@@ -27,6 +27,18 @@ void nuContRmbForceStop(void) {}
 
 u8 nuContInit(void) { return 1; }
 
+void nuContDataGet(OSContPad* data, u32 padno) {
+    (void)padno;
+    if (!data) return;
+    unsigned short b = 0, t = 0;
+    signed char x = 0, y = 0;
+    pm_pad_read(&b, &x, &y, &t);
+    data->button = b;
+    data->stick_x = x;
+    data->stick_y = y;
+    (void)t;
+}
+
 void nuContDataGetEx(NUContData* data, u32 padno) {
     (void)padno;
     if (!data) return;

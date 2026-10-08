@@ -5,6 +5,15 @@
 #include "ultra64.h"
 #include "pm_port.h"
 
+void osInvalICache(void* addr, s32 nbytes) {
+    (void)addr;
+    (void)nbytes;
+}
+
+void bcopy(const void* src, void* dst, unsigned int n) {
+    memcpy(dst, src, n);
+}
+
 s32 osTvType = OS_TV_NTSC;
 u32 osMemSize = 0x00400000;
 OSViMode osViModeNtscLan1;
@@ -104,6 +113,14 @@ void pm_rom_init(void) {
 
 void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     if (!buf || !size) return;
+    if ((unsigned)buf < 0x00100000u) {
+        static int once;
+        if (!once) {
+            once = 1;
+            pm_log("dma skip rom %08x buf %08x n %u", rom_addr, (unsigned)buf, size);
+        }
+        return;
+    }
     if (!rom_tried) pm_rom_init();
     if (rom_bytes) {
         if (rom_addr >= rom_size) {

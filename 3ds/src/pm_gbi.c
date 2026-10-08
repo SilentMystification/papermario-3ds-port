@@ -206,7 +206,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         }
         case G_TRI1:
-            draw_tri(w1);
+            draw_tri(w0);
             break;
         case G_TRI2:
             draw_tri(w0);

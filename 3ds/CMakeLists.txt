@@ -23,7 +23,20 @@ include_directories(
     ${DECOMP}/src
 )
 
-set(GAME_TU "${DECOMP}/src/main.c" "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
+set(GAME_SRC
+    ${DECOMP}/src/main.c
+    ${DECOMP}/src/main_loop.c
+    ${DECOMP}/src/game_modes.c
+    ${DECOMP}/src/game_states.c
+    ${DECOMP}/src/state_startup.c
+    ${DECOMP}/src/state_logos.c
+    ${DECOMP}/src/startup_screen_fading.c
+    ${DECOMP}/src/heap.c
+    ${DECOMP}/src/heaps3.c
+    ${DECOMP}/src/43F0.c
+    ${DECOMP}/src/input.c
+)
+set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w")
 
 ctr_add_shader_library(pm_shader shaders/pm.v.pica)
@@ -40,8 +53,9 @@ add_executable(pm_3ds
     src/pm_nusys.c
     src/pm_os.c
     src/pm_audio.c
+    src/pm_later.c
     src/game_stubs.c
-    ${DECOMP}/src/main.c
+    ${GAME_SRC}
 )
 target_link_options(pm_3ds PRIVATE -Wl,--gc-sections)
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)

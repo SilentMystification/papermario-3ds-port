@@ -43,13 +43,19 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
 
 unsigned pm_ticks(void) { return (unsigned)svcGetSystemTick(); }
 
+/* gfxRetrace_Callback flips D_80073E0A and builds a display list only when it
+ * lands on 0. The other retrace leaves the N64 framebuffer alone. Clearing
+ * and presenting on that retrace flashes black between the logo frames. */
+extern s16 D_80073E0A;
+
 void pm_frame_loop(void) {
     unsigned frame = 0;
     int ever = 0;
     while (aptMainLoop()) {
         pm_log_poll();
         pm_pad_scan();
-        pm_gpu_begin();
+        int draw = D_80073E0A != 0 || !ever;
+        pm_gpu_begin(draw);
         pm_gfx_retrace();
         if (!pm_gpu_drew()) {
             if (!ever) pm_gbi_fallback();

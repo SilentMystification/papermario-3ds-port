@@ -16,6 +16,7 @@ void *memcpy(void *,const void *,size_t);
 int  memicmp(void *,void *,size_t);
 void *memmove(void *,void *,size_t);
 void *memset(void *,int,size_t);
+void bcopy(const void *, void *, unsigned int);
 
 void movmem(void *,void *,unsigned);
 void setmem(void *,unsigned,int);

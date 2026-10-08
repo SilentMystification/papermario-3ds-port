@@ -9,7 +9,7 @@
 typedef struct {
     float x, y, z;
     float u, v;
-    u8 r, g, b, a;
+    float r, g, b, a;
 } Vert;
 
 static Vert* verts;
@@ -22,6 +22,8 @@ static int combine;
 static int batch_identity;
 static unsigned prim = 0xffffffffu;
 static float mvp[4][4];
+static C3D_Mtx projection;
+static int u_proj = -1;
 static C3D_RenderTarget* target;
 static shaderProgram_s prog;
 static DVLB_s* dvlb;
@@ -48,13 +50,10 @@ static void flush(void) {
         batch_identity = 0;
         return;
     }
-    float id[4][4];
-    if (batch_identity) {
-        ident(id);
-        upload(id);
-    } else {
-        upload(mvp);
-    }
+    /* Pixel positions, y up. Mtx_OrthoTilt rotates them into the 240x400 target. */
+    if (u_proj >= 0) C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, &projection);
+    (void)batch_identity;
+    (void)mvp;
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     int tex = (combine == 2) && pm_tex_bind();
@@ -69,11 +68,13 @@ static void flush(void) {
         C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
         C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
     }
-    C3D_DepthTest(z_on ? true : false, GPU_GEQUAL, GPU_WRITE_ALL);
+    C3D_DepthTest(z_on ? true : false, GPU_GEQUAL, z_on ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+    C3D_EarlyDepthTest(false, GPU_EARLYDEPTH_GREATER, 0);
+    C3D_AlphaTest(false, GPU_ALWAYS, 0);
+    C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
     C3D_CullFace(GPU_CULL_NONE);
-    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD,
-                   GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-                   GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+    GSPGPU_FlushDataCache(verts, sizeof(Vert) * (u32)nverts);
     C3D_BufInfo* buf = C3D_GetBufInfo();
     BufInfo_Init(buf);
     BufInfo_Add(buf, verts, sizeof(Vert), 3, 0x210);
@@ -91,54 +92,61 @@ static void put(float x, float y, float z, float u, float v, unsigned c) {
     }
     if (light_on) c = 0xffffffffu;
     Vert* p = &verts[nverts++];
-    p->x = x;
-    p->y = y;
-    p->z = z;
+    /* Clip space for the 240x400 viewport: x = y/120 - 1, y = -x/200 + 1, z = -0.5. */
+    p->x = y * (2.f / 240.f) - 1.f;
+    p->y = x * (2.f / -400.f) + 1.f;
+    p->z = -0.5f;
     p->u = u;
     p->v = v;
-    p->r = (u8)((c >> 24) & 255);
-    p->g = (u8)((c >> 16) & 255);
-    p->b = (u8)((c >> 8) & 255);
-    p->a = (u8)(c & 255);
+    p->r = (float)((c >> 24) & 255) / 255.f;
+    p->g = (float)((c >> 16) & 255) / 255.f;
+    p->b = (float)((c >> 8) & 255) / 255.f;
+    p->a = (float)(c & 255) / 255.f;
 }
 
 void pm_gpu_init(void) {
     if (gpu_ok) return;
     gfxInitDefault();
     C3D_Init(0x100000);
-    target = C3D_RenderTargetCreate(240, 320, GPU_RB_RGB565, GPU_RB_DEPTH16);
+    /* Width 240, height 400: that is the top screen's rotated framebuffer.
+     * A 320-tall target copied into it skews every scanline. */
+    target = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
     if (!target) {
         pm_log("render target failed\n");
         return;
     }
     C3D_RenderTargetSetOutput(target, GFX_TOP, GFX_LEFT,
         GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |
-        GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB565) |
+        GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
         GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) |
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
     dvlb = DVLB_ParseFile((u32*)pm_shader_shbin, pm_shader_shbin_size);
     shaderProgramInit(&prog);
     shaderProgramSetVsh(&prog, &dvlb->DVLE[0]);
     C3D_BindProgram(&prog);
+    u_proj = shaderInstanceGetUniformLocation(prog.vertexShader, "projection");
+    /* y grows up, matching the citro3d immediate example. 320 game pixels sit in the middle. */
+    Mtx_OrthoTilt(&projection, 0.f, 400.f, 0.f, 240.f, 0.f, 1.f, true);
     C3D_AttrInfo* ai = C3D_GetAttrInfo();
     AttrInfo_Init(ai);
     AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 3);
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
-    AttrInfo_AddLoader(ai, 2, GPU_UNSIGNED_BYTE, 4);
+    AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     verts = (Vert*)linearAlloc(sizeof(Vert) * 512);
     ident(mvp);
     pm_tex_init();
     consoleInit(GFX_BOTTOM, NULL);
     gpu_ok = verts != NULL;
-    pm_log("gpu %s 320x240", gpu_ok ? "ok" : "no vertex buffer");
+    pm_log("gpu %s proj %d m %d %d", gpu_ok ? "ok" : "no vertex buffer", u_proj,
+           (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
 
-void pm_gpu_begin(void) {
+void pm_gpu_begin(int clear) {
     drew = 0;
     nverts = 0;
     if (!gpu_ok) return;
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-    C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+    if (clear) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
     C3D_FrameDrawOn(target);
 }
 
@@ -178,18 +186,25 @@ void pm_gpu_tri(float x0, float y0, float z0, float u0, float v0, unsigned c0,
     put(x2, y2, z2, u2, v2, c2);
 }
 
+/* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
+static float px(int x) { return 40.f + (float)x; }
+static float py(int y) { return 240.f - (float)y; }
+
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
     flush();
+    int saved = combine;
+    combine = 0;
     batch_identity = 1;
-    float xa = (float)x0 / 320.f * 2.f - 1.f;
-    float xb = (float)(x1 + 1) / 320.f * 2.f - 1.f;
-    float ya = 1.f - (float)y0 / 240.f * 2.f;
-    float yb = 1.f - (float)(y1 + 1) / 240.f * 2.f;
-    pm_gpu_tri(xa, ya, 0, 0, 0, rgba, xb, ya, 0, 0, 0, rgba, xb, yb, 0, 0, 0, rgba);
-    pm_gpu_tri(xa, ya, 0, 0, 0, rgba, xb, yb, 0, 0, 0, rgba, xa, yb, 0, 0, 0, rgba);
+    float xa = px(x0);
+    float xb = px(x1 + 1);
+    float ya = py(y0);
+    float yb = py(y1 + 1);
+    pm_gpu_tri(xa, ya, 0.5f, 0, 0, rgba, xb, ya, 0.5f, 0, 0, rgba, xb, yb, 0.5f, 0, 0, rgba);
+    pm_gpu_tri(xa, ya, 0.5f, 0, 0, rgba, xb, yb, 0.5f, 0, 0, rgba, xa, yb, 0.5f, 0, 0, rgba);
     flush();
+    combine = saved;
 }
 
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
@@ -199,13 +214,13 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     int saved = combine;
     combine = 2;
     batch_identity = 1;
-    float xa = (float)x0 / 320.f * 2.f - 1.f;
-    float xb = (float)(x1 + 1) / 320.f * 2.f - 1.f;
-    float ya = 1.f - (float)y0 / 240.f * 2.f;
-    float yb = 1.f - (float)(y1 + 1) / 240.f * 2.f;
+    float xa = px(x0);
+    float xb = px(x1 + 1);
+    float ya = py(y0);
+    float yb = py(y1 + 1);
     unsigned c = 0xffffffffu;
-    pm_gpu_tri(xa, ya, 0, s0, t0, c, xb, ya, 0, s1, t0, c, xb, yb, 0, s1, t1, c);
-    pm_gpu_tri(xa, ya, 0, s0, t0, c, xb, yb, 0, s1, t1, c, xa, yb, 0, s0, t1, c);
+    pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, ya, 0.5f, s1, t0, c, xb, yb, 0.5f, s1, t1, c);
+    pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, yb, 0.5f, s1, t1, c, xa, yb, 0.5f, s0, t1, c);
     flush();
     combine = saved;
 }

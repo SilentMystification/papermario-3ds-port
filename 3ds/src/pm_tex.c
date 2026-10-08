@@ -50,6 +50,17 @@ static void write5551(u8* dst, unsigned c) {
     dst[1] = (u8)((c >> 8) & 255);
 }
 
+/* PICA stores 16-bit texels in 8x8 Morton tiles. C3D_TexLoadImage copies
+ * the bytes through, so the scratch has to already be in that order. */
+static unsigned tiled16(int x, int y, int pw) {
+    unsigned mx = (unsigned)x & 7u;
+    unsigned my = (unsigned)y & 7u;
+    unsigned morton = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) |
+                      ((mx & 4u) << 2) | ((my & 4u) << 3);
+    unsigned tile = ((unsigned)y >> 3) * ((unsigned)pw >> 3) + ((unsigned)x >> 3);
+    return (tile * 64u + morton) * 2u;
+}
+
 static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h,
                   const u8* tlut, int tlut_n, int pw, int ph, GPU_TEXCOLOR gf) {
     unsigned out_bpp = (gf == GPU_RGBA8) ? 4 : (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4) ? 1 : 2;
@@ -137,6 +148,14 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     have = 0;
     cur = -1;
     if (!img || width < 1 || height < 1 || !scratch) return 0;
+    if ((unsigned)img < 0x00100000u) {
+        static int once;
+        if (!once) {
+            once = 1;
+            pm_log("tex ptr %08x %dx%d fmt %u", (unsigned)img, width, height, fmt);
+        }
+        return 0;
+    }
     if (width > MAX_DIM || height > MAX_DIM) {
         pm_log("tex %dx%d skipped\n", width, height);
         return 0;
@@ -172,7 +191,20 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     }
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
-    C3D_TexLoadImage(&s->tex, scratch, GPU_TEXFACE_2D, 0);
+    const void* upload = scratch;
+    if (bpp == 2u) {
+        u8* tiled = scratch + (256 * 256 * 2);
+        for (int y = 0; y < ph; y++) {
+            for (int x = 0; x < pw; x++) {
+                unsigned s0 = ((unsigned)y * (unsigned)pw + (unsigned)x) * 2u;
+                unsigned d0 = tiled16(x, y, pw);
+                tiled[d0] = scratch[s0];
+                tiled[d0 + 1] = scratch[s0 + 1];
+            }
+        }
+        upload = tiled;
+    }
+    C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
     s->img = img;
     s->fmt = fmt;
     s->siz = siz;

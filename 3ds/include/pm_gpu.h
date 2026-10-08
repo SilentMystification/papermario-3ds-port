@@ -2,7 +2,7 @@
 #define PM_GPU_H
 
 void pm_gpu_init(void);
-void pm_gpu_begin(void);
+void pm_gpu_begin(int clear);
 void pm_gpu_end(void);
 int pm_gpu_drew(void);
 
