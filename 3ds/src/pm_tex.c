@@ -194,9 +194,12 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     const void* upload = scratch;
     if (bpp == 2u) {
         u8* tiled = scratch + (256 * 256 * 2);
+        /* PICA samples t = 0 from the last row. Store row 0 there so the
+         * game's top-left UV is the top of the image. */
         for (int y = 0; y < ph; y++) {
+            int sy = ph - 1 - y;
             for (int x = 0; x < pw; x++) {
-                unsigned s0 = ((unsigned)y * (unsigned)pw + (unsigned)x) * 2u;
+                unsigned s0 = ((unsigned)sy * (unsigned)pw + (unsigned)x) * 2u;
                 unsigned d0 = tiled16(x, y, pw);
                 tiled[d0] = scratch[s0];
                 tiled[d0 + 1] = scratch[s0 + 1];

@@ -12,8 +12,11 @@ typedef struct {
     float r, g, b, a;
 } Vert;
 
+enum { VERT_SLOTS = 16384 };
+static Vert* vert_base;
 static Vert* verts;
 static int nverts;
+static int rect_2d;
 static int drew;
 static int gpu_ok;
 static int z_on;
@@ -68,17 +71,25 @@ static void flush(void) {
         C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
         C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
     }
-    C3D_DepthTest(z_on ? true : false, GPU_GEQUAL, z_on ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+    /* Fill and texrects ignore the Z buffer. Startup turns G_ZBUFFER on
+     * before the logo, and every 2D quad shares z, so a depth test keeps
+     * only the first rectangle. */
+    int z = z_on && !rect_2d;
+    C3D_DepthTest(z ? true : false, GPU_GEQUAL, z ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
     C3D_EarlyDepthTest(false, GPU_EARLYDEPTH_GREATER, 0);
     C3D_AlphaTest(false, GPU_ALWAYS, 0);
     C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
     C3D_CullFace(GPU_CULL_NONE);
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-    GSPGPU_FlushDataCache(verts, sizeof(Vert) * (u32)nverts);
+    /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
+    Vert* batch = verts;
+    int count = nverts;
+    GSPGPU_FlushDataCache(batch, sizeof(Vert) * (u32)count);
     C3D_BufInfo* buf = C3D_GetBufInfo();
     BufInfo_Init(buf);
-    BufInfo_Add(buf, verts, sizeof(Vert), 3, 0x210);
-    C3D_DrawArrays(GPU_TRIANGLES, 0, nverts);
+    BufInfo_Add(buf, batch, sizeof(Vert), 3, 0x210);
+    C3D_DrawArrays(GPU_TRIANGLES, 0, count);
+    verts = batch + count;
     nverts = 0;
     batch_identity = 0;
     drew = 1;
@@ -91,11 +102,11 @@ static void put(float x, float y, float z, float u, float v, unsigned c) {
         batch_identity = id;
     }
     if (light_on) c = 0xffffffffu;
+    if (!verts || verts + nverts >= vert_base + VERT_SLOTS) return;
     Vert* p = &verts[nverts++];
-    /* Clip space for the 240x400 viewport: x = y/120 - 1, y = -x/200 + 1, z = -0.5. */
-    p->x = y * (2.f / 240.f) - 1.f;
-    p->y = x * (2.f / -400.f) + 1.f;
-    p->z = -0.5f;
+    p->x = x;
+    p->y = y;
+    p->z = z;
     p->u = u;
     p->v = v;
     p->r = (float)((c >> 24) & 255) / 255.f;
@@ -132,11 +143,12 @@ void pm_gpu_init(void) {
     AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 3);
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
-    verts = (Vert*)linearAlloc(sizeof(Vert) * 512);
+    vert_base = (Vert*)linearAlloc(sizeof(Vert) * VERT_SLOTS);
+    verts = vert_base;
     ident(mvp);
     pm_tex_init();
     consoleInit(GFX_BOTTOM, NULL);
-    gpu_ok = verts != NULL;
+    gpu_ok = vert_base != NULL;
     pm_log("gpu %s proj %d m %d %d", gpu_ok ? "ok" : "no vertex buffer", u_proj,
            (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
@@ -144,6 +156,7 @@ void pm_gpu_init(void) {
 void pm_gpu_begin(int clear) {
     drew = 0;
     nverts = 0;
+    verts = vert_base;
     if (!gpu_ok) return;
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     if (clear) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
@@ -196,6 +209,7 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     flush();
     int saved = combine;
     combine = 0;
+    rect_2d = 1;
     batch_identity = 1;
     float xa = px(x0);
     float xb = px(x1 + 1);
@@ -204,6 +218,7 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     pm_gpu_tri(xa, ya, 0.5f, 0, 0, rgba, xb, ya, 0.5f, 0, 0, rgba, xb, yb, 0.5f, 0, 0, rgba);
     pm_gpu_tri(xa, ya, 0.5f, 0, 0, rgba, xb, yb, 0.5f, 0, 0, rgba, xa, yb, 0.5f, 0, 0, rgba);
     flush();
+    rect_2d = 0;
     combine = saved;
 }
 
@@ -213,6 +228,7 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     flush();
     int saved = combine;
     combine = 2;
+    rect_2d = 1;
     batch_identity = 1;
     float xa = px(x0);
     float xb = px(x1 + 1);
@@ -222,5 +238,6 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, ya, 0.5f, s1, t0, c, xb, yb, 0.5f, s1, t1, c);
     pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, yb, 0.5f, s1, t1, c, xa, yb, 0.5f, s0, t1, c);
     flush();
+    rect_2d = 0;
     combine = saved;
 }
