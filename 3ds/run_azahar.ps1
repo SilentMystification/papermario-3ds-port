@@ -5,7 +5,9 @@ run_azahar.ps1 - run build3ds/pm_3ds.3dsx in Azahar, wait for a log line, then c
 
 Stops at the first of: a log line that matches -Until, a [CRASH] line, an Azahar CPU
 exception dialog, Azahar exit,
-no game log output for -Stall seconds, or -Timeout seconds. Azahar is always force-killed at the end, so the script cannot hang.
+no game log output for -Stall seconds, or -Timeout seconds. This script's own Azahar instance is always
+force-killed at the end (by PID, never other azahar.exe processes - safe to run alongside another
+concurrent instance), so this script cannot hang.
 Output: build3ds/last_log.txt (game log), build3ds/last_shot.png (-Capture), and
 [CRASH] addresses resolved to source lines (needs Docker and the pm3ds-work volume).
 -Gdb: start Azahar with its GDB stub (port 24689) and attach arm-none-eabi-gdb (Docker) in
@@ -34,9 +36,12 @@ $log = "$sd\log.txt"
 $emuLog = "$env:APPDATA\Azahar\log\azahar_log.txt"
 $out = "$repo\build3ds"
 
-function Kill-Azahar {
-    cmd /c "taskkill /F /T /IM azahar.exe >nul 2>&1"
-    for ($i = 0; $i -lt 50 -and (Get-Process azahar -ErrorAction SilentlyContinue); $i++) {
+function Kill-Azahar([int]$procId) {
+    # Scoped to the PID this script itself launched - never kills other azahar.exe processes (a
+    # concurrent agent/session may have its own instance open; a blanket "taskkill /IM azahar.exe"
+    # here would silently terminate theirs too).
+    Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+    for ($i = 0; $i -lt 50 -and (Get-Process -Id $procId -ErrorAction SilentlyContinue); $i++) {
         Start-Sleep -Milliseconds 100
     }
 }
@@ -66,7 +71,6 @@ function Set-GdbStub([bool]$on) {
     Set-Content $cfg $text -NoNewline
 }
 
-Kill-Azahar
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
 Copy-Item "$out\pm_3ds.3dsx" "$sd\pm_3ds.3dsx" -Force
 Remove-Item $log -ErrorAction SilentlyContinue
@@ -164,7 +168,7 @@ public class AzWin {
         $g.Dispose(); $bmp.Dispose()
     }
 } finally {
-    Kill-Azahar
+    if ($p) { Kill-Azahar $p.Id }
     if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
     if ($Gdb) { Set-GdbStub $false }
 }

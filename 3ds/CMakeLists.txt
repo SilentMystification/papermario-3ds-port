@@ -35,9 +35,28 @@ set(GAME_SRC
     ${DECOMP}/src/heaps3.c
     ${DECOMP}/src/43F0.c
     ${DECOMP}/src/input.c
+    ${DECOMP}/src/cam_main.c
+    ${DECOMP}/src/cam_math.c
+    ${DECOMP}/src/cam_mode_interp.c
+    ${DECOMP}/src/cam_mode_minimal.c
+    ${DECOMP}/src/cam_mode_no_interp.c
+    ${DECOMP}/src/cam_mode_unused_ahead.c
+    ${DECOMP}/src/cam_mode_unused_leading.c
+    ${DECOMP}/src/cam_mode_unused_radial.c
+    ${DECOMP}/src/cam_mode_zone_interp.c
+    ${DECOMP}/src/state_intro.c
+    ${DECOMP}/src/model.c
+    ${DECOMP}/src/model_clear_render_tasks.c
+    ${DECOMP}/src/os/guOrtho.c
+    ${DECOMP}/src/os/perspective.c
+    ${DECOMP}/src/os/guRotate.c
+    ${DECOMP}/src/os/lookatref.c
+    ${DECOMP}/src/os/guMtxXFML.c
+    ${DECOMP}/src/os/sins.c
+    ${DECOMP}/src/os/coss.c
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
-set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w")
+set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration")
 
 ctr_add_shader_library(pm_shader shaders/pm.v.pica)
 dkp_add_embedded_binary_library(pm_shader_lib pm_shader)
@@ -50,10 +69,12 @@ add_executable(pm_3ds
     src/pm_gpu.c
     src/pm_tex.c
     src/pm_gbi.c
+    src/pm_gu.c
     src/pm_nusys.c
     src/pm_os.c
     src/pm_audio.c
     src/pm_later.c
+    src/pm_overlay.c
     src/game_stubs.c
     ${GAME_SRC}
 )

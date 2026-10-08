@@ -1,7 +1,6 @@
 /* Systems the logo slice does not run. Each one is replaced by its real file later. */
 unsigned char heap_battleHead[0x25800];
 void update_max_rumble_duration() {}
-void mdl_reset_transform_flags() {}
 void npc_iter_no_op() {}
 void update_workers() {}
 void update_triggers() {}
@@ -20,28 +19,22 @@ void disable_player_input() {}
 void spr_render_init() {}
 void player_render_interact_prompts() {}
 void func_802C3EE4() {}
-void render_screen_overlay_backUI() {}
 void render_workers_backUI() {}
 void render_hud_elements_backUI() {}
 void render_effects_UI() {}
 void render_workers_frontUI() {}
 void render_hud_elements_frontUI() {}
-void render_screen_overlay_frontUI() {}
 void render_curtains() {}
 void crash_screen_set_draw_info() {}
-void render_frame() {}
 void _render_transition_stencil() {}
 void render_window_root() {}
 void render_messages() {}
 void fio_init_flash() {}
-void clear_render_tasks() {}
 void clear_worker_list() {}
 void clear_script_list() {}
 void clear_player_status() {}
 void spr_init_sprites() {}
 void clear_entity_models() {}
-void clear_animator_list() {}
-void clear_model_data() {}
 void clear_sprite_shading_data() {}
 void reset_background_settings() {}
 void clear_character_set() {}
@@ -72,14 +65,25 @@ void fio_load_globals() {}
 void snd_set_stereo() {}
 void snd_set_mono() {}
 void update_npcs() {}
-void update_cameras() {}
+void update_effects() {}
+void update_player() {}
+void update_encounters() {}
+int does_script_exist() { return 0; }
+void load_map_by_IDs() {}
+void clear_animator_list() {}
+void render_effects_scene() {}
+void render_entities() {}
+void render_item_entities() {}
+void render_npcs() {}
+void render_player() {}
+void render_transformed_hud_elements() {}
+void render_workers_scene() {}
+int test_ray_zones() { return -1; }
 void set_curtain_scale() {}
 void set_curtain_fade() {}
 void set_curtain_scale_goal() {}
 void set_curtain_draw_callback() {}
 void set_curtain_fade_goal() {}
-void set_screen_overlay_params_front() {}
-void set_screen_overlay_color() {}
 void state_drawUI_battle() {}
 void state_drawUI_change_map() {}
 void state_drawUI_demo() {}
@@ -89,7 +93,6 @@ void state_drawUI_exit_file_select() {}
 void state_drawUI_exit_language_select() {}
 void state_drawUI_file_select() {}
 void state_drawUI_game_over() {}
-void state_drawUI_intro() {}
 void state_drawUI_language_select() {}
 void state_drawUI_pause() {}
 void state_drawUI_title_screen() {}
@@ -105,7 +108,6 @@ void state_init_exit_file_select() {}
 void state_init_exit_language_select() {}
 void state_init_file_select() {}
 void state_init_game_over() {}
-void state_init_intro() {}
 void state_init_language_select() {}
 void state_init_pause() {}
 void state_init_title_screen() {}
@@ -120,7 +122,6 @@ void state_step_exit_file_select() {}
 void state_step_exit_language_select() {}
 void state_step_file_select() {}
 void state_step_game_over() {}
-void state_step_intro() {}
 void state_step_language_select() {}
 void state_step_pause() {}
 void state_step_title_screen() {}

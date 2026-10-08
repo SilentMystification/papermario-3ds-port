@@ -80,7 +80,8 @@ static void flush(void) {
     C3D_AlphaTest(false, GPU_ALWAYS, 0);
     C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
     C3D_CullFace(GPU_CULL_NONE);
-    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
     Vert* batch = verts;
     int count = nverts;

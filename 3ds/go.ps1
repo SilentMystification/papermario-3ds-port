@@ -27,8 +27,9 @@ file under 3ds/src, 3ds/include, 3ds/shaders, src/, and include/ (a real rebuild
 -Interactive: a person is playing, not watching for a scripted stop condition.
   push a: no timeout, no log-silence stop, settings windows allowed (forwarded to run_azahar.ps1).
   push o/n: keeps echoing the hardware log for a long time (24h) instead of stopping at -Seconds.
-  Either way, closing this script does not stop the game - Azahar is killed by run_azahar.ps1 on
-  exit, but real hardware keeps running regardless of whether this PC script is watching it.
+  Either way, closing this script does not stop the game - run_azahar.ps1 kills only the Azahar
+  process it started (other azahar.exe instances keep running), and real hardware keeps running
+  regardless of whether this PC script is watching it.
 
 pull o: FTP (port 5000) into O3DS's SD card. Downloads the game log and any Luma crash dumps to
   build3ds/hw_o3ds_log.txt and build3ds/hw_o3ds_dumps/.

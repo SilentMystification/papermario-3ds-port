@@ -12,7 +12,11 @@ extern unsigned int __ctru_linear_heap_size;
 
 static float proj[4][4];
 static float mv[10][4][4];
+static float combined[4][4];
 static int mv_sp;
+/* Viewport scale/translate after the 2-bit fraction. Full 320x240 until a display list sets one. */
+static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
+static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 static unsigned geom;
 static unsigned omode_h;
 static unsigned prim = 0xffffffffu;
@@ -77,9 +81,9 @@ static void unpack(const Mtx* src, float d[4][4]) {
 }
 
 static void upload_mvp(void) {
-    float m[4][4];
-    mul(m, proj, mv[mv_sp]);
-    pm_gpu_set_mvp(m);
+    /* Row-vector matrices, same as transform_point: modelview first, then projection. */
+    mul(combined, mv[mv_sp], proj);
+    pm_gpu_set_mvp(combined);
 }
 
 static void sync_combine(void) {
@@ -104,7 +108,18 @@ static unsigned rgba_from_5551(unsigned c) {
 }
 
 static unsigned vert_color(const Vtx* v) {
-    if (geom & G_LIGHTING) return 0xffffffffu;
+    if (geom & G_LIGHTING) {
+        /* Normals share the color bytes. One light from above-front until the
+         * display list's lights are applied. */
+        float nx = (float)(signed char)v->v.cn[0] / 127.f;
+        float ny = (float)(signed char)v->v.cn[1] / 127.f;
+        float nz = (float)(signed char)v->v.cn[2] / 127.f;
+        float d = nx * 0.25f + ny * 0.85f + nz * 0.45f;
+        if (d < 0.f) d = 0.f;
+        if (d > 1.f) d = 1.f;
+        unsigned c = (unsigned)((0.35f + 0.65f * d) * 255.f);
+        return (c << 24) | (c << 16) | (c << 8) | 255u;
+    }
     return ((unsigned)v->v.cn[0] << 24) | ((unsigned)v->v.cn[1] << 16) |
            ((unsigned)v->v.cn[2] << 8) | (unsigned)v->v.cn[3];
 }
@@ -118,18 +133,47 @@ static void vert_uv(const Vtx* v, float* u, float* vcoord) {
     *vcoord = ((float)v->v.tc[1] / 32.f) / (float)th;
 }
 
+/* Model vertex -> upright screen pixels, same space as the logo rectangles.
+ * Y is flipped to match get_screen_coords. Depth 1 is near so the greater-equal
+ * test (cleared to 0) keeps the closer fragment. */
+static int project_vtx(const Vtx* v, float* ox, float* oy, float* oz) {
+    float x = (float)v->v.ob[0];
+    float y = (float)v->v.ob[1];
+    float z = (float)v->v.ob[2];
+    float cx = combined[0][0] * x + combined[1][0] * y + combined[2][0] * z + combined[3][0];
+    float cy = combined[0][1] * x + combined[1][1] * y + combined[2][1] * z + combined[3][1];
+    float cz = combined[0][2] * x + combined[1][2] * y + combined[2][2] * z + combined[3][2];
+    float cw = combined[0][3] * x + combined[1][3] * y + combined[2][3] * z + combined[3][3];
+    if (cw <= 0.01f) return 0;
+    float inv = 1.f / cw;
+    float sx = cx * inv * vp_sx + vp_tx;
+    float sy = -cy * inv * vp_sy + vp_ty;
+    float sz = cz * inv * vp_sz + vp_tz;
+    float depth = 1.f - sz / 256.f;
+    if (depth < 0.f) depth = 0.f;
+    if (depth > 1.f) depth = 1.f;
+    *ox = 40.f + sx;
+    *oy = 240.f - sy;
+    *oz = depth;
+    return 1;
+}
+
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
     int i2 = (int)(w & 0xff) / 2;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) return;
+    float x0, y0, z0, x1, y1, z1, x2, y2, z2;
+    if (!project_vtx(&verts[i0], &x0, &y0, &z0)) return;
+    if (!project_vtx(&verts[i1], &x1, &y1, &z1)) return;
+    if (!project_vtx(&verts[i2], &x2, &y2, &z2)) return;
     float u0, v0, u1, v1, u2, v2;
     vert_uv(&verts[i0], &u0, &v0);
     vert_uv(&verts[i1], &u1, &v1);
     vert_uv(&verts[i2], &u2, &v2);
-    pm_gpu_tri(verts[i0].v.ob[0], verts[i0].v.ob[1], verts[i0].v.ob[2], u0, v0, vert_color(&verts[i0]),
-               verts[i1].v.ob[0], verts[i1].v.ob[1], verts[i1].v.ob[2], u1, v1, vert_color(&verts[i1]),
-               verts[i2].v.ob[0], verts[i2].v.ob[1], verts[i2].v.ob[2], u2, v2, vert_color(&verts[i2]));
+    pm_gpu_tri(x0, y0, z0, u0, v0, vert_color(&verts[i0]),
+               x1, y1, z1, u1, v1, vert_color(&verts[i1]),
+               x2, y2, z2, u2, v2, vert_color(&verts[i2]));
 }
 
 static void load_mtx(u32 w0, u32 w1) {
@@ -215,6 +259,20 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_MTX:
             load_mtx(w0, w1);
             break;
+        case G_MOVEMEM: {
+            if ((w0 & 0xff) == G_MV_VIEWPORT) {
+                Vp* vp = (Vp*)ptr_of(w1);
+                if (vp) {
+                    vp_sx = (float)vp->vp.vscale[0] / 4.f;
+                    vp_sy = (float)vp->vp.vscale[1] / 4.f;
+                    vp_sz = (float)vp->vp.vscale[2] / 4.f;
+                    vp_tx = (float)vp->vp.vtrans[0] / 4.f;
+                    vp_ty = (float)vp->vp.vtrans[1] / 4.f;
+                    vp_tz = (float)vp->vp.vtrans[2] / 4.f;
+                }
+            }
+            break;
+        }
         case G_POPMTX: {
             unsigned count = w1 / 64;
             if (count == 0) count = 1;
@@ -258,7 +316,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int lry = (int)((w0 >> 2) & 0x3ff);
             int ulx = (int)((w1 >> 14) & 0x3ff);
             int uly = (int)((w1 >> 2) & 0x3ff);
-            pm_gpu_fill_rect(ulx, uly, lrx, lry, rgba_from_5551(fill & 0xffff));
+            /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
+            unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
+                ? rgba_from_5551(fill & 0xffff) : prim;
+            pm_gpu_fill_rect(ulx, uly, lrx, lry, color);
             break;
         }
         case G_TEXRECT:
