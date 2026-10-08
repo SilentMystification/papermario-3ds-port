@@ -20,6 +20,9 @@ void appendGfx_reset_tile_pattern(void);
 
 void gfx_draw_frame(void);
 void gfx_init_state(void);
+#ifdef TARGET_3DS
+void pm_frame_loop(void);
+#endif
 
 void create_audio_system(void);
 void load_engine_data(void);
@@ -97,7 +100,11 @@ void boot_main(void* data) {
     gRandSeed += osGetCount();
     nuGfxDisplayOn();
 
+#ifdef TARGET_3DS
+    pm_frame_loop();
+#else
     while (true) {}
+#endif
 }
 
 void gfxRetrace_Callback(s32 gfxTaskNum) {

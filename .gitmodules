@@ -1,0 +1,10 @@
+[submodule "reference/paperboat"]
+	path = reference/paperboat
+	url = https://github.com/HarbourMasters/PaperBoat.git
+	branch = develop
+[submodule "reference/sm64-3ds"]
+	path = reference/sm64-3ds
+	url = https://github.com/Epic0522/Super-Mario-64-3ds-port---Ultimate.git
+[submodule "reference/soh-3ds"]
+	path = reference/soh-3ds
+	url = https://github.com/999sian/soh-3ds.git

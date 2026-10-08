@@ -81,9 +81,11 @@ extern "C" {
 /* byte string operations */
 
 
+#ifndef TARGET_3DS
 extern void     bcopy(const void *, void *, int);
 extern int      bcmp(const void *, const void *, int);
 extern void     bzero(void *, int);
+#endif
 
 /* Printf */
 

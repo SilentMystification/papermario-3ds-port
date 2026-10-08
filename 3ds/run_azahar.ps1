@@ -1,0 +1,241 @@
+<#
+run_azahar.ps1 - run build3ds/pm_3ds.3dsx in Azahar, wait for a log line, then close Azahar.
+
+  powershell -File 3ds/run_azahar.ps1 [-Until <regex>] [-Timeout <s>] [-Capture] [-Gdb]
+
+Stops at the first of: a log line that matches -Until, a [CRASH] line, an Azahar CPU
+exception dialog, Azahar exit,
+no game log output for -Stall seconds, or -Timeout seconds. Azahar is always force-killed at the end, so the script cannot hang.
+Output: build3ds/last_log.txt (game log), build3ds/last_shot.png (-Capture), and
+[CRASH] addresses resolved to source lines (needs Docker and the pm3ds-work volume).
+-Gdb: start Azahar with its GDB stub (port 24689) and attach arm-none-eabi-gdb (Docker) in
+batch mode. gdb runs -GdbScript (gdb commands, e.g. "break boot_main"), then "continue".
+When the game stops (breakpoint or fault), gdb prints a backtrace, the registers and the stack.
+Output: build3ds/last_gdb.txt. The run ends when gdb exits or at -Timeout. Log-silence
+detection is off, because a stopped game is silent. For an interactive prompt use 3ds/gdb.sh.
+#>
+param(
+    [string]$Until = "",
+    [int]$Timeout = 60,
+    [int]$Stall = 10,
+    [switch]$Capture,
+    [switch]$Gdb,
+    [switch]$Interactive, # a person plays: no timeout, no log-silence stop, settings windows allowed
+    [string]$GdbScript = "",
+    [string]$Debug = ""  # render debug switches for the game, see pm_main.c (nofog nolight notex texonly logtev)
+)
+$ErrorActionPreference = "Stop"
+if ($Interactive) { $Timeout = [int]::MaxValue }
+$repo = Split-Path -Parent $PSScriptRoot
+$sd = "$env:APPDATA\Azahar\sdmc\3ds\PaperMario"
+$cfg = "$env:APPDATA\Azahar\config\qt-config.ini"
+$exe = "C:\Program Files\Azahar\azahar.exe"
+$log = "$sd\log.txt"
+$emuLog = "$env:APPDATA\Azahar\log\azahar_log.txt"
+$out = "$repo\build3ds"
+
+function Kill-Azahar {
+    cmd /c "taskkill /F /T /IM azahar.exe >nul 2>&1"
+    for ($i = 0; $i -lt 50 -and (Get-Process azahar -ErrorAction SilentlyContinue); $i++) {
+        Start-Sleep -Milliseconds 100
+    }
+}
+
+# Last $max bytes of a file that Azahar keeps open (the emulator log can reach 100 MB)
+function Read-Tail([string]$path, [int]$max = 65536) {
+    try {
+        $fs = [IO.File]::Open($path, "Open", "Read", "ReadWrite")
+        if ($fs.Length -gt $max) { $fs.Seek(-$max, "End") | Out-Null }
+        $sr = New-Object IO.StreamReader($fs)
+        $t = $sr.ReadToEnd()
+        $sr.Close()
+        return $t
+    } catch { return "" }
+}
+
+function Set-GdbStub([bool]$on) {
+    $v = if ($on) { "true" } else { "false" }
+    $text = Get-Content $cfg -Raw
+    # instant_debug_log: Azahar flushes each log line, so an exception dump shows at once
+    foreach ($kv in @("use_gdbstub\default=false", "use_gdbstub=$v", "gdbstub_port\default=false", "gdbstub_port=24689",
+                      "instant_debug_log\default=false", "instant_debug_log=true")) {
+        $key = [regex]::Escape(($kv -split "=")[0])
+        if ($text -match "(?m)^$key=") { $text = $text -replace "(?m)^$key=.*$", $kv }
+        else { $text = $text -replace "(?m)^\[Debugging\]\r?$", "[Debugging]`r`n$kv" }
+    }
+    Set-Content $cfg $text -NoNewline
+}
+
+Kill-Azahar
+New-Item -ItemType Directory -Force -Path $sd | Out-Null
+Copy-Item "$out\pm_3ds.3dsx" "$sd\pm_3ds.3dsx" -Force
+Remove-Item $log -ErrorAction SilentlyContinue
+if ($Debug) { Set-Content "$sd\debug3ds.txt" $Debug } else { Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue }
+Remove-Item "$sd\shots", "$out\shots" -Recurse -ErrorAction SilentlyContinue # "shots" switch output
+Remove-Item $emuLog -ErrorAction SilentlyContinue # an old exception dump must not stop this run
+Set-GdbStub $Gdb.IsPresent
+
+# Visible top-level windows of a process: Azahar's error dialog is a second one
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class AzEnum {
+  delegate bool CB(IntPtr h, IntPtr p);
+  [DllImport("user32.dll")] static extern bool EnumWindows(CB cb, IntPtr p);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+  public static string Titles = "";
+  public static int Count(uint pid) {
+    int n = 0;
+    var t = new System.Text.StringBuilder();
+    EnumWindows((h, p) => {
+      uint q; GetWindowThreadProcessId(h, out q);
+      if (q == pid && IsWindowVisible(h)) {
+        n++;
+        var sb = new System.Text.StringBuilder(256); GetWindowText(h, sb, 256);
+        t.Append("'" + sb.ToString() + "' ");
+      }
+      return true;
+    }, IntPtr.Zero);
+    Titles = t.ToString();
+    return n;
+  }
+}
+"@
+
+$p = Start-Process $exe -ArgumentList "`"$sd\pm_3ds.3dsx`"" -PassThru
+$gdbProc = $null
+if ($Gdb) {
+    # Azahar waits for gdb before it runs the game. winhost = the Windows host (IPv4) seen from Docker.
+    $cmds = @("set pagination off", "set confirm off", "set width 0", "target remote winhost:24689")
+    if ($GdbScript) { $cmds += Get-Content $GdbScript }
+    $cmds += @("continue", "echo \n--- stopped ---\n", "bt 30", "info registers", 'x/32wx $sp', "kill")
+    Set-Content "$out\gdb_cmds.txt" $cmds
+    Start-Sleep -Seconds 2
+    $gdbArgs = "run --rm --add-host=winhost:host-gateway -v pm3ds-work:/work -v `"${out}:/out`" " +
+               "devkitpro/devkitarm:latest /opt/devkitpro/devkitARM/bin/arm-none-eabi-gdb -q -batch " +
+               "-x /out/gdb_cmds.txt /work/build/pm_3ds.elf"
+    $gdbProc = Start-Process docker -ArgumentList $gdbArgs -NoNewWindow -PassThru `
+        -RedirectStandardOutput "$out\last_gdb.txt" -RedirectStandardError "$out\last_gdb_err.txt"
+}
+$start = Get-Date
+$reason = "timeout ($Timeout s)"
+$lastSize = -1
+$lastGrow = Get-Date
+$echoed = 0
+try {
+    while (((Get-Date) - $start).TotalSeconds -lt $Timeout) {
+        Start-Sleep -Milliseconds 500
+        if ($p.HasExited) { $reason = "Azahar exited"; break }
+        if ($gdbProc -and $gdbProc.HasExited) { $reason = "gdb finished"; break }
+        # Azahar shows a dialog on a guest CPU exception and the game stops: kill at once
+        if (-not $Interactive -and [AzEnum]::Count([uint32]$p.Id) -gt 1) { Start-Sleep -Seconds 4; $reason = "Azahar dialog (exception or error), windows: $([AzEnum]::Titles)"; break }
+        if ((Read-Tail $emuLog) -match "Exception Type:") { Start-Sleep -Seconds 4; $reason = "emulator exception"; break }
+        if (-not (Test-Path $log)) { continue }
+        # The game logs at least once per second; silence means a hang or an exception dialog
+        $size = (Get-Item $log).Length
+        if ($size -ne $lastSize) { $lastSize = $size; $lastGrow = Get-Date }
+        elseif (-not $Gdb -and -not $Interactive -and ((Get-Date) - $lastGrow).TotalSeconds -gt $Stall) { $reason = "game log silent for $Stall s"; break }
+        $text = Get-Content $log -Raw -ErrorAction SilentlyContinue
+        if (-not $text) { continue }
+        if ($text.Length -gt $echoed) { Write-Host -NoNewline $text.Substring($echoed); $echoed = $text.Length }
+        if ($text -match "\[CRASH\]") { Start-Sleep -Seconds 1; $reason = "crash"; break }
+        if ($Until -and $text -match $Until) { $reason = "matched '$Until'"; break }
+    }
+    if ($Capture -and -not $p.HasExited) {
+        Add-Type -AssemblyName System.Drawing
+        Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class AzWin {
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint f);
+  public struct RECT { public int L, T, R, B; }
+}
+"@
+        $p.Refresh()
+        $r = New-Object AzWin+RECT
+        [AzWin]::GetWindowRect($p.MainWindowHandle, [ref]$r) | Out-Null
+        $bmp = New-Object System.Drawing.Bitmap ($r.R - $r.L), ($r.B - $r.T)
+        $g = [System.Drawing.Graphics]::FromImage($bmp)
+        $hdc = $g.GetHdc()
+        [AzWin]::PrintWindow($p.MainWindowHandle, $hdc, 2) | Out-Null
+        $g.ReleaseHdc($hdc)
+        $bmp.Save("$out\last_shot.png")
+        $g.Dispose(); $bmp.Dispose()
+    }
+} finally {
+    Kill-Azahar
+    if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
+    if ($Gdb) { Set-GdbStub $false }
+}
+
+if (Test-Path "$sd\shots") { Copy-Item "$sd\shots" "$out\shots" -Recurse -Force }
+$secs = [int]((Get-Date) - $start).TotalSeconds
+Write-Output "stopped after $secs s: $reason"
+if ($Gdb) {
+    Write-Output "--- gdb (build3ds/last_gdb.txt) ---"
+    Get-Content "$out\last_gdb.txt", "$out\last_gdb_err.txt" -ErrorAction SilentlyContinue | Select-Object -Last 80
+}
+if (Test-Path $log) {
+    # Azahar writes SD files late: copy when the size has not changed for 1 s (max 6 s)
+    $prev = -1
+    for ($k = 0; $k -lt 20; $k++) {
+        $cur = (Get-Item $log).Length
+        if ($cur -eq $prev -and $k -ge 3) { break }
+        $prev = $cur
+        Start-Sleep -Milliseconds 300
+    }
+    Copy-Item $log "$out\last_log.txt" -Force
+    Get-Content "$out\last_log.txt" | Select-Object -Last 15
+} else {
+    Write-Output "no log.txt written"
+}
+
+# Crash addresses: the game's [CRASH] lines (hardware) or Azahar's exception dump (emulator)
+$addrs = @()
+$lines = if (Test-Path "$out\last_log.txt") { Get-Content "$out\last_log.txt" } else { @() }
+foreach ($l in ($lines | Where-Object { $_ -match "^\[CRASH\]" -and $_ -match "pc=|stack" })) {
+    $addrs += [regex]::Matches($l, "(?:pc=|lr=| )([0-9a-f]{8})") | ForEach-Object { $_.Groups[1].Value }
+}
+$emu = ""
+for ($k = 0; $k -lt 10 -and $emu -notmatch "Exception Type:"; $k++) { # the log can stay locked briefly after the kill
+    $emu = Read-Tail $emuLog 262144
+    if ($emu -notmatch "Exception Type:") { Start-Sleep -Milliseconds 300 }
+}
+$i = $emu.LastIndexOf("Exception Type:") # Azahar repeats the dump: keep the last one
+if ($i -ge 0) {
+    $block = $emu.Substring([Math]::Max(0, $emu.LastIndexOf("Thread:", $i)))
+    Set-Content "$out\last_exception.txt" $block
+    Write-Output "--- Azahar exception (build3ds/last_exception.txt) ---"
+    ($block -split "`n") | Where-Object { $_ -match "Exception Type|PC |LR " } | ForEach-Object { $_.Trim() }
+    foreach ($m in [regex]::Matches($block, "(?:LR|PC)\s+0x([0-9A-Fa-f]{8})")) { $addrs += $m.Groups[1].Value }
+    foreach ($m in [regex]::Matches($block, "(?m)^\s*0x[0-9A-Fa-f]{8}:((?:\s+[0-9A-Fa-f]{2})+)")) {
+        $b = ($m.Groups[1].Value.Trim() -split "\s+")
+        for ($k = 0; $k + 3 -lt $b.Count; $k += 4) { $addrs += ($b[$k + 3] + $b[$k + 2] + $b[$k + 1] + $b[$k]) }
+    }
+}
+# Unmapped accesses: Azahar returns 0 and continues; real hardware faults. Report the top sites.
+$bad = @{}
+try {
+    $sr = New-Object IO.StreamReader([IO.File]::Open($emuLog, "Open", "Read", "ReadWrite"))
+    while (($line = $sr.ReadLine()) -ne $null) {
+        if ($line -match "UnmappedAccess.* at PC 0x([0-9A-F]{8})") { $bad[$Matches[1]] = 1 + [int]$bad[$Matches[1]] }
+    }
+    $sr.Close()
+} catch {}
+if ($bad.Count) {
+    $top = $bad.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 3
+    Write-Output "--- WARNING: unmapped memory accesses (a fault on hardware) ---"
+    foreach ($t in $top) { Write-Output ("{0,8}x at PC 0x{1}" -f $t.Value, $t.Key) }
+    $addrs += $top | ForEach-Object { $_.Key }
+}
+$addrs = $addrs | ForEach-Object { [Convert]::ToUInt32($_, 16) } |
+    Where-Object { $_ -ge 0x100000 -and $_ -lt 0x1000000 } | ForEach-Object { "0x{0:x8}" -f $_ } | Select-Object -Unique
+if ($addrs) {
+    Write-Output "--- crash symbols (pc, lr, then stack words that are code) ---"
+    $env:MSYS_NO_PATHCONV = "1"
+    & docker run --rm -v pm3ds-work:/work devkitpro/devkitarm:latest sh -c "`$DEVKITARM/bin/arm-none-eabi-addr2line -f -C -p -e /work/build/pm_3ds.elf $($addrs -join ' ')" |
+        Where-Object { $_ -notmatch "^\?\?" }
+    exit 2
+}
+exit 0
