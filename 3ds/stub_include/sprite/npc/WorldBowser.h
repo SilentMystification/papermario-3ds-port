@@ -1,0 +1,13 @@
+#ifndef SPRITE_NPC_WORLDBOWSER_H
+#define SPRITE_NPC_WORLDBOWSER_H
+#define ANIM_WorldBowser_ClownCarBrandish 1
+#define ANIM_WorldBowser_ClownCarCloseMouth 2
+#define ANIM_WorldBowser_ClownCarFireBreath 3
+#define ANIM_WorldBowser_ClownCarIdle 4
+#define ANIM_WorldBowser_ClownCarLaugh 5
+#define ANIM_WorldBowser_ClownCarOpenMouth 6
+#define ANIM_WorldBowser_ClownCarPropeller 7
+#define ANIM_WorldBowser_ClownCarStarRod 8
+#define ANIM_WorldBowser_ClownCarStill 9
+#define ANIM_WorldBowser_ClownCarTalk 10
+#endif

@@ -4,11 +4,19 @@
 /* libultra matrix ops the decomp calls. The fixed layout matches pm_gbi's unpack:
  * one u32 holds the integer halves of a column pair, the word 8 later holds the fractions. */
 
+void guMtxF2L(float mf[4][4], Mtx* m);
+
 void guMtxIdentF(float mf[4][4]) {
     int i, j;
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) mf[i][j] = (i == j) ? 1.f : 0.f;
     }
+}
+
+void guMtxIdent(Mtx* m) {
+    float f[4][4];
+    guMtxIdentF(f);
+    guMtxF2L(f, m);
 }
 
 void guMtxCatF(float mf[4][4], float nf[4][4], float res[4][4]) {

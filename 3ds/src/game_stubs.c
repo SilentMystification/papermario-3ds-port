@@ -21,6 +21,8 @@ void pm_game_bind(void) {
     gGameStatusPtr = &gGameStatus;
     gDisplayContext = &D_80164000[0];
     gMainGfxPos = gDisplayContext->mainGfx;
+    init_worker_list();
+    init_script_list();
 }
 
 void crash_screen_init(void) {}

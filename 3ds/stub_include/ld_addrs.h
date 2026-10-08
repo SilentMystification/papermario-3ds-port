@@ -26,4 +26,8 @@
 #define logos_ROM_START ((u8*)0x1FE1B0)
 #define logos_ROM_END   ((u8*)0x2191B0)
 
+/* Storybook pages live in the asset table. A placeholder keeps the intro script linked. */
+#define title_bg_1_ROM_START ((u8*)0x1E40000)
+#define title_bg_1_ROM_END   ((u8*)0x1E40000)
+
 #endif

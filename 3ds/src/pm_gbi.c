@@ -24,6 +24,8 @@ static unsigned fill = 0xffffffffu;
 static int tex_on;
 static const void* timg;
 static unsigned timg_fmt, timg_siz;
+static int timg_stride;
+static int tile_x0, tile_y0;
 static const void* tlut;
 static int tlut_n;
 static unsigned tile_fmt[8], tile_siz[8];
@@ -339,8 +341,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (yl & 0x800) yl |= ~0xfff;
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
-            float s0 = (float)(s16)(hs >> 16) / 32.f / (float)tw;
-            float t0 = (float)(s16)(hs & 0xffff) / 32.f / (float)th;
+            float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)tile_x0) / (float)tw;
+            float t0 = ((float)(s16)(hs & 0xffff) / 32.f - (float)tile_y0) / (float)th;
             float dsdx = (float)(s16)(hd >> 16) / 1024.f;
             float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
             float width = (float)(xh - xl) / 4.f;
@@ -354,6 +356,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             timg = ptr_of(w1);
             timg_fmt = (w0 >> 21) & 7;
             timg_siz = (w0 >> 19) & 3;
+            timg_stride = (int)(w0 & 0xfff) + 1;
             break;
         case G_SETTILE: {
             unsigned tile = (w1 >> 24) & 7;
@@ -372,10 +375,18 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int ult = (int)(w0 & 0xfff);
             int lrs = (int)((w1 >> 12) & 0xfff);
             int lrt = (int)(w1 & 0xfff);
+            int x0 = uls >> 2;
+            int y0 = ult >> 2;
             int w = ((lrs - uls) >> 2) + 1;
             int h = ((lrt - ult) >> 2) + 1;
-            if (timg && w > 0 && h > 0)
-                pm_tex_load(timg, tile_fmt[0], tile_siz[0], w, h, tlut, tlut_n);
+            int stride = timg_stride > w ? timg_stride : w;
+            int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
+            const u8* src = (const u8*)timg;
+            if (src && bpp) src += (size_t)(y0 * stride + x0) * (size_t)bpp;
+            tile_x0 = x0;
+            tile_y0 = y0;
+            if (src && w > 0 && h > 0)
+                pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, tlut, tlut_n, stride);
             break;
         }
         case G_MOVEWORD: {

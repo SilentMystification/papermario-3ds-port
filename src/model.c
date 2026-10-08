@@ -91,7 +91,7 @@ enum {
     RENDER_CLASS_2CYC_DEPTH     = 11,
 };
 
-#define WORLD_TEXTURE_MEMORY_SIZE 0x20000
+#define WORLD_TEXTURE_MEMORY_SIZE 0x60000
 #define BATTLE_TEXTURE_MEMORY_SIZE 0x8000
 
 u8* gBackgroundTintModePtr; // NOTE: the type for this u8 is TintMode, as shown in SetModelTintMode
@@ -2005,6 +2005,29 @@ void appendGfx_model(void* data) {
     gDPPipeSync((*gfxPos)++);
 }
 
+#ifdef TARGET_3DS
+/* Texture archives are big-endian. Bitfields are allocated from the top of the byte on the N64 compiler. */
+static void pm_tex_header_native(TextureHeader* h) {
+    u8* b = (u8*)h;
+    u16* s = (u16*)(b + 0x20);
+    s32 i;
+
+    for (i = 0; i < 4; i++) {
+        s[i] = (u16)((s[i] << 8) | (s[i] >> 8));
+    }
+    {
+        u8 c = b[0x2A];
+        u8 typ = c >> 2;
+        u8 sub = c & 3;
+        b[0x2A] = (u8)((sub << 6) | typ);
+    }
+    for (i = 0x2B; i <= 0x2E; i++) {
+        u8 n = b[i];
+        b[i] = (u8)((n << 4) | (n >> 4));
+    }
+}
+#endif
+
 void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* header, s32 mainSize, s32 mainPalSize, s32 auxSize, s32 auxPalSize) {
     Gfx** temp;
 
@@ -2063,6 +2086,9 @@ void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 si
     while (romOffset < startOffset + size) {
         dma_copy((u8*)romOffset, (u8*)romOffset + sizeof(gCurrentTextureHeader), &gCurrentTextureHeader);
         header = &gCurrentTextureHeader;
+#ifdef TARGET_3DS
+        pm_tex_header_native(header);
+#endif
 
         rasterSize = header->mainW * header->mainH;
 
@@ -2184,6 +2210,9 @@ void load_texture_variants(u32 romOffset, s32 textureID, s32 baseOffset, s32 siz
     for (offset = romOffset; offset < baseOffset + size;) {
         dma_copy((u8*)offset, (u8*)offset + sizeof(iterTextureHeader), &iterTextureHeader);
         header = &iterTextureHeader;
+#ifdef TARGET_3DS
+        pm_tex_header_native(header);
+#endif
 
         if (!header->isVariant) {
             // done reading variants
@@ -2566,6 +2595,11 @@ void mdl_create_model(ModelBlueprint* bp, s32 unused) {
     model->center.x = x;
     model->center.y = y;
     model->center.z = z;
+
+    if (prop == nullptr) {
+        (*gCurrentModelTreeNodeInfo)[TreeIterPos].modelIndex = modelIdx;
+        return;
+    }
 
     bb = (ModelBoundingBox*) prop;
     x = bb->maxX - bb->minX;

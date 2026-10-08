@@ -47,6 +47,10 @@ unsigned pm_ticks(void) { return (unsigned)svcGetSystemTick(); }
  * lands on 0. The other retrace leaves the N64 framebuffer alone. Clearing
  * and presenting on that retrace flashes black between the logo frames. */
 extern s16 D_80073E0A;
+/* The intro camera waits until the displayed color buffer changes, which NuSys
+ * does on every swap. Two tokens stand in for that pair of framebuffers. */
+extern unsigned short* nuGfxCfb_ptr;
+static unsigned short cfb_token[2];
 
 void pm_frame_loop(void) {
     unsigned frame = 0;
@@ -55,6 +59,7 @@ void pm_frame_loop(void) {
         pm_log_poll();
         pm_pad_scan();
         int draw = D_80073E0A != 0 || !ever;
+        nuGfxCfb_ptr = &cfb_token[frame & 1u];
         pm_gpu_begin(draw);
         pm_gfx_retrace();
         if (!pm_gpu_drew()) {

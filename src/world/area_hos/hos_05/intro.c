@@ -1496,7 +1496,11 @@ void N(load_story_image)(s32 loadBackImage, s32 imageIdx) {
 
         // overwrite palette to fill entire frame with subtle off-white coloring
         for (i = 0; i < 256; i++) {
-            *pal++ = GPACK_RGBA5551(212, 212, 212, 1);
+            u16 color = GPACK_RGBA5551(212, 212, 212, 1);
+#ifdef TARGET_3DS
+            color = (u16)((color >> 8) | (color << 8));
+#endif
+            *pal++ = color;
         }
         return;
     }

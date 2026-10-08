@@ -9,7 +9,7 @@ enum { SIZ_4, SIZ_8, SIZ_16, SIZ_32 };
 
 #define SLOTS 24
 #define BUDGET (4u * 1024u * 1024u)
-#define MAX_DIM 256
+#define MAX_DIM 512
 
 typedef struct {
     const void* img;
@@ -61,7 +61,7 @@ static unsigned tiled16(int x, int y, int pw) {
     return (tile * 64u + morton) * 2u;
 }
 
-static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h,
+static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int stride,
                   const u8* tlut, int tlut_n, int pw, int ph, GPU_TEXCOLOR gf) {
     unsigned out_bpp = (gf == GPU_RGBA8) ? 4 : (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4) ? 1 : 2;
     if ((unsigned)pw * (unsigned)ph * out_bpp > 256u * 256u * 4u) return 0;
@@ -71,33 +71,33 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h,
             if (fmt == FMT_CI) {
                 unsigned idx = 0;
                 if (siz == SIZ_4) {
-                    unsigned byte = src[(y * w + x) >> 1];
+                    unsigned byte = src[(y * stride + x) >> 1];
                     idx = (x & 1) ? (byte & 15) : (byte >> 4);
                 } else {
-                    idx = src[y * w + x];
+                    idx = src[y * stride + x];
                 }
                 unsigned pix = (tlut && (int)idx < tlut_n) ? rd16(tlut + idx * 2) : 0xffffu;
                 write5551(scratch + ((y * pw + x) * 2), pix);
             } else if (fmt == FMT_RGBA && siz == SIZ_16) {
-                write5551(scratch + ((y * pw + x) * 2), rd16(src + (y * w + x) * 2));
+                write5551(scratch + ((y * pw + x) * 2), rd16(src + (y * stride + x) * 2));
             } else if (fmt == FMT_RGBA && siz == SIZ_32) {
-                const u8* s = src + (y * w + x) * 4;
+                const u8* s = src + (y * stride + x) * 4;
                 u8* d = scratch + (y * pw + x) * 4;
                 d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
             } else if (fmt == FMT_IA && siz == SIZ_16) {
-                unsigned c = rd16(src + (y * w + x) * 2);
+                unsigned c = rd16(src + (y * stride + x) * 2);
                 u8* d = scratch + (y * pw + x) * 2;
                 d[0] = (u8)(c >> 8);
                 d[1] = (u8)(c & 255);
             } else if (fmt == FMT_IA && siz == SIZ_8) {
-                unsigned c = src[y * w + x];
+                unsigned c = src[y * stride + x];
                 unsigned i = (c >> 4) * 17;
                 unsigned a = (c & 15) * 17;
                 u8* d = scratch + (y * pw + x) * 2;
                 d[0] = (u8)i;
                 d[1] = (u8)a;
             } else if (fmt == FMT_IA && siz == SIZ_4) {
-                unsigned byte = src[(y * w + x) >> 1];
+                unsigned byte = src[(y * stride + x) >> 1];
                 unsigned nib = (x & 1) ? (byte & 15) : (byte >> 4);
                 unsigned i = (nib >> 1) * 36;
                 unsigned a = (nib & 1) ? 255 : 0;
@@ -105,9 +105,9 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h,
                 d[0] = (u8)i;
                 d[1] = (u8)a;
             } else if (fmt == FMT_I && siz == SIZ_8) {
-                scratch[y * pw + x] = src[y * w + x];
+                scratch[y * pw + x] = src[y * stride + x];
             } else if (fmt == FMT_I && siz == SIZ_4) {
-                unsigned byte = src[(y * w + x) >> 1];
+                unsigned byte = src[(y * stride + x) >> 1];
                 unsigned nib = (x & 1) ? (byte & 15) : (byte >> 4);
                 scratch[y * pw + x] = (u8)(nib * 17);
             } else {
@@ -144,7 +144,7 @@ void pm_tex_init(void) {
 }
 
 int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height,
-                const void* tlut, int tlut_n) {
+                const void* tlut, int tlut_n, int stride) {
     have = 0;
     cur = -1;
     if (!img || width < 1 || height < 1 || !scratch) return 0;
@@ -156,8 +156,13 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
         }
         return 0;
     }
+    if (stride < width) stride = width;
     if (width > MAX_DIM || height > MAX_DIM) {
-        pm_log("tex %dx%d skipped\n", width, height);
+        static int once;
+        if (!once) {
+            once = 1;
+            pm_log("tex %dx%d skipped\n", width, height);
+        }
         return 0;
     }
     for (int i = 0; i < SLOTS; i++) {
@@ -173,7 +178,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     int ph = pot_at_least_8(height);
     GPU_TEXCOLOR gf = gpu_fmt(fmt, siz);
     if (fmt == FMT_CI) gf = GPU_RGBA5551;
-    if (!expand((const u8*)img, fmt, siz, width, height, (const u8*)tlut, tlut_n, pw, ph, gf)) return 0;
+    if (!expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf)) return 0;
     unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8) ? 1u : 2u;
     unsigned bytes = (unsigned)pw * (unsigned)ph * bpp;
     int slot = -1;
@@ -192,7 +197,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
     const void* upload = scratch;
-    if (bpp == 2u) {
+    if (bpp == 2u && (unsigned)pw * (unsigned)ph * 2u <= 256u * 256u * 2u) {
         u8* tiled = scratch + (256 * 256 * 2);
         /* PICA samples t = 0 from the last row. Store row 0 there so the
          * game's top-left UV is the top of the image. */

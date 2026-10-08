@@ -1,0 +1,4 @@
+#ifndef SPRITE_NPC_STARROD_H
+#define SPRITE_NPC_STARROD_H
+#define ANIM_SPIRIT_CAPTURE 1
+#endif

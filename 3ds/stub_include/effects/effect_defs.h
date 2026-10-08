@@ -1,4 +1,15 @@
-/* Placeholder until tools/build/effects.py is run. model.c only needs the types above this include. */
+/* IDs the intro script names. The effect runtime is not linked yet. */
 enum EffectID {
-    EFFECT_NONE = 0
+    EFFECT_NONE = 0,
+    EFFECT_RING_BLAST,
+    EFFECT_MISC_PARTICLES,
+    EFFECT_LIGHTNING,
+    EFFECT_ENDING_DECALS,
+    EFFECT_LIGHT_RAYS,
+    EFFECT_FIRE_BREATH,
+    EFFECT_SHIMMER_BURST,
+    EFFECT_BULB_GLOW,
+    EFFECT_ENERGY_SHOCKWAVE,
+    EFFECT_AURA,
+    EFFECT_SOMETHING_ROTATING
 };

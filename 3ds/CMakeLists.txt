@@ -47,6 +47,7 @@ set(GAME_SRC
     ${DECOMP}/src/state_intro.c
     ${DECOMP}/src/model.c
     ${DECOMP}/src/model_clear_render_tasks.c
+    ${DECOMP}/src/texture_memory.c
     ${DECOMP}/src/os/guOrtho.c
     ${DECOMP}/src/os/perspective.c
     ${DECOMP}/src/os/guRotate.c
@@ -54,6 +55,13 @@ set(GAME_SRC
     ${DECOMP}/src/os/guMtxXFML.c
     ${DECOMP}/src/os/sins.c
     ${DECOMP}/src/os/coss.c
+    ${DECOMP}/src/worker.c
+    ${DECOMP}/src/evt/evt.c
+    ${DECOMP}/src/evt/script_list.c
+    ${DECOMP}/src/evt/cam_api.c
+    ${DECOMP}/src/evt/model_api.c
+    ${DECOMP}/src/evt/map_api.c
+    ${DECOMP}/src/world/area_hos/hos_05/intro.c
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration")
@@ -75,6 +83,8 @@ add_executable(pm_3ds
     src/pm_audio.c
     src/pm_later.c
     src/pm_overlay.c
+    src/pm_map.c
+    src/pm_evt_stub.c
     src/game_stubs.c
     ${GAME_SRC}
 )
