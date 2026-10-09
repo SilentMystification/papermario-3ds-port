@@ -37,11 +37,9 @@ static Vtx verts[64];
 static u8 vert_live[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
 static float vert_m[64][4][4];
-static float vert_vp[64][4];
 static u8 seen[256];
-/* i = fully in front, c = cut at the near plane, d = thrown out. x is the first
- * in-frustum vertex, N64 ndc * 100. Same numbers across builds means the
- * triangles did not move. */
+/* i = one matrix, submitted in object space. c = corners from different loads,
+ * submitted as clip x,y,z,w. d = index was never loaded. x is N64 ndc * 100. */
 static int n_cmd, n_in, n_cut, n_drop, sample_x, have_sample;
 static char stats_line[48];
 static unsigned comb_a, comb_b, comb_c;
@@ -149,79 +147,9 @@ static void vert_uv(const Vtx* v, float* u, float* vcoord) {
     *vcoord = ((float)v->v.tc[1] / 32.f - (float)tile_y0) / (float)th;
 }
 
-/* Clip-space vertex. A triangle that crosses the near plane or the sides of the
- * view has to be cut before the divide, or one vertex lands thousands of pixels
- * away and the triangle covers the screen. */
 typedef struct {
     float x, y, z, w, u, v, r, g, b, a;
 } ClipV;
-
-static void load_clip(ClipV* o, const Vtx* v) {
-    float x = (float)v->v.ob[0];
-    float y = (float)v->v.ob[1];
-    float z = (float)v->v.ob[2];
-    unsigned c = vert_color(v);
-    o->x = combined[0][0] * x + combined[1][0] * y + combined[2][0] * z + combined[3][0];
-    o->y = combined[0][1] * x + combined[1][1] * y + combined[2][1] * z + combined[3][1];
-    o->z = combined[0][2] * x + combined[1][2] * y + combined[2][2] * z + combined[3][2];
-    o->w = combined[0][3] * x + combined[1][3] * y + combined[2][3] * z + combined[3][3];
-    vert_uv(v, &o->u, &o->v);
-    o->r = (float)((c >> 24) & 255u);
-    o->g = (float)((c >> 16) & 255u);
-    o->b = (float)((c >> 8) & 255u);
-    o->a = (float)(c & 255u);
-}
-
-static float plane_dist(const ClipV* v, int plane) {
-    switch (plane) {
-    case 0: return v->w + v->x;
-    case 1: return v->w - v->x;
-    case 2: return v->w + v->y;
-    case 3: return v->w - v->y;
-    case 4: return v->w + v->z;
-    default: return v->w - v->z;
-    }
-}
-
-static ClipV lerp_clip(const ClipV* a, const ClipV* b, float t) {
-    ClipV o;
-    o.x = a->x + (b->x - a->x) * t;
-    o.y = a->y + (b->y - a->y) * t;
-    o.z = a->z + (b->z - a->z) * t;
-    o.w = a->w + (b->w - a->w) * t;
-    o.u = a->u + (b->u - a->u) * t;
-    o.v = a->v + (b->v - a->v) * t;
-    o.r = a->r + (b->r - a->r) * t;
-    o.g = a->g + (b->g - a->g) * t;
-    o.b = a->b + (b->b - a->b) * t;
-    o.a = a->a + (b->a - a->a) * t;
-    return o;
-}
-
-static int clip_poly(ClipV* poly, int n) {
-    ClipV tmp[12];
-    int plane;
-    for (plane = 0; plane < 6; plane++) {
-        int m = 0;
-        int i;
-        if (n < 3) return 0;
-        for (i = 0; i < n; i++) {
-            ClipV* cur = &poly[i];
-            ClipV* prev = &poly[(i + n - 1) % n];
-            float dc = plane_dist(cur, plane);
-            float dp = plane_dist(prev, plane);
-            int ic = dc >= 0.f;
-            int ip = dp >= 0.f;
-            if (ic != ip && (dp - dc) != 0.f && m < 12) {
-                tmp[m++] = lerp_clip(prev, cur, dp / (dp - dc));
-            }
-            if (ic && m < 12) tmp[m++] = *cur;
-        }
-        for (i = 0; i < m; i++) poly[i] = tmp[i];
-        n = m;
-    }
-    return n;
-}
 
 static unsigned pack_color(const ClipV* v) {
     int r = (int)v->r, g = (int)v->g, b = (int)v->b, a = (int)v->a;
@@ -234,46 +162,6 @@ static unsigned pack_color(const ClipV* v) {
     if (b > 255) b = 255;
     if (a > 255) a = 255;
     return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)a;
-}
-
-/* Y is flipped to match get_screen_coords. Depth 1 is near so the greater-equal
- * test (cleared to 0) keeps the closer fragment. */
-static int to_screen(const ClipV* v, float* ox, float* oy, float* oz, unsigned* oc) {
-    float inv, sx, sy, sz, depth;
-    if (v->w <= 0.01f) return 0;
-    inv = 1.f / v->w;
-    sx = v->x * inv * vp_sx + vp_tx;
-    sy = -v->y * inv * vp_sy + vp_ty;
-    sz = v->z * inv * vp_sz + vp_tz;
-    depth = 1.f - sz / 256.f;
-    if (depth < 0.f) depth = 0.f;
-    if (depth > 1.f) depth = 1.f;
-    *ox = 40.f + sx;
-    *oy = 240.f - sy;
-    /* A vertex this far outside the 400x240 target survived the clip with a bad w.
-     * Drawing it stretches one triangle across the whole screen. The comparison
-     * also rejects NaN, which the GPU will not finish. */
-    if (!(*ox >= -48.f && *ox <= 448.f && *oy >= -48.f && *oy <= 288.f)) return 0;
-    /* Ortho near 0 / far 1. Keep the whole range inside that slab so layers
-     * sort, without sitting on the clip plane. */
-    *oz = 0.08f + depth * 0.84f;
-    *oc = pack_color(v);
-    return 1;
-}
-
-static void emit_poly(ClipV* poly, int n) {
-    int i;
-    float x0, y0, z0, x1, y1, z1, x2, y2, z2;
-    unsigned c0, c1, c2;
-    if (n < 3) return;
-    if (!to_screen(&poly[0], &x0, &y0, &z0, &c0)) return;
-    for (i = 1; i < n - 1; i++) {
-        if (!to_screen(&poly[i], &x1, &y1, &z1, &c1)) return;
-        if (!to_screen(&poly[i + 1], &x2, &y2, &z2, &c2)) return;
-        pm_gpu_tri(x0, y0, z0, poly[0].u, poly[0].v, c0,
-                   x1, y1, z1, poly[i].u, poly[i].v, c1,
-                   x2, y2, z2, poly[i + 1].u, poly[i + 1].v, c2);
-    }
 }
 
 static const float ident_m[4][4] = {
@@ -300,60 +188,55 @@ static void xform_vtx(const float m[4][4], const Vtx* v, ClipV* o) {
     o->a = (float)(c & 255u);
 }
 
-static int inside_frustum(const ClipV* v) {
-    int plane;
-    if (!(v->w > 0.05f)) return 0;
-    for (plane = 0; plane < 6; plane++) {
-        if (plane_dist(v, plane) < 0.f) return 0;
-    }
-    return 1;
-}
-
+/* One matrix for the whole triangle: object positions, shader writes clip w,
+ * and the PICA clips. Corners loaded under different matrices are already in
+ * clip space, same as PaperBoat, because one uniform cannot hold three. */
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
     int i2 = (int)(w & 0xff) / 2;
     int idx[3];
-    ClipV poly[12];
-    int n, i;
+    ClipV poly[3];
+    float u[3], v[3];
+    int i;
     n_cmd++;
-    if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) return;
-    if (!vert_live[i0] || !vert_live[i1] || !vert_live[i2]) return;
-    idx[0] = i0;
-    idx[1] = i1;
-    idx[2] = i2;
-    for (i = 0; i < 3; i++) xform_vtx(vert_m[i0], &verts[idx[i]], &poly[i]);
-    /* A triangle that crosses the near plane has to be cut first. The GPU
-     * draws the uncut one as a shard stretching across the screen. */
-    if (inside_frustum(&poly[0]) && inside_frustum(&poly[1]) && inside_frustum(&poly[2])) {
-        n_in++;
-        if (!have_sample && poly[0].w != 0.f) {
-            sample_x = (int)(poly[0].x / poly[0].w * 100.f);
-            have_sample = 1;
-        }
-        pm_gpu_set_mvp(vert_m[i0], vert_vp[i0][0], vert_vp[i0][1], vert_vp[i0][2], vert_vp[i0][3]);
-        pm_gpu_tri3d((float)verts[i0].v.ob[0], (float)verts[i0].v.ob[1], (float)verts[i0].v.ob[2],
-                     poly[0].u, poly[0].v, pack_color(&poly[0]),
-                     (float)verts[i1].v.ob[0], (float)verts[i1].v.ob[1], (float)verts[i1].v.ob[2],
-                     poly[1].u, poly[1].v, pack_color(&poly[1]),
-                     (float)verts[i2].v.ob[0], (float)verts[i2].v.ob[1], (float)verts[i2].v.ob[2],
-                     poly[2].u, poly[2].v, pack_color(&poly[2]));
-        return;
-    }
-    n = clip_poly(poly, 3);
-    if (n < 3) {
+    if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
         n_drop++;
         return;
     }
-    n_cut++;
-    pm_gpu_set_mvp(ident_m, vert_vp[i0][0], vert_vp[i0][1], vert_vp[i0][2], vert_vp[i0][3]);
-    for (i = 1; i < n - 1; i++) {
-        if (poly[0].w < 0.05f || poly[i].w < 0.05f || poly[i + 1].w < 0.05f) continue;
-        pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
-        pm_gpu_vert_clip(poly[i].x, poly[i].y, poly[i].z, poly[i].w, poly[i].u, poly[i].v, pack_color(&poly[i]));
-        pm_gpu_vert_clip(poly[i + 1].x, poly[i + 1].y, poly[i + 1].z, poly[i + 1].w,
-                         poly[i + 1].u, poly[i + 1].v, pack_color(&poly[i + 1]));
+    if (!vert_live[i0] || !vert_live[i1] || !vert_live[i2]) {
+        n_drop++;
+        return;
     }
+    idx[0] = i0;
+    idx[1] = i1;
+    idx[2] = i2;
+    if (!have_sample) {
+        xform_vtx(vert_m[i0], &verts[i0], &poly[0]);
+        if (poly[0].w != 0.f) {
+            sample_x = (int)(poly[0].x / poly[0].w * 100.f);
+            have_sample = 1;
+        }
+    }
+    if (memcmp(vert_m[i0], vert_m[i1], sizeof vert_m[0]) == 0 &&
+        memcmp(vert_m[i0], vert_m[i2], sizeof vert_m[0]) == 0) {
+        n_in++;
+        for (i = 0; i < 3; i++) vert_uv(&verts[idx[i]], &u[i], &v[i]);
+        pm_gpu_set_mvp(vert_m[i0], vp_sx, vp_sy, vp_tx, vp_ty);
+        pm_gpu_tri3d((float)verts[i0].v.ob[0], (float)verts[i0].v.ob[1], (float)verts[i0].v.ob[2],
+                     u[0], v[0], vert_color(&verts[i0]),
+                     (float)verts[i1].v.ob[0], (float)verts[i1].v.ob[1], (float)verts[i1].v.ob[2],
+                     u[1], v[1], vert_color(&verts[i1]),
+                     (float)verts[i2].v.ob[0], (float)verts[i2].v.ob[1], (float)verts[i2].v.ob[2],
+                     u[2], v[2], vert_color(&verts[i2]));
+        return;
+    }
+    n_cut++;
+    for (i = 0; i < 3; i++) xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
+    pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
+    pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
+    pm_gpu_vert_clip(poly[1].x, poly[1].y, poly[1].z, poly[1].w, poly[1].u, poly[1].v, pack_color(&poly[1]));
+    pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
 }
 
 static void load_mtx(u32 w0, u32 w1) {
@@ -463,10 +346,6 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 for (unsigned i = 0; i < n; i++) {
                     vert_live[v0 + i] = 1;
                     memcpy(vert_m[v0 + i], combined, sizeof combined);
-                    vert_vp[v0 + i][0] = vp_sx;
-                    vert_vp[v0 + i][1] = vp_sy;
-                    vert_vp[v0 + i][2] = vp_tx;
-                    vert_vp[v0 + i][3] = vp_ty;
                 }
             }
             break;
