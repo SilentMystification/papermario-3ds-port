@@ -487,9 +487,11 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         }
     } else {
         /* No kmr_20 script yet, so there is no zone to enter. A fixed boom
-         * behind the door (yaw 90 faces +X) is the stand-in until one loads. */
+         * behind the door (yaw 90 faces +X) is the stand-in until one loads.
+         * 480 left the eye on top of the west edge of the mesh, and that
+         * shell drew over the rest of the yard. */
         cam->controlSettings.type = CAM_CONTROL_FIXED_ORIENTATION;
-        cam->controlSettings.boomLength = 480.f;
+        cam->controlSettings.boomLength = 900.f;
         cam->controlSettings.boomPitch = 18.f;
         cam->controlSettings.viewPitch = -5.f;
         cam->controlSettings.flag = false;
