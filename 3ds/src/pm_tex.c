@@ -30,6 +30,20 @@ static unsigned epoch;
 static u8* scratch;
 static int cur = -1;
 static int have;
+static GPU_TEXTURE_WRAP_PARAM wrap_s = GPU_REPEAT;
+static GPU_TEXTURE_WRAP_PARAM wrap_t = GPU_REPEAT;
+
+static GPU_TEXTURE_WRAP_PARAM wrap_of(unsigned mode, unsigned mask) {
+    /* mask 0 is clamp on the RDP, whatever the wrap field says. */
+    if (mask == 0 || (mode & 2)) return GPU_CLAMP_TO_EDGE;
+    if (mode & 1) return GPU_MIRRORED_REPEAT;
+    return GPU_REPEAT;
+}
+
+void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
+    wrap_s = wrap_of(cms, masks);
+    wrap_t = wrap_of(cmt, maskt);
+}
 
 static int pot_at_least_8(int n) {
     int p = 8;
@@ -305,6 +319,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
 int pm_tex_bind(void) {
     if (!have || cur < 0 || !slots[cur].live) return 0;
     slots[cur].stamp = ++stamp;
+    C3D_TexSetWrap(&slots[cur].tex, wrap_s, wrap_t);
     C3D_TexBind(0, &slots[cur].tex);
     return 1;
 }

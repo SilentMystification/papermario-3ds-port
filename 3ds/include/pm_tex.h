@@ -13,5 +13,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
                 const void* tlut, int tlut_n, int stride);
 int pm_tex_bind(void);
 void pm_tex_size(int* w, int* h);
+/* G_TX_WRAP / G_TX_MIRROR / G_TX_CLAMP for the render tile. mask 0 clamps. */
+void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt);
 
 #endif

@@ -292,6 +292,8 @@ void pm_gpu_set_combine(int mode) {
 
 void pm_gpu_set_prim(unsigned rgba) { prim = rgba; }
 
+void pm_gpu_flush(void) { flush(); }
+
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;

@@ -506,6 +506,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             unsigned tile = (w1 >> 24) & 7;
             tile_fmt[tile] = (w0 >> 21) & 7;
             tile_siz[tile] = (w0 >> 19) & 3;
+            /* The render tile's wrap belongs to the triangles already queued.
+             * Draw them before this tile replaces it. */
+            if (tile == 0) {
+                pm_gpu_flush();
+                pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
+            }
             break;
         }
         case G_LOADTLUT:
@@ -529,6 +535,9 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (src && bpp) src += (size_t)(y0 * stride + x0) * (size_t)bpp;
             tile_x0 = x0;
             tile_y0 = y0;
+            /* One batch can only sample one image. The last load of the frame
+             * was being bound for every surface, so the house wore one fence. */
+            pm_gpu_flush();
             if (src && w > 0 && h > 0)
                 pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, tlut, tlut_n, stride);
             break;
