@@ -270,24 +270,74 @@ static void emit_poly(ClipV* poly, int n) {
     }
 }
 
+static const float ident_m[4][4] = {
+    { 1.f, 0.f, 0.f, 0.f },
+    { 0.f, 1.f, 0.f, 0.f },
+    { 0.f, 0.f, 1.f, 0.f },
+    { 0.f, 0.f, 0.f, 1.f },
+};
+
+/* The RSP multiplies when the vertex is loaded. Later matrices do not move it. */
+static void xform_vtx(const float m[4][4], const Vtx* v, ClipV* o) {
+    float x = (float)v->v.ob[0];
+    float y = (float)v->v.ob[1];
+    float z = (float)v->v.ob[2];
+    unsigned c = vert_color(v);
+    o->x = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
+    o->y = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
+    o->z = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
+    o->w = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+    vert_uv(v, &o->u, &o->v);
+    o->r = (float)((c >> 24) & 255u);
+    o->g = (float)((c >> 16) & 255u);
+    o->b = (float)((c >> 8) & 255u);
+    o->a = (float)(c & 255u);
+}
+
+static int inside_frustum(const ClipV* v) {
+    int plane;
+    if (!(v->w > 0.05f)) return 0;
+    for (plane = 0; plane < 6; plane++) {
+        if (plane_dist(v, plane) < 0.f) return 0;
+    }
+    return 1;
+}
+
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
     int i2 = (int)(w & 0xff) / 2;
-    float u0, v0, u1, v1, u2, v2;
-    unsigned c0, c1, c2;
+    int idx[3];
+    ClipV poly[12];
+    int n, i;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) return;
     if (!vert_live[i0] || !vert_live[i1] || !vert_live[i2]) return;
-    c0 = vert_color(&verts[i0]);
-    c1 = vert_color(&verts[i1]);
-    c2 = vert_color(&verts[i2]);
-    vert_uv(&verts[i0], &u0, &v0);
-    vert_uv(&verts[i1], &u1, &v1);
-    vert_uv(&verts[i2], &u2, &v2);
-    pm_gpu_set_mvp(vert_m[i0], vert_vp[i0][0], vert_vp[i0][1], vert_vp[i0][2], vert_vp[i0][3]);
-    pm_gpu_tri3d((float)verts[i0].v.ob[0], (float)verts[i0].v.ob[1], (float)verts[i0].v.ob[2], u0, v0, c0,
-                 (float)verts[i1].v.ob[0], (float)verts[i1].v.ob[1], (float)verts[i1].v.ob[2], u1, v1, c1,
-                 (float)verts[i2].v.ob[0], (float)verts[i2].v.ob[1], (float)verts[i2].v.ob[2], u2, v2, c2);
+    idx[0] = i0;
+    idx[1] = i1;
+    idx[2] = i2;
+    for (i = 0; i < 3; i++) xform_vtx(vert_m[i0], &verts[idx[i]], &poly[i]);
+    /* A triangle that crosses the near plane has to be cut first. The GPU
+     * draws the uncut one as a shard stretching across the screen. */
+    if (inside_frustum(&poly[0]) && inside_frustum(&poly[1]) && inside_frustum(&poly[2])) {
+        pm_gpu_set_mvp(vert_m[i0], vert_vp[i0][0], vert_vp[i0][1], vert_vp[i0][2], vert_vp[i0][3]);
+        pm_gpu_tri3d((float)verts[i0].v.ob[0], (float)verts[i0].v.ob[1], (float)verts[i0].v.ob[2],
+                     poly[0].u, poly[0].v, pack_color(&poly[0]),
+                     (float)verts[i1].v.ob[0], (float)verts[i1].v.ob[1], (float)verts[i1].v.ob[2],
+                     poly[1].u, poly[1].v, pack_color(&poly[1]),
+                     (float)verts[i2].v.ob[0], (float)verts[i2].v.ob[1], (float)verts[i2].v.ob[2],
+                     poly[2].u, poly[2].v, pack_color(&poly[2]));
+        return;
+    }
+    n = clip_poly(poly, 3);
+    if (n < 3) return;
+    pm_gpu_set_mvp(ident_m, vert_vp[i0][0], vert_vp[i0][1], vert_vp[i0][2], vert_vp[i0][3]);
+    for (i = 1; i < n - 1; i++) {
+        if (poly[0].w < 0.05f || poly[i].w < 0.05f || poly[i + 1].w < 0.05f) continue;
+        pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
+        pm_gpu_vert_clip(poly[i].x, poly[i].y, poly[i].z, poly[i].w, poly[i].u, poly[i].v, pack_color(&poly[i]));
+        pm_gpu_vert_clip(poly[i + 1].x, poly[i + 1].y, poly[i + 1].z, poly[i + 1].w,
+                         poly[i + 1].u, poly[i + 1].v, pack_color(&poly[i + 1]));
+    }
 }
 
 static void load_mtx(u32 w0, u32 w1) {

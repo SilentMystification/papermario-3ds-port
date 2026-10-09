@@ -8,15 +8,15 @@
 #include "pm_port.h"
 
 typedef struct {
-    float x, y, z;
+    float x, y, z, w;
     float u, v;
     float r, g, b, a;
 } Vert;
 
 enum { VERT_SLOTS = 32768 };
 /* CONFIG2 stores bytes-per-vertex in 8 bits, and that value has to equal the
- * attribute size or the PICA freezes. 3+2+4 floats, no padding. */
-_Static_assert(sizeof(Vert) == (3 + 2 + 4) * sizeof(float), "vertex stride");
+ * attribute size or the PICA freezes. 4+2+4 floats, no padding. */
+_Static_assert(sizeof(Vert) == (4 + 2 + 4) * sizeof(float), "vertex stride");
 static Vert* vert_base;
 static Vert* verts;
 static int nverts;
@@ -143,7 +143,7 @@ static void flush(void) {
     drew = 1;
 }
 
-static void put(float x, float y, float z, float u, float v, unsigned c) {
+static void put4(float x, float y, float z, float w, float u, float v, unsigned c) {
     if (nverts >= 510) {
         int id = batch_identity;
         flush();
@@ -154,12 +154,17 @@ static void put(float x, float y, float z, float u, float v, unsigned c) {
     p->x = x;
     p->y = y;
     p->z = z;
+    p->w = w;
     p->u = u;
     p->v = v;
     p->r = (float)((c >> 24) & 255) / 255.f;
     p->g = (float)((c >> 16) & 255) / 255.f;
     p->b = (float)((c >> 8) & 255) / 255.f;
     p->a = (float)(c & 255) / 255.f;
+}
+
+static void put(float x, float y, float z, float u, float v, unsigned c) {
+    put4(x, y, z, 1.f, u, v, c);
 }
 
 void pm_gpu_init(void) {
@@ -187,7 +192,7 @@ void pm_gpu_init(void) {
     Mtx_OrthoTilt(&projection, 0.f, 400.f, 0.f, 240.f, 0.f, 1.f, true);
     C3D_AttrInfo* ai = C3D_GetAttrInfo();
     AttrInfo_Init(ai);
-    AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 3);
+    AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 4);
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     vert_base = (Vert*)linearAlloc(sizeof(Vert) * VERT_SLOTS);
@@ -317,6 +322,14 @@ void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
     put(x0, y0, z0, u0, v0, c0);
     put(x1, y1, z1, u1, v1, c1);
     put(x2, y2, z2, u2, v2, c2);
+}
+
+void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsigned c) {
+    if (!draw_3d) {
+        flush();
+        draw_3d = 1;
+    }
+    put4(x, y, z, w, u, v, c);
 }
 
 /* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
