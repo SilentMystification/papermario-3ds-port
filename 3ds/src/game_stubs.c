@@ -34,4 +34,5 @@ void load_engine_data(void);
 void shim_load_engine_data_obfuscated(void) { load_engine_data(); }
 
 void gfx_init_state(void) {}
-void gfx_draw_background(void) {}
+void pm_draw_loaded_background(void);
+void gfx_draw_background(void) { pm_draw_loaded_background(); }

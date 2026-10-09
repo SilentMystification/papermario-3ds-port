@@ -69,7 +69,7 @@ set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error
 ctr_add_shader_library(pm_shader shaders/pm.v.pica)
 dkp_add_embedded_binary_library(pm_shader_lib pm_shader)
 
-add_executable(pm_3ds
+set(PORT_SRC
     src/pm_main.c
     src/pm_mem.c
     src/pm_log.c
@@ -84,10 +84,27 @@ add_executable(pm_3ds
     src/pm_later.c
     src/pm_overlay.c
     src/pm_map.c
+    src/pm_title.c
     src/pm_evt_stub.c
     src/game_stubs.c
-    ${GAME_SRC}
 )
+set(PM_BUILD_ID_H "${CMAKE_CURRENT_BINARY_DIR}/pm_build_id.h")
+add_custom_command(
+    OUTPUT "${PM_BUILD_ID_H}"
+    COMMAND ${CMAKE_COMMAND}
+        -DNUMBER_FILE=${CMAKE_CURRENT_BINARY_DIR}/build_number.txt
+        -DOUT=${PM_BUILD_ID_H}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/bump_build.cmake
+    DEPENDS ${PORT_SRC} ${GAME_SRC} shaders/pm.v.pica
+    VERBATIM
+)
+
+add_executable(pm_3ds
+    ${PORT_SRC}
+    ${GAME_SRC}
+    ${PM_BUILD_ID_H}
+)
+target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_options(pm_3ds PRIVATE -Wl,--gc-sections)
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)
 

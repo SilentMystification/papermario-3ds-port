@@ -2028,8 +2028,24 @@ static void pm_tex_header_native(TextureHeader* h) {
 }
 #endif
 
+static Gfx pm_tex_unloaded[] = { gsSPEndDisplayList() };
+
 void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* header, s32 mainSize, s32 mainPalSize, s32 auxSize, s32 auxPalSize) {
     Gfx** temp;
+    u32 pixels = (u32)mainSize + (u32)mainPalSize + (u32)auxSize + (u32)auxPalSize;
+    u8* pos = (u8*)TextureHeapPos;
+    u8* end = (u8*)TextureHeapBase + (WORLD_TEXTURE_MEMORY_SIZE + BATTLE_TEXTURE_MEMORY_SIZE);
+
+    /* The linker places the worker list on the next byte after this heap.
+     * A texture that runs past the end turns that list into a function pointer. */
+    if (pos == nullptr || pos >= end || pixels > (u32)(end - pos) || (u32)(end - pos) - pixels < 0x200) {
+        handle->raster = nullptr;
+        handle->palette = nullptr;
+        handle->auxRaster = nullptr;
+        handle->auxPalette = nullptr;
+        handle->gfx = pm_tex_unloaded;
+        return;
+    }
 
     // load main img + palette to texture heap
     handle->raster = (IMG_PTR) TextureHeapPos;

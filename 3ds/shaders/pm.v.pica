@@ -1,7 +1,6 @@
-; Upright screen pixels in, rotated clip out.
-; Same multiply the citro3d immediate sample uses. PaperBoat's 2D path
-; bakes the equivalent divide on the CPU for an upright window; Mtx_OrthoTilt
-; is that divide plus the 90 degree framebuffer rotation.
+; One multiply. 2D batches upload screen pixels and Mtx_OrthoTilt.
+; 3D batches upload object-space vertices and the F3DEX matrix composed
+; with the viewport and that same tilt. The rasterizer divides by w.
 
 .fvec projection[4]
 
@@ -18,6 +17,7 @@
 .alias inclr v2
 
 .proc main
+	; Each configured output component is written once. A second write freezes the PICA.
 	mov r0.xyz, inpos
 	mov r0.w, ones
 	dp4 outpos.x, projection[0], r0

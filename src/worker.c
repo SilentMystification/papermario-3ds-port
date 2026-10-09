@@ -7,6 +7,19 @@ BSS WorkerList* gCurrentWorkerListPtr;
 void worker_delegate_do_nothing(void) {
 }
 
+/* A worker function pointer has to land in this executable. Texture bytes
+ * that spill into the worker list are odd addresses well outside it. */
+extern char __start__;
+extern char __init_array_start;
+
+static void call_worker(void (*fn)(void)) {
+    u32 p = (u32)fn;
+
+    if ((p & 3) != 0) return;
+    if (p < (u32)&__start__ || p >= (u32)&__init_array_start) return;
+    fn();
+}
+
 void clear_worker_list(void) {
     s32 i;
 
@@ -129,7 +142,7 @@ void update_workers(void) {
         Worker* worker = (*gCurrentWorkerListPtr)[i];
         if (worker != nullptr) {
             worker->flags &= ~WORKER_FLAG_SKIP_DRAW_UNTIL_UPDATE;
-            worker->update();
+            call_worker(worker->update);
         }
     }
 }
@@ -141,7 +154,7 @@ void render_workers_scene(void) {
         Worker* worker = (*gCurrentWorkerListPtr)[i];
         if (worker != nullptr && !(worker->flags & WORKER_FLAG_SKIP_DRAW_UNTIL_UPDATE)) {
             if (!(worker->flags & WORKER_FLAG_FRONT_UI)) {
-                worker->draw();
+                call_worker(worker->draw);
             }
         }
     }
@@ -154,7 +167,7 @@ void render_workers_frontUI(void) {
         Worker* worker = (*gCurrentWorkerListPtr)[i];
         if (worker != nullptr && !(worker->flags & WORKER_FLAG_SKIP_DRAW_UNTIL_UPDATE)) {
             if (worker->flags & WORKER_FLAG_FRONT_UI) {
-                worker->draw();
+                call_worker(worker->draw);
             }
         }
     }
@@ -167,7 +180,7 @@ void render_workers_backUI(void) {
         Worker* worker = (*gCurrentWorkerListPtr)[i];
         if (worker != nullptr && !(worker->flags & WORKER_FLAG_SKIP_DRAW_UNTIL_UPDATE)) {
             if (worker->flags & WORKER_FLAG_BACK_UI) {
-                worker->draw();
+                call_worker(worker->draw);
             }
         }
     }

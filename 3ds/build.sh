@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build the 3DS port inside the devkitpro/devkitarm Docker image.
 # Usage (from repo root): sh 3ds/build.sh [extra ninja args]
-# Output: build3ds/pm_3ds.3dsx
+# Output: build3ds/pm_3ds.3dsx, also copied to %APPDATA%\Azahar\sdmc\3ds\PaperMario\
 #
 # Sources are rsynced into a Docker volume and compiled there. Compiling
 # straight from a Windows bind mount is I/O-bound (~10% CPU use); the volume
@@ -22,3 +22,9 @@ MSYS_NO_PATHCONV=1 docker run --rm \
     cp -f /work/build/pm_3ds.3dsx /work/build/pm_3ds.smdh /out/ 2>/dev/null || true
     exit $status
 '
+# Azahar loads from its own SD card, not from build3ds/.
+if [ -n "$APPDATA" ] && [ -f build3ds/pm_3ds.3dsx ]; then
+    dest="$(cygpath -u "$APPDATA" 2>/dev/null || printf '%s' "$APPDATA")/Azahar/sdmc/3ds/PaperMario"
+    mkdir -p "$dest"
+    cp -f build3ds/pm_3ds.3dsx "$dest/pm_3ds.3dsx"
+fi

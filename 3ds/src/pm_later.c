@@ -11,7 +11,6 @@ void bgm_update_music_control() {}
 void update_ambient_sounds() {}
 void sfx_update_env_sound_params() {}
 void update_windows() {}
-void update_curtains() {}
 void sfx_stop_env_sounds() {}
 void disable_player_input() {}
 void spr_render_init() {}
@@ -19,7 +18,6 @@ void player_render_interact_prompts() {}
 void render_hud_elements_backUI() {}
 void render_effects_UI() {}
 void render_hud_elements_frontUI() {}
-void render_curtains() {}
 void crash_screen_set_draw_info() {}
 void _render_transition_stencil() {}
 void render_window_root() {}
@@ -38,7 +36,6 @@ void clear_trigger_data() {}
 void clear_entity_data() {}
 void clear_player_data() {}
 void init_encounter_status() {}
-void clear_screen_overlays() {}
 void clear_effect_data() {}
 void clear_saved_variables() {}
 void clear_item_entity_data() {}
@@ -46,7 +43,6 @@ void bgm_reset_sequence_players() {}
 void reset_ambient_sounds() {}
 void sfx_clear_sounds() {}
 void clear_windows() {}
-void initialize_curtains() {}
 void poll_rumble() {}
 void hud_element_set_aux_cache() {}
 void reset_battle_status() {}
@@ -72,11 +68,6 @@ void render_npcs() {}
 void render_player() {}
 void render_transformed_hud_elements() {}
 int test_ray_zones() { return -1; }
-void set_curtain_scale() {}
-void set_curtain_fade() {}
-void set_curtain_scale_goal() {}
-void set_curtain_draw_callback() {}
-void set_curtain_fade_goal() {}
 void state_drawUI_battle() {}
 void state_drawUI_change_map() {}
 void state_drawUI_demo() {}
@@ -84,11 +75,9 @@ void state_drawUI_end_battle() {}
 void state_drawUI_enter_world() {}
 void state_drawUI_exit_file_select() {}
 void state_drawUI_exit_language_select() {}
-void state_drawUI_file_select() {}
 void state_drawUI_game_over() {}
 void state_drawUI_language_select() {}
 void state_drawUI_pause() {}
-void state_drawUI_title_screen() {}
 void state_drawUI_unpause() {}
 void state_drawUI_world() {}
 void state_init_battle() {}
@@ -99,13 +88,10 @@ void state_init_enter_demo() {}
 void state_init_enter_world() {}
 void state_init_exit_file_select() {}
 void state_init_exit_language_select() {}
-void state_init_file_select() {}
 void state_init_game_over() {}
 void state_init_language_select() {}
 void state_init_pause() {}
-void state_init_title_screen() {}
 void state_init_unpause() {}
-void state_init_world() {}
 void state_step_battle() {}
 void state_step_change_map() {}
 void state_step_demo() {}
@@ -113,10 +99,7 @@ void state_step_end_battle() {}
 void state_step_enter_world() {}
 void state_step_exit_file_select() {}
 void state_step_exit_language_select() {}
-void state_step_file_select() {}
 void state_step_game_over() {}
 void state_step_language_select() {}
 void state_step_pause() {}
-void state_step_title_screen() {}
 void state_step_unpause() {}
-void state_step_world() {}

@@ -2254,12 +2254,20 @@ typedef struct {
     /* 0x1D */ char unk_1D[3];
 } Window; // size = 0x20
 
-#if VERSION_JP
+#if defined(TARGET_3DS)
+/* Retail fits a map into 0x2080 commands. A full village or the house,
+ * drawn twice per frame, walks off the end and the assert never returns. */
+#define DISPLAYCONTEXT_GFX_COUNT 0x10000
+#define DISPLAYCONTEXT_MTX_COUNT 0x800
+#elif VERSION_JP
 #define DISPLAYCONTEXT_GFX_COUNT 0x2000
+#define DISPLAYCONTEXT_MTX_COUNT 0x200
 #elif VERSION_IQUE || VERSION_PAL
 #define DISPLAYCONTEXT_GFX_COUNT 0x2200
+#define DISPLAYCONTEXT_MTX_COUNT 0x200
 #else
 #define DISPLAYCONTEXT_GFX_COUNT 0x2080
+#define DISPLAYCONTEXT_MTX_COUNT 0x200
 #endif
 
 typedef struct {
@@ -2268,7 +2276,7 @@ typedef struct {
     /* 0x00030 */ Mtx camPerspMatrix[8]; // could only be length 4, unsure
     /* 0x00230 */ Gfx mainGfx[DISPLAYCONTEXT_GFX_COUNT];
     /* 0x10630 */ Gfx backgroundGfx[0x200]; // used by gfx_task_background
-    /* 0x11630 */ Mtx matrixStack[0x200];
+    /* 0x11630 */ Mtx matrixStack[DISPLAYCONTEXT_MTX_COUNT];
 } DisplayContext; // size = 0x19630
 
 typedef struct PlayerSpinState {

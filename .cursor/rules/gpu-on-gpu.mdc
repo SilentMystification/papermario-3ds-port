@@ -1,0 +1,14 @@
+---
+description: PICA does GPU work; the ARM11 does not
+alwaysApply: true
+---
+
+# GPU work stays on the GPU
+
+Original 3DS is a 268 MHz ARM11 with no NEON. The PICA is the vertex, raster, and texture unit. Use it.
+
+- Transform, perspective divide, and rasterization of 3D display lists run in the vertex shader. Upload object-space vertices and the modelview/projection matrix. `dp4` is the multiply.
+- The CPU interprets F3DEX only far enough to feed the GPU: decode the list, bind textures, load matrices and vertex arrays.
+- Do not project triangles to screen pixels on the CPU and submit them through the 2D ortho shader. That path is for rectangles that are already in screen pixels (logos, texrects, HUD).
+- Texture filtering, depth test, and scissor are GPU state. Do not emulate them by dropping or rewriting triangles on the CPU.
+- Keep the shader's output components written exactly once, and keep the vertex stride equal to the attribute size. A mismatch freezes the PICA.

@@ -213,6 +213,13 @@ void state_step_intro(void) {
 
             playerData->curPartner = PARTNER_NONE;
             load_map_by_IDs(gGameStatusPtr->areaID, gGameStatusPtr->mapID, LOAD_FROM_MAP);
+            /* hos_04 and later have no script linked yet. The retail flow
+             * would keep playing those maps; without a script, go to the title. */
+            if (!does_script_exist(gGameStatusPtr->mainScriptID)) {
+                gGameStatusPtr->introPart = INTRO_PART_NONE;
+                set_game_mode(GAME_MODE_TITLE_SCREEN);
+                return;
+            }
             gGameStatusPtr->startupState = INTRO_AWAIT_MAIN;
             disable_player_input();
             break;

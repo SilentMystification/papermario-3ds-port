@@ -31,6 +31,12 @@ static int tlut_n;
 static unsigned tile_fmt[8], tile_siz[8];
 static u32 segbase[16];
 static Vtx verts[64];
+/* A display list may only draw vertices its own G_VTX loaded. Slots left by
+ * the previous model otherwise connect the two meshes into long triangles. */
+static u8 vert_live[64];
+/* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
+static float vert_m[64][4][4];
+static float vert_vp[64][4];
 static u8 seen[256];
 static unsigned comb_a, comb_b, comb_c;
 static int comb_set;
@@ -85,7 +91,7 @@ static void unpack(const Mtx* src, float d[4][4]) {
 static void upload_mvp(void) {
     /* Row-vector matrices, same as transform_point: modelview first, then projection. */
     mul(combined, mv[mv_sp], proj);
-    pm_gpu_set_mvp(combined);
+    pm_gpu_set_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty);
 }
 
 static void sync_combine(void) {
@@ -131,51 +137,157 @@ static void vert_uv(const Vtx* v, float* u, float* vcoord) {
     pm_tex_size(&tw, &th);
     if (tw < 1) tw = 1;
     if (th < 1) th = 1;
-    *u = ((float)v->v.tc[0] / 32.f) / (float)tw;
-    *vcoord = ((float)v->v.tc[1] / 32.f) / (float)th;
+    /* SetTileSize's origin is the start of the uploaded window. Absolute
+     * vertex UVs have to be moved into that window, same as a texrect. */
+    *u = ((float)v->v.tc[0] / 32.f - (float)tile_x0) / (float)tw;
+    *vcoord = ((float)v->v.tc[1] / 32.f - (float)tile_y0) / (float)th;
 }
 
-/* Model vertex -> upright screen pixels, same space as the logo rectangles.
- * Y is flipped to match get_screen_coords. Depth 1 is near so the greater-equal
- * test (cleared to 0) keeps the closer fragment. */
-static int project_vtx(const Vtx* v, float* ox, float* oy, float* oz) {
+/* Clip-space vertex. A triangle that crosses the near plane or the sides of the
+ * view has to be cut before the divide, or one vertex lands thousands of pixels
+ * away and the triangle covers the screen. */
+typedef struct {
+    float x, y, z, w, u, v, r, g, b, a;
+} ClipV;
+
+static void load_clip(ClipV* o, const Vtx* v) {
     float x = (float)v->v.ob[0];
     float y = (float)v->v.ob[1];
     float z = (float)v->v.ob[2];
-    float cx = combined[0][0] * x + combined[1][0] * y + combined[2][0] * z + combined[3][0];
-    float cy = combined[0][1] * x + combined[1][1] * y + combined[2][1] * z + combined[3][1];
-    float cz = combined[0][2] * x + combined[1][2] * y + combined[2][2] * z + combined[3][2];
-    float cw = combined[0][3] * x + combined[1][3] * y + combined[2][3] * z + combined[3][3];
-    if (cw <= 0.01f) return 0;
-    float inv = 1.f / cw;
-    float sx = cx * inv * vp_sx + vp_tx;
-    float sy = -cy * inv * vp_sy + vp_ty;
-    float sz = cz * inv * vp_sz + vp_tz;
-    float depth = 1.f - sz / 256.f;
+    unsigned c = vert_color(v);
+    o->x = combined[0][0] * x + combined[1][0] * y + combined[2][0] * z + combined[3][0];
+    o->y = combined[0][1] * x + combined[1][1] * y + combined[2][1] * z + combined[3][1];
+    o->z = combined[0][2] * x + combined[1][2] * y + combined[2][2] * z + combined[3][2];
+    o->w = combined[0][3] * x + combined[1][3] * y + combined[2][3] * z + combined[3][3];
+    vert_uv(v, &o->u, &o->v);
+    o->r = (float)((c >> 24) & 255u);
+    o->g = (float)((c >> 16) & 255u);
+    o->b = (float)((c >> 8) & 255u);
+    o->a = (float)(c & 255u);
+}
+
+static float plane_dist(const ClipV* v, int plane) {
+    switch (plane) {
+    case 0: return v->w + v->x;
+    case 1: return v->w - v->x;
+    case 2: return v->w + v->y;
+    case 3: return v->w - v->y;
+    case 4: return v->w + v->z;
+    default: return v->w - v->z;
+    }
+}
+
+static ClipV lerp_clip(const ClipV* a, const ClipV* b, float t) {
+    ClipV o;
+    o.x = a->x + (b->x - a->x) * t;
+    o.y = a->y + (b->y - a->y) * t;
+    o.z = a->z + (b->z - a->z) * t;
+    o.w = a->w + (b->w - a->w) * t;
+    o.u = a->u + (b->u - a->u) * t;
+    o.v = a->v + (b->v - a->v) * t;
+    o.r = a->r + (b->r - a->r) * t;
+    o.g = a->g + (b->g - a->g) * t;
+    o.b = a->b + (b->b - a->b) * t;
+    o.a = a->a + (b->a - a->a) * t;
+    return o;
+}
+
+static int clip_poly(ClipV* poly, int n) {
+    ClipV tmp[12];
+    int plane;
+    for (plane = 0; plane < 6; plane++) {
+        int m = 0;
+        int i;
+        if (n < 3) return 0;
+        for (i = 0; i < n; i++) {
+            ClipV* cur = &poly[i];
+            ClipV* prev = &poly[(i + n - 1) % n];
+            float dc = plane_dist(cur, plane);
+            float dp = plane_dist(prev, plane);
+            int ic = dc >= 0.f;
+            int ip = dp >= 0.f;
+            if (ic != ip && (dp - dc) != 0.f && m < 12) {
+                tmp[m++] = lerp_clip(prev, cur, dp / (dp - dc));
+            }
+            if (ic && m < 12) tmp[m++] = *cur;
+        }
+        for (i = 0; i < m; i++) poly[i] = tmp[i];
+        n = m;
+    }
+    return n;
+}
+
+static unsigned pack_color(const ClipV* v) {
+    int r = (int)v->r, g = (int)v->g, b = (int)v->b, a = (int)v->a;
+    if (r < 0) r = 0;
+    if (g < 0) g = 0;
+    if (b < 0) b = 0;
+    if (a < 0) a = 0;
+    if (r > 255) r = 255;
+    if (g > 255) g = 255;
+    if (b > 255) b = 255;
+    if (a > 255) a = 255;
+    return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)a;
+}
+
+/* Y is flipped to match get_screen_coords. Depth 1 is near so the greater-equal
+ * test (cleared to 0) keeps the closer fragment. */
+static int to_screen(const ClipV* v, float* ox, float* oy, float* oz, unsigned* oc) {
+    float inv, sx, sy, sz, depth;
+    if (v->w <= 0.01f) return 0;
+    inv = 1.f / v->w;
+    sx = v->x * inv * vp_sx + vp_tx;
+    sy = -v->y * inv * vp_sy + vp_ty;
+    sz = v->z * inv * vp_sz + vp_tz;
+    depth = 1.f - sz / 256.f;
     if (depth < 0.f) depth = 0.f;
     if (depth > 1.f) depth = 1.f;
     *ox = 40.f + sx;
     *oy = 240.f - sy;
-    *oz = depth;
+    /* A vertex this far outside the 400x240 target survived the clip with a bad w.
+     * Drawing it stretches one triangle across the whole screen. The comparison
+     * also rejects NaN, which the GPU will not finish. */
+    if (!(*ox >= -48.f && *ox <= 448.f && *oy >= -48.f && *oy <= 288.f)) return 0;
+    /* Ortho near 0 / far 1. Keep the whole range inside that slab so layers
+     * sort, without sitting on the clip plane. */
+    *oz = 0.08f + depth * 0.84f;
+    *oc = pack_color(v);
     return 1;
+}
+
+static void emit_poly(ClipV* poly, int n) {
+    int i;
+    float x0, y0, z0, x1, y1, z1, x2, y2, z2;
+    unsigned c0, c1, c2;
+    if (n < 3) return;
+    if (!to_screen(&poly[0], &x0, &y0, &z0, &c0)) return;
+    for (i = 1; i < n - 1; i++) {
+        if (!to_screen(&poly[i], &x1, &y1, &z1, &c1)) return;
+        if (!to_screen(&poly[i + 1], &x2, &y2, &z2, &c2)) return;
+        pm_gpu_tri(x0, y0, z0, poly[0].u, poly[0].v, c0,
+                   x1, y1, z1, poly[i].u, poly[i].v, c1,
+                   x2, y2, z2, poly[i + 1].u, poly[i + 1].v, c2);
+    }
 }
 
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
     int i2 = (int)(w & 0xff) / 2;
-    if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) return;
-    float x0, y0, z0, x1, y1, z1, x2, y2, z2;
-    if (!project_vtx(&verts[i0], &x0, &y0, &z0)) return;
-    if (!project_vtx(&verts[i1], &x1, &y1, &z1)) return;
-    if (!project_vtx(&verts[i2], &x2, &y2, &z2)) return;
     float u0, v0, u1, v1, u2, v2;
+    unsigned c0, c1, c2;
+    if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) return;
+    if (!vert_live[i0] || !vert_live[i1] || !vert_live[i2]) return;
+    c0 = vert_color(&verts[i0]);
+    c1 = vert_color(&verts[i1]);
+    c2 = vert_color(&verts[i2]);
     vert_uv(&verts[i0], &u0, &v0);
     vert_uv(&verts[i1], &u1, &v1);
     vert_uv(&verts[i2], &u2, &v2);
-    pm_gpu_tri(x0, y0, z0, u0, v0, vert_color(&verts[i0]),
-               x1, y1, z1, u1, v1, vert_color(&verts[i1]),
-               x2, y2, z2, u2, v2, vert_color(&verts[i2]));
+    pm_gpu_set_mvp(vert_m[i0], vert_vp[i0][0], vert_vp[i0][1], vert_vp[i0][2], vert_vp[i0][3]);
+    pm_gpu_tri3d((float)verts[i0].v.ob[0], (float)verts[i0].v.ob[1], (float)verts[i0].v.ob[2], u0, v0, c0,
+                 (float)verts[i1].v.ob[0], (float)verts[i1].v.ob[1], (float)verts[i1].v.ob[2], u1, v1, c1,
+                 (float)verts[i2].v.ob[0], (float)verts[i2].v.ob[1], (float)verts[i2].v.ob[2], u2, v2, c2);
 }
 
 static void load_mtx(u32 w0, u32 w1) {
@@ -190,11 +302,15 @@ static void load_mtx(u32 w0, u32 w1) {
         mv_sp++;
     }
     float (*dst)[4] = is_proj ? proj : mv[mv_sp];
-    if (flags & G_MTX_LOAD) memcpy(dst, in, sizeof(in));
-    else {
+    if (flags & G_MTX_LOAD) {
+        memcpy(dst, in, sizeof(in));
+    } else {
+        /* Row vector v * incoming * current. The RSP and PaperBoat's
+         * interpreter both premultiply; the other order leaves a child
+         * under the wrong parent. */
         float cur[4][4];
         memcpy(cur, dst, sizeof(cur));
-        mul(dst, cur, in);
+        mul(dst, in, cur);
     }
     upload_mvp();
 }
@@ -209,6 +325,7 @@ void pm_gbi_init(void) {
     ident(proj);
     ident(mv[0]);
     mv_sp = 0;
+    memset(vert_live, 0, sizeof vert_live);
     geom = G_SHADE | G_SHADING_SMOOTH;
     upload_mvp();
 }
@@ -248,6 +365,17 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (src && n <= 64) {
                 if (v0 + n > 64) n = 64 - v0;
                 memcpy(&verts[v0], src, n * sizeof(Vtx));
+                /* A load at slot 0 starts a new mesh. Later loads in the same
+                 * list append above it and keep the earlier slots. */
+                if (v0 == 0) memset(vert_live, 0, sizeof vert_live);
+                for (unsigned i = 0; i < n; i++) {
+                    vert_live[v0 + i] = 1;
+                    memcpy(vert_m[v0 + i], combined, sizeof combined);
+                    vert_vp[v0 + i][0] = vp_sx;
+                    vert_vp[v0 + i][1] = vp_sy;
+                    vert_vp[v0 + i][2] = vp_tx;
+                    vert_vp[v0 + i][3] = vp_ty;
+                }
             }
             break;
         }
@@ -261,6 +389,14 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_MTX:
             load_mtx(w0, w1);
             break;
+        case G_SETSCISSOR: {
+            int ulx = (int)((w0 >> 12) & 0xfff);
+            int uly = (int)(w0 & 0xfff);
+            int lrx = (int)((w1 >> 12) & 0xfff);
+            int lry = (int)(w1 & 0xfff);
+            pm_gpu_set_scissor(ulx >> 2, uly >> 2, lrx >> 2, lry >> 2);
+            break;
+        }
         case G_MOVEMEM: {
             if ((w0 & 0xff) == G_MV_VIEWPORT) {
                 Vp* vp = (Vp*)ptr_of(w1);
@@ -271,6 +407,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     vp_tx = (float)vp->vp.vtrans[0] / 4.f;
                     vp_ty = (float)vp->vp.vtrans[1] / 4.f;
                     vp_tz = (float)vp->vp.vtrans[2] / 4.f;
+                    upload_mvp();
                 }
             }
             break;

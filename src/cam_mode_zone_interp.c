@@ -624,6 +624,10 @@ void update_camera_zone_interp(Camera* camera) {
     targetY = camera->targetPos.y;
     targetZ = camera->targetPos.z;
     changingZone = false;
+    /* A fresh camera has this at 0, and the y blend divides by it. */
+    if (camera->yinterpRate < 1.0f) {
+        camera->yinterpRate = 3.0f;
+    }
 
     if (camera->needsReinit) {
         camera->curSettings = nullptr;
@@ -688,6 +692,10 @@ void update_camera_zone_interp(Camera* camera) {
             cs = &camera->controlSettings;
         } else {
             cs = test_ray_zone_aabb(targetX, targetY + 10.0f, targetZ);
+            /* No floor zones yet. The scripted boom still has to drive the eye. */
+            if (cs == nullptr) {
+                cs = &camera->controlSettings;
+            }
         }
 
         cond2 = false;

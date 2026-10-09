@@ -7,16 +7,18 @@
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
 enum { SIZ_4, SIZ_8, SIZ_16, SIZ_32 };
 
-#define SLOTS 24
+#define SLOTS 128
 #define BUDGET (4u * 1024u * 1024u)
 #define MAX_DIM 512
 
 typedef struct {
     const void* img;
+    const void* tlut;
     unsigned fmt, siz;
-    int w, h;
+    int w, h, stride;
     unsigned bytes;
     unsigned stamp;
+    unsigned epoch;
     int live;
     C3D_Tex tex;
 } Slot;
@@ -24,6 +26,7 @@ typedef struct {
 static Slot slots[SLOTS];
 static unsigned used;
 static unsigned stamp;
+static unsigned epoch;
 static u8* scratch;
 static int cur = -1;
 static int have;
@@ -87,23 +90,24 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
             } else if (fmt == FMT_IA && siz == SIZ_16) {
                 unsigned c = rd16(src + (y * stride + x) * 2);
                 u8* d = scratch + (y * pw + x) * 2;
-                d[0] = (u8)(c >> 8);
-                d[1] = (u8)(c & 255);
+                /* PICA LA8 is alpha, then luminance. */
+                d[0] = (u8)(c & 255);
+                d[1] = (u8)(c >> 8);
             } else if (fmt == FMT_IA && siz == SIZ_8) {
                 unsigned c = src[y * stride + x];
                 unsigned i = (c >> 4) * 17;
                 unsigned a = (c & 15) * 17;
                 u8* d = scratch + (y * pw + x) * 2;
-                d[0] = (u8)i;
-                d[1] = (u8)a;
+                d[0] = (u8)a;
+                d[1] = (u8)i;
             } else if (fmt == FMT_IA && siz == SIZ_4) {
                 unsigned byte = src[(y * stride + x) >> 1];
                 unsigned nib = (x & 1) ? (byte & 15) : (byte >> 4);
                 unsigned i = (nib >> 1) * 36;
                 unsigned a = (nib & 1) ? 255 : 0;
                 u8* d = scratch + (y * pw + x) * 2;
-                d[0] = (u8)i;
-                d[1] = (u8)a;
+                d[0] = (u8)a;
+                d[1] = (u8)i;
             } else if (fmt == FMT_I && siz == SIZ_8) {
                 scratch[y * pw + x] = src[y * stride + x];
             } else if (fmt == FMT_I && siz == SIZ_4) {
@@ -126,21 +130,49 @@ static void drop(Slot* s) {
     s->live = 0;
 }
 
-static void evict_until(unsigned need) {
-    while (used + need > BUDGET) {
-        int oldest = -1;
-        for (int i = 0; i < SLOTS; i++) {
-            if (!slots[i].live) continue;
-            if (oldest < 0 || slots[i].stamp < slots[oldest].stamp) oldest = i;
-        }
-        if (oldest < 0) return;
-        if (oldest == cur) cur = -1;
-        drop(&slots[oldest]);
+/* A texture bound in the current command list has to stay alive until the next
+ * frame begins. Deleting it earlier makes the GPU sample freed VRAM. */
+static int evict_oldest_done(void) {
+    int oldest = -1;
+    for (int i = 0; i < SLOTS; i++) {
+        if (!slots[i].live || slots[i].epoch == epoch) continue;
+        if (oldest < 0 || slots[i].stamp < slots[oldest].stamp) oldest = i;
     }
+    if (oldest < 0) return 0;
+    if (oldest == cur) cur = -1;
+    drop(&slots[oldest]);
+    return 1;
 }
 
 void pm_tex_init(void) {
-    scratch = (u8*)linearAlloc(256 * 256 * 4);
+    /* Linear image, then a second copy in PICA tile order. */
+    scratch = (u8*)linearAlloc(256 * 256 * 4 * 2);
+}
+
+void pm_tex_begin_frame(void) {
+    epoch++;
+}
+
+void pm_tex_invalidate(const void* ptr, unsigned size) {
+    unsigned start, end;
+    int i;
+    if (!ptr || !size) return;
+    start = (unsigned)ptr;
+    end = start + size;
+    if (end < start) end = 0xffffffffu;
+    for (i = 0; i < SLOTS; i++) {
+        Slot* s = &slots[i];
+        unsigned img, pal;
+        if (!s->live) continue;
+        img = (unsigned)s->img;
+        pal = (unsigned)s->tlut;
+        if (!((img >= start && img < end) || (pal && pal >= start && pal < end))) continue;
+        if (cur == i) {
+            cur = -1;
+            have = 0;
+        }
+        drop(s);
+    }
 }
 
 int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height,
@@ -167,8 +199,10 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     }
     for (int i = 0; i < SLOTS; i++) {
         Slot* s = &slots[i];
-        if (s->live && s->img == img && s->fmt == fmt && s->siz == siz && s->w == width && s->h == height) {
+        if (s->live && s->img == img && s->tlut == tlut && s->fmt == fmt && s->siz == siz &&
+            s->w == width && s->h == height && s->stride == stride) {
             s->stamp = ++stamp;
+            s->epoch = epoch;
             cur = i;
             have = 1;
             return 1;
@@ -182,13 +216,19 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8) ? 1u : 2u;
     unsigned bytes = (unsigned)pw * (unsigned)ph * bpp;
     int slot = -1;
-    for (int i = 0; i < SLOTS; i++) if (!slots[i].live) { slot = i; break; }
-    if (slot < 0) {
-        evict_until(BUDGET);
+    for (;;) {
         for (int i = 0; i < SLOTS; i++) if (!slots[i].live) { slot = i; break; }
+        if (slot >= 0 && used + bytes <= BUDGET) break;
+        if (!evict_oldest_done()) {
+            static int once;
+            if (!once) {
+                once = 1;
+                pm_log("tex cache full %dx%d", width, height);
+            }
+            return 0;
+        }
+        slot = -1;
     }
-    if (slot < 0) return 0;
-    evict_until(bytes);
     Slot* s = &slots[slot];
     if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
         pm_log("tex init failed %dx%d\n", pw, ph);
@@ -197,8 +237,11 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
     const void* upload = scratch;
-    if (bpp == 2u && (unsigned)pw * (unsigned)ph * 2u <= 256u * 256u * 2u) {
-        u8* tiled = scratch + (256 * 256 * 2);
+    /* Scratch is two 256KB halves. The linear image fills the first, the
+     * Morton copy the second. A 512x256 RGBA5551 background is 256KB, so the
+     * old 128KB tile buffer skipped tiling and the GPU scattered the pixels. */
+    if (bpp == 2u && (unsigned)pw * (unsigned)ph * 2u <= 256u * 256u * 4u) {
+        u8* tiled = scratch + (256 * 256 * 4);
         /* PICA samples t = 0 from the last row. Store row 0 there so the
          * game's top-left UV is the top of the image. */
         for (int y = 0; y < ph; y++) {
@@ -211,15 +254,47 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
             }
         }
         upload = tiled;
+    } else if (bpp == 4u && (unsigned)pw * (unsigned)ph * 4u <= 256u * 256u * 4u) {
+        u8* tiled = scratch + (256 * 256 * 4);
+        for (int y = 0; y < ph; y++) {
+            int sy = ph - 1 - y;
+            for (int x = 0; x < pw; x++) {
+                unsigned s0 = ((unsigned)sy * (unsigned)pw + (unsigned)x) * 4u;
+                unsigned d0 = (tiled16(x, y, pw) / 2u) * 4u;
+                /* Same byte order citro3d's RGBA8 tiles use: A, B, G, R. */
+                tiled[d0] = scratch[s0 + 3];
+                tiled[d0 + 1] = scratch[s0 + 2];
+                tiled[d0 + 2] = scratch[s0 + 1];
+                tiled[d0 + 3] = scratch[s0];
+            }
+        }
+        upload = tiled;
+    } else if (bpp == 1u && (unsigned)pw * (unsigned)ph <= 256u * 256u * 4u) {
+        u8* tiled = scratch + (256 * 256 * 4);
+        for (int y = 0; y < ph; y++) {
+            int sy = ph - 1 - y;
+            for (int x = 0; x < pw; x++) {
+                unsigned mx = (unsigned)x & 7u;
+                unsigned my = (unsigned)y & 7u;
+                unsigned morton = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) |
+                                  ((mx & 4u) << 2) | ((my & 4u) << 3);
+                unsigned tile = ((unsigned)y >> 3) * ((unsigned)pw >> 3) + ((unsigned)x >> 3);
+                tiled[tile * 64u + morton] = scratch[(unsigned)sy * (unsigned)pw + (unsigned)x];
+            }
+        }
+        upload = tiled;
     }
     C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
     s->img = img;
+    s->tlut = tlut;
     s->fmt = fmt;
     s->siz = siz;
     s->w = width;
     s->h = height;
+    s->stride = stride;
     s->bytes = bytes;
     s->stamp = ++stamp;
+    s->epoch = epoch;
     s->live = 1;
     used += bytes;
     cur = slot;

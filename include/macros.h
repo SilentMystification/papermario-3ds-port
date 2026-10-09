@@ -67,6 +67,9 @@
 
 #ifdef DEBUG
 #define IS_DEBUG_PANIC(statement, file, line) is_debug_panic(statement, file, line)
+#elif defined(TARGET_3DS)
+void pm_assert_fail(const char* statement);
+#define IS_DEBUG_PANIC(statement, file, line) pm_assert_fail(statement)
 #else
 #define IS_DEBUG_PANIC(statement, file, line) do {} while(true)
 #endif
@@ -128,7 +131,11 @@ typedef s32 Difficulty2D[AC_DIFFICULTY_LEN][2];
 
 #define WORLD_ENTITY_HEAP_SIZE 0x17FF0
 #define COLLISION_HEAP_SIZE 0x18000
+#if defined(TARGET_3DS)
+#define GENERAL_HEAP_SIZE 0x180000
+#else
 #define GENERAL_HEAP_SIZE 0x54000
+#endif
 #define SPRITE_HEAP_SIZE 0x40000
 #define BATTLE_HEAP_SIZE 0x25800
 #define FRAME_BUFFER_SIZE 0x25800

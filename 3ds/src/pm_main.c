@@ -6,6 +6,7 @@
 #include "pm_port.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
+#include "pm_build_id.h"
 
 extern void boot_main(void* data);
 
@@ -54,13 +55,31 @@ static unsigned short cfb_token[2];
 
 void pm_frame_loop(void) {
     unsigned frame = 0;
+    unsigned presents = 0;
     int ever = 0;
+    int have_fps = 0;
+    u64 step_start = 0;
+    u64 fps_mark = 0;
+    float fps = 0.f;
+    float frame_ms = 0.f;
+    const u64 tick_hz = SYSCLOCK_ARM11;
     while (aptMainLoop()) {
+        u64 now = svcGetSystemTick();
+        /* The retrace builds a display list only every other call. Presenting
+         * the idle call shows the other framebuffer, which was never drawn. */
+        int draw = D_80073E0A != 0 || !ever;
         pm_log_poll();
         pm_pad_scan();
-        int draw = D_80073E0A != 0 || !ever;
+        if (!draw) {
+            pm_gfx_retrace();
+            /* Pad to 30Hz when the drawn frame was quick. A slow frame already
+             * missed its vblank, so waiting again only adds another stall. */
+            if (tick_hz && now - step_start < (tick_hz / 60ull) * 2ull) gspWaitForVBlank();
+            continue;
+        }
+        step_start = now;
         nuGfxCfb_ptr = &cfb_token[frame & 1u];
-        pm_gpu_begin(draw);
+        pm_gpu_begin(1);
         pm_gfx_retrace();
         if (!pm_gpu_drew()) {
             if (!ever) pm_gbi_fallback();
@@ -68,7 +87,25 @@ void pm_frame_loop(void) {
             ever = 1;
         }
         pm_gpu_end();
-        if ((++frame % 60u) == 0) pm_log("frame %u", frame);
+        frame++;
+        presents++;
+        now = svcGetSystemTick();
+        frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;
+        if (!fps_mark) fps_mark = now;
+        if (now - fps_mark >= tick_hz) {
+            fps = (float)presents * (float)tick_hz / (float)(now - fps_mark);
+            presents = 0;
+            fps_mark = now;
+            have_fps = 1;
+        }
+        {
+            char top[40];
+            char bot[40];
+            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f  #%d", fps, PM_BUILD);
+            else snprintf(top, sizeof(top), "FPS ...  #%d", PM_BUILD);
+            snprintf(bot, sizeof(bot), "%5.1f ms", frame_ms);
+            pm_gpu_hud(top, bot);
+        }
     }
 }
 

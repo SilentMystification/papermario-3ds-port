@@ -339,8 +339,37 @@ static int find_asset(const char* name, u32* rom_off, u32* comp_len, u32* dec_le
     return 0;
 }
 
+void* pm_decode_asset(const char* name, unsigned* out_size) {
+    u32 rom_off, comp_len, dec_len;
+    void* compressed;
+    u8* decoded;
+
+    if (out_size) *out_size = 0;
+    if (!find_asset(name, &rom_off, &comp_len, &dec_len) || dec_len < 16 || dec_len > 0x200000 || comp_len > 0x200000) {
+        return NULL;
+    }
+    compressed = general_heap_malloc(comp_len);
+    decoded = general_heap_malloc(dec_len);
+    if (!compressed || !decoded) return NULL;
+    dma_copy((u8*)rom_off, (u8*)rom_off + comp_len, compressed);
+    if (comp_len >= 4 && ((u8*)compressed)[0] == 'Y') {
+        if (!yay0_decode(compressed, comp_len, decoded, dec_len)) {
+            general_heap_free(compressed);
+            general_heap_free(decoded);
+            return NULL;
+        }
+    } else {
+        u32 n = comp_len < dec_len ? comp_len : dec_len;
+        bcopy(compressed, decoded, n);
+    }
+    general_heap_free(compressed);
+    if (out_size) *out_size = dec_len;
+    return decoded;
+}
+
 void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     const char* shape_name = NULL;
+    const char* tex_name = "hos_tex";
     u32 rom_off, comp_len, dec_len, tex_off, tex_comp, tex_dec;
     void* compressed;
     u8* shape;
@@ -349,11 +378,16 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     s32 models = 0;
     s32 i;
 
-    (void)areaID;
     (void)loadType;
     if (mapID == 5) shape_name = "hos_05_shape";
     else if (mapID == 4) shape_name = "hos_04_shape";
-    else {
+    else if (areaID == AREA_KMR && mapID == 11) {
+        shape_name = "kmr_20_shape";
+        tex_name = "kmr_tex";
+    } else if (areaID == AREA_KMR && mapID == 1) {
+        shape_name = "kmr_02_shape";
+        tex_name = "kmr_tex";
+    } else {
         pm_log("map %d not loaded", mapID);
         return;
     }
@@ -389,7 +423,7 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     }
     shape_keep = shape;
 
-    if (find_asset("hos_tex", &tex_off, &tex_comp, &tex_dec)) {
+    if (find_asset(tex_name, &tex_off, &tex_comp, &tex_dec)) {
         load_data_for_models(root, tex_off, tex_comp);
     } else {
         load_data_for_models(root, 0, 0);
@@ -401,27 +435,68 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
 
     cam = &gCameras[CAM_DEFAULT];
     cam->flags &= ~CAMERA_FLAG_LEAD_PLAYER;
-    cam->needsInit = false;
-    cam->updateMode = CAM_UPDATE_MINIMAL;
-    cam->lookAt_obj.x = 0.f;
-    cam->lookAt_obj.y = -1.f;
-    cam->lookAt_obj.z = 0.f;
-    cam->lookAt_eye.x = -113.f;
-    cam->lookAt_eye.y = 28.f;
-    cam->lookAt_eye.z = -65.f;
-    cam->vfov = 50.f;
-    cam->updateMode = CAM_UPDATE_FROM_ZONE;
+    cam->flags &= ~CAMERA_FLAG_DISABLED;
     cam->nearClip = 16;
     cam->farClip = 4096;
-    cam->needsInit = true;
+    cam->vfov = 25.f;
+    cam->updateMode = CAM_UPDATE_FROM_ZONE;
+    cam->needsInit = false;
     cam->needsReinit = true;
-    set_cam_viewport(CAM_DEFAULT, 29, 28, 262, 162);
+    cam->yinterpRate = 3.f;
+    cam->params.world.zoomPercent = 100;
     gCurrentCameraID = CAM_DEFAULT;
 
     if (mapID == 5) {
-        Evt* script = start_script_in_group(&hos_05_EVS_Intro_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
-        if (script) gGameStatusPtr->mainScriptID = script->id;
-        pm_log("intro script %d", gGameStatusPtr->mainScriptID);
+        /* Intro_Main loads IntroCamSettings and pans. Zone update turns that
+         * boom into the eye. Minimal mode was ignoring it. */
+        cam->controlSettings.type = CAM_CONTROL_FIXED_ORIENTATION;
+        cam->controlSettings.boomLength = 130.4f;
+        cam->controlSettings.boomPitch = 12.4f;
+        cam->controlSettings.viewPitch = -16.8f;
+        cam->controlSettings.flag = false;
+        cam->controlSettings.points.two.Ax = 0.f;
+        cam->controlSettings.points.two.Ay = -1.f;
+        cam->controlSettings.points.two.Az = 0.f;
+        cam->controlSettings.points.two.Bx = -433.0127f;
+        cam->controlSettings.points.two.By = -1.f;
+        cam->controlSettings.points.two.Bz = -250.f;
+        cam->movePos.x = 0.f;
+        cam->movePos.y = 157.f;
+        cam->movePos.z = 0.f;
+        cam->targetPos = cam->movePos;
+        cam->followPlayer = true;
+        cam->panActive = true;
+        set_cam_viewport(CAM_DEFAULT, 29, 28, 262, 162);
+        {
+            Evt* script = start_script_in_group(&hos_05_EVS_Intro_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
+            if (script) gGameStatusPtr->mainScriptID = script->id;
+            pm_log("intro script %d", gGameStatusPtr->mainScriptID);
+        }
+    } else {
+        /* No kmr_20 script yet, so there is no zone to enter. A fixed boom
+         * behind the door (yaw 90 faces +X) is the stand-in until one loads. */
+        cam->controlSettings.type = CAM_CONTROL_FIXED_ORIENTATION;
+        cam->controlSettings.boomLength = 480.f;
+        cam->controlSettings.boomPitch = 18.f;
+        cam->controlSettings.viewPitch = -5.f;
+        cam->controlSettings.flag = false;
+        cam->controlSettings.points.two.Ax = 0.f;
+        cam->controlSettings.points.two.Ay = 0.f;
+        cam->controlSettings.points.two.Az = 0.f;
+        cam->controlSettings.points.two.Bx = 50.f;
+        cam->controlSettings.points.two.By = 0.f;
+        cam->controlSettings.points.two.Bz = 0.f;
+        cam->followPlayer = false;
+        cam->targetPos.x = 240.f;
+        cam->targetPos.y = 30.f;
+        cam->targetPos.z = -80.f;
+        set_cam_viewport(CAM_DEFAULT, 0, 0, 320, 240);
+        gPlayerStatus.pos.x = 240.f;
+        gPlayerStatus.pos.y = 30.f;
+        gPlayerStatus.pos.z = -80.f;
+        gPlayerStatus.curYaw = 90.f;
+        update_cameras();
+        pm_log("world cam");
     }
     pm_log("map %s models %d", shape_name, models);
 }

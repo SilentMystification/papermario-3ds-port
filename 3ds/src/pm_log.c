@@ -132,6 +132,16 @@ void pm_log(const char* fmt, ...) {
     fflush(stdout);
 }
 
+void pm_assert_fail(const char* statement) {
+    static const char* seen[8];
+    static int nseen;
+    int i;
+    if (!statement) statement = "assert";
+    for (i = 0; i < nseen; i++) if (seen[i] == statement) return;
+    if (nseen < 8) seen[nseen++] = statement;
+    pm_log("assert %s", statement);
+}
+
 void pm_crash_line(const char* s, int n) {
     svcOutputDebugString(s, n);
     if (log_fd >= 0) {

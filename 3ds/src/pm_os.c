@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include "ultra64.h"
 #include "pm_port.h"
+#include "pm_tex.h"
 
 void osInvalICache(void* addr, s32 nbytes) {
     (void)addr;
@@ -125,22 +126,26 @@ void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     if (rom_bytes) {
         if (rom_addr >= rom_size) {
             memset(buf, 0, size);
+            pm_tex_invalidate(buf, size);
             return;
         }
         u32 n = size;
         if (rom_addr + n > rom_size) n = rom_size - rom_addr;
         memcpy(buf, rom_bytes + rom_addr, n);
         if (n < size) memset((u8*)buf + n, 0, size - n);
+        pm_tex_invalidate(buf, size);
         return;
     }
     /* Byte stream, not word-swapped. A display list copied out of the ROM is still
      * big-endian until the loader that knows the type swaps it once. */
     if (!rom || fseek(rom, (long)rom_addr, SEEK_SET) != 0) {
         memset(buf, 0, size);
+        pm_tex_invalidate(buf, size);
         return;
     }
     size_t n = fread(buf, 1, size, rom);
     if (n < size) memset((u8*)buf + n, 0, size - n);
+    pm_tex_invalidate(buf, size);
 }
 
 s32 osPiStartDma(OSIoMesg* mb, s32 priority, s32 direction, u32 devAddr, void* vAddr, u32 nbytes, OSMesgQueue* mq) {
