@@ -95,8 +95,21 @@ static void fix_gfx(ShapeFix* s, u8* dl) {
             u8* target = in_shape(s, w1);
             if (target) {
                 if (op == 0x01) {
+                    /* A later G_VTX often starts inside an earlier load. claim()
+                     * only marks the first byte, so that overlap was swapped
+                     * twice and those corners landed tens of thousands of units away. */
                     int count = (w0 >> 12) & 0xff;
-                    if (claim(s, target) && count > 0 && count <= 64) swap_verts(target, count);
+                    int i;
+                    if (count > 64) count = 0;
+                    for (i = 0; i < count; i++) {
+                        u8* vtx = target + (u32)i * 16u;
+                        u32 vi;
+                        if ((u32)(vtx - s->buf) + 16u > s->size) break;
+                        vi = (u32)(vtx - s->buf);
+                        if (s->seen[vi]) continue;
+                        s->seen[vi] = 1;
+                        swap_verts(vtx, 1);
+                    }
                 } else if (op == 0xDA) {
                     if (claim(s, target)) swap_mtx(target);
                 }
