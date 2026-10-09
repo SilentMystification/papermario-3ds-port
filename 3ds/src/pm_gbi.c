@@ -388,10 +388,25 @@ static void note(unsigned op) {
 }
 
 void pm_gbi_end_frame(void) {
-    static int tick;
+    /* One second of presented frames, summed. Identical seconds are not written. */
+    static int frames, acc_t, acc_i, acc_c, acc_d, acc_x;
+    static char prev[48];
     snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d x%d", n_cmd, n_in, n_cut, n_drop, have_sample ? sample_x : 0);
-    if ((pm_debug_has("stats") || pm_debug_has("fast")) && (tick++ % 30) == 0)
-        pm_log("stats %s", stats_line);
+    acc_t += n_cmd;
+    acc_i += n_in;
+    acc_c += n_cut;
+    acc_d += n_drop;
+    if (have_sample) acc_x = sample_x;
+    frames++;
+    if (frames >= 30) {
+        char line[48];
+        snprintf(line, sizeof line, "t%d i%d c%d d%d x%d", acc_t, acc_i, acc_c, acc_d, acc_x);
+        if (strcmp(line, prev) != 0) {
+            pm_log("stats %s", line);
+            snprintf(prev, sizeof prev, "%s", line);
+        }
+        frames = acc_t = acc_i = acc_c = acc_d = 0;
+    }
     n_cmd = n_in = n_cut = n_drop = 0;
     have_sample = 0;
 }
