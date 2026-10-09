@@ -66,7 +66,10 @@ static void rebuild_3d(void) {
     view.r[0].w = 40.f + vp_tx;
     view.r[1].y = vp_sy;
     view.r[1].w = 240.f - vp_ty;
-    view.r[2].z = 0.4f;
+    /* clip z/w is -1 at the near plane and +1 at the far plane. GEQUAL,
+     * cleared to 0, keeps the greater value, so near has to be the greater one.
+     * The other sign lets a far wall cover the room. */
+    view.r[2].z = -0.4f;
     view.r[2].w = 0.5f;
     view.r[3].w = 1.f;
     Mtx_Multiply(&tmp, &view, &game);

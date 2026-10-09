@@ -38,8 +38,8 @@ static u8 vert_live[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
 static float vert_m[64][4][4];
 static u8 seen[256];
-/* i = one matrix, submitted in object space. c = corners from different loads,
- * submitted as clip x,y,z,w. d = index was never loaded. x is N64 ndc * 100. */
+/* i = fully in front. c = cut where it crossed the camera. d = fully outside.
+ * x is the first vertex's N64 ndc * 100. */
 static int n_cmd, n_in, n_cut, n_drop, sample_x, have_sample;
 static char stats_line[48];
 static unsigned comb_a, comb_b, comb_c;
@@ -188,17 +188,75 @@ static void xform_vtx(const float m[4][4], const Vtx* v, ClipV* o) {
     o->a = (float)(c & 255u);
 }
 
-/* One matrix for the whole triangle: object positions, shader writes clip w,
- * and the PICA clips. Corners loaded under different matrices are already in
- * clip space, same as PaperBoat, because one uniform cannot hold three. */
+static float plane_dist(const ClipV* v, int plane) {
+    switch (plane) {
+    case 0: return v->w + v->x;
+    case 1: return v->w - v->x;
+    case 2: return v->w + v->y;
+    case 3: return v->w - v->y;
+    case 4: return v->w + v->z;
+    default: return v->w - v->z;
+    }
+}
+
+static void lerp_clip(ClipV* o, const ClipV* a, const ClipV* b, float t) {
+    o->x = a->x + (b->x - a->x) * t;
+    o->y = a->y + (b->y - a->y) * t;
+    o->z = a->z + (b->z - a->z) * t;
+    o->w = a->w + (b->w - a->w) * t;
+    o->u = a->u + (b->u - a->u) * t;
+    o->v = a->v + (b->v - a->v) * t;
+    o->r = a->r + (b->r - a->r) * t;
+    o->g = a->g + (b->g - a->g) * t;
+    o->b = a->b + (b->b - a->b) * t;
+    o->a = a->a + (b->a - a->a) * t;
+}
+
+/* Azahar does not clip a corner that passes behind the camera, so that corner
+ * is pulled through the eye and the face becomes a streak. Cut it here. */
+static int clip_poly(ClipV* poly, int n) {
+    ClipV tmp[12];
+    int plane;
+    for (plane = 0; plane < 6; plane++) {
+        int m = 0;
+        int i;
+        if (n < 3) return 0;
+        for (i = 0; i < n; i++) {
+            ClipV* cur = &poly[i];
+            ClipV* prev = &poly[(i + n - 1) % n];
+            float dc = plane_dist(cur, plane);
+            float dp = plane_dist(prev, plane);
+            int ic = dc >= 0.f;
+            int ip = dp >= 0.f;
+            if (ic != ip && (dp - dc) != 0.f && m < 12)
+                lerp_clip(&tmp[m++], prev, cur, dp / (dp - dc));
+            if (ic && m < 12) tmp[m++] = *cur;
+        }
+        for (i = 0; i < m; i++) poly[i] = tmp[i];
+        n = m;
+    }
+    return n;
+}
+
+static int in_front(const ClipV* v) {
+    int plane;
+    if (!(v->w > 0.05f)) return 0;
+    for (plane = 0; plane < 6; plane++) {
+        if (plane_dist(v, plane) < 0.f) return 0;
+    }
+    return 1;
+}
+
+/* Clip positions, not object positions. The identity matrix leaves x,y,z,w
+ * alone and the viewport places them. A corner behind the camera is cut off
+ * first so it cannot be divided through the eye. */
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
     int i2 = (int)(w & 0xff) / 2;
     int idx[3];
-    ClipV poly[3];
-    float u[3], v[3];
-    int i;
+    ClipV poly[12];
+    int n, i;
     n_cmd++;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
         n_drop++;
@@ -211,32 +269,30 @@ static void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
-    if (!have_sample) {
-        xform_vtx(vert_m[i0], &verts[i0], &poly[0]);
-        if (poly[0].w != 0.f) {
-            sample_x = (int)(poly[0].x / poly[0].w * 100.f);
-            have_sample = 1;
-        }
-    }
-    if (memcmp(vert_m[i0], vert_m[i1], sizeof vert_m[0]) == 0 &&
-        memcmp(vert_m[i0], vert_m[i2], sizeof vert_m[0]) == 0) {
-        n_in++;
-        for (i = 0; i < 3; i++) vert_uv(&verts[idx[i]], &u[i], &v[i]);
-        pm_gpu_set_mvp(vert_m[i0], vp_sx, vp_sy, vp_tx, vp_ty);
-        pm_gpu_tri3d((float)verts[i0].v.ob[0], (float)verts[i0].v.ob[1], (float)verts[i0].v.ob[2],
-                     u[0], v[0], vert_color(&verts[i0]),
-                     (float)verts[i1].v.ob[0], (float)verts[i1].v.ob[1], (float)verts[i1].v.ob[2],
-                     u[1], v[1], vert_color(&verts[i1]),
-                     (float)verts[i2].v.ob[0], (float)verts[i2].v.ob[1], (float)verts[i2].v.ob[2],
-                     u[2], v[2], vert_color(&verts[i2]));
-        return;
-    }
-    n_cut++;
     for (i = 0; i < 3; i++) xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
+    if (!have_sample && poly[0].w != 0.f) {
+        sample_x = (int)(poly[0].x / poly[0].w * 100.f);
+        have_sample = 1;
+    }
+    if (in_front(&poly[0]) && in_front(&poly[1]) && in_front(&poly[2])) {
+        n_in++;
+        n = 3;
+    } else {
+        n = clip_poly(poly, 3);
+        if (n < 3) {
+            n_drop++;
+            return;
+        }
+        n_cut++;
+    }
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
-    pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
-    pm_gpu_vert_clip(poly[1].x, poly[1].y, poly[1].z, poly[1].w, poly[1].u, poly[1].v, pack_color(&poly[1]));
-    pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
+    for (i = 1; i < n - 1; i++) {
+        if (!(poly[0].w > 0.05f && poly[i].w > 0.05f && poly[i + 1].w > 0.05f)) continue;
+        pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
+        pm_gpu_vert_clip(poly[i].x, poly[i].y, poly[i].z, poly[i].w, poly[i].u, poly[i].v, pack_color(&poly[i]));
+        pm_gpu_vert_clip(poly[i + 1].x, poly[i + 1].y, poly[i + 1].z, poly[i + 1].w,
+                         poly[i + 1].u, poly[i + 1].v, pack_color(&poly[i + 1]));
+    }
 }
 
 static void load_mtx(u32 w0, u32 w1) {
