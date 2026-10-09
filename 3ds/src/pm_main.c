@@ -103,7 +103,10 @@ void pm_frame_loop(void) {
             char bot[40];
             if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f  #%d", fps, PM_BUILD);
             else snprintf(top, sizeof(top), "FPS ...  #%d", PM_BUILD);
-            snprintf(bot, sizeof(bot), "%5.1f ms", frame_ms);
+            if (pm_debug_has("stats") || pm_debug_has("fast"))
+                snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
+            else
+                snprintf(bot, sizeof(bot), "%5.1f ms", frame_ms);
             pm_gpu_hud(top, bot);
         }
     }

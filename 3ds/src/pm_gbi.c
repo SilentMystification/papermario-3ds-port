@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include "ultra64.h"
 #include "pm_gbi.h"
@@ -38,6 +39,11 @@ static u8 vert_live[64];
 static float vert_m[64][4][4];
 static float vert_vp[64][4];
 static u8 seen[256];
+/* i = fully in front, c = cut at the near plane, d = thrown out. x is the first
+ * in-frustum vertex, N64 ndc * 100. Same numbers across builds means the
+ * triangles did not move. */
+static int n_cmd, n_in, n_cut, n_drop, sample_x, have_sample;
+static char stats_line[48];
 static unsigned comb_a, comb_b, comb_c;
 static int comb_set;
 
@@ -310,6 +316,7 @@ static void draw_tri(unsigned w) {
     int idx[3];
     ClipV poly[12];
     int n, i;
+    n_cmd++;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) return;
     if (!vert_live[i0] || !vert_live[i1] || !vert_live[i2]) return;
     idx[0] = i0;
@@ -319,6 +326,11 @@ static void draw_tri(unsigned w) {
     /* A triangle that crosses the near plane has to be cut first. The GPU
      * draws the uncut one as a shard stretching across the screen. */
     if (inside_frustum(&poly[0]) && inside_frustum(&poly[1]) && inside_frustum(&poly[2])) {
+        n_in++;
+        if (!have_sample && poly[0].w != 0.f) {
+            sample_x = (int)(poly[0].x / poly[0].w * 100.f);
+            have_sample = 1;
+        }
         pm_gpu_set_mvp(vert_m[i0], vert_vp[i0][0], vert_vp[i0][1], vert_vp[i0][2], vert_vp[i0][3]);
         pm_gpu_tri3d((float)verts[i0].v.ob[0], (float)verts[i0].v.ob[1], (float)verts[i0].v.ob[2],
                      poly[0].u, poly[0].v, pack_color(&poly[0]),
@@ -329,7 +341,11 @@ static void draw_tri(unsigned w) {
         return;
     }
     n = clip_poly(poly, 3);
-    if (n < 3) return;
+    if (n < 3) {
+        n_drop++;
+        return;
+    }
+    n_cut++;
     pm_gpu_set_mvp(ident_m, vert_vp[i0][0], vert_vp[i0][1], vert_vp[i0][2], vert_vp[i0][3]);
     for (i = 1; i < n - 1; i++) {
         if (poly[0].w < 0.05f || poly[i].w < 0.05f || poly[i + 1].w < 0.05f) continue;
@@ -370,6 +386,17 @@ static void note(unsigned op) {
     seen[op] = 1;
     pm_log("gbi skip %02x\n", op);
 }
+
+void pm_gbi_end_frame(void) {
+    static int tick;
+    snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d x%d", n_cmd, n_in, n_cut, n_drop, have_sample ? sample_x : 0);
+    if ((pm_debug_has("stats") || pm_debug_has("fast")) && (tick++ % 30) == 0)
+        pm_log("stats %s", stats_line);
+    n_cmd = n_in = n_cut = n_drop = 0;
+    have_sample = 0;
+}
+
+const char* pm_gbi_stats(void) { return stats_line; }
 
 void pm_gbi_init(void) {
     ident(proj);

@@ -4,6 +4,7 @@
 #include <string.h>
 #include "pm_shader_shbin.h"
 #include "pm_gpu.h"
+#include "pm_gbi.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 
@@ -253,6 +254,7 @@ void pm_gpu_begin(int clear) {
 void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
+    pm_gbi_end_frame();
     /* Without this flag citro3d flushes the entire linear heap. That heap is
      * the 20MB port pool, so every frame was writing it back through the cache. */
     C3D_FrameEnd(GX_CMDLIST_FLUSH);

@@ -130,6 +130,15 @@ void state_step_logos(void) {
 #if VERSION_JP
     int pressedButtons = gGameStatusPtr->pressedButtons[0];
 #endif
+    /* debug3ds.txt "fast": skip the logo holds. The 3D scene is the thing under test. */
+    {
+        extern int pm_debug_has(const char* word);
+        if (pm_debug_has("fast")) {
+            gGameStatusPtr->introPart = INTRO_PART_0;
+            set_game_mode(GAME_MODE_INTRO);
+            return;
+        }
+    }
 
     if (gGameStatusPtr->skipLogos) {
         if (startup_fade_screen_out(10)) {
