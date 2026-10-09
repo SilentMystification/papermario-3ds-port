@@ -38,7 +38,8 @@ static u8 vert_live[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
 static float vert_m[64][4][4];
 static u8 seen[256];
-/* i = fully in front. c = cut where it crossed the camera. d = fully outside.
+/* i = every corner in front of the eye, drawn where it projected.
+ * c = a corner behind the eye was cut. d = nothing left in front.
  * x is the first vertex's N64 ndc * 100. */
 static int n_cmd, n_in, n_cut, n_drop, sample_x, have_sample;
 static char stats_line[48];
@@ -188,17 +189,6 @@ static void xform_vtx(const float m[4][4], const Vtx* v, ClipV* o) {
     o->a = (float)(c & 255u);
 }
 
-static float plane_dist(const ClipV* v, int plane) {
-    switch (plane) {
-    case 0: return v->w + v->x;
-    case 1: return v->w - v->x;
-    case 2: return v->w + v->y;
-    case 3: return v->w - v->y;
-    case 4: return v->w + v->z;
-    default: return v->w - v->z;
-    }
-}
-
 static void lerp_clip(ClipV* o, const ClipV* a, const ClipV* b, float t) {
     o->x = a->x + (b->x - a->x) * t;
     o->y = a->y + (b->y - a->y) * t;
@@ -212,49 +202,34 @@ static void lerp_clip(ClipV* o, const ClipV* a, const ClipV* b, float t) {
     o->a = a->a + (b->a - a->a) * t;
 }
 
-/* Azahar does not clip a corner that passes behind the camera, so that corner
- * is pulled through the eye and the face becomes a streak. Cut it here. */
-static int clip_poly(ClipV* poly, int n) {
+/* Cut only corners that passed behind the eye. A corner that is merely off the
+ * side of the screen keeps its projected position, so a pan cannot swap the
+ * triangle for a different polygon. */
+static int clip_near(ClipV* poly, int n) {
     ClipV tmp[12];
-    int plane;
-    for (plane = 0; plane < 6; plane++) {
-        int m = 0;
-        int i;
-        if (n < 3) return 0;
-        for (i = 0; i < n; i++) {
-            ClipV* cur = &poly[i];
-            ClipV* prev = &poly[(i + n - 1) % n];
-            float dc = plane_dist(cur, plane);
-            float dp = plane_dist(prev, plane);
-            int ic = dc >= 0.f;
-            int ip = dp >= 0.f;
-            if (ic != ip && m < 12) {
-                float denom = dp - dc;
-                float t = (denom != 0.f) ? dp / denom : -1.f;
-                /* A near-zero denominator is noise, not a real crossing. The
-                 * blend then throws the new corner far outside the view. */
-                if (t >= 0.f && t <= 1.f) lerp_clip(&tmp[m++], prev, cur, t);
-            }
-            if (ic && m < 12) tmp[m++] = *cur;
+    int m = 0;
+    int i;
+    if (n < 3) return 0;
+    for (i = 0; i < n; i++) {
+        ClipV* cur = &poly[i];
+        ClipV* prev = &poly[(i + n - 1) % n];
+        float dc = cur->w - 0.05f;
+        float dp = prev->w - 0.05f;
+        int ic = dc >= 0.f;
+        int ip = dp >= 0.f;
+        if (ic != ip && m < 12) {
+            float denom = dp - dc;
+            float t = (denom != 0.f) ? dp / denom : -1.f;
+            if (t >= 0.f && t <= 1.f) lerp_clip(&tmp[m++], prev, cur, t);
         }
-        for (i = 0; i < m; i++) poly[i] = tmp[i];
-        n = m;
+        if (ic && m < 12) tmp[m++] = *cur;
     }
-    return n;
-}
-
-static int in_front(const ClipV* v) {
-    int plane;
-    if (!(v->w > 0.05f)) return 0;
-    for (plane = 0; plane < 6; plane++) {
-        if (plane_dist(v, plane) < 0.f) return 0;
-    }
-    return 1;
+    for (i = 0; i < m; i++) poly[i] = tmp[i];
+    return m;
 }
 
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
- * alone and the viewport places them. A corner behind the camera is cut off
- * first so it cannot be divided through the eye. */
+ * alone and the viewport places them. */
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
@@ -279,11 +254,11 @@ static void draw_tri(unsigned w) {
         sample_x = (int)(poly[0].x / poly[0].w * 100.f);
         have_sample = 1;
     }
-    if (in_front(&poly[0]) && in_front(&poly[1]) && in_front(&poly[2])) {
+    if (poly[0].w > 0.05f && poly[1].w > 0.05f && poly[2].w > 0.05f) {
         n_in++;
         n = 3;
     } else {
-        n = clip_poly(poly, 3);
+        n = clip_near(poly, 3);
         if (n < 3) {
             n_drop++;
             return;
@@ -292,7 +267,7 @@ static void draw_tri(unsigned w) {
     }
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
     for (i = 1; i < n - 1; i++) {
-        if (!in_front(&poly[0]) || !in_front(&poly[i]) || !in_front(&poly[i + 1])) continue;
+        if (!(poly[0].w > 0.05f && poly[i].w > 0.05f && poly[i + 1].w > 0.05f)) continue;
         pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
         pm_gpu_vert_clip(poly[i].x, poly[i].y, poly[i].z, poly[i].w, poly[i].u, poly[i].v, pack_color(&poly[i]));
         pm_gpu_vert_clip(poly[i + 1].x, poly[i + 1].y, poly[i + 1].z, poly[i + 1].w,
