@@ -20,11 +20,10 @@ API_CALLABLE(SetCamEnabled) {
     s32 id = evt_get_variable(script, *args++);
     s32 enabled = evt_get_variable(script, *args++);
 
-    /* The storybook disables the world camera and composites 3D into a page.
-     * Until that compositor exists, keep the world camera up during the intro. */
-    if (!enabled && gGameStatusPtr->introPart == INTRO_PART_NONE) {
+    /* The intro turns this camera off and draws the storybook pages in its place. */
+    if (!enabled) {
         gCameras[id].flags |= CAMERA_FLAG_DISABLED;
-    } else if (enabled) {
+    } else {
         gCameras[id].flags &= ~CAMERA_FLAG_DISABLED;
     }
     return ApiStatus_DONE2;

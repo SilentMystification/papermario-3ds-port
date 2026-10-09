@@ -23,6 +23,8 @@ static int nverts;
 static int rect_2d;
 static int drew;
 static int gpu_ok;
+/* 3D writes the depth buffer. A later texrect has to win even if the test stays on. */
+static int depth_holds_3d;
 static PrintConsole bottom_con;
 static int z_on;
 static int light_on;
@@ -79,6 +81,13 @@ static void flush(void) {
     /* 2D batches are already pixels. 3D batches are object space. */
     if (u_proj >= 0)
         C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, draw_3d ? &shader_3d : &projection);
+    /* Story pages and fades are submitted after the world. Clearing depth lets
+     * those rectangles replace the mesh instead of failing the depth test. */
+    if (rect_2d && depth_holds_3d && target) {
+        C3D_RenderTargetClear(target, C3D_CLEAR_DEPTH, 0, 0);
+        depth_holds_3d = 0;
+    }
+    if (draw_3d) depth_holds_3d = 1;
     (void)batch_identity;
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
@@ -221,6 +230,7 @@ void pm_gpu_hud(const char* line0, const char* line1) {
 
 void pm_gpu_begin(int clear) {
     drew = 0;
+    depth_holds_3d = 0;
     nverts = 0;
     verts = vert_base;
     sci_x0 = 0;

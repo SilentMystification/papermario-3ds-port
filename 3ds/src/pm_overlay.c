@@ -30,6 +30,7 @@ static void emit_color_overlay(s32 layer) {
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, overlay_r[layer], overlay_g[layer], overlay_b[layer], (u8)alpha);
+    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     if (type == OVERLAY_SCREEN_COLOR) {
         gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
     } else {
