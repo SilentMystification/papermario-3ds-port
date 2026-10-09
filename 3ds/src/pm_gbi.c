@@ -228,8 +228,13 @@ static int clip_poly(ClipV* poly, int n) {
             float dp = plane_dist(prev, plane);
             int ic = dc >= 0.f;
             int ip = dp >= 0.f;
-            if (ic != ip && (dp - dc) != 0.f && m < 12)
-                lerp_clip(&tmp[m++], prev, cur, dp / (dp - dc));
+            if (ic != ip && m < 12) {
+                float denom = dp - dc;
+                float t = (denom != 0.f) ? dp / denom : -1.f;
+                /* A near-zero denominator is noise, not a real crossing. The
+                 * blend then throws the new corner far outside the view. */
+                if (t >= 0.f && t <= 1.f) lerp_clip(&tmp[m++], prev, cur, t);
+            }
             if (ic && m < 12) tmp[m++] = *cur;
         }
         for (i = 0; i < m; i++) poly[i] = tmp[i];
@@ -287,7 +292,7 @@ static void draw_tri(unsigned w) {
     }
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
     for (i = 1; i < n - 1; i++) {
-        if (!(poly[0].w > 0.05f && poly[i].w > 0.05f && poly[i + 1].w > 0.05f)) continue;
+        if (!in_front(&poly[0]) || !in_front(&poly[i]) || !in_front(&poly[i + 1])) continue;
         pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
         pm_gpu_vert_clip(poly[i].x, poly[i].y, poly[i].z, poly[i].w, poly[i].u, poly[i].v, pack_color(&poly[i]));
         pm_gpu_vert_clip(poly[i + 1].x, poly[i + 1].y, poly[i + 1].z, poly[i + 1].w,
