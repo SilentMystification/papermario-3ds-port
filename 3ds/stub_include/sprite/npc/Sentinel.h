@@ -1,0 +1,115 @@
+#ifndef _NPC_SPRITE_SENTINEL_H_
+#define _NPC_SPRITE_SENTINEL_H_
+
+#define SPR_Sentinel 0x38
+
+#define SPR_PAL_Sentinel 0x0
+#define SPR_PAL_Sentinel_Question 0x1
+#define SPR_PAL_Sentinel_Pulse1 0x2
+#define SPR_PAL_Sentinel_Pulse2 0x3
+#define SPR_PAL_Sentinel_Pulse3 0x4
+#define SPR_PAL_Sentinel_Pulse4 0x5
+#define SPR_PAL_Sentinel_Glow1 0x6
+#define SPR_PAL_Sentinel_Glow2 0x7
+#define SPR_PAL_Sentinel_Smoke 0x8
+
+#define ANIM_Sentinel_Still 0x380000
+#define ANIM_Sentinel_Idle 0x380001
+#define ANIM_Sentinel_FlySlow 0x380002
+#define ANIM_Sentinel_FlyFast 0x380003
+#define ANIM_Sentinel_Smoke 0x380004
+#define ANIM_Sentinel_Alert 0x380005
+#define ANIM_Sentinel_Sad 0x380006
+#define ANIM_Sentinel_Questions 0x380007
+#define ANIM_Sentinel_Grab 0x380008
+#define ANIM_Sentinel_Release 0x380009
+
+#define ANIM_Sentinel_Question_Still 0x380100
+#define ANIM_Sentinel_Question_Idle 0x380101
+#define ANIM_Sentinel_Question_FlySlow 0x380102
+#define ANIM_Sentinel_Question_FlyFast 0x380103
+#define ANIM_Sentinel_Question_Smoke 0x380104
+#define ANIM_Sentinel_Question_Alert 0x380105
+#define ANIM_Sentinel_Question_Sad 0x380106
+#define ANIM_Sentinel_Question_Questions 0x380107
+#define ANIM_Sentinel_Question_Grab 0x380108
+#define ANIM_Sentinel_Question_Release 0x380109
+
+#define ANIM_Sentinel_Pulse1_Still 0x380200
+#define ANIM_Sentinel_Pulse1_Idle 0x380201
+#define ANIM_Sentinel_Pulse1_FlySlow 0x380202
+#define ANIM_Sentinel_Pulse1_FlyFast 0x380203
+#define ANIM_Sentinel_Pulse1_Smoke 0x380204
+#define ANIM_Sentinel_Pulse1_Alert 0x380205
+#define ANIM_Sentinel_Pulse1_Sad 0x380206
+#define ANIM_Sentinel_Pulse1_Questions 0x380207
+#define ANIM_Sentinel_Pulse1_Grab 0x380208
+#define ANIM_Sentinel_Pulse1_Release 0x380209
+
+#define ANIM_Sentinel_Pulse2_Still 0x380300
+#define ANIM_Sentinel_Pulse2_Idle 0x380301
+#define ANIM_Sentinel_Pulse2_FlySlow 0x380302
+#define ANIM_Sentinel_Pulse2_FlyFast 0x380303
+#define ANIM_Sentinel_Pulse2_Smoke 0x380304
+#define ANIM_Sentinel_Pulse2_Alert 0x380305
+#define ANIM_Sentinel_Pulse2_Sad 0x380306
+#define ANIM_Sentinel_Pulse2_Questions 0x380307
+#define ANIM_Sentinel_Pulse2_Grab 0x380308
+#define ANIM_Sentinel_Pulse2_Release 0x380309
+
+#define ANIM_Sentinel_Pulse3_Still 0x380400
+#define ANIM_Sentinel_Pulse3_Idle 0x380401
+#define ANIM_Sentinel_Pulse3_FlySlow 0x380402
+#define ANIM_Sentinel_Pulse3_FlyFast 0x380403
+#define ANIM_Sentinel_Pulse3_Smoke 0x380404
+#define ANIM_Sentinel_Pulse3_Alert 0x380405
+#define ANIM_Sentinel_Pulse3_Sad 0x380406
+#define ANIM_Sentinel_Pulse3_Questions 0x380407
+#define ANIM_Sentinel_Pulse3_Grab 0x380408
+#define ANIM_Sentinel_Pulse3_Release 0x380409
+
+#define ANIM_Sentinel_Pulse4_Still 0x380500
+#define ANIM_Sentinel_Pulse4_Idle 0x380501
+#define ANIM_Sentinel_Pulse4_FlySlow 0x380502
+#define ANIM_Sentinel_Pulse4_FlyFast 0x380503
+#define ANIM_Sentinel_Pulse4_Smoke 0x380504
+#define ANIM_Sentinel_Pulse4_Alert 0x380505
+#define ANIM_Sentinel_Pulse4_Sad 0x380506
+#define ANIM_Sentinel_Pulse4_Questions 0x380507
+#define ANIM_Sentinel_Pulse4_Grab 0x380508
+#define ANIM_Sentinel_Pulse4_Release 0x380509
+
+#define ANIM_Sentinel_Glow1_Still 0x380600
+#define ANIM_Sentinel_Glow1_Idle 0x380601
+#define ANIM_Sentinel_Glow1_FlySlow 0x380602
+#define ANIM_Sentinel_Glow1_FlyFast 0x380603
+#define ANIM_Sentinel_Glow1_Smoke 0x380604
+#define ANIM_Sentinel_Glow1_Alert 0x380605
+#define ANIM_Sentinel_Glow1_Sad 0x380606
+#define ANIM_Sentinel_Glow1_Questions 0x380607
+#define ANIM_Sentinel_Glow1_Grab 0x380608
+#define ANIM_Sentinel_Glow1_Release 0x380609
+
+#define ANIM_Sentinel_Glow2_Still 0x380700
+#define ANIM_Sentinel_Glow2_Idle 0x380701
+#define ANIM_Sentinel_Glow2_FlySlow 0x380702
+#define ANIM_Sentinel_Glow2_FlyFast 0x380703
+#define ANIM_Sentinel_Glow2_Smoke 0x380704
+#define ANIM_Sentinel_Glow2_Alert 0x380705
+#define ANIM_Sentinel_Glow2_Sad 0x380706
+#define ANIM_Sentinel_Glow2_Questions 0x380707
+#define ANIM_Sentinel_Glow2_Grab 0x380708
+#define ANIM_Sentinel_Glow2_Release 0x380709
+
+#define ANIM_Sentinel_Smoke_Still 0x380800
+#define ANIM_Sentinel_Smoke_Idle 0x380801
+#define ANIM_Sentinel_Smoke_FlySlow 0x380802
+#define ANIM_Sentinel_Smoke_FlyFast 0x380803
+#define ANIM_Sentinel_Smoke_Smoke 0x380804
+#define ANIM_Sentinel_Smoke_Alert 0x380805
+#define ANIM_Sentinel_Smoke_Sad 0x380806
+#define ANIM_Sentinel_Smoke_Questions 0x380807
+#define ANIM_Sentinel_Smoke_Grab 0x380808
+#define ANIM_Sentinel_Smoke_Release 0x380809
+
+#endif

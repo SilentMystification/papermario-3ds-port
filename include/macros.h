@@ -62,8 +62,15 @@
 #define MAP_RODATA_PAD(n,name) const s32 N(rodata_pad_##name)[n] = {};
 #define MAP_STATIC_PAD(n,name) BSS s32 N(static_pad_##name)[n];
 
+#if defined(TARGET_3DS)
+/* Host pointers are already the addresses the GPU reader uses. Subtracting
+ * the N64 KSEG0 base wraps them into unmapped space and drops the sprite matrices. */
+#define PHYSICAL_TO_VIRTUAL(addr) ((void*)(addr))
+#define VIRTUAL_TO_PHYSICAL(addr) ((u32)(addr))
+#else
 #define PHYSICAL_TO_VIRTUAL(addr) (void*)((u32)(addr) + 0x80000000)
 #define VIRTUAL_TO_PHYSICAL(addr) (u32)((u8*)(addr) - 0x80000000)
+#endif
 
 #ifdef DEBUG
 #define IS_DEBUG_PANIC(statement, file, line) is_debug_panic(statement, file, line)
@@ -136,7 +143,13 @@ typedef s32 Difficulty2D[AC_DIFFICULTY_LEN][2];
 #else
 #define GENERAL_HEAP_SIZE 0x54000
 #endif
+#if defined(TARGET_3DS)
+/* The intro cast alone is ~386KB of decoded sprites, and they stay resident.
+ * 256KB fits Bowser and then drops everyone standing in the room. */
+#define SPRITE_HEAP_SIZE 0x100000
+#else
 #define SPRITE_HEAP_SIZE 0x40000
+#endif
 #define BATTLE_HEAP_SIZE 0x25800
 #define FRAME_BUFFER_SIZE 0x25800
 

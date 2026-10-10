@@ -1,0 +1,103 @@
+#ifndef _NPC_SPRITE_PYROGUY_H_
+#define _NPC_SPRITE_PYROGUY_H_
+
+#define SPR_PyroGuy 0x3E
+
+#define SPR_PAL_PyroGuy 0x0
+#define SPR_PAL_PyroGuy_Glow 0x1
+#define SPR_PAL_PyroGuy_Poisoned 0x2
+#define SPR_PAL_PyroGuy_Glow_Poisoned 0x3
+#define SPR_PAL_PyroGuy_Dizzy 0x4
+#define SPR_PAL_PyroGuy_Glow_Dizzy 0x5
+#define SPR_PAL_PyroGuy_Shocked 0x6
+#define SPR_PAL_PyroGuy_Glow_Shocked 0x7
+
+#define ANIM_PyroGuy_Still 0x3E0000
+#define ANIM_PyroGuy_Idle 0x3E0001
+#define ANIM_PyroGuy_Walk 0x3E0002
+#define ANIM_PyroGuy_Run 0x3E0003
+#define ANIM_PyroGuy_Dash 0x3E0004
+#define ANIM_PyroGuy_Tackle 0x3E0005
+#define ANIM_PyroGuy_Hurt 0x3E0006
+#define ANIM_PyroGuy_Sleep 0x3E0007
+#define ANIM_PyroGuy_Dizzy 0x3E0008
+#define ANIM_PyroGuy_Scared 0x3E0009
+
+#define ANIM_PyroGuy_Glow_Still 0x3E0100
+#define ANIM_PyroGuy_Glow_Idle 0x3E0101
+#define ANIM_PyroGuy_Glow_Walk 0x3E0102
+#define ANIM_PyroGuy_Glow_Run 0x3E0103
+#define ANIM_PyroGuy_Glow_Dash 0x3E0104
+#define ANIM_PyroGuy_Glow_Tackle 0x3E0105
+#define ANIM_PyroGuy_Glow_Hurt 0x3E0106
+#define ANIM_PyroGuy_Glow_Sleep 0x3E0107
+#define ANIM_PyroGuy_Glow_Dizzy 0x3E0108
+#define ANIM_PyroGuy_Glow_Scared 0x3E0109
+
+#define ANIM_PyroGuy_Poisoned_Still 0x3E0200
+#define ANIM_PyroGuy_Poisoned_Idle 0x3E0201
+#define ANIM_PyroGuy_Poisoned_Walk 0x3E0202
+#define ANIM_PyroGuy_Poisoned_Run 0x3E0203
+#define ANIM_PyroGuy_Poisoned_Dash 0x3E0204
+#define ANIM_PyroGuy_Poisoned_Tackle 0x3E0205
+#define ANIM_PyroGuy_Poisoned_Hurt 0x3E0206
+#define ANIM_PyroGuy_Poisoned_Sleep 0x3E0207
+#define ANIM_PyroGuy_Poisoned_Dizzy 0x3E0208
+#define ANIM_PyroGuy_Poisoned_Scared 0x3E0209
+
+#define ANIM_PyroGuy_Glow_Poisoned_Still 0x3E0300
+#define ANIM_PyroGuy_Glow_Poisoned_Idle 0x3E0301
+#define ANIM_PyroGuy_Glow_Poisoned_Walk 0x3E0302
+#define ANIM_PyroGuy_Glow_Poisoned_Run 0x3E0303
+#define ANIM_PyroGuy_Glow_Poisoned_Dash 0x3E0304
+#define ANIM_PyroGuy_Glow_Poisoned_Tackle 0x3E0305
+#define ANIM_PyroGuy_Glow_Poisoned_Hurt 0x3E0306
+#define ANIM_PyroGuy_Glow_Poisoned_Sleep 0x3E0307
+#define ANIM_PyroGuy_Glow_Poisoned_Dizzy 0x3E0308
+#define ANIM_PyroGuy_Glow_Poisoned_Scared 0x3E0309
+
+#define ANIM_PyroGuy_Dizzy_Still 0x3E0400
+#define ANIM_PyroGuy_Dizzy_Idle 0x3E0401
+#define ANIM_PyroGuy_Dizzy_Walk 0x3E0402
+#define ANIM_PyroGuy_Dizzy_Run 0x3E0403
+#define ANIM_PyroGuy_Dizzy_Dash 0x3E0404
+#define ANIM_PyroGuy_Dizzy_Tackle 0x3E0405
+#define ANIM_PyroGuy_Dizzy_Hurt 0x3E0406
+#define ANIM_PyroGuy_Dizzy_Sleep 0x3E0407
+#define ANIM_PyroGuy_Dizzy_Dizzy 0x3E0408
+#define ANIM_PyroGuy_Dizzy_Scared 0x3E0409
+
+#define ANIM_PyroGuy_Glow_Dizzy_Still 0x3E0500
+#define ANIM_PyroGuy_Glow_Dizzy_Idle 0x3E0501
+#define ANIM_PyroGuy_Glow_Dizzy_Walk 0x3E0502
+#define ANIM_PyroGuy_Glow_Dizzy_Run 0x3E0503
+#define ANIM_PyroGuy_Glow_Dizzy_Dash 0x3E0504
+#define ANIM_PyroGuy_Glow_Dizzy_Tackle 0x3E0505
+#define ANIM_PyroGuy_Glow_Dizzy_Hurt 0x3E0506
+#define ANIM_PyroGuy_Glow_Dizzy_Sleep 0x3E0507
+#define ANIM_PyroGuy_Glow_Dizzy_Dizzy 0x3E0508
+#define ANIM_PyroGuy_Glow_Dizzy_Scared 0x3E0509
+
+#define ANIM_PyroGuy_Shocked_Still 0x3E0600
+#define ANIM_PyroGuy_Shocked_Idle 0x3E0601
+#define ANIM_PyroGuy_Shocked_Walk 0x3E0602
+#define ANIM_PyroGuy_Shocked_Run 0x3E0603
+#define ANIM_PyroGuy_Shocked_Dash 0x3E0604
+#define ANIM_PyroGuy_Shocked_Tackle 0x3E0605
+#define ANIM_PyroGuy_Shocked_Hurt 0x3E0606
+#define ANIM_PyroGuy_Shocked_Sleep 0x3E0607
+#define ANIM_PyroGuy_Shocked_Dizzy 0x3E0608
+#define ANIM_PyroGuy_Shocked_Scared 0x3E0609
+
+#define ANIM_PyroGuy_Glow_Shocked_Still 0x3E0700
+#define ANIM_PyroGuy_Glow_Shocked_Idle 0x3E0701
+#define ANIM_PyroGuy_Glow_Shocked_Walk 0x3E0702
+#define ANIM_PyroGuy_Glow_Shocked_Run 0x3E0703
+#define ANIM_PyroGuy_Glow_Shocked_Dash 0x3E0704
+#define ANIM_PyroGuy_Glow_Shocked_Tackle 0x3E0705
+#define ANIM_PyroGuy_Glow_Shocked_Hurt 0x3E0706
+#define ANIM_PyroGuy_Glow_Shocked_Sleep 0x3E0707
+#define ANIM_PyroGuy_Glow_Shocked_Dizzy 0x3E0708
+#define ANIM_PyroGuy_Glow_Shocked_Scared 0x3E0709
+
+#endif

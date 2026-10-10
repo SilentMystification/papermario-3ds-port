@@ -1,0 +1,16 @@
+#ifndef _NPC_SPRITE_MERLE_H_
+#define _NPC_SPRITE_MERLE_H_
+
+#define SPR_Merle 0xD2
+
+#define SPR_PAL_Merle 0x0
+
+#define ANIM_Merle_Still 0xD20000
+#define ANIM_Merle_Idle 0xD20001
+#define ANIM_Merle_Walk 0xD20002
+#define ANIM_Merle_Run 0xD20003
+#define ANIM_Merle_Talk 0xD20004
+#define ANIM_Merle_Gather 0xD20005
+#define ANIM_Merle_Release 0xD20006
+
+#endif

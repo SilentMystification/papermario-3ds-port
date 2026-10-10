@@ -1,23 +1,7 @@
 #ifndef _NPC_SPRITE_WORLDMUSKULAR_H_
 #define _NPC_SPRITE_WORLDMUSKULAR_H_
 
-#include "types.h"
-
 #define SPR_WorldMuskular 0x15
-
-#define SPR_IMG_WorldMuskular_Idle1 0x0
-#define SPR_IMG_WorldMuskular_Idle2 0x1
-#define SPR_IMG_WorldMuskular_Talk 0x2
-#define SPR_IMG_WorldMuskular_Happy1 0x3
-#define SPR_IMG_WorldMuskular_Happy2 0x4
-#define SPR_IMG_WorldMuskular_Leap1 0x5
-#define SPR_IMG_WorldMuskular_Leap2 0x6
-#define SPR_IMG_WorldMuskular_Panic1 0x7
-#define SPR_IMG_WorldMuskular_Panic2 0x8
-#define SPR_IMG_WorldMuskular_Hurt1 0x9
-#define SPR_IMG_WorldMuskular_Hurt2 0xA
-#define SPR_IMG_WorldMuskular_Back1 0xB
-#define SPR_IMG_WorldMuskular_Back2 0xC
 
 #define SPR_PAL_WorldMuskular 0x0
 #define SPR_PAL_WorldMuskular_Glowing 0x1

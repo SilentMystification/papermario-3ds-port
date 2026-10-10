@@ -1,0 +1,39 @@
+#ifndef _NPC_SPRITE_SHYSTACKUNFOLD_H_
+#define _NPC_SPRITE_SHYSTACKUNFOLD_H_
+
+#define SPR_ShyStackUnfold 0x73
+
+#define SPR_PAL_ShyStackUnfold 0x0
+#define SPR_PAL_ShyStackUnfold_Alt 0x1
+#define SPR_PAL_ShyStackUnfold_Darker 0x2
+#define SPR_PAL_ShyStackUnfold_Dark 0x3
+
+#define ANIM_ShyStackUnfold_Whole 0x730000
+#define ANIM_ShyStackUnfold_Segment1 0x730001
+#define ANIM_ShyStackUnfold_Segment2 0x730002
+#define ANIM_ShyStackUnfold_Segment3 0x730003
+#define ANIM_ShyStackUnfold_Segment4 0x730004
+#define ANIM_ShyStackUnfold_Unfold 0x730005
+
+#define ANIM_ShyStackUnfold_Alt_Whole 0x730100
+#define ANIM_ShyStackUnfold_Alt_Segment1 0x730101
+#define ANIM_ShyStackUnfold_Alt_Segment2 0x730102
+#define ANIM_ShyStackUnfold_Alt_Segment3 0x730103
+#define ANIM_ShyStackUnfold_Alt_Segment4 0x730104
+#define ANIM_ShyStackUnfold_Alt_Unfold 0x730105
+
+#define ANIM_ShyStackUnfold_Darker_Whole 0x730200
+#define ANIM_ShyStackUnfold_Darker_Segment1 0x730201
+#define ANIM_ShyStackUnfold_Darker_Segment2 0x730202
+#define ANIM_ShyStackUnfold_Darker_Segment3 0x730203
+#define ANIM_ShyStackUnfold_Darker_Segment4 0x730204
+#define ANIM_ShyStackUnfold_Darker_Unfold 0x730205
+
+#define ANIM_ShyStackUnfold_Dark_Whole 0x730300
+#define ANIM_ShyStackUnfold_Dark_Segment1 0x730301
+#define ANIM_ShyStackUnfold_Dark_Segment2 0x730302
+#define ANIM_ShyStackUnfold_Dark_Segment3 0x730303
+#define ANIM_ShyStackUnfold_Dark_Segment4 0x730304
+#define ANIM_ShyStackUnfold_Dark_Unfold 0x730305
+
+#endif

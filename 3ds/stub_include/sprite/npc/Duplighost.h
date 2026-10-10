@@ -1,0 +1,92 @@
+#ifndef _NPC_SPRITE_DUPLIGHOST_H_
+#define _NPC_SPRITE_DUPLIGHOST_H_
+
+#define SPR_Duplighost 0x4E
+
+#define SPR_PAL_Duplighost 0x0
+#define SPR_PAL_Duplighost_Poisoned 0x1
+#define SPR_PAL_Duplighost_Dizzy 0x2
+#define SPR_PAL_Duplighost_Shocked 0x3
+#define SPR_PAL_Duplighost_Burnt 0x4
+
+#define ANIM_Duplighost_Still 0x4E0000
+#define ANIM_Duplighost_StandTall 0x4E0001
+#define ANIM_Duplighost_Idle 0x4E0002
+#define ANIM_Duplighost_Walk 0x4E0003
+#define ANIM_Duplighost_Run 0x4E0004
+#define ANIM_Duplighost_Talk 0x4E0005
+#define ANIM_Duplighost_Threaten 0x4E0006
+#define ANIM_Duplighost_Crouch 0x4E0007
+#define ANIM_Duplighost_Leap 0x4E0008
+#define ANIM_Duplighost_Land 0x4E0009
+#define ANIM_Duplighost_Hurt 0x4E000A
+#define ANIM_Duplighost_Defeated 0x4E000B
+#define ANIM_Duplighost_BurnHurt 0x4E000C
+#define ANIM_Duplighost_Sleep 0x4E000D
+#define ANIM_Duplighost_Dizzy 0x4E000E
+
+#define ANIM_Duplighost_Poisoned_Still 0x4E0100
+#define ANIM_Duplighost_Poisoned_StandTall 0x4E0101
+#define ANIM_Duplighost_Poisoned_Idle 0x4E0102
+#define ANIM_Duplighost_Poisoned_Walk 0x4E0103
+#define ANIM_Duplighost_Poisoned_Run 0x4E0104
+#define ANIM_Duplighost_Poisoned_Talk 0x4E0105
+#define ANIM_Duplighost_Poisoned_Threaten 0x4E0106
+#define ANIM_Duplighost_Poisoned_Crouch 0x4E0107
+#define ANIM_Duplighost_Poisoned_Leap 0x4E0108
+#define ANIM_Duplighost_Poisoned_Land 0x4E0109
+#define ANIM_Duplighost_Poisoned_Hurt 0x4E010A
+#define ANIM_Duplighost_Poisoned_Defeated 0x4E010B
+#define ANIM_Duplighost_Poisoned_BurnHurt 0x4E010C
+#define ANIM_Duplighost_Poisoned_Sleep 0x4E010D
+#define ANIM_Duplighost_Poisoned_Dizzy 0x4E010E
+
+#define ANIM_Duplighost_Dizzy_Still 0x4E0200
+#define ANIM_Duplighost_Dizzy_StandTall 0x4E0201
+#define ANIM_Duplighost_Dizzy_Idle 0x4E0202
+#define ANIM_Duplighost_Dizzy_Walk 0x4E0203
+#define ANIM_Duplighost_Dizzy_Run 0x4E0204
+#define ANIM_Duplighost_Dizzy_Talk 0x4E0205
+#define ANIM_Duplighost_Dizzy_Threaten 0x4E0206
+#define ANIM_Duplighost_Dizzy_Crouch 0x4E0207
+#define ANIM_Duplighost_Dizzy_Leap 0x4E0208
+#define ANIM_Duplighost_Dizzy_Land 0x4E0209
+#define ANIM_Duplighost_Dizzy_Hurt 0x4E020A
+#define ANIM_Duplighost_Dizzy_Defeated 0x4E020B
+#define ANIM_Duplighost_Dizzy_BurnHurt 0x4E020C
+#define ANIM_Duplighost_Dizzy_Sleep 0x4E020D
+#define ANIM_Duplighost_Dizzy_Dizzy 0x4E020E
+
+#define ANIM_Duplighost_Shocked_Still 0x4E0300
+#define ANIM_Duplighost_Shocked_StandTall 0x4E0301
+#define ANIM_Duplighost_Shocked_Idle 0x4E0302
+#define ANIM_Duplighost_Shocked_Walk 0x4E0303
+#define ANIM_Duplighost_Shocked_Run 0x4E0304
+#define ANIM_Duplighost_Shocked_Talk 0x4E0305
+#define ANIM_Duplighost_Shocked_Threaten 0x4E0306
+#define ANIM_Duplighost_Shocked_Crouch 0x4E0307
+#define ANIM_Duplighost_Shocked_Leap 0x4E0308
+#define ANIM_Duplighost_Shocked_Land 0x4E0309
+#define ANIM_Duplighost_Shocked_Hurt 0x4E030A
+#define ANIM_Duplighost_Shocked_Defeated 0x4E030B
+#define ANIM_Duplighost_Shocked_BurnHurt 0x4E030C
+#define ANIM_Duplighost_Shocked_Sleep 0x4E030D
+#define ANIM_Duplighost_Shocked_Dizzy 0x4E030E
+
+#define ANIM_Duplighost_Burnt_Still 0x4E0400
+#define ANIM_Duplighost_Burnt_StandTall 0x4E0401
+#define ANIM_Duplighost_Burnt_Idle 0x4E0402
+#define ANIM_Duplighost_Burnt_Walk 0x4E0403
+#define ANIM_Duplighost_Burnt_Run 0x4E0404
+#define ANIM_Duplighost_Burnt_Talk 0x4E0405
+#define ANIM_Duplighost_Burnt_Threaten 0x4E0406
+#define ANIM_Duplighost_Burnt_Crouch 0x4E0407
+#define ANIM_Duplighost_Burnt_Leap 0x4E0408
+#define ANIM_Duplighost_Burnt_Land 0x4E0409
+#define ANIM_Duplighost_Burnt_Hurt 0x4E040A
+#define ANIM_Duplighost_Burnt_Defeated 0x4E040B
+#define ANIM_Duplighost_Burnt_BurnHurt 0x4E040C
+#define ANIM_Duplighost_Burnt_Sleep 0x4E040D
+#define ANIM_Duplighost_Burnt_Dizzy 0x4E040E
+
+#endif

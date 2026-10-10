@@ -1,11 +1,7 @@
 #ifndef _NPC_SPRITE_STARROD_H_
 #define _NPC_SPRITE_STARROD_H_
 
-#include "types.h"
-
 #define SPR_StarRod 0xD3
-
-#define SPR_IMG_StarRod_Still 0x0
 
 #define SPR_PAL_StarRod 0x0
 #define SPR_PAL_StarRod_Inert 0x1

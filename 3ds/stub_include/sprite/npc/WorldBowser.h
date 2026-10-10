@@ -1,93 +1,7 @@
 #ifndef _NPC_SPRITE_WORLDBOWSER_H_
 #define _NPC_SPRITE_WORLDBOWSER_H_
 
-#include "types.h"
-
 #define SPR_WorldBowser 0x80
-
-#define SPR_IMG_WorldBowser_Head 0x0
-#define SPR_IMG_WorldBowser_BodyWalk 0x1
-#define SPR_IMG_WorldBowser_Shell 0x2
-#define SPR_IMG_WorldBowser_LArm 0x3
-#define SPR_IMG_WorldBowser_RArm 0x4
-#define SPR_IMG_WorldBowser_HeadAngry 0x5
-#define SPR_IMG_WorldBowser_LFoot 0x6
-#define SPR_IMG_WorldBowser_RFoot 0x7
-#define SPR_IMG_WorldBowser_LFootStep1 0x8
-#define SPR_IMG_WorldBowser_RFootStep1 0x9
-#define SPR_IMG_WorldBowser_LFootStep2 0xA
-#define SPR_IMG_WorldBowser_RFootStep2 0xB
-#define SPR_IMG_WorldBowser_LFootStep3 0xC
-#define SPR_IMG_WorldBowser_RFootStep3 0xD
-#define SPR_IMG_WorldBowser_HeadTalk1 0xE
-#define SPR_IMG_WorldBowser_HeadTalk2 0xF
-#define SPR_IMG_WorldBowser_HeadEyesClosed1 0x10
-#define SPR_IMG_WorldBowser_HeadEyesClosed2 0x11
-#define SPR_IMG_WorldBowser_HeadMock3 0x12
-#define SPR_IMG_WorldBowser_BodyStand 0x13
-#define SPR_IMG_WorldBowser_BodyRotated 0x14
-#define SPR_IMG_WorldBowser_LFootRotated 0x15
-#define SPR_IMG_WorldBowser_RFootRotated 0x16
-#define SPR_IMG_WorldBowser_FootBottom1 0x17
-#define SPR_IMG_WorldBowser_LArmBrandish 0x18
-#define SPR_IMG_WorldBowser_RArmBrandish 0x19
-#define SPR_IMG_WorldBowser_RHandBrandish 0x1A
-#define SPR_IMG_WorldBowser_LArmRaised 0x1B
-#define SPR_IMG_WorldBowser_RArmRaised1 0x1C
-#define SPR_IMG_WorldBowser_RArmRaised2 0x1D
-#define SPR_IMG_WorldBowser_LArmCrossed 0x1E
-#define SPR_IMG_WorldBowser_RArmCrossed 0x1F
-#define SPR_IMG_WorldBowser_LArmBent 0x20
-#define SPR_IMG_WorldBowser_RArmBent 0x21
-#define SPR_IMG_WorldBowser_BodyLand 0x22
-#define SPR_IMG_WorldBowser_BodyInsideCar 0x23
-#define SPR_IMG_WorldBowser_ClownCar 0x24
-#define SPR_IMG_WorldBowser_HeadFwdIdle1 0x25
-#define SPR_IMG_WorldBowser_HeadFwdIdle2 0x26
-#define SPR_IMG_WorldBowser_HeadFwdOpenMouth 0x27
-#define SPR_IMG_WorldBowser_HeadFwdBrandish1 0x28
-#define SPR_IMG_WorldBowser_HeadFwdBrandish2 0x29
-#define SPR_IMG_WorldBowser_StarRod 0x2A
-#define SPR_IMG_WorldBowser_StarRodTip 0x2B
-#define SPR_IMG_WorldBowser_StarRodShaft 0x2C
-#define SPR_IMG_WorldBowser_HeadFwdTalk1 0x2D
-#define SPR_IMG_WorldBowser_HeadFwdTalk2 0x2E
-#define SPR_IMG_WorldBowser_HeadFwdFireBreath 0x2F
-#define SPR_IMG_WorldBowser_LArmClownCar 0x30
-#define SPR_IMG_WorldBowser_RArmClownCar 0x31
-#define SPR_IMG_WorldBowser_Propeller1 0x32
-#define SPR_IMG_WorldBowser_Propeller2 0x33
-#define SPR_IMG_WorldBowser_Propeller3 0x34
-#define SPR_IMG_WorldBowser_Propeller4 0x35
-#define SPR_IMG_WorldBowser_Propeller5 0x36
-#define SPR_IMG_WorldBowser_DefeatedHead 0x37
-#define SPR_IMG_WorldBowser_DefeatedHeadBlink 0x38
-#define SPR_IMG_WorldBowser_DefeatedHeadTalk1 0x39
-#define SPR_IMG_WorldBowser_DefeatedHeadTalk2 0x3A
-#define SPR_IMG_WorldBowser_DefeatedBody 0x3B
-#define SPR_IMG_WorldBowser_DefeatedRArm 0x3C
-#define SPR_IMG_WorldBowser_DefeatedRFoot 0x3D
-#define SPR_IMG_WorldBowser_FootBottom2 0x3E
-#define SPR_IMG_WorldBowser_LFist 0x3F
-#define SPR_IMG_WorldBowser_LArmFist 0x40
-#define SPR_IMG_WorldBowser_RArmFist 0x41
-#define SPR_IMG_WorldBowser_RFist 0x42
-#define SPR_IMG_WorldBowser_HeadFwdLaugh1 0x43
-#define SPR_IMG_WorldBowser_HeadFwdLaugh2 0x44
-#define SPR_IMG_WorldBowser_HeadRotated1 0x45
-#define SPR_IMG_WorldBowser_HeadRotated2 0x46
-#define SPR_IMG_WorldBowser_HeadRotated3 0x47
-#define SPR_IMG_WorldBowser_HeadTantrum 0x48
-#define SPR_IMG_WorldBowser_HeadSurprise 0x49
-#define SPR_IMG_WorldBowser_HeadEyesClosed 0x4A
-#define SPR_IMG_WorldBowser_HeadLaugh1 0x4B
-#define SPR_IMG_WorldBowser_HeadLaugh2 0x4C
-#define SPR_IMG_WorldBowser_LArmSwipe 0x4D
-#define SPR_IMG_WorldBowser_RFistSwipe 0x4E
-#define SPR_IMG_WorldBowser_RArmSwipe 0x4F
-#define SPR_IMG_WorldBowser_BodyFwd 0x50
-#define SPR_IMG_WorldBowser_LFootTantrum 0x51
-#define SPR_IMG_WorldBowser_RFootTantrum 0x52
 
 #define SPR_PAL_WorldBowser 0x0
 #define SPR_PAL_WorldBowser_StarRod 0x1
@@ -135,8 +49,8 @@
 #define ANIM_WorldBowser_DefeatedStill 0x800022
 #define ANIM_WorldBowser_DefeatedIdle 0x800023
 #define ANIM_WorldBowser_DefeatedTalk 0x800024
-#define ANIM_WorldBowser_BlastUp 0x800025
-#define ANIM_WorldBowser_BlastFall 0x800026
+#define ANIM_WorldBowser_BlastUp   # unused, probably intended for after the final fight 0x800025
+#define ANIM_WorldBowser_BlastFall # unused, probably intended for after the final fight 0x800026
 
 #define ANIM_WorldBowser_StarRod_Still 0x800100
 #define ANIM_WorldBowser_StarRod_BrandishStill 0x800101
@@ -175,8 +89,8 @@
 #define ANIM_WorldBowser_StarRod_DefeatedStill 0x800122
 #define ANIM_WorldBowser_StarRod_DefeatedIdle 0x800123
 #define ANIM_WorldBowser_StarRod_DefeatedTalk 0x800124
-#define ANIM_WorldBowser_StarRod_BlastUp 0x800125
-#define ANIM_WorldBowser_StarRod_BlastFall 0x800126
+#define ANIM_WorldBowser_StarRod_BlastUp   # unused, probably intended for after the final fight 0x800125
+#define ANIM_WorldBowser_StarRod_BlastFall # unused, probably intended for after the final fight 0x800126
 
 #define ANIM_WorldBowser_Unused1_Still 0x800200
 #define ANIM_WorldBowser_Unused1_BrandishStill 0x800201
@@ -215,8 +129,8 @@
 #define ANIM_WorldBowser_Unused1_DefeatedStill 0x800222
 #define ANIM_WorldBowser_Unused1_DefeatedIdle 0x800223
 #define ANIM_WorldBowser_Unused1_DefeatedTalk 0x800224
-#define ANIM_WorldBowser_Unused1_BlastUp 0x800225
-#define ANIM_WorldBowser_Unused1_BlastFall 0x800226
+#define ANIM_WorldBowser_Unused1_BlastUp   # unused, probably intended for after the final fight 0x800225
+#define ANIM_WorldBowser_Unused1_BlastFall # unused, probably intended for after the final fight 0x800226
 
 #define ANIM_WorldBowser_Unused2_Still 0x800300
 #define ANIM_WorldBowser_Unused2_BrandishStill 0x800301
@@ -255,8 +169,8 @@
 #define ANIM_WorldBowser_Unused2_DefeatedStill 0x800322
 #define ANIM_WorldBowser_Unused2_DefeatedIdle 0x800323
 #define ANIM_WorldBowser_Unused2_DefeatedTalk 0x800324
-#define ANIM_WorldBowser_Unused2_BlastUp 0x800325
-#define ANIM_WorldBowser_Unused2_BlastFall 0x800326
+#define ANIM_WorldBowser_Unused2_BlastUp   # unused, probably intended for after the final fight 0x800325
+#define ANIM_WorldBowser_Unused2_BlastFall # unused, probably intended for after the final fight 0x800326
 
 #define ANIM_WorldBowser_Unused3_Still 0x800400
 #define ANIM_WorldBowser_Unused3_BrandishStill 0x800401
@@ -295,8 +209,8 @@
 #define ANIM_WorldBowser_Unused3_DefeatedStill 0x800422
 #define ANIM_WorldBowser_Unused3_DefeatedIdle 0x800423
 #define ANIM_WorldBowser_Unused3_DefeatedTalk 0x800424
-#define ANIM_WorldBowser_Unused3_BlastUp 0x800425
-#define ANIM_WorldBowser_Unused3_BlastFall 0x800426
+#define ANIM_WorldBowser_Unused3_BlastUp   # unused, probably intended for after the final fight 0x800425
+#define ANIM_WorldBowser_Unused3_BlastFall # unused, probably intended for after the final fight 0x800426
 
 #define ANIM_WorldBowser_Unused4_Still 0x800500
 #define ANIM_WorldBowser_Unused4_BrandishStill 0x800501
@@ -335,8 +249,8 @@
 #define ANIM_WorldBowser_Unused4_DefeatedStill 0x800522
 #define ANIM_WorldBowser_Unused4_DefeatedIdle 0x800523
 #define ANIM_WorldBowser_Unused4_DefeatedTalk 0x800524
-#define ANIM_WorldBowser_Unused4_BlastUp 0x800525
-#define ANIM_WorldBowser_Unused4_BlastFall 0x800526
+#define ANIM_WorldBowser_Unused4_BlastUp   # unused, probably intended for after the final fight 0x800525
+#define ANIM_WorldBowser_Unused4_BlastFall # unused, probably intended for after the final fight 0x800526
 
 #define ANIM_WorldBowser_Unused5_Still 0x800600
 #define ANIM_WorldBowser_Unused5_BrandishStill 0x800601
@@ -375,8 +289,8 @@
 #define ANIM_WorldBowser_Unused5_DefeatedStill 0x800622
 #define ANIM_WorldBowser_Unused5_DefeatedIdle 0x800623
 #define ANIM_WorldBowser_Unused5_DefeatedTalk 0x800624
-#define ANIM_WorldBowser_Unused5_BlastUp 0x800625
-#define ANIM_WorldBowser_Unused5_BlastFall 0x800626
+#define ANIM_WorldBowser_Unused5_BlastUp   # unused, probably intended for after the final fight 0x800625
+#define ANIM_WorldBowser_Unused5_BlastFall # unused, probably intended for after the final fight 0x800626
 
 #define ANIM_WorldBowser_Unused6_Still 0x800700
 #define ANIM_WorldBowser_Unused6_BrandishStill 0x800701
@@ -415,7 +329,7 @@
 #define ANIM_WorldBowser_Unused6_DefeatedStill 0x800722
 #define ANIM_WorldBowser_Unused6_DefeatedIdle 0x800723
 #define ANIM_WorldBowser_Unused6_DefeatedTalk 0x800724
-#define ANIM_WorldBowser_Unused6_BlastUp 0x800725
-#define ANIM_WorldBowser_Unused6_BlastFall 0x800726
+#define ANIM_WorldBowser_Unused6_BlastUp   # unused, probably intended for after the final fight 0x800725
+#define ANIM_WorldBowser_Unused6_BlastFall # unused, probably intended for after the final fight 0x800726
 
 #endif

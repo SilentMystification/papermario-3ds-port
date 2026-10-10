@@ -1,0 +1,107 @@
+#ifndef _NPC_SPRITE_GENERALGUY_H_
+#define _NPC_SPRITE_GENERALGUY_H_
+
+#define SPR_GeneralGuy 0x76
+
+#define SPR_PAL_GeneralGuy 0x0
+#define SPR_PAL_GeneralGuy_Poisoned 0x1
+#define SPR_PAL_GeneralGuy_Dizzy 0x2
+#define SPR_PAL_GeneralGuy_Shocked 0x3
+#define SPR_PAL_GeneralGuy_Burnt 0x4
+
+#define ANIM_GeneralGuy_Still 0x760000
+#define ANIM_GeneralGuy_ShockStill 0x760001
+#define ANIM_GeneralGuy_Idle 0x760002
+#define ANIM_GeneralGuy_Point 0x760003
+#define ANIM_GeneralGuy_BowHead 0x760004
+#define ANIM_GeneralGuy_Hurt 0x760005
+#define ANIM_GeneralGuy_HurtStill 0x760006
+#define ANIM_GeneralGuy_Fallen 0x760007
+#define ANIM_GeneralGuy_BurnHurt 0x760008
+#define ANIM_GeneralGuy_BurnStill 0x760009
+#define ANIM_GeneralGuy_Whistle 0x76000A
+#define ANIM_GeneralGuy_Lift 0x76000B
+#define ANIM_GeneralGuy_Talk 0x76000C
+#define ANIM_GeneralGuy_Angry 0x76000D
+#define ANIM_GeneralGuy_Panic 0x76000E
+#define ANIM_GeneralGuy_Shout 0x76000F
+#define ANIM_GeneralGuy_Shock 0x760010
+#define ANIM_GeneralGuy_Tired 0x760011
+
+#define ANIM_GeneralGuy_Poisoned_Still 0x760100
+#define ANIM_GeneralGuy_Poisoned_ShockStill 0x760101
+#define ANIM_GeneralGuy_Poisoned_Idle 0x760102
+#define ANIM_GeneralGuy_Poisoned_Point 0x760103
+#define ANIM_GeneralGuy_Poisoned_BowHead 0x760104
+#define ANIM_GeneralGuy_Poisoned_Hurt 0x760105
+#define ANIM_GeneralGuy_Poisoned_HurtStill 0x760106
+#define ANIM_GeneralGuy_Poisoned_Fallen 0x760107
+#define ANIM_GeneralGuy_Poisoned_BurnHurt 0x760108
+#define ANIM_GeneralGuy_Poisoned_BurnStill 0x760109
+#define ANIM_GeneralGuy_Poisoned_Whistle 0x76010A
+#define ANIM_GeneralGuy_Poisoned_Lift 0x76010B
+#define ANIM_GeneralGuy_Poisoned_Talk 0x76010C
+#define ANIM_GeneralGuy_Poisoned_Angry 0x76010D
+#define ANIM_GeneralGuy_Poisoned_Panic 0x76010E
+#define ANIM_GeneralGuy_Poisoned_Shout 0x76010F
+#define ANIM_GeneralGuy_Poisoned_Shock 0x760110
+#define ANIM_GeneralGuy_Poisoned_Tired 0x760111
+
+#define ANIM_GeneralGuy_Dizzy_Still 0x760200
+#define ANIM_GeneralGuy_Dizzy_ShockStill 0x760201
+#define ANIM_GeneralGuy_Dizzy_Idle 0x760202
+#define ANIM_GeneralGuy_Dizzy_Point 0x760203
+#define ANIM_GeneralGuy_Dizzy_BowHead 0x760204
+#define ANIM_GeneralGuy_Dizzy_Hurt 0x760205
+#define ANIM_GeneralGuy_Dizzy_HurtStill 0x760206
+#define ANIM_GeneralGuy_Dizzy_Fallen 0x760207
+#define ANIM_GeneralGuy_Dizzy_BurnHurt 0x760208
+#define ANIM_GeneralGuy_Dizzy_BurnStill 0x760209
+#define ANIM_GeneralGuy_Dizzy_Whistle 0x76020A
+#define ANIM_GeneralGuy_Dizzy_Lift 0x76020B
+#define ANIM_GeneralGuy_Dizzy_Talk 0x76020C
+#define ANIM_GeneralGuy_Dizzy_Angry 0x76020D
+#define ANIM_GeneralGuy_Dizzy_Panic 0x76020E
+#define ANIM_GeneralGuy_Dizzy_Shout 0x76020F
+#define ANIM_GeneralGuy_Dizzy_Shock 0x760210
+#define ANIM_GeneralGuy_Dizzy_Tired 0x760211
+
+#define ANIM_GeneralGuy_Shocked_Still 0x760300
+#define ANIM_GeneralGuy_Shocked_ShockStill 0x760301
+#define ANIM_GeneralGuy_Shocked_Idle 0x760302
+#define ANIM_GeneralGuy_Shocked_Point 0x760303
+#define ANIM_GeneralGuy_Shocked_BowHead 0x760304
+#define ANIM_GeneralGuy_Shocked_Hurt 0x760305
+#define ANIM_GeneralGuy_Shocked_HurtStill 0x760306
+#define ANIM_GeneralGuy_Shocked_Fallen 0x760307
+#define ANIM_GeneralGuy_Shocked_BurnHurt 0x760308
+#define ANIM_GeneralGuy_Shocked_BurnStill 0x760309
+#define ANIM_GeneralGuy_Shocked_Whistle 0x76030A
+#define ANIM_GeneralGuy_Shocked_Lift 0x76030B
+#define ANIM_GeneralGuy_Shocked_Talk 0x76030C
+#define ANIM_GeneralGuy_Shocked_Angry 0x76030D
+#define ANIM_GeneralGuy_Shocked_Panic 0x76030E
+#define ANIM_GeneralGuy_Shocked_Shout 0x76030F
+#define ANIM_GeneralGuy_Shocked_Shock 0x760310
+#define ANIM_GeneralGuy_Shocked_Tired 0x760311
+
+#define ANIM_GeneralGuy_Burnt_Still 0x760400
+#define ANIM_GeneralGuy_Burnt_ShockStill 0x760401
+#define ANIM_GeneralGuy_Burnt_Idle 0x760402
+#define ANIM_GeneralGuy_Burnt_Point 0x760403
+#define ANIM_GeneralGuy_Burnt_BowHead 0x760404
+#define ANIM_GeneralGuy_Burnt_Hurt 0x760405
+#define ANIM_GeneralGuy_Burnt_HurtStill 0x760406
+#define ANIM_GeneralGuy_Burnt_Fallen 0x760407
+#define ANIM_GeneralGuy_Burnt_BurnHurt 0x760408
+#define ANIM_GeneralGuy_Burnt_BurnStill 0x760409
+#define ANIM_GeneralGuy_Burnt_Whistle 0x76040A
+#define ANIM_GeneralGuy_Burnt_Lift 0x76040B
+#define ANIM_GeneralGuy_Burnt_Talk 0x76040C
+#define ANIM_GeneralGuy_Burnt_Angry 0x76040D
+#define ANIM_GeneralGuy_Burnt_Panic 0x76040E
+#define ANIM_GeneralGuy_Burnt_Shout 0x76040F
+#define ANIM_GeneralGuy_Burnt_Shock 0x760410
+#define ANIM_GeneralGuy_Burnt_Tired 0x760411
+
+#endif

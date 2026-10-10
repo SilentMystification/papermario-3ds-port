@@ -1,0 +1,13 @@
+#ifndef _NPC_SPRITE_FISHMAEL_H_
+#define _NPC_SPRITE_FISHMAEL_H_
+
+#define SPR_Fishmael 0x8D
+
+#define SPR_PAL_Fishmael 0x0
+
+#define ANIM_Fishmael_Still 0x8D0000
+#define ANIM_Fishmael_Idle 0x8D0001
+#define ANIM_Fishmael_Talk 0x8D0002
+#define ANIM_Fishmael_Reel 0x8D0003
+
+#endif

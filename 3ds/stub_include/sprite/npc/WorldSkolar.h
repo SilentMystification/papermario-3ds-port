@@ -1,24 +1,7 @@
 #ifndef _NPC_SPRITE_WORLDSKOLAR_H_
 #define _NPC_SPRITE_WORLDSKOLAR_H_
 
-#include "types.h"
-
 #define SPR_WorldSkolar 0x14
-
-#define SPR_IMG_WorldSkolar_Idle1 0x0
-#define SPR_IMG_WorldSkolar_Idle2 0x1
-#define SPR_IMG_WorldSkolar_Talk1 0x2
-#define SPR_IMG_WorldSkolar_Talk2 0x3
-#define SPR_IMG_WorldSkolar_Leap1 0x4
-#define SPR_IMG_WorldSkolar_Leap2 0x5
-#define SPR_IMG_WorldSkolar_Hurt1 0x6
-#define SPR_IMG_WorldSkolar_Hurt2 0x7
-#define SPR_IMG_WorldSkolar_Back1 0x8
-#define SPR_IMG_WorldSkolar_Back2 0x9
-#define SPR_IMG_WorldSkolar_IdleSad1 0xA
-#define SPR_IMG_WorldSkolar_IdleSad2 0xB
-#define SPR_IMG_WorldSkolar_TalkSad 0xC
-#define SPR_IMG_WorldSkolar_Panic 0xD
 
 #define SPR_PAL_WorldSkolar 0x0
 #define SPR_PAL_WorldSkolar_Glowing 0x1

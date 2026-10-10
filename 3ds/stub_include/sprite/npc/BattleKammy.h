@@ -1,0 +1,87 @@
+#ifndef _NPC_SPRITE_BATTLEKAMMY_H_
+#define _NPC_SPRITE_BATTLEKAMMY_H_
+
+#define SPR_BattleKammy 0x61
+
+#define SPR_PAL_BattleKammy 0x0
+#define SPR_PAL_BattleKammy_Poisoned 0x1
+#define SPR_PAL_BattleKammy_Dizzy 0x2
+#define SPR_PAL_BattleKammy_Shocked 0x3
+#define SPR_PAL_BattleKammy_Burnt 0x4
+
+#define ANIM_BattleKammy_Idle 0x610000
+#define ANIM_BattleKammy_Talk 0x610001
+#define ANIM_BattleKammy_Fall 0x610002
+#define ANIM_BattleKammy_Slump 0x610003
+#define ANIM_BattleKammy_FlyStill 0x610004
+#define ANIM_BattleKammy_FlyIdle 0x610005
+#define ANIM_BattleKammy_FlyTalk 0x610006
+#define ANIM_BattleKammy_FlyRodTalk 0x610007
+#define ANIM_BattleKammy_FlyRodCast 0x610008
+#define ANIM_BattleKammy_FlyLaugh 0x610009
+#define ANIM_BattleKammy_FlyGrowl 0x61000A
+#define ANIM_BattleKammy_FlyRodStill 0x61000B
+#define ANIM_BattleKammy_Broom 0x61000C
+#define ANIM_BattleKammy_FlyHurt 0x61000D
+
+#define ANIM_BattleKammy_Poisoned_Idle 0x610100
+#define ANIM_BattleKammy_Poisoned_Talk 0x610101
+#define ANIM_BattleKammy_Poisoned_Fall 0x610102
+#define ANIM_BattleKammy_Poisoned_Slump 0x610103
+#define ANIM_BattleKammy_Poisoned_FlyStill 0x610104
+#define ANIM_BattleKammy_Poisoned_FlyIdle 0x610105
+#define ANIM_BattleKammy_Poisoned_FlyTalk 0x610106
+#define ANIM_BattleKammy_Poisoned_FlyRodTalk 0x610107
+#define ANIM_BattleKammy_Poisoned_FlyRodCast 0x610108
+#define ANIM_BattleKammy_Poisoned_FlyLaugh 0x610109
+#define ANIM_BattleKammy_Poisoned_FlyGrowl 0x61010A
+#define ANIM_BattleKammy_Poisoned_FlyRodStill 0x61010B
+#define ANIM_BattleKammy_Poisoned_Broom 0x61010C
+#define ANIM_BattleKammy_Poisoned_FlyHurt 0x61010D
+
+#define ANIM_BattleKammy_Dizzy_Idle 0x610200
+#define ANIM_BattleKammy_Dizzy_Talk 0x610201
+#define ANIM_BattleKammy_Dizzy_Fall 0x610202
+#define ANIM_BattleKammy_Dizzy_Slump 0x610203
+#define ANIM_BattleKammy_Dizzy_FlyStill 0x610204
+#define ANIM_BattleKammy_Dizzy_FlyIdle 0x610205
+#define ANIM_BattleKammy_Dizzy_FlyTalk 0x610206
+#define ANIM_BattleKammy_Dizzy_FlyRodTalk 0x610207
+#define ANIM_BattleKammy_Dizzy_FlyRodCast 0x610208
+#define ANIM_BattleKammy_Dizzy_FlyLaugh 0x610209
+#define ANIM_BattleKammy_Dizzy_FlyGrowl 0x61020A
+#define ANIM_BattleKammy_Dizzy_FlyRodStill 0x61020B
+#define ANIM_BattleKammy_Dizzy_Broom 0x61020C
+#define ANIM_BattleKammy_Dizzy_FlyHurt 0x61020D
+
+#define ANIM_BattleKammy_Shocked_Idle 0x610300
+#define ANIM_BattleKammy_Shocked_Talk 0x610301
+#define ANIM_BattleKammy_Shocked_Fall 0x610302
+#define ANIM_BattleKammy_Shocked_Slump 0x610303
+#define ANIM_BattleKammy_Shocked_FlyStill 0x610304
+#define ANIM_BattleKammy_Shocked_FlyIdle 0x610305
+#define ANIM_BattleKammy_Shocked_FlyTalk 0x610306
+#define ANIM_BattleKammy_Shocked_FlyRodTalk 0x610307
+#define ANIM_BattleKammy_Shocked_FlyRodCast 0x610308
+#define ANIM_BattleKammy_Shocked_FlyLaugh 0x610309
+#define ANIM_BattleKammy_Shocked_FlyGrowl 0x61030A
+#define ANIM_BattleKammy_Shocked_FlyRodStill 0x61030B
+#define ANIM_BattleKammy_Shocked_Broom 0x61030C
+#define ANIM_BattleKammy_Shocked_FlyHurt 0x61030D
+
+#define ANIM_BattleKammy_Burnt_Idle 0x610400
+#define ANIM_BattleKammy_Burnt_Talk 0x610401
+#define ANIM_BattleKammy_Burnt_Fall 0x610402
+#define ANIM_BattleKammy_Burnt_Slump 0x610403
+#define ANIM_BattleKammy_Burnt_FlyStill 0x610404
+#define ANIM_BattleKammy_Burnt_FlyIdle 0x610405
+#define ANIM_BattleKammy_Burnt_FlyTalk 0x610406
+#define ANIM_BattleKammy_Burnt_FlyRodTalk 0x610407
+#define ANIM_BattleKammy_Burnt_FlyRodCast 0x610408
+#define ANIM_BattleKammy_Burnt_FlyLaugh 0x610409
+#define ANIM_BattleKammy_Burnt_FlyGrowl 0x61040A
+#define ANIM_BattleKammy_Burnt_FlyRodStill 0x61040B
+#define ANIM_BattleKammy_Burnt_Broom 0x61040C
+#define ANIM_BattleKammy_Burnt_FlyHurt 0x61040D
+
+#endif

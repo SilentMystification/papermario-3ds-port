@@ -955,7 +955,9 @@ void appendGfx_npc(void* data) {
             spr_draw_player_sprite(PLAYER_SPRITE_AUX1 | DRAW_SPRITE_OVERRIDE_YAW, renderYaw, 0, 0, mtx1);
         }
     }
-    npc->onRender(npc);
+    if ((u32)npc->onRender >= 0x00100000u && (u32)npc->onRender < 0x01000000u) {
+        npc->onRender(npc);
+    }
 }
 
 void render_npcs(void) {

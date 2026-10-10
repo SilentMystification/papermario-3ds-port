@@ -1,27 +1,7 @@
 #ifndef _NPC_SPRITE_WORLDMISSTAR_H_
 #define _NPC_SPRITE_WORLDMISSTAR_H_
 
-#include "types.h"
-
 #define SPR_WorldMisstar 0x16
-
-#define SPR_IMG_WorldMisstar_Idle1 0x0
-#define SPR_IMG_WorldMisstar_Idle2 0x1
-#define SPR_IMG_WorldMisstar_Talk 0x2
-#define SPR_IMG_WorldMisstar_Leap1 0x3
-#define SPR_IMG_WorldMisstar_Leap2 0x4
-#define SPR_IMG_WorldMisstar_Happy1 0x5
-#define SPR_IMG_WorldMisstar_Happy2 0x6
-#define SPR_IMG_WorldMisstar_Panic1 0x7
-#define SPR_IMG_WorldMisstar_Panic2 0x8
-#define SPR_IMG_WorldMisstar_IdleAngry1 0x9
-#define SPR_IMG_WorldMisstar_IdleAngry2 0xA
-#define SPR_IMG_WorldMisstar_TalkAngry 0xB
-#define SPR_IMG_WorldMisstar_Back1 0xC
-#define SPR_IMG_WorldMisstar_Back2 0xD
-#define SPR_IMG_WorldMisstar_Hurt1 0xE
-#define SPR_IMG_WorldMisstar_Hurt2 0xF
-#define SPR_IMG_WorldMisstar_Fly 0x10
 
 #define SPR_PAL_WorldMisstar 0x0
 #define SPR_PAL_WorldMisstar_Glowing 0x1

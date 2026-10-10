@@ -1,24 +1,7 @@
 #ifndef _NPC_SPRITE_WORLDELDSTAR_H_
 #define _NPC_SPRITE_WORLDELDSTAR_H_
 
-#include "types.h"
-
 #define SPR_WorldEldstar 0x12
-
-#define SPR_IMG_WorldEldstar_Idle1 0x0
-#define SPR_IMG_WorldEldstar_Idle2 0x1
-#define SPR_IMG_WorldEldstar_Wave1 0x2
-#define SPR_IMG_WorldEldstar_Wave2 0x3
-#define SPR_IMG_WorldEldstar_Leap1 0x4
-#define SPR_IMG_WorldEldstar_Leap2 0x5
-#define SPR_IMG_WorldEldstar_Panic 0x6
-#define SPR_IMG_WorldEldstar_Angry1 0x7
-#define SPR_IMG_WorldEldstar_Angry2 0x8
-#define SPR_IMG_WorldEldstar_Hurt1 0x9
-#define SPR_IMG_WorldEldstar_Hurt2 0xA
-#define SPR_IMG_WorldEldstar_Back1 0xB
-#define SPR_IMG_WorldEldstar_Back2 0xC
-#define SPR_IMG_WorldEldstar_Talk 0xD
 
 #define SPR_PAL_WorldEldstar 0x0
 #define SPR_PAL_WorldEldstar_Glowing 0x1

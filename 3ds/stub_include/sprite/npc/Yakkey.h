@@ -1,0 +1,13 @@
+#ifndef _NPC_SPRITE_YAKKEY_H_
+#define _NPC_SPRITE_YAKKEY_H_
+
+#define SPR_Yakkey 0xC0
+
+#define SPR_PAL_Yakkey 0x0
+
+#define ANIM_Yakkey_Still 0xC00000
+#define ANIM_Yakkey_Idle 0xC00001
+#define ANIM_Yakkey_Talk 0xC00002
+#define ANIM_Yakkey_Use 0xC00003
+
+#endif

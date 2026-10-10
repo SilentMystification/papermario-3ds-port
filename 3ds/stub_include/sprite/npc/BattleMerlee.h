@@ -1,12 +1,7 @@
 #ifndef _NPC_SPRITE_BATTLEMERLEE_H_
 #define _NPC_SPRITE_BATTLEMERLEE_H_
 
-#include "types.h"
-
 #define SPR_BattleMerlee 0xBB
-
-#define SPR_IMG_BattleMerlee_Release 0x0
-#define SPR_IMG_BattleMerlee_Gather 0x1
 
 #define SPR_PAL_BattleMerlee 0x0
 #define SPR_PAL_BattleMerlee_Brighter 0x1

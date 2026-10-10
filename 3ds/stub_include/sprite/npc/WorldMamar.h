@@ -1,23 +1,7 @@
 #ifndef _NPC_SPRITE_WORLDMAMAR_H_
 #define _NPC_SPRITE_WORLDMAMAR_H_
 
-#include "types.h"
-
 #define SPR_WorldMamar 0x13
-
-#define SPR_IMG_WorldMamar_Idle1 0x0
-#define SPR_IMG_WorldMamar_Idle2 0x1
-#define SPR_IMG_WorldMamar_Back1 0x2
-#define SPR_IMG_WorldMamar_Back2 0x3
-#define SPR_IMG_WorldMamar_TalkHappy 0x4
-#define SPR_IMG_WorldMamar_Panic 0x5
-#define SPR_IMG_WorldMamar_Angry1 0x6
-#define SPR_IMG_WorldMamar_Angry2 0x7
-#define SPR_IMG_WorldMamar_Leap1 0x8
-#define SPR_IMG_WorldMamar_Leap2 0x9
-#define SPR_IMG_WorldMamar_Talk 0xA
-#define SPR_IMG_WorldMamar_Hurt1 0xB
-#define SPR_IMG_WorldMamar_Hurt2 0xC
 
 #define SPR_PAL_WorldMamar 0x0
 #define SPR_PAL_WorldMamar_Glowing 0x1

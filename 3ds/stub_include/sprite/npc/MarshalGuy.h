@@ -1,0 +1,79 @@
+#ifndef _NPC_SPRITE_MARSHALGUY_H_
+#define _NPC_SPRITE_MARSHALGUY_H_
+
+#define SPR_MarshalGuy 0x6F
+
+#define SPR_PAL_MarshalGuy 0x0
+#define SPR_PAL_MarshalGuy_Poisoned 0x1
+#define SPR_PAL_MarshalGuy_Dizzy 0x2
+#define SPR_PAL_MarshalGuy_Shocked 0x3
+
+#define ANIM_MarshalGuy_Still 0x6F0000
+#define ANIM_MarshalGuy_Idle 0x6F0001
+#define ANIM_MarshalGuy_Crashed 0x6F0002
+#define ANIM_MarshalGuy_Hiding 0x6F0003
+#define ANIM_MarshalGuy_Signal 0x6F0004
+#define ANIM_MarshalGuy_SignalFaster 0x6F0005
+#define ANIM_MarshalGuy_SignalStill 0x6F0006
+#define ANIM_MarshalGuy_SignalStop 0x6F0007
+#define ANIM_MarshalGuy_SignalUp 0x6F0008
+#define ANIM_MarshalGuy_SignalFrantic 0x6F0009
+#define ANIM_MarshalGuy_Hurt 0x6F000A
+#define ANIM_MarshalGuy_HurtStill 0x6F000B
+#define ANIM_MarshalGuy_Panic 0x6F000C
+#define ANIM_MarshalGuy_BatonRed 0x6F000D
+#define ANIM_MarshalGuy_BatonBlue 0x6F000E
+#define ANIM_MarshalGuy_Run 0x6F000F
+
+#define ANIM_MarshalGuy_Poisoned_Still 0x6F0100
+#define ANIM_MarshalGuy_Poisoned_Idle 0x6F0101
+#define ANIM_MarshalGuy_Poisoned_Crashed 0x6F0102
+#define ANIM_MarshalGuy_Poisoned_Hiding 0x6F0103
+#define ANIM_MarshalGuy_Poisoned_Signal 0x6F0104
+#define ANIM_MarshalGuy_Poisoned_SignalFaster 0x6F0105
+#define ANIM_MarshalGuy_Poisoned_SignalStill 0x6F0106
+#define ANIM_MarshalGuy_Poisoned_SignalStop 0x6F0107
+#define ANIM_MarshalGuy_Poisoned_SignalUp 0x6F0108
+#define ANIM_MarshalGuy_Poisoned_SignalFrantic 0x6F0109
+#define ANIM_MarshalGuy_Poisoned_Hurt 0x6F010A
+#define ANIM_MarshalGuy_Poisoned_HurtStill 0x6F010B
+#define ANIM_MarshalGuy_Poisoned_Panic 0x6F010C
+#define ANIM_MarshalGuy_Poisoned_BatonRed 0x6F010D
+#define ANIM_MarshalGuy_Poisoned_BatonBlue 0x6F010E
+#define ANIM_MarshalGuy_Poisoned_Run 0x6F010F
+
+#define ANIM_MarshalGuy_Dizzy_Still 0x6F0200
+#define ANIM_MarshalGuy_Dizzy_Idle 0x6F0201
+#define ANIM_MarshalGuy_Dizzy_Crashed 0x6F0202
+#define ANIM_MarshalGuy_Dizzy_Hiding 0x6F0203
+#define ANIM_MarshalGuy_Dizzy_Signal 0x6F0204
+#define ANIM_MarshalGuy_Dizzy_SignalFaster 0x6F0205
+#define ANIM_MarshalGuy_Dizzy_SignalStill 0x6F0206
+#define ANIM_MarshalGuy_Dizzy_SignalStop 0x6F0207
+#define ANIM_MarshalGuy_Dizzy_SignalUp 0x6F0208
+#define ANIM_MarshalGuy_Dizzy_SignalFrantic 0x6F0209
+#define ANIM_MarshalGuy_Dizzy_Hurt 0x6F020A
+#define ANIM_MarshalGuy_Dizzy_HurtStill 0x6F020B
+#define ANIM_MarshalGuy_Dizzy_Panic 0x6F020C
+#define ANIM_MarshalGuy_Dizzy_BatonRed 0x6F020D
+#define ANIM_MarshalGuy_Dizzy_BatonBlue 0x6F020E
+#define ANIM_MarshalGuy_Dizzy_Run 0x6F020F
+
+#define ANIM_MarshalGuy_Shocked_Still 0x6F0300
+#define ANIM_MarshalGuy_Shocked_Idle 0x6F0301
+#define ANIM_MarshalGuy_Shocked_Crashed 0x6F0302
+#define ANIM_MarshalGuy_Shocked_Hiding 0x6F0303
+#define ANIM_MarshalGuy_Shocked_Signal 0x6F0304
+#define ANIM_MarshalGuy_Shocked_SignalFaster 0x6F0305
+#define ANIM_MarshalGuy_Shocked_SignalStill 0x6F0306
+#define ANIM_MarshalGuy_Shocked_SignalStop 0x6F0307
+#define ANIM_MarshalGuy_Shocked_SignalUp 0x6F0308
+#define ANIM_MarshalGuy_Shocked_SignalFrantic 0x6F0309
+#define ANIM_MarshalGuy_Shocked_Hurt 0x6F030A
+#define ANIM_MarshalGuy_Shocked_HurtStill 0x6F030B
+#define ANIM_MarshalGuy_Shocked_Panic 0x6F030C
+#define ANIM_MarshalGuy_Shocked_BatonRed 0x6F030D
+#define ANIM_MarshalGuy_Shocked_BatonBlue 0x6F030E
+#define ANIM_MarshalGuy_Shocked_Run 0x6F030F
+
+#endif

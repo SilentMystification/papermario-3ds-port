@@ -1,0 +1,43 @@
+#ifndef _NPC_SPRITE_PETITPIRANHA_H_
+#define _NPC_SPRITE_PETITPIRANHA_H_
+
+#define SPR_PetitPiranha 0x7A
+
+#define SPR_PAL_PetitPiranha 0x0
+#define SPR_PAL_PetitPiranha_Poisoned 0x1
+#define SPR_PAL_PetitPiranha_Dizzy 0x2
+#define SPR_PAL_PetitPiranha_Shocked 0x3
+
+#define ANIM_PetitPiranha_Still 0x7A0000
+#define ANIM_PetitPiranha_Idle 0x7A0001
+#define ANIM_PetitPiranha_Talk 0x7A0002
+#define ANIM_PetitPiranha_Hurt 0x7A0003
+#define ANIM_PetitPiranha_Strain 0x7A0004
+#define ANIM_PetitPiranha_Dive 0x7A0005
+#define ANIM_PetitPiranha_Curl 0x7A0006
+
+#define ANIM_PetitPiranha_Poisoned_Still 0x7A0100
+#define ANIM_PetitPiranha_Poisoned_Idle 0x7A0101
+#define ANIM_PetitPiranha_Poisoned_Talk 0x7A0102
+#define ANIM_PetitPiranha_Poisoned_Hurt 0x7A0103
+#define ANIM_PetitPiranha_Poisoned_Strain 0x7A0104
+#define ANIM_PetitPiranha_Poisoned_Dive 0x7A0105
+#define ANIM_PetitPiranha_Poisoned_Curl 0x7A0106
+
+#define ANIM_PetitPiranha_Dizzy_Still 0x7A0200
+#define ANIM_PetitPiranha_Dizzy_Idle 0x7A0201
+#define ANIM_PetitPiranha_Dizzy_Talk 0x7A0202
+#define ANIM_PetitPiranha_Dizzy_Hurt 0x7A0203
+#define ANIM_PetitPiranha_Dizzy_Strain 0x7A0204
+#define ANIM_PetitPiranha_Dizzy_Dive 0x7A0205
+#define ANIM_PetitPiranha_Dizzy_Curl 0x7A0206
+
+#define ANIM_PetitPiranha_Shocked_Still 0x7A0300
+#define ANIM_PetitPiranha_Shocked_Idle 0x7A0301
+#define ANIM_PetitPiranha_Shocked_Talk 0x7A0302
+#define ANIM_PetitPiranha_Shocked_Hurt 0x7A0303
+#define ANIM_PetitPiranha_Shocked_Strain 0x7A0304
+#define ANIM_PetitPiranha_Shocked_Dive 0x7A0305
+#define ANIM_PetitPiranha_Shocked_Curl 0x7A0306
+
+#endif

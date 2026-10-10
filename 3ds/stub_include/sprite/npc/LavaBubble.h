@@ -1,0 +1,245 @@
+#ifndef _NPC_SPRITE_LAVABUBBLE_H_
+#define _NPC_SPRITE_LAVABUBBLE_H_
+
+#define SPR_LavaBubble 0x46
+
+#define SPR_PAL_LavaBubble 0x0
+#define SPR_PAL_LavaBubble_Blue 0x1
+#define SPR_PAL_LavaBubble_Glow 0x2
+#define SPR_PAL_LavaBubble_BlueGlow 0x3
+#define SPR_PAL_LavaBubble_Poisoned 0x4
+#define SPR_PAL_LavaBubble_Blue_Poisoned 0x5
+#define SPR_PAL_LavaBubble_Glow_Poisoned 0x6
+#define SPR_PAL_LavaBubble_BlueGlow_Poisoned 0x7
+#define SPR_PAL_LavaBubble_Dizzy 0x8
+#define SPR_PAL_LavaBubble_Blue_Dizzy 0x9
+#define SPR_PAL_LavaBubble_Glow_Dizzy 0xA
+#define SPR_PAL_LavaBubble_BlueGlow_Dizzy 0xB
+#define SPR_PAL_LavaBubble_Shocked 0xC
+#define SPR_PAL_LavaBubble_Blue_Shocked 0xD
+#define SPR_PAL_LavaBubble_Glow_Shocked 0xE
+#define SPR_PAL_LavaBubble_BlueGlow_Shocked 0xF
+#define SPR_PAL_LavaBubble_Burnt 0x10
+
+#define ANIM_LavaBubble_Still 0x460000
+#define ANIM_LavaBubble_Idle 0x460001
+#define ANIM_LavaBubble_FlySlow 0x460002
+#define ANIM_LavaBubble_FlyFast 0x460003
+#define ANIM_LavaBubble_Confused 0x460004
+#define ANIM_LavaBubble_Inhale 0x460005
+#define ANIM_LavaBubble_Exhale 0x460006
+#define ANIM_LavaBubble_Hurt 0x460007
+#define ANIM_LavaBubble_BurnHurt 0x460008
+#define ANIM_LavaBubble_BurnStill 0x460009
+#define ANIM_LavaBubble_Dizzy 0x46000A
+#define ANIM_LavaBubble_Sleep 0x46000B
+
+#define ANIM_LavaBubble_Blue_Still 0x460100
+#define ANIM_LavaBubble_Blue_Idle 0x460101
+#define ANIM_LavaBubble_Blue_FlySlow 0x460102
+#define ANIM_LavaBubble_Blue_FlyFast 0x460103
+#define ANIM_LavaBubble_Blue_Confused 0x460104
+#define ANIM_LavaBubble_Blue_Inhale 0x460105
+#define ANIM_LavaBubble_Blue_Exhale 0x460106
+#define ANIM_LavaBubble_Blue_Hurt 0x460107
+#define ANIM_LavaBubble_Blue_BurnHurt 0x460108
+#define ANIM_LavaBubble_Blue_BurnStill 0x460109
+#define ANIM_LavaBubble_Blue_Dizzy 0x46010A
+#define ANIM_LavaBubble_Blue_Sleep 0x46010B
+
+#define ANIM_LavaBubble_Glow_Still 0x460200
+#define ANIM_LavaBubble_Glow_Idle 0x460201
+#define ANIM_LavaBubble_Glow_FlySlow 0x460202
+#define ANIM_LavaBubble_Glow_FlyFast 0x460203
+#define ANIM_LavaBubble_Glow_Confused 0x460204
+#define ANIM_LavaBubble_Glow_Inhale 0x460205
+#define ANIM_LavaBubble_Glow_Exhale 0x460206
+#define ANIM_LavaBubble_Glow_Hurt 0x460207
+#define ANIM_LavaBubble_Glow_BurnHurt 0x460208
+#define ANIM_LavaBubble_Glow_BurnStill 0x460209
+#define ANIM_LavaBubble_Glow_Dizzy 0x46020A
+#define ANIM_LavaBubble_Glow_Sleep 0x46020B
+
+#define ANIM_LavaBubble_BlueGlow_Still 0x460300
+#define ANIM_LavaBubble_BlueGlow_Idle 0x460301
+#define ANIM_LavaBubble_BlueGlow_FlySlow 0x460302
+#define ANIM_LavaBubble_BlueGlow_FlyFast 0x460303
+#define ANIM_LavaBubble_BlueGlow_Confused 0x460304
+#define ANIM_LavaBubble_BlueGlow_Inhale 0x460305
+#define ANIM_LavaBubble_BlueGlow_Exhale 0x460306
+#define ANIM_LavaBubble_BlueGlow_Hurt 0x460307
+#define ANIM_LavaBubble_BlueGlow_BurnHurt 0x460308
+#define ANIM_LavaBubble_BlueGlow_BurnStill 0x460309
+#define ANIM_LavaBubble_BlueGlow_Dizzy 0x46030A
+#define ANIM_LavaBubble_BlueGlow_Sleep 0x46030B
+
+#define ANIM_LavaBubble_Poisoned_Still 0x460400
+#define ANIM_LavaBubble_Poisoned_Idle 0x460401
+#define ANIM_LavaBubble_Poisoned_FlySlow 0x460402
+#define ANIM_LavaBubble_Poisoned_FlyFast 0x460403
+#define ANIM_LavaBubble_Poisoned_Confused 0x460404
+#define ANIM_LavaBubble_Poisoned_Inhale 0x460405
+#define ANIM_LavaBubble_Poisoned_Exhale 0x460406
+#define ANIM_LavaBubble_Poisoned_Hurt 0x460407
+#define ANIM_LavaBubble_Poisoned_BurnHurt 0x460408
+#define ANIM_LavaBubble_Poisoned_BurnStill 0x460409
+#define ANIM_LavaBubble_Poisoned_Dizzy 0x46040A
+#define ANIM_LavaBubble_Poisoned_Sleep 0x46040B
+
+#define ANIM_LavaBubble_Blue_Poisoned_Still 0x460500
+#define ANIM_LavaBubble_Blue_Poisoned_Idle 0x460501
+#define ANIM_LavaBubble_Blue_Poisoned_FlySlow 0x460502
+#define ANIM_LavaBubble_Blue_Poisoned_FlyFast 0x460503
+#define ANIM_LavaBubble_Blue_Poisoned_Confused 0x460504
+#define ANIM_LavaBubble_Blue_Poisoned_Inhale 0x460505
+#define ANIM_LavaBubble_Blue_Poisoned_Exhale 0x460506
+#define ANIM_LavaBubble_Blue_Poisoned_Hurt 0x460507
+#define ANIM_LavaBubble_Blue_Poisoned_BurnHurt 0x460508
+#define ANIM_LavaBubble_Blue_Poisoned_BurnStill 0x460509
+#define ANIM_LavaBubble_Blue_Poisoned_Dizzy 0x46050A
+#define ANIM_LavaBubble_Blue_Poisoned_Sleep 0x46050B
+
+#define ANIM_LavaBubble_Glow_Poisoned_Still 0x460600
+#define ANIM_LavaBubble_Glow_Poisoned_Idle 0x460601
+#define ANIM_LavaBubble_Glow_Poisoned_FlySlow 0x460602
+#define ANIM_LavaBubble_Glow_Poisoned_FlyFast 0x460603
+#define ANIM_LavaBubble_Glow_Poisoned_Confused 0x460604
+#define ANIM_LavaBubble_Glow_Poisoned_Inhale 0x460605
+#define ANIM_LavaBubble_Glow_Poisoned_Exhale 0x460606
+#define ANIM_LavaBubble_Glow_Poisoned_Hurt 0x460607
+#define ANIM_LavaBubble_Glow_Poisoned_BurnHurt 0x460608
+#define ANIM_LavaBubble_Glow_Poisoned_BurnStill 0x460609
+#define ANIM_LavaBubble_Glow_Poisoned_Dizzy 0x46060A
+#define ANIM_LavaBubble_Glow_Poisoned_Sleep 0x46060B
+
+#define ANIM_LavaBubble_BlueGlow_Poisoned_Still 0x460700
+#define ANIM_LavaBubble_BlueGlow_Poisoned_Idle 0x460701
+#define ANIM_LavaBubble_BlueGlow_Poisoned_FlySlow 0x460702
+#define ANIM_LavaBubble_BlueGlow_Poisoned_FlyFast 0x460703
+#define ANIM_LavaBubble_BlueGlow_Poisoned_Confused 0x460704
+#define ANIM_LavaBubble_BlueGlow_Poisoned_Inhale 0x460705
+#define ANIM_LavaBubble_BlueGlow_Poisoned_Exhale 0x460706
+#define ANIM_LavaBubble_BlueGlow_Poisoned_Hurt 0x460707
+#define ANIM_LavaBubble_BlueGlow_Poisoned_BurnHurt 0x460708
+#define ANIM_LavaBubble_BlueGlow_Poisoned_BurnStill 0x460709
+#define ANIM_LavaBubble_BlueGlow_Poisoned_Dizzy 0x46070A
+#define ANIM_LavaBubble_BlueGlow_Poisoned_Sleep 0x46070B
+
+#define ANIM_LavaBubble_Dizzy_Still 0x460800
+#define ANIM_LavaBubble_Dizzy_Idle 0x460801
+#define ANIM_LavaBubble_Dizzy_FlySlow 0x460802
+#define ANIM_LavaBubble_Dizzy_FlyFast 0x460803
+#define ANIM_LavaBubble_Dizzy_Confused 0x460804
+#define ANIM_LavaBubble_Dizzy_Inhale 0x460805
+#define ANIM_LavaBubble_Dizzy_Exhale 0x460806
+#define ANIM_LavaBubble_Dizzy_Hurt 0x460807
+#define ANIM_LavaBubble_Dizzy_BurnHurt 0x460808
+#define ANIM_LavaBubble_Dizzy_BurnStill 0x460809
+#define ANIM_LavaBubble_Dizzy_Dizzy 0x46080A
+#define ANIM_LavaBubble_Dizzy_Sleep 0x46080B
+
+#define ANIM_LavaBubble_Blue_Dizzy_Still 0x460900
+#define ANIM_LavaBubble_Blue_Dizzy_Idle 0x460901
+#define ANIM_LavaBubble_Blue_Dizzy_FlySlow 0x460902
+#define ANIM_LavaBubble_Blue_Dizzy_FlyFast 0x460903
+#define ANIM_LavaBubble_Blue_Dizzy_Confused 0x460904
+#define ANIM_LavaBubble_Blue_Dizzy_Inhale 0x460905
+#define ANIM_LavaBubble_Blue_Dizzy_Exhale 0x460906
+#define ANIM_LavaBubble_Blue_Dizzy_Hurt 0x460907
+#define ANIM_LavaBubble_Blue_Dizzy_BurnHurt 0x460908
+#define ANIM_LavaBubble_Blue_Dizzy_BurnStill 0x460909
+#define ANIM_LavaBubble_Blue_Dizzy_Dizzy 0x46090A
+#define ANIM_LavaBubble_Blue_Dizzy_Sleep 0x46090B
+
+#define ANIM_LavaBubble_Glow_Dizzy_Still 0x460A00
+#define ANIM_LavaBubble_Glow_Dizzy_Idle 0x460A01
+#define ANIM_LavaBubble_Glow_Dizzy_FlySlow 0x460A02
+#define ANIM_LavaBubble_Glow_Dizzy_FlyFast 0x460A03
+#define ANIM_LavaBubble_Glow_Dizzy_Confused 0x460A04
+#define ANIM_LavaBubble_Glow_Dizzy_Inhale 0x460A05
+#define ANIM_LavaBubble_Glow_Dizzy_Exhale 0x460A06
+#define ANIM_LavaBubble_Glow_Dizzy_Hurt 0x460A07
+#define ANIM_LavaBubble_Glow_Dizzy_BurnHurt 0x460A08
+#define ANIM_LavaBubble_Glow_Dizzy_BurnStill 0x460A09
+#define ANIM_LavaBubble_Glow_Dizzy_Dizzy 0x460A0A
+#define ANIM_LavaBubble_Glow_Dizzy_Sleep 0x460A0B
+
+#define ANIM_LavaBubble_BlueGlow_Dizzy_Still 0x460B00
+#define ANIM_LavaBubble_BlueGlow_Dizzy_Idle 0x460B01
+#define ANIM_LavaBubble_BlueGlow_Dizzy_FlySlow 0x460B02
+#define ANIM_LavaBubble_BlueGlow_Dizzy_FlyFast 0x460B03
+#define ANIM_LavaBubble_BlueGlow_Dizzy_Confused 0x460B04
+#define ANIM_LavaBubble_BlueGlow_Dizzy_Inhale 0x460B05
+#define ANIM_LavaBubble_BlueGlow_Dizzy_Exhale 0x460B06
+#define ANIM_LavaBubble_BlueGlow_Dizzy_Hurt 0x460B07
+#define ANIM_LavaBubble_BlueGlow_Dizzy_BurnHurt 0x460B08
+#define ANIM_LavaBubble_BlueGlow_Dizzy_BurnStill 0x460B09
+#define ANIM_LavaBubble_BlueGlow_Dizzy_Dizzy 0x460B0A
+#define ANIM_LavaBubble_BlueGlow_Dizzy_Sleep 0x460B0B
+
+#define ANIM_LavaBubble_Shocked_Still 0x460C00
+#define ANIM_LavaBubble_Shocked_Idle 0x460C01
+#define ANIM_LavaBubble_Shocked_FlySlow 0x460C02
+#define ANIM_LavaBubble_Shocked_FlyFast 0x460C03
+#define ANIM_LavaBubble_Shocked_Confused 0x460C04
+#define ANIM_LavaBubble_Shocked_Inhale 0x460C05
+#define ANIM_LavaBubble_Shocked_Exhale 0x460C06
+#define ANIM_LavaBubble_Shocked_Hurt 0x460C07
+#define ANIM_LavaBubble_Shocked_BurnHurt 0x460C08
+#define ANIM_LavaBubble_Shocked_BurnStill 0x460C09
+#define ANIM_LavaBubble_Shocked_Dizzy 0x460C0A
+#define ANIM_LavaBubble_Shocked_Sleep 0x460C0B
+
+#define ANIM_LavaBubble_Blue_Shocked_Still 0x460D00
+#define ANIM_LavaBubble_Blue_Shocked_Idle 0x460D01
+#define ANIM_LavaBubble_Blue_Shocked_FlySlow 0x460D02
+#define ANIM_LavaBubble_Blue_Shocked_FlyFast 0x460D03
+#define ANIM_LavaBubble_Blue_Shocked_Confused 0x460D04
+#define ANIM_LavaBubble_Blue_Shocked_Inhale 0x460D05
+#define ANIM_LavaBubble_Blue_Shocked_Exhale 0x460D06
+#define ANIM_LavaBubble_Blue_Shocked_Hurt 0x460D07
+#define ANIM_LavaBubble_Blue_Shocked_BurnHurt 0x460D08
+#define ANIM_LavaBubble_Blue_Shocked_BurnStill 0x460D09
+#define ANIM_LavaBubble_Blue_Shocked_Dizzy 0x460D0A
+#define ANIM_LavaBubble_Blue_Shocked_Sleep 0x460D0B
+
+#define ANIM_LavaBubble_Glow_Shocked_Still 0x460E00
+#define ANIM_LavaBubble_Glow_Shocked_Idle 0x460E01
+#define ANIM_LavaBubble_Glow_Shocked_FlySlow 0x460E02
+#define ANIM_LavaBubble_Glow_Shocked_FlyFast 0x460E03
+#define ANIM_LavaBubble_Glow_Shocked_Confused 0x460E04
+#define ANIM_LavaBubble_Glow_Shocked_Inhale 0x460E05
+#define ANIM_LavaBubble_Glow_Shocked_Exhale 0x460E06
+#define ANIM_LavaBubble_Glow_Shocked_Hurt 0x460E07
+#define ANIM_LavaBubble_Glow_Shocked_BurnHurt 0x460E08
+#define ANIM_LavaBubble_Glow_Shocked_BurnStill 0x460E09
+#define ANIM_LavaBubble_Glow_Shocked_Dizzy 0x460E0A
+#define ANIM_LavaBubble_Glow_Shocked_Sleep 0x460E0B
+
+#define ANIM_LavaBubble_BlueGlow_Shocked_Still 0x460F00
+#define ANIM_LavaBubble_BlueGlow_Shocked_Idle 0x460F01
+#define ANIM_LavaBubble_BlueGlow_Shocked_FlySlow 0x460F02
+#define ANIM_LavaBubble_BlueGlow_Shocked_FlyFast 0x460F03
+#define ANIM_LavaBubble_BlueGlow_Shocked_Confused 0x460F04
+#define ANIM_LavaBubble_BlueGlow_Shocked_Inhale 0x460F05
+#define ANIM_LavaBubble_BlueGlow_Shocked_Exhale 0x460F06
+#define ANIM_LavaBubble_BlueGlow_Shocked_Hurt 0x460F07
+#define ANIM_LavaBubble_BlueGlow_Shocked_BurnHurt 0x460F08
+#define ANIM_LavaBubble_BlueGlow_Shocked_BurnStill 0x460F09
+#define ANIM_LavaBubble_BlueGlow_Shocked_Dizzy 0x460F0A
+#define ANIM_LavaBubble_BlueGlow_Shocked_Sleep 0x460F0B
+
+#define ANIM_LavaBubble_Burnt_Still 0x461000
+#define ANIM_LavaBubble_Burnt_Idle 0x461001
+#define ANIM_LavaBubble_Burnt_FlySlow 0x461002
+#define ANIM_LavaBubble_Burnt_FlyFast 0x461003
+#define ANIM_LavaBubble_Burnt_Confused 0x461004
+#define ANIM_LavaBubble_Burnt_Inhale 0x461005
+#define ANIM_LavaBubble_Burnt_Exhale 0x461006
+#define ANIM_LavaBubble_Burnt_Hurt 0x461007
+#define ANIM_LavaBubble_Burnt_BurnHurt 0x461008
+#define ANIM_LavaBubble_Burnt_BurnStill 0x461009
+#define ANIM_LavaBubble_Burnt_Dizzy 0x46100A
+#define ANIM_LavaBubble_Burnt_Sleep 0x46100B
+
+#endif

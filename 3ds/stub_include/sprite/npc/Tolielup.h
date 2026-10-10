@@ -1,0 +1,13 @@
+#ifndef _NPC_SPRITE_TOLIELUP_H_
+#define _NPC_SPRITE_TOLIELUP_H_
+
+#define SPR_Tolielup 0xC5
+
+#define SPR_PAL_Tolielup 0x0
+
+#define ANIM_Tolielup_Still 0xC50000
+#define ANIM_Tolielup_Idle 0xC50001
+#define ANIM_Tolielup_Talk 0xC50002
+#define ANIM_Tolielup_Laugh 0xC50003
+
+#endif

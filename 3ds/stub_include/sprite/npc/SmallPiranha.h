@@ -1,0 +1,77 @@
+#ifndef _NPC_SPRITE_SMALLPIRANHA_H_
+#define _NPC_SPRITE_SMALLPIRANHA_H_
+
+#define SPR_SmallPiranha 0x37
+
+#define SPR_PAL_SmallPiranha 0x0
+#define SPR_PAL_SmallPiranha_Poisoned 0x1
+#define SPR_PAL_SmallPiranha_Dizzy 0x2
+#define SPR_PAL_SmallPiranha_Shocked 0x3
+#define SPR_PAL_SmallPiranha_Burnt 0x4
+
+#define ANIM_SmallPiranha_Still 0x370000
+#define ANIM_SmallPiranha_Idle 0x370001
+#define ANIM_SmallPiranha_Biting 0x370002
+#define ANIM_SmallPiranha_Emerge 0x370003
+#define ANIM_SmallPiranha_Burrow 0x370004
+#define ANIM_SmallPiranha_BiteUp 0x370005
+#define ANIM_SmallPiranha_ResetUp 0x370006
+#define ANIM_SmallPiranha_BiteSide 0x370007
+#define ANIM_SmallPiranha_ResetSide 0x370008
+#define ANIM_SmallPiranha_Hurt 0x370009
+#define ANIM_SmallPiranha_BurnHurt 0x37000A
+#define ANIM_SmallPiranha_BurnStill 0x37000B
+
+#define ANIM_SmallPiranha_Poisoned_Still 0x370100
+#define ANIM_SmallPiranha_Poisoned_Idle 0x370101
+#define ANIM_SmallPiranha_Poisoned_Biting 0x370102
+#define ANIM_SmallPiranha_Poisoned_Emerge 0x370103
+#define ANIM_SmallPiranha_Poisoned_Burrow 0x370104
+#define ANIM_SmallPiranha_Poisoned_BiteUp 0x370105
+#define ANIM_SmallPiranha_Poisoned_ResetUp 0x370106
+#define ANIM_SmallPiranha_Poisoned_BiteSide 0x370107
+#define ANIM_SmallPiranha_Poisoned_ResetSide 0x370108
+#define ANIM_SmallPiranha_Poisoned_Hurt 0x370109
+#define ANIM_SmallPiranha_Poisoned_BurnHurt 0x37010A
+#define ANIM_SmallPiranha_Poisoned_BurnStill 0x37010B
+
+#define ANIM_SmallPiranha_Dizzy_Still 0x370200
+#define ANIM_SmallPiranha_Dizzy_Idle 0x370201
+#define ANIM_SmallPiranha_Dizzy_Biting 0x370202
+#define ANIM_SmallPiranha_Dizzy_Emerge 0x370203
+#define ANIM_SmallPiranha_Dizzy_Burrow 0x370204
+#define ANIM_SmallPiranha_Dizzy_BiteUp 0x370205
+#define ANIM_SmallPiranha_Dizzy_ResetUp 0x370206
+#define ANIM_SmallPiranha_Dizzy_BiteSide 0x370207
+#define ANIM_SmallPiranha_Dizzy_ResetSide 0x370208
+#define ANIM_SmallPiranha_Dizzy_Hurt 0x370209
+#define ANIM_SmallPiranha_Dizzy_BurnHurt 0x37020A
+#define ANIM_SmallPiranha_Dizzy_BurnStill 0x37020B
+
+#define ANIM_SmallPiranha_Shocked_Still 0x370300
+#define ANIM_SmallPiranha_Shocked_Idle 0x370301
+#define ANIM_SmallPiranha_Shocked_Biting 0x370302
+#define ANIM_SmallPiranha_Shocked_Emerge 0x370303
+#define ANIM_SmallPiranha_Shocked_Burrow 0x370304
+#define ANIM_SmallPiranha_Shocked_BiteUp 0x370305
+#define ANIM_SmallPiranha_Shocked_ResetUp 0x370306
+#define ANIM_SmallPiranha_Shocked_BiteSide 0x370307
+#define ANIM_SmallPiranha_Shocked_ResetSide 0x370308
+#define ANIM_SmallPiranha_Shocked_Hurt 0x370309
+#define ANIM_SmallPiranha_Shocked_BurnHurt 0x37030A
+#define ANIM_SmallPiranha_Shocked_BurnStill 0x37030B
+
+#define ANIM_SmallPiranha_Burnt_Still 0x370400
+#define ANIM_SmallPiranha_Burnt_Idle 0x370401
+#define ANIM_SmallPiranha_Burnt_Biting 0x370402
+#define ANIM_SmallPiranha_Burnt_Emerge 0x370403
+#define ANIM_SmallPiranha_Burnt_Burrow 0x370404
+#define ANIM_SmallPiranha_Burnt_BiteUp 0x370405
+#define ANIM_SmallPiranha_Burnt_ResetUp 0x370406
+#define ANIM_SmallPiranha_Burnt_BiteSide 0x370407
+#define ANIM_SmallPiranha_Burnt_ResetSide 0x370408
+#define ANIM_SmallPiranha_Burnt_Hurt 0x370409
+#define ANIM_SmallPiranha_Burnt_BurnHurt 0x37040A
+#define ANIM_SmallPiranha_Burnt_BurnStill 0x37040B
+
+#endif

@@ -1,27 +1,7 @@
 #ifndef _NPC_SPRITE_WORLDWATT_H_
 #define _NPC_SPRITE_WORLDWATT_H_
 
-#include "types.h"
-
 #define SPR_WorldWatt 0x06
-
-#define SPR_IMG_WorldWatt_Idle1 0x0
-#define SPR_IMG_WorldWatt_Idle2 0x1
-#define SPR_IMG_WorldWatt_Idle3 0x2
-#define SPR_IMG_WorldWatt_Talk 0x3
-#define SPR_IMG_WorldWatt_Happy1 0x4
-#define SPR_IMG_WorldWatt_Happy2 0x5
-#define SPR_IMG_WorldWatt_Happy3 0x6
-#define SPR_IMG_WorldWatt_Hurt1 0x7
-#define SPR_IMG_WorldWatt_Hurt2 0x8
-#define SPR_IMG_WorldWatt_Hurt3 0x9
-#define SPR_IMG_WorldWatt_Strain1 0xA
-#define SPR_IMG_WorldWatt_Strain2 0xB
-#define SPR_IMG_WorldWatt_Strain3 0xC
-#define SPR_IMG_WorldWatt_ULBolt 0xD
-#define SPR_IMG_WorldWatt_LLBolt 0xE
-#define SPR_IMG_WorldWatt_URBolt 0xF
-#define SPR_IMG_WorldWatt_LRBolt 0x10
 
 #define SPR_PAL_WorldWatt 0x0
 #define SPR_PAL_WorldWatt_Poisoned 0x1

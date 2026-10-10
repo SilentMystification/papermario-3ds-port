@@ -45,7 +45,7 @@ static int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample;
 static char stats_line[64];
 /* kmr_20 door, world (240, 30, -80). One object-space corner per second. */
 static int door_have, door_ox, door_oy, door_oz, door_xw, door_yw, door_zw, door_w100;
-static unsigned comb_a, comb_b, comb_c;
+static unsigned comb_a, comb_b, comb_c, comb_d;
 static int comb_set;
 
 static int is_host(u32 p) {
@@ -102,7 +102,10 @@ static void upload_mvp(void) {
 }
 
 static void sync_combine(void) {
-    int wants_tex = tex_on && (comb_a == G_CCMUX_TEXEL0 || comb_b == G_CCMUX_TEXEL0 || comb_c == G_CCMUX_TEXEL0);
+    /* Decal modes put TEXEL0 in the addend, which is mux d, not a/b/c.
+     * Missing it draws the sprite quad's vertex colors: a grey gradient. */
+    int wants_tex = tex_on && (comb_a == G_CCMUX_TEXEL0 || comb_b == G_CCMUX_TEXEL0 ||
+        comb_c == G_CCMUX_TEXEL0 || comb_d == G_CCMUX_TEXEL0 || comb_c == G_CCMUX_TEXEL0_ALPHA);
     int wants_prim = comb_a == G_CCMUX_PRIMITIVE || comb_b == G_CCMUX_PRIMITIVE || comb_c == G_CCMUX_PRIMITIVE;
     int mode = 0;
     if (wants_tex) mode = 2;
@@ -515,6 +518,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             comb_a = (w0 >> 20) & 0xf;
             comb_c = (w0 >> 15) & 0x1f;
             comb_b = (w1 >> 28) & 0xf;
+            comb_d = (w1 >> 15) & 7;
             comb_set = 1;
             sync_combine();
             break;

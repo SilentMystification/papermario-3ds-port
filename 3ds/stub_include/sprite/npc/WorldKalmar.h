@@ -1,23 +1,7 @@
 #ifndef _NPC_SPRITE_WORLDKALMAR_H_
 #define _NPC_SPRITE_WORLDKALMAR_H_
 
-#include "types.h"
-
 #define SPR_WorldKalmar 0x18
-
-#define SPR_IMG_WorldKalmar_Idle1 0x0
-#define SPR_IMG_WorldKalmar_Idle2 0x1
-#define SPR_IMG_WorldKalmar_Talk 0x2
-#define SPR_IMG_WorldKalmar_Leap1 0x3
-#define SPR_IMG_WorldKalmar_Leap2 0x4
-#define SPR_IMG_WorldKalmar_TalkHappy1 0x5
-#define SPR_IMG_WorldKalmar_TalkHappy2 0x6
-#define SPR_IMG_WorldKalmar_Panic1 0x7
-#define SPR_IMG_WorldKalmar_Panic2 0x8
-#define SPR_IMG_WorldKalmar_Back1 0x9
-#define SPR_IMG_WorldKalmar_Back2 0xA
-#define SPR_IMG_WorldKalmar_Hurt1 0xB
-#define SPR_IMG_WorldKalmar_Hurt2 0xC
 
 #define SPR_PAL_WorldKalmar 0x0
 #define SPR_PAL_WorldKalmar_Glowing 0x1

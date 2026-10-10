@@ -1,59 +1,7 @@
 #ifndef _NPC_SPRITE_TWINK_H_
 #define _NPC_SPRITE_TWINK_H_
 
-#include "types.h"
-
 #define SPR_Twink 0x20
-
-#define SPR_IMG_Twink_Idle1 0x0
-#define SPR_IMG_Twink_Idle2 0x1
-#define SPR_IMG_Twink_IdleAngry1 0x2
-#define SPR_IMG_Twink_IdleAngry2 0x3
-#define SPR_IMG_Twink_IdleAngry3 0x4
-#define SPR_IMG_Twink_Talk 0x5
-#define SPR_IMG_Twink_Shout1 0x6
-#define SPR_IMG_Twink_Shout2 0x7
-#define SPR_IMG_Twink_Cringe1 0x8
-#define SPR_IMG_Twink_Cringe2 0x9
-#define SPR_IMG_Twink_Cringe3 0xA
-#define SPR_IMG_Twink_TalkSad1 0xB
-#define SPR_IMG_Twink_TalkSad2 0xC
-#define SPR_IMG_Twink_ShoutJoy1 0xD
-#define SPR_IMG_Twink_ShoutJoy2 0xE
-#define SPR_IMG_Twink_Carry1 0xF
-#define SPR_IMG_Twink_Carry2 0x10
-#define SPR_IMG_Twink_Carry3 0x11
-#define SPR_IMG_Twink_Tense1 0x12
-#define SPR_IMG_Twink_Tense2 0x13
-#define SPR_IMG_Twink_Wink1 0x14
-#define SPR_IMG_Twink_Wink2 0x15
-#define SPR_IMG_Twink_TossItem 0x16
-#define SPR_IMG_Twink_Pleased1 0x17
-#define SPR_IMG_Twink_Pleased2 0x18
-#define SPR_IMG_Twink_Pleased3 0x19
-#define SPR_IMG_Twink_Disappointed1 0x1A
-#define SPR_IMG_Twink_Disappointed2 0x1B
-#define SPR_IMG_Twink_Back1 0x1C
-#define SPR_IMG_Twink_Back2 0x1D
-#define SPR_IMG_Twink_AngryAlt1 0x1E
-#define SPR_IMG_Twink_AngryAlt2 0x1F
-#define SPR_IMG_Twink_IdleSad1 0x20
-#define SPR_IMG_Twink_IdleSad2 0x21
-#define SPR_IMG_Twink_TalkAngry 0x22
-#define SPR_IMG_Twink_IdleLean1 0x23
-#define SPR_IMG_Twink_IdleLean2 0x24
-#define SPR_IMG_Twink_TalkLean 0x25
-#define SPR_IMG_Twink_LiftBook 0x26
-#define SPR_IMG_Twink_OpenBook1 0x27
-#define SPR_IMG_Twink_OpenBook2 0x28
-#define SPR_IMG_Twink_BookLifted 0x29
-#define SPR_IMG_Twink_BookHeld 0x2A
-#define SPR_IMG_Twink_BookHalfOpen 0x2B
-#define SPR_IMG_Twink_BookOpen 0x2C
-#define SPR_IMG_Twink_BookClosed 0x2D
-#define SPR_IMG_Twink_ShoutAngry 0x2E
-#define SPR_IMG_Twink_Hurt1 0x2F
-#define SPR_IMG_Twink_Hurt2 0x30
 
 #define SPR_PAL_Twink 0x0
 #define SPR_PAL_Twink_Unused1 0x1

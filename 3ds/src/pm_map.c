@@ -414,6 +414,10 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     s32 i;
 
     (void)loadType;
+    /* NPCs live on the general heap. Resetting it below leaves the old list
+     * pointing at the new shape, and onRender becomes those bytes. */
+    gGameStatusPtr->context = CONTEXT_WORLD;
+    clear_npcs();
     if (mapID == 5) shape_name = "hos_05_shape";
     else if (mapID == 4) shape_name = "hos_04_shape";
     else if (areaID == AREA_KMR && mapID == 11) {
@@ -486,7 +490,9 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         /* Intro_Main loads IntroCamSettings and pans. Zone update turns that
          * boom into the eye. Minimal mode was ignoring it. */
         cam->controlSettings.type = CAM_CONTROL_FIXED_ORIENTATION;
-        cam->controlSettings.boomLength = 130.4f;
+        /* The spirits stand on a ring about 280 units out. A boom of 130
+         * left the far side of that ring outside the 25 degree view. */
+        cam->controlSettings.boomLength = 480.f;
         cam->controlSettings.boomPitch = 12.4f;
         cam->controlSettings.viewPitch = -16.8f;
         cam->controlSettings.flag = false;

@@ -1,0 +1,124 @@
+#ifndef _NPC_SPRITE_BATTLECLUBBA_H_
+#define _NPC_SPRITE_BATTLECLUBBA_H_
+
+#define SPR_BattleClubba 0x3A
+
+#define SPR_PAL_BattleClubba 0x0
+#define SPR_PAL_BattleClubba_Frost 0x1
+#define SPR_PAL_BattleClubba_Poisoned 0x2
+#define SPR_PAL_BattleClubba_Frost_Poisoned 0x3
+#define SPR_PAL_BattleClubba_Dizzy 0x4
+#define SPR_PAL_BattleClubba_Frost_Dizzy 0x5
+#define SPR_PAL_BattleClubba_Shocked 0x6
+#define SPR_PAL_BattleClubba_Frost_Shocked 0x7
+#define SPR_PAL_BattleClubba_Burnt 0x8
+
+#define ANIM_BattleClubba_Still 0x3A0000
+#define ANIM_BattleClubba_Idle 0x3A0001
+#define ANIM_BattleClubba_Run 0x3A0002
+#define ANIM_BattleClubba_Sleep 0x3A0003
+#define ANIM_BattleClubba_Hurt 0x3A0004
+#define ANIM_BattleClubba_Dizzy 0x3A0005
+#define ANIM_BattleClubba_BurnHurt 0x3A0006
+#define ANIM_BattleClubba_BurnStill 0x3A0007
+#define ANIM_BattleClubba_ClubAttack 0x3A0008
+#define ANIM_BattleClubba_RaiseClub 0x3A0009
+#define ANIM_BattleClubba_SwingClub 0x3A000A
+
+#define ANIM_BattleClubba_Frost_Still 0x3A0100
+#define ANIM_BattleClubba_Frost_Idle 0x3A0101
+#define ANIM_BattleClubba_Frost_Run 0x3A0102
+#define ANIM_BattleClubba_Frost_Sleep 0x3A0103
+#define ANIM_BattleClubba_Frost_Hurt 0x3A0104
+#define ANIM_BattleClubba_Frost_Dizzy 0x3A0105
+#define ANIM_BattleClubba_Frost_BurnHurt 0x3A0106
+#define ANIM_BattleClubba_Frost_BurnStill 0x3A0107
+#define ANIM_BattleClubba_Frost_ClubAttack 0x3A0108
+#define ANIM_BattleClubba_Frost_RaiseClub 0x3A0109
+#define ANIM_BattleClubba_Frost_SwingClub 0x3A010A
+
+#define ANIM_BattleClubba_Poisoned_Still 0x3A0200
+#define ANIM_BattleClubba_Poisoned_Idle 0x3A0201
+#define ANIM_BattleClubba_Poisoned_Run 0x3A0202
+#define ANIM_BattleClubba_Poisoned_Sleep 0x3A0203
+#define ANIM_BattleClubba_Poisoned_Hurt 0x3A0204
+#define ANIM_BattleClubba_Poisoned_Dizzy 0x3A0205
+#define ANIM_BattleClubba_Poisoned_BurnHurt 0x3A0206
+#define ANIM_BattleClubba_Poisoned_BurnStill 0x3A0207
+#define ANIM_BattleClubba_Poisoned_ClubAttack 0x3A0208
+#define ANIM_BattleClubba_Poisoned_RaiseClub 0x3A0209
+#define ANIM_BattleClubba_Poisoned_SwingClub 0x3A020A
+
+#define ANIM_BattleClubba_Frost_Poisoned_Still 0x3A0300
+#define ANIM_BattleClubba_Frost_Poisoned_Idle 0x3A0301
+#define ANIM_BattleClubba_Frost_Poisoned_Run 0x3A0302
+#define ANIM_BattleClubba_Frost_Poisoned_Sleep 0x3A0303
+#define ANIM_BattleClubba_Frost_Poisoned_Hurt 0x3A0304
+#define ANIM_BattleClubba_Frost_Poisoned_Dizzy 0x3A0305
+#define ANIM_BattleClubba_Frost_Poisoned_BurnHurt 0x3A0306
+#define ANIM_BattleClubba_Frost_Poisoned_BurnStill 0x3A0307
+#define ANIM_BattleClubba_Frost_Poisoned_ClubAttack 0x3A0308
+#define ANIM_BattleClubba_Frost_Poisoned_RaiseClub 0x3A0309
+#define ANIM_BattleClubba_Frost_Poisoned_SwingClub 0x3A030A
+
+#define ANIM_BattleClubba_Dizzy_Still 0x3A0400
+#define ANIM_BattleClubba_Dizzy_Idle 0x3A0401
+#define ANIM_BattleClubba_Dizzy_Run 0x3A0402
+#define ANIM_BattleClubba_Dizzy_Sleep 0x3A0403
+#define ANIM_BattleClubba_Dizzy_Hurt 0x3A0404
+#define ANIM_BattleClubba_Dizzy_Dizzy 0x3A0405
+#define ANIM_BattleClubba_Dizzy_BurnHurt 0x3A0406
+#define ANIM_BattleClubba_Dizzy_BurnStill 0x3A0407
+#define ANIM_BattleClubba_Dizzy_ClubAttack 0x3A0408
+#define ANIM_BattleClubba_Dizzy_RaiseClub 0x3A0409
+#define ANIM_BattleClubba_Dizzy_SwingClub 0x3A040A
+
+#define ANIM_BattleClubba_Frost_Dizzy_Still 0x3A0500
+#define ANIM_BattleClubba_Frost_Dizzy_Idle 0x3A0501
+#define ANIM_BattleClubba_Frost_Dizzy_Run 0x3A0502
+#define ANIM_BattleClubba_Frost_Dizzy_Sleep 0x3A0503
+#define ANIM_BattleClubba_Frost_Dizzy_Hurt 0x3A0504
+#define ANIM_BattleClubba_Frost_Dizzy_Dizzy 0x3A0505
+#define ANIM_BattleClubba_Frost_Dizzy_BurnHurt 0x3A0506
+#define ANIM_BattleClubba_Frost_Dizzy_BurnStill 0x3A0507
+#define ANIM_BattleClubba_Frost_Dizzy_ClubAttack 0x3A0508
+#define ANIM_BattleClubba_Frost_Dizzy_RaiseClub 0x3A0509
+#define ANIM_BattleClubba_Frost_Dizzy_SwingClub 0x3A050A
+
+#define ANIM_BattleClubba_Shocked_Still 0x3A0600
+#define ANIM_BattleClubba_Shocked_Idle 0x3A0601
+#define ANIM_BattleClubba_Shocked_Run 0x3A0602
+#define ANIM_BattleClubba_Shocked_Sleep 0x3A0603
+#define ANIM_BattleClubba_Shocked_Hurt 0x3A0604
+#define ANIM_BattleClubba_Shocked_Dizzy 0x3A0605
+#define ANIM_BattleClubba_Shocked_BurnHurt 0x3A0606
+#define ANIM_BattleClubba_Shocked_BurnStill 0x3A0607
+#define ANIM_BattleClubba_Shocked_ClubAttack 0x3A0608
+#define ANIM_BattleClubba_Shocked_RaiseClub 0x3A0609
+#define ANIM_BattleClubba_Shocked_SwingClub 0x3A060A
+
+#define ANIM_BattleClubba_Frost_Shocked_Still 0x3A0700
+#define ANIM_BattleClubba_Frost_Shocked_Idle 0x3A0701
+#define ANIM_BattleClubba_Frost_Shocked_Run 0x3A0702
+#define ANIM_BattleClubba_Frost_Shocked_Sleep 0x3A0703
+#define ANIM_BattleClubba_Frost_Shocked_Hurt 0x3A0704
+#define ANIM_BattleClubba_Frost_Shocked_Dizzy 0x3A0705
+#define ANIM_BattleClubba_Frost_Shocked_BurnHurt 0x3A0706
+#define ANIM_BattleClubba_Frost_Shocked_BurnStill 0x3A0707
+#define ANIM_BattleClubba_Frost_Shocked_ClubAttack 0x3A0708
+#define ANIM_BattleClubba_Frost_Shocked_RaiseClub 0x3A0709
+#define ANIM_BattleClubba_Frost_Shocked_SwingClub 0x3A070A
+
+#define ANIM_BattleClubba_Burnt_Still 0x3A0800
+#define ANIM_BattleClubba_Burnt_Idle 0x3A0801
+#define ANIM_BattleClubba_Burnt_Run 0x3A0802
+#define ANIM_BattleClubba_Burnt_Sleep 0x3A0803
+#define ANIM_BattleClubba_Burnt_Hurt 0x3A0804
+#define ANIM_BattleClubba_Burnt_Dizzy 0x3A0805
+#define ANIM_BattleClubba_Burnt_BurnHurt 0x3A0806
+#define ANIM_BattleClubba_Burnt_BurnStill 0x3A0807
+#define ANIM_BattleClubba_Burnt_ClubAttack 0x3A0808
+#define ANIM_BattleClubba_Burnt_RaiseClub 0x3A0809
+#define ANIM_BattleClubba_Burnt_SwingClub 0x3A080A
+
+#endif

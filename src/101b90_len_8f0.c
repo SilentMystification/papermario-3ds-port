@@ -179,51 +179,64 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
     spr_asset_entry[1] = spr_be32(&spr_asset_entry[1]);
 
     compressedSize = ALIGN8(spr_asset_entry[1] - spr_asset_entry[0]);
+    if (compressedSize < 16 || compressedSize > 0x40000) {
+        extern void pm_log(const char* fmt, ...);
+        static int once;
+        if (once < 4) {
+            once++;
+            pm_log("spr %d size %d base %08x", idx, compressedSize, base);
+        }
+        return nullptr;
+    }
     data = general_heap_malloc(compressedSize);
+    if (data == nullptr) {
+        extern void pm_log(const char* fmt, ...);
+        pm_log("spr %d heap %d", idx, compressedSize);
+        return nullptr;
+    }
     nuPiReadRom(base + spr_asset_entry[0], data, compressedSize);
 
-    ptr1 = (s32*)data;
-    // skip 4 bytes: 'YAY0' signature
-    ptr1++;
-    *ptr1 = spr_be32(ptr1);
-
-    if (*ptr1 < 16 || *ptr1 > 0x40000 || compressedSize < 16) {
-        general_heap_free(data);
-        return nullptr;
-    }
-    if (useTailAlloc) {
-        animData = _heap_malloc_tail(&heap_spriteHead, *ptr1);
-    } else {
-        animData = _heap_malloc(&heap_spriteHead, *ptr1);
-    }
-    if (!animData) {
-        general_heap_free(data);
-        return nullptr;
-    }
+    /* Leave the Yay0 header big-endian. The decoder reads it that way. */
     {
-        extern int pm_yay0_decode(const void* src, u32 src_len, void* dst, u32 dst_len);
-        if (!pm_yay0_decode(data, (u32)compressedSize, animData, (u32)*ptr1)) {
+        s32 destSize = spr_be32((u8*)data + 4);
+        if (destSize < 16 || destSize > 0x40000) {
+            extern void pm_log(const char* fmt, ...);
+            static int once;
+            if (once < 4) {
+                once++;
+                pm_log("spr %d yay0 %08x dest %d", idx, ((u32*)data)[0], destSize);
+            }
             general_heap_free(data);
             return nullptr;
         }
-    }
-    spr_host_endian((u8*)animData, (u32)*ptr1);
-    general_heap_free(data);
-    {
-        extern void pm_log(const char* fmt, ...);
-        static int sprite_logs;
-        if (sprite_logs < 4) {
-            sprite_logs++;
-            pm_log("sprite %d bytes %d comps %d", idx, *ptr1, animData->maxComponents);
+        if (useTailAlloc) {
+            animData = _heap_malloc_tail(&heap_spriteHead, destSize);
+        } else {
+            animData = _heap_malloc(&heap_spriteHead, destSize);
         }
+        if (!animData) {
+            general_heap_free(data);
+            return nullptr;
+        }
+        {
+            extern int pm_yay0_decode(const void* src, u32 src_len, void* dst, u32 dst_len);
+            if (!pm_yay0_decode(data, (u32)compressedSize, animData, (u32)destSize)) {
+                extern void pm_log(const char* fmt, ...);
+                pm_log("spr %d decode fail %d", idx, destSize);
+                general_heap_free(data);
+                return nullptr;
+            }
+        }
+        spr_host_endian((u8*)animData, (u32)destSize);
     }
+    general_heap_free(data);
 
     // swizzle raster array
     data = (s32**)animData->rastersOffset;
     data = SPR_SWIZZLE(ALIGN4(animData), data);
     animData->rastersOffset = (SpriteRasterCacheEntry**)data;
 
-    while (true) {
+    for (i = 0; i < 512; i++) {
         ptr1 = *data;
         if (ptr1 == PTR_LIST_END) {
             break;

@@ -1,0 +1,39 @@
+#ifndef _NPC_SPRITE_STILTGUYUNFOLD_H_
+#define _NPC_SPRITE_STILTGUYUNFOLD_H_
+
+#define SPR_StiltGuyUnfold 0x71
+
+#define SPR_PAL_StiltGuyUnfold 0x0
+#define SPR_PAL_StiltGuyUnfold_Alt 0x1
+#define SPR_PAL_StiltGuyUnfold_Darker 0x2
+#define SPR_PAL_StiltGuyUnfold_Dark 0x3
+
+#define ANIM_StiltGuyUnfold_Segment1 0x710000
+#define ANIM_StiltGuyUnfold_Segment2 0x710001
+#define ANIM_StiltGuyUnfold_Segment3 0x710002
+#define ANIM_StiltGuyUnfold_Segment4 0x710003
+#define ANIM_StiltGuyUnfold_Whole 0x710004
+#define ANIM_StiltGuyUnfold_Unfold 0x710005
+
+#define ANIM_StiltGuyUnfold_Alt_Segment1 0x710100
+#define ANIM_StiltGuyUnfold_Alt_Segment2 0x710101
+#define ANIM_StiltGuyUnfold_Alt_Segment3 0x710102
+#define ANIM_StiltGuyUnfold_Alt_Segment4 0x710103
+#define ANIM_StiltGuyUnfold_Alt_Whole 0x710104
+#define ANIM_StiltGuyUnfold_Alt_Unfold 0x710105
+
+#define ANIM_StiltGuyUnfold_Darker_Segment1 0x710200
+#define ANIM_StiltGuyUnfold_Darker_Segment2 0x710201
+#define ANIM_StiltGuyUnfold_Darker_Segment3 0x710202
+#define ANIM_StiltGuyUnfold_Darker_Segment4 0x710203
+#define ANIM_StiltGuyUnfold_Darker_Whole 0x710204
+#define ANIM_StiltGuyUnfold_Darker_Unfold 0x710205
+
+#define ANIM_StiltGuyUnfold_Dark_Segment1 0x710300
+#define ANIM_StiltGuyUnfold_Dark_Segment2 0x710301
+#define ANIM_StiltGuyUnfold_Dark_Segment3 0x710302
+#define ANIM_StiltGuyUnfold_Dark_Segment4 0x710303
+#define ANIM_StiltGuyUnfold_Dark_Whole 0x710304
+#define ANIM_StiltGuyUnfold_Dark_Unfold 0x710305
+
+#endif

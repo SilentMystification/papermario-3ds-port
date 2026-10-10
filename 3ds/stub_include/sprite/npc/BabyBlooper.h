@@ -1,0 +1,51 @@
+#ifndef _NPC_SPRITE_BABYBLOOPER_H_
+#define _NPC_SPRITE_BABYBLOOPER_H_
+
+#define SPR_BabyBlooper 0x51
+
+#define SPR_PAL_BabyBlooper 0x0
+#define SPR_PAL_BabyBlooper_Poisoned 0x1
+#define SPR_PAL_BabyBlooper_Dizzy 0x2
+#define SPR_PAL_BabyBlooper_Burnt 0x3
+
+#define ANIM_BabyBlooper_Still 0x510000
+#define ANIM_BabyBlooper_Idle 0x510001
+#define ANIM_BabyBlooper_Hurt 0x510002
+#define ANIM_BabyBlooper_Dead 0x510003
+#define ANIM_BabyBlooper_BurnHurt 0x510004
+#define ANIM_BabyBlooper_BurnStill 0x510005
+#define ANIM_BabyBlooper_Sleep 0x510006
+#define ANIM_BabyBlooper_Dizzy 0x510007
+#define ANIM_BabyBlooper_Leech 0x510008
+
+#define ANIM_BabyBlooper_Poisoned_Still 0x510100
+#define ANIM_BabyBlooper_Poisoned_Idle 0x510101
+#define ANIM_BabyBlooper_Poisoned_Hurt 0x510102
+#define ANIM_BabyBlooper_Poisoned_Dead 0x510103
+#define ANIM_BabyBlooper_Poisoned_BurnHurt 0x510104
+#define ANIM_BabyBlooper_Poisoned_BurnStill 0x510105
+#define ANIM_BabyBlooper_Poisoned_Sleep 0x510106
+#define ANIM_BabyBlooper_Poisoned_Dizzy 0x510107
+#define ANIM_BabyBlooper_Poisoned_Leech 0x510108
+
+#define ANIM_BabyBlooper_Dizzy_Still 0x510200
+#define ANIM_BabyBlooper_Dizzy_Idle 0x510201
+#define ANIM_BabyBlooper_Dizzy_Hurt 0x510202
+#define ANIM_BabyBlooper_Dizzy_Dead 0x510203
+#define ANIM_BabyBlooper_Dizzy_BurnHurt 0x510204
+#define ANIM_BabyBlooper_Dizzy_BurnStill 0x510205
+#define ANIM_BabyBlooper_Dizzy_Sleep 0x510206
+#define ANIM_BabyBlooper_Dizzy_Dizzy 0x510207
+#define ANIM_BabyBlooper_Dizzy_Leech 0x510208
+
+#define ANIM_BabyBlooper_Burnt_Still 0x510300
+#define ANIM_BabyBlooper_Burnt_Idle 0x510301
+#define ANIM_BabyBlooper_Burnt_Hurt 0x510302
+#define ANIM_BabyBlooper_Burnt_Dead 0x510303
+#define ANIM_BabyBlooper_Burnt_BurnHurt 0x510304
+#define ANIM_BabyBlooper_Burnt_BurnStill 0x510305
+#define ANIM_BabyBlooper_Burnt_Sleep 0x510306
+#define ANIM_BabyBlooper_Burnt_Dizzy 0x510307
+#define ANIM_BabyBlooper_Burnt_Leech 0x510308
+
+#endif

@@ -1,0 +1,282 @@
+#ifndef _NPC_SPRITE_MAGIKOOPA_H_
+#define _NPC_SPRITE_MAGIKOOPA_H_
+
+#define SPR_Magikoopa 0x56
+
+#define SPR_PAL_Magikoopa 0x0
+#define SPR_PAL_Magikoopa_Red 0x1
+#define SPR_PAL_Magikoopa_Yellow 0x2
+#define SPR_PAL_Magikoopa_White 0x3
+#define SPR_PAL_Magikoopa_Green 0x4
+#define SPR_PAL_Magikoopa_Gray 0x5
+#define SPR_PAL_Magikoopa_Poisoned 0x6
+#define SPR_PAL_Magikoopa_Red_Poisoned 0x7
+#define SPR_PAL_Magikoopa_Yellow_Poisoned 0x8
+#define SPR_PAL_Magikoopa_White_Poisoned 0x9
+#define SPR_PAL_Magikoopa_Green_Poisoned 0xA
+#define SPR_PAL_Magikoopa_Gray_Poisoned 0xB
+#define SPR_PAL_Magikoopa_Dizzy 0xC
+#define SPR_PAL_Magikoopa_Red_Dizzy 0xD
+#define SPR_PAL_Magikoopa_Yellow_Dizzy 0xE
+#define SPR_PAL_Magikoopa_White_Dizzy 0xF
+#define SPR_PAL_Magikoopa_Green_Dizzy 0x10
+#define SPR_PAL_Magikoopa_Gray_Dizzy 0x11
+#define SPR_PAL_Magikoopa_Shocked 0x12
+#define SPR_PAL_Magikoopa_Red_Shocked 0x13
+#define SPR_PAL_Magikoopa_Yellow_Shocked 0x14
+#define SPR_PAL_Magikoopa_White_Shocked 0x15
+#define SPR_PAL_Magikoopa_Green_Shocked 0x16
+#define SPR_PAL_Magikoopa_Gray_Shocked 0x17
+#define SPR_PAL_Magikoopa_Burnt 0x18
+
+#define ANIM_Magikoopa_Still 0x560000
+#define ANIM_Magikoopa_Idle 0x560001
+#define ANIM_Magikoopa_Shout 0x560002
+#define ANIM_Magikoopa_CastSpell 0x560003
+#define ANIM_Magikoopa_Hurt 0x560004
+#define ANIM_Magikoopa_BurnHurt 0x560005
+#define ANIM_Magikoopa_BurnStill 0x560006
+#define ANIM_Magikoopa_Dizzy 0x560007
+#define ANIM_Magikoopa_Sleep 0x560008
+
+#define ANIM_Magikoopa_Red_Still 0x560100
+#define ANIM_Magikoopa_Red_Idle 0x560101
+#define ANIM_Magikoopa_Red_Shout 0x560102
+#define ANIM_Magikoopa_Red_CastSpell 0x560103
+#define ANIM_Magikoopa_Red_Hurt 0x560104
+#define ANIM_Magikoopa_Red_BurnHurt 0x560105
+#define ANIM_Magikoopa_Red_BurnStill 0x560106
+#define ANIM_Magikoopa_Red_Dizzy 0x560107
+#define ANIM_Magikoopa_Red_Sleep 0x560108
+
+#define ANIM_Magikoopa_Yellow_Still 0x560200
+#define ANIM_Magikoopa_Yellow_Idle 0x560201
+#define ANIM_Magikoopa_Yellow_Shout 0x560202
+#define ANIM_Magikoopa_Yellow_CastSpell 0x560203
+#define ANIM_Magikoopa_Yellow_Hurt 0x560204
+#define ANIM_Magikoopa_Yellow_BurnHurt 0x560205
+#define ANIM_Magikoopa_Yellow_BurnStill 0x560206
+#define ANIM_Magikoopa_Yellow_Dizzy 0x560207
+#define ANIM_Magikoopa_Yellow_Sleep 0x560208
+
+#define ANIM_Magikoopa_White_Still 0x560300
+#define ANIM_Magikoopa_White_Idle 0x560301
+#define ANIM_Magikoopa_White_Shout 0x560302
+#define ANIM_Magikoopa_White_CastSpell 0x560303
+#define ANIM_Magikoopa_White_Hurt 0x560304
+#define ANIM_Magikoopa_White_BurnHurt 0x560305
+#define ANIM_Magikoopa_White_BurnStill 0x560306
+#define ANIM_Magikoopa_White_Dizzy 0x560307
+#define ANIM_Magikoopa_White_Sleep 0x560308
+
+#define ANIM_Magikoopa_Green_Still 0x560400
+#define ANIM_Magikoopa_Green_Idle 0x560401
+#define ANIM_Magikoopa_Green_Shout 0x560402
+#define ANIM_Magikoopa_Green_CastSpell 0x560403
+#define ANIM_Magikoopa_Green_Hurt 0x560404
+#define ANIM_Magikoopa_Green_BurnHurt 0x560405
+#define ANIM_Magikoopa_Green_BurnStill 0x560406
+#define ANIM_Magikoopa_Green_Dizzy 0x560407
+#define ANIM_Magikoopa_Green_Sleep 0x560408
+
+#define ANIM_Magikoopa_Gray_Still 0x560500
+#define ANIM_Magikoopa_Gray_Idle 0x560501
+#define ANIM_Magikoopa_Gray_Shout 0x560502
+#define ANIM_Magikoopa_Gray_CastSpell 0x560503
+#define ANIM_Magikoopa_Gray_Hurt 0x560504
+#define ANIM_Magikoopa_Gray_BurnHurt 0x560505
+#define ANIM_Magikoopa_Gray_BurnStill 0x560506
+#define ANIM_Magikoopa_Gray_Dizzy 0x560507
+#define ANIM_Magikoopa_Gray_Sleep 0x560508
+
+#define ANIM_Magikoopa_Poisoned_Still 0x560600
+#define ANIM_Magikoopa_Poisoned_Idle 0x560601
+#define ANIM_Magikoopa_Poisoned_Shout 0x560602
+#define ANIM_Magikoopa_Poisoned_CastSpell 0x560603
+#define ANIM_Magikoopa_Poisoned_Hurt 0x560604
+#define ANIM_Magikoopa_Poisoned_BurnHurt 0x560605
+#define ANIM_Magikoopa_Poisoned_BurnStill 0x560606
+#define ANIM_Magikoopa_Poisoned_Dizzy 0x560607
+#define ANIM_Magikoopa_Poisoned_Sleep 0x560608
+
+#define ANIM_Magikoopa_Red_Poisoned_Still 0x560700
+#define ANIM_Magikoopa_Red_Poisoned_Idle 0x560701
+#define ANIM_Magikoopa_Red_Poisoned_Shout 0x560702
+#define ANIM_Magikoopa_Red_Poisoned_CastSpell 0x560703
+#define ANIM_Magikoopa_Red_Poisoned_Hurt 0x560704
+#define ANIM_Magikoopa_Red_Poisoned_BurnHurt 0x560705
+#define ANIM_Magikoopa_Red_Poisoned_BurnStill 0x560706
+#define ANIM_Magikoopa_Red_Poisoned_Dizzy 0x560707
+#define ANIM_Magikoopa_Red_Poisoned_Sleep 0x560708
+
+#define ANIM_Magikoopa_Yellow_Poisoned_Still 0x560800
+#define ANIM_Magikoopa_Yellow_Poisoned_Idle 0x560801
+#define ANIM_Magikoopa_Yellow_Poisoned_Shout 0x560802
+#define ANIM_Magikoopa_Yellow_Poisoned_CastSpell 0x560803
+#define ANIM_Magikoopa_Yellow_Poisoned_Hurt 0x560804
+#define ANIM_Magikoopa_Yellow_Poisoned_BurnHurt 0x560805
+#define ANIM_Magikoopa_Yellow_Poisoned_BurnStill 0x560806
+#define ANIM_Magikoopa_Yellow_Poisoned_Dizzy 0x560807
+#define ANIM_Magikoopa_Yellow_Poisoned_Sleep 0x560808
+
+#define ANIM_Magikoopa_White_Poisoned_Still 0x560900
+#define ANIM_Magikoopa_White_Poisoned_Idle 0x560901
+#define ANIM_Magikoopa_White_Poisoned_Shout 0x560902
+#define ANIM_Magikoopa_White_Poisoned_CastSpell 0x560903
+#define ANIM_Magikoopa_White_Poisoned_Hurt 0x560904
+#define ANIM_Magikoopa_White_Poisoned_BurnHurt 0x560905
+#define ANIM_Magikoopa_White_Poisoned_BurnStill 0x560906
+#define ANIM_Magikoopa_White_Poisoned_Dizzy 0x560907
+#define ANIM_Magikoopa_White_Poisoned_Sleep 0x560908
+
+#define ANIM_Magikoopa_Green_Poisoned_Still 0x560A00
+#define ANIM_Magikoopa_Green_Poisoned_Idle 0x560A01
+#define ANIM_Magikoopa_Green_Poisoned_Shout 0x560A02
+#define ANIM_Magikoopa_Green_Poisoned_CastSpell 0x560A03
+#define ANIM_Magikoopa_Green_Poisoned_Hurt 0x560A04
+#define ANIM_Magikoopa_Green_Poisoned_BurnHurt 0x560A05
+#define ANIM_Magikoopa_Green_Poisoned_BurnStill 0x560A06
+#define ANIM_Magikoopa_Green_Poisoned_Dizzy 0x560A07
+#define ANIM_Magikoopa_Green_Poisoned_Sleep 0x560A08
+
+#define ANIM_Magikoopa_Gray_Poisoned_Still 0x560B00
+#define ANIM_Magikoopa_Gray_Poisoned_Idle 0x560B01
+#define ANIM_Magikoopa_Gray_Poisoned_Shout 0x560B02
+#define ANIM_Magikoopa_Gray_Poisoned_CastSpell 0x560B03
+#define ANIM_Magikoopa_Gray_Poisoned_Hurt 0x560B04
+#define ANIM_Magikoopa_Gray_Poisoned_BurnHurt 0x560B05
+#define ANIM_Magikoopa_Gray_Poisoned_BurnStill 0x560B06
+#define ANIM_Magikoopa_Gray_Poisoned_Dizzy 0x560B07
+#define ANIM_Magikoopa_Gray_Poisoned_Sleep 0x560B08
+
+#define ANIM_Magikoopa_Dizzy_Still 0x560C00
+#define ANIM_Magikoopa_Dizzy_Idle 0x560C01
+#define ANIM_Magikoopa_Dizzy_Shout 0x560C02
+#define ANIM_Magikoopa_Dizzy_CastSpell 0x560C03
+#define ANIM_Magikoopa_Dizzy_Hurt 0x560C04
+#define ANIM_Magikoopa_Dizzy_BurnHurt 0x560C05
+#define ANIM_Magikoopa_Dizzy_BurnStill 0x560C06
+#define ANIM_Magikoopa_Dizzy_Dizzy 0x560C07
+#define ANIM_Magikoopa_Dizzy_Sleep 0x560C08
+
+#define ANIM_Magikoopa_Red_Dizzy_Still 0x560D00
+#define ANIM_Magikoopa_Red_Dizzy_Idle 0x560D01
+#define ANIM_Magikoopa_Red_Dizzy_Shout 0x560D02
+#define ANIM_Magikoopa_Red_Dizzy_CastSpell 0x560D03
+#define ANIM_Magikoopa_Red_Dizzy_Hurt 0x560D04
+#define ANIM_Magikoopa_Red_Dizzy_BurnHurt 0x560D05
+#define ANIM_Magikoopa_Red_Dizzy_BurnStill 0x560D06
+#define ANIM_Magikoopa_Red_Dizzy_Dizzy 0x560D07
+#define ANIM_Magikoopa_Red_Dizzy_Sleep 0x560D08
+
+#define ANIM_Magikoopa_Yellow_Dizzy_Still 0x560E00
+#define ANIM_Magikoopa_Yellow_Dizzy_Idle 0x560E01
+#define ANIM_Magikoopa_Yellow_Dizzy_Shout 0x560E02
+#define ANIM_Magikoopa_Yellow_Dizzy_CastSpell 0x560E03
+#define ANIM_Magikoopa_Yellow_Dizzy_Hurt 0x560E04
+#define ANIM_Magikoopa_Yellow_Dizzy_BurnHurt 0x560E05
+#define ANIM_Magikoopa_Yellow_Dizzy_BurnStill 0x560E06
+#define ANIM_Magikoopa_Yellow_Dizzy_Dizzy 0x560E07
+#define ANIM_Magikoopa_Yellow_Dizzy_Sleep 0x560E08
+
+#define ANIM_Magikoopa_White_Dizzy_Still 0x560F00
+#define ANIM_Magikoopa_White_Dizzy_Idle 0x560F01
+#define ANIM_Magikoopa_White_Dizzy_Shout 0x560F02
+#define ANIM_Magikoopa_White_Dizzy_CastSpell 0x560F03
+#define ANIM_Magikoopa_White_Dizzy_Hurt 0x560F04
+#define ANIM_Magikoopa_White_Dizzy_BurnHurt 0x560F05
+#define ANIM_Magikoopa_White_Dizzy_BurnStill 0x560F06
+#define ANIM_Magikoopa_White_Dizzy_Dizzy 0x560F07
+#define ANIM_Magikoopa_White_Dizzy_Sleep 0x560F08
+
+#define ANIM_Magikoopa_Green_Dizzy_Still 0x561000
+#define ANIM_Magikoopa_Green_Dizzy_Idle 0x561001
+#define ANIM_Magikoopa_Green_Dizzy_Shout 0x561002
+#define ANIM_Magikoopa_Green_Dizzy_CastSpell 0x561003
+#define ANIM_Magikoopa_Green_Dizzy_Hurt 0x561004
+#define ANIM_Magikoopa_Green_Dizzy_BurnHurt 0x561005
+#define ANIM_Magikoopa_Green_Dizzy_BurnStill 0x561006
+#define ANIM_Magikoopa_Green_Dizzy_Dizzy 0x561007
+#define ANIM_Magikoopa_Green_Dizzy_Sleep 0x561008
+
+#define ANIM_Magikoopa_Gray_Dizzy_Still 0x561100
+#define ANIM_Magikoopa_Gray_Dizzy_Idle 0x561101
+#define ANIM_Magikoopa_Gray_Dizzy_Shout 0x561102
+#define ANIM_Magikoopa_Gray_Dizzy_CastSpell 0x561103
+#define ANIM_Magikoopa_Gray_Dizzy_Hurt 0x561104
+#define ANIM_Magikoopa_Gray_Dizzy_BurnHurt 0x561105
+#define ANIM_Magikoopa_Gray_Dizzy_BurnStill 0x561106
+#define ANIM_Magikoopa_Gray_Dizzy_Dizzy 0x561107
+#define ANIM_Magikoopa_Gray_Dizzy_Sleep 0x561108
+
+#define ANIM_Magikoopa_Shocked_Still 0x561200
+#define ANIM_Magikoopa_Shocked_Idle 0x561201
+#define ANIM_Magikoopa_Shocked_Shout 0x561202
+#define ANIM_Magikoopa_Shocked_CastSpell 0x561203
+#define ANIM_Magikoopa_Shocked_Hurt 0x561204
+#define ANIM_Magikoopa_Shocked_BurnHurt 0x561205
+#define ANIM_Magikoopa_Shocked_BurnStill 0x561206
+#define ANIM_Magikoopa_Shocked_Dizzy 0x561207
+#define ANIM_Magikoopa_Shocked_Sleep 0x561208
+
+#define ANIM_Magikoopa_Red_Shocked_Still 0x561300
+#define ANIM_Magikoopa_Red_Shocked_Idle 0x561301
+#define ANIM_Magikoopa_Red_Shocked_Shout 0x561302
+#define ANIM_Magikoopa_Red_Shocked_CastSpell 0x561303
+#define ANIM_Magikoopa_Red_Shocked_Hurt 0x561304
+#define ANIM_Magikoopa_Red_Shocked_BurnHurt 0x561305
+#define ANIM_Magikoopa_Red_Shocked_BurnStill 0x561306
+#define ANIM_Magikoopa_Red_Shocked_Dizzy 0x561307
+#define ANIM_Magikoopa_Red_Shocked_Sleep 0x561308
+
+#define ANIM_Magikoopa_Yellow_Shocked_Still 0x561400
+#define ANIM_Magikoopa_Yellow_Shocked_Idle 0x561401
+#define ANIM_Magikoopa_Yellow_Shocked_Shout 0x561402
+#define ANIM_Magikoopa_Yellow_Shocked_CastSpell 0x561403
+#define ANIM_Magikoopa_Yellow_Shocked_Hurt 0x561404
+#define ANIM_Magikoopa_Yellow_Shocked_BurnHurt 0x561405
+#define ANIM_Magikoopa_Yellow_Shocked_BurnStill 0x561406
+#define ANIM_Magikoopa_Yellow_Shocked_Dizzy 0x561407
+#define ANIM_Magikoopa_Yellow_Shocked_Sleep 0x561408
+
+#define ANIM_Magikoopa_White_Shocked_Still 0x561500
+#define ANIM_Magikoopa_White_Shocked_Idle 0x561501
+#define ANIM_Magikoopa_White_Shocked_Shout 0x561502
+#define ANIM_Magikoopa_White_Shocked_CastSpell 0x561503
+#define ANIM_Magikoopa_White_Shocked_Hurt 0x561504
+#define ANIM_Magikoopa_White_Shocked_BurnHurt 0x561505
+#define ANIM_Magikoopa_White_Shocked_BurnStill 0x561506
+#define ANIM_Magikoopa_White_Shocked_Dizzy 0x561507
+#define ANIM_Magikoopa_White_Shocked_Sleep 0x561508
+
+#define ANIM_Magikoopa_Green_Shocked_Still 0x561600
+#define ANIM_Magikoopa_Green_Shocked_Idle 0x561601
+#define ANIM_Magikoopa_Green_Shocked_Shout 0x561602
+#define ANIM_Magikoopa_Green_Shocked_CastSpell 0x561603
+#define ANIM_Magikoopa_Green_Shocked_Hurt 0x561604
+#define ANIM_Magikoopa_Green_Shocked_BurnHurt 0x561605
+#define ANIM_Magikoopa_Green_Shocked_BurnStill 0x561606
+#define ANIM_Magikoopa_Green_Shocked_Dizzy 0x561607
+#define ANIM_Magikoopa_Green_Shocked_Sleep 0x561608
+
+#define ANIM_Magikoopa_Gray_Shocked_Still 0x561700
+#define ANIM_Magikoopa_Gray_Shocked_Idle 0x561701
+#define ANIM_Magikoopa_Gray_Shocked_Shout 0x561702
+#define ANIM_Magikoopa_Gray_Shocked_CastSpell 0x561703
+#define ANIM_Magikoopa_Gray_Shocked_Hurt 0x561704
+#define ANIM_Magikoopa_Gray_Shocked_BurnHurt 0x561705
+#define ANIM_Magikoopa_Gray_Shocked_BurnStill 0x561706
+#define ANIM_Magikoopa_Gray_Shocked_Dizzy 0x561707
+#define ANIM_Magikoopa_Gray_Shocked_Sleep 0x561708
+
+#define ANIM_Magikoopa_Burnt_Still 0x561800
+#define ANIM_Magikoopa_Burnt_Idle 0x561801
+#define ANIM_Magikoopa_Burnt_Shout 0x561802
+#define ANIM_Magikoopa_Burnt_CastSpell 0x561803
+#define ANIM_Magikoopa_Burnt_Hurt 0x561804
+#define ANIM_Magikoopa_Burnt_BurnHurt 0x561805
+#define ANIM_Magikoopa_Burnt_BurnStill 0x561806
+#define ANIM_Magikoopa_Burnt_Dizzy 0x561807
+#define ANIM_Magikoopa_Burnt_Sleep 0x561808
+
+#endif

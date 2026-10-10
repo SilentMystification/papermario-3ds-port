@@ -1,0 +1,103 @@
+#ifndef _NPC_SPRITE_TUFFPUFF_H_
+#define _NPC_SPRITE_TUFFPUFF_H_
+
+#define SPR_TuffPuff 0x4C
+
+#define SPR_PAL_TuffPuff 0x0
+#define SPR_PAL_TuffPuff_Missing1 0x1
+#define SPR_PAL_TuffPuff_Missing2 0x2
+#define SPR_PAL_TuffPuff_Missing3 0x3
+
+#define ANIM_TuffPuff_StillSmall 0x4C0000
+#define ANIM_TuffPuff_StillLarge 0x4C0001
+#define ANIM_TuffPuff_IdleSmall 0x4C0002
+#define ANIM_TuffPuff_IdleLarge 0x4C0003
+#define ANIM_TuffPuff_FlySlowSmall 0x4C0004
+#define ANIM_TuffPuff_FlySlowLarge 0x4C0005
+#define ANIM_TuffPuff_FlyFastSmall 0x4C0006
+#define ANIM_TuffPuff_FlyFastLarge 0x4C0007
+#define ANIM_TuffPuff_HorrorSmall 0x4C0008
+#define ANIM_TuffPuff_GrinSmall 0x4C0009
+#define ANIM_TuffPuff_HorrorLarge 0x4C000A
+#define ANIM_TuffPuff_GrinLarge 0x4C000B
+#define ANIM_TuffPuff_HurtSmall 0x4C000C
+#define ANIM_TuffPuff_HurtLarge 0x4C000D
+#define ANIM_TuffPuff_BurnHurtSmall 0x4C000E
+#define ANIM_TuffPuff_BurnStillSmall 0x4C000F
+#define ANIM_TuffPuff_BurnHurtLarge 0x4C0010
+#define ANIM_TuffPuff_BurnStillLarge 0x4C0011
+#define ANIM_TuffPuff_ShockSmall 0x4C0012
+#define ANIM_TuffPuff_ShockLarge 0x4C0013
+#define ANIM_TuffPuff_TalkSmall 0x4C0014
+#define ANIM_TuffPuff_TalkLarge 0x4C0015
+
+#define ANIM_TuffPuff_Missing1_StillSmall 0x4C0100
+#define ANIM_TuffPuff_Missing1_StillLarge 0x4C0101
+#define ANIM_TuffPuff_Missing1_IdleSmall 0x4C0102
+#define ANIM_TuffPuff_Missing1_IdleLarge 0x4C0103
+#define ANIM_TuffPuff_Missing1_FlySlowSmall 0x4C0104
+#define ANIM_TuffPuff_Missing1_FlySlowLarge 0x4C0105
+#define ANIM_TuffPuff_Missing1_FlyFastSmall 0x4C0106
+#define ANIM_TuffPuff_Missing1_FlyFastLarge 0x4C0107
+#define ANIM_TuffPuff_Missing1_HorrorSmall 0x4C0108
+#define ANIM_TuffPuff_Missing1_GrinSmall 0x4C0109
+#define ANIM_TuffPuff_Missing1_HorrorLarge 0x4C010A
+#define ANIM_TuffPuff_Missing1_GrinLarge 0x4C010B
+#define ANIM_TuffPuff_Missing1_HurtSmall 0x4C010C
+#define ANIM_TuffPuff_Missing1_HurtLarge 0x4C010D
+#define ANIM_TuffPuff_Missing1_BurnHurtSmall 0x4C010E
+#define ANIM_TuffPuff_Missing1_BurnStillSmall 0x4C010F
+#define ANIM_TuffPuff_Missing1_BurnHurtLarge 0x4C0110
+#define ANIM_TuffPuff_Missing1_BurnStillLarge 0x4C0111
+#define ANIM_TuffPuff_Missing1_ShockSmall 0x4C0112
+#define ANIM_TuffPuff_Missing1_ShockLarge 0x4C0113
+#define ANIM_TuffPuff_Missing1_TalkSmall 0x4C0114
+#define ANIM_TuffPuff_Missing1_TalkLarge 0x4C0115
+
+#define ANIM_TuffPuff_Missing2_StillSmall 0x4C0200
+#define ANIM_TuffPuff_Missing2_StillLarge 0x4C0201
+#define ANIM_TuffPuff_Missing2_IdleSmall 0x4C0202
+#define ANIM_TuffPuff_Missing2_IdleLarge 0x4C0203
+#define ANIM_TuffPuff_Missing2_FlySlowSmall 0x4C0204
+#define ANIM_TuffPuff_Missing2_FlySlowLarge 0x4C0205
+#define ANIM_TuffPuff_Missing2_FlyFastSmall 0x4C0206
+#define ANIM_TuffPuff_Missing2_FlyFastLarge 0x4C0207
+#define ANIM_TuffPuff_Missing2_HorrorSmall 0x4C0208
+#define ANIM_TuffPuff_Missing2_GrinSmall 0x4C0209
+#define ANIM_TuffPuff_Missing2_HorrorLarge 0x4C020A
+#define ANIM_TuffPuff_Missing2_GrinLarge 0x4C020B
+#define ANIM_TuffPuff_Missing2_HurtSmall 0x4C020C
+#define ANIM_TuffPuff_Missing2_HurtLarge 0x4C020D
+#define ANIM_TuffPuff_Missing2_BurnHurtSmall 0x4C020E
+#define ANIM_TuffPuff_Missing2_BurnStillSmall 0x4C020F
+#define ANIM_TuffPuff_Missing2_BurnHurtLarge 0x4C0210
+#define ANIM_TuffPuff_Missing2_BurnStillLarge 0x4C0211
+#define ANIM_TuffPuff_Missing2_ShockSmall 0x4C0212
+#define ANIM_TuffPuff_Missing2_ShockLarge 0x4C0213
+#define ANIM_TuffPuff_Missing2_TalkSmall 0x4C0214
+#define ANIM_TuffPuff_Missing2_TalkLarge 0x4C0215
+
+#define ANIM_TuffPuff_Missing3_StillSmall 0x4C0300
+#define ANIM_TuffPuff_Missing3_StillLarge 0x4C0301
+#define ANIM_TuffPuff_Missing3_IdleSmall 0x4C0302
+#define ANIM_TuffPuff_Missing3_IdleLarge 0x4C0303
+#define ANIM_TuffPuff_Missing3_FlySlowSmall 0x4C0304
+#define ANIM_TuffPuff_Missing3_FlySlowLarge 0x4C0305
+#define ANIM_TuffPuff_Missing3_FlyFastSmall 0x4C0306
+#define ANIM_TuffPuff_Missing3_FlyFastLarge 0x4C0307
+#define ANIM_TuffPuff_Missing3_HorrorSmall 0x4C0308
+#define ANIM_TuffPuff_Missing3_GrinSmall 0x4C0309
+#define ANIM_TuffPuff_Missing3_HorrorLarge 0x4C030A
+#define ANIM_TuffPuff_Missing3_GrinLarge 0x4C030B
+#define ANIM_TuffPuff_Missing3_HurtSmall 0x4C030C
+#define ANIM_TuffPuff_Missing3_HurtLarge 0x4C030D
+#define ANIM_TuffPuff_Missing3_BurnHurtSmall 0x4C030E
+#define ANIM_TuffPuff_Missing3_BurnStillSmall 0x4C030F
+#define ANIM_TuffPuff_Missing3_BurnHurtLarge 0x4C0310
+#define ANIM_TuffPuff_Missing3_BurnStillLarge 0x4C0311
+#define ANIM_TuffPuff_Missing3_ShockSmall 0x4C0312
+#define ANIM_TuffPuff_Missing3_ShockLarge 0x4C0313
+#define ANIM_TuffPuff_Missing3_TalkSmall 0x4C0314
+#define ANIM_TuffPuff_Missing3_TalkLarge 0x4C0315
+
+#endif

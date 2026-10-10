@@ -1,0 +1,18 @@
+#ifndef _NPC_SPRITE_CHETRIPPO_H_
+#define _NPC_SPRITE_CHETRIPPO_H_
+
+#define SPR_ChetRippo 0xA6
+
+#define SPR_PAL_ChetRippo 0x0
+
+#define ANIM_ChetRippo_Still 0xA60000
+#define ANIM_ChetRippo_Idle 0xA60001
+#define ANIM_ChetRippo_Swim 0xA60002
+#define ANIM_ChetRippo_SwimFaster 0xA60003
+#define ANIM_ChetRippo_Talk 0xA60004
+#define ANIM_ChetRippo_Spread 0xA60005
+#define ANIM_ChetRippo_ShakeSlow 0xA60006
+#define ANIM_ChetRippo_ShakeFast 0xA60007
+#define ANIM_ChetRippo_Revert 0xA60008
+
+#endif

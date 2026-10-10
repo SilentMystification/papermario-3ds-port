@@ -1,0 +1,21 @@
+#ifndef _NPC_SPRITE_PARADEBURNTBOWSER_H_
+#define _NPC_SPRITE_PARADEBURNTBOWSER_H_
+
+#define SPR_ParadeBurntBowser 0xD8
+
+#define SPR_PAL_ParadeBurntBowser 0x0
+#define SPR_PAL_ParadeBurntBowser_Shadow 0x1
+
+#define ANIM_ParadeBurntBowser_BurntIdle 0xD80000
+#define ANIM_ParadeBurntBowser_BurntDrawBack 0xD80001
+#define ANIM_ParadeBurntBowser_BurntPropeller 0xD80002
+#define ANIM_ParadeBurntBowser_ShadowStill 0xD80003
+#define ANIM_ParadeBurntBowser_ShadowFly 0xD80004
+
+#define ANIM_ParadeBurntBowser_Shadow_BurntIdle 0xD80100
+#define ANIM_ParadeBurntBowser_Shadow_BurntDrawBack 0xD80101
+#define ANIM_ParadeBurntBowser_Shadow_BurntPropeller 0xD80102
+#define ANIM_ParadeBurntBowser_Shadow_ShadowStill 0xD80103
+#define ANIM_ParadeBurntBowser_Shadow_ShadowFly 0xD80104
+
+#endif

@@ -1,0 +1,92 @@
+#ifndef _NPC_SPRITE_HURTPLANT_H_
+#define _NPC_SPRITE_HURTPLANT_H_
+
+#define SPR_HurtPlant 0x44
+
+#define SPR_PAL_HurtPlant 0x0
+#define SPR_PAL_HurtPlant_Poisoned 0x1
+#define SPR_PAL_HurtPlant_Dizzy 0x2
+#define SPR_PAL_HurtPlant_Shocked 0x3
+#define SPR_PAL_HurtPlant_Burnt 0x4
+
+#define ANIM_HurtPlant_Still 0x440000
+#define ANIM_HurtPlant_Hiding 0x440001
+#define ANIM_HurtPlant_Idle 0x440002
+#define ANIM_HurtPlant_Emerge 0x440003
+#define ANIM_HurtPlant_Burrow 0x440004
+#define ANIM_HurtPlant_WindupBite 0x440005
+#define ANIM_HurtPlant_Bite 0x440006
+#define ANIM_HurtPlant_ReleaseBite 0x440007
+#define ANIM_HurtPlant_Reveal 0x440008
+#define ANIM_HurtPlant_Dizzy 0x440009
+#define ANIM_HurtPlant_BurnHurt 0x44000A
+#define ANIM_HurtPlant_BurnStill 0x44000B
+#define ANIM_HurtPlant_Sleep 0x44000C
+#define ANIM_HurtPlant_Stun 0x44000D
+#define ANIM_HurtPlant_Hurt 0x44000E
+
+#define ANIM_HurtPlant_Poisoned_Still 0x440100
+#define ANIM_HurtPlant_Poisoned_Hiding 0x440101
+#define ANIM_HurtPlant_Poisoned_Idle 0x440102
+#define ANIM_HurtPlant_Poisoned_Emerge 0x440103
+#define ANIM_HurtPlant_Poisoned_Burrow 0x440104
+#define ANIM_HurtPlant_Poisoned_WindupBite 0x440105
+#define ANIM_HurtPlant_Poisoned_Bite 0x440106
+#define ANIM_HurtPlant_Poisoned_ReleaseBite 0x440107
+#define ANIM_HurtPlant_Poisoned_Reveal 0x440108
+#define ANIM_HurtPlant_Poisoned_Dizzy 0x440109
+#define ANIM_HurtPlant_Poisoned_BurnHurt 0x44010A
+#define ANIM_HurtPlant_Poisoned_BurnStill 0x44010B
+#define ANIM_HurtPlant_Poisoned_Sleep 0x44010C
+#define ANIM_HurtPlant_Poisoned_Stun 0x44010D
+#define ANIM_HurtPlant_Poisoned_Hurt 0x44010E
+
+#define ANIM_HurtPlant_Dizzy_Still 0x440200
+#define ANIM_HurtPlant_Dizzy_Hiding 0x440201
+#define ANIM_HurtPlant_Dizzy_Idle 0x440202
+#define ANIM_HurtPlant_Dizzy_Emerge 0x440203
+#define ANIM_HurtPlant_Dizzy_Burrow 0x440204
+#define ANIM_HurtPlant_Dizzy_WindupBite 0x440205
+#define ANIM_HurtPlant_Dizzy_Bite 0x440206
+#define ANIM_HurtPlant_Dizzy_ReleaseBite 0x440207
+#define ANIM_HurtPlant_Dizzy_Reveal 0x440208
+#define ANIM_HurtPlant_Dizzy_Dizzy 0x440209
+#define ANIM_HurtPlant_Dizzy_BurnHurt 0x44020A
+#define ANIM_HurtPlant_Dizzy_BurnStill 0x44020B
+#define ANIM_HurtPlant_Dizzy_Sleep 0x44020C
+#define ANIM_HurtPlant_Dizzy_Stun 0x44020D
+#define ANIM_HurtPlant_Dizzy_Hurt 0x44020E
+
+#define ANIM_HurtPlant_Shocked_Still 0x440300
+#define ANIM_HurtPlant_Shocked_Hiding 0x440301
+#define ANIM_HurtPlant_Shocked_Idle 0x440302
+#define ANIM_HurtPlant_Shocked_Emerge 0x440303
+#define ANIM_HurtPlant_Shocked_Burrow 0x440304
+#define ANIM_HurtPlant_Shocked_WindupBite 0x440305
+#define ANIM_HurtPlant_Shocked_Bite 0x440306
+#define ANIM_HurtPlant_Shocked_ReleaseBite 0x440307
+#define ANIM_HurtPlant_Shocked_Reveal 0x440308
+#define ANIM_HurtPlant_Shocked_Dizzy 0x440309
+#define ANIM_HurtPlant_Shocked_BurnHurt 0x44030A
+#define ANIM_HurtPlant_Shocked_BurnStill 0x44030B
+#define ANIM_HurtPlant_Shocked_Sleep 0x44030C
+#define ANIM_HurtPlant_Shocked_Stun 0x44030D
+#define ANIM_HurtPlant_Shocked_Hurt 0x44030E
+
+#define ANIM_HurtPlant_Burnt_Still 0x440400
+#define ANIM_HurtPlant_Burnt_Hiding 0x440401
+#define ANIM_HurtPlant_Burnt_Idle 0x440402
+#define ANIM_HurtPlant_Burnt_Emerge 0x440403
+#define ANIM_HurtPlant_Burnt_Burrow 0x440404
+#define ANIM_HurtPlant_Burnt_WindupBite 0x440405
+#define ANIM_HurtPlant_Burnt_Bite 0x440406
+#define ANIM_HurtPlant_Burnt_ReleaseBite 0x440407
+#define ANIM_HurtPlant_Burnt_Reveal 0x440408
+#define ANIM_HurtPlant_Burnt_Dizzy 0x440409
+#define ANIM_HurtPlant_Burnt_BurnHurt 0x44040A
+#define ANIM_HurtPlant_Burnt_BurnStill 0x44040B
+#define ANIM_HurtPlant_Burnt_Sleep 0x44040C
+#define ANIM_HurtPlant_Burnt_Stun 0x44040D
+#define ANIM_HurtPlant_Burnt_Hurt 0x44040E
+
+#endif

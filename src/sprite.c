@@ -703,6 +703,9 @@ s32 spr_component_update(s32 curNotifyValue, SpriteComponent** compList, SpriteA
 
     SpriteUpdateNotifyValue = curNotifyValue;
 
+    if ((u32)compList < 0x00100000u || (u32)animList < 0x00100000u) {
+        return curNotifyValue;
+    }
     compListIt = compList;
     while (*compListIt != PTR_LIST_END) {
         spr_component_update_commands(*compListIt++, *animList);
@@ -747,6 +750,12 @@ void spr_init_component_anim_state(SpriteComponent* comp, SpriteAnimComponent* a
 }
 
 void spr_init_anim_state(SpriteComponent** compList, SpriteAnimComponent** animList) {
+    /* A file offset that never became a pointer, or a list with no sentinel,
+     * spins here. Offsets below the heap are not lists. */
+    if ((u32)compList < 0x00100000u || (u32)compList >= 0x08000000u
+        || (u32)animList < 0x00100000u || (u32)animList >= 0x08000000u) {
+        return;
+    }
     while (*compList != PTR_LIST_END) {
         SpriteComponent* component = *compList++;
         spr_init_component_anim_state(component, *animList);
@@ -1061,6 +1070,9 @@ s32 spr_load_npc_sprite(s32 animID, u32* extraAnimList) {
     } else {
         NpcSpriteInstanceCount[spriteIndex] = 1;
         header = spr_load_sprite(spriteIndex - 1, false, useTailAlloc);
+        if (header == nullptr) {
+            return -1;
+        }
         SpriteInstances[listIndex].spriteData = header;
         NpcSpriteData[spriteIndex] = header;
         if (extraAnimList != nullptr) {
@@ -1091,6 +1103,9 @@ s32 spr_update_sprite(s32 spriteInstanceID, s32 animID, f32 timeScale) {
 
     compList = SpriteInstances[i].componentList;
     spriteData = (u32*)SpriteInstances[i].spriteData;
+    if (spriteData == nullptr || compList == nullptr) {
+        return 0;
+    }
 
     rasterList = (SpriteRasterCacheEntry**)*spriteData;
     spriteData += 4 + animIndex;

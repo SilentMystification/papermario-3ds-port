@@ -1,0 +1,18 @@
+#ifndef _NPC_SPRITE_MERLUVLEE_H_
+#define _NPC_SPRITE_MERLUVLEE_H_
+
+#define SPR_Merluvlee 0xB0
+
+#define SPR_PAL_Merluvlee 0x0
+
+#define ANIM_Merluvlee_Still 0xB00000
+#define ANIM_Merluvlee_Idle 0xB00001
+#define ANIM_Merluvlee_Walk 0xB00002
+#define ANIM_Merluvlee_Run 0xB00003
+#define ANIM_Merluvlee_Talk 0xB00004
+#define ANIM_Merluvlee_Happy 0xB00005
+#define ANIM_Merluvlee_Think 0xB00006
+#define ANIM_Merluvlee_Gather 0xB00007
+#define ANIM_Merluvlee_Release 0xB00008
+
+#endif

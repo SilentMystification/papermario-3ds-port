@@ -1,0 +1,103 @@
+#ifndef _NPC_SPRITE_SHYSTACKDAMAGE_H_
+#define _NPC_SPRITE_SHYSTACKDAMAGE_H_
+
+#define SPR_ShyStackDamage 0x74
+
+#define SPR_PAL_ShyStackDamage 0x0
+#define SPR_PAL_ShyStackDamage_Blue 0x1
+#define SPR_PAL_ShyStackDamage_Green 0x2
+#define SPR_PAL_ShyStackDamage_Pink 0x3
+#define SPR_PAL_ShyStackDamage_Yellow 0x4
+#define SPR_PAL_ShyStackDamage_Black 0x5
+#define SPR_PAL_ShyStackDamage_Burnt 0x6
+#define SPR_PAL_ShyStackDamage_Blue_Burnt 0x7
+#define SPR_PAL_ShyStackDamage_Green_Burnt 0x8
+#define SPR_PAL_ShyStackDamage_Pink_Burnt 0x9
+#define SPR_PAL_ShyStackDamage_Yellow_Burnt 0xA
+#define SPR_PAL_ShyStackDamage_Black_Burnt 0xB
+#define SPR_PAL_ShyStackDamage_Unused1 0xC
+#define SPR_PAL_ShyStackDamage_Unused2 0xD
+#define SPR_PAL_ShyStackDamage_Unused3 0xE
+#define SPR_PAL_ShyStackDamage_Unused4 0xF
+#define SPR_PAL_ShyStackDamage_Unused5 0x10
+#define SPR_PAL_ShyStackDamage_Unused6 0x11
+#define SPR_PAL_ShyStackDamage_Unused7 0x12
+#define SPR_PAL_ShyStackDamage_Unused8 0x13
+#define SPR_PAL_ShyStackDamage_Unused9 0x14
+#define SPR_PAL_ShyStackDamage_Unused10 0x15
+#define SPR_PAL_ShyStackDamage_Unused11 0x16
+#define SPR_PAL_ShyStackDamage_Unused12 0x17
+
+#define ANIM_ShyStackDamage_Hurt 0x740000
+#define ANIM_ShyStackDamage_BurnHurt 0x740001
+
+#define ANIM_ShyStackDamage_Blue_Hurt 0x740100
+#define ANIM_ShyStackDamage_Blue_BurnHurt 0x740101
+
+#define ANIM_ShyStackDamage_Green_Hurt 0x740200
+#define ANIM_ShyStackDamage_Green_BurnHurt 0x740201
+
+#define ANIM_ShyStackDamage_Pink_Hurt 0x740300
+#define ANIM_ShyStackDamage_Pink_BurnHurt 0x740301
+
+#define ANIM_ShyStackDamage_Yellow_Hurt 0x740400
+#define ANIM_ShyStackDamage_Yellow_BurnHurt 0x740401
+
+#define ANIM_ShyStackDamage_Black_Hurt 0x740500
+#define ANIM_ShyStackDamage_Black_BurnHurt 0x740501
+
+#define ANIM_ShyStackDamage_Burnt_Hurt 0x740600
+#define ANIM_ShyStackDamage_Burnt_BurnHurt 0x740601
+
+#define ANIM_ShyStackDamage_Blue_Burnt_Hurt 0x740700
+#define ANIM_ShyStackDamage_Blue_Burnt_BurnHurt 0x740701
+
+#define ANIM_ShyStackDamage_Green_Burnt_Hurt 0x740800
+#define ANIM_ShyStackDamage_Green_Burnt_BurnHurt 0x740801
+
+#define ANIM_ShyStackDamage_Pink_Burnt_Hurt 0x740900
+#define ANIM_ShyStackDamage_Pink_Burnt_BurnHurt 0x740901
+
+#define ANIM_ShyStackDamage_Yellow_Burnt_Hurt 0x740A00
+#define ANIM_ShyStackDamage_Yellow_Burnt_BurnHurt 0x740A01
+
+#define ANIM_ShyStackDamage_Black_Burnt_Hurt 0x740B00
+#define ANIM_ShyStackDamage_Black_Burnt_BurnHurt 0x740B01
+
+#define ANIM_ShyStackDamage_Unused1_Hurt 0x740C00
+#define ANIM_ShyStackDamage_Unused1_BurnHurt 0x740C01
+
+#define ANIM_ShyStackDamage_Unused2_Hurt 0x740D00
+#define ANIM_ShyStackDamage_Unused2_BurnHurt 0x740D01
+
+#define ANIM_ShyStackDamage_Unused3_Hurt 0x740E00
+#define ANIM_ShyStackDamage_Unused3_BurnHurt 0x740E01
+
+#define ANIM_ShyStackDamage_Unused4_Hurt 0x740F00
+#define ANIM_ShyStackDamage_Unused4_BurnHurt 0x740F01
+
+#define ANIM_ShyStackDamage_Unused5_Hurt 0x741000
+#define ANIM_ShyStackDamage_Unused5_BurnHurt 0x741001
+
+#define ANIM_ShyStackDamage_Unused6_Hurt 0x741100
+#define ANIM_ShyStackDamage_Unused6_BurnHurt 0x741101
+
+#define ANIM_ShyStackDamage_Unused7_Hurt 0x741200
+#define ANIM_ShyStackDamage_Unused7_BurnHurt 0x741201
+
+#define ANIM_ShyStackDamage_Unused8_Hurt 0x741300
+#define ANIM_ShyStackDamage_Unused8_BurnHurt 0x741301
+
+#define ANIM_ShyStackDamage_Unused9_Hurt 0x741400
+#define ANIM_ShyStackDamage_Unused9_BurnHurt 0x741401
+
+#define ANIM_ShyStackDamage_Unused10_Hurt 0x741500
+#define ANIM_ShyStackDamage_Unused10_BurnHurt 0x741501
+
+#define ANIM_ShyStackDamage_Unused11_Hurt 0x741600
+#define ANIM_ShyStackDamage_Unused11_BurnHurt 0x741601
+
+#define ANIM_ShyStackDamage_Unused12_Hurt 0x741700
+#define ANIM_ShyStackDamage_Unused12_BurnHurt 0x741701
+
+#endif
