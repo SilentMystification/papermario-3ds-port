@@ -76,6 +76,36 @@ void guScaleF(float mf[4][4], float x, float y, float z) {
     mf[2][2] = z;
 }
 
+void guScale(Mtx* m, float x, float y, float z) {
+    float f[4][4];
+    guScaleF(f, x, y, z);
+    guMtxF2L(f, m);
+}
+
+void guRotateRPYF(float mf[4][4], float r, float p, float h) {
+    float dtor = 3.1415926f / 180.f;
+    float sinr, sinp, sinh, cosr, cosp, cosh;
+    r *= dtor;
+    p *= dtor;
+    h *= dtor;
+    sinr = sinf(r);
+    cosr = cosf(r);
+    sinp = sinf(p);
+    cosp = cosf(p);
+    sinh = sinf(h);
+    cosh = cosf(h);
+    guMtxIdentF(mf);
+    mf[0][0] = cosp * cosh;
+    mf[0][1] = cosp * sinh;
+    mf[0][2] = -sinp;
+    mf[1][0] = sinr * sinp * cosh - cosr * sinh;
+    mf[1][1] = sinr * sinp * sinh + cosr * cosh;
+    mf[1][2] = sinr * cosp;
+    mf[2][0] = cosr * sinp * cosh + sinr * sinh;
+    mf[2][1] = cosr * sinp * sinh - sinr * cosh;
+    mf[2][2] = cosr * cosp;
+}
+
 void guTranslateF(float mf[4][4], float x, float y, float z) {
     guMtxIdentF(mf);
     mf[3][0] = x;

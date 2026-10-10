@@ -2792,6 +2792,11 @@ void create_encounters(void) {
             }
             resume_all_group(EVT_GROUP_FLAG_BATTLE);
             gEncounterState = ENCOUNTER_STATE_NEUTRAL;
+            {
+                extern void pm_log(const char* fmt, ...);
+                extern s16 gNpcCount;
+                pm_log("spawn npcs %d", gNpcCount);
+            }
             EncounterStateChanged = true;
             gEncounterSubState = ENCOUNTER_SUBSTATE_NEUTRAL;
             break;

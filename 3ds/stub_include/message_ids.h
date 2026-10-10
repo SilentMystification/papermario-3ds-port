@@ -6,6 +6,9 @@
 #define MSG_HOS_006A 2
 #define MSG_HOS_006B 3
 #define MSG_Menus_0198 30
+#define MSG_Menus_PlayerFirstStrike 31
+#define MSG_Menus_PartnerFirstStrike 32
+#define MSG_Menus_EnemyFirstStrike 33
 #define MSG_Intro_0001 4
 #define MSG_Intro_0002 5
 #define MSG_Intro_0003 6

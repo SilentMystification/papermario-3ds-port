@@ -37,6 +37,93 @@ BSS PlayerSpriteCacheEntry PlayerRasterCache[18];
 #define ALIGN4(v) (((u32)(v) >> 2) << 2)
 #define SPR_SWIZZLE(base,offset) ((void*)((s32)(offset) + (s32)(base)))
 
+/* Sprite blobs in the ROM are big-endian 32-bit offsets. Paperboat converts those
+ * offsets in an offline cook because its pointers are 64-bit. Here the pointers
+ * stay 32-bit, so the same fields are swapped in place and the retail swizzle
+ * still adds the base. */
+static s32 spr_be32(void* p) {
+    return (s32)__builtin_bswap32(*(u32*)p);
+}
+
+static s16 spr_be16(void* p) {
+    return (s16)__builtin_bswap16(*(u16*)p);
+}
+
+static void spr_host_endian(u8* base, u32 size) {
+    s32* anims;
+    s32* rasters;
+    s32* pals;
+    u32 off;
+
+    if (size < 0x14) return;
+    *(s32*)(base + 0) = spr_be32(base + 0);
+    *(s32*)(base + 4) = spr_be32(base + 4);
+    *(s32*)(base + 8) = spr_be32(base + 8);
+    *(s32*)(base + 12) = spr_be32(base + 12);
+
+    off = (u32)*(s32*)(base + 0);
+    if (off < size) {
+        rasters = (s32*)(base + off);
+        while ((u8*)rasters + 4 <= base + size) {
+            s32 ent = spr_be32(rasters);
+            *rasters = ent;
+            if (ent == -1) break;
+            if ((u32)ent + 4 <= size) {
+                *(s32*)(base + ent) = spr_be32(base + ent);
+            }
+            rasters++;
+        }
+    }
+
+    off = (u32)*(s32*)(base + 4);
+    if (off < size) {
+        pals = (s32*)(base + off);
+        while ((u8*)pals + 4 <= base + size) {
+            s32 ent = spr_be32(pals);
+            *pals = ent;
+            if (ent == -1) break;
+            pals++;
+        }
+    }
+
+    anims = (s32*)(base + 0x10);
+    while ((u8*)anims + 4 <= base + size) {
+        s32 aoff = spr_be32(anims);
+        *anims = aoff;
+        if (aoff == -1) break;
+        if ((u32)aoff < size) {
+            s32* comps = (s32*)(base + aoff);
+            while ((u8*)comps + 4 <= base + size) {
+                s32 coff = spr_be32(comps);
+                *comps = coff;
+                if (coff == -1) break;
+                if ((u32)coff + 12 <= size) {
+                    u8* comp = base + coff;
+                    s32 cmd = spr_be32(comp);
+                    s16 cmd_size = spr_be16(comp + 4);
+                    s16 ox = spr_be16(comp + 6);
+                    s16 oy = spr_be16(comp + 8);
+                    s16 oz = spr_be16(comp + 10);
+                    *(s32*)comp = cmd;
+                    *(s16*)(comp + 4) = cmd_size;
+                    *(s16*)(comp + 6) = ox;
+                    *(s16*)(comp + 8) = oy;
+                    *(s16*)(comp + 10) = oz;
+                    if (cmd > 0 && (u32)cmd < size && cmd_size > 0) {
+                        u32 nbytes = (u32)cmd_size;
+                        u16* cmds = (u16*)(base + cmd);
+                        u32 i;
+                        if ((u32)cmd + nbytes > size) nbytes = size - (u32)cmd;
+                        for (i = 0; i < nbytes / 2; i++) cmds[i] = (u16)spr_be16(cmds + i);
+                    }
+                }
+                comps++;
+            }
+        }
+        anims++;
+    }
+}
+
 void spr_swizzle_anim_offsets(s32 arg0, s32 base, void* spriteData) {
     u8* buffer;
     SpriteAnimComponent*** animList;
@@ -88,6 +175,8 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
 
     // read current and next sprite offsets, so we can find the difference
     nuPiReadRom(base + idx * 4, &spr_asset_entry, sizeof(spr_asset_entry));
+    spr_asset_entry[0] = spr_be32(&spr_asset_entry[0]);
+    spr_asset_entry[1] = spr_be32(&spr_asset_entry[1]);
 
     compressedSize = ALIGN8(spr_asset_entry[1] - spr_asset_entry[0]);
     data = general_heap_malloc(compressedSize);
@@ -96,14 +185,38 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
     ptr1 = (s32*)data;
     // skip 4 bytes: 'YAY0' signature
     ptr1++;
+    *ptr1 = spr_be32(ptr1);
 
+    if (*ptr1 < 16 || *ptr1 > 0x40000 || compressedSize < 16) {
+        general_heap_free(data);
+        return nullptr;
+    }
     if (useTailAlloc) {
         animData = _heap_malloc_tail(&heap_spriteHead, *ptr1);
     } else {
         animData = _heap_malloc(&heap_spriteHead, *ptr1);
     }
-    decode_yay0(data, animData);
+    if (!animData) {
+        general_heap_free(data);
+        return nullptr;
+    }
+    {
+        extern int pm_yay0_decode(const void* src, u32 src_len, void* dst, u32 dst_len);
+        if (!pm_yay0_decode(data, (u32)compressedSize, animData, (u32)*ptr1)) {
+            general_heap_free(data);
+            return nullptr;
+        }
+    }
+    spr_host_endian((u8*)animData, (u32)*ptr1);
     general_heap_free(data);
+    {
+        extern void pm_log(const char* fmt, ...);
+        static int sprite_logs;
+        if (sprite_logs < 4) {
+            sprite_logs++;
+            pm_log("sprite %d bytes %d comps %d", idx, *ptr1, animData->maxComponents);
+        }
+    }
 
     // swizzle raster array
     data = (s32**)animData->rastersOffset;
@@ -134,7 +247,7 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
         nuPiReadRom(SpriteDataHeader[0] + PlayerRasterHeader.loadDescriptors + sizeof(u32) * PlayerSpriteRasterSets[idx],
             PlayerRasterLoadDescBuffer, sizeof(PlayerRasterLoadDescBuffer));
         for (i = 0; i < count; i++) {
-            PlayerRasterLoadDesc[PlayerRasterLoadDescNumLoaded++] = PlayerRasterLoadDescBuffer[i];
+            PlayerRasterLoadDesc[PlayerRasterLoadDescNumLoaded++] = spr_be32(&PlayerRasterLoadDescBuffer[i]);
         }
     }
 
@@ -160,6 +273,9 @@ void spr_init_player_raster_cache(s32 cacheSize, s32 maxRasterSize) {
     s32 i;
 
     nuPiReadRom(SPRITE_ROM_START, &SpriteDataHeader, sizeof(SpriteDataHeader));
+    SpriteDataHeader[0] = spr_be32(&SpriteDataHeader[0]);
+    SpriteDataHeader[1] = spr_be32(&SpriteDataHeader[1]);
+    SpriteDataHeader[2] = spr_be32(&SpriteDataHeader[2]);
     PlayerRasterCacheSize = cacheSize;
     PlayerRasterMaxSize = maxRasterSize;
     SpriteDataHeader[0] += SPRITE_ROM_START;
@@ -180,7 +296,16 @@ void spr_init_player_raster_cache(s32 cacheSize, s32 maxRasterSize) {
     }
     PlayerRasterLoadDescNumLoaded = 0;
     nuPiReadRom(SpriteDataHeader[0], &PlayerRasterHeader, sizeof(PlayerRasterHeader));
+    PlayerRasterHeader.indexRanges = spr_be32(&PlayerRasterHeader.indexRanges);
+    PlayerRasterHeader.loadDescriptors = spr_be32(&PlayerRasterHeader.loadDescriptors);
+    PlayerRasterHeader.imageData = spr_be32(&PlayerRasterHeader.imageData);
     nuPiReadRom(SpriteDataHeader[0] + PlayerRasterHeader.indexRanges, PlayerSpriteRasterSets, sizeof(PlayerSpriteRasterSets));
+    {
+        s32 n;
+        for (n = 0; n < (s32)ARRAY_COUNT(PlayerSpriteRasterSets); n++) {
+            PlayerSpriteRasterSets[n] = spr_be32(&PlayerSpriteRasterSets[n]);
+        }
+    }
 }
 
 IMG_PTR spr_get_player_raster(s32 rasterIndex, s32 playerSpriteID) {
@@ -256,8 +381,14 @@ void spr_load_npc_extra_anims(SpriteAnimData* header, u32* extraAnimList) {
     while ((extraAnimID = *extraAnimList++) != -1) {
         compList = header->animListStart[extraAnimID & 0xFF];
         while ((comp = *compList++) != PTR_LIST_END) {
+            if ((u32)comp < 0x00100000u) {
+                break;
+            }
             cmdList = comp->cmdList;
             remaining = (s16) comp->cmdListSize / 2;
+            if (remaining < 0 || remaining > 0x1000 || (u32)cmdList < 0x00100000u) {
+                break;
+            }
             while (remaining > 0) {
                 animCmd = *cmdList++;
                 remaining--;

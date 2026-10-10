@@ -62,6 +62,14 @@ set(GAME_SRC
     ${DECOMP}/src/evt/model_api.c
     ${DECOMP}/src/evt/map_api.c
     ${DECOMP}/src/evt/f8f60_len_1560.c
+    ${DECOMP}/src/evt/npc_api.c
+    ${DECOMP}/src/encounter_api.c
+    ${DECOMP}/src/npc.c
+    ${DECOMP}/src/sprite.c
+    ${DECOMP}/src/101b90_len_8f0.c
+    ${DECOMP}/src/imgfx.c
+    ${DECOMP}/src/77480.c
+    ${DECOMP}/src/encounter.c
     ${DECOMP}/src/world/area_hos/hos_05/intro.c
     ${DECOMP}/src/world/area_hos/hos_05/main.c
     ${DECOMP}/src/world/area_hos/hos_05/misc.c
@@ -71,7 +79,7 @@ set(GAME_SRC
     ${DECOMP}/src/world/area_hos/hos_05/npc.c
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
-set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration")
+set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types")
 
 ctr_add_shader_library(pm_shader shaders/pm.v.pica)
 dkp_add_embedded_binary_library(pm_shader_lib pm_shader)
@@ -93,6 +101,8 @@ set(PORT_SRC
     src/pm_map.c
     src/pm_title.c
     src/pm_evt_stub.c
+    src/pm_actor_link.c
+    src/pm_actor_stubs.c
     src/game_stubs.c
 )
 set(PM_BUILD_ID_H "${CMAKE_CURRENT_BINARY_DIR}/pm_build_id.h")

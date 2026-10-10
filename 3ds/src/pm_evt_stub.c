@@ -19,31 +19,9 @@ STUB(SetSpriteShading)
 STUB(SetMusic)
 STUB(FadeInMusic)
 STUB(PlaySound)
-ApiStatus MakeNpcs(Evt* script, bool initial) {
-    Bytecode* args = script->ptrReadPos;
-    NpcGroup* groups;
-    s32 count = 0;
-
-    (void)initial;
-    evt_get_variable(script, *args++);
-    groups = (NpcGroup*)evt_get_variable(script, *args++);
-    if (script->curArgc > 0) {
-        script->ptrReadPos += script->curArgc;
-        script->curArgc = 0;
-    }
-    while (groups != NULL && groups->npcCount > 0 && count < 64) {
-        count += groups->npcCount;
-        groups++;
-    }
-    pm_log("spawn npcs %d", count);
-    return ApiStatus_DONE2;
-}
 STUB(DisablePlayerInput)
 STUB(PlaySoundAt)
 STUB(PlaySoundAtPlayer)
-STUB(GetSelfNpcID)
-STUB(BindNpcIdle)
-STUB(RemoveNpc)
 STUB(GetPlayerPos)
 STUB(GetPartnerInUse)
 STUB(InterruptUsePartner)
@@ -51,23 +29,9 @@ STUB(func_802D2C14)
 STUB(PlayerMoveTo)
 STUB(PlayerFaceNpc)
 STUB(SpeakToPlayer)
-STUB(SetSelfVar)
-STUB(NpcJump0)
 STUB(SetPlayerAnimation)
-STUB(SetNpcVar)
-STUB(GetNpcVar)
 STUB(UseExitHeading)
 STUB(ShowMessageAtScreenPos)
-
-EvtScript EnemyNpcHit = {
-    Return
-    End
-};
-
-EvtScript EnemyNpcDefeat = {
-    Return
-    End
-};
 
 s32 get_msg_lines(s32 msgID) { (void)msgID; return 1; }
 void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style) {
@@ -95,23 +59,8 @@ EvtScript hos_05_EVS_EnterStarship = {
 };
 STUB(DisablePlayerPhysics)
 STUB(DismissEffect)
-STUB(EnableNpcShadow)
-STUB(GetNpcPos)
-STUB(InterpNpcYaw)
-STUB(NpcFaceNpc)
 STUB(PlayEffect_impl)
 STUB(RemoveEffect)
-STUB(SetNpcAnimation)
-STUB(SetNpcFlagBits)
-STUB(SetNpcImgFXParams)
-STUB(SetNpcJumpscale)
-STUB(SetNpcPaletteSwapLower)
-STUB(SetNpcPaletteSwapMode)
-STUB(SetNpcPaletteSwapping)
-STUB(SetNpcPos)
-STUB(SetNpcRotation)
-STUB(SetNpcScale)
-
 s32 get_global_flag(s32 idx) { (void)idx; return 0; }
 s32 get_area_flag(s32 idx) { (void)idx; return 0; }
 s32 get_global_byte(s32 idx) { (void)idx; return 0; }

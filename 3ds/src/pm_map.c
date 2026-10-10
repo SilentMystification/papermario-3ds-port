@@ -327,6 +327,27 @@ static int yay0_decode(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
     return 1;
 }
 
+/* Retail decode_yay0. Header fields are big-endian. The bitfield is the 32-bit
+ * Yay0 stream this port already uses for map shapes, not Paperboat's 8-bit variant. */
+int pm_yay0_decode(const void* src, u32 src_len, void* dst, u32 dst_len) {
+    return yay0_decode(src, src_len, dst, dst_len);
+}
+
+void decode_yay0(void* src, void* dst) {
+    u8* s = src;
+    u32 dec, link, count, bound;
+    if (!src || !dst) return;
+    if (s[0] != 'Y' || s[1] != 'a' || s[2] != 'y' || s[3] != '0') return;
+    dec = rbe(s + 4);
+    link = rbe(s + 8);
+    count = rbe(s + 12);
+    /* No source length was passed. Stop at the farther table, and do not
+     * scan a megabyte past the block the caller allocated. */
+    bound = link > count ? link : count;
+    if (dec > 0x40000u || bound < 16u) return;
+    yay0_decode(s, bound, dst, dec);
+}
+
 static int find_asset(const char* name, u32* rom_off, u32* comp_len, u32* dec_len) {
     AssetEntry first;
     AssetEntry* table;
@@ -424,6 +445,7 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         return;
     }
     dma_copy((u8*)rom_off, (u8*)rom_off + comp_len, compressed);
+    pm_log("yay0 %s %u -> %u", shape_name, comp_len, dec_len);
     if (!yay0_decode(compressed, comp_len, shape, dec_len)) {
         pm_log("map %s yay0 failed", shape_name);
         general_heap_free(compressed);
@@ -522,16 +544,3 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     pm_log("map %s models %d", shape_name, models);
 }
 
-static Npc intro_npcs[16];
-
-Npc* get_npc_safe(s32 npcId) {
-    if (npcId < 0 || npcId >= 16) return &intro_npcs[0];
-    return &intro_npcs[npcId];
-}
-
-Npc* resolve_npc(Evt* script, s32 npcIdOrPtr) {
-    (void)script;
-    if (npcIdOrPtr == NPC_SELF) return &intro_npcs[0];
-    if (npcIdOrPtr >= EVT_LIMIT) return get_npc_safe(npcIdOrPtr);
-    return (Npc*)(unsigned long)npcIdOrPtr;
-}

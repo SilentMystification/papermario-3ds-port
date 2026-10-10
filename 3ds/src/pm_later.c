@@ -1,7 +1,7 @@
 /* Systems the logo slice does not run. Each one is replaced by its real file later. */
 unsigned char heap_battleHead[0x25800];
 void update_max_rumble_duration() {}
-void npc_iter_no_op() {}
+/* npc_iter_no_op is npc.c */
 void update_triggers() {}
 void update_messages() {}
 void update_hud_elements() {}
@@ -12,9 +12,9 @@ void update_ambient_sounds() {}
 void sfx_update_env_sound_params() {}
 void update_windows() {}
 void sfx_stop_env_sounds() {}
-void disable_player_input() {}
-void spr_render_init() {}
-void player_render_interact_prompts() {}
+/* disable_player_input is 77480.c */
+/* spr_render_init is sprite.c */
+/* player_render_interact_prompts is 77480.c */
 void render_hud_elements_backUI() {}
 void render_effects_UI() {}
 void render_hud_elements_frontUI() {}
@@ -23,19 +23,19 @@ void _render_transition_stencil() {}
 void render_window_root() {}
 void render_messages() {}
 void fio_init_flash() {}
-void clear_player_status() {}
-void spr_init_sprites() {}
+/* clear_player_status is 77480.c */
+/* spr_init_sprites is sprite.c */
 void clear_entity_models() {}
 void clear_sprite_shading_data() {}
 void reset_background_settings() {}
 void clear_character_set() {}
 void clear_printers() {}
-void clear_npcs() {}
+/* clear_npcs is npc.c */
 void hud_element_clear_cache() {}
 void clear_trigger_data() {}
 void clear_entity_data() {}
 void clear_player_data() {}
-void init_encounter_status() {}
+/* init_encounter_status is npc.c */
 void clear_effect_data() {}
 void clear_saved_variables() {}
 void clear_item_entity_data() {}
@@ -53,10 +53,8 @@ void bgm_reset_volume() {}
 void fio_load_globals() {}
 void snd_set_stereo() {}
 void snd_set_mono() {}
-void update_npcs() {}
+/* update_npcs, update_player, update_encounters are npc.c and 77480.c */
 void update_effects() {}
-void update_player() {}
-void update_encounters() {}
 void clear_virtual_entity_list() {}
 void init_virtual_entity_list() {}
 void fx_flame() {}
@@ -64,8 +62,7 @@ void clear_animator_list() {}
 void render_effects_scene() {}
 void render_entities() {}
 void render_item_entities() {}
-void render_npcs() {}
-void render_player() {}
+/* render_npcs is npc.c, render_player is 77480.c */
 void render_transformed_hud_elements() {}
 int test_ray_zones() { return -1; }
 void state_drawUI_battle() {}

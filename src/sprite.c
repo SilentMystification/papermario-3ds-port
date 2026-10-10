@@ -764,6 +764,9 @@ void spr_load_player_sprite(s32 spriteIndex) {
     SpriteAnimData* playerSprite = spr_load_sprite(spriteIndex - 1, true, false);
 
     PlayerSprites[spriteIndex - 1] = playerSprite;
+    if (playerSprite == nullptr) {
+        return;
+    }
     if (MaxPlayerSpriteComponents < playerSprite->maxComponents) {
         MaxPlayerSpriteComponents = playerSprite->maxComponents;
     }
