@@ -41,8 +41,10 @@ static u8 seen[256];
 /* i = every corner in front of the eye, drawn where it projected.
  * c = a corner behind the eye was cut. d = nothing left in front.
  * x is the first vertex's N64 ndc * 100. */
-static int n_cmd, n_in, n_cut, n_drop, sample_x, have_sample;
-static char stats_line[48];
+static int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample;
+static char stats_line[64];
+/* kmr_20 door, world (240, 30, -80). One object-space corner per second. */
+static int door_have, door_ox, door_oy, door_oz, door_xw, door_yw, door_zw, door_w100;
 static unsigned comb_a, comb_b, comb_c;
 static int comb_set;
 
@@ -228,6 +230,43 @@ static int clip_near(ClipV* poly, int n) {
     return m;
 }
 
+/* Object-space corner within a few units of the house door. Clip ratios are
+ * the same x/w libultraship stores before the viewport. */
+static void note_door(const Vtx* v, const ClipV* o) {
+    int dx = (int)v->v.ob[0] - 240;
+    int dy = (int)v->v.ob[1] - 30;
+    int dz = (int)v->v.ob[2] + 80;
+    if (dx < 0) dx = -dx;
+    if (dy < 0) dy = -dy;
+    if (dz < 0) dz = -dz;
+    if (dx > 16 || dy > 16 || dz > 16) return;
+    if (door_have) return;
+    door_have = 1;
+    door_ox = (int)v->v.ob[0];
+    door_oy = (int)v->v.ob[1];
+    door_oz = (int)v->v.ob[2];
+    door_xw = door_yw = door_zw = 0;
+    if (o->w != 0.f) {
+        door_xw = (int)(o->x / o->w * 100.f);
+        door_yw = (int)(o->y / o->w * 100.f);
+        door_zw = (int)(o->z / o->w * 100.f);
+    }
+    door_w100 = (int)(o->w * 100.f);
+}
+
+/* Same bits as libultraship, except the near plane, which they leave commented out.
+ * A triangle is dropped only when every corner is off the same side. */
+static int clip_bits(const ClipV* p) {
+    int b = 0;
+    float w = p->w;
+    if (p->x < -w) b |= 1;
+    if (p->x > w) b |= 2;
+    if (p->y < -w) b |= 4;
+    if (p->y > w) b |= 8;
+    if (p->z > w) b |= 32;
+    return b;
+}
+
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
 static void draw_tri(unsigned w) {
@@ -249,10 +288,25 @@ static void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
-    for (i = 0; i < 3; i++) xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
+    for (i = 0; i < 3; i++) {
+        xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
+        note_door(&verts[idx[i]], &poly[i]);
+    }
     if (!have_sample && poly[0].w != 0.f) {
         sample_x = (int)(poly[0].x / poly[0].w * 100.f);
         have_sample = 1;
+    }
+    if (clip_bits(&poly[0]) & clip_bits(&poly[1]) & clip_bits(&poly[2])) {
+        n_out++;
+        return;
+    }
+    {
+        int k;
+        for (k = 0; k < 3; k++) {
+            float pw = poly[k].w;
+            if (pw > 0.05f && poly[k].x >= -pw && poly[k].x <= pw && poly[k].y >= -pw && poly[k].y <= pw)
+                n_keep++;
+        }
     }
     if (poly[0].w > 0.05f && poly[1].w > 0.05f && poly[2].w > 0.05f) {
         n_in++;
@@ -308,25 +362,39 @@ static void note(unsigned op) {
 
 void pm_gbi_end_frame(void) {
     /* One second of presented frames, summed. Identical seconds are not written. */
-    static int frames, acc_t, acc_i, acc_c, acc_d, acc_x;
-    static char prev[48];
-    snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d x%d", n_cmd, n_in, n_cut, n_drop, have_sample ? sample_x : 0);
+    static int frames, acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x;
+    static char prev[64];
+    snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d o%d k%d x%d",
+             n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0);
     acc_t += n_cmd;
     acc_i += n_in;
     acc_c += n_cut;
     acc_d += n_drop;
+    acc_o += n_out;
+    acc_k += n_keep;
     if (have_sample) acc_x = sample_x;
     frames++;
     if (frames >= 30) {
-        char line[48];
-        snprintf(line, sizeof line, "t%d i%d c%d d%d x%d", acc_t, acc_i, acc_c, acc_d, acc_x);
+        char line[80];
+        snprintf(line, sizeof line, "t%d i%d c%d d%d o%d k%d x%d", acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x);
         if (strcmp(line, prev) != 0) {
             pm_log("stats %s", line);
             snprintf(prev, sizeof prev, "%s", line);
         }
-        frames = acc_t = acc_i = acc_c = acc_d = 0;
+        frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
+        if (door_have) {
+            static char door_prev[64];
+            char door_line[64];
+            snprintf(door_line, sizeof door_line, "door %d %d %d x%d y%d z%d w%d",
+                     door_ox, door_oy, door_oz, door_xw, door_yw, door_zw, door_w100);
+            if (strcmp(door_line, door_prev) != 0) {
+                pm_log("%s", door_line);
+                snprintf(door_prev, sizeof door_prev, "%s", door_line);
+            }
+        }
+        door_have = 0;
     }
-    n_cmd = n_in = n_cut = n_drop = 0;
+    n_cmd = n_in = n_cut = n_drop = n_out = n_keep = 0;
     have_sample = 0;
 }
 
