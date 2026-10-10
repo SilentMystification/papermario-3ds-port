@@ -16,7 +16,6 @@ void sfx_stop_env_sounds() {}
 /* spr_render_init is sprite.c */
 /* player_render_interact_prompts is 77480.c */
 void render_hud_elements_backUI() {}
-void render_effects_UI() {}
 void render_hud_elements_frontUI() {}
 void crash_screen_set_draw_info() {}
 void _render_transition_stencil() {}
@@ -36,7 +35,6 @@ void clear_trigger_data() {}
 void clear_entity_data() {}
 void clear_player_data() {}
 /* init_encounter_status is npc.c */
-void clear_effect_data() {}
 void clear_saved_variables() {}
 void clear_item_entity_data() {}
 void bgm_reset_sequence_players() {}
@@ -54,12 +52,10 @@ void fio_load_globals() {}
 void snd_set_stereo() {}
 void snd_set_mono() {}
 /* update_npcs, update_player, update_encounters are npc.c and 77480.c */
-void update_effects() {}
 void clear_virtual_entity_list() {}
 void init_virtual_entity_list() {}
 void fx_flame() {}
 void clear_animator_list() {}
-void render_effects_scene() {}
 void render_entities() {}
 void render_item_entities() {}
 /* render_npcs is npc.c, render_player is 77480.c */

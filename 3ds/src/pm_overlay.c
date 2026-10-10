@@ -21,6 +21,16 @@ void set_screen_overlay_color(s32 layer, u8 r, u8 g, u8 b) {
     overlay_b[layer] = b;
 }
 
+void get_screen_overlay_params(s32 layer, u8* type, f32* zoom) {
+    if (layer != SCREEN_LAYER_FRONT && layer != SCREEN_LAYER_BACK) {
+        if (type) *type = (u8)OVERLAY_NONE;
+        if (zoom) *zoom = 0.f;
+        return;
+    }
+    if (type) *type = (u8)overlay_type[layer];
+    if (zoom) *zoom = overlay_alpha[layer] > 0.f ? overlay_alpha[layer] : 0.f;
+}
+
 static void emit_color_overlay(s32 layer) {
     s32 type = overlay_type[layer];
     f32 alpha = overlay_alpha[layer];

@@ -98,6 +98,7 @@ set(PORT_SRC
     src/pm_audio.c
     src/pm_later.c
     src/pm_overlay.c
+    src/pm_fx.c
     src/pm_map.c
     src/pm_title.c
     src/pm_evt_stub.c

@@ -58,9 +58,6 @@ EvtScript hos_05_EVS_EnterStarship = {
     End
 };
 STUB(DisablePlayerPhysics)
-STUB(DismissEffect)
-STUB(PlayEffect_impl)
-STUB(RemoveEffect)
 s32 get_global_flag(s32 idx) { (void)idx; return 0; }
 s32 get_area_flag(s32 idx) { (void)idx; return 0; }
 s32 get_global_byte(s32 idx) { (void)idx; return 0; }
@@ -76,11 +73,5 @@ Trigger* create_trigger(TriggerBlueprint* def) { (void)def; return NULL; }
 void delete_trigger(Trigger* toDelete) { (void)toDelete; }
 s32 is_another_trigger_bound(Trigger* trigger, EvtScript* script) { (void)trigger; (void)script; return 0; }
 void sfx_play_sound(s32 id) { (void)id; }
-void fx_fire_breath(void) {}
 void render_animated_model(s32 animatorID, Mtx* rootTransform) { (void)animatorID; (void)rootTransform; }
 void update_model_animator_with_transform(s32 animatorID, Mtx* mtx) { (void)animatorID; (void)mtx; }
-void get_screen_overlay_params(s32 idx, u8* type, f32* zoom) {
-    (void)idx;
-    if (type) *type = 0;
-    if (zoom) *zoom = 0.f;
-}
