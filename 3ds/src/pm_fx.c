@@ -13,7 +13,7 @@ typedef struct PmFx {
     s32 live;
     EffectInstance inst;
     s32 kind;
-    f32 x, y, z, scale;
+    f32 x, y, z, x2, y2, z2, scale;
     s32 life, maxLife;
     u8 r, g, b;
     union {
@@ -125,7 +125,13 @@ static void pull_pos(PmFx* s) {
     }
 }
 
+static EffectInstance* spawn_to(s32 kind, f32 x, f32 y, f32 z, f32 x2, f32 y2, f32 z2, f32 scale, s32 life, u8 r, u8 g, u8 b);
+
 static EffectInstance* spawn(s32 kind, f32 x, f32 y, f32 z, f32 scale, s32 life, u8 r, u8 g, u8 b) {
+    return spawn_to(kind, x, y, z, x, y, z, scale, life, r, g, b);
+}
+
+static EffectInstance* spawn_to(s32 kind, f32 x, f32 y, f32 z, f32 x2, f32 y2, f32 z2, f32 scale, s32 life, u8 r, u8 g, u8 b) {
     PmFx* s = NULL;
     s32 i;
     /* life < 0 stays until the script dismisses it. */
@@ -143,6 +149,9 @@ static EffectInstance* spawn(s32 kind, f32 x, f32 y, f32 z, f32 scale, s32 life,
     s->x = x;
     s->y = y;
     s->z = z;
+    s->x2 = x2;
+    s->y2 = y2;
+    s->z2 = z2;
     s->scale = scale;
     s->life = s->maxLife = life;
     s->r = r;
@@ -291,10 +300,20 @@ static void draw_one(PmFx* s) {
             }
             break;
         case EFFECT_LIGHTNING:
-            quad(s->x, s->y + 30.f, s->z, 6.f, 50.f, 255, 255, 255, a);
+            for (i = 0; i < 7; i++) {
+                f32 jag = ((i & 1) ? 14.f : -14.f);
+                quad(s->x + jag, s->y + 90.f - (f32)i * 22.f, s->z, 3.f, 16.f, 255, 255, 220, a);
+            }
+            quad(s->x, s->y + 20.f, s->z, 10.f, 6.f, 255, 255, 255, a);
             break;
         case EFFECT_FIRE_BREATH:
-            quad(s->x, s->y, s->z, 10.f + grow * 0.2f, 8.f, 255, 120, 30, a);
+            for (i = 0; i < 6; i++) {
+                f32 t = ((f32)i + 1.f) / 6.f;
+                f32 heat = 1.f - t * 0.65f;
+                quad(s->x + (s->x2 - s->x) * t, s->y + (s->y2 - s->y) * t, s->z + (s->z2 - s->z) * t,
+                    4.f + 10.f * t, 4.f + 8.f * t,
+                    255, (u8)(180.f * heat), (u8)(40.f * heat), a);
+            }
             break;
         default:
             quad(s->x, s->y, s->z, grow, grow, s->r, s->g, s->b, a);
@@ -351,7 +370,7 @@ API_CALLABLE(PlayEffect_impl) {
             evt_set_variable(script, script->ptrReadPos[6], (s32)made);
             break;
         case EFFECT_FIRE_BREATH:
-            made = spawn(id, x, y, z, 1.f, -1, 255, 90, 20);
+            made = spawn_to(id, x, y, z, arg_f(script, 5), arg_f(script, 6), arg_f(script, 7), 1.f, -1, 255, 90, 20);
             evt_set_variable(script, LVarF, (s32)made);
             break;
         case EFFECT_SHIMMER_BURST:
@@ -430,10 +449,7 @@ EffectInstance* fx_misc_particles(s32 variation, f32 x, f32 y, f32 z, f32 sx, f3
 
 void fx_fire_breath(s32 type, f32 x, f32 y, f32 z, f32 x2, f32 y2, f32 z2, s32 a, s32 b, s32 life) {
     (void)type;
-    (void)x2;
-    (void)y2;
-    (void)z2;
     (void)a;
     (void)b;
-    spawn(EFFECT_FIRE_BREATH, x, y, z, 1.f, life > 0 ? life : 20, 255, 90, 20);
+    spawn_to(EFFECT_FIRE_BREATH, x, y, z, x2, y2, z2, 1.f, life > 0 ? life : 20, 255, 90, 20);
 }

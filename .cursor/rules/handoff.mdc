@@ -1,0 +1,14 @@
+---
+description: Stop at a finished slice and hand off through a short file
+alwaysApply: true
+---
+
+# Handoff
+
+When a feature or slice is finished, stop and tell the user. They start a new agent from `HANDOFF.md`. Do not keep working in the same chat.
+
+A commit is not automatically a handoff. Each commit, decide whether the slice is done enough for a new agent. If it is, say so.
+
+`HANDOFF.md` is the only handoff document. Replace it. Do not append history. Keep it short.
+
+Plan: `C:\Users\Andrew\.cursor\plans\cutscene_systems_plan_2097aefa.plan.md`

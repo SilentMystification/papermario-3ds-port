@@ -206,6 +206,28 @@ Quad* spr_get_quad_for_size(s32* quadIndex, s32 width, s32 height) {
             spr_make_quad_for_size(quad, width, height);
             return quad;
         }
+    } else if (width > 0 && height > 0 && width <= 255 && height <= 255) {
+        /* The clown car is past the 4KB cutoff, so retail builds it as an
+         * imgfx mesh. That mesh does not come out here. Keep Kammy's small
+         * cache, and give the large pieces their own quads on the same path. */
+        static Quad large_quads[24];
+        static s32 large_info[24];
+        static s32 ready;
+        s32 dimensions = (width << 0x18) + (height << 0x10);
+        if (!ready) {
+            for (i = 0; i < 24; i++) large_info[i] = -1;
+            ready = 1;
+        }
+        for (i = 0; i < 24; i++) {
+            if (large_info[i] == dimensions) return &large_quads[i];
+        }
+        for (i = 0; i < 24; i++) {
+            if (large_info[i] == -1) {
+                large_info[i] = dimensions;
+                spr_make_quad_for_size(&large_quads[i], width, height);
+                return &large_quads[i];
+            }
+        }
     }
     return nullptr;
 }
