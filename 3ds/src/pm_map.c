@@ -2,11 +2,12 @@
 #include "model.h"
 #include "camera.h"
 #include "pm_port.h"
+#include "mapfs/hos_05_shape.h"
 
 int strcmp(const char* a, const char* b);
 void bcopy(const void* src, void* dst, unsigned int n);
 
-extern EvtScript hos_05_EVS_Intro_Main;
+extern EvtScript hos_05_EVS_Main;
 
 /* Shape files are built for gMapShapeData at this N64 address. */
 #define SHAPE_BASE 0x80210000u
@@ -480,8 +481,13 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         cam->followPlayer = true;
         cam->panActive = true;
         set_cam_viewport(CAM_DEFAULT, 29, 28, 262, 162);
+        /* Entry 3 is the intro. EVS_Main hides the starship after the cutscene,
+         * so hide it before the first frame. The same script asks for IntroNPCs. */
+        mdl_group_set_visibility(MODEL_g277, MODEL_FLAG_HIDDEN, MODEL_GROUP_HIDDEN);
+        mdl_group_set_visibility(MODEL_g279, MODEL_FLAG_HIDDEN, MODEL_GROUP_HIDDEN);
+        pm_log("hide starship entry %d", gGameStatusPtr->entryID);
         {
-            Evt* script = start_script_in_group(&hos_05_EVS_Intro_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
+            Evt* script = start_script_in_group(&hos_05_EVS_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
             if (script) gGameStatusPtr->mainScriptID = script->id;
             pm_log("intro script %d", gGameStatusPtr->mainScriptID);
         }

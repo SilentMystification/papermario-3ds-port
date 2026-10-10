@@ -10,4 +10,5 @@
 #define ANIM_WorldBowser_ClownCarStarRod 8
 #define ANIM_WorldBowser_ClownCarStill 9
 #define ANIM_WorldBowser_ClownCarTalk 10
+#define ANIM_WorldBowser_Idle 11
 #endif

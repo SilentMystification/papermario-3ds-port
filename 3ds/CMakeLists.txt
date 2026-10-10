@@ -61,7 +61,14 @@ set(GAME_SRC
     ${DECOMP}/src/evt/cam_api.c
     ${DECOMP}/src/evt/model_api.c
     ${DECOMP}/src/evt/map_api.c
+    ${DECOMP}/src/evt/f8f60_len_1560.c
     ${DECOMP}/src/world/area_hos/hos_05/intro.c
+    ${DECOMP}/src/world/area_hos/hos_05/main.c
+    ${DECOMP}/src/world/area_hos/hos_05/misc.c
+    ${DECOMP}/src/world/area_hos/hos_05/model_fx.c
+    ${DECOMP}/src/world/area_hos/hos_05/music.c
+    ${DECOMP}/src/world/area_hos/hos_05/narrator.c
+    ${DECOMP}/src/world/area_hos/hos_05/npc.c
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration")

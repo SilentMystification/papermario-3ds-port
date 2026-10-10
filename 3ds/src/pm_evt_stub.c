@@ -1,4 +1,5 @@
 #include "common.h"
+#include "pm_port.h"
 
 /* Calls the intro script reaches before their real systems exist.
  * Each one consumes the arguments the opcode already counted, then finishes. */
@@ -14,14 +15,89 @@ static ApiStatus skip_call(Evt* script, bool initial) {
 
 #define STUB(name) ApiStatus name(Evt* script, bool initial) { return skip_call(script, initial); }
 
+STUB(SetSpriteShading)
+STUB(SetMusic)
+STUB(FadeInMusic)
+STUB(PlaySound)
+ApiStatus MakeNpcs(Evt* script, bool initial) {
+    Bytecode* args = script->ptrReadPos;
+    NpcGroup* groups;
+    s32 count = 0;
+
+    (void)initial;
+    evt_get_variable(script, *args++);
+    groups = (NpcGroup*)evt_get_variable(script, *args++);
+    if (script->curArgc > 0) {
+        script->ptrReadPos += script->curArgc;
+        script->curArgc = 0;
+    }
+    while (groups != NULL && groups->npcCount > 0 && count < 64) {
+        count += groups->npcCount;
+        groups++;
+    }
+    pm_log("spawn npcs %d", count);
+    return ApiStatus_DONE2;
+}
 STUB(DisablePlayerInput)
+STUB(PlaySoundAt)
+STUB(PlaySoundAtPlayer)
+STUB(GetSelfNpcID)
+STUB(BindNpcIdle)
+STUB(RemoveNpc)
+STUB(GetPlayerPos)
+STUB(GetPartnerInUse)
+STUB(InterruptUsePartner)
+STUB(func_802D2C14)
+STUB(PlayerMoveTo)
+STUB(PlayerFaceNpc)
+STUB(SpeakToPlayer)
+STUB(SetSelfVar)
+STUB(NpcJump0)
+STUB(SetPlayerAnimation)
+STUB(SetNpcVar)
+STUB(GetNpcVar)
+STUB(UseExitHeading)
+STUB(ShowMessageAtScreenPos)
+
+EvtScript EnemyNpcHit = {
+    Return
+    End
+};
+
+EvtScript EnemyNpcDefeat = {
+    Return
+    End
+};
+
+s32 get_msg_lines(s32 msgID) { (void)msgID; return 1; }
+void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style) {
+    (void)msgID; (void)posX; (void)posY; (void)opacity; (void)palette; (void)style;
+}
+
+EvtScript ExitWalk = {
+    Return
+    End
+};
+
+EvtScript EnterWalk = {
+    Return
+    End
+};
+
+EvtScript hos_05_EVS_Starship_Depart = {
+    Return
+    End
+};
+
+EvtScript hos_05_EVS_EnterStarship = {
+    Return
+    End
+};
 STUB(DisablePlayerPhysics)
 STUB(DismissEffect)
 STUB(EnableNpcShadow)
-STUB(GetNextPathPos)
 STUB(GetNpcPos)
 STUB(InterpNpcYaw)
-STUB(LoadPath)
 STUB(NpcFaceNpc)
 STUB(PlayEffect_impl)
 STUB(RemoveEffect)
