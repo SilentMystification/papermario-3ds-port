@@ -65,6 +65,7 @@ set(GAME_SRC
     ${DECOMP}/src/evt/npc_api.c
     ${DECOMP}/src/encounter_api.c
     ${DECOMP}/src/npc.c
+    ${DECOMP}/src/npc_collision.c
     ${DECOMP}/src/sprite.c
     ${DECOMP}/src/101b90_len_8f0.c
     ${DECOMP}/src/imgfx.c

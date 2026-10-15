@@ -11,7 +11,6 @@ u8 ResetTilesImg[16];
 extern PlayerData gPlayerData;
 SaveGlobals gSaveGlobals;
 extern PlayerStatus gPlayerStatus;
-PlayerStatus* gPlayerStatusPtr = &gPlayerStatus;
 BattleStatus gBattleStatus;
 PartnerStatus gPartnerStatus;
 SaveData gCurrentSaveFile;

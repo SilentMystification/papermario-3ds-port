@@ -223,6 +223,13 @@ void state_step_world(void) {
         if (++n % 10 == 0) {
             pm_log("plr %d %d %d as %d fl %x floor %d", (s32)gPlayerStatus.pos.x, (s32)gPlayerStatus.pos.y, (s32)gPlayerStatus.pos.z,
                    gPlayerStatus.actionState, gPlayerStatus.flags, gCollisionStatus.curFloor);
+            for (s32 i = 0; i < MAX_NPCS; i++) {
+                Npc* npc = get_npc_by_index(i);
+                if (npc != nullptr && npc->flags != 0) {
+                    pm_log("npc%d %d %d %d spd %d floor %d fl %x", i, (s32)npc->pos.x, (s32)npc->pos.y, (s32)npc->pos.z,
+                           (s32)npc->moveSpeed, npc->curFloor, npc->flags);
+                }
+            }
         }
     }
 }
