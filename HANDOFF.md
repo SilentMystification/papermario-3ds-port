@@ -10,22 +10,20 @@ Plan: [Cutscene systems plan](file:///C:/Users/Andrew/.cursor/plans/cutscene_sys
 
 ## Now
 
-Paper Mario O3DS port. The intro (`hos_05` entry 3) plays in Azahar. After the title, the real `kmr_20_EVS_Main` runs (committed). See git log for the earlier slice (real collision, entity, map, player code).
+Paper Mario O3DS port. The intro (`hos_05` entry 3) plays in Azahar. After the title, the real `kmr_20_EVS_Main` runs and the Luigi scene now plays to its end.
 
 This round:
-- Fixed an intro crash. Real `update_player` read a null player shadow. `pm_map.c` now creates the player shadow on the intro map. `sprite.c` returns early for a negative sprite index (`TARGET_3DS`).
-- New debug switch `player` logs `plr x y z actionState flags curFloor` every 10 world frames.
-- With `fast autoa player`: Mario sits at (-50, 30, -80), action state 0, floor collider 33. No fall seen in this run. The player-sprite faults in Azahar are gone.
-- Finding: the kmr_20 begin-game script (evt 25) blocks in `NpcMoveTo`. The NPC moves 4 units per frame, then `npc->moveSpeed` becomes 0 at x=260 (goal x=450). The script never finishes. A gdb watchpoint put the write inside `spr_component_update_commands` (`sprite.c:673`, called from `update_npcs`). That is likely a stale line, so the real writer is unknown. Evt 34 and 35 (child scripts) sit in `WAIT_FRAMES`.
+- Root cause of the NPC fall (old issues 1 and 2): `npc_collision.c` was not built. `npc_raycast_down_*` and `npc_test_move_*` were zero stubs, so NPCs had no floor, fell below y=-2000, and `update_npcs` zeroed `moveSpeed`. `3ds/CMakeLists.txt` now builds `npc_collision.c` and the stubs are gone. Luigi now walks on floor 25 and 9, and Mario reaches (70, 30, -110).
+- `player` debug switch now also logs each NPC (`npcN x y z spd floor flags`).
+- The game stops logging at about frame 299 (after about 20 s). The script is at `npc_intro.c:389`: `GotoMapSpecial osr_00` right after Luigi's letter. `get_map_IDs_by_name` is a stub (`game_stubs.c`) and the real map transition is not wired, so the loop hangs. Not yet confirmed where it hangs. Text boxes do not draw, so the user sees "Luigi reads the letter, then freeze".
 
 ## Open issues (carry over until fixed)
 
-User reports. The user suspects missing collision causes the first four. Mario falling out of bounds and snapping back was seen in play. The `player` log did not show it, so check again with a longer run.
-1. Cutscene does not run correctly. Mario keeps falling and snapping back, like an out-of-bounds reset. Check collision (`kmr_20_hit` has 43 colliders) and the real floor raycast in `collision.c`.
-2. NPC `moveSpeed` is zeroed mid-`NpcMoveTo` (see Finding above).
-3. Text box transitions do not happen.
-4. Parakarry's first text box does not show.
-5. Transparency half works. A transparent object shows the background layer, but anything behind it that is not background does not render. Likely draw order or depth write for translucent models.
+1. Hang at `GotoMapSpecial osr_00` (above). Needs the real transition path (see Next 3), or a stand-in that ends the scene.
+2. Lighting looks wrong on Luigi and Parakarry, so probably all character (sprite) lighting. Check sprite shading (`pm_shade`, `gSpriteShadingProfile`).
+3. Mario does not show in the cutscene (player sprite or flags; `player` log says he exists at (70,30,-110)).
+4. Text box transitions do not happen. Parakarry's first text box does not show.
+5. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
 6. The Mario logo does not show on the house in the intro cutscene.
 
 Known gaps: audio (all `SetMusic`, `PlaySound` are skip stubs in `pm_evt_stub.c`), item and popup APIs (`pm_kmr_stubs.c`), `fx_*` return 0 (`pm_later.c`), entity display lists and shadows draw nothing (`Entity_*_Render` are empty, `pm_shadow.c`), `bed.c` and `records.c` (need extracted textures), message boxes, status bar, HUD.
