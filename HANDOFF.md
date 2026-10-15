@@ -21,7 +21,7 @@ This round:
 
 1. Hang at `GotoMapSpecial osr_00` (above). Needs the real transition path (see Next 3), or a stand-in that ends the scene.
 2. Lighting looks wrong on Luigi and Parakarry, so probably all character (sprite) lighting. Check sprite shading (`pm_shade`, `gSpriteShadingProfile`).
-4. Text box transitions do not happen. Parakarry's first text box does not show.
+3. Text box transitions do not happen. Parakarry's first text box does not show.
 4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
 5. The Mario logo does not show on the house in the intro cutscene.
 
