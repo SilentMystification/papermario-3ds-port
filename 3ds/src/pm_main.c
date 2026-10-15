@@ -53,6 +53,7 @@ extern s16 D_80073E0A;
 extern unsigned short* nuGfxCfb_ptr;
 static unsigned short cfb_token[2];
 
+void pm_dump_scripts(void);
 void pm_frame_loop(void) {
     unsigned frame = 0;
     unsigned presents = 0;
@@ -98,6 +99,7 @@ void pm_frame_loop(void) {
             fps_mark = now;
             have_fps = 1;
         }
+        if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
             char top[40];
             char bot[40];

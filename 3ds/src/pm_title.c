@@ -210,15 +210,11 @@ void state_init_world(void) {
 }
 
 void state_step_world(void) {
-    Camera* cam = &gCameras[CAM_DEFAULT];
-
-    /* The zone controller reads this. Forcing minimal mode here threw away
-     * every boom and pan the map script had set. */
-    cam->flags &= ~CAMERA_FLAG_DISABLED;
-    if (!(gPlayerStatus.flags & PS_FLAG_CAMERA_DOESNT_FOLLOW)) {
-        cam->targetPos.x = gPlayerStatus.pos.x;
-        cam->targetPos.y = gPlayerStatus.pos.y;
-        cam->targetPos.z = gPlayerStatus.pos.z;
-    }
+    gCameras[CAM_DEFAULT].flags &= ~CAMERA_FLAG_DISABLED;
+    update_encounters();
+    update_npcs();
+    update_player();
+    update_effects();
+    iterate_models();
     update_cameras();
 }

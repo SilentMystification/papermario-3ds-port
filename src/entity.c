@@ -12,6 +12,13 @@ extern Addr WorldEntityHeapBase;
 #define entity_jan_iwa_VRAM (void*) entity_jan_iwa_VRAM
 #define entity_sbk_omo_VRAM (void*) entity_sbk_omo_VRAM
 #define entity_default_VRAM (void*) entity_default_VRAM
+#elif defined(TARGET_3DS)
+extern u8 pm_world_entity_heap[];
+#define WORLD_ENTITY_HEAP_BOTTOM ((s32)pm_world_entity_heap)
+#define WORLD_ENTITY_HEAP_BASE ((s32)pm_world_entity_heap + 0x17FF0)
+#define entity_jan_iwa_VRAM (void*) 0x802BAE00
+#define entity_sbk_omo_VRAM (void*) 0x802BAE00
+#define entity_default_VRAM (void*) 0x802BAE00
 #else
 #define WORLD_ENTITY_HEAP_BOTTOM 0x80250000
 #define WORLD_ENTITY_HEAP_BASE 0x80267FF0
@@ -864,6 +871,12 @@ void reload_world_entity_data(void) {
             break;
         }
 
+#ifdef TARGET_3DS
+        /* Animated meshes use the compiled C node data, not the ROM copy. */
+        if (bp->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
+            continue;
+        }
+#endif
         if (!(bp->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL)) {
             void* gfxData;
 
@@ -1048,6 +1061,28 @@ void load_split_entity_data(Entity* entity, EntityBlueprint* entityData, s32 lis
     s32 dma2size_2;
     s32 totalLoaded;
 
+#ifdef TARGET_3DS
+    if (entityData->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
+        StaticAnimatorNode** nodes = (StaticAnimatorNode**)entityData->modelAnimationNodes;
+        /* The C nodes mark empty links with -1. The ROM swizzle turns those into null. */
+        for (; (s32)*nodes != -1 && *nodes != nullptr; nodes++) {
+            StaticAnimatorNode* n = *nodes;
+            if ((s32)n->displayList == -1) n->displayList = nullptr;
+            if ((s32)n->sibling == -1) n->sibling = nullptr;
+            if ((s32)n->child == -1) n->child = nullptr;
+            if ((s32)n->vtxList == -1) n->vtxList = nullptr;
+        }
+        *nodes = nullptr;
+        /* The ROM node data is offset-based and big-endian. The compiled C nodes are native, so use them. */
+        entity->vertexSegment = 0xA;
+        entity->gfxBaseAddr = nullptr;
+        entity->virtualModelIndex = create_mesh_animator(entityData->renderCommandList, nullptr);
+        load_mesh_animator_tree(entity->virtualModelIndex, (StaticAnimatorNode**)entityData->modelAnimationNodes);
+        update_model_animator(entity->virtualModelIndex);
+        entity->flags |= ENTITY_FLAG_HAS_ANIMATED_MODEL;
+        return;
+    }
+#endif
     if (entityData->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
         DmaEntry* dmaList = entityData->dmaList;
         entity->vertexSegment = 0xA;

@@ -2,9 +2,7 @@
 unsigned char heap_battleHead[0x25800];
 void update_max_rumble_duration() {}
 /* npc_iter_no_op is npc.c */
-void update_triggers() {}
 void update_hud_elements() {}
-void update_entities() {}
 void func_80138198() {}
 void bgm_update_music_control() {}
 void update_ambient_sounds() {}
@@ -22,16 +20,12 @@ void render_window_root() {}
 void fio_init_flash() {}
 /* clear_player_status is 77480.c */
 /* spr_init_sprites is sprite.c */
-void clear_entity_models() {}
 void clear_sprite_shading_data() {}
 void reset_background_settings() {}
 /* clear_npcs is npc.c */
 void hud_element_clear_cache() {}
-void clear_trigger_data() {}
-void clear_entity_data() {}
 void clear_player_data() {}
 /* init_encounter_status is npc.c */
-void clear_saved_variables() {}
 void clear_item_entity_data() {}
 void bgm_reset_sequence_players() {}
 void reset_ambient_sounds() {}
@@ -40,7 +34,6 @@ void clear_windows() {}
 void poll_rumble() {}
 void hud_element_set_aux_cache() {}
 void reset_battle_status() {}
-void initialize_collision() {}
 void bgm_init_music_players() {}
 void partner_initialize_data() {}
 void bgm_reset_volume() {}
@@ -51,12 +44,9 @@ void snd_set_mono() {}
 void clear_virtual_entity_list() {}
 void init_virtual_entity_list() {}
 void fx_flame() {}
-void clear_animator_list() {}
-void render_entities() {}
 void render_item_entities() {}
 /* render_npcs is npc.c, render_player is 77480.c */
 void render_transformed_hud_elements() {}
-int test_ray_zones() { return -1; }
 void state_drawUI_battle() {}
 void state_drawUI_change_map() {}
 void state_drawUI_demo() {}
@@ -92,3 +82,17 @@ void state_step_game_over() {}
 void state_step_language_select() {}
 void state_step_pause() {}
 void state_step_unpause() {}
+unsigned char heap_collisionHead[0x20000];
+unsigned char BattleEntityHeapBottom[0x3000] __attribute__((aligned(0x1000)));
+void* fx_effect_46() { return 0; }
+void* fx_pink_sparkles() { return 0; }
+void* fx_smoke_burst() { return 0; }
+void* fx_smoke_impact() { return 0; }
+void* fx_sparkles() { return 0; }
+void* fx_stars_shimmer() { return 0; }
+void open_status_bar_slowly() {}
+int subtract_hp() { return 0; }
+int snd_stop_sound() { return 0; }
+void world_lakilester_sync_player_position() {}
+void world_sushie_sync_player_position() {}
+short FlowerGoalPositionX, FlowerGoalPositionY, FlowerGoalPositionZ;

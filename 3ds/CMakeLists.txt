@@ -73,6 +73,55 @@ set(GAME_SRC
     ${DECOMP}/src/msg_data.c
     ${DECOMP}/src/77480.c
     ${DECOMP}/src/encounter.c
+    ${DECOMP}/src/evt/player_api.c
+    ${DECOMP}/src/world/script_api/rooms.c
+    ${DECOMP}/src/entity/Block.c
+    ${DECOMP}/src/entity/SimpleSpring.c
+    ${DECOMP}/src/entity/model/SimpleSpring_anim.c
+    ${DECOMP}/src/entity/ShatteringBlock.c
+    ${DECOMP}/src/entity/ShatteringBlock_common.c
+    ${DECOMP}/src/entity/model/ScriptSpring_anim.c
+    ${DECOMP}/src/entity/default/BombableRock.c
+    ${DECOMP}/src/collision.c
+    ${DECOMP}/src/world/actions.c
+    ${DECOMP}/src/world/action/hammer.c
+    ${DECOMP}/src/world/action/hit_fire.c
+    ${DECOMP}/src/world/action/hit_lava.c
+    ${DECOMP}/src/world/action/idle.c
+    ${DECOMP}/src/world/action/jump.c
+    ${DECOMP}/src/world/action/knockback.c
+    ${DECOMP}/src/world/action/land.c
+    ${DECOMP}/src/world/action/misc.c
+    ${DECOMP}/src/world/action/slide.c
+    ${DECOMP}/src/world/action/sneaky_parasol.c
+    ${DECOMP}/src/world/action/spin.c
+    ${DECOMP}/src/world/action/spin_jump.c
+    ${DECOMP}/src/world/action/step_up.c
+    ${DECOMP}/src/world/action/tornado_jump.c
+    ${DECOMP}/src/world/action/use_munchlesia.c
+    ${DECOMP}/src/world/action/use_spinning_flower.c
+    ${DECOMP}/src/world/action/use_tweester.c
+    ${DECOMP}/src/world/action/walk.c
+    ${DECOMP}/src/7B440.c
+    ${DECOMP}/src/7BB60.c
+    ${DECOMP}/src/7E9D0.c
+    ${DECOMP}/src/entity.c
+    ${DECOMP}/src/entity_model.c
+    ${DECOMP}/src/animator.c
+    ${DECOMP}/src/trigger.c
+    ${DECOMP}/src/vars_access.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/bushes.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/documents.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/npc_epilogue.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/npc_intro.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/npc_scenes.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/rooms.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/trees.c
     ${DECOMP}/src/world/area_hos/hos_05/intro.c
     ${DECOMP}/src/world/area_hos/hos_05/main.c
     ${DECOMP}/src/world/area_hos/hos_05/misc.c
@@ -107,6 +156,8 @@ set(PORT_SRC
     src/pm_evt_stub.c
     src/pm_msg.c
     src/pm_actor_link.c
+    src/pm_kmr_stubs.c
+    src/pm_shadow.c
     src/pm_actor_stubs.c
     src/game_stubs.c
 )

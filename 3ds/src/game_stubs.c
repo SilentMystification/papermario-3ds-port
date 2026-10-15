@@ -14,16 +14,10 @@ extern PlayerStatus gPlayerStatus;
 PlayerStatus* gPlayerStatusPtr = &gPlayerStatus;
 BattleStatus gBattleStatus;
 PartnerStatus gPartnerStatus;
-CollisionData gZoneCollisionData;
-CollisionData gCollisionData;
+SaveData gCurrentSaveFile;
 u8 IntroMessageIdx;
 u16 StarShrineLightBeamAlpha = 255;
 
-static Collider pm_colliders[32];
-static Collider pm_zones[16];
-
-void parent_collider_to_model(s16 colliderID, s16 modelIndex) { (void)colliderID; (void)modelIndex; }
-void update_collider_transform(s16 colliderID) { (void)colliderID; }
 s32 get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
     (void)mapName;
     if (areaID) *areaID = 0;
@@ -34,19 +28,6 @@ void set_map_transition_effect(ScreenTransition transition) { (void)transition; 
 void sync_status_bar(void) {}
 
 void pm_game_bind(void) {
-    s32 i;
-    for (i = 0; i < 32; i++) {
-        pm_colliders[i].firstChild = -1;
-        pm_colliders[i].nextSibling = -1;
-    }
-    for (i = 0; i < 16; i++) {
-        pm_zones[i].firstChild = -1;
-        pm_zones[i].nextSibling = -1;
-    }
-    gCollisionData.colliderList = pm_colliders;
-    gCollisionData.numColliders = 32;
-    gZoneCollisionData.colliderList = pm_zones;
-    gZoneCollisionData.numColliders = 16;
     gGameStatusPtr = &gGameStatus;
     gDisplayContext = &D_80164000[0];
     gMainGfxPos = gDisplayContext->mainGfx;
@@ -65,3 +46,20 @@ void shim_load_engine_data_obfuscated(void) { load_engine_data(); }
 void gfx_init_state(void) {}
 void pm_draw_loaded_background(void);
 void gfx_draw_background(void) { pm_draw_loaded_background(); }
+Vec3s gEntityColliderFaces[] = {
+    { 4, 6, 5 }, { 4, 7, 6 },
+    { 0, 3, 4 }, { 3, 7, 4 },
+    { 3, 2, 7 }, { 2, 6, 7 },
+    { 2, 1, 6 }, { 1, 5, 6 },
+    { 1, 0, 5 }, { 0, 4, 5 },
+    { 0, 1, 2 }, { 0, 2, 3 },
+};
+
+Vec3f gEntityColliderNormals[] = {
+    {  0.0f,  1.0f,  0.0f }, {  0.0f,  1.0f,  0.0f },
+    {  1.0f,  0.0f,  0.0f }, {  1.0f,  0.0f,  0.0f },
+    {  0.0f,  0.0f, -1.0f }, {  0.0f,  0.0f, -1.0f },
+    { -1.0f,  0.0f,  0.0f }, { -1.0f,  0.0f,  0.0f },
+    {  0.0f,  0.0f,  1.0f }, {  0.0f,  0.0f,  1.0f },
+    {  0.0f, -1.0f,  0.0f }, {  0.0f, -1.0f,  0.0f },
+};

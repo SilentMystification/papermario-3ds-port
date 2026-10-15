@@ -6,8 +6,10 @@
 
 int strcmp(const char* a, const char* b);
 void bcopy(const void* src, void* dst, unsigned int n);
+void bzero(void* p, unsigned int n);
 
 extern EvtScript hos_05_EVS_Main;
+extern EvtScript kmr_20_EVS_Main;
 
 /* Shape files are built for gMapShapeData at this N64 address. */
 #define SHAPE_BASE 0x80210000u
@@ -27,6 +29,8 @@ typedef struct ShapeFix {
 } ShapeFix;
 
 static void* shape_keep;
+void* pm_decode_asset(const char* name, unsigned* out_size);
+void load_hit_data(s32 idx, void* hit);
 
 static u32 rbe(const u8* p) {
     return ((u32)p[0] << 24) | ((u32)p[1] << 16) | ((u32)p[2] << 8) | p[3];
@@ -374,6 +378,77 @@ static int find_asset(const char* name, u32* rom_off, u32* comp_len, u32* dec_le
     return 0;
 }
 
+static MapSettings pm_settings;
+static MapConfig pm_maps[32];
+AreaConfig gAreas[29];
+extern MapSettings kmr_20_settings;
+
+MapSettings* get_current_map_settings(void) {
+    return &pm_settings;
+}
+
+static void swap_u16s(u8* p, int n) {
+    int i;
+    for (i = 0; i < n; i++) {
+        u8 t = p[i * 2];
+        p[i * 2] = p[i * 2 + 1];
+        p[i * 2 + 1] = t;
+    }
+}
+
+/* Hit files are big-endian N64 data read in place. Layout follows load_hit_data in collision.c. */
+static void swap_hit_section(u8* hit, u32 size, u32 off) {
+    u8* h;
+    s32 numColliders, numVerts, numBoxes, i;
+    u32 collOff, vertOff, boxOff;
+    if (!off || off + 0x18 > size) return;
+    h = hit + off;
+    numColliders = (s16)((h[0] << 8) | h[1]);
+    collOff = rbe(h + 4);
+    numVerts = (s16)((h[8] << 8) | h[9]);
+    vertOff = rbe(h + 0xC);
+    numBoxes = (s16)((h[0x10] << 8) | h[0x11]);
+    boxOff = rbe(h + 0x14);
+    if (collOff + numColliders * 12u > size || vertOff + numVerts * 6u > size || boxOff + numBoxes * 4u > size) return;
+    for (i = 0; i < numColliders; i++) {
+        u8* c = hit + collOff + i * 12;
+        u32 triOff = rbe(c + 8);
+        s32 numTris = (s16)((c[6] << 8) | c[7]);
+        if (numTris > 0 && triOff + numTris * 4u <= size) swap_u32s(hit + triOff, numTris);
+        swap_u16s(c, 4);
+        swap_u32s(c + 8, 1);
+    }
+    swap_u16s(hit + vertOff, numVerts * 3);
+    swap_u32s(hit + boxOff, numBoxes);
+    swap_u16s(h, 1);
+    swap_u32s(h + 4, 1);
+    swap_u16s(h + 8, 1);
+    swap_u32s(h + 0xC, 1);
+    swap_u16s(h + 0x10, 1);
+    swap_u32s(h + 0x14, 1);
+}
+
+static void load_hit(const char* name) {
+    unsigned size;
+    u8* hit = pm_decode_asset(name, &size);
+    u32 collOff, zoneOff;
+    if (!hit) {
+        pm_log("hit %s missing", name);
+        return;
+    }
+    collOff = rbe(hit);
+    zoneOff = rbe(hit + 4);
+    swap_hit_section(hit, size, collOff);
+    swap_hit_section(hit, size, zoneOff);
+    swap_u32s(hit, 2);
+    pm_settings.hitAssetCollisionOffset = collOff;
+    pm_settings.hitAssetZoneOffset = zoneOff;
+    load_hit_data(0, (void*)hit);
+    load_hit_data(1, (void*)hit);
+    general_heap_free(hit);
+    pm_log("hit %s %d colliders", name, gCollisionData.numColliders);
+}
+
 void* pm_decode_asset(const char* name, unsigned* out_size) {
     u32 rom_off, comp_len, dec_len;
     void* compressed;
@@ -405,6 +480,7 @@ void* pm_decode_asset(const char* name, unsigned* out_size) {
 void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     const char* shape_name = NULL;
     const char* tex_name = "hos_tex";
+    char hit_name[12];
     u32 rom_off, comp_len, dec_len, tex_off, tex_comp, tex_dec;
     void* compressed;
     u8* shape;
@@ -463,10 +539,31 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     }
     shape_keep = shape;
 
+    /* Real code reads gAreas[area].maps[map].settings for entry positions and the like. */
+    if (areaID == AREA_KMR && mapID == 11) pm_settings = kmr_20_settings;
+    else bzero(&pm_settings, sizeof(pm_settings));
+    bcopy(shape + 8, &pm_settings.modelNameList, 4);
+    bcopy(shape + 12, &pm_settings.colliderNameList, 4);
+    bcopy(shape + 16, &pm_settings.zoneNameList, 4);
+    pm_settings.modelTreeRoot = root;
+    pm_maps[mapID & 31].settings = &pm_settings;
+    gAreas[areaID].maps = pm_maps;
+
     if (find_asset(tex_name, &tex_off, &tex_comp, &tex_dec)) {
         load_data_for_models(root, tex_off, tex_comp);
     } else {
         load_data_for_models(root, 0, 0);
+    }
+
+    clear_trigger_data();
+    initialize_collision();
+    bcopy(shape_name, hit_name, 6);
+    bcopy("_hit", hit_name + 6, 5);
+    load_hit(hit_name);
+    clear_entity_data(true);
+    if (mapID != 5) {
+        gGameStatusPtr->playerSpriteSet = PLAYER_SPRITES_MARIO_WORLD;
+        player_reset_data();
     }
 
     for (i = 0; i < MAX_MODELS; i++) {
@@ -545,8 +642,25 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         gPlayerStatus.pos.z = -80.f;
         gPlayerStatus.curYaw = 90.f;
         update_cameras();
+        {
+            Evt* script = start_script_in_group(&kmr_20_EVS_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
+            if (script) gGameStatusPtr->mainScriptID = script->id;
+        }
         pm_log("world cam");
     }
     pm_log("map %s models %d", shape_name, models);
 }
 
+
+/* Debug switch "scripts": log every live script's position. */
+extern ScriptList* gCurrentScriptListPtr;
+void pm_dump_scripts(void) {
+    s32 i;
+    for (i = 0; i < MAX_SCRIPTS; i++) {
+        Evt* e = (*gCurrentScriptListPtr)[i];
+        if (e && e->id) {
+            pm_log("evt %d cur %d fn %p cl %d first %p flags %x blk %d off %d wait %d", e->id, e->curOpcode, e->callFunction, (s32)(e->ptrCurLine - e->ptrFirstLine), e->ptrFirstLine, e->stateFlags, e->blocked,
+                (s32)(e->ptrNextLine - e->ptrFirstLine), e->loopDepth);
+        }
+    }
+}
