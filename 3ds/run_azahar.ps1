@@ -171,6 +171,8 @@ public class AzWin {
     if ($p) { Kill-Azahar $p.Id }
     if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
     if ($Gdb) { Set-GdbStub $false }
+    # A later manual launch must not inherit this run's switches (autoa, shots, fast).
+    Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue
 }
 
 if (Test-Path "$sd\shots") { Copy-Item "$sd\shots" "$out\shots" -Recurse -Force }
