@@ -23,6 +23,9 @@ s32 get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
         { "hos_05", AREA_HOS, 5 }, { "kmr_02", AREA_KMR, 1 }, { "kmr_20", AREA_KMR, 11 }, { "osr_00", AREA_OSR, 0 },
     };
     s32 i;
+    /* Unknown name keeps the current map so callers never read unset IDs. */
+    *areaID = gGameStatusPtr->areaID;
+    *mapID = gGameStatusPtr->mapID;
     for (i = 0; i < 4; i++) {
         if (strcmp(maps[i].name, mapName) == 0) {
             *areaID = maps[i].area;

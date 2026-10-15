@@ -15,13 +15,14 @@ Paper Mario O3DS port. The intro (`hos_05` entry 3) plays in Azahar. After the t
 This round:
 - Issue 1 fixed. `load_map_by_IDs` (`pm_map.c`) used `kmr_20_settings` and `kmr_20_EVS_Main` for every non-intro map. It now uses `osr_00_settings` and `osr_00_EVS_Main` for osr_00. The `osr_00` sources are in `3ds/CMakeLists.txt`. Stubs added: `fx_sun`, `PlaySoundAtF`, `EnterDoubleDoor`, `ExitDoubleDoor`.
 - The scripted chain now runs: kmr_20 (Luigi) -> osr_00 entry 3 (invitation) -> kmr_20 entry 1 -> `GotoMap kkj_00`.
-- That last step fails. `kkj_00` is not in the `get_map_IDs_by_name` table and not in `load_map_by_IDs`. The failed lookup leaves `areaID` and `mapID` unset, logs `map 0 not loaded`, then `update_encounters_neutral` faults (`i < MAX_NPCS`). Add a guard so an unknown name keeps the current map, or add kkj_00.
+- `GotoMap kkj_00` no longer faults. `get_map_IDs_by_name` (`game_stubs.c`) now keeps the current map on an unknown name, so kmr_20 reloads. Real kkj_00 is not ported.
+- Azahar run with `fast autoa` ends exit 2 with unmapped-access warnings (`player_raycast_down`, `update_npcs`). Not checked if new. Check first.
 - Earlier: `npc_collision.c` is built, so NPCs have floors.
 
 ## Open issues (carry over until fixed)
 
-1. Unknown map name (`kkj_00`) breaks the world (above).
-2. Lighting looks wrong on Luigi and Parakarry, so probably all character (sprite) lighting. Check sprite shading (`pm_shade`, `gSpriteShadingProfile`).
+1. kkj_00 is not ported. The scripted chain loops back to kmr_20 (above).
+2. Lighting looks wrong on Luigi and Parakarry (sprite shading). `SetSpriteShading` is a skip stub, so shading stays off and sprites draw flat. Tried the real `sprite_shading.c` + `demo_api.c` with `--defsym sprite_shading_profiles_ROM_START=0x315B80` (data +0x1D0). Shading ran but characters turned dark. `appendGfx_shading_palette` renders a 16x1 palette into a fake framebuffer and does a TLUT double lookup, which `pm_gbi.c` cannot emulate. Reverted. Fix needs a port-side shader path: compute shadow/highlight colors on the CPU and tint the sprite.
 3. Text box transitions do not happen. Parakarry's first text box does not show.
 4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
 5. The Mario logo does not show on the house in the intro cutscene.
