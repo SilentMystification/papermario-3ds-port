@@ -564,6 +564,9 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     if (mapID != 5) {
         gGameStatusPtr->playerSpriteSet = PLAYER_SPRITES_MARIO_WORLD;
         player_reset_data();
+    } else {
+        /* The intro never resets the player. Real update_player reads the player shadow. */
+        gPlayerStatus.shadowID = create_shadow_type(SHADOW_VARYING_CIRCLE, 0.0f, 0.0f, 0.0f);
     }
 
     for (i = 0; i < MAX_MODELS; i++) {

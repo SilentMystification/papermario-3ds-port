@@ -871,6 +871,11 @@ s32 spr_update_player_sprite(s32 spriteInstanceID, s32 animID, f32 timeScale) {
     s32 spriteIdx = SPR_UNPACK_SPR(animID) - 1;
     s32 instanceIdx = spriteInstanceID & 0xFF;
     s32 animIndex = SPR_UNPACK_ANIM(animID);
+#ifdef TARGET_3DS
+    if (spriteIdx < 0) {
+        return 0;
+    }
+#endif
     CurPlayerSpriteIndex = spriteIdx;
 
     if (CurPlayerAnimInfo[instanceIdx].componentList == nullptr) {
