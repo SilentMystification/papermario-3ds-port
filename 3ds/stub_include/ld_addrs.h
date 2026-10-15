@@ -27,7 +27,7 @@
 #define inspect_icon_ROM_START ((u8*)1)
 #define inspect_icon_ROM_END   ((u8*)1)
 #define inspect_icon_VRAM      ((u8*)1)
-#define imgfx_data_ROM_START ((u8*)1)
+#define imgfx_data_ROM_START ((u8*)0x24B7F0)
 #define imgfx_data_ROM_END   ((u8*)1)
 #define imgfx_data_VRAM      ((u8*)1)
 #define engine2_ROM_START ((u8*)1)

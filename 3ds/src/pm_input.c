@@ -47,6 +47,14 @@ void pm_pad_scan(void) {
     if (d & KEY_CSTICK_DOWN) edge |= 0x0004;
     if (d & KEY_CSTICK_LEFT) edge |= 0x0002;
     if (d & KEY_CSTICK_RIGHT) edge |= 0x0001;
+    /* autoa switch: press A for one scan every 4 seconds, so Azahar runs can leave the title. */
+    {
+        static unsigned scans;
+        if (pm_debug_has("autoa") && scans++ % 240 == 239) {
+            b |= 0x8000;
+            edge |= 0x8000;
+        }
+    }
     held = b;
     down = edge;
     circlePosition c;

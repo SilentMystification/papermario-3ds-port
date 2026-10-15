@@ -2,24 +2,34 @@
 
 When a feature or slice is finished, stop and tell the user. They start a new agent from this file. Do not keep working in the same chat.
 
-A commit is not automatically a handoff. Each commit, decide whether the slice is done enough for a new agent. If it is, say so.
+A commit is not automatically a handoff. Each commit, decide whether the slice is done enough for a new agent. If it is, or if a handoff looks like the right next step for any other reason, bring it up and wait.
 
 Replace this file. Do not append a history. Keep it short.
 
-Plan: [Cutscene systems plan](file:///C:/Users/Andrew/.cursor/plans/cutscene_systems_plan_2097aefa.plan.md). Scene setup and actors are done. Effects are in progress: partially wired, not functional. Audio is pending. Cook ROM assets only if a measured frame budget is missed.
+Plan: [Cutscene systems plan](file:///C:/Users/Andrew/.cursor/plans/cutscene_systems_plan_2097aefa.plan.md). Scene setup, actors, and Bowser are done. Effects are still stand-in quads. Audio is pending. Cook ROM assets only if a measured frame budget is missed.
 
 ## Now
 
-Paper Mario O3DS port. Intro is `hos_05` entry 3. Last binary is **build 49** (not committed).
+Paper Mario O3DS port. The intro (`hos_05` entry 3) plays end to end in Azahar and reaches PRESS START. Bowser and his clown car render. The spirit-capture imgfx works.
 
-Bowser still does not render. Kammy does. Effects are colored rectangles where the effects should be. The real fire, lightning, and other effect graphics are not in yet.
+Fixed this slice: `pm_gbi.c` forced vertex alpha to 255 when the combiner does not read shade alpha (imgfx quads were invisible). `imgfx.c` now uses the real `imgfx_data` ROM offsets (0x24B7F0 plus the splat table) and byte-swaps the data.
 
-Uncommitted: `src/sprite.c` (large clown-car pieces got their own flat quads; that did not make Bowser show), `3ds/src/pm_fx.c` (lightning zigzag, fire as a cone of quads). Last commits on `main`, not pushed: `1da0d7d3f` overlay getter and stand-in effect quads, `fa20b99d5` sprite heap and intro camera.
+Not verified: the black-silhouette fade-in of Bowser. Fire and lightning are still colored quads.
+
+Debug switches in `debug3ds.txt` or `-Debug`: `shots` saves a frame every 30 frames to `sdmc/3ds/PaperMario/shots/*.ppm` (240x400, rotate 90 degrees; `build3ds/sheet.py` makes contact sheets). `autoa` presses A every 4 seconds. This is the only way to see the GL screen.
 
 ## Next
 
-Get Bowser on screen in the clown car, with Kammy still herself. Replace the colored rectangles with the actual intro effects, starting with fire and lightning.
+After the title, the port runs stand-ins. `pm_title.c` and `pm_map.c` replace the real title, file select, enter-world, and change-map code. kmr_20 loads as a static mesh. It has a fixed camera, no script, no player, no collision, and no HUD.
+
+Make the real kmr_20 main script run. Known gaps:
+- Flag and byte storage in `pm_evt_stub.c` always returns 0 and stores nothing. `create_trigger` returns NULL.
+- Of 129 `Call()` names in kmr_20, 11 are stubs and 62 are not linked: player (`SetPlayerPos`, `PlayerJump`, `SetPlayerActionState`), audio, messages (`ShowChoice`, `CloseMessage`), entities (`MakeEntity`), and the kmr_20 and ToadHouse map code.
+- Not compiled: collision, entity, trigger, msg, windows, hud, fio, audio, `src/world/action/`, pause, battle, `state_world.c`, `state_map_transitions.c`.
+- `player_raycast_down` (from `update_npcs`) reads unmapped memory about 100 times per run. That would fault on hardware.
+
+Start small: compile `collision.c`, `trigger.c`, `entity.c`, and real flag storage. Then run `kmr_20_EVS_Main`.
 
 ## Do not
 
-Do not push. One Azahar window; the run script kills only the process it started. Do not leave `fast` in `debug3ds.txt` (it skips the logos). `3ds/run_azahar.ps1` stops on `-Until`, a crash, log silence (`-Stall`), or `-Timeout`. The storybook needs on the order of 150s with no early `-Until`. Log: `%APPDATA%\Azahar\sdmc\3ds\PaperMario\log.txt`. Window captures do not show the OpenGL screen. GPU work stays on the GPU. Paperboat is evidence of one little-endian behavior, not a template.
+Do not push. One Azahar window; the run script kills only the process it started. Do not leave `fast` in `debug3ds.txt` (it skips the logos). `3ds/run_azahar.ps1` stops on `-Until`, a crash, log silence (`-Stall`), or `-Timeout`. Use `run_azahar.ps1` directly, not `go.ps1`, to see the unmapped-access report. The full intro needs about 150s. Log: `%APPDATA%\Azahar\sdmc\3ds\PaperMario\log.txt`. Window captures do not show the OpenGL screen. GPU work stays on the GPU. Paperboat (`reference/paperboat`) shares the game-side sprite and imgfx code. The Fast3D interpreter to compare against is `reference/soh-3ds/third_party/libultraship/src/fast/interpreter.cpp`.

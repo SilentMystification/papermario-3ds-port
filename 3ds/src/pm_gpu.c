@@ -2,6 +2,9 @@
 #include <citro3d.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "pm_shader_shbin.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
@@ -233,6 +236,39 @@ void pm_gpu_hud(const char* line0, const char* line1) {
     c->cursorY = cy;
 }
 
+/* shots switch: dump the last finished frame (rotated 240x400 buffer, tiled RGBA8) as a PPM. */
+static void dump_shot(void) {
+    static unsigned n, frames;
+    char path[64];
+    FILE* f;
+    unsigned char* row;
+    const unsigned char* src;
+    int x, y;
+    if (!pm_debug_has("shots") || (frames++ % 30) != 0 || n >= 200) return;
+    src = (const unsigned char*)target->frameBuf.colorBuf;
+    if (!src) return;
+    mkdir("shots", 0777);
+    snprintf(path, sizeof path, "shots/%04u.ppm", n++);
+    f = fopen(path, "wb");
+    if (!f) return;
+    fputs("P6 240 400 255\n", f);
+    row = (unsigned char*)malloc(240 * 3);
+    for (y = 0; y < 400; y++) {
+        for (x = 0; x < 240; x++) {
+            unsigned mx = x & 7u, my = y & 7u;
+            unsigned m = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) |
+                         ((mx & 4u) << 2) | ((my & 4u) << 3);
+            const unsigned char* p = src + ((((unsigned)(y >> 3) * 30u + (unsigned)(x >> 3)) * 64u + m) * 4u);
+            row[x * 3] = p[3];
+            row[x * 3 + 1] = p[2];
+            row[x * 3 + 2] = p[1];
+        }
+        fwrite(row, 1, 240 * 3, f);
+    }
+    free(row);
+    fclose(f);
+}
+
 void pm_gpu_begin(int clear) {
     drew = 0;
     nverts = 0;
@@ -244,6 +280,7 @@ void pm_gpu_begin(int clear) {
     draw_3d = 0;
     if (!gpu_ok) return;
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    dump_shot();
     pm_tex_begin_frame();
     if (clear) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
     C3D_FrameDrawOn(target);

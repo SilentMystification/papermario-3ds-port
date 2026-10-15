@@ -7,7 +7,7 @@ alwaysApply: true
 
 When a feature or slice is finished, stop and tell the user. They start a new agent from `HANDOFF.md`. Do not keep working in the same chat.
 
-A commit is not automatically a handoff. Each commit, decide whether the slice is done enough for a new agent. If it is, say so.
+A commit is not automatically a handoff. Each commit, decide whether the slice is done enough for a new agent. If it is, or if a handoff looks like the right next step for any other reason, bring it up and wait.
 
 `HANDOFF.md` is the only handoff document. Replace it. Do not append history. Keep it short.
 

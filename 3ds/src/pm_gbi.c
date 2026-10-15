@@ -47,6 +47,9 @@ static char stats_line[64];
 static int door_have, door_ox, door_oy, door_oz, door_xw, door_yw, door_zw, door_w100;
 static unsigned comb_a, comb_b, comb_c, comb_d;
 static int comb_set;
+/* 1 when the alpha combiner reads shade alpha. DECAL and MODULATE modes do not, and imgfx
+ * meshes leave cn[3] at 0, so passing it through made them vanish. */
+static int comb_alpha_shade = 1;
 
 static int is_host(u32 p) {
     unsigned int heap = __ctru_heap;
@@ -322,6 +325,9 @@ static void draw_tri(unsigned w) {
         }
         n_cut++;
     }
+    if (!comb_alpha_shade) {
+        for (i = 0; i < n; i++) poly[i].a = 255;
+    }
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
     for (i = 1; i < n - 1; i++) {
         if (!(poly[0].w > 0.05f && poly[i].w > 0.05f && poly[i + 1].w > 0.05f)) continue;
@@ -421,6 +427,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     if (!pc) return;
     while (pc && guard++ < 200000) {
         if (end && sp == 0 && pc >= end) break;
+        if (!is_host((u32)pc)) {
+            static int bad_dl;
+            if (bad_dl++ < 6) pm_log("bad dl pc %08x list %08x n %u sp %d", (u32)pc, (u32)list, nbytes, sp);
+            return;
+        }
         u32 w0 = pc->words.w0;
         u32 w1 = pc->words.w1;
         unsigned op = w0 >> 24;
@@ -432,6 +443,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_DL: {
             Gfx* next = (Gfx*)ptr_of(w1);
+            if (next && !is_host((u32)next)) {
+                static int bad_next;
+                if (bad_next++ < 8) pm_log("bad dl target %08x w0 %08x list %08x", w1, w0, (u32)list);
+                break;
+            }
             if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = next;
             else if (sp < 12) {
                 stack[sp++] = pc;
@@ -444,6 +460,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             unsigned v0n = (w0 >> 1) & 0x7f;
             unsigned v0 = (v0n >= n) ? v0n - n : 0;
             Vtx* src = (Vtx*)ptr_of(w1);
+            if (src && !is_host((u32)src)) {
+                static int bad_vtx;
+                if (bad_vtx++ < 8) pm_log("bad vtx %08x w0 %08x list %08x", w1, w0, (u32)list);
+                src = NULL;
+            }
             if (src && n <= 64) {
                 if (v0 + n > 64) n = 64 - v0;
                 memcpy(&verts[v0], src, n * sizeof(Vtx));
@@ -520,6 +541,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             comb_b = (w1 >> 28) & 0xf;
             comb_d = (w1 >> 15) & 7;
             comb_set = 1;
+            comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
+                               ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
             sync_combine();
             break;
         case G_SETPRIMCOLOR:
