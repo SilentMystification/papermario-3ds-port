@@ -123,6 +123,12 @@ set(GAME_SRC
     ${DECOMP}/src/world/area_kmr/kmr_20/rooms.c
     ${DECOMP}/src/world/area_kmr/kmr_20/settings.c
     ${DECOMP}/src/world/area_kmr/kmr_20/trees.c
+    ${DECOMP}/src/world/area_osr/osr_00/main.c
+    ${DECOMP}/src/world/area_osr/osr_00/music.c
+    ${DECOMP}/src/world/area_osr/osr_00/npc_intro.c
+    ${DECOMP}/src/world/area_osr/osr_00/npc_epilogue.c
+    ${DECOMP}/src/world/area_osr/osr_00/scenes.c
+    ${DECOMP}/src/world/area_osr/osr_00/settings.c
     ${DECOMP}/src/world/area_hos/hos_05/intro.c
     ${DECOMP}/src/world/area_hos/hos_05/main.c
     ${DECOMP}/src/world/area_hos/hos_05/misc.c

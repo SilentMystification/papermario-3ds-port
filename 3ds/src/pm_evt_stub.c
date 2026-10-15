@@ -29,6 +29,16 @@ EvtScript EnterWalk = {
     End
 };
 
+EvtScript EnterDoubleDoor = {
+    Return
+    End
+};
+
+EvtScript ExitDoubleDoor = {
+    Return
+    End
+};
+
 EvtScript hos_05_EVS_Starship_Depart = {
     Return
     End
@@ -48,5 +58,6 @@ STUB(FadeInMusic)
 STUB(FadeOutMusic)
 STUB(PlaySound)
 STUB(PlaySoundAt)
+STUB(PlaySoundAtF)
 STUB(ClearAmbientSounds)
 STUB(PlayAmbientSounds)

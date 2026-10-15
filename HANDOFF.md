@@ -13,13 +13,14 @@ Plan: [Cutscene systems plan](file:///C:/Users/Andrew/.cursor/plans/cutscene_sys
 Paper Mario O3DS port. The intro (`hos_05` entry 3) plays in Azahar. After the title, the real `kmr_20_EVS_Main` runs and the Luigi scene now plays to its end.
 
 This round:
-- `GotoMapSpecial osr_00` no longer hangs. `get_map_IDs_by_name` (`game_stubs.c`) has a 4-map table (hos_05, kmr_02, kmr_20, osr_00). `state_step_change_map` (`pm_later.c`) sets `GAME_MODE_WORLD`. `load_map_by_IDs` (`pm_map.c`) loads `osr_00_shape`, `osr_00_hit` and `osr_tex` (the model and collision load: 73 models, 17 colliders).
-- New crash right after: `kmr_20_func_80241C9C` (`npc_intro.c:11`) calls `CreateMapRoom` (`rooms.c:122`) and faults at PC 0x159AA4 (6190 unmapped accesses). The kmr_20 main script still runs on the osr_00 world init, because `pm_settings` is `bzero`'d for other maps and `spawn npcs 2` ran. Check which script starts and why it targets kmr_20 data. osr_00 needs its own `MapSettings` (main script, entry list) from its map file, not the kmr_20 one.
+- Issue 1 fixed. `load_map_by_IDs` (`pm_map.c`) used `kmr_20_settings` and `kmr_20_EVS_Main` for every non-intro map. It now uses `osr_00_settings` and `osr_00_EVS_Main` for osr_00. The `osr_00` sources are in `3ds/CMakeLists.txt`. Stubs added: `fx_sun`, `PlaySoundAtF`, `EnterDoubleDoor`, `ExitDoubleDoor`.
+- The scripted chain now runs: kmr_20 (Luigi) -> osr_00 entry 3 (invitation) -> kmr_20 entry 1 -> `GotoMap kkj_00`.
+- That last step fails. `kkj_00` is not in the `get_map_IDs_by_name` table and not in `load_map_by_IDs`. The failed lookup leaves `areaID` and `mapID` unset, logs `map 0 not loaded`, then `update_encounters_neutral` faults (`i < MAX_NPCS`). Add a guard so an unknown name keeps the current map, or add kkj_00.
 - Earlier: `npc_collision.c` is built, so NPCs have floors.
 
 ## Open issues (carry over until fixed)
 
-1. Crash after the `osr_00` load (above).
+1. Unknown map name (`kkj_00`) breaks the world (above).
 2. Lighting looks wrong on Luigi and Parakarry, so probably all character (sprite) lighting. Check sprite shading (`pm_shade`, `gSpriteShadingProfile`).
 3. Text box transitions do not happen. Parakarry's first text box does not show.
 4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
@@ -33,7 +34,7 @@ Debug switches in `debug3ds.txt` or `-Debug "..."`: `fast`, `autoa`, `shots` (fr
 
 Boot a file and progress instead of sitting on the first frame. The port still fakes the file path: `pm_title.c` `state_step_file_select` jumps straight to kmr_20 entry 0 and `load_map_by_IDs` in `pm_map.c` replaces the real loader.
 
-1. Work the open issues above, starting with 1 and 2 (they block the scene).
+1. Work the open issues above, starting with 1 and 2.
 2. Verify input moves Mario (walk, jump, camera follow).
 3. Use the real `state_map_transitions.c` / `state_file_select.c` flow: real `state_init_enter_world` and `state_step_enter_world`, file load into `gCurrentSaveFile` (needs `fio.c` and a save in SD), `set_map_transition_effect`, `GotoMap`, `get_map_IDs_by_name` (currently a stub returning 0).
 4. Then the `hos_05` intro should hand off to the real file path instead of the stand-in.
