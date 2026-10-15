@@ -3,7 +3,6 @@ unsigned char heap_battleHead[0x25800];
 void update_max_rumble_duration() {}
 /* npc_iter_no_op is npc.c */
 void update_triggers() {}
-void update_messages() {}
 void update_hud_elements() {}
 void update_entities() {}
 void func_80138198() {}
@@ -20,15 +19,12 @@ void render_hud_elements_frontUI() {}
 void crash_screen_set_draw_info() {}
 void _render_transition_stencil() {}
 void render_window_root() {}
-void render_messages() {}
 void fio_init_flash() {}
 /* clear_player_status is 77480.c */
 /* spr_init_sprites is sprite.c */
 void clear_entity_models() {}
 void clear_sprite_shading_data() {}
 void reset_background_settings() {}
-void clear_character_set() {}
-void clear_printers() {}
 /* clear_npcs is npc.c */
 void hud_element_clear_cache() {}
 void clear_trigger_data() {}

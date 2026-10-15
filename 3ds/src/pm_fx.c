@@ -370,7 +370,7 @@ API_CALLABLE(PlayEffect_impl) {
             evt_set_variable(script, script->ptrReadPos[6], (s32)made);
             break;
         case EFFECT_FIRE_BREATH:
-            made = spawn_to(id, x, y, z, arg_f(script, 5), arg_f(script, 6), arg_f(script, 7), 1.f, -1, 255, 90, 20);
+            made = spawn_to(id, x, y, z, arg_f(script, 5), arg_f(script, 6), arg_f(script, 7), 1.f, arg_i(script, 10), 255, 90, 20);
             evt_set_variable(script, LVarF, (s32)made);
             break;
         case EFFECT_SHIMMER_BURST:

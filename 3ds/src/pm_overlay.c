@@ -134,5 +134,7 @@ void render_curtains(void) {
         if (bottom < SCREEN_HEIGHT) gDPFillRectangle(gMainGfxPos++, left, bottom, right - 1, SCREEN_HEIGHT - 1);
     }
 
+    /* The callback draws narration text over the letterbox bars. */
+    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     if (curtain_draw) curtain_draw();
 }

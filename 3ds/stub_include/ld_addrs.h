@@ -46,4 +46,9 @@
 #define title_bg_1_ROM_START ((u8*)0x2191B0)
 #define title_bg_1_ROM_END   ((u8*)0x24B7F0)
 
+/* ver/us/splat.yaml charset segment. Message strings live at 0x1B83000 (msg.c). */
+#define charset_ROM_START ((u8*)0x10F1B0)
+#define charset_ROM_END   ((u8*)0x123128)
+#define icon_ROM_START    ((u8*)1)
+
 #endif

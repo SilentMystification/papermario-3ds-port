@@ -10,13 +10,18 @@ Plan: [Cutscene systems plan](file:///C:/Users/Andrew/.cursor/plans/cutscene_sys
 
 ## Now
 
-Paper Mario O3DS port. The intro (`hos_05` entry 3) plays end to end in Azahar and reaches PRESS START. Bowser and his clown car render. The spirit-capture imgfx works.
+Paper Mario O3DS port. The intro (`hos_05` entry 3) plays end to end in Azahar.
 
-Fixed this slice: `pm_gbi.c` forced vertex alpha to 255 when the combiner does not read shade alpha (imgfx quads were invisible). `imgfx.c` now uses the real `imgfx_data` ROM offsets (0x24B7F0 plus the splat table) and byte-swaps the data.
+Fixed this slice (not committed):
+- Clown car: 4-bit imgfx strips ignored the LoadTile row offset (`pm_gbi.c` `G_LOADTILE`). The top rows drew twice.
+- Real message code is compiled: `msg.c`, `msg_draw.c`, `msg_data.c`, plus `3ds/src/pm_msg.c` (blank box art, stub `draw_box`). The narrator text draws. Font ROM offsets are in `3ds/stub_include/charset_offsets.h`. `dma_load_msg` byte-swaps. `draw_msg` passes the ID, not the buffer pointer, to `get_msg_properties`.
+- `MSG_Intro_*` IDs in `message_ids.h` were fake. Intro is message section 0, so ID = index.
+- `render_curtains` resets the scissor before the narrator callback.
+- Fire breath from `PlayEffect` now uses the script life (it never ended).
 
-Not verified: the black-silhouette fade-in of Bowser. Fire and lightning are still colored quads.
+Not done: fire and lightning and the other effects are still colored quads (`pm_fx.c`). The real effect code is in `src/effects/` but its display lists live in the ROM effect overlay. The black-silhouette fade-in of Bowser is not verified. Message boxes, choices, and item icons in text draw nothing (box art is blank, `draw_box` is a stub).
 
-Debug switches in `debug3ds.txt` or `-Debug`: `shots` saves a frame every 30 frames to `sdmc/3ds/PaperMario/shots/*.ppm` (240x400, rotate 90 degrees; `build3ds/sheet.py` makes contact sheets). `autoa` presses A every 4 seconds. This is the only way to see the GL screen.
+Debug switches in `debug3ds.txt` or `-GameDebug`: `shots` saves a frame every 30 frames to `sdmc/3ds/PaperMario/shots/*.ppm` (240x400, rotate 90 degrees; `build3ds/sheet.py` makes contact sheets, crop hides the letterbox bars, so view full frames for text). Do not combine `shots` with `autoa`: A skips the intro. `3ds/run_azahar.ps1` deletes `debug3ds.txt` at the end of a run.
 
 ## Next
 

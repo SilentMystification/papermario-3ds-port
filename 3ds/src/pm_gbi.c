@@ -26,6 +26,7 @@ static int tex_on;
 static const void* timg;
 static unsigned timg_fmt, timg_siz;
 static int timg_stride;
+static int ld_valid, ld_x, ld_y; /* last LoadTile window, in 8-bit texels of the source image */
 static int tile_x0, tile_y0;
 static const void* tlut;
 static int tlut_n;
@@ -596,6 +597,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             timg_fmt = (w0 >> 21) & 7;
             timg_siz = (w0 >> 19) & 3;
             timg_stride = (int)(w0 & 0xfff) + 1;
+            ld_valid = 0;
             break;
         case G_SETTILE: {
             unsigned tile = (w1 >> 24) & 7;
@@ -609,6 +611,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             break;
         }
+        case G_LOADTILE:
+            ld_valid = 1;
+            ld_x = (int)((w0 >> 12) & 0xfff) >> 2;
+            ld_y = (int)(w0 & 0xfff) >> 2;
+            break;
         case G_LOADTLUT:
             tlut = timg;
             tlut_n = (int)((w1 >> 14) & 0x3ff) + 1;
@@ -628,6 +635,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
             const u8* src = (const u8*)timg;
             if (src && bpp) src += (size_t)(y0 * stride + x0) * (size_t)bpp;
+            else if (src && tile_siz[0] == 0 && ld_valid) {
+                /* 4-bit strips (imgfx meshes) load a window of an 8-bit-wide image. The
+                 * tile size carries only the scroll, so the window comes from LoadTile. */
+                src += (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
+                stride = timg_stride * 2;
+            }
             tile_x0 = x0;
             tile_y0 = y0;
             /* One batch can only sample one image. The last load of the frame

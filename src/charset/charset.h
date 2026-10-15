@@ -2,6 +2,10 @@
 
 #include "charset/peach_letter.png.h"
 
+#ifdef TARGET_3DS
+#include "charset_offsets.h"
+#else
+
 #if VERSION_JP
 extern unsigned char charset_kana_OFFSET[];
 extern unsigned char charset_latin_OFFSET[];
@@ -62,5 +66,7 @@ extern unsigned short charset_letter_content_11_pal_OFFSET[];
 
 extern unsigned char charset_letter_content_12_OFFSET[];
 extern unsigned short charset_letter_content_12_pal_OFFSET[];
+
+#endif /* TARGET_3DS */
 
 #endif

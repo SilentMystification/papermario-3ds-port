@@ -1405,9 +1405,16 @@ void dma_load_msg(u32 msgID, void* dest) {
     u8* offset[2]; // start, end
 
     dma_copy(addr, addr + 4, &offset[0]); // Load section offset
+#ifdef TARGET_3DS
+    offset[0] = (u8*)__builtin_bswap32((u32)offset[0]);
+#endif
 
     addr = MSG_ROM_START + offset[0] + (msgID & 0xFFFF) * 4;
     dma_copy(addr, addr + 8, &offset); // Load message start and end offsets
+#ifdef TARGET_3DS
+    offset[0] = (u8*)__builtin_bswap32((u32)offset[0]);
+    offset[1] = (u8*)__builtin_bswap32((u32)offset[1]);
+#endif
 
     // Load the msg data
     dma_copy(MSG_ROM_START + offset[0], MSG_ROM_START + offset[1], dest);
@@ -2024,7 +2031,12 @@ void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style)
             mallocSpace = general_heap_malloc(0x400);
             dma_load_msg(msgID, mallocSpace);
             printer->srcBuffer = mallocSpace;
+#ifdef TARGET_3DS
+            /* A 3DS pointer is not negative, so a buffer cannot stand in for a message ID. */
+            get_msg_properties(msgID, 0, &width, 0, 0, 0, 0, charset);
+#else
             get_msg_properties((s32) printer->srcBuffer, 0, &width, 0, 0, 0, 0, charset);
+#endif
             printer->msgWidth = width;
         }
 

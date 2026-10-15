@@ -68,6 +68,9 @@ set(GAME_SRC
     ${DECOMP}/src/sprite.c
     ${DECOMP}/src/101b90_len_8f0.c
     ${DECOMP}/src/imgfx.c
+    ${DECOMP}/src/msg.c
+    ${DECOMP}/src/msg_draw.c
+    ${DECOMP}/src/msg_data.c
     ${DECOMP}/src/77480.c
     ${DECOMP}/src/encounter.c
     ${DECOMP}/src/world/area_hos/hos_05/intro.c
@@ -102,6 +105,7 @@ set(PORT_SRC
     src/pm_map.c
     src/pm_title.c
     src/pm_evt_stub.c
+    src/pm_msg.c
     src/pm_actor_link.c
     src/pm_actor_stubs.c
     src/game_stubs.c
