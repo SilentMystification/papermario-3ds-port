@@ -18,9 +18,18 @@ u8 IntroMessageIdx;
 u16 StarShrineLightBeamAlpha = 255;
 
 s32 get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
-    (void)mapName;
-    if (areaID) *areaID = 0;
-    if (mapID) *mapID = 0;
+    /* Only maps load_map_by_IDs can load. ponytail: replace with the real gAreas walk once the loader is generic. */
+    static const struct { const char* name; s16 area, map; } maps[] = {
+        { "hos_05", AREA_HOS, 5 }, { "kmr_02", AREA_KMR, 1 }, { "kmr_20", AREA_KMR, 11 }, { "osr_00", AREA_OSR, 0 },
+    };
+    s32 i;
+    for (i = 0; i < 4; i++) {
+        if (strcmp(maps[i].name, mapName) == 0) {
+            *areaID = maps[i].area;
+            *mapID = maps[i].map;
+            return 1;
+        }
+    }
     return 0;
 }
 void set_map_transition_effect(ScreenTransition transition) { (void)transition; }

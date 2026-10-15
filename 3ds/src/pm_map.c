@@ -496,6 +496,10 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     clear_npcs();
     if (mapID == 5) shape_name = "hos_05_shape";
     else if (mapID == 4) shape_name = "hos_04_shape";
+    else if (areaID == AREA_OSR && mapID == 0) {
+        shape_name = "osr_00_shape";
+        tex_name = "osr_tex";
+    }
     else if (areaID == AREA_KMR && mapID == 11) {
         shape_name = "kmr_20_shape";
         tex_name = "kmr_tex";

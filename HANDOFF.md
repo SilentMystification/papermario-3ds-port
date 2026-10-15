@@ -13,13 +13,13 @@ Plan: [Cutscene systems plan](file:///C:/Users/Andrew/.cursor/plans/cutscene_sys
 Paper Mario O3DS port. The intro (`hos_05` entry 3) plays in Azahar. After the title, the real `kmr_20_EVS_Main` runs and the Luigi scene now plays to its end.
 
 This round:
-- Root cause of the NPC fall (old issues 1 and 2): `npc_collision.c` was not built. `npc_raycast_down_*` and `npc_test_move_*` were zero stubs, so NPCs had no floor, fell below y=-2000, and `update_npcs` zeroed `moveSpeed`. `3ds/CMakeLists.txt` now builds `npc_collision.c` and the stubs are gone. Luigi now walks on floor 25 and 9, and Mario reaches (70, 30, -110).
-- `player` debug switch now also logs each NPC (`npcN x y z spd floor flags`).
-- The game stops logging at about frame 299 (after about 20 s). The script is at `npc_intro.c:389`: `GotoMapSpecial osr_00` right after Luigi's letter. `get_map_IDs_by_name` is a stub (`game_stubs.c`) and the real map transition is not wired, so the loop hangs. Not yet confirmed where it hangs. Text boxes do not draw, so the user sees "Luigi reads the letter, then freeze".
+- `GotoMapSpecial osr_00` no longer hangs. `get_map_IDs_by_name` (`game_stubs.c`) has a 4-map table (hos_05, kmr_02, kmr_20, osr_00). `state_step_change_map` (`pm_later.c`) sets `GAME_MODE_WORLD`. `load_map_by_IDs` (`pm_map.c`) loads `osr_00_shape`, `osr_00_hit` and `osr_tex` (the model and collision load: 73 models, 17 colliders).
+- New crash right after: `kmr_20_func_80241C9C` (`npc_intro.c:11`) calls `CreateMapRoom` (`rooms.c:122`) and faults at PC 0x159AA4 (6190 unmapped accesses). The kmr_20 main script still runs on the osr_00 world init, because `pm_settings` is `bzero`'d for other maps and `spawn npcs 2` ran. Check which script starts and why it targets kmr_20 data. osr_00 needs its own `MapSettings` (main script, entry list) from its map file, not the kmr_20 one.
+- Earlier: `npc_collision.c` is built, so NPCs have floors.
 
 ## Open issues (carry over until fixed)
 
-1. Hang at `GotoMapSpecial osr_00` (above). Needs the real transition path (see Next 3), or a stand-in that ends the scene.
+1. Crash after the `osr_00` load (above).
 2. Lighting looks wrong on Luigi and Parakarry, so probably all character (sprite) lighting. Check sprite shading (`pm_shade`, `gSpriteShadingProfile`).
 3. Text box transitions do not happen. Parakarry's first text box does not show.
 4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.

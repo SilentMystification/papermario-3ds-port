@@ -72,7 +72,8 @@ void state_init_language_select() {}
 void state_init_pause() {}
 void state_init_unpause() {}
 void state_step_battle() {}
-void state_step_change_map() {}
+void set_game_mode(int mode);
+void state_step_change_map() { set_game_mode(4); /* GAME_MODE_WORLD */ }
 void state_step_demo() {}
 void state_step_end_battle() {}
 void state_step_enter_world() {}
