@@ -21,10 +21,9 @@ This round:
 
 1. Hang at `GotoMapSpecial osr_00` (above). Needs the real transition path (see Next 3), or a stand-in that ends the scene.
 2. Lighting looks wrong on Luigi and Parakarry, so probably all character (sprite) lighting. Check sprite shading (`pm_shade`, `gSpriteShadingProfile`).
-3. Mario does not show in the cutscene (player sprite or flags; `player` log says he exists at (70,30,-110)).
 4. Text box transitions do not happen. Parakarry's first text box does not show.
-5. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
-6. The Mario logo does not show on the house in the intro cutscene.
+4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
+5. The Mario logo does not show on the house in the intro cutscene.
 
 Known gaps: audio (all `SetMusic`, `PlaySound` are skip stubs in `pm_evt_stub.c`), item and popup APIs (`pm_kmr_stubs.c`), `fx_*` return 0 (`pm_later.c`), entity display lists and shadows draw nothing (`Entity_*_Render` are empty, `pm_shadow.c`), `bed.c` and `records.c` (need extracted textures), message boxes, status bar, HUD.
 
