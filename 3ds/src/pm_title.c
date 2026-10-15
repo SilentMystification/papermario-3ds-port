@@ -209,6 +209,7 @@ void state_init_world(void) {
     load_background("kmr_bg");
 }
 
+int pm_debug_has(const char* word);
 void state_step_world(void) {
     gCameras[CAM_DEFAULT].flags &= ~CAMERA_FLAG_DISABLED;
     update_encounters();
@@ -217,4 +218,11 @@ void state_step_world(void) {
     update_effects();
     iterate_models();
     update_cameras();
+    if (pm_debug_has("player")) {
+        static int n;
+        if (++n % 10 == 0) {
+            pm_log("plr %d %d %d as %d fl %x floor %d", (s32)gPlayerStatus.pos.x, (s32)gPlayerStatus.pos.y, (s32)gPlayerStatus.pos.z,
+                   gPlayerStatus.actionState, gPlayerStatus.flags, gCollisionStatus.curFloor);
+        }
+    }
 }

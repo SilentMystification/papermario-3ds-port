@@ -10,31 +10,35 @@ Plan: [Cutscene systems plan](file:///C:/Users/Andrew/.cursor/plans/cutscene_sys
 
 ## Now
 
-Paper Mario O3DS port. The intro (`hos_05` entry 3) still plays in Azahar. The real `kmr_20_EVS_Main` now runs after the title (not committed).
+Paper Mario O3DS port. The intro (`hos_05` entry 3) plays in Azahar. After the title, the real `kmr_20_EVS_Main` runs (committed). See git log for the earlier slice (real collision, entity, map, player code).
 
-Done this slice:
-- Real code compiled: `collision.c`, `trigger.c`, `entity.c`, `entity_model.c`, `animator.c`, `vars_access.c` (real flags and bytes in `gCurrentSaveFile`), `7B440.c`, `7BB60.c`, `7E9D0.c`, `world/actions.c`, `world/action/*.c`, `evt/player_api.c`, `world/script_api/rooms.c`, the kmr_20 map files except `bed.c` and `records.c`, and some `entity/*.c` blocks and springs.
-- `pm_map.c`: loads `<map>_hit` (byte-swaps the big-endian hit file, then real `load_hit_data`). `get_current_map_settings` returns `pm_settings`. `gAreas[area].maps[map].settings` points at it so `reset_player_status` reads the entry list. Calls `player_reset_data` for non-intro maps.
-- `pm_title.c` `state_step_world` now calls `update_encounters`, `update_npcs`, `update_player`, `update_effects`, `iterate_models`, `update_cameras`.
-- Generated headers: `3ds/tools/gen_msg_ids.py` (real message IDs), `gen_effect_ids.py` (real effect IDs), `gen_entity_rom.py` (entity model ROM offsets). `dedup_stubs.py` removes a port stub after the real file defines it (pipe the link log in).
-- `src/entity.c` has `TARGET_3DS` branches: heap buffers, and animated meshes use the compiled C node data instead of the big-endian ROM copy.
-- Debug switch `scripts` logs every live script each 120 frames (`pm_dump_scripts` in `pm_map.c`).
+This round:
+- Fixed an intro crash. Real `update_player` read a null player shadow. `pm_map.c` now creates the player shadow on the intro map. `sprite.c` returns early for a negative sprite index (`TARGET_3DS`).
+- New debug switch `player` logs `plr x y z actionState flags curFloor` every 10 world frames.
+- With `fast autoa player`: Mario sits at (-50, 30, -80), action state 0, floor collider 33. No fall seen in this run. The player-sprite faults in Azahar are gone.
+- Finding: the kmr_20 begin-game script (evt 25) blocks in `NpcMoveTo`. The NPC moves 4 units per frame, then `npc->moveSpeed` becomes 0 at x=260 (goal x=450). The script never finishes. A gdb watchpoint put the write inside `spr_component_update_commands` (`sprite.c:673`, called from `update_npcs`). That is likely a stale line, so the real writer is unknown. Evt 34 and 35 (child scripts) sit in `WAIT_FRAMES`.
 
-Result: with `fast autoa`, kmr_20 draws the house exterior from the script camera. `MakeNpcs` and `MakeEntities` finish. The begin-game scene scripts run (Parakarry `_npc_jump_to`).
+## Open issues (carry over until fixed)
 
-Still stubs or missing: audio (all `SetMusic`, `PlaySound`, etc. are skip stubs in `pm_evt_stub.c`), item and popup APIs (`pm_kmr_stubs.c`), `fx_*` return 0 (`pm_later.c`), entity display lists and shadows draw nothing (`Entity_*_Render` are empty, `pm_shadow.c`), `bed.c` and `records.c` (need extracted textures), message boxes, status bar, HUD.
+User reports. The user suspects missing collision causes the first four. Mario falling out of bounds and snapping back was seen in play. The `player` log did not show it, so check again with a longer run.
+1. Cutscene does not run correctly. Mario keeps falling and snapping back, like an out-of-bounds reset. Check collision (`kmr_20_hit` has 43 colliders) and the real floor raycast in `collision.c`.
+2. NPC `moveSpeed` is zeroed mid-`NpcMoveTo` (see Finding above).
+3. Text box transitions do not happen.
+4. Parakarry's first text box does not show.
+5. Transparency half works. A transparent object shows the background layer, but anything behind it that is not background does not render. Likely draw order or depth write for translucent models.
+6. The Mario logo does not show on the house in the intro cutscene.
 
-Faults still logged in Azahar (would fault on hardware): `spr_draw_player_sprite` about 29x (the player sprite is not set up), `update_player_shadow`, a few more under `appendGfx_player`.
+Known gaps: audio (all `SetMusic`, `PlaySound` are skip stubs in `pm_evt_stub.c`), item and popup APIs (`pm_kmr_stubs.c`), `fx_*` return 0 (`pm_later.c`), entity display lists and shadows draw nothing (`Entity_*_Render` are empty, `pm_shadow.c`), `bed.c` and `records.c` (need extracted textures), message boxes, status bar, HUD.
 
-Debug switches in `debug3ds.txt` or `-GameDebug`: `shots` saves a frame every 30 frames to `sdmc/3ds/PaperMario/shots/*.ppm` (240x400, rotate 90 degrees; `build3ds/sheet.py` makes contact sheets). Do not combine `shots` with `autoa` on the intro: A skips it. `3ds/run_azahar.ps1` deletes `debug3ds.txt` at the end of a run.
+Debug switches in `debug3ds.txt` or `-Debug "..."`: `fast`, `autoa`, `shots` (frame every 30 to `sdmc/3ds/PaperMario/shots/*.ppm`, `build3ds/sheet.py step start count out.png` makes sheets), `scripts` (live script dump every 120 frames), `player`. Use `fast autoa shots` to reach kmr_20 with frames. Do not use `shots` with `autoa` to watch the intro. gdb: `-Gdb -GdbScript <file>`. Per-frame gdb `commands` logging did not work. Use game-side logging.
 
 ## Next
 
 Boot a file and progress instead of sitting on the first frame. The port still fakes the file path: `pm_title.c` `state_step_file_select` jumps straight to kmr_20 entry 0 and `load_map_by_IDs` in `pm_map.c` replaces the real loader.
 
-1. Fix the player: sprite and animation setup so `spr_draw_player_sprite` stops faulting, shadow, and `disable_player_input` / `enable_player_input` around the scene.
-2. Let `kmr_20` scripts finish: check `evt 25/34/35` in the `scripts` log (blocked in `_npc_jump_to`), then verify input moves Mario (walk, jump, camera follow).
-3. Use the real `state_map_transitions.c` / `state_file_select.c` flow: real `state_init_enter_world` and `state_step_enter_world`, file load into `gCurrentSaveFile` (needs `fio.c` and a save in SD), `set_map_transition_effect`, `GotoMap`, `get_map_IDs_by_name` (currently a stub returning 0, needs `gAreas` data or a port table).
+1. Work the open issues above, starting with 1 and 2 (they block the scene).
+2. Verify input moves Mario (walk, jump, camera follow).
+3. Use the real `state_map_transitions.c` / `state_file_select.c` flow: real `state_init_enter_world` and `state_step_enter_world`, file load into `gCurrentSaveFile` (needs `fio.c` and a save in SD), `set_map_transition_effect`, `GotoMap`, `get_map_IDs_by_name` (currently a stub returning 0).
 4. Then the `hos_05` intro should hand off to the real file path instead of the stand-in.
 
 ## Do not
