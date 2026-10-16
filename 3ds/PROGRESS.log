@@ -177,3 +177,10 @@
 13:47 V02 baseline shots look right by eye; kmr_20 panorama draws zb0 Z_CMP0 after zb1 draws
 13:49 V02 docs: L01 row and HANDOFF note added (coordinator request)
 13:50 V02 paused for L01, no code changed, notes in HANDOFF
+13:50 L01 start
+13:51 L01 libctru: SetAppCpuTimeLimit in apt.h, core1 needs it (thread.h doc)
+13:52 L01 added logstat/lognull/logflood counters, building baseline
+13:53 L01 build 0 ok (counters only), baseline run A fast autoa logstat
+14:01 L01 base A fast autoa: 0.1-0.2 lines/frame, 2-6 lines/s, frame work 25-44 ms wall 28-50 ms
+14:01 L01 base B same run with lognull: lines same, frame work 1-1.5 ms lower per frame (about 12 ms per line)
+14:01 L01 base C normal run: 1-3 lines/s. Base D logflood old code: only 2340 lines in 60 s, frame 1 never ends

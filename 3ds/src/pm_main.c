@@ -156,6 +156,9 @@ void pm_frame_loop(void) {
     float fps = 0.f;
     float frame_ms = 0.f;
     const u64 tick_hz = SYSCLOCK_ARM11;
+    float stat_ms = 0.f;
+    unsigned stat_n = 0;
+    u64 stat_t0 = 0;
     while (aptMainLoop()) {
         u64 now = svcGetSystemTick();
         /* The retrace builds a display list only every other call. Presenting
@@ -193,6 +196,18 @@ void pm_frame_loop(void) {
             have_fps = 1;
         }
         if (frame % 3600 == 0) pm_mem_log("tick");
+        if (pm_debug_has("logflood")) for (int i = 0; i < 10000; i++) pm_log("flood %d of frame %u", i, frame);
+        if (pm_debug_has("logstat")) {
+            if (!stat_t0) stat_t0 = now;
+            stat_ms += frame_ms;
+            if (++stat_n == 300) {
+                pm_log_stat(stat_ms / 300.f, 300, (float)(now - stat_t0) / (float)tick_hz);
+                if (frame % 1200 == 0) pm_log_top();
+                stat_ms = 0.f;
+                stat_n = 0;
+                stat_t0 = now;
+            }
+        }
         if (frame == 300 && pm_debug_has("crashtest_call")) pm_crash_selftest();
         if (frame == 300 && pm_debug_has("crashtest")) __asm__ volatile(".word 0xe7f000f0"); /* class E: deliberate undefined instruction on the game thread */
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();

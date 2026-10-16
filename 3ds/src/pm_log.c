@@ -23,6 +23,14 @@ static unsigned ring_pos;
 static unsigned ring_len;
 static char switches[256];
 
+/* L01 measurement: lines and bytes logged, and a per call site count (by format string address). */
+#define SITES 96
+static unsigned st_lines, st_bytes, st_prev_lines, st_prev_bytes;
+static const char* st_fmt[SITES];
+static unsigned st_cnt[SITES];
+static int st_nsites;
+static int st_on;
+
 static void ring_add(const char* s, int n) {
     for (int i = 0; i < n; i++) ring[ring_pos++ % RING] = s[i];
     if (ring_len + (unsigned)n < RING) ring_len += (unsigned)n;
@@ -109,7 +117,34 @@ void pm_log_init(int live) {
     pm_log("live log: port 17492\n");
 }
 
+static void stat_site(const char* fmt) {
+    int i;
+    for (i = 0; i < st_nsites; i++) if (st_fmt[i] == fmt) { st_cnt[i]++; return; }
+    if (st_nsites < SITES) { st_fmt[st_nsites] = fmt; st_cnt[st_nsites++] = 1; }
+}
+
+/* Called by the frame loop every 300 drawn frames when the logstat switch is on. */
+void pm_log_stat(float avg_ms, unsigned frames, float secs) {
+    unsigned dl = st_lines - st_prev_lines, db = st_bytes - st_prev_bytes;
+    st_prev_lines = st_lines;
+    st_prev_bytes = st_bytes;
+    pm_log("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u", frames, avg_ms, secs * 1000.f / (float)frames, dl,
+           (float)dl / (float)frames, (float)dl / secs, db, st_lines);
+}
+
+void pm_log_top(void) {
+    for (int k = 0; k < 8; k++) {
+        int best = -1;
+        for (int i = 0; i < st_nsites; i++) if (st_cnt[i] && (best < 0 || st_cnt[i] > st_cnt[best])) best = i;
+        if (best < 0) return;
+        pm_log("logtop %u x \"%.60s\"", st_cnt[best], st_fmt[best]);
+        st_cnt[best] = 0;
+    }
+}
+
 void pm_log(const char* fmt, ...) {
+    if (st_on == 0) st_on = pm_debug_has("logstat") ? 1 : 2;
+    if (st_on == 1 && fmt[0] != 'l') stat_site(fmt);
     char body[240];
     va_list ap;
     va_start(ap, fmt);
@@ -125,6 +160,10 @@ void pm_log(const char* fmt, ...) {
     char line[280];
     int n = snprintf(line, sizeof(line), "#%u %s", seq++, body);
     if (n < 0) return;
+    st_lines++;
+    st_bytes += (unsigned)n;
+    /* lognull: measurement switch, drops every line that is not an error. */
+    if (pm_debug_has("lognull") && !strstr(body, "CRASH") && !strstr(body, "FATAL") && !strstr(body, "logstat")) return;
     if (log_fd >= 0) {
         if (write(log_fd, line, (size_t)n) > 0) fsync(log_fd);
     }
