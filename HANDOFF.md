@@ -113,6 +113,11 @@ State of the tree at this handoff:
 - kkj_00 does not load in the intro chain yet. The `fast autoa` run ends in kmr_20 after the third load. The log does not show which `GotoMap` fires before that. Log `get_map_IDs_by_name` calls to find out.
 - A pipe in kmr_20 runs `GotoMap mac_00`. mac_00 is not in the name table. The map reloads kmr_20 and Mario exits his own door.
 
+## S13 result
+
+Done (slice S13). Real `src/curtains.c`, `src/entity/Shadow.c`, `kmr_20/bed.c` and `kmr_20/records.c` build and link first try. Deleted: `3ds/src/pm_overlay.c` (all curtain stand-ins), `3ds/src/pm_shadow.c` (SHADOW() blueprints, `entity_Shadow_init`, `Entity_RenderNone`, `entity_can_collide_with_jumping_player`), `kmr_20_EVS_SetupBed` and `kmr_20_EVS_Inspect_Records` in `pm_kmr_stubs.c`. No `HES_Item_*` stand-in existed. `fast autoa` (130 s): kmr_20, osr_00, kmr_20, no unmapped access.
+- Curtain (issue 6): `fast shots` (32 frames, sheet via `build3ds/sheet.py`) shows the real theater curtain valence at the top of the intro and the star ship and palace scenes fully visible. The curtain is not solid red. The red cover came from the port stand-in. Issue 6 is fixed by the real file. Only the valence and side walls were seen. Not checked: curtain close and open animation timing, Shadow textures drawn in kmr_20 (shadows not looked at).
+
 ## S01 result: all area_* maps (measured, no code change)
 
 - 28 areas, 2,401 `.c` files, 9.6 MB of `.c` source (10.0 MB with headers).
@@ -129,7 +134,7 @@ State of the tree at this handoff:
 3. Text box transitions do not happen. Parakarry's first text box does not show.
 4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
 5. The Mario logo does not show on the house in the intro cutscene.
-6. The red outline stays on screen after it should go. It blocks a large part of the view. Suspected cause: port curtain stand-in in pm_overlay.c. Fix: slice S13.
+6. FIXED by S13 (real curtains.c): the red cover is gone in the intro (seen in shots).
 7. Mario has transparency problems around his sprite. The background layer shows in place of the scene geometry behind him. Likely the same cause as issue 4.
 
 Known gaps: item and popup APIs, entity display lists and shadows, `bed.c` and `records.c` (need extracted textures), message boxes, status bar, HUD.

@@ -33,3 +33,9 @@
 05:09 D01 start
 05:15 D01 baseline: no crash in 300s but unmapped read 0xFFFFFFFF in spr_update_sprite (animList=-1)
 05:25 D01 H1: badanim=Luigi anim on RussT npc; port file select skips STORY_INTRO; fixing pm_title.c
+05:37 D01 commit 0d35cb4c1; fast autoa 400s clean; end
+05:38 S13 start
+05:39 S13 build 1 done
+05:39 S13 commit real curtains/Shadow/bed/records
+05:41 S13 fast autoa run done
+05:43 S13 end, curtain not solid red in shots
