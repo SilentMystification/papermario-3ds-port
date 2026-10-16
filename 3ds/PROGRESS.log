@@ -129,3 +129,6 @@
 10:09 S23 commit 71fd803f6, end
 10:09 S24 start
 10:10 S24 gen_effect_ld.py now writes real gfx ROM ranges (112, 659552 B), none overlap M02 drops
+10:13 S24 build ok (build_s24.log)
+10:17 S24 fast autoa romtrace: mac_00 reached, 0 DROPPED lines; see gfx reads below
+10:22 S24 docs written, S24 marked [x]

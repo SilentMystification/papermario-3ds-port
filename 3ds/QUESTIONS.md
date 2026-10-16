@@ -25,7 +25,7 @@ Last tidied by slice S20. Answer by editing the "Answer" line or by telling the 
 - Fact: `effects.cmake` sets every `effect_gfx_*` ROM start to NULL, so `sharedData->graphics` stays NULL. The data is 660 KB in the packed ROM. Effects that need it draw nothing or draw wrong. This is a data placeholder, not a code placeholder.
 - Options: (a) load it (slice S24: use the real splat ranges, check `flame` render-to-texture), (b) drop the data and accept effects without graphics.
 - Recommendation: (a). The rule is to remove stand-ins. Cost: 660 KB stays resident (already counted).
-- Answer: (open)
+- Answer: (a) done in S24 (user asleep: the rule 'remove stand-ins' decides). Ranges are real, 660 KB is read when an effect loads.
 
 ### Q4. Idle title: demo timer (from S17, S18b)
 - Fact: the real title has a 480 frame timer. If nobody presses A it enters GAME_MODE_DEMO or the intro. On main the demo states are empty stand-ins (A3), so an idle title ends in a black screen after 8 s. `autoa` and `fast` do not show it. With the branch, scene 1 of the demo battle plays. Scene 2 (`isk_04`) is not linked, so the demo goes black there. The full demo needs `nok_12`, `isk_04`, `tik_03`, `trd_09`, `jan_04` and more.
