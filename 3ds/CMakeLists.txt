@@ -317,6 +317,10 @@ set(GAME_SRC
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types")
+# G02: world/actions.c holds f32 tables that 7B440.c reads through pointer arithmetic from DefaultMoveSpeed[-1] (walk, run, max jump).
+# -fdata-sections plus --gc-sections gave each variable its own section: the layout broke and maxJumpSpeed read GravityParamsStartFall[0].
+# Keep this file as one data block in source order.
+set_property(SOURCE ${DECOMP}/src/world/actions.c APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
 # heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
 # (pm_map.c) and heaps.c gets its copy renamed.
 set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data)

@@ -155,8 +155,9 @@ void pm_warp_tick(unsigned frame) {
     if (scene_f0 < 0) return;
     unsigned f = frame - (unsigned)scene_f0;
     if (f % (padscript_log ? 2 : 100) == 0 || f == 5) {
-        pm_log("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
-               (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState);
+        pm_log("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
+               (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,
+               (int)(gPlayerStatus.gravityIntegrator[0] * 100), (int)(gPlayerStatus.maxJumpSpeed * 1000), (int)(gPlayerStatus.walkSpeed * 100), (int)(gPlayerStatus.runSpeed * 100));
     }
     if (smoke_on && f == 300) pm_log("warp: smoke done (300 frames in the scene) t=%u ms", pm_uptime_ms());
 }
