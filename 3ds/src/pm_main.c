@@ -82,7 +82,7 @@ void pm_frame_loop(void) {
             pm_gfx_retrace();
             /* Pad to 30Hz when the drawn frame was quick. A slow frame already
              * missed its vblank, so waiting again only adds another stall. */
-            if (tick_hz && now - step_start < (tick_hz / 60ull) * 2ull) gspWaitForVBlank();
+            if (!pm_debug_has("fast") && tick_hz && now - step_start < (tick_hz / 60ull) * 2ull) gspWaitForVBlank();
             continue;
         }
         step_start = now;

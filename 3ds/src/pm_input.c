@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include "pm_port.h"
 
+unsigned pm_pad_scans;
 static unsigned short held;
 static unsigned short down;
 static signed char stick_x;
@@ -47,13 +48,16 @@ void pm_pad_scan(void) {
     if (d & KEY_CSTICK_DOWN) edge |= 0x0004;
     if (d & KEY_CSTICK_LEFT) edge |= 0x0002;
     if (d & KEY_CSTICK_RIGHT) edge |= 0x0001;
-    /* autoa switch: press A for one scan every 4 seconds, so Azahar runs can leave the title. */
+    /* autoa switch: press A on two of every four scans, so Azahar runs leave the menus fast.
+     * The old pattern was 1 scan in 240. */
     {
-        static unsigned scans;
-        if (pm_debug_has("autoa") && scans++ % 240 == 239) {
-            b |= 0x8000;
-            edge |= 0x8000;
+        if (pm_debug_has("autoa")) {
+            if (pm_pad_scans % 4 < 2) {
+                b |= 0x8000;
+                edge |= 0x8000;
+            }
         }
+        pm_pad_scans++;
     }
     held = b;
     down = edge;

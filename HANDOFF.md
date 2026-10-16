@@ -494,3 +494,7 @@ Platform layer only (`pm_gbi.c`, `pm_gpu.c`, `pm_tex.c`), no game code changed.
 - G01: loading zone in mac_00 does not trigger after the pipe. Hypothesis: the target map is an id-only row (`GotoMap refused`, Q6 and S30). Not checked.
 - G02: jump animation plays, Mario barely leaves the ground. Cause unknown. Not checked.
 - Also queued by the coordinator: S32 input speed, S33 gitignore cleanup (no detail given to S27).
+
+- Open issue V01 (recorded during slice S32, not worked in S32): the user also reports that the WRONG background shows in game (the intro cutscene or title background in a later scene). User-reported, unverified. Joins the squished background report in V01. Hypothesis, not verified: one fixed buffer (gBackgroundImage) plus a texture cache keyed on address and size returns a stale picture. Test steps are in the V01 row of 3ds/SLICES.md.
+
+Done (slice S32). `autoa` in `pm_input.c` now presses A on 2 of every 4 scans (was 1 scan in 240), and `fast` skips the 30 Hz `gspWaitForVBlank` pad wait in `pm_main.c`. The log line `load map` now shows `scan N` (pad scan count). Before (`fast autoa freshsave`, old pattern): kmr_20 at scan 3928, 87 s. After: scan 562, 31 s. With a save present: kmr_20 at scan 410. Chain hos_05, kmr_20, osr_00, kmr_20, mac_00 reached, mac_00 stays up, 0 unmapped lines, no crash (150 s and 100 s runs). `fast autoa shots freshsave` shows the real title, file select, name entry (AAAAAAAA) and file list. Not changed: Azahar speed limit (not needed).

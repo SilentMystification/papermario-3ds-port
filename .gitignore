@@ -67,3 +67,4 @@ build/
 compile_commands.json
 
 /ver/*/asm/data/rsp/*.s
+3ds/logs/
