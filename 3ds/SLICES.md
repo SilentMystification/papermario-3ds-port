@@ -37,7 +37,7 @@ Common done check: build passes, no new unresolved symbol, `fast autoa` run reac
 [x] S24 | Effect graphics (Q3, A17): real effect_gfx ROM ranges from splat in place of 0 in gen_effect_ld.py. Check flame render-to-texture. Needs the answer to Q3 | effects draw with graphics
 [ ] S25 | Fast3D gaps in pm_gbi.c: log "gbi skip" in a battle (needs S19a), fix the missing feature (replaces S19c), then display list lights and fog | attack animations draw, no black or olive polygons
 [x] S26 | Transparency, issues 4 and 7 (draw order, depth write, blender) | translucent models show the geometry behind them
-[ ] S27 | File select render faults: pink arrows in name entry, overlapping and cut windows | file select looks right
+[x] S27 | File select render faults: pink arrows in name entry, overlapping and cut windows | file select looks right
 [ ] S28 | Hardware run on O3DS and N3DS: first boot line (real memory limit), audio cost line, FPS. Settles Q2 and helps Q1 | numbers in HANDOFF.md
 [ ] S29 | Real encounter start (walk into an enemy), kkj_00 chain (issue 1), title demo timer. Needs S19a and the answers to Q4 and Q6 | battle starts and ends without assert
 [x] S22b | Leftovers of S22: delete note_door in pm_gbi.c, restore the large_quads edit in src/sprite.c, script that checks area_table.c against world.c | build passes, common check, clown car draws

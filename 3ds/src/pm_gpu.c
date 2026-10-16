@@ -34,6 +34,7 @@ static int light_on;
 /* RDP render mode: depth compare, depth update, alpha blend, alpha cut-off (-1 none), decal. */
 static int r_zcmp = 1, r_zupd = 1, r_blend = 1, r_atest = -1, r_decal;
 static int combine;
+static unsigned env_col = 0xffffffffu; /* combine mode 5: the ENV colour */
 static unsigned cconst;
 static int rgb_scale = 1;
 static int batch_identity;
@@ -103,7 +104,14 @@ static void flush(void) {
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     int tex = (combine >= 2) && pm_tex_bind();
-    if (tex && combine == 4) {
+    if (tex && combine == 5) {
+        /* (PRIM - ENV) * TEXEL + ENV, alpha = texel alpha. ENV rides in the vertex colour. */
+        C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_TEXTURE0);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
+        C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, GPU_TEXTURE0);
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+        C3D_TexEnvColor(env, abgr(prim));
+    } else if (tex && combine == 4) {
         /* Flat colour, alpha = texture alpha times the constant's alpha. */
         C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_CONSTANT, GPU_CONSTANT);
         C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
@@ -375,7 +383,12 @@ void pm_gpu_set_rgb_scale(int scale) {
     rgb_scale = scale;
 }
 
-void pm_gpu_set_prim(unsigned rgba) { prim = rgba; }
+void pm_gpu_set_prim(unsigned rgba) {
+    if (combine == 5 && rgba != prim) flush();
+    prim = rgba;
+}
+
+void pm_gpu_set_env(unsigned rgba) { env_col = rgba; }
 
 void pm_gpu_set_const(unsigned rgba) {
     if (rgba == cconst) return;
@@ -458,14 +471,14 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
     flush();
     int saved = combine;
-    combine = 2;
+    combine = saved == 5 ? 5 : 2;
     rect_2d = 1;
     batch_identity = 1;
     float xa = px(x0);
     float xb = px(x1 + 1);
     float ya = py(y0);
     float yb = py(y1 + 1);
-    unsigned c = 0xffffffffu;
+    unsigned c = saved == 5 ? env_col : 0xffffffffu;
     pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, ya, 0.5f, s1, t0, c, xb, yb, 0.5f, s1, t1, c);
     pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, yb, 0.5f, s1, t1, c, xa, yb, 0.5f, s0, t1, c);
     flush();

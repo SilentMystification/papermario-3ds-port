@@ -17,6 +17,7 @@ void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
 void pm_gpu_set_const(unsigned rgba); /* combine mode 4: flat colour (a = factor on texture alpha) */
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal);
 void pm_gpu_set_prim(unsigned rgba);
+void pm_gpu_set_env(unsigned rgba); /* combine mode 5: lerp from ENV (vertex colour) to PRIM by texel */
 /* Draw the current batch now. The next vertices belong to a different texture. */
 void pm_gpu_flush(void);
 /* N64 pixels, y down. Clipped to the 320x240 picture inside the 400-wide target. */

@@ -141,6 +141,14 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
             }
         }
     }
+    /* Pad to the power-of-two size with the last texel, so a clamped coordinate gets the edge. */
+    for (int y = 0; y < ph; y++) {
+        int sy = y < h ? y : h - 1;
+        for (int x = (y < h ? w : 0); x < pw; x++) {
+            int sx = x < w ? x : w - 1;
+            memcpy(scratch + ((size_t)y * pw + x) * out_bpp, scratch + ((size_t)sy * pw + sx) * out_bpp, out_bpp);
+        }
+    }
     return 1;
 }
 

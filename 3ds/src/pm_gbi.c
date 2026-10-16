@@ -49,8 +49,23 @@ static unsigned comb_aa, comb_ab, comb_ac, comb_ad;
  * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
 static struct { int valid; const u8* src; int stride, w, h, x0, y0; } m1;
 static int dual_on;
+/* A texture tile as the RDP holds it. Tile 0 is the render tile. A combiner that reads only TEXEL1
+ * samples tile 1 (draw_box takes its window body from tile 1). One texture is bound at a time,
+ * so the tile the next draw needs is bound just before it. */
+static struct {
+    int valid;
+    const u8* src;
+    unsigned fmt, siz;
+    int w, h, stride, x0, y0, pal_n;
+    const void* pal;
+} td[2];
+static unsigned tile_wrap[8][4];
+static int cur_tile;
+static int use_t1;     /* the combiner reads TEXEL1 only: draw with tile 1 (TEXEL1 is renamed TEXEL0) */
+static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 static float dual_gain[3];
 static void unpack8(unsigned c, float o[4]);
+static void ensure_tile(int n);
 static unsigned tile_fmt[8], tile_siz[8];
 static u32 segbase[16];
 static Vtx verts[64];
@@ -207,6 +222,14 @@ static void sync_combine(void) {
     /* Mode 3 = texture colour, but alpha only from the vertex: the alpha combiner does not read TEXEL0. */
     int alpha_tex = comb_aa == 1 || comb_ab == 1 || comb_ac == 1 || comb_ad == 1 ||
                     comb_aa == 2 || comb_ab == 2 || comb_ac == 2 || comb_ad == 2;
+    comb_mode5 = 0;
+    if (wants_tex && comb_a == G_CCMUX_PRIMITIVE && comb_b == G_CCMUX_ENVIRONMENT && comb_c == G_CCMUX_TEXEL0 &&
+        comb_d == G_CCMUX_ENVIRONMENT && alpha_tex) {
+        comb_mode5 = 1;
+        pm_gpu_set_env(envc);
+        pm_gpu_set_combine(5);
+        return;
+    }
     if (wants_tex) mode = alpha_tex ? 2 : 3;
     else if (wants_prim && !comb_set) mode = 1;
     else if (wants_prim && comb_a != G_CCMUX_SHADE) mode = 1;
@@ -388,6 +411,7 @@ static void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
+    ensure_tile(use_t1 ? 1 : 0);
     for (i = 0; i < 3; i++) {
         xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
     }
@@ -427,6 +451,11 @@ static void draw_tri(unsigned w) {
             pm_log("rm f%d oml %08x omh %08x zb %d comb %x %x %x %x a %x %x %x %x tex %d fmt %u/%u prim %08x env %08x xy %d %d w %d", rm_frame, lo, lh, lg != 0, la, lb, lc, ld, comb_aa, comb_ab, comb_ac, comb_ad, tex_on, tile_fmt[0], tile_siz[0], prim, envc,
                    (int)(poly[0].x / poly[0].w * vp_sx + vp_tx), (int)(vp_ty - poly[0].y / poly[0].w * vp_sy), (int)poly[0].w);
         }
+    }
+    if (comb_mode5) {
+        float en[4];
+        unpack8(envc, en);
+        for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
     sync_render();
     if (!comb_alpha_shade) {
@@ -680,6 +709,17 @@ static int load_shaded_sprite(int dx4, int dy4) {
     return pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp, lut, dx4, dy4);
 }
 
+/* Bind the texture of tile n (0 or 1) for the next draw. */
+static void ensure_tile(int n) {
+    if (n == cur_tile || !td[n].valid) return;
+    pm_gpu_flush();
+    pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
+    pm_tex_load(td[n].src, td[n].fmt, td[n].siz, td[n].w, td[n].h, td[n].pal, td[n].pal_n, td[n].stride);
+    tile_x0 = td[n].x0;
+    tile_y0 = td[n].y0;
+    cur_tile = n;
+}
+
 void pm_gbi_run(void* list, unsigned nbytes) {
     Gfx* stack[12];
     int sp = 0;
@@ -820,6 +860,30 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             comb2_ac = (w1 >> 18) & 7;
             comb2_ab = (w1 >> 3) & 7;
             comb2_ad = w1 & 7;
+            /* TEXEL1 with no TEXEL0 anywhere: the texture is tile 1. Rename it so one binding serves. */
+            {
+                int t0 = comb_a == 1 || comb_b == 1 || comb_d == 1 || comb_c == 1 || comb_c == 8 ||
+                         comb_aa == 1 || comb_ab == 1 || comb_ac == 1 || comb_ad == 1;
+                int t1 = comb_a == 2 || comb_b == 2 || comb_d == 2 || comb_c == 2 || comb_c == 9 ||
+                         comb_aa == 2 || comb_ab == 2 || comb_ac == 2 || comb_ad == 2;
+                int c2 = comb2_a == 1 || comb2_b == 1 || comb2_d == 1 || comb2_c == 1 || comb2_c == 8 ||
+                         comb2_aa == 1 || comb2_ab == 1 || comb2_ac == 1 || comb2_ad == 1 ||
+                         comb2_a == 2 || comb2_b == 2 || comb2_d == 2 || comb2_c == 2 || comb2_c == 9 ||
+                         comb2_aa == 2 || comb2_ab == 2 || comb2_ac == 2 || comb2_ad == 2;
+                use_t1 = 0;
+                if (t1 && !t0 && !c2) {
+                    use_t1 = 1;
+                    if (comb_a == 2) comb_a = 1;
+                    if (comb_b == 2) comb_b = 1;
+                    if (comb_d == 2) comb_d = 1;
+                    if (comb_c == 2) comb_c = 1;
+                    if (comb_c == 9) comb_c = 8;
+                    if (comb_aa == 2) comb_aa = 1;
+                    if (comb_ab == 2) comb_ab = 1;
+                    if (comb_ac == 2) comb_ac = 1;
+                    if (comb_ad == 2) comb_ad = 1;
+                }
+            }
             comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
                                ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
             sync_combine();
@@ -831,6 +895,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_SETENVCOLOR:
             envc = w1;
+            pm_gpu_set_env(envc);
             sync_combine();
             break;
         case G_SETCIMG:
@@ -867,6 +932,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (xl & 0x800) xl |= ~0xfff;
             if (yl & 0x800) yl |= ~0xfff;
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
+            ensure_tile(use_t1 ? 1 : 0);
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
             float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)tile_x0) / (float)tw;
@@ -893,6 +959,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             tile_siz[tile] = (w0 >> 19) & 3;
             tile_tmem[tile] = w0 & 0x1ff;
             tile_pal[tile] = (w1 >> 20) & 15;
+            tile_wrap[tile][0] = (w1 >> 8) & 3;
+            tile_wrap[tile][1] = (w1 >> 18) & 3;
+            tile_wrap[tile][2] = (w1 >> 4) & 15;
+            tile_wrap[tile][3] = (w1 >> 14) & 15;
             /* The render tile's wrap belongs to the triangles already queued.
              * Draw them before this tile replaces it. */
             if (tile == 0) {
@@ -935,7 +1005,34 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 m1.x0 = uls >> 2;
                 m1.y0 = ult >> 2;
             }
+            if (tile == 1) {
+                int w = ((lrs - uls) >> 2) + 1, h = ((lrt - ult) >> 2) + 1;
+                int stride = timg_stride > w ? timg_stride : w;
+                int bpp = tile_siz[1] >= 3 ? 4 : tile_siz[1] == 2 ? 2 : tile_siz[1] == 0 ? 0 : 1;
+                const u8* src = (const u8*)timg;
+                td[1].valid = 0;
+                if (src && bpp) src += (size_t)((uls >> 2) + (ult >> 2) * stride) * (size_t)bpp;
+                else if (src && ld_valid) {
+                    src += (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
+                    stride = timg_stride * 2;
+                }
+                if (src && w > 0 && h > 0) {
+                    td[1].valid = 1;
+                    td[1].src = src;
+                    td[1].fmt = tile_fmt[1];
+                    td[1].siz = tile_siz[1];
+                    td[1].w = w;
+                    td[1].h = h;
+                    td[1].stride = stride;
+                    td[1].x0 = uls >> 2;
+                    td[1].y0 = ult >> 2;
+                    td[1].pal = tlut_pal[tile_pal[1] & 15] ? tlut_pal[tile_pal[1] & 15] : tlut;
+                    td[1].pal_n = tlut_n;
+                }
+            }
             if (tile != 0) break;
+            td[0].valid = 0;
+            cur_tile = 0;
             dual_on = 0;
             if (m1.valid && tile_fmt[0] == 2 && tile_siz[0] == 0 && tile_pal[0] != tile_pal[1] &&
                 comb_a == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_TEXEL1 &&
@@ -972,9 +1069,21 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             /* One batch can only sample one image. The last load of the frame
              * was being bound for every surface, so the house wore one fence. */
             pm_gpu_flush();
-            if (src && w > 0 && h > 0)
-                pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h,
-                            tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut, tlut_n, stride);
+            if (src && w > 0 && h > 0) {
+                const void* pal0 = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
+                pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, pal0, tlut_n, stride);
+                td[0].valid = 1;
+                td[0].src = src;
+                td[0].fmt = tile_fmt[0];
+                td[0].siz = tile_siz[0];
+                td[0].w = w;
+                td[0].h = h;
+                td[0].stride = stride;
+                td[0].x0 = x0;
+                td[0].y0 = y0;
+                td[0].pal = pal0;
+                td[0].pal_n = tlut_n;
+            }
             break;
         }
         case G_MOVEWORD: {
