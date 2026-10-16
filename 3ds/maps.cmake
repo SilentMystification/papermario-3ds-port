@@ -1084,6 +1084,65 @@ set(MAP_SRC_obk
     ${DECOMP}/src/world/area_obk/obk_09/epilogue.c
 )
 set(MAP_SRC_arn
+    ${DECOMP}/src/world/area_arn/arn_02/settings.c
+    ${DECOMP}/src/world/area_arn/arn_02/music.c
+    ${DECOMP}/src/world/area_arn/arn_02/main.c
+    ${DECOMP}/src/world/area_arn/arn_02/entity.c
+    ${DECOMP}/src/world/area_arn/arn_02/npc.c
+    ${DECOMP}/src/world/area_arn/arn_03/settings.c
+    ${DECOMP}/src/world/area_arn/arn_03/music.c
+    ${DECOMP}/src/world/area_arn/arn_03/main.c
+    ${DECOMP}/src/world/area_arn/arn_03/npc.c
+    ${DECOMP}/src/world/area_arn/arn_03/entity.c
+    ${DECOMP}/src/world/area_arn/arn_04/settings.c
+    ${DECOMP}/src/world/area_arn/arn_04/music.c
+    ${DECOMP}/src/world/area_arn/arn_04/main.c
+    ${DECOMP}/src/world/area_arn/arn_04/npc.c
+    ${DECOMP}/src/world/area_arn/arn_04/entity.c
+    ${DECOMP}/src/world/area_arn/arn_05/settings.c
+    ${DECOMP}/src/world/area_arn/arn_05/music.c
+    ${DECOMP}/src/world/area_arn/arn_05/main.c
+    ${DECOMP}/src/world/area_arn/arn_05/npc.c
+    ${DECOMP}/src/world/area_arn/arn_05/entity.c
+    ${DECOMP}/src/world/area_arn/arn_07/settings.c
+    ${DECOMP}/src/world/area_arn/arn_07/music.c
+    ${DECOMP}/src/world/area_arn/arn_07/main.c
+    ${DECOMP}/src/world/area_arn/arn_07/windmill.c
+    ${DECOMP}/src/world/area_arn/arn_07/entity.c
+    ${DECOMP}/src/world/area_arn/arn_07/npc.c
+    ${DECOMP}/src/world/area_arn/arn_08/settings.c
+    ${DECOMP}/src/world/area_arn/arn_08/music.c
+    ${DECOMP}/src/world/area_arn/arn_08/main.c
+    ${DECOMP}/src/world/area_arn/arn_08/well.c
+    ${DECOMP}/src/world/area_arn/arn_08/gears.c
+    ${DECOMP}/src/world/area_arn/arn_08/demo.c
+    ${DECOMP}/src/world/area_arn/arn_08/npc.c
+    ${DECOMP}/src/world/area_arn/arn_08/entity.c
+    ${DECOMP}/src/world/area_arn/arn_09/settings.c
+    ${DECOMP}/src/world/area_arn/arn_09/music.c
+    ${DECOMP}/src/world/area_arn/arn_09/main.c
+    ${DECOMP}/src/world/area_arn/arn_09/entity.c
+    ${DECOMP}/src/world/area_arn/arn_09/launch.c
+    ${DECOMP}/src/world/area_arn/arn_09/npc.c
+    ${DECOMP}/src/world/area_arn/arn_10/settings.c
+    ${DECOMP}/src/world/area_arn/arn_10/music.c
+    ${DECOMP}/src/world/area_arn/arn_10/main.c
+    ${DECOMP}/src/world/area_arn/arn_10/npc.c
+    ${DECOMP}/src/world/area_arn/arn_10/entity.c
+    ${DECOMP}/src/world/area_arn/arn_11/settings.c
+    ${DECOMP}/src/world/area_arn/arn_11/music.c
+    ${DECOMP}/src/world/area_arn/arn_11/main.c
+    ${DECOMP}/src/world/area_arn/arn_11/npc.c
+    ${DECOMP}/src/world/area_arn/arn_12/settings.c
+    ${DECOMP}/src/world/area_arn/arn_12/music.c
+    ${DECOMP}/src/world/area_arn/arn_12/main.c
+    ${DECOMP}/src/world/area_arn/arn_12/npc.c
+    ${DECOMP}/src/world/area_arn/arn_12/entity.c
+    ${DECOMP}/src/world/area_arn/arn_13/settings.c
+    ${DECOMP}/src/world/area_arn/arn_13/music.c
+    ${DECOMP}/src/world/area_arn/arn_13/main.c
+    ${DECOMP}/src/world/area_arn/arn_13/npc.c
+    ${DECOMP}/src/world/area_arn/arn_13/entity.c
 )
 set(MAP_SRC_dgb
 )
