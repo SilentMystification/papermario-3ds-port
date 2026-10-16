@@ -2,7 +2,6 @@
 unsigned char heap_battleHead[0x25800];
 void update_max_rumble_duration() {}
 /* npc_iter_no_op is npc.c */
-void update_hud_elements() {}
 void bgm_update_music_control() {}
 void update_ambient_sounds() {}
 void sfx_update_env_sound_params() {}
@@ -11,8 +10,6 @@ void sfx_stop_env_sounds() {}
 /* disable_player_input is 77480.c */
 /* spr_render_init is sprite.c */
 /* player_render_interact_prompts is 77480.c */
-void render_hud_elements_backUI() {}
-void render_hud_elements_frontUI() {}
 void crash_screen_set_draw_info() {}
 void render_window_root() {}
 void fio_init_flash() {}
@@ -21,7 +18,6 @@ void fio_init_flash() {}
 void clear_sprite_shading_data() {}
 void reset_background_settings() {}
 /* clear_npcs is npc.c */
-void hud_element_clear_cache() {}
 void clear_player_data() {}
 /* init_encounter_status is npc.c */
 void clear_item_entity_data() {}
@@ -30,7 +26,6 @@ void reset_ambient_sounds() {}
 void sfx_clear_sounds() {}
 void clear_windows() {}
 void poll_rumble() {}
-void hud_element_set_aux_cache() {}
 void reset_battle_status() {}
 void bgm_init_music_players() {}
 void partner_initialize_data() {}
@@ -44,7 +39,6 @@ void init_virtual_entity_list() {}
 void fx_flame() {}
 void render_item_entities() {}
 /* render_npcs is npc.c, render_player is 77480.c */
-void render_transformed_hud_elements() {}
 void state_drawUI_battle() {}
 void state_drawUI_demo() {}
 void state_drawUI_end_battle() {}

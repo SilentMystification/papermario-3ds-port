@@ -30,7 +30,6 @@ void close_status_bar(void) {}
 void hide_popup_menu(void) {}
 void destroy_popup_menu(void) {}
 
-s32 HES_Item_EmptyBook, HES_Item_EmptyBook_disabled, HES_Item_Postcard, HES_Item_Postcard_disabled;
 
 /* bed.c and records.c include extracted textures that are not in the tree. */
 EvtScript kmr_20_EVS_Inspect_Records = { Return End };

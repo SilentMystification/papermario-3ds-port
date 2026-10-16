@@ -119,6 +119,10 @@ set(GAME_SRC
     ${DECOMP}/src/entity_model.c
     ${DECOMP}/src/animator.c
     ${DECOMP}/src/trigger.c
+    ${DECOMP}/src/hud_element.c
+    ${DECOMP}/src/global_hud_scripts.c
+    ${DECOMP}/src/5B320.c
+    ${DECOMP}/src/msg_img.c
     ${DECOMP}/src/vars_access.c
     ${DECOMP}/src/world/area_kmr/kmr_20/bushes.c
     ${DECOMP}/src/world/area_kmr/kmr_20/documents.c
