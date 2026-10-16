@@ -23,9 +23,10 @@ void nuGfxSetCfb(u16** framebuf, u32 framebufnum) {
     (void)framebufnum;
 }
 
-void nuContRmbForceStop(void) {}
 /* N64 serial interface message queue. The 3DS has no SI and no rumble pak, so the rumble messages go nowhere. */
 s32 nuSiSendMesg(NUScMsg mesg, void* dataPtr) { return 0; }
+/* nusys BSS array, placed by symbol_addrs on the N64. nuContRmbMgrInit is not built, so it stays zeroed (state, mode). */
+NUContRmbCtl nuContRmbCtl[NU_CONT_MAXCONTROLLERS];
 
 u8 nuContInit(void) { return 1; }
 

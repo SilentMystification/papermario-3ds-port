@@ -1,6 +1,5 @@
 /* Systems the logo slice does not run. Each one is replaced by its real file later. */
 unsigned char heap_battleHead[0x25800] __attribute__((aligned(16)));
-void update_max_rumble_duration() {}
 /* npc_iter_no_op is npc.c */
 /* disable_player_input is 77480.c */
 /* spr_render_init is sprite.c */
@@ -12,12 +11,9 @@ void fio_init_flash() {}
 void reset_background_settings() {}
 /* clear_npcs is npc.c */
 /* init_encounter_status is npc.c */
-void poll_rumble() {}
 void reset_battle_status() {}
 void fio_load_globals() {}
 /* update_npcs, update_player, update_encounters are npc.c and 77480.c */
-void clear_virtual_entity_list() {}
-void init_virtual_entity_list() {}
 /* render_npcs is npc.c, render_player is 77480.c */
 void state_drawUI_battle() {}
 void state_drawUI_demo() {}

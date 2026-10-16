@@ -75,6 +75,8 @@ set(GAME_SRC
     ${DECOMP}/src/world/script_api/enter_exit.c
     ${DECOMP}/src/evt/audio_api.c
     ${DECOMP}/src/heaps.c
+    ${DECOMP}/src/rumble.c
+    ${DECOMP}/src/evt/virtual_entity.c
     ${DECOMP}/src/audio/ambience.c
     ${DECOMP}/src/audio/bgm_control.c
     ${DECOMP}/src/audio/bgm_player.c
@@ -121,6 +123,10 @@ set(GAME_SRC
     ${DECOMP}/src/collision.c
     ${DECOMP}/src/state_map_transitions.c
     ${DECOMP}/src/os/nusys/nucontrmbforcestopend.c
+    ${DECOMP}/src/os/nusys/nucontrmbforcestop.c
+    ${DECOMP}/src/os/nusys/nucontrmbcheck.c
+    ${DECOMP}/src/os/nusys/nucontrmbmodeset.c
+    ${DECOMP}/src/os/nusys/nucontrmbstart.c
     ${DECOMP}/src/world/partners.c
     ${DECOMP}/src/world_use_item.c
     ${DECOMP}/src/world/partner/goombario.c

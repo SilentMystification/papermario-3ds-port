@@ -10,7 +10,6 @@ STUB(handle_floor_behavior)
 STUB(load_battle)
 STUB(set_battle_formation)
 STUB(set_battle_stage)
-STUB(start_rumble)
 
 int cymbal_crush_header;
 int flip_card_1_header;
