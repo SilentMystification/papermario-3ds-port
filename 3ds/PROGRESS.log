@@ -194,3 +194,8 @@
 14:39 L01 commit step 2 (ring buffer, writer thread, console lock, quiet lines)
 14:39 L01 docs: SLICES L01 done, row F01, HANDOFF result and threading rule
 14:39 L01 end
+14:39 PT01 start: reading handoff
+14:42 PT01 SLICES row added; reading code done, writing pm_phase.c
+14:45 PT01 build 1 ok (pm_phase.c, hooks in gpu/gbi/tex/os/map/main)
+14:45 PT01 measurement run A: fast autoa phase phasecsv 230 s
+14:51 PT01 build 2 ok (gcache, gdraw sub-phases); commit 1

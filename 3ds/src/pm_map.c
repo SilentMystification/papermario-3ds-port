@@ -286,7 +286,7 @@ static ModelNode* fix_shape(u8* buf, u32 size) {
     return (ModelNode*)(unsigned long)root;
 }
 
-static int yay0_decode(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
+static int yay0_decode_raw(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
     u32 dec_size, link, count, src_pos, dst_pos, bits, mask;
     if (src_len < 16 || src[0] != 'Y' || src[1] != 'a' || src[2] != 'y' || src[3] != '0') return 0;
     dec_size = rbe(src + 4);
@@ -332,6 +332,17 @@ static int yay0_decode(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
         mask >>= 1;
     }
     return 1;
+}
+
+/* PT01: phase and counters around the decoder. */
+static int yay0_decode(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
+    int r;
+    PH_PUSH(PH_YAY0);
+    r = yay0_decode_raw(src, src_len, dst, dst_len);
+    PH_ADD(C_YAYN, 1);
+    PH_ADD(C_YAYB, dst_len >> 10);
+    PH_POP();
+    return r;
 }
 
 /* Retail decode_yay0 core, also used by spr_load_sprite. Header fields are big-endian. */

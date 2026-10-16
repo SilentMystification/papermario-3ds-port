@@ -166,12 +166,20 @@ void pm_frame_loop(void) {
         int draw = D_80073E0A != 0 || !ever;
         pm_log_poll();
         pm_pad_scan();
-        if (!pm_debug_has("noaudio")) for (unsigned n = pm_audio_retraces(); n; n--) pm_audio_tick();
+        if (!pm_debug_has("noaudio")) {
+            PH_PUSH(PH_AUDIO);
+            for (unsigned n = pm_audio_retraces(); n; n--) { pm_audio_tick(); PH_ADD(C_ATICK, 1); }
+            PH_POP();
+        }
         if (!draw) {
             pm_gfx_retrace();
             /* Pad to 30Hz when the drawn frame was quick. A slow frame already
              * missed its vblank, so waiting again only adds another stall. */
-            if (!pm_debug_has("fast") && tick_hz && now - step_start < (tick_hz / 60ull) * 2ull) gspWaitForVBlank();
+            if (!pm_debug_has("fast") && tick_hz && now - step_start < (tick_hz / 60ull) * 2ull) {
+                PH_PUSH(PH_IDLE);
+                gspWaitForVBlank();
+                PH_POP();
+            }
             continue;
         }
         step_start = now;
@@ -184,6 +192,7 @@ void pm_frame_loop(void) {
             ever = 1;
         }
         pm_gpu_end();
+        pm_ph_frame_end();
         frame++;
         presents++;
         now = svcGetSystemTick();
@@ -248,6 +257,7 @@ static void game_thread(void* arg) {
     pm_log_set_switches(sw);
     pm_log_init(live);
     pm_log_start();
+    pm_ph_init();
     pm_fpscr_setup("game");
     bool is_new = false;
     APT_CheckNew3DS(&is_new);

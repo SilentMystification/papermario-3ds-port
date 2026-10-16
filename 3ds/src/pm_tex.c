@@ -250,9 +250,25 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
     }
 }
 
+static int ph_miss;
+static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, int height,
+                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
+                      unsigned dkey);
+/* PT01: a cache hit is only counted. A miss (convert, tile, upload) runs under the tex phase. */
 static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int height,
                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                      unsigned dkey) {
+    int r;
+    ph_miss = 0;
+    PH_ADD(C_TEXCALL, 1);
+    r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
+    if (ph_miss) PH_POP();
+    return r;
+}
+
+static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, int height,
+                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
+                      unsigned dkey) {
     have = 0;
     cur = -1;
     if (!img || width < 1 || height < 1 || !scratch) return 0;
@@ -284,6 +300,9 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
             return 1;
         }
     }
+    ph_miss = 1;
+    PH_PUSH(PH_TEX);
+    PH_ADD(C_TEXMISS, 1);
     int pw = pot_at_least_8(width);
     int ph = pot_at_least_8(height);
     GPU_TEXCOLOR gf = gpu_fmt(fmt, siz);
@@ -373,6 +392,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     s->stride = stride;
     s->dkey = dkey;
     s->bytes = bytes;
+    PH_ADD(C_TEXBYTE, bytes >> 10);
     s->stamp = ++stamp;
     s->epoch = epoch;
     s->live = 1;

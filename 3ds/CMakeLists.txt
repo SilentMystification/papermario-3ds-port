@@ -331,6 +331,7 @@ set(PORT_SRC
     src/pm_main.c
     src/pm_mem.c
     src/pm_log.c
+    src/pm_phase.c
     src/pm_input.c
     src/pm_gpu.c
     src/pm_tex.c
@@ -383,6 +384,7 @@ add_executable(pm_3ds
 target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
     -Wl,--wrap=get_map_IDs_by_name -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_asset_by_name
+    -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
     -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50
     # partner overlays are linked in. Each range is empty (START == END, in the image) so dma_copy copies nothing.

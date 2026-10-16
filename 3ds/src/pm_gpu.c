@@ -93,11 +93,13 @@ static unsigned abgr(unsigned c) {
 }
 
 static void flush(void) {
+    PH_ADD(C_FLUSH, 1);
     if (nverts <= 0 || !gpu_ok) {
         nverts = 0;
         batch_identity = 0;
         return;
     }
+    PH_PUSH(PH_GPU);
     /* 2D batches are already pixels. 3D batches are object space. */
     if (u_proj >= 0)
         C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, draw_3d ? &shader_3d : &projection);
@@ -182,15 +184,22 @@ static void flush(void) {
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
     Vert* batch = verts;
     int count = nverts;
+    PH_PUSH(PH_GCACHE); /* PT01: the per-draw GSPGPU call (an IPC to the GSP service) */
     GSPGPU_FlushDataCache(batch, sizeof(Vert) * (u32)count);
+    PH_POP();
+    PH_PUSH(PH_GDRAW);
     C3D_BufInfo* buf = C3D_GetBufInfo();
     BufInfo_Init(buf);
     BufInfo_Add(buf, batch, sizeof(Vert), 3, 0x210);
     C3D_DrawArrays(GPU_TRIANGLES, 0, count);
+    PH_POP();
     verts = batch + count;
     /* 16-byte aligned start for the next batch (a vertex is 40 bytes, so every other batch start moves one slot). */
     if ((unsigned)(uintptr_t)verts & 15u) verts++;
     draws_frame++;
+    PH_ADD(C_DRAW, 1);
+    PH_ADD(C_VTXSLOT, count);
+    PH_POP();
     nverts = 0;
     batch_identity = 0;
     drew = 1;
@@ -346,11 +355,17 @@ void pm_gpu_begin(int clear) {
     sci_y1 = 240;
     draw_3d = 0;
     if (!gpu_ok) return;
+    PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    PH_POP();
     dump_shot();
+    PH_PUSH(PH_TEX);
     pm_tex_begin_frame();
+    PH_POP();
+    PH_PUSH(PH_GPU);
     if (clear) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
     C3D_FrameDrawOn(target);
+    PH_POP();
 }
 
 void pm_gpu_end(void) {
@@ -373,7 +388,9 @@ void pm_gpu_end(void) {
     pm_gbi_end_frame();
     /* Without this flag citro3d flushes the entire linear heap. That heap is
      * the 20MB port pool, so every frame was writing it back through the cache. */
+    PH_PUSH(PH_FEND);
     C3D_FrameEnd(GX_CMDLIST_FLUSH);
+    PH_POP();
 }
 
 int pm_gpu_drew(void) { return drew; }

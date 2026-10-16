@@ -73,6 +73,7 @@ void pm_log_poll(void) {
 }
 
 int pm_debug_has(const char* word) {
+    PH_ADD(C_DBG, 1);
     if (!word || !switches[0]) return 0;
     const char* p = switches;
     size_t n = strlen(word);

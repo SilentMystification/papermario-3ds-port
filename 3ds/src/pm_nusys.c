@@ -70,7 +70,9 @@ void nuContDataGetExAll(NUContData* data) {
 void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     (void)ucode;
     (void)flag;
+    PH_PUSH(PH_GBI);
     pm_gbi_run(gfxList, gfxListSize);
+    PH_POP();
 }
 
 void pm_gfx_retrace(void) {

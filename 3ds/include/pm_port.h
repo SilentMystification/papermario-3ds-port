@@ -24,6 +24,20 @@ void pm_frame_loop(void);
 int pm_debug_has(const char* word);
 unsigned pm_ticks(void);
 
+/* PT01: per-frame phase timer. Switch `phase` turns it on (pm_ph_on). Exclusive time: a nested phase takes its time from
+ * the phase that was running. Counters are per drawn frame. All macros are one load and one branch when the switch is off. */
+enum { PH_OTHER, PH_LOGIC, PH_DL, PH_GBI, PH_GPU, PH_TEX, PH_AUDIO, PH_ROM, PH_YAY0, PH_FBEGIN, PH_FEND, PH_IDLE, PH_GCACHE, PH_GDRAW, PH_N };
+enum { C_TRI, C_TRIOUT, C_VTXLOAD, C_VTXSLOT, C_DRAW, C_FLUSH, C_TEXCALL, C_TEXMISS, C_TEXBYTE, C_ROMN, C_ROMB, C_YAYN, C_YAYB, C_DBG, C_ATICK, C_N };
+extern int pm_ph_on;
+extern unsigned pm_ph_cnt[C_N];
+void pm_ph_init(void);
+void pm_ph_push(int id);
+void pm_ph_pop(void);
+void pm_ph_frame_end(void);
+#define PH_PUSH(id) do { if (pm_ph_on) pm_ph_push(id); } while (0)
+#define PH_POP() do { if (pm_ph_on) pm_ph_pop(); } while (0)
+#define PH_ADD(c, n) do { if (pm_ph_on) pm_ph_cnt[c] += (unsigned)(n); } while (0)
+
 void pm_pad_scan(void);
 void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsigned short* trigger);
 

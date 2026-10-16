@@ -528,6 +528,8 @@ void pm_gbi_end_frame(void) {
     static char prev[64];
     snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d o%d k%d x%d",
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0);
+    PH_ADD(C_TRI, n_cmd);
+    PH_ADD(C_TRIOUT, n_in + n_cut);
     acc_t += n_cmd;
     acc_i += n_in;
     acc_c += n_cut;
@@ -769,6 +771,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             if (src && n <= 64) {
                 if (v0 + n > 64) n = 64 - v0;
+                PH_ADD(C_VTXLOAD, n);
                 memcpy(&verts[v0], src, n * sizeof(Vtx));
                 /* A load at slot 0 starts a new mesh. Later loads in the same
                  * list append above it and keep the earlier slots. */

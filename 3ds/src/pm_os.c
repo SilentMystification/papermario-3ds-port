@@ -254,6 +254,9 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
         return;
     }
     if (!rom_tried) pm_rom_init();
+    PH_PUSH(PH_ROM);
+    PH_ADD(C_ROMN, 1);
+    PH_ADD(C_ROMB, size);
     /* Walk the request over the original offsets. A byte in a dropped range is a hard error. */
     u8* out = (u8*)buf;
     u32 left = size, addr = rom_addr;
@@ -296,6 +299,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
         out += n; addr += n; left -= n;
     }
     pm_tex_invalidate(buf, size);
+    PH_POP();
 }
 
 /* The map asset table (28-byte entries, see AssetHeader in src/world/world.c) is read by the real load_asset_by_name and
