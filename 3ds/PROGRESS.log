@@ -126,3 +126,6 @@
 09:55 S23 build 1: 8 model files added, A7-A10 stubs removed, link ok
 09:55 S23 commit ffbd01b4b models linked
 10:04 S23 build 2: Plants1 + 5 model files, FlowerGoalPosition stub deleted, link ok
+10:09 S23 commit 71fd803f6, end
+10:09 S24 start
+10:10 S24 gen_effect_ld.py now writes real gfx ROM ranges (112, 659552 B), none overlap M02 drops
