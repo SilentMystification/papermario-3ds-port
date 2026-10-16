@@ -308,6 +308,46 @@ set(MAP_SRC_kmr
     ${DECOMP}/src/world/area_kmr/kmr_30/the_end.c
 )
 set(MAP_SRC_iwa
+    ${DECOMP}/src/world/area_iwa/iwa_00/settings.c
+    ${DECOMP}/src/world/area_iwa/iwa_00/main.c
+    ${DECOMP}/src/world/area_iwa/iwa_00/entity.c
+    ${DECOMP}/src/world/area_iwa/iwa_00/npc.c
+    ${DECOMP}/src/world/area_iwa/iwa_00/slide.c
+    ${DECOMP}/src/world/area_iwa/iwa_01/settings.c
+    ${DECOMP}/src/world/area_iwa/iwa_01/main.c
+    ${DECOMP}/src/world/area_iwa/iwa_01/entity.c
+    ${DECOMP}/src/world/area_iwa/iwa_01/splash.c
+    ${DECOMP}/src/world/area_iwa/iwa_01/npc.c
+    ${DECOMP}/src/world/area_iwa/iwa_01/slide.c
+    ${DECOMP}/src/world/area_iwa/iwa_02/settings.c
+    ${DECOMP}/src/world/area_iwa/iwa_02/main.c
+    ${DECOMP}/src/world/area_iwa/iwa_02/entity.c
+    ${DECOMP}/src/world/area_iwa/iwa_02/npc.c
+    ${DECOMP}/src/world/area_iwa/iwa_03/settings.c
+    ${DECOMP}/src/world/area_iwa/iwa_03/main.c
+    ${DECOMP}/src/world/area_iwa/iwa_03/entity.c
+    ${DECOMP}/src/world/area_iwa/iwa_03/npc.c
+    ${DECOMP}/src/world/area_iwa/iwa_03/slide.c
+    ${DECOMP}/src/world/area_iwa/iwa_04/settings.c
+    ${DECOMP}/src/world/area_iwa/iwa_04/music.c
+    ${DECOMP}/src/world/area_iwa/iwa_04/main.c
+    ${DECOMP}/src/world/area_iwa/iwa_04/entity.c
+    ${DECOMP}/src/world/area_iwa/iwa_04/npc.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/settings.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/music.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/main.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/npc.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/train.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/entity.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/parakarry.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/new_partner.c
+    ${DECOMP}/src/world/area_iwa/iwa_10/foliage.c
+    ${DECOMP}/src/world/area_iwa/iwa_11/settings.c
+    ${DECOMP}/src/world/area_iwa/iwa_11/music.c
+    ${DECOMP}/src/world/area_iwa/iwa_11/main.c
+    ${DECOMP}/src/world/area_iwa/iwa_11/train.c
+    ${DECOMP}/src/world/area_iwa/iwa_11/scenery.c
+    ${DECOMP}/src/world/area_iwa/iwa_11/npc.c
 )
 set(MAP_SRC_dro
 )
