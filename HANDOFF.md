@@ -273,3 +273,156 @@ Slice S17 built the real `src/state_title_screen.c`, `src/state_file_select.c` (
 - Seen by eye (`fast autoa shots`): the real title (logo, PRESS START, star curtain), then the file select with the name entry window, then the file list. Rendering is wrong in places: during the name entry the keyboard shows pink arrows over every letter, and the file list windows overlap or are cut off (Stereo and Mono boxes clipped at the right edge, the files row is incomplete). Not diagnosed, probably `pm_gbi.c` or window scale gaps. The text and menus work (the name was typed, the confirm worked).
 - Not run: the demo path of the title (`state_*_demo` are still empty stand-ins on main, see QUESTIONS.md), the PAL language select, the title menu when `contBitPattern & 1` (the real title draws PRESS START only if a controller bit is set: it showed in the shots, so the port reports controller 1).
 - The `player` debug switch (per 10 frames position log) was in the deleted `state_step_world` and is gone.
+
+## S20 audit (slice S20: final audit, no game code changed)
+
+Scope: every file in `3ds/src`, `3ds/stub_include`, `3ds/include`, `3ds/CMakeLists.txt`, `3ds/effects.cmake`, `3ds/shaders`, `3ds/tools`. Also the `TARGET_3DS` edits in shared source (`git grep TARGET_3DS -- src include`). The branch `s19-full-battle` was read with `git diff main...s19-full-battle`. Nothing was checked out.
+Method: every small file was read in full. For the large files (`pm_gbi.c`, `pm_os.c`, `pm_gpu.c`, `pm_tex.c`, `pm_audio.c`, `pm_rsp_audio.c`, `pm_mem.c`, `pm_log.c`) the entry points were read and grep looked for game symbols (`gPlayer*`, `gGameStatus`, `Npc`, `Evt`, `GAME_MODE`) and for hacks. No game symbol appears in them. No program was run in this slice. Rendering and issue states come from the notes above.
+
+### Counts per class (one row = one item in the lists below)
+
+| Class | Rows | Meaning |
+|---|---|---|
+| A | 17 | empty or skip stub, or zero placeholder, for decomp code or data |
+| B | 7 | hand-written logic or data that replaces decomp code |
+| C | 26 | port platform layer (legitimate) |
+| D | 4 (+1 on the branch) | placeholder alias (legitimate) |
+| E | 10 | debug switch or tooling |
+
+Check of C and D for game logic: 2 items moved out of C into B (the `GotoMap` guard in `pm_map.c`, the `spriteIdx < 0` guard in `src/sprite.c`). 1 item moved to E (`note_door`). All other C and D items contain no game logic.
+
+### Class A (replace with real code). Full table
+
+| # | Where | Stands in for | Real file or system | Why it exists |
+|---|---|---|---|---|
+| A1 | `pm_actor_stubs.c:6-8` `load_battle`, `set_battle_formation`, `set_battle_stage` (return 0) | battle start | `src/battle/battle.c` | battle tree is only on the branch (Q1) |
+| A2 | `pm_later.c:12` `reset_battle_status` (empty) | battle reset | `src/battle/battle.c` | same |
+| A3 | `pm_later.c:15-23` `state_init/step/drawUI_battle`, `_demo`, `_end_battle` (9 empty functions) | battle and demo states | `src/state_battle.c`, `src/state_demo.c` | same. An idle title ends in a black screen after 8 s (Q4) |
+| A4 | `pm_later.c:7` `crash_screen_set_draw_info` (empty) | crash screen draw info | `src/crash_screen.c` | the N64 crash screen draws into the N64 frame buffer. `pm_main.c` has its own crash handler (Q5) |
+| A5 | `game_stubs.c:23-25` `crash_screen_init`, `is_debug_init`, `load_obfuscation_shims` (empty) | crash screen, IS-Viewer, anti-tamper shims | `src/crash_screen.c`, `src/is_debug.c`, `src/load_obfuscation_shims.c` | N64 only. May move to class C if the user agrees (Q5) |
+| A6 | `pm_actor_stubs.c:10-29` 20 `int *_header` variables (cymbal_crush, flip_card_1..3, flutter_down, ...) | imgfx animation ROM offsets | `src/imgfx.c` (`ImgFXAnimOffsets` under `TARGET_3DS` already holds the real offsets) | they satisfy `extern Addr` lines that the 3DS table no longer uses. Probably dead. Delete them and link to confirm (S21) |
+| A7 | `pm_kmr_stubs.c:15-16` `Entity_BrickBlock_Render`, `Entity_Hammer3Block_Render` (`gsSPEndDisplayList`) | block models | `src/entity/model/BrickBlock.c`, `Hammer3Block.c` | model files are not in CMake. These blocks draw nothing (S23) |
+| A8 | `pm_kmr_stubs.c:19-25` `Entity_ScriptSpring_RenderPart1..7` (empty lists) | spring models | `src/entity/model/ScriptSpring_gfx.c` | same. Springs draw nothing (S23) |
+| A9 | `pm_kmr_stubs.c:26-33` `Entity_Shattering{Brick,Hammer1,Hammer2,Hammer3}Block_Fragments{Render,Matrices}` (zero arrays) | shattering block fragments | `src/entity/model/Shattering*Block.c` | same. Fragments draw nothing (S23) |
+| A10 | `pm_kmr_stubs.c:10-11` `Entity_BombableRock_Fragments{Matrices,Render}` (zero arrays) | rock fragments | `src/entity/model/BombableRock.c` | same (S23) |
+| A11 | `pm_actor_link.c:11` `EVS_NpcHitRecoil` = `Return End` | NPC hit recoil script | `src/38F00.c` (166 lines, not in CMake) | the script was needed before `38F00.c` was linked. Build the file and delete `pm_actor_link.c` (S21) |
+| A12 | `game_stubs.c:6-10` `ResetGameState`, `ResetSavedFrameImg`, `D_80073E08`, `D_80073E0A`, `ResetTilesImg[16]` | startup data and the reset tile image | `src/main_pre.c` (11 lines, not in CMake) | `main_pre.c` was never added. `ResetTilesImg` holds 16 zero bytes in place of `reset_tiles.png` (S21) |
+| A13 | `game_stubs.c:13` `BattleStatus gBattleStatus` (zero) | battle status storage | `src/battle/` (real definition) | the branch removes it (A1) |
+| A14 | `pm_later.c:2` `heap_battleHead[0x25800]` | battle heap | real address `gFrameBuf2` (`ver/us/undefined_syms.txt`) | the branch replaces it by `--defsym` (A1) |
+| A15 | `pm_later.c:24` `heap_collisionHead[0x20000]` | collision heap | `src/heaps2.c` (`COLLISION_HEAP_SIZE` is 0x18000) | `heaps2.c` is not in CMake. The size differs. Storage only (S21) |
+| A16 | `pm_later.c:25` `FlowerGoalPositionX/Y/Z` (`short`) | flower goal position | `src/entity/jan_iwa/Plants1.c` (`u16 BSS`) | file not built. Real code reads these (`use_spinning_flower.c`). The type differs (S21, or later with the jan_iwa entities) |
+| A17 | `stub_include/effect_ld_addrs.h:385-608` 224 lines `effect_gfx_*_ROM_START/END` = `(u8*)0` | effect graphics (data, not code) | splat `effect_gfx_*` segments, 660 KB, kept in the packed ROM | gfx start is null, so `sharedData->graphics` stays NULL. Effects draw without graphics (S24, Q3) |
+
+### Class B (hand-written logic or data). Full table
+
+| # | Where | Stands in for | Real file or system | Why it exists |
+|---|---|---|---|---|
+| B1 | `area_table.c` (586 lines) | `gAreas` table in `src/world/world.c` | real table with all `area_*` maps | S08 user decision: 6 real `MAP()` rows, all others `MAP_ID()`. All maps do not fit (S01). The `.bgName`, `.songVariation`, `.sfxReverb` fields are copied by hand. No script checks them against `world.c` (S22). The header comment names `pm_map_guard.c`, which does not exist (the code is in `pm_map.c`) |
+| B2 | `pm_map.c:496-541` `__wrap_get_map_IDs_by_name`, `__wrap_set_game_mode`, `__wrap_load_map_by_IDs`, `map_is_linked` | game flow for a `GotoMap` to a map that is not in the image | real `load_map_by_IDs` with every map linked | consequence of B1. It decides game flow (refuse and stay), so it is not a platform shim. Moved from C to B. It goes away with B1 |
+| B3 | `stub_include/sprite/npc/*.h` (233 files) and `sprite/player.h` | generated `ver/us/build/include/sprite/npc/*.h` | the generated headers (E01) | `stub_include` comes before `ver/us/build/include` in `include_directories`, so these shadow the real ones. `Goomba.h` has 398 lines, the generated one 421 (the `SPR_IMG_*` lines are missing). `player.h` is identical in content. The branch deletes them |
+| B4 | `stub_include/sprite/sprite_shading_profiles.h` (5 lines) | generated header (97 lines) | generated header | only `SHADING_NONE` exists. `SetSpriteShading(SHADING_HOS_01)` cannot compile on main. The branch deletes it |
+| B5 | `stub_include/battle/actor_types.h` (7 lines) | generated header (435 lines) | generated header | only 3 `ACTOR_LEVEL_*` names. The branch deletes it |
+| B6 | `stub_include/charset/{letter_content_1,peach_letter,postcard}.png.h` | generated `ver/us/build/include/charset/*.png.h` | the generated headers | image sizes typed by hand from splat. `postcard.png.h` only includes `peach_letter.png.h` (both are 150x105 in splat, so the values match). They shadow the generated ones |
+| B7 | `src/sprite.c:874` `#ifdef TARGET_3DS if (spriteIdx < 0) return 0;` (shared source) | decomp behavior for a bad sprite index | real code, which reads an array at a negative index | guard added in an early slice to hide bad data. It changes game code. Find the cause of the bad index, then remove the guard (S22) |
+
+### Class C (platform layer, no game logic). Short list
+
+1. `pm_main.c` boot, frame loop, 2 color-image tokens `nuGfxCfb` (`pm_is_cfb`), crash handler.
+2. `pm_mem.c` FCRAM split (4 MB base, resident ROM, 20 MB linear pool).
+3. `pm_os.c` `os*` calls, `bcopy`, message queues, threads, TLB no-ops, `osVi*`, `osAi*`.
+4. `pm_os.c` ROM: `pm_rom_init`, `pi_read_raw`, `nuPiReadRom` (swaps the asset table), `rom_remap.h` (generated by `gen_rom_remap.py`).
+5. `pm_os.c` flash: `osFlash*` on `save.flash`.
+6. `pm_nusys.c` `nuGfx*`, `nuCont*` (reads the 3DS pad), `nuSiSendMesg` no-op, `nuContRmbCtl[]` storage.
+7. `pm_gu.c` libultra `gu*` matrix functions (fixed-point pack like the RSP).
+8. `pm_gbi.c` Fast3D interpreter (platform layer, runs the real display lists). Gaps are in the next section.
+9. `pm_gpu.c` PICA200 state, batches, Z buffer, HUD text.
+10. `pm_tex.c` texture decode, tile, cache (4 MB budget).
+11. `pm_audio.c` ndsp output and the audio thread hand-over.
+12. `pm_rsp_audio.c` C version of the RSP audio microcode ops (from paperboat).
+13. `pm_input.c` pad mapping (the `autoa` part is E).
+14. `pm_map.c` big-endian fixes: `fix_shape`, `swap_hit_file`, `decode_yay0`, `find_asset`, `gMapShapeData` 256 KB, `--wrap` of `load_asset_by_name`. They read decomp structure layouts but hold no game rule.
+15. `pm_kmr_stubs.c:35,37` `gBackgroundImage` buffer (real address 0x80200000) and `pm_world_entity_heap` (real N64 address, `#ifdef` in `src/entity.c`).
+16. `game_stubs.c:15-32` `pm_game_bind`, `shim_*_obfuscated` (call the real functions).
+17. `effect_loads.c` generated C form of the splat asm (`load_effect(id)` then `<name>_main`).
+18. `shaders/pm.v.pica` one matrix multiply.
+19. `stub_include/ld_addrs.h` real ROM offsets (`imgfx_data`, `logos`, `title_bg_1`, `charset`), `entity_model_offsets.h` (generated), `charset_offsets.h` (typed by hand from splat, should be generated), `include_asset.h` (ARM `%object`), `PR/abi.h`, `PR/n_abi.h`.
+20. `CMakeLists.txt` flags (`-fno-short-enums`, `-fsigned-char`, `-fwrapv`), `--wrap` list, 2 `sprite_shading_profiles_*` real ROM offsets, `world.c` cut at `#define AREA(`.
+21. `3ds/include/*.h` port headers.
+22. Shared source `TARGET_3DS` edits, 36 places in 15 files (`background.c`, `charset.h`, `demo_api.c`, `imgfx.c`, `main.c`, `model.c`, `msg.c`, `entity.c`, `sprite.c`, `hos_05/intro.c`, `macros.h`, `common_structs.h`, `os_convert.h`, `os_libc.h`, `include_asm.h`). Almost all are byte swaps and address macros. Two are more: B7 above, and `entity.c:1064` (animated entity models use the compiled C node data in place of the ROM copy: data path only, no rule).
+23. `imgfx.c` `ImgFXAnimOffsets` (offsets copied from splat `imgfx_data`).
+24. `entity.c:15-21` `WORLD_ENTITY_HEAP_*` macros.
+25. `pm_gbi.c:151-160` fixed light direction for `G_LIGHTING` vertices (RSP lighting approximation, no game logic, but a gap: the display list lights are ignored).
+26. `3ds/build.sh`, `go.ps1`, `push_3ds.sh`, `bump_build.cmake` build glue (no game content).
+
+### Class D (placeholder alias). Short list
+
+1. `CMakeLists.txt` 47 `--defsym X=gPartnerStatus` (`world_partner_*`, `world_use_item_*`, `pause_*`, `filemenu_*`, `ui_images_filemenu_pause_*`). They name code overlays that are linked in place. `ui_images_filemenu_pause_*` names image data, but the images are linked in place by `INCLUDE_IMG` (P01), so the empty range is correct. No game logic.
+2. `stub_include/ld_addrs.h` code overlay ranges `((u8*)1)` (engine1, engine2, engine4, evt, entity*, world_script_api, world_action_* and others). Code only. `rom_static_check.py` (M02) showed no overlap with a dropped range.
+3. `stub_include/effect_ld_addrs.h` effect code ranges `((u8*)1)` (3 per effect). Code only. The 224 `effect_gfx_*` lines are NOT code and are class A (A17).
+4. `effect_shims.yaml` `--defsym shim_X=X` (aliases of real functions).
+5. On the branch: `battle_ld_addrs.h` (159 empty ranges for battle code and the item and move overlays) and `--defsym heap_battleHead=gFrameBuf2` (real address).
+
+### Class E (debug switch or tooling). Short list
+
+1. `pm_log.c` switch parser and log functions.
+2. `pm_input.c:50-57` `autoa`.
+3. `pm_gbi.c` `pm_gbi_fallback` (red, green, blue boot test triangle, switch `nofallback`), `pm_gbi_stats`, the `gbi skip` note.
+4. `pm_gbi.c:258-280,433-440` `note_door`: probe of the house door vertex with fixed object coordinates (240, 30, -80). It only writes a log line. It has no game logic, but it holds a map coordinate. Delete it (S22). Moved from C to E.
+5. `pm_gpu.c:249` `shots`.
+6. `pm_map.c:483-494` `pm_dump_scripts` (`scripts`).
+7. `pm_os.c` `romfull`, `romtrace`.
+8. `pm_main.c` FPS and ms HUD, `stats`, `fast`.
+9. `3ds/tools/*` (14 files): `extract_assets.*`, `gen_*`, `rom_*_check.py`, `dedup_stubs.py`, `livelog.py`, `ftppull.py`, shims, `c01.sh`. `dedup_stubs.py` lists `pm_evt_stub.c` (deleted), harmless. `c01.sh` is a C01 build helper, probably dead.
+10. `3ds/run_azahar.ps1` and the pull and push helpers.
+
+### Branch `s19-full-battle` (read only)
+
+One commit (`7fd566684`) on `088a06e2e`. Main is 4 commits ahead (S17, M02 and notes). Diff `main...s19-full-battle`: 250 files, +690 and -37,614 lines. It adds only these files under `3ds`: `battle.cmake` (GLOB of `src/battle/*.c` minus `.inc.c` and region files, plus `state_battle.c`, `state_demo.c`, `level_up.c`, `starpoint.c`, `PowBlock.c`, `battle_ui_gfx.c`, 627 files in all), `stub_include/battle_ld_addrs.h` (592 lines), `tools/gen_battle_ld.py`, and small edits. The image grows 3.9 MB (12.15 MiB in all). The 3dsx is 6.59 MB.
+- It removes: A1, A2, A3, A13, A14, B3, B4, B5.
+- It adds: debug switches `battle` and `demobattle` in `pm_title.c`, switch `assets` in `pm_map.c`, `shim_battle_heap_create_obfuscated`, `--defsym heap_battleHead=gFrameBuf2`.
+- Merge into main: `git merge-tree` reports conflicts in `PROGRESS.log`, `QUESTIONS.md`, `SLICES.md`, `HANDOFF.md`, `game_stubs.c`, `pm_later.c`, and `pm_title.c` (modified on the branch, deleted on main). The two debug hooks need a new home (one call in `pm_main.c` or the real `state_world.c` flow). Rebase the branch first, then merge.
+- Known on the branch: kzn2 `dmaTable` ranges are empty (Lava Piranha animation missing), stage `kmr_02` names a missing asset (decomp bug), `assert i < MAX_NPCS` with the debug hook only, attack animations draw black and olive polygons, Fuzzy sprites look dark.
+
+### Open rendering gaps (from the notes, plus what the audit found in `pm_gbi.c`)
+
+1. Fast3D features not handled in `pm_gbi.c`. The opcode switch handles `G_VTX`, `G_TRI1/2`, `G_MTX`, `G_POPMTX`, `G_MOVEMEM` (viewport only), `G_GEOMETRYMODE`, `G_TEXTURE`, `G_SETOTHERMODE_H/L`, `G_SETCOMBINE`, prim and env color, `G_SETCIMG`, fill, `G_FILLRECT`, `G_TEXRECT`, tile and TLUT loads, and `G_MOVEWORD` (segments). It ignores `G_SETZIMG`. Every other opcode logs `gbi skip <op>` once. By reading the code, these are missing: fog (`G_FOG`, fog color), display list lights (a fixed light is used), `G_SETBLENDCOLOR`, blender and alpha-compare modes, `G_SETKEYGB`, `G_SETCONVERT`, texture generation, `G_LINE3D`, `G_BRANCH_Z`, `G_CULLDIV`, LOD and mipmap, the bilinear filter of the shading lookup, and render-to-texture except the shading palette. Not measured: which of these cause the black and olive polygons (S25 finds out with the `gbi skip` log in a battle).
+2. `effect_gfx_*` never loaded (A17). Effects that need graphics data draw nothing or draw wrong. `flame` and a few effects render into `D_800B32E0` and `D_800B3AE0` (render-to-texture, not emulated).
+3. Attack animations show black and olive polygons (battle branch). Not diagnosed.
+4. Pink arrows over every letter in the file select name entry. File list windows overlap or are cut off at the right edge (Stereo and Mono boxes). Not diagnosed. Probably `pm_gbi.c`.
+5. Transparency: translucent models show the background but not the geometry behind them (issues 4 and 7). Mario's sprite has the same fault.
+6. Text box transitions, the Parakarry box (issue 3), the Mario logo on the house (issue 5): not checked by eye after S14. State is unknown.
+7. Shading: the second pass `SPR_SHADING_FLAG_SET_VIEWPORT` and shaded imgfx meshes are untested.
+8. Not seen by eye yet: pause screen (S18), Shadow textures, kmr_20 background. Entity blocks, springs and rocks draw nothing (A7 to A10).
+
+### Open issues from this file and their state now
+
+| # | Issue | State |
+|---|---|---|
+| 1 | kkj_00 not reached by the intro chain | Open. The chain ends in kmr_20, osr_00, kmr_20, mac_00. Nothing sends the game to kkj_00 |
+| 2 | Sprite shading | Fixed (S15). No linked map uses a real profile, so it is not seen in play |
+| 3 | Text box transitions, Parakarry text box | Unknown. Real message files are built (S14). Not seen by eye |
+| 4 | Half transparency | Open |
+| 5 | Mario logo on the house | Unknown. Not re-checked |
+| 6 | Red curtain | Fixed (S13) |
+| 7 | Mario sprite transparency | Open, same cause as 4 |
+| - | mac_00 crash (S08) | Root cause found by D01 (new file setup). No crash in runs since |
+| - | O3DS RAM limit | Estimated only. Not run on hardware. `push o` failed (M02) |
+| - | Audio CPU cost | Measured on Azahar only (about 3 ms per tick) |
+| - | Demo path of the title | Dead black screen on an idle title on main (Q4) |
+| - | Save from a save block, copy, erase | Not checked |
+| - | Battle: only one Goomba battle seen, no real encounter start | Open (S19d) |
+
+### Ranked next 10 slices (rows are in `3ds/SLICES.md`)
+
+Ranking rule: remove stubs first (user priority), then rendering faults that block checking, then measurement.
+1. S19a, merge or trim the battle tree (Q1). It removes 8 rows (A1, A2, A3, A13, A14, B3, B4, B5) at once. Blocked on the user.
+2. S21, build `main_pre.c`, `heaps2.c`, `38F00.c`. It deletes A6, A11, A12, A15. Small and certain (the real files exist, 11, 7 and 166 lines).
+3. S22, remove stale shadow headers on main (B3 to B6, only if the branch is not merged first), delete `note_door` (E), check `area_table.c` against `world.c` by script (B1), find the cause of the `spriteIdx < 0` guard (B7).
+4. S23, link the entity model files (A7 to A10). Blocks, springs and rocks draw nothing today. Real files, no stand-in.
+5. S24, load effect graphics (A17, Q3). It needs the real `effect_gfx` ROM ranges from splat in place of 0. Check the `flame` render-to-texture case.
+6. S25, Fast3D gaps: log `gbi skip` in a battle, fix the missing feature (was S19c), then lights and fog.
+7. S26, transparency (issues 4 and 7): draw order and depth write.
+8. S27, file select render faults (pink arrows, overlapping windows).
+9. S28, hardware run on O3DS and N3DS: real memory limit, audio cost, FPS. It settles Q2.
+10. S29, real encounter start, kkj_00 chain, title demo timer (S19d, issue 1, Q4). Needs S19a first.
+Q5 (crash screen shims) and Q6 (link more maps, for example hos_04) have no slice until the user answers.

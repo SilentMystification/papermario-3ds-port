@@ -97,3 +97,12 @@
 09:16 M02 run1 packed fast autoa: 0 dropped, 0 unmapped, mac_00 reached, heap used 27339KB
 09:17 M02 hardware: push o failed (push_3ds.sh exit 1), not retried
 09:20 M02 commit: remap drops 14.36 MB, notes
+09:21 S20 start
+09:21 S20 read notes, small port files
+09:22 S20 audited stub_include and CMake
+09:22 S20 audited pm_map pm_main game stubs
+09:22 S20 audited pm_gbi pm_os; reading branch
+09:25 S20 audited headers, branch diff
+09:27 S20 wrote HANDOFF section
+09:28 S20 wrote QUESTIONS and SLICES
+09:28 S20 end
