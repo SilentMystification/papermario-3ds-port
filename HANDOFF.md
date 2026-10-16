@@ -426,3 +426,9 @@ Ranking rule: remove stubs first (user priority), then rendering faults that blo
 9. S28, hardware run on O3DS and N3DS: real memory limit, audio cost, FPS. It settles Q2.
 10. S29, real encounter start, kkj_00 chain, title demo timer (S19d, issue 1, Q4). Needs S19a first.
 Q5 (crash screen shims) and Q6 (link more maps, for example hos_04) have no slice until the user answers.
+
+## S21 result
+
+Done (slice S21). Real `src/main_pre.c`, `src/heaps2.c`, `src/38F00.c` are in CMake and link first try. Deleted in S21: `ResetGameState`, `ResetSavedFrameImg`, `D_80073E08`, `D_80073E0A`, `ResetTilesImg[16]` (game_stubs.c, A12), `heap_collisionHead[0x20000]` (pm_later.c, A15), `pm_actor_link.c` with its CMake line (A11), the 20 `*_header` ints in pm_actor_stubs.c (A6, the link needs none of them). Audit rows A6, A11, A12, A15 are closed. `ResetTilesImg` now holds the real `reset_tiles.png`.
+- A16 (`FlowerGoalPosition*` in pm_later.c) stays. `Plants1.c` is a jan_iwa entity file. Build it with those entities (S23).
+- Check (S21, Azahar `fast autoa`, 220 s): kmr_20, osr_00, kmr_20, mac_00 reached and stable. 0 unmapped-access lines, 0 crash lines, 0 `ROM READ IN DROPPED RANGE` lines. `GotoMap refused` for area 1 map 2 is the known B2 guard.

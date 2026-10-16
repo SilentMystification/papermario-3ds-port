@@ -3,11 +3,6 @@
 #include "fio.h"
 #include "pm_port.h"
 
-s32 ResetGameState;
-u16* ResetSavedFrameImg;
-s16 D_80073E08;
-s16 D_80073E0A;
-u8 ResetTilesImg[16];
 extern PlayerData gPlayerData;
 extern PlayerStatus gPlayerStatus;
 BattleStatus gBattleStatus;

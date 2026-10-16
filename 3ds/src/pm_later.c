@@ -21,5 +21,4 @@ void state_init_end_battle() {}
 void state_step_battle() {}
 void state_step_demo() {}
 void state_step_end_battle() {}
-unsigned char heap_collisionHead[0x20000] __attribute__((aligned(16)));
 short FlowerGoalPositionX, FlowerGoalPositionY, FlowerGoalPositionZ;

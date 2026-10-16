@@ -86,6 +86,9 @@ set(GAME_SRC
     ${DECOMP}/src/world/script_api/enter_exit.c
     ${DECOMP}/src/evt/audio_api.c
     ${DECOMP}/src/heaps.c
+    ${DECOMP}/src/heaps2.c
+    ${DECOMP}/src/main_pre.c
+    ${DECOMP}/src/38F00.c
     ${DECOMP}/src/rumble.c
     ${DECOMP}/src/background.c
     ${DECOMP}/src/background_gfx.c
@@ -326,7 +329,6 @@ set(PORT_SRC
     src/pm_later.c
     src/pm_map.c
     src/area_table.c
-    src/pm_actor_link.c
     src/pm_kmr_stubs.c
     src/pm_actor_stubs.c
     src/game_stubs.c
