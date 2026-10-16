@@ -350,6 +350,20 @@ set(MAP_SRC_iwa
     ${DECOMP}/src/world/area_iwa/iwa_11/npc.c
 )
 set(MAP_SRC_dro
+    ${DECOMP}/src/world/area_dro/dro_01/settings.c
+    ${DECOMP}/src/world/area_dro/dro_01/music.c
+    ${DECOMP}/src/world/area_dro/dro_01/main.c
+    ${DECOMP}/src/world/area_dro/dro_01/npc.c
+    ${DECOMP}/src/world/area_dro/dro_01/shop.c
+    ${DECOMP}/src/world/area_dro/dro_01/rooms.c
+    ${DECOMP}/src/world/area_dro/dro_01/entity.c
+    ${DECOMP}/src/world/area_dro/dro_01/foliage.c
+    ${DECOMP}/src/world/area_dro/dro_02/settings.c
+    ${DECOMP}/src/world/area_dro/dro_02/music.c
+    ${DECOMP}/src/world/area_dro/dro_02/entity.c
+    ${DECOMP}/src/world/area_dro/dro_02/main.c
+    ${DECOMP}/src/world/area_dro/dro_02/rooms.c
+    ${DECOMP}/src/world/area_dro/dro_02/npc.c
 )
 set(MAP_SRC_sbk
 )
