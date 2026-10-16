@@ -60,7 +60,8 @@ static GPU_TEXCOLOR gpu_fmt(unsigned fmt, unsigned siz) {
     if (fmt == FMT_IA && siz == SIZ_16) return GPU_LA8;
     if (fmt == FMT_IA && siz == SIZ_8) return GPU_LA8;
     if (fmt == FMT_IA && siz == SIZ_4) return GPU_LA8;
-    if (fmt == FMT_I && (siz == SIZ_8 || siz == SIZ_4)) return GPU_L8;
+    /* The RDP gives an I texel an alpha equal to its intensity. PICA L8 has alpha 1. */
+    if (fmt == FMT_I && (siz == SIZ_8 || siz == SIZ_4)) return GPU_LA8;
     return GPU_RGBA5551;
 }
 
@@ -125,11 +126,16 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
                 d[0] = (u8)a;
                 d[1] = (u8)i;
             } else if (fmt == FMT_I && siz == SIZ_8) {
-                scratch[y * pw + x] = src[y * stride + x];
+                u8 c = src[y * stride + x];
+                u8* d = scratch + (y * pw + x) * 2;
+                d[0] = c;
+                d[1] = c;
             } else if (fmt == FMT_I && siz == SIZ_4) {
                 unsigned byte = src[(y * stride + x) >> 1];
                 unsigned nib = (x & 1) ? (byte & 15) : (byte >> 4);
-                scratch[y * pw + x] = (u8)(nib * 17);
+                u8* d = scratch + (y * pw + x) * 2;
+                d[0] = (u8)(nib * 17);
+                d[1] = (u8)(nib * 17);
             } else {
                 write5551(scratch + ((y * pw + x) * 2), 0xffffu);
             }

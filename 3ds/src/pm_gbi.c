@@ -20,6 +20,9 @@ static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
 static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 static unsigned geom;
 static unsigned omode_h;
+static unsigned omode_l = 0x00000030u; /* Z_CMP | Z_UPD until a list sets a mode */
+static int rm_frame;
+
 static unsigned prim = 0xffffffffu;
 static unsigned fill = 0xffffffffu;
 static int tex_on;
@@ -128,10 +131,31 @@ static void sync_combine(void) {
         comb_c == G_CCMUX_TEXEL0 || comb_d == G_CCMUX_TEXEL0 || comb_c == G_CCMUX_TEXEL0_ALPHA);
     int wants_prim = comb_a == G_CCMUX_PRIMITIVE || comb_b == G_CCMUX_PRIMITIVE || comb_c == G_CCMUX_PRIMITIVE;
     int mode = 0;
-    if (wants_tex) mode = 2;
+    /* Mode 3 = texture colour, but alpha only from the vertex: the alpha combiner does not read TEXEL0. */
+    int alpha_tex = comb_aa == 1 || comb_ab == 1 || comb_ac == 1 || comb_ad == 1 ||
+                    comb_aa == 2 || comb_ab == 2 || comb_ac == 2 || comb_ad == 2;
+    if (wants_tex) mode = alpha_tex ? 2 : 3;
     else if (wants_prim && !comb_set) mode = 1;
     else if (wants_prim && comb_a != G_CCMUX_SHADE) mode = 1;
     pm_gpu_set_combine(mode);
+}
+
+/* Render mode bits of G_SETOTHERMODE_L, same reading as libultraship DeriveTriState: depth
+ * compare and update come from Z_CMP and Z_UPD, a decal passes equal depth, blending is on when
+ * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
+ * cut away near-transparent texels. */
+static void sync_render(void) {
+    unsigned m = omode_l;
+    int blend = ((m & (3u << 20)) == (1u << 20) && (m & (3u << 16)) == 0) ||
+                ((m & (3u << 22)) == (1u << 22) && (m & (3u << 18)) == 0);
+    int atest = -1;
+    if (m & 0x1000u) { /* CVG_X_ALPHA, texture edge */
+        if (blend) atest = 0x08;
+        else atest = 0x30;
+    } else if ((m & 3u) == 1u) { /* G_AC_THRESHOLD */
+        atest = 0x08;
+    }
+    pm_gpu_set_render((m & 0x10u) != 0, (m & 0x20u) != 0, blend, atest, (m & 0xc00u) == 0xc00u);
 }
 
 static unsigned rgba_from_5551(unsigned c) {
@@ -317,6 +341,15 @@ static void draw_tri(unsigned w) {
         }
         n_cut++;
     }
+    if (pm_debug_has("rmlog") && (rm_frame % 30) == 1) {
+        static unsigned lo, lg, la, lb, lc, ld, lh;
+        if (lo != omode_l || lg != (geom & G_ZBUFFER) || la != comb_a || lb != comb_b || lc != comb_c || ld != comb_d ||
+            lh != omode_h) {
+            lo = omode_l; lg = geom & G_ZBUFFER; la = comb_a; lb = comb_b; lc = comb_c; ld = comb_d; lh = omode_h;
+            pm_log("rm f%d oml %08x omh %08x zb %d comb %x %x %x %x a %x %x %x %x tex %d fmt %u/%u prim %08x", rm_frame, lo, lh, lg != 0, la, lb, lc, ld, comb_aa, comb_ab, comb_ac, comb_ad, tex_on, tile_fmt[0], tile_siz[0], prim);
+        }
+    }
+    sync_render();
     if (!comb_alpha_shade) {
         for (i = 0; i < n; i++) poly[i].a = 255;
     }
@@ -406,6 +439,7 @@ void pm_gbi_end_frame(void) {
     }
     n_cmd = n_in = n_cut = n_drop = n_out = n_keep = 0;
     have_sample = 0;
+    rm_frame++;
 }
 
 const char* pm_gbi_stats(void) { return stats_line; }
@@ -686,6 +720,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             unsigned sft = 32 - field - len;
             unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
             if (op == G_SETOTHERMODE_H) omode_h = (omode_h & ~mask) | (w1 & mask);
+            else omode_l = (omode_l & ~mask) | (w1 & mask);
             break;
         }
         case G_SETCOMBINE:

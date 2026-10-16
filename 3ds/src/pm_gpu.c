@@ -31,6 +31,8 @@ static int gpu_ok;
 static PrintConsole bottom_con;
 static int z_on;
 static int light_on;
+/* RDP render mode: depth compare, depth update, alpha blend, alpha cut-off (-1 none), decal. */
+static int r_zcmp = 1, r_zupd = 1, r_blend = 1, r_atest = -1, r_decal;
 static int combine;
 static int rgb_scale = 1;
 static int batch_identity;
@@ -94,10 +96,17 @@ static void flush(void) {
     (void)batch_identity;
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
-    int tex = (combine == 2) && pm_tex_bind();
+    int tex = (combine == 2 || combine == 3) && pm_tex_bind();
     if (tex) {
-        C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-        C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+        C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
+        if (combine == 3) {
+            C3D_TexEnvSrc(env, C3D_Alpha, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+            C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+        } else {
+            C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+            C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
+        }
         if (rgb_scale == 2) C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);
     } else if (combine == 1) {
         C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
@@ -111,10 +120,17 @@ static void flush(void) {
      * before the logo, and every 2D quad shares z, so a depth test keeps
      * only the first rectangle. */
     int z = z_on && !rect_2d;
-    /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. */
-    C3D_DepthTest(z ? true : false, GPU_GREATER, z ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+    /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. A decal
+     * sits in the same plane as its base, so equal depth has to pass. */
+    if (z && r_zcmp)
+        C3D_DepthTest(true, r_decal ? GPU_GEQUAL : GPU_GREATER, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+    else if (z && r_zupd)
+        C3D_DepthTest(true, GPU_ALWAYS, GPU_WRITE_ALL);
+    else
+        C3D_DepthTest(false, GPU_GREATER, GPU_WRITE_COLOR);
     C3D_EarlyDepthTest(false, GPU_EARLYDEPTH_GREATER, 0);
-    C3D_AlphaTest(false, GPU_ALWAYS, 0);
+    if (r_atest >= 0) C3D_AlphaTest(true, GPU_GREATER, r_atest);
+    else C3D_AlphaTest(false, GPU_ALWAYS, 0);
     /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide
      * game picture and whatever scissor the display list set inside it. */
     {
@@ -132,8 +148,11 @@ static void flush(void) {
             C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, 40, 240, 360);
     }
     C3D_CullFace(GPU_CULL_NONE);
-    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+    if (r_blend || rect_2d)
+        C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+            GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+    else
+        C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
     Vert* batch = verts;
     int count = nverts;
@@ -316,6 +335,16 @@ void pm_gpu_set_mode(int zbuffer, int lighting) {
     flush();
     z_on = zbuffer;
     light_on = lighting;
+}
+
+void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
+    if (zcmp == r_zcmp && zupd == r_zupd && blend == r_blend && atest == r_atest && decal == r_decal) return;
+    flush();
+    r_zcmp = zcmp;
+    r_zupd = zupd;
+    r_blend = blend;
+    r_atest = atest;
+    r_decal = decal;
 }
 
 void pm_gpu_set_combine(int mode) {
