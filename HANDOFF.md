@@ -180,6 +180,10 @@ All items below belong to slice H02. Checked on Azahar only. Nothing ran on hard
 - RAM: `pm_mem.c` splits the 64 MB O3DS FCRAM as 4 MB N64 heap + 40 MB cart image + 20 MB linear. Nothing is free. 6 MB of static image does not fit.
 - DECISION: does NOT fit. Do not link all maps. S08 must link only the maps in use, or load map data from the ROM at run time. Linking a subset needs a `gAreas` built from only those maps. The real `gAreas` in `world.c` references all of them.
 
+## Open slice L01 (user decision, 2026-10, documentation only)
+
+Slice L01 is queued in 3ds/SLICES.md before S28. The user decided that no blocking write may run on the game path. pm_log must become a ring buffer with a writer thread on core 1. This note was added during slice V02. No L01 code was written.
+
 ## Open issues (carry over until fixed)
 
 1. kkj_00 is not reached by the intro chain. See above. Toad Town (mac_00) and every other map also fail to load. The generic map table fixes both.

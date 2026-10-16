@@ -172,3 +172,7 @@
 13:36 H02 build ok, tests: crashtest_call, taptest, ROM checks, boot fail trace passed on Azahar
 13:41 H02 docs written (HANDOFF, SLICES H02 x, H03, V02, V03)
 13:41 H02 end, last commit e577f9531
+13:42 V02 start
+13:43 V02 baseline build done
+13:47 V02 baseline shots look right by eye; kmr_20 panorama draws zb0 Z_CMP0 after zb1 draws
+13:49 V02 docs: L01 row and HANDOFF note added (coordinator request)
