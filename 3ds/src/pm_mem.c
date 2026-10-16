@@ -20,6 +20,7 @@ extern u32 __ctru_heap, __ctru_heap_size;
 extern u32 __ctru_linear_heap, __ctru_linear_heap_size;
 
 static u8* soc_buf;
+static s64 commit_max, commit_cur; /* M02 measurement: what the OS offered before the 64MB cap */
 static u32 soc_size;
 
 static int started_by_netload(void) {
@@ -44,6 +45,8 @@ void __system_allocateHeaps(void) {
     svcGetResourceLimitLimitValues(&max_commit, reslimit, &type, 1);
     svcGetResourceLimitCurrentValues(&cur_commit, reslimit, &type, 1);
     svcCloseHandle(reslimit);
+    commit_max = max_commit;
+    commit_cur = cur_commit;
 
     u32 avail = (u32)(max_commit - cur_commit) & ~0xFFFu;
     if (avail > PM_FCRAM) avail = PM_FCRAM;
@@ -83,11 +86,17 @@ void* pm_soc_buffer(unsigned* size) {
 unsigned pm_heap_bytes(void) { return __ctru_heap_size; }
 unsigned pm_linear_bytes(void) { return __ctru_linear_heap_size; }
 
+unsigned pm_tex_used(void);
+unsigned pm_tex_peak(void);
+
 /* M01 measurement: newlib heap in use, newlib heap free, linear pool free. All bytes read from the OS now. */
 void pm_mem_log(const char* tag) {
+    if (!strcmp(tag, "boot"))
+        pm_log("mem commit limit %uKB used-by-image %uKB offered %uKB cap %uKB", (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10),
+               (unsigned)((commit_max - commit_cur) >> 10), PM_FCRAM >> 10);
     struct mallinfo mi = mallinfo();
-    pm_log("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB", tag,
+    pm_log("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB tex-cache %uKB peak %uKB", tag,
            pm_heap_bytes() >> 10, (unsigned)mi.uordblks >> 10, (unsigned)mi.fordblks >> 10,
            (unsigned)(fake_heap_end - (char*)__ctru_heap - mi.arena) >> 10, pm_linear_bytes() >> 10,
-           (unsigned)linearSpaceFree() >> 10);
+           (unsigned)linearSpaceFree() >> 10, pm_tex_used() >> 10, pm_tex_peak() >> 10);
 }

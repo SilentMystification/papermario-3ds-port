@@ -90,3 +90,10 @@
 08:51 S17 build 5 (clean pm_map.c)
 09:04 S17 check: fast autoa save+fresh reach mac_00, 0 warnings, 0 dropped reads
 09:05 S17 end: notes written, S17 marked done
+09:05 M02 start
+09:09 M02 static: M01 header overlapped BombableRock model; fixed, 77 named ranges 0 overlap
+09:12 M02 build 1: remap now drops 14.36 MB (M01 8.64), tex/commit logging
+09:12 M02 build 1 ok
+09:16 M02 run1 packed fast autoa: 0 dropped, 0 unmapped, mac_00 reached, heap used 27339KB
+09:17 M02 hardware: push o failed (push_3ds.sh exit 1), not retried
+09:20 M02 commit: remap drops 14.36 MB, notes

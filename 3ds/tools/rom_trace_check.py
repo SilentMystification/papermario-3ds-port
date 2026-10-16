@@ -2,7 +2,8 @@
 """M01: rom_trace_check.py full.txt [packed.txt]. Reports reads into dropped ranges. With two logs, compares the
 set of (addr,size,checksum) reads and lists differences."""
 import sys
-D=[(0x800880,0xE20110),(0xE9ECD0,0xF00000),(0x1942C40,0x1943000),(0x1B8220C,0x1B83000),(0x1C84D30,0x1E40000),(0x27FEE22,0x2800000)]
+import re
+D=[(int(a,16),int(b,16)) for a,b in re.findall(r'\{ 0x([0-9A-F]+), 0x([0-9A-F]+), "', open('3ds/src/rom_remap.h').read())]  # M02: read from the generated header
 def load(p):
     r=[]
     for l in open(p):

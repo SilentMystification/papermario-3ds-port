@@ -4,40 +4,40 @@ Dropped ROM ranges: world map overlays mac_01..gv_01 (map code is linked into th
 dead maps, junk gap unk_1C84D30, copy_* segments. Kept ranges become {rom_start,len,packed_off}."""
 import re, sys
 ROM = 0x2800000
-L = open('ver/us/splat.yaml').read().split('\n')
-i0 = [i for i, l in enumerate(L) if l.startswith('segments:')][0]
+import yaml
+# PyYAML parse: the old line scanner missed 121 segments written as "- type: code / start: / name:".
+Y = yaml.load(open('ver/us/splat.yaml'), Loader=yaml.CSafeLoader)
 segs = []  # (start, name)
-cur = None
-for l in L[i0 + 1:]:
-    m = re.match(r'^  - \[(0x[0-9A-Fa-f]+)(?:,\s*(\w+))?(?:,\s*([\w/]+))?', l)
-    if m:
-        segs.append([int(m.group(1), 16), m.group(3) or m.group(2) or '?']); cur = None; continue
-    m = re.match(r'^  - \{.*start: (0x[0-9A-Fa-f]+)', l)
-    if m:
-        n = re.search(r'name: (\w+)', l); segs.append([int(m.group(1), 16), n.group(1) if n else '?']); cur = None; continue
-    m = re.match(r'^  - name: (\w+)', l)
-    if m: cur = [None, m.group(1)]; segs.append(cur); continue
-    m = re.match(r'^  - start: (0x[0-9A-Fa-f]+)', l)
-    if m: cur = [int(m.group(1), 16), '?']; segs.append(cur); continue
-    m = re.match(r'^    start: (0x[0-9A-Fa-f]+)', l)
-    if m and cur and cur[0] is None: cur[0] = int(m.group(1), 16)
-    m = re.match(r'^    name: (\w+)', l)
-    if m and cur and cur[1] == '?': cur[1] = m.group(1)
+for s in Y['segments']:
+    if isinstance(s, list): segs.append([s[0], str(s[2] if len(s) > 2 else s[1] if len(s) > 1 else '?')])
+    else: segs.append([s['start'], s.get('name') or s.get('dir', '?')])
 segs = [s for s in segs if s[0] is not None]
 segs.sort()
-def end_of(i): return segs[i + 1][0] if i + 1 < len(segs) else ROM
+def end_of(i):  # next segment with a larger start (heaps and others have length 0 and share a start)
+    return next((x[0] for x in segs[i + 1:] if x[0] > segs[i][0]), ROM)
 names = [s[1] for s in segs]
 drops = []
+# M02: the block 0x315B80..0x800880 mixes code overlays with data. Drop only the overlays (battle, partner, effect, map
+# and engine code linked into the 3dsx, their ROM ranges are empty or NULL in ld_addrs.h). Keep sprite_shading_profiles
+# (read through defsym) and effect_gfx_* (graphics data that the port does not load yet, but a fix will need).
+BLOCK = (0x3169F0, 0x800880)
+# M02: resident game code that the 3dsx links as ARM. splat type code, all subsegments c. The ROM_START symbols are
+# empty ((u8*)1, or a defsym alias of gPartnerStatus), so DMA_COPY_SEGMENT copies 0 bytes. main is NOT here: the trace
+# reads 8,544 B inside it.
+CODE_OVERLAYS = {'engine1', 'engine2', 'evt', 'engine4', 'entity', 'pause', 'filemenu', 'battle_code'}
 def isdrop(n, s):
+    if n in CODE_OVERLAYS and s < 0x1CC310: return True
+    if BLOCK[0] <= s < BLOCK[1]: return not n.startswith('effect_gfx_')
     return n.startswith('dead_') or n.startswith('copy_') or n == 'unk_1C84D30' or (0x800880 <= s < 0xE20110)
 for i, (s, n) in enumerate(segs):
     if s >= 0x2800000: continue
-    if isdrop(n, s): drops.append([s, end_of(i), n])
+    if isdrop(n, s): drops.append([max(s, 0xEA0900) if n == 'dead_kzn_11_end' else s, end_of(i), n])  # BombableRock model ends at 0xEA0900
 # the world overlay run ends at the heaps2 data start (0xE20110). Merge touching ranges.
 merged = []
+drops.sort()
 for d in drops:
-    if merged and merged[-1][1] == d[0]:
-        merged[-1][1] = d[1]; merged[-1][2] += '+' + d[2] if len(merged[-1][2]) < 60 else ''
+    if merged and d[0] <= merged[-1][1]:
+        merged[-1][1] = max(merged[-1][1], d[1]); merged[-1][2] += '+' + d[2] if len(merged[-1][2]) < 60 else ''
     else: merged.append(d)
 for m in merged:
     m[2] = m[2].split('+')[0] + ('+' if '+' in m[2] else '')

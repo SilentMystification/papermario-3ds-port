@@ -26,6 +26,7 @@ typedef struct {
 
 static Slot slots[SLOTS];
 static unsigned used;
+static unsigned used_peak; /* M02 measurement */
 static unsigned stamp;
 static unsigned epoch;
 static u8* scratch;
@@ -194,6 +195,9 @@ void pm_tex_init(void) {
     scratch = (u8*)linearAlloc(256 * 256 * 4 * 2);
 }
 
+unsigned pm_tex_used(void) { return used; }
+unsigned pm_tex_peak(void) { return used_peak; }
+
 void pm_tex_begin_frame(void) {
     epoch++;
 }
@@ -347,6 +351,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     s->epoch = epoch;
     s->live = 1;
     used += bytes;
+    if (used > used_peak) used_peak = used;
     cur = slot;
     have = 1;
     return 1;

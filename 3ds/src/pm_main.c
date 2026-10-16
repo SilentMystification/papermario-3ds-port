@@ -106,6 +106,7 @@ void pm_frame_loop(void) {
             fps_mark = now;
             have_fps = 1;
         }
+        if (frame % 3600 == 0) pm_mem_log("tick");
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
             char top[40];
