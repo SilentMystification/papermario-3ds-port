@@ -24,6 +24,8 @@ void nuGfxSetCfb(u16** framebuf, u32 framebufnum) {
 }
 
 void nuContRmbForceStop(void) {}
+/* N64 serial interface message queue. The 3DS has no SI and no rumble pak, so the rumble messages go nowhere. */
+s32 nuSiSendMesg(NUScMsg mesg, void* dataPtr) { return 0; }
 
 u8 nuContInit(void) { return 1; }
 

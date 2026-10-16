@@ -5,3 +5,7 @@
 03:12 S09 start: reading HANDOFF.md
 03:12 S09 CMake and ld_addrs edited, building
 03:16 S09 build links with partners.c, running Azahar check
+03:19 S09 partners check OK kmr_20 reached, committed 0825d4206
+03:19 S09 adding state_map_transitions.c, building
+03:21 S09 state_map_transitions links, running check
+03:29 S09 crash in status bar draw (hud list not set up), fixed in pm_map.c, rerunning

@@ -1,6 +1,9 @@
 #include "common.h"
 #include "game_modes.h"
 
+/* Set by load_map_by_IDs (pm_map.c). The real change_map and enter_world load the map, so state_init_world must not load it again. */
+int pm_map_loaded;
+
 /* US title_data, after the four big-endian offsets at the front. */
 #define TITLE_LOGO_W 200
 #define TITLE_LOGO_H 112
@@ -178,6 +181,7 @@ void state_step_file_select(void) {
         gGameStatusPtr->mapID = 11;
         gGameStatusPtr->entryID = 0;
         pm_log("file %d", file_slot + 1);
+        pm_map_loaded = 0;
         set_game_mode(GAME_MODE_WORLD);
     }
 }
@@ -199,63 +203,9 @@ void state_drawUI_file_select(void) {
     gDPPipeSync(gMainGfxPos++);
 }
 
-/* Stand-in for state_map_transitions.c change_map: same states, no screen fade (screen_overlays.c is not built). */
-enum { CM_WAIT, CM_DELAY, CM_LOAD, CM_AWAIT_MAIN };
-static s16 cm_state, cm_time;
-static int world_loaded;
-
-void state_init_change_map(void) {
-    cm_state = CM_WAIT;
-    cm_time = 10;
-    if (gGameStatusPtr->prevArea != gGameStatusPtr->areaID) {
-        gGameStatusPtr->didAreaChange = true;
-        gGameStatusPtr->prevArea = gGameStatusPtr->areaID;
-    } else {
-        gGameStatusPtr->didAreaChange = false;
-    }
-}
-
-void state_step_change_map(void) {
-    switch (cm_state) {
-        case CM_WAIT:
-            update_npcs();
-            update_player();
-            update_effects();
-            update_cameras();
-            if (cm_time-- <= 0) {
-                gOverrideFlags |= GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
-                cm_time = 4;
-                cm_state = CM_LOAD;
-            }
-            break;
-        case CM_LOAD:
-            if (cm_time-- > 0) break;
-            gGameStatusPtr->context = CONTEXT_WORLD;
-            load_map_by_IDs(gGameStatusPtr->areaID, gGameStatusPtr->mapID, LOAD_FROM_MAP);
-            load_background("kmr_bg");
-            update_cameras();
-            cm_time = 2;
-            cm_state = CM_AWAIT_MAIN;
-            break;
-        case CM_AWAIT_MAIN:
-            update_encounters();
-            update_npcs();
-            update_player();
-            update_cameras();
-            if (cm_time-- > 0 || does_script_exist(gGameStatusPtr->mainScriptID)) break;
-            gOverrideFlags &= ~GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
-            world_loaded = 1;
-            set_game_mode(GAME_MODE_WORLD);
-            break;
-    }
-}
-
-void state_drawUI_change_map(void) {}
-
 void state_init_world(void) {
-    if (world_loaded) {
-        /* change_map already loaded the map. */
-        world_loaded = 0;
+    if (pm_map_loaded) {
+        pm_map_loaded = 0;
         gOverrideFlags &= ~GLOBAL_OVERRIDES_DISABLE_RENDER_WORLD;
         return;
     }

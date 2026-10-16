@@ -482,7 +482,11 @@ void* pm_decode_asset(const char* name, unsigned* out_size) {
     return decoded;
 }
 
+extern int pm_map_loaded;
+void init_hud_element_list(void);
+void hud_element_clear_cache(void);
 void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
+    pm_map_loaded = 1;
     const char* shape_name = NULL;
     const char* tex_name = "hos_tex";
     char hit_name[12];
@@ -531,6 +535,10 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     clear_encounter_status();
     clear_effect_data();
     create_cameras();
+    /* The real flow sets these up in file select and load_map (hud_element_clear_cache). */
+    init_hud_element_list();
+    hud_element_clear_cache();
+    init_item_entity_list();
     /* imgfx and sprite state hold pointers into the general heap reset above. */
     if (mapID != 5) spr_init_sprites(PLAYER_SPRITES_MARIO_WORLD);
 
@@ -591,6 +599,7 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         gPlayerStatus.shadowID = create_shadow_type(SHADOW_VARYING_CIRCLE, 0.0f, 0.0f, 0.0f);
     }
 
+    initialize_status_bar();
     for (i = 0; i < MAX_MODELS; i++) {
         if ((*gCurrentModels)[i] != NULL) models++;
     }

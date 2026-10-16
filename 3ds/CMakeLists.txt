@@ -119,6 +119,8 @@ set(GAME_SRC
     ${DECOMP}/src/entity/model/ScriptSpring_anim.c
     ${DECOMP}/src/entity/default/BombableRock.c
     ${DECOMP}/src/collision.c
+    ${DECOMP}/src/state_map_transitions.c
+    ${DECOMP}/src/os/nusys/nucontrmbforcestopend.c
     ${DECOMP}/src/world/partners.c
     ${DECOMP}/src/world_use_item.c
     ${DECOMP}/src/world/partner/goombario.c
