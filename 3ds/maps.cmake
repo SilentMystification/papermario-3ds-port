@@ -198,6 +198,13 @@ set(MAP_SRC_tik
     ${DECOMP}/src/world/area_tik/tik_25/entity.c
 )
 set(MAP_SRC_kgr
+    ${DECOMP}/src/world/area_kgr/kgr_01/main.c
+    ${DECOMP}/src/world/area_kgr/kgr_01/wiggle.c
+    ${DECOMP}/src/world/area_kgr/kgr_01/extra.c
+    ${DECOMP}/src/world/area_kgr/kgr_02/main.c
+    ${DECOMP}/src/world/area_kgr/kgr_02/unused.c
+    ${DECOMP}/src/world/area_kgr/kgr_02/npc.c
+    ${DECOMP}/src/world/area_kgr/kgr_02/extra.c
 )
 set(MAP_SRC_kmr
     ${DECOMP}/src/world/area_kmr/kmr_00/settings.c
