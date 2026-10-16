@@ -233,3 +233,10 @@
 16:10 V03 build ok, shots rerun: 0 'cache full' lines
 16:10 V03 shots 56-90 text now correct by eye, no boxes
 16:12 V03 committed, end
+16:12 F01 start
+16:16 F01 added switches padrand faulttest, run_azahar -FaultStop, last_unmapped.txt
+16:26 F01 baseline fast autoa freshsave/save/idle60: 0 unmapped. title idle and padrand runs start
+16:42 F01 padrand fast autoa freshsave and save, 420 s each, mac_00 random walk: 0 unmapped
+16:47 F01 FAULT1 idle title crash: stale wModelList after refused hos_04 load (state_intro.c skips clear_model_data)
+16:58 F01 commit c701a4bef: intro to title cleanup fix. idle title 330 s: 0 unmapped, no crash
+17:02 F01 paused for W01. fast autoa ok, 0 unmapped. fault 1 fixed, tex ptr 0xfd7e open, see HANDOFF
