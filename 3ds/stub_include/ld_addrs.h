@@ -117,4 +117,7 @@
 #define charset_ROM_END   ((u8*)0x123128)
 #define icon_ROM_START    ((u8*)1)
 
+/* Linker symbols, set by --defsym in CMakeLists.txt (ROM offsets from splat.yaml and undefined_syms.txt). */
+extern Addr sprite_shading_profiles_ROM_START;
+extern Addr sprite_shading_profiles_data_ROM_START;
 #endif

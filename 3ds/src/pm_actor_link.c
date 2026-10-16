@@ -6,9 +6,7 @@
  * are linked. Collision, partners, and battle stay empty so the cutscene can
  * run. */
 
-static SpriteShadingProfile pm_shade;
 
-SpriteShadingProfile* gSpriteShadingProfile = &pm_shade;
 PartnerAnimations gPartnerAnimations[12];
 Npc* wPartnerNpc;
 s32 WorldTattleInteractionID = -1;

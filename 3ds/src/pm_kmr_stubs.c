@@ -16,9 +16,6 @@ void func_800EF314(void) {}
 void func_800EF3E4(void) {}
 void func_800EF414(s32 posX, s32 posZ) {}
 
-ItemEntity* get_item_entity(s32 itemEntityIndex) { return NULL; }
-void set_current_item_entity_render_group(s32 group) {}
-s32 get_current_item_entity_render_group(void) { return 0; }
 void create_standard_popup_menu(void* menu) {}
 
 Mtx Entity_BombableRock_FragmentMatrices[8];

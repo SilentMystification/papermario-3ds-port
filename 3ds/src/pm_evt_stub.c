@@ -15,7 +15,6 @@ static ApiStatus skip_call(Evt* script, bool initial) {
 
 #define STUB(name) ApiStatus name(Evt* script, bool initial) { return skip_call(script, initial); }
 
-STUB(SetSpriteShading)
 STUB(SpeakToPlayer)
 STUB(ShowMessageAtScreenPos)
 
@@ -30,7 +29,4 @@ EvtScript hos_05_EVS_EnterStarship = {
 };
 void sfx_play_sound(s32 id) { (void)id; }
 STUB(ShowEmote)
-STUB(AddKeyItem)
-STUB(DropItemEntity)
-STUB(ShowGotItem)
 STUB(ShowMessageAtWorldPos)

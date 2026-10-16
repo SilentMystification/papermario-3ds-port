@@ -15,7 +15,6 @@ BattleStatus gBattleStatus;
 PartnerStatus gPartnerStatus;
 SaveData gCurrentSaveFile;
 u8 IntroMessageIdx;
-u16 StarShrineLightBeamAlpha = 255;
 
 s32 get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
     /* Only maps load_map_by_IDs can load. ponytail: replace with the real gAreas walk once the loader is generic. */

@@ -123,6 +123,11 @@ set(GAME_SRC
     ${DECOMP}/src/global_hud_scripts.c
     ${DECOMP}/src/5B320.c
     ${DECOMP}/src/msg_img.c
+    ${DECOMP}/src/windows.c
+    ${DECOMP}/src/item_entity.c
+    ${DECOMP}/src/sprite_shading.c
+    ${DECOMP}/src/evt/demo_api.c
+    ${DECOMP}/src/evt/item_api.c
     ${DECOMP}/src/vars_access.c
     ${DECOMP}/src/world/area_kmr/kmr_20/bushes.c
     ${DECOMP}/src/world/area_kmr/kmr_20/documents.c
@@ -205,7 +210,9 @@ add_executable(pm_3ds
     ${PM_BUILD_ID_H}
 )
 target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_options(pm_3ds PRIVATE -Wl,--gc-sections)
+target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
+    -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
+    -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50)
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")
