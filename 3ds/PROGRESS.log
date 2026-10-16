@@ -210,3 +210,10 @@
 15:21 PT01 R2 done
 15:24 PT01 HANDOFF result written, SLICES marked done; commit 2
 15:24 PT01 end
+15:25 PO1 start
+15:26 PO1 baseline build done
+15:29 PO1 baseline run done (po1_base_log.txt)
+15:30 PO1 build 1 done: per-frame vertex flush
+15:33 PO1 run 1 done (po1_new_log.txt)
+15:36 PO1 run 2 (no shots) done
+15:37 PO1 run 3 (shots) done

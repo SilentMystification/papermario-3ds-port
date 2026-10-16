@@ -93,7 +93,6 @@ static unsigned abgr(unsigned c) {
 }
 
 static void flush(void) {
-    PH_ADD(C_FLUSH, 1);
     if (nverts <= 0 || !gpu_ok) {
         nverts = 0;
         batch_identity = 0;
@@ -184,9 +183,6 @@ static void flush(void) {
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
     Vert* batch = verts;
     int count = nverts;
-    PH_PUSH(PH_GCACHE); /* PT01: the per-draw GSPGPU call (an IPC to the GSP service) */
-    GSPGPU_FlushDataCache(batch, sizeof(Vert) * (u32)count);
-    PH_POP();
     PH_PUSH(PH_GDRAW);
     C3D_BufInfo* buf = C3D_GetBufInfo();
     BufInfo_Init(buf);
@@ -371,6 +367,15 @@ void pm_gpu_begin(int clear) {
 void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
+    /* PO1: the GPU reads the vertex buffer when C3D_FrameEnd runs the command list. One flush of the
+     * whole range written this frame replaces one GSPGPU call per draw. Each frame starts at vert_base
+     * again, and FrameBegin(SYNCDRAW) has waited for the GPU, so no draw of this frame overlaps the
+     * writes. */
+    if (verts && verts > vert_base) {
+        PH_PUSH(PH_GCACHE);
+        GSPGPU_FlushDataCache(vert_base, (u32)((uintptr_t)verts - (uintptr_t)vert_base));
+        PH_POP();
+    }
     {
         unsigned used = verts ? (unsigned)(verts - vert_base) : 0;
         float cmd = C3D_GetCmdBufUsage();

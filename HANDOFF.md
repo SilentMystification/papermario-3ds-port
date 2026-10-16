@@ -668,3 +668,41 @@ Wall time is a multiple of 16.7 ms. A frame with cpu work of 33.3 ms or more tak
 - The real cost of `GSPGPU_FlushDataCache` per call (candidate 1), of FrameBegin (GPU time, candidate 5) and of the audio tick (the `audio cost` line said 3 ms per tick in Azahar, the real ARM11 has no NEON and may be slower).
 - Azahar does not model cache misses or pipeline stalls. The real ARM11 (268 MHz, 16 KB caches) is likely slower in the GBI and texture loops. The tick read costs 1.34 us here. The real svc cost may differ, so the timer overhead on hardware is unknown (the `phase: on` line shows it).
 - The 2 and 3 vblank judder depends on the real cpu time per frame. Expect it where cpu is near 33 ms.
+
+## PO1 result (slice PO1: one vertex cache flush per frame, port layer)
+
+All items belong to slice PO1. Numbers come from Azahar and are NOT the real hardware cost. Logs: `3ds/logs/po1_base_log.txt` (before), `po1_new2_log.txt` (after), both `fast autoa phase phasecsv`, same 170 s run.
+
+### Flush audit (all cache calls in the port)
+- `pm_gpu.c flush()`: `GSPGPU_FlushDataCache` once per draw (120 to 208 per frame). REMOVED. Now one call in `pm_gpu_end` over `vert_base` to `verts` (the range written this frame), before `C3D_FrameEnd`.
+- `pm_tex.c`: `C3D_TexLoadImage` copies the tile data and flushes it once per texture upload. Already the minimum. Not changed.
+- `pm_audio.c`: one `DSP_FlushDataCache` per audio buffer fill. Not per draw. Not changed.
+- `C3D_FrameEnd(GX_CMDLIST_FLUSH)` flushes only the command buffer (the S-slice comment explains why). Not changed.
+- Batch start is already rounded up to 16 bytes (H02 item i).
+
+### Hazards checked
+- Vertex range reused in one frame: no. `verts` only grows from `vert_base` in a frame and resets in `pm_gpu_begin`. A full buffer drops vertices (counted in `vert_drops`), it never wraps.
+- Previous frame still on the GPU: `C3D_FrameBegin(C3D_FRAME_SYNCDRAW)` waits first, so the CPU does not write while the GPU reads.
+- Texture rewritten in the same frame: slots are freed late (H02 item k) and `C3D_TexLoadImage` flushes at upload, so the GPU never reads unflushed texture data.
+- Command buffer order: unchanged. The flush runs before `C3D_FrameEnd`, so before the GPU starts the list.
+
+### Result (Azahar, fast autoa, 3 runs of 170 s)
+| | before | after |
+|---|---|---|
+| vertex flushes per frame | 120 (mac_00), 135 (kmr_20), 208 (osr_00) | 1 |
+| flush time per frame | 7.4 to 13.0 ms | under 0.1 ms |
+| mac_00 cpu per frame avg / p95 / max | 32.4 / 38.0 / 45.4 ms | 23.7 / 28.2 / 32.6 ms |
+| mac_00 wall avg / p95 / max | 38.3 / 51.3 / 51.4 ms | 33.4 / 34.7 / 38.0 ms |
+| kmr_20 cpu avg / p95 | 36.2 / 44.4 ms | 26.3 / 35.1 ms |
+| frames over 36 ms wall | 1501 of 3755 (40.0%) | 93 of 4482 (2.1%) |
+| frames over 40 ms wall (a missed vblank slot) | 1493 (39.8%) | 81 (1.8%) |
+| frames over 34 ms wall (the report threshold) | 2012 (53.6%) | 1421 (31.7%) |
+The 34 ms row stays high because a 2 vblank frame takes 33.4 ms and its jitter reaches 34.7 ms. Use the 36 and 40 ms rows. Frames with cpu over 33.3 ms: 1513 (40.3%) before, 82 (1.8%) after. Audio ticks per frame after frame 1500: avg 2.3 and max 4 before, avg 2.0 and max 3 after, frames with 3 or more ticks 806 of 2574 before, 411 of 3243 after. Audio was not changed. The tick count falls because frames no longer run long.
+
+### Visual check
+`fast autoa shots` (162 shots, run with the change): logos, title, file select, hos_05 intro, kmr_20, mac_00 look right. No flicker, no corrupt polygons, no stale vertex garbage seen between shots. Shots show only 1 frame in 30, so a one frame glitch could be missed. The white fades are map transitions. `fast autoa`: kmr_20 reached, mac_00 stays up, 0 unmapped and 0 crash lines.
+
+### Re-measure on the O3DS
+- The 62 us per flush call is Azahar's model of a GSP IPC call. The real cost per call and the real cost of one flush of 40 to 130 KB (the vertex range, a cache write back of 32 byte lines on the ARM11) are unknown. The saving on hardware is probably smaller or different. Run `push-o` with `phase phasecsv`, then compare the `gc` column (now one call per frame) and the cpu per frame with the PT01 numbers.
+- If the flush of the whole range is slow on hardware, flush only up to the last batch that changed.
+
