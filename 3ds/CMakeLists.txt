@@ -265,6 +265,14 @@ set(GAME_SRC
     ${DECOMP}/src/world/area_mac/mac_00/epilogue.c
     ${WORLD_C_GEN}
     ${DECOMP}/src/entity/model/Hammer1Block.c
+    ${DECOMP}/src/entity/model/BrickBlock.c
+    ${DECOMP}/src/entity/model/Hammer3Block.c
+    ${DECOMP}/src/entity/model/ScriptSpring_gfx.c
+    ${DECOMP}/src/entity/model/ShatteringBrickBlock.c
+    ${DECOMP}/src/entity/model/ShatteringHammer1Block.c
+    ${DECOMP}/src/entity/model/ShatteringHammer2Block.c
+    ${DECOMP}/src/entity/model/ShatteringHammer3Block.c
+    ${DECOMP}/src/entity/model/BombableRock.c
     ${DECOMP}/src/entity/BlueWarpPipe.c
     ${DECOMP}/src/entity/model/BlueWarpPipe.c
     ${DECOMP}/src/entity/SaveBlock.c
