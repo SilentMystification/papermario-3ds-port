@@ -48,7 +48,6 @@ void render_item_entities() {}
 /* render_npcs is npc.c, render_player is 77480.c */
 void render_transformed_hud_elements() {}
 void state_drawUI_battle() {}
-void state_drawUI_change_map() {}
 void state_drawUI_demo() {}
 void state_drawUI_end_battle() {}
 void state_drawUI_enter_world() {}
@@ -60,7 +59,6 @@ void state_drawUI_pause() {}
 void state_drawUI_unpause() {}
 void state_drawUI_world() {}
 void state_init_battle() {}
-void state_init_change_map() {}
 void state_init_demo() {}
 void state_init_end_battle() {}
 void state_init_enter_demo() {}
@@ -72,8 +70,6 @@ void state_init_language_select() {}
 void state_init_pause() {}
 void state_init_unpause() {}
 void state_step_battle() {}
-void set_game_mode(int mode);
-void state_step_change_map() { set_game_mode(4); /* GAME_MODE_WORLD */ }
 void state_step_demo() {}
 void state_step_end_battle() {}
 void state_step_enter_world() {}

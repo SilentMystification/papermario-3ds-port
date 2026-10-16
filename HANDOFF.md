@@ -13,15 +13,14 @@ Plan: [Cutscene systems plan](file:///C:/Users/Andrew/.cursor/plans/cutscene_sys
 Paper Mario O3DS port. The intro (`hos_05` entry 3) plays in Azahar. After the title, the real `kmr_20_EVS_Main` runs and the Luigi scene now plays to its end.
 
 This round:
-- Issue 1 fixed. `load_map_by_IDs` (`pm_map.c`) used `kmr_20_settings` and `kmr_20_EVS_Main` for every non-intro map. It now uses `osr_00_settings` and `osr_00_EVS_Main` for osr_00. The `osr_00` sources are in `3ds/CMakeLists.txt`. Stubs added: `fx_sun`, `PlaySoundAtF`, `EnterDoubleDoor`, `ExitDoubleDoor`.
-- The scripted chain now runs: kmr_20 (Luigi) -> osr_00 entry 3 (invitation) -> kmr_20 entry 1 -> `GotoMap kkj_00`.
-- `GotoMap kkj_00` no longer faults. `get_map_IDs_by_name` (`game_stubs.c`) now keeps the current map on an unknown name, so kmr_20 reloads. Real kkj_00 is not ported.
-- Azahar run with `fast autoa` ends exit 2 with unmapped-access warnings (`player_raycast_down`, `update_npcs`). Not checked if new. Check first.
-- Earlier: `npc_collision.c` is built, so NPCs have floors.
+- Map transition fixed. After `GotoMap`, the second kmr_20 load drew garbage display lists and the Azahar run reported unmapped accesses. Cause: `load_map_by_IDs` (`pm_map.c`) never called `spr_init_sprites`. imgfx and sprite state kept pointers into the general heap that the loader resets. The loader now calls `spr_init_sprites(PLAYER_SPRITES_MARIO_WORLD)` (not for the intro map) and also `clear_animator_list`, `clear_entity_models`, `clear_encounter_status`, `clear_effect_data`, like the real loader.
+- `GotoMap` now runs a port-side `state_step_change_map` (`pm_title.c`): wait 10 frames, load the map, wait for the main script, back to world. `state_init_world` skips its own load after that. No fade, because `screen_overlays.c` is not built. The real `state_map_transitions.c` needs it.
+- `imgfx_mesh_anim_update` (`src/imgfx.c`) returns if `heap_malloc` fails.
+- `fast autoa` run in Azahar ends exit 0 with no unmapped-access warning.
 
 ## Open issues (carry over until fixed)
 
-1. kkj_00 is not ported. The scripted chain loops back to kmr_20 (above).
+1. kkj_00 is not ported. `get_map_IDs_by_name` keeps the current map on an unknown name, so the chain reloads kmr_20.
 2. Lighting looks wrong on Luigi and Parakarry (sprite shading). `SetSpriteShading` is a skip stub, so shading stays off and sprites draw flat. Tried the real `sprite_shading.c` + `demo_api.c` with `--defsym sprite_shading_profiles_ROM_START=0x315B80` (data +0x1D0). Shading ran but characters turned dark. `appendGfx_shading_palette` renders a 16x1 palette into a fake framebuffer and does a TLUT double lookup, which `pm_gbi.c` cannot emulate. Reverted. Fix needs a port-side shader path: compute shadow/highlight colors on the CPU and tint the sprite.
 3. Text box transitions do not happen. Parakarry's first text box does not show.
 4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.

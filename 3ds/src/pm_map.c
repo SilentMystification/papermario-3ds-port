@@ -1,5 +1,6 @@
 #include "common.h"
 #include "model.h"
+#include "sprite.h"
 #include "camera.h"
 #include "pm_port.h"
 #include "mapfs/hos_05_shape.h"
@@ -518,7 +519,14 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     clear_script_list();
     clear_worker_list();
     clear_model_data();
+    /* Stale lists point into the heap reset above. Real load_map_by_IDs clears them too. */
+    clear_animator_list();
+    clear_entity_models();
+    clear_encounter_status();
+    clear_effect_data();
     create_cameras();
+    /* imgfx and sprite state hold pointers into the general heap reset above. */
+    if (mapID != 5) spr_init_sprites(PLAYER_SPRITES_MARIO_WORLD);
 
     if (!find_asset(shape_name, &rom_off, &comp_len, &dec_len) || dec_len < 32 || dec_len > 0x80000 || comp_len > 0x80000) {
         pm_log("map %s missing", shape_name);

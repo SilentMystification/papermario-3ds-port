@@ -1376,6 +1376,13 @@ void imgfx_mesh_anim_update(ImgFXState* state) {
 
     // find the current + next keyframe vertex data
     curKeyframe = heap_malloc(header->vtxCount * sizeof(ImgFXVtx));
+#ifdef TARGET_3DS
+    if (curKeyframe == nullptr) {
+        extern void pm_log(const char* fmt, ...);
+        pm_log("imgfx anim alloc failed vtx %d type %d", header->vtxCount, state->ints.anim.type);
+        return;
+    }
+#endif
     romStart = (u8*)((s32)imgfx_data_ROM_START + (s32) header->keyframesOffset + curKeyIdx * header->vtxCount * sizeof(ImgFXVtx));
     dma_copy(romStart, romStart + header->vtxCount * sizeof(ImgFXVtx), curKeyframe);
 #ifdef TARGET_3DS
