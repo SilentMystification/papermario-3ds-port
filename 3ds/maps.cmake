@@ -1408,6 +1408,21 @@ set(MAP_SRC_end
     ${DECOMP}/src/world/area_end/end_01/peach_float.c
 )
 set(MAP_SRC_mgm
+    ${DECOMP}/src/world/area_mgm/mgm_00/settings.c
+    ${DECOMP}/src/world/area_mgm/mgm_00/main.c
+    ${DECOMP}/src/world/area_mgm/mgm_00/npc.c
+    ${DECOMP}/src/world/area_mgm/mgm_00/scoreboard.c
+    ${DECOMP}/src/world/area_mgm/mgm_01/settings.c
+    ${DECOMP}/src/world/area_mgm/mgm_01/main.c
+    ${DECOMP}/src/world/area_mgm/mgm_01/npc.c
+    ${DECOMP}/src/world/area_mgm/mgm_01/entity.c
+    ${DECOMP}/src/world/area_mgm/mgm_01/images.c
+    ${DECOMP}/src/world/area_mgm/mgm_02/settings.c
+    ${DECOMP}/src/world/area_mgm/mgm_02/main.c
+    ${DECOMP}/src/world/area_mgm/mgm_02/npc.c
+    ${DECOMP}/src/world/area_mgm/mgm_02/images.c
+    ${DECOMP}/src/world/area_mgm/mgm_03/settings.c
+    ${DECOMP}/src/world/area_mgm/mgm_03/main.c
 )
 set(MAP_SRC_gv
 )
