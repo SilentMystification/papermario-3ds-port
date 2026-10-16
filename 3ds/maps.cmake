@@ -309,6 +309,55 @@ set(MAP_SRC_sbk
 set(MAP_SRC_isk
 )
 set(MAP_SRC_trd
+    ${DECOMP}/src/world/area_trd/trd_00/settings.c
+    ${DECOMP}/src/world/area_trd/trd_00/main.c
+    ${DECOMP}/src/world/area_trd/trd_00/entity.c
+    ${DECOMP}/src/world/area_trd/trd_00/npc.c
+    ${DECOMP}/src/world/area_trd/trd_01/settings.c
+    ${DECOMP}/src/world/area_trd/trd_01/main.c
+    ${DECOMP}/src/world/area_trd/trd_01/entity.c
+    ${DECOMP}/src/world/area_trd/trd_01/npc.c
+    ${DECOMP}/src/world/area_trd/trd_02/settings.c
+    ${DECOMP}/src/world/area_trd/trd_02/main.c
+    ${DECOMP}/src/world/area_trd/trd_02/entity.c
+    ${DECOMP}/src/world/area_trd/trd_02/npc.c
+    ${DECOMP}/src/world/area_trd/trd_03/settings.c
+    ${DECOMP}/src/world/area_trd/trd_03/main.c
+    ${DECOMP}/src/world/area_trd/trd_03/entity.c
+    ${DECOMP}/src/world/area_trd/trd_03/npc.c
+    ${DECOMP}/src/world/area_trd/trd_03/puzzle.c
+    ${DECOMP}/src/world/area_trd/trd_04/settings.c
+    ${DECOMP}/src/world/area_trd/trd_04/main.c
+    ${DECOMP}/src/world/area_trd/trd_04/entity.c
+    ${DECOMP}/src/world/area_trd/trd_04/npc.c
+    ${DECOMP}/src/world/area_trd/trd_05/settings.c
+    ${DECOMP}/src/world/area_trd/trd_05/main.c
+    ${DECOMP}/src/world/area_trd/trd_05/entity.c
+    ${DECOMP}/src/world/area_trd/trd_05/trap.c
+    ${DECOMP}/src/world/area_trd/trd_05/npc.c
+    ${DECOMP}/src/world/area_trd/trd_06/settings.c
+    ${DECOMP}/src/world/area_trd/trd_06/main.c
+    ${DECOMP}/src/world/area_trd/trd_06/falling.c
+    ${DECOMP}/src/world/area_trd/trd_06/npc_prisoners.c
+    ${DECOMP}/src/world/area_trd/trd_06/npc_koopa_bros.c
+    ${DECOMP}/src/world/area_trd/trd_06/entity.c
+    ${DECOMP}/src/world/area_trd/trd_07/settings.c
+    ${DECOMP}/src/world/area_trd/trd_07/main.c
+    ${DECOMP}/src/world/area_trd/trd_07/npc.c
+    ${DECOMP}/src/world/area_trd/trd_07/magic_doors.c
+    ${DECOMP}/src/world/area_trd/trd_08/settings.c
+    ${DECOMP}/src/world/area_trd/trd_08/main.c
+    ${DECOMP}/src/world/area_trd/trd_08/entity.c
+    ${DECOMP}/src/world/area_trd/trd_08/npc.c
+    ${DECOMP}/src/world/area_trd/trd_09/settings.c
+    ${DECOMP}/src/world/area_trd/trd_09/main.c
+    ${DECOMP}/src/world/area_trd/trd_09/entity.c
+    ${DECOMP}/src/world/area_trd/trd_09/npc.c
+    ${DECOMP}/src/world/area_trd/trd_09/demo.c
+    ${DECOMP}/src/world/area_trd/trd_10/settings.c
+    ${DECOMP}/src/world/area_trd/trd_10/main.c
+    ${DECOMP}/src/world/area_trd/trd_10/npc.c
+    ${DECOMP}/src/world/area_trd/trd_10/fake_bowser.c
 )
 set(MAP_SRC_nok
     ${DECOMP}/src/world/area_nok/nok_01/settings.c
