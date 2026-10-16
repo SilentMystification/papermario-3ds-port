@@ -148,3 +148,10 @@
 12:42 S27 autoa ok (mac_00, 0 unmapped); shots: keyboard and file windows right
 12:42 S27 commit ab1c67940, end
 12:42 S27 recorded V01 G01 G02 S32 S33 rows and open issues
+12:42 S32 start
+12:44 S32 build 1 ok: autoa 2-of-4 scans, fast skips vblank pad, scan in load map log
+12:45 S32 before (autaold freshsave): kmr_20 at scan 3928, 87 s
+12:46 S32 after (autoa freshsave): kmr_20 at scan 562, 31 s
+12:49 S32 recorded V01 wrong-background report in SLICES.md and HANDOFF.md
+12:52 S32 build 2 (remove measuring switch)
+12:54 S32 commit 603918ab4, end
