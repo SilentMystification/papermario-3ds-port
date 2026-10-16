@@ -11,10 +11,6 @@ Mtx Entity_BombableRock_FragmentMatrices[8];
 Gfx* Entity_BombableRock_FragmentsRender[8];
 
 
-/* bed.c and records.c include extracted textures that are not in the tree. */
-EvtScript kmr_20_EVS_Inspect_Records = { Return End };
-EvtScript kmr_20_EVS_SetupBed = { Return End };
-
 /* Entity model display lists live in ROM entity_model_* segments; no model draws yet. */
 Gfx Entity_BrickBlock_Render[] = { gsSPEndDisplayList() };
 Gfx Entity_Hammer3Block_Render[] = { gsSPEndDisplayList() };

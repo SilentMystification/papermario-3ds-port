@@ -53,6 +53,8 @@ set(GAME_SRC
     ${DECOMP}/src/cam_math.c
     ${DECOMP}/src/cam_mode_interp.c
     ${DECOMP}/src/screen_overlays.c
+    ${DECOMP}/src/curtains.c
+    ${DECOMP}/src/entity/Shadow.c
     ${DECOMP}/src/screen_render_util.c
     ${DECOMP}/src/cam_mode_minimal.c
     ${DECOMP}/src/cam_mode_no_interp.c
@@ -197,6 +199,8 @@ set(GAME_SRC
     ${DECOMP}/src/evt/demo_api.c
     ${DECOMP}/src/evt/item_api.c
     ${DECOMP}/src/vars_access.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/bed.c
+    ${DECOMP}/src/world/area_kmr/kmr_20/records.c
     ${DECOMP}/src/world/area_kmr/kmr_20/bushes.c
     ${DECOMP}/src/world/area_kmr/kmr_20/documents.c
     ${DECOMP}/src/world/area_kmr/kmr_20/entity.c
@@ -292,14 +296,12 @@ set(PORT_SRC
     src/pm_audio.c
     src/pm_rsp_audio.c
     src/pm_later.c
-    src/pm_overlay.c
     src/pm_map.c
     src/area_table.c
     src/pm_title.c
     src/pm_evt_stub.c
     src/pm_actor_link.c
     src/pm_kmr_stubs.c
-    src/pm_shadow.c
     src/pm_actor_stubs.c
     src/game_stubs.c
     src/effect_loads.c
