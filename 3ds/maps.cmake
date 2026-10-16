@@ -271,6 +271,25 @@ set(MAP_SRC_osr
     ${DECOMP}/src/world/area_osr/osr_00/npc_intro.c
     ${DECOMP}/src/world/area_osr/osr_00/npc_epilogue.c
     ${DECOMP}/src/world/area_osr/osr_00/scenes.c
+    ${DECOMP}/src/world/area_osr/osr_01/settings.c
+    ${DECOMP}/src/world/area_osr/osr_01/music.c
+    ${DECOMP}/src/world/area_osr/osr_01/main.c
+    ${DECOMP}/src/world/area_osr/osr_01/npc.c
+    ${DECOMP}/src/world/area_osr/osr_02/settings.c
+    ${DECOMP}/src/world/area_osr/osr_02/main.c
+    ${DECOMP}/src/world/area_osr/osr_02/entity.c
+    ${DECOMP}/src/world/area_osr/osr_02/npc.c
+    ${DECOMP}/src/world/area_osr/osr_02/npc_peach.c
+    ${DECOMP}/src/world/area_osr/osr_03/settings.c
+    ${DECOMP}/src/world/area_osr/osr_03/main.c
+    ${DECOMP}/src/world/area_osr/osr_03/npc.c
+    ${DECOMP}/src/world/area_osr/osr_03/intro.c
+    ${DECOMP}/src/world/area_osr/osr_03/starship.c
+    ${DECOMP}/src/world/area_osr/osr_03/interlude.c
+    ${DECOMP}/src/world/area_osr/osr_03/ending.c
+    ${DECOMP}/src/world/area_osr/osr_04/settings.c
+    ${DECOMP}/src/world/area_osr/osr_04/main.c
+    ${DECOMP}/src/world/area_osr/osr_04/assault.c
 )
 set(MAP_SRC_kkj
     ${DECOMP}/src/world/area_kkj/kkj_00/settings.c
