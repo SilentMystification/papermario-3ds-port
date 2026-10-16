@@ -4,6 +4,8 @@
 unsigned pm_pad_scans;
 static unsigned short held;
 static unsigned short down;
+static unsigned short press_seen; /* presses since the last read: a tap shorter than one game frame still counts as held once */
+static unsigned tap_injected, tap_seen;
 static signed char stick_x;
 static signed char stick_y;
 
@@ -57,10 +59,19 @@ void pm_pad_scan(void) {
                 edge |= 0x8000;
             }
         }
+        /* taptest switch: a press that lasts one scan, once per 60 scans. Half of them land on a scan the game never reads. */
+        if (pm_debug_has("taptest") && pm_pad_scans % 60 == 0) {
+            b |= 0x8000;
+            edge |= 0x8000;
+            tap_injected++;
+        }
         pm_pad_scans++;
     }
     held = b;
-    down = edge;
+    /* The game reads the pad every second retrace, the pad is scanned every retrace.
+     * Keep every press edge until the game reads it. */
+    down |= edge;
+    press_seen |= edge;
     circlePosition c;
     hidCircleRead(&c);
     stick_x = (signed char)clamp_stick(c.dx);
@@ -68,8 +79,14 @@ void pm_pad_scan(void) {
 }
 
 void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsigned short* trigger) {
-    if (buttons) *buttons = held;
+    if (buttons) *buttons = held | press_seen;
     if (x) *x = stick_x;
     if (y) *y = stick_y;
     if (trigger) *trigger = down;
+    if ((down & 0x8000) && pm_debug_has("taptest")) {
+        tap_seen++;
+        if (tap_seen % 5 == 0) pm_log("taptest injected %u seen %u", tap_injected, tap_seen);
+    }
+    down = 0;
+    press_seen = 0;
 }

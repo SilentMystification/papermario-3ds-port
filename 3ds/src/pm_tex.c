@@ -21,6 +21,7 @@ typedef struct {
     unsigned stamp;
     unsigned epoch;
     int live;
+    int stale; /* invalidated while this frame's draws still use it: freed at the next frame start */
     C3D_Tex tex;
 } Slot;
 
@@ -188,6 +189,7 @@ static void drop(Slot* s) {
     if (used >= s->bytes) used -= s->bytes;
     else used = 0;
     s->live = 0;
+    s->stale = 0;
 }
 
 /* A texture bound in the current command list has to stay alive until the next
@@ -214,6 +216,9 @@ unsigned pm_tex_peak(void) { return used_peak; }
 
 void pm_tex_begin_frame(void) {
     epoch++;
+    /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
+    for (int i = 0; i < SLOTS; i++)
+        if (slots[i].live && slots[i].stale) drop(&slots[i]);
 }
 
 void pm_tex_invalidate(const void* ptr, unsigned size) {
@@ -233,6 +238,13 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         if (cur == i) {
             cur = -1;
             have = 0;
+        }
+        if (s->epoch == epoch) {
+            /* A draw of this frame may still sample it (the GPU runs at FrameEnd). Hide it from the cache and free it later. */
+            s->img = NULL;
+            s->tlut = NULL;
+            s->stale = 1;
+            continue;
         }
         drop(s);
     }
