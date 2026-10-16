@@ -488,3 +488,9 @@ Platform layer only (`pm_gbi.c`, `pm_gpu.c`, `pm_tex.c`), no game code changed.
 - User items (slice S27): (1) arrow under the current character on ALL grid cells: fixed, same cause. (2) wrong textures on the file windows and the curtain texture in the name box: fixed, same cause. (3) starry sky behind the file select and the house cutscene: by eye the sky is the real file select stage (blue starry stage between the curtains, shots 18 to 60) and the real night yard behind Mario's house (shots 72 to 84, a night scene). The castle scene (shot 108) and the house inside (shots 90 to 102) show no sky. I did not see a layer that is not redrawn. No change made. If the user saw sky somewhere else, tell me the place.
 - Check (slice S27): `fast autoa` 280 s: kmr_20, hos_05, kmr_20, mac_00 reached (area 1 map 1), mac_00 stays up, 0 unmapped lines, no crash, no dropped-range line.
 - Not done: the second cycle texel use (TEXEL0 in cycle 2 means the next tile), more than 2 tiles, the filled body style of other windows not seen in this run (pause menu: not checked by eye).
+
+### New open issues reported by the user during slice S27 (all unverified, rows in 3ds/SLICES.md)
+- V01: background image squished at the left and right sides, stretched in the middle. Not checked.
+- G01: loading zone in mac_00 does not trigger after the pipe. Hypothesis: the target map is an id-only row (`GotoMap refused`, Q6 and S30). Not checked.
+- G02: jump animation plays, Mario barely leaves the ground. Cause unknown. Not checked.
+- Also queued by the coordinator: S32 input speed, S33 gitignore cleanup (no detail given to S27).
