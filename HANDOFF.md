@@ -725,7 +725,48 @@ The 34 ms row stays high because a 2 vblank frame takes 33.4 ms and its jitter r
 - If the flush of the whole range is slow on hardware, flush only up to the last batch that changed.
 
 
+## Warp (slice W01: warp, story presets, scripted pad, Azahar turbo)
+
+All items belong to slice W01. Azahar only. Port-side debug tools (class E). No decomp function was replaced. Later agents: slices G01 and G02 and the F01 sweep SHOULD use the warp and `-Turbo` instead of the 30 s to 75 s `fast autoa freshsave` chain.
+
+### Switches (game side, in `debug3ds.txt` or `-Debug "..."`, code in `3ds/src/pm_warp.c` and `pm_input.c`)
+- `preset=<name>`: one row of the table below (story, map, entry, flag).
+- `warp=<map>:<entry>` (example `warp=mac_00:4`): map name and entry id. Overrides the map of a preset. Only the 6 linked maps work (hos_05, kmr_02, kmr_20, osr_00, kkj_00, mac_00). An unlinked map logs `warp: map X not found` and the normal start runs.
+- `story=<name|number>` (example `story=ch0_toad_town` or `story=-107`): GB_StoryProgress. Names: intro, ch0_wake_up, ch0_hammer, ch0_goombario, ch0_toad_town, ch1_start, ch1_kooper, ch2_start, epilogue (table `stories` in pm_warp.c, add rows from include/enums.h). Alone it sets the story and warps to kmr_20 entry 0.
+- How it works: the wrapper `__wrap_set_game_mode` (pm_map.c) sees the real `set_game_mode(GAME_MODE_LOGOS)` at the end of `state_step_startup`. The hook then does what the real new-file menu does (`filemenu_yesno.c` FM_CONFIRM_CREATE): `clear_player_data`, `clear_saved_variables`, area/map/entry, `evt_set_variable(GB_StoryProgress)` (and one GF flag if the preset has one), the real `fio_serialize_state`, and enters the real `GAME_MODE_ENTER_WORLD`. That state loads the map with `LOAD_FROM_FILE_SELECT` (real `fio_deserialize_state` and `load_map_by_IDs`). So logos, intro, title and file select are skipped, and the map script runs from the real entry. Without the switches nothing changes (normal chain checked at the end of W01: same scans 562, 2316, 2562, 3178, 0 unmapped).
+- Log lines: `warp: <map> entry <e> (area a map m) story s`, `warp: scene frame0 F scan S t=ms`, `warp: scene fN t= pos x y z inputDisabled 0|1 actionState N` (every 100 frames, every 2 frames when `padscript` or `padlog` is on), `warp: smoke done`. `t=` is emulated time (same in normal and turbo).
+- `padscript=A,wait30,right*60` or `padscript=@file.txt` (file in the SD app folder, comma, space or newline between tokens, max 160 steps). A token is `wait<n>` or buttons joined by `+` with an optional `*<n>` scan count (default 1): `A B Z START L R dup ddown dleft dright` and the stick `up down left right` (80 of 80). Unit = pad scan. The game reads the pad every 2nd scan, so 2 scans = 1 game frame (30 Hz). With `warp`/`preset`/`story` the script starts on the first frame of the scene (`padscript: start at scan N`), else at scan 0. At the end the real pad is back. `padrand` is unchanged. Hold A 20 scans or more for a full jump: a tap of 3 scans is a hop (ACTION_STATE_HOP).
+- Example (walk, jump, walk back): `fast preset=toad padscript=wait80,right*40,A*24,wait60,left*40,A*24,wait30`. `wait80` covers the pipe entry (input is on from about frame 36 in the scene).
+- Helper scripts (git-ignored): `3ds/logs/w01_test.sh <preset>`, `3ds/logs/w01_test2.sh <name> "<switches>"` (turbo smoke with a walk and jump script, position range summary).
+
+### Presets (all tested: turbo smoke, 300 frames in the scene, `-FaultStop` 0 unmapped, no assert, no hang, no crash)
+| name | story | map:entry | note |
+|---|---|---|---|
+| intro | STORY_INTRO | kmr_20:0 | real bed scene of a new file. The scene disables input for 300+ frames (by design): Mario is NOT controllable here |
+| yard | CH0_ARRIVED_AT_TOAD_TOWN (-107) | kmr_20:4 | Mario's yard, enters from the pipe, GF_KMR20_ReunitedWithLuigi set (no Luigi scene). Controllable from frame 34. Walked x 594 to 654 |
+| toad | -107 | mac_00:4 | Toad Town from the pipe. Controllable from frame 36. Walked x -100 to -5 |
+| toad_east | -107 | mac_00:1 | east edge (x 600). Walking right enters the zone to mac_01: `GotoMap refused: area 1 map 2 is not linked` (3 lines). Input is then disabled by the exit script and Mario walks off the map and falls (y -1043) |
+| toad_west | -107 | mac_00:0 | west edge (x -387), zone to kmr_10 (not linked either) |
+| osr | -107 | osr_00:1 | x 612 to 710 |
+| kmr02 | CH0_WAKE_UP | kmr_02:0 | x -4 to 96 |
+- Not in the table (reason): `hos_05` (warp=hos_05:3 reaches the scene, but it is the intro cutscene map, no control). `kkj_00` (entry 6 with story -107 gives the ending scene, Mario never gets input in 300 frames). Other maps are id-only rows, refused by the guard. Presets with partner, items or badges: none made, no linked map needs them (clear_player_data gives boots normal, no hammer). Other story points work with `story=<number>`, but only the rows above were run.
+- Evidence for G01 (not diagnosed in W01): `toad_east` shows the east zone fires and the load is refused (Q6/S30), so it is not a trigger bug.
+- Evidence for G02 (not diagnosed): in `toad`, `toad_west`, `kmr02` a held A (24 scans) gives ACTION_STATE_JUMP for about 2 game frames and Mario stays at y 0 (max y 0 in toad_west and kmr02). Use `padscript=...A*24...` and read `warp: scene f.. pos`.
+
+### Azahar speed (run_azahar.ps1 `-Turbo`, `-Smoke`)
+- Azahar config (`%APPDATA%\Azahar\config\qt-config.ini`, [Renderer]): `frame_limit` (percent, default 100), `turbo_limit` (200, hotkey only), `use_vsync`. `-Turbo` sets `frame_limit=1000` and `use_vsync=false` for the run only. The 4 original lines go to `build3ds/qt-config.turbo-backup` and are restored in the finally block, and at the next start if a run was killed. Checked after the runs: `frame_limit\default=true`, `frame_limit=100`, `use_vsync=true`. `-TurboLimit <percent>`: 5000 gave the same times, so emulation speed is the limit.
+- Switch `turbo` is added to the game switches (the log shows `switches ... turbo`). The script prints `TURBO run: not valid for performance numbers`.
+- `-Timeout` and `-Stall` are divided by `-TurboFactor` (default 3, min 25 s and 10 s). The script prints the wall time at each map load, `scene frame0` and `smoke done`. The game log reaches the SD card late, so these times are late by up to about 1 s.
+- `-Smoke` adds `smoke` (needs warp, preset or story): the game logs `warp: smoke done` 300 frames after `scene frame0`. The script stops there. Exit 0 = ok, 1 = failed, 2 = unmapped access or crash symbols.
+- Game logic is frame driven and Azahar's clock is emulated: same switches, normal versus turbo, gave the same log. `fast autoa freshsave`: map loads at scans 562, 2316, 2562, 3178 in both. The logs differ only in `switches ... turbo`, `audio cost` lines (1 to 17 us) and where the run ended. The `warp: scene f` lines of a `padscript` run are identical (`t=` differs by 1 ms).
+- Speedup (wall seconds from script start, one run each, +-1 s): `fast autoa freshsave`: kmr_20 27.9 normal, 14.8 turbo. mac_00 73.9 normal, 23.9 turbo (3.1x). kmr_20 to mac_00 alone: 46 s to 9 s (5x). `fast preset=toad` first scene frame: 22.3 normal, 13.7 turbo. `-Smoke` complete: 32 s normal, 16 s turbo. About 13 s is fixed (Azahar start, ROM resident load) and turbo does not shorten it.
+- Limits: in turbo the Azahar audio output runs ahead (no ear check, expect crackle or silence). The port timers (phase timer, audio cost, fps) read `svcGetSystemTick`, which Azahar emulates, so they matched the normal run. The host GPU work is not charged, so turbo logs are NOT valid for performance numbers. `-FaultStop` works the same in turbo.
+- Commands: `powershell -File 3ds/run_azahar.ps1 -Turbo -Smoke -FaultStop -Debug "fast preset=toad"` (16 s). Normal chain: `-Debug "fast autoa freshsave" -Stall 40` (the normal-speed kmr_20 intro is silent in the log for more than 10 s).
+- Modal dialogs: run_azahar.ps1 must never leave a modal dialog open, an unattended run stalls on it. The popup the user saw during W01 came from one command of this slice: `azahar.exe --help` (Azahar opens a usage message box instead of printing). Never start azahar.exe with other arguments than the .3dsx path. The -Turbo override only edits 2 keys of the real config and has no first-run or telemetry key effect. The script now reports `modal dialog suspected` when no game log appears 30 s after the stall time, or when the log goes quiet before the first `game mode` line.
+
 ## F01 paused (slice F01: fault sweep, paused for W01)
+
+Note from W01: the walk, jump, wall and loading-zone paths that this note calls not exercised can now be run with `preset=toad` and `padscript` (see the Warp section). Scripted `START` opens the pause.
 
 All items belong to slice F01. Azahar only. Nothing ran on hardware.
 - Capture: Azahar logs `HW.Memory <Error> core/memory.cpp:UnmappedAccess:579: unmapped Read32 @ 0x00000010 at PC 0x00105000`. The log filter in qt-config.ini is `*:Info Debug.Emulated:Debug`, so these lines already show. No change needed. Log file: `%APPDATA%\Azahar\log\azahar_log.txt`.

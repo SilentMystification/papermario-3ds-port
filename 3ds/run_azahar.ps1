@@ -182,11 +182,16 @@ try {
         if (-not $Interactive -and [AzEnum]::Count([uint32]$p.Id) -gt 1) { Start-Sleep -Seconds 4; $reason = "Azahar dialog (exception or error), windows: $([AzEnum]::Titles)"; break }
         if ($FaultStop -and (Read-Tail $emuLog) -match "UnmappedAccess") { Start-Sleep -Seconds 1; $reason = "unmapped access"; break }
         if ((Read-Tail $emuLog) -match "Exception Type:") { Start-Sleep -Seconds 4; $reason = "emulator exception"; break }
-        if (-not (Test-Path $log)) { continue }
+        if (-not (Test-Path $log)) {
+            # No game log yet: a modal dialog (usage, first-run, error) or a hang before the first frame stops an unattended run
+            if (-not $Gdb -and -not $Interactive -and ((Get-Date) - $start).TotalSeconds -gt ($Stall + 30)) { $reason = "modal dialog suspected: no game log $($Stall + 30) s after the start (windows: $([AzEnum]::Titles))"; break }
+            continue
+        }
         # The game logs at least once per second; silence means a hang or an exception dialog
         $size = (Get-Item $log).Length
+        $text0 = Get-Content $log -Raw -ErrorAction SilentlyContinue
         if ($size -ne $lastSize) { $lastSize = $size; $lastGrow = Get-Date }
-        elseif (-not $Gdb -and -not $Interactive -and ((Get-Date) - $lastGrow).TotalSeconds -gt $Stall) { $reason = "game log silent for $Stall s"; break }
+        elseif (-not $Gdb -and -not $Interactive -and ((Get-Date) - $lastGrow).TotalSeconds -gt $Stall) { $reason = "game log silent for $Stall s" + $(if ($text0 -notmatch "game mode") { " before the first frame: modal dialog suspected" } else { "" }); break }
         $text = Get-Content $log -Raw -ErrorAction SilentlyContinue
         if (-not $text) { continue }
         # W01: wall seconds at each map load, scene start and smoke end (for normal versus turbo comparisons)
