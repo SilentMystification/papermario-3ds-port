@@ -68,3 +68,11 @@ compile_commands.json
 
 /ver/*/asm/data/rsp/*.s
 3ds/logs/
+3ds/*.log
+!3ds/PROGRESS.log
+3ds/*.out
+3ds/*.done
+3ds/*_log.txt
+3ds/shots/
+3ds/trace/
+rows.pkl
