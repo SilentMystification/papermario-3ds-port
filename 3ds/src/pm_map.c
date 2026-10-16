@@ -346,10 +346,10 @@ void decode_yay0(void* src, void* dst) {
     dec = rbe(s + 4);
     link = rbe(s + 8);
     count = rbe(s + 12);
-    /* No source length was passed. Stop at the farther table, and do not
-     * scan a megabyte past the block the caller allocated. */
-    bound = link > count ? link : count;
-    if (dec > 0x40000u || bound < 16u) return;
+    /* No source length is passed. The streams are valid, so the decoder reads only what it needs. The old bound
+     * (the farther table offset) cut the literal bytes at the end and every decode failed. */
+    bound = 0x100000u;
+    if (dec > 0x40000u || link < 16u || count < 16u) return;
     yay0_decode(s, bound, dst, dec);
 }
 
@@ -454,6 +454,20 @@ static void load_hit(const char* name) {
     pm_log("hit %s %d colliders", name, gCollisionData.numColliders);
 }
 
+/* Same contract as load_asset_by_name in src/world/world.c: compressed bytes on the general heap, size is the
+ * decompressed length. world.c is not built yet (S08), and its copy ignores the big-endian asset table. */
+void* load_asset_by_name(const char* name, u32* decompressedSize) {
+    u32 rom_off, comp_len, dec_len;
+    void* ret;
+
+    if (!find_asset(name, &rom_off, &comp_len, &dec_len)) return NULL;
+    ret = general_heap_malloc(comp_len);
+    if (!ret) return NULL;
+    dma_copy((u8*)rom_off, (u8*)rom_off + comp_len, ret);
+    *decompressedSize = dec_len;
+    return ret;
+}
+
 void* pm_decode_asset(const char* name, unsigned* out_size) {
     u32 rom_off, comp_len, dec_len;
     void* compressed;
@@ -489,6 +503,7 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     pm_map_loaded = 1;
     const char* shape_name = NULL;
     const char* tex_name = "hos_tex";
+    const char* bg_name = NULL; /* real value is MapConfig.bgName from world.c (S08) */
     char hit_name[12];
     u32 rom_off, comp_len, dec_len, tex_off, tex_comp, tex_dec;
     void* compressed;
@@ -503,22 +518,26 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
      * pointing at the new shape, and onRender becomes those bytes. */
     gGameStatusPtr->context = CONTEXT_WORLD;
     clear_npcs();
-    if (mapID == 5) shape_name = "hos_05_shape";
+    if (mapID == 5) { shape_name = "hos_05_shape"; bg_name = "hos_bg"; }
     else if (mapID == 4) shape_name = "hos_04_shape";
     else if (areaID == AREA_OSR && mapID == 0) {
         shape_name = "osr_00_shape";
         tex_name = "osr_tex";
+        bg_name = "nok_bg";
     }
     else if (areaID == AREA_KKJ && mapID == 0) {
         shape_name = "kkj_00_shape";
         tex_name = "kkj_tex";
+        bg_name = "nok_bg";
     }
     else if (areaID == AREA_KMR && mapID == 11) {
         shape_name = "kmr_20_shape";
         tex_name = "kmr_tex";
+        bg_name = "kmr_bg";
     } else if (areaID == AREA_KMR && mapID == 1) {
         shape_name = "kmr_02_shape";
         tex_name = "kmr_tex";
+        bg_name = "kmr_bg";
     } else {
         pm_log("map %d not loaded", mapID);
         return;
@@ -583,6 +602,15 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         load_data_for_models(root, tex_off, tex_comp);
     } else {
         load_data_for_models(root, 0, 0);
+    }
+
+    /* Same order as the real load_map: load_map_bg, reset_background_settings, then set_background. */
+    if (bg_name) load_map_bg((char*)bg_name);
+    reset_background_settings();
+    if (pm_settings.background != NULL) {
+        set_background(pm_settings.background);
+    } else {
+        set_background_size(SCREEN_XMAX - SCREEN_XMIN, SCREEN_YMAX - SCREEN_YMIN, SCREEN_INSET_X, SCREEN_INSET_Y);
     }
 
     clear_trigger_data();

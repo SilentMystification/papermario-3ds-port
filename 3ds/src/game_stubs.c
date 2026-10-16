@@ -51,9 +51,6 @@ void shim_create_audio_system_obfuscated(void) { create_audio_system(); }
 void load_engine_data(void);
 void shim_load_engine_data_obfuscated(void) { load_engine_data(); }
 
-void gfx_init_state(void) {}
-void pm_draw_loaded_background(void);
-void gfx_draw_background(void) { pm_draw_loaded_background(); }
 Vec3s gEntityColliderFaces[] = {
     { 4, 6, 5 }, { 4, 7, 6 },
     { 0, 3, 4 }, { 3, 7, 4 },

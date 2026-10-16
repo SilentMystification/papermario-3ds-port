@@ -8,6 +8,12 @@ s8 gBackroundWaveEnabled = false;
 s16 gBackroundTextureYOffset = 0;
 f32 gBackroundWavePhase = 0.0f;
 
+#ifdef TARGET_3DS
+// Palettes are big-endian in the ROM asset and the GBI reads them big-endian, so C code swaps on access.
+#define BG_PAL(x) ((u16)__builtin_bswap16((u16)(x)))
+#else
+#define BG_PAL(x) (x)
+#endif
 BSS PAL_BIN gBackgroundPalette[256];
 BSS f32 gBackroundLastScrollValue;
 BSS s32 D_801595A4[3];
@@ -30,6 +36,19 @@ void load_map_bg(char* optAssetName) {
 
         compressedData = load_asset_by_name(assetName, &assetSize);
         decode_yay0(compressedData, &gBackgroundImage);
+#ifdef TARGET_3DS
+        {
+            // The asset header holds big-endian N64 pointers relative to 0x80200000 (the address of gBackgroundImage).
+            u32 raster = __builtin_bswap32(*(u32*)&gBackgroundImage.raster);
+            u32 palette = __builtin_bswap32(*(u32*)&gBackgroundImage.palette);
+            gBackgroundImage.raster = (u8*)&gBackgroundImage + (raster - 0x80200000);
+            gBackgroundImage.palette = (u16*)((u8*)&gBackgroundImage + (palette - 0x80200000));
+            gBackgroundImage.startX = __builtin_bswap16(gBackgroundImage.startX);
+            gBackgroundImage.startY = __builtin_bswap16(gBackgroundImage.startY);
+            gBackgroundImage.width = __builtin_bswap16(gBackgroundImage.width);
+            gBackgroundImage.height = __builtin_bswap16(gBackgroundImage.height);
+        }
+#endif
         general_heap_free(compressedData);
     }
 }
@@ -150,17 +169,17 @@ void appendGfx_background_texture(void) {
             case ENV_TINT_SHROUD:
                 if (fogA == 255) {
                     for (i = 0; i < ARRAY_COUNT(gBackgroundPalette); i++) {
-                        gBackgroundPalette[i] = 1;
+                        gBackgroundPalette[i] = BG_PAL(1);
                     }
                 } else {
                     // lerp from background palette color to fog color based on fog alpha
                     for (i = 0; i < ARRAY_COUNT(gBackgroundPalette); i++) {
                         // NOTE: values after UNPACK range from [0,31], so we need to shift fog color into that range
-                        u16 palColor = gGameStatusPtr->backgroundPalette[i];
+                        u16 palColor = BG_PAL(gGameStatusPtr->backgroundPalette[i]);
                         blendedB = blend_background_channel(UNPACK_PAL_B(palColor), fogB >> 3, fogA);
                         blendedG = blend_background_channel(UNPACK_PAL_G(palColor), fogG >> 3, fogA);
                         blendedR = blend_background_channel(UNPACK_PAL_R(palColor), fogR >> 3, fogA);
-                        gBackgroundPalette[i] = blendedB << 1 | blendedG << 6 | blendedR << 11 | 1;
+                        gBackgroundPalette[i] = BG_PAL(blendedB << 1 | blendedG << 6 | blendedR << 11 | 1);
                     }
                 }
                 break;
@@ -170,7 +189,7 @@ void appendGfx_background_texture(void) {
                 // the background color channels are remapped from [0,255] -> [min,max]
                 for (i = 0; i < ARRAY_COUNT(gBackgroundPalette); i++) {
                     // NOTE: values after UNPACK range from [0,31], so we need to shift other colors into that range
-                    u16 palColor = gGameStatusPtr->backgroundPalette[i];
+                    u16 palColor = BG_PAL(gGameStatusPtr->backgroundPalette[i]);
                     blendedB = (b2 >> 3) + ((UNPACK_PAL_B(palColor) * b1 >> 3) >> 5);
                     blendedG = (g2 >> 3) + ((UNPACK_PAL_G(palColor) * g1 >> 3) >> 5);
                     blendedR = (r2 >> 3) + ((UNPACK_PAL_R(palColor) * r1 >> 3) >> 5);
@@ -184,7 +203,7 @@ void appendGfx_background_texture(void) {
                     if (blendedR > 0x1F) {
                         blendedR = 0x1F;
                     }
-                    gBackgroundPalette[i] = blendedB << 1 | blendedG << 6 | blendedR << 11 | 1;
+                    gBackgroundPalette[i] = BG_PAL(blendedB << 1 | blendedG << 6 | blendedR << 11 | 1);
                 }
                 break;
         }

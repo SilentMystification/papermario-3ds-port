@@ -76,6 +76,8 @@ set(GAME_SRC
     ${DECOMP}/src/evt/audio_api.c
     ${DECOMP}/src/heaps.c
     ${DECOMP}/src/rumble.c
+    ${DECOMP}/src/background.c
+    ${DECOMP}/src/background_gfx.c
     ${DECOMP}/src/evt/virtual_entity.c
     ${DECOMP}/src/audio/ambience.c
     ${DECOMP}/src/audio/bgm_control.c

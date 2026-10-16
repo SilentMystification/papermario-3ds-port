@@ -73,59 +73,6 @@ static void draw_press_start(void) {
     gDPPipeSync(gMainGfxPos++);
 }
 
-/* Background files store N64 pointers relative to gBackgroundImage at 0x80200000. */
-#define BG_BASE 0x80200000u
-
-static u8* bg_blob;
-static u8* bg_raster;
-static u8* bg_pal;
-static int bg_x, bg_y, bg_w, bg_h;
-
-static void load_background(const char* name) {
-    unsigned size = 0;
-    u8* blob;
-    u32 raster, pal;
-
-    bg_blob = NULL;
-    bg_raster = NULL;
-    bg_pal = NULL;
-    bg_w = bg_h = 0;
-    blob = pm_decode_asset(name, &size);
-    if (!blob || size < 16) {
-        pm_log("bg %s missing", name);
-        return;
-    }
-    raster = read_be(blob);
-    pal = read_be(blob + 4);
-    bg_x = (blob[8] << 8) | blob[9];
-    bg_y = (blob[10] << 8) | blob[11];
-    bg_w = (blob[12] << 8) | blob[13];
-    bg_h = (blob[14] << 8) | blob[15];
-    if (raster >= BG_BASE && raster - BG_BASE < size) bg_raster = blob + (raster - BG_BASE);
-    if (pal >= BG_BASE && pal - BG_BASE + 512u <= size) bg_pal = blob + (pal - BG_BASE);
-    bg_blob = blob;
-    pm_log("bg %s %dx%d", name, bg_w, bg_h);
-}
-
-void pm_draw_loaded_background(void) {
-    int w, h;
-
-    if (!bg_raster || !bg_pal || bg_w < 8 || bg_h < 8 || !gMainGfxPos) return;
-    w = bg_w > 320 ? 320 : bg_w;
-    h = bg_h > 240 ? 240 : bg_h;
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGB, G_CC_DECALRGB);
-    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-    gDPLoadTLUT_pal256(gMainGfxPos++, bg_pal);
-    gDPLoadTextureTile(gMainGfxPos++, bg_raster, G_IM_FMT_CI, G_IM_SIZ_8b, bg_w, h,
-                       0, 0, w - 1, h - 1, 0,
-                       G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-    gSPTextureRectangle(gMainGfxPos++, bg_x << 2, bg_y << 2, (bg_x + w) << 2, (bg_y + h) << 2,
-                        G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
-    gDPPipeSync(gMainGfxPos++);
-}
-
 void state_init_title_screen(void) {
     gOverrideFlags &= ~GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
     gOverrideFlags |= GLOBAL_OVERRIDES_DISABLE_RENDER_WORLD;
@@ -134,7 +81,9 @@ void state_init_title_screen(void) {
     gGameStatusPtr->startupState = 2;
     general_heap_create();
     load_title_images();
-    load_background("title_bg");
+    reset_background_settings();
+    load_map_bg("title_bg");
+    set_background(&gBackgroundImage);
     show_press = 1;
     blink = 0;
     pm_log("title screen");
@@ -215,7 +164,6 @@ void state_init_world(void) {
      * unless this mode clears it, which is the blank screen on a file slot. */
     clear_screen_overlays();
     load_map_by_IDs(gGameStatusPtr->areaID, gGameStatusPtr->mapID, LOAD_FROM_MAP);
-    load_background("kmr_bg");
 }
 
 int pm_debug_has(const char* word);

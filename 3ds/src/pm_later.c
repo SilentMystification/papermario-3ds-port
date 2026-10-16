@@ -8,7 +8,6 @@ void crash_screen_set_draw_info() {}
 void fio_init_flash() {}
 /* clear_player_status is 77480.c */
 /* spr_init_sprites is sprite.c */
-void reset_background_settings() {}
 /* clear_npcs is npc.c */
 /* init_encounter_status is npc.c */
 void reset_battle_status() {}
