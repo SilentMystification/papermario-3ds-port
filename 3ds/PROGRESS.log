@@ -60,3 +60,4 @@
 06:29 S15 build ok (pm_gbi sw palette rect + dual-tile lut, pm_tex_load_shaded)
 07:02 S15 finding: no linked map enables shading; SetSpriteShading read ROM words unswapped (profile=0). fixed
 07:08 S15 clean build, running fast autoa shots
+07:18 S15 committed 8d6422df9, done, S15 marked [x]
