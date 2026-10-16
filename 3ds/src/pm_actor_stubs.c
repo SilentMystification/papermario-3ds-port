@@ -3,10 +3,6 @@
 
 #define STUB(name) int name() { return 0; }
 
-STUB(check_input_open_menus)
-STUB(check_input_status_bar)
-STUB(func_800F0C9C)
-STUB(handle_floor_behavior)
 STUB(load_battle)
 STUB(set_battle_formation)
 STUB(set_battle_stage)

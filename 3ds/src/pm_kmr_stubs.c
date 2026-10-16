@@ -31,7 +31,6 @@ Gfx* Entity_ShatteringHammer2Block_FragmentsRender[16];
 Mtx Entity_ShatteringHammer2Block_FragmentsMatrices[16];
 Gfx* Entity_ShatteringHammer3Block_FragmentsRender[16];
 Mtx Entity_ShatteringHammer3Block_FragmentsMatrices[16];
-void clear_world_menus(void) {}
 /* Real N64 address 0x80200000 (undefined_syms.txt). The decoded background file (header, CI8 raster, palette) lands here. */
 unsigned char gBackgroundImage_buf[0x40000] __asm__("gBackgroundImage") __attribute__((aligned(16)));
 

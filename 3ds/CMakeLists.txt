@@ -271,6 +271,8 @@ set(GAME_SRC
     ${DECOMP}/src/world/script_api/shops.c
     ${DECOMP}/src/fio.c
     ${DECOMP}/src/8a860_len_3f30.c
+    ${DECOMP}/src/world/surfaces.c
+    ${DECOMP}/src/world/menus.c
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types")
