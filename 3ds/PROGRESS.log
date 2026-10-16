@@ -250,3 +250,10 @@
 17:37 W01 final normal chain run (fast autoa freshsave, no turbo, no warp)
 17:41 W01 docs written, rerun final normal chain with new script
 17:43 W01 end: presets tested, turbo 3.1x to mac_00, normal chain ok 0 unmapped
+17:43 G02 start
+17:45 G02 hyp: maxJumpSpeed reads DefaultMoveSpeed[1]=GravityParamsStartFall[0] (data-sections reorder)
+17:47 G02 build a (diag log fields)
+17:47 G02 finding: walkSpeed 0, maxJumpSpeed 0.154 (should be 2,4,32) in log
+17:49 G02 build b (actions.c no data sections)
+17:49 G02 commit fix; y 30->67 jump
+17:54 G02 chain ok, 0 unmapped; end

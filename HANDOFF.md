@@ -583,7 +583,7 @@ Platform layer only (`pm_gbi.c`, `pm_gpu.c`, `pm_tex.c`), no game code changed.
 ### New open issues reported by the user during slice S27 (all unverified, rows in 3ds/SLICES.md)
 - V01: background image squished at the left and right sides, stretched in the middle. Not checked.
 - G01: loading zone in mac_00 does not trigger after the pipe. Hypothesis: the target map is an id-only row (`GotoMap refused`, Q6 and S30). Not checked.
-- G02: jump animation plays, Mario barely leaves the ground. Cause unknown. Not checked.
+- G02: FIXED (see the G02 result section).
 - Also queued by the coordinator: S32 input speed, S33 gitignore cleanup (no detail given to S27).
 
 - Open issue V01 (recorded during slice S32, not worked in S32): the user also reports that the WRONG background shows in game (the intro cutscene or title background in a later scene). User-reported, unverified. Joins the squished background report in V01. Hypothesis, not verified: one fixed buffer (gBackgroundImage) plus a texture cache keyed on address and size returns a stale picture. Test steps are in the V01 row of 3ds/SLICES.md.
@@ -777,3 +777,17 @@ All items belong to slice F01. Azahar only. Nothing ran on hardware.
 - OPEN, not fixed: `tex ptr 0000fd7e 4x1 fmt 0` (log line, once, in the hos_05 intro just before the refused hos_04 load, idle path only). `pm_tex.c load_inner` returns 0 for image pointers below 0x100000. gdb: `pm_gbi_run(list=0x3ff560 in heap_spriteHead, nbytes=320)` from `nuGfxTaskStart`. The list bytes are random data (0x0755ce39 ...) then 0xffffffff, so a whole frame list is read from freed or unwritten sprite heap. Not an Azahar unmapped access. Cause not found. The `ptr_of` fallback in pm_gbi.c (returns an unknown segment pointer as is) and the `is_host` checks in pm_gbi.c are port guards that hide bad display lists. Next step: find who passes that list (state change frame, the frame after clear_model_data or general_heap_create).
 - Not done: branch s19-full-battle sweep (`battle`, `demobattle`). A worktree exists at `3ds/logs/wt_battle` (detached at 7fd566684, assets and ver/us copied, main's pm_input.c copied in, not built). The branch is based on old main (autoa 1 press in 240 scans), so it needs the main `pm_input.c`. Remove with `git worktree remove --force 3ds/logs/wt_battle`. Q4 `update_player_shadow` access: cause read from code only: `get_shadow_by_index(shadowID)` returns NULL after a cleared shadow list, then `shadow->pos` writes through NULL. Not run.
 - Not done (static sweep): bounds checks of array indexes in port code, unaligned LDM/VLDR (Azahar does not fault on them, so only static review or UBSan alignment can find them), unchecked `heap_malloc` in imgfx.c (anim->vtxCount buffers at ~1297), `pi_read_raw` zero fill past ROM size without a log line. The 47 `gPartnerStatus` defsyms: P01 plus a grep show they are only dma_copy arguments, no call.
+
+
+## G02 result (slice G02: Mario could not jump)
+
+All items belong to slice G02. Azahar only. Fix in the build setup (`3ds/CMakeLists.txt`), no decomp file changed.
+- Root cause: `src/7B440.c` (`clear_player_data` / `init_player_status`) reads walk, run and max jump speed by pointer arithmetic: `floatsTemp = &(&DefaultMoveSpeed)[-1]`, then 3 floats. The decomp puts `DefaultWalkSpeed`, `DefaultMoveSpeed`, `D_800F7B78` next to each other in `src/world/actions.c`. The port builds with `-fdata-sections` and links with `--gc-sections`, so each variable had its own section. The linker moved `DefaultMoveSpeed` next to `GravityParamsStartFall` and dropped the two unused neighbours. Result: walkSpeed = a garbage word (0), runSpeed = 4 (right by luck), maxJumpSpeed = `GravityParamsStartFall[0]` = 0.154. `phys_update_jump` caps the integrator at maxJumpSpeed, so the real jump speed 15.7 became 0.154 and Mario stayed on the ground.
+- Fix: `set_property(SOURCE src/world/actions.c APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)`. The file keeps its data as one block in source order. Log after: `walk 200 run 400 maxJump 32000` (x100, x100, x1000), the decomp values 2, 4, 32.
+- Evidence tool: the `warp: scene f..` line now also prints `vy` (gravityIntegrator[0] x100), `maxJump` (x1000), `walk` and `run` (x100).
+- Y trace, `fast preset=yard padscript=wait80,A*24,wait60` (frames in the scene, y of Mario):
+  - Before: f42 y 30 (vy 0.15), f44 y 30 (vy -1.04), then y 30. No lift. maxJump 0.154, walk 0.
+  - After: f42 41, f44 56, f46 66, f48 67 (peak, 37 above the floor), f50 64, f52 57, f54 46, f56 30 (landed). maxJump 32, walk 2.
+- `preset=toad` with the default script (walk, jump, walk back, jump): two full jumps (y 0 to 37, 0 to 11+), landing between them, walking works.
+- Other code that reads a neighbour variable through a pointer may break the same way. Not searched. If a similar bug shows up, check the section layout with `nm` first.
+- Normal-speed check (slice G02): `fast autoa` 260 s, maps kmr_20, osr_00, kmr_20, mac_00 (area 1 map 1) at scans 410, 2164, 2410, 3026. 0 unmapped lines.
