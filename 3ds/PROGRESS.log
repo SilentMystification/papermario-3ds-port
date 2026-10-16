@@ -219,3 +219,8 @@
 15:37 PO1 run 3 (shots) done
 15:41 PO1 commit 953f1d36d
 15:41 PO1 end
+15:42 V02 start, reading HANDOFF
+15:44 V02 shots run 1 done (no code change)
+15:45 V02 kmr_20 shots 12-52 checked: bushes in front of hills, not reproduced
+15:47 V02 hos_05 intro shots 0-106 no house seen; running mac_00 shots
+15:53 V02 committed, end
