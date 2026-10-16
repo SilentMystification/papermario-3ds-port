@@ -184,6 +184,15 @@ All items below belong to slice H02. Checked on Azahar only. Nothing ran on hard
 
 Slice L01 is queued in 3ds/SLICES.md before S28. The user decided that no blocking write may run on the game path. pm_log must become a ring buffer with a writer thread on core 1. This note was added during slice V02. No L01 code was written.
 
+## V02 paused (slice V02, paused for L01, no code changed)
+
+Found so far (slice V02, Azahar only):
+- `fast autoa shots freshsave` reaches the Mario house yard (kmr_20, shots 11 to 29) and the yard after the letter (shots 44 to 53). Sheet 3ds/logs/v02_s0.png (git-ignored). By eye in the default state: the bushes sit in front of the hazy hills and the tree trunk is in front of the haze. I did NOT see the wall over the bushes. The same shots with `rmoff` (shot 50) look the same, except a dark square under the Mario sprite and Luigi with `rmoff` (old always-write depth).
+- `rmlog` kmr_20 draw states (frame 301 onward): first zb1 draws with oml 0c192078 and 00552078 (Z_CMP and Z_UPD on, depth w 400 to 1200), then a run of draws with geometry zb 0 and oml 00552048 or 00553048 (Z_CMP 0, Z_UPD 0, w 750 to 1100), then zb1 draws again. Draws with zb 0 and no Z_CMP skip the depth test in the port, so they cover earlier depth draws. The N64 does the same, so the draw order of the display list decides. Not yet shown: which of these draws is the panorama and which are the bushes.
+- Not verified: the report may be a hardware only effect (depth precision on PICA, decal bias 0.001 below float24 resolution), or a different scene (mac_00 background, hos_05 house).
+Next step: log per draw (model name or vertex address) in the zb 0 run of kmr_20 frame 301 and check whether the bushes are in that run. Test the decal bias (`C3D_DepthMap` in `pm_gpu.c` flush) with a larger value. Check mac_00 shots.
+Commands: `powershell -File 3ds/run_azahar.ps1 -Debug "fast autoa freshsave rmlog" -Timeout 200 -Until "area 1 map 1"` (rmlog lines `rm f<frame>`, logged on frames where frame mod 30 is 1, only on a state change). A/B: add `rmoff`. Shots: `fast autoa shots freshsave`, then `python build3ds/sheet.py 1 0 54 out.png`.
+
 ## Open issues (carry over until fixed)
 
 1. kkj_00 is not reached by the intro chain. See above. Toad Town (mac_00) and every other map also fail to load. The generic map table fixes both.
