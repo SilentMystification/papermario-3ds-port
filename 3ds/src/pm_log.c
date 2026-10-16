@@ -78,7 +78,12 @@ void pm_log_set_switches(const char* s) {
 }
 
 void pm_log_init(int live) {
+    /* Keep the last run: a crash trace in log.txt must survive the next boot. */
+    unlink("log.old");
+    int rot = rename("log.txt", "log.old");
+    int rot_err = errno;
     log_fd = open("log.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (rot != 0) pm_log("log rotate failed errno %d (no previous log.txt on the first boot)", rot_err);
     unsigned soc_bytes = 0;
     u32* soc = (u32*)pm_soc_buffer(&soc_bytes);
     if (!live || !soc || soc_bytes < 0x1000 || socInit(soc, soc_bytes) != 0) {
@@ -143,10 +148,17 @@ void pm_assert_fail(const char* statement) {
 }
 
 void pm_crash_line(const char* s, int n) {
+    static int crash_fd = -1;
     svcOutputDebugString(s, n);
     if (log_fd >= 0) {
         write(log_fd, s, (size_t)n);
         fsync(log_fd);
+    }
+    /* crash.txt keeps every crash (append), so it stays after the next boot. */
+    if (crash_fd < 0) crash_fd = open("crash.txt", O_WRONLY | O_CREAT | O_APPEND, 0666);
+    if (crash_fd >= 0) {
+        write(crash_fd, s, (size_t)n);
+        fsync(crash_fd);
     }
     if (client >= 0) send(client, s, (size_t)n, MSG_DONTWAIT);
 }

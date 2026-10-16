@@ -14,32 +14,118 @@ static u8 crash_stack[0x4000] __attribute__((aligned(8)));
 static int netloaded;
 static char args[256];
 
+/* Stack records: bounds of the game and audio thread stacks, a fill pattern for the high-water mark.
+ * A thread registers itself with the address of a local at its entry. The fill stops below the live frames. */
+#define STACK_PAT 0xA5A5A5A5u
+typedef struct { u32 lo, hi; const char* name; } StackRec;
+static StackRec recs[2];
+
+void pm_stack_register(int id, const char* name, unsigned size) {
+    volatile u32 here;
+    u32 top = (u32)&here;
+    StackRec* r = &recs[id];
+    r->name = name;
+    r->hi = top;
+    r->lo = (top - size + 512) & ~3u; /* 512 bytes of slack: the real top is a little above this frame */
+    for (volatile u32* p = (volatile u32*)r->lo; (u32)p < top - 256; p++) *p = STACK_PAT;
+}
+
+unsigned pm_stack_used(int id, unsigned* size) {
+    const StackRec* r = &recs[id];
+    if (!r->hi) return 0;
+    const u32* p = (const u32*)r->lo;
+    while ((u32)p < r->hi && *p == STACK_PAT) p++;
+    if (size) *size = r->hi - r->lo;
+    return r->hi - (u32)p;
+}
+
+static unsigned fpscr_get(void) {
+    unsigned v;
+    __asm__ volatile("vmrs %0, fpscr" : "=r"(v));
+    return v;
+}
+
+/* N64 libultra runs the game with FPCSR flush-to-zero set (FS), round to nearest, no FPU traps.
+ * So: FZ (bit 24) on, DN (bit 25) on (a NaN result is one fixed quiet NaN, nothing depends on payloads),
+ * RMode (bits 23:22) = 0 nearest, trap enables (bits 12:8, bit 15) off, sticky flags cleared. */
+void pm_fpscr_setup(const char* who) {
+    unsigned before = fpscr_get();
+    unsigned v = (before | (1u << 24) | (1u << 25)) & ~((3u << 22) | (0x1Fu << 8) | (1u << 15) | 0x9Fu);
+    __asm__ volatile("vmsr fpscr, %0" : : "r"(v));
+    pm_log("fpscr %s before %08x after %08x", who, before, fpscr_get());
+}
+
 static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     static const char* names[] = { "prefetch abort", "data abort", "undefined instruction", "VFP" };
-    char buf[160];
-    int n = snprintf(buf, sizeof(buf),
-                     "\n[CRASH] %s thread=%lx pc=%08lx lr=%08lx sp=%08lx far=%08lx\n",
-                     excep->type < 4 ? names[excep->type] : "?",
-                     (unsigned long)threadGetCurrent(),
-                     (unsigned long)regs->pc, (unsigned long)regs->lr,
-                     (unsigned long)regs->sp, (unsigned long)excep->far);
+    char buf[200];
+    int n;
+    const StackRec* st = NULL;
+    for (int i = 0; i < 2; i++)
+        if (recs[i].hi && regs->sp >= recs[i].lo && regs->sp <= recs[i].hi + 512) st = &recs[i];
+    n = snprintf(buf, sizeof(buf),
+                 "\n[CRASH] %s thread=%s (%lx) pc=%08lx lr=%08lx sp=%08lx far=%08lx fsr=%08lx cpsr=%08lx build #%d\n",
+                 excep->type < 4 ? names[excep->type] : "?", st ? st->name : "other",
+                 (unsigned long)threadGetCurrent(), (unsigned long)regs->pc, (unsigned long)regs->lr,
+                 (unsigned long)regs->sp, (unsigned long)excep->far, (unsigned long)excep->fsr,
+                 (unsigned long)regs->cpsr, PM_BUILD);
     pm_crash_line(buf, n);
-    const u32* sp = (const u32*)(regs->sp & ~3u);
-    n = snprintf(buf, sizeof(buf), "[CRASH] stack");
-    for (int i = 0, found = 0; i < 1024 && found < 48; i++) {
-        u32 v = sp[i];
-        if (v < 0x00100000u || v >= 0x01000000u) continue;
-        n += snprintf(buf + n, sizeof(buf) - (size_t)n, " %08lx", (unsigned long)v);
-        if (++found % 12 == 0) {
-            buf[n++] = '\n';
-            pm_crash_line(buf, n);
-            n = snprintf(buf, sizeof(buf), "[CRASH] stack");
-        }
+    for (int i = 0; i < 13; i += 4) {
+        n = snprintf(buf, sizeof(buf), "[CRASH] ");
+        for (int j = i; j < i + 4 && j < 13; j++) n += snprintf(buf + n, sizeof(buf) - (size_t)n, "r%d=%08lx ", j, (unsigned long)regs->r[j]);
+        buf[n++] = '\n';
+        pm_crash_line(buf, n);
     }
-    buf[n++] = '\n';
+    n = pm_mem_crash_line(buf, sizeof(buf));
     pm_crash_line(buf, n);
+    /* Stack walk: only inside the recorded stack bounds, at most 2048 words. */
+    if (st && regs->sp >= st->lo && regs->sp < st->hi) {
+        n = snprintf(buf, sizeof(buf), "[CRASH] stack used %lu of %lu, code-like words:",
+                     (unsigned long)(st->hi - regs->sp), (unsigned long)(st->hi - st->lo));
+        buf[n++] = '\n';
+        pm_crash_line(buf, n);
+        const u32* sp = (const u32*)(regs->sp & ~3u);
+        const u32* end = (const u32*)st->hi;
+        n = snprintf(buf, sizeof(buf), "[CRASH] stack");
+        for (int i = 0, found = 0; sp + i < end && i < 2048 && found < 48; i++) {
+            u32 v = sp[i];
+            if (v < 0x00100000u || v >= 0x01000000u) continue;
+            n += snprintf(buf + n, sizeof(buf) - (size_t)n, " %08lx", (unsigned long)v);
+            if (++found % 12 == 0) {
+                buf[n++] = '\n';
+                pm_crash_line(buf, n);
+                n = snprintf(buf, sizeof(buf), "[CRASH] stack");
+            }
+        }
+        buf[n++] = '\n';
+        pm_crash_line(buf, n);
+    } else {
+        n = snprintf(buf, sizeof(buf), "[CRASH] sp %08lx is outside the known thread stacks, no stack walk\n", (unsigned long)regs->sp);
+        pm_crash_line(buf, n);
+    }
     svcBreak(USERBREAK_PANIC);
     for (;;) {}
+}
+
+/* Class E test: Azahar stops on a real CPU exception itself and never calls the guest handler, so the handler has a direct
+ * entry. It gets made-up registers and the live sp. On hardware use the switches crashtest and crashtest_audio instead (real fault). */
+void pm_crash_selftest(void) {
+    ERRF_ExceptionInfo e;
+    CpuRegisters r;
+    memset(&e, 0, sizeof(e));
+    memset(&r, 0, sizeof(r));
+    e.type = ERRF_EXCEPTION_DATA_ABORT;
+    e.fsr = 0x805;
+    e.far = 4;
+    for (int i = 0; i < 13; i++) r.r[i] = 0x1000u + (u32)i;
+    r.sp = (u32)(uintptr_t)&e;
+    r.lr = (u32)(uintptr_t)__builtin_return_address(0);
+    r.pc = (u32)(uintptr_t)&pm_crash_selftest;
+    r.cpsr = 0x60000010u;
+    crash_handler(&e, &r);
+}
+
+void pm_crash_install(void* stack, unsigned size) {
+    threadOnException(crash_handler, (u8*)stack + size, WRITE_DATA_TO_HANDLER_STACK);
 }
 
 unsigned pm_ticks(void) { return (unsigned)svcGetSystemTick(); }
@@ -107,6 +193,8 @@ void pm_frame_loop(void) {
             have_fps = 1;
         }
         if (frame % 3600 == 0) pm_mem_log("tick");
+        if (frame == 300 && pm_debug_has("crashtest_call")) pm_crash_selftest();
+        if (frame == 300 && pm_debug_has("crashtest")) __asm__ volatile(".word 0xe7f000f0"); /* class E: deliberate undefined instruction on the game thread */
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
             char top[40];
@@ -124,7 +212,8 @@ void pm_frame_loop(void) {
 
 static void game_thread(void* arg) {
     (void)arg;
-    threadOnException(crash_handler, crash_stack + sizeof(crash_stack), WRITE_DATA_TO_HANDLER_STACK);
+    pm_crash_install(crash_stack, sizeof(crash_stack));
+    pm_stack_register(0, "game", 256 * 1024);
     char sw[256];
     memset(sw, 0, sizeof(sw));
     FILE* f = fopen("debug3ds.txt", "r");
@@ -140,6 +229,7 @@ static void game_thread(void* arg) {
     }
     pm_log_set_switches(sw);
     pm_log_init(live);
+    pm_fpscr_setup("game");
     bool is_new = false;
     APT_CheckNew3DS(&is_new);
     if (is_new) osSetSpeedupEnable(true);
@@ -147,7 +237,7 @@ static void game_thread(void* arg) {
     pm_log("Paper Mario 3DS");
     pm_log("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
-    pm_rom_init();
+    if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
     pm_game_bind();
     pm_log("boot_main");

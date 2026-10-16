@@ -1,6 +1,8 @@
 #include <3ds.h>
 #include <string.h>
 #include <malloc.h>
+#include <stdio.h>
+#include <unistd.h>
 #include "pm_port.h"
 
 /* O3DS application FCRAM, all of it. N3DS and Azahar can offer more; this
@@ -37,9 +39,34 @@ static int started_by_netload(void) {
     return last && argc > 1 && strlen(last) == 17 && strncmp(last + 8, "_3DSLINK_", 8) == 0;
 }
 
+/* Boot failure before the heap exists: leave a trace on the SD card, then break. The heap, stdio and the log are not up
+ * yet, so this opens the SD archive by hand with stack buffers only. Best effort: if the SD is not reachable, only the break happens. */
+static void boot_fail(const char* what, u32 a, u32 b, Result rc) {
+    char msg[200];
+    int n = snprintf(msg, sizeof(msg), "[BOOT FAIL] %s a=%08lx b=%08lx rc=%08lx\n", what, (unsigned long)a, (unsigned long)b, (unsigned long)rc);
+    if (R_SUCCEEDED(srvInit())) {
+        if (R_SUCCEEDED(fsInit())) {
+            Handle fh;
+            if (R_SUCCEEDED(FSUSER_OpenFileDirectly(&fh, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
+                                                    fsMakePath(PATH_ASCII, "/3ds/PaperMario/crash.txt"), FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
+                u64 size = 0;
+                u32 wrote = 0;
+                FSFILE_GetSize(fh, &size);
+                FSFILE_Write(fh, &wrote, size, msg, (u32)n, FS_WRITE_FLUSH);
+                FSFILE_Close(fh);
+            }
+            fsExit();
+        }
+        srvExit();
+    }
+    svcOutputDebugString(msg, n);
+    svcBreak(USERBREAK_PANIC);
+}
+
 void __system_allocateHeaps(void) {
     Handle reslimit = 0;
-    if (R_FAILED(svcGetResourceLimit(&reslimit, CUR_PROCESS_HANDLE))) svcBreak(USERBREAK_PANIC);
+    Result rc0 = svcGetResourceLimit(&reslimit, CUR_PROCESS_HANDLE);
+    if (R_FAILED(rc0)) boot_fail("svcGetResourceLimit", 0, 0, rc0);
     s64 max_commit = 0, cur_commit = 0;
     ResourceLimitType type = RESLIMIT_COMMIT;
     svcGetResourceLimitLimitValues(&max_commit, reslimit, &type, 1);
@@ -52,13 +79,13 @@ void __system_allocateHeaps(void) {
     if (avail > PM_FCRAM) avail = PM_FCRAM;
 
     u32 soc = started_by_netload() ? PM_SOC : 0;
-    if (avail <= soc + PM_OURS) svcBreak(USERBREAK_PANIC);
+    if (avail <= soc + PM_OURS) boot_fail("commit too small", avail, soc + PM_OURS, 0);
     avail -= soc;
     u32 ours = PM_OURS - soc;
 
     u32 base = 0;
-    if (R_FAILED(svcControlMemory(&base, 0, 0, avail, MEMOP_ALLOC_LINEAR, MEMPERM_READ | MEMPERM_WRITE)))
-        svcBreak(USERBREAK_PANIC);
+    Result rc1 = svcControlMemory(&base, 0, 0, avail, MEMOP_ALLOC_LINEAR, MEMPERM_READ | MEMPERM_WRITE);
+    if (R_FAILED(rc1)) boot_fail("linear alloc of the whole commit", avail, 0, rc1);
 
     __ctru_linear_heap = base;
     __ctru_linear_heap_size = ours;
@@ -90,7 +117,27 @@ unsigned pm_tex_used(void);
 unsigned pm_tex_peak(void);
 
 /* M01 measurement: newlib heap in use, newlib heap free, linear pool free. All bytes read from the OS now. */
+/* Memory line for the crash handler. No mallinfo and no linear heap query: the fault may sit inside malloc and hold its lock. */
+int pm_mem_crash_line(char* buf, int cap) {
+    s64 cur = 0;
+    Handle rl = 0;
+    ResourceLimitType type = RESLIMIT_COMMIT;
+    if (R_SUCCEEDED(svcGetResourceLimit(&rl, CUR_PROCESS_HANDLE))) {
+        svcGetResourceLimitCurrentValues(&cur, rl, &type, 1);
+        svcCloseHandle(rl);
+    }
+    return snprintf(buf, (size_t)cap, "[CRASH] mem heap total %uKB sbrk-used %uKB linear pool %uKB commit used %uKB of %uKB\n",
+                    pm_heap_bytes() >> 10, (unsigned)((char*)sbrk(0) - (char*)__ctru_heap) >> 10, pm_linear_bytes() >> 10,
+                    (unsigned)(cur >> 10), (unsigned)(commit_max >> 10));
+}
+
 void pm_mem_log(const char* tag) {
+    {
+        unsigned gs = 0, as = 0;
+        unsigned gu = pm_stack_used(0, &gs), au = pm_stack_used(1, &as);
+        pm_log("mem %s stack high-water game %u of %u B, audio %u of %u B", tag, gu, gs, au, as);
+        pm_gpu_log_stats(tag);
+    }
     if (!strcmp(tag, "boot"))
         pm_log("mem commit limit %uKB used-by-image %uKB offered %uKB cap %uKB", (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10),
                (unsigned)((commit_max - commit_cur) >> 10), PM_FCRAM >> 10);

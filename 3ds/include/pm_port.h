@@ -18,7 +18,15 @@ void pm_pad_scan(void);
 void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsigned short* trigger);
 
 void pm_game_bind(void);
-void pm_rom_init(void);
+int pm_rom_init(void);
+void pm_fatal_screen(const char* msg);
+void pm_crash_selftest(void);
+void pm_crash_install(void* stack, unsigned size);
+void pm_stack_register(int id, const char* name, unsigned size);
+unsigned pm_stack_used(int id, unsigned* size);
+void pm_fpscr_setup(const char* who);
+int pm_mem_crash_line(char* buf, int cap);
+void pm_gpu_log_stats(const char* tag);
 void* pm_soc_buffer(unsigned* size);
 unsigned pm_heap_bytes(void);
 unsigned pm_linear_bytes(void);

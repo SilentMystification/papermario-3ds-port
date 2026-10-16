@@ -1,5 +1,6 @@
 #include <3ds.h>
 #include <string.h>
+#include <unistd.h>
 #include "pm_port.h"
 
 #define CAP 8192
@@ -11,9 +12,14 @@ static ndspWaveBuf wb[SLOTS];
 static s16* data[SLOTS];
 
 void pm_audio_init(void) {
-    if (ready) return;
-    if (R_FAILED(ndspInit())) {
-        pm_log("ndsp init failed\n");
+    static int tried;
+    if (ready || tried) return; /* fail once, log once, run silent: no ndspInit retry on every audio tick */
+    tried = 1;
+    int fw = access("sdmc:/3ds/dspfirm.cdc", F_OK) == 0;
+    pm_log("dspfirm.cdc %s", fw ? "found" : "MISSING (sdmc:/3ds/dspfirm.cdc): no sound unless the DSP firmware is dumped");
+    Result rc = ndspInit();
+    if (R_FAILED(rc)) {
+        pm_log("ndsp init failed rc=%08lx, audio is silent", (unsigned long)rc);
         return;
     }
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
@@ -25,6 +31,12 @@ void pm_audio_init(void) {
         data[i] = (s16*)linearAlloc(CAP);
         memset(&wb[i], 0, sizeof(wb[i]));
         wb[i].status = NDSP_WBUF_DONE;
+        if (!data[i]) {
+            pm_log("audio linearAlloc %d of %d failed, audio is silent", i, SLOTS);
+            for (int j = 0; j < i; j++) linearFree(data[j]);
+            ndspExit();
+            return;
+        }
     }
     ready = 1;
     pm_log("ndsp ready %u Hz\n", rate);
@@ -80,8 +92,13 @@ static void (*au_entry)(void*);
 static void* au_arg;
 static unsigned long long au_last;
 
+static u8 au_crash_stack[0x4000] __attribute__((aligned(8)));
+
 static void au_main(void* unused) {
     (void)unused;
+    pm_crash_install(au_crash_stack, sizeof(au_crash_stack)); /* the engine runs here: a fault needs its own trace */
+    pm_stack_register(1, "audio", 64 * 1024);
+    pm_fpscr_setup("audio");
     au_entry(au_arg);
 }
 
@@ -107,6 +124,11 @@ int pm_au_thread_started(void) { return au_thread != NULL; }
 /* Called by the audio thread when it waits on an empty queue. Returns 0 on any other thread. */
 int pm_au_thread_yield(void) {
     if (!au_thread || threadGetCurrent() != au_thread) return 0;
+    {
+        static unsigned yields;
+        if (yields == 299 && pm_debug_has("crashtest_audio_call")) pm_crash_selftest();
+        if (++yields == 300 && pm_debug_has("crashtest_audio")) __asm__ volatile(".word 0xe7f000f0"); /* class E: deliberate undefined instruction on the audio thread */
+    }
     LightSemaphore_Release(&au_idle, 1);
     LightSemaphore_Acquire(&au_run, 1);
     return 1;
