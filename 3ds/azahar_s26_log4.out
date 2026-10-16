@@ -1,0 +1,1405 @@
+#0 Paper Mario 3DS
+#1 MODE = O3DS / 64MB cap (console region 96MB)
+#2 switches fast autoa rmlog
+#3 rom resident 26933KB of 40960KB (packed)
+#4 ram n64 4MB, rom 27MB, port 20MB
+#5 mem commit limit 98304KB used-by-image 9108KB offered 89196KB cap 65536KB
+#6 mem boot heap total 45056KB used 27202KB free-in-arena 5KB sbrk-left 17848KB linear total 20480KB free 0KB tex-cache 0KB peak 0KB
+#7 boot_main
+#8 gpu ok proj 0 m 8 -1000
+#9 ndsp ready 32000 Hz
+#10 audio manager thread ready
+#11 save.flash loaded 131072 bytes
+#12 game mode 0
+#13 rm f1 oml 0f0a4000 omh 00000040 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 0/0 prim ffffffff env ffffffff xy 110 159 w 1
+#14 game mode 1
+#15 game mode 16
+#16 gbi skip f3
+#17 load map area 5 map 5
+#18 mem map heap total 45056KB used 27335KB free-in-arena 8KB sbrk-left 17712KB linear total 20480KB free 12918KB tex-cache 35KB peak 35KB
+#19 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#20 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#21 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#22 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#23 spawn npcs 11
+#24 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#25 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#26 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#27 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#28 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#29 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#30 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#31 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#32 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#33 stats t13186 i3842 c0 d0 o9344 k9578 x63
+#34 rm f31 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim e4e4e4ff env 000000ff xy 257 205 w 320
+#35 rm f31 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e4e4e4ff env 000000ff xy -10 207 w 310
+#36 rm f31 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e4e4e4ff env 000000ff xy 309 205 w 320
+#37 rm f31 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim e4e4e4ff env 000000ff xy -43 34 w 306
+#38 rm f31 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim e4e4e4ff env 000000ff xy -54 30 w 291
+#39 stats t1800 i1370 c0 d0 o430 k2401 x50
+#40 rm f61 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim c6c6c6ff env 000000ff xy 239 189 w 320
+#41 rm f61 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim c6c6c6ff env 000000ff xy -4 191 w 312
+#42 rm f61 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim c6c6c6ff env 000000ff xy 282 189 w 320
+#43 rm f61 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim c6c6c6ff env 000000ff xy -5 50 w 309
+#44 rm f61 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim c6c6c6ff env 000000ff xy -12 48 w 296
+#45 audio cost avg 472 us max 572 us per 60 Hz tick
+#46 audio posts 120 peak 0
+#47 stats t1800 i1590 c0 d0 o210 k2818 x49
+#48 rm f91 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim bababaff env 000000ff xy 239 189 w 320
+#49 rm f91 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim bababaff env 000000ff xy -4 191 w 312
+#50 rm f91 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim bababaff env 000000ff xy 282 189 w 320
+#51 rm f91 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim bababaff env 000000ff xy -5 50 w 309
+#52 rm f91 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim bababaff env 000000ff xy -12 48 w 296
+#53 audio cost avg 3019 us max 15861 us per 60 Hz tick
+#54 audio posts 240 peak 12043
+#55 stats t1800 i1590 c0 d0 o210 k2820 x49
+#56 rm f121 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim b5b5b5ff env 000000ff xy 239 189 w 320
+#57 rm f121 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim b5b5b5ff env 000000ff xy -4 191 w 312
+#58 rm f121 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim b5b5b5ff env 000000ff xy 282 189 w 320
+#59 rm f121 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim b5b5b5ff env 000000ff xy -5 50 w 309
+#60 rm f121 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim b5b5b5ff env 000000ff xy -12 48 w 296
+#61 audio cost avg 3172 us max 18998 us per 60 Hz tick
+#62 audio posts 360 peak 13793
+#63 rm f151 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim dbdbdbff env 000000ff xy 239 189 w 320
+#64 rm f151 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim dbdbdbff env 000000ff xy -4 191 w 312
+#65 rm f151 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim dbdbdbff env 000000ff xy 282 189 w 320
+#66 rm f151 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim dbdbdbff env 000000ff xy -5 50 w 309
+#67 rm f151 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim dbdbdbff env 000000ff xy -12 48 w 296
+#68 game mode 2
+#69 stats t1500 i1325 c0 d0 o175 k2350 x49
+#70 rm f181 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 000000ff xy 239 189 w 320
+#71 rm f181 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 000000ff xy -4 191 w 312
+#72 rm f181 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 000000ff xy 282 189 w 320
+#73 rm f181 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 000000ff xy -5 50 w 309
+#74 rm f181 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 000000ff xy -12 48 w 296
+#75 audio cost avg 3184 us max 29893 us per 60 Hz tick
+#76 audio posts 480 peak 11620
+#77 stats t1800 i1590 c0 d0 o210 k2820 x49
+#78 rm f211 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 000000ff xy 239 189 w 320
+#79 rm f211 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 000000ff xy -4 191 w 312
+#80 rm f211 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 000000ff xy 282 189 w 320
+#81 rm f211 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 000000ff xy -5 50 w 309
+#82 rm f211 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 000000ff xy -12 48 w 296
+#83 audio cost avg 2523 us max 16573 us per 60 Hz tick
+#84 audio posts 600 peak 20662
+#85 rm f241 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 000000ff xy 239 189 w 320
+#86 rm f241 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 000000ff xy -4 191 w 312
+#87 rm f241 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 000000ff xy 282 189 w 320
+#88 rm f241 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 000000ff xy -5 50 w 309
+#89 rm f241 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 000000ff xy -12 48 w 296
+#90 game mode 14
+#91 gbi skip f9
+#92 gbi skip f8
+#93 stats t1560 i1378 c0 d0 o182 k2444 x49
+#94 rm f271 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#95 rm f271 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#96 rm f271 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#97 rm f271 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#98 rm f271 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#99 audio cost avg 3174 us max 19265 us per 60 Hz tick
+#100 audio posts 720 peak 19333
+#101 stats t1800 i1590 c0 d0 o210 k2820 x49
+#102 rm f301 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#103 rm f301 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#104 rm f301 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#105 rm f301 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#106 rm f301 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#107 audio cost avg 2637 us max 28166 us per 60 Hz tick
+#108 audio posts 840 peak 11563
+#109 rm f331 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#110 rm f331 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#111 rm f331 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#112 rm f331 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#113 rm f331 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#114 rm f361 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#115 rm f361 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#116 rm f361 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#117 rm f361 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#118 rm f361 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#119 audio cost avg 2464 us max 15233 us per 60 Hz tick
+#120 audio posts 960 peak 15017
+#121 stats t3580 i3370 c0 d0 o210 k6980 x49
+#122 rm f391 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#123 rm f391 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#124 rm f391 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#125 rm f391 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#126 rm f391 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#127 stats t1800 i1590 c0 d0 o210 k2820 x49
+#128 rm f421 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#129 rm f421 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#130 rm f421 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#131 rm f421 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#132 rm f421 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#133 audio cost avg 2443 us max 18130 us per 60 Hz tick
+#134 audio posts 1080 peak 9431
+#135 rm f451 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#136 rm f451 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#137 rm f451 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#138 rm f451 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#139 rm f451 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#140 rm f481 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#141 rm f481 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#142 rm f481 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#143 rm f481 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#144 rm f481 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#145 game mode 15
+#146 audio cost avg 2525 us max 29392 us per 60 Hz tick
+#147 audio posts 1200 peak 16188
+#148 rm f511 oml 0f0a4200 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/0 prim ffffffff env 00000000 xy 239 189 w 320
+#149 rm f511 oml 0f0a4200 omh 0018ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -4 191 w 312
+#150 rm f511 oml 0c184240 omh 0018ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 282 189 w 320
+#151 rm f511 oml 0c184340 omh 00182c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -5 50 w 309
+#152 rm f511 oml 0c184240 omh 00182c00 zb 0 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 0/3 prim ffffffff env 00000000 xy -12 48 w 296
+#153 game mode 7
+#154 load map area 0 map 11
+#155 mem map heap total 45056KB used 27338KB free-in-arena 5KB sbrk-left 17712KB linear total 20480KB free 12261KB tex-cache 691KB peak 999KB
+#156 spawn npcs 2
+#157 stats t960 i404 c0 d0 o556 k640 x85
+#158 rm f541 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 80 207 w 675
+#159 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 27 75 w 1197
+#160 rm f541 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 73 171 w 1077
+#161 rm f541 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim ffffffff env 00000000 xy 9 164 w 977
+#162 rm f541 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 1 88 w 964
+#163 rm f541 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 116 107 w 1016
+#164 rm f541 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 154 134 w 1094
+#165 rm f541 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 190 137 w 1042
+#166 rm f541 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 00000000 xy 256 173 w 953
+#167 rm f541 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 186 186 w 887
+#168 rm f541 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 166 158 w 793
+#169 rm f541 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 328 42 w 496
+#170 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 259 190 w 524
+#171 rm f541 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 61 202 w 713
+#172 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 109 190 w 701
+#173 rm f541 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 207 180 w 770
+#174 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 201 181 w 761
+#175 rm f541 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 00000000 xy 208 168 w 749
+#176 rm f541 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 206 180 w 775
+#177 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 151 165 w 762
+#178 rm f541 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -7 263 w 424
+#179 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 109 127 w 822
+#180 rm f541 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 00000000 xy 90 128 w 796
+#181 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 111 148 w 834
+#182 rm f541 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 22 153 w 880
+#183 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 5 157 w 954
+#184 rm f541 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 15 168 w 877
+#185 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 101 78 w 804
+#186 rm f541 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 69 83 w 1001
+#187 rm f541 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 33 143 w 1056
+#188 rm f541 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 00000000 xy -21 108 w 1036
+#189 rm f541 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 00000000 xy 94 147 w 849
+#190 rm f541 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 00000000 xy 91 170 w 872
+#191 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#192 rm f541 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 00000000 xy 23 159 w 1072
+#193 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#194 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#195 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#196 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#197 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#198 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#199 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#200 audio cost avg 1970 us max 18851 us per 60 Hz tick
+#201 audio posts 1320 peak 14781
+#202 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#203 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#204 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#205 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#206 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#207 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#208 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#209 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#210 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#211 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#212 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#213 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#214 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#215 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#216 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#217 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#218 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#219 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#220 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#221 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#222 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#223 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#224 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#225 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#226 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#227 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#228 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#229 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#230 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#231 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#232 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#233 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#234 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#235 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#236 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#237 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#238 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#239 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 0000007f
+#240 mode4 flush tex 1 n 6 z 1 zcmp 1 zupd 0 blend 1 at -1 c 00000080
+#241 stats t44736 i28645 c0 d0 o16091 k78912 x-54
+#242 rm f571 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 78 206 w 659
+#243 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 25 73 w 1182
+#244 rm f571 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 71 170 w 1061
+#245 rm f571 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 0000003b env 00000000 xy 6 162 w 961
+#246 rm f571 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 0 86 w 949
+#247 rm f571 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 115 105 w 1001
+#248 rm f571 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 154 133 w 1078
+#249 rm f571 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 191 136 w 1026
+#250 rm f571 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 0000003b env 00000000 xy 258 172 w 937
+#251 rm f571 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 186 185 w 871
+#252 rm f571 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 166 157 w 777
+#253 rm f571 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 334 36 w 481
+#254 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 262 188 w 508
+#255 rm f571 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 59 201 w 697
+#256 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 108 189 w 686
+#257 rm f571 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 0000003b env 00000000 xy 209 166 w 733
+#258 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 202 180 w 746
+#259 rm f571 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 0000003b env 00000000 xy 208 179 w 754
+#260 rm f571 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 207 179 w 760
+#261 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 150 164 w 746
+#262 rm f571 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy -14 264 w 409
+#263 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 108 125 w 807
+#264 rm f571 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 0000003b env 00000000 xy 89 126 w 780
+#265 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 110 146 w 819
+#266 rm f571 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 20 152 w 864
+#267 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 2 156 w 939
+#268 rm f571 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 12 167 w 861
+#269 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 100 75 w 789
+#270 rm f571 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 68 80 w 985
+#271 rm f571 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 31 142 w 1041
+#272 rm f571 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000003b env 00000000 xy -24 106 w 1021
+#273 rm f571 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 0000003b env 00000000 xy 92 145 w 833
+#274 rm f571 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 00000000 xy 89 169 w 856
+#275 rm f571 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 00000000 xy 21 158 w 1057
+#276 game mode 4
+#277 audio cost avg 2421 us max 17421 us per 60 Hz tick
+#278 audio posts 1440 peak 14418
+#279 stats t45720 i28614 c0 d0 o17106 k78720 x-57
+#280 rm f601 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 74 205 w 627
+#281 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 22 68 w 1149
+#282 rm f601 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 69 169 w 1029
+#283 rm f601 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 0000007f env 7f7f7f7f xy 1 160 w 929
+#284 rm f601 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 68 84 w 1025
+#285 rm f601 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 113 101 w 968
+#286 rm f601 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 154 130 w 1046
+#287 rm f601 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 192 133 w 994
+#288 rm f601 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 0000007f env 7f7f7f7f xy 261 170 w 905
+#289 rm f601 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 187 183 w 839
+#290 rm f601 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 166 154 w 745
+#291 rm f601 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 362 22 w 448
+#292 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 60 99 w 475
+#293 rm f601 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 54 199 w 665
+#294 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 105 187 w 653
+#295 rm f601 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 0000007f env 7f7f7f7f xy 212 163 w 701
+#296 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 204 178 w 713
+#297 rm f601 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 0000007f env 7f7f7f7f xy 210 177 w 722
+#298 rm f601 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 209 177 w 727
+#299 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 150 161 w 714
+#300 rm f601 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -29 267 w 376
+#301 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 106 121 w 774
+#302 rm f601 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 0000007f env 7f7f7f7f xy 85 121 w 748
+#303 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 108 142 w 786
+#304 rm f601 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 14 149 w 832
+#305 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -3 153 w 906
+#306 rm f601 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 65 75 w 953
+#307 rm f601 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 27 139 w 1008
+#308 rm f601 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -6 69 w 1001
+#309 rm f601 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 90 142 w 801
+#310 rm f601 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 87 166 w 824
+#311 rm f601 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 17 156 w 1024
+#312 stats t45720 i27072 c0 d0 o18648 k74709 x-60
+#313 audio cost avg 2332 us max 16966 us per 60 Hz tick
+#314 audio posts 1560 peak 10452
+#315 rm f631 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 69 203 w 594
+#316 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 18 64 w 1117
+#317 rm f631 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 66 166 w 996
+#318 rm f631 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 0000007f env 7f7f7f7f xy -4 157 w 896
+#319 rm f631 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 65 79 w 993
+#320 rm f631 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 112 97 w 936
+#321 rm f631 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 154 126 w 1014
+#322 rm f631 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 193 129 w 961
+#323 rm f631 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 0000007f env 7f7f7f7f xy 265 168 w 872
+#324 rm f631 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 189 181 w 806
+#325 rm f631 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 166 150 w 712
+#326 rm f631 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 415 5 w 416
+#327 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 328 136 w 442
+#328 rm f631 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 48 198 w 632
+#329 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 102 185 w 621
+#330 rm f631 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 0000007f env 7f7f7f7f xy 212 174 w 689
+#331 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 206 175 w 681
+#332 rm f631 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 0000007f env 7f7f7f7f xy 214 160 w 668
+#333 rm f631 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 211 175 w 695
+#334 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 149 157 w 681
+#335 rm f631 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -47 270 w 344
+#336 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 104 116 w 742
+#337 rm f631 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 0000007f env 7f7f7f7f xy 82 116 w 715
+#338 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 106 138 w 754
+#339 rm f631 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 8 145 w 799
+#340 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -9 150 w 874
+#341 rm f631 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 61 69 w 920
+#342 rm f631 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 22 136 w 976
+#343 rm f631 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -12 63 w 968
+#344 rm f631 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 87 138 w 768
+#345 rm f631 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 84 163 w 791
+#346 rm f631 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 12 153 w 992
+#347 stats t45720 i26133 c0 d0 o19587 k72529 x-62
+#348 rm f661 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 67 203 w 578
+#349 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 16 61 w 1101
+#350 rm f661 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 64 165 w 980
+#351 rm f661 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 0000007f env 7f7f7f7f xy -7 156 w 880
+#352 rm f661 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 64 76 w 977
+#353 rm f661 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 111 94 w 920
+#354 rm f661 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 153 125 w 998
+#355 rm f661 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 193 128 w 945
+#356 rm f661 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 0000007f env 7f7f7f7f xy 267 167 w 856
+#357 rm f661 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 189 180 w 790
+#358 rm f661 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 167 148 w 696
+#359 rm f661 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 425 -3 w 400
+#360 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 309 117 w 426
+#361 rm f661 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 45 197 w 616
+#362 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 101 184 w 605
+#363 rm f661 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 0000007f env 7f7f7f7f xy 216 158 w 652
+#364 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 208 174 w 665
+#365 rm f661 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 212 173 w 679
+#366 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 149 155 w 665
+#367 rm f661 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -57 272 w 328
+#368 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 103 113 w 726
+#369 rm f661 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 0000007f env 7f7f7f7f xy 80 113 w 699
+#370 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 105 136 w 738
+#371 rm f661 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 10 144 w 768
+#372 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -12 149 w 858
+#373 rm f661 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 60 67 w 904
+#374 rm f661 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 20 134 w 960
+#375 rm f661 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy -15 60 w 952
+#376 rm f661 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 0000007f env 7f7f7f7f xy 85 136 w 752
+#377 rm f661 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#378 rm f661 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#379 audio cost avg 3899 us max 17406 us per 60 Hz tick
+#380 audio posts 1680 peak 11691
+#381 stats t44328 i26064 c0 d0 o18264 k72401 x-62
+#382 rm f691 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#383 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#384 rm f691 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#385 rm f691 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#386 rm f691 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#387 rm f691 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#388 rm f691 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#389 rm f691 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#390 rm f691 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#391 rm f691 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#392 rm f691 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#393 rm f691 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#394 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#395 rm f691 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#396 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#397 rm f691 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#398 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#399 rm f691 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#400 rm f691 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#401 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#402 rm f691 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#403 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 103 113 w 725
+#404 rm f691 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#405 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#406 rm f691 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#407 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#408 rm f691 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#409 rm f691 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#410 rm f691 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#411 rm f691 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 263 109 w 543
+#412 rm f691 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 268 207 w 553
+#413 rm f691 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#414 rm f691 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#415 audio cost avg 5512 us max 19079 us per 60 Hz tick
+#416 audio posts 1800 peak 20127
+#417 stats t44280 i26220 c0 d0 o18060 k72960 x-62
+#418 rm f721 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#419 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#420 rm f721 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#421 rm f721 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#422 rm f721 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#423 rm f721 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#424 rm f721 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#425 rm f721 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#426 rm f721 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#427 rm f721 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#428 rm f721 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#429 rm f721 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#430 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#431 rm f721 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#432 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#433 rm f721 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#434 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#435 rm f721 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#436 rm f721 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#437 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#438 rm f721 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#439 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 103 113 w 725
+#440 rm f721 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#441 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#442 rm f721 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#443 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#444 rm f721 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#445 rm f721 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#446 rm f721 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#447 rm f721 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 199 150 w 655
+#448 rm f721 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 194 191 w 662
+#449 rm f721 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#450 rm f721 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#451 audio cost avg 4888 us max 21786 us per 60 Hz tick
+#452 audio posts 1920 peak 16376
+#453 rm f751 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#454 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#455 rm f751 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#456 rm f751 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#457 rm f751 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#458 rm f751 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#459 rm f751 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#460 rm f751 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#461 rm f751 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#462 rm f751 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#463 rm f751 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#464 rm f751 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#465 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#466 rm f751 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#467 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#468 rm f751 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#469 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#470 rm f751 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#471 rm f751 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#472 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#473 rm f751 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#474 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 103 113 w 725
+#475 rm f751 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#476 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#477 rm f751 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#478 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#479 rm f751 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#480 rm f751 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#481 rm f751 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#482 rm f751 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 215 158 w 648
+#483 rm f751 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 194 191 w 662
+#484 rm f751 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#485 rm f751 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#486 rm f781 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#487 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#488 rm f781 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#489 rm f781 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#490 rm f781 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#491 rm f781 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#492 rm f781 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#493 rm f781 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#494 rm f781 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#495 rm f781 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#496 rm f781 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#497 rm f781 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#498 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#499 rm f781 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#500 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#501 rm f781 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#502 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#503 rm f781 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#504 rm f781 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#505 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#506 rm f781 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#507 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 103 113 w 725
+#508 rm f781 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#509 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#510 rm f781 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#511 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#512 rm f781 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#513 rm f781 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#514 rm f781 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#515 rm f781 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 218 165 w 648
+#516 rm f781 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 194 191 w 662
+#517 rm f781 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#518 rm f781 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#519 audio cost avg 2595 us max 21674 us per 60 Hz tick
+#520 audio posts 2040 peak 14408
+#521 stats t44370 i26310 c0 d0 o18060 k73230 x-62
+#522 rm f811 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 67 203 w 578
+#523 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 16 61 w 1101
+#524 rm f811 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 64 165 w 980
+#525 rm f811 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 202020ff env 7f7f7f7f xy -7 156 w 880
+#526 rm f811 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 64 76 w 976
+#527 rm f811 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 111 94 w 919
+#528 rm f811 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 153 125 w 997
+#529 rm f811 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 193 128 w 945
+#530 rm f811 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 267 167 w 856
+#531 rm f811 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 189 180 w 790
+#532 rm f811 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 167 148 w 696
+#533 rm f811 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 425 -3 w 400
+#534 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 309 117 w 426
+#535 rm f811 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 45 197 w 616
+#536 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 101 184 w 605
+#537 rm f811 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy 216 158 w 652
+#538 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 208 174 w 665
+#539 rm f811 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy 214 173 w 673
+#540 rm f811 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 212 173 w 679
+#541 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 149 155 w 665
+#542 rm f811 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy -57 272 w 327
+#543 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 103 113 w 725
+#544 rm f811 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 80 113 w 699
+#545 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 105 136 w 737
+#546 rm f811 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 10 144 w 768
+#547 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy -12 149 w 858
+#548 rm f811 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 60 67 w 904
+#549 rm f811 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 20 134 w 959
+#550 rm f811 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy -15 60 w 952
+#551 rm f811 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 197 150 w 648
+#552 rm f811 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 194 191 w 662
+#553 rm f811 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#554 rm f811 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#555 rm f811 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#556 rm f811 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#557 audio cost avg 1646 us max 18361 us per 60 Hz tick
+#558 audio posts 2160 peak 8164
+#559 stats t44574 i26514 c0 d0 o18060 k73842 x-62
+#560 rm f841 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 67 203 w 578
+#561 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 16 61 w 1101
+#562 rm f841 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 64 165 w 980
+#563 rm f841 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim ffffffff env 7f7f7f7f xy -7 156 w 880
+#564 rm f841 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 64 76 w 976
+#565 rm f841 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 111 94 w 919
+#566 rm f841 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 153 125 w 997
+#567 rm f841 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 193 128 w 945
+#568 rm f841 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 267 167 w 856
+#569 rm f841 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 189 180 w 790
+#570 rm f841 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 167 148 w 696
+#571 rm f841 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 425 -3 w 400
+#572 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 309 117 w 426
+#573 rm f841 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 45 197 w 616
+#574 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 101 184 w 605
+#575 rm f841 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 216 158 w 652
+#576 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 208 174 w 665
+#577 rm f841 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 214 173 w 673
+#578 rm f841 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 212 173 w 679
+#579 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 149 155 w 665
+#580 rm f841 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy -57 272 w 327
+#581 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 103 113 w 725
+#582 rm f841 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 80 113 w 699
+#583 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 105 136 w 737
+#584 rm f841 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 10 144 w 768
+#585 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy -12 149 w 858
+#586 rm f841 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 60 67 w 904
+#587 rm f841 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 20 134 w 959
+#588 rm f841 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy -15 60 w 952
+#589 rm f841 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 192 165 w 648
+#590 rm f841 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 194 191 w 662
+#591 rm f841 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#592 rm f841 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#593 rm f841 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#594 rm f841 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#595 rm f841 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim ffffffff env 7f7f7f7f xy 271 62 w 1
+#596 stats t44380 i26320 c0 d0 o18060 k73260 x-62
+#597 rm f871 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#598 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#599 rm f871 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#600 rm f871 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#601 rm f871 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#602 rm f871 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#603 rm f871 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#604 rm f871 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#605 rm f871 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#606 rm f871 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#607 rm f871 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#608 rm f871 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#609 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#610 rm f871 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#611 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#612 rm f871 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#613 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#614 rm f871 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#615 rm f871 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#616 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#617 rm f871 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#618 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 103 113 w 725
+#619 rm f871 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#620 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#621 rm f871 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#622 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#623 rm f871 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#624 rm f871 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#625 rm f871 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#626 rm f871 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 179 133 w 637
+#627 rm f871 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 177 192 w 650
+#628 rm f871 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#629 rm f871 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#630 audio cost avg 1872 us max 27455 us per 60 Hz tick
+#631 audio posts 2280 peak 12437
+#632 stats t44280 i26220 c0 d0 o18060 k72960 x-62
+#633 rm f901 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#634 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#635 rm f901 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#636 rm f901 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#637 rm f901 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#638 rm f901 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#639 rm f901 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#640 rm f901 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#641 rm f901 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#642 rm f901 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#643 rm f901 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#644 rm f901 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#645 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#646 rm f901 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#647 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#648 rm f901 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#649 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#650 rm f901 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#651 rm f901 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#652 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#653 rm f901 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#654 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 103 113 w 725
+#655 rm f901 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#656 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#657 rm f901 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#658 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#659 rm f901 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#660 rm f901 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#661 rm f901 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#662 rm f901 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 96 56 w 590
+#663 rm f901 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#664 rm f901 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#665 rm f901 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 101 199 w 599
+#666 audio cost avg 2055 us max 16713 us per 60 Hz tick
+#667 audio posts 2400 peak 6725
+#668 stats t44280 i26134 c0 d0 o18146 k72663 x-62
+#669 rm f931 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#670 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#671 rm f931 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#672 rm f931 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#673 rm f931 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#674 rm f931 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#675 rm f931 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#676 rm f931 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#677 rm f931 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#678 rm f931 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#679 rm f931 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#680 rm f931 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#681 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#682 rm f931 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#683 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#684 rm f931 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#685 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#686 rm f931 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#687 rm f931 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#688 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#689 rm f931 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#690 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 103 113 w 725
+#691 rm f931 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#692 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#693 rm f931 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#694 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#695 rm f931 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#696 rm f931 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#697 rm f931 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#698 rm f931 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 85 136 w 752
+#699 rm f931 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#700 rm f931 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#701 rm f931 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 34 206 w 559
+#702 stats t44868 i26628 c0 d0 o18240 k74184 x-62
+#703 rm f961 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#704 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#705 rm f961 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#706 rm f961 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#707 rm f961 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#708 rm f961 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#709 rm f961 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#710 rm f961 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#711 rm f961 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#712 rm f961 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#713 rm f961 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#714 rm f961 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#715 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#716 rm f961 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#717 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#718 rm f961 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#719 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#720 rm f961 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#721 rm f961 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#722 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#723 rm f961 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#724 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 102 132 w 710
+#725 rm f961 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#726 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#727 rm f961 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#728 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#729 rm f961 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 84 122 w 847
+#730 rm f961 oml 00553078 omh 00082c00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 82 145 w 845
+#731 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 85 151 w 878
+#732 rm f961 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#733 rm f961 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#734 rm f961 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#735 rm f961 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 85 136 w 752
+#736 rm f961 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 82 162 w 775
+#737 rm f961 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#738 rm f961 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 34 206 w 559
+#739 audio cost avg 1910 us max 19004 us per 60 Hz tick
+#740 audio posts 2520 peak 14345
+#741 stats t47346 i29106 c0 d0 o18240 k81618 x-62
+#742 rm f991 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 67 203 w 578
+#743 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 16 61 w 1101
+#744 rm f991 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 165 w 980
+#745 rm f991 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim e6dede6e env 7f7f7f7f xy -7 156 w 880
+#746 rm f991 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 76 w 976
+#747 rm f991 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 111 94 w 919
+#748 rm f991 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 153 125 w 997
+#749 rm f991 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 193 128 w 945
+#750 rm f991 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 267 167 w 856
+#751 rm f991 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 189 180 w 790
+#752 rm f991 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 167 148 w 696
+#753 rm f991 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 425 -3 w 400
+#754 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 309 117 w 426
+#755 rm f991 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 45 197 w 616
+#756 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 101 184 w 605
+#757 rm f991 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 216 158 w 652
+#758 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 208 174 w 665
+#759 rm f991 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 214 173 w 673
+#760 rm f991 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 212 173 w 679
+#761 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 149 155 w 665
+#762 rm f991 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -57 272 w 327
+#763 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 107 132 w 713
+#764 rm f991 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 80 113 w 699
+#765 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 105 136 w 737
+#766 rm f991 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 10 144 w 768
+#767 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -12 149 w 858
+#768 rm f991 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 84 122 w 847
+#769 rm f991 oml 00553078 omh 00082c00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 82 145 w 845
+#770 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 85 151 w 878
+#771 rm f991 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 60 67 w 904
+#772 rm f991 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 20 134 w 959
+#773 rm f991 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -15 60 w 952
+#774 rm f991 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 130 139 w 663
+#775 rm f991 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#776 rm f991 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 128 172 w 648
+#777 rm f991 oml 0c184b50 omh 00182cf0 zb 1 comb f f 1f 3 a 2 1 5 1 tex 1 fmt 4/0 prim e6dede6e env 0000007f xy 91 166 w 711
+#778 audio cost avg 2124 us max 16913 us per 60 Hz tick
+#779 audio posts 2640 peak 17012
+#780 stats t46310 i28070 c0 d0 o18240 k78510 x-62
+#781 rm f1021 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 67 203 w 578
+#782 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 16 61 w 1101
+#783 rm f1021 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 165 w 980
+#784 rm f1021 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim e6dede6e env 7f7f7f7f xy -7 156 w 880
+#785 rm f1021 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 76 w 976
+#786 rm f1021 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 111 94 w 919
+#787 rm f1021 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 153 125 w 997
+#788 rm f1021 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 193 128 w 945
+#789 rm f1021 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 267 167 w 856
+#790 rm f1021 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 189 180 w 790
+#791 rm f1021 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 167 148 w 696
+#792 rm f1021 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 425 -3 w 400
+#793 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 309 117 w 426
+#794 rm f1021 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 45 197 w 616
+#795 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 101 184 w 605
+#796 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 216 158 w 652
+#797 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 208 174 w 665
+#798 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 214 173 w 673
+#799 rm f1021 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 212 173 w 679
+#800 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 149 155 w 665
+#801 rm f1021 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -57 272 w 327
+#802 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 103 113 w 725
+#803 rm f1021 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 80 113 w 699
+#804 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 105 136 w 737
+#805 rm f1021 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 10 144 w 768
+#806 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -12 149 w 858
+#807 rm f1021 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 60 67 w 904
+#808 rm f1021 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 20 134 w 959
+#809 rm f1021 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -15 60 w 952
+#810 rm f1021 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 181 166 w 584
+#811 rm f1021 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 185 204 w 569
+#812 rm f1021 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#813 rm f1021 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 34 206 w 559
+#814 rm f1021 oml 0c184b50 omh 00182cf0 zb 1 comb f f 1f 3 a 2 1 5 1 tex 1 fmt 4/0 prim e6dede6e env 0000007f xy 137 183 w 619
+#815 stats t44430 i26190 c0 d0 o18240 k72870 x-62
+#816 rm f1051 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 67 203 w 578
+#817 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 16 61 w 1101
+#818 rm f1051 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 165 w 980
+#819 rm f1051 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim e6dede6e env 7f7f7f7f xy -7 156 w 880
+#820 rm f1051 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 76 w 976
+#821 rm f1051 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 111 94 w 919
+#822 rm f1051 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 153 125 w 997
+#823 rm f1051 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 193 128 w 945
+#824 rm f1051 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 267 167 w 856
+#825 rm f1051 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 189 180 w 790
+#826 rm f1051 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 167 148 w 696
+#827 rm f1051 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 425 -3 w 400
+#828 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 309 117 w 426
+#829 rm f1051 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 45 197 w 616
+#830 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 101 184 w 605
+#831 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 216 158 w 652
+#832 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 208 174 w 665
+#833 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 214 173 w 673
+#834 rm f1051 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 212 173 w 679
+#835 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 149 155 w 665
+#836 rm f1051 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -57 272 w 327
+#837 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 103 113 w 725
+#838 rm f1051 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 80 113 w 699
+#839 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 105 136 w 737
+#840 rm f1051 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 10 144 w 768
+#841 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -12 149 w 858
+#842 rm f1051 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 60 67 w 904
+#843 rm f1051 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 20 134 w 959
+#844 rm f1051 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -15 60 w 952
+#845 rm f1051 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 212 161 w 644
+#846 rm f1051 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 216 195 w 629
+#847 rm f1051 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#848 rm f1051 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 34 206 w 559
+#849 rm f1051 oml 0c184b50 omh 00182cf0 zb 1 comb f f 1f 3 a 2 1 5 1 tex 1 fmt 4/0 prim e6dede6e env 0000007f xy 191 194 w 631
+#850 audio cost avg 1977 us max 17861 us per 60 Hz tick
+#851 audio posts 2760 peak 7025
+#852 stats t44284 i26044 c0 d0 o18240 k72432 x-62
+#853 rm f1081 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 203 w 578
+#854 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 16 61 w 1101
+#855 rm f1081 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 165 w 980
+#856 rm f1081 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -7 156 w 880
+#857 rm f1081 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 64 76 w 976
+#858 rm f1081 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 94 w 919
+#859 rm f1081 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 125 w 997
+#860 rm f1081 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 193 128 w 945
+#861 rm f1081 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 267 167 w 856
+#862 rm f1081 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 189 180 w 790
+#863 rm f1081 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 167 148 w 696
+#864 rm f1081 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 425 -3 w 400
+#865 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 309 117 w 426
+#866 rm f1081 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 45 197 w 616
+#867 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 101 184 w 605
+#868 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 216 158 w 652
+#869 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 208 174 w 665
+#870 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 214 173 w 673
+#871 rm f1081 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 212 173 w 679
+#872 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 149 155 w 665
+#873 rm f1081 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -57 272 w 327
+#874 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 103 113 w 725
+#875 rm f1081 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 80 113 w 699
+#876 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 105 136 w 737
+#877 rm f1081 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 144 w 768
+#878 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -12 149 w 858
+#879 rm f1081 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 60 67 w 904
+#880 rm f1081 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 134 w 959
+#881 rm f1081 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -15 60 w 952
+#882 rm f1081 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 220 161 w 644
+#883 rm f1081 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 216 195 w 629
+#884 rm f1081 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#885 rm f1081 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 34 206 w 559
+#886 audio cost avg 2182 us max 28417 us per 60 Hz tick
+#887 audio posts 2880 peak 11169
+#888 stats t44280 i26040 c0 d0 o18240 k72420 x-62
+#889 rm f1111 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 67 203 w 578
+#890 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 16 61 w 1101
+#891 rm f1111 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 165 w 980
+#892 rm f1111 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim e6dede6e env 7f7f7f7f xy -7 156 w 880
+#893 rm f1111 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 76 w 976
+#894 rm f1111 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 111 94 w 919
+#895 rm f1111 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 153 125 w 997
+#896 rm f1111 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 193 128 w 945
+#897 rm f1111 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 267 167 w 856
+#898 rm f1111 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 189 180 w 790
+#899 rm f1111 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 167 148 w 696
+#900 rm f1111 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 425 -3 w 400
+#901 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 309 117 w 426
+#902 rm f1111 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 45 197 w 616
+#903 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 101 184 w 605
+#904 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 216 158 w 652
+#905 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 208 174 w 665
+#906 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 214 173 w 673
+#907 rm f1111 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 212 173 w 679
+#908 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 149 155 w 665
+#909 rm f1111 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -57 272 w 327
+#910 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 103 113 w 725
+#911 rm f1111 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 80 113 w 699
+#912 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 105 136 w 737
+#913 rm f1111 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 10 144 w 768
+#914 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -12 149 w 858
+#915 rm f1111 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 60 67 w 904
+#916 rm f1111 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 20 134 w 959
+#917 rm f1111 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -15 60 w 952
+#918 rm f1111 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 185 161 w 646
+#919 rm f1111 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 200 192 w 653
+#920 rm f1111 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#921 rm f1111 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 34 206 w 559
+#922 rm f1111 oml 0c184b50 omh 00182cf0 zb 1 comb f f 1f 3 a 2 1 5 1 tex 1 fmt 4/0 prim e6dede6e env 0000007f xy 196 196 w 639
+#923 stats t44422 i26182 c0 d0 o18240 k72846 x-62
+#924 rm f1141 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 67 203 w 578
+#925 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 16 61 w 1101
+#926 rm f1141 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 165 w 980
+#927 rm f1141 oml 00552048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim e6dede6e env 7f7f7f7f xy -7 156 w 880
+#928 rm f1141 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 64 76 w 976
+#929 rm f1141 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 111 94 w 919
+#930 rm f1141 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 153 125 w 997
+#931 rm f1141 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 193 128 w 945
+#932 rm f1141 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 267 167 w 856
+#933 rm f1141 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 189 180 w 790
+#934 rm f1141 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 167 148 w 696
+#935 rm f1141 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 425 -3 w 400
+#936 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 309 117 w 426
+#937 rm f1141 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 45 197 w 616
+#938 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 101 184 w 605
+#939 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 216 158 w 652
+#940 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 208 174 w 665
+#941 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 214 173 w 673
+#942 rm f1141 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 212 173 w 679
+#943 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 149 155 w 665
+#944 rm f1141 oml 0c192078 omh 0019ac00 zb 1 comb 2 1 d 1 a 2 1 0 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -57 272 w 327
+#945 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 103 113 w 725
+#946 rm f1141 oml 00504dd8 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 80 113 w 699
+#947 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 105 136 w 737
+#948 rm f1141 oml 00553078 omh 0008ac00 zb 1 comb 1 f 4 7 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 10 144 w 768
+#949 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -12 149 w 858
+#950 rm f1141 oml 00552078 omh 00088c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 60 67 w 904
+#951 rm f1141 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 20 134 w 959
+#952 rm f1141 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy -15 60 w 952
+#953 rm f1141 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 126 156 w 614
+#954 rm f1141 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 10 152 w 976
+#955 rm f1141 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 132 188 w 630
+#956 rm f1141 oml 0c184b50 omh 00182cf0 zb 1 comb f f 1f 3 a 2 1 5 1 tex 1 fmt 4/0 prim e6dede6e env 0000007f xy 141 193 w 608
+#957 audio cost avg 2104 us max 17352 us per 60 Hz tick
+#958 audio posts 3000 peak 5457
+#959 stats t45038 i26342 c0 d0 o18696 k73384 x-25
+#960 rm f1171 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 121 218 w 319
+#961 rm f1171 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 298 50 w 425
+#962 rm f1171 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 21 164 w 452
+#963 rm f1171 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 238 151 w 460
+#964 rm f1171 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 245 137 w 434
+#965 rm f1171 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 248 124 w 442
+#966 rm f1171 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 177 144 w 467
+#967 rm f1171 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 181 120 w 463
+#968 rm f1171 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 179 140 w 466
+#969 rm f1171 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 148 155 w 444
+#970 rm f1171 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim e6dede6e env 7f7f7f7f xy 144 146 w 446
+#971 rm f1171 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 144 102 w 445
+#972 rm f1171 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 10 -6 w 374
+#973 rm f1171 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 111 72 w 333
+#974 rm f1171 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim e6dede6e env 7f7f7f7f xy 289 137 w 382
+#975 rm f1171 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 288 189 w 387
+#976 audio cost avg 2072 us max 19487 us per 60 Hz tick
+#977 audio posts 3120 peak 15169
+#978 stats t62006 i30026 c0 d0 o31980 k85892 x-25
+#979 rm f1201 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 121 218 w 319
+#980 rm f1201 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 298 50 w 425
+#981 rm f1201 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 21 164 w 452
+#982 rm f1201 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 238 151 w 460
+#983 rm f1201 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 245 137 w 434
+#984 rm f1201 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 248 124 w 442
+#985 rm f1201 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 177 144 w 467
+#986 rm f1201 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 181 120 w 463
+#987 rm f1201 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 179 140 w 466
+#988 rm f1201 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 148 155 w 444
+#989 rm f1201 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 144 146 w 446
+#990 rm f1201 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 144 102 w 445
+#991 rm f1201 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 -6 w 374
+#992 rm f1201 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 72 w 333
+#993 rm f1201 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 230 135 w 391
+#994 rm f1201 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 237 181 w 413
+#995 stats t62174 i30266 c0 d0 o31908 k86812 x-25
+#996 audio cost avg 2042 us max 17356 us per 60 Hz tick
+#997 audio posts 3240 peak 17026
+#998 rm f1231 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 121 218 w 319
+#999 rm f1231 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 298 50 w 425
+#1000 rm f1231 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 21 164 w 452
+#1001 rm f1231 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 238 151 w 460
+#1002 rm f1231 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 245 137 w 434
+#1003 rm f1231 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 248 124 w 442
+#1004 rm f1231 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 177 144 w 467
+#1005 rm f1231 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy 181 120 w 463
+#1006 rm f1231 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 179 140 w 466
+#1007 rm f1231 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 148 155 w 444
+#1008 rm f1231 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 144 146 w 446
+#1009 rm f1231 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 144 102 w 445
+#1010 rm f1231 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 10 -6 w 374
+#1011 rm f1231 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 111 72 w 333
+#1012 rm f1231 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 229 135 w 392
+#1013 rm f1231 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 233 180 w 414
+#1014 rm f1231 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1015 rm f1231 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1016 stats t62220 i30420 c0 d0 o31800 k87480 x-25
+#1017 rm f1261 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 121 218 w 319
+#1018 rm f1261 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 298 50 w 425
+#1019 rm f1261 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 21 164 w 452
+#1020 rm f1261 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 238 151 w 460
+#1021 rm f1261 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 245 137 w 434
+#1022 rm f1261 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 248 124 w 442
+#1023 rm f1261 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 177 144 w 467
+#1024 rm f1261 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy 181 120 w 463
+#1025 rm f1261 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 179 140 w 466
+#1026 rm f1261 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 148 155 w 444
+#1027 rm f1261 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 144 146 w 446
+#1028 rm f1261 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 144 102 w 445
+#1029 rm f1261 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 10 -6 w 374
+#1030 rm f1261 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 111 72 w 333
+#1031 rm f1261 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 229 135 w 392
+#1032 rm f1261 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 233 180 w 414
+#1033 rm f1261 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1034 rm f1261 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1035 rm f1261 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim ffffffff env 7f7f7f7f xy 280 64 w 1
+#1036 audio cost avg 2276 us max 18125 us per 60 Hz tick
+#1037 audio posts 3360 peak 7898
+#1038 stats t62278 i30478 c0 d0 o31800 k87654 x-25
+#1039 rm f1291 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 121 218 w 319
+#1040 rm f1291 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 298 50 w 425
+#1041 rm f1291 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 21 164 w 452
+#1042 rm f1291 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 238 151 w 460
+#1043 rm f1291 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 245 137 w 434
+#1044 rm f1291 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 248 124 w 442
+#1045 rm f1291 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 177 144 w 467
+#1046 rm f1291 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 181 120 w 463
+#1047 rm f1291 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 179 140 w 466
+#1048 rm f1291 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 148 155 w 444
+#1049 rm f1291 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 144 146 w 446
+#1050 rm f1291 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 144 102 w 445
+#1051 rm f1291 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 10 -6 w 374
+#1052 rm f1291 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 111 72 w 333
+#1053 rm f1291 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 229 135 w 392
+#1054 rm f1291 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 233 180 w 414
+#1055 rm f1291 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1056 rm f1291 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1057 rm f1291 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim fcfcfbff env 7f7f7f7f xy 270 66 w 1
+#1058 audio cost avg 1867 us max 18109 us per 60 Hz tick
+#1059 audio posts 3480 peak 1417
+#1060 stats t62280 i30480 c0 d0 o31800 k87660 x-25
+#1061 rm f1321 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 121 218 w 319
+#1062 rm f1321 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 298 50 w 425
+#1063 rm f1321 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 21 164 w 452
+#1064 rm f1321 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 238 151 w 460
+#1065 rm f1321 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 245 137 w 434
+#1066 rm f1321 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 248 124 w 442
+#1067 rm f1321 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 177 144 w 467
+#1068 rm f1321 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 181 120 w 463
+#1069 rm f1321 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 179 140 w 466
+#1070 rm f1321 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 148 155 w 444
+#1071 rm f1321 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 144 146 w 446
+#1072 rm f1321 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 144 102 w 445
+#1073 rm f1321 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 10 -6 w 374
+#1074 rm f1321 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 111 72 w 333
+#1075 rm f1321 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 229 135 w 392
+#1076 rm f1321 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 233 180 w 414
+#1077 rm f1321 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1078 rm f1321 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1079 rm f1321 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim ffffffff env 7f7f7f7f xy 270 66 w 1
+#1080 audio cost avg 2035 us max 17086 us per 60 Hz tick
+#1081 audio posts 3600 peak 12537
+#1082 stats t62080 i30280 c0 d0 o31800 k87060 x-25
+#1083 rm f1351 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 121 218 w 319
+#1084 rm f1351 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 298 50 w 425
+#1085 rm f1351 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 21 164 w 452
+#1086 rm f1351 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 238 151 w 460
+#1087 rm f1351 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 245 137 w 434
+#1088 rm f1351 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 248 124 w 442
+#1089 rm f1351 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 177 144 w 467
+#1090 rm f1351 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 181 120 w 463
+#1091 rm f1351 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 179 140 w 466
+#1092 rm f1351 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 148 155 w 444
+#1093 rm f1351 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 144 146 w 446
+#1094 rm f1351 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 144 102 w 445
+#1095 rm f1351 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 -6 w 374
+#1096 rm f1351 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 72 w 333
+#1097 rm f1351 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 222 131 w 407
+#1098 rm f1351 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 227 176 w 429
+#1099 stats t61980 i30180 c0 d0 o31800 k86760 x-25
+#1100 rm f1381 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 121 218 w 319
+#1101 rm f1381 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 298 50 w 425
+#1102 rm f1381 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 21 164 w 452
+#1103 rm f1381 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 238 151 w 460
+#1104 rm f1381 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 245 137 w 434
+#1105 rm f1381 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 248 124 w 442
+#1106 rm f1381 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 177 144 w 467
+#1107 rm f1381 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 181 120 w 463
+#1108 rm f1381 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 179 140 w 466
+#1109 rm f1381 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 148 155 w 444
+#1110 rm f1381 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 144 146 w 446
+#1111 rm f1381 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 144 102 w 445
+#1112 rm f1381 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 10 -6 w 374
+#1113 rm f1381 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 111 72 w 333
+#1114 rm f1381 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 184 126 w 436
+#1115 rm f1381 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 190 168 w 458
+#1116 audio cost avg 1881 us max 16520 us per 60 Hz tick
+#1117 audio posts 3720 peak 3429
+#1118 stats t62100 i31503 c0 d0 o30597 k89535 x0
+#1119 rm f1411 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 165 218 w 319
+#1120 rm f1411 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 313 50 w 425
+#1121 rm f1411 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 52 164 w 452
+#1122 rm f1411 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 21 106 w 412
+#1123 rm f1411 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy -40 150 w 463
+#1124 rm f1411 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 20 165 w 426
+#1125 rm f1411 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 277 137 w 434
+#1126 rm f1411 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 280 124 w 442
+#1127 rm f1411 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 207 144 w 467
+#1128 rm f1411 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 211 120 w 463
+#1129 rm f1411 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 209 140 w 466
+#1130 rm f1411 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 180 155 w 444
+#1131 rm f1411 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 176 146 w 446
+#1132 rm f1411 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 176 102 w 445
+#1133 rm f1411 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 46 55 w 369
+#1134 rm f1411 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 153 72 w 333
+#1135 rm f1411 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 80 142 w 393
+#1136 rm f1411 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 162 170 w 449
+#1137 rm f1411 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 54 180 w 414
+#1138 audio cost avg 2137 us max 14649 us per 60 Hz tick
+#1139 audio posts 3840 peak 5714
+#1140 stats t62234 i37244 c0 d0 o24990 k103897 x26
+#1141 rm f1441 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 199 218 w 319
+#1142 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 50 w 425
+#1143 rm f1441 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 76 164 w 452
+#1144 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 47 106 w 412
+#1145 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy -17 150 w 463
+#1146 rm f1441 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy -2 112 w 413
+#1147 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 0 160 w 420
+#1148 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -37 126 w 415
+#1149 rm f1441 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 302 137 w 434
+#1150 rm f1441 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 304 124 w 442
+#1151 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 230 144 w 467
+#1152 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 235 120 w 463
+#1153 rm f1441 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 232 140 w 466
+#1154 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 204 155 w 444
+#1155 rm f1441 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 200 146 w 446
+#1156 rm f1441 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 200 102 w 445
+#1157 rm f1441 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 75 55 w 369
+#1158 rm f1441 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 115 72 w 333
+#1159 rm f1441 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -23 278 w 423
+#1160 rm f1441 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 346 54 w 382
+#1161 rm f1441 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 136 135 w 422
+#1162 rm f1441 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1163 rm f1441 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1164 audio cost avg 1997 us max 17241 us per 60 Hz tick
+#1165 audio posts 3960 peak 3734
+#1166 stats t62374 i37654 c0 d0 o24720 k104862 x26
+#1167 rm f1471 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 199 218 w 319
+#1168 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 67 50 w 425
+#1169 rm f1471 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 76 164 w 452
+#1170 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 47 106 w 412
+#1171 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy -17 150 w 463
+#1172 rm f1471 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy -2 112 w 413
+#1173 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy 0 160 w 420
+#1174 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy -37 126 w 415
+#1175 rm f1471 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 302 137 w 434
+#1176 rm f1471 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 304 124 w 442
+#1177 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 230 144 w 467
+#1178 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy 235 120 w 463
+#1179 rm f1471 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 232 140 w 466
+#1180 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 204 155 w 444
+#1181 rm f1471 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 200 146 w 446
+#1182 rm f1471 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 200 102 w 445
+#1183 rm f1471 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 75 55 w 369
+#1184 rm f1471 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 115 72 w 333
+#1185 rm f1471 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 202020ff env 7f7f7f7f xy -23 278 w 423
+#1186 rm f1471 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 346 54 w 382
+#1187 rm f1471 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 136 135 w 422
+#1188 rm f1471 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1189 rm f1471 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1190 rm f1471 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1191 rm f1471 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1192 stats t62510 i37790 c0 d0 o24720 k105270 x26
+#1193 rm f1501 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 199 218 w 319
+#1194 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 67 50 w 425
+#1195 rm f1501 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 76 164 w 452
+#1196 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 47 106 w 412
+#1197 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy -17 150 w 463
+#1198 rm f1501 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy -2 112 w 413
+#1199 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 0 160 w 420
+#1200 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy -37 126 w 415
+#1201 rm f1501 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 302 137 w 434
+#1202 rm f1501 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 304 124 w 442
+#1203 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 230 144 w 467
+#1204 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 235 120 w 463
+#1205 rm f1501 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 232 140 w 466
+#1206 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 204 155 w 444
+#1207 rm f1501 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 200 146 w 446
+#1208 rm f1501 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 200 102 w 445
+#1209 rm f1501 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 75 55 w 369
+#1210 rm f1501 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 115 72 w 333
+#1211 rm f1501 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim ffffffff env 7f7f7f7f xy -23 278 w 423
+#1212 rm f1501 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 346 54 w 382
+#1213 rm f1501 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 136 135 w 422
+#1214 rm f1501 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1215 rm f1501 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1216 rm f1501 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1217 rm f1501 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1218 rm f1501 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim ffffffff env 7f7f7f7f xy 273 57 w 1
+#1219 audio cost avg 1936 us max 16807 us per 60 Hz tick
+#1220 audio posts 4080 peak 8169
+#1221 stats t62520 i37800 c0 d0 o24720 k105300 x26
+#1222 rm f1531 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 199 218 w 319
+#1223 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 67 50 w 425
+#1224 rm f1531 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 76 164 w 452
+#1225 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 47 106 w 412
+#1226 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy -17 150 w 463
+#1227 rm f1531 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy -2 112 w 413
+#1228 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 0 160 w 420
+#1229 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy -37 126 w 415
+#1230 rm f1531 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 302 137 w 434
+#1231 rm f1531 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim f6f6f2ff env 7f7f7f7f xy 304 124 w 442
+#1232 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 230 144 w 467
+#1233 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 235 120 w 463
+#1234 rm f1531 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim f6f6f2ff env 7f7f7f7f xy 232 140 w 466
+#1235 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 204 155 w 444
+#1236 rm f1531 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim f6f6f2ff env 7f7f7f7f xy 200 146 w 446
+#1237 rm f1531 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 200 102 w 445
+#1238 rm f1531 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 75 55 w 369
+#1239 rm f1531 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 115 72 w 333
+#1240 rm f1531 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim f6f6f2ff env 7f7f7f7f xy -23 278 w 423
+#1241 rm f1531 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 346 54 w 382
+#1242 rm f1531 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim f6f6f2ff env 7f7f7f7f xy 136 135 w 422
+#1243 rm f1531 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1244 rm f1531 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1245 rm f1531 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1246 rm f1531 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1247 rm f1531 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim f8f8f5ff env 7f7f7f7f xy 269 68 w 1
+#1248 audio cost avg 1983 us max 17300 us per 60 Hz tick
+#1249 audio posts 4200 peak 1256
+#1250 rm f1561 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 199 218 w 319
+#1251 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 67 50 w 425
+#1252 rm f1561 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 76 164 w 452
+#1253 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 47 106 w 412
+#1254 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy -17 150 w 463
+#1255 rm f1561 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy -2 112 w 413
+#1256 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 0 160 w 420
+#1257 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy -37 126 w 415
+#1258 rm f1561 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 302 137 w 434
+#1259 rm f1561 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim fcfcfbff env 7f7f7f7f xy 304 124 w 442
+#1260 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 230 144 w 467
+#1261 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 235 120 w 463
+#1262 rm f1561 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim fcfcfbff env 7f7f7f7f xy 232 140 w 466
+#1263 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 204 155 w 444
+#1264 rm f1561 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim fcfcfbff env 7f7f7f7f xy 200 146 w 446
+#1265 rm f1561 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 200 102 w 445
+#1266 rm f1561 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 75 55 w 369
+#1267 rm f1561 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 115 72 w 333
+#1268 rm f1561 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim fcfcfbff env 7f7f7f7f xy -23 278 w 423
+#1269 rm f1561 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 346 54 w 382
+#1270 rm f1561 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim fcfcfbff env 7f7f7f7f xy 136 135 w 422
+#1271 rm f1561 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1272 rm f1561 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1273 rm f1561 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1274 rm f1561 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1275 rm f1561 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim fafaf8ff env 7f7f7f7f xy 271 62 w 1
+#1276 audio cost avg 1852 us max 16586 us per 60 Hz tick
+#1277 audio posts 4320 peak 12906
+#1278 stats t62320 i37600 c0 d0 o24720 k104700 x26
+#1279 rm f1591 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 199 218 w 319
+#1280 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 67 50 w 425
+#1281 rm f1591 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 76 164 w 452
+#1282 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 47 106 w 412
+#1283 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy -17 150 w 463
+#1284 rm f1591 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy -2 112 w 413
+#1285 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 0 160 w 420
+#1286 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy -37 126 w 415
+#1287 rm f1591 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 302 137 w 434
+#1288 rm f1591 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 304 124 w 442
+#1289 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 230 144 w 467
+#1290 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 00000080 env 7f7f7f7f xy 235 120 w 463
+#1291 rm f1591 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 232 140 w 466
+#1292 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 204 155 w 444
+#1293 rm f1591 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 00000080 env 7f7f7f7f xy 200 146 w 446
+#1294 rm f1591 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 200 102 w 445
+#1295 rm f1591 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 75 55 w 369
+#1296 rm f1591 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 115 72 w 333
+#1297 rm f1591 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 00000080 env 7f7f7f7f xy -23 278 w 423
+#1298 rm f1591 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 346 54 w 382
+#1299 rm f1591 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 00000080 env 7f7f7f7f xy 136 135 w 422
+#1300 rm f1591 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1301 rm f1591 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1302 stats t62414 i37694 c0 d0 o24720 k104982 x26
+#1303 rm f1621 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 199 218 w 319
+#1304 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 67 50 w 425
+#1305 rm f1621 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 76 164 w 452
+#1306 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 47 106 w 412
+#1307 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy -17 150 w 463
+#1308 rm f1621 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy -2 112 w 413
+#1309 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy 0 160 w 420
+#1310 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy -37 126 w 415
+#1311 rm f1621 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 302 137 w 434
+#1312 rm f1621 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 304 124 w 442
+#1313 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 230 144 w 467
+#1314 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim 202020ff env 7f7f7f7f xy 235 120 w 463
+#1315 rm f1621 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 232 140 w 466
+#1316 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 204 155 w 444
+#1317 rm f1621 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim 202020ff env 7f7f7f7f xy 200 146 w 446
+#1318 rm f1621 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 200 102 w 445
+#1319 rm f1621 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 75 55 w 369
+#1320 rm f1621 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 115 72 w 333
+#1321 rm f1621 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim 202020ff env 7f7f7f7f xy -23 278 w 423
+#1322 rm f1621 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 346 54 w 382
+#1323 rm f1621 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 136 135 w 422
+#1324 rm f1621 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1325 rm f1621 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1326 rm f1621 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1327 rm f1621 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1328 rm f1621 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim ffffffff env 7f7f7f7f xy 280 64 w 1
+#1329 audio cost avg 2166 us max 17575 us per 60 Hz tick
+#1330 audio posts 4440 peak 7749
+#1331 stats t62518 i37798 c0 d0 o24720 k105294 x26
+#1332 rm f1651 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 199 218 w 319
+#1333 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 67 50 w 425
+#1334 rm f1651 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 76 164 w 452
+#1335 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 47 106 w 412
+#1336 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy -17 150 w 463
+#1337 rm f1651 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy -2 112 w 413
+#1338 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 0 160 w 420
+#1339 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy -37 126 w 415
+#1340 rm f1651 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 302 137 w 434
+#1341 rm f1651 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 304 124 w 442
+#1342 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 230 144 w 467
+#1343 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 235 120 w 463
+#1344 rm f1651 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 232 140 w 466
+#1345 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 204 155 w 444
+#1346 rm f1651 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 200 146 w 446
+#1347 rm f1651 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 200 102 w 445
+#1348 rm f1651 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 75 55 w 369
+#1349 rm f1651 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 115 72 w 333
+#1350 rm f1651 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim ffffffff env 7f7f7f7f xy -23 278 w 423
+#1351 rm f1651 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 346 54 w 382
+#1352 rm f1651 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 136 135 w 422
+#1353 rm f1651 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1354 rm f1651 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1355 rm f1651 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1356 rm f1651 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1357 rm f1651 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim fcfcfbff env 7f7f7f7f xy 270 66 w 1
+#1358 audio cost avg 1911 us max 16797 us per 60 Hz tick
+#1359 audio posts 4560 peak 946
+#1360 stats t62520 i37800 c0 d0 o24720 k105300 x26
+#1361 rm f1681 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 199 218 w 319
+#1362 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 67 50 w 425
+#1363 rm f1681 oml 00552048 omh 00088c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 76 164 w 452
+#1364 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 47 106 w 412
+#1365 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy -17 150 w 463
+#1366 rm f1681 oml 00552078 omh 0008ac00 zb 1 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy -2 112 w 413
+#1367 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 0 160 w 420
+#1368 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy -37 126 w 415
+#1369 rm f1681 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 302 137 w 434
+#1370 rm f1681 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 304 124 w 442
+#1371 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 230 144 w 467
+#1372 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb f f 1f 4 a 7 7 7 4 tex 0 fmt 2/0 prim ffffffff env 7f7f7f7f xy 235 120 w 463
+#1373 rm f1681 oml 005041c8 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 232 140 w 466
+#1374 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 204 155 w 444
+#1375 rm f1681 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 200 146 w 446
+#1376 rm f1681 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 200 102 w 445
+#1377 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 75 55 w 369
+#1378 rm f1681 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 115 72 w 333
+#1379 rm f1681 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim ffffffff env 7f7f7f7f xy -23 278 w 423
+#1380 rm f1681 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 346 54 w 382
+#1381 rm f1681 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 136 135 w 422
+#1382 rm f1681 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1383 rm f1681 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1384 rm f1681 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1385 rm f1681 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1386 rm f1681 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim ffffffff env 7f7f7f7f xy 270 66 w 1
+#1387 audio cost avg 1981 us max 17327 us per 60 Hz tick
+#1388 audio posts 4680 peak 12475
+stopped after 121 s: timeout (120 s)
+#1374 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 204 155 w 444
+#1375 rm f1681 oml 00553048 omh 00082c00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 3/0 prim ffffffff env 7f7f7f7f xy 200 146 w 446
+#1376 rm f1681 oml 00553048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 200 102 w 445
+#1377 rm f1681 oml 00552048 omh 0008ac00 zb 0 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 75 55 w 369
+#1378 rm f1681 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 115 72 w 333
+#1379 rm f1681 oml 00552078 omh 00082c00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 4/1 prim ffffffff env 7f7f7f7f xy -23 278 w 423
+#1380 rm f1681 oml 00552078 omh 0008ac00 zb 1 comb 1 f 4 7 a 1 7 4 7 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 346 54 w 382
+#1381 rm f1681 oml 00551238 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim ffffffff env 7f7f7f7f xy 136 135 w 422
+#1382 rm f1681 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 00000080 env 7f7f7f7f xy 152 172 w 444
+#1383 rm f1681 oml 00504f50 omh 00082cf0 zb 1 comb f f 1f 7 a 3 7 1 7 tex 1 fmt 4/0 prim 0000007f env 7f7f7f7f xy 110 172 w 444
+#1384 rm f1681 oml 00551208 omh 00088cf0 zb 1 comb f f 1f 1 a 7 7 7 1 tex 1 fmt 2/0 prim 2080f000 env 7f7f7f7f xy 23 12 w 1
+#1385 rm f1681 oml 0f0a4000 omh 0008acf0 zb 1 comb f f 1f 1 a 7 7 7 6 tex 1 fmt 2/0 prim 202020ff env 7f7f7f7f xy 220 76 w 1
+#1386 rm f1681 oml 0c184b40 omh 00183cf0 zb 1 comb 1 f 3 7 a 7 7 7 2 tex 1 fmt 0/2 prim ffffffff env 7f7f7f7f xy 270 66 w 1
+#1387 audio cost avg 1981 us max 17327 us per 60 Hz tick
+#1388 audio posts 4680 peak 12475

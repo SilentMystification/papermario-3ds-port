@@ -34,6 +34,7 @@ static int light_on;
 /* RDP render mode: depth compare, depth update, alpha blend, alpha cut-off (-1 none), decal. */
 static int r_zcmp = 1, r_zupd = 1, r_blend = 1, r_atest = -1, r_decal;
 static int combine;
+static unsigned cconst;
 static int rgb_scale = 1;
 static int batch_identity;
 static int draw_3d;
@@ -82,6 +83,11 @@ static void rebuild_3d(void) {
     Mtx_Multiply(&shader_3d, &projection, &tmp);
 }
 
+/* The PICA constant colour register is 0xAABBGGRR. The port keeps colours as 0xRRGGBBAA. */
+static unsigned abgr(unsigned c) {
+    return ((c & 255u) << 24) | (((c >> 8) & 255u) << 16) | (((c >> 16) & 255u) << 8) | (c >> 24);
+}
+
 static void flush(void) {
     if (nverts <= 0 || !gpu_ok) {
         nverts = 0;
@@ -96,8 +102,15 @@ static void flush(void) {
     (void)batch_identity;
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
-    int tex = (combine == 2 || combine == 3) && pm_tex_bind();
-    if (tex) {
+    int tex = (combine >= 2) && pm_tex_bind();
+    if (tex && combine == 4) {
+        /* Flat colour, alpha = texture alpha times the constant's alpha. */
+        C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_CONSTANT, GPU_CONSTANT);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+        C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_CONSTANT, GPU_CONSTANT);
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
+        C3D_TexEnvColor(env, abgr(cconst));
+    } else if (tex) {
         C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
         C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
         if (combine == 3) {
@@ -111,7 +124,7 @@ static void flush(void) {
     } else if (combine == 1) {
         C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
         C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-        C3D_TexEnvColor(env, prim);
+        C3D_TexEnvColor(env, abgr(prim));
     } else {
         C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
         C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
@@ -128,6 +141,8 @@ static void flush(void) {
         C3D_DepthTest(true, GPU_ALWAYS, GPU_WRITE_ALL);
     else
         C3D_DepthTest(false, GPU_GREATER, GPU_WRITE_COLOR);
+    /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
+    C3D_DepthMap(true, -1.0f, r_decal ? 0.001f : 0.0f);
     C3D_EarlyDepthTest(false, GPU_EARLYDEPTH_GREATER, 0);
     if (r_atest >= 0) C3D_AlphaTest(true, GPU_GREATER, r_atest);
     else C3D_AlphaTest(false, GPU_ALWAYS, 0);
@@ -361,6 +376,12 @@ void pm_gpu_set_rgb_scale(int scale) {
 }
 
 void pm_gpu_set_prim(unsigned rgba) { prim = rgba; }
+
+void pm_gpu_set_const(unsigned rgba) {
+    if (rgba == cconst) return;
+    if (combine == 4) flush();
+    cconst = rgba;
+}
 
 void pm_gpu_flush(void) { flush(); }
 

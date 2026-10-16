@@ -43,7 +43,7 @@ static unsigned tile_tmem[8], tile_pal[8];
 static int tile_sz[8][4];
 static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 static unsigned envc = 0xffffffffu;
-static unsigned comb2_a, comb2_b, comb2_c, comb2_d;
+static unsigned comb2_a, comb2_b, comb2_c, comb2_d, comb2_aa, comb2_ab, comb2_ac, comb2_ad;
 static unsigned comb_aa, comb_ab, comb_ac, comb_ad;
 /* The sprite raster captured when tile 1 got its size. A shaded sprite sets two tiles on the
  * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
@@ -124,7 +124,80 @@ static void upload_mvp(void) {
     pm_gpu_set_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty);
 }
 
+/* Combiner input as a constant, or -1 when it needs a texel or the shade, -2 for COMBINED.
+ * slot 0..3 is A, B, C, D of the colour equation. */
+static float cc_const_in(int slot, unsigned sel, int ch, const float* pr, const float* en) {
+    if (sel == 0) return -2.f;
+    if (sel == 3) return pr[ch];
+    if (sel == 5) return en[ch];
+    if (slot == 0 && sel == 6) return 1.f;
+    if (slot == 3 && sel == 6) return 1.f;
+    if (slot == 3 && sel == 7) return 0.f;
+    if (slot == 1 && sel >= 7) return 0.f;
+    if (slot == 0 && sel >= 8) return 0.f;
+    if (slot == 2 && sel == 10) return pr[3];
+    if (slot == 2 && sel == 12) return en[3];
+    if (slot == 2 && sel >= 16) return 0.f;
+    return -1.f;
+}
+
+/* Alpha of one cycle as K * TEXEL0 alpha. Returns K, or -1 if the form is not that.
+ * (T1 - T0) * E + T0 reads two textures. Tile 1 is not loaded, so TEXEL0 stands for both. */
+static float cc_alpha_k(unsigned aa, unsigned ab, unsigned ac, unsigned ad, const float* pr, const float* en) {
+    if (ab == 7 && ad == 7 && aa == 1 && (ac == 3 || ac == 5)) return ac == 3 ? pr[3] : en[3];
+    if (ab == 7 && ad == 7 && ac == 1 && (aa == 3 || aa == 5)) return aa == 3 ? pr[3] : en[3];
+    if (aa == 2 && ab == 1 && ad == 1 && (ac == 3 || ac == 5)) return 1.f;
+    return -1.f;
+}
+
+/* A combiner whose colour needs no texel and no shade, and whose alpha is a constant times
+ * TEXEL0 alpha: a flat colour through a texture's alpha mask (a drop shadow is black this way).
+ * Returns 1 and the RGBA constant, the alpha byte being the factor on texture alpha. */
+static int const_rgb_tex_alpha(unsigned* out) {
+    float pr[4], en[4], rgb[3], k, k2;
+    int ch;
+    int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
+    if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) > 1 || !comb_set || !tex_on) return 0;
+    unpack8(prim, pr);
+    unpack8(envc, en);
+    for (ch = 0; ch < 3; ch++) {
+        float a, b, c, d;
+        if (two) {
+            a = cc_const_in(0, comb2_a, ch, pr, en); b = cc_const_in(1, comb2_b, ch, pr, en);
+            c = cc_const_in(2, comb2_c, ch, pr, en); d = cc_const_in(3, comb2_d, ch, pr, en);
+        } else {
+            a = cc_const_in(0, comb_a, ch, pr, en); b = cc_const_in(1, comb_b, ch, pr, en);
+            c = cc_const_in(2, comb_c, ch, pr, en); d = cc_const_in(3, comb_d, ch, pr, en);
+            if (a == -2.f) a = 0.f; /* COMBINED is 0 in the only cycle */
+            if (b == -2.f) b = 0.f;
+            if (c == -2.f) c = 0.f;
+            if (d == -2.f) d = 0.f;
+        }
+        if (a < 0.f || b < 0.f || c < 0.f || d < 0.f) return 0;
+        rgb[ch] = (a - b) * c + d;
+        rgb[ch] = rgb[ch] < 0.f ? 0.f : rgb[ch] > 1.f ? 1.f : rgb[ch];
+    }
+    k = cc_alpha_k(comb_aa, comb_ab, comb_ac, comb_ad, pr, en);
+    if (k < 0.f) return 0;
+    if (two) {
+        /* Second cycle alpha: COMBINED * constant, or COMBINED passed through. */
+        if (comb2_aa == 0 && comb2_ab == 7 && comb2_ad == 7 && (comb2_ac == 3 || comb2_ac == 5)) k2 = comb2_ac == 3 ? pr[3] : en[3];
+        else if (comb2_aa == 7 && comb2_ab == 7 && comb2_ac == 7 && comb2_ad == 0) k2 = 1.f;
+        else return 0;
+        k *= k2;
+    }
+    *out = ((unsigned)(rgb[0] * 255.f + .5f) << 24) | ((unsigned)(rgb[1] * 255.f + .5f) << 16) |
+           ((unsigned)(rgb[2] * 255.f + .5f) << 8) | (unsigned)(k * 255.f + .5f);
+    return 1;
+}
+
 static void sync_combine(void) {
+    unsigned cc;
+    if (const_rgb_tex_alpha(&cc)) {
+        pm_gpu_set_const(cc);
+        pm_gpu_set_combine(4);
+        return;
+    }
     /* Decal modes put TEXEL0 in the addend, which is mux d, not a/b/c.
      * Missing it draws the sprite quad's vertex colors: a grey gradient. */
     int wants_tex = tex_on && (comb_a == G_CCMUX_TEXEL0 || comb_b == G_CCMUX_TEXEL0 ||
@@ -146,6 +219,10 @@ static void sync_combine(void) {
  * cut away near-transparent texels. */
 static void sync_render(void) {
     unsigned m = omode_l;
+    if (pm_debug_has("rmoff")) { /* A/B check: the old always-blend, always-write state */
+        pm_gpu_set_render(1, 1, 1, -1, 0);
+        return;
+    }
     int blend = ((m & (3u << 20)) == (1u << 20) && (m & (3u << 16)) == 0) ||
                 ((m & (3u << 22)) == (1u << 22) && (m & (3u << 18)) == 0);
     int atest = -1;
@@ -342,11 +419,13 @@ static void draw_tri(unsigned w) {
         n_cut++;
     }
     if (pm_debug_has("rmlog") && (rm_frame % 30) == 1) {
-        static unsigned lo, lg, la, lb, lc, ld, lh;
+        static unsigned lo, lg, la, lb, lc, ld, lh, lp, lf;
         if (lo != omode_l || lg != (geom & G_ZBUFFER) || la != comb_a || lb != comb_b || lc != comb_c || ld != comb_d ||
-            lh != omode_h) {
+            lh != omode_h || lp != prim || lf != tile_fmt[0] * 4 + tile_siz[0]) {
+            lp = prim; lf = tile_fmt[0] * 4 + tile_siz[0];
             lo = omode_l; lg = geom & G_ZBUFFER; la = comb_a; lb = comb_b; lc = comb_c; ld = comb_d; lh = omode_h;
-            pm_log("rm f%d oml %08x omh %08x zb %d comb %x %x %x %x a %x %x %x %x tex %d fmt %u/%u prim %08x", rm_frame, lo, lh, lg != 0, la, lb, lc, ld, comb_aa, comb_ab, comb_ac, comb_ad, tex_on, tile_fmt[0], tile_siz[0], prim);
+            pm_log("rm f%d oml %08x omh %08x zb %d comb %x %x %x %x a %x %x %x %x tex %d fmt %u/%u prim %08x env %08x xy %d %d w %d", rm_frame, lo, lh, lg != 0, la, lb, lc, ld, comb_aa, comb_ab, comb_ac, comb_ad, tex_on, tile_fmt[0], tile_siz[0], prim, envc,
+                   (int)(poly[0].x / poly[0].w * vp_sx + vp_tx), (int)(vp_ty - poly[0].y / poly[0].w * vp_sy), (int)poly[0].w);
         }
     }
     sync_render();
@@ -737,6 +816,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             comb2_c = w0 & 0x1f;
             comb2_b = (w1 >> 24) & 0xf;
             comb2_d = (w1 >> 6) & 7;
+            comb2_aa = (w1 >> 21) & 7;
+            comb2_ac = (w1 >> 18) & 7;
+            comb2_ab = (w1 >> 3) & 7;
+            comb2_ad = w1 & 7;
             comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
                                ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
             sync_combine();
@@ -744,9 +827,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_SETPRIMCOLOR:
             prim = w1;
             pm_gpu_set_prim(prim);
+            sync_combine();
             break;
         case G_SETENVCOLOR:
             envc = w1;
+            sync_combine();
             break;
         case G_SETCIMG:
             cimg = ptr_of(w1);

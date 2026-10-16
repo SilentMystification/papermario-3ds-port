@@ -1,0 +1,312 @@
+#0 Paper Mario 3DS
+#1 MODE = O3DS / 64MB cap (console region 96MB)
+#2 switches fast autoa shots
+#3 rom resident 26933KB of 40960KB (packed)
+#4 ram n64 4MB, rom 27MB, port 20MB
+#5 mem commit limit 98304KB used-by-image 9108KB offered 89196KB cap 65536KB
+#6 mem boot heap total 45056KB used 27202KB free-in-arena 5KB sbrk-left 17848KB linear total 20480KB free 0KB tex-cache 0KB peak 0KB
+#7 boot_main
+#8 gpu ok proj 0 m 8 -1000
+#9 ndsp ready 32000 Hz
+#10 audio manager thread ready
+#11 save.flash loaded 131072 bytes
+#12 game mode 0
+#13 game mode 1
+#14 game mode 16
+#15 gbi skip f3
+#16 load map area 5 map 5
+#17 mem map heap total 45056KB used 27335KB free-in-arena 8KB sbrk-left 17712KB linear total 20480KB free 12918KB tex-cache 35KB peak 35KB
+#18 spawn npcs 11
+#19 stats t13186 i3842 c0 d0 o9344 k9578 x63
+#20 stats t1800 i1370 c0 d0 o430 k2401 x50
+#21 audio cost avg 473 us max 571 us per 60 Hz tick
+#22 audio posts 120 peak 0
+#23 stats t1800 i1590 c0 d0 o210 k2818 x49
+#24 audio cost avg 3036 us max 17012 us per 60 Hz tick
+#25 audio posts 240 peak 12043
+#26 stats t1800 i1590 c0 d0 o210 k2820 x49
+#27 audio cost avg 3190 us max 20092 us per 60 Hz tick
+#28 audio posts 360 peak 13793
+#29 game mode 2
+#30 stats t1500 i1325 c0 d0 o175 k2350 x49
+#31 audio cost avg 3055 us max 20096 us per 60 Hz tick
+#32 audio posts 480 peak 11620
+#33 stats t1800 i1590 c0 d0 o210 k2820 x49
+#34 audio cost avg 2587 us max 16230 us per 60 Hz tick
+#35 audio posts 600 peak 20662
+#36 game mode 14
+#37 gbi skip f9
+#38 gbi skip f8
+#39 stats t1560 i1378 c0 d0 o182 k2444 x49
+#40 audio cost avg 3288 us max 30113 us per 60 Hz tick
+#41 audio posts 720 peak 19333
+#42 stats t1800 i1590 c0 d0 o210 k2820 x49
+#43 audio cost avg 2657 us max 29313 us per 60 Hz tick
+#44 audio posts 840 peak 11563
+#45 audio cost avg 2489 us max 18758 us per 60 Hz tick
+#46 audio posts 960 peak 11918
+#47 stats t3580 i3370 c0 d0 o210 k6980 x49
+#48 audio cost avg 2475 us max 18123 us per 60 Hz tick
+#49 audio posts 1080 peak 12221
+#50 stats t1800 i1590 c0 d0 o210 k2820 x49
+#51 audio cost avg 2533 us max 29072 us per 60 Hz tick
+#52 audio posts 1200 peak 11258
+#53 game mode 15
+#54 audio cost avg 2282 us max 17445 us per 60 Hz tick
+#55 audio posts 1320 peak 12874
+#56 game mode 7
+#57 load map area 0 map 11
+#58 mem map heap total 45056KB used 27338KB free-in-arena 5KB sbrk-left 17712KB linear total 20480KB free 12261KB tex-cache 691KB peak 999KB
+#59 spawn npcs 2
+#60 stats t960 i404 c0 d0 o556 k640 x85
+#61 stats t44736 i28645 c0 d0 o16091 k78912 x-54
+#62 audio cost avg 2031 us max 27686 us per 60 Hz tick
+#63 audio posts 1440 peak 14781
+#64 game mode 4
+#65 stats t45720 i28614 c0 d0 o17106 k78720 x-57
+#66 audio cost avg 2378 us max 17006 us per 60 Hz tick
+#67 audio posts 1560 peak 10028
+#68 stats t45720 i27072 c0 d0 o18648 k74709 x-60
+#69 audio cost avg 3050 us max 17923 us per 60 Hz tick
+#70 audio posts 1680 peak 11691
+#71 stats t45720 i26133 c0 d0 o19587 k72529 x-62
+#72 stats t44328 i26064 c0 d0 o18264 k72401 x-62
+#73 audio cost avg 4968 us max 21742 us per 60 Hz tick
+#74 audio posts 1800 peak 20127
+#75 stats t44280 i26220 c0 d0 o18060 k72960 x-62
+#76 audio cost avg 5392 us max 19908 us per 60 Hz tick
+#77 audio posts 1920 peak 18930
+#78 audio cost avg 3854 us max 20939 us per 60 Hz tick
+#79 audio posts 2040 peak 16042
+#80 stats t44370 i26310 c0 d0 o18060 k73230 x-62
+#81 audio cost avg 1642 us max 17038 us per 60 Hz tick
+#82 audio posts 2160 peak 8187
+#83 stats t44574 i26514 c0 d0 o18060 k73842 x-62
+#84 audio cost avg 1677 us max 16951 us per 60 Hz tick
+#85 stats t44380 i26320 c0 d0 o18060 k73260 x-62
+#86 audio posts 2280 peak 12391
+#87 stats t44280 i26220 c0 d0 o18060 k72960 x-62
+#88 audio cost avg 1974 us max 16847 us per 60 Hz tick
+#89 audio posts 2400 peak 6725
+#90 stats t44280 i26134 c0 d0 o18146 k72663 x-62
+#91 stats t44868 i26628 c0 d0 o18240 k74184 x-62
+#92 audio cost avg 1904 us max 16994 us per 60 Hz tick
+#93 audio posts 2520 peak 13805
+#94 stats t47346 i29106 c0 d0 o18240 k81618 x-62
+#95 audio cost avg 2125 us max 17858 us per 60 Hz tick
+#96 audio posts 2640 peak 5821
+#97 stats t46310 i28070 c0 d0 o18240 k78510 x-62
+#98 stats t44430 i26190 c0 d0 o18240 k72870 x-62
+#99 audio cost avg 2178 us max 28429 us per 60 Hz tick
+#100 audio posts 2760 peak 16148
+#101 stats t44284 i26044 c0 d0 o18240 k72432 x-62
+#102 audio cost avg 2079 us max 17371 us per 60 Hz tick
+#103 audio posts 2880 peak 12594
+#104 stats t44280 i26040 c0 d0 o18240 k72420 x-62
+#105 stats t44422 i26182 c0 d0 o18240 k72846 x-62
+#106 audio cost avg 2052 us max 17612 us per 60 Hz tick
+#107 audio posts 3000 peak 7352
+#108 stats t45038 i26342 c0 d0 o18696 k73384 x-25
+#109 audio cost avg 2072 us max 16772 us per 60 Hz tick
+#110 audio posts 3120 peak 15376
+#111 stats t62006 i30026 c0 d0 o31980 k85892 x-25
+#112 audio cost avg 2060 us max 16899 us per 60 Hz tick
+#113 audio posts 3240 peak 17032
+#114 stats t62174 i30266 c0 d0 o31908 k86812 x-25
+#115 stats t62220 i30420 c0 d0 o31800 k87480 x-25
+#116 audio cost avg 2280 us max 16894 us per 60 Hz tick
+#117 audio posts 3360 peak 11634
+#118 stats t62278 i30478 c0 d0 o31800 k87654 x-25
+#119 audio cost avg 1850 us max 16792 us per 60 Hz tick
+#120 audio posts 3480 peak 1108
+#121 stats t62280 i30480 c0 d0 o31800 k87660 x-25
+#122 audio cost avg 2014 us max 17328 us per 60 Hz tick
+#123 audio posts 3600 peak 12480
+#124 stats t62080 i30280 c0 d0 o31800 k87060 x-25
+#125 stats t61980 i30180 c0 d0 o31800 k86760 x-25
+#126 audio cost avg 1864 us max 16706 us per 60 Hz tick
+#127 audio posts 3720 peak 3236
+#128 stats t62100 i31503 c0 d0 o30597 k89535 x0
+#129 audio cost avg 2224 us max 17084 us per 60 Hz tick
+#130 audio posts 3840 peak 5734
+#131 stats t62234 i37244 c0 d0 o24990 k103897 x26
+#132 audio cost avg 1968 us max 17300 us per 60 Hz tick
+#133 audio posts 3960 peak 3398
+#134 stats t62374 i37654 c0 d0 o24720 k104862 x26
+#135 stats t62510 i37790 c0 d0 o24720 k105270 x26
+#136 audio cost avg 1984 us max 27549 us per 60 Hz tick
+#137 audio posts 4080 peak 7654
+#138 stats t62520 i37800 c0 d0 o24720 k105300 x26
+#139 audio cost avg 2053 us max 16800 us per 60 Hz tick
+#140 audio posts 4200 peak 1546
+#141 audio cost avg 1785 us max 17331 us per 60 Hz tick
+#142 audio posts 4320 peak 12618
+#143 stats t62320 i37600 c0 d0 o24720 k104700 x26
+#144 stats t62414 i37694 c0 d0 o24720 k104982 x26
+#145 audio cost avg 2170 us max 17243 us per 60 Hz tick
+#146 audio posts 4440 peak 3785
+#147 stats t62518 i37798 c0 d0 o24720 k105294 x26
+#148 audio cost avg 1878 us max 17928 us per 60 Hz tick
+#149 audio posts 4560 peak 6432
+#150 stats t62520 i37800 c0 d0 o24720 k105300 x26
+#151 audio cost avg 2021 us max 17606 us per 60 Hz tick
+#152 audio posts 4680 peak 12354
+#153 game mode 5
+#154 stats t62320 i37600 c0 d0 o24720 k104700 x26
+#155 audio cost avg 2373 us max 17306 us per 60 Hz tick
+#156 audio posts 4800 peak 6909
+#157 stats t62220 i37500 c0 d0 o24720 k104400 x26
+#158 load map area 23 map 0
+#159 mem map heap total 45056KB used 27338KB free-in-arena 5KB sbrk-left 17712KB linear total 20480KB free 12382KB tex-cache 570KB peak 999KB
+#160 spawn npcs 1
+#161 stats t33076 i18929 c0 d0 o14147 k52621 x178
+#162 audio cost avg 2412 us max 17922 us per 60 Hz tick
+#163 audio posts 4920 peak 8637
+#164 game mode 4
+#165 stats t42960 i24480 c0 d0 o18480 k68370 x178
+#166 audio cost avg 2415 us max 20785 us per 60 Hz tick
+#167 audio posts 5040 peak 8431
+#168 stats t42994 i24514 c0 d0 o18480 k68472 x178
+#169 stats t43020 i24540 c0 d0 o18480 k68550 x178
+#170 audio cost avg 2478 us max 17865 us per 60 Hz tick
+#171 audio posts 5160 peak 9513
+#172 audio cost avg 2357 us max 17527 us per 60 Hz tick
+#173 audio posts 5280 peak 9318
+#174 audio cost avg 2360 us max 18020 us per 60 Hz tick
+#175 audio posts 5400 peak 16723
+#176 stats t42974 i24494 c0 d0 o18480 k68412 x178
+#177 stats t42960 i24480 c0 d0 o18480 k68370 x178
+#178 audio cost avg 2032 us max 18046 us per 60 Hz tick
+#179 audio posts 5520 peak 6065
+#180 stats t43006 i24526 c0 d0 o18480 k68508 x178
+#181 audio cost avg 2399 us max 17182 us per 60 Hz tick
+#182 audio posts 5640 peak 9309
+#183 stats t43020 i24540 c0 d0 o18480 k68550 x178
+#184 audio cost avg 2346 us max 17885 us per 60 Hz tick
+#185 audio posts 5760 peak 16655
+#186 stats t42974 i24494 c0 d0 o18480 k68412 x178
+#187 stats t42960 i24480 c0 d0 o18480 k68370 x178
+#188 audio cost avg 2446 us max 29340 us per 60 Hz tick
+#189 audio posts 5880 peak 8485
+#190 audio cost avg 2332 us max 17947 us per 60 Hz tick
+#191 audio posts 6000 peak 9313
+#192 stats t42962 i24482 c0 d0 o18480 k68376 x178
+#193 game mode 5
+#194 audio cost avg 2372 us max 17961 us per 60 Hz tick
+#195 audio posts 6120 peak 14785
+#196 stats t42974 i24494 c0 d0 o18480 k68412 x178
+#197 load map area 0 map 11
+#198 mem map heap total 45056KB used 27338KB free-in-arena 5KB sbrk-left 17712KB linear total 20480KB free 12537KB tex-cache 416KB peak 999KB
+#199 spawn npcs 2
+#200 stats t28640 i16320 c0 d0 o12320 k45580 x178
+#201 audio cost avg 2410 us max 17210 us per 60 Hz tick
+#202 audio posts 6240 peak 7448
+#203 stats t46492 i23265 c0 d0 o23227 k59802 x-33
+#204 game mode 4
+#205 audio cost avg 1624 us max 17900 us per 60 Hz tick
+#206 audio posts 6360 peak 6725
+#207 stats t42270 i20430 c0 d0 o21840 k51720 x-33
+#208 stats t45014 i23174 c0 d0 o21840 k59952 x-34
+#209 audio cost avg 3238 us max 16995 us per 60 Hz tick
+#210 audio posts 6480 peak 18610
+#211 stats t44940 i24617 c0 d0 o20323 k65683 x-73
+#212 audio cost avg 3784 us max 21685 us per 60 Hz tick
+#213 audio posts 6600 peak 19826
+#214 stats t42790 i20504 c0 d0 o22286 k53675 x-117
+#215 stats t43310 i15937 c0 d0 o27373 k41360 x-172
+#216 audio cost avg 3730 us max 23806 us per 60 Hz tick
+#217 audio posts 6720 peak 15926
+#218 stats t42658 i11476 c0 d0 o31182 k30980 x-210
+#219 audio cost avg 3868 us max 19745 us per 60 Hz tick
+#220 audio posts 6840 peak 22845
+#221 stats t42930 i10980 c0 d0 o31950 k30420 x-210
+#222 stats t43124 i11174 c0 d0 o31950 k31002 x-210
+#223 audio cost avg 3574 us max 26510 us per 60 Hz tick
+#224 audio posts 6960 peak 23576
+#225 game mode 5
+#226 stats t40404 i10584 c0 d0 o29820 k29400 x-210
+#227 load map area 1 map 1
+#228 mem map heap total 45056KB used 27338KB free-in-arena 5KB sbrk-left 17712KB linear total 20480KB free 12394KB tex-cache 559KB peak 999KB
+#229 spawn npcs 6
+#230 gbi skip ee
+#231 audio cost avg 2937 us max 19549 us per 60 Hz tick
+#232 audio posts 7080 peak 21378
+#233 game mode 4
+#234 stats t29038 i5098 c0 d0 o23940 k13220 x197
+#235 stats t40794 i7074 c0 d0 o33720 k18432 x197
+#236 audio cost avg 2757 us max 18945 us per 60 Hz tick
+#237 audio posts 7200 peak 18951
+#238 stats t40646 i6965 c0 d0 o33681 k18020 x219
+#239 audio cost avg 2674 us max 18583 us per 60 Hz tick
+#240 audio posts 7320 peak 18692
+#241 stats t41100 i10903 c0 d0 o30197 k29562 x761
+#242 stats t40930 i13704 c0 d0 o27226 k37034 x935
+#243 audio cost avg 2378 us max 18273 us per 60 Hz tick
+#244 audio posts 7440 peak 16245
+#245 stats t41576 i14065 c0 d0 o27511 k38568 x1474
+#246 audio cost avg 3494 us max 30108 us per 60 Hz tick
+#247 audio posts 7560 peak 15958
+#248 stats t40878 i13816 c0 d0 o27062 k37086 x3334
+#249 stats t40942 i11179 c0 d0 o29763 k28131 x24743
+#250 audio cost avg 3332 us max 19252 us per 60 Hz tick
+#251 audio posts 7680 peak 17211
+#252 stats t40878 i8681 c14 d0 o32183 k20385 x-9365
+#253 audio cost avg 3266 us max 18853 us per 60 Hz tick
+#254 audio posts 7800 peak 18120
+#255 stats t40878 i9309 c4 d0 o31565 k22703 x-6181
+#256 GotoMap refused: area 1 map 2 is not linked
+#257 stats t40878 i9138 c0 d0 o31740 k22254 x-6144
+#258 audio cost avg 3747 us max 25098 us per 60 Hz tick
+#259 audio posts 7920 peak 17104
+#260 stats t40878 i9028 c0 d0 o31850 k21797 x-6144
+#261 audio cost avg 3354 us max 17748 us per 60 Hz tick
+#262 audio posts 8040 peak 12019
+#263 stats t40830 i8744 c0 d0 o32086 k21054 x-6144
+#264 stats t40710 i8730 c0 d0 o31980 k21030 x-6144
+#265 audio cost avg 3570 us max 25053 us per 60 Hz tick
+#266 audio posts 8160 peak 16472
+#267 audio cost avg 3399 us max 30053 us per 60 Hz tick
+#268 audio posts 8280 peak 19307
+#269 audio cost avg 3675 us max 30507 us per 60 Hz tick
+#270 audio posts 8400 peak 20900
+#271 audio cost avg 3165 us max 18523 us per 60 Hz tick
+#272 audio posts 8520 peak 16031
+#273 audio cost avg 2866 us max 18315 us per 60 Hz tick
+#274 audio posts 8640 peak 13251
+#275 audio cost avg 2795 us max 18098 us per 60 Hz tick
+#276 audio posts 8760 peak 11335
+#277 audio cost avg 3106 us max 18583 us per 60 Hz tick
+#278 audio posts 8880 peak 10749
+#279 audio cost avg 3171 us max 19178 us per 60 Hz tick
+#280 audio posts 9000 peak 14711
+#281 audio cost avg 2757 us max 18297 us per 60 Hz tick
+#282 audio posts 9120 peak 11390
+#283 audio cost avg 2798 us max 18333 us per 60 Hz tick
+#284 audio posts 9240 peak 12601
+#285 audio cost avg 2741 us max 18682 us per 60 Hz tick
+#286 audio posts 9360 peak 12073
+#287 audio cost avg 2831 us max 18039 us per 60 Hz tick
+#288 audio posts 9480 peak 13807
+#289 audio cost avg 3161 us max 29268 us per 60 Hz tick
+#290 audio posts 9600 peak 16441
+#291 audio cost avg 3555 us max 25692 us per 60 Hz tick
+#292 audio posts 9720 peak 17122
+#293 audio cost avg 3418 us max 19448 us per 60 Hz tick
+#294 audio posts 9840 peak 15825
+#295 mem tick heap total 45056KB used 27338KB free-in-arena 5KB sbrk-left 17712KB linear total 20480KB free 12294KB tex-cache 658KB peak 999KB
+stopped after 201 s: timeout (200 s)
+#281 audio cost avg 2757 us max 18297 us per 60 Hz tick
+#282 audio posts 9120 peak 11390
+#283 audio cost avg 2798 us max 18333 us per 60 Hz tick
+#284 audio posts 9240 peak 12601
+#285 audio cost avg 2741 us max 18682 us per 60 Hz tick
+#286 audio posts 9360 peak 12073
+#287 audio cost avg 2831 us max 18039 us per 60 Hz tick
+#288 audio posts 9480 peak 13807
+#289 audio cost avg 3161 us max 29268 us per 60 Hz tick
+#290 audio posts 9600 peak 16441
+#291 audio cost avg 3555 us max 25692 us per 60 Hz tick
+#292 audio posts 9720 peak 17122
+#293 audio cost avg 3418 us max 19448 us per 60 Hz tick
+#294 audio posts 9840 peak 15825
+#295 mem tick heap total 45056KB used 27338KB free-in-arena 5KB sbrk-left 17712KB linear total 20480KB free 12294KB tex-cache 658KB peak 999KB

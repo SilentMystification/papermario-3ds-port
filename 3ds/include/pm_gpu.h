@@ -14,6 +14,7 @@ void pm_gpu_set_mvp(const float m[4][4], float vp_sx, float vp_sy, float vp_tx, 
 void pm_gpu_set_mode(int zbuffer, int lighting);
 void pm_gpu_set_rgb_scale(int scale); /* 1 or 2, texture stage only */
 void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
+void pm_gpu_set_const(unsigned rgba); /* combine mode 4: flat colour (a = factor on texture alpha) */
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal);
 void pm_gpu_set_prim(unsigned rgba);
 /* Draw the current batch now. The next vertices belong to a different texture. */

@@ -138,3 +138,5 @@
 10:25 S26 build 1 ok (rmlog only, no render change)
 10:28 S26 build 2 ok: othermode L drives zcmp/zupd/blend/alpha test/decal
 10:37 S26 found: I4/I8 textures use PICA L8 (alpha 1), RDP alpha=intensity -> black squares; fixing
+10:41 S26 commit e71b51fbd: othermode L + I-texture alpha; black squares gone in shots
+11:42 S26 found: shadow/glow quads read texel alpha only via combiner; added const-colour mode 4 (1 and 2 cycle), PICA const colour is ABGR

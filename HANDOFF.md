@@ -167,10 +167,10 @@ All items below belong to slice M02. Done and checked on Azahar. Not run on hard
 1. kkj_00 is not reached by the intro chain. See above. Toad Town (mac_00) and every other map also fail to load. The generic map table fixes both.
 2. FIXED by S15 (slice S15): sprite shading renders. See the S15 result section. No linked map enables shading yet (all call SHADING_NONE), so it shows only when a map with a real profile is linked.
 3. Text box transitions do not happen. Parakarry's first text box does not show.
-4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
+4. FIXED by S26 (slice S26): translucent draws wrote depth and hid geometry behind them. See the S26 result section.
 5. The Mario logo does not show on the house in the intro cutscene.
 6. FIXED by S13 (real curtains.c): the red cover is gone in the intro (seen in shots).
-7. Mario has transparency problems around his sprite. The background layer shows in place of the scene geometry behind him. Likely the same cause as issue 4.
+7. FIXED by S26 (slice S26): same cause as issue 4. Mario's sprite no longer has a black rectangle that hides the scene.
 
 Known gaps: item and popup APIs, entity display lists and shadows, `bed.c` and `records.c` (need extracted textures), message boxes, status bar, HUD.
 
@@ -389,7 +389,7 @@ One commit (`7fd566684`) on `088a06e2e`. Main is 4 commits ahead (S17, M02 and n
 2. `effect_gfx_*` never loaded (A17). Effects that need graphics data draw nothing or draw wrong. `flame` and a few effects render into `D_800B32E0` and `D_800B3AE0` (render-to-texture, not emulated).
 3. Attack animations show black and olive polygons (battle branch). Not diagnosed.
 4. Pink arrows over every letter in the file select name entry. File list windows overlap or are cut off at the right edge (Stereo and Mono boxes). Not diagnosed. Probably `pm_gbi.c`.
-5. Transparency: translucent models show the background but not the geometry behind them (issues 4 and 7). Mario's sprite has the same fault.
+5. FIXED by S26 (slice S26): transparency, issues 4 and 7.
 6. Text box transitions, the Parakarry box (issue 3), the Mario logo on the house (issue 5): not checked by eye after S14. State is unknown.
 7. Shading: the second pass `SPR_SHADING_FLAG_SET_VIEWPORT` and shaded imgfx meshes are untested.
 8. Not seen by eye yet: pause screen (S18), Shadow textures, kmr_20 background. Entity blocks, springs and rocks draw nothing (A7 to A10).
@@ -460,3 +460,18 @@ Done (slice S24). `3ds/tools/gen_effect_ld.py` now reads `ver/us/splat.yaml` and
 - Finding (slice S24, by reading the code): the effect Gfx lists, Vtx arrays and images in `src/effects/gfx/*.c` are C and PNG data linked into the 3dsx, so DL words are host pointers and do not use segment 9. `sharedData->graphics` was NULL but nothing read through it. So the ROM block is a faithful copy that no draw call needs yet. Effects drew the same before and after by this argument. A before and after pixel compare was NOT made.
 - Seen by eye (slice S24, `fast shots`, 106 frames, intro): storybook, ship, palace, Kammy, Bowser and the clown car draw, with sparkles and light effects. Not seen: any flame. Bad draws in frames 70 to 90 (Bowser fight at the Star Rod): black squares around the sparkles, one olive square with a black blob (frames 74 to 76), black bars. The effect that makes each one is not identified. They look like alpha/blender gaps (CLD or XLU render modes), so they belong to S25 and S26. The `gbi skip` log in this run: `f3`, `04` (G_BRANCH_Z), `02` (G_MODIFYVTX).
 - Render-to-texture, exact list (by reading the code): only `flame` writes its own scratch images (`D_800B3AE0` and `D_800B32E0`, 32x64 I8, two-cycle combiner, tile loads from the same buffer, 6 texrects). `underwater` writes into `nuGfxZBuffer` as RGBA16 and back to the frame buffer. The missing feature for both: texrect and tile load into a non-screen colour image in formats other than the TLUT case of S15 (`rect_to_image` handles only a TMEM palette). `flame` is used only in unlinked maps (kzn2 battles, isk stages), so it cannot be run or seen now. I wrote no fix: it needs a 2-cycle I8 software rasteriser, which is not small, and I cannot test it. Do it after those maps link.
+
+## S26 result (slice S26: transparency, issues 4 and 7)
+
+Done (slice S26). Platform layer only (`pm_gbi.c`, `pm_gpu.c`, `pm_tex.c`), no game code changed.
+- Root cause 1 (slice S26): `pm_gbi.c` read `G_SETOTHERMODE_L` but ignored it. `pm_gpu.c` always wrote depth, always blended by source alpha and never alpha tested. A translucent mode (XLU, no `Z_UPD`) therefore wrote depth, and the quad of a sprite wrote depth over its transparent texels. Later draws behind them failed the depth test. The measured render modes (log switch `rmlog`) match: XLU surface `0c1849d8` has `Z_CMP`, no `Z_UPD`.
+- Fix 1 (slice S26): `sync_render()` in `pm_gbi.c` reads the mode as libultraship `DeriveTriState` does: depth test from `Z_CMP`, depth write from `Z_UPD`, decal (`ZMODE_DEC`) passes equal depth with a 0.001 depth bias toward the eye, blend only when the blender mixes with the frame buffer by (1 - alpha), texture edge (`CVG_X_ALPHA`) alpha test 0x30 (blend off) or 0x08 (blend on), `G_AC_THRESHOLD` alpha test 0x08. `pm_gpu_set_render()` carries it to the PICA state. Debug switch `rmoff` restores the old always-write, always-blend state for an A/B check.
+- Root cause 2 (slice S26): the I4 and I8 formats used PICA L8, whose alpha is 1. The RDP gives an I texel an alpha equal to its intensity. Effect sprites (sparkles) drew their whole quad: black squares and black bars (the Star Rod fight, S24 note). Fix: `pm_tex.c` uses LA8 for I formats with alpha = intensity.
+- Root cause 3 (slice S26): a combiner whose colour is a constant (shadows: black) but whose alpha reads TEXEL0 never bound the texture, so shadows were solid squares (white, then black). Fix: combine mode 4 in `pm_gbi.c` `const_rgb_tex_alpha()` (1-cycle and 2-cycle forms, colour constant, alpha = constant x TEXEL0 alpha; the form `(T1-T0)*E+T0` uses TEXEL0 for both because tile 1 is not loaded). The same slice added combine mode 3 (texture colour, vertex alpha) when the alpha combiner does not read a texel. Found on the way: the PICA constant colour register is 0xAABBGGRR. `pm_gpu.c` passed 0xRRGGBBAA, so prim colour in mode 1 had red and blue swapped. Fixed with `abgr()`.
+- Seen by eye (slice S26, Azahar, `fast shots` and `fast autoa shots`, A/B with `rmoff`):
+  - Intro, Star Rod fight (shots 70 to 82): with the old state Bowser's clown car is missing at shot 70 and a dark bar sits across shots 74 and 82. With the fix both are right. Before the slice there were black squares around the sparkles and black bars. After: no black squares, no black bars.
+  - Toad Town and the yard (autoa shots 76 to 96): before, Mario and Luigi had a black rectangle that hid the window, sign and house wall behind them. After: gone. The soft round shadows under Mario and Luigi now show.
+- Not fixed, by eye (slice S26): the olive square with a dark blob (intro shot 74) and the black sparkle streaks (they should be white or yellow). Cause by the log: the combiner is `(ENV-PRIM)*TEXEL0+PRIM` and `(1-TEXEL0)*PRIM+TEXEL0`, a general combiner. `pm_gbi.c` only models texture x shade, a constant, and the modes above. This belongs to S25 (combiner). The sky in kmr_20 and mac_00 stays black in some shots (not S26).
+- Check (slice S26): `fast autoa`, 261 s: hos_05, kmr_20, osr_00, kmr_20, mac_00 reached, mac_00 stays up, 0 unmapped lines, no crash. The `fast shots` run ends with a crash after the intro (title screen, `mdl_update_transform_matrices`), same as before S26.
+- Not tested: blend colour (`G_SETBLENDCOLOR`), fog, noise, the exact `ZMODE_INTER` rule, 2-cycle modes whose second blender cycle differs from the first.
+
