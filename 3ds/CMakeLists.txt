@@ -124,6 +124,7 @@ set(GAME_SRC
     ${DECOMP}/src/5B320.c
     ${DECOMP}/src/msg_img.c
     ${DECOMP}/src/windows.c
+    ${DECOMP}/src/status_star_shimmer.c
     ${DECOMP}/src/inventory.c
     ${DECOMP}/src/status_icons.c
     ${DECOMP}/src/item_entity.c
