@@ -30,7 +30,6 @@ void snd_set_mono() {}
 /* update_npcs, update_player, update_encounters are npc.c and 77480.c */
 void clear_virtual_entity_list() {}
 void init_virtual_entity_list() {}
-void fx_flame() {}
 /* render_npcs is npc.c, render_player is 77480.c */
 void state_drawUI_battle() {}
 void state_drawUI_demo() {}
@@ -66,12 +65,6 @@ void state_step_pause() {}
 void state_step_unpause() {}
 unsigned char heap_collisionHead[0x20000];
 unsigned char BattleEntityHeapBottom[0x3000] __attribute__((aligned(0x1000)));
-void* fx_effect_46() { return 0; }
-void* fx_pink_sparkles() { return 0; }
-void* fx_smoke_burst() { return 0; }
-void* fx_smoke_impact() { return 0; }
-void* fx_sparkles() { return 0; }
-void* fx_stars_shimmer() { return 0; }
 int snd_stop_sound() { return 0; }
 void world_lakilester_sync_player_position() {}
 void world_sushie_sync_player_position() {}

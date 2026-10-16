@@ -26,6 +26,8 @@ include_directories(
     ${DECOMP}/ver/us/build/include
 )
 
+include(effects.cmake)
+
 set(GAME_SRC
     ${DECOMP}/src/main.c
     ${DECOMP}/src/main_loop.c
@@ -54,6 +56,10 @@ set(GAME_SRC
     ${DECOMP}/src/model_clear_render_tasks.c
     ${DECOMP}/src/texture_memory.c
     ${DECOMP}/src/os/guOrtho.c
+    ${DECOMP}/src/os/lookathil.c
+    ${DECOMP}/src/os/frustum.c
+    ${DECOMP}/src/os/position.c
+    ${DECOMP}/src/os/sqrtf.c
     ${DECOMP}/src/os/perspective.c
     ${DECOMP}/src/os/guRotate.c
     ${DECOMP}/src/os/lookatref.c
@@ -69,6 +75,10 @@ set(GAME_SRC
     ${DECOMP}/src/world/script_api/enter_exit.c
     ${DECOMP}/src/evt/audio_api.c
     ${DECOMP}/src/enemy_ai.c
+    ${DECOMP}/src/effects.c
+    ${DECOMP}/src/effect_utils.c
+    ${DECOMP}/src/evt/fx_api.c
+    ${EFFECT_SRC}
     ${DECOMP}/src/25AF0.c
     ${DECOMP}/src/evt/f8f60_len_1560.c
     ${DECOMP}/src/evt/npc_api.c
@@ -185,7 +195,6 @@ set(PORT_SRC
     src/pm_audio.c
     src/pm_later.c
     src/pm_overlay.c
-    src/pm_fx.c
     src/pm_map.c
     src/pm_title.c
     src/pm_evt_stub.c
@@ -195,6 +204,7 @@ set(PORT_SRC
     src/pm_shadow.c
     src/pm_actor_stubs.c
     src/game_stubs.c
+    src/effect_loads.c
 )
 set(PM_BUILD_ID_H "${CMAKE_CURRENT_BINARY_DIR}/pm_build_id.h")
 add_custom_command(
@@ -207,6 +217,14 @@ add_custom_command(
     VERBATIM
 )
 
+file(STRINGS ${DECOMP}/src/effect_shims.yaml EFFECT_SHIM_LINES REGEX "^- shim_")
+foreach(line ${EFFECT_SHIM_LINES})
+    string(REGEX REPLACE "^- shim_" "" fn "${line}")
+    if(NOT fn STREQUAL "NULL")
+        list(APPEND EFFECT_SHIM_DEFSYMS "-Wl,--defsym,shim_${fn}=${fn}")
+    endif()
+endforeach()
+
 add_executable(pm_3ds
     ${PORT_SRC}
     ${GAME_SRC}
@@ -215,7 +233,9 @@ add_executable(pm_3ds
 target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
-    -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50)
+    -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50
+    # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
+    ${EFFECT_SHIM_DEFSYMS})
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")

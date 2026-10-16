@@ -3,21 +3,6 @@
 
 #define STUB(name) int name() { return 0; }
 
-STUB(fx_big_smoke_puff)
-STUB(fx_cloud_puff)
-STUB(fx_cloud_trail)
-STUB(fx_damage_stars)
-STUB(fx_emote)
-STUB(fx_energy_in_out)
-STUB(fx_falling_leaves)
-STUB(fx_flower_splash)
-STUB(fx_flower_trail)
-STUB(fx_footprint)
-STUB(fx_landing_dust)
-STUB(fx_rising_bubble)
-STUB(fx_sweat)
-STUB(fx_sun)
-STUB(fx_walking_dust)
 STUB(appendGfx_interact_prompt)
 STUB(appendGfx_ispy_icon)
 STUB(appendGfx_pulse_stone_icon)

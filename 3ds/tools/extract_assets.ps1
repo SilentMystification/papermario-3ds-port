@@ -36,3 +36,5 @@ Remove-Item build3ds\e01_bin\crunch64.cmd -ErrorAction SilentlyContinue
 $env:PATH = "$root\build3ds\e01_bin;$env:PATH"
 $null | ninja e01_assets -k 0
 Write-Host "done (one expected failure: ver/us/build/crash_screen/font.png.bin)"
+# 6. effect table, macros and EffectID enum (S11). Same command as the repo's effect_data ninja rule.
+& $py tools\build\effects.py src\effects.yaml assets\us\effects

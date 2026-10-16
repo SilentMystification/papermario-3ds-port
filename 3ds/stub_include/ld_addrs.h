@@ -1,6 +1,7 @@
 #ifndef LD_ADDRS_H
 #define LD_ADDRS_H
 #include "entity_model_offsets.h"
+#include "effect_ld_addrs.h"
 
 /* Code overlays are already linked into the 3dsx. A zero-length copy leaves them alone.
  * Asset ranges are ROM file offsets. dma_copy treats the pointer value as that offset. */

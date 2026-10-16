@@ -71,7 +71,11 @@ extern "C" {
 #define OS_CYCLES_TO_USEC(c)	(((u64)(c)*(1000000LL/15625LL))/(OS_CPU_COUNTER/15625LL))
 
 /* OS_K?_TO_PHYSICAL macro bug fix for CodeWarrior */
-#ifndef __MWERKS__
+#if defined(TARGET_3DS)
+/* Host pointers are not KSEG0. Subtracting the base puts 0x8 in the top nibble of a linked pointer, and the 3dsx loader rejects that. */
+#define	OS_K0_TO_PHYSICAL(x)	(u32)(x)
+#define	OS_K1_TO_PHYSICAL(x)	(u32)(x)
+#elif !defined(__MWERKS__)
 #define	OS_K0_TO_PHYSICAL(x)	(u32)(((char *)(x)-0x80000000))
 #define	OS_K1_TO_PHYSICAL(x)	(u32)(((char *)(x)-0xa0000000))
 #else

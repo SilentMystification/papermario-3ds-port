@@ -11,6 +11,16 @@ void osInvalICache(void* addr, s32 nbytes) {
     (void)nbytes;
 }
 
+/* The R4300 TLB does not exist here. Effect overlays are linked in, so nothing needs mapping. */
+void osMapTLB(s32 index, OSPageMask pm, void* vaddr, u32 evenpaddr, u32 oddpaddr, s32 pagesize) {
+    (void)index; (void)pm; (void)vaddr; (void)evenpaddr; (void)oddpaddr; (void)pagesize;
+}
+void osUnmapTLB(s32 index) { (void)index; }
+void osUnmapTLBAll(void) {}
+/* TLB window buffers (heaps.c on N64). Only their addresses reach osMapTLB, so one byte is enough. */
+u8 gEffectDataBuffer[1];
+u8 gEffectGlobals[1];
+
 void bcopy(const void* src, void* dst, unsigned int n) {
     memcpy(dst, src, n);
 }
