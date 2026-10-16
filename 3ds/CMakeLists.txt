@@ -74,6 +74,22 @@ set(GAME_SRC
     ${DECOMP}/src/evt/map_api.c
     ${DECOMP}/src/world/script_api/enter_exit.c
     ${DECOMP}/src/evt/audio_api.c
+    ${DECOMP}/src/heaps.c
+    ${DECOMP}/src/audio/ambience.c
+    ${DECOMP}/src/audio/bgm_control.c
+    ${DECOMP}/src/audio/bgm_player.c
+    ${DECOMP}/src/audio/load_banks.c
+    ${DECOMP}/src/audio/mseq_player.c
+    ${DECOMP}/src/audio/sfx_control.c
+    ${DECOMP}/src/audio/sfx_player.c
+    ${DECOMP}/src/audio/snd_interface.c
+    ${DECOMP}/src/audio/core/engine.c
+    ${DECOMP}/src/audio/core/pull_voice.c
+    ${DECOMP}/src/audio/core/reverb.c
+    ${DECOMP}/src/audio/core/syn_driver.c
+    ${DECOMP}/src/audio/core/system.c
+    ${DECOMP}/src/audio/core/tables.c
+    ${DECOMP}/src/audio/core/voice.c
     ${DECOMP}/src/enemy_ai.c
     ${DECOMP}/src/effects.c
     ${DECOMP}/src/effect_utils.c
@@ -193,6 +209,7 @@ set(PORT_SRC
     src/pm_nusys.c
     src/pm_os.c
     src/pm_audio.c
+    src/pm_rsp_audio.c
     src/pm_later.c
     src/pm_overlay.c
     src/pm_map.c
@@ -224,6 +241,14 @@ foreach(line ${EFFECT_SHIM_LINES})
         list(APPEND EFFECT_SHIM_DEFSYMS "-Wl,--defsym,shim_${fn}=${fn}")
     endif()
 endforeach()
+
+# The decomp assumes 4-byte enums. arm-none-eabi-gcc makes enums as small as possible, so an AuResult that holds a
+# song name (0x31303120) was cut to one byte. Files that include libctru or citro3d keep the default, because
+# those libraries were built with it and their structures hold enums.
+set(PM_NO_SHORT_ENUM_SRC ${PORT_SRC} ${GAME_SRC})
+list(REMOVE_DUPLICATES PM_NO_SHORT_ENUM_SRC)
+list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c)
+set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
 
 add_executable(pm_3ds
     ${PORT_SRC}

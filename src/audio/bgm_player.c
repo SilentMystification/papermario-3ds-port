@@ -803,7 +803,7 @@ void au_bgm_player_initialize(BGMPlayer* player) {
     buf = player->compReadPos;
     keepReading = true;
     while (keepReading) {
-        cmd = *buf++;
+        cmd = AU_BE32(*buf++);
         if (cmd == 0) {
             keepReading = false;
         } else if ((cmd & 0xF0000000) == BGM_COMP_START_LOOP << 28) {
@@ -864,7 +864,7 @@ void au_bgm_player_read_composition(BGMPlayer* player) {
     player->masterTempoTicks = 0;
 
     while (continueReading) {
-        cmd = *player->compReadPos++;
+        cmd = AU_BE32(*player->compReadPos++);
         if (cmd == BGM_COMP_END) {
             player->masterState = BGM_PLAY_STATE_STOP;
             continueReading = false;
@@ -952,7 +952,7 @@ void au_bgm_load_phrase(BGMPlayer* player, u32 cmd) {
     trackList = player->phraseStartPos;
     for (i = 0; i < ARRAY_COUNT(player->tracks); i++) {
         track = &player->tracks[i];
-        trackInfo = *trackList++;
+        trackInfo = AU_BE32(*trackList++);
         track->bgmReadPos = (AuFilePos) (trackInfo >> 0x10);
         if (track->bgmReadPos != nullptr) {
             if ((trackInfo & 0x100) == 0) {
@@ -1380,6 +1380,25 @@ void au_bgm_player_update_playing(BGMPlayer *player) {
                                 POST_BGM_READ();
                             }
                             bgm_args_done:
+#ifdef TARGET_3DS
+                            // The arguments were read as bytes in file order. The multi-byte fields of SeqArgs are read in host order.
+                            switch (opcode) {
+                                case 0xE0: // MasterTempo: u16
+                                case 0xE5: // MasterVolumeFade: u16, u8
+                                case 0xEF: // TrackDetune: s16
+                                case 0xF6: // TrackVolumeFade: u16, u8
+                                case 0xFC: // Branch: u16, u8
+                                case 0xFE: // Detour: u16, u8
+                                    au_swap16(&player->seqCmdArgs.raw[0], 1);
+                                    break;
+                                case 0xE4: // MasterTempoFade: u16, u16
+                                    au_swap16(&player->seqCmdArgs.raw[0], 2);
+                                    break;
+                                case 0xFD: // EventTrigger: u32
+                                    au_swap32(&player->seqCmdArgs.raw[0], 1);
+                                    break;
+                            }
+#endif
                             CurrentSeqCmdHandler = SeqCmdHandlers[opcode - 0xE0];
                             CurrentSeqCmdHandler(player, track);
                         }

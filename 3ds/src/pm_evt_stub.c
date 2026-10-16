@@ -27,5 +27,4 @@ EvtScript hos_05_EVS_EnterStarship = {
     Return
     End
 };
-void sfx_play_sound(s32 id) { (void)id; }
 STUB(ShowMessageAtWorldPos)

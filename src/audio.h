@@ -42,6 +42,19 @@ typedef u8* WaveData;
 #define ALIGN16_(val) (((val) + 0xF) & 0xFFF0)
 #define AU_FILE_RELATIVE(base,offset) ((void*)((s32)(offset) + (s32)(base)))
 
+#ifdef TARGET_3DS
+// The audio data in the ROM is big-endian. The 3DS is little-endian. Each structure is converted once, right after it is read.
+void au_swap16(void* p, s32 count);
+void au_swap32(void* p, s32 count);
+#define AU_BE16(x) __builtin_bswap16(x)
+#define AU_BE32(x) __builtin_bswap32(x)
+#else
+#define au_swap16(p, count) ((void)0)
+#define au_swap32(p, count) ((void)0)
+#define AU_BE16(x) (x)
+#define AU_BE32(x) (x)
+#endif
+
 #if VERSION_PAL
 #define VIDEO_FRAMES_PER_SECOND 50
 #define AUDIO_HEAP_SIZE 0x5B000
@@ -708,12 +721,22 @@ typedef struct SoundLerp {
 typedef struct SoundPlayChange {
     union {
         u32 all;
+#ifdef TARGET_3DS
+        // `all |= 0x10101` assumes big-endian byte order (tune in the top byte)
+        struct {
+            u8 reverb;
+            u8 pan;
+            u8 volume;
+            u8 tune;
+        };
+#else
         struct {
             u8 tune;
             u8 volume;
             u8 pan;
             u8 reverb;
         };
+#endif
     };
 } SoundPlayChange;
 
@@ -1318,12 +1341,22 @@ typedef struct AmbienceSavedVoice {
  * and command execution (e.g. stop or pitch/volume changes).
  */
 typedef union AmbVoiceStateInfo {
+#ifdef TARGET_3DS
+    // `all` is packed with shifts that assume big-endian byte order (playerIndex in the top byte)
+    struct {
+        u8 released;
+        u8 tune;
+        u8 trackIndex;
+        u8 playerIndex;
+    };
+#else
     struct {
         u8 playerIndex;     /// Index of the owning ambience player
         u8 trackIndex;      ///< Track index within the player (0–9)
         u8 tune;            ///< Note or drum ID used to differentiate voices on the same track
         u8 released;        ///< Set to true when the voice should be released/stopped
     };
+#endif
     s32 all;
 } AmbVoiceStateInfo;
 

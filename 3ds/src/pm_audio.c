@@ -2,12 +2,13 @@
 #include <string.h>
 #include "pm_port.h"
 
-#define CAP 32768
+#define CAP 8192
+#define SLOTS 8
 
 static int ready;
 static unsigned rate = 32000;
-static ndspWaveBuf wb[2];
-static s16* data[2];
+static ndspWaveBuf wb[SLOTS];
+static s16* data[SLOTS];
 
 void pm_audio_init(void) {
     if (ready) return;
@@ -20,7 +21,7 @@ void pm_audio_init(void) {
     ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
     ndspChnSetRate(0, (float)rate);
     ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < SLOTS; i++) {
         data[i] = (s16*)linearAlloc(CAP);
         memset(&wb[i], 0, sizeof(wb[i]));
         wb[i].status = NDSP_WBUF_DONE;
@@ -37,8 +38,22 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
     if (!pcm || bytes < 4) return;
     if (!ready) pm_audio_init();
     if (!ready) return;
+    {
+        /* Log once per 120 posts: how many were queued and the loudest sample, to check the output in an emulator. */
+        static unsigned posts;
+        static int peak;
+        const s16* p = (const s16*)pcm;
+        for (unsigned i = 0; i < bytes / 2; i++) {
+            int v = p[i] < 0 ? -p[i] : p[i];
+            if (v > peak) peak = v;
+        }
+        if (++posts % 120 == 0) {
+            pm_log("audio posts %u peak %d\n", posts, peak);
+            peak = 0;
+        }
+    }
     int slot = -1;
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < SLOTS; i++) {
         if (wb[i].status != NDSP_WBUF_QUEUED && wb[i].status != NDSP_WBUF_PLAYING) {
             slot = i;
             break;
@@ -54,4 +69,76 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
     wb[slot].nsamples = bytes / 4;
     wb[slot].status = NDSP_WBUF_FREE;
     ndspChnWaveBufAdd(0, &wb[slot]);
+}
+
+/* The N64 audio manager is a thread that blocks on a message queue. Run it as a real thread,
+ * but hand control back and forth so that only one of the two threads runs at a time.
+ * The game thread resumes it once per retrace and waits until it blocks again. */
+static Thread au_thread;
+static LightSemaphore au_run, au_idle;
+static void (*au_entry)(void*);
+static void* au_arg;
+static unsigned long long au_last;
+
+static void au_main(void* unused) {
+    (void)unused;
+    au_entry(au_arg);
+}
+
+void pm_au_thread_start(void (*entry)(void*), void* arg) {
+    if (au_thread) return;
+    au_entry = entry;
+    au_arg = arg;
+    LightSemaphore_Init(&au_run, 0, 1);
+    LightSemaphore_Init(&au_idle, 0, 1);
+    s32 prio = 0x30;
+    svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
+    au_thread = threadCreate(au_main, NULL, 64 * 1024, prio, -2, false);
+    if (!au_thread) {
+        pm_log("audio thread failed\n");
+        return;
+    }
+    LightSemaphore_Acquire(&au_idle, 1);
+    pm_log("audio manager thread ready");
+}
+
+int pm_au_thread_started(void) { return au_thread != NULL; }
+
+/* Called by the audio thread when it waits on an empty queue. Returns 0 on any other thread. */
+int pm_au_thread_yield(void) {
+    if (!au_thread || threadGetCurrent() != au_thread) return 0;
+    LightSemaphore_Release(&au_idle, 1);
+    LightSemaphore_Acquire(&au_run, 1);
+    return 1;
+}
+
+void pm_au_thread_resume(void) {
+    LightSemaphore_Release(&au_run, 1);
+    LightSemaphore_Acquire(&au_idle, 1);
+}
+
+/* Number of 60 Hz retraces that passed since the last call, at most 3. */
+unsigned pm_audio_retraces(void) {
+    unsigned long long now = svcGetSystemTick();
+    unsigned long long per = SYSCLOCK_ARM11 / 60ull;
+    if (!au_last) au_last = now;
+    unsigned long long n = (now - au_last) / per;
+    au_last += n * per;
+    if (n > 3) {
+        n = 3;
+        au_last = now;
+    }
+    return (unsigned)n;
+}
+
+/* Bytes of PCM that were posted and not played yet. This is what osAiGetLength reports. */
+unsigned pm_audio_pending(void) {
+    unsigned n = 0;
+    if (!ready) return 0;
+    for (int i = 0; i < SLOTS; i++) {
+        if (wb[i].status == NDSP_WBUF_QUEUED || wb[i].status == NDSP_WBUF_PLAYING) n += wb[i].nsamples;
+    }
+    unsigned pos = ndspChnGetSamplePos(0);
+    n = n > pos ? n - pos : 0;
+    return n * 4;
 }

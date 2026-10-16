@@ -768,7 +768,7 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
         soundIndex = (request->soundID - 1) & SOUND_ID_UNK_INDEX_MASK;
         if (soundIndex < 0x140) {
             cmdList = (u16*)&manager->extraSounds[soundIndex];
-            if (*cmdList != 0) {
+            if (AU_BE16(*cmdList) != 0) {
                 // check if any player is playing this sound
                 for (playerIndex = 7; playerIndex >= 0; playerIndex--) {
                     player = &manager->players[playerIndex];
@@ -805,7 +805,7 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
                 cmdList = (u16*)&manager->normalSounds[sectionIndex][v1];
             }
 
-            if (*cmdList != 0) {
+            if (AU_BE16(*cmdList) != 0) {
                 // check if any player is playing this sound
                 for (playerIndex = 7; playerIndex >= 0; playerIndex--) {
                     player = &manager->players[playerIndex];
@@ -838,9 +838,9 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
                 cmdList = (u16*)&manager->normalSounds[sectionIndex][soundIndex];
             }
 
-            if (*cmdList != 0) {
+            if (AU_BE16(*cmdList) != 0) {
                 // read sound info chunk
-                soundInfo = cmdList[1];
+                soundInfo = AU_BE16(cmdList[1]);
 
                 priority = (soundInfo & 0x300) >> 8; // bits 8, 9
                 polyphonyMode = (soundInfo & 0x60) >> 5; // bits 5, 6,
@@ -863,7 +863,7 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
                             playerIndex = soundInfo & 0x7;
                             player = &manager->players[playerIndex];
                             if (player->sefDataReadPos == nullptr || priority >= player->priority) {
-                                au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, *cmdList), request, priority, 0);
+                                au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, AU_BE16(*cmdList)), request, priority, 0);
                             }
                             return;
                         }
@@ -912,10 +912,10 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
                     }
 
                     if (foundPlayer) {
-                        au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, *cmdList), request, priority, 0);
+                        au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, AU_BE16(*cmdList)), request, priority, 0);
                     }
                 } else {
-                    cmdList = AU_FILE_RELATIVE(manager->sefData, *cmdList);
+                    cmdList = AU_FILE_RELATIVE(manager->sefData, AU_BE16(*cmdList));
                     exclusiveID = (soundInfo & 0x1800) >> 11; // bits 11, 12
                     if (exclusiveID != 0) {
                         au_sfx_stop_by_exlusive_id(manager, exclusiveID);
@@ -927,11 +927,11 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
 
                     if (useSpecificPlayerMode != 0) {
                         for (playerIndex = 7; playerIndex >= 0; playerIndex--) {
-                            if (*cmdList != 0) {
+                            if (AU_BE16(*cmdList) != 0) {
                                 // first check the players that were stopped just now
                                 player = &manager->players[playerIndex];
                                 if (player->sefDataReadPos == BlankSEFData) {
-                                    au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, *cmdList), request, priority, exclusiveID);
+                                    au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, AU_BE16(*cmdList)), request, priority, exclusiveID);
                                     NEXT_POLY_TRACK;
                                 }
                             } else {
@@ -942,11 +942,11 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
 
                         if (trackCount != 0) {
                             for (playerIndex = 7; playerIndex >= 0;){
-                                if (*cmdList != 0) {
+                                if (AU_BE16(*cmdList) != 0) {
                                     // then check any free players
                                     player = &manager->players[playerIndex];
                                     if (player->sefDataReadPos == nullptr) {
-                                        au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, *cmdList), request, priority, exclusiveID);
+                                        au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, AU_BE16(*cmdList)), request, priority, exclusiveID);
                                         NEXT_POLY_TRACK;
                                     }
                                     playerIndex--;
@@ -958,11 +958,11 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
 
                         if (trackCount != 0) {
                             for (playerIndex = 7; playerIndex >= 0; playerIndex--) {
-                                if (*cmdList != 0) {
+                                if (AU_BE16(*cmdList) != 0) {
                                     // then try to steal
                                     player = &manager->players[playerIndex];
                                     if (exclusiveID > player->exclusiveID && priority >= player->priority) {
-                                        au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, *cmdList), request, priority, exclusiveID);
+                                        au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, AU_BE16(*cmdList)), request, priority, exclusiveID);
                                         NEXT_POLY_TRACK;
                                     }
                                 } else {
@@ -973,13 +973,13 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
                     } else {
                         s32 i;
                         for (i = 0; i < trackCount; i++) {
-                            if (*cmdList != 0) {
-                                soundInfo = cmdList[1];
+                            if (AU_BE16(*cmdList) != 0) {
+                                soundInfo = AU_BE16(cmdList[1]);
                                 playerIndex = soundInfo & 7;
                                 player = &manager->players[playerIndex];
                                 priority = (soundInfo & 0x300) >> 8; // bits 8, 9
                                 if (player->sefDataReadPos == nullptr || priority >= player->priority) {
-                                    au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, *cmdList), request, priority, exclusiveID);
+                                    au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, AU_BE16(*cmdList)), request, priority, exclusiveID);
                                 }
                                 cmdList += 2;
                             }

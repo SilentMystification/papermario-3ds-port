@@ -1,11 +1,7 @@
 /* Systems the logo slice does not run. Each one is replaced by its real file later. */
-unsigned char heap_battleHead[0x25800];
+unsigned char heap_battleHead[0x25800] __attribute__((aligned(16)));
 void update_max_rumble_duration() {}
 /* npc_iter_no_op is npc.c */
-void bgm_update_music_control() {}
-void update_ambient_sounds() {}
-void sfx_update_env_sound_params() {}
-void sfx_stop_env_sounds() {}
 /* disable_player_input is 77480.c */
 /* spr_render_init is sprite.c */
 /* player_render_interact_prompts is 77480.c */
@@ -16,17 +12,10 @@ void fio_init_flash() {}
 void reset_background_settings() {}
 /* clear_npcs is npc.c */
 /* init_encounter_status is npc.c */
-void bgm_reset_sequence_players() {}
-void reset_ambient_sounds() {}
-void sfx_clear_sounds() {}
 void poll_rumble() {}
 void reset_battle_status() {}
-void bgm_init_music_players() {}
 void partner_initialize_data() {}
-void bgm_reset_volume() {}
 void fio_load_globals() {}
-void snd_set_stereo() {}
-void snd_set_mono() {}
 /* update_npcs, update_player, update_encounters are npc.c and 77480.c */
 void clear_virtual_entity_list() {}
 void init_virtual_entity_list() {}
@@ -63,9 +52,7 @@ void state_step_game_over() {}
 void state_step_language_select() {}
 void state_step_pause() {}
 void state_step_unpause() {}
-unsigned char heap_collisionHead[0x20000];
-unsigned char BattleEntityHeapBottom[0x3000] __attribute__((aligned(0x1000)));
-int snd_stop_sound() { return 0; }
+unsigned char heap_collisionHead[0x20000] __attribute__((aligned(16)));
 void world_lakilester_sync_player_position() {}
 void world_sushie_sync_player_position() {}
 short FlowerGoalPositionX, FlowerGoalPositionY, FlowerGoalPositionZ;

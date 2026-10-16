@@ -146,7 +146,7 @@ void bgm_update_music_control(void) {
                         music->state = MUSIC_STATE_IDLE;
                     } else {
                         music->songName = snd_song_load(music->requestedSongID, i);
-                        // snd_song_lond may return either songName or an AuResult error code.
+                                            // snd_song_lond may return either songName or an AuResult error code.
                         // since song names are 4-character big-endian identifiers packed into an s32, we require
                         // the upper half of the return value to be nonzero for songs which loaded without error.
                         // this reserves return values from 0 to 0xFFFF for AuResult codes.

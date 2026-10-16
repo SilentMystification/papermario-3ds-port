@@ -25,5 +25,12 @@ unsigned pm_linear_bytes(void);
 void pm_gfx_retrace(void);
 void pm_audio_init(void);
 void pm_audio_post(const void* pcm, unsigned bytes, unsigned rate);
+void pm_au_thread_start(void (*entry)(void*), void* arg);
+int pm_au_thread_started(void);
+int pm_au_thread_yield(void);
+void pm_au_thread_resume(void);
+unsigned pm_audio_retraces(void);
+unsigned pm_audio_pending(void);
+void pm_audio_tick(void);
 
 #endif

@@ -3,6 +3,8 @@
 #include <string.h>
 #include <malloc.h>
 #include "ultra64.h"
+#include "nu/nusys.h"
+#include "enums.h"
 #include "pm_port.h"
 #include "pm_tex.h"
 
@@ -17,9 +19,6 @@ void osMapTLB(s32 index, OSPageMask pm, void* vaddr, u32 evenpaddr, u32 oddpaddr
 }
 void osUnmapTLB(s32 index) { (void)index; }
 void osUnmapTLBAll(void) {}
-/* TLB window buffers (heaps.c on N64). Only their addresses reach osMapTLB, so one byte is enough. */
-u8 gEffectDataBuffer[1];
-u8 gEffectGlobals[1];
 
 void bcopy(const void* src, void* dst, unsigned int n) {
     memcpy(dst, src, n);
@@ -75,12 +74,82 @@ s32 osSendMesg(OSMesgQueue* mq, OSMesg mesg, s32 block) {
 }
 
 s32 osRecvMesg(OSMesgQueue* mq, OSMesg* mesg, s32 block) {
-    (void)block;
-    if (!mq || mq->validCount <= 0 || mq->msgCount <= 0) return -1;
+    if (!mq || mq->msgCount <= 0) return -1;
+    /* Only the audio manager thread blocks. It gives control back to the game thread until a message arrives. */
+    while (mq->validCount <= 0) {
+        if (!block || !pm_au_thread_yield()) return -1;
+    }
     if (mesg) *mesg = mq->msg[mq->first];
     mq->first = (mq->first + 1) % mq->msgCount;
     mq->validCount--;
     return 0;
+}
+
+/* The audio thread of the N64 nusys scheduler. nusys itself is not built. */
+NUSched nusched = { .retraceCount = 1 }; /* one audio frame per 60 Hz retrace */
+static NUScClient* au_client;
+static OSThread* au_os_thread;
+static void (*au_entry)(void*);
+static void* au_arg;
+OSPiHandle* nuPiCartHandle;
+
+void osCreateThread(OSThread* t, OSId id, void (*entry)(void*), void* arg, void* sp, OSPri p) {
+    (void)sp; (void)p;
+    t->id = id;
+    if (id == THREAD_ID_AUDIO) {
+        au_os_thread = t;
+        au_entry = entry;
+        au_arg = arg;
+    }
+}
+
+void osStartThread(OSThread* t) {
+    if (t == au_os_thread && au_entry) pm_au_thread_start(au_entry, au_arg);
+}
+
+OSIntMask osSetIntMask(OSIntMask m) { return m; }
+
+void nuScAddClient(NUScClient* c, OSMesgQueue* mq, NUScMsg msgType) {
+    c->msgQ = mq;
+    c->msgType = msgType;
+    c->next = nusched.clientList;
+    nusched.clientList = c;
+    if (msgType & NU_SC_RETRACE_MSG) au_client = c;
+}
+
+/* One retrace. Wakes the audio manager, then plays the part of the RSP and the scheduler: each audio task it
+ * submits is finished at once (the work already ran in pm_rsp_audio.c) and its reply message is sent. */
+void pm_audio_tick(void) {
+    static unsigned ticks, sum, worst;
+    unsigned t0;
+    if (!au_client || !pm_au_thread_started()) return;
+    t0 = pm_ticks();
+    if (!nusched.audioRequestMQ.msgCount) {
+        osCreateMesgQueue(&nusched.audioRequestMQ, nusched.audioRequestBuf, NU_SC_MAX_MESGS);
+        nusched.retraceMsg = NU_SC_RETRACE_MSG;
+    }
+    osSendMesg(au_client->msgQ, (OSMesg)&nusched.retraceMsg, OS_MESG_NOBLOCK);
+    for (int i = 0; i < 8; i++) {
+        int any = 0;
+        OSMesg m;
+        pm_au_thread_resume();
+        while (osRecvMesg(&nusched.audioRequestMQ, &m, OS_MESG_NOBLOCK) == 0) {
+            NUScTask* t = (NUScTask*)m;
+            osSendMesg(t->msgQ, t->msg, OS_MESG_NOBLOCK);
+            any = 1;
+        }
+        if (!any) break;
+    }
+    {
+        /* Frame cost of the audio engine. 268111856 ticks per second on the ARM11. */
+        unsigned dt = pm_ticks() - t0;
+        sum += dt;
+        if (dt > worst) worst = dt;
+        if (++ticks == 120) {
+            pm_log("audio cost avg %u us max %u us per 60 Hz tick", (unsigned)((unsigned long long)sum * 1000 / 120 / 268112), (unsigned)((unsigned long long)worst * 1000 / 268112));
+            ticks = sum = worst = 0;
+        }
+    }
 }
 
 void pm_rom_init(void) {
@@ -165,6 +234,13 @@ s32 osPiStartDma(OSIoMesg* mb, s32 priority, s32 direction, u32 devAddr, void* v
     return 0;
 }
 
+s32 osEPiStartDma(OSPiHandle* handle, OSIoMesg* mb, s32 direction) {
+    (void)handle;
+    if (direction == OS_READ) nuPiReadRom(mb->devAddr, mb->dramAddr, mb->size);
+    if (mb->hdr.retQueue) osSendMesg(mb->hdr.retQueue, (OSMesg)mb, OS_MESG_NOBLOCK);
+    return 0;
+}
+
 s32 osAiSetFrequency(u32 hz) {
     pm_audio_post(NULL, 0, (unsigned)hz);
     return (s32)hz;
@@ -175,5 +251,5 @@ s32 osAiSetNextBuffer(void* buf, u32 nbytes) {
     return 0;
 }
 
-u32 osAiGetLength(void) { return 0; }
+u32 osAiGetLength(void) { return pm_audio_pending(); }
 u32 osAiGetStatus(void) { return 0; }

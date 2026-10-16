@@ -46,7 +46,8 @@ void pm_game_bind(void) {
 void crash_screen_init(void) {}
 void is_debug_init(void) {}
 void load_obfuscation_shims(void) {}
-void shim_create_audio_system_obfuscated(void) {}
+void create_audio_system(void);
+void shim_create_audio_system_obfuscated(void) { create_audio_system(); }
 
 void load_engine_data(void);
 void shim_load_engine_data_obfuscated(void) { load_engine_data(); }

@@ -4,12 +4,6 @@
 
 /* Systems kmr_20 reaches that are not linked yet. Each is replaced by its real file later. */
 
-/* No audio backend yet. Return success so SetMusic and FadeOutMusic do not block. */
-s32 bgm_set_song(s32 playerIndex, s32 songID, s32 variation, s32 fadeOutTime, s16 volume) { return 1; }
-s32 play_ambient_sounds(s32 fadeInTime, s32 fadeOutTime) { return 1; }
-AuResult snd_ambient_stop_slow(s32 a, s32 b) { return 0; }
-AuResult snd_ambient_set_volume(s32 a, s32 b, s32 c) { return 0; }
-void sfx_play_sound_at_player(s32 soundID, s32 arg1) {}
 
 void enable_partner_ai(void) {}
 void func_800EF314(void) {}
