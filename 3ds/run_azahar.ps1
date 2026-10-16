@@ -1,7 +1,7 @@
 <#
 run_azahar.ps1 - run build3ds/pm_3ds.3dsx in Azahar, wait for a log line, then close Azahar.
 
-  powershell -File 3ds/run_azahar.ps1 [-Until <regex>] [-Timeout <s>] [-Capture] [-Gdb]
+  powershell -File 3ds/run_azahar.ps1 [-Until <regex>] [-Timeout <s>] [-Capture] [-Gdb] [-FaultStop]
 
 Stops at the first of: a log line that matches -Until, a [CRASH] line, an Azahar CPU
 exception dialog, Azahar exit,
@@ -14,7 +14,9 @@ Output: build3ds/last_log.txt (game log), build3ds/last_shot.png (-Capture), and
 batch mode. gdb runs -GdbScript (gdb commands, e.g. "break boot_main"), then "continue".
 When the game stops (breakpoint or fault), gdb prints a backtrace, the registers and the stack.
 Output: build3ds/last_gdb.txt. The run ends when gdb exits or at -Timeout. Log-silence
-detection is off, because a stopped game is silent. For an interactive prompt use 3ds/gdb.sh.
+detection is off, because a stopped game is silent.
+-FaultStop: stop at the first "UnmappedAccess" line in Azahar's log (Memory class, Info level, already on).
+Every run writes build3ds/last_unmapped.txt: each distinct (PC, address) with a count, or nothing. For an interactive prompt use 3ds/gdb.sh.
 #>
 param(
     [string]$Until = "",
@@ -22,6 +24,7 @@ param(
     [int]$Stall = 10,
     [switch]$Capture,
     [switch]$Gdb,
+    [switch]$FaultStop, # stop at the first unmapped memory access that Azahar logs (a data abort on hardware)
     [switch]$Interactive, # a person plays: no timeout, no log-silence stop, settings windows allowed
     [string]$GdbScript = "",
     [string]$Debug = ""  # render debug switches for the game, see pm_main.c (nofog nolight notex texonly logtev)
@@ -134,6 +137,7 @@ try {
         if ($gdbProc -and $gdbProc.HasExited) { $reason = "gdb finished"; break }
         # Azahar shows a dialog on a guest CPU exception and the game stops: kill at once
         if (-not $Interactive -and [AzEnum]::Count([uint32]$p.Id) -gt 1) { Start-Sleep -Seconds 4; $reason = "Azahar dialog (exception or error), windows: $([AzEnum]::Titles)"; break }
+        if ($FaultStop -and (Read-Tail $emuLog) -match "UnmappedAccess") { Start-Sleep -Seconds 1; $reason = "unmapped access"; break }
         if ((Read-Tail $emuLog) -match "Exception Type:") { Start-Sleep -Seconds 4; $reason = "emulator exception"; break }
         if (-not (Test-Path $log)) { continue }
         # The game logs at least once per second; silence means a hang or an exception dialog
@@ -222,13 +226,19 @@ if ($i -ge 0) {
 }
 # Unmapped accesses: Azahar returns 0 and continues; real hardware faults. Report the top sites.
 $bad = @{}
+$badFull = @{}
 try {
     $sr = New-Object IO.StreamReader([IO.File]::Open($emuLog, "Open", "Read", "ReadWrite"))
     while (($line = $sr.ReadLine()) -ne $null) {
-        if ($line -match "UnmappedAccess.* at PC 0x([0-9A-F]{8})") { $bad[$Matches[1]] = 1 + [int]$bad[$Matches[1]] }
+        if ($line -match "UnmappedAccess.* at PC 0x([0-9A-F]{8})") {
+            $bad[$Matches[1]] = 1 + [int]$bad[$Matches[1]]
+            $key = ($line -replace "^\[[^\]]*\]\s*", "") -replace "^\S+\s+<\w+>\s*", ""
+            $badFull[$key] = 1 + [int]$badFull[$key]
+        }
     }
     $sr.Close()
 } catch {}
+Set-Content "$out\last_unmapped.txt" ($badFull.GetEnumerator() | Sort-Object Value -Descending | ForEach-Object { "{0,8}x {1}" -f $_.Value, $_.Key })
 if ($bad.Count) {
     $top = $bad.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 3
     Write-Output "--- WARNING: unmapped memory accesses (a fault on hardware) ---"

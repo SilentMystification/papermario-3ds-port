@@ -216,8 +216,11 @@ void state_step_intro(void) {
             /* hos_04 and later have no script linked yet. The retail flow
              * would keep playing those maps; without a script, go to the title. */
             if (!does_script_exist(gGameStatusPtr->mainScriptID)) {
+                /* Run the INTRO_PART_NONE branch above next frame. It clears the model, entity and
+                 * script lists before the title screen starts. Without it, wModelList keeps pointers
+                 * into the old heap and the first title frame writes through them. */
                 gGameStatusPtr->introPart = INTRO_PART_NONE;
-                set_game_mode(GAME_MODE_TITLE_SCREEN);
+                gGameStatusPtr->startupState = INTRO_LOAD_MAP;
                 return;
             }
             gGameStatusPtr->startupState = INTRO_AWAIT_MAIN;

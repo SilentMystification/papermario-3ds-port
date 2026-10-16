@@ -8,6 +8,7 @@ static unsigned short press_seen; /* presses since the last read: a tap shorter 
 static unsigned tap_injected, tap_seen;
 static signed char stick_x;
 static signed char stick_y;
+static int rand_on, rand_x, rand_y; /* padrand switch */
 
 static int clamp_stick(int v) {
     v = v * 80 / 154;
@@ -65,6 +66,29 @@ void pm_pad_scan(void) {
             edge |= 0x8000;
             tap_injected++;
         }
+        /* padrand switch (slice F01): a seeded random walk. The stick holds one direction for 20 to 60
+         * scans, B and START and Z tap now and then. With autoa this jumps, bumps walls and walks into loading zones. */
+        if (pm_debug_has("padrand")) {
+            static unsigned rng = 12345, left;
+            if (left == 0) {
+                rng = rng * 1103515245u + 12345u;
+                unsigned r = rng >> 8;
+                left = 20 + r % 41;
+                int dir = (r >> 6) % 9;
+                rand_x = dir == 8 ? 0 : (int)(70 * __builtin_cosf(dir * 0.7853982f));
+                rand_y = dir == 8 ? 0 : (int)(70 * __builtin_sinf(dir * 0.7853982f));
+            }
+            left--;
+            rand_on = 1;
+            if (pm_pad_scans % 97 < 3) { b |= 0x4000; edge |= 0x4000; }
+            if (pm_pad_scans % 701 < 3) { b |= 0x1000; edge |= 0x1000; }
+            if (pm_pad_scans % 211 < 3) { b |= 0x2000; edge |= 0x2000; }
+        }
+        /* faulttest switch (slice F01): one read of address 0x10 at scan 300, to check the fault detector */
+        if (pm_debug_has("faulttest") && pm_pad_scans == 300) {
+            pm_log("faulttest read 0x10");
+            pm_log("faulttest value %u", *(volatile unsigned*)0x10);
+        }
         pm_pad_scans++;
     }
     held = b;
@@ -76,6 +100,10 @@ void pm_pad_scan(void) {
     hidCircleRead(&c);
     stick_x = (signed char)clamp_stick(c.dx);
     stick_y = (signed char)clamp_stick(c.dy);
+    if (rand_on) {
+        stick_x = (signed char)rand_x;
+        stick_y = (signed char)rand_y;
+    }
 }
 
 void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsigned short* trigger) {
