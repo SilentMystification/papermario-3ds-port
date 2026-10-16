@@ -62,8 +62,6 @@ static u8 seen[256];
  * x is the first vertex's N64 ndc * 100. */
 static int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample;
 static char stats_line[64];
-/* kmr_20 door, world (240, 30, -80). One object-space corner per second. */
-static int door_have, door_ox, door_oy, door_oz, door_xw, door_yw, door_zw, door_w100;
 static unsigned comb_a, comb_b, comb_c, comb_d;
 static int comb_set;
 /* 1 when the alpha combiner reads shade alpha. DECAL and MODULATE modes do not, and imgfx
@@ -255,30 +253,6 @@ static int clip_near(ClipV* poly, int n) {
     return m;
 }
 
-/* Object-space corner within a few units of the house door. Clip ratios are
- * the same x/w libultraship stores before the viewport. */
-static void note_door(const Vtx* v, const ClipV* o) {
-    int dx = (int)v->v.ob[0] - 240;
-    int dy = (int)v->v.ob[1] - 30;
-    int dz = (int)v->v.ob[2] + 80;
-    if (dx < 0) dx = -dx;
-    if (dy < 0) dy = -dy;
-    if (dz < 0) dz = -dz;
-    if (dx > 16 || dy > 16 || dz > 16) return;
-    if (door_have) return;
-    door_have = 1;
-    door_ox = (int)v->v.ob[0];
-    door_oy = (int)v->v.ob[1];
-    door_oz = (int)v->v.ob[2];
-    door_xw = door_yw = door_zw = 0;
-    if (o->w != 0.f) {
-        door_xw = (int)(o->x / o->w * 100.f);
-        door_yw = (int)(o->y / o->w * 100.f);
-        door_zw = (int)(o->z / o->w * 100.f);
-    }
-    door_w100 = (int)(o->w * 100.f);
-}
-
 /* Same bits as libultraship, except the near plane, which they leave commented out.
  * A triangle is dropped only when every corner is off the same side. */
 static int clip_bits(const ClipV* p) {
@@ -315,7 +289,6 @@ static void draw_tri(unsigned w) {
     idx[2] = i2;
     for (i = 0; i < 3; i++) {
         xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
-        note_door(&verts[idx[i]], &poly[i]);
     }
     if (!have_sample && poly[0].w != 0.f) {
         sample_x = (int)(poly[0].x / poly[0].w * 100.f);
@@ -430,17 +403,6 @@ void pm_gbi_end_frame(void) {
             snprintf(prev, sizeof prev, "%s", line);
         }
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
-        if (door_have) {
-            static char door_prev[64];
-            char door_line[64];
-            snprintf(door_line, sizeof door_line, "door %d %d %d x%d y%d z%d w%d",
-                     door_ox, door_oy, door_oz, door_xw, door_yw, door_zw, door_w100);
-            if (strcmp(door_line, door_prev) != 0) {
-                pm_log("%s", door_line);
-                snprintf(door_prev, sizeof door_prev, "%s", door_line);
-            }
-        }
-        door_have = 0;
     }
     n_cmd = n_in = n_cut = n_drop = n_out = n_keep = 0;
     have_sample = 0;
