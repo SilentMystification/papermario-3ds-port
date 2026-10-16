@@ -1019,6 +1019,69 @@ set(MAP_SRC_mim
     ${DECOMP}/src/world/area_mim/mim_12/gate.c
 )
 set(MAP_SRC_obk
+    ${DECOMP}/src/world/area_obk/obk_01/settings.c
+    ${DECOMP}/src/world/area_obk/obk_01/music.c
+    ${DECOMP}/src/world/area_obk/obk_01/main.c
+    ${DECOMP}/src/world/area_obk/obk_01/chandelier.c
+    ${DECOMP}/src/world/area_obk/obk_01/portrait.c
+    ${DECOMP}/src/world/area_obk/obk_01/jump_scare.c
+    ${DECOMP}/src/world/area_obk/obk_01/npc.c
+    ${DECOMP}/src/world/area_obk/obk_01/entity.c
+    ${DECOMP}/src/world/area_obk/obk_02/settings.c
+    ${DECOMP}/src/world/area_obk/obk_02/music.c
+    ${DECOMP}/src/world/area_obk/obk_02/main.c
+    ${DECOMP}/src/world/area_obk/obk_02/npc.c
+    ${DECOMP}/src/world/area_obk/obk_02/bombable.c
+    ${DECOMP}/src/world/area_obk/obk_02/clock.c
+    ${DECOMP}/src/world/area_obk/obk_02/entity.c
+    ${DECOMP}/src/world/area_obk/obk_03/settings.c
+    ${DECOMP}/src/world/area_obk/obk_03/music.c
+    ${DECOMP}/src/world/area_obk/obk_03/main.c
+    ${DECOMP}/src/world/area_obk/obk_03/shop.c
+    ${DECOMP}/src/world/area_obk/obk_03/entity.c
+    ${DECOMP}/src/world/area_obk/obk_03/stairs.c
+    ${DECOMP}/src/world/area_obk/obk_03/npc.c
+    ${DECOMP}/src/world/area_obk/obk_03/rocking_chair.c
+    ${DECOMP}/src/world/area_obk/obk_04/settings.c
+    ${DECOMP}/src/world/area_obk/obk_04/music.c
+    ${DECOMP}/src/world/area_obk/obk_04/entity.c
+    ${DECOMP}/src/world/area_obk/obk_04/npc.c
+    ${DECOMP}/src/world/area_obk/obk_04/main.c
+    ${DECOMP}/src/world/area_obk/obk_04/hole.c
+    ${DECOMP}/src/world/area_obk/obk_04/game.c
+    ${DECOMP}/src/world/area_obk/obk_05/settings.c
+    ${DECOMP}/src/world/area_obk/obk_05/music.c
+    ${DECOMP}/src/world/area_obk/obk_05/main.c
+    ${DECOMP}/src/world/area_obk/obk_05/rocking_chair.c
+    ${DECOMP}/src/world/area_obk/obk_05/hole.c
+    ${DECOMP}/src/world/area_obk/obk_05/npc.c
+    ${DECOMP}/src/world/area_obk/obk_05/entity.c
+    ${DECOMP}/src/world/area_obk/obk_06/settings.c
+    ${DECOMP}/src/world/area_obk/obk_06/music.c
+    ${DECOMP}/src/world/area_obk/obk_06/main.c
+    ${DECOMP}/src/world/area_obk/obk_06/bombable.c
+    ${DECOMP}/src/world/area_obk/obk_06/entity.c
+    ${DECOMP}/src/world/area_obk/obk_07/settings.c
+    ${DECOMP}/src/world/area_obk/obk_07/music.c
+    ${DECOMP}/src/world/area_obk/obk_07/main.c
+    ${DECOMP}/src/world/area_obk/obk_07/entity.c
+    ${DECOMP}/src/world/area_obk/obk_07/fireplace.c
+    ${DECOMP}/src/world/area_obk/obk_07/npc.c
+    ${DECOMP}/src/world/area_obk/obk_07/phonograph.c
+    ${DECOMP}/src/world/area_obk/obk_08/settings.c
+    ${DECOMP}/src/world/area_obk/obk_08/music.c
+    ${DECOMP}/src/world/area_obk/obk_08/main.c
+    ${DECOMP}/src/world/area_obk/obk_08/cabinets.c
+    ${DECOMP}/src/world/area_obk/obk_08/entity.c
+    ${DECOMP}/src/world/area_obk/obk_08/npc.c
+    ${DECOMP}/src/world/area_obk/obk_08/game.c
+    ${DECOMP}/src/world/area_obk/obk_09/settings.c
+    ${DECOMP}/src/world/area_obk/obk_09/music.c
+    ${DECOMP}/src/world/area_obk/obk_09/main.c
+    ${DECOMP}/src/world/area_obk/obk_09/meet_bow.c
+    ${DECOMP}/src/world/area_obk/obk_09/npc.c
+    ${DECOMP}/src/world/area_obk/obk_09/new_partner.c
+    ${DECOMP}/src/world/area_obk/obk_09/epilogue.c
 )
 set(MAP_SRC_arn
 )
