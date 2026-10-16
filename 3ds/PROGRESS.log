@@ -54,3 +54,9 @@
 06:12 S10 build2 links after dedup (5 symbols)
 06:12 S10 commit 61da9e0da
 06:15 S10 end commit 7e30575c0
+06:16 S15 start
+06:19 S15 finding: tile0 loads shading pal (never filled, cimg ignored) ->dark; plan sw palette rect + dual-tile bake
+06:28 S15 before shots saved build3ds/s15_before (autoa shots, Luigi/Parakarry dark)
+06:29 S15 build ok (pm_gbi sw palette rect + dual-tile lut, pm_tex_load_shaded)
+07:02 S15 finding: no linked map enables shading; SetSpriteShading read ROM words unswapped (profile=0). fixed
+07:08 S15 clean build, running fast autoa shots

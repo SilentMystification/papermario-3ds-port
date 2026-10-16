@@ -17,7 +17,7 @@ Common done check: build passes, no new unresolved symbol, `fast autoa` run reac
 [x] S14 | src/evt/msg_api.c, src/draw_box.c, src/draw_img_util.c, src/speech_bubble.c, src/inspect_icon.c, src/i_spy.c, src/pulse_stone.c replace message and prompt stubs | common check, Parakarry text box shows (moved before S09: S09 needs sfx_play_sound_at_npc, SpeechBubblePtr, cancel_current_message, fx_explosion, fx_static_status)
 [x] S09 | src/world/partners.c and src/world/partner/*.c replace partner_* stubs, gPartnerAnimations, wPartnerNpc | common check
 [x] S10 | src/world/surfaces.c, src/world/menus.c, src/8a860_len_3f30.c replace floor, menu, popup stubs | common check
-[ ] S15 | src/evt/demo_api.c, src/sprite_shading.c. Needs a port-side shader path (see HANDOFF issue 2). Ask user before any port-side code. | common check, no dark characters
+[x] S15 | src/evt/demo_api.c, src/sprite_shading.c. Needs a port-side shader path (see HANDOFF issue 2). Ask user before any port-side code. | common check, no dark characters
 [ ] S16 | Real hos_05 EVS_Starship_Depart and EVS_EnterStarship replace the hand-written scripts in pm_evt_stub.c | common check
 [ ] S18 | src/state_pause.c, state_demo.c, state_game_over.c, state_language_select.c replace remaining state stubs in pm_later.c | common check
 [ ] S19 | src/battle/battle.c and the battle tree replace load_battle, set_battle_*, reset_battle_status, state_*_battle, heap stubs | common check

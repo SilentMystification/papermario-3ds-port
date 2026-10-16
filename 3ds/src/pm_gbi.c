@@ -30,6 +30,24 @@ static int ld_valid, ld_x, ld_y; /* last LoadTile window, in 8-bit texels of the
 static int tile_x0, tile_y0;
 static const void* tlut;
 static int tlut_n;
+/* RDP state the shaded-sprite path needs: color image, TLUT per palette slot, per-tile TMEM
+ * address and palette, tile sizes, scissor, env color and the second combiner cycle. */
+extern int pm_is_cfb(const void* p);
+static void* cimg;
+static int cimg_stride = 320;
+static const void* tlut_pal[16];
+static unsigned tile_tmem[8], tile_pal[8];
+static int tile_sz[8][4];
+static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
+static unsigned envc = 0xffffffffu;
+static unsigned comb2_a, comb2_b, comb2_c, comb2_d;
+static unsigned comb_aa, comb_ab, comb_ac, comb_ad;
+/* The sprite raster captured when tile 1 got its size. A shaded sprite sets two tiles on the
+ * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
+static struct { int valid; const u8* src; int stride, w, h, x0, y0; } m1;
+static int dual_on;
+static float dual_gain[3];
+static void unpack8(unsigned c, float o[4]);
 static unsigned tile_fmt[8], tile_siz[8];
 static u32 segbase[16];
 static Vtx verts[64];
@@ -329,6 +347,26 @@ static void draw_tri(unsigned w) {
     if (!comb_alpha_shade) {
         for (i = 0; i < n; i++) poly[i].a = 255;
     }
+    {
+        int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT &&
+                    comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
+        pm_gpu_set_rgb_scale(boost ? 2 : 1);
+        if (!boost) goto no_boost;
+    }
+    {
+        /* Cycle 2 is (SHADE - ENV) * COMBINED + COMBINED = COMBINED * (SHADE - ENV + 1), up to 2.
+         * The texture stage multiplies by 2, so the vertex carries half of it. */
+        float en[4];
+        unpack8(envc, en);
+        for (i = 0; i < n; i++) {
+            float* ch[3] = { &poly[i].r, &poly[i].g, &poly[i].b };
+            for (int k = 0; k < 3; k++) {
+                float f = (*ch[k] / 255.f - en[k] + 1.f) / 2.f;
+                *ch[k] = (f < 0.f ? 0.f : f > 1.f ? 1.f : f) * 255.f;
+            }
+        }
+    }
+no_boost:
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
     for (i = 1; i < n - 1; i++) {
         if (!(poly[0].w > 0.05f && poly[i].w > 0.05f && poly[i + 1].w > 0.05f)) continue;
@@ -419,6 +457,154 @@ void pm_gbi_init(void) {
     upload_mvp();
 }
 
+
+/* ---- RDP color combiner, one cycle, for work the display list does off screen ---- */
+static void unpack8(unsigned c, float o[4]) {
+    o[0] = (float)((c >> 24) & 255u) / 255.f;
+    o[1] = (float)((c >> 16) & 255u) / 255.f;
+    o[2] = (float)((c >> 8) & 255u) / 255.f;
+    o[3] = (float)(c & 255u) / 255.f;
+}
+
+static float cc_rgb_in(unsigned sel, int ch, const float* t0, const float* t1, const float* pr,
+                       const float* en, int a_ok) {
+    switch (sel) {
+    case 1: return t0[ch];
+    case 2: return t1[ch];
+    case 3: return pr[ch];
+    case 4: return 1.f; /* SHADE: none off screen */
+    case 5: return en[ch];
+    case 6: return a_ok ? 1.f : 0.f;
+    default: return 0.f;
+    }
+}
+
+/* (A - B) * C + D, cycle 1 only. COMBINED reads as 0 there. */
+static void cc_cycle1(const float* t0, const float* t1, float out[4]) {
+    float pr[4], en[4];
+    unpack8(prim, pr);
+    unpack8(envc, en);
+    for (int ch = 0; ch < 3; ch++) {
+        float a = cc_rgb_in(comb_a, ch, t0, t1, pr, en, 1);
+        float b = cc_rgb_in(comb_b, ch, t0, t1, pr, en, 0);
+        float c;
+        switch (comb_c) {
+        case 8: c = t0[3]; break;
+        case 9: c = t1[3]; break;
+        case 10: c = pr[3]; break;
+        case 11: c = 1.f; break;
+        case 12: c = en[3]; break;
+        default: c = cc_rgb_in(comb_c, ch, t0, t1, pr, en, 0); break;
+        }
+        float d = cc_rgb_in(comb_d, ch, t0, t1, pr, en, 1);
+        float v = (a - b) * c + d;
+        out[ch] = v < 0.f ? 0.f : v > 1.f ? 1.f : v;
+    }
+    {
+        unsigned sel[4] = { comb_aa, comb_ab, comb_ac, comb_ad };
+        float v[4];
+        for (int i = 0; i < 4; i++) {
+            switch (sel[i]) {
+            case 1: v[i] = t0[3]; break;
+            case 2: v[i] = t1[3]; break;
+            case 3: v[i] = pr[3]; break;
+            case 4: v[i] = 1.f; break;
+            case 5: v[i] = en[3]; break;
+            case 6: v[i] = (i == 2) ? 0.f : 1.f; break;
+            default: v[i] = 0.f; break;
+            }
+        }
+        float r = (v[0] - v[1]) * v[2] + v[3];
+        out[3] = r < 0.f ? 0.f : r > 1.f ? 1.f : r;
+    }
+}
+
+static void pal_rgba(const void* base, unsigned i, float o[4]) {
+    const u8* p = (const u8*)base;
+    unsigned c = 0;
+    if (p) {
+        p += (i & 15u) * 2u;
+        c = ((unsigned)p[0] << 8) | p[1];
+    }
+    float r = (float)((c >> 11) & 31u) / 31.f, g = (float)((c >> 6) & 31u) / 31.f,
+          b = (float)((c >> 1) & 31u) / 31.f;
+    o[0] = r; o[1] = g; o[2] = b; o[3] = (c & 1u) ? 1.f : 0.f;
+}
+
+/* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
+ * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
+static int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
+    if (!cimg || pm_is_cfb(cimg) || tile >= 8 || tile_tmem[tile] < 256) return 0;
+    int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
+    if (x0 < sci_x0) x0 = sci_x0;
+    if (y0 < sci_y0) y0 = sci_y0;
+    if (x1 > sci_x1) x1 = sci_x1;
+    if (y1 > sci_y1) y1 = sci_y1;
+    float s0 = (float)(s16)(hs >> 16) / 32.f;
+    float t0 = (float)(s16)(hs & 0xffff) / 32.f;
+    float dsdx = (float)(s16)(hd >> 16) / 1024.f;
+    float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
+    float sl = (float)tile_sz[tile][0] / 4.f, tl = (float)tile_sz[tile][1] / 4.f;
+    for (int y = y0; y < y1; y++) {
+        for (int x = x0; x < x1; x++) {
+            float s = s0 + dsdx * (float)(x - (xl >> 2)) - sl;
+            float t = t0 + dtdy * (float)(y - (yl >> 2)) - tl;
+            int ts = (int)s;
+            (void)t;
+            if (ts < 0) ts = 0;
+            /* A TLUT in TMEM holds each entry four times in a row. One row only. */
+            unsigned word = tile_tmem[tile] + (unsigned)(ts >> 2);
+            unsigned entry = word - 256u;
+            if (entry > 255u) continue;
+            float tx[4], none[4] = { 0, 0, 0, 0 }, o[4];
+            pal_rgba(tlut_pal[entry >> 4], entry & 15u, tx);
+            cc_cycle1(tx, none, o);
+            unsigned r = (unsigned)(o[0] * 31.f + .5f), g = (unsigned)(o[1] * 31.f + .5f),
+                     b = (unsigned)(o[2] * 31.f + .5f), a = o[3] >= .5f;
+            unsigned c = (r << 11) | (g << 6) | (b << 1) | a;
+            u8* d = (u8*)cimg + ((size_t)y * (size_t)cimg_stride + (size_t)x) * 2u;
+            d[0] = (u8)(c >> 8);
+            d[1] = (u8)c;
+        }
+    }
+    pm_tex_invalidate(cimg, 64);
+    return 1;
+}
+
+/* Tile 0 reads the shading palette, tile 1 the sprite palette, both through the same 4-bit
+ * indices, and the first combiner cycle multiplies them. Build the 16 x 16 result the
+ * combiner would give, and let pm_tex apply it per texel. Returns 1 if the texture is bound. */
+static int load_shaded_sprite(int dx4, int dy4) {
+    const void* sp = tlut_pal[tile_pal[1] & 15];
+    const void* sh = tlut_pal[tile_pal[0] & 15];
+    unsigned lut[256];
+    float env[4];
+    if (!sp || !sh) return 0;
+    unpack8(envc, env);
+    /* Second cycle (SHADE - ENV) * COMBINED + COMBINED is linear in the vertex shade. It
+     * can brighten past 1, so fold the largest factor into the texture and the rest into the
+     * vertex color (see draw_tri). */
+    (void)env;
+    dual_gain[0] = dual_gain[1] = dual_gain[2] = 1.f;
+    for (unsigned i = 0; i < 16; i++) {
+        float t1[4];
+        pal_rgba(sp, i, t1);
+        for (unsigned j = 0; j < 16; j++) {
+            float t0[4], o[4];
+            pal_rgba(sh, j, t0);
+            cc_cycle1(t0, t1, o);
+            unsigned c[4];
+            for (int k = 0; k < 4; k++) {
+                float v = o[k] * (k < 3 ? dual_gain[k] : 1.f);
+                if (v > 1.f) v = 1.f;
+                c[k] = (unsigned)(v * 255.f + .5f);
+            }
+            lut[i * 16 + j] = (c[0] << 24) | (c[1] << 16) | (c[2] << 8) | c[3];
+        }
+    }
+    return pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp, lut, dx4, dy4);
+}
+
 void pm_gbi_run(void* list, unsigned nbytes) {
     Gfx* stack[12];
     int sp = 0;
@@ -494,6 +680,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int uly = (int)(w0 & 0xfff);
             int lrx = (int)((w1 >> 12) & 0xfff);
             int lry = (int)(w1 & 0xfff);
+            sci_x0 = ulx >> 2;
+            sci_y0 = uly >> 2;
+            sci_x1 = lrx >> 2;
+            sci_y1 = lry >> 2;
             pm_gpu_set_scissor(ulx >> 2, uly >> 2, lrx >> 2, lry >> 2);
             break;
         }
@@ -542,6 +732,14 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             comb_b = (w1 >> 28) & 0xf;
             comb_d = (w1 >> 15) & 7;
             comb_set = 1;
+            comb_aa = (w0 >> 12) & 7;
+            comb_ac = (w0 >> 9) & 7;
+            comb_ab = (w1 >> 12) & 7;
+            comb_ad = (w1 >> 9) & 7;
+            comb2_a = (w0 >> 5) & 0xf;
+            comb2_c = w0 & 0x1f;
+            comb2_b = (w1 >> 24) & 0xf;
+            comb2_d = (w1 >> 6) & 7;
             comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
                                ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
             sync_combine();
@@ -549,6 +747,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_SETPRIMCOLOR:
             prim = w1;
             pm_gpu_set_prim(prim);
+            break;
+        case G_SETENVCOLOR:
+            envc = w1;
+            break;
+        case G_SETCIMG:
+            cimg = ptr_of(w1);
+            cimg_stride = (int)(w0 & 0xfff) + 1;
             break;
         case G_SETFILLCOLOR:
             fill = w1;
@@ -579,6 +784,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (yh & 0x800) yh |= ~0xfff;
             if (xl & 0x800) xl |= ~0xfff;
             if (yl & 0x800) yl |= ~0xfff;
+            if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
             float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)tile_x0) / (float)tw;
@@ -603,6 +809,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             unsigned tile = (w1 >> 24) & 7;
             tile_fmt[tile] = (w0 >> 21) & 7;
             tile_siz[tile] = (w0 >> 19) & 3;
+            tile_tmem[tile] = w0 & 0x1ff;
+            tile_pal[tile] = (w1 >> 20) & 15;
             /* The render tile's wrap belongs to the triangles already queued.
              * Draw them before this tile replaces it. */
             if (tile == 0) {
@@ -619,14 +827,50 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_LOADTLUT:
             tlut = timg;
             tlut_n = (int)((w1 >> 14) & 0x3ff) + 1;
+            {
+                /* The palette slot is the 16-entry block at the load tile's TMEM address. */
+                unsigned slot = (tile_tmem[(w1 >> 24) & 7] - 256u) >> 4;
+                if (slot < 16) tlut_pal[slot] = timg;
+            }
             break;
         case G_SETTILESIZE: {
             unsigned tile = (w1 >> 24) & 7;
-            if (tile != 0) break;
             int uls = (int)((w0 >> 12) & 0xfff);
             int ult = (int)(w0 & 0xfff);
             int lrs = (int)((w1 >> 12) & 0xfff);
             int lrt = (int)(w1 & 0xfff);
+            tile_sz[tile][0] = uls;
+            tile_sz[tile][1] = ult;
+            tile_sz[tile][2] = lrs;
+            tile_sz[tile][3] = lrt;
+            if (tile == 1 && tile_fmt[1] == 2 && tile_siz[1] == 0 && ld_valid && timg) {
+                /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
+                m1.valid = 1;
+                m1.src = (const u8*)timg + (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
+                m1.stride = timg_stride * 2;
+                m1.w = ((lrs - uls) >> 2) + 1;
+                m1.h = ((lrt - ult) >> 2) + 1;
+                m1.x0 = uls >> 2;
+                m1.y0 = ult >> 2;
+            }
+            if (tile != 0) break;
+            dual_on = 0;
+            if (m1.valid && tile_fmt[0] == 2 && tile_siz[0] == 0 && tile_pal[0] != tile_pal[1] &&
+                comb_a == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_TEXEL1 &&
+                m1.w > 0 && m1.h > 0) {
+                /* Tile 0 starts 256 texels in (the vertices carry that) plus the light offset. */
+                int dx4 = uls - (m1.x0 << 2);
+                int dy4 = ult - (m1.y0 << 2);
+                m1.valid = 0;
+                pm_gpu_flush();
+                tile_x0 = m1.x0;
+                tile_y0 = m1.y0;
+                if (load_shaded_sprite(dx4, dy4)) {
+                    dual_on = 1;
+                    break;
+                }
+            }
+            m1.valid = 0;
             int x0 = uls >> 2;
             int y0 = ult >> 2;
             int w = ((lrs - uls) >> 2) + 1;
@@ -647,7 +891,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
              * was being bound for every surface, so the house wore one fence. */
             pm_gpu_flush();
             if (src && w > 0 && h > 0)
-                pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, tlut, tlut_n, stride);
+                pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h,
+                            tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut, tlut_n, stride);
             break;
         }
         case G_MOVEWORD: {
@@ -666,7 +911,6 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_RDPTILESYNC:
         case G_RDPPIPESYNC:
         case G_RDPLOADSYNC:
-        case G_SETCIMG:
         case G_SETZIMG:
         case G_RDPHALF_1:
         case G_RDPHALF_2:

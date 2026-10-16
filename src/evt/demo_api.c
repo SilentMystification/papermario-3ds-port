@@ -33,11 +33,19 @@ API_CALLABLE(SetSpriteShading) {
     romStart = (s32)sprite_shading_profiles_ROM_START;
     romEnd = romStart + 8;
     dma_copy((u8*) shadingGroupOffset + romStart, (u8*) shadingGroupOffset + romEnd, ShadingOffsetsBuffer);
+#ifdef TARGET_3DS
+    // ROM words are big-endian
+    ShadingOffsetsBuffer[0] = __builtin_bswap32(ShadingOffsetsBuffer[0]);
+    ShadingOffsetsBuffer[1] = __builtin_bswap32(ShadingOffsetsBuffer[1]);
+#endif
 
     // load offset to shading data
     romStart = shadingProfileOffset + (s32)sprite_shading_profiles_ROM_START;
     data = ShadingOffsetsBuffer[0];
     dma_copy((u8*)ShadingOffsetsBuffer[1] + romStart, (u8*)ShadingOffsetsBuffer[1] + romStart + 4, ShadingOffsetsBuffer);
+#ifdef TARGET_3DS
+    ShadingOffsetsBuffer[0] = __builtin_bswap32(ShadingOffsetsBuffer[0]);
+#endif
 
     // load shading data
     dataOffset = (s32)sprite_shading_profiles_data_ROM_START + data + ShadingOffsetsBuffer[0];

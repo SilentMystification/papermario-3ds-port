@@ -17,6 +17,7 @@ typedef struct {
     unsigned fmt, siz;
     int w, h, stride;
     unsigned bytes;
+    unsigned dkey; /* 0 for a plain texture, else the hash of a shaded one */
     unsigned stamp;
     unsigned epoch;
     int live;
@@ -136,6 +137,36 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
     return 1;
 }
 
+static int nib(const u8* src, int stride, int x, int y) {
+    unsigned byte = src[(y * stride + x) >> 1];
+    return (x & 1) ? (byte & 15) : (byte >> 4);
+}
+
+static int floor4(int v) { return v >= 0 ? v / 4 : -((-v + 3) / 4); }
+
+static int expand_dual(const u8* src, int w, int h, int stride, const unsigned* lut, int dx4, int dy4,
+                       int pw, int ph) {
+    if ((unsigned)pw * (unsigned)ph * 4u > 256u * 256u * 4u) return 0;
+    memset(scratch, 0, (size_t)pw * (size_t)ph * 4u);
+    for (int y = 0; y < h; y++) {
+        int sy = floor4(4 * y + 2 - dy4);
+        if (sy < 0) sy = 0;
+        if (sy > h - 1) sy = h - 1;
+        for (int x = 0; x < w; x++) {
+            int sx = floor4(4 * x + 2 - dx4);
+            if (sx < 0) sx = 0;
+            if (sx > w - 1) sx = w - 1;
+            unsigned c = lut[nib(src, stride, x, y) * 16 + nib(src, stride, sx, sy)];
+            u8* d = scratch + (y * pw + x) * 4;
+            d[0] = (u8)(c >> 24);
+            d[1] = (u8)(c >> 16);
+            d[2] = (u8)(c >> 8);
+            d[3] = (u8)c;
+        }
+    }
+    return 1;
+}
+
 static void drop(Slot* s) {
     if (!s->live) return;
     C3D_TexDelete(&s->tex);
@@ -189,8 +220,9 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
     }
 }
 
-int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height,
-                const void* tlut, int tlut_n, int stride) {
+static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int height,
+                     const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
+                     unsigned dkey) {
     have = 0;
     cur = -1;
     if (!img || width < 1 || height < 1 || !scratch) return 0;
@@ -214,7 +246,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     for (int i = 0; i < SLOTS; i++) {
         Slot* s = &slots[i];
         if (s->live && s->img == img && s->tlut == tlut && s->fmt == fmt && s->siz == siz &&
-            s->w == width && s->h == height && s->stride == stride) {
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
             s->stamp = ++stamp;
             s->epoch = epoch;
             cur = i;
@@ -226,7 +258,10 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     int ph = pot_at_least_8(height);
     GPU_TEXCOLOR gf = gpu_fmt(fmt, siz);
     if (fmt == FMT_CI) gf = GPU_RGBA5551;
-    if (!expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf)) return 0;
+    if (lut) gf = GPU_RGBA8;
+    if (lut) {
+        if (!expand_dual((const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph)) return 0;
+    } else if (!expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf)) return 0;
     unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8) ? 1u : 2u;
     unsigned bytes = (unsigned)pw * (unsigned)ph * bpp;
     int slot = -1;
@@ -306,6 +341,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     s->w = width;
     s->h = height;
     s->stride = stride;
+    s->dkey = dkey;
     s->bytes = bytes;
     s->stamp = ++stamp;
     s->epoch = epoch;
@@ -314,6 +350,20 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     cur = slot;
     have = 1;
     return 1;
+}
+
+int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height,
+                const void* tlut, int tlut_n, int stride) {
+    return load_impl(img, fmt, siz, width, height, tlut, tlut_n, stride, NULL, 0, 0, 0);
+}
+
+int pm_tex_load_shaded(const void* img, int width, int height, int stride, const void* spal,
+                       const unsigned* lut, int dx4, int dy4) {
+    unsigned h = 2166136261u;
+    for (int i = 0; i < 256; i++) h = (h ^ lut[i]) * 16777619u;
+    h = (h ^ (unsigned)dx4) * 16777619u;
+    h = (h ^ (unsigned)dy4) * 16777619u;
+    return load_impl(img, FMT_CI, SIZ_4, width, height, spal, 16, stride, lut, dx4, dy4, h | 1u);
 }
 
 int pm_tex_bind(void) {

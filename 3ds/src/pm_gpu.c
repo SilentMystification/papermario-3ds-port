@@ -32,6 +32,7 @@ static PrintConsole bottom_con;
 static int z_on;
 static int light_on;
 static int combine;
+static int rgb_scale = 1;
 static int batch_identity;
 static int draw_3d;
 static unsigned prim = 0xffffffffu;
@@ -97,6 +98,7 @@ static void flush(void) {
     if (tex) {
         C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
         C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+        if (rgb_scale == 2) C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);
     } else if (combine == 1) {
         C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
         C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
@@ -320,6 +322,13 @@ void pm_gpu_set_combine(int mode) {
     if (mode == combine) return;
     flush();
     combine = mode;
+}
+
+/* The RDP can brighten past 1 in the second cycle. Texture * color * 2 gives that range. */
+void pm_gpu_set_rgb_scale(int scale) {
+    if (scale == rgb_scale) return;
+    flush();
+    rgb_scale = scale;
 }
 
 void pm_gpu_set_prim(unsigned rgba) { prim = rgba; }

@@ -55,6 +55,8 @@ extern unsigned short** nuGfxCfb;
 static unsigned short cfb_token[2];
 static unsigned short* cfb_list[2] = { &cfb_token[0], &cfb_token[1] };
 unsigned nuGfxCfbNum = 2;
+/* The two tokens are the real screen. Any other color image is memory the game reads back. */
+int pm_is_cfb(const void* p) { return p == &cfb_token[0] || p == &cfb_token[1]; }
 
 void pm_dump_scripts(void);
 void pm_frame_loop(void) {

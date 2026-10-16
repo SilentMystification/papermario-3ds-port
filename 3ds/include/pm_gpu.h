@@ -12,6 +12,7 @@ int pm_gpu_drew(void);
  * vertices by this, then the viewport and the screen tilt. */
 void pm_gpu_set_mvp(const float m[4][4], float vp_sx, float vp_sy, float vp_tx, float vp_ty);
 void pm_gpu_set_mode(int zbuffer, int lighting);
+void pm_gpu_set_rgb_scale(int scale); /* 1 or 2, texture stage only */
 void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
 void pm_gpu_set_prim(unsigned rgba);
 /* Draw the current batch now. The next vertices belong to a different texture. */
