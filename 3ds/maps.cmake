@@ -82,6 +82,12 @@ set(MAP_SRC_tik
 set(MAP_SRC_kgr
 )
 set(MAP_SRC_kmr
+    ${DECOMP}/src/world/area_kmr/kmr_00/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_00/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_00/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_00/revival.c
+    ${DECOMP}/src/world/area_kmr/kmr_00/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_00/entity.c
     ${DECOMP}/src/world/area_kmr/kmr_02/settings.c
     ${DECOMP}/src/world/area_kmr/kmr_02/music.c
     ${DECOMP}/src/world/area_kmr/kmr_02/main.c
@@ -92,6 +98,64 @@ set(MAP_SRC_kmr
     ${DECOMP}/src/world/area_kmr/kmr_02/kammy.c
     ${DECOMP}/src/world/area_kmr/kmr_02/foliage.c
     ${DECOMP}/src/world/area_kmr/kmr_02/images.c
+    ${DECOMP}/src/world/area_kmr/kmr_03/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_03/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_03/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_03/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_03/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_03/foliage.c
+    ${DECOMP}/src/world/area_kmr/kmr_03/fall_down.c
+    ${DECOMP}/src/world/area_kmr/kmr_04/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_04/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_04/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_04/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_04/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_04/foliage.c
+    ${DECOMP}/src/world/area_kmr/kmr_05/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_05/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_05/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_05/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_05/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_05/foliage.c
+    ${DECOMP}/src/world/area_kmr/kmr_06/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_06/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_06/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_06/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_06/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_06/sticker_sign.c
+    ${DECOMP}/src/world/area_kmr/kmr_07/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_07/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_07/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_07/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_07/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_09/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_09/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_09/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_09/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_09/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_10/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_10/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_10/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_10/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_10/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_10/foliage.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/scenes.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/entity.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/kammy.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/foliage.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/fortress_skeleton.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/fortress_animation.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/bridge_skeleton.c
+    ${DECOMP}/src/world/area_kmr/kmr_11/bridge_animation.c
+    ${DECOMP}/src/world/area_kmr/kmr_12/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_12/music.c
+    ${DECOMP}/src/world/area_kmr/kmr_12/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_12/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_12/entity.c
     ${DECOMP}/src/world/area_kmr/kmr_20/settings.c
     ${DECOMP}/src/world/area_kmr/kmr_20/music.c
     ${DECOMP}/src/world/area_kmr/kmr_20/main.c
@@ -106,6 +170,17 @@ set(MAP_SRC_kmr
     ${DECOMP}/src/world/area_kmr/kmr_20/npc_intro.c
     ${DECOMP}/src/world/area_kmr/kmr_20/npc_epilogue.c
     ${DECOMP}/src/world/area_kmr/kmr_20/records.c
+    ${DECOMP}/src/world/area_kmr/kmr_21/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_21/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_23/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_23/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_23/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_24/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_24/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_30/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_30/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_30/npc.c
+    ${DECOMP}/src/world/area_kmr/kmr_30/the_end.c
 )
 set(MAP_SRC_iwa
 )
