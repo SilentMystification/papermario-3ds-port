@@ -7,6 +7,7 @@
 #include "enums.h"
 #include "pm_port.h"
 #include "pm_tex.h"
+#include "rom_remap.h"
 
 void osInvalICache(void* addr, s32 nbytes) {
     (void)addr;
@@ -35,6 +36,7 @@ static FILE* rom;
 static u8* rom_bytes;
 static u32 rom_size;
 static int rom_tried;
+static int rom_remap; /* 1: rom_bytes is the packed image (pm_rom_keep), 0: full image or file stream */
 
 u32 osGetCount(void) { return (u32)pm_ticks(); }
 
@@ -169,18 +171,30 @@ void pm_rom_init(void) {
     }
     long sz = ftell(f);
     rewind(f);
+    /* M01: keep only the ranges in pm_rom_keep, packed back to back. Offsets the game uses stay the original ones. */
+    int can_pack = sz == (long)PM_ROM_FULL && !pm_debug_has("romfull");
+    unsigned need = can_pack ? PM_ROM_PACKED : (unsigned)sz;
     /* Heap is 44MB. Leave 4MB of it for the game. */
     unsigned leave = 4u * 1024u * 1024u;
     unsigned heap = pm_heap_bytes();
     unsigned cap = heap > leave ? heap - leave : 0;
-    if (sz > 0 && (unsigned)sz <= cap) {
-        u8* block = (u8*)memalign(16, (size_t)sz);
-        if (block && fread(block, 1, (size_t)sz, f) == (size_t)sz) {
+    if (sz > 0 && need <= cap) {
+        u8* block = (u8*)memalign(16, (size_t)need);
+        int ok = block != NULL;
+        if (ok && can_pack) {
+            for (unsigned i = 0; ok && i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)
+                ok = fseek(f, (long)pm_rom_keep[i].start, SEEK_SET) == 0 &&
+                     fread(block + pm_rom_keep[i].packed_off, 1, pm_rom_keep[i].len, f) == pm_rom_keep[i].len;
+        } else if (ok) {
+            ok = fread(block, 1, (size_t)sz, f) == (size_t)sz;
+        }
+        if (ok) {
             rom_bytes = block;
             rom_size = (u32)sz;
+            rom_remap = can_pack;
             fclose(f);
-            pm_log("rom resident %uKB", rom_size >> 10);
-            pm_log("ram n64 4MB, rom %uMB, port %uMB", (rom_size + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
+            pm_log("rom resident %uKB of %uKB%s", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "");
+            pm_log("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
             return;
         }
         free(block);
@@ -202,28 +216,47 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
         return;
     }
     if (!rom_tried) pm_rom_init();
-    if (rom_bytes) {
-        if (rom_addr >= rom_size) {
-            memset(buf, 0, size);
-            pm_tex_invalidate(buf, size);
-            return;
+    /* Walk the request over the original offsets. A byte in a dropped range is a hard error. */
+    u8* out = (u8*)buf;
+    u32 left = size, addr = rom_addr;
+    while (left) {
+        u32 n = left;
+        if (addr >= rom_size) {
+            memset(out, 0, left);
+            break;
         }
-        u32 n = size;
-        if (rom_addr + n > rom_size) n = rom_size - rom_addr;
-        memcpy(buf, rom_bytes + rom_addr, n);
-        if (n < size) memset((u8*)buf + n, 0, size - n);
-        pm_tex_invalidate(buf, size);
-        return;
+        if (n > rom_size - addr) n = rom_size - addr;
+        int dropped = 0;
+        for (unsigned i = 0; i < sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0]); i++) {
+            u32 ds = pm_rom_drop[i].start, de = pm_rom_drop[i].end;
+            if (addr >= ds && addr < de) { dropped = 1; if (n > de - addr) n = de - addr; }
+            else if (ds > addr && ds < addr + n) n = ds - addr;
+        }
+        if (dropped) {
+            static unsigned hits;
+            if (hits++ < 100) pm_log("ROM READ IN DROPPED RANGE %08x n %u (req %08x n %u)", addr, n, rom_addr, size);
+        }
+        if (dropped && !pm_debug_has("romfull")) {
+            memset(out, 0, n);
+        } else if (rom_bytes) {
+            u32 off = addr;
+            if (rom_remap) {
+                for (unsigned i = 0; i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)
+                    if (addr >= pm_rom_keep[i].start && addr < pm_rom_keep[i].start + pm_rom_keep[i].len) {
+                        off = pm_rom_keep[i].packed_off + (addr - pm_rom_keep[i].start);
+                        if (n > pm_rom_keep[i].start + pm_rom_keep[i].len - addr) n = pm_rom_keep[i].start + pm_rom_keep[i].len - addr;
+                    }
+            }
+            memcpy(out, rom_bytes + off, n);
+        } else {
+            /* Byte stream, not word-swapped. A display list copied out of the ROM is still
+             * big-endian until the loader that knows the type swaps it once. */
+            size_t got = 0;
+            if (rom && fseek(rom, (long)addr, SEEK_SET) == 0) got = fread(out, 1, n, rom);
+            if (got < n) memset(out + got, 0, n - got);
+        }
+        out += n; addr += n; left -= n;
     }
-    /* Byte stream, not word-swapped. A display list copied out of the ROM is still
-     * big-endian until the loader that knows the type swaps it once. */
-    if (!rom || fseek(rom, (long)rom_addr, SEEK_SET) != 0) {
-        memset(buf, 0, size);
-        pm_tex_invalidate(buf, size);
-        return;
-    }
-    size_t n = fread(buf, 1, size, rom);
-    if (n < size) memset((u8*)buf + n, 0, size - n);
     pm_tex_invalidate(buf, size);
 }
 
@@ -252,6 +285,18 @@ void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
                 u8 t0 = f[0], t1 = f[1];
                 f[0] = f[3]; f[1] = f[2]; f[2] = t1; f[3] = t0;
             }
+        }
+    }
+    if (pm_debug_has("romtrace")) {
+        /* M01 evidence: address, size, FNV-1a of the bytes the game gets. Own buffered file: pm_log fsyncs every line. */
+        static FILE* tr;
+        static unsigned lines;
+        if (!tr) tr = fopen(pm_debug_has("romfull") ? "romtrace_full.txt" : "romtrace_pack.txt", "w");
+        u32 h = 2166136261u;
+        for (u32 i = 0; i < size; i++) h = (h ^ ((u8*)buf)[i]) * 16777619u;
+        if (tr) {
+            fprintf(tr, "%08x %u %08x\n", rom_addr, size, h);
+            if ((++lines & 63) == 0) fflush(tr);
         }
     }
 }
