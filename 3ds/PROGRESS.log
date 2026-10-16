@@ -87,3 +87,6 @@
 08:36 S17 build 3 (title_data header endian swap)
 08:45 S17 build 4 (flash shim backed by save.flash)
 08:51 S17 commit 1: real title, file select, world, filemenu, flash save shim
+08:51 S17 build 5 (clean pm_map.c)
+09:04 S17 check: fast autoa save+fresh reach mac_00, 0 warnings, 0 dropped reads
+09:05 S17 end: notes written, S17 marked done
