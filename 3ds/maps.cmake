@@ -311,6 +311,68 @@ set(MAP_SRC_isk
 set(MAP_SRC_trd
 )
 set(MAP_SRC_nok
+    ${DECOMP}/src/world/area_nok/nok_01/settings.c
+    ${DECOMP}/src/world/area_nok/nok_01/music.c
+    ${DECOMP}/src/world/area_nok/nok_01/main.c
+    ${DECOMP}/src/world/area_nok/nok_01/entity.c
+    ${DECOMP}/src/world/area_nok/nok_01/npc.c
+    ${DECOMP}/src/world/area_nok/nok_01/shop.c
+    ${DECOMP}/src/world/area_nok/nok_01/rooms.c
+    ${DECOMP}/src/world/area_nok/nok_01/radio.c
+    ${DECOMP}/src/world/area_nok/nok_01/foliage.c
+    ${DECOMP}/src/world/area_nok/nok_02/settings.c
+    ${DECOMP}/src/world/area_nok/nok_02/music.c
+    ${DECOMP}/src/world/area_nok/nok_02/main.c
+    ${DECOMP}/src/world/area_nok/nok_02/entity.c
+    ${DECOMP}/src/world/area_nok/nok_02/rooms.c
+    ${DECOMP}/src/world/area_nok/nok_02/bookshelf.c
+    ${DECOMP}/src/world/area_nok/nok_02/npc.c
+    ${DECOMP}/src/world/area_nok/nok_02/demo.c
+    ${DECOMP}/src/world/area_nok/nok_02/koot_favors.c
+    ${DECOMP}/src/world/area_nok/nok_02/foliage.c
+    ${DECOMP}/src/world/area_nok/nok_02/epilogue.c
+    ${DECOMP}/src/world/area_nok/nok_03/settings.c
+    ${DECOMP}/src/world/area_nok/nok_03/music.c
+    ${DECOMP}/src/world/area_nok/nok_03/main.c
+    ${DECOMP}/src/world/area_nok/nok_03/entity.c
+    ${DECOMP}/src/world/area_nok/nok_03/npc.c
+    ${DECOMP}/src/world/area_nok/nok_04/settings.c
+    ${DECOMP}/src/world/area_nok/nok_04/music.c
+    ${DECOMP}/src/world/area_nok/nok_04/main.c
+    ${DECOMP}/src/world/area_nok/nok_04/entity.c
+    ${DECOMP}/src/world/area_nok/nok_04/npc.c
+    ${DECOMP}/src/world/area_nok/nok_04/new_partner.c
+    ${DECOMP}/src/world/area_nok/nok_11/settings.c
+    ${DECOMP}/src/world/area_nok/nok_11/music.c
+    ${DECOMP}/src/world/area_nok/nok_11/main.c
+    ${DECOMP}/src/world/area_nok/nok_11/entity.c
+    ${DECOMP}/src/world/area_nok/nok_11/npc.c
+    ${DECOMP}/src/world/area_nok/nok_12/settings.c
+    ${DECOMP}/src/world/area_nok/nok_12/music.c
+    ${DECOMP}/src/world/area_nok/nok_12/main.c
+    ${DECOMP}/src/world/area_nok/nok_12/entity.c
+    ${DECOMP}/src/world/area_nok/nok_12/bridge.c
+    ${DECOMP}/src/world/area_nok/nok_12/foliage.c
+    ${DECOMP}/src/world/area_nok/nok_12/npc.c
+    ${DECOMP}/src/world/area_nok/nok_12/demo.c
+    ${DECOMP}/src/world/area_nok/nok_13/settings.c
+    ${DECOMP}/src/world/area_nok/nok_13/music.c
+    ${DECOMP}/src/world/area_nok/nok_13/main.c
+    ${DECOMP}/src/world/area_nok/nok_13/entity.c
+    ${DECOMP}/src/world/area_nok/nok_13/npc.c
+    ${DECOMP}/src/world/area_nok/nok_13/musical_hill.c
+    ${DECOMP}/src/world/area_nok/nok_14/settings.c
+    ${DECOMP}/src/world/area_nok/nok_14/music.c
+    ${DECOMP}/src/world/area_nok/nok_14/main.c
+    ${DECOMP}/src/world/area_nok/nok_14/entity.c
+    ${DECOMP}/src/world/area_nok/nok_14/bridge.c
+    ${DECOMP}/src/world/area_nok/nok_14/npc.c
+    ${DECOMP}/src/world/area_nok/nok_15/settings.c
+    ${DECOMP}/src/world/area_nok/nok_15/music.c
+    ${DECOMP}/src/world/area_nok/nok_15/main.c
+    ${DECOMP}/src/world/area_nok/nok_15/entity.c
+    ${DECOMP}/src/world/area_nok/nok_15/npc.c
+    ${DECOMP}/src/world/area_nok/nok_15/foliage.c
 )
 set(MAP_SRC_hos
     ${DECOMP}/src/world/area_hos/hos_00/settings.c
