@@ -1368,6 +1368,22 @@ set(MAP_SRC_omo
     ${DECOMP}/src/world/area_omo/omo_17/entity.c
 )
 set(MAP_SRC_tst
+    ${DECOMP}/src/world/area_tst/tst_01/main.c
+    ${DECOMP}/src/world/area_tst/tst_01/entity.c
+    ${DECOMP}/src/world/area_tst/tst_02/main.c
+    ${DECOMP}/src/world/area_tst/tst_02/entity.c
+    ${DECOMP}/src/world/area_tst/tst_03/main.c
+    ${DECOMP}/src/world/area_tst/tst_03/entity.c
+    ${DECOMP}/src/world/area_tst/tst_04/main.c
+    ${DECOMP}/src/world/area_tst/tst_04/entity.c
+    ${DECOMP}/src/world/area_tst/tst_04/reflection.c
+    ${DECOMP}/src/world/area_tst/tst_04/npc.c
+    ${DECOMP}/src/world/area_tst/tst_10/main.c
+    ${DECOMP}/src/world/area_tst/tst_11/main.c
+    ${DECOMP}/src/world/area_tst/tst_11/extra.c
+    ${DECOMP}/src/world/area_tst/tst_12/main.c
+    ${DECOMP}/src/world/area_tst/tst_13/main.c
+    ${DECOMP}/src/world/area_tst/tst_20/main.c
 )
 set(MAP_SRC_end
 )

@@ -306,8 +306,8 @@ set(GAME_SRC
     ${DECOMP}/src/pause/pause_gfx.c
     ${DECOMP}/src/pause/pause_styles.c
 )
-# S30: every map. maps.cmake and map_syms.ld come from tools/gen_map_sources.py. The real world.c is built whole with its real gAreas.
-# A map that is not linked has <map>_settings = pm_unlinked_map in map_syms.ld (sentinel row, refused by the GotoMap guard in pm_map.c).
+# S30: every map. maps.cmake and map_syms.lds come from tools/gen_map_sources.py. The real world.c is built whole with its real gAreas.
+# A map that is not linked has <map>_settings = pm_unlinked_map in map_syms.lds (sentinel row, refused by the GotoMap guard in pm_map.c).
 include(maps.cmake)
 foreach(a ${MAP_AREAS})
     list(APPEND MAP_SRC ${MAP_SRC_${a}})
@@ -389,7 +389,7 @@ add_executable(pm_3ds
     ${PM_BUILD_ID_H}
 )
 target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.ld -Wl,--gc-sections
+target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -Wl,--gc-sections
     -Wl,--wrap=get_map_IDs_by_name -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
@@ -459,7 +459,7 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.ld -Wl,-
     -Wl,--defsym,fx_sun_undeclared=fx_sun
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
-set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.ld)
+set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds)
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")

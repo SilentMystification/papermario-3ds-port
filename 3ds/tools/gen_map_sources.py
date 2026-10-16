@@ -1,10 +1,10 @@
-"""Slice S30. Generate 3ds/maps.cmake and 3ds/map_syms.ld from the real decomp.
+"""Slice S30. Generate 3ds/maps.cmake and 3ds/map_syms.lds from the real decomp.
 - Sources: every .c of src/world/area_<area>/<map>/ that the decomp build.ninja compiles (the N64 build list).
 - The real src/world/world.c (with its full gAreas table) is built whole. Its MAP() rows name <map>_settings,
   <map>_map_init and <map>_ROM_START/_END/_VRAM. This tool writes:
     * stub_include/map_rom_ranges.h: <map>_ROM_START/_END/_VRAM = null for every map (the map code is linked in, so
       dmaStart is null: no overlay DMA) and for the in-place map data segments that the maps DMA at run time
-    * map_syms.ld: <map>_settings = pm_unlinked_map (and <map>_map_init) for every map that is NOT linked: the row points
+    * map_syms.lds: <map>_settings = pm_unlinked_map (and <map>_map_init) for every map that is NOT linked: the row points
       at the one sentinel byte in pm_map.c, and the GotoMap guard refuses it. (A plain 0 does not work: 3dsxtool
       rejects an absolute relocation, "Relocation to invalid address".)
 Usage: python gen_map_sources.py [--skip map[,map...]] [--areas a,b,c]
@@ -77,5 +77,5 @@ cm.append("set(MAP_AREAS %s extra)" % " ".join(table))
 open(os.path.join(root, "3ds", "maps.cmake"), "w", newline="\n").write("\n".join(cm) + "\n")
 hdr += ["#define dgb_01_smash_bridges_%s ((u8*)0)" % s for s in ("ROM_START", "ROM_END", "VRAM")]  # smash_bridges.c is linked in place
 open(os.path.join(root, "3ds", "stub_include", "map_rom_ranges.h"), "w", newline=chr(10)).write(chr(10).join(hdr) + chr(10))
-open(os.path.join(root, "3ds", "map_syms.ld"), "w", newline=chr(10)).write(chr(10).join(ld) + chr(10))
+open(os.path.join(root, "3ds", "map_syms.lds"), "w", newline=chr(10)).write(chr(10).join(ld) + chr(10))
 print("linked", len(linked), "unlinked", len(unlinked), "files", sum(len(src[(a, m)]) for a, r in table.items() for m, _ in r if m in linked and (a, m) in src))
