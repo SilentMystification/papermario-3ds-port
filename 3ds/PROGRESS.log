@@ -146,3 +146,4 @@
 12:23 S27 found: box quadrant texrects (draw_box corners) draw with stale tile0 (8x8 hud tile); texrect ignores combiner; checking
 12:32 S27 build: tile 1 binding when combiner reads TEXEL1 only, combine mode 5 (PRIM-ENV)*T+ENV, pm_tex edge pad
 12:42 S27 autoa ok (mac_00, 0 unmapped); shots: keyboard and file windows right
+12:42 S27 commit ab1c67940, end
