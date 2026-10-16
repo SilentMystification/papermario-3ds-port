@@ -195,6 +195,45 @@ set(MAP_SRC_trd
 set(MAP_SRC_nok
 )
 set(MAP_SRC_hos
+    ${DECOMP}/src/world/area_hos/hos_00/settings.c
+    ${DECOMP}/src/world/area_hos/hos_00/music.c
+    ${DECOMP}/src/world/area_hos/hos_00/main.c
+    ${DECOMP}/src/world/area_hos/hos_00/unused.c
+    ${DECOMP}/src/world/area_hos/hos_00/npc.c
+    ${DECOMP}/src/world/area_hos/hos_00/entity.c
+    ${DECOMP}/src/world/area_hos/hos_00/scenes.c
+    ${DECOMP}/src/world/area_hos/hos_00/shade_gfx.c
+    ${DECOMP}/src/world/area_hos/hos_01/settings.c
+    ${DECOMP}/src/world/area_hos/hos_01/music.c
+    ${DECOMP}/src/world/area_hos/hos_01/main.c
+    ${DECOMP}/src/world/area_hos/hos_01/model_fx.c
+    ${DECOMP}/src/world/area_hos/hos_01/npc.c
+    ${DECOMP}/src/world/area_hos/hos_01/entity.c
+    ${DECOMP}/src/world/area_hos/hos_01/star_way.c
+    ${DECOMP}/src/world/area_hos/hos_02/settings.c
+    ${DECOMP}/src/world/area_hos/hos_02/music.c
+    ${DECOMP}/src/world/area_hos/hos_02/main.c
+    ${DECOMP}/src/world/area_hos/hos_02/model_fx.c
+    ${DECOMP}/src/world/area_hos/hos_02/unused.c
+    ${DECOMP}/src/world/area_hos/hos_02/npc.c
+    ${DECOMP}/src/world/area_hos/hos_02/descent.c
+    ${DECOMP}/src/world/area_hos/hos_03/settings.c
+    ${DECOMP}/src/world/area_hos/hos_03/music.c
+    ${DECOMP}/src/world/area_hos/hos_03/main.c
+    ${DECOMP}/src/world/area_hos/hos_03/model_fx.c
+    ${DECOMP}/src/world/area_hos/hos_03/rooms.c
+    ${DECOMP}/src/world/area_hos/hos_03/foliage.c
+    ${DECOMP}/src/world/area_hos/hos_03/npc.c
+    ${DECOMP}/src/world/area_hos/hos_03/shop.c
+    ${DECOMP}/src/world/area_hos/hos_03/entity.c
+    ${DECOMP}/src/world/area_hos/hos_04/settings.c
+    ${DECOMP}/src/world/area_hos/hos_04/music.c
+    ${DECOMP}/src/world/area_hos/hos_04/main.c
+    ${DECOMP}/src/world/area_hos/hos_04/fountains.c
+    ${DECOMP}/src/world/area_hos/hos_04/unused.c
+    ${DECOMP}/src/world/area_hos/hos_04/intro.c
+    ${DECOMP}/src/world/area_hos/hos_04/starship.c
+    ${DECOMP}/src/world/area_hos/hos_04/narrator.c
     ${DECOMP}/src/world/area_hos/hos_05/settings.c
     ${DECOMP}/src/world/area_hos/hos_05/music.c
     ${DECOMP}/src/world/area_hos/hos_05/main.c
@@ -204,6 +243,24 @@ set(MAP_SRC_hos
     ${DECOMP}/src/world/area_hos/hos_05/narrator.c
     ${DECOMP}/src/world/area_hos/hos_05/model_fx.c
     ${DECOMP}/src/world/area_hos/hos_05/star_ship.c
+    ${DECOMP}/src/world/area_hos/hos_06/settings.c
+    ${DECOMP}/src/world/area_hos/hos_06/entity.c
+    ${DECOMP}/src/world/area_hos/hos_06/main.c
+    ${DECOMP}/src/world/area_hos/hos_06/merlow.c
+    ${DECOMP}/src/world/area_hos/hos_06/rooms.c
+    ${DECOMP}/src/world/area_hos/hos_06/merluvlee.c
+    ${DECOMP}/src/world/area_hos/hos_06/chest.c
+    ${DECOMP}/src/world/area_hos/hos_10/settings.c
+    ${DECOMP}/src/world/area_hos/hos_10/music.c
+    ${DECOMP}/src/world/area_hos/hos_10/npc1.c
+    ${DECOMP}/src/world/area_hos/hos_10/npc2.c
+    ${DECOMP}/src/world/area_hos/hos_10/main.c
+    ${DECOMP}/src/world/area_hos/hos_10/intro.c
+    ${DECOMP}/src/world/area_hos/hos_10/pre_title.c
+    ${DECOMP}/src/world/area_hos/hos_10/ending.c
+    ${DECOMP}/src/world/area_hos/hos_20/settings.c
+    ${DECOMP}/src/world/area_hos/hos_20/main.c
+    ${DECOMP}/src/world/area_hos/hos_20/starship.c
 )
 set(MAP_SRC_kpa
 )
