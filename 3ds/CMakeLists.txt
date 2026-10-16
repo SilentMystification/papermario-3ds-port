@@ -28,15 +28,6 @@ include_directories(
 
 include(effects.cmake)
 
-# world.c with its gAreas table cut off. The table is in src/area_table.c (port side, only the maps in the image have real rows).
-# Everything before "#define AREA(" is the real world.c text.
-set(WORLD_C_GEN "${CMAKE_CURRENT_BINARY_DIR}/world_gen.c")
-file(READ ${DECOMP}/src/world/world.c WORLD_C_TEXT)
-string(FIND "${WORLD_C_TEXT}" "#define AREA(" WORLD_C_CUT)
-string(SUBSTRING "${WORLD_C_TEXT}" 0 ${WORLD_C_CUT} WORLD_C_HEAD)
-file(WRITE ${WORLD_C_GEN} "#line 1 \"src/world/world.c\"
-${WORLD_C_HEAD}")
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${DECOMP}/src/world/world.c)
 set(GAME_SRC
     ${DECOMP}/src/main.c
     ${DECOMP}/src/main_loop.c
@@ -263,7 +254,7 @@ set(GAME_SRC
     ${DECOMP}/src/world/area_mac/mac_00/intro.c
     ${DECOMP}/src/world/area_mac/mac_00/epilogue_npc.c
     ${DECOMP}/src/world/area_mac/mac_00/epilogue.c
-    ${WORLD_C_GEN}
+    ${DECOMP}/src/world/world.c
     ${DECOMP}/src/entity/model/Hammer1Block.c
     ${DECOMP}/src/entity/model/BrickBlock.c
     ${DECOMP}/src/entity/model/Hammer3Block.c
@@ -315,6 +306,15 @@ set(GAME_SRC
     ${DECOMP}/src/pause/pause_gfx.c
     ${DECOMP}/src/pause/pause_styles.c
 )
+# S30: every map. maps.cmake and map_syms.ld come from tools/gen_map_sources.py. The real world.c is built whole with its real gAreas.
+# A map that is not linked has <map>_settings = pm_unlinked_map in map_syms.ld (sentinel row, refused by the GotoMap guard in pm_map.c).
+include(maps.cmake)
+foreach(a ${MAP_AREAS})
+    list(APPEND MAP_SRC ${MAP_SRC_${a}})
+endforeach()
+list(REMOVE_ITEM MAP_SRC ${GAME_SRC})
+list(APPEND GAME_SRC ${MAP_SRC})
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/maps.cmake)
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types")
 # G02: world/actions.c holds f32 tables that 7B440.c reads through pointer arithmetic from DefaultMoveSpeed[-1] (walk, run, max jump).
@@ -351,7 +351,6 @@ set(PORT_SRC
     src/pm_rsp_audio.c
     src/pm_later.c
     src/pm_map.c
-    src/area_table.c
     src/pm_kmr_stubs.c
     src/pm_actor_stubs.c
     src/game_stubs.c
@@ -390,7 +389,7 @@ add_executable(pm_3ds
     ${PM_BUILD_ID_H}
 )
 target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
+target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.ld -Wl,--gc-sections
     -Wl,--wrap=get_map_IDs_by_name -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
@@ -456,8 +455,11 @@ target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
     -Wl,--defsym,filemenu_RODATA_END=gPartnerStatus
     -Wl,--defsym,filemenu_BSS_START=gPartnerStatus
     -Wl,--defsym,filemenu_BSS_END=gPartnerStatus
+    # S30: ver/us/undefined_syms.txt line 9 (real decomp alias, used by the flo maps)
+    -Wl,--defsym,fx_sun_undeclared=fx_sun
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
+set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.ld)
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")

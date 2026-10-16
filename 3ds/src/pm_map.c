@@ -5,6 +5,7 @@
 #include "game_modes.h"
 #include "pm_port.h"
 
+void partner_enable_input(void);
 int strcmp(const char* a, const char* b);
 unsigned int strlen(const char* s);
 char* strncpy(char* d, const char* s, unsigned int n);
@@ -530,10 +531,13 @@ s32 __wrap_get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
     return ok;
 }
 
+/* S30: settings (and init) of a map that is not linked point here (3ds/map_syms.ld, tools/gen_map_sources.py). */
+char pm_unlinked_map[4];
+
 static int map_is_linked(s16 areaID, s16 mapID) {
     if (areaID < 0 || areaID >= ARRAY_COUNT(gAreas) - 1 || gAreas[areaID].maps == NULL) return 0;
     if (mapID < 0 || mapID >= gAreas[areaID].mapCount) return 0;
-    return gAreas[areaID].maps[mapID].settings != NULL;
+    return gAreas[areaID].maps[mapID].settings != NULL && (void*)gAreas[areaID].maps[mapID].settings != (void*)pm_unlinked_map;
 }
 
 s16 pm_warp_hook(s16 mode);
@@ -543,6 +547,14 @@ void __wrap_set_game_mode(s16 mode) {
         pm_log("GotoMap refused: area %d map %d is not linked", gGameStatusPtr->areaID, gGameStatusPtr->mapID);
         gGameStatusPtr->areaID = cur_area;
         gGameStatusPtr->mapID = cur_map;
+        /* S30: the exit scripts call DisablePlayerInput(true) before GotoMap and never enable it again, because a real
+           map change clears every script. A refused change keeps the map, so undo what DisablePlayerInput(true) did,
+           with the game's own functions (same calls as the false branch in src/evt/player_api.c). */
+        enable_player_input();
+        partner_enable_input();
+        func_800E01DC();
+        gOverrideFlags &= ~GLOBAL_OVERRIDES_40;
+        enable_status_bar_input();
         return;
     }
     pm_log("game mode %d", mode);

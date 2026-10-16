@@ -269,3 +269,9 @@
 18:26 D02 chain ok 0 unmapped (562,2316,2562,3178), HANDOFF written
 18:26 D02 commit; end
 18:26 D02 row D03 added for pause fault
+18:27 S30 start: read notes, plan
+18:29 S30 all 421 maps in real world.c table, map_syms.ld, first full compile started
+18:34 S30 first compile: 2142 map files, 5 fail (recipes.inc.c, ld_addrs, kzn dma). fixing
+18:37 S30 compile 0 errors in 2132 files; adding entity files, fx_sun alias; link round 3
+18:42 S30 area_table.c and check_area_table.py deleted: real world.c table is built whole
+18:44 S30 +mac maps 13 img 9980KB heapused 27370KB spare 7706KB 3dsx 3149992 run rc 0

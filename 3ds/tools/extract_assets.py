@@ -40,7 +40,7 @@ import subprocess
 
 out = subprocess.run(["ninja", "-t", "targets", "all"], capture_output=True, text=True, check=True).stdout
 t = [l.split(":")[0] for l in out.splitlines()]
-t = [x for x in t if re.search(r"\.(h|png\.bin|pal\.bin)$", x) and not x.startswith(("src/", "ver/us/build/src"))]
+t = [x for x in t if re.search(r"(\.(h|png\.bin|pal\.bin)|build/include/.*\.inc\.c)$", x.replace("\\", "/")) and not x.startswith(("src/", "ver/us/build/src"))]
 with open(p, "a", encoding="utf-8") as f:
     f.write("\nbuild e01_assets: phony " + " ".join(t) + "\n")
 print(f"e01_assets: {len(t)} targets")

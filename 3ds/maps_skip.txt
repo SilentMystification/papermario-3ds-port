@@ -1,0 +1,4 @@
+# Maps left id-only (null settings, GotoMap refused). One per line, reason after '#'. Slice S30.
+kmr_22   # common/lava_piranha/part2.inc.c needs world_model_anim_kzn_00..20_ROM_START/_END/_VRAM (ROM data of src/world/model_anim/kzn/*.c, DMAd to one VRAM address). Needs slice S19b
+kzn_19   # same (lava piranha, npc.c includes common/lava_piranha/part2.inc.c). Needs slice S19b
+flo_11   # main.c calls func_80044238 -> func_80072BCC, defined in src/battle/battle.c (battle tree not on main, Q1)
