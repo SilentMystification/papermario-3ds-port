@@ -29,3 +29,7 @@
 04:15 S08 intro->hos_04 refused then title crashed (stale effects); fixing title init, QUESTIONS.md added
 04:55 S08 chain ok: kmr_20, osr_00, kmr_20, mac_00 loaded, GotoMap to mac_01 refused; crash in mac_00 npc draw
 05:08 S08 HANDOFF written; mac_00 loads but crashes after; committing
+05:08 S08 commit ec7fd94a9; partial, mac_00 crash open
+05:09 D01 start
+05:15 D01 baseline: no crash in 300s but unmapped read 0xFFFFFFFF in spr_update_sprite (animList=-1)
+05:25 D01 H1: badanim=Luigi anim on RussT npc; port file select skips STORY_INTRO; fixing pm_title.c

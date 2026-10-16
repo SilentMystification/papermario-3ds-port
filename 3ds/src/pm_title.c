@@ -148,6 +148,11 @@ void state_step_file_select(void) {
         gGameStatusPtr->areaID = AREA_KMR;
         gGameStatusPtr->mapID = 11;
         gGameStatusPtr->entryID = 0;
+        /* Same calls as the real new-file path (filemenu_yesno.c FM_CONFIRM_CREATE). Without
+         * STORY_INTRO, mac_00 builds DefaultNPCs but runs the intro scene on them. */
+        clear_player_data();
+        clear_saved_variables();
+        evt_set_variable(nullptr, GB_StoryProgress, STORY_INTRO);
         pm_log("file %d", file_slot + 1);
         pm_map_loaded = 0;
         set_game_mode(GAME_MODE_WORLD);
