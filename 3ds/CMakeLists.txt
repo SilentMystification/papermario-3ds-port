@@ -301,7 +301,6 @@ set(PORT_SRC
     src/pm_map.c
     src/area_table.c
     src/pm_title.c
-    src/pm_evt_stub.c
     src/pm_actor_link.c
     src/pm_kmr_stubs.c
     src/pm_actor_stubs.c

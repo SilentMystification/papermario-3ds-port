@@ -61,3 +61,6 @@
 07:02 S15 finding: no linked map enables shading; SetSpriteShading read ROM words unswapped (profile=0). fixed
 07:08 S15 clean build, running fast autoa shots
 07:18 S15 committed 8d6422df9, done, S15 marked [x]
+07:18 S16 start
+07:19 S16 build done, see build_s16.log
+07:22 S16 check ok
