@@ -268,3 +268,4 @@
 18:19 D02 pause under warp faults in gfx_frame_filter_pass_1 also at base (not D02), listed
 18:26 D02 chain ok 0 unmapped (562,2316,2562,3178), HANDOFF written
 18:26 D02 commit; end
+18:26 D02 row D03 added for pause fault
