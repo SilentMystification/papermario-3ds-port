@@ -15,6 +15,14 @@ batch mode. gdb runs -GdbScript (gdb commands, e.g. "break boot_main"), then "co
 When the game stops (breakpoint or fault), gdb prints a backtrace, the registers and the stack.
 Output: build3ds/last_gdb.txt. The run ends when gdb exits or at -Timeout. Log-silence
 detection is off, because a stopped game is silent.
+-Turbo: (slice W01) raise Azahar's speed limit for this run only: frame_limit=1000 (percent) and use_vsync=false in
+qt-config.ini. The four original lines are saved in build3ds/qt-config.turbo-backup and put back at the end (also after a
+killed run: the next start restores first). The game then runs as fast as the PC allows. Game logic is frame driven, so the same
+scans give the same maps. NOT valid for performance numbers: ms per frame, phase times, fps and the audio budget (the audio
+thread works against real time) all change. -Timeout and -Until keep their normal-speed meaning: the run waits Timeout/TurboFactor s.
+-TurboFactor <n> (default 3): the assumed speedup. The script prints the wall time, and the game log has t= in ms.
+-Smoke: warp check. Adds the game switch `smoke`, waits for the log line "smoke done" (300 frames after the first frame in the
+scene, needs warp, story or preset in -Debug), exit status 0 when it appears and no unmapped access was seen.
 -FaultStop: stop at the first "UnmappedAccess" line in Azahar's log (Memory class, Info level, already on).
 Every run writes build3ds/last_unmapped.txt: each distinct (PC, address) with a count, or nothing. For an interactive prompt use 3ds/gdb.sh.
 #>
@@ -24,6 +32,10 @@ param(
     [int]$Stall = 10,
     [switch]$Capture,
     [switch]$Gdb,
+    [switch]$Turbo, # slice W01: no frame limit for this run, see above
+    [double]$TurboFactor = 3,
+    [int]$TurboLimit = 1000, # Azahar speed limit in percent for -Turbo
+    [switch]$Smoke, # slice W01: stop 300 frames after the first scene frame (warp), exit 0
     [switch]$FaultStop, # stop at the first unmapped memory access that Azahar logs (a data abort on hardware)
     [switch]$Interactive, # a person plays: no timeout, no log-silence stop, settings windows allowed
     [string]$GdbScript = "",
@@ -72,6 +84,36 @@ function Set-GdbStub([bool]$on) {
         else { $text = $text -replace "(?m)^\[Debugging\]\r?$", "[Debugging]`r`n$kv" }
     }
     Set-Content $cfg $text -NoNewline
+}
+
+# Turbo: per-run override of two lines in qt-config.ini, original lines kept in a backup file and restored in finally
+$turboBak = "$out\qt-config.turbo-backup"
+$turboKeys = @("frame_limit\default", "frame_limit", "use_vsync\default", "use_vsync")
+function Set-Turbo([bool]$on) {
+    $text = Get-Content $cfg -Raw
+    if ($on) {
+        if (-not (Test-Path $turboBak)) {
+            $orig = foreach ($k in $turboKeys) { [regex]::Match($text, "(?m)^" + [regex]::Escape($k) + "=.*$").Value.TrimEnd() }
+            Set-Content $turboBak $orig
+        }
+        $new = @{ "frame_limit\default" = "false"; "frame_limit" = "$TurboLimit"; "use_vsync\default" = "false"; "use_vsync" = "false" }
+        foreach ($k in $turboKeys) { $text = $text -replace ("(?m)^" + [regex]::Escape($k) + "=.*$"), ($k + "=" + $new[$k]) }
+    } elseif (Test-Path $turboBak) {
+        foreach ($l in (Get-Content $turboBak)) {
+            if ($l -match "^([^=]+)=") { $text = $text -replace ("(?m)^" + [regex]::Escape($Matches[1]) + "=.*$"), $l }
+        }
+        Remove-Item $turboBak
+    }
+    Set-Content $cfg $text -NoNewline
+}
+Set-Turbo $false # a killed earlier -Turbo run must not leave its override behind
+if ($Smoke) { $Until = "smoke done"; $Debug = ("$Debug smoke").Trim() }
+if ($Turbo) {
+    $Debug = ("$Debug turbo").Trim()
+    $Timeout = [Math]::Max(25, [int]($Timeout / $TurboFactor))
+    $Stall = [Math]::Max(10, [int]($Stall / $TurboFactor))
+    if ($Until -or $Smoke) { Write-Output "TURBO run: timeout $Timeout s. Not valid for performance numbers." }
+    Set-Turbo $true
 }
 
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
@@ -130,6 +172,7 @@ $reason = "timeout ($Timeout s)"
 $lastSize = -1
 $lastGrow = Get-Date
 $echoed = 0
+$marks = @()
 try {
     while (((Get-Date) - $start).TotalSeconds -lt $Timeout) {
         Start-Sleep -Milliseconds 500
@@ -146,6 +189,9 @@ try {
         elseif (-not $Gdb -and -not $Interactive -and ((Get-Date) - $lastGrow).TotalSeconds -gt $Stall) { $reason = "game log silent for $Stall s"; break }
         $text = Get-Content $log -Raw -ErrorAction SilentlyContinue
         if (-not $text) { continue }
+        # W01: wall seconds at each map load, scene start and smoke end (for normal versus turbo comparisons)
+        $mk = [regex]::Matches($text, "(?m)^#\d+ (load map area \d+ map \d+ scan \d+|warp: scene frame0.*|warp: smoke done.*)")
+        for ($mi = $marks.Count; $mi -lt $mk.Count; $mi++) { $marks += ("{0,6:N1} s  {1}" -f ((Get-Date) - $start).TotalSeconds, $mk[$mi].Groups[1].Value) }
         if ($text.Length -gt $echoed) { Write-Host -NoNewline $text.Substring($echoed); $echoed = $text.Length }
         if ($text -match "\[CRASH\]") { Start-Sleep -Seconds 1; $reason = "crash"; break }
         if ($Until -and $text -match $Until) { $reason = "matched '$Until'"; break }
@@ -175,6 +221,7 @@ public class AzWin {
     if ($p) { Kill-Azahar $p.Id }
     if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
     if ($Gdb) { Set-GdbStub $false }
+    if ($Turbo) { Set-Turbo $false }
     # A later manual launch must not inherit this run's switches (autoa, shots, fast).
     Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue
 }
@@ -182,6 +229,8 @@ public class AzWin {
 if (Test-Path "$sd\shots") { Copy-Item "$sd\shots" "$out\shots" -Recurse -Force }
 $secs = [int]((Get-Date) - $start).TotalSeconds
 Write-Output "stopped after $secs s: $reason"
+if ($marks.Count) { Write-Output "--- wall time at map loads (run start = 0) ---"; $marks | ForEach-Object { Write-Output $_ } }
+if ($Turbo) { Write-Output "TURBO run: times and fps in this log are not valid for performance measurements" }
 if ($Gdb) {
     Write-Output "--- gdb (build3ds/last_gdb.txt) ---"
     Get-Content "$out\last_gdb.txt", "$out\last_gdb_err.txt" -ErrorAction SilentlyContinue | Select-Object -Last 80
@@ -254,4 +303,5 @@ if ($addrs) {
         Where-Object { $_ -notmatch "^\?\?" }
     exit 2
 }
+if ($Smoke -and $reason -notmatch "^matched") { Write-Output "SMOKE FAILED: $reason"; exit 1 }
 exit 0

@@ -1,0 +1,162 @@
+/* Slice W01 (class E, port-side debug tool): `warp=<map>:<entry>`, `story=<name|number>`, `preset=<name>`.
+ * No decomp function is replaced. When the game leaves GAME_MODE_STARTUP (its real set_game_mode(GAME_MODE_LOGOS)
+ * call, see __wrap_set_game_mode in pm_map.c) the hook does what the real new-file menu does (clear_player_data,
+ * clear_saved_variables, area/map/entry, GB_StoryProgress through evt_set_variable, fio_serialize_state) and then
+ * enters the real GAME_MODE_ENTER_WORLD, which loads the map through the real state machine.
+ * So logos, intro, title and file select are skipped. Without the switches nothing changes. */
+#include "common.h"
+#include "functions.h"
+#include "game_modes.h"
+#include "pm_port.h"
+#include <string.h>
+
+void fio_serialize_state(void);
+unsigned pm_uptime_ms(void);
+
+typedef struct {
+    const char* name;
+    s32 story;
+    const char* map;
+    s32 entry;
+    s32 flag; /* a game flag (GF_*) to set, 0 = none */
+} WarpPreset;
+
+/* Tested rows only. See HANDOFF.md "Warp" for the untested ones and the reason. */
+static const WarpPreset presets[] = {
+    { "intro",    STORY_INTRO,                    "kmr_20", 0, 0 }, /* new file: bed scene of the real intro */
+    { "yard",     STORY_CH0_ARRIVED_AT_TOAD_TOWN, "kmr_20", 4, GF_KMR20_ReunitedWithLuigi }, /* Mario's yard, enters from the pipe, controllable */
+    { "toad",     STORY_CH0_ARRIVED_AT_TOAD_TOWN, "mac_00", 4, 0 }, /* Toad Town, enters from the pipe, controllable */
+    { "toad_east", STORY_CH0_ARRIVED_AT_TOAD_TOWN, "mac_00", 1, 0 }, /* Toad Town east side: walk right into the loading zone to mac_01 */
+    { "toad_west", STORY_CH0_ARRIVED_AT_TOAD_TOWN, "mac_00", 0, 0 }, /* Toad Town west side: kmr_10 zone */
+    { "osr",      STORY_CH0_ARRIVED_AT_TOAD_TOWN, "osr_00", 1, 0 },
+    { "kmr02",    STORY_CH0_WAKE_UP,              "kmr_02", 0, 0 },
+};
+
+typedef struct { const char* name; s32 value; } StoryName;
+static const StoryName stories[] = {
+    { "intro", STORY_INTRO },
+    { "ch0_wake_up", STORY_CH0_WAKE_UP },
+    { "ch0_hammer", STORY_CH0_FOUND_HAMMER },
+    { "ch0_goombario", STORY_CH0_GOOMBARIO_JOINED_PARTY },
+    { "ch0_toad_town", STORY_CH0_ARRIVED_AT_TOAD_TOWN },
+    { "ch1_start", STORY_CH1_SPOKE_WITH_MERLIN },
+    { "ch1_kooper", STORY_CH1_KOOPER_JOINED_PARTY },
+    { "ch2_start", STORY_CH2_ARRIVED_AT_MT_RUGGED },
+    { "epilogue", STORY_EPILOGUE },
+};
+
+/* value of "key=value" in the switch string, 0 when absent */
+int pm_debug_value(const char* key, char* out, unsigned n) {
+    const char* sw = pm_debug_text();
+    size_t kl = strlen(key);
+    const char* p = sw;
+    out[0] = 0;
+    while ((p = strstr(p, key)) != NULL) {
+        int edge = p == sw || p[-1] == ' ' || p[-1] == '\n' || p[-1] == '\t';
+        if (edge && p[kl] == '=') {
+            p += kl + 1;
+            unsigned i = 0;
+            while (*p && *p != ' ' && *p != '\n' && *p != '\t' && *p != '\r' && i + 1 < n) out[i++] = *p++;
+            out[i] = 0;
+            return 1;
+        }
+        p += kl;
+    }
+    return 0;
+}
+
+static int padscript_log, warp_on, warp_done, scene_f0 = -1, smoke_on;
+static s32 w_story = STORY_INTRO;
+static char w_map[16] = "kmr_20";
+static s32 w_entry, w_flag;
+
+int pm_warp_active(void) {
+    char v[40];
+    int has_preset = pm_debug_value("preset", v, sizeof v);
+    if (has_preset) {
+        int i, found = 0;
+        for (i = 0; i < (int)ARRAY_COUNT(presets); i++) {
+            if (strcasecmp(v, presets[i].name) == 0) {
+                w_story = presets[i].story;
+                strncpy(w_map, presets[i].map, sizeof w_map - 1);
+                w_entry = presets[i].entry;
+                w_flag = presets[i].flag;
+                found = 1;
+            }
+        }
+        if (!found) pm_log("warp: unknown preset '%s'", v);
+    }
+    int has_warp = pm_debug_value("warp", v, sizeof v);
+    if (has_warp) {
+        char* c = strchr(v, ':');
+        w_entry = 0;
+        if (c) {
+            *c = 0;
+            w_entry = atoi(c + 1);
+        }
+        w_map[0] = 0;
+        strncat(w_map, v, sizeof w_map - 1);
+    }
+    int has_story = pm_debug_value("story", v, sizeof v);
+    if (has_story) {
+        int i, found = 0;
+        for (i = 0; i < (int)ARRAY_COUNT(stories); i++) {
+            if (strcasecmp(v, stories[i].name) == 0) {
+                w_story = stories[i].value;
+                found = 1;
+            }
+        }
+        if (!found) w_story = atoi(v);
+    }
+    smoke_on = pm_debug_has("smoke");
+    padscript_log = pm_debug_has("padlog") || pm_debug_value("padscript", v, sizeof v); /* position every 2 frames while a script runs */
+    return has_preset || has_warp || has_story;
+}
+
+/* Called from the set_game_mode wrapper. Returns the mode to enter (the caller then calls the real set_game_mode). */
+s16 pm_warp_hook(s16 mode) {
+    s16 areaID, mapID;
+    if (warp_done || mode != GAME_MODE_LOGOS) return mode;
+    warp_done = 1;
+    if (!pm_warp_active()) return mode;
+    if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) {
+        pm_log("warp: map %s not found, normal start", w_map);
+        return mode;
+    }
+    gGameStatusPtr->areaID = areaID;
+    gGameStatusPtr->mapID = mapID;
+    gGameStatusPtr->entryID = (s16)w_entry;
+    clear_player_data();
+    clear_saved_variables();
+    gGameStatusPtr->areaID = areaID;
+    gGameStatusPtr->mapID = mapID;
+    gGameStatusPtr->entryID = (s16)w_entry;
+    evt_set_variable(NULL, GB_StoryProgress, w_story);
+    if (w_flag) evt_set_variable(NULL, w_flag, 1);
+    fio_serialize_state();
+    warp_on = 1;
+    pm_log("warp: %s entry %d (area %d map %d) story %d flag %x", w_map, w_entry, areaID, mapID, w_story, w_flag);
+    return GAME_MODE_ENTER_WORLD;
+}
+
+void pm_padscript_start(void);
+extern unsigned pm_pad_scans;
+
+/* The game reaches GAME_MODE_WORLD: first frame of the chosen scene. */
+void pm_warp_world_mode(unsigned frame) {
+    if (!warp_on || scene_f0 >= 0) return;
+    scene_f0 = (int)frame;
+    pm_log("warp: scene frame0 %u scan %u t=%u ms", frame, pm_pad_scans, pm_uptime_ms());
+    pm_padscript_start();
+}
+
+/* Once per drawn frame (pm_frame_loop). */
+void pm_warp_tick(unsigned frame) {
+    if (scene_f0 < 0) return;
+    unsigned f = frame - (unsigned)scene_f0;
+    if (f % (padscript_log ? 2 : 100) == 0 || f == 5) {
+        pm_log("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
+               (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState);
+    }
+    if (smoke_on && f == 300) pm_log("warp: smoke done (300 frames in the scene) t=%u ms", pm_uptime_ms());
+}

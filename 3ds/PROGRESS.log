@@ -240,3 +240,10 @@
 16:47 F01 FAULT1 idle title crash: stale wModelList after refused hos_04 load (state_intro.c skips clear_model_data)
 16:58 F01 commit c701a4bef: intro to title cleanup fix. idle title 330 s: 0 unmapped, no crash
 17:02 F01 paused for W01. fast autoa ok, 0 unmapped. fault 1 fixed, tex ptr 0xfd7e open, see HANDOFF
+17:03 W01 start
+17:09 W01 step1 pm_warp.c, padscript in pm_input.c written, first build
+17:15 W01 build 1 ok, first warp run preset=toad
+17:17 W01 build 2 ok (turbo, smoke in run_azahar.ps1, uptime in log)
+17:24 W01 build 3 ok, turbo chain compare done: scans identical 562 2316 2562 3178
+17:26 W01 build 4 ok, toad preset tested (controllable, walks, no fault). testing other presets
+17:36 W01 commit warp, story, preset, padscript switches and run_azahar -Turbo -Smoke

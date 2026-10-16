@@ -22,6 +22,8 @@ void pm_crash_line(const char* s, int n);
 void pm_frame_loop(void);
 
 int pm_debug_has(const char* word);
+const char* pm_debug_text(void);
+int pm_debug_value(const char* key, char* out, unsigned n);
 unsigned pm_ticks(void);
 
 /* PT01: per-frame phase timer. Switch `phase` turns it on (pm_ph_on). Exclusive time: a nested phase takes its time from

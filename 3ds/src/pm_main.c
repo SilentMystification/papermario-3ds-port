@@ -129,6 +129,13 @@ void pm_crash_install(void* stack, unsigned size) {
 }
 
 unsigned pm_ticks(void) { return (unsigned)svcGetSystemTick(); }
+/* milliseconds since the first call (64 bit tick, the 32 bit pm_ticks wraps every 16 s) */
+unsigned pm_uptime_ms(void) {
+    static u64 t0;
+    u64 t = svcGetSystemTick();
+    if (!t0) t0 = t;
+    return (unsigned)((t - t0) / (SYSCLOCK_ARM11 / 1000ull));
+}
 
 /* gfxRetrace_Callback flips D_80073E0A and builds a display list only when it
  * lands on 0. The other retrace leaves the N64 framebuffer alone. Clearing
@@ -145,8 +152,13 @@ unsigned nuGfxCfbNum = 2;
 int pm_is_cfb(const void* p) { return p == &cfb_token[0] || p == &cfb_token[1]; }
 
 void pm_dump_scripts(void);
+void pm_warp_tick(unsigned frame);
+unsigned pm_uptime_ms(void);
+static unsigned pm_frame_n;
+unsigned pm_frame_count(void) { return pm_frame_n; }
 void pm_frame_loop(void) {
     unsigned frame = 0;
+    pm_uptime_ms(); /* start the clock */
     nuGfxCfb = cfb_list;
     unsigned presents = 0;
     int ever = 0;
@@ -194,6 +206,8 @@ void pm_frame_loop(void) {
         pm_gpu_end();
         pm_ph_frame_end();
         frame++;
+        pm_frame_n = frame;
+        pm_warp_tick(frame);
         presents++;
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;

@@ -1,5 +1,9 @@
 #include <3ds.h>
 #include "pm_port.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 
 unsigned pm_pad_scans;
 static unsigned short held;
@@ -9,6 +13,80 @@ static unsigned tap_injected, tap_seen;
 static signed char stick_x;
 static signed char stick_y;
 static int rand_on, rand_x, rand_y; /* padrand switch */
+
+/* padscript switch (slice W01): a scripted pad. `padscript=A,wait30,right*60,right+A*20` or `padscript=@file`
+ * (file in the SD app folder, tokens split by comma, space or newline). A token is `wait<n>` (nothing pressed) or buttons joined
+ * with +, then an optional *<n> scan count (default 1). Buttons: A B Z START L R dup ddown dleft dright, stick: up down left right.
+ * The unit is a pad scan: the game reads the pad on every second scan, so 2 scans are 1 game frame (30 Hz). With `warp` the script
+ * starts on the first frame of the scene (pm_padscript_start), without it on the first scan. After the last token the real pad is back. */
+#define PS_MAX 160
+static struct { unsigned short b; signed char x, y; unsigned short n; } ps[PS_MAX];
+static int ps_n, ps_i, ps_run, ps_wait_start;
+static unsigned ps_left;
+static unsigned short ps_prev;
+
+static int ps_button(const char* t, unsigned short* b, signed char* x, signed char* y) {
+    static const struct { const char* n; unsigned short bit; } bt[] = {
+        { "A", 0x8000 }, { "B", 0x4000 }, { "Z", 0x2000 }, { "START", 0x1000 }, { "L", 0x0020 }, { "R", 0x0010 },
+        { "dup", 0x0800 }, { "ddown", 0x0400 }, { "dleft", 0x0200 }, { "dright", 0x0100 },
+    };
+    for (unsigned i = 0; i < sizeof(bt) / sizeof(bt[0]); i++) if (strcasecmp(t, bt[i].n) == 0) { *b |= bt[i].bit; return 1; }
+    if (strcasecmp(t, "up") == 0) { *y = 80; return 1; }
+    if (strcasecmp(t, "down") == 0) { *y = -80; return 1; }
+    if (strcasecmp(t, "left") == 0) { *x = -80; return 1; }
+    if (strcasecmp(t, "right") == 0) { *x = 80; return 1; }
+    return 0;
+}
+
+static void ps_parse(char* s) {
+    char* save = NULL;
+    const char* sep = ", \r\n\t";
+    for (char* tok = strtok_r(s, sep, &save); tok && ps_n < PS_MAX; tok = strtok_r(NULL, sep, &save)) {
+        unsigned n = 1;
+        char* star = strchr(tok, '*');
+        if (star) { *star = 0; n = (unsigned)atoi(star + 1); }
+        unsigned short b = 0;
+        signed char x = 0, y = 0;
+        if (strncasecmp(tok, "wait", 4) == 0) {
+            n = (unsigned)atoi(tok + 4);
+        } else {
+            char* sv2 = NULL;
+            for (char* p = strtok_r(tok, "+", &sv2); p; p = strtok_r(NULL, "+", &sv2))
+                if (!ps_button(p, &b, &x, &y)) pm_log("padscript: unknown button '%s'", p);
+        }
+        if (n == 0) n = 1;
+        ps[ps_n].b = b; ps[ps_n].x = x; ps[ps_n].y = y; ps[ps_n].n = (unsigned short)n;
+        ps_n++;
+    }
+}
+
+static void ps_load(void) {
+    static char buf[1024];
+    char v[40];
+    if (!pm_debug_value("padscript", v, sizeof v)) return;
+    if (v[0] == '@') {
+        FILE* f = fopen(v + 1, "rb");
+        size_t n = f ? fread(buf, 1, sizeof(buf) - 1, f) : 0;
+        if (f) fclose(f);
+        buf[n] = 0;
+        if (!f) pm_log("padscript: cannot open %s", v + 1);
+    } else {
+        strncpy(buf, v, sizeof buf - 1);
+    }
+    ps_parse(buf);
+    ps_i = 0;
+    ps_left = ps_n ? ps[0].n : 0;
+    {
+        char t[8];
+        ps_wait_start = pm_debug_value("warp", t, sizeof t) || pm_debug_value("preset", t, sizeof t) || pm_debug_value("story", t, sizeof t);
+    }
+    ps_run = ps_n > 0 && !ps_wait_start;
+    pm_log("padscript: %d steps, starts %s", ps_n, ps_wait_start ? "in the scene" : "now");
+}
+
+void pm_padscript_start(void) {
+    if (ps_n && !ps_run && ps_wait_start && ps_i == 0) { ps_run = 1; pm_log("padscript: start at scan %u", pm_pad_scans); }
+}
 
 static int clamp_stick(int v) {
     v = v * 80 / 154;
@@ -83,6 +161,22 @@ void pm_pad_scan(void) {
             if (pm_pad_scans % 97 < 3) { b |= 0x4000; edge |= 0x4000; }
             if (pm_pad_scans % 701 < 3) { b |= 0x1000; edge |= 0x1000; }
             if (pm_pad_scans % 211 < 3) { b |= 0x2000; edge |= 0x2000; }
+        }
+        {
+            static int ps_init;
+            if (!ps_init) { ps_init = 1; ps_load(); }
+            if (ps_run) {
+                b |= ps[ps_i].b;
+                edge |= ps[ps_i].b & ~ps_prev;
+                ps_prev = ps[ps_i].b;
+                rand_x = ps[ps_i].x;
+                rand_y = ps[ps_i].y;
+                rand_on = 1;
+                if (--ps_left == 0) {
+                    if (++ps_i >= ps_n) { ps_run = 0; rand_on = 0; ps_prev = 0; pm_log("padscript: done at scan %u", pm_pad_scans); }
+                    else ps_left = ps[ps_i].n;
+                }
+            }
         }
         /* faulttest switch (slice F01): one read of address 0x10 at scan 300, to check the fault detector */
         if (pm_debug_has("faulttest") && pm_pad_scans == 300) {

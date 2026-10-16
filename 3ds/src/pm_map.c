@@ -533,7 +533,9 @@ static int map_is_linked(s16 areaID, s16 mapID) {
     return gAreas[areaID].maps[mapID].settings != NULL;
 }
 
+s16 pm_warp_hook(s16 mode);
 void __wrap_set_game_mode(s16 mode) {
+    mode = pm_warp_hook(mode); /* slice W01 debug switches warp, story, preset */
     if (mode == GAME_MODE_CHANGE_MAP && !map_is_linked(gGameStatusPtr->areaID, gGameStatusPtr->mapID)) {
         pm_log("GotoMap refused: area %d map %d is not linked", gGameStatusPtr->areaID, gGameStatusPtr->mapID);
         gGameStatusPtr->areaID = cur_area;
@@ -541,6 +543,11 @@ void __wrap_set_game_mode(s16 mode) {
         return;
     }
     pm_log("game mode %d", mode);
+    if (mode == GAME_MODE_WORLD) {
+        extern void pm_warp_world_mode(unsigned frame);
+        extern unsigned pm_frame_count(void);
+        pm_warp_world_mode(pm_frame_count());
+    }
     __real_set_game_mode(mode);
 }
 
