@@ -119,6 +119,19 @@ set(GAME_SRC
     ${DECOMP}/src/entity/model/ScriptSpring_anim.c
     ${DECOMP}/src/entity/default/BombableRock.c
     ${DECOMP}/src/collision.c
+    ${DECOMP}/src/world/partners.c
+    ${DECOMP}/src/world_use_item.c
+    ${DECOMP}/src/world/partner/goombario.c
+    ${DECOMP}/src/world/partner/kooper.c
+    ${DECOMP}/src/world/partner/bombette.c
+    ${DECOMP}/src/world/partner/parakarry.c
+    ${DECOMP}/src/world/partner/goompa.c
+    ${DECOMP}/src/world/partner/watt.c
+    ${DECOMP}/src/world/partner/sushie.c
+    ${DECOMP}/src/world/partner/lakilester.c
+    ${DECOMP}/src/world/partner/bow.c
+    ${DECOMP}/src/world/partner/goombaria.c
+    ${DECOMP}/src/world/partner/twink.c
     ${DECOMP}/src/world/actions.c
     ${DECOMP}/src/world/action/hammer.c
     ${DECOMP}/src/world/action/hit_fire.c
@@ -200,6 +213,7 @@ set(GAME_SRC
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types")
+set_property(SOURCE ${DECOMP}/src/world/partners.c APPEND PROPERTY COMPILE_OPTIONS -include common.h)
 
 ctr_add_shader_library(pm_shader shaders/pm.v.pica)
 dkp_add_embedded_binary_library(pm_shader_lib pm_shader)
@@ -265,6 +279,42 @@ target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
     -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50
+    # partner overlays are linked in. Each range is empty (START == END, in the image) so dma_copy copies nothing.
+    -Wl,--defsym,world_partner_goombario_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_goombario_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_goombario_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_kooper_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_kooper_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_kooper_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_bombette_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_bombette_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_bombette_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_parakarry_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_parakarry_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_parakarry_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_goompa_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_goompa_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_goompa_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_watt_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_watt_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_watt_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_sushie_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_sushie_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_sushie_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_lakilester_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_lakilester_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_lakilester_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_bow_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_bow_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_bow_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_goombaria_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_goombaria_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_goombaria_VRAM=gPartnerStatus
+    -Wl,--defsym,world_partner_twink_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_partner_twink_ROM_END=gPartnerStatus
+    -Wl,--defsym,world_partner_twink_VRAM=gPartnerStatus
+    -Wl,--defsym,world_use_item_ROM_START=gPartnerStatus
+    -Wl,--defsym,world_use_item_ROM_END=gPartnerStatus
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)

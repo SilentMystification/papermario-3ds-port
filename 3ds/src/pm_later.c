@@ -14,7 +14,6 @@ void reset_background_settings() {}
 /* init_encounter_status is npc.c */
 void poll_rumble() {}
 void reset_battle_status() {}
-void partner_initialize_data() {}
 void fio_load_globals() {}
 /* update_npcs, update_player, update_encounters are npc.c and 77480.c */
 void clear_virtual_entity_list() {}
@@ -53,6 +52,4 @@ void state_step_language_select() {}
 void state_step_pause() {}
 void state_step_unpause() {}
 unsigned char heap_collisionHead[0x20000] __attribute__((aligned(16)));
-void world_lakilester_sync_player_position() {}
-void world_sushie_sync_player_position() {}
 short FlowerGoalPositionX, FlowerGoalPositionY, FlowerGoalPositionZ;

@@ -121,4 +121,40 @@
 /* Linker symbols, set by --defsym in CMakeLists.txt (ROM offsets from splat.yaml and undefined_syms.txt). */
 extern Addr sprite_shading_profiles_ROM_START;
 extern Addr sprite_shading_profiles_data_ROM_START;
+/* partner overlays are linked in; defsym in CMakeLists.txt */
+extern Addr world_partner_goombario_ROM_START;
+extern Addr world_partner_goombario_ROM_END;
+extern Addr world_partner_goombario_VRAM;
+extern Addr world_partner_kooper_ROM_START;
+extern Addr world_partner_kooper_ROM_END;
+extern Addr world_partner_kooper_VRAM;
+extern Addr world_partner_bombette_ROM_START;
+extern Addr world_partner_bombette_ROM_END;
+extern Addr world_partner_bombette_VRAM;
+extern Addr world_partner_parakarry_ROM_START;
+extern Addr world_partner_parakarry_ROM_END;
+extern Addr world_partner_parakarry_VRAM;
+extern Addr world_partner_goompa_ROM_START;
+extern Addr world_partner_goompa_ROM_END;
+extern Addr world_partner_goompa_VRAM;
+extern Addr world_partner_watt_ROM_START;
+extern Addr world_partner_watt_ROM_END;
+extern Addr world_partner_watt_VRAM;
+extern Addr world_partner_sushie_ROM_START;
+extern Addr world_partner_sushie_ROM_END;
+extern Addr world_partner_sushie_VRAM;
+extern Addr world_partner_lakilester_ROM_START;
+extern Addr world_partner_lakilester_ROM_END;
+extern Addr world_partner_lakilester_VRAM;
+extern Addr world_partner_bow_ROM_START;
+extern Addr world_partner_bow_ROM_END;
+extern Addr world_partner_bow_VRAM;
+extern Addr world_partner_goombaria_ROM_START;
+extern Addr world_partner_goombaria_ROM_END;
+extern Addr world_partner_goombaria_VRAM;
+extern Addr world_partner_twink_ROM_START;
+extern Addr world_partner_twink_ROM_END;
+extern Addr world_partner_twink_VRAM;
+extern Addr world_use_item_ROM_START;
+extern Addr world_use_item_ROM_END;
 #endif

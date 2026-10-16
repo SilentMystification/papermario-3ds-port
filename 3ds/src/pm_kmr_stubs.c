@@ -5,17 +5,11 @@
 /* Systems kmr_20 reaches that are not linked yet. Each is replaced by its real file later. */
 
 
-void enable_partner_ai(void) {}
-void func_800EF314(void) {}
-void func_800EF3E4(void) {}
-void func_800EF414(s32 posX, s32 posZ) {}
 
 void create_standard_popup_menu(void* menu) {}
 
 Mtx Entity_BombableRock_FragmentMatrices[8];
 Gfx* Entity_BombableRock_FragmentsRender[8];
-void func_800EF300(void) {}
-void partner_set_tether_distance(f32 dist) {}
 void hide_popup_menu(void) {}
 void destroy_popup_menu(void) {}
 

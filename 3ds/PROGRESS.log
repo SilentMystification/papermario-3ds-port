@@ -1,3 +1,7 @@
 03:05 S14 start
 03:06 S14 first build: 16 dup stubs, no compile errors
 03:08 S14 links clean after dedup
+03:11 S14 done, committed, kmr_20 reached no unmapped
+03:12 S09 start: reading HANDOFF.md
+03:12 S09 CMake and ld_addrs edited, building
+03:16 S09 build links with partners.c, running Azahar check

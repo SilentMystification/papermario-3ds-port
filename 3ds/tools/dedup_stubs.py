@@ -3,7 +3,7 @@ Handles `STUB(name)` lines and one-line `type name(...) {...}` stubs in the port
 import re, sys, pathlib
 root = pathlib.Path(__file__).resolve().parents[1] / "src"
 names = set(re.findall(r"multiple definition of `(\w+)'", sys.stdin.read()))
-files = ["pm_actor_stubs.c", "pm_evt_stub.c", "pm_later.c", "pm_kmr_stubs.c", "game_stubs.c", "pm_actor_link.c", "pm_msg.c"]
+files = ["pm_actor_stubs.c", "pm_evt_stub.c", "pm_later.c", "pm_kmr_stubs.c", "game_stubs.c", "pm_actor_link.c"]
 for f in files:
     p = root / f
     lines = p.read_text().split("\n")

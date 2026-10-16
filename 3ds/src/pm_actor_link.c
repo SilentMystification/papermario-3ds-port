@@ -7,9 +7,6 @@
  * run. */
 
 
-PartnerAnimations gPartnerAnimations[12];
-Npc* wPartnerNpc;
-s32 WorldTattleInteractionID = -1;
 
 EvtScript EVS_NpcHitRecoil = {
     Return

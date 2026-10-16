@@ -12,7 +12,6 @@ extern PlayerData gPlayerData;
 SaveGlobals gSaveGlobals;
 extern PlayerStatus gPlayerStatus;
 BattleStatus gBattleStatus;
-PartnerStatus gPartnerStatus;
 SaveData gCurrentSaveFile;
 u8 IntroMessageIdx;
 
