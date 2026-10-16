@@ -54,3 +54,6 @@ Last tidied by slice S20. Answer by editing the "Answer" line or by telling the 
 - S17 idle title timer: merged into Q4.
 - M02 effect graphics, M02 ROM streaming: moved to Q3 and Q2.
 - S08 hos_04: moved to Q6.
+
+## V02 (not reproduced): where exactly does the wall cover the bushes?
+Slice V02 found nothing in Azahar. Bushes draw in front of the hills in kmr_20 (yard, both camera positions), the hos_05 intro and mac_00. Please tell: the map, the moment (before or after the letter, intro or after the title), the camera angle, what is in front, and the device (Azahar, O3DS, N3DS). If it is hardware only, a photo helps.

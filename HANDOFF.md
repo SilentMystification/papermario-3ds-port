@@ -219,6 +219,15 @@ Found so far (slice V02, Azahar only):
 Next step: log per draw (model name or vertex address) in the zb 0 run of kmr_20 frame 301 and check whether the bushes are in that run. Test the decal bias (`C3D_DepthMap` in `pm_gpu.c` flush) with a larger value. Check mac_00 shots.
 Commands: `powershell -File 3ds/run_azahar.ps1 -Debug "fast autoa freshsave rmlog" -Timeout 200 -Until "area 1 map 1"` (rmlog lines `rm f<frame>`, logged on frames where frame mod 30 is 1, only on a state change). A/B: add `rmoff`. Shots: `fast autoa shots freshsave`, then `python build3ds/sheet.py 1 0 54 out.png`.
 
+## V02 result (slice V02, NOT REPRODUCED, no code changed)
+
+Checked in slice V02 on Azahar, on current main (after S26, S27, V01, PO1, PT01):
+- `fast autoa shots freshsave` (54 shots): kmr_20 yard before the letter (shots 11 to 29), the house interior, the letter, the yard after the letter (44 to 53). Shots 15 and 49 looked at full size (rotated, 2x). Bushes sit in front of the hazy hills. Tree trunk sits in front of the haze. No back wall over the bushes at any camera position.
+- `fast shots` (106 shots): the hos_05 intro (star ship, palace, Bowser). No Mario house in the first 106 shots. The house scene in the intro comes later and was not reached with shots.
+- `fast autoa shots freshsave` to 200 shots: mac_00 (Toad Town) idle view and osr_00. No bush or wall overlap seen.
+- Not done: no per-draw `rmlog` of panorama and bush draws, because there was nothing to find. Depth state was not changed.
+Question for the user is in 3ds/QUESTIONS.md. Possible remaining cause: a hardware only effect (depth precision on PICA) that Azahar does not show.
+
 ## Open issues (carry over until fixed)
 
 1. kkj_00 is not reached by the intro chain. See above. Toad Town (mac_00) and every other map also fail to load. The generic map table fixes both.
