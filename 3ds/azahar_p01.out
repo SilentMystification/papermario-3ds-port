@@ -1,0 +1,344 @@
+#0 Paper Mario 3DS
+#1 MODE = O3DS / 64MB cap (console region 96MB)
+#2 switches fast autoa romtrace
+#3 rom resident 32519KB of 40960KB (packed)
+#4 ram n64 4MB, rom 32MB, port 20MB
+#5 mem boot heap total 45056KB used 32789KB free-in-arena 2KB sbrk-left 12264KB linear total 20480KB free 0KB
+#6 boot_main
+#7 gpu ok proj 0 m 8 -1000
+#8 ndsp ready 32000 Hz
+#9 audio manager thread ready
+#10 gbi skip f3
+#11 load map area 5 map 5
+#12 mem map heap total 45056KB used 32922KB free-in-arena 5KB sbrk-left 12128KB linear total 20480KB free 12919KB
+#13 spawn npcs 11
+#14 stats t13028 i3830 c0 d0 o9198 k9542 x63
+#15 stats t1800 i1370 c0 d0 o430 k2401 x50
+#16 audio cost avg 470 us max 602 us per 60 Hz tick
+#17 audio posts 120 peak 0
+#18 stats t1800 i1590 c0 d0 o210 k2818 x49
+#19 audio cost avg 3239 us max 25666 us per 60 Hz tick
+#20 audio posts 240 peak 12043
+#21 stats t1800 i1590 c0 d0 o210 k2820 x49
+#22 audio cost avg 3304 us max 28722 us per 60 Hz tick
+#23 audio posts 360 peak 13793
+#24 title logo 00002210 press 00001210
+#25 title screen
+#26 stats t1740 i1537 c0 d0 o203 k2726 x49
+#27 audio cost avg 3096 us max 14676 us per 60 Hz tick
+#28 audio posts 480 peak 11620
+#29 stats t1800 i1590 c0 d0 o210 k2820 x49
+#30 file select
+#31 audio cost avg 3013 us max 22081 us per 60 Hz tick
+#32 audio posts 600 peak 11238
+#33 audio cost avg 3154 us max 29522 us per 60 Hz tick
+#34 audio posts 720 peak 12122
+#35 file 1
+#36 load map area 0 map 11
+#37 mem map heap total 45056KB used 32925KB free-in-arena 2KB sbrk-left 12128KB linear total 20480KB free 12054KB
+#38 audio cost avg 3254 us max 21851 us per 60 Hz tick
+#39 audio posts 840 peak 11126
+#40 spawn npcs 2
+#41 stats t45651 i28534 c0 d0 o17117 k77317 x-53
+#42 door 245 30 -76 x67 y-67 z92 w39515
+#43 audio cost avg 2571 us max 18737 us per 60 Hz tick
+#44 audio posts 960 peak 14781
+#45 stats t45120 i30793 c0 d0 o14327 k83176 x-55
+#46 stats t45120 i29637 c0 d0 o15483 k79951 x-59
+#47 audio cost avg 1886 us max 16733 us per 60 Hz tick
+#48 audio posts 1080 peak 10028
+#49 stats t45120 i27989 c0 d0 o17131 k76007 x-61
+#50 audio cost avg 2146 us max 20419 us per 60 Hz tick
+#51 audio posts 1200 peak 10452
+#52 stats t44496 i27628 c0 d0 o16868 k75138 x-62
+#53 stats t43680 i27760 c0 d0 o15920 k75551 x-62
+#54 audio cost avg 4072 us max 22397 us per 60 Hz tick
+#55 audio posts 1320 peak 14702
+#56 stats t43680 i27810 c0 d0 o15870 k75780 x-62
+#57 audio cost avg 5247 us max 20801 us per 60 Hz tick
+#58 audio posts 1440 peak 20128
+#59 audio cost avg 4583 us max 19976 us per 60 Hz tick
+#60 audio posts 1560 peak 16691
+#61 stats t43904 i28034 c0 d0 o15870 k76452 x-62
+#62 audio cost avg 1883 us max 29767 us per 60 Hz tick
+#63 audio posts 1680 peak 8522
+#64 stats t43980 i28110 c0 d0 o15870 k76680 x-62
+#65 audio cost avg 1797 us max 16608 us per 60 Hz tick
+#66 audio posts 1800 peak 5623
+#67 stats t43780 i27910 c0 d0 o15870 k76080 x-62
+#68 audio cost avg 2158 us max 28469 us per 60 Hz tick
+#69 audio posts 1920 peak 12487
+#70 stats t43680 i27810 c0 d0 o15870 k75780 x-62
+#71 stats t43680 i27724 c0 d0 o15956 k75483 x-62
+#72 audio cost avg 1799 us max 17041 us per 60 Hz tick
+#73 audio posts 2040 peak 5345
+#74 stats t44268 i28218 c0 d0 o16050 k77004 x-62
+#75 door 245 31 -76 x-50 y-44 z96 w73154
+#76 audio cost avg 2160 us max 16791 us per 60 Hz tick
+#77 audio posts 2160 peak 13917
+#78 stats t46746 i30696 c0 d0 o16050 k84438 x-62
+#79 stats t45710 i29660 c0 d0 o16050 k81330 x-62
+#80 audio cost avg 2067 us max 17544 us per 60 Hz tick
+#81 audio posts 2280 peak 16108
+#82 stats t43830 i27780 c0 d0 o16050 k75690 x-62
+#83 audio cost avg 2119 us max 16983 us per 60 Hz tick
+#84 audio posts 2400 peak 11446
+#85 stats t43684 i27634 c0 d0 o16050 k75252 x-62
+#86 stats t43680 i27630 c0 d0 o16050 k75240 x-62
+#87 audio cost avg 2049 us max 17533 us per 60 Hz tick
+#88 audio posts 2520 peak 4932
+#89 stats t43822 i27772 c0 d0 o16050 k75666 x-62
+#90 audio cost avg 2064 us max 20250 us per 60 Hz tick
+#91 audio posts 2640 peak 5427
+#92 stats t44438 i27932 c0 d0 o16506 k76204 x-25
+#93 door 245 30 -76 x67 y-67 z92 w39515
+#94 stats t61406 i31616 c0 d0 o29790 k88712 x-25
+#95 audio cost avg 2068 us max 16991 us per 60 Hz tick
+#96 audio posts 2760 peak 15828
+#97 stats t61574 i31856 c0 d0 o29718 k89632 x-25
+#98 audio cost avg 2316 us max 18165 us per 60 Hz tick
+#99 audio posts 2880 peak 17011
+#100 stats t61620 i32010 c0 d0 o29610 k90300 x-25
+#101 stats t61678 i32068 c0 d0 o29610 k90474 x-25
+#102 audio cost avg 1973 us max 17385 us per 60 Hz tick
+#103 audio posts 3000 peak 8192
+#104 stats t61680 i32070 c0 d0 o29610 k90480 x-25
+#105 audio cost avg 1975 us max 17618 us per 60 Hz tick
+#106 audio posts 3120 peak 12260
+#107 stats t61480 i31870 c0 d0 o29610 k89880 x-25
+#108 audio cost avg 1938 us max 16608 us per 60 Hz tick
+#109 audio posts 3240 peak 3303
+#110 stats t61380 i31770 c0 d0 o29610 k89580 x-25
+#111 stats t61500 i33093 c0 d0 o28407 k92355 x0
+#112 audio cost avg 2129 us max 18490 us per 60 Hz tick
+#113 audio posts 3360 peak 5687
+#114 stats t61634 i38834 c0 d0 o22800 k106717 x26
+#115 door 245 30 -76 x89 y-67 z92 w39515
+#116 audio cost avg 1979 us max 17381 us per 60 Hz tick
+#117 audio posts 3480 peak 3182
+#118 stats t61774 i39244 c0 d0 o22530 k107682 x26
+#119 door 245 30 -76 x109 y-67 z92 w39515
+#120 audio cost avg 2019 us max 17115 us per 60 Hz tick
+#121 audio posts 3600 peak 8210
+#122 stats t61910 i39380 c0 d0 o22530 k108090 x26
+#123 stats t61920 i39390 c0 d0 o22530 k108120 x26
+#124 audio cost avg 1984 us max 16833 us per 60 Hz tick
+#125 audio posts 3720 peak 1256
+#126 audio cost avg 1918 us max 17039 us per 60 Hz tick
+#127 audio posts 3840 peak 12366
+#128 stats t61720 i39190 c0 d0 o22530 k107520 x26
+#129 audio cost avg 2101 us max 17321 us per 60 Hz tick
+#130 audio posts 3960 peak 3464
+#131 stats t61814 i39284 c0 d0 o22530 k107802 x26
+#132 stats t61918 i39388 c0 d0 o22530 k108114 x26
+#133 audio cost avg 2012 us max 17904 us per 60 Hz tick
+#134 audio posts 4080 peak 8123
+#135 stats t61920 i39390 c0 d0 o22530 k108120 x26
+#136 audio cost avg 2036 us max 17408 us per 60 Hz tick
+#137 audio posts 4200 peak 12379
+#138 stats t61720 i39190 c0 d0 o22530 k107520 x26
+#139 audio cost avg 2399 us max 17093 us per 60 Hz tick
+#140 audio posts 4320 peak 6909
+#141 stats t61620 i39090 c0 d0 o22530 k107220 x26
+#142 load map area 23 map 0
+#143 mem map heap total 45056KB used 32925KB free-in-arena 2KB sbrk-left 12128KB linear total 20480KB free 12382KB
+#144 spawn npcs 1
+#145 stats t33716 i19989 c0 d0 o13727 k54501 x178
+#146 gbi skip f9
+#147 gbi skip f8
+#148 audio cost avg 2439 us max 17942 us per 60 Hz tick
+#149 audio posts 4440 peak 8637
+#150 stats t44760 i26070 c0 d0 o18690 k71190 x178
+#151 tex cache full 32x32
+#152 audio cost avg 2432 us max 17118 us per 60 Hz tick
+#153 audio posts 4560 peak 8431
+#154 stats t44794 i26104 c0 d0 o18690 k71292 x178
+#155 stats t44820 i26130 c0 d0 o18690 k71370 x178
+#156 audio cost avg 2467 us max 17957 us per 60 Hz tick
+#157 audio posts 4680 peak 9340
+#158 audio cost avg 2447 us max 18422 us per 60 Hz tick
+#159 audio posts 4800 peak 9513
+#160 audio cost avg 2403 us max 17884 us per 60 Hz tick
+#161 audio posts 4920 peak 15934
+#162 stats t44774 i26084 c0 d0 o18690 k71232 x178
+#163 stats t44760 i26070 c0 d0 o18690 k71190 x178
+#164 audio cost avg 2088 us max 17218 us per 60 Hz tick
+#165 audio posts 5040 peak 6065
+#166 stats t44806 i26116 c0 d0 o18690 k71328 x178
+#167 audio cost avg 2379 us max 16829 us per 60 Hz tick
+#168 audio posts 5160 peak 7058
+#169 stats t44820 i26130 c0 d0 o18690 k71370 x178
+#170 audio cost avg 2374 us max 17877 us per 60 Hz tick
+#171 audio posts 5280 peak 17169
+#172 stats t44774 i26084 c0 d0 o18690 k71232 x178
+#173 stats t44760 i26070 c0 d0 o18690 k71190 x178
+#174 audio cost avg 2376 us max 17117 us per 60 Hz tick
+#175 audio posts 5400 peak 8485
+#176 audio cost avg 2380 us max 17205 us per 60 Hz tick
+#177 audio posts 5520 peak 9313
+#178 stats t44762 i26072 c0 d0 o18690 k71196 x178
+#179 audio cost avg 2391 us max 17649 us per 60 Hz tick
+#180 audio posts 5640 peak 14407
+#181 stats t44774 i26084 c0 d0 o18690 k71232 x178
+#182 load map area 0 map 11
+#183 mem map heap total 45056KB used 32925KB free-in-arena 2KB sbrk-left 12128KB linear total 20480KB free 12547KB
+#184 spawn npcs 2
+#185 stats t29840 i17380 c0 d0 o12460 k47460 x178
+#186 audio cost avg 2449 us max 17870 us per 60 Hz tick
+#187 audio posts 5760 peak 7448
+#188 stats t45892 i24855 c0 d0 o21037 k62622 x-33
+#189 door 245 30 -76 x67 y-67 z92 w39515
+#190 audio cost avg 1703 us max 23128 us per 60 Hz tick
+#191 audio posts 5880 peak 6725
+#192 stats t41670 i22020 c0 d0 o19650 k54540 x-33
+#193 stats t44414 i24764 c0 d0 o19650 k62772 x-34
+#194 door 245 31 -76 x-26 y-38 z94 w50691
+#195 audio cost avg 3249 us max 16973 us per 60 Hz tick
+#196 audio posts 6000 peak 20147
+#197 stats t44340 i26207 c0 d0 o18133 k68503 x-73
+#198 door 245 31 -76 x-26 y-37 z94 w50779
+#199 audio cost avg 3788 us max 17115 us per 60 Hz tick
+#200 audio posts 6120 peak 23404
+#201 stats t42190 i22094 c0 d0 o20096 k56495 x-117
+#202 stats t42710 i17527 c0 d0 o25183 k44180 x-172
+#203 audio cost avg 3743 us max 19632 us per 60 Hz tick
+#204 audio posts 6240 peak 15792
+#205 stats t42058 i13066 c0 d0 o28992 k33800 x-210
+#206 audio cost avg 3967 us max 27616 us per 60 Hz tick
+#207 audio posts 6360 peak 21002
+#208 stats t42330 i12570 c0 d0 o29760 k33240 x-210
+#209 stats t42524 i12764 c0 d0 o29760 k33822 x-210
+#210 audio cost avg 3580 us max 20006 us per 60 Hz tick
+#211 audio posts 6480 peak 19418
+#212 stats t39844 i12068 c0 d0 o27776 k32032 x-210
+#213 load map area 1 map 1
+#214 mem map heap total 45056KB used 32925KB free-in-arena 2KB sbrk-left 12128KB linear total 20480KB free 12411KB
+#215 spawn npcs 6
+#216 gbi skip ee
+#217 audio cost avg 3031 us max 27431 us per 60 Hz tick
+#218 audio posts 6600 peak 23442
+#219 stats t30298 i6211 c0 d0 o24087 k15194 x197
+#220 stats t42594 i8664 c0 d0 o33930 k21252 x197
+#221 audio cost avg 2859 us max 28797 us per 60 Hz tick
+#222 audio posts 6720 peak 20796
+#223 stats t42446 i8555 c0 d0 o33891 k20840 x219
+#224 audio cost avg 2750 us max 25322 us per 60 Hz tick
+#225 audio posts 6840 peak 21903
+#226 stats t42900 i12493 c0 d0 o30407 k32382 x761
+#227 stats t42730 i15294 c0 d0 o27436 k39854 x935
+#228 audio cost avg 2476 us max 29308 us per 60 Hz tick
+#229 audio posts 6960 peak 16245
+#230 stats t43376 i15655 c0 d0 o27721 k41388 x1474
+#231 audio cost avg 3416 us max 17836 us per 60 Hz tick
+#232 audio posts 7080 peak 15945
+#233 stats t42678 i15406 c0 d0 o27272 k39906 x3334
+#234 stats t42742 i12769 c0 d0 o29973 k30951 x24743
+#235 audio cost avg 3527 us max 29118 us per 60 Hz tick
+#236 audio posts 7200 peak 17211
+#237 stats t42678 i10271 c14 d0 o32393 k23205 x-9365
+#238 audio cost avg 3255 us max 17687 us per 60 Hz tick
+#239 audio posts 7320 peak 18128
+#240 stats t42678 i10899 c4 d0 o31775 k25523 x-6181
+#241 GotoMap refused: area 1 map 2 is not linked
+#242 stats t42678 i10728 c0 d0 o31950 k25074 x-6144
+#243 audio cost avg 3904 us max 30779 us per 60 Hz tick
+#244 audio posts 7440 peak 17107
+#245 stats t42678 i10618 c0 d0 o32060 k24617 x-6144
+#246 stats t42630 i10334 c0 d0 o32296 k23874 x-6144
+#247 audio cost avg 3430 us max 19800 us per 60 Hz tick
+#248 audio posts 7560 peak 12019
+#249 stats t42510 i10320 c0 d0 o32190 k23850 x-6144
+#250 audio cost avg 3560 us max 17540 us per 60 Hz tick
+#251 audio posts 7680 peak 16472
+#252 audio cost avg 3358 us max 19425 us per 60 Hz tick
+#253 audio posts 7800 peak 19307
+#254 audio cost avg 3642 us max 18567 us per 60 Hz tick
+#255 audio posts 7920 peak 17964
+#256 audio cost avg 3346 us max 26133 us per 60 Hz tick
+#257 audio posts 8040 peak 16031
+#258 audio cost avg 2915 us max 18102 us per 60 Hz tick
+#259 audio posts 8160 peak 14556
+#260 audio cost avg 2884 us max 24988 us per 60 Hz tick
+#261 audio posts 8280 peak 11335
+#262 audio cost avg 3189 us max 25068 us per 60 Hz tick
+#263 audio posts 8400 peak 10749
+#264 audio cost avg 3300 us max 24563 us per 60 Hz tick
+#265 audio posts 8520 peak 15300
+#266 audio cost avg 2901 us max 28505 us per 60 Hz tick
+#267 audio posts 8640 peak 11390
+#268 audio cost avg 2898 us max 18258 us per 60 Hz tick
+#269 audio posts 8760 peak 13180
+#270 audio cost avg 2740 us max 17775 us per 60 Hz tick
+#271 audio posts 8880 peak 11197
+#272 audio cost avg 2898 us max 18776 us per 60 Hz tick
+#273 audio posts 9000 peak 13807
+#274 audio cost avg 3129 us max 24785 us per 60 Hz tick
+#275 audio posts 9120 peak 15284
+#276 audio cost avg 3592 us max 19381 us per 60 Hz tick
+#277 audio posts 9240 peak 17122
+#278 audio cost avg 3671 us max 29146 us per 60 Hz tick
+#279 audio posts 9360 peak 18007
+#280 audio cost avg 3808 us max 19475 us per 60 Hz tick
+#281 audio posts 9480 peak 17873
+#282 audio cost avg 3726 us max 29889 us per 60 Hz tick
+#283 audio posts 9600 peak 15212
+#284 audio cost avg 3631 us max 18229 us per 60 Hz tick
+#285 audio posts 9720 peak 16430
+#286 audio cost avg 3966 us max 31333 us per 60 Hz tick
+#287 audio posts 9840 peak 15449
+#288 audio cost avg 3964 us max 18826 us per 60 Hz tick
+#289 audio posts 9960 peak 16780
+#290 audio cost avg 3663 us max 30943 us per 60 Hz tick
+#291 audio posts 10080 peak 13926
+#292 audio cost avg 3639 us max 29023 us per 60 Hz tick
+#293 audio posts 10200 peak 16435
+#294 audio cost avg 3881 us max 18415 us per 60 Hz tick
+#295 audio posts 10320 peak 16613
+#296 audio cost avg 3534 us max 19387 us per 60 Hz tick
+#297 audio posts 10440 peak 16207
+#298 audio cost avg 4110 us max 30962 us per 60 Hz tick
+#299 audio posts 10560 peak 20404
+#300 audio cost avg 3411 us max 18193 us per 60 Hz tick
+#301 audio posts 10680 peak 14331
+#302 audio cost avg 3322 us max 19411 us per 60 Hz tick
+#303 audio posts 10800 peak 13329
+#304 audio cost avg 2850 us max 17951 us per 60 Hz tick
+#305 audio posts 10920 peak 18746
+#306 audio cost avg 3286 us max 25874 us per 60 Hz tick
+#307 audio posts 11040 peak 14872
+#308 audio cost avg 3353 us max 18873 us per 60 Hz tick
+#309 audio posts 11160 peak 14012
+#310 audio cost avg 3117 us max 18879 us per 60 Hz tick
+#311 audio posts 11280 peak 16018
+#312 audio cost avg 3138 us max 18336 us per 60 Hz tick
+#313 audio posts 11400 peak 13582
+#314 audio cost avg 3033 us max 18551 us per 60 Hz tick
+#315 audio posts 11520 peak 15404
+#316 audio cost avg 3312 us max 18866 us per 60 Hz tick
+#317 audio posts 11640 peak 16044
+#318 audio cost avg 3083 us max 25776 us per 60 Hz tick
+#319 audio posts 11760 peak 14584
+#320 audio cost avg 2671 us max 24629 us per 60 Hz tick
+#321 audio posts 11880 peak 12770
+#322 audio cost avg 2865 us max 28524 us per 60 Hz tick
+#323 audio posts 12000 peak 10946
+#324 audio cost avg 3302 us max 20200 us per 60 Hz tick
+#325 audio posts 12120 peak 16021
+#326 audio cost avg 3166 us max 19090 us per 60 Hz tick
+#327 audio posts 12240 peak 17537
+stopped after 231 s: timeout (230 s)
+#313 audio posts 11400 peak 13582
+#314 audio cost avg 3033 us max 18551 us per 60 Hz tick
+#315 audio posts 11520 peak 15404
+#316 audio cost avg 3312 us max 18866 us per 60 Hz tick
+#317 audio posts 11640 peak 16044
+#318 audio cost avg 3083 us max 25776 us per 60 Hz tick
+#319 audio posts 11760 peak 14584
+#320 audio cost avg 2671 us max 24629 us per 60 Hz tick
+#321 audio posts 11880 peak 12770
+#322 audio cost avg 2865 us max 28524 us per 60 Hz tick
+#323 audio posts 12000 peak 10946
+#324 audio cost avg 3302 us max 20200 us per 60 Hz tick
+#325 audio posts 12120 peak 16021
+#326 audio cost avg 3166 us max 19090 us per 60 Hz tick
+#327 audio posts 12240 peak 17537

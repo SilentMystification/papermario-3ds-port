@@ -185,7 +185,7 @@ Every agent may read the ports in `reference/` (see `reference/README.md`) to le
 ## Known stand-ins added or recorded by S07
 
 - S07, new: `load_asset_by_name` in `3ds/src/pm_map.c` is a port-side copy of the real `load_asset_by_name` in `src/world/world.c` (line 268). Reason: the real `background.c` `load_map_bg` calls it, and `world.c` is S08 (needs `gAreas`). The port copy uses the port's own `find_asset`, which byte-swaps the asset table. Paperboat does not use a stand-in. It builds the real `src/world/world.c` copy of the function. So the way to use the real one is to build `world.c` (S08). Remove the port copy in S08.
-- S09, recorded by S07: the `world_partner_*` and `world_use_item_ROM_*` symbols are `--defsym` aliases that point at `gPartnerStatus`. This is a placeholder from S09. Partner abilities do not work through them, because `dma_copy` copies nothing. A real fix needs the partner overlays built (real ROM ranges and a way to load the code). Remove this stand-in then.
+- S09, recorded by S07: the `world_partner_*` and `world_use_item_ROM_*` symbols are `--defsym` aliases that point at `gPartnerStatus`. This is a placeholder from S09. It is for CODE only (MIPS overlays that the ARM build links in place), so `dma_copy` copies nothing and nothing is read. Slice P01 checked this: no data symbol uses the placeholder (see the P01 result).
 
 ## Do not
 
@@ -219,3 +219,12 @@ Done. S08 had already removed the hand-written hos_05 scripts. S16 grep: no hos_
 - BLOCKED part (slice S18b): `src/state_demo.c` needs `load_demo_battle` (`src/battle/battle.c`, pulls the whole battle tree, S19). Demo stand-ins `state_init/step/drawUI_demo` stay in `pm_later.c`. Queued in QUESTIONS.md.
 - Stand-ins left for S17: `state_*_language_select`, `state_*_exit_language_select`, `state_*_exit_file_select` in `pm_later.c`, plus `state_step_file_select` and `state_init_world` in `pm_title.c`. For S19: `state_*_battle`, `state_*_end_battle`, `reset_battle_status`. `state_drawUI_world` is also still a stand-in (`state_world.c`, S17).
 - Check (slice S18, Azahar `fast autoa`, 220 s): kmr_20 reached (twice), mac_00 loaded and stayed up, 0 unmapped-access or crash lines. The pause screen was NOT seen: autoa never opens it. It is linked only. Overlay `pause_init` and the `D_80200000` aux cache symbol were not run. `D_80200000` resolved at link, so no stand-in was added for it.
+
+## P01 result (slice P01: ROM-symbol placeholders)
+
+Done, no code change except a CMake comment. Slice P01 classified all 47 `--defsym ... =gPartnerStatus` lines with `ver/us/splat.yaml` and the real users.
+- Code (never read): 11 `world_partner_*` (ROM_START, ROM_END, VRAM), `world_use_item_ROM_*`, `pause_*` (ROM, VRAM, TEXT, DATA, RODATA, BSS). `dma_copy` and `nuPiReadRomOverlay` get length 0, so no read and `bzero` of 0 bytes.
+- Data: only `ui_images_filemenu_pause_*` (splat `type: code`, `.data` images). The images are linked in place by `INCLUDE_IMG` in the real `src/menu_hud_scripts.c`, and the HUD scripts name them by symbol. `pause_init` and `filemenu_init` call `DMA_COPY_SEGMENT` on it with length 0. So the placeholder is correct. A real ROM offset would be wrong: `dma_copy` would copy ROM bytes over gPartnerStatus (the VRAM target). Data symbols read from ROM: 0. Data symbols fixed: 0.
+- Why not a script: the partner symbols are used as `&symbol` (relocation), and 3dsxtool rejects a small absolute value there. The placeholder must be an in-image address. A generated list would give the same bytes.
+- M01 remap: no range change needed, nothing reads these ranges. Check (Azahar, `fast autoa romtrace`, 230 s, slice P01): kmr_20, osr_00, kmr_20, mac_00 reached, 61,484 reads (3,168 distinct), 0 in dropped ranges (`rom_trace_check.py`), 0 unmapped or crash lines.
+- The pause screen was not seen: no input script reaches it. Only the read path was checked.

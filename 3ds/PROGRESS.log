@@ -69,3 +69,7 @@
 07:23 S18 build1 pause+demo files added
 07:26 S18 build2 pause files compile, dedup 9 stubs
 07:27 S18 build3 links (pause real, demo blocked on load_demo_battle)
+07:31 S18 commit done, demo blocked on S19
+07:32 P01 start
+07:33 P01 finding: all 47 defsyms are code overlays or linked-in data, 0 read ROM data
+07:38 P01 build ok, autoa 0 dropped reads, 0 unmapped

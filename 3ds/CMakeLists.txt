@@ -395,7 +395,9 @@ target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
     -Wl,--defsym,world_partner_twink_VRAM=gPartnerStatus
     -Wl,--defsym,world_use_item_ROM_START=gPartnerStatus
     -Wl,--defsym,world_use_item_ROM_END=gPartnerStatus
-    # pause overlay is linked in, all ranges empty (same pattern as the partners)
+    # P01: pause overlay code and its image data (INCLUDE_IMG in menu_hud_scripts.c) are linked in place, so every range
+    # is empty and nothing is read from the ROM. Do not give these a real ROM offset: dma_copy would then copy ROM bytes
+    # over gPartnerStatus (the VRAM target).
     -Wl,--defsym,ui_images_filemenu_pause_ROM_START=gPartnerStatus
     -Wl,--defsym,ui_images_filemenu_pause_ROM_END=gPartnerStatus
     -Wl,--defsym,ui_images_filemenu_pause_VRAM=gPartnerStatus
