@@ -115,3 +115,9 @@
 09:36 S22 build 1 (headers removed + guard log) done
 09:40 S22 guard hit 0 times in kmr_20/osr_00/mac_00 chain; cause = old bad story state (D01)
 09:40 S22 build 2 (guard removed)
+09:44 S22 commit, end
+09:44 S22b start
+09:45 S22b note_door=log-only probe (from 2e3cb7411), large_quads=failed Bowser experiment; both removed in tree
+09:46 S22b build 1 ok (both removed)
+09:53 S22b shots: clown car + Bowser draw (hos_05 frames 75-81) without large_quads
+09:54 S22b check_area_table.py added, 0 diffs; docs updated

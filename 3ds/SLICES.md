@@ -40,3 +40,4 @@ Common done check: build passes, no new unresolved symbol, `fast autoa` run reac
 [ ] S27 | File select render faults: pink arrows in name entry, overlapping and cut windows | file select looks right
 [ ] S28 | Hardware run on O3DS and N3DS: first boot line (real memory limit), audio cost line, FPS. Settles Q2 and helps Q1 | numbers in HANDOFF.md
 [ ] S29 | Real encounter start (walk into an enemy), kkj_00 chain (issue 1), title demo timer. Needs S19a and the answers to Q4 and Q6 | battle starts and ends without assert
+[x] S22b | Leftovers of S22: delete note_door in pm_gbi.c, restore the large_quads edit in src/sprite.c, script that checks area_table.c against world.c | build passes, common check, clown car draws

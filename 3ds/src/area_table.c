@@ -1,6 +1,6 @@
 // Port-side gAreas. Same AREA and MAP layout as src/world/world.c, so the real area and map indices and mapCount hold.
 // Only the maps in the 3DS image have MAP() rows (real settings). Every other map is MAP_ID(): id only, null settings.
-// load_map_by_IDs would dereference a null settings pointer, so pm_map_guard.c refuses a GotoMap to such a row.
+// load_map_by_IDs would dereference a null settings pointer, so pm_map.c (map_is_linked) refuses a GotoMap to such a row.
 // world.c itself is built with its table cut off (see CMakeLists.txt, WORLD_C_GEN).
 #include "common.h"
 #include "map.h"
