@@ -941,6 +941,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
             float width = (float)(xh - xl) / 4.f;
             float height = (float)(yh - yl) / 4.f;
+            if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2) {
+                /* COPY mode: the RDP writes 4 pixels per cycle, so dsdx counts 4 texels per pixel (4.0 = 1:1).
+                 * The lower right corner is inclusive, one more pixel (as in libultraship). */
+                dsdx /= 4.f;
+                width += 1.f;
+            }
             float s1 = s0 + dsdx * width / (float)tw;
             float t1 = t0 + dtdy * height / (float)th;
             pm_gpu_tex_rect(xl / 4, yl / 4, xh / 4, yh / 4, s0, t0, s1, t1);

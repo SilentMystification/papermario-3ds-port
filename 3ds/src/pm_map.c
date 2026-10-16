@@ -339,6 +339,8 @@ int pm_yay0_decode(const void* src, u32 src_len, void* dst, u32 dst_len) {
     return yay0_decode(src, src_len, dst, dst_len);
 }
 
+extern void pm_tex_invalidate(const void* ptr, unsigned size);
+
 void decode_yay0(void* src, void* dst) {
     u8* s = src;
     u32 dec, link, count, bound;
@@ -352,6 +354,9 @@ void decode_yay0(void* src, void* dst) {
     bound = 0x100000u;
     if (dec > 0x40000u || link < 16u || count < 16u) return;
     if (!yay0_decode(s, bound, dst, dec)) return;
+    /* The decode overwrote RAM that cached PICA textures were built from (the background raster and palette sit at one
+     * fixed address for every map). The cache keys on address and size, so drop what the decode replaced. */
+    pm_tex_invalidate(dst, dec);
     /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
     if (dst == (void*)pm_shape_buf) {
         fix_shape(dst, dec);

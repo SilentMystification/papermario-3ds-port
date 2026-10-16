@@ -157,3 +157,12 @@
 12:54 S32 commit 603918ab4, end
 12:54 S33 start
 12:54 S33 untracked 40 files, rules added, end
+12:55 V01 start
+12:59 V01 seen: bg is a thin strip left, rest white, in title and 1st kmr_20; 2nd kmr_20 blue sky
+12:59 V01 added TEMP stale-hit checksum log in pm_tex.c, yay0 log in pm_map.c
+13:00 V01 build 1 ok (diagnostic logs)
+13:02 V01 cause1: copy-mode texrect used dsdx 4.0 as 4 texels/px (4x squish, rest clamped)
+13:02 V01 cause2: bg cache hit stale (same addr, 40 hits logged); decode_yay0 did not invalidate
+13:03 V01 build 2 ok (fix: copy dsdx/4, invalidate on decode_yay0)
+13:12 V01 coordinator H01 hypothesis: invalidate frees slot in same frame; adding TEMP inval log
+13:14 V01 H01 rejected (0 in-frame invalidates), temp logs removed, build 3 ok
