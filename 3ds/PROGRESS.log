@@ -49,3 +49,8 @@
 06:01 M01 build 3 (pm_mem_log)
 06:06 M01 build 4 (fb_mem removed)
 06:10 M01 end, committed
+06:10 S10 start
+06:11 S10 build1 added surfaces.c menus.c
+06:12 S10 build2 links after dedup (5 symbols)
+06:12 S10 commit 61da9e0da
+06:15 S10 end commit 7e30575c0
