@@ -209,3 +209,4 @@
 15:15 PT01 R2 start: normal run (no fast) autoa phase phasecsv 330 s
 15:21 PT01 R2 done
 15:24 PT01 HANDOFF result written, SLICES marked done; commit 2
+15:24 PT01 end
