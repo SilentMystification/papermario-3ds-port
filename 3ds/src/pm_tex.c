@@ -7,7 +7,9 @@
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
 enum { SIZ_4, SIZ_8, SIZ_16, SIZ_32 };
 
-#define SLOTS 128
+/* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
+ * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
+#define SLOTS 512
 #define BUDGET (4u * 1024u * 1024u)
 #define MAX_DIM 512
 
@@ -27,6 +29,7 @@ typedef struct {
 
 static Slot slots[SLOTS];
 static unsigned used;
+static int slot_hi; /* every live slot index is below this, so scans stay short while few slots are live */
 static unsigned used_peak; /* M02 measurement */
 static unsigned stamp;
 static unsigned epoch;
@@ -190,13 +193,14 @@ static void drop(Slot* s) {
     else used = 0;
     s->live = 0;
     s->stale = 0;
+    while (slot_hi > 0 && !slots[slot_hi - 1].live) slot_hi--;
 }
 
 /* A texture bound in the current command list has to stay alive until the next
  * frame begins. Deleting it earlier makes the GPU sample freed VRAM. */
 static int evict_oldest_done(void) {
     int oldest = -1;
-    for (int i = 0; i < SLOTS; i++) {
+    for (int i = 0; i < slot_hi; i++) {
         if (!slots[i].live || slots[i].epoch == epoch) continue;
         if (oldest < 0 || slots[i].stamp < slots[oldest].stamp) oldest = i;
     }
@@ -217,7 +221,7 @@ unsigned pm_tex_peak(void) { return used_peak; }
 void pm_tex_begin_frame(void) {
     epoch++;
     /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
-    for (int i = 0; i < SLOTS; i++)
+    for (int i = 0; i < slot_hi; i++)
         if (slots[i].live && slots[i].stale) drop(&slots[i]);
 }
 
@@ -228,7 +232,7 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
     start = (unsigned)ptr;
     end = start + size;
     if (end < start) end = 0xffffffffu;
-    for (i = 0; i < SLOTS; i++) {
+    for (i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
         unsigned img, pal;
         if (!s->live) continue;
@@ -289,7 +293,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
         return 0;
     }
-    for (int i = 0; i < SLOTS; i++) {
+    for (int i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
         if (s->live && s->img == img && s->tlut == tlut && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
@@ -396,6 +400,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     s->stamp = ++stamp;
     s->epoch = epoch;
     s->live = 1;
+    if (slot >= slot_hi) slot_hi = slot + 1;
     used += bytes;
     if (used > used_peak) used_peak = used;
     cur = slot;

@@ -245,6 +245,15 @@ Known gaps: item and popup APIs, entity display lists and shadows, `bed.c` and `
 
 Debug switches in `debug3ds.txt` or `-Debug "..."`: `fast`, `autoa`, `shots` (frame every 30 to `sdmc/3ds/PaperMario/shots/*.ppm`, `build3ds/sheet.py step start count out.png` makes sheets), `scripts` (live script dump every 120 frames), `player`. Use `fast autoa shots` to reach kmr_20 with frames. Do not use `shots` with `autoa` to watch the intro. gdb: `-Gdb -GdbScript <file>`. Per-frame gdb `commands` logging did not work, and an async `interrupt` in a gdb script did not stop the target. Use game-side logging.
 
+## V03 result (slice V03: white boxes behind narrator text, DONE)
+
+Platform layer only (`pm_tex.c`), no game code changed.
+- Reproduced (slice V03, Azahar, `fast shots`, 106 shots, needs `-Stall 120`): at the Bowser silhouette scene (shots 57 to 66) the narrator glyph quads draw as solid white boxes. Earlier narrator lines are fine. It is not S26 or S27: the render mode, combiner and palette at the glyph draws were identical in good and bad text (temporary texrect log: CI4 16x16, palette 16 entries, `oml 0f0a7008`, TEXEL0 decal).
+- Cause: the log line `tex cache full 16x16`. `pm_tex.c` had 128 slots. The silhouette draws many background strips (296x6 and 264x7 CI8 tiles) in the same frame, so all 128 slots were in use this frame and could not be evicted. The glyph load failed, no texture was bound, and the quad drew white.
+- Fix: `SLOTS` 128 to 512, and every scan stops at `slot_hi` (highest live slot + 1), so the cost stays that of the live count. After: 0 `cache full` lines, text reads correctly in shots 56 to 90 ("Ha ha ha! Yeah! I did!", "So I can, at long last, beat my archenemy, Mario.", "I'll take this Star Rod!").
+- Seen by eye: intro sheet (28 frames) unchanged otherwise (storybook, palace, Kammy, Bowser). The olive square in shot 76 is still there (S25 combiner, known). `fast autoa` 6 loads, kmr_20, osr_00, kmr_20, mac_00 reached, 0 unmapped, 0 crash. Not checked by eye: file select, shadows, Mario sprites in new shots (not part of this change; only cache capacity changed).
+- Limit: a frame with more than 512 distinct textures still fails the same way (the `tex cache full` line still logs once).
+
 ## Next
 
 After the stub cleanup: boot a file and progress instead of sitting on the first frame. Use the real `state_map_transitions.c` / `state_file_select.c` flow, file load into `gCurrentSaveFile` (needs `fio.c` and a save in SD), and the real `GotoMap`. Then work open issues 2 to 7. Then verify input moves Mario.
