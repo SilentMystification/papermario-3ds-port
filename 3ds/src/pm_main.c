@@ -145,6 +145,7 @@ static void game_thread(void* arg) {
     pm_log("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     pm_rom_init();
+    pm_mem_log("boot");
     pm_game_bind();
     pm_log("boot_main");
     boot_main(NULL);

@@ -31,7 +31,7 @@ OSViMode osViModeNtscLan1;
 OSViMode osViModeMpalLan1;
 
 static void* cur_fb;
-static u16 fb_mem[320 * 240];
+extern u16 gFrameBuf0[]; /* M01: the real 150KB frame buffer is the fallback, no second 150KB array */
 static FILE* rom;
 static u8* rom_bytes;
 static u32 rom_size;
@@ -50,7 +50,7 @@ void osViSetMode(OSViMode* mode) { (void)mode; }
 void osViSetSpecialFeatures(u32 func) { (void)func; }
 
 void* osViGetCurrentFramebuffer(void) {
-    return cur_fb ? cur_fb : fb_mem;
+    return cur_fb ? cur_fb : (void*)gFrameBuf0;
 }
 
 void osViSwapBuffer(void* fb) { cur_fb = fb; }

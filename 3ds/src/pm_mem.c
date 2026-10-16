@@ -1,5 +1,7 @@
 #include <3ds.h>
 #include <string.h>
+#include <malloc.h>
+#include "pm_port.h"
 
 /* O3DS application FCRAM, all of it. N3DS and Azahar can offer more; this
  * build does not take it.
@@ -80,3 +82,12 @@ void* pm_soc_buffer(unsigned* size) {
 
 unsigned pm_heap_bytes(void) { return __ctru_heap_size; }
 unsigned pm_linear_bytes(void) { return __ctru_linear_heap_size; }
+
+/* M01 measurement: newlib heap in use, newlib heap free, linear pool free. All bytes read from the OS now. */
+void pm_mem_log(const char* tag) {
+    struct mallinfo mi = mallinfo();
+    pm_log("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB", tag,
+           pm_heap_bytes() >> 10, (unsigned)mi.uordblks >> 10, (unsigned)mi.fordblks >> 10,
+           (unsigned)(fake_heap_end - (char*)__ctru_heap - mi.arena) >> 10, pm_linear_bytes() >> 10,
+           (unsigned)linearSpaceFree() >> 10);
+}

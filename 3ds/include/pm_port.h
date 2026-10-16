@@ -22,6 +22,7 @@ void pm_rom_init(void);
 void* pm_soc_buffer(unsigned* size);
 unsigned pm_heap_bytes(void);
 unsigned pm_linear_bytes(void);
+void pm_mem_log(const char* tag);
 void pm_gfx_retrace(void);
 void pm_audio_init(void);
 void pm_audio_post(const void* pcm, unsigned bytes, unsigned rate);

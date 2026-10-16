@@ -532,5 +532,6 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     cur_area = areaID;
     cur_map = mapID;
     pm_log("load map area %d map %d", areaID, mapID);
+    pm_mem_log("map");
     __real_load_map_by_IDs(areaID, mapID, loadType);
 }

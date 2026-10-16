@@ -39,3 +39,12 @@
 05:39 S13 commit real curtains/Shadow/bed/records
 05:41 S13 fast autoa run done
 05:43 S13 end, curtain not solid red in shots
+05:43 M01 start
+05:45 M01 wrote gen_rom_remap.py, remap in pm_os.c, romtrace/romfull switches
+05:46 M01 build 1 done
+05:50 M01 build 2 (romtrace to own file)
+05:53 M01 build 2 (romtrace to own file)
+05:57 M01 full-image trace: 57k reads, see check script
+06:00 M01 commit step 1 remap; packed 32519KB vs 40960KB, 0 dropped reads, diffs only audio stream
+06:01 M01 build 3 (pm_mem_log)
+06:06 M01 build 4 (fb_mem removed)
