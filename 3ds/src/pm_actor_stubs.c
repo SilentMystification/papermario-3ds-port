@@ -31,7 +31,6 @@ STUB(create_shading_palette)
 STUB(func_80045AC0)
 STUB(func_800EF3D4)
 STUB(func_800F0C9C)
-STUB(get_coin_drop_amount)
 STUB(handle_floor_behavior)
 STUB(interact_inspect_setup)
 STUB(interact_speech_setup)
@@ -55,7 +54,6 @@ STUB(setup_status_bar_for_world)
 STUB(sfx_play_sound_at_position)
 STUB(sfx_stop_sound)
 STUB(show_merlee_message)
-STUB(spawn_drops)
 STUB(start_rumble)
 STUB(update_merlee_messages)
 STUB(world_watt_sync_held_position)
@@ -80,3 +78,9 @@ int unused_2_header;
 int unused_3_header;
 int vertical_pipe_curl_header;
 int get_in_bed_header;
+/* Partner system is not ported. Real enter_exit.c and sfx_control.c reference these. */
+STUB(partner_clear_player_tracking)
+STUB(partner_get_enter_map_script)
+STUB(partner_is_flying)
+unsigned short gCurrentDoorSounds;
+STUB(make_item_entity)

@@ -19,26 +19,6 @@ STUB(SetSpriteShading)
 STUB(SpeakToPlayer)
 STUB(ShowMessageAtScreenPos)
 
-EvtScript ExitWalk = {
-    Return
-    End
-};
-
-EvtScript EnterWalk = {
-    Return
-    End
-};
-
-EvtScript EnterDoubleDoor = {
-    Return
-    End
-};
-
-EvtScript ExitDoubleDoor = {
-    Return
-    End
-};
-
 EvtScript hos_05_EVS_Starship_Depart = {
     Return
     End
@@ -53,11 +33,4 @@ STUB(ShowEmote)
 STUB(AddKeyItem)
 STUB(DropItemEntity)
 STUB(ShowGotItem)
-STUB(SetMusic)
-STUB(FadeInMusic)
-STUB(FadeOutMusic)
-STUB(PlaySound)
-STUB(PlaySoundAt)
-STUB(PlaySoundAtF)
-STUB(ClearAmbientSounds)
-STUB(PlayAmbientSounds)
+STUB(ShowMessageAtWorldPos)

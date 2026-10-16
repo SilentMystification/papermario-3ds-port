@@ -385,6 +385,8 @@ AreaConfig gAreas[29];
 extern MapSettings kmr_20_settings;
 extern MapSettings osr_00_settings;
 extern EvtScript osr_00_EVS_Main;
+extern MapSettings kkj_00_settings;
+extern EvtScript kkj_00_EVS_Main;
 
 MapSettings* get_current_map_settings(void) {
     return &pm_settings;
@@ -503,6 +505,10 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         shape_name = "osr_00_shape";
         tex_name = "osr_tex";
     }
+    else if (areaID == AREA_KKJ && mapID == 0) {
+        shape_name = "kkj_00_shape";
+        tex_name = "kkj_tex";
+    }
     else if (areaID == AREA_KMR && mapID == 11) {
         shape_name = "kmr_20_shape";
         tex_name = "kmr_tex";
@@ -556,6 +562,7 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     /* Real code reads gAreas[area].maps[map].settings for entry positions and the like. */
     if (areaID == AREA_KMR && mapID == 11) pm_settings = kmr_20_settings;
     else if (areaID == AREA_OSR && mapID == 0) pm_settings = osr_00_settings;
+    else if (areaID == AREA_KKJ && mapID == 0) pm_settings = kkj_00_settings;
     else bzero(&pm_settings, sizeof(pm_settings));
     bcopy(shape + 8, &pm_settings.modelNameList, 4);
     bcopy(shape + 12, &pm_settings.colliderNameList, 4);
@@ -661,7 +668,7 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         gPlayerStatus.curYaw = 90.f;
         update_cameras();
         {
-            Evt* script = start_script_in_group(areaID == AREA_OSR ? &osr_00_EVS_Main : &kmr_20_EVS_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
+            Evt* script = start_script_in_group(areaID == AREA_KKJ ? &kkj_00_EVS_Main : areaID == AREA_OSR ? &osr_00_EVS_Main : &kmr_20_EVS_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
             if (script) gGameStatusPtr->mainScriptID = script->id;
         }
         pm_log("world cam");

@@ -61,6 +61,10 @@ set(GAME_SRC
     ${DECOMP}/src/evt/cam_api.c
     ${DECOMP}/src/evt/model_api.c
     ${DECOMP}/src/evt/map_api.c
+    ${DECOMP}/src/world/script_api/enter_exit.c
+    ${DECOMP}/src/evt/audio_api.c
+    ${DECOMP}/src/enemy_ai.c
+    ${DECOMP}/src/25AF0.c
     ${DECOMP}/src/evt/f8f60_len_1560.c
     ${DECOMP}/src/evt/npc_api.c
     ${DECOMP}/src/encounter_api.c
@@ -129,6 +133,13 @@ set(GAME_SRC
     ${DECOMP}/src/world/area_osr/osr_00/npc_epilogue.c
     ${DECOMP}/src/world/area_osr/osr_00/scenes.c
     ${DECOMP}/src/world/area_osr/osr_00/settings.c
+    ${DECOMP}/src/world/area_kkj/kkj_00/main.c
+    ${DECOMP}/src/world/area_kkj/kkj_00/music.c
+    ${DECOMP}/src/world/area_kkj/kkj_00/npc_intro.c
+    ${DECOMP}/src/world/area_kkj/kkj_00/npc_ending.c
+    ${DECOMP}/src/world/area_kkj/kkj_00/scene_intro.c
+    ${DECOMP}/src/world/area_kkj/kkj_00/scene_ending.c
+    ${DECOMP}/src/world/area_kkj/kkj_00/settings.c
     ${DECOMP}/src/world/area_hos/hos_05/intro.c
     ${DECOMP}/src/world/area_hos/hos_05/main.c
     ${DECOMP}/src/world/area_hos/hos_05/misc.c
