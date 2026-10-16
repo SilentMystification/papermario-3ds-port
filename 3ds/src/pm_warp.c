@@ -66,6 +66,14 @@ int pm_debug_value(const char* key, char* out, unsigned n) {
 }
 
 static int padscript_log, warp_on, warp_done, scene_f0 = -1, smoke_on;
+/* S30: tour=<map>:<entry>,<map>:<entry>,... After warp= (or preset=) has loaded its first map, the real GotoMap path
+   (set_map_transition_effect + set_game_mode(GAME_MODE_CHANGE_MAP), as in src/evt/map_api.c goto_map) visits every
+   map of the list, TOUR_FRAMES frames each. Log lines "tour: ...". Debug tool only (class E). */
+#define TOUR_FRAMES 40
+static char tour[3000];
+static const char* tour_next;
+static unsigned tour_f0, tour_ts;
+static int tour_n, tour_wait;
 static s32 w_story = STORY_INTRO;
 static char w_map[16] = "kmr_20";
 static s32 w_entry, w_flag;
@@ -108,6 +116,7 @@ int pm_warp_active(void) {
         }
         if (!found) w_story = atoi(v);
     }
+    if (pm_debug_value("tour", tour, sizeof tour)) tour_next = tour;
     smoke_on = pm_debug_has("smoke");
     padscript_log = pm_debug_has("padlog") || pm_debug_value("padscript", v, sizeof v); /* position every 2 frames while a script runs */
     return has_preset || has_warp || has_story;
@@ -144,15 +153,57 @@ extern unsigned pm_pad_scans;
 
 /* The game reaches GAME_MODE_WORLD: first frame of the chosen scene. */
 void pm_warp_world_mode(unsigned frame) {
+    if (tour_next && warp_on) {
+        tour_f0 = frame; /* a map of the tour is in */
+        tour_wait = 0;
+        pm_log("tour: in map area %d map %d entry %d frame %u t=%u ms", gGameStatusPtr->areaID, gGameStatusPtr->mapID, gGameStatusPtr->entryID, frame, pm_uptime_ms());
+    }
     if (!warp_on || scene_f0 >= 0) return;
     scene_f0 = (int)frame;
     pm_log("warp: scene frame0 %u scan %u t=%u ms", frame, pm_pad_scans, pm_uptime_ms());
     pm_padscript_start();
 }
 
+static void tour_step(void) {
+    char name[16];
+    s16 areaID, mapID;
+    int entry = 0;
+    unsigned i = 0;
+    if (!*tour_next) {
+        pm_log("tour: done, %d maps", tour_n);
+        tour_next = NULL;
+        return;
+    }
+    while (*tour_next && *tour_next != ':' && *tour_next != ',' && i + 1 < sizeof name) name[i++] = *tour_next++;
+    name[i] = 0;
+    if (*tour_next == ':') entry = atoi(++tour_next);
+    while (*tour_next && *tour_next != ',') tour_next++;
+    if (*tour_next == ',') tour_next++;
+    tour_n++;
+    if (!get_map_IDs_by_name(name, &areaID, &mapID)) {
+        pm_log("tour: map %s not in gAreas", name);
+        return;
+    }
+    pm_log("tour: next %s entry %d (area %d map %d)", name, entry, areaID, mapID);
+    gGameStatusPtr->areaID = areaID;
+    gGameStatusPtr->mapID = mapID;
+    gGameStatusPtr->entryID = (s16)entry;
+    set_map_transition_effect(TRANSITION_STANDARD);
+    set_game_mode(GAME_MODE_CHANGE_MAP);
+    tour_wait = 1;
+}
+
 /* Once per drawn frame (pm_frame_loop). */
 void pm_warp_tick(unsigned frame) {
     if (scene_f0 < 0) return;
+    if (tour_next && !tour_wait && frame - tour_f0 >= TOUR_FRAMES) {
+        tour_ts = frame;
+        tour_step();
+    } else if (tour_next && tour_wait && frame - tour_ts > 300) { /* the change was refused or never came */
+        pm_log("tour: no map change within 300 frames");
+        tour_wait = 0;
+        tour_f0 = frame - TOUR_FRAMES + 1;
+    }
     unsigned f = frame - (unsigned)scene_f0;
     if (f % (padscript_log ? 2 : 100) == 0 || f == 5) {
         pm_log("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
