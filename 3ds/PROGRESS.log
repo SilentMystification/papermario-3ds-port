@@ -167,3 +167,7 @@
 13:12 V01 coordinator H01 hypothesis: invalidate frees slot in same frame; adding TEMP inval log
 13:14 V01 H01 rejected (0 in-frame invalidates), temp logs removed, build 3 ok
 13:14 V01 commit 9cc417e61, end
+13:16 H02 start: hardware-safety diagnostics a to i
+13:22 H02 build 1 start (all groups edited)
+13:36 H02 build ok, tests: crashtest_call, taptest, ROM checks, boot fail trace passed on Azahar
+13:41 H02 docs written (HANDOFF, SLICES H02 x, H03, V02, V03)
