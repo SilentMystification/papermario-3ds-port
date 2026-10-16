@@ -22,8 +22,6 @@ Mtx Entity_BombableRock_FragmentMatrices[8];
 Gfx* Entity_BombableRock_FragmentsRender[8];
 void func_800EF300(void) {}
 void partner_set_tether_distance(f32 dist) {}
-void status_bar_respond_to_changes(void) {}
-void close_status_bar(void) {}
 void hide_popup_menu(void) {}
 void destroy_popup_menu(void) {}
 
@@ -36,8 +34,6 @@ EvtScript kmr_20_EVS_SetupBed = { Return End };
 Gfx Entity_BrickBlock_Render[] = { gsSPEndDisplayList() };
 Gfx Entity_Hammer3Block_Render[] = { gsSPEndDisplayList() };
 
-void disable_status_bar_input(void) {}
-void enable_status_bar_input(void) {}
 
 Gfx Entity_ScriptSpring_RenderPart1[] = { gsSPEndDisplayList() };
 Gfx Entity_ScriptSpring_RenderPart2[] = { gsSPEndDisplayList() };

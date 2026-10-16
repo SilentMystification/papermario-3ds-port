@@ -124,6 +124,8 @@ set(GAME_SRC
     ${DECOMP}/src/5B320.c
     ${DECOMP}/src/msg_img.c
     ${DECOMP}/src/windows.c
+    ${DECOMP}/src/inventory.c
+    ${DECOMP}/src/status_icons.c
     ${DECOMP}/src/item_entity.c
     ${DECOMP}/src/sprite_shading.c
     ${DECOMP}/src/evt/demo_api.c

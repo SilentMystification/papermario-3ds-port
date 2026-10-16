@@ -15,7 +15,6 @@ void fio_init_flash() {}
 /* spr_init_sprites is sprite.c */
 void reset_background_settings() {}
 /* clear_npcs is npc.c */
-void clear_player_data() {}
 /* init_encounter_status is npc.c */
 void bgm_reset_sequence_players() {}
 void reset_ambient_sounds() {}
@@ -73,8 +72,6 @@ void* fx_smoke_burst() { return 0; }
 void* fx_smoke_impact() { return 0; }
 void* fx_sparkles() { return 0; }
 void* fx_stars_shimmer() { return 0; }
-void open_status_bar_slowly() {}
-int subtract_hp() { return 0; }
 int snd_stop_sound() { return 0; }
 void world_lakilester_sync_player_position() {}
 void world_sushie_sync_player_position() {}

@@ -34,7 +34,6 @@ s32 get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
     }
     return 0;
 }
-void sync_status_bar(void) {}
 
 void pm_game_bind(void) {
     gGameStatusPtr = &gGameStatus;
