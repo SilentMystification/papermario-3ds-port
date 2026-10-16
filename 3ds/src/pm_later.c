@@ -21,4 +21,3 @@ void state_init_end_battle() {}
 void state_step_battle() {}
 void state_step_demo() {}
 void state_step_end_battle() {}
-short FlowerGoalPositionX, FlowerGoalPositionY, FlowerGoalPositionZ;

@@ -122,3 +122,7 @@
 09:53 S22b shots: clown car + Bowser draw (hos_05 frames 75-81) without large_quads
 09:54 S22b check_area_table.py added, 0 diffs; docs updated
 09:54 S22b commit, end
+09:54 S23 start
+09:55 S23 build 1: 8 model files added, A7-A10 stubs removed, link ok
+09:55 S23 commit ffbd01b4b models linked
+10:04 S23 build 2: Plants1 + 5 model files, FlowerGoalPosition stub deleted, link ok

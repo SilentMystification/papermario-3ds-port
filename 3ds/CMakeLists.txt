@@ -273,6 +273,12 @@ set(GAME_SRC
     ${DECOMP}/src/entity/model/ShatteringHammer2Block.c
     ${DECOMP}/src/entity/model/ShatteringHammer3Block.c
     ${DECOMP}/src/entity/model/BombableRock.c
+    ${DECOMP}/src/entity/jan_iwa/Plants1.c
+    ${DECOMP}/src/entity/model/CymbalPlant_anim.c
+    ${DECOMP}/src/entity/model/CymbalPlant_gfx.c
+    ${DECOMP}/src/entity/model/PinkFlower_anim.c
+    ${DECOMP}/src/entity/model/PinkFlower_gfx.c
+    ${DECOMP}/src/entity/model/SpinningFlower.c
     ${DECOMP}/src/entity/BlueWarpPipe.c
     ${DECOMP}/src/entity/model/BlueWarpPipe.c
     ${DECOMP}/src/entity/SaveBlock.c
