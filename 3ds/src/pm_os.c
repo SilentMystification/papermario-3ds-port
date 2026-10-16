@@ -154,23 +154,57 @@ void pm_audio_tick(void) {
     }
 }
 
-void pm_rom_init(void) {
-    if (rom_tried) return;
+/* Expected Paper Mario (US 1.0, NMQE) ROM: size, z64 magic, FNV-1a of the first 64 KB. A full SHA1 of 40 MB on the ARM11 would
+ * take seconds, the first 64 KB covers the header and the boot code and costs one small read. Measured on the verified ROM
+ * (SHA1 3837f44cda784b466c9a2d99df70d77c322b97a0 as in ver/us/checksum.sha1). */
+#define ROM_HEAD_BYTES 0x10000u
+#define ROM_HEAD_FNV 0x0244636Cu
+
+static int rom_fail(FILE* f, const char* msg) {
+    if (f) fclose(f);
+    pm_fatal_screen(msg);
+    return 0;
+}
+
+/* Returns 1 when the ROM can be used. On 0 the reason is on the bottom screen and the game must not run. */
+int pm_rom_init(void) {
+    if (rom_tried) return rom_bytes != NULL || rom != NULL;
     rom_tried = 1;
     FILE* f = fopen("papermario.z64", "rb");
     if (!f) f = fopen("baserom.us.z64", "rb");
-    if (!f) {
-        pm_log("rom missing (sdmc:/3ds/PaperMario/papermario.z64)");
-        pm_log("ram n64 4MB, port %uMB, rom not loaded", pm_linear_bytes() >> 20);
-        return;
-    }
-    if (fseek(f, 0, SEEK_END) != 0) {
-        fclose(f);
-        pm_log("rom size failed");
-        return;
-    }
+    if (!f) return rom_fail(NULL, "ROM missing. Copy the US Paper Mario ROM to sdmc:/3ds/PaperMario/papermario.z64 (big-endian .z64).");
+    if (fseek(f, 0, SEEK_END) != 0) return rom_fail(f, "Cannot read the ROM size. Check the SD card.");
     long sz = ftell(f);
     rewind(f);
+    {
+        u8* head = (u8*)malloc(ROM_HEAD_BYTES);
+        size_t got = head ? fread(head, 1, ROM_HEAD_BYTES, f) : 0;
+        char msg[200];
+        int bad = 0;
+        if (!head || got != ROM_HEAD_BYTES) {
+            free(head);
+            return rom_fail(f, "Cannot read the ROM header. The file is too small or the SD card failed.");
+        }
+        u32 magic = ((u32)head[0] << 24) | ((u32)head[1] << 16) | ((u32)head[2] << 8) | head[3];
+        u32 h = 2166136261u;
+        for (u32 i = 0; i < ROM_HEAD_BYTES; i++) h = (h ^ head[i]) * 16777619u;
+        free(head);
+        if (magic == 0x37804012u || magic == 0x40123780u) {
+            snprintf(msg, sizeof(msg), "ROM is byte-swapped (.v64 or .n64). Convert it to big-endian .z64.");
+            bad = 1;
+        } else if (magic != 0x80371240u) {
+            snprintf(msg, sizeof(msg), "File is not an N64 ROM (header %08x).", (unsigned)magic);
+            bad = 1;
+        } else if (sz != (long)PM_ROM_FULL) {
+            snprintf(msg, sizeof(msg), "ROM size is %ld bytes, expected %u. Use the US 1.0 ROM.", sz, (unsigned)PM_ROM_FULL);
+            bad = 1;
+        } else if (h != ROM_HEAD_FNV) {
+            snprintf(msg, sizeof(msg), "Wrong ROM version (header check %08x). Use the US 1.0 ROM.", (unsigned)h);
+            bad = 1;
+        }
+        if (bad) return rom_fail(f, msg);
+        rewind(f);
+    }
     /* M01: keep only the ranges in pm_rom_keep, packed back to back. Offsets the game uses stay the original ones. */
     int can_pack = sz == (long)PM_ROM_FULL && !pm_debug_has("romfull");
     unsigned need = can_pack ? PM_ROM_PACKED : (unsigned)sz;
@@ -195,7 +229,7 @@ void pm_rom_init(void) {
             fclose(f);
             pm_log("rom resident %uKB of %uKB%s", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "");
             pm_log("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
-            return;
+            return 1;
         }
         free(block);
     }
@@ -203,6 +237,7 @@ void pm_rom_init(void) {
     rom = f;
     pm_log("rom streaming (%ld bytes, cap %uKB)", sz, cap >> 10);
     pm_log("ram n64 4MB, port %uMB", pm_linear_bytes() >> 20);
+    return 1;
 }
 
 static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
@@ -339,12 +374,13 @@ static int flash_ready;
 static const void* flash_wr_src;
 
 static void flash_sync(u32 off, u32 len) {
+    static unsigned fails;
     FILE* f = fopen("save.flash", "r+b");
     if (!f) f = fopen("save.flash", "w+b");
-    if (!f) return;
-    fseek(f, (long)off, SEEK_SET);
-    fwrite(flash_mem + off, 1, len, f);
-    fclose(f);
+    int ok = f != NULL && fseek(f, (long)off, SEEK_SET) == 0 && fwrite(flash_mem + off, 1, len, f) == len;
+    /* fclose flushes: a full SD card shows up here. The save stays in RAM, the game goes on. */
+    if (f && fclose(f) != 0) ok = 0;
+    if (!ok && fails++ < 5) pm_log("save.flash write FAILED (off %u len %u, SD full or missing?), save kept in RAM only", off, len);
 }
 
 static void flash_init(void) {

@@ -48,6 +48,9 @@ static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 static C3D_Mtx projection;
 static int u_proj = -1;
 static C3D_RenderTarget* target;
+/* H02 GPU limit stats, maxima since the last `mem` log line. Verts and command buffer overflow drop work without a message. */
+static unsigned draws_frame, draws_max, verts_max, vert_drops, frames_seen;
+static float cmd_max;
 static shaderProgram_s prog;
 static DVLB_s* dvlb;
 
@@ -185,6 +188,9 @@ static void flush(void) {
     BufInfo_Add(buf, batch, sizeof(Vert), 3, 0x210);
     C3D_DrawArrays(GPU_TRIANGLES, 0, count);
     verts = batch + count;
+    /* 16-byte aligned start for the next batch (a vertex is 40 bytes, so every other batch start moves one slot). */
+    if ((unsigned)(uintptr_t)verts & 15u) verts++;
+    draws_frame++;
     nverts = 0;
     batch_identity = 0;
     drew = 1;
@@ -196,7 +202,10 @@ static void put4(float x, float y, float z, float w, float u, float v, unsigned 
         flush();
         batch_identity = id;
     }
-    if (!verts || verts + nverts >= vert_base + VERT_SLOTS) return;
+    if (!verts || verts + nverts >= vert_base + VERT_SLOTS) {
+        vert_drops++;
+        return;
+    }
     Vert* p = &verts[nverts++];
     p->x = x;
     p->y = y;
@@ -217,7 +226,12 @@ static void put(float x, float y, float z, float u, float v, unsigned c) {
 void pm_gpu_init(void) {
     if (gpu_ok) return;
     gfxInitDefault();
-    C3D_Init(0x400000);
+    if (!C3D_Init(0x400000)) {
+        consoleInit(GFX_BOTTOM, &bottom_con);
+        pm_log("C3D_Init failed (command buffer 4MB), no graphics");
+        printf("C3D_Init failed. No graphics.");
+        return;
+    }
     /* Width 240, height 400: that is the top screen's rotated framebuffer.
      * A 320-tall target copied into it skews every scanline. */
     target = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
@@ -253,6 +267,7 @@ void pm_gpu_init(void) {
     setvbuf(stdout, NULL, _IONBF, 0);
     consoleSetWindow(&bottom_con, 1, 3, 40, 28);
     gpu_ok = vert_base != NULL;
+    if (!vert_base) pm_log("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
     pm_log("gpu %s proj %d m %d %d", gpu_ok ? "ok" : "no vertex buffer", u_proj,
            (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
@@ -314,6 +329,7 @@ static void dump_shot(void) {
 }
 
 void pm_gpu_begin(int clear) {
+    draws_frame = 0;
     drew = 0;
     nverts = 0;
     verts = vert_base;
@@ -333,6 +349,20 @@ void pm_gpu_begin(int clear) {
 void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
+    {
+        unsigned used = verts ? (unsigned)(verts - vert_base) : 0;
+        float cmd = C3D_GetCmdBufUsage();
+        static unsigned warned;
+        frames_seen++;
+        if (draws_frame > draws_max) draws_max = draws_frame;
+        if (used > verts_max) verts_max = used;
+        if (cmd > cmd_max) cmd_max = cmd;
+        if ((used * 10u > VERT_SLOTS * 9u || cmd > 0.9f || vert_drops) && (warned < 5 || frames_seen % 600 == 0)) {
+            warned++;
+            pm_log("GPU LIMIT NEAR: vertex slots %u of %u (dropped %u), command buffer %d%%, draws %u", used,
+                   (unsigned)VERT_SLOTS, vert_drops, (int)(cmd * 100.f), draws_frame);
+        }
+    }
     pm_gbi_end_frame();
     /* Without this flag citro3d flushes the entire linear heap. That heap is
      * the 20MB port pool, so every frame was writing it back through the cache. */
@@ -340,6 +370,33 @@ void pm_gpu_end(void) {
 }
 
 int pm_gpu_drew(void) { return drew; }
+
+void pm_gpu_log_stats(const char* tag) {
+    pm_log("mem %s gpu max per frame: draws %u, vertex slots %u of %u, command buffer %d%%, vertex drops (total) %u", tag, draws_max,
+           verts_max, (unsigned)VERT_SLOTS, (int)(cmd_max * 100.f), vert_drops);
+    draws_max = verts_max = 0;
+    cmd_max = 0.f;
+}
+
+/* Fatal boot problem (no ROM, wrong ROM): show it on the bottom screen and wait for START. Used before the GPU is up. */
+void pm_fatal_screen(const char* msg) {
+    pm_log("FATAL: %s", msg);
+    if (!bottom_con.consoleInitialised) {
+        gfxInitDefault();
+        consoleInit(GFX_BOTTOM, &bottom_con);
+    } else {
+        consoleSelect(&bottom_con);
+        consoleSetWindow(&bottom_con, 0, 0, 40, 30);
+    }
+    consoleClear();
+    printf("Paper Mario 3DS cannot start.%c%c%s%c%cPress START to exit.%c", 10, 10, msg, 10, 10, 10);
+    fflush(stdout);
+    while (aptMainLoop()) {
+        gspWaitForVBlank();
+        hidScanInput();
+        if (hidKeysDown() & KEY_START) break;
+    }
+}
 
 void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty) {
     if (sx == vp_sx && sy == vp_sy && tx == vp_tx && ty == vp_ty &&
