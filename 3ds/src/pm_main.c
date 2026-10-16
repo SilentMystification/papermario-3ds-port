@@ -51,11 +51,15 @@ extern s16 D_80073E0A;
 /* The intro camera waits until the displayed color buffer changes, which NuSys
  * does on every swap. Two tokens stand in for that pair of framebuffers. */
 extern unsigned short* nuGfxCfb_ptr;
+extern unsigned short** nuGfxCfb;
 static unsigned short cfb_token[2];
+static unsigned short* cfb_list[2] = { &cfb_token[0], &cfb_token[1] };
+unsigned nuGfxCfbNum = 2;
 
 void pm_dump_scripts(void);
 void pm_frame_loop(void) {
     unsigned frame = 0;
+    nuGfxCfb = cfb_list;
     unsigned presents = 0;
     int ever = 0;
     int have_fps = 0;

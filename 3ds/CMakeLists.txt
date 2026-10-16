@@ -7,10 +7,11 @@ set(CMAKE_C_EXTENSIONS ON)
 set(DECOMP "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 add_compile_options(-O2 -fsigned-char -fno-strict-aliasing -fwrapv -ffunction-sections -fdata-sections)
-add_compile_options($<$<COMPILE_LANGUAGE:C>:-Dnullptr=NULL>)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Dnullptr=NULL> $<$<COMPILE_LANGUAGE:C>:-Wa,-I${DECOMP}>)
 add_compile_definitions(
     TARGET_3DS
     VERSION_US
+    VERSION=us
     F3DEX_GBI_2
     _LANGUAGE_C
     _MIPS_SZLONG=32
@@ -21,6 +22,8 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/stub_include
     ${DECOMP}/include
     ${DECOMP}/src
+    ${DECOMP}/assets/us
+    ${DECOMP}/ver/us/build/include
 )
 
 set(GAME_SRC
@@ -38,6 +41,8 @@ set(GAME_SRC
     ${DECOMP}/src/cam_main.c
     ${DECOMP}/src/cam_math.c
     ${DECOMP}/src/cam_mode_interp.c
+    ${DECOMP}/src/screen_overlays.c
+    ${DECOMP}/src/screen_render_util.c
     ${DECOMP}/src/cam_mode_minimal.c
     ${DECOMP}/src/cam_mode_no_interp.c
     ${DECOMP}/src/cam_mode_unused_ahead.c

@@ -113,6 +113,12 @@ void guTranslateF(float mf[4][4], float x, float y, float z) {
     mf[3][2] = z;
 }
 
+void guTranslate(Mtx* m, float x, float y, float z) {
+    float f[4][4];
+    guTranslateF(f, x, y, z);
+    guMtxF2L(f, m);
+}
+
 void guNormalize(float* x, float* y, float* z) {
     float len = (*x) * (*x) + (*y) * (*y) + (*z) * (*z);
     if (len < 1e-12f) return;
