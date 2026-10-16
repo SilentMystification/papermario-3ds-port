@@ -1386,6 +1386,26 @@ set(MAP_SRC_tst
     ${DECOMP}/src/world/area_tst/tst_20/main.c
 )
 set(MAP_SRC_end
+    ${DECOMP}/src/world/area_end/end_00/settings.c
+    ${DECOMP}/src/world/area_end/end_00/main.c
+    ${DECOMP}/src/world/area_end/end_00/credits.c
+    ${DECOMP}/src/world/area_end/end_00/parade_setup.c
+    ${DECOMP}/src/world/area_end/end_00/allies.c
+    ${DECOMP}/src/world/area_end/end_00/koopas.c
+    ${DECOMP}/src/world/area_end/end_00/caravan.c
+    ${DECOMP}/src/world/area_end/end_00/boos.c
+    ${DECOMP}/src/world/area_end/end_00/yoshis.c
+    ${DECOMP}/src/world/area_end/end_00/huff_n_puff.c
+    ${DECOMP}/src/world/area_end/end_00/crystal_king.c
+    ${DECOMP}/src/world/area_end/end_00/bowser.c
+    ${DECOMP}/src/world/area_end/end_01/settings.c
+    ${DECOMP}/src/world/area_end/end_01/main.c
+    ${DECOMP}/src/world/area_end/end_01/credits.c
+    ${DECOMP}/src/world/area_end/end_01/parade_setup.c
+    ${DECOMP}/src/world/area_end/end_01/opera_float.c
+    ${DECOMP}/src/world/area_end/end_01/flower_float.c
+    ${DECOMP}/src/world/area_end/end_01/shyguy_float.c
+    ${DECOMP}/src/world/area_end/end_01/peach_float.c
 )
 set(MAP_SRC_mgm
 )
