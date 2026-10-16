@@ -16,12 +16,3 @@ EvtScript EVS_NpcHitRecoil = {
     End
 };
 
-s32 integer_log(s32 number, u32 base) {
-    s32 ret = 1;
-    if (base < 2) return 1;
-    while (number > (s32)base) {
-        number /= (s32)base;
-        ret++;
-    }
-    return ret;
-}

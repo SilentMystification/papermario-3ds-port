@@ -149,6 +149,13 @@ set(GAME_SRC
     ${DECOMP}/src/global_hud_scripts.c
     ${DECOMP}/src/5B320.c
     ${DECOMP}/src/msg_img.c
+    ${DECOMP}/src/evt/msg_api.c
+    ${DECOMP}/src/draw_box.c
+    ${DECOMP}/src/draw_img_util.c
+    ${DECOMP}/src/speech_bubble.c
+    ${DECOMP}/src/inspect_icon.c
+    ${DECOMP}/src/i_spy.c
+    ${DECOMP}/src/pulse_stone.c
     ${DECOMP}/src/windows.c
     ${DECOMP}/src/status_star_shimmer.c
     ${DECOMP}/src/inventory.c
@@ -215,7 +222,6 @@ set(PORT_SRC
     src/pm_map.c
     src/pm_title.c
     src/pm_evt_stub.c
-    src/pm_msg.c
     src/pm_actor_link.c
     src/pm_kmr_stubs.c
     src/pm_shadow.c

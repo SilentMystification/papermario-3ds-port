@@ -15,8 +15,6 @@ static ApiStatus skip_call(Evt* script, bool initial) {
 
 #define STUB(name) ApiStatus name(Evt* script, bool initial) { return skip_call(script, initial); }
 
-STUB(SpeakToPlayer)
-STUB(ShowMessageAtScreenPos)
 
 EvtScript hos_05_EVS_Starship_Depart = {
     Return
@@ -27,4 +25,3 @@ EvtScript hos_05_EVS_EnterStarship = {
     Return
     End
 };
-STUB(ShowMessageAtWorldPos)
