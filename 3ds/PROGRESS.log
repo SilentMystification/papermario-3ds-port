@@ -232,3 +232,4 @@
 16:07 V03 fix: pm_tex.c SLOTS 128 to 512, scans bounded by slot_hi; building
 16:10 V03 build ok, shots rerun: 0 'cache full' lines
 16:10 V03 shots 56-90 text now correct by eye, no boxes
+16:12 V03 committed, end
