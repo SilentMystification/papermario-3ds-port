@@ -27,6 +27,7 @@ include_directories(
 )
 
 include(effects.cmake)
+include(battle.cmake)
 
 # world.c with its gAreas table cut off. The table is in src/area_table.c (port side, only the maps in the image have real rows).
 # Everything before "#define AREA(" is the real world.c text.
@@ -286,6 +287,7 @@ set(GAME_SRC
     ${DECOMP}/src/pause/pause_map.c
     ${DECOMP}/src/pause/pause_gfx.c
     ${DECOMP}/src/pause/pause_styles.c
+    ${BATTLE_SRC}
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types")
@@ -357,6 +359,7 @@ add_executable(pm_3ds
 target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
     -Wl,--wrap=get_map_IDs_by_name -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_asset_by_name
+    -Wl,--defsym,heap_battleHead=gFrameBuf2
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
     -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50
     # partner overlays are linked in. Each range is empty (START == END, in the image) so dma_copy copies nothing.

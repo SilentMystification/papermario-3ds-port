@@ -3,9 +3,6 @@
 
 #define STUB(name) int name() { return 0; }
 
-STUB(load_battle)
-STUB(set_battle_formation)
-STUB(set_battle_stage)
 
 int cymbal_crush_header;
 int flip_card_1_header;

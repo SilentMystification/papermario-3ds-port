@@ -1,6 +1,7 @@
 #include "common.h"
 #include "game_modes.h"
 #include "fio.h"
+#include "battle/battle.h"
 
 /* Set by load_map_by_IDs (pm_map.c). The real change_map and enter_world load the map, so state_init_world must not load it again. */
 int pm_map_loaded;
@@ -200,6 +201,25 @@ void state_step_world(void) {
     update_effects();
     iterate_models();
     update_cameras();
+    /* Debug switch "battle": start the first KMR battle 600 world frames after the first world frame. No game logic. */
+    if (pm_debug_has("battle")) {
+        static int bf;
+        if (++bf == 600) {
+            pm_log("debug battle: load_battle(BTL_KMR_1_FORMATION_00)");
+            set_battle_stage(BTL_KMR_1_STAGE_01);
+            load_battle(BTL_KMR_1_FORMATION_00);
+        }
+    }
+    /* Debug switch "demobattle": enter the real demo state at scene 1, which calls load_demo_battle(0) (dig area, Fuzzies). */
+    if (pm_debug_has("demobattle")) {
+        static int df;
+        if (++df == 600) {
+            pm_log("debug demobattle: enter GAME_MODE_DEMO at demo scene 1 (battle index 0)");
+            gGameStatusPtr->demoState = DEMO_STATE_ACTIVE;
+            gGameStatusPtr->nextDemoScene = 1;
+            set_game_mode(GAME_MODE_DEMO);
+        }
+    }
     if (pm_debug_has("player")) {
         static int n;
         if (++n % 10 == 0) {
