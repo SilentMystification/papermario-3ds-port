@@ -321,9 +321,12 @@ set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error
 # -fdata-sections plus --gc-sections gave each variable its own section: the layout broke and maxJumpSpeed read GravityParamsStartFall[0].
 # Keep this file as one data block in source order.
 set_property(SOURCE ${DECOMP}/src/world/actions.c APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
+# D02: demo_api.c SetSpriteShading reads ShadingOffsetsBuffer[2] and PackedShadingData[0x100] over the BSS variables that follow them in script_list.c
+# (declared as 4 byte variables there). gcc emits BSS in reverse order, so the 256 byte DMA overwrote D_802DB830 (item_api PopupMenu).
+set_property(SOURCE ${DECOMP}/src/evt/script_list.c APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
 # heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
 # (pm_map.c) and heaps.c gets its copy renamed.
-set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data)
+set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data -DD_80200000=pm_unused_80200000)
 set_property(SOURCE ${DECOMP}/src/world/partners.c APPEND PROPERTY COMPILE_OPTIONS -include common.h)
 file(GLOB PAUSE_SRC ${DECOMP}/src/pause/pause_*.c)
 set_property(SOURCE ${PAUSE_SRC} APPEND PROPERTY COMPILE_OPTIONS -include common.h)

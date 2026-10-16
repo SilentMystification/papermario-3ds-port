@@ -31,6 +31,9 @@ typedef struct ShapeFix {
 void* pm_decode_asset(const char* name, unsigned* out_size);
 /* Real map shapes are up to 157 KB. heaps.c only has 32 KB, so this is the buffer that the real code uses as gMapShapeData. */
 u8 pm_shape_buf[0x40000] __asm__("gMapShapeData") __attribute__((aligned(16)));
+/* D02: heaps.c has D_80200000 as 16 KB, but the pause menu (0x38000) and file select (0x20000) use it as the hud element aux cache.
+ * On the N64 it is the start of the expansion RAM. Here the next symbol is AuHeapBase (audio heap), so the cache overran it. */
+u8 pm_hud_aux_cache[0x38000] __asm__("D_80200000") __attribute__((aligned(0x1000)));
 
 static const void* last_asset_src;
 static char last_asset_name[24];

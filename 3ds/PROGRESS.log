@@ -257,3 +257,13 @@
 17:49 G02 build b (actions.c no data sections)
 17:49 G02 commit fix; y 30->67 jump
 17:54 G02 chain ok, 0 unmapped; end
+17:55 D02 start
+18:00 D02 LTO+array-bounds build: hits demo_api, game_states, main.c:118, 7B440
+18:01 D02 FOUND demo_api: BSS in script_list.c reversed, SetSpriteShading DMA 256 B overwrites D_802DB830
+18:02 D02 build A: global -fno-data-sections -fno-toplevel-reorder on GAME_SRC
+18:06 D02 build A links (exceptions Block.c SimpleSpring*.c), 3dsx 2692992 -> 2829808
+18:12 D02 build A checks: yard jump peak 67, toad ok, chain ok 0 unmapped (scans 410,2164,2410,3026)
+18:15 D02 FOUND D_80200000 buffer 16 KB but aux hud cache 0x20000 (file select) 0x38000 (pause) runs into AuHeapBase
+18:16 D02 build C: script_list.c flags, D_80200000 0x38000 buffer in pm_map.c
+18:19 D02 pause under warp faults in gfx_frame_filter_pass_1 also at base (not D02), listed
+18:26 D02 chain ok 0 unmapped (562,2316,2562,3178), HANDOFF written
