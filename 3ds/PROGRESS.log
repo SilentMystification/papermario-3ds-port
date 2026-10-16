@@ -81,3 +81,9 @@
 07:54 S19 check: kmr_20 and mac_00 reached, 0 unmapped, 0 dropped-range reads (full tree)
 08:30 S19 notes written, committing on branch s19-full-battle
 08:30 S19 end: code on branch s19-full-battle (7fd566684), notes on main
+08:31 S17 start
+08:33 S17 build 1 (real title, file select, world, filemenu added)
+08:33 S17 build 2 links (IntroMessageIdx dup removed)
+08:36 S17 build 3 (title_data header endian swap)
+08:45 S17 build 4 (flash shim backed by save.flash)
+08:51 S17 commit 1: real title, file select, world, filemenu, flash save shim

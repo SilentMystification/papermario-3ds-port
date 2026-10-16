@@ -173,4 +173,15 @@ extern Addr world_partner_twink_ROM_END;
 extern Addr world_partner_twink_VRAM;
 extern Addr world_use_item_ROM_START;
 extern Addr world_use_item_ROM_END;
+/* filemenu overlay is linked in; defsym in CMakeLists.txt (S17) */
+extern Addr filemenu_ROM_START;
+extern Addr filemenu_ROM_END;
+extern Addr filemenu_VRAM;
+extern Addr filemenu_TEXT_START;
+extern Addr filemenu_TEXT_END;
+extern Addr filemenu_DATA_START;
+extern Addr filemenu_RODATA_END;
+extern Addr filemenu_BSS_START;
+extern Addr filemenu_BSS_END;
+
 #endif

@@ -358,6 +358,11 @@ void decode_yay0(void* src, void* dst) {
     } else if (src == last_asset_src) {
         u32 n = strlen(last_asset_name);
         if (n > 4 && strcmp(last_asset_name + n - 4, "_hit") == 0) swap_hit_file(dst, dec);
+        /* title_data starts with TitleDataStruct (4 big-endian offsets), read in place by state_title_screen.c. Image data stays as is. */
+        if (strcmp(last_asset_name, "title_data") == 0) {
+            u32* w = dst;
+            for (int i = 0; i < 4; i++) w[i] = __builtin_bswap32(w[i]);
+        }
     }
     last_asset_src = NULL;
 }
@@ -494,7 +499,6 @@ void pm_dump_scripts(void) {
 extern s32 __real_get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID);
 extern void __real_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType);
 extern void __real_set_game_mode(s16 mode);
-extern int pm_map_loaded;
 static s16 cur_area = -1, cur_map = -1;
 
 s32 __wrap_get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
@@ -520,6 +524,7 @@ void __wrap_set_game_mode(s16 mode) {
         gGameStatusPtr->mapID = cur_map;
         return;
     }
+    pm_log("game mode %d", mode);
     __real_set_game_mode(mode);
 }
 
@@ -528,7 +533,6 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         pm_log("load refused: area %d map %d is not linked", areaID, mapID);
         return;
     }
-    pm_map_loaded = 1;
     cur_area = areaID;
     cur_map = mapID;
     pm_log("load map area %d map %d", areaID, mapID);

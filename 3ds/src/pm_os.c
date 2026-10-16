@@ -328,19 +328,68 @@ s32 osAiSetNextBuffer(void* buf, u32 nbytes) {
 u32 osAiGetLength(void) { return pm_audio_pending(); }
 u32 osAiGetStatus(void) { return 0; }
 
-/* N64 flash save chip (fio.c). The 3DS port has no flash. Reads return erased flash (0xFF), so no save is found.
- * Writes and erases do nothing and report success. Every call completes its message queue like the OS would. */
+/* N64 flash save chip (fio.c). OS-level shim: the 128 KB chip is an array backed by save.flash next to the ROM on the SD card
+ * (page = 128 bytes, sector = 128 pages = 16 KB, erased bytes are 0xFF). No game logic. Debug switch `freshsave` starts
+ * with an erased chip and overwrites the file. Every call completes its message queue like the OS would. */
+#define FLASH_PAGE 128u
+#define FLASH_SECTOR (128u * FLASH_PAGE)
+#define FLASH_SIZE (8u * FLASH_SECTOR)
+static u8 flash_mem[FLASH_SIZE];
+static int flash_ready;
+static const void* flash_wr_src;
+
+static void flash_sync(u32 off, u32 len) {
+    FILE* f = fopen("save.flash", "r+b");
+    if (!f) f = fopen("save.flash", "w+b");
+    if (!f) return;
+    fseek(f, (long)off, SEEK_SET);
+    fwrite(flash_mem + off, 1, len, f);
+    fclose(f);
+}
+
+static void flash_init(void) {
+    FILE* f;
+    if (flash_ready) return;
+    flash_ready = 1;
+    memset(flash_mem, 0xFF, sizeof(flash_mem));
+    f = pm_debug_has("freshsave") ? NULL : fopen("save.flash", "rb");
+    if (f) {
+        size_t n = fread(flash_mem, 1, sizeof(flash_mem), f);
+        fclose(f);
+        pm_log("save.flash loaded %u bytes", (unsigned)n);
+    } else {
+        flash_sync(0, FLASH_SIZE);
+        pm_log("save.flash new");
+    }
+}
+
 void osFlashReadArray(OSIoMesg* mb, s32 pri, u32 pageNum, void* dramAddr, u32 pageCount, OSMesgQueue* mq) {
-    (void)pri; (void)pageNum;
-    memset(dramAddr, 0xFF, pageCount * 128);
+    (void)pri;
+    flash_init();
+    if ((pageNum + pageCount) * FLASH_PAGE <= FLASH_SIZE) memcpy(dramAddr, flash_mem + pageNum * FLASH_PAGE, pageCount * FLASH_PAGE);
+    else memset(dramAddr, 0xFF, pageCount * FLASH_PAGE);
     if (mq) osSendMesg(mq, (OSMesg)mb, OS_MESG_NOBLOCK);
 }
 void osFlashWriteBuffer(OSIoMesg* mb, s32 pri, void* dramAddr, OSMesgQueue* mq) {
-    (void)pri; (void)dramAddr;
+    (void)pri;
+    flash_wr_src = dramAddr;
     if (mq) osSendMesg(mq, (OSMesg)mb, OS_MESG_NOBLOCK);
 }
-s32 osFlashWriteArray(u32 pageNum) { (void)pageNum; return 0; }
-s32 osFlashSectorErase(u32 pageNum) { (void)pageNum; return 0; }
+s32 osFlashWriteArray(u32 pageNum) {
+    flash_init();
+    if ((pageNum + 1) * FLASH_PAGE > FLASH_SIZE || !flash_wr_src) return -1;
+    memcpy(flash_mem + pageNum * FLASH_PAGE, flash_wr_src, FLASH_PAGE);
+    flash_sync(pageNum * FLASH_PAGE, FLASH_PAGE);
+    return 0;
+}
+s32 osFlashSectorErase(u32 pageNum) {
+    u32 off = pageNum / 128u * FLASH_SECTOR;
+    flash_init();
+    if (off + FLASH_SECTOR > FLASH_SIZE) return -1;
+    memset(flash_mem + off, 0xFF, FLASH_SECTOR);
+    flash_sync(off, FLASH_SECTOR);
+    return 0;
+}
 void osInvalDCache(void* addr, s32 nbytes) { (void)addr; (void)nbytes; }
 void osWritebackDCache(void* addr, s32 nbytes) { (void)addr; (void)nbytes; }
-OSPiHandle* osFlashInit(void) { return NULL; }
+OSPiHandle* osFlashInit(void) { flash_init(); return NULL; }

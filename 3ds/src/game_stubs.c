@@ -11,7 +11,6 @@ u8 ResetTilesImg[16];
 extern PlayerData gPlayerData;
 extern PlayerStatus gPlayerStatus;
 BattleStatus gBattleStatus;
-u8 IntroMessageIdx;
 
 void pm_game_bind(void) {
     gGameStatusPtr = &gGameStatus;

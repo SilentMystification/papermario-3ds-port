@@ -274,6 +274,17 @@ set(GAME_SRC
     ${DECOMP}/src/world/surfaces.c
     ${DECOMP}/src/world/menus.c
     ${DECOMP}/src/state_pause.c
+    ${DECOMP}/src/state_title_screen.c
+    ${DECOMP}/src/state_file_select.c
+    ${DECOMP}/src/state_world.c
+    ${DECOMP}/src/filemenu/filemenu_common.c
+    ${DECOMP}/src/filemenu/filemenu_main.c
+    ${DECOMP}/src/filemenu/filemenu_yesno.c
+    ${DECOMP}/src/filemenu/filemenu_info.c
+    ${DECOMP}/src/filemenu/filemenu_createfile.c
+    ${DECOMP}/src/filemenu/filemenu_gfx.c
+    ${DECOMP}/src/filemenu/filemenu_msg.c
+    ${DECOMP}/src/filemenu/filemenu_styles.c
     ${DECOMP}/src/menu_hud_scripts.c
     ${DECOMP}/src/os/nusys/nupireadromoverlay.c
     ${DECOMP}/src/pause/pause_main.c
@@ -315,7 +326,6 @@ set(PORT_SRC
     src/pm_later.c
     src/pm_map.c
     src/area_table.c
-    src/pm_title.c
     src/pm_actor_link.c
     src/pm_kmr_stubs.c
     src/pm_actor_stubs.c
@@ -410,6 +420,16 @@ target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
     -Wl,--defsym,pause_RODATA_END=gPartnerStatus
     -Wl,--defsym,pause_BSS_START=gPartnerStatus
     -Wl,--defsym,pause_BSS_END=gPartnerStatus
+    # S17: filemenu overlay is linked in place (same as pause). Empty ranges, nothing is read from the ROM.
+    -Wl,--defsym,filemenu_ROM_START=gPartnerStatus
+    -Wl,--defsym,filemenu_ROM_END=gPartnerStatus
+    -Wl,--defsym,filemenu_VRAM=gPartnerStatus
+    -Wl,--defsym,filemenu_TEXT_START=gPartnerStatus
+    -Wl,--defsym,filemenu_TEXT_END=gPartnerStatus
+    -Wl,--defsym,filemenu_DATA_START=gPartnerStatus
+    -Wl,--defsym,filemenu_RODATA_END=gPartnerStatus
+    -Wl,--defsym,filemenu_BSS_START=gPartnerStatus
+    -Wl,--defsym,filemenu_BSS_END=gPartnerStatus
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)
