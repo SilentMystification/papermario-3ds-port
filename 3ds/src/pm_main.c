@@ -195,7 +195,10 @@ void pm_frame_loop(void) {
             fps_mark = now;
             have_fps = 1;
         }
-        if (frame % 3600 == 0) pm_mem_log("tick");
+        if (frame % 3600 == 0) {
+            pm_mem_log("tick");
+            pm_log("log writer core %d heartbeat %u dropped %u", pm_log_writer_core(), pm_log_writer_hb(), pm_log_dropped());
+        }
         if (pm_debug_has("logflood")) for (int i = 0; i < 10000; i++) pm_log("flood %d of frame %u", i, frame);
         if (pm_debug_has("logstat")) {
             if (!stat_t0) stat_t0 = now;
@@ -244,12 +247,14 @@ static void game_thread(void* arg) {
     }
     pm_log_set_switches(sw);
     pm_log_init(live);
+    pm_log_start();
     pm_fpscr_setup("game");
     bool is_new = false;
     APT_CheckNew3DS(&is_new);
     if (is_new) osSetSpeedupEnable(true);
     unsigned ram = (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20);
     pm_log("Paper Mario 3DS");
+    pm_log("threads: game on core %d (svcGetProcessorID), log writer on core %d", (int)svcGetProcessorID(), pm_log_writer_core());
     pm_log("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
@@ -276,5 +281,6 @@ int main(int argc, char** argv) {
     if (!t) return 1;
     threadJoin(t, U64_MAX);
     threadFree(t);
+    pm_log_stop(); /* write what is left, then stop the writer thread */
     return 0;
 }

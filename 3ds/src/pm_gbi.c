@@ -540,7 +540,7 @@ void pm_gbi_end_frame(void) {
         char line[80];
         snprintf(line, sizeof line, "t%d i%d c%d d%d o%d k%d x%d", acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x);
         if (strcmp(line, prev) != 0) {
-            pm_log("stats %s", line);
+            if (pm_debug_has("stats")) pm_log("stats %s", line); /* L01: per second line, only with the stats switch */
             snprintf(prev, sizeof prev, "%s", line);
         }
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;

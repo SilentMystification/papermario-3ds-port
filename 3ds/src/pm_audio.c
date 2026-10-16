@@ -60,7 +60,7 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
             if (v > peak) peak = v;
         }
         if (++posts % 120 == 0) {
-            pm_log("audio posts %u peak %d\n", posts, peak);
+            if (pm_debug_has("audiostat")) pm_log("audio posts %u peak %d\n", posts, peak);
             peak = 0;
         }
     }
@@ -99,6 +99,7 @@ static void au_main(void* unused) {
     pm_crash_install(au_crash_stack, sizeof(au_crash_stack)); /* the engine runs here: a fault needs its own trace */
     pm_stack_register(1, "audio", 64 * 1024);
     pm_fpscr_setup("audio");
+    pm_log("threads: audio on core %d (svcGetProcessorID)", (int)svcGetProcessorID());
     au_entry(au_arg);
 }
 

@@ -7,6 +7,16 @@
 void pm_log(const char* fmt, ...);
 void pm_log_init(int live);
 void pm_log_poll(void);
+void pm_con_lock(void);
+int pm_con_trylock(void);
+void pm_con_unlock(void);
+void pm_log_start(void);
+void pm_log_stop(void);
+int pm_log_writer_core(void);
+unsigned pm_log_writer_hb(void);
+unsigned pm_log_dropped(void);
+void pm_log_stat(float avg_ms, unsigned frames, float secs);
+void pm_log_top(void);
 void pm_log_set_switches(const char* s);
 void pm_crash_line(const char* s, int n);
 void pm_frame_loop(void);

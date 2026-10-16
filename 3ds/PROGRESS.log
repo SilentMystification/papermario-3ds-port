@@ -184,3 +184,11 @@
 14:01 L01 base A fast autoa: 0.1-0.2 lines/frame, 2-6 lines/s, frame work 25-44 ms wall 28-50 ms
 14:01 L01 base B same run with lognull: lines same, frame work 1-1.5 ms lower per frame (about 12 ms per line)
 14:01 L01 base C normal run: 1-3 lines/s. Base D logflood old code: only 2340 lines in 60 s, frame 1 never ends
+14:01 L01 commit step 1 (counters)
+14:03 L01 ring buffer + writer thread coded, building
+14:11 L01 build 3: writer starts on core 1 in Azahar (WaitTimeout result is not reliable, use a started flag)
+14:14 L01 found: writer stdout raced with HUD console (unmapped con_write); added console lock, HUD uses trylock
+14:18 L01 test fast autoa: kmr_20 and mac_00 reached, no unmapped warning, work 22.6-42.4 ms (base 24.8-43.5)
+14:25 L01 logflood 10000/frame: wall +4 to +7 ms per frame (cost of 10000 calls), old code never finished frame 1
+14:35 L01 build 10 final candidate; live log cannot start in Azahar (no soc buffer), tested by reading only
+14:39 L01 commit step 2 (ring buffer, writer thread, console lock, quiet lines)

@@ -227,9 +227,11 @@ void pm_gpu_init(void) {
     if (gpu_ok) return;
     gfxInitDefault();
     if (!C3D_Init(0x400000)) {
+        pm_con_lock();
         consoleInit(GFX_BOTTOM, &bottom_con);
-        pm_log("C3D_Init failed (command buffer 4MB), no graphics");
         printf("C3D_Init failed. No graphics.");
+        pm_con_unlock();
+        pm_log("C3D_Init failed (command buffer 4MB), no graphics");
         return;
     }
     /* Width 240, height 400: that is the top screen's rotated framebuffer.
@@ -263,9 +265,11 @@ void pm_gpu_init(void) {
     pm_tex_init();
     /* consoleGetDefault() stays the uninitialized template. The console printf
      * writes is the one passed to consoleInit. */
+    pm_con_lock();
     consoleInit(GFX_BOTTOM, &bottom_con);
     setvbuf(stdout, NULL, _IONBF, 0);
     consoleSetWindow(&bottom_con, 1, 3, 40, 28);
+    pm_con_unlock();
     gpu_ok = vert_base != NULL;
     if (!vert_base) pm_log("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
     pm_log("gpu %s proj %d m %d %d", gpu_ok ? "ok" : "no vertex buffer", u_proj,
@@ -276,6 +280,8 @@ void pm_gpu_hud(const char* line0, const char* line1) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
     if (!c->consoleInitialised) return;
+    /* The log writer thread prints on this console. Skip the HUD update when it is busy: the game thread never waits for it. */
+    if (pm_con_trylock() != 0) return;
     cx = c->cursorX;
     cy = c->cursorY;
     wx = c->windowX;
@@ -293,6 +299,7 @@ void pm_gpu_hud(const char* line0, const char* line1) {
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;
     c->cursorY = cy;
+    pm_con_unlock();
 }
 
 /* shots switch: dump the last finished frame (rotated 240x400 buffer, tiled RGBA8) as a PPM. */
@@ -381,6 +388,7 @@ void pm_gpu_log_stats(const char* tag) {
 /* Fatal boot problem (no ROM, wrong ROM): show it on the bottom screen and wait for START. Used before the GPU is up. */
 void pm_fatal_screen(const char* msg) {
     pm_log("FATAL: %s", msg);
+    pm_con_lock();
     if (!bottom_con.consoleInitialised) {
         gfxInitDefault();
         consoleInit(GFX_BOTTOM, &bottom_con);
@@ -391,6 +399,7 @@ void pm_fatal_screen(const char* msg) {
     consoleClear();
     printf("Paper Mario 3DS cannot start.%c%c%s%c%cPress START to exit.%c", 10, 10, msg, 10, 10, 10);
     fflush(stdout);
+    pm_con_unlock();
     while (aptMainLoop()) {
         gspWaitForVBlank();
         hidScanInput();

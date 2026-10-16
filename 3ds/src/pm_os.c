@@ -122,7 +122,8 @@ void nuScAddClient(NUScClient* c, OSMesgQueue* mq, NUScMsg msgType) {
 /* One retrace. Wakes the audio manager, then plays the part of the RSP and the scheduler: each audio task it
  * submits is finished at once (the work already ran in pm_rsp_audio.c) and its reply message is sent. */
 void pm_audio_tick(void) {
-    static unsigned ticks, sum, worst;
+    static unsigned ticks, worst;
+    static unsigned long long sum;
     unsigned t0;
     if (!au_client || !pm_au_thread_started()) return;
     t0 = pm_ticks();
@@ -147,9 +148,11 @@ void pm_audio_tick(void) {
         unsigned dt = pm_ticks() - t0;
         sum += dt;
         if (dt > worst) worst = dt;
-        if (++ticks == 120) {
-            pm_log("audio cost avg %u us max %u us per 60 Hz tick", (unsigned)((unsigned long long)sum * 1000 / 120 / 268112), (unsigned)((unsigned long long)worst * 1000 / 268112));
-            ticks = sum = worst = 0;
+        /* L01: every 2 s with the audiostat switch, else every 20 s (S28 reads this line on hardware) */
+        if (++ticks == (pm_debug_has("audiostat") ? 120u : 1200u)) {
+            pm_log("audio cost avg %u us max %u us per 60 Hz tick", (unsigned)((unsigned long long)sum * 1000 / ticks / 268112), (unsigned)((unsigned long long)worst * 1000 / 268112));
+            ticks = worst = 0;
+            sum = 0;
         }
     }
 }
