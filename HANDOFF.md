@@ -180,9 +180,35 @@ All items below belong to slice H02. Checked on Azahar only. Nothing ran on hard
 - RAM: `pm_mem.c` splits the 64 MB O3DS FCRAM as 4 MB N64 heap + 40 MB cart image + 20 MB linear. Nothing is free. 6 MB of static image does not fit.
 - DECISION: does NOT fit. Do not link all maps. S08 must link only the maps in use, or load map data from the ROM at run time. Linking a subset needs a `gAreas` built from only those maps. The real `gAreas` in `world.c` references all of them.
 
-## Open slice L01 (user decision, 2026-10, documentation only)
+## L01 result (slice L01: non-blocking log, port layer only)
 
-Slice L01 is queued in 3ds/SLICES.md before S28. The user decided that no blocking write may run on the game path. pm_log must become a ring buffer with a writer thread on core 1. This note was added during slice V02. No L01 code was written.
+All items below belong to slice L01. Checked on Azahar only. Nothing ran on hardware.
+
+Question: does logging cause the stutter? Measured before the change (Azahar, `fast autoa logstat`; the switch `logstat` prints a line per 300 drawn frames):
+- Rate is low: 0.1 to 0.2 lines per frame, 1 to 6 lines per second, 175 lines in a 100 s autoa run. Normal run without `fast autoa`: 1 to 3 lines per second. The rate is NOT the problem.
+- The cost per line is the problem. The old pm_log did write + fsync + socket + stdout in the calling thread. In Azahar one line cost about 12 ms (frame work was 1 to 1.5 ms lower per frame with `lognull`, which drops every line, at about 0.1 lines per frame). With `logflood` (10000 lines per frame) the old code wrote only 2340 lines in 60 s and frame 1 never ended. The real SD fsync cost is not known. Azahar cannot show it. A stutter of a few lines per second fits the numbers, but it is NOT proven on hardware.
+- Noisiest call sites (count in a 100 s run): `stats %s` 39 (pm_gbi.c), `audio cost` 23 and `audio posts` 23 (every 2 s), `game mode` 11, mem lines 3 each. No per-frame line exists.
+
+After the change (same scene, same run, `fast autoa logstat`): frame work 22.6, 34.3, 35.6, 42.4, 31.4, 29.8 ms (before: 24.8, 35.4, 36.2, 43.5, 34.6, 31.3 ms). That equals the `lognull` run. Wall time per frame 25.4, 41.1, 39.9, 47.9 ms (before: 28.2, 42.6, 41.5, 50.4 ms). With `logflood` (10000 lines per frame): wall 30.4, 47.3, 47.4 ms. So 10000 calls cost 4 to 7 ms per frame in Azahar (the queue is full, each call is one atomic add and a return). The frame time is NOT unchanged by 10000 calls per frame, but the game is not blocked either. The game reached frame 1061 in 70 s and the log has `N lines dropped` lines. Azahar runs both ARM cores on host threads that may share work, so some of the 4 to 7 ms may be writer work. Not separated.
+
+What changed (3ds/src/pm_log.c and small edits):
+- pm_log formats the line and copies it into one of 512 slots (184 bytes each, 96 KB in .bss). Lock-free: reserve with `__atomic_compare_exchange_n` on the head index, commit with a release store, the writer reads with acquire. Full queue: one atomic add on a drop counter and return, before any formatting. The writer logs `N lines dropped (queue full)`.
+- One writer thread (libctru `threadCreate`, 32 KB stack, priority 0x3F) waits on a `LightEvent` with a 250 ms timeout. Producers signal it when the queue was empty or half full. It writes log.txt in batches, calls fsync about once per second, sends to the live socket, prints to stdout and accepts live-log clients. No busy wait.
+- Core: `APT_SetAppCpuTimeLimit(30)`, then the thread on core 1 (libctru 2.7.0 `thread.h`: core 1 allows one thread after that call). If that fails, the thread goes on core 0 at the same low priority. The boot line `log: writer id 1 core 1 ... thread ran 1` proves the thread ran (a start flag, not the `LightEvent_WaitTimeout` result, which returned 1 although the event was set). The minute line `log writer core N heartbeat H dropped D` and the `logstat` line show the heartbeat. In Azahar the thread runs on core 1 (heartbeat about 4 per second). `svcGetProcessorID` returns a wrong number for the game thread in Azahar (for example 19 or 8020348). Trust it only on hardware.
+- Before the writer exists (first boot lines), pm_log writes directly as before. A crash: `pm_crash_line` calls `crash_flush` once (takes the drain lock, writes the queue, fsync). Test `crashtest_call`: log.txt holds all queued lines and the 8 `[CRASH]` lines, crash.txt appends them. The log.txt to log.old rotation and crash.txt from H02 are unchanged. `pm_log_stop` (end of `main`) writes what is left.
+- Console: stdout is the bottom screen console, which is not thread safe. The first test run gave 23465 unmapped accesses in `con_write` because the writer printed while the HUD changed the console window. Fix: `pm_con_lock` (a `LightLock` in pm_log.c) around the writer's print, the console setup and the FATAL screen. The HUD (`pm_gpu_hud`) uses `LightLock_TryLock` and skips one update when the writer is printing, so the game thread never waits for the writer.
+- Noisy lines behind switches: the `stats` line only with switch `stats`. `audio posts` only with switch `audiostat`. `audio cost` every 20 s by default (S28 reads it), every 2 s with `audiostat`. Kept: `mem tick`, `load map`, `scan N`, the `rom_trace_check.py` inputs, `rmlog`, FATAL and crash lines.
+- New switches: `logstat` (line per 300 drawn frames: work ms, wall ms, lines per frame and per second, writer heartbeat, drops, top 8 call sites every 1200 frames; it also goes to the Azahar debug log through `svcOutputDebugString`, read `%APPDATA%\Azahar\log\azahar_log.txt`), `lognull` (drop all lines except errors, for A/B), `logflood` (10000 lines per frame).
+
+What Azahar does not show:
+- The real SD write and fsync cost on hardware. The writer takes it now. An SD stall of more than the queue holds (512 lines) would drop lines in a busy scene.
+- Core 1 behaviour on the O3DS (whether APT_SetAppCpuTimeLimit lets the thread run). The core 0 fallback exists but was not run.
+- The live log. Azahar has no network buffer on this run path (`started_by_netload` is false, a forced test with a heap buffer gave `socInit e0e01bf5`). The socket send path and `livelog.py` were NOT run. Code read only. `livelog.py` reads `#seq` numbers. The number is taken after the queue slot, so the queue order equals the number order. Dropped lines make no gap, the writer adds one numbered `lines dropped` line. `go.ps1 pull o|n` and `ftppull.py` read log.txt over FTP. The file format is unchanged. The newest lines come about 250 ms late, and fsync runs once per second.
+- The writer thread has no crash handler of its own (a fault there gets no trace).
+
+## Port threading rule and note for the audio slice
+
+Port threading and sync use libctru natives (threadCreate, LightLock, LightEvent, LightSemaphore, svc handles). No hand-rolled locks or sleeps in loops. For the later audio slice: the cooperative audio thread hand-off in `3ds/src/pm_os.c` (`pm_au_thread_yield`) and the `au_run` and `au_idle` semaphores in `3ds/src/pm_audio.c` use custom yield logic. Review them against this rule then. L01 did not change them.
 
 ## V02 paused (slice V02, paused for L01, no code changed)
 
@@ -246,6 +272,8 @@ Every agent may read the ports in `reference/` (see `reference/README.md`) to le
 - S09, recorded by S07: the `world_partner_*` and `world_use_item_ROM_*` symbols are `--defsym` aliases that point at `gPartnerStatus`. This is a placeholder from S09. It is for CODE only (MIPS overlays that the ARM build links in place), so `dma_copy` copies nothing and nothing is read. Slice P01 checked this: no data symbol uses the placeholder (see the P01 result).
 
 ## Do not
+
+Port threading and sync use libctru natives (threadCreate, LightLock, LightEvent, LightSemaphore, svc handles). No hand-rolled locks or sleeps in loops.
 
 Do not commit logs, traces or shots. Write them under `3ds/logs/` (ignored by git). Only `3ds/PROGRESS.log` is tracked.
 Do not push. Do not stub (see the rule at the top). One Azahar window; the run script kills only the process it started. Do not leave `fast` in `debug3ds.txt` (it skips the logos). `3ds/run_azahar.ps1` stops on `-Until`, a crash, log silence (`-Stall`), or `-Timeout`. Use `run_azahar.ps1` directly, not `go.ps1`, to see the unmapped-access report. `go.ps1` skips the build when the 3dsx is newer than all sources, even after a `CMakeLists.txt` change. Touch a source file to force a build. The scene after the third kmr_20 load is idle, so the log goes quiet. That is not a hang. The full intro needs about 150s. Log: `%APPDATA%\Azahar\sdmc\3ds\PaperMario\log.txt`. Window captures do not show the OpenGL screen. GPU work stays on the GPU. Paperboat (`reference/paperboat`) shares the game-side sprite and imgfx code, and runs the unmodified decomp loader. The Fast3D interpreter to compare against is `reference/soh-3ds/third_party/libultraship/src/fast/interpreter.cpp`.
