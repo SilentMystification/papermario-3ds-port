@@ -191,7 +191,7 @@ void pm_rom_init(void) {
     pm_log("ram n64 4MB, port %uMB", pm_linear_bytes() >> 20);
 }
 
-void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
+static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     if (!buf || !size) return;
     if ((unsigned)buf < 0x00100000u) {
         static int once;
@@ -227,6 +227,35 @@ void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     pm_tex_invalidate(buf, size);
 }
 
+/* The map asset table (28-byte entries, see AssetHeader in src/world/world.c) is read by the real load_asset_by_name and
+ * get_asset_offset as native u32 fields. The ROM stores them big-endian, so swap the three u32 fields of each entry that
+ * lies inside the table. Asset data is not touched. */
+#define ASSET_TABLE_START 0x1E40020u
+#define ASSET_ENTRY_SIZE 0x1Cu
+void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
+    static u32 table_bytes;
+    pi_read_raw(rom_addr, buf, size);
+    if (!buf || !size || (unsigned)buf < 0x00100000u) return;
+    if (table_bytes == 0) {
+        u8 b[4];
+        pi_read_raw(ASSET_TABLE_START + 0x10, b, 4);
+        table_bytes = ((u32)b[0] << 24) | ((u32)b[1] << 16) | ((u32)b[2] << 8) | b[3];
+    }
+    if ((rom_addr & 3) == 0 && (size & 3) == 0 && rom_addr < ASSET_TABLE_START + table_bytes && rom_addr + size > ASSET_TABLE_START) {
+        /* dma_copy reads in chunks, so decide per word from its offset in the table. */
+        u32 i;
+        for (i = 0; i < size; i += 4) {
+            u32 w = rom_addr + i;
+            u32 field = (w - ASSET_TABLE_START) % ASSET_ENTRY_SIZE;
+            if (w >= ASSET_TABLE_START && w < ASSET_TABLE_START + table_bytes && field >= 0x10) {
+                u8* f = (u8*)buf + i;
+                u8 t0 = f[0], t1 = f[1];
+                f[0] = f[3]; f[1] = f[2]; f[2] = t1; f[3] = t0;
+            }
+        }
+    }
+}
+
 s32 osPiStartDma(OSIoMesg* mb, s32 priority, s32 direction, u32 devAddr, void* vAddr, u32 nbytes, OSMesgQueue* mq) {
     (void)priority;
     if (direction == OS_READ) nuPiReadRom(devAddr, vAddr, nbytes);
@@ -253,3 +282,20 @@ s32 osAiSetNextBuffer(void* buf, u32 nbytes) {
 
 u32 osAiGetLength(void) { return pm_audio_pending(); }
 u32 osAiGetStatus(void) { return 0; }
+
+/* N64 flash save chip (fio.c). The 3DS port has no flash. Reads return erased flash (0xFF), so no save is found.
+ * Writes and erases do nothing and report success. Every call completes its message queue like the OS would. */
+void osFlashReadArray(OSIoMesg* mb, s32 pri, u32 pageNum, void* dramAddr, u32 pageCount, OSMesgQueue* mq) {
+    (void)pri; (void)pageNum;
+    memset(dramAddr, 0xFF, pageCount * 128);
+    if (mq) osSendMesg(mq, (OSMesg)mb, OS_MESG_NOBLOCK);
+}
+void osFlashWriteBuffer(OSIoMesg* mb, s32 pri, void* dramAddr, OSMesgQueue* mq) {
+    (void)pri; (void)dramAddr;
+    if (mq) osSendMesg(mq, (OSMesg)mb, OS_MESG_NOBLOCK);
+}
+s32 osFlashWriteArray(u32 pageNum) { (void)pageNum; return 0; }
+s32 osFlashSectorErase(u32 pageNum) { (void)pageNum; return 0; }
+void osInvalDCache(void* addr, s32 nbytes) { (void)addr; (void)nbytes; }
+void osWritebackDCache(void* addr, s32 nbytes) { (void)addr; (void)nbytes; }
+OSPiHandle* osFlashInit(void) { return NULL; }

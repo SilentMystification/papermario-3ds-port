@@ -1,5 +1,6 @@
 #include "common.h"
 #include "game_modes.h"
+#include "fio.h"
 
 /* Set by load_map_by_IDs (pm_map.c). The real change_map and enter_world load the map, so state_init_world must not load it again. */
 int pm_map_loaded;
@@ -14,6 +15,9 @@ int pm_map_loaded;
 
 extern void* pm_decode_asset(const char* name, unsigned* out_size);
 extern void pm_log(const char* fmt, ...);
+void init_hud_element_list(void);
+void init_item_entity_list(void);
+void hud_element_clear_cache(void);
 
 static u8* title_blob;
 static u8* logo;
@@ -79,7 +83,22 @@ void state_init_title_screen(void) {
     clear_screen_overlays();
     gGameStatusPtr->introPart = INTRO_PART_NONE;
     gGameStatusPtr->startupState = 2;
+    /* Leaving the intro without a map load (hos_04 is not in gAreas): drop every list that points into the general heap. */
+    clear_npcs();
+    clear_render_tasks();
+    clear_script_list();
+    clear_worker_list();
+    clear_model_data();
+    clear_animator_list();
+    clear_entity_models();
+    clear_encounter_status();
+    clear_effect_data();
+    clear_entity_data(true);
     general_heap_create();
+    /* The real file select and startup states set these lists up before the first map load. */
+    init_hud_element_list();
+    init_item_entity_list();
+    hud_element_clear_cache();
     load_title_images();
     reset_background_settings();
     load_map_bg("title_bg");
@@ -163,6 +182,7 @@ void state_init_world(void) {
     /* The intro fade is a full-screen plate. It stays up after the title
      * unless this mode clears it, which is the blank screen on a file slot. */
     clear_screen_overlays();
+    gGameStatusPtr->context = CONTEXT_WORLD;
     load_map_by_IDs(gGameStatusPtr->areaID, gGameStatusPtr->mapID, LOAD_FROM_MAP);
 }
 
@@ -190,3 +210,7 @@ void state_step_world(void) {
         }
     }
 }
+
+/* Storage only. The real definition (with FILENAME_ERROR defaults) is in src/state_title_screen.c, which the port replaces
+ * with the code above until the title slice. fio.c needs the symbol. Remove when state_title_screen.c is built. */
+SaveMetadata gSaveSlotMetadata[4];

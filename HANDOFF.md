@@ -78,6 +78,21 @@ Done. Real `src/world/partners.c`, `src/world_use_item.c`, 11 `src/world/partner
 - `pm_map.c load_map_by_IDs` now calls `init_hud_element_list`, `hud_element_clear_cache`, `init_item_entity_list` and `initialize_status_bar` (the real `draw_status_ui` crashed without them). It sets `pm_map_loaded`, which `state_init_world` in `pm_title.c` uses to skip a second load. The title clears it before entering the world.
 - `fast autoa` (170 s): kmr_20, osr_00, kmr_20 chain, no unmapped access. kkj_00 is still not reached (open issue 1, unchanged). Fade and status bar were not checked by eye.
 
+## S08 result (slice S08, PARTIAL: loader done, mac_00 crashes after it loads)
+
+Done in S08: real `get_map_IDs_by_name`, `load_map_by_IDs`, `load_asset_by_name`, `get_asset_offset`, `get_current_map_settings` and `gEntityCollider*` now come from `src/world/world.c`. CMake cuts `world.c` at `#define AREA(` into `build3ds/world_gen.c` (no edit of shared source). The table is `3ds/src/area_table.c` (port side, same AREA/MAP layout, real indices and mapCount). Real MAP() rows: hos_05, kmr_02, kmr_20, osr_00, kkj_00, mac_00. All other maps are `MAP_ID()` rows (id, bgName, reverb only, null settings). Map code is linked in, so the port MAP() leaves dmaStart null (no overlay DMA).
+- Removed: port `load_map_by_IDs`, `pm_maps`, `pm_settings`, `gAreas[29]`, hard-coded kmr_20/osr_00/kkj_00 settings and cameras, port `load_asset_by_name`, port `get_current_map_settings`, port `get_map_IDs_by_name` (game_stubs.c), duplicate `gEntityCollider*`, stand-in `hos_05_EVS_Starship_Depart/EnterStarship`, stale shadow headers `stub_include/item_enum.h` and `message_ids.h` (the generated ones now apply).
+- Real files added: hos_05 settings+star_ship, all kmr_02 and mac_00 files, `entity/model/Hammer1Block.c`, `BlueWarpPipe`, `SaveBlock`, `HiddenPanel` (+ model), `world/script_api/shops.c`, `fio.c`, `8a860_len_3f30.c` (popup menus).
+- Endian shims (port layer, no game logic): `nuPiReadRom` swaps the u32 fields of the asset table (pm_os.c). `decode_yay0` converts a decoded map shape (when dst is gMapShapeData) and a `_hit` asset in place (pm_map.c, uses `--wrap=load_asset_by_name` to learn the asset name). `gMapShapeData` is a 256 KB buffer in pm_map.c (heaps.c renamed its 32 KB copy with `-DgMapShapeData=pm_unused_shape_data`).
+- Guard (pm_map.c, `--wrap` on get_map_IDs_by_name, set_game_mode, load_map_by_IDs): GotoMap to a row with null settings (or an unknown name) logs `GotoMap refused: ...` and keeps the current map. Verified: `GotoMap refused: area 1 map 2 is not linked`.
+- Flash shims in pm_os.c (`osFlash*`, `osInvalDCache`, `osWritebackDCache`): reads return 0xFF, writes do nothing. Needed by real `fio.c`.
+- STAND-IN left: `SaveMetadata gSaveSlotMetadata[4]` storage in pm_title.c (real one is in `state_title_screen.c`). See 3ds/QUESTIONS.md.
+- Port title init now clears NPC, script, worker, model, animator, effect and entity lists, because hos_05 -> hos_04 is refused (hos_04 is id-only), so no load cleans them.
+- Known bug kept from real code: `*(s32*)mapConfig->unk_1C & 3` reads a big-endian packing, so the reverb mode is 0 on ARM.
+- Size: .text 1.12 MB, .data 1.11 MB, .bss 6.74 MB (image 8.97 MB, was 7.43 MB at S11). 3dsx 2.29 MB.
+- Check (`run_azahar.ps1 -Debug "fast autoa"`, NOT `go.ps1`): hos_05 intro, title, file 1, kmr_20 (area 0 map 11), osr_00 (area 23), kmr_20, then the pipe loads mac_00 (area 1 map 1, `spawn npcs 24`). kkj_00 is still not reached (issue 1, unchanged: nothing sends the chain there). A few seconds in mac_00 the game crashes: PC=0 in `render_effects_UI` (effects.c:171), or under gdb a divide by zero in `spr_appendGfx_component_flat` and a fault in `is_ability_active`. Different crashes per run point to memory corruption or a sprite/effect limit in the 24-NPC mac_00 scene. Not diagnosed. Next step: find who overwrites memory in mac_00 (watchpoint on `gPlayerData.equippedBadges`, sprite heap size, effect instance count).
+- Unrelated detail: always pass `-Debug "fast autoa"` to run_azahar.ps1. The script deletes debug3ds.txt otherwise.
+
 ## S07 result
 
 Done (slice S07). Real `src/rumble.c`, `src/evt/virtual_entity.c`, `src/background.c`, `src/background_gfx.c` and the real `src/os/nusys/nucontrmb{check,modeset,start,forcestop}.c` build and link. Removed: `poll_rumble`, `start_rumble`, `update_max_rumble_duration`, `clear_virtual_entity_list`, `init_virtual_entity_list`, `reset_background_settings`, `gfx_init_state`, `gfx_draw_background`, port `nuContRmbForceStop`, and in `pm_title.c` the port `load_background` and `pm_draw_loaded_background` (title now calls real `load_map_bg("title_bg")` and `set_background`).
@@ -85,7 +100,7 @@ Done (slice S07). Real `src/rumble.c`, `src/evt/virtual_entity.c`, `src/backgrou
 - `gBackgroundImage` is a 256 KB buffer (`pm_kmr_stubs.c`, asm label). `load_map_bg` has a `TARGET_3DS` fix-up of the big-endian header and pointers. Fog palette code swaps with `BG_PAL`.
 - Bug fixed in port `decode_yay0` (`pm_map.c`): its source bound cut off the literal bytes, so every call failed. First user was `load_map_bg`.
 - Port shims: `nuContRmbCtl[]` (zeroed nusys BSS) in `pm_nusys.c`. `nuSiSendMesg` returns 0, so rumble messages go nowhere.
-- Stand-in left: port `load_asset_by_name` (see the stand-in list). Remove in S08.
+- Port `load_asset_by_name` was removed in S08.
 - `fast autoa` (170 s): kmr_20 reached, no unmapped access, no hang. Intro hos_bg sky seen in shots. The kmr_20 background was not checked by eye (shots mode is too slow to reach it).
 
 ## Now
@@ -114,7 +129,7 @@ State of the tree at this handoff:
 3. Text box transitions do not happen. Parakarry's first text box does not show.
 4. Transparency half works: translucent models show the background layer but not other geometry behind them. Likely draw order or depth write.
 5. The Mario logo does not show on the house in the intro cutscene.
-6. The red outline stays on screen after it should go. It blocks a large part of the view.
+6. The red outline stays on screen after it should go. It blocks a large part of the view. Suspected cause: port curtain stand-in in pm_overlay.c. Fix: slice S13.
 7. Mario has transparency problems around his sprite. The background layer shows in place of the scene geometry behind him. Likely the same cause as issue 4.
 
 Known gaps: item and popup APIs, entity display lists and shadows, `bed.c` and `records.c` (need extracted textures), message boxes, status bar, HUD.

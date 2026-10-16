@@ -6,12 +6,9 @@
 
 
 
-void create_standard_popup_menu(void* menu) {}
 
 Mtx Entity_BombableRock_FragmentMatrices[8];
 Gfx* Entity_BombableRock_FragmentsRender[8];
-void hide_popup_menu(void) {}
-void destroy_popup_menu(void) {}
 
 
 /* bed.c and records.c include extracted textures that are not in the tree. */

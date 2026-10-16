@@ -2,15 +2,14 @@
 #include "model.h"
 #include "sprite.h"
 #include "camera.h"
+#include "game_modes.h"
 #include "pm_port.h"
-#include "mapfs/hos_05_shape.h"
 
 int strcmp(const char* a, const char* b);
+unsigned int strlen(const char* s);
+char* strncpy(char* d, const char* s, unsigned int n);
 void bcopy(const void* src, void* dst, unsigned int n);
 void bzero(void* p, unsigned int n);
-
-extern EvtScript hos_05_EVS_Main;
-extern EvtScript kmr_20_EVS_Main;
 
 /* Shape files are built for gMapShapeData at this N64 address. */
 #define SHAPE_BASE 0x80210000u
@@ -29,10 +28,13 @@ typedef struct ShapeFix {
     u8* seen;
 } ShapeFix;
 
-static void* shape_keep;
 void* pm_decode_asset(const char* name, unsigned* out_size);
-void load_hit_data(s32 idx, void* hit);
+/* Real map shapes are up to 157 KB. heaps.c only has 32 KB, so this is the buffer that the real code uses as gMapShapeData. */
+u8 pm_shape_buf[0x40000] __asm__("gMapShapeData") __attribute__((aligned(16)));
 
+static const void* last_asset_src;
+static char last_asset_name[24];
+static void swap_hit_file(u8* hit, u32 size);
 static u32 rbe(const u8* p) {
     return ((u32)p[0] << 24) | ((u32)p[1] << 16) | ((u32)p[2] << 8) | p[3];
 }
@@ -332,8 +334,7 @@ static int yay0_decode(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
     return 1;
 }
 
-/* Retail decode_yay0. Header fields are big-endian. The bitfield is the 32-bit
- * Yay0 stream this port already uses for map shapes, not Paperboat's 8-bit variant. */
+/* Retail decode_yay0 core, also used by spr_load_sprite. Header fields are big-endian. */
 int pm_yay0_decode(const void* src, u32 src_len, void* dst, u32 dst_len) {
     return yay0_decode(src, src_len, dst, dst_len);
 }
@@ -350,7 +351,15 @@ void decode_yay0(void* src, void* dst) {
      * (the farther table offset) cut the literal bytes at the end and every decode failed. */
     bound = 0x100000u;
     if (dec > 0x40000u || link < 16u || count < 16u) return;
-    yay0_decode(s, bound, dst, dec);
+    if (!yay0_decode(s, bound, dst, dec)) return;
+    /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
+    if (dst == (void*)pm_shape_buf) {
+        fix_shape(dst, dec);
+    } else if (src == last_asset_src) {
+        u32 n = strlen(last_asset_name);
+        if (n > 4 && strcmp(last_asset_name + n - 4, "_hit") == 0) swap_hit_file(dst, dec);
+    }
+    last_asset_src = NULL;
 }
 
 static int find_asset(const char* name, u32* rom_off, u32* comp_len, u32* dec_len) {
@@ -358,7 +367,6 @@ static int find_asset(const char* name, u32* rom_off, u32* comp_len, u32* dec_le
     AssetEntry* table;
     u32 bytes, i, n;
     dma_copy((u8*)ASSET_TABLE, (u8*)ASSET_TABLE + sizeof(first), &first);
-    swap_u32s(&first.offset, 3);
     bytes = first.offset;
     if (bytes < sizeof(first) || bytes > 0x20000) return 0;
     table = general_heap_malloc(bytes);
@@ -366,7 +374,6 @@ static int find_asset(const char* name, u32* rom_off, u32* comp_len, u32* dec_le
     dma_copy((u8*)ASSET_TABLE, (u8*)ASSET_TABLE + bytes, table);
     n = bytes / sizeof(AssetEntry);
     for (i = 0; i < n; i++) {
-        swap_u32s(&table[i].offset, 3);
         if (strcmp(table[i].name, name) == 0) {
             *rom_off = ASSET_TABLE + table[i].offset;
             *comp_len = table[i].compressedLength;
@@ -377,19 +384,6 @@ static int find_asset(const char* name, u32* rom_off, u32* comp_len, u32* dec_le
     }
     general_heap_free(table);
     return 0;
-}
-
-static MapSettings pm_settings;
-static MapConfig pm_maps[32];
-AreaConfig gAreas[29];
-extern MapSettings kmr_20_settings;
-extern MapSettings osr_00_settings;
-extern EvtScript osr_00_EVS_Main;
-extern MapSettings kkj_00_settings;
-extern EvtScript kkj_00_EVS_Main;
-
-MapSettings* get_current_map_settings(void) {
-    return &pm_settings;
 }
 
 static void swap_u16s(u8* p, int n) {
@@ -433,38 +427,23 @@ static void swap_hit_section(u8* hit, u32 size, u32 off) {
     swap_u32s(h + 0x14, 1);
 }
 
-static void load_hit(const char* name) {
-    unsigned size;
-    u8* hit = pm_decode_asset(name, &size);
-    u32 collOff, zoneOff;
-    if (!hit) {
-        pm_log("hit %s missing", name);
-        return;
-    }
-    collOff = rbe(hit);
-    zoneOff = rbe(hit + 4);
+/* The hit file is decoded in place by the real load_map_hit_asset. Swap it once, before the real code reads it. */
+static void swap_hit_file(u8* hit, u32 size) {
+    u32 collOff = rbe(hit);
+    u32 zoneOff = rbe(hit + 4);
     swap_hit_section(hit, size, collOff);
     swap_hit_section(hit, size, zoneOff);
     swap_u32s(hit, 2);
-    pm_settings.hitAssetCollisionOffset = collOff;
-    pm_settings.hitAssetZoneOffset = zoneOff;
-    load_hit_data(0, (void*)hit);
-    load_hit_data(1, (void*)hit);
-    general_heap_free(hit);
-    pm_log("hit %s %d colliders", name, gCollisionData.numColliders);
 }
 
-/* Same contract as load_asset_by_name in src/world/world.c: compressed bytes on the general heap, size is the
- * decompressed length. world.c is not built yet (S08), and its copy ignores the big-endian asset table. */
-void* load_asset_by_name(const char* name, u32* decompressedSize) {
-    u32 rom_off, comp_len, dec_len;
-    void* ret;
-
-    if (!find_asset(name, &rom_off, &comp_len, &dec_len)) return NULL;
-    ret = general_heap_malloc(comp_len);
-    if (!ret) return NULL;
-    dma_copy((u8*)rom_off, (u8*)rom_off + comp_len, ret);
-    *decompressedSize = dec_len;
+/* Records the last asset the real load_asset_by_name returned (linked with --wrap, see CMakeLists.txt). decode_yay0 then
+ * knows which kind of big-endian file it just decoded. */
+extern void* __real_load_asset_by_name(const char* name, u32* decompressedSize);
+void* __wrap_load_asset_by_name(const char* name, u32* decompressedSize) {
+    void* ret = __real_load_asset_by_name(name, decompressedSize);
+    last_asset_src = ret;
+    strncpy(last_asset_name, name, sizeof(last_asset_name) - 1);
+    last_asset_name[sizeof(last_asset_name) - 1] = 0;
     return ret;
 }
 
@@ -496,224 +475,6 @@ void* pm_decode_asset(const char* name, unsigned* out_size) {
     return decoded;
 }
 
-extern int pm_map_loaded;
-void init_hud_element_list(void);
-void hud_element_clear_cache(void);
-void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
-    pm_map_loaded = 1;
-    const char* shape_name = NULL;
-    const char* tex_name = "hos_tex";
-    const char* bg_name = NULL; /* real value is MapConfig.bgName from world.c (S08) */
-    char hit_name[12];
-    u32 rom_off, comp_len, dec_len, tex_off, tex_comp, tex_dec;
-    void* compressed;
-    u8* shape;
-    ModelNode* root;
-    Camera* cam;
-    s32 models = 0;
-    s32 i;
-
-    (void)loadType;
-    /* NPCs live on the general heap. Resetting it below leaves the old list
-     * pointing at the new shape, and onRender becomes those bytes. */
-    gGameStatusPtr->context = CONTEXT_WORLD;
-    clear_npcs();
-    if (mapID == 5) { shape_name = "hos_05_shape"; bg_name = "hos_bg"; }
-    else if (mapID == 4) shape_name = "hos_04_shape";
-    else if (areaID == AREA_OSR && mapID == 0) {
-        shape_name = "osr_00_shape";
-        tex_name = "osr_tex";
-        bg_name = "nok_bg";
-    }
-    else if (areaID == AREA_KKJ && mapID == 0) {
-        shape_name = "kkj_00_shape";
-        tex_name = "kkj_tex";
-        bg_name = "nok_bg";
-    }
-    else if (areaID == AREA_KMR && mapID == 11) {
-        shape_name = "kmr_20_shape";
-        tex_name = "kmr_tex";
-        bg_name = "kmr_bg";
-    } else if (areaID == AREA_KMR && mapID == 1) {
-        shape_name = "kmr_02_shape";
-        tex_name = "kmr_tex";
-        bg_name = "kmr_bg";
-    } else {
-        pm_log("map %d not loaded", mapID);
-        return;
-    }
-
-    general_heap_create();
-    clear_render_tasks();
-    clear_script_list();
-    clear_worker_list();
-    clear_model_data();
-    /* Stale lists point into the heap reset above. Real load_map_by_IDs clears them too. */
-    clear_animator_list();
-    clear_entity_models();
-    clear_encounter_status();
-    clear_effect_data();
-    create_cameras();
-    /* The real flow sets these up in file select and load_map (hud_element_clear_cache). */
-    init_hud_element_list();
-    hud_element_clear_cache();
-    init_item_entity_list();
-    /* imgfx and sprite state hold pointers into the general heap reset above. */
-    if (mapID != 5) spr_init_sprites(PLAYER_SPRITES_MARIO_WORLD);
-
-    if (!find_asset(shape_name, &rom_off, &comp_len, &dec_len) || dec_len < 32 || dec_len > 0x80000 || comp_len > 0x80000) {
-        pm_log("map %s missing", shape_name);
-        return;
-    }
-    compressed = general_heap_malloc(comp_len);
-    shape = general_heap_malloc(dec_len);
-    if (!compressed || !shape) {
-        pm_log("map %s alloc failed", shape_name);
-        return;
-    }
-    dma_copy((u8*)rom_off, (u8*)rom_off + comp_len, compressed);
-    pm_log("yay0 %s %u -> %u", shape_name, comp_len, dec_len);
-    if (!yay0_decode(compressed, comp_len, shape, dec_len)) {
-        pm_log("map %s yay0 failed", shape_name);
-        general_heap_free(compressed);
-        return;
-    }
-    general_heap_free(compressed);
-    root = fix_shape(shape, dec_len);
-    if (!root) {
-        pm_log("map %s fix failed", shape_name);
-        return;
-    }
-    shape_keep = shape;
-
-    /* Real code reads gAreas[area].maps[map].settings for entry positions and the like. */
-    if (areaID == AREA_KMR && mapID == 11) pm_settings = kmr_20_settings;
-    else if (areaID == AREA_OSR && mapID == 0) pm_settings = osr_00_settings;
-    else if (areaID == AREA_KKJ && mapID == 0) pm_settings = kkj_00_settings;
-    else bzero(&pm_settings, sizeof(pm_settings));
-    bcopy(shape + 8, &pm_settings.modelNameList, 4);
-    bcopy(shape + 12, &pm_settings.colliderNameList, 4);
-    bcopy(shape + 16, &pm_settings.zoneNameList, 4);
-    pm_settings.modelTreeRoot = root;
-    pm_maps[mapID & 31].settings = &pm_settings;
-    gAreas[areaID].maps = pm_maps;
-
-    if (find_asset(tex_name, &tex_off, &tex_comp, &tex_dec)) {
-        load_data_for_models(root, tex_off, tex_comp);
-    } else {
-        load_data_for_models(root, 0, 0);
-    }
-
-    /* Same order as the real load_map: load_map_bg, reset_background_settings, then set_background. */
-    if (bg_name) load_map_bg((char*)bg_name);
-    reset_background_settings();
-    if (pm_settings.background != NULL) {
-        set_background(pm_settings.background);
-    } else {
-        set_background_size(SCREEN_XMAX - SCREEN_XMIN, SCREEN_YMAX - SCREEN_YMIN, SCREEN_INSET_X, SCREEN_INSET_Y);
-    }
-
-    clear_trigger_data();
-    initialize_collision();
-    bcopy(shape_name, hit_name, 6);
-    bcopy("_hit", hit_name + 6, 5);
-    load_hit(hit_name);
-    clear_entity_data(true);
-    if (mapID != 5) {
-        gGameStatusPtr->playerSpriteSet = PLAYER_SPRITES_MARIO_WORLD;
-        player_reset_data();
-    } else {
-        /* The intro never resets the player. Real update_player reads the player shadow. */
-        gPlayerStatus.shadowID = create_shadow_type(SHADOW_VARYING_CIRCLE, 0.0f, 0.0f, 0.0f);
-    }
-
-    initialize_status_bar();
-    for (i = 0; i < MAX_MODELS; i++) {
-        if ((*gCurrentModels)[i] != NULL) models++;
-    }
-
-    cam = &gCameras[CAM_DEFAULT];
-    cam->flags &= ~CAMERA_FLAG_LEAD_PLAYER;
-    cam->flags &= ~CAMERA_FLAG_DISABLED;
-    cam->nearClip = 16;
-    cam->farClip = 4096;
-    cam->vfov = 25.f;
-    cam->updateMode = CAM_UPDATE_FROM_ZONE;
-    cam->needsInit = false;
-    cam->needsReinit = true;
-    cam->yinterpRate = 3.f;
-    cam->params.world.zoomPercent = 100;
-    gCurrentCameraID = CAM_DEFAULT;
-
-    if (mapID == 5) {
-        /* Intro_Main loads IntroCamSettings and pans. Zone update turns that
-         * boom into the eye. Minimal mode was ignoring it. */
-        cam->controlSettings.type = CAM_CONTROL_FIXED_ORIENTATION;
-        /* The spirits stand on a ring about 280 units out. A boom of 130
-         * left the far side of that ring outside the 25 degree view. */
-        cam->controlSettings.boomLength = 480.f;
-        cam->controlSettings.boomPitch = 12.4f;
-        cam->controlSettings.viewPitch = -16.8f;
-        cam->controlSettings.flag = false;
-        cam->controlSettings.points.two.Ax = 0.f;
-        cam->controlSettings.points.two.Ay = -1.f;
-        cam->controlSettings.points.two.Az = 0.f;
-        cam->controlSettings.points.two.Bx = -433.0127f;
-        cam->controlSettings.points.two.By = -1.f;
-        cam->controlSettings.points.two.Bz = -250.f;
-        cam->movePos.x = 0.f;
-        cam->movePos.y = 157.f;
-        cam->movePos.z = 0.f;
-        cam->targetPos = cam->movePos;
-        cam->followPlayer = true;
-        cam->panActive = true;
-        set_cam_viewport(CAM_DEFAULT, 29, 28, 262, 162);
-        /* Entry 3 is the intro. EVS_Main hides the starship after the cutscene,
-         * so hide it before the first frame. The same script asks for IntroNPCs. */
-        mdl_group_set_visibility(MODEL_g277, MODEL_FLAG_HIDDEN, MODEL_GROUP_HIDDEN);
-        mdl_group_set_visibility(MODEL_g279, MODEL_FLAG_HIDDEN, MODEL_GROUP_HIDDEN);
-        pm_log("hide starship entry %d", gGameStatusPtr->entryID);
-        {
-            Evt* script = start_script_in_group(&hos_05_EVS_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
-            if (script) gGameStatusPtr->mainScriptID = script->id;
-            pm_log("intro script %d", gGameStatusPtr->mainScriptID);
-        }
-    } else {
-        /* No kmr_20 script yet, so there is no zone to enter. A fixed boom
-         * behind the door (yaw 90 faces +X) is the stand-in until one loads.
-         * 480 left the eye on top of the west edge of the mesh, and that
-         * shell drew over the rest of the yard. */
-        cam->controlSettings.type = CAM_CONTROL_FIXED_ORIENTATION;
-        cam->controlSettings.boomLength = 900.f;
-        cam->controlSettings.boomPitch = 18.f;
-        cam->controlSettings.viewPitch = -5.f;
-        cam->controlSettings.flag = false;
-        cam->controlSettings.points.two.Ax = 0.f;
-        cam->controlSettings.points.two.Ay = 0.f;
-        cam->controlSettings.points.two.Az = 0.f;
-        cam->controlSettings.points.two.Bx = 50.f;
-        cam->controlSettings.points.two.By = 0.f;
-        cam->controlSettings.points.two.Bz = 0.f;
-        cam->followPlayer = false;
-        cam->targetPos.x = 240.f;
-        cam->targetPos.y = 30.f;
-        cam->targetPos.z = -80.f;
-        set_cam_viewport(CAM_DEFAULT, 0, 0, 320, 240);
-        gPlayerStatus.pos.x = 240.f;
-        gPlayerStatus.pos.y = 30.f;
-        gPlayerStatus.pos.z = -80.f;
-        gPlayerStatus.curYaw = 90.f;
-        update_cameras();
-        {
-            Evt* script = start_script_in_group(areaID == AREA_KKJ ? &kkj_00_EVS_Main : areaID == AREA_OSR ? &osr_00_EVS_Main : &kmr_20_EVS_Main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE);
-            if (script) gGameStatusPtr->mainScriptID = script->id;
-        }
-        pm_log("world cam");
-    }
-    pm_log("map %s models %d", shape_name, models);
-}
-
-
 /* Debug switch "scripts": log every live script's position. */
 extern ScriptList* gCurrentScriptListPtr;
 void pm_dump_scripts(void) {
@@ -725,4 +486,51 @@ void pm_dump_scripts(void) {
                 (s32)(e->ptrNextLine - e->ptrFirstLine), e->loopDepth);
         }
     }
+}
+
+/* Map guard (linked with --wrap, see CMakeLists.txt). gAreas has MAP_ID rows with null settings for maps that are not
+ * in the image. The real load_map_by_IDs would read through that null pointer. goto_map ignores the result of
+ * get_map_IDs_by_name and then calls set_game_mode(GAME_MODE_CHANGE_MAP), so refuse there and keep the current map. */
+extern s32 __real_get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID);
+extern void __real_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType);
+extern void __real_set_game_mode(s16 mode);
+extern int pm_map_loaded;
+static s16 cur_area = -1, cur_map = -1;
+
+s32 __wrap_get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
+    s32 ok = __real_get_map_IDs_by_name(mapName, areaID, mapID);
+    if (!ok) {
+        pm_log("map %s not in gAreas", mapName);
+        *areaID = -1;
+        *mapID = -1;
+    }
+    return ok;
+}
+
+static int map_is_linked(s16 areaID, s16 mapID) {
+    if (areaID < 0 || areaID >= ARRAY_COUNT(gAreas) - 1 || gAreas[areaID].maps == NULL) return 0;
+    if (mapID < 0 || mapID >= gAreas[areaID].mapCount) return 0;
+    return gAreas[areaID].maps[mapID].settings != NULL;
+}
+
+void __wrap_set_game_mode(s16 mode) {
+    if (mode == GAME_MODE_CHANGE_MAP && !map_is_linked(gGameStatusPtr->areaID, gGameStatusPtr->mapID)) {
+        pm_log("GotoMap refused: area %d map %d is not linked", gGameStatusPtr->areaID, gGameStatusPtr->mapID);
+        gGameStatusPtr->areaID = cur_area;
+        gGameStatusPtr->mapID = cur_map;
+        return;
+    }
+    __real_set_game_mode(mode);
+}
+
+void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
+    if (loadType == LOAD_FROM_MAP && !map_is_linked(areaID, mapID)) {
+        pm_log("load refused: area %d map %d is not linked", areaID, mapID);
+        return;
+    }
+    pm_map_loaded = 1;
+    cur_area = areaID;
+    cur_map = mapID;
+    pm_log("load map area %d map %d", areaID, mapID);
+    __real_load_map_by_IDs(areaID, mapID, loadType);
 }

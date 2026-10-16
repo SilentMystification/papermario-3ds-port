@@ -26,6 +26,9 @@
 #define entity_sbk_omo_ROM_START ((u8*)1)
 #define entity_sbk_omo_ROM_END   ((u8*)1)
 #define entity_sbk_omo_VRAM      ((u8*)1)
+#define world_script_api_ROM_START ((u8*)1)
+#define world_script_api_ROM_END   ((u8*)1)
+#define world_script_api_VRAM      ((u8*)1)
 /* world/action code overlays are linked in */
 #define world_action_hammer_ROM_START ((u8*)1)
 #define world_action_hammer_ROM_END   ((u8*)1)

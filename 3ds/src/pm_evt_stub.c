@@ -16,12 +16,4 @@ static ApiStatus skip_call(Evt* script, bool initial) {
 #define STUB(name) ApiStatus name(Evt* script, bool initial) { return skip_call(script, initial); }
 
 
-EvtScript hos_05_EVS_Starship_Depart = {
-    Return
-    End
-};
 
-EvtScript hos_05_EVS_EnterStarship = {
-    Return
-    End
-};

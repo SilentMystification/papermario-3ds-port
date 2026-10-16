@@ -9,3 +9,23 @@
 03:19 S09 adding state_map_transitions.c, building
 03:21 S09 state_map_transitions links, running check
 03:29 S09 crash in status bar draw (hud list not set up), fixed in pm_map.c, rerunning
+03:33 S09 done, C01 done, S03 covered, check OK, commit c075bec80
+03:34 S07 start: rumble, virtual_entity, background, background_gfx
+03:35 S07 build1 rumble+virtual_entity: 5 dup symbols only, dedup
+03:38 S07 build2 rumble+virtual_entity links (added nuContRmb* real files). Running azahar
+03:41 S07 commit 04f386f84 rumble+virtual_entity; azahar kmr_20 ok no unmapped
+03:43 S07 build3 background: dups removed, added load_asset_by_name port loader (world.c is S08)
+03:48 S07 HANDOFF: reference ports note + load_asset_by_name and defsym stand-in entries added
+03:53 S07 SLICES: S17 moved before S20 with note. bg fix: decode_yay0 bound; kmr_20 reached
+03:57 S07 done, commit f064dde84, kmr_20 reached no unmapped
+03:58 S08 start: reading world.c and port loader
+04:04 S08 edits done (area_table.c, wraps, shape buf); build1
+04:05 S08 build2 (removed stale item_enum/message_ids shadow headers)
+04:06 S08 SLICES: M01 row added after S08
+04:06 S08 build2 failed on link: need entity/shop/fio real files, adding
+04:08 S08 build3: fio flash shims, 8a860 popup file
+04:10 S08 build ok, 3dsx 2.29MB; running azahar
+04:15 S08 SLICES: S13 moved after S08 and reworded; HANDOFF issue 6 note
+04:15 S08 intro->hos_04 refused then title crashed (stale effects); fixing title init, QUESTIONS.md added
+04:55 S08 chain ok: kmr_20, osr_00, kmr_20, mac_00 loaded, GotoMap to mac_01 refused; crash in mac_00 npc draw
+05:08 S08 HANDOFF written; mac_00 loads but crashes after; committing
