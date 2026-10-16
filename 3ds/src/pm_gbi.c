@@ -522,12 +522,16 @@ static void note(unsigned op) {
     pm_log("gbi skip %02x\n", op);
 }
 
+static unsigned n_ops; /* PT01: display list ops run this frame */
+
 void pm_gbi_end_frame(void) {
     /* One second of presented frames, summed. Identical seconds are not written. */
     static int frames, acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x;
     static char prev[64];
     snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d o%d k%d x%d",
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0);
+    PH_ADD(C_CMD, n_ops);
+    n_ops = 0;
     PH_ADD(C_TRI, n_cmd);
     PH_ADD(C_TRIOUT, n_in + n_cut);
     acc_t += n_cmd;
@@ -739,10 +743,20 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         u32 w0 = pc->words.w0;
         u32 w1 = pc->words.w1;
         unsigned op = w0 >> 24;
+        int fp = 0;
         pc++;
+        n_ops++;
+        if (pm_ph_fine) {
+            /* only these three: the thousands of state ops stay in the gbi phase (a tick read costs 1.3 us in Azahar) */
+            fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
+            if (fp) pm_ph_push(fp);
+        }
         switch (op) {
         case G_ENDDL:
-            if (sp == 0) return;
+            if (sp == 0) {
+                if (fp) pm_ph_pop();
+                return;
+            }
             pc = stack[--sp];
             break;
         case G_DL: {
@@ -1119,6 +1133,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             note(op);
             break;
         }
+        if (fp) pm_ph_pop();
     }
 }
 

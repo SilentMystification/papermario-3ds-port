@@ -12,10 +12,11 @@
 #define OVER_MS 34.0f
 
 int pm_ph_on;
+int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
 
-static const char* const pname[PH_N] = { "other", "logic", "dl", "gbi", "gpu", "tex", "audio", "rom", "yay0", "fbegin", "fend", "idle", "gcache", "gdraw" };
-static const char* const cname[C_N] = { "tri", "triout", "vtxload", "vtxslot", "draw", "flush", "texcall", "texmiss", "texKB", "romn", "romKB", "yayn", "yayKB", "dbgcall", "atick" };
+static const char* const pname[PH_N] = { "other", "logic", "dl", "gbi", "gpu", "tex", "audio", "rom", "yay0", "fbegin", "fend", "idle", "gcache", "gdraw", "g_vtx", "g_tri", "g_mtx", "g_op" };
+static const char* const cname[C_N] = { "tri", "triout", "vtxload", "vtxslot", "draw", "flush", "texcall", "texmiss", "texKB", "romn", "romKB", "yayn", "yayKB", "dbgcall", "atick", "gbiops" };
 
 static int stk[16], depth, cur;
 static unsigned last, frame_t0, acc[PH_N];
@@ -30,6 +31,7 @@ static unsigned win_t0;
 void pm_ph_init(void) {
     pm_ph_on = pm_debug_has("phase");
     csv = pm_debug_has("phasecsv");
+    pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (!pm_ph_on) return;
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();
@@ -94,7 +96,7 @@ static void summarize(unsigned now) {
     for (int i = 0; i < n; i++) if (win[i].wall - win[i].ms[PH_IDLE] - win[i].ms[PH_FBEGIN] > 33.3f) overcpu++;
     pm_log("phase W f%u-%u n %d span %.0f ms | wall avg/p95/max %.1f/%.1f/%.1f | cpu (wall-idle-fbegin) %.1f/%.1f/%.1f | wall over34 %u, cpu over33 %u",
            win[0].f, win[n - 1].f, n, (double)(now - win_t0) / TICKS_MS, wa, wp, wm, a, p, m, over, overcpu);
-    for (int g = 0; g < 3; g++) {
+    for (int g = 0; g < (PH_N + 4) / 5; g++) {
         len = snprintf(line, sizeof line, "phase ms avg/p95/max:");
         for (int k = g * 5; k < g * 5 + 5 && k < PH_N; k++) {
             for (int i = 0; i < n; i++) col[i] = win[i].ms[k];
@@ -151,11 +153,11 @@ void pm_ph_frame_end(void) {
     r->f = ++frame_no;
     frame_t0 = now;
     if (csv) {
-        pm_log("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d | %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),
+        pm_log("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d gv %d gt %d gm %d go %d | %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),
                (int)(r->ms[PH_IDLE] * 10.f), (int)(r->ms[PH_LOGIC] * 10.f), (int)(r->ms[PH_DL] * 10.f), (int)(r->ms[PH_GBI] * 10.f),
                (int)(r->ms[PH_GPU] * 10.f), (int)(r->ms[PH_TEX] * 10.f), (int)(r->ms[PH_AUDIO] * 10.f), (int)(r->ms[PH_ROM] * 10.f),
                (int)(r->ms[PH_YAY0] * 10.f), (int)(r->ms[PH_FBEGIN] * 10.f), (int)(r->ms[PH_FEND] * 10.f), (int)(r->ms[PH_OTHER] * 10.f),
-               (int)(r->ms[PH_GCACHE] * 10.f), (int)(r->ms[PH_GDRAW] * 10.f), r->c[C_TRIOUT], r->c[C_VTXSLOT], r->c[C_DRAW], r->c[C_TEXMISS], r->c[C_TEXBYTE], r->c[C_ROMN], r->c[C_ROMB], r->c[C_ATICK]);
+               (int)(r->ms[PH_GCACHE] * 10.f), (int)(r->ms[PH_GDRAW] * 10.f), (int)(r->ms[PH_GVTX] * 10.f), (int)(r->ms[PH_GTRI] * 10.f), (int)(r->ms[PH_GMTX] * 10.f), (int)(r->ms[PH_GOP] * 10.f), r->c[C_TRIOUT], r->c[C_VTXSLOT], r->c[C_DRAW], r->c[C_TEXMISS], r->c[C_TEXBYTE], r->c[C_ROMN], r->c[C_ROMB], r->c[C_ATICK]);
     }
     if (++nwin >= MAXW || (now - win_t0) >= 536223712u /* 2 s */) summarize(now);
 }

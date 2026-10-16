@@ -199,3 +199,13 @@
 14:45 PT01 build 1 ok (pm_phase.c, hooks in gpu/gbi/tex/os/map/main)
 14:45 PT01 measurement run A: fast autoa phase phasecsv 230 s
 14:51 PT01 build 2 ok (gcache, gdraw sub-phases); commit 1
+14:51 PT01 measurement run B: fast autoa phase phasecsv (build 2) 230 s
+14:57 PT01 build 3 ok (gbi op counter, phasegbi fine split); run R1 fast autoa phase phasecsv 230 s
+15:01 PT01 R1 done, run R3 fast autoa phase phasegbi phasecsv 230 s
+15:05 PT01 R3 done; run R4 fast autoa logstat (no phase) 230 s
+15:07 PT01 build 4 ok (phasegbi times only vtx, tri, mtx ops)
+15:11 PT01 R3 redone (phasegbi build 4)
+15:15 PT01 R4 done (fast autoa logstat, overhead compare)
+15:15 PT01 R2 start: normal run (no fast) autoa phase phasecsv 330 s
+15:21 PT01 R2 done
+15:24 PT01 HANDOFF result written, SLICES marked done; commit 2

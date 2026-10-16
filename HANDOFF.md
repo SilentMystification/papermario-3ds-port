@@ -243,7 +243,7 @@ After the stub cleanup: boot a file and progress instead of sitting on the first
 ## Next after the stub list is empty (performance)
 
 Do not start before `3ds/SLICES.md` is done. Order:
-1. Add a per-frame phase timer: game logic, GBI transform and clip, GPU submit, texture load. Measure on real O3DS (`/push-o`), not Azahar.
+1. Add a per-frame phase timer: game logic, GBI transform and clip, GPU submit, texture load. Measure on real O3DS (`/push-o`), not Azahar. DONE on Azahar in slice PT01 (switch `phase`, see the PT01 result). Hardware run still open.
 2. If transform and clip dominate, transform each vertex once at `G_VTX`. `draw_tri` in `pm_gbi.c` now transforms per triangle corner. CPU only. Small change.
 3. Then move the transform to the GPU: raw `Vtx` as short attributes, `u8` index list, `C3D_DrawElements`, combined matrix in the `projection[4]` uniform of `shaders/pm.v.pica`. Risks: hardware near-plane clipping (unverified), float24 precision, lighting and fog vertices, the `note_door` hack, `Vtx` endianness, small batches (one flush per matrix change).
 4. Last, optional: pre-baked native assets. Offline PC bake tool, SD cache, fall back to runtime conversion on a miss. Textures first (`pm_tex.c` cache), static-model vertex buffers second. Keep the N64 data as the source of truth.
@@ -582,3 +582,89 @@ Platform layer only (`pm_gbi.c`, `pm_map.c`), no game code changed. Two separate
 - Coordinator hypothesis H01 (pm_tex_invalidate drops a slot that the current frame still uses): REJECTED for V01 by log. Temporary log of every invalidate with slot epoch and frame epoch, run hos/title/kmr_20/osr_00: 0 invalidations of a slot used in the current frame (INFRAME 1 count 0 of 39 drops). Game logic runs inside `pm_gpu_begin`..`pm_gpu_end` before the display list executes, so a decode comes before this frame's draws. The risk stays possible in theory (a texture drawn, then invalidated, in one frame). Not seen. `C3D_TexLoadImage` flush: not the cause, the right pictures show after the cache fix.
 - Check (slice V01, Azahar): `fast autoa` 110 s: kmr_20, osr_00, kmr_20, mac_00 (area 1 map 1) reached, mac_00 stays up, 0 unmapped, 0 crash. Sheets: `3ds/logs/v01_b1.png` before, `v01_a1.png`, `v01_fr.png` (freshsave), `v01_i1.png` (intro) after (git-ignored).
 - Not checked: other maps, the wave background, fog tinted palette, pause background fade, battle backgrounds.
+
+## PT01 result (slice PT01: per-frame phase timer, measurement only, port layer)
+
+All items below belong to slice PT01. No optimization was done. No game logic changed. All numbers come from Azahar. They are NOT cycle exact. The user says Azahar does not run at full speed. Nothing ran on the O3DS. The last section says what to re-measure first on the O3DS.
+
+### What was added
+- `3ds/src/pm_phase.c` and the macros in `3ds/include/pm_port.h` (`PH_PUSH`, `PH_POP`, `PH_ADD`: one load and one branch when the switch is off). Hooks: `--wrap` on `step_game_loop`, `gfx_draw_frame`, `gfx_task_background` (CMake link options, the game code is not edited). Small edits in `pm_main.c`, `pm_nusys.c`, `pm_gpu.c`, `pm_gbi.c`, `pm_tex.c`, `pm_os.c` (`pi_read_raw`), `pm_map.c` (`yay0_decode`), `pm_log.c` (call counter in `pm_debug_has`).
+- Switches (runtime, they also work on hardware): `phase` (summary every 2 s through `pm_log`: wall, cpu, each phase avg/p95/max, counters avg/max, frame numbers of frames over 34 ms, the 3 worst frames with all phases). `phasecsv` (one log line per drawn frame, for analysis runs only: 30 to 60 lines per second, 0 lines dropped in a 330 s run). `phasegbi` (times G_VTX, triangle and G_MTX ops on their own, see the limits).
+- `python 3ds/tools/phase_report.py log.txt` reads a `phasecsv` log. It prints the per scene table, the causes of frames over 34 ms and the gap histogram. The scene is the last `game mode` or `load map` line before the frame.
+- Phases are exclusive: a nested phase takes its time from the phase that runs. One drawn frame runs from the end of the previous drawn frame to its own end, so the phases add up to the wall time. `cpu` = wall - idle - FrameBegin. FrameBegin is `C3D_FrameBegin(C3D_FRAME_SYNCDRAW)`. It waits for the previous frame on the GPU and for the screen transfer, and the transfer waits for the vblank. So FrameBegin is mostly a wait and is not CPU work. Idle is the `gspWaitForVBlank` pad of the normal run (the `fast` run has no pad).
+- Timer cost: one `svcGetSystemTick` read costs 1.34 us in Azahar (log line `phase: on`). A frame makes about 900 reads. A run without `phase` (R4, `fast autoa logstat`) has wall 34.1 to 37.2 ms in mac_00. The same scene with `phase` has wall 38.9 ms. So the timer adds about 3 ms per frame (about 8%). All phase times are a little high. The ranking does not change.
+- Logs (git-ignored, `3ds/logs/`): `pt01_r1_log.txt` (fast), `pt01_r2_log.txt` (normal), `pt01_r3_log.txt` (fast, phasegbi), `pt01_r4_log.txt` (no phase, logstat).
+- Runs: R1 `fast autoa phase phasecsv` 230 s, 5271 drawn frames. R2 `autoa phase phasecsv` (normal, 30 Hz pad wait) 330 s, 6736 frames. R3 `fast autoa phase phasegbi phasecsv`. R4 `fast autoa logstat`. The map chain in all runs: logos, hos_05 intro, title, file select (continue), kmr_20, osr_00, kmr_20, mac_00. 0 unmapped and 0 crash lines.
+
+### Table 1: phase time per scene, fast run R1 (ms, avg / p95 / max)
+
+| phase | title (n=66) | file select (n=38) | hos_05 intro (n=48) | kmr_20 (n=1032) | mac_00 (n=3731) | osr_00 (n=37) |
+|---|---|---|---|---|---|---|
+| wall | 22.2 / 33.4 / 80.7 | 27.5 / 46.3 / 61.0 | 16.5 / 16.8 / 17.0 | 43.8 / 50.8 / 98.2 | 38.9 / 51.3 / 51.5 | 50.3 / 51.4 / 51.6 |
+| cpu (wall - idle - FrameBegin) | 17.5 / 27.8 / 65.0 | 20.7 / 31.8 / 53.1 | 2.9 / 3.3 / 3.3 | 36.2 / 44.4 / 83.1 | 32.6 / 38.1 / 46.9 | 42.0 / 48.1 / 48.1 |
+| 1 logic (step_game_loop) | 0.0 / 0.0 / 2.8 | 0.0 / 0.4 / 1.3 | 0.0 | 0.6 / 0.7 / 0.9 | 0.6 / 0.7 / 0.9 | 0.4 / 0.5 / 0.5 |
+| 2 display list build (gfx_draw_frame) | 0.0 | 0.1 / 0.3 / 0.3 | 0.0 | 0.5 / 0.7 / 0.7 | 0.8 / 0.8 / 0.8 | 0.6 / 0.7 / 0.7 |
+| 3 GBI interpret (self: walk, transform, clip, emit) | 1.8 / 2.1 / 2.2 | 2.9 / 5.9 / 6.1 | 0.6 / 0.7 / 0.8 | 15.3 / 20.8 / 21.4 | 11.1 / 11.4 / 12.7 | 14.8 / 15.2 / 15.2 |
+| 4a GPU draw prep (state, uniform, texenv) | 0.6 / 0.8 / 0.8 | 0.7 / 1.0 / 1.0 | 0.0 | 0.7 / 0.8 / 1.0 | 0.6 / 0.7 / 0.8 | 1.2 / 1.4 / 1.4 |
+| 4b `GSPGPU_FlushDataCache` per draw | 7.5 / 8.6 / 8.7 | 8.4 / 11.3 / 11.3 | 0.7 / 0.8 / 0.9 | 8.5 / 9.6 / 11.3 | 7.4 / 7.8 / 8.4 | 13.0 / 15.2 / 15.3 |
+| 4c BufInfo + `C3D_DrawArrays` | 2.2 / 2.5 / 2.6 | 2.4 / 3.3 / 3.3 | 0.2 | 2.5 / 2.8 / 3.2 | 2.2 / 2.3 / 2.5 | 3.8 / 4.5 / 4.5 |
+| 4d FrameEnd (submit) | 0.3 | 0.3 | 0.3 | 0.3 | 0.3 | 0.3 |
+| 4e FrameBegin (wait, not CPU) | 4.7 / 15.7 / 16.5 | 6.8 / 15.5 / 15.8 | 13.6 / 14.4 / 14.7 | 7.6 / 15.4 / 16.7 | 6.2 / 15.9 / 16.7 | 8.3 / 12.3 / 13.4 |
+| 5 texture convert + upload (`pm_tex.c` miss) | 1.3 / 0.0 / 42.8 | 0.6 / 0.4 / 20.1 | 0.0 | 0.2 / 1.2 / 43.9 | 0.7 / 1.2 / 4.2 | 0.0 / 0.3 / 0.3 |
+| 6 audio tick (`pm_audio_tick`) | 2.9 / 13.0 / 13.0 | 4.4 / 9.8 / 9.9 | 0.5 / 0.5 / 0.9 | 6.8 / 15.3 / 19.2 | 8.0 / 13.4 / 21.6 | 7.0 / 9.7 / 9.8 |
+| 7a ROM read (`pi_read_raw`) | 0.0 / 0.0 / 2.2 | 0.0 / 0.2 / 0.6 | 0.0 | 0.0 / 0.2 / 0.3 | 0.1 / 0.2 / 0.4 | 0.0 / 0.1 / 0.1 |
+| 7b Yay0 decode | 0.1 / 0.0 / 9.3 | 0.0 / 0.0 / 0.9 | 0.0 | 0.0 | 0.0 | 0.0 |
+| 8 idle (vblank pad) | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| other (loop, pad, HUD, log poll) | 0.3 / 0.3 / 2.4 | 0.3 | 0.2 / 0.3 / 0.3 | 0.3 / 0.3 / 2.2 | 0.3 / 0.4 / 2.5 | 0.3 / 0.4 / 1.9 |
+| triangles drawn avg / max | 46 / 53 | 99 / 231 | 36 / 53 | 862 / 1260 | 295 / 481 | 816 / 818 |
+| vertex slots avg / max | 829 / 951 | 977 / 1383 | 157 / 207 | 3029 / 4344 | 1325 / 1881 | 3404 / 3618 |
+| draws avg / max | 120 / 138 | 134 / 180 | 12 / 14 | 135 / 180 | 120 / 134 | 208 / 244 |
+| texture uploads avg / max per frame | 1 / 58 | 1 / 45 | 0 / 3 | 0 / 40 | 0 / 3 | 0 / 4 |
+| texture KB avg / max per frame | 11 / 464 | 4 / 142 | 0 / 6 | 1 / 286 | 4 / 26 | 0 / 1 |
+| ROM reads avg / max per frame | 1 / 71 | 1 / 23 | 0 / 0 | 1 / 11 | 3 / 13 | 1 / 4 |
+| audio ticks avg / max per frame | 1 / 3 | 1 / 3 | 1 / 2 | 2 / 4 | 2 / 4 | 3 / 4 |
+
+Extra counters for a steady mac_00 frame (`phase count` lines): 1357 triangle commands, 291 drawn (79% culled after the transform), 2237 vertices loaded by G_VTX (4071 triangle corners are transformed), 5981 display list ops, 784 `flush` calls of which 120 draw, 162 texture cache lookups (hits), 600 `pm_debug_has` calls (1.9 us each when a switch string is set, 1.1 ms).
+
+### Table 2: normal run R2 (30 Hz pad wait), wall and cpu only
+| scene | wall avg / p95 / max | cpu avg / p95 / max | idle avg | frames at 2 / 3 / 4 vblanks |
+|---|---|---|---|---|
+| hos_05 intro | 33.3 / 33.4 / 33.5 | 3.7 / 3.7 / 4.7 | 13.5 | all at 2 |
+| title | 48.3 / 50.2 / 97.5 | 22.6 / 27.7 / 65.6 | 12.4 | not counted |
+| file select | 41.2 / 50.9 / 77.7 | 22.3 / 32.8 / 50.2 | 5.9 | not counted |
+| kmr_20 | 47.7 / 50.8 / 98.1 | 36.5 / 44.3 / 83.3 | 0.5 | 151 / 878 / 3 |
+| osr_00 | 50.7 / 51.6 / 66.7 | 41.9 / 49.1 / 50.8 | 0.0 | not counted |
+| mac_00 | 46.3 / 51.4 / 67.3 | 34.2 / 38.8 / 45.9 | 0.8 | 1136 / 3721 / 29 |
+
+Wall time is a multiple of 16.7 ms. A frame with cpu work of 33.3 ms or more takes 3 vblanks (50 ms). In Azahar kmr_20 and mac_00 run at about 21 fps, osr_00 at 20 fps. Frames over 34 ms wall: 5630 of 6736 (83.6%) in R2, 2920 of 5271 (55.4%) in the fast run R1. Frames with cpu work over 33.3 ms: 4072 (60.5%) in R2, 2039 (38.7%) in R1.
+
+### Top 3 causes of frames over 33 ms (R2, from `phase_report.py`; a cause is the phase 3 ms or more above its scene median, else `base`)
+1. Steady load, no spike (4387 of 5630 frames, 78%). The cpu work per frame is 34 to 42 ms in kmr_20, mac_00 and osr_00, so the frame misses the 2 vblank slot. The three biggest phases of a kmr_20 or mac_00 frame: GBI interpretation 11 to 15 ms, `GSPGPU_FlushDataCache` per draw 7.5 to 8.5 ms (osr_00 13 ms), audio tick 7 to 10 ms (2 to 3 ticks of 2.5 to 3.5 ms). Logic (0.6 ms) and display list build (0.5 to 0.8 ms) are small.
+2. Audio catch-up (905 frames, mean +5.2 ms above median). The audio tick runs once per elapsed 60 Hz, at most 3 per loop pass. A frame that took 3 vblanks gets 3 or 4 ticks. A 2 vblank frame gets 2. So a slow frame gets more audio work, and that makes the next frame slower. Frames with 4 ticks (about 5% of mac_00 frames) show audio 14 to 21 ms.
+3. GBI peaks (277 frames, +5.6 ms): frames with more triangles after a map change or camera move (kmr_20 up to 1260 drawn, 2599 commands in change_map). Rare but large: texture upload bursts (18 frames, mean +26 ms, up to 69 ms: 58 to 85 uploads, 280 to 460 KB in one frame, about 0.75 ms per upload) and map load ROM reads (3 frames of 449, 447 and 300 ms, see below).
+
+### Stutter pattern (frame numbers from R2)
+- It is not a GC-like hitch. The main pattern is steady. In mac_00 the wall alternates 33 ms and 50 ms (2 and 3 vblanks) frame by frame, runs `(2,1),(3,1),(2,1),(3,1)` from the start of the scene (frame 1862). The autocorrelation of the wall time peaks at lag 4, 6 and 2. The audio tick count alternates between 2 and 3, and cpu work is about 34 ms, close to the 33.3 ms limit, so the frame flips between 2 and 3 vblanks. That is a visible judder. In kmr_20 85% of the frames take 3 vblanks (50 ms), with runs of 79 and 86 frames.
+- No spike has a fixed period. Audio spikes (4 ticks, 14 to 21 ms) occur 164 to 888 frames apart in mac_00 (frames 2340, 3228, 3956, 4120, 4844, 5264, 5616), not regular. Texture uploads: in mac_00 about 1 upload of 4 KB per frame in 71% of the frames (animated sprites or streamed textures), 0.7 ms on average, not a hitch.
+- Map load hitches (one time per load): frame 523 (hos_05 to kmr_20) 449 ms: 15,643 ROM reads (1 MB, 66 B each) 327 ms, game logic 76 ms (script init), Yay0 12 ms. Frame 1523 (kmr_20 reload) 447 ms. Frame 1831 (mac_00) 300 ms: 9168 ROM reads 207 ms. Then a few frames of 100 to 140 ms with texture bursts (for example frames 533, 1528, 1837). Title frames 375 and 380: 98 and 90 ms, texture upload (35 and 58 uploads). File select frame 461: 78 ms. Boot to the first frame: 5.47 s (ROM load and init, before frame 1).
+
+### Ranked optimization candidates (Azahar ms per frame, mac_00 or kmr_20)
+1. One `GSPGPU_FlushDataCache` per frame, not per draw (`pm_gpu.c flush()`): 7.4 to 8.5 ms (kmr_20 8.5, osr_00 13.0, title 7.5 for only 46 triangles). That is 62 us per call in Azahar at 120 to 208 calls per frame. The GPU does not read the vertex buffer before `C3D_FrameEnd`, so one flush of the used range before FrameEnd is enough. Evidence: the draw counts are exact. The per call cost is Azahar's model of a GSP IPC call. UNVERIFIED on hardware. This is the first thing to check there.
+2. GBI: 10.8 ms (mac_00) to 15 ms (kmr_20). 79% of the triangle commands are culled after a full per corner transform (mac_00: 1357 commands, 291 drawn, 4071 corner transforms for 2237 loaded vertices). Transform once per vertex at G_VTX, keep clip bits per vertex, reject a triangle by AND of three flags (this is performance step 2 in "Next after the stub list is empty"). Fine split (R3, the timer inflates it): triangle ops about half of the GBI time, G_VTX and G_MTX under 1 ms, the walk and the state ops (5981 ops per frame) the rest. Expected saving 2 to 5 ms. UNVERIFIED which part is memory bound on hardware.
+3. Audio: 7 to 10 ms per frame (2 to 3 ticks of 2.5 to 3.5 ms, scalar C mixer, 24 voices). Move per voice mixing to the DSP (ndsp), or lower the cost per tick (quality changes need the user). Also cap the catch-up so that a slow frame does not add ticks.
+4. Draw count: 120 to 208 draws per frame for 46 (title) to 862 triangles. The title has 120 draws for 46 triangles. Merge draws that share state. Cost of the per draw work: items 1 and 4c (2.2 to 3.8 ms for BufInfo + DrawArrays) and 4a (0.6 to 1.2 ms). Also 784 `flush` calls for 120 draws in mac_00 (cheap).
+5. Pipeline: FrameBegin waits 5 to 8 ms in Azahar (vblank locked). With `C3D_FRAME_SYNCDRAW` the CPU cannot start frame N+1 while the GPU draws frame N. Double buffering the vertex buffer and the deferred texture free would let the CPU overlap. On hardware the GPU time may be small. Needs the hardware run first.
+6. Texture miss cost: 0.75 ms per upload (scalar expand, then tile, then upload). Bursts of 40 to 85 uploads cost 40 to 70 ms on a map load. Single pass tiling or direct tile order writes. Lower priority (one time per map load).
+7. Map load: 15.6k ROM reads of 66 B cost 327 ms (21 us per read). The per read path (`pi_read_raw`: drop table walk, `pm_tex_invalidate` over 128 slots, `pm_debug_has("romtrace")`) dominates. One time per load, 0.3 s.
+8. `pm_debug_has`: 600 calls per frame, 1.1 ms in Azahar, only when a switch string is set (the function returns at once with no switches). Cache the lookups in static ints. Small.
+
+### Limits of this measurement
+- `phasegbi` (R3) puts two tick reads around each vertex, triangle and matrix op (about 900 ops per frame). Wall grew from 38.9 to 48.8 ms in mac_00. The split is approximate. State ops are not timed on their own because there are 5981 per frame.
+- The 5.47 s boot time and the 449 ms map load include Azahar's own cost for service calls.
+- Azahar GPU and GSP time is a model. FrameBegin, `GSPGPU_FlushDataCache` and `C3D_DrawArrays` costs especially need hardware.
+
+### Must be re-measured on the O3DS
+- Run `push-o` with `phase phasecsv` (in `debug3ds.txt` or as game args), then `pull-o`, then `python 3ds/tools/phase_report.py <log>`. First read the `phase W` lines. Compare cpu per frame with the 34 to 42 ms here.
+- The real cost of `GSPGPU_FlushDataCache` per call (candidate 1), of FrameBegin (GPU time, candidate 5) and of the audio tick (the `audio cost` line said 3 ms per tick in Azahar, the real ARM11 has no NEON and may be slower).
+- Azahar does not model cache misses or pipeline stalls. The real ARM11 (268 MHz, 16 KB caches) is likely slower in the GBI and texture loops. The tick read costs 1.34 us here. The real svc cost may differ, so the timer overhead on hardware is unknown (the `phase: on` line shows it).
+- The 2 and 3 vblank judder depends on the real cpu time per frame. Expect it where cpu is near 33 ms.
