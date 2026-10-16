@@ -194,4 +194,3 @@ pra_39_settings = pm_unlinked_map;
 pra_39_map_init = pm_unlinked_map;
 pra_40_settings = pm_unlinked_map;
 pra_40_map_init = pm_unlinked_map;
-gv_01_settings = pm_unlinked_map;

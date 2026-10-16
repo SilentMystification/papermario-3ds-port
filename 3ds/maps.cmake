@@ -1425,6 +1425,8 @@ set(MAP_SRC_mgm
     ${DECOMP}/src/world/area_mgm/mgm_03/main.c
 )
 set(MAP_SRC_gv
+    ${DECOMP}/src/world/area_gv/gv_01/settings.c
+    ${DECOMP}/src/world/area_gv/gv_01/main.c
 )
 set(MAP_SRC_extra
     ${DECOMP}/src/entity/Shadow.c
