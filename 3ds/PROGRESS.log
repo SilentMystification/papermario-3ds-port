@@ -64,3 +64,8 @@
 07:18 S16 start
 07:19 S16 build done, see build_s16.log
 07:22 S16 check ok
+07:22 S16 committed, end
+07:22 S18 start
+07:23 S18 build1 pause+demo files added
+07:26 S18 build2 pause files compile, dedup 9 stubs
+07:27 S18 build3 links (pause real, demo blocked on load_demo_battle)

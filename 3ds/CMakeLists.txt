@@ -273,6 +273,19 @@ set(GAME_SRC
     ${DECOMP}/src/8a860_len_3f30.c
     ${DECOMP}/src/world/surfaces.c
     ${DECOMP}/src/world/menus.c
+    ${DECOMP}/src/state_pause.c
+    ${DECOMP}/src/menu_hud_scripts.c
+    ${DECOMP}/src/os/nusys/nupireadromoverlay.c
+    ${DECOMP}/src/pause/pause_main.c
+    ${DECOMP}/src/pause/pause_tabs.c
+    ${DECOMP}/src/pause/pause_stats.c
+    ${DECOMP}/src/pause/pause_badges.c
+    ${DECOMP}/src/pause/pause_items.c
+    ${DECOMP}/src/pause/pause_partners.c
+    ${DECOMP}/src/pause/pause_spirits.c
+    ${DECOMP}/src/pause/pause_map.c
+    ${DECOMP}/src/pause/pause_gfx.c
+    ${DECOMP}/src/pause/pause_styles.c
 )
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
 set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types")
@@ -280,6 +293,8 @@ set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error
 # (pm_map.c) and heaps.c gets its copy renamed.
 set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data)
 set_property(SOURCE ${DECOMP}/src/world/partners.c APPEND PROPERTY COMPILE_OPTIONS -include common.h)
+file(GLOB PAUSE_SRC ${DECOMP}/src/pause/pause_*.c)
+set_property(SOURCE ${PAUSE_SRC} APPEND PROPERTY COMPILE_OPTIONS -include common.h)
 
 ctr_add_shader_library(pm_shader shaders/pm.v.pica)
 dkp_add_embedded_binary_library(pm_shader_lib pm_shader)
@@ -380,6 +395,19 @@ target_link_options(pm_3ds PRIVATE -Wl,--gc-sections
     -Wl,--defsym,world_partner_twink_VRAM=gPartnerStatus
     -Wl,--defsym,world_use_item_ROM_START=gPartnerStatus
     -Wl,--defsym,world_use_item_ROM_END=gPartnerStatus
+    # pause overlay is linked in, all ranges empty (same pattern as the partners)
+    -Wl,--defsym,ui_images_filemenu_pause_ROM_START=gPartnerStatus
+    -Wl,--defsym,ui_images_filemenu_pause_ROM_END=gPartnerStatus
+    -Wl,--defsym,ui_images_filemenu_pause_VRAM=gPartnerStatus
+    -Wl,--defsym,pause_ROM_START=gPartnerStatus
+    -Wl,--defsym,pause_ROM_END=gPartnerStatus
+    -Wl,--defsym,pause_VRAM=gPartnerStatus
+    -Wl,--defsym,pause_TEXT_START=gPartnerStatus
+    -Wl,--defsym,pause_TEXT_END=gPartnerStatus
+    -Wl,--defsym,pause_DATA_START=gPartnerStatus
+    -Wl,--defsym,pause_RODATA_END=gPartnerStatus
+    -Wl,--defsym,pause_BSS_START=gPartnerStatus
+    -Wl,--defsym,pause_BSS_END=gPartnerStatus
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)

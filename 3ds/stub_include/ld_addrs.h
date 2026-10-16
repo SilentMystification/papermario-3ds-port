@@ -124,6 +124,19 @@
 /* Linker symbols, set by --defsym in CMakeLists.txt (ROM offsets from splat.yaml and undefined_syms.txt). */
 extern Addr sprite_shading_profiles_ROM_START;
 extern Addr sprite_shading_profiles_data_ROM_START;
+/* pause overlay is linked in; defsym in CMakeLists.txt */
+extern Addr pause_ROM_START;
+extern Addr pause_ROM_END;
+extern Addr pause_VRAM;
+extern Addr pause_TEXT_START;
+extern Addr pause_TEXT_END;
+extern Addr pause_DATA_START;
+extern Addr pause_RODATA_END;
+extern Addr pause_BSS_START;
+extern Addr pause_BSS_END;
+extern Addr ui_images_filemenu_pause_ROM_START;
+extern Addr ui_images_filemenu_pause_ROM_END;
+extern Addr ui_images_filemenu_pause_VRAM;
 /* partner overlays are linked in; defsym in CMakeLists.txt */
 extern Addr world_partner_goombario_ROM_START;
 extern Addr world_partner_goombario_ROM_END;

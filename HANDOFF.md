@@ -208,3 +208,14 @@ Done (slice S15). Three causes, all fixed in the platform layer or by the same e
 
 ## S16 result
 Done. S08 had already removed the hand-written hos_05 scripts. S16 grep: no hos_05 script in 3ds/src. Real `star_ship.c` is in CMake and links. `3ds/src/pm_evt_stub.c` held only an unused `STUB` macro and `skip_call`, so S16 deleted it and its CMake entry. `fast autoa` run (S16): kmr_20 reached, mac_00 loads and stays up, no unmapped access, no crash line.
+
+## S18 result (slice S18: PARTIAL, pause done, demo blocked on S19)
+
+- Slice S18 built the real `src/state_pause.c`, `src/pause/pause_{main,tabs,stats,badges,items,partners,spirits,map,gfx,styles}.c`, `src/menu_hud_scripts.c` and `src/os/nusys/nupireadromoverlay.c`. Removed from `pm_later.c`: `state_init/step/drawUI_pause` and `state_init/step/drawUI_unpause`.
+- Overlays are linked in, so `pause_*` and `ui_images_filemenu_pause_*` ROM ranges are `--defsym` aliases of `gPartnerStatus` (empty range, nothing copied). Same placeholder pattern as the partners, listed as a stand-in. Declared in `3ds/stub_include/ld_addrs.h`. Pause files get `-include common.h`.
+- `pause_map.c` includes `world_map.inc.c`. Slice S18 made it with `python tools/build/world_map.py src/world_map.xml ver/us/build/include/world_map.inc.c` (git-ignored). `extract_assets.ps1` does not make it yet: add that command.
+- `3ds/tools/dedup_stubs.py` now skips files that do not exist.
+- Game over: already real since S09 (`state_map_transitions.c`), no stub left in `pm_later.c`.
+- BLOCKED part (slice S18b): `src/state_demo.c` needs `load_demo_battle` (`src/battle/battle.c`, pulls the whole battle tree, S19). Demo stand-ins `state_init/step/drawUI_demo` stay in `pm_later.c`. Queued in QUESTIONS.md.
+- Stand-ins left for S17: `state_*_language_select`, `state_*_exit_language_select`, `state_*_exit_file_select` in `pm_later.c`, plus `state_step_file_select` and `state_init_world` in `pm_title.c`. For S19: `state_*_battle`, `state_*_end_battle`, `reset_battle_status`. `state_drawUI_world` is also still a stand-in (`state_world.c`, S17).
+- Check (slice S18, Azahar `fast autoa`, 220 s): kmr_20 reached (twice), mac_00 loaded and stayed up, 0 unmapped-access or crash lines. The pause screen was NOT seen: autoa never opens it. It is linked only. Overlay `pause_init` and the `D_80200000` aux cache symbol were not run. `D_80200000` resolved at link, so no stand-in was added for it.

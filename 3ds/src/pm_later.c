@@ -18,8 +18,6 @@ void state_drawUI_end_battle() {}
 void state_drawUI_exit_file_select() {}
 void state_drawUI_exit_language_select() {}
 void state_drawUI_language_select() {}
-void state_drawUI_pause() {}
-void state_drawUI_unpause() {}
 void state_drawUI_world() {}
 void state_init_battle() {}
 void state_init_demo() {}
@@ -27,15 +25,11 @@ void state_init_end_battle() {}
 void state_init_exit_file_select() {}
 void state_init_exit_language_select() {}
 void state_init_language_select() {}
-void state_init_pause() {}
-void state_init_unpause() {}
 void state_step_battle() {}
 void state_step_demo() {}
 void state_step_end_battle() {}
 void state_step_exit_file_select() {}
 void state_step_exit_language_select() {}
 void state_step_language_select() {}
-void state_step_pause() {}
-void state_step_unpause() {}
 unsigned char heap_collisionHead[0x20000] __attribute__((aligned(16)));
 short FlowerGoalPositionX, FlowerGoalPositionY, FlowerGoalPositionZ;

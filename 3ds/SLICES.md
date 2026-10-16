@@ -19,8 +19,9 @@ Common done check: build passes, no new unresolved symbol, `fast autoa` run reac
 [x] S10 | src/world/surfaces.c, src/world/menus.c, src/8a860_len_3f30.c replace floor, menu, popup stubs | common check
 [x] S15 | src/evt/demo_api.c, src/sprite_shading.c. Needs a port-side shader path (see HANDOFF issue 2). Ask user before any port-side code. | common check, no dark characters
 [x] S16 (done in S08; S16 deleted empty pm_evt_stub.c) | Real hos_05 EVS_Starship_Depart and EVS_EnterStarship replace the hand-written scripts in pm_evt_stub.c | common check
-[ ] S18 | src/state_pause.c, state_demo.c, state_game_over.c, state_language_select.c replace remaining state stubs in pm_later.c | common check
+[~] S18 | PARTIAL: pause is real (state_pause.c, src/pause/*, menu_hud_scripts.c, nupireadromoverlay.c). Demo and language select remain, see S18b and S17 | common check
 [ ] S19 | src/battle/battle.c and the battle tree replace load_battle, set_battle_*, reset_battle_status, state_*_battle, heap stubs | common check
+[ ] S18b | After S19: build src/state_demo.c (needs real load_demo_battle in src/battle/battle.c), delete the 3 demo stubs in pm_later.c | common check
 [ ] S17 | src/state_file_select.c, src/state_world.c, src/fio.c replace state_step_file_select, state_init_world, fio stubs, plus real state_title_screen.c replaces title drawing in pm_title.c | common check, file select reached User: do last. Until then keep the port file select path (state_step_file_select, state_init_world in pm_title.c) as a listed stand-in.
 [ ] S20 | Final audit: grep every port file for stubs and stand-ins. List what remains. Ask user about each remaining port shim. | list written to HANDOFF.md
 [x] D01 | Root cause: port file select (pm_title.c) skipped the real new-file setup, so GB_StoryProgress was 0 not STORY_INTRO. mac_00 built DefaultNPCs but ran the intro scene (entry 5), which drove NPC id 0 (RussT) with Luigi anims, so animList was -1 and reads at 0xFFFFFFFF followed. Fix: clear_player_data, clear_saved_variables, set STORY_INTRO. Not a memory corruption. | fast autoa 400 s, no crash, 0 unmapped accesses
