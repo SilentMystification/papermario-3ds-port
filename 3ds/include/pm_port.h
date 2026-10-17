@@ -70,4 +70,13 @@ unsigned pm_audio_retraces(void);
 unsigned pm_audio_pending(void);
 void pm_audio_tick(void);
 
+/* MS01: static data of a map is restored when the map is entered again (pm_mapdata.c, map_restore_table.c is generated). */
+typedef struct PmMapRst {
+    const char* id;          /* map id, or machi / dgb for the files shared by the maps of an area */
+    unsigned char *d0, *d1;  /* block of the .data symbols that change at run time (pristine copy in save) */
+    unsigned char *b0, *b1;  /* block of all .bss of the map (zeroed) */
+    unsigned char* save;
+} PmMapRst;
+void pm_mapdata_enter(const char* id);
+
 #endif
