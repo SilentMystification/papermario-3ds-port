@@ -586,3 +586,16 @@
 06:41 MS01 run 6: tour twice with restore check
 06:45 MS01 run 6 result: tour twice 523 maps done, after-restore diff 0, no fault
 06:50 MS01 commit and end
+06:50 S19d start
+06:57 S29 chain turbo run: osr_00 entry 4 at scan 4222 then kkj_00 at 4472, 0 unmapped
+06:59 S19d test: warp kmr_05:0 story ch0_goombario partner=1, padscript file, Goomba_01
+07:02 S19d kmr_09 Goomba: real encounter starts (mode 8 at f~150), battle runs; checking shots
+07:02 S19d build 1: PS_MAX 160 to 400 (debug padscript, +1.4 KB)
+07:08 S19d run g: sp=99 level up + pause after battle
+07:20 S19d run m: kmr_12 single ambush Goomba, level up, pause after
+07:27 S19d: win/level up/return/pause ok; flee test; battle submenu windows draw as checkerboard (new fault)
+07:31 S19d: flee ok by eye (run away, fade, return). now lose test hp=1
+07:32 S19d: lose ok by eye (HP 0, game over, title, file select, load). start demo check
+07:35 S19d demo test 1: A at scan 8500 (scene 1 nok_12 world)
+07:36 S19d demo test 2: A at scan 8700 (battle scene)
+07:39 S19d build 6: debug log removed, final; full chain next

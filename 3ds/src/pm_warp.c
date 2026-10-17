@@ -173,6 +173,9 @@ s16 pm_warp_hook(s16 mode) {
         gPlayerData.partners[w_partner].enabled = 1;
         gPlayerData.curPartner = w_partner;
     }
+    char vs[16];
+    if (pm_debug_value("sp", vs, sizeof vs)) gPlayerData.starPoints = (s8)atoi(vs); /* slice S19d: sp=<n> star points, 99 + one win = level up */
+    if (pm_debug_value("hp", vs, sizeof vs)) gPlayerData.curHP = (s8)atoi(vs); /* slice S19d: hp=<n> Mario HP, 1 = lose the battle fast */
     fio_serialize_state();
     warp_on = 1;
     pm_log("warp: %s entry %d (area %d map %d) story %d flag %x", w_map, w_entry, areaID, mapID, w_story, w_flag);

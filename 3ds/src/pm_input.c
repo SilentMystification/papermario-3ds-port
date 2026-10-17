@@ -19,7 +19,7 @@ static int rand_on, rand_x, rand_y; /* padrand switch */
  * with +, then an optional *<n> scan count (default 1). Buttons: A B Z START L R dup ddown dleft dright, stick: up down left right.
  * The unit is a pad scan: the game reads the pad on every second scan, so 2 scans are 1 game frame (30 Hz). With `warp` the script
  * starts on the first frame of the scene (pm_padscript_start), without it on the first scan. After the last token the real pad is back. */
-#define PS_MAX 160
+#define PS_MAX 450
 static struct { unsigned short b; signed char x, y; unsigned short n; } ps[PS_MAX];
 static int ps_n, ps_i, ps_run, ps_wait_start;
 static unsigned ps_left;
@@ -61,7 +61,7 @@ static void ps_parse(char* s) {
 }
 
 static void ps_load(void) {
-    static char buf[1024];
+    static char buf[3072]; /* slice S19d: was 1024, a battle script needs about 2.5 KB */
     char v[200]; /* was 40: a long inline script was cut after 39 characters */
     if (!pm_debug_value("padscript", v, sizeof v)) return;
     if (v[0] == '@') {
