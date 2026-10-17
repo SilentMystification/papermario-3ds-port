@@ -1137,3 +1137,38 @@ All items belong to slice S25. Platform layer only (`3ds/src/pm_gbi.c`, new `3ds
 - Seen (intro, `fast shots`, before and after sheets `3ds/logs/s25_before_70_82.png` and `s25_after3_70_82.png`): the olive square is gone (shots 76 and 77 show Bowser), the black streaks are gone (pink and white energy), the star spirit cards (shot 98) show their pictures, scene dissolves show as cross-fades. Background tints in shots 70 to 77 are darker or red (they were light blue before). By the combiner this is the colour fade of the scene, consistent with Bowser's rage. NOT compared with a real console.
 - Seen (presets yard, toad, kmr02, A/B with `nocomb`): sprites are no longer dark. Sheet `3ds/logs/s25_cmp_presets.png`. Backgrounds, houses, windows, the pause menu (Stats and Items pages with the checker window), file select with name entry, the title, and the soft shadow under Mario look the same as before.
 - Not seen: any battle (branch not built), hardware speed (the plan path uses up to 6 stages and one more texture unit, Azahar does not show the cost on the O3DS), fog and light maps by eye, the 3 faulting maps as pictures.
+
+## PC01 result (slice PC01: exact 30 fps pacing, DONE, Azahar only, port layer only)
+
+All items belong to slice PC01. Files: `3ds/src/pm_main.c` (`pm_frame_loop`), `3ds/src/pm_phase.c` (`pm_step_calls` counter in `__wrap_step_game_loop`). No game code changed. Numbers are from Azahar. Logs (git-ignored): `3ds/logs/pc01_*.txt`, summary script `3ds/logs/pc01_sum.sh`.
+
+### What the measurement showed (before the change, normal speed)
+- The user's report (uncapped up to 59 or 60) was NOT reproduced. The game never stepped faster than 30 per second. `C3D_FrameBegin(SYNCDRAW)` calls `C3D_FrameSync`, which waits for the next vblank. Together with the display transfer wait, a drawn iteration takes at least 2 vblanks even with the pad wait off (`fast`: 29.8 steps/s).
+- The old idle wait was wrong in the other direction. After the drawn iteration, `gspWaitForVBlank` ran when the frame took under 33 ms. Then FrameBegin waited for one more vblank. A step took 2 or 3 vblanks: yard 23.5 steps/s (min 20, max 24), toad 23.9, audio ticks per step 2.5 to 2.6. Turbo run: 23.8 (same, the Azahar clock is emulated). `fast`: 29.8, audio ticks per step 2.0.
+- Vblank counter: `C3D_FrameCounter(0)` (citro3d) counts 59.83 to 59.86 vblanks per second in Azahar. Audio ticks (wall clock, 1/60 s) run at 60.0 per second.
+
+### Change
+- Switch `pacestat`: one `pace:` line per second (wall ms, steps, drawn frames, vblanks, audio ticks, steps per second, histogram of vblanks between drawn iterations).
+- The idle iteration waits (`gspWaitForVBlank` in a loop) until `C3D_FrameCounter(0)` is `PM_VBLANKS_PER_STEP - 1` past the vblank count at which the last drawn iteration got past FrameBegin. FrameBegin then waits for the last vblank. A slow frame is already past the target: no wait, no extra step. Guard: at most `PM_VBLANKS_PER_STEP + 1` waits. `fast` keeps no wait (uncapped debug mode). `PM_VBLANKS_PER_STEP` is 2. A 60 fps option (F06) must also stop FrameBegin from waiting for the vblank. That is not done and not in this slice.
+
+### Result (normal speed, no `fast`, no turbo)
+| run | steps/s | vblanks/s | audio ticks per step | intervals (vblanks between steps) |
+|---|---|---|---|---|
+| toad, 49 s | 29.91 (min 30, max 30) | 59.83 | 2.01 | 2: 1470, 3: 0 |
+| yard, 49 s | 29.82 (min 29, max 30) | 59.85 | 2.01 | 2: 1458, 3: 9 |
+| yard with `phase`, 49 s | 29.66 | 59.83 | 2.02 | 2: 1437, 3: 25 |
+| yard `fast` | 29.78 | 59.86 | 2.01 | 2: 860, 3: 8 |
+- 29.91 is the limit: 59.83 vblanks per second divided by 2. A value of exactly 30.00 per wall second needs a vblank rate of 60.0. The step is 2 vblanks in 99.4 to 100 percent of the steps. The 3 vblank steps are frames with cpu work near 34 ms in the yard (phase report: wall 33.4 ms avg, 4 of 60 frames over 34 ms in one window, max 50 ms once).
+- Idle slack: the phase report shows cpu 25 to 27 ms of a 33.4 ms frame (yard), so about 7 ms per step is wait.
+- Padscript walk (`preset=toad padscript=wait80,right*40,A*24,wait60,left*40,A*24,wait30 smoke`): the `warp: scene f.. pos` lines of the normal run and the `fast` run are identical frame by frame (153 lines compared, 0 diff). A step does not depend on the wait.
+- Chains: `fast autoa freshsave` map loads at scans 562, 2316, 2562, 3178 (kmr_20, osr_00, kmr_20, mac_00), same as before, 0 unmapped. Normal `autoa freshsave` (no `fast`, logos, title, file select run): kmr_20, osr_00, kmr_20, mac_00 reached, 0 unmapped. `-Turbo -Smoke preset=toad`: smoke done, exit 0.
+- Not changed: audio. It still follows the wall clock (1/60 s, `pm_audio_retraces`). It gives 2.01 ticks per step. On a console with a vblank rate of 59.83 Hz the wall clock gives 60.0 ticks per second, so the audio drift against the game stays near 0.3 percent. A tick count tied to the vblank counter is a possible later change.
+
+### What Azahar timing cannot show
+- The real vblank behaviour of the O3DS: the real screen refresh (about 59.83 Hz), the real GPU time per frame, and whether frames on the O3DS (slower ARM11) take more than 2 vblanks. If the cpu work is above about 33 ms the step takes 3 vblanks (20 fps), as in the PT01 numbers. The `pace:` line (`pacestat`) on the O3DS shows this at once: steps per second and the interval histogram. Run slice S28 with `pacestat phase`.
+- Judder from 2 and 3 vblank frames, and the feel of the game speed by ear and eye. Nothing was heard or seen on a console.
+- Real audio drift over minutes.
+
+## F08 and V09 notes (documentation only, not started)
+
+Two new rows in 3ds/SLICES.md. F08 (fog): S25 found that fog is not implemented. About 1.3M draws in 2 tour chunks use it (`G_SETFOGCOLOR`, the fog blender bits in othermode L, the RSP fog factor per vertex). The task is to decide with evidence which maps and scenes depend on it, then implement it in the platform layer (PICA fog table or a shader path). V09 (intro tints): S25 changed the background tints in the intro (shots 70 to 77) from light blue to dark or red. Nobody compared them with a console. The task is to check the hos_05 intro background and the screen tint and overlay colours in the intro scripts against the decomp and against paperboat, with an A/B using `nocomb`, and to check nok_01 (`au_syn_begin_audio_frame` unmapped access, seen only in the tour). No code was changed for these two rows.
