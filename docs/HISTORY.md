@@ -1554,3 +1554,9 @@ Report (5 lines or fewer): slice id; last commit hash; result; what was and was 
 ```
 Read 3ds/ORCHESTRATOR.md, HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md. You are the orchestrator only. Do not read or write code. Subagents do all work. First check the running agent state: read the last 20 lines of 3ds/PROGRESS.log and the open rows in 3ds/SLICES.md. Tell me the status in plain terms. Then launch the next slice with the template in 3ds/ORCHESTRATOR.md, one build agent at a time, in the background.
 ```
+
+## G01g golden frames (2026-10-17)
+- New `3ds/tools/golden.py`. Each scene is one `run_azahar.ps1 -Turbo -FaultStop` run with `shots shotwin=<frame>:3` and `-Until "shot 2 frame"`. It compares shot 0000 with `3ds/golden/<scene>.png`. A pixel differs when a channel differs by more than 8. A scene fails above 0.5 percent of the pixels (battle: 3 percent).
+- Scenes and absolute frames: title (`fast`, 400), fileselect (`fast padscript=wait200,START*6,wait400`, 500), intro (preset intro, 183), toad (251), yard (249), battle (preset toad battle, 300), pause1 to pause4 (preset toad, START then R*3 per page, frames 181, 226, 266, 306).
+- Result: references saved from the build of 2026-10-17 11:43 (V06 blender mix). A second run: 9 scenes 0.00 percent, battle 0.38 to 1.06 percent (random effects, not exactly the same each run). Pause pages differ from each other by 46 percent of the pixels, so the padscript pages work. Seen by eye: no. The references are not compared with a console.
+- Not checked: pause pages beyond 4, a real regression catch (no code was broken on purpose), O3DS or N3DS. Total size of references 536 KB (PNG, tracked).

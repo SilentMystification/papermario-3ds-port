@@ -34,6 +34,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - The game runs at exactly 30 fps (PC01: 29.91 steps per second, 2 vblanks per step). 60 fps (F06) and widescreen (F07) come later.
 - Fixed in the platform layer (details in docs/HISTORY.md): combiner (S25), transparency (S26), file select (S27), screen transitions (X01), brown wall by culling (V02), menu flip (V05), HUD (H04), pause (D03), V06 blender mix.
 - Port layer files and tools: see docs/INDEX.md.
+- Golden frames (G01g): `python 3ds/tools/golden.py [--update] [scene..]` runs 10 scenes (title, fileselect, intro, toad, yard, battle, pause1 to 4), prints a table of pixel differences against `3ds/golden/*.png`. About 25 s per scene. Run it after a graphics change. Update the references only after a change that you checked by eye.
 - Last commits: V05 (menu flip, scissor), V06 (fog colour mix).
 
 ## Debug switches (put in `debug3ds.txt` or `-Debug "..."`). One line per group, details in docs/INDEX.md

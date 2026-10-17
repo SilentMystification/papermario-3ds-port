@@ -38,3 +38,6 @@
 11:37 V06 build a: warp log shows curWall and pushingAgainstWall
 11:42 V06 coded blender mix (blend/fog colour by fog alpha) stage, building
 11:45 V06 smoke ok, committing blender mix; V07 not started, paused
+12:04 G01g script written, 10 scenes
+12:04 G01g refs saved, second run 9 scenes 0.00 pct, battle up to 1.06 pct
+12:04 G01g docs updated, row moved to SLICES_DONE

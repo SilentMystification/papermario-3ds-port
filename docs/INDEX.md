@@ -38,6 +38,7 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 - `tools/rom_static_check.py`: static check of named ROM ranges against dropped ranges. `rom_symbol_audit.py`: classify every ROM-address symbol.
 - `tools/rom_trace_check.py`: check a `romtrace` log for dropped reads. `rom_trace_classify.py`: classify ROM reads by splat segment.
 - `tools/check_data_layout.py`: D02 check of adjacent variables in the ELF. `map_data_sizes.py`: static data of linked maps from the link map.
+- `tools/golden.py`: golden frames (G01g), 10 scenes, pixel compare against `3ds/golden/*.png`, `--update` saves new references.
 - `tools/phase_report.py`: tables from a `phase phasecsv` log.
 - `tools/dedup_stubs.py`: drop stubs that a real file now defines (old). `tools/c01.sh`: C01 build helper (old).
 - `tools/livelog.py`: live log over the network (TCP 17492). `tools/ftppull.py`: pull log and crash dumps over FTP (skills `pull-o`, `pull-n`).

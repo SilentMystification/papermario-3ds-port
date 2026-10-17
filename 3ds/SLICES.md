@@ -4,7 +4,6 @@ Format: `[ ] id | task | done check`. `[~]` = partly done. Done rows are in docs
 Rule: build the real decomp file. Never write a stub. If a stub looks like the only option, write `BLOCKED: <reason>` in HANDOFF.md and stop.
 Model tier per row: see the MODEL RULE in 3ds/ORCHESTRATOR.md.
 
-[ ] G01g | Golden frames: a script runs fixed scenes (title, file select, pause pages, toad, yard, a battle, intro start) with warp and turbo and compares pixels with a tolerance against saved references | one run prints a table of scenes that differ and by how much
 [ ] S28 | Hardware run on the O3DS (192.168.1.168) and the N3DS: boot line (real memory limit), audio cost, FPS. Needs the user: O3DS on, dspfirm.cdc on the SD card | numbers in HANDOFF.md, settles Q2 and Q7
 [ ] H03 | Memory split from measured need, and a graceful texture failure when the cache is full (no white quad) | numbers logged at boot, no regression on `fast autoa`
 [ ] S30b | Link the remaining 154 id-only maps (kpa, kzn, flo, jan, sam, pra, see 3ds/maps_skip.txt). Needs the answer to Q7 (about -1.1 MB at the current spare) | maps_skip.txt area lines removed, presets and tour clean
