@@ -22,4 +22,11 @@ void pm_tex_size(int* w, int* h);
 /* G_TX_WRAP / G_TX_MIRROR / G_TX_CLAMP for the render tile. mask 0 clamps. */
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt);
 
+/* S25: TEXEL1. Load a texture with pm_tex_load, then call set_aux to keep it at unit 1; load tile 0 after it. */
+int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt);
+int pm_tex_bind_aux(void);
+int pm_tex_aux_valid(void);
+void pm_tex_unbind_aux(void);
+void pm_tex_aux_size(int* w, int* h);
+
 #endif

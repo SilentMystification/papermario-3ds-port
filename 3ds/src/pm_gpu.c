@@ -49,7 +49,9 @@ static C3D_Mtx shader_3d;
 /* N64 scissor, y down. The 400-wide target is the 320 game plus 40px bars. */
 static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 static C3D_Mtx projection;
-static int u_proj = -1;
+static int u_proj = -1, u_uvx = -1;
+static float t1_s[4] = { 1.f, 1.f, 0.f, 0.f };
+static int aux_bound;
 static C3D_RenderTarget* target;
 /* H02 GPU limit stats, maxima since the last `mem` log line. Verts and command buffer overflow drop work without a message. */
 static unsigned draws_frame, draws_max, verts_max, vert_drops, frames_seen;
@@ -98,6 +100,7 @@ static unsigned abgr(unsigned c) {
 static GPU_TEVSRC tev_src(int s) {
     switch (s) {
     case PM_S_TEX0: return GPU_TEXTURE0;
+    case PM_S_TEX1: return GPU_TEXTURE1;
     case PM_S_VTX: return GPU_PRIMARY_COLOR;
     case PM_S_CONST: return GPU_CONSTANT;
     case PM_S_PREV: return GPU_PREVIOUS;
@@ -143,7 +146,10 @@ static void flush(void) {
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     int tex = (combine >= 2) && pm_tex_bind();
-    if (combine == 8 && (!plan.uses_tex || tex)) {
+    int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
+    if (tex1 && u_uvx >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
+    /* Unit 1 stays bound to the last TEXEL1 texture: C3D_TexBind(1, NULL) crashes. No stage reads it. */
+    if (combine == 8 && (!plan.uses_tex || tex) && (!plan.uses_tex1 || tex1)) {
         /* S25: general combiner. A stage reads the texture, the vertex colour, its constant, the previous
          * stage or the buffer colour. The buffer is never updated by a stage, so it holds one constant. */
         C3D_TexEnvBufUpdate(C3D_Both, 0);
@@ -327,6 +333,7 @@ void pm_gpu_init(void) {
     shaderProgramSetVsh(&prog, &dvlb->DVLE[0]);
     C3D_BindProgram(&prog);
     u_proj = shaderInstanceGetUniformLocation(prog.vertexShader, "projection");
+    u_uvx = shaderInstanceGetUniformLocation(prog.vertexShader, "uvx");
     /* y grows up, matching the citro3d immediate example. 320 game pixels sit in the middle. */
     Mtx_OrthoTilt(&projection, 0.f, 400.f, 0.f, 240.f, 0.f, 1.f, true);
     C3D_AttrInfo* ai = C3D_GetAttrInfo();
@@ -558,6 +565,12 @@ void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
     r_blend = blend;
     r_atest = atest;
     r_decal = decal;
+}
+
+void pm_gpu_set_tex1(float sx, float sy, float ox, float oy) {
+    if (sx == t1_s[0] && sy == t1_s[1] && ox == t1_s[2] && oy == t1_s[3]) return;
+    flush();
+    t1_s[0] = sx; t1_s[1] = sy; t1_s[2] = ox; t1_s[3] = oy;
 }
 
 void pm_gpu_set_plan(const PmPlan* p) {

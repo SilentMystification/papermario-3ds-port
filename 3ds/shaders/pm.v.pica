@@ -3,6 +3,7 @@
 ; with the viewport and that same tilt. The rasterizer divides by w.
 
 .fvec projection[4]
+.fvec uvx ; S25: second texture coordinates = uv * uvx.xy + uvx.zw
 
 .constf myconst(0.0, 1.0, 0.0, 0.0)
 .alias zeros myconst.xxxx
@@ -10,6 +11,7 @@
 .out outpos position
 .out outclr color
 .out outtc0 texcoord0
+.out outtc1 texcoord1
 
 .alias inpos v0
 .alias inuv v1
@@ -25,5 +27,8 @@
 	mov outclr, inclr
 	mov outtc0.xy, inuv.xy
 	mov outtc0.zw, zeros
+	mul r0.xy, uvx.xy, inuv.xy
+	add outtc1.xy, uvx.zw, r0.xy
+	mov outtc1.zw, zeros
 	end
 .end

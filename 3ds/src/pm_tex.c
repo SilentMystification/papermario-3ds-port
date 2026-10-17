@@ -35,6 +35,8 @@ static unsigned stamp;
 static unsigned epoch;
 static u8* scratch;
 static int cur = -1;
+static int aux = -1; /* S25: the second texture (TEXEL1), bound at unit 1 */
+static GPU_TEXTURE_WRAP_PARAM aux_ws = GPU_REPEAT, aux_wt = GPU_REPEAT;
 static int have;
 static GPU_TEXTURE_WRAP_PARAM wrap_s = GPU_REPEAT;
 static GPU_TEXTURE_WRAP_PARAM wrap_t = GPU_REPEAT;
@@ -191,6 +193,7 @@ static int expand_dual(const u8* src, int w, int h, int stride, const unsigned* 
 
 static void drop(Slot* s) {
     if (!s->live) return;
+    if (aux == (int)(s - slots)) aux = -1;
     C3D_TexDelete(&s->tex);
     if (used >= s->bytes) used -= s->bytes;
     else used = 0;
@@ -242,6 +245,7 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         img = (unsigned)s->img;
         pal = (unsigned)s->tlut;
         if (!((img >= start && img < end) || (pal && pal >= start && pal < end))) continue;
+        if (aux == i) aux = -1;
         if (cur == i) {
             cur = -1;
             have = 0;
@@ -467,3 +471,35 @@ void pm_tex_size(int* w, int* h) {
     if (w) *w = pw;
     if (h) *h = ph;
 }
+
+/* S25: the texture just loaded becomes TEXEL1 (unit 1). Wrap is that tile's own. */
+int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
+    if (!have || cur < 0 || !slots[cur].live) { aux = -1; return 0; }
+    aux = cur;
+    aux_ws = wrap_of(cms, masks);
+    aux_wt = wrap_of(cmt, maskt);
+    return 1;
+}
+
+int pm_tex_bind_aux(void) {
+    if (aux < 0 || !slots[aux].live) return 0;
+    slots[aux].stamp = ++stamp;
+    slots[aux].epoch = epoch;
+    C3D_TexSetWrap(&slots[aux].tex, aux_ws, aux_wt);
+    C3D_TexBind(1, &slots[aux].tex);
+    return 1;
+}
+
+void pm_tex_unbind_aux(void) { C3D_TexBind(1, NULL); }
+
+void pm_tex_aux_size(int* w, int* h) {
+    int pw = 1, ph = 1;
+    if (aux >= 0 && slots[aux].live) {
+        pw = pot_at_least_8(slots[aux].w);
+        ph = pot_at_least_8(slots[aux].h);
+    }
+    if (w) *w = pw;
+    if (h) *h = ph;
+}
+
+int pm_tex_aux_valid(void) { return aux >= 0 && slots[aux].live; }

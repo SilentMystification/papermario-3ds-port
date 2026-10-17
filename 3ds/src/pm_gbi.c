@@ -599,6 +599,8 @@ static int cc_uses(const unsigned s[2][8], int two, int t) {
 static struct { unsigned key; unsigned cnt, next; int first, last, bad; } aud[160];
 static int aud_n;
 static unsigned aud_cnt_special, aud_cnt_total, aud_cnt_bad;
+static unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
+static unsigned mm_cnt[256], mw_cnt[256];
 static unsigned lcg_s = 12345u;
 static float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
 static unsigned char aud_prim_lod;
@@ -614,7 +616,7 @@ static unsigned plan_draws, plan_fails;
 
 static Dec* decide(int two) {
     unsigned key = 2166136261u, i;
-    unsigned parts[] = { comb_w0, comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(tex_on | use_t1 << 1), (unsigned)comb_alpha_shade };
+    unsigned parts[] = { comb_w0, comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2), (unsigned)comb_alpha_shade };
     for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
     for (i = 0; i < (unsigned)dec_n; i++)
         if (dec[i].key == key) return &dec[i];
@@ -629,6 +631,7 @@ static Dec* decide(int two) {
         if (leg_mode == 4) { d->why = -2; return d; } /* mode 4 is exact by construction (const_rgb_tex_alpha) */
         if (!tex_on && (cc_uses(s, two, 0) || cc_uses(s, two, 1))) { d->why = 5; d->el = 1.f; return d; }
         d->why = pm_comb_build(comb_w0, comb_w1, two, use_t1, &d->plan);
+        if (!d->why && d->plan.uses_tex1 && !td[1].valid) d->why = 6; /* TEXEL1 read, tile 1 not loaded */
         {
             float el = 0.f, ep = 0.f;
             lcg_s = 777u;
@@ -642,14 +645,13 @@ static Dec* decide(int two) {
                     pc = pc << 8 | pcs[0]; ec = ec << 8 | pcs[1];
                 }
                 unpack8(pc, in.pr); unpack8(ec, in.en);
-                for (int c = 0; c < 4; c++) in.t1[c] = in.t0[c]; /* one texture: TEXEL1 reads the bound tile */
                 cc_eval(s, two, &in, plod_f, f);
-                cc_legacy(leg_mode, &in, 0, g);
+                cc_legacy(leg_mode, &in, use_t1, g);
                 for (int c = 0; c < 4; c++) { float e = f[c] > g[c] ? f[c] - g[c] : g[c] - f[c]; if (e > el) el = e; }
                 if (!d->why) {
                     PmPlan t = d->plan;
                     pm_comb_colours(&t, pc, ec, aud_prim_lod);
-                    pm_comb_eval(&t, in.t0, in.sh, h);
+                    pm_comb_eval(&t, use_t1 ? in.t1 : in.t0, in.t1, in.sh, h);
                     for (int c = 0; c < 4; c++) { float e = f[c] > h[c] ? f[c] - h[c] : h[c] - f[c]; if (e > ep) ep = e; }
                 }
             }
@@ -729,6 +731,33 @@ static void comb_audit(void) {
     }
 }
 
+/* S25: a plan that reads TEXEL1. Tile 1 is loaded and kept at unit 1, tile 0 stays the current texture, and the
+ * unit 1 coordinates are the first ones moved by the difference of the two tile windows. */
+static unsigned aux_key;
+static void dual_bind(void) {
+    unsigned key = 2166136261u, i;
+    int tw0, th0, tw1, th1;
+    if (!plan_active || !cur_plan.uses_tex1 || !td[0].valid || !td[1].valid) return;
+    {
+        unsigned parts[] = { (unsigned)td[1].src, td[1].fmt, td[1].siz, (unsigned)td[1].w, (unsigned)td[1].h, (unsigned)td[1].stride,
+                             (unsigned)td[1].pal, tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3] };
+        for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
+    }
+    if (key != aux_key || !pm_tex_aux_valid()) {
+        pm_gpu_flush();
+        pm_tex_set_wrap(tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3]);
+        pm_tex_load(td[1].src, td[1].fmt, td[1].siz, td[1].w, td[1].h, td[1].pal, td[1].pal_n, td[1].stride);
+        pm_tex_set_aux(tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3]);
+        aux_key = key;
+        cur_tile = -1;
+    }
+    ensure_tile(0);
+    pm_tex_size(&tw0, &th0);
+    pm_tex_aux_size(&tw1, &th1);
+    pm_gpu_set_tex1((float)tw0 / (float)tw1, (float)th0 / (float)th1, (float)(td[0].x0 - td[1].x0) / (float)tw1,
+                    (float)(td[0].y0 - td[1].y0) / (float)th1);
+}
+
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
 static void draw_tri(unsigned w) {
@@ -752,7 +781,19 @@ static void draw_tri(unsigned w) {
     idx[2] = i2;
     box_fold_sync();
     comb_audit();
+    st_tri++;
+    if (geom & G_LIGHTING) st_lit++;
+    if (geom & G_FOG) st_fogg++;
+    if (geom & G_TEXTURE_GEN) st_tgen++;
+    {
+        unsigned bl = omode_l;
+        int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
+        unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
+        if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) st_fogb++;
+        if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) st_blc++;
+    }
     ensure_tile(use_t1 ? 1 : 0);
+    dual_bind();
     for (i = 0; i < 3; i++) {
         xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
     }
@@ -903,7 +944,7 @@ void pm_gbi_end_frame(void) {
     have_sample = 0;
     rm_frame++;
     if ((rm_frame % 600) == 0 && aud_cnt_total) {
-        pm_log("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n);
+        pm_log("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners | tris %u lit %u fogmode %u fogblend %u blendcol %u texgen %u", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n, st_tri, st_lit, st_fogg, st_fogb, st_blc, st_tgen);
     }
 }
 
@@ -1263,6 +1304,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         }
         case G_MOVEMEM: {
+            if ((w0 & 0xff) != G_MV_VIEWPORT) {
+                unsigned ix = w0 & 0xff, n = ++mm_cnt[ix];
+                if (n == 1 || n == 1000 || n == 1000000) pm_log("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
+            }
             if ((w0 & 0xff) == G_MV_VIEWPORT) {
                 Vp* vp = (Vp*)ptr_of(w1);
                 if (vp) {
@@ -1418,6 +1463,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             comb_audit();
             if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
             ensure_tile(use_t1 ? 1 : 0);
+            dual_bind();
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
             float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)tile_x0) / (float)tw;
@@ -1535,6 +1581,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     td[1].pal_n = tlut_n;
                 }
             }
+            if (tile == 1) sync_combine(); /* S25: a plan that reads TEXEL1 needs tile 1 */
             if (tile != 0) break;
             td[0].valid = 0;
             cur_tile = 0;
@@ -1594,6 +1641,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_MOVEWORD: {
             unsigned index = (w0 >> 16) & 0xff;
             unsigned offset = w0 & 0xffff;
+            if (index != G_MW_SEGMENT) {
+                unsigned n = ++mw_cnt[index];
+                if (n == 1 || n == 1000 || n == 1000000) pm_log("gbi ignore moveword index %02x offset %04x count %u frame %d", index, offset, n, rm_frame);
+            }
             if (index == G_MW_SEGMENT && (offset / 4) < 16) {
                 unsigned seg = offset / 4;
                 segbase[seg] = (u32)ptr_of(w1);

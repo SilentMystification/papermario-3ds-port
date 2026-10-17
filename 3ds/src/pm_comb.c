@@ -8,11 +8,11 @@
  *   at 0: not exact when A < B).
  * The PICA has one constant per stage, one buffer colour and the vertex colour. PRIM, ENV and PRIM_LOD_FRAC
  * are put in those three slots by name. The vertex colour carries a constant when the shade is not read.
- * Not done: two textures at once (TEXEL0 and TEXEL1 read together), reason 2. */
+ * TEXEL0 and TEXEL1 read together: TEXTURE0 and TEXTURE1 (TEXEL1 coordinates are a per-draw affine of the first). */
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1 };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
 typedef struct { unsigned char func; Term t[3]; unsigned char inv[3]; } Sk;
 
@@ -40,7 +40,7 @@ static Term term_rgb(int slot, unsigned sel, int cyc2, int t1only) {
     switch (sel) {
     case 0: return cyc2 ? TM(TN_CMB, 0) : TM(TN_ZERO, 0);
     case 1: return TM(TN_T0, 0);
-    case 2: return t1only ? TM(TN_T0, 0) : TM(TN_T0 + 100, 0); /* TN_T0 + 100: TEXEL1 beside TEXEL0 */
+    case 2: return t1only ? TM(TN_T0, 0) : TM(TN_T1, 0);
     case 3: return TM(TN_PR, 0);
     case 4: return TM(TN_SH, 0);
     case 5: return TM(TN_EN, 0);
@@ -51,7 +51,7 @@ static Term term_rgb(int slot, unsigned sel, int cyc2, int t1only) {
         switch (sel) {
         case 7: return cyc2 ? TM(TN_CMB, 1) : TM(TN_ZERO, 0);
         case 8: return TM(TN_T0, 1);
-        case 9: return t1only ? TM(TN_T0, 1) : TM(TN_T0 + 100, 1);
+        case 9: return t1only ? TM(TN_T0, 1) : TM(TN_T1, 1);
         case 10: return TM(TN_PR, 1);
         case 11: return TM(TN_SH, 1);
         case 12: return TM(TN_EN, 1);
@@ -66,7 +66,7 @@ static Term term_a(int slot, unsigned sel, int cyc2, int t1only) {
     switch (sel) {
     case 0: return slot == 2 ? TM(TN_ZERO, 0) : (cyc2 ? TM(TN_CMB, 1) : TM(TN_ZERO, 0));
     case 1: return TM(TN_T0, 1);
-    case 2: return t1only ? TM(TN_T0, 1) : TM(TN_T0 + 100, 1);
+    case 2: return t1only ? TM(TN_T0, 1) : TM(TN_T1, 1);
     case 3: return TM(TN_PR, 1);
     case 4: return TM(TN_SH, 1);
     case 5: return TM(TN_EN, 1);
@@ -129,19 +129,6 @@ static int add_cycle(Seq* r, Seq* a, int start_r, int start_a, Term v[2][4]) {
     return 0;
 }
 
-static int has_t1(Term v[2][4]) {
-    for (int g = 0; g < 2; g++)
-        for (int i = 0; i < 4; i++)
-            if (v[g][i].n == TN_T0 + 100) return 1;
-    return 0;
-}
-static int has_t0(Term v[2][4]) {
-    for (int g = 0; g < 2; g++)
-        for (int i = 0; i < 4; i++)
-            if (v[g][i].n == TN_T0) return 1;
-    return 0;
-}
-
 /* Resolve a skeleton input to a hardware source. Returns 0, or a reason. */
 typedef struct { unsigned char stage_name[6]; unsigned char buf, vtx; } Alloc;
 
@@ -149,6 +136,7 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     int name = 0, part = t.a, ninv = inv;
     switch (t.n) {
     case TN_T0: *src = PM_S_TEX0; pl->uses_tex = 1; break;
+    case TN_T1: *src = PM_S_TEX1; pl->uses_tex1 = 1; break;
     case TN_SH:
         *src = PM_S_VTX;
         if (al->vtx != PM_NM_SHADE) return 5;
@@ -204,28 +192,6 @@ int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
         for (int i = 0; i < 4; i++) {
             v[c][0][i] = term_rgb(i, s[c][i], c, t1only);
             v[c][1][i] = term_a(i, s[c][4 + i], c, t1only);
-        }
-    }
-    {
-        Term all[2][4];
-        for (int c = 0; c < (two ? 2 : 1); c++) {
-            for (int g = 0; g < 2; g++) {
-                for (int i = 0; i < 4; i++) {
-                    all[g][i] = v[c][g][i];
-                }
-            }
-            if (has_t0(all) && has_t1(all)) return 2;
-        }
-        {
-            int a0 = 0, a1 = 0;
-            for (int c = 0; c < (two ? 2 : 1); c++)
-                for (int g = 0; g < 2; g++)
-                    for (int i = 0; i < 4; i++) {
-                        if (v[c][g][i].n == TN_T0) a0 = 1;
-                        if (v[c][g][i].n == TN_T0 + 100) a1 = 1;
-                    }
-            if (a0 && a1) return 2;
-            if (a1) return 2; /* TEXEL1 alone without the rename (the caller renames when tile 1 is the only one read) */
         }
     }
     rc = add_cycle(&R, &A, 0, 0, v[0]);
@@ -285,7 +251,7 @@ static void unp(unsigned c, float o[4]) {
 
 static float cl(float v) { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
 
-void pm_comb_eval(const PmPlan* p, const float t0[4], const float shade[4], float out[4]) {
+void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const float shade[4], float out[4]) {
     float prev[4], vtx[4], buf[4];
     memcpy(vtx, shade, sizeof vtx);
     if (p->vtxname != PM_NM_SHADE) unp(p->vtx, vtx);
@@ -298,7 +264,7 @@ void pm_comb_eval(const PmPlan* p, const float t0[4], const float shade[4], floa
             const PmTevCh* ch = &p->st[i].g[g];
             float in[3][3];
             for (int k = 0; k < 3; k++) {
-                const float* sv = ch->src[k] == PM_S_TEX0 ? t0 : ch->src[k] == PM_S_VTX ? vtx : ch->src[k] == PM_S_CONST ? cst
+                const float* sv = ch->src[k] == PM_S_TEX0 ? t0 : ch->src[k] == PM_S_TEX1 ? t1 : ch->src[k] == PM_S_VTX ? vtx : ch->src[k] == PM_S_CONST ? cst
                                 : ch->src[k] == PM_S_PREV ? prev : buf;
                 for (int c = 0; c < 3; c++) {
                     float x;
