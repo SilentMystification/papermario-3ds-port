@@ -13,7 +13,7 @@ Last tidied by slice S20. Answer by editing the "Answer" line or by telling the 
   - (c) Wait for a hardware run (S28) and then choose.
 - Recommendation: (c) first, then (a). Run S28 (one push to the O3DS, read the first boot line). If the heap left is above 4 MB after the merge, take (a). It adds no stand-in. Take (b) only if the hardware run shows too little memory.
 - Note for the merge: rebase first. `pm_title.c` was deleted on main, so the two debug hooks (`battle`, `demobattle`) need a new place.
-- Answer: (open)
+- Answer: (user, 2026-10) (a), whole tree merged. Done in slice M03 (tag s19-pre-merge keeps the old branch tip).
 
 ### Q2. Stream the ROM from SD or keep it resident? (from M02)
 - Fact: resident ROM is 26.9 MB. Estimated to fit the O3DS with 8.6 MB spare if the limit is 64 MB. Not measured on hardware (`push o` failed in M02). Streaming saves 26 MB but costs SD latency on the 1280 B BGM reads.
@@ -49,6 +49,7 @@ Last tidied by slice S20. Answer by editing the "Answer" line or by telling the 
 - Fact (measured in S30, Azahar inputs, O3DS values estimated): 267 maps linked, image 13.1 MB, estimated O3DS heap left 4.58 MB. All 418 compilable maps would give 15.1 MB and 2.6 MB left. The battle merge (Q1, +3.9 MB) is not counted: with 267 maps it leaves about 0.7 MB, with all maps it does not fit. kpa alone costs 340 KB. kmr_22 and kzn_19 need S19b (kzn model_anim data), flo_11 needs battle.c.
 - Options: (a) stream the map data of rarely used areas (read it from the ROM on the first visit, needs a loader for the in-place map data, a big change). (b) shrink the resident ROM more (Q2, for example stream the ROM from SD, saves up to 26 MB). (c) accept less spare and link all (2.6 MB, no room for the battle tree). (d) stay at 267 and link the rest after the hardware run (S28) shows the real limit.
 - Recommendation: (d) first. Then (b) if S28 shows less than 64 MB or if Q1 is merged.
+- Update (M03, Azahar based estimate, not hardware): Q1 is merged. Image 17.19 MB, estimated O3DS spare about 865 KB (65,536 - 20,480 - 16,808 - 27,383 KB). Linking the 154 maps (+2.0 MB) gives about -1.1 MB: it does NOT fit without (a) or (b). The merge needs no map removed (spare is above 0.5 MB). Decision needed from the user: (b) stream the ROM from SD (Q2) or (a) stream map data, or stay at 267 maps.
 - Answer: (open)
 
 ## Answered or resolved

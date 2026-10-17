@@ -540,3 +540,20 @@
 04:00 M03 stand-ins already gone by merge (A1-A3,A13,A14,B3-B5)
 04:01 M03 layout scan 0 battle hits; 190B20 fixed; size measured
 04:06 M03 battle hook works (state NONE), Goomba battle plays to STAR POINTS, back to world black; spare est 873 KB
+04:07 M03 battle sweep of 40 areas started (m03_sweep.sh)
+04:22 M03 sweep: 34 of 40 areas clean, 0 dropped reads; fails KMR_2/3 ISK_1/2 (decomp stage bug), HOS, KZN2
+04:25 M03 retests: stage bug areas ok with stage 01, HOS/KMR_3 need partner=1 (ok); only KZN2 (S19b gap) fails
+04:32 M03 chain ok: loads at scans 562 2316 2562 3178, 0 unmapped
+04:44 M03 demo: scenes 1-4 pass, jan_04 refused (kzn_02 too), pause toad ok, jump ok
+04:44 M03 full 266-map tour started (partner=1 ptrcheck)
+04:44 M03 tour progress 40 of 266
+04:45 M03 tour progress 49 of 266
+04:45 M03 tour progress 89 of 266
+04:46 M03 tour progress 129 of 266
+04:46 M03 tour progress 136 of 266
+04:47 M03 tour progress 176 of 266
+04:47 M03 tour progress 216 of 266
+04:48 M03 tour progress 256 of 266
+04:48 M03 tour progress 257 of 266
+04:49 M03 tour progress 297 of 266
+04:49 M03 tour 263 ok, 3 known fails (same as S25); docs written
