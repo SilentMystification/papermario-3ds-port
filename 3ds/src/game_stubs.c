@@ -5,7 +5,6 @@
 
 extern PlayerData gPlayerData;
 extern PlayerStatus gPlayerStatus;
-BattleStatus gBattleStatus;
 
 void pm_game_bind(void) {
     gGameStatusPtr = &gGameStatus;
@@ -25,3 +24,5 @@ void load_engine_data(void);
 void shim_load_engine_data_obfuscated(void) { load_engine_data(); }
 
 void shim_general_heap_create_obfuscated(void) { general_heap_create(); }
+
+void shim_battle_heap_create_obfuscated(void) { battle_heap_create(); }

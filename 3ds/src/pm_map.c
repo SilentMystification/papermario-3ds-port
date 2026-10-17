@@ -463,9 +463,12 @@ static void swap_hit_file(u8* hit, u32 size) {
 
 /* Records the last asset the real load_asset_by_name returned (linked with --wrap, see CMakeLists.txt). decode_yay0 then
  * knows which kind of big-endian file it just decoded. */
+int pm_debug_has(const char* word);
 extern void* __real_load_asset_by_name(const char* name, u32* decompressedSize);
 void* __wrap_load_asset_by_name(const char* name, u32* decompressedSize) {
-    void* ret = __real_load_asset_by_name(name, decompressedSize);
+    void* ret;
+    if (pm_debug_has("assets")) pm_log("load_asset_by_name %s", name);
+    ret = __real_load_asset_by_name(name, decompressedSize);
     last_asset_src = ret;
     strncpy(last_asset_name, name, sizeof(last_asset_name) - 1);
     last_asset_name[sizeof(last_asset_name) - 1] = 0;

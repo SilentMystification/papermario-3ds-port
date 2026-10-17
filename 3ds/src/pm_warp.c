@@ -8,6 +8,7 @@
 #include "functions.h"
 #include "game_modes.h"
 #include "fio.h"
+#include "battle/battle.h"
 extern bool fio_fetch_saved_file_info(void);
 #include "pm_port.h"
 #include <stdio.h>
@@ -224,6 +225,48 @@ static void tour_step(void) {
     tour_wait = 1;
 }
 
+/* M03: debug switches `battle` and `demobattle` (class E, no game logic), moved here from the deleted pm_title.c.
+ * `battle` or `battle=<formation>:<stage>` starts a real battle through set_battle_stage and load_battle. A part is a name from
+ * battle_names.h or stage_names.h (BTL_KMR_1_FORMATION_00, BTL_KMR_1_STAGE_01) or a number (0x0000, 1). The default is
+ * BTL_KMR_1_FORMATION_00 and BTL_KMR_1_STAGE_01 (one Goomba on kmr_03). `battlef=<n>` is the scene frame (default 100).
+ * `demobattle` enters the real demo state at scene 1 (load_demo_battle(0), dig stage, Fuzzies). Both need warp, preset or story. */
+static const struct { const char* name; s32 value; } battle_names[] = {
+#include "battle_name_table.h"
+};
+
+static s32 battle_name_value(const char* s, unsigned n, s32 dflt) {
+    char t[48];
+    unsigned i;
+    if (n == 0) return dflt;
+    if (n >= sizeof t) n = sizeof t - 1;
+    memcpy(t, s, n);
+    t[n] = 0;
+    for (i = 0; i < sizeof battle_names / sizeof battle_names[0]; i++) {
+        if (strcmp(t, battle_names[i].name) == 0) return battle_names[i].value;
+    }
+    return (s32)strtol(t, NULL, 0);
+}
+
+static void battle_hooks(unsigned f) {
+    char v[96], vf[16];
+    unsigned at = 100;
+    if (pm_debug_value("battlef", vf, sizeof vf)) at = (unsigned)atoi(vf);
+    if (f == at && (pm_debug_value("battle", v, sizeof v) || pm_debug_has("battle"))) {
+        const char* c = strchr(v, ':');
+        s32 formation = battle_name_value(v, c ? (unsigned)(c - v) : (unsigned)strlen(v), BTL_KMR_1_FORMATION_00);
+        s32 stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
+        pm_log("debug battle: formation %d stage %d at scene frame %u", (int)formation, (int)stage, f);
+        set_battle_stage(stage);
+        load_battle(formation);
+    }
+    if (f == at && pm_debug_has("demobattle")) {
+        pm_log("debug demobattle: enter GAME_MODE_DEMO at demo scene 1 (battle index 0)");
+        gGameStatusPtr->demoState = DEMO_STATE_ACTIVE;
+        gGameStatusPtr->nextDemoScene = 1;
+        set_game_mode(GAME_MODE_DEMO);
+    }
+}
+
 /* Once per drawn frame (pm_frame_loop). */
 void pm_warp_tick(unsigned frame) {
     if (scene_f0 < 0) return;
@@ -236,6 +279,7 @@ void pm_warp_tick(unsigned frame) {
         tour_f0 = frame - TOUR_FRAMES + 1;
     }
     unsigned f = frame - (unsigned)scene_f0;
+    battle_hooks(f);
     if (f % (padscript_log ? 2 : 100) == 0 || f == 5) {
         pm_log("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
                (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,

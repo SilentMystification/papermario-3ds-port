@@ -27,6 +27,7 @@ include_directories(
 )
 
 include(effects.cmake)
+include(battle.cmake)
 
 set(GAME_SRC
     ${DECOMP}/src/main.c
@@ -305,6 +306,7 @@ set(GAME_SRC
     ${DECOMP}/src/pause/pause_map.c
     ${DECOMP}/src/pause/pause_gfx.c
     ${DECOMP}/src/pause/pause_styles.c
+    ${BATTLE_SRC}
 )
 # S30: every map. maps.cmake and map_syms.lds come from tools/gen_map_sources.py. The real world.c is built whole with its real gAreas.
 # A map that is not linked has <map>_settings = pm_unlinked_map in map_syms.lds (sentinel row, refused by the GotoMap guard in pm_map.c).
@@ -400,6 +402,7 @@ target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -Wl,--gc-sections
     -Wl,--wrap=get_map_IDs_by_name -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background
+    -Wl,--defsym,heap_battleHead=gFrameBuf2
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
     -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50
     # partner overlays are linked in. Each range is empty (START == END, in the image) so dma_copy copies nothing.
