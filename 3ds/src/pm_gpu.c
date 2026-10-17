@@ -34,6 +34,9 @@ static int light_on;
 /* RDP render mode: depth compare, depth update, alpha blend, alpha cut-off (-1 none), decal. */
 static int r_zcmp = 1, r_zupd = 1, r_blend = 1, r_atest = -1, r_decal;
 static int combine;
+static int r_nocol; /* S25: the blender gives back the frame buffer colour: depth only */
+static PmPlan plan; /* S25: combine mode 8 */
+static int env_hi = 1; /* texenv stages configured so far (stage 0 is always reset) */
 static unsigned env_col = 0xffffffffu; /* combine mode 5: the ENV colour */
 static unsigned cconst;
 static int rgb_scale = 1;
@@ -92,8 +95,38 @@ static unsigned abgr(unsigned c) {
     return ((c & 255u) << 24) | (((c >> 8) & 255u) << 16) | (((c >> 16) & 255u) << 8) | (c >> 24);
 }
 
+static GPU_TEVSRC tev_src(int s) {
+    switch (s) {
+    case PM_S_TEX0: return GPU_TEXTURE0;
+    case PM_S_VTX: return GPU_PRIMARY_COLOR;
+    case PM_S_CONST: return GPU_CONSTANT;
+    case PM_S_PREV: return GPU_PREVIOUS;
+    default: return GPU_PREVIOUS_BUFFER;
+    }
+}
+static GPU_TEVOP_RGB tev_op_rgb(int o) {
+    return o == PM_O_C ? GPU_TEVOP_RGB_SRC_COLOR : o == PM_O_1MC ? GPU_TEVOP_RGB_ONE_MINUS_SRC_COLOR :
+           o == PM_O_A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_ONE_MINUS_SRC_ALPHA;
+}
+static GPU_TEVOP_A tev_op_a(int o) { return (o == PM_O_1MA || o == PM_O_1MC) ? GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA : GPU_TEVOP_A_SRC_ALPHA; }
+static GPU_COMBINEFUNC tev_func(int f) {
+    switch (f) {
+    case PM_F_REPLACE: return GPU_REPLACE;
+    case PM_F_MODULATE: return GPU_MODULATE;
+    case PM_F_ADD: return GPU_ADD;
+    case PM_F_SUBTRACT: return GPU_SUBTRACT;
+    case PM_F_INTERP: return GPU_INTERPOLATE;
+    default: return GPU_MULTIPLY_ADD;
+    }
+}
+
 static void flush(void) {
     if (nverts <= 0 || !gpu_ok) {
+        nverts = 0;
+        batch_identity = 0;
+        return;
+    }
+    if (r_nocol && !(z_on && !rect_2d && r_zupd)) {
         nverts = 0;
         batch_identity = 0;
         return;
@@ -105,10 +138,33 @@ static void flush(void) {
     /* Rectangles skip the depth test, so a story page already covers the mesh.
      * Wiping the buffer here let the next 3D batch ignore the house. */
     (void)batch_identity;
+    for (int i = 1; i < env_hi; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
+    env_hi = 1;
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     int tex = (combine >= 2) && pm_tex_bind();
-    if (tex && combine == 6) {
+    if (combine == 8 && (!plan.uses_tex || tex)) {
+        /* S25: general combiner. A stage reads the texture, the vertex colour, its constant, the previous
+         * stage or the buffer colour. The buffer is never updated by a stage, so it holds one constant. */
+        C3D_TexEnvBufUpdate(C3D_Both, 0);
+        C3D_TexEnvBufColor(abgr(plan.buf));
+        for (int i = 0; i < plan.n && i < 6; i++) {
+            C3D_TexEnv* e = C3D_GetTexEnv(i);
+            const PmTevStage* st = &plan.st[i];
+            C3D_TexEnvInit(e);
+            C3D_TexEnvSrc(e, C3D_RGB, tev_src(st->g[0].src[0]), tev_src(st->g[0].src[1]), tev_src(st->g[0].src[2]));
+            C3D_TexEnvOpRgb(e, tev_op_rgb(st->g[0].op[0]), tev_op_rgb(st->g[0].op[1]), tev_op_rgb(st->g[0].op[2]));
+            C3D_TexEnvFunc(e, C3D_RGB, tev_func(st->g[0].func));
+            C3D_TexEnvSrc(e, C3D_Alpha, tev_src(st->g[1].src[0]), tev_src(st->g[1].src[1]), tev_src(st->g[1].src[2]));
+            C3D_TexEnvOpAlpha(e, tev_op_a(st->g[1].op[0]), tev_op_a(st->g[1].op[1]), tev_op_a(st->g[1].op[2]));
+            C3D_TexEnvFunc(e, C3D_Alpha, tev_func(st->g[1].func));
+            C3D_TexEnvColor(e, abgr(st->constant));
+        }
+        env_hi = plan.n;
+    } else if (combine == 8) {
+        C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+        C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+    } else if (tex && combine == 6) {
         /* (TEXEL - PRIM) * PRIM_ALPHA + PRIM: the texture fades to the primitive colour (pause screen
          * background, darkened by gray 40 at alpha 128). Alpha = texel alpha. */
         C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_TEXTURE0, GPU_CONSTANT);
@@ -163,9 +219,9 @@ static void flush(void) {
     /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. A decal
      * sits in the same plane as its base, so equal depth has to pass. */
     if (z && r_zcmp)
-        C3D_DepthTest(true, r_decal ? GPU_GEQUAL : GPU_GREATER, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+        C3D_DepthTest(true, r_decal ? GPU_GEQUAL : GPU_GREATER, r_nocol ? GPU_WRITE_DEPTH : r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
     else if (z && r_zupd)
-        C3D_DepthTest(true, GPU_ALWAYS, GPU_WRITE_ALL);
+        C3D_DepthTest(true, GPU_ALWAYS, r_nocol ? GPU_WRITE_DEPTH : GPU_WRITE_ALL);
     else
         C3D_DepthTest(false, GPU_GREATER, GPU_WRITE_COLOR);
     /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
@@ -488,6 +544,12 @@ void pm_gpu_set_mode(int zbuffer, int lighting) {
     light_on = lighting;
 }
 
+void pm_gpu_set_nocolor(int on) {
+    if (on == r_nocol) return;
+    flush();
+    r_nocol = on;
+}
+
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
     if (zcmp == r_zcmp && zupd == r_zupd && blend == r_blend && atest == r_atest && decal == r_decal) return;
     flush();
@@ -496,6 +558,13 @@ void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
     r_blend = blend;
     r_atest = atest;
     r_decal = decal;
+}
+
+void pm_gpu_set_plan(const PmPlan* p) {
+    if (combine == 8 && memcmp(&plan, p, sizeof plan) == 0) return;
+    flush();
+    plan = *p;
+    combine = 8;
 }
 
 void pm_gpu_set_combine(int mode) {
@@ -599,14 +668,14 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
     flush();
     int saved = combine;
-    combine = (saved == 5 || saved == 6 || saved == 7) ? saved : 2;
+    combine = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
     rect_2d = 1;
     batch_identity = 1;
     float xa = px(x0);
     float xb = px(x1 + 1);
     float ya = py(y0);
     float yb = py(y1 + 1);
-    unsigned c = (saved == 5 || saved == 7) ? env_col : 0xffffffffu;
+    unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
     pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, ya, 0.5f, s1, t0, c, xb, yb, 0.5f, s1, t1, c);
     pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, yb, 0.5f, s1, t1, c, xa, yb, 0.5f, s0, t1, c);
     flush();

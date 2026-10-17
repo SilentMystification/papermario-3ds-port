@@ -15,7 +15,39 @@ void pm_gpu_set_mvp(const float m[4][4], float vp_sx, float vp_sy, float vp_tx, 
 void pm_gpu_set_mode(int zbuffer, int lighting);
 void pm_gpu_set_rgb_scale(int scale); /* 1 or 2, texture stage only */
 void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
+
+/* S25: a general RDP combiner as PICA texenv stages (mode 8). The stages are built by pm_comb.c. */
+enum { PM_S_TEX0, PM_S_VTX, PM_S_CONST, PM_S_PREV, PM_S_BUF };
+enum { PM_O_C, PM_O_1MC, PM_O_A, PM_O_1MA };
+enum { PM_F_REPLACE, PM_F_MODULATE, PM_F_ADD, PM_F_SUBTRACT, PM_F_INTERP, PM_F_MULADD };
+enum { PM_NM_NONE, PM_NM_ZERO, PM_NM_PRIM, PM_NM_ENV, PM_NM_PLOD, PM_NM_SHADE };
+typedef struct {
+    unsigned char src[3], op[3], func; /* one channel group of one stage */
+} PmTevCh;
+typedef struct {
+    PmTevCh g[2];       /* 0 colour, 1 alpha */
+    unsigned char cname; /* what the stage constant holds (PM_NM_*) */
+    unsigned constant;  /* RGBA 0xRRGGBBAA, from cname */
+} PmTevStage;
+typedef struct {
+    int n;               /* stages in use, 1 to 6 */
+    PmTevStage st[6];
+    unsigned char bufname, vtxname; /* PM_NM_*: the buffer colour, and what the vertex colour carries */
+    unsigned buf, vtx;   /* RGBA, from the names */
+    unsigned char uses_tex, uses_sha; /* a stage reads TEXTURE0, the vertex alpha as shade alpha */
+} PmPlan;
+void pm_gpu_set_plan(const PmPlan* p);
+
+/* pm_comb.c. Build the stages of one G_SETCOMBINE (two cycles when `two`). t1only: TEXEL1 is the bound texture.
+ * Returns 0 and fills `out`, or a reason: 1 more than 6 stages, 2 reads two textures, 3 COMBINED read after a
+ * sub-stage, 4 more constants than the PICA has, 5 no vertex or texture source for a name. */
+int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out);
+/* Fill the constants. prim, env RGBA 0xRRGGBBAA, plod 0..255 (PRIM_LOD_FRAC). */
+void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod);
+/* What the stages give, as the PICA computes them. t0, shade: RGBA 0..1. out: RGBA 0..1. */
+void pm_comb_eval(const PmPlan* p, const float t0[4], const float shade[4], float out[4]);
 void pm_gpu_set_const(unsigned rgba); /* combine mode 4: flat colour (a = factor on texture alpha) */
+void pm_gpu_set_nocolor(int on); /* S25: the blender returns the frame buffer colour, so only depth is written */
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal);
 void pm_gpu_set_prim(unsigned rgba);
 void pm_gpu_set_env(unsigned rgba); /* combine mode 5: lerp from ENV (vertex colour) to PRIM by texel */

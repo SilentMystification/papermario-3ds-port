@@ -351,6 +351,7 @@ set(PORT_SRC
     src/pm_gpu.c
     src/pm_tex.c
     src/pm_gbi.c
+    src/pm_comb.c
     src/pm_gu.c
     src/pm_nusys.c
     src/pm_os.c
