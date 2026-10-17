@@ -63,6 +63,9 @@ static float cmd_max;
 static shaderProgram_s prog;
 static DVLB_s* dvlb;
 
+static int off_active; /* V05: drawing goes to an off-screen image (see pm_gpu_off_begin) */
+static C3D_Mtx off_proj;
+
 static void ident(float m[4][4]) {
     memset(m, 0, sizeof(float) * 16);
     m[0][0] = m[1][1] = m[2][2] = m[3][3] = 1.f;
@@ -81,10 +84,11 @@ static void rebuild_3d(void) {
         game.r[r].w = game_mvp[3][r];
     }
     Mtx_Zeros(&view);
+    /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
     view.r[0].x = vp_sx;
-    view.r[0].w = 40.f + vp_tx;
-    view.r[1].y = vp_sy;
-    view.r[1].w = 240.f - vp_ty;
+    view.r[0].w = (off_active ? 0.f : 40.f) + vp_tx;
+    view.r[1].y = off_active ? -vp_sy : vp_sy;
+    view.r[1].w = off_active ? vp_ty : 240.f - vp_ty;
     /* Clip z/w is -1 at the near plane and +1 at the far plane. Citro's
      * ortho then wants near at -1 and far at 0, which is the value GEQUAL
      * keeps. The opposite sign stores the far wall as the nearer depth, so
@@ -93,7 +97,7 @@ static void rebuild_3d(void) {
     view.r[2].w = 0.5f;
     view.r[3].w = 1.f;
     Mtx_Multiply(&tmp, &view, &game);
-    Mtx_Multiply(&shader_3d, &projection, &tmp);
+    Mtx_Multiply(&shader_3d, off_active ? &off_proj : &projection, &tmp);
 }
 
 /* The PICA constant colour register is 0xAABBGGRR. The port keeps colours as 0xRRGGBBAA. */
@@ -127,6 +131,15 @@ static GPU_COMBINEFUNC tev_func(int f) {
     }
 }
 
+/* V05: an off-screen colour image. draw_box renders the contents of a rotating window (pause pages, file select panels)
+ * into a game buffer with the color image set to it, then draws that buffer as strips through the rotation matrix.
+ * Such a pass renders into a PICA render target that is a texture (VRAM), and pm_tex samples it for the strips. */
+enum { OFF_N = 4 };
+static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; } offs[OFF_N];
+static int off_used, off_cur, off_fail;
+extern unsigned pm_frame_count(void);
+static int r_replace; /* off-screen fill: the pixel is written, not blended */
+
 static void flush(void) {
     if (nverts <= 0 || !gpu_ok) {
         nverts = 0;
@@ -141,7 +154,7 @@ static void flush(void) {
     PH_PUSH(PH_GPU);
     /* 2D batches are already pixels. 3D batches are object space. */
     if (u_proj >= 0)
-        C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, draw_3d ? &shader_3d : &projection);
+        C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, draw_3d ? &shader_3d : off_active ? &off_proj : &projection); /* V05: shader_3d follows off_active, see rebuild_3d */
     /* Rectangles skip the depth test, so a story page already covers the mesh.
      * Wiping the buffer here let the next 3D batch ignore the house. */
     (void)batch_identity;
@@ -240,7 +253,7 @@ static void flush(void) {
         }
     }
     dv_draw++;
-    int z = z_on && (!rect_2d || rect_z);
+    int z = z_on && (!rect_2d || rect_z) && !off_active;
     /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. A decal
      * sits in the same plane as its base, so equal depth has to pass. */
     if (z && r_zcmp)
@@ -256,7 +269,14 @@ static void flush(void) {
     else C3D_AlphaTest(false, GPU_ALWAYS, 0);
     /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide
      * game picture and whatever scissor the display list set inside it. */
-    {
+    if (off_active) {
+        /* not rotated: x is the game x. GPU y is the game y: row 0 of the image is the last memory row, where v = 0 samples */
+        int x1 = sci_x1 > PM_OFF_W ? PM_OFF_W : sci_x1, y1 = sci_y1 > PM_OFF_H ? PM_OFF_H : sci_y1;
+        if (x1 > sci_x0 && y1 > sci_y0)
+            C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)sci_x0, (u32)sci_y0, (u32)x1, (u32)y1);
+        else
+            C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, 0, PM_OFF_W, PM_OFF_H);
+    } else {
         int left = 240 - sci_y1;
         int right = 240 - sci_y0;
         int top = 40 + sci_x0;
@@ -271,7 +291,12 @@ static void flush(void) {
             C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, 40, 240, 360);
     }
     C3D_CullFace(GPU_CULL_NONE);
-    if (r_blend || rect_2d)
+    if (off_active && r_replace)
+        C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+    else if (off_active) /* alpha accumulates as source over destination: a covered pixel becomes opaque */
+        C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+            GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    else if (r_blend || rect_2d)
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
             GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     else
@@ -517,7 +542,97 @@ void pm_gpu_read_frame(unsigned short* dst) {
     PH_POP();
 }
 
+/* V05: start (or go back to) the off-screen pass for the colour image at base, width stride pixels. Returns 1 if
+ * drawing goes there now. Each base gets one image for the frame (cleared on first use). */
+int pm_gpu_off_begin(const void* base, int stride) {
+    int i;
+    if (!gpu_ok || off_fail || stride < 1 || stride > PM_OFF_W) return 0;
+    if (off_active && offs[off_cur].base == base) return 1;
+    flush();
+    for (i = 0; i < off_used; i++) if (offs[i].base == base) break;
+    if (i == off_used) {
+        if (off_used >= OFF_N) {
+            static int once;
+            if (!once++) pm_log("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
+            return 0;
+        }
+        if (!offs[i].rt) {
+            if (!C3D_TexInitVRAM(&offs[i].tex, PM_OFF_W, PM_OFF_H, GPU_RGBA8)) {
+                pm_log("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
+                off_fail = 1;
+                return 0;
+            }
+            C3D_TexSetFilter(&offs[i].tex, GPU_LINEAR, GPU_NEAREST);
+            C3D_TexSetWrap(&offs[i].tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+            offs[i].rt = C3D_RenderTargetCreateFromTex(&offs[i].tex, GPU_TEXFACE_2D, 0, -1);
+            if (!offs[i].rt) {
+                pm_log("V05: off-screen image %d: render target failed", i);
+                C3D_TexDelete(&offs[i].tex);
+                off_fail = 1;
+                return 0;
+            }
+            Mtx_Ortho(&off_proj, 0.f, (float)PM_OFF_W, 0.f, (float)PM_OFF_H, 0.f, 1.f, true);
+        }
+        C3D_RenderTargetClear(offs[i].rt, C3D_CLEAR_COLOR, 0, 0);
+        offs[i].base = base;
+        pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex);
+        off_used++;
+    }
+    off_cur = i;
+    off_active = 1;
+    rebuild_3d();
+    C3D_FrameDrawOn(offs[i].rt);
+    return 1;
+}
+
+/* V05: back to the screen. */
+void pm_gpu_off_end(void) {
+    if (!off_active) return;
+    flush();
+    off_active = 0;
+    rebuild_3d();
+    C3D_FrameDrawOn(target);
+}
+
+void pm_gpu_set_replace(int on) { r_replace = on; }
+
+/* V05 debug switch offdump: the first off-screen image of the last frame, as shots/off<frame>.ppm (memory row 0 on top) */
+static void off_dump(void) {
+    static int on = -1, n;
+    FILE* f;
+    unsigned char* row;
+    const unsigned char* src;
+    if (on < 0) on = pm_debug_has("offdump");
+    if (!on || !off_used || n >= 12) return;
+    src = (const unsigned char*)offs[0].tex.data;
+    mkdir("shots", 0777);
+    char path[48];
+    snprintf(path, sizeof path, "shots/off%03u.ppm", pm_frame_count());
+    n++;
+    f = fopen(path, "wb");
+    if (!f) return;
+    fprintf(f, "P6 %d %d 255\n", PM_OFF_W, PM_OFF_H);
+    row = (unsigned char*)malloc(PM_OFF_W * 3);
+    for (int y = 0; y < PM_OFF_H; y++) {
+        for (int x = 0; x < PM_OFF_W; x++) {
+            unsigned mx = x & 7u, my = y & 7u;
+            unsigned m = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) | ((mx & 4u) << 2) | ((my & 4u) << 3);
+            const unsigned char* p = src + ((((unsigned)(y >> 3) * (PM_OFF_W / 8) + (unsigned)(x >> 3)) * 64u + m) * 4u);
+            unsigned a = p[0];
+            row[x * 3] = (unsigned char)(p[3] * a / 255); row[x * 3 + 1] = (unsigned char)(p[2] * a / 255); row[x * 3 + 2] = (unsigned char)(p[1] * a / 255);
+            if (a == 0) row[x * 3] = row[x * 3 + 1] = row[x * 3 + 2] = 40;
+        }
+        fwrite(row, 1, PM_OFF_W * 3, f);
+    }
+    free(row);
+    fclose(f);
+}
+
 void pm_gpu_begin(int clear) {
+    off_dump();
+    off_used = 0;
+    off_active = 0;
+    pm_tex_clear_offscreen();
     dv_draw = 0;
     draws_frame = 0;
     drew = 0;
@@ -545,6 +660,7 @@ void pm_gpu_begin(int clear) {
 void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
+    if (off_active) pm_gpu_off_end();
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
@@ -733,8 +849,8 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
 }
 
 /* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
-static float px(int x) { return 40.f + (float)x; }
-static float py(int y) { return 240.f - (float)y; }
+static float px(int x) { return off_active ? (float)x : 40.f + (float)x; }
+static float py(int y) { return off_active ? (float)y : 240.f - (float)y; }
 
 static float fill_z = 0.5f;
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {

@@ -88,6 +88,14 @@ extern void pm_zbuf_need(void);
 extern unsigned pm_frame_count(void);
 static void* cimg;
 static int cimg_stride = 320;
+extern int pm_fb_native(const void* p);
+/* V05: the colour image is a game buffer (not a frame buffer, not the saved frame): the draw goes to an off-screen render
+ * texture, which a later draw reads as an image (draw_box: the contents of a rotating window). */
+static void off_screen_check(void) {
+    static int nooff = -1;
+    if (nooff < 0) nooff = pm_debug_has("nooff");
+    if (cimg && !nooff && !pm_fb_native(cimg)) pm_gpu_off_begin(cimg, cimg_stride);
+}
 static const void* tlut_pal[16];
 static unsigned tile_tmem[8], tile_pal[8];
 static int tile_sz[8][4];
@@ -834,6 +842,7 @@ static void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
+    off_screen_check();
     box_fold_sync();
     comb_audit();
     st_tri++;
@@ -1213,8 +1222,12 @@ static void ensure_tile(int n) {
     pm_gpu_flush();
     pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
     pm_tex_load(td[n].src, td[n].fmt, td[n].siz, td[n].w, td[n].h, td[n].pal, td[n].pal_n, td[n].stride);
-    tile_x0 = td[n].x0;
-    tile_y0 = td[n].y0;
+    {   /* V05: a window of an off-screen texture starts at (ox, oy) in it */
+        int ox, oy;
+        pm_tex_origin(&ox, &oy);
+        tile_x0 = td[n].x0 - ox;
+        tile_y0 = td[n].y0 - oy;
+    }
     cur_tile = n;
 }
 
@@ -1518,10 +1531,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             pm_gpu_set_env(envc);
             sync_combine();
             break;
-        case G_SETCIMG:
-            cimg = ptr_of(w1);
+        case G_SETCIMG: {
+            void* nc = ptr_of(w1);
+            if (nc != cimg) pm_gpu_off_end(); /* V05 */
+            cimg = nc;
             cimg_stride = (int)(w0 & 0xfff) + 1;
             break;
+        }
         case G_SETPRIMDEPTH:
             prim_z = (w1 >> 16) & 0x7fffu;
             break;
@@ -1549,12 +1565,15 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (xt_on()) pm_log("xt f%u fillrect %d %d %d %d oml %08x omh %08x zb %d prim %08x primz %u cimg %p", pm_frame_count(), ulx, uly, lrx, lry, omode_l, omode_h, (geom & G_ZBUFFER) != 0, prim, prim_z, cimg);
             unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
                 ? rgba_from_5551(fill & 0xffff) : prim;
+            off_screen_check();
+            pm_gpu_set_replace(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
             /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
             if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !pm_debug_has("noprimz")) {
                 sync_render();
                 pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)prim_z / 32767.f);
             } else
             pm_gpu_fill_rect(ulx, uly, lrx, lry, color);
+            pm_gpu_set_replace(0);
             break;
         }
         case G_TEXRECT:
@@ -1575,6 +1594,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (xt_on()) pm_log("xt f%u texrect %d %d %d %d tile %u s %d t %d dsdx %d dtdy %d oml %08x omh %08x tile0 x0 %d y0 %d", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (w1 >> 24) & 7, (int)(s16)(hs >> 16), (int)(s16)(hs & 0xffff), (int)(s16)(hd >> 16), (int)(s16)(hd & 0xffff), omode_l, omode_h, tile_x0, tile_y0);
             if (xt_on()) { int tw_ = 0, th_ = 0; pm_tex_size(&tw_, &th_); pm_log("xt   tile0 w %d h %d stride %d fmt %u siz %u tex %dx%d valid %d", td[0].w, td[0].h, td[0].stride, td[0].fmt, td[0].siz, tw_, th_, td[0].valid); }
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
+            off_screen_check();
             box_fold_sync();
             comb_audit();
             if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
@@ -1739,7 +1759,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int stride = timg_stride > w ? timg_stride : w;
             int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
             const u8* src = (const u8*)timg;
-            if (src && bpp) src += (size_t)(y0 * stride + x0) * (size_t)bpp;
+            /* V05: the source window starts at the LoadTile origin. SetTileSize only says which texel coordinate that is
+             * (draw_box loads a strip at row idx * 6 and sets the tile origin to (160 - w / 2, 0)). Both are the same
+             * for gDPLoadTextureTile, so this changes no other draw. */
+            if (src && bpp && ld_valid) src += (size_t)(ld_y * stride + ld_x) * (size_t)bpp;
+            else if (src && bpp) src += (size_t)(y0 * stride + x0) * (size_t)bpp;
             else if (src && tile_siz[0] == 0 && ld_valid) {
                 /* 4-bit strips (imgfx meshes) load a window of an 8-bit-wide image. The
                  * tile size carries only the scroll, so the window comes from LoadTile. */
@@ -1754,6 +1778,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (src && w > 0 && h > 0) {
                 const void* pal0 = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
                 pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, pal0, tlut_n, stride);
+                {   /* V05 */
+                    int ox, oy;
+                    pm_tex_origin(&ox, &oy);
+                    tile_x0 = x0 - ox;
+                    tile_y0 = y0 - oy;
+                }
                 td[0].valid = 1;
                 td[0].src = src;
                 td[0].fmt = tile_fmt[0];

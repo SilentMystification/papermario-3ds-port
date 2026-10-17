@@ -67,6 +67,10 @@ void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
                   float x2, float y2, float z2, float u2, float v2, unsigned c2);
 /* One vertex already in F3DEX clip space. The MVP uniform must be identity. */
 void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsigned c);
+/* V05: draws go to an off-screen RGBA image for the colour image at base (width stride pixels) until pm_gpu_off_end. */
+int pm_gpu_off_begin(const void* base, int stride);
+void pm_gpu_off_end(void);
+void pm_gpu_set_replace(int on); /* off-screen fill: write the pixel, no blend */
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba);
 void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d); /* X01: tests depth d (0 near .. 1 far) */
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1,

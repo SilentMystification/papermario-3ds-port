@@ -38,6 +38,20 @@ static int cur = -1;
 static int aux = -1; /* S25: the second texture (TEXEL1), bound at unit 1 */
 static GPU_TEXTURE_WRAP_PARAM aux_ws = GPU_REPEAT, aux_wt = GPU_REPEAT;
 static int have;
+/* V05: off-screen images of this frame (render textures owned by pm_gpu.c) */
+static struct { const u8* base; unsigned stride; C3D_Tex* tex; } offt[4];
+static int offt_n, off_cur = -1, off_ox, off_oy;
+void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex) {
+    offt[i].base = (const u8*)base;
+    offt[i].stride = stride;
+    offt[i].tex = (C3D_Tex*)tex;
+    if (i >= offt_n) offt_n = i + 1;
+}
+void pm_tex_clear_offscreen(void) { offt_n = 0; off_cur = -1; }
+void pm_tex_origin(int* x, int* y) {
+    *x = (have && off_cur >= 0) ? off_ox : 0;
+    *y = (have && off_cur >= 0) ? off_oy : 0;
+}
 static GPU_TEXTURE_WRAP_PARAM wrap_s = GPU_REPEAT;
 static GPU_TEXTURE_WRAP_PARAM wrap_t = GPU_REPEAT;
 
@@ -299,7 +313,21 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
                       unsigned dkey) {
     have = 0;
     cur = -1;
+    off_cur = -1;
     if (!img || width < 1 || height < 1 || !scratch) return 0;
+    if (fmt == FMT_RGBA && siz == SIZ_16) {
+        /* V05: a window of an off-screen image drawn this frame: sample the render texture, no copy */
+        for (int i = 0; i < offt_n; i++) {
+            unsigned d = (unsigned)((const u8*)img - offt[i].base), row = offt[i].stride * 2u;
+            if ((const u8*)img >= offt[i].base && d < row * PM_OFF_H) {
+                off_oy = (int)(d / row);
+                off_ox = (int)((d % row) / 2u);
+                off_cur = i;
+                have = 1;
+                return 1;
+            }
+        }
+    }
     if ((unsigned)img < 0x00100000u) {
         static int once;
         if (!once) {
@@ -463,6 +491,7 @@ int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigne
     if (!rgba) {
         have = 0;
         cur = -1;
+        off_cur = -1;
         for (int i = 0; i < slot_hi; i++) {
             Slot* s = &slots[i];
             if (s->live && s->img == buf && s->dkey == key && s->fmt == FMT_RGBA && s->siz == SIZ_32 && s->w == w &&
@@ -481,6 +510,10 @@ int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigne
 }
 
 int pm_tex_bind(void) {
+    if (have && off_cur >= 0) {
+        C3D_TexBind(0, offt[off_cur].tex);
+        return 1;
+    }
     if (!have || cur < 0 || !slots[cur].live) return 0;
     slots[cur].stamp = ++stamp;
     C3D_TexSetWrap(&slots[cur].tex, wrap_s, wrap_t);
@@ -490,7 +523,10 @@ int pm_tex_bind(void) {
 
 void pm_tex_size(int* w, int* h) {
     int pw = 1, ph = 1;
-    if (have && cur >= 0) {
+    if (have && off_cur >= 0) {
+        pw = PM_OFF_W;
+        ph = PM_OFF_H;
+    } else if (have && cur >= 0) {
         pw = pot_at_least_8(slots[cur].w);
         ph = pot_at_least_8(slots[cur].h);
     }
@@ -500,6 +536,7 @@ void pm_tex_size(int* w, int* h) {
 
 /* S25: the texture just loaded becomes TEXEL1 (unit 1). Wrap is that tile's own. */
 int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
+    if (have && off_cur >= 0) { aux = -1; return 0; }
     if (!have || cur < 0 || !slots[cur].live) { aux = -1; return 0; }
     aux = cur;
     aux_ws = wrap_of(cms, masks);
