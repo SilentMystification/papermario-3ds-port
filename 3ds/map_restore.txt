@@ -1,0 +1,22 @@
+# MS01: .data symbols of a map that change at run time (gen_map_restore.py learn). owner, object file, input section
+hos_01 area_hos/hos_01/model_fx.o .data.hos_01_GivingPowerAlpha
+hos_01 area_hos/hos_01/model_fx.o .data.hos_01_GlowingStarAlpha
+hos_05 area_hos/hos_05/intro.o .data.IntroCamStateA_BoomPitch
+hos_05 area_hos/hos_05/intro.o .data.IntroCamStateA_Vfov
+hos_05 area_hos/hos_05/intro.o .data.IntroCamStateA_ViewPitch
+hos_05 area_hos/hos_05/intro.o .data.hos_05_BoomLengthExhale
+hos_05 area_hos/hos_05/intro.o .data.hos_05_BoomLengthInhale
+hos_05 area_hos/hos_05/intro.o .data.hos_05_FadeAwayTapeTime
+hos_05 area_hos/hos_05/intro.o .data.hos_05_FinalCamMoveBoomLength
+hos_05 area_hos/hos_05/intro.o .data.hos_05_OrbitKammyAngle
+hos_05 area_hos/hos_05/intro.o .data.hos_05_OrbitKammyBoomLength
+hos_05 area_hos/hos_05/intro.o .data.hos_05_OrbitKammyCamY
+hos_05 area_hos/hos_05/intro.o .data.hos_05_OrbitKammyFov
+hos_05 area_hos/hos_05/intro.o .data.hos_05_PanAcrossRoomAngle
+hos_05 area_hos/hos_05/intro.o .data.hos_05_PanAcrossRoomCamX
+hos_05 area_hos/hos_05/intro.o .data.hos_05_PanAcrossRoomCamZ
+hos_05 area_hos/hos_05/intro.o .data.hos_05_StoryCameraAngle
+kmr_21 area_kmr/kmr_21/main.o .data.TitlePosY
+mac_06 area_mac/mac_06/whale.o .data.mac_06_unkAngle2
+mac_06 area_mac/mac_06/whale.o .data.mac_06_unkAngle3
+tst_13 area_tst/tst_13/main.o .data.tst_13_shockwave_vtx

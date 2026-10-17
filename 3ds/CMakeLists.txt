@@ -361,6 +361,8 @@ set(PORT_SRC
     src/pm_rsp_audio.c
     src/pm_later.c
     src/pm_map.c
+    src/pm_mapdata.c
+    src/map_restore_table.c
     src/pm_kmr_stubs.c
     src/pm_actor_stubs.c
     src/game_stubs.c
@@ -399,8 +401,12 @@ add_executable(pm_3ds
     ${PM_BUILD_ID_H}
 )
 target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -Wl,--gc-sections
-    -Wl,--wrap=get_map_IDs_by_name -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_asset_by_name
+# MS01: 3dsx.ld of devkitPro with the map statics blocks (INCLUDE of ld/map_restore.ld, made by tools/gen_map_restore.py). gcc finds it
+# through -B before its own copy: the 3dsx.specs link spec names 3dsx.ld.
+set(MS_LD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ld)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in ${CMAKE_BINARY_DIR}/ldscripts/3dsx.ld @ONLY)
+target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map
+    -Wl,--wrap=get_map_IDs_by_name -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background
     -Wl,--defsym,heap_battleHead=gFrameBuf2
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
@@ -470,7 +476,7 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -Wl,
     -Wl,--defsym,fx_sun_undeclared=fx_sun
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
-set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds)
+set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds;${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore.ld")
 target_link_libraries(pm_3ds pm_shader_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")

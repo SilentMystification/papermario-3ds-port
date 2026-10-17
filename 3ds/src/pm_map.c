@@ -628,5 +628,24 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         pm_log("load map area %d map %d scan %u", areaID, mapID, pm_pad_scans);
     }
     pm_mem_log("map");
+    {
+        extern void pm_mapdata_probe(const char* id);
+        s16 pa = loadType == LOAD_FROM_MAP ? areaID : gGameStatusPtr->areaID, pmap = loadType == LOAD_FROM_MAP ? mapID : gGameStatusPtr->mapID;
+        if (map_is_linked(pa, pmap)) pm_mapdata_probe(gAreas[pa].maps[pmap].id); /* slice MS01 debug switch dataprobe */
+    }
     __real_load_map_by_IDs(areaID, mapID, loadType);
+}
+
+/* MS01: a linked map has PM_MAP_DMA_TAG as dmaStart and dmaEnd (3ds/stub_include/map_rom_ranges.h), so load_map_by_IDs calls
+ * dma_copy for it, at the place where the N64 copied the overlay. The overlay has no ROM data here. The call restores the static data of
+ * the map instead (pm_mapdata.c), like the overlay copy did. gMapConfig is set by then. */
+extern MapConfig* gMapConfig;
+extern u32 __real_dma_copy(u8* romStart, u8* romEnd, void* vramDest);
+u32 __wrap_dma_copy(u8* romStart, u8* romEnd, void* vramDest) {
+    if (romStart == (u8*)0x70000001 && romEnd == romStart) {
+        extern void pm_mapdata_enter(const char* id);
+        pm_mapdata_enter(gMapConfig->id);
+        return 0;
+    }
+    return __real_dma_copy(romStart, romEnd, vramDest);
 }

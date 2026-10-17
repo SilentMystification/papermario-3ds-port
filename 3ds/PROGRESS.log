@@ -571,3 +571,18 @@
 05:29 S19b second intro: curtains ok, no ship, no text, static. running scripts dump to see waiting script
 05:37 S19b CAUSE: hos_05 N(PanAcrossRoomTime) static in map .data, not reset on reload (N64 DMA resets it). 2nd intro hangs. new row S33
 05:40 S19b end, notes committed 90de9051c
+05:41 MS01 start
+05:42 MS01 build 1: add link map output, measure .data
+05:46 MS01 build 2: dataprobe switch (pm_mapdata.c), ranges file from link map
+05:48 MS01 run 1: dataprobe tour, 262 maps twice, first=mac_00
+05:48 MS01 run 2: dataprobe tour with partner=1 (run 1 faulted in tik drip without partner)
+05:53 MS01 measure 1: tour twice 262 maps: 12 maps change 388 B (32 syms), tour is 40 frames per map only
+05:53 MS01 run 3: dataprobe on title demo loop, turbo 420 s
+06:02 MS01 measure 2: demo loop 1st pass: hos_05 46 syms 407 B, DemoInitState flags in 7 maps; next: normal chain
+06:09 MS01 build 3: restore at dma_copy tag (linker blocks per map, 21 data rows, all map bss zeroed)
+06:22 MS01 build 3 linked: .mapstat block per map via 3dsx.ld.in INCLUDE
+06:24 MS01 run 5: demo loop with restore + dataprobe check, turbo 1000 s
+06:41 MS01 run 5 result: demo loop repeated 19 times in 1000 s turbo, after-restore diff 0, 0 unmapped
+06:41 MS01 run 6: tour twice with restore check
+06:45 MS01 run 6 result: tour twice 523 maps done, after-restore diff 0, no fault
+06:50 MS01 commit and end

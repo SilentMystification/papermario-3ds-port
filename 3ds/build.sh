@@ -19,7 +19,7 @@ MSYS_NO_PATHCONV=1 docker run --rm \
     cmake -G Ninja -S /work/src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake
     status=0
     cmake --build /work/build -- -k 0 '"$*"' || status=$?
-    cp -f /work/build/pm_3ds.3dsx /work/build/pm_3ds.smdh /out/ 2>/dev/null || true
+    cp -f /work/build/pm_3ds.3dsx /work/build/pm_3ds.smdh /work/build/pm_3ds.map /out/ 2>/dev/null || true
     exit $status
 '
 # Azahar loads from its own SD card, not from build3ds/.
