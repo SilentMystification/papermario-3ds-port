@@ -386,6 +386,7 @@ void pm_gpu_hud(const char* line0, const char* line1) {
 }
 
 /* shots switch: dump the last finished frame (rotated 240x400 buffer, tiled RGBA8) as a PPM. */
+int pm_debug_value(const char* key, char* out, unsigned n);
 static void dump_shot(void) {
     static unsigned n, frames;
     char path[64];
@@ -393,7 +394,13 @@ static void dump_shot(void) {
     unsigned char* row;
     const unsigned char* src;
     int x, y;
-    if (!pm_debug_has("shots") || (frames++ % 30) != 0 || n >= 200) return;
+    static int skip = -1;
+    if (!pm_debug_has("shots")) return;
+    if (skip < 0) { /* shotskip=<n>: no shot in the first n frames (a later scene, such as the second intro after the demo) */
+        char v[16];
+        skip = pm_debug_value("shotskip", v, sizeof v) ? atoi(v) : 0;
+    }
+    if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
     src = (const unsigned char*)target->frameBuf.colorBuf;
     if (!src) return;
     mkdir("shots", 0777);

@@ -564,3 +564,9 @@
 04:58 S19b kzn_19 warp 300 frames rc 0 0 unmapped, shot ok; img 16928KB heap 27543KB spare ~585KB
 04:59 S19b lp battle fault: VINE_n_BASE are N64 addrs (non-SHIFT). Use real buffers under TARGET_3DS, rebuild
 05:02 S19b lava piranha battle kzn2 runs, vine anim by eye, 0 unmapped (real buffers fix)
+05:02 S19b commit 2ed0ef7c5
+05:08 S19b demo run 1 (turbo, fast shots): loop reaches kkj_26, end, title, intro again; jan_04 kzn_02 load; 0 unmapped
+05:08 S19b demo scenes seen by eye jan_04 kzn_02; starting 2-loop run (turbo, timeout 667s)
+05:20 S19b FOUND: after demo, title then intro hos_05 stays on a static scene (360k frames). Adding shotskip switch to look
+05:29 S19b second intro: curtains ok, no ship, no text, static. running scripts dump to see waiting script
+05:37 S19b CAUSE: hos_05 N(PanAcrossRoomTime) static in map .data, not reset on reload (N64 DMA resets it). 2nd intro hangs. new row S33
