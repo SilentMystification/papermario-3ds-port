@@ -1,91 +1,84 @@
 # Orchestrator handoff
 
-Written 2026-10-17 for a new orchestrator chat. Read this file, then HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md.
+Written 2026-10-17 for a NEW orchestrator chat. Read this file, then HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md. The old version of this file is in docs/HISTORY.md.
 
-## 1. Role
+## 1. Role and workflow
 - The orchestrator only orchestrates. It never writes code. It never reads code or project source.
 - Subagents do all work: code, scans, reads, queue edits, notes.
-- Launch ONE slice agent at a time for anything that builds or runs Azahar. The build directory is shared. Only one Azahar window can run. Run the agent in the background.
-- Read only the agent report and the last lines of 3ds/PROGRESS.log.
-- Relay each report to the user in plain terms: what was done, the numbers, what was not verified, the next step. Then launch the next slice.
-- Read-only research agents (Explore type) may run in parallel with a build agent.
-- Post a status to the user after every report. Never leave the user without feedback during a long run.
-- Start no subagent the user did not expect. Stop at a finished slice when the context grows long. Write a short HANDOFF.md note and ask the user to start a new chat.
+- Launch ONE slice agent at a time in the background for anything that builds or runs Azahar. The build directory is shared and only one Azahar window can run.
+- Read-only Explore agents may run in parallel with a build agent.
+- Each agent reports in 5 lines or fewer. The orchestrator reads only the report and the last 20 lines of 3ds/PROGRESS.log.
+- Relay each report to the user in plain terms: what was done, the numbers, what was not verified, the next step.
+- Post a status to the user after every report. Never leave the user without feedback.
+- Launch the next slice automatically. Do not wait for the user. Work in large chunks until the queue is empty or a stop condition (section 7) holds.
+- A question only the user can answer: add it to 3ds/QUESTIONS.md and continue with other work.
+- Start no subagent the user did not expect. When the context grows long, stop at a finished slice, ask an agent for a short HANDOFF.md note, and ask the user to start a new chat.
 
 ## 2. User decisions (2026-10)
-- All subagents use the default model. No tiers.
 - Never push to git. No Claude or Anthropic attribution in commits or PRs.
 - NO STUBS. Never write a stub or stand-in for decomp code or data without asking. A port-layer shim is allowed only for real N64 OS or hardware functions with no game logic.
 - Fix root causes. Never hide a fault with a guard.
-- Q1 (a): merge the whole real battle tree (branch s19-full-battle), everything resident, no stand-in table.
-- Q2 (a): keep needed assets resident in RAM. No SD streaming during play. The ROM file itself need not stay resident.
-- Q4: merge battle first. Then link the demo maps.
-- Q5: the obfuscation shims stay ignored (empty). The crash screen functions only if the debug output can be used (slice S31 checks). Else leave them.
-- Q6: link all maps. Measure first. The memory ceiling stopped at 267 of 421.
-- The game runs at exactly 30 fps (PC01). A 30/60 toggle comes later (F06).
+- Q1 (a): the whole real battle tree is merged (done, M03). Q2 (a): needed assets stay resident in RAM, no SD streaming during play.
+- Q4: demo maps linked (done). Q5: the obfuscation shims stay empty. The crash screen works only if the debug output can be used (row S31).
+- Q6: link all maps. Measure first. 271 of 421 are linked, the rest does not fit (Q7).
+- The game runs at exactly 30 fps (PC01). A 30/60 toggle comes later (F06). Widescreen comes later (F07).
 - The O3DS is the hardware target. It should reach full speed. Performance work comes after everything works.
 - ARM11 math audit: experiments allowed. Game-logic math changes need a replay check and the user approval.
-- Use libctru natives for threading and sync.
-- The log is non-blocking on core 1 (L01).
+- Use libctru natives for threading and sync. The log is non-blocking on core 1 (L01).
 - Workload split: core 0 = logic plus the CPU part of the RSP work. Core 1 = audio. PICA GPU = rasterization plus vertex work. Consider ndsp for audio mixing.
-- Testing: feature tests use the warp with -Turbo -Smoke and a fixed length. Never an open wait. Tours iterate on the failing set. Run the full tour once at the end. Run the full normal chain only for slices that touch boot, title, file select, intro or the map change path.
+- Testing: feature tests use the warp with -Turbo -Smoke and a fixed length. Never an open wait. Tours iterate on the failing set. Run the full tour once at the end.
+- SMALL HANDOFF.md: at most about 150 lines. Each slice adds at most 3 lines to it. Detail goes to docs/HISTORY.md.
+- History is kept in docs/ (HISTORY.md, SLICES_DONE.md, PROGRESS_ARCHIVE.log). Nothing is deleted. Move text, never drop it.
+- Screenshot analysis is GENTLE. Use screenshots only when really needed. Prefer text evidence: draw logs, depth view, checksums, pixel diffs, summary scripts. When a picture is needed, use ONE contact sheet.
+- Lighter checks: smoke on presets yard and toad with -Turbo -Smoke, shots of only the touched scenes. No 4-scene A/B and no full tour, unless the slice touches the map change path, boot, title, file select or intro. Iterate on failing sets. Run the full tour once at the end. Warp and turbo for feature tests.
+- Memory rule: the estimated O3DS spare is about 518 KB. No more than about 10 KB of code or data per slice without a Q7 question.
+- MODEL RULE (replaces the old "default model, no tiers"): never use `fable`. Use `opus` ONLY for planning: an agent whose job is to plan or design (the Plan agent type, a design or research-to-plan slice, a plan for a large feature such as widescreen, 60 fps, the GPU vertex transform or the audio redesign). Never use `opus` for coding, investigation, builds or checks. For all coding, investigation, shared-code changes, graphics, memory and audio work the highest tier is `sonnet`. After the handoff use `haiku` for MECHANICAL slices: measurement and listing slices, tours and check runs that report a table, documentation and queue edits, git cleanup, and link-and-build slices that follow an existing pattern with a clear check. Use `sonnet` for investigation, any change to shared decomp code, the GPU and graphics layer, memory layout, audio, and anything that needs judgment about the no-stub rule. Pass the `model` parameter of the Agent tool. A planning slice may use `opus`. Its output is a plan file or a design section in docs/ that a later sonnet or haiku agent executes. If a haiku agent reports BLOCKED or gives an unclear result, relaunch the slice on `sonnet` (not opus).
 
-## 3. How to run
-- Debug switches go in `debug3ds.txt` or `-Debug "..."`. Never leave `fast` in debug3ds.txt.
-- Switches: `fast` (skip logos and the 30 Hz pad wait), `autoa`, `freshsave`, `shots`, `padscript=`, `padrand`, `warp=<map>:<entry>`, `story=`, `preset=` (intro yard toad toad_east toad_west osr kmr02), `partner=`, `loadslot=`, `smoke`, `smokeframes=`, `tour=@file`, `turbo`, `rmlog`, `rmoff`, `phase` (`phasecsv`, `phasegbi`), `ptrcheck`, `romstrict`, `romtrace`, `logstat`, `lognull`, `logflood`, `audiostat`, `stats`, `scripts`, `faulttest`, `crashtest_call`.
-- Main command: `powershell -File 3ds/run_azahar.ps1 -Turbo -Smoke -FaultStop -Debug "fast preset=toad"`. Other options: `-Timeout`, `-Stall`, `-Until`, `-Gdb -GdbScript`, `-TurboFactor`. Exit 0 = ok, 1 = failed, 2 = unmapped access or crash.
-- Normal chain: `-Debug "fast autoa freshsave" -Stall 40`. Use run_azahar.ps1, not go.ps1.
-- Never start azahar.exe with other arguments than the .3dsx path (modal dialog).
-- Hardware skills: `pull-n`, `pull-o` (pull log and crash dumps), `push-a` (Azahar), `push-n` (N3DS 192.168.1.223), `push-o` (O3DS 192.168.1.168).
-- Progress log: each agent appends one line per step to 3ds/PROGRESS.log (`HH:MM ID text`). Logs, traces and shots go under 3ds/logs/ (git-ignored). Never commit logs. Do not run `git checkout` on tracked log files.
+## 3. Agent reading rules
+Every agent prompt says "follow the reading rules in ORCHESTRATOR.md".
+- Read the tail (last 40 lines) of logs. Never read a whole log.
+- Read files with offset and limit.
+- Use the summary scripts, not raw logs: `3ds/tools/phase_report.py`, `rom_trace_classify.py`, `rom_trace_check.py`, `check_data_layout.py`, and the tour table output.
+- Read docs/INDEX.md first to find things. Do not search the tree.
+- Read HANDOFF.md and the one slice row. Do not read docs/HISTORY.md. Use grep on it only when a topic needs it.
+- No screenshots unless needed (section 2). One contact sheet at most.
 
-## 4. Agent prompt template
+## 4. How to run
+- Debug switches go in `debug3ds.txt` or `-Debug "..."`. The list is in HANDOFF.md and docs/INDEX.md. Never leave `fast` in debug3ds.txt.
+- Main command: `powershell -File 3ds/run_azahar.ps1 -Turbo -Smoke -FaultStop -Debug "fast preset=toad"`. Exit 0 = ok, 1 = failed, 2 = unmapped access or crash.
+- Normal chain: `-Debug "fast autoa freshsave" -Stall 40`. Use run_azahar.ps1, not go.ps1. Never start azahar.exe with other arguments than the .3dsx path.
+- Hardware skills: `pull-n`, `pull-o`, `push-a`, `push-n` (N3DS 192.168.1.223), `push-o` (O3DS 192.168.1.168).
+- Progress log: each agent appends one line per step to 3ds/PROGRESS.log (`HH:MM ID text`). Logs, traces and shots go under 3ds/logs/ (git-ignored).
+
+## 5. Slim agent prompt template
 ```
-Repo: c:\Users\Andrew\Documents\GitHub\papermario-3ds-port. Branch main. Do not git push. Add no Claude or Anthropic attribution to commits. Commit locally in plain English. Commit only your own files.
-Read HANDOFF.md (sections "Do not", "Warp" and the result of your slice) and 3ds/SLICES.md first.
-Append one line per step to 3ds/PROGRESS.log (format: HH:MM <ID> text). Write logs and shots under 3ds/logs/. Never commit them.
-Rules:
-- No stubs. Never write a stand-in for decomp code or data. If a stub looks like the only option, write BLOCKED: <reason> in HANDOFF.md and stop.
-- Fix root causes. No guard that hides a fault.
-- Testing: warp with -Turbo -Smoke -FaultStop and a fixed length. Run the full normal chain only if the slice touches boot, title, file select, intro or the map change path.
-- Threading and sync use libctru natives.
-- Write notes and replies in ASD-STE100 English: short sentences, one instruction each, active voice, no semicolons, no praise.
-Overnight mode: if you need a user answer, add the question to 3ds/QUESTIONS.md and keep working on what you can do.
-Task: <slice id and text from SLICES.md>
-Verification: <the done check from SLICES.md>. Say what you saw by eye and what you did not check.
-Write a result section in HANDOFF.md and mark the row in SLICES.md.
-Report (5 lines or fewer): slice id; last commit hash; result; what was and was not checked by eye; BLOCKED or not.
+Repo: c:\Users\Andrew\Documents\GitHub\papermario-3ds-port. Branch main.
+Read 3ds/ORCHESTRATOR.md (rules, reading rules), HANDOFF.md and the row <id> in 3ds/SLICES.md. Follow the rules and the reading rules in ORCHESTRATOR.md. Use docs/INDEX.md to find files.
+Task: <slice id and text>
+Verification: <the done check of the row>. Say what you checked and what you did not check.
+Append one line per step to 3ds/PROGRESS.log. Add at most 3 lines to HANDOFF.md. Put detail in docs/HISTORY.md. Mark the row done: move it to docs/SLICES_DONE.md.
+Overnight mode: a question for the user goes to 3ds/QUESTIONS.md. Keep working on the rest.
+No push. No Claude or Anthropic attribution. No stubs (write BLOCKED: <reason> in HANDOFF.md and stop). Commit locally, plain English, only your files.
+Write notes and replies in ASD-STE100 English.
+Report (5 lines or fewer): slice id; last commit hash; result; what was and was not checked; BLOCKED or not.
 ```
+Pass `model` to the Agent tool by the MODEL RULE.
 
-## 5. State (2026-10-17)
-- RUNNING when this file was written: S25 (Fast3D gaps, combiner audit, pm_comb.c). Its row in SLICES.md still shows `[ ]`. PROGRESS.log shows its commit af71c887b at 02:30. It may still run. Read its report in the S25 note in HANDOFF.md and the S25 row in SLICES.md before you launch anything.
-- Queue, in order:
-1. S25: finish, read the report. The battle part of S25 needs the merge.
-2. PC01 (HIGH): exact 30 fps pacing in pm_frame_loop. Measure steps per second first. No input needed.
-3. S28: hardware run on the O3DS and N3DS (boot line, audio cost, FPS). Needs the user: O3DS on, dspfirm.cdc on the SD card.
-4. H03: derive the memory split from measured need. Needs the S28 boot line.
-5. S31: check whether the crash screen can use the debug output (Q5). No row exists yet in SLICES.md. Create it.
-6. S30b: link kpa, kzn, flo, jan, sam, pra (154 maps). Needs Q7.
-7. F01 remainder: fault sweep paths (battle after the merge, pause, save, zones). Row is `[~]`.
-8. F03: depth read back for `is_point_visible` (NULL z-buffer). No input needed.
-9. T02: run_azahar.ps1 safe config (per-run config copy, mutex, try/finally). Low priority.
-10. V02: wall over bushes. Not reproduced. Needs the user details (section 6).
-11. Battle merge: branch s19-full-battle (Q1 a). Rebase first. `pm_title.c` was deleted on main, so the `battle` and `demobattle` hooks need a new place. Needs the memory answer (Q7).
-12. S19b: link src/world/model_anim/kzn/*.c. After the merge.
-13. S19d: real encounter start. After the merge.
-14. S29: kkj_00 chain, title demo timer. After the merge and the demo maps (Q4).
-15. Remaining 154 maps (same as S30b if not done earlier).
-16. Performance phase (HANDOFF "Performance phase"): PO2 vertex once at G_VTX, GPU transform, audio on core 1 or ndsp, ARM11 math audit, F06 30/60 toggle plan. Re-measure on the O3DS.
-17. Final re-audit of all port files (like S20): list stand-ins, confirm each is gone or approved.
+## 6. State (2026-10-17)
+- Queue: 3ds/SLICES.md, in order. First 6 rows: (1) G01g golden frames. (2) S28 hardware run (needs the user: O3DS on at 192.168.1.168, dspfirm.cdc on the SD card). (3) H03 memory split and graceful texture failure. (4) S30b the 154 id-only maps and Q7. (5) V07 items flicker. (6) V06 follow-up, then V08, V09 (two rows), V10, V11, X02, S31, F01, F03, T02, F08, then the performance phase (PO2, PO3, AU1, MA1), then F06 and F07.
+- Open questions for the user (3ds/QUESTIONS.md): Q7 memory (spare about 518 KB, limit 500 KB, 154 maps would give about -1.1 MB), Q2 resident ROM, PO2, V06 (which problem), S28 (is the O3DS on).
+- Memory and hardware: the game never ran on hardware. The spare is an Azahar-based estimate. S28 comes first in the hardware path.
+- Done so far: see docs/SLICES_DONE.md. The real chain, battle, demo loop, transitions, pause and file select run in Azahar.
 
-## 6. Open questions for the user (from 3ds/QUESTIONS.md)
-- Q7: fit all maps plus the battle tree? All 418 maps leave about 2.6 MB (O3DS estimate). The battle tree needs about 3.9 MB. Options: stream rare map data, shrink the resident ROM, accept less spare, or wait for S28.
-- PO2: transform each vertex once at G_VTX (CPU only, small change). Not in QUESTIONS.md yet. Ask the user.
-- V02: where exactly does the back wall render over the bushes? Map, moment, camera angle, device. A photo helps if it is hardware only.
-- Is the O3DS at 192.168.1.168 on, with dspfirm.cdc on the SD card, for S28?
-- QUESTIONS.md still lists Q1, Q2, Q4, Q5 as open. Section 2 holds the user decisions. Ask an agent to update QUESTIONS.md.
+## 7. Stop conditions
+- A slice agent reports BLOCKED (a stub looks necessary).
+- Two failed builds in a row for one slice.
+- A regression: the smoke check, the normal chain or a tour gets worse.
+- A question only the user can answer: queue it in QUESTIONS.md, then continue with other rows.
+- S28 and any hardware step: wait for the user.
+- The queue is empty.
 
-## 7. Start prompt for the new chat
+## 8. Start prompt for the new chat
 ```
-Read 3ds/ORCHESTRATOR.md, HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md. You are the orchestrator only. Do not read or write code. Subagents do all work. First check the running agent state: read the last 20 lines of 3ds/PROGRESS.log and the open rows in 3ds/SLICES.md. Tell me the status in plain terms. Then launch the next slice with the template in 3ds/ORCHESTRATOR.md, one build agent at a time, in the background.
+Read 3ds/ORCHESTRATOR.md, HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md. You are the orchestrator only. Do not read or write code. Subagents do all work. Follow the workflow, the model rule and the reading rules in 3ds/ORCHESTRATOR.md. Tell me the status in 10 lines. Ask me the open questions from 3ds/QUESTIONS.md. Then launch the first slice (G01g golden frames) with the slim agent prompt template and continue with the same workflow without waiting for me.
 ```
