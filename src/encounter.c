@@ -2533,8 +2533,9 @@ void create_encounters(void) {
                     }
                     enemy->encountered = 0;
 #ifdef TARGET_3DS
-                    /* N64 pointers are negative as s32, so '< EVT_LIMIT' means 'is a pointer'. Host pointers are positive: every NPC init script was dropped. */
-                    if (npcData->init != nullptr) {
+                    /* N64 pointers are negative as s32, so '< EVT_LIMIT' means 'is a pointer'. Host pointers are positive: every NPC init script was dropped.
+                     * A few maps (machi, kzn_04) hold a small number there (0x1F64) that is not a pointer. The image starts at 0x100000. */
+                    if ((u32) npcData->init >= 0x00100000u) {
 #else
                     if ((s32) npcData->init < EVT_LIMIT) {
 #endif
