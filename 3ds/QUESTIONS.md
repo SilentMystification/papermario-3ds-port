@@ -43,6 +43,12 @@ Last tidied by slice S20. Answer by editing the "Answer" line or by telling the 
 - Fact: the intro goes hos_05 to hos_04. `hos_04` is an id-only row, so the load is refused and the game goes to the title (same result as the real intro end, `state_intro.c` handles it). Only 6 maps are real rows (hos_05, kmr_02, kmr_20, osr_00, kkj_00, mac_00). Each real map costs about 45 KB (estimated). This also decides how long the stand-in B1 (`area_table.c`) and B2 (the `GotoMap` guard) stay.
 - Options: (a) leave. (b) link hos_04 (8 files in `src/world/area_hos/hos_04`). (c) link all maps after S28 shows the real RAM limit. This removes B1 and B2.
 - Recommendation: (a) now, (c) after S28 and Q2. If all maps fit, B1 and B2 go away.
+- Answer: (user, S30) "scan and measure, I would like all maps to be linked". S30 linked 267 of 421 maps (ceiling reached, see Q7).
+
+### Q7. How to link the last 154 maps (kpa, kzn, flo, jan, sam, pra, plus kmr_22, kzn_19, flo_11)? (from S30)
+- Fact (measured in S30, Azahar inputs, O3DS values estimated): 267 maps linked, image 13.1 MB, estimated O3DS heap left 4.58 MB. All 418 compilable maps would give 15.1 MB and 2.6 MB left. The battle merge (Q1, +3.9 MB) is not counted: with 267 maps it leaves about 0.7 MB, with all maps it does not fit. kpa alone costs 340 KB. kmr_22 and kzn_19 need S19b (kzn model_anim data), flo_11 needs battle.c.
+- Options: (a) stream the map data of rarely used areas (read it from the ROM on the first visit, needs a loader for the in-place map data, a big change). (b) shrink the resident ROM more (Q2, for example stream the ROM from SD, saves up to 26 MB). (c) accept less spare and link all (2.6 MB, no room for the battle tree). (d) stay at 267 and link the rest after the hardware run (S28) shows the real limit.
+- Recommendation: (d) first. Then (b) if S28 shows less than 64 MB or if Q1 is merged.
 - Answer: (open)
 
 ## Answered or resolved

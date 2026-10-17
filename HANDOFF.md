@@ -808,3 +808,104 @@ All items belong to slice D02. Azahar only. Fixes are in the build setup (`3ds/C
 - Per-file list or global `-fno-data-sections -fno-toplevel-reorder` on all decomp files? Measured (3dsx, elf): base 2692992 B file, text 1264404, data 1360064, bss 6906656. Global: 2829808 B file (+136816, +5.1%), text +6952, data +123840, bss +40512, total RAM image about +171 KB. Global also needs 3 exceptions to link (`entity/Block.c`, `entity/SimpleSpring.c`, `entity/model/SimpleSpring_anim.c`: their data points at render functions of block models that are not linked, and gc used to drop it). Per-file (actions.c, script_list.c): 0 bytes. Decision: per-file list, because the scan found only these files and the global flag costs about 171 KB for no known gain. If a later slice links more decomp data with neighbour reads, run `check_data_layout.py --scan` first.
 - Side finding, NOT D02 (also at the commit before D02): pause opened by `padscript` START in `preset=toad` writes to tiny addresses (`unmapped Write16 0x1 @ 0x209EA`, 66756 times) in `gfx_frame_filter_pass_1` (`src/background_gfx.c:64`) and `gfx_transfer_frame_to_depth` (`:271`). It looks like the frozen frame pointer is not mapped to a real buffer. Needs a slice (F01 area). Command: `fast preset=toad padscript=wait80,right*40,A*24,wait60,START*3,wait120,START*3,wait60`.
 - Checks after the fixes: yard jump same as G02 (y 41, 56, 66, 67 peak, back to 30 at f56), toad smoke 0 unmapped, `fast autoa freshsave` maps at scans 562, 2316, 2562, 3178 (same as before), 0 unmapped lines.
+
+## Open issue H04 (user-reported, unverified, documentation only so far): the in-world HUD texture is not there
+User report: "the HUD texture is not there". Meaning: the in-world HUD (status bar with HP, FP, coins, star points, or HUD elements). Which one is not known: ask the user. Row H04 in 3ds/SLICES.md. Hypotheses, none tested:
+1. The status bar is never shown or opened (setup_status_bar_for_world, sync_status_bar, open_status_bar_slowly, show/hide flags, gPlayerData values). The D01 new-file setup may leave it hidden.
+2. HUD element textures do not decode or draw (hud_element.c cache tables gHudElementCacheTableRaster/Palette/Buffer, aux cache buffer D_80200000 that D02 moved to pm_hud_aux_cache[0x38000] in pm_map.c, icons read from ROM).
+3. The M01/M02 resident ROM remap dropped an icon or HUD range that the game reads later (ROM read trace, rom_static_check.py).
+4. Render state: I4/IA/CI textures and combiners changed in S26 and S27.
+Method: warp to yard or toad with -Turbo -Smoke, `fast shots`, log HUD element creation and draws, dump a HUD texture.
+
+
+## S30 result (slice S30: link all maps, Q6)
+
+All items belong to slice S30. Azahar only. Memory numbers for the O3DS are ESTIMATED from Azahar-measured inputs (64 MB limit assumed, as in M02).
+
+### What changed
+- `src/world/world.c` is built whole with its real `gAreas` (421 map rows). `3ds/src/area_table.c`, `3ds/tools/check_area_table.py` and the CMake cut of world.c are deleted (stand-in B1 is gone).
+- `3ds/tools/gen_map_sources.py` writes `3ds/maps.cmake` (real sources of each map, taken from the decomp `build.ninja`, plus every `src/entity/**` and `src/world/script_api/**` file the maps need), `3ds/stub_include/map_rom_ranges.h` (all map `_ROM_START/_END/_VRAM` are null: map code and data are linked in, no overlay DMA) and `3ds/map_syms.lds` (for a map that is not linked: `<map>_settings = pm_unlinked_map`, a sentinel in pm_map.c). `3ds/maps_skip.txt` lists what stays unlinked and why. Run `python 3ds/tools/gen_map_sources.py` after editing it.
+- All 2,142 map files (418 maps) compile with the CMake flags and no stub. The 441 files that failed in S01 compile now. Real fixes: the generated `ver/us/build/include/recipes.inc.c` was missing (run `ninja ver/us/build/include/recipes.inc.c`; `extract_assets.py` now lists `.inc.c` targets), the `fx_sun_undeclared` alias from `undefined_syms.txt` (link option), `src/world/area_dgb/smash_bridges.c` (data segment of dgb_01, linked in place).
+- The port guard (B2) stays for unlinked maps: `GotoMap refused` now gives the control back (see below).
+
+### Memory (arm-none-eabi-size of the ELF, boot log, Azahar)
+- Before S30: image 9,531,124 B (text 1,264,404, data 1,360,064, bss 6,906,656), 3dsx 2,692,992 B.
+- All 418 maps linked: text 2,379,964, data 5,758,944, bss 7,292,944 = 15,431,852 B (+5.9 MB), 3dsx 8,563,360 B, `used-by-image` 15,088 KB, estimated O3DS spare 65,536 - 20,480 - 15,088 - 27,370 = 2,598 KB. That is under the 4,500 KB ceiling, so not all areas are linked.
+- Linked (267 maps in 22 areas, last build): text 1,941,924, data 4,191,480, bss 7,264,712 = 13,398,116 B, 3dsx 6,437,736 B (6.14 MB). Boot log: `mem commit limit ... used-by-image 13104KB`, `mem map heap used 27370KB sbrk-left 17676KB linear free 12953KB`, `mem tick heap used 27375KB sbrk-left 17676KB linear free 11828KB tex-cache 1124KB`. Estimated O3DS heap left = 65,536 - 20,480 - 13,104 - 27,375 = 4,577 KB (above 4,500 KB). Estimated spare after the battle merge (+3.9 MB): about 0.7 MB. Azahar `sbrk-left` does not change with the image (Azahar offers 98 MB), so the estimate comes from `used-by-image`.
+- Compile time: the full compile of all map files plus entities took about 2 minutes on 32 cores (Docker volume). One area step (generate, build, link, size, Azahar smoke) took about 75 to 80 seconds of build plus 20 seconds of run.
+- Per area, measured one by one (cumulative, order mac, kmr, hos, osr, kkj, tik, nok, trd, kgr, iwa, dro, sbk, isk, mim, obk, arn, dgb, omo, then tst, end, mgm, gv). The first row includes the entity files (about 0.5 MB, needed by any map) and the 6 maps linked before. kpa was measured and did NOT fit (spare 4,442 KB, 58 KB under the ceiling), so it was removed again: its row is not part of the final image (the rows after it start from omo). tst, end, mgm, gv are small and fit after kpa was dropped.
+
+| area | maps linked in total | files | image KB (used-by-image) | added KB | est. O3DS spare KB |
+|---|---|---|---|---|---|
+| mac | 13 | 122 | 9980 |  | 7706 |
+| kmr | 27 | 197 | 10168 | 188 | 7518 |
+| hos | 35 | 254 | 10316 | 148 | 7370 |
+| osr | 39 | 273 | 10356 | 40 | 7330 |
+| kkj | 63 | 403 | 10668 | 312 | 7018 |
+| tik | 85 | 521 | 10900 | 232 | 6786 |
+| nok | 94 | 583 | 11148 | 248 | 6538 |
+| trd | 105 | 632 | 11316 | 168 | 6370 |
+| kgr | 107 | 639 | 11324 | 8 | 6362 |
+| iwa | 114 | 679 | 11444 | 120 | 6242 |
+| dro | 116 | 693 | 11536 | 92 | 6150 |
+| sbk | 166 | 821 | 11724 | 188 | 5962 |
+| isk | 183 | 908 | 11840 | 116 | 5846 |
+| mim | 195 | 987 | 11980 | 140 | 5706 |
+| obk | 204 | 1050 | 12136 | 156 | 5550 |
+| arn | 215 | 1109 | 12236 | 100 | 5450 |
+| dgb | 234 | 1212 | 12560 | 324 | 5126 |
+| omo | 251 | 1319 | 12904 | 344 | 4782 |
+| kpa | 301 | 1540 | 13244 | 340 | 4442 |
+| tst | 260 | 1335 | 12924 | -320 | 4762 |
+| end | 262 | 1355 | 13036 | 112 | 4650 |
+| mgm | 266 | 1370 | 13092 | 56 | 4594 |
+| gv | 267 | 1372 | 13096 | 4 | 4590 |
+
+- Not linked, measured or estimated: kpa +340 KB (measured). kzn about 229, flo about 355, jan about 450, sam about 327, pra about 287 KB (ESTIMATED: the measured total of all 418 maps minus the linked ones, split by object size).
+
+### Maps left id-only (154 maps, listed in `3ds/maps_skip.txt`)
+- Areas kpa (50 maps, Bowser's Castle), kzn, flo, jan, sam, pra: memory ceiling only. Nothing else blocks them, except the three maps below.
+- `kmr_22`, `kzn_19`: `common/lava_piranha/part2.inc.c` needs `world_model_anim_kzn_00..20_ROM_START/_END/_VRAM`, the ROM data of `src/world/model_anim/kzn/*.c`, DMA'd to one VRAM address. Needs slice S19b.
+- `flo_11`: `main.c` calls `func_80044238` (src/encounter_api.c) which calls `func_80072BCC`, defined in `src/battle/battle.c` (battle tree, Q1).
+- Question Q7 in `3ds/QUESTIONS.md` asks how to link the rest.
+
+### Refused GotoMap no longer freezes Mario (task 4)
+- Cause: the exit scripts (`EVT_EXIT_WALK` and the door and pipe variants) run `Exec(ExitWalk)`, which calls `DisablePlayerInput(true)` AFTER `GotoMap` returned. Nothing enables the input again, because a real map change clears every script. The first idea (enable the input inside the guard) was too early: the Exec'd script disabled it right after.
+- Fix (port guard, `3ds/src/pm_map.c`, no decomp change): `pm_map_tick` (called once per drawn frame from pm_main.c). After a refusal it waits until the scripts of group EVT_GROUP_EXIT_MAP are gone (or 200 frames), then calls the game's own `enable_player_input`, `partner_enable_input`, `func_800E01DC`, `enable_status_bar_input`, clears `GLOBAL_OVERRIDES_40`, and puts Mario back where he stood 45 frames before (history of the frames with input on), idle. Without the move the exit zone fires again at once and Mario stays frozen in a loop.
+- Test (temporary id-only row for mac_01, then removed): `fast preset=toad_east padscript=wait80,right*120,wait200,left*30,wait30` gives `GotoMap refused` at f46, `control back after 103 frames (exit scripts ended)`, `Mario back to 600 0 0 (was 686 0 0)`, inputDisabled 0, and Mario walks left (x 600 to 531). 0 unmapped.
+
+### East zone of mac_00 (G01)
+`fast preset=toad_east padscript=wait80,right*100,wait260,left*140,wait300` (turbo, fixed 50 s timeout): `load map area 1 map 2` (mac_01) at scan 198, Mario controllable at x -581, walks out of the west zone, `load map area 1 map 1` (mac_00) at scan 566, x 648 to 513. 0 unmapped. G01 is done: the cause was Q6 (mac_01 was id-only).
+
+### Presets (turbo, -Smoke, -FaultStop)
+toad, toad_east, toad_west, yard, kmr02, osr: all rc 0, 0 unmapped, 0 refusals.
+
+### Two real bugs found by the link (fixed, not map specific)
+- `ENTITY_ADDR(entity, type, data)` (include/entity.h) is `gfxBaseAddr + (data & 0xFFFF)`. On the N64 the symbol is an offset in the DMA'd model. Here the model data is linked in place, so the low 16 bits of a host address are layout dependent. With sbk linked, kmr_02 (SaveBlock) drew a display list from the wrong place in the entity heap: a garbage list, 600 KB of overwrite and unmapped writes at the end of the image. Fix: under `TARGET_3DS` the macro is `(type)(data)` (shared decomp header, `#ifdef` as in src/entity.c). Visual check of the save block: NOT done (logs only).
+- `pm_gbi.c` G_VTX: a load that starts past slot 64 (`v0 >= 64`) made `n = 64 - v0` negative, so `memcpy` copied 4 GB. Now `n = 0`. A garbage display list can still be drawn. The guard hides bad lists (see the F01 notes).
+
+### Map tour (tour switch, class E, `3ds/src/pm_warp.c`)
+`warp=<first>:0 tour=@tour.txt` visits a list of maps through the real GotoMap path (40 frames each, `-Until "tour: done"`). `tour.txt` is in the SD app folder, `map:0` per line. Scripts (git-ignored): `3ds/logs/s30_tour.sh` (chunks of 40, restarts after a fault), result `3ds/logs/s30_tour_result.csv`. Entry 0 of each map, state of a new file (flags unset, no partner). Result: 266 maps visited, 251 without an unmapped access in 40 frames, 15 with. The tour does not detect a black screen or a wrong picture, only unmapped accesses, crash symbols and stalls. The map column can be one map late (the fault shows while the next map is requested): the function name tells the real map. No assert was seen.
+
+| map (as listed by the tour) | result |
+|---|---|
+| mac_05 | FAIL: stopped after 19 s: unmapped access  77761x at PC 0x00127B40 mdl_local_gfx_update_vtx_pointers at /work/src/src/model.c:4088 |
+| mac_06 | FAIL: stopped after 16 s: unmapped access  80898x at PC 0x00127B30 mdl_local_gfx_update_vtx_pointers at /work/src/src/model.c:4088 |
+| tik_07 | FAIL: stopped after 16 s: unmapped access  40x at PC 0x00218CA4 tik_06_CheckDripCollisionWithNPC at /work/src/src/world/area_tik/tik_06/../common/DripVolu |
+| tik_15 | FAIL: stopped after 16 s: unmapped access  42x at PC 0x0021EB44 tik_14_CheckDripCollisionWithNPC at /work/src/src/world/area_tik/tik_14/../common/DripVolu |
+| kgr_01 | FAIL: stopped after 17 s: unmapped access  15410x at PC 0x00127B20 mdl_make_local_vertex_copy at /work/src/src/model.c:4117 |
+| kmr_10 | FAIL: stopped after 17 s: unmapped access  152x at PC 0x001D5D70 SpeakToPlayer at /work/src/src/evt/msg_api.c:21 |
+| isk_14 | FAIL: stopped after 27 s: unmapped access  56175x at PC 0x00130CD4 set_script_flags at /work/src/src/evt/script_list.c:950 |
+| nok_01 | FAIL: stopped after 18 s: unmapped access  1x at PC 0x00248580 trd_06_InitializeFallingPartner at /work/src/src/world/area_trd/trd_06/falling.c:148 |
+| hos_02 | FAIL: stopped after 20 s: unmapped access  98982x at PC 0x00127B30 mdl_local_gfx_update_vtx_pointers at /work/src/src/model.c:4088 |
+| hos_04 | FAIL: stopped after 16 s: unmapped access  74446x at PC 0x00127B30 mdl_local_gfx_update_vtx_pointers at /work/src/src/model.c:4088 |
+| kkj_28 | FAIL: stopped after 28 s: unmapped access  6x at PC 0x001B09CC partner_walking_enable at /work/src/src/world/partners.c:1136 |
+| omo_12 | FAIL: stopped after 24 s: unmapped access  383x at PC 0x002957AC omo_11_UpdateRotatingPlatforms at /work/src/src/world/area_omo/omo_11/gizmos.c:185 |
+| tst_03 | FAIL: stopped after 17 s: unmapped access  675x at PC 0x002985EC omo_16_SetNpcPosYaw at /work/src/3ds/../src/common/SetNpcPosYaw.inc.c:10 |
+| tst_12 | FAIL: stopped after 17 s: unmapped access  28410x at PC 0x0015F24C floating_flower_main at /work/src/src/effects/floating_flower.c:31 (discriminator 1) |
+| gv_01 | FAIL: stopped after 18 s: unmapped access  116545x at PC 0x0012FC9C find_script_labels at /work/src/src/evt/script_list.c:136 |
+
+Causes (grouped, new rows in SLICES.md): `mdl_make_local_vertex_copy` / `mdl_local_gfx_update_vtx_pointers` (model.c 4088, 4117) in mac_05, mac_06, kgr_01, hos_02, hos_04 (row V04). Null reads in scripts, NPCs and partners (row F02): `find_script_labels` (gv_01, script_list.c:136), `set_script_flags` (isk_14, script_list.c:950), `SpeakToPlayer` (kmr_10, msg_api.c:21), `CheckDripCollisionWithNPC` of tik_06 and tik_14 (DripVolumes.inc.c:20, NPC missing), `trd_06_InitializeFallingPartner` (no partner in a new file), `partner_walking_enable` (kkj_28, no partner), `omo_11_UpdateRotatingPlatforms`, `omo_16_SetNpcPosYaw`, `floating_flower_main` (tst_12). Several may come from the tour state (new file, no partner, entry 0), not from the maps. Not diagnosed beyond the first fault.
+
+### Full normal chain (slice S30 touches the map change path)
+`fast autoa freshsave -FaultStop`, normal speed: kmr_20 (scan 562), osr_00 (2316), kmr_20 (2562), mac_00 (3178), 0 unmapped, same scans as before S30.

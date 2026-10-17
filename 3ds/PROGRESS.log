@@ -301,3 +301,50 @@
 19:22 S30 temp build with mac_01 id-only for the refusal test
 19:28 S30 refusal fix tested (mac_01 temp id-only): control back after 103 frames, Mario back to 600
 20:14 S30 kmr02 fault: ENTITY_ADDR used low 16 bits of host symbol; fixed in include/entity.h (3DS), G_VTX v0>=64 guard
+20:19 S30 east zone walk mac_00 -> mac_01 -> mac_00 ok, 0 unmapped; 6 presets ok
+20:20 S30 H04 row and open issue added (documentation only)
+20:22 S30 tour progress 1 of 266
+20:23 S30 tour progress 2 of 266
+20:23 S30 tour progress 3 of 266
+20:23 S30 tour progress 4 of 266
+20:24 S30 tour progress 5 of 266
+20:24 S30 tour progress 6 of 266
+20:25 S30 tour progress 7 of 266
+20:25 S30 tour progress 8 of 266
+20:26 S30 tour progress 9 of 266
+20:26 S30 tour progress 10 of 266
+20:26 S30 tour progress 11 of 266
+20:27 S30 tour progress 12 of 266
+20:27 S30 tour progress 13 of 266
+20:28 S30 tour progress 14 of 266
+20:28 S30 tour progress 15 of 266
+20:28 S30 tour progress 16 of 266
+20:29 S30 tour progress 17 of 266
+20:29 S30 tour progress 18 of 266
+20:29 S30 tour progress 19 of 266
+20:30 S30 tour progress 20 of 266
+20:30 S30 tour progress 21 of 266
+20:31 S30 tour progress 22 of 266
+20:31 S30 tour progress 23 of 266
+20:31 S30 tour progress 24 of 266
+20:32 S30 tour progress 25 of 266
+20:39 S30 tour progress 7 of 266
+20:40 S30 tour progress 8 of 266
+20:40 S30 tour progress 15 of 266
+20:40 S30 tour progress 21 of 266
+20:41 S30 tour progress 31 of 266
+20:41 S30 tour progress 41 of 266
+20:42 S30 tour progress 81 of 266
+20:42 S30 tour progress 121 of 266
+20:43 S30 tour progress 136 of 266
+20:43 S30 tour progress 147 of 266
+20:44 S30 tour progress 149 of 266
+20:44 S30 tour progress 181 of 266
+20:45 S30 tour progress 221 of 266
+20:45 S30 tour progress 245 of 266
+20:46 S30 tour progress 253 of 266
+20:46 S30 tour progress 257 of 266
+20:47 S30 tour progress 266 of 266
+20:47 S30 tour of 266 maps done: 251 ok, 15 fault; chain test next
+20:54 S30 HANDOFF result written
+20:54 S30 SLICES and QUESTIONS updated, end
