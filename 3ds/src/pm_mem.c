@@ -9,11 +9,15 @@
  * build does not take it.
  *   4MB  N64 base RAM. Left free in the newlib heap for the game.
  *  40MB  Cartridge image, one resident copy.
- *  20MB  This port: linearAlloc pool (GPU command buffer, vertices, texture
+ *  14MB  This port: linearAlloc pool (GPU command buffer, vertices, texture
  *        scratch, audio) plus the netload socket buffer.
+ * H03: the pool is the measured need, not a round number. Azahar, 4 maps: linear used minus the texture cache is a constant
+ * 7528KB (vertices, command buffer, audio, scratch, render targets). The texture cache budget is 4096KB. Sum 11624KB. The pool
+ * adds a margin of 2.7MB for fragmentation from texture churn. A full pool fails a texture, never a boot (pm_tex.c).
  */
 #define PM_FCRAM (64u * 1024u * 1024u)
-#define PM_OURS  (20u * 1024u * 1024u)
+#define PM_OURS  (14u * 1024u * 1024u)
+#define PM_LINEAR_FIXED_KB 7528u /* measured, H03 */
 #define PM_SOC   0x20000u
 
 extern char* fake_heap_start;
@@ -115,6 +119,9 @@ unsigned pm_linear_bytes(void) { return __ctru_linear_heap_size; }
 
 unsigned pm_tex_used(void);
 unsigned pm_tex_peak(void);
+unsigned pm_tex_budget(void);
+unsigned pm_tex_fail_count(void);
+static unsigned lin_peak; /* highest linear bytes in use seen at a log call */
 
 /* M01 measurement: newlib heap in use, newlib heap free, linear pool free. All bytes read from the OS now. */
 /* Memory line for the crash handler. No mallinfo and no linear heap query: the fault may sit inside malloc and hold its lock. */
@@ -141,6 +148,15 @@ void pm_mem_log(const char* tag) {
     if (!strcmp(tag, "boot"))
         pm_log("mem commit limit %uKB used-by-image %uKB offered %uKB cap %uKB", (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10),
                (unsigned)((commit_max - commit_cur) >> 10), PM_FCRAM >> 10);
+    unsigned lin_used = pm_linear_bytes() - (unsigned)linearSpaceFree();
+    if (strcmp(tag, "boot") && lin_used > lin_peak) lin_peak = lin_used;
+    if (!strcmp(tag, "boot"))
+        pm_log("mem split H03 linear pool %uKB = fixed need %uKB + tex budget %uKB + margin %uKB, heap %uKB", pm_linear_bytes() >> 10,
+               PM_LINEAR_FIXED_KB, pm_tex_budget() >> 10, (pm_linear_bytes() >> 10) - PM_LINEAR_FIXED_KB - (pm_tex_budget() >> 10),
+               pm_heap_bytes() >> 10);
+    else
+        pm_log("mem %s linear used %uKB peak %uKB (fixed part %uKB) texture failures %u", tag, lin_used >> 10, lin_peak >> 10,
+               (lin_used - pm_tex_used()) >> 10, pm_tex_fail_count());
     struct mallinfo mi = mallinfo();
     pm_log("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB tex-cache %uKB peak %uKB", tag,
            pm_heap_bytes() >> 10, (unsigned)mi.uordblks >> 10, (unsigned)mi.fordblks >> 10,

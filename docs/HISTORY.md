@@ -1560,3 +1560,12 @@ Read 3ds/ORCHESTRATOR.md, HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md. You ar
 - Scenes and absolute frames: title (`fast`, 400), fileselect (`fast padscript=wait200,START*6,wait400`, 500), intro (preset intro, 183), toad (251), yard (249), battle (preset toad battle, 300), pause1 to pause4 (preset toad, START then R*3 per page, frames 181, 226, 266, 306).
 - Result: references saved from the build of 2026-10-17 11:43 (V06 blender mix). A second run: 9 scenes 0.00 percent, battle 0.38 to 1.06 percent (random effects, not exactly the same each run). Pause pages differ from each other by 46 percent of the pixels, so the padscript pages work. Seen by eye: no. The references are not compared with a console.
 - Not checked: pause pages beyond 4, a real regression catch (no code was broken on purpose), O3DS or N3DS. Total size of references 536 KB (PNG, tracked).
+
+## H03 memory split and graceful texture failure (2026-10-17)
+- Measured in Azahar (maps of the normal chain, `mem map` lines): linear used 8395, 8696, 8736 KB. Minus the texture cache in use, the rest is a constant 7527 KB (vertices, command buffer, audio, scratch, render targets). Texture cache peak 1209 KB. Budget 4096 KB.
+- Change: `PM_OURS` 20480 KB to 14336 KB in `pm_mem.c`. Need 7528 + 4096 = 11624 KB, margin 2712 KB for fragmentation. The heap grows by 6 MB (51200 KB on Azahar, and 6 MB more spare on a real O3DS). New boot line: `mem split H03 linear pool ... = fixed need + tex budget + margin, heap`. New line per map: `mem map linear used ... peak ... texture failures N`.
+- Graceful failure: `pm_tex.c` sets `fail_last` when the cache is full or `C3D_TexInit` fails. `flush` in `pm_gpu.c` skips a batch that needs a texture when the last load failed. Before, the quad drew with the vertex colour only (white).
+- Test: BUDGET set to 128 KB for one build. Log `tex cache full 296x6, draws using it are skipped`, no crash, smoke toad exit 0. BUDGET restored to 4 MB.
+- Checked after: smoke yard and toad exit 0, normal chain `fast autoa freshsave` exit 0, 0 texture failures, 0 cache full lines. 3dsx 10,919,208 B to 10,919,784 B (+576 B).
+- Not checked: pixel compare of the skipped draws (no shot), O3DS or N3DS (the margin is an Azahar estimate, fragmentation on real hardware is unknown), golden frames.
+

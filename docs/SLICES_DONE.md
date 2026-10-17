@@ -68,3 +68,6 @@ All rows marked [x], moved unchanged from 3ds/SLICES.md on 2026-10-17. Append on
 [x] F04 | Host pointer versus NPC id: `resolve_npc` (npc_api.c:11), player_api.c:403, WhaleAnim.inc.c:7, Bandit.inc.c:20, evt_find_label (evt.c:2039) use `>= EVT_LIMIT` (negative N64 pointers). Host pointers are positive and read as ids. 7 maps use GetNpcPointer. Find a test per site, fix in a 3DS branch | warp to a map with GetNpcPointer, no NULL NPC DONE in P02 (see HANDOFF P02 result)
 
 [x] G01g | Golden frames: a script runs fixed scenes (title, file select, pause pages, toad, yard, a battle, intro start) with warp and turbo and compares pixels with a tolerance against saved references | one run prints a table of scenes that differ and by how much
+
+[x] H03 | Memory split from measured need, and a graceful texture failure when the cache is full (no white quad) | numbers logged at boot, no regression on `fast autoa`
+- Pool 20 MB to 14 MB (fixed need 7528 KB measured + tex budget 4096 KB + margin 2712 KB), boot line `mem split H03`. A full cache now skips the batch (`pm_tex_failed`), no white quad. 3dsx +576 B.

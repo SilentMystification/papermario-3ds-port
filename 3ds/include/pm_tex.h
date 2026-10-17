@@ -26,6 +26,8 @@ int pm_tex_load_shaded(const void* img, int width, int height, int stride, const
                        const unsigned* lut, int dx4, int dy4);
 int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigned char* rgba);
 int pm_tex_bind(void);
+int pm_tex_failed(void);
+unsigned pm_tex_fail_count(void);
 void pm_tex_size(int* w, int* h);
 /* G_TX_WRAP / G_TX_MIRROR / G_TX_CLAMP for the render tile. mask 0 clamps. */
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt);

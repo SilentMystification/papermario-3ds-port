@@ -41,3 +41,7 @@
 12:04 G01g script written, 10 scenes
 12:04 G01g refs saved, second run 9 scenes 0.00 pct, battle up to 1.06 pct
 12:04 G01g docs updated, row moved to SLICES_DONE
+12:05 H03 start, baseline normal chain run
+12:06 H03 coded pool 14MB, boot split log, tex fail flag, flush skip; test with BUDGET 128KB
+12:09 H03 tiny-budget test ok (cache full logged, no crash), budget restored, rebuilding
+12:12 H03 smoke yard toad ok, chain ok, docs updated, committing

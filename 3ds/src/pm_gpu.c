@@ -152,6 +152,12 @@ static void flush(void) {
         batch_identity = 0;
         return;
     }
+    /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
+    if (combine >= 2 && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
+        nverts = 0;
+        batch_identity = 0;
+        return;
+    }
     PH_PUSH(PH_GPU);
     /* 2D batches are already pixels. 3D batches are object space. */
     if (u_proj >= 0)

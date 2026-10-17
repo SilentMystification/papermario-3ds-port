@@ -253,6 +253,11 @@ void pm_tex_init(void) {
 }
 
 unsigned pm_tex_used(void) { return used; }
+unsigned pm_tex_budget(void) { return BUDGET; }
+/* H03: the last load failed (cache full or no VRAM). The draw skips the batch, no white quad. */
+static int fail_last, fail_n;
+int pm_tex_failed(void) { return fail_last; }
+unsigned pm_tex_fail_count(void) { return (unsigned)fail_n; }
 unsigned pm_tex_peak(void) { return used_peak; }
 
 void pm_tex_begin_frame(void) {
@@ -314,6 +319,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     have = 0;
     cur = -1;
     off_cur = -1;
+    fail_last = 0;
     if (!img || width < 1 || height < 1 || !scratch) return 0;
     if (fmt == FMT_RGBA && siz == SIZ_16) {
         /* V05: a window of an off-screen image drawn this frame: sample the render texture, no copy */
@@ -381,9 +387,11 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (slot >= 0 && used + bytes <= BUDGET) break;
         if (!evict_oldest_done()) {
             static int once;
+            fail_last = 1;
+            fail_n++;
             if (!once) {
                 once = 1;
-                pm_log("tex cache full %dx%d", width, height);
+                pm_log("tex cache full %dx%d, draws using it are skipped", width, height);
             }
             return 0;
         }
@@ -392,6 +400,8 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     Slot* s = &slots[slot];
     if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
         pm_log("tex init failed %dx%d\n", pw, ph);
+        fail_last = 1;
+        fail_n++;
         return 0;
     }
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
