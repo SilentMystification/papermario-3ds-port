@@ -985,3 +985,55 @@ Rounded corners: the composite carries the corner image alpha, so the box shape 
 - Warp checks (preset=toad) for the pause. The rectangle fix and frame buffers touch all rendering, so the normal chain was also run: `fast autoa freshsave -Turbo`, map loads at scans 562, 2316, 2562, 3178, 0 unmapped (same as before).
 - Test switch `prevtest` (pm_warp.c, class E): from scene frame 100 it sets the game's own OVERLAY_BLUR front overlay with the real `set_screen_overlay_params_front` and `set_screen_overlay_center`, so a previous-frame draw shows. Result: 6 captures logged, picture stable, no drift.
 - Run files: 3ds/logs/d03_*.txt (git-ignored).
+
+## P02 result (slice P02, with F04 and F05: N64 address and ID range assumptions, DONE, Azahar, no stub)
+
+All items belong to slice P02. Azahar only. Nothing ran on hardware. Check used: warp tour (`-Turbo -FaultStop`, `partner=1 ptrcheck`), 7 presets with a walk script, 3 warps, and the full normal chain (the NPC and message tests touch the intro scripts).
+
+### Evt value encoding (include/script_api/macros.h, src/evt/evt.c `evt_get_variable` and siblings)
+| s32 value | meaning | 3DS host pointer (image 0x100000 to about 0xD00000, heap from 0x08000000, linear heap 0x14000000 and up, all positive) |
+|---|---|---|
+| <= -270000000 (EVT_LIMIT) | literal. N64 KSEG0 pointers (0x80000000 = -2147483648 and up) are here | never here |
+| -270000000 to -250000000 | literal (EVT_IGNORE_ARG is -250000000) | never here |
+| -250000000 to -220000000 | `Float()` fixed point, (value + 230000000) / 1024 | never here |
+| -220000000 to -20000000 | variable references in bands of 20000000: array flag, array var, game byte, area byte, game flag, area flag, map flag, local flag, map var, local var | never here |
+| above -20000000 (all positive values) | plain integer literal | HERE. A host pointer is read and written as an integer, which is right for a pointer |
+- Result: the evt readers and writers (`evt_get_variable`, `evt_set_variable`, `evt_get_float_variable`, `evt_set_float_variable`, `evt_get_variable_index`) need no change. A pointer in a variable round trips.
+- What breaks is the TEST written for N64 pointers: `value < EVT_LIMIT` (pointer) or `value >= EVT_LIMIT` (ID), `msgID < 0` (buffer), `(s32) p < 0`. On the 3DS those tests say "ID" or "number" for every pointer. S30 (ENTITY_ADDR), F02 (NpcData init) and D03 (msg buffers) were this one cause.
+
+### Shared helpers (TARGET_3DS inside the macro, the N64 expansion is the old test)
+- `EVT_IS_PTR(v)` (include/script_api/macros.h:49): 3DS `(s32)(v) >= 0x100000`, N64 `(s32)(v) < EVT_LIMIT`. Signed on purpose: negative IDs (NPC_SELF -1, NPC_PARTNER) are not pointers. A first unsigned version made mac_02 fault (found by the tour, fixed before the commit).
+- `MSG_IS_BUF(id)` (include/macros.h:591): 3DS `(u32)(id) >= 0x2F0000`, N64 sign. It accepts a tagged buffer (`MSG_BUF_ID`, D03) and a raw pointer.
+- `IS_ADDR(v)` (include/macros.h): 3DS `(s32)(v) >= 0x100000`, N64 `(s32)(v) < 0`.
+- `MAP_TATTLE_IS_FUNC(v)` (include/script_api/macros.h:58): MapSettings.tattle is a message ID or a function. 3DS: address from 0x100000 outside 0x190000..0x1901FF (map tattle IDs are MESSAGE_ID(0x19, n), n up to 0x188).
+- Known limits: (a) `MSG_IS_BUF` assumes no message buffer lives below 0x2F0000. Measured in this build: code ends at 0x2D0790, `.rodata` 0x2D1000, `.data` 0x2DD000. The 187 symbols below 0x2F0000 are textures, string literals and constants, no message buffer. If a later change puts a message array there, move the data or raise the bound. (b) `MAP_TATTLE_IS_FUNC` assumes no `get_tattle` function sits at 0x190000..0x1901FF. The two linked ones are at 0x239308 (sbk_02) and 0x23acc8 (sbk_30). Check `nm` when kpa, flo, jan, sam or mgm_02 are linked (S30b). (c) `EVT_IS_PTR` assumes NPC and label IDs stay below 0x100000.
+
+### Edits to shared decomp files (all by the macros above, file and line after the P02 commit)
+- include/script_api/macros.h:49 and :55 (macros). include/macros.h:591 (MSG_IS_BUF, IS_ADDR, PTRCHECK).
+- src/evt/npc_api.c:11 `resolve_npc` (F04). src/evt/player_api.c:403 (F04). src/world/common/atomic/WhaleAnim.inc.c:7 (F04). src/world/common/enemy/Bandit.inc.c:20 (F04). src/evt/evt.c:2045 `evt_find_label` (F04).
+- src/msg.c:1458, 1492, 1540, 1733, 2029: `msgID >= 0` and `< 0` became `MSG_IS_BUF` (F05; D03 had done the 6 casts). src/world/area_end/common/Credits.inc.c:781 (F05).
+- src/filemenu/filemenu_msg.c:814 `filemenu_draw_message`: `(s32) message < 0` was the only path that drew a string on the non-JP build, so no file select string drawn through it could show on the 3DS. Now `IS_ADDR`.
+- src/world/partner/goombario.c:406 and :425: `msgID < EVT_LIMIT` (map tattle function) now `MAP_TATTLE_IS_FUNC`.
+- Debug hooks (no behaviour): `PTRCHECK` in src/npc.c:1029 and :1046 (get_npc_unsafe, get_npc_safe), src/msg.c:1405 (dma_load_msg), src/evt/evt.c:1863, :1947, :1997 (set, get float, set float).
+
+### Hits and classes (static grep of the built sources: 1890 files in the CMake lists plus their .inc.c)
+- Compares with EVT_LIMIT outside evt.c: 12 sites. Broken and fixed: resolve_npc, player_api.c:403, WhaleAnim, Bandit, goombario tattle x2 (6 here, plus encounter.c:2540 fixed in F02). Safe: goombario.c:379 (enemy tattle, only message IDs in NpcData, no function), `!= EVT_IGNORE_ARG` in actor_api.c and 1A5830.c (literal compare, battle tree, not built on main). Not built on main: `src/battle/190B20.c:1762` (`formation->home.index >= EVT_LIMIT`, branch s19-full-battle, not touched): use `!EVT_IS_PTR(...)` when that branch merges.
+- Compares inside evt.c: the readers and writers and the debug print (lines 1248 to 1340): safe, see the table. `evt_find_label` was broken, fixed.
+- Message ID versus buffer sign tests: msg.c 5 sites, Credits 781, filemenu_msg.c 814: broken, fixed. Callers that pass a raw buffer as an ID (`shops.c:125` and `:166`, `area_mgm/mgm_01/npc.c:670`, Quizmo `SetMessageText Ref(...)` x5, Credits `get_msg_properties((s32) line->message ...)` x3): were broken, now work without an edit because `MSG_IS_BUF` accepts raw pointers (test: `get_msg_width` of a raw buffer returns 8 in `ptrtest`).
+- `0x80000000` and similar constants: `y == 0x80000000` (77480.c, Reflection.inc.c), `gSpinHistoryPosY`, TWEESTER_PATH_STOP, `sprite.h` flags: integer or float sentinels, safe. N64 VRAM defines (`entity_*_VRAM`, 0x802xxxxx): overlay names, ranges are empty (R01), safe. `osVirtualToPhysical`, `OS_K0_TO_PHYSICAL`, `VIRTUAL_TO_PHYSICAL`: no-op or port shim (S11, S02), safe. `IO_READ`: only in the obfuscated shims and `src/os`, replaced by the port.
+- `& 0xFFFFFF` and `& 0xFFFF` on addresses: `animator.c` 83, 346, 1055, 1069 are guarded by `animationBuffer != NULL` and `baseAddr != NULL`, and both are NULL for every 3DS animator (the 3DS branch of `entity.c` passes NULL for animated entities): safe. `entity.c` 924 to 940 (`entity_swizzle_anim_pointers`) runs only on ROM data, the 3DS skips animated entities: safe. `effects.c` osMapTLB masks: no-op shim, safe. ENTITY_ADDR: fixed in S30.
+- Casts of pointers to `s32` or `u32` stored in game state: `(s32)` of a pointer into evt variables (`fx_api.c`, `npc_api.c:65`, `evt.c:852` and `:1044`): 32-bit host, round trips, safe. No cast of a pointer into an s16, u16 or u8 field found. No `%p` use. No sign extension case (32-bit host).
+- Found only by the dynamic check: nothing (see below).
+
+### Dynamic check (switch `ptrcheck`, `pm_ptrcheck` in 3ds/src/pm_warp.c)
+- `PTRCHECK` logs `ptrcheck: <site> value <hex> caller <addr>` once per (site, caller) when a value from 0x100000 to 0x1FFFFFFF reaches `get_npc_safe`, `get_npc_unsafe`, `dma_load_msg` (value above 0x2F0000), `evt_get_float_variable`, or the destination argument of `evt_set_variable` or `evt_set_float_variable`. `evt_get_variable` has no check: a pointer there is the normal case (see the table). Use `addr2line` on the caller.
+- Control (switch `ptrtest`, scene frames 50 and 60): the 4 sites fire once each, `resolve_npc` returns the partner `Npc*` for its own pointer, `get_msg_width` of a raw message buffer returns 8.
+- Result (turbo, `-FaultStop`): tour of 266 maps with `partner=1 ptrcheck` (40 frames each, entry 0): 264 clean, 2 faulting: iwa_02 (the kmr_23 curtain callback left set by the tour, F02 note) and tst_12 (cut map, F02 note). 0 `ptrcheck` lines. Presets yard, toad, kmr02, osr, toad_east, toad_west, intro with `partner=1 ptrcheck` and a walk and jump script: rc 0, 0 hits, 0 unmapped. Warps mac_01 (GetNpcPointer, Rowf and Rhuff), nok_02, nok_04 (GetNpcPointer and `(Npc*)` casts): 0 hits, 0 unmapped. Normal chain `fast autoa freshsave ptrcheck`: loads at scans 562, 2316, 2562, 3178 (same as before), 0 hits, 0 unmapped.
+- Limit: the tour runs 40 idle frames per map, so scripts that need input (talk to an NPC, open a shop, tattle, credits) did not run. The static fixes cover those. Shop text, credits text and tattle were NOT run (no preset reaches them).
+
+### By eye (shots, `fast preset=toad_west partner=1 shots padscript=...`)
+- Toad Town west gate: Mario, Goombario follows and stops beside him, a Toad (red cap) walks in from the right edge and stands (moved by its init script). File select (`fast autoa shots freshsave`): "Select file to start:", "File 1", "NEW", "First Play", the letter grid and "Start game with File 1?" all draw. NOT compared with a build from before P02 or before F02 (no before shots were taken), so the shots show the state now, not the change.
+
+### Open
+- Hardware not run. The battle tree check of `190B20.c` waits for the merge. The `MSG_IS_BUF` and `MAP_TATTLE_IS_FUNC` bounds are layout assumptions (limits above).
+- Slip noted: a `git checkout 3ds/PROGRESS.log` during the slice dropped the uncommitted lines of the log. They were written again by hand (same text).
