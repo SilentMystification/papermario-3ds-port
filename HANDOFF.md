@@ -1078,3 +1078,7 @@ Slice T02 is a new row in 3ds/SLICES.md, low priority. It makes `3ds/run_azahar.
 ## PC01 and F06 notes (documentation only, not started)
 
 PC01 (high priority, next after S25) and F06 (later) are new rows in 3ds/SLICES.md. PC01: the user reports that the frame rate feels uncapped up to 59 or 60. A read-only review (UNVERIFIED) found that `pm_frame_loop` in 3ds/src/pm_main.c waits for the next vblank only, so a game step can take less than 2/60 s while audio follows the wall clock. PC01 measures steps per second first, then enforces two counted vblanks per step with a target-rate parameter. F06 is the 30/60 fps toggle: render extra frames with interpolation, not logic at 60 Hz. No code was changed for these two rows.
+
+## Open issues V05, V06, V07, V08 (documentation only, this round, not started)
+
+Four user reports (2026-10) are rows in 3ds/SLICES.md after V02. All diagnoses are UNVERIFIED hypotheses. V05: artifacting when menus flip (pause pages, file select panels). V06: the outside ground disappears when entering buildings. V07: item entities flicker when the camera moves. V08: transparency on the save block (Entity_SavePoint) looks odd, with a possible regression from the S25 plan path (switch `nocomb` turns it off) or the nocolor blender. The user wants none of them left dangling this round. No code was changed for these rows.
