@@ -63,6 +63,12 @@ static unsigned tile_wrap[8][4];
 static int cur_tile;
 static int use_t1;     /* the combiner reads TEXEL1 only: draw with tile 1 (TEXEL1 is renamed TEXEL0) */
 static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
+/* draw_box (H04): cycle 1 = TEXEL0 * TEXEL1 (tile 0 window background, tile 1 corner image),
+ * alpha = TEXEL1 alpha, cycle 2 = (PRIM - ENV) * COMBINED + ENV. box_prod marks that form.
+ * box_folded is 1 while it is drawn as (PRIM - ENV) * TEXEL1 + ENV, which is exact when tile 0
+ * is all white (the flat background of the window styles, `bg_flat`). */
+static int box_prod, box_folded;
+static unsigned box_save[4];
 static float dual_gain[3];
 static void unpack8(unsigned c, float o[4]);
 static void ensure_tile(int n);
@@ -234,6 +240,42 @@ static void sync_combine(void) {
     else if (wants_prim && !comb_set) mode = 1;
     else if (wants_prim && comb_a != G_CCMUX_SHADE) mode = 1;
     pm_gpu_set_combine(mode);
+}
+
+/* All texels of tile 0 are 1.0 (I4 0xF or I8 0xFF)? Then TEXEL0 * TEXEL1 is TEXEL1. */
+static int tile0_white(void) {
+    const u8* src = td[0].src;
+    if (!td[0].valid || !src || td[0].fmt != G_IM_FMT_I || td[0].siz > 1) return 0;
+    for (int y = 0; y < td[0].h; y++) {
+        for (int x = 0; x < td[0].w; x++) {
+            if (td[0].siz == 0) {
+                unsigned b = src[(y * td[0].stride + x) >> 1];
+                if (((x & 1) ? (b & 15u) : (b >> 4)) != 15u) return 0;
+            } else if (src[y * td[0].stride + x] != 255) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+/* Called before each textured draw. Tiles 0 and 1 are known by then, the combine mode came
+ * before them. */
+static void box_fold_sync(void) {
+    int want = box_prod && td[1].valid && tile0_white();
+    if (want == box_folded) return;
+    box_folded = want;
+    if (want) {
+        box_save[0] = comb_a; box_save[1] = comb_b; box_save[2] = comb_c; box_save[3] = comb_d;
+        comb_a = G_CCMUX_PRIMITIVE; comb_b = G_CCMUX_ENVIRONMENT; comb_c = G_CCMUX_TEXEL0; comb_d = G_CCMUX_ENVIRONMENT;
+        comb_aa = 7; comb_ab = 7; comb_ac = 7; comb_ad = 1; /* TEXEL1 alpha, renamed TEXEL0 */
+        use_t1 = 1;
+    } else {
+        comb_a = box_save[0]; comb_b = box_save[1]; comb_c = box_save[2]; comb_d = box_save[3];
+        comb_aa = 7; comb_ab = 7; comb_ac = 7; comb_ad = 2;
+        use_t1 = 0;
+    }
+    sync_combine();
 }
 
 /* Render mode bits of G_SETOTHERMODE_L, same reading as libultraship DeriveTriState: depth
@@ -411,6 +453,7 @@ static void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
+    box_fold_sync();
     ensure_tile(use_t1 ? 1 : 0);
     for (i = 0; i < 3; i++) {
         xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
@@ -902,6 +945,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     if (comb_ad == 2) comb_ad = 1;
                 }
             }
+            box_folded = 0;
+            box_prod = comb_a == 1 && comb_b >= 7 && comb_c == 2 && comb_d == 7 &&
+                       comb_aa == 7 && comb_ab == 7 && comb_ac == 7 && comb_ad == 2 &&
+                       comb2_a == 3 && comb2_b == 5 && comb2_c == 0 && comb2_d == 5 &&
+                       comb2_aa == 7 && comb2_ab == 7 && comb2_ac == 7 && comb2_ad == 0;
             comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
                                ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
             sync_combine();
@@ -950,6 +998,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (xl & 0x800) xl |= ~0xfff;
             if (yl & 0x800) yl |= ~0xfff;
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
+            box_fold_sync();
             ensure_tile(use_t1 ? 1 : 0);
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
@@ -1035,7 +1084,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 int bpp = tile_siz[1] >= 3 ? 4 : tile_siz[1] == 2 ? 2 : tile_siz[1] == 0 ? 0 : 1;
                 const u8* src = (const u8*)timg;
                 td[1].valid = 0;
-                if (src && bpp) src += (size_t)((uls >> 2) + (ult >> 2) * stride) * (size_t)bpp;
+                if (cur_tile == 1) cur_tile = -1; /* a new tile 1 image: bind it again */
+                /* The image offset is the LoadTile origin. SetTileSize uls and ult only place
+                 * it: gDPLoadMultiTile (draw_box corners) loads at 0,0 and moves tiles 1 to 3
+                 * to the far side of the window by SetTileSize. */
+                if (src && bpp && ld_valid) src += (size_t)(ld_y * stride + ld_x) * (size_t)bpp;
+                else if (src && bpp) src += (size_t)((uls >> 2) + (ult >> 2) * stride) * (size_t)bpp;
                 else if (src && ld_valid) {
                     src += (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
                     stride = timg_stride * 2;

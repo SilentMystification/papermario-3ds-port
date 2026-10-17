@@ -348,3 +348,12 @@
 20:47 S30 tour of 266 maps done: 251 ok, 15 fault; chain test next
 20:54 S30 HANDOFF result written
 20:54 S30 SLICES and QUESTIONS updated, end
+20:55 H04 start
+20:57 H04 before shot: bar icons+text draw, window body is flat white, junk px near coin x; adding temp rect log
+20:59 H04 build ok (temp h04log)
+21:01 H04 cause: draw_box combiner TEXEL0*TEXEL1 (bg tile0 x corner tile1) not folded, port draws tile0 only = white
+21:02 H04 build 2 done
+21:05 H04 build 3: fold box + tile1 image offset from LoadTile
+21:19 H04 finding: coin sparkle palette junk (red/blue px): icon_ROM_START stub = 1, hud SetImage reads ROM 0x30241 not icon seg 0x1CC310
+21:20 H04 build 4: icon_ROM_START 0x1CC310, temp log removed
+21:23 H04 docs done, committing

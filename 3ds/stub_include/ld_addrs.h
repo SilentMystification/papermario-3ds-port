@@ -120,7 +120,8 @@
 /* ver/us/splat.yaml charset segment. Message strings live at 0x1B83000 (msg.c). */
 #define charset_ROM_START ((u8*)0x10F1B0)
 #define charset_ROM_END   ((u8*)0x123128)
-#define icon_ROM_START    ((u8*)1)
+/* ver/us/splat.yaml: [0x1CC310, pm_icons, icon]. ICON_*_raster/_palette offsets are relative to it. */
+#define icon_ROM_START    ((u8*)0x1CC310)
 
 /* Linker symbols, set by --defsym in CMakeLists.txt (ROM offsets from splat.yaml and undefined_syms.txt). */
 extern Addr sprite_shading_profiles_ROM_START;
