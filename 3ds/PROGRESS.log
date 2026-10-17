@@ -483,3 +483,7 @@
 01:33 E02 entity survey: kmr_04 brick block shatters ok, save block ok; testing kmr_03 heart, kmr_07 spring, kmr_02 pipe
 01:39 E02 docs written, SLICES E02 marked [x]
 01:39 E02 end
+01:39 S25 start
+01:43 S25 combiner audit and gbi skip counts coded, building
+01:46 S25 build ok, intro run fast shots
+01:55 S25 T02 row and HANDOFF note added (docs only)

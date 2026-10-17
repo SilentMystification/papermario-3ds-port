@@ -1067,3 +1067,8 @@ All items belong to slice E02. Azahar only. Check used: warp with `-Turbo -Fault
 | HiddenPanel, HiddenYellowBlock, MulticoinBlock, HeartBlock, ScriptSpring, BlueSwitch, Chest, Padlock | machi, tst_03, kmr_03, kmr_20 | seen in `machi` and `tst_03`: ? block, brick blocks, a chest like box and a colored grid box (`machi`, near the ? block, not identified), tst_03 shows hollow pale yellow frames (not identified). Not verified, no row made because I cannot tell the intended look from the shots |
 - No fault in any of these warps (`-FaultStop`, 8 maps in the first batch plus 5 more, all rc 0, 0 unmapped). The ENTITY_ADDR change of S30 works for these entities: they were created, drawn and (save block, brick block) ran their scripts.
 - Not reached: Heart Block (kmr_03 route blocked by the hammer block at (45, 0, 70)), springs and pipes by hand, hidden blocks, chests. Follow up: a later slice with `partner`, hammer and items presets can reach them.
+
+
+## T02 note (slice T02, documentation only, not started)
+
+Slice T02 is a new row in 3ds/SLICES.md, low priority. It makes `3ds/run_azahar.ps1` safe for the user's Azahar config. Five fault paths were found by a read-only review (restore skipped after a throw before the try, hard kill, overlapping runs, locked config file, missing backup or regex miss). The plan is a per-run config copy, a try/finally around the whole script, a named mutex, and a loud failure on a missing key. State at the time of writing: the user's qt-config.ini is clean (frame_limit=100, use_vsync=true). No code was changed for T02.
