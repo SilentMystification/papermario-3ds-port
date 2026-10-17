@@ -479,3 +479,6 @@
 01:21 E02 kmr_02: tutorial, Save/Don't save choice, Save completed seen by eye; save.flash rewritten
 01:24 E02 build b (loadslot switch for warp)
 01:27 E02 saved via block with loadslot=0: slot 1 count 2 crc ok map kmr_02; now load test
+01:28 E02 commit warp switches
+01:33 E02 entity survey: kmr_04 brick block shatters ok, save block ok; testing kmr_03 heart, kmr_07 spring, kmr_02 pipe
+01:39 E02 docs written, SLICES E02 marked [x]

@@ -1037,3 +1037,33 @@ All items belong to slice P02. Azahar only. Nothing ran on hardware. Check used:
 ### Open
 - Hardware not run. The battle tree check of `190B20.c` waits for the merge. The `MSG_IS_BUF` and `MAP_TATTLE_IS_FUNC` bounds are layout assumptions (limits above).
 - Slip noted: a `git checkout 3ds/PROGRESS.log` during the slice dropped the uncommitted lines of the log. They were written again by hand (same text).
+
+## E02 result (slice E02: save block and entity check, DONE, Azahar, port layer only, no decomp code changed)
+
+All items belong to slice E02. Azahar only. Check used: warp with `-Turbo -FaultStop`, padscript and shots, plus one file select load (the save touches the file select). No stub, no decomp edit.
+
+### Tool changes (class E, `3ds/src/pm_warp.c`)
+- `smokeframes=<n>`: length of the smoke run, default 300 (with `-Smoke`). Padscripts for a save need about 1000 frames.
+- `loadslot=<n>`: the warp first calls the real `fio_fetch_saved_file_info` and `fio_load_game(n)` (what the file select does), then sets map, entry and story, and skips `clear_player_data` and `clear_saved_variables`. The file name and `saveCount` are then the real ones. Without it a warp starts with `saveCount` 0 and an empty name: the block save then gets count 1, the same as the old file in physical slot 0, and the load picks the OLD file (tie rule `LogicalSaveInfo.count < saveCount`). That is a warp artifact, not a game fault: the real flow loads `saveCount` first.
+- Helper scripts (git-ignored): `3ds/logs/e02_run.sh <name> "<switches>" "<padscript>" <frames>`, `e02_mont.py`, `e02_maps.sh`.
+
+### Save block (entity name `Entity_SavePoint`, `src/entity/SaveBlock.c`; 28 linked maps have one)
+- Used: kmr_02 at (250, 60, 75). Command: `fast preset=kmr02 loadslot=0 shots smokeframes=1000 padscript=wait80,right*88,down*24,right*30,wait20,A*24,wait100,A*3,wait80,A*3,wait80,A*3,wait80,A*3,wait80,A*3,wait80,A*3,wait120,A*3,wait120,A*3,wait120` (Mario ends at x 255 z 82, a jump with A held 24 scans hits it from below). Rc 0, 0 unmapped.
+- Seen by eye (shots): the block draws as a cube with a rainbow gradient and an S face. After the hit: input disabled, the message box with the tutorial text ("Hit this block to save your game progress." and 3 more pages, first hit only), then "Do you want to save?" with the choice box (Save, Don't save, hand cursor on Save), A selects Save, then "Save completed.", A closes it, input comes back (inputDisabled 0, HUD shows), the block is normal again. The 4 tutorial pages need 4 A presses (3 scans each, 80 frames apart).
+- Save file (131,072 B, 8 sectors of 16 KB, written by the real `fio_save_game` through the `osFlash` shims): the save went to the next free physical sector (1), sector 0 (the old file) stays. SaveData is 0x1380 bytes, little endian. Checked with a script: magic `Mario Story 006`, `crc1` = sum of all 0x4E0 words = `~crc2`, saveSlot 0, saveCount 2 (old 1), area 0 map 1 entry 0 (kmr_02). Old sector: map 11 (kmr_20). Both checksums valid.
+- Load: `fast autoa shots` (no freshsave, no warp, full chain logos, title, file select). The file select lists "File 1 AAAAAAAA, Level 01, Play Time 00:00", the confirm window shows, `load map area 0 map 1` at scan 410, Mario stands in kmr_02 beside the block. The load accepted the new checksum and chose the newer file.
+- Not checked: erase and copy, a save with a partner or items, the save while the game is at story points after the intro, the second save over an existing slot of the same logical file more than once.
+
+### Entities (shots, `warp=<map>:<entry> partner=1`, 150 frames each, padscript where noted)
+| entity | map | result |
+|---|---|---|
+| SavePoint (save block) | kmr_02, kmr_04 | draws, reacts (above) |
+| BrickBlock | kmr_04 (-230, 60, -140) | draws, hit from below: breaks into pieces and vanishes |
+| YellowBlock (? block) | kmr_03, machi | draws (? face). Not hit: it stands on the ground (needs a hammer) |
+| Hammer1Block (big block with eyes) | kmr_03 | draws. Not hit (needs a hammer) |
+| SimpleSpring | kmr_07 | draws (blue and yellow coil). Not stepped on: a Goomba guard scene (real NPC talk, text draws) stops Mario at x 231 and my A presses missed its timing |
+| BlueWarpPipe | kmr_02 | draws as a flat pale pad at (0, 0, 355). Not entered. I believe this is the closed state, NOT compared with a real shot |
+| Signpost | nok_13 | draws (board on a post) |
+| HiddenPanel, HiddenYellowBlock, MulticoinBlock, HeartBlock, ScriptSpring, BlueSwitch, Chest, Padlock | machi, tst_03, kmr_03, kmr_20 | seen in `machi` and `tst_03`: ? block, brick blocks, a chest like box and a colored grid box (`machi`, near the ? block, not identified), tst_03 shows hollow pale yellow frames (not identified). Not verified, no row made because I cannot tell the intended look from the shots |
+- No fault in any of these warps (`-FaultStop`, 8 maps in the first batch plus 5 more, all rc 0, 0 unmapped). The ENTITY_ADDR change of S30 works for these entities: they were created, drawn and (save block, brick block) ran their scripts.
+- Not reached: Heart Block (kmr_03 route blocked by the hammer block at (45, 0, 70)), springs and pipes by hand, hidden blocks, chests. Follow up: a later slice with `partner`, hammer and items presets can reach them.
