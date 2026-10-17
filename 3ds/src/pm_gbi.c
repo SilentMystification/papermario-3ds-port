@@ -35,6 +35,40 @@ static int xt_on(void) {
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
 
+/* V02 debug switch drawlog=<first frame>:<count>: one line per mesh chunk (a G_VTX load at slot 0 starts one) with the
+ * vertex source (the model data address), the two innermost G_DL targets, render mode, texture and screen bounds. */
+static int dd_on(void) {
+    static int a = -2, b;
+    if (a == -2) {
+        char v[24];
+        a = -1;
+        if (pm_debug_value("drawlog", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
+        else a = -1;
+    }
+    return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
+}
+static struct {
+    unsigned idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri;
+    float x0, y0, x1, y1, w0, w1;
+} dd;
+static unsigned dd_idx, dd_dl0, dd_dl1, dd_top;
+/* ddonly=<lo>:<hi>: inside the drawlog window only chunks with lo <= index <= hi draw (bisect which draw makes a fault). */
+static int dd_skip(void) {
+    static int lo = -2, hi;
+    if (lo == -2) {
+        char v[24];
+        if (!(pm_debug_value("ddonly", v, sizeof v) && sscanf(v, "%d:%d", &lo, &hi) == 2)) lo = -1, hi = -1;
+    }
+    return lo >= 0 && dd_on() && ((int)dd.idx < lo || (int)dd.idx > hi);
+}
+static void dd_end(void) {
+    if (dd.ntri)
+        pm_log("dd f%u #%u top %08x vtx %08x dl %08x %08x oml %08x omh %08x zb %u img %08x fmt %u/%u %ux%u prim %08x tris %u box %d %d %d %d w %d %d",
+               pm_frame_count(), dd.idx, dd.top, dd.src, dd.dl0, dd.dl1, dd.oml, dd.omh, dd.zb, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.prim,
+               dd.ntri, (int)dd.x0, (int)dd.y0, (int)dd.x1, (int)dd.y1, (int)dd.w0, (int)dd.w1);
+    dd.ntri = 0;
+}
+
 static unsigned prim = 0xffffffffu;
 static unsigned fill = 0xffffffffu;
 static unsigned prim_z; /* X01: G_SETPRIMDEPTH, 15 bit, 0 near, 0x7fff far */
@@ -826,6 +860,21 @@ static void draw_tri(unsigned w) {
         n_out++;
         return;
     }
+    if ((geom & G_CULL_BOTH) && !pm_debug_has("nocull")) {
+        /* V02: the RSP culls by the sign of the screen space area (G_CULL_FRONT / G_CULL_BACK / both), same test as
+         * libultraship. A one sided wall (the cliff skirt around the Mario house yard, seen from inside) draws only
+         * if this test runs. nocull turns it off for A/B checks. */
+        const ClipV *p1 = &poly[0], *p2 = &poly[1], *p3 = &poly[2];
+        float ex1 = p1->x * p2->w - p2->x * p1->w, ey1 = p1->y * p2->w - p2->y * p1->w;
+        float ex2 = p3->x * p2->w - p2->x * p3->w, ey2 = p3->y * p2->w - p2->y * p3->w;
+        float cross = (ex1 * ey2 - ey1 * ex2) * (p1->w * p3->w);
+        unsigned ct = geom & G_CULL_BOTH;
+        if ((p1->w < 0) ^ (p2->w < 0) ^ (p3->w < 0)) cross = -cross;
+        if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
+            n_out++;
+            return;
+        }
+    }
     {
         int k;
         for (k = 0; k < 3; k++) {
@@ -860,7 +909,32 @@ static void draw_tri(unsigned w) {
         unpack8(envc, en);
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
+    if (dd_skip()) return;
     sync_render();
+    if (dd_on()) {
+        if (!dd.ntri) {
+            dd.oml = omode_l; dd.omh = omode_h; dd.zb = (geom & G_ZBUFFER) != 0; dd.timg = (u32)td[0].src; dd.fmt = td[0].fmt;
+            dd.siz = td[0].siz; dd.w = td[0].w; dd.h = td[0].h; dd.prim = prim;
+            dd.x0 = dd.y0 = dd.w0 = 1e9f; dd.x1 = dd.y1 = dd.w1 = -1e9f;
+        }
+        dd.ntri++;
+        if (pm_debug_has("ddverb")) {
+            int k;
+            for (k = 0; k < 3 && k < n; k++)
+                pm_log("ddv #%u obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
+                       (int)verts[idx[k]].v.ob[2], (int)poly[k].x, (int)poly[k].y, (int)poly[k].z, (int)poly[k].w,
+                       (int)verts[idx[k]].v.tc[0], (int)verts[idx[k]].v.tc[1]);
+        }
+        for (i = 0; i < n; i++) {
+            float sx = poly[i].x / poly[i].w * vp_sx + vp_tx, sy = vp_ty - poly[i].y / poly[i].w * vp_sy;
+            if (sx < dd.x0) dd.x0 = sx;
+            if (sx > dd.x1) dd.x1 = sx;
+            if (sy < dd.y0) dd.y0 = sy;
+            if (sy > dd.y1) dd.y1 = sy;
+            if (poly[i].w < dd.w0) dd.w0 = poly[i].w;
+            if (poly[i].w > dd.w1) dd.w1 = poly[i].w;
+        }
+    }
     if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && !pm_debug_has("noprimz")) { /* noprimz: A/B check */
         /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
         float zn = 2.f * (float)prim_z / 32767.f - 1.f;
@@ -1242,6 +1316,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     Gfx* end = (nbytes >= 8) ? pc + nbytes / 8 : NULL;
     unsigned guard = 0;
     if (!pc) return;
+    dd_end();
+    if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }
     while (pc && guard++ < 200000) {
         if (end && sp == 0 && pc >= end) break;
         if (!is_host((u32)pc)) {
@@ -1263,6 +1339,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         switch (op) {
         case G_ENDDL:
             if (sp == 0) {
+                dd_end();
                 if (fp) pm_ph_pop();
                 return;
             }
@@ -1275,6 +1352,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (bad_next++ < 8) pm_log("bad dl target %08x w0 %08x list %08x", w1, w0, (u32)list);
                 break;
             }
+            if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
             if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = next;
             else if (sp < 12) {
                 stack[sp++] = pc;
@@ -1300,6 +1378,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 /* A load at slot 0 starts a new mesh. Later loads in the same
                  * list append above it and keep the earlier slots. */
                 if (v0 == 0) memset(vert_live, 0, sizeof vert_live);
+                if (v0 == 0 && dd_on()) { dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1; }
                 for (unsigned i = 0; i < n; i++) {
                     vert_live[v0 + i] = 1;
                     memcpy(vert_m[v0 + i], combined, sizeof combined);

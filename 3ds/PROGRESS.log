@@ -617,3 +617,12 @@
 08:50 X01 finding: dark rooms (kgr_01) all black: darkness stencil renders into z-buffer image (needs RTT), row X02
 08:59 X01 docs written, commit 4
 08:59 X01 end
+09:00 V02 start
+09:03 V02 added drawlog (per mesh chunk) and depthview=1|2|3 switches; building
+09:06 V02 build ok, running yard with drawlog and depthview
+09:18 V02 FOUND draw #25 (brown wall, obj y 0..-100, zb0 no depth) paints over fence+bushes draws #8-24; checking order
+09:25 V02 wall = own task g98 (center z 0?), sorted after fence group g88; checking center calc in model.c
+09:30 V02 ROOT CAUSE: port ignores G_CULL_BACK; one-sided cliff skirt (g98) draws over fence+bushes. Added cull test (nocull switch)
+09:32 V02 build ok (temp model.c hook removed); 3dsx size checked; regression runs next
+09:41 V02 yard fixed by eye (A/B nocull, chain 0 unmapped); checking battle and pause
+09:45 V02 committing fix (cull) and docs

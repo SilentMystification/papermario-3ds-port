@@ -34,6 +34,9 @@ static int light_on;
 /* RDP render mode: depth compare, depth update, alpha blend, alpha cut-off (-1 none), decal. */
 static int r_zcmp = 1, r_zupd = 1, r_blend = 1, r_atest = -1, r_decal;
 static int combine;
+int pm_debug_value(const char* key, char* out, unsigned n);
+static int dview = -1; /* V02 depth view mode, see dv_color */
+static unsigned dv_draw;
 static int rect_z; /* X01: the 2D rectangle in flight tests depth (fill rect with G_ZS_PRIM) */
 static int r_nocol; /* S25: the blender gives back the frame buffer colour: depth only */
 static PmPlan plan; /* S25: combine mode 8 */
@@ -222,6 +225,21 @@ static void flush(void) {
     /* Fill and texrects ignore the Z buffer. Startup turns G_ZBUFFER on
      * before the logo, and every 2D quad shares z, so a depth test keeps
      * only the first rectangle. */
+    if (dview && draw_3d && !rect_2d) { /* V02 depth view: vertex colour only, alpha from the texture */
+        for (int i = 0; i < 6; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
+        env_hi = 6;
+        env = C3D_GetTexEnv(0);
+        C3D_TexEnvSrc(env, C3D_RGB, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+        if (tex) {
+            C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+            C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
+        } else {
+            C3D_TexEnvSrc(env, C3D_Alpha, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+            C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+        }
+    }
+    dv_draw++;
     int z = z_on && (!rect_2d || rect_z);
     /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. A decal
      * sits in the same plane as its base, so equal depth has to pass. */
@@ -279,7 +297,35 @@ static void flush(void) {
     drew = 1;
 }
 
+/* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
+ * (texture alpha kept, so cut-outs show). 1: depth, red near to blue far. 2: one colour per draw (flush) index.
+ * 3: depth bands (repeating, 64 per range) to see depth order faults of near-equal surfaces. */
+static unsigned dv_color(float z, float w, unsigned c) {
+    float r, g, b, d;
+    if (dview == 2) {
+        unsigned h = dv_draw * 2654435761u;
+        r = (float)((h >> 8) & 255) / 255.f; g = (float)((h >> 16) & 255) / 255.f; b = (float)((h >> 24) & 255) / 255.f;
+    } else {
+        d = (w > 0.f ? z / w : 0.f) * 0.5f + 0.5f;
+        if (d < 0.f) d = 0.f;
+        if (d > 1.f) d = 1.f;
+        if (dview == 3) {
+            float f = d * 64.f;
+            f -= (float)(int)f;
+            r = f; g = 1.f - f; b = d;
+        } else {
+            r = d; g = 1.f - (d < 0.5f ? 1.f - 2.f * d : 2.f * d - 1.f); b = 1.f - d;
+        }
+    }
+    return ((unsigned)(r * 255.f) << 24) | ((unsigned)(g * 255.f) << 16) | ((unsigned)(b * 255.f) << 8) | (c & 255u);
+}
+
 static void put4(float x, float y, float z, float w, float u, float v, unsigned c) {
+    if (dview < 0) {
+        char vv[8];
+        dview = pm_debug_value("depthview", vv, sizeof vv) ? atoi(vv) : 0;
+    }
+    if (dview && draw_3d && !rect_2d) c = dv_color(z, w, c);
     if (nverts >= 510) {
         int id = batch_identity;
         flush();
@@ -472,6 +518,7 @@ void pm_gpu_read_frame(unsigned short* dst) {
 }
 
 void pm_gpu_begin(int clear) {
+    dv_draw = 0;
     draws_frame = 0;
     drew = 0;
     nverts = 0;
