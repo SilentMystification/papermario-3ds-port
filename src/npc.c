@@ -1026,6 +1026,8 @@ Npc* get_npc_unsafe(s32 npcID) {
     s32 i;
     Npc* npc;
 
+    PTRCHECK("get_npc_unsafe(ptr)", npcID);
+
     for (i = 0; i < MAX_NPCS; i++) {
         npc = (*gCurrentNpcListPtr)[i];
         if (npc != nullptr && npc->flags != 0 && npc->npcID == npcID) {
@@ -1040,6 +1042,8 @@ Npc* get_npc_unsafe(s32 npcID) {
 Npc* get_npc_safe(s32 npcID) {
     s32 i;
     Npc* npc;
+
+    PTRCHECK("get_npc_safe(ptr)", npcID);
 
     for (i = 0; i < MAX_NPCS; i++) {
         npc = (*gCurrentNpcListPtr)[i];

@@ -583,4 +583,30 @@ typedef enum {
 #define MSG_BUF_ID(p) ((s32)(p))
 #define MSG_BUF_PTR(id) ((void*)(id))
 #endif
+
+/* "Is this a message buffer, not a message ID?" N64: the sign. 3DS: every message ID is below 0x2F0000 (the last section is
+ * 0x2E), every data or heap address is above it (image data starts after the 1.9 MB of code), so this accepts a tagged buffer
+ * (MSG_BUF_ID) and a raw pointer (shops, credits, Quizmo scripts, static data). */
+#ifdef TARGET_3DS
+#define MSG_IS_BUF(id) ((u32)(id) >= 0x2F0000u)
+#else
+#define MSG_IS_BUF(id) ((s32)(id) < 0)
+#endif
+
+/* "Is this value a data address?" for code that tells a pointer from a small number. N64: a KSEG0 address is negative as an s32.
+ * 3DS: addresses are positive and start at 0x100000 (the image), so use the same bound as EVT_IS_PTR. */
+#ifdef TARGET_3DS
+#define IS_ADDR(v) ((s32)(v) >= 0x100000)
+#else
+#define IS_ADDR(v) ((s32)(v) < 0)
+#endif
+
+/* P02 debug check (switch `ptrcheck`): log once per (site, caller) when a value in the 3DS host pointer range 0x100000 to
+ * 0x1FFFFFFF reaches a place that expects an ID, a number or a float. Port function in 3ds/src/pm_warp.c. */
+#ifdef TARGET_3DS
+void pm_ptrcheck(const char* what, unsigned val, const void* caller);
+#define PTRCHECK(what, val) do { if ((u32)(val) >= 0x100000u && (u32)(val) < 0x20000000u) pm_ptrcheck(what, (u32)(val), __builtin_return_address(0)); } while (0)
+#else
+#define PTRCHECK(what, val) do { } while (0)
+#endif
 #endif

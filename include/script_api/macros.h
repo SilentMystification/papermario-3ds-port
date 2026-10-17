@@ -42,6 +42,24 @@
 #define EVT_IGNORE_ARG          -250000000 // used by a couple functions to selectively ignore args
 #define EVT_LIMIT               -270000000 // TODO better name
 
+/* "Is this value a pointer, not an ID or a variable?" On the N64 every pointer is a KSEG0 address, which is below EVT_LIMIT as
+ * an s32. A 3DS pointer is positive (image from 0x100000, heap and linear heap below 0x20000000), so that test is false for
+ * every pointer and true for an ID. IDs (NPC, trigger, label) are small or negative. Use this macro, not a compare with EVT_LIMIT. */
+#ifdef TARGET_3DS
+#define EVT_IS_PTR(v) ((s32)(v) >= 0x100000) /* signed: negative IDs (NPC_SELF -1, NPC_PARTNER) are not pointers */
+#else
+#define EVT_IS_PTR(v) ((s32)(v) < EVT_LIMIT)
+#endif
+
+/* MapSettings.tattle is a message ID or a get_tattle function. A map tattle ID is MESSAGE_ID(0x19, n) with n < 0x200 (the
+ * last is 0x188), so on the 3DS a function is any address from 0x100000 outside 0x190000..0x1901FF. The two linked
+ * get_tattle functions (sbk_02, sbk_30) sit at 0x23xxxx. Check the nm address when a map with get_tattle is linked. */
+#ifdef TARGET_3DS
+#define MAP_TATTLE_IS_FUNC(v) ((u32)(v) >= 0x100000u && ((u32)(v) < 0x190000u || (u32)(v) >= 0x190200u))
+#else
+#define MAP_TATTLE_IS_FUNC(v) EVT_IS_PTR(v)
+#endif
+
  // This fixes an issue with fixed point numbers not being correct. Potentially a truncation vs round difference.
 #define FLOAT_ROUND(x) ((x) >=0 ? (f64)((x) + 0.9) : (f64)(x))
 #define Float(DOUBLE)  ((Bytecode)FLOAT_ROUND(((DOUBLE) * 1024.0f)) - EVT_FIXED_OFFSET)

@@ -239,5 +239,45 @@ void pm_warp_tick(unsigned frame) {
         set_screen_overlay_center(0, 0, 20, 20);
         set_screen_overlay_center(0, 1, 300, 220);
     }
+    /* P02 control: switch ptrtest feeds a host pointer value to each ptrcheck site once, to prove the check logs. Needs ptrcheck. */
+    if (f == 50 && pm_debug_has("ptrtest")) {
+        get_npc_safe(0x200000);
+        evt_get_float_variable(NULL, 0x200000);
+        evt_set_variable(NULL, 0x200000, 1);
+        evt_set_float_variable(NULL, 0x200000, 1.0f);
+    }
+    /* P02 control for the fixes: an Npc pointer must come back from resolve_npc, a raw message buffer must be measured. */
+    if (f == 60 && pm_debug_has("ptrtest")) {
+        extern u8 MessagePlural[];
+        Npc* n = get_npc_safe(NPC_PARTNER);
+        s32 w = get_msg_width((s32)MessagePlural, 0);
+        pm_log("ptrtest: resolve_npc(ptr) %s, partner npc %08x, get_msg_width(raw buffer) %d", (n != NULL && resolve_npc(NULL, (s32)n) == n) ? "ok" : "FAIL", (unsigned)n, (int)w);
+    }
     if (smoke_on && f == 300) pm_log("warp: smoke done (300 frames in the scene) t=%u ms", pm_uptime_ms());
+}
+
+/* P02: switch `ptrcheck`. Called by the PTRCHECK macro (include/macros.h) when a value in the host pointer range reaches an
+ * ID, number or float place. Logs once per (what, caller). `caller` is a code address: use addr2line on it. */
+void pm_ptrcheck(const char* what, unsigned val, const void* caller) {
+    static int on = -1;
+    static unsigned keys[512];
+    static int n;
+    unsigned key = (unsigned)caller ^ ((unsigned)what * 2654435761u);
+    int i;
+
+    if (on < 0) {
+        on = pm_debug_has("ptrcheck");
+    }
+    if (!on) {
+        return;
+    }
+    for (i = 0; i < n; i++) {
+        if (keys[i] == key) {
+            return;
+        }
+    }
+    if (n < 512) {
+        keys[n++] = key;
+    }
+    pm_log("ptrcheck: %s value %08x caller %08x", what, val, (unsigned)caller);
 }

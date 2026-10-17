@@ -403,7 +403,7 @@ API_CALLABLE(N(SelectTattleMsg)) {
             if (temp == MSG_NONE) {
                 msgID = get_current_map_settings()->tattle.msgID;
                 if (msgID != 0) {
-                    if (msgID < EVT_LIMIT) {
+                    if (MAP_TATTLE_IS_FUNC(msgID)) {
                         // map uses a get_tattle function
                         script->VAR_MSG = ((s32(*)(void))msgID)();
                     } else {
@@ -422,7 +422,7 @@ API_CALLABLE(N(SelectTattleMsg)) {
         case USE_TATTLE_FORCE_MAP:
             msgID = get_current_map_settings()->tattle.msgID;
             if (msgID != 0) {
-                if (msgID < EVT_LIMIT) {
+                if (MAP_TATTLE_IS_FUNC(msgID)) {
                     script->VAR_MSG = ((s32(*)(void))msgID)();
                 } else {
                     script->VAR_MSG = msgID;

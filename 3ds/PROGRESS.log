@@ -450,3 +450,22 @@
 23:47 D03 capture verified: fb 320x240 correct. pause bg shows cream checker + doubled text, investigating all pages
 00:10 D03 fixed: bg fade combine mode 6, bg_tile window composite (CPU tile0*tile1). spirits+map pages look right
 00:35 D03 pause pages all render (stats text fixed by msg buffer tag), prev-frame blur stable; checking autoa chain
+00:36 D03 commit done, D03 marked [x]
+00:37 P02 start: read HANDOFF, SLICES, QUESTIONS
+00:45 P02 find: evt values <=EVT_LIMIT are N64 ptrs; host ptrs positive pass literal; added EVT_IS_PTR, 5 sites
+00:47 P02 build a ok (EVT_IS_PTR, MSG_IS_BUF)
+00:49 P02 ptrcheck added (npc, float, set, dma_load_msg); build b ok
+00:50 P02 tour a start (partner=1 ptrcheck)
+00:53 P02 bug in my EVT_IS_PTR (unsigned: -4 read as ptr, mac_02 fault); signed now, rebuild c
+00:55 P02 build c ok, tour b start
+00:55 P02 tour progress 40 of 266
+00:56 P02 tour progress 51 of 266
+00:56 P02 tour progress 91 of 266
+00:57 P02 tour progress 131 of 266
+00:57 P02 tour progress 171 of 266
+00:58 P02 tour progress 211 of 266
+00:58 P02 tour progress 251 of 266
+00:59 P02 tour progress 257 of 266
+00:59 P02 tour progress 297 of 266
+01:00 P02 tour b: 264 clean, 2 fault (iwa_02 tour artifact, tst_12 cut map), 0 ptrcheck hits; adding ptrtest control
+01:05 P02 presets (7) with ptrcheck partner=1: 0 hits, 0 unmapped; ptrtest control fires 4 sites; adding fix control, build e

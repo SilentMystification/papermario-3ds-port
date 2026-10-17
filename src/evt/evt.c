@@ -1860,6 +1860,8 @@ s32 evt_set_variable(Evt* script, Bytecode var, s32 value) {
     s32 flagBitPos;
     s32 oldValue;
 
+    PTRCHECK("evt_set_variable(dest ptr)", var);
+
     if (var <= EVT_LIMIT) {
         return value;
     } else if (var <= EVT_FIXED_CUTOFF) {
@@ -1942,6 +1944,8 @@ s32 evt_set_variable(Evt* script, Bytecode var, s32 value) {
 f32 evt_get_float_variable(Evt* script, Bytecode var) {
     s32 temp;
 
+    PTRCHECK("evt_get_float_variable(ptr)", var);
+
     if (var <= EVT_LIMIT) {
         return var;
     } else if (var <= EVT_IGNORE_ARG) {
@@ -1990,6 +1994,8 @@ f32 evt_set_float_variable(Evt* script, Bytecode var, f32 value) {
     s32 temp;
     s32 oldValue;
 
+    PTRCHECK("evt_set_float_variable(dest ptr)", var);
+
     if (var <= EVT_LIMIT) {
         return value;
     } else if (var <= EVT_FIXED_CUTOFF) {
@@ -2036,7 +2042,7 @@ Bytecode* evt_find_label(Evt* script, s32 arg1) {
     Bytecode* ret = script->ptrReadPos;
     s32 i;
 
-    if (arg1 < EVT_LIMIT) {
+    if (EVT_IS_PTR(arg1)) {
         return (Bytecode*) arg1;
     }
 

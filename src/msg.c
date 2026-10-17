@@ -1402,6 +1402,7 @@ void dma_load_msg(u32 msgID, void* dest) {
 #else
 void dma_load_msg(u32 msgID, void* dest) {
     u8* addr = (u8*) MSG_ROM_START + (msgID >> 14); // (msgID >> 16) * 4
+    PTRCHECK("dma_load_msg(ptr)", msgID >= 0x2F0000u ? msgID : 0);
     u8* offset[2]; // start, end
 
     dma_copy(addr, addr + 4, &offset[0]); // Load section offset
@@ -1454,7 +1455,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
     }
 
     srcBuffer = (s8*) MSG_BUF_PTR(msgID);
-    if (msgID >= 0) {
+    if (!MSG_IS_BUF(msgID)) {
         srcBuffer = load_message_to_buffer((s32)srcBuffer);
     }
 
@@ -1488,7 +1489,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
 s32 msg_printer_load_msg(s32 msgID, MessagePrintState* printer) {
     s8* buffer;
 
-    if (msgID >= 0) {
+    if (!MSG_IS_BUF(msgID)) {
         buffer = load_message_to_buffer(msgID);
     } else {
         buffer = (s8*) MSG_BUF_PTR(msgID);
@@ -1536,7 +1537,7 @@ void set_message_text_var(s32 msgID, s32 index) {
     s32 i;
     u8* msgVars;
 
-    if (msgID >= 0) {
+    if (!MSG_IS_BUF(msgID)) {
         mallocSpace = general_heap_malloc(0x400);
         dma_load_msg(msgID, mallocSpace);
         msgID = (s32)mallocSpace;
@@ -1729,7 +1730,7 @@ void get_msg_properties(s32 msgID, s32* height, s32* width, s32* maxLineChars, s
         return;
     }
 
-    if (msgID >= 0) {
+    if (!MSG_IS_BUF(msgID)) {
         buffer = general_heap_malloc(0x400);
         dma_load_msg(msgID, buffer);
         message = buffer;
@@ -2025,7 +2026,7 @@ void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style)
         printer = &stackPrinter;
         initialize_printer(printer, 1, 0);
 
-        if (msgID < 0) {
+        if (MSG_IS_BUF(msgID)) {
             printer->srcBuffer = (u8*)MSG_BUF_PTR(msgID);
         } else {
             mallocSpace = general_heap_malloc(0x400);
