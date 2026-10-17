@@ -48,7 +48,18 @@ static GPU_TEXTURE_WRAP_PARAM wrap_of(unsigned mode, unsigned mask) {
     return GPU_REPEAT;
 }
 
+/* X01: the tile mask. A tile larger than its mask (the star and circle wipes load a 32 texel wide image into a 64 texel
+ * tile, mask 5, mirror) reads the image through the mask: s is masked before the texel address, so the part past the
+ * mask mirrors or repeats the image. The texture is built that way (a copy of the 64 wide window, clamped at its edge). */
+static unsigned mk_ws, mk_wt;  /* mask width in texels, 0 = none */
+static unsigned mk_ms, mk_mt;  /* mirror flags */
+static int mk_on;              /* the next load is a render tile load (pm_tex_load), not the shaded or rgba8 loads */
+
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
+    mk_ws = masks ? 1u << masks : 0;
+    mk_wt = maskt ? 1u << maskt : 0;
+    mk_ms = cms & 1u;
+    mk_mt = cmt & 1u;
     wrap_s = wrap_of(cms, masks);
     wrap_t = wrap_of(cmt, maskt);
 }
@@ -95,53 +106,59 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
     unsigned out_bpp = (gf == GPU_RGBA8) ? 4 : (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4) ? 1 : 2;
     if ((unsigned)pw * (unsigned)ph * out_bpp > 256u * 256u * 4u) return 0;
     memset(scratch, 0, (size_t)pw * (size_t)ph * out_bpp);
+    int mw = (mk_on && mk_ws && (int)mk_ws < w) ? (int)mk_ws : 0;
+    int mh = (mk_on && mk_wt && (int)mk_wt < h) ? (int)mk_wt : 0;
     for (int y = 0; y < h; y++) {
+        int sy = y;
+        if (mh) { int r = mk_mt ? y % (2 * mh) : y % mh; sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
         for (int x = 0; x < w; x++) {
+            int sx = x;
+            if (mw) { int r = mk_ms ? x % (2 * mw) : x % mw; sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
             if (fmt == FMT_CI) {
                 unsigned idx = 0;
                 if (siz == SIZ_4) {
-                    unsigned byte = src[(y * stride + x) >> 1];
-                    idx = (x & 1) ? (byte & 15) : (byte >> 4);
+                    unsigned byte = src[(sy * stride + sx) >> 1];
+                    idx = (sx & 1) ? (byte & 15) : (byte >> 4);
                 } else {
-                    idx = src[y * stride + x];
+                    idx = src[sy * stride + sx];
                 }
                 unsigned pix = (tlut && (int)idx < tlut_n) ? rd16(tlut + idx * 2) : 0xffffu;
                 write5551(scratch + ((y * pw + x) * 2), pix);
             } else if (fmt == FMT_RGBA && siz == SIZ_16) {
-                write5551(scratch + ((y * pw + x) * 2), rd16s(src + (y * stride + x) * 2));
+                write5551(scratch + ((y * pw + x) * 2), rd16s(src + (sy * stride + sx) * 2));
             } else if (fmt == FMT_RGBA && siz == SIZ_32) {
-                const u8* s = src + (y * stride + x) * 4;
+                const u8* s = src + (sy * stride + sx) * 4;
                 u8* d = scratch + (y * pw + x) * 4;
                 d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
             } else if (fmt == FMT_IA && siz == SIZ_16) {
-                unsigned c = rd16(src + (y * stride + x) * 2);
+                unsigned c = rd16(src + (sy * stride + sx) * 2);
                 u8* d = scratch + (y * pw + x) * 2;
                 /* PICA LA8 is alpha, then luminance. */
                 d[0] = (u8)(c & 255);
                 d[1] = (u8)(c >> 8);
             } else if (fmt == FMT_IA && siz == SIZ_8) {
-                unsigned c = src[y * stride + x];
+                unsigned c = src[sy * stride + sx];
                 unsigned i = (c >> 4) * 17;
                 unsigned a = (c & 15) * 17;
                 u8* d = scratch + (y * pw + x) * 2;
                 d[0] = (u8)a;
                 d[1] = (u8)i;
             } else if (fmt == FMT_IA && siz == SIZ_4) {
-                unsigned byte = src[(y * stride + x) >> 1];
-                unsigned nib = (x & 1) ? (byte & 15) : (byte >> 4);
+                unsigned byte = src[(sy * stride + sx) >> 1];
+                unsigned nib = (sx & 1) ? (byte & 15) : (byte >> 4);
                 unsigned i = (nib >> 1) * 36;
                 unsigned a = (nib & 1) ? 255 : 0;
                 u8* d = scratch + (y * pw + x) * 2;
                 d[0] = (u8)a;
                 d[1] = (u8)i;
             } else if (fmt == FMT_I && siz == SIZ_8) {
-                u8 c = src[y * stride + x];
+                u8 c = src[sy * stride + sx];
                 u8* d = scratch + (y * pw + x) * 2;
                 d[0] = c;
                 d[1] = c;
             } else if (fmt == FMT_I && siz == SIZ_4) {
-                unsigned byte = src[(y * stride + x) >> 1];
-                unsigned nib = (x & 1) ? (byte & 15) : (byte >> 4);
+                unsigned byte = src[(sy * stride + sx) >> 1];
+                unsigned nib = (sx & 1) ? (byte & 15) : (byte >> 4);
                 u8* d = scratch + (y * pw + x) * 2;
                 d[0] = (u8)(nib * 17);
                 d[1] = (u8)(nib * 17);
@@ -291,7 +308,12 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
         return 0;
     }
-    if (stride < width) stride = width;
+    if (mk_on && lut == NULL) {
+        int mw = (mk_ws && (int)mk_ws < width) ? (int)mk_ws : 0, mh = (mk_wt && (int)mk_wt < height) ? (int)mk_wt : 0;
+        if (mw || mh) dkey = (unsigned)(mw | mh << 8 | (int)mk_ms << 16 | (int)mk_mt << 17) | 0x80000000u;
+        if (mw && stride < mw) stride = mw; /* the source row is the mask width, not the tile width */
+        else if (!mw && stride < width) stride = width;
+    } else if (stride < width) stride = width;
     if (width > MAX_DIM || height > MAX_DIM) {
         static int once;
         if (!once) {
@@ -418,7 +440,11 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
 
 int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height,
                 const void* tlut, int tlut_n, int stride) {
-    return load_impl(img, fmt, siz, width, height, tlut, tlut_n, stride, NULL, 0, 0, 0);
+    int r;
+    mk_on = 1;
+    r = load_impl(img, fmt, siz, width, height, tlut, tlut_n, stride, NULL, 0, 0, 0);
+    mk_on = 0;
+    return r;
 }
 
 int pm_tex_load_shaded(const void* img, int width, int height, int stride, const void* spal,

@@ -609,3 +609,5 @@
 08:02 X01 finding: _SHIFTL cast negative float to u32 = 0 on ARM, wipe centre wrong; fix in mbi.h
 08:16 X01 build 4: _SHIFTL via int (negative float) in mbi.h (earlier edit did not apply)
 08:19 X01 verified: Mario wipe centred (fx8), battle swirl ok; commit 1
+08:25 X01 run: tourfx 1-16 shot sheets made
+08:27 X01 finding: star/circle stencil 32 wide in 64 tile with mask 5 mirror was garbled; pm_tex applies tile mask
