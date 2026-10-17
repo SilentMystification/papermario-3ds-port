@@ -526,3 +526,11 @@
 03:28 S25 tour progress 297 of 266
 03:33 S25 HANDOFF result written, SLICES S25 marked done
 03:33 S25 end
+03:34 PC01 start
+03:35 PC01 added pacestat counters, building
+03:38 PC01 base yard normal: 19.9 to 23.9 steps/s, vblanks 60/s, audio ticks 60/s
+03:42 PC01 base fast 29.8, turbo 23.8 steps/s; counted vblank idle wait added, build 2
+03:45 PC01 committed pacing; yard normal 29.82 steps/s
+03:50 PC01 toad 29.91, walk positions same fast vs normal; running chains
+03:55 PC01 chains ok (fast + normal), turbo smoke checked; writing docs
+03:56 PC01 end, docs committed
