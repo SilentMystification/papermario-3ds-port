@@ -327,6 +327,16 @@ void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     static u32 table_bytes;
     pi_read_raw(rom_addr, buf, size);
     if (!buf || !size || (unsigned)buf < 0x00100000u) return;
+    /* S19b: s16 data (Lava Piranha animation scripts). The ROM is big-endian, the reader wants native s16.
+     * A read starts and ends on an even offset (dma_copy chunks and the segment bounds are even). */
+    for (unsigned i = 0; i < sizeof(pm_rom_swap16) / sizeof(pm_rom_swap16[0]); i++) {
+        u32 s = pm_rom_swap16[i].start, e = pm_rom_swap16[i].end;
+        u32 from = rom_addr > s ? rom_addr : s, to = rom_addr + size < e ? rom_addr + size : e;
+        for (u32 a = from; a + 1 < to; a += 2) {
+            u8* f = (u8*)buf + (a - rom_addr), t0 = f[0];
+            f[0] = f[1]; f[1] = t0;
+        }
+    }
     if (table_bytes == 0) {
         u8 b[4];
         pi_read_raw(ASSET_TABLE_START + 0x10, b, 4);

@@ -5,7 +5,7 @@ import re, pathlib, yaml  # needs PyYAML (build3ds/.venv_e01/Scripts/python.exe 
 root = pathlib.Path(__file__).resolve().parents[2]
 ld = (root / "ver/us/build/include/ld_addrs.h").read_text()
 names = sorted(set(re.findall(r"extern Addr (\w+)_ROM_START;", ld)))
-pat = re.compile(r"^(world_model_anim_kzn_|battle_area_|action_cmd_|battle_move_|battle_partner_|battle_code$|btl_states_menus$)")
+pat = re.compile(r"^(battle_area_|action_cmd_|battle_move_|battle_partner_|battle_code$|btl_states_menus$)")
 # every segment of the battle vram classes (items, star powers, level_up, starpoint, ...)
 segs = yaml.load((root / "ver/us/splat.yaml").read_text(encoding="utf8"), Loader=yaml.CSafeLoader)["segments"]
 classes = {"battle_code", "battle_move", "action_cmd", "battle_partner"}

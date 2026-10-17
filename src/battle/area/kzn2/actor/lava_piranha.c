@@ -289,7 +289,7 @@ enum {
     VINE_RENDER_STATE_OK        = 1,
 };
 
-#ifdef SHIFT
+#if defined(SHIFT) || defined(TARGET_3DS) // 3DS: no fixed N64 address, use the real buffers
 extern Addr Vine3Base;
 extern Addr Vine2Base;
 extern Addr Vine1Base;

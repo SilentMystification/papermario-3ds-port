@@ -297,6 +297,9 @@ set(MAP_SRC_kmr
     ${DECOMP}/src/world/area_kmr/kmr_20/records.c
     ${DECOMP}/src/world/area_kmr/kmr_21/settings.c
     ${DECOMP}/src/world/area_kmr/kmr_21/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_22/settings.c
+    ${DECOMP}/src/world/area_kmr/kmr_22/main.c
+    ${DECOMP}/src/world/area_kmr/kmr_22/npc.c
     ${DECOMP}/src/world/area_kmr/kmr_23/settings.c
     ${DECOMP}/src/world/area_kmr/kmr_23/main.c
     ${DECOMP}/src/world/area_kmr/kmr_23/npc.c
@@ -936,6 +939,17 @@ set(MAP_SRC_kkj
     ${DECOMP}/src/world/area_kkj/kkj_29/quiz.c
 )
 set(MAP_SRC_jan
+    ${DECOMP}/src/world/area_jan/jan_04/settings.c
+    ${DECOMP}/src/world/area_jan/jan_04/music.c
+    ${DECOMP}/src/world/area_jan/jan_04/main.c
+    ${DECOMP}/src/world/area_jan/jan_04/entity.c
+    ${DECOMP}/src/world/area_jan/jan_04/npc.c
+    ${DECOMP}/src/world/area_jan/jan_04/unused.c
+    ${DECOMP}/src/world/area_jan/jan_04/trees.c
+    ${DECOMP}/src/world/area_jan/jan_04/scenes.c
+    ${DECOMP}/src/world/area_jan/jan_04/treasure.c
+    ${DECOMP}/src/world/area_jan/jan_04/bushes.c
+    ${DECOMP}/src/world/area_jan/jan_04/demo.c
 )
 set(MAP_SRC_mim
     ${DECOMP}/src/world/area_mim/mim_01/settings.c
@@ -1251,6 +1265,18 @@ set(MAP_SRC_dgb
     ${DECOMP}/src/world/area_dgb/smash_bridges.c
 )
 set(MAP_SRC_kzn
+    ${DECOMP}/src/world/area_kzn/kzn_02/settings.c
+    ${DECOMP}/src/world/area_kzn/kzn_02/main.c
+    ${DECOMP}/src/world/area_kzn/kzn_02/platforms.c
+    ${DECOMP}/src/world/area_kzn/kzn_02/npc.c
+    ${DECOMP}/src/world/area_kzn/kzn_02/demo.c
+    ${DECOMP}/src/world/area_kzn/kzn_19/settings.c
+    ${DECOMP}/src/world/area_kzn/kzn_19/music.c
+    ${DECOMP}/src/world/area_kzn/kzn_19/main.c
+    ${DECOMP}/src/world/area_kzn/kzn_19/npc_settings.c
+    ${DECOMP}/src/world/area_kzn/kzn_19/npc.c
+    ${DECOMP}/src/world/area_kzn/kzn_19/eruption.c
+    ${DECOMP}/src/world/area_kzn/kzn_19/entity.c
 )
 set(MAP_SRC_flo
 )

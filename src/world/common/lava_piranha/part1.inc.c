@@ -6,7 +6,7 @@ enum {
     NUM_VINES   = 4
 };
 
-#ifdef SHIFT
+#if defined(SHIFT) || defined(TARGET_3DS) // 3DS: no fixed N64 address, use the real buffers
 extern Addr D_80200000;
 extern Addr D_80204000;
 extern Addr D_80207000;

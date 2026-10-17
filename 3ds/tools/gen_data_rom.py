@@ -5,6 +5,9 @@ These are DATA ranges the game reads from the ROM by offset (nuPiReadRom or dma_
 (the same value the real linker script gives). Add a stem to STEMS when the game reads a new data segment."""
 import yaml
 STEMS = ['charset', 'logos', 'title_bg_1', 'icon', 'imgfx_data']
+# S19b: Lava Piranha animation scripts (s16 data, 00..24 hex). The game copies one of them to VINE_n_BASE by dma_copy.
+# VRAM is the real N64 address (0x80234000). The callers always pass their own destination.
+VINE_STEMS = ['world_model_anim_kzn_%02X' % i for i in range(0x25)]
 
 def splat_ranges(path='ver/us/splat.yaml'):
     """name -> (start, end, type, top_level). End of a top level segment is the next top level start, else the next start."""
@@ -35,6 +38,9 @@ if __name__ == '__main__':
     for n in STEMS:
         s, e = R[n][0], R[n][1]
         o += ['#define %s_ROM_START ((u8*)0x%X)' % (n, s), '#define %s_ROM_END   ((u8*)0x%X)' % (n, e)]
+    for n in VINE_STEMS:
+        s, e = R[n][0], R[n][1]
+        o += ['#define %s_ROM_START ((u8*)0x%X)' % (n, s), '#define %s_ROM_END   ((u8*)0x%X)' % (n, e), '#define %s_VRAM ((u8*)0x80234000)' % n]
     o.append('#endif')
     open('3ds/stub_include/data_rom_addrs.h', 'w').write('\n'.join(o) + '\n')
-    print('wrote', len(STEMS), 'ranges')
+    print('wrote', len(STEMS) + len(VINE_STEMS), 'ranges')

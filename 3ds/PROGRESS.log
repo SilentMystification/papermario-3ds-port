@@ -558,3 +558,9 @@
 04:49 M03 tour progress 297 of 266
 04:49 M03 tour 263 ok, 3 known fails (same as S25); docs written
 04:49 M03 end, notes committed
+04:50 S19b start
+04:55 S19b edits: kzn anim ROM ranges real, rom keep+swap16, link kmr_22 kzn_19 kzn_02 jan_04; build next
+04:57 S19b build 1 ok
+04:58 S19b kzn_19 warp 300 frames rc 0 0 unmapped, shot ok; img 16928KB heap 27543KB spare ~585KB
+04:59 S19b lp battle fault: VINE_n_BASE are N64 addrs (non-SHIFT). Use real buffers under TARGET_3DS, rebuild
+05:02 S19b lava piranha battle kzn2 runs, vine anim by eye, 0 unmapped (real buffers fix)
