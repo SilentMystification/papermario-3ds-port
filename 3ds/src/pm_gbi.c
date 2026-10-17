@@ -861,7 +861,7 @@ static void draw_tri(unsigned w) {
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
     sync_render();
-    if (omode_l & (1u << G_MDSFT_ZSRCSEL)) {
+    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && !pm_debug_has("noprimz")) { /* noprimz: A/B check */
         /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
         float zn = 2.f * (float)prim_z / 32767.f - 1.f;
         for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
@@ -1471,7 +1471,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
                 ? rgba_from_5551(fill & 0xffff) : prim;
             /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
-            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
+            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !pm_debug_has("noprimz")) {
                 sync_render();
                 pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)prim_z / 32767.f);
             } else
