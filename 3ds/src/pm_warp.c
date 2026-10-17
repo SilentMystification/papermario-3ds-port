@@ -256,6 +256,9 @@ static void battle_hooks(unsigned f) {
         s32 formation = battle_name_value(v, c ? (unsigned)(c - v) : (unsigned)strlen(v), BTL_KMR_1_FORMATION_00);
         s32 stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
         pm_log("debug battle: formation %d stage %d at scene frame %u", (int)formation, (int)stage, f);
+        /* No world enemy started this battle, so there is no encounter to run: the real update_encounters_neutral reads
+         * the enemy list of the world map (get_npc_unsafe assert, unmapped reads). ENCOUNTER_STATE_NONE makes update_encounters do nothing. */
+        gEncounterState = ENCOUNTER_STATE_NONE;
         set_battle_stage(stage);
         load_battle(formation);
     }

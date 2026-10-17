@@ -535,3 +535,8 @@
 03:55 PC01 chains ok (fast + normal), turbo smoke checked; writing docs
 03:56 PC01 end, docs committed
 03:56 M03 start
+03:58 M03 conflicts resolved, hooks in pm_warp.c, first build
+04:00 M03 merge committed, build links first try
+04:00 M03 stand-ins already gone by merge (A1-A3,A13,A14,B3-B5)
+04:01 M03 layout scan 0 battle hits; 190B20 fixed; size measured
+04:06 M03 battle hook works (state NONE), Goomba battle plays to STAR POINTS, back to world black; spare est 873 KB
