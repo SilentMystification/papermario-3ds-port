@@ -300,3 +300,4 @@
 19:21 S30 area loop done: 267 maps linked, image 13096KB, est spare 4590KB, kpa would give 4442KB (stop)
 19:22 S30 temp build with mac_01 id-only for the refusal test
 19:28 S30 refusal fix tested (mac_01 temp id-only): control back after 103 frames, Mario back to 600
+20:14 S30 kmr02 fault: ENTITY_ADDR used low 16 bits of host symbol; fixed in include/entity.h (3DS), G_VTX v0>=64 guard

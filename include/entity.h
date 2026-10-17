@@ -61,7 +61,13 @@ enum {
         ems_End \
     }
 
+#ifdef TARGET_3DS
+// The model data (vtx, gfx, textures) is compiled and linked in place, so the symbol already is the host address.
+// On the N64 the symbol is an offset into the DMA'd model (low 16 bits), which is layout dependent garbage here.
+#define ENTITY_ADDR(entity, type, data) (type)(data)
+#else
 #define ENTITY_ADDR(entity, type, data) (type)((s32)(entity->gfxBaseAddr) + ((s32)(data) & 0xFFFF))
+#endif
 #define ENTITY_ROM(name) { entity_model_##name##_ROM_START, entity_model_##name##_ROM_END }
 
 #define BLOCK_GRID_SIZE 25
