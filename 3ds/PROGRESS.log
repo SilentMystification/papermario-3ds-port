@@ -387,3 +387,66 @@
 21:51 R01 build 4: final
 21:53 R01 commit a833bb5ed tools, generated data_rom_addrs.h, rom_suspect check
 21:53 R01 end, docs committed
+21:54 F02 start
+21:55 F02 V04 group: mdl_make_local_vertex_copy, add debug log, build
+22:04 F02 V04 cause: u64 cast of Gfx is big-endian only (model.c:4079), loop overran heap. fixing
+22:05 F02 build d (V04 fix)
+22:07 F02 commit V04 model.c u64 endian fix; mac_06 kgr_01 clean, others show F02 faults
+22:15 F02 cause: encounter.c:2535 init < EVT_LIMIT is false for host ptrs, NPC init scripts never ran in any map
+22:15 F02 build e (encounter init fix)
+22:17 F02 commit encounter.c init pointer test; mac_05 kmr_10 clean
+22:19 F02 build f (warp partner= switch)
+22:26 F02 group: unterminated map scripts (gv_01 etc) -> -fno-data-sections; partner-needed maps -> partner=1 switch; build g
+22:31 F02 commit cmake order + partner switch; gv_01 hos_02 hos_04 trd_06 tik_06 tik_14 omo_11 omo_16 clean (partner=1 where needed)
+22:33 F02 start tour with partner=1 (tag p1)
+22:33 F02 tour progress 1 of 266
+22:34 F02 tour progress 41 of 266
+22:34 F02 tour progress 50 of 266
+22:35 F02 tour progress 90 of 266
+22:35 F02 tour progress 130 of 266
+22:36 F02 tour progress 133 of 266
+22:36 F02 tour progress 173 of 266
+22:37 F02 tour progress 213 of 266
+22:37 F02 tour progress 253 of 266
+22:38 F02 tour progress 257 of 266
+22:38 F02 tour progress 297 of 266
+22:38 F02 tour p1 finished
+22:39 F02 tour p1: 262 ok, 4 fail: machi+trd_08 (NpcData init small immediate 0x1F64/0x4003 -> start_script), iwa_01 (kmr_23 callback), tst_12
+22:40 F02 build h (init pointer range fix)
+22:42 F02 commit init range; start tour p0 (no partner) then p1
+22:43 F02 tour progress 14 of 266
+22:43 F02 tour progress 24 of 266
+22:44 F02 tour progress 31 of 266
+22:44 F02 tour progress 42 of 266
+22:44 F02 tour progress 50 of 266
+22:45 F02 tour progress 90 of 266
+22:45 F02 tour progress 130 of 266
+22:46 F02 tour progress 137 of 266
+22:46 F02 tour progress 151 of 266
+22:47 F02 tour progress 180 of 266
+22:47 F02 tour progress 209 of 266
+22:48 F02 tour progress 244 of 266
+22:48 F02 tour progress 253 of 266
+22:49 F02 tour progress 257 of 266
+22:49 F02 tour progress 297 of 266
+22:49 F02 tour p0 (no partner): 254 ok, 12 fail (partner users, iwa_01, tst_12)
+22:50 F02 tour progress 40 of 266
+22:50 F02 tour progress 50 of 266
+22:51 F02 tour progress 90 of 266
+22:51 F02 tour progress 130 of 266
+22:52 F02 tour progress 170 of 266
+22:52 F02 tour progress 210 of 266
+22:53 F02 tour progress 250 of 266
+22:53 F02 tour progress 257 of 266
+22:54 F02 tour progress 297 of 266
+22:54 F02 tour p1 final
+23:05 F02 tex ptr 0xfd7e: temp log in pm_gbi G_SETTIMG, build i
+23:17 F02 tex ptr cause found: depth query reads nuGfxZBuffer (NULL), model.c:4497; rebuild clean
+23:20 F02 end, docs committed
+23:20 D03 start
+23:28 D03 cause: nuGfxZBuffer NULL, cfb are 2-byte tokens; adding real fb copy on request
+23:29 D03 build 1 ok (1m15)
+23:34 D03 run1: pause opens (mode 10) but never closes; padscript inline cut at 39 chars (v[40]) fixed
+23:47 D03 capture verified: fb 320x240 correct. pause bg shows cream checker + doubled text, investigating all pages
+00:10 D03 fixed: bg fade combine mode 6, bg_tile window composite (CPU tile0*tile1). spirits+map pages look right
+00:35 D03 pause pages all render (stats text fixed by msg buffer tag), prev-frame blur stable; checking autoa chain

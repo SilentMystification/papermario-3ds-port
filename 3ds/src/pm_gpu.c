@@ -108,13 +108,28 @@ static void flush(void) {
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     int tex = (combine >= 2) && pm_tex_bind();
-    if (tex && combine == 5) {
-        /* (PRIM - ENV) * TEXEL + ENV, alpha = texel alpha. ENV rides in the vertex colour. */
-        C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_TEXTURE0);
+    if (tex && combine == 6) {
+        /* (TEXEL - PRIM) * PRIM_ALPHA + PRIM: the texture fades to the primitive colour (pause screen
+         * background, darkened by gray 40 at alpha 128). Alpha = texel alpha. */
+        C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_TEXTURE0, GPU_CONSTANT);
+        C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_ALPHA);
         C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
         C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, GPU_TEXTURE0);
         C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
         C3D_TexEnvColor(env, abgr(prim));
+    } else if (tex && (combine == 5 || combine == 7)) {
+        /* (PRIM - ENV) * TEXEL + ENV, alpha = texel alpha. ENV rides in the vertex colour. */
+        C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_TEXTURE0);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
+        if (combine == 7) {
+            C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, GPU_CONSTANT, GPU_CONSTANT);
+            C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+            C3D_TexEnvColor(env, abgr(prim | 0xffu));
+        } else {
+            C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, GPU_TEXTURE0);
+            C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+            C3D_TexEnvColor(env, abgr(prim));
+        }
     } else if (tex && combine == 4) {
         /* Flat colour, alpha = texture alpha times the constant's alpha. */
         C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_CONSTANT, GPU_CONSTANT);
@@ -340,6 +355,31 @@ static void dump_shot(void) {
     fclose(f);
 }
 
+/* D03: the last finished frame as N64 RGBA5551 (native u16, alpha bit set), 320x240, for game code that
+ * reads the frame buffer. Reads the PICA color buffer (tiled RGBA8, 240 wide x 400 tall, the screen rotated;
+ * game x is the long axis shifted by 40, game y runs backwards on the short axis). Costs one pass over 76800
+ * pixels of VRAM, so it runs only when the game asks (pause screen, previous-frame draws). */
+void pm_gpu_read_frame(unsigned short* dst) {
+    const unsigned char* src;
+    int x, y;
+    if (!target || !dst) return;
+    src = (const unsigned char*)target->frameBuf.colorBuf;
+    if (!src) return;
+    PH_PUSH(PH_FBREAD);
+    for (y = 0; y < 240; y++) {
+        unsigned fx = (unsigned)(239 - y);
+        for (x = 0; x < 320; x++) {
+            unsigned fy = (unsigned)(40 + x);
+            unsigned mx = fx & 7u, my = fy & 7u;
+            unsigned m = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) |
+                         ((mx & 4u) << 2) | ((my & 4u) << 3);
+            const unsigned char* p = src + ((((fy >> 3) * 30u + (fx >> 3)) * 64u + m) * 4u);
+            dst[y * 320 + x] = (unsigned short)(((p[3] >> 3) << 11) | ((p[2] >> 3) << 6) | ((p[1] >> 3) << 1) | 1u);
+        }
+    }
+    PH_POP();
+}
+
 void pm_gpu_begin(int clear) {
     draws_frame = 0;
     drew = 0;
@@ -472,7 +512,7 @@ void pm_gpu_set_rgb_scale(int scale) {
 }
 
 void pm_gpu_set_prim(unsigned rgba) {
-    if (combine == 5 && rgba != prim) flush();
+    if ((combine == 5 || combine == 6 || combine == 7) && rgba != prim) flush();
     prim = rgba;
 }
 
@@ -559,14 +599,14 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
     flush();
     int saved = combine;
-    combine = saved == 5 ? 5 : 2;
+    combine = (saved == 5 || saved == 6 || saved == 7) ? saved : 2;
     rect_2d = 1;
     batch_identity = 1;
     float xa = px(x0);
     float xb = px(x1 + 1);
     float ya = py(y0);
     float yb = py(y1 + 1);
-    unsigned c = saved == 5 ? env_col : 0xffffffffu;
+    unsigned c = (saved == 5 || saved == 7) ? env_col : 0xffffffffu;
     pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, ya, 0.5f, s1, t0, c, xb, yb, 0.5f, s1, t1, c);
     pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, yb, 0.5f, s1, t1, c, xa, yb, 0.5f, s0, t1, c);
     flush();

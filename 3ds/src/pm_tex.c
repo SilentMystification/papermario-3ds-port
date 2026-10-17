@@ -58,6 +58,9 @@ static int pot_at_least_8(int n) {
 }
 
 static unsigned rd16(const u8* p) { return ((unsigned)p[0] << 8) | p[1]; }
+extern int pm_fb_native(const void* p);
+static int src_native; /* D03: the image is a frame buffer or the saved frame (native u16) */
+static unsigned rd16s(const u8* p) { return src_native ? ((unsigned)p[1] << 8) | p[0] : rd16(p); }
 
 static GPU_TEXCOLOR gpu_fmt(unsigned fmt, unsigned siz) {
     if (fmt == FMT_RGBA && siz == SIZ_32) return GPU_RGBA8;
@@ -103,7 +106,7 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
                 unsigned pix = (tlut && (int)idx < tlut_n) ? rd16(tlut + idx * 2) : 0xffffu;
                 write5551(scratch + ((y * pw + x) * 2), pix);
             } else if (fmt == FMT_RGBA && siz == SIZ_16) {
-                write5551(scratch + ((y * pw + x) * 2), rd16(src + (y * stride + x) * 2));
+                write5551(scratch + ((y * pw + x) * 2), rd16s(src + (y * stride + x) * 2));
             } else if (fmt == FMT_RGBA && siz == SIZ_32) {
                 const u8* s = src + (y * stride + x) * 4;
                 u8* d = scratch + (y * pw + x) * 4;
@@ -305,6 +308,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
     }
     ph_miss = 1;
+    src_native = pm_fb_native(img);
     PH_PUSH(PH_TEX);
     PH_ADD(C_TEXMISS, 1);
     int pw = pot_at_least_8(width);
@@ -420,6 +424,30 @@ int pm_tex_load_shaded(const void* img, int width, int height, int stride, const
     h = (h ^ (unsigned)dx4) * 16777619u;
     h = (h ^ (unsigned)dy4) * 16777619u;
     return load_impl(img, FMT_CI, SIZ_4, width, height, spal, 16, stride, lut, dx4, dy4, h | 1u);
+}
+
+/* D03: a texture the port composed on the CPU (RGBA8, w x h, tightly packed in rgba). key names the content.
+ * rgba NULL: only look for a cached copy and bind it. Returns 1 if bound. */
+int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigned char* rgba) {
+    key |= 1u;
+    if (!rgba) {
+        have = 0;
+        cur = -1;
+        for (int i = 0; i < slot_hi; i++) {
+            Slot* s = &slots[i];
+            if (s->live && s->img == buf && s->dkey == key && s->fmt == FMT_RGBA && s->siz == SIZ_32 && s->w == w &&
+                s->h == h && s->stride == w) {
+                s->stamp = ++stamp;
+                s->epoch = epoch;
+                cur = i;
+                have = 1;
+                return 1;
+            }
+        }
+        return 0;
+    }
+    (void)buf;
+    return load_impl(buf, FMT_RGBA, SIZ_32, w, h, NULL, 0, w, NULL, 0, 0, key);
 }
 
 int pm_tex_bind(void) {

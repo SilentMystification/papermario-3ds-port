@@ -7,6 +7,7 @@ void pm_gpu_end(void);
 /* Two lines at the top of the bottom screen. The log scrolls underneath. */
 void pm_gpu_hud(const char* line0, const char* line1);
 int pm_gpu_drew(void);
+void pm_gpu_read_frame(unsigned short* dst);
 
 /* Row-vector F3DEX matrix: out = v * m. The shader multiplies object-space
  * vertices by this, then the viewport and the screen tilt. */

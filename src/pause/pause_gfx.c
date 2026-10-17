@@ -626,7 +626,19 @@ Gfx* PauseGfxLabels[] = {
 };
 
 s32 pause_get_menu_msg(s32 index) {
+#ifdef TARGET_3DS
+    /* gPauseMessages holds message IDs and pointers to message buffers (gPauseMsg_*). A buffer must carry bit 31 (see
+     * MSG_BUF_ID). The largest message ID is below 0x2F0000 (last section 0x2E), so a larger value is a buffer address.
+     * A table initializer cannot hold the tagged address (the 3dsx loader rejects the relocation). */
+    s32 msg = gPauseMessages[index];
+
+    if ((u32) msg >= 0x2F0000U) {
+        return MSG_BUF_ID(msg);
+    }
+    return msg;
+#else
     return gPauseMessages[index];
+#endif
 }
 
 void pause_draw_menu_label(s32 index, s32 x, s32 y) {

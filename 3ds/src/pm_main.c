@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include "pm_port.h"
@@ -153,15 +154,36 @@ unsigned pm_uptime_ms(void) {
  * lands on 0. The other retrace leaves the N64 framebuffer alone. Clearing
  * and presenting on that retrace flashes black between the logo frames. */
 extern s16 D_80073E0A;
-/* The intro camera waits until the displayed color buffer changes, which NuSys
- * does on every swap. Two tokens stand in for that pair of framebuffers. */
+/* The intro camera waits until the displayed color buffer changes, which NuSys does on every
+ * swap. The list holds the real frame buffers gFrameBuf0..2 (heaps3.c). The GPU does not draw
+ * into them. Code that reads the last frame (pause screen, screen transitions) gets it from
+ * pm_cfb_capture_prev: a copy of the PICA color buffer in N64 RGBA5551, made only when asked. */
 extern unsigned short* nuGfxCfb_ptr;
 extern unsigned short** nuGfxCfb;
-static unsigned short cfb_token[2];
-static unsigned short* cfb_list[2] = { &cfb_token[0], &cfb_token[1] };
+extern unsigned short* nuGfxZBuffer;
+extern unsigned short gFrameBuf0[], gFrameBuf1[], gFrameBuf2[];
+void pm_gpu_read_frame(unsigned short* dst);
+void pm_tex_invalidate(const void* ptr, unsigned size);
+#define CFB_PIXELS (320 * 240)
+static unsigned short* cfb_list[3] = { gFrameBuf0, gFrameBuf1, gFrameBuf2 };
 unsigned nuGfxCfbNum = 2;
-/* The two tokens are the real screen. Any other color image is memory the game reads back. */
-int pm_is_cfb(const void* p) { return p == &cfb_token[0] || p == &cfb_token[1]; }
+static int in_buf(const void* p, const unsigned short* b) {
+    return (const unsigned short*)p >= b && (const unsigned short*)p < b + CFB_PIXELS;
+}
+/* A color image that is the screen (a frame buffer). Any other color image is memory the game reads back. */
+int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1) || in_buf(p, gFrameBuf2); }
+/* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
+ * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
+int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)); }
+/* D03: the z-buffer memory the pause code saves the last frame into. Allocated when first needed. */
+void pm_zbuf_need(void) {
+    if (!nuGfxZBuffer) {
+        nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
+        if (!nuGfxZBuffer) pm_log("D03: no memory for the %d KB z-buffer image", CFB_PIXELS * 2 / 1024);
+        else pm_log("D03: z-buffer image allocated, %d KB", CFB_PIXELS * 2 / 1024);
+    }
+    if (nuGfxZBuffer) pm_tex_invalidate(nuGfxZBuffer, CFB_PIXELS * 2);
+}
 
 void pm_dump_scripts(void);
 void pm_warp_tick(unsigned frame);
@@ -169,6 +191,26 @@ void pm_map_tick(void);
 unsigned pm_uptime_ms(void);
 static unsigned pm_frame_n;
 unsigned pm_frame_count(void) { return pm_frame_n; }
+/* D03: copy the last finished frame into the frame buffer that is not being drawn (the N64 "previous
+ * color buffer"). The PICA color buffer holds that frame until C3D_FrameEnd of this frame runs the
+ * command list, so any time during this frame's display list build or run is right. Once per frame. */
+void pm_cfb_capture_prev(void) {
+    static unsigned done = ~0u;
+    unsigned i;
+    if (done == pm_frame_n) return;
+    done = pm_frame_n;
+    for (i = 0; i < nuGfxCfbNum; i++) {
+        if (nuGfxCfb[i] == nuGfxCfb_ptr) {
+            unsigned short* prev = nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
+            unsigned t0 = pm_ticks();
+            static unsigned nlog;
+            pm_gpu_read_frame(prev);
+            if (nlog++ < 6) pm_log("D03: last frame copied to a frame buffer in %u us (ARM11 tick, Azahar timing)", (unsigned)((pm_ticks() - t0) / 268u));
+            pm_tex_invalidate(prev, CFB_PIXELS * 2);
+            return;
+        }
+    }
+}
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
@@ -208,7 +250,7 @@ void pm_frame_loop(void) {
             continue;
         }
         step_start = now;
-        nuGfxCfb_ptr = &cfb_token[frame & 1u];
+        nuGfxCfb_ptr = nuGfxCfb[frame % nuGfxCfbNum];
         pm_gpu_begin(1);
         pm_gfx_retrace();
         if (!pm_gpu_drew()) {

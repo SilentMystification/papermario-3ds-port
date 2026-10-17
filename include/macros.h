@@ -573,4 +573,14 @@ typedef enum {
 } bool;
 #endif
 
+
+/* A message buffer passed where a message ID goes. On the N64 a buffer pointer is negative (KSEG0) and a message ID is not, so
+ * "id < 0" means "buffer". A 3DS pointer is positive (below 0x80000000), so the buffer is tagged with bit 31. */
+#ifdef TARGET_3DS
+#define MSG_BUF_ID(p) ((s32)((u32)(p) + 0x80000000u))
+#define MSG_BUF_PTR(id) ((void*)((u32)(id) & 0x7FFFFFFFu))
+#else
+#define MSG_BUF_ID(p) ((s32)(p))
+#define MSG_BUF_PTR(id) ((void*)(id))
+#endif
 #endif

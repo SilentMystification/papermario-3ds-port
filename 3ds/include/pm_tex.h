@@ -16,6 +16,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
  * clamped to the image. spal is only the cache key and the invalidation range. */
 int pm_tex_load_shaded(const void* img, int width, int height, int stride, const void* spal,
                        const unsigned* lut, int dx4, int dy4);
+int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigned char* rgba);
 int pm_tex_bind(void);
 void pm_tex_size(int* w, int* h);
 /* G_TX_WRAP / G_TX_MIRROR / G_TX_CLAMP for the render tile. mask 0 clamps. */

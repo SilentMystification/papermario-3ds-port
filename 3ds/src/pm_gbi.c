@@ -36,6 +36,9 @@ static int tlut_n;
 /* RDP state the shaded-sprite path needs: color image, TLUT per palette slot, per-tile TMEM
  * address and palette, tile sizes, scissor, env color and the second combiner cycle. */
 extern int pm_is_cfb(const void* p);
+extern void pm_cfb_capture_prev(void);
+extern void pm_zbuf_need(void);
+extern unsigned pm_frame_count(void);
 static void* cimg;
 static int cimg_stride = 320;
 static const void* tlut_pal[16];
@@ -68,6 +71,7 @@ static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
  * box_folded is 1 while it is drawn as (PRIM - ENV) * TEXEL1 + ENV, which is exact when tile 0
  * is all white (the flat background of the window styles, `bg_flat`). */
 static int box_prod, box_folded;
+static int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
 static unsigned box_save[4];
 static float dual_gain[3];
 static void unpack8(unsigned c, float o[4]);
@@ -229,11 +233,26 @@ static void sync_combine(void) {
     int alpha_tex = comb_aa == 1 || comb_ab == 1 || comb_ac == 1 || comb_ad == 1 ||
                     comb_aa == 2 || comb_ab == 2 || comb_ac == 2 || comb_ad == 2;
     comb_mode5 = 0;
+    box_pat = 0;
     if (wants_tex && comb_a == G_CCMUX_PRIMITIVE && comb_b == G_CCMUX_ENVIRONMENT && comb_c == G_CCMUX_TEXEL0 &&
         comb_d == G_CCMUX_ENVIRONMENT && alpha_tex) {
         comb_mode5 = 1;
         pm_gpu_set_env(envc);
-        pm_gpu_set_combine(5);
+        /* D03: draw_box windows with the bg_tile pattern (tile 0, I4 0/F checker) take their alpha from
+         * TEXEL1 (the corner image). Tile 0 alpha is the checker itself, so it must not become the alpha:
+         * mode 7 draws the body opaque (the 8x8 rounded corner shape is lost). */
+        {
+            int a_t0 = comb_aa == 1 || comb_ab == 1 || comb_ac == 1 || comb_ad == 1;
+            box_pat = !a_t0;
+            pm_gpu_set_combine(a_t0 ? 5 : 7);
+        }
+        return;
+    }
+    /* D03: (TEXEL0 - PRIM) * PRIM_ALPHA + PRIM, the pause screen background fade. */
+    /* Texture rectangles read the texture whatever gSPTexture says, so tex_on is not tested. */
+    if (comb_a == G_CCMUX_PRIMITIVE && comb_b == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_PRIMITIVE_ALPHA &&
+        comb_d == G_CCMUX_TEXEL0) {
+        pm_gpu_set_combine(6);
         return;
     }
     if (wants_tex) mode = alpha_tex ? 2 : 3;
@@ -769,6 +788,97 @@ static void ensure_tile(int n) {
     cur_tile = n;
 }
 
+/* D03: one texel of tile n as RGBA 0..255. Tile 0 wraps, tile 1 clamps (draw_box: pattern and corner image).
+ * Returns 0 for a format not handled. */
+static int tile_texel(int n, int s, int t, unsigned char o[4]) {
+    const u8* p = td[n].src;
+    int w = td[n].w, h = td[n].h;
+    if (n == 0) {
+        s %= w; if (s < 0) s += w;
+        t %= h; if (t < 0) t += h;
+    } else {
+        if (s < 0) s = 0; else if (s >= w) s = w - 1;
+        if (t < 0) t = 0; else if (t >= h) t = h - 1;
+    }
+    size_t i = (size_t)t * (size_t)td[n].stride + (size_t)s;
+    unsigned c;
+    switch (td[n].fmt * 4 + td[n].siz) {
+    case 4 * 4 + 0: { u8 b = p[i >> 1]; unsigned v = ((i & 1) ? (b & 15u) : (b >> 4)) * 17u; o[0] = o[1] = o[2] = o[3] = (u8)v; return 1; }
+    case 4 * 4 + 1: o[0] = o[1] = o[2] = o[3] = p[i]; return 1;
+    case 3 * 4 + 0: { u8 b = p[i >> 1]; unsigned v = (i & 1) ? (b & 15u) : (b >> 4); o[0] = o[1] = o[2] = (u8)((v >> 1) * 36u); o[3] = (v & 1u) ? 255 : 0; return 1; }
+    case 3 * 4 + 1: o[0] = o[1] = o[2] = (u8)((p[i] >> 4) * 17u); o[3] = (u8)((p[i] & 15u) * 17u); return 1;
+    case 3 * 4 + 2: o[0] = o[1] = o[2] = p[i * 2]; o[3] = p[i * 2 + 1]; return 1;
+    case 0 * 4 + 2: c = ((unsigned)p[i * 2] << 8) | p[i * 2 + 1]; break;
+    case 2 * 4 + 0: case 2 * 4 + 1: {
+        unsigned idx;
+        if (!td[n].pal) return 0;
+        if (td[n].siz == 0) { u8 b = p[i >> 1]; idx = (i & 1) ? (b & 15u) : (b >> 4); } else idx = p[i];
+        c = ((unsigned)((const u8*)td[n].pal)[idx * 2] << 8) | ((const u8*)td[n].pal)[idx * 2 + 1];
+        break;
+    }
+    default: return 0;
+    }
+    o[0] = (u8)(((c >> 11) & 31u) * 255u / 31u);
+    o[1] = (u8)(((c >> 6) & 31u) * 255u / 31u);
+    o[2] = (u8)(((c >> 1) & 31u) * 255u / 31u);
+    o[3] = (c & 1u) ? 255 : 0;
+    return 1;
+}
+
+/* D03: a draw_box window with the bg_tile pattern. The combiner is (PRIM - ENV) * (TEXEL0 * TEXEL1) + ENV, alpha
+ * TEXEL1: tile 0 is the wrapped pattern, tile 1 the corner image, clamped, so its edge texels make the border.
+ * The PICA path binds one texture, so the product TEXEL0 * TEXEL1 (colour) and TEXEL1 alpha are composed on the
+ * CPU into an RGBA texture (cached by content, 128 x 128 pixel chunks), then drawn with (PRIM - ENV) * texel + ENV.
+ * Returns 1 if drawn. */
+static unsigned char box_buf[128 * 128 * 4];
+static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
+    int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
+    float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
+    float dsdx = (float)(s16)(hd >> 16) / 1024.f, dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
+    unsigned char tst[4];
+    if (!box_pat || !td[0].valid || !td[1].valid || !td[0].src || !td[1].src) return 0;
+    if (!tile_texel(0, 0, 0, tst) || !tile_texel(1, 0, 0, tst)) return 0;
+    int cx0 = X0 < 0 ? 0 : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > 320 ? 320 : X1, cy1 = Y1 > 240 ? 240 : Y1;
+    pm_gpu_flush();
+    pm_gpu_set_combine(5);
+    for (int ys = cy0; ys < cy1; ys += 128) {
+        for (int xs = cx0; xs < cx1; xs += 128) {
+            int cw = cx1 - xs < 128 ? cx1 - xs : 128, ch = cy1 - ys < 128 ? cy1 - ys : 128;
+            int sa = (int)__builtin_floorf(s0 + dsdx * (float)(xs - X0));
+            int ta = (int)__builtin_floorf(t0 + dtdy * (float)(ys - Y0));
+            unsigned key = 2166136261u;
+            unsigned parts[] = { (unsigned)td[0].src, (unsigned)td[1].src, (unsigned)td[0].x0, (unsigned)td[0].y0, (unsigned)td[1].x0,
+                                 (unsigned)td[1].y0, (unsigned)(td[0].w | td[0].h << 8 | td[1].w << 16 | td[1].h << 24),
+                                 (unsigned)(td[0].fmt | td[0].siz << 3 | td[1].fmt << 6 | td[1].siz << 9), (unsigned)sa, (unsigned)ta,
+                                 hd, (unsigned)(cw | ch << 8), (unsigned)td[0].stride | (unsigned)td[1].stride << 16 };
+            for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) key = (key ^ parts[k]) * 16777619u;
+            if (!pm_tex_load_rgba8(box_buf, key, cw, ch, NULL)) {
+                for (int y = 0; y < ch; y++) {
+                    for (int x = 0; x < cw; x++) {
+                        int S = (int)__builtin_floorf(s0 + dsdx * (float)(xs + x - X0));
+                        int T = (int)__builtin_floorf(t0 + dtdy * (float)(ys + y - Y0));
+                        unsigned char a[4], b[4];
+                        tile_texel(0, S - td[0].x0, T - td[0].y0, a);
+                        tile_texel(1, S - td[1].x0, T - td[1].y0, b);
+                        unsigned char* d = &box_buf[(y * cw + x) * 4];
+                        d[0] = (unsigned char)(a[0] * b[0] / 255u);
+                        d[1] = (unsigned char)(a[1] * b[1] / 255u);
+                        d[2] = (unsigned char)(a[2] * b[2] / 255u);
+                        d[3] = b[3];
+                    }
+                }
+                if (!pm_tex_load_rgba8(box_buf, key, cw, ch, box_buf)) { sync_combine(); return 0; }
+            }
+            int tw = 1, th = 1;
+            pm_tex_size(&tw, &th);
+            pm_gpu_tex_rect(xs, ys, xs + cw - 1, ys + ch - 1, 0.f, 0.f, (float)cw / (float)tw, (float)ch / (float)th);
+        }
+    }
+    cur_tile = -1; /* the bound texture is the composite */
+    sync_combine();
+    return 1;
+}
+
 void pm_gbi_run(void* list, unsigned nbytes) {
     Gfx* stack[12];
     int sp = 0;
@@ -976,6 +1086,18 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int lry = (int)((w0 >> 2) & 0x3ff);
             int ulx = (int)((w1 >> 14) & 0x3ff);
             int uly = (int)((w1 >> 2) & 0x3ff);
+            /* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
+             * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
+             * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
+             * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
+            if (cimg && pm_is_cfb(cimg) && (omode_l & ~7u) == ((G_RM_VISCVG | G_RM_VISCVG2) & ~7u)) {
+                unsigned short* d = (unsigned short*)cimg;
+                pm_zbuf_need();
+                pm_cfb_capture_prev(); /* the filter reads the last frame from the other frame buffer */
+                for (int y = uly; y <= lry && y < 240; y++)
+                    for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
+                break;
+            }
             /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
             unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
                 ? rgba_from_5551(fill & 0xffff) : prim;
@@ -999,6 +1121,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (yl & 0x800) yl |= ~0xfff;
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
             box_fold_sync();
+            if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
             ensure_tile(use_t1 ? 1 : 0);
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
@@ -1016,11 +1139,20 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             float s1 = s0 + dsdx * width / (float)tw;
             float t1 = t0 + dtdy * height / (float)th;
-            pm_gpu_tex_rect(xl / 4, yl / 4, xh / 4, yh / 4, s0, t0, s1, t1);
+            {
+                /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
+                 * above). In 1-cycle and 2-cycle mode the lower right edge is exclusive: without this the quad was one
+                 * pixel too wide and stretched its texture. A previous-frame blur drawn every frame zoomed in. */
+                int ex = xh / 4, ey = yh / 4;
+                if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 2) { ex -= 1; ey -= 1; }
+                if (ex >= xl / 4 && ey >= yl / 4) pm_gpu_tex_rect(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1);
+            }
             break;
         }
         case G_SETTIMG:
             timg = ptr_of(w1);
+            /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
+            if (timg && pm_is_cfb(timg)) pm_cfb_capture_prev();
             timg_fmt = (w0 >> 21) & 7;
             timg_siz = (w0 >> 19) & 3;
             timg_stride = (int)(w0 & 0xfff) + 1;

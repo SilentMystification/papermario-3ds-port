@@ -62,7 +62,7 @@ static void ps_parse(char* s) {
 
 static void ps_load(void) {
     static char buf[1024];
-    char v[40];
+    char v[200]; /* was 40: a long inline script was cut after 39 characters */
     if (!pm_debug_value("padscript", v, sizeof v)) return;
     if (v[0] == '@') {
         FILE* f = fopen(v + 1, "rb");

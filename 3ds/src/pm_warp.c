@@ -232,5 +232,12 @@ void pm_warp_tick(unsigned frame) {
                (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,
                (int)(gPlayerStatus.gravityIntegrator[0] * 100), (int)(gPlayerStatus.maxJumpSpeed * 1000), (int)(gPlayerStatus.walkSpeed * 100), (int)(gPlayerStatus.runSpeed * 100));
     }
+    /* D03 check: switch prevtest turns on the game's own previous-frame blur overlay (OVERLAY_BLUR, real
+     * set_screen_overlay_params_front) from scene frame 100 on (each frame), so the frame-buffer read can be seen. */
+    if (f >= 100 && pm_debug_has("prevtest")) {
+        set_screen_overlay_params_front(12, 200.0f);
+        set_screen_overlay_center(0, 0, 20, 20);
+        set_screen_overlay_center(0, 1, 300, 220);
+    }
     if (smoke_on && f == 300) pm_log("warp: smoke done (300 frames in the scene) t=%u ms", pm_uptime_ms());
 }

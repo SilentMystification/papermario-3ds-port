@@ -1453,7 +1453,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
         return nullptr;
     }
 
-    srcBuffer = (s8*) msgID;
+    srcBuffer = (s8*) MSG_BUF_PTR(msgID);
     if (msgID >= 0) {
         srcBuffer = load_message_to_buffer((s32)srcBuffer);
     }
@@ -1491,7 +1491,7 @@ s32 msg_printer_load_msg(s32 msgID, MessagePrintState* printer) {
     if (msgID >= 0) {
         buffer = load_message_to_buffer(msgID);
     } else {
-        buffer = (s8*) msgID;
+        buffer = (s8*) MSG_BUF_PTR(msgID);
     }
 
     printer->srcBuffer = buffer;
@@ -1545,8 +1545,8 @@ void set_message_text_var(s32 msgID, s32 index) {
     i = 0;
     msgVars = gMessageMsgVars[index];
     while (true) {
-        msgVars[i] = ((u8*)msgID)[i];
-        if (((u8*)msgID)[i] == MSG_CHAR_READ_END) {
+        msgVars[i] = ((u8*)MSG_BUF_PTR(msgID))[i];
+        if (((u8*)MSG_BUF_PTR(msgID))[i] == MSG_CHAR_READ_END) {
             break;
         }
 
@@ -1734,7 +1734,7 @@ void get_msg_properties(s32 msgID, s32* height, s32* width, s32* maxLineChars, s
         dma_load_msg(msgID, buffer);
         message = buffer;
     } else {
-        message = (u8*)msgID;
+        message = (u8*)MSG_BUF_PTR(msgID);
     }
 
     if (charset & 1) {
@@ -1909,7 +1909,7 @@ void get_msg_properties(s32 msgID, s32* height, s32* width, s32* maxLineChars, s
                         }
                         break;
                     case MSG_READ_FUNC_VAR:
-                        lineWidth += get_msg_width((s32)gMessageMsgVars[message[i++]], 0);
+                        lineWidth += get_msg_width(MSG_BUF_ID(gMessageMsgVars[message[i++]]), 0);
                         break;
                 }
                 break;
@@ -2026,7 +2026,7 @@ void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style)
         initialize_printer(printer, 1, 0);
 
         if (msgID < 0) {
-            printer->srcBuffer = (u8*)msgID;
+            printer->srcBuffer = (u8*)MSG_BUF_PTR(msgID);
         } else {
             mallocSpace = general_heap_malloc(0x400);
             dma_load_msg(msgID, mallocSpace);
