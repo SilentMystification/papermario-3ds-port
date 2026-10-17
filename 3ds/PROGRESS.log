@@ -611,3 +611,8 @@
 08:19 X01 verified: Mario wipe centred (fx8), battle swirl ok; commit 1
 08:25 X01 run: tourfx 1-16 shot sheets made
 08:27 X01 finding: star/circle stencil 32 wide in 64 tile with mask 5 mirror was garbled; pm_tex applies tile mask
+08:31 X01 commit 2: tile mask in pm_tex; fx 0-16 all by eye ok (16 unused by game)
+08:37 X01 verified: battle exit fade ok (mode 9 burst); hook path has no swirl by design; now intro, curtains, title
+08:43 X01 fixed: black frame at pause open (clear only when drawn); commit 3; next game over, curtains, flashes
+08:50 X01 finding: dark rooms (kgr_01) all black: darkness stencil renders into z-buffer image (needs RTT), row X02
+08:59 X01 docs written, commit 4
