@@ -358,3 +358,32 @@
 21:20 H04 build 4: icon_ROM_START 0x1CC310, temp log removed
 21:23 H04 docs done, committing
 21:23 H04 end, commit d30e65e17
+21:24 R01 start, row added to SLICES.md
+21:28 R01 finding: 787 ROM stems audited, 596 CODE, 188 REAL, 0 placeholder data; charset END and unused ENDs hand-typed
+21:29 R01 build 1: data_rom_addrs.h generated, rom_suspect check in pm_os.c
+21:33 R01 romtrace tour start (7 chunks of 40 maps, background)
+21:34 R01 tour progress 7 of 266
+21:34 R01 tour progress 8 of 266
+21:35 R01 tour progress 17 of 266
+21:35 R01 tour progress 28 of 266
+21:36 R01 tour progress 31 of 266
+21:36 R01 tour progress 41 of 266
+21:37 R01 tour progress 81 of 266
+21:37 R01 tour progress 121 of 266
+21:38 R01 tour progress 136 of 266
+21:38 R01 tour progress 147 of 266
+21:39 R01 tour progress 148 of 266
+21:39 R01 tour progress 151 of 266
+21:40 R01 tour progress 181 of 266
+21:40 R01 tour progress 221 of 266
+21:41 R01 tour progress 244 of 266
+21:41 R01 tour progress 253 of 266
+21:41 R01 tour progress 257 of 266
+21:42 R01 tour progress 266 of 266
+21:42 R01 finding: 266-map romtrace tour + 4 presets, 0 tiny/odd/dropped reads, 250 maps ok 16 fault (same causes as S30)
+21:42 R01 build 2: TEMP negative test (charset 0, icon dropped), reverted after
+21:45 R01 build 3: romstrict uses pm_fatal_stop (null write lost the log under Azahar), temp negative test still in header
+21:51 R01 negative test ok: tiny + dropped logged once per address, romstrict stops with [CRASH]; header regenerated
+21:51 R01 build 4: final
+21:53 R01 commit a833bb5ed tools, generated data_rom_addrs.h, rom_suspect check
+21:53 R01 end, docs committed
