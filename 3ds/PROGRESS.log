@@ -48,3 +48,5 @@
 12:21 V07 instrumented draw_item_entities (temp), warp mac_02:5 odd key
 13:01 V07 temp logs removed, testitem switch kept, rebuilt
 13:03 V07 not reproduced, docs written, committing
+13:20 V08 decomp reads XLU alpha 128 by design, port draws it exact (plan err 0)
+13:25 V08 verdict RIGHT, no code change, smoke yard toad rc 0, docs written, committing

@@ -36,6 +36,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - Port layer files and tools: see docs/INDEX.md.
 - Golden frames (G01g): `python 3ds/tools/golden.py [--update] [scene..]` runs 10 scenes (title, fileselect, intro, toad, yard, battle, pause1 to 4), prints a table of pixel differences against `3ds/golden/*.png`. About 25 s per scene. Run it after a graphics change. Update the references only after a change that you checked by eye.
 - H03: linear pool 14 MB (was 20 MB), boot line `mem split H03`. A full texture cache skips the draw (no white quad). Detail in docs/HISTORY.md.
+- V08 done: the save block is translucent by design (decomp XLU, prim alpha 128). The port draws it exact. No code change.
 - Last commits: V05 (menu flip, scissor), V06 (fog colour mix).
 
 ## Debug switches (put in `debug3ds.txt` or `-Debug "..."`). One line per group, details in docs/INDEX.md
@@ -52,7 +53,6 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 ## Open issues (one line each, row id in 3ds/SLICES.md)
 - V06 (paused): ground vanishes in Toad Town houses. By design shroud fade, blender mix added. The user must confirm.
 - V07 (open): items flicker when the camera moves. NOT reproduced in Azahar (8 maps, draw log and pixels stable, `nocull` A/B identical). Debug switch `testitem=<m|c|s>` spawns an item beside the player. Needs the exact scene (QUESTIONS.md) or hardware.
-- V08: save block looks translucent. Not compared with a console.
 - V09 (two rows): intro tints changed by S25 (and nok_01 tour fault). kmr_22 card shows a rainbow bar.
 - V10: battle Strategies box and level-up box draw as a checkerboard.
 - V11: kmr_05 path to the first Goomba is blocked at x 75 to 88.

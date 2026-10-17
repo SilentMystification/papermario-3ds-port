@@ -71,3 +71,6 @@ All rows marked [x], moved unchanged from 3ds/SLICES.md on 2026-10-17. Append on
 
 [x] H03 | Memory split from measured need, and a graceful texture failure when the cache is full (no white quad) | numbers logged at boot, no regression on `fast autoa`
 - Pool 20 MB to 14 MB (fixed need 7528 KB measured + tex budget 4096 KB + margin 2712 KB), boot line `mem split H03`. A full cache now skips the batch (`pm_tex_failed`), no white quad. 3dsx +576 B.
+
+[x] V08 | Save block (Entity_SavePoint, kmr_02) looks translucent. Unchanged by `nocomb`. Compare with the decomp render mode and reference/soh-3ds | verdict: right or wrong, fixed if wrong
+- Verdict: RIGHT, translucent by design. No code change. 3dsx +0 B. Detail in docs/HISTORY.md.

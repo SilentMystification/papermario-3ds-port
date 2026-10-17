@@ -1576,3 +1576,10 @@ Read 3ds/ORCHESTRATOR.md, HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md. You ar
 - Ruled out: near plane clip (w 309 to 1043 at the item), clip bits, cull, tex cache (`texture failures 0`, constant `img` address), draw order (dist 0 sorts the same every frame), item visibility flags and render group.
 - Not ruled out: an effect that exists only on hardware (cache flush of the vertex data, GPU command buffer), an item type that I did not spawn (tossed items, transparent HIDING items, item block items), the coin sparkle plane that lies in the same plane as the coin (z fight, coin looked stable in the yard sheet), maps with floor reflection. The user report has no map name.
 - Memory: 3dsx 10,919,784 B before, 10,919,956 B after (+172 B, the `testitem` switch). Checks: smoke yard and toad exit 0, golden toad and yard 0.00 percent. Not checked: hardware, full tour, normal chain (no change to game or graphics code).
+
+## V08 result (save block translucency, DONE, verdict RIGHT, no code change, 3dsx +0 B)
+
+- Decomp: `entity_SaveBlock_setupGfx` (src/entity/SaveBlock.c lines 24 to 72) draws the star with G_RM_ZB_CLD_SURF and the block faces with G_RM_AA_XLU_SURF | Z_CMP. Both use PM_CC_01/PM_CC_02 (colour TEXEL0, alpha PRIM * TEXEL0) and prim alpha 128. The block is translucent by design (about 50 percent). reference/paperboat has the same code. reference/soh-3ds is an OoT port and has no equal entity.
+- Port: the draw log shows combine `fcffb3ff ff2cfe7f` with render mode `00504b50` (blender mix with the frame buffer, XLU depth). The S25 plan path reports PLAN-OK with plan error 0 for it, so the combiner is exact.
+- Evidence by eye (one crop, `fast preset=kmr02` with the E02 padscript, shot at frame 440): the wall and the star show through the S block. `nocomb` differs in 1.18 percent of the frame, the block looks the same. This matches the user note that `nocomb` changes nothing.
+- Not checked: a real console, the exact look on hardware. Smoke on yard and toad: rc 0. Golden not run: no code was touched.
