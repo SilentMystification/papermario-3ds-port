@@ -19,6 +19,7 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs);
 void pm_log_top(void);
 void pm_log_set_switches(const char* s);
 void pm_crash_line(const char* s, int n);
+void pm_fatal_stop(const char* msg); /* R01: log FATAL, flush, [CRASH] line, svcBreak */
 void pm_frame_loop(void);
 
 int pm_debug_has(const char* word);

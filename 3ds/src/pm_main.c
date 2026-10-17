@@ -106,6 +106,18 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     for (;;) {}
 }
 
+/* R01: stop the program on purpose from a debug check (switch romstrict). Azahar never calls the guest handler on a real
+ * fault, so a null write would lose the queued log lines. pm_crash_line flushes the queue, writes crash.txt, and the
+ * [CRASH] prefix makes run_azahar.ps1 stop. svcBreak ends the process like the crash handler does. */
+void pm_fatal_stop(const char* msg) {
+    char buf[200];
+    pm_log("FATAL: %s", msg);
+    int n = snprintf(buf, sizeof(buf), "\n[CRASH] debug check: %s build #%d\n", msg, PM_BUILD);
+    pm_crash_line(buf, n);
+    svcBreak(USERBREAK_PANIC);
+    for (;;) {}
+}
+
 /* Class E test: Azahar stops on a real CPU exception itself and never calls the guest handler, so the handler has a direct
  * entry. It gets made-up registers and the live sp. On hardware use the switches crashtest and crashtest_audio instead (real fault). */
 void pm_crash_selftest(void) {

@@ -243,6 +243,23 @@ int pm_rom_init(void) {
     return 1;
 }
 
+/* R01: a ROM read that no real asset makes. Logged once per address through the non-blocking log. With the debug switch
+ * romstrict it also stops the program (pm_fatal_stop: FATAL line, [CRASH] line, svcBreak), so the run script stops.
+ * Placeholder ROM symbols (icon_ROM_START was 1, H04) show up here as a tiny offset. */
+static void rom_suspect(const char* why, u32 addr, u32 n, u32 req, u32 size) {
+    static u32 seen[512];
+    static unsigned cnt;
+    for (unsigned i = 0; i < cnt; i++)
+        if (seen[i] == addr) return;
+    if (cnt < 512) seen[cnt++] = addr;
+    pm_log("ROM READ %s %08x n %u (req %08x n %u)", why, addr, n, req, size);
+    if (pm_debug_has("romstrict")) {
+        char m[80];
+        snprintf(m, sizeof(m), "romstrict, ROM read %s at %08x n %u", why, addr, n);
+        pm_fatal_stop(m);
+    }
+}
+
 static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     if (!buf || !size) return;
     if ((unsigned)buf < 0x00100000u) {
@@ -257,12 +274,14 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     PH_PUSH(PH_ROM);
     PH_ADD(C_ROMN, 1);
     PH_ADD(C_ROMB, size);
+    if (rom_addr < 0x1000u) rom_suspect("AT TINY OFFSET", rom_addr, size, rom_addr, size);
     /* Walk the request over the original offsets. A byte in a dropped range is a hard error. */
     u8* out = (u8*)buf;
     u32 left = size, addr = rom_addr;
     while (left) {
         u32 n = left;
         if (addr >= rom_size) {
+            rom_suspect("PAST END OF ROM", addr, left, rom_addr, size);
             memset(out, 0, left);
             break;
         }
@@ -273,10 +292,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
             if (addr >= ds && addr < de) { dropped = 1; if (n > de - addr) n = de - addr; }
             else if (ds > addr && ds < addr + n) n = ds - addr;
         }
-        if (dropped) {
-            static unsigned hits;
-            if (hits++ < 100) pm_log("ROM READ IN DROPPED RANGE %08x n %u (req %08x n %u)", addr, n, rom_addr, size);
-        }
+        if (dropped) rom_suspect("IN DROPPED RANGE", addr, n, rom_addr, size);
         if (dropped && !pm_debug_has("romfull")) {
             memset(out, 0, n);
         } else if (rom_bytes) {
