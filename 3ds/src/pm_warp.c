@@ -7,6 +7,8 @@
 #include "common.h"
 #include "functions.h"
 #include "game_modes.h"
+#include "fio.h"
+extern bool fio_fetch_saved_file_info(void);
 #include "pm_port.h"
 #include <stdio.h>
 #include <string.h>
@@ -66,6 +68,7 @@ int pm_debug_value(const char* key, char* out, unsigned n) {
     return 0;
 }
 
+static int smoke_frames = 300, w_loadslot = -1;
 static int padscript_log, warp_on, warp_done, scene_f0 = -1, smoke_on;
 /* S30: tour=<map>:<entry>,<map>:<entry>,... After warp= (or preset=) has loaded its first map, the real GotoMap path
    (set_map_transition_effect + set_game_mode(GAME_MODE_CHANGE_MAP), as in src/evt/map_api.c goto_map) visits every
@@ -135,6 +138,8 @@ int pm_warp_active(void) {
         }
     }
     smoke_on = pm_debug_has("smoke");
+    if (pm_debug_value("loadslot", v, sizeof v)) w_loadslot = atoi(v); /* E02: loadslot=<n> loads save slot n first */
+    if (pm_debug_value("smokeframes", v, sizeof v)) smoke_frames = atoi(v); /* E02: smoke length, default 300 */
     padscript_log = pm_debug_has("padlog") || pm_debug_value("padscript", v, sizeof v); /* position every 2 frames while a script runs */
     return has_preset || has_warp || has_story;
 }
@@ -149,11 +154,15 @@ s16 pm_warp_hook(s16 mode) {
         pm_log("warp: map %s not found, normal start", w_map);
         return mode;
     }
+    if (w_loadslot >= 0) { /* E02: load the file as the file select does (name, save count), then override map and story */
+        fio_fetch_saved_file_info();
+        pm_log("warp: loadslot %d %s", w_loadslot, fio_load_game(w_loadslot) ? "loaded" : "FAILED");
+    }
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)w_entry;
-    clear_player_data();
-    clear_saved_variables();
+    if (w_loadslot < 0) clear_player_data();
+    if (w_loadslot < 0) clear_saved_variables();
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)w_entry;
@@ -253,7 +262,7 @@ void pm_warp_tick(unsigned frame) {
         s32 w = get_msg_width((s32)MessagePlural, 0);
         pm_log("ptrtest: resolve_npc(ptr) %s, partner npc %08x, get_msg_width(raw buffer) %d", (n != NULL && resolve_npc(NULL, (s32)n) == n) ? "ok" : "FAIL", (unsigned)n, (int)w);
     }
-    if (smoke_on && f == 300) pm_log("warp: smoke done (300 frames in the scene) t=%u ms", pm_uptime_ms());
+    if (smoke_on && f == smoke_frames) pm_log("warp: smoke done (%d frames in the scene) t=%u ms", smoke_frames, pm_uptime_ms());
 }
 
 /* P02: switch `ptrcheck`. Called by the PTRCHECK macro (include/macros.h) when a value in the host pointer range reaches an

@@ -473,3 +473,9 @@
 01:08 P02 file select text seen; toad shots taken
 01:12 P02 docs written, SLICES P02 F04 F05 marked [x]
 01:12 P02 end, commit 247e263a3
+01:13 E02 start
+01:16 E02 build a (smokeframes switch)
+01:20 E02 kmr_02 save point hit, tutorial message shown, now pressing through prompt
+01:21 E02 kmr_02: tutorial, Save/Don't save choice, Save completed seen by eye; save.flash rewritten
+01:24 E02 build b (loadslot switch for warp)
+01:27 E02 saved via block with loadslot=0: slot 1 count 2 crc ok map kmr_02; now load test
