@@ -357,3 +357,4 @@
 21:19 H04 finding: coin sparkle palette junk (red/blue px): icon_ROM_START stub = 1, hud SetImage reads ROM 0x30241 not icon seg 0x1CC310
 21:20 H04 build 4: icon_ROM_START 0x1CC310, temp log removed
 21:23 H04 docs done, committing
+21:23 H04 end, commit d30e65e17
