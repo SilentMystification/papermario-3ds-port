@@ -45,3 +45,6 @@
 12:06 H03 coded pool 14MB, boot split log, tex fail flag, flush skip; test with BUDGET 128KB
 12:09 H03 tiny-budget test ok (cache full logged, no crash), budget restored, rebuilding
 12:12 H03 smoke yard toad ok, chain ok, docs updated, committing
+12:21 V07 instrumented draw_item_entities (temp), warp mac_02:5 odd key
+13:01 V07 temp logs removed, testitem switch kept, rebuilt
+13:03 V07 not reproduced, docs written, committing

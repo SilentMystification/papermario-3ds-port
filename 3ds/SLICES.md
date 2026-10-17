@@ -6,7 +6,7 @@ Model tier per row: see the MODEL RULE in 3ds/ORCHESTRATOR.md.
 
 [ ] S28 | Hardware run on the O3DS (192.168.1.168) and the N3DS: boot line (real memory limit), audio cost, FPS. Needs the user: O3DS on, dspfirm.cdc on the SD card | numbers in HANDOFF.md, settles Q2 and Q7
 [ ] S30b | Link the remaining 154 id-only maps (kpa, kzn, flo, jan, sam, pra, see 3ds/maps_skip.txt). Needs the answer to Q7 (about -1.1 MB at the current spare) | maps_skip.txt area lines removed, presets and tour clean
-[~] V07 | Item entities flicker when the camera moves. Not started. Find a map with an item on walkable ground, drawlog the item chunks per frame, `nocull` A/B | cause named with evidence, fixed
+[~] V07 | Item entities flicker when the camera moves. NOT REPRODUCED in Azahar (see docs/HISTORY.md V07): item draws and pixels are stable in 8 maps with a moving camera, `nocull` A/B identical. Needs the exact scene from the user (QUESTIONS.md) or a hardware run | cause named with evidence, fixed
 [~] V06 | Ground disappears when entering a building. Cause found: shroud fade by fog colour alpha, blender mix added. The user must confirm this is the problem (QUESTIONS.md). Follow-up: kmr_20 and kmr_02 doors | the user confirms, or the other case is found and fixed
 [ ] V08 | Save block (Entity_SavePoint, kmr_02) looks translucent. Unchanged by `nocomb`. Compare with the decomp render mode and reference/soh-3ds | verdict: right or wrong, fixed if wrong
 [ ] V09 | (intro tints) S25 changed the hos_05 intro tints (shots 70 to 77) to dark or red. Check against the decomp and paperboat, A/B with `nocomb`. Also nok_01 `au_syn_begin_audio_frame` unmapped access (tour only) | verdict per shot, nok_01 cause

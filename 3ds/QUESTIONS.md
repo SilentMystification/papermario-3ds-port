@@ -27,3 +27,7 @@ Answered questions and the old text are in docs/HISTORY.md (section "Original QU
 
 ## Q5. Crash screen and obfuscation shims (row S31)
 - Decision so far: the obfuscation shims stay empty. The crash screen works only if the debug output can be used. S31 checks. No user action.
+
+## V07. Where do the items flicker? (row V07)
+- I could not reproduce the flicker in Azahar. Item draws and pixels were stable in 8 maps. Which map, which item, and which camera move show it? Did you see it only on the O3DS or N3DS?
+- Answer: (open)

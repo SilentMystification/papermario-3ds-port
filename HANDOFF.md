@@ -51,7 +51,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 
 ## Open issues (one line each, row id in 3ds/SLICES.md)
 - V06 (paused): ground vanishes in Toad Town houses. By design shroud fade, blender mix added. The user must confirm.
-- V07 (paused): items flicker when the camera moves. Not started.
+- V07 (open): items flicker when the camera moves. NOT reproduced in Azahar (8 maps, draw log and pixels stable, `nocull` A/B identical). Debug switch `testitem=<m|c|s>` spawns an item beside the player. Needs the exact scene (QUESTIONS.md) or hardware.
 - V08: save block looks translucent. Not compared with a console.
 - V09 (two rows): intro tints changed by S25 (and nok_01 tour fault). kmr_22 card shows a rainbow bar.
 - V10: battle Strategies box and level-up box draw as a checkerboard.
