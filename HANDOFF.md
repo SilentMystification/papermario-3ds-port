@@ -280,6 +280,8 @@ Do not start before the slice list is done. User decisions (2026-10) are marked 
 
 `3ds/SLICES.md` is the queue. One subagent does one slice with a fresh context. The orchestrator reads only the first open line and any `BLOCKED:` line here.
 
+The orchestrator handoff, the agent prompt template and the slice queue order are in `3ds/ORCHESTRATOR.md`.
+
 ## Reference ports (slice S07 note)
 
 Every agent may read the ports in `reference/` (see `reference/README.md`) to learn how a feature works. Read `reference/paperboat` first (Paper Mario PC port, runs the decomp loader). Use `reference/soh-3ds` and `reference/sm64-3ds` for 3DS GPU, audio and memory. Read to learn the method, then build the real decomp file here. Do not copy a hand-written stand-in from a reference port. If a stand-in is the only way to match, write `BLOCKED:` and ask.
