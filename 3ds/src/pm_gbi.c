@@ -596,7 +596,7 @@ static int cc_uses(const unsigned s[2][8], int two, int t) {
     return u;
 }
 
-static struct { unsigned key; unsigned cnt, next; int first, last, bad; } aud[160];
+static struct { unsigned key; unsigned cnt, next; int first, last, bad; } aud[512];
 static int aud_n;
 static unsigned aud_cnt_special, aud_cnt_total, aud_cnt_bad;
 static unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
@@ -609,20 +609,24 @@ static unsigned char aud_prim_lod;
  * the flags the legacy mode depends on. The plan is chosen when the legacy mode is off by more than 0.012
  * (of 1.0, max over colour and alpha, 24 random inputs) and the plan is closer. */
 typedef struct { unsigned key; int use, why; float el, ep; PmPlan plan; } Dec;
-static Dec dec[160];
-static int dec_n;
-static Dec dec_over; /* table full: legacy */
+static Dec dec[128];
+static int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
 static unsigned plan_draws, plan_fails;
 
 static Dec* decide(int two) {
     unsigned key = 2166136261u, i;
     unsigned parts[] = { comb_w0, comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2), (unsigned)comb_alpha_shade };
     for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
-    for (i = 0; i < (unsigned)dec_n; i++)
-        if (dec[i].key == key) return &dec[i];
-    if (dec_n >= 160) return &dec_over;
     {
-        Dec* d = &dec[dec_n++];
+        static unsigned last_i;
+        if (last_i < (unsigned)dec_n && dec[last_i].key == key) return &dec[last_i];
+        for (i = 0; i < (unsigned)dec_n; i++)
+            if (dec[i].key == key) { last_i = i; return &dec[i]; }
+    }
+    {
+        Dec* d;
+        if (dec_n < 128) d = &dec[dec_n++];
+        else { d = &dec[dec_next]; dec_next = (dec_next + 1) & 127; }
         unsigned s[2][8];
         float plod_f = (float)aud_prim_lod / 255.f;
         memset(d, 0, sizeof *d);
@@ -663,12 +667,15 @@ static Dec* decide(int two) {
     }
 }
 
+static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 static void sync_combine(void) {
     unsigned cyc = (omode_h >> G_MDSFT_CYCLETYPE) & 3;
     sync_legacy();
     plan_active = 0;
-    if (cyc <= 1 && comb_set && !dual_on && !box_prod && !box_pat && !comb_mode5 && !pm_debug_has("nocomb")) {
+    ls_use = -1; ls_cyc = (int)cyc; ls_dual = dual_on | box_prod << 1 | box_pat << 2; ls_frame = rm_frame;
+    if (cyc <= 1 && comb_set && !dual_on && !box_prod && !box_pat && !pm_debug_has("nocomb")) {
         Dec* d = decide((int)cyc);
+        ls_use = d->use; ls_why = d->why;
         if (d->use) {
             cur_plan = d->plan;
             pm_comb_colours(&cur_plan, prim, envc, aud_prim_lod);
@@ -703,7 +710,7 @@ static void comb_audit(void) {
             unsigned s[2][8];
             Dec* d = decide((int)cyc);
             float err = plan_active ? d->ep : d->el;
-            if (aud_n >= 160) return;
+            if (aud_n >= 512) { static int full; if (!full++) pm_log("comb audit table full (512)"); return; }
             aud_n++;
             aud[i].key = key; aud[i].cnt = 0; aud[i].next = 1; aud[i].first = rm_frame;
             aud[i].bad = (leg_mode != 4 && err > 0.012f) ? 1 : 0;
@@ -716,6 +723,7 @@ static void comb_audit(void) {
                        rm_frame, aud[i].bad ? "INEXACT" : "PLAN-OK", comb_w0, comb_w1, cyc + 1, omode_l, tile_fmt[0], tile_siz[0], tex_on, use_t1,
                        cc_uses(s, cyc == 1, 0), cc_uses(s, cyc == 1, 1), leg_mode, (int)(d->el * 1000.f), plan_active ? "USED" : "no", d->why,
                        (int)(d->ep * 1000.f), d->plan.n, t1, t2);
+                if (!d->why) pm_log("comb dbg %08x act %d use %d lastsync use %d why %d cyc %d special %d at f%d", comb_w0, plan_active, d->use, ls_use, ls_why, ls_cyc, ls_dual, ls_frame);
             }
         }
     }
@@ -834,7 +842,7 @@ static void draw_tri(unsigned w) {
                    (int)(poly[0].x / poly[0].w * vp_sx + vp_tx), (int)(vp_ty - poly[0].y / poly[0].w * vp_sy), (int)poly[0].w);
         }
     }
-    if (comb_mode5) {
+    if (comb_mode5 && !plan_active) {
         float en[4];
         unpack8(envc, en);
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
@@ -1537,6 +1545,18 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int ult = (int)(w0 & 0xfff);
             int lrs = (int)((w1 >> 12) & 0xfff);
             int lrt = (int)(w1 & 0xfff);
+            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) {
+                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. Texel 0 is
+                 * still the first texel of the loaded image, so keep the size and start at 0. */
+                int su = uls & 0x800 ? uls - 0x1000 : uls, st = ult & 0x800 ? ult - 0x1000 : ult;
+                int sr = lrs & 0x800 ? lrs - 0x1000 : lrs, sl = lrt & 0x800 ? lrt - 0x1000 : lrt;
+                if (sr >= su && sl >= st) {
+                    lrs = (su < 0 ? 0 : su) + (sr - su);
+                    lrt = (st < 0 ? 0 : st) + (sl - st);
+                    uls = su < 0 ? 0 : su;
+                    ult = st < 0 ? 0 : st;
+                }
+            }
             tile_sz[tile][0] = uls;
             tile_sz[tile][1] = ult;
             tile_sz[tile][2] = lrs;
@@ -1585,7 +1605,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (tile != 0) break;
             td[0].valid = 0;
             cur_tile = 0;
-            dual_on = 0;
+            if (dual_on) { dual_on = 0; sync_combine(); } /* S25: the plan path is off while the shaded sprite is on */
             if (m1.valid && tile_fmt[0] == 2 && tile_siz[0] == 0 && tile_pal[0] != tile_pal[1] &&
                 comb_a == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_TEXEL1 &&
                 m1.w > 0 && m1.h > 0) {
@@ -1598,6 +1618,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 tile_y0 = m1.y0;
                 if (load_shaded_sprite(dx4, dy4)) {
                     dual_on = 1;
+                    sync_combine();
                     break;
                 }
             }
