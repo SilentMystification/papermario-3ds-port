@@ -208,6 +208,8 @@ What Azahar does not show:
 
 ## Port threading rule and note for the audio slice
 
+Lighter checks (user rule 2026-10, applies to all later slices): after a fix the regression check is (1) the smoke check on the presets yard and toad with -Turbo -Smoke (about 16 s each), (2) shots of only the scenes the change plausibly touches, (3) NO 4-scene A/B and NO full tour, unless the slice touches the map change path, boot, title, file select or the intro. A by-eye A/B with a `nocull`-style switch stays for proving that the symptom itself is fixed.
+
 Port threading and sync use libctru natives (threadCreate, LightLock, LightEvent, LightSemaphore, svc handles). No hand-rolled locks or sleeps in loops. For the later audio slice: the cooperative audio thread hand-off in `3ds/src/pm_os.c` (`pm_au_thread_yield`) and the `au_run` and `au_idle` semaphores in `3ds/src/pm_audio.c` use custom yield logic. Review them against this rule then. L01 did not change them.
 
 ## V02 paused (slice V02, paused for L01, no code changed)
@@ -1335,3 +1337,12 @@ All items belong to slice V05. Azahar only. Nothing ran on hardware. Check kind:
 - V06 (ground disappears when entering buildings): NOT REPRODUCED, NOT TESTED to the end. In `preset=toad` Mario reached the door of the house at the pipe (shots show "!" and the door opening), but the door did not start a map change in 480 frames and no ground fault is visible outside. The Mario house interior (kmr_20) was not reached. Still open.
 - V07 (items flicker when the camera moves): NOT TESTED. kmr_03 has coins at (345, 205 to 255, -250) (`MakeItemEntity`, FIXED_NEVER_VANISH). The padscript walk from `warp=kmr_03:0` stopped at x 30 (blocked), the coins never came into view. Still open. Next agent: find a map where an item lies on the walkable ground and the camera moves.
 - V08 (save block transparency): STILL THERE, and unchanged by `nocomb`. kmr_02 (`preset=kmr02 loadslot=0`, block hit by a jump): the block is a translucent rainbow cube with a white S, the wall behind shows through. `nocomb` gives the same picture (crop 3ds/logs/v05_v8z.png). Not compared with a real console, so it is not known whether this translucency is right. `nocull` A/B was not run for the block (V02 saw no change for entities). Still open.
+
+## V06/V07 paused (slices V06 and V07, short note)
+- V06: Toad Town houses are in-map rooms (src/world/script_api/rooms.c, CreateMapRoom in mac_00 rooms.c). Russ T door: padscript `wait80,right*38,up*60,up+A*4,up*20` (preset=toad). Exit: `wait200,down+right*30` (wait until the enter script is done, else the exit script returns).
+- Found: entering fades the shrouded group (house, ground, bushes) with PM_RM_SHROUD (blend colour mixed by the fog colour alpha). The port ignored G_SETFOGCOLOR and G_SETBLENDCOLOR, so the ground stayed bright for 7 frames and then vanished in one frame (drawlog: 8 chunks gone at one frame, prim alpha falls 0xdf, 0x7f, 0x1f). At alpha 255 the game draws nothing, so the ground is gone inside the room by design. The background picture stays (bgColor only fills under it).
+- Fix (uncommitted before this note, committed after): `pm_gbi.c` sync_render and the two opcodes, `pm_gpu.c` pm_gpu_set_mix (one extra TEV stage), switch `nomix` for A/B. Shots now show the ground darkening. Smoke yard and toad rc 0. Exit works (world returns).
+- Not known: whether the user means this vanishing (by design) or a ground that stays missing. Asked in QUESTIONS.md. kmr_20 and kmr_02 doors (map change) not tested.
+- Debug: warp log lines now end with `wall <curWall> push <pushingAgainstWall>`.
+- V07: not started. Next: kmr_02 or mac_00 coins, drawlog item entity chunks per frame, `nocull` A/B.
+- Commands: `3ds/logs/v06_run.sh <tag> "preset=toad shots shotwin=156:10 padscript=..."` (git-ignored helper), sheet script `3ds/logs/v05_sheet.py`.

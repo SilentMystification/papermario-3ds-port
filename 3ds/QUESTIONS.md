@@ -66,3 +66,6 @@ Last tidied by slice S20. Answer by editing the "Answer" line or by telling the 
 
 ## V02 (answered by slice V02, no user input needed)
 Reproduced and fixed: the brown wall was a back-face-culled cliff skirt that the port drew (the port had no triangle culling). Please look at the kmr_20 yard on Azahar and on hardware. If a wall still shows anywhere else, give the map and the moment.
+
+### V06 question (from slice V06)
+- In the Toad Town houses (Russ T, shop, dojo, waterfront) the game hides the outside ground on purpose when you enter (shroud fade to nothing, the background picture stays). Do you mean this, or a ground that stays missing after you leave a house or in another building? Give the map, the building and a screenshot. Answer: (open)

@@ -642,3 +642,9 @@
 11:15 V05 V06 test: toad house door reached, no map change seen in 480 frames; trying V08 kmr02
 11:19 V05 HANDOFF result written, SLICES V05 marked [x]
 11:19 V05 end: fixed, last commit 000b2b67b
+11:20 V06 start: reading ORCHESTRATOR/HANDOFF
+11:22 V06 found: mac_00 houses are in-map rooms (CreateMapRoom, shroud tint), door at x-22 z-451 etc
+11:37 V06 recorded lighter-check rule in HANDOFF, added G01g row
+11:37 V06 build a: warp log shows curWall and pushingAgainstWall
+11:42 V06 coded blender mix (blend/fog colour by fog alpha) stage, building
+11:45 V06 smoke ok, committing blender mix; V07 not started, paused

@@ -138,6 +138,7 @@ enum { OFF_N = 4 };
 static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; } offs[OFF_N];
 static int off_used, off_cur, off_fail;
 extern unsigned pm_frame_count(void);
+static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
 
 static void flush(void) {
@@ -234,6 +235,18 @@ static void flush(void) {
     } else {
         C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
         C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+    }
+    if (r_mix && draw_3d && !rect_2d && env_hi < 6 && !dview) {
+        /* V06: colour = mix * alpha + previous * (1 - alpha), alpha = the constant's alpha. The alpha channel passes. */
+        C3D_TexEnv* e = C3D_GetTexEnv(env_hi);
+        C3D_TexEnvInit(e);
+        C3D_TexEnvSrc(e, C3D_RGB, GPU_CONSTANT, GPU_PREVIOUS, GPU_CONSTANT);
+        C3D_TexEnvOpRgb(e, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_ALPHA);
+        C3D_TexEnvFunc(e, C3D_RGB, GPU_INTERPOLATE);
+        C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
+        C3D_TexEnvFunc(e, C3D_Alpha, GPU_REPLACE);
+        C3D_TexEnvColor(e, abgr(r_mixcol));
+        env_hi++;
     }
     /* Fill and texrects ignore the Z buffer. Startup turns G_ZBUFFER on
      * before the logo, and every 2D quad shares z, so a depth test keeps
@@ -791,6 +804,14 @@ void pm_gpu_set_rgb_scale(int scale) {
 void pm_gpu_set_prim(unsigned rgba) {
     if ((combine == 5 || combine == 6 || combine == 7) && rgba != prim) flush();
     prim = rgba;
+}
+
+void pm_gpu_set_mix(int on, unsigned rgba) {
+    if (!on) rgba = 0;
+    if (on == r_mix && rgba == r_mixcol) return;
+    flush();
+    r_mix = on;
+    r_mixcol = rgba;
 }
 
 void pm_gpu_set_env(unsigned rgba) { env_col = rgba; }

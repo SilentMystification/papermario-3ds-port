@@ -364,8 +364,19 @@ static void box_fold_sync(void) {
  * compare and update come from Z_CMP and Z_UPD, a decal passes equal depth, blending is on when
  * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
  * cut away near-transparent texels. */
+static unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
 static void sync_render(void) {
     unsigned m = omode_l;
+    /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog
+     * colour alpha: (P * A + M * (1 - A)), P = BL or FOG, A = A_FOG, M = IN, B = 1MA. The room shroud (PM_RM_SHROUD) fades the
+     * world to black this way. Other blenders are not touched. */
+    {
+        unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
+        if (!pm_debug_has("nomix") && (p == 2u || p == 3u) && a == 1u && mm == 0u && b == 0u)
+            pm_gpu_set_mix(1, ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu));
+        else
+            pm_gpu_set_mix(0, 0);
+    }
     if (pm_debug_has("rmoff")) { /* A/B check: the old always-blend, always-write state */
         pm_gpu_set_nocolor(0);
         pm_gpu_set_render(1, 1, 1, -1, 0);
@@ -1525,6 +1536,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             prim = w1;
             pm_gpu_set_prim(prim);
             sync_combine();
+            break;
+        case G_SETFOGCOLOR:
+            fogc = w1;
+            break;
+        case G_SETBLENDCOLOR:
+            blendc = w1;
             break;
         case G_SETENVCOLOR:
             envc = w1;

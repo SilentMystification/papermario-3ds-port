@@ -52,6 +52,8 @@ void pm_gpu_set_const(unsigned rgba); /* combine mode 4: flat colour (a = factor
 void pm_gpu_set_nocolor(int on); /* S25: the blender returns the frame buffer colour, so only depth is written */
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal);
 void pm_gpu_set_prim(unsigned rgba);
+/* V06: a last stage mixes the colour to rgb of `rgba` by its alpha (the RDP blender with the blend or fog colour and the fog alpha). */
+void pm_gpu_set_mix(int on, unsigned rgba);
 void pm_gpu_set_env(unsigned rgba); /* combine mode 5: lerp from ENV (vertex colour) to PRIM by texel */
 /* Draw the current batch now. The next vertices belong to a different texture. */
 void pm_gpu_flush(void);
