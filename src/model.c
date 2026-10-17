@@ -4076,7 +4076,11 @@ void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2, 
     u32 w0;
     Vtx* w1;
     do {
+#ifdef TARGET_3DS
+        w0 = nodeDlist->words.w0; // the u64 read below is big-endian only (ARM: it gave w1, the loop never saw G_ENDDL)
+#else
         w0 = (*((unsigned long long*)nodeDlist)) >> 0x20; // TODO required to match
+#endif
         w1 = (Vtx*)nodeDlist->words.w1;
         if (w0 >> 0x18 == G_VTX) {
             w1 = arg3 + (w1 - baseVtx);
