@@ -167,7 +167,9 @@ extern void __real_step_game_loop(void);
 extern void __real_gfx_task_background(void);
 extern void __real_gfx_draw_frame(void);
 
+unsigned pm_step_calls; /* PC01: game logic steps, counted always (not only with the phase switch) */
 void __wrap_step_game_loop(void) {
+    pm_step_calls++;
     PH_PUSH(PH_LOGIC);
     __real_step_game_loop();
     PH_POP();
