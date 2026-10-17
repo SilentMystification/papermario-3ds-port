@@ -1072,3 +1072,7 @@ All items belong to slice E02. Azahar only. Check used: warp with `-Turbo -Fault
 ## T02 note (slice T02, documentation only, not started)
 
 Slice T02 is a new row in 3ds/SLICES.md, low priority. It makes `3ds/run_azahar.ps1` safe for the user's Azahar config. Five fault paths were found by a read-only review (restore skipped after a throw before the try, hard kill, overlapping runs, locked config file, missing backup or regex miss). The plan is a per-run config copy, a try/finally around the whole script, a named mutex, and a loud failure on a missing key. State at the time of writing: the user's qt-config.ini is clean (frame_limit=100, use_vsync=true). No code was changed for T02.
+
+## PC01 and F06 notes (documentation only, not started)
+
+PC01 (high priority, next after S25) and F06 (later) are new rows in 3ds/SLICES.md. PC01: the user reports that the frame rate feels uncapped up to 59 or 60. A read-only review (UNVERIFIED) found that `pm_frame_loop` in 3ds/src/pm_main.c waits for the next vblank only, so a game step can take less than 2/60 s while audio follows the wall clock. PC01 measures steps per second first, then enforces two counted vblanks per step with a target-rate parameter. F06 is the 30/60 fps toggle: render extra frames with interpolation, not logic at 60 Hz. No code was changed for these two rows.
