@@ -46,7 +46,7 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 
 ## Debug switches (grep `pm_debug_has` in 3ds/src)
 - Start and input: `fast` (skip logos and the 30 Hz pad wait), `autoa` (press A), `freshsave`, `loadslot=<n>`, `padscript=<steps|@file>`, `padrand`, `padlog` (position every 2 frames), `taptest`.
-- Warp (`pm_warp.c`): `warp=<map>:<entry>`, `story=<name|n>`, `preset=<name>`, `partner=<n>`, `sp=<n>` star points, `hp=<n>`, `battle[=<formation>:<stage>]`, `battlef=<n>`, `demobattle`.
+- Warp (`pm_warp.c`): `testitem=<m|c|s>` (an item beside the player at scene frame 30), `warp=<map>:<entry>`, `story=<name|n>`, `preset=<name>`, `partner=<n>`, `sp=<n>` star points, `hp=<n>`, `battle[=<formation>:<stage>]`, `battlef=<n>`, `demobattle`.
 - Run control: `smoke`, `smokeframes=<n>`, `tour=@file`, `tourfx=<n>` (transition for tour map changes), `turbo` (set by the script).
 - Pictures: `shots` (PPM per 30 frames in `sdmc/3ds/PaperMario/shots`), `shotwin=<f>:<n>`, `shotmode=<mode>:<n>`, `shotskip=<n>`, `offdump`.
 - Draw A/B: `nocomb` (no combiner plan path), `nocull` (no triangle culling), `nomix` (no blend or fog colour mix), `nooff` (no off-screen targets), `noprimz` (no prim depth), `rmoff` (old render mode handling), `nofallback` (no boot test triangle).
