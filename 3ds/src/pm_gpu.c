@@ -810,6 +810,9 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     if (y1 > 240) y1 = 240;
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
+    /* V05: the batch in flight was drawn under the old scissor on the N64. Draw it before the scissor changes: the last
+     * background piece of a window (its bottom right quarter) was cut by the next pass's scissor, a smaller one. */
+    if (x0 != sci_x0 || y0 != sci_y0 || x1 != sci_x1 || y1 != sci_y1) flush();
     sci_x0 = x0;
     sci_y0 = y0;
     sci_x1 = x1;
