@@ -626,3 +626,4 @@
 09:32 V02 build ok (temp model.c hook removed); 3dsx size checked; regression runs next
 09:41 V02 yard fixed by eye (A/B nocull, chain 0 unmapped); checking battle and pause
 09:45 V02 committing fix (cull) and docs
+09:45 V02 end: fixed by back-face cull, commit 41bb5a809
