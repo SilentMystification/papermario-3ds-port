@@ -324,6 +324,13 @@ set_property(SOURCE ${DECOMP}/src/world/actions.c APPEND PROPERTY COMPILE_OPTION
 # D02: demo_api.c SetSpriteShading reads ShadingOffsetsBuffer[2] and PackedShadingData[0x100] over the BSS variables that follow them in script_list.c
 # (declared as 4 byte variables there). gcc emits BSS in reverse order, so the 256 byte DMA overwrote D_802DB830 (item_api PopupMenu).
 set_property(SOURCE ${DECOMP}/src/evt/script_list.c APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
+# F02: these map files end a script without an End (decomp @bug, 'not terminated'). find_script_labels then reads on into the next data
+# until it finds an End. In source order that is the next script of the file. With -fdata-sections the next bytes were BSS zeros and the scan ran
+# to the end of the image (gv_01 EVS_DropLetter, unmapped reads over 8 MB). Keep the files as one data block in source order.
+set_property(SOURCE ${DECOMP}/src/world/area_gv/gv_01/main.c ${DECOMP}/src/world/area_kmr/kmr_11/main.c
+    ${DECOMP}/src/world/area_kkj/kkj_15/main.c ${DECOMP}/src/world/area_kkj/kkj_16/main.c
+    ${DECOMP}/src/world/area_kkj/kkj_23/main.c ${DECOMP}/src/world/area_kkj/kkj_29/main.c
+    APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
 # heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
 # (pm_map.c) and heaps.c gets its copy renamed.
 set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data -DD_80200000=pm_unused_80200000)

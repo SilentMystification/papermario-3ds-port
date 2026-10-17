@@ -77,7 +77,7 @@ static unsigned tour_f0, tour_ts;
 static int tour_n, tour_wait;
 static s32 w_story = STORY_INTRO;
 static char w_map[16] = "kmr_20";
-static s32 w_entry, w_flag;
+static s32 w_entry, w_flag, w_partner;
 
 int pm_warp_active(void) {
     char v[40];
@@ -117,6 +117,7 @@ int pm_warp_active(void) {
         }
         if (!found) w_story = atoi(v);
     }
+    if (pm_debug_value("partner", v, sizeof v)) w_partner = atoi(v); /* partner=<n>: PARTNER_* id, 1 = Goombario */
     if (pm_debug_value("tour", tour, sizeof tour)) {
         tour_next = tour;
         if (tour[0] == '@') { /* tour=@file: map:entry list in a file of the SD app folder (the switch string is only 256 bytes) */
@@ -158,6 +159,10 @@ s16 pm_warp_hook(s16 mode) {
     gGameStatusPtr->entryID = (s16)w_entry;
     evt_set_variable(NULL, GB_StoryProgress, w_story);
     if (w_flag) evt_set_variable(NULL, w_flag, 1);
+    if (w_partner > 0 && w_partner < 12) { /* slice F02: a map script that calls EnablePartnerAI needs a partner */
+        gPlayerData.partners[w_partner].enabled = 1;
+        gPlayerData.curPartner = w_partner;
+    }
     fio_serialize_state();
     warp_on = 1;
     pm_log("warp: %s entry %d (area %d map %d) story %d flag %x", w_map, w_entry, areaID, mapID, w_story, w_flag);
