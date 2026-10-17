@@ -1,3 +1,4 @@
+#include <string.h>
 #include "common.h"
 #include "model.h"
 #include "sprite.h"
@@ -609,7 +610,13 @@ void __wrap_set_game_mode(s16 mode) {
     }
     {
         extern unsigned pm_frame_count(void);
+        char sm[16];
         pm_log("game mode %d frame %u", mode, pm_frame_count());
+        if (pm_debug_value("shotmode", sm, sizeof sm) && atoi(sm) == mode) { /* X01: shotmode=<mode>:<n> one shot per frame for n frames from the change to <mode> */
+            const char* c = strchr(sm, ':');
+            extern void pm_gpu_shot_burst(int n);
+            pm_gpu_shot_burst(c ? atoi(c + 1) : 60);
+        }
     }
     if (mode == GAME_MODE_WORLD) {
         extern void pm_warp_world_mode(unsigned frame);

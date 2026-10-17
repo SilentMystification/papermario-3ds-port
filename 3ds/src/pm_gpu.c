@@ -388,6 +388,9 @@ void pm_gpu_hud(const char* line0, const char* line1) {
 
 /* shots switch: dump the last finished frame (rotated 240x400 buffer, tiled RGBA8) as a PPM. */
 int pm_debug_value(const char* key, char* out, unsigned n);
+static int want_clear; /* X01: the clear runs at frame end, and only for a frame the game drew */
+static int shot_burst;
+void pm_gpu_shot_burst(int n) { shot_burst = n; }
 static void dump_shot(void) {
     static unsigned n, frames;
     char path[64];
@@ -410,7 +413,10 @@ static void dump_shot(void) {
             if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d", &w0, &w1) == 2) w1 += w0;
             else w0 = -1;
         }
-        if (w0 >= 0) {
+        if (shot_burst > 0) {
+            shot_burst--;
+            pm_log("shot %u frame %u", n, pm_frame_count());
+        } else if (w0 >= 0) {
             unsigned fc = pm_frame_count();
             if ((int)fc < w0 || (int)fc >= w1) return;
             pm_log("shot %u frame %u", n, fc);
@@ -484,7 +490,7 @@ void pm_gpu_begin(int clear) {
     pm_tex_begin_frame();
     PH_POP();
     PH_PUSH(PH_GPU);
-    if (clear) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+    want_clear = clear;
     C3D_FrameDrawOn(target);
     PH_POP();
 }
@@ -492,6 +498,10 @@ void pm_gpu_begin(int clear) {
 void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
+    /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
+     * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
+     * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
+    if (want_clear && drew) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
     /* PO1: the GPU reads the vertex buffer when C3D_FrameEnd runs the command list. One flush of the
      * whole range written this frame replaces one GSPGPU call per draw. Each frame starts at vert_base
      * again, and FrameBegin(SYNCDRAW) has waited for the GPU, so no draw of this frame overlaps the
