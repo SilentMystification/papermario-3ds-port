@@ -627,3 +627,18 @@
 09:41 V02 yard fixed by eye (A/B nocull, chain 0 unmapped); checking battle and pause
 09:45 V02 committing fix (cull) and docs
 09:45 V02 end: fixed by back-face cull, commit 41bb5a809
+09:46 V05 start
+09:47 V05 run a pause flip shots, preset toad
+09:48 V05 run b nocull same flip
+09:52 V05 found: page drawn to offscreen cimg dcc460 then strips; port draws it on screen
+09:58 V05 coded offscreen render texture pass, building
+10:00 V05 build 1 ok, 3dsx 10918084 B
+10:19 V05 offscreen pass + LoadTile origin fix: pause flip now shows contents rotating (shots k)
+10:24 V05 commit offscreen pass 8b1c00417
+10:47 V05 fix: flush batch before scissor change (4th bg quarter of windows was cut), file select flip ok
+11:03 V05 A/B pause: diffs only in flip frames
+11:06 V05 A/B toad world same, battle same look (timing noise)
+11:10 V05 A/B file select chain: no diffs beyond timing noise
+11:15 V05 V06 test: toad house door reached, no map change seen in 480 frames; trying V08 kmr02
+11:19 V05 HANDOFF result written, SLICES V05 marked [x]
+11:19 V05 end: fixed, last commit 000b2b67b
