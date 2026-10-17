@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include <citro3d.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -211,6 +212,26 @@ void pm_cfb_capture_prev(void) {
         }
     }
 }
+/* PC01: once per second (switch `pacestat`): game steps, drawn frames, vblanks and audio ticks since the last line. */
+extern unsigned pm_step_calls;
+static unsigned pace_ticks;
+static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 or more */
+/* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
+ * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
+#define PM_VBLANKS_PER_STEP 2
+static void pace_stat(u64 now, u64 hz, unsigned frame) {
+    static u64 t0;
+    static unsigned s0, f0, v0, a0, i0[4];
+    unsigned v = C3D_FrameCounter(0);
+    if (!t0) { t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; for (int i = 0; i < 4; i++) i0[i] = pace_iv[i]; return; }
+    if (now - t0 < hz) return;
+    float wall = (float)(now - t0) * 1000.f / (float)hz;
+    pm_log("pace: wall %.1f ms steps %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u", wall, pm_step_calls - s0,
+           frame - f0, v - v0, pace_ticks - a0, (float)(pm_step_calls - s0) * 1000.f / wall, pace_iv[0] - i0[0],
+           pace_iv[1] - i0[1], pace_iv[2] - i0[2], pace_iv[3] - i0[3]);
+    for (int i = 0; i < 4; i++) i0[i] = pace_iv[i];
+    t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks;
+}
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
@@ -219,6 +240,8 @@ void pm_frame_loop(void) {
     int ever = 0;
     int have_fps = 0;
     u64 step_start = 0;
+    unsigned step_vb = 0; /* vblank counter when the last drawn iteration got past FrameBegin */
+    int step_vb_ok = 0;
     u64 fps_mark = 0;
     float fps = 0.f;
     float frame_ms = 0.f;
@@ -226,6 +249,7 @@ void pm_frame_loop(void) {
     float stat_ms = 0.f;
     unsigned stat_n = 0;
     u64 stat_t0 = 0;
+    const int pace_on = pm_debug_has("pacestat");
     while (aptMainLoop()) {
         u64 now = svcGetSystemTick();
         /* The retrace builds a display list only every other call. Presenting
@@ -233,18 +257,22 @@ void pm_frame_loop(void) {
         int draw = D_80073E0A != 0 || !ever;
         pm_log_poll();
         pm_pad_scan();
+        if (pace_on) pace_stat(now, tick_hz, frame);
         if (!pm_debug_has("noaudio")) {
             PH_PUSH(PH_AUDIO);
-            for (unsigned n = pm_audio_retraces(); n; n--) { pm_audio_tick(); PH_ADD(C_ATICK, 1); }
+            for (unsigned n = pm_audio_retraces(); n; n--) { pm_audio_tick(); PH_ADD(C_ATICK, 1); pace_ticks++; }
             PH_POP();
         }
         if (!draw) {
             pm_gfx_retrace();
-            /* Pad to 30Hz when the drawn frame was quick. A slow frame already
-             * missed its vblank, so waiting again only adds another stall. */
-            if (!pm_debug_has("fast") && tick_hz && now - step_start < (tick_hz / 60ull) * 2ull) {
+            /* PC01: keep PM_VBLANKS_PER_STEP vblanks between game steps. The counter is citro3d's own vblank
+             * counter. The next drawn iteration waits for one more vblank in C3D_FrameBegin(SYNCDRAW), so this
+             * waits until the counter is PM_VBLANKS_PER_STEP - 1 past the last drawn iteration. A slow frame is
+             * already past it: no wait and no extra step to catch up. `fast` stays uncapped (debug). */
+            if (!pm_debug_has("fast") && step_vb_ok) {
+                int guard = PM_VBLANKS_PER_STEP + 1;
                 PH_PUSH(PH_IDLE);
-                gspWaitForVBlank();
+                while ((int)(C3D_FrameCounter(0) - step_vb) < PM_VBLANKS_PER_STEP - 1 && guard--) gspWaitForVBlank();
                 PH_POP();
             }
             continue;
@@ -252,6 +280,15 @@ void pm_frame_loop(void) {
         step_start = now;
         nuGfxCfb_ptr = nuGfxCfb[frame % nuGfxCfbNum];
         pm_gpu_begin(1);
+        {
+            unsigned vb = C3D_FrameCounter(0);
+            if (step_vb_ok) {
+                unsigned iv = vb - step_vb;
+                pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
+            }
+            step_vb = vb;
+            step_vb_ok = 1;
+        }
         pm_gfx_retrace();
         if (!pm_gpu_drew()) {
             if (!ever) pm_gbi_fallback();
