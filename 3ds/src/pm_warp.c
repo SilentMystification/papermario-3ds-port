@@ -8,6 +8,7 @@
 #include "functions.h"
 #include "game_modes.h"
 #include "pm_port.h"
+#include <stdio.h>
 #include <string.h>
 
 void fio_serialize_state(void);
@@ -70,7 +71,7 @@ static int padscript_log, warp_on, warp_done, scene_f0 = -1, smoke_on;
    (set_map_transition_effect + set_game_mode(GAME_MODE_CHANGE_MAP), as in src/evt/map_api.c goto_map) visits every
    map of the list, TOUR_FRAMES frames each. Log lines "tour: ...". Debug tool only (class E). */
 #define TOUR_FRAMES 40
-static char tour[3000];
+static char tour[6000];
 static const char* tour_next;
 static unsigned tour_f0, tour_ts;
 static int tour_n, tour_wait;
@@ -116,7 +117,22 @@ int pm_warp_active(void) {
         }
         if (!found) w_story = atoi(v);
     }
-    if (pm_debug_value("tour", tour, sizeof tour)) tour_next = tour;
+    if (pm_debug_value("tour", tour, sizeof tour)) {
+        tour_next = tour;
+        if (tour[0] == '@') { /* tour=@file: map:entry list in a file of the SD app folder (the switch string is only 256 bytes) */
+            char fn[40];
+            FILE* tf;
+            strncpy(fn, tour + 1, sizeof fn - 1);
+            fn[sizeof fn - 1] = 0;
+            tour[0] = 0;
+            if ((tf = fopen(fn, "r")) != NULL) {
+                size_t n = fread(tour, 1, sizeof tour - 1, tf);
+                fclose(tf);
+                tour[n] = 0;
+                for (n = 0; tour[n]; n++) if (tour[n] == 10 || tour[n] == 13 || tour[n] == ' ') tour[n] = ',';
+            }
+        }
+    }
     smoke_on = pm_debug_has("smoke");
     padscript_log = pm_debug_has("padlog") || pm_debug_value("padscript", v, sizeof v); /* position every 2 frames while a script runs */
     return has_preset || has_warp || has_story;
@@ -169,6 +185,7 @@ static void tour_step(void) {
     s16 areaID, mapID;
     int entry = 0;
     unsigned i = 0;
+    while (*tour_next == ',') tour_next++;
     if (!*tour_next) {
         pm_log("tour: done, %d maps", tour_n);
         tour_next = NULL;
