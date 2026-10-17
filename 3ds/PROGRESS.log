@@ -570,3 +570,4 @@
 05:20 S19b FOUND: after demo, title then intro hos_05 stays on a static scene (360k frames). Adding shotskip switch to look
 05:29 S19b second intro: curtains ok, no ship, no text, static. running scripts dump to see waiting script
 05:37 S19b CAUSE: hos_05 N(PanAcrossRoomTime) static in map .data, not reset on reload (N64 DMA resets it). 2nd intro hangs. new row S33
+05:40 S19b end, notes committed 90de9051c
