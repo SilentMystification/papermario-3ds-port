@@ -599,3 +599,13 @@
 07:35 S19d demo test 1: A at scan 8500 (scene 1 nok_12 world)
 07:36 S19d demo test 2: A at scan 8700 (battle scene)
 07:39 S19d build 6: debug log removed, final; full chain next
+07:45 S19d S29 commit and end
+07:46 X01 start: reading docs
+07:47 X01 build 1: shotwin switch (one shot per frame), frame in game mode log
+07:49 X01 run b1: real encounter kmr_09, wipe starts about frame 159, mode 8 at 197
+07:54 X01 build 2: prim depth (G_SETPRIMDEPTH) for tris and fill rect depth test, xtrace switch
+07:56 X01 finding: battle swirl was wrong (fill ignored depth, hole missing); fixed by prim depth + fill depth test; swirl shots ok
+07:57 X01 build 3: tourfx switch (tour with any ScreenTransition)
+08:02 X01 finding: _SHIFTL cast negative float to u32 = 0 on ARM, wipe centre wrong; fix in mbi.h
+08:16 X01 build 4: _SHIFTL via int (negative float) in mbi.h (earlier edit did not apply)
+08:19 X01 verified: Mario wipe centred (fx8), battle swirl ok; commit 1

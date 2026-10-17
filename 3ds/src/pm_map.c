@@ -607,7 +607,10 @@ void __wrap_set_game_mode(s16 mode) {
         }
         return;
     }
-    pm_log("game mode %d", mode);
+    {
+        extern unsigned pm_frame_count(void);
+        pm_log("game mode %d frame %u", mode, pm_frame_count());
+    }
     if (mode == GAME_MODE_WORLD) {
         extern void pm_warp_world_mode(unsigned frame);
         extern unsigned pm_frame_count(void);

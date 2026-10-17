@@ -22,9 +22,22 @@ static unsigned geom;
 static unsigned omode_h;
 static unsigned omode_l = 0x00000030u; /* Z_CMP | Z_UPD until a list sets a mode */
 static int rm_frame;
+/* X01 debug switch xtrace=<first frame>:<count>: log fill rects, prim depth and render state changes in that frame window. */
+extern unsigned pm_frame_count(void);
+static int xt_on(void) {
+    static int a = -2, b;
+    if (a == -2) {
+        char v[24];
+        a = -1;
+        if (pm_debug_value("xtrace", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
+        else a = -1;
+    }
+    return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
+}
 
 static unsigned prim = 0xffffffffu;
 static unsigned fill = 0xffffffffu;
+static unsigned prim_z; /* X01: G_SETPRIMDEPTH, 15 bit, 0 near, 0x7fff far */
 static int tex_on;
 static const void* timg;
 static unsigned timg_fmt, timg_siz;
@@ -832,7 +845,7 @@ static void draw_tri(unsigned w) {
         }
         n_cut++;
     }
-    if (pm_debug_has("rmlog") && (rm_frame % 30) == 1) {
+    if ((pm_debug_has("rmlog") && (rm_frame % 30) == 1) || xt_on()) {
         static unsigned lo, lg, la, lb, lc, ld, lh, lp, lf;
         if (lo != omode_l || lg != (geom & G_ZBUFFER) || la != comb_a || lb != comb_b || lc != comb_c || ld != comb_d ||
             lh != omode_h || lp != prim || lf != tile_fmt[0] * 4 + tile_siz[0]) {
@@ -848,6 +861,11 @@ static void draw_tri(unsigned w) {
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
     sync_render();
+    if (omode_l & (1u << G_MDSFT_ZSRCSEL)) {
+        /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
+        float zn = 2.f * (float)prim_z / 32767.f - 1.f;
+        for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
+    }
     if (plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE) {
         /* S25: the vertex colour carries a constant (PRIM, ENV or PRIM_LOD_FRAC) because the shade is not read. */
         float vc[4];
@@ -1425,6 +1443,9 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             cimg = ptr_of(w1);
             cimg_stride = (int)(w0 & 0xfff) + 1;
             break;
+        case G_SETPRIMDEPTH:
+            prim_z = (w1 >> 16) & 0x7fffu;
+            break;
         case G_SETFILLCOLOR:
             fill = w1;
             break;
@@ -1446,8 +1467,14 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 break;
             }
             /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
+            if (xt_on()) pm_log("xt f%u fillrect %d %d %d %d oml %08x omh %08x zb %d prim %08x primz %u cimg %p", pm_frame_count(), ulx, uly, lrx, lry, omode_l, omode_h, (geom & G_ZBUFFER) != 0, prim, prim_z, cimg);
             unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
                 ? rgba_from_5551(fill & 0xffff) : prim;
+            /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
+            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
+                sync_render();
+                pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)prim_z / 32767.f);
+            } else
             pm_gpu_fill_rect(ulx, uly, lrx, lry, color);
             break;
         }
@@ -1466,6 +1493,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (yh & 0x800) yh |= ~0xfff;
             if (xl & 0x800) xl |= ~0xfff;
             if (yl & 0x800) yl |= ~0xfff;
+            if (xt_on()) pm_log("xt f%u texrect %d %d %d %d tile %u s %d t %d dsdx %d dtdy %d oml %08x omh %08x tile0 x0 %d y0 %d", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (w1 >> 24) & 7, (int)(s16)(hs >> 16), (int)(s16)(hs & 0xffff), (int)(s16)(hd >> 16), (int)(s16)(hd & 0xffff), omode_l, omode_h, tile_x0, tile_y0);
+            if (xt_on()) { int tw_ = 0, th_ = 0; pm_tex_size(&tw_, &th_); pm_log("xt   tile0 w %d h %d stride %d fmt %u siz %u tex %dx%d valid %d", td[0].w, td[0].h, td[0].stride, td[0].fmt, td[0].siz, tw_, th_, td[0].valid); }
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
             box_fold_sync();
             comb_audit();
@@ -1488,6 +1517,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             float s1 = s0 + dsdx * width / (float)tw;
             float t1 = t0 + dtdy * height / (float)th;
+            if (xt_on()) pm_log("xt   uv %d/%d  %d %d  s %d t %d (milli) s1 %d t1 %d width %d height %d tw %d th %d", (int)(s0 * 1000), (int)(t0 * 1000), 0, 0, 0, 0, (int)(s1 * 1000), (int)(t1 * 1000), (int)width, (int)height, tw, th);
             {
                 /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
                  * above). In 1-cycle and 2-cycle mode the lower right edge is exclusive: without this the quad was one

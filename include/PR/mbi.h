@@ -44,8 +44,15 @@
  * (NOTE: _SHIFTL(v, 0, 32) won't work, just use an assignment)
  *
  */
+#ifdef TARGET_3DS
+/* X01: (unsigned int) of a negative float is 0 on ARM (saturating vcvt) but wraps on MIPS. The texture rectangle
+ * start s and t (the screen transition stencils) are negative floats, so go through int first. */
+#define _SHIFTL(v, s, w)	\
+    ((unsigned int) (((unsigned int)(int)(v) & ((0x01 << (w)) - 1)) << (s)))
+#else
 #define _SHIFTL(v, s, w)	\
     ((unsigned int) (((unsigned int)(v) & ((0x01 << (w)) - 1)) << (s)))
+#endif
 #define _SHIFTR(v, s, w)	\
     ((unsigned int)(((unsigned int)(v) >> (s)) & ((0x01 << (w)) - 1)))
 

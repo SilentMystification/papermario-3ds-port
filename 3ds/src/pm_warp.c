@@ -223,7 +223,10 @@ static void tour_step(void) {
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)entry;
-    set_map_transition_effect(TRANSITION_STANDARD);
+    {   /* X01: tourfx=<n> uses ScreenTransition n for the tour changes (default TRANSITION_STANDARD) */
+        char fx[8];
+        set_map_transition_effect(pm_debug_value("tourfx", fx, sizeof fx) ? (ScreenTransition)atoi(fx) : TRANSITION_STANDARD);
+    }
     set_game_mode(GAME_MODE_CHANGE_MAP);
     tour_wait = 1;
 }

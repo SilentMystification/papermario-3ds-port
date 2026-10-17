@@ -68,6 +68,7 @@ void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
 /* One vertex already in F3DEX clip space. The MVP uniform must be identity. */
 void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsigned c);
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba);
+void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d); /* X01: tests depth d (0 near .. 1 far) */
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1,
                      float s0, float t0, float s1, float t1);
 

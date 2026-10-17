@@ -34,6 +34,7 @@ static int light_on;
 /* RDP render mode: depth compare, depth update, alpha blend, alpha cut-off (-1 none), decal. */
 static int r_zcmp = 1, r_zupd = 1, r_blend = 1, r_atest = -1, r_decal;
 static int combine;
+static int rect_z; /* X01: the 2D rectangle in flight tests depth (fill rect with G_ZS_PRIM) */
 static int r_nocol; /* S25: the blender gives back the frame buffer colour: depth only */
 static PmPlan plan; /* S25: combine mode 8 */
 static int env_hi = 1; /* texenv stages configured so far (stage 0 is always reset) */
@@ -221,7 +222,7 @@ static void flush(void) {
     /* Fill and texrects ignore the Z buffer. Startup turns G_ZBUFFER on
      * before the logo, and every 2D quad shares z, so a depth test keeps
      * only the first rectangle. */
-    int z = z_on && !rect_2d;
+    int z = z_on && (!rect_2d || rect_z);
     /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. A decal
      * sits in the same plane as its base, so equal depth has to pass. */
     if (z && r_zcmp)
@@ -400,7 +401,21 @@ static void dump_shot(void) {
         char v[16];
         skip = pm_debug_value("shotskip", v, sizeof v) ? atoi(v) : 0;
     }
-    if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
+    {   /* X01: shotwin=<first frame>:<count> takes one shot per game frame (frame = pm_frame_count) */
+        static int w0 = -2, w1;
+        extern unsigned pm_frame_count(void);
+        if (w0 == -2) {
+            char v[24];
+            w0 = -1;
+            if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d", &w0, &w1) == 2) w1 += w0;
+            else w0 = -1;
+        }
+        if (w0 >= 0) {
+            unsigned fc = pm_frame_count();
+            if ((int)fc < w0 || (int)fc >= w1) return;
+            pm_log("shot %u frame %u", n, fc);
+        } else if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
+    }
     src = (const unsigned char*)target->frameBuf.colorBuf;
     if (!src) return;
     mkdir("shots", 0777);
@@ -664,6 +679,7 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
 static float px(int x) { return 40.f + (float)x; }
 static float py(int y) { return 240.f - (float)y; }
 
+static float fill_z = 0.5f;
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
@@ -676,11 +692,20 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     float xb = px(x1 + 1);
     float ya = py(y0);
     float yb = py(y1 + 1);
-    pm_gpu_tri(xa, ya, 0.5f, 0, 0, rgba, xb, ya, 0.5f, 0, 0, rgba, xb, yb, 0.5f, 0, 0, rgba);
-    pm_gpu_tri(xa, ya, 0.5f, 0, 0, rgba, xb, yb, 0.5f, 0, 0, rgba, xa, yb, 0.5f, 0, 0, rgba);
+    pm_gpu_tri(xa, ya, fill_z, 0, 0, rgba, xb, ya, fill_z, 0, 0, rgba, xb, yb, fill_z, 0, 0, rgba);
+    pm_gpu_tri(xa, ya, fill_z, 0, 0, rgba, xb, yb, fill_z, 0, 0, rgba, xa, yb, fill_z, 0, 0, rgba);
     flush();
     rect_2d = 0;
     combine = saved;
+}
+
+void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d) {
+    flush(); /* the batch in flight keeps its own depth state */
+    fill_z = d;
+    rect_z = 1;
+    pm_gpu_fill_rect(x0, y0, x1, y1, rgba);
+    rect_z = 0;
+    fill_z = 0.5f;
 }
 
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
