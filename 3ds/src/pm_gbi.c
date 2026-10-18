@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "ultra64.h"
 #include "pm_gbi.h"
 #include "pm_gpu.h"
@@ -504,18 +505,42 @@ static unsigned rgba_from_5551(unsigned c) {
     return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
-static unsigned vert_color(const Vtx* v) {
+/* L01: RSP light table. G_MW_NUMLIGHT sets the count, G_MOVEMEM index G_MV_LIGHT fills slots (slot 0 is light 1, slot nlights is the ambient light). */
+static struct { u8 col[3]; s8 dir[3]; } lt[9];
+static unsigned lt_n;
+static unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex is loaded, as the RSP does */
+
+/* L01: RSP lighting. The normal goes through the model view matrix, then colour = ambient + sum(light colour * max(0, normal . direction)). Alpha stays the vertex alpha.
+ * Debug switch nolight keeps the old fixed light for an A/B. */
+static unsigned vert_color(const Vtx* v, const float m[4][4]) {
     if (geom & G_LIGHTING) {
-        /* Normals share the color bytes. One light from above-front until the
-         * display list's lights are applied. */
+        static int nolight = -1;
         float nx = (float)(signed char)v->v.cn[0] / 127.f;
         float ny = (float)(signed char)v->v.cn[1] / 127.f;
         float nz = (float)(signed char)v->v.cn[2] / 127.f;
-        float d = nx * 0.25f + ny * 0.85f + nz * 0.45f;
-        if (d < 0.f) d = 0.f;
-        if (d > 1.f) d = 1.f;
-        unsigned c = (unsigned)((0.35f + 0.65f * d) * 255.f);
-        return (c << 24) | (c << 16) | (c << 8) | 255u;
+        if (nolight < 0) nolight = pm_debug_has("nolight");
+        if (nolight) {
+            float d = nx * 0.25f + ny * 0.85f + nz * 0.45f;
+            if (d < 0.f) d = 0.f;
+            if (d > 1.f) d = 1.f;
+            unsigned c = (unsigned)((0.35f + 0.65f * d) * 255.f);
+            return (c << 24) | (c << 16) | (c << 8) | 255u;
+        }
+        float tx = nx * m[0][0] + ny * m[1][0] + nz * m[2][0];
+        float ty = nx * m[0][1] + ny * m[1][1] + nz * m[2][1];
+        float tz = nx * m[0][2] + ny * m[1][2] + nz * m[2][2];
+        float l2 = tx * tx + ty * ty + tz * tz;
+        if (l2 > 0.f) { float k = 1.f / sqrtf(l2); tx *= k; ty *= k; tz *= k; }
+        float r = lt[lt_n].col[0], g = lt[lt_n].col[1], b = lt[lt_n].col[2];
+        for (unsigned i = 0; i < lt_n; i++) {
+            float d = (tx * lt[i].dir[0] + ty * lt[i].dir[1] + tz * lt[i].dir[2]) / 127.f;
+            if (d <= 0.f) continue;
+            r += lt[i].col[0] * d; g += lt[i].col[1] * d; b += lt[i].col[2] * d;
+        }
+        if (r > 255.f) r = 255.f;
+        if (g > 255.f) g = 255.f;
+        if (b > 255.f) b = 255.f;
+        return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)v->v.cn[3];
     }
     return ((unsigned)v->v.cn[0] << 24) | ((unsigned)v->v.cn[1] << 16) |
            ((unsigned)v->v.cn[2] << 8) | (unsigned)v->v.cn[3];
@@ -561,11 +586,10 @@ static const float ident_m[4][4] = {
 };
 
 /* The RSP multiplies when the vertex is loaded. Later matrices do not move it. */
-static void xform_vtx(const float m[4][4], const Vtx* v, ClipV* o) {
+static void xform_vtx(const float m[4][4], const Vtx* v, unsigned c, ClipV* o) {
     float x = (float)v->v.ob[0];
     float y = (float)v->v.ob[1];
     float z = (float)v->v.ob[2];
-    unsigned c = vert_color(v);
     o->x = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
     o->y = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
     o->z = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
@@ -971,7 +995,7 @@ static void draw_tri(unsigned w) {
     ensure_tile(use_t1 ? 1 : 0);
     dual_bind();
     for (i = 0; i < 3; i++) {
-        xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
+        xform_vtx(vert_m[idx[i]], &verts[idx[i]], vert_c[idx[i]], &poly[i]);
         if (vert_scr[idx[i]]) { /* B5: screen position from G_MODIFYVTX, the inverse of the viewport map (x, y only, z and w kept in ratio) */
             ClipV* p = &poly[i];
             p->z = p->w > 0.f ? p->z / p->w : 0.f;
@@ -1529,6 +1553,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 for (unsigned i = 0; i < n; i++) {
                     vert_live[v0 + i] = 1;
                     vert_scr[v0 + i] = 0;
+                    vert_c[v0 + i] = vert_color(&src[i], mv[mv_sp]);
                     memcpy(vert_m[v0 + i], combined, sizeof combined);
                 }
             }
@@ -1575,6 +1600,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if ((w0 & 0xff) != G_MV_VIEWPORT) {
                 unsigned ix = w0 & 0xff, n = ++mm_cnt[ix];
                 if (n == 1 || n == 1000 || n == 1000000) pm_log("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
+            }
+            if ((w0 & 0xff) == G_MV_LIGHT) { /* L01: offset 0 and 24 are the look-at vectors, light n is at n * 24 + 24 */
+                int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
+                const u8* l = (const u8*)ptr_of(w1);
+                if (l && slot >= 0 && slot < 9) { lt[slot].col[0] = l[0]; lt[slot].col[1] = l[1]; lt[slot].col[2] = l[2]; lt[slot].dir[0] = (s8)l[8]; lt[slot].dir[1] = (s8)l[9]; lt[slot].dir[2] = (s8)l[10]; }
             }
             if ((w0 & 0xff) == G_MV_VIEWPORT) {
                 Vp* vp = (Vp*)ptr_of(w1);
@@ -2044,6 +2074,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_MOVEWORD: {
             unsigned index = (w0 >> 16) & 0xff;
             unsigned offset = w0 & 0xffff;
+            if (index == G_MW_NUMLIGHT) { lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; break; } /* L01 */
+            if (index == G_MW_LIGHTCOL && offset / 24 < 9 && (offset % 24) == 0) { unsigned k = offset / 24; lt[k].col[0] = w1 >> 24; lt[k].col[1] = w1 >> 16; lt[k].col[2] = w1 >> 8; break; } /* L01 */
             if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; } /* F08 */
             if (index != G_MW_SEGMENT) {
                 unsigned n = ++mw_cnt[index];
