@@ -13,6 +13,7 @@ Written 2026-10-17 for a NEW orchestrator chat. Read this file, then HANDOFF.md,
 - Launch the next slice automatically. Do not wait for the user. Work in large chunks until the queue is empty or a stop condition (section 7) holds.
 - A question only the user can answer: add it to 3ds/QUESTIONS.md and continue with other work.
 - Start no subagent the user did not expect. When the context grows long, stop at a finished slice, ask an agent for a short HANDOFF.md note, and ask the user to start a new chat.
+- Agents read AGENT_RULES.md, not this file. Batch doc edits into one docs agent per milestone. Reuse a running agent by SendMessage for a small follow-up.
 
 ## 2. User decisions (2026-10)
 - Never push to git. No Claude or Anthropic attribution in commits or PRs.
@@ -38,7 +39,7 @@ Written 2026-10-17 for a NEW orchestrator chat. Read this file, then HANDOFF.md,
 - S28 gate (user decision 2026-10-18): S28 waits until the Azahar queue is empty. Hardware validation checks only that the existing code works on the console. Port logic that Azahar can verify is not debugged on hardware.
 
 ## 3. Agent reading rules
-Every agent prompt says "follow the reading rules in ORCHESTRATOR.md".
+Every agent prompt says "follow the reading rules in AGENT_RULES.md".
 - Read the tail (last 40 lines) of logs. Never read a whole log.
 - Read files with offset and limit.
 - Use the summary scripts, not raw logs: `3ds/tools/phase_report.py`, `rom_trace_classify.py`, `rom_trace_check.py`, `check_data_layout.py`, and the tour table output.
@@ -56,7 +57,7 @@ Every agent prompt says "follow the reading rules in ORCHESTRATOR.md".
 ## 5. Slim agent prompt template
 ```
 Repo: c:\Users\Andrew\Documents\GitHub\papermario-3ds-port. Branch main.
-Read 3ds/ORCHESTRATOR.md (rules, reading rules), HANDOFF.md and the row <id> in 3ds/SLICES.md. Follow the rules and the reading rules in ORCHESTRATOR.md. Use docs/INDEX.md to find files.
+Read 3ds/AGENT_RULES.md, HANDOFF.md only if the task needs it, and row <id> in 3ds/SLICES.md.
 Task: <slice id and text>
 Verification: <the done check of the row>. Say what you checked and what you did not check.
 Append one line per step to 3ds/PROGRESS.log. Add at most 3 lines to HANDOFF.md. Put detail in docs/HISTORY.md. Mark the row done: move it to docs/SLICES_DONE.md.

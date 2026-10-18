@@ -9,8 +9,6 @@ Use this file to resume the orchestrator in a new chat. Read it first.
 |---|---|---|---|
 | X02 slice B0 | Main tree. Uncommitted edits in 3ds/src/pm_gpu.c, pm_gbi.c, pm_main.c, pm_tex.c, 3ds/include/pm_gpu.h, pm_tex.h | Running. Not committed. | `git status`. Tail of 3ds/PROGRESS.log. |
 | F01 trd_06 faults | Lane B: ..\papermario-3ds-port-laneB, branch lane-b | Running. | `git -C ..\papermario-3ds-port-laneB status`. Tail of 3ds/PROGRESS.log. |
-| S18 check | Copy of the lane B 3dsx | Log line at 02:55 records a result (pause smoke exit 0, demo mode 17 at frame 4138, unmapped 0). Verify. | Tail of 3ds/PROGRESS.log. |
-| S19c check | Copy of the lane B 3dsx | Log line at 02:56 records a result (Goomba battle 500 frames, 300 shots, exit 0, unmapped 0). Verify. | Tail of 3ds/PROGRESS.log. |
 
 Agents may have stopped. Check the agent list before you wait for a result.
 A row is done only when its PROGRESS.log line and its 3ds/SLICES.md row agree.
@@ -26,8 +24,12 @@ A row is done only when its PROGRESS.log line and its 3ds/SLICES.md row agree.
 | S30b 154 id-only maps | d7d626ea7 | lane-b |
 | F01 kmr_23 cause | 04ae78a19 | lane-b |
 | F01 tst_12 measure | 57a23316f | lane-b |
-| F01 nok_01 | 6ead17dbd | lane-b |
+| F01 nok_01 (tour harness: bgm_set_song(1, AU_SONG_NONE) in tour_step) | 6ead17dbd | lane-b |
 | S31 crash screen closed | 1a23cbe64 | main |
+| S18 done (rows in docs/SLICES_DONE.md) | see docs/SLICES_DONE.md | main |
+| S19c done (poly_scan.py) | 5beb113c1 | main |
+
+S19c scan thresholds are too loose (flags natural dirt). The pass was by eye on 3 shots. Low priority tune.
 
 ## 3. Open queue, in order
 
@@ -70,7 +72,8 @@ Only one build or Azahar agent runs at a time in the main tree.
 |---|---|
 | V07 and V09 intro tints are shelved. | Work is on branch shelf/v09-nok01. Not in the queue. |
 | All 421 maps are linked and resident. | No SD streaming during play. |
-| tst_12 stays linked. | Its loop bug is row 26 (F10), last. |
+| tst_12 stays linked. | Its loop bug is row F10 (queue row 26), last. |
+| AGENT_RULES.md (new rule). | Slice agents read 3ds/AGENT_RULES.md, not ORCHESTRATOR.md. Keep it at most 45 lines. |
 | Optimization starts only after S28. | Rows 18 to 22 wait for S28. |
 | S28 starts only after all Azahar-verifiable work. | S28 is the gate. |
 | Narrow tests. Tight prompts. | Use small test scopes and short agent prompts. |
