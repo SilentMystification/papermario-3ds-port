@@ -8,11 +8,14 @@
 # is a native Linux filesystem, so ninja can use every core.
 set -e
 cd "$(dirname "$0")/.."
-mkdir -p build3ds
+# PM_LANE (empty = main lane): own Docker volume and own output folder, no copy to the real SD card.
+OUT=build3ds; VOL=pm3ds-work
+if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-work-$PM_LANE; fi
+mkdir -p $OUT
 MSYS_NO_PATHCONV=1 docker run --rm \
     -v "$(pwd):/host:ro" \
-    -v "$(pwd)/build3ds:/out" \
-    -v pm3ds-work:/work \
+    -v "$(pwd)/$OUT:/out" \
+    -v $VOL:/work \
     devkitpro/devkitarm:latest sh -c '
     set -e
     rsync -a --delete --exclude .git --exclude build3ds --exclude reference --exclude orig --exclude "pc/build*" /host/ /work/src/
@@ -23,7 +26,7 @@ MSYS_NO_PATHCONV=1 docker run --rm \
     exit $status
 '
 # Azahar loads from its own SD card, not from build3ds/.
-if [ -n "$APPDATA" ] && [ -f build3ds/pm_3ds.3dsx ]; then
+if [ -z "$PM_LANE" ] && [ -n "$APPDATA" ] && [ -f build3ds/pm_3ds.3dsx ]; then
     dest="$(cygpath -u "$APPDATA" 2>/dev/null || printf '%s' "$APPDATA")/Azahar/sdmc/3ds/PaperMario"
     mkdir -p "$dest"
     cp -f build3ds/pm_3ds.3dsx "$dest/pm_3ds.3dsx"

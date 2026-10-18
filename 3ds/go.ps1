@@ -109,7 +109,7 @@ $gitBash = Resolve-GitBash
 
 function Invoke-Build {
     if ($NoBuild) { return }
-    $target = "build3ds\pm_3ds.3dsx"
+    $target = if ($env:PM_LANE) { "build3ds\lane-$env:PM_LANE\pm_3ds.3dsx" } else { "build3ds\pm_3ds.3dsx" }
     if (Test-Path $target) {
         $builtAt = (Get-Item $target).LastWriteTime
         # Only what actually feeds the compiled binary - not go.ps1/push_3ds.sh/run_azahar.ps1,

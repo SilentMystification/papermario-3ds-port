@@ -51,6 +51,9 @@ $exe = "C:\Program Files\Azahar\azahar.exe"
 $log = "$sd\log.txt"
 $emuLog = "$env:APPDATA\Azahar\log\azahar_log.txt"
 $out = "$repo\build3ds"
+$vol = "pm3ds-work"
+$x3dsx = "pm_3ds.3dsx"
+if ($env:PM_LANE) { $out = "$repo\build3ds\lane-$env:PM_LANE"; $vol = "pm3ds-work-$env:PM_LANE"; $x3dsx = "pm_3ds_$($env:PM_LANE).3dsx" }
 
 function Kill-Azahar([int]$procId) {
     # Scoped to the PID this script itself launched - never kills other azahar.exe processes (a
@@ -147,7 +150,7 @@ try {
     if ($Turbo) { Set-Turbo }
 
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
-Copy-Item "$out\pm_3ds.3dsx" "$sd\pm_3ds.3dsx" -Force
+Copy-Item "$out\pm_3ds.3dsx" "$sd\$x3dsx" -Force
 Remove-Item $log -ErrorAction SilentlyContinue
 if ($Debug) { Set-Content "$sd\debug3ds.txt" $Debug } else { Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue }
 Remove-Item "$sd\shots", "$out\shots" -Recurse -ErrorAction SilentlyContinue # "shots" switch output
@@ -182,7 +185,7 @@ public class AzEnum {
 }
 "@
 
-$p = Start-Process $exe -ArgumentList "`"$sd\pm_3ds.3dsx`"" -PassThru
+$p = Start-Process $exe -ArgumentList "`"$sd\$x3dsx`"" -PassThru
 Set-Content $pidFile $p.Id
 if ($Gdb) {
     # Azahar waits for gdb before it runs the game. winhost = the Windows host (IPv4) seen from Docker.
@@ -191,7 +194,7 @@ if ($Gdb) {
     $cmds += @("continue", "echo \n--- stopped ---\n", "bt 30", "info registers", 'x/32wx $sp', "kill")
     Set-Content "$out\gdb_cmds.txt" $cmds
     Start-Sleep -Seconds 2
-    $gdbArgs = "run --rm --add-host=winhost:host-gateway -v pm3ds-work:/work -v `"${out}:/out`" " +
+    $gdbArgs = "run --rm --add-host=winhost:host-gateway -v ${vol}:/work -v `"${out}:/out`" " +
                "devkitpro/devkitarm:latest /opt/devkitpro/devkitARM/bin/arm-none-eabi-gdb -q -batch " +
                "-x /out/gdb_cmds.txt /work/build/pm_3ds.elf"
     $gdbProc = Start-Process docker -ArgumentList $gdbArgs -NoNewWindow -PassThru `
@@ -334,7 +337,7 @@ $addrs = $addrs | ForEach-Object { [Convert]::ToUInt32($_, 16) } |
 if ($addrs) {
     Write-Output "--- crash symbols (pc, lr, then stack words that are code) ---"
     $env:MSYS_NO_PATHCONV = "1"
-    & docker run --rm -v pm3ds-work:/work devkitpro/devkitarm:latest sh -c "`$DEVKITARM/bin/arm-none-eabi-addr2line -f -C -p -e /work/build/pm_3ds.elf $($addrs -join ' ')" |
+    & docker run --rm -v ${vol}:/work devkitpro/devkitarm:latest sh -c "`$DEVKITARM/bin/arm-none-eabi-addr2line -f -C -p -e /work/build/pm_3ds.elf $($addrs -join ' ')" |
         Where-Object { $_ -notmatch "^\?\?" }
     exit 2
 }
