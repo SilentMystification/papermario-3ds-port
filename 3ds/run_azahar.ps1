@@ -40,6 +40,9 @@ param(
     [int]$LockWait = 900, # seconds to wait for the Azahar lock held by another run
     [switch]$Interactive, # a person plays: no timeout, no log-silence stop, settings windows allowed
     [string]$GdbScript = "",
+    [switch]$Milestone, # allows tour= with more than 40 maps (budget rule)
+    [switch]$Force, # run an identical rerun anyway (counts double in the budget)
+    [string]$ResetBudget = "", # orchestrator only: reset the run count of one row, then exit
     [string]$Debug = ""  # render debug switches for the game, see pm_main.c (nofog nolight notex texonly logtev)
 )
 $ErrorActionPreference = "Stop"
@@ -54,6 +57,42 @@ $out = "$repo\build3ds"
 $vol = "pm3ds-work"
 $x3dsx = "pm_3ds.3dsx"
 if ($env:PM_LANE) { $out = "$repo\build3ds\lane-$env:PM_LANE"; $vol = "pm3ds-work-$env:PM_LANE"; $x3dsx = "pm_3ds_$($env:PM_LANE).3dsx" }
+
+# Test budget (3ds/logs/test_budget.csv): columns time,row,sha256,args,kind,rc,result. kind = start or end.
+$budgetFile = "$repo\3ds\logs\test_budget.csv"
+if ($ResetBudget) {
+    if (Test-Path $budgetFile) { $keep = @(Get-Content $budgetFile | Where-Object { $_.Split(",")[1] -ne $ResetBudget }); Set-Content $budgetFile $keep }
+    Write-Output "Budget of row $ResetBudget reset."; exit 0
+}
+$row = if ($env:PM_ROW) { $env:PM_ROW } else { "adhoc" }
+$max = if ($env:PM_BUDGET) { [int]$env:PM_BUDGET } elseif ($row -eq "adhoc") { 12 } else { 4 }
+if ($row -eq "adhoc") { Write-Output "WARNING: PM_ROW is not set. Set PM_ROW to your row id. Runs count under row adhoc (12 per 3 hours)." }
+$sha = (Get-FileHash "$out\pm_3ds.3dsx" -Algorithm SHA256).Hash.ToLower()
+$argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "Force", "ResetBudget", "Milestone" } | Sort-Object Key |
+    ForEach-Object { "$($_.Key)=$($_.Value)" }) -join " ").Replace(",", ";")
+$budgetRows = @(if (Test-Path $budgetFile) { Get-Content $budgetFile | Where-Object { $_ } | ForEach-Object { $f = $_.Split(","); [pscustomobject]@{ t = [datetime]$f[0]; row = $f[1]; sha = $f[2]; args = $f[3]; kind = $f[4]; rc = $f[5]; res = ($f[6..($f.Count - 1)] -join ",") } } })
+$used = @($budgetRows | Where-Object { $_.row -eq $row -and $_.kind -eq "start" -and ($row -ne "adhoc" -or $_.t -gt (Get-Date).AddHours(-3)) }).Count
+if ($used -ge $max) { Write-Output "BUDGET: row $row used $used runs. Stop and report what blocks you."; exit 9 }
+if ($Debug -match "tour=(\S+)") {
+    $tv = $Matches[1]
+    if ($tv.StartsWith("@")) { $tv = if (Test-Path "$sd\$($tv.Substring(1))") { (Get-Content "$sd\$($tv.Substring(1))" -Raw) -replace "\s+", "," } else { "" } }
+    $nmaps = @($tv.Split(",") | Where-Object { $_ }).Count
+    if ($nmaps -gt 40 -and -not $Milestone) { Write-Output "TOUR: $nmaps maps is more than 40. A tour this long needs -Milestone. Tour only the touched maps."; exit 8 }
+}
+if (-not $Force) {
+    $old = $budgetRows | Where-Object { $_.row -eq $row -and $_.sha -eq $sha -and $_.args -eq $argStr -and $_.kind -eq "end" -and $_.rc -eq "0" } | Select-Object -Last 1
+    if ($old) { Write-Output "cached ok (same row, 3dsx and args, rc 0): $($old.res)"; Write-Output "budget: row $row run $used/$max (not run, use -Force to rerun)"; exit 0 }
+}
+New-Item -ItemType Directory -Force -Path (Split-Path $budgetFile) | Out-Null
+$stamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+$nStart = if ($Force) { 2 } else { 1 }
+1..$nStart | ForEach-Object { Add-Content $budgetFile "$stamp,$row,$sha,$argStr,start,," }
+$used += $nStart
+function End-Run([int]$rc, [string]$res) {
+    Add-Content $budgetFile "$((Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')),$row,$sha,$argStr,end,$rc,$($res.Replace(',', ';'))"
+    Write-Output "budget: row $row run $used/$max"
+    exit $rc
+}
 
 function Kill-Azahar([int]$procId) {
     # Scoped to the PID this script itself launched - never kills other azahar.exe processes (a
@@ -339,7 +378,7 @@ if ($addrs) {
     $env:MSYS_NO_PATHCONV = "1"
     & docker run --rm -v ${vol}:/work devkitpro/devkitarm:latest sh -c "`$DEVKITARM/bin/arm-none-eabi-addr2line -f -C -p -e /work/build/pm_3ds.elf $($addrs -join ' ')" |
         Where-Object { $_ -notmatch "^\?\?" }
-    exit 2
+    End-Run 2 "crash symbols; stopped: $reason"
 }
-if ($Smoke -and $reason -notmatch "^matched") { Write-Output "SMOKE FAILED: $reason"; exit 1 }
-exit 0
+if ($Smoke -and $reason -notmatch "^matched") { Write-Output "SMOKE FAILED: $reason"; End-Run 1 "smoke failed: $reason" }
+End-Run 0 "stopped after ${secs}s: $reason"

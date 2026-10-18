@@ -316,3 +316,9 @@
 19:17 F11-3 build ok after pm_log fix, run padscript test expect 2 min
 19:18 R13c temp coin hook R13C_TMP in pm_gbi.c draw_tri (remove before commit). build, run warp=mac_01:0 story=ch1_kooper loadslot=0 padscript, shots every 30, expect 15 min
 19:22 C2F C2G C2H C2I done: jan_08 rc0, KMR_3/HOS partner=1 rc0, TRD_2 stage 00 rc0, golden toad yard battle ok (battle 1.15 pct). 3dsx 13080832 B. Rows moved to SLICES_DONE
+19:25 F11-3 panel test ok (options.txt fps60/wide saved, second run read back). golden toad yard fileselect, expect 3 min
+19:32 F11-3 golden toad 0.03 yard 0.04 fileselect 0.00. 3dsx 13072248 to 13081116 B (others WIP included). Commit, then move row
+19:33 R13c cause 2 found in log: GRAB_MAX 8 reached in 1 frame (3 flames x strips x 2 loads x copy), later strips reuse a slot with other columns. swap alone leaves squares black. fix: full width copy, dirty rows of texrects (pm_gpu_grab y0 y1), reuse for other rows. build, run fortune, expect 10 min
+20:10 TB1 run_azahar.ps1: row budget (4 per row, adhoc 12 per 3 h), identical rerun cache, tour limit 40, -Force -Milestone -ResetBudget, summary line
+20:11 TB1 golden.py: 1 to 3 scenes, no all, cached ok per 3dsx sha256, --milestone once per sha256
+20:12 TB1 docs: AGENT_RULES Tests and memory, ORCHESTRATOR sections 1 and 5. Tested with row zz9: tour refusal, run, cached rerun, run 2, BUDGET exit 9, reset (2 real starts)

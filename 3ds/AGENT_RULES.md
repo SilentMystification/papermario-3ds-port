@@ -31,7 +31,8 @@
 - Use -Turbo -Smoke -FaultStop and a warp preset for feature tests. Never wait open ended.
 - Lighter check: smoke on presets yard and toad, then shots of touched scenes only.
 - STOP RULE: stop when the done check of your row passes. Run at most 3 build and run rounds per row, then report what blocks you. Do not add checks that the row does not name. A fault outside your row becomes a new row in 3ds/SLICES.md (one line). Do not fix it in this slice. Before each Azahar run, log one line with the expected length. If one step takes more than 15 minutes, log the reason.
-- Fast checks: each Azahar start costs about 17 s. Check many maps in ONE run with `tour=<map:entry,...>` (one start, many maps). Run `golden.py` with scene names for the touched scenes only. Skip the yard and toad smoke when `golden.py` already ran yard and toad in the same build. Run the full golden set and the full tour only at a milestone. Use a high -TurboFactor for runs that do not measure timing.
+- TEST BUDGET (enforced by run_azahar.ps1 and golden.py): Set PM_ROW to your row id in every shell before a test. Your row has 4 Azahar starts. The script writes each start to 3ds/logs/test_budget.csv. A message that starts with BUDGET means: stop and report what blocks you. Do not reset the budget. An identical rerun (same row, same 3dsx, same arguments, rc 0) does not start Azahar and prints "cached ok". Without PM_ROW the runs count under row adhoc (12 per 3 hours).
+- A tour= with more than 40 maps needs -Milestone. Use tour=<map:entry,...> for the touched maps only, in one start. golden.py accepts 1 to 3 scene names, skips a scene that passed on the same 3dsx, and allows --milestone once per 3dsx.
 - Full tour and 4-scene A/B only for map change path, boot, title, file select or intro.
 - Screenshots only when needed. One contact sheet at most.
 - Memory: no size cap per slice (user decision 2026-10-18). Report the 3dsx size change. Do not stop a slice for its size.

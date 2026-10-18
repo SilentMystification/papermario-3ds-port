@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """G01g golden frames. Run fixed scenes with warp and turbo, take one frame, compare with 3ds/golden/<scene>.png.
 
-  python 3ds/tools/golden.py                 compare all scenes, print a table
-  python 3ds/tools/golden.py toad yard       only these scenes
+  python 3ds/tools/golden.py toad yard       compare these scenes (at most 3 per call; name the touched scenes)
+  python 3ds/tools/golden.py --milestone     full set, once per 3dsx sha256
+  A scene that passed on the same 3dsx sha256 is not run again ("cached ok").
   python 3ds/tools/golden.py --update [..]   save the frame as the new reference
   python 3ds/tools/golden.py --list
 
@@ -10,7 +11,7 @@ Each scene is one Azahar run (about 25 s, turbo). The frame number is absolute (
 driven, so the same switches give the same frame. A pixel differs when a channel differs by more than TOL.
 A scene fails when more than PCT percent of the pixels differ. Exit 0 = all ok, 1 = a scene differs, 2 = a run failed.
 """
-import subprocess, sys, os
+import subprocess, sys, os, json, hashlib
 import numpy as np
 from PIL import Image
 
@@ -44,16 +45,35 @@ def run(name):
         return None, r.stdout.strip().splitlines()[-3:]
     return Image.open(SHOT).convert("RGB"), None
 
+CACHE = os.path.join(ROOT, "3ds", "logs", "golden_ok.json")
+def load_cache():
+    try: return json.load(open(CACHE))
+    except Exception: return {}
+
 def main():
     a = sys.argv[1:]
     update = "--update" in a
-    names = [x for x in a if not x.startswith("--")] or list(SCENES)
+    milestone = "--milestone" in a
+    names = [x for x in a if not x.startswith("--")]
     if "--list" in a:
         for n, (s, f) in SCENES.items(): print(f"{n:11} frame {f:4} {s}")
         return 0
+    x3 = os.path.join(ROOT, "build3ds", *(["lane-" + LANE] if LANE else []), "pm_3ds.3dsx")
+    sha = hashlib.sha256(open(x3, "rb").read()).hexdigest()
+    cache = load_cache()
+    ent = cache.setdefault(sha, {"ok": [], "milestone": False})
+    if milestone:
+        if ent["milestone"]: print(f"REFUSED: --milestone already ran on this 3dsx ({sha[:12]})."); return 2
+        names = list(SCENES); ent["milestone"] = True
+    elif not names or "all" in names or len(names) > 3:
+        print("REFUSED: name 1 to 3 touched scenes (not 'all'). Use --milestone for the full set, once per build."); return 2
+    unknown = [n for n in names if n not in SCENES]
+    if unknown: print("REFUSED: unknown scene", unknown); return 2
     os.makedirs(GOLD, exist_ok=True)
     rows, bad, failed = [], 0, 0
     for n in names:
+        if not update and n in ent["ok"] and not milestone:
+            rows.append((n, "cached ok", "", "", "same 3dsx")); continue
         img, err = run(n)
         ref = os.path.join(GOLD, n + ".png")
         if img is None:
@@ -64,7 +84,10 @@ def main():
         pct = 100.0 * (d > TOL).mean()
         st = "DIFF" if pct > PCT_SCENE.get(n, PCT) else "ok"
         bad += st == "DIFF"
+        if st == "ok" and n not in ent["ok"]: ent["ok"].append(n)
         rows.append((n, st, f"{pct:.2f}", f"{int(d.max())}", f"mean {d.mean():.2f}"))
+    os.makedirs(os.path.dirname(CACHE), exist_ok=True)
+    json.dump(cache, open(CACHE, "w"))
     print(f"{'scene':11} {'status':10} {'%px>'+str(TOL):>8} {'max':>4}  note")
     for r in rows: print(f"{r[0]:11} {r[1]:10} {r[2]:>8} {r[3]:>4}  {r[4]}")
     return 2 if failed else 1 if bad else 0

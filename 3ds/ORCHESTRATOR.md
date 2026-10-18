@@ -57,6 +57,7 @@ Every agent prompt says "follow the reading rules in AGENT_RULES.md".
 - Main command: `powershell -File 3ds/run_azahar.ps1 -Turbo -Smoke -FaultStop -Debug "fast preset=toad"`. Exit 0 = ok, 1 = failed, 2 = unmapped access or crash.
 - Normal chain: `-Debug "fast autoa freshsave" -Stall 40`. Use run_azahar.ps1, not go.ps1. Never start azahar.exe with other arguments than the .3dsx path.
 - Hardware skills: `pull-n`, `pull-o`, `push-a`, `push-n` (N3DS 192.168.1.223), `push-o` (O3DS 192.168.1.168).
+- Test budget: each row has 4 Azahar starts (PM_ROW, run_azahar.ps1). The orchestrator never gives a row more than one budget reset (`-ResetBudget <row>`) without a reason.
 - Progress log: each agent appends one line per step to 3ds/PROGRESS.log (`HH:MM ID text`). Logs, traces and shots go under 3ds/logs/ (git-ignored).
 
 ## 5. Slim agent prompt template
@@ -64,6 +65,7 @@ Every agent prompt says "follow the reading rules in AGENT_RULES.md".
 Repo: c:\Users\Andrew\Documents\GitHub\papermario-3ds-port. Branch main.
 Read 3ds/AGENT_RULES.md, HANDOFF.md only if the task needs it, and row <id> in 3ds/SLICES.md.
 Task: <slice id and text>
+Set PM_ROW=<row id> in every test shell.
 Verification: <the done check of the row>. Say what you checked and what you did not check.
 Append one line per step to 3ds/PROGRESS.log. Add at most 3 lines to HANDOFF.md. Put detail in docs/HISTORY.md. Mark the row done: move it to docs/SLICES_DONE.md.
 Overnight mode: a question for the user goes to 3ds/QUESTIONS.md. Keep working on the rest.
