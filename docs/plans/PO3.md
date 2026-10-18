@@ -95,6 +95,7 @@ The +320 KB comes from the linear pool margin (2,712 KB). The pool size and the 
 | R4 | Azahar shader, attribute and clipper emulation differ from the PICA | Golden passes in Azahar but hardware differs | Hardware shots on the O3DS (PO3f) |
 | R5 | Mixed matrix triangles are common | Small gain | PO3a measures it before PO3b |
 | R6 | Command buffer (4 MB) use grows with uniforms | Draws drop without a message | H02 stat `command buffer %` in the `mem` line |
+| R7 | RISK (RSP to PICA port): effects that render into or read back N64 memory images (z-buffer, colour image, framebuffer grabs: darkness X02, depth readback F03, water_splash and similar current-frame grabs, see docs/plans/render_gaps.md and docs/plans/buffer_bridge.md when it exists) may break or need rework when RSP vertex work moves to the PICA GPU (PO3, PO2). Check each such case again at every PO3 slice (A/B with golden frames and the render_gaps list) | Buffer readers render wrong or stop working after the move | Check each case at every PO3 slice: golden A/B and the render_gaps list |
 
 ## 8. What only the O3DS run can measure
 
