@@ -143,6 +143,16 @@ HudScript* filemenu_main_hudScripts[][20] = {
 #endif
 };
 
+#ifdef TARGET_3DS
+// port: 4 rows per state. Row 3 is the Options item, only in the select file state.
+u8 filemenu_main_gridData[] = {
+    0, 0, 1, 2, 2, 3, 4, 5, 6, 7, 7, 7,
+    0, 0, 1, 2, 2, 3, 6, 6, 6, 6, 6, 6,
+    0, 0, 1, 2, 2, 3, 6, 6, 6, 6, 6, 6,
+    0, 0, 1, 2, 2, 3, 6, 6, 6, 6, 6, 6,
+    0, 0, 1, 2, 2, 3, 6, 6, 6, 6, 6, 6,
+};
+#else
 u8 filemenu_main_gridData[] = {
     0, 0, 1, 2, 2, 3, 4, 5, 6,
     0, 0, 1, 2, 2, 3, 6, 6, 6,
@@ -152,6 +162,7 @@ u8 filemenu_main_gridData[] = {
     0, 0, 1, 2, 2, 3, 6, 6, 6,
 #endif
 };
+#endif
 
 MenuWindowBP filemenu_main_windowBPs[] = {
     {
@@ -384,6 +395,23 @@ MenuWindowBP filemenu_main_windowBPs[] = {
         .extraFlags = 0,
         .style = { .customStyle = &filemenu_windowStyles[12] }
     },
+#ifdef TARGET_3DS
+    {
+        // port: Options item, a child of the Copy window so it moves and hides with it
+        .windowID = WIN_FILES_OPTIONS_ITEM,
+        .unk_01 = 0,
+        .pos = { .x = 0, .y = 20 },
+        .width = 88,
+        .height = 16,
+        .priority = WINDOW_PRIORITY_0,
+        .fpDrawContents = &filemenu_draw_contents_option_options,
+        .tab = nullptr,
+        .parentID = WIN_FILES_OPTION_CENTER,
+        .fpUpdate = { WINDOW_UPDATE_SHOW },
+        .extraFlags = 0,
+        .style = { .customStyle = &filemenu_windowStyles[5] }
+    },
+#endif
 };
 
 MenuPanel filemenu_main_menuBP = {
@@ -393,7 +421,11 @@ MenuPanel filemenu_main_menuBP = {
     .selected = 0,
     .state = 0,
     .numCols = 3,
+#ifdef TARGET_3DS
+    .numRows = 4,
+#else
     .numRows = 3,
+#endif
     .numPages = 0,
     .gridData = filemenu_main_gridData,
     .fpInit = &filemenu_main_init,
@@ -957,6 +989,16 @@ void filemenu_main_handle_input(MenuPanel* menu) {
         }
     }
 
+#ifdef TARGET_3DS
+    // port: row 3 (Options) exists only in the select file state, and only in column 1
+    if (menu->state != FM_MAIN_SELECT_FILE && menu->row > 2) {
+        menu->row = 2;
+    }
+    if (menu->state == FM_MAIN_SELECT_FILE && menu->row == 3) {
+        menu->col = 1;
+    }
+#endif
+
     switch (menu->state) {
         case FM_MAIN_SELECT_FILE:
             // force selection to column 0 when navigating up from bottom row
@@ -1107,6 +1149,18 @@ void filemenu_main_handle_input(MenuPanel* menu) {
                     set_window_update(WIN_FILES_MONO, (s32)filemenu_update_hidden_options_right);
                     set_window_update(WIN_FILES_OPTION_LEFT, (s32)filemenu_update_hidden_options_bottom);
                     set_window_update(WIN_FILES_OPTION_RIGHT, (s32)filemenu_update_hidden_options_bottom);
+#ifdef TARGET_3DS
+                } else if (menu->selected == FM_MAIN_OPT_OPTIONS) {
+                    // port: selected "Options" item, open the empty panel
+                    sfx_play_sound(SOUND_MENU_NEXT);
+                    gWindows[WIN_FILES_OPTIONS_PANEL].width = 200;
+                    gWindows[WIN_FILES_OPTIONS_PANEL].height = 100;
+                    gWindows[WIN_FILES_OPTIONS_PANEL].pos.x = CENTER_WINDOW_X(WIN_FILES_OPTIONS_PANEL);
+                    gWindows[WIN_FILES_OPTIONS_PANEL].pos.y = CENTER_WINDOW_Y(WIN_FILES_OPTIONS_PANEL);
+                    filemenu_currentMenu = FILE_MENU_OPTIONS;
+                    filemenu_menus[FILE_MENU_OPTIONS]->state = 0;
+                    set_window_update(WIN_FILES_OPTIONS_PANEL, WINDOW_UPDATE_SHOW);
+#endif
                 } else if (menu->selected <= FM_MAIN_OPT_FILE_4) {
                     MenuPanel* confirmMenu;
 
@@ -1381,6 +1435,10 @@ void filemenu_main_handle_input(MenuPanel* menu) {
 }
 
 void filemenu_main_update(MenuPanel* menu) {
+#ifdef TARGET_3DS
+    // port: the Options item shows only in the select file state
+    set_window_update(WIN_FILES_OPTIONS_ITEM, menu->state == FM_MAIN_SELECT_FILE ? WINDOW_UPDATE_SHOW : WINDOW_UPDATE_HIDE);
+#endif
     // set default styles for all file slot panels
     gWindowStyles[WIN_FILES_SLOT1_BODY].customStyle = &filemenu_windowStyles[15];
     gWindowStyles[WIN_FILES_SLOT2_BODY].customStyle = &filemenu_windowStyles[15];
@@ -1441,3 +1499,93 @@ void filemenu_main_cleanup(MenuPanel* menu) {
         hud_element_free(filemenu_mainHIDs[i]);
     }
 }
+
+#ifdef TARGET_3DS
+// port: Options item draw callback, same layout as the Copy item
+void filemenu_draw_contents_option_options(
+    MenuPanel* menu,
+    s32 baseX, s32 baseY,
+    s32 width, s32 height,
+    s32 opacity, s32 darkening
+) {
+    if (menu->state != FM_MAIN_SELECT_FILE) {
+        return;
+    }
+    if (menu->col == 1 && menu->row == 3) {
+        filemenu_set_cursor_goal_pos(WIN_FILES_OPTIONS_ITEM, baseX + 12, baseY + 8);
+    }
+    filemenu_draw_message(filemenu_get_menu_message(FILE_MESSAGE_OPTIONS), baseX + 22, baseY + 2, 255, 0, 1);
+}
+
+// port: Options panel. Empty in F11-2. B closes it.
+u8 filemenu_options_gridData[] = {
+    0, 0, 0, 0
+};
+
+MenuWindowBP filemenu_options_windowBPs[] = {
+    {
+        .windowID = WIN_FILES_OPTIONS_PANEL,
+        .unk_01 = 0,
+        .pos = { .x = 0, .y = 0 },
+        .width = 0,
+        .height = 0,
+        .priority = WINDOW_PRIORITY_64,
+        .fpDrawContents = &filemenu_draw_contents_options_panel,
+        .tab = nullptr,
+        .parentID = -1,
+        .fpUpdate = { WINDOW_UPDATE_HIDE },
+        .extraFlags = 0,
+        .style = { .customStyle = &filemenu_windowStyles[20] }
+    },
+};
+
+MenuPanel filemenu_options_menuBP = {
+    .initialized = false,
+    .col = 0,
+    .row = 0,
+    .selected = 0,
+    .state = 0,
+    .numCols = 1,
+    .numRows = 1,
+    .numPages = 0,
+    .gridData = filemenu_options_gridData,
+    .fpInit = &filemenu_options_init,
+    .fpHandleInput = &filemenu_options_handle_input,
+    .fpUpdate = &filemenu_options_update,
+    .fpCleanup = &filemenu_options_cleanup
+};
+
+void filemenu_draw_contents_options_panel(
+    MenuPanel* menu,
+    s32 baseX, s32 baseY,
+    s32 width, s32 height,
+    s32 opacity, s32 darkening
+) {
+    filemenu_set_cursor_alpha(0);
+}
+
+void filemenu_options_init(MenuPanel* tab) {
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(filemenu_options_windowBPs); i++) {
+        filemenu_options_windowBPs[i].tab = tab;
+    }
+
+    setup_pause_menu_tab(filemenu_options_windowBPs, ARRAY_COUNT(filemenu_options_windowBPs));
+    tab->initialized = true;
+}
+
+void filemenu_options_handle_input(MenuPanel* menu) {
+    if (filemenu_pressedButtons & BUTTON_B) {
+        sfx_play_sound(SOUND_MENU_BACK);
+        filemenu_currentMenu = FILE_MENU_MAIN;
+        set_window_update(WIN_FILES_OPTIONS_PANEL, WINDOW_UPDATE_HIDE);
+    }
+}
+
+void filemenu_options_update(MenuPanel* menu) {
+}
+
+void filemenu_options_cleanup(MenuPanel* menu) {
+}
+#endif

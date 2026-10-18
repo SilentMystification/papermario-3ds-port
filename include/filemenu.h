@@ -20,6 +20,9 @@ enum {
     FILE_MENU_MESSAGE       = 2, // message is displayed, e.g. "File X has been deleted."
     FILE_MENU_INPUT_NAME    = 3, // "Enter a file name!" screen
     FILE_MENU_SELECT_LANG   = 4, // PAL only
+#ifdef TARGET_3DS
+    FILE_MENU_OPTIONS       = 4, // port: Options panel (US build)
+#endif
 };
 
 enum {
@@ -63,6 +66,9 @@ enum {
     FM_MAIN_OPT_DELETE,
     FM_MAIN_OPT_COPY,
     FM_MAIN_OPT_CANCEL,
+#ifdef TARGET_3DS
+    FM_MAIN_OPT_OPTIONS, // port: Options item under Copy
+#endif
 };
 
 extern MenuPanel* filemenu_menus[];
@@ -159,6 +165,14 @@ void filemenu_info_init(MenuPanel*);
 void filemenu_info_handle_input(MenuPanel*);
 void filemenu_info_update(MenuPanel*);
 void filemenu_info_cleanup(MenuPanel*);
+#ifdef TARGET_3DS
+void filemenu_draw_contents_option_options(MenuPanel*, s32, s32, s32, s32, s32, s32);
+void filemenu_draw_contents_options_panel(MenuPanel*, s32, s32, s32, s32, s32, s32);
+void filemenu_options_init(MenuPanel*);
+void filemenu_options_handle_input(MenuPanel*);
+void filemenu_options_update(MenuPanel*);
+void filemenu_options_cleanup(MenuPanel*);
+#endif
 void filemenu_choose_name_init(MenuPanel*);
 void filemenu_choose_name_handle_input(MenuPanel*);
 void filemenu_choose_name_update(MenuPanel*);

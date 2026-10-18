@@ -24,7 +24,7 @@ PAUSE = "wait80,START*3,wait100"  # pause open in toad (scene frame 0 = frame 51
 # name: (switches, first shot frame). Three frames are taken (F, F+1, F+2), the first one is compared.
 SCENES = {
     "title":      ("fast", 400),
-    "fileselect": ("fast padscript=wait200,START*6,wait400", 500),
+    "fileselect": ("fast padscript=wait200,START*6,wait300,START*6,wait300", 400),
     "intro":      ("fast preset=intro", 183),
     "toad":       ("fast preset=toad", 251),
     "yard":       ("fast preset=yard", 249),

@@ -437,6 +437,9 @@ u8 filemenu_createfile_gridData[] = { 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 
 };
 u8 filemenu_msg_33[] = { 0x1F, 0xFD };
 u8 filemenu_msg_34[] = { 0x0E, 0xFD };
+#ifdef TARGET_3DS
+u8 filemenu_msg_options[] = { 0x2F, 0x50, 0x54, 0x49, 0x4F, 0x4E, 0x53, 0xFD }; // Options[End]
+#endif
 #endif
 
 u8 *gFileMenuMessages[] = {
@@ -508,6 +511,9 @@ u8 *gFileMenuMessages[] = {
 #else
     [FILE_MESSAGE_QUESTION]                    filemenu_msg_33,
     [FILE_MESSAGE_PERIOD_34]                   filemenu_msg_34,
+#endif
+#ifdef TARGET_3DS
+    [FILE_MESSAGE_OPTIONS]                     filemenu_msg_options,
 #endif
 };
 

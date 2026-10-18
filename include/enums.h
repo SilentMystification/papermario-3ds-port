@@ -5320,6 +5320,10 @@ enum WindowID {
     WIN_FILES_SLOT2_TITLE                   = 61,
     WIN_FILES_SLOT3_TITLE                   = 62,
     WIN_FILES_SLOT4_TITLE                   = 63,
+#ifdef TARGET_3DS
+    WIN_FILES_OPTIONS_ITEM                  = 64, // port: Options item under Copy
+    WIN_FILES_OPTIONS_PANEL                 = 65, // port: Options panel
+#endif
 };
 
 enum SimpleWindowUpdateId {
@@ -5404,6 +5408,9 @@ enum FileMenuMessages {
     FILE_MESSAGE_PAL_FILENUM_2,
     FILE_MESSAGE_PAL_FILENUM_3,
     FILE_MESSAGE_PAL_FILENUM_4,
+#endif
+#ifdef TARGET_3DS
+    FILE_MESSAGE_OPTIONS,                              // port: Options[End]
 #endif
 };
 

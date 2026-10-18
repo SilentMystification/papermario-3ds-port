@@ -51,7 +51,11 @@ extern PartnerAnimations gPartnerAnimations[12];
 
 extern SpriteShadingProfile* gSpriteShadingProfile;
 
+#ifdef TARGET_3DS
+extern Window gWindows[66];
+#else
 extern Window gWindows[64];
+#endif
 
 extern s32 gEncounterState;
 extern s32 gOverrideFlags;

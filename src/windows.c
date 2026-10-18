@@ -20,9 +20,17 @@ typedef struct WindowGroup {
     /* 0x01 */ u8 max;
 } WindowGroup; // size = 0x02
 
+#ifdef TARGET_3DS
+Window gWindows[66];
+#else
 Window gWindows[64];
+#endif
 
+#ifdef TARGET_3DS
+WindowStyle gWindowStyles[66] = {
+#else
 WindowStyle gWindowStyles[64] = {
+#endif
     { WINDOW_STYLE_3 }, { WINDOW_STYLE_3 }, { WINDOW_STYLE_11 }, { WINDOW_STYLE_12 },
     { WINDOW_STYLE_13 }, { WINDOW_STYLE_14 }, { WINDOW_STYLE_3 }, { WINDOW_STYLE_21 },
     { WINDOW_STYLE_3 }, { WINDOW_STYLE_0 }, { WINDOW_STYLE_9 }, { WINDOW_STYLE_3 },
@@ -126,10 +134,18 @@ u8 gWindowDisappearFlags[] = { DRAW_FLAG_ROTSCALE, DRAW_FLAG_ROTSCALE, DRAW_FLAG
                                DRAW_FLAG_ROTSCALE, DRAW_FLAG_ROTSCALE, 0 };
 
 WindowGroup gWindowGroups[] = {
+#ifdef TARGET_3DS
+    { WIN_UNUSED_0, WIN_FILES_OPTIONS_PANEL }, // all windows
+#else
     { WIN_UNUSED_0, WIN_FILES_SLOT4_TITLE }, // all windows
+#endif
     { WIN_BTL_DESC_BOX, WIN_BTL_POPUP }, // battle ?
     { WIN_PAUSE_MAIN, WIN_PAUSE_TAB_INVIS }, // pause menu
+#ifdef TARGET_3DS
+    { WIN_FILES_MAIN, WIN_FILES_OPTIONS_PANEL } // file menu
+#else
     { WIN_FILES_MAIN, WIN_FILES_SLOT4_TITLE } // file menu
+#endif
 };
 
 void clear_windows(void) {
