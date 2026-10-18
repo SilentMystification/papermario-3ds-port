@@ -33,7 +33,6 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F09 | LATER, future feature. Language select. Decide scope after the hardware run. Full text: docs/plans/F09.md | plan in docs/
 [ ] F10 | NICE TO HAVE, last. Fix the endless loop in tst_12. Full text: docs/plans/F10.md | warp=tst_12:0 -Turbo -Smoke -FaultStop exit 0, no flood. Decide: patch the game data or add a documented port rule (needs the user)
 
-[ ] B1 | (sonnet) Correctness, no picture change. `img_role()` in pm_gbi.c. Full text: docs/plans/B1.md. Prep: docs/plans/B1_B3_prep.md. | golden toad yard battle title pause1 0 diff. `imglog` table for kgr_01, flo_10, mac_01, one battle with water_splash
 [ ] B2 | (sonnet) Correctness. Role T2 grab. Full text: docs/plans/B2.md. Prep: docs/plans/B1_B3_prep.md. | `warp=flo_10:<entry>` (agent confirms the entry in pm_warp.c), `offdump` of the grab slot shows the scene. Log grabs per frame. golden toad yard battle 0 diff
 [ ] B3 | (sonnet) Correctness. Role DEPTH: case 5 fill and case 6 model as depth writes. Full text: docs/plans/B3.md. Prep: docs/plans/B1_B3_prep.md. | `warp=mac_01:<entry>` crystal ball and flo_10: `drawlog` shows the decal draw passes in the model area only. Golden 4 scenes, each diff explained
 [ ] B5 | (sonnet) Correctness. Underwater (case 7). Full text: docs/plans/B5.md. Prep: docs/plans/B5_B6_F08_V10_prep.md. | Sushie battle move or `fx_underwater` site (agent finds a warp or preset). `offdump` of the z-buffer slot, log of modified vertices

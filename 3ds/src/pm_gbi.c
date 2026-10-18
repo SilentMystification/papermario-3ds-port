@@ -103,11 +103,40 @@ static int cimg_siz = 2; /* G_IM_SIZ of the colour image: 1 = 8 bit, 2 = 16 bit,
 extern int pm_fb_native(const void* p);
 /* V05: the colour image is a game buffer (not a frame buffer, not the saved frame): the draw goes to an off-screen render
  * texture, which a later draw reads as an image (draw_box: the contents of a rotating window). */
+/* B1: the one decision for a colour image (docs/plans/buffer_bridge.md table 1.2). for_fill = 1 at G_FILLRECT.
+ * ROLE_CPUPAL and ROLE_DEPTH are not returned yet (rect_to_image keeps its own test, B3 adds the depth role).
+ * R4: the z-buffer at siz 2 stays MAIN until B3. */
+enum { ROLE_MAIN, ROLE_DEPTHQ, ROLE_CPUFILL, ROLE_DEPTH, ROLE_CPUPAL, ROLE_SLOT };
+extern unsigned short* nuGfxCfb_ptr;
+static int img_role(int for_fill) {
+    if (!cimg) return ROLE_MAIN;
+    if (cimg == (void*)DepthCopyBuffer) return ROLE_DEPTHQ;
+    if (for_fill && pm_is_cfb(cimg) && (omode_l & ~7u) == ((G_RM_VISCVG | G_RM_VISCVG2) & ~7u)) {
+        pm_zbuf_need(); /* D03: the single call site in this file; pm_main.c wraps the darkness stencil */
+        return ROLE_CPUFILL;
+    }
+    if (pm_fb_native(cimg) && cimg_siz == 2) return ROLE_MAIN;
+    return ROLE_SLOT;
+}
+static unsigned n_splits, n_grabs; /* B2 fills these */
+static void imglog(const char* op, const void* a, int siz, int stride, int role) {
+    static int on = -1;
+    const char* kind;
+    if (on < 0) on = pm_debug_has("imglog");
+    if (!on) return;
+    if (a == (const void*)DepthCopyBuffer) kind = "depthcopy";
+    else if (nuGfxZBuffer && (const unsigned short*)a >= nuGfxZBuffer && (const unsigned short*)a < nuGfxZBuffer + 320 * 240) kind = "zbuf";
+    else if (pm_is_cfb(a)) kind = ((const unsigned short*)a >= nuGfxCfb_ptr && (const unsigned short*)a < nuGfxCfb_ptr + 320 * 240) ? "cfb_cur" : "cfb_prev";
+    else { kind = "other"; if (role < 0) return; } /* settimg: log only frame buffer, z-buffer and depth copy reads */
+    pm_log("imglog f%d %s %s %p siz%d stride%d role%d oml %08x", rm_frame, op, kind, a, siz, stride, role, omode_l);
+}
 static void off_screen_check(void) {
     static int nooff = -1;
+    int r;
     if (nooff < 0) nooff = pm_debug_has("nooff");
+    r = img_role(0);
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
-    if (cimg && !nooff && (!pm_fb_native(cimg) || cimg_siz != 2)) pm_gpu_off_begin(cimg, cimg_stride, cimg_siz);
+    if (!nooff && (r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(cimg, cimg_stride, cimg_siz);
 }
 static const void* tlut_pal[16];
 static unsigned tile_tmem[8], tile_pal[8];
@@ -162,7 +191,7 @@ static u8 seen[256];
  * c = a corner behind the eye was cut. d = nothing left in front.
  * x is the first vertex's N64 ndc * 100. */
 static int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample;
-static char stats_line[64];
+static char stats_line[96];
 static unsigned comb_a, comb_b, comb_c, comb_d;
 static unsigned comb_w0, comb_w1; /* S25: raw G_SETCOMBINE words, for the combiner audit */
 static int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
@@ -1058,9 +1087,9 @@ static unsigned n_ops; /* PT01: display list ops run this frame */
 void pm_gbi_end_frame(void) {
     /* One second of presented frames, summed. Identical seconds are not written. */
     static int frames, acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x;
-    static char prev[64];
-    snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d o%d k%d x%d",
-             n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0);
+    static char prev[112];
+    snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d o%d k%d x%d sp%u sl%d gr%u",
+             n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0, n_splits, pm_gpu_off_count(), n_grabs);
     PH_ADD(C_CMD, n_ops);
     n_ops = 0;
     PH_ADD(C_TRI, n_cmd);
@@ -1074,8 +1103,8 @@ void pm_gbi_end_frame(void) {
     if (have_sample) acc_x = sample_x;
     frames++;
     if (frames >= 30) {
-        char line[80];
-        snprintf(line, sizeof line, "t%d i%d c%d d%d o%d k%d x%d", acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x);
+        char line[112];
+        snprintf(line, sizeof line, "t%d i%d c%d d%d o%d k%d x%d sp%u sl%d gr%u", acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x, n_splits, pm_gpu_off_count(), n_grabs);
         if (strcmp(line, prev) != 0) {
             if (pm_debug_has("stats")) pm_log("stats %s", line); /* L01: per second line, only with the stats switch */
             snprintf(prev, sizeof prev, "%s", line);
@@ -1083,6 +1112,7 @@ void pm_gbi_end_frame(void) {
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
     }
     n_cmd = n_in = n_cut = n_drop = n_out = n_keep = 0;
+    n_splits = n_grabs = 0;
     have_sample = 0;
     rm_frame++;
     if ((rm_frame % 600) == 0 && aud_cnt_total) {
@@ -1577,6 +1607,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             cimg = nc;
             cimg_siz = ns;
             cimg_stride = (int)(w0 & 0xfff) + 1;
+            imglog("setcimg", cimg, cimg_siz, cimg_stride, img_role(0));
             break;
         }
         case G_SETPRIMDEPTH:
@@ -1594,9 +1625,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
              * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
              * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
              * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
-            if (cimg && pm_is_cfb(cimg) && (omode_l & ~7u) == ((G_RM_VISCVG | G_RM_VISCVG2) & ~7u)) {
+            if (img_role(1) == ROLE_CPUFILL) {
                 unsigned short* d = (unsigned short*)cimg;
-                pm_zbuf_need();
                 pm_cfb_capture_prev(); /* the filter reads the last frame from the other frame buffer */
                 for (int y = uly; y <= lry && y < 240; y++)
                     for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
@@ -1675,6 +1705,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         }
         case G_SETTIMG:
             timg = ptr_of(w1);
+            imglog("settimg", timg, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1, -1);
             /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
             if (timg && pm_is_cfb(timg)) pm_cfb_capture_prev();
             timg_fmt = (w0 >> 21) & 7;

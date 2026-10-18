@@ -630,6 +630,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
 }
 
 /* V05: back to the screen. */
+int pm_gpu_off_count(void) { return off_used; }
 void pm_gpu_off_end(void) {
     if (!off_active) return;
     flush();

@@ -34,6 +34,7 @@ Notes:
 - The 4 MB N64 RAM block is not a separate allocation in `pm_mem.c`. The `pm_mem.c` comment says it stays free in the heap. I did not prove where it lives. If it is a separate 4 MB reserve, the spare drops by 4,096 KB (still positive, section 4). HW settles it.
 - The GPU command buffer is 4 MB (`C3D_Init(0x400000)`, pm_gpu.c). I did not check whether it lies inside the 7,528 KB fixed part. The H03 measure counts all linear use, so it does.
 - Audio: 8 x 8 KB linear buffers (M02). Inside the fixed part.
+- VRAM (6,144 KB on the O3DS, not in the table above): main target 750 KB, off-screen slots OFF_N = 4 up to 2,048 KB, so 2,798 KB in use today. The grab scratch (B2, 512 KB) brings the worst case to 3,310 KB, or 3,822 KB if OFF_N becomes 5. EST. HW settles fragmentation after many map changes.
 - The 3dsx file (10.9 MB) is not resident after load. It is not a copy.
 
 ## 3. Duplicates

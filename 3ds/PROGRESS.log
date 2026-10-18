@@ -127,3 +127,9 @@
 05:01 V10 cause: box_prod window with non-white tile 0 never sets box_pat (cause 3 of prep, not 1 or 2): guard log shows box_pat 0, tile 0 I4 and tile 1 IA8, valid. fix: box_pat = box_prod && !box_folded in sync_combine. rebuild + Strategies shot + golden 4, expect 250 s
 05:05 V10 shot readable, golden battle toad yard ok (0.38 0.01 0.00 pct), 3dsx 13014664 B. commit, docs, move row
 05:05 V10 row moved to SLICES_DONE
+05:07 B1 img_role, imglog, counters edited in pm_gbi.c, pm_gpu.c, pm_gpu.h. build + golden 5 scenes, expect 300 s
+05:11 B1 golden: toad 0.01 yard 0 battle 1.05 title 0 ok, pause1 DIFF 23.63. baseline check with stash, build + pause1, expect 150 s
+05:13 B1 baseline pause1 without my change: DIFF 23.63 same value, pre-existing. rebuild with change, imglog tour run, expect 120 s
+05:15 B1 imglog run: warp=kgr_01:0 tour flo_10:0,mac_01:0, expect 60 s
+05:19 B1 battle run with temp water_splash hook in pm_warp.c (restored after), expect 60 s
+05:25 B1 imglog tables done (kgr_01 darkness slots role5, flo_10 and mac_01 only role0 up to f275, battle with temp water_splash hook removed). MEMORY_BUDGET VRAM line added, 3dsx 13015504 B. commit, docs, move row
