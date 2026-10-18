@@ -312,7 +312,7 @@ static void sync_legacy(void) {
     int alpha_tex = comb_aa == 1 || comb_ab == 1 || comb_ac == 1 || comb_ad == 1 ||
                     comb_aa == 2 || comb_ab == 2 || comb_ac == 2 || comb_ad == 2;
     comb_mode5 = 0;
-    box_pat = 0;
+    box_pat = box_prod && !box_folded; /* V10: the 2-cycle window with a pattern in tile 0 (not white): product on the CPU */
     if (wants_tex && comb_a == G_CCMUX_PRIMITIVE && comb_b == G_CCMUX_ENVIRONMENT && comb_c == G_CCMUX_TEXEL0 &&
         comb_d == G_CCMUX_ENVIRONMENT && alpha_tex) {
         comb_mode5 = 1;
