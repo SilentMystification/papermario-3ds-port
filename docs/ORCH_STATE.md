@@ -92,3 +92,20 @@ Only one graphics agent at a time. Other lanes may run non-graphics rows.
 3. Run `git status` in the main tree and in ..\papermario-3ds-port-laneB. Read the tail of 3ds/PROGRESS.log.
 4. Continue at the first open row in section 3. Launch with the slim prompt in ORCHESTRATOR.md section 5. Use `sonnet` for code and investigation, `haiku` for mechanical work, `opus` for planning only. Never `fable`.
 5. Keep your own chat small. Hand off again when it grows long.
+
+## 7. PAUSE 2026-10-18 (usage limit). Newer than sections 1 to 3. Read this first.
+
+All agents were stopped by the orchestrator. Nothing runs. The main tree holds UNCOMMITTED half-done work from the stopped agents (all in one tree, mixed):
+| Stopped agent | Row | Uncommitted files |
+|---|---|---|
+| R13b | black blobs on water_splash and motion_blur_flame | 3ds/src/pm_comb.c, pm_gbi.c (half way: a fold call and a helper, pm_gpu.c cleanup not done) |
+| V12d | 12 effect gfx data layout | 3ds/CMakeLists.txt, 3ds/src/pm_v12d_tmp.c (temp file, delete or finish) |
+| V13c | texture cache peak | 3ds/src/pm_tex.c, pm_mem.c (maybe a log), tour script in 3ds/logs |
+| F11-2 | Options item on file select | include/enums.h, filemenu.h, variables.h, src/filemenu/filemenu_common.c, filemenu_main.c, filemenu_msg.c, src/windows.c |
+| FX1a | effect test harness | 3ds/src/pm_fxtest.c, 3ds/tools/fxtest_report.py, docs/plans/FX1_table.md, pm_main.c hunk |
+| C2F to C2I | tour faults | only reading so far; 3ds/src/pm_warp.c hunk is from an earlier agent |
+Resume plan: run `git diff` per file group. Relaunch each row with a fresh agent and tell it to continue from the uncommitted diff (or `git stash` the group). Do NOT run git checkout on these files without looking. Remove the git worktree 3ds/logs/wt_battle if it is not needed.
+Done since section 3 (all local commits, nothing pushed): F03, V06, V12, V12b, V12c, V13, V13b, V10, B1, B2, B3, B3b, B5, B6, F08, L01, L01b, GP1, T01, T02, T01b, R05, R13 (checks), C3A, C3B, C3C, C4A to C4E, F11-1, plans F06 F07 F09 F11, V6 to V14 diagnoses.
+Open rows now (3ds/SLICES.md is the truth): R13b, V12d, V13c, F11-2, F11-3, FX1a, FX1b, V14, C2F to C2I, C2R rest, C4F, F07-1 to F07-5, F06-1 to F06-6, then tour (13), golden (14), H05 re-check (15), S28.
+New user decisions today: V12d yes; F09 US only; F06 and F07 are toggles on N3DS and O3DS, built before S28, default off, like PaperBoat; no 10 KB memory cap (revisit only if memory runs out); H05 findings that need no user decision become rows and are worked at once; C4E static map (D-pad, X, Y, C-stick = C; L and R = Z; N3DS ZL, ZR = N64 L, R); Options menu F11 before S28 for F11-1 to F11-3.
+Open questions for the user: O3DS has no ZR (N64 R loses a button: stopgap?), F11 decisions D1, D2, D4, D5, what looks wrong on the fortune ball and wedge (V14), S28 hardware readiness.
