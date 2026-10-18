@@ -8,7 +8,7 @@ Use this file to resume the orchestrator in a new chat. Read it first.
 No agent runs. The merge of lane-b into main is DONE (93cab18e2, docs b44eba7f2). Lane B is rebased onto main. Tag lane-b-pre-merge keeps the old lane-b tip. Main tree: ..\papermario-3ds-port (branch main). Lane B: ..\papermario-3ds-port-laneB (branch lane-b, PM_LANE=laneB, rules in docs/LANES.md).
 Merge checks passed: build links, 3dsx 13,013,472 B, x02_check kgr_01 (corners 0, centre 87), one tour over kpa_03, kzn_03, flo_03, jan_03, sam_03, pra_03, kzn_08 (rc 0, no fault). golden.py 9 scenes 0.00 to 0.01 percent (battle about 1 percent, known).
 Not checked after the merge: the tour chunk trd_05 to nok_04 (stopped at trd_10, rc 0, no "tour: done" line, not re-run), the full tour. kzn_08 loads but draws no darkness (alpha stays 0, the fog script is unused there), so it is not a darkness fault.
-Uncommitted in the main tree: 3ds/ORCHESTRATOR.md (parallel rule), 3ds/AGENT_RULES.md (stop rule, fast checks), HANDOFF.md, docs/ORCH_STATE.md. Commit them first.
+Main tree clean.
 
 ## 2. Done this session
 
@@ -39,6 +39,7 @@ Note for the merge: V09 kmr_22 changes pm_gbi.c on lane-b and X02 changed pm_gbi
 | 1 | B4 (= F03) depth readback | none |
 | 2 | V06 outside of a building is black | row 1 (graphics, one at a time) |
 | 3 | V12 damage star zoomed and clipped, plus test of other battle effects | row 2 |
+| 3a | V13 lava texture in the volcano (docs/plans/V12_V13_diag.md) | row 3, one graphics agent at a time |
 | 4 | B1 | row 3 |
 | 5 | B2 mid-frame frame grab | row 4 |
 | 6 | B3 | row 5 |
