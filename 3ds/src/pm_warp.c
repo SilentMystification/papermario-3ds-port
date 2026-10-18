@@ -223,6 +223,9 @@ static void tour_step(void) {
     /* F01: the tour skips the exit script of the map (kmr_23 N(func_80240010_907A40)). Do what it does, else the curtain callback runs on the next map. */
     set_curtain_scale_goal(2.0f);
     set_curtain_draw_callback(NULL);
+    /* F01 nok_01: the tour skips the scripts that stop BGM player B (trd_05 plays SONG_KOOPA_BROS_INTERLUDE on it). nok_01 loads the radio MSEQ files
+       into dataMSEQ[1], the same buffer as dataBGM[1] (decomp layout, engine.c), so a song left on B reads overwritten data. */
+    bgm_set_song(1, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL);
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)entry;

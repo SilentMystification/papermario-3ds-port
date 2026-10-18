@@ -65,7 +65,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - S31: crash screen and debug output check (Q5).
 - T02 Phase 1 done: run_azahar.ps1 holds mutex `Global\pm_azahar_run` (-LockWait s, exit 3 on timeout), restores qt-config.ini byte for byte in finally, and recovers after a hard kill. Lanes (Phase 2, 3) are open in docs/PARALLEL_PLAN.md.
 - F01 tst_12: cause measured (LVar5 = -17, LVarF = -11, endless Loop, N64-identical decomp defect of a cut map, no port fix). Skip tst_12 in tours. Detail in docs/HISTORY.md.
-- Tour faults: kmr_23 fixed by F01 (lane B), nok_01 (`au_syn_begin_audio_frame`, engine.c:488).
+- Tour faults: kmr_23 and nok_01 fixed by F01 (lane B). Open in the trd_05 chunk: trd_06 falling.c:148, partners.c:1136 (partner_walking_enable).
 - Not verified by eye: partner moves, items and star power in battle. Pause with items or a partner. Hardware.
 - F09 language select: future feature, not in the current batch.
 

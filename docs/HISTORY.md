@@ -1637,3 +1637,11 @@ Old text moved from 3ds/QUESTIONS.md.
 - This corrects the HISTORY 953 note and the F01_causes guess (Wait(0)). The Loop is the flood, not the Wait.
 - The port evt.c code is the decomp code. The evaluation order is the same on the N64 by source reading (not run on an N64). So this is a decomp defect of a cut, unreachable map. No port fix without a guard, so none was made.
 - Check: `warp=tst_12:0 -Turbo -Smoke -FaultStop` still exits 2 (expected). yard and toad exit 0. nok_01 not touched.
+
+## F01 nok_01 (lane B, 2026-10-18)
+- Fault: `voice->instrument` is -1 in `au_syn_begin_audio_frame` (engine.c:488). Source: BGM player B notes read `track->instrument` = NO_INSTRUMENT (no F5 ran on the track).
+- Method: tour chunk trd_05 to nok_04 (39 maps, the list of s30_tour_list.txt lines 131 to 169, warp=trd_05:0, no -FaultStop). Temporary logs in engine.c and bgm_player.c (state, load, F5, hash of the first 0x400 bytes of dataBGM[1], read_rom). All removed.
+- Evidence: trd_05 plays SONG_KOOPA_BROS_INTERLUDE (song id 81, file size 0x4e0) on player B (settings.c FadeInMusic 1). The tour leaves the map without the script that stops it. The hash of the B file is 255ed113 at init and a0dadaec after nok_01 loads. nok_01 radio.c calls snd_load_ambient(AMBIENT_RADIO). `au_ambient_load` reads the MSEQ files into `dataMSEQ[1]`. `dataMSEQ[1]` and `dataBGM[1]` are the same address (engine.c:178 and 180, decomp layout). So the song of player B is overwritten and its notes run without an instrument.
+- Not a race, not zero fill, not a bad swap. The decomp layout is N64 identical. On the N64 the game stops player B before nok_01. The tour does not.
+- Fix: 3ds/src/pm_warp.c `tour_step` calls `bgm_set_song(1, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL)` before each tour map change (harness only, no guard in audio code).
+- Check: same chunk, tour done, no audio fault. `warp=nok_01:0`, yard, toad: rc 0. Not checked: a real play path from trd_05 into nok_01 (not reachable), other maps that leave a song on player B, hardware, the full tour. Other faults in the chunk: trd_06 falling.c:148 (InitializeFallingPartner), partners.c:1136 (partner_walking_enable).
