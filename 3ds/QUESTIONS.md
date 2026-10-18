@@ -17,17 +17,9 @@ Answered questions and the old text are in docs/HISTORY.md (section "Original QU
 - Recommendation: yes, after S28 gives real timing.
 - Answer: (open)
 
-## V06. Which problem do you mean? (row V06)
-- In the Toad Town houses (Russ T, shop, dojo, waterfront) the game hides the outside ground on purpose when you enter (shroud fade). Do you mean this, or a ground that stays missing after you leave or in another building? Give the map, the building and a screenshot.
-- Answer: (open)
-
 ## S28. Is the O3DS ready?
 - Is the O3DS at 192.168.1.168 on, with dspfirm.cdc on the SD card?
 - Answer: (open)
 
 ## Q5. Crash screen and obfuscation shims (row S31)
 - Decision so far: the obfuscation shims stay empty. The crash screen works only if the debug output can be used. S31 checks. No user action.
-
-## V07. Where do the items flicker? (row V07)
-- I could not reproduce the flicker in Azahar. Item draws and pixels were stable in 8 maps. Which map, which item, and which camera move show it? Did you see it only on the O3DS or N3DS?
-- Answer: (open)

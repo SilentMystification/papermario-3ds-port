@@ -51,8 +51,8 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - Build: `3ds/build.sh` and `3ds/go.ps1` (build glue). Hardware: skills `push-o`, `push-n`, `pull-o`, `pull-n`, `push-a`.
 
 ## Open issues (one line each, row id in 3ds/SLICES.md)
-- V06 (paused): ground vanishes in Toad Town houses. By design shroud fade, blender mix added. The user must confirm.
-- V07 (open): items flicker when the camera moves. NOT reproduced in Azahar (8 maps, draw log and pixels stable, `nocull` A/B identical). Debug switch `testitem=<m|c|s>` spawns an item beside the player. Needs the exact scene (QUESTIONS.md) or hardware.
+- V06 (queued, after X02): user confirmed the ground gap in buildings is correct. Real fault: the outside must be black in a building room, the port draws the normal background.
+- V07 (SHELVED by user 2026-10-18): items flicker. Not reproduced in Azahar. The user reports it again if seen. Do not work on it.
 - V09 (two rows): intro tints changed by S25 (and nok_01 tour fault). kmr_22 card shows a rainbow bar.
 - V10: battle Strategies box and level-up box draw as a checkerboard.
 - V11: kmr_05 path to the first Goomba is blocked at x 75 to 88.

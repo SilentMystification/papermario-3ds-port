@@ -1583,3 +1583,15 @@ Read 3ds/ORCHESTRATOR.md, HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md. You ar
 - Port: the draw log shows combine `fcffb3ff ff2cfe7f` with render mode `00504b50` (blender mix with the frame buffer, XLU depth). The S25 plan path reports PLAN-OK with plan error 0 for it, so the combiner is exact.
 - Evidence by eye (one crop, `fast preset=kmr02` with the E02 padscript, shot at frame 440): the wall and the star show through the S block. `nocomb` differs in 1.18 percent of the frame, the block looks the same. This matches the user note that `nocomb` changes nothing.
 - Not checked: a real console, the exact look on hardware. Smoke on yard and toad: rc 0. Golden not run: no code was touched.
+
+## QUESTIONS answered 2026-10-18
+
+Old text moved from 3ds/QUESTIONS.md.
+
+### V06. Which problem do you mean? (row V06)
+- In the Toad Town houses (Russ T, shop, dojo, waterfront) the game hides the outside ground on purpose when you enter (shroud fade). Do you mean this, or a ground that stays missing after you leave or in another building? Give the map, the building and a screenshot.
+- Answer: User answer 2026-10-18: the ground vanishing inside Toad Town buildings is CORRECT. The real fault: when Mario is in a building the outside must be BLACK, but the port shows the normal background there. Find in the decomp how the outside is hidden in building rooms (shroud, background, CreateMapRoom) and make the port draw black outside. Check mac_00 houses, kmr_20 and kmr_02 doors. (Row V06 in 3ds/SLICES.md, waits for X02.)
+
+### V07. Where do the items flicker? (row V07)
+- I could not reproduce the flicker in Azahar. Item draws and pixels were stable in 8 maps. Which map, which item, and which camera move show it? Did you see it only on the O3DS or N3DS?
+- Answer: SHELVED (user decision 2026-10-18, the user reports it again if seen, do not work on it). (Row V07 in 3ds/SLICES.md.)
