@@ -66,6 +66,7 @@ Only one graphics agent at a time. Other lanes may run non-graphics rows.
 | tst_12 stays linked and warpable (future scene selector). | Loop bug is row F10, last. |
 | Optimization starts only after S28. Planning is allowed. | PO2, PO3, AU1, MA1 wait. |
 | S28 only after all Azahar-verifiable work and H05. | No early boot test. |
+| Every H05 finding goes into the active queue as a row and is done BEFORE S28. Then repeat the affected checks. | S28 does not start while an H05 row is open (user decision 2026-10-18). |
 | Narrow tests, tight prompts, token efficiency. | Agents read 3ds/AGENT_RULES.md (45 lines). Batch docs edits. The orchestrator may edit docs itself (small edits). |
 | No flattery. Replies in ASD-STE100. | Every reply. |
 | Orchestrator calls out its own bloat and hands off. | This file is the handoff. |
