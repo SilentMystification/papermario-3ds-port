@@ -216,3 +216,9 @@
 09:52 L01 pm_gbi.c: light table, RSP dot product at G_VTX, ambient, nolight switch. build now, expect 5 min
 09:53 L01 build ok, 3dsx +1072 bytes. golden toad yard battle title pause1, expect 150 s
 10:01 L01 goldens toad 0.00 yard 0.00 battle 1.04 title 0.00 pause1 0.00. A/B battle nolight: Mario and Goomba differ only. code committed
+10:02 L01b temp vertex log L01B_TMP in pm_gbi.c. build and battle run now, expect 6 min
+10:06 L01b log never printed in first run (condition too strict). relax, rebuild, battle run, expect 6 min
+10:09 L01b first log shows entity/HUD lights white ambient black light, out ffffffff, matches gdSPDefLights1(255,255,255,0..). filter to non-default lights, rebuild, expect 6 min
+10:19 L01b hand calc vs log (mac_01 light col 255 dir 111 32 -52 amb 0, mv scale 0.5): nrm (51,105,51) exp 100=0x64 log 64, (121,24,32) exp 197 log c5, (103,69,28) exp 192 log c0, (19,-105,70) exp 0 log 00. all match. log removed
+10:19 L01b rebuild without log, golden toad yard battle pause1, expect 7 min
+10:27 L01b goldens toad 0.00 yard 0.00 battle 1.07 pause1 0.00. no fault, no code change. row moved to SLICES_DONE
