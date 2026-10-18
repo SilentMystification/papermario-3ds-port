@@ -56,6 +56,8 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - V09 (two rows): intro tints changed by S25 (and nok_01 tour fault). kmr_22 card shows a rainbow bar.
 - V10: battle Strategies box and level-up box draw as a checkerboard.
 - V11: kmr_05 path to the first Goomba is blocked at x 75 to 88.
+- V09, V10, V11 shelved by the user.
+- V07 not reproduced in Azahar (8 maps tested, see docs/HISTORY.md), shelved until the user names a map and item.
 - X02: darkness overlay draws the whole screen black (kgr_01, kgr_02, omo_12, omo_14, kzn_08).
 - F03: `is_point_visible` reads a NULL z-buffer (hos_05 lamp, `tex ptr 0000fd7e`).
 - F08: fog partly done by V06 (blend and fog colour mix). The per-vertex fog factor is open.
