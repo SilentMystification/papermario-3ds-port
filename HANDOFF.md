@@ -68,6 +68,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - Not verified by eye: partner moves, items and star power in battle. Pause with items or a partner. Hardware.
 - F09 language select: future feature, not in the current batch.
 - PO3 RISK (RSP to PICA port): effects that read back N64 memory images (X02, F03, water_splash, grabs) may need rework. Check each at every PO3 slice (docs/plans/PO3.md R7).
+- Buffer bridge plan: docs/plans/buffer_bridge.md (B0 is X02)
 
 ## Stand-ins still open (checked against docs/HISTORY.md, S20 audit A, B, C, D and later results)
 - Placeholder aliases (class D, code only, no data read): 47 `--defsym X=gPartnerStatus` in `3ds/CMakeLists.txt` (`world_partner_*`, `world_use_item_*`, `pause_*`, `filemenu_*`). Code overlays linked in place. Verified in P01 and R01.
