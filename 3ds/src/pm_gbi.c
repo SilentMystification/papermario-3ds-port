@@ -128,6 +128,11 @@ static struct {
     const void* pal;
 } td[2];
 static unsigned tile_wrap[8][4];
+static unsigned tile_shift[8][2]; /* V12: G_SETTILE shifts (s, t) of each tile */
+/* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
+static float shift_mul(unsigned n) {
+    return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
+}
 static int cur_tile;
 static int use_t1;     /* the combiner reads TEXEL1 only: draw with tile 1 (TEXEL1 is renamed TEXEL0) */
 static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
@@ -447,8 +452,12 @@ static void vert_uv(const Vtx* v, float* u, float* vcoord) {
     if (th < 1) th = 1;
     /* SetTileSize's origin is the start of the uploaded window. Absolute
      * vertex UVs have to be moved into that window, same as a texrect. */
-    *u = ((float)v->v.tc[0] / 32.f - (float)tile_x0) / (float)tw;
-    *vcoord = ((float)v->v.tc[1] / 32.f - (float)tile_y0) / (float)th;
+    /* V12: the tile shift scales the coordinate before the tile origin is subtracted. */
+    unsigned st = use_t1 ? 1 : 0;
+    float ms = shift_mul(tile_shift[st][0]);
+    float mt = shift_mul(tile_shift[st][1]);
+    *u = ((float)v->v.tc[0] / 32.f * ms - (float)tile_x0) / (float)tw;
+    *vcoord = ((float)v->v.tc[1] / 32.f * mt - (float)tile_y0) / (float)th;
 }
 
 typedef struct {
@@ -1677,6 +1686,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             tile_wrap[tile][1] = (w1 >> 18) & 3;
             tile_wrap[tile][2] = (w1 >> 4) & 15;
             tile_wrap[tile][3] = (w1 >> 14) & 15;
+            tile_shift[tile][0] = w1 & 15;
+            tile_shift[tile][1] = (w1 >> 10) & 15;
             /* The render tile's wrap belongs to the triangles already queued.
              * Draw them before this tile replaces it. */
             if (tile == 0) {
