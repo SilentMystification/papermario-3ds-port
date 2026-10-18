@@ -225,3 +225,20 @@
 10:30 T01/T02 code in pm_gbi.c: texgen in G_VTX path, lookat from MOVEMEM, G_TEXTURE s/t scale on vertex UV. T02 finding: screen_overlays.c:141 draws gsSP2Triangles not texrect, so scale applies. T01 finding: only user is mac_01 mirrorball (reachable: read_fortune.inc.c). build now, expect 8 min
 10:37 T01/T02 build ok 3dsx 13049852->13050412 (+560). golden toad 0.03 yard 0.04 battle 0.69 title 0.01 pause1 0.00. now mac_01 ball padscript from B3b, expect 120 s
 10:41 T01/T02 mac_01 ball seen (decal inside ball, unchanged). mirrorball sphere not seen. docs written. moving rows
+10:43 R05 case 9: grep proof nuGfxPreNMIFuncSet is a no-op in pm_nusys.c, gfxRetrace_Callback has no caller. case 5: xtrace=100:1 preset=toad, expect 60 s
+10:44 R05 case 5: run preset=toad imglog xtrace=100:1 to see depth-role setcimg and fill_depth, expect 60 s
+10:46 T01b temp log T01B_TMP in pm_gbi.c vert_color. build, then mac_01 fortune padscript loadslot=0, expect 8 min build
+10:48 T01b build ok. run warp=mac_01:0 story=ch1_kooper loadslot=0 padscript file, shots, imglog, expect 150 s
+10:55 T01b: Mario enters Merlon room at f250, A presses only jump. learn stick mapping to reach Merlon, run 60 s
+10:56 T01b: right*60 walks to Merlon, A taps. run with shots every 30 frames, smokeframes 1800, expect 100 s
+10:57 T01b temp coin hook (T01B_TMP) in vert_color, rebuild, rerun, expect 2 min build
+10:58 C2R battle loop 1 used the wrong formation (area comes from the formation id). Rerun with the matching BTL_<area>_FORMATION_00, 244 stages, expect 150 min
+11:01 T01b: texgen path logged (f626 ss 4096), mirrorball seen. R13 motion_blur_flame: black squares with white dot in shot (fault?). run xtrace=700:2 offdump=700 to see, expect 100 s
+11:06 R13: motion_blur_flame (mac_01 fortune): grab slot dump shows real scene, but flames draw black squares (cycle 2 TEXEL0/TEXEL1 order in pm_comb.c, theory). new row, no fix. next water_splash via warp=nok_11 story -75 (Jr Troopa), expect 120 s
+11:12 R13 water_splash: nok_11:1 story=-75 partner=1 padscript A taps gives grabs at f779-814. shotwin=778:40 offdump=779 run, expect 150 s
+11:19 R13 water_splash: draws black droplets, grab slot is real scene (off779 dump). Same as motion_blur_flame. bulb_glow: try warp=hos_05:0 (intro lamp), expect 150 s
+11:22 R13 bulb_glow: warp=hos_05:0 is not the intro (ice room). try plain fast boot with shots, expect 300 s
+11:28 R13 bulb_glow: plain fast boot intro f2094-2104 grabs, shot 70 shows lightning and glow over the scene (not black). effect_utils func_E02000AC and kgr_02 unused.c have no caller (grep). temp hooks removed from pm_gbi.c. rebuild and golden toad yard battle pause1, expect 7 min
+11:33 T01b overlay: kmr_09 encounter battle-start swirl shot, expect 120 s
+11:34 T01b R05 R13 docs written (HANDOFF, HISTORY, H05_findings). new row R13b, move rows to SLICES_DONE, commit
+11:34 T01b R05 R13 rows moved to SLICES_DONE, R13b added. commit
