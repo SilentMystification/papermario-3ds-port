@@ -962,3 +962,19 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     rect_2d = 0;
     combine = saved;
 }
+
+/* F03: one pixel of the last finished depth buffer (D24S8, same tiling and rotation as pm_gpu_read_frame). */
+int pm_gpu_depth_at(int x, int y, unsigned* d24) {
+    const unsigned char* src;
+    unsigned fx, fy, mx, my, m;
+    if (!target || x < 0 || x > 319 || y < 0 || y > 239) return 0;
+    src = (const unsigned char*)target->frameBuf.depthBuf;
+    if (!src) return 0;
+    fx = (unsigned)(239 - y);
+    fy = (unsigned)(40 + x);
+    mx = fx & 7u;
+    my = fy & 7u;
+    m = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) | ((mx & 4u) << 2) | ((my & 4u) << 3);
+    *d24 = *(const unsigned*)(src + ((((fy >> 3) * 30u + (fx >> 3)) * 64u + m) * 4u)) & 0xFFFFFFu;
+    return 1;
+}

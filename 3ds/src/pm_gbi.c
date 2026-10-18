@@ -6,6 +6,10 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 
+extern u16 DepthCopyBuffer[16];
+extern unsigned short* nuGfxZBuffer;
+void pm_depth_query(const void* timg, int x, int id); /* F03, pm_depth.c */
+
 extern unsigned int __ctru_heap;
 extern unsigned int __ctru_heap_size;
 extern unsigned int __ctru_linear_heap;
@@ -1618,6 +1622,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (yl & 0x800) yl |= ~0xfff;
             if (xt_on()) pm_log("xt f%u texrect %d %d %d %d tile %u s %d t %d dsdx %d dtdy %d oml %08x omh %08x tile0 x0 %d y0 %d", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (w1 >> 24) & 7, (int)(s16)(hs >> 16), (int)(s16)(hs & 0xffff), (int)(s16)(hd >> 16), (int)(s16)(hd & 0xffff), omode_l, omode_h, tile_x0, tile_y0);
             if (xt_on()) { int tw_ = 0, th_ = 0; pm_tex_size(&tw_, &th_); pm_log("xt   tile0 w %d h %d stride %d fmt %u siz %u tex %dx%d valid %d", td[0].w, td[0].h, td[0].stride, td[0].fmt, td[0].siz, tw_, th_, td[0].valid); }
+            /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
+            if (cimg == (void*)DepthCopyBuffer) { pm_depth_query(timg, (int)((s16)(hs >> 16) >> 5), sci_x0); break; }
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
             off_screen_check();
             box_fold_sync();
@@ -1819,7 +1825,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             /* One batch can only sample one image. The last load of the frame
              * was being bound for every surface, so the house wore one fence. */
             pm_gpu_flush();
-            if (src && w > 0 && h > 0) {
+            /* F03: a tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture */
+            if (src && w > 0 && h > 0 && (unsigned)timg - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u) {
                 const void* pal0 = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
                 pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, pal0, tlut_n, stride);
                 {   /* V05 */

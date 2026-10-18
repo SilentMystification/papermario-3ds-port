@@ -37,7 +37,7 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - V10: battle Strategies box and level-up box draw as a checkerboard.
 - V12 (USER-CONFIRMED 2026-10-18): battle damage star is zoomed in and clipped.
 - V13 (USER-CONFIRMED 2026-10-18): lava texture in the volcano looks off.
-- F03: `is_point_visible` reads a NULL z-buffer (hos_05 lamp, `tex ptr 0000fd7e`).
+- F03 done: `pm_depth_query` (3ds/src/pm_depth.c) reads one PICA depth pixel into `DepthCopyBuffer`. The glow draw on screen is not checked.
 - F08: fog partly done by V06. The per-vertex fog factor is open.
 - F10: tst_12 endless loop (LVar5 = -17, LVarF = -11, N64-identical decomp defect of a cut map, no port fix). Skip tst_12 in tours.
 - Not verified by eye: partner moves, items and star power in battle. Pause with items or a partner. Hardware.
