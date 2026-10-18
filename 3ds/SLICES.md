@@ -19,9 +19,9 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] PO3 | OPT: after S28 only (user decision 2026-10-18). Performance: GPU vertex transform. Plan first (opus allowed for the plan only). RISK: effects that read back N64 memory images. Full text: docs/plans/PO3_row.md | plan in docs/, then a working A/B
 [ ] AU1 | OPT: after S28 only (user decision 2026-10-18). Performance: audio on core 1 or ndsp. Full row text: docs/plans/AU1_row.md | audio cost per tick measured on the O3DS
 [ ] MA1 | OPT: after S28 only (user decision 2026-10-18). Performance: ARM11 math audit with the replay check. Full text: docs/plans/MA1.md | same hashes, lower cost
-[ ] F06 | LATER, big. 30/60 fps toggle by interpolated extra frames. Plan only after the hardware run. Full text: docs/plans/F06.md | plan in docs/
-[ ] F07 | LATER. Widescreen mode. Plan after the hardware run. Full text: docs/plans/F07.md | plan in docs/
-[ ] F09 | LATER, future feature. Language select. Decide scope after the hardware run. Full text: docs/plans/F09.md | plan in docs/
+[ ] F06 | LATER, big. 30/60 fps toggle by interpolated extra frames. Plan only after the hardware run. Full text: docs/plans/F06.md USER DECISION 2026-10-18: runs on N3DS and O3DS as a toggle (wired to the UI later). Not before optimization (PO2, PO3, AU1, MA1). Build 4:3 at 30 fps for now. | plan in docs/
+[ ] F07 | LATER. Widescreen mode. Plan after the hardware run. Full text: docs/plans/F07.md USER DECISION 2026-10-18: runs on N3DS and O3DS as a toggle (wired to the UI later). Not before optimization. Build 4:3 for now. | plan in docs/
+[ ] F09 | LATER, future feature. Language select. Decide scope after the hardware run. Full text: docs/plans/F09.md USER DECISION 2026-10-18: US build only. Later, language text may come from a PAL ROM. No 25/50 Hz mode. Not before optimization. | plan in docs/
 [ ] F10 | NICE TO HAVE, last. Fix the endless loop in tst_12. Full text: docs/plans/F10.md | warp=tst_12:0 -Turbo -Smoke -FaultStop exit 0, no flood. Decide: patch the game data or add a documented port rule (needs the user)
 
 [ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only. Full text: docs/plans/B7.md | `push-o`, `pull-o`, `phase_report.py`

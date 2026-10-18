@@ -22,3 +22,8 @@ Answered questions and the old text are in docs/HISTORY.md (section "Original QU
 ## 2026-10-18 V12c memory (over the 10 KB slice rule)
 - V12c added 22.8 KB (3dsx 13.02 MB) for the fright jar and snowfall data. This is real game data. Without it the effects draw nothing. The same data-layout bug probably hits 12 more effect files (row V12d, about 18 KB). Recommendation: yes, approve V12d. Check docs/MEMORY_BUDGET.md first (the estimated O3DS spare was 518 KB). V12d waits for your answer.
 - The texture cache peaks at 4092 of 4096 KB at kzn_22 (row V13c). It has almost no spare. S28 on the O3DS shows the real limit.
+
+## ANSWERED 2026-10-18 (user)
+- V12d memory: YES, approved (about 18 KB).
+- F09: US only. Languages may come from a PAL ROM later. No 25/50 Hz mode.
+- F06 and F07: toggles for N3DS and O3DS, wired to the UI later. Not before optimization. Build 4:3 for now. The earlier N3DS-only limit and the 80 to 144 KB heap question are replaced by this: re-check cost on the O3DS in the plan phase after optimization.
