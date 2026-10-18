@@ -20,7 +20,7 @@ Needs row 14: every check of the final picture (C2 full counts, lava, fog look, 
 - C1-12 | G_LOADBLOCK | ignored for data. V09 notes a TMEM replace. 17 uses. Works in golden frames | accepted.
 - C1-13 | Alpha and colour dither, noise | ignored, no PICA equivalent | accepted (cosmetic).
 - C1-14 | Texture tile animation (scroll, pan, tile size) and CI palettes | G_SETTILESIZE negative start handled (S25, pm_gbi.c:1720). G_LOADTLUT handled (1704). The texture look needs a picture check | needs row 14. Include the V13 lava maps (src/world/area_kzn).
-- C1-15 | Frame buffer as texture source (case 13) and gDPLoadMultiTile from a frame buffer | dual_bind breaks for a frame buffer source (render_gaps.md section C) | covered by NEW R13. R13 result: the grab works (B2, V12c). The draw of 2 of 3 live effects is black, see R13b. Stays open.
+- C1-15 | Frame buffer as texture source (case 13) and gDPLoadMultiTile from a frame buffer | dual_bind breaks for a frame buffer source (render_gaps.md section C) | covered by NEW R13. R13 result: the grab works (B2, V12c). R13b: water_splash fixed (tile 1 wrap window, pm_gbi.c t1_fold). motion_blur_flame still black, row R13c. Stays open.
 
 ## C2 Unhandled-op counters on all content
 

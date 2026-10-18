@@ -940,6 +940,8 @@ static void comb_audit(void) {
 /* S25: a plan that reads TEXEL1. Tile 1 is loaded and kept at unit 1, tile 0 stays the current texture, and the
  * unit 1 coordinates are the first ones moved by the difference of the two tile windows. */
 static unsigned aux_key;
+static float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
+static int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */
 static void dual_bind(void) {
     unsigned key = 2166136261u, i;
     int tw0, th0, tw1, th1;
@@ -965,9 +967,39 @@ static void dual_bind(void) {
         int ox1, oy1;
         float rs = shift_mul(tile_shift[1][0]) / shift_mul(tile_shift[0][0]), rt = shift_mul(tile_shift[1][1]) / shift_mul(tile_shift[0][1]);
         pm_tex_aux_origin(&ox1, &oy1);
-        pm_gpu_set_tex1((float)tw0 / (float)tw1 * rs, (float)th0 / (float)th1 * rt, ((float)tile_x0 * rs - (float)(td[1].x0 - ox1)) / (float)tw1,
-                        ((float)tile_y0 * rt - (float)(td[1].y0 - oy1)) / (float)th1);
+        t1_p[0] = (float)tw0 / (float)tw1 * rs;
+        t1_p[1] = (float)th0 / (float)th1 * rt;
+        t1_p[2] = ((float)tile_x0 * rs - (float)(td[1].x0 - ox1)) / (float)tw1;
+        t1_p[3] = ((float)tile_y0 * rt - (float)(td[1].y0 - oy1)) / (float)th1;
+        t1_ox = ox1; t1_oy = oy1; t1_w = tw1; t1_h = th1;
+        pm_gpu_set_tex1(t1_p[0], t1_p[1], t1_p[2], t1_p[3]);
     }
+}
+
+/* R13b: a tile 1 window that wraps (G_TX_WRAP, mask bits) is read at (s - sl) & (size - 1). The draw may start outside the window
+ * (water_splash: window origin 65, droplet s from 0, so the RDP reads the window at 31, 0, 1 ...). dual_bind maps s linearly, which
+ * reads the slot far from the window and finds nothing grabbed there. Fold the start of this draw into the window. The draw is
+ * kept inside the window when it fits. The wrap inside one draw is not reproduced, the part past the window edge reads the
+ * neighbour pixels of the slot. Tile 0 uv range of the draw: u0..u1 and v0..v1. */
+static void t1_fold(float u0, float u1, float v0, float v1) {
+    float o[2] = { t1_p[2], t1_p[3] };
+    const float lo[2] = { u0, v0 }, ex[2] = { (u1 - u0) * t1_p[0] * (float)t1_w, (v1 - v0) * t1_p[1] * (float)t1_h };
+    const float sc[2] = { t1_p[0], t1_p[1] };
+    const int org[2] = { t1_ox, t1_oy }, dim[2] = { t1_w, t1_h };
+    int changed = 0;
+    for (int a = 0; a < 2; a++) {
+        unsigned mask = tile_wrap[1][2 + a];
+        float win, ws, wsz, wrapped;
+        if (!mask || mask > 9) continue;
+        wsz = (float)(1u << mask);
+        win = (lo[a] * sc[a] + o[a]) * (float)dim[a] - (float)org[a]; /* window position of the draw start, texels */
+        if (win >= 0.f && win < wsz) continue;
+        ws = win - wsz * floorf(win / wsz);
+        wrapped = ws + ex[a] > wsz ? (wsz - ex[a] > 0.f ? wsz - ex[a] : 0.f) : ws;
+        o[a] += (wrapped - win) / (float)dim[a];
+        changed = 1;
+    }
+    if (changed) pm_gpu_set_tex1(t1_p[0], t1_p[1], o[0], o[1]);
 }
 
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
@@ -1016,6 +1048,10 @@ static void draw_tri(unsigned w) {
             p->x = ((float)vert_sx[idx[i]] / 4.f - vp_tx) / vp_sx;
             p->y = (vp_ty - (float)vert_sy[idx[i]] / 4.f) / vp_sy;
         }
+    }
+    if (plan_active && cur_plan.uses_tex1) {
+        float u0 = poly[0].u, u1 = poly[1].u, u2 = poly[2].u, v0 = poly[0].v, v1 = poly[1].v, v2 = poly[2].v;
+        t1_fold(fminf(u0, fminf(u1, u2)), fmaxf(u0, fmaxf(u1, u2)), fminf(v0, fminf(v1, v2)), fmaxf(v0, fmaxf(v1, v2)));
     }
     if (!have_sample && poly[0].w != 0.f) {
         sample_x = (int)(poly[0].x / poly[0].w * 100.f);
@@ -1851,6 +1887,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             float s1 = s0 + dsdx * width / (float)tw;
             float t1 = t0 + dtdy * height / (float)th;
+            t1_fold(s0 < s1 ? s0 : s1, s0 < s1 ? s1 : s0, t0 < t1 ? t0 : t1, t0 < t1 ? t1 : t0);
             if (xt_on()) pm_log("xt   uv %d/%d  %d %d  s %d t %d (milli) s1 %d t1 %d width %d height %d tw %d th %d", (int)(s0 * 1000), (int)(t0 * 1000), 0, 0, 0, 0, (int)(s1 * 1000), (int)(t1 * 1000), (int)width, (int)height, tw, th);
             {
                 /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
