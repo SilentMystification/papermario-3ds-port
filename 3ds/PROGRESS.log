@@ -142,3 +142,4 @@
 05:51 B2 grabtest slot equals shot exactly (diff 0.0). rerun flo_10:2 grab, expect 60 s
 05:52 B2 flo_10:2 slot dump shows the scene upright (8 copies per frame then reuse, stats sp8 sl1 gr8). temp hook removed (flo_10/main.c clean). build + golden toad yard battle pause1, expect 400 s
 05:57 B2 golden toad 0 yard 0 battle 1.06 pause1 23.63 (unchanged), 3dsx 13018360 B (+2856). docs written, commit
+05:57 B2 row moved to SLICES_DONE
