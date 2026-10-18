@@ -123,3 +123,7 @@
 04:44 V12b contact sheet: effects 0-5,10,11 whole. 9 bulb_glow black block (fb copy), 6 12 13 not visible. later-frame shots of 6 7 8 12 13, 5 runs 40 s
 04:47 V12b temp code removed, texrect shift kept. rebuild + golden battle toad yard, expect 200 s
 04:50 V12b golden ok, 3dsx +208 B, docs written, moving row to SLICES_DONE
+04:51 V10 added xt log lines at the two guards in box_pattern_rect. run battle with padscript to the Strategies menu
+05:01 V10 cause: box_prod window with non-white tile 0 never sets box_pat (cause 3 of prep, not 1 or 2): guard log shows box_pat 0, tile 0 I4 and tile 1 IA8, valid. fix: box_pat = box_prod && !box_folded in sync_combine. rebuild + Strategies shot + golden 4, expect 250 s
+05:05 V10 shot readable, golden battle toad yard ok (0.38 0.01 0.00 pct), 3dsx 13014664 B. commit, docs, move row
+05:05 V10 row moved to SLICES_DONE
