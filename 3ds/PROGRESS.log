@@ -62,3 +62,6 @@
 04:10 F01 nok_01 repro: tour chunk trd_05..nok_04 (39 maps, no -FaultStop). Temp logs: voice ins -1 on bgm player B, song 81 (trd_05 plays SONG_KOOPA_BROS_INTERLUDE on B), hash of B file changes when nok_01 radio.c loads AMBIENT_RADIO MSEQ into dataMSEQ[1] (same buffer as dataBGM[1], decomp layout)
 04:20 F01 nok_01 cause: tour skips the script that stops player B, then nok_01 radio overwrites its song data. Not a race, not zero fill. Fix: pm_warp.c tour_step calls bgm_set_song(1, AU_SONG_NONE,...). Temp logs removed
 04:30 F01 nok_01 check: same 39-map chunk, no au_syn_begin_audio_frame fault, tour done. warp=nok_01:0 rc 0, yard rc 0, toad rc 0. Other tour faults remain (trd_06 falling.c:148, partner_walking_enable partners.c:1136)
+05:10 F01 trd_06 repro: warp=trd_06:0 (no partner) rc 2 falling.c:148 (get_npc_unsafe(NPC_PARTNER) NULL). Same with partner=1 rc 0. Chunk trd_05..nok_04 partner=0 rc 2, partner=1 rc 0 (partners.c:1136 gone too)
+05:20 F01 cause: tour state is a new file with no partner. Real game has a partner at trd_06 (falling script reads the partner NPC). Tour-only fault. Fix: pm_warp.c uses partner 1 for a tour unless partner= is given
+05:30 F01 check: chunk trd_05..nok_04 without partner switch rc 0, tour done 39 maps, no unmapped. yard rc 0, toad rc 0

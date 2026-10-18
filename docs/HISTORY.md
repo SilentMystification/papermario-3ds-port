@@ -1645,3 +1645,10 @@ Old text moved from 3ds/QUESTIONS.md.
 - Not a race, not zero fill, not a bad swap. The decomp layout is N64 identical. On the N64 the game stops player B before nok_01. The tour does not.
 - Fix: 3ds/src/pm_warp.c `tour_step` calls `bgm_set_song(1, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL)` before each tour map change (harness only, no guard in audio code).
 - Check: same chunk, tour done, no audio fault. `warp=nok_01:0`, yard, toad: rc 0. Not checked: a real play path from trd_05 into nok_01 (not reachable), other maps that leave a song on player B, hardware, the full tour. Other faults in the chunk: trd_06 falling.c:148 (InitializeFallingPartner), partners.c:1136 (partner_walking_enable).
+
+## F01 trd_06 and partner_walking_enable (lane B, 2026-10-18)
+- Faults: trd_06 `falling.c:148` (`InitializeFallingPartner`, `get_npc_unsafe(NPC_PARTNER)` is NULL) and `partners.c:1136` (`partner_walking_enable`, partner NULL).
+- Method: narrow warps with -Turbo -Smoke -FaultStop. `warp=trd_06:0` (new file, no partner): rc 2 at falling.c:148. `warp=trd_06:0 partner=1`: rc 0. Chunk trd_05 to nok_04 (39 maps, tour=@tour.txt): `partner=0` rc 2 at falling.c:148, `partner=1` rc 0, tour done, no unmapped access.
+- Cause: the tour starts from a new file, curPartner is PARTNER_NONE, so no partner NPC exists. The trd_06 scripts and the partner code need the partner NPC. The real game has a partner there (trd_06 comes after the partners are earned, the N64 code dereferences the NPC the same way). Tour-only fault, same class as kmr_23 and nok_01.
+- Fix: 3ds/src/pm_warp.c, a tour uses partner 1 (Goombario) unless `partner=` is given. No guard in game code.
+- Check: same chunk without a partner switch: rc 0, tour done. yard rc 0, toad rc 0. Not checked: the real exit and entry path from trd_05 into trd_06 with game scripts (story state not reachable by warp), partners other than Goombario, the full tour, hardware.

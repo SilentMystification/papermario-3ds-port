@@ -138,6 +138,8 @@ int pm_warp_active(void) {
             }
         }
     }
+    /* F01: a tour visits maps at story 0 with a new file (no partner). The real game has a partner at trd_06 and later maps (trd_06 InitializeFallingPartner, partner_walking_enable need one), so the tour uses Goombario unless partner= says otherwise. */
+    if (tour_next != NULL && w_partner == 0) w_partner = 1;
     smoke_on = pm_debug_has("smoke");
     if (pm_debug_value("loadslot", v, sizeof v)) w_loadslot = atoi(v); /* E02: loadslot=<n> loads save slot n first */
     if (pm_debug_value("smokeframes", v, sizeof v)) smoke_frames = atoi(v); /* E02: smoke length, default 300 */
