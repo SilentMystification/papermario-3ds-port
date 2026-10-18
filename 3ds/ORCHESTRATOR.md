@@ -35,6 +35,7 @@ Written 2026-10-17 for a NEW orchestrator chat. Read this file, then HANDOFF.md,
 - Memory rule: the estimated O3DS spare is about 518 KB. No more than about 10 KB of code or data per slice without a Q7 question.
 - MODEL RULE (replaces the old "default model, no tiers"): never use `fable`. Use `opus` ONLY for planning: an agent whose job is to plan or design (the Plan agent type, a design or research-to-plan slice, a plan for a large feature such as widescreen, 60 fps, the GPU vertex transform or the audio redesign). Never use `opus` for coding, investigation, builds or checks. For all coding, investigation, shared-code changes, graphics, memory and audio work the highest tier is `sonnet`. After the handoff use `haiku` for MECHANICAL slices: measurement and listing slices, tours and check runs that report a table, documentation and queue edits, git cleanup, and link-and-build slices that follow an existing pattern with a clear check. Use `sonnet` for investigation, any change to shared decomp code, the GPU and graphics layer, memory layout, audio, and anything that needs judgment about the no-stub rule. Pass the `model` parameter of the Agent tool. A planning slice may use `opus`. Its output is a plan file or a design section in docs/ that a later sonnet or haiku agent executes. If a haiku agent reports BLOCKED or gives an unclear result, relaunch the slice on `sonnet` (not opus).
 - OPT (user decision 2026-10-18): optimization code work starts only after S28. Planning is allowed before S28. A correctness fault in audio code (nok_01, row F01) is a bug fix, not optimization.
+- S28 gate (user decision 2026-10-18): S28 waits until the Azahar queue is empty. Hardware validation checks only that the existing code works on the console. Port logic that Azahar can verify is not debugged on hardware.
 
 ## 3. Agent reading rules
 Every agent prompt says "follow the reading rules in ORCHESTRATOR.md".
@@ -67,9 +68,9 @@ Report (5 lines or fewer): slice id; last commit hash; result; what was and was 
 Pass `model` to the Agent tool by the MODEL RULE.
 
 ## 6. State (2026-10-17)
-- Queue: 3ds/SLICES.md, in order. First 6 rows: (1) G01g golden frames. (2) S28 hardware run (needs the user: O3DS on at 192.168.1.168, dspfirm.cdc on the SD card). (3) H03 memory split and graceful texture failure. (4) S30b the 154 id-only maps and Q7. (5) V07 items flicker. (6) V06 follow-up, then V08, V09 (two rows), V10, V11, X02, S31, F01, F03, T02, F08, then the performance phase (PO2, PO3, AU1, MA1), then F06 and F07.
+- Queue: 3ds/SLICES.md, in order. First 6 rows: (1) G01g golden frames. (2) S28 hardware run, last of the Azahar queue (needs the user: O3DS on at 192.168.1.168, dspfirm.cdc on the SD card). (3) H03 memory split and graceful texture failure. (4) S30b the 154 id-only maps and Q7. (5) V07 items flicker. (6) V06 follow-up, then V08, V09 (two rows), V10, V11, X02, S31, F01, F03, T02, F08, then the performance phase (PO2, PO3, AU1, MA1), then F06 and F07.
 - Open questions for the user (3ds/QUESTIONS.md): Q7 memory (spare about 518 KB, limit 500 KB, 154 maps would give about -1.1 MB), Q2 resident ROM, PO2, V06 (which problem), S28 (is the O3DS on).
-- Memory and hardware: the game never ran on hardware. The spare is an Azahar-based estimate. S28 comes first in the hardware path.
+- Memory and hardware: the game never ran on hardware. The spare is an Azahar-based estimate. S28 waits until the Azahar queue is empty.
 - Done so far: see docs/SLICES_DONE.md. The real chain, battle, demo loop, transitions, pause and file select run in Azahar.
 
 ## 7. Stop conditions
