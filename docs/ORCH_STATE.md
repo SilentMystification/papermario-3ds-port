@@ -5,9 +5,10 @@ Use this file to resume the orchestrator in a new chat. Read it first.
 
 ## 1. Running work at this moment
 
-ONE agent runs: the merge of lane-b into main (main tree, started 2026-10-18, conflicts in 3ds/CMakeLists.txt, 3ds/PROGRESS.log, 3ds/SLICES.md). Do NOT touch the main tree until it reports. If the agent is gone, run `git status` in the main tree: a half-done merge shows `UU` files. Finish it (`git merge --continue` after solving: keep both sides, keep all PROGRESS.log lines), or `git merge --abort` and start again. Then run the checks in 3ds/SLICES.md row S28 prep and the merge checks (x02_check.py, golden.py, smoke yard and toad, one warp per new area, kzn_08 darkness). The S28 gate edit "H05 findings all FIXED" and the H05 and V12 rows in 3ds/SLICES.md must survive the merge.
-Main tree: ..\papermario-3ds-port (branch main). Lane B: ..\papermario-3ds-port-laneB (branch lane-b, PM_LANE=laneB, rules in docs/LANES.md).
-The V09 kmr_22 fix is committed on lane-b (378f2879f). Check `git -C ..\papermario-3ds-port-laneB status` for stray edits.
+No agent runs. The merge of lane-b into main is DONE (93cab18e2, docs b44eba7f2). Lane B is rebased onto main. Tag lane-b-pre-merge keeps the old lane-b tip. Main tree: ..\papermario-3ds-port (branch main). Lane B: ..\papermario-3ds-port-laneB (branch lane-b, PM_LANE=laneB, rules in docs/LANES.md).
+Merge checks passed: build links, 3dsx 13,013,472 B, x02_check kgr_01 (corners 0, centre 87), one tour over kpa_03, kzn_03, flo_03, jan_03, sam_03, pra_03, kzn_08 (rc 0, no fault). golden.py 9 scenes 0.00 to 0.01 percent (battle about 1 percent, known).
+Not checked after the merge: the tour chunk trd_05 to nok_04 (stopped at trd_10, rc 0, no "tour: done" line, not re-run), the full tour. kzn_08 loads but draws no darkness (alpha stays 0, the fog script is unused there), so it is not a darkness fault.
+Uncommitted in the main tree: 3ds/ORCHESTRATOR.md (parallel rule), 3ds/AGENT_RULES.md (stop rule, fast checks), HANDOFF.md, docs/ORCH_STATE.md. Commit them first.
 
 ## 2. Done this session
 

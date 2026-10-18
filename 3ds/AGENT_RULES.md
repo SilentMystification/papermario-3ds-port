@@ -30,6 +30,8 @@
 - Fix every fault a test finds. Name the areas you did not test.
 - Use -Turbo -Smoke -FaultStop and a warp preset for feature tests. Never wait open ended.
 - Lighter check: smoke on presets yard and toad, then shots of touched scenes only.
+- STOP RULE: stop when the done check of your row passes. Run at most 3 build and run rounds per row, then report what blocks you. Do not add checks that the row does not name. A fault outside your row becomes a new row in 3ds/SLICES.md (one line). Do not fix it in this slice. Before each Azahar run, log one line with the expected length. If one step takes more than 15 minutes, log the reason.
+- Fast checks: each Azahar start costs about 17 s. Check many maps in ONE run with `tour=<map:entry,...>` (one start, many maps). Run `golden.py` with scene names for the touched scenes only. Skip the yard and toad smoke when `golden.py` already ran yard and toad in the same build. Run the full golden set and the full tour only at a milestone. Use a high -TurboFactor for runs that do not measure timing.
 - Full tour and 4-scene A/B only for map change path, boot, title, file select or intro.
 - Screenshots only when needed. One contact sheet at most.
 - Memory: at most 10 KB of code or data per slice. Report the 3dsx size change.

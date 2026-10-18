@@ -14,7 +14,7 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - Branch `main`. Tag `s19-pre-merge` keeps the old tip of branch `s19-full-battle` (merged by M03). No push. Lane B: worktree ..\papermario-3ds-port-laneB, branch lane-b, `PM_LANE=laneB` (docs/LANES.md).
 - The game boots in Azahar: logos, title, file select, intro (hos_05), kmr_20, osr_00, mac_00, mac_01, kkj_00. The real battle tree is merged. Encounters, level up, flee, game over and the title demo loop (17 scenes, repeats after MS01) run.
 - All 421 maps are linked (S30b). 3ds/maps_skip.txt is empty. 6 new maps warped in Azahar. The other 148 are not.
-- Image about 16.98 MB. 3dsx about 10.9 MB. Estimated O3DS spare about 518 KB (Azahar numbers: 64 MB limit assumed, 20 MB linear pool, N64 RAM block 4 MB). This line and the S30b line differ. The user must confirm the current figure.
+- All 421 maps are linked (merge 93cab18e2). 3dsx is 13,013,472 B. Image is about 18.9 MB. Estimated O3DS spare is about 4.7 MB with all maps (docs/MEMORY_BUDGET.md, 64 MB assumed, 14 MB linear pool after H03). Azahar shows a commit limit of 98304 KB. This is not an O3DS number. Only S28 can measure the real limit.
 - The O3DS and the N3DS were never run. S28 is the first hardware run. All speed numbers are Azahar numbers. They are not valid for the O3DS.
 - The game runs at exactly 30 fps (PC01: 29.91 steps per second, 2 vblanks per step). 60 fps (F06) and widescreen (F07) come later.
 - Port layer files and tools: see docs/INDEX.md. Fixes in the platform layer: docs/HISTORY.md.

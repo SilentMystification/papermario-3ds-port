@@ -5,8 +5,11 @@ Written 2026-10-17 for a NEW orchestrator chat. Read this file, then HANDOFF.md,
 ## 1. Role and workflow
 - The orchestrator only orchestrates. It never writes code. It never reads code or project source.
 - Subagents do all work: code, scans, reads, queue edits, notes.
-- Launch ONE slice agent at a time in the background for anything that builds or runs Azahar. The build directory is shared and only one Azahar window can run.
-- Read-only Explore agents may run in parallel with a build agent.
+- RUN WORK IN PARALLEL (user decision 2026-10-18). Before each launch, look ahead in the queue and start every row that has no conflict. Do not limit the number of agents when work is independent.
+- Build lanes: the main tree and lane B (docs/LANES.md, PM_LANE=laneB). One build agent per lane. Add a lane when two independent build rows wait. Azahar runs queue by the mutex in run_azahar.ps1 (one run at a time, a wait is normal).
+- Graphics rows (pm_gbi.c, pm_gpu.c, pm_tex.c) run one at a time because they edit the same functions. Non-graphics rows run in the other lane.
+- Read-only agents (plans, audits, reviews) run in parallel with build agents. They write one file under docs/plans/ and commit only that file.
+- A closing step (merge, doc rows) belongs to the last slice of a lane. It does not get its own agent. Batch other doc edits: do small ones yourself, use one fresh docs agent per milestone.
 - Each agent reports in 5 lines or fewer. The orchestrator reads only the report and the last 20 lines of 3ds/PROGRESS.log.
 - Relay each report to the user in plain terms: what was done, the numbers, what was not verified, the next step.
 - Post a status to the user after every report. Never leave the user without feedback.
