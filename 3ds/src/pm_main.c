@@ -186,6 +186,16 @@ void pm_zbuf_need(void) {
     if (nuGfxZBuffer) pm_tex_invalidate(nuGfxZBuffer, CFB_PIXELS * 2);
 }
 
+/* X02: the darkness overlay draws into the z-buffer memory (a 64 x 64 image). The game owns that memory from boot, the port
+ * allocates it on first use (see pm_zbuf_need), so the colour image address is valid before the display list names it. */
+void pm_x02_log(int isWorld, int alpha, int x, int y);
+void __real_appendGfx_darkness_stencil(int isWorld, int posX, int posY, float alpha, float progress);
+void __wrap_appendGfx_darkness_stencil(int isWorld, int posX, int posY, float alpha, float progress) {
+    pm_x02_log(isWorld, (int)alpha, posX, posY);
+    pm_zbuf_need();
+    __real_appendGfx_darkness_stencil(isWorld, posX, posY, alpha, progress);
+}
+
 void pm_dump_scripts(void);
 void pm_warp_tick(unsigned frame);
 void pm_map_tick(void);

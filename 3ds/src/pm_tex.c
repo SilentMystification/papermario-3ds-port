@@ -39,9 +39,12 @@ static int aux = -1; /* S25: the second texture (TEXEL1), bound at unit 1 */
 static GPU_TEXTURE_WRAP_PARAM aux_ws = GPU_REPEAT, aux_wt = GPU_REPEAT;
 static int have;
 /* V05: off-screen images of this frame (render textures owned by pm_gpu.c) */
-static struct { const u8* base; unsigned stride; C3D_Tex* tex; } offt[4];
+static struct { const u8* base; unsigned stride; C3D_Tex* tex; int siz, w, h; } offt[4]; /* siz as pm_gpu_off_begin */
 static int offt_n, off_cur = -1, off_ox, off_oy;
-void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex) {
+void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, int siz, int w, int h) {
+    offt[i].siz = siz;
+    offt[i].w = w;
+    offt[i].h = h;
     offt[i].base = (const u8*)base;
     offt[i].stride = stride;
     offt[i].tex = (C3D_Tex*)tex;
@@ -321,14 +324,17 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     off_cur = -1;
     fail_last = 0;
     if (!img || width < 1 || height < 1 || !scratch) return 0;
-    if (fmt == FMT_RGBA && siz == SIZ_16) {
-        /* V05: a window of an off-screen image drawn this frame: sample the render texture, no copy */
-        for (int i = 0; i < offt_n; i++) {
-            unsigned d = (unsigned)((const u8*)img - offt[i].base), row = offt[i].stride * 2u;
-            if ((const u8*)img >= offt[i].base && d < row * PM_OFF_H) {
+    {
+        /* V05: a window of an off-screen image drawn this frame: sample the render texture, no copy. The load must have the
+         * pixel size of the image (X02: the same memory is a 32 bit and an 8 bit image in one frame). */
+        unsigned gs = (fmt == FMT_RGBA && siz == SIZ_32) ? 3u : (fmt == FMT_RGBA && siz == SIZ_16) ? 2u : (fmt == FMT_I && siz == SIZ_8) ? 1u : 0u;
+        for (int i = 0; gs && i < offt_n; i++) {
+            unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[i].base), row = offt[i].stride * bpp;
+            if ((unsigned)offt[i].siz == gs && (const u8*)img >= offt[i].base && d < row * (unsigned)offt[i].h) {
                 off_oy = (int)(d / row);
-                off_ox = (int)((d % row) / 2u);
+                off_ox = (int)((d % row) / bpp);
                 off_cur = i;
+                if (offt[i].w == 64) { static int n; if (n++ < 6) pm_log("X02: overlay reads 64x64 slot %d bits %d addr %p", i, gs == 3 ? 32 : gs == 2 ? 16 : 8, img); }
                 have = 1;
                 return 1;
             }
@@ -534,8 +540,8 @@ int pm_tex_bind(void) {
 void pm_tex_size(int* w, int* h) {
     int pw = 1, ph = 1;
     if (have && off_cur >= 0) {
-        pw = PM_OFF_W;
-        ph = PM_OFF_H;
+        pw = offt[off_cur].w;
+        ph = offt[off_cur].h;
     } else if (have && cur >= 0) {
         pw = pot_at_least_8(slots[cur].w);
         ph = pot_at_least_8(slots[cur].h);

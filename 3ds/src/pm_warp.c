@@ -347,3 +347,13 @@ void pm_ptrcheck(const char* what, unsigned val, const void* caller) {
     }
     pm_log("ptrcheck: %s value %08x caller %08x", what, val, (unsigned)caller);
 }
+
+/* X02: one log line when the darkness alpha or the partner action state changes (Watt test) */
+void pm_x02_log(int isWorld, int alpha, int x, int y) {
+    static int la = -1, ls = -1;
+    if (alpha != la || (int)gPartnerStatus.partnerActionState != ls) {
+        la = alpha;
+        ls = (int)gPartnerStatus.partnerActionState;
+        pm_log("X02: darkness world %d alpha %d pos %d %d partnerAction %d cur %d", isWorld, alpha, x, y, ls, (int)gPlayerData.curPartner);
+    }
+}

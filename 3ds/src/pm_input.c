@@ -28,7 +28,7 @@ static unsigned short ps_prev;
 static int ps_button(const char* t, unsigned short* b, signed char* x, signed char* y) {
     static const struct { const char* n; unsigned short bit; } bt[] = {
         { "A", 0x8000 }, { "B", 0x4000 }, { "Z", 0x2000 }, { "START", 0x1000 }, { "L", 0x0020 }, { "R", 0x0010 },
-        { "dup", 0x0800 }, { "ddown", 0x0400 }, { "dleft", 0x0200 }, { "dright", 0x0100 },
+        { "cdown", 0x0004 }, { "dup", 0x0800 }, { "ddown", 0x0400 }, { "dleft", 0x0200 }, { "dright", 0x0100 },
     };
     for (unsigned i = 0; i < sizeof(bt) / sizeof(bt[0]); i++) if (strcasecmp(t, bt[i].n) == 0) { *b |= bt[i].bit; return 1; }
     if (strcasecmp(t, "up") == 0) { *y = 80; return 1; }

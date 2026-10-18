@@ -135,8 +135,10 @@ static GPU_COMBINEFUNC tev_func(int f) {
  * into a game buffer with the color image set to it, then draws that buffer as strips through the rotation matrix.
  * Such a pass renders into a PICA render target that is a texture (VRAM), and pm_tex samples it for the strips. */
 enum { OFF_N = 4 };
-static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; } offs[OFF_N];
-static int off_used, off_cur, off_fail;
+/* X02: w x h is the size of the slot (64 x 64 for a game image up to 64 wide, else PM_OFF_W x PM_OFF_H). siz is the game pixel size
+ * (3 = 32 bit, 2 = 16 bit, 1 = 8 bit). The same memory can be a 32 bit image and an 8 bit image in one frame: two slots. */
+static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; } offs[OFF_N];
+static int off_used, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8;
 extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
@@ -254,6 +256,15 @@ static void flush(void) {
         C3D_TexEnvColor(e, abgr(r_mixcol));
         env_hi++;
     }
+    if (off_active && off_i8 && env_hi < 6) {
+        /* X02: an 8 bit intensity image reads as I in all four channels. The pixel written is (R, R, R, R). */
+        C3D_TexEnv* e = C3D_GetTexEnv(env_hi);
+        C3D_TexEnvInit(e);
+        C3D_TexEnvSrc(e, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
+        C3D_TexEnvOpAlpha(e, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R);
+        C3D_TexEnvFunc(e, C3D_Both, GPU_REPLACE);
+        env_hi++;
+    }
     /* Fill and texrects ignore the Z buffer. Startup turns G_ZBUFFER on
      * before the logo, and every 2D quad shares z, so a depth test keeps
      * only the first rectangle. */
@@ -290,11 +301,11 @@ static void flush(void) {
      * game picture and whatever scissor the display list set inside it. */
     if (off_active) {
         /* not rotated: x is the game x. GPU y is the game y: row 0 of the image is the last memory row, where v = 0 samples */
-        int x1 = sci_x1 > PM_OFF_W ? PM_OFF_W : sci_x1, y1 = sci_y1 > PM_OFF_H ? PM_OFF_H : sci_y1;
+        int x1 = sci_x1 > off_w ? off_w : sci_x1, y1 = sci_y1 > off_h ? off_h : sci_y1;
         if (x1 > sci_x0 && y1 > sci_y0)
             C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)sci_x0, (u32)sci_y0, (u32)x1, (u32)y1);
         else
-            C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, 0, PM_OFF_W, PM_OFF_H);
+            C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, 0, off_w, off_h);
     } else {
         int left = 240 - sci_y1;
         int right = 240 - sci_y0;
@@ -310,7 +321,7 @@ static void flush(void) {
             C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, 40, 240, 360);
     }
     C3D_CullFace(GPU_CULL_NONE);
-    if (off_active && r_replace)
+    if (off_active && (r_replace || off_i8))
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
     else if (off_active) /* alpha accumulates as source over destination: a covered pixel becomes opaque */
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
@@ -563,20 +574,27 @@ void pm_gpu_read_frame(unsigned short* dst) {
 
 /* V05: start (or go back to) the off-screen pass for the colour image at base, width stride pixels. Returns 1 if
  * drawing goes there now. Each base gets one image for the frame (cleared on first use). */
-int pm_gpu_off_begin(const void* base, int stride) {
-    int i;
+int pm_gpu_off_begin(const void* base, int stride, int siz) {
+    int i, w, h;
     if (!gpu_ok || off_fail || stride < 1 || stride > PM_OFF_W) return 0;
-    if (off_active && offs[off_cur].base == base) return 1;
+    if (off_active && offs[off_cur].base == base && offs[off_cur].siz == siz) return 1;
     flush();
-    for (i = 0; i < off_used; i++) if (offs[i].base == base) break;
+    for (i = 0; i < off_used; i++) if (offs[i].base == base && offs[i].siz == siz) break;
+    w = stride <= 64 ? 64 : PM_OFF_W; /* X02: the darkness stencil is 64 x 64: 16 KB of VRAM, not 512 KB */
+    h = stride <= 64 ? 64 : PM_OFF_H;
     if (i == off_used) {
         if (off_used >= OFF_N) {
             static int once;
             if (!once++) pm_log("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
             return 0;
         }
+        if (offs[i].rt && (offs[i].w != w || offs[i].h != h)) { /* the slot has the other size: make it again */
+            C3D_RenderTargetDelete(offs[i].rt);
+            C3D_TexDelete(&offs[i].tex);
+            offs[i].rt = NULL;
+        }
         if (!offs[i].rt) {
-            if (!C3D_TexInitVRAM(&offs[i].tex, PM_OFF_W, PM_OFF_H, GPU_RGBA8)) {
+            if (!C3D_TexInitVRAM(&offs[i].tex, w, h, GPU_RGBA8)) {
                 pm_log("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
                 off_fail = 1;
                 return 0;
@@ -590,14 +608,21 @@ int pm_gpu_off_begin(const void* base, int stride) {
                 off_fail = 1;
                 return 0;
             }
-            Mtx_Ortho(&off_proj, 0.f, (float)PM_OFF_W, 0.f, (float)PM_OFF_H, 0.f, 1.f, true);
+            offs[i].w = w;
+            offs[i].h = h;
         }
         C3D_RenderTargetClear(offs[i].rt, C3D_CLEAR_COLOR, 0, 0);
         offs[i].base = base;
-        pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex);
+        offs[i].siz = siz;
+        pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
+        if (w == 64) { static int n; if (n++ < 6) pm_log("X02: darkness draw to 64x64 slot %d size %d bits %d addr %p", i, stride, siz == 3 ? 32 : siz == 2 ? 16 : 8, base); }
         off_used++;
     }
     off_cur = i;
+    off_w = offs[i].w;
+    off_h = offs[i].h;
+    off_i8 = siz == 1;
+    Mtx_Ortho(&off_proj, 0.f, (float)off_w, 0.f, (float)off_h, 0.f, 1.f, true);
     off_active = 1;
     rebuild_3d();
     C3D_FrameDrawOn(offs[i].rt);
@@ -609,6 +634,7 @@ void pm_gpu_off_end(void) {
     if (!off_active) return;
     flush();
     off_active = 0;
+    off_i8 = 0;
     rebuild_3d();
     C3D_FrameDrawOn(target);
 }
@@ -617,40 +643,46 @@ void pm_gpu_set_replace(int on) { r_replace = on; }
 
 /* V05 debug switch offdump: the first off-screen image of the last frame, as shots/off<frame>.ppm (memory row 0 on top) */
 static void off_dump(void) {
-    static int on = -1, n;
+    static int on = -1, n, from;
+    int k;
+    char v[16];
     FILE* f;
     unsigned char* row;
     const unsigned char* src;
-    if (on < 0) on = pm_debug_has("offdump");
-    if (!on || !off_used || n >= 12) return;
-    src = (const unsigned char*)offs[0].tex.data;
+    if (on < 0) { from = pm_debug_value("offdump", v, sizeof v) ? atoi(v) : 0; on = from || pm_debug_has("offdump"); } /* offdump=<first frame> */
+    if (!on || !off_used || n >= 12 || (int)pm_frame_count() < from) return;
+    /* X02: every slot of the frame, 64 x 64 slots too: off<frame>_<slot>.ppm */
+  for (k = 0; k < off_used && n < 12; k++) {
+    src = (const unsigned char*)offs[k].tex.data;
     mkdir("shots", 0777);
     char path[48];
-    snprintf(path, sizeof path, "shots/off%03u.ppm", pm_frame_count());
+    snprintf(path, sizeof path, "shots/off%03u_%d.ppm", pm_frame_count(), k);
     n++;
     f = fopen(path, "wb");
-    if (!f) return;
-    fprintf(f, "P6 %d %d 255\n", PM_OFF_W, PM_OFF_H);
-    row = (unsigned char*)malloc(PM_OFF_W * 3);
-    for (int y = 0; y < PM_OFF_H; y++) {
-        for (int x = 0; x < PM_OFF_W; x++) {
+    if (!f) continue;
+    fprintf(f, "P6 %d %d 255\n", offs[k].w, offs[k].h);
+    row = (unsigned char*)malloc(offs[k].w * 3);
+    for (int y = 0; y < offs[k].h; y++) {
+        for (int x = 0; x < offs[k].w; x++) {
             unsigned mx = x & 7u, my = y & 7u;
             unsigned m = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) | ((mx & 4u) << 2) | ((my & 4u) << 3);
-            const unsigned char* p = src + ((((unsigned)(y >> 3) * (PM_OFF_W / 8) + (unsigned)(x >> 3)) * 64u + m) * 4u);
+            const unsigned char* p = src + ((((unsigned)(y >> 3) * (offs[k].w / 8) + (unsigned)(x >> 3)) * 64u + m) * 4u);
             unsigned a = p[0];
             row[x * 3] = (unsigned char)(p[3] * a / 255); row[x * 3 + 1] = (unsigned char)(p[2] * a / 255); row[x * 3 + 2] = (unsigned char)(p[1] * a / 255);
             if (a == 0) row[x * 3] = row[x * 3 + 1] = row[x * 3 + 2] = 40;
         }
-        fwrite(row, 1, PM_OFF_W * 3, f);
+        fwrite(row, 1, offs[k].w * 3, f);
     }
     free(row);
     fclose(f);
+  }
 }
 
 void pm_gpu_begin(int clear) {
     off_dump();
     off_used = 0;
     off_active = 0;
+    off_i8 = 0;
     pm_tex_clear_offscreen();
     dv_draw = 0;
     draws_frame = 0;

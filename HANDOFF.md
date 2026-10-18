@@ -58,7 +58,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - V10: battle Strategies box and level-up box draw as a checkerboard.
 - V11: kmr_05 path to the first Goomba is blocked at x 75 to 88.
 - V09 intro tints and nok_01 shelved by the user, partial edits on branch shelf/v09-nok01.
-- X02: darkness overlay draws the whole screen black (kgr_01, kgr_02, omo_12, omo_14, kzn_08).
+- X02 done (B0 of docs/plans/buffer_bridge.md): darkness runs the real decomp function with 64x64 slots keyed by (address, pixel size). kzn_08 untested (not linked). Detail in docs/HISTORY.md.
 - F03: `is_point_visible` reads a NULL z-buffer (hos_05 lamp, `tex ptr 0000fd7e`).
 - F08: fog partly done by V06 (blend and fog colour mix). The per-vertex fog factor is open.
 - S30b (Q7 answered 2026-10-18): 154 maps are not linked. With all 421 maps the spare is about 4.7 MB by estimate (docs/MEMORY_BUDGET.md).
@@ -80,3 +80,5 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - Gone (do not look for them): `area_table.c`, `pm_title.c`, `pm_evt_stub.c`, `pm_actor_link.c`, `pm_shadow.c`, `pm_fx.c`, battle stand-ins, effect graphics zeros (A17), shadow headers (B3 to B6), the `spriteIdx` guard, `note_door`.
 - Not stand-ins but still approximate: fixed light direction for `G_LIGHTING` vertices (`pm_gbi.c`), no fog table (F08), no texture generation, LOD or `G_BRANCH_Z`.
 - Lane B (worktree ..\papermario-3ds-port-laneB, branch lane-b, `PM_LANE=laneB`): see docs/LANES.md. Build parallel, run one at a time.
+
+- S18 and S19c closed (lane B copy run via PM_LANE=s18chk scratch lane). poly_scan.py thresholds too loose (flags natural dirt): tune before reuse.

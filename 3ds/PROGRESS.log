@@ -50,3 +50,30 @@
 13:03 V07 not reproduced, docs written, committing
 13:20 V08 decomp reads XLU alpha 128 by design, port draws it exact (plan err 0)
 13:25 V08 verdict RIGHT, no code change, smoke yard toad rc 0, docs written, committing
+01:31 X02 cause found: nuGfxZBuffer is NULL so the darkness cimg is 0 and draws go to the screen. Adding sized off-screen slots, 8 bit slot, zbuf wrap
+01:33 PARALLEL plan written in docs/PARALLEL_PLAN.md (read-only study)
+16:40 T02 new script written as run_azahar.new.ps1 while no Azahar ran: mutex, try/finally, byte restore, loud keys
+16:48 T02 tests: normal run, two runs at once, forced kill plus recovery all exit 0, qt-config.ini hash same
+16:50 T02 new script swapped in as run_azahar.ps1, row moved to SLICES_DONE, committing
+01:41 MB memory budget doc written (docs/MEMORY_BUDGET.md): H03 gives spare 6657 KB EST, all 421 maps 4669 KB EST
+01:55 S31 verdict b: H02 handler enough, decomp crash screen needs MIPS fault bridge and IS64 device, shims stay empty (docs/plans/S31.md)
+01:49 PREP S18/S19c test commands written (docs/plans/S18_S19c_commands.md), not run
+01:50 MA1 list written: docs/plans/MA1_list.md, 37 hot spots (21 port, 16 decomp). No code changed, no build, no Azahar.
+01:51 PO3 plan written (docs/plans/PO3.md): 7 slices, needs PO2, S28 gate, waits for X02
+2026-10-18 F01 read-only cause analysis: docs/plans/F01_causes.md (kmr_23 tour leaves curtain callback set; tst_12 HISTORY loop explanation conflicts with evt.c, needs measure; nok_01 track instrument is NO_INSTRUMENT at note-on, cause needs a logged Azahar run)
+01:52 AU1 plan written: docs/plans/AU1.md, 7 slices (AU1a-g, f and g conditional), option A (N64 mixer on core 1) first. No code, no build, no Azahar.
+01:53 F03/F08 design written: docs/plans/F03_F08.md (F03 emulate depth copy in GBI + 1 pixel PICA depth read, F08 per-vertex fog alpha + mix stage). No code changed.
+01:53 LANES step1 worktree ..\papermario-3ds-port-laneB branch lane-b, copied 141 MB ignored inputs (folder 215 MB)
+01:53 LANES step2 PM_LANE in build.sh run_azahar.ps1 go.ps1 golden.py (on lane-b; main files not touched, X02 builds)
+01:53 LANES step3 lane B full build 233 s, smoke yard via run_azahar.ps1 PM_LANE=laneB exit 0
+01:53 LANES step4 docs/LANES.md, INDEX line, HANDOFF line
+02:16 X02 step 1 no tmpnofill/TMPX02 found in tree (already removed)
+02:16 X02 step 2 added two narrow log lines (pm_gpu.c off_begin, pm_tex.c load)
+02:21 X02 step 2 build ok (removed leftover junk block in pm_gpu.c flush)
+02:21 X02 step 1 removed orphan tmpnofill body in pm_gpu.c flush (was build error); slots stay keyed by (address, size)
+02:24 X02 step 3 kgr_01 exit 0, both X02 log lines (32 bit slot0 draw+read, 8 bit slot1 draw+read, same addr), pixels corners 0 centre 87 mean 42 (tools/x02_check.py)
+02:39 X02 step 4 Watt kgr_01 (padscript cdown added, X02 alpha log in pm_warp.c): alpha 255 to 90, partnerAction 1; pixels frame260 corners 0 centre 107 mean 50 (plain 87/42)
+
+02:55 S18 lane B copy (lane-s18chk): pause smoke exit 0, mode 10 once, golden pause1-4 ok; demo mode 17 at frame 4138, unmapped 0
+02:56 S19c Goomba battle 500 frames 300 shots exit 0, unmapped 0, gbi skip f3 only; poly_scan flags 195/300 on dirt (olive max 13094), 3 shots by eye clean; rows moved
+02:43 X02 step 5 omo_12 ok (6 log lines, corners 0 centre 63), omo_14 DOES draw darkness (alpha 255, corners 0 centre 66), kzn_08 not linked (maps_skip, S30b): load stops, not tested

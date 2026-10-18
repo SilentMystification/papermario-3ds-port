@@ -88,13 +88,15 @@ extern void pm_zbuf_need(void);
 extern unsigned pm_frame_count(void);
 static void* cimg;
 static int cimg_stride = 320;
+static int cimg_siz = 2; /* G_IM_SIZ of the colour image: 1 = 8 bit, 2 = 16 bit, 3 = 32 bit */
 extern int pm_fb_native(const void* p);
 /* V05: the colour image is a game buffer (not a frame buffer, not the saved frame): the draw goes to an off-screen render
  * texture, which a later draw reads as an image (draw_box: the contents of a rotating window). */
 static void off_screen_check(void) {
     static int nooff = -1;
     if (nooff < 0) nooff = pm_debug_has("nooff");
-    if (cimg && !nooff && !pm_fb_native(cimg)) pm_gpu_off_begin(cimg, cimg_stride);
+    /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
+    if (cimg && !nooff && (!pm_fb_native(cimg) || cimg_siz != 2)) pm_gpu_off_begin(cimg, cimg_stride, cimg_siz);
 }
 static const void* tlut_pal[16];
 static unsigned tile_tmem[8], tile_pal[8];
@@ -1550,8 +1552,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_SETCIMG: {
             void* nc = ptr_of(w1);
-            if (nc != cimg) pm_gpu_off_end(); /* V05 */
+            int ns = (int)((w0 >> 19) & 3);
+            if (nc != cimg || ns != cimg_siz) pm_gpu_off_end(); /* V05 */
             cimg = nc;
+            cimg_siz = ns;
             cimg_stride = (int)(w0 & 0xfff) + 1;
             break;
         }

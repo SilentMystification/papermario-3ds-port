@@ -6,7 +6,7 @@
 #define PM_OFF_H 256
 void pm_tex_init(void);
 /* V05: image i holds the colour image at base (width stride pixels). A load inside it binds the render texture. */
-void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* c3d_tex);
+void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* c3d_tex, int siz, int w, int h);
 void pm_tex_clear_offscreen(void);
 /* V05: texel offset of the last loaded image inside its off-screen texture (0, 0 for an ordinary texture) */
 void pm_tex_origin(int* x, int* y);

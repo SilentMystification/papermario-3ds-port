@@ -1617,3 +1617,6 @@ Old text moved from 3ds/QUESTIONS.md.
 ### Q2. Keep the ROM resident or stream it from SD? (from M02)
 - Fact: resident ROM is about 27 MB. Not measured on hardware. Stays resident until S28.
 - Answer: User answer 2026-10-18: keep ALL game data resident in RAM. No SD streaming. No duplicate copies.
+
+### X02 darkness (B0 of buffer_bridge)
+- Stray tmpnofill body removed from pm_gpu.c flush (build error). Logs: `X02: darkness draw to 64x64 slot`, `X02: overlay reads 64x64 slot` (pm_gpu.c, pm_tex.c), `X02: darkness world .. alpha` (pm_warp.c pm_x02_log). padscript token `cdown` added. Test tool 3ds/tools/x02_check.py (pixel stats). Watt: partner=6 plus padscript=wait40,cdown*4,wait200. omo_14 does call darkness (earlier note was wrong). kzn_08 is not linked.
