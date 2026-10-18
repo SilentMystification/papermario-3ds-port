@@ -283,3 +283,36 @@
 16:50 R13b water_splash cause proved by numbers: tile 1 window wraps (mask 5), droplet s starts at 0, window origin 65, linear uv reads slot x 0..16 where nothing was grabbed. Added t1_fold in pm_gbi.c (fold draw start into the window), removed other temp hooks, kept coins50 hook. build, run water_splash and flame, expect 15 min
 14:46 F11-2 test run: padscript wait500,START*6,wait300,down steps,A,B with shots every 30 frames, until frame 1000, expect 4 min plus mutex wait
 14:48 C2R map tour 421 maps (2 faults), battle stages 181 of 244 (29 faults), effects left for FX1a. Findings written, rows C2F C2G C2H C2I added. C3A and C3B done
+14:49 C2F repro BTL_KMR_3 formation 00 stage 01 smoke, expect 1 min plus mutex wait
+14:58 FX1a first sweep lost shots 0 to 53 (run_azahar copies shots only after a clean exit) and stopped at 123. driver now reads shots from the SD folder, denser heuristic. rerun all, expect 35 min
+15:03 C2F cause: ActorSpeak ACTOR_PARTNER with no partner (tutorial_spiked_goomba). Fix in pm_warp.c: battle= gives Goombario like tour. Rebuild + rerun, expect 10 min
+15:04 C2G cause: Formation 00 (fake_bowser, MODEL_atama in stage trd_00) paired with stage 01-0B by the tour only; game uses trd_00. C2I cause: stage 00 shape kmr_bt02_shape and isk_bt00_shape are marked @bug does not exist in decomp, only non-battle NPCs name it. C2H repro warp=jan_08:0 expect 5 min
+15:06 F11-2 run 1 showed START at scan 500 is too early (title holds from about scan 660). Rerun with wait800 start, until padscript done, expect 4 min
+18:21 C2G cause: Formation 00 (fake_bowser, MODEL_atama in stage trd_00) paired with stage 01-0B by the tour only. C2I cause: stage 00 shape is marked @bug does not exist in decomp, only non-battle NPCs name it. C2H repro warp=jan_08:0 expect 5 min
+17:20 R13b flame: B2 log says more than 8 grabs in one frame (3 flames x 2 strips x grabs), later strips reuse the last grab and read ungrabbed columns (black). Test GRAB_MAX 8 to 32 in pm_gpu.c, build, run flame, expect 15 min
+18:21 F11-2 run 2: title starts at scan about 900, so START at 800 is early. Rerun wait1100, expect 4 min
+14:50 V12d shots: balloon, peach_star_beam, snowman_doll, tubba draw. effect_75 oink quizmo static_status sun throw_spiny show nothing (hook args, not checked). fire_flower and water_block run failed. hook removed, build then golden, expect 6 min
+18:21 V13c first tour (266 maps) done: 0 tex cache full, no kzn in that list. second tour of the 155 other maps (kzn first) via v13c_tour3.sh, expect 40 min
+18:22 C2H gdb backtrace of fault, warp=jan_08:0, expect 5 min
+18:24 F11-2 run 3: frame to scan ratio moves with load, title at frame 604. Rerun wait1500, expect 5 min
+17:45 R13b GRAB_MAX test no change (flame still black), reverted. swap reverted (unproven: water fixed by the window fold alone is to be shown). coins hook removed. build, water_splash shot, golden toad yard battle title pause1, expect 20 min
+18:29 FX1a 2-effect run rc 0 (fxtest=0,1 toad Turbo Smoke FaultStop). driver log path fixed. full sweep, expect 35 min
+18:30 F11-2 found: first START skips the logos, the title needs a second START (golden fileselect reference shows the title, a stale scene). Rerun with two STARTs, expect 4 min
+18:31 C2H cause: EVS_NpcAI_MBush has no End, falls into next script. -fdata-sections reversed order. Fix: jan_05/08/09 npc.c in the CMake no-data-sections list. Build + rerun jan_08, C2F, TRD_2 stage 00, expect 15 min
+18:40 F11-2 contact sheet checked by eye: Options item under Copy, cursor on it, empty panel opens and closes, no text overlap. Update golden fileselect (scene fixed to two STARTs, frame 400), expect 2 min
+18:50 V13c done, row moved. 3dsx lane 13081512 B vs 13069252 B before the working set counter (main baseline 13050412 B, other agents WIP included)
+18:50 V12d done. goldens toad 0.03 yard 0.04 pause1 0.00, battle DIFF 59.7 (not this row). 3dsx 13050412 to 13068444 B. row moved to SLICES_DONE
+18:55 F11-2 done, 3dsx 13070596 to 13072248, golden fileselect updated, toad yard ok. Commit, row moved
+18:55 C2F first fix not enough (pm_debug_has misses battle=value), use pm_debug_value too. Rebuild, rerun, expect 10 min
+18:56 FX1a shot file mapping now from the game's own shot N lines (a missed dump shifted the numbers). full sweep again, expect 35 min
+18:30 R13b water_splash shot has no black blob (droplets light blue). goldens toad 0.03 yard 0.04 title 0.01 pause1 0.00 ok, battle DIFF 59.7 (other agent pm_warp.c partner change, dialog scene). flame open: new row R13c. rows moved, commit
+18:57 F11-3 code written (filemenu_options.c, Select flag, SELECT token, 6 rows). Build + padscript run, expect 4 min
+18:57 C2F pm_warp.c edit reverted (coordinator: golden battle +59.7 pct). Cause is the harness: battle= repro needs partner=1. Rerun with partner=1, expect 5 min
+19:00 R13c cycle 2 TEXEL0/TEXEL1 swap now in cc_decode and pm_comb_build (pm_comb_swap_c2): flame no-swap formula gives C1*scene+I = black square with white dot. build main, run fortune padscript, expect 12 min
+19:08 FX1a driver bug fixed (stray backspace in regex), runs use PM_LANE=fx so other runs cannot overwrite log and shots. full sweep, expect 35 min
+19:10 FX1a sweep done: 127 of 127 shot, 1 order dependent crash (75), 11 sheets. golden toad yard next, expect 3 min
+19:11 FX1a done, row moved to SLICES_DONE, new row V05b
+19:15 R13c build ok (3dsx 13080800 B before-edit main 13078696 B). run fxtest=75 (motion_blur_flame) lane r13c, preset=toad shots, expect 6 min with mutex wait
+19:17 F11-3 build ok after pm_log fix, run padscript test expect 2 min
+19:18 R13c temp coin hook R13C_TMP in pm_gbi.c draw_tri (remove before commit). build, run warp=mac_01:0 story=ch1_kooper loadslot=0 padscript, shots every 30, expect 15 min
+19:22 C2F C2G C2H C2I done: jan_08 rc0, KMR_3/HOS partner=1 rc0, TRD_2 stage 00 rc0, golden toad yard battle ok (battle 1.15 pct). 3dsx 13080832 B. Rows moved to SLICES_DONE

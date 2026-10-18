@@ -330,9 +330,11 @@ set_property(SOURCE ${DECOMP}/src/evt/script_list.c APPEND PROPERTY COMPILE_OPTI
 # until it finds an End. In source order that is the next script of the file. With -fdata-sections the next bytes were BSS zeros and the scan ran
 # to the end of the image (gv_01 EVS_DropLetter, unmapped reads over 8 MB). Keep the files as one data block in source order.
 set_property(SOURCE ${DECOMP}/src/world/area_gv/gv_01/main.c ${DECOMP}/src/world/area_kmr/kmr_11/main.c
+# C2H: jan_05, jan_08, jan_09 npc.c include MBush.inc.c, whose EVS_NpcAI_MBush ends in StartBattle with no End (decomp "fallthrough :(").
     ${DECOMP}/src/world/area_kkj/kkj_15/main.c ${DECOMP}/src/world/area_kkj/kkj_16/main.c
     ${DECOMP}/src/world/area_kkj/kkj_23/main.c ${DECOMP}/src/world/area_kkj/kkj_29/main.c
     APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
+    ${DECOMP}/src/world/area_jan/jan_05/npc.c ${DECOMP}/src/world/area_jan/jan_08/npc.c ${DECOMP}/src/world/area_jan/jan_09/npc.c
 # V12c: effect gfx files read one array on into the next array of the file (snowfall D_09000C00_38DC70 is 16 raw bytes with no end, the state
 # list D_09000C10_38DC80 follows. fright_jar indexes D_09004040_3C5BE0 as 22 vertex rows over the three vertex arrays after it). With -fdata-sections
 # the next array was somewhere else: snowfall drew nothing, the jar drew a black wedge.

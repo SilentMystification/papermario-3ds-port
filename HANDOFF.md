@@ -113,3 +113,5 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - FX1a done: `shots fxtest=all` with preset toad spawns all 127 effects (3ds/src/pm_fxtest.c). `python 3ds/tools/fxtest_report.py run all` builds 3ds/logs/fx/sheet_N.png and docs/plans/FX1_table.md. Run it again for FX1b.
 - FX1a found: 7 effects look wrong (flame, bulb_glow type 2, motion_blur_flame, effect_63, peach_star_beam, huff_puff_breath, quizmo_audience). A 127 effect run stops with svcBreak in pm_gpu_off_begin (slot resize inside a frame): row V05b.
 - FX1a not checked: battle context, effects with other types or args than the first game call, hardware.
+- C2F to C2I done: C2F battle repro needs partner=1 (tour artefact), C2G pairing fake_bowser with stage 01 to 0B is not a game pairing, C2I stage 00 is unused in the game, C2H fixed (MBush script has no End, jan npc.c files in no-data-sections list).
+- C2R not checked: other formation and stage pairs beyond the 4 rows, hardware.
