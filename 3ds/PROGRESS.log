@@ -147,3 +147,4 @@
 06:12 GP1 bisect: ok at 89441f330, DIFF at 6885fd88d (F03) and later. read F03 diff
 06:20 GP1 cause: F03 skip of texture load for z-buffer tiles also skips the pause background (tall tiles from nuGfxZBuffer, background_gfx.c:373). fix: skip only 1 row tiles. build + golden pause1 toad yard battle, expect 400 s
 06:33 GP1 golden pause1 0.00 toad 0 yard 0 battle 1.04, 3dsx 13018352 B (-8). commit
+06:36 GP1 row moved to SLICES_DONE
