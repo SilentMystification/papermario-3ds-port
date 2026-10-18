@@ -212,3 +212,4 @@
 11:05 V12c fright jar real cause: D_09004040_3C5BE0 is indexed as 22 vertex rows over the 3 vertex arrays after it, -fdata-sections split them (map: far apart). Add fright_jar.c to EFFECT_GFX_SRC. The pm_tex.c mask change stays (window 501 load failure is real). build, run, expect 150 s
 11:15 V12c temp hook and temp log removed, build, golden toad yard battle pause1, expect 150 s
 11:25 V12c goldens: toad 0.00, yard 0.00, battle 0.67, pause1 0.00. 3dsx +22.8 KB (jar and snowfall data kept by -fno-data-sections). code commit next, then docs
+11:35 V12c row moved to SLICES_DONE, new row V12d, HANDOFF 3 lines
