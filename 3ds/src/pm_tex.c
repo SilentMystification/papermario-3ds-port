@@ -19,6 +19,7 @@ typedef struct {
     unsigned fmt, siz;
     int w, h, stride;
     unsigned bytes;
+    unsigned phash; /* V06: FNV-1a of the CI palette, so an in-place palette edit misses */
     unsigned dkey; /* 0 for a plain texture, else the hash of a shaded one */
     unsigned stamp;
     unsigned epoch;
@@ -362,9 +363,14 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
         return 0;
     }
+    unsigned phash = 0;
+    if (fmt == FMT_CI && tlut) {
+        phash = 2166136261u;
+        for (int i = 0; i < tlut_n * 2; i++) phash = (phash ^ ((const u8*)tlut)[i]) * 16777619u;
+    }
     for (int i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
-        if (s->live && s->img == img && s->tlut == tlut && s->fmt == fmt && s->siz == siz &&
+        if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
             s->stamp = ++stamp;
             s->epoch = epoch;
@@ -463,6 +469,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
     s->img = img;
     s->tlut = tlut;
+    s->phash = phash;
     s->fmt = fmt;
     s->siz = siz;
     s->w = width;

@@ -99,3 +99,5 @@
 03:28 F03 build ok, host test_zenc worst err 7, 3dsx 13014276 B (+804). next: warp=hos_05:0 -Turbo -Smoke -FaultStop, expect about 60 s
 03:31 F03 run 2: tex ptr came from SETTILESIZE load of the z-buffer tile. Skipped that load, rebuilt 13014416 B. run fast repro, expect 40 s
 03:34 F03 done: hos_05 repro has real d24 14e0a8 word 7554, no tex ptr. warp=hos_05:0 smoke rc 0, golden intro 0.00 toad 0.01 yard 0.00, 3dsx 13014416 B (+944), row moved
+03:35 V06 added phash to pm_tex.c slot, temp log for palette change. build + run toad Russ T door, expect 90 s
+03:37 V06 log shows palette change under same ptr, shot after fix: outside black. temp log removed, run golden yard toad

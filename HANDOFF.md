@@ -53,3 +53,4 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - Storage at real N64 addresses (class C, no game logic): `gBackgroundImage` and `pm_world_entity_heap` (`3ds/src/pm_kmr_stubs.c`).
 - Gone (do not look for them): `area_table.c`, `pm_title.c`, `pm_evt_stub.c`, `pm_actor_link.c`, `pm_shadow.c`, `pm_fx.c`, battle stand-ins, effect graphics zeros (A17), shadow headers (B3 to B6), the `spriteIdx` guard, `note_door`, the GotoMap guard (removed by S30b).
 - Approximate, not stand-ins: fixed light direction for `G_LIGHTING` vertices (`pm_gbi.c`), no fog table (F08), no texture generation, LOD or `G_BRANCH_Z`.
+- V06 done: `pm_tex.c` cache hit now needs the CI palette hash (FNV-1a), so a palette edited in place (room fade) re-converts. Russ T door shows black outside. Not checked: mac_00 other houses, kmr_20 and kmr_02 doors, 3dsx size change.
