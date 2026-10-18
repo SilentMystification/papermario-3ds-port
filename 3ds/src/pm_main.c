@@ -311,6 +311,7 @@ void pm_frame_loop(void) {
         frame++;
         pm_frame_n = frame;
         pm_warp_tick(frame);
+        { extern void pm_fxtest_tick(unsigned); pm_fxtest_tick(frame); } /* FX1a, switch fxtest */
         presents++;
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;

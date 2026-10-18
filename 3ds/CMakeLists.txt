@@ -365,6 +365,7 @@ set(PORT_SRC
     src/pm_gpu.c
     src/pm_depth.c
     src/pm_tex.c
+    src/pm_fxtest.c
     src/pm_gbi.c
     src/pm_comb.c
     src/pm_gu.c
