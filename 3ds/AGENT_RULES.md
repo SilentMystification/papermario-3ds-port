@@ -41,5 +41,5 @@
 - Move the done row from 3ds/SLICES.md to docs/SLICES_DONE.md.
 - Put questions for the user in 3ds/QUESTIONS.md. Keep working on other items.
 - Commit locally in plain English. Commit only your own files.
-- Write notes and replies in ASD-STE100 English.
+- Write notes, docs, commit messages and reports in ASD-STE100 English: one instruction per sentence, active voice, simple tenses, no semicolons, one plain verb, no praise. Keep every number, path, command and switch name exact.
 - Report in 5 lines or fewer: slice id; commit hash; result; checked and not checked; BLOCKED or not.
