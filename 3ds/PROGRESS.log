@@ -322,3 +322,10 @@
 20:10 TB1 run_azahar.ps1: row budget (4 per row, adhoc 12 per 3 h), identical rerun cache, tour limit 40, -Force -Milestone -ResetBudget, summary line
 20:11 TB1 golden.py: 1 to 3 scenes, no all, cached ok per 3dsx sha256, --milestone once per sha256
 20:12 TB1 docs: AGENT_RULES Tests and memory, ORCHESTRATOR sections 1 and 5. Tested with row zz9: tour refusal, run, cached rerun, run 2, BUDGET exit 9, reset (2 real starts)
+19:37 R13c fortune run with grab fix + swap: no black squares (shots 23-28). swap reverted as unproven, rebuild, one run without swap, expect 6 min
+19:40 R13c no-swap run (grab fix only): black squares with white dot again. swap is cause 1. test swap only (grab fix reversed, patch kept) to see if the grab fix is needed, run 3 of 4
+19:43 R13c swap only: squares remain (fewer). both parts needed. reapply grab fix, build, final run 4 of 4 with golden title, expect 8 min
+19:46 R13c done: flame no black (run 1 shots 23-28), golden title ok 0.01, 3dsx 13078696 to 13081140 B (others WIP included). new row R13d. commit
+19:47 R13d read: swap matches RDP (cycle 2 TEXEL0 = tile 1, TEXEL1 = tile 0). 12 raw cycle 2 texel combiners in logs, no code change planned. build, then golden toad yard battle (3 starts)
+19:49 R13d golden toad yard battle, one call, expect 3 min
+19:50 R13d done: golden toad 0.03, yard 0.04, battle 0.43 percent ok. no code change
