@@ -64,7 +64,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - S30b (Q7 answered 2026-10-18): 154 maps are not linked. With all 421 maps the spare is about 4.7 MB by estimate (docs/MEMORY_BUDGET.md).
 - S31: crash screen and debug output check (Q5).
 - T02 Phase 1 done: run_azahar.ps1 holds mutex `Global\pm_azahar_run` (-LockWait s, exit 3 on timeout), restores qt-config.ini byte for byte in finally, and recovers after a hard kill. Lanes (Phase 2, 3) are open in docs/PARALLEL_PLAN.md.
-- Tour faults: kmr_23 (curtain callback), tst_12 (cut map), nok_01 (`au_syn_begin_audio_frame`, engine.c:488).
+- Tour faults: kmr_23 (curtain callback), tst_12: stays linked and warpable, loop bug is row F10 (last), nok_01 (`au_syn_begin_audio_frame`, engine.c:488).
 - Not verified by eye: partner moves, items and star power in battle. Pause with items or a partner. Hardware.
 - F09 language select: future feature, not in the current batch.
 - PO3 RISK (RSP to PICA port): effects that read back N64 memory images (X02, F03, water_splash, grabs) may need rework. Check each at every PO3 slice (docs/plans/PO3.md R7).

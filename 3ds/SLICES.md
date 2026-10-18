@@ -13,7 +13,7 @@ Model tier per row: see the MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] V10 | Battle Strategies submenu and level-up box draw as a white and brown checkerboard (draw_box pattern path `box_pattern_rect` is the suspect) | Strategies list readable in a shot
 [ ] V11 | kmr_05 from entry 0: Mario stops at x 75 to 88, the first Goomba is not reachable. Real geometry or a collision fault | Mario reaches Goomba_01
 [~] X02 | = slice B0 of docs/plans/buffer_bridge.md, in progress. Darkness overlay (kgr_01, kgr_02, omo_12, omo_14, kzn_08) draws the whole screen black. Needs a generic render to image for a non-cfb G_SETCIMG (64x64 target, I8 reinterpretation), about 32 KB VRAM and 3 KB code | `warp=kgr_01:0 partner=1` shows a soft dark circle around Mario
-[~] F01 | Fault sweep remainder: static remainder and the 3 maps with unmapped accesses (kmr_23, nok_01, tst_12); paths: pause, save and load, zones | list of causes, each fixed or recorded
+[~] F01 | Fault sweep remainder: static remainder and the 2 maps with unmapped accesses (kmr_23, nok_01). The tst_12 part is moved to F10 (measured, cause named); paths: pause, save and load, zones | list of causes, each fixed or recorded
 [ ] F03 | = slice B4 of the buffer bridge plan. `is_point_visible` (src/model.c:4497) reads a NULL z-buffer (log `tex ptr 0000fd7e`, hos_05 lamp). Give the platform layer a depth read back for one pixel | `DepthCopyBuffer` holds real depth, no `tex ptr` line
 [ ] F08 | Fog remainder. V06 added the blend and fog colour mix. G_FOG per-vertex factor and the fog table are not done (about 1.3M draws in the tour use fog) | one fog map renders fog, maps without fog unchanged
 [ ] PO2 | OPT: code work starts only after S28 (user decision 2026-10-18). Plans are done: docs/plans/PO3.md. Performance: transform each vertex once at G_VTX (CPU only). Needs the user answer (QUESTIONS.md) | phase timer shows less transform time, same pictures
@@ -23,6 +23,7 @@ Model tier per row: see the MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F06 | LATER, big. 30/60 fps toggle by interpolated extra frames (logic stays at 30 Hz). Plan only after the hardware run | plan in docs/
 [ ] F07 | LATER. Widescreen mode (research in docs/HISTORY.md, section "Widescreen and 60 fps research"). Plan after the hardware run | plan in docs/
 [ ] F09 | LATER, future feature. Language select. The US build never runs it (only a PAL call site exists, see docs/plans/S18_S19c_commands.md). Decide scope after the hardware run | plan in docs/
+[ ] F10 | NICE TO HAVE, last. Fix the endless loop in tst_12 (decomp script D_80240050: Add(LVarF,11) reads float -22.5 as integer, Loop(LVar5) gets -17). Do after everything else, after F06 and F07. tst_12 stays linked and warpable for the future scene selector. Until then the tour list may skip tst_12 as a test setting only | warp=tst_12:0 -Turbo -Smoke -FaultStop exit 0, no flood. Decide: patch the game data or add a documented port rule (needs the user)
 [~] S18 | Close-out: pause is real and the demo was done in S18b and S17. Language select moved to F09 (future, user decision 2026-10-18). Check and move to docs/SLICES_DONE.md | one check run for pause and demo, then moved
 [ ] S19c | Close-out: black and olive polygons in attacks. S25 may have fixed them (24 shots clean in M03). Check one attack-heavy battle | no polygons, then moved to docs/SLICES_DONE.md
 
