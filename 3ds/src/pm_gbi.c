@@ -109,6 +109,8 @@ extern int pm_fb_native(const void* p);
  * B3, R4: the z-buffer image at siz 2 with a FILL cycle or Z_CMP or Z_UPD is DEPTH (a depth write on the main target). */
 enum { ROLE_MAIN, ROLE_DEPTHQ, ROLE_CPUFILL, ROLE_DEPTH, ROLE_CPUPAL, ROLE_SLOT };
 extern unsigned short* nuGfxCfb_ptr;
+static int zcol, zslot_on; /* B5: zcol = this texrect copies colour into the z-buffer image (underwater, case 7): a slot, not a depth write */
+static void* const zb_fake = (void*)0x1000; /* the key of that slot when nuGfxZBuffer is NULL (address 0 cannot name a texture) */
 static int cimg_zero; /* B3: the last G_SETCIMG named address 0. nuGfxZBuffer is NULL until the pause or the darkness overlay allocates it (D03), so the game's z-buffer image is address 0 */
 static int img_role(int for_fill) {
     if (!cimg && !cimg_zero) return ROLE_MAIN;
@@ -118,8 +120,8 @@ static int img_role(int for_fill) {
         return ROLE_CPUFILL;
     }
     if (cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)cimg >= nuGfxZBuffer && (const unsigned short*)cimg < nuGfxZBuffer + 320 * 240)) &&
-        (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3 || (omode_l & 0x30u))) return ROLE_DEPTH;
-    if (!cimg) return ROLE_MAIN;
+        (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3 || (omode_l & 0x30u)) && !zcol) return ROLE_DEPTH;
+    if (!cimg && !zcol) return ROLE_MAIN;
     if (pm_fb_native(cimg) && cimg_siz == 2) return ROLE_MAIN;
     return ROLE_SLOT;
 }
@@ -162,7 +164,7 @@ static void off_screen_check(void) {
     if (nooff < 0) nooff = pm_debug_has("nooff");
     r = img_role(0);
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
-    if (!nooff && (r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(cimg, cimg_stride, cimg_siz);
+    if (!nooff && (r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(cimg ? cimg : zb_fake, cimg_stride, cimg_siz);
 }
 static const void* tlut_pal[16];
 static unsigned tile_tmem[8], tile_pal[8];
@@ -210,6 +212,9 @@ static Vtx verts[64];
 /* A display list may only draw vertices its own G_VTX loaded. Slots left by
  * the previous model otherwise connect the two meshes into long triangles. */
 static u8 vert_live[64];
+/* B5: G_MODIFYVTX G_MWO_POINT_XYSCREEN sets the screen position of a loaded vertex (underwater warp). x, y in 10.2 fixed point. */
+static u8 vert_scr[64];
+static s16 vert_sx[64], vert_sy[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
 static float vert_m[64][4][4];
 static u8 seen[256];
@@ -962,6 +967,13 @@ static void draw_tri(unsigned w) {
     dual_bind();
     for (i = 0; i < 3; i++) {
         xform_vtx(vert_m[idx[i]], &verts[idx[i]], &poly[i]);
+        if (vert_scr[idx[i]]) { /* B5: screen position from G_MODIFYVTX, the inverse of the viewport map (x, y only, z and w kept in ratio) */
+            ClipV* p = &poly[i];
+            p->z = p->w > 0.f ? p->z / p->w : 0.f;
+            p->w = 1.f;
+            p->x = ((float)vert_sx[idx[i]] / 4.f - vp_tx) / vp_sx;
+            p->y = (vp_ty - (float)vert_sy[idx[i]] / 4.f) / vp_sy;
+        }
     }
     if (!have_sample && poly[0].w != 0.f) {
         sample_x = (int)(poly[0].x / poly[0].w * 100.f);
@@ -1511,9 +1523,25 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (v0 == 0 && dd_on()) { dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1; }
                 for (unsigned i = 0; i < n; i++) {
                     vert_live[v0 + i] = 1;
+                    vert_scr[v0 + i] = 0;
                     memcpy(vert_m[v0 + i], combined, sizeof combined);
                 }
             }
+            break;
+        }
+        case G_MODIFYVTX: { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
+            unsigned where = (w0 >> 16) & 0xff, vi = (w0 & 0xffffu) / 2;
+            static int lf = -1, lc, bad;
+            if (where == G_MWO_POINT_XYSCREEN && vi < 64) {
+                vert_sx[vi] = (s16)(w1 >> 16);
+                vert_sy[vi] = (s16)(w1 & 0xffffu);
+                vert_scr[vi] = 1;
+                if (lf != rm_frame) {
+                    if (lf >= 0) pm_log("modifyvtx f%d count %d", lf, lc);
+                    lf = rm_frame; lc = 0;
+                }
+                if (lc++ < 8) pm_log("modifyvtx f%d v%u sx %d sy %d (10.2)", rm_frame, vi, (int)(s16)(w1 >> 16), (int)(s16)(w1 & 0xffffu));
+            } else if (bad++ < 4) pm_log("modifyvtx ignored where %02x vtx %u", where, vi);
             break;
         }
         case G_TRI1:
@@ -1670,7 +1698,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int ns = (int)((w0 >> 19) & 3);
             if (nc != cimg || ns != cimg_siz) pm_gpu_off_end(); /* V05 */
             cimg = nc;
-            cimg_zero = (w1 == 0);
+            cimg_zero = (w1 == 0); zcol = 0;
             cimg_siz = ns;
             cimg_stride = (int)(w0 & 0xfff) + 1;
             imglog("setcimg", cimg, cimg_siz, cimg_stride, img_role(0));
@@ -1737,6 +1765,9 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
             if (cimg == (void*)DepthCopyBuffer) { pm_depth_query(timg, (int)((s16)(hs >> 16) >> 5), sci_x0); break; }
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
+            /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
+            zcol = cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)cimg >= nuGfxZBuffer && (const unsigned short*)cimg < nuGfxZBuffer + 320 * 240)) && !(omode_l & (1u << G_MDSFT_ZSRCSEL));
+            if (zcol) { zslot_on = 1; sync_render(); }
             off_screen_check();
             box_fold_sync();
             comb_audit();
@@ -1778,10 +1809,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     pm_gpu_tex_rect(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1);
                 }
             }
+            zcol = 0;
             break;
         }
         case G_SETTIMG:
             timg = ptr_of(w1);
+            if (!w1 && zslot_on && ((w0 >> 19) & 3) == 2) timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
             imglog("settimg", timg, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1, -1);
             /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
             if (timg && pm_is_cfb(timg) && !pm_is_cur_cfb(timg)) pm_cfb_capture_prev(); /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */

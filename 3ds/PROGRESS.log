@@ -164,3 +164,7 @@
 07:22 F08 built 3dsx +444 B, run mim_11:0 with and without nofog, expect 120 s
 07:24 F08 mim_11:0 shot on vs nofog differs 47 pct, fog haze visible. golden toad yard battle title, expect 150 s
 07:26 F08 committed, row moved to SLICES_DONE
+07:27 B5 added G_MODIFYVTX case, vert_scr override in draw_tri, temp hook tmpuw in pm_warp.c. build, expect 600 s
+07:33 B5 built, run preset=toad battle tmpuw imglog offdump, expect 120 s
+07:36 B5 f200 shows z-buffer strips are ROLE_DEPTH (Z_CMP in oml 00504f50): added zcol slot path for texrect without ZS_PRIM, zb_fake key. build, expect 600 s
+07:41 B5 z slot made at f200 (offdump off200_1 shows scene), shot shows tinted warp mesh, modifyvtx count 864 per frame. hook removed, rebuild, golden toad yard battle, expect 400 s
