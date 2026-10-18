@@ -23,6 +23,11 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F07 | LATER. Widescreen mode. Plan after the hardware run. Full text: docs/plans/F07.md USER DECISION 2026-10-18: runs on N3DS and O3DS as a toggle (wired to the UI later). Not before optimization. Build 4:3 for now. | plan in docs/
 [ ] F09 | LATER, future feature. Language select. Decide scope after the hardware run. Full text: docs/plans/F09.md USER DECISION 2026-10-18: US build only. Later, language text may come from a PAL ROM. No 25/50 Hz mode. Not before optimization. | plan in docs/
 [ ] F10 | NICE TO HAVE, last. Fix the endless loop in tst_12. Full text: docs/plans/F10.md | warp=tst_12:0 -Turbo -Smoke -FaultStop exit 0, no flood. Decide: patch the game data or add a documented port rule (needs the user)
-[ ] F11 | LATER with F06 and F07, after optimization (user wish 2026-10-18). Options menu: a new entry on the file select screen, also opened by the 3DS Select button. Holds toggles (60 fps, widescreen), debug options and input rebinding. Static mappings (C4E) until then. Discuss details with the user first. Plan only | plan in docs/plans/F11.md after the user talk
+[ ] F11-1 | (sonnet) BEFORE S28 (user decision 2026-10-18, plan docs/plans/F11.md). pm_options.c: pm_opt struct, defaults, options.txt on the SD card, log line. No menu | per F11.md slice F11-1
+[ ] F11-2 | (sonnet) BEFORE S28. Options item on the file select screen under Copy, Delete and Cancel, empty panel. Follow F11.md; decide D1 by the plan default | per F11.md slice F11-2
+[ ] F11-3 | (sonnet) BEFORE S28. Options panel rows (60 FPS, Widescreen, debug toggles), Select opens it on file select, save on close | per F11.md slice F11-3
+[ ] F11-4 | Wire pm_opt.fps60 and pm_opt.wide inside F06 and F07 (part of those rows)
+[ ] F11-5 | LATER. Rebinding (needs the user, D5). Plan docs/plans/F11.md
+[ ] F11-6 | LATER. Select menu at any time on the bottom screen (needs the user, D2). Plan docs/plans/F11.md
 
 [ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only. Full text: docs/plans/B7.md | `push-o`, `pull-o`, `phase_report.py`
