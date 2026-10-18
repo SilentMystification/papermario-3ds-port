@@ -42,6 +42,7 @@ static int have;
 /* V05: off-screen images of this frame (render textures owned by pm_gpu.c) */
 static struct { const u8* base; unsigned stride; C3D_Tex* tex; int siz, w, h; } offt[4]; /* siz as pm_gpu_off_begin */
 static int offt_n, off_cur = -1, off_ox, off_oy;
+static int aux_off = -1, aux_ox, aux_oy; /* V12c: TEXEL1 is an off-screen slot (the grab of the frame buffer) */
 void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, int siz, int w, int h) {
     offt[i].siz = siz;
     offt[i].w = w;
@@ -51,13 +52,14 @@ void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, i
     offt[i].tex = (C3D_Tex*)tex;
     if (i >= offt_n) offt_n = i + 1;
 }
-void pm_tex_clear_offscreen(void) { offt_n = 0; off_cur = -1; }
+void pm_tex_clear_offscreen(void) { offt_n = 0; off_cur = -1; aux_off = -1; }
 void pm_tex_origin(int* x, int* y) {
     *x = (have && off_cur >= 0) ? off_ox : 0;
     *y = (have && off_cur >= 0) ? off_oy : 0;
 }
 static GPU_TEXTURE_WRAP_PARAM wrap_s = GPU_REPEAT;
 static GPU_TEXTURE_WRAP_PARAM wrap_t = GPU_REPEAT;
+static int shr_s, shr_t, aux_shr_s, aux_shr_t; /* V12c: the texture is only mask wide, the GPU wrap does the mask (set per load) */
 
 static GPU_TEXTURE_WRAP_PARAM wrap_of(unsigned mode, unsigned mask) {
     /* mask 0 is clamp on the RDP, whatever the wrap field says. */
@@ -349,8 +351,16 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
         return 0;
     }
+    shr_s = shr_t = 0;
     if (mk_on && lut == NULL) {
         int mw = (mk_ws && (int)mk_ws < width) ? (int)mk_ws : 0, mh = (mk_wt && (int)mk_wt < height) ? (int)mk_wt : 0;
+        /* V12c: a tile window far larger than its mask (fright jar: window 501, mask 128, SetTileSize to 2000 only lifts the clamp) cannot be
+         * expanded (512 x 512 is over the build size) and the load failed. The RDP applies the mask after the clamp, so a window larger than
+         * the mask repeats (or mirrors) the mask sized image. Build that image, the GPU wrap repeats it. */
+        if ((mw || mh) && pot_at_least_8(width) * pot_at_least_8(height) > 128 * 1024) {
+            if (mw) { width = mw; shr_s = 1; mw = 0; }
+            if (mh) { height = mh; shr_t = 1; mh = 0; }
+        }
         if (mw || mh) dkey = (unsigned)(mw | mh << 8 | (int)mk_ms << 16 | (int)mk_mt << 17) | 0x80000000u;
         if (mw && stride < mw) stride = mw; /* the source row is the mask width, not the tile width */
         else if (!mw && stride < width) stride = width;
@@ -539,7 +549,7 @@ int pm_tex_bind(void) {
     }
     if (!have || cur < 0 || !slots[cur].live) return 0;
     slots[cur].stamp = ++stamp;
-    C3D_TexSetWrap(&slots[cur].tex, wrap_s, wrap_t);
+    C3D_TexSetWrap(&slots[cur].tex, shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t);
     C3D_TexBind(0, &slots[cur].tex);
     return 1;
 }
@@ -559,19 +569,23 @@ void pm_tex_size(int* w, int* h) {
 
 /* S25: the texture just loaded becomes TEXEL1 (unit 1). Wrap is that tile's own. */
 int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
-    if (have && off_cur >= 0) { aux = -1; return 0; }
+    aux_off = -1;
+    if (have && off_cur >= 0) { aux = -1; aux_off = off_cur; aux_ox = off_ox; aux_oy = off_oy; return 1; }
     if (!have || cur < 0 || !slots[cur].live) { aux = -1; return 0; }
     aux = cur;
     aux_ws = wrap_of(cms, masks);
     aux_wt = wrap_of(cmt, maskt);
+    aux_shr_s = shr_s;
+    aux_shr_t = shr_t;
     return 1;
 }
 
 int pm_tex_bind_aux(void) {
+    if (aux_off >= 0 && aux_off < offt_n) { C3D_TexBind(1, offt[aux_off].tex); return 1; }
     if (aux < 0 || !slots[aux].live) return 0;
     slots[aux].stamp = ++stamp;
     slots[aux].epoch = epoch;
-    C3D_TexSetWrap(&slots[aux].tex, aux_ws, aux_wt);
+    C3D_TexSetWrap(&slots[aux].tex, aux_shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_ws, aux_shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_wt);
     C3D_TexBind(1, &slots[aux].tex);
     return 1;
 }
@@ -580,7 +594,10 @@ void pm_tex_unbind_aux(void) { C3D_TexBind(1, NULL); }
 
 void pm_tex_aux_size(int* w, int* h) {
     int pw = 1, ph = 1;
-    if (aux >= 0 && slots[aux].live) {
+    if (aux_off >= 0 && aux_off < offt_n) {
+        pw = offt[aux_off].w;
+        ph = offt[aux_off].h;
+    } else if (aux >= 0 && slots[aux].live) {
         pw = pot_at_least_8(slots[aux].w);
         ph = pot_at_least_8(slots[aux].h);
     }
@@ -588,4 +605,5 @@ void pm_tex_aux_size(int* w, int* h) {
     if (h) *h = ph;
 }
 
-int pm_tex_aux_valid(void) { return aux >= 0 && slots[aux].live; }
+int pm_tex_aux_valid(void) { return (aux_off >= 0 && aux_off < offt_n) || (aux >= 0 && slots[aux].live); }
+void pm_tex_aux_origin(int* x, int* y) { *x = aux_off >= 0 ? aux_ox : 0; *y = aux_off >= 0 ? aux_oy : 0; }

@@ -333,6 +333,13 @@ set_property(SOURCE ${DECOMP}/src/world/area_gv/gv_01/main.c ${DECOMP}/src/world
     ${DECOMP}/src/world/area_kkj/kkj_15/main.c ${DECOMP}/src/world/area_kkj/kkj_16/main.c
     ${DECOMP}/src/world/area_kkj/kkj_23/main.c ${DECOMP}/src/world/area_kkj/kkj_29/main.c
     APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
+# V12c: effect gfx files read one array on into the next array of the file (snowfall D_09000C00_38DC70 is 16 raw bytes with no end, the state
+# list D_09000C10_38DC80 follows. fright_jar indexes D_09004040_3C5BE0 as 22 vertex rows over the three vertex arrays after it). With -fdata-sections
+# the next array was somewhere else: snowfall drew nothing, the jar drew a black wedge.
+# 14 effect gfx files have raw byte lists (grep '^u8 D_09' src/effects/gfx). Only snowfall and fright_jar are done here: all 14 cost 18 KB (the 10 KB rule), see SLICES.md row V12d.
+# Keep the file as one data block in source order, as in the ROM.
+set(EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/snowfall.c ${DECOMP}/src/effects/gfx/fright_jar.c)
+set_property(SOURCE ${EFFECT_GFX_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
 # heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
 # (pm_map.c) and heaps.c gets its copy renamed.
 set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data -DD_80200000=pm_unused_80200000)

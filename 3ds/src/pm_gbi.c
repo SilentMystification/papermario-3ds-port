@@ -924,8 +924,13 @@ static void dual_bind(void) {
     ensure_tile(0);
     pm_tex_size(&tw0, &th0);
     pm_tex_aux_size(&tw1, &th1);
-    pm_gpu_set_tex1((float)tw0 / (float)tw1, (float)th0 / (float)th1, (float)(td[0].x0 - td[1].x0) / (float)tw1,
-                    (float)(td[0].y0 - td[1].y0) / (float)th1);
+    {   /* V12c: the two tiles may have different shifts (bulb glow: tile 0 shift 1, tile 1 shift 0) and TEXEL1 may be a slot with a window origin */
+        int ox1, oy1;
+        float rs = shift_mul(tile_shift[1][0]) / shift_mul(tile_shift[0][0]), rt = shift_mul(tile_shift[1][1]) / shift_mul(tile_shift[0][1]);
+        pm_tex_aux_origin(&ox1, &oy1);
+        pm_gpu_set_tex1((float)tw0 / (float)tw1 * rs, (float)th0 / (float)th1 * rt, ((float)tile_x0 * rs - (float)(td[1].x0 - ox1)) / (float)tw1,
+                        ((float)tile_y0 * rt - (float)(td[1].y0 - oy1)) / (float)th1);
+    }
 }
 
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
@@ -1982,16 +1987,29 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int stride = timg_stride > w ? timg_stride : w;
             int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
             const u8* src = (const u8*)timg;
+            int r_x = ld_x, r_y = ld_y, r_str = timg_stride, r_v = ld_valid;
+            /* V12c: the render tile shows what was loaded at its own TMEM address. A later load of another image at another
+             * address (bulb glow: the frame buffer window into the upper half of TMEM, then SetTileSize of tile 0 for the
+             * next strip) must not replace the image of tile 0. Tile 1 does the same lookup below. */
+            for (unsigned k = 0; k < 4; k++) {
+                if (ldrec[k].img && ldrec[k].tmem == tile_tmem[0] && ldrec[k].img != timg) {
+                    src = (const u8*)ldrec[k].img; r_x = ldrec[k].x; r_y = ldrec[k].y; r_str = ldrec[k].stride; r_v = 1;
+                    stride = r_str > w ? r_str : w;
+                }
+            }
+            /* V12c: a tile window wider than the loaded image only works through the tile mask (it repeats or mirrors the image).
+             * The source rows are as long as the loaded image, not as long as the window (bulb glow: 32 texel image, 65 texel window). */
+            if (tile_wrap[0][2] && (1u << tile_wrap[0][2]) < (unsigned)w && r_str > 0 && r_str < w) stride = r_str;
             /* V05: the source window starts at the LoadTile origin. SetTileSize only says which texel coordinate that is
              * (draw_box loads a strip at row idx * 6 and sets the tile origin to (160 - w / 2, 0)). Both are the same
              * for gDPLoadTextureTile, so this changes no other draw. */
-            if (src && bpp && ld_valid) src += (size_t)(ld_y * stride + ld_x) * (size_t)bpp;
+            if (src && bpp && r_v) src += (size_t)(r_y * stride + r_x) * (size_t)bpp;
             /* V13: no source offset for a block load. SetTileSize only moves the coordinates (the pan of a lava model). */
-            else if (src && tile_siz[0] == 0 && ld_valid) {
+            else if (src && tile_siz[0] == 0 && r_v) {
                 /* 4-bit strips (imgfx meshes) load a window of an 8-bit-wide image. The
                  * tile size carries only the scroll, so the window comes from LoadTile. */
-                src += (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
-                stride = timg_stride * 2;
+                src += (size_t)r_y * (size_t)r_str + (size_t)r_x;
+                stride = r_str * 2;
             }
             tile_x0 = x0;
             tile_y0 = y0;

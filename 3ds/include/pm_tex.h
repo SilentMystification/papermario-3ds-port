@@ -36,6 +36,7 @@ void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt)
 int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt);
 int pm_tex_bind_aux(void);
 int pm_tex_aux_valid(void);
+void pm_tex_aux_origin(int* x, int* y); /* V12c: window start inside an off-screen TEXEL1 slot */
 void pm_tex_unbind_aux(void);
 void pm_tex_aux_size(int* w, int* h);
 

@@ -202,3 +202,13 @@
 08:37 C2R map tour finished, battle stage loop 244 stages next, expect 60 min
 08:40 V13b golden toad 0.00 yard 0.00 battle 0.67, hos_05 fast 0 tex ptr, water tour of 7 maps no failure. writing docs
 08:40 V13b committed, row moved to SLICES_DONE
+09:00 V12c temp hook fxtest in pm_warp.c (bulb, snow, shim, jar), build then run toad fxtest=b, expect 60 s
+09:20 V12c cause 1: pm_tex_set_aux refused an off-screen slot as TEXEL1 (the grab), dual_bind ignored tile 1 shift and origin. Fix in pm_tex.c and pm_gbi.c dual_bind, build, expect 120 s
+09:45 V12c cause 2: G_SETTILESIZE of tile 0 took the last SETTIMG image (the frame buffer of the previous strip) as tile 0 image. Fixed with ldrec lookup by tile 0 TMEM address. build, run toad fxtest=b, expect 120 s
+10:00 V12c cause 3: tile 0 window (65 texel) wider than the 32 texel image used the window as source row length, bands. Use the image stride when a tile mask applies. build, run bulb, expect 120 s
+10:10 V12c bulb glow fixed (round glow, type 0 over scene, no black). now snowfall, shimmer, jar via fxtest hook
+10:25 V12c snowfall cause: -fdata-sections splits the 16 byte raw list D_09000C00_38DC70 from the state list D_09000C10 (map: far apart). Fix: -fno-data-sections -fno-toplevel-reorder on src/effects/gfx/*.c in 3ds/CMakeLists.txt. build, run toad battle fxtest=s, expect 150 s
+10:50 V12c fright jar cause: tile window 501 with mask 128 (SetTileSize 2000 lifts clamp), expand over build size, load failed, nothing drawn. Fix in pm_tex.c: build mask sized image, GPU wrap repeats. build, run toad battle fxtest=j, expect 150 s
+11:05 V12c fright jar real cause: D_09004040_3C5BE0 is indexed as 22 vertex rows over the 3 vertex arrays after it, -fdata-sections split them (map: far apart). Add fright_jar.c to EFFECT_GFX_SRC. The pm_tex.c mask change stays (window 501 load failure is real). build, run, expect 150 s
+11:15 V12c temp hook and temp log removed, build, golden toad yard battle pause1, expect 150 s
+11:25 V12c goldens: toad 0.00, yard 0.00, battle 0.67, pause1 0.00. 3dsx +22.8 KB (jar and snowfall data kept by -fno-data-sections). code commit next, then docs
