@@ -68,3 +68,4 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 - Maps and battle: `src/world/area_hos/hos_05/intro.c`, `src/battle/area/kzn2/actor/lava_piranha.c`, `src/world/common/lava_piranha/part1.inc.c` (vine buffers), `src/battle/190B20.c` (`EVT_IS_PTR`).
 - Link-time hooks (`3ds/CMakeLists.txt`): `--wrap` of `get_map_IDs_by_name`, `set_game_mode`, `load_map_by_IDs`, `dma_copy`, `load_asset_by_name`, `step_game_loop`, `gfx_draw_frame`, `gfx_task_background`. Flags `-fsigned-char -fwrapv -fno-short-enums`. `world.c` is cut at `#define AREA(`.
 - Sources outside `3ds`: `src/world/world.c` (real gAreas), `src/screen_overlays.c`, `src/curtains.c`, `src/battle/*` (merged by M03).
+- Lanes (parallel build worktree, `PM_LANE`, volume, merge, removal, cost): `docs/LANES.md`. Plan: `docs/PARALLEL_PLAN.md`.

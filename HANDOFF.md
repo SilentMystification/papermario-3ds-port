@@ -76,3 +76,4 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - Storage at real N64 addresses (class C, no game logic): `gBackgroundImage` and `pm_world_entity_heap` (`3ds/src/pm_kmr_stubs.c`).
 - Gone (do not look for them): `area_table.c`, `pm_title.c`, `pm_evt_stub.c`, `pm_actor_link.c`, `pm_shadow.c`, `pm_fx.c`, battle stand-ins, effect graphics zeros (A17), shadow headers (B3 to B6), the `spriteIdx` guard, `note_door`.
 - Not stand-ins but still approximate: fixed light direction for `G_LIGHTING` vertices (`pm_gbi.c`), no fog table (F08), no texture generation, LOD or `G_BRANCH_Z`.
+- Lane B (worktree ..\papermario-3ds-port-laneB, branch lane-b, `PM_LANE=laneB`): see docs/LANES.md. Build parallel, run one at a time.
