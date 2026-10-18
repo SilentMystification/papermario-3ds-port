@@ -143,3 +143,7 @@
 05:52 B2 flo_10:2 slot dump shows the scene upright (8 copies per frame then reuse, stats sp8 sl1 gr8). temp hook removed (flo_10/main.c clean). build + golden toad yard battle pause1, expect 400 s
 05:57 B2 golden toad 0 yard 0 battle 1.06 pause1 23.63 (unchanged), 3dsx 13018360 B (+2856). docs written, commit
 05:57 B2 row moved to SLICES_DONE
+05:58 GP1 shot vs reference: reference shows toad yard behind menu, now black background. bisect via worktree at 89441f330, build+golden pause1, expect 300 s
+06:12 GP1 bisect: ok at 89441f330, DIFF at 6885fd88d (F03) and later. read F03 diff
+06:20 GP1 cause: F03 skip of texture load for z-buffer tiles also skips the pause background (tall tiles from nuGfxZBuffer, background_gfx.c:373). fix: skip only 1 row tiles. build + golden pause1 toad yard battle, expect 400 s
+06:33 GP1 golden pause1 0.00 toad 0 yard 0 battle 1.04, 3dsx 13018352 B (-8). commit

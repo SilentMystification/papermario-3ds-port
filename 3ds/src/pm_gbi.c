@@ -1904,8 +1904,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             /* One batch can only sample one image. The last load of the frame
              * was being bound for every surface, so the house wore one fence. */
             pm_gpu_flush();
-            /* F03: a tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture */
-            if (src && w > 0 && h > 0 && (unsigned)timg - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u) {
+            /* F03: a 1 row tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture (the pause background loads tall z-buffer tiles, those are textures) */
+            if (src && w > 0 && h > 0 && (h > 1 || (unsigned)timg - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u)) {
                 const void* pal0 = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
                 if (tile_fmt[0] == 0 && tile_siz[0] == 2) grab_cur(src, w);
                 pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, pal0, tlut_n, stride);
