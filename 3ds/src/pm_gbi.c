@@ -508,11 +508,17 @@ static unsigned rgba_from_5551(unsigned c) {
 /* L01: RSP light table. G_MW_NUMLIGHT sets the count, G_MOVEMEM index G_MV_LIGHT fills slots (slot 0 is light 1, slot nlights is the ambient light). */
 static struct { u8 col[3]; s8 dir[3]; } lt[9];
 static unsigned lt_n;
+static s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
+static unsigned tex_ss = 0xFFFF, tex_ts = 0xFFFF; /* T02: G_TEXTURE s and t scale, 0x10000 is 1.0 */
+static float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
+static int tg_ok;
+static float tg_s, tg_t; /* T01: texgen result of the last vert_color call */
 static unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex is loaded, as the RSP does */
 
 /* L01: RSP lighting. The normal goes through the model view matrix, then colour = ambient + sum(light colour * max(0, normal . direction)). Alpha stays the vertex alpha.
  * Debug switch nolight keeps the old fixed light for an A/B. */
 static unsigned vert_color(const Vtx* v, const float m[4][4]) {
+    tg_ok = 0;
     if (geom & G_LIGHTING) {
         static int nolight = -1;
         float nx = (float)(signed char)v->v.cn[0] / 127.f;
@@ -531,6 +537,13 @@ static unsigned vert_color(const Vtx* v, const float m[4][4]) {
         float tz = nx * m[0][2] + ny * m[1][2] + nz * m[2][2];
         float l2 = tx * tx + ty * ty + tz * tz;
         if (l2 > 0.f) { float k = 1.f / sqrtf(l2); tx *= k; ty *= k; tz *= k; }
+        if (geom & G_TEXTURE_GEN) { /* T01: F3DEX2 texgen is in the lighting path. Non-linear: (dot + 1) / 4 * scale. G_TEXTURE_GEN_LINEAR has no user in src */
+            float dx = (tx * lk[0][0] + ty * lk[0][1] + tz * lk[0][2]) / 127.f;
+            float dy = (tx * lk[1][0] + ty * lk[1][1] + tz * lk[1][2]) / 127.f;
+            tg_s = (dx + 1.f) / 4.f * (float)tex_ss;
+            tg_t = (dy + 1.f) / 4.f * (float)tex_ts;
+            tg_ok = 1;
+        }
         float r = lt[lt_n].col[0], g = lt[lt_n].col[1], b = lt[lt_n].col[2];
         for (unsigned i = 0; i < lt_n; i++) {
             float d = (tx * lt[i].dir[0] + ty * lt[i].dir[1] + tz * lt[i].dir[2]) / 127.f;
@@ -546,7 +559,7 @@ static unsigned vert_color(const Vtx* v, const float m[4][4]) {
            ((unsigned)v->v.cn[2] << 8) | (unsigned)v->v.cn[3];
 }
 
-static void vert_uv(const Vtx* v, float* u, float* vcoord) {
+static void vert_uv(const float* tc, float* u, float* vcoord) {
     int tw = 1, th = 1;
     pm_tex_size(&tw, &th);
     if (tw < 1) tw = 1;
@@ -557,8 +570,8 @@ static void vert_uv(const Vtx* v, float* u, float* vcoord) {
     unsigned st = use_t1 ? 1 : 0;
     float ms = shift_mul(tile_shift[st][0]);
     float mt = shift_mul(tile_shift[st][1]);
-    *u = ((float)v->v.tc[0] / 32.f * ms - (float)tile_x0) / (float)tw;
-    *vcoord = ((float)v->v.tc[1] / 32.f * mt - (float)tile_y0) / (float)th;
+    *u = (tc[0] / 32.f * ms - (float)tile_x0) / (float)tw;
+    *vcoord = (tc[1] / 32.f * mt - (float)tile_y0) / (float)th;
 }
 
 typedef struct {
@@ -586,7 +599,7 @@ static const float ident_m[4][4] = {
 };
 
 /* The RSP multiplies when the vertex is loaded. Later matrices do not move it. */
-static void xform_vtx(const float m[4][4], const Vtx* v, unsigned c, ClipV* o) {
+static void xform_vtx(const float m[4][4], const Vtx* v, const float* st, unsigned c, ClipV* o) {
     float x = (float)v->v.ob[0];
     float y = (float)v->v.ob[1];
     float z = (float)v->v.ob[2];
@@ -594,7 +607,7 @@ static void xform_vtx(const float m[4][4], const Vtx* v, unsigned c, ClipV* o) {
     o->y = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
     o->z = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
     o->w = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-    vert_uv(v, &o->u, &o->v);
+    vert_uv(st, &o->u, &o->v);
     o->r = (float)((c >> 24) & 255u);
     o->g = (float)((c >> 16) & 255u);
     o->b = (float)((c >> 8) & 255u);
@@ -995,7 +1008,7 @@ static void draw_tri(unsigned w) {
     ensure_tile(use_t1 ? 1 : 0);
     dual_bind();
     for (i = 0; i < 3; i++) {
-        xform_vtx(vert_m[idx[i]], &verts[idx[i]], vert_c[idx[i]], &poly[i]);
+        xform_vtx(vert_m[idx[i]], &verts[idx[i]], vert_st[idx[i]], vert_c[idx[i]], &poly[i]);
         if (vert_scr[idx[i]]) { /* B5: screen position from G_MODIFYVTX, the inverse of the viewport map (x, y only, z and w kept in ratio) */
             ClipV* p = &poly[i];
             p->z = p->w > 0.f ? p->z / p->w : 0.f;
@@ -1553,7 +1566,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 for (unsigned i = 0; i < n; i++) {
                     vert_live[v0 + i] = 1;
                     vert_scr[v0 + i] = 0;
+                    vert_st[v0 + i][0] = (float)src[i].v.tc[0] * (float)tex_ss / 65536.f; /* T02: the RSP scales S and T */
+                    vert_st[v0 + i][1] = (float)src[i].v.tc[1] * (float)tex_ts / 65536.f;
                     vert_c[v0 + i] = vert_color(&src[i], mv[mv_sp]);
+                    if (tg_ok) { vert_st[v0 + i][0] = tg_s; vert_st[v0 + i][1] = tg_t; }
                     memcpy(vert_m[v0 + i], combined, sizeof combined);
                 }
             }
@@ -1601,6 +1617,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 unsigned ix = w0 & 0xff, n = ++mm_cnt[ix];
                 if (n == 1 || n == 1000 || n == 1000000) pm_log("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
             }
+            if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
+                int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
+                const u8* l = (const u8*)ptr_of(w1);
+                if (l && (ls == -2 || ls == -1)) { lk[ls + 2][0] = (s8)l[8]; lk[ls + 2][1] = (s8)l[9]; lk[ls + 2][2] = (s8)l[10]; }
+            }
             if ((w0 & 0xff) == G_MV_LIGHT) { /* L01: offset 0 and 24 are the look-at vectors, light n is at n * 24 + 24 */
                 int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
                 const u8* l = (const u8*)ptr_of(w1);
@@ -1633,6 +1654,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_TEXTURE:
             tex_on = (w0 & 0xff) != 0;
+            tex_ss = w1 >> 16;
+            tex_ts = w1 & 0xffffu;
             sync_combine();
             break;
         case G_SETOTHERMODE_H:

@@ -222,3 +222,6 @@
 10:19 L01b hand calc vs log (mac_01 light col 255 dir 111 32 -52 amb 0, mv scale 0.5): nrm (51,105,51) exp 100=0x64 log 64, (121,24,32) exp 197 log c5, (103,69,28) exp 192 log c0, (19,-105,70) exp 0 log 00. all match. log removed
 10:19 L01b rebuild without log, golden toad yard battle pause1, expect 7 min
 10:27 L01b goldens toad 0.00 yard 0.00 battle 1.07 pause1 0.00. no fault, no code change. row moved to SLICES_DONE
+10:30 T01/T02 code in pm_gbi.c: texgen in G_VTX path, lookat from MOVEMEM, G_TEXTURE s/t scale on vertex UV. T02 finding: screen_overlays.c:141 draws gsSP2Triangles not texrect, so scale applies. T01 finding: only user is mac_01 mirrorball (reachable: read_fortune.inc.c). build now, expect 8 min
+10:37 T01/T02 build ok 3dsx 13049852->13050412 (+560). golden toad 0.03 yard 0.04 battle 0.69 title 0.01 pause1 0.00. now mac_01 ball padscript from B3b, expect 120 s
+10:41 T01/T02 mac_01 ball seen (decal inside ball, unchanged). mirrorball sphere not seen. docs written. moving rows
