@@ -2,15 +2,6 @@
 #include "pm_port.h"
 #include "audio/public.h"
 
-/* Systems kmr_20 reaches that are not linked yet. Each is replaced by its real file later. */
-
-
-
-
-
-
-
-
 /* Real N64 address 0x80200000 (undefined_syms.txt). The decoded background file (header, CI8 raster, palette) lands here. */
 unsigned char gBackgroundImage_buf[0x40000] __asm__("gBackgroundImage") __attribute__((aligned(16)));
 

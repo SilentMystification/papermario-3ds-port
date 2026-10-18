@@ -364,8 +364,7 @@ set(PORT_SRC
     src/pm_map.c
     src/pm_mapdata.c
     src/map_restore_table.c
-    src/pm_kmr_stubs.c
-    src/pm_actor_stubs.c
+    src/pm_buffers.c
     src/game_stubs.c
     src/effect_loads.c
 )

@@ -23,7 +23,7 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 - `pm_warp.c`: warp, presets, story, battle hooks, tour, `ptrcheck`, `sp`, `hp`, smoke.
 - `effect_loads.c`: generated C form of the effect load asm.
 - `rom_remap.h`: generated list of dropped ROM ranges and swap ranges.
-- `game_stubs.c`: `pm_game_bind`, empty N64 shims (Q5). `pm_later.c`, `pm_kmr_stubs.c`, `pm_actor_stubs.c`: almost empty, only the stand-ins named in HANDOFF.md.
+- `game_stubs.c`: `pm_game_bind`, empty N64 shims (Q5). `pm_later.c`: almost empty. `pm_buffers.c`: the buffers gBackgroundImage_buf and pm_world_entity_heap.
 - Headers: `3ds/include/` (`pm_port.h`, `pm_gbi.h`, `pm_gpu.h`, `pm_tex.h`, `pm_rsp_audio.h`). Generated headers: `3ds/stub_include/` (below). Shader: `3ds/shaders/pm.v.pica`.
 
 ## Tools and scripts (3ds/tools and 3ds)
