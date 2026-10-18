@@ -16,7 +16,7 @@ Written 2026-10-17 for a NEW orchestrator chat. Read this file, then HANDOFF.md,
 - Launch the next slice automatically. Do not wait for the user. Work in large chunks until the queue is empty or a stop condition (section 7) holds.
 - A question only the user can answer: add it to 3ds/QUESTIONS.md and continue with other work.
 - Start no subagent the user did not expect. When the context grows long, stop at a finished slice, ask an agent for a short HANDOFF.md note, and ask the user to start a new chat.
-- H05 FINDINGS (user amendment 2026-10-18): add each finding that needs no user decision as a queue row at once and work it at once. Do not wait for the user review. Only findings that need a user decision (button map, memory over 10 KB, scope) wait.
+- H05 FINDINGS (user amendment 2026-10-18): add each finding that needs no user decision as a queue row at once and work it at once. Do not wait for the user review. Only findings that need a user decision (button map, scope) wait.
 - HANDOFF POINT (user decision 2026-10-18): when the chat grows long, tell the user in one line that a handoff is due and refresh docs/ORCH_STATE.md. Do NOT stop work. Keep launching rows until the queue is empty or a stop condition (section 7) holds. The user may be asleep.
 - Agents read AGENT_RULES.md, not this file. Batch doc edits into one docs agent per milestone. Reuse a running agent by SendMessage for a small follow-up.
 
