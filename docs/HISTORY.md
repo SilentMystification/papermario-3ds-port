@@ -1624,3 +1624,9 @@ Old text moved from 3ds/QUESTIONS.md.
 - Size: 3dsx 10,919,956 to 13,011,156 B (+2,091,200 B). Boot line: commit limit 98304KB used-by-image 18944KB, heap total 51200KB, sbrk-left 23716KB (Azahar numbers). Map line at load: heap used 27543KB, linear peak 7527KB, texture failures 0.
 - Checks (-Turbo -Smoke -FaultStop, 300 frames each, exit 0, no fault, no unmapped access): warp kpa_03, kzn_03, flo_03, jan_03, sam_03, pra_03 (entry 0), presets yard and toad.
 - Not checked: the other 148 new maps, entry points other than 0, the exit scripts of the new maps, tour of all maps, hardware (S28), full chain, golden frames.
+
+## F01 kmr_23 (lane B)
+- Cause (docs/plans/F01_causes.md): the tour warp skips the exit script of kmr_23. The curtain draw callback stays set. `func_80240DA4_9087D4` runs on the next map with a NULL data pointer.
+- Fix: 3ds/src/pm_warp.c `tour_step` calls `set_curtain_scale_goal(2.0f)` and `set_curtain_draw_callback(NULL)` before the map change. This is the same as `N(func_80240010_907A40)` in kmr_23/main.c. No guard in the decomp.
+- Checks (-Turbo -Smoke -FaultStop): `warp=kmr_23:0 tour=iwa_01:0,iwa_00:0 smokeframes=200` rc 0, no unmapped access. Presets yard and toad rc 0.
+- Not checked: the run before the fix (fault not reproduced for comparison), the full tour, the real exit with entry 4 (kzn_19), other maps that set a curtain callback, hardware, tst_12, nok_01.

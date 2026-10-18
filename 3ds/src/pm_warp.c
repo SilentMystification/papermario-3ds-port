@@ -220,6 +220,9 @@ static void tour_step(void) {
         return;
     }
     pm_log("tour: next %s entry %d (area %d map %d)", name, entry, areaID, mapID);
+    /* F01: the tour skips the exit script of the map (kmr_23 N(func_80240010_907A40)). Do what it does, else the curtain callback runs on the next map. */
+    set_curtain_scale_goal(2.0f);
+    set_curtain_draw_callback(NULL);
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)entry;

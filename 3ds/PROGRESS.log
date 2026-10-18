@@ -54,3 +54,5 @@
 02:10 S30b build ok, 3dsx 10919956 -> 13011156 B (+2091200)
 02:20 S30b warp kpa_03 kzn_03 flo_03 jan_03 sam_03 pra_03 and presets yard toad: rc 0, no fault, 300 frames each
 02:25 S30b docs written, committing
+03:00 F01 kmr_23: tour_step in pm_warp.c now runs set_curtain_scale_goal(2.0f) and set_curtain_draw_callback(NULL) as the real exit script does
+03:05 F01 kmr_23 check warp=kmr_23:0 tour=iwa_01:0,iwa_00:0 -Turbo -Smoke -FaultStop: rc 0, no unmapped access. yard rc 0, toad rc 0
