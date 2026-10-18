@@ -56,7 +56,6 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - V07 (SHELVED by user 2026-10-18): items flicker. Not reproduced in Azahar. The user reports it again if seen. Do not work on it.
 - V09 (two rows): intro tints changed by S25 (and nok_01 tour fault). kmr_22 card shows a rainbow bar.
 - V10: battle Strategies box and level-up box draw as a checkerboard.
-- V11: kmr_05 path to the first Goomba is blocked at x 75 to 88.
 - V09 intro tints and nok_01 shelved by the user, partial edits on branch shelf/v09-nok01.
 - X02: darkness overlay draws the whole screen black (kgr_01, kgr_02, omo_12, omo_14, kzn_08).
 - F03: `is_point_visible` reads a NULL z-buffer (hos_05 lamp, `tex ptr 0000fd7e`).
