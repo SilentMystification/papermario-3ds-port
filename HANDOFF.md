@@ -104,3 +104,5 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - C2R partly done: 421 map tour and 181 of 244 battle stages counted in H05_findings C2-02. Left: 63 stages (3ds/logs/c2r_battle.sh, from line 182) and effects (FX1a). New rows C2F, C2G, C2H, C2I.
 
 - V13c done: texture cache peak over 416 maps (switch `texmax`): 46 maps over 3500 KB (kzn_04..23, flo_*, jan_00..02, sbk_*), top kzn_23 and flo_00 at 4096 KB, but the largest one-frame use is 687 KB (kmr_00), `tex cache full` 0, eviction skips slots used in the current frame. Cache size unchanged.
+- V12d done: the 12 effect gfx files are in EFFECT_GFX_SRC (3ds/CMakeLists.txt, -fno-data-sections -fno-toplevel-reorder), 3dsx +18 KB (13050412 to 13068444 B at link). Temp hook shots: balloon, peach_star_beam, snowman_doll, tubba_heart_attack draw.
+- V12d not checked: fire_flower and water_block (run failed), effect_75, lil_oink, quizmo_assistant, static_status, sun, throw_spiny (shot shows nothing, hook arguments unknown), hardware. Golden toad 0.03, yard 0.04, pause1 0.00. battle DIFF 59.7 (dialog 'Hey Mario' in the frame, other agents' uncommitted changes, not this row).

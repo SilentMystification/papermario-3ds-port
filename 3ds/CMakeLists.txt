@@ -341,6 +341,10 @@ set_property(SOURCE ${DECOMP}/src/world/area_gv/gv_01/main.c ${DECOMP}/src/world
 set(EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/snowfall.c ${DECOMP}/src/effects/gfx/fright_jar.c)
 set_property(SOURCE ${EFFECT_GFX_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
 # heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
+# V12d: the 12 other files with a raw u8 D_09 list.
+foreach(_e balloon effect_75 ending_decals fire_flower lil_oink peach_star_beam quizmo_assistant snowman_doll static_status sun throw_spiny tubba_heart_attack water_block)
+    list(APPEND EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/${_e}.c)
+endforeach()
 # (pm_map.c) and heaps.c gets its copy renamed.
 set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data -DD_80200000=pm_unused_80200000)
 set_property(SOURCE ${DECOMP}/src/world/partners.c APPEND PROPERTY COMPILE_OPTIONS -include common.h)
