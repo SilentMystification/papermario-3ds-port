@@ -12,7 +12,7 @@
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1 };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
 typedef struct { unsigned char func; Term t[3]; unsigned char inv[3]; } Sk;
 
@@ -44,7 +44,8 @@ static Term term_rgb(int slot, unsigned sel, int cyc2, int t1only) {
     case 3: return TM(TN_PR, 0);
     case 4: return TM(TN_SH, 0);
     case 5: return TM(TN_EN, 0);
-    case 6: return (slot == 0 || slot == 3) ? TM(TN_ONE, 0) : TM(TN_ZERO, 0);
+    case 6: /* B6: slot 1 is CENTER, slot 2 is the key SCALE */
+        return slot == 1 ? TM(TN_KEY, 0) : slot == 2 ? TM(TN_KS, 0) : slot == 0 || slot == 3 ? TM(TN_ONE, 0) : TM(TN_ZERO, 0);
     default: break;
     }
     if (slot == 2) {
@@ -147,6 +148,9 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     case TN_ZERO: name = PM_NM_ZERO; part = 0; break;
     case TN_ONE: name = PM_NM_ZERO; part = 0; ninv ^= 1; break;
     case TN_PR: name = PM_NM_PRIM; break;
+    case TN_PK: name = PM_NM_PK; break;
+    case TN_KEY: name = PM_NM_KEYC; break;
+    case TN_KS: name = PM_NM_KEYS; break;
     case TN_EN: name = PM_NM_ENV; break;
     case TN_PLOD: name = PM_NM_PLOD; break;
     default: return 5;
@@ -194,6 +198,9 @@ int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
             v[c][1][i] = term_a(i, s[c][4 + i], c, t1only);
         }
     }
+    /* B6: PRIM - CENTER (both constants) is one constant PK, B becomes 0. CENTER anywhere else has no source (reason 5). */
+    for (int c = 0; c < (two ? 2 : 1); c++)
+        if (v[c][0][0].n == TN_PR && v[c][0][1].n == TN_KEY) { v[c][0][0] = TM(TN_PK, 0); v[c][0][1] = TM(TN_ZERO, 0); }
     rc = add_cycle(&R, &A, 0, 0, v[0]);
     if (rc) return -rc;
     if (two) {
@@ -227,8 +234,20 @@ int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     return 0;
 }
 
-static unsigned name_colour(int n, unsigned prim, unsigned env, unsigned plod) {
+static unsigned pk_colour(unsigned prim, unsigned key) {
+    unsigned o = prim & 255u; /* alpha of PK: PRIM alpha */
+    for (int sh = 8; sh < 32; sh += 8) {
+        int d = (int)((prim >> sh) & 255u) - (int)((key >> sh) & 255u);
+        o |= (unsigned)(d < 0 ? 0 : d) << sh; /* PICA constants are not negative: clamp, the RDP result clamps too in the common case */
+    }
+    return o;
+}
+
+static unsigned name_colour(int n, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
     switch (n) {
+    case PM_NM_KEYC: return key;
+    case PM_NM_KEYS: return keys;
+    case PM_NM_PK: return pk_colour(prim, key);
     case PM_NM_PRIM: return prim;
     case PM_NM_ENV: return env;
     case PM_NM_PLOD: return plod * 0x01010101u;
@@ -236,10 +255,10 @@ static unsigned name_colour(int n, unsigned prim, unsigned env, unsigned plod) {
     }
 }
 
-void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod) {
-    for (int i = 0; i < p->n; i++) p->st[i].constant = name_colour(p->st[i].cname, prim, env, plod);
-    p->buf = name_colour(p->bufname, prim, env, plod);
-    p->vtx = (p->vtxname == PM_NM_SHADE) ? 0 : name_colour(p->vtxname, prim, env, plod);
+void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
+    for (int i = 0; i < p->n; i++) p->st[i].constant = name_colour(p->st[i].cname, prim, env, plod, key, keys);
+    p->buf = name_colour(p->bufname, prim, env, plod, key, keys);
+    p->vtx = (p->vtxname == PM_NM_SHADE) ? 0 : name_colour(p->vtxname, prim, env, plod, key, keys);
 }
 
 static void unp(unsigned c, float o[4]) {

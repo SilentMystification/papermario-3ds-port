@@ -74,6 +74,7 @@ static void dd_end(void) {
 }
 
 static unsigned prim = 0xffffffffu;
+static unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
 static unsigned fill = 0xffffffffu;
 static unsigned prim_z; /* X01: G_SETPRIMDEPTH, 15 bit, 0 near, 0x7fff far */
 static int tex_on;
@@ -620,7 +621,7 @@ static int clip_bits(const ClipV* p) {
  * (A-B)*C+D per cycle, on random inputs, against what that mode draws. A difference is logged once
  * ("comb new") and then with a draw count at 1, 10, 100, ... draws ("comb count"). COMBINED is 0 in
  * cycle 1. LOD fraction, noise, key and convert read 0. */
-typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4]; } CcIn;
+typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; } CcIn;
 
 static float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* cb, int alpha, float prlod) {
     int rgb_c = !alpha && slot == 2;
@@ -643,7 +644,7 @@ static float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* c
     case 3: return in->pr[ch];
     case 4: return in->sh[ch];
     case 5: return in->en[ch];
-    case 6: return slot == 0 || slot == 3 ? 1.f : 0.f;
+    case 6: return slot == 1 ? in->ke[ch] : slot == 2 ? in->ks[ch] : slot == 0 || slot == 3 ? 1.f : 0.f;
     case 7: return rgb_c ? cb[3] : 0.f;
     case 8: return rgb_c ? in->t0[3] : 0.f;
     case 9: return rgb_c ? in->t1[3] : 0.f;
@@ -795,13 +796,13 @@ static Dec* decide(int two) {
                     pcs[0] = (unsigned)(lcg_f() * 255.f + .5f); pcs[1] = (unsigned)(lcg_f() * 255.f + .5f);
                     pc = pc << 8 | pcs[0]; ec = ec << 8 | pcs[1];
                 }
-                unpack8(pc, in.pr); unpack8(ec, in.en);
+                unpack8(pc, in.pr); unpack8(ec, in.en); unpack8(keyc, in.ke); unpack8(keys, in.ks);
                 cc_eval(s, two, &in, plod_f, f);
                 cc_legacy(leg_mode, &in, use_t1, g);
                 for (int c = 0; c < 4; c++) { float e = f[c] > g[c] ? f[c] - g[c] : g[c] - f[c]; if (e > el) el = e; }
                 if (!d->why) {
                     PmPlan t = d->plan;
-                    pm_comb_colours(&t, pc, ec, aud_prim_lod);
+                    pm_comb_colours(&t, pc, ec, aud_prim_lod, keyc, keys);
                     pm_comb_eval(&t, use_t1 ? in.t1 : in.t0, in.t1, in.sh, h);
                     for (int c = 0; c < 4; c++) { float e = f[c] > h[c] ? f[c] - h[c] : h[c] - f[c]; if (e > ep) ep = e; }
                 }
@@ -825,7 +826,7 @@ static void sync_combine(void) {
         ls_use = d->use; ls_why = d->why;
         if (d->use) {
             cur_plan = d->plan;
-            pm_comb_colours(&cur_plan, prim, envc, aud_prim_lod);
+            pm_comb_colours(&cur_plan, prim, envc, aud_prim_lod, keyc, keys);
             pm_gpu_set_plan(&cur_plan);
             plan_active = 1;
             return;
@@ -1626,6 +1627,17 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             aud_prim_lod = (u8)(w0 & 0xff);
             prim = w1;
             pm_gpu_set_prim(prim);
+            sync_combine();
+            break;
+        case G_SETKEYR:
+            keyc = (keyc & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24);
+            keys = (keys & 0x00ffffffu) | ((w1 & 0xffu) << 24);
+            sync_combine();
+            break;
+        case G_SETKEYGB:
+            keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
+            keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
+            { static int kl; if (kl < 4) { kl++; pm_log("B6 key centre %08x scale %08x frame %d", keyc, keys, rm_frame); } }
             sync_combine();
             break;
         case G_SETFOGCOLOR:
