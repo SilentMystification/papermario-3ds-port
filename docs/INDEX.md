@@ -52,7 +52,7 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 - Draw A/B: `nocomb` (no combiner plan path), `nocull` (no triangle culling), `nomix` (no blend or fog colour mix), `nooff` (no off-screen targets), `noprimz` (no prim depth), `rmoff` (old render mode handling), `nofallback` (no boot test triangle).
 - Draw trace: `rmlog` (render mode changes), `drawlog=<f>:<n>` (one line per mesh chunk), `ddonly=<lo>:<hi>`, `ddverb`, `depthview=<1|2|3>`, `xtrace=<f>:<n>` (fills, texrects, state), `prevtest` (previous frame blur test).
 - Checks: `ptrcheck` and `ptrtest` (N64 address assumptions), `romstrict`, `romtrace`, `romfull` (no packed ROM), `dataprobe` (map statics), `assets` (log asset loads), `scripts` (script dump every 120 frames), `faulttest`, `crashtest`, `crashtest_call`, `crashtest_audio`, `crashtest_audio_call`.
-- Timing and log: `phase`, `phasecsv`, `phasegbi`, `stats` (gbi counters), `audiostat`, `pacestat` (pacing), `logstat`, `lognull`, `logflood` (10000 lines per frame), `noaudio`.
+- Timing and log: `phase`, `phasecsv`, `phasegbi`, `stats` (gbi counters), `audiostat`, `pacestat` (pacing), `texmax` (texture cache peak and one-frame use per map, one log line at each map load), `logstat`, `lognull`, `logflood` (10000 lines per frame), `noaudio`.
 
 ## Assets and generated paths
 - ROM: `C:\Users\Andrew\AppData\Roaming\Azahar\sdmc\3ds\PaperMario\papermario.z64` and copy `ver/us/baserom.z64` (git-ignored).

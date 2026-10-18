@@ -32,6 +32,10 @@ static Slot slots[SLOTS];
 static unsigned used;
 static int slot_hi; /* every live slot index is below this, so scans stay short while few slots are live */
 static unsigned used_peak; /* M02 measurement */
+static unsigned map_peak;
+/* V13c: bytes of the slots that a draw touched in this frame (the working set that eviction must keep), highest since the last map. */
+static unsigned frame_bytes, map_wmax;
+#define TOUCH(s) do { if ((s)->epoch != epoch) { frame_bytes += (s)->bytes; if (frame_bytes > map_wmax) map_wmax = frame_bytes; } (s)->epoch = epoch; } while (0)
 static unsigned stamp;
 static unsigned epoch;
 static u8* scratch;
@@ -265,9 +269,12 @@ static int fail_last, fail_n;
 int pm_tex_failed(void) { return fail_last; }
 unsigned pm_tex_fail_count(void) { return (unsigned)fail_n; }
 unsigned pm_tex_peak(void) { return used_peak; }
+/* V13c: highest cache use since the last call, then restart from the current use. */
+unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }
 
 void pm_tex_begin_frame(void) {
     epoch++;
+    frame_bytes = 0;
     /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
     for (int i = 0; i < slot_hi; i++)
         if (slots[i].live && slots[i].stale) drop(&slots[i]);
@@ -383,7 +390,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
             s->stamp = ++stamp;
-            s->epoch = epoch;
+            TOUCH(s);
             cur = i;
             have = 1;
             return 1;
@@ -490,10 +497,13 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     PH_ADD(C_TEXBYTE, bytes >> 10);
     s->stamp = ++stamp;
     s->epoch = epoch;
+    frame_bytes += bytes;
+    if (frame_bytes > map_wmax) map_wmax = frame_bytes;
     s->live = 1;
     if (slot >= slot_hi) slot_hi = slot + 1;
     used += bytes;
     if (used > used_peak) used_peak = used;
+    if (used > map_peak) map_peak = used;
     cur = slot;
     have = 1;
     return 1;
@@ -530,7 +540,7 @@ int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigne
             if (s->live && s->img == buf && s->dkey == key && s->fmt == FMT_RGBA && s->siz == SIZ_32 && s->w == w &&
                 s->h == h && s->stride == w) {
                 s->stamp = ++stamp;
-                s->epoch = epoch;
+                TOUCH(s);
                 cur = i;
                 have = 1;
                 return 1;
@@ -584,7 +594,7 @@ int pm_tex_bind_aux(void) {
     if (aux_off >= 0 && aux_off < offt_n) { C3D_TexBind(1, offt[aux_off].tex); return 1; }
     if (aux < 0 || !slots[aux].live) return 0;
     slots[aux].stamp = ++stamp;
-    slots[aux].epoch = epoch;
+    TOUCH(&slots[aux]);
     C3D_TexSetWrap(&slots[aux].tex, aux_shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_ws, aux_shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_wt);
     C3D_TexBind(1, &slots[aux].tex);
     return 1;

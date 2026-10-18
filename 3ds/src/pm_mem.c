@@ -119,6 +119,7 @@ unsigned pm_linear_bytes(void) { return __ctru_linear_heap_size; }
 
 unsigned pm_tex_used(void);
 unsigned pm_tex_peak(void);
+unsigned pm_tex_map_peak_take(unsigned* wmax);
 unsigned pm_tex_budget(void);
 unsigned pm_tex_fail_count(void);
 static unsigned lin_peak; /* highest linear bytes in use seen at a log call */
@@ -139,6 +140,10 @@ int pm_mem_crash_line(char* buf, int cap) {
 }
 
 void pm_mem_log(const char* tag) {
+    if (!strcmp(tag, "map") && pm_debug_has("texmax")) {
+        unsigned wmax, pk = pm_tex_map_peak_take(&wmax);
+        pm_log("texmax %u KB of %u KB before this map load, one frame used %u KB, now %u KB", pk >> 10, pm_tex_budget() >> 10, wmax >> 10, pm_tex_used() >> 10);
+    }
     {
         unsigned gs = 0, as = 0;
         unsigned gu = pm_stack_used(0, &gs), au = pm_stack_used(1, &as);

@@ -102,3 +102,5 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - F11-1 not checked: that the bottom-screen FPS line is gone with hud=0 (no shot taken), hardware, write on power loss.
 - C3A, C3B done: pm_actor_stubs.c deleted, pm_kmr_stubs.c is now pm_buffers.c (nm: 0 undefined symbols). Commit 487712a4d.
 - C2R partly done: 421 map tour and 181 of 244 battle stages counted in H05_findings C2-02. Left: 63 stages (3ds/logs/c2r_battle.sh, from line 182) and effects (FX1a). New rows C2F, C2G, C2H, C2I.
+
+- V13c done: texture cache peak over 416 maps (switch `texmax`): 46 maps over 3500 KB (kzn_04..23, flo_*, jan_00..02, sbk_*), top kzn_23 and flo_00 at 4096 KB, but the largest one-frame use is 687 KB (kmr_00), `tex cache full` 0, eviction skips slots used in the current frame. Cache size unchanged.
