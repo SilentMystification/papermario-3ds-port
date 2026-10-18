@@ -67,11 +67,8 @@ Report (5 lines or fewer): slice id; last commit hash; result; what was and was 
 ```
 Pass `model` to the Agent tool by the MODEL RULE.
 
-## 6. State (2026-10-17)
-- Queue: 3ds/SLICES.md, in order. First 6 rows: (1) G01g golden frames. (2) S28 hardware run, last of the Azahar queue (needs the user: O3DS on at 192.168.1.168, dspfirm.cdc on the SD card). (3) H03 memory split and graceful texture failure. (4) S30b the 154 id-only maps and Q7. (5) V07 items flicker. (6) V06 follow-up, then V08, V09 (two rows), V10, V11, X02, S31, F01, F03, T02, F08, then the performance phase (PO2, PO3, AU1, MA1), then F06 and F07.
-- Open questions for the user (3ds/QUESTIONS.md): Q7 memory (spare about 518 KB, limit 500 KB, 154 maps would give about -1.1 MB), Q2 resident ROM, PO2, V06 (which problem), S28 (is the O3DS on).
-- Memory and hardware: the game never ran on hardware. The spare is an Azahar-based estimate. S28 waits until the Azahar queue is empty.
-- Done so far: see docs/SLICES_DONE.md. The real chain, battle, demo loop, transitions, pause and file select run in Azahar.
+## 6. State
+- The current state is in docs/ORCH_STATE.md. Read that file first. It holds the running work, the done list, the open queue and the resume steps.
 
 ## 7. Stop conditions
 - A slice agent reports BLOCKED (a stub looks necessary).
@@ -83,5 +80,5 @@ Pass `model` to the Agent tool by the MODEL RULE.
 
 ## 8. Start prompt for the new chat
 ```
-Read 3ds/ORCHESTRATOR.md, HANDOFF.md, 3ds/SLICES.md and 3ds/QUESTIONS.md. You are the orchestrator only. Do not read or write code. Subagents do all work. Follow the workflow, the model rule and the reading rules in 3ds/ORCHESTRATOR.md. Tell me the status in 10 lines. Ask me the open questions from 3ds/QUESTIONS.md. Then launch the first slice (G01g golden frames) with the slim agent prompt template and continue with the same workflow without waiting for me.
+Read docs/ORCH_STATE.md first. Then read 3ds/ORCHESTRATOR.md and HANDOFF.md. You are the orchestrator only. Do not read or write code. Subagents do all work. Follow section 6 of docs/ORCH_STATE.md to resume, and the workflow and reading rules in 3ds/ORCHESTRATOR.md. Tell me the status in 10 lines. Ask me the open questions in docs/ORCH_STATE.md section 5.
 ```
