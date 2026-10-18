@@ -148,3 +148,8 @@
 06:20 GP1 cause: F03 skip of texture load for z-buffer tiles also skips the pause background (tall tiles from nuGfxZBuffer, background_gfx.c:373). fix: skip only 1 row tiles. build + golden pause1 toad yard battle, expect 400 s
 06:33 GP1 golden pause1 0.00 toad 0 yard 0 battle 1.04, 3dsx 13018352 B (-8). commit
 06:36 GP1 row moved to SLICES_DONE
+06:36 B3 code in pm_gbi.c pm_gpu.c pm_gpu.h (ROLE_DEPTH, fill_depth, tri const depth, tex_rect_z). build + warp=mac_01:0 imglog drawlog, expect 400 s
+06:39 B3 finding: nuGfxZBuffer is NULL in the world (setcimg 0x0), so R4 also matches address 0 (cimg_zero). rebuild + warp=mac_01:0 imglog, expect 400 s
+06:45 B3 mac_01 entry 0 never draws the crystal ball (house model, Mario cannot walk there). temp hook B3TEMP in mac_01/main.c enables tama+mirrorball. build+run, expect 400 s
+06:55 B3 mac_01 ball stays off screen (clamped decal x4..35), hook removed. flo_10 temp hook B3TEMP (custom gfx o40). build+run warp=flo_10:2 partner=1 imglog, expect 400 s
+06:59 B3 flo_10:2 imglog: 414 depthtri lines, comb PRIM, prim f8f0f000, word ffbc (constant, step 1 ok). drawlog f39: decal chunks #62 #63 #65 have the same boxes as model chunks #58 #59 #61. hooks removed. golden toad yard battle title pause1, expect 600 s

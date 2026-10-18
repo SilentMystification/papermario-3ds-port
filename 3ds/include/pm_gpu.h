@@ -79,6 +79,8 @@ int pm_gpu_off_count(void); /* B1: off-screen slots started this frame */
 int pm_gpu_grab(const void* cfb, int x0, int x1);
 void pm_gpu_set_replace(int on); /* off-screen fill: write the pixel, no blend */
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba);
+void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d); /* B3: depth write only, d 0 near .. 1 far */
+void pm_gpu_tex_rect_z(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1, float d); /* B3: tests depth d */
 void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d); /* X01: tests depth d (0 near .. 1 far) */
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1,
                      float s0, float t0, float s1, float t1);

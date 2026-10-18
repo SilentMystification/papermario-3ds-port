@@ -155,7 +155,7 @@ static void flush(void) {
         batch_identity = 0;
         return;
     }
-    if (r_nocol && !(z_on && !rect_2d && r_zupd)) {
+    if (r_nocol && !(z_on && (!rect_2d || rect_z) && r_zupd)) {
         nverts = 0;
         batch_identity = 0;
         return;
@@ -1026,6 +1026,15 @@ void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d) 
     fill_z = 0.5f;
 }
 
+/* B3: a fill into the z-buffer image: depth d in the rectangle, colour untouched, no depth test (r_nocol, r_zupd, no r_zcmp). */
+void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d) {
+    int s_nc = r_nocol, s_zc = r_zcmp, s_zu = r_zupd, s_bl = r_blend, s_at = r_atest, s_de = r_decal, s_z = z_on, s_mix = r_mix;
+    flush();
+    r_nocol = 1; r_zcmp = 0; r_zupd = 1; r_blend = 0; r_atest = -1; r_decal = 0; z_on = 1; r_mix = 0;
+    pm_gpu_fill_rect_z(x0, y0, x1, y1, 0, d);
+    r_nocol = s_nc; r_zcmp = s_zc; r_zupd = s_zu; r_blend = s_bl; r_atest = s_at; r_decal = s_de; z_on = s_z; r_mix = s_mix;
+}
+
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float s = s0; s0 = s1; s1 = s; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
@@ -1039,11 +1048,20 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     float ya = py(y0);
     float yb = py(y1 + 1);
     unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
-    pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, ya, 0.5f, s1, t0, c, xb, yb, 0.5f, s1, t1, c);
-    pm_gpu_tri(xa, ya, 0.5f, s0, t0, c, xb, yb, 0.5f, s1, t1, c, xa, yb, 0.5f, s0, t1, c);
+    pm_gpu_tri(xa, ya, fill_z, s0, t0, c, xb, ya, fill_z, s1, t0, c, xb, yb, fill_z, s1, t1, c);
+    pm_gpu_tri(xa, ya, fill_z, s0, t0, c, xb, yb, fill_z, s1, t1, c, xa, yb, fill_z, s0, t1, c);
     flush();
     rect_2d = 0;
     combine = saved;
+}
+
+void pm_gpu_tex_rect_z(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1, float d) {
+    flush();
+    fill_z = d;
+    rect_z = 1;
+    pm_gpu_tex_rect(x0, y0, x1, y1, s0, t0, s1, t1);
+    rect_z = 0;
+    fill_z = 0.5f;
 }
 
 /* F03: one pixel of the last finished depth buffer (D24S8, same tiling and rotation as pm_gpu_read_frame). */

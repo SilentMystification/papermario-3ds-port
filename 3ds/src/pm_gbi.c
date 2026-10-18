@@ -105,18 +105,28 @@ extern int pm_fb_native(const void* p);
  * texture, which a later draw reads as an image (draw_box: the contents of a rotating window). */
 /* B1: the one decision for a colour image (docs/plans/buffer_bridge.md table 1.2). for_fill = 1 at G_FILLRECT.
  * ROLE_CPUPAL and ROLE_DEPTH are not returned yet (rect_to_image keeps its own test, B3 adds the depth role).
- * R4: the z-buffer at siz 2 stays MAIN until B3. */
+ * B3, R4: the z-buffer image at siz 2 with a FILL cycle or Z_CMP or Z_UPD is DEPTH (a depth write on the main target). */
 enum { ROLE_MAIN, ROLE_DEPTHQ, ROLE_CPUFILL, ROLE_DEPTH, ROLE_CPUPAL, ROLE_SLOT };
 extern unsigned short* nuGfxCfb_ptr;
+static int cimg_zero; /* B3: the last G_SETCIMG named address 0. nuGfxZBuffer is NULL until the pause or the darkness overlay allocates it (D03), so the game's z-buffer image is address 0 */
 static int img_role(int for_fill) {
-    if (!cimg) return ROLE_MAIN;
+    if (!cimg && !cimg_zero) return ROLE_MAIN;
     if (cimg == (void*)DepthCopyBuffer) return ROLE_DEPTHQ;
     if (for_fill && pm_is_cfb(cimg) && (omode_l & ~7u) == ((G_RM_VISCVG | G_RM_VISCVG2) & ~7u)) {
         pm_zbuf_need(); /* D03: the single call site in this file; pm_main.c wraps the darkness stencil */
         return ROLE_CPUFILL;
     }
+    if (cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)cimg >= nuGfxZBuffer && (const unsigned short*)cimg < nuGfxZBuffer + 320 * 240)) &&
+        (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3 || (omode_l & 0x30u))) return ROLE_DEPTH;
+    if (!cimg) return ROLE_MAIN;
     if (pm_fb_native(cimg) && cimg_siz == 2) return ROLE_MAIN;
     return ROLE_SLOT;
+}
+/* B3: the N64 writes a 16 bit colour word into the z-buffer memory, and the RDP reads it back as 14 bit z plus 2 bit dz. The port
+ * keeps z as prim_z (15 bit, 0 near): the word shifted right by 1 (the decal uses prim depth 32734 = the word 0xFFBC of prim 248 240 240). */
+static float depth_of_word(unsigned w16) { return (float)((w16 & 0xffffu) >> 1) / 32767.f; }
+static unsigned word_5551(unsigned rgba) {
+    return (((rgba >> 27) & 31u) << 11) | (((rgba >> 19) & 31u) << 6) | (((rgba >> 11) & 31u) << 1) | ((rgba >> 7) & 1u);
 }
 static unsigned n_splits, n_grabs; /* B2: per frame, see grab_cur */
 extern int pm_is_cur_cfb(const void* p);
@@ -139,6 +149,7 @@ static void imglog(const char* op, const void* a, int siz, int stride, int role)
     if (on < 0) on = pm_debug_has("imglog");
     if (!on) return;
     if (a == (const void*)DepthCopyBuffer) kind = "depthcopy";
+    else if (!a) kind = "zero";
     else if (nuGfxZBuffer && (const unsigned short*)a >= nuGfxZBuffer && (const unsigned short*)a < nuGfxZBuffer + 320 * 240) kind = "zbuf";
     else if (pm_is_cfb(a)) kind = ((const unsigned short*)a >= nuGfxCfb_ptr && (const unsigned short*)a < nuGfxCfb_ptr + 320 * 240) ? "cfb_cur" : "cfb_prev";
     else { kind = "other"; if (role < 0) return; } /* settimg: log only frame buffer, z-buffer and depth copy reads */
@@ -437,6 +448,11 @@ static void sync_render(void) {
             pm_gpu_set_mix(1, ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu));
         else
             pm_gpu_set_mix(0, 0);
+    }
+    if (img_role(0) == ROLE_DEPTH) { /* B3: a model drawn into the z-buffer image is a depth write: no colour, always pass, constant depth (draw_tri) */
+        pm_gpu_set_nocolor(1);
+        pm_gpu_set_render(0, 1, 0, -1, 0);
+        return;
     }
     if (pm_debug_has("rmoff")) { /* A/B check: the old always-blend, always-write state */
         pm_gpu_set_nocolor(0);
@@ -1025,6 +1041,13 @@ static void draw_tri(unsigned w) {
         /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
         float zn = 2.f * (float)prim_z / 32767.f - 1.f;
         for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
+    } else if (img_role(0) == ROLE_DEPTH) {
+        float zn = 2.f * depth_of_word(word_5551(prim)) - 1.f; /* B3: case 6, the combiner is PRIM (log: imglog) */
+        for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
+        { static int on = -1, lf = -1, c; /* B3 step 1: the first 3 depth triangles of a frame */
+          if (on < 0) on = pm_debug_has("imglog");
+          if (on && (lf != rm_frame ? (lf = rm_frame, c = 0, 1) : 1) && c++ < 3)
+              pm_log("imglog f%d depthtri oml %08x omh %08x comb %x %x %x %x a %x %x %x %x prim %08x word %04x", rm_frame, omode_l, omode_h, comb_a, comb_b, comb_c, comb_d, comb_aa, comb_ab, comb_ac, comb_ad, prim, word_5551(prim)); }
     }
     if (plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE) {
         /* S25: the vertex colour carries a constant (PRIM, ENV or PRIM_LOD_FRAC) because the shade is not read. */
@@ -1621,6 +1644,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int ns = (int)((w0 >> 19) & 3);
             if (nc != cimg || ns != cimg_siz) pm_gpu_off_end(); /* V05 */
             cimg = nc;
+            cimg_zero = (w1 == 0);
             cimg_siz = ns;
             cimg_stride = (int)(w0 & 0xfff) + 1;
             imglog("setcimg", cimg, cimg_siz, cimg_stride, img_role(0));
@@ -1646,6 +1670,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 pm_cfb_capture_prev(); /* the filter reads the last frame from the other frame buffer */
                 for (int y = uly; y <= lry && y < 240; y++)
                     for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
+                break;
+            }
+            if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
+                pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(fill));
                 break;
             }
             /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
@@ -1715,7 +1743,14 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                  * pixel too wide and stretched its texture. A previous-frame blur drawn every frame zoomed in. */
                 int ex = xh / 4, ey = yh / 4;
                 if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 2) { ex -= 1; ey -= 1; }
-                if (ex >= xl / 4 && ey >= yl / 4) pm_gpu_tex_rect(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1);
+                if (ex >= xl / 4 && ey >= yl / 4) {
+                    /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
+                    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !pm_debug_has("noprimz")) {
+                        sync_render();
+                        pm_gpu_tex_rect_z(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1, (float)prim_z / 32767.f);
+                    } else
+                    pm_gpu_tex_rect(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1);
+                }
             }
             break;
         }

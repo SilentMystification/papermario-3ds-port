@@ -1956,3 +1956,12 @@ No text removed. A decision row was added to section 4 (ALL functionality ported
 
 ## B2 grab queue order (2026-10-18)
 citro3d stops the GX queue in C3D_FrameBegin and runs it in C3D_FrameEnd. Calls queue in call order: C3D_RenderTargetClear, C3D_FrameSplit (command list part), GX_TextureCopy, next part. The end of frame clear of the main target is a queue entry too, so pm_gpu_grab queues it before the first split. A CPU read mid-frame sees the last frame because the queue has not run, so pm_cfb_capture_prev needs no change. Texture copy: 7680 byte strips (30 tiles, 8 target rows = 8 game columns) into a 256 x 512 texture with a 512 byte gap. PICA v = 0 samples the last memory row, so v = 1 - row / 512. Grab quad: game (x, y) reads column 239 - y, row 40 + x.
+
+## B3 depth role (2026-10-18)
+- `nuGfxZBuffer` is NULL in the world until the pause or the darkness overlay allocates it (D03). The game names the z-buffer image as address 0 (`setcimg zero 0x0`). `img_role()` returns ROLE_DEPTH for siz 2, address 0 (set by a G_SETCIMG with w1 = 0) or an address inside `nuGfxZBuffer`, and a FILL cycle or Z_CMP or Z_UPD.
+- Case 5 (fill): `pm_gpu_fill_depth()` writes depth only (`r_nocol`, `r_zupd`, no `r_zcmp`), depth = fill word >> 1 over 32767 (0xFFFC gives 32766, far). `flush()` keeps a 2D batch with `rect_z` under `r_nocol`.
+- Case 6 (model): step 1 log on flo_10 entry 2 (`imglog`): comb `f f 1f 3` (PRIM), prim f8f0f000, word ffbc, so the colour word is constant. Depth = word >> 1 = 32734, the same value as the decal prim depth. Triangles get `z = zn * w` like the X01 G_ZS_PRIM path, colour off, depth test always.
+- Known gap: the N64 tests the model depth against the scene first and then writes the constant. The PICA tests and writes one value, so the model also writes where a nearer object hides it. Not seen on screen yet.
+- Decal texrect (mac_01 crystal ball, G_ZS_PRIM): `pm_gpu_tex_rect_z()` tests the prim depth like the X01 fill. Not seen on screen: the crystal ball is clamped to x 4..35 and the model is off screen in mac_01 (Mario cannot reach the house, a `SetPlayerPos` hook did not move the camera).
+- flo_10 `drawlog=39:1` (temp hook, removed): model chunks #58 #59 #61 (oml 0f0a4010, depth write) and decal chunks #62 #63 #65 have the same screen boxes (190 148 434 193, -22 111 298 252, 216 111 269 148).
+- Golden: toad 0, yard 0, title 0, pause1 0.00, battle 0.86 then 1.05 in a second run (baseline 1.04 to 1.06, random effects). F03: hos_05 `fast` gives 8 `F03 query` lines, 0 `tex ptr`. 3dsx 13021120 B (+2768 vs GP1).
