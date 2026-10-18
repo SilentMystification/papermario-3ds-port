@@ -1,14 +1,1 @@
-# Maps left id-only (null settings, GotoMap refused). One per line, reason after '#'. Slice S30.
-flo_11   # main.c calls func_80044238 -> func_80072BCC, defined in src/battle/battle.c (battle tree not on main, Q1)
-# Areas not linked: the O3DS memory ceiling (spare 4.5 MB, estimated). Measured cost per area in HANDOFF.md "S30 result".
-area:kpa   # Bowser's Castle, +340 KB measured, spare would be 4442 KB
-area:kzn   # Mt. Lavalava
-area:flo   # Flower Fields
-area:jan   # Jade Jungle
-area:sam   # Shiver Mountain
-area:pra   # Crystal Palace
-
-# S19b: maps of a skipped area that are linked anyway (kzn_19: Lava Piranha, kzn_02 and jan_04: title demo scenes)
-link:kzn_19
-link:kzn_02
-link:jan_04
+# S30b: all maps are linked. Nothing is skipped. Format (see tools/gen_map_sources.py): one map per line, "area:<name>" for an area, "link:<map>" to force one map.

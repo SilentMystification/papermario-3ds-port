@@ -198,7 +198,6 @@ void __wrap_appendGfx_darkness_stencil(int isWorld, int posX, int posY, float al
 
 void pm_dump_scripts(void);
 void pm_warp_tick(unsigned frame);
-void pm_map_tick(void);
 unsigned pm_uptime_ms(void);
 static unsigned pm_frame_n;
 unsigned pm_frame_count(void) { return pm_frame_n; }
@@ -310,7 +309,6 @@ void pm_frame_loop(void) {
         frame++;
         pm_frame_n = frame;
         pm_warp_tick(frame);
-        pm_map_tick();
         presents++;
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;

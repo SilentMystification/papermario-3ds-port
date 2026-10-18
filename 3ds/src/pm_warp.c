@@ -138,6 +138,8 @@ int pm_warp_active(void) {
             }
         }
     }
+    /* F01: a tour visits maps at story 0 with a new file (no partner). The real game has a partner at trd_06 and later maps (trd_06 InitializeFallingPartner, partner_walking_enable need one), so the tour uses Goombario unless partner= says otherwise. */
+    if (tour_next != NULL && w_partner == 0) w_partner = 1;
     smoke_on = pm_debug_has("smoke");
     if (pm_debug_value("loadslot", v, sizeof v)) w_loadslot = atoi(v); /* E02: loadslot=<n> loads save slot n first */
     if (pm_debug_value("smokeframes", v, sizeof v)) smoke_frames = atoi(v); /* E02: smoke length, default 300 */
@@ -220,6 +222,12 @@ static void tour_step(void) {
         return;
     }
     pm_log("tour: next %s entry %d (area %d map %d)", name, entry, areaID, mapID);
+    /* F01: the tour skips the exit script of the map (kmr_23 N(func_80240010_907A40)). Do what it does, else the curtain callback runs on the next map. */
+    set_curtain_scale_goal(2.0f);
+    set_curtain_draw_callback(NULL);
+    /* F01 nok_01: the tour skips the scripts that stop BGM player B (trd_05 plays SONG_KOOPA_BROS_INTERLUDE on it). nok_01 loads the radio MSEQ files
+       into dataMSEQ[1], the same buffer as dataBGM[1] (decomp layout, engine.c), so a song left on B reads overwritten data. */
+    bgm_set_song(1, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL);
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)entry;

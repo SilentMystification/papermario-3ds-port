@@ -5,7 +5,7 @@ Use this file to resume the orchestrator in a new chat. Read it first.
 
 ## 1. Running work at this moment
 
-No agent runs. All agents finished. Check `git status` in both trees before you launch anything.
+ONE agent runs: the merge of lane-b into main (main tree, started 2026-10-18, conflicts in 3ds/CMakeLists.txt, 3ds/PROGRESS.log, 3ds/SLICES.md). Do NOT touch the main tree until it reports. If the agent is gone, run `git status` in the main tree: a half-done merge shows `UU` files. Finish it (`git merge --continue` after solving: keep both sides, keep all PROGRESS.log lines), or `git merge --abort` and start again. Then run the checks in 3ds/SLICES.md row S28 prep and the merge checks (x02_check.py, golden.py, smoke yard and toad, one warp per new area, kzn_08 darkness). The S28 gate edit "H05 findings all FIXED" and the H05 and V12 rows in 3ds/SLICES.md must survive the merge.
 Main tree: ..\papermario-3ds-port (branch main). Lane B: ..\papermario-3ds-port-laneB (branch lane-b, PM_LANE=laneB, rules in docs/LANES.md).
 The V09 kmr_22 fix is committed on lane-b (378f2879f). Check `git -C ..\papermario-3ds-port-laneB status` for stray edits.
 

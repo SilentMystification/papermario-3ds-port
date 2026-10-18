@@ -1620,3 +1620,37 @@ Old text moved from 3ds/QUESTIONS.md.
 
 ### X02 darkness (B0 of buffer_bridge)
 - Stray tmpnofill body removed from pm_gpu.c flush (build error). Logs: `X02: darkness draw to 64x64 slot`, `X02: overlay reads 64x64 slot` (pm_gpu.c, pm_tex.c), `X02: darkness world .. alpha` (pm_warp.c pm_x02_log). padscript token `cdown` added. Test tool 3ds/tools/x02_check.py (pixel stats). Watt: partner=6 plus padscript=wait40,cdown*4,wait200. omo_14 does call darkness (earlier note was wrong). kzn_08 is not linked.
+### S30b: all 154 id-only maps linked (2026-10-18, lane B)
+- Edit: 3ds/maps_skip.txt now has no skip line (area:kpa, kzn, flo, jan, sam, pra and flo_11 removed, link: lines not needed). gen_map_sources.py run (needs build.ninja in the root, copied from the main folder, git-ignored): linked 421, unlinked 0. map_syms.lds has no row. map_rom_ranges.h has all 421 maps with the DMA tag.
+- Guard removed in 3ds/src/pm_map.c: `__wrap_get_map_IDs_by_name`, `map_is_linked`, `pm_unlinked_map`, `pm_map_tick` and its history and refuse code, the refusal in `__wrap_set_game_mode` and `__wrap_load_map_by_IDs`. The wraps of set_game_mode and load_map_by_IDs stay (warp hook, shotmode, mem log, data probe). The `--wrap=get_map_IDs_by_name` link flag is gone. pm_main.c no longer calls pm_map_tick.
+- Size: 3dsx 10,919,956 to 13,011,156 B (+2,091,200 B). Boot line: commit limit 98304KB used-by-image 18944KB, heap total 51200KB, sbrk-left 23716KB (Azahar numbers). Map line at load: heap used 27543KB, linear peak 7527KB, texture failures 0.
+- Checks (-Turbo -Smoke -FaultStop, 300 frames each, exit 0, no fault, no unmapped access): warp kpa_03, kzn_03, flo_03, jan_03, sam_03, pra_03 (entry 0), presets yard and toad.
+- Not checked: the other 148 new maps, entry points other than 0, the exit scripts of the new maps, tour of all maps, hardware (S28), full chain, golden frames.
+
+## F01 kmr_23 (lane B)
+- Cause (docs/plans/F01_causes.md): the tour warp skips the exit script of kmr_23. The curtain draw callback stays set. `func_80240DA4_9087D4` runs on the next map with a NULL data pointer.
+- Fix: 3ds/src/pm_warp.c `tour_step` calls `set_curtain_scale_goal(2.0f)` and `set_curtain_draw_callback(NULL)` before the map change. This is the same as `N(func_80240010_907A40)` in kmr_23/main.c. No guard in the decomp.
+- Checks (-Turbo -Smoke -FaultStop): `warp=kmr_23:0 tour=iwa_01:0,iwa_00:0 smokeframes=200` rc 0, no unmapped access. Presets yard and toad rc 0.
+- Not checked: the run before the fix (fault not reproduced for comparison), the full tour, the real exit with entry 4 (kzn_19), other maps that set a curtain callback, hardware, tst_12, nok_01.
+
+## F01 tst_12 (lane B, 2026-10-18)
+- Measured with temporary logs (removed): `Loop(LVar5)` logged val=-17. From LVar5 = 200 / LVarF + 1 this gives LVarF = -11 (integer). `floating_flower_main` ran more than 12000 times in one run (96 effect slots, then `general_heap_malloc` returns NULL, fault at floating_flower.c:32, 34720 hits at one PC).
+- Cause: in `N(D_80240050_B1D340)` (src/world/area_tst/tst_12/main.c) LVarF holds the float -22.5 (DivF of 100.0 by -4.44, because the first Exec passes LVarC = 100 - 544 < 0). `Add(LVarF, 11)` reads LVarF through `evt_get_variable`, which converts the float to the integer -22, and stores the integer -11. `Div(LVar5, LVarF)` gives -18, +1 gives -17. `evt_handle_end_loop` counts a negative value down and never reaches 0. The loop runs about 2^31 times. `Wait(LVarF)` with -11 also never ends.
+- This corrects the HISTORY 953 note and the F01_causes guess (Wait(0)). The Loop is the flood, not the Wait.
+- The port evt.c code is the decomp code. The evaluation order is the same on the N64 by source reading (not run on an N64). So this is a decomp defect of a cut, unreachable map. No port fix without a guard, so none was made.
+- Check: `warp=tst_12:0 -Turbo -Smoke -FaultStop` still exits 2 (expected). yard and toad exit 0. nok_01 not touched.
+
+## F01 nok_01 (lane B, 2026-10-18)
+- Fault: `voice->instrument` is -1 in `au_syn_begin_audio_frame` (engine.c:488). Source: BGM player B notes read `track->instrument` = NO_INSTRUMENT (no F5 ran on the track).
+- Method: tour chunk trd_05 to nok_04 (39 maps, the list of s30_tour_list.txt lines 131 to 169, warp=trd_05:0, no -FaultStop). Temporary logs in engine.c and bgm_player.c (state, load, F5, hash of the first 0x400 bytes of dataBGM[1], read_rom). All removed.
+- Evidence: trd_05 plays SONG_KOOPA_BROS_INTERLUDE (song id 81, file size 0x4e0) on player B (settings.c FadeInMusic 1). The tour leaves the map without the script that stops it. The hash of the B file is 255ed113 at init and a0dadaec after nok_01 loads. nok_01 radio.c calls snd_load_ambient(AMBIENT_RADIO). `au_ambient_load` reads the MSEQ files into `dataMSEQ[1]`. `dataMSEQ[1]` and `dataBGM[1]` are the same address (engine.c:178 and 180, decomp layout). So the song of player B is overwritten and its notes run without an instrument.
+- Not a race, not zero fill, not a bad swap. The decomp layout is N64 identical. On the N64 the game stops player B before nok_01. The tour does not.
+- Fix: 3ds/src/pm_warp.c `tour_step` calls `bgm_set_song(1, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL)` before each tour map change (harness only, no guard in audio code).
+- Check: same chunk, tour done, no audio fault. `warp=nok_01:0`, yard, toad: rc 0. Not checked: a real play path from trd_05 into nok_01 (not reachable), other maps that leave a song on player B, hardware, the full tour. Other faults in the chunk: trd_06 falling.c:148 (InitializeFallingPartner), partners.c:1136 (partner_walking_enable).
+
+## F01 trd_06 and partner_walking_enable (lane B, 2026-10-18)
+- Faults: trd_06 `falling.c:148` (`InitializeFallingPartner`, `get_npc_unsafe(NPC_PARTNER)` is NULL) and `partners.c:1136` (`partner_walking_enable`, partner NULL).
+- Method: narrow warps with -Turbo -Smoke -FaultStop. `warp=trd_06:0` (new file, no partner): rc 2 at falling.c:148. `warp=trd_06:0 partner=1`: rc 0. Chunk trd_05 to nok_04 (39 maps, tour=@tour.txt): `partner=0` rc 2 at falling.c:148, `partner=1` rc 0, tour done, no unmapped access.
+- Cause: the tour starts from a new file, curPartner is PARTNER_NONE, so no partner NPC exists. The trd_06 scripts and the partner code need the partner NPC. The real game has a partner there (trd_06 comes after the partners are earned, the N64 code dereferences the NPC the same way). Tour-only fault, same class as kmr_23 and nok_01.
+- Fix: 3ds/src/pm_warp.c, a tour uses partner 1 (Goombario) unless `partner=` is given. No guard in game code.
+- Check: same chunk without a partner switch: rc 0, tour done. yard rc 0, toad rc 0. Not checked: the real exit and entry path from trd_05 into trd_06 with game scripts (story state not reachable by warp), partners other than Goombario, the full tour, hardware.

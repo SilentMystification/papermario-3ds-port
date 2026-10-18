@@ -77,3 +77,20 @@
 02:55 S18 lane B copy (lane-s18chk): pause smoke exit 0, mode 10 once, golden pause1-4 ok; demo mode 17 at frame 4138, unmapped 0
 02:56 S19c Goomba battle 500 frames 300 shots exit 0, unmapped 0, gbi skip f3 only; poly_scan flags 195/300 on dirt (olive max 13094), 3 shots by eye clean; rows moved
 02:43 X02 step 5 omo_12 ok (6 log lines, corners 0 centre 63), omo_14 DOES draw darkness (alpha 255, corners 0 centre 66), kzn_08 not linked (maps_skip, S30b): load stops, not tested
+02:05 S30b maps_skip.txt emptied, gen_map_sources.py linked 421 unlinked 0, guard removed in pm_map.c
+02:10 S30b build ok, 3dsx 10919956 -> 13011156 B (+2091200)
+02:20 S30b warp kpa_03 kzn_03 flo_03 jan_03 sam_03 pra_03 and presets yard toad: rc 0, no fault, 300 frames each
+02:25 S30b docs written, committing
+03:00 F01 kmr_23: tour_step in pm_warp.c now runs set_curtain_scale_goal(2.0f) and set_curtain_draw_callback(NULL) as the real exit script does
+03:05 F01 kmr_23 check warp=kmr_23:0 tour=iwa_01:0,iwa_00:0 -Turbo -Smoke -FaultStop: rc 0, no unmapped access. yard rc 0, toad rc 0
+03:30 F01 tst_12 temp logs (Loop, Wait, floating_flower_main): Loop(LVar5) val=-17, so LVarF=-11 (int), flower count over 12000 in one run
+03:35 F01 tst_12 cause: decomp script D_80240050 stores float -22.5 in LVarF, Add(LVarF,11) makes int -11, LVar5=200/-11+1=-17, Loop of a negative count never ends. N64 code is identical. Logs removed
+03:40 F01 tst_12 no port fix possible (no guard allowed). warp=tst_12:0 still rc 2 (heap NULL in floating_flower_main). yard rc 0, toad rc 0
+04:10 F01 nok_01 repro: tour chunk trd_05..nok_04 (39 maps, no -FaultStop). Temp logs: voice ins -1 on bgm player B, song 81 (trd_05 plays SONG_KOOPA_BROS_INTERLUDE on B), hash of B file changes when nok_01 radio.c loads AMBIENT_RADIO MSEQ into dataMSEQ[1] (same buffer as dataBGM[1], decomp layout)
+04:20 F01 nok_01 cause: tour skips the script that stops player B, then nok_01 radio overwrites its song data. Not a race, not zero fill. Fix: pm_warp.c tour_step calls bgm_set_song(1, AU_SONG_NONE,...). Temp logs removed
+04:30 F01 nok_01 check: same 39-map chunk, no au_syn_begin_audio_frame fault, tour done. warp=nok_01:0 rc 0, yard rc 0, toad rc 0. Other tour faults remain (trd_06 falling.c:148, partner_walking_enable partners.c:1136)
+05:10 F01 trd_06 repro: warp=trd_06:0 (no partner) rc 2 falling.c:148 (get_npc_unsafe(NPC_PARTNER) NULL). Same with partner=1 rc 0. Chunk trd_05..nok_04 partner=0 rc 2, partner=1 rc 0 (partners.c:1136 gone too)
+05:20 F01 cause: tour state is a new file with no partner. Real game has a partner at trd_06 (falling script reads the partner NPC). Tour-only fault. Fix: pm_warp.c uses partner 1 for a tour unless partner= is given
+05:30 F01 check: chunk trd_05..nok_04 without partner switch rc 0, tour done 39 maps, no unmapped. yard rc 0, toad rc 0
+06:00 V11 closed: real geometry. warp=kmr_05:0 story=ch0_wake_up partner=5 (without partner SpeakToPlayer reads NULL, test artefact). Script: A taps for the Goompa text, right*150, right+A*60 twice, right*200. Mario x 395 y 50 at f728, battle (mode 8) at scan 831. 0 unmapped.
+07:00 V09 kmr_22 fixed in pm_gbi.c (tile 1 source by TMEM address). warp=kmr_22:0 story=-107 shotwin=130:1: rainbow bar clean. golden.py 10 scenes ok, smoke yard rc 0, toad rc 0, 0 unmapped.

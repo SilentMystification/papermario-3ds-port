@@ -29,7 +29,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 ## Current state (2026-10-17)
 - Branch `main`. Tag `s19-pre-merge` keeps the old tip of branch `s19-full-battle` (merged by M03). No push.
 - The game boots in Azahar: logos, title, file select, intro (hos_05), kmr_20, osr_00, mac_00, mac_01, kkj_00 (the real chain). The real battle tree is merged. Real encounters, level up, flee, game over and the title demo loop (17 scenes, repeats after MS01) run.
-- 271 of 421 maps are linked. 154 maps are id-only rows (3ds/maps_skip.txt). A GotoMap to them is refused and logged.
+- All 421 maps are linked (S30b). 3ds/maps_skip.txt is empty. 6 new maps warped in Azahar, the other 148 not.
 - Image about 16.98 MB. 3dsx about 10.9 MB. Estimated O3DS spare about 518 KB. This is an estimate from Azahar numbers (64 MB limit assumed, 20 MB linear pool, N64 RAM block 4 MB).
 - The O3DS and the N3DS were never run. S28 is the first hardware run. All speed numbers are Azahar numbers and are not valid for the O3DS.
 - The game runs at exactly 30 fps (PC01: 29.91 steps per second, 2 vblanks per step). 60 fps (F06) and widescreen (F07) come later.
@@ -56,15 +56,15 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - V07 (SHELVED by user 2026-10-18): items flicker. Not reproduced in Azahar. The user reports it again if seen. Do not work on it.
 - V09 (two rows): intro tints changed by S25 (and nok_01 tour fault). kmr_22 card shows a rainbow bar.
 - V10: battle Strategies box and level-up box draw as a checkerboard.
-- V11: kmr_05 path to the first Goomba is blocked at x 75 to 88.
 - V09 intro tints and nok_01 shelved by the user, partial edits on branch shelf/v09-nok01.
 - X02 done (B0 of docs/plans/buffer_bridge.md): darkness runs the real decomp function with 64x64 slots keyed by (address, pixel size). kzn_08 untested (not linked). Detail in docs/HISTORY.md.
 - F03: `is_point_visible` reads a NULL z-buffer (hos_05 lamp, `tex ptr 0000fd7e`).
 - F08: fog partly done by V06 (blend and fog colour mix). The per-vertex fog factor is open.
-- S30b (Q7 answered 2026-10-18): 154 maps are not linked. With all 421 maps the spare is about 4.7 MB by estimate (docs/MEMORY_BUDGET.md).
+- S30b done: all 421 maps linked, 3dsx 13,011,156 B (+2.09 MB), GotoMap guard removed. Spare about 4.7 MB by estimate (docs/MEMORY_BUDGET.md).
 - S31: crash screen and debug output check (Q5).
 - T02 Phase 1 done: run_azahar.ps1 holds mutex `Global\pm_azahar_run` (-LockWait s, exit 3 on timeout), restores qt-config.ini byte for byte in finally, and recovers after a hard kill. Lanes (Phase 2, 3) are open in docs/PARALLEL_PLAN.md.
-- Tour faults: kmr_23 (curtain callback), tst_12: stays linked and warpable, loop bug is row F10 (last), nok_01 (`au_syn_begin_audio_frame`, engine.c:488).
+- F01 tst_12: cause measured (LVar5 = -17, LVarF = -11, endless Loop, N64-identical decomp defect of a cut map, no port fix). Skip tst_12 in tours. Detail in docs/HISTORY.md.
+- Tour faults: kmr_23, nok_01, trd_06 (falling.c:148) and partners.c:1136 fixed by F01 (lane B, tour-only: a tour now uses partner 1). Detail in docs/HISTORY.md.
 - Not verified by eye: partner moves, items and star power in battle. Pause with items or a partner. Hardware.
 - F09 language select: future feature, not in the current batch.
 - PO3 RISK (RSP to PICA port): effects that read back N64 memory images (X02, F03, water_splash, grabs) may need rework. Check each at every PO3 slice (docs/plans/PO3.md R7).
@@ -74,7 +74,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 ## Stand-ins still open (checked against docs/HISTORY.md, S20 audit A, B, C, D and later results)
 - Placeholder aliases (class D, code only, no data read): 47 `--defsym X=gPartnerStatus` in `3ds/CMakeLists.txt` (`world_partner_*`, `world_use_item_*`, `pause_*`, `filemenu_*`). Code overlays linked in place. Verified in P01 and R01.
 - `((u8*)1)` ROM ranges for linked code overlays in `3ds/stub_include/ld_addrs.h`, `effect_ld_addrs.h`, `battle_ld_addrs.h`. Code only.
-- GotoMap guard: `__wrap_get_map_IDs_by_name`, `__wrap_set_game_mode`, `__wrap_load_map_by_IDs`, `map_is_linked` in `3ds/src/pm_map.c`. It refuses a load of an id-only map. It goes away when all maps are linked (S30b).
+- GotoMap guard: removed by S30b.
 - Empty shims: `crash_screen_init`, `is_debug_init`, `load_obfuscation_shims` (`3ds/src/game_stubs.c`), `crash_screen_set_draw_info` (`3ds/src/pm_later.c`). User decision Q5: obfuscation shims stay empty. Row S31 checks the crash screen.
 - Storage at real N64 addresses (class C, no game logic): `gBackgroundImage` and `pm_world_entity_heap` (`3ds/src/pm_kmr_stubs.c`).
 - Gone (do not look for them): `area_table.c`, `pm_title.c`, `pm_evt_stub.c`, `pm_actor_link.c`, `pm_shadow.c`, `pm_fx.c`, battle stand-ins, effect graphics zeros (A17), shadow headers (B3 to B6), the `spriteIdx` guard, `note_door`.

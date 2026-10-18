@@ -18,7 +18,8 @@ TOL, PCT = 8, 0.5
 PCT_SCENE = {"battle": 3.0}  # the battle frame is not exactly the same in every run (random effects, seen 1.06 percent)
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GOLD = os.path.join(ROOT, "3ds", "golden")
-SHOT = os.path.join(ROOT, "build3ds", "shots", "0000.ppm")
+LANE = os.environ.get("PM_LANE")
+SHOT = os.path.join(ROOT, "build3ds", *(["lane-" + LANE] if LANE else []), "shots", "0000.ppm")
 PAUSE = "wait80,START*3,wait100"  # pause open in toad (scene frame 0 = frame 51)
 # name: (switches, first shot frame). Three frames are taken (F, F+1, F+2), the first one is compared.
 SCENES = {
