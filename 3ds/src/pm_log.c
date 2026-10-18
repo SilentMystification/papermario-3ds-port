@@ -89,6 +89,26 @@ int pm_debug_has(const char* word) {
 
 const char* pm_debug_text(void) { return switches; }
 
+/* F11-3: add or remove one word at run time (the options panel). Every pm_debug_has call sees it at once. */
+void pm_log_switch(const char* word, int on) {
+    size_t n = strlen(word), len = strlen(switches);
+    char* p = switches;
+    if (pm_debug_has(word) == (on != 0)) return;
+    if (on) {
+        if (len + n + 2 < sizeof(switches)) snprintf(switches + len, sizeof(switches) - len, " %s", word);
+        return;
+    }
+    while ((p = strstr(p, word)) != NULL) {
+        int edge0 = (p == switches) || p[-1] <= ' ';
+        char after = p[n];
+        if (edge0 && (unsigned char)after <= ' ') {
+            memmove(p, p + n + (after ? 1 : 0), strlen(p + n + (after ? 1 : 0)) + 1);
+            return;
+        }
+        p += n;
+    }
+}
+
 void pm_log_set_switches(const char* s) {
     switches[0] = 0;
     if (s) strncat(switches, s, sizeof(switches) - 1);

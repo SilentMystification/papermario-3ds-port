@@ -5411,6 +5411,15 @@ enum FileMenuMessages {
 #endif
 #ifdef TARGET_3DS
     FILE_MESSAGE_OPTIONS,                              // port: Options[End]
+    FILE_MESSAGE_OPT_FPS60,
+    FILE_MESSAGE_OPT_WIDE,
+    FILE_MESSAGE_OPT_HUD,
+    FILE_MESSAGE_OPT_STATS,
+    FILE_MESSAGE_OPT_NOFOG,
+    FILE_MESSAGE_OPT_NOLIGHT,
+    FILE_MESSAGE_OPT_BACK,
+    FILE_MESSAGE_OPT_ON,
+    FILE_MESSAGE_OPT_OFF,
 #endif
 };
 

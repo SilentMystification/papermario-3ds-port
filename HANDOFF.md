@@ -115,3 +115,5 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - FX1a not checked: battle context, effects with other types or args than the first game call, hardware.
 - C2F to C2I done: C2F battle repro needs partner=1 (tour artefact), C2G pairing fake_bowser with stage 01 to 0B is not a game pairing, C2I stage 00 is unused in the game, C2H fixed (MBush script has no End, jan npc.c files in no-data-sections list).
 - C2R not checked: other formation and stage pairs beyond the 4 rows, hardware.
+- F11-3 done: Options panel (src/filemenu/filemenu_options.c, 6 rows plus Back), Select or the Options item opens it, B or Back saves options.txt. The 60 FPS and Widescreen rows only store the value (F11-4 wires them). No light takes effect at the next boot (pm_gbi.c caches it).
+- F11-3 not checked: real Select key on hardware, the panel in the save menu path (item shows only in the select file state).

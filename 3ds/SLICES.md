@@ -30,7 +30,6 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F06-6 | (sonnet) BEFORE S28 (user decision 2026-10-18, 60 fps like PaperBoat, switch `fps60`, default off, after F07, graphics row). Plan docs/plans/F06.md | per F06.md slice F06-6, golden unchanged with the switch off
 [ ] F09 | LATER, future feature. Language select. Decide scope after the hardware run. Full text: docs/plans/F09.md USER DECISION 2026-10-18: US build only. Later, language text may come from a PAL ROM. No 25/50 Hz mode. Not before optimization. | plan in docs/
 [ ] F10 | NICE TO HAVE, last. Fix the endless loop in tst_12. Full text: docs/plans/F10.md | warp=tst_12:0 -Turbo -Smoke -FaultStop exit 0, no flood. Decide: patch the game data or add a documented port rule (needs the user)
-[ ] F11-3 | (sonnet) BEFORE S28. Options panel rows (60 FPS, Widescreen, debug toggles), Select opens it on file select, save on close | per F11.md slice F11-3
 [ ] F11-4 | Wire pm_opt.fps60 and pm_opt.wide inside F06 and F07 (part of those rows)
 [ ] F11-5 | LATER. Rebinding (needs the user, D5). Plan docs/plans/F11.md
 [ ] F11-6 | LATER. Select menu at any time on the bottom screen (needs the user, D2). Plan docs/plans/F11.md

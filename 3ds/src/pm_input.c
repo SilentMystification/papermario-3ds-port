@@ -13,6 +13,12 @@ static unsigned tap_injected, tap_seen;
 static signed char stick_x;
 static signed char stick_y;
 static int rand_on, rand_x, rand_y; /* padrand switch */
+static unsigned select_scan = 0x80000000u; /* F11-3: scan of the last Select press. A port flag, never an N64 bit. */
+int pm_pad_take_select(void) {
+    int r = pm_pad_scans - select_scan <= 4u; /* a press older than 2 game frames is stale */
+    select_scan = 0x80000000u;
+    return r;
+}
 
 /* padscript switch (slice W01): a scripted pad. `padscript=A,wait30,right*60,right+A*20` or `padscript=@file`
  * (file in the SD app folder, tokens split by comma, space or newline). A token is `wait<n>` (nothing pressed) or buttons joined
@@ -27,7 +33,7 @@ static unsigned short ps_prev;
 
 static int ps_button(const char* t, unsigned short* b, signed char* x, signed char* y) {
     static const struct { const char* n; unsigned short bit; } bt[] = {
-        { "A", 0x8000 }, { "B", 0x4000 }, { "Z", 0x2000 }, { "START", 0x1000 }, { "L", 0x0020 }, { "R", 0x0010 },
+        { "SELECT", 0x0040 }, { "A", 0x8000 }, { "B", 0x4000 }, { "Z", 0x2000 }, { "START", 0x1000 }, { "L", 0x0020 }, { "R", 0x0010 },
         { "cdown", 0x0004 }, { "dup", 0x0800 }, { "ddown", 0x0400 }, { "dleft", 0x0200 }, { "dright", 0x0100 },
     };
     for (unsigned i = 0; i < sizeof(bt) / sizeof(bt[0]); i++) if (strcasecmp(t, bt[i].n) == 0) { *b |= bt[i].bit; return 1; }
@@ -115,6 +121,7 @@ void pm_pad_scan(void) {
     if (k & KEY_CSTICK_LEFT) b |= 0x0002;
     if (k & KEY_CSTICK_RIGHT) b |= 0x0001;
     unsigned short edge = 0;
+    if (d & KEY_SELECT) select_scan = pm_pad_scans;
     if (d & KEY_A) edge |= 0x8000;
     if (d & KEY_B) edge |= 0x4000;
     if (d & (KEY_L | KEY_R)) edge |= 0x2000;
@@ -166,8 +173,9 @@ void pm_pad_scan(void) {
             static int ps_init;
             if (!ps_init) { ps_init = 1; ps_load(); }
             if (ps_run) {
-                b |= ps[ps_i].b;
-                edge |= ps[ps_i].b & ~ps_prev;
+                if (ps[ps_i].b & ~ps_prev & 0x0040) select_scan = pm_pad_scans; /* SELECT token: bit 0x40 is the script's own flag */
+                b |= ps[ps_i].b & ~0x0040;
+                edge |= ps[ps_i].b & ~ps_prev & ~0x0040;
                 ps_prev = ps[ps_i].b;
                 rand_x = ps[ps_i].x;
                 rand_y = ps[ps_i].y;

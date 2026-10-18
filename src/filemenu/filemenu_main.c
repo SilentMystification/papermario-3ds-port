@@ -1001,6 +1001,12 @@ void filemenu_main_handle_input(MenuPanel* menu) {
 
     switch (menu->state) {
         case FM_MAIN_SELECT_FILE:
+#ifdef TARGET_3DS
+            if (pm_pad_take_select()) { // port: Select opens the Options panel
+                filemenu_options_open();
+                break;
+            }
+#endif
             // force selection to column 0 when navigating up from bottom row
             if (menu->col == 1 && (u8) menu->row < 2) {
                 menu->col = 0;
@@ -1151,15 +1157,8 @@ void filemenu_main_handle_input(MenuPanel* menu) {
                     set_window_update(WIN_FILES_OPTION_RIGHT, (s32)filemenu_update_hidden_options_bottom);
 #ifdef TARGET_3DS
                 } else if (menu->selected == FM_MAIN_OPT_OPTIONS) {
-                    // port: selected "Options" item, open the empty panel
-                    sfx_play_sound(SOUND_MENU_NEXT);
-                    gWindows[WIN_FILES_OPTIONS_PANEL].width = 200;
-                    gWindows[WIN_FILES_OPTIONS_PANEL].height = 100;
-                    gWindows[WIN_FILES_OPTIONS_PANEL].pos.x = CENTER_WINDOW_X(WIN_FILES_OPTIONS_PANEL);
-                    gWindows[WIN_FILES_OPTIONS_PANEL].pos.y = CENTER_WINDOW_Y(WIN_FILES_OPTIONS_PANEL);
-                    filemenu_currentMenu = FILE_MENU_OPTIONS;
-                    filemenu_menus[FILE_MENU_OPTIONS]->state = 0;
-                    set_window_update(WIN_FILES_OPTIONS_PANEL, WINDOW_UPDATE_SHOW);
+                    // port: selected "Options" item, open the panel
+                    filemenu_options_open();
 #endif
                 } else if (menu->selected <= FM_MAIN_OPT_FILE_4) {
                     MenuPanel* confirmMenu;
@@ -1437,7 +1436,7 @@ void filemenu_main_handle_input(MenuPanel* menu) {
 void filemenu_main_update(MenuPanel* menu) {
 #ifdef TARGET_3DS
     // port: the Options item shows only in the select file state
-    set_window_update(WIN_FILES_OPTIONS_ITEM, menu->state == FM_MAIN_SELECT_FILE ? WINDOW_UPDATE_SHOW : WINDOW_UPDATE_HIDE);
+    set_window_update(WIN_FILES_OPTIONS_ITEM, menu->state == FM_MAIN_SELECT_FILE && filemenu_currentMenu == FILE_MENU_MAIN ? WINDOW_UPDATE_SHOW : WINDOW_UPDATE_HIDE);
 #endif
     // set default styles for all file slot panels
     gWindowStyles[WIN_FILES_SLOT1_BODY].customStyle = &filemenu_windowStyles[15];
@@ -1515,77 +1514,5 @@ void filemenu_draw_contents_option_options(
         filemenu_set_cursor_goal_pos(WIN_FILES_OPTIONS_ITEM, baseX + 12, baseY + 8);
     }
     filemenu_draw_message(filemenu_get_menu_message(FILE_MESSAGE_OPTIONS), baseX + 22, baseY + 2, 255, 0, 1);
-}
-
-// port: Options panel. Empty in F11-2. B closes it.
-u8 filemenu_options_gridData[] = {
-    0, 0, 0, 0
-};
-
-MenuWindowBP filemenu_options_windowBPs[] = {
-    {
-        .windowID = WIN_FILES_OPTIONS_PANEL,
-        .unk_01 = 0,
-        .pos = { .x = 0, .y = 0 },
-        .width = 0,
-        .height = 0,
-        .priority = WINDOW_PRIORITY_64,
-        .fpDrawContents = &filemenu_draw_contents_options_panel,
-        .tab = nullptr,
-        .parentID = -1,
-        .fpUpdate = { WINDOW_UPDATE_HIDE },
-        .extraFlags = 0,
-        .style = { .customStyle = &filemenu_windowStyles[20] }
-    },
-};
-
-MenuPanel filemenu_options_menuBP = {
-    .initialized = false,
-    .col = 0,
-    .row = 0,
-    .selected = 0,
-    .state = 0,
-    .numCols = 1,
-    .numRows = 1,
-    .numPages = 0,
-    .gridData = filemenu_options_gridData,
-    .fpInit = &filemenu_options_init,
-    .fpHandleInput = &filemenu_options_handle_input,
-    .fpUpdate = &filemenu_options_update,
-    .fpCleanup = &filemenu_options_cleanup
-};
-
-void filemenu_draw_contents_options_panel(
-    MenuPanel* menu,
-    s32 baseX, s32 baseY,
-    s32 width, s32 height,
-    s32 opacity, s32 darkening
-) {
-    filemenu_set_cursor_alpha(0);
-}
-
-void filemenu_options_init(MenuPanel* tab) {
-    s32 i;
-
-    for (i = 0; i < ARRAY_COUNT(filemenu_options_windowBPs); i++) {
-        filemenu_options_windowBPs[i].tab = tab;
-    }
-
-    setup_pause_menu_tab(filemenu_options_windowBPs, ARRAY_COUNT(filemenu_options_windowBPs));
-    tab->initialized = true;
-}
-
-void filemenu_options_handle_input(MenuPanel* menu) {
-    if (filemenu_pressedButtons & BUTTON_B) {
-        sfx_play_sound(SOUND_MENU_BACK);
-        filemenu_currentMenu = FILE_MENU_MAIN;
-        set_window_update(WIN_FILES_OPTIONS_PANEL, WINDOW_UPDATE_HIDE);
-    }
-}
-
-void filemenu_options_update(MenuPanel* menu) {
-}
-
-void filemenu_options_cleanup(MenuPanel* menu) {
 }
 #endif

@@ -439,6 +439,15 @@ u8 filemenu_msg_33[] = { 0x1F, 0xFD };
 u8 filemenu_msg_34[] = { 0x0E, 0xFD };
 #ifdef TARGET_3DS
 u8 filemenu_msg_options[] = { 0x2F, 0x50, 0x54, 0x49, 0x4F, 0x4E, 0x53, 0xFD }; // Options[End]
+u8 filemenu_msg_opt_fps60[] = { 0x16, 0x10, 0xF7, 0x26, 0x30, 0x33, 0xFD }; // 60 FPS[End]
+u8 filemenu_msg_opt_wide[] = { 0x37, 0x49, 0x44, 0x45, 0x53, 0x43, 0x52, 0x45, 0x45, 0x4E, 0xFD }; // Widescreen[End]
+u8 filemenu_msg_opt_hud[] = { 0x28, 0x35, 0x24, 0xFD }; // HUD[End]
+u8 filemenu_msg_opt_stats[] = { 0x33, 0x54, 0x41, 0x54, 0x53, 0xFD }; // Stats[End]
+u8 filemenu_msg_opt_nofog[] = { 0x2E, 0x4F, 0xF7, 0x46, 0x4F, 0x47, 0xFD }; // No fog[End]
+u8 filemenu_msg_opt_nolight[] = { 0x2E, 0x4F, 0xF7, 0x4C, 0x49, 0x47, 0x48, 0x54, 0xFD }; // No light[End]
+u8 filemenu_msg_opt_back[] = { 0x22, 0x41, 0x43, 0x4B, 0xFD }; // Back[End]
+u8 filemenu_msg_opt_on[] = { 0x2F, 0x4E, 0xFD }; // On[End]
+u8 filemenu_msg_opt_off[] = { 0x2F, 0x46, 0x46, 0xFD }; // Off[End]
 #endif
 #endif
 
@@ -514,6 +523,15 @@ u8 *gFileMenuMessages[] = {
 #endif
 #ifdef TARGET_3DS
     [FILE_MESSAGE_OPTIONS]                     filemenu_msg_options,
+    [FILE_MESSAGE_OPT_FPS60]                  filemenu_msg_opt_fps60,
+    [FILE_MESSAGE_OPT_WIDE]                  filemenu_msg_opt_wide,
+    [FILE_MESSAGE_OPT_HUD]                  filemenu_msg_opt_hud,
+    [FILE_MESSAGE_OPT_STATS]                  filemenu_msg_opt_stats,
+    [FILE_MESSAGE_OPT_NOFOG]                  filemenu_msg_opt_nofog,
+    [FILE_MESSAGE_OPT_NOLIGHT]                  filemenu_msg_opt_nolight,
+    [FILE_MESSAGE_OPT_BACK]                  filemenu_msg_opt_back,
+    [FILE_MESSAGE_OPT_ON]                  filemenu_msg_opt_on,
+    [FILE_MESSAGE_OPT_OFF]                  filemenu_msg_opt_off,
 #endif
 };
 

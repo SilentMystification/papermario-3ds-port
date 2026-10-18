@@ -168,6 +168,11 @@ void filemenu_info_cleanup(MenuPanel*);
 #ifdef TARGET_3DS
 void filemenu_draw_contents_option_options(MenuPanel*, s32, s32, s32, s32, s32, s32);
 void filemenu_draw_contents_options_panel(MenuPanel*, s32, s32, s32, s32, s32, s32);
+void filemenu_options_open(void);
+int pm_pad_take_select(void); // port layer, pm_input.c
+int pm_options_get(int row);
+void pm_options_flip(int row);
+void pm_options_close(void);
 void filemenu_options_init(MenuPanel*);
 void filemenu_options_handle_input(MenuPanel*);
 void filemenu_options_update(MenuPanel*);

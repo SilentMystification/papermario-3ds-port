@@ -290,6 +290,7 @@ set(GAME_SRC
     ${DECOMP}/src/filemenu/filemenu_main.c
     ${DECOMP}/src/filemenu/filemenu_yesno.c
     ${DECOMP}/src/filemenu/filemenu_info.c
+    ${DECOMP}/src/filemenu/filemenu_options.c
     ${DECOMP}/src/filemenu/filemenu_createfile.c
     ${DECOMP}/src/filemenu/filemenu_gfx.c
     ${DECOMP}/src/filemenu/filemenu_msg.c

@@ -81,10 +81,16 @@ void pm_mapdata_enter(const char* id);
 
 /* F11-1: port settings (pm_options.c). The file is options.txt in the working folder. */
 typedef struct PmOpt {
-    int fps60, wide, dbg_hud, dbg_stats;
+    int fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight;
 } PmOpt;
 extern PmOpt pm_opt;
 void pm_options_init(void);
 void pm_options_write(void);
+/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight. */
+int pm_options_get(int row);
+void pm_options_flip(int row);
+void pm_options_close(void);
+void pm_log_switch(const char* word, int on);
+int pm_pad_take_select(void);
 
 #endif
