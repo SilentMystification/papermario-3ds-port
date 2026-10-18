@@ -56,7 +56,7 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 
 ## Assets and generated paths
 - ROM: `C:\Users\Andrew\AppData\Roaming\Azahar\sdmc\3ds\PaperMario\papermario.z64` and copy `ver/us/baserom.z64` (git-ignored).
-- Extracted, git-ignored: `ver/us/build/` (PNGs, `.png.bin`, headers, build.ninja), `src/vtx`, `assets/`.
+- Extracted, git-ignored: `ver/us/build/` (PNGs, `.png.bin`, headers, build.ninja), `assets/`.
 - Generated and tracked: `3ds/stub_include/*.h` (ld_addrs, effect_ld_addrs, battle_ld_addrs, data_rom_addrs, entity_model_offsets, map_rom_ranges, battle_name_table, charset_offsets), `3ds/maps.cmake`, `3ds/effects.cmake`, `3ds/battle.cmake`, `3ds/map_syms.lds`, `3ds/ld/map_restore.ld`, `3ds/src/rom_remap.h`, `3ds/src/map_restore_table.c`, `3ds/src/effect_loads.c`.
 - Runtime on the SD card or Azahar: `sdmc/3ds/PaperMario/` (`log.txt`, `crash.txt`, `shots/`, `save.flash`, `debug3ds.txt`). Build output `build3ds/` (`pm_3ds.3dsx`, `pm_3ds.map`). Logs and traces: `3ds/logs/` (git-ignored).
 
@@ -68,4 +68,4 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 - Maps and battle: `src/world/area_hos/hos_05/intro.c`, `src/battle/area/kzn2/actor/lava_piranha.c`, `src/world/common/lava_piranha/part1.inc.c` (vine buffers), `src/battle/190B20.c` (`EVT_IS_PTR`).
 - Link-time hooks (`3ds/CMakeLists.txt`): `--wrap` of `get_map_IDs_by_name`, `set_game_mode`, `load_map_by_IDs`, `dma_copy`, `load_asset_by_name`, `step_game_loop`, `gfx_draw_frame`, `gfx_task_background`. Flags `-fsigned-char -fwrapv -fno-short-enums`. `world.c` is cut at `#define AREA(`.
 - Sources outside `3ds`: `src/world/world.c` (real gAreas), `src/screen_overlays.c`, `src/curtains.c`, `src/battle/*` (merged by M03).
-- Lanes (parallel build worktree, `PM_LANE`, volume, merge, removal, cost): `docs/LANES.md`. Plan: `docs/PARALLEL_PLAN.md`.
+- Lanes (parallel build worktree, `PM_LANE`, volume, merge, removal, cost): `docs/LANES.md`. Archived plan: docs/HISTORY.md, section "Trimmed 2026-10-18 (docs/PARALLEL_PLAN.md)".

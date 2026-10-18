@@ -69,6 +69,7 @@ Only one graphics agent at a time. Other lanes may run non-graphics rows.
 | No flattery. Replies in ASD-STE100. | Every reply. |
 | Orchestrator calls out its own bloat and hands off. | This file is the handoff. |
 | User wants one general solution for N64 memory image effects. | docs/plans/buffer_bridge.md. Check PO3 risk R7 at every PO3 slice. |
+| ALL functionality is ported before S28 (user decision 2026-10-18). | S28 and later: hardware, missed fixes, optimization only. No new functionality after S28. H05 Part C (docs/plans/H05.md) audits this. |
 | Usage-limit auto stop: not wanted. | None. |
 | User confirmed faults to fix: V12 (damage star). Check other battle effects for the same cause. | Row 3. |
 

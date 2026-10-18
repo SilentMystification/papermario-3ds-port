@@ -21,14 +21,14 @@ Written 2026-10-17 for a NEW orchestrator chat. Read this file, then HANDOFF.md,
 - Fix root causes. Never hide a fault with a guard.
 - Q1 (a): the whole real battle tree is merged (done, M03). Q2 (a): needed assets stay resident in RAM, no SD streaming during play.
 - Q4: demo maps linked (done). Q5: the obfuscation shims stay empty. The crash screen works only if the debug output can be used (row S31).
-- Q6: link all maps. Measure first. 271 of 421 are linked, the rest does not fit (Q7).
+- Q6: link all maps. Measure first. All 421 maps are linked (S30b).
 - The game runs at exactly 30 fps (PC01). A 30/60 toggle comes later (F06). Widescreen comes later (F07).
 - The O3DS is the hardware target. It should reach full speed. Performance work comes after everything works.
 - ARM11 math audit: experiments allowed. Game-logic math changes need a replay check and the user approval.
 - Use libctru natives for threading and sync. The log is non-blocking on core 1 (L01).
 - Workload split: core 0 = logic plus the CPU part of the RSP work. Core 1 = audio. PICA GPU = rasterization plus vertex work. Consider ndsp for audio mixing.
 - Testing: feature tests use the warp with -Turbo -Smoke and a fixed length. Never an open wait. Tours iterate on the failing set. Run the full tour once at the end.
-- SMALL HANDOFF.md: at most about 150 lines. Each slice adds at most 3 lines to it. Detail goes to docs/HISTORY.md.
+- SMALL HANDOFF.md: at most 55 lines. Each slice adds at most 3 lines to it. Detail goes to docs/HISTORY.md.
 - History is kept in docs/ (HISTORY.md, SLICES_DONE.md, PROGRESS_ARCHIVE.log). Nothing is deleted. Move text, never drop it.
 - Screenshot analysis is GENTLE. Use screenshots only when really needed. Prefer text evidence: draw logs, depth view, checksums, pixel diffs, summary scripts. When a picture is needed, use ONE contact sheet.
 - Lighter checks: smoke on presets yard and toad with -Turbo -Smoke, shots of only the touched scenes. No 4-scene A/B and no full tour, unless the slice touches the map change path, boot, title, file select or intro. Iterate on failing sets. Run the full tour once at the end. Warp and turbo for feature tests.

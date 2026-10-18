@@ -37,4 +37,4 @@ A lane is a git worktree with its own branch, build folder and Docker volume. La
 ## Rules
 - Only one Azahar run at a time. The mutex enforces it. Builds may run in parallel.
 - Never touch `build3ds/` or volume `pm3ds-work` from lane B. Never touch `pm3ds-work-laneB` from main.
-- Azahar settings (qt-config.ini, SD card, log) are still shared. Phase 3 of docs/PARALLEL_PLAN.md (own Azahar folder per lane) is not done.
+- Azahar settings (qt-config.ini, SD card, log) are still shared. Phase 3 of docs/HISTORY.md (section "Trimmed 2026-10-18 (docs/PARALLEL_PLAN.md)") (own Azahar folder per lane) is not done.

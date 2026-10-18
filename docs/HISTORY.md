@@ -1654,3 +1654,302 @@ Old text moved from 3ds/QUESTIONS.md.
 - Cause: the tour starts from a new file, curPartner is PARTNER_NONE, so no partner NPC exists. The trd_06 scripts and the partner code need the partner NPC. The real game has a partner there (trd_06 comes after the partners are earned, the N64 code dereferences the NPC the same way). Tour-only fault, same class as kmr_23 and nok_01.
 - Fix: 3ds/src/pm_warp.c, a tour uses partner 1 (Goombario) unless `partner=` is given. No guard in game code.
 - Check: same chunk without a partner switch: rc 0, tour done. yard rc 0, toad rc 0. Not checked: the real exit and entry path from trd_05 into trd_06 with game scripts (story state not reachable by warp), partners other than Goombario, the full tour, hardware.
+
+
+## Trimmed 2026-10-18 (docs/PARALLEL_PLAN.md)
+
+This file was obsolete and was removed. Full text follows.
+
+# Parallel plan (written 2026-10-18, read-only study, nothing was run)
+
+Sources read: ORCHESTRATOR.md, HANDOFF.md, SLICES.md, INDEX.md, run_azahar.ps1, build.sh, go.ps1, qt-config.ini, the Azahar folder. Facts marked UNVERIFIED were not tested. X02 owns Azahar and the build now.
+
+## Part A. Can several Azahar instances run?
+
+Answer: YES in principle. Each instance needs its own user directory. The repo does not do this today. UNVERIFIED: no run was made.
+
+### A1. Separate user directory per instance
+| Item | Finding |
+|---|---|
+| Portable mode | Azahar (a Citra fork) uses a folder named `user` next to azahar.exe as its user directory, if the folder exists. This is Citra behaviour. UNVERIFIED for the installed version (first step of the setup tests it). The repo has no portable folder now. `C:\Program Files\Azahar` has no `user` folder. |
+| Command line option | Not needed and not allowed. The rule says azahar.exe starts with only the .3dsx path. Portable mode needs no option. |
+| Per-instance copy | Copy `C:\Program Files\Azahar` (178 MB) to `C:\azahar-lanes\<lane>\`. Add `user\config\qt-config.ini` (copy of the real one, edited), `user\nand` (177 MB copy, first boot needs it), `user\sysdata` (4 KB), `user\sdmc\3ds\PaperMario\papermario.z64` (40 MB, use a hard link: `mklink /H`), `user\shaders` (11 MB, optional, avoids a cold shader cache). Do NOT copy the 4.5 GB real sdmc. About 430 MB per lane. |
+| Config keys to change per lane | `gdbstub_port` (24689 is fixed in the script), `nand_directory` and `sdmc_directory` (set to the lane paths, or leave them to portable mode), `use_custom_storage`. |
+
+### A2. Shared paths in a run
+| Path or resource | Where it is used | Shared? | Fix per lane |
+|---|---|---|---|
+| `%APPDATA%\Azahar\config\qt-config.ini` | run_azahar.ps1 `$cfg` (Set-Turbo, Set-GdbStub) | Shared. Overlap races (T02 cause 3). | Lane config in `user\config`. |
+| `%APPDATA%\Azahar\sdmc\3ds\PaperMario` | `$sd`: 3dsx copy, debug3ds.txt, log.txt, shots, save.flash, crash.txt, ROM | Shared. One game log, one debug3ds.txt. | `$sd` under the lane `user\sdmc`. The game reads `sdmc:/` so it follows the lane. |
+| `%APPDATA%\Azahar\log\azahar_log.txt` | `$emuLog`: FaultStop, exception, last_unmapped | Shared. Run start deletes it. | Lane `user\log`. |
+| `build3ds/` and `pm_3ds.3dsx` | build.sh output, run_azahar.ps1 copies the 3dsx, last_log.txt, last_unmapped.txt, last_exception.txt, last_shot.png, last_gdb.txt, gdb_cmds.txt, qt-config.turbo-backup | Shared inside one tree. | A git worktree per lane gives each lane its own `build3ds/`. |
+| Docker volume `pm3ds-work` (`/work/src`, `/work/build`) | build.sh rsync with `--delete`, then cmake. gdb and addr2line in run_azahar.ps1 read `/work/build/pm_3ds.elf` | Shared. Two builds destroy each other. | Volume per lane: `pm3ds-work-<lane>`. Change build.sh and the two `docker run` calls in run_azahar.ps1 to use `$PM_LANE`. |
+| `build.sh` last step | copies the 3dsx to the real `%APPDATA%` sdmc | Shared. | Skip it when `PM_LANE` is set. run_azahar.ps1 copies the 3dsx anyway. |
+| `debug3ds.txt` | written to `$sd`, removed in finally | Shared. | Follows `$sd`. |
+| `3ds/logs/` | git-ignored, agent logs and traces | Per worktree if the lane has its own tree. | Use the lane tree. |
+| `3ds/golden/*.png`, `3ds/tools/golden.py` | tracked references, calls run_azahar.ps1 | Tracked files. Only one lane may run `--update`. | golden.py inherits `PM_LANE` from the environment. |
+| Capture by window | `-Capture`: `$p.MainWindowHandle` and PrintWindow. The dialog check uses the window list of the PID. | Per PID, not by title. | None. |
+| Game shots (`shots` switch) | PPM files in `$sd\shots`, copied to `build3ds\shots` | Follows `$sd`. | None. |
+| GDB port 24689 | Set-GdbStub | Shared. | Port per lane in the lane config. Pass it to gdb (`target remote winhost:<port>`). Rarely used. |
+| Live log TCP 17492 | `pm_log.c` binds this port inside the game. Azahar guest sockets use the host network. | A second instance gets `bind 17492 failed`. The game logs the line and goes on. UNVERIFIED. | None needed. Ignore the line. |
+| `PROGRESS.log`, `HANDOFF.md`, `SLICES.md`, `docs/*` | tracked | Merge conflicts only. | Rule: a lane appends only. The orchestrator merges. |
+| Kill logic | Kill-Azahar uses the PID. | Safe already. | None. |
+
+### A3. Does shot capture depend on one window or on focus?
+- No. `-Capture` uses the PID of the launched instance, `PrintWindow` (works without focus) and `GetWindowRect`. The game shots come from the game as files. The script never uses a window title.
+- Risk: PrintWindow of a minimised window gives a black frame. Keep the windows open and not minimised.
+
+### A4. What N lanes need
+1. A git worktree per lane: `git worktree add C:\pm-lanes\<lane> -b lane/<lane> main`. The existing `3ds/logs/wt_battle` worktree is old (detached). Remove it first or ignore it.
+2. The extracted assets are git-ignored (`ver/us/build`, `src/vtx`, `assets`, `include/message_ids.h`). A new worktree does not have them. Copy or junction them from the main tree (`mklink /J`). This is the largest hidden cost. Check it first.
+3. A Docker volume per lane (`pm3ds-work-<lane>`). The first build in a lane is a full build. The ninja build uses all 32 threads, so parallel builds slow each other.
+4. An Azahar folder copy per lane with its own config, sdmc, nand, log (A1).
+5. A lane variable `PM_LANE` read by build.sh, run_azahar.ps1, golden.py. Empty means the old behaviour.
+6. Merge back: each lane commits on its branch. The orchestrator merges into main one lane at a time (`git merge --no-ff lane/<lane>`), builds once and runs the smoke check on `yard` and `toad`. The shared files (HANDOFF.md, PROGRESS.log, SLICES.md) conflict. Lane agents append only. The orchestrator fixes conflicts.
+7. Generated tracked files (maps.cmake, map_syms.lds, stub_include) conflict if two lanes regenerate them. Only the S30b lane may run generators.
+
+### A5. Fallback: one lock for the Azahar run
+| | Per-lane Azahar (A4) | Lock only |
+|---|---|---|
+| Parallel edit and build | Yes, if build dirs and volumes are separate | Yes, only with a worktree and a volume per lane. Without them builds still clash. |
+| Parallel Azahar run | Yes | No. Agents queue. A run is 16 to 60 s. |
+| Change size | Large: 3 scripts, a setup script, an unverified portable mode | Small: a named mutex in run_azahar.ps1 (about 10 lines), part of T02 |
+| Risk | Portable mode may not work. The lane config can drift. | Low |
+
+Recommendation: do the lock FIRST (T02, small, safe). Add worktree, volume and build dir per lane next, because builds are the long step. Add the per-lane Azahar copy only if the queue for Azahar becomes the bottleneck. Most slices run Azahar for about 1 to 3 minutes in total, so the queue is short.
+
+### A6. Cost of one instance
+- Not measured in the repo or the logs. The logs only give guest numbers (audio 3 ms per tick, guest memory 98 MB offered). An Azahar run uses CPU for the emulator thread and the render thread. At `-Turbo` the speed limit is 1000 percent, so it takes as much CPU as it can get.
+- Estimate, UNVERIFIED: 2 to 4 cores and 1 to 2 GB RAM per instance (process working set, window, shader cache). Measure with `Get-Process azahar | select WS,CPU` during one run.
+- The PC: Ryzen 9 3950X, 16 cores, 32 threads, 64 GB RAM. Three or four instances fit. Docker builds also use all threads. Turbo runs from several lanes at the same time may change timing but not frame-driven results. No performance numbers from a parallel run are valid.
+
+### A7. Changes in run_azahar.ps1 (relates to row T02)
+| # | Change | T02 link |
+|---|---|---|
+| 1 | Named mutex `Global\pm_azahar_cfg` around any read or write of a config. Release in `finally`. | T02 named mutex |
+| 2 | Resolve paths from `$env:PM_LANE`. Empty: the paths of today. Set: `$exe`, `$cfg`, `$sd`, `$emuLog` under `C:\azahar-lanes\<lane>`. | T02 per-run config |
+| 3 | Use the lane config only. The real `qt-config.ini` is never opened when a lane is set. Later also for the default run (copy the real one to a temp user dir). | T02 core goal |
+| 4 | Wrap the whole body in try/finally. Move Set-Turbo and Set-GdbStub inside the `try`. | T02 cause 1 |
+| 5 | Remove the unconditional `Set-Turbo $false` at line 109 for a lane run (it deletes a running lane's backup). | T02 cause 3 |
+| 6 | Fail loudly when a config key is missing (throw, do not skip). | T02 cause 5 |
+| 7 | Docker calls (gdb, addr2line): volume `pm3ds-work-$PM_LANE`. Gdb port from the lane config. | new |
+| 8 | Optional: when a lane has no config, copy from the real one and set `use_gdbstub`, `frame_limit`, `use_vsync` once. | new |
+| 9 | While X02 runs, do not edit the file in place. Edit it after X02 ends, or write `3ds/run_azahar_lane.ps1` and merge later. | safety |
+
+## Part B. Lookahead over open rows
+
+Shelved: V09 intro tints and nok_01 (first V09 row). Optional (unconfirmed visual faults): V09 kmr_22, V10, V11.
+Model tier by the MODEL RULE: opus only for plans, sonnet for code, shared code, graphics, memory, audio, haiku for mechanical work.
+
+| Row | Files or subsystem (likely) | Azahar runs | User or hardware | Tier |
+|---|---|---|---|---|
+| S28 | no code. Hardware run, boot line, audio cost, fps | Not Azahar. O3DS and N3DS | YES (O3DS on, dspfirm.cdc) | sonnet (judgment on numbers) |
+| S30b | `3ds/maps_skip.txt`, `maps.cmake`, `map_syms.lds`, `CMakeLists.txt`, `map_restore.*`, `src/world/area_*`, memory layout | yes, tours | YES, answer to Q7 | sonnet |
+| V07 | `src/entity.c`, `pm_gbi.c`, `testitem` in `pm_warp.c` | yes | YES, exact scene or hardware | sonnet |
+| V06 | `pm_gbi.c`, `pm_gpu.c` (fog, blender) | yes | YES, user must confirm | sonnet |
+| X02 | `pm_gbi.c`, `pm_gpu.c`, `pm_tex.c` (render to image, 32 KB VRAM, 3 KB code) | yes (running now) | no | sonnet |
+| S31 | `game_stubs.c`, `pm_later.c`, crash handler in `pm_main.c`, `crashtest*` switches | yes (`crashtest_call`) | partly: real crash screen needs hardware | sonnet (no-stub judgment) |
+| F01 | kmr_23 `src/curtains.c`, tst_12 cut map, nok_01 `src/audio/core/engine.c` (the nok_01 part overlaps shelved V09), pause, save, zones | yes (tour) | no | sonnet |
+| F03 | `src/model.c:4497`, depth read back in `pm_gpu.c` and `pm_gbi.c` | yes (`warp=hos_05`) | no | sonnet |
+| T02 | `3ds/run_azahar.ps1`, `build.sh`, `golden.py` | one check run at the end | no | sonnet (script plus config safety) |
+| F08 | `pm_gbi.c`, `pm_comb.c`, `pm_gpu.c`, shader `pm.v.pica` | yes, fog map | no | sonnet |
+| PO2 | `pm_gbi.c` (vertex transform at G_VTX), `pm_phase.c` | yes (phase timer) | YES, answer in QUESTIONS.md | sonnet |
+| PO3 | plan in `docs/`. Later `pm_gbi.c`, `pm_gpu.c`, `pm.v.pica` | plan: no. Later: yes | no | opus for the plan, sonnet later |
+| AU1 | plan first. Later `pm_audio.c`, `pm_rsp_audio.c`, `pm_os.c`, `src/audio/core/engine.c` | later yes | YES for the O3DS cost number | opus plan, sonnet later |
+| MA1 | many files (libm calls, divides). Replay hash in `pm_warp.c` | yes (replay check) | YES, approval for game-logic math | haiku for the listing, sonnet for changes |
+| F06 | plan only, after S28 | no | needs S28 | opus |
+| F07 | plan only, after S28 | no | needs S28 | opus |
+| S18 | check run, move row to `docs/SLICES_DONE.md` | yes, one run | no | haiku |
+| S19c | check one attack battle, move row | yes, one run | no | haiku |
+| V09 kmr_22 (optional) | card texture in `src/world/area_kmr/kmr_22`, `pm_tex.c` | yes | no, but unconfirmed fault | sonnet |
+| V10 (optional) | `draw_box` pattern path `box_pattern_rect`, `pm_gbi.c` | yes | no, unconfirmed | sonnet |
+| V11 (optional) | kmr_05 collision or map data | yes | no, unconfirmed | sonnet |
+
+### Batches without file conflicts
+Conflict groups: GFX = `pm_gbi.c`, `pm_gpu.c`, `pm_tex.c`, `pm_comb.c`. AUDIO = `pm_audio.c`, `pm_rsp_audio.c`, `pm_os.c`, `engine.c`. MAPS = `maps.cmake`, `CMakeLists.txt`, generated files. TOOLS = `run_azahar.ps1`, `build.sh`, `golden.py`.
+
+| Batch | Rows | Why they do not conflict | Needs |
+|---|---|---|---|
+| 0 (beside X02, now) | T02 (TOOLS, edit in a copy or after X02), PO3 plan (docs only), AU1 plan (docs only), MA1 listing (docs only) | No GFX file. No build. No Azahar run. Plans write one new file each in `docs/`. | no build, no Azahar |
+| 1 (after X02 ends and lanes exist) | F01 (curtains, engine.c, tst_12), S31 (stubs, crash handler), S18 and S19c (docs plus one run each) | Different files. F01 touches AUDIO `engine.c`, so no AU1 coding in this batch. | one lane each |
+| 2 (GFX chain, one lane at a time) | F03, then F08, then PO2 (needs the user answer), then optional V10, V09 kmr_22 | All touch `pm_gbi.c` or `pm_gpu.c`. They would conflict. | one lane |
+| 3 (AUDIO) | AU1 code after its plan, after F01 nok_01 | Shares `engine.c` with F01. | S28 number helps |
+| 4 (sequential, alone) | S30b | Changes memory layout and generated files. All other measurements and golden frames move. Needs Q7. | user |
+| 5 (user or hardware) | S28, V06, V07 | Cannot run without the user. S28 first because it settles Q2 and Q7. | user |
+| 6 (late) | MA1 changes, PO3 code, F06, F07 | Touch many files. MA1 needs replay hashes and approval. F06 and F07 plan after S28. | S28, user |
+
+Rows that must stay sequential: S28 first in the hardware path. S30b after Q7 and alone. The GFX chain (X02, F03, F08, PO2, PO3 code) because of shared files. MA1 changes and PO3 code after the GFX chain. F06 and F07 after S28.
+
+### What can start beside X02 now
+- T02 (write the changes in `3ds/run_azahar_lane.ps1` or wait: X02 runs `run_azahar.ps1`). No Azahar run, no build.
+- PO3 plan, AU1 plan (opus, docs only), MA1 listing (haiku, read-only listing into one doc).
+- Read-only analysis for F01, F03, S31 (cause notes only, no build, no code edit).
+- NOT now: anything that builds (the shared `pm3ds-work` volume and `build3ds/` belong to X02) or runs Azahar, and any edit in the GFX files.
+
+## Recommended setup
+1. Phase 1 (now): the lock. T02 adds the named mutex, try/finally, and loud key checks. No lanes yet.
+2. Phase 2: worktree, Docker volume and build directory per lane (2 or 3 lanes). Lanes share one Azahar through the mutex. Runs queue.
+3. Phase 3 (only if the queue hurts): per-lane Azahar folder with portable `user` directory (A1).
+4. Merge: orchestrator merges one lane at a time, smoke check `yard` and `toad` after each merge.
+
+## First steps for the build agent (haiku or sonnet, after X02 ends)
+1. Read ORCHESTRATOR.md, this file. Check `git status`. Do not touch X02 files.
+2. Test portable mode on a throw-away copy: `robocopy "C:\Program Files\Azahar" C:\azahar-lanes\t1 /E`, make `C:\azahar-lanes\t1\user`, copy `%APPDATA%\Azahar\config`, `nand`, `sysdata` into it, hard link the ROM into `user\sdmc\3ds\PaperMario`. Start `C:\azahar-lanes\t1\azahar.exe` with ONLY the 3dsx path (use a copy of the script with the lane paths). Check that `user\log\azahar_log.txt` and `user\sdmc\...\log.txt` appear and that `%APPDATA%\Azahar\log\azahar_log.txt` does not change. Write the result (works or not) in PROGRESS.log. If not, stop at Phase 2.
+3. Add `PM_LANE` to `build.sh` (volume `pm3ds-work-$PM_LANE`, no copy to the real sdmc when set). Add the same volume name to the two `docker run` calls and the lane paths in `run_azahar.ps1` (A7 items 1 to 7).
+4. Create lane worktrees: `git worktree add C:\pm-lanes\L1 -b lane/L1 main` and `L2`. Junction the git-ignored assets (`ver\us\build`, `src\vtx`, `assets`, `include\message_ids.h`) from the main tree. Check `include/message_ids.h` is regenerated or copied.
+5. In each lane: `set PM_LANE=L1`, run `sh 3ds/build.sh`, then `powershell -File 3ds/run_azahar.ps1 -Turbo -Smoke -FaultStop -Debug "fast preset=yard"`. Both lanes in parallel. Both must exit 0 and keep their own `build3ds/last_log.txt`.
+6. Measure CPU and RAM during the parallel run (`Get-Process azahar | select Id,WS,CPU`). Write the numbers in this file (Part A6).
+7. Write the lane rules in ORCHESTRATOR.md (one paragraph): lanes append only to shared docs, the orchestrator merges, only the S30b lane runs generators.
+8. Commit locally in plain English. No push. No attribution.
+
+
+## Trimmed 2026-10-18 (HANDOFF.md)
+
+Full text of HANDOFF.md before the trim. Rules that 3ds/AGENT_RULES.md holds are kept here.
+
+```
+# Handoff (short, read in full by every agent)
+
+RULE: Each slice adds at most 3 lines to this file. Put detail in docs/HISTORY.md (append at the end).
+Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done rows), docs/INDEX.md (where things are), 3ds/ORCHESTRATOR.md (workflow, reading rules, model rule), 3ds/SLICES.md (open queue), 3ds/QUESTIONS.md (open questions).
+
+## RULE: NO STUBS WITHOUT ASKING
+- Do not add a stub. Do not write a stand-in for decomp code or data. Build the real decomp file.
+- A port-layer shim is allowed only for real N64 OS or hardware functions that hold no game logic.
+- If a stub looks like the only option, stop. Write `BLOCKED: <reason>` here. Name the unported system that forces it. Ask the user. Wait.
+- Top priority: remove existing stubs (list at the end of this file).
+- Fix root causes. Never hide a fault with a guard (the `spriteIdx < 0` guard of S22 was removed).
+
+## Rules the project depends on (Do not)
+- Do not push to git. Add no Claude or Anthropic attribution to commits or PRs. Commit locally, plain English, only your own files.
+- Do not run `git checkout` on tracked files. Do not commit logs, traces or shots. They go under `3ds/logs/` (git-ignored). Only `3ds/PROGRESS.log` is tracked.
+- Do not start `azahar.exe` with any argument except the .3dsx path (a modal dialog blocks the run). Use `3ds/run_azahar.ps1`, not `go.ps1`. Only one Azahar window can run.
+- Do not leave `fast` in `debug3ds.txt` (it skips the logos). The build skips when the 3dsx is newer than all sources: touch a source file after a CMakeLists.txt change.
+- Testing: feature tests use the warp (`preset=` or `warp=<map>:<entry>`) with `-Turbo -Smoke -FaultStop` and a fixed length. Never wait open ended. Add `padscript=` where input is needed.
+- Lighter check rule (2026-10): after a fix run (1) the smoke check on presets `yard` and `toad` with `-Turbo -Smoke` (about 16 s each), (2) shots of only the scenes the change touches. No 4-scene A/B and no full tour, unless the slice touches the map change path, boot, title, file select or the intro. Then run the full normal chain `-Debug "fast autoa freshsave" -Stall 40`. A by-eye A/B with a `nocull` style switch stays allowed to prove that the symptom is fixed.
+- NARROW TESTS (2026-10-18): test only what the change touches. Use one target scene or map, a fixed short length and one text check (log line, draw count or one pixel diff). Do not build large test setups. Do not skip a fault the narrow test finds: fix it. Say in the result which areas were not tested. Build or run checks per slice must be short.
+- Tours: iterate on the failing set. Run the full tour once at the end of a slice. Say in the result which kind of check you used.
+- Threading and sync use libctru natives (threadCreate, LightLock, LightEvent, LightSemaphore, svc handles). No hand-rolled locks. No sleep loops. The custom yield in `pm_os.c` (`pm_au_thread_yield`) and `pm_audio.c` is to be reviewed in the audio slice (AU1).
+- Memory rule: the estimated O3DS spare is about 4.7 MB with all 421 maps (docs/MEMORY_BUDGET.md). Add at most about 10 KB of code or data per slice. Exception: S30b may add about 2 MB of static image (user approved). Write the size change (3dsx bytes) in the slice result.
+- Screenshot rule: use screenshots only when really needed. Prefer text evidence (draw logs, depth view, checksums, pixel diffs, summary scripts). When a picture is needed, make ONE contact sheet.
+- Log rule: each agent appends one line per step to `3ds/PROGRESS.log` (`HH:MM ID text`). Read logs with the last 40 lines only. Game log: `%APPDATA%\Azahar\sdmc\3ds\PaperMario\log.txt`. The log is non-blocking (L01). Never commit it.
+- Notes and replies use ASD-STE100 English: short sentences, one instruction each, active voice, no semicolons, no praise.
+- Reference ports in `reference/` (paperboat first, soh-3ds and sm64-3ds for 3DS GPU, audio, memory): read to learn the method. Never copy a hand-written stand-in.
+
+## Current state (2026-10-17)
+- Branch `main`. Tag `s19-pre-merge` keeps the old tip of branch `s19-full-battle` (merged by M03). No push.
+- The game boots in Azahar: logos, title, file select, intro (hos_05), kmr_20, osr_00, mac_00, mac_01, kkj_00 (the real chain). The real battle tree is merged. Real encounters, level up, flee, game over and the title demo loop (17 scenes, repeats after MS01) run.
+- All 421 maps are linked (S30b). 3ds/maps_skip.txt is empty. 6 new maps warped in Azahar, the other 148 not.
+- Image about 16.98 MB. 3dsx about 10.9 MB. Estimated O3DS spare about 518 KB. This is an estimate from Azahar numbers (64 MB limit assumed, 20 MB linear pool, N64 RAM block 4 MB).
+- The O3DS and the N3DS were never run. S28 is the first hardware run. All speed numbers are Azahar numbers and are not valid for the O3DS.
+- The game runs at exactly 30 fps (PC01: 29.91 steps per second, 2 vblanks per step). 60 fps (F06) and widescreen (F07) come later.
+- Fixed in the platform layer (details in docs/HISTORY.md): combiner (S25), transparency (S26), file select (S27), screen transitions (X01), brown wall by culling (V02), menu flip (V05), HUD (H04), pause (D03), V06 blender mix.
+- Port layer files and tools: see docs/INDEX.md.
+- Golden frames (G01g): `python 3ds/tools/golden.py [--update] [scene..]` runs 10 scenes (title, fileselect, intro, toad, yard, battle, pause1 to 4), prints a table of pixel differences against `3ds/golden/*.png`. About 25 s per scene. Run it after a graphics change. Update the references only after a change that you checked by eye.
+- H03: linear pool 14 MB (was 20 MB), boot line `mem split H03`. A full texture cache skips the draw (no white quad). Detail in docs/HISTORY.md.
+- V08 done: the save block is translucent by design (decomp XLU, prim alpha 128). The port draws it exact. No code change.
+- Last commits: V05 (menu flip, scissor), V06 (fog colour mix).
+
+## Debug switches (put in `debug3ds.txt` or `-Debug "..."`). One line per group, details in docs/INDEX.md
+- Start: `fast autoa freshsave loadslot=<n>`. Warp: `warp=<map>:<entry> story=<name|n> preset=<name> partner=<n> sp=<n> hp=<n> battle[=<f>:<s>] battlef=<n> demobattle`.
+- Run control: `smoke smokeframes=<n> tour=@file tourfx=<n> turbo padscript=<..|@file> padrand padlog taptest`.
+- Pictures: `shots shotwin=<f>:<n> shotmode=<m>:<n> shotskip=<n> offdump`.
+- Draw A/B and trace: `nocomb nocull nomix nooff noprimz rmoff rmlog drawlog=<f>:<n> ddonly=<lo>:<hi> ddverb depthview=<1|2|3> xtrace=<f>:<n> prevtest nofallback`.
+- Checks: `ptrcheck ptrtest romstrict romtrace romfull dataprobe assets scripts faulttest crashtest crashtest_call crashtest_audio crashtest_audio_call`.
+- Timing and log: `phase phasecsv phasegbi stats audiostat pacestat logstat lognull logflood noaudio`.
+- Presets: intro yard toad toad_east toad_west osr kmr02.
+- Run script `3ds/run_azahar.ps1`: `-Until -Timeout -Stall -Turbo -TurboFactor -TurboLimit -Smoke -FaultStop -Capture -Gdb -GdbScript -Interactive`. Exit 0 ok, 1 failed, 2 unmapped access or crash. Main command: `powershell -File 3ds/run_azahar.ps1 -Turbo -Smoke -FaultStop -Debug "fast preset=toad"`.
+- Build: `3ds/build.sh` and `3ds/go.ps1` (build glue). Hardware: skills `push-o`, `push-n`, `pull-o`, `pull-n`, `push-a`.
+
+## Open issues (one line each, row id in 3ds/SLICES.md)
+- V06 (queued, after X02): user confirmed the ground gap in buildings is correct. Real fault: the outside must be black in a building room, the port draws the normal background.
+- V07 (SHELVED by user 2026-10-18): items flicker. Not reproduced in Azahar. The user reports it again if seen. Do not work on it.
+- V09 (two rows): intro tints changed by S25 (and nok_01 tour fault). kmr_22 card shows a rainbow bar.
+- V10: battle Strategies box and level-up box draw as a checkerboard.
+- V09 intro tints and nok_01 shelved by the user, partial edits on branch shelf/v09-nok01.
+- X02 done (B0 of docs/plans/buffer_bridge.md): darkness runs the real decomp function with 64x64 slots keyed by (address, pixel size). kzn_08 untested (not linked). Detail in docs/HISTORY.md.
+- F03: `is_point_visible` reads a NULL z-buffer (hos_05 lamp, `tex ptr 0000fd7e`).
+- F08: fog partly done by V06 (blend and fog colour mix). The per-vertex fog factor is open.
+- S30b done: all 421 maps linked, 3dsx 13,011,156 B (+2.09 MB), GotoMap guard removed. Spare about 4.7 MB by estimate (docs/MEMORY_BUDGET.md).
+- S31: crash screen and debug output check (Q5).
+- T02 Phase 1 done: run_azahar.ps1 holds mutex `Global\pm_azahar_run` (-LockWait s, exit 3 on timeout), restores qt-config.ini byte for byte in finally, and recovers after a hard kill. Lanes (Phase 2, 3) are open in docs/PARALLEL_PLAN.md.
+- F01 tst_12: cause measured (LVar5 = -17, LVarF = -11, endless Loop, N64-identical decomp defect of a cut map, no port fix). Skip tst_12 in tours. Detail in docs/HISTORY.md.
+- Tour faults: kmr_23, nok_01, trd_06 (falling.c:148) and partners.c:1136 fixed by F01 (lane B, tour-only: a tour now uses partner 1). Detail in docs/HISTORY.md.
+- Not verified by eye: partner moves, items and star power in battle. Pause with items or a partner. Hardware.
+- F09 language select: future feature, not in the current batch.
+- PO3 RISK (RSP to PICA port): effects that read back N64 memory images (X02, F03, water_splash, grabs) may need rework. Check each at every PO3 slice (docs/plans/PO3.md R7).
+- Buffer bridge plan: docs/plans/buffer_bridge.md (B0 is X02)
+- S28 only after all Azahar-verifiable rows are done (user decision 2026-10-18).
+
+## Stand-ins still open (checked against docs/HISTORY.md, S20 audit A, B, C, D and later results)
+- Placeholder aliases (class D, code only, no data read): 47 `--defsym X=gPartnerStatus` in `3ds/CMakeLists.txt` (`world_partner_*`, `world_use_item_*`, `pause_*`, `filemenu_*`). Code overlays linked in place. Verified in P01 and R01.
+- `((u8*)1)` ROM ranges for linked code overlays in `3ds/stub_include/ld_addrs.h`, `effect_ld_addrs.h`, `battle_ld_addrs.h`. Code only.
+- GotoMap guard: removed by S30b.
+- Empty shims: `crash_screen_init`, `is_debug_init`, `load_obfuscation_shims` (`3ds/src/game_stubs.c`), `crash_screen_set_draw_info` (`3ds/src/pm_later.c`). User decision Q5: obfuscation shims stay empty. Row S31 checks the crash screen.
+- Storage at real N64 addresses (class C, no game logic): `gBackgroundImage` and `pm_world_entity_heap` (`3ds/src/pm_kmr_stubs.c`).
+- Gone (do not look for them): `area_table.c`, `pm_title.c`, `pm_evt_stub.c`, `pm_actor_link.c`, `pm_shadow.c`, `pm_fx.c`, battle stand-ins, effect graphics zeros (A17), shadow headers (B3 to B6), the `spriteIdx` guard, `note_door`.
+- Not stand-ins but still approximate: fixed light direction for `G_LIGHTING` vertices (`pm_gbi.c`), no fog table (F08), no texture generation, LOD or `G_BRANCH_Z`.
+- Lane B (worktree ..\papermario-3ds-port-laneB, branch lane-b, `PM_LANE=laneB`): see docs/LANES.md. Build parallel, run one at a time.
+
+- S18 and S19c closed (lane B copy run via PM_LANE=s18chk scratch lane). poly_scan.py thresholds too loose (flags natural dirt): tune before reuse.
+
+```
+
+## Trimmed 2026-10-18 (3ds/SLICES.md)
+
+Full text of 3ds/SLICES.md before the trim. Long rows moved to docs/plans/<id>.md (H05, V06, V07, V09, V12, PO2, PO3_row, F06, F07, F09, F10, MA1, AU1_row, B1, B2, B3, B5, B6, B7). Note line moved here: "Note: graphics rows: one at a time, X02 first."
+
+```
+# Slice queue (open rows only, plan for the next round)
+
+Format: `[ ] id | task | done check`. `[~]` = partly done. Done rows are in docs/SLICES_DONE.md. The full original text of each row below is in docs/HISTORY.md (section "Original text of the open slice rows"): grep for the id.
+Rule: build the real decomp file. Never write a stub. If a stub looks like the only option, write `BLOCKED: <reason>` in HANDOFF.md and stop.
+Model tier per row: see the MODEL RULE in 3ds/ORCHESTRATOR.md.
+
+[ ] H05 | HARDWARE-READINESS AUDIT (user decision 2026-10-18). Runs after every other Azahar-verifiable row is done and lane-b is merged, BEFORE S28. Goal: high confidence that the first hardware run works. Part A, game faults: full tour with -FaultStop, long chains (title, intro, chapter paths, battles, pause, save and load), every remaining in-game fault is listed and flagged for a fix (a fault that happens in the game is a row, not a note). Part B, Azahar versus hardware (read code, no guess): memory limit and the 64 MB assumption, linear and VRAM use, cache flush and invalidate before GPU or DMA use, buffer alignment, texture size and format limits, GPU command buffer and vertex limits, thread stacks, core use on the O3DS (app core and the syscore time limit), ARM11 unaligned access and float behaviour, N64 big-endian data handling, SD and file speed, 3dsx load size, watchdog or timeout paths, DSP firmware, log and crash path. Use fresh agents per area (one read-only agent per area, sonnet, plans and findings only), compare with reference/ ports, write docs/plans/H05_findings.md | a findings table (area, risk, evidence, fix row or accepted), every in-game fault has a fix row, the user reviews the table before S28
+[ ] S28 | GATE (user decision 2026-10-18): start only when every other open row that Azahar can verify is done or shelved, H05 findings are fixed or accepted by the user, lane-b is merged into main, and one full tour and one golden run are clean. Prep: docs/plans/S28_prep.md. Hardware run on the O3DS (192.168.1.168) and the N3DS: boot line (real memory limit), audio cost, FPS. Needs the user: O3DS on, dspfirm.cdc on the SD card | numbers in HANDOFF.md, settles Q2 and Q7
+[ ] V07 | SHELVED (user decision 2026-10-18, the user reports it again if seen, do not work on it) Item entities flicker when the camera moves. NOT REPRODUCED in Azahar (see docs/HISTORY.md V07): item draws and pixels are stable in 8 maps with a moving camera, `nocull` A/B identical. Needs the exact scene from the user (QUESTIONS.md) or a hardware run | cause named with evidence, fixed
+[ ] V06 | User answer 2026-10-18: the ground vanishing inside Toad Town buildings is CORRECT. The real fault: when Mario is in a building the outside must be BLACK, but the port shows the normal background there. Find in the decomp how the outside is hidden in building rooms (shroud, background, CreateMapRoom) and make the port draw black outside. Check mac_00 houses, kmr_20 and kmr_02 doors. Note: it touches the graphics layer, so it waits for X02 to finish. | outside of a building room is black in a shot, ground and other scenes unchanged
+[ ] V09 | SHELVED (user decision 2026-10-18, potential future problem, not confirmed by the user, take up only if the user notices it) (intro tints) S25 changed the hos_05 intro tints (shots 70 to 77) to dark or red. Check against the decomp and paperboat, A/B with `nocomb`. Also nok_01 `au_syn_begin_audio_frame` unmapped access (tour only). Partial nok_01 audio edits (src/audio/bgm_player.c, src/audio/core/engine.c) are saved on local branch shelf/v09-nok01 (commit made from a stash). Not merged. Not verified. | verdict per shot, nok_01 cause
+[ ] V10 | Battle Strategies submenu and level-up box draw as a white and brown checkerboard (draw_box pattern path `box_pattern_rect` is the suspect) | Strategies list readable in a shot
+[ ] V12 | USER-CONFIRMED 2026-10-18. The damage star in battle is wrong: it is zoomed in and clipped. Find the effect (damage star, hit number burst), compare size and clip with the decomp and render_gaps.md (scissor, texrect, scale). Graphics row: one at a time AND check the other battle effects for the same fault (the user asks: find the common cause, then test every effect that draws with the same path: hit bursts, status icons, number pops, attack effects, partner and item effects; list the effects tested and the ones not tested) | one battle hit shows the star at normal size, whole, in one shot or a pixel check, and a table of the other effects tested shows none zoomed or clipped
+[ ] F03 | = slice B4 of the buffer bridge plan. `is_point_visible` (src/model.c:4497) reads a NULL z-buffer (log `tex ptr 0000fd7e`, hos_05 lamp). Give the platform layer a depth read back for one pixel | `DepthCopyBuffer` holds real depth, no `tex ptr` line
+[ ] F08 | Fog remainder. V06 added the blend and fog colour mix. G_FOG per-vertex factor and the fog table are not done (about 1.3M draws in the tour use fog) | one fog map renders fog, maps without fog unchanged
+[ ] PO2 | OPT: code work starts only after S28 (user decision 2026-10-18). Plans are done: docs/plans/PO3.md. Performance: transform each vertex once at G_VTX (CPU only). Needs the user answer (QUESTIONS.md) | phase timer shows less transform time, same pictures
+[ ] PO3 | OPT: code work starts only after S28 (user decision 2026-10-18). Plans are done: docs/plans/PO3.md. Performance: GPU vertex transform (raw Vtx attributes, index list, matrix in the vertex shader). Plan first (opus allowed for the plan only) | plan in docs/, then a working A/B. RISK (RSP to PICA port): effects that render into or read back N64 memory images (z-buffer, colour image, framebuffer grabs: darkness X02, depth readback F03, water_splash and similar current-frame grabs, see docs/plans/render_gaps.md and docs/plans/buffer_bridge.md when it exists) may break or need rework when RSP vertex work moves to the PICA GPU (PO3, PO2). Check each such case again at every PO3 slice (A/B with golden frames and the render_gaps list)
+[ ] AU1 | OPT: code work starts only after S28 (user decision 2026-10-18). Plans are done: docs/plans/AU1.md. Performance: audio on core 1 or the DSP (ndsp), with libctru natives. Plan first | audio cost per tick measured on the O3DS
+[ ] MA1 | OPT: code work starts only after S28 (user decision 2026-10-18). Plans are done: docs/plans/MA1_list.md. Performance: ARM11 math audit (slow divides, sqrt, libm calls) with the replay check (hash of game state per N frames). Game-logic math changes need the replay check and the user approval | same hashes, lower cost
+[ ] F06 | LATER, big. 30/60 fps toggle by interpolated extra frames (logic stays at 30 Hz). Plan only after the hardware run | plan in docs/
+[ ] F07 | LATER. Widescreen mode (research in docs/HISTORY.md, section "Widescreen and 60 fps research"). Plan after the hardware run | plan in docs/
+[ ] F09 | LATER, future feature. Language select. The US build never runs it (only a PAL call site exists, see docs/plans/S18_S19c_commands.md). Decide scope after the hardware run | plan in docs/
+[ ] F10 | NICE TO HAVE, last. Fix the endless loop in tst_12 (decomp script D_80240050: Add(LVarF,11) reads float -22.5 as integer, Loop(LVar5) gets -17). Do after everything else, after F06 and F07. tst_12 stays linked and warpable for the future scene selector. Until then the tour list may skip tst_12 as a test setting only | warp=tst_12:0 -Turbo -Smoke -FaultStop exit 0, no flood. Decide: patch the game data or add a documented port rule (needs the user)
+
+Note: graphics rows: one at a time, X02 first.
+[ ] B1 | (sonnet) Correctness, no picture change. `img_role()` in pm_gbi.c with table 1.2. Move today's checks behind it. One `pm_zbuf_need()` call site. `imglog` switch. `stats` counters splits, slots, grabs. Add VRAM line to MEMORY_BUDGET.md | golden toad yard battle title pause1 0 diff. `imglog` table for kgr_01, flo_10, mac_01, one battle with water_splash
+[ ] B2 | (sonnet) Correctness. Role T2 grab: split T2 from T3 at `G_SETTIMG`, strip `GX_TextureCopy`, upright slot, reuse, `GRAB_MAX`. Step 1: confirm queue order | `warp=flo_10:<entry>` (agent confirms the entry in pm_warp.c), `offdump` of the grab slot shows the scene. Log grabs per frame. golden toad yard battle 0 diff
+[ ] B3 | (sonnet) Correctness. Role DEPTH: case 5 fill as depth write, case 6 model as depth write. Step 1 is the log in section 4 | `warp=mac_01:<entry>` crystal ball and flo_10: `drawlog` shows the decal draw passes in the model area only. Golden 4 scenes, each diff explained
+[ ] B5 | (sonnet) Correctness. Underwater (case 7): z-buffer as colour goes to a slot (B1), source from B2. Add `G_MODIFYVTX` to the opcode switch | Sushie battle move or `fx_underwater` site (agent finds a warp or preset). `offdump` of the z-buffer slot, log of modified vertices
+[ ] B6 | (sonnet) Correctness. Flame scratch I8 (case 8) and ring_blast: chroma key (`G_SETKEYR`, `G_SETKEYGB`) to an alpha test or combiner key. I8 slot from X02 | isk battle stage with the flame effect, `offdump` of the I8 slot, one shot
+[ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only | `push-o`, `pull-o`, `phase_report.py`
+
+```
+
+## Trimmed 2026-10-18 (docs/INDEX.md)
+
+Removed: the entry `src/vtx` (file does not exist). Changed: the lanes entry pointed to docs/PARALLEL_PLAN.md (archived here).
+
+Before: `- Extracted, git-ignored: `ver/us/build/` (PNGs, `.png.bin`, headers, build.ninja), `src/vtx`, `assets/`.`
+Before: `- Lanes (parallel build worktree, `PM_LANE`, volume, merge, removal, cost): `docs/LANES.md`. Plan: `docs/PARALLEL_PLAN.md`.`
+
+## Trimmed 2026-10-18 (3ds/ORCHESTRATOR.md)
+
+Stale text removed or updated. Before:
+
+- Q6: link all maps. Measure first. 271 of 421 are linked, the rest does not fit (Q7).
+- SMALL HANDOFF.md: at most about 150 lines. Each slice adds at most 3 lines to it. Detail goes to docs/HISTORY.md.
+
+After: Q6 says all 421 maps are linked (S30b). HANDOFF.md limit is 55 lines.
+
+## Trimmed 2026-10-18 (docs/ORCH_STATE.md)
+
+No text removed. A decision row was added to section 4 (ALL functionality ported before S28, user decision 2026-10-18).
