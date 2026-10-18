@@ -55,3 +55,6 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - Approximate, not stand-ins: fixed light direction for `G_LIGHTING` vertices (`pm_gbi.c`), no fog table (F08), no texture generation, LOD or `G_BRANCH_Z`.
 - V06 done: `pm_tex.c` cache hit now needs the CI palette hash (FNV-1a), so a palette edited in place (room fade) re-converts. Russ T door shows black outside. Not checked: mac_00 other houses, kmr_20 and kmr_02 doors, 3dsx size change.
 - V12 done: `pm_gbi.c` stores G_SETTILE shifts (`tile_shift`) and `vert_uv` applies them (RDP rule). Battle hit shows the whole star. Golden battle 0.19, toad 0.01, yard 0.00. Not checked: the other 13 effects, texrect shift, 3dsx +344 B vs F03.
+- V13 done: `pm_gbi.c` no longer adds the SetTileSize pan to a block-load source (it read past the 32x64 lava image = noise) and tile 1 now reads its TMEM half (stale LoadTile record cleared by LoadBlock). Lava in kzn_02 shows orange lava. Golden battle 1.05, toad 0.01, yard 0.00, 3dsx +288 B.
+- V13 not done: sub-texel pan (uls >> 2) and bilinear (`pm_tex.c` GPU_NEAREST) are unchanged and not proven to matter. Not checked: pixel diff against N64, kzn_03/11/20/22 shots (tour ran with no fault), water and conveyors.
+- Found, not fixed: `tex cache full 129x129` on tour start at kzn_03 (also before V13), 1111 skipped draws. See row V13b.

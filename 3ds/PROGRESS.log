@@ -101,3 +101,15 @@
 03:34 F03 done: hos_05 repro has real d24 14e0a8 word 7554, no tex ptr. warp=hos_05:0 smoke rc 0, golden intro 0.00 toad 0.01 yard 0.00, 3dsx 13014416 B (+944), row moved
 03:35 V06 added phash to pm_tex.c slot, temp log for palette change. build + run toad Russ T door, expect 90 s
 03:37 V06 log shows palette change under same ptr, shot after fix: outside black. temp log removed, run golden yard toad
+03:39 V12 temp log of SETTILE shifts added. build + run battle autoa, expect 90 s
+03:42 V12 fix in vert_uv + noshift switch + log of shifts>=11. build + run battle autoa, expect 90 s
+03:45 V12 log narrowed to tile 0 shift 15. rebuild + run battle autoa, expect 90 s
+03:49 V12 cause confirmed (log: tile 0 shifts 15 15 at f255+ in battle hit). shot: fix shows whole star, noshift shows zoomed block. temp log and noshift removed, run golden battle toad yard
+03:53 V12 golden battle 0.19 toad 0.01 yard 0.00, 3dsx 13014760 B. committing code, then move row
+03:54 V13 diag run kzn_02:0 shots, expect 60 s
+03:57 V13 diag shot: lava noisy (pink/purple texel noise), not smooth. suspect tile 1 tmem offset (half-height aux, LoadBlock) not used. temp log V13dbg, run 60 s
+04:00 V13 cause: SetTileSize pan was added to the image source (reads past the 32x64 lava block = noise) and tile 1 ignored its TMEM half offset. fix in pm_gbi.c, build + shot run 60 s
+04:06 V13 stale LoadTile record at TMEM 256 gave tile 1 another texture. LoadBlock now clears records in its TMEM range. build + shot run 60 s
+04:09 V13 lava shot ok (orange lava, no noise). temp logs removed, run golden battle toad yard + tour of kzn maps
+04:13 V13 golden battle 1.05 toad 0.01 yard 0.00, 3dsx 13015048 B (+288). tour kzn_03 kzn_11 kzn_20 kzn_22 fault check, expect 90 s
+04:20 V13 committed code, moving row to SLICES_DONE
