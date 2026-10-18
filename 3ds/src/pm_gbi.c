@@ -137,15 +137,16 @@ extern int pm_is_cur_cfb(const void* p);
 /* B2: role T2. A 16 bit texture window inside the frame buffer being drawn (water ripples, crystal ball, bulb glow). Copy it into
  * the grab slot before the load, so that the load finds the slot like any off-screen image (T1). A window inside an older frame
  * buffer is T3: G_SETTIMG fetched it with pm_cfb_capture_prev. */
-static void grab_cur(const void* src, int w) {
+static void grab_cur(const void* src, int w, int h) {
     static int on = -1;
-    int x, r;
+    int x, y, r;
     if (!src || w < 1 || !pm_is_cur_cfb(src)) return;
     x = (int)(((const u8*)src - (const u8*)nuGfxCfb_ptr) >> 1) % 320;
-    r = pm_gpu_grab(nuGfxCfb_ptr, x, x + w);
+    y = (int)(((const u8*)src - (const u8*)nuGfxCfb_ptr) >> 1) / 320; /* rows of the window: a later load of other rows reuses the copy (R13c) */
+    r = pm_gpu_grab(nuGfxCfb_ptr, y, y + (h < 1 ? 1 : h));
     if (r == 2) { n_grabs++; n_splits++; }
     if (on < 0) on = pm_debug_has("imglog");
-    if (on) pm_log("imglog f%d grab x%d..%d result %d (0 none, 1 reused, 2 copied) grabs this frame %u", rm_frame, x, x + w - 1, r, n_grabs);
+    if (on) pm_log("imglog f%d grab x%d..%d y%d..%d result %d (0 none, 1 reused, 2 copied) grabs this frame %u", rm_frame, x, x + w - 1, y, y + h - 1, r, n_grabs);
 }
 static void imglog(const char* op, const void* a, int siz, int stride, int role) {
     static int on = -1;
@@ -712,6 +713,7 @@ static void cc_decode(unsigned w0, unsigned w1, unsigned s[2][8]) {
     s[0][4] = (w0 >> 12) & 7;   s[0][5] = (w1 >> 12) & 7;   s[0][6] = (w0 >> 9) & 7;      s[0][7] = (w1 >> 9) & 7;
     s[1][0] = (w0 >> 5) & 0xf;  s[1][1] = (w1 >> 24) & 0xf; s[1][2] = w0 & 0x1f;          s[1][3] = (w1 >> 6) & 7;
     s[1][4] = (w1 >> 21) & 7;   s[1][5] = (w1 >> 3) & 7;    s[1][6] = (w1 >> 18) & 7;     s[1][7] = w1 & 7;
+    pm_comb_swap_c2(s[1]);
 }
 
 static float cc_clamp(float v) { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
@@ -954,7 +956,7 @@ static void dual_bind(void) {
     if (key != aux_key || !pm_tex_aux_valid()) {
         pm_gpu_flush();
         pm_tex_set_wrap(tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3]);
-        if (td[1].fmt == 0 && td[1].siz == 2) grab_cur(td[1].src, td[1].w);
+        if (td[1].fmt == 0 && td[1].siz == 2) grab_cur(td[1].src, td[1].w, td[1].h);
         pm_tex_load(td[1].src, td[1].fmt, td[1].siz, td[1].w, td[1].h, td[1].pal, td[1].pal_n, td[1].stride);
         pm_tex_set_aux(tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3]);
         aux_key = key;
@@ -1427,7 +1429,7 @@ static void ensure_tile(int n) {
     if (n == cur_tile || !td[n].valid) return;
     pm_gpu_flush();
     pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
-    if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w);
+    if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w, td[n].h);
     pm_tex_load(td[n].src, td[n].fmt, td[n].siz, td[n].w, td[n].h, td[n].pal, td[n].pal_n, td[n].stride);
     {   /* V05: a window of an off-screen texture starts at (ox, oy) in it */
         int ox, oy;
@@ -2109,7 +2111,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             /* F03: a 1 row tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture (the pause background loads tall z-buffer tiles, those are textures) */
             if (src && w > 0 && h > 0 && (h > 1 || (unsigned)timg - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u)) {
                 const void* pal0 = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
-                if (tile_fmt[0] == 0 && tile_siz[0] == 2) grab_cur(src, w);
+                if (tile_fmt[0] == 0 && tile_siz[0] == 2) grab_cur(src, w, h);
                 pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, pal0, tlut_n, stride);
                 {   /* V05 */
                     int ox, oy;

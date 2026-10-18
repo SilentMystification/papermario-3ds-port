@@ -145,11 +145,12 @@ extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
 /* B2: T2 grab state. grab_tex holds a copy of the main target strips (same tiled layout, 256 x 512). grab_bind: flush binds it
- * instead of the pm_tex texture. grab_dirty: a draw went to the main target since the last grab. [grab_x0, grab_x1) is the
- * game x range the slot of this frame holds. */
+ * instead of the pm_tex texture. A grab copies the full width. grab_dirty: a draw of unknown rows went to the main target since the
+ * last grab. [grab_dy0, grab_dy1) are the rows that texture rectangles drew since then (R13c: motion_blur_flame loads one strip of
+ * rows per rectangle, the strips do not overlap, so one copy serves them). */
 enum { GRAB_MAX = 8 };
 static C3D_Tex grab_tex;
-static int grab_ready, grab_bind, grab_dirty = 1, grab_x0, grab_x1, grab_n, grab_split;
+static int grab_ready, grab_bind, grab_dirty = 1, grab_dy0, grab_dy1, grab_n, grab_split, rect_y0, rect_y1;
 
 static void flush(void) {
     if (nverts <= 0 || !gpu_ok) {
@@ -379,7 +380,11 @@ static void flush(void) {
     nverts = 0;
     batch_identity = 0;
     drew = 1;
-    if (!off_active) grab_dirty = 1; /* B2: the main target changed, the grab slot is old */
+    if (!off_active) { /* B2: the main target changed, the grab slot is old */
+        if (rect_y1 <= rect_y0) grab_dirty = 1;
+        else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
+        else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
+    }
 }
 
 /* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
@@ -677,15 +682,14 @@ void pm_gpu_set_replace(int on) { r_replace = on; }
  * split part, so it sees every draw so far), then draw the copy rotated upright into the slot (cfb, siz 2). Later loads of that
  * address find the slot (T1). citro3d stops the GX queue in a frame and runs it at C3D_FrameEnd, so the order is the order of
  * these calls. The end-of-frame clear of the main target is a queue entry too: it has to come before the first split. */
-int pm_gpu_grab(const void* cfb, int x0, int x1) {
+int pm_gpu_grab(const void* cfb, int y0, int y1) {
     int was_off = off_active, prev = off_cur, s0, s1;
     static int once;
-    if (x0 < 0) x0 = 0;
-    if (x1 > 320) x1 = 320;
-    if (!gpu_ok || off_fail || grab_ready < 0 || x1 <= x0) return 0;
-    if (grab_x1 > grab_x0) {
-        if (!grab_dirty && x0 >= grab_x0 && x1 <= grab_x1) return 1; /* no draw since the last grab: same slot */
-        if (!grab_dirty) { if (grab_x0 < x0) x0 = grab_x0; if (grab_x1 > x1) x1 = grab_x1; } /* old columns are still right */
+    const int x0 = 0, x1 = 320;
+    if (!gpu_ok || off_fail || grab_ready < 0 || y1 <= y0) return 0;
+    if (grab_n) {
+        /* no draw since the last grab, or only rectangles of other rows: same slot */
+        if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) return 1;
         if (grab_n >= GRAB_MAX) {
             if (!once++) pm_log("B2: more than %d grabs in one frame, the rest reuse the last one", (int)GRAB_MAX);
             return 1;
@@ -735,8 +739,7 @@ int pm_gpu_grab(const void* cfb, int x0, int x1) {
     if (was_off) pm_gpu_off_begin(offs[prev].base, offs[prev].w == 64 ? 64 : 320, offs[prev].siz);
     else pm_gpu_off_end();
     grab_dirty = 0;
-    grab_x0 = x0;
-    grab_x1 = x1;
+    grab_dy0 = grab_dy1 = 0;
     grab_n++;
     return 2;
 }
@@ -784,7 +787,7 @@ void pm_gpu_begin(int clear) {
     off_active = 0;
     off_i8 = 0;
     grab_dirty = 1;
-    grab_x0 = grab_x1 = grab_n = grab_split = 0;
+    grab_dy0 = grab_dy1 = grab_n = grab_split = 0;
     pm_tex_clear_offscreen();
     dv_draw = 0;
     draws_frame = 0;
@@ -816,7 +819,7 @@ void pm_gpu_end(void) {
     if (off_active) pm_gpu_off_end();
     if (drew && pm_debug_has("grabtest")) { /* B2 test switch: grab the whole finished frame, `offdump` then shows it next to the shot */
         extern unsigned short* nuGfxCfb_ptr;
-        pm_gpu_grab(nuGfxCfb_ptr, 0, 320);
+        pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
     }
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
@@ -1084,7 +1087,9 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
     pm_gpu_tri(xa, ya, fill_z, s0, t0, c, xb, ya, fill_z, s1, t0, c, xb, yb, fill_z, s1, t1, c);
     pm_gpu_tri(xa, ya, fill_z, s0, t0, c, xb, yb, fill_z, s1, t1, c, xa, yb, fill_z, s0, t1, c);
+    rect_y0 = y0 < 0 ? 0 : y0; rect_y1 = y1 + 1; /* R13c: the rows this rectangle draws, see grab_dy0 */
     flush();
+    rect_y0 = rect_y1 = 0;
     rect_2d = 0;
     combine = saved;
 }

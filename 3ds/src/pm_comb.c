@@ -178,6 +178,15 @@ static int uses_shade(const Seq* r, const Seq* a) {
     return 0;
 }
 
+/* R13c: the RDP reads the texels of cycle 2 swapped: TEXEL0 is the tile 1 texel and TEXEL1 the tile 0 texel. s = A B C D, Aa Ab Ac Ad of cycle 2. */
+void pm_comb_swap_c2(unsigned s[8]) {
+    for (int i = 0; i < 8; i++) {
+        unsigned v = s[i];
+        if (v == 1 || v == 2) s[i] = 3 - v;
+        else if (i == 2 && (v == 8 || v == 9)) s[i] = 17 - v;
+    }
+}
+
 int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     Term v[2][2][4]; /* cycle, group, A B C D */
     unsigned s[2][8];
@@ -192,6 +201,7 @@ int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     s[0][4] = (w0 >> 12) & 7;   s[0][5] = (w1 >> 12) & 7;   s[0][6] = (w0 >> 9) & 7;      s[0][7] = (w1 >> 9) & 7;
     s[1][0] = (w0 >> 5) & 0xf;  s[1][1] = (w1 >> 24) & 0xf; s[1][2] = w0 & 0x1f;          s[1][3] = (w1 >> 6) & 7;
     s[1][4] = (w1 >> 21) & 7;   s[1][5] = (w1 >> 3) & 7;    s[1][6] = (w1 >> 18) & 7;     s[1][7] = w1 & 7;
+    pm_comb_swap_c2(s[1]);
     for (int c = 0; c < (two ? 2 : 1); c++) {
         for (int i = 0; i < 4; i++) {
             v[c][0][i] = term_rgb(i, s[c][i], c, t1only);

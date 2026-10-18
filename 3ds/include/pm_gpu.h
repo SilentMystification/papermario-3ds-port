@@ -45,6 +45,7 @@ void pm_gpu_set_tex1(float sx, float sy, float ox, float oy);
  * Returns 0 and fills `out`, or a reason: 1 more than 6 stages, 2 (unused), 3 COMBINED read after a
  * sub-stage, 4 more constants than the PICA has, 5 no vertex or texture source for a name. */
 int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out);
+void pm_comb_swap_c2(unsigned s[8]);
 /* Fill the constants. prim, env RGBA 0xRRGGBBAA, plod 0..255 (PRIM_LOD_FRAC), key and keys RGBA 0xRRGGBB00 (CENTER, SCALE). */
 void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys);
 /* What the stages give, as the PICA computes them. t0, shade: RGBA 0..1. out: RGBA 0..1. */
@@ -75,9 +76,9 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
 int pm_gpu_off_begin(const void* base, int stride, int siz); /* siz: 3 = 32 bit, 2 = 16 bit, 1 = 8 bit */
 void pm_gpu_off_end(void);
 int pm_gpu_off_count(void); /* B1: off-screen slots started this frame */
-/* B2: T2 grab. Copies game columns x0..x1-1 of the frame being drawn into the upright slot (cfb, siz 2).
+/* B2: T2 grab. Copies the full width of the frame being drawn (rows y0..y1-1 are the window: the copy is reused when texrects drew only other rows) into the upright slot (cfb, siz 2).
  * Returns 0 = no slot, 1 = slot reused, 2 = new copy (the command list was split). */
-int pm_gpu_grab(const void* cfb, int x0, int x1);
+int pm_gpu_grab(const void* cfb, int y0, int y1);
 void pm_gpu_set_replace(int on); /* off-screen fill: write the pixel, no blend */
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba);
 void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d); /* B3: depth write only, d 0 near .. 1 far */
