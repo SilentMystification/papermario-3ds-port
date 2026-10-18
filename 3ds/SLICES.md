@@ -32,6 +32,5 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F09 | LATER, future feature. Language select. Decide scope after the hardware run. Full text: docs/plans/F09.md | plan in docs/
 [ ] F10 | NICE TO HAVE, last. Fix the endless loop in tst_12. Full text: docs/plans/F10.md | warp=tst_12:0 -Turbo -Smoke -FaultStop exit 0, no flood. Decide: patch the game data or add a documented port rule (needs the user)
 
-[ ] B5 | (sonnet) Correctness. Underwater (case 7). Full text: docs/plans/B5.md. Prep: docs/plans/B5_B6_F08_V10_prep.md. | Sushie battle move or `fx_underwater` site (agent finds a warp or preset). `offdump` of the z-buffer slot, log of modified vertices
 [ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only. Full text: docs/plans/B7.md | `push-o`, `pull-o`, `phase_report.py`
 [ ] B3b | (sonnet) Found in B3. Case 6 model depth test: the PICA tests and writes one depth, so a model behind a nearer object still writes the constant. Also the `underwater.c` z-buffer triangles take ROLE_DEPTH with the wrong prim depth, and the mac_01 crystal ball was never seen on screen | crystal ball visible with the decal inside the ball only, `fx_underwater` shows no depth write from its mesh
