@@ -179,3 +179,25 @@
 08:20 B3b underwater (tmpuw, f200): 0 depthtri lines, modifyvtx runs, no depth write from its mesh. now mac_01 walk to Merlon house with padscript, expect 120 s
 08:55 B3b mac_01 crystal ball seen WITHOUT a hook: warp=mac_01:0 story=ch1_kooper padscript=wait80,up*40,left*140,right*45,up*60,wait5,A*2,wait100 shotwin=330: Merlon room, ball with decal inside only. hooks removed (pm_warp.c restored). rebuild + golden toad yard battle pause1, expect 700 s
 09:05 B3b committed, row moved to SLICES_DONE
+08:22 V13b diag log in pm_tex cache-full path, build, expect 600 s
+08:23 C3A removed pm_actor_stubs.c (empty), C3B nm: 0 undefined, 38 partner T symbols, renamed pm_kmr_stubs.c to pm_buffers.c. build links. golden toad yard next, expect 300 s
+08:23 V13b tour kzn_03,11,20,22 with diag, expect 120 s
+08:24 C2R map tour of 421 maps, 40 per run, expect about 40 min
+08:25 C2R tour progress 40 of 421
+08:26 C2R tour progress 80 of 421
+08:27 C2R tour progress 97 of 421
+08:28 C2R tour progress 137 of 421
+08:29 C2R tour progress 177 of 421
+08:31 C2R tour progress 217 of 421
+08:32 C2R tour progress 257 of 421
+08:32 V13b HEAD: 4 tour runs (toad, yard, warp kzn_03 start, shots) show no cache full, texture failures 0, tex-cache peak 4092KB at kzn_22. Shots made. try non-turbo run, expect 120 s
+08:33 C2R tour progress 297 of 421
+08:34 V13b diag 2: log 129 loads, build, expect 300 s
+08:34 C2R tour progress 337 of 421
+08:35 C2R tour progress 377 of 421
+08:35 C2R tour progress 417 of 421
+08:36 C2R tour progress 419 of 421
+08:36 V13b 129x129 never loads at HEAD (diag 2), diag removed, pm_tex.c clean. tour of water maps flo_00 flo_07 flo_24 jan_00 jan_03 iwa_00 hos_04 + golden + hos_05 fast, expect 300 s
+08:37 C2R tour progress 459 of 421
+08:37 C2R map tour finished, battle stage loop 244 stages next, expect 60 min
+08:40 V13b golden toad 0.00 yard 0.00 battle 0.67, hos_05 fast 0 tex ptr, water tour of 7 maps no failure. writing docs
