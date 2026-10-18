@@ -23,5 +23,6 @@ Model tier per row: see the MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] MA1 | Performance: ARM11 math audit (slow divides, sqrt, libm calls) with the replay check (hash of game state per N frames). Game-logic math changes need the replay check and the user approval | same hashes, lower cost
 [ ] F06 | LATER, big. 30/60 fps toggle by interpolated extra frames (logic stays at 30 Hz). Plan only after the hardware run | plan in docs/
 [ ] F07 | LATER. Widescreen mode (research in docs/HISTORY.md, section "Widescreen and 60 fps research"). Plan after the hardware run | plan in docs/
-[~] S18 | Close-out: pause is real and the demo and language select were done in S18b and S17. Check and move to docs/SLICES_DONE.md | one check run, then moved
+[ ] F09 | LATER, future feature. Language select. The US build never runs it (only a PAL call site exists, see docs/plans/S18_S19c_commands.md). Decide scope after the hardware run | plan in docs/
+[~] S18 | Close-out: pause is real and the demo was done in S18b and S17. Language select moved to F09 (future, user decision 2026-10-18). Check and move to docs/SLICES_DONE.md | one check run for pause and demo, then moved
 [ ] S19c | Close-out: black and olive polygons in attacks. S25 may have fixed them (24 shots clean in M03). Check one attack-heavy battle | no polygons, then moved to docs/SLICES_DONE.md
