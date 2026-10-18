@@ -1595,3 +1595,11 @@ Old text moved from 3ds/QUESTIONS.md.
 ### V07. Where do the items flicker? (row V07)
 - I could not reproduce the flicker in Azahar. Item draws and pixels were stable in 8 maps. Which map, which item, and which camera move show it? Did you see it only on the O3DS or N3DS?
 - Answer: SHELVED (user decision 2026-10-18, the user reports it again if seen, do not work on it). (Row V07 in 3ds/SLICES.md.)
+
+### T02 Phase 1 (2026-10-18). run_azahar.ps1 safe for the shared Azahar config
+- A per-run copy of qt-config.ini is not possible. Azahar reads only %APPDATA%\Azahar\config\qt-config.ini and the rule allows no other argument. The script saves the file byte for byte to %TEMP%\pm_azahar_qt-config.orig before the first edit and copies it back in finally.
+- Named mutex `Global\pm_azahar_run` serialises all runs on the PC. A second run prints a wait message and waits up to -LockWait s (default 900), then exits 3 and runs nothing. The lock stays held until the last read of the shared game log and emulator log, because the next run deletes them at its start.
+- A hard kill skips finally. The script writes the PID to %TEMP%\pm_azahar_run.pid. The next run owns the lock, kills that Azahar if it still runs, and restores the saved config. An abandoned mutex is treated as acquired.
+- A missing config key throws and the run stops (Set-CfgKeys). Only the [Debugging] keys may be inserted under their section. The old qt-config.turbo-backup file is gone: the byte copy replaces it. A stale build3ds/qt-config.turbo-backup from an old run may be deleted.
+- Checks: normal -Turbo -Smoke yard run exit 0, config SHA256 same before and after. Two runs at once: second waited 21 s, got the lock, exit 0, both exit 0, hash same. Forced kill of a run: the config was left changed and Azahar ran. The next run killed it, restored the config, exit 0, hash same.
+- Not checked: lock timeout exit 3, the missing key throw, -Gdb, -Interactive, golden.py, a run by the old script at the same time (it ignores the mutex).

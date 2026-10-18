@@ -16,7 +16,6 @@ Model tier per row: see the MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] S31 | Check whether the crash screen can use the debug output (Q5). The shims crash_screen_init, is_debug_init, load_obfuscation_shims stay empty unless this works | verdict written, shims kept or replaced
 [~] F01 | Fault sweep remainder: static remainder and the 3 maps with unmapped accesses (kmr_23, nok_01, tst_12); paths: pause, save and load, zones | list of causes, each fixed or recorded
 [ ] F03 | `is_point_visible` (src/model.c:4497) reads a NULL z-buffer (log `tex ptr 0000fd7e`, hos_05 lamp). Give the platform layer a depth read back for one pixel | `DepthCopyBuffer` holds real depth, no `tex ptr` line
-[ ] T02 | Low priority. Make 3ds/run_azahar.ps1 safe for the user's Azahar config: per-run config copy, try/finally around the body, named mutex, loud failure on a missing key | the real qt-config.ini is never written
 [ ] F08 | Fog remainder. V06 added the blend and fog colour mix. G_FOG per-vertex factor and the fog table are not done (about 1.3M draws in the tour use fog) | one fog map renders fog, maps without fog unchanged
 [ ] PO2 | Performance: transform each vertex once at G_VTX (CPU only). Needs the user answer (QUESTIONS.md) | phase timer shows less transform time, same pictures
 [ ] PO3 | Performance: GPU vertex transform (raw Vtx attributes, index list, matrix in the vertex shader). Plan first (opus allowed for the plan only) | plan in docs/, then a working A/B

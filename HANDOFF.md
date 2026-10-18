@@ -62,7 +62,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - F08: fog partly done by V06 (blend and fog colour mix). The per-vertex fog factor is open.
 - S30b and Q7: 154 maps are not linked. They do not fit in memory (about -1.1 MB).
 - S31: crash screen and debug output check (Q5).
-- T02: run_azahar.ps1 can leave Azahar config values changed after a kill.
+- T02 Phase 1 done: run_azahar.ps1 holds mutex `Global\pm_azahar_run` (-LockWait s, exit 3 on timeout), restores qt-config.ini byte for byte in finally, and recovers after a hard kill. Lanes (Phase 2, 3) are open in docs/PARALLEL_PLAN.md.
 - Tour faults: kmr_23 (curtain callback), tst_12 (cut map), nok_01 (`au_syn_begin_audio_frame`, engine.c:488).
 - Not verified by eye: partner moves, items and star power in battle. Pause with items or a partner. Hardware.
 

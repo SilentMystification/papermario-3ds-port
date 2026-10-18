@@ -37,6 +37,7 @@ param(
     [int]$TurboLimit = 1000, # Azahar speed limit in percent for -Turbo
     [switch]$Smoke, # slice W01: stop 300 frames after the first scene frame (warp), exit 0
     [switch]$FaultStop, # stop at the first unmapped memory access that Azahar logs (a data abort on hardware)
+    [int]$LockWait = 900, # seconds to wait for the Azahar lock held by another run
     [switch]$Interactive, # a person plays: no timeout, no log-silence stop, settings windows allowed
     [string]$GdbScript = "",
     [string]$Debug = ""  # render debug switches for the game, see pm_main.c (nofog nolight notex texonly logtev)
@@ -73,48 +74,77 @@ function Read-Tail([string]$path, [int]$max = 65536) {
     } catch { return "" }
 }
 
-function Set-GdbStub([bool]$on) {
-    $v = if ($on) { "true" } else { "false" }
-    $text = Get-Content $cfg -Raw
-    # instant_debug_log: Azahar flushes each log line, so an exception dump shows at once
-    foreach ($kv in @("use_gdbstub\default=false", "use_gdbstub=$v", "gdbstub_port\default=false", "gdbstub_port=24689",
-                      "instant_debug_log\default=false", "instant_debug_log=true")) {
-        $key = [regex]::Escape(($kv -split "=")[0])
-        if ($text -match "(?m)^$key=") { $text = $text -replace "(?m)^$key=.*$", $kv }
-        else { $text = $text -replace "(?m)^\[Debugging\]\r?$", "[Debugging]`r`n$kv" }
+# T02. Azahar reads only %APPDATA%\Azahar\config\qt-config.ini and takes no config argument, so a per-run copy
+# cannot be used. Instead: one named mutex serialises all runs, the real file is saved byte for byte before the
+# first edit and put back byte for byte in finally. A hard kill skips finally: the next run puts the file back
+# from the saved copy (and kills the orphan Azahar) before it does anything.
+$cfgBak = "$env:TEMP\pm_azahar_qt-config.orig"
+$pidFile = "$env:TEMP\pm_azahar_run.pid"
+function Restore-Cfg {
+    if (Test-Path $cfgBak) {
+        Copy-Item $cfgBak $cfg -Force
+        Remove-Item $cfgBak -Force
     }
-    Set-Content $cfg $text -NoNewline
 }
 
-# Turbo: per-run override of two lines in qt-config.ini, original lines kept in a backup file and restored in finally
-$turboBak = "$out\qt-config.turbo-backup"
-$turboKeys = @("frame_limit\default", "frame_limit", "use_vsync\default", "use_vsync")
-function Set-Turbo([bool]$on) {
+# Replace "key=value" lines. A missing key stops the run (no silent skip). $insertAfter: section header to add a missing key under.
+function Set-CfgKeys([hashtable]$kv, [string]$insertAfter = "") {
     $text = Get-Content $cfg -Raw
-    if ($on) {
-        if (-not (Test-Path $turboBak)) {
-            $orig = foreach ($k in $turboKeys) { [regex]::Match($text, "(?m)^" + [regex]::Escape($k) + "=.*$").Value.TrimEnd() }
-            Set-Content $turboBak $orig
-        }
-        $new = @{ "frame_limit\default" = "false"; "frame_limit" = "$TurboLimit"; "use_vsync\default" = "false"; "use_vsync" = "false" }
-        foreach ($k in $turboKeys) { $text = $text -replace ("(?m)^" + [regex]::Escape($k) + "=.*$"), ($k + "=" + $new[$k]) }
-    } elseif (Test-Path $turboBak) {
-        foreach ($l in (Get-Content $turboBak)) {
-            if ($l -match "^([^=]+)=") { $text = $text -replace ("(?m)^" + [regex]::Escape($Matches[1]) + "=.*$"), $l }
-        }
-        Remove-Item $turboBak
+    foreach ($k in $kv.Keys) {
+        $re = "(?m)^" + [regex]::Escape($k) + "=.*$"
+        $line = $k + "=" + $kv[$k]
+        if ($text -match $re) { $text = $text -replace $re, $line.Replace('$', '$$') }
+        elseif ($insertAfter -and $text -match "(?m)^\[$insertAfter\]\r?$") { $text = $text -replace "(?m)^\[$insertAfter\]\r?$", "[$insertAfter]`r`n$($line.Replace('$', '$$'))" }
+        else { throw "qt-config.ini: key '$k' not found in $cfg. Run stopped, config restored." }
     }
     Set-Content $cfg $text -NoNewline
 }
-Set-Turbo $false # a killed earlier -Turbo run must not leave its override behind
+function Set-GdbStub([bool]$on) {
+    $v = if ($on) { "true" } else { "false" }
+    # instant_debug_log: Azahar flushes each log line, so an exception dump shows at once
+    Set-CfgKeys ([ordered]@{ 'use_gdbstub\default' = "false"; "use_gdbstub" = $v; 'gdbstub_port\default' = "false"; "gdbstub_port" = "24689";
+                             'instant_debug_log\default' = "false"; "instant_debug_log" = "true" }) "Debugging"
+}
+function Set-Turbo {
+    Set-CfgKeys ([ordered]@{ 'frame_limit\default' = "false"; "frame_limit" = "$TurboLimit"; 'use_vsync\default' = "false"; "use_vsync" = "false" })
+}
+
 if ($Smoke) { $Until = "smoke done"; $Debug = ("$Debug smoke").Trim() }
 if ($Turbo) {
     $Debug = ("$Debug turbo").Trim()
     $Timeout = [Math]::Max(25, [int]($Timeout / $TurboFactor))
     $Stall = [Math]::Max(10, [int]($Stall / $TurboFactor))
     if ($Until -or $Smoke) { Write-Output "TURBO run: timeout $Timeout s. Not valid for performance numbers." }
-    Set-Turbo $true
 }
+
+# Named mutex: one Azahar run at a time on this PC (all trees, all agents)
+$p = $null
+$gdbProc = $null
+$mutex = New-Object Threading.Mutex($false, "Global\pm_azahar_run")
+$held = $false
+# The lock covers the later reads of the shared game log and emulator log too: released after the last read (Release-Lock below)
+function Release-Lock { if ($script:held) { $script:held = $false; $mutex.ReleaseMutex() } }
+trap { Release-Lock; break }
+try {
+    if (-not $mutex.WaitOne(0)) {
+        Write-Output "Another Azahar run holds the lock (Global\pm_azahar_run). Waiting up to $LockWait s..."
+        $held = $mutex.WaitOne([int]($LockWait * 1000))
+        if (-not $held) { Write-Output "LOCK TIMEOUT: no free slot after $LockWait s. Nothing was run."; exit 3 }
+        Write-Output "Lock acquired."
+    } else { $held = $true }
+} catch [Threading.AbandonedMutexException] { $held = $true; Write-Output "Lock was abandoned by a killed run. Recovering." }
+# From here this script owns the lock. Any earlier run that was killed: kill its Azahar, put the config back.
+if (Test-Path $pidFile) {
+    $old = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
+    $op = Get-Process -Id $old -ErrorAction SilentlyContinue
+    if ($op -and $op.ProcessName -eq "azahar") { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old }
+    Remove-Item $pidFile -ErrorAction SilentlyContinue
+}
+if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
+try {
+    Set-Content $pidFile $PID # the script PID until Azahar starts, then the Azahar PID
+    Copy-Item $cfg $cfgBak -Force # every run edits the config (Set-GdbStub), so every run saves it first
+    if ($Turbo) { Set-Turbo }
 
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
 Copy-Item "$out\pm_3ds.3dsx" "$sd\pm_3ds.3dsx" -Force
@@ -153,7 +183,7 @@ public class AzEnum {
 "@
 
 $p = Start-Process $exe -ArgumentList "`"$sd\pm_3ds.3dsx`"" -PassThru
-$gdbProc = $null
+Set-Content $pidFile $p.Id
 if ($Gdb) {
     # Azahar waits for gdb before it runs the game. winhost = the Windows host (IPv4) seen from Docker.
     $cmds = @("set pagination off", "set confirm off", "set width 0", "target remote winhost:24689")
@@ -173,7 +203,6 @@ $lastSize = -1
 $lastGrow = Get-Date
 $echoed = 0
 $marks = @()
-try {
     while (((Get-Date) - $start).TotalSeconds -lt $Timeout) {
         Start-Sleep -Milliseconds 500
         if ($p.HasExited) { $reason = "Azahar exited"; break }
@@ -225,8 +254,8 @@ public class AzWin {
 } finally {
     if ($p) { Kill-Azahar $p.Id }
     if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
-    if ($Gdb) { Set-GdbStub $false }
-    if ($Turbo) { Set-Turbo $false }
+    Restore-Cfg # byte for byte copy of the real config
+    Remove-Item $pidFile -ErrorAction SilentlyContinue
     # A later manual launch must not inherit this run's switches (autoa, shots, fast).
     Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue
 }
@@ -292,6 +321,7 @@ try {
     }
     $sr.Close()
 } catch {}
+Release-Lock # the last read of the shared game and emulator logs is done
 Set-Content "$out\last_unmapped.txt" ($badFull.GetEnumerator() | Sort-Object Value -Descending | ForEach-Object { "{0,8}x {1}" -f $_.Value, $_.Key })
 if ($bad.Count) {
     $top = $bad.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 3
