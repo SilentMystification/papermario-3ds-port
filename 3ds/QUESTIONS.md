@@ -13,3 +13,8 @@ Answered questions and the old text are in docs/HISTORY.md (section "Original QU
 
 ## Q5. Crash screen and obfuscation shims (row S31)
 - Decision so far: the obfuscation shims stay empty. The crash screen works only if the debug output can be used. S31 checks. No user action.
+
+## 2026-10-18 plans F06, F07, F09 (docs/plans/F06.md, F07.md, F09.md)
+- F09: the US build has no German, French or Spanish text. Option A: US only. Option B: a second PAL build from a PAL ROM you give. Recommendation: decide after S28. Slices F09-1 to F09-4 and F09-6 wait for your answer.
+- F06: 60 fps cannot run on the O3DS (extra frame about 21 ms, budget 16.7 ms). The plan makes the toggle N3DS only. The matrix record needs 80 to 144 KB of heap (over the 10 KB rule). Do you approve both?
+- F07: widescreen costs about 1 to 4 ms per frame on the O3DS. The plan keeps it off by default there. Do you approve?
