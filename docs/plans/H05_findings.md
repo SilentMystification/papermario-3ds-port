@@ -6,7 +6,7 @@ Needs row 14: every check of the final picture (C2 full counts, lava, fog look, 
 
 ## C1 GBI, RDP and RSP features against the port
 
-- C1-01 | G_LIGHTING | pm_gbi.c:425 vert_color uses one fixed light (0.25, 0.85, 0.45). G_MOVEMEM light index 0x0a, G_MW_NUMLIGHT 0x02 and G_MW_LIGHTCOL are ignored (pm_gbi.c:1445 and 1853). 18 files in src set lights (entity_model.c, hud_element.c, imgfx.c, item_entity.c, level_up*.c, battle/move/item/*.c) | NEW L01: read lights from G_MOVEMEM into a light table, do the RSP dot product per vertex, apply ambient. Done before S28.
+- C1-01 | FIXED by L01 (pm_gbi.c light table, nolight switch) | G_LIGHTING | pm_gbi.c:425 vert_color uses one fixed light (0.25, 0.85, 0.45). G_MOVEMEM light index 0x0a, G_MW_NUMLIGHT 0x02 and G_MW_LIGHTCOL are ignored (pm_gbi.c:1445 and 1853). 18 files in src set lights (entity_model.c, hud_element.c, imgfx.c, item_entity.c, level_up*.c, battle/move/item/*.c) | NEW L01: read lights from G_MOVEMEM into a light table, do the RSP dot product per vertex, apply ambient. Done before S28.
 - C1-02 | Fog | G_MW_FOG ignored, vertex alpha not replaced by the fog factor. Only the blender A=A_FOG mix exists (V06). 24 files, about 1.3M draws per tour (F03_F08.md) | F08 (open).
 - C1-03 | G_TEXTURE_GEN | geom bit counted only (st_tgen), no vertex code. One user: world/area_mac/mac_01/crystal_ball_gfx.c:26 | NEW T01: texgen in xform_vtx, or merge into B3 (mac_01 case 6). Done before S28.
 - C1-04 | G_TEXTURE scale | pm_gbi.c:1474 reads only the on bit. The s and t scale is ignored. Non-0xFFFF scale with G_ON: screen_overlays.c:141 (0x8000) | NEW T02: low risk. Check that the overlay uses a texrect. Else apply the scale to the vertex UV.
