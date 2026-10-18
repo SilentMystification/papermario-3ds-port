@@ -136,11 +136,11 @@ static GPU_COMBINEFUNC tev_func(int f) {
 /* V05: an off-screen colour image. draw_box renders the contents of a rotating window (pause pages, file select panels)
  * into a game buffer with the color image set to it, then draws that buffer as strips through the rotation matrix.
  * Such a pass renders into a PICA render target that is a texture (VRAM), and pm_tex samples it for the strips. */
-enum { OFF_N = 4 };
+enum { OFF_N = 4, OFF_ALL = 2 * OFF_N }; /* V05b: slots 0..3 are full size, 4..7 are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */
 /* X02: w x h is the size of the slot (64 x 64 for a game image up to 64 wide, else PM_OFF_W x PM_OFF_H). siz is the game pixel size
  * (3 = 32 bit, 2 = 16 bit, 1 = 8 bit). The same memory can be a 32 bit image and an 8 bit image in one frame: two slots. */
-static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; } offs[OFF_N];
-static int off_used, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8;
+static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; } offs[OFF_ALL];
+static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8;
 extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
@@ -614,20 +614,16 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
     if (!gpu_ok || off_fail || stride < 1 || stride > PM_OFF_W) return 0;
     if (off_active && offs[off_cur].base == base && offs[off_cur].siz == siz) return 1;
     flush();
-    for (i = 0; i < off_used; i++) if (offs[i].base == base && offs[i].siz == siz) break;
+    for (i = 0; i < OFF_ALL; i++) if (offs[i].base == base && offs[i].siz == siz) break;
     w = stride <= 64 ? 64 : PM_OFF_W; /* X02: the darkness stencil is 64 x 64: 16 KB of VRAM, not 512 KB */
     h = stride <= 64 ? 64 : PM_OFF_H;
-    if (i == off_used) {
-        if (off_used >= OFF_N) {
+    if (i == OFF_ALL) {
+        if (w == 64 ? off_sused >= OFF_N : off_used >= OFF_N) {
             static int once;
             if (!once++) pm_log("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
             return 0;
         }
-        if (offs[i].rt && (offs[i].w != w || offs[i].h != h)) { /* the slot has the other size: make it again */
-            C3D_RenderTargetDelete(offs[i].rt);
-            C3D_TexDelete(&offs[i].tex);
-            offs[i].rt = NULL;
-        }
+        i = w == 64 ? OFF_N + off_sused++ : off_used++;
         if (!offs[i].rt) {
             if (!C3D_TexInitVRAM(&offs[i].tex, w, h, GPU_RGBA8)) {
                 pm_log("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
@@ -651,7 +647,6 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         offs[i].siz = siz;
         pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
         if (w == 64) { static int n; if (n++ < 6) pm_log("X02: darkness draw to 64x64 slot %d size %d bits %d addr %p", i, stride, siz == 3 ? 32 : siz == 2 ? 16 : 8, base); }
-        off_used++;
     }
     off_cur = i;
     off_w = offs[i].w;
@@ -665,7 +660,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
 }
 
 /* V05: back to the screen. */
-int pm_gpu_off_count(void) { return off_used; }
+int pm_gpu_off_count(void) { return off_used + off_sused; }
 void pm_gpu_off_end(void) {
     if (!off_active) return;
     flush();
@@ -753,9 +748,10 @@ static void off_dump(void) {
     unsigned char* row;
     const unsigned char* src;
     if (on < 0) { from = pm_debug_value("offdump", v, sizeof v) ? atoi(v) : 0; on = from || pm_debug_has("offdump"); } /* offdump=<first frame> */
-    if (!on || !off_used || n >= 12 || (int)pm_frame_count() < from) return;
+    if (!on || !(off_used + off_sused) || n >= 12 || (int)pm_frame_count() < from) return;
     /* X02: every slot of the frame, 64 x 64 slots too: off<frame>_<slot>.ppm */
-  for (k = 0; k < off_used && n < 12; k++) {
+  for (k = 0; k < OFF_ALL && n < 12; k++) {
+    if (!offs[k].base) continue;
     src = (const unsigned char*)offs[k].tex.data;
     mkdir("shots", 0777);
     char path[48];
@@ -783,7 +779,8 @@ static void off_dump(void) {
 
 void pm_gpu_begin(int clear) {
     off_dump();
-    off_used = 0;
+    for (int k = 0; k < OFF_ALL; k++) offs[k].base = NULL;
+    off_used = off_sused = 0;
     off_active = 0;
     off_i8 = 0;
     grab_dirty = 1;

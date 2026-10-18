@@ -121,3 +121,4 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - R13c proof: swap alone or grab fix alone leaves black squares (shots), both give none. Not checked: golden battle/yard/toad/pause1 (user limit), hardware cost of full width copies, other 2 cycle effects that read TEXEL0 in cycle 2.
 - R13d done: the cycle 2 swap in pm_comb_swap_c2 matches the RDP rule (cycle 2 TEXEL0 is tile 1, TEXEL1 is tile 0), no code change. Logs show 12 distinct 2 cycle combiners that read a texel in cycle 2 (words in 3ds/logs/c2*.txt).
 - R13d golden toad 0.03, yard 0.04, battle 0.43 percent, all ok. Not checked: pause1, a game that sets tile 1 stale for a cycle 2 TEXEL0 only combiner (tile 1 not loaded falls back to the legacy path, why 6).
+V05b: off-screen slots keep their size (0..3 full, 4..7 64x64), no render target delete in a frame. fxtest 50..80 and golden battle ok.

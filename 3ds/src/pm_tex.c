@@ -44,7 +44,7 @@ static int aux = -1; /* S25: the second texture (TEXEL1), bound at unit 1 */
 static GPU_TEXTURE_WRAP_PARAM aux_ws = GPU_REPEAT, aux_wt = GPU_REPEAT;
 static int have;
 /* V05: off-screen images of this frame (render textures owned by pm_gpu.c) */
-static struct { const u8* base; unsigned stride; C3D_Tex* tex; int siz, w, h; } offt[4]; /* siz as pm_gpu_off_begin */
+static struct { const u8* base; unsigned stride; C3D_Tex* tex; int siz, w, h; } offt[8]; /* siz as pm_gpu_off_begin */
 static int offt_n, off_cur = -1, off_ox, off_oy;
 static int aux_off = -1, aux_ox, aux_oy; /* V12c: TEXEL1 is an off-screen slot (the grab of the frame buffer) */
 void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, int siz, int w, int h) {
@@ -56,7 +56,7 @@ void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, i
     offt[i].tex = (C3D_Tex*)tex;
     if (i >= offt_n) offt_n = i + 1;
 }
-void pm_tex_clear_offscreen(void) { offt_n = 0; off_cur = -1; aux_off = -1; }
+void pm_tex_clear_offscreen(void) { for (int k = 0; k < 8; k++) offt[k].base = NULL; offt_n = 0; off_cur = -1; aux_off = -1; }
 void pm_tex_origin(int* x, int* y) {
     *x = (have && off_cur >= 0) ? off_ox : 0;
     *y = (have && off_cur >= 0) ? off_oy : 0;
@@ -339,6 +339,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
          * pixel size of the image (X02: the same memory is a 32 bit and an 8 bit image in one frame). */
         unsigned gs = (fmt == FMT_RGBA && siz == SIZ_32) ? 3u : (fmt == FMT_RGBA && siz == SIZ_16) ? 2u : (fmt == FMT_I && siz == SIZ_8) ? 1u : 0u;
         for (int i = 0; gs && i < offt_n; i++) {
+            if (!offt[i].base) continue;
             unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[i].base), row = offt[i].stride * bpp;
             if ((unsigned)offt[i].siz == gs && (const u8*)img >= offt[i].base && d < row * (unsigned)offt[i].h) {
                 off_oy = (int)(d / row);

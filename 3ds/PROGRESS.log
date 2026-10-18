@@ -329,3 +329,7 @@
 19:47 R13d read: swap matches RDP (cycle 2 TEXEL0 = tile 1, TEXEL1 = tile 0). 12 raw cycle 2 texel combiners in logs, no code change planned. build, then golden toad yard battle (3 starts)
 19:49 R13d golden toad yard battle, one call, expect 3 min
 19:50 R13d done: golden toad 0.03, yard 0.04, battle 0.43 percent ok. no code change
+19:52 V05b root cause: off-screen slot index follows use order, so a slot of 64x64 in one frame gets full size in the next and is deleted in a frame. Fix: fixed slot classes (0..3 full, 4..7 64x64), no delete. Building
+19:54 V05b build ok. Azahar run of fxtest 50..80 (bulb_glow to motion_blur_flame), expect 10 min
+19:55 V05b fxtest 50..80 rc 0, 31 of 31 shot. golden battle next, expect 3 min
+19:56 V05b golden battle ok. commit and move row
