@@ -169,3 +169,9 @@
 07:36 B5 f200 shows z-buffer strips are ROLE_DEPTH (Z_CMP in oml 00504f50): added zcol slot path for texrect without ZS_PRIM, zb_fake key. build, expect 600 s
 07:41 B5 z slot made at f200 (offdump off200_1 shows scene), shot shows tinted warp mesh, modifyvtx count 864 per frame. hook removed, rebuild, golden toad yard battle, expect 400 s
 07:45 B5 committed, row moved to SLICES_DONE
+07:48 C3C read-only check done, result in H05_findings.md
+07:48 C4A read-only check done, result in H05_findings.md
+07:48 C4B read-only check done, result in H05_findings.md
+07:48 C4C read-only check done, result in H05_findings.md
+07:48 C4D read-only check done, result in H05_findings.md
+07:48 C4B new row C4F (sin_rad in guRotateRPYF)
