@@ -113,3 +113,13 @@
 04:09 V13 lava shot ok (orange lava, no noise). temp logs removed, run golden battle toad yard + tour of kzn maps
 04:13 V13 golden battle 1.05 toad 0.01 yard 0.00, 3dsx 13015048 B (+288). tour kzn_03 kzn_11 kzn_20 kzn_22 fault check, expect 90 s
 04:20 V13 committed code, moving row to SLICES_DONE
+04:21 V12b temp log of shifts, texrect shift, effect ids added. build + battle autoa run, expect 120 s
+04:25 V12b battle run: only tile0 shift 15 15 (star), tile1/2 shifts at f37, no texrect shift. fx seen 1 6 7 30 65 67 127. next: intro preset run 150 s
+04:28 V12b intro run no shift effects. next: tour sam_03 sam_04 pra_32 kmr_04 dro_02 arn_07 flo_00 flo_21 nok_01 hos_05 hos_10 end_00 mgm_02, expect 120 s
+04:29 V12b tour reached no shift effects (sam, pra, kmr, dro, arn, flo, nok, hos, end, mgm). added TEMP fxtest=<grp> hook in pm_warp.c that calls the 14 real fx_ functions at scene frame 150. build + run toad fxtest=0 shot, expect 90 s
+04:33 V12b group 0 (damage_stars stars_spread stars_orbiting explosion snowflake big_snowflakes) shot: all whole. next group 1, expect 60 s
+04:34 V12b group 1 shot: bulb_glow texrect has shift 1 1 and draws a black and yellow block. texrect now applies the shift (pm_gbi.c). rebuild + rerun group 1, expect 90 s
+04:37 V12b fxtest now spawns one effect per run (0..13). build, then 14 runs of 40 s, one shot each at frame 207
+04:44 V12b contact sheet: effects 0-5,10,11 whole. 9 bulb_glow black block (fb copy), 6 12 13 not visible. later-frame shots of 6 7 8 12 13, 5 runs 40 s
+04:47 V12b temp code removed, texrect shift kept. rebuild + golden battle toad yard, expect 200 s
+04:50 V12b golden ok, 3dsx +208 B, docs written, moving row to SLICES_DONE
