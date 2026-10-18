@@ -45,8 +45,8 @@ Note for the merge: V09 kmr_22 changes pm_gbi.c on lane-b and X02 changed pm_gbi
 | 8 | B6 | row 7 |
 | 9 | F08 fog factor | row 8 |
 | 10 | V10 Strategies box checkerboard | row 9 |
-| 11 | Merge lane-b into main (conflict in pm_gbi.c expected). Close F01 and the kmr_23 part | rows 1 to 10 may run before or after. Merge early if a graphics agent needs the 421 maps. |
-| 12 | Test kzn_08 darkness (X02) after the merge | row 11 |
+| 11 | DONE 93cab18e2 (merge lane-b; F01 closed) | rows 1 to 10 may run before or after. Merge early if a graphics agent needs the 421 maps. |
+| 12 | DONE: kzn_08 loads and renders, darkness alpha stays 0 (fog script unused in kzn_08), no fault | row 11 |
 | 13 | One full tour with -FaultStop | row 12 |
 | 14 | One golden run | row 13 |
 | 15 | H05 hardware-readiness audit (see 3ds/SLICES.md) | row 14 |
