@@ -1603,3 +1603,17 @@ Old text moved from 3ds/QUESTIONS.md.
 - A missing config key throws and the run stops (Set-CfgKeys). Only the [Debugging] keys may be inserted under their section. The old qt-config.turbo-backup file is gone: the byte copy replaces it. A stale build3ds/qt-config.turbo-backup from an old run may be deleted.
 - Checks: normal -Turbo -Smoke yard run exit 0, config SHA256 same before and after. Two runs at once: second waited 21 s, got the lock, exit 0, both exit 0, hash same. Forced kill of a run: the config was left changed and Azahar ran. The next run killed it, restored the config, exit 0, hash same.
 - Not checked: lock timeout exit 3, the missing key throw, -Gdb, -Interactive, golden.py, a run by the old script at the same time (it ignores the mutex).
+
+## QUESTIONS answered 2026-10-18 (Q7, Q2)
+
+Old text moved from 3ds/QUESTIONS.md.
+
+### Q7. Memory: how to link the last 154 maps? (row S30b)
+- Fact (Azahar numbers, O3DS values estimated, not hardware): image about 16.98 MB. Estimated O3DS spare about 518 KB against a limit of 500 KB. All maps plus the battle tree do not fit. Linking the other 154 maps (+2.0 MB) gives about -1.1 MB.
+- Options: (a) stream the map data of rare areas. (b) stream the ROM from SD (Q2, saves up to 26 MB). (c) stay at 271 maps. (d) wait for the hardware run (S28).
+- Recommendation: (d), then (b) if S28 shows a limit below 64 MB.
+- Answer: User answer 2026-10-18: link ALL 421 maps. The -1.1 MB number used the old 20 MB linear pool and is wrong since H03 (pool 14 MB, heap gains 6,144 KB). Basis: docs/MEMORY_BUDGET.md. Spare 4,669 KB with all 421 maps (4,169 KB above the 500 KB reserve). Worst case 573 KB (if the separate 4 MB N64 block is extra). Estimate only, S28 settles it.
+
+### Q2. Keep the ROM resident or stream it from SD? (from M02)
+- Fact: resident ROM is about 27 MB. Not measured on hardware. Stays resident until S28.
+- Answer: User answer 2026-10-18: keep ALL game data resident in RAM. No SD streaming. No duplicate copies.

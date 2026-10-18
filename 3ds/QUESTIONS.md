@@ -2,16 +2,6 @@
 
 Answered questions and the old text are in docs/HISTORY.md (section "Original QUESTIONS.md"). Answer by editing the Answer line or by telling the orchestrator.
 
-## Q7. Memory: how to link the last 154 maps? (row S30b)
-- Fact (Azahar numbers, O3DS values estimated, not hardware): image about 16.98 MB. Estimated O3DS spare about 518 KB against a limit of 500 KB. All maps plus the battle tree do not fit. Linking the other 154 maps (+2.0 MB) gives about -1.1 MB.
-- Options: (a) stream the map data of rare areas. (b) stream the ROM from SD (Q2, saves up to 26 MB). (c) stay at 271 maps. (d) wait for the hardware run (S28).
-- Recommendation: (d), then (b) if S28 shows a limit below 64 MB.
-- Answer: (open)
-
-## Q2. Keep the ROM resident or stream it from SD? (from M02)
-- Fact: resident ROM is about 27 MB. Not measured on hardware. Stays resident until S28.
-- Answer: (open, default: resident)
-
 ## PO2. Transform each vertex once at G_VTX? (row PO2)
 - Fact: draw_tri in 3ds/src/pm_gbi.c transforms per triangle corner. A transform at G_VTX is CPU only and a small change.
 - Recommendation: yes, after S28 gives real timing.

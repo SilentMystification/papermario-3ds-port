@@ -19,7 +19,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - Lighter check rule (2026-10): after a fix run (1) the smoke check on presets `yard` and `toad` with `-Turbo -Smoke` (about 16 s each), (2) shots of only the scenes the change touches. No 4-scene A/B and no full tour, unless the slice touches the map change path, boot, title, file select or the intro. Then run the full normal chain `-Debug "fast autoa freshsave" -Stall 40`. A by-eye A/B with a `nocull` style switch stays allowed to prove that the symptom is fixed.
 - Tours: iterate on the failing set. Run the full tour once at the end of a slice. Say in the result which kind of check you used.
 - Threading and sync use libctru natives (threadCreate, LightLock, LightEvent, LightSemaphore, svc handles). No hand-rolled locks. No sleep loops. The custom yield in `pm_os.c` (`pm_au_thread_yield`) and `pm_audio.c` is to be reviewed in the audio slice (AU1).
-- Memory rule: the estimated O3DS spare is about 518 KB (limit 500 KB). Add at most about 10 KB of code or data per slice. More needs a Q7 question to the user. Write the size change (3dsx bytes) in the slice result.
+- Memory rule: the estimated O3DS spare is about 4.7 MB with all 421 maps (docs/MEMORY_BUDGET.md). Add at most about 10 KB of code or data per slice. Exception: S30b may add about 2 MB of static image (user approved). Write the size change (3dsx bytes) in the slice result.
 - Screenshot rule: use screenshots only when really needed. Prefer text evidence (draw logs, depth view, checksums, pixel diffs, summary scripts). When a picture is needed, make ONE contact sheet.
 - Log rule: each agent appends one line per step to `3ds/PROGRESS.log` (`HH:MM ID text`). Read logs with the last 40 lines only. Game log: `%APPDATA%\Azahar\sdmc\3ds\PaperMario\log.txt`. The log is non-blocking (L01). Never commit it.
 - Notes and replies use ASD-STE100 English: short sentences, one instruction each, active voice, no semicolons, no praise.
@@ -60,7 +60,7 @@ Pointers: docs/HISTORY.md (all old slice results), docs/SLICES_DONE.md (done row
 - X02: darkness overlay draws the whole screen black (kgr_01, kgr_02, omo_12, omo_14, kzn_08).
 - F03: `is_point_visible` reads a NULL z-buffer (hos_05 lamp, `tex ptr 0000fd7e`).
 - F08: fog partly done by V06 (blend and fog colour mix). The per-vertex fog factor is open.
-- S30b and Q7: 154 maps are not linked. They do not fit in memory (about -1.1 MB).
+- S30b (Q7 answered 2026-10-18): 154 maps are not linked. With all 421 maps the spare is about 4.7 MB by estimate (docs/MEMORY_BUDGET.md).
 - S31: crash screen and debug output check (Q5).
 - T02 Phase 1 done: run_azahar.ps1 holds mutex `Global\pm_azahar_run` (-LockWait s, exit 3 on timeout), restores qt-config.ini byte for byte in finally, and recovers after a hard kill. Lanes (Phase 2, 3) are open in docs/PARALLEL_PLAN.md.
 - Tour faults: kmr_23 (curtain callback), tst_12 (cut map), nok_01 (`au_syn_begin_audio_frame`, engine.c:488).
