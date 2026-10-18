@@ -34,7 +34,7 @@
 - Fast checks: each Azahar start costs about 17 s. Check many maps in ONE run with `tour=<map:entry,...>` (one start, many maps). Run `golden.py` with scene names for the touched scenes only. Skip the yard and toad smoke when `golden.py` already ran yard and toad in the same build. Run the full golden set and the full tour only at a milestone. Use a high -TurboFactor for runs that do not measure timing.
 - Full tour and 4-scene A/B only for map change path, boot, title, file select or intro.
 - Screenshots only when needed. One contact sheet at most.
-- Memory: at most 10 KB of code or data per slice. Report the 3dsx size change.
+- Memory: no size cap per slice (user decision 2026-10-18). Report the 3dsx size change. Do not stop a slice for its size.
 - Optimization code starts only after S28. S28 waits for the empty Azahar queue and the user.
 
 ## Logging and finish

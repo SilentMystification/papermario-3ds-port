@@ -116,3 +116,6 @@ Smallest change set: option A only. Link the 154 maps (S30b: edit `3ds/maps_skip
 | Linear pool fragmentation and texture failures (`mem map` line) | Azahar numbers only |
 | Boot time of the 27 MB ROM read from SD | not timed on hardware |
 | Real peak after all 421 maps run | EST until a hardware tour |
+
+## User decision 2026-10-18
+The 518 KB spare and the 10 KB per slice cap are void. They assumed that the N64 ROM and copies of assets stay resident. Revisit the memory limits and the strategy only if the port runs out of memory. S28 gives the real numbers.
