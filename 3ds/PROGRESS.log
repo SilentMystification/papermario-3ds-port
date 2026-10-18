@@ -154,3 +154,13 @@
 06:55 B3 mac_01 ball stays off screen (clamped decal x4..35), hook removed. flo_10 temp hook B3TEMP (custom gfx o40). build+run warp=flo_10:2 partner=1 imglog, expect 400 s
 06:59 B3 flo_10:2 imglog: 414 depthtri lines, comb PRIM, prim f8f0f000, word ffbc (constant, step 1 ok). drawlog f39: decal chunks #62 #63 #65 have the same boxes as model chunks #58 #59 #61. hooks removed. golden toad yard battle title pause1, expect 600 s
 07:05 B3 golden toad 0 yard 0 title 0 pause1 0.00 battle 0.86/1.05, F03 ok, commit 58f40f3f3, row moved to SLICES_DONE
+07:07 B6 code: G_SETKEYR/GB keyc, PM_NM_PK fold in pm_comb.c, audit key. build+run isk_04 battle formation 0B02, expect 400 s
+07:10 B6 run1: no KEYC combiner in log, no flame in shot. added key log line, rerun, expect 300 s
+07:13 B6 stage index of isk_04 is 7 not 4. rerun with stage 7, expect 300 s
+07:14 B6 finding: flame combiner is (T0-CENTER)*SCALE+ENV (KEYS too), PM_CC_4B is ring_blast only. added KEYC and KEYS plan terms, rebuild+run, expect 300 s
+07:17 B6 isk_04 battle: plan USED planerr 0 nst 4, I8 offdump shows flame mask, shot shows orange flame. golden toad yard battle, expect 500 s
+07:18 B6 committed 627380f72, golden ok, moving row to SLICES_DONE
+07:20 F08 edited pm_gbi.c and pm_gpu.c (fog factor in draw_tri, r_mix 2 stage). build, expect 600 s
+07:22 F08 built 3dsx +444 B, run mim_11:0 with and without nofog, expect 120 s
+07:24 F08 mim_11:0 shot on vs nofog differs 47 pct, fog haze visible. golden toad yard battle title, expect 150 s
+07:26 F08 committed, row moved to SLICES_DONE

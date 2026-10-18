@@ -254,7 +254,7 @@ static void flush(void) {
         /* V06: colour = mix * alpha + previous * (1 - alpha), alpha = the constant's alpha. The alpha channel passes. */
         C3D_TexEnv* e = C3D_GetTexEnv(env_hi);
         C3D_TexEnvInit(e);
-        C3D_TexEnvSrc(e, C3D_RGB, GPU_CONSTANT, GPU_PREVIOUS, GPU_CONSTANT);
+        C3D_TexEnvSrc(e, C3D_RGB, GPU_CONSTANT, GPU_PREVIOUS, r_mix == 2 ? GPU_PRIMARY_COLOR : GPU_CONSTANT); /* F08: r_mix 2 = weight is the vertex alpha */
         C3D_TexEnvOpRgb(e, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_ALPHA);
         C3D_TexEnvFunc(e, C3D_RGB, GPU_INTERPOLATE);
         C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);

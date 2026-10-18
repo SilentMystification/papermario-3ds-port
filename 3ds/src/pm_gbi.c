@@ -438,6 +438,7 @@ static void box_fold_sync(void) {
  * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
  * cut away near-transparent texels. */
 static unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
+static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 static void sync_render(void) {
     unsigned m = omode_l;
     /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog
@@ -447,9 +448,16 @@ static void sync_render(void) {
         unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
         if (!pm_debug_has("nomix") && (p == 2u || p == 3u) && a == 1u && mm == 0u && b == 0u)
             pm_gpu_set_mix(1, ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu));
-        else
+        else if (!pm_debug_has("nofog") && p == 3u && a == 2u && mm == 0u && b == 0u) {
+            /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
+            pm_gpu_set_mix(2, (fogc & 0xffffff00u) | 0xffu);
+            fogmix_on = 1;
+            goto mixed;
+        } else
             pm_gpu_set_mix(0, 0);
+        fogmix_on = 0;
     }
+mixed:
     if (img_role(0) == ROLE_DEPTH) { /* B3: a model drawn into the z-buffer image is a depth write: no colour, always pass, constant depth (draw_tri) */
         pm_gpu_set_nocolor(1);
         pm_gpu_set_render(0, 1, 0, -1, 0);
@@ -1024,7 +1032,7 @@ static void draw_tri(unsigned w) {
         if (pm_debug_has("ddverb")) {
             int k;
             for (k = 0; k < 3 && k < n; k++)
-                pm_log("ddv #%u obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
+                pm_log("ddv #%u fog %d %d obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, fog_fm, fog_fo, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
                        (int)verts[idx[k]].v.ob[2], (int)poly[k].x, (int)poly[k].y, (int)poly[k].z, (int)poly[k].w,
                        (int)verts[idx[k]].v.tc[0], (int)verts[idx[k]].v.tc[1]);
         }
@@ -1057,6 +1065,12 @@ static void draw_tri(unsigned w) {
         for (i = 0; i < n; i++) { poly[i].r = vc[0] * 255.f; poly[i].g = vc[1] * 255.f; poly[i].b = vc[2] * 255.f; poly[i].a = vc[3] * 255.f; }
     } else if (!comb_alpha_shade && !(plan_active && cur_plan.uses_sha)) {
         for (i = 0; i < n; i++) poly[i].a = 255;
+    }
+    if (fogmix_on && (geom & G_FOG)) { /* F08: RSP fog factor, clamp(z / w * fm + fo) replaces the vertex alpha */
+        for (i = 0; i < n; i++) {
+            float f = (poly[i].w > 0.f ? poly[i].z / poly[i].w : poly[i].z * 32767.f) * fog_fm + fog_fo;
+            poly[i].a = f < 0.f ? 0.f : f > 255.f ? 255.f : f;
+        }
     }
     {
         int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT &&
@@ -1979,6 +1993,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_MOVEWORD: {
             unsigned index = (w0 >> 16) & 0xff;
             unsigned offset = w0 & 0xffff;
+            if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; } /* F08 */
             if (index != G_MW_SEGMENT) {
                 unsigned n = ++mw_cnt[index];
                 if (n == 1 || n == 1000 || n == 1000000) pm_log("gbi ignore moveword index %02x offset %04x count %u frame %d", index, offset, n, rm_frame);
