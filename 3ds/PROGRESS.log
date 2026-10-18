@@ -56,3 +56,6 @@
 02:25 S30b docs written, committing
 03:00 F01 kmr_23: tour_step in pm_warp.c now runs set_curtain_scale_goal(2.0f) and set_curtain_draw_callback(NULL) as the real exit script does
 03:05 F01 kmr_23 check warp=kmr_23:0 tour=iwa_01:0,iwa_00:0 -Turbo -Smoke -FaultStop: rc 0, no unmapped access. yard rc 0, toad rc 0
+03:30 F01 tst_12 temp logs (Loop, Wait, floating_flower_main): Loop(LVar5) val=-17, so LVarF=-11 (int), flower count over 12000 in one run
+03:35 F01 tst_12 cause: decomp script D_80240050 stores float -22.5 in LVarF, Add(LVarF,11) makes int -11, LVar5=200/-11+1=-17, Loop of a negative count never ends. N64 code is identical. Logs removed
+03:40 F01 tst_12 no port fix possible (no guard allowed). warp=tst_12:0 still rc 2 (heap NULL in floating_flower_main). yard rc 0, toad rc 0

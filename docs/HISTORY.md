@@ -1630,3 +1630,10 @@ Old text moved from 3ds/QUESTIONS.md.
 - Fix: 3ds/src/pm_warp.c `tour_step` calls `set_curtain_scale_goal(2.0f)` and `set_curtain_draw_callback(NULL)` before the map change. This is the same as `N(func_80240010_907A40)` in kmr_23/main.c. No guard in the decomp.
 - Checks (-Turbo -Smoke -FaultStop): `warp=kmr_23:0 tour=iwa_01:0,iwa_00:0 smokeframes=200` rc 0, no unmapped access. Presets yard and toad rc 0.
 - Not checked: the run before the fix (fault not reproduced for comparison), the full tour, the real exit with entry 4 (kzn_19), other maps that set a curtain callback, hardware, tst_12, nok_01.
+
+## F01 tst_12 (lane B, 2026-10-18)
+- Measured with temporary logs (removed): `Loop(LVar5)` logged val=-17. From LVar5 = 200 / LVarF + 1 this gives LVarF = -11 (integer). `floating_flower_main` ran more than 12000 times in one run (96 effect slots, then `general_heap_malloc` returns NULL, fault at floating_flower.c:32, 34720 hits at one PC).
+- Cause: in `N(D_80240050_B1D340)` (src/world/area_tst/tst_12/main.c) LVarF holds the float -22.5 (DivF of 100.0 by -4.44, because the first Exec passes LVarC = 100 - 544 < 0). `Add(LVarF, 11)` reads LVarF through `evt_get_variable`, which converts the float to the integer -22, and stores the integer -11. `Div(LVar5, LVarF)` gives -18, +1 gives -17. `evt_handle_end_loop` counts a negative value down and never reaches 0. The loop runs about 2^31 times. `Wait(LVarF)` with -11 also never ends.
+- This corrects the HISTORY 953 note and the F01_causes guess (Wait(0)). The Loop is the flood, not the Wait.
+- The port evt.c code is the decomp code. The evaluation order is the same on the N64 by source reading (not run on an N64). So this is a decomp defect of a cut, unreachable map. No port fix without a guard, so none was made.
+- Check: `warp=tst_12:0 -Turbo -Smoke -FaultStop` still exits 2 (expected). yard and toad exit 0. nok_01 not touched.
