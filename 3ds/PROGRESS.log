@@ -133,3 +133,12 @@
 05:15 B1 imglog run: warp=kgr_01:0 tour flo_10:0,mac_01:0, expect 60 s
 05:19 B1 battle run with temp water_splash hook in pm_warp.c (restored after), expect 60 s
 05:25 B1 imglog tables done (kgr_01 darkness slots role5, flo_10 and mac_01 only role0 up to f275, battle with temp water_splash hook removed). MEMORY_BUDGET VRAM line added, 3dsx 13015504 B. commit, docs, move row
+05:36 B2 code in pm_gpu.c pm_gbi.c pm_main.c pm_gpu.h, temp hook B2TEMP in flo_10/main.c (calls UnkModelFunc001, remove after). build, expect 300 s
+05:39 B2 build ok. run warp=flo_10:0 imglog stats offdump=100 smoke, expect 60 s
+05:39 B2 entry 0 gives no grab (water model not drawn). try flo_10:2, expect 60 s
+05:40 B2 flo_10:2 grabs happen (8 copies then reuse at cap) but entry 2 faults in partner_walking_enable (game side, no partner). rerun without FaultStop for offdump, expect 60 s
+05:43 B2 first dump looked repeated/mirrored (mid-frame content, hard to judge). added switch grabtest (grab whole finished frame at pm_gpu_end) to compare slot with shot. build + run preset=toad, expect 300 s
+05:47 B2 grabtest dump shows slot mirrored in x: PICA v=0 samples last memory row. fix v = 1 - row/512. build + rerun preset=toad grabtest, expect 300 s
+05:51 B2 grabtest slot equals shot exactly (diff 0.0). rerun flo_10:2 grab, expect 60 s
+05:52 B2 flo_10:2 slot dump shows the scene upright (8 copies per frame then reuse, stats sp8 sl1 gr8). temp hook removed (flo_10/main.c clean). build + golden toad yard battle pause1, expect 400 s
+05:57 B2 golden toad 0 yard 0 battle 1.06 pause1 23.63 (unchanged), 3dsx 13018360 B (+2856). docs written, commit

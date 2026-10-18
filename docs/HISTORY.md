@@ -1953,3 +1953,6 @@ After: Q6 says all 421 maps are linked (S30b). HANDOFF.md limit is 55 lines.
 ## Trimmed 2026-10-18 (docs/ORCH_STATE.md)
 
 No text removed. A decision row was added to section 4 (ALL functionality ported before S28, user decision 2026-10-18).
+
+## B2 grab queue order (2026-10-18)
+ciro3d stops the GX queue in C3D_FrameBegin and runs it in C3D_FrameEnd. Calls queue in call order: C3D_RenderTargetClear, C3D_FrameSplit (command list part), GX_TextureCopy, next part. The end of frame clear of the main target is a queue entry too, so pm_gpu_grab queues it before the first split. A CPU read mid-frame sees the last frame because the queue has not run, so pm_cfb_capture_prev needs no change. Texture copy: 7680 byte strips (30 tiles, 8 target rows = 8 game columns) into a 256 x 512 texture with a 512 byte gap. PICA v = 0 samples the last memory row, so v = 1 - row / 512. Grab quad: game (x, y) reads column 239 - y, row 40 + x.

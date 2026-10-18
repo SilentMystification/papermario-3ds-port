@@ -142,6 +142,12 @@ static int off_used, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_
 extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
+/* B2: T2 grab state. grab_tex holds a copy of the main target strips (same tiled layout, 256 x 512). grab_bind: flush binds it
+ * instead of the pm_tex texture. grab_dirty: a draw went to the main target since the last grab. [grab_x0, grab_x1) is the
+ * game x range the slot of this frame holds. */
+enum { GRAB_MAX = 8 };
+static C3D_Tex grab_tex;
+static int grab_ready, grab_bind, grab_dirty = 1, grab_x0, grab_x1, grab_n, grab_split;
 
 static void flush(void) {
     if (nverts <= 0 || !gpu_ok) {
@@ -155,7 +161,7 @@ static void flush(void) {
         return;
     }
     /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
-    if (combine >= 2 && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
+    if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
         nverts = 0;
         batch_identity = 0;
         return;
@@ -171,7 +177,7 @@ static void flush(void) {
     env_hi = 1;
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
-    int tex = (combine >= 2) && pm_tex_bind();
+    int tex = (combine >= 2) && (grab_bind ? (C3D_TexBind(0, &grab_tex), 1) : pm_tex_bind());
     int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
     if (tex1 && u_uvx >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
     /* Unit 1 stays bound to the last TEXEL1 texture: C3D_TexBind(1, NULL) crashes. No stage reads it. */
@@ -350,6 +356,7 @@ static void flush(void) {
     nverts = 0;
     batch_identity = 0;
     drew = 1;
+    if (!off_active) grab_dirty = 1; /* B2: the main target changed, the grab slot is old */
 }
 
 /* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
@@ -642,6 +649,75 @@ void pm_gpu_off_end(void) {
 
 void pm_gpu_set_replace(int on) { r_replace = on; }
 
+/* B2: T2 grab. The PICA cannot sample the target it draws to, and a CPU read mid-frame sees the last frame (the GPU has not run
+ * yet). So: draw what is pending, split the command list, copy the strips of the main target (GX_TextureCopy, queued after the
+ * split part, so it sees every draw so far), then draw the copy rotated upright into the slot (cfb, siz 2). Later loads of that
+ * address find the slot (T1). citro3d stops the GX queue in a frame and runs it at C3D_FrameEnd, so the order is the order of
+ * these calls. The end-of-frame clear of the main target is a queue entry too: it has to come before the first split. */
+int pm_gpu_grab(const void* cfb, int x0, int x1) {
+    int was_off = off_active, prev = off_cur, s0, s1;
+    static int once;
+    if (x0 < 0) x0 = 0;
+    if (x1 > 320) x1 = 320;
+    if (!gpu_ok || off_fail || grab_ready < 0 || x1 <= x0) return 0;
+    if (grab_x1 > grab_x0) {
+        if (!grab_dirty && x0 >= grab_x0 && x1 <= grab_x1) return 1; /* no draw since the last grab: same slot */
+        if (!grab_dirty) { if (grab_x0 < x0) x0 = grab_x0; if (grab_x1 > x1) x1 = grab_x1; } /* old columns are still right */
+        if (grab_n >= GRAB_MAX) {
+            if (!once++) pm_log("B2: more than %d grabs in one frame, the rest reuse the last one", (int)GRAB_MAX);
+            return 1;
+        }
+    }
+    flush();
+    if (!grab_ready) {
+        if (!C3D_TexInitVRAM(&grab_tex, 256, 512, GPU_RGBA8)) {
+            pm_log("B2: no VRAM for the 256 x 512 grab copy, grabs stay off");
+            grab_ready = -1;
+            return 0;
+        }
+        C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
+        C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+        grab_ready = 1;
+    }
+    if (!pm_gpu_off_begin(cfb, 320, 2)) return 0; /* no free slot: the load reads the frame buffer memory as before */
+    pm_gpu_off_end(); /* the slot exists (cleared on first use); the copy goes before the quad */
+    if (!grab_split++ && want_clear) { /* queue entry order: clear, part 1, copy, part 2 */
+        C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+        want_clear = 0;
+    }
+    C3D_FrameSplit(GX_CMDLIST_FLUSH);
+    s0 = (40 + x0) >> 3; /* one tile row strip = 8 target rows = 8 game columns = 30 tiles = 7680 bytes */
+    s1 = (40 + x1 - 1) >> 3;
+    GX_TextureCopy((u32*)((u8*)target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
+                   (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
+    pm_gpu_off_begin(cfb, 320, 2);
+    {
+        int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
+        int s_comb = combine, s_2d = rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = r_atest, s_nc = r_nocol, s_mix = r_mix,
+            s_rs = rgb_scale, s_3d = draw_3d;
+        float xa = (float)x0, xb = (float)x1, va = 1.f - (40.f + xa) / 512.f, vb = 1.f - (40.f + xb) / 512.f, ua = 240.f / 256.f;
+        sci_x0 = 0; sci_y0 = 0; sci_x1 = 320; sci_y1 = 240;
+        combine = 3; rect_2d = 1; batch_identity = 1; r_replace = 1; r_atest = -1; r_nocol = 0; r_mix = 0; rgb_scale = 1; draw_3d = 0;
+        grab_bind = 1;
+        /* game (x, y) reads texel column 239 - y, memory row 40 + x of the copy. v = 0 samples the last memory row (found with
+         * the grabtest dump: with v = row / 512 the slot came out mirrored in x), so v = 1 - row / 512. */
+        pm_gpu_tri(xa, 0.f, 0.5f, ua, va, 0xffffffffu, xb, 0.f, 0.5f, ua, vb, 0xffffffffu, xb, 240.f, 0.5f, 0.f, vb, 0xffffffffu);
+        pm_gpu_tri(xa, 0.f, 0.5f, ua, va, 0xffffffffu, xb, 240.f, 0.5f, 0.f, vb, 0xffffffffu, xa, 240.f, 0.5f, 0.f, va, 0xffffffffu);
+        flush();
+        grab_bind = 0;
+        sci_x0 = sc[0]; sci_y0 = sc[1]; sci_x1 = sc[2]; sci_y1 = sc[3];
+        combine = s_comb; rect_2d = s_2d; batch_identity = s_bi; r_replace = s_rep; r_atest = s_at; r_nocol = s_nc; r_mix = s_mix;
+        rgb_scale = s_rs; draw_3d = s_3d;
+    }
+    if (was_off) pm_gpu_off_begin(offs[prev].base, offs[prev].w == 64 ? 64 : 320, offs[prev].siz);
+    else pm_gpu_off_end();
+    grab_dirty = 0;
+    grab_x0 = x0;
+    grab_x1 = x1;
+    grab_n++;
+    return 2;
+}
+
 /* V05 debug switch offdump: the first off-screen image of the last frame, as shots/off<frame>.ppm (memory row 0 on top) */
 static void off_dump(void) {
     static int on = -1, n, from;
@@ -684,6 +760,8 @@ void pm_gpu_begin(int clear) {
     off_used = 0;
     off_active = 0;
     off_i8 = 0;
+    grab_dirty = 1;
+    grab_x0 = grab_x1 = grab_n = grab_split = 0;
     pm_tex_clear_offscreen();
     dv_draw = 0;
     draws_frame = 0;
@@ -713,6 +791,10 @@ void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
     if (off_active) pm_gpu_off_end();
+    if (drew && pm_debug_has("grabtest")) { /* B2 test switch: grab the whole finished frame, `offdump` then shows it next to the shot */
+        extern unsigned short* nuGfxCfb_ptr;
+        pm_gpu_grab(nuGfxCfb_ptr, 0, 320);
+    }
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */

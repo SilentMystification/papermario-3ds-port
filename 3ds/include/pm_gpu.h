@@ -74,6 +74,9 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
 int pm_gpu_off_begin(const void* base, int stride, int siz); /* siz: 3 = 32 bit, 2 = 16 bit, 1 = 8 bit */
 void pm_gpu_off_end(void);
 int pm_gpu_off_count(void); /* B1: off-screen slots started this frame */
+/* B2: T2 grab. Copies game columns x0..x1-1 of the frame being drawn into the upright slot (cfb, siz 2).
+ * Returns 0 = no slot, 1 = slot reused, 2 = new copy (the command list was split). */
+int pm_gpu_grab(const void* cfb, int x0, int x1);
 void pm_gpu_set_replace(int on); /* off-screen fill: write the pixel, no blend */
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba);
 void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d); /* X01: tests depth d (0 near .. 1 far) */
