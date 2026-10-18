@@ -242,3 +242,44 @@
 11:33 T01b overlay: kmr_09 encounter battle-start swirl shot, expect 120 s
 11:34 T01b R05 R13 docs written (HANDOFF, HISTORY, H05_findings). new row R13b, move rows to SLICES_DONE, commit
 11:34 T01b R05 R13 rows moved to SLICES_DONE, R13b added. commit
+11:40 R13b hook R13B_TMP in pm_gbi.c draw_tri logs 2-cycle comb words and tile 0/1 bindings. lane build r13b (own build folder, C2R uses main), expect 6 min
+11:57 R13b build ok. run water_splash nok_11:1 story=-75 partner=1 pad_nok.txt shotwin=778:40, expect 150 s
+12:08 R13b first log filled the 80 line cap with unrelated 2-cycle draws. filter on RGBA16 tile, rebuild lane r13b, expect 4 min
+12:25 R13b water_splash log: tile0 IA8 16x16, tile1 RGBA16 32x32 cfb window (x 64, y 146), comb c1 (T1)*PRIM+ENV, c2 (1-CMB)*T1+CMB. Not a cycle-2 TEXEL swap problem on first look. suspect TEXEL1 uv offset (window origin). add uv log, rebuild, expect 4 min
+12:40 R13b cause 1 (theory held for flame): both effects have cycle 2 TEXEL1 = scene in our order, the RDP swaps in cycle 2. flame: no swap gives scene*PRIM(dark)+I = black square with white dot. Apply the swap to pm_comb.c cycle 2 terms and cc_eval. cause 2 (water_splash): TEXEL1 uv offset ignores tile 1 sl vs tile 0 coords (window local s, sl=65): uv samples slot top left. rebuild, expect 4 min
+12:40 R13b cause 1 (theory held for flame): both effects have cycle 2 TEXEL1 = scene in our order, the RDP swaps in cycle 2. flame: no swap gives scene*PRIM(dark)+I = black square with white dot. Apply the swap to pm_comb.c cycle 2 terms and cc_eval. cause 2 (water_splash): TEXEL1 uv offset ignores tile 1 sl vs tile 0 coords (window local s, sl=65): uv samples slot top left. rebuild, expect 4 min
+12:55 R13b water_splash after swap alone: droplets still dark (TEXEL1 samples slot top left, uv log ox1 65 oy1 151 offset 0). need flame data: temp hook coins50 (R13B_TMP, set coins 50 in draw_tri) for mac_01 fortune, rebuild, run pad_t01b3 with uv log, expect 8 min
+13:20 R13b flame still black after swap: plan used, tile 1 uv offsets look right on paper (sl0=sl1, ox1=uls). test TEXEL1-only debug (r13bt1 in pm_gpu.c flush, R13B_TMP) to see if the aux slot samples black. rebuild, run flame, expect 10 min
+13:50 R13b log of texrect corners and TEXEL1 slot px for the flame, rebuild, run flame, expect 10 min
+14:20 R13b flame TEXEL1 uv maps to the same screen px as the rect (log), imglog grabs ok (x140..155 copied), yet TEXEL1-only draw is black. test slot v flip (r13bflip, R13B_TMP) with r13bt1, expect 10 min
+13:30 V12d add 12 files to EFFECT_GFX_SRC (foreach in 3ds/CMakeLists.txt). build, expect 5 min. baseline 3dsx 13050412 B
+13:45 V12d temp hook v12d=<0..11> in 3ds/src/pm_v12d_tmp.c (V12D_TMP, spawn at frame 400 by pm_main.c). build, expect 3 min
+14:50 R13b flip test: flip changes the squares (some white), no-flip black, neither seamless. test constant TEXEL1 sample (r13bc=x,row, R13B_TMP) at known glow px (150,100) and (150,155), expect 15 min
+13:40 V12d run toad v12d=0..11, shotwin=412:1 each, 12 runs x 30 s, expect 8 min
+13:36 C4E map applied in 3ds/src/pm_input.c (pm_nusys.c only calls pm_pad_read): D-pad to N64 C, 3DS L and R to N64 Z, 3DS R no longer N64 R. build, then smoke preset toad, expect 4 min
+13:39 C4E coordinator map: add X=C-up, Y=C-down, ZR=N64 R (ZL=L, C-stick=C kept). rebuild, smoke preset toad, expect 4 min
+13:44 C4E smoke preset=toad rc 0 (smoke done 300 frames). C4-06 FIXED, row moved
+13:48 V13c seed lane volume pm3ds-work-v13c from pm3ds-work, add texmax log in pm_tex.c and pm_mem.c, expect 2 min
+15:10 R13b const sample at (150,row155) is white = glow, row 100 dark: v=y/256 is right. The scaled uv sample is black though the log says px 140,152. test per-rect constant from the same numbers (r13bk), expect 12 min
+13:52 V13c lane build ok, 3dsx 13069252 B (baseline main 13050412 B is older, other agents WIP included). run full tour in chunks of 40 with texmax, expect 40 min
+13:52 F11-1 added pm_options.c, pm_opt, init call in game_thread, hud/stats from pm_opt. build next, then 2 Azahar runs kmr_20:0, expect 6 min
+13:57 F11-1 run 1 (no options.txt), warp=kmr_20:0 smoke, expect 3 min
+13:55 V12d hook fixed to use fx_ wrappers (load_effect). run v12d=0..11 with -Until shot, expect 10 min
+14:04 F11-1 run 2 (options.txt hud=0 bogus=7), expect 3 min
+15:35 R13b per-rect const sample is plausible scene, scaled uv sample black. add flush log (tex1, uvx, v0) R13B_TMP, rebuild, run, expect 12 min
+14:06 F11-1 golden.py toad, expect 4 min
+15:55 R13b uvx and v0 are as computed at flush (tex1 1, v 0.594), yet the sample is black while per-rect const works. test fold of uv0 (r13bf, subtract floor, offset compensated) in case large negative uv0 breaks the unit 1 path, expect 12 min
+14:15 F11-1 done: 2 runs ok, golden toad ok, 3dsx 13068984 to 13070620 bytes. Commit, then move row
+14:20 F11-2 code done in 7 decomp files (TARGET_3DS), build next, baseline 3dsx 13070596 bytes, expect 10 min
+16:15 R13b fold did not help. test one axis varying (r13bx=1 u varies, r13bx=2 v varies), expect 25 min
+14:24 F11-2 build ok, 3dsx see size, next golden fileselect plus panel padscript run, expect 3 min each
+14:27 FX1a pm_fxtest.c written (127 effects, X-macro), hooked in pm_main.c and CMakeLists. build next, expect 10 min
+14:28 V13c tour runs in chunks of 40 via 3ds/logs/v13c_tour2.sh (texmax switch), runs wait on the lock, expect 60 min
+14:33 FX1a build ok. next: list run then all run with shots, expect 6 min
+14:35 F11-2 golden fileselect scene shows the title screen both in the reference and now (START not accepted by frame 500). Find the real file select frame, one run, expect 3 min
+14:37 FX1a first all run crashed at effect 54 bulb_glow (C3D_RenderTargetDelete in pm_gpu_off_begin, slot size change in a frame). wrote 3ds/tools/fxtest_report.py with resume after crash. full run, expect 25 min
+14:39 V13c add per-frame working set (TOUCH in pm_tex.c) to the texmax line, rebuild lane v13c, expect 3 min
+14:43 V13c rebuild ok, full tour restarted (chunks of 40, waits for lock), expect 60 min
+16:50 R13b water_splash cause proved by numbers: tile 1 window wraps (mask 5), droplet s starts at 0, window origin 65, linear uv reads slot x 0..16 where nothing was grabbed. Added t1_fold in pm_gbi.c (fold draw start into the window), removed other temp hooks, kept coins50 hook. build, run water_splash and flame, expect 15 min
+14:46 F11-2 test run: padscript wait500,START*6,wait300,down steps,A,B with shots every 30 frames, until frame 1000, expect 4 min plus mutex wait
+14:48 C2R map tour 421 maps (2 faults), battle stages 181 of 244 (29 faults), effects left for FX1a. Findings written, rows C2F C2G C2H C2I added. C3A and C3B done

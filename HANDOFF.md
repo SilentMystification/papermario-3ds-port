@@ -100,3 +100,5 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - C4E loss: on the O3DS N64 R has no button, so pause tab right, partner switch, menu down by R and file menu R fail. Battle D-pad to stick (16C8E0.c) now reads no D-pad. Not checked: real hardware, button feel.
 - F11-1 done: 3ds/src/pm_options.c, pm_opt (fps60 wide hud stats), options.txt in the working folder, log line `options: ...`. Run 1 (no file) writes it, run 2 (hud=0, bogus key) skips the bad key. 3dsx 13068984 to 13070620 bytes.
 - F11-1 not checked: that the bottom-screen FPS line is gone with hud=0 (no shot taken), hardware, write on power loss.
+- C3A, C3B done: pm_actor_stubs.c deleted, pm_kmr_stubs.c is now pm_buffers.c (nm: 0 undefined symbols). Commit 487712a4d.
+- C2R partly done: 421 map tour and 181 of 244 battle stages counted in H05_findings C2-02. Left: 63 stages (3ds/logs/c2r_battle.sh, from line 182) and effects (FX1a). New rows C2F, C2G, C2H, C2I.
