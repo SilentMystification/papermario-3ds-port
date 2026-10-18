@@ -98,3 +98,5 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - R13 fault: water_splash and motion_blur_flame draw black blobs, new row R13b. C1-09 and C1-15 stay open. Not checked: hardware, flo_10, the 2-cycle TEXEL order theory.
 - C4E done: map in 3ds/src/pm_input.c (pm_nusys.c only calls it). D-pad, X, Y, C-stick = N64 C. 3DS L and R = Z. ZL = N64 L, ZR = N64 R (New 3DS only). Stick 80/154 clamp +-80 is right.
 - C4E loss: on the O3DS N64 R has no button, so pause tab right, partner switch, menu down by R and file menu R fail. Battle D-pad to stick (16C8E0.c) now reads no D-pad. Not checked: real hardware, button feel.
+- F11-1 done: 3ds/src/pm_options.c, pm_opt (fps60 wide hud stats), options.txt in the working folder, log line `options: ...`. Run 1 (no file) writes it, run 2 (hud=0, bogus key) skips the bad key. 3dsx 13068984 to 13070620 bytes.
+- F11-1 not checked: that the bottom-screen FPS line is gone with hud=0 (no shot taken), hardware, write on power loss.

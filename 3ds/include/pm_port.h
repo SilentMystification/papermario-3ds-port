@@ -79,4 +79,12 @@ typedef struct PmMapRst {
 } PmMapRst;
 void pm_mapdata_enter(const char* id);
 
+/* F11-1: port settings (pm_options.c). The file is options.txt in the working folder. */
+typedef struct PmOpt {
+    int fps60, wide, dbg_hud, dbg_stats;
+} PmOpt;
+extern PmOpt pm_opt;
+void pm_options_init(void);
+void pm_options_write(void);
+
 #endif

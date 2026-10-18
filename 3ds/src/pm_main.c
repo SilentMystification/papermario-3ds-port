@@ -345,11 +345,11 @@ void pm_frame_loop(void) {
             char bot[40];
             if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f  #%d", fps, PM_BUILD);
             else snprintf(top, sizeof(top), "FPS ...  #%d", PM_BUILD);
-            if (pm_debug_has("stats") || pm_debug_has("fast"))
+            if (pm_opt.dbg_stats || pm_debug_has("stats") || pm_debug_has("fast"))
                 snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
             else
                 snprintf(bot, sizeof(bot), "%5.1f ms", frame_ms);
-            pm_gpu_hud(top, bot);
+            if (pm_opt.dbg_hud) pm_gpu_hud(top, bot);
         }
     }
 }
@@ -384,6 +384,7 @@ static void game_thread(void* arg) {
     pm_log("threads: game on core %d (svcGetProcessorID), log writer on core %d", (int)svcGetProcessorID(), pm_log_writer_core());
     pm_log("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
+    pm_options_init();
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
     pm_game_bind();
