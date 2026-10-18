@@ -517,97 +517,13 @@ void pm_dump_scripts(void) {
     }
 }
 
-/* Map guard (linked with --wrap, see CMakeLists.txt). gAreas has MAP_ID rows with null settings for maps that are not
- * in the image. The real load_map_by_IDs would read through that null pointer. goto_map ignores the result of
- * get_map_IDs_by_name and then calls set_game_mode(GAME_MODE_CHANGE_MAP), so refuse there and keep the current map. */
-extern s32 __real_get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID);
+/* S30b: all 421 maps are linked, the GotoMap guard is gone. The wraps log the map change (warp hook, shot mode, data probe). */
 extern void __real_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType);
 extern void __real_set_game_mode(s16 mode);
-static s16 cur_area = -1, cur_map = -1;
-
-s32 __wrap_get_map_IDs_by_name(const char* mapName, s16* areaID, s16* mapID) {
-    s32 ok = __real_get_map_IDs_by_name(mapName, areaID, mapID);
-    if (!ok) {
-        pm_log("map %s not in gAreas", mapName);
-        *areaID = -1;
-        *mapID = -1;
-    }
-    return ok;
-}
-
-/* S30: settings (and init) of a map that is not linked point here (3ds/map_syms.ld, tools/gen_map_sources.py). */
-char pm_unlinked_map[4];
-
-/* S30: a refused GotoMap must not leave Mario frozen. The exit scripts (EVT_EXIT_WALK and the door and pipe variants) start
-   ExitWalk with Exec, which runs DisablePlayerInput(true) AFTER GotoMap returned, and nothing enables the input again,
-   because a real map change clears every script. So the control is given back later, once the exit scripts are gone
-   (group EVT_GROUP_EXIT_MAP, they end after Wait(100)) or after 200 frames, with the calls of DisablePlayerInput(false)
-   in src/evt/player_api.c. Called once per drawn frame (pm_main.c).
-   The exit zone fires again at once while Mario stands in it, so he also goes back to where he was 45 frames before the
-   refusal (position history of the frames with input on), idle. */
-static int refuse_wait;
-static f32 hist[64][3];
-static unsigned hist_n;
-static f32 back[3];
-static int back_ok;
-
-void pm_map_tick(void) {
-    int i, exit_scripts = 0;
-    if (!refuse_wait) {
-        if (!(gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED)) {
-            hist[hist_n & 63][0] = gPlayerStatus.pos.x;
-            hist[hist_n & 63][1] = gPlayerStatus.pos.y;
-            hist[hist_n & 63][2] = gPlayerStatus.pos.z;
-            hist_n++;
-        }
-        return;
-    }
-    refuse_wait++;
-    for (i = 0; i < MAX_SCRIPTS; i++) {
-        Evt* sc = get_script_by_index(i);
-        if (sc != NULL && sc->stateFlags != 0 && sc->groupFlags == EVT_GROUP_EXIT_MAP) exit_scripts = 1;
-    }
-    if ((!exit_scripts && refuse_wait > 3) || refuse_wait > 200) {
-        pm_log("GotoMap refused: control back after %d frames (exit scripts %s)", refuse_wait, exit_scripts ? "still running" : "ended");
-        enable_player_input();
-        partner_enable_input();
-        func_800E01DC();
-        gOverrideFlags &= ~GLOBAL_OVERRIDES_40;
-        enable_status_bar_input();
-        if (back_ok) {
-            pm_log("GotoMap refused: Mario back to %d %d %d (was %d %d %d)", (int)back[0], (int)back[1], (int)back[2], (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z);
-            gPlayerStatus.pos.x = back[0];
-            gPlayerStatus.pos.y = back[1];
-            gPlayerStatus.pos.z = back[2];
-            set_action_state(ACTION_STATE_IDLE);
-        }
-        refuse_wait = 0;
-    }
-}
-
-static int map_is_linked(s16 areaID, s16 mapID) {
-    if (areaID < 0 || areaID >= ARRAY_COUNT(gAreas) - 1 || gAreas[areaID].maps == NULL) return 0;
-    if (mapID < 0 || mapID >= gAreas[areaID].mapCount) return 0;
-    return gAreas[areaID].maps[mapID].settings != NULL && (void*)gAreas[areaID].maps[mapID].settings != (void*)pm_unlinked_map;
-}
 
 s16 pm_warp_hook(s16 mode);
 void __wrap_set_game_mode(s16 mode) {
     mode = pm_warp_hook(mode); /* slice W01 debug switches warp, story, preset */
-    if (mode == GAME_MODE_CHANGE_MAP && !map_is_linked(gGameStatusPtr->areaID, gGameStatusPtr->mapID)) {
-        pm_log("GotoMap refused: area %d map %d is not linked", gGameStatusPtr->areaID, gGameStatusPtr->mapID);
-        gGameStatusPtr->areaID = cur_area;
-        gGameStatusPtr->mapID = cur_map;
-        refuse_wait = 1; /* pm_map_tick gives the control back, see there */
-        back_ok = hist_n > 0;
-        if (back_ok) {
-            unsigned k = hist_n >= 45 ? hist_n - 45 : 0;
-            back[0] = hist[k & 63][0];
-            back[1] = hist[k & 63][1];
-            back[2] = hist[k & 63][2];
-        }
-        return;
-    }
     {
         extern unsigned pm_frame_count(void);
         char sm[16];
@@ -627,12 +543,6 @@ void __wrap_set_game_mode(s16 mode) {
 }
 
 void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
-    if (loadType == LOAD_FROM_MAP && !map_is_linked(areaID, mapID)) {
-        pm_log("load refused: area %d map %d is not linked", areaID, mapID);
-        return;
-    }
-    cur_area = areaID;
-    cur_map = mapID;
     {
         extern unsigned pm_pad_scans;
         pm_log("load map area %d map %d scan %u", areaID, mapID, pm_pad_scans);
@@ -641,7 +551,7 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     {
         extern void pm_mapdata_probe(const char* id);
         s16 pa = loadType == LOAD_FROM_MAP ? areaID : gGameStatusPtr->areaID, pmap = loadType == LOAD_FROM_MAP ? mapID : gGameStatusPtr->mapID;
-        if (map_is_linked(pa, pmap)) pm_mapdata_probe(gAreas[pa].maps[pmap].id); /* slice MS01 debug switch dataprobe */
+        pm_mapdata_probe(gAreas[pa].maps[pmap].id); /* slice MS01 debug switch dataprobe */
     }
     __real_load_map_by_IDs(areaID, mapID, loadType);
 }

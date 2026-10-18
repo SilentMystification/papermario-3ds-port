@@ -309,7 +309,7 @@ set(GAME_SRC
     ${BATTLE_SRC}
 )
 # S30: every map. maps.cmake and map_syms.lds come from tools/gen_map_sources.py. The real world.c is built whole with its real gAreas.
-# A map that is not linked has <map>_settings = pm_unlinked_map in map_syms.lds (sentinel row, refused by the GotoMap guard in pm_map.c).
+# S30b: all maps are linked, no guard.
 include(maps.cmake)
 foreach(a ${MAP_AREAS})
     list(APPEND MAP_SRC ${MAP_SRC_${a}})
@@ -406,7 +406,7 @@ target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 set(MS_LD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ld)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in ${CMAKE_BINARY_DIR}/ldscripts/3dsx.ld @ONLY)
 target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map
-    -Wl,--wrap=get_map_IDs_by_name -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
+    -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background
     -Wl,--defsym,heap_battleHead=gFrameBuf2
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80

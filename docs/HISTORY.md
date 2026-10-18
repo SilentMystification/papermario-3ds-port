@@ -1617,3 +1617,10 @@ Old text moved from 3ds/QUESTIONS.md.
 ### Q2. Keep the ROM resident or stream it from SD? (from M02)
 - Fact: resident ROM is about 27 MB. Not measured on hardware. Stays resident until S28.
 - Answer: User answer 2026-10-18: keep ALL game data resident in RAM. No SD streaming. No duplicate copies.
+
+### S30b: all 154 id-only maps linked (2026-10-18, lane B)
+- Edit: 3ds/maps_skip.txt now has no skip line (area:kpa, kzn, flo, jan, sam, pra and flo_11 removed, link: lines not needed). gen_map_sources.py run (needs build.ninja in the root, copied from the main folder, git-ignored): linked 421, unlinked 0. map_syms.lds has no row. map_rom_ranges.h has all 421 maps with the DMA tag.
+- Guard removed in 3ds/src/pm_map.c: `__wrap_get_map_IDs_by_name`, `map_is_linked`, `pm_unlinked_map`, `pm_map_tick` and its history and refuse code, the refusal in `__wrap_set_game_mode` and `__wrap_load_map_by_IDs`. The wraps of set_game_mode and load_map_by_IDs stay (warp hook, shotmode, mem log, data probe). The `--wrap=get_map_IDs_by_name` link flag is gone. pm_main.c no longer calls pm_map_tick.
+- Size: 3dsx 10,919,956 to 13,011,156 B (+2,091,200 B). Boot line: commit limit 98304KB used-by-image 18944KB, heap total 51200KB, sbrk-left 23716KB (Azahar numbers). Map line at load: heap used 27543KB, linear peak 7527KB, texture failures 0.
+- Checks (-Turbo -Smoke -FaultStop, 300 frames each, exit 0, no fault, no unmapped access): warp kpa_03, kzn_03, flo_03, jan_03, sam_03, pra_03 (entry 0), presets yard and toad.
+- Not checked: the other 148 new maps, entry points other than 0, the exit scripts of the new maps, tour of all maps, hardware (S28), full chain, golden frames.

@@ -50,3 +50,7 @@
 13:03 V07 not reproduced, docs written, committing
 13:20 V08 decomp reads XLU alpha 128 by design, port draws it exact (plan err 0)
 13:25 V08 verdict RIGHT, no code change, smoke yard toad rc 0, docs written, committing
+02:05 S30b maps_skip.txt emptied, gen_map_sources.py linked 421 unlinked 0, guard removed in pm_map.c
+02:10 S30b build ok, 3dsx 10919956 -> 13011156 B (+2091200)
+02:20 S30b warp kpa_03 kzn_03 flo_03 jan_03 sam_03 pra_03 and presets yard toad: rc 0, no fault, 300 frames each
+02:25 S30b docs written, committing
