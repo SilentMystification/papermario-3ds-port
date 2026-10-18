@@ -80,3 +80,6 @@ All rows marked [x], moved unchanged from 3ds/SLICES.md on 2026-10-17. Append on
 
 [x] V11 | kmr_05 from entry 0: Mario stops at x 75 to 88, the first Goomba is not reachable. Real geometry or a collision fault | Mario reaches Goomba_01
 - Result: real geometry, not a collision fault. The y 0 floor is closed by 25 high walls (kmr_05_hit.bin colliders 14, 46). Mario must jump with A held. A short jump stops at the wall, x 75. A full jump gets on the ledge, then the ramps. No code change.
+
+[x] V09 | (kmr_22) The "A Plea from the Stars" card shows a garbled rainbow bar above the title (`warp=kmr_22:0 story=-107`). Check the card texture format in src/world/area_kmr/kmr_22 | the card shows its picture
+- Result: not a texture format fault. chapter_change draws the title strips with a 2-cycle combine that reads TEXEL1 (a 128x1 RGBA16 rainbow, gDPLoadMultiTile to tile 1). The second strip only loads a new IA8 text image and calls gDPSetTileSize(1). pm_gbi.c took the tile 1 source from the last G_SETTIMG, so tile 1 read the text as RGBA16 (barcode). Fix in pm_gbi.c G_LOADTILE, G_LOADBLOCK, G_SETTILESIZE: tile 1 reads the image that was loaded to its TMEM address (4 records). Graphics edit in the main tree waits for X02 (merge risk).

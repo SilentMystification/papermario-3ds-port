@@ -66,3 +66,4 @@
 05:20 F01 cause: tour state is a new file with no partner. Real game has a partner at trd_06 (falling script reads the partner NPC). Tour-only fault. Fix: pm_warp.c uses partner 1 for a tour unless partner= is given
 05:30 F01 check: chunk trd_05..nok_04 without partner switch rc 0, tour done 39 maps, no unmapped. yard rc 0, toad rc 0
 06:00 V11 closed: real geometry. warp=kmr_05:0 story=ch0_wake_up partner=5 (without partner SpeakToPlayer reads NULL, test artefact). Script: A taps for the Goompa text, right*150, right+A*60 twice, right*200. Mario x 395 y 50 at f728, battle (mode 8) at scan 831. 0 unmapped.
+07:00 V09 kmr_22 fixed in pm_gbi.c (tile 1 source by TMEM address). warp=kmr_22:0 story=-107 shotwin=130:1: rainbow bar clean. golden.py 10 scenes ok, smoke yard rc 0, toad rc 0, 0 unmapped.

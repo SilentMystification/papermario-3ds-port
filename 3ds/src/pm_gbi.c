@@ -77,6 +77,10 @@ static const void* timg;
 static unsigned timg_fmt, timg_siz;
 static int timg_stride;
 static int ld_valid, ld_x, ld_y; /* last LoadTile window, in 8-bit texels of the source image */
+/* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
+ * the image that was loaded to its TMEM address, not the image of the load that came last. */
+static struct { unsigned tmem; const void* img; int stride, x, y; } ldrec[4];
+static unsigned ldrec_n;
 static int tile_x0, tile_y0;
 static const void* tlut;
 static int tlut_n;
@@ -1671,9 +1675,21 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             break;
         }
+        case G_LOADBLOCK: { /* V09: a block load replaces what a LoadTile put at that TMEM address */
+            unsigned tm = tile_tmem[(w1 >> 24) & 7];
+            for (unsigned k = 0; k < 4; k++) if (ldrec[k].tmem == tm) ldrec[k].img = NULL;
+            break;
+        }
         case G_LOADTILE:
             ld_valid = 1;
             ld_x = (int)((w0 >> 12) & 0xfff) >> 2;
+            {
+                unsigned tm = tile_tmem[(w1 >> 24) & 7], k;
+                for (k = 0; k < 4 && !(ldrec[k].img && ldrec[k].tmem == tm); k++) {}
+                if (k == 4) k = ldrec_n++ & 3;
+                ldrec[k].tmem = tm; ldrec[k].img = timg; ldrec[k].stride = timg_stride;
+                ldrec[k].x = (int)((w0 >> 12) & 0xfff) >> 2; ldrec[k].y = (int)(w0 & 0xfff) >> 2;
+            }
             ld_y = (int)(w0 & 0xfff) >> 2;
             break;
         case G_LOADTLUT:
@@ -1722,16 +1738,23 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 int stride = timg_stride > w ? timg_stride : w;
                 int bpp = tile_siz[1] >= 3 ? 4 : tile_siz[1] == 2 ? 2 : tile_siz[1] == 0 ? 0 : 1;
                 const u8* src = (const u8*)timg;
+                int l1x = ld_x, l1y = ld_y, l1stride = timg_stride, l1v = ld_valid;
+                for (unsigned k = 0; k < 4; k++) {
+                    if (ldrec[k].img && ldrec[k].tmem == tile_tmem[1]) {
+                        src = (const u8*)ldrec[k].img; l1x = ldrec[k].x; l1y = ldrec[k].y; l1stride = ldrec[k].stride; l1v = 1;
+                        stride = l1stride > w ? l1stride : w;
+                    }
+                }
                 td[1].valid = 0;
                 if (cur_tile == 1) cur_tile = -1; /* a new tile 1 image: bind it again */
                 /* The image offset is the LoadTile origin. SetTileSize uls and ult only place
                  * it: gDPLoadMultiTile (draw_box corners) loads at 0,0 and moves tiles 1 to 3
                  * to the far side of the window by SetTileSize. */
-                if (src && bpp && ld_valid) src += (size_t)(ld_y * stride + ld_x) * (size_t)bpp;
+                if (src && bpp && l1v) src += (size_t)(l1y * stride + l1x) * (size_t)bpp;
                 else if (src && bpp) src += (size_t)((uls >> 2) + (ult >> 2) * stride) * (size_t)bpp;
-                else if (src && ld_valid) {
-                    src += (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
-                    stride = timg_stride * 2;
+                else if (src && l1v) {
+                    src += (size_t)l1y * (size_t)l1stride + (size_t)l1x;
+                    stride = l1stride * 2;
                 }
                 if (src && w > 0 && h > 0) {
                     td[1].valid = 1;
