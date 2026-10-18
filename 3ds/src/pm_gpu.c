@@ -38,6 +38,8 @@ int pm_debug_value(const char* key, char* out, unsigned n);
 static int dview = -1; /* V02 depth view mode, see dv_color */
 static unsigned dv_draw;
 static int rect_z; /* X01: the 2D rectangle in flight tests depth (fill rect with G_ZS_PRIM) */
+static int r_zmark, stencil_on; /* B3b: case 6 model, see flush */
+static float r_zmark_zn; /* B3b: the constant clip depth (z / w) the model writes */
 static int r_nocol; /* S25: the blender gives back the frame buffer colour: depth only */
 static PmPlan plan; /* S25: combine mode 8 */
 static int env_hi = 1; /* texenv stages configured so far (stage 0 is always reset) */
@@ -292,13 +294,20 @@ static void flush(void) {
     int z = z_on && (!rect_2d || rect_z) && !off_active;
     /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. A decal
      * sits in the same plane as its base, so equal depth has to pass. */
-    if (z && r_zcmp)
+    if (z && r_zmark) {
+        /* B3b: pass 1 tests the model with its own depth and marks the stencil where it is nearer than the world. Pass 2 (below) writes the constant there. */
+        C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_DEPTH);
+        C3D_StencilTest(true, GPU_ALWAYS, 1, 0xff, 0xff);
+        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
+        stencil_on = 1;
+    } else if (z && r_zcmp)
         C3D_DepthTest(true, r_decal ? GPU_GEQUAL : GPU_GREATER, r_nocol ? GPU_WRITE_DEPTH : r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
     else if (z && r_zupd)
         C3D_DepthTest(true, GPU_ALWAYS, r_nocol ? GPU_WRITE_DEPTH : GPU_WRITE_ALL);
     else
         C3D_DepthTest(false, GPU_GREATER, GPU_WRITE_COLOR);
     /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
+    if (stencil_on && !(z && r_zmark)) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
     C3D_DepthMap(true, -1.0f, r_decal ? 0.001f : 0.0f);
     C3D_EarlyDepthTest(false, GPU_EARLYDEPTH_GREATER, 0);
     if (r_atest >= 0) C3D_AlphaTest(true, GPU_GREATER, r_atest);
@@ -349,6 +358,20 @@ static void flush(void) {
     verts = batch + count;
     /* 16-byte aligned start for the next batch (a vertex is 40 bytes, so every other batch start moves one slot). */
     if ((unsigned)(uintptr_t)verts & 15u) verts++;
+    if (z && r_zmark && verts + count < vert_base + VERT_SLOTS) {
+        /* B3b pass 2: the same triangles with the constant depth, where pass 1 marked the stencil. The stencil is cleared as it passes. */
+        Vert* b2 = verts;
+        for (int i = 0; i < count; i++) { b2[i] = batch[i]; b2[i].z = r_zmark_zn * b2[i].w; }
+        C3D_DepthTest(true, GPU_ALWAYS, GPU_WRITE_DEPTH);
+        C3D_StencilTest(true, GPU_EQUAL, 1, 0xff, 0xff);
+        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_ZERO);
+        BufInfo_Init(buf);
+        BufInfo_Add(buf, b2, sizeof(Vert), 3, 0x210);
+        C3D_DrawArrays(GPU_TRIANGLES, 0, count);
+        verts = b2 + count;
+        if ((unsigned)(uintptr_t)verts & 15u) verts++;
+        draws_frame++;
+    }
     draws_frame++;
     PH_ADD(C_DRAW, 1);
     PH_ADD(C_VTXSLOT, count);
@@ -886,9 +909,18 @@ void pm_gpu_set_nocolor(int on) {
     r_nocol = on;
 }
 
+/* B3b: on = the next triangles are a case 6 model (a depth test against the world, a constant depth write). zn = clip z / w of the constant. */
+void pm_gpu_set_zmark(int on, float zn) {
+    if (on == r_zmark && (!on || zn == r_zmark_zn)) return;
+    flush();
+    r_zmark = on;
+    r_zmark_zn = zn;
+}
+
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
     if (zcmp == r_zcmp && zupd == r_zupd && blend == r_blend && atest == r_atest && decal == r_decal) return;
     flush();
+    r_zmark = 0; /* B3b: draw_tri turns it on again for a case 6 model */
     r_zcmp = zcmp;
     r_zupd = zupd;
     r_blend = blend;
@@ -1030,8 +1062,10 @@ void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d) 
 void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d) {
     int s_nc = r_nocol, s_zc = r_zcmp, s_zu = r_zupd, s_bl = r_blend, s_at = r_atest, s_de = r_decal, s_z = z_on, s_mix = r_mix;
     flush();
+    int s_zm = r_zmark; r_zmark = 0;
     r_nocol = 1; r_zcmp = 0; r_zupd = 1; r_blend = 0; r_atest = -1; r_decal = 0; z_on = 1; r_mix = 0;
     pm_gpu_fill_rect_z(x0, y0, x1, y1, 0, d);
+    r_zmark = s_zm;
     r_nocol = s_nc; r_zcmp = s_zc; r_zupd = s_zu; r_blend = s_bl; r_atest = s_at; r_decal = s_de; z_on = s_z; r_mix = s_mix;
 }
 

@@ -175,3 +175,7 @@
 07:48 C4C read-only check done, result in H05_findings.md
 07:48 C4D read-only check done, result in H05_findings.md
 07:48 C4B new row C4F (sin_rad in guRotateRPYF)
+08:00 B3b code: pm_gpu zmark two-pass (stencil), pm_gbi keeps real z for case 6. temp hook tmpuw in pm_warp.c. build+run preset=toad battle tmpuw imglog, expect 400 s
+08:20 B3b underwater (tmpuw, f200): 0 depthtri lines, modifyvtx runs, no depth write from its mesh. now mac_01 walk to Merlon house with padscript, expect 120 s
+08:55 B3b mac_01 crystal ball seen WITHOUT a hook: warp=mac_01:0 story=ch1_kooper padscript=wait80,up*40,left*140,right*45,up*60,wait5,A*2,wait100 shotwin=330: Merlon room, ball with decal inside only. hooks removed (pm_warp.c restored). rebuild + golden toad yard battle pause1, expect 700 s
+09:05 B3b committed, row moved to SLICES_DONE

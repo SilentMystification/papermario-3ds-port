@@ -1063,8 +1063,8 @@ static void draw_tri(unsigned w) {
         float zn = 2.f * (float)prim_z / 32767.f - 1.f;
         for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
     } else if (img_role(0) == ROLE_DEPTH) {
-        float zn = 2.f * depth_of_word(word_5551(prim)) - 1.f; /* B3: case 6, the combiner is PRIM (log: imglog) */
-        for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
+        /* B3: case 6, the combiner is PRIM (log: imglog). B3b: the vertices keep their own depth, the GPU tests it against the world and writes zn there */
+        pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(prim)) - 1.f);
         { static int on = -1, lf = -1, c; /* B3 step 1: the first 3 depth triangles of a frame */
           if (on < 0) on = pm_debug_has("imglog");
           if (on && (lf != rm_frame ? (lf = rm_frame, c = 0, 1) : 1) && c++ < 3)

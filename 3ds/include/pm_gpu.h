@@ -50,6 +50,7 @@ void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsi
 /* What the stages give, as the PICA computes them. t0, shade: RGBA 0..1. out: RGBA 0..1. */
 void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const float shade[4], float out[4]);
 void pm_gpu_set_const(unsigned rgba); /* combine mode 4: flat colour (a = factor on texture alpha) */
+void pm_gpu_set_zmark(int on, float zn); /* B3b: case 6 model: depth test against the world, constant depth write */
 void pm_gpu_set_nocolor(int on); /* S25: the blender returns the frame buffer colour, so only depth is written */
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal);
 void pm_gpu_set_prim(unsigned rgba);
