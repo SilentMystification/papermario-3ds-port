@@ -1645,10 +1645,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             dual_bind();
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
-            float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)tile_x0) / (float)tw;
-            float t0 = ((float)(s16)(hs & 0xffff) / 32.f - (float)tile_y0) / (float)th;
-            float dsdx = (float)(s16)(hd >> 16) / 1024.f;
-            float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
+            /* V12b: the tile shift scales a texrect coordinate too (bulb glow uses shift 1 1). It applies after the interpolation, so it scales the step as well. */
+            float ms = shift_mul(tile_shift[use_t1 ? 1 : 0][0]);
+            float mt = shift_mul(tile_shift[use_t1 ? 1 : 0][1]);
+            float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)tile_x0) / (float)tw;
+            float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)tile_y0) / (float)th;
+            float dsdx = (float)(s16)(hd >> 16) / 1024.f * ms;
+            float dtdy = (float)(s16)(hd & 0xffff) / 1024.f * mt;
             float width = (float)(xh - xl) / 4.f;
             float height = (float)(yh - yl) / 4.f;
             if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2) {
