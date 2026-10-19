@@ -91,10 +91,20 @@ void reset_player_status(void) {
     }
 
     // TODO required to match
+#ifdef TARGET_3DS
+    /* V26: the N64 build reads three floats that sit next to each other (DefaultWalkSpeed, DefaultMoveSpeed, D_800F7B78). The 3DS
+     * link uses -fdata-sections and scatters them: walk was 0.01, jump 0, so Mario could not jump (demo trd_09 hit the Bullet Bills). */
+    extern f32 DefaultWalkSpeed, D_800F7B78;
+    (void) floatsTemp;
+    playerStatus->walkSpeed = DefaultWalkSpeed * one;
+    playerStatus->runSpeed = DefaultMoveSpeed * one;
+    playerStatus->maxJumpSpeed = D_800F7B78 * one;
+#else
     floatsTemp = &(&DefaultMoveSpeed)[-1]; // index of 0 does not work
     playerStatus->walkSpeed = *floatsTemp++ * one;
     playerStatus->runSpeed = *floatsTemp++ * one;
     playerStatus->maxJumpSpeed = *floatsTemp++ * one;
+#endif
 
     set_action_state(ACTION_STATE_IDLE);
 

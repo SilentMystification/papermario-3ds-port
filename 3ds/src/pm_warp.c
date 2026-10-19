@@ -363,7 +363,7 @@ void pm_warp_tick(unsigned frame) {
     }
     if (pm_debug_has("simlog") && f >= 110 && f <= 150) { /* V26: every step, Mario and demo Bills */
         extern unsigned pm_step_calls;
-        char b[120]; int n = 0, i;
+        char b[120] = ""; int n = 0, i;
         for (i = 0; i < 8; i++) { Npc* np = get_npc_safe(i); if (np) n += snprintf(b + n, sizeof b - n, " n%d:%d,%d", i, (int)np->pos.x, (int)np->pos.y); }
         pm_log("simstep f%u steps %u mx %d my %d st %u btn %x%s", f, pm_step_calls, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (unsigned)gPlayerStatus.actionState, (unsigned)gGameStatusPtr->demoButtonInput, b);
     }

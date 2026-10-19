@@ -519,3 +519,4 @@
 11:27 F07-7 overlay edge fix coded, untested (budget)
 12:10 V26 fps60 ruled out, osGetCount fixed, trd_09 demo hit at f140 still open, 4/4 starts (QUESTIONS)
 12:11 V25 intro page ghost f318 to f341 seen, cause open, 3 of 4 starts
+12:40 V26 root cause: (&DefaultMoveSpeed)[-1] adjacency, Mario max jump 0. Fixed, demo trd_09 passes, seed same in 2 runs
