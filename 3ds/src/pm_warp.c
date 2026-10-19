@@ -338,6 +338,21 @@ static void battle_hooks(unsigned f) {
         set_battle_stage(stage);
         load_battle(formation);
     }
+    if (pm_debug_value("flashheavy", v, sizeof v)) { /* V16b2: `flashheavy=<scene frame>` forces a heavy flash (damage 7) on every enemy part, again every 40 frames, with the real part_flash_on path */
+        unsigned ff = (unsigned)atoi(v);
+        if (f >= ff && (f - ff) % 40 == 0 && get_game_mode() == GAME_MODE_BATTLE) {
+            int i;
+            gBattleStatus.lastAttackDamage = 7;
+            for (i = 0; i < ARRAY_COUNT(gBattleStatus.enemyActors); i++) {
+                Actor* a = gBattleStatus.enemyActors[i];
+                ActorPart* p = a ? a->partsTable : NULL;
+                for (; p; p = p->nextPart) {
+                    if (p->decorationTable) { p->decorationTable->flashState = 1; p->decorationTable->flashStateChanged = true; }
+                }
+            }
+            pm_log("debug flashheavy at scene frame %u", f);
+        }
+    }
     if (f == at && (pm_debug_has("demobattle") || pm_debug_value("demoscene", v, sizeof v))) { /* demoscene=<n>: any real demo scene (index in DemoScenes of src/state_demo.c; 0 nok_12, 5 jan_04 is unchecked) */
         s32 ds = pm_debug_has("demobattle") ? 1 : atoi(v);
         pm_log("debug demo: enter GAME_MODE_DEMO at demo scene %d", (int)ds);

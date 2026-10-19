@@ -2045,6 +2045,9 @@ void make_flash_palettes(ActorPart* part) {
     s32 i, j;
 
     for (i = 0; i < decorations->originalPalettesCount; i++) {
+        if (decorations->adjustedPalettes[i] == nullptr) {
+            pm_log_w("V16b2: make_flash_palettes pal %d adjusted null, flash %p", i, (void*)decorations->flashPalettes[i]); // port log
+        }
         if (decorations->adjustedPalettes[i] != nullptr) {
             src = decorations->adjustedPalettes[i];
             dest = decorations->copiedPalettes[1][i];

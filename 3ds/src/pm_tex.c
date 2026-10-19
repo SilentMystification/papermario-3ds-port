@@ -150,6 +150,7 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
                     idx = src[sy * stride + sx];
                 }
                 unsigned pix = (tlut && (int)idx < tlut_n) ? rd16(tlut + idx * 2) : 0xffffu;
+                if (!(tlut && (int)idx < tlut_n)) { static int nb; if (nb++ < 8) pm_log_w("V16b2: CI texel idx %d tlut %p n %d, drawn white", (int)idx, (const void*)tlut, tlut_n); }
                 write5551(scratch + ((y * pw + x) * 2), pix);
             } else if (fmt == FMT_RGBA && siz == SIZ_16) {
                 write5551(scratch + ((y * pw + x) * 2), rd16s(src + (sy * stride + sx) * 2));
