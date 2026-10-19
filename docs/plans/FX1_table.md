@@ -14,14 +14,14 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 4 | flower_trail | ok | weak | 250 | 12 | no | 0 | 0 | no | 18 | 0 |
 | 5 | cloud_puff | ok | yes | 1624 | 34 | no | 0 | 32 | no | 40 | 0 |
 | 6 | cloud_trail | ok | weak | 265 | 10 | no | 0 | 0 | no | 15 | 0 |
-| 7 | footprint | ok | weak | 304 | 13 | no | 0 | 0 | no | 42 | 0 |
+| 7 | footprint | ok | weak | 261 | 10 | no | 0 | 0 | no | 40 | 0 |
 | 8 | floating_flower | ok | yes | 469 | 18 | no | 0 | 0 | no | 42 | 0 |
-| 9 | snowflake | ok | weak | 297 | 11 | no | 0 | 0 | no | 40 | 0 |
+| 9 | snowflake | ok | weak | 326 | 13 | no | 0 | 0 | no | 42 | 0 |
 | 10 | star | ok | yes | 3957 | 85 | no | 0 | 11 | no | 43 | 0 |
-| 11 | emote | ok | weak | 146 | 6 | no | 0 | 0 | no | 1 | 0 |
+| 11 | emote | ok | weak | 313 | 13 | no | 0 | 0 | no | 42 | 0 |
 | 12 | sparkles | ok | yes | 758 | 21 | no | 0 | 0 | no | 16 | 0 |
-| 13 | shape_spell | ok | weak | 135 | 6 | no | 0 | 0 | no | 1 | 0 |
-| 14 | gather_energy_pink | ok | weak | 256 | 11 | no | 0 | 0 | no | 42 | 0 |
+| 13 | shape_spell | ok | weak | 107 | 4 | no | 0 | 0 | no | 1 | 0 |
+| 14 | gather_energy_pink | ok | weak | 354 | 6 | no | 0 | 0 | no | 1 | 0 |
 | 15 | drop_leaves | ok | weak | 335 | 10 | no | 0 | 0 | no | 28 | 0 |
 | 16 | dust | ok | yes | 470 | 17 | no | 0 | 0 | no | 42 | 0 |
 | 17 | shattering_stones | ok | weak | 327 | 12 | no | 1 | 0 | no | 42 | 0 |
@@ -37,13 +37,13 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 27 | flame | ok | yes | 747 | 24 | no | 0 | 0 | no | 42 | 0 |
 | 28 | stars_burst | ok | yes | 434 | 17 | no | 0 | 0 | no | 40 | 0 |
 | 29 | stars_shimmer | ok | yes | 889 | 28 | no | 0 | 5 | no | 42 | 0 |
-| 30 | rising_bubble | ok | weak | 198 | 8 | no | 0 | 0 | no | 15 | 0 |
+| 30 | rising_bubble | ok | weak | 240 | 8 | no | 0 | 0 | no | 40 | 0 |
 | 31 | ring_blast | ok | weak | 362 | 13 | no | 0 | 0 | no | 15 | 0 |
 | 32 | shockwave | ok | yes | 6877 | 132 | no | 0 | 12 | no | 25 | 0 |
 | 33 | music_note | ok | yes | 522 | 17 | no | 15 | 0 | no | 43 | 0 |
-| 34 | smoke_burst | ok | weak | 106 | 4 | no | 0 | 0 | no | 1 | 0 |
+| 34 | smoke_burst | ok | yes | 1073 | 25 | no | 0 | 10 | no | 17 | 0 |
 | 35 | sweat | ok | weak | 311 | 12 | no | 0 | 0 | no | 42 | 0 |
-| 36 | sleep_bubble | ok | weak | 307 | 12 | no | 0 | 0 | no | 42 | 0 |
+| 36 | sleep_bubble | ok | yes | 1103 | 38 | no | 0 | SOLID 77 | no | 42 | 0 |
 | 37 | windy_leaves | ok | yes | 589 | 19 | no | 0 | 0 | no | 43 | 0 |
 | 38 | falling_leaves | ok | yes | 539 | 20 | no | 0 | 0 | no | 42 | 0 |
 | 39 | stars_spread | ok | yes | 1004 | 30 | no | 0 | 32 | no | 23 | 0 |
@@ -56,11 +56,11 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 46 | ending_decals | ok | yes | 19883 | 534 | no | 0 | 6 | YES | 66 | 0 |
 | 47 | light_rays | ok | yes | 36006 | 767 | no | 0 | 16 | YES | 66 | 0 |
 | 48 | lightning | ok | yes | 6967 | 138 | no | 0 | 3 | no | 29 | 0 |
-| 49 | fire_breath | ok | weak | 309 | 8 | no | 0 | 0 | no | 1 | 0 |
+| 49 | fire_breath | ok | yes | 39158 | 658 | no | 0 | 27 | no | 56 | 0 |
 | 50 | shimmer_burst | ok | yes | 1196 | 38 | no | 0 | 14 | no | 35 | 0 |
 | 51 | energy_shockwave | ok | yes | 10551 | 270 | no | 0 | 10 | no | 41 | 0 |
 | 52 | shimmer_wave | ok | yes | 614 | 18 | no | 0 | 0 | no | 13 | 0 |
-| 53 | aura | ok | yes | 6309 | 107 | no | 0 | 47 | YES | 71 | 1 |
+| 53 | aura | ok | yes | 2103 | 54 | no | 0 | 6 | no | 40 | 0 |
 | 54 | bulb_glow | ok | yes | 5133 | 99 | no | 0 | 8 | no | 16 | 0 |
 | 55 | effect_3D | ok | yes | 5822 | 113 | no | 0 | 39 | no | 27 | 0 |
 | 56 | blast | ok | yes | 3209 | 68 | no | 0 | 20 | no | 21 | 0 |
@@ -107,9 +107,9 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 97 | whirlwind | ok | yes | 1611 | 36 | no | 0 | 8 | no | 17 | 0 |
 | 98 | red_impact | ok | yes | 28128 | 485 | no | 0 | 16 | YES | 63 | 0 |
 | 99 | floating_cloud_puff | ok | yes | 556 | 18 | no | 0 | 0 | no | 42 | 0 |
-| 100 | energy_in_out | ok | weak | 373 | 11 | no | 0 | 0 | no | 40 | 0 |
+| 100 | energy_in_out | ok | yes | 411 | 17 | no | 0 | 0 | no | 40 | 0 |
 | 101 | tattle_window | ok | yes | 16313 | 278 | no | 0 | SOLID 89 | no | 48 | 0 |
-| 102 | shiny_flare | ok | weak | 145 | 6 | no | 0 | 0 | no | 1 | 0 |
+| 102 | shiny_flare | ok | weak | 321 | 11 | no | 0 | 0 | no | 42 | 0 |
 | 103 | huff_puff_breath | ok | yes | 4137 | 80 | no | 0 | 7 | no | 45 | 0 |
 | 104 | cold_breath | ok | yes | 3661 | 66 | no | 0 | 12 | no | 15 | 0 |
 | 105 | embers | ok | weak | 298 | 12 | no | 0 | 0 | no | 22 | 0 |
@@ -119,20 +119,20 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 109 | moving_cloud | ok | weak | 303 | 12 | no | 0 | 0 | no | 42 | 0 |
 | 110 | effect_75 | ok | weak | 274 | 11 | no | 0 | 0 | no | 40 | 0 |
 | 111 | firework_rocket | ok | weak | 292 | 12 | no | 0 | 0 | no | 42 | 0 |
-| 112 | peach_star_beam | ok | yes | 14998 | 275 | no | 0 | 34 | no | 30 | 0 |
+| 112 | peach_star_beam | ok | yes | 15173 | 281 | no | 0 | 34 | no | 47 | 0 |
 | 113 | chapter_change | ok | yes | 5238 | 109 | no | 1369 | 27 | no | 27 | 0 |
 | 114 | ice_shard | ok | weak | 272 | 10 | no | 0 | 0 | no | 26 | 0 |
 | 115 | spirit_card | ok | yes | 1776 | 42 | no | 69 | SOLID 50 | no | 42 | 0 |
-| 116 | lil_oink | ok | weak | 106 | 4 | no | 0 | 0 | no | 1 | 0 |
+| 116 | lil_oink | ok | yes | 555 | 17 | no | 4 | 0 | no | 18 | 0 |
 | 117 | something_rotating | ok | yes | 2968 | 75 | no | 0 | 2 | no | 42 | 0 |
 | 118 | breaking_junk | ok | yes | 459 | 17 | no | 0 | 0 | no | 42 | 0 |
 | 119 | partner_buff | ok | weak | 261 | 10 | no | 0 | 0 | no | 40 | 0 |
 | 120 | quizmo_assistant | ok | yes | 1024 | 28 | no | 0 | 15 | no | 45 | 0 |
 | 121 | ice_pillar | ok | yes | 1408 | 29 | no | 0 | 14 | no | 16 | 0 |
-| 122 | sun | ok | weak | 303 | 9 | no | 0 | 0 | no | 6 | 0 |
+| 122 | sun | ok | weak | 265 | 7 | no | 0 | 0 | no | 5 | 0 |
 | 123 | star_spirits_energy | ok | weak | 165 | 6 | no | 0 | 0 | no | 14 | 0 |
 | 124 | pink_sparkles | ok | yes | 606 | 23 | no | 0 | 0 | no | 40 | 0 |
 | 125 | star_outline | ok | yes | 5932 | 135 | no | 0 | 5 | no | 47 | 0 |
-| 126 | effect_86 | ok | weak | 148 | 6 | no | 0 | 0 | no | 1 | 0 |
+| 126 | effect_86 | ok | yes | 775 | 21 | no | 0 | 0 | no | 16 | 0 |
 
-Spawned and shot: 127 of 127. Weak or nothing: 39. Black block: 0. Zoomed or clipped: 10. Solid colour block: 3.
+Spawned and shot: 127 of 127. Weak or nothing: 33. Black block: 0. Zoomed or clipped: 9. Solid colour block: 4.
