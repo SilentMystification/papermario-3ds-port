@@ -562,3 +562,4 @@
 16:12 V16b V18 V19 no repro in Azahar, leads in SLICES, build.sh CRLF fix
 16:18 V23c no second hand in Azahar, 5 starts
 18:26 V24c ok, DARK rectangle found not fixed
+HH DARK fixed (fold of mirror clamp tile on off-screen texrect), WIDEHUD row added

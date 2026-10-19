@@ -641,6 +641,34 @@ static void lerp_clip(ClipV* o, const ClipV* a, const ClipV* b, float t) {
 /* Cut only corners that passed behind the eye. A corner that is merely off the
  * side of the screen keeps its projected position, so a pan cannot swap the
  * triangle for a different polygon. */
+/* DARK: a texrect that reads an off-screen image (64 texels) through a mirror + clamp + mask tile (the darkness stencil, tile 128 over a 64 image).
+ * The RDP mirrors the window (period 2 * mask) and clamps outside +-2 * mask to texel 0. The PICA bound render texture has one wrap mode,
+ * so the rect is cut at every mirror line and each part gets its own (flipped or constant) uv. a0 to a1 is the texel range over width pixels. */
+typedef struct { int p0, p1; float u0, u1; } FoldSeg;
+static int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out) {
+    float b[8];
+    int nb = 0, n = 0, i;
+    if (!(a1 > a0) || width < 1.f) return 0;
+    b[nb++] = a0;
+    for (i = -2; i <= 2; i++) if (i * mw > a0 && i * mw < a1) b[nb++] = i * mw;
+    b[nb++] = a1;
+    for (i = 0; i + 1 < nb; i++) {
+        float x = b[i], y = b[i + 1], mid = (x + y) * 0.5f;
+        FoldSeg* g = &out[n];
+        g->p0 = plo + (int)((x - a0) / (a1 - a0) * width + 0.5f);
+        g->p1 = plo + (int)((y - a0) / (a1 - a0) * width + 0.5f);
+        if (g->p1 <= g->p0) continue;
+        if (mid < -2.f * mw || mid >= 2.f * mw || (negclamp && mid < 0.f)) g->u0 = g->u1 = 0.f;
+        else {
+            int k = (int)floorf(mid / mw);
+            if (k & 1) { g->u0 = ((k + 1) * mw - x) / mw; g->u1 = ((k + 1) * mw - y) / mw; }
+            else { g->u0 = (x - k * mw) / mw; g->u1 = (y - k * mw) / mw; }
+        }
+        if (flip && !(mid < -2.f * mw || mid >= 2.f * mw || (negclamp && mid < 0.f))) { g->u0 = 1.f - g->u0; g->u1 = 1.f - g->u1; }
+        n++;
+    }
+    return n;
+}
 static int clip_near_k(ClipV* poly, int n, int zplane) {
     ClipV tmp[12];
     int m = 0;
@@ -1960,9 +1988,22 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                         sync_render();
                         pm_gpu_tex_rect_z(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1, (float)prim_z / 32767.f);
                     } else
+                    if (pm_tex_off_idx() >= 0 && (tile_wrap[rtile][0] & 3) == 3 && (tile_wrap[rtile][1] & 3) == 3 && tile_wrap[rtile][2] && tile_wrap[rtile][3] &&
+                        (1 << tile_wrap[rtile][2]) == tw && (1 << tile_wrap[rtile][3]) == th) {
+                        FoldSeg fs[8], ft[8];
+                        int ns = fold_axis(xl / 4, (float)(ex + 1 - xl / 4), s0 * tw, s1 * tw, (float)tw, 0, 1, fs);
+                        int nt = fold_axis(yl / 4, (float)(ey + 1 - yl / 4), t0 * th, t1 * th, (float)th, 0, 1, ft);
+                        if (ns && nt) {
+                            for (int a = 0; a < ns; a++)
+                                for (int c = 0; c < nt; c++)
+                                    pm_gpu_tex_rect(fs[a].p0, ft[c].p0, fs[a].p1 - 1, ft[c].p1 - 1, fs[a].u0, ft[c].u0, fs[a].u1, ft[c].u1);
+                            goto rect_done;
+                        }
+                    }
                     pm_gpu_tex_rect(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1);
                 }
             }
+            rect_done:
             zcol = 0;
             break;
         }
