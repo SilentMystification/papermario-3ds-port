@@ -24,4 +24,3 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F11-6 | LATER. Select menu at any time on the bottom screen (needs the user, D2). Plan docs/plans/F11.md
 
 [ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only. Full text: docs/plans/B7.md | `push-o`, `pull-o`, `phase_report.py`
-[ ] FX3h | (sonnet) From FX3g (8 of 8 starts used). Not seen yet: 14 gather_energy_pink (alive at shots, no draw chunk with an effect vertex seen at frame 412, it loads G_MTX_PROJECTION with posB from mtxPerspective and tile windows tempX..+256, check the projection load path and the window), 11 emote (fxtest now uses PTR_LIST_END, follow the player, built but not shot), 9 snowflake and 7 footprint (alive, tiny or faint, zoom a shot at the spawn point) | each effect drawn or named by design
