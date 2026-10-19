@@ -31,4 +31,3 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F11-6 | LATER. Select menu at any time on the bottom screen (needs the user, D2). Plan docs/plans/F11.md
 
 [ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only. Full text: docs/plans/B7.md | `push-o`, `pull-o`, `phase_report.py`
-[ ] G01R | Found in C4F. 3ds/golden/toad.png, yard.png and battle.png are byte-identical (a battle frame, commit e6beb88a1). Golden toad shows 62 percent DIFF on any build | Re-save the toad and yard references from a good build, then golden toad yard passes
