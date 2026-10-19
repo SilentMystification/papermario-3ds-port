@@ -51,7 +51,7 @@ void filemenu_options_open(void) {
 
     sfx_play_sound(SOUND_MENU_NEXT);
     gWindows[WIN_FILES_OPTIONS_PANEL].width = 200;
-    gWindows[WIN_FILES_OPTIONS_PANEL].height = 176;
+    gWindows[WIN_FILES_OPTIONS_PANEL].height = 196;
     gWindows[WIN_FILES_OPTIONS_PANEL].pos.x = CENTER_WINDOW_X(WIN_FILES_OPTIONS_PANEL);
     gWindows[WIN_FILES_OPTIONS_PANEL].pos.y = CENTER_WINDOW_Y(WIN_FILES_OPTIONS_PANEL);
     menu->state = 0;
@@ -114,6 +114,7 @@ void filemenu_draw_contents_options_panel(
             filemenu_set_cursor_goal_pos(WIN_FILES_OPTIONS_PANEL, baseX + 12, y + 8);
         }
     }
+    filemenu_draw_message((u8*)pm_options_build_msg(), baseX + 24, baseY + 8 + OPT_ROWS * 17, 255, 0, 1);
 }
 
 void filemenu_options_init(MenuPanel* tab) {

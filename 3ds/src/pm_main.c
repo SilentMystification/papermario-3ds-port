@@ -9,7 +9,7 @@
 #include "pm_port.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
-#include "pm_build_id.h"
+
 
 extern void boot_main(void* data);
 
@@ -66,11 +66,11 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     for (int i = 0; i < 2; i++)
         if (recs[i].hi && regs->sp >= recs[i].lo && regs->sp <= recs[i].hi + 512) st = &recs[i];
     n = snprintf(buf, sizeof(buf),
-                 "\n[CRASH] %s thread=%s (%lx) pc=%08lx lr=%08lx sp=%08lx far=%08lx fsr=%08lx cpsr=%08lx build #%d\n",
+                 "\n[CRASH] %s thread=%s (%lx) pc=%08lx lr=%08lx sp=%08lx far=%08lx fsr=%08lx cpsr=%08lx build #%s\n",
                  excep->type < 4 ? names[excep->type] : "?", st ? st->name : "other",
                  (unsigned long)threadGetCurrent(), (unsigned long)regs->pc, (unsigned long)regs->lr,
                  (unsigned long)regs->sp, (unsigned long)excep->far, (unsigned long)excep->fsr,
-                 (unsigned long)regs->cpsr, PM_BUILD);
+                 (unsigned long)regs->cpsr, PM_BUILD_STR);
     pm_crash_line(buf, n);
     for (int i = 0; i < 13; i += 4) {
         n = snprintf(buf, sizeof(buf), "[CRASH] ");
@@ -115,7 +115,7 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
 void pm_fatal_stop(const char* msg) {
     char buf[200];
     pm_log_e("FATAL: %s", msg);
-    int n = snprintf(buf, sizeof(buf), "\n[CRASH] debug check: %s build #%d\n", msg, PM_BUILD);
+    int n = snprintf(buf, sizeof(buf), "\n[CRASH] debug check: %s build #%s\n", msg, PM_BUILD_STR);
     pm_crash_line(buf, n);
     svcBreak(USERBREAK_PANIC);
     for (;;) {}
@@ -355,8 +355,8 @@ void pm_frame_loop(void) {
         {
             char top[40];
             char bot[40];
-            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f  #%d", fps, PM_BUILD);
-            else snprintf(top, sizeof(top), "FPS ...  #%d", PM_BUILD);
+            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f  #%s", fps, PM_BUILD_STR);
+            else snprintf(top, sizeof(top), "FPS ...  #%s", PM_BUILD_STR);
             if (pm_opt.dbg_stats || pm_debug_has("stats") || pm_debug_has("fast"))
                 snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
             else
@@ -393,10 +393,10 @@ static void game_thread(void* arg) {
     pm_new3ds = is_new;
     if (is_new) osSetSpeedupEnable(true);
     unsigned ram = (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20);
-    pm_log("Paper Mario 3DS");
+    pm_log_w("Paper Mario 3DS");
     pm_log_d("threads: game on core %d (svcGetProcessorID), log writer on core %d", (int)svcGetProcessorID(), pm_log_writer_core());
-    pm_log("build %d", PM_BUILD_N);
-    pm_log("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
+    pm_log_w("build %s", PM_BUILD_STR);
+    pm_log_w("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     pm_options_init();
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */

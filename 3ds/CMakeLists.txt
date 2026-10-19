@@ -367,16 +367,6 @@ set(PORT_SRC
     src/game_stubs.c
     src/effect_loads.c
 )
-set(PM_BUILD_ID_H "${CMAKE_CURRENT_BINARY_DIR}/pm_build_id.h")
-add_custom_command(
-    OUTPUT "${PM_BUILD_ID_H}"
-    COMMAND ${CMAKE_COMMAND}
-        -DNUMBER_FILE=${CMAKE_CURRENT_BINARY_DIR}/build_number.txt
-        -DOUT=${PM_BUILD_ID_H}
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/bump_build.cmake
-    DEPENDS ${PORT_SRC} ${GAME_SRC} shaders/pm.v.pica
-    VERBATIM
-)
 
 file(STRINGS ${DECOMP}/src/effect_shims.yaml EFFECT_SHIM_LINES REGEX "^- shim_")
 foreach(line ${EFFECT_SHIM_LINES})
@@ -397,7 +387,6 @@ set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno
 add_executable(pm_3ds
     ${PORT_SRC}
     ${GAME_SRC}
-    ${PM_BUILD_ID_H}
 )
 target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 # MS01: 3dsx.ld of devkitPro with the map statics blocks (INCLUDE of ld/map_restore.ld, made by tools/gen_map_restore.py). gcc finds it

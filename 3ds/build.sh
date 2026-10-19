@@ -12,8 +12,14 @@ cd "$(dirname "$0")/.."
 OUT=build3ds; VOL=pm3ds-work
 if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-work-$PM_LANE; fi
 mkdir -p $OUT
-# Build number = git commit count, written to 3ds/include/pm_build.h (ignored by git), logged at boot as "build <n>" and "MODE ..."
-echo "#define PM_BUILD_N $(git rev-list --count HEAD)" > 3ds/include/pm_build.h
+# BN1: one build number = V0 + (commit count - C0), V0 and C0 in 3ds/build_base.txt. Suffix -dirty (tracked file changed), -laneB (branch lane-b or PM_LANE set).
+# Written to 3ds/include/pm_build.h (ignored by git). The boot log and the Options panel show PM_BUILD_STR.
+read V0 C0 < 3ds/build_base.txt
+BN=$((V0 + $(git rev-list --count HEAD) - C0))
+git diff-index --quiet HEAD -- || BN="$BN-dirty"
+if [ -n "$PM_LANE" ] || [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
+printf '#define PM_BUILD_STR "%s"
+' "$BN" > 3ds/include/pm_build.h
 MSYS_NO_PATHCONV=1 docker run --rm \
     -v "$(pwd):/host:ro" \
     -v "$(pwd)/$OUT:/out" \

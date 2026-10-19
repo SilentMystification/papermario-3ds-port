@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "pm_port.h"
+#include "pm_build.h"
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
@@ -113,4 +114,17 @@ void pm_options_close(void) {
     pm_log("options: fps60=%d wide=%d hud=%d stats=%d nofog=%d nolight=%d (saved)", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight);
     pm_options_write();
+}
+
+/* BN1: "Build <n><suffix>" as a game message (0-9 = 0x10, A = 0x21, a = 0x41, '-' = 0x0D, space = 0xF7, end = 0xFD) for the Options panel footer. */
+const unsigned char* pm_options_build_msg(void) {
+    static unsigned char m[40];
+    const char* t = "Build " PM_BUILD_STR;
+    int n = 0;
+    for (; *t && n < 38; t++, n++) {
+        char c = *t;
+        m[n] = c >= '0' && c <= '9' ? 0x10 + (c - '0') : c >= 'A' && c <= 'Z' ? 0x21 + (c - 'A') : c >= 'a' && c <= 'z' ? 0x41 + (c - 'a') : c == '-' ? 0x0D : 0xF7;
+    }
+    m[n] = 0xFD;
+    return m;
 }

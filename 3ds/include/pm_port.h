@@ -114,6 +114,7 @@ void pm_options_write(void);
 int pm_options_get(int row);
 void pm_options_flip(int row);
 void pm_options_close(void);
+const unsigned char* pm_options_build_msg(void); /* BN1 footer text */
 void pm_log_switch(const char* word, int on);
 int pm_pad_take_select(void);
 
