@@ -105,12 +105,13 @@ typedef struct PmOpt {
     int fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight;
     int o3ds_z; /* C-O3DS: 0 = X is the Z key on the O3DS, 1 = Y (options.txt o3dsz) */
     int log, loglevel; /* L02, F11-8: log file on or off (default 1), level 0 error, 1 warn (default), 2 info, 3 debug */
+    int fixedseed; /* F11-7: 1 = same random start seed every boot (as the switch fixedseed), read at boot */
 } PmOpt;
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
 void pm_options_init(void);
 void pm_options_write(void);
-/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level. */
+/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed. */
 int pm_options_get(int row);
 void pm_options_flip(int row);
 void pm_options_close(void);

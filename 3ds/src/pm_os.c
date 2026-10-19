@@ -46,7 +46,7 @@ u32 osGetCount(void) {
     static int started;
     static u32 salt;
     u32 t = pm_ticks();
-    if (!started) { started = 1; t0 = t; salt = pm_debug_has("fixedseed") ? 0 : t * 2654435761u; } /* R-SEED: random start seed each boot, the switch fixedseed (tests, golden, smoke) keeps it the same */
+    if (!started) { started = 1; t0 = t; salt = (pm_debug_has("fixedseed") || pm_opt.fixedseed) ? 0 : t * 2654435761u; } /* R-SEED: random start seed each boot, the switch fixedseed (tests, golden, smoke) keeps it the same */
     return salt + (u32)((unsigned long long)(t - t0) * 46875u / 268111u);
 }
 

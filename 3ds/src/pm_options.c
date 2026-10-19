@@ -9,7 +9,7 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn) */
+PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed */
 
 static int* opt_field(const char* key) {
     if (!strcmp(key, "fps60")) return &pm_opt.fps60;
@@ -21,6 +21,7 @@ static int* opt_field(const char* key) {
     if (!strcmp(key, "o3dsz")) return &pm_opt.o3ds_z;
     if (!strcmp(key, "log")) return &pm_opt.log;
     if (!strcmp(key, "loglevel")) return &pm_opt.loglevel;
+    if (!strcmp(key, "fixedseed")) return &pm_opt.fixedseed;
     return NULL;
 }
 
@@ -30,8 +31,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "version=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel);
+    fprintf(f, "version=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed);
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
         return;
@@ -87,6 +88,7 @@ static int changed;
 int pm_options_get(int row) {
     if (row == 6) return pm_opt.log;
     if (row == 7) return pm_opt.loglevel; /* 0 error, 1 warn, 2 info, 3 debug */
+    if (row == 8) return pm_opt.fixedseed;
     int* f = row == 0 ? &pm_opt.fps60 : row == 1 ? &pm_opt.wide : row == 2 ? &pm_opt.dbg_hud : row == 3 ? &pm_opt.dbg_stats
            : row == 4 ? &pm_opt.dbg_nofog : row == 5 ? &pm_opt.dbg_nolight : NULL;
     return f ? *f : 0;
@@ -99,6 +101,7 @@ void pm_options_flip(int row) {
         changed = 1;
         return;
     }
+    if (row == 8) { pm_opt.fixedseed = !pm_opt.fixedseed; changed = 1; return; } /* F11-7: takes effect at the next boot */
     int* f = row == 0 ? &pm_opt.fps60 : row == 1 ? &pm_opt.wide : row == 2 ? &pm_opt.dbg_hud : row == 3 ? &pm_opt.dbg_stats
            : row == 4 ? &pm_opt.dbg_nofog : row == 5 ? &pm_opt.dbg_nolight : NULL;
     if (!f) return;

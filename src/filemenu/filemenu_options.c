@@ -2,15 +2,15 @@
 #include "filemenu.h"
 
 // port: Options panel of the file select screen (F11-3). TARGET_3DS only.
-// Rows 0 to 5 are settings (60 FPS, Widescreen, HUD, Stats, No fog, No light). Row 6 is Logging (On or Off), row 7 is Log level (Error, Warn, Info, Debug), row 8 is Back.
+// Rows 0 to 5 are settings (60 FPS, Widescreen, HUD, Stats, No fog, No light). Row 6 is Logging (On or Off), row 7 is Log level (Error, Warn, Info, Debug), row 8 is Fixed seed (On or Off), row 9 is Back.
 // The panel holds no setting logic. It reads and flips the values in the port layer (pm_options.c).
 #ifdef TARGET_3DS
 
-#define OPT_ROWS 9
-#define OPT_ROW_BACK 8
+#define OPT_ROWS 10
+#define OPT_ROW_BACK 9
 
 u8 filemenu_options_gridData[] = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 };
 
 MenuWindowBP filemenu_options_windowBPs[] = {
@@ -51,7 +51,7 @@ void filemenu_options_open(void) {
 
     sfx_play_sound(SOUND_MENU_NEXT);
     gWindows[WIN_FILES_OPTIONS_PANEL].width = 200;
-    gWindows[WIN_FILES_OPTIONS_PANEL].height = 196;
+    gWindows[WIN_FILES_OPTIONS_PANEL].height = 214;
     gWindows[WIN_FILES_OPTIONS_PANEL].pos.x = CENTER_WINDOW_X(WIN_FILES_OPTIONS_PANEL);
     gWindows[WIN_FILES_OPTIONS_PANEL].pos.y = CENTER_WINDOW_Y(WIN_FILES_OPTIONS_PANEL);
     menu->state = 0;
@@ -94,7 +94,7 @@ void filemenu_draw_contents_options_panel(
     MenuPanel* panel = &filemenu_options_menuBP;
     static const s32 labels[OPT_ROWS] = {
         FILE_MESSAGE_OPT_FPS60, FILE_MESSAGE_OPT_WIDE, FILE_MESSAGE_OPT_HUD, FILE_MESSAGE_OPT_STATS,
-        FILE_MESSAGE_OPT_NOFOG, FILE_MESSAGE_OPT_NOLIGHT, FILE_MESSAGE_OPT_LOG, FILE_MESSAGE_OPT_LOGLEVEL, FILE_MESSAGE_OPT_BACK
+        FILE_MESSAGE_OPT_NOFOG, FILE_MESSAGE_OPT_NOLIGHT, FILE_MESSAGE_OPT_LOG, FILE_MESSAGE_OPT_LOGLEVEL, FILE_MESSAGE_OPT_FIXEDSEED, FILE_MESSAGE_OPT_BACK
     };
     s32 i;
 

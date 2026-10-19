@@ -20,8 +20,8 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 10 | star | ok | yes | 3957 | 85 | no | 0 | 11 | no | 43 | 0 |
 | 11 | emote | ok | weak | 313 | 13 | no | 0 | 0 | no | 42 | 0 |
 | 12 | sparkles | ok | yes | 758 | 21 | no | 0 | 0 | no | 16 | 0 |
-| 13 | shape_spell | ok | weak | 107 | 4 | no | 0 | 0 | no | 1 | 0 |
-| 14 | gather_energy_pink | ok | weak | 354 | 6 | no | 0 | 0 | no | 1 | 0 |
+| 13 | shape_spell | ok | yes | 6840 | 130 | no | 0 | 3 | no | 40 | 0 |
+| 14 | gather_energy_pink | ok | weak | 326 | 4 | no | 0 | 0 | no | 1 | 0 |
 | 15 | drop_leaves | ok | weak | 335 | 10 | no | 0 | 0 | no | 28 | 0 |
 | 16 | dust | ok | yes | 470 | 17 | no | 0 | 0 | no | 42 | 0 |
 | 17 | shattering_stones | ok | weak | 327 | 12 | no | 1 | 0 | no | 42 | 0 |
@@ -135,4 +135,4 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 125 | star_outline | ok | yes | 5932 | 135 | no | 0 | 5 | no | 47 | 0 |
 | 126 | effect_86 | ok | yes | 775 | 21 | no | 0 | 0 | no | 16 | 0 |
 
-Spawned and shot: 127 of 127. Weak or nothing: 33. Black block: 0. Zoomed or clipped: 9. Solid colour block: 4.
+Spawned and shot: 127 of 127. Weak or nothing: 32. Black block: 0. Zoomed or clipped: 9. Solid colour block: 4.
