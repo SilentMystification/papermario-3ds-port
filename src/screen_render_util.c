@@ -130,6 +130,8 @@ void draw_prev_frame_buffer_at_screen_pos(s32 x1, s32 y1, s32 x2, s32 y2, f32 al
 void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32 progress) {
     Camera* camera = &gCameras[gCurrentCameraID];
     f32 texScale, f24;
+    f32 sShift;
+    s32 rectLeft, rectRight;
     s32 i;
 
     if (alpha == 0.0f) {
@@ -227,19 +229,28 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha * 0.5f * progress / 255.0f);
     gDPSetEnvColor(gMainGfxPos++, 255, 255, 255, (255.0f - alpha * 0.5f) * progress / 255.0f);
 
+    /* F07-6: with wide the rect reaches both screen edges. s moves by 32 / texScale per pixel, so it shifts with the left edge. */
+    rectLeft = camera->viewportStartX;
+    rectRight = camera->viewportStartX + camera->viewportW;
+    if (pm_wide && (gCurrentCameraID == CAM_DEFAULT || gCurrentCameraID == CAM_BATTLE)) {
+        rectLeft = pm_wide_left(0);
+        rectRight = pm_wide_right(SCREEN_WIDTH);
+    }
+    sShift = (rectLeft - camera->viewportStartX) * 32.0f / texScale;
+
     if (!isWorld) {
         gSPTextureRectangle(gMainGfxPos++,
-                            camera->viewportStartX * 4, camera->viewportStartY * 4,
-                            (camera->viewportStartX + camera->viewportW) * 4, (camera->viewportStartY + camera->viewportH) * 4,
+                            rectLeft * 4, camera->viewportStartY * 4,
+                            rectRight * 4, (camera->viewportStartY + camera->viewportH) * 4,
                             G_TX_RENDERTILE,
-                            (12 - posX) * 32.0f / texScale + 16.0f + 1024.0f, (19 - posY) * 32.0f / texScale + 16.0f + 1024.0f,
+                            (12 - posX) * 32.0f / texScale + 16.0f + 1024.0f + sShift, (19 - posY) * 32.0f / texScale + 16.0f + 1024.0f,
                             1024.0f / texScale, 1024.0f / texScale);
     } else {
         gSPTextureRectangle(gMainGfxPos++,
-                            camera->viewportStartX * 4, camera->viewportStartY * 4,
-                            (camera->viewportStartX + camera->viewportW) * 4, (camera->viewportStartY + camera->viewportH) * 4,
+                            rectLeft * 4, camera->viewportStartY * 4,
+                            rectRight * 4, (camera->viewportStartY + camera->viewportH) * 4,
                             G_TX_RENDERTILE,
-                            (9 - posX) * 32.0f / texScale + 1024.0f, (32 - posY) * 32.0f / texScale + 1024.0f,
+                            (9 - posX) * 32.0f / texScale + 1024.0f + sShift, (32 - posY) * 32.0f / texScale + 1024.0f,
                             1024.0f / texScale, 1024.0f / texScale);
     }
 }

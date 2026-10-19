@@ -195,6 +195,13 @@ void bulb_glow_appendGfx(void* effect) {
         isPointVisible = true;
     }
 
+    {   /* F07-6: with wide the 3D point sits at 1.25 x, the rect is drawn 1:1 centered (screen x = 40 + x). The glow stays inside game x 0 to 320. */
+        extern int pm_wide;
+        if (pm_wide) {
+            centerX = centerX * 1.25f - 40.0f;
+        }
+    }
+
     if (!isPointVisible || centerX < 0.0f || centerY < 0.0f || centerX >= SCREEN_WIDTH || centerY >= SCREEN_HEIGHT) {
         return;
     }

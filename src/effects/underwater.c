@@ -193,7 +193,11 @@ void underwater_appendGfx(void* effect) {
     gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
     gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
 
-    guFrustumF(mtx, -80.0f, 80.0f, 60.0f, -60.0f, 160.0f, 640.0f, 1.0f);
+    {   /* F07-6: with wide the 3D batch is stretched 1.25. The frame copy is the center 320 columns, so widen the frustum to draw the mesh 1:1 centered. */
+        extern int pm_wide;
+        f32 k = pm_wide ? 1.25f : 1.0f;
+        guFrustumF(mtx, -80.0f * k, 80.0f * k, 60.0f, -60.0f, 160.0f, 640.0f, 1.0f);
+    }
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH | G_LIGHTING);

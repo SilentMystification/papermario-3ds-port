@@ -1,6 +1,7 @@
 #include "common.h"
 #include "ld_addrs.h"
 #include "model.h"
+#include "map.h"
 #include "effects.h"
 #include "hud_element.h"
 #include "model_clear_render_tasks.h"
@@ -4751,4 +4752,108 @@ void execute_render_tasks(void) {
         RenderTaskListIdx = 0;
     }
     RenderTaskCount = 0;
+}
+
+/* F07-6: end_00 and end_01 parade backdrops (PaperBoat ParadeBackdropPatches). With wide the camera sees 25 percent more world
+ * width. Each listed model is drawn again, shifted by stepX, count times. Sky and mountain walls are 1500 units and repeat every
+ * 1500. Ground tiles are 750 units. The slots CUSTOM_GFX_4 and up are free in these two maps. */
+extern MapSettings gMapSettings;
+
+typedef struct ParadeCopy {
+    const char* modelName;
+    f32 stepX;
+    s32 count;
+} ParadeCopy;
+
+static const ParadeCopy sEnd00Copies[] = {
+    { "sky", -1500.0f, 1 },   { "sky", 1500.0f, 1 },       { "cloud", -1500.0f, 1 },
+    { "cloud", 1500.0f, 1 },  { "mountain", -1500.0f, 1 }, { "mountain", 1500.0f, 1 },
+    { "j1", -750.0f, 2 },     { "j3", -750.0f, 2 },        { "j3_b", -750.0f, 2 },
+    { "j2", -3750.0f, 1 },    { "j25", 750.0f, 2 },        { "o226", 750.0f, 2 },
+    { "j27", 750.0f, 2 },
+};
+
+static const ParadeCopy sEnd01Copies[] = {
+    { "sky", -1500.0f, 1 },      { "sky", 1500.0f, 1 },      { "mountain", -1500.0f, 1 },
+    { "mountain", 1500.0f, 1 },  { "o145", -750.0f, 2 },     { "o146", -750.0f, 2 },
+    { "j2", -750.0f, 2 },
+};
+
+typedef struct ParadeSlot {
+    Model* model;
+    const ParadeCopy* copies[4];
+    s32 numCopies;
+} ParadeSlot;
+
+static ParadeSlot sParadeSlots[16];
+
+static void parade_build_copies(s32 index) {
+    ParadeSlot* slot = &sParadeSlots[index];
+    Gfx* dl;
+    s32 i, j;
+
+    if (slot->model == nullptr || slot->model->modelNode->displayData == nullptr) {
+        return;
+    }
+    dl = slot->model->modelNode->displayData->displayList;
+    for (i = 0; i < slot->numCopies; i++) {
+        for (j = 1; j <= slot->copies[i]->count; j++) {
+            Matrix4f mtx;
+            Mtx* dispMtx = &gDisplayContext->matrixStack[gMatrixListPos++];
+
+            guTranslateF(mtx, slot->copies[i]->stepX * j, 0.0f, 0.0f);
+            guMtxF2L(mtx, dispMtx);
+            gSPMatrix(gMainGfxPos++, dispMtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+            gSPDisplayList(gMainGfxPos++, dl);
+            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        }
+    }
+}
+
+/// Call once from the main script of end_00 (which == 0) or end_01 (which == 1). Does nothing without wide.
+void parade_wide_setup(s32 which) {
+    extern int pm_wide;
+    const ParadeCopy* copies = which ? sEnd01Copies : sEnd00Copies;
+    s32 numCopies = which ? ARRAY_COUNT(sEnd01Copies) : ARRAY_COUNT(sEnd00Copies);
+    char** names = gMapSettings.modelNameList;
+    s32 nextSlot = CUSTOM_GFX_4;
+    s32 i, k, n;
+
+    if (!pm_wide || names == nullptr) {
+        return;
+    }
+    memset(sParadeSlots, 0, sizeof(sParadeSlots));
+    for (i = 0; i < numCopies; i++) {
+        Model* model;
+        ParadeSlot* slot = nullptr;
+
+        for (n = 0; names[n] != nullptr; n++) {
+            if (strcmp(names[n], copies[i].modelName) == 0) {
+                break;
+            }
+        }
+        if (names[n] == nullptr) {
+            continue;
+        }
+        model = get_model_from_list_index(get_model_list_index_from_tree_index(n));
+        if (model == nullptr || model->modelNode == nullptr) {
+            continue;
+        }
+        for (k = CUSTOM_GFX_4; k < nextSlot; k++) {
+            if (sParadeSlots[k].model == model) {
+                slot = &sParadeSlots[k];
+            }
+        }
+        if (slot == nullptr && nextSlot < ARRAY_COUNT(sParadeSlots)) {
+            slot = &sParadeSlots[nextSlot];
+            slot->model = model;
+            set_mdl_custom_gfx_set(model, nextSlot, ENV_TINT_UNCHANGED);
+            model->flags |= MODEL_FLAG_USES_CUSTOM_GFX;
+            set_custom_gfx_builders(nextSlot, nullptr, parade_build_copies);
+            nextSlot++;
+        }
+        if (slot != nullptr && slot->numCopies < ARRAY_COUNT(slot->copies)) {
+            slot->copies[slot->numCopies++] = &copies[i];
+        }
+    }
 }

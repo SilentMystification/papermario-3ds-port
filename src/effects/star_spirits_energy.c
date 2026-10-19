@@ -384,7 +384,21 @@ void star_spirits_energy_appendGfx(void* effect) {
 
         if (alpha > 0) {
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 208, 208, 208, alpha);
-            gSPDisplayList(gMainGfxPos++, D_E0122BA0[0]);
+            {   /* F07-6: with wide the flash reaches both screen edges (D_09005440_4126D0 is 0 to 320) */
+                extern int pm_wide;
+                if (pm_wide) {
+                    gDPPipeSync(gMainGfxPos++);
+                    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
+                    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+                    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
+                    gDPSetCombineLERP(gMainGfxPos++, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE);
+                    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+                    gSPTextureRectangle(gMainGfxPos++, -40 * 4, 0, 360 * 4, SCREEN_HEIGHT * 4, G_TX_RENDERTILE, 0, 0, 0, 0);
+                    gDPPipeSync(gMainGfxPos++);
+                } else {
+                    gSPDisplayList(gMainGfxPos++, D_E0122BA0[0]);
+                }
+            }
         }
     }
 
