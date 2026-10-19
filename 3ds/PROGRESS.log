@@ -333,3 +333,7 @@
 19:54 V05b build ok. Azahar run of fxtest 50..80 (bulb_glow to motion_blur_flame), expect 10 min
 19:55 V05b fxtest 50..80 rc 0, 31 of 31 shot. golden battle next, expect 3 min
 19:56 V05b golden battle ok. commit and move row
+19:58 V14 Azahar run 1 of 3: drawlog and xtrace at f765, expect 5 min
+19:59 V14 run 1 lost drawlog lines (log queue full by imglog). Run 2 of 3 without imglog, expect 5 min
+20:01 V14 f765: only white wedge is the speech balloon tail (game art). Run 3 of 3: shots f700..889 and drawlog f875, expect 6 min
+20:02 V14 done: F2 balloon tail, F3 and F4 nearest filter, no code change. New row V15. Evidence in V14_diag.md

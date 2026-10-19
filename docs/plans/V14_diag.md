@@ -37,3 +37,9 @@ Retest after R13b. If the stars stay grey, grab f710 with imglog and compare cyc
 
 ## Order
 R13b first (F1, maybe F4), then F2 (grab), then F3.
+
+## Result (2026-10-18, no code change)
+- Runs: 3 Azahar starts. Build pm_3ds.3dsx 19:54. drawlog=765:1 and drawlog=875:1, shots f700 to f889. Shots are 240x400, rotate 90 degrees counter clockwise to read them.
+- F2: the only hard edged white wedge in f765 and f875 is the tail of the speech balloon (the balloon covers the top of the screen and points at Merlon). The game draws it (message box). Draw list of f765 and f875 is the same 24 chunks. No white or opaque light cone chunk exists. The light cone is chunk #19/#20 (IA 32x16, oml 0c184a50, prim f8f0f000). It shows as a soft cyan beam in f835. F2 is intended art. No change.
+- F3: the pastel blocks are the wall and floor chunks #1 to #3 (I4 32x32 texture, 16+4+8 tris, box 0..312 x -23..177) enlarged by the room. The mirrorball texgen path runs (T01) and gives smooth arcs. The blocks are nearest sampling: pm_tex.c line 437 sets GPU_NEAREST for every game texture. The N64 uses G_TF_BILERP (omh 00082c00). Root cause is the port wide texture filter, not texgen or hilite. New row V15.
+- F4: the stars at the wall edges are the same 32x32 textures with nearest sampling. R13c fixed the TEXEL1 part. Same row V15.

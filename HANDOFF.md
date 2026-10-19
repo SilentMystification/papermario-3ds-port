@@ -122,3 +122,5 @@ Pointers: docs/HISTORY.md (old slice results), docs/SLICES_DONE.md (done rows), 
 - R13d done: the cycle 2 swap in pm_comb_swap_c2 matches the RDP rule (cycle 2 TEXEL0 is tile 1, TEXEL1 is tile 0), no code change. Logs show 12 distinct 2 cycle combiners that read a texel in cycle 2 (words in 3ds/logs/c2*.txt).
 - R13d golden toad 0.03, yard 0.04, battle 0.43 percent, all ok. Not checked: pause1, a game that sets tile 1 stale for a cycle 2 TEXEL0 only combiner (tile 1 not loaded falls back to the legacy path, why 6).
 V05b: off-screen slots keep their size (0..3 full, 4..7 64x64), no render target delete in a frame. fxtest 50..80 and golden battle ok.
+V14 done, no code change: F2 is the speech balloon tail (game art). F3 and F4 are blocky from GPU_NEAREST on all textures (pm_tex.c line 437). Evidence in docs/plans/V14_diag.md.
+V14 new row V15 (bilinear filter from omh). Not checked: golden (no code change), f875 only by drawlog and contact sheet.
