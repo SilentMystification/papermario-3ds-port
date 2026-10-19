@@ -1,6 +1,7 @@
 #include "common.h"
 #include "message_ids.h"
 #include "hud_element.h"
+#include "pm_interp_fi.h"
 #include "model.h"
 #include "pause/pause_common.h"
 
@@ -861,13 +862,17 @@ void draw_shop_items(void) {
                 }
 
                 if (!(get_item_entity(shopItemEntities->index)->flags & ITEM_ENTITY_FLAG_HIDDEN)) {
+                    pm_anchor_begin("shop_price", i, xTemp + xOffset, yTemp);
                     draw_number(itemData->price, xTemp + xOffset, yTemp, DRAW_NUMBER_CHARSET_THIN, MSG_PAL_WHITE, 255, 0);
+                    pm_anchor_end();
                 }
 
                 if (i == shop->curItemSlot) {
                     hud_element_set_render_pos(shop->costHID, (xTemp + xOffset) - 6, yTemp + 5);
                     hud_element_set_scale(shop->costHID, 0.7f);
+                    pm_anchor_begin("shop_cost_icon", i, (xTemp + xOffset) - 6, yTemp + 5);
                     hud_element_draw_clipped(shop->costHID);
+                    pm_anchor_end();
                 }
             }
         }

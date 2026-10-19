@@ -411,3 +411,13 @@
 01:16 F06-3 smoke ok rc 0, no overflow, f06 pair=99, peak leaves 49 nodes 440 (tables 1024/1024). start 3: tour kmr_20 mac_00 flo_10 fps60 autoa shots, expect 5 min
 01:20 F06-3 tour: f06 pair 98 to 100 in steady state (93 once at a map load), over=0, peak leaves 50 nodes 370, contact sheet of 12 shots: no doubled object. Tour hit the 200 s smoke cap after 3+ maps. start 4: golden toad fps60 off, expect 2 min
 01:20 F06-3 golden toad off 0.00. 3dsx 13090960 to 13092440 (+1480). Rows F06-2, F06-2v, F06-3 moved to SLICES_DONE.
+01:30 V16d diag: azahar start 1 preset=toad battle autoa shots rmlog, expect 3 min
+01:30 V17d run 1: fast shots (1 per 30 frames, up to 200), intro, expect 200 s
+01:34 V17d run 2: fast shots shotwin=3140:480 (fade, road, pan, fade), expect 400 s
+01:34 V16d start 2: preset=toad battle autoa shots, 130 s
+01:37 V17d run 3 (rerun: run 2 shots were deleted by the V16d run that shared the sdmc shots folder): shotwin=3140:480, expect 70 s
+01:40 V16d diag written, cause unconfirmed, 2 starts used
+01:40 F06-4 build ok, 3dsx 13092440 to 13094360 (+1920). start 1: preset=toad battle autoa fps60 shots, expect 3 min
+01:41 F06-4 start 1 ok (rc 0, pair=92, over 0, no battle entered). start 2: fast preset=toad battle fps60 shots shotwin=200:4, expect 2 min
+01:42 F06-4 start 2 ok: battle menu and status bar steady in 8 shots, no smear. start 3: golden toad fps60 off, expect 2 min
+01:42 F06-4 golden toad off 0.00. 3dsx 13092440 to 13094360 (+1920). Not tested: pause1 text box, map change, shop anchor (no shop run), peach star beam, snowfall, flowers.

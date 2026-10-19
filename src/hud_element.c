@@ -3,6 +3,7 @@
 #include "hud_element.h"
 #include "nu/nusys.h"
 #include "ld_addrs.h"
+#include "pm_interp_fi.h"
 
 #define MAX_HUD_CACHE_ENTRIES 192
 
@@ -584,9 +585,13 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
             }
 
             if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
-                gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale);
+                if (!pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale)) {
+                    gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale);
+                }
             } else {
-                gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale);
+                if (!pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale)) {
+                    gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale);
+                }
             }
             if (isLastTileX) {
                 break;
@@ -1685,7 +1690,9 @@ void render_transformed_hud_elements(void) {
                     gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
 
                     for (i = 0; i < count; i++) {
+                        FI_OPEN("HUD Elements", (uintptr_t)(*gHudElements)[sortedElements[i]]);
                         render_complex_hud_element((*gHudElements)[sortedElements[i]]);
+                        FI_CLOSE();
                     }
                 }
             }
@@ -1748,7 +1755,9 @@ void render_transformed_hud_elements(void) {
                     gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
 
                     for (i = 0; i < count; i++) {
+                        FI_OPEN("HUD Elements", (uintptr_t)(*gHudElements)[sortedElements[i]]);
                         render_complex_hud_element((*gHudElements)[sortedElements[i]]);
+                        FI_CLOSE();
                     }
                 }
             }
@@ -2286,4 +2295,73 @@ void hud_element_set_aux_cache(void* base, s32 size) {
     } else {
         HudElemCacheCapacity = size;
     }
+}
+
+/* F06-4: screen anchor (PaperBoat ScreenAnchorPatches). Inside an anchor a texture rectangle becomes a quad under a matrix
+ * that frame interpolation can move. Only with fps60: without it begin does nothing and every rectangle stays a rectangle. */
+extern int pm_interp_on;
+static s32 sAnchorOpen;
+static s32 sAnchorX;
+static s32 sAnchorY;
+static Vp sAnchorViewport = { .vp = { .vscale = { SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2, G_MAXZ / 2, 0 }, .vtrans = { SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2, G_MAXZ / 2, 0 } } };
+
+void pm_anchor_begin(const void* key, unsigned idx, int x, int y) {
+    if (pm_interp_on <= 0) {
+        return;
+    }
+    FI_OPEN(key, idx);
+    guOrtho(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, -1.0f, 1.0f, 1.0f);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    guTranslate(&gDisplayContext->matrixStack[gMatrixListPos], x, y, 0.0f);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    gSPViewport(gMainGfxPos++, &sAnchorViewport);
+    gSPLoadGeometryMode(gMainGfxPos++, 0);
+    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
+    sAnchorOpen = true;
+    sAnchorX = x;
+    sAnchorY = y;
+}
+
+void pm_anchor_end(void) {
+    if (!sAnchorOpen) {
+        return;
+    }
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    FI_CLOSE();
+    sAnchorOpen = false;
+}
+
+int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, int dsdx, int dtdy) {
+    const s32 slots = (4 * sizeof(Vtx) + sizeof(Gfx) - 1) / sizeof(Gfx);
+    Vtx_t* vtx;
+    s16 corners[4][4];
+    s32 i;
+
+    if (!sAnchorOpen) {
+        return false;
+    }
+    vtx = (Vtx_t*)(gMainGfxPos + 1);
+    gSPBranchList(gMainGfxPos, gMainGfxPos + 1 + slots);
+    gMainGfxPos += 1 + slots;
+
+    corners[0][0] = corners[3][0] = (ulx >> 2) - sAnchorX;
+    corners[0][1] = corners[1][1] = (uly >> 2) - sAnchorY;
+    corners[1][0] = corners[2][0] = (lrx >> 2) - sAnchorX;
+    corners[2][1] = corners[3][1] = (lry >> 2) - sAnchorY;
+    corners[0][2] = corners[3][2] = s;
+    corners[0][3] = corners[1][3] = t;
+    corners[1][2] = corners[2][2] = ((s << 7) + dsdx * (lrx - ulx)) >> 7;
+    corners[2][3] = corners[3][3] = ((t << 7) + dtdy * (lry - uly)) >> 7;
+    for (i = 0; i < 4; i++) {
+        vtx[i].ob[0] = corners[i][0];
+        vtx[i].ob[1] = corners[i][1];
+        vtx[i].ob[2] = 0;
+        vtx[i].flag = 0;
+        vtx[i].tc[0] = corners[i][2];
+        vtx[i].tc[1] = corners[i][3];
+        vtx[i].cn[0] = vtx[i].cn[1] = vtx[i].cn[2] = vtx[i].cn[3] = 255;
+    }
+    gSPVertex(gMainGfxPos++, vtx, 4, 0);
+    gSP2Triangles(gMainGfxPos++, 0, 3, 1, 0, 3, 2, 1, 0);
+    return true;
 }

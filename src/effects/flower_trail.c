@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "pm_interp_fi.h"
 
 extern Gfx D_09000E20_32DCE0[];
 extern Gfx D_09000E38_32DCF8[];
@@ -22,7 +23,9 @@ void flower_trail_update_part_transform(FlowerFXData* effect) {
     guMtxCatF(tempMtx, transformMtx, transformMtx);
     guTranslateF(tempMtx, effect->pos.x, effect->pos.y, effect->pos.z);
     guMtxCatF(transformMtx, tempMtx, transformMtx);
+    FI_OPEN("flower_part", (uintptr_t)effect);
     guMtxF2L(transformMtx, &effect->transformMtx);
+    FI_CLOSE();
 }
 
 void flower_trail_update_part(FlowerFXData* effect) {

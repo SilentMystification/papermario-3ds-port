@@ -13,3 +13,5 @@ F06-2v: golden toad off 0.00, shots no holes, leaf peak 49 (297 in F06-1), pace 
 F06-2v: tables resized to 384 leaves and 32 nodes and open/close fixed, built but not run (budget used). Rerun toad fps60 smoke once to check.
 F06-3 done: node hooks in model, entity, animator, model_api, sprite, imgfx, item_entity, worker, effects (header include/pm_interp_fi.h), `f06 pair` log. Tables 1024 leaves and 1024 nodes (peak 50 leaves, 440 nodes). fps60 smoke ok, pair 98 to 100, toad golden off 0.00. 3dsx +1480 bytes.
 F06-3 not checked: pair in battle and during a map change, tour stopped at the 200 s smoke cap. F06-2 and F06-2v moved to SLICES_DONE (pace stays with F06-5).
+F06-4 done: nodes in msg, hud_element, peach_star_beam, snowfall (wrapEpoch), flower_trail, flower_splash. Screen anchor (pm_anchor_* in hud_element.c, used by shops and draw_number) and camera epoch (pm_interp_dont_camera). Battle fps60 shots steady, golden toad off 0.00, 3dsx +1920.
+F06-4 not checked: pause1 text box, map change smear, shop anchor, star beam, snowfall, flowers (budget used).

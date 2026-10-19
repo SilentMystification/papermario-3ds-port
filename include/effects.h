@@ -1204,7 +1204,8 @@ typedef struct SnowfallFXData {
     /* 0x28 */ s32 unk_28;
     /* 0x2C */ s32 unk_2C;
     /* 0x30 */ s32 unk_30;
-} SnowfallFXData; // size = 0x34
+    s32 wrapEpoch; /* F06-4: part of the interpolation key */
+} SnowfallFXData; // size = 0x34 (+ wrapEpoch)
 
 typedef struct SpinFXData {
     /* 0x00 */ s32 type;

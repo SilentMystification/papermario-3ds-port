@@ -68,6 +68,10 @@ void pm_interp_close(void) {
     else if (depth > 0) depth--;
 }
 
+/* F06-4: camera cut counter (PaperBoat FrameInterpolation_DontInterpolateCamera). No reader, as in PaperBoat. */
+static unsigned camera_epoch, previous_camera_epoch;
+void pm_interp_dont_camera(void) { camera_epoch = previous_camera_epoch + 1; }
+
 void pm_interp_start(void) {
     if (pm_interp_on < 0) pm_interp_on = pm_debug_has("fps60") || pm_opt.fps60;
     if (!pm_interp_on) return;
@@ -146,6 +150,7 @@ void pm_interp_lerp(float t) {
 }
 
 void pm_interp_stop(void) {
+    previous_camera_epoch = camera_epoch;
     if (!recording) return;
     recording = 0;
     memcpy(pleaves, leaves, nleaf * sizeof(Leaf));

@@ -2,6 +2,7 @@
 #include "ld_addrs.h"
 #include "message_ids.h"
 #include "sprite.h"
+#include "pm_interp_fi.h"
 
 #include "charset/charset.h"
 #include "charset/postcard.png.h"
@@ -568,9 +569,14 @@ s32 _update_message(MessagePrintState* printer) {
 void render_messages(void) {
     Mtx* matrix = &gMessageWindowProjMatrix[gCurrentDisplayContextIndex];
     s32 i;
+    s32 msgInterpScopeOpen = false;
 
     for (i = 0; i < ARRAY_COUNT(gMessagePrinters); i++) {
         if (gMessagePrinters[i].stateFlags & MSG_STATE_FLAG_2) {
+            if (!msgInterpScopeOpen) {
+                FI_OPEN("render_messages", 0);
+                msgInterpScopeOpen = true;
+            }
             gSPViewport(gMainGfxPos++, &D_8014C280);
             guOrtho(matrix, 0.0f, 319.0f, -240.0f, 0.0f, -500.0f, 500.0f, 1.0f);
             gSPMatrix(gMainGfxPos++, OS_K0_TO_PHYSICAL(matrix), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
@@ -603,6 +609,10 @@ void render_messages(void) {
                 msg_draw_choice_pointer(&gMessagePrinters[i]);
             }
         }
+    }
+
+    if (msgInterpScopeOpen) {
+        FI_CLOSE();
     }
 }
 
@@ -2070,7 +2080,9 @@ void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style)
         }
 
         msg_copy_to_print_buffer(printer, 10000, 1);
+        FI_OPEN("draw_msg", 0);
         appendGfx_message(printer, (s16)posX, (s16)posY, 0, 0, flags, opacity & 0xFF);
+        FI_CLOSE();
 
         if (mallocSpace != nullptr) {
             general_heap_free(mallocSpace);
@@ -2144,6 +2156,7 @@ void msg_update_rewind_arrow(s32 printerIndex) {
         }
     }
 
+    FI_OPEN("msg_star", (uintptr_t)printer);
     guTranslateF(sp18, printer->rewindArrowPos.x + 12, -(printer->rewindArrowPos.y + 12), 0);
     if (angle != 0.0) {
         guRotateF(sp58, angle, 0, 0, 1.0f);
@@ -2160,6 +2173,7 @@ void msg_update_rewind_arrow(s32 printerIndex) {
     gDPLoadMultiTile_4b(gMainGfxPos++, ui_msg_star_silhouette_png, 0x0100, 1, G_IM_FMT_I, 16, 0, 0, 0, 15, 18, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
     gSPVertex(gMainGfxPos++, gRewindArrowQuad, 4, 0);
     gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+    FI_CLOSE();
 }
 
 void msg_draw_rewind_arrow(s32 printerIndex) {
@@ -2232,12 +2246,14 @@ void draw_digit(IMG_PTR img, s32 charset, s32 posX, s32 posY) {
         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
         G_TX_NOMASK, G_TX_NOMASK,
         G_TX_NOLOD, G_TX_NOLOD);
-    gSPTextureRectangle(gMainGfxPos++,
-        4 * posX, 4 * posY,
-        4 * (posX + num->texWidth), 4 * (posY + num->texHeight),
-        G_TX_RENDERTILE,
-        0, 0,
-        1 << 10, 1 << 10);
+    if (!pm_anchor_rect(4 * posX, 4 * posY, 4 * (posX + num->texWidth), 4 * (posY + num->texHeight), G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10)) {
+        gSPTextureRectangle(gMainGfxPos++,
+            4 * posX, 4 * posY,
+            4 * (posX + num->texWidth), 4 * (posY + num->texHeight),
+            G_TX_RENDERTILE,
+            0, 0,
+            1 << 10, 1 << 10);
+    }
 }
 
 void draw_number(s32 value, s32 x, s32 y, s32 charset, s32 palette, s32 opacity, u16 style) {

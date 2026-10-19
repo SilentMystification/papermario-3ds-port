@@ -7,6 +7,7 @@
 extern int pm_wide; /* F07-2 */
 extern void pm_interp_open(unsigned a, unsigned b); /* F06-2 */
 extern void pm_interp_close(void);
+extern void pm_interp_dont_camera(void); /* F06-4 */
 #define FI_OPEN(n, t) pm_interp_open((unsigned)(n), (t))
 #define FI_CLOSE() pm_interp_close()
 void render_models(void);
@@ -393,6 +394,7 @@ Camera* initialize_next_camera(CameraInitData* initData) {
     camera->unk_8C = 0.0f;
     camera->updateMode = initData->updateMode;
     camera->needsInit = true;
+    pm_interp_dont_camera();
     camera->nearClip = initData->nearClip;
     camera->farClip = initData->farClip;
     camera->vfov = initData->vfov;
