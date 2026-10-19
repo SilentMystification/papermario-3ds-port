@@ -390,3 +390,7 @@
 00:39 F07-6 start 1 wide shot end_00 ok: sky, clouds, hills and ground fill the whole letterbox, no gap at the edges. Not reached: BulbGlow, Underwater, DarknessStencil, star_spirits_energy. Azahar start 2: golden toad wide off
 00:39 F07-6 golden toad ok 0.00 percent, wide off. 2 Azahar starts. 3dsx +1792 bytes (13084768 to 13086560).
 00:40 F07-6 row moved to SLICES_DONE, F07-7 row added
+00:44 F06-1 build ok, 3dsx 13086560 to 13087468 (+908 bytes). Azahar start 1: toad fps60 smokeframes=600, expect about 1 min
+00:45 F06-1 start 1 ok: f06 rec leaves=23 nodes=1 peak=297 (table 4096). Start 2: warp=mac_00:0 fps60, expect 1 min
+00:45 F06-1 start 2 ok: mac_00 peak=297. Start 3: golden toad, switch off, expect 2 min
+00:46 F06-1 golden toad ok 0.00 percent, fps60 off. 3 Azahar starts. 3dsx +908 bytes (13086560 to 13087468). Leaf peak 297, tables stay 4096 leaves (size to peak +25 percent comes in F06-2 with the lerp table).

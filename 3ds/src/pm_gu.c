@@ -1,5 +1,6 @@
 #include <math.h>
 #include "ultra64.h"
+#include "pm_port.h"
 
 /* libultra matrix ops the decomp calls. The fixed layout matches pm_gbi's unpack:
  * one u32 holds the integer halves of a column pair, the word 8 later holds the fractions. */
@@ -35,6 +36,7 @@ void guMtxCatF(float mf[4][4], float nf[4][4], float res[4][4]) {
 }
 
 void guMtxF2L(float mf[4][4], Mtx* m) {
+    if (pm_interp_on > 0) pm_interp_record(mf, m);
     u32* ai = (u32*)m->m;
     u32* af = ai + 8;
     int i, j;

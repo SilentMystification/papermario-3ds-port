@@ -23,6 +23,13 @@ void pm_fatal_stop(const char* msg); /* R01: log FATAL, flush, [CRASH] line, svc
 void pm_frame_loop(void);
 
 int pm_debug_has(const char* word);
+/* F06-1: frame interpolation record (pm_interp.c). pm_interp_on is -1 until the first start. */
+extern int pm_interp_on;
+void pm_interp_start(void);
+void pm_interp_stop(void);
+void pm_interp_open(unsigned a, unsigned b);
+void pm_interp_close(void);
+void pm_interp_record(float mf[4][4], void* m);
 const char* pm_debug_text(void);
 int pm_debug_value(const char* key, char* out, unsigned n);
 unsigned pm_ticks(void);

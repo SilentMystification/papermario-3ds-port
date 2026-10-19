@@ -73,6 +73,7 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     PH_PUSH(PH_GBI);
     pm_gbi_run(gfxList, gfxListSize);
     PH_POP();
+    pm_interp_stop();
 }
 
 void pm_gfx_retrace(void) {

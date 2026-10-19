@@ -372,6 +372,7 @@ set(PORT_SRC
     src/pm_gbi.c
     src/pm_comb.c
     src/pm_gu.c
+    src/pm_interp.c
     src/pm_nusys.c
     src/pm_os.c
     src/pm_audio.c

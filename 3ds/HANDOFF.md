@@ -6,3 +6,4 @@ F07-3 done: with wide, 2D and orthographic UI draw 1:1 centered (pm_gpu.c ui_ort
 F07-3 not tested: pause menu, text box, battle menu in wide. pause_map and pause_partners clamps stay (content is centered). Background tiling is F07-4. 3dsx +1140 bytes.
 F07-4 done: with wide the sky tiles over -40 to 360 (background.c bg_texrect), side fills skipped for CAM_DEFAULT and CAM_BATTLE (background_gfx.c), curtain frustum x1.25 (curtains.c). Toad golden 0 diff.
 F07-4 not tested: wave sky, battle sky, mac_00, flo_10 (the tour stopped in the intro at the 25 s smoke limit). 3dsx +40 bytes.
+F06-1 done: 3ds/src/pm_interp.c records every guMtxF2L as a leaf (start in __wrap_step_game_loop, stop in nuGfxTaskStart), switch fps60 / pm_opt.fps60. Leaf peak 297 of 4096. Toad golden 0 diff. 3dsx +908 bytes.
