@@ -37,3 +37,5 @@ FX2a: BUDGET 4/4 used again on 2026-10-19 (second budget). No user decision need
 
 F07-7 (2026-10-19): BUDGET 4/4 used. Code is done (frame grab 400 columns). Open: golden toad with `wide` off (expect 0 diff) and one fxtest=54 shot pair with the glow centre within 40 px of a screen edge. Needs a reset of 1 start. No user decision needed.
 F07-7 (2026-10-19, coordinator add): the overlay edge fix (pm_gpu_vert_clip, pm_gpu_tex_rect) is coded and not tested, BUDGET 4/4. Needs 2 starts in total (this test and the golden toad / edge glow test).
+
+V23 (2026-10-19): BUDGET 4/4 used. The party portrait cut is not a texture fault: a solid red fill of the strip rect is cut at the same x. Needs 1 start to log the scissor and depth state at the flush. Details in the V23 row. No user decision needed.

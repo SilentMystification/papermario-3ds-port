@@ -513,3 +513,9 @@
 11:23 F07-7 start 4 (last): fxtest=54,54,87 fxdx=-165 wide, expect 3 min
 11:24 F07-7 code done, 4/4 starts used, golden toad and edge shot open (QUESTIONS)
 11:27 F07-7 overlay edge fix coded, untested (budget)
+11:33 V23 start 1 of 4: party tab v23log=258, expect 2 min
+11:36 V23 start 2 of 4: box chunk log, expect 2 min
+11:38 V23 start 2 of 4: box chunk log, expect 2 min
+11:42 V23 start 3 of 4: skip frame box chunks (v23skip), expect 2 min
+11:45 V23 start 4 of 4: solid red fill in place of the portrait strips (v23solid), expect 2 min
+11:49 V23 budget used, cause narrowed to GPU scissor/depth stage, no fix
