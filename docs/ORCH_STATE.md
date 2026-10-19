@@ -135,3 +135,8 @@ Build number: read /work/build/build_number.txt in the Docker volume pm3ds-work 
 
 ## 9a. V23 result (added at the pause)
 V23 stays open (commits 3dcc56320, 1de1f7643). Map: G_TEXRECT now honours its tile argument (path dots tile 1). Not seen in a shot: new row V23b (debug switch for GF_MAP_* flags). Party portrait cut (about 30 of 150 px): NOT found. Ruled out: box panels, scissor, image 2, texrect uv, portrait bytes, palette. Suspect: GPU upload or sampling of the 256x16 CI8 texture, or the slot cache in pm_tex. Next step: one start that dumps the uploaded texel row in pm_tex load_inner (reset the V23 budget first). A user screenshot of the cut party screen would help. All agents are stopped at this point. Nothing runs.
+
+## 9b. Notes for the new chat (added at the end)
+- Nothing is running. No agent, no Azahar, no pending cron job. Closing the old chat kills nothing, because nothing is left. A cron job lives only in the chat that made it.
+- V23 repro command and next start are in the V23 row in 3ds/SLICES.md (HANDOFF 2026-10-19 text at the end of the row). The party portrait is drawn in 12-row strips (tile 0 is 150x12): check the strip loop and the line offset between strips.
+- The first thing to do in the new chat: `git status`, then `powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget V23` once, then relaunch V23 with a fresh sonnet agent.
