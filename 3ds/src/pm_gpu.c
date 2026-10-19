@@ -407,7 +407,7 @@ static void flush(void) {
         if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
         if (bottom > (pm_wide ? 400 : 360)) bottom = pm_wide ? 400 : 360;
         if (right > left && bottom > top)
-            C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)top, (u32)right, (u32)bottom);
+            C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)(400 - bottom), (u32)right, (u32)(400 - top)); /* V23: the GPU counts the 400 axis from the other end */
         else
             C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
