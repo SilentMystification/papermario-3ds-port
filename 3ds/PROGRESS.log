@@ -438,3 +438,9 @@
 11:40 V22 done: build links, 3dsx 13094436 to 13094692 (+256, lane build, includes other uncommitted edits). Azahar not run.
 02:24 V18V20 start 4: preset=toad fast shots shotwin=270:120 demoscene=13 (nok_12 demo after bridge, dark block on tree seen in start 3 shot 115), expect 2 min
 02:25 V18V20 done: all three stay open with evidence in SLICES rows. 4 starts used. Cull log removed. demoscene switch added. 3dsx 13094436 to 13094788 (with the temp log, about +100 without).
+02:26 H06c start: one rule on GAME_SRC, per-file lists removed, full rebuild
+02:31 H06c STOP: build links (needed src/npc_follow.c added), 3dsx 13094788 to 14015892 (+921104), .bss end 0x01472ca8 over 0x01380000 and over is_host bound 0x01400000, build 94 s incremental/152 s first. No Azahar run. CMakeLists.txt change left uncommitted.
+02:40 H06c plan B: -fno-toplevel-reorder only on GAME_SRC, npc_follow.c kept. 3dsx 13094788 to 13049632 (-45156), .bss end 0x01390728 (was 0x01394708, over 0x01380000 before too), 3ds/tools/check_data_order.py: 0 mismatches in old-list and H06a1 files, 44 in 4 other files
+02:41 H06c start 1: golden toad yard battle title, expect 3 min
+02:42 H06c start 4 (last): tour 40 maps incl nok_12 jan_04 -FaultStop, expect 5 min; fxtest and nok_12 shot skipped, 3 starts used by golden toad yard battle
+02:48 H06c end: golden toad yard battle ok, tour 26 maps rc smoke timeout after tour end (iwa_01 name not parsed, 14 maps left), no fault; fxtest 40-80 and nok_12 shot not run (budget 4/4). Rows not moved.

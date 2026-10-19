@@ -18,3 +18,4 @@ F06-4 not checked: pause1 text box, map change smear, shop anchor, star beam, sn
 V16V17: V21 fixed (fire dlist fall-through, CMake EFFECT_GFX_SRC), shot checked. Golden battle not run.
 V16 and V17 stay open with leads in SLICES.md (f2070 box is the tape graphic, no battle flicker frame found, partial fade open).
 V22: scan of src/ for dlists and Vtx arrays read past their end. 5 effect gfx files added to EFFECT_GFX_SRC. screen_overlays D_8014EA48 unsure (docs/plans/dlist_noend.md). Not run in Azahar.
+H06c: -fno-toplevel-reorder on GAME_SRC, lists removed, check 3ds/tools/check_data_order.py. Open: fxtest 40-80, nok_12 V20 shot, 14 tour maps, then move H06c and H06a1.
