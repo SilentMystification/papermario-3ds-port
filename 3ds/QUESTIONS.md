@@ -42,3 +42,5 @@ V26 (2026-10-19): BUDGET 4/4 used. Code: osGetCount fix and switch simlog. Needs
 V26 (2026-10-19): BUDGET in the lane B folder. The reset went to the main folder file 3ds/logs/test_budget.csv. Lane B uses its own copy (papermario-3ds-port-laneB/3ds/logs/test_budget.csv). Run -ResetBudget V26, V25 (needs 1 more) and V24 from the lane B folder. The simstep per-step log (f110 to f150, demoscene=4) is built and not run.
 
 V25 (2026-10-19): BUDGET 4/4 used again. No user decision. Needs a new budget for 2 starts: log prim, plan, r_blend and r_atest at the story strips for f322 (see row V25).
+
+V24 (2026-10-19): the PAL_MEM sites in src/battle/actor_rendering.c (dark, fear, poison, blend) are not tested at run time. No debug switch sets an actor status. Needs a small switch (battle with a status on one actor), 1 start. Golden intro differs 11 percent from the old frame (RNG and Mario jump): decide if 3ds/golden/intro.png is updated with --update.

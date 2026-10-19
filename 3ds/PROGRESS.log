@@ -521,3 +521,4 @@
 12:11 V25 intro page ghost f318 to f341 seen, cause open, 3 of 4 starts
 12:40 V26 root cause: (&DefaultMoveSpeed)[-1] adjacency, Mario max jump 0. Fixed, demo trd_09 passes, seed same in 2 runs
 13:30 V24 star rainbow: palette words are big-endian in memory, blend math swapped. PAL_MEM added. V25 sync_render in texrect no effect, open
+14:20 H06f sweep: one hit only (7B440, fixed in V26). golden battle ok, intro 11 percent diff (RNG, older golden)
