@@ -530,3 +530,6 @@
 12:04 F07-7 done, moved
 12:05 FX3b start 1: fxtest=63 shots, 60 s
 12:06 FX3b done, no code change
+12:06 FX3a start 1: fxtest_report run 80 effects in one chunk, expected 10 to 25 min
+12:11 FX3a start 4: 80 effects in one run, switch buffer raised to 1023, expected 15 min
+12:12 FX3a budget used, step 1 and switch buffers done, sweep open

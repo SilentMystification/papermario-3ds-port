@@ -182,7 +182,7 @@ static void clear_all(void) {
 }
 
 void pm_fxtest_tick(unsigned f) {
-    static char sw[300];
+    static char sw[1024];
     int slot, k, i, n;
     if (nsel < 0) {
         char* p;

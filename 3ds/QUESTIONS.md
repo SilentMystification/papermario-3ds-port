@@ -41,3 +41,5 @@ F07-7 (2026-10-19, coordinator add): the overlay edge fix (pm_gpu_vert_clip, pm_
 V23 (2026-10-19): BUDGET 4/4 used. The party portrait cut is not a texture fault: a solid red fill of the strip rect is cut at the same x. Needs 1 start to log the scissor and depth state at the flush. Details in the V23 row. No user decision needed.
 
 FX2a (2026-10-19): BUDGET 4/4 used (third budget). Noise scroll works. Flame is still a red block (slot 9 nearly white). The darkness stencil at omo_14 frame 200 may be a regression (hard lit rectangle). Needs 2 starts. No user decision needed.
+
+FX3a (2026-10-19): BUDGET 4/4 used. The 80 effect sweep did not start (run_azahar.ps1 rc 1 before Azahar starts, full -Debug string 305 chars). Needs 1 start, no user decision.
