@@ -141,3 +141,4 @@ V18V20: new switch demoscene=<n> in pm_warp.c (index in DemoScenes, 13 gave the 
 V23 partial: G_TEXRECT now uses its tile argument (pause map path dots, pm_gbi.c), 3dsx +68 B (13049632 to 13049700). Party portrait cut at 30 px not found, 4 of 4 starts used, row V23 stays open with notes.
 V16b: no box seen in Azahar (Shy Guys with forced HEAVY flash, medium, light). All palette writes use PAL_MEM. Hardware test needed, row V16b in SLICES.md.
 V18 and V19: no code change. Leads and the device debug switches (nozclip, nozt, depthview=3) are in the SLICES rows. build.sh BN1 read now strips CR from build_base.txt (the lane build failed on CRLF).
+V23c: no second pause hand in Azahar (5 starts, fps60 and wide too). The pause hand is drawn once. Needs user steps or photo.
