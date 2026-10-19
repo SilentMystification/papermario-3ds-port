@@ -449,3 +449,10 @@
 02:51 H06c start A: preset=toad fast shots demoscene=0 (nok_12 bridge), expect 3 min
 02:53 H06c start B: fxtest 40-80, expect 10 min
 02:54 H06c done: fxtest 40-80 rc 0, nok_12 demo shot looks right (brick blocks orange, 30 frame spacing), rows H06c and H06a1 moved
+02:55 V23 start A: preset=toad pause party+map shotwin 300:95, expect 2 min
+02:57 V23 start A2 (run 1 had no partner tab): partner=1 window 230:200
+02:58 V23 start B: party tab window 205:25 + xtrace, expect 2 min
+03:03 V23: party portrait is hidden by draw_box interior (box alpha), add xt log in box_pattern_rect, build
+03:04 V23 fix 1: texrect uses its own tile index (path dots tile 1). Build + start C: party log + map shot, window 205:130, expect 8 min
+03:10 V23 start C done: party log shows texrect, tile, scissor, box alpha, palette all right. Cut happens after texture build. Map shot has no path dots in the toad preset.
+03:13 V23 stop: debug log removed, rebuilt, 3dsx 13049700 B (+68). Budget 4 of 4 used. Row V23 stays open, notes in SLICES.md.

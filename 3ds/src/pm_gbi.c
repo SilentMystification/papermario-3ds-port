@@ -1891,13 +1891,15 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             box_fold_sync();
             comb_audit();
             if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
-            ensure_tile(use_t1 ? 1 : 0);
+            /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
+            int rtile = (use_t1 || (((w1 >> 24) & 7) == 1 && td[1].valid)) ? 1 : 0;
+            ensure_tile(rtile);
             dual_bind();
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
             /* V12b: the tile shift scales a texrect coordinate too (bulb glow uses shift 1 1). It applies after the interpolation, so it scales the step as well. */
-            float ms = shift_mul(tile_shift[use_t1 ? 1 : 0][0]);
-            float mt = shift_mul(tile_shift[use_t1 ? 1 : 0][1]);
+            float ms = shift_mul(tile_shift[rtile][0]);
+            float mt = shift_mul(tile_shift[rtile][1]);
             float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)tile_x0) / (float)tw;
             float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)tile_y0) / (float)th;
             float dsdx = (float)(s16)(hd >> 16) / 1024.f * ms;

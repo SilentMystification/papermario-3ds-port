@@ -138,3 +138,4 @@ F07-6 done: end_00 and end_01 backdrop copies (model.c parade_wide_setup, shot o
 F07-6 not seen in a shot: BulbGlow, Underwater, DarknessStencil, star_spirits_energy (no scene reached). New row F07-7. Title 4:3 path not seen in a shot.
 V18V20: no fault fixed. V18 model cull is stable (no toggle). V20 is the nok_12 demo after the bridge (dark block on the tree). V19 is the jan_04 demo. Evidence in the SLICES rows.
 V18V20: new switch demoscene=<n> in pm_warp.c (index in DemoScenes, 13 gave the Peach scene). 4 starts used. 3dsx 13094436 to about 13094500.
+V23 partial: G_TEXRECT now uses its tile argument (pause map path dots, pm_gbi.c), 3dsx +68 B (13049632 to 13049700). Party portrait cut at 30 px not found, 4 of 4 starts used, row V23 stays open with notes.
