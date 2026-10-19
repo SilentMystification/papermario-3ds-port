@@ -342,8 +342,9 @@ set_property(SOURCE ${DECOMP}/src/world/area_gv/gv_01/main.c ${DECOMP}/src/world
 # 14 effect gfx files have raw byte lists (grep '^u8 D_09' src/effects/gfx). Only snowfall and fright_jar are done here: all 14 cost 18 KB (the 10 KB rule), see SLICES.md row V12d.
 # Keep the file as one data block in source order, as in the ROM.
 set(EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/snowfall.c ${DECOMP}/src/effects/gfx/fright_jar.c)
+# V22: five more files where a gsSPVertex list loads more vertices than its array holds and the triangles index past it into the next array(s) (scan: docs/plans/dlist_noend.md).
 # V12d: the 12 other files with a raw u8 D_09 list. V16V17: fire_breath (D_09000B88 loads 5 vertices and ends, the triangles are in D_09000BA8).
-foreach(_e balloon effect_75 ending_decals fire_breath fire_flower lil_oink peach_star_beam quizmo_assistant snowman_doll static_status sun throw_spiny tubba_heart_attack water_block)
+foreach(_e balloon effect_75 ending_decals fire_breath fire_flower flashing_box_shockwave huff_puff_breath ice_pillar lil_oink merlin_house_stars peach_star_beam purple_ring quizmo_assistant snowman_doll static_status sun throw_spiny tubba_heart_attack water_block)
     list(APPEND EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/${_e}.c)
 endforeach()
 set_property(SOURCE ${EFFECT_GFX_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)

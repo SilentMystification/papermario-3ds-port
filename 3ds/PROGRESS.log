@@ -430,3 +430,9 @@
 02:00 V16V17 step: mask_span change in pm_gbi.c reverted (no proof it is needed, shared by all tiles). Rebuilding with the fire fix only.
 02:02 V16V17 start 4: intro fast shots shotwin=2290:35, expect 3 min (V21 fire check)
 02:03 V16V17 done: V21 moved to SLICES_DONE (fire visible f2290-2324, 3dsx 13094360 to 13094436 +76). V16 and V17 open with leads. 4 starts used, golden not run.
+11:00 V22 step: static scan of src/ with assets/us includes expanded: 6 Gfx without end (5 known, D_8014EA48 unsure), 60 vertex over-loads, 5 new files where triangles index past the array.
+11:05 V22 step: flashing_box_shockwave, huff_puff_breath, ice_pillar, merlin_house_stars, purple_ring added to the EFFECT_GFX_SRC foreach in 3ds/CMakeLists.txt. Notes in docs/plans/dlist_noend.md.
+02:13 V18V20 start 1: intro fast culllog shotwin=3364:170, expect 4 min
+02:16 V18V20 start 2: same with shots shotwin=3440:70 (run 1 had no shots switch; cull log is monotone, no toggle), expect 3 min
+02:19 V18V20 start 3: preset=toad fast shots demoscene=0 (nok_12 demo, bridge), pm_warp.c demoscene switch added, expect 3 min
+11:40 V22 done: build links, 3dsx 13094436 to 13094692 (+256, lane build, includes other uncommitted edits). Azahar not run.

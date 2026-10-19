@@ -17,3 +17,4 @@ F06-4 done: nodes in msg, hud_element, peach_star_beam, snowfall (wrapEpoch), fl
 F06-4 not checked: pause1 text box, map change smear, shop anchor, star beam, snowfall, flowers (budget used).
 V16V17: V21 fixed (fire dlist fall-through, CMake EFFECT_GFX_SRC), shot checked. Golden battle not run.
 V16 and V17 stay open with leads in SLICES.md (f2070 box is the tape graphic, no battle flicker frame found, partial fade open).
+V22: scan of src/ for dlists and Vtx arrays read past their end. 5 effect gfx files added to EFFECT_GFX_SRC. screen_overlays D_8014EA48 unsure (docs/plans/dlist_noend.md). Not run in Azahar.
