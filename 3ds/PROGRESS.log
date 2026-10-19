@@ -506,3 +506,4 @@
 06:58 H06b5 start 1: tour of mgm_03 kzn_05 flo_17 hos_01 kkj_02 plus tik_01 (H06b1 check) and omo_07 (H06b2), expect 6 min
 07:01 C2J start 1: fxtest=49 with a log of the skip 08 address, expect 2 min
 07:05 C2J: cause = --gc-sections dropped D_09000BA8 (no reference), B88 ran into vertex data. Fix: -fno-data-sections on src/effects/gfx/*.c. Start 2: fxtest=49 shots, expect 2 min
+07:10 H06e warp past kmr_ gets partner 1, tik_01 smoke clean
