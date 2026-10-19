@@ -32,3 +32,5 @@ F06-6 (2026-10-19): BUDGET 4/4 used. fps60+wide tour faults in load_mtx at area 
 
 V16 (2026-10-19): No flicker frame found. Name the scene, enemy and attack where the box shows (or a save), then one run with drawlog on that frame closes it. 1 of 4 starts left in row V16.
 V19 (2026-10-19): BUDGET 4/4 used. Azahar shows no Sushie shadow and no jump in jan_04 (frames 170 to 320). Question: is the flicker seen on Azahar or only on the O3DS and N3DS? Which shadow flickers, Sushie or another one?
+
+FX2a: BUDGET 4/4 used on 2026-10-19. No user decision needed. The row needs a new budget for one more run (state in the FX2a row of 3ds/SLICES.md).
