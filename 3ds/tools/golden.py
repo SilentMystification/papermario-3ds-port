@@ -38,7 +38,7 @@ SCENES = {
 
 def run(name):
     sw, f = SCENES[name]
-    dbg = f"{sw} shots shotwin={f}:3"
+    dbg = f"{sw} fixedseed shots shotwin={f}:3"  # R-SEED: a normal boot has a random RNG seed, tests use the fixed one
     if os.path.exists(SHOT): os.remove(SHOT)  # a stale shot from an earlier run must never be read
     r = subprocess.run(["powershell", "-File", os.path.join(ROOT, "3ds", "run_azahar.ps1"), "-Turbo", "-FaultStop",
                         "-Timeout", "90", "-Until", "shot 2 frame", "-Debug", dbg], capture_output=True, text=True, cwd=ROOT)

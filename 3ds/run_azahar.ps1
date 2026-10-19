@@ -192,6 +192,7 @@ try {
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
 Copy-Item "$out\pm_3ds.3dsx" "$sd\$x3dsx" -Force
 Remove-Item $log -ErrorAction SilentlyContinue
+if ($Smoke -and $Debug -notmatch "fixedseed") { $Debug = "$Debug fixedseed" } # R-SEED: smoke runs use the fixed RNG seed
 if ($Debug) { Set-Content "$sd\debug3ds.txt" $Debug } else { Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue }
 Remove-Item "$sd\shots", "$out\shots" -Recurse -ErrorAction SilentlyContinue # "shots" switch output
 Remove-Item $emuLog -ErrorAction SilentlyContinue # an old exception dump must not stop this run

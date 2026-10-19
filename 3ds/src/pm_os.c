@@ -40,13 +40,14 @@ static int rom_remap; /* 1: rom_bytes is the packed image (pm_rom_keep), 0: full
 
 /* V26: the N64 counts from the reset, so the game's gRandSeed += osGetCount() (main.c) starts the same on every boot and the demo scenes
  * (Bill Blasters fire by RandInt) play the same way. The 3DS tick counts from the console start, so the seed was random per boot.
- * Count from the first call, in the N64 rate (46.875 MHz). The 32 bit tick wraps every 16 s, enough for deltas of the seed call. */
+ * Count from the first call, in the N64 rate (46.875 MHz). A boot salt (the tick since console start) is added unless the switch fixedseed is set. The 32 bit tick wraps every 16 s, enough for deltas of the seed call. */
 u32 osGetCount(void) {
     static u32 t0;
     static int started;
+    static u32 salt;
     u32 t = pm_ticks();
-    if (!started) { started = 1; t0 = t; }
-    return (u32)((unsigned long long)(t - t0) * 46875u / 268111u);
+    if (!started) { started = 1; t0 = t; salt = pm_debug_has("fixedseed") ? 0 : t * 2654435761u; } /* R-SEED: random start seed each boot, the switch fixedseed (tests, golden, smoke) keeps it the same */
+    return salt + (u32)((unsigned long long)(t - t0) * 46875u / 268111u);
 }
 
 u32 osVirtualToPhysical(void* addr) {

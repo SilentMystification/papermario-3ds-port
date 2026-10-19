@@ -547,3 +547,4 @@
 12:15 FX3c start 2 after reverting the 1024 buffers (boot crash in _svfprintf_r): fxtest=93 shots, 60 s
 12:17 FX3c findings: ENV blue, signed form INEXACT, no code. Buffers reverted, fxtest_report splits 40 per start
 12:17 C-O3DS row added, blocked on which key is Z
+15:40 R-SEED done: random seed per boot, fixedseed for tests. merge main done, smoke yard ok

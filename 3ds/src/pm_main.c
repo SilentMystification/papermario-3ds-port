@@ -249,6 +249,7 @@ int pm_interp_key_draw(void);
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
+    { extern unsigned gRandSeed; pm_log("rng start seed %08x%s", gRandSeed, pm_debug_has("fixedseed") ? " (fixedseed)" : ""); } /* R-SEED */
     nuGfxCfb = cfb_list;
     unsigned presents = 0;
     int ever = 0;
