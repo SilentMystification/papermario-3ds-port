@@ -361,7 +361,8 @@ void pm_warp_tick(unsigned frame) {
         char sv[12];
         if (pm_debug_value("btlstatus", sv, sizeof sv) && get_game_mode() == GAME_MODE_BATTLE && gBattleStatus.enemyActors[0]) {
             Actor* ea = gBattleStatus.enemyActors[0];
-            if (!strcmp(sv, "static")) { ea->staticStatus = STATUS_KEY_STATIC; ea->staticDuration = 99; }
+            if (!strcmp(sv, "flicker")) { ActorPart* ap; for (ap = ea->partsTable; ap; ap = ap->nextPart) ap->opacity = 128; } /* V16: the damage flicker */
+            else if (!strcmp(sv, "static")) { ea->staticStatus = STATUS_KEY_STATIC; ea->staticDuration = 99; }
             else {
                 ea->debuff = !strcmp(sv, "poison") ? STATUS_KEY_POISON : !strcmp(sv, "paralyze") ? STATUS_KEY_PARALYZE : STATUS_KEY_DIZZY;
                 ea->debuffDuration = 99;

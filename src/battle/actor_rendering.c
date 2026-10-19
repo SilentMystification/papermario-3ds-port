@@ -2050,7 +2050,7 @@ void make_flash_palettes(ActorPart* part) {
             dest = decorations->copiedPalettes[1][i];
 
             for (j = 0; j < SPR_PAL_SIZE; j++) {
-                *dest = *src | 0xFFFE; // pure white, not affecting alpha bit
+                *dest = PAL_MEM(PAL_MEM(*src) | 0xFFFE); // pure white, not affecting alpha bit (V16: the word is big-endian in memory on the 3DS)
                 src++;
                 dest++;
 
