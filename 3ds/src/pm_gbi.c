@@ -235,6 +235,7 @@ static int comb_set;
  * meshes leave cn[3] at 0, so passing it through made them vanish. */
 static int comb_alpha_shade = 1;
 
+extern char __end__[]; /* linker: end of .bss */
 static int is_host(u32 p) {
     unsigned int heap = __ctru_heap;
     unsigned int hend = __ctru_heap + __ctru_heap_size;
@@ -242,7 +243,7 @@ static int is_host(u32 p) {
     unsigned int lend = lin + __ctru_linear_heap_size;
     if (p >= heap && p < hend) return 1;
     if (p >= lin && p < lend) return 1;
-    if (p >= 0x00100000u && p < 0x01400000u) return 1;
+    if (p >= 0x00100000u && p < (u32)(uintptr_t)__end__) return 1;
     return 0;
 }
 
@@ -1285,6 +1286,7 @@ void pm_gbi_init(void) {
     memset(vert_live, 0, sizeof vert_live);
     geom = G_SHADE | G_SHADING_SMOOTH;
     upload_mvp();
+    pm_log("is_host bound __end__ %08x, margin below old bound 0x01400000: %d bytes", (unsigned)(uintptr_t)__end__, 0x01400000 - (int)(uintptr_t)__end__);
 }
 
 

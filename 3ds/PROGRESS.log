@@ -465,3 +465,5 @@
 04:29 V23 start 3: party tab needs two R*3 (first start showed Items tab). window 256:10, expect 6 min
 04:36 V23 start 4: v23skip on odd frames (box draws skipped), window 256:10, expect 6 min
 04:39 V23 stop 3: budget 4/4 used, cause is a draw that covers the portrait after strip 0 (frame box interior), not the texture. Row open, notes in SLICES.md
+04:41 H06a2 smoke yard, 17 s
+11:00 H06a2 smoke yard, expect 20 s
