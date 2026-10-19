@@ -507,3 +507,4 @@
 07:01 C2J start 1: fxtest=49 with a log of the skip 08 address, expect 2 min
 07:05 C2J: cause = --gc-sections dropped D_09000BA8 (no reference), B88 ran into vertex data. Fix: -fno-data-sections on src/effects/gfx/*.c. Start 2: fxtest=49 shots, expect 2 min
 07:10 H06e warp past kmr_ gets partner 1, tik_01 smoke clean
+07:20 H06b2 cycle 2 (K - COMBINED) * X + K in 3 stages, planerr 7

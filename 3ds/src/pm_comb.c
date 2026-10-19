@@ -12,7 +12,7 @@
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN, TN_KH };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
 typedef struct { unsigned char func, scale; Term t[3]; unsigned char inv[3]; } Sk;
 
@@ -140,6 +140,17 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
         out[2] = mk(PM_F_SUBTRACT, prv, TM(TN_FKN, 0), TM(TN_FKN, 0), 0, 0, 0);
         return 3;
     }
+    if (!cur_grp && !fold_t[2] && B.n == TN_CMB && !B.a && is_k(A) && teq(A, D) && C.n != TN_CMB) {
+        /* H06b2: (K - COMBINED) * X + K, cycle 2. K - COMBINED is negative where COMBINED > K and the PICA clamps it at 0. With Q = 1 - COMBINED:
+         * S = (Q + K) / 2, Mid = S * X + (1 - X) / 2, result = 2 * (Mid - (1 - K) / 2) = K + X * (2 S - 1). All stages stay in 0..1, so the clamp is exact.
+         * HALF rides in the buffer colour, (1 - K) / 2 is the constant KH. */
+        Term h = TM(TN_HALF, 0), kh = TM(TN_KH, 0);
+        fold_t[0] = A.n; fold_t[1] = A.a;
+        out[0] = mk(PM_F_INTERP, prv, A, h, 1, 0, 0);
+        out[1] = mk(PM_F_INTERP, prv, h, C, 0, 0, 0);
+        out[2] = mk(PM_F_SUBTRACT, prv, kh, kh, 0, 0, 0); out[2].scale = 2;
+        return 3;
+    }
     if (C.n == TN_CMB || D.n == TN_CMB) return -3;
     out[0] = mk(PM_F_SUBTRACT, A, B, B, 0, 0, 0);
     if (isz(D)) out[1] = mk(PM_F_MODULATE, prv, C, C, 0, 0, 0);
@@ -198,6 +209,7 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     case TN_FC: name = PM_NM_FC; break;
     case TN_FKP: name = PM_NM_FKP; break;
     case TN_FKN: name = PM_NM_FKN; break;
+    case TN_KH: name = PM_NM_KH; break;
     case TN_KEY: name = PM_NM_KEYC; break;
     case TN_KS: name = PM_NM_KEYS; break;
     case TN_EN: name = PM_NM_ENV; break;
@@ -350,11 +362,21 @@ static unsigned fold_colour(const PmPlan* p, int kind, unsigned prim, unsigned e
     return o;
 }
 
+/* H06b2: (1 - K) / 2 per channel, K named by fold[0], fold[1]. */
+static unsigned kh_colour(const PmPlan* p, unsigned prim, unsigned env, unsigned plod) {
+    float pr[4], en[4];
+    unsigned o = 0;
+    unp(prim, pr); unp(env, en);
+    for (int ch = 0; ch < 4; ch++) o = o << 8 | (unsigned)((1.f - k_val(p->fold[0], p->fold[1], ch < 3 ? ch : 0, pr, en, plod)) * 127.5f + .5f);
+    return o;
+}
+
 static unsigned name_colour(const PmPlan* p, int n, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
     switch (n) {
     case PM_NM_FC: return fold_colour(p, 0, prim, env, plod);
     case PM_NM_FKP: return fold_colour(p, 1, prim, env, plod);
     case PM_NM_FKN: return fold_colour(p, 2, prim, env, plod);
+    case PM_NM_KH: return kh_colour(p, prim, env, plod);
     case PM_NM_KEYC: return key;
     case PM_NM_KEYS: return keys;
     case PM_NM_PK: return pk_colour(prim, key);
