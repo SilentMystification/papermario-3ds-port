@@ -60,6 +60,7 @@ void pm_gpu_set_prim(unsigned rgba);
 /* V06: a last stage mixes the colour to rgb of `rgba` by its alpha (the RDP blender with the blend or fog colour and the fog alpha). */
 void pm_gpu_set_mix(int on, unsigned rgba);
 void pm_gpu_set_env(unsigned rgba); /* combine mode 5: lerp from ENV (vertex colour) to PRIM by texel */
+void pm_gpu_set_memblend(int on); /* FX2a: blender B is the memory alpha */
 /* Draw the current batch now. The next vertices belong to a different texture. */
 void pm_gpu_flush(void);
 /* N64 pixels, y down. Clipped to the 320x240 picture inside the 400-wide target. */

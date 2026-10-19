@@ -157,6 +157,7 @@ static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_
 extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
+static int r_memblend; /* FX2a: the blender mixes with the memory colour by the memory alpha (G_BL_A_MEM) */
 /* B2: T2 grab state. grab_tex holds a copy of the main target strips (same tiled layout, 256 x 512). grab_bind: flush binds it
  * instead of the pm_tex texture. A grab copies the full width. grab_dirty: a draw of unknown rows went to the main target since the
  * last grab. [grab_dy0, grab_dy1) are the rows that texture rectangles drew since then (R13c: motion_blur_flame loads one strip of
@@ -316,7 +317,28 @@ static void flush(void) {
         C3D_TexEnvColor(e, abgr(r_mixcol));
         env_hi++;
     }
-    if (off_active && off_i8 && !(r_blend && !r_replace) && env_hi < 6) { /* FX2a: a blended 8 bit write keeps the blend weight in A */
+    /* FX2a: an 8 bit image has memory alpha 0xE0 (7/8). The RDP blender then gives (P*a + M*0.88) / (a + 0.88): the weight of P is
+     * a / (a + 0.88), 0.53 at a = 1. The PICA blends by src alpha, so the fragment alpha becomes 0.532 * (1 - (1 - a)^2), a fit of that weight
+     * (error under 0.04). Pass A of the flame (colour 0, alpha 1) so keeps 0.47 of the old pixel and pass B keeps the old pixel where the blob alpha is 0. */
+    int memb = off_active && off_i8 && r_memblend && !r_replace;
+    if (memb && env_hi <= 4) {
+        C3D_TexEnv* e = C3D_GetTexEnv(env_hi++);
+        C3D_TexEnvInit(e);
+        C3D_TexEnvSrc(e, C3D_RGB, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
+        C3D_TexEnvFunc(e, C3D_RGB, GPU_REPLACE);
+        C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
+        C3D_TexEnvOpAlpha(e, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA);
+        C3D_TexEnvFunc(e, C3D_Alpha, GPU_MODULATE);
+        e = C3D_GetTexEnv(env_hi++);
+        C3D_TexEnvInit(e);
+        C3D_TexEnvSrc(e, C3D_RGB, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
+        C3D_TexEnvFunc(e, C3D_RGB, GPU_REPLACE);
+        C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_CONSTANT, GPU_CONSTANT);
+        C3D_TexEnvOpAlpha(e, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
+        C3D_TexEnvFunc(e, C3D_Alpha, GPU_MODULATE);
+        C3D_TexEnvColor(e, 0x88000000u);
+    } else memb = 0;
+    if (off_active && off_i8 && !(r_blend && !r_replace) && !memb && env_hi < 6) { /* FX2a: a blended 8 bit write keeps the blend weight in A */
         /* X02: an 8 bit intensity image reads as I in all four channels. The pixel written is (R, R, R, R). */
         C3D_TexEnv* e = C3D_GetTexEnv(env_hi);
         C3D_TexEnvInit(e);
@@ -390,7 +412,7 @@ static void flush(void) {
             C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
     C3D_CullFace(GPU_CULL_NONE);
-    if (off_active && (r_replace || (off_i8 && !r_blend)))
+    if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
     else if (off_active) /* alpha accumulates as source over destination: a covered pixel becomes opaque */
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
@@ -737,6 +759,7 @@ void pm_gpu_off_end(void) {
 }
 
 void pm_gpu_set_replace(int on) { r_replace = on; }
+void pm_gpu_set_memblend(int on) { if (on == r_memblend) return; flush(); r_memblend = on; }
 
 /* B2: T2 grab. The PICA cannot sample the target it draws to, and a CPU read mid-frame sees the last frame (the GPU has not run
  * yet). So: draw what is pending, split the command list, copy the strips of the main target (GX_TextureCopy, queued after the

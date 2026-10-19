@@ -496,6 +496,8 @@ mixed:
         pm_gpu_set_nocolor(nocol);
     }
     pm_gpu_set_render((m & 0x10u) != 0, (m & 0x20u) != 0, blend, atest, (m & 0xc00u) == 0xc00u);
+    /* FX2a: two cycle only. The one cycle darkness stencil (CLD_SURF into an 8 bit slot) reads memory the port does not hold (the z buffer fill), it stays a write. */
+    pm_gpu_set_memblend(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1 && ((m >> 20) & 3u) == 1u && ((m >> 16) & 3u) == 1u);
 }
 
 static unsigned rgba_from_5551(unsigned c) {
@@ -1006,7 +1008,8 @@ static void t1_fold(float u0, float u1, float v0, float v1) {
         win = (lo[a] * sc[a] + o[a]) * (float)dim[a] - (float)org[a]; /* window position of the draw start, texels */
         if (win >= 0.f && win < wsz) continue;
         ws = win - wsz * floorf(win / wsz);
-        wrapped = ws + ex[a] > wsz ? (wsz - ex[a] > 0.f ? wsz - ex[a] : 0.f) : ws;
+        { float lim = ex[a] >= wsz && (float)dim[a] > wsz ? (float)dim[a] : wsz; /* FX2a: a draw over the whole window (flame noise scroll) reads the wrapped pad of the texture */
+          wrapped = ws + ex[a] > lim ? (lim - ex[a] > 0.f ? lim - ex[a] : 0.f) : ws; }
         o[a] += (wrapped - win) / (float)dim[a];
         changed = 1;
     }

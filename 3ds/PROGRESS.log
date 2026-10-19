@@ -491,3 +491,15 @@
 06:15 H06d done
 06:17 H06b done
 06:28 C2R done
+06:30 FX2a session start: Azahar start 1: fxtest=27 offdump=410, expect 1 min
+06:35 FX2a edit: G_BL_A_MEM blend for 8 bit slots (pm_gpu memblend, fragment alpha .532*(1-(1-a)^2)). build 1, expect 5 min
+06:37 FX2a start 3: memblend build, shape appears (dim red). offdump=436 to see growth, expect 1 min
+06:39 FX2a: slot 8 and 9 static between frames (noise scroll lost?). build 2 with t1log, Azahar start 4 of 4, expect 2 min
+06:42 FX2a: cause of static noise = t1_fold pins a full window draw to 0 (scroll lost). Fix coded, memblend limited to two cycle. build 3, no Azahar start left (4/4)
+06:45 H06b1 start 1: warp=sbk_00:0 smoke 400, find comb new fc121824 and the frame, expect 1 min
+06:45 H06b1 start 2: warp=tik_01:0 (the audit line f1241 is 25 frames after tik_01 loaded), expect 1 min
+06:46 H06b1 start 3: tik_01 drawlog=37:2 to find chunk with oml 00552078, expect 1 min
+06:48 H06b1 start 4: dd log with tex flag, tik_01 drawlog=37:2, expect 1 min
+06:54 H06b1 coded (G_TEXTURE off reads texel 0,0, budget used 4/4, not tested). H06b3 coded: folded form for (A-B)*C+D with constant B C D in pm_comb.c. build
+06:56 H06b3 start 1: warp=hos_00:0 smoke 600, expect 2 min
+06:56 H06b3 start 2: shot of hos_00 frame 45, expect 1 min
