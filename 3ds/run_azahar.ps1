@@ -65,7 +65,7 @@ if ($ResetBudget) {
     Write-Output "Budget of row $ResetBudget reset."; exit 0
 }
 $row = if ($env:PM_ROW) { $env:PM_ROW } else { "adhoc" }
-$max = if ($env:PM_BUDGET) { [int]$env:PM_BUDGET } elseif ($row -eq "adhoc") { 12 } else { 4 }
+$max = if ($env:PM_BUDGET) { [int]$env:PM_BUDGET } elseif ($row -eq "adhoc") { 12 } else { 8 }
 if ($row -eq "adhoc") { Write-Output "WARNING: PM_ROW is not set. Set PM_ROW to your row id. Runs count under row adhoc (12 per 3 hours)." }
 $sha = (Get-FileHash "$out\pm_3ds.3dsx" -Algorithm SHA256).Hash.ToLower()
 $argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "Force", "ResetBudget", "Milestone" } | Sort-Object Key |
