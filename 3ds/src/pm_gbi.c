@@ -930,10 +930,11 @@ static void comb_audit(void) {
                 cc_decode(comb_w0, comb_w1, s);
                 cc_text(s, 0, t1, sizeof t1);
                 cc_text(s, 1, t2, sizeof t2);
-                pm_log("comb new f%d %s w %08x %08x cyc %u oml %08x fmt %u/%u tex %d t1only %d uses T0 %d T1 %d leg %d legerr %d plan %s why %d planerr %d nst %d | c1 %s | c2 %s",
+                pm_log("comb new f%d %s w %08x %08x cyc %u oml %08x fmt %u/%u tex %d t1only %d uses T0 %d T1 %d leg %d legerr %d plan %s why %d planerr %d nst %d",
                        rm_frame, aud[i].bad ? "INEXACT" : "PLAN-OK", comb_w0, comb_w1, cyc + 1, omode_l, tile_fmt[0], tile_siz[0], tex_on, use_t1,
                        cc_uses(s, cyc == 1, 0), cc_uses(s, cyc == 1, 1), leg_mode, (int)(d->el * 1000.f), plan_active ? "USED" : "no", d->why,
-                       (int)(d->ep * 1000.f), d->plan.n, t1, t2);
+                       (int)(d->ep * 1000.f), d->plan.n);
+                pm_log("comb text %08x c1 %s | c2 %s", comb_w0, t1, t2);
                 if (!d->why) pm_log("comb dbg %08x act %d use %d lastsync use %d why %d cyc %d special %d at f%d", comb_w0, plan_active, d->use, ls_use, ls_why, ls_cyc, ls_dual, ls_frame);
             }
         }
@@ -1896,6 +1897,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
             zcol = cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)cimg >= nuGfxZBuffer && (const unsigned short*)cimg < nuGfxZBuffer + 320 * 240)) && !(omode_l & (1u << G_MDSFT_ZSRCSEL));
             if (zcol) { zslot_on = 1; sync_render(); }
+            else if (img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
             off_screen_check();
             box_fold_sync();
             comb_audit();

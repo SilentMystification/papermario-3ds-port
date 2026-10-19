@@ -21,7 +21,7 @@ void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
 enum { PM_S_TEX0, PM_S_VTX, PM_S_CONST, PM_S_PREV, PM_S_BUF, PM_S_TEX1 };
 enum { PM_O_C, PM_O_1MC, PM_O_A, PM_O_1MA };
 enum { PM_F_REPLACE, PM_F_MODULATE, PM_F_ADD, PM_F_SUBTRACT, PM_F_INTERP, PM_F_MULADD };
-enum { PM_NM_NONE, PM_NM_ZERO, PM_NM_PRIM, PM_NM_ENV, PM_NM_PLOD, PM_NM_SHADE, PM_NM_PK, PM_NM_KEYC, PM_NM_KEYS, PM_NM_HALF, PM_NM_K4, PM_NM_FC, PM_NM_FKP, PM_NM_FKN, PM_NM_KH }; /* PK: PRIM - CENTER, B6 */
+enum { PM_NM_NONE, PM_NM_ZERO, PM_NM_PRIM, PM_NM_ENV, PM_NM_PLOD, PM_NM_SHADE, PM_NM_PK, PM_NM_KEYC, PM_NM_KEYS, PM_NM_HALF, PM_NM_K4, PM_NM_FC, PM_NM_FKP, PM_NM_FKN, PM_NM_KH, PM_NM_KC }; /* PK: PRIM - CENTER, B6 */
 typedef struct {
     unsigned char src[3], op[3], func; /* one channel group of one stage */
     unsigned char scale; /* 0 or 1: x1, 2 or 4: the PICA stage scale (result x scale, then clamp) */

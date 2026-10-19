@@ -12,7 +12,7 @@
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN, TN_KH };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN, TN_KH, TN_KC };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
 typedef struct { unsigned char func, scale; Term t[3]; unsigned char inv[3]; } Sk;
 
@@ -106,6 +106,21 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
         out[0] = mk(PM_F_MULADD, B, pa, pc, 0, 0, 1);
         out[1] = mk(PM_F_MULADD, A, pa, pc, 0, 0, 1);
         hold_alpha = 1;
+        return 2;
+    }
+    if (!cur_grp && B.n == TN_K4 && is_k(C) && !isz(C) && !iso(C) && (A.n == TN_T0 || A.n == TN_T1) && (D.n == TN_T0 || D.n == TN_T1)) {
+        /* FX2a, flame blur cycle 1: (T1 - K4) * k + T0 = k * T1 + T0 - K4 * k. The PICA clamps T1 - K4 at 0 and loses the negative part.
+         * Halved: H = (k * T1 + T0) / 2 stays under 1, then 2 * (H - K4 * k / 2) is exact, the clamp at 0 is the RDP clamp. */
+        fold_t[4] = C.n; fold_t[5] = C.a;
+        out[0] = mk(PM_F_MODULATE, A, C, C, 0, 0, 0);
+        out[1] = mk(PM_F_INTERP, prv, D, TM(TN_HALF, 0), 0, 0, 0);
+        out[2] = mk(PM_F_SUBTRACT, prv, TM(TN_KC, 0), TM(TN_KC, 0), 0, 0, 0); out[2].scale = 2;
+        return 3;
+    }
+    if (cur_grp && is_k(C) && teq(C, D) && !isz(C) && !iso(C) && (A.n == TN_T0 || A.n == TN_T1) && (B.n == TN_T0 || B.n == TN_T1)) {
+        /* FX2a: (A - B) * k + k = k * (1 - B) + k * A, no negative step, the sum clamps at 1 as the RDP does. */
+        out[0] = mk(PM_F_MODULATE, B, C, C, 1, 0, 0);
+        out[1] = mk(PM_F_MULADD, A, C, prv, 0, 0, 0);
         return 2;
     }
     if (iso(A)) {
@@ -210,6 +225,7 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     case TN_FKP: name = PM_NM_FKP; break;
     case TN_FKN: name = PM_NM_FKN; break;
     case TN_KH: name = PM_NM_KH; break;
+    case TN_KC: name = PM_NM_KC; break;
     case TN_KEY: name = PM_NM_KEYC; break;
     case TN_KS: name = PM_NM_KEYS; break;
     case TN_EN: name = PM_NM_ENV; break;
@@ -371,12 +387,21 @@ static unsigned kh_colour(const PmPlan* p, unsigned prim, unsigned env, unsigned
     return o;
 }
 
+/* FX2a: K4 * C / 2 in all channels, C named by fold[4], fold[5]. */
+static unsigned kc_colour(const PmPlan* p, unsigned prim, unsigned env, unsigned plod) {
+    float pr[4], en[4];
+    unp(prim, pr); unp(env, en);
+    unsigned v = (unsigned)(k_val(p->fold[4], p->fold[5], 0, pr, en, plod) * (float)pm_k4 * .5f + .5f);
+    return v * 0x01010101u;
+}
+
 static unsigned name_colour(const PmPlan* p, int n, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
     switch (n) {
     case PM_NM_FC: return fold_colour(p, 0, prim, env, plod);
     case PM_NM_FKP: return fold_colour(p, 1, prim, env, plod);
     case PM_NM_FKN: return fold_colour(p, 2, prim, env, plod);
     case PM_NM_KH: return kh_colour(p, prim, env, plod);
+    case PM_NM_KC: return kc_colour(p, prim, env, plod);
     case PM_NM_KEYC: return key;
     case PM_NM_KEYS: return keys;
     case PM_NM_PK: return pk_colour(prim, key);
