@@ -1137,13 +1137,18 @@ static void draw_tri(unsigned w) {
         if (!dd.ntri) {
             dd.oml = omode_l; dd.omh = omode_h; dd.zb = (geom & G_ZBUFFER) != 0; dd.tex = (unsigned)tex_on; dd.timg = (u32)td[0].src; dd.fmt = td[0].fmt;
             dd.siz = td[0].siz; dd.w = td[0].w; dd.h = td[0].h; dd.prim = prim;
+            if (pm_debug_has("ddtex") && td[0].fmt == 2 && td[0].siz == 0) { /* V20 temp */
+                const unsigned char* im = (const unsigned char*)td[0].src; const unsigned char* pl = (const unsigned char*)tlut;
+                pm_log("ddtex #%u img %p %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x tlut %p n %d pal %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x", dd.idx, (void*)im, im?im[0]:0, im?im[1]:0, im?im[2]:0, im?im[3]:0, im?im[64]:0, im?im[65]:0, im?im[66]:0, im?im[67]:0, im?im[128]:0, im?im[129]:0, im?im[130]:0, im?im[131]:0,
+                       (void*)pl, tlut_n, pl?pl[0]:0, pl?pl[1]:0, pl?pl[2]:0, pl?pl[3]:0, pl?pl[4]:0, pl?pl[5]:0, pl?pl[6]:0, pl?pl[7]:0, pl?pl[8]:0, pl?pl[9]:0, pl?pl[10]:0, pl?pl[11]:0);
+            }
             dd.x0 = dd.y0 = dd.w0 = 1e9f; dd.x1 = dd.y1 = dd.w1 = -1e9f;
         }
         dd.ntri++;
         if (pm_debug_has("ddverb")) {
             int k;
             for (k = 0; k < 3 && k < n; k++)
-                pm_log("ddv #%u fog %d %d obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, fog_fm, fog_fo, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
+                pm_log("ddv #%u col %d %d %d %d fog %d %d obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, (int)poly[k].r, (int)poly[k].g, (int)poly[k].b, (int)poly[k].a, fog_fm, fog_fo, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
                        (int)verts[idx[k]].v.ob[2], (int)poly[k].x, (int)poly[k].y, (int)poly[k].z, (int)poly[k].w,
                        (int)verts[idx[k]].v.tc[0], (int)verts[idx[k]].v.tc[1]);
         }
