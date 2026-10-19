@@ -142,6 +142,7 @@ static GPU_COMBINEFUNC tev_func(int f) {
     case PM_F_ADD: return GPU_ADD;
     case PM_F_SUBTRACT: return GPU_SUBTRACT;
     case PM_F_INTERP: return GPU_INTERPOLATE;
+    case PM_F_ADDSIGNED: return GPU_ADD_SIGNED;
     default: return GPU_MULTIPLY_ADD;
     }
 }

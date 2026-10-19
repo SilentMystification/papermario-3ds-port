@@ -12,7 +12,7 @@
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN, TN_KH, TN_KC };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN, TN_KH, TN_X0, TN_X1, TN_X2, TN_X3 };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
 typedef struct { unsigned char func, scale; Term t[3]; unsigned char inv[3]; } Sk;
 
@@ -83,6 +83,16 @@ static int cur_grp, fold_off; /* group being lowered (0 colour); fold_off: build
 static unsigned char fold_t[6]; /* B, C, D of the folded colour group: n and alpha flag each */
 static int is_k(Term t) { return t.n == TN_ZERO || t.n == TN_ONE || t.n == TN_PR || t.n == TN_EN || t.n == TN_PLOD; }
 
+static int short_step;
+static unsigned char kspec[4][5];
+static int nk, kover;
+/* A derived constant (kind 0: B * C / 2, kind 1: C / 2), one of 4 per plan. */
+static Term kterm(int kind, Term b, Term c) {
+    if (nk >= 4) { kover = 1; return TM(TN_X0, 0); }
+    kspec[nk][0] = (unsigned char)kind; kspec[nk][1] = b.n; kspec[nk][2] = b.a; kspec[nk][3] = c.n; kspec[nk][4] = c.a;
+    return TM(TN_X0 + nk++, 0);
+}
+
 /* Lower one group. Returns the stage count (1 to 4), or a negative reason. */
 static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
     Term prv = TM(TN_PRV, 0);
@@ -108,13 +118,14 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
         hold_alpha = 1;
         return 2;
     }
-    if (!cur_grp && B.n == TN_K4 && is_k(C) && !isz(C) && !iso(C) && (A.n == TN_T0 || A.n == TN_T1) && (D.n == TN_T0 || D.n == TN_T1)) {
+    if ((B.n == TN_K4 || (is_k(B) && !isz(B))) && is_k(C) && !isz(C) && !iso(C) && (A.n == TN_T0 || A.n == TN_T1) && (D.n == TN_T0 || D.n == TN_T1)) {
         /* FX2a, flame blur cycle 1: (T1 - K4) * k + T0 = k * T1 + T0 - K4 * k. The PICA clamps T1 - K4 at 0 and loses the negative part.
-         * Halved: H = (k * T1 + T0) / 2 stays under 1, then 2 * (H - K4 * k / 2) is exact, the clamp at 0 is the RDP clamp. */
-        fold_t[4] = C.n; fold_t[5] = C.a;
+         * Halved: H = (k * T1 + T0) / 2 stays under 1, then 2 * (H - K4 * k / 2) is exact, the clamp at 0 is the RDP clamp.
+         * FX3c: the same with a constant B (effect_63 alpha (T1A - PRIMA) * ENVA + T0A). */
+        Term kc = kterm(0, B, C);
         out[0] = mk(PM_F_MODULATE, A, C, C, 0, 0, 0);
         out[1] = mk(PM_F_INTERP, prv, D, TM(TN_HALF, 0), 0, 0, 0);
-        out[2] = mk(PM_F_SUBTRACT, prv, TM(TN_KC, 0), TM(TN_KC, 0), 0, 0, 0); out[2].scale = 2;
+        out[2] = mk(PM_F_SUBTRACT, prv, kc, kc, 0, 0, 0); out[2].scale = 2;
         return 3;
     }
     if (cur_grp && is_k(C) && teq(C, D) && !isz(C) && !iso(C) && (A.n == TN_T0 || A.n == TN_T1) && (B.n == TN_T0 || B.n == TN_T1)) {
@@ -122,6 +133,17 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
         out[0] = mk(PM_F_MODULATE, B, C, C, 1, 0, 0);
         out[1] = mk(PM_F_MULADD, A, C, prv, 0, 0, 0);
         return 2;
+    }
+    if (is_k(D) && !isz(D) && !is_k(C) && C.n != TN_PRV && !is_k(A) && !is_k(B)) {
+        /* FX3c: (A - B) * C + D, D a constant, A B C sources (effect_63 (T1 - T0) * T0 + ENV and (COMBINED - T0) * T1 + PRIM). A - B is signed and
+         * the PICA clamps it. s = (A + 1 - B) / 2, m = s * C + (1 - C) / 2 = (1 + C * (A - B)) / 2, result = 2 * (m + D / 2 - 1/2) = C * (A - B) + D.
+         * Every stage stays in 0..1, the final clamp is the RDP clamp. 3 stages. */
+        Term h = TM(TN_HALF, 0);
+        Term dh = kterm(1, D, D);
+        out[0] = mk(PM_F_INTERP, A, B, h, 0, 1, 0);
+        out[1] = mk(PM_F_INTERP, prv, h, C, 0, 0, 0);
+        out[2] = mk(PM_F_ADDSIGNED, prv, dh, dh, 0, 0, 0); out[2].scale = 2;
+        return 3;
     }
     if (iso(A)) {
         if (isz(D)) out[0] = mk(PM_F_MODULATE, B, C, C, 1, 0, 0);
@@ -138,6 +160,7 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
             out[1] = mk(PM_F_SUBTRACT, prv, h, h, 0, 0, 0); out[1].scale = 4;
             out[2] = mk(PM_F_ADD, prv, prv, prv, 0, 0, 0);  out[2].scale = 4;
             out[3] = out[2];
+            if (short_step) return 3; /* FX3c: out of stages, gain 4 * 8 = 32: a step that is 1/32 wide instead of 1/256 */
             return 4;
         }
         if (D.n == TN_CMB) return -3;
@@ -225,7 +248,7 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     case TN_FKP: name = PM_NM_FKP; break;
     case TN_FKN: name = PM_NM_FKN; break;
     case TN_KH: name = PM_NM_KH; break;
-    case TN_KC: name = PM_NM_KC; break;
+    case TN_X0: case TN_X1: case TN_X2: case TN_X3: name = PM_NM_X0 + (t.n - TN_X0); break;
     case TN_KEY: name = PM_NM_KEYC; break;
     case TN_KS: name = PM_NM_KEYS; break;
     case TN_EN: name = PM_NM_ENV; break;
@@ -276,6 +299,7 @@ static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan
     memset(&A, 0, sizeof A);
     memset(&al, 0, sizeof al);
     memset(fold_t, 0, sizeof fold_t);
+    memset(kspec, 0, sizeof kspec); nk = kover = 0;
     s[0][0] = (w0 >> 20) & 0xf; s[0][1] = (w1 >> 28) & 0xf; s[0][2] = (w0 >> 15) & 0x1f; s[0][3] = (w1 >> 15) & 7;
     s[0][4] = (w0 >> 12) & 7;   s[0][5] = (w1 >> 12) & 7;   s[0][6] = (w0 >> 9) & 7;      s[0][7] = (w1 >> 9) & 7;
     s[1][0] = (w0 >> 5) & 0xf;  s[1][1] = (w1 >> 24) & 0xf; s[1][2] = w0 & 0x1f;          s[1][3] = (w1 >> 6) & 7;
@@ -326,6 +350,8 @@ static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan
     out->bufname = al.buf;
     out->vtxname = al.vtx;
     memcpy(out->fold, fold_t, sizeof fold_t);
+    memcpy(out->ks, kspec, sizeof kspec);
+    if (kover) return 7;
     return 0;
 }
 
@@ -337,7 +363,9 @@ static int build_lead(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out
 int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     int rc;
     fold_off = 0;
+    short_step = 0;
     rc = build_lead(w0, w1, two, t1only, out);
+    if (rc == 1) { short_step = 1; rc = build_lead(w0, w1, two, t1only, out); short_step = 0; }
     if (rc && fold_t[2]) { fold_off = 1; rc = build_lead(w0, w1, two, t1only, out); fold_off = 0; } /* the folded form needs 1 stage more: out of stages or constants, use the plain form */
     return rc;
 }
@@ -358,6 +386,7 @@ static void unp(unsigned c, float o[4]);
 static float k_val(unsigned n, unsigned a, int ch, const float pr[4], const float en[4], unsigned plod) {
     switch (n) {
     case TN_ONE: return 1.f;
+    case TN_K4: return (float)pm_k4 / 255.f;
     case TN_PR: return pr[a ? 3 : ch];
     case TN_EN: return en[a ? 3 : ch];
     case TN_PLOD: return (float)plod / 255.f;
@@ -387,12 +416,18 @@ static unsigned kh_colour(const PmPlan* p, unsigned prim, unsigned env, unsigned
     return o;
 }
 
-/* FX2a: K4 * C / 2 in all channels, C named by fold[4], fold[5]. */
-static unsigned kc_colour(const PmPlan* p, unsigned prim, unsigned env, unsigned plod) {
+/* FX2a, FX3c: a derived constant, spec p->ks[i] = kind, B term, B alpha flag, C term, C alpha flag. Kind 0 is B * C / 2, kind 1 is C / 2, per channel. */
+static unsigned x_colour(const PmPlan* p, int i, unsigned prim, unsigned env, unsigned plod) {
     float pr[4], en[4];
+    unsigned o = 0;
     unp(prim, pr); unp(env, en);
-    unsigned v = (unsigned)(k_val(p->fold[4], p->fold[5], 0, pr, en, plod) * (float)pm_k4 * .5f + .5f);
-    return v * 0x01010101u;
+    for (int ch = 0; ch < 4; ch++) {
+        int c3 = ch < 3 ? ch : 0;
+        float v = k_val(p->ks[i][3], p->ks[i][4], c3, pr, en, plod) * .5f;
+        if (p->ks[i][0] == 0) v *= k_val(p->ks[i][1], p->ks[i][2], c3, pr, en, plod);
+        o = o << 8 | (unsigned)(v * 255.f + .5f);
+    }
+    return o;
 }
 
 static unsigned name_colour(const PmPlan* p, int n, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
@@ -401,7 +436,7 @@ static unsigned name_colour(const PmPlan* p, int n, unsigned prim, unsigned env,
     case PM_NM_FKP: return fold_colour(p, 1, prim, env, plod);
     case PM_NM_FKN: return fold_colour(p, 2, prim, env, plod);
     case PM_NM_KH: return kh_colour(p, prim, env, plod);
-    case PM_NM_KC: return kc_colour(p, prim, env, plod);
+    case PM_NM_X0: case PM_NM_X1: case PM_NM_X2: case PM_NM_X3: return x_colour(p, n - PM_NM_X0, prim, env, plod);
     case PM_NM_KEYC: return key;
     case PM_NM_KEYS: return keys;
     case PM_NM_PK: return pk_colour(prim, key);
@@ -463,6 +498,7 @@ void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const f
                 case PM_F_ADD: r = a + b; break;
                 case PM_F_SUBTRACT: r = a - b; break;
                 case PM_F_INTERP: r = a * d + b * (1.f - d); break;
+                case PM_F_ADDSIGNED: r = a + b - .5f; break;
                 default: r = a * b + d; break;
                 }
                 res[g ? 3 : c] = cl(r * (ch->scale > 1 ? (float)ch->scale : 1.f));

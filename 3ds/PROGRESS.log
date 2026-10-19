@@ -539,3 +539,4 @@
 12:17 C-O3DS row added, blocked on which key is Z
 12:40 V23 scissor mirror fix in pm_gpu.c flush, party portrait full
 13:30 FX2a texrect sync_render for slots, K4 blur plan forms, flame glow
+13:55 FX3c signed form (A-B)*C+D plan, ADD_SIGNED, derived constants; effect 93 petals
