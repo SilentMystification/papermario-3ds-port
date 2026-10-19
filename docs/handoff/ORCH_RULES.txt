@@ -8,3 +8,5 @@ ORCHESTRATOR RULES (papermario-3ds-port). You are the orchestrator only. Agents 
 7. ASD-STE100 English, no praise. No push. No Claude attribution in commits. No stubs.
 8. Every H05 finding that needs no user decision becomes a row and is worked at once. No per-slice memory cap.
 9. Do not start S28. It needs the user and the O3DS.
+10. SEND, DO NOT SPAWN: before every Agent call, check for a running or resumable agent in that tree. If one exists, use SendMessage. A row of about 30 changed lines or less never gets its own agent: send it to a live agent or bundle it with the next launch. The handoff text is written by the finishing code agent, never by a new agent.
+11. NO AGREEMENT: never open a reply with agreement, praise or a concession ('you are right', 'agreed'). State the action taken and the result. If the plan changed, say so in the first line.

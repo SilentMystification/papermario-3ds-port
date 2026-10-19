@@ -20,6 +20,8 @@ Written 2026-10-17 for a NEW orchestrator chat. Read this file, then HANDOFF.md,
 - FULL RUNS (user decision 2026-10-18): run the full tour or the full golden set only when a change cannot be tested another way, and once before S28. Never run them per slice or per milestone by habit. The orchestrator does not schedule them unless a change needs them.
 - HANDOFF POINT (user decision 2026-10-18): when the chat grows long, tell the user in one line that a handoff is due and refresh docs/ORCH_STATE.md. Do NOT stop work. Keep launching rows until the queue is empty or a stop condition (section 7) holds. The user may be asleep.
 - Agents read AGENT_RULES.md, not this file. Batch doc edits into one docs agent per milestone. Reuse a running agent by SendMessage for a small follow-up.
+- 10. SEND, DO NOT SPAWN: before every Agent call, check for a running or resumable agent in that tree. If one exists, use SendMessage. A row of about 30 changed lines or less never gets its own agent: send it to a live agent or bundle it with the next launch. The handoff text is written by the finishing code agent, never by a new agent.
+- 11. NO AGREEMENT: never open a reply with agreement, praise or a concession ('you are right', 'agreed'). State the action taken and the result. If the plan changed, say so in the first line.
 
 ## 2. User decisions (2026-10)
 - Never push to git. No Claude or Anthropic attribution in commits or PRs.
