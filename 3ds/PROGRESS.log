@@ -503,3 +503,4 @@
 06:54 H06b1 coded (G_TEXTURE off reads texel 0,0, budget used 4/4, not tested). H06b3 coded: folded form for (A-B)*C+D with constant B C D in pm_comb.c. build
 06:56 H06b3 start 1: warp=hos_00:0 smoke 600, expect 2 min
 06:56 H06b3 start 2: shot of hos_00 frame 45, expect 1 min
+06:58 H06b5 start 1: tour of mgm_03 kzn_05 flo_17 hos_01 kkj_02 plus tik_01 (H06b1 check) and omo_07 (H06b2), expect 6 min
