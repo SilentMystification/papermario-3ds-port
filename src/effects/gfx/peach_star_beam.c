@@ -61,7 +61,14 @@ INCLUDE_PAL("effects/gfx/D_090045E8_3EA518.pal", D_09004DE8_3EAD18);
 u8 D_09004E08_3EAD38[0x1E0] = {};
 
 #include "effects/gfx/D_09004FE8_3EAF18.gfx.inc.c"
+extern Gfx D_090050F0_3EB020[];
+#define D_09005090_3EAFC0 D_09005090_3EAFC0_body
 #include "effects/gfx/D_09005090_3EAFC0.gfx.inc.c"
+#undef D_09005090_3EAFC0
+Gfx D_09005090_3EAFC0[] = {
+    gsSPDisplayList(D_09005090_3EAFC0_body),
+    gsSPBranchList(D_090050F0_3EB020),
+};
 #include "effects/gfx/D_090050F0_3EB020.gfx.inc.c"
 #include "effects/gfx/D_09005168_3EB098.gfx.inc.c"
 #include "effects/gfx/D_090051E0_3EB110.gfx.inc.c"
