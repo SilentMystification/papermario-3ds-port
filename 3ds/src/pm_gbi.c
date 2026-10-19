@@ -25,6 +25,7 @@ static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
 static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 static unsigned geom;
 static unsigned omode_h;
+void pm_tex_set_filter(int linear);
 static unsigned omode_l = 0x00000030u; /* Z_CMP | Z_UPD until a list sets a mode */
 static int rm_frame;
 /* X01 debug switch xtrace=<first frame>:<count>: log fill rects, prim depth and render state changes in that frame window. */
@@ -1702,7 +1703,14 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             unsigned field = (w0 >> 8) & 0xff;
             unsigned sft = 32 - field - len;
             unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-            if (op == G_SETOTHERMODE_H) omode_h = (omode_h & ~mask) | (w1 & mask);
+            if (op == G_SETOTHERMODE_H) {
+                unsigned old_tf = omode_h & (3u << 12);
+                omode_h = (omode_h & ~mask) | (w1 & mask);
+                if ((omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
+                    pm_gpu_flush();
+                    pm_tex_set_filter((omode_h & (3u << 12)) != 0);
+                }
+            }
             else omode_l = (omode_l & ~mask) | (w1 & mask);
             /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
             if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();

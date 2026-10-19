@@ -553,6 +553,9 @@ int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigne
     return load_impl(buf, FMT_RGBA, SIZ_32, w, h, NULL, 0, w, NULL, 0, 0, key);
 }
 
+static GPU_TEXTURE_FILTER_PARAM tex_filt = GPU_NEAREST; /* V15: from omh G_TF bits, set sampler state at bind, not in the cache key */
+void pm_tex_set_filter(int linear) { tex_filt = linear ? GPU_LINEAR : GPU_NEAREST; }
+
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         C3D_TexBind(0, offt[off_cur].tex);
@@ -560,6 +563,7 @@ int pm_tex_bind(void) {
     }
     if (!have || cur < 0 || !slots[cur].live) return 0;
     slots[cur].stamp = ++stamp;
+    C3D_TexSetFilter(&slots[cur].tex, tex_filt, tex_filt);
     C3D_TexSetWrap(&slots[cur].tex, shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t);
     C3D_TexBind(0, &slots[cur].tex);
     return 1;
@@ -596,6 +600,7 @@ int pm_tex_bind_aux(void) {
     if (aux < 0 || !slots[aux].live) return 0;
     slots[aux].stamp = ++stamp;
     TOUCH(&slots[aux]);
+    C3D_TexSetFilter(&slots[aux].tex, tex_filt, tex_filt);
     C3D_TexSetWrap(&slots[aux].tex, aux_shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_ws, aux_shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_wt);
     C3D_TexBind(1, &slots[aux].tex);
     return 1;

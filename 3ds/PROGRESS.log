@@ -337,3 +337,6 @@
 19:59 V14 run 1 lost drawlog lines (log queue full by imglog). Run 2 of 3 without imglog, expect 5 min
 20:01 V14 f765: only white wedge is the speech balloon tail (game art). Run 3 of 3: shots f700..889 and drawlog f875, expect 6 min
 20:02 V14 done: F2 balloon tail, F3 and F4 nearest filter, no code change. New row V15. Evidence in V14_diag.md
+20:05 V15 build ok, 3dsx +148 B. golden toad yard battle, expect 3 min
+20:07 V15 golden toad yard battle all DIFF (12.1, 7.8, 8.9 pct px). Battle sheet old|new: smoother, no seams. battle.png updated from the shot, toad and yard need --update (budget)
+20:07 V15 done, row moved
