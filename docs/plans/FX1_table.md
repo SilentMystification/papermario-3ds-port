@@ -70,7 +70,7 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 60 | bombette_breaking | ok | yes | 1009 | 28 | no | 0 | 20 | no | 11 | 0 |
 | 61 | firework | ok | yes | 13953 | 269 | no | 4945 | 36 | no | 48 | 1 |
 | 62 | confetti | ok | yes | 1231 | 49 | no | 0 | 7 | no | 42 | 0 |
-| 63 | snowfall | ok | yes | 4769 | 137 | no | 611 | 14 | YES | 63 | 0 |
+| 63 | snowfall | ok | yes | 1059 | 36 | no | 0 | 18 | no | 60 | 0 |
 | 64 | effect_46 | ok | yes | 599 | 25 | no | 0 | 0 | no | 16 | 0 |
 | 65 | gather_magic | ok | yes | 1015 | 37 | no | 0 | 7 | no | 25 | 0 |
 | 66 | attack_result_text | ok | yes | 1674 | 37 | no | 596 | 37 | no | 12 | 0 |
@@ -135,4 +135,4 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 125 | star_outline | ok | yes | 5932 | 135 | no | 0 | 5 | no | 47 | 0 |
 | 126 | effect_86 | ok | weak | 148 | 6 | no | 0 | 0 | no | 1 | 0 |
 
-Spawned and shot: 127 of 127. Weak or nothing: 39. Black block: 0. Zoomed or clipped: 11. Solid colour block: 3.
+Spawned and shot: 127 of 127. Weak or nothing: 39. Black block: 0. Zoomed or clipped: 10. Solid colour block: 3.

@@ -556,3 +556,4 @@
 16:40 V27 fixed: near plane clip at z >= -w for corners with w < 1. V18, V19 candidates, unproven in Azahar
 17:30 V20 fixed: tile palette taken at G_LOADTLUT. V16 done. build number log line
 13:50 V23b mapflags switch, map shot ok, one hand
+14:10 FX3d snowfall setup list branch, FX3e judged from sheets
