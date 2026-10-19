@@ -35,6 +35,7 @@
 - A tour= with more than 40 maps needs -Milestone. Use tour=<map:entry,...> for the touched maps only, in one start. golden.py accepts 1 to 3 scene names, skips a scene that passed on the same 3dsx, and allows --milestone once per 3dsx.
 - Full tour and 4-scene A/B only for map change path, boot, title, file select or intro.
 - Screenshots only when needed. One contact sheet at most.
+- FULL RUNS (user decision 2026-10-18): run the full tour or the full golden set only when a change cannot be tested another way, and once before S28. Never run them per slice or per milestone by habit. The orchestrator does not schedule them unless a change needs them.
 - Memory: no size cap per slice (user decision 2026-10-18). Report the 3dsx size change. Do not stop a slice for its size.
 - Optimization code starts only after S28. S28 waits for the empty Azahar queue and the user.
 
