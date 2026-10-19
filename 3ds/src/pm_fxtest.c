@@ -24,6 +24,8 @@ static float fx_x, fx_y, fx_z;
 static EffectInstance* oe;
 static Npc* fx_npc;
 
+/* FX3f: lil_oink draws only the pigs a script sets visible (mac_03 LoadLilOinks): show one. */
+static void fxt_lil_oink(void);
 /* E(name, call). Names follow src/effects/<name>.c. */
 #define FXLIST(E) \
 E(big_smoke_puff, fx_big_smoke_puff(X, Y, Z)) \
@@ -33,14 +35,14 @@ E(flower_splash, fx_flower_splash(X, Y, Z, 0)) \
 E(flower_trail, fx_flower_trail(1, X, Y, Z, 0, 0)) \
 E(cloud_puff, fx_cloud_puff(X, Y, Z, 0)) \
 E(cloud_trail, fx_cloud_trail(0, X, Y, Z)) \
-E(footprint, fx_footprint(X, Y, Z, 0, 0)) \
+E(footprint, fx_footprint(X, Y - 25.0f, Z, 0, 0)) \
 E(floating_flower, fx_floating_flower(0, X, Y, Z, 100)) \
 E(snowflake, fx_snowflake(X, Y, Z, 60)) \
 E(star, fx_star(FX_STAR_LARGE_BOUNCING, X, Y, Z, X + 20, 0, Z, 10)) \
 E(emote, if (fx_npc) fx_emote(EMOTE_EXCLAMATION, fx_npc, 0, fx_npc->collisionHeight, 1.0f, 2.0f, -20.0f, 15, &oe)) \
 E(sparkles, fx_sparkles(0, X, Y, Z, 10)) \
-E(shape_spell, fx_shape_spell(0, X, Y, Z, X + 60, Y + 40, Z, 10)) \
-E(gather_energy_pink, fx_gather_energy_pink(0, X, Y, Z, 0.5f, 10)) \
+E(shape_spell, fx_shape_spell(0, X, Y, Z, X + 60, Y + 40, Z, 30)) \
+E(gather_energy_pink, fx_gather_energy_pink(0, X, Y, Z, 1.0f, 60)) \
 E(drop_leaves, fx_drop_leaves(0, X, Y, Z, 100)) \
 E(dust, fx_dust(0, X, Y, Z, 30)) \
 E(shattering_stones, fx_shattering_stones(0, X, Y, Z, 187)) \
@@ -60,9 +62,9 @@ E(rising_bubble, fx_rising_bubble(0, X, Y, Z, 0)) \
 E(ring_blast, fx_ring_blast(0, X, Y, Z, 1.0f, 24)) \
 E(shockwave, fx_shockwave(0, X, Y, Z)) \
 E(music_note, fx_music_note(1, X, Y, Z)) \
-E(smoke_burst, fx_smoke_burst(0, X, Y, Z, 1.0f, 40)) \
+E(smoke_burst, fx_smoke_burst(0, X, Y, Z, 3.0f, 40)) \
 E(sweat, fx_sweat(0, X, Y, Z, 5.0f, 45.0f, 20)) \
-E(sleep_bubble, fx_sleep_bubble(0, X, Y, Z, 5.0f, 0, &oe)) \
+E(sleep_bubble, fx_sleep_bubble(0, X, Y, Z, 25.0f, 0, &oe)) \
 E(windy_leaves, fx_windy_leaves(2, X, Y, Z)) \
 E(falling_leaves, fx_falling_leaves(0, X, Y, Z)) \
 E(stars_spread, fx_stars_spread(0, X, Y, Z, 6, 20)) \
@@ -79,7 +81,7 @@ E(fire_breath, fx_fire_breath(0, X, Y, Z, X + 10, Y, Z, 5, 2, 30)) \
 E(shimmer_burst, fx_shimmer_burst(0, X, Y, Z, 1.0f, 30)) \
 E(energy_shockwave, fx_energy_shockwave(0, X, Y, Z, 1.0f, 90)) \
 E(shimmer_wave, fx_shimmer_wave(0, X, Y, Z, 300.0f, 100.0f, 10, 40)) \
-E(aura, fx_aura(FX_AURA_GOLD, X, Y, Z, 0.4f, &oe)) \
+E(aura, fx_aura(FX_AURA_GOLD, X, Y, Z, 1.0f, &oe)) \
 E(bulb_glow, fx_bulb_glow(2, X, Y, Z, 1.0f, &oe)) \
 E(effect_3D, fx_effect_3D(0, X, Y, Z, 0, 0, 1.0f, 60, &oe)) \
 E(blast, fx_blast(0, X, Y, Z, 3.0f, 30)) \
@@ -128,7 +130,7 @@ E(red_impact, fx_red_impact(0, X, Y, Z, 1.0f, 0)) \
 E(floating_cloud_puff, fx_floating_cloud_puff(0, X, Y, Z, 1.0f, 25)) \
 E(energy_in_out, fx_energy_in_out(1, X, Y, Z, 1.0f, 30)) \
 E(tattle_window, fx_tattle_window(0, 106.0f, 144.0f, 0, 1.0f, 0)) \
-E(shiny_flare, fx_shiny_flare(0, X, Y, Z, 0.6f, 0)) \
+E(shiny_flare, fx_shiny_flare(0, X, Y, Z, 1.5f, 0)) \
 E(huff_puff_breath, fx_huff_puff_breath(1, X, Y, Z, 190.0f, -1.0f, 1.5f, 100)) \
 E(cold_breath, fx_cold_breath(0, X, Y, Z, 2.0f, 45)) \
 E(embers, fx_embers(0, X, Y, Z, 70.0f, 80.0f, 2.5f, 80, 55, 2.0f, 2.0f)) \
@@ -142,7 +144,7 @@ E(peach_star_beam, fx_peach_star_beam(0, X, Y, Z, 1.0f, 0)) \
 E(chapter_change, fx_chapter_change(0, 100.0f, 100.0f, 0.0f, 1.0f, 0)) \
 E(ice_shard, fx_ice_shard(0, X, Y, Z, 1.0f, 30)) \
 E(spirit_card, fx_spirit_card(1, X, Y, Z, 1.0f, 0)) \
-E(lil_oink, fx_lil_oink(0, X, Y, Z, 1.0f, 0)) \
+E(lil_oink, fxt_lil_oink()) \
 E(something_rotating, fx_something_rotating(2, X, Y, Z, 1.0f, 0)) \
 E(breaking_junk, fx_breaking_junk(0, X, Y, Z, 1.0f, 30)) \
 E(partner_buff, fx_partner_buff(0, X, Y, Z, 1.0f, 0)) \
@@ -152,7 +154,15 @@ E(sun, fx_sun(0, 0, 0, 0, 0, 0)) \
 E(star_spirits_energy, fx_star_spirits_energy(2, X, Y, Z, 1.0f, 0)) \
 E(pink_sparkles, fx_pink_sparkles(0, X, Y, Z, 1.0f, 0)) \
 E(star_outline, fx_star_outline(0, X, Y, Z, 1.0f, 0)) \
-E(effect_86, fx_effect_86(0, X, Y, Z, 1.0f, 0))
+E(effect_86, fx_effect_86(0, X, Y, Z, 3.0f, 0))
+
+static void fxt_lil_oink(void) {
+    EffectInstance* o = fx_lil_oink(0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
+    LilOinkFXData* d = o->data.lilOink;
+    d->type[0] = 0;
+    d->x[0] = X; d->y[0] = Y - 25.0f; d->z[0] = Z; d->rot[0] = 270.0f;
+    d->flags[0] |= LIL_OINK_FLAG_VISIBLE;
+}
 
 #define E_ENUM(n, c) FXT_##n,
 enum { FXLIST(E_ENUM) FXT_COUNT };
@@ -170,7 +180,9 @@ static unsigned char sel[FXT_COUNT];
 static int nsel = -1, shotn;
 
 static void shot(const char* what, int i) {
-    pm_log("fxtest: shot %d effect %d %s %s", shotn++, i, fx_names[i], what);
+    { int k, live = 0; for (k = 0; k < 96; k++) if (gEffectInstances[k]) live++; /* FX3f: live effect count at the shot */
+      pm_log("fxtest: shot %d effect %d %s %s", shotn++, i, fx_names[i], what);
+      pm_log("fxtest: live %d", live); }
     pm_gpu_shot_burst(1);
 }
 
@@ -222,7 +234,7 @@ void pm_fxtest_tick(unsigned f) {
         pm_log("fxtest: spawn %d %s at %d %d %d", i, fx_names[i], (int)fx_x, (int)fx_y, (int)fx_z);
         if (i == FXT_emote && !fx_npc) pm_log_w("fxtest: not spawned %s: no NPC in this map", fx_names[i]);
         fx_spawn(i);
-    } else if (k == 12) shot("a", i);
+    } else if (k == (i == FXT_shiny_flare || i == FXT_emote ? 7 : 12)) shot("a", i); /* FX3f: shiny_flare lives 10 frames */
     else if (k == 32) shot("b", i);
     else if (k == 40) clear_all();
 }

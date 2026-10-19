@@ -216,6 +216,9 @@ static Vtx verts[64];
 /* A display list may only draw vertices its own G_VTX loaded. Slots left by
  * the previous model otherwise connect the two meshes into long triangles. */
 static u8 vert_live[64];
+/* FX3f: a triangle was issued since the last G_VTX. A load at slot 0 only starts a new mesh then. aura loads slots 2,6 and then
+ * 0,4 and draws 4,5,6,7, so the slot 0 load must keep the slots loaded just before it. */
+static int tri_since_vtx;
 /* B5: G_MODIFYVTX G_MWO_POINT_XYSCREEN sets the screen position of a loaded vertex (underwater warp). x, y in 10.2 fixed point. */
 static u8 vert_scr[64];
 static s16 vert_sx[64], vert_sy[64];
@@ -1037,6 +1040,7 @@ static void draw_tri(unsigned w) {
     ClipV poly[12];
     int n, i;
     n_cmd++;
+    tri_since_vtx = 1;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
         n_drop++;
         return;
@@ -1635,7 +1639,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 memcpy(&verts[v0], src, n * sizeof(Vtx));
                 /* A load at slot 0 starts a new mesh. Later loads in the same
                  * list append above it and keep the earlier slots. */
-                if (v0 == 0) memset(vert_live, 0, sizeof vert_live);
+                if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
+                tri_since_vtx = 0;
                 if (v0 == 0 && dd_on()) { dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1; }
                 for (unsigned i = 0; i < n; i++) {
                     vert_live[v0 + i] = 1;
