@@ -90,6 +90,8 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     if (swap) pm_interp_stop(); /* the background task has no swap flag: the record goes on until the main task */
 }
 
+void pm_interp_drop_keys(void) { nkey = 0; } /* F11-10 */
+
 /* F06-2: the key frame of the last step, drawn without replacements. Returns 0 when the step built no list. */
 int pm_interp_key_draw(void) {
     if (!nkey) return 0;

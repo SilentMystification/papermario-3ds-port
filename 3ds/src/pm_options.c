@@ -107,6 +107,13 @@ void pm_options_flip(int row) {
     if (!f) return;
     *f = !*f;
     changed = 1;
+    {   /* F11-10: apply now */
+        extern int pm_interp_want, pm_wide_cfg, pm_nolight;
+        if (row == 0) pm_interp_want = *f; /* next game step */
+        if (row == 1) pm_wide_cfg = *f || pm_debug_has("wide"); /* pm_wide follows at the next game mode change (the panel is a 4:3 mode) */
+        if (row == 5) pm_nolight = *f || pm_debug_has("nolight");
+        pm_log("options: live row %d value %d", row, *f);
+    }
     if (row == 4) pm_log_switch("nofog", *f);
     if (row == 5) pm_log_switch("nolight", *f);
 }

@@ -31,6 +31,7 @@ typedef struct {
 } Node;
 
 int pm_interp_on = -1;
+int pm_interp_want = -1; /* F11-10: the Options row asks for on or off, applied at the next step start (never inside a step or a draw) */
 int pm_interp_repl;
 int pm_interp_skip; /* F06-5: set by pm_frame_loop when the last step took more than 2 vblanks */
 static unsigned nskip;
@@ -75,8 +76,18 @@ void pm_interp_close(void) {
 static unsigned camera_epoch, previous_camera_epoch;
 void pm_interp_dont_camera(void) { camera_epoch = previous_camera_epoch + 1; }
 
+void pm_interp_drop_keys(void);
 void pm_interp_start(void) {
     if (pm_interp_on < 0) pm_interp_on = pm_debug_has("fps60") || pm_opt.fps60;
+    else if (pm_interp_want >= 0 && pm_interp_want != pm_interp_on) {
+        /* A new on state starts with empty records and no key frame list, an off state drops both. */
+        pm_interp_on = pm_interp_want;
+        pm_log("f06: fps60 %d (Options)", pm_interp_on);
+        recording = 0;
+        pnleaf = pnnode = 0;
+        pm_interp_drop_keys();
+    }
+    pm_interp_want = -1;
     if (!pm_interp_on) return;
     if (!leaves) {
         leaves = malloc(2 * MAX_LEAVES * sizeof(Leaf) + 2 * MAX_NODES * sizeof(Node) + RT_SIZE * sizeof(RT) +

@@ -528,15 +528,15 @@ static unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex i
 
 /* L01: RSP lighting. The normal goes through the model view matrix, then colour = ambient + sum(light colour * max(0, normal . direction)). Alpha stays the vertex alpha.
  * Debug switch nolight keeps the old fixed light for an A/B. */
+int pm_nolight = -1; /* F11-10: -1 = read the switch at first use, the Options row sets 0 or 1 */
 static unsigned vert_color(const Vtx* v, const float m[4][4]) {
     tg_ok = 0;
     if (geom & G_LIGHTING) {
-        static int nolight = -1;
         float nx = (float)(signed char)v->v.cn[0] / 127.f;
         float ny = (float)(signed char)v->v.cn[1] / 127.f;
         float nz = (float)(signed char)v->v.cn[2] / 127.f;
-        if (nolight < 0) nolight = pm_debug_has("nolight");
-        if (nolight) {
+        if (pm_nolight < 0) pm_nolight = pm_debug_has("nolight");
+        if (pm_nolight) {
             float d = nx * 0.25f + ny * 0.85f + nz * 0.45f;
             if (d < 0.f) d = 0.f;
             if (d > 1.f) d = 1.f;

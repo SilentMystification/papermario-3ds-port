@@ -130,21 +130,30 @@ void filemenu_options_init(MenuPanel* tab) {
 
 void filemenu_options_handle_input(MenuPanel* menu) {
     s32 oldRow = menu->row;
+    // F11-9: the panel moved one row per stick jitter. Gate the direction: the pad must be pushed to 56 of 80 (the game dead zone and
+    // button threshold are 32), a d-pad press always counts, and two moves are at least 6 updates apart (the held repeat is 15 then 4).
+    static s32 moveGap;
+    s32 sy = gGameStatusPtr->stickY[0];
+    s32 held = filemenu_heldButtons;
+    s32 up = (held & BUTTON_D_UP) || ((held & BUTTON_STICK_UP) && sy >= 56);
+    s32 down = (held & BUTTON_D_DOWN) || ((held & BUTTON_STICK_DOWN) && sy <= -56);
 
-    if (filemenu_heldButtons & BUTTON_STICK_UP) {
-        menu->row--;
+    if (moveGap > 0) {
+        moveGap--;
+    }
+    if (moveGap == 0 && (up || down)) {
+        menu->row += down ? 1 : -1;
+        moveGap = 6;
         if (menu->row < 0) {
             menu->row = 0;
         }
-    }
-    if (filemenu_heldButtons & BUTTON_STICK_DOWN) {
-        menu->row++;
         if (menu->row >= menu->numRows) {
             menu->row = menu->numRows - 1;
         }
     }
     if (oldRow != menu->row) {
         filemenu_set_selected(menu, 0, menu->row);
+        pm_log_d("options: row %d", menu->row);
         sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
     }
 
