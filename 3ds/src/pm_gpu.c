@@ -125,6 +125,16 @@ static GPU_TEVOP_RGB tev_op_rgb(int o) {
            o == PM_O_A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_ONE_MINUS_SRC_ALPHA;
 }
 static GPU_TEVOP_A tev_op_a(int o) { return (o == PM_O_1MA || o == PM_O_1MC) ? GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA : GPU_TEVOP_A_SRC_ALPHA; }
+/* FX2a: an 8 bit slot is one channel, I, in R. A blended write leaves the alpha channel as the blend weight, so a read takes I from R, never from A. */
+static int tev_i8(int src, int i8_0, int i8_1) { return (src == PM_S_TEX0 && i8_0) || (src == PM_S_TEX1 && i8_1); }
+static GPU_TEVOP_RGB tev_op_rgb_i(int o, int i8) {
+    if (i8 && (o == PM_O_A || o == PM_O_1MA)) return o == PM_O_A ? GPU_TEVOP_RGB_SRC_R : GPU_TEVOP_RGB_ONE_MINUS_SRC_R;
+    return tev_op_rgb(o);
+}
+static GPU_TEVOP_A tev_op_a_i(int o, int i8) {
+    if (i8) return (o == PM_O_1MA || o == PM_O_1MC) ? GPU_TEVOP_A_ONE_MINUS_SRC_R : GPU_TEVOP_A_SRC_R;
+    return tev_op_a(o);
+}
 static GPU_COMBINEFUNC tev_func(int f) {
     switch (f) {
     case PM_F_REPLACE: return GPU_REPLACE;
@@ -139,14 +149,15 @@ static GPU_COMBINEFUNC tev_func(int f) {
 /* V05: an off-screen colour image. draw_box renders the contents of a rotating window (pause pages, file select panels)
  * into a game buffer with the color image set to it, then draws that buffer as strips through the rotation matrix.
  * Such a pass renders into a PICA render target that is a texture (VRAM), and pm_tex samples it for the strips. */
-enum { OFF_N = 4, OFF_ALL = 2 * OFF_N }; /* V05b: slots 0..3 are full size, 4..7 are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */
+enum { OFF_N = 4, OFF_P = 2 * OFF_N, OFF_ALL = OFF_P + 2 }; /* FX2a: slots OFF_P and OFF_P + 1 are the 8 bit images (flame), they keep their pixels from frame to frame like the N64 memory */ /* V05b: slots 0..3 are full size, 4..7 are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */
 /* X02: w x h is the size of the slot (64 x 64 for a game image up to 64 wide, else PM_OFF_W x PM_OFF_H). siz is the game pixel size
  * (3 = 32 bit, 2 = 16 bit, 1 = 8 bit). The same memory can be a 32 bit image and an 8 bit image in one frame: two slots. */
-static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; } offs[OFF_ALL];
+static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; unsigned last; C3D_Tex snap; int snap_ready; } offs[OFF_ALL];
 static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8;
 extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
+static int r_memblend; /* FX2a: the blender mixes with the memory colour by the memory alpha (G_BL_A_MEM) */
 /* B2: T2 grab state. grab_tex holds a copy of the main target strips (same tiled layout, 256 x 512). grab_bind: flush binds it
  * instead of the pm_tex texture. A grab copies the full width. grab_dirty: a draw of unknown rows went to the main target since the
  * last grab. [grab_dy0, grab_dy1) are the rows that texture rectangles drew since then (R13c: motion_blur_flame loads one strip of
@@ -154,6 +165,30 @@ static int r_replace; /* off-screen fill: the pixel is written, not blended */
 enum { GRAB_MAX = 8 };
 static C3D_Tex grab_tex;
 static int grab_ready, grab_bind, grab_dirty = 1, grab_dy0, grab_dy1, grab_n, grab_split, rect_y0, rect_y1;
+
+static int want_clear; /* see below */
+/* B2: queue order is clear of the main target, then every part. The first split of a frame queues the clear first. */
+static void split_frame(void) {
+    if (!grab_split++ && want_clear) {
+        C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+        want_clear = 0;
+    }
+    C3D_FrameSplit(GX_CMDLIST_FLUSH);
+}
+
+/* FX2a: the RDP loads a tile into TMEM before it draws, so a pass that reads the image it writes (the flame blur) sees the pixels from before
+ * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
+static void off_snapshot(int i) {
+    if (!offs[i].snap_ready) {
+        if (!C3D_TexInitVRAM(&offs[i].snap, offs[i].w, offs[i].h, GPU_RGBA8)) { pm_log("FX2a: no VRAM for the copy of slot %d", i); return; }
+        C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
+        C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+        offs[i].snap_ready = 1;
+    }
+    split_frame();
+    u32 bytes = (u32)offs[i].w * (u32)offs[i].h * 4u;
+    GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)offs[i].snap.data, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
+}
 
 static void flush(void) {
     if (nverts <= 0 || !gpu_ok) {
@@ -172,6 +207,13 @@ static void flush(void) {
         batch_identity = 0;
         return;
     }
+    int snap0 = 0, snap1 = 0;
+    if (off_active) { /* FX2a: this batch reads the slot it writes */
+        snap0 = combine >= 2 && !grab_bind && pm_tex_off_idx() == off_cur;
+        snap1 = combine == 8 && plan.uses_tex1 && pm_tex_aux_off_idx() == off_cur;
+        if (snap0 || snap1) off_snapshot(off_cur);
+        if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
+    }
     PH_PUSH(PH_GPU);
     /* 2D batches are already pixels. 3D batches are object space. */
     if (u_proj >= 0)
@@ -185,6 +227,9 @@ static void flush(void) {
     C3D_TexEnvInit(env);
     int tex = (combine >= 2) && (grab_bind ? (C3D_TexBind(0, &grab_tex), 1) : pm_tex_bind());
     int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
+    int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
+    if (tex && snap0) C3D_TexBind(0, &offs[off_cur].snap);
+    if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
     if (tex1 && u_uvx >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
     /* Unit 1 stays bound to the last TEXEL1 texture: C3D_TexBind(1, NULL) crashes. No stage reads it. */
     if (combine == 8 && (!plan.uses_tex || tex) && (!plan.uses_tex1 || tex1)) {
@@ -197,10 +242,12 @@ static void flush(void) {
             const PmTevStage* st = &plan.st[i];
             C3D_TexEnvInit(e);
             C3D_TexEnvSrc(e, C3D_RGB, tev_src(st->g[0].src[0]), tev_src(st->g[0].src[1]), tev_src(st->g[0].src[2]));
-            C3D_TexEnvOpRgb(e, tev_op_rgb(st->g[0].op[0]), tev_op_rgb(st->g[0].op[1]), tev_op_rgb(st->g[0].op[2]));
+            C3D_TexEnvOpRgb(e, tev_op_rgb_i(st->g[0].op[0], tev_i8(st->g[0].src[0], i8_0, i8_1)), tev_op_rgb_i(st->g[0].op[1], tev_i8(st->g[0].src[1], i8_0, i8_1)),
+                            tev_op_rgb_i(st->g[0].op[2], tev_i8(st->g[0].src[2], i8_0, i8_1)));
             C3D_TexEnvFunc(e, C3D_RGB, tev_func(st->g[0].func));
             C3D_TexEnvSrc(e, C3D_Alpha, tev_src(st->g[1].src[0]), tev_src(st->g[1].src[1]), tev_src(st->g[1].src[2]));
-            C3D_TexEnvOpAlpha(e, tev_op_a(st->g[1].op[0]), tev_op_a(st->g[1].op[1]), tev_op_a(st->g[1].op[2]));
+            C3D_TexEnvOpAlpha(e, tev_op_a_i(st->g[1].op[0], tev_i8(st->g[1].src[0], i8_0, i8_1)), tev_op_a_i(st->g[1].op[1], tev_i8(st->g[1].src[1], i8_0, i8_1)),
+                              tev_op_a_i(st->g[1].op[2], tev_i8(st->g[1].src[2], i8_0, i8_1)));
             C3D_TexEnvFunc(e, C3D_Alpha, tev_func(st->g[1].func));
             C3D_TexEnvColor(e, abgr(st->constant));
             if (st->g[0].scale > 1) C3D_TexEnvScale(e, C3D_RGB, st->g[0].scale == 4 ? GPU_TEVSCALE_4 : GPU_TEVSCALE_2);
@@ -270,7 +317,28 @@ static void flush(void) {
         C3D_TexEnvColor(e, abgr(r_mixcol));
         env_hi++;
     }
-    if (off_active && off_i8 && env_hi < 6) {
+    /* FX2a: an 8 bit image has memory alpha 0xE0 (7/8). The RDP blender then gives (P*a + M*0.88) / (a + 0.88): the weight of P is
+     * a / (a + 0.88), 0.53 at a = 1. The PICA blends by src alpha, so the fragment alpha becomes 0.532 * (1 - (1 - a)^2), a fit of that weight
+     * (error under 0.04). Pass A of the flame (colour 0, alpha 1) so keeps 0.47 of the old pixel and pass B keeps the old pixel where the blob alpha is 0. */
+    int memb = off_active && off_i8 && r_memblend && !r_replace;
+    if (memb && env_hi <= 4) {
+        C3D_TexEnv* e = C3D_GetTexEnv(env_hi++);
+        C3D_TexEnvInit(e);
+        C3D_TexEnvSrc(e, C3D_RGB, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
+        C3D_TexEnvFunc(e, C3D_RGB, GPU_REPLACE);
+        C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
+        C3D_TexEnvOpAlpha(e, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA);
+        C3D_TexEnvFunc(e, C3D_Alpha, GPU_MODULATE);
+        e = C3D_GetTexEnv(env_hi++);
+        C3D_TexEnvInit(e);
+        C3D_TexEnvSrc(e, C3D_RGB, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
+        C3D_TexEnvFunc(e, C3D_RGB, GPU_REPLACE);
+        C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_CONSTANT, GPU_CONSTANT);
+        C3D_TexEnvOpAlpha(e, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
+        C3D_TexEnvFunc(e, C3D_Alpha, GPU_MODULATE);
+        C3D_TexEnvColor(e, 0x88000000u);
+    } else memb = 0;
+    if (off_active && off_i8 && !(r_blend && !r_replace) && !memb && env_hi < 6) { /* FX2a: a blended 8 bit write keeps the blend weight in A */
         /* X02: an 8 bit intensity image reads as I in all four channels. The pixel written is (R, R, R, R). */
         C3D_TexEnv* e = C3D_GetTexEnv(env_hi);
         C3D_TexEnvInit(e);
@@ -344,7 +412,7 @@ static void flush(void) {
             C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
     C3D_CullFace(GPU_CULL_NONE);
-    if (off_active && (r_replace || off_i8))
+    if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
     else if (off_active) /* alpha accumulates as source over destination: a covered pixel becomes opaque */
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
@@ -618,6 +686,7 @@ void pm_gpu_read_frame(unsigned short* dst) {
 
 /* V05: start (or go back to) the off-screen pass for the colour image at base, width stride pixels. Returns 1 if
  * drawing goes there now. Each base gets one image for the frame (cleared on first use). */
+extern int pm_is_cfb(const void* p);
 int pm_gpu_off_begin(const void* base, int stride, int siz) {
     int i, w, h;
     if (!gpu_ok || off_fail || stride < 1 || stride > PM_OFF_W) return 0;
@@ -626,13 +695,23 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
     for (i = 0; i < OFF_ALL; i++) if (offs[i].base == base && offs[i].siz == siz) break;
     w = stride <= 64 ? 64 : PM_OFF_W; /* X02: the darkness stencil is 64 x 64: 16 KB of VRAM, not 512 KB */
     h = stride <= 64 ? 64 : PM_OFF_H;
+    if (i < OFF_ALL && i >= OFF_P && offs[i].last != pm_frame_count()) { /* FX2a: a kept 8 bit image, back in this frame with last frame's pixels */
+        offs[i].last = pm_frame_count();
+        pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
+    }
     if (i == OFF_ALL) {
-        if (w == 64 ? off_sused >= OFF_N : off_used >= OFF_N) {
+        if (siz == 1 && stride <= 64) {
+            /* FX2a: the flame writes D_800B32E0 from its own last frame, so 8 bit images keep their slot and pixels. A slot not named in this frame is taken over. */
+            int k;
+            for (k = OFF_P; k < OFF_ALL && offs[k].base; k++) {}
+            if (k == OFF_ALL) for (k = OFF_P; k < OFF_ALL && offs[k].last == pm_frame_count(); k++) {}
+            if (k == OFF_ALL) { pm_log("FX2a: more than 2 8 bit images in one frame, the rest draw on the screen"); return 0; }
+            i = k;
+        } else if (w == 64 ? off_sused >= OFF_N : off_used >= OFF_N) {
             static int once;
             if (!once++) pm_log("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
             return 0;
-        }
-        i = w == 64 ? OFF_N + off_sused++ : off_used++;
+        } else i = w == 64 ? OFF_N + off_sused++ : off_used++;
         if (!offs[i].rt) {
             if (!C3D_TexInitVRAM(&offs[i].tex, w, h, GPU_RGBA8)) {
                 pm_log("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
@@ -654,7 +733,9 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         C3D_RenderTargetClear(offs[i].rt, C3D_CLEAR_COLOR, 0, 0);
         offs[i].base = base;
         offs[i].siz = siz;
-        pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
+        offs[i].last = pm_frame_count();
+        /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
+        pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
         if (w == 64) { static int n; if (n++ < 6) pm_log("X02: darkness draw to 64x64 slot %d size %d bits %d addr %p", i, stride, siz == 3 ? 32 : siz == 2 ? 16 : 8, base); }
     }
     off_cur = i;
@@ -680,6 +761,7 @@ void pm_gpu_off_end(void) {
 }
 
 void pm_gpu_set_replace(int on) { r_replace = on; }
+void pm_gpu_set_memblend(int on) { if (on == r_memblend) return; flush(); r_memblend = on; }
 
 /* B2: T2 grab. The PICA cannot sample the target it draws to, and a CPU read mid-frame sees the last frame (the GPU has not run
  * yet). So: draw what is pending, split the command list, copy the strips of the main target (GX_TextureCopy, queued after the
@@ -689,7 +771,8 @@ void pm_gpu_set_replace(int on) { r_replace = on; }
 int pm_gpu_grab(const void* cfb, int y0, int y1) {
     int was_off = off_active, prev = off_cur, s0, s1;
     static int once;
-    const int x0 = 0, x1 = 320;
+    /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
+    const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
     if (!gpu_ok || off_fail || grab_ready < 0 || y1 <= y0) return 0;
     if (grab_n) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
@@ -717,8 +800,8 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) {
         want_clear = 0;
     }
     C3D_FrameSplit(GX_CMDLIST_FLUSH);
-    s0 = (40 + x0) >> 3; /* one tile row strip = 8 target rows = 8 game columns = 30 tiles = 7680 bytes */
-    s1 = (40 + x1 - 1) >> 3;
+    s0 = (mo + x0) >> 3; /* one tile row strip = 8 target rows = 8 game columns = 30 tiles = 7680 bytes */
+    s1 = (mo + x1 - 1) >> 3;
     GX_TextureCopy((u32*)((u8*)target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
                    (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
     pm_gpu_off_begin(cfb, 320, 2);
@@ -726,8 +809,8 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
         int s_comb = combine, s_2d = rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = r_atest, s_nc = r_nocol, s_mix = r_mix,
             s_rs = rgb_scale, s_3d = draw_3d;
-        float xa = (float)x0, xb = (float)x1, va = 1.f - (40.f + xa) / 512.f, vb = 1.f - (40.f + xb) / 512.f, ua = 240.f / 256.f;
-        sci_x0 = 0; sci_y0 = 0; sci_x1 = 320; sci_y1 = 240;
+        float xa = (float)x0, xb = (float)x1, va = 1.f - ((float)mo + xa) / 512.f, vb = 1.f - ((float)mo + xb) / 512.f, ua = 240.f / 256.f;
+        sci_x0 = 0; sci_y0 = 0; sci_x1 = x1; sci_y1 = 240;
         combine = 3; rect_2d = 1; batch_identity = 1; r_replace = 1; r_atest = -1; r_nocol = 0; r_mix = 0; rgb_scale = 1; draw_3d = 0;
         grab_bind = 1;
         /* game (x, y) reads texel column 239 - y, memory row 40 + x of the copy. v = 0 samples the last memory row (found with
@@ -757,7 +840,7 @@ static void off_dump(void) {
     unsigned char* row;
     const unsigned char* src;
     if (on < 0) { from = pm_debug_value("offdump", v, sizeof v) ? atoi(v) : 0; on = from || pm_debug_has("offdump"); } /* offdump=<first frame> */
-    if (!on || !(off_used + off_sused) || n >= 12 || (int)pm_frame_count() < from) return;
+    if (!on || !(off_used + off_sused || offs[OFF_P].base || offs[OFF_P + 1].base) || n >= 12 || (int)pm_frame_count() < from) return;
     /* X02: every slot of the frame, 64 x 64 slots too: off<frame>_<slot>.ppm */
   for (k = 0; k < OFF_ALL && n < 12; k++) {
     if (!offs[k].base) continue;
@@ -778,6 +861,7 @@ static void off_dump(void) {
             unsigned a = p[0];
             row[x * 3] = (unsigned char)(p[3] * a / 255); row[x * 3 + 1] = (unsigned char)(p[2] * a / 255); row[x * 3 + 2] = (unsigned char)(p[1] * a / 255);
             if (a == 0) row[x * 3] = row[x * 3 + 1] = row[x * 3 + 2] = 40;
+            if (offs[k].siz == 1) row[x * 3] = row[x * 3 + 1] = row[x * 3 + 2] = (unsigned char)p[3]; /* FX2a: an 8 bit image shows its intensity */
         }
         fwrite(row, 1, offs[k].w * 3, f);
     }
@@ -788,7 +872,7 @@ static void off_dump(void) {
 
 void pm_gpu_begin(int clear) {
     off_dump();
-    for (int k = 0; k < OFF_ALL; k++) offs[k].base = NULL;
+    for (int k = 0; k < OFF_P; k++) offs[k].base = NULL; /* FX2a: the 8 bit slots keep their base */
     off_used = off_sused = 0;
     off_active = 0;
     off_i8 = 0;
@@ -1035,6 +1119,8 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
         flush();
         draw_3d = 1;
     }
+    /* F07-7: a UI (orthographic) vertex on the left or right screen edge goes to the 400 px screen edge: bars, fades and overlay quads fill the gutters. Same rule as the fill rectangle. */
+    if (pm_wide && !off_active && ui_ortho && w > 0.f && (x >= w * 0.999f || x <= -w * 0.999f)) x *= 1.25f;
     put4(x, y, z, w, u, v, c);
 }
 
@@ -1092,6 +1178,11 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     batch_identity = 1;
     float xa = px(x0);
     float xb = px(x1 + 1);
+    if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, the texture continues at the same density */
+        float ds = (s1 - s0) / (xb - xa);
+        if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
+        if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
+    }
     float ya = py(y0);
     float yb = py(y1 + 1);
     unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;

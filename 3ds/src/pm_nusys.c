@@ -79,7 +79,8 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
         /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. pm_interp_key_draw replays every task of the
          * step without replacements in the idle iteration. The background task of the step comes before the swap task. */
         if (nkey < MAX_KEY) { key_list[nkey] = gfxList; key_size[nkey++] = gfxListSize; }
-        if (swap) { pm_interp_lerp(0.5f); pm_interp_repl = 1; }
+        if (swap && pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
+        else if (swap) { pm_interp_lerp(0.5f); pm_interp_repl = 1; }
         pm_gbi_run(gfxList, gfxListSize);
         pm_interp_repl = 0;
     } else {

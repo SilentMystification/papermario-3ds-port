@@ -469,3 +469,51 @@
 11:00 H06a2 smoke yard, expect 20 s
 11:19 H06a3 flags added, build ok, scan 36 hits, 2 real (rows H06a4, H06a5), rest H06a6
 11:50 H06a4-6 done, builds ok, smoke yard rc 0
+04:42 F06-5 start 1: pacestat fps60 warp kmr_20, expect 3 min
+04:45 F06-5 start 2: baseline without fps60, expect 3 min
+04:47 F06-5 done
+04:47 F06-6 start 1: tour 3 maps fps60 wide shots, expect 8 min
+04:47 F06-6 start 2: same tour, -Until tour: done, expect 5 min
+04:50 F06-6 start 3: tour with crash in load_mtx at f6800 (fps60 wide). Rerun fps60 only to split, expect 5 min
+04:52 F06-6 start 4: repeat fps60 wide tour, keep full crash output, expect 5 min
+04:53 F06-6 stop: budget 4/4, fault with fps60+wide in load_mtx, row updated
+04:54 F07-7 start 1: fxtest=54,87,123 with wide, toad, expect 6 min
+04:55 F07-7 progress, F11-4 done (no code change)
+05:10 F06-6 start 1 (new budget): debug logs stale key list and bad mtx, tour fps60 wide, expect 6 min
+05:35 F06-6 start 2: checksum of key list at save and at replay, same tour, expect 8 min
+05:50 F06-6 start 3: first diff word of the changed key list, same tour, expect 8 min
+06:10 F06-6 start 4: root cause bg list 0x200 overflow with wide, buffer 0x800, same tour, expect 8 min
+06:30 F06-6 done, bg list overflow fixed
+06:35 F07-8 start 1: toad wide shot, check columns 385 to 399, expect 2 min
+06:55 F07-8 fix: bg_texrect right copy xh clipped to 360 px, the 12 bit field wrapped at 512 px; rerun toad wide shot
+07:00 F07-8 done
+07:05 F07-7 notes: blocked on frame grab width decision
+07:40 V17 done: no fault, fade to grey 208 and curtains after overlay by decomp
+07:41 V16 V19 not reproduced in Azahar, see QUESTIONS.md
+05:58 V22b done
+06:14 FX2a partial, budget used
+06:15 H06d done
+06:17 H06b done
+06:28 C2R done
+06:30 FX2a session start: Azahar start 1: fxtest=27 offdump=410, expect 1 min
+06:35 FX2a edit: G_BL_A_MEM blend for 8 bit slots (pm_gpu memblend, fragment alpha .532*(1-(1-a)^2)). build 1, expect 5 min
+06:37 FX2a start 3: memblend build, shape appears (dim red). offdump=436 to see growth, expect 1 min
+06:39 FX2a: slot 8 and 9 static between frames (noise scroll lost?). build 2 with t1log, Azahar start 4 of 4, expect 2 min
+06:42 FX2a: cause of static noise = t1_fold pins a full window draw to 0 (scroll lost). Fix coded, memblend limited to two cycle. build 3, no Azahar start left (4/4)
+06:45 H06b1 start 1: warp=sbk_00:0 smoke 400, find comb new fc121824 and the frame, expect 1 min
+06:45 H06b1 start 2: warp=tik_01:0 (the audit line f1241 is 25 frames after tik_01 loaded), expect 1 min
+06:46 H06b1 start 3: tik_01 drawlog=37:2 to find chunk with oml 00552078, expect 1 min
+06:48 H06b1 start 4: dd log with tex flag, tik_01 drawlog=37:2, expect 1 min
+06:54 H06b1 coded (G_TEXTURE off reads texel 0,0, budget used 4/4, not tested). H06b3 coded: folded form for (A-B)*C+D with constant B C D in pm_comb.c. build
+06:56 H06b3 start 1: warp=hos_00:0 smoke 600, expect 2 min
+06:56 H06b3 start 2: shot of hos_00 frame 45, expect 1 min
+06:58 H06b5 start 1: tour of mgm_03 kzn_05 flo_17 hos_01 kkj_02 plus tik_01 (H06b1 check) and omo_07 (H06b2), expect 6 min
+07:01 C2J start 1: fxtest=49 with a log of the skip 08 address, expect 2 min
+07:05 C2J: cause = --gc-sections dropped D_09000BA8 (no reference), B88 ran into vertex data. Fix: -fno-data-sections on src/effects/gfx/*.c. Start 2: fxtest=49 shots, expect 2 min
+07:10 H06e warp past kmr_ gets partner 1, tik_01 smoke clean
+07:20 H06b2 cycle 2 (K - COMBINED) * X + K in 3 stages, planerr 7
+11:19 F07-7 start 2: fxtest=54,87,123 fxdx=-130 wide, expect 4 min
+11:20 F07-7 start 3: fxtest=54 fxdx=-190 wide, expect 2 min
+11:23 F07-7 start 4 (last): fxtest=54,54,87 fxdx=-165 wide, expect 3 min
+11:24 F07-7 code done, 4/4 starts used, golden toad and edge shot open (QUESTIONS)
+11:27 F07-7 overlay edge fix coded, untested (budget)

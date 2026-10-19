@@ -27,3 +27,13 @@ Answered questions and the old text are in docs/HISTORY.md (section "Original QU
 - V12d memory: YES, approved (about 18 KB).
 - F09: US only. Languages may come from a PAL ROM later. No 25/50 Hz mode.
 - F06 and F07: toggles for N3DS and O3DS, wired to the UI later. Not before optimization. Build 4:3 for now. The earlier N3DS-only limit and the 80 to 144 KB heap question are replaced by this: re-check cost on the O3DS in the plan phase after optimization.
+
+F06-6 (2026-10-19): BUDGET 4/4 used. fps60+wide tour faults in load_mtx at area 6 map 5. Reset needed to continue. Details in the row.
+
+V16 (2026-10-19): No flicker frame found. Name the scene, enemy and attack where the box shows (or a save), then one run with drawlog on that frame closes it. 1 of 4 starts left in row V16.
+V19 (2026-10-19): BUDGET 4/4 used. Azahar shows no Sushie shadow and no jump in jan_04 (frames 170 to 320). Question: is the flicker seen on Azahar or only on the O3DS and N3DS? Which shadow flickers, Sushie or another one?
+
+FX2a: BUDGET 4/4 used again on 2026-10-19 (second budget). No user decision needed. The row needs a new budget for one test start: the noise scroll fix (t1_fold) and the darkness stencil check are coded or open and not tested. State in the FX2a row of 3ds/SLICES.md.
+
+F07-7 (2026-10-19): BUDGET 4/4 used. Code is done (frame grab 400 columns). Open: golden toad with `wide` off (expect 0 diff) and one fxtest=54 shot pair with the glow centre within 40 px of a screen edge. Needs a reset of 1 start. No user decision needed.
+F07-7 (2026-10-19, coordinator add): the overlay edge fix (pm_gpu_vert_clip, pm_gpu_tex_rect) is coded and not tested, BUDGET 4/4. Needs 2 starts in total (this test and the golden toad / edge glow test).

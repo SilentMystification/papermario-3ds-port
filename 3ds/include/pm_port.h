@@ -31,6 +31,8 @@ void pm_interp_open(unsigned a, unsigned b);
 void pm_interp_close(void);
 void pm_interp_lerp(float t); /* F06-2 */
 const float (*pm_interp_find(const void* m))[4];
+extern int pm_interp_skip;
+extern void pm_interp_skip_count(void);
 extern int pm_interp_repl; /* 1 during the t = 0.5 pass */
 void pm_interp_record(float mf[4][4], void* m);
 const char* pm_debug_text(void);

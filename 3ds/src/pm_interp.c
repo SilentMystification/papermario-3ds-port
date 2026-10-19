@@ -32,6 +32,9 @@ typedef struct {
 
 int pm_interp_on = -1;
 int pm_interp_repl;
+int pm_interp_skip; /* F06-5: set by pm_frame_loop when the last step took more than 2 vblanks */
+static unsigned nskip;
+void pm_interp_skip_count(void) { nskip++; }
 /* The tables sit on the heap and exist only with fps60. A 700 KB BSS growth moved gDisplayContext past 0x01400000, the end of the
  * is_host range in pm_gbi.c: the background list was then "bad dl" and the picture changed with the switch off. */
 static Leaf *leaves, *pleaves;
@@ -163,6 +166,7 @@ void pm_interp_stop(void) {
     if ((unsigned)nnode > peak_nodes) peak_nodes = nnode;
     if (++frames % 600 == 0) {
         pm_log("f06 rec leaves=%u nodes=%u peak=%u (table %d) peak_nodes=%u (table %d) over leaves=%u nodes=%u", tot_leaves / 600, tot_nodes / 600, peak, MAX_LEAVES, peak_nodes, MAX_NODES, over_leaves, over_nodes);
+        pm_log("f06 skip=%u", nskip); nskip = 0;
         pm_log("f06 pair=%u", pair_total ? pair_leaves * 100 / pair_total : 0); /* percent of leaves with an old pair */
         tot_leaves = tot_nodes = pair_leaves = pair_total = 0;
     }

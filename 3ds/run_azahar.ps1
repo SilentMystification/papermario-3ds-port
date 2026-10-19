@@ -73,6 +73,7 @@ $argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "F
 $budgetRows = @(if (Test-Path $budgetFile) { Get-Content $budgetFile | Where-Object { $_ } | ForEach-Object { $f = $_.Split(","); [pscustomobject]@{ t = [datetime]$f[0]; row = $f[1]; sha = $f[2]; args = $f[3]; kind = $f[4]; rc = $f[5]; res = ($f[6..($f.Count - 1)] -join ",") } } })
 $used = @($budgetRows | Where-Object { $_.row -eq $row -and $_.kind -eq "start" -and ($row -ne "adhoc" -or $_.t -gt (Get-Date).AddHours(-3)) }).Count
 if ($used -ge $max) { Write-Output "BUDGET: row $row used $used runs. Stop and report what blocks you."; exit 9 }
+if ($Debug -and $Debug.Length -gt 255) { Write-Output "SWITCHES: -Debug is $($Debug.Length) characters. The game reads 255 and cuts the rest, so a map name of a tour list is cut (H06d). Use tour=@file for a long list."; exit 8 }
 if ($Debug -match "tour=(\S+)") {
     $tv = $Matches[1]
     if ($tv.StartsWith("@")) { $tv = if (Test-Path "$sd\$($tv.Substring(1))") { (Get-Content "$sd\$($tv.Substring(1))" -Raw) -replace "\s+", "," } else { "" } }
