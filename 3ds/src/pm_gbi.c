@@ -76,6 +76,7 @@ static void dd_end(void) {
 }
 
 static unsigned prim = 0xffffffffu;
+static unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
 static unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
 static unsigned fill = 0xffffffffu;
 static unsigned prim_z; /* X01: G_SETPRIMDEPTH, 15 bit, 0 near, 0x7fff far */
@@ -296,7 +297,8 @@ static float cc_const_in(int slot, unsigned sel, int ch, const float* pr, const 
     if (slot == 0 && sel == 6) return 1.f;
     if (slot == 3 && sel == 6) return 1.f;
     if (slot == 3 && sel == 7) return 0.f;
-    if (slot == 1 && sel >= 7) return 0.f;
+    if (slot == 1 && sel == 7) return (float)conv_k4 / 255.f;
+    if (slot == 1 && sel > 7) return 0.f;
     if (slot == 0 && sel >= 8) return 0.f;
     if (slot == 2 && sel == 10) return pr[3];
     if (slot == 2 && sel == 12) return en[3];
@@ -673,7 +675,7 @@ static int clip_bits(const ClipV* p) {
  * (A-B)*C+D per cycle, on random inputs, against what that mode draws. A difference is logged once
  * ("comb new") and then with a draw count at 1, 10, 100, ... draws ("comb count"). COMBINED is 0 in
  * cycle 1. LOD fraction, noise, key and convert read 0. */
-typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; } CcIn;
+typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; float k4; } CcIn;
 
 static float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* cb, int alpha, float prlod) {
     int rgb_c = !alpha && slot == 2;
@@ -697,7 +699,7 @@ static float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* c
     case 4: return in->sh[ch];
     case 5: return in->en[ch];
     case 6: return slot == 1 ? in->ke[ch] : slot == 2 ? in->ks[ch] : slot == 0 || slot == 3 ? 1.f : 0.f;
-    case 7: return rgb_c ? cb[3] : 0.f;
+    case 7: return slot == 1 ? in->k4 : rgb_c ? cb[3] : 0.f;
     case 8: return rgb_c ? in->t0[3] : 0.f;
     case 9: return rgb_c ? in->t1[3] : 0.f;
     case 10: return rgb_c ? in->pr[3] : 0.f;
@@ -855,7 +857,7 @@ static Dec* decide(int two) {
                     pcs[0] = (unsigned)(lcg_f() * 255.f + .5f); pcs[1] = (unsigned)(lcg_f() * 255.f + .5f);
                     pc = pc << 8 | pcs[0]; ec = ec << 8 | pcs[1];
                 }
-                unpack8(pc, in.pr); unpack8(ec, in.en); unpack8(keyc, in.ke); unpack8(keys, in.ks);
+                unpack8(pc, in.pr); unpack8(ec, in.en); unpack8(keyc, in.ke); unpack8(keys, in.ks); in.k4 = (float)conv_k4 / 255.f;
                 cc_eval(s, two, &in, plod_f, f);
                 cc_legacy(leg_mode, &in, use_t1, g);
                 for (int c = 0; c < 4; c++) { float e = f[c] > g[c] ? f[c] - g[c] : g[c] - f[c]; if (e > el) el = e; }
@@ -1779,6 +1781,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             aud_prim_lod = (u8)(w0 & 0xff);
             prim = w1;
             pm_gpu_set_prim(prim);
+            sync_combine();
+            break;
+        case G_SETCONVERT:
+            conv_k4 = (w1 >> 9) & 0xffu;
+            pm_comb_set_k4(conv_k4);
             sync_combine();
             break;
         case G_SETKEYR:

@@ -21,7 +21,7 @@ void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
 enum { PM_S_TEX0, PM_S_VTX, PM_S_CONST, PM_S_PREV, PM_S_BUF, PM_S_TEX1 };
 enum { PM_O_C, PM_O_1MC, PM_O_A, PM_O_1MA };
 enum { PM_F_REPLACE, PM_F_MODULATE, PM_F_ADD, PM_F_SUBTRACT, PM_F_INTERP, PM_F_MULADD };
-enum { PM_NM_NONE, PM_NM_ZERO, PM_NM_PRIM, PM_NM_ENV, PM_NM_PLOD, PM_NM_SHADE, PM_NM_PK, PM_NM_KEYC, PM_NM_KEYS, PM_NM_HALF }; /* PK: PRIM - CENTER, B6 */
+enum { PM_NM_NONE, PM_NM_ZERO, PM_NM_PRIM, PM_NM_ENV, PM_NM_PLOD, PM_NM_SHADE, PM_NM_PK, PM_NM_KEYC, PM_NM_KEYS, PM_NM_HALF, PM_NM_K4 }; /* PK: PRIM - CENTER, B6 */
 typedef struct {
     unsigned char src[3], op[3], func; /* one channel group of one stage */
     unsigned char scale; /* 0 or 1: x1, 2 or 4: the PICA stage scale (result x scale, then clamp) */
@@ -47,6 +47,7 @@ void pm_gpu_set_tex1(float sx, float sy, float ox, float oy);
  * sub-stage, 4 more constants than the PICA has, 5 no vertex or texture source for a name. */
 int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out);
 void pm_comb_swap_c2(unsigned s[8]);
+void pm_comb_set_k4(unsigned k4); /* G_SETCONVERT K4, 0..255: the combiner input K4 */
 /* Fill the constants. prim, env RGBA 0xRRGGBBAA, plod 0..255 (PRIM_LOD_FRAC), key and keys RGBA 0xRRGGBB00 (CENTER, SCALE). */
 void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys);
 /* What the stages give, as the PICA computes them. t0, shade: RGBA 0..1. out: RGBA 0..1. */

@@ -192,10 +192,14 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
         }
     }
     /* Pad to the power-of-two size with the last texel, so a clamped coordinate gets the edge. */
+    /* A tile mask makes the image repeat or mirror past the window (bulb glow: window 65 in a 128 texture, mask 64, mirror),
+     * so the pad follows the mask. */
     for (int y = 0; y < ph; y++) {
         int sy = y < h ? y : h - 1;
+        if (mh) { int r = mk_mt ? y % (2 * mh) : y % mh; sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
         for (int x = (y < h ? w : 0); x < pw; x++) {
             int sx = x < w ? x : w - 1;
+            if (mw) { int r = mk_ms ? x % (2 * mw) : x % mw; sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
             memcpy(scratch + ((size_t)y * pw + x) * out_bpp, scratch + ((size_t)sy * pw + sx) * out_bpp, out_bpp);
         }
     }

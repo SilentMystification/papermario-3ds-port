@@ -130,3 +130,5 @@ FX1b done: sweep 127 of 127. Fixed or fine: 2 (bulb_glow solid gone, quizmo_audi
 - FX2 done: FX2f huff_puff_breath fixed (pm_gbi.c window test comb2_aa), FX2c and FX2g checked, no change. 3dsx 13080892 to 13080884 bytes.
 - FX2 open: FX2a flame, FX2b bulb_glow, FX2d effect_63, FX2e peach_star_beam, leads in 3ds/SLICES.md. Golden battle ok.
 FX2d and FX2e done. 3dsx +1036 bytes. effect_63 draws black puffs, colour not checked against a reference.
+FX2ab: FX2b bulb_glow done (tile mask pad in pm_tex). FX2a flame partly fixed (K4 convert input), still a red block.
+FX2a left: snapshot slot D_800B32E0 per pass, keep it between frames. Details in 3ds/SLICES.md. Golden battle ok. 3dsx 13081920 to 13082696 (+776).

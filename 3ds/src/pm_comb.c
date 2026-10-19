@@ -12,7 +12,7 @@
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4 };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
 typedef struct { unsigned char func, scale; Term t[3]; unsigned char inv[3]; } Sk;
 
@@ -48,6 +48,7 @@ static Term term_rgb(int slot, unsigned sel, int cyc2, int t1only) {
         return slot == 1 ? TM(TN_KEY, 0) : slot == 2 ? TM(TN_KS, 0) : slot == 0 || slot == 3 ? TM(TN_ONE, 0) : TM(TN_ZERO, 0);
     default: break;
     }
+    if (slot == 1 && sel == 7) return TM(TN_K4, 0); /* the convert constant K4 (flame: (TEXEL1 - K4) * PRIM alpha) */
     if (slot == 2) {
         switch (sel) {
         case 7: return cyc2 ? TM(TN_CMB, 1) : TM(TN_ZERO, 0);
@@ -76,6 +77,8 @@ static Term term_a(int slot, unsigned sel, int cyc2, int t1only) {
     }
 }
 
+static int hold_alpha; /* the colour group of this cycle needs the cycle 1 alpha in its first stage: the alpha group goes last */
+
 /* Lower one group. Returns the stage count (1 or 2), or a negative reason. */
 static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
     Term prv = TM(TN_PRV, 0);
@@ -91,6 +94,15 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
             out[0] = mk(PM_F_MULADD, A, C, D, 0, 0, 0);
         }
         return 1;
+    }
+    if (B.n == TN_K4 && C.n == TN_CMB && C.a && D.n == TN_CMB && !D.a) {
+        /* (X - K4) * COMBINED alpha + COMBINED, cycle 2. y = K4 * a + (1 - P), then X * a + (1 - y) = X * a + P - K4 * a.
+         * The alpha of the first stage passes the cycle 1 alpha on to the second (the alpha group is placed last). */
+        Term pa = TM(TN_PRV, 1), pc = TM(TN_PRV, 0);
+        out[0] = mk(PM_F_MULADD, B, pa, pc, 0, 0, 1);
+        out[1] = mk(PM_F_MULADD, A, pa, pc, 0, 0, 1);
+        hold_alpha = 1;
+        return 2;
     }
     if (iso(A)) {
         if (isz(D)) out[0] = mk(PM_F_MODULATE, B, C, C, 1, 0, 0);
@@ -126,13 +138,20 @@ typedef struct { Sk s[6]; int n; } Seq;
 static int add_cycle(Seq* r, Seq* a, int start_r, int start_a, Term v[2][4]) {
     Sk o[4];
     int n;
+    int nr;
+    hold_alpha = 0;
     n = lower(v[0][0], v[0][1], v[0][2], v[0][3], o);
     if (n < 0) return n;
     if (start_r + n > 6) return -1;
     for (int i = 0; i < n; i++) r->s[start_r + i] = o[i];
     r->n = start_r + n;
+    nr = n;
     n = lower(v[1][0], v[1][1], v[1][2], v[1][3], o);
     if (n < 0) return n;
+    if (hold_alpha && n < nr) { /* stages before the alpha group only pass the alpha */
+        for (int i = 0; i < nr - n; i++) a->s[start_a + i] = mk(PM_F_REPLACE, TM(TN_PRV, 0), TM(TN_PRV, 0), TM(TN_PRV, 0), 0, 0, 0);
+        start_a += nr - n;
+    }
     if (start_a + n > 6) return -1;
     for (int i = 0; i < n; i++) a->s[start_a + i] = o[i];
     a->n = start_a + n;
@@ -159,6 +178,7 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     case TN_PR: name = PM_NM_PRIM; break;
     case TN_PK: name = PM_NM_PK; break;
     case TN_HALF: name = PM_NM_HALF; break;
+    case TN_K4: name = PM_NM_K4; break;
     case TN_KEY: name = PM_NM_KEYC; break;
     case TN_KS: name = PM_NM_KEYS; break;
     case TN_EN: name = PM_NM_ENV; break;
@@ -266,6 +286,9 @@ int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     return rc == 4 ? build(w0, w1, two, t1only, 1, out) : rc;
 }
 
+static unsigned pm_k4;
+void pm_comb_set_k4(unsigned k4) { pm_k4 = k4 & 255u; }
+
 static unsigned pk_colour(unsigned prim, unsigned key) {
     unsigned o = prim & 255u; /* alpha of PK: PRIM alpha */
     for (int sh = 8; sh < 32; sh += 8) {
@@ -284,6 +307,7 @@ static unsigned name_colour(int n, unsigned prim, unsigned env, unsigned plod, u
     case PM_NM_ENV: return env;
     case PM_NM_PLOD: return plod * 0x01010101u;
     case PM_NM_HALF: return 0x80808080u;
+    case PM_NM_K4: return pm_k4 * 0x01010101u;
     default: return 0;
     }
 }

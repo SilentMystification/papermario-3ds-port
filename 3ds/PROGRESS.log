@@ -353,3 +353,9 @@
 23:35 FX2de edits: stage 0 never reads the buffer colour (retry with a passing first stage), 0-B*C step plan with stage scale, reference wrap for that form. build 1
 23:37 FX2de build 1 done, 3dsx 13081920 bytes (+1036). Azahar start 1 of 2: fxtest 93,112, expect 3 min
 23:38 FX2de fxtest ok: 93 draws (6635 px), 112 black 0. Azahar start 2 of 2: golden battle, expect 2 min
+23:39 FX2de done, rows moved, golden battle ok, 3dsx 13081920 (+1036)
+23:41 FX2ab start, 3dsx 13081920 bytes. Azahar start 1 of 2: fxtest 27,54 with offdump=410 imglog? expect 3 min
+23:46 FX2ab fixes: bulb pad follows tile mask (pm_tex expand), K4 convert input in combiner (G_SETCONVERT, pm_comb, audit). build 1
+23:48 FX2ab build 1 done, 3dsx 13082696 (+776). Azahar start 2 of 2: fxtest 27,54 offdump=410, expect 3 min
+23:49 FX2ab shared renderer changed: golden battle (1 scene), expect 1 min
+23:50 FX2ab done: FX2b moved to SLICES_DONE, FX2a open with new lead, golden battle ok, 3dsx 13082696 (+776)
