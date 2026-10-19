@@ -62,3 +62,5 @@ V20 (2026-10-19): BUDGET 8/8. Block data is identical to the orange case, the fa
 V27 (2026-10-19): the Underwater effect matches the decomp in a numeric check (see the row). What looks off to you: the clean border around the picture (12 to 20 px, as in the real game), the wave speed, the colour, or the picture jumps? V19: not reproduced in Azahar, maybe only on hardware. V18: not worked in this pass (earlier tests did not reproduce it in Azahar, the cause lists only hardware tests).
 
 V18, V19, V27 (2026-10-19): one shared cause found for V27 (near plane clip, huge screen coordinates). Please test V18 (intro pan walkway) and V19 (Sushie shadow) on the next build. Azahar never showed V18 or V19.
+
+Q-F10 (2026-10-19): tst_12 floods effects (decomp script defect, same on N64). Option A: patch the game script (Add to AddF). Option B: keep the data, the scene selector and the tour skip tst_12. Which one? Default if no answer: B.
