@@ -325,6 +325,10 @@ set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error
 # GCC emits variables in reverse order without -fno-toplevel-reorder. With it, -fdata-sections keeps the sections in source order and --gc-sections still drops unused data.
 # One rule for all decomp game code, no per-file list. The port layer (3ds/src) is not in GAME_SRC.
 set_property(SOURCE ${GAME_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-toplevel-reorder)
+# C2J: effect display lists run on into the next array by adjacency (fire_breath D_09000B88 has no end command, D_09000BA8 follows). --gc-sections dropped the unreferenced
+# next array and the list ran into vertex data. The effect gfx files keep one data section each, so a file stays whole when any symbol of it is used.
+file(GLOB EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/*.c)
+set_property(SOURCE ${EFFECT_GFX_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections)
 # heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
 # (pm_map.c) and heaps.c gets its copy renamed.
 set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data -DD_80200000=pm_unused_80200000)
