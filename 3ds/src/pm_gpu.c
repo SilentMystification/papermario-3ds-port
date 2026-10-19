@@ -417,7 +417,7 @@ static void flush(void) {
     else if (off_active) /* alpha accumulates as source over destination: a covered pixel becomes opaque */
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
             GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-    else if (r_blend || rect_2d)
+    else if (r_blend) /* V25: a 2D rectangle follows its own blender mode (the story page strips use alpha = PRIM with an opaque blender) */
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
             GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     else

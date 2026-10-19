@@ -522,3 +522,4 @@
 12:40 V26 root cause: (&DefaultMoveSpeed)[-1] adjacency, Mario max jump 0. Fixed, demo trd_09 passes, seed same in 2 runs
 13:30 V24 star rainbow: palette words are big-endian in memory, blend math swapped. PAL_MEM added. V25 sync_render in texrect no effect, open
 14:20 H06f sweep: one hit only (7B440, fixed in V26). golden battle ok, intro 11 percent diff (RNG, older golden)
+15:10 V25 fixed: 2D rects blended by combiner alpha whatever the blender. golden toad ok, title old frame had the ghost, pause1 2.3 percent unchecked

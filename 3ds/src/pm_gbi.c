@@ -1901,6 +1901,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             off_screen_check();
             box_fold_sync();
             comb_audit();
+            sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
             if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
             /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
             int rtile = (use_t1 || (((w1 >> 24) & 7) == 1 && td[1].valid)) ? 1 : 0;

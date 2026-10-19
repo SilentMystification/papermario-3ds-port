@@ -45,3 +45,5 @@ V25 (2026-10-19): BUDGET 4/4 used again. No user decision. Needs a new budget fo
 
 V24 (2026-10-19): the PAL_MEM sites in src/battle/actor_rendering.c (dark, fear, poison, blend) are not tested at run time. No debug switch sets an actor status. Needs a small switch (battle with a status on one actor), 1 start. Golden intro differs 11 percent from the old frame (RNG and Mario jump): decide if 3ds/golden/intro.png is updated with --update.
 V24b (2026-10-19): BUDGET, V24 used 4/4 (golden battle took the last one). Switch btlstatus=poison|paralyze|static|dizzy is built (pm_warp.c) and not run. Needs 1 start: PM_ROW=V24 powershell -File 3ds/run_azahar.ps1 -Turbo -Smoke -FaultStop -Debug "fast preset=toad battle btlstatus=poison smokeframes=320 shots shotwin=300:3", then look at the Goomba: poison palette is a green tint, no rainbow.
+
+V25 (2026-10-19): golden title.png holds the ghost bug (dim dome). Update it with --update after the user agrees. golden pause1 differs 2.3 percent after the rectangle blend fix, look at it by eye first.
