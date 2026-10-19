@@ -153,6 +153,8 @@ function Set-Turbo {
 }
 
 if ($Smoke) { $Until = "smoke done"; $Debug = ("$Debug smoke").Trim() }
+# L02: the game logs only warnings and errors by default. The tools read info and debug lines, so a run asks for all of them.
+if ($Debug -notmatch "loglevel=" -and ($Debug.Length + 12) -le 255) { $Debug = ("$Debug loglevel=debug").Trim() }
 if ($Turbo) {
     $Debug = ("$Debug turbo").Trim()
     $Timeout = [Math]::Max(25, [int]($Timeout / $TurboFactor))

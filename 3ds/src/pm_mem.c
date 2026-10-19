@@ -142,28 +142,28 @@ int pm_mem_crash_line(char* buf, int cap) {
 void pm_mem_log(const char* tag) {
     if (!strcmp(tag, "map") && pm_debug_has("texmax")) {
         unsigned wmax, pk = pm_tex_map_peak_take(&wmax);
-        pm_log("texmax %u KB of %u KB before this map load, one frame used %u KB, now %u KB", pk >> 10, pm_tex_budget() >> 10, wmax >> 10, pm_tex_used() >> 10);
+        pm_log_d("texmax %u KB of %u KB before this map load, one frame used %u KB, now %u KB", pk >> 10, pm_tex_budget() >> 10, wmax >> 10, pm_tex_used() >> 10);
     }
     {
         unsigned gs = 0, as = 0;
         unsigned gu = pm_stack_used(0, &gs), au = pm_stack_used(1, &as);
-        pm_log("mem %s stack high-water game %u of %u B, audio %u of %u B", tag, gu, gs, au, as);
+        pm_log_d("mem %s stack high-water game %u of %u B, audio %u of %u B", tag, gu, gs, au, as);
         pm_gpu_log_stats(tag);
     }
     if (!strcmp(tag, "boot"))
-        pm_log("mem commit limit %uKB used-by-image %uKB offered %uKB cap %uKB", (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10),
+        pm_log_d("mem commit limit %uKB used-by-image %uKB offered %uKB cap %uKB", (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10),
                (unsigned)((commit_max - commit_cur) >> 10), PM_FCRAM >> 10);
     unsigned lin_used = pm_linear_bytes() - (unsigned)linearSpaceFree();
     if (strcmp(tag, "boot") && lin_used > lin_peak) lin_peak = lin_used;
     if (!strcmp(tag, "boot"))
-        pm_log("mem split H03 linear pool %uKB = fixed need %uKB + tex budget %uKB + margin %uKB, heap %uKB", pm_linear_bytes() >> 10,
+        pm_log_d("mem split H03 linear pool %uKB = fixed need %uKB + tex budget %uKB + margin %uKB, heap %uKB", pm_linear_bytes() >> 10,
                PM_LINEAR_FIXED_KB, pm_tex_budget() >> 10, (pm_linear_bytes() >> 10) - PM_LINEAR_FIXED_KB - (pm_tex_budget() >> 10),
                pm_heap_bytes() >> 10);
     else
-        pm_log("mem %s linear used %uKB peak %uKB (fixed part %uKB) texture failures %u", tag, lin_used >> 10, lin_peak >> 10,
+        pm_log_d("mem %s linear used %uKB peak %uKB (fixed part %uKB) texture failures %u", tag, lin_used >> 10, lin_peak >> 10,
                (lin_used - pm_tex_used()) >> 10, pm_tex_fail_count());
     struct mallinfo mi = mallinfo();
-    pm_log("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB tex-cache %uKB peak %uKB", tag,
+    pm_log_d("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB tex-cache %uKB peak %uKB", tag,
            pm_heap_bytes() >> 10, (unsigned)mi.uordblks >> 10, (unsigned)mi.fordblks >> 10,
            (unsigned)(fake_heap_end - (char*)__ctru_heap - mi.arena) >> 10, pm_linear_bytes() >> 10,
            (unsigned)linearSpaceFree() >> 10, pm_tex_used() >> 10, pm_tex_peak() >> 10);

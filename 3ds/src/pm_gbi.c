@@ -69,7 +69,7 @@ static int dd_skip(void) {
 }
 static void dd_end(void) {
     if (dd.ntri)
-        pm_log("dd f%u #%u top %08x vtx %08x dl %08x %08x oml %08x omh %08x zb %u tex %u img %08x fmt %u/%u %ux%u prim %08x tris %u box %d %d %d %d w %d %d",
+        pm_log_d("dd f%u #%u top %08x vtx %08x dl %08x %08x oml %08x omh %08x zb %u tex %u img %08x fmt %u/%u %ux%u prim %08x tris %u box %d %d %d %d w %d %d",
                pm_frame_count(), dd.idx, dd.top, dd.src, dd.dl0, dd.dl1, dd.oml, dd.omh, dd.zb, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.prim,
                dd.ntri, (int)dd.x0, (int)dd.y0, (int)dd.x1, (int)dd.y1, (int)dd.w0, (int)dd.w1);
     dd.ntri = 0;
@@ -148,7 +148,7 @@ static void grab_cur(const void* src, int w, int h) {
     r = pm_gpu_grab(nuGfxCfb_ptr, y, y + (h < 1 ? 1 : h));
     if (r == 2) { n_grabs++; n_splits++; }
     if (on < 0) on = pm_debug_has("imglog");
-    if (on) pm_log("imglog f%d grab x%d..%d y%d..%d result %d (0 none, 1 reused, 2 copied) grabs this frame %u", rm_frame, x, x + w - 1, y, y + h - 1, r, n_grabs);
+    if (on) pm_log_d("imglog f%d grab x%d..%d y%d..%d result %d (0 none, 1 reused, 2 copied) grabs this frame %u", rm_frame, x, x + w - 1, y, y + h - 1, r, n_grabs);
 }
 static void imglog(const char* op, const void* a, int siz, int stride, int role) {
     static int on = -1;
@@ -160,7 +160,7 @@ static void imglog(const char* op, const void* a, int siz, int stride, int role)
     else if (nuGfxZBuffer && (const unsigned short*)a >= nuGfxZBuffer && (const unsigned short*)a < nuGfxZBuffer + 320 * 240) kind = "zbuf";
     else if (pm_is_cfb(a)) kind = ((const unsigned short*)a >= nuGfxCfb_ptr && (const unsigned short*)a < nuGfxCfb_ptr + 320 * 240) ? "cfb_cur" : "cfb_prev";
     else { kind = "other"; if (role < 0) return; } /* settimg: log only frame buffer, z-buffer and depth copy reads */
-    pm_log("imglog f%d %s %s %p siz%d stride%d role%d oml %08x", rm_frame, op, kind, a, siz, stride, role, omode_l);
+    pm_log_d("imglog f%d %s %s %p siz%d stride%d role%d oml %08x", rm_frame, op, kind, a, siz, stride, role, omode_l);
 }
 static void off_screen_check(void) {
     static int nooff = -1;
@@ -921,7 +921,7 @@ static void comb_audit(void) {
             unsigned s[2][8];
             Dec* d = decide((int)cyc);
             float err = plan_active ? d->ep : d->el;
-            if (aud_n >= 512) { static int full; if (!full++) pm_log("comb audit table full (512)"); return; }
+            if (aud_n >= 512) { static int full; if (!full++) pm_log_d("comb audit table full (512)"); return; }
             aud_n++;
             aud[i].key = key; aud[i].cnt = 0; aud[i].next = 1; aud[i].first = rm_frame;
             aud[i].bad = (leg_mode != 4 && err > 0.012f) ? 1 : 0;
@@ -930,12 +930,12 @@ static void comb_audit(void) {
                 cc_decode(comb_w0, comb_w1, s);
                 cc_text(s, 0, t1, sizeof t1);
                 cc_text(s, 1, t2, sizeof t2);
-                pm_log("comb new f%d %s w %08x %08x cyc %u oml %08x fmt %u/%u tex %d t1only %d uses T0 %d T1 %d leg %d legerr %d plan %s why %d planerr %d nst %d",
+                pm_log_d("comb new f%d %s w %08x %08x cyc %u oml %08x fmt %u/%u tex %d t1only %d uses T0 %d T1 %d leg %d legerr %d plan %s why %d planerr %d nst %d",
                        rm_frame, aud[i].bad ? "INEXACT" : "PLAN-OK", comb_w0, comb_w1, cyc + 1, omode_l, tile_fmt[0], tile_siz[0], tex_on, use_t1,
                        cc_uses(s, cyc == 1, 0), cc_uses(s, cyc == 1, 1), leg_mode, (int)(d->el * 1000.f), plan_active ? "USED" : "no", d->why,
                        (int)(d->ep * 1000.f), d->plan.n);
-                pm_log("comb text %08x c1 %s | c2 %s", comb_w0, t1, t2);
-                if (!d->why) pm_log("comb dbg %08x act %d use %d lastsync use %d why %d cyc %d special %d at f%d", comb_w0, plan_active, d->use, ls_use, ls_why, ls_cyc, ls_dual, ls_frame);
+                pm_log_d("comb text %08x c1 %s | c2 %s", comb_w0, t1, t2);
+                if (!d->why) pm_log_d("comb dbg %08x act %d use %d lastsync use %d why %d cyc %d special %d at f%d", comb_w0, plan_active, d->use, ls_use, ls_why, ls_cyc, ls_dual, ls_frame);
             }
         }
     }
@@ -946,7 +946,7 @@ static void comb_audit(void) {
     if (aud[i].bad) aud_cnt_bad++;
     if ((aud[i].bad || plan_active) && aud[i].cnt == aud[i].next) {
         aud[i].next *= 10;
-        pm_log("comb count %08x %08x cyc %u oml %08x fmt %u/%u leg %d plan %d bad %d: %u draws, frames %d to %d", comb_w0, comb_w1, cyc + 1, omode_l,
+        pm_log_d("comb count %08x %08x cyc %u oml %08x fmt %u/%u leg %d plan %d bad %d: %u draws, frames %d to %d", comb_w0, comb_w1, cyc + 1, omode_l,
                tile_fmt[0], tile_siz[0], leg_mode, plan_active, aud[i].bad, aud[i].cnt, aud[i].first, rm_frame);
     }
 }
@@ -1122,7 +1122,7 @@ static void draw_tri(unsigned w) {
             lh != omode_h || lp != prim || lf != tile_fmt[0] * 4 + tile_siz[0]) {
             lp = prim; lf = tile_fmt[0] * 4 + tile_siz[0];
             lo = omode_l; lg = geom & G_ZBUFFER; la = comb_a; lb = comb_b; lc = comb_c; ld = comb_d; lh = omode_h;
-            pm_log("rm f%d oml %08x omh %08x zb %d comb %x %x %x %x a %x %x %x %x tex %d fmt %u/%u prim %08x env %08x xy %d %d w %d", rm_frame, lo, lh, lg != 0, la, lb, lc, ld, comb_aa, comb_ab, comb_ac, comb_ad, tex_on, tile_fmt[0], tile_siz[0], prim, envc,
+            pm_log_d("rm f%d oml %08x omh %08x zb %d comb %x %x %x %x a %x %x %x %x tex %d fmt %u/%u prim %08x env %08x xy %d %d w %d", rm_frame, lo, lh, lg != 0, la, lb, lc, ld, comb_aa, comb_ab, comb_ac, comb_ad, tex_on, tile_fmt[0], tile_siz[0], prim, envc,
                    (int)(poly[0].x / poly[0].w * vp_sx + vp_tx), (int)(vp_ty - poly[0].y / poly[0].w * vp_sy), (int)poly[0].w);
         }
     }
@@ -1143,7 +1143,7 @@ static void draw_tri(unsigned w) {
         if (pm_debug_has("ddverb")) {
             int k;
             for (k = 0; k < 3 && k < n; k++)
-                pm_log("ddv #%u fog %d %d obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, fog_fm, fog_fo, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
+                pm_log_d("ddv #%u fog %d %d obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, fog_fm, fog_fo, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
                        (int)verts[idx[k]].v.ob[2], (int)poly[k].x, (int)poly[k].y, (int)poly[k].z, (int)poly[k].w,
                        (int)verts[idx[k]].v.tc[0], (int)verts[idx[k]].v.tc[1]);
         }
@@ -1167,7 +1167,7 @@ static void draw_tri(unsigned w) {
         { static int on = -1, lf = -1, c; /* B3 step 1: the first 3 depth triangles of a frame */
           if (on < 0) on = pm_debug_has("imglog");
           if (on && (lf != rm_frame ? (lf = rm_frame, c = 0, 1) : 1) && c++ < 3)
-              pm_log("imglog f%d depthtri oml %08x omh %08x comb %x %x %x %x a %x %x %x %x prim %08x word %04x", rm_frame, omode_l, omode_h, comb_a, comb_b, comb_c, comb_d, comb_aa, comb_ab, comb_ac, comb_ad, prim, word_5551(prim)); }
+              pm_log_d("imglog f%d depthtri oml %08x omh %08x comb %x %x %x %x a %x %x %x %x prim %08x word %04x", rm_frame, omode_l, omode_h, comb_a, comb_b, comb_c, comb_d, comb_aa, comb_ab, comb_ac, comb_ad, prim, word_5551(prim)); }
     }
     if (plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE) {
         /* S25: the vertex colour carries a constant (PRIM, ENV or PRIM_LOD_FRAC) because the shade is not read. */
@@ -1245,7 +1245,7 @@ static unsigned op_cnt[256];
 static void note(unsigned op) {
     unsigned n = ++op_cnt[op];
     seen[op] = 1;
-    if (n == 1 || n == 100 || n == 10000 || n == 1000000) pm_log("gbi skip %02x count %u frame %d", op, n, rm_frame);
+    if (n == 1 || n == 100 || n == 10000 || n == 1000000) pm_log_d("gbi skip %02x count %u frame %d", op, n, rm_frame);
 }
 
 static unsigned n_ops; /* PT01: display list ops run this frame */
@@ -1272,7 +1272,7 @@ void pm_gbi_end_frame(void) {
         char line[112];
         snprintf(line, sizeof line, "t%d i%d c%d d%d o%d k%d x%d sp%u sl%d gr%u", acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x, n_splits, pm_gpu_off_count(), n_grabs);
         if (strcmp(line, prev) != 0) {
-            if (pm_debug_has("stats")) pm_log("stats %s", line); /* L01: per second line, only with the stats switch */
+            if (pm_debug_has("stats")) pm_log_d("stats %s", line); /* L01: per second line, only with the stats switch */
             snprintf(prev, sizeof prev, "%s", line);
         }
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
@@ -1282,7 +1282,7 @@ void pm_gbi_end_frame(void) {
     have_sample = 0;
     rm_frame++;
     if ((rm_frame % 600) == 0 && aud_cnt_total) {
-        pm_log("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners | tris %u lit %u fogmode %u fogblend %u blendcol %u texgen %u", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n, st_tri, st_lit, st_fogg, st_fogb, st_blc, st_tgen);
+        pm_log_d("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners | tris %u lit %u fogmode %u fogblend %u blendcol %u texgen %u", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n, st_tri, st_lit, st_fogg, st_fogb, st_blc, st_tgen);
     }
 }
 
@@ -1565,7 +1565,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         if (end && sp == 0 && pc >= end) break;
         if (!is_host((u32)pc)) {
             static int bad_dl;
-            if (bad_dl++ < 6) pm_log("bad dl pc %08x list %08x n %u sp %d", (u32)pc, (u32)list, nbytes, sp);
+            if (bad_dl++ < 6) pm_log_e("bad dl pc %08x list %08x n %u sp %d", (u32)pc, (u32)list, nbytes, sp);
             return;
         }
         u32 w0 = pc->words.w0;
@@ -1592,7 +1592,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             Gfx* next = (Gfx*)ptr_of(w1);
             if (next && !is_host((u32)next)) {
                 static int bad_next;
-                if (bad_next++ < 8) pm_log("bad dl target %08x w0 %08x list %08x", w1, w0, (u32)list);
+                if (bad_next++ < 8) pm_log_e("bad dl target %08x w0 %08x list %08x", w1, w0, (u32)list);
                 break;
             }
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
@@ -1610,7 +1610,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             Vtx* src = (Vtx*)ptr_of(w1);
             if (src && !is_host((u32)src)) {
                 static int bad_vtx;
-                if (bad_vtx++ < 8) pm_log("bad vtx %08x w0 %08x list %08x", w1, w0, (u32)list);
+                if (bad_vtx++ < 8) pm_log_e("bad vtx %08x w0 %08x list %08x", w1, w0, (u32)list);
                 src = NULL;
             }
             if (src && n <= 64) {
@@ -1642,11 +1642,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 vert_sy[vi] = (s16)(w1 & 0xffffu);
                 vert_scr[vi] = 1;
                 if (lf != rm_frame) {
-                    if (lf >= 0) pm_log("modifyvtx f%d count %d", lf, lc);
+                    if (lf >= 0) pm_log_d("modifyvtx f%d count %d", lf, lc);
                     lf = rm_frame; lc = 0;
                 }
-                if (lc++ < 8) pm_log("modifyvtx f%d v%u sx %d sy %d (10.2)", rm_frame, vi, (int)(s16)(w1 >> 16), (int)(s16)(w1 & 0xffffu));
-            } else if (bad++ < 4) pm_log("modifyvtx ignored where %02x vtx %u", where, vi);
+                if (lc++ < 8) pm_log_d("modifyvtx f%d v%u sx %d sy %d (10.2)", rm_frame, vi, (int)(s16)(w1 >> 16), (int)(s16)(w1 & 0xffffu));
+            } else if (bad++ < 4) pm_log_d("modifyvtx ignored where %02x vtx %u", where, vi);
             break;
         }
         case G_TRI1:
@@ -1674,7 +1674,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_MOVEMEM: {
             if ((w0 & 0xff) != G_MV_VIEWPORT) {
                 unsigned ix = w0 & 0xff, n = ++mm_cnt[ix];
-                if (n == 1 || n == 1000 || n == 1000000) pm_log("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
+                if (n == 1 || n == 1000 || n == 1000000) pm_log_d("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
             }
             if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
                 int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
@@ -1808,7 +1808,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_SETKEYGB:
             keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
             keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
-            { static int kl; if (kl < 4) { kl++; pm_log("B6 key centre %08x scale %08x frame %d", keyc, keys, rm_frame); } }
+            { static int kl; if (kl < 4) { kl++; pm_log_d("B6 key centre %08x scale %08x frame %d", keyc, keys, rm_frame); } }
             sync_combine();
             break;
         case G_SETFOGCOLOR:
@@ -1860,7 +1860,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 break;
             }
             /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-            if (xt_on()) pm_log("xt f%u fillrect %d %d %d %d oml %08x omh %08x zb %d prim %08x primz %u cimg %p", pm_frame_count(), ulx, uly, lrx, lry, omode_l, omode_h, (geom & G_ZBUFFER) != 0, prim, prim_z, cimg);
+            if (xt_on()) pm_log_d("xt f%u fillrect %d %d %d %d oml %08x omh %08x zb %d prim %08x primz %u cimg %p", pm_frame_count(), ulx, uly, lrx, lry, omode_l, omode_h, (geom & G_ZBUFFER) != 0, prim, prim_z, cimg);
             unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
                 ? rgba_from_5551(fill & 0xffff) : prim;
             off_screen_check();
@@ -1889,8 +1889,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (yh & 0x800) yh |= ~0xfff;
             if (xl & 0x800) xl |= ~0xfff;
             if (yl & 0x800) yl |= ~0xfff;
-            if (xt_on()) pm_log("xt f%u texrect %d %d %d %d tile %u s %d t %d dsdx %d dtdy %d oml %08x omh %08x tile0 x0 %d y0 %d", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (w1 >> 24) & 7, (int)(s16)(hs >> 16), (int)(s16)(hs & 0xffff), (int)(s16)(hd >> 16), (int)(s16)(hd & 0xffff), omode_l, omode_h, tile_x0, tile_y0);
-            if (xt_on()) { int tw_ = 0, th_ = 0; pm_tex_size(&tw_, &th_); pm_log("xt   tile0 w %d h %d stride %d fmt %u siz %u tex %dx%d valid %d", td[0].w, td[0].h, td[0].stride, td[0].fmt, td[0].siz, tw_, th_, td[0].valid); }
+            if (xt_on()) pm_log_d("xt f%u texrect %d %d %d %d tile %u s %d t %d dsdx %d dtdy %d oml %08x omh %08x tile0 x0 %d y0 %d", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (w1 >> 24) & 7, (int)(s16)(hs >> 16), (int)(s16)(hs & 0xffff), (int)(s16)(hd >> 16), (int)(s16)(hd & 0xffff), omode_l, omode_h, tile_x0, tile_y0);
+            if (xt_on()) { int tw_ = 0, th_ = 0; pm_tex_size(&tw_, &th_); pm_log_d("xt   tile0 w %d h %d stride %d fmt %u siz %u tex %dx%d valid %d", td[0].w, td[0].h, td[0].stride, td[0].fmt, td[0].siz, tw_, th_, td[0].valid); }
             /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
             if (cimg == (void*)DepthCopyBuffer) { pm_depth_query(timg, (int)((s16)(hs >> 16) >> 5), sci_x0); break; }
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
@@ -1926,7 +1926,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             float s1 = s0 + dsdx * width / (float)tw;
             float t1 = t0 + dtdy * height / (float)th;
             t1_fold(s0 < s1 ? s0 : s1, s0 < s1 ? s1 : s0, t0 < t1 ? t0 : t1, t0 < t1 ? t1 : t0);
-            if (xt_on()) pm_log("xt   uv %d/%d  %d %d  s %d t %d (milli) s1 %d t1 %d width %d height %d tw %d th %d", (int)(s0 * 1000), (int)(t0 * 1000), 0, 0, 0, 0, (int)(s1 * 1000), (int)(t1 * 1000), (int)width, (int)height, tw, th);
+            if (xt_on()) pm_log_d("xt   uv %d/%d  %d %d  s %d t %d (milli) s1 %d t1 %d width %d height %d tw %d th %d", (int)(s0 * 1000), (int)(t0 * 1000), 0, 0, 0, 0, (int)(s1 * 1000), (int)(t1 * 1000), (int)width, (int)height, tw, th);
             {
                 /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
                  * above). In 1-cycle and 2-cycle mode the lower right edge is exclusive: without this the quad was one
@@ -2177,7 +2177,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; } /* F08 */
             if (index != G_MW_SEGMENT) {
                 unsigned n = ++mw_cnt[index];
-                if (n == 1 || n == 1000 || n == 1000000) pm_log("gbi ignore moveword index %02x offset %04x count %u frame %d", index, offset, n, rm_frame);
+                if (n == 1 || n == 1000 || n == 1000000) pm_log_d("gbi ignore moveword index %02x offset %04x count %u frame %d", index, offset, n, rm_frame);
             }
             if (index == G_MW_SEGMENT && (offset / 4) < 16) {
                 unsigned seg = offset / 4;

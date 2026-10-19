@@ -20,6 +20,7 @@
 ## Reading
 - Read docs/INDEX.md first. Do not search the tree.
 - Read logs with the last 40 lines only. Never read a whole log.
+- The game logs only warn and error lines by default (L02, switch `loglevel=<0..3>`). run_azahar.ps1 adds `loglevel=debug`, so test runs show all lines. A hardware run needs `loglevel=debug` in -GameDebug to log more.
 - Read files with offset and limit.
 - Use summary scripts: 3ds/tools/phase_report.py, rom_trace_classify.py, rom_trace_check.py, check_data_layout.py.
 - Do not read docs/HISTORY.md. Grep it for one topic only.

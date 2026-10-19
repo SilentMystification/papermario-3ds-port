@@ -352,7 +352,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
                 off_oy = (int)(d / row);
                 off_ox = (int)((d % row) / bpp);
                 off_cur = i;
-                if (offt[i].w == 64) { static int n; if (n++ < 6) pm_log("X02: overlay reads 64x64 slot %d bits %d addr %p", i, gs == 3 ? 32 : gs == 2 ? 16 : 8, img); }
+                if (offt[i].w == 64) { static int n; if (n++ < 6) pm_log_d("X02: overlay reads 64x64 slot %d bits %d addr %p", i, gs == 3 ? 32 : gs == 2 ? 16 : 8, img); }
                 have = 1;
                 return 1;
             }
@@ -362,7 +362,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         static int once;
         if (!once) {
             once = 1;
-            pm_log("tex ptr %08x %dx%d fmt %u", (unsigned)img, width, height, fmt);
+            pm_log_d("tex ptr %08x %dx%d fmt %u", (unsigned)img, width, height, fmt);
         }
         return 0;
     }
@@ -384,7 +384,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         static int once;
         if (!once) {
             once = 1;
-            pm_log("tex %dx%d skipped\n", width, height);
+            pm_log_w("tex %dx%d skipped\n", width, height);
         }
         return 0;
     }
@@ -428,7 +428,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             fail_n++;
             if (!once) {
                 once = 1;
-                pm_log("tex cache full %dx%d, draws using it are skipped", width, height);
+                pm_log_w("tex cache full %dx%d, draws using it are skipped", width, height);
             }
             return 0;
         }
@@ -436,7 +436,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     }
     Slot* s = &slots[slot];
     if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
-        pm_log("tex init failed %dx%d\n", pw, ph);
+        pm_log_e("tex init failed %dx%d\n", pw, ph);
         fail_last = 1;
         fail_n++;
         return 0;

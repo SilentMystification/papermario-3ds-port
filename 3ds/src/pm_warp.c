@@ -100,7 +100,7 @@ int pm_warp_active(void) {
                 found = 1;
             }
         }
-        if (!found) pm_log("warp: unknown preset '%s'", v);
+        if (!found) pm_log_w("warp: unknown preset '%s'", v);
     }
     int has_warp = pm_debug_value("warp", v, sizeof v);
     if (has_warp) {
@@ -168,7 +168,7 @@ s16 pm_warp_hook(s16 mode) {
     warp_done = 1;
     if (!pm_warp_active()) return mode;
     if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) {
-        pm_log("warp: map %s not found, normal start", w_map);
+        pm_log_w("warp: map %s not found, normal start", w_map);
         return mode;
     }
     if (w_loadslot >= 0) { /* E02: load the file as the file select does (name, save count), then override map and story */
@@ -206,11 +206,11 @@ void pm_warp_world_mode(unsigned frame) {
     if (tour_next && warp_on) {
         tour_f0 = frame; /* a map of the tour is in */
         tour_wait = 0;
-        pm_log("tour: in map area %d map %d entry %d frame %u t=%u ms", gGameStatusPtr->areaID, gGameStatusPtr->mapID, gGameStatusPtr->entryID, frame, pm_uptime_ms());
+        pm_log_d("tour: in map area %d map %d entry %d frame %u t=%u ms", gGameStatusPtr->areaID, gGameStatusPtr->mapID, gGameStatusPtr->entryID, frame, pm_uptime_ms());
     }
     if (!warp_on || scene_f0 >= 0) return;
     scene_f0 = (int)frame;
-    pm_log("warp: scene frame0 %u scan %u t=%u ms", frame, pm_pad_scans, pm_uptime_ms());
+    pm_log_d("warp: scene frame0 %u scan %u t=%u ms", frame, pm_pad_scans, pm_uptime_ms());
     pm_padscript_start();
 }
 
@@ -232,7 +232,7 @@ static void tour_step(void) {
     if (*tour_next == ',') tour_next++;
     tour_n++;
     if (!get_map_IDs_by_name(name, &areaID, &mapID)) {
-        pm_log("tour: map %s not in gAreas", name);
+        pm_log_w("tour: map %s not in gAreas", name);
         return;
     }
     pm_log("tour: next %s entry %d (area %d map %d)", name, entry, areaID, mapID);
@@ -310,11 +310,11 @@ static void battlelist_tick(unsigned f) {
             bl_state = 0;
             bl_t = (int)f + 10;
         } else if (f - (unsigned)bl_t > 900) {
-            pm_log("battlelist: battle %d did not end in 900 frames, mode %d, stop", bl_n - 1, (int)get_game_mode());
+            pm_log_w("battlelist: battle %d did not end in 900 frames, mode %d, stop", bl_n - 1, (int)get_game_mode());
             blist_next = NULL;
         }
     } else if (bl_state == 1 && f - (unsigned)bl_t > 900) {
-        pm_log("battlelist: battle %d never reached the battle mode, mode %d, stop", bl_n - 1, (int)get_game_mode());
+        pm_log_w("battlelist: battle %d never reached the battle mode, mode %d, stop", bl_n - 1, (int)get_game_mode());
         blist_next = NULL;
     }
 }
@@ -350,7 +350,7 @@ void pm_warp_tick(unsigned frame) {
         tour_ts = frame;
         tour_step();
     } else if (tour_next && tour_wait && frame - tour_ts > 300) { /* the change was refused or never came */
-        pm_log("tour: no map change within 300 frames");
+        pm_log_w("tour: no map change within 300 frames");
         tour_wait = 0;
         tour_f0 = frame - TOUR_FRAMES + 1;
     }
@@ -362,7 +362,7 @@ void pm_warp_tick(unsigned frame) {
         make_item_entity_nodelay(ti[0] == 'c' ? ITEM_COIN : ti[0] == 's' ? ITEM_STAR_PIECE : ITEM_MUSHROOM, gPlayerStatus.pos.x + 60.0f, gPlayerStatus.pos.y, gPlayerStatus.pos.z, ITEM_SPAWN_MODE_FIXED_NEVER_VANISH, 0);
     }
     if (f % (padscript_log ? 2 : 100) == 0 || f == 5) {
-        pm_log("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d wall %d push %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
+        pm_log_d("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d wall %d push %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
                (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,
                (int)(gPlayerStatus.gravityIntegrator[0] * 100), (int)(gPlayerStatus.maxJumpSpeed * 1000), (int)(gPlayerStatus.walkSpeed * 100), (int)(gPlayerStatus.runSpeed * 100), (int)gCollisionStatus.curWall, (int)gCollisionStatus.pushingAgainstWall);
     }
@@ -422,6 +422,6 @@ void pm_x02_log(int isWorld, int alpha, int x, int y) {
     if (alpha != la || (int)gPartnerStatus.partnerActionState != ls) {
         la = alpha;
         ls = (int)gPartnerStatus.partnerActionState;
-        pm_log("X02: darkness world %d alpha %d pos %d %d partnerAction %d cur %d", isWorld, alpha, x, y, ls, (int)gPlayerData.curPartner);
+        pm_log_d("X02: darkness world %d alpha %d pos %d %d partnerAction %d cur %d", isWorld, alpha, x, y, ls, (int)gPlayerData.curPartner);
     }
 }

@@ -448,6 +448,12 @@ u8 filemenu_msg_opt_nolight[] = { 0x2E, 0x4F, 0xF7, 0x4C, 0x49, 0x47, 0x48, 0x54
 u8 filemenu_msg_opt_back[] = { 0x22, 0x41, 0x43, 0x4B, 0xFD }; // Back[End]
 u8 filemenu_msg_opt_on[] = { 0x2F, 0x4E, 0xFD }; // On[End]
 u8 filemenu_msg_opt_off[] = { 0x2F, 0x46, 0x46, 0xFD }; // Off[End]
+u8 filemenu_msg_opt_log[] = { 0x2C, 0x4F, 0x47, 0x47, 0x49, 0x4E, 0x47, 0xFD }; // Logging[End]
+u8 filemenu_msg_opt_loglevel[] = { 0x2C, 0x4F, 0x47, 0xF7, 0x4C, 0x45, 0x56, 0x45, 0x4C, 0xFD }; // Log level[End]
+u8 filemenu_msg_opt_lv_error[] = { 0x25, 0x52, 0x52, 0x4F, 0x52, 0xFD }; // Error[End]
+u8 filemenu_msg_opt_lv_warn[] = { 0x37, 0x41, 0x52, 0x4E, 0xFD }; // Warn[End]
+u8 filemenu_msg_opt_lv_info[] = { 0x29, 0x4E, 0x46, 0x4F, 0xFD }; // Info[End]
+u8 filemenu_msg_opt_lv_debug[] = { 0x24, 0x45, 0x42, 0x55, 0x47, 0xFD }; // Debug[End]
 #endif
 #endif
 
@@ -532,6 +538,12 @@ u8 *gFileMenuMessages[] = {
     [FILE_MESSAGE_OPT_BACK]                  filemenu_msg_opt_back,
     [FILE_MESSAGE_OPT_ON]                  filemenu_msg_opt_on,
     [FILE_MESSAGE_OPT_OFF]                  filemenu_msg_opt_off,
+    [FILE_MESSAGE_OPT_LOG]                  filemenu_msg_opt_log,
+    [FILE_MESSAGE_OPT_LOGLEVEL]                  filemenu_msg_opt_loglevel,
+    [FILE_MESSAGE_OPT_LV_ERROR]                  filemenu_msg_opt_lv_error,
+    [FILE_MESSAGE_OPT_LV_WARN]                  filemenu_msg_opt_lv_warn,
+    [FILE_MESSAGE_OPT_LV_INFO]                  filemenu_msg_opt_lv_info,
+    [FILE_MESSAGE_OPT_LV_DEBUG]                  filemenu_msg_opt_lv_debug,
 #endif
 };
 

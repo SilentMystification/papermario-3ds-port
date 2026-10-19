@@ -81,7 +81,7 @@ void pm_interp_start(void) {
     if (!leaves) {
         leaves = malloc(2 * MAX_LEAVES * sizeof(Leaf) + 2 * MAX_NODES * sizeof(Node) + RT_SIZE * sizeof(RT) +
                         MAX_LEAVES * 64 + (PT_SIZE + NT_SIZE) * sizeof(short));
-        if (!leaves) { pm_log("f06: no memory for the tables, fps60 off"); pm_interp_on = 0; return; }
+        if (!leaves) { pm_log_e("f06: no memory for the tables, fps60 off"); pm_interp_on = 0; return; }
         pleaves = leaves + MAX_LEAVES;
         nodes = (Node*)(pleaves + MAX_LEAVES);
         pnodes = nodes + MAX_NODES;
@@ -165,9 +165,9 @@ void pm_interp_stop(void) {
     if ((unsigned)nleaf > peak) peak = nleaf;
     if ((unsigned)nnode > peak_nodes) peak_nodes = nnode;
     if (++frames % 600 == 0) {
-        pm_log("f06 rec leaves=%u nodes=%u peak=%u (table %d) peak_nodes=%u (table %d) over leaves=%u nodes=%u", tot_leaves / 600, tot_nodes / 600, peak, MAX_LEAVES, peak_nodes, MAX_NODES, over_leaves, over_nodes);
-        pm_log("f06 skip=%u", nskip); nskip = 0;
-        pm_log("f06 pair=%u", pair_total ? pair_leaves * 100 / pair_total : 0); /* percent of leaves with an old pair */
+        pm_log_d("f06 rec leaves=%u nodes=%u peak=%u (table %d) peak_nodes=%u (table %d) over leaves=%u nodes=%u", tot_leaves / 600, tot_nodes / 600, peak, MAX_LEAVES, peak_nodes, MAX_NODES, over_leaves, over_nodes);
+        pm_log_d("f06 skip=%u", nskip); nskip = 0;
+        pm_log_d("f06 pair=%u", pair_total ? pair_leaves * 100 / pair_total : 0); /* percent of leaves with an old pair */
         tot_leaves = tot_nodes = pair_leaves = pair_total = 0;
     }
 }

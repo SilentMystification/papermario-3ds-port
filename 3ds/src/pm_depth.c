@@ -15,5 +15,5 @@ void pm_depth_query(const void* timg, int x, int id) {
     ok = pm_gpu_depth_at(x, y, &d24);
     /* near = large d24 (GREATER test), so 0 near .. 1 far is 1 - d24/0xFFFFFF */
     DepthCopyBuffer[id] = ok ? pm_depth_encode((int)((1.0f - (float)d24 / 16777215.0f) * 32704.0f + 0.5f)) : 0;
-    if (n++ < 8 || (n % 600) == 0) pm_log("F03 query n %d id %d x %d y %d ok %d d24 %06x word %04x", n, id, x, y, ok, d24, DepthCopyBuffer[id]);
+    if (n++ < 8 || (n % 600) == 0) pm_log_d("F03 query n %d id %d x %d y %d ok %d d24 %06x word %04x", n, id, x, y, ok, d24, DepthCopyBuffer[id]);
 }

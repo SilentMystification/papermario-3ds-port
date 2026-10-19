@@ -220,7 +220,7 @@ void pm_fxtest_tick(unsigned f) {
         fx_npc = NULL;
         for (id = 0; id < 16 && !fx_npc; id++) fx_npc = get_npc_safe(id);
         pm_log("fxtest: spawn %d %s at %d %d %d", i, fx_names[i], (int)fx_x, (int)fx_y, (int)fx_z);
-        if (i == FXT_emote && !fx_npc) pm_log("fxtest: not spawned %s: no NPC in this map", fx_names[i]);
+        if (i == FXT_emote && !fx_npc) pm_log_w("fxtest: not spawned %s: no NPC in this map", fx_names[i]);
         fx_spawn(i);
     } else if (k == 12) shot("a", i);
     else if (k == 32) shot("b", i);

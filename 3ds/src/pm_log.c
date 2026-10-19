@@ -36,6 +36,8 @@ static volatile int writer_core = -1;
 static volatile u32 writer_hb;
 static u32 q_dropped, q_drop_total;
 static int sw_lognull;
+static int log_level = 1; /* L02: 0 error, 1 warn, 2 info, 3 debug. A line above this level is dropped before any formatting. Default warn. */
+static int log_file_on = 1; /* L02: 0 = no write to log.txt (switch log=off, options panel) */
 
 static void ring_add(const char* s, int n) {
     for (int i = 0; i < n; i++) ring[ring_pos++ % RING] = s[i];
@@ -114,7 +116,21 @@ void pm_log_set_switches(const char* s) {
     if (s) strncat(switches, s, sizeof(switches) - 1);
     st_on = pm_debug_has("logstat") ? 1 : 2;
     sw_lognull = pm_debug_has("lognull");
+    {   /* L02: loglevel=<0..3 or error, warn, info, debug>, log=off */
+        extern int pm_debug_value(const char* key, char* out, unsigned n);
+        char v[16];
+        if (pm_debug_value("loglevel", v, sizeof v)) {
+            int lv = v[0] >= '0' && v[0] <= '3' ? v[0] - '0' : v[0] == 'e' ? 0 : v[0] == 'w' ? 1 : v[0] == 'i' ? 2 : v[0] == 'd' ? 3 : log_level;
+            log_level = lv;
+        }
+        if (pm_debug_value("log", v, sizeof v) && (!strcmp(v, "off") || !strcmp(v, "0"))) log_file_on = 0;
+    }
 }
+
+int pm_log_level(void) { return log_level; }
+int pm_log_file(void) { return log_file_on; }
+void pm_log_set_level(int lv) { log_level = lv < 0 ? 0 : lv > 3 ? 3 : lv; }
+void pm_log_set_file(int on) { log_file_on = on != 0; }
 
 void pm_log_init(int live) {
     LightLock_Init(&con_lock);
@@ -123,12 +139,12 @@ void pm_log_init(int live) {
     int rot = rename("log.txt", "log.old");
     int rot_err = errno;
     log_fd = open("log.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    if (rot != 0) pm_log("log rotate failed errno %d (no previous log.txt on the first boot)", rot_err);
+    if (rot != 0) pm_log_w("log rotate failed errno %d (no previous log.txt on the first boot)", rot_err);
     unsigned soc_bytes = 0;
     u32* soc = (u32*)pm_soc_buffer(&soc_bytes);
     Result soc_rc = (!live || !soc || soc_bytes < 0x1000) ? -1 : socInit(soc, soc_bytes);
     if (soc_rc != 0) {
-        if (live) pm_log("live log: off (buffer %p, %u bytes, socInit %08lx)", (void*)soc, soc_bytes, (unsigned long)soc_rc);
+        if (live) pm_log_w("live log: off (buffer %p, %u bytes, socInit %08lx)", (void*)soc, soc_bytes, (unsigned long)soc_rc);
         return;
     }
     listen_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -143,7 +159,7 @@ void pm_log_init(int live) {
     if (bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0 || listen(listen_fd, 1) < 0) {
         close(listen_fd);
         listen_fd = -1;
-        pm_log("live log: bind 17492 failed\n");
+        pm_log_e("live log: bind 17492 failed\n");
         return;
     }
     fcntl(listen_fd, F_SETFL, O_NONBLOCK);
@@ -167,7 +183,7 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs) {
     int dn = snprintf(dbg, sizeof(dbg), "logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s)", frames, avg_ms,
                       secs * 1000.f / (float)frames, dl, (float)dl / (float)frames, (float)dl / secs);
     svcOutputDebugString(dbg, dn);
-    pm_log("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u", frames, avg_ms, secs * 1000.f / (float)frames, dl,
+    pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u", frames, avg_ms, secs * 1000.f / (float)frames, dl,
            (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped);
 }
 
@@ -176,7 +192,7 @@ void pm_log_top(void) {
         int best = -1;
         for (int i = 0; i < st_nsites; i++) if (st_cnt[i] && (best < 0 || st_cnt[i] > st_cnt[best])) best = i;
         if (best < 0) return;
-        pm_log("logtop %u x \"%.60s\"", st_cnt[best], st_fmt[best]);
+        pm_log_d("logtop %u x \"%.60s\"", st_cnt[best], st_fmt[best]);
         st_cnt[best] = 0;
     }
 }
@@ -211,7 +227,7 @@ void pm_con_unlock(void) { LightLock_Unlock(&con_lock); }
 static LightEvent ev_wake, ev_started, ev_flushed;
 
 static void direct_write(const char* line, int n, const char* body, size_t bl) {
-    if (log_fd >= 0) {
+    if (log_fd >= 0 && log_file_on) {
         if (write(log_fd, line, (size_t)n) > 0) fsync(log_fd);
     }
     ring_add(line, n);
@@ -223,7 +239,8 @@ static void direct_write(const char* line, int n, const char* body, size_t bl) {
     fflush(stdout);
 }
 
-void pm_log(const char* fmt, ...) {
+static void vlog(int lv, const char* fmt, va_list ap) {
+    if (lv > log_level) return;
     int on = __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE);
     /* Queue full: one atomic add and out, before any formatting work, so a flood costs almost nothing. */
     if (on && __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= SLOTS) {
@@ -233,10 +250,7 @@ void pm_log(const char* fmt, ...) {
     __atomic_fetch_add(&st_lines, 1, __ATOMIC_RELAXED);
     if (st_on == 1 && fmt[0] != 'l') stat_site(fmt);
     char body[240];
-    va_list ap;
-    va_start(ap, fmt);
     vsnprintf(body, sizeof(body), fmt, ap);
-    va_end(ap);
     size_t bl = strlen(body);
     if (bl == 0 || body[bl - 1] != '\n') {
         if (bl + 1 < sizeof(body)) {
@@ -278,10 +292,17 @@ void pm_log(const char* fmt, ...) {
     if (h == t || h - t == SLOTS / 2) LightEvent_Signal(&ev_wake);
 }
 
+#define PM_LOG_FN(name, lv) void name(const char* fmt, ...) { va_list ap; va_start(ap, fmt); vlog(lv, fmt, ap); va_end(ap); }
+PM_LOG_FN(pm_log_e, 0)
+PM_LOG_FN(pm_log_w, 1)
+PM_LOG_FN(pm_log_i, 2)
+PM_LOG_FN(pm_log_d, 3)
+PM_LOG_FN(pm_log, 2) /* an old call is info */
+
 /* Output of one batch: log.txt, replay ring, live socket, stdout. Writer thread (or crash flush) only. */
 static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     if (n <= 0) return;
-    if (log_fd >= 0 && write(log_fd, lines, (size_t)n) > 0) dirty = 1;
+    if (log_fd >= 0 && log_file_on && write(log_fd, lines, (size_t)n) > 0) dirty = 1;
     ring_add(lines, n);
     if (client >= 0) {
         int off = 0;
@@ -384,7 +405,7 @@ static int start_writer(int id, int core) {
     int to = LightEvent_WaitTimeout(&ev_started, 1000000000LL);
     unsigned waited_ms = (unsigned)((svcGetSystemTick() - t0) / (SYSCLOCK_ARM11 / 1000));
     int ran = __atomic_load_n(&writer_started, __ATOMIC_ACQUIRE) == id;
-    pm_log("log: writer id %d core %d: wait result %d, thread ran %d after %u ms, svcGetProcessorID in thread %d", id, core, to, ran, waited_ms, writer_core);
+    pm_log_d("log: writer id %d core %d: wait result %d, thread ran %d after %u ms, svcGetProcessorID in thread %d", id, core, to, ran, waited_ms, writer_core);
     return ran;
 }
 
@@ -397,19 +418,19 @@ void pm_log_start(void) {
     LightLock_Init(&drain_lock);
     /* Core 1 (system core): a thread there is allowed only after APT_SetAppCpuTimeLimit (libctru thread.h). */
     Result r = APT_SetAppCpuTimeLimit(30);
-    pm_log("log: APT_SetAppCpuTimeLimit(30) = %08lx", (unsigned long)r);
+    pm_log_d("log: APT_SetAppCpuTimeLimit(30) = %08lx", (unsigned long)r);
     int ok = start_writer(1, 1);
     if (!ok) {
-        pm_log("log: writer thread on core 1 %s, using core 0", writer_th ? "did not start" : "not created");
+        pm_log_w("log: writer thread on core 1 %s, using core 0", writer_th ? "did not start" : "not created");
         writer_core = -1;
         ok = start_writer(2, 0);
     }
     if (!ok) {
-        pm_log("log: writer thread failed, the log stays direct");
+        pm_log_e("log: writer thread failed, the log stays direct");
         __atomic_store_n(&active_id, 0, __ATOMIC_RELEASE);
         return;
     }
-    pm_log("log: writer thread on core %d, game thread on core %d", writer_core, (int)svcGetProcessorID());
+    pm_log_d("log: writer thread on core %d, game thread on core %d", writer_core, (int)svcGetProcessorID());
     __atomic_store_n(&writer_on, 1, __ATOMIC_RELEASE);
 }
 
@@ -449,7 +470,7 @@ void pm_assert_fail(const char* statement) {
     if (!statement) statement = "assert";
     for (i = 0; i < nseen; i++) if (seen[i] == statement) return;
     if (nseen < 8) seen[nseen++] = statement;
-    pm_log("assert %s", statement);
+    pm_log_e("assert %s", statement);
 }
 
 void pm_crash_line(const char* s, int n) {

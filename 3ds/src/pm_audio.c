@@ -16,10 +16,10 @@ void pm_audio_init(void) {
     if (ready || tried) return; /* fail once, log once, run silent: no ndspInit retry on every audio tick */
     tried = 1;
     int fw = access("sdmc:/3ds/dspfirm.cdc", F_OK) == 0;
-    pm_log("dspfirm.cdc %s", fw ? "found" : "MISSING (sdmc:/3ds/dspfirm.cdc): no sound unless the DSP firmware is dumped");
+    (fw ? pm_log_i : pm_log_e)("dspfirm.cdc %s", fw ? "found" : "MISSING (sdmc:/3ds/dspfirm.cdc): no sound unless the DSP firmware is dumped");
     Result rc = ndspInit();
     if (R_FAILED(rc)) {
-        pm_log("ndsp init failed rc=%08lx, audio is silent", (unsigned long)rc);
+        pm_log_e("ndsp init failed rc=%08lx, audio is silent", (unsigned long)rc);
         return;
     }
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
@@ -32,7 +32,7 @@ void pm_audio_init(void) {
         memset(&wb[i], 0, sizeof(wb[i]));
         wb[i].status = NDSP_WBUF_DONE;
         if (!data[i]) {
-            pm_log("audio linearAlloc %d of %d failed, audio is silent", i, SLOTS);
+            pm_log_e("audio linearAlloc %d of %d failed, audio is silent", i, SLOTS);
             for (int j = 0; j < i; j++) linearFree(data[j]);
             ndspExit();
             return;
@@ -60,7 +60,7 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
             if (v > peak) peak = v;
         }
         if (++posts % 120 == 0) {
-            if (pm_debug_has("audiostat")) pm_log("audio posts %u peak %d\n", posts, peak);
+            if (pm_debug_has("audiostat")) pm_log_d("audio posts %u peak %d\n", posts, peak);
             peak = 0;
         }
     }
@@ -99,7 +99,7 @@ static void au_main(void* unused) {
     pm_crash_install(au_crash_stack, sizeof(au_crash_stack)); /* the engine runs here: a fault needs its own trace */
     pm_stack_register(1, "audio", 64 * 1024);
     pm_fpscr_setup("audio");
-    pm_log("threads: audio on core %d (svcGetProcessorID)", (int)svcGetProcessorID());
+    pm_log_d("threads: audio on core %d (svcGetProcessorID)", (int)svcGetProcessorID());
     au_entry(au_arg);
 }
 
@@ -113,7 +113,7 @@ void pm_au_thread_start(void (*entry)(void*), void* arg) {
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
     au_thread = threadCreate(au_main, NULL, 64 * 1024, prio, -2, false);
     if (!au_thread) {
-        pm_log("audio thread failed\n");
+        pm_log_e("audio thread failed\n");
         return;
     }
     LightSemaphore_Acquire(&au_idle, 1);

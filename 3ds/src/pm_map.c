@@ -468,7 +468,7 @@ int pm_debug_has(const char* word);
 extern void* __real_load_asset_by_name(const char* name, u32* decompressedSize);
 void* __wrap_load_asset_by_name(const char* name, u32* decompressedSize) {
     void* ret;
-    if (pm_debug_has("assets")) pm_log("load_asset_by_name %s", name);
+    if (pm_debug_has("assets")) pm_log_d("load_asset_by_name %s", name);
     ret = __real_load_asset_by_name(name, decompressedSize);
     last_asset_src = ret;
     strncpy(last_asset_name, name, sizeof(last_asset_name) - 1);
@@ -511,7 +511,7 @@ void pm_dump_scripts(void) {
     for (i = 0; i < MAX_SCRIPTS; i++) {
         Evt* e = (*gCurrentScriptListPtr)[i];
         if (e && e->id) {
-            pm_log("evt %d cur %d fn %p cl %d first %p flags %x blk %d off %d wait %d", e->id, e->curOpcode, e->callFunction, (s32)(e->ptrCurLine - e->ptrFirstLine), e->ptrFirstLine, e->stateFlags, e->blocked,
+            pm_log_d("evt %d cur %d fn %p cl %d first %p flags %x blk %d off %d wait %d", e->id, e->curOpcode, e->callFunction, (s32)(e->ptrCurLine - e->ptrFirstLine), e->ptrFirstLine, e->stateFlags, e->blocked,
                 (s32)(e->ptrNextLine - e->ptrFirstLine), e->loopDepth);
         }
     }
@@ -527,7 +527,7 @@ void __wrap_set_game_mode(s16 mode) {
     {
         extern unsigned pm_frame_count(void);
         char sm[16];
-        pm_log("game mode %d frame %u", mode, pm_frame_count());
+        pm_log_d("game mode %d frame %u", mode, pm_frame_count());
         if (pm_debug_value("shotmode", sm, sizeof sm) && atoi(sm) == mode) { /* X01: shotmode=<mode>:<n> one shot per frame for n frames from the change to <mode> */
             const char* c = strchr(sm, ':');
             extern void pm_gpu_shot_burst(int n);
@@ -545,7 +545,7 @@ void __wrap_set_game_mode(s16 mode) {
 void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     {
         extern unsigned pm_pad_scans;
-        pm_log("load map area %d map %d scan %u", areaID, mapID, pm_pad_scans);
+        pm_log_d("load map area %d map %d scan %u", areaID, mapID, pm_pad_scans);
     }
     pm_mem_log("map");
     {

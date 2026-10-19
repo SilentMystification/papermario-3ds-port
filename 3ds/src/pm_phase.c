@@ -43,7 +43,7 @@ void pm_ph_init(void) {
     unsigned x = 0;
     for (int i = 0; i < 2000; i++) x += pm_ticks();
     unsigned dt2 = pm_ticks() - t1;
-    pm_log("phase: on. pm_debug_has costs %.3f us per call (hit %d). A tick read costs %.3f us (x %u)", (double)dt / 2000.0 / 268.112, hit,
+    pm_log_d("phase: on. pm_debug_has costs %.3f us per call (hit %d). A tick read costs %.3f us (x %u)", (double)dt / 2000.0 / 268.112, hit,
            (double)dt2 / 2000.0 / 268.112, x & 1);
     last = frame_t0 = win_t0 = pm_ticks();
     memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
@@ -94,7 +94,7 @@ static void summarize(unsigned now) {
     stat3(col, n, &a, &p, &m);
     for (int i = 0; i < n; i++) if (win[i].wall > OVER_MS) over++;
     for (int i = 0; i < n; i++) if (win[i].wall - win[i].ms[PH_IDLE] - win[i].ms[PH_FBEGIN] > 33.3f) overcpu++;
-    pm_log("phase W f%u-%u n %d span %.0f ms | wall avg/p95/max %.1f/%.1f/%.1f | cpu (wall-idle-fbegin) %.1f/%.1f/%.1f | wall over34 %u, cpu over33 %u",
+    pm_log_d("phase W f%u-%u n %d span %.0f ms | wall avg/p95/max %.1f/%.1f/%.1f | cpu (wall-idle-fbegin) %.1f/%.1f/%.1f | wall over34 %u, cpu over33 %u",
            win[0].f, win[n - 1].f, n, (double)(now - win_t0) / TICKS_MS, wa, wp, wm, a, p, m, over, overcpu);
     for (int g = 0; g < (PH_N + 4) / 5; g++) {
         len = snprintf(line, sizeof line, "phase ms avg/p95/max:");
@@ -103,7 +103,7 @@ static void summarize(unsigned now) {
             stat3(col, n, &a, &p, &m);
             len += snprintf(line + len, sizeof line - (size_t)len, " %s %.1f/%.1f/%.1f", pname[k], a, p, m);
         }
-        pm_log("%s", line);
+        pm_log_d("%s", line);
     }
     for (int g = 0; g < 2; g++) {
         len = snprintf(line, sizeof line, "phase count avg/max per frame:");
@@ -113,13 +113,13 @@ static void summarize(unsigned now) {
             for (int i = 0; i < n; i++) { s += win[i].c[k]; if (win[i].c[k] > mx) mx = win[i].c[k]; }
             len += snprintf(line + len, sizeof line - (size_t)len, " %s %u/%u", cname[k], (unsigned)(s / (unsigned)n), mx);
         }
-        pm_log("%s", line);
+        pm_log_d("%s", line);
     }
     if (over) {
         len = snprintf(line, sizeof line, "phase over frames:");
         for (int i = 0, k = 0; i < n && k < 24; i++)
             if (win[i].wall > OVER_MS) { len += snprintf(line + len, sizeof line - (size_t)len, " %u(%.0f)", win[i].f, win[i].wall); k++; }
-        pm_log("%s", line);
+        pm_log_d("%s", line);
         /* the three worst frames, with every phase over 0.5 ms and every counter */
         for (int r = 0; r < 3; r++) {
             int w = -1;
@@ -132,7 +132,7 @@ static void summarize(unsigned now) {
             len += snprintf(line + len, sizeof line - (size_t)len, " |");
             for (int k = 0; k < C_N; k++)
                 if (win[w].c[k]) len += snprintf(line + len, sizeof line - (size_t)len, " %s %u", cname[k], win[w].c[k]);
-            pm_log("%s", line);
+            pm_log_d("%s", line);
             win[w].wall = 0.f; /* out of the next pick, the window is reset below */
         }
     }
@@ -153,7 +153,7 @@ void pm_ph_frame_end(void) {
     r->f = ++frame_no;
     frame_t0 = now;
     if (csv) {
-        pm_log("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d gv %d gt %d gm %d go %d | %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),
+        pm_log_d("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d gv %d gt %d gm %d go %d | %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),
                (int)(r->ms[PH_IDLE] * 10.f), (int)(r->ms[PH_LOGIC] * 10.f), (int)(r->ms[PH_DL] * 10.f), (int)(r->ms[PH_GBI] * 10.f),
                (int)(r->ms[PH_GPU] * 10.f), (int)(r->ms[PH_TEX] * 10.f), (int)(r->ms[PH_AUDIO] * 10.f), (int)(r->ms[PH_ROM] * 10.f),
                (int)(r->ms[PH_YAY0] * 10.f), (int)(r->ms[PH_FBEGIN] * 10.f), (int)(r->ms[PH_FEND] * 10.f), (int)(r->ms[PH_OTHER] * 10.f),

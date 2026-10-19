@@ -28,7 +28,7 @@ static void load_ranges(void) {
     FILE* f = fopen("ms_ranges.txt", "r");
     char line[128];
     int cap = 0;
-    if (!f) { pm_log("dprobe: no ms_ranges.txt"); probe_on = 0; return; }
+    if (!f) { pm_log_d("dprobe: no ms_ranges.txt"); probe_on = 0; return; }
     while (fgets(line, sizeof line, f)) cap++;
     rewind(f);
     rg = calloc(cap, sizeof(PmRange));
@@ -38,7 +38,7 @@ static void load_ranges(void) {
         if (sscanf(line, "%7s %x %u %c %47s", r->owner, &r->addr, &r->size, &k, r->sym) == 5) { r->kind = k; rg_n++; }
     }
     fclose(f);
-    pm_log("dprobe: %d ranges", rg_n);
+    pm_log_d("dprobe: %d ranges", rg_n);
 }
 
 static void probe_one(const char* phase, PmPristine* p, const char* id) {
@@ -55,12 +55,12 @@ static void probe_one(const char* phase, PmPristine* p, const char* id) {
         }
         if (r->kind == 'd') off += r->size;
         if (chg) {
-            pm_log("dprobe: %s %s %c %s size %u chg %u", phase, id, r->kind, r->sym, r->size, chg);
+            pm_log_d("dprobe: %s %s %c %s size %u chg %u", phase, id, r->kind, r->sym, r->size, chg);
             bytes += chg;
             syms++;
         }
     }
-    pm_log("dprobe: %s %s sum syms %u bytes %u of %u", phase, id, syms, bytes, total);
+    pm_log_d("dprobe: %s %s sum syms %u bytes %u of %u", phase, id, syms, bytes, total);
     if (bytes > p->chg_max) p->chg_max = bytes;
 }
 
@@ -79,9 +79,9 @@ void pm_mapdata_probe(const char* id) {
         strncpy(p->id, id, 7);
         for (i2 = 0; i2 < (unsigned)rg_n; i2++) if (owns(&rg[i2], id) && rg[i2].kind == 'd') p->n += rg[i2].size;
         p->d = malloc(p->n ? p->n : 1);
-        if (!p->d) { pm_log("dprobe: out of memory %s %u", id, p->n); pr_n--; return; }
+        if (!p->d) { pm_log_e("dprobe: out of memory %s %u", id, p->n); pr_n--; return; }
         for (i2 = 0; i2 < (unsigned)rg_n; i2++) if (owns(&rg[i2], id) && rg[i2].kind == 'd') { memcpy(p->d + off, (void*)rg[i2].addr, rg[i2].size); off += rg[i2].size; }
-        pm_log("dprobe: first %s data %u", id, p->n);
+        pm_log_d("dprobe: first %s data %u", id, p->n);
     }
     strncpy(cur, id, 7);
     cur[7] = 0;
@@ -116,7 +116,7 @@ void pm_mapdata_enter(const char* id) {
             if (!r->save) {
                 r->save = malloc(n);
                 if (r->save) memcpy(r->save, r->d0, n);
-                else pm_log("mapdata: out of memory %s %u", r->id, n);
+                else pm_log_e("mapdata: out of memory %s %u", r->id, n);
             } else {
                 memcpy(r->d0, r->save, n);
                 bd += n;
@@ -125,7 +125,7 @@ void pm_mapdata_enter(const char* id) {
         if (r->b1 > r->b0) { memset(r->b0, 0, r->b1 - r->b0); bz += r->b1 - r->b0; }
     }
     if (pm_debug_has("dataprobe")) {
-        pm_log("mapdata: %s restored data %u bss %u", id, bd, bz);
+        pm_log_d("mapdata: %s restored data %u bss %u", id, bd, bz);
         pm_mapdata_probe_after(id); /* what is still different from the first entry after the restore: changers not in map_restore.txt */
     }
 }

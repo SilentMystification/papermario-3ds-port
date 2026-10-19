@@ -181,7 +181,7 @@ static void split_frame(void) {
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
 static void off_snapshot(int i) {
     if (!offs[i].snap_ready) {
-        if (!C3D_TexInitVRAM(&offs[i].snap, offs[i].w, offs[i].h, GPU_RGBA8)) { pm_log("FX2a: no VRAM for the copy of slot %d", i); return; }
+        if (!C3D_TexInitVRAM(&offs[i].snap, offs[i].w, offs[i].h, GPU_RGBA8)) { pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
         C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
         C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
         offs[i].snap_ready = 1;
@@ -528,14 +528,14 @@ void pm_gpu_init(void) {
         consoleInit(GFX_BOTTOM, &bottom_con);
         printf("C3D_Init failed. No graphics.");
         pm_con_unlock();
-        pm_log("C3D_Init failed (command buffer 4MB), no graphics");
+        pm_log_e("C3D_Init failed (command buffer 4MB), no graphics");
         return;
     }
     /* Width 240, height 400: that is the top screen's rotated framebuffer.
      * A 320-tall target copied into it skews every scanline. */
     target = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
     if (!target) {
-        pm_log("render target failed\n");
+        pm_log_e("render target failed\n");
         return;
     }
     C3D_RenderTargetSetOutput(target, GFX_TOP, GFX_LEFT,
@@ -569,8 +569,8 @@ void pm_gpu_init(void) {
     consoleSetWindow(&bottom_con, 1, 3, 40, 28);
     pm_con_unlock();
     gpu_ok = vert_base != NULL;
-    if (!vert_base) pm_log("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
-    pm_log("gpu %s proj %d m %d %d", gpu_ok ? "ok" : "no vertex buffer", u_proj,
+    if (!vert_base) pm_log_e("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
+    pm_log_d("gpu %s proj %d m %d %d", gpu_ok ? "ok" : "no vertex buffer", u_proj,
            (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
 
@@ -629,11 +629,11 @@ static void dump_shot(void) {
         }
         if (shot_burst > 0) {
             shot_burst--;
-            pm_log("shot %u frame %u", n, pm_frame_count());
+            pm_log_d("shot %u frame %u", n, pm_frame_count());
         } else if (w0 >= 0) {
             unsigned fc = pm_frame_count();
             if ((int)fc < w0 || (int)fc >= w1) return;
-            pm_log("shot %u frame %u", n, fc);
+            pm_log_d("shot %u frame %u", n, fc);
         } else if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
     }
     src = (const unsigned char*)target->frameBuf.colorBuf;
@@ -706,16 +706,16 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             int k;
             for (k = OFF_P; k < OFF_ALL && offs[k].base; k++) {}
             if (k == OFF_ALL) for (k = OFF_P; k < OFF_ALL && offs[k].last == pm_frame_count(); k++) {}
-            if (k == OFF_ALL) { pm_log("FX2a: more than 2 8 bit images in one frame, the rest draw on the screen"); return 0; }
+            if (k == OFF_ALL) { pm_log_w("FX2a: more than 2 8 bit images in one frame, the rest draw on the screen"); return 0; }
             i = k;
         } else if (w == 64 ? off_sused >= OFF_N : off_used >= OFF_N) {
             static int once;
-            if (!once++) pm_log("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
+            if (!once++) pm_log_w("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
             return 0;
         } else i = w == 64 ? OFF_N + off_sused++ : off_used++;
         if (!offs[i].rt) {
             if (!C3D_TexInitVRAM(&offs[i].tex, w, h, GPU_RGBA8)) {
-                pm_log("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
+                pm_log_e("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
                 off_fail = 1;
                 return 0;
             }
@@ -723,7 +723,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             C3D_TexSetWrap(&offs[i].tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
             offs[i].rt = C3D_RenderTargetCreateFromTex(&offs[i].tex, GPU_TEXFACE_2D, 0, -1);
             if (!offs[i].rt) {
-                pm_log("V05: off-screen image %d: render target failed", i);
+                pm_log_e("V05: off-screen image %d: render target failed", i);
                 C3D_TexDelete(&offs[i].tex);
                 off_fail = 1;
                 return 0;
@@ -737,7 +737,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         offs[i].last = pm_frame_count();
         /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
         pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
-        if (w == 64) { static int n; if (n++ < 6) pm_log("X02: darkness draw to 64x64 slot %d size %d bits %d addr %p", i, stride, siz == 3 ? 32 : siz == 2 ? 16 : 8, base); }
+        if (w == 64) { static int n; if (n++ < 6) pm_log_d("X02: darkness draw to 64x64 slot %d size %d bits %d addr %p", i, stride, siz == 3 ? 32 : siz == 2 ? 16 : 8, base); }
     }
     off_cur = i;
     off_w = offs[i].w;
@@ -779,14 +779,14 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) return 1;
         if (grab_n >= GRAB_MAX) {
-            if (!once++) pm_log("B2: more than %d grabs in one frame, the rest reuse the last one", (int)GRAB_MAX);
+            if (!once++) pm_log_w("B2: more than %d grabs in one frame, the rest reuse the last one", (int)GRAB_MAX);
             return 1;
         }
     }
     flush();
     if (!grab_ready) {
         if (!C3D_TexInitVRAM(&grab_tex, 256, 512, GPU_RGBA8)) {
-            pm_log("B2: no VRAM for the 256 x 512 grab copy, grabs stay off");
+            pm_log_e("B2: no VRAM for the 256 x 512 grab copy, grabs stay off");
             grab_ready = -1;
             return 0;
         }
@@ -935,7 +935,7 @@ void pm_gpu_end(void) {
         if (cmd > cmd_max) cmd_max = cmd;
         if ((used * 10u > VERT_SLOTS * 9u || cmd > 0.9f || vert_drops) && (warned < 5 || frames_seen % 600 == 0)) {
             warned++;
-            pm_log("GPU LIMIT NEAR: vertex slots %u of %u (dropped %u), command buffer %d%%, draws %u", used,
+            pm_log_w("GPU LIMIT NEAR: vertex slots %u of %u (dropped %u), command buffer %d%%, draws %u", used,
                    (unsigned)VERT_SLOTS, vert_drops, (int)(cmd * 100.f), draws_frame);
         }
     }
@@ -950,7 +950,7 @@ void pm_gpu_end(void) {
 int pm_gpu_drew(void) { return drew; }
 
 void pm_gpu_log_stats(const char* tag) {
-    pm_log("mem %s gpu max per frame: draws %u, vertex slots %u of %u, command buffer %d%%, vertex drops (total) %u", tag, draws_max,
+    pm_log_d("mem %s gpu max per frame: draws %u, vertex slots %u of %u, command buffer %d%%, vertex drops (total) %u", tag, draws_max,
            verts_max, (unsigned)VERT_SLOTS, (int)(cmd_max * 100.f), vert_drops);
     draws_max = verts_max = 0;
     cmd_max = 0.f;
@@ -958,7 +958,7 @@ void pm_gpu_log_stats(const char* tag) {
 
 /* Fatal boot problem (no ROM, wrong ROM): show it on the bottom screen and wait for START. Used before the GPU is up. */
 void pm_fatal_screen(const char* msg) {
-    pm_log("FATAL: %s", msg);
+    pm_log_e("FATAL: %s", msg);
     pm_con_lock();
     if (!bottom_con.consoleInitialised) {
         gfxInitDefault();

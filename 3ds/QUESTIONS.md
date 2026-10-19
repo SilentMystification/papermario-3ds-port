@@ -44,4 +44,3 @@ FX2a (2026-10-19): BUDGET 4/4 used (third budget). Noise scroll works. Flame is 
 
 FX3a (2026-10-19): BUDGET 4/4 used. Sweep of 80 effects not run. Cause found: switch buffers of 1024 crashed the boot (_svfprintf_r, PC 0), reverted. fxtest_report.py now splits into 40 effects per start (2 starts needed). No user decision.
 
-C-O3DS (2026-10-19): the decision names Z, but the O3DS has only L and R as shoulder keys, and both give N64 Z now. Which physical 3DS key is Z on the O3DS (for example Select, X or Y, or L+R together)? Then R+Z = N64 R and L+Z = N64 L. Not coded. Needs the answer.

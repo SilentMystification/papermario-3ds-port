@@ -54,7 +54,7 @@ void pm_fpscr_setup(const char* who) {
     unsigned before = fpscr_get();
     unsigned v = (before | (1u << 24) | (1u << 25)) & ~((3u << 22) | (0x1Fu << 8) | (1u << 15) | 0x9Fu);
     __asm__ volatile("vmsr fpscr, %0" : : "r"(v));
-    pm_log("fpscr %s before %08x after %08x", who, before, fpscr_get());
+    pm_log_d("fpscr %s before %08x after %08x", who, before, fpscr_get());
 }
 
 static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
@@ -113,7 +113,7 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
  * [CRASH] prefix makes run_azahar.ps1 stop. svcBreak ends the process like the crash handler does. */
 void pm_fatal_stop(const char* msg) {
     char buf[200];
-    pm_log("FATAL: %s", msg);
+    pm_log_e("FATAL: %s", msg);
     int n = snprintf(buf, sizeof(buf), "\n[CRASH] debug check: %s build #%d\n", msg, PM_BUILD);
     pm_crash_line(buf, n);
     svcBreak(USERBREAK_PANIC);
@@ -184,7 +184,7 @@ int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf
 void pm_zbuf_need(void) {
     if (!nuGfxZBuffer) {
         nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
-        if (!nuGfxZBuffer) pm_log("D03: no memory for the %d KB z-buffer image", CFB_PIXELS * 2 / 1024);
+        if (!nuGfxZBuffer) pm_log_e("D03: no memory for the %d KB z-buffer image", CFB_PIXELS * 2 / 1024);
         else pm_log("D03: z-buffer image allocated, %d KB", CFB_PIXELS * 2 / 1024);
     }
     if (nuGfxZBuffer) pm_tex_invalidate(nuGfxZBuffer, CFB_PIXELS * 2);
@@ -239,7 +239,7 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     if (!t0) { t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; for (int i = 0; i < 4; i++) i0[i] = pace_iv[i]; return; }
     if (now - t0 < hz) return;
     float wall = (float)(now - t0) * 1000.f / (float)hz;
-    pm_log("pace: wall %.1f ms steps %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u", wall, pm_step_calls - s0,
+    pm_log_d("pace: wall %.1f ms steps %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u", wall, pm_step_calls - s0,
            frame - f0, v - v0, pace_ticks - a0, (float)(pm_step_calls - s0) * 1000.f / wall, pace_iv[0] - i0[0],
            pace_iv[1] - i0[1], pace_iv[2] - i0[2], pace_iv[3] - i0[3]);
     for (int i = 0; i < 4; i++) i0[i] = pace_iv[i];
@@ -333,9 +333,9 @@ void pm_frame_loop(void) {
         }
         if (frame % 3600 == 0) {
             pm_mem_log("tick");
-            pm_log("log writer core %d heartbeat %u dropped %u", pm_log_writer_core(), pm_log_writer_hb(), pm_log_dropped());
+            pm_log_d("log writer core %d heartbeat %u dropped %u", pm_log_writer_core(), pm_log_writer_hb(), pm_log_dropped());
         }
-        if (pm_debug_has("logflood")) for (int i = 0; i < 10000; i++) pm_log("flood %d of frame %u", i, frame);
+        if (pm_debug_has("logflood")) for (int i = 0; i < 10000; i++) pm_log_d("flood %d of frame %u", i, frame);
         if (pm_debug_has("logstat")) {
             if (!stat_t0) stat_t0 = now;
             stat_ms += frame_ms;
@@ -388,10 +388,11 @@ static void game_thread(void* arg) {
     pm_fpscr_setup("game");
     bool is_new = false;
     APT_CheckNew3DS(&is_new);
+    pm_new3ds = is_new;
     if (is_new) osSetSpeedupEnable(true);
     unsigned ram = (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20);
     pm_log("Paper Mario 3DS");
-    pm_log("threads: game on core %d (svcGetProcessorID), log writer on core %d", (int)svcGetProcessorID(), pm_log_writer_core());
+    pm_log_d("threads: game on core %d (svcGetProcessorID), log writer on core %d", (int)svcGetProcessorID(), pm_log_writer_core());
     pm_log("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     pm_options_init();

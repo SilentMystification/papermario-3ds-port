@@ -1379,8 +1379,8 @@ void imgfx_mesh_anim_update(ImgFXState* state) {
     curKeyframe = heap_malloc(header->vtxCount * sizeof(ImgFXVtx));
 #ifdef TARGET_3DS
     if (curKeyframe == nullptr) {
-        extern void pm_log(const char* fmt, ...);
-        pm_log("imgfx anim alloc failed vtx %d type %d", header->vtxCount, state->ints.anim.type);
+        extern void pm_log(const char* fmt, ...); extern void pm_log_e(const char* fmt, ...); extern void pm_log_w(const char* fmt, ...); extern void pm_log_d(const char* fmt, ...);
+        pm_log_e("imgfx anim alloc failed vtx %d type %d", header->vtxCount, state->ints.anim.type);
         return;
     }
 #endif

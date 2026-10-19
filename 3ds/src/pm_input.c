@@ -58,7 +58,7 @@ static void ps_parse(char* s) {
         } else {
             char* sv2 = NULL;
             for (char* p = strtok_r(tok, "+", &sv2); p; p = strtok_r(NULL, "+", &sv2))
-                if (!ps_button(p, &b, &x, &y)) pm_log("padscript: unknown button '%s'", p);
+                if (!ps_button(p, &b, &x, &y)) pm_log_w("padscript: unknown button '%s'", p);
         }
         if (n == 0) n = 1;
         ps[ps_n].b = b; ps[ps_n].x = x; ps[ps_n].y = y; ps[ps_n].n = (unsigned short)n;
@@ -75,7 +75,7 @@ static void ps_load(void) {
         size_t n = f ? fread(buf, 1, sizeof(buf) - 1, f) : 0;
         if (f) fclose(f);
         buf[n] = 0;
-        if (!f) pm_log("padscript: cannot open %s", v + 1);
+        if (!f) pm_log_e("padscript: cannot open %s", v + 1);
     } else {
         strncpy(buf, v, sizeof buf - 1);
     }
@@ -87,11 +87,11 @@ static void ps_load(void) {
         ps_wait_start = pm_debug_value("warp", t, sizeof t) || pm_debug_value("preset", t, sizeof t) || pm_debug_value("story", t, sizeof t);
     }
     ps_run = ps_n > 0 && !ps_wait_start;
-    pm_log("padscript: %d steps, starts %s", ps_n, ps_wait_start ? "in the scene" : "now");
+    pm_log_d("padscript: %d steps, starts %s", ps_n, ps_wait_start ? "in the scene" : "now");
 }
 
 void pm_padscript_start(void) {
-    if (ps_n && !ps_run && ps_wait_start && ps_i == 0) { ps_run = 1; pm_log("padscript: start at scan %u", pm_pad_scans); }
+    if (ps_n && !ps_run && ps_wait_start && ps_i == 0) { ps_run = 1; pm_log_d("padscript: start at scan %u", pm_pad_scans); }
 }
 
 static int clamp_stick(int v) {
@@ -101,6 +101,18 @@ static int clamp_stick(int v) {
     return v;
 }
 
+/* C-O3DS: N3DS: L and R give N64 Z (C4E), ZL and ZR give N64 L and R. O3DS (no ZL, ZR): L and R give Z, and with the Z key held (X, or Y by options.txt o3dsz=1)
+ * L gives N64 L and R gives N64 R. X alone and Y alone stay C-up and C-down. */
+int pm_new3ds;
+static unsigned short prev_sh;
+static unsigned short shoulder_map(u32 k) {
+    if (pm_new3ds)
+        return (unsigned short)(((k & (KEY_L | KEY_R)) ? 0x2000 : 0) | ((k & KEY_ZL) ? 0x0020 : 0) | ((k & KEY_ZR) ? 0x0010 : 0));
+    if (k & (pm_opt.o3ds_z ? KEY_Y : KEY_X))
+        return (unsigned short)(((k & KEY_L) ? 0x0020 : 0) | ((k & KEY_R) ? 0x0010 : 0));
+    return (k & (KEY_L | KEY_R)) ? 0x2000 : 0;
+}
+
 void pm_pad_scan(void) {
     hidScanInput();
     u32 k = hidKeysHeld();
@@ -108,30 +120,27 @@ void pm_pad_scan(void) {
     unsigned short b = 0;
     if (k & KEY_A) b |= 0x8000;
     if (k & KEY_B) b |= 0x4000;
-    if (k & (KEY_L | KEY_R)) b |= 0x2000; /* Z on L and R (C4E) */
     if (k & KEY_START) b |= 0x1000;
     if (k & (KEY_DUP | KEY_X)) b |= 0x0008;       /* D-pad is N64 C (C4E) */
     if (k & (KEY_DDOWN | KEY_Y)) b |= 0x0004;
     if (k & KEY_DLEFT) b |= 0x0002;
     if (k & KEY_DRIGHT) b |= 0x0001;
-    if (k & KEY_ZL) b |= 0x0020;     /* L, New 3DS only */
-    if (k & KEY_ZR) b |= 0x0010;     /* R, New 3DS only */
     if (k & KEY_CSTICK_UP) b |= 0x0008;
     if (k & KEY_CSTICK_DOWN) b |= 0x0004;
     if (k & KEY_CSTICK_LEFT) b |= 0x0002;
     if (k & KEY_CSTICK_RIGHT) b |= 0x0001;
-    unsigned short edge = 0;
+    unsigned short sh = shoulder_map(k);
+    b |= sh;
+    unsigned short edge = sh & ~prev_sh;
+    prev_sh = sh;
     if (d & KEY_SELECT) select_scan = pm_pad_scans;
     if (d & KEY_A) edge |= 0x8000;
     if (d & KEY_B) edge |= 0x4000;
-    if (d & (KEY_L | KEY_R)) edge |= 0x2000;
     if (d & KEY_START) edge |= 0x1000;
     if (d & (KEY_DUP | KEY_X)) edge |= 0x0008;
     if (d & (KEY_DDOWN | KEY_Y)) edge |= 0x0004;
     if (d & KEY_DLEFT) edge |= 0x0002;
     if (d & KEY_DRIGHT) edge |= 0x0001;
-    if (d & KEY_ZL) edge |= 0x0020;
-    if (d & KEY_ZR) edge |= 0x0010;
     if (d & KEY_CSTICK_UP) edge |= 0x0008;
     if (d & KEY_CSTICK_DOWN) edge |= 0x0004;
     if (d & KEY_CSTICK_LEFT) edge |= 0x0002;
@@ -181,15 +190,15 @@ void pm_pad_scan(void) {
                 rand_y = ps[ps_i].y;
                 rand_on = 1;
                 if (--ps_left == 0) {
-                    if (++ps_i >= ps_n) { ps_run = 0; rand_on = 0; ps_prev = 0; pm_log("padscript: done at scan %u", pm_pad_scans); }
+                    if (++ps_i >= ps_n) { ps_run = 0; rand_on = 0; ps_prev = 0; pm_log_d("padscript: done at scan %u", pm_pad_scans); }
                     else ps_left = ps[ps_i].n;
                 }
             }
         }
         /* faulttest switch (slice F01): one read of address 0x10 at scan 300, to check the fault detector */
         if (pm_debug_has("faulttest") && pm_pad_scans == 300) {
-            pm_log("faulttest read 0x10");
-            pm_log("faulttest value %u", *(volatile unsigned*)0x10);
+            pm_log_d("faulttest read 0x10");
+            pm_log_d("faulttest value %u", *(volatile unsigned*)0x10);
         }
         pm_pad_scans++;
     }
@@ -215,7 +224,7 @@ void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsign
     if (trigger) *trigger = down;
     if ((down & 0x8000) && pm_debug_has("taptest")) {
         tap_seen++;
-        if (tap_seen % 5 == 0) pm_log("taptest injected %u seen %u", tap_injected, tap_seen);
+        if (tap_seen % 5 == 0) pm_log_d("taptest injected %u seen %u", tap_injected, tap_seen);
     }
     down = 0;
     press_seen = 0;

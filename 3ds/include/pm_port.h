@@ -4,7 +4,16 @@
 /* Plain C seam. Game files include ultra64; GPU files include 3ds.h.
  * Neither side includes the other. */
 
+/* L02: levels 0 error, 1 warn, 2 info, 3 debug. pm_log is info. Switch loglevel=<0..3>, default warn. log=off stops the write to log.txt. */
 void pm_log(const char* fmt, ...);
+void pm_log_e(const char* fmt, ...);
+void pm_log_w(const char* fmt, ...);
+void pm_log_i(const char* fmt, ...);
+void pm_log_d(const char* fmt, ...);
+int pm_log_level(void);
+int pm_log_file(void);
+void pm_log_set_level(int lv);
+void pm_log_set_file(int on);
 void pm_log_init(int live);
 void pm_log_poll(void);
 void pm_con_lock(void);
@@ -94,11 +103,14 @@ void pm_mapdata_enter(const char* id);
 /* F11-1: port settings (pm_options.c). The file is options.txt in the working folder. */
 typedef struct PmOpt {
     int fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight;
+    int o3ds_z; /* C-O3DS: 0 = X is the Z key on the O3DS, 1 = Y (options.txt o3dsz) */
+    int log, loglevel; /* L02, F11-8: log file on or off (default 1), level 0 error, 1 warn (default), 2 info, 3 debug */
 } PmOpt;
+extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
 void pm_options_init(void);
 void pm_options_write(void);
-/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight. */
+/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level. */
 int pm_options_get(int row);
 void pm_options_flip(int row);
 void pm_options_close(void);

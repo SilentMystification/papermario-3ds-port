@@ -180,18 +180,18 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
 
     compressedSize = ALIGN8(spr_asset_entry[1] - spr_asset_entry[0]);
     if (compressedSize < 16 || compressedSize > 0x40000) {
-        extern void pm_log(const char* fmt, ...);
+        extern void pm_log(const char* fmt, ...); extern void pm_log_e(const char* fmt, ...); extern void pm_log_w(const char* fmt, ...); extern void pm_log_d(const char* fmt, ...);
         static int once;
         if (once < 4) {
             once++;
-            pm_log("spr %d size %d base %08x", idx, compressedSize, base);
+            pm_log_d("spr %d size %d base %08x", idx, compressedSize, base);
         }
         return nullptr;
     }
     data = general_heap_malloc(compressedSize);
     if (data == nullptr) {
-        extern void pm_log(const char* fmt, ...);
-        pm_log("spr %d heap %d", idx, compressedSize);
+        extern void pm_log(const char* fmt, ...); extern void pm_log_e(const char* fmt, ...); extern void pm_log_w(const char* fmt, ...); extern void pm_log_d(const char* fmt, ...);
+        pm_log_d("spr %d heap %d", idx, compressedSize);
         return nullptr;
     }
     nuPiReadRom(base + spr_asset_entry[0], data, compressedSize);
@@ -200,11 +200,11 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
     {
         s32 destSize = spr_be32((u8*)data + 4);
         if (destSize < 16 || destSize > 0x40000) {
-            extern void pm_log(const char* fmt, ...);
+            extern void pm_log(const char* fmt, ...); extern void pm_log_e(const char* fmt, ...); extern void pm_log_w(const char* fmt, ...); extern void pm_log_d(const char* fmt, ...);
             static int once;
             if (once < 4) {
                 once++;
-                pm_log("spr %d yay0 %08x dest %d", idx, ((u32*)data)[0], destSize);
+                pm_log_d("spr %d yay0 %08x dest %d", idx, ((u32*)data)[0], destSize);
             }
             general_heap_free(data);
             return nullptr;
@@ -221,8 +221,8 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
         {
             extern int pm_yay0_decode(const void* src, u32 src_len, void* dst, u32 dst_len);
             if (!pm_yay0_decode(data, (u32)compressedSize, animData, (u32)destSize)) {
-                extern void pm_log(const char* fmt, ...);
-                pm_log("spr %d decode fail %d", idx, destSize);
+                extern void pm_log(const char* fmt, ...); extern void pm_log_e(const char* fmt, ...); extern void pm_log_w(const char* fmt, ...); extern void pm_log_d(const char* fmt, ...);
+                pm_log_e("spr %d decode fail %d", idx, destSize);
                 general_heap_free(data);
                 return nullptr;
             }

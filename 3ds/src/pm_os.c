@@ -150,7 +150,7 @@ void pm_audio_tick(void) {
         if (dt > worst) worst = dt;
         /* L01: every 2 s with the audiostat switch, else every 20 s (S28 reads this line on hardware) */
         if (++ticks == (pm_debug_has("audiostat") ? 120u : 1200u)) {
-            pm_log("audio cost avg %u us max %u us per 60 Hz tick", (unsigned)((unsigned long long)sum * 1000 / ticks / 268112), (unsigned)((unsigned long long)worst * 1000 / 268112));
+            pm_log_d("audio cost avg %u us max %u us per 60 Hz tick", (unsigned)((unsigned long long)sum * 1000 / ticks / 268112), (unsigned)((unsigned long long)worst * 1000 / 268112));
             ticks = worst = 0;
             sum = 0;
         }
@@ -230,16 +230,16 @@ int pm_rom_init(void) {
             rom_size = (u32)sz;
             rom_remap = can_pack;
             fclose(f);
-            pm_log("rom resident %uKB of %uKB%s", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "");
-            pm_log("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
+            pm_log_d("rom resident %uKB of %uKB%s", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "");
+            pm_log_d("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
             return 1;
         }
         free(block);
     }
     rewind(f);
     rom = f;
-    pm_log("rom streaming (%ld bytes, cap %uKB)", sz, cap >> 10);
-    pm_log("ram n64 4MB, port %uMB", pm_linear_bytes() >> 20);
+    pm_log_d("rom streaming (%ld bytes, cap %uKB)", sz, cap >> 10);
+    pm_log_d("ram n64 4MB, port %uMB", pm_linear_bytes() >> 20);
     return 1;
 }
 
@@ -252,7 +252,7 @@ static void rom_suspect(const char* why, u32 addr, u32 n, u32 req, u32 size) {
     for (unsigned i = 0; i < cnt; i++)
         if (seen[i] == addr) return;
     if (cnt < 512) seen[cnt++] = addr;
-    pm_log("ROM READ %s %08x n %u (req %08x n %u)", why, addr, n, req, size);
+    pm_log_w("ROM READ %s %08x n %u (req %08x n %u)", why, addr, n, req, size);
     if (pm_debug_has("romstrict")) {
         char m[80];
         snprintf(m, sizeof(m), "romstrict, ROM read %s at %08x n %u", why, addr, n);
@@ -266,7 +266,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
         static int once;
         if (!once) {
             once = 1;
-            pm_log("dma skip rom %08x buf %08x n %u", rom_addr, (unsigned)buf, size);
+            pm_log_d("dma skip rom %08x buf %08x n %u", rom_addr, (unsigned)buf, size);
         }
         return;
     }
@@ -413,7 +413,7 @@ static void flash_sync(u32 off, u32 len) {
     int ok = f != NULL && fseek(f, (long)off, SEEK_SET) == 0 && fwrite(flash_mem + off, 1, len, f) == len;
     /* fclose flushes: a full SD card shows up here. The save stays in RAM, the game goes on. */
     if (f && fclose(f) != 0) ok = 0;
-    if (!ok && fails++ < 5) pm_log("save.flash write FAILED (off %u len %u, SD full or missing?), save kept in RAM only", off, len);
+    if (!ok && fails++ < 5) pm_log_e("save.flash write FAILED (off %u len %u, SD full or missing?), save kept in RAM only", off, len);
 }
 
 static void flash_init(void) {
