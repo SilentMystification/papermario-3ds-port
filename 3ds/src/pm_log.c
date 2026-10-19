@@ -163,7 +163,7 @@ void pm_log_init(int live) {
         return;
     }
     fcntl(listen_fd, F_SETFL, O_NONBLOCK);
-    pm_log("live log: port 17492\n");
+    pm_log_w("live log: port 17492\n");
 }
 
 static void stat_site(const char* fmt) {

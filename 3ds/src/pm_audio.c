@@ -16,7 +16,7 @@ void pm_audio_init(void) {
     if (ready || tried) return; /* fail once, log once, run silent: no ndspInit retry on every audio tick */
     tried = 1;
     int fw = access("sdmc:/3ds/dspfirm.cdc", F_OK) == 0;
-    (fw ? pm_log_i : pm_log_e)("dspfirm.cdc %s", fw ? "found" : "MISSING (sdmc:/3ds/dspfirm.cdc): no sound unless the DSP firmware is dumped");
+    (fw ? pm_log_w : pm_log_e)("dspfirm.cdc %s", fw ? "found" : "MISSING (sdmc:/3ds/dspfirm.cdc): no sound unless the DSP firmware is dumped");
     Result rc = ndspInit();
     if (R_FAILED(rc)) {
         pm_log_e("ndsp init failed rc=%08lx, audio is silent", (unsigned long)rc);

@@ -150,6 +150,8 @@ void pm_mem_log(const char* tag) {
         pm_log_d("mem %s stack high-water game %u of %u B, audio %u of %u B", tag, gu, gs, au, as);
         pm_gpu_log_stats(tag);
     }
+    if (!strcmp(tag, "boot")) /* BS1: status line, shown at every log level */
+        pm_log_w("memory: linear %uKB, heap %uKB, texture budget %uKB, FCRAM cap %uKB", pm_linear_bytes() >> 10, pm_heap_bytes() >> 10, pm_tex_budget() >> 10, PM_FCRAM >> 10);
     if (!strcmp(tag, "boot"))
         pm_log_d("mem commit limit %uKB used-by-image %uKB offered %uKB cap %uKB", (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10),
                (unsigned)((commit_max - commit_cur) >> 10), PM_FCRAM >> 10);
