@@ -460,3 +460,8 @@
 03:16 V23 start E: temp switch v23t (frame parity skips box, image 2), window 205:12
 03:19 V23 start F: log scissor and rect corners, window 215:3
 03:24 V23 stop 2: debug code removed, 3dsx 13049700 B. Budget used. Cut proven not box, scissor, image 2. Row open.
+04:24 V23 start 1: repro party shot, window 205:25, expect 6 min
+04:28 V23 start 2: portrait texel log + shots, window 205:25, expect 6 min
+04:29 V23 start 3: party tab needs two R*3 (first start showed Items tab). window 256:10, expect 6 min
+04:36 V23 start 4: v23skip on odd frames (box draws skipped), window 256:10, expect 6 min
+04:39 V23 stop 3: budget 4/4 used, cause is a draw that covers the portrait after strip 0 (frame box interior), not the texture. Row open, notes in SLICES.md
