@@ -2073,8 +2073,6 @@ s32 npc_find_standing_on_entity(s32 entityIndex) {
     s32 i;
     s32 var_v1;
 
-    npc->pos = npc->pos; // TODO required to match
-
     for (i = 0; i < ARRAY_COUNT(*gCurrentNpcListPtr); i++) {
         npc = (*gCurrentNpcListPtr)[i];
 
