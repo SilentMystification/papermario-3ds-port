@@ -528,3 +528,5 @@
 12:02 F07-7 battle fade edges ok (edge columns equal centre). start 2: golden toad, expected 2 min
 12:04 F07-7 golden toad wide off 0 diff. start 3: wide omo_14 darkness, 30 s
 12:04 F07-7 done, moved
+12:05 FX3b start 1: fxtest=63 shots, 60 s
+12:06 FX3b done, no code change
