@@ -82,6 +82,20 @@ u16 blend_background_channel(u16 arg0, s32 arg1, s32 alpha) {
     return arg0 + (arg1 - arg0) * alpha / 256;
 }
 
+extern int pm_wide;
+/* F07-4: with wide the 296 px sky tiles over the 400 px screen (game x -40 to 360). The pattern repeats every 296 px. */
+static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
+    s32 shift;
+    gSPTextureRectangle(gMainGfxPos++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
+    if (pm_wide) {
+        for (shift = -296 * 4; shift <= 296 * 4; shift += 592 * 4) {
+            if (xh + shift >= -40 * 4 && xl + shift <= 360 * 4) {
+                gSPTextureRectangle(gMainGfxPos++, xl + shift, yl, xh + shift, yh, tile, s, t, dsdx, dtdy);
+            }
+        }
+    }
+}
+
 void appendGfx_background_texture(void) {
     Camera* cam = &gCameras[gCurrentCameraID];
     u16 flags = 0;
@@ -261,10 +275,10 @@ void appendGfx_background_texture(void) {
                                0, 0, 295, 5, 0,
                                G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
-            gSPTextureRectangle(gMainGfxPos++, bgMinX * 4, (lineHeight * i + bgMinY) * 4,
+            bg_texrect( bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (bgXOffset + bgMinX - 1) * 4, (lineHeight * i + lineHeight - 1 + bgMinY) * 4,
                                                  G_TX_RENDERTILE, (bgMaxX - bgXOffset) * 32, 0, 4096, 1024);
-            gSPTextureRectangle(gMainGfxPos++, (bgXOffset + bgMinX) * 4, (lineHeight * i + bgMinY) * 4,
+            bg_texrect( (bgXOffset + bgMinX) * 4, (lineHeight * i + bgMinY) * 4,
                                                  (bgMaxX + bgMinX - 1) * 4, (lineHeight * i + lineHeight - 1 + bgMinY) * 4,
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
@@ -277,10 +291,10 @@ void appendGfx_background_texture(void) {
                                G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, extraHeight,
                                0, 0, 295, extraHeight - 1, 0,
                                G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-            gSPTextureRectangle(gMainGfxPos++, bgMinX * 4, (lineHeight * i + bgMinY) * 4,
+            bg_texrect( bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (bgXOffset + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4,
                                                  G_TX_RENDERTILE, (bgMaxX - bgXOffset) * 32, 0, 4096, 1024);
-            gSPTextureRectangle(gMainGfxPos++, (bgXOffset + bgMinX) * 4, (lineHeight * i + bgMinY) * 4,
+            bg_texrect( (bgXOffset + bgMinX) * 4, (lineHeight * i + bgMinY) * 4,
                                                  (bgMaxX + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4,
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
@@ -301,10 +315,10 @@ void appendGfx_background_texture(void) {
                                0, 0, 295, 5, 0,
                                G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
-            gSPTextureRectangle(gMainGfxPos++, bgMinX * 4, (lineHeight * i + bgMinY) * 4,
+            bg_texrect( bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (2 * bgXOffset + (bgMinX - 1)) * 4, (lineHeight * i + lineHeight - 1 + bgMinY) * 4,
                                                  G_TX_RENDERTILE, bgMaxX * 32 - bgXOffset * 16, 0, 4096, 1024);
-            gSPTextureRectangle(gMainGfxPos++, bgXOffset * 2 + bgMinX * 4, (lineHeight * i + bgMinY) * 4,
+            bg_texrect( bgXOffset * 2 + bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (bgMaxX + bgMinX - 1) * 4, (lineHeight * i + lineHeight - 1 + bgMinY) * 4,
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
@@ -319,10 +333,10 @@ void appendGfx_background_texture(void) {
                                G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, extraHeight,
                                0, 0, 295, extraHeight - 1, 0,
                                G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-            gSPTextureRectangle(gMainGfxPos++, bgMinX * 4, (lineHeight * i + bgMinY) * 4,
+            bg_texrect( bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (2 * bgXOffset + (bgMinX - 1)) * 4, (bgMaxY - 1 + bgMinY) * 4, /// @bug xh = 2 * bgXOffset + (bgMinX - 1) * 4
                                                  G_TX_RENDERTILE, bgMaxX * 32 - bgXOffset * 16, 0, 4096, 1024);
-            gSPTextureRectangle(gMainGfxPos++, bgXOffset * 2  + bgMinX * 4, (lineHeight * i + bgMinY) * 4,
+            bg_texrect( bgXOffset * 2  + bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (bgMaxX + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4, /// @bug xh = 2 * bgXOffset + (bgMinX - 1) * 4
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }

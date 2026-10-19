@@ -6,6 +6,7 @@
 #include "overlay.h"
 
 extern s32 gPauseBackgroundFade;
+extern int pm_wide; /* F07-4 */
 
 Vp D_80074200 = {
     .vp = {
@@ -454,6 +455,11 @@ void gfx_draw_background(void) {
 
             if (backgroundMaxY > SCREEN_HEIGHT) {
                 backgroundMaxY = SCREEN_HEIGHT;
+            }
+
+            if (pm_wide && (gCurrentCameraID == CAM_DEFAULT || gCurrentCameraID == CAM_BATTLE)) {
+                backgroundMinX = 0; /* F07-4: the sky covers the whole screen, no side bar */
+                backgroundMaxX = SCREEN_WIDTH;
             }
 
             if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE)) {

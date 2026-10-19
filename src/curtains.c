@@ -1,4 +1,5 @@
 #include "common.h"
+extern int pm_wide; /* F07-4 */
 #include "theater/walls.png.h"
 #include "theater/curtains.png.h"
 #include "theater/floor.png.h"
@@ -253,7 +254,7 @@ void render_curtains(void) {
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
         gSPDisplayList(gMainGfxPos++, &TheaterInitGfx);
 
-        guFrustumF(m, -80.0f, 80.0f, -60.0f, 60.0f, 160.0f, 640.0f, 1.0f);
+        guFrustumF(m, -80.0f * (pm_wide ? 1.25f : 1.0f), 80.0f * (pm_wide ? 1.25f : 1.0f), -60.0f, 60.0f, 160.0f, 640.0f, 1.0f);
         guMtxF2L(m, &D_8009BAA8[0]);
 
         gSPMatrix(gMainGfxPos++, &D_8009BAA8[0], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);

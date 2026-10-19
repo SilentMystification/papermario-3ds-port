@@ -375,3 +375,7 @@
 00:11 F07-3 edits: pm_wide.h, inventory, hud_element, msg_draw, draw_box, screen_render_util, pm_gpu (2D 1:1 centered, ortho UI, edge fills). Built. Azahar start 1 wide shot about 1 min
 00:14 F07-3 wide shot ok: scene fills width, no fault in log. UI not on screen at frame 200. Azahar start 2: golden toad wide off, about 2 min
 00:15 F07-3 golden toad ok 0.00 percent, wide off. 2 Azahar starts. 3dsx +1140 bytes (13083508 to 13084648). Not tested: pause menu, text box, battle menu with wide, pause_map and pause_partners clamps (unchanged), encounter cull (no change needed).
+00:17 F07-4 edits: background.c bg_texrect tiles sky to 400 px, background_gfx.c wide fill bounds, curtains.c frustum x1.25. Building
+00:20 F07-4 built. Azahar start 1 wide tour kmr_20 mac_00 flo_10 shots about 3 min
+00:23 F07-4 wide shot ok: intro curtains and sky fill the full width, no bar at the sides (tour hit smoke timeout 25 s in the intro, no fault). Azahar start 2: golden toad wide off
+00:24 F07-4 golden toad ok 0.00 percent, wide off. 2 Azahar starts. 3dsx +40 bytes (13084648 to 13084688). Not tested: wave sky maps, battle sky, mac_00 and flo_10 (tour stopped in the intro).
