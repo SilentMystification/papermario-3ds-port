@@ -76,6 +76,9 @@ static int padscript_log, warp_on, warp_done, scene_f0 = -1, smoke_on;
    map of the list, TOUR_FRAMES frames each. Log lines "tour: ...". Debug tool only (class E). */
 #define TOUR_FRAMES 40
 static char tour[6000];
+static char blist[8000];
+static const char* blist_next;
+static int bl_state, bl_n, bl_t;
 static const char* tour_next;
 static unsigned tour_f0, tour_ts;
 static int tour_n, tour_wait;
@@ -136,6 +139,15 @@ int pm_warp_active(void) {
                 tour[n] = 0;
                 for (n = 0; tour[n]; n++) if (tour[n] == 10 || tour[n] == 13 || tour[n] == ' ') tour[n] = ',';
             }
+        }
+    }
+    if (pm_debug_value("battlelist", v, sizeof v) && v[0] == '@') { /* C2R: battlelist=@file, one <formation>:<stage> per line, one Azahar start for the whole list (battlen=<frames> each, default 30) */
+        FILE* bf = fopen(v + 1, "r");
+        if (bf) {
+            size_t n = fread(blist, 1, sizeof blist - 1, bf);
+            fclose(bf);
+            blist[n] = 0;
+            blist_next = blist;
         }
     }
     /* F01: a tour visits maps at story 0 with a new file (no partner). The real game has a partner at trd_06 and later maps (trd_06 InitializeFallingPartner, partner_walking_enable need one), so the tour uses Goombario unless partner= says otherwise. */
@@ -261,6 +273,50 @@ static s32 battle_name_value(const char* s, unsigned n, s32 dflt) {
     return (s32)strtol(t, NULL, 0);
 }
 
+/* C2R: battlelist runs one battle after the other in one process. A battle ends through the real BATTLE_STATE_END_BATTLE (the way a won battle ends). */
+static void battlelist_tick(unsigned f) {
+    char vn[16];
+    unsigned per = pm_debug_value("battlen", vn, sizeof vn) ? (unsigned)atoi(vn) : 30;
+    if (!blist_next) return;
+    if (bl_state == 0 && get_game_mode() == GAME_MODE_WORLD && f >= (unsigned)bl_t) {
+        char line[96];
+        unsigned i = 0;
+        while (*blist_next == '\n' || *blist_next == '\r' || *blist_next == ' ') blist_next++;
+        if (!*blist_next) {
+            pm_log("battlelist: done, %d battles", bl_n);
+            blist_next = NULL;
+            return;
+        }
+        while (*blist_next && *blist_next != '\n' && *blist_next != '\r' && i + 1 < sizeof line) line[i++] = *blist_next++;
+        line[i] = 0;
+        const char* c = strchr(line, ':');
+        s32 formation = battle_name_value(line, c ? (unsigned)(c - line) : i, BTL_KMR_1_FORMATION_00);
+        s32 stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
+        pm_log("battlelist: %d start %s (formation %d stage %d) at scene frame %u", bl_n, line, (int)formation, (int)stage, f);
+        bl_n++;
+        gEncounterState = ENCOUNTER_STATE_NONE;
+        set_battle_stage(stage);
+        load_battle(formation);
+        bl_state = 1;
+        bl_t = (int)f;
+    } else if (bl_state == 1 && get_game_mode() == GAME_MODE_BATTLE && f - (unsigned)bl_t >= per) {
+        btl_set_state(BATTLE_STATE_END_BATTLE);
+        bl_state = 2;
+        bl_t = (int)f;
+    } else if (bl_state == 2) {
+        if (get_game_mode() == GAME_MODE_WORLD) {
+            bl_state = 0;
+            bl_t = (int)f + 10;
+        } else if (f - (unsigned)bl_t > 900) {
+            pm_log("battlelist: battle %d did not end in 900 frames, mode %d, stop", bl_n - 1, (int)get_game_mode());
+            blist_next = NULL;
+        }
+    } else if (bl_state == 1 && f - (unsigned)bl_t > 900) {
+        pm_log("battlelist: battle %d never reached the battle mode, mode %d, stop", bl_n - 1, (int)get_game_mode());
+        blist_next = NULL;
+    }
+}
+
 static void battle_hooks(unsigned f) {
     char v[96], vf[16];
     unsigned at = 100;
@@ -298,6 +354,7 @@ void pm_warp_tick(unsigned frame) {
     }
     unsigned f = frame - (unsigned)scene_f0;
     battle_hooks(f);
+    battlelist_tick(f);
     char ti[8];
     if (f == 30 && pm_debug_value("testitem", ti, sizeof ti)) { /* V07 debug: a real item entity beside the player */
         make_item_entity_nodelay(ti[0] == 'c' ? ITEM_COIN : ti[0] == 's' ? ITEM_STAR_PIECE : ITEM_MUSHROOM, gPlayerStatus.pos.x + 60.0f, gPlayerStatus.pos.y, gPlayerStatus.pos.z, ITEM_SPAWN_MODE_FIXED_NEVER_VANISH, 0);
