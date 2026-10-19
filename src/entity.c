@@ -3,6 +3,7 @@
 #include "entity.h"
 #include "model.h"
 #include "sprite/player.h"
+#include "pm_interp_fi.h"
 
 #ifdef SHIFT
 extern Addr WorldEntityHeapBottom;
@@ -366,6 +367,7 @@ void render_entities(void) {
             }
 
             if (!(entity->flags & ENTITY_FLAG_HIDDEN)) {
+                FI_OPEN("entity", (uintptr_t)entity);
                 if (entity->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
                     if (D_8014AFB0 == 255) {
                         if (entity->renderSetupFunc != nullptr) {
@@ -415,6 +417,7 @@ void render_entities(void) {
                                                entity->gfxBaseAddr);
                     }
                 }
+                FI_CLOSE();
             }
         }
     }
@@ -437,6 +440,7 @@ void render_shadows(void) {
                     }
                 }
             } else if (shadow->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
+                FI_OPEN("shadow", (uintptr_t)shadow);
                 if (shadow->vertexArray == nullptr) {
                     render_animated_model(shadow->entityModelID, &shadow->transformMatrix);
                 } else {
@@ -445,7 +449,9 @@ void render_shadows(void) {
                                   shadow->vertexSegment,
                                   shadow->vertexArray);
                 }
+                FI_CLOSE();
             } else {
+                FI_OPEN("shadow", (uintptr_t)shadow);
                 if (shadow->flags & ENTITY_FLAG_FADING_AWAY) {
                     shadow->alpha -= 20;
                     if (shadow->alpha <= 20) {
@@ -463,6 +469,7 @@ void render_shadows(void) {
                                            shadow->vertexSegment,
                                            shadow->vertexArray);
                 }
+                FI_CLOSE();
             }
         }
     }
@@ -477,8 +484,10 @@ void update_entity_transform_matrix(Entity* entity) {
     Matrix4f sp158;
     Matrix4f sp198;
 
+    FI_OPEN("entity_transform", (uintptr_t)entity);
     if (entity->updateMatrixOverride != nullptr) {
         entity->updateMatrixOverride(entity);
+        FI_CLOSE();
         return;
     }
 
@@ -492,6 +501,7 @@ void update_entity_transform_matrix(Entity* entity) {
     guMtxCatF(sp198, sp98, sp18);
     guMtxCatF(sp18, sp58, sp98);
     guMtxF2L(sp98, &entity->transformMatrix);
+    FI_CLOSE();
 }
 
 void update_shadow_transform_matrix(Shadow* shadow) {
@@ -512,7 +522,9 @@ void update_shadow_transform_matrix(Shadow* shadow) {
     guScaleF(sp198, shadow->scale.x, shadow->scale.y, shadow->scale.z);
     guMtxCatF(sp198, sp98, sp18);
     guMtxCatF(sp18, sp58, sp98);
+    FI_OPEN("shadow_transform", (uintptr_t)shadow);
     guMtxF2L(sp98, &shadow->transformMatrix);
+    FI_CLOSE();
 }
 
 void update_entity_inverse_rotation_matrix(Entity* entity) {

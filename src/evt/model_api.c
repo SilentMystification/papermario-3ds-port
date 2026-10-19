@@ -1,4 +1,5 @@
 #include "model.h"
+#include "pm_interp_fi.h"
 
 extern AnimatedModelList gBattleMeshAnimationList;
 extern AnimatedModelList gWorldMeshAnimationList;
@@ -11,7 +12,9 @@ void update_animated_models(void) {
         AnimatedModel* anim = (*gCurrentMeshAnimationListPtr)[i];
 
         if (anim->animModelID >= 0) {
+            FI_OPEN("animator_matrix", FI_TAG(0x00F00000, i, anim->animModelID));
             update_model_animator_with_transform(anim->animModelID, &anim->mtx);
+            FI_CLOSE();
         }
     }
 }
@@ -41,7 +44,9 @@ void render_animated_models(void) {
             guMtxCatF(sp158, sp98, sp118);
             guMtxCatF(sp1D8, sp118, sp158);
             guMtxCatF(sp158, sp18, sp198);
+            FI_OPEN("animator_render", FI_TAG(0x00F00000, i, model->animModelID));
             guMtxF2L(sp198, &model->mtx);
+            FI_CLOSE();
             render_animated_model(model->animModelID, &model->mtx);
         }
     }

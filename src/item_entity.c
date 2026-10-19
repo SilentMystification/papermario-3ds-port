@@ -10,6 +10,7 @@
 #include "ld_addrs.h"
 #include "sprite.h"
 #include "sprite/player.h"
+#include "pm_interp_fi.h"
 
 #define MAX_ITEM_ENTITIES 256
 
@@ -1135,6 +1136,7 @@ void render_item_entities(void) {
             if ((item->flags != 0)) {
                 if (!(item->flags & ITEM_ENTITY_FLAG_HIDDEN)) {
                     if ((item->flags & ITEM_ENTITY_FLAG_INVISIBLE)) {
+                        FI_OPEN("item_entity", (uintptr_t)item);
                         if (!(item->flags & ITEM_ENTITY_FLAG_FULLSIZE)) {
                             offsetY = -4;
                         } else {
@@ -1247,6 +1249,7 @@ void render_item_entities(void) {
                         }
                         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
                         gDPPipeSync(gMainGfxPos++);
+                        FI_CLOSE();
                     }
                 }
             }

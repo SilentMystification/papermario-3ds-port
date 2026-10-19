@@ -1,6 +1,7 @@
 #include "model.h"
 #include "animation_script.h"
 #include "model.h"
+#include "pm_interp_fi.h"
 
 typedef struct DisplayListBufferHandle {
     /* 0x0 */ s32 ttl;
@@ -470,7 +471,9 @@ void update_model_animator(s32 animatorID) {
         return;
     }
 
+    FI_OPEN("animator", FI_TAG(0xB0000000, animatorID, animator->treeIndexPos));
     animator_update_model_transforms(animator, nullptr);
+    FI_CLOSE();
 
     for (i = 0; i < ARRAY_COUNT(D_801533C0); i++) {
         if (D_801533C0[i].ttl >= 0) {

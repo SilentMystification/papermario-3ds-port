@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects.h"
 #include "ld_addrs.h"
+#include "pm_interp_fi.h"
 
 typedef s8 TlbEntry[0x1000];
 typedef TlbEntry TlbMappablePage[15];
@@ -120,6 +121,7 @@ void render_effects_scene(void) {
         EffectInstance* effectInstance = gEffectInstances[i];
 
         if (effectInstance != nullptr) {
+            FI_OPEN("effect_render", FI_TAG(0x70000000, i, effectInstance->shared->effectIndex));
             if (effectInstance->flags & FX_INSTANCE_FLAG_ENABLED) {
                 if (effectInstance->flags & FX_INSTANCE_FLAG_HAS_UPDATED) {
                     if (gGameStatusPtr->context != CONTEXT_WORLD) {
@@ -133,6 +135,7 @@ void render_effects_scene(void) {
                     }
                 }
             }
+            FI_CLOSE();
         }
     }
 }
@@ -159,6 +162,7 @@ void render_effects_UI(void) {
 
                     renderUI = effectInstance->shared->renderUI;
                     if (renderUI != stub_effect_delegate) {
+                        FI_OPEN("effect_renderUI", FI_TAG(0x70000000, i, effectInstance->shared->effectIndex));
                         if (cond) {
                             Camera* camera = &gCameras[gCurrentCameraID];
 
@@ -184,6 +188,7 @@ void render_effects_UI(void) {
                         }
 
                         renderUI(effectInstance);
+                        FI_CLOSE();
                     }
                 }
             }

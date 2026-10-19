@@ -11,3 +11,5 @@ F06-2 code done, NOT verified (3 Azahar starts used): fps60 passes in pm_nusys.c
 F06-2 open: golden toad switch off after the heap fix, fps60 smoke (25 s limit hit, game runs slower with two draws), pacestat, true leaf peak (F06-1 peak 297 missed gfx_draw_frame: the background task stopped the record). See row F06-2v.
 F06-2v: golden toad off 0.00, shots no holes, leaf peak 49 (297 in F06-1), pace 11 to 14 steps/s with fps60 on Azahar (draw cost, F06-5). Rows F06-2 and F06-2v stay open.
 F06-2v: tables resized to 384 leaves and 32 nodes and open/close fixed, built but not run (budget used). Rerun toad fps60 smoke once to check.
+F06-3 done: node hooks in model, entity, animator, model_api, sprite, imgfx, item_entity, worker, effects (header include/pm_interp_fi.h), `f06 pair` log. Tables 1024 leaves and 1024 nodes (peak 50 leaves, 440 nodes). fps60 smoke ok, pair 98 to 100, toad golden off 0.00. 3dsx +1480 bytes.
+F06-3 not checked: pair in battle and during a map change, tour stopped at the 200 s smoke cap. F06-2 and F06-2v moved to SLICES_DONE (pace stays with F06-5).

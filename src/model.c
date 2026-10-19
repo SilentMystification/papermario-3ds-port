@@ -6,6 +6,7 @@
 #include "hud_element.h"
 #include "model_clear_render_tasks.h"
 #include "nu/nusys.h"
+#include "pm_interp_fi.h"
 
 // models are rendered in two stages by the RDP:
 // (1) main and aux textures are combined in the color combiner
@@ -2402,8 +2403,11 @@ s32 mdl_get_child_count(ModelNode* model) {
     return ret;
 }
 
+void mdl_reset_interp_teleport_state(void);
 void clear_model_data(void) {
     s32 i;
+
+    mdl_reset_interp_teleport_state();
 
     if (gGameStatusPtr->context == CONTEXT_WORLD) {
         gCurrentModels = &wModelList;
@@ -2647,6 +2651,43 @@ void iterate_models(void) {
     mdl = last;
 }
 
+/* F06-3: a model moved a long way in one frame (looping platforms, elevators) is not interpolated across the jump. The epoch
+ * goes in the low byte of the node key, so the node has no old pair after the jump (PaperBoat mdl_interp_epoch). */
+#define MDL_INTERP_TELEPORT_DIST 100.0f
+
+static Vec3f ModelInterpPrevPos[MAX_MODELS];
+static u8 ModelInterpEpoch[MAX_MODELS];
+static u8 ModelInterpHasPrev[MAX_MODELS];
+static Vec3f GroupInterpPrevPos[MAX_MODEL_TRANSFORM_GROUPS];
+static u8 GroupInterpEpoch[MAX_MODEL_TRANSFORM_GROUPS];
+static u8 GroupInterpHasPrev[MAX_MODEL_TRANSFORM_GROUPS];
+
+static u32 mdl_interp_epoch(Vec3f* prevPos, u8* epoch, u8* hasPrev, Matrix4f mtx) {
+    f32 dx = mtx[3][0] - prevPos->x;
+    f32 dy = mtx[3][1] - prevPos->y;
+    f32 dz = mtx[3][2] - prevPos->z;
+
+    if (*hasPrev && SQ(dx) + SQ(dy) + SQ(dz) > SQ(MDL_INTERP_TELEPORT_DIST)) {
+        (*epoch)++;
+    }
+    prevPos->x = mtx[3][0];
+    prevPos->y = mtx[3][1];
+    prevPos->z = mtx[3][2];
+    *hasPrev = 1;
+    return *epoch;
+}
+
+void mdl_reset_interp_teleport_state(void) {
+    s32 i;
+
+    for (i = 0; i < MAX_MODELS; i++) {
+        ModelInterpHasPrev[i] = 0;
+    }
+    for (i = 0; i < MAX_MODEL_TRANSFORM_GROUPS; i++) {
+        GroupInterpHasPrev[i] = 0;
+    }
+}
+
 void mdl_update_transform_matrices(void) {
     Matrix4f tempModelMtx;
     Matrix4f tempGroupMtx;
@@ -2661,6 +2702,8 @@ void mdl_update_transform_matrices(void) {
     for (i = 0; i < ARRAY_COUNT(*gCurrentModels); i++) {
         model = (*gCurrentModels)[i];
         if (model != nullptr && (model->flags != 0) && !(model->flags & MODEL_FLAG_INACTIVE)) {
+            FI_OPEN("model_matrix", FI_TAG(0x40000000, i, model->modelID) |
+                    mdl_interp_epoch(&ModelInterpPrevPos[i], &ModelInterpEpoch[i], &ModelInterpHasPrev[i], model->userTransformMtx));
             if (!(model->flags & MODEL_FLAG_MATRIX_DIRTY)) {
                 if (model->matrixFreshness != 0) {
                     // matrix was recalculated recently and stored on the matrix stack
@@ -2710,12 +2753,15 @@ void mdl_update_transform_matrices(void) {
                 // disable bounds culling for models with dynamic transformations
                 model->flags &= ~MODEL_FLAG_DO_BOUNDS_CULLING;
             }
+            FI_CLOSE();
         }
     }
 
     for (i = 0; i < ARRAY_COUNT((*gCurrentTransformGroups)); i++) {
         mtg = (*gCurrentTransformGroups)[i];
         if (mtg != nullptr && mtg->flags != 0 && !(mtg->flags & TRANSFORM_GROUP_FLAG_INACTIVE)) {
+            FI_OPEN("group_matrix", FI_TAG(0xF0000000, i, mtg->groupModelID) |
+                    mdl_interp_epoch(&GroupInterpPrevPos[i], &GroupInterpEpoch[i], &GroupInterpHasPrev[i], mtg->userTransformMtx));
             if (!(mtg->flags & TRANSFORM_GROUP_FLAG_MATRIX_DIRTY)) {
                 if (mtg->matrixFreshness != 0) {
                     // matrix was recalculated recently and stored on the matrix stack
@@ -2762,6 +2808,7 @@ void mdl_update_transform_matrices(void) {
                 // point matrix for gfx building to our matrix on the stack
                 mtg->finalMtx = curMtx;
             }
+            FI_CLOSE();
         }
     }
 
@@ -4717,9 +4764,11 @@ void execute_render_tasks(void) {
         Mtx* dispMtx;
         Gfx* savedGfxPos = nullptr;
 
+        FI_OPEN("floor_reflection_flipY", 0);
         guScaleF(mtxFlipY, 1.0f, -1.0f, 1.0f);
         guMtxF2L(mtxFlipY, &gDisplayContext->matrixStack[gMatrixListPos]);
         dispMtx = &gDisplayContext->matrixStack[gMatrixListPos++];
+        FI_CLOSE();
         for (i = 0; i < taskCount; i++) {
             task = &taskList[sorted[i]];
             appendGfx = task->appendGfx;
@@ -4728,7 +4777,10 @@ void execute_render_tasks(void) {
                 savedGfxPos = gMainGfxPos++;
             }
 
+            /* the key is (draw function, argument): the argument alone is not always an object pointer (PaperBoat note) */
+            FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
+            FI_CLOSE();
 
             if (task->renderMode & RENDER_TASK_FLAG_REFLECT_FLOOR) {
                 gSPEndDisplayList(gMainGfxPos++);
@@ -4743,7 +4795,9 @@ void execute_render_tasks(void) {
         for (i = 0; i < taskCount; i++) {
             task = &taskList[sorted[i]];
             appendGfx = task->appendGfx;
+            FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
+            FI_CLOSE();
         }
     }
 

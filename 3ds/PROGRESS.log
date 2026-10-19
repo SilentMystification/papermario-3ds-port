@@ -405,3 +405,9 @@
 01:06 F06-2v start 3 pace fps60 toad: steps/s 14, 4+ vblanks per step (about 2 vblanks per present, 30 presents/s). start 4: pacestat phase fps60 toad to read draw ms
 01:09 F06-2v start 4 phase: 4+ vblanks per step, 11 to 14 steps/s. Cause: each draw costs 20 to 45 ms in Azahar (gbi 14372 ops, 254 draws) and fps60 draws twice. Cost, not a sync fault: F06-5 (overload skip) owns it. Rows F06-2 and F06-2v NOT moved: pace check fails (needs steps/s near 30).
 01:09 F06-2v tables sized to peak plus 25 percent: leaves 384 (peak 297), nodes 32 (peak 18), hash 1024/1024/64. Fixed open/close imbalance when the node table is full. Built, not run (4 of 4 starts used). 3dsx 13090876 to 13090960 (+84), F06-2 total +3492 vs F06-1. Heap with fps60 on about 60 KB.
+01:12 F06-3 hooks added in model entity animator model_api sprite imgfx item_entity worker effects, f06 pair log, tables 1024 leaves 1024 nodes. Build next.
+01:14 F06-3 azahar start 1 of 3: fps60 toad smoke, about 1 min
+01:15 F06-3 start 1 timed out at 25 s default (slow fps60 pace, no crash, no f06 line yet). start 2: same smoke with -Stall 90 -Timeout 300, expect 3 min
+01:16 F06-3 smoke ok rc 0, no overflow, f06 pair=99, peak leaves 49 nodes 440 (tables 1024/1024). start 3: tour kmr_20 mac_00 flo_10 fps60 autoa shots, expect 5 min
+01:20 F06-3 tour: f06 pair 98 to 100 in steady state (93 once at a map load), over=0, peak leaves 50 nodes 370, contact sheet of 12 shots: no doubled object. Tour hit the 200 s smoke cap after 3+ maps. start 4: golden toad fps60 off, expect 2 min
+01:20 F06-3 golden toad off 0.00. 3dsx 13090960 to 13092440 (+1480). Rows F06-2, F06-2v, F06-3 moved to SLICES_DONE.

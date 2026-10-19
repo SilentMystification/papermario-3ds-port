@@ -1,4 +1,5 @@
 #include "common.h"
+#include "pm_interp_fi.h"
 
 BSS WorkerList gWorldWorkerList;
 BSS WorkerList gBattleWorkerList;
@@ -154,7 +155,9 @@ void render_workers_scene(void) {
         Worker* worker = (*gCurrentWorkerListPtr)[i];
         if (worker != nullptr && !(worker->flags & WORKER_FLAG_SKIP_DRAW_UNTIL_UPDATE)) {
             if (!(worker->flags & WORKER_FLAG_FRONT_UI)) {
+                FI_OPEN("WorkerScene", FI_TAG(0x0F000000, i, (unsigned)worker->draw));
                 call_worker(worker->draw);
+                FI_CLOSE();
             }
         }
     }
@@ -167,7 +170,9 @@ void render_workers_frontUI(void) {
         Worker* worker = (*gCurrentWorkerListPtr)[i];
         if (worker != nullptr && !(worker->flags & WORKER_FLAG_SKIP_DRAW_UNTIL_UPDATE)) {
             if (worker->flags & WORKER_FLAG_FRONT_UI) {
+                FI_OPEN("WorkerFrontUI", FI_TAG(0x0F000000, i, (unsigned)worker->draw));
                 call_worker(worker->draw);
+                FI_CLOSE();
             }
         }
     }
@@ -180,7 +185,9 @@ void render_workers_backUI(void) {
         Worker* worker = (*gCurrentWorkerListPtr)[i];
         if (worker != nullptr && !(worker->flags & WORKER_FLAG_SKIP_DRAW_UNTIL_UPDATE)) {
             if (worker->flags & WORKER_FLAG_BACK_UI) {
+                FI_OPEN("WorkerBackUI", FI_TAG(0x0F000000, i, (unsigned)worker->draw));
                 call_worker(worker->draw);
+                FI_CLOSE();
             }
         }
     }

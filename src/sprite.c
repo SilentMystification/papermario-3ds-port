@@ -1,5 +1,6 @@
 #include "sprite.h"
 #include "sprite/player.h"
+#include "pm_interp_fi.h"
 
 #define MAX_SPRITE_ID 0xEA // todo generate this
 
@@ -439,6 +440,7 @@ void spr_draw_component(s32 drawOpts, SpriteComponent* component, SpriteAnimComp
     f32 rotX, rotY, rotZ;
     f32 inX, inY, inZ;
 
+    FI_OPEN("sprite_component", (uintptr_t)component);
     if (component->initialized && component->curRaster != -1) {
         rotX = SpriteCurBaseRot[0];
         rotY = SpriteCurBaseRot[1];
@@ -469,6 +471,7 @@ void spr_draw_component(s32 drawOpts, SpriteComponent* component, SpriteAnimComp
         );
         component->imgfxIdx = CurSpriteImgFX;
     }
+    FI_CLOSE();
 }
 
 s32 spr_unpack_signed_12bit(u16 val) {

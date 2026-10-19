@@ -2,6 +2,7 @@
 #include "ld_addrs.h"
 #include "sprite.h"
 #include "imgfx.h"
+#include "pm_interp_fi.h"
 
 typedef union ImgFXIntVars {
     s32 raw[2][4];
@@ -1796,8 +1797,10 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
         return;
     }
 
+    FI_OPEN("imgfx_anim", (uintptr_t)state);
     guScale(&gDisplayContext->matrixStack[gMatrixListPos], 0.1f, 0.1f, 0.1f);
     gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    FI_CLOSE();
 
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
         gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
@@ -1852,8 +1855,10 @@ void imgfx_appendGfx_mesh_strip(ImgFXState* state, Matrix4f mtx) {
     s32 uls, ult;
     s32 lrs, lrt;
 
+    FI_OPEN("imgfx_strip", (uintptr_t)state);
     guScale(&gDisplayContext->matrixStack[gMatrixListPos], (f32)ImgFXCurrentTexturePtr->tex.width / 100.0, (f32)ImgFXCurrentTexturePtr->tex.height / 100.0, 1.0f);
     gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    FI_CLOSE();
     gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_XLU_DECAL, G_RM_ZB_XLU_DECAL2);
 
     if (state->renderType == IMGFX_RENDER_OVERLAY_RGBA) {

@@ -9,14 +9,15 @@
 #include "ultra64.h"
 #include "pm_port.h"
 
-/* Sizes: peak plus 25 percent. Leaf peak 297 (F06-1, toad and mac_00 start), 49 in the toad smoke (F06-2v); node peak 18. */
-#define MAX_LEAVES 384
-#define MAX_NODES 32
+/* Sizes: leaf peak 297 (F06-1, toad and mac_00 start), 49 in the toad smoke (F06-2v). F06-3 adds one node per model, entity,
+ * render task and effect: the tables are larger. The overflow count is in the f06 rec log line. */
+#define MAX_LEAVES 1024
+#define MAX_NODES 1024
 #define MAX_DEPTH 16
-#define RT_BITS 10 /* 1024 slots, more than 2 x MAX_LEAVES */
+#define RT_BITS 11 /* 2048 slots, 2 x MAX_LEAVES */
 #define RT_SIZE (1 << RT_BITS)
-#define PT_SIZE 1024
-#define NT_SIZE 64
+#define PT_SIZE 2048
+#define NT_SIZE 2048
 
 typedef struct {
     unsigned node, idx;
@@ -42,7 +43,7 @@ static short* ptab; /* prev leaf index + 1 by hash(node, idx) */
 static short* ntab; /* prev node index + 1 by node id */
 static int skipped, nleaf, nnode, depth, recording, pnleaf, pnnode;
 static int stack[MAX_DEPTH];
-static unsigned frames, tot_leaves, tot_nodes, peak, peak_nodes;
+static unsigned frames, tot_leaves, tot_nodes, peak, peak_nodes, over_leaves, over_nodes, pair_leaves, pair_total;
 
 static unsigned hash4(unsigned p, unsigned a, unsigned b, unsigned occ) {
     unsigned h = 2166136261u;
@@ -53,7 +54,7 @@ static unsigned hash4(unsigned p, unsigned a, unsigned b, unsigned occ) {
 
 void pm_interp_open(unsigned a, unsigned b) {
     if (!recording) return;
-    if (nnode >= MAX_NODES || depth >= MAX_DEPTH - 1) { skipped++; return; } /* close must pair with it */
+    if (nnode >= MAX_NODES || depth >= MAX_DEPTH - 1) { skipped++; over_nodes++; return; } /* close must pair with it */
     unsigned parent = nodes[stack[depth]].id, occ = 0;
     for (int i = 0; i < nnode; i++)
         if (nodes[i].parent == parent && nodes[i].a == a && nodes[i].b == b) occ++;
@@ -140,6 +141,8 @@ void pm_interp_lerp(float t) {
             break;
         }
     }
+    pair_leaves += paired;
+    pair_total += nleaf;
 }
 
 void pm_interp_stop(void) {
@@ -154,13 +157,15 @@ void pm_interp_stop(void) {
     if ((unsigned)nleaf > peak) peak = nleaf;
     if ((unsigned)nnode > peak_nodes) peak_nodes = nnode;
     if (++frames % 600 == 0) {
-        pm_log("f06 rec leaves=%u nodes=%u peak=%u (table %d) peak_nodes=%u", tot_leaves / 600, tot_nodes / 600, peak, MAX_LEAVES, peak_nodes);
-        tot_leaves = tot_nodes = 0;
+        pm_log("f06 rec leaves=%u nodes=%u peak=%u (table %d) peak_nodes=%u (table %d) over leaves=%u nodes=%u", tot_leaves / 600, tot_nodes / 600, peak, MAX_LEAVES, peak_nodes, MAX_NODES, over_leaves, over_nodes);
+        pm_log("f06 pair=%u", pair_total ? pair_leaves * 100 / pair_total : 0); /* percent of leaves with an old pair */
+        tot_leaves = tot_nodes = pair_leaves = pair_total = 0;
     }
 }
 
 void pm_interp_record(float mf[4][4], void* m) {
-    if (!recording || nleaf >= MAX_LEAVES) return;
+    if (!recording) return;
+    if (nleaf >= MAX_LEAVES) { over_leaves++; return; }
     Node* n = &nodes[stack[depth]];
     Leaf* l = &leaves[nleaf++];
     l->node = n->id;
