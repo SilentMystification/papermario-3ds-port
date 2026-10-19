@@ -65,6 +65,7 @@ static float cmd_max;
 static shaderProgram_s prog;
 static DVLB_s* dvlb;
 
+int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
 static int off_active; /* V05: drawing goes to an off-screen image (see pm_gpu_off_begin) */
 static C3D_Mtx off_proj;
 
@@ -87,8 +88,8 @@ static void rebuild_3d(void) {
     }
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
-    view.r[0].x = vp_sx;
-    view.r[0].w = (off_active ? 0.f : 40.f) + vp_tx;
+    view.r[0].x = (pm_wide && !off_active) ? vp_sx * 1.25f : vp_sx;
+    view.r[0].w = off_active ? vp_tx : pm_wide ? vp_tx * 1.25f : 40.f + vp_tx;
     view.r[1].y = off_active ? -vp_sy : vp_sy;
     view.r[1].w = off_active ? vp_ty : 240.f - vp_ty;
     /* Clip z/w is -1 at the near plane and +1 at the far plane. Citro's
@@ -327,16 +328,16 @@ static void flush(void) {
     } else {
         int left = 240 - sci_y1;
         int right = 240 - sci_y0;
-        int top = 40 + sci_x0;
-        int bottom = 40 + sci_x1;
+        int top = pm_wide ? sci_x0 * 5 / 4 : 40 + sci_x0;
+        int bottom = pm_wide ? sci_x1 * 5 / 4 : 40 + sci_x1;
         if (left < 0) left = 0;
         if (right > 240) right = 240;
-        if (top < 40) top = 40;
-        if (bottom > 360) bottom = 360;
+        if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
+        if (bottom > (pm_wide ? 400 : 360)) bottom = pm_wide ? 400 : 360;
         if (right > left && bottom > top)
             C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)top, (u32)right, (u32)bottom);
         else
-            C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, 40, 240, 360);
+            C3D_SetScissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
     C3D_CullFace(GPU_CULL_NONE);
     if (off_active && (r_replace || off_i8))
@@ -446,6 +447,8 @@ static void put(float x, float y, float z, float u, float v, unsigned c) {
 
 void pm_gpu_init(void) {
     if (gpu_ok) return;
+    pm_wide = pm_debug_has("wide") || pm_opt.wide;
+    pm_log("gpu: wide=%d", pm_wide);
     gfxInitDefault();
     if (!C3D_Init(0x400000)) {
         pm_con_lock();
@@ -1028,7 +1031,7 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
 }
 
 /* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
-static float px(int x) { return off_active ? (float)x : 40.f + (float)x; }
+static float px(int x) { return off_active ? (float)x : pm_wide ? (float)x * 1.25f : 40.f + (float)x; }
 static float py(int y) { return off_active ? (float)y : 240.f - (float)y; }
 
 static float fill_z = 0.5f;

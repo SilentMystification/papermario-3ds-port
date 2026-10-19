@@ -362,3 +362,9 @@
 23:51 C4F pm_gu.c guRotateRPYF uses sin_rad cos_rad and f32 dtor. Build next.
 23:53 C4F build ok, 3dsx 13082696 bytes, no change. Golden toad, about 30 s.
 23:54 C4F golden toad DIFF 62 percent, reference file is a battle frame (same bytes as yard, battle). Row G01R added. Docs done.
+00:10 G01R golden.py: run() deletes the old shot before each run, --update refuses a frame equal to another reference.
+00:12 G01R toad, yard saved from fresh runs (3 starts total with battle check ok 0.96 pct). Contact sheet checked.
+23:57 F07-1 pm_gpu.c: pm_wide, px, viewport uniform, scissor edited. Build next, 3dsx before 13082696
+23:59 F07-1 built, 3dsx +600 bytes (13082696 to 13083296). Azahar start 1: wide shot, about 2 min
+23:59 F07-1 wide shot ok: columns 0-39 and 360-399 have 5000 of 9600 non-black pixels each. Azahar start 2: golden toad, about 2 min
+00:00 F07-1 golden toad ok 0.00 percent, max 0, wide off. 2 Azahar starts. 3dsx +600 bytes (13082696 to 13083296). Not tested: yard, 3D aspect, UI, frame grabs (F07-2 to F07-5).
