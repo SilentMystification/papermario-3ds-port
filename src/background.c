@@ -90,7 +90,7 @@ static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s
     if (pm_wide) {
         for (shift = -296 * 4; shift <= 296 * 4; shift += 592 * 4) {
             if (xh + shift >= -40 * 4 && xl + shift <= 360 * 4) {
-                gSPTextureRectangle(gMainGfxPos++, xl + shift, yl, xh + shift, yh, tile, s, t, dsdx, dtdy);
+                gSPTextureRectangle(gMainGfxPos++, xl + shift, yl, xh + shift > 360 * 4 - 1 ? 360 * 4 - 1 : xh + shift, yh, tile, s, t, dsdx, dtdy); /* F07-8: the 12 bit field is signed, 512 px and more wrap negative, so the right copy was lost */
             }
         }
     }

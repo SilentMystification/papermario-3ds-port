@@ -480,3 +480,6 @@
 05:50 F06-6 start 3: first diff word of the changed key list, same tour, expect 8 min
 06:10 F06-6 start 4: root cause bg list 0x200 overflow with wide, buffer 0x800, same tour, expect 8 min
 06:30 F06-6 done, bg list overflow fixed
+06:35 F07-8 start 1: toad wide shot, check columns 385 to 399, expect 2 min
+06:55 F07-8 fix: bg_texrect right copy xh clipped to 360 px, the 12 bit field wrapped at 512 px; rerun toad wide shot
+07:00 F07-8 done
