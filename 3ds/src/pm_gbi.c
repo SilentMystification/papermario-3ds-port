@@ -638,7 +638,7 @@ static void lerp_clip(ClipV* o, const ClipV* a, const ClipV* b, float t) {
 /* Cut only corners that passed behind the eye. A corner that is merely off the
  * side of the screen keeps its projected position, so a pan cannot swap the
  * triangle for a different polygon. */
-static int clip_near(ClipV* poly, int n) {
+static int clip_near_k(ClipV* poly, int n, int zplane) {
     ClipV tmp[12];
     int m = 0;
     int i;
@@ -646,8 +646,8 @@ static int clip_near(ClipV* poly, int n) {
     for (i = 0; i < n; i++) {
         ClipV* cur = &poly[i];
         ClipV* prev = &poly[(i + n - 1) % n];
-        float dc = cur->w - 0.05f;
-        float dp = prev->w - 0.05f;
+        float dc = zplane ? cur->z + cur->w : cur->w - 0.05f;
+        float dp = zplane ? prev->z + prev->w : prev->w - 0.05f;
         int ic = dc >= 0.f;
         int ip = dp >= 0.f;
         if (ic != ip && m < 12) {
@@ -659,6 +659,14 @@ static int clip_near(ClipV* poly, int n) {
     }
     for (i = 0; i < m; i++) poly[i] = tmp[i];
     return m;
+}
+/* V27: clip at the true near plane (z >= -w, as the RSP does) when a corner is close to the eye, then at w > 0.05. Clipping only at w > 0.05 left corners with a
+ * tiny w, whose screen coordinates are huge (box -145558 to 21692 in the Sushie dive water plane) and the GPU rasteriser mis-draws them. */
+static int clip_near(ClipV* poly, int n) {
+    int i, close = 0;
+    for (i = 0; i < n; i++) if (poly[i].w < 1.f && poly[i].z + poly[i].w < 0.f) close = 1;
+    if (close && !pm_debug_has("nozclip")) { n = clip_near_k(poly, n, 1); if (n < 3) return 0; }
+    return clip_near_k(poly, n, 0);
 }
 
 /* Same bits as libultraship, except the near plane, which they leave commented out.

@@ -366,6 +366,7 @@ static void flush(void) {
     }
     dv_draw++;
     int z = z_on && (!rect_2d || rect_z) && !off_active;
+    { static int nozt = -1; if (nozt < 0) nozt = pm_debug_has("nozt"); if (nozt) z = 0; } /* V27 debug: no depth test or write at all */
     /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. A decal
      * sits in the same plane as its base, so equal depth has to pass. */
     if (z && r_zmark) {

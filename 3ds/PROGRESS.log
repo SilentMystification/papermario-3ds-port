@@ -548,3 +548,4 @@
 12:17 FX3c findings: ENV blue, signed form INEXACT, no code. Buffers reverted, fxtest_report splits 40 per start
 12:17 C-O3DS row added, blocked on which key is Z
 15:40 R-SEED done: random seed per boot, fixedseed for tests. merge main done, smoke yard ok
+16:40 V27 fixed: near plane clip at z >= -w for corners with w < 1. V18, V19 candidates, unproven in Azahar
