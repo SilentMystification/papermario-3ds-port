@@ -39,3 +39,4 @@ F07-7 (2026-10-19): BUDGET 4/4 used. Code is done (frame grab 400 columns). Open
 F07-7 (2026-10-19, coordinator add): the overlay edge fix (pm_gpu_vert_clip, pm_gpu_tex_rect) is coded and not tested, BUDGET 4/4. Needs 2 starts in total (this test and the golden toad / edge glow test).
 
 V26 (2026-10-19): BUDGET 4/4 used. Code: osGetCount fix and switch simlog. Needs 1 start with a per-step Mario and Bullet Bill log for demoscene=4 (see row V26). V25: 3 of 4 used, 1 start left for the one line per strip log. V24: 0 starts used, not started (V26 and V25 first).
+V26 (2026-10-19): BUDGET in the lane B folder. The reset went to the main folder file 3ds/logs/test_budget.csv. Lane B uses its own copy (papermario-3ds-port-laneB/3ds/logs/test_budget.csv). Run -ResetBudget V26, V25 (needs 1 more) and V24 from the lane B folder. The simstep per-step log (f110 to f150, demoscene=4) is built and not run.
