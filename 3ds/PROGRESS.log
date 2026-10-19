@@ -483,3 +483,4 @@
 06:35 F07-8 start 1: toad wide shot, check columns 385 to 399, expect 2 min
 06:55 F07-8 fix: bg_texrect right copy xh clipped to 360 px, the 12 bit field wrapped at 512 px; rerun toad wide shot
 07:00 F07-8 done
+07:05 F07-7 notes: blocked on frame grab width decision
