@@ -377,7 +377,7 @@ static void sync_legacy(void) {
     comb_mode5 = 0;
     box_pat = box_prod && !box_folded; /* V10: the 2-cycle window with a pattern in tile 0 (not white): product on the CPU */
     if (wants_tex && comb_a == G_CCMUX_PRIMITIVE && comb_b == G_CCMUX_ENVIRONMENT && comb_c == G_CCMUX_TEXEL0 &&
-        comb_d == G_CCMUX_ENVIRONMENT && alpha_tex) {
+        comb_d == G_CCMUX_ENVIRONMENT && alpha_tex && comb2_aa != 0) { /* FX2f: a cycle 2 alpha that reads COMBINED (huff_puff_breath, times PRIM) is no window pass */
         comb_mode5 = 1;
         pm_gpu_set_env(envc);
         /* D03: draw_box windows with the bg_tile pattern (tile 0, I4 0/F checker) take their alpha from

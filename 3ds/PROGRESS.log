@@ -344,3 +344,9 @@
 20:14 FX1b first start timed out at 300 s after effect 79 (limit in script). Second start for 80 to 126, expect 5 min
 20:16 FX1b second start done, 127 of 127, no crash. 6 sheets read. 7 new rows FX2a to FX2g in SLICES.md, table updated
 20:16 FX1b done, row moved
+20:26 FX2 start, huff_puff_breath cause found (window hack in sync_legacy), build 1, 3dsx before 13080892 bytes
+20:28 FX2 build 1 done, 3dsx 13080884 bytes. Azahar start 1 of 4: fxtest 27,51,54,75,93,103,112 with imglog, expect 3 min
+23:21 FX2 edits: pm_tex expand pad (bulb), flip buffer for self-read slot (flame), huff window fix. build 2
+23:23 FX2 Azahar start 2: fxtest 7 effects, expect 3 min
+23:26 FX2 bulb pad and flip reverted (no visible change), golden battle start 3, expect 2 min
+23:27 FX2 done: 3 rows moved, 4 open with leads, golden battle ok, 3dsx 13080884

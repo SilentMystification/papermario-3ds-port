@@ -127,3 +127,5 @@ V14 new row V15 (bilinear filter from omh). Not checked: golden (no code change)
 V15 done: texture filter follows omh G_TF bits (pm_gbi.c sets, pm_tex.c binds, no cache key change). 3dsx +148 B. Golden toad 12.1, yard 7.8, battle 8.9 percent px differ (smoother, no seams on battle sheet).
 V15 golden.png for battle updated from the shot. Toad and yard references still old (test budget): run golden.py --update toad yard once, in the next graphics row.
 FX1b done: sweep 127 of 127. Fixed or fine: 2 (bulb_glow solid gone, quizmo_audience). Still wrong: 7, rows FX2a to FX2g. Table and notes in docs/plans/FX1_table.md. Sheets 3ds/logs/fx.
+- FX2 done: FX2f huff_puff_breath fixed (pm_gbi.c window test comb2_aa), FX2c and FX2g checked, no change. 3dsx 13080892 to 13080884 bytes.
+- FX2 open: FX2a flame, FX2b bulb_glow, FX2d effect_63, FX2e peach_star_beam, leads in 3ds/SLICES.md. Golden battle ok.

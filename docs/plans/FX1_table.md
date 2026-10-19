@@ -34,7 +34,7 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 24 | smoke_impact | ok | yes | 1003 | 24 | no | 0 | 8 | no | 16 | 0 |
 | 25 | damage_indicator | ok | yes | 3380 | 76 | no | 0 | SOLID 64 | no | 42 | 0 |
 | 26 | purple_ring | ok | yes | 1302 | 42 | no | 0 | 7 | no | 42 | 0 |
-| 27 | flame | ok | yes | 2529 | 53 | no | 0 | SOLID 95 | no | 40 | 0 |
+| 27 | flame | ok | yes | 2516 | 52 | no | 0 | SOLID 96 | no | 40 | 0 |
 | 28 | stars_burst | ok | yes | 431 | 16 | no | 0 | 0 | no | 42 | 0 |
 | 29 | stars_shimmer | ok | yes | 704 | 21 | no | 0 | 0 | no | 15 | 0 |
 | 30 | rising_bubble | ok | weak | 174 | 7 | no | 0 | 0 | no | 14 | 0 |
@@ -58,10 +58,10 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 48 | lightning | ok | yes | 6545 | 136 | no | 0 | 2 | no | 51 | 0 |
 | 49 | fire_breath | ok | weak | 147 | 7 | no | 0 | 0 | no | 14 | 0 |
 | 50 | shimmer_burst | ok | yes | 1301 | 46 | no | 0 | 10 | no | 42 | 0 |
-| 51 | energy_shockwave | ok | yes | 13432 | 309 | no | 0 | 10 | YES | 63 | 0 |
+| 51 | energy_shockwave | ok | yes | 13770 | 318 | no | 0 | 10 | YES | 63 | 0 |
 | 52 | shimmer_wave | ok | weak | 343 | 14 | no | 0 | 0 | no | 43 | 0 |
 | 53 | aura | ok | weak | 300 | 12 | no | 0 | 0 | no | 42 | 0 |
-| 54 | bulb_glow | ok | yes | 8931 | 163 | no | 0 | 16 | no | 40 | 0 |
+| 54 | bulb_glow | ok | yes | 10166 | 175 | no | 0 | 14 | no | 28 | 0 |
 | 55 | effect_3D | ok | yes | 3604 | 77 | no | 0 | 30 | no | 42 | 0 |
 | 56 | blast | ok | yes | 2903 | 63 | no | 0 | 17 | no | 23 | 0 |
 | 57 | fire_flower | ok | yes | 1945 | 49 | no | 0 | 20 | no | 24 | 0 |
@@ -110,7 +110,7 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 100 | energy_in_out | ok | weak | 230 | 8 | no | 0 | 0 | no | 15 | 0 |
 | 101 | tattle_window | ok | yes | 16128 | 270 | no | 0 | SOLID 90 | no | 43 | 0 |
 | 102 | shiny_flare | ok | weak | 138 | 6 | no | 0 | 0 | no | 1 | 0 |
-| 103 | huff_puff_breath | ok | yes | 12079 | 214 | no | 0 | 21 | no | 52 | 0 |
+| 103 | huff_puff_breath | ok | yes | 2870 | 66 | no | 0 | 9 | no | 52 | 0 |
 | 104 | cold_breath | ok | yes | 3661 | 66 | no | 0 | 12 | no | 15 | 0 |
 | 105 | embers | ok | weak | 290 | 12 | no | 0 | 0 | no | 42 | 0 |
 | 106 | hieroglyphs | ok | yes | 1907 | 54 | no | 0 | 9 | no | 47 | 0 |
@@ -119,7 +119,7 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 109 | moving_cloud | ok | weak | 145 | 6 | no | 0 | 0 | no | 1 | 0 |
 | 110 | effect_75 | ok | weak | 121 | 5 | no | 0 | 0 | no | 13 | 0 |
 | 111 | firework_rocket | ok | weak | 138 | 6 | no | 0 | 0 | no | 1 | 0 |
-| 112 | peach_star_beam | ok | yes | 11819 | 221 | no | 1455 | 24 | no | 47 | 0 |
+| 112 | peach_star_beam | ok | yes | 11633 | 215 | no | 1455 | 24 | no | 30 | 0 |
 | 113 | chapter_change | ok | yes | 5222 | 108 | no | 1369 | 27 | no | 25 | 0 |
 | 114 | ice_shard | ok | yes | 423 | 16 | no | 0 | 0 | no | 42 | 0 |
 | 115 | spirit_card | ok | yes | 1663 | 42 | no | 70 | 47 | no | 42 | 0 |
@@ -136,9 +136,3 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 126 | effect_86 | ok | weak | 305 | 13 | no | 0 | 0 | no | 42 | 0 |
 
 Spawned and shot: 127 of 127. Weak or nothing: 50. Black block: 0. Zoomed or clipped: 4. Solid colour block: 3.
-
-FX1b sweep 2026-10-18 (after R13c, V05b, V15, V12d, V12c), sheets in 3ds/logs/fx/sheet_1.png to sheet_11.png. The script limit of 300 s stopped the first start at effect 79, a second start did effects 80 to 126. No crash.
-- Fixed since the first sweep: bulb_glow 54 (no longer solid, still a white square, see row FX2c), quizmo_audience 78 (no longer clipped, dark shapes are probably the real look).
-- Still wrong: flame 27 (flat red block), bulb_glow 54 (white square), motion_blur_flame 75 (now nothing drawn, black blob gone), effect_63 93 (now nothing drawn, black blob gone), peach_star_beam 112 (black block), huff_puff_breath 103 (yellow block), energy_shockwave 51 (clipped, may be a real wide ring). Rows FX2a to FX2g in 3ds/SLICES.md.
-- New flags that look right: underwater 87 (full screen tint), quizmo_stage 72 (stage strip), red_impact 98 (large red burst). tattle_window 101 and chapter_change 113 need game context.
-- The heuristics do not see a wrong colour or a wrong shape. Only the sheets show that.
