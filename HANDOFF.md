@@ -143,3 +143,6 @@ FALLTHRU: fire_breath and peach_star_beam setup lists now end in gsSPBranchList 
 FX3f: aura fixed (pm_gbi.c slot 0 vertex load kept earlier slots when no triangle came between, golden not run). fxtest args fixed for 8 effects, new log line fxtest: live N. Open row FX3g: 13, 14, 11, 9, 7. 8 of 8 starts used.
 FX3g: shape_spell fixed (pm_gbi.c binds the whole T mask period when the SetTileSize window is shorter). Golden toad yard 0.00 percent. Open row FX3h: 14, 11, 9, 7. Emote fxtest edit built, not shot.
 F11-7: Options row Fixed seed (row 8, Back is 9) sets pm_opt.fixedseed, used by osGetCount at the next boot. Panel not tried by hand.
+V16b: no box seen in Azahar (Shy Guys with forced HEAVY flash, medium, light). All palette writes use PAL_MEM. Hardware test needed, row V16b in SLICES.md.
+V18 and V19: no code change. Leads and the device debug switches (nozclip, nozt, depthview=3) are in the SLICES rows. build.sh BN1 read now strips CR from build_base.txt (the lane build failed on CRLF).
+V23c: no second pause hand in Azahar (5 starts, fps60 and wide too). The pause hand is drawn once. Needs user steps or photo.

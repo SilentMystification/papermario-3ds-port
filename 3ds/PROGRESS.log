@@ -559,3 +559,5 @@
 14:10 FX3d snowfall setup list branch, FX3e judged from sheets
 15:54 FALLTHRU wrapper for fire_breath and peach_star_beam lists, building
 16:19 FX3f done, FX3g opened
+16:12 V16b V18 V19 no repro in Azahar, leads in SLICES, build.sh CRLF fix
+16:18 V23c no second hand in Azahar, 5 starts
