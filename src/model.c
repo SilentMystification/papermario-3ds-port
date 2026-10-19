@@ -3745,7 +3745,7 @@ void clone_model(u16 srcModelID, u16 newModelID) {
 
 void mdl_group_set_visibility(u16 treeIndex, s32 flags, s32 mode) {
     s32 maxGroupIndex = -1;
-    s32 minGroupIndex;
+    s32 minGroupIndex = 0;
     s32 modelIndex = (*gCurrentModelTreeNodeInfo)[treeIndex].modelIndex;
     s32 siblingIndex;
     s32 i;
@@ -3804,7 +3804,7 @@ void mdl_group_set_visibility(u16 treeIndex, s32 flags, s32 mode) {
 void mdl_group_set_custom_gfx(u16 groupModelID, s32 customGfxIndex, s32 tintType, bool invertSelection) {
     s32 maxGroupIndex = -1;
     s32 i;
-    s32 minGroupIndex;
+    s32 minGroupIndex = 0;
     s32 modelIndex = (*gCurrentModelTreeNodeInfo)[groupModelID].modelIndex;
     s32 siblingIndex;
     s32 maskLow, maskHigh, packed;

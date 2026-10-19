@@ -68,7 +68,7 @@ void N(gfx_build_club_64)(s32 index) {
     Vtx* copied;
     s32 numCopied;
     s32 i;
-    f32 colR, colG, colB;
+    f32 colR = 0.0f, colG = 0.0f, colB = 0.0f;
 
     mdl_get_copied_vertices(VTX_COPY_3, &first, &copied, &numCopied);
 

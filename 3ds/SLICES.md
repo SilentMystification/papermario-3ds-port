@@ -34,6 +34,3 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 
 [ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only. Full text: docs/plans/B7.md | `push-o`, `pull-o`, `phase_report.py`
 [ ] V22b | Shot of effects flashing_box_shockwave, huff_puff_breath, ice_pillar, merlin_house_stars, purple_ring (fxtest) and the stencil overlay D_8014EA48 | each draws all triangles, no black wedge
-[ ] H06a4 | (sonnet) From H06a3. npc.c:2076 npc_find_standing_on_entity: `npc->pos = npc->pos` reads the uninitialized pointer npc (decomp match hack). Fix: remove the statement (or init npc) so ARM never derefs garbage; grep callers and check the loop sets npc before use | -Wuninitialized clean at npc.c:2076, smoke yard
-[ ] H06a5 | (sonnet) From H06a3. effects/water_fountain.c:257 reads uninitialized sp9C (`temp = sp9C + 1`). Find the decomp value (git history of the effect, comment, other call sites) and fix at the root, no guess | -Wuninitialized clean at water_fountain.c:257
-[ ] H06a6 | (sonnet) From H06a3. Judge the remaining maybe-uninitialized hits in docs/plans/H06a.md (WaterEffects.inc.c:103, 101b90_len_8f0.c:475, audio/core/system.c:146,167, emote.c:303, model.c x11, kpa_63/scenes.c, mac_05, pra_31/puzzle.c:165). One row per real hit | each hit judged in docs/plans/H06a.md
