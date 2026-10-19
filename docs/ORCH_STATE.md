@@ -123,7 +123,7 @@ Running at the time of writing: V23 (pause menu party picture cut and map circle
 How to work (user rules, keep them):
 - Reply in ASD-STE100, no praise, relay each agent report in 3 lines or fewer. Do not answer late or duplicate agent notices.
 - One code agent per build tree and only one using Azahar at a time (read-only agents may run in parallel but must not use Azahar). Group related rows into one agent. Do tiny edits inline.
-- Set PM_ROW=<row> in every test shell. The budget (3ds/run_azahar.ps1) allows 4 Azahar starts per row. Only the orchestrator resets it (`powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <row>`), at most once per row. golden.py: 1 to 3 named scenes, --update runs the scene. No full tour or full golden per slice: only when a change needs them, and once before S28.
+- Set PM_ROW=<row> in every test shell. The budget (3ds/run_azahar.ps1) allows 8 Azahar starts per row. Only the orchestrator resets it (`powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <row>`), at most once per row. golden.py: 1 to 3 named scenes, --update runs the scene. No full tour or full golden per slice: only when a change needs them, and once before S28.
 - Agent models: sonnet for code, haiku for mechanical work, opus only for plans. Never fable. Agents do not push. No Claude attribution in commits.
 - H05 findings that need no user decision become rows and are worked at once. No per-slice memory cap (revisit only if the O3DS runs out).
 - The classifier blocks edits of settings files (self-modification). The user added `.claude/settings.local.json` allow rules for go.ps1 and run_azahar.ps1 by hand.
