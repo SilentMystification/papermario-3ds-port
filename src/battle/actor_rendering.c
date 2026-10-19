@@ -2242,10 +2242,10 @@ void render_with_sleep_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, Matr
         decorations->adjustedPalettes[i] = palOut;
         if (palIn != nullptr) {
             for (j = 0; j < SPR_PAL_SIZE; j++) {
-                u8 r = UNPACK_PAL_R(*palIn);
-                u8 g = UNPACK_PAL_G(*palIn);
-                u8 b = UNPACK_PAL_B(*palIn);
-                u8 a = UNPACK_PAL_A(*palIn);
+                u8 r = UNPACK_PAL_R(PAL_MEM(*palIn));
+                u8 g = UNPACK_PAL_G(PAL_MEM(*palIn));
+                u8 b = UNPACK_PAL_B(PAL_MEM(*palIn));
+                u8 a = UNPACK_PAL_A(PAL_MEM(*palIn));
                 palIn++;
 
                 // make colors darker and bluer
@@ -2253,7 +2253,9 @@ void render_with_sleep_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, Matr
                 g *= 0.4;
                 b *= 0.7;
 
-                *palOut++ = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PAL_MEM(*palOut);
+                palOut++;
             }
         }
     }
@@ -2354,17 +2356,19 @@ void render_with_static_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, Mat
                 palOut = decorations->copiedPalettes[0][i];
                 if (palIn != nullptr) {
                     for (j = 0; j < SPR_PAL_SIZE; j++) {
-                        u8 r = UNPACK_PAL_R(*palIn);
-                        u8 g = UNPACK_PAL_G(*palIn);
-                        u8 b = UNPACK_PAL_B(*palIn);
-                        u8 a = UNPACK_PAL_A(*palIn);
+                        u8 r = UNPACK_PAL_R(PAL_MEM(*palIn));
+                        u8 g = UNPACK_PAL_G(PAL_MEM(*palIn));
+                        u8 b = UNPACK_PAL_B(PAL_MEM(*palIn));
+                        u8 a = UNPACK_PAL_A(PAL_MEM(*palIn));
                         palIn++;
 
                         r *= 0.1;
                         g *= 0.1;
                         b *= 0.1;
 
-                        *palOut++ = PACK_PAL_RGBA(r, g, b, a);
+                        *palOut = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PAL_MEM(*palOut);
+                palOut++;
                     }
                 }
             }
@@ -2420,10 +2424,10 @@ void render_with_fear_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, Matri
         decorations->adjustedPalettes[i] = palOut;
         if (palIn != nullptr) {
             for (j = 0; j < SPR_PAL_SIZE; j++) {
-                u8 r = UNPACK_PAL_R(*palIn);
-                u8 g = UNPACK_PAL_G(*palIn);
-                u8 b = UNPACK_PAL_B(*palIn);
-                u8 a = UNPACK_PAL_A(*palIn);
+                u8 r = UNPACK_PAL_R(PAL_MEM(*palIn));
+                u8 g = UNPACK_PAL_G(PAL_MEM(*palIn));
+                u8 b = UNPACK_PAL_B(PAL_MEM(*palIn));
+                u8 a = UNPACK_PAL_A(PAL_MEM(*palIn));
                 palIn++;
 
                 // darken the color
@@ -2431,7 +2435,9 @@ void render_with_fear_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, Matri
                 g /= 2;
                 b /= 2;
 
-                *palOut++ = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PAL_MEM(*palOut);
+                palOut++;
             }
         }
     }
@@ -2546,10 +2552,10 @@ void render_with_paralyze_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, M
         palOut = decorations->copiedPalettes[0][i];
         if (palIn != nullptr) {
             for (j = 0; j < SPR_PAL_SIZE; j++) {
-                u8 r = UNPACK_PAL_R(*palIn);
-                u8 g = UNPACK_PAL_G(*palIn);
-                u8 b = UNPACK_PAL_B(*palIn);
-                u8 a = UNPACK_PAL_A(*palIn);
+                u8 r = UNPACK_PAL_R(PAL_MEM(*palIn));
+                u8 g = UNPACK_PAL_G(PAL_MEM(*palIn));
+                u8 b = UNPACK_PAL_B(PAL_MEM(*palIn));
+                u8 a = UNPACK_PAL_A(PAL_MEM(*palIn));
                 palIn++;
                 r += 4;
                 if (r > 31) {
@@ -2564,7 +2570,9 @@ void render_with_paralyze_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, M
                     b = 31;
                 }
 
-                *palOut++ = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PAL_MEM(*palOut);
+                palOut++;
             }
         }
     }
@@ -2647,10 +2655,10 @@ void render_with_berserk_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, Ma
         PAL_PTR palOut = decorations->copiedPalettes[0][i];
         if (palIn != nullptr) {
             for (j = 0; j < SPR_PAL_SIZE; j++) {
-                u8 r = UNPACK_PAL_R(*palIn);
-                u8 g = UNPACK_PAL_G(*palIn);
-                u8 b = UNPACK_PAL_B(*palIn);
-                u8 a = UNPACK_PAL_A(*palIn);
+                u8 r = UNPACK_PAL_R(PAL_MEM(*palIn));
+                u8 g = UNPACK_PAL_G(PAL_MEM(*palIn));
+                u8 b = UNPACK_PAL_B(PAL_MEM(*palIn));
+                u8 a = UNPACK_PAL_A(PAL_MEM(*palIn));
                 palIn++;
 
                 // make each color darker and redder
@@ -2658,7 +2666,9 @@ void render_with_berserk_palettes(bool isNpcSprite, ActorPart* part, s32 yaw, Ma
                 g *= 0.6;
                 b *= 0.1;
 
-                *palOut++ = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PACK_PAL_RGBA(r, g, b, a);
+                *palOut = PAL_MEM(*palOut);
+                palOut++;
             }
         }
     }
@@ -2983,13 +2993,13 @@ void render_with_player_debuff_palettes(bool isNpcSprite, ActorPart* part, s32 y
                 palOut = decorations->copiedPalettes[0][i];
 
                 for (j = 0; j < SPR_PAL_SIZE; j++) {
-                    u8 r2 = UNPACK_PAL_R(*color2);
-                    u8 g2 = UNPACK_PAL_G(*color2);
-                    u8 b2 = UNPACK_PAL_B(*color2);
-                    u8 r1 = UNPACK_PAL_R(*color1);
-                    u8 g1 = UNPACK_PAL_G(*color1);
-                    u8 b1 = UNPACK_PAL_B(*color1);
-                    u8 a1 = UNPACK_PAL_A(*color1);
+                    u8 r2 = UNPACK_PAL_R(PAL_MEM(*color2));
+                    u8 g2 = UNPACK_PAL_G(PAL_MEM(*color2));
+                    u8 b2 = UNPACK_PAL_B(PAL_MEM(*color2));
+                    u8 r1 = UNPACK_PAL_R(PAL_MEM(*color1));
+                    u8 g1 = UNPACK_PAL_G(PAL_MEM(*color1));
+                    u8 b1 = UNPACK_PAL_B(PAL_MEM(*color1));
+                    u8 a1 = UNPACK_PAL_A(PAL_MEM(*color1));
                     color2++;
                     color1++;
 
@@ -2997,7 +3007,9 @@ void render_with_player_debuff_palettes(bool isNpcSprite, ActorPart* part, s32 y
                     g1 = LERP_COMPONENT(g2, g1, blendAlpha);
                     b1 = LERP_COMPONENT(b2, b1, blendAlpha);
 
-                    *palOut++ = PACK_PAL_RGBA(r1, g1, b1, a1);
+                    *palOut = PACK_PAL_RGBA(r1, g1, b1, a1);
+                    *palOut = PAL_MEM(*palOut);
+                    palOut++;
                 }
             }
             if (blendAlpha == 255) {
@@ -3106,13 +3118,13 @@ void render_with_pal_blending(bool isNpcSprite, ActorPart* part, s32 yaw, bool h
             outColor = decorations->adjustedPalettes[0] = decorations->copiedPalettes[0][0];
 
             for (j = 0; j < SPR_PAL_SIZE; j++) {
-                r2 = UNPACK_PAL_R(*color2);
-                g2 = UNPACK_PAL_G(*color2);
-                b2 = UNPACK_PAL_B(*color2);
-                r1 = UNPACK_PAL_R(*color1);
-                g1 = UNPACK_PAL_G(*color1);
-                b1 = UNPACK_PAL_B(*color1);
-                a1 = UNPACK_PAL_A(*color1);
+                r2 = UNPACK_PAL_R(PAL_MEM(*color2));
+                g2 = UNPACK_PAL_G(PAL_MEM(*color2));
+                b2 = UNPACK_PAL_B(PAL_MEM(*color2));
+                r1 = UNPACK_PAL_R(PAL_MEM(*color1));
+                g1 = UNPACK_PAL_G(PAL_MEM(*color1));
+                b1 = UNPACK_PAL_B(PAL_MEM(*color1));
+                a1 = UNPACK_PAL_A(PAL_MEM(*color1));
                 color2++;
                 color1++;
 
@@ -3120,7 +3132,9 @@ void render_with_pal_blending(bool isNpcSprite, ActorPart* part, s32 yaw, bool h
                 g1 = LERP_COMPONENT(g2, g1, blendAlpha);
                 b1 = LERP_COMPONENT(b2, b1, blendAlpha);
 
-                *outColor++ = PACK_PAL_RGBA(r1, g1, b1, a1);
+                *outColor = PACK_PAL_RGBA(r1, g1, b1, a1);
+                *outColor = PAL_MEM(*outColor);
+                outColor++;
             }
 
             if (blendAlpha == 255) {
@@ -3158,13 +3172,13 @@ void render_with_pal_blending(bool isNpcSprite, ActorPart* part, s32 yaw, bool h
             decorations->adjustedPalettes[0] = outColor;
 
             for (j = 0; j < SPR_PAL_SIZE; j++) {
-                r2 = UNPACK_PAL_R(*color2);
-                g2 = UNPACK_PAL_G(*color2);
-                b2 = UNPACK_PAL_B(*color2);
-                r1 = UNPACK_PAL_R(*color1);
-                g1 = UNPACK_PAL_G(*color1);
-                b1 = UNPACK_PAL_B(*color1);
-                a1 = UNPACK_PAL_A(*color1);
+                r2 = UNPACK_PAL_R(PAL_MEM(*color2));
+                g2 = UNPACK_PAL_G(PAL_MEM(*color2));
+                b2 = UNPACK_PAL_B(PAL_MEM(*color2));
+                r1 = UNPACK_PAL_R(PAL_MEM(*color1));
+                g1 = UNPACK_PAL_G(PAL_MEM(*color1));
+                b1 = UNPACK_PAL_B(PAL_MEM(*color1));
+                a1 = UNPACK_PAL_A(PAL_MEM(*color1));
                 color2++;
                 color1++;
 
@@ -3172,7 +3186,9 @@ void render_with_pal_blending(bool isNpcSprite, ActorPart* part, s32 yaw, bool h
                 g1 = LERP_COMPONENT(g2, g1, blendAlpha);
                 b1 = LERP_COMPONENT(b2, b1, blendAlpha);
 
-                *outColor++ = PACK_PAL_RGBA(r1, g1, b1, a1);
+                *outColor = PACK_PAL_RGBA(r1, g1, b1, a1);
+                *outColor = PAL_MEM(*outColor);
+                outColor++;
             }
             if (blendAlpha == 255) {
                 decorations->palAnimState = PAL_SWAP_HOLD_A;
@@ -3276,13 +3292,13 @@ void render_with_palset_blending(bool isNpcSprite, ActorPart* part, s32 yaw, Mat
                 decorations->adjustedPalettes[i] = outColor;
 
                 for (j = 0; j < SPR_PAL_SIZE; j++) {
-                    r2 = UNPACK_PAL_R(*color2);
-                    g2 = UNPACK_PAL_G(*color2);
-                    b2 = UNPACK_PAL_B(*color2);
-                    r1 = UNPACK_PAL_R(*color1);
-                    g1 = UNPACK_PAL_G(*color1);
-                    b1 = UNPACK_PAL_B(*color1);
-                    a1 = UNPACK_PAL_A(*color1);
+                    r2 = UNPACK_PAL_R(PAL_MEM(*color2));
+                    g2 = UNPACK_PAL_G(PAL_MEM(*color2));
+                    b2 = UNPACK_PAL_B(PAL_MEM(*color2));
+                    r1 = UNPACK_PAL_R(PAL_MEM(*color1));
+                    g1 = UNPACK_PAL_G(PAL_MEM(*color1));
+                    b1 = UNPACK_PAL_B(PAL_MEM(*color1));
+                    a1 = UNPACK_PAL_A(PAL_MEM(*color1));
                     color2++;
                     color1++;
 
@@ -3290,7 +3306,9 @@ void render_with_palset_blending(bool isNpcSprite, ActorPart* part, s32 yaw, Mat
                     g1 = LERP_COMPONENT(g2, g1, blendAlpha);
                     b1 = LERP_COMPONENT(b2, b1, blendAlpha);
 
-                    *outColor++ = PACK_PAL_RGBA(r1, g1, b1, a1);
+                    *outColor = PACK_PAL_RGBA(r1, g1, b1, a1);
+                    *outColor = PAL_MEM(*outColor);
+                    outColor++;
                 }
             }
             if (blendAlpha == 255) {
@@ -3328,13 +3346,13 @@ void render_with_palset_blending(bool isNpcSprite, ActorPart* part, s32 yaw, Mat
                 decorations->adjustedPalettes[i] = outColor;
 
                 for (j = 0; j < SPR_PAL_SIZE; j++) {
-                    r2 = UNPACK_PAL_R(*color2);
-                    g2 = UNPACK_PAL_G(*color2);
-                    b2 = UNPACK_PAL_B(*color2);
-                    r1 = UNPACK_PAL_R(*color1);
-                    g1 = UNPACK_PAL_G(*color1);
-                    b1 = UNPACK_PAL_B(*color1);
-                    a1 = UNPACK_PAL_A(*color1);
+                    r2 = UNPACK_PAL_R(PAL_MEM(*color2));
+                    g2 = UNPACK_PAL_G(PAL_MEM(*color2));
+                    b2 = UNPACK_PAL_B(PAL_MEM(*color2));
+                    r1 = UNPACK_PAL_R(PAL_MEM(*color1));
+                    g1 = UNPACK_PAL_G(PAL_MEM(*color1));
+                    b1 = UNPACK_PAL_B(PAL_MEM(*color1));
+                    a1 = UNPACK_PAL_A(PAL_MEM(*color1));
                     color2++;
                     color1++;
 
@@ -3342,7 +3360,9 @@ void render_with_palset_blending(bool isNpcSprite, ActorPart* part, s32 yaw, Mat
                     g1 = LERP_COMPONENT(g2, g1, blendAlpha);
                     b1 = LERP_COMPONENT(b2, b1, blendAlpha);
 
-                    *outColor++ = PACK_PAL_RGBA(r1, g1, b1, a1);
+                    *outColor = PACK_PAL_RGBA(r1, g1, b1, a1);
+                    *outColor = PAL_MEM(*outColor);
+                    outColor++;
                 }
             }
             if (blendAlpha == 255) {
