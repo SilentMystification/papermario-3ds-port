@@ -357,6 +357,17 @@ void pm_warp_tick(unsigned frame) {
     unsigned f = frame - (unsigned)scene_f0;
     battle_hooks(f);
     battlelist_tick(f);
+    { /* V24b: btlstatus=poison|paralyze|static|dizzy: every frame in a battle the first enemy actor gets that status, to see the palette effect of actor_rendering.c */
+        char sv[12];
+        if (pm_debug_value("btlstatus", sv, sizeof sv) && get_game_mode() == GAME_MODE_BATTLE && gBattleStatus.enemyActors[0]) {
+            Actor* ea = gBattleStatus.enemyActors[0];
+            if (!strcmp(sv, "static")) { ea->staticStatus = STATUS_KEY_STATIC; ea->staticDuration = 99; }
+            else {
+                ea->debuff = !strcmp(sv, "poison") ? STATUS_KEY_POISON : !strcmp(sv, "paralyze") ? STATUS_KEY_PARALYZE : STATUS_KEY_DIZZY;
+                ea->debuffDuration = 99;
+            }
+        }
+    }
     char ti[8];
     if (f == 30 && pm_debug_value("testitem", ti, sizeof ti)) { /* V07 debug: a real item entity beside the player */
         make_item_entity_nodelay(ti[0] == 'c' ? ITEM_COIN : ti[0] == 's' ? ITEM_STAR_PIECE : ITEM_MUSHROOM, gPlayerStatus.pos.x + 60.0f, gPlayerStatus.pos.y, gPlayerStatus.pos.z, ITEM_SPAWN_MODE_FIXED_NEVER_VANISH, 0);
