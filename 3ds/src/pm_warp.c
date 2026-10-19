@@ -185,6 +185,10 @@ s16 pm_warp_hook(s16 mode) {
     gGameStatusPtr->entryID = (s16)w_entry;
     evt_set_variable(NULL, GB_StoryProgress, w_story);
     if (w_flag) evt_set_variable(NULL, w_flag, 1);
+    if (pm_debug_has("mapflags")) { /* V23b: mapflags sets every GF_MAP_* flag (visited spaces) so the pause map shows the path dots */
+        s32 mi;
+        for (mi = GF_MAP_ToadTown; mi <= GF_MAP_MariosHouse; mi++) evt_set_variable(NULL, mi, 1);
+    }
     if (w_partner > 0 && w_partner < 12) { /* slice F02: a map script that calls EnablePartnerAI needs a partner */
         gPlayerData.partners[w_partner].enabled = 1;
         gPlayerData.curPartner = w_partner;
