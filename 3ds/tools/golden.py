@@ -39,6 +39,7 @@ SCENES = {
 def run(name):
     sw, f = SCENES[name]
     dbg = f"{sw} shots shotwin={f}:3"
+    if os.path.exists(SHOT): os.remove(SHOT)  # a stale shot from an earlier run must never be read
     r = subprocess.run(["powershell", "-File", os.path.join(ROOT, "3ds", "run_azahar.ps1"), "-Turbo", "-FaultStop",
                         "-Timeout", "90", "-Until", "shot 2 frame", "-Debug", dbg], capture_output=True, text=True, cwd=ROOT)
     if "matched 'shot 2 frame'" not in r.stdout or not os.path.exists(SHOT):
@@ -49,6 +50,10 @@ CACHE = os.path.join(ROOT, "3ds", "logs", "golden_ok.json")
 def load_cache():
     try: return json.load(open(CACHE))
     except Exception: return {}
+
+def img_bytes(img):
+    import io
+    b = io.BytesIO(); img.save(b, "PNG"); return b.getvalue()
 
 def main():
     a = sys.argv[1:]
@@ -79,6 +84,10 @@ def main():
         if img is None:
             rows.append((n, "RUN FAILED", "", "", " ".join(err))); failed += 1; continue
         if update or not os.path.exists(ref):
+            same = [o for o in SCENES if o != n and os.path.exists(os.path.join(GOLD, o + ".png"))
+                    and open(os.path.join(GOLD, o + ".png"), "rb").read() == img_bytes(img)]
+            if same:
+                rows.append((n, "REFUSED", "", "", "equals reference of " + ",".join(same))); failed += 1; continue
             img.save(ref); rows.append((n, "saved", "", "", "")); continue
         d = np.abs(np.asarray(img, np.int16) - np.asarray(Image.open(ref).convert("RGB"), np.int16)).max(axis=2)
         pct = 100.0 * (d > TOL).mean()
