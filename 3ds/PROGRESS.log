@@ -557,3 +557,4 @@
 17:30 V20 fixed: tile palette taken at G_LOADTLUT. V16 done. build number log line
 13:50 V23b mapflags switch, map shot ok, one hand
 14:10 FX3d snowfall setup list branch, FX3e judged from sheets
+16:12 V16b V18 V19 no repro in Azahar, leads in SLICES, build.sh CRLF fix
