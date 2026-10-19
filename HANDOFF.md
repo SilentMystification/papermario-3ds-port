@@ -132,3 +132,4 @@ FX1b done: sweep 127 of 127. Fixed or fine: 2 (bulb_glow solid gone, quizmo_audi
 FX2d and FX2e done. 3dsx +1036 bytes. effect_63 draws black puffs, colour not checked against a reference.
 FX2ab: FX2b bulb_glow done (tile mask pad in pm_tex). FX2a flame partly fixed (K4 convert input), still a red block.
 FX2a left: snapshot slot D_800B32E0 per pass, keep it between frames. Details in 3ds/SLICES.md. Golden battle ok. 3dsx 13081920 to 13082696 (+776).
+C4F: guRotateRPYF uses sin_rad and cos_rad. 3dsx size unchanged. Golden toad DIFF 62 percent is a bad reference: toad.png, yard.png and battle.png are the same file (new row G01R).

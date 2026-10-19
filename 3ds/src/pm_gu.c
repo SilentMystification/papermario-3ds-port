@@ -82,18 +82,21 @@ void guScale(Mtx* m, float x, float y, float z) {
     guMtxF2L(f, m);
 }
 
+float sin_rad(float x);
+float cos_rad(float x);
+
 void guRotateRPYF(float mf[4][4], float r, float p, float h) {
-    float dtor = 3.1415926f / 180.f;
+    float dtor = (float)(3.1415926 / 180.0);
     float sinr, sinp, sinh, cosr, cosp, cosh;
     r *= dtor;
     p *= dtor;
     h *= dtor;
-    sinr = sinf(r);
-    cosr = cosf(r);
-    sinp = sinf(p);
-    cosp = cosf(p);
-    sinh = sinf(h);
-    cosh = cosf(h);
+    sinr = sin_rad(r);
+    cosr = cos_rad(r);
+    sinp = sin_rad(p);
+    cosp = cos_rad(p);
+    sinh = sin_rad(h);
+    cosh = cos_rad(h);
     guMtxIdentF(mf);
     mf[0][0] = cosp * cosh;
     mf[0][1] = cosp * sinh;
