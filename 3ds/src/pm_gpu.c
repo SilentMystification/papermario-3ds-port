@@ -1119,6 +1119,8 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
         flush();
         draw_3d = 1;
     }
+    /* F07-7: a UI (orthographic) vertex on the left or right screen edge goes to the 400 px screen edge: bars, fades and overlay quads fill the gutters. Same rule as the fill rectangle. */
+    if (pm_wide && !off_active && ui_ortho && w > 0.f && (x >= w * 0.999f || x <= -w * 0.999f)) x *= 1.25f;
     put4(x, y, z, w, u, v, c);
 }
 
@@ -1176,6 +1178,11 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     batch_identity = 1;
     float xa = px(x0);
     float xb = px(x1 + 1);
+    if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, the texture continues at the same density */
+        float ds = (s1 - s0) / (xb - xa);
+        if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
+        if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
+    }
     float ya = py(y0);
     float yb = py(y1 + 1);
     unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
