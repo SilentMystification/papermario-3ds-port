@@ -29,3 +29,6 @@ Answered questions and the old text are in docs/HISTORY.md (section "Original QU
 - F06 and F07: toggles for N3DS and O3DS, wired to the UI later. Not before optimization. Build 4:3 for now. The earlier N3DS-only limit and the 80 to 144 KB heap question are replaced by this: re-check cost on the O3DS in the plan phase after optimization.
 
 F06-6 (2026-10-19): BUDGET 4/4 used. fps60+wide tour faults in load_mtx at area 6 map 5. Reset needed to continue. Details in the row.
+
+V16 (2026-10-19): No flicker frame found. Name the scene, enemy and attack where the box shows (or a save), then one run with drawlog on that frame closes it. 1 of 4 starts left in row V16.
+V19 (2026-10-19): BUDGET 4/4 used. Azahar shows no Sushie shadow and no jump in jan_04 (frames 170 to 320). Question: is the flicker seen on Azahar or only on the O3DS and N3DS? Which shadow flickers, Sushie or another one?
