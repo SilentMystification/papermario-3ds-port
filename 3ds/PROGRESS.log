@@ -475,3 +475,8 @@
 04:53 F06-6 stop: budget 4/4, fault with fps60+wide in load_mtx, row updated
 04:54 F07-7 start 1: fxtest=54,87,123 with wide, toad, expect 6 min
 04:55 F07-7 progress, F11-4 done (no code change)
+05:10 F06-6 start 1 (new budget): debug logs stale key list and bad mtx, tour fps60 wide, expect 6 min
+05:35 F06-6 start 2: checksum of key list at save and at replay, same tour, expect 8 min
+05:50 F06-6 start 3: first diff word of the changed key list, same tour, expect 8 min
+06:10 F06-6 start 4: root cause bg list 0x200 overflow with wide, buffer 0x800, same tour, expect 8 min
+06:30 F06-6 done, bg list overflow fixed
