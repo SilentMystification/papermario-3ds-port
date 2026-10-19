@@ -468,3 +468,8 @@
 04:42 F06-5 start 1: pacestat fps60 warp kmr_20, expect 3 min
 04:45 F06-5 start 2: baseline without fps60, expect 3 min
 04:47 F06-5 done
+04:47 F06-6 start 1: tour 3 maps fps60 wide shots, expect 8 min
+04:47 F06-6 start 2: same tour, -Until tour: done, expect 5 min
+04:50 F06-6 start 3: tour with crash in load_mtx at f6800 (fps60 wide). Rerun fps60 only to split, expect 5 min
+04:52 F06-6 start 4: repeat fps60 wide tour, keep full crash output, expect 5 min
+04:53 F06-6 stop: budget 4/4, fault with fps60+wide in load_mtx, row updated
