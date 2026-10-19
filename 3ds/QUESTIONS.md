@@ -37,3 +37,5 @@ FX2a: BUDGET 4/4 used again on 2026-10-19 (second budget). No user decision need
 
 F07-7 (2026-10-19): BUDGET 4/4 used. Code is done (frame grab 400 columns). Open: golden toad with `wide` off (expect 0 diff) and one fxtest=54 shot pair with the glow centre within 40 px of a screen edge. Needs a reset of 1 start. No user decision needed.
 F07-7 (2026-10-19, coordinator add): the overlay edge fix (pm_gpu_vert_clip, pm_gpu_tex_rect) is coded and not tested, BUDGET 4/4. Needs 2 starts in total (this test and the golden toad / edge glow test).
+
+V26 (2026-10-19): BUDGET 4/4 used. Code: osGetCount fix and switch simlog. Needs 1 start with a per-step Mario and Bullet Bill log for demoscene=4 (see row V26). V25: 3 of 4 used, 1 start left for the one line per strip log. V24: 0 starts used, not started (V26 and V25 first).

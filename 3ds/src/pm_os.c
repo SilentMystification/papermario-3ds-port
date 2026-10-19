@@ -38,7 +38,16 @@ static u32 rom_size;
 static int rom_tried;
 static int rom_remap; /* 1: rom_bytes is the packed image (pm_rom_keep), 0: full image or file stream */
 
-u32 osGetCount(void) { return (u32)pm_ticks(); }
+/* V26: the N64 counts from the reset, so the game's gRandSeed += osGetCount() (main.c) starts the same on every boot and the demo scenes
+ * (Bill Blasters fire by RandInt) play the same way. The 3DS tick counts from the console start, so the seed was random per boot.
+ * Count from the first call, in the N64 rate (46.875 MHz). The 32 bit tick wraps every 16 s, enough for deltas of the seed call. */
+u32 osGetCount(void) {
+    static u32 t0;
+    static int started;
+    u32 t = pm_ticks();
+    if (!started) { started = 1; t0 = t; }
+    return (u32)((unsigned long long)(t - t0) * 46875u / 268111u);
+}
 
 u32 osVirtualToPhysical(void* addr) {
     u32 p = (u32)(unsigned long)addr;
