@@ -1,3 +1,4 @@
+#include "pm_build.h"
 #include <3ds.h>
 #include <citro3d.h>
 #include <stdio.h>
@@ -393,6 +394,7 @@ static void game_thread(void* arg) {
     unsigned ram = (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20);
     pm_log("Paper Mario 3DS");
     pm_log("threads: game on core %d (svcGetProcessorID), log writer on core %d", (int)svcGetProcessorID(), pm_log_writer_core());
+    pm_log("build %d", PM_BUILD_N);
     pm_log("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     pm_options_init();

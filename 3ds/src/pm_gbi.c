@@ -2024,7 +2024,19 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             {
                 /* The palette slot is the 16-entry block at the load tile's TMEM address. */
                 unsigned slot = (tile_tmem[(w1 >> 24) & 7] - 256u) >> 4;
-                if (slot < 16) tlut_pal[slot] = timg;
+                if (slot < 16) {
+                    tlut_pal[slot] = timg;
+                    /* V20: gDPLoadTextureBlock_4b sets the tile size (which binds the texture) BEFORE the palette load. A bound CI tile that
+                     * uses this palette bank must take the new palette, else it keeps the one of the previous model (the brick block was
+                     * drawn with a dark grey palette). */
+                    for (int n = 0; n < 2; n++)
+                        if (td[n].valid && td[n].fmt == 2 && (tile_pal[n] & 15) == (int)slot && td[n].pal != timg) {
+                            pm_gpu_flush();
+                            td[n].pal = timg;
+                            td[n].pal_n = tlut_n;
+                            if (n == cur_tile) cur_tile = -1;
+                        }
+                }
             }
             break;
         case G_SETTILESIZE: {

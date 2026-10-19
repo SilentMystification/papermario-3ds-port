@@ -12,6 +12,8 @@ cd "$(dirname "$0")/.."
 OUT=build3ds; VOL=pm3ds-work
 if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-work-$PM_LANE; fi
 mkdir -p $OUT
+# Build number = git commit count, written to 3ds/include/pm_build.h (ignored by git), logged at boot as "build <n>" and "MODE ..."
+echo "#define PM_BUILD_N $(git rev-list --count HEAD)" > 3ds/include/pm_build.h
 MSYS_NO_PATHCONV=1 docker run --rm \
     -v "$(pwd):/host:ro" \
     -v "$(pwd)/$OUT:/out" \
