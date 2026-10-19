@@ -149,3 +149,4 @@ V23c: no second pause hand in Azahar (5 starts, fps60 and wide too). The pause h
 MERGE2: lane-b merged into main (commit de1c8d72e). Merged 3dsx build 803 (shows -dirty only because CLAUDE.md is untracked). Smoke on toad ran to frame 6000 with no fault.
 User must test on a device: V16b (white box on a flashing enemy sprite), V18 and V19 (use switches nozclip, nozt, depthview=3), V23c (two pause hand cursors, needs user steps).
 User must also try the Options row Fixed seed (row 8) and a seed repeat across two boots.
+DARK: omo_14 darkness is a hard rectangle in Azahar (not fixed). V24c paralyze static dizzy: palettes look sane, no box. V16c, WIDEGLOW not run.
