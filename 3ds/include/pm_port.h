@@ -118,5 +118,19 @@ void pm_options_close(void);
 const unsigned char* pm_options_build_msg(void); /* BN1 footer text */
 void pm_log_switch(const char* word, int on);
 int pm_pad_take_select(void);
+/* F11-5: rebinding. 17 3DS inputs, each gives one N64 button mask (0 = none). SELECT opens the port menu and is not in the table. */
+#define PM_NIN 17
+enum { PM_IN_A, PM_IN_B, PM_IN_X, PM_IN_Y, PM_IN_L, PM_IN_R, PM_IN_ZL, PM_IN_ZR, PM_IN_START, PM_IN_DUP, PM_IN_DDOWN, PM_IN_DLEFT, PM_IN_DRIGHT, PM_IN_CSUP, PM_IN_CSDOWN, PM_IN_CSLEFT, PM_IN_CSRIGHT };
+extern unsigned short pm_map[PM_NIN];
+extern const char* const pm_in_name[PM_NIN];
+const char* pm_n64_name(unsigned short mask);
+unsigned short pm_n64_next(unsigned short mask); /* the next N64 button in the cycle NONE A B Z START L R CUP CDOWN CLEFT CRIGHT */
+void pm_map_reset(void);
+void pm_options_touch(void); /* mark the settings changed, saved at pm_options_close */
+/* F11-6: the port menu on the bottom screen (3ds/src/pm_options_ui.c). Select, when no game code takes it, opens it in any game mode. */
+extern volatile int pm_menu_open;
+void pm_menu_set(int on);
+void pm_menu_key(unsigned hid_keys_down);
+void pm_gpu_menu_draw(const char* text);
 
 #endif

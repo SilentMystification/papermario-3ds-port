@@ -152,3 +152,4 @@ User must also try the Options row Fixed seed (row 8) and a seed repeat across t
 DARK: omo_14 darkness is a hard rectangle in Azahar (not fixed). V24c paralyze static dizzy: palettes look sane, no box. V16c, WIDEGLOW not run.
 DARK: omo_14 darkness is a soft circle now (pm_gbi.c fold_axis for off-screen mirror clamp texrect). Open: WIDEHUD (P WP WP label in wide).
 S28 done 2026-10-19, boot on console works. The optimization rows (PO2, PO3, AU1, MA1) and F11-5, F11-6 are now open.
+F11-5 and F11-6 done: Select opens the port menu on the bottom screen (options and controls), options.txt map.* keys.

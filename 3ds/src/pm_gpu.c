@@ -579,6 +579,19 @@ void pm_gpu_init(void) {
            (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
 
+/* F11-6: draw the port menu text on the bottom console (rows 3 to 30). The log writer is silent while the menu is open. */
+void pm_gpu_menu_draw(const char* text) {
+    PrintConsole* c = &bottom_con;
+    if (!c->consoleInitialised) return;
+    pm_con_lock();
+    consoleSelect(c);
+    consoleSetWindow(c, 1, 3, 40, 28);
+    consoleClear();
+    fputs(text, stdout);
+    fflush(stdout);
+    pm_con_unlock();
+}
+
 void pm_gpu_hud(const char* line0, const char* line1) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
