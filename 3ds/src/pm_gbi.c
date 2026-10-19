@@ -718,6 +718,12 @@ static void cc_decode(unsigned w0, unsigned w1, unsigned s[2][8]) {
 }
 
 static float cc_clamp(float v) { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
+/* (A-B)*C+D. RDP: the result is a 9 bit value, 129..255 below zero wraps to 255 and 1..128 below zero gives 0. The plan models this for
+ * 0 - B*C only (pm_comb.c lower), so the reference applies it only there. Other negative results clamp to 0 as before. */
+static float cc_rdp(float a, float b, float c, float d) {
+    if (a == 0.f && d == 0.f && b * c > 0.f) return floorf(b * c * 255.f + .5f) >= 129.f ? 1.f : 0.f;
+    return cc_clamp((a - b) * c + d);
+}
 
 /* The RDP result, one or two cycles. */
 static void cc_eval(const unsigned s[2][8], int two, const CcIn* in, float prlod, float out[4]) {
@@ -727,12 +733,12 @@ static void cc_eval(const unsigned s[2][8], int two, const CcIn* in, float prlod
         for (int ch = 0; ch < 3; ch++) {
             float a = cc_v(0, s[cyc][0], ch, in, cb, 0, prlod), b = cc_v(1, s[cyc][1], ch, in, cb, 0, prlod);
             float c = cc_v(2, s[cyc][2], ch, in, cb, 0, prlod), d = cc_v(3, s[cyc][3], ch, in, cb, 0, prlod);
-            r[ch] = cc_clamp((a - b) * c + d);
+            r[ch] = cc_rdp(a, b, c, d);
         }
         {
             float a = cc_v(0, s[cyc][4], 3, in, cb, 1, prlod), b = cc_v(1, s[cyc][5], 3, in, cb, 1, prlod);
             float c = cc_v(2, s[cyc][6], 3, in, cb, 1, prlod), d = cc_v(3, s[cyc][7], 3, in, cb, 1, prlod);
-            r[3] = cc_clamp((a - b) * c + d);
+            r[3] = cc_rdp(a, b, c, d);
         }
         memcpy(cb, r, sizeof cb);
     }

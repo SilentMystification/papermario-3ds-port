@@ -100,7 +100,7 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 90 | snowman_doll | ok | yes | 18473 | 332 | no | 560 | 21 | no | 42 | 0 |
 | 91 | fright_jar | ok | yes | 7564 | 149 | no | 0 | 11 | no | 26 | 0 |
 | 92 | stop_watch | ok | yes | 5132 | 108 | no | 0 | 4 | no | 53 | 0 |
-| 93 | effect_63 | ok | weak | 135 | 6 | no | 0 | 0 | no | 1 | 0 |
+| 93 | effect_63 | ok | yes | 6635 | 122 | no | 2275 | 34 | no | 40 | 0 |
 | 94 | throw_spiny | ok | yes | 1110 | 28 | no | 0 | 19 | no | 42 | 0 |
 | 95 | effect_65 | ok | weak | 107 | 4 | no | 0 | 0 | no | 1 | 0 |
 | 96 | tubba_heart_attack | ok | yes | 1309 | 43 | no | 0 | 8 | no | 55 | 0 |
@@ -119,7 +119,7 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 109 | moving_cloud | ok | weak | 145 | 6 | no | 0 | 0 | no | 1 | 0 |
 | 110 | effect_75 | ok | weak | 121 | 5 | no | 0 | 0 | no | 13 | 0 |
 | 111 | firework_rocket | ok | weak | 138 | 6 | no | 0 | 0 | no | 1 | 0 |
-| 112 | peach_star_beam | ok | yes | 11633 | 215 | no | 1455 | 24 | no | 30 | 0 |
+| 112 | peach_star_beam | ok | yes | 15183 | 281 | no | 0 | 34 | no | 47 | 0 |
 | 113 | chapter_change | ok | yes | 5222 | 108 | no | 1369 | 27 | no | 25 | 0 |
 | 114 | ice_shard | ok | yes | 423 | 16 | no | 0 | 0 | no | 42 | 0 |
 | 115 | spirit_card | ok | yes | 1663 | 42 | no | 70 | 47 | no | 42 | 0 |
@@ -135,4 +135,4 @@ The heuristics flag candidates. The user looks at the contact sheets (3ds/logs/f
 | 125 | star_outline | ok | yes | 5667 | 133 | no | 107 | 3 | no | 47 | 0 |
 | 126 | effect_86 | ok | weak | 305 | 13 | no | 0 | 0 | no | 42 | 0 |
 
-Spawned and shot: 127 of 127. Weak or nothing: 50. Black block: 0. Zoomed or clipped: 4. Solid colour block: 3.
+Spawned and shot: 127 of 127. Weak or nothing: 49. Black block: 0. Zoomed or clipped: 4. Solid colour block: 3.

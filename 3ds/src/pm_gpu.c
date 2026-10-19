@@ -200,6 +200,8 @@ static void flush(void) {
             C3D_TexEnvOpAlpha(e, tev_op_a(st->g[1].op[0]), tev_op_a(st->g[1].op[1]), tev_op_a(st->g[1].op[2]));
             C3D_TexEnvFunc(e, C3D_Alpha, tev_func(st->g[1].func));
             C3D_TexEnvColor(e, abgr(st->constant));
+            if (st->g[0].scale > 1) C3D_TexEnvScale(e, C3D_RGB, st->g[0].scale == 4 ? GPU_TEVSCALE_4 : GPU_TEVSCALE_2);
+            if (st->g[1].scale > 1) C3D_TexEnvScale(e, C3D_Alpha, st->g[1].scale == 4 ? GPU_TEVSCALE_4 : GPU_TEVSCALE_2);
         }
         env_hi = plan.n;
     } else if (combine == 8) {

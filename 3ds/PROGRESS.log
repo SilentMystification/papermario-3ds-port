@@ -350,3 +350,6 @@
 23:23 FX2 Azahar start 2: fxtest 7 effects, expect 3 min
 23:26 FX2 bulb pad and flip reverted (no visible change), golden battle start 3, expect 2 min
 23:27 FX2 done: 3 rows moved, 4 open with leads, golden battle ok, 3dsx 13080884
+23:35 FX2de edits: stage 0 never reads the buffer colour (retry with a passing first stage), 0-B*C step plan with stage scale, reference wrap for that form. build 1
+23:37 FX2de build 1 done, 3dsx 13081920 bytes (+1036). Azahar start 1 of 2: fxtest 93,112, expect 3 min
+23:38 FX2de fxtest ok: 93 draws (6635 px), 112 black 0. Azahar start 2 of 2: golden battle, expect 2 min

@@ -12,9 +12,9 @@
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
-typedef struct { unsigned char func; Term t[3]; unsigned char inv[3]; } Sk;
+typedef struct { unsigned char func, scale; Term t[3]; unsigned char inv[3]; } Sk;
 
 #define TM(n_, a_) ((Term){ (unsigned char)(n_), (unsigned char)(a_) })
 
@@ -77,7 +77,7 @@ static Term term_a(int slot, unsigned sel, int cyc2, int t1only) {
 }
 
 /* Lower one group. Returns the stage count (1 or 2), or a negative reason. */
-static int lower(Term A, Term B, Term C, Term D, Sk out[2]) {
+static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
     Term prv = TM(TN_PRV, 0);
     Term z = TM(TN_ZERO, 0);
     if (isz(C) || teq(A, B)) { out[0] = mk(PM_F_REPLACE, D, D, D, 0, 0, 0); return 1; }
@@ -99,7 +99,16 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[2]) {
     }
     if (teq(B, D)) { out[0] = mk(PM_F_INTERP, A, B, C, 0, 0, 0); return 1; }
     if (isz(A)) {
-        if (isz(D)) { out[0] = mk(PM_F_REPLACE, z, z, z, 0, 0, 0); return 1; }
+        if (isz(D)) {
+            /* 0 - B*C: the RDP result is a 9 bit value. A product over 128/255 wraps to 255 and a smaller one to 0, so the result
+             * is a step at 128.5/255. PICA: B*C, minus 0.5 (x4), then two doublings (x8 each): 4 * 8 * 8 = 256 turns one step into 0 or 1. */
+            Term h = TM(TN_HALF, 0);
+            out[0] = mk(PM_F_MODULATE, B, C, C, 0, 0, 0);
+            out[1] = mk(PM_F_SUBTRACT, prv, h, h, 0, 0, 0); out[1].scale = 4;
+            out[2] = mk(PM_F_ADD, prv, prv, prv, 0, 0, 0);  out[2].scale = 4;
+            out[3] = out[2];
+            return 4;
+        }
         if (D.n == TN_CMB) return -3;
         out[0] = mk(PM_F_MODULATE, B, C, C, 0, 0, 0);
         out[1] = mk(PM_F_SUBTRACT, D, prv, prv, 0, 0, 0);
@@ -115,7 +124,7 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[2]) {
 typedef struct { Sk s[6]; int n; } Seq;
 
 static int add_cycle(Seq* r, Seq* a, int start_r, int start_a, Term v[2][4]) {
-    Sk o[2];
+    Sk o[4];
     int n;
     n = lower(v[0][0], v[0][1], v[0][2], v[0][3], o);
     if (n < 0) return n;
@@ -149,6 +158,7 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     case TN_ONE: name = PM_NM_ZERO; part = 0; ninv ^= 1; break;
     case TN_PR: name = PM_NM_PRIM; break;
     case TN_PK: name = PM_NM_PK; break;
+    case TN_HALF: name = PM_NM_HALF; break;
     case TN_KEY: name = PM_NM_KEYC; break;
     case TN_KS: name = PM_NM_KEYS; break;
     case TN_EN: name = PM_NM_ENV; break;
@@ -156,11 +166,12 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     default: return 5;
     }
     if (name) {
+        /* The PICA buffer colour reads 0 in stage 0 (it shows from stage 1 on), so stage 0 never uses it. */
         if (al->stage_name[stage] == name) *src = PM_S_CONST;
-        else if (al->buf == name) *src = PM_S_BUF;
+        else if (stage > 0 && al->buf == name) *src = PM_S_BUF;
         else if (al->vtx == name) *src = PM_S_VTX;
         else if (al->stage_name[stage] == PM_NM_NONE) { al->stage_name[stage] = (unsigned char)name; *src = PM_S_CONST; }
-        else if (al->buf == PM_NM_NONE) { al->buf = (unsigned char)name; *src = PM_S_BUF; }
+        else if (stage > 0 && al->buf == PM_NM_NONE) { al->buf = (unsigned char)name; *src = PM_S_BUF; }
         else if (al->vtx == PM_NM_NONE) { al->vtx = (unsigned char)name; *src = PM_S_VTX; }
         else return 4;
     }
@@ -187,7 +198,7 @@ void pm_comb_swap_c2(unsigned s[8]) {
     }
 }
 
-int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
+static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan* out) {
     Term v[2][2][4]; /* cycle, group, A B C D */
     unsigned s[2][8];
     Seq R, A;
@@ -211,7 +222,11 @@ int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     /* B6: PRIM - CENTER (both constants) is one constant PK, B becomes 0. CENTER anywhere else has no source (reason 5). */
     for (int c = 0; c < (two ? 2 : 1); c++)
         if (v[c][0][0].n == TN_PR && v[c][0][1].n == TN_KEY) { v[c][0][0] = TM(TN_PK, 0); v[c][0][1] = TM(TN_ZERO, 0); }
-    rc = add_cycle(&R, &A, 0, 0, v[0]);
+    for (int i = 0; i < lead; i++) { /* a first stage that only passes, so no real stage is stage 0 */
+        R.s[i] = A.s[i] = mk(PM_F_REPLACE, TM(TN_PRV, 0), TM(TN_PRV, 0), TM(TN_PRV, 0), 0, 0, 0);
+        R.n = A.n = i + 1;
+    }
+    rc = add_cycle(&R, &A, lead, lead, v[0]);
     if (rc) return -rc;
     if (two) {
         /* Cycle 2 starts after both groups of cycle 1 are done, so COMBINED is the cycle 1 result. */
@@ -232,6 +247,7 @@ int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
         for (int g = 0; g < 2; g++) {
             PmTevCh* ch = &out->st[i].g[g];
             ch->func = q[g]->s[i].func;
+            ch->scale = q[g]->s[i].scale;
             for (int k = 0; k < 3; k++) {
                 int e = src_of(q[g]->s[i].t[k], q[g]->s[i].inv[k], g, i, &al, &ch->src[k], &ch->op[k], out);
                 if (e) return e;
@@ -242,6 +258,12 @@ int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     out->bufname = al.buf;
     out->vtxname = al.vtx;
     return 0;
+}
+
+/* Reason 4 at stage 0 can come from the buffer colour, which stage 0 cannot read: try again with one passing stage first. */
+int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
+    int rc = build(w0, w1, two, t1only, 0, out);
+    return rc == 4 ? build(w0, w1, two, t1only, 1, out) : rc;
 }
 
 static unsigned pk_colour(unsigned prim, unsigned key) {
@@ -261,6 +283,7 @@ static unsigned name_colour(int n, unsigned prim, unsigned env, unsigned plod, u
     case PM_NM_PRIM: return prim;
     case PM_NM_ENV: return env;
     case PM_NM_PLOD: return plod * 0x01010101u;
+    case PM_NM_HALF: return 0x80808080u;
     default: return 0;
     }
 }
@@ -316,7 +339,7 @@ void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const f
                 case PM_F_INTERP: r = a * d + b * (1.f - d); break;
                 default: r = a * b + d; break;
                 }
-                res[g ? 3 : c] = cl(r);
+                res[g ? 3 : c] = cl(r * (ch->scale > 1 ? (float)ch->scale : 1.f));
             }
         }
         memcpy(prev, res, sizeof prev);
