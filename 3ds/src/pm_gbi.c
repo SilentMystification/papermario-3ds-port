@@ -235,6 +235,7 @@ static int comb_set;
  * meshes leave cn[3] at 0, so passing it through made them vanish. */
 static int comb_alpha_shade = 1;
 
+extern char __end__[]; /* linker: end of .bss */
 static int is_host(u32 p) {
     unsigned int heap = __ctru_heap;
     unsigned int hend = __ctru_heap + __ctru_heap_size;
@@ -242,7 +243,7 @@ static int is_host(u32 p) {
     unsigned int lend = lin + __ctru_linear_heap_size;
     if (p >= heap && p < hend) return 1;
     if (p >= lin && p < lend) return 1;
-    if (p >= 0x00100000u && p < 0x01400000u) return 1;
+    if (p >= 0x00100000u && p < (u32)(uintptr_t)__end__) return 1;
     return 0;
 }
 
@@ -637,7 +638,7 @@ static void lerp_clip(ClipV* o, const ClipV* a, const ClipV* b, float t) {
 /* Cut only corners that passed behind the eye. A corner that is merely off the
  * side of the screen keeps its projected position, so a pan cannot swap the
  * triangle for a different polygon. */
-static int clip_near(ClipV* poly, int n) {
+static int clip_near_k(ClipV* poly, int n, int zplane) {
     ClipV tmp[12];
     int m = 0;
     int i;
@@ -645,8 +646,8 @@ static int clip_near(ClipV* poly, int n) {
     for (i = 0; i < n; i++) {
         ClipV* cur = &poly[i];
         ClipV* prev = &poly[(i + n - 1) % n];
-        float dc = cur->w - 0.05f;
-        float dp = prev->w - 0.05f;
+        float dc = zplane ? cur->z + cur->w : cur->w - 0.05f;
+        float dp = zplane ? prev->z + prev->w : prev->w - 0.05f;
         int ic = dc >= 0.f;
         int ip = dp >= 0.f;
         if (ic != ip && m < 12) {
@@ -658,6 +659,14 @@ static int clip_near(ClipV* poly, int n) {
     }
     for (i = 0; i < m; i++) poly[i] = tmp[i];
     return m;
+}
+/* V27: clip at the true near plane (z >= -w, as the RSP does) when a corner is close to the eye, then at w > 0.05. Clipping only at w > 0.05 left corners with a
+ * tiny w, whose screen coordinates are huge (box -145558 to 21692 in the Sushie dive water plane) and the GPU rasteriser mis-draws them. */
+static int clip_near(ClipV* poly, int n) {
+    int i, close = 0;
+    for (i = 0; i < n; i++) if (poly[i].w < 1.f && poly[i].z + poly[i].w < 0.f) close = 1;
+    if (close && !pm_debug_has("nozclip")) { n = clip_near_k(poly, n, 1); if (n < 3) return 0; }
+    return clip_near_k(poly, n, 0);
 }
 
 /* Same bits as libultraship, except the near plane, which they leave commented out.
@@ -1137,13 +1146,18 @@ static void draw_tri(unsigned w) {
         if (!dd.ntri) {
             dd.oml = omode_l; dd.omh = omode_h; dd.zb = (geom & G_ZBUFFER) != 0; dd.tex = (unsigned)tex_on; dd.timg = (u32)td[0].src; dd.fmt = td[0].fmt;
             dd.siz = td[0].siz; dd.w = td[0].w; dd.h = td[0].h; dd.prim = prim;
+            if (pm_debug_has("ddtex") && td[0].fmt == 2 && td[0].siz == 0) { /* V20 temp */
+                const unsigned char* im = (const unsigned char*)td[0].src; const unsigned char* pl = (const unsigned char*)tlut;
+                pm_log("ddtex #%u img %p %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x tlut %p n %d pal %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x", dd.idx, (void*)im, im?im[0]:0, im?im[1]:0, im?im[2]:0, im?im[3]:0, im?im[64]:0, im?im[65]:0, im?im[66]:0, im?im[67]:0, im?im[128]:0, im?im[129]:0, im?im[130]:0, im?im[131]:0,
+                       (void*)pl, tlut_n, pl?pl[0]:0, pl?pl[1]:0, pl?pl[2]:0, pl?pl[3]:0, pl?pl[4]:0, pl?pl[5]:0, pl?pl[6]:0, pl?pl[7]:0, pl?pl[8]:0, pl?pl[9]:0, pl?pl[10]:0, pl?pl[11]:0);
+            }
             dd.x0 = dd.y0 = dd.w0 = 1e9f; dd.x1 = dd.y1 = dd.w1 = -1e9f;
         }
         dd.ntri++;
         if (pm_debug_has("ddverb")) {
             int k;
             for (k = 0; k < 3 && k < n; k++)
-                pm_log_d("ddv #%u fog %d %d obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, fog_fm, fog_fo, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
+                pm_log_d("ddv #%u col %d %d %d %d fog %d %d obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, (int)poly[k].r, (int)poly[k].g, (int)poly[k].b, (int)poly[k].a, fog_fm, fog_fo, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
                        (int)verts[idx[k]].v.ob[2], (int)poly[k].x, (int)poly[k].y, (int)poly[k].z, (int)poly[k].w,
                        (int)verts[idx[k]].v.tc[0], (int)verts[idx[k]].v.tc[1]);
         }
@@ -1295,6 +1309,7 @@ void pm_gbi_init(void) {
     memset(vert_live, 0, sizeof vert_live);
     geom = G_SHADE | G_SHADING_SMOOTH;
     upload_mvp();
+    pm_log("is_host bound __end__ %08x, margin below old bound 0x01400000: %d bytes", (unsigned)(uintptr_t)__end__, 0x01400000 - (int)(uintptr_t)__end__);
 }
 
 
@@ -1901,6 +1916,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             off_screen_check();
             box_fold_sync();
             comb_audit();
+            sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
             if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
             /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
             int rtile = (use_t1 || (((w1 >> 24) & 7) == 1 && td[1].valid)) ? 1 : 0;
@@ -2010,7 +2026,19 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             {
                 /* The palette slot is the 16-entry block at the load tile's TMEM address. */
                 unsigned slot = (tile_tmem[(w1 >> 24) & 7] - 256u) >> 4;
-                if (slot < 16) tlut_pal[slot] = timg;
+                if (slot < 16) {
+                    tlut_pal[slot] = timg;
+                    /* V20: gDPLoadTextureBlock_4b sets the tile size (which binds the texture) BEFORE the palette load. A bound CI tile that
+                     * uses this palette bank must take the new palette, else it keeps the one of the previous model (the brick block was
+                     * drawn with a dark grey palette). */
+                    for (int n = 0; n < 2; n++)
+                        if (td[n].valid && td[n].fmt == 2 && (tile_pal[n] & 15) == (int)slot && td[n].pal != timg) {
+                            pm_gpu_flush();
+                            td[n].pal = timg;
+                            td[n].pal_n = tlut_n;
+                            if (n == cur_tile) cur_tile = -1;
+                        }
+                }
             }
             break;
         case G_SETTILESIZE: {

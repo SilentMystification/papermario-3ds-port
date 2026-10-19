@@ -367,6 +367,7 @@ static void flush(void) {
     }
     dv_draw++;
     int z = z_on && (!rect_2d || rect_z) && !off_active;
+    { static int nozt = -1; if (nozt < 0) nozt = pm_debug_has("nozt"); if (nozt) z = 0; } /* V27 debug: no depth test or write at all */
     /* Citro's default. Near is -1 and far is 0, and GREATER keeps the near fragment. A decal
      * sits in the same plane as its base, so equal depth has to pass. */
     if (z && r_zmark) {
@@ -418,7 +419,7 @@ static void flush(void) {
     else if (off_active) /* alpha accumulates as source over destination: a covered pixel becomes opaque */
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
             GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-    else if (r_blend || rect_2d)
+    else if (r_blend) /* V25: a 2D rectangle follows its own blender mode (the story page strips use alpha = PRIM with an opaque blender) */
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
             GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     else

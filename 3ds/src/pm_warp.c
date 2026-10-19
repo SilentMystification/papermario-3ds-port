@@ -357,10 +357,30 @@ void pm_warp_tick(unsigned frame) {
     unsigned f = frame - (unsigned)scene_f0;
     battle_hooks(f);
     battlelist_tick(f);
+    { /* V24b: btlstatus=poison|paralyze|static|dizzy: every frame in a battle the first enemy actor gets that status, to see the palette effect of actor_rendering.c */
+        char sv[12];
+        if (pm_debug_value("btlstatus", sv, sizeof sv) && get_game_mode() == GAME_MODE_BATTLE && gBattleStatus.enemyActors[0]) {
+            Actor* ea = gBattleStatus.enemyActors[0];
+            if (!strcmp(sv, "flicker")) { ActorPart* ap; for (ap = ea->partsTable; ap; ap = ap->nextPart) ap->opacity = 128; } /* V16: the damage flicker */
+            else if (!strcmp(sv, "static")) { ea->staticStatus = STATUS_KEY_STATIC; ea->staticDuration = 99; }
+            else {
+                ea->debuff = !strcmp(sv, "poison") ? STATUS_KEY_POISON : !strcmp(sv, "paralyze") ? STATUS_KEY_PARALYZE : STATUS_KEY_DIZZY;
+                ea->debuffDuration = 99;
+            }
+        }
+    }
     char ti[8];
     if (f == 30 && pm_debug_value("testitem", ti, sizeof ti)) { /* V07 debug: a real item entity beside the player */
         make_item_entity_nodelay(ti[0] == 'c' ? ITEM_COIN : ti[0] == 's' ? ITEM_STAR_PIECE : ITEM_MUSHROOM, gPlayerStatus.pos.x + 60.0f, gPlayerStatus.pos.y, gPlayerStatus.pos.z, ITEM_SPAWN_MODE_FIXED_NEVER_VANISH, 0);
     }
+    if (pm_debug_has("simlog") && f >= 110 && f <= 150) { /* V26: every step, Mario and demo Bills */
+        extern unsigned pm_step_calls;
+        char b[120] = ""; int n = 0, i;
+        for (i = 0; i < 8; i++) { Npc* np = get_npc_safe(i); if (np) n += snprintf(b + n, sizeof b - n, " n%d:%d,%d", i, (int)np->pos.x, (int)np->pos.y); }
+        pm_log("simstep f%u steps %u mx %d my %d st %u btn %x%s", f, pm_step_calls, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (unsigned)gPlayerStatus.actionState, (unsigned)gGameStatusPtr->demoButtonInput, b);
+    }
+    if (pm_debug_has("simlog") && f % 10 == 0) /* V26: game state per 10 steps, to compare default, fps60 and wide */
+        pm_log("simlog f%u seed %08x pos %d %d %d state %u dstate %d", f, (unsigned)gRandSeed, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, (unsigned)gPlayerStatus.actionState, (int)gGameStatusPtr->demoState);
     if (f % (padscript_log ? 2 : 100) == 0 || f == 5) {
         pm_log_d("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d wall %d push %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
                (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,

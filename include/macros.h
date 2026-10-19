@@ -309,6 +309,12 @@ typedef s32 Difficulty2D[AC_DIFFICULTY_LEN][2];
 #define UNPACK_PAL_A(color) ((color) & 1)
 
 #define PACK_PAL_RGBA(r, g, b, a) (((r) << 11) | ((g) << 6) | ((b) << 1) | (a));
+/* V24: sprite palettes stay big-endian bytes in memory on the 3DS (the GBI reads them as big-endian). Code that does colour math on a palette word reads it with PAL_MEM and writes it back with PAL_MEM. */
+#ifdef TARGET_3DS
+#define PAL_MEM(c) ((u16) __builtin_bswap16((u16) (c)))
+#else
+#define PAL_MEM(c) (c)
+#endif
 
 #define PM_RM_SHROUD    GBL_c1(G_BL_CLR_BL, G_BL_A_FOG, G_BL_CLR_IN, G_BL_1MA)
 

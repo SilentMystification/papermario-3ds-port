@@ -1473,12 +1473,17 @@ s32 npc_render_with_watt_idle_palettes(Npc* npc, s32 arg1, Matrix4f mtx) {
 }
 
 u16 npc_blend_palette_colors(u16 colorA, u16 colorB, s32 lerpAlpha) {
+    colorA = PAL_MEM(colorA); /* V24: palette words are big-endian in memory on the 3DS */
+    colorB = PAL_MEM(colorB);
     u8 r = (UNPACK_PAL_R(colorA) * (255 - lerpAlpha) + UNPACK_PAL_R(colorB) * lerpAlpha) / 255;
     u8 g = (UNPACK_PAL_G(colorA) * (255 - lerpAlpha) + UNPACK_PAL_G(colorB) * lerpAlpha) / 255;
     u8 b = (UNPACK_PAL_B(colorA) * (255 - lerpAlpha) + UNPACK_PAL_B(colorB) * lerpAlpha) / 255;
     u8 a = UNPACK_PAL_A(colorB);
 
-    return PACK_PAL_RGBA(r, g, b, a);
+    {
+        u16 out = PACK_PAL_RGBA(r, g, b, a);
+        return PAL_MEM(out);
+    }
 }
 
 s32 npc_render_with_single_pal_blending(Npc* npc, s32 yaw, bool hasDifferentIntervals, Matrix4f mtx) {
@@ -1556,7 +1561,7 @@ s32 npc_render_with_single_pal_blending(Npc* npc, s32 yaw, bool hasDifferentInte
             color1 = npc->originalPalettesList[npc->blendPalB];
             npc->adjustedPalettes[0] = outColor;
 
-            for (j = 0; j < SPR_PAL_SIZE; j++) {
+                    for (j = 0; j < SPR_PAL_SIZE; j++) {
                 *outColor++ = npc_blend_palette_colors(*color2++, *color1++, blendAlpha);
             }
 
@@ -2072,8 +2077,6 @@ s32 npc_find_standing_on_entity(s32 entityIndex) {
     Npc* npc;
     s32 i;
     s32 var_v1;
-
-    npc->pos = npc->pos; // TODO required to match
 
     for (i = 0; i < ARRAY_COUNT(*gCurrentNpcListPtr); i++) {
         npc = (*gCurrentNpcListPtr)[i];

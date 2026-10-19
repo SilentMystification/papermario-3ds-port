@@ -209,7 +209,7 @@ void water_fountain_appendGfx(void* effect) {
     Camera* camera = &gCameras[gCurrentCameraID];
     s32 lifeTime = data->lifeTime;
     s32 timeLeft = data->timeLeft;
-    s32 sp9C;
+    s32 sp9C = 0; // N64 code reads an unset stack slot here (one lw 0x9C(sp), no store). 0 is the fixed value for ARM.
     s32 unk_24 = data->unk_24;
     s32 unk_00 = data->unk_00;
     s32 unk_18 = data->unk_18;

@@ -465,6 +465,10 @@
 04:29 V23 start 3: party tab needs two R*3 (first start showed Items tab). window 256:10, expect 6 min
 04:36 V23 start 4: v23skip on odd frames (box draws skipped), window 256:10, expect 6 min
 04:39 V23 stop 3: budget 4/4 used, cause is a draw that covers the portrait after strip 0 (frame box interior), not the texture. Row open, notes in SLICES.md
+04:41 H06a2 smoke yard, 17 s
+11:00 H06a2 smoke yard, expect 20 s
+11:19 H06a3 flags added, build ok, scan 36 hits, 2 real (rows H06a4, H06a5), rest H06a6
+11:50 H06a4-6 done, builds ok, smoke yard rc 0
 04:42 F06-5 start 1: pacestat fps60 warp kmr_20, expect 3 min
 04:45 F06-5 start 2: baseline without fps60, expect 3 min
 04:47 F06-5 done
@@ -513,6 +517,12 @@
 11:23 F07-7 start 4 (last): fxtest=54,54,87 fxdx=-165 wide, expect 3 min
 11:24 F07-7 code done, 4/4 starts used, golden toad and edge shot open (QUESTIONS)
 11:27 F07-7 overlay edge fix coded, untested (budget)
+12:10 V26 fps60 ruled out, osGetCount fixed, trd_09 demo hit at f140 still open, 4/4 starts (QUESTIONS)
+12:11 V25 intro page ghost f318 to f341 seen, cause open, 3 of 4 starts
+12:40 V26 root cause: (&DefaultMoveSpeed)[-1] adjacency, Mario max jump 0. Fixed, demo trd_09 passes, seed same in 2 runs
+13:30 V24 star rainbow: palette words are big-endian in memory, blend math swapped. PAL_MEM added. V25 sync_render in texrect no effect, open
+14:20 H06f sweep: one hit only (7B440, fixed in V26). golden battle ok, intro 11 percent diff (RNG, older golden)
+15:10 V25 fixed: 2D rects blended by combiner alpha whatever the blender. golden toad ok, title old frame had the ghost, pause1 2.3 percent unchecked
 11:33 V23 start 1 of 4: party tab v23log=258, expect 2 min
 11:36 V23 start 2 of 4: box chunk log, expect 2 min
 11:38 V23 start 2 of 4: box chunk log, expect 2 min
@@ -542,3 +552,6 @@
 13:55 FX3c signed form (A-B)*C+D plan, ADD_SIGNED, derived constants; effect 93 petals
 14:10 FX3a sweep done, rows FX3d FX3e added
 14:50 C-O3DS L02 F11-8 done, goldens fileselect pause1-3 updated
+15:40 R-SEED done: random seed per boot, fixedseed for tests. merge main done, smoke yard ok
+16:40 V27 fixed: near plane clip at z >= -w for corners with w < 1. V18, V19 candidates, unproven in Azahar
+17:30 V20 fixed: tile palette taken at G_LOADTLUT. V16 done. build number log line

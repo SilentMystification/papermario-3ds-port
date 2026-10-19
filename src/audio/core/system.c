@@ -124,7 +124,7 @@ void nuAuMgr(void* arg) {
     Acmd* cmdListBuf;
     u8* bufferPtr;
     s32 samples;
-    s32 cond;
+    s32 cond = false;
 
     osCreateMesgQueue(&auMesgQ, auMsgBuf, NU_AU_MESG_MAX);
     osCreateMesgQueue(&auRtnMesgQ, &auRtnMesgBuf, 1);

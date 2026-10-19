@@ -76,3 +76,5 @@ compile_commands.json
 3ds/shots/
 3ds/trace/
 rows.pkl
+
+3ds/include/pm_build.h

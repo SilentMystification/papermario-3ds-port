@@ -320,7 +320,7 @@ list(REMOVE_ITEM MAP_SRC ${GAME_SRC})
 list(APPEND GAME_SRC ${MAP_SRC})
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/maps.cmake)
 set(GAME_TU ${GAME_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/game_stubs.c")
-set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types")
+set_source_files_properties(${GAME_TU} PROPERTIES COMPILE_OPTIONS "-w;-Wno-error=implicit-function-declaration;-Wno-return-mismatch;-Wno-int-conversion;-Wno-incompatible-pointer-types;-fno-delete-null-pointer-checks;-fno-aggressive-loop-optimizations")
 # H06c: the game reads decomp data in source order (display lists, EvtScripts, tables, strings, scripts with no End, gfx arrays read on into the next array).
 # GCC emits variables in reverse order without -fno-toplevel-reorder. With it, -fdata-sections keeps the sections in source order and --gc-sections still drops unused data.
 # One rule for all decomp game code, no per-file list. The port layer (3ds/src) is not in GAME_SRC.
