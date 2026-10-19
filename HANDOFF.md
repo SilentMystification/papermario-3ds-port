@@ -146,3 +146,6 @@ F11-7: Options row Fixed seed (row 8, Back is 9) sets pm_opt.fixedseed, used by 
 V16b: no box seen in Azahar (Shy Guys with forced HEAVY flash, medium, light). All palette writes use PAL_MEM. Hardware test needed, row V16b in SLICES.md.
 V18 and V19: no code change. Leads and the device debug switches (nozclip, nozt, depthview=3) are in the SLICES rows. build.sh BN1 read now strips CR from build_base.txt (the lane build failed on CRLF).
 V23c: no second pause hand in Azahar (5 starts, fps60 and wide too). The pause hand is drawn once. Needs user steps or photo.
+MERGE2: lane-b merged into main (commit de1c8d72e). Merged 3dsx build 803 (shows -dirty only because CLAUDE.md is untracked). Smoke on toad ran to frame 6000 with no fault.
+User must test on a device: V16b (white box on a flashing enemy sprite), V18 and V19 (use switches nozclip, nozt, depthview=3), V23c (two pause hand cursors, needs user steps).
+User must also try the Options row Fixed seed (row 8) and a seed repeat across two boots.
