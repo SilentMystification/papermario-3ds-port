@@ -368,7 +368,7 @@ static void game_thread(void* arg) {
     (void)arg;
     pm_crash_install(crash_stack, sizeof(crash_stack));
     pm_stack_register(0, "game", 256 * 1024);
-    char sw[1024];
+    char sw[256];
     memset(sw, 0, sizeof(sw));
     FILE* f = fopen("debug3ds.txt", "r");
     if (f) {

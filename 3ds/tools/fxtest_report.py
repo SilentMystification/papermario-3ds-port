@@ -69,6 +69,7 @@ def run_all(sel):
         meta = json.load(open(META))
     todo = list(sel)
     while todo:
+        tail, todo = todo[40:], todo[:40]  # the game reads 255 characters of switches: at most 40 effects per start
         rc, names, shots, spawned, nolog = run_chunk(todo)
         meta['rc'].append([todo[0], todo[-1], rc])
         for i, nm in names.items():
@@ -93,9 +94,9 @@ def run_all(sel):
                     meta['names'][str(bad)] = n1[bad]
                 else:
                     meta['status'][str(bad)] = 'crash alone'
-            todo = [i for i in rest if i > bad]
+            todo = [i for i in rest if i > bad] + tail
         else:
-            todo = []
+            todo = tail
         json.dump(meta, open(META, 'w'), indent=1)
     return meta
 

@@ -533,3 +533,6 @@
 12:06 FX3a start 1: fxtest_report run 80 effects in one chunk, expected 10 to 25 min
 12:11 FX3a start 4: 80 effects in one run, switch buffer raised to 1023, expected 15 min
 12:12 FX3a budget used, step 1 and switch buffers done, sweep open
+12:12 FX3c start 1: fxtest=93 shots, 60 s
+12:15 FX3c start 2 after reverting the 1024 buffers (boot crash in _svfprintf_r): fxtest=93 shots, 60 s
+12:17 FX3c findings: ENV blue, signed form INEXACT, no code. Buffers reverted, fxtest_report splits 40 per start

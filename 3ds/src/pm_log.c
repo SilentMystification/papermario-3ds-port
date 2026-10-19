@@ -21,7 +21,7 @@ static unsigned seq;
 static char ring[RING];
 static unsigned ring_pos;
 static unsigned ring_len;
-static char switches[1024];
+static char switches[256];
 
 /* L01 measurement: lines and bytes logged, and a per call site count (by format string address). */
 #define SITES 96
