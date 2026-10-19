@@ -508,3 +508,7 @@
 07:05 C2J: cause = --gc-sections dropped D_09000BA8 (no reference), B88 ran into vertex data. Fix: -fno-data-sections on src/effects/gfx/*.c. Start 2: fxtest=49 shots, expect 2 min
 07:10 H06e warp past kmr_ gets partner 1, tik_01 smoke clean
 07:20 H06b2 cycle 2 (K - COMBINED) * X + K in 3 stages, planerr 7
+11:19 F07-7 start 2: fxtest=54,87,123 fxdx=-130 wide, expect 4 min
+11:20 F07-7 start 3: fxtest=54 fxdx=-190 wide, expect 2 min
+11:23 F07-7 start 4 (last): fxtest=54,54,87 fxdx=-165 wide, expect 3 min
+11:24 F07-7 code done, 4/4 starts used, golden toad and edge shot open (QUESTIONS)

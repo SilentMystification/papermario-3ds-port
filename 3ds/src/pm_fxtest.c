@@ -211,6 +211,7 @@ void pm_fxtest_tick(unsigned f) {
     i = sel[slot];
     if (k == 0) {
         fx_x = gPlayerStatus.pos.x;
+        { char dx[16]; if (pm_debug_value("fxdx", dx, sizeof dx)) fx_x += (slot & 1 ? -1.f : 1.f) * (float)atoi(dx); } /* F07-7: move the spawn point to the screen edge, odd slots to the other side */
         fx_y = gPlayerStatus.pos.y + 25.0f;
         fx_z = gPlayerStatus.pos.z;
         shot("base", i);

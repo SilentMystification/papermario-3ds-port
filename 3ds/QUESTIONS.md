@@ -34,3 +34,5 @@ V16 (2026-10-19): No flicker frame found. Name the scene, enemy and attack where
 V19 (2026-10-19): BUDGET 4/4 used. Azahar shows no Sushie shadow and no jump in jan_04 (frames 170 to 320). Question: is the flicker seen on Azahar or only on the O3DS and N3DS? Which shadow flickers, Sushie or another one?
 
 FX2a: BUDGET 4/4 used again on 2026-10-19 (second budget). No user decision needed. The row needs a new budget for one test start: the noise scroll fix (t1_fold) and the darkness stencil check are coded or open and not tested. State in the FX2a row of 3ds/SLICES.md.
+
+F07-7 (2026-10-19): BUDGET 4/4 used. Code is done (frame grab 400 columns). Open: golden toad with `wide` off (expect 0 diff) and one fxtest=54 shot pair with the glow centre within 40 px of a screen edge. Needs a reset of 1 start. No user decision needed.

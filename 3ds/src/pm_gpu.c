@@ -686,6 +686,7 @@ void pm_gpu_read_frame(unsigned short* dst) {
 
 /* V05: start (or go back to) the off-screen pass for the colour image at base, width stride pixels. Returns 1 if
  * drawing goes there now. Each base gets one image for the frame (cleared on first use). */
+extern int pm_is_cfb(const void* p);
 int pm_gpu_off_begin(const void* base, int stride, int siz) {
     int i, w, h;
     if (!gpu_ok || off_fail || stride < 1 || stride > PM_OFF_W) return 0;
@@ -733,7 +734,8 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         offs[i].base = base;
         offs[i].siz = siz;
         offs[i].last = pm_frame_count();
-        pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
+        /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
+        pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
         if (w == 64) { static int n; if (n++ < 6) pm_log("X02: darkness draw to 64x64 slot %d size %d bits %d addr %p", i, stride, siz == 3 ? 32 : siz == 2 ? 16 : 8, base); }
     }
     off_cur = i;
@@ -769,7 +771,8 @@ void pm_gpu_set_memblend(int on) { if (on == r_memblend) return; flush(); r_memb
 int pm_gpu_grab(const void* cfb, int y0, int y1) {
     int was_off = off_active, prev = off_cur, s0, s1;
     static int once;
-    const int x0 = 0, x1 = 320;
+    /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
+    const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
     if (!gpu_ok || off_fail || grab_ready < 0 || y1 <= y0) return 0;
     if (grab_n) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
@@ -797,8 +800,8 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) {
         want_clear = 0;
     }
     C3D_FrameSplit(GX_CMDLIST_FLUSH);
-    s0 = (40 + x0) >> 3; /* one tile row strip = 8 target rows = 8 game columns = 30 tiles = 7680 bytes */
-    s1 = (40 + x1 - 1) >> 3;
+    s0 = (mo + x0) >> 3; /* one tile row strip = 8 target rows = 8 game columns = 30 tiles = 7680 bytes */
+    s1 = (mo + x1 - 1) >> 3;
     GX_TextureCopy((u32*)((u8*)target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
                    (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
     pm_gpu_off_begin(cfb, 320, 2);
@@ -806,8 +809,8 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
         int s_comb = combine, s_2d = rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = r_atest, s_nc = r_nocol, s_mix = r_mix,
             s_rs = rgb_scale, s_3d = draw_3d;
-        float xa = (float)x0, xb = (float)x1, va = 1.f - (40.f + xa) / 512.f, vb = 1.f - (40.f + xb) / 512.f, ua = 240.f / 256.f;
-        sci_x0 = 0; sci_y0 = 0; sci_x1 = 320; sci_y1 = 240;
+        float xa = (float)x0, xb = (float)x1, va = 1.f - ((float)mo + xa) / 512.f, vb = 1.f - ((float)mo + xb) / 512.f, ua = 240.f / 256.f;
+        sci_x0 = 0; sci_y0 = 0; sci_x1 = x1; sci_y1 = 240;
         combine = 3; rect_2d = 1; batch_identity = 1; r_replace = 1; r_atest = -1; r_nocol = 0; r_mix = 0; rgb_scale = 1; draw_3d = 0;
         grab_bind = 1;
         /* game (x, y) reads texel column 239 - y, memory row 40 + x of the copy. v = 0 samples the last memory row (found with

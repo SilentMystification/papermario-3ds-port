@@ -175,6 +175,7 @@ void bulb_glow_appendGfx(void* effect) {
     s32 i;
     s32 j;
     u8 r, g, b;
+    s32 lo = 0, hi = SCREEN_WIDTH, off = 0; /* F07-7: with wide the glow reaches the gutters, game x -40 to 360. The frame grab slot column is x + 40. */
 
     brightness = data->brightness;
     type = data->type;
@@ -199,10 +200,13 @@ void bulb_glow_appendGfx(void* effect) {
         extern int pm_wide;
         if (pm_wide) {
             centerX = centerX * 1.25f - 40.0f;
+            lo = -40;
+            hi = SCREEN_WIDTH + 40;
+            off = 40;
         }
     }
 
-    if (!isPointVisible || centerX < 0.0f || centerY < 0.0f || centerX >= SCREEN_WIDTH || centerY >= SCREEN_HEIGHT) {
+    if (!isPointVisible || centerX < lo || centerY < 0.0f || centerX >= hi || centerY >= SCREEN_HEIGHT) {
         return;
     }
 
@@ -221,15 +225,15 @@ void bulb_glow_appendGfx(void* effect) {
     yMax = yMin + glowExtent * 2;
 
     xStart = 0;
-    if (xMin < 0) {
-        xStart = -xMin;
+    if (xMin < lo) {
+        xStart = lo - xMin;
     }
     yStart = 0;
     if (yMin < 0) {
         yStart = -yMin;
     }
-    if (xMax > SCREEN_WIDTH) {
-        xMax = SCREEN_WIDTH - 1;
+    if (xMax > hi) {
+        xMax = hi - 1;
     }
     if (yMax > SCREEN_HEIGHT) {
         yMax = SCREEN_HEIGHT - 1;
@@ -251,15 +255,15 @@ void bulb_glow_appendGfx(void* effect) {
 
         for (j = 0; j < 1; j++) {
             gDPLoadMultiTile(gMainGfxPos++,
-                VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr + y * SCREEN_WIDTH),
+                VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr + y * SCREEN_WIDTH - off),
                 TMEM_ADDR(TMEM_SIZE/2), G_TX_RENDERTILE + 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0,
-                xMin + xStart, 0, xMax - 1, rectHeight - 1,
+                xMin + xStart + off, 0, xMax - 1 + off, rectHeight - 1,
                 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 9, 8, G_TX_NOLOD, G_TX_NOLOD);
             gSPTextureRectangle(gMainGfxPos++,
                 (xMin + xStart) * 4, y * 4,
                 xMax * 4, (y + rectHeight) * 4,
                 G_TX_RENDERTILE,
-                ((xMin + xStart) & 0x1FF) << 5, 0,
+                ((xMin + xStart + off) & 0x1FF) << 5, 0,
                 1 << 10, 1 << 10);
             gDPPipeSync(gMainGfxPos++);
         }
