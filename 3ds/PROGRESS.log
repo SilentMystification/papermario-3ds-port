@@ -398,3 +398,10 @@
 00:49 F06-2 edits done (pm_interp lerp, key draw, load_mtx, main_loop and cam_main nodes), build next
 00:53 F06-2 start 1 of 3 ok but nodes=1: the background task (no swap flag) stopped the record before gfx_draw_frame. Fix: stop and lerp only on NU_SC_SWAPBUFFER, key frame replays all tasks. Rebuild.
 00:59 F06-2 golden toad switch off DIFF 7.31 pct: BSS +700 KB moved gDisplayContext past is_host end 0x01400000 (bad dl pc 0145a558). Fix: tables on heap only with fps60. Third build, check map address, no more Azahar starts (3 used).
+01:02 F06-2 committed, NOT moved to SLICES_DONE (checks not run); row F06-2v added. 3dsx 13090876 (+3408)
+01:03 F06-2v start 1: golden toad fps60 off, expect about 2 min
+01:04 F06-2v golden toad off: 0.00 diff ok. start 2: fps60 smoke -Stall 90, expect 2 min
+01:05 F06-2v shots ok (8 shots, 38.33 pct black each, diff 0.4-0.75 pct, no holes). peak=49 leaves 18 nodes (toad). start 3: pacestat no turbo, expect 2 min
+01:06 F06-2v start 3 pace fps60 toad: steps/s 14, 4+ vblanks per step (about 2 vblanks per present, 30 presents/s). start 4: pacestat phase fps60 toad to read draw ms
+01:09 F06-2v start 4 phase: 4+ vblanks per step, 11 to 14 steps/s. Cause: each draw costs 20 to 45 ms in Azahar (gbi 14372 ops, 254 draws) and fps60 draws twice. Cost, not a sync fault: F06-5 (overload skip) owns it. Rows F06-2 and F06-2v NOT moved: pace check fails (needs steps/s near 30).
+01:09 F06-2v tables sized to peak plus 25 percent: leaves 384 (peak 297), nodes 32 (peak 18), hash 1024/1024/64. Fixed open/close imbalance when the node table is full. Built, not run (4 of 4 starts used). 3dsx 13090876 to 13090960 (+84), F06-2 total +3492 vs F06-1. Heap with fps60 on about 60 KB.

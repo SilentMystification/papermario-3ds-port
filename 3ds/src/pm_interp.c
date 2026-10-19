@@ -9,12 +9,14 @@
 #include "ultra64.h"
 #include "pm_port.h"
 
-#define MAX_LEAVES 4096
-#define MAX_NODES 1024
+/* Sizes: peak plus 25 percent. Leaf peak 297 (F06-1, toad and mac_00 start), 49 in the toad smoke (F06-2v); node peak 18. */
+#define MAX_LEAVES 384
+#define MAX_NODES 32
 #define MAX_DEPTH 16
-#define RT_SIZE 8192
-#define PT_SIZE 8192
-#define NT_SIZE 2048
+#define RT_BITS 10 /* 1024 slots, more than 2 x MAX_LEAVES */
+#define RT_SIZE (1 << RT_BITS)
+#define PT_SIZE 1024
+#define NT_SIZE 64
 
 typedef struct {
     unsigned node, idx;
@@ -38,7 +40,7 @@ static RT* rtab;
 static float (*repl)[4][4];
 static short* ptab; /* prev leaf index + 1 by hash(node, idx) */
 static short* ntab; /* prev node index + 1 by node id */
-static int nleaf, nnode, depth, recording, pnleaf, pnnode;
+static int skipped, nleaf, nnode, depth, recording, pnleaf, pnnode;
 static int stack[MAX_DEPTH];
 static unsigned frames, tot_leaves, tot_nodes, peak, peak_nodes;
 
@@ -50,7 +52,8 @@ static unsigned hash4(unsigned p, unsigned a, unsigned b, unsigned occ) {
 }
 
 void pm_interp_open(unsigned a, unsigned b) {
-    if (!recording || nnode >= MAX_NODES || depth >= MAX_DEPTH - 1) return;
+    if (!recording) return;
+    if (nnode >= MAX_NODES || depth >= MAX_DEPTH - 1) { skipped++; return; } /* close must pair with it */
     unsigned parent = nodes[stack[depth]].id, occ = 0;
     for (int i = 0; i < nnode; i++)
         if (nodes[i].parent == parent && nodes[i].a == a && nodes[i].b == b) occ++;
@@ -59,7 +62,9 @@ void pm_interp_open(unsigned a, unsigned b) {
 }
 
 void pm_interp_close(void) {
-    if (recording && depth > 0) depth--;
+    if (!recording) return;
+    if (skipped) skipped--;
+    else if (depth > 0) depth--;
 }
 
 void pm_interp_start(void) {
@@ -80,6 +85,7 @@ void pm_interp_start(void) {
     nleaf = 0;
     nnode = 0;
     depth = 0;
+    skipped = 0;
     nodes[nnode] = (Node){ hash4(0, 0x67616d65u, 0x6c6f6769u, 0), 0, 0x67616d65u, 0x6c6f6769u, 0 }; /* "game_logic" */
     stack[0] = nnode++;
     recording = 1;
@@ -88,7 +94,7 @@ void pm_interp_start(void) {
 /* F06-2: replacement table. Open addressing, keys are the new frame dest pointers. */
 
 const float (*pm_interp_find(const void* m))[4] {
-    unsigned h = ((unsigned)m >> 3) * 2654435761u >> 19;
+    unsigned h = ((unsigned)m >> 3) * 2654435761u >> (32 - RT_BITS);
     for (int i = 0; i < RT_SIZE; i++, h = (h + 1) & (RT_SIZE - 1)) {
         if (rtab[h].key == m) return repl[rtab[h].idx];
         if (!rtab[h].key) return 0;
@@ -125,7 +131,7 @@ void pm_interp_lerp(float t) {
             if (o->node != l->node || o->idx != l->idx) continue;
             float (*r)[4] = repl[paired];
             for (j = 0; j < 16; j++) r[j >> 2][j & 3] = (1.f - t) * o->mf[j >> 2][j & 3] + t * l->mf[j >> 2][j & 3];
-            unsigned k = ((unsigned)l->dest >> 3) * 2654435761u >> 19;
+            unsigned k = ((unsigned)l->dest >> 3) * 2654435761u >> (32 - RT_BITS);
             while (rtab[k].key && rtab[k].key != l->dest) k = (k + 1) & (RT_SIZE - 1);
             if (!rtab[k].key) paired++; /* a dest written twice keeps one slot, the later leaf wins */
             else { memcpy(repl[rtab[k].idx], r, sizeof(repl[0])); break; }
