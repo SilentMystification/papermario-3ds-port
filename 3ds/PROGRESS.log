@@ -519,3 +519,8 @@
 11:42 V23 start 3 of 4: skip frame box chunks (v23skip), expect 2 min
 11:45 V23 start 4 of 4: solid red fill in place of the portrait strips (v23solid), expect 2 min
 11:49 V23 budget used, cause narrowed to GPU scissor/depth stage, no fix
+11:51 FX2a start 1 of 4: offdump=436 fxtest=27 shots, expect 2 min
+11:55 FX2a start 2 of 4: fx2alog t1_fold values at frames 436 437, expect 2 min
+11:56 FX2a start 3 of 4: warp=omo_14:0 darkness check + shots, expect 2 min
+11:59 FX2a start 4 of 4: warp=omo_14:0 offdump=200 shots, expect 2 min
+12:00 FX2a budget used: scroll ok, flame still block, darkness suspect

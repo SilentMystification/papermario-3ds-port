@@ -39,3 +39,5 @@ F07-7 (2026-10-19): BUDGET 4/4 used. Code is done (frame grab 400 columns). Open
 F07-7 (2026-10-19, coordinator add): the overlay edge fix (pm_gpu_vert_clip, pm_gpu_tex_rect) is coded and not tested, BUDGET 4/4. Needs 2 starts in total (this test and the golden toad / edge glow test).
 
 V23 (2026-10-19): BUDGET 4/4 used. The party portrait cut is not a texture fault: a solid red fill of the strip rect is cut at the same x. Needs 1 start to log the scissor and depth state at the flush. Details in the V23 row. No user decision needed.
+
+FX2a (2026-10-19): BUDGET 4/4 used (third budget). Noise scroll works. Flame is still a red block (slot 9 nearly white). The darkness stencil at omo_14 frame 200 may be a regression (hard lit rectangle). Needs 2 starts. No user decision needed.
