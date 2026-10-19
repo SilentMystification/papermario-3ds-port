@@ -563,3 +563,4 @@
 16:18 V23c no second hand in Azahar, 5 starts
 18:26 V24c ok, DARK rectangle found not fixed
 HH DARK fixed (fold of mirror clamp tile on off-screen texrect), WIDEHUD row added
+HH WIDEHUD fixed (gbi.h SCIS macro keeps negative xl in wide)

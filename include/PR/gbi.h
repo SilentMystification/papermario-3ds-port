@@ -4499,6 +4499,14 @@ typedef union {
     gImmp1(pkt, G_RDPHALF_2, (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16)));\
 }
 
+#ifdef TARGET_3DS
+extern int pm_wide; /* WIDEHUD: with wide a rect left of x 0 is drawn in the gutter. Clipping it to 0 made the port extend the rect to the screen edge and repeat its texture. */
+#define PM_SCIS_XL(v) (pm_wide ? (s16)(v) : MAX((s16)(v), 0))
+#define PM_SCIS_CLIP(v) (!pm_wide && (s16)(v) < 0)
+#else
+#define PM_SCIS_XL(v) MAX((s16)(v), 0)
+#define PM_SCIS_CLIP(v) ((s16)(v) < 0)
+#endif
 /* like gSPTextureRectangle but accepts negative position arguments */
 #define gSPScisTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
 {                                                                            \
@@ -4508,11 +4516,11 @@ typedef union {
                     _SHIFTL(MAX((s16)(xh),0), 12, 12) |                      \
                     _SHIFTL(MAX((s16)(yh),0), 0, 12));                       \
     _g->words.w1 = (_SHIFTL((tile), 24, 3) |                                 \
-                    _SHIFTL(MAX((s16)(xl),0), 12, 12) |                      \
+                    _SHIFTL(PM_SCIS_XL(xl), 12, 12) |                      \
                     _SHIFTL(MAX((s16)(yl),0), 0, 12));                       \
     gImmp1(pkt, G_RDPHALF_1,                                                 \
                 (_SHIFTL(((s) -                                              \
-                          (((s16)(xl) < 0) ?                                 \
+                          (PM_SCIS_CLIP(xl) ?                                 \
                            (((s16)(dsdx) < 0) ?                              \
                             (MAX((((s16)(xl)*(s16)(dsdx))>>7),0)) :          \
 			    (MIN((((s16)(xl)*(s16)(dsdx))>>7),0))) : 0)),    \
