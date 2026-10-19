@@ -384,7 +384,11 @@ static void flush(void) {
         C3D_DepthTest(false, GPU_GREATER, GPU_WRITE_COLOR);
     /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
     if (stencil_on && !(z && r_zmark)) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
-    C3D_DepthMap(true, -1.0f, r_decal ? 0.001f : 0.0f);
+    { /* V19: decal depth bias, switch decalbias=<float> (default 0.001 as before; 0.00003 is about 2 float24 steps at mid range, to test on the device) */
+        static float dbias = -1.f;
+        if (dbias < 0.f) { char dv[24]; dbias = pm_debug_value("decalbias", dv, sizeof dv) ? (float)atof(dv) : 0.001f; }
+        C3D_DepthMap(true, -1.0f, r_decal ? dbias : 0.0f);
+    }
     C3D_EarlyDepthTest(false, GPU_EARLYDEPTH_GREATER, 0);
     if (r_atest >= 0) C3D_AlphaTest(true, GPU_GREATER, r_atest);
     else C3D_AlphaTest(false, GPU_ALWAYS, 0);
