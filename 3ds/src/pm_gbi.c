@@ -54,7 +54,7 @@ static int dd_on(void) {
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
 static struct {
-    unsigned idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri;
+    unsigned idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri, tex;
     float x0, y0, x1, y1, w0, w1;
 } dd;
 static unsigned dd_idx, dd_dl0, dd_dl1, dd_top;
@@ -69,8 +69,8 @@ static int dd_skip(void) {
 }
 static void dd_end(void) {
     if (dd.ntri)
-        pm_log("dd f%u #%u top %08x vtx %08x dl %08x %08x oml %08x omh %08x zb %u img %08x fmt %u/%u %ux%u prim %08x tris %u box %d %d %d %d w %d %d",
-               pm_frame_count(), dd.idx, dd.top, dd.src, dd.dl0, dd.dl1, dd.oml, dd.omh, dd.zb, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.prim,
+        pm_log("dd f%u #%u top %08x vtx %08x dl %08x %08x oml %08x omh %08x zb %u tex %u img %08x fmt %u/%u %ux%u prim %08x tris %u box %d %d %d %d w %d %d",
+               pm_frame_count(), dd.idx, dd.top, dd.src, dd.dl0, dd.dl1, dd.oml, dd.omh, dd.zb, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.prim,
                dd.ntri, (int)dd.x0, (int)dd.y0, (int)dd.x1, (int)dd.y1, (int)dd.w0, (int)dd.w1);
     dd.ntri = 0;
 }
@@ -369,7 +369,8 @@ static void sync_legacy(void) {
     }
     /* Decal modes put TEXEL0 in the addend, which is mux d, not a/b/c.
      * Missing it draws the sprite quad's vertex colors: a grey gradient. */
-    int wants_tex = tex_on && (comb_a == G_CCMUX_TEXEL0 || comb_b == G_CCMUX_TEXEL0 ||
+    /* H06b1: with G_TEXTURE off the RSP sends a triangle with no S and T, the RDP reads texel (0, 0) of tile 0 (draw_tri sets that), so TEXEL0 is read whatever the flag says. */
+    int wants_tex = (comb_a == G_CCMUX_TEXEL0 || comb_b == G_CCMUX_TEXEL0 ||
         comb_c == G_CCMUX_TEXEL0 || comb_d == G_CCMUX_TEXEL0 || comb_c == G_CCMUX_TEXEL0_ALPHA);
     int wants_prim = comb_a == G_CCMUX_PRIMITIVE || comb_b == G_CCMUX_PRIMITIVE || comb_c == G_CCMUX_PRIMITIVE;
     int mode = 0;
@@ -495,9 +496,9 @@ mixed:
         int nocol = two ? (((m >> 28) & 3u) == 1u && ((m >> 20) & 3u) == 1u) : (((m >> 30) & 3u) == 1u && ((m >> 22) & 3u) == 1u);
         pm_gpu_set_nocolor(nocol);
     }
-    pm_gpu_set_render((m & 0x10u) != 0, (m & 0x20u) != 0, blend, atest, (m & 0xc00u) == 0xc00u);
     /* FX2a: two cycle only. The one cycle darkness stencil (CLD_SURF into an 8 bit slot) reads memory the port does not hold (the z buffer fill), it stays a write. */
     pm_gpu_set_memblend(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1 && ((m >> 20) & 3u) == 1u && ((m >> 16) & 3u) == 1u);
+    pm_gpu_set_render((m & 0x10u) != 0, (m & 0x20u) != 0, blend, atest, (m & 0xc00u) == 0xc00u);
 }
 
 static unsigned rgba_from_5551(unsigned c) {
@@ -844,7 +845,6 @@ static Dec* decide(int two) {
         d->key = key;
         cc_decode(comb_w0, comb_w1, s);
         if (leg_mode == 4) { d->why = -2; return d; } /* mode 4 is exact by construction (const_rgb_tex_alpha) */
-        if (!tex_on && (cc_uses(s, two, 0) || cc_uses(s, two, 1))) { d->why = 5; d->el = 1.f; return d; }
         d->why = pm_comb_build(comb_w0, comb_w1, two, use_t1, &d->plan);
         if (!d->why && d->plan.uses_tex1 && !td[1].valid) d->why = 6; /* TEXEL1 read, tile 1 not loaded */
         {
@@ -1018,6 +1018,7 @@ static void t1_fold(float u0, float u1, float v0, float v1) {
 
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
+static const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
@@ -1054,7 +1055,12 @@ static void draw_tri(unsigned w) {
     ensure_tile(use_t1 ? 1 : 0);
     dual_bind();
     for (i = 0; i < 3; i++) {
-        xform_vtx(vert_m[idx[i]], &verts[idx[i]], vert_st[idx[i]], vert_c[idx[i]], &poly[i]);
+        xform_vtx(vert_m[idx[i]], &verts[idx[i]], tex_on ? vert_st[idx[i]] : st_off, vert_c[idx[i]], &poly[i]);
+        if (!tex_on) { /* H06b1: texel (0, 0), the centre of the first texel */
+            int tw, th;
+            pm_tex_size(&tw, &th);
+            if (tw > 0 && th > 0) { poly[i].u += 0.5f / (float)tw; poly[i].v += 0.5f / (float)th; }
+        }
         if (vert_scr[idx[i]]) { /* B5: screen position from G_MODIFYVTX, the inverse of the viewport map (x, y only, z and w kept in ratio) */
             ClipV* p = &poly[i];
             p->z = p->w > 0.f ? p->z / p->w : 0.f;
@@ -1128,7 +1134,7 @@ static void draw_tri(unsigned w) {
     sync_render();
     if (dd_on()) {
         if (!dd.ntri) {
-            dd.oml = omode_l; dd.omh = omode_h; dd.zb = (geom & G_ZBUFFER) != 0; dd.timg = (u32)td[0].src; dd.fmt = td[0].fmt;
+            dd.oml = omode_l; dd.omh = omode_h; dd.zb = (geom & G_ZBUFFER) != 0; dd.tex = (unsigned)tex_on; dd.timg = (u32)td[0].src; dd.fmt = td[0].fmt;
             dd.siz = td[0].siz; dd.w = td[0].w; dd.h = td[0].h; dd.prim = prim;
             dd.x0 = dd.y0 = dd.w0 = 1e9f; dd.x1 = dd.y1 = dd.w1 = -1e9f;
         }
