@@ -7,3 +7,5 @@ F07-3 not tested: pause menu, text box, battle menu in wide. pause_map and pause
 F07-4 done: with wide the sky tiles over -40 to 360 (background.c bg_texrect), side fills skipped for CAM_DEFAULT and CAM_BATTLE (background_gfx.c), curtain frustum x1.25 (curtains.c). Toad golden 0 diff.
 F07-4 not tested: wave sky, battle sky, mac_00, flo_10 (the tour stopped in the intro at the 25 s smoke limit). 3dsx +40 bytes.
 F06-1 done: 3ds/src/pm_interp.c records every guMtxF2L as a leaf (start in __wrap_step_game_loop, stop in nuGfxTaskStart), switch fps60 / pm_opt.fps60. Leaf peak 297 of 4096. Toad golden 0 diff. 3dsx +908 bytes.
+F06-2 code done, NOT verified (3 Azahar starts used): fps60 passes in pm_nusys.c (t = 0.5 in the draw iteration, key frame replay in the idle iteration), pm_interp_lerp, load_mtx lookup, nodes in main_loop.c and cam_main.c. Tables are on the heap (a BSS growth put gDisplayContext past is_host, 0x01400000).
+F06-2 open: golden toad switch off after the heap fix, fps60 smoke (25 s limit hit, game runs slower with two draws), pacestat, true leaf peak (F06-1 peak 297 missed gfx_draw_frame: the background task stopped the record). See row F06-2v.

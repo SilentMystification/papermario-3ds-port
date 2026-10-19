@@ -67,13 +67,38 @@ void nuContDataGetExAll(NUContData* data) {
     }
 }
 
+#define MAX_KEY 4
+static Gfx* key_list[MAX_KEY];
+static u32 key_size[MAX_KEY];
+static int nkey;
 void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     (void)ucode;
-    (void)flag;
+    int swap = (flag & NU_SC_SWAPBUFFER) != 0;
     PH_PUSH(PH_GBI);
-    pm_gbi_run(gfxList, gfxListSize);
+    if (pm_interp_on > 0) {
+        /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. pm_interp_key_draw replays every task of the
+         * step without replacements in the idle iteration. The background task of the step comes before the swap task. */
+        if (nkey < MAX_KEY) { key_list[nkey] = gfxList; key_size[nkey++] = gfxListSize; }
+        if (swap) { pm_interp_lerp(0.5f); pm_interp_repl = 1; }
+        pm_gbi_run(gfxList, gfxListSize);
+        pm_interp_repl = 0;
+    } else {
+        pm_gbi_run(gfxList, gfxListSize);
+    }
     PH_POP();
-    pm_interp_stop();
+    if (swap) pm_interp_stop(); /* the background task has no swap flag: the record goes on until the main task */
+}
+
+/* F06-2: the key frame of the last step, drawn without replacements. Returns 0 when the step built no list. */
+int pm_interp_key_draw(void) {
+    if (!nkey) return 0;
+    pm_gpu_begin(1);
+    PH_PUSH(PH_GBI);
+    for (int i = 0; i < nkey; i++) pm_gbi_run(key_list[i], key_size[i]);
+    PH_POP();
+    nkey = 0;
+    pm_gpu_end();
+    return 1;
 }
 
 void pm_gfx_retrace(void) {

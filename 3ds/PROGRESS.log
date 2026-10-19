@@ -395,3 +395,6 @@
 00:45 F06-1 start 2 ok: mac_00 peak=297. Start 3: golden toad, switch off, expect 2 min
 00:46 F06-1 golden toad ok 0.00 percent, fps60 off. 3 Azahar starts. 3dsx +908 bytes (13086560 to 13087468). Leaf peak 297, tables stay 4096 leaves (size to peak +25 percent comes in F06-2 with the lerp table).
 00:46 F06-1 row moved to SLICES_DONE
+00:49 F06-2 edits done (pm_interp lerp, key draw, load_mtx, main_loop and cam_main nodes), build next
+00:53 F06-2 start 1 of 3 ok but nodes=1: the background task (no swap flag) stopped the record before gfx_draw_frame. Fix: stop and lerp only on NU_SC_SWAPBUFFER, key frame replays all tasks. Rebuild.
+00:59 F06-2 golden toad switch off DIFF 7.31 pct: BSS +700 KB moved gDisplayContext past is_host end 0x01400000 (bad dl pc 0145a558). Fix: tables on heap only with fps60. Third build, check map address, no more Azahar starts (3 used).

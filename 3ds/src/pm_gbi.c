@@ -1208,7 +1208,9 @@ static void load_mtx(u32 w0, u32 w1) {
     Mtx* src = (Mtx*)ptr_of(w1);
     if (!src) return;
     float in[4][4];
-    unpack(src, in);
+    const float (*lm)[4] = pm_interp_repl ? pm_interp_find(src) : 0; /* F06-2 */
+    if (lm) memcpy(in, lm, sizeof(in));
+    else unpack(src, in);
     int is_proj = (flags & G_MTX_PROJECTION) != 0;
     if (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 < 10) {
         memcpy(mv[mv_sp + 1], mv[mv_sp], sizeof(mv[0]));

@@ -26,3 +26,4 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F11-6 | LATER. Select menu at any time on the bottom screen (needs the user, D2). Plan docs/plans/F11.md
 
 [ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only. Full text: docs/plans/B7.md | `push-o`, `pull-o`, `phase_report.py`
+[ ] F06-2v | (sonnet) BEFORE S28, verify F06-2 (commit after 9bbe6b3f6). Golden toad without fps60 must give 0 diff (the build before the heap fix gave 7.31 pct). `fps60 autoa shots shotwin=200:4` showed a full step then a step with black holes, alternating: check against a run without fps60 at frames 200 to 203. Read the new `f06 rec` peak (leaves and nodes) and size the tables. Run pacestat. Also a one-line fault: `bad dl pc` with a list in memory that is freed before the idle iteration, if it shows | golden toad 0 diff, shots with no holes, pace near 60 and 30

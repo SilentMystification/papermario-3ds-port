@@ -173,6 +173,10 @@ void gfx_task_background(void) {
                    NU_GFX_UCODE_F3DEX2, NU_SC_NOSWAPBUFFER);
 }
 
+extern void pm_interp_open(unsigned a, unsigned b); /* F06-2 */
+extern void pm_interp_close(void);
+#define FI_OPEN(n) pm_interp_open((unsigned)(n), 0)
+#define FI_CLOSE() pm_interp_close()
 void gfx_draw_frame(void) {
     gMatrixListPos = 0;
     gMainGfxPos = &gDisplayContext->mainGfx[0];
@@ -184,55 +188,81 @@ void gfx_draw_frame(void) {
 
     gSPMatrix(gMainGfxPos++, &MasterIdentityMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
+    FI_OPEN("gfx_sprite_init");
     spr_render_init();
+    FI_CLOSE();
 
+    FI_OPEN("gfx_world");
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_RENDER_WORLD)) {
         render_frame(false);
     }
+    FI_CLOSE();
 
+    FI_OPEN("gfx_interact_prompts");
     player_render_interact_prompts();
+    FI_CLOSE();
+    FI_OPEN("gfx_back_ui");
     func_802C3EE4();
     render_screen_overlay_backUI();
     render_workers_backUI();
     render_hud_elements_backUI();
     render_effects_UI();
     render_game_mode_backUI();
+    FI_CLOSE();
 
+    FI_OPEN("gfx_window_root");
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_WINDOWS_OVER_CURTAINS)) {
         render_window_root();
     }
+    FI_CLOSE();
 
+    FI_OPEN("gfx_world_hud");
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_RENDER_WORLD) && gGameStatusPtr->debugScripts == DEBUG_SCRIPTS_NONE) {
         render_frame(true);
     }
+    FI_CLOSE();
 
+    FI_OPEN("gfx_messages_mid");
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS)
         && !(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_FRONTUI)
     ) {
         render_messages();
     }
+    FI_CLOSE();
 
+    FI_OPEN("gfx_front_ui");
     render_workers_frontUI();
     render_hud_elements_frontUI();
     render_screen_overlay_frontUI();
+    FI_CLOSE();
 
+    FI_OPEN("gfx_messages_front");
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS)
         && (gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_FRONTUI)
     ) {
         render_messages();
     }
+    FI_CLOSE();
 
+    FI_OPEN("gfx_curtains");
     render_curtains();
+    FI_CLOSE();
 
+    FI_OPEN("gfx_messages_over_curtains");
     if (gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS) {
         render_messages();
     }
+    FI_CLOSE();
 
+    FI_OPEN("gfx_window_over_curtains");
     if (gOverrideFlags & GLOBAL_OVERRIDES_WINDOWS_OVER_CURTAINS) {
         render_window_root();
     }
+    FI_CLOSE();
 
+    FI_OPEN("gfx_game_mode_front_ui");
     render_game_mode_frontUI();
+    FI_CLOSE();
 
     if (gOverrideFlags & GLOBAL_OVERRIDES_SOFT_RESET) {
         switch (SoftResetState) {

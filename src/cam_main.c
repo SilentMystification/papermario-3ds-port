@@ -5,6 +5,10 @@
 #include "camera.h"
 
 extern int pm_wide; /* F07-2 */
+extern void pm_interp_open(unsigned a, unsigned b); /* F06-2 */
+extern void pm_interp_close(void);
+#define FI_OPEN(n, t) pm_interp_open((unsigned)(n), (t))
+#define FI_CLOSE() pm_interp_close()
 void render_models(void);
 void execute_render_tasks(void);
 void render_item_entities(void);
@@ -117,6 +121,7 @@ void render_frame(s32 isSecondPass) {
         }
 
         gCurrentCamID = camID;
+        FI_OPEN("camera_render", 0xC0000000u | (((u32)camID << 8) & 0xFF00) | (((u32)camera << 16) & 0x0FFF0000));
 
         if (camera->fpDoPreRender != nullptr) {
             camera->fpDoPreRender(camera);
@@ -185,14 +190,18 @@ void render_frame(s32 isSecondPass) {
                 gSPPerspNormalize(gMainGfxPos++, camera->perspNorm);
             }
 
+            FI_OPEN("camera_persp", 0);
             guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
+            FI_CLOSE();
             gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
                         G_MTX_PROJECTION);
         }
 
         camera->mtxBillboard = &gDisplayContext->matrixStack[gMatrixListPos];
         matrixListPos = gMatrixListPos++;
+        FI_OPEN("camera_billboard", 0);
         guRotate(&gDisplayContext->matrixStack[matrixListPos], -camera->curBoomYaw, 0.0f, 1.0f, 0.0f);
+        FI_CLOSE();
         camera->vpAlt.vp.vtrans[0] = camera->vp.vp.vtrans[0] + gGameStatusPtr->altViewportOffset.x;
         camera->vpAlt.vp.vtrans[1] = camera->vp.vp.vtrans[1] + gGameStatusPtr->altViewportOffset.y;
 
@@ -209,15 +218,23 @@ void render_frame(s32 isSecondPass) {
                 render_workers_scene();
                 render_effects_scene();
                 execute_render_tasks();
+                FI_OPEN("cam_hud_elements", 0);
                 render_transformed_hud_elements();
+                FI_CLOSE();
             } else {
                 guOrthoF(camera->mtxPerspective, 0.0f, SCREEN_WIDTH, -SCREEN_HEIGHT, 0.0f, -1000.0f, 1000.0f,
                             1.0f);
+                FI_OPEN("camera_persp_hud", 0);
                 guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
+                FI_CLOSE();
                 gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH |
                             G_MTX_LOAD | G_MTX_PROJECTION);
+                FI_OPEN("cam_hud_elements", 0);
                 render_transformed_hud_elements();
+                FI_CLOSE();
+                FI_OPEN("cam_item_entities", 0);
                 render_item_entities();
+                FI_CLOSE();
             }
         } else {
             render_workers_scene();
@@ -232,6 +249,7 @@ void render_frame(s32 isSecondPass) {
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
                             osVirtualToPhysical(nuGfxCfb_ptr));
         gDPPipeSync(gMainGfxPos++);
+        FI_CLOSE();
     }
 }
 

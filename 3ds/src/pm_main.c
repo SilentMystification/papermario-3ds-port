@@ -243,6 +243,7 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     for (int i = 0; i < 4; i++) i0[i] = pace_iv[i];
     t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks;
 }
+int pm_interp_key_draw(void);
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
@@ -276,6 +277,11 @@ void pm_frame_loop(void) {
         }
         if (!draw) {
             pm_gfx_retrace();
+            /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
+            if (pm_interp_on > 0 && pm_interp_key_draw()) {
+                presents++;
+                continue;
+            }
             /* PC01: keep PM_VBLANKS_PER_STEP vblanks between game steps. The counter is citro3d's own vblank
              * counter. The next drawn iteration waits for one more vblank in C3D_FrameBegin(SYNCDRAW), so this
              * waits until the counter is PM_VBLANKS_PER_STEP - 1 past the last drawn iteration. A slow frame is
