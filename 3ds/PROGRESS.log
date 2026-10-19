@@ -456,3 +456,7 @@
 03:04 V23 fix 1: texrect uses its own tile index (path dots tile 1). Build + start C: party log + map shot, window 205:130, expect 8 min
 03:10 V23 start C done: party log shows texrect, tile, scissor, box alpha, palette all right. Cut happens after texture build. Map shot has no path dots in the toad preset.
 03:13 V23 stop: debug log removed, rebuilt, 3dsx 13049700 B (+68). Budget 4 of 4 used. Row V23 stays open, notes in SLICES.md.
+03:13 V23 start D: pixel log for portrait in pm_tex, party window 205:25, expect 6 min
+03:16 V23 start E: temp switch v23t (frame parity skips box, image 2), window 205:12
+03:19 V23 start F: log scissor and rect corners, window 215:3
+03:24 V23 stop 2: debug code removed, 3dsx 13049700 B. Budget used. Cut proven not box, scissor, image 2. Row open.
