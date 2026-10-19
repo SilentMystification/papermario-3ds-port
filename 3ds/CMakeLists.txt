@@ -330,24 +330,24 @@ set_property(SOURCE ${DECOMP}/src/evt/script_list.c APPEND PROPERTY COMPILE_OPTI
 # F02: these map files end a script without an End (decomp @bug, 'not terminated'). find_script_labels then reads on into the next data
 # until it finds an End. In source order that is the next script of the file. With -fdata-sections the next bytes were BSS zeros and the scan ran
 # to the end of the image (gv_01 EVS_DropLetter, unmapped reads over 8 MB). Keep the files as one data block in source order.
-set_property(SOURCE ${DECOMP}/src/world/area_gv/gv_01/main.c ${DECOMP}/src/world/area_kmr/kmr_11/main.c
 # C2H: jan_05, jan_08, jan_09 npc.c include MBush.inc.c, whose EVS_NpcAI_MBush ends in StartBattle with no End (decomp "fallthrough :(").
+set_property(SOURCE ${DECOMP}/src/world/area_gv/gv_01/main.c ${DECOMP}/src/world/area_kmr/kmr_11/main.c
     ${DECOMP}/src/world/area_kkj/kkj_15/main.c ${DECOMP}/src/world/area_kkj/kkj_16/main.c
     ${DECOMP}/src/world/area_kkj/kkj_23/main.c ${DECOMP}/src/world/area_kkj/kkj_29/main.c
-    APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
     ${DECOMP}/src/world/area_jan/jan_05/npc.c ${DECOMP}/src/world/area_jan/jan_08/npc.c ${DECOMP}/src/world/area_jan/jan_09/npc.c
+    APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
 # V12c: effect gfx files read one array on into the next array of the file (snowfall D_09000C00_38DC70 is 16 raw bytes with no end, the state
 # list D_09000C10_38DC80 follows. fright_jar indexes D_09004040_3C5BE0 as 22 vertex rows over the three vertex arrays after it). With -fdata-sections
 # the next array was somewhere else: snowfall drew nothing, the jar drew a black wedge.
 # 14 effect gfx files have raw byte lists (grep '^u8 D_09' src/effects/gfx). Only snowfall and fright_jar are done here: all 14 cost 18 KB (the 10 KB rule), see SLICES.md row V12d.
 # Keep the file as one data block in source order, as in the ROM.
 set(EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/snowfall.c ${DECOMP}/src/effects/gfx/fright_jar.c)
-set_property(SOURCE ${EFFECT_GFX_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
-# heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
-# V12d: the 12 other files with a raw u8 D_09 list.
-foreach(_e balloon effect_75 ending_decals fire_flower lil_oink peach_star_beam quizmo_assistant snowman_doll static_status sun throw_spiny tubba_heart_attack water_block)
+# V12d: the 12 other files with a raw u8 D_09 list. V16V17: fire_breath (D_09000B88 loads 5 vertices and ends, the triangles are in D_09000BA8).
+foreach(_e balloon effect_75 ending_decals fire_breath fire_flower lil_oink peach_star_beam quizmo_assistant snowman_doll static_status sun throw_spiny tubba_heart_attack water_block)
     list(APPEND EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/${_e}.c)
 endforeach()
+set_property(SOURCE ${EFFECT_GFX_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections -fno-toplevel-reorder)
+# heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
 # (pm_map.c) and heaps.c gets its copy renamed.
 set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data -DD_80200000=pm_unused_80200000)
 set_property(SOURCE ${DECOMP}/src/world/partners.c APPEND PROPERTY COMPILE_OPTIONS -include common.h)
@@ -365,10 +365,10 @@ set(PORT_SRC
     src/pm_input.c
     src/pm_warp.c
     src/pm_options.c
+    src/pm_fxtest.c
     src/pm_gpu.c
     src/pm_depth.c
     src/pm_tex.c
-    src/pm_fxtest.c
     src/pm_gbi.c
     src/pm_comb.c
     src/pm_gu.c

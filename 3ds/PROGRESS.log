@@ -421,3 +421,12 @@
 01:41 F06-4 start 1 ok (rc 0, pair=92, over 0, no battle entered). start 2: fast preset=toad battle fps60 shots shotwin=200:4, expect 2 min
 01:42 F06-4 start 2 ok: battle menu and status bar steady in 8 shots, no smear. start 3: golden toad fps60 off, expect 2 min
 01:42 F06-4 golden toad off 0.00. 3dsx 13092440 to 13094360 (+1920). Not tested: pause1 text box, map change, shop anchor (no shop run), peach star beam, snowfall, flowers.
+01:46 V17d done: docs/plans/V17_V21_diag.md written, 3 Azahar starts (run 2 lost to a parallel V16d run), 2 contact sheets
+01:47 V16V17 start 1: intro fast shotwin=2060:21 drawlog=2068:2 xtrace=2068:2, expect 3 min
+01:51 V16V17 step: V21 root cause read: tile window 33 at imgFrame*32 (mask 7 mirror, image 128) cut to window at image start. Added mask_span in pm_gbi.c SETTILESIZE (tile 0 and 1) to keep masked image span. Box at f2070 is tape graphic (FadeAwayTapeGraphic), no fault found there.
+01:53 V16V17 start 2: intro fast shots shotwin=2250:61, expect 3 min
+01:55 V16V17 start 3: intro fast shots shotwin=2296:30 drawlog=2306:2, expect 3 min (V21 fire draw check)
+01:58 V16V17 step: V21 ROOT CAUSE: D_09000B88 (vertex load, no end) falls into D_09000BA8 (triangles) in ROM. In the ELF the next symbol is D_09000B38 (vertex data), so the fan drew no triangles. Fix: fire_breath.c added to EFFECT_GFX_SRC in 3ds/CMakeLists.txt (-fno-data-sections -fno-toplevel-reorder). Scan of assets/us gfx.inc.c: only 4 dlists lack an end, the other 3 are already covered.
+02:00 V16V17 step: mask_span change in pm_gbi.c reverted (no proof it is needed, shared by all tiles). Rebuilding with the fire fix only.
+02:02 V16V17 start 4: intro fast shots shotwin=2290:35, expect 3 min (V21 fire check)
+02:03 V16V17 done: V21 moved to SLICES_DONE (fire visible f2290-2324, 3dsx 13094360 to 13094436 +76). V16 and V17 open with leads. 4 starts used, golden not run.

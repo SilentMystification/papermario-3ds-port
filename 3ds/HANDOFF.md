@@ -15,3 +15,5 @@ F06-3 done: node hooks in model, entity, animator, model_api, sprite, imgfx, ite
 F06-3 not checked: pair in battle and during a map change, tour stopped at the 200 s smoke cap. F06-2 and F06-2v moved to SLICES_DONE (pace stays with F06-5).
 F06-4 done: nodes in msg, hud_element, peach_star_beam, snowfall (wrapEpoch), flower_trail, flower_splash. Screen anchor (pm_anchor_* in hud_element.c, used by shops and draw_number) and camera epoch (pm_interp_dont_camera). Battle fps60 shots steady, golden toad off 0.00, 3dsx +1920.
 F06-4 not checked: pause1 text box, map change smear, shop anchor, star beam, snowfall, flowers (budget used).
+V16V17: V21 fixed (fire dlist fall-through, CMake EFFECT_GFX_SRC), shot checked. Golden battle not run.
+V16 and V17 stay open with leads in SLICES.md (f2070 box is the tape graphic, no battle flicker frame found, partial fade open).
