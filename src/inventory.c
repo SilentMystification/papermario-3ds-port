@@ -1,3 +1,4 @@
+#include "pm_wide.h"
 #include "common.h"
 #include "hud_element.h"
 
@@ -329,7 +330,7 @@ void initialize_status_bar(void) {
     PlayerData* playerData = &gPlayerData;
     HudElemID hid;
 
-    statusBar->drawPosX = 12;
+    statusBar->drawPosX = pm_wide_left(12);
     ShowingCoinCounter = false;
     HidingCoinCounter = false;
     statusBar->drawPosY = FULLY_RETRACTED_Y;
@@ -740,11 +741,11 @@ void update_status_bar(void) {
             break;
     }
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 12, 20, SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
+    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
     x = statusBar->drawPosX;
     y = statusBar->drawPosY;
     draw_box(0, WINDOW_STYLE_5, x,       y, 0, 174, 35, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
-    draw_box(0, WINDOW_STYLE_6, x + 174, y, 0, 122, 25, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
+    draw_box(0, WINDOW_STYLE_6, x + 174, y, 0, pm_wide_right(122) - pm_wide_left(0), 25, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
 
     if (statusBar->hpBlinkTimeLeft > 0) {
         statusBar->hpBlinkTimeLeft--;
@@ -838,18 +839,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->spIconHID;
-        x = statusBar->drawPosX + 195;
+        x = pm_wide_right(207);
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->spShineHID;
-        x = statusBar->drawPosX + 195;
+        x = pm_wide_right(207);
         y = statusBar->drawPosY + 9;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + 200;
+        x = pm_wide_right(212);
         y = statusBar->drawPosY + 8;
         status_bar_draw_number(statusBar->spTimesHID, x, y, playerData->starPoints, 2);
     }
@@ -875,18 +876,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->coinIconHID;
-        x = statusBar->drawPosX + 244;
+        x = pm_wide_right(256);
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->coinSparkleHID;
-        x = statusBar->drawPosX + 244;
+        x = pm_wide_right(256);
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + 247;
+        x = pm_wide_right(259);
         y = statusBar->drawPosY + 8;
         status_bar_draw_number(statusBar->coinTimesHID, x, y, statusBar->displayCoins, 3);
     }
@@ -1526,7 +1527,7 @@ void reset_status_bar(void) {
     StatusBar* statusBar = &gStatusBar;
     s32 i;
 
-    statusBar->drawPosX = 12;
+    statusBar->drawPosX = pm_wide_left(12);
     statusBar->drawPosY = FULLY_RETRACTED_Y;
     statusBar->hidden = 0;
     statusBar->showTimer = 210;

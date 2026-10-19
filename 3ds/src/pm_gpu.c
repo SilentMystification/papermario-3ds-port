@@ -66,6 +66,7 @@ static shaderProgram_s prog;
 static DVLB_s* dvlb;
 
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
+static int ui_ortho; /* F07-3: the game matrix is orthographic (UI): drawn 1:1 and centered with wide, not stretched */
 static int off_active; /* V05: drawing goes to an off-screen image (see pm_gpu_off_begin) */
 static C3D_Mtx off_proj;
 
@@ -88,8 +89,8 @@ static void rebuild_3d(void) {
     }
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
-    view.r[0].x = (pm_wide && !off_active) ? vp_sx * 1.25f : vp_sx;
-    view.r[0].w = off_active ? vp_tx : pm_wide ? vp_tx * 1.25f : 40.f + vp_tx;
+    view.r[0].x = (pm_wide && !off_active && !ui_ortho) ? vp_sx * 1.25f : vp_sx;
+    view.r[0].w = off_active ? vp_tx : (pm_wide && !ui_ortho) ? vp_tx * 1.25f : 40.f + vp_tx;
     view.r[1].y = off_active ? -vp_sy : vp_sy;
     view.r[1].w = off_active ? vp_ty : 240.f - vp_ty;
     /* Clip z/w is -1 at the near plane and +1 at the far plane. Citro's
@@ -328,8 +329,10 @@ static void flush(void) {
     } else {
         int left = 240 - sci_y1;
         int right = 240 - sci_y0;
-        int top = pm_wide ? sci_x0 * 5 / 4 : 40 + sci_x0;
-        int bottom = pm_wide ? sci_x1 * 5 / 4 : 40 + sci_x1;
+        /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
+        int ui = pm_wide && (!draw_3d || ui_ortho);
+        int top = !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
+        int bottom = !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
         if (left < 0) left = 0;
         if (right > 240) right = 240;
         if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
@@ -890,9 +893,13 @@ void pm_fatal_screen(const char* msg) {
 }
 
 void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty) {
-    if (sx == vp_sx && sy == vp_sy && tx == vp_tx && ty == vp_ty &&
+    static const float id4[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1} };
+    /* F07-3: orthographic = no perspective divide. The clipped-polygon path passes identity and keeps the flag of the last real matrix. */
+    int ortho = memcmp(m, id4, sizeof(id4)) == 0 ? ui_ortho : (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f);
+    if (sx == vp_sx && sy == vp_sy && tx == vp_tx && ty == vp_ty && ortho == ui_ortho &&
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
     if (draw_3d && nverts > 0) flush();
+    ui_ortho = ortho;
     memcpy(game_mvp, m, sizeof(game_mvp));
     vp_sx = sx;
     vp_sy = sy;
@@ -1031,7 +1038,7 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
 }
 
 /* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
-static float px(int x) { return off_active ? (float)x : pm_wide ? (float)x * 1.25f : 40.f + (float)x; }
+static float px(int x) { return off_active ? (float)x : 40.f + (float)x; } /* F07-3: 2D is 1:1 and centered, also with wide */
 static float py(int y) { return off_active ? (float)y : 240.f - (float)y; }
 
 static float fill_z = 0.5f;
@@ -1043,8 +1050,8 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     combine = 0;
     rect_2d = 1;
     batch_identity = 1;
-    float xa = px(x0);
-    float xb = px(x1 + 1);
+    float xa = (pm_wide && !off_active && x0 <= 0) ? 0.f : px(x0); /* F07-3: a fill from the game edge reaches the screen edge */
+    float xb = (pm_wide && !off_active && x1 >= 319) ? 400.f : px(x1 + 1);
     float ya = py(y0);
     float yb = py(y1 + 1);
     pm_gpu_tri(xa, ya, fill_z, 0, 0, rgba, xb, ya, fill_z, 0, 0, rgba, xb, yb, fill_z, 0, 0, rgba);

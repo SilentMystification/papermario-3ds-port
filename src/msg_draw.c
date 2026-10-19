@@ -1,3 +1,4 @@
+#include "pm_wide.h"
 #include "common.h"
 #include "ld_addrs.h"
 #include "message_ids.h"
@@ -315,9 +316,9 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
     }
     msg_drawState->textStartPos[0] = 0;
     msg_drawState->textStartPos[1] = 0;
-    msg_drawState->clipX[0] = 0;
+    msg_drawState->clipX[0] = pm_wide_left(0);
     msg_drawState->clipY[0] = 0;
-    msg_drawState->clipX[1] = SCREEN_WIDTH - 1;
+    msg_drawState->clipX[1] = pm_wide_right(SCREEN_WIDTH) - 1;
     msg_drawState->clipY[1] = SCREEN_HEIGHT - 1;
     msg_drawState->msgScale.x = 1.0f;
     msg_drawState->msgScale.y = 1.0f;

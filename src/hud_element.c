@@ -1,3 +1,4 @@
+#include "pm_wide.h"
 #include "common.h"
 #include "hud_element.h"
 #include "nu/nusys.h"
@@ -440,16 +441,16 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
                 texStartX = 0;
             }
 
-            if (lrx < 0  || ulx > SCREEN_WIDTH) {
+            if (lrx < pm_wide_left(0)  || ulx > pm_wide_right(SCREEN_WIDTH)) {
                 break;
             }
 
-            if (lrx >= SCREEN_WIDTH) {
-                s32 temp = uls + SCREEN_WIDTH + 63;
+            if (lrx >= pm_wide_right(SCREEN_WIDTH)) {
+                s32 temp = uls + pm_wide_right(SCREEN_WIDTH) + 63;
                 temp -= baseX + lrs;
                 lrs = temp - 1;
 
-                lrx = SCREEN_WIDTH;
+                lrx = pm_wide_right(SCREEN_WIDTH);
                 isLastTileX = true;
             }
 
@@ -1867,7 +1868,7 @@ void draw_hud_element_internal(s32 id, s32 clipMode) {
         if (!(elem->flags & (HUD_ELEMENT_FLAG_INVISIBLE | HUD_ELEMENT_FLAG_HIDDEN)) && (elem->drawSizePreset >= 0)) {
             if (clipMode != HUD_ELEMENT_DRAW_NEXT) {
                 if (clipMode == HUD_ELEMENT_DRAW_FIRST_WITH_CLIPPING) {
-                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 12, 20, SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
+                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
                 }
                 gDPPipeSync(gMainGfxPos++);
                 gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);

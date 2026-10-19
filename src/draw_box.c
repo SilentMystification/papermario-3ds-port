@@ -1,3 +1,4 @@
+#include "pm_wide.h"
 #include "common.h"
 #include "nu/nusys.h"
 #include "include_asset.h"
@@ -418,11 +419,11 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
             return true;
         }
 
-        if (posX >= SCREEN_WIDTH || posY >= SCREEN_HEIGHT) {
+        if (posX >= pm_wide_right(SCREEN_WIDTH) || posY >= SCREEN_HEIGHT) {
             return true;
         }
 
-        if (posX + width >= 768 || posY + height >= 768 || posX + width <= 0 || posY + height <= 0) {
+        if (posX + width >= 768 || posY + height >= 768 || posX + width <= pm_wide_left(0) || posY + height <= 0) {
             return true;
         }
 

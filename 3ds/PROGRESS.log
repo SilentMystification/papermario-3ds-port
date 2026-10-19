@@ -372,3 +372,6 @@
 00:03 F07-2 built, 3dsx +212 bytes (13083296 to 13083508). Azahar start 1 wide shot done
 00:04 F07-2 wide shot ok: Mario same size, scene wider. Azahar start 2: golden toad wide off, about 2 min
 00:04 F07-2 golden toad ok 0.00 percent, wide off. 2 Azahar starts. 3dsx +212 bytes (13083296 to 13083508). Not tested: 60-frame walk pop-in, mac_00, other cull sites (effects use own aspect), UI (F07-3).
+00:11 F07-3 edits: pm_wide.h, inventory, hud_element, msg_draw, draw_box, screen_render_util, pm_gpu (2D 1:1 centered, ortho UI, edge fills). Built. Azahar start 1 wide shot about 1 min
+00:14 F07-3 wide shot ok: scene fills width, no fault in log. UI not on screen at frame 200. Azahar start 2: golden toad wide off, about 2 min
+00:15 F07-3 golden toad ok 0.00 percent, wide off. 2 Azahar starts. 3dsx +1140 bytes (13083508 to 13084648). Not tested: pause menu, text box, battle menu with wide, pause_map and pause_partners clamps (unchanged), encounter cull (no change needed).
