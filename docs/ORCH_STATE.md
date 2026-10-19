@@ -140,3 +140,43 @@ V23 stays open (commits 3dcc56320, 1de1f7643). Map: G_TEXRECT now honours its ti
 - Nothing is running. No agent, no Azahar, no pending cron job. Closing the old chat kills nothing, because nothing is left. A cron job lives only in the chat that made it.
 - V23 repro command and next start are in the V23 row in 3ds/SLICES.md (HANDOFF 2026-10-19 text at the end of the row). The party portrait is drawn in 12-row strips (tile 0 is 150x12): check the strip loop and the line offset between strips.
 - The first thing to do in the new chat: `git status`, then `powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget V23` once, then relaunch V23 with a fresh sonnet agent.
+
+## 10. HANDOFF STATE (2026-10-19 evening, written for a new orchestrator chat). Newest section. Section 9 is obsolete.
+Start here: read this section, then docs/handoff/ORCH_RULES.txt (eleven rules), 3ds/AGENT_RULES.md, and 3ds/SLICES.md (truth for open rows). Check `git status` first. CLAUDE.md in the main folder is untracked on purpose. Nothing is running. No agent works. No Azahar window is open.
+
+### User style (hard rules, the user has shouted about these)
+- Rule 10: before an Agent call, look for a running or resumable agent. Use SendMessage when one exists. A row of about 30 lines or less never gets its own agent. The handoff is written by the orchestrator or the finishing agent, never by a new agent.
+- Rule 11: never open with agreement or praise. State the action and the result. If the plan changed, say so in the first line.
+- Decide small things yourself. Do not ask the user what you can work out. Explain things in plain words with the file link (markdown link) and what to look for.
+- Test with the user together. The user plays in Azahar and reports. Open it for the user: `powershell -NoProfile -File 3ds/run_azahar.ps1 -Interactive` (run in the background). Lane B: `cd ..\papermario-3ds-port-laneB; $env:PM_LANE="laneB"; powershell -File 3ds/run_azahar.ps1 -Interactive`. Close Azahar before an agent needs the mutex.
+- Do not read agent transcripts. Read 3ds/PROGRESS.log (last 12 lines) if a check is needed. The user dislikes questions about this.
+
+### Done since section 9 (all local commits, nothing pushed)
+V26 (Mario speed floats read as neighbours, `(&DefaultMoveSpeed)[-1]` in src/7B440.c), V25 (rect_2d blending by combiner alpha in pm_gpu.c), V24 (PAL_MEM byte swap for sprite palettes), V24b (poison tint check), V27 (clip_near at true near plane in pm_gbi.c, water surface), V20 (G_LOADTLUT updates the bound tile), V16 (hit flash palette, Goomba only), V23 (GPU scissor axis mirrored, pm_gpu.c flush), V17 (no fault), V22b, FX2a (flame glow, partial), FX3a (sheets at full size, 80-effect sweep), FX3b and FX3d (snowfall list fall-through), FX3c (effect 93, planerr 90), FX3e, F07-7 (400 column grab, overlays reach both edges), F07-8, F06-5, F06-6 (backgroundGfx 0x800), F11-4, C-O3DS (on the O3DS, X is Z; held with L or R it gives N64 L and R; options.txt `o3dsz=1` uses Y), L02 (log levels, switch `loglevel`, default warn, `log=off`), F11-8 (Options rows Logging and Log level), R-SEED (random seed per boot; switch `fixedseed` for tests; run_azahar.ps1 -Smoke and golden.py add it), H06a2 to H06a6 (sp9C = 0 in water_fountain.c accepted by the user), H06b1 to H06b3, H06b5, H06d, H06e, H06f, C2R, C2J, V23b (switch `mapflags`), BN1 and BS1 (below), rules 10 and 11.
+Lane-b was merged into main at commit 07c1d7ab1. Goldens after the merge: battle 1.07%, toad 0.00%, yard 0.00%. No golden was updated for the title (lane B showed 37% because the old golden contains the ghost image) or for intro (11.2%, the user said the saved golden files are correct, keep them).
+
+### Open rows
+- V16b: white box around the enemy sprite while it is hit and flashes: Thunder Rage on Shy Guys, Parakarry 7 damage, jump on Monty Mole. The Goomba flash is fixed. Lane B agent a230bb016a984a094 had just started it (merge main into lane-b first). Check every sprite palette write, the flash path and sprite format. 
+- V18: sanctuary walkway flicker at the end of the star spirit intro pan. Not seen in Azahar. The V27 near-plane fix may help. User still sees it in the merged build.
+- V19: Sushie shadow flicker when she dives under the log in the jungle. Not seen in Azahar. Same state as V18. Possible shared cause: geometry flicker with camera angle (depth range, z-fight, clipping).
+- V23b: the user sees two hand cursors on the map. The agent saw one.
+- Fall-through fix: fire_breath D_09000B88_373F68 to gsSPBranchList(D_09000BA8_373F88) and peach_star_beam D_09005090_3EAFC0 to gsSPBranchList(D_090050F0_3EB020). Plan in docs/plans/fallthrough_sweep.md. Not started.
+- FX3f: 14 effects show nothing in the shots (7, 9, 11, 13, 14, 30, 34, 36, 53, 100, 102, 116, 122, 126). Fall-through is ruled out. Check spawn arguments and life time against the 44 frame slot.
+- F11-7: Options panel debug row "Fixed seed" (switch exists). F11-5 (rebinding) and F11-6 (Select at any time) come after S28.
+- Not tested: O3DS shoulder map on hardware, Options panel A press on the Log level row, glow within 40 px of the screen edge in `wide`, darkness stencil at omo_14 against an older build, V16 on Parakarry and Monty Mole, golden battle after V20 in lane B (merged main golden passed), paralyze, static and dizzy palettes.
+- Then: the H05 final steps, one full tour plus golden if a change needs them. Then S28 (the user sets up the O3DS when it is time. Do not start S28).
+
+### Decisions of the user (keep)
+F11 D1 plan default, D2 Select at any time, D4 choice A (four debug rows), D5 choice A (all 18 inputs). F07-7 option A (400 columns). O3DS Z key: the agent chose X (changeable by `o3dsz=1`). Fixed seed and logging become Options rows. Test budget raised from 4 to 8 starts per row. The intro golden stays as saved.
+
+### Build and budget
+- Build number = 797 + (commit count - 3172), constants in 3ds/build_base.txt (tracked). Suffix -dirty (tracked files changed) and -laneB. The boot log, the bottom screen and the Options footer show it. HEAD had 3173 commits, so the next clean build prints 798. The old Docker counters are not used any more.
+- Budget: 8 Azahar starts per row. The count is in 3ds/logs/test_budget.csv of each folder. Lane B has its own copy in papermario-3ds-port-laneB: run `-ResetBudget <row>` from that folder. Only the orchestrator resets, once per row (the user approved extra resets for V23, FX2a, V25).
+- Docker commands in Git Bash need `MSYS_NO_PATHCONV=1`.
+- Lane B is behind main after the merge. Merge main into lane-b before any lane B work. Lane B agent id a230bb016a984a094 can be resumed with SendMessage. The session rate limit stopped it once (reset 3:40pm Eastern). Container awesome_johnson is gone. Agent a78e72286b2383811 was stopped by the user (it had finished BN1, BS1, rules 10 and 11).
+
+### Files for the user to look at
+Effect sheets 3ds/logs/fx/sheet_1.png to sheet_11.png (checked, mostly correct). Golden pictures 3ds/golden/toad.png, yard.png, intro.png (checked, correct). Plain questions: docs/plans/user_questions_plain.md.
+
+### Start prompt for the new chat
+Read docs/ORCH_STATE.md section 10, then docs/handoff/ORCH_RULES.txt, 3ds/AGENT_RULES.md and 3ds/ORCHESTRATOR.md section 1. You are the orchestrator only. Reply in ASD-STE100 English, no praise, no agreement. Nothing runs now. Step 1: print the eleven rules in 11 short lines and one status block (RUNNING, READY-NOT-LAUNCHED with the conflict, BLOCKED-ON-USER). Step 2: resume agent a230bb016a984a094 with SendMessage (merge main into lane-b first) for V16b, V18, V19. Launch one main-tree code agent for the fall-through fix and FX3f. Ask the user to test with you when a merged build is ready. Do not start S28.
