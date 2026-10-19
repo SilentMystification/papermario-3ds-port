@@ -446,3 +446,6 @@
 02:48 H06c end: golden toad yard battle ok, tour 26 maps rc smoke timeout after tour end (iwa_01 name not parsed, 14 maps left), no fault; fxtest 40-80 and nok_12 shot not run (budget 4/4). Rows not moved.
 02:50 H06c start A: preset=toad fast shots demoscene=0 (nok_12 bridge demo), expect 3 min
 02:50 H06c: Azahar start refused, BUDGET row H06c used 4 runs (orchestrator must reset). Script marks 4 files as read-by-name. Row H06d added.
+02:51 H06c start A: preset=toad fast shots demoscene=0 (nok_12 bridge), expect 3 min
+02:53 H06c start B: fxtest 40-80, expect 10 min
+02:54 H06c done: fxtest 40-80 rc 0, nok_12 demo shot looks right (brick blocks orange, 30 frame spacing), rows H06c and H06a1 moved
