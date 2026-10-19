@@ -133,3 +133,5 @@ FX2d and FX2e done. 3dsx +1036 bytes. effect_63 draws black puffs, colour not ch
 FX2ab: FX2b bulb_glow done (tile mask pad in pm_tex). FX2a flame partly fixed (K4 convert input), still a red block.
 FX2a left: snapshot slot D_800B32E0 per pass, keep it between frames. Details in 3ds/SLICES.md. Golden battle ok. 3dsx 13081920 to 13082696 (+776).
 C4F: guRotateRPYF uses sin_rad and cos_rad. 3dsx size unchanged. Golden toad DIFF 62 percent is a bad reference: toad.png, yard.png and battle.png are the same file (new row G01R).
+F07-5 done: set_game_mode turns `wide` off in logos, title and file select (pm_wide_cfg keeps the setting). D03 copy and grab strips already use the center 320 columns. 3dsx +80 bytes.
+F07-5 not done: BulbGlow, Underwater, DarknessStencil, star_spirits_energy, end_00 and end_01 wide offsets are row F07-6. Title 4:3 path not seen in a shot.

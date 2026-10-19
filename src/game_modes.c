@@ -258,8 +258,13 @@ GameMode* gameModeMap[] = {
 
 BSS s16 CurGameMode;
 
+extern int pm_wide, pm_wide_cfg;
+
 void set_game_mode(s16 mode) {
     CurGameMode = mode;
+    /* F07-5: logos, title and file select keep 4:3 */
+    pm_wide = pm_wide_cfg && !(mode == GAME_MODE_LOGOS || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_LANGUAGE_SELECT ||
+        mode == GAME_MODE_END_LANGUAGE_SELECT || mode == GAME_MODE_FILE_SELECT || mode == GAME_MODE_END_FILE_SELECT);
     set_game_mode_slot(0, gameModeMap[mode]);
 }
 

@@ -379,3 +379,9 @@
 00:20 F07-4 built. Azahar start 1 wide tour kmr_20 mac_00 flo_10 shots about 3 min
 00:23 F07-4 wide shot ok: intro curtains and sky fill the full width, no bar at the sides (tour hit smoke timeout 25 s in the intro, no fault). Azahar start 2: golden toad wide off
 00:24 F07-4 golden toad ok 0.00 percent, wide off. 2 Azahar starts. 3dsx +40 bytes (13084648 to 13084688). Not tested: wave sky maps, battle sky, mac_00 and flo_10 (tour stopped in the intro).
+00:25 F07-5 code: pm_wide_cfg in pm_gpu.c, set_game_mode turns wide off in logos/title/file select. D03 copy and grab strips already read the center 320 columns (40 + x). Build next
+00:27 F07-5 built, 3dsx +80 bytes (13084688 to 13084768). Azahar start 1: preset=title wide shots, about 2 min
+00:28 F07-5 start 1 hit a world scene not the title. Azahar start 2: fast wide shots shotwin=400:3 (title), about 2 min
+00:29 F07-5 wide shot at frame 400 is the intro, full width ok. Title 4:3 path not seen in a shot. Azahar start 3: golden toad wide off
+00:29 F07-5 golden toad ok 0.00 percent, wide off. 3 Azahar starts. 3dsx +80 bytes. Not done: BulbGlow, Underwater, DarknessStencil, star_spirits_energy, end_00/end_01 wide offsets (new row F07-6). Title 4:3 not seen in a shot.
+00:30 F07-5 row moved to SLICES_DONE, F07-6 row added

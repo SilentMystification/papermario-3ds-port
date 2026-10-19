@@ -65,6 +65,7 @@ static float cmd_max;
 static shaderProgram_s prog;
 static DVLB_s* dvlb;
 
+int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
 static int ui_ortho; /* F07-3: the game matrix is orthographic (UI): drawn 1:1 and centered with wide, not stretched */
 static int off_active; /* V05: drawing goes to an off-screen image (see pm_gpu_off_begin) */
@@ -450,7 +451,7 @@ static void put(float x, float y, float z, float u, float v, unsigned c) {
 
 void pm_gpu_init(void) {
     if (gpu_ok) return;
-    pm_wide = pm_debug_has("wide") || pm_opt.wide;
+    pm_wide = pm_wide_cfg = pm_debug_has("wide") || pm_opt.wide;
     pm_log("gpu: wide=%d", pm_wide);
     gfxInitDefault();
     if (!C3D_Init(0x400000)) {
