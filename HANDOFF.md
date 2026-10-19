@@ -141,3 +141,4 @@ V18V20: new switch demoscene=<n> in pm_warp.c (index in DemoScenes, 13 gave the 
 V23 partial: G_TEXRECT now uses its tile argument (pause map path dots, pm_gbi.c), 3dsx +68 B (13049632 to 13049700). Party portrait cut at 30 px not found, 4 of 4 starts used, row V23 stays open with notes.
 FALLTHRU: fire_breath and peach_star_beam setup lists now end in gsSPBranchList (wrapper in src/effects/gfx/*.c). fxtest=49,112 draw.
 FX3f: aura fixed (pm_gbi.c slot 0 vertex load kept earlier slots when no triangle came between, golden not run). fxtest args fixed for 8 effects, new log line fxtest: live N. Open row FX3g: 13, 14, 11, 9, 7. 8 of 8 starts used.
+FX3g: shape_spell fixed (pm_gbi.c binds the whole T mask period when the SetTileSize window is shorter). Golden toad yard 0.00 percent. Open row FX3h: 14, 11, 9, 7. Emote fxtest edit built, not shot.

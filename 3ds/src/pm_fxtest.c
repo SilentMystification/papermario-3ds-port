@@ -26,6 +26,7 @@ static Npc* fx_npc;
 
 /* FX3f: lil_oink draws only the pigs a script sets visible (mac_03 LoadLilOinks): show one. */
 static void fxt_lil_oink(void);
+/* FX3g: emote follows the player (PTR_LIST_END), the first NPC of the map was off screen. */
 /* E(name, call). Names follow src/effects/<name>.c. */
 #define FXLIST(E) \
 E(big_smoke_puff, fx_big_smoke_puff(X, Y, Z)) \
@@ -39,7 +40,7 @@ E(footprint, fx_footprint(X, Y - 25.0f, Z, 0, 0)) \
 E(floating_flower, fx_floating_flower(0, X, Y, Z, 100)) \
 E(snowflake, fx_snowflake(X, Y, Z, 60)) \
 E(star, fx_star(FX_STAR_LARGE_BOUNCING, X, Y, Z, X + 20, 0, Z, 10)) \
-E(emote, if (fx_npc) fx_emote(EMOTE_EXCLAMATION, fx_npc, 0, fx_npc->collisionHeight, 1.0f, 2.0f, -20.0f, 15, &oe)) \
+E(emote, fx_emote(EMOTE_EXCLAMATION, (Npc*)PTR_LIST_END, 0, 40.0f, 1.0f, 2.0f, -20.0f, 15, &oe)) \
 E(sparkles, fx_sparkles(0, X, Y, Z, 10)) \
 E(shape_spell, fx_shape_spell(0, X, Y, Z, X + 60, Y + 40, Z, 30)) \
 E(gather_energy_pink, fx_gather_energy_pink(0, X, Y, Z, 1.0f, 60)) \

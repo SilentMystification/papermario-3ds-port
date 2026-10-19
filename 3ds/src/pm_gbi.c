@@ -84,7 +84,7 @@ static int tex_on;
 static const void* timg;
 static unsigned timg_fmt, timg_siz;
 static int timg_stride;
-static int ld_valid, ld_x, ld_y; /* last LoadTile window, in 8-bit texels of the source image */
+static int ld_valid, ld_x, ld_y, ld_h; /* last LoadTile window, in 8-bit texels of the source image */
 /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
  * the image that was loaded to its TMEM address, not the image of the load that came last. */
 static struct { unsigned tmem; const void* img; int stride, x, y; } ldrec[4];
@@ -2024,6 +2024,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 ldrec[k].x = (int)((w0 >> 12) & 0xfff) >> 2; ldrec[k].y = (int)(w0 & 0xfff) >> 2;
             }
             ld_y = (int)(w0 & 0xfff) >> 2;
+            ld_h = (((int)(w1 & 0xfff) - (int)(w0 & 0xfff)) >> 2) + 1;
             break;
         case G_LOADTLUT:
             tlut = timg;
@@ -2145,6 +2146,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int y0 = ult >> 2;
             int w = ((lrs - uls) >> 2) + 1;
             int h = ((lrt - ult) >> 2) + 1;
+            /* FX3f: the RDP reads TMEM row (t - SetTileSize ult) wrapped by the T mask. A window shorter than the mask period (shape_spell:
+             * 65 rows of a 256 row image, ult 256) reads rows outside the window, so the whole period must be bound. */
+            if (tile_wrap[0][3] && (tile_wrap[0][1] & 3) && ld_valid) {
+                int per = 1 << tile_wrap[0][3];
+                if (per > h && per <= 256 && ld_h >= per) h = per;
+            }
             int stride = timg_stride > w ? timg_stride : w;
             int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
             const u8* src = (const u8*)timg;
