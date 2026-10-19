@@ -69,6 +69,7 @@ def run_all(sel):
         meta = json.load(open(META))
     todo = list(sel)
     while todo:
+        tail, todo = todo[40:], todo[:40]  # the game reads 255 characters of switches: at most 40 effects per start
         rc, names, shots, spawned, nolog = run_chunk(todo)
         meta['rc'].append([todo[0], todo[-1], rc])
         for i, nm in names.items():
@@ -93,9 +94,9 @@ def run_all(sel):
                     meta['names'][str(bad)] = n1[bad]
                 else:
                     meta['status'][str(bad)] = 'crash alone'
-            todo = [i for i in rest if i > bad]
+            todo = [i for i in rest if i > bad] + tail
         else:
-            todo = []
+            todo = tail
         json.dump(meta, open(META, 'w'), indent=1)
     return meta
 
@@ -140,7 +141,7 @@ def analyse(base, shot):
 
 
 def upright(im):
-    return im.transpose(Image.ROTATE_90).resize((200, 120))
+    return im.transpose(Image.ROTATE_90)
 
 
 def report():
@@ -168,15 +169,15 @@ def report():
         rows.append((i, nm, st, (drew, ch, black, blk, zc, area, edges, dense, solid)))
     # contact sheets
     for k in range(0, len(rows), 12):
-        sheet = Image.new('RGB', (1200, 4 * 134), (30, 30, 30))
+        sheet = Image.new('RGB', (3 * 800, 4 * 254), (30, 30, 30))
         d = ImageDraw.Draw(sheet)
         for j, (i, nm, st, r) in enumerate(rows[k:k + 12]):
-            cx, cy = (j % 3) * 400, (j // 3) * 134
+            cx, cy = (j % 3) * 800, (j // 3) * 254
             d.text((cx + 4, cy + 1), '%d %s' % (i, nm), fill=(255, 255, 0))
             for q, ph in enumerate(('a', 'b')):
                 f = os.path.join(RAW, '%03d_%s_%s.ppm' % (i, nm, ph))
                 if os.path.exists(f):
-                    sheet.paste(upright(load(f)), (cx + q * 200, cy + 14))
+                    sheet.paste(upright(load(f)), (cx + q * 400, cy + 14))
         sheet.save(os.path.join(OUT, 'sheet_%d.png' % (k // 12 + 1)))
     L = ['# FX1 effect table', '',
          'Made by `python 3ds/tools/fxtest_report.py run all` (game switch `fxtest=all` with `shots`, preset toad, player position, 44 frame slot per effect).',
@@ -206,7 +207,7 @@ if __name__ == '__main__':
     if sys.argv[1] == 'run':
         arg = sys.argv[2] if len(sys.argv) > 2 else 'all'
         total = len(json.load(open(META))['names']) if False else None
-        sel = list(range(FXN)) if arg == 'all' else [int(x) for x in arg.split(',')]
+        sel = list(range(FXN)) if arg == 'all' else [i for x in arg.split(',') for i in range(int(x.split('-')[0]), int(x.split('-')[-1]) + 1)]
         if arg == 'all' and os.path.exists(META):
             os.remove(META)
         run_all(sel)

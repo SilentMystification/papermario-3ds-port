@@ -523,3 +523,27 @@
 13:30 V24 star rainbow: palette words are big-endian in memory, blend math swapped. PAL_MEM added. V25 sync_render in texrect no effect, open
 14:20 H06f sweep: one hit only (7B440, fixed in V26). golden battle ok, intro 11 percent diff (RNG, older golden)
 15:10 V25 fixed: 2D rects blended by combiner alpha whatever the blender. golden toad ok, title old frame had the ghost, pause1 2.3 percent unchecked
+11:33 V23 start 1 of 4: party tab v23log=258, expect 2 min
+11:36 V23 start 2 of 4: box chunk log, expect 2 min
+11:38 V23 start 2 of 4: box chunk log, expect 2 min
+11:42 V23 start 3 of 4: skip frame box chunks (v23skip), expect 2 min
+11:45 V23 start 4 of 4: solid red fill in place of the portrait strips (v23solid), expect 2 min
+11:49 V23 budget used, cause narrowed to GPU scissor/depth stage, no fix
+11:51 FX2a start 1 of 4: offdump=436 fxtest=27 shots, expect 2 min
+11:55 FX2a start 2 of 4: fx2alog t1_fold values at frames 436 437, expect 2 min
+11:56 FX2a start 3 of 4: warp=omo_14:0 darkness check + shots, expect 2 min
+11:59 FX2a start 4 of 4: warp=omo_14:0 offdump=200 shots, expect 2 min
+12:00 FX2a budget used: scroll ok, flame still block, darkness suspect
+12:01 F07-7 build and one start: wide fast preset=toad battle shots, expected 90 s
+12:02 F07-7 battle fade edges ok (edge columns equal centre). start 2: golden toad, expected 2 min
+12:04 F07-7 golden toad wide off 0 diff. start 3: wide omo_14 darkness, 30 s
+12:04 F07-7 done, moved
+12:05 FX3b start 1: fxtest=63 shots, 60 s
+12:06 FX3b done, no code change
+12:06 FX3a start 1: fxtest_report run 80 effects in one chunk, expected 10 to 25 min
+12:11 FX3a start 4: 80 effects in one run, switch buffer raised to 1023, expected 15 min
+12:12 FX3a budget used, step 1 and switch buffers done, sweep open
+12:12 FX3c start 1: fxtest=93 shots, 60 s
+12:15 FX3c start 2 after reverting the 1024 buffers (boot crash in _svfprintf_r): fxtest=93 shots, 60 s
+12:17 FX3c findings: ENV blue, signed form INEXACT, no code. Buffers reverted, fxtest_report splits 40 per start
+12:17 C-O3DS row added, blocked on which key is Z

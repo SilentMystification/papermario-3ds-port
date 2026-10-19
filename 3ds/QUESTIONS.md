@@ -47,3 +47,10 @@ V24 (2026-10-19): the PAL_MEM sites in src/battle/actor_rendering.c (dark, fear,
 V24b (2026-10-19): BUDGET, V24 used 4/4 (golden battle took the last one). Switch btlstatus=poison|paralyze|static|dizzy is built (pm_warp.c) and not run. Needs 1 start: PM_ROW=V24 powershell -File 3ds/run_azahar.ps1 -Turbo -Smoke -FaultStop -Debug "fast preset=toad battle btlstatus=poison smokeframes=320 shots shotwin=300:3", then look at the Goomba: poison palette is a green tint, no rainbow.
 
 V25 (2026-10-19): golden title.png holds the ghost bug (dim dome). Update it with --update after the user agrees. golden pause1 differs 2.3 percent after the rectangle blend fix, look at it by eye first.
+V23 (2026-10-19): BUDGET 4/4 used. The party portrait cut is not a texture fault: a solid red fill of the strip rect is cut at the same x. Needs 1 start to log the scissor and depth state at the flush. Details in the V23 row. No user decision needed.
+
+FX2a (2026-10-19): BUDGET 4/4 used (third budget). Noise scroll works. Flame is still a red block (slot 9 nearly white). The darkness stencil at omo_14 frame 200 may be a regression (hard lit rectangle). Needs 2 starts. No user decision needed.
+
+FX3a (2026-10-19): BUDGET 4/4 used. Sweep of 80 effects not run. Cause found: switch buffers of 1024 crashed the boot (_svfprintf_r, PC 0), reverted. fxtest_report.py now splits into 40 effects per start (2 starts needed). No user decision.
+
+C-O3DS (2026-10-19): the decision names Z, but the O3DS has only L and R as shoulder keys, and both give N64 Z now. Which physical 3DS key is Z on the O3DS (for example Select, X or Y, or L+R together)? Then R+Z = N64 R and L+Z = N64 L. Not coded. Needs the answer.
