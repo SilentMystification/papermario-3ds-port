@@ -426,6 +426,7 @@ void pm_warp_tick(unsigned frame) {
         s32 w = get_msg_width((s32)MessagePlural, 0);
         pm_log("ptrtest: resolve_npc(ptr) %s, partner npc %08x, get_msg_width(raw buffer) %d", (n != NULL && resolve_npc(NULL, (s32)n) == n) ? "ok" : "FAIL", (unsigned)n, (int)w);
     }
+    if (smoke_on && f == smoke_frames) pm_audio_hash_log();
     if (smoke_on && f == smoke_frames) pm_log("warp: smoke done (%d frames in the scene) t=%u ms", smoke_frames, pm_uptime_ms());
 }
 

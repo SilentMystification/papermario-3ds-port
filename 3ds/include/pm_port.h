@@ -89,6 +89,8 @@ int pm_au_thread_yield(void);
 void pm_au_thread_resume(void);
 unsigned pm_audio_retraces(void);
 unsigned pm_audio_pending(void);
+int pm_audio_lock(void);
+void pm_audio_hash_log(void);
 void pm_audio_tick(void);
 
 /* MS01: static data of a map is restored when the map is entered again (pm_mapdata.c, map_restore_table.c is generated). */

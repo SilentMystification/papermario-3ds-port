@@ -8,6 +8,14 @@
 
 static int ready;
 static unsigned rate = 32000;
+
+/* AU1a: switch audiohash = FNV-1a of every PCM buffer that pm_audio_post receives (before the full queue drop), one log line per 120 posts
+ * and one at smoke end. Switch audiolock = exactly 2 ticks per drawn step and osAiGetLength 0, so the hash does not depend on the clock. */
+int pm_audio_lock(void) { static int v = -1; if (v < 0) v = pm_debug_has("audiolock"); return v; }
+static unsigned au_hash = 2166136261u, au_posts, au_dropped, au_underrun;
+void pm_audio_hash_log(void) {
+    if (pm_debug_has("audiohash")) pm_log("audiohash posts %u fnv %08x dropped %u underrun %u (final)", au_posts, au_hash, au_dropped, au_underrun);
+}
 static ndspWaveBuf wb[SLOTS];
 static s16* data[SLOTS];
 
@@ -48,6 +56,11 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
         if (ready) ndspChnSetRate(0, (float)rate);
     }
     if (!pcm || bytes < 4) return;
+    if (pm_debug_has("audiohash")) {
+        const unsigned char* q = (const unsigned char*)pcm;
+        for (unsigned i = 0; i < bytes; i++) au_hash = (au_hash ^ q[i]) * 16777619u;
+        if (++au_posts % 120 == 0) pm_log("audiohash posts %u fnv %08x dropped %u underrun %u", au_posts, au_hash, au_dropped, au_underrun);
+    }
     if (!ready) pm_audio_init();
     if (!ready) return;
     {
@@ -71,7 +84,8 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
             break;
         }
     }
-    if (slot < 0) return;
+    if (slot < 0) { au_dropped++; return; }
+    if (pm_audio_pending() == 0) au_underrun++; /* nothing queued: the DSP ran dry before this post */
     if (bytes > CAP) bytes = CAP;
     bytes &= ~3u;
     memcpy(data[slot], pcm, bytes);
@@ -157,7 +171,7 @@ unsigned pm_audio_retraces(void) {
 /* Bytes of PCM that were posted and not played yet. This is what osAiGetLength reports. */
 unsigned pm_audio_pending(void) {
     unsigned n = 0;
-    if (!ready) return 0;
+    if (!ready || pm_audio_lock()) return 0;
     for (int i = 0; i < SLOTS; i++) {
         if (wb[i].status == NDSP_WBUF_QUEUED || wb[i].status == NDSP_WBUF_PLAYING) n += wb[i].nsamples;
     }

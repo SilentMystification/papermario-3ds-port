@@ -276,7 +276,7 @@ void pm_frame_loop(void) {
         if (pace_on) pace_stat(now, tick_hz, frame);
         if (!pm_debug_has("noaudio")) {
             PH_PUSH(PH_AUDIO);
-            for (unsigned n = pm_audio_retraces(); n; n--) { pm_audio_tick(); PH_ADD(C_ATICK, 1); pace_ticks++; }
+            for (unsigned n = pm_audio_lock() ? (draw ? 2u : 0u) : pm_audio_retraces(); n; n--) { pm_audio_tick(); PH_ADD(C_ATICK, 1); pace_ticks++; }
             PH_POP();
         }
         if (!draw) {
