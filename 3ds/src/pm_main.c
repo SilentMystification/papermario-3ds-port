@@ -302,6 +302,7 @@ void pm_frame_loop(void) {
             if (step_vb_ok) {
                 unsigned iv = vb - step_vb;
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
+                pm_interp_skip = iv > PM_VBLANKS_PER_STEP; /* F06-5 */
             }
             step_vb = vb;
             step_vb_ok = 1;

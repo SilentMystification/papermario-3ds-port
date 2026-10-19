@@ -1840,7 +1840,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
              * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
             if (img_role(1) == ROLE_CPUFILL) {
                 unsigned short* d = (unsigned short*)cimg;
-                pm_cfb_capture_prev(); /* the filter reads the last frame from the other frame buffer */
+                if (!pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only. the filter reads the last frame from the other frame buffer */
                 for (int y = uly; y <= lry && y < 240; y++)
                     for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
                 break;
@@ -1939,7 +1939,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (!w1 && zslot_on && ((w0 >> 19) & 3) == 2) timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
             imglog("settimg", timg, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1, -1);
             /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
-            if (timg && pm_is_cfb(timg) && !pm_is_cur_cfb(timg)) pm_cfb_capture_prev(); /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
+            if (timg && pm_is_cfb(timg) && !pm_is_cur_cfb(timg) && !pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
             timg_fmt = (w0 >> 21) & 7;
             timg_siz = (w0 >> 19) & 3;
             timg_stride = (int)(w0 & 0xfff) + 1;
