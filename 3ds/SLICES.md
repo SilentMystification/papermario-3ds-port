@@ -31,4 +31,3 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] F11-6 | LATER. Select menu at any time on the bottom screen (needs the user, D2). Plan docs/plans/F11.md
 
 [ ] B7 | (haiku) after S28, O3DS measure run. Phase times, grabs and splits per frame, VRAM `mem` line, swirl capture time, F03 query time. Table only. Full text: docs/plans/B7.md | `push-o`, `pull-o`, `phase_report.py`
-[ ] V22b | Shot of effects flashing_box_shockwave, huff_puff_breath, ice_pillar, merlin_house_stars, purple_ring (fxtest) and the stencil overlay D_8014EA48 | each draws all triangles, no black wedge
