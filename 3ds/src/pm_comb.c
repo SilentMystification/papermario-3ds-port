@@ -12,7 +12,7 @@
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4 };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
 typedef struct { unsigned char func, scale; Term t[3]; unsigned char inv[3]; } Sk;
 
@@ -79,7 +79,11 @@ static Term term_a(int slot, unsigned sel, int cyc2, int t1only) {
 
 static int hold_alpha; /* the colour group of this cycle needs the cycle 1 alpha in its first stage: the alpha group goes last */
 
-/* Lower one group. Returns the stage count (1 or 2), or a negative reason. */
+static int cur_grp, fold_off; /* group being lowered (0 colour); fold_off: build without the folded form */
+static unsigned char fold_t[6]; /* B, C, D of the folded colour group: n and alpha flag each */
+static int is_k(Term t) { return t.n == TN_ZERO || t.n == TN_ONE || t.n == TN_PR || t.n == TN_EN || t.n == TN_PLOD; }
+
+/* Lower one group. Returns the stage count (1 to 4), or a negative reason. */
 static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
     Term prv = TM(TN_PRV, 0);
     Term z = TM(TN_ZERO, 0);
@@ -126,6 +130,16 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
         out[1] = mk(PM_F_SUBTRACT, D, prv, prv, 0, 0, 0);
         return 2;
     }
+    if (!cur_grp && !fold_off && !fold_t[2] && !is_k(A) && is_k(B) && is_k(C) && is_k(D)) {
+        /* H06b3: (A - B) * C + D with B, C, D constants (hos_00 (T0 - ENV) * ENVA + PRIM) is C * A + K with K = D - B * C known at the draw.
+         * The PICA clamps A - B at 0, the RDP keeps it negative. K is split into Kp and Kn (one of them is 0 per channel): A * C, + Kp, - Kn.
+         * Each stage reads one constant, an exact result for every A. */
+        fold_t[0] = B.n; fold_t[1] = B.a; fold_t[2] = C.n; fold_t[3] = C.a; fold_t[4] = D.n; fold_t[5] = D.a;
+        out[0] = mk(PM_F_MODULATE, A, TM(TN_FC, 0), TM(TN_FC, 0), 0, 0, 0);
+        out[1] = mk(PM_F_ADD, prv, TM(TN_FKP, 0), TM(TN_FKP, 0), 0, 0, 0);
+        out[2] = mk(PM_F_SUBTRACT, prv, TM(TN_FKN, 0), TM(TN_FKN, 0), 0, 0, 0);
+        return 3;
+    }
     if (C.n == TN_CMB || D.n == TN_CMB) return -3;
     out[0] = mk(PM_F_SUBTRACT, A, B, B, 0, 0, 0);
     if (isz(D)) out[1] = mk(PM_F_MODULATE, prv, C, C, 0, 0, 0);
@@ -140,12 +154,14 @@ static int add_cycle(Seq* r, Seq* a, int start_r, int start_a, Term v[2][4]) {
     int n;
     int nr;
     hold_alpha = 0;
+    cur_grp = 0;
     n = lower(v[0][0], v[0][1], v[0][2], v[0][3], o);
     if (n < 0) return n;
     if (start_r + n > 6) return -1;
     for (int i = 0; i < n; i++) r->s[start_r + i] = o[i];
     r->n = start_r + n;
     nr = n;
+    cur_grp = 1;
     n = lower(v[1][0], v[1][1], v[1][2], v[1][3], o);
     if (n < 0) return n;
     if (hold_alpha && n < nr) { /* stages before the alpha group only pass the alpha */
@@ -179,6 +195,9 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     case TN_PK: name = PM_NM_PK; break;
     case TN_HALF: name = PM_NM_HALF; break;
     case TN_K4: name = PM_NM_K4; break;
+    case TN_FC: name = PM_NM_FC; break;
+    case TN_FKP: name = PM_NM_FKP; break;
+    case TN_FKN: name = PM_NM_FKN; break;
     case TN_KEY: name = PM_NM_KEYC; break;
     case TN_KS: name = PM_NM_KEYS; break;
     case TN_EN: name = PM_NM_ENV; break;
@@ -228,6 +247,7 @@ static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan
     memset(&R, 0, sizeof R);
     memset(&A, 0, sizeof A);
     memset(&al, 0, sizeof al);
+    memset(fold_t, 0, sizeof fold_t);
     s[0][0] = (w0 >> 20) & 0xf; s[0][1] = (w1 >> 28) & 0xf; s[0][2] = (w0 >> 15) & 0x1f; s[0][3] = (w1 >> 15) & 7;
     s[0][4] = (w0 >> 12) & 7;   s[0][5] = (w1 >> 12) & 7;   s[0][6] = (w0 >> 9) & 7;      s[0][7] = (w1 >> 9) & 7;
     s[1][0] = (w0 >> 5) & 0xf;  s[1][1] = (w1 >> 24) & 0xf; s[1][2] = w0 & 0x1f;          s[1][3] = (w1 >> 6) & 7;
@@ -277,13 +297,21 @@ static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan
     }
     out->bufname = al.buf;
     out->vtxname = al.vtx;
+    memcpy(out->fold, fold_t, sizeof fold_t);
     return 0;
 }
 
 /* Reason 4 at stage 0 can come from the buffer colour, which stage 0 cannot read: try again with one passing stage first. */
-int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
+static int build_lead(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     int rc = build(w0, w1, two, t1only, 0, out);
     return rc == 4 ? build(w0, w1, two, t1only, 1, out) : rc;
+}
+int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
+    int rc;
+    fold_off = 0;
+    rc = build_lead(w0, w1, two, t1only, out);
+    if (rc && fold_t[2]) { fold_off = 1; rc = build_lead(w0, w1, two, t1only, out); fold_off = 0; } /* the folded form needs 1 stage more: out of stages or constants, use the plain form */
+    return rc;
 }
 
 static unsigned pm_k4;
@@ -298,8 +326,35 @@ static unsigned pk_colour(unsigned prim, unsigned key) {
     return o;
 }
 
-static unsigned name_colour(int n, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
+static void unp(unsigned c, float o[4]);
+static float k_val(unsigned n, unsigned a, int ch, const float pr[4], const float en[4], unsigned plod) {
     switch (n) {
+    case TN_ONE: return 1.f;
+    case TN_PR: return pr[a ? 3 : ch];
+    case TN_EN: return en[a ? 3 : ch];
+    case TN_PLOD: return (float)plod / 255.f;
+    default: return 0.f;
+    }
+}
+/* H06b3: the constants of the folded form. kind 0 is C, 1 is Kp = max(D - B * C, 0), 2 is Kn = max(B * C - D, 0), per colour channel. */
+static unsigned fold_colour(const PmPlan* p, int kind, unsigned prim, unsigned env, unsigned plod) {
+    float pr[4], en[4];
+    unsigned o = 0;
+    unp(prim, pr); unp(env, en);
+    for (int ch = 0; ch < 4; ch++) {
+        int c3 = ch < 3 ? ch : 0;
+        float b = k_val(p->fold[0], p->fold[1], c3, pr, en, plod), c = k_val(p->fold[2], p->fold[3], c3, pr, en, plod), d = k_val(p->fold[4], p->fold[5], c3, pr, en, plod);
+        float k = d - b * c, v = kind == 0 ? c : kind == 1 ? (k > 0.f ? k : 0.f) : (k < 0.f ? -k : 0.f);
+        o = o << 8 | (unsigned)(v * 255.f + .5f);
+    }
+    return o;
+}
+
+static unsigned name_colour(const PmPlan* p, int n, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
+    switch (n) {
+    case PM_NM_FC: return fold_colour(p, 0, prim, env, plod);
+    case PM_NM_FKP: return fold_colour(p, 1, prim, env, plod);
+    case PM_NM_FKN: return fold_colour(p, 2, prim, env, plod);
     case PM_NM_KEYC: return key;
     case PM_NM_KEYS: return keys;
     case PM_NM_PK: return pk_colour(prim, key);
@@ -313,9 +368,9 @@ static unsigned name_colour(int n, unsigned prim, unsigned env, unsigned plod, u
 }
 
 void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
-    for (int i = 0; i < p->n; i++) p->st[i].constant = name_colour(p->st[i].cname, prim, env, plod, key, keys);
-    p->buf = name_colour(p->bufname, prim, env, plod, key, keys);
-    p->vtx = (p->vtxname == PM_NM_SHADE) ? 0 : name_colour(p->vtxname, prim, env, plod, key, keys);
+    for (int i = 0; i < p->n; i++) p->st[i].constant = name_colour(p, p->st[i].cname, prim, env, plod, key, keys);
+    p->buf = name_colour(p, p->bufname, prim, env, plod, key, keys);
+    p->vtx = (p->vtxname == PM_NM_SHADE) ? 0 : name_colour(p, p->vtxname, prim, env, plod, key, keys);
 }
 
 static void unp(unsigned c, float o[4]) {

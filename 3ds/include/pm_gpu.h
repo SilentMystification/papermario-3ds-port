@@ -21,7 +21,7 @@ void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
 enum { PM_S_TEX0, PM_S_VTX, PM_S_CONST, PM_S_PREV, PM_S_BUF, PM_S_TEX1 };
 enum { PM_O_C, PM_O_1MC, PM_O_A, PM_O_1MA };
 enum { PM_F_REPLACE, PM_F_MODULATE, PM_F_ADD, PM_F_SUBTRACT, PM_F_INTERP, PM_F_MULADD };
-enum { PM_NM_NONE, PM_NM_ZERO, PM_NM_PRIM, PM_NM_ENV, PM_NM_PLOD, PM_NM_SHADE, PM_NM_PK, PM_NM_KEYC, PM_NM_KEYS, PM_NM_HALF, PM_NM_K4 }; /* PK: PRIM - CENTER, B6 */
+enum { PM_NM_NONE, PM_NM_ZERO, PM_NM_PRIM, PM_NM_ENV, PM_NM_PLOD, PM_NM_SHADE, PM_NM_PK, PM_NM_KEYC, PM_NM_KEYS, PM_NM_HALF, PM_NM_K4, PM_NM_FC, PM_NM_FKP, PM_NM_FKN }; /* PK: PRIM - CENTER, B6 */
 typedef struct {
     unsigned char src[3], op[3], func; /* one channel group of one stage */
     unsigned char scale; /* 0 or 1: x1, 2 or 4: the PICA stage scale (result x scale, then clamp) */
@@ -37,6 +37,7 @@ typedef struct {
     unsigned char bufname, vtxname; /* PM_NM_*: the buffer colour, and what the vertex colour carries */
     unsigned buf, vtx;   /* RGBA, from the names */
     unsigned char uses_tex, uses_sha, uses_tex1; /* a stage reads TEXTURE0, the vertex alpha as shade alpha, TEXTURE1 */
+    unsigned char fold[6]; /* H06b3: B, C, D of the folded form (TN_* and alpha flag), see pm_comb.c; fold[2] is 0 when unused */
 } PmPlan;
 void pm_gpu_set_plan(const PmPlan* p);
 /* Plan with TEXTURE1: its coordinates are uv * (sx, sy) + (ox, oy). The caller has made the unit 1 texture (pm_tex_set_aux). */
@@ -59,8 +60,8 @@ void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal);
 void pm_gpu_set_prim(unsigned rgba);
 /* V06: a last stage mixes the colour to rgb of `rgba` by its alpha (the RDP blender with the blend or fog colour and the fog alpha). */
 void pm_gpu_set_mix(int on, unsigned rgba);
-void pm_gpu_set_env(unsigned rgba); /* combine mode 5: lerp from ENV (vertex colour) to PRIM by texel */
 void pm_gpu_set_memblend(int on); /* FX2a: blender B is the memory alpha */
+void pm_gpu_set_env(unsigned rgba); /* combine mode 5: lerp from ENV (vertex colour) to PRIM by texel */
 /* Draw the current batch now. The next vertices belong to a different texture. */
 void pm_gpu_flush(void);
 /* N64 pixels, y down. Clipped to the 320x240 picture inside the 400-wide target. */
