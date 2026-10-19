@@ -340,3 +340,7 @@
 20:05 V15 build ok, 3dsx +148 B. golden toad yard battle, expect 3 min
 20:07 V15 golden toad yard battle all DIFF (12.1, 7.8, 8.9 pct px). Battle sheet old|new: smoother, no seams. battle.png updated from the shot, toad and yard need --update (budget)
 20:07 V15 done, row moved
+20:08 FX1b start full sweep, expect 20 min
+20:14 FX1b first start timed out at 300 s after effect 79 (limit in script). Second start for 80 to 126, expect 5 min
+20:16 FX1b second start done, 127 of 127, no crash. 6 sheets read. 7 new rows FX2a to FX2g in SLICES.md, table updated
+20:16 FX1b done, row moved
