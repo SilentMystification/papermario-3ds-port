@@ -1,6 +1,7 @@
 #include "common.h"
 #include "camera.h"
 
+extern int pm_wide; /* F07-2 */
 s32 gCurrentCameraID = CAM_DEFAULT;
 
 CameraControlSettings* test_ray_zone(f32 posX, f32 posY, f32 posZ, Collider** zone) {
@@ -393,7 +394,7 @@ void apply_constraints_to_lead_amount(Camera* camera) {
         ) {
             if (camera->needsInitialConstrainDir) {
                 guPerspectiveF(camera->mtxPerspective, &camera->perspNorm, camera->vfov,
-                    (f32)camera->viewportW / (f32)camera->viewportH, camera->nearClip, camera->farClip, 1.0f);
+                    (f32)camera->viewportW / (f32)camera->viewportH * (pm_wide && (camera == &gCameras[CAM_DEFAULT] || camera == &gCameras[CAM_BATTLE]) ? 1.25f : 1.0f), camera->nearClip, camera->farClip, 1.0f);
                 guMtxCatF(camera->mtxViewPlayer, camera->mtxPerspective, camera->mtxPerspective);
                 transform_point(camera->mtxPerspective, camera->targetPos.x, camera->targetPos.y, camera->targetPos.z,
                     1.0f, &X, &Y, &Z, &W);

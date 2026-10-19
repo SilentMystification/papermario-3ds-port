@@ -4,6 +4,7 @@
 #include "hud_element.h"
 #include "camera.h"
 
+extern int pm_wide; /* F07-2 */
 void render_models(void);
 void execute_render_tasks(void);
 void render_item_entities(void);
@@ -62,7 +63,7 @@ void update_cameras(void) {
                 create_camera_leadplayer_matrix(cam);
             }
 
-            guPerspectiveF(cam->mtxPerspective, &cam->perspNorm, cam->vfov, (f32) cam->viewportW / (f32) cam->viewportH, (f32) cam->nearClip, (f32) cam->farClip, 1.0f);
+            guPerspectiveF(cam->mtxPerspective, &cam->perspNorm, cam->vfov, (f32) cam->viewportW / (f32) cam->viewportH * (pm_wide && i <= CAM_BATTLE ? 1.25f : 1.0f), (f32) cam->nearClip, (f32) cam->farClip, 1.0f);
 
             if (cam->flags & CAMERA_FLAG_SHAKING) {
                 guMtxCatF(cam->mtxViewShaking, cam->mtxPerspective, cam->mtxPerspective);

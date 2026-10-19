@@ -368,3 +368,7 @@
 23:59 F07-1 built, 3dsx +600 bytes (13082696 to 13083296). Azahar start 1: wide shot, about 2 min
 23:59 F07-1 wide shot ok: columns 0-39 and 360-399 have 5000 of 9600 non-black pixels each. Azahar start 2: golden toad, about 2 min
 00:00 F07-1 golden toad ok 0.00 percent, max 0, wide off. 2 Azahar starts. 3dsx +600 bytes (13082696 to 13083296). Not tested: yard, 3D aspect, UI, frame grabs (F07-2 to F07-5).
+00:01 F07-2 edits: cam_main.c, cam_math.c aspect x1.25, model.c cull +-1.25 with pm_wide. Build next
+00:03 F07-2 built, 3dsx +212 bytes (13083296 to 13083508). Azahar start 1 wide shot done
+00:04 F07-2 wide shot ok: Mario same size, scene wider. Azahar start 2: golden toad wide off, about 2 min
+00:04 F07-2 golden toad ok 0.00 percent, wide off. 2 Azahar starts. 3dsx +212 bytes (13083296 to 13083508). Not tested: 60-frame walk pop-in, mac_00, other cull sites (effects use own aspect), UI (F07-3).

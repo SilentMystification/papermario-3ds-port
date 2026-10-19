@@ -2783,6 +2783,8 @@ void render_models(void) {
     ModelBoundingBox* boundingBox;
     ModelTransformGroup* transformGroup;
     f32 xComp, yComp, zComp;
+    extern int pm_wide;
+    f32 wsCullX = pm_wide ? 1.25f : 1.0f; /* F07-2 */
 
     s32 distance;
     s32 notVisible;
@@ -2801,7 +2803,7 @@ void render_models(void) {
     xComp = outX * outW; \
     yComp = outY * outW; \
     zComp = outZ * outW; \
-    if (zComp > -1.0f && xComp >= -1.0f && xComp <= 1.0f && yComp >= -1.0f && yComp <= 1.0f) { \
+    if (zComp > -1.0f && xComp >= -wsCullX && xComp <= wsCullX && yComp >= -1.0f && yComp <= 1.0f) { \
         break; \
     }
 
