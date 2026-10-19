@@ -436,3 +436,5 @@
 02:16 V18V20 start 2: same with shots shotwin=3440:70 (run 1 had no shots switch; cull log is monotone, no toggle), expect 3 min
 02:19 V18V20 start 3: preset=toad fast shots demoscene=0 (nok_12 demo, bridge), pm_warp.c demoscene switch added, expect 3 min
 11:40 V22 done: build links, 3dsx 13094436 to 13094692 (+256, lane build, includes other uncommitted edits). Azahar not run.
+02:24 V18V20 start 4: preset=toad fast shots shotwin=270:120 demoscene=13 (nok_12 demo after bridge, dark block on tree seen in start 3 shot 115), expect 2 min
+02:25 V18V20 done: all three stay open with evidence in SLICES rows. 4 starts used. Cull log removed. demoscene switch added. 3dsx 13094436 to 13094788 (with the temp log, about +100 without).

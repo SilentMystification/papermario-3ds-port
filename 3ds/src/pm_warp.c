@@ -276,10 +276,11 @@ static void battle_hooks(unsigned f) {
         set_battle_stage(stage);
         load_battle(formation);
     }
-    if (f == at && pm_debug_has("demobattle")) {
-        pm_log("debug demobattle: enter GAME_MODE_DEMO at demo scene 1 (battle index 0)");
+    if (f == at && (pm_debug_has("demobattle") || pm_debug_value("demoscene", v, sizeof v))) { /* demoscene=<n>: any real demo scene (index in DemoScenes of src/state_demo.c; 0 nok_12, 5 jan_04 is unchecked) */
+        s32 ds = pm_debug_has("demobattle") ? 1 : atoi(v);
+        pm_log("debug demo: enter GAME_MODE_DEMO at demo scene %d", (int)ds);
         gGameStatusPtr->demoState = DEMO_STATE_ACTIVE;
-        gGameStatusPtr->nextDemoScene = 1;
+        gGameStatusPtr->nextDemoScene = ds;
         set_game_mode(GAME_MODE_DEMO);
     }
 }
