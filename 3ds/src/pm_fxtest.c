@@ -194,9 +194,32 @@ static void clear_all(void) {
     }
 }
 
+extern EffectInstance* gEffectInstances[96];
 void pm_fxtest_tick(unsigned f) {
     static char sw[300];
     int slot, k, i, n;
+    { /* switch fxlist=<first frame>:<count>: every 4th frame in the window, one log line: live effect instances by name with a count */
+        static int f0 = -2, f1;
+        extern unsigned pm_frame_count(void);
+        char v[24];
+        if (f0 == -2) { if (pm_debug_value("fxlist", v, sizeof v) && sscanf(v, "%d:%d", &f0, &f1) == 2) f1 += f0; else f0 = -1; }
+        unsigned fc = pm_frame_count();
+        static unsigned last = 0xffffffffu;
+        if (f0 >= 0 && (int)fc >= f0 && (int)fc < f1 && fc % 4 == 0 && fc != last) {
+            int cnt[FXT_COUNT] = {0};
+            char line[400];
+            int ln = 0;
+            last = fc;
+            for (i = 0; i < 96; i++) {
+                EffectInstance* e = gEffectInstances[i];
+                if (e && e->shared && e->shared->effectIndex >= 0 && e->shared->effectIndex < FXT_COUNT) cnt[e->shared->effectIndex]++;
+            }
+            ln = snprintf(line, sizeof line, "fxlist f%u:", fc);
+            for (i = 0; i < FXT_COUNT && ln < (int)sizeof line - 40; i++)
+                if (cnt[i]) ln += snprintf(line + ln, sizeof line - (size_t)ln, " %s x%d", fx_names[i], cnt[i]);
+            pm_log("%s", line);
+        }
+    }
     if (nsel < 0) {
         char* p;
         nsel = 0;

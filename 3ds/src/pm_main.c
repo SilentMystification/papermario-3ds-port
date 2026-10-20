@@ -276,6 +276,10 @@ void pm_frame_loop(void) {
     int step_vb_ok = 0;
     u64 fps_mark = 0;
     float fps = 0.f;
+    /* HUD2: application memory region (free and total, MB) and the APT commit limit (MB). The free value is read once per second with the fps. */
+    extern unsigned pm_mem_commit_limit_mb(void);
+    const unsigned reg_total = (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20), lim_mb = pm_mem_commit_limit_mb();
+    unsigned reg_free = (unsigned)(osGetMemRegionFree(MEMREGION_APPLICATION) >> 20);
     float frame_ms = 0.f;
     const u64 tick_hz = SYSCLOCK_ARM11;
     float stat_ms = 0.f;
@@ -346,6 +350,7 @@ void pm_frame_loop(void) {
             presents = 0;
             fps_mark = now;
             have_fps = 1;
+            reg_free = (unsigned)(osGetMemRegionFree(MEMREGION_APPLICATION) >> 20);
         }
         if (frame % 3600 == 0) {
             pm_mem_log("tick");
@@ -379,13 +384,16 @@ void pm_frame_loop(void) {
         if (frame == 300 && pm_debug_has("crashtest")) __asm__ volatile(".word 0xe7f000f0"); /* class E: deliberate undefined instruction on the game thread */
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
-            char top[40];
+            char top[48];
             char bot[40];
             /* CPULIM-UI: line 1 = fps, app core 1 time limit the game set (? when the last APT call failed), 3DS mode, build */
             char lim[8];
             if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "L%d?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "L%d", pm_cpu_game_value);
-            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f %s %s #%s", fps, lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
-            else snprintf(top, sizeof(top), "FPS ... %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
+            /* HUD2: "FPS 29.8 L80 O3DS 96/96M C96M #861". R part = free/total application region, C = APT commit limit. At most 39 columns, the build text is cut last. */
+            char mem[24];
+            snprintf(mem, sizeof mem, "%u/%uM C%uM", reg_free, reg_total, lim_mb);
+            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f %s %s %s #%s", fps, lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
+            else snprintf(top, sizeof(top), "FPS ... %s %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
             if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast"))
                 snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
             else
