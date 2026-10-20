@@ -234,6 +234,7 @@ static int tri_since_vtx;
 static u8 vert_scr[64];
 static s16 vert_sx[64], vert_sy[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
+static unsigned char vert_cb[64]; /* DIP1: clip bits of vert_p, made once at G_VTX */
 static float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
 /* PO3a (switch po3a): counters for the go or no-go of PO3b. Matrix id = FNV-1a of the 16 bits of `combined` at each G_VTX. One log line per drawn frame. No rendering change. */
 static int po3a_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("po3a"); return v; }
@@ -390,6 +391,7 @@ static void set_leg(int m) { leg_mode = m; }
 static int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 static PmPlan cur_plan;
 static void sync_combine(void);
+static void sync_combine_work(void);
 static void sync_legacy(void) {
     unsigned cc;
     if (const_rgb_tex_alpha(&cc)) {
@@ -943,7 +945,29 @@ static Dec* decide(int two) {
 }
 
 static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
+static unsigned sc_sig; static int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
 static void sync_combine(void) {
+    {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
+         * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
+        unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
+                             (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
+        unsigned sg = 2166136261u;
+        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+        if (sc_ok && sg == sc_sig && !PMD("nodip2")) { GP_SET(5, 1); return; }
+        sc_sig = sg;
+        sc_ok = 0; /* set again below when the work is done */
+    }
+    sync_combine_work();
+    sc_ok = 1;
+    {   /* the work may change leg_mode (an input): the signature of the next call must start from the new value */
+        unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
+                             (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
+        unsigned sg = 2166136261u;
+        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+        sc_sig = sg;
+    }
+}
+static void sync_combine_work(void) {
     if (gp_on()) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
         static unsigned last_sig;
         unsigned parts[] = { comb_w0, comb_w1, omode_h, omode_l, prim, envc, (unsigned)aud_prim_lod, tile_fmt[0] * 4 + tile_siz[0], (unsigned)(tex_on | use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), geom };
@@ -1187,25 +1211,7 @@ static void draw_tri(unsigned w) {
     }
     off_screen_check();
     box_fold_sync();
-    if (audit_on()) comb_audit();
-    GP_LAP(GPL_A);
-    st_tri++;
-    if (geom & G_LIGHTING) st_lit++;
-    if (geom & G_FOG) st_fogg++;
-    if (geom & G_TEXTURE_GEN) st_tgen++;
-    {
-        unsigned bl = omode_l;
-        int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
-        unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
-        if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) st_fogb++;
-        if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) st_blc++;
-    }
-    GP_LAP(GPL_A);
-    ensure_tile(use_t1 ? 1 : 0);
-    GP_LAP(GPL_ENSURE);
-    dual_bind();
-    GP_LAP(GPL_DUAL);
-    int early = 0; /* PO3b2: reject and cull from the clip positions of PO2 alone, before any uv, colour or ClipV is built. Same tests, same order, same counters. */
+    int early = 0; /* PO3b2, DIP1: reject and cull from the clip positions of PO2 and the clip bits made at G_VTX, before the statistics, ensure_tile, dual_bind and any ClipV. Same tests and counters as before except the debug statistics (tris lit fog), which now count the triangles that pass. */
     if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
         const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
         early = 1;
@@ -1214,7 +1220,7 @@ static void draw_tri(unsigned w) {
             sample_x = (int)(a[0] / a[3] * 100.f);
             have_sample = 1;
         }
-        if (clip_bits4(a) & clip_bits4(b) & clip_bits4(c)) {
+        if (vert_cb[idx[0]] & vert_cb[idx[1]] & vert_cb[idx[2]]) {
             n_out++;
             GP_LAP(GPL_EARLY);
             return;
@@ -1238,6 +1244,28 @@ static void draw_tri(unsigned w) {
                 if (pw > 0.05f && q[k][0] >= -pw && q[k][0] <= pw && q[k][1] >= -pw && q[k][1] <= pw) n_keep++;
             }
         }
+    }
+    GP_LAP(GPL_EARLY);
+    if (audit_on()) comb_audit();
+    GP_LAP(GPL_A);
+    st_tri++;
+    if (geom & G_LIGHTING) st_lit++;
+    if (geom & G_FOG) st_fogg++;
+    if (geom & G_TEXTURE_GEN) st_tgen++;
+    {
+        unsigned bl = omode_l;
+        int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
+        unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
+        if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) st_fogb++;
+        if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) st_blc++;
+    }
+    GP_LAP(GPL_A);
+    ensure_tile(use_t1 ? 1 : 0);
+    GP_LAP(GPL_ENSURE);
+    dual_bind();
+    GP_LAP(GPL_DUAL);
+    if (early) {
+        const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
         if (a[3] > 0.05f && b[3] > 0.05f && c[3] > 0.05f && po3b_on()) { /* the raw path needs no ClipV */
             int fog = fogmix_on && (geom & G_FOG);
             if (!(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !fog && vert_ring[idx[0]] != GV_NONE && vert_ring[idx[1]] != GV_NONE && vert_ring[idx[2]] != GV_NONE &&
@@ -1552,6 +1580,7 @@ void pm_gbi_end_frame(void) {
         memset(gp_same, 0, sizeof gp_same); memset(gp_set, 0, sizeof gp_set);
         pm_gpu_gbiprof_report(300);
         { extern void pm_debug_report(unsigned); pm_debug_report(300); }
+        { extern void pm_tex_prof_report(unsigned); pm_tex_prof_report(300); }
         (void)nm;
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
@@ -1799,6 +1828,7 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     int cx0 = X0 < 0 ? 0 : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > 320 ? 320 : X1, cy1 = Y1 > 240 ? 240 : Y1;
     pm_gpu_flush();
     pm_gpu_set_combine(5);
+    sc_ok = 0; /* DIP2: pm_gpu holds a combine mode sync_combine did not set */
     for (int ys = cy0; ys < cy1; ys += 128) {
         for (int xs = cx0; xs < cx1; xs += 128) {
             int cw = cx1 - xs < 128 ? cx1 - xs : 128, ch = cy1 - ys < 128 ? cy1 - ys : 128;
@@ -1843,6 +1873,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     Gfx* pc = (Gfx*)list;
     Gfx* end = (nbytes >= 8) ? pc + nbytes / 8 : NULL;
     unsigned guard = 0;
+    sc_ok = 0; /* DIP2: a new display list starts with a full sync */
     if (!pc) return;
     dd_end();
     if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }
@@ -1954,6 +1985,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                         vert_p[v0 + i][1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
                         vert_p[v0 + i][2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
                         vert_p[v0 + i][3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+                        vert_cb[v0 + i] = (unsigned char)clip_bits4(vert_p[v0 + i]);
                         st_vx++;
                     }
                 }

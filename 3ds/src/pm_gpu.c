@@ -209,6 +209,7 @@ static int fl_line;
 typedef struct { const char* fn; int line; unsigned n, e; } FlCause; /* n = flush calls, e = calls that found an empty batch */
 static FlCause fl_tab[48];
 static int fl_nt;
+static int fl_prev_rect; static unsigned fl_rects, fl_consec; /* PG0: texture rectangles, and those that follow another with no other flush call between */
 static int fl_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
 static void fl_count(int empty) {
     for (int i = 0; i < fl_nt; i++) if (fl_tab[i].fn == fl_fn && fl_tab[i].line == fl_line) { fl_tab[i].n++; fl_tab[i].e += empty; return; }
@@ -225,13 +226,15 @@ void pm_gpu_gbiprof_report(unsigned frames) { /* the six most frequent causes si
         pm_log("gbiprof flush %s line %d calls per frame x100 %u empty x100 %u", fl_tab[best].fn, fl_tab[best].line, bn * 100 / (frames ? frames : 1), fl_tab[best].e * 100 / (frames ? frames : 1));
         fl_tab[best].n = 0;
     }
+    pm_log("gbiprof texrect per frame x100: rects %u consecutive (no other flush between) %u", fl_rects * 100 / (frames ? frames : 1), fl_consec * 100 / (frames ? frames : 1));
+    fl_rects = fl_consec = 0;
     for (int i = 0; i < fl_nt; i++) fl_tab[i].n = fl_tab[i].e = 0;
 }
 static void flush_impl(void);
 #define flush() do { fl_fn = __func__; fl_line = __LINE__; flush_impl(); } while (0)
 static void flush_impl(void) {
     int graw = gni > 0; /* PO3b: the open batch is a raw Vtx batch */
-    if (fl_on() && gpu_ok) fl_count(nverts <= 0 && !graw);
+    if (fl_on() && gpu_ok) { fl_count(nverts <= 0 && !graw); if (fl_fn != (const char*)"pm_gpu_tex_rect" && strcmp(fl_fn, "pm_gpu_tex_rect") != 0) fl_prev_rect = 0; }
     if ((nverts <= 0 && !graw) || !gpu_ok) {
         nverts = 0;
         gni = 0; gi_start = gidx_n;
@@ -1323,6 +1326,7 @@ void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d) {
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float s = s0; s0 = s1; s1 = s; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
+    if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; }
     flush();
     int saved = combine;
     combine = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
@@ -1345,6 +1349,7 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     rect_y0 = rect_y1 = 0;
     rect_2d = 0;
     combine = saved;
+    fl_prev_rect = 1;
 }
 
 void pm_gpu_tex_rect_z(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1, float d) {
