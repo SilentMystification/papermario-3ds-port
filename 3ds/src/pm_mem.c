@@ -139,6 +139,9 @@ int pm_mem_crash_line(char* buf, int cap) {
                     (unsigned)(cur >> 10), (unsigned)(commit_max >> 10));
 }
 
+/* HUD2: the commit limit the system gave the app at boot (the same value as the log line `mem commit limit`), in MB. */
+unsigned pm_mem_commit_limit_mb(void) { return (unsigned)(commit_max >> 20); }
+
 void pm_mem_log(const char* tag) {
     if (!strcmp(tag, "map") && pm_debug_has("texmax")) {
         unsigned wmax, pk = pm_tex_map_peak_take(&wmax);
