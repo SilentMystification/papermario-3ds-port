@@ -110,6 +110,7 @@ static int au_core = -2;
 static void (*au_entry)(void*);
 static void* au_arg;
 static unsigned long long au_last;
+static unsigned au_pr_n, au_pr_sum, au_pr_min = 0xFFFFFFFFu, au_pr_max, au_pr_on = 2;
 static unsigned au_w_n, au_w_sum, au_w_max, au_j_sum, au_j_max, au_j_t0, au_g_sum;
 
 static u8 au_crash_stack[0x4000] __attribute__((aligned(8)));
@@ -174,6 +175,23 @@ int pm_au_thread_yield(void) {
             au_busy = 0;
         }
         LightEvent_Signal(&au_done);
+        /* AU1f core share probe: every 16th job, after "done", the audio thread runs a fixed loop and times it. The shortest time is
+         * the speed of a free core. A longer average means core 1 gives the audio thread less than the whole core (APT limit, system
+         * modules). Switch audiostat or coreprobe. 100000 loop steps are about 1.5 ms. */
+        if (au_pr_on == 2) au_pr_on = (pm_debug_has("audiostat") || pm_debug_has("coreprobe")) ? 1 : 0;
+        if (au_pr_on) {
+            static unsigned jobs;
+            if ((++jobs & 15) == 0) {
+                volatile unsigned x = 0;
+                unsigned t0 = pm_ticks();
+                for (unsigned i = 0; i < 100000; i++) x += i * 3u;
+                unsigned dt = pm_ticks() - t0;
+                au_pr_n++;
+                au_pr_sum += dt;
+                if (dt < au_pr_min) au_pr_min = dt;
+                if (dt > au_pr_max) au_pr_max = dt;
+            }
+        }
         LightEvent_Wait(&au_start);
     }
 }
@@ -206,6 +224,10 @@ void pm_audio_join_at(int site) {
         pm_log_d("audio wait avg %u us max %u us (core 0 join), job avg %u us max %u us, kick to join avg %u us, audio thread core %d",
                  (unsigned)((unsigned long long)au_w_sum * 1000 / au_w_n / 268112), (unsigned)((unsigned long long)au_w_max * 1000 / 268112),
                  (unsigned)((unsigned long long)au_j_sum * 1000 / au_w_n / 268112), (unsigned)((unsigned long long)au_j_max * 1000 / 268112), (unsigned)((unsigned long long)au_g_sum * 1000 / au_w_n / 268112), au_core);
+        if (au_pr_n) pm_log_d("audio core probe (100000 steps, %u probes): min %u us avg %u us max %u us. avg / min above 1.0 means core %d gives the audio thread less than the whole core",
+                              au_pr_n, (unsigned)((unsigned long long)au_pr_min * 1000 / 268112), (unsigned)((unsigned long long)au_pr_sum * 1000 / au_pr_n / 268112),
+                              (unsigned)((unsigned long long)au_pr_max * 1000 / 268112), au_core);
+        au_pr_n = au_pr_sum = au_pr_max = 0; /* min stays: it is the free core speed */
         pm_log_d("audio join sites (count, avg us): kick %u %u, retrace %u %u, step %u %u, main %u %u", au_site_n[0], au_site_n[0] ? au_site_sum[0] / au_site_n[0] / 268 : 0, au_site_n[1], au_site_n[1] ? au_site_sum[1] / au_site_n[1] / 268 : 0, au_site_n[2], au_site_n[2] ? au_site_sum[2] / au_site_n[2] / 268 : 0, au_site_n[3], au_site_n[3] ? au_site_sum[3] / au_site_n[3] / 268 : 0);
         au_w_n = au_w_sum = au_w_max = au_j_sum = au_j_max = au_g_sum = 0;
     }

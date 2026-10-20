@@ -88,6 +88,14 @@ static int16_t resample_table[64][4] = {
     { 0xffdf, 0x0d46, 0x66ad, 0x0c39 }
 };
 
+/* AU1f: ARMv6 SSAT does the 16-bit clamp in one instruction (the O3DS ARM11 is ARMv6K). Same result as the compare chain. */
+#if defined(__arm__) && defined(__ARM_ARCH) && __ARM_ARCH >= 6 && !defined(PM_AU_NO_ASM)
+static inline int16_t clamp16(int32_t v) {
+    int32_t r;
+    __asm__("ssat %0, #16, %1" : "=r"(r) : "r"(v));
+    return (int16_t) r;
+}
+#else
 static inline int16_t clamp16(int32_t v) {
     if (v < -0x8000) {
         return -0x8000;
@@ -96,6 +104,7 @@ static inline int16_t clamp16(int32_t v) {
     }
     return (int16_t) v;
 }
+#endif
 
 static inline int32_t clamp32(int64_t v) {
     if (v < -0x7fffffff - 1) {
@@ -574,11 +583,14 @@ void aEnvMixerImpl(uint8_t flags, ENVMIX_STATE state, int16_t rvol) {
 #define XOR 1
 #endif
 
-    for (int i = 0; i < nsamples; ++i) {
-        int16_t gain[4];
+    /* AU1f: the envelope only moves while rate is not zero. After a sample that ends with both rates zero, t and so the four gains
+     * stay fixed for the rest of the block (t += 0, and t == tgt or t > tgt does not change again). Compute the gains once, then run
+     * the mix loop without the envelope step. A gain of 0 adds (x * 0) >> 15 = 0 to a value that is already in range, so that bus is
+     * skipped. Output equals the old loop bit for bit (host test 3ds/tests/au1f). */
+    int i = 0;
+    int16_t gain[4] = { 0, 0, 0, 0 };
+    for (; i < nsamples; ++i) {
         int16_t vol[2];
-        int16_t* outptr[4];
-
         for (int j = 0; j < 2; ++j) {
             t[j] += rate[j];
             if ((rate[j] <= 0 && t[j] <= tgt[j]) || (rate[j] > 0 && t[j] >= tgt[j])) {
@@ -588,19 +600,49 @@ void aEnvMixerImpl(uint8_t flags, ENVMIX_STATE state, int16_t rvol) {
             vol[j] = t[j] >> 16;
         }
 
-        outptr[0] = dry[0] + (i ^ XOR);
-        outptr[1] = dry[1] + (i ^ XOR);
-        outptr[2] = wet[0] + (i ^ XOR);
-        outptr[3] = wet[1] + (i ^ XOR);
-
         gain[0] = clamp16((vol[0] * voldry + 0x4000) >> 15);
         gain[1] = clamp16((vol[1] * voldry + 0x4000) >> 15);
         gain[2] = clamp16((vol[0] * volwet + 0x4000) >> 15);
         gain[3] = clamp16((vol[1] * volwet + 0x4000) >> 15);
 
         const int16_t insamp = in[i ^ XOR];
-        for (int j = 0; j < 4; ++j) {
-            *outptr[j] = clamp16(*outptr[j] + ((insamp * gain[j]) >> 15));
+        int16_t* d0 = dry[0] + (i ^ XOR);
+        int16_t* d1 = dry[1] + (i ^ XOR);
+        int16_t* w0 = wet[0] + (i ^ XOR);
+        int16_t* w1 = wet[1] + (i ^ XOR);
+        *d0 = clamp16(*d0 + ((insamp * gain[0]) >> 15));
+        *d1 = clamp16(*d1 + ((insamp * gain[1]) >> 15));
+        *w0 = clamp16(*w0 + ((insamp * gain[2]) >> 15));
+        *w1 = clamp16(*w1 + ((insamp * gain[3]) >> 15));
+        if (rate[0] == 0 && rate[1] == 0) {
+            ++i;
+            break;
+        }
+    }
+    if (i < nsamples) {
+        const int32_t g0 = gain[0], g1 = gain[1], g2 = gain[2], g3 = gain[3];
+        if (g2 == 0 && g3 == 0) {
+            if (g0 != 0 || g1 != 0) {
+                for (; i < nsamples; ++i) {
+                    const int32_t x = in[i ^ XOR];
+                    int16_t* d0 = dry[0] + (i ^ XOR);
+                    int16_t* d1 = dry[1] + (i ^ XOR);
+                    *d0 = clamp16(*d0 + ((x * g0) >> 15));
+                    *d1 = clamp16(*d1 + ((x * g1) >> 15));
+                }
+            }
+        } else {
+            for (; i < nsamples; ++i) {
+                const int32_t x = in[i ^ XOR];
+                int16_t* d0 = dry[0] + (i ^ XOR);
+                int16_t* d1 = dry[1] + (i ^ XOR);
+                int16_t* w0 = wet[0] + (i ^ XOR);
+                int16_t* w1 = wet[1] + (i ^ XOR);
+                *d0 = clamp16(*d0 + ((x * g0) >> 15));
+                *d1 = clamp16(*d1 + ((x * g1) >> 15));
+                *w0 = clamp16(*w0 + ((x * g2) >> 15));
+                *w1 = clamp16(*w1 + ((x * g3) >> 15));
+            }
         }
     }
 
@@ -677,6 +719,13 @@ void aMixImpl(uint8_t flags, int16_t gain, uint16_t in_addr, uint16_t out_addr) 
         out += 8;
         in += 8;
 #else
+        if (gain == 0x7fff) {
+            /* AU1f: out * 0x7fff + in * 0x7fff = (out + in) * 0x7fff, the same sum with one multiply (max 17 bit * 15 bit fits 32 bit). */
+            for (i = 0; i < 8; i++) {
+                sample = ((*out + *in++) * 0x7fff + 0x4000) >> 15;
+                *out++ = clamp16(sample);
+            }
+        } else
         for (i = 0; i < 8; i++) {
             sample = ((*out * 0x7fff + *in++ * gain) + 0x4000) >> 15;
             *out++ = clamp16(sample);
