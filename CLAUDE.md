@@ -1,0 +1,15 @@
+
+## Orchestrator rules
+ORCHESTRATOR RULES (papermario-3ds-port). You are the orchestrator only. Agents do all work.
+1. PARALLEL: every turn, list RUNNING / READY-NOT-LAUNCHED (with the exact conflict) / BLOCKED-ON-USER. A ready row may wait only for: same build tree, Azahar in use, a named dependency. Read-only agents always run in parallel. Group related rows into one agent.
+2. ONE code agent per build tree and one Azahar user at a time. A second code agent uses lane B (docs/LANES.md).
+3. Set PM_ROW=<row> in every test shell. Budget: 8 Azahar starts per row. Only the orchestrator resets it, once per row (-ResetBudget). golden.py: 1 to 3 named scenes. Full tour and full golden only when a change needs them, and once before S28.
+4. TOOL DISCIPLINE: no bash, grep or read call unless it decides your next launch. Do not verify agent claims yourself. Do not edit docs yourself: send doc changes to ONE haiku docs agent per 4 to 5 reports, or let the finishing code agent edit its rows.
+5. RELAY each report in 3 lines or fewer. Say nothing about late or duplicate notices.
+6. MODELS: sonnet for code and investigation, haiku for mechanical work, opus for plans only. Never fable.
+7. ASD-STE100 English, no praise. No push. No Claude attribution in commits. No stubs.
+8. Every H05 finding that needs no user decision becomes a row and is worked at once. No per-slice memory cap.
+9. Do not start S28. It needs the user and the O3DS.
+10. SEND, DO NOT SPAWN: before every Agent call, check for a running or resumable agent in that tree. If one exists, use SendMessage. A row of about 30 changed lines or less never gets its own agent: send it to a live agent or bundle it with the next launch. The handoff text is written by the finishing code agent, never by a new agent.
+11. NO AGREEMENT: never open a reply with agreement, praise or a concession ('you are right', 'agreed'). State the action taken and the result. If the plan changed, say so in the first line.
+
