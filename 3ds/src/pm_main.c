@@ -256,9 +256,9 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     if (!t0) { t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; for (int i = 0; i < 4; i++) i0[i] = pace_iv[i]; return; }
     if (now - t0 < hz) return;
     float wall = (float)(now - t0) * 1000.f / (float)hz;
-    pm_log_d("pace: wall %.1f ms steps %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u total 1:%u 2:%u 3:%u 4+:%u", wall, pm_step_calls - s0,
+    pm_log_d("pace: wall %.1f ms steps %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u total 1:%u 2:%u 3:%u 4+:%u late steps (3+, over 33.3 ms) %u of %u", wall, pm_step_calls - s0,
            frame - f0, v - v0, pace_ticks - a0, (float)(pm_step_calls - s0) * 1000.f / wall, pace_iv[0] - i0[0],
-           pace_iv[1] - i0[1], pace_iv[2] - i0[2], pace_iv[3] - i0[3], pace_iv[0], pace_iv[1], pace_iv[2], pace_iv[3]);
+           pace_iv[1] - i0[1], pace_iv[2] - i0[2], pace_iv[3] - i0[3], pace_iv[0], pace_iv[1], pace_iv[2], pace_iv[3], pace_iv[2] + pace_iv[3], pace_iv[0] + pace_iv[1] + pace_iv[2] + pace_iv[3]);
     for (int i = 0; i < 4; i++) i0[i] = pace_iv[i];
     t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks;
 }

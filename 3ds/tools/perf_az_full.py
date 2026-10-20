@@ -15,7 +15,7 @@ def parse(path):
         m = PC.match(l)
         if m:
             g = list(map(int, m.groups())); f = g[0]
-            pcs[f] = dict(wall=g[1], gbi=g[5], au=g[8], fb=g[11], c=g[15:22]); continue
+            pcs[f] = dict(wall=g[1], idle=g[2], gbi=g[5], au=g[8], fb=g[11], c=g[15:22]); continue
         m = GM.match(l)
         if m: modes.append((int(m.group(1)), int(m.group(2)))); continue
         fr = max(pcs) if pcs else 0
@@ -47,6 +47,10 @@ def stats(d, a, b):
     fr = [f for f in range(a, b) if f in pcs]
     s = {"frames": len(fr)}
     for i, n in enumerate(CNT): s[n] = sum(pcs[f]["c"][i] for f in fr)
+    cpu = sorted(pcs[f]["wall"] - pcs[f]["idle"] - pcs[f]["fb"] for f in fr) # DIP metric: cpu work of the step in 0.1 ms (wall - idle - fbegin wait)
+    s["steps_over_33ms"] = sum(1 for c in cpu if c > 333)
+    s["cpu_p99_ms"] = (cpu[min(len(cpu) - 1, int(len(cpu) * 0.99))] / 10.0) if cpu else 0.0
+    s["cpu_max_ms"] = (cpu[-1] / 10.0) if cpu else 0.0
     s["wall_s"] = sum(pcs[f]["wall"] for f in fr) / 10000.0
     s["gbi_ms"] = sum(pcs[f]["gbi"] for f in fr) / 10.0 / max(1, len(fr))
     s["audio_ms"] = sum(pcs[f]["au"] for f in fr) / 10.0 / max(1, len(fr))
@@ -89,12 +93,13 @@ out.append("romn and romB (ROM reads) differ between runs of the same build and 
 out.append("A 0 in linear_peak_KB or vram_free_min_KB means the segment has no mem log line (mem lines print at map loads). A vram 0 in intro is the boot line before the first map.")
 out.append("")
 tc = [stats(cur, a, b) for _, a, b in segs]; tp = [stats(pre, a, b) for _, a, b in segs]
-rows = ["frames"] + [c for c in CNT if c not in ("romn", "romB")] + ["audio_posts", "linear_peak_KB", "tex_fail", "vram_free_min_KB", "grabs_max", "splits_max", "wall_s", "gbi_ms", "audio_ms"]
+rows = ["frames"] + [c for c in CNT if c not in ("romn", "romB")] + ["audio_posts", "linear_peak_KB", "tex_fail", "vram_free_min_KB", "grabs_max", "splits_max", "steps_over_33ms", "cpu_p99_ms", "cpu_max_ms", "wall_s", "gbi_ms", "audio_ms"]
 def block(name, sc, sp):
     out.append("=== " + name)
     out.append("%-34s%16s%16s%10s" % ("metric", "pre-PO2", "current", "change"))
     for r in rows:
         lab = r + (" (host time, not O3DS)" if r in ("wall_s", "gbi_ms", "audio_ms") else "")
+        if r in ("cpu_p99_ms", "cpu_max_ms", "steps_over_33ms"): lab = r + " (Azahar guest ms)"
         a, b = sp[r], sc[r]
         fmt = (lambda v: "%.2f" % v) if isinstance(a, float) or isinstance(b, float) else str
         out.append("%-34s%16s%16s%10s" % (lab, fmt(a), fmt(b), pct(a, b)))
@@ -102,7 +107,7 @@ def block(name, sc, sp):
 for (n, a, b), sc, sp in zip(segs, tc, tp): block("%s (frames %d to %d)" % (n, a, b), sc, sp)
 # total
 tot_c = {r: sum(s[r] for s in tc) for r in rows}; tot_p = {r: sum(s[r] for s in tp) for r in rows}
-for r in ("linear_peak_KB", "tex_fail", "grabs_max", "splits_max"): tot_c[r] = max(s[r] for s in tc); tot_p[r] = max(s[r] for s in tp)
+for r in ("linear_peak_KB", "tex_fail", "grabs_max", "splits_max", "cpu_p99_ms", "cpu_max_ms"): tot_c[r] = max(s[r] for s in tc); tot_p[r] = max(s[r] for s in tp)
 tot_c["vram_free_min_KB"] = min(s["vram_free_min_KB"] for s in tc); tot_p["vram_free_min_KB"] = min(s["vram_free_min_KB"] for s in tp)
 tot_c["gbi_ms"] = sum(s["gbi_ms"] * s["frames"] for s in tc) / max(1, tot_c["frames"]); tot_p["gbi_ms"] = sum(s["gbi_ms"] * s["frames"] for s in tp) / max(1, tot_p["frames"])
 tot_c["audio_ms"] = sum(s["audio_ms"] * s["frames"] for s in tc) / max(1, tot_c["frames"]); tot_p["audio_ms"] = sum(s["audio_ms"] * s["frames"] for s in tp) / max(1, tot_p["frames"])
