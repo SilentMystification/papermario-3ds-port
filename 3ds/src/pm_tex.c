@@ -30,6 +30,9 @@ typedef struct {
 
 static Slot slots[SLOTS];
 static unsigned used;
+#define RECENT_N 12
+static short recent_slot[RECENT_N] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+static unsigned recent_n;
 static int slot_hi; /* every live slot index is below this, so scans stay short while few slots are live */
 static unsigned used_peak; /* M02 measurement */
 static unsigned map_peak;
@@ -334,15 +337,28 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
                       const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                       unsigned dkey);
 /* PT01: a cache hit is only counted. A miss (convert, tile, upload) runs under the tex phase. */
+static unsigned tprof_hit_t, tprof_hit_n, tprof_miss_t, tprof_miss_n;
+void pm_tex_prof_report(unsigned frames) {
+    pm_log("gbiprof tex per frame: hit calls %u ticks-us %u (%u us per call), miss calls %u ticks-us %u (%u us per call)", tprof_hit_n / frames, tprof_hit_t / 268 / frames,
+           tprof_hit_n ? tprof_hit_t / 268 / tprof_hit_n : 0, tprof_miss_n / frames, tprof_miss_t / 268 / frames, tprof_miss_n ? tprof_miss_t / 268 / tprof_miss_n : 0);
+    tprof_hit_t = tprof_hit_n = tprof_miss_t = tprof_miss_n = 0;
+}
 static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int height,
                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                      unsigned dkey) {
     pm_tex_epoch_v++;
     int r;
+    static int tp = -1;
+    if (tp < 0) tp = pm_debug_has("gbiprof");
+    unsigned t0 = tp ? pm_ticks() : 0;
     ph_miss = 0;
     PH_ADD(C_TEXCALL, 1);
     r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
     if (ph_miss) PH_POP();
+    if (tp) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
+        unsigned dt = pm_ticks() - t0;
+        if (ph_miss) { tprof_miss_t += dt; tprof_miss_n++; } else { tprof_hit_t += dt; tprof_hit_n++; }
+    }
     return r;
 }
 
@@ -410,7 +426,31 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     unsigned phash = 0;
     if (fmt == FMT_CI && tlut) {
         phash = 2166136261u;
-        for (int i = 0; i < tlut_n * 2; i++) phash = (phash ^ ((const u8*)tlut)[i]) * 16777619u;
+        static int nopg2 = -1;
+        if (nopg2 < 0) nopg2 = pm_debug_has("nopg2");
+        if (nopg2) { for (int i = 0; i < tlut_n * 2; i++) phash = (phash ^ ((const u8*)tlut)[i]) * 16777619u; } /* A/B: the old byte loop */
+        else { /* PG2: two palette entries per step (the key is internal, only its stability matters). Any in-place edit still changes it. */
+            const u16* pl = (const u16*)tlut;
+            int i = 0;
+            for (; i + 1 < tlut_n; i += 2) phash = (phash ^ ((unsigned)pl[i] | ((unsigned)pl[i + 1] << 16))) * 16777619u;
+            if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u;
+        }
+    }
+    /* PG2: most loads repeat one of the last few textures. Check those slots first (same full compare), then the whole table. */
+    static int nopg2r = -1;
+    if (nopg2r < 0) nopg2r = pm_debug_has("nopg2");
+    for (int k = 0; k < (nopg2r ? 0 : RECENT_N); k++) {
+        int i = recent_slot[k];
+        if (i < 0 || i >= slot_hi) continue;
+        Slot* s = &slots[i];
+        if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
+            s->stamp = ++stamp;
+            TOUCH(s);
+            cur = i;
+            have = 1;
+            return 1;
+        }
     }
     for (int i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
@@ -420,6 +460,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             TOUCH(s);
             cur = i;
             have = 1;
+            recent_slot[recent_n++ % RECENT_N] = (short)i;
             return 1;
         }
     }
@@ -532,6 +573,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     if (used > used_peak) used_peak = used;
     if (used > map_peak) map_peak = used;
     cur = slot;
+    recent_slot[recent_n++ % RECENT_N] = (short)slot; /* PG2 */
     have = 1;
     return 1;
 }

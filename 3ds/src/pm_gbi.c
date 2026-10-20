@@ -1552,6 +1552,7 @@ void pm_gbi_end_frame(void) {
         memset(gp_same, 0, sizeof gp_same); memset(gp_set, 0, sizeof gp_set);
         pm_gpu_gbiprof_report(300);
         { extern void pm_debug_report(unsigned); pm_debug_report(300); }
+        { extern void pm_tex_prof_report(unsigned); pm_tex_prof_report(300); }
         (void)nm;
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
