@@ -1104,6 +1104,7 @@ static void t1_fold(float u0, float u1, float v0, float v1) {
         unsigned mask = tile_wrap[1][2 + a];
         float win, ws, wsz, wrapped;
         if (!mask || mask > 9) continue;
+        if (tile_wrap[1][a] & 2u) continue; /* V21: a CLAMP axis has no wrap or mirror: the RDP reads (s - sl) clamped to the window, the linear map of dual_bind is right. Folding moved the star icons on the Bowser cards by 9 texels. */
         wsz = (float)(1u << mask);
         win = (lo[a] * sc[a] + o[a]) * (float)dim[a] - (float)org[a]; /* window position of the draw start, texels */
         if (win >= 0.f && win < wsz) continue;
