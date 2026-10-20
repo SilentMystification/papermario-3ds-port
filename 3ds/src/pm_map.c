@@ -549,6 +549,7 @@ void __wrap_set_game_mode(s16 mode) {
         extern unsigned pm_frame_count(void);
         char sm[16];
         pm_log_d("game mode %d frame %u", mode, pm_frame_count());
+        pm_ph_scene_mode(mode);
         if (pm_debug_value("shotmode", sm, sizeof sm) && atoi(sm) == mode) { /* X01: shotmode=<mode>:<n> one shot per frame for n frames from the change to <mode> */
             const char* c = strchr(sm, ':');
             extern void pm_gpu_shot_burst(int n);
@@ -567,6 +568,7 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     {
         extern unsigned pm_pad_scans;
         pm_log_d("load map area %d map %d scan %u", areaID, mapID, pm_pad_scans);
+        pm_ph_scene_map(areaID, mapID);
     }
     pm_mem_log("map");
     {

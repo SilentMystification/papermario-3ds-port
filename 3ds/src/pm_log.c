@@ -42,6 +42,9 @@ static int writer_on;
 static volatile int writer_core = -1;
 static volatile u32 writer_hb;
 static u32 q_dropped, q_drop_total;
+static u32 q_head;    /* next slot to reserve (producers, compare and swap) */
+static u32 q_tail;    /* next slot to read (writer or crash flush, under drain_lock) */
+static u32 wr_file_max, wr_con_max, wr_sock_max, con_skipped; /* HWM1: longest single step of the writer in us, since the last logstat line */
 static int sw_lognull;
 static int log_level = 1; /* L02: 0 error, 1 warn, 2 info, 3 debug. A line above this level is dropped before any formatting. Default warn. */
 static int log_file_on = 1; /* L02: 0 = no write to log.txt (switch log=off, options panel) */
@@ -236,6 +239,9 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs) {
     svcOutputDebugString(dbg, dn);
     pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u live eagain %u stall closes %u", frames, avg_ms, secs * 1000.f / (float)frames, dl,
            (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped, live_eagain, live_stall_close);
+    pm_log_d("logstat2 writer max us file %u sock %u console %u, console skipped %u, queue %u of %u",
+           wr_file_max, wr_sock_max, wr_con_max, con_skipped, __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED), 1024u);
+    wr_file_max = wr_sock_max = wr_con_max = 0;
 }
 
 void pm_log_top(void) {
@@ -253,8 +259,10 @@ void pm_log_top(void) {
  * SD, socket or stdout call. One low-priority writer thread (core 1, or core 0 when core 1 is not available) does
  * write, fsync about once per second, socket send and stdout. Full queue: the new line is dropped and counted.
  * Before the writer thread runs, pm_log writes directly (boot lines). */
-#define SLOTS 512
-#define SLOT_TEXT 184
+#define SLOTS 1024 /* HWM1: was 512. The first O3DS run lost 1207 lines when the writer fell behind. */
+#define SLOT_TEXT 256 /* HWM1: the phs and phq lines are about 200 characters */
+#define VIP 16 /* level flag: a measurement line (pm_log_hw) keeps the last SLOT_RES slots, other lines are dropped first */
+#define SLOT_RES 128
 typedef struct {
     u32 state; /* 0 free, 1 committed (release store by the producer, acquire load by the writer) */
     u16 len;
@@ -262,8 +270,6 @@ typedef struct {
     char text[SLOT_TEXT];
 } Slot;
 static Slot slots[SLOTS];
-static u32 q_head;    /* next slot to reserve (producers, compare and swap) */
-static u32 q_tail;    /* next slot to read (writer or crash flush, under drain_lock) */
 static int writer_stop;
 static int crashed;
 static int active_id;
@@ -298,16 +304,18 @@ static void direct_write(const char* line, int n, const char* body, size_t bl) {
 }
 
 static void vlog(int lv, const char* fmt, va_list ap) {
+    int vip = (lv & VIP) != 0;
+    lv &= 15;
     if (lv > log_level) return;
     int on = __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE);
     /* Queue full: one atomic add and out, before any formatting work, so a flood costs almost nothing. */
-    if (on && __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= SLOTS) {
+    if (on && __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
         __atomic_fetch_add(&q_dropped, 1, __ATOMIC_RELAXED);
         return;
     }
     __atomic_fetch_add(&st_lines, 1, __ATOMIC_RELAXED);
     if (st_on == 1 && fmt[0] != 'l') stat_site(fmt);
-    char body[240];
+    char body[SLOT_TEXT];
     vsnprintf(body, sizeof(body), fmt, ap);
     size_t bl = strlen(body);
     if (bl == 0 || body[bl - 1] != '\n') {
@@ -329,7 +337,7 @@ static void vlog(int lv, const char* fmt, va_list ap) {
     }
     u32 h = __atomic_load_n(&q_head, __ATOMIC_RELAXED);
     for (;;) {
-        if (h - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= SLOTS) {
+        if (h - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
             __atomic_fetch_add(&q_dropped, 1, __ATOMIC_RELAXED);
             return;
         }
@@ -347,7 +355,7 @@ static void vlog(int lv, const char* fmt, va_list ap) {
     __atomic_store_n(&sl->state, 1, __ATOMIC_RELEASE);
     /* Wake the writer when the queue was empty or is half full. Otherwise its 250 ms timeout collects the lines. */
     u32 t = __atomic_load_n(&q_tail, __ATOMIC_RELAXED);
-    if (h == t || h - t == SLOTS / 2) LightEvent_Signal(&ev_wake);
+    if (h == t || h - t == SLOTS / 8) LightEvent_Signal(&ev_wake);
 }
 
 #define PM_LOG_FN(name, lv) void name(const char* fmt, ...) { va_list ap; va_start(ap, fmt); vlog(lv, fmt, ap); va_end(ap); }
@@ -356,15 +364,20 @@ PM_LOG_FN(pm_log_w, 1)
 PM_LOG_FN(pm_log_i, 2)
 PM_LOG_FN(pm_log_d, 3)
 PM_LOG_FN(pm_log, 2) /* an old call is info */
+PM_LOG_FN(pm_log_hw, 3 | VIP) /* HWM1: a measurement line at debug level that the queue keeps longest */
 
 /* HW8: a client that only returns EAGAIN (stalled Wi-Fi, a reader that stopped) is closed after 3 s without one successful send.
  * The PC script reconnects and the ring replay fills the gap. Counters go to the logstat line. */
 #define LIVE_STALL_TICKS (3ull * 268111856ull)
 
 /* Output of one batch: log.txt, replay ring, live socket, stdout. Writer thread (or crash flush) only. */
+static u32 us_since(u64 t0) { return (u32)((svcGetSystemTick() - t0) / (SYSCLOCK_ARM11 / 1000000ull)); }
 static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     if (n <= 0) return;
+    u64 t0 = svcGetSystemTick();
     if (log_fd >= 0 && log_file_on && write(log_fd, lines, (size_t)n) > 0) dirty = 1;
+    { u32 d = us_since(t0); if (d > wr_file_max) wr_file_max = d; }
+    t0 = svcGetSystemTick();
     ring_add(lines, n);
     if (client >= 0) {
         int off = 0;
@@ -395,12 +408,17 @@ static void out_batch(const char* lines, int n, const char* bodies, int bn) {
             break; /* a full socket drops the rest for the live view only, log.txt has it */
         }
     }
+    { u32 d = us_since(t0); if (d > wr_sock_max) wr_sock_max = d; }
+    /* HWM1: the console (bottom screen text, slow) is for a reader on the device. When more than 128 lines wait, skip it for this batch: log.txt has the lines. */
+    if (__atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED) > 128) { con_skipped++; return; }
+    t0 = svcGetSystemTick();
     /* After a crash the lock owner may be the dead thread: then skip the console. */
     if (__atomic_load_n(&crashed, __ATOMIC_ACQUIRE) ? LightLock_TryLock(&con_lock) == 0 : (LightLock_Lock(&con_lock), 1)) {
         if (!con_up) { if (con_pend_n + (unsigned)bn < sizeof con_pend) { memcpy(con_pend + con_pend_n, bodies, (size_t)bn); con_pend_n += (unsigned)bn; } }
         else if (!pm_menu_open) { fwrite(bodies, 1, (size_t)bn, stdout); fflush(stdout); } /* F11-6: the menu owns the bottom screen */
         LightLock_Unlock(&con_lock);
     }
+    { u32 d = us_since(t0); if (d > wr_con_max) wr_con_max = d; }
 }
 
 /* Report lines that producers dropped because the queue was full (writer or crash flush). */
@@ -415,7 +433,7 @@ static void report_drops(void) {
 
 /* The caller holds drain_lock. */
 static void drain_locked(void) {
-    static char lb[4096], bb[4096];
+    static char lb[8192], bb[8192];
     int ln = 0, bn = 0;
     u32 t = q_tail;
     for (;;) {

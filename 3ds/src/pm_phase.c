@@ -5,6 +5,8 @@
  *   switch `phasecsv`: one line per drawn frame (analysis runs only). */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <citro3d.h>
 #include "pm_port.h"
 
 #define TICKS_MS 268112.0f
@@ -15,12 +17,12 @@ int pm_ph_on;
 int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
 
-static const char* const pname[PH_N] = { "other", "logic", "dl", "gbi", "gpu", "tex", "audio", "rom", "yay0", "fbegin", "fend", "idle", "gcache", "gdraw", "g_vtx", "g_tri", "g_mtx", "g_op", "fbread" };
+static const char* const pname[PH_N] = { "other", "logic", "dl", "gbi", "gpu", "tex", "audio", "rom", "yay0", "fbegin", "fend", "idle", "gcache", "gdraw", "g_vtx", "g_tri", "g_mtx", "g_op", "fbread", "g_tev", "g_bind", "g_state" };
 static const char* const cname[C_N] = { "tri", "triout", "vtxload", "vtxslot", "draw", "flush", "texcall", "texmiss", "texKB", "romn", "romKB", "yayn", "yayKB", "dbgcall", "atick", "gbiops", "ajob" };
 
 static int stk[16], depth, cur;
 static unsigned last, frame_t0, acc[PH_N];
-static int csv;
+static int csv, csv_from, csv_to = 0x7fffffff;
 static unsigned frame_no;
 
 typedef struct { float ms[PH_N]; float wall; unsigned c[C_N]; unsigned f; } Rec;
@@ -28,11 +30,149 @@ static Rec win[MAXW];
 static int nwin;
 static unsigned win_t0;
 
+/* ---- HWM1: phs lines (switch phsum) and the in-run A/B (switch abtog=<state,state,...>:<n>) ----
+ * One bucket per A/B state holds the sums of the current scene (game mode, area, map). A bucket is written as three log lines
+ * (phs: phase sums, phh: cpu histogram, phc: counter sums) when the scene changes or after 300 drawn steps in the bucket.
+ * Units: phase sums in 0.1 ms, counters as sums. cpu = wall - idle - fbegin. The first 2 steps after a state change are not summed. */
+#define BK_N 8
+#define CPU_MAX 300
+#define SKIP_STEPS 2
+typedef struct {
+    unsigned n, f0, f1;
+    float ph[PH_N];
+    unsigned long long c[C_N];
+    float cpu[CPU_MAX];
+    unsigned ok[14], late[14];
+    float gpu_us[2];
+    unsigned cmd_max;
+} Bucket;
+static Bucket bk[BK_N];
+static int ps_on;
+static const char* const ab_words[] = { "base", "gpuvtx", "nodr1", "nokick", "notx1", "phasegbi" };
+static int ab_st[BK_N], ab_n, ab_every, ab_cur, ab_steps, ab_skip, ab_seq;
+static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buckets */
+static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */
+unsigned pm_ph_gpu_us[2];
+unsigned pm_ph_cmd_pm;
+
+void pm_ph_scene_mode(int mode) { cur_mode = mode; }
+void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; }
+void pm_ph_gpu_note(void) {
+    if (!pm_ph_on) return;
+    pm_ph_gpu_us[0] = (unsigned)(C3D_GetDrawingTime() * 1000.f);
+    pm_ph_gpu_us[1] = (unsigned)(C3D_GetProcessingTime() * 1000.f);
+}
+
+int pm_ph_abtog_has(const char* w) {
+    char v[96];
+    if (!pm_debug_value("abtog", v, sizeof v)) return 0;
+    char* c = strchr(v, ':');
+    if (c) *c = 0;
+    const char* p = v;
+    size_t n = strlen(w);
+    while ((p = strstr(p, w)) != NULL) {
+        if ((p == v || p[-1] == ',') && (p[n] == 0 || p[n] == ',')) return 1;
+        p += n;
+    }
+    return 0;
+}
+
+static void ab_apply(int st, int announce) {
+    /* switch off the words of the old state, then the new one. The generation counter makes every PMDL cache see it. */
+    for (int i = 1; i < (int)(sizeof ab_words / sizeof *ab_words); i++) pm_log_switch(ab_words[i], 0);
+    if (st > 0) pm_log_switch(ab_words[st], 1);
+    pm_ph_fine = pm_ph_on && (st == 5 || pm_debug_has("phasegbi"));
+    if (announce) pm_log_hw("abtog %d %s f%u", ab_seq, ab_words[st], frame_no);
+    ab_seq++;
+}
+
+static void ps_init(void) {
+    char v[96];
+    if (!pm_debug_value("abtog", v, sizeof v)) return;
+    char* c = strchr(v, ':');
+    ab_every = c ? atoi(c + 1) : 30;
+    if (ab_every < 4) ab_every = 4;
+    if (c) *c = 0;
+    for (char* t = strtok(v, ","); t && ab_n < BK_N; t = strtok(NULL, ",")) {
+        for (int i = 0; i < (int)(sizeof ab_words / sizeof *ab_words); i++) if (!strcmp(t, ab_words[i])) { ab_st[ab_n++] = i; break; }
+    }
+    if (ab_n < 2) { ab_n = 0; ab_every = 0; return; }
+    ps_on = 1;
+    ab_apply(ab_st[0], 0);
+    pm_log_hw("abtog %d %s f%u (start, %d states, every %d drawn steps)", 0, ab_words[ab_st[0]], 0u, ab_n, ab_every);
+}
+
+static int fcmp(const void* a, const void* b) { float x = *(const float*)a, y = *(const float*)b; return x < y ? -1 : x > y; }
+
+static void bk_flush(int i) {
+    Bucket* b = &bk[i];
+    if (!b->n) return;
+    const char* nm = ab_words[ab_n ? ab_st[i] : 0];
+    unsigned id = b->f0; /* the first frame number joins the three lines */
+    qsort(b->cpu, b->n, sizeof(float), fcmp);
+    float p50 = b->cpu[(b->n * 50 + 99) / 100 - 1], p95 = b->cpu[(b->n * 95 + 99) / 100 - 1];
+    static const int ord[] = { PH_LOGIC, PH_DL, PH_GBI, PH_GPU, PH_GCACHE, PH_GDRAW, PH_TEX, PH_AUDIO, PH_ROM, PH_YAY0, PH_FBEGIN, PH_FEND, PH_OTHER, PH_GVTX, PH_GTRI, PH_GMTX, PH_GOP, PH_FBREAD, PH_GTEV, PH_GBIND, PH_GST };
+    char line[256];
+    int len = snprintf(line, sizeof line, "phs %d %d:%d %s n %u f%u-%u |", sc_mode, sc_area, sc_map, nm, b->n, b->f0, b->f1);
+    for (unsigned k = 0; k < sizeof ord / sizeof *ord; k++) len += snprintf(line + len, sizeof line - (size_t)len, " %d", (int)(b->ph[ord[k]] * 10.f + 0.5f));
+    snprintf(line + len, sizeof line - (size_t)len, " | %d %d", (int)(p50 * 10.f + 0.5f), (int)(p95 * 10.f + 0.5f));
+    pm_log_hw("%s", line);
+    len = snprintf(line, sizeof line, "phh %d %d:%d %s f%u |", sc_mode, sc_area, sc_map, nm, id);
+    for (int k = 0; k < 14; k++) len += snprintf(line + len, sizeof line - (size_t)len, " %u", b->ok[k]);
+    len += snprintf(line + len, sizeof line - (size_t)len, " |");
+    for (int k = 0; k < 14; k++) len += snprintf(line + len, sizeof line - (size_t)len, " %u", b->late[k]);
+    pm_log_hw("%s", line);
+    len = snprintf(line, sizeof line, "phc %d %d:%d %s f%u |", sc_mode, sc_area, sc_map, nm, id);
+    for (int k = 0; k < C_N; k++) len += snprintf(line + len, sizeof line - (size_t)len, " %llu", b->c[k]);
+    snprintf(line + len, sizeof line - (size_t)len, " | gpu %u %u cmdmax %u", (unsigned)b->gpu_us[0], (unsigned)b->gpu_us[1], b->cmd_max);
+    pm_log_hw("%s", line);
+    memset(b, 0, sizeof *b);
+}
+
+static void ps_step(const Rec* r) {
+    if (cur_mode != sc_mode || cur_area != sc_area || cur_map != sc_map) {
+        for (int i = 0; i < BK_N; i++) bk_flush(i);
+        sc_mode = cur_mode; sc_area = cur_area; sc_map = cur_map;
+    }
+    int si = ab_n ? ab_cur : 0;
+    if (ab_skip > 0) ab_skip--;
+    else {
+        Bucket* b = &bk[si];
+        float cpu = r->wall - r->ms[PH_IDLE] - r->ms[PH_FBEGIN];
+        int bin = cpu < 24.f ? 0 : cpu >= 36.f ? 13 : (int)cpu - 23;
+        if (!b->n) b->f0 = r->f;
+        b->f1 = r->f;
+        b->cpu[b->n++] = cpu;
+        if (r->wall <= 34.5f) b->ok[bin]++; else b->late[bin]++;
+        for (int k = 0; k < PH_N; k++) b->ph[k] += r->ms[k];
+        for (int k = 0; k < C_N; k++) b->c[k] += r->c[k];
+        b->gpu_us[0] += (float)pm_ph_gpu_us[0];
+        b->gpu_us[1] += (float)pm_ph_gpu_us[1];
+        if (pm_ph_cmd_pm > b->cmd_max) b->cmd_max = pm_ph_cmd_pm;
+        if (b->n >= CPU_MAX) bk_flush(si);
+    }
+    if (ab_n && ++ab_steps >= ab_every) {
+        ab_steps = 0;
+        ab_cur = (ab_cur + 1) % ab_n;
+        ab_apply(ab_st[ab_cur], 1);
+        ab_skip = SKIP_STEPS;
+    }
+}
+
 void pm_ph_init(void) {
-    pm_ph_on = pm_debug_has("phase");
+    char rv[40];
+    ps_on = pm_debug_has("phsum");
+    pm_ph_on = pm_debug_has("phase") || ps_on;
     csv = pm_debug_has("phasecsv");
+    if (pm_debug_value("phasecsv", rv, sizeof rv)) { /* HWM1: phasecsv=<from>:<to>, pc lines only for these drawn steps */
+        csv = 1;
+        csv_from = atoi(rv);
+        const char* c = strchr(rv, ':');
+        if (c) csv_to = atoi(c + 1);
+    }
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (!pm_ph_on) return;
+    ps_init();
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();
     int hit = 0;
@@ -154,12 +294,15 @@ void pm_ph_frame_end(void) {
     memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
     r->f = ++frame_no;
     frame_t0 = now;
-    if (csv) {
+    if (ps_on) ps_step(r);
+    if (csv && r->f >= (unsigned)csv_from && r->f <= (unsigned)csv_to) {
         pm_log_d("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d gv %d gt %d gm %d go %d | %u %u %u %u %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),
                (int)(r->ms[PH_IDLE] * 10.f), (int)(r->ms[PH_LOGIC] * 10.f), (int)(r->ms[PH_DL] * 10.f), (int)(r->ms[PH_GBI] * 10.f),
                (int)(r->ms[PH_GPU] * 10.f), (int)(r->ms[PH_TEX] * 10.f), (int)(r->ms[PH_AUDIO] * 10.f), (int)(r->ms[PH_ROM] * 10.f),
                (int)(r->ms[PH_YAY0] * 10.f), (int)(r->ms[PH_FBEGIN] * 10.f), (int)(r->ms[PH_FEND] * 10.f), (int)(r->ms[PH_OTHER] * 10.f),
                (int)(r->ms[PH_GCACHE] * 10.f), (int)(r->ms[PH_GDRAW] * 10.f), (int)(r->ms[PH_GVTX] * 10.f), (int)(r->ms[PH_GTRI] * 10.f), (int)(r->ms[PH_GMTX] * 10.f), (int)(r->ms[PH_GOP] * 10.f), r->c[C_TRIOUT], r->c[C_VTXSLOT], r->c[C_DRAW], r->c[C_TEXMISS], r->c[C_TEXBYTE], r->c[C_ROMN], r->c[C_ROMB], r->c[C_ATICK], r->c[C_FLUSH], r->c[C_DBG], r->c[C_CMD], r->c[C_AJOB]);
+        pm_log_hw("pcx %u rd %d tev %d bind %d st %d gpu %u %u cmd %u", r->f, (int)(r->ms[PH_FBREAD] * 10.f), (int)(r->ms[PH_GTEV] * 10.f), (int)(r->ms[PH_GBIND] * 10.f),
+                  (int)(r->ms[PH_GST] * 10.f), pm_ph_gpu_us[0], pm_ph_gpu_us[1], pm_ph_cmd_pm);
     }
     if (++nwin >= MAXW || (now - win_t0) >= 536223712u /* 2 s */) summarize(now);
 }
