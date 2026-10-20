@@ -7,6 +7,13 @@
 #include "pm_gpu.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+/* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
+#define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
+#define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (switch gbiprof) */
+static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
+static unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
+#define GP_SET(k, same) do { if (gp_on()) { gp_set[k]++; if (same) gp_same[k]++; } } while (0)
+
 
 extern u16 DepthCopyBuffer[16];
 extern unsigned short* nuGfxZBuffer;
@@ -471,15 +478,16 @@ static void box_fold_sync(void) {
 static unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
 static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 static void sync_render(void) {
+    GP_SET(6, 0);
     unsigned m = omode_l;
     /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog
      * colour alpha: (P * A + M * (1 - A)), P = BL or FOG, A = A_FOG, M = IN, B = 1MA. The room shroud (PM_RM_SHROUD) fades the
      * world to black this way. Other blenders are not touched. */
     {
         unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
-        if (!pm_debug_has("nomix") && (p == 2u || p == 3u) && a == 1u && mm == 0u && b == 0u)
+        if (!PMD("nomix") && (p == 2u || p == 3u) && a == 1u && mm == 0u && b == 0u)
             pm_gpu_set_mix(1, ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu));
-        else if (!pm_debug_has("nofog") && p == 3u && a == 2u && mm == 0u && b == 0u) {
+        else if (!PMDL("nofog") && p == 3u && a == 2u && mm == 0u && b == 0u) {
             /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
             pm_gpu_set_mix(2, (fogc & 0xffffff00u) | 0xffu);
             fogmix_on = 1;
@@ -494,7 +502,7 @@ mixed:
         pm_gpu_set_render(0, 1, 0, -1, 0);
         return;
     }
-    if (pm_debug_has("rmoff")) { /* A/B check: the old always-blend, always-write state */
+    if (PMD("rmoff")) { /* A/B check: the old always-blend, always-write state */
         pm_gpu_set_nocolor(0);
         pm_gpu_set_render(1, 1, 1, -1, 0);
         return;
@@ -709,7 +717,7 @@ static int clip_near_k(ClipV* poly, int n, int zplane) {
 static int clip_near(ClipV* poly, int n) {
     int i, close = 0;
     for (i = 0; i < n; i++) if (poly[i].w < 1.f && poly[i].z + poly[i].w < 0.f) close = 1;
-    if (close && !pm_debug_has("nozclip")) { n = clip_near_k(poly, n, 1); if (n < 3) return 0; }
+    if (close && !PMD("nozclip")) { n = clip_near_k(poly, n, 1); if (n < 3) return 0; }
     return clip_near_k(poly, n, 0);
 }
 
@@ -933,11 +941,12 @@ static Dec* decide(int two) {
 
 static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 static void sync_combine(void) {
+    GP_SET(5, 0);
     unsigned cyc = (omode_h >> G_MDSFT_CYCLETYPE) & 3;
     sync_legacy();
     plan_active = 0;
     ls_use = -1; ls_cyc = (int)cyc; ls_dual = dual_on | box_prod << 1 | box_pat << 2; ls_frame = rm_frame;
-    if (cyc <= 1 && comb_set && !dual_on && !box_prod && !box_pat && !pm_debug_has("nocomb")) {
+    if (cyc <= 1 && comb_set && !dual_on && !box_prod && !box_pat && !PMD("nocomb")) {
         Dec* d = decide((int)cyc);
         ls_use = d->use; ls_why = d->why;
         if (d->use) {
@@ -1077,7 +1086,6 @@ static void t1_fold(float u0, float u1, float v0, float v1) {
  * alone and the viewport places them. */
 static const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
 /* PERF-GBI (switch gbiprof, default off): cycle laps inside draw_tri, a tick read costs 1.3 us in Azahar so the totals are inflated, the ranking holds. One load and one branch when off. */
-static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
 static unsigned gp_acc[8], gp_last, gp_ntri, gp_frames;
 static unsigned gp_opt[256], gp_opn[256], gp_opt_last; static int gp_prev_op = -1; /* time between two ops, charged to the first */
 enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_N };
@@ -1096,7 +1104,7 @@ static int clip_bits4(const float* p) { /* the same bits as clip_bits, from a cl
 }
 static int cull_off(void) { static int v = -1; if (v < 0) v = pm_debug_has("nocull"); return v; }
 static int rmlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("rmlog"); return v; }
-static int noprimz_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("noprimz"); return v; }
+static int noprimz_on(void) { static int v = -1; if (v < 0) v = PMD("noprimz"); return v; }
 
 /* PO3b, PO3c: one triangle of the raw Vtx path. The caller checked that the three vertices have a ring slot, one matrix and one texture scale, and that
  * the triangle is plain (unlit, no texgen, no screen vertex, no fog). The colour and depth overrides of the CPU path become uniforms: ENV or the plan
@@ -1320,7 +1328,7 @@ static void draw_tri(unsigned w) {
         int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
         int fog = fogmix_on && (geom & G_FOG);
         int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
-        int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL)) && !pm_debug_has("noprimz");
+        int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL)) && !PMD("noprimz");
         int scr = vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]];
         int cm = p_cur_mixed;
         if (po3b_on()) cm = vert_gmi[idx[0]] != vert_gmi[idx[1]] || vert_gmi[idx[0]] != vert_gmi[idx[2]];
@@ -1368,7 +1376,7 @@ static void draw_tri(unsigned w) {
             if (poly[i].w > dd.w1) dd.w1 = poly[i].w;
         }
     }
-    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && !pm_debug_has("noprimz")) { /* noprimz: A/B check */
+    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && !PMD("noprimz")) { /* noprimz: A/B check */
         /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
         float zn = 2.f * (float)prim_z / 32767.f - 1.f;
         for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
@@ -1529,6 +1537,11 @@ void pm_gbi_end_frame(void) {
             gp_opt[best] = 0;
         }
         memset(gp_opt, 0, sizeof gp_opt); memset(gp_opn, 0, sizeof gp_opn);
+        pm_log("gbiprof same per frame (calls/same): combine %u/%u prim %u/%u env %u/%u tile0 %u/%u tilesize %u/%u sync_combine calls %u sync_render calls %u", gp_set[0] / 300, gp_same[0] / 300,
+               gp_set[1] / 300, gp_same[1] / 300, gp_set[2] / 300, gp_same[2] / 300, gp_set[3] / 300, gp_same[3] / 300, gp_set[4] / 300, gp_same[4] / 300, gp_set[5] / 300, gp_set[6] / 300);
+        memset(gp_same, 0, sizeof gp_same); memset(gp_set, 0, sizeof gp_set);
+        pm_gpu_gbiprof_report(300);
+        { extern void pm_debug_report(unsigned); pm_debug_report(300); }
         (void)nm;
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
@@ -2041,6 +2054,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         }
         case G_SETCOMBINE:
+            GP_SET(0, comb_w0 == w0 && comb_w1 == w1 && comb_set);
             comb_w0 = w0;
             comb_w1 = w1;
             comb_a = (w0 >> 20) & 0xf;
@@ -2094,6 +2108,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             sync_combine();
             break;
         case G_SETPRIMCOLOR:
+            GP_SET(1, prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
             aud_prim_lod = (u8)(w0 & 0xff);
             prim = w1;
             pm_gpu_set_prim(prim);
@@ -2122,6 +2137,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             blendc = w1;
             break;
         case G_SETENVCOLOR:
+            GP_SET(2, envc == w1);
             envc = w1;
             pm_gpu_set_env(envc);
             sync_combine();
@@ -2170,7 +2186,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             off_screen_check();
             pm_gpu_set_replace(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
             /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
-            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !pm_debug_has("noprimz")) {
+            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !PMD("noprimz")) {
                 sync_render();
                 pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)prim_z / 32767.f);
             } else
@@ -2240,7 +2256,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 2) { ex -= 1; ey -= 1; }
                 if (ex >= xl / 4 && ey >= yl / 4) {
                     /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
-                    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !pm_debug_has("noprimz")) {
+                    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !PMD("noprimz")) {
                         sync_render();
                         pm_gpu_tex_rect_z(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1, (float)prim_z / 32767.f);
                     } else
@@ -2276,6 +2292,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_SETTILE: {
             unsigned tile = (w1 >> 24) & 7;
+            if (tile == 0 && gp_on()) {
+                GP_SET(3, tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
+                          tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
+                          tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15));
+            }
             tile_fmt[tile] = (w0 >> 21) & 7;
             tile_siz[tile] = (w0 >> 19) & 3;
             tile_tmem[tile] = w0 & 0x1ff;
@@ -2362,6 +2383,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     ult = st < 0 ? 0 : st;
                 }
             }
+            GP_SET(4, tile_sz[tile][0] == uls && tile_sz[tile][1] == ult && tile_sz[tile][2] == lrs && tile_sz[tile][3] == lrt);
             tile_sz[tile][0] = uls;
             tile_sz[tile][1] = ult;
             tile_sz[tile][2] = lrs;
