@@ -235,8 +235,7 @@ static void direct_write(const char* line, int n, const char* body, size_t bl) {
         close(client);
         client = -1;
     }
-    fwrite(body, 1, bl, stdout);
-    fflush(stdout);
+    if (!pm_menu_open) { fwrite(body, 1, bl, stdout); fflush(stdout); }
 }
 
 static void vlog(int lv, const char* fmt, va_list ap) {
@@ -321,8 +320,7 @@ static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     }
     /* After a crash the lock owner may be the dead thread: then skip the console. */
     if (__atomic_load_n(&crashed, __ATOMIC_ACQUIRE) ? LightLock_TryLock(&con_lock) == 0 : (LightLock_Lock(&con_lock), 1)) {
-        fwrite(bodies, 1, (size_t)bn, stdout);
-        fflush(stdout);
+        if (!pm_menu_open) { fwrite(bodies, 1, (size_t)bn, stdout); fflush(stdout); } /* F11-6: the menu owns the bottom screen */
         LightLock_Unlock(&con_lock);
     }
 }

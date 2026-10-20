@@ -14,9 +14,12 @@ static signed char stick_x;
 static signed char stick_y;
 static int rand_on, rand_x, rand_y; /* padrand switch */
 static unsigned select_scan = 0x80000000u; /* F11-3: scan of the last Select press. A port flag, never an N64 bit. */
+static int select_pending; /* F11-6: a Select press that no game code took opens the port menu */
+static unsigned ps_menu_edge; /* F11-6: padscript edge of this scan, drives the port menu in tests */
 int pm_pad_take_select(void) {
     int r = pm_pad_scans - select_scan <= 4u; /* a press older than 2 game frames is stale */
     select_scan = 0x80000000u;
+    select_pending = 0;
     return r;
 }
 
@@ -101,16 +104,17 @@ static int clamp_stick(int v) {
     return v;
 }
 
-/* C-O3DS: N3DS: L and R give N64 Z (C4E), ZL and ZR give N64 L and R. O3DS (no ZL, ZR): L and R give Z, and with the Z key held (X, or Y by options.txt o3dsz=1)
- * L gives N64 L and R gives N64 R. X alone and Y alone stay C-up and C-down. */
+/* C-O3DS and F11-5: pm_map[i] is the N64 button of 3DS input i (options.txt map.*, the Select menu). Default: A, B, START as is, the D-pad and
+ * X, Y and the C-stick give N64 C, L and R give Z, ZL and ZR give N64 L and R. O3DS (no ZL, ZR): with the Z key held (X, or Y by options.txt
+ * o3dsz=1) L gives N64 L and R gives N64 R. SELECT is reserved for the port menu. */
 int pm_new3ds;
 static unsigned short prev_sh;
+static const u32 in_key[PM_NIN] = { KEY_A, KEY_B, KEY_X, KEY_Y, KEY_L, KEY_R, KEY_ZL, KEY_ZR, KEY_START, KEY_DUP, KEY_DDOWN, KEY_DLEFT, KEY_DRIGHT,
+                                    KEY_CSTICK_UP, KEY_CSTICK_DOWN, KEY_CSTICK_LEFT, KEY_CSTICK_RIGHT };
 static unsigned short shoulder_map(u32 k) {
-    if (pm_new3ds)
-        return (unsigned short)(((k & (KEY_L | KEY_R)) ? 0x2000 : 0) | ((k & KEY_ZL) ? 0x0020 : 0) | ((k & KEY_ZR) ? 0x0010 : 0));
-    if (k & (pm_opt.o3ds_z ? KEY_Y : KEY_X))
+    if (!pm_new3ds && (k & (pm_opt.o3ds_z ? KEY_Y : KEY_X)))
         return (unsigned short)(((k & KEY_L) ? 0x0020 : 0) | ((k & KEY_R) ? 0x0010 : 0));
-    return (k & (KEY_L | KEY_R)) ? 0x2000 : 0;
+    return (unsigned short)(((k & KEY_L) ? pm_map[PM_IN_L] : 0) | ((k & KEY_R) ? pm_map[PM_IN_R] : 0) | ((k & KEY_ZL) ? pm_map[PM_IN_ZL] : 0) | ((k & KEY_ZR) ? pm_map[PM_IN_ZR] : 0));
 }
 
 void pm_pad_scan(void) {
@@ -118,33 +122,17 @@ void pm_pad_scan(void) {
     u32 k = hidKeysHeld();
     u32 d = hidKeysDown();
     unsigned short b = 0;
-    if (k & KEY_A) b |= 0x8000;
-    if (k & KEY_B) b |= 0x4000;
-    if (k & KEY_START) b |= 0x1000;
-    if (k & (KEY_DUP | KEY_X)) b |= 0x0008;       /* D-pad is N64 C (C4E) */
-    if (k & (KEY_DDOWN | KEY_Y)) b |= 0x0004;
-    if (k & KEY_DLEFT) b |= 0x0002;
-    if (k & KEY_DRIGHT) b |= 0x0001;
-    if (k & KEY_CSTICK_UP) b |= 0x0008;
-    if (k & KEY_CSTICK_DOWN) b |= 0x0004;
-    if (k & KEY_CSTICK_LEFT) b |= 0x0002;
-    if (k & KEY_CSTICK_RIGHT) b |= 0x0001;
+    unsigned short edge = 0;
+    for (int i = 0; i < PM_NIN; i++) {
+        if (i >= PM_IN_L && i <= PM_IN_ZR) continue; /* shoulders below */
+        if (k & in_key[i]) b |= pm_map[i];
+        if (d & in_key[i]) edge |= pm_map[i];
+    }
     unsigned short sh = shoulder_map(k);
     b |= sh;
-    unsigned short edge = sh & ~prev_sh;
+    edge |= sh & ~prev_sh;
     prev_sh = sh;
-    if (d & KEY_SELECT) select_scan = pm_pad_scans;
-    if (d & KEY_A) edge |= 0x8000;
-    if (d & KEY_B) edge |= 0x4000;
-    if (d & KEY_START) edge |= 0x1000;
-    if (d & (KEY_DUP | KEY_X)) edge |= 0x0008;
-    if (d & (KEY_DDOWN | KEY_Y)) edge |= 0x0004;
-    if (d & KEY_DLEFT) edge |= 0x0002;
-    if (d & KEY_DRIGHT) edge |= 0x0001;
-    if (d & KEY_CSTICK_UP) edge |= 0x0008;
-    if (d & KEY_CSTICK_DOWN) edge |= 0x0004;
-    if (d & KEY_CSTICK_LEFT) edge |= 0x0002;
-    if (d & KEY_CSTICK_RIGHT) edge |= 0x0001;
+    if ((d & KEY_SELECT) && !pm_menu_open) { select_scan = pm_pad_scans; select_pending = 1; }
     /* autoa switch: press A on two of every four scans, so Azahar runs leave the menus fast.
      * The old pattern was 1 scan in 240. */
     {
@@ -182,7 +170,8 @@ void pm_pad_scan(void) {
             static int ps_init;
             if (!ps_init) { ps_init = 1; ps_load(); }
             if (ps_run) {
-                if (ps[ps_i].b & ~ps_prev & 0x0040) select_scan = pm_pad_scans; /* SELECT token: bit 0x40 is the script's own flag */
+                ps_menu_edge = ps[ps_i].b & ~ps_prev;
+                if ((ps_menu_edge & 0x0040) && !pm_menu_open) { select_scan = pm_pad_scans; select_pending = 1; } /* SELECT token: bit 0x40 is the script's own flag */
                 b |= ps[ps_i].b & ~0x0040;
                 edge |= ps[ps_i].b & ~ps_prev & ~0x0040;
                 ps_prev = ps[ps_i].b;
@@ -202,6 +191,15 @@ void pm_pad_scan(void) {
         }
         pm_pad_scans++;
     }
+    {   /* F11-6: the port menu. A Select press that no game code took in 5 scans opens it. While open the game gets no button and no stick. */
+        unsigned md = d | ((ps_menu_edge & 0x8000) ? KEY_A : 0) | ((ps_menu_edge & 0x4000) ? KEY_B : 0) | ((ps_menu_edge & 0x0800) ? KEY_DUP : 0) |
+                      ((ps_menu_edge & 0x0400) ? KEY_DDOWN : 0) | ((ps_menu_edge & 0x0040) ? KEY_SELECT : 0);
+        ps_menu_edge = 0;
+        if (!pm_menu_open) {
+            if (select_pending && pm_pad_scans - select_scan >= 5u) { select_pending = 0; pm_menu_set(1); }
+        } else pm_menu_key(md);
+        if (pm_menu_open) { b = 0; edge = 0; }
+    }
     held = b;
     /* The game reads the pad every second retrace, the pad is scanned every retrace.
      * Keep every press edge until the game reads it. */
@@ -215,6 +213,7 @@ void pm_pad_scan(void) {
         stick_x = (signed char)rand_x;
         stick_y = (signed char)rand_y;
     }
+    if (pm_menu_open) stick_x = stick_y = 0;
 }
 
 void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsigned short* trigger) {

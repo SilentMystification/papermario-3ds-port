@@ -11,6 +11,23 @@ int pm_debug_value(const char* key, char* out, unsigned n);
 
 PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed */
 
+/* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
+static const struct { const char* name; unsigned short mask; } n64_btn[] = { {"NONE", 0}, {"A", 0x8000}, {"B", 0x4000}, {"Z", 0x2000}, {"START", 0x1000}, {"L", 0x0020}, {"R", 0x0010},
+                                                                              {"CUP", 0x0008}, {"CDOWN", 0x0004}, {"CLEFT", 0x0002}, {"CRIGHT", 0x0001} };
+#define N_BTN ((int)(sizeof n64_btn / sizeof n64_btn[0]))
+const char* const pm_in_name[PM_NIN] = { "A", "B", "X", "Y", "L", "R", "ZL", "ZR", "START", "DUP", "DDOWN", "DLEFT", "DRIGHT", "CSUP", "CSDOWN", "CSLEFT", "CSRIGHT" };
+static const unsigned short map_def[PM_NIN] = { 0x8000, 0x4000, 0x0008, 0x0004, 0x2000, 0x2000, 0x0020, 0x0010, 0x1000, 0x0008, 0x0004, 0x0002, 0x0001, 0x0008, 0x0004, 0x0002, 0x0001 };
+unsigned short pm_map[PM_NIN] = { 0x8000, 0x4000, 0x0008, 0x0004, 0x2000, 0x2000, 0x0020, 0x0010, 0x1000, 0x0008, 0x0004, 0x0002, 0x0001, 0x0008, 0x0004, 0x0002, 0x0001 };
+const char* pm_n64_name(unsigned short mask) {
+    for (int i = 0; i < N_BTN; i++) if (n64_btn[i].mask == mask) return n64_btn[i].name;
+    return "?";
+}
+unsigned short pm_n64_next(unsigned short mask) {
+    for (int i = 0; i < N_BTN; i++) if (n64_btn[i].mask == mask) return n64_btn[(i + 1) % N_BTN].mask;
+    return n64_btn[0].mask;
+}
+void pm_map_reset(void) { memcpy(pm_map, map_def, sizeof pm_map); }
+
 static int* opt_field(const char* key) {
     if (!strcmp(key, "fps60")) return &pm_opt.fps60;
     if (!strcmp(key, "wide")) return &pm_opt.wide;
@@ -33,6 +50,7 @@ void pm_options_write(void) {
     }
     fprintf(f, "version=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
             pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed);
+    for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
         return;
@@ -60,6 +78,14 @@ void pm_options_init(void) {
             }
             *eq = 0;
             if (!strcmp(line, "version")) continue;
+            if (!strncmp(line, "map.", 4)) { /* F11-5: map.<3DS input>=<N64 button> */
+                int in, bt;
+                for (in = 0; in < PM_NIN && strcmp(line + 4, pm_in_name[in]); in++) {}
+                for (bt = 0; bt < N_BTN && strcmp(eq + 1, n64_btn[bt].name); bt++) {}
+                if (in == PM_NIN || bt == N_BTN) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
+                else { pm_map[in] = n64_btn[bt].mask; pm_log("options: map %s = %s", line + 4, eq + 1); }
+                continue;
+            }
             fld = opt_field(line);
             v = strtol(eq + 1, &end, 10);
             if (!fld || end == eq + 1 || *end || v < 0 || v > (fld == &pm_opt.loglevel ? 3 : 1)) {
@@ -84,6 +110,7 @@ void pm_options_init(void) {
 
 /* F11-3: the panel. nofog is live. nolight is cached in pm_gbi.c at first use, so it takes effect at the next boot. */
 static int changed;
+void pm_options_touch(void) { changed = 1; }
 
 int pm_options_get(int row) {
     if (row == 6) return pm_opt.log;
