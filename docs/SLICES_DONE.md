@@ -247,3 +247,4 @@ All rows marked [x], moved unchanged from 3ds/SLICES.md on 2026-10-17. Append on
 [x] H05 | HARDWARE-READINESS AUDIT, before S28. Full text: docs/plans/H05.md | DONE 2026-10-20 by user decision. Findings table in docs/plans/H05_findings.md.
 [x] V17 | Intro transition fade and star glow | DONE 2026-10-20 by user decision.
 [x] OVR1 | Overrun metric: late steps in the pace line, steps over 33.3 ms and cpu p99 and max per segment and for pc 1700 to 1800 in perf_az_full.py | DONE 2026-10-20: full cycle 223 steps over 33.3 ms, window 7 of 100, gbi 13.76 ms per step. Reference: 3ds/logs/perf/speed_ref_856.txt
+[x] PG2a | Texture bake tool and format (3ds/src/pm_texbake.h, 3ds/tools/texbake.c, texbake_test.sh), loader design in docs/plans/PG2_loader.md | DONE 2026-10-20: host test 3384 requests, 0 mismatches against the pm_tex.c decode. Loader edit waits for the shared files
