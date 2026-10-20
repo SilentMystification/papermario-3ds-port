@@ -168,6 +168,7 @@ int pm_au_thread_yield(void) {
         }
         if (au_busy) {
             unsigned dt = pm_ticks() - au_j_t0;
+            if (pm_ph_on) __atomic_fetch_add(&pm_ph_cnt[C_AJOB], dt / 268u, __ATOMIC_RELAXED); /* PG0: kick to done of the job in us, a pc field (core 1 wall time, an upper bound of its CPU time) */
             au_j_sum += dt;
             if (dt > au_j_max) au_j_max = dt;
             au_busy = 0;

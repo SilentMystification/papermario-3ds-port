@@ -36,6 +36,9 @@ void pm_fatal_stop(const char* msg); /* R01: log FATAL, flush, [CRASH] line, svc
 void pm_frame_loop(void);
 
 int pm_debug_has(const char* word);
+extern unsigned pm_dbg_gen;
+/* O6: a switch word cached until the switch string changes (pm_log_switch, options panel) */
+#define PMDL(word) ({ static int v_; static unsigned g_; if (g_ != pm_dbg_gen) { v_ = pm_debug_has(word); g_ = pm_dbg_gen; } v_; })
 /* F06-1: frame interpolation record (pm_interp.c). pm_interp_on is -1 until the first start. */
 extern int pm_interp_on;
 void pm_interp_start(void);
@@ -55,7 +58,7 @@ unsigned pm_ticks(void);
 /* PT01: per-frame phase timer. Switch `phase` turns it on (pm_ph_on). Exclusive time: a nested phase takes its time from
  * the phase that was running. Counters are per drawn frame. All macros are one load and one branch when the switch is off. */
 enum { PH_OTHER, PH_LOGIC, PH_DL, PH_GBI, PH_GPU, PH_TEX, PH_AUDIO, PH_ROM, PH_YAY0, PH_FBEGIN, PH_FEND, PH_IDLE, PH_GCACHE, PH_GDRAW, PH_GVTX, PH_GTRI, PH_GMTX, PH_GOP, PH_FBREAD, PH_N };
-enum { C_TRI, C_TRIOUT, C_VTXLOAD, C_VTXSLOT, C_DRAW, C_FLUSH, C_TEXCALL, C_TEXMISS, C_TEXBYTE, C_ROMN, C_ROMB, C_YAYN, C_YAYB, C_DBG, C_ATICK, C_CMD, C_N };
+enum { C_TRI, C_TRIOUT, C_VTXLOAD, C_VTXSLOT, C_DRAW, C_FLUSH, C_TEXCALL, C_TEXMISS, C_TEXBYTE, C_ROMN, C_ROMB, C_YAYN, C_YAYB, C_DBG, C_ATICK, C_CMD, C_AJOB, C_N };
 extern int pm_ph_on;
 extern int pm_ph_fine; /* switch phasegbi: time G_VTX, triangle and G_MTX ops on their own (two tick reads per op, so it inflates the frame) */
 extern unsigned pm_ph_cnt[C_N];

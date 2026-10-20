@@ -68,6 +68,8 @@ void pm_gpu_set_memblend(int on); /* FX2a: blender B is the memory alpha */
 void pm_gpu_set_env(unsigned rgba); /* combine mode 5: lerp from ENV (vertex colour) to PRIM by texel */
 /* Draw the current batch now. The next vertices belong to a different texture. */
 void pm_gpu_flush(void);
+void pm_gpu_flush_at(int line);
+void pm_gpu_gbiprof_report(unsigned frames);
 /* N64 pixels, y down. Clipped to the 320x240 picture inside the 400-wide target. */
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1);
 

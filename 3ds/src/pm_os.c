@@ -373,7 +373,7 @@ void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
             }
         }
     }
-    if (pm_debug_has("romtrace")) {
+    if (PMDL("romtrace")) {
         /* M01 evidence: address, size, FNV-1a of the bytes the game gets. Own buffered file: pm_log fsyncs every line. */
         static FILE* tr;
         static unsigned lines;

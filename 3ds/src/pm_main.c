@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "pm_port.h"
+/* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
+#define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #include "pm_gpu.h"
 #include "pm_gbi.h"
 
@@ -237,7 +239,7 @@ static int au_kicked;
 void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
-    if (pm_debug_has("noaudio")) return;
+    if (PMD("noaudio")) return;
     unsigned n = pm_audio_lock() ? 2u : pm_audio_retraces();
     PH_ADD(C_ATICK, n);
     pace_ticks += n;
@@ -254,9 +256,9 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     if (!t0) { t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; for (int i = 0; i < 4; i++) i0[i] = pace_iv[i]; return; }
     if (now - t0 < hz) return;
     float wall = (float)(now - t0) * 1000.f / (float)hz;
-    pm_log_d("pace: wall %.1f ms steps %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u", wall, pm_step_calls - s0,
+    pm_log_d("pace: wall %.1f ms steps %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u total 1:%u 2:%u 3:%u 4+:%u", wall, pm_step_calls - s0,
            frame - f0, v - v0, pace_ticks - a0, (float)(pm_step_calls - s0) * 1000.f / wall, pace_iv[0] - i0[0],
-           pace_iv[1] - i0[1], pace_iv[2] - i0[2], pace_iv[3] - i0[3]);
+           pace_iv[1] - i0[1], pace_iv[2] - i0[2], pace_iv[3] - i0[3], pace_iv[0], pace_iv[1], pace_iv[2], pace_iv[3]);
     for (int i = 0; i < 4; i++) i0[i] = pace_iv[i];
     t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks;
 }
@@ -299,7 +301,7 @@ void pm_frame_loop(void) {
              * counter. The next drawn iteration waits for one more vblank in C3D_FrameBegin(SYNCDRAW), so this
              * waits until the counter is PM_VBLANKS_PER_STEP - 1 past the last drawn iteration. A slow frame is
              * already past it: no wait and no extra step to catch up. `fast` stays uncapped (debug). */
-            if (!pm_debug_has("fast") && step_vb_ok) {
+            if (!PMD("fast") && step_vb_ok) {
                 int guard = PM_VBLANKS_PER_STEP + 1;
                 PH_PUSH(PH_IDLE);
                 while ((int)(C3D_FrameCounter(0) - step_vb) < PM_VBLANKS_PER_STEP - 1 && guard--) gspWaitForVBlank();
@@ -384,7 +386,7 @@ void pm_frame_loop(void) {
             if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "L%d?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "L%d", pm_cpu_game_value);
             if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f %s %s #%s", fps, lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
             else snprintf(top, sizeof(top), "FPS ... %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
-            if (pm_opt.dbg_stats || pm_debug_has("stats") || pm_debug_has("fast"))
+            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast"))
                 snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
             else
                 snprintf(bot, sizeof(bot), "%5.1f ms", frame_ms);

@@ -80,9 +80,10 @@ void pm_log_poll(void) {
 
 /* PERF-GBI: a test run has a switch string, and every pm_debug_has call scanned it (4.6 us in Azahar). Real play has none and returns at once. The cache makes a
  * test run cost what real play costs. Entries hold a copy of the word, so a word in a changing buffer is safe. The cache is cleared when the string changes. */
-typedef struct { char w[20]; signed char v; } DbgEnt;
+typedef struct { char w[20]; signed char v; unsigned n; } DbgEnt;
 static DbgEnt dbg_cache[64];
-static void dbg_cache_clear(void) { memset(dbg_cache, 0, sizeof dbg_cache); }
+unsigned pm_dbg_gen = 1; /* changes whenever the switch string changes, for callers that cache a word and must see the options panel */
+static void dbg_cache_clear(void) { memset(dbg_cache, 0, sizeof dbg_cache); pm_dbg_gen++; }
 static int debug_scan(const char* word) {
     const char* p = switches;
     size_t n = strlen(word);
@@ -103,11 +104,24 @@ int pm_debug_has(const char* word) {
     for (; word[n] && n < 19; n++) h = h * 33u + (unsigned char)word[n];
     if (word[n]) return debug_scan(word); /* a long word: no cache */
     DbgEnt* e = &dbg_cache[h & 63u];
-    if (e->v && strcmp(e->w, word) == 0) return e->v > 0;
+    if (e->v && strcmp(e->w, word) == 0) { e->n++; return e->v > 0; }
     int r = debug_scan(word);
     memcpy(e->w, word, n + 1);
     e->v = r ? 1 : -1;
+    e->n = 1;
     return r;
+}
+
+/* PG0: the words most often asked since the last report (switch gbiprof calls this every 300 frames) */
+void pm_debug_report(unsigned frames) {
+    for (int r = 0; r < 6; r++) {
+        int best = -1; unsigned bn = 0;
+        for (int i = 0; i < 64; i++) if (dbg_cache[i].v && dbg_cache[i].n > bn) { bn = dbg_cache[i].n; best = i; }
+        if (best < 0 || bn < frames) break;
+        pm_log("gbiprof dbgword %s per frame %u", dbg_cache[best].w, bn / (frames ? frames : 1));
+        dbg_cache[best].n = 0;
+    }
+    for (int i = 0; i < 64; i++) dbg_cache[i].n = 0;
 }
 
 const char* pm_debug_text(void) { return switches; }

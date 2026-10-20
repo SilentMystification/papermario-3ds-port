@@ -203,7 +203,30 @@ static void off_snapshot(int i) {
     GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)offs[i].snap.data, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
 }
 
-static void flush(void) {
+/* PG0 (switch gbiprof): flush count by caller. The macro below records the function and line of the call. */
+static const char* fl_fn = "?";
+static int fl_line;
+typedef struct { const char* fn; int line; unsigned n; } FlCause;
+static FlCause fl_tab[48];
+static int fl_nt;
+static int fl_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
+static void fl_count(void) {
+    for (int i = 0; i < fl_nt; i++) if (fl_tab[i].fn == fl_fn && fl_tab[i].line == fl_line) { fl_tab[i].n++; return; }
+    if (fl_nt < 48) { fl_tab[fl_nt].fn = fl_fn; fl_tab[fl_nt].line = fl_line; fl_tab[fl_nt].n = 1; fl_nt++; }
+}
+void pm_gpu_gbiprof_report(unsigned frames) { /* the six most frequent causes since the last report, per frame in 0.01 */
+    for (int r = 0; r < 6; r++) {
+        int best = -1; unsigned bn = 0;
+        for (int i = 0; i < fl_nt; i++) if (fl_tab[i].n > bn) { bn = fl_tab[i].n; best = i; }
+        if (best < 0) break;
+        pm_log("gbiprof flush %s line %d per frame x100 %u", fl_tab[best].fn, fl_tab[best].line, bn * 100 / (frames ? frames : 1));
+        fl_tab[best].n = 0;
+    }
+    for (int i = 0; i < fl_nt; i++) fl_tab[i].n = 0;
+}
+static void flush_impl(void);
+#define flush() do { fl_fn = __func__; fl_line = __LINE__; flush_impl(); } while (0)
+static void flush_impl(void) {
     int graw = gni > 0; /* PO3b: the open batch is a raw Vtx batch */
     if ((nverts <= 0 && !graw) || !gpu_ok) {
         nverts = 0;
@@ -231,6 +254,8 @@ static void flush(void) {
         if (snap0 || snap1) off_snapshot(off_cur);
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
+    PH_ADD(C_FLUSH, 1);
+    if (fl_on()) fl_count();
     PH_PUSH(PH_GPU);
     if (graw) { /* PO3b */
         C3D_BindProgram(&prog3);
@@ -1196,6 +1221,7 @@ void pm_gpu_set_const(unsigned rgba) {
 }
 
 void pm_gpu_flush(void) { flush(); }
+void pm_gpu_flush_at(int line) { fl_fn = "gbi"; fl_line = line; flush_impl(); } /* PG0: a flush asked for by the display list interpreter, line of the call in pm_gbi.c */
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     if (x0 < 0) x0 = 0;
