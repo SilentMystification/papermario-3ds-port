@@ -363,7 +363,36 @@ static void battle_hooks(unsigned f) {
 }
 
 /* Once per drawn frame (pm_frame_loop). */
+static void pm_statehash(unsigned f) {
+    { /* MA1 step 0: switch statehash=<n> logs an FNV-1a hash of the game state every n steps (default 10), and a running hash over all samples.
+         * Fields only, no pointers, so the value is equal between builds when the game logic is equal. Use it as the replay check for MA1 edits. */
+        static unsigned sh_every, sh_run = 2166136261u, sh_n;
+        char sv[12];
+        if (!sh_every) sh_every = pm_debug_value("statehash", sv, sizeof sv) ? (unsigned)(atoi(sv) > 0 ? atoi(sv) : 10) : 0xFFFFFFFFu;
+        if (sh_every != 0xFFFFFFFFu && f % sh_every == 0) {
+            unsigned h = 2166136261u;
+            #define SHF(v) do { float fv_ = (float)(v); unsigned u_; memcpy(&u_, &fv_, 4); h = (h ^ u_) * 16777619u; } while (0)
+            #define SHI(v) do { h = (h ^ (unsigned)(int)(v)) * 16777619u; } while (0)
+            SHI(gRandSeed);
+            SHF(gPlayerStatus.pos.x); SHF(gPlayerStatus.pos.y); SHF(gPlayerStatus.pos.z);
+            SHF(gPlayerStatus.targetYaw); SHF(gPlayerStatus.curYaw);
+            SHI(gPlayerStatus.actionState); SHI(gPlayerStatus.flags);
+            SHI(gPlayerData.curHP); SHI(gPlayerData.curFP); SHI(gPlayerData.coins); SHI(gPlayerData.starPoints); SHI(gPlayerData.curPartner);
+            SHI(gGameStatusPtr->demoState); SHI(gGameStatusPtr->mapID); SHI(gGameStatusPtr->areaID);
+            for (int i = 0; i < MAX_NPCS; i++) { /* slot order, no search */
+                Npc* np = get_npc_by_index(i);
+                if (!np || !np->flags) { SHI(-1); continue; }
+                SHF(np->pos.x); SHF(np->pos.y); SHF(np->pos.z); SHF(np->yaw); SHI(np->flags); SHI(np->curAnim);
+            }
+            sh_run = (sh_run ^ h) * 16777619u;
+            sh_n++;
+            pm_log("statehash f%u %08x run %08x n %u", f, h, sh_run, sh_n);
+        }
+    }
+}
+
 void pm_warp_tick(unsigned frame) {
+    pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
     if (scene_f0 < 0) return;
     if (tour_next && !tour_wait && frame - tour_f0 >= TOUR_FRAMES) {
         tour_ts = frame;
