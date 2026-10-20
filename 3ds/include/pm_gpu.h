@@ -96,5 +96,6 @@ void pm_gpu_tex_rect_z(int x0, int y0, int x1, int y1, float s0, float t0, float
 void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d); /* X01: tests depth d (0 near .. 1 far) */
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1,
                      float s0, float t0, float s1, float t1);
+extern float pm_f255[256], pm_f127[256]; /* PG3 O11: i / 255.f and (signed char)i / 127.f for a byte i */
 
 #endif

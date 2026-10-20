@@ -670,17 +670,24 @@ static void put4(float x, float y, float z, float w, float u, float v, unsigned 
     p->w = w;
     p->u = u;
     p->v = v;
-    p->r = (float)((c >> 24) & 255) / 255.f;
-    p->g = (float)((c >> 16) & 255) / 255.f;
-    p->b = (float)((c >> 8) & 255) / 255.f;
-    p->a = (float)(c & 255) / 255.f;
+    p->r = pm_f255[(c >> 24) & 255];
+    p->g = pm_f255[(c >> 16) & 255];
+    p->b = pm_f255[(c >> 8) & 255];
+    p->a = pm_f255[c & 255];
 }
 
 static void put(float x, float y, float z, float u, float v, unsigned c) {
     put4(x, y, z, 1.f, u, v, c);
 }
 
+/* PG3 O11: byte to float tables, filled with the same divide the code used, so every value is equal. The VFP divide costs about 19 cycles on the O3DS. */
+float pm_f255[256], pm_f127[256]; /* pm_f127 is indexed by the byte of a signed char */
+static void init_f_tables(void) {
+    for (int i = 0; i < 256; i++) { pm_f255[i] = (float)i / 255.f; pm_f127[i] = (float)(signed char)i / 127.f; }
+}
+
 void pm_gpu_init(void) {
+    init_f_tables();
     if (gpu_ok) return;
     pm_wide = pm_wide_cfg = pm_debug_has("wide") || pm_opt.wide;
     pm_log("gpu: wide=%d", pm_wide);

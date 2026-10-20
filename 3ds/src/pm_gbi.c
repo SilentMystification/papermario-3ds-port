@@ -561,9 +561,9 @@ int pm_nolight = -1; /* F11-10: -1 = read the switch at first use, the Options r
 static unsigned vert_color(const Vtx* v, const float m[4][4]) {
     tg_ok = 0;
     if (geom & G_LIGHTING) {
-        float nx = (float)(signed char)v->v.cn[0] / 127.f;
-        float ny = (float)(signed char)v->v.cn[1] / 127.f;
-        float nz = (float)(signed char)v->v.cn[2] / 127.f;
+        float nx = pm_f127[(unsigned char)v->v.cn[0]];
+        float ny = pm_f127[(unsigned char)v->v.cn[1]];
+        float nz = pm_f127[(unsigned char)v->v.cn[2]];
         if (pm_nolight < 0) pm_nolight = pm_debug_has("nolight");
         if (pm_nolight) {
             float d = nx * 0.25f + ny * 0.85f + nz * 0.45f;
@@ -1618,10 +1618,10 @@ void pm_gbi_init(void) {
 
 /* ---- RDP color combiner, one cycle, for work the display list does off screen ---- */
 static void unpack8(unsigned c, float o[4]) {
-    o[0] = (float)((c >> 24) & 255u) / 255.f;
-    o[1] = (float)((c >> 16) & 255u) / 255.f;
-    o[2] = (float)((c >> 8) & 255u) / 255.f;
-    o[3] = (float)(c & 255u) / 255.f;
+    o[0] = pm_f255[(c >> 24) & 255u];
+    o[1] = pm_f255[(c >> 16) & 255u];
+    o[2] = pm_f255[(c >> 8) & 255u];
+    o[3] = pm_f255[c & 255u];
 }
 
 static float cc_rgb_in(unsigned sel, int ch, const float* t0, const float* t1, const float* pr,
