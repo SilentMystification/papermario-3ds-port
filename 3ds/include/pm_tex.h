@@ -30,6 +30,7 @@ int pm_tex_load_shaded(const void* img, int width, int height, int stride, const
                        const unsigned* lut, int dx4, int dy4);
 int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigned char* rgba);
 int pm_tex_bind(void);
+void pm_tex_bind_reset(void); /* DR1: forget the texture bind shadow */
 int pm_tex_failed(void);
 unsigned pm_tex_fail_count(void);
 void pm_tex_size(int* w, int* h);

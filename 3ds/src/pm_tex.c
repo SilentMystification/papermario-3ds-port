@@ -8,6 +8,7 @@
 #include "pm_tex.h"
 #include "pm_texbake.h"
 #include "pm_port.h"
+void pm_gpu_rect_sync(void); /* pm_gpu.c */
 
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
 enum { SIZ_4, SIZ_8, SIZ_16, SIZ_32 };
@@ -85,6 +86,8 @@ void pm_tex_origin(int* x, int* y) {
     *x = (have && off_cur >= 0) ? off_ox : 0;
     *y = (have && off_cur >= 0) ? off_oy : 0;
 }
+static const C3D_Tex* tb_last; /* DR1 bind shadow, see pm_tex_bind */
+static int tb_f, tb_ws, tb_wt;
 static GPU_TEXTURE_WRAP_PARAM wrap_s = GPU_REPEAT;
 static GPU_TEXTURE_WRAP_PARAM wrap_t = GPU_REPEAT;
 static int shr_s, shr_t, aux_shr_s, aux_shr_t; /* V12c: the texture is only mask wide, the GPU wrap does the mask (set per load) */
@@ -104,6 +107,7 @@ static unsigned mk_ms, mk_mt;  /* mirror flags */
 static int mk_on;              /* the next load is a render tile load (pm_tex_load), not the shaded or rgba8 loads */
 
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
+    pm_gpu_rect_sync(); /* DR1: a queued rectangle batch is drawn with the texture state it was queued in */
     pm_tex_epoch_v++;
     mk_ws = masks ? 1u << masks : 0;
     mk_wt = maskt ? 1u << maskt : 0;
@@ -292,6 +296,7 @@ static void drop(Slot* s) {
     addr_sub(s->tlut);
     if (aux == (int)(s - slots)) aux = -1;
     C3D_TexDelete(&s->tex);
+    tb_last = NULL;
     if (used >= s->bytes) used -= s->bytes;
     else used = 0;
     s->live = 0;
@@ -464,6 +469,7 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         img = (unsigned)s->img;
         pal = (unsigned)s->tlut;
         if (!((img >= start && img < end) || (pal && pal >= start && pal < end))) continue;
+        pm_gpu_rect_sync(); /* DR1: draw a queued rectangle batch before its texture goes away */
         tc_inval++;
         if (aux == i) aux = -1;
         if (cur == i) {
@@ -498,6 +504,7 @@ void pm_tex_prof_report(unsigned frames) {
 static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int height,
                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                      unsigned dkey) {
+    pm_gpu_rect_sync(); /* DR1 */
     pm_tex_epoch_v++;
     int r;
     static int tp = -1;
@@ -681,6 +688,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         slot = -1;
     }
     Slot* s = &slots[slot];
+    tb_last = NULL; /* DR1 */
     if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
         pm_log_e("tex init failed %dx%d\n", pw, ph);
         fail_last = 1;
@@ -813,6 +821,7 @@ int pm_tex_load_shaded(const void* img, int width, int height, int stride, const
 /* D03: a texture the port composed on the CPU (RGBA8, w x h, tightly packed in rgba). key names the content.
  * rgba NULL: only look for a cached copy and bind it. Returns 1 if bound. */
 int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigned char* rgba) {
+    pm_gpu_rect_sync(); /* DR1: a queued rectangle batch is drawn with the texture state it was queued in */
     pm_tex_epoch_v++;
     key |= 1u;
     if (!rgba) {
@@ -838,19 +847,30 @@ int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigne
 }
 
 static GPU_TEXTURE_FILTER_PARAM tex_filt = GPU_NEAREST; /* V15: from omh G_TF bits, set sampler state at bind, not in the cache key */
-void pm_tex_set_filter(int linear) { tex_filt = linear ? GPU_LINEAR : GPU_NEAREST; }
+void pm_tex_set_filter(int linear) {
+    pm_gpu_rect_sync(); /* DR1 */ tex_filt = linear ? GPU_LINEAR : GPU_NEAREST; }
 
+/* DR1: citro3d sends the texture unit again at the next draw after every C3D_TexBind, C3D_TexSetFilter and C3D_TexSetWrap call. The shadow below
+ * skips the three calls when the texture, filter and wrap are what the last bind set. Anything that can change the unit or the texture
+ * object in another way clears it (frame and target changes through pm_tex_bind_reset, a dropped or loaded slot, the aux bind). */
+void pm_tex_bind_reset(void) { tb_last = NULL; }
 int pm_tex_bind(void) {
+    const int dr1 = !PMDL("nodr1") && !PMDL("nodr1t");
     if (have && off_cur >= 0) {
+        if (dr1 && tb_last == offt[off_cur].tex && tb_f == -2) return 1;
         C3D_TexBind(0, offt[off_cur].tex);
+        tb_last = offt[off_cur].tex; tb_f = -2;
         return 1;
     }
     if (!have || cur < 0 || !slots[cur].live) return 0;
     slots[cur].stamp = ++stamp;
     slots[cur].last_frame = tc_frame;
+    GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
+    if (dr1 && tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
     C3D_TexSetFilter(&slots[cur].tex, tex_filt, tex_filt);
-    C3D_TexSetWrap(&slots[cur].tex, shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t);
+    C3D_TexSetWrap(&slots[cur].tex, ws, wt);
     C3D_TexBind(0, &slots[cur].tex);
+    tb_last = &slots[cur].tex; tb_f = (int)tex_filt; tb_ws = (int)ws; tb_wt = (int)wt;
     return 1;
 }
 
@@ -869,6 +889,7 @@ void pm_tex_size(int* w, int* h) {
 
 /* S25: the texture just loaded becomes TEXEL1 (unit 1). Wrap is that tile's own. */
 int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
+    pm_gpu_rect_sync(); /* DR1: a queued rectangle batch is drawn with the texture state it was queued in */
     pm_tex_epoch_v++;
     aux_off = -1;
     if (have && off_cur >= 0) { aux = -1; aux_off = off_cur; aux_ox = off_ox; aux_oy = off_oy; return 1; }
@@ -886,13 +907,15 @@ int pm_tex_bind_aux(void) {
     if (aux < 0 || !slots[aux].live) return 0;
     slots[aux].stamp = ++stamp;
     TOUCH(&slots[aux]);
+    tb_last = NULL; /* DR1: this changes the filter and wrap of a texture that unit 0 may use */
     C3D_TexSetFilter(&slots[aux].tex, tex_filt, tex_filt);
     C3D_TexSetWrap(&slots[aux].tex, aux_shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_ws, aux_shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_wt);
     C3D_TexBind(1, &slots[aux].tex);
     return 1;
 }
 
-void pm_tex_unbind_aux(void) { C3D_TexBind(1, NULL); }
+void pm_tex_unbind_aux(void) {
+    pm_gpu_rect_sync(); /* DR1 */ C3D_TexBind(1, NULL); }
 
 void pm_tex_aux_size(int* w, int* h) {
     pm_tex_epoch_v++;
