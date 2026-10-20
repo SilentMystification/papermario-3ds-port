@@ -18,6 +18,7 @@ read V0 C0 <<EOF
 $(tr -d '\015' < 3ds/build_base.txt)
 EOF
 BN=$((V0 + $(git rev-list --count HEAD) - C0))
+git update-index -q --refresh >/dev/null 2>&1 # a changed file time or CRLF conversion alone is not a change
 git diff-index --quiet HEAD -- || BN="$BN-dirty"
 if [ -n "$PM_LANE" ] || [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
 printf '#define PM_BUILD_STR "%s"
