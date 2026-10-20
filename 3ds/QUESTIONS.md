@@ -2,9 +2,12 @@
 
 Answered questions and the old text are in docs/HISTORY.md (section "Original QUESTIONS.md"). Answer by editing the Answer line or by telling the orchestrator.
 
-## PO2. Transform each vertex once at G_VTX? (row PO2)
-- Fact: draw_tri in 3ds/src/pm_gbi.c transforms per triangle corner. A transform at G_VTX is CPU only and a small change.
-- Recommendation: yes, after S28 gives real timing.
+## Q-PO2. Do the "each corner once" speed-up (row PO2)?
+- Plain words: the game sends each 3D point once, but the port does the point math again for every triangle that uses it (about 1.8 times per point). PO2 does the math once per point. Pictures stay the same. Only the speed changes. PO3 (math on the graphics chip) builds on PO2.
+- Option A: yes. Code PO2 after S28, in lane B, next to AU1. Golden must show 0 difference.
+- Option B: no. Skip PO2 and go to PO3 only. PO3 then has to carry the PO2 changes itself (larger, riskier slice).
+- Option C: wait. Decide after the O3DS speed run. Do PO2 only if "GBI interpret" uses 5 ms or more per step on the O3DS.
+- Recommendation: A. It is CPU only, small (pm_gbi.c, pm_phase.c), and Azahar can prove "same pictures". Details: docs/plans/post_s28_gaps.md section 1.
 - Answer: (open)
 
 ## S28. Is the O3DS ready?
