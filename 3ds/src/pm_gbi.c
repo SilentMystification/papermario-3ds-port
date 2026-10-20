@@ -223,7 +223,8 @@ static int tri_since_vtx;
 static u8 vert_scr[64];
 static s16 vert_sx[64], vert_sy[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
-static float vert_m[64][4][4];
+static float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
+static unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
 static u8 seen[256];
 /* i = every corner in front of the eye, drawn where it projected.
  * c = a corner behind the eye was cut. d = nothing left in front.
@@ -610,14 +611,11 @@ static const float ident_m[4][4] = {
 };
 
 /* The RSP multiplies when the vertex is loaded. Later matrices do not move it. */
-static void xform_vtx(const float m[4][4], const Vtx* v, const float* st, unsigned c, ClipV* o) {
-    float x = (float)v->v.ob[0];
-    float y = (float)v->v.ob[1];
-    float z = (float)v->v.ob[2];
-    o->x = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
-    o->y = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
-    o->z = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
-    o->w = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+static void xform_vtx(const float* p, const float* st, unsigned c, ClipV* o) {
+    o->x = p[0];
+    o->y = p[1];
+    o->z = p[2];
+    o->w = p[3];
     vert_uv(st, &o->u, &o->v);
     o->r = (float)((c >> 24) & 255u);
     o->g = (float)((c >> 16) & 255u);
@@ -1097,7 +1095,8 @@ static void draw_tri(unsigned w) {
     ensure_tile(use_t1 ? 1 : 0);
     dual_bind();
     for (i = 0; i < 3; i++) {
-        xform_vtx(vert_m[idx[i]], &verts[idx[i]], tex_on ? vert_st[idx[i]] : st_off, vert_c[idx[i]], &poly[i]);
+        st_cor++;
+        xform_vtx(vert_p[idx[i]], tex_on ? vert_st[idx[i]] : st_off, vert_c[idx[i]], &poly[i]);
         if (!tex_on) { /* H06b1: texel (0, 0), the centre of the first texel */
             int tw, th;
             pm_tex_size(&tw, &th);
@@ -1329,6 +1328,7 @@ void pm_gbi_end_frame(void) {
     rm_frame++;
     if ((rm_frame % 600) == 0 && aud_cnt_total) {
         pm_log_d("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners | tris %u lit %u fogmode %u fogblend %u blendcol %u texgen %u", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n, st_tri, st_lit, st_fogg, st_fogb, st_blc, st_tgen);
+        pm_log_d("PO2 f%d: %u vertices transformed at G_VTX, %u triangle corners read (before PO2: one matrix product per corner)", rm_frame, st_vx, st_cor);
     }
 }
 
@@ -1677,7 +1677,15 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     vert_st[v0 + i][1] = (float)src[i].v.tc[1] * (float)tex_ts / 65536.f;
                     vert_c[v0 + i] = vert_color(&src[i], mv[mv_sp]);
                     if (tg_ok) { vert_st[v0 + i][0] = tg_s; vert_st[v0 + i][1] = tg_t; }
-                    memcpy(vert_m[v0 + i], combined, sizeof combined);
+                    {   /* PO2: the same products as the old per corner code, once per vertex */
+                        const float(*m)[4] = combined;
+                        float x = (float)src[i].v.ob[0], y = (float)src[i].v.ob[1], z = (float)src[i].v.ob[2];
+                        vert_p[v0 + i][0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
+                        vert_p[v0 + i][1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
+                        vert_p[v0 + i][2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
+                        vert_p[v0 + i][3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+                        st_vx++;
+                    }
                 }
             }
             break;

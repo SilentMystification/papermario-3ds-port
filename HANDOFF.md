@@ -153,3 +153,4 @@ DARK: omo_14 darkness is a hard rectangle in Azahar (not fixed). V24c paralyze s
 DARK: omo_14 darkness is a soft circle now (pm_gbi.c fold_axis for off-screen mirror clamp texrect). Open: WIDEHUD (P WP WP label in wide).
 S28 done 2026-10-19, boot on console works. The optimization rows (PO2, PO3, AU1, MA1) and F11-5, F11-6 are now open.
 F11-5 and F11-6 done: Select opens the port menu on the bottom screen (options and controls), options.txt map.* keys.
+F11-5 and F11-6 are done and committed (11cc3fffa): Select menu and map.* keys, tested in Azahar. Not tested: real key presses and the bottom screen picture. PO2 stops after the code (pm_gbi.c vert_p, one transform per vertex at G_VTX, committed): golden toad, yard, battle same as before, f12000 counters 27.9M vertices against 50.5M corners (1.8 per vertex). Open: user answer Q-PO2 in QUESTIONS.md and the O3DS phase 3 number.

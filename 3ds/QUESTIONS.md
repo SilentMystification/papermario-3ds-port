@@ -67,3 +67,5 @@ V27 (2026-10-19): the Underwater effect matches the decomp in a numeric check (s
 V18, V19, V27 (2026-10-19): one shared cause found for V27 (near plane clip, huge screen coordinates). Please test V18 (intro pan walkway) and V19 (Sushie shadow) on the next build. Azahar never showed V18 or V19.
 
 Q-F10 (2026-10-19): tst_12 floods effects (decomp script defect, same on N64). Option A: patch the game script (Add to AddF). Option B: keep the data, the scene selector and the tour skip tst_12. Which one? Default if no answer: B.
+
+Q-PO2 (2026-10-19): PO2 changes how the port reads vertices. It transforms each vertex once when the display list loads it, not once per triangle corner. The math and the pictures stay the same (golden toad, yard, battle show no change). Do you accept this change? Default if no answer: yes. The speed gain must be measured on the O3DS (phase 3, GBI interpret).
