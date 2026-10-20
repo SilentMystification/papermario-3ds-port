@@ -1959,7 +1959,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (v0 >= 64) n = 0; /* S30: a vertex load that starts past the buffer (garbage list) copied 4 GB */
                 else if (v0 + n > 64) n = 64 - v0;
                 PH_ADD(C_VTXLOAD, n);
-                memcpy(&verts[v0], src, n * sizeof(Vtx));
+                if (dd_on()) memcpy(&verts[v0], src, n * sizeof(Vtx)); /* PG4: verts is read only by the drawlog statistics */
                 /* A load at slot 0 starts a new mesh. Later loads in the same
                  * list append above it and keep the earlier slots. */
                 if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
