@@ -1580,11 +1580,11 @@ void pm_gbi_end_frame(void) {
         char b[200]; int n = 0;
         for (int k = 0; k < 8; k++) n += snprintf(b + n, sizeof b - n, "%s %u ", k == 3 ? "early" : k == 0 ? "A" : k == 1 ? "ens" : k == 2 ? "dual" : k == 4 ? "sync" : k == 5 ? "emit" : k == 6 ? "old" : "gvtx", gp_acc[k] / 26811 / 300);
         pm_log("gbiprof f%d per frame 0.1ms: %s tris/frame %u", rm_frame, b, gp_ntri / 300);
-        for (int r = 0; r < 8; r++) { /* the eight most expensive op codes: per frame time in 0.1 ms and count */
+        for (int r = 0; r < 20; r++) { /* the twenty most expensive op codes: per frame time in 0.1 ms and count */
             int best = -1; unsigned bt = 0;
             for (int k = 0; k < 256; k++) if (gp_opt[k] > bt) { bt = gp_opt[k]; best = k; }
             if (best < 0) break;
-            pm_log("gbiprof op %02x per frame 0.1ms %u count %u", best, gp_opt[best] / 26811 / 300, gp_opn[best] / 300);
+            pm_log("gbiprof op %02x per frame 0.1ms %u count %u, ns per call %u", best, gp_opt[best] / 26811 / 300, gp_opn[best] / 300, gp_opn[best] ? (unsigned)((unsigned long long)gp_opt[best] * 1000ull / 268ull / gp_opn[best]) : 0u);
             gp_opt[best] = 0;
         }
         memset(gp_opt, 0, sizeof gp_opt); memset(gp_opn, 0, sizeof gp_opn);
@@ -1887,6 +1887,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     Gfx* end = (nbytes >= 8) ? pc + nbytes / 8 : NULL;
     unsigned guard = 0;
     u32 pc_lo = 0, pc_hi = 0;
+    gp_prev_op = -1; /* PG4: the time between two lists is not an op cost */
     sc_ok = 0; /* DIP2: a new display list starts with a full sync */
     if (!pc) return;
     dd_end();
@@ -1920,6 +1921,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         switch (op) {
         case G_ENDDL:
             if (sp == 0) {
+                if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
                 dd_end();
                 if (fp) pm_ph_pop();
                 return;
