@@ -73,6 +73,7 @@ static void au2_put(AuCmd* c) {
     if (au2_tr < 0) au2_tr = pm_debug_has("au2trace");
     if (au2_tr) {
         u32 h = au2_cmd_hash(c);
+        if (au2_tr_nc >= 1534 * 3 && au2_tr_nc <= 1536 * 3 + 2) pm_log("au2cmd blk %u op %u idx %u b1 %u b2 %u s1 %d s2 %d v0 %d v1 %d v2 %d", au2_tr_nc, c->op, c->idx, c->b1, c->b2, c->s1, c->s2, c->op == AUC_BLOCK || c->op == AUC_START_PARAMS || c->op == AUC_SET_WAVETABLE ? 0 : c->v0, c->v1, c->v2);
         au2_cur_c = au2_fnv(au2_cur_c, &h, 4);
         if (c->op == AUC_BLOCK) { if (au2_tr_nc < AU2_TR_MAX) au2_tr_c[au2_tr_nc] = au2_cur_c; au2_tr_nc++; au2_cur_c = 2166136261u; }
     }
