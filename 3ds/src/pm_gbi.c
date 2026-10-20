@@ -234,6 +234,7 @@ static int tri_since_vtx;
 static u8 vert_scr[64];
 static s16 vert_sx[64], vert_sy[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
+static unsigned char vert_cb[64]; /* DIP1: clip bits of vert_p, made once at G_VTX */
 static float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
 /* PO3a (switch po3a): counters for the go or no-go of PO3b. Matrix id = FNV-1a of the 16 bits of `combined` at each G_VTX. One log line per drawn frame. No rendering change. */
 static int po3a_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("po3a"); return v; }
@@ -1187,25 +1188,7 @@ static void draw_tri(unsigned w) {
     }
     off_screen_check();
     box_fold_sync();
-    if (audit_on()) comb_audit();
-    GP_LAP(GPL_A);
-    st_tri++;
-    if (geom & G_LIGHTING) st_lit++;
-    if (geom & G_FOG) st_fogg++;
-    if (geom & G_TEXTURE_GEN) st_tgen++;
-    {
-        unsigned bl = omode_l;
-        int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
-        unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
-        if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) st_fogb++;
-        if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) st_blc++;
-    }
-    GP_LAP(GPL_A);
-    ensure_tile(use_t1 ? 1 : 0);
-    GP_LAP(GPL_ENSURE);
-    dual_bind();
-    GP_LAP(GPL_DUAL);
-    int early = 0; /* PO3b2: reject and cull from the clip positions of PO2 alone, before any uv, colour or ClipV is built. Same tests, same order, same counters. */
+    int early = 0; /* PO3b2, DIP1: reject and cull from the clip positions of PO2 and the clip bits made at G_VTX, before the statistics, ensure_tile, dual_bind and any ClipV. Same tests and counters as before except the debug statistics (tris lit fog), which now count the triangles that pass. */
     if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
         const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
         early = 1;
@@ -1214,7 +1197,7 @@ static void draw_tri(unsigned w) {
             sample_x = (int)(a[0] / a[3] * 100.f);
             have_sample = 1;
         }
-        if (clip_bits4(a) & clip_bits4(b) & clip_bits4(c)) {
+        if (vert_cb[idx[0]] & vert_cb[idx[1]] & vert_cb[idx[2]]) {
             n_out++;
             GP_LAP(GPL_EARLY);
             return;
@@ -1238,6 +1221,28 @@ static void draw_tri(unsigned w) {
                 if (pw > 0.05f && q[k][0] >= -pw && q[k][0] <= pw && q[k][1] >= -pw && q[k][1] <= pw) n_keep++;
             }
         }
+    }
+    GP_LAP(GPL_EARLY);
+    if (audit_on()) comb_audit();
+    GP_LAP(GPL_A);
+    st_tri++;
+    if (geom & G_LIGHTING) st_lit++;
+    if (geom & G_FOG) st_fogg++;
+    if (geom & G_TEXTURE_GEN) st_tgen++;
+    {
+        unsigned bl = omode_l;
+        int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
+        unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
+        if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) st_fogb++;
+        if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) st_blc++;
+    }
+    GP_LAP(GPL_A);
+    ensure_tile(use_t1 ? 1 : 0);
+    GP_LAP(GPL_ENSURE);
+    dual_bind();
+    GP_LAP(GPL_DUAL);
+    if (early) {
+        const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
         if (a[3] > 0.05f && b[3] > 0.05f && c[3] > 0.05f && po3b_on()) { /* the raw path needs no ClipV */
             int fog = fogmix_on && (geom & G_FOG);
             if (!(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !fog && vert_ring[idx[0]] != GV_NONE && vert_ring[idx[1]] != GV_NONE && vert_ring[idx[2]] != GV_NONE &&
@@ -1955,6 +1960,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                         vert_p[v0 + i][1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
                         vert_p[v0 + i][2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
                         vert_p[v0 + i][3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+                        vert_cb[v0 + i] = (unsigned char)clip_bits4(vert_p[v0 + i]);
                         st_vx++;
                     }
                 }
