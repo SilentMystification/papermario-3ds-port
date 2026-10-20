@@ -194,9 +194,23 @@ static void clear_all(void) {
     }
 }
 
+extern EffectInstance* gEffectInstances[96];
 void pm_fxtest_tick(unsigned f) {
     static char sw[300];
     int slot, k, i, n;
+    { /* switch fxlist=<frame>: one log line per live effect instance (name, graphics address) at that frame */
+        static int fl = -2;
+        char v[16];
+        if (fl == -2) fl = pm_debug_value("fxlist", v, sizeof v) ? atoi(v) : -1;
+        extern unsigned pm_frame_count(void);
+        static int fdone;
+        if (fl >= 0 && !fdone && pm_frame_count() >= (unsigned)fl && ++fdone)
+            for (i = 0; i < 96; i++) {
+                EffectInstance* e = gEffectInstances[i];
+                if (e && e->shared && e->shared->effectIndex >= 0 && e->shared->effectIndex < FXT_COUNT)
+                    pm_log("fxlist f%u slot %d effect %d %s graphics %p", pm_frame_count(), i, e->shared->effectIndex, fx_names[e->shared->effectIndex], (void*)e->shared->graphics);
+            }
+    }
     if (nsel < 0) {
         char* p;
         nsel = 0;
