@@ -966,9 +966,10 @@ static void sync_combine(void) {
         sc_sig = sg;
         sc_ok = 0; /* set again below when the work is done */
     }
+    int leg0 = leg_mode, pat0 = box_pat;
     sync_combine_work();
     sc_ok = 1;
-    {   /* the work may change leg_mode (an input): the signature of the next call must start from the new value */
+    if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
                              (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
         unsigned sg = 2166136261u;
@@ -1191,6 +1192,7 @@ static int gpu_emit(const int* idx) {
     return pm_gpu_gtri(gm_tab[vert_gmi[idx[0]]], vp, uvso, cm, ca, zm, vert_ring[idx[0]], vert_ring[idx[1]], vert_ring[idx[2]]);
 }
 
+static int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
@@ -1222,8 +1224,7 @@ static void draw_tri(unsigned w) {
         if (geom & G_TEXTURE_GEN) p_tgen++;
         if (vert_scr[i0] | vert_scr[i1] | vert_scr[i2]) p_scr++;
     }
-    off_screen_check();
-    box_fold_sync();
+    if (!tri_prep_ok) { off_screen_check(); box_fold_sync(); tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
     int early = 0; /* PO3b2, DIP1: reject and cull from the clip positions of PO2 and the clip bits made at G_VTX, before the statistics, ensure_tile, dual_bind and any ClipV. Same tests and counters as before except the debug statistics (tris lit fog), which now count the triangles that pass. */
     if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
         const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
@@ -2027,9 +2028,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         }
         case G_TRI1:
+            tri_prep_ok = 0;
             draw_tri(w0);
             break;
         case G_TRI2:
+            tri_prep_ok = 0;
             draw_tri(w0);
             draw_tri(w1);
             break;
