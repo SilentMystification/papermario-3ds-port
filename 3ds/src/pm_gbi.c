@@ -1073,6 +1073,58 @@ static void t1_fold(float u0, float u1, float v0, float v1) {
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
 static const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
+static int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
+    int b = 0;
+    float w = p[3];
+    if (p[0] < -w) b |= 1;
+    if (p[0] > w) b |= 2;
+    if (p[1] < -w) b |= 4;
+    if (p[1] > w) b |= 8;
+    if (p[2] > w) b |= 32;
+    return b;
+}
+static int cull_off(void) { static int v = -1; if (v < 0) v = pm_debug_has("nocull"); return v; }
+static int rmlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("rmlog"); return v; }
+static int noprimz_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("noprimz"); return v; }
+
+/* PO3b, PO3c: one triangle of the raw Vtx path. The caller checked that the three vertices have a ring slot, one matrix and one texture scale, and that
+ * the triangle is plain (unlit, no texgen, no screen vertex, no fog). The colour and depth overrides of the CPU path become uniforms: ENV or the plan
+ * constant replace the colour, alpha 255, the boost of the second cycle, and G_ZS_PRIM replaces the depth. Returns 0 when the path refuses. */
+static int gpu_emit(const int* idx) {
+    int env = comb_mode5 && !plan_active;
+    int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
+    int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
+    int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
+    int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL)) && !noprimz_on();
+    int tw = 1, th = 1;
+    pm_tex_size(&tw, &th);
+    if (tw < 1) tw = 1;
+    if (th < 1) th = 1;
+    unsigned st = use_t1 ? 1 : 0;
+    float ms = shift_mul(tile_shift[st][0]), mt = shift_mul(tile_shift[st][1]);
+    unsigned tss = vert_tss[idx[0]];
+    float uvso[4], vp[4] = { vp_sx, vp_sy, vp_tx, vp_ty };
+    float cm[4] = { 1.f, 1.f, 1.f, 1.f }, ca[4] = { 0.f, 0.f, 0.f, 0.f }, zm[2] = { 1.f, 0.f }, en[4];
+    unpack8(envc, en);
+    if (tex_on) {
+        uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms / (float)tw;
+        uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt / (float)th;
+        uvso[2] = -(float)tile_x0 / (float)tw;
+        uvso[3] = -(float)tile_y0 / (float)th;
+    } else { /* H06b1: the vertex texcoords are 0, texel (0, 0) centre */
+        uvso[0] = uvso[1] = 0.f;
+        uvso[2] = -(float)tile_x0 / (float)tw + 0.5f / (float)tw;
+        uvso[3] = -(float)tile_y0 / (float)th + 0.5f / (float)th;
+    }
+    if (env) { for (int k = 0; k < 4; k++) { cm[k] = 0.f; ca[k] = en[k]; } } /* the CPU order: ENV or the plan constant, then alpha 255, then boost */
+    else if (plan) { float vc[4]; unpack8(cur_plan.vtx, vc); for (int k = 0; k < 4; k++) { cm[k] = 0.f; ca[k] = vc[k]; } }
+    if (a255) { cm[3] = 0.f; ca[3] = 1.f; }
+    if (boost) for (int k = 0; k < 3; k++) { ca[k] = ca[k] * 0.5f + (1.f - en[k]) * 0.5f; cm[k] *= 0.5f; }
+    if (primz) { zm[0] = 0.f; zm[1] = 2.f * (float)prim_z / 32767.f - 1.f; }
+    pm_gpu_set_rgb_scale(boost ? 2 : 1);
+    return pm_gpu_gtri(gm_tab[vert_gmi[idx[0]]], vp, uvso, cm, ca, zm, vert_ring[idx[0]], vert_ring[idx[1]], vert_ring[idx[2]]);
+}
+
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
@@ -1118,8 +1170,52 @@ static void draw_tri(unsigned w) {
     }
     ensure_tile(use_t1 ? 1 : 0);
     dual_bind();
+    int early = 0; /* PO3b2: reject and cull from the clip positions of PO2 alone, before any uv, colour or ClipV is built. Same tests, same order, same counters. */
+    if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
+        const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
+        early = 1;
+        st_cor += 3;
+        if (!have_sample && a[3] != 0.f) {
+            sample_x = (int)(a[0] / a[3] * 100.f);
+            have_sample = 1;
+        }
+        if (clip_bits4(a) & clip_bits4(b) & clip_bits4(c)) {
+            n_out++;
+            return;
+        }
+        if ((geom & G_CULL_BOTH) && !cull_off()) {
+            float ex1 = a[0] * b[3] - b[0] * a[3], ey1 = a[1] * b[3] - b[1] * a[3];
+            float ex2 = c[0] * b[3] - b[0] * c[3], ey2 = c[1] * b[3] - b[1] * c[3];
+            float cross = (ex1 * ey2 - ey1 * ex2) * (a[3] * c[3]);
+            unsigned ct = geom & G_CULL_BOTH;
+            if ((a[3] < 0) ^ (b[3] < 0) ^ (c[3] < 0)) cross = -cross;
+            if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
+                n_out++;
+                return;
+            }
+        }
+        {
+            const float* q[3] = { a, b, c };
+            for (int k = 0; k < 3; k++) {
+                float pw = q[k][3];
+                if (pw > 0.05f && q[k][0] >= -pw && q[k][0] <= pw && q[k][1] >= -pw && q[k][1] <= pw) n_keep++;
+            }
+        }
+        if (a[3] > 0.05f && b[3] > 0.05f && c[3] > 0.05f && po3b_on()) { /* the raw path needs no ClipV */
+            int fog = fogmix_on && (geom & G_FOG);
+            if (!(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !fog && vert_ring[idx[0]] != GV_NONE && vert_ring[idx[1]] != GV_NONE && vert_ring[idx[2]] != GV_NONE &&
+                vert_gmi[idx[0]] != GV_NONE && vert_gmi[idx[0]] == vert_gmi[idx[1]] && vert_gmi[idx[0]] == vert_gmi[idx[2]] &&
+                vert_tss[idx[0]] == vert_tss[idx[1]] && vert_tss[idx[0]] == vert_tss[idx[2]] &&
+                img_role(0) != ROLE_DEPTH && !dd_on() && !xt_on() && !rmlog_on()) {
+                if (po3a_on()) goto early_flags; /* the counters of PO3a need the flags block below: build the ClipV path */
+                sync_render();
+                if (gpu_emit(idx)) { n_in++; st_gpu_tri++; return; }
+            }
+        }
+    }
+    early_flags:;
     for (i = 0; i < 3; i++) {
-        st_cor++;
+        if (!early) st_cor++;
         xform_vtx(vert_p[idx[i]], tex_on ? vert_st[idx[i]] : st_off, vert_c[idx[i]], &poly[i]);
         if (!tex_on) { /* H06b1: texel (0, 0), the centre of the first texel */
             int tw, th;
@@ -1138,15 +1234,15 @@ static void draw_tri(unsigned w) {
         float u0 = poly[0].u, u1 = poly[1].u, u2 = poly[2].u, v0 = poly[0].v, v1 = poly[1].v, v2 = poly[2].v;
         t1_fold(fminf(u0, fminf(u1, u2)), fmaxf(u0, fmaxf(u1, u2)), fminf(v0, fminf(v1, v2)), fmaxf(v0, fmaxf(v1, v2)));
     }
-    if (!have_sample && poly[0].w != 0.f) {
+    if (!early && !have_sample && poly[0].w != 0.f) {
         sample_x = (int)(poly[0].x / poly[0].w * 100.f);
         have_sample = 1;
     }
-    if (clip_bits(&poly[0]) & clip_bits(&poly[1]) & clip_bits(&poly[2])) {
+    if (!early && (clip_bits(&poly[0]) & clip_bits(&poly[1]) & clip_bits(&poly[2]))) {
         n_out++;
         return;
     }
-    if ((geom & G_CULL_BOTH) && !pm_debug_has("nocull")) {
+    if (!early && (geom & G_CULL_BOTH) && !cull_off()) {
         /* V02: the RSP culls by the sign of the screen space area (G_CULL_FRONT / G_CULL_BACK / both), same test as
          * libultraship. A one sided wall (the cliff skirt around the Mario house yard, seen from inside) draws only
          * if this test runs. nocull turns it off for A/B checks. */
@@ -1161,7 +1257,7 @@ static void draw_tri(unsigned w) {
             return;
         }
     }
-    {
+    if (!early) {
         int k;
         for (k = 0; k < 3; k++) {
             float pw = poly[k].w;
@@ -1181,7 +1277,7 @@ static void draw_tri(unsigned w) {
         }
         n_cut++;
     }
-    if ((pm_debug_has("rmlog") && (rm_frame % 30) == 1) || xt_on()) {
+    if ((rmlog_on() && (rm_frame % 30) == 1) || xt_on()) {
         static unsigned lo, lg, la, lb, lc, ld, lh, lp, lf;
         if (lo != omode_l || lg != (geom & G_ZBUFFER) || la != comb_a || lb != comb_b || lc != comb_c || ld != comb_d ||
             lh != omode_h || lp != prim || lf != tile_fmt[0] * 4 + tile_siz[0]) {
@@ -1213,7 +1309,8 @@ static void draw_tri(unsigned w) {
             p_plain += base && !a255;  /* plain: one matrix, unlit, no override at all */
         }
         if (po3b_on()) {
-            gpu_plain = base && !a255 && vert_ring[idx[0]] != GV_NONE && vert_ring[idx[1]] != GV_NONE && vert_ring[idx[2]] != GV_NONE &&
+            int gbase = !cm && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !fog; /* PO3c: lit, texgen, screen vertices and fog stay on the CPU path */
+            gpu_plain = gbase && vert_ring[idx[0]] != GV_NONE && vert_ring[idx[1]] != GV_NONE && vert_ring[idx[2]] != GV_NONE &&
                         vert_gmi[idx[0]] != GV_NONE && vert_tss[idx[0]] == vert_tss[idx[1]] && vert_tss[idx[0]] == vert_tss[idx[2]] &&
                         img_role(0) != ROLE_DEPTH && !(plan_active && cur_plan.uses_tex1) && !dd_on();
         }
@@ -1295,27 +1392,7 @@ static void draw_tri(unsigned w) {
         }
     }
 no_boost:
-    if (gpu_plain && was_in) { /* PO3b: the raw Vtx path, same triangle, the GPU transforms it */
-        int tw = 1, th = 1;
-        pm_tex_size(&tw, &th);
-        if (tw < 1) tw = 1;
-        if (th < 1) th = 1;
-        unsigned st = use_t1 ? 1 : 0;
-        float ms = shift_mul(tile_shift[st][0]), mt = shift_mul(tile_shift[st][1]);
-        unsigned tss = vert_tss[idx[0]];
-        float uvso[4], vp[4] = { vp_sx, vp_sy, vp_tx, vp_ty };
-        if (tex_on) {
-            uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms / (float)tw;
-            uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt / (float)th;
-            uvso[2] = -(float)tile_x0 / (float)tw;
-            uvso[3] = -(float)tile_y0 / (float)th;
-        } else { /* H06b1: the vertex texcoords are 0, texel (0, 0) centre */
-            uvso[0] = uvso[1] = 0.f;
-            uvso[2] = -(float)tile_x0 / (float)tw + 0.5f / (float)tw;
-            uvso[3] = -(float)tile_y0 / (float)th + 0.5f / (float)th;
-        }
-        if (pm_gpu_gtri(gm_tab[vert_gmi[idx[0]]], vp, uvso, vert_ring[idx[0]], vert_ring[idx[1]], vert_ring[idx[2]])) { st_gpu_tri++; return; }
-    }
+    if (gpu_plain && was_in && gpu_emit(idx)) { st_gpu_tri++; return; } /* PO3b: the raw Vtx path, same triangle, the GPU transforms it */
     if (po3b_on()) st_cpu_tri++;
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
     for (i = 1; i < n - 1; i++) {
