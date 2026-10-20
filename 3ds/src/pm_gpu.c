@@ -182,8 +182,24 @@ static int grab_ready, grab_bind, grab_dirty = 1, grab_dy0, grab_dy1, grab_n, gr
 
 static void sh_clear(void);
 static int want_clear; /* see below */
+/* GV0 and KICK1: the GPU reads the vertex pool, the raw Vtx ring and the index ring when it runs the command list. Everything written since the last
+ * flush goes out of the data cache before every C3D_FrameSplit and at the end of the frame (GSPGPU_FlushDataCache is one call to the GSP, so each
+ * range is flushed once). v_fl, gring_fl and gidx_fl mark what is flushed. They restart at pm_gpu_begin. */
+static Vert* v_fl;
+static unsigned gring_fl, gidx_fl;
+static void gpu_flush_written(void) {
+    if (verts && v_fl && verts > v_fl) {
+        PH_PUSH(PH_GCACHE);
+        GSPGPU_FlushDataCache(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl));
+        PH_POP();
+        v_fl = verts;
+    }
+    if (gring && gring_n > gring_fl) { GSPGPU_FlushDataCache(gring + gring_fl * 16, (gring_n - gring_fl) * 16); gring_fl = gring_n; }
+    if (gidx && gidx_n > gidx_fl) { GSPGPU_FlushDataCache(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); gidx_fl = gidx_n; }
+}
 /* B2: queue order is clear of the main target, then every part. The first split of a frame queues the clear first. */
 static void split_frame(void) {
+    gpu_flush_written(); /* GV0b: the GPU runs the first part now, its vertices must be in memory */
     if (!grab_split++ && want_clear) {
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
         want_clear = 0;
@@ -263,7 +279,7 @@ static struct { int dt[3]; float dm[2]; int dm_on, at[2]; unsigned sc[5]; int bl
  * flush_impl puts it in place for the draw, then restores the caller's state. pm_gpu_drew and the grab and off-screen entry points flush it first. */
 static int rect_open, rect_ec, rect_zb;
 static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compares this instead of the plan */
-static unsigned dr1_merged, dr1_splits, dr1_skips; /* the dr1 log line */
+static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
 static int dr1_on(void) { return !PMDL("nodr1"); }
 #define DR1X(w) (dr1_on() && !PMDL(w)) /* a single DR1 part off for A/B: nodr1u uniform, nodr1b buffer, nodr1k texenv key, nodr1t texture bind */
 static int pool_buf_ok; /* DR1: the citro3d buffer info holds the vertex pool (set once per frame, cleared by a raw batch and by sh_clear) */
@@ -313,6 +329,23 @@ static void dbg_cmp(void) {
     static int n;
     dbg_take(now);
     for (int i = 0; i < SN_N - 1; i++) if (i != 33 && now[i] != dbg_snap[i] && n++ < 40) pm_log_w("rectdbg: state %d was %d now %d at the draw of a queued rectangle batch (frame %u) flush from %s line %d", i, dbg_snap[i], now[i], pm_frame_count(), fl_fn, fl_line);
+}
+/* KICK1: citro3d holds the GX queue inside a frame and starts the PICA at C3D_FrameEnd, so the GPU idled for the whole CPU part of the frame. One
+ * C3D_FrameSplit when about 55 percent of the draws of the last frame are queued starts the GPU on the first part while the CPU builds the rest.
+ * Cost: one more cache flush and one more command list submit on the CPU. Only on the main target (an off-screen pass and a grab split on their own).
+ * Switch nokick turns it off. */
+static unsigned prev_draws, kick_at;
+static int kick_done;
+static void kick_check(void) {
+    if (kick_done || off_active || !kick_at || draws_frame < kick_at || rect_open || nverts > 0 || gni > 0 || PMDL("nokick")) return;
+    kick_done = 1;
+    gpu_flush_written();
+    if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
+    sh_clear();
+    PH_PUSH(PH_GPU);
+    C3D_FrameSplit(GX_CMDLIST_FLUSH);
+    PH_POP();
+    kick_n++;
 }
 static void flush_draw(void);
 static void flush_impl(void) {
@@ -627,6 +660,7 @@ static void flush_draw(void) {
             else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
             else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
         }
+        kick_check();
         return;
     }
     Vert* batch = verts;
@@ -687,6 +721,7 @@ static void flush_draw(void) {
         else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
         else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
     }
+    kick_check();
 }
 
 /* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
@@ -1155,6 +1190,7 @@ void pm_gpu_begin(int clear) {
     nverts = 0;
     gni = 0; gidx_n = 0; gi_start = 0; gring_n = 0; /* PO3b */
     verts = vert_base;
+    v_fl = vert_base; gring_fl = gidx_fl = 0; kick_done = 0; /* GV0, KICK1 */
     sci_x0 = 0;
     sci_y0 = 0;
     sci_x1 = 320;
@@ -1191,18 +1227,15 @@ void pm_gpu_end(void) {
      * whole range written this frame replaces one GSPGPU call per draw. Each frame starts at vert_base
      * again, and FrameBegin(SYNCDRAW) has waited for the GPU, so no draw of this frame overlaps the
      * writes. */
-    if (verts && verts > vert_base) {
-        PH_PUSH(PH_GCACHE);
-        GSPGPU_FlushDataCache(vert_base, (u32)((uintptr_t)verts - (uintptr_t)vert_base));
-        PH_POP();
-    }
+    gpu_flush_written(); /* GV0: pool, raw Vtx ring and index ring, what a split has not flushed already */
     {
         unsigned used = verts ? (unsigned)(verts - vert_base) : 0;
         float cmd = C3D_GetCmdBufUsage();
         static unsigned warned;
         frames_seen++;
-        if (frames_seen % 300 == 0) pm_log_hw("dr1 f%u merged %u splits %u uniform skips %u%s", frames_seen, dr1_merged, dr1_splits, dr1_skips, dr1_on() ? "" : " (nodr1)");
+        if (frames_seen % 300 == 0) pm_log_hw("dr1 f%u merged %u splits %u uniform skips %u rect breaks %u%s", frames_seen, dr1_merged, kick_n, dr1_skips, dr1_breaks, dr1_on() ? "" : " (nodr1)");
         if (draws_frame > draws_max) draws_max = draws_frame;
+        prev_draws = draws_frame; kick_at = draws_frame >= 48 ? draws_frame * 55 / 100 : 0; /* KICK1 */
         if (used > verts_max) verts_max = used;
         if (cmd > cmd_max) cmd_max = cmd;
         pm_ph_cmd_pm = (unsigned)(cmd * 1000.f);
@@ -1453,7 +1486,7 @@ static float fill_z = 0.5f;
 /* DR1/O2: a rectangle joins the open rectangle batch when its draw state is the same (effective combine mode, rect_z). Else the batch is drawn first. */
 static void rect_begin(int ec) {
     if (rect_open && dr1_on() && !PMDL("nomerge") && !(ec ? PMDL("nomergetex") : PMDL("nomergefill")) && rect_ec == ec && rect_zb == rect_z && nverts + 6 < 500 && !(off_active && pm_tex_off_idx() >= 0)) /* a batch that samples the image it writes needs one snapshot per rectangle (FX2a) */ { dr1_merged++; return; }
-    if (rect_open) dr1_splits++;
+    if (rect_open) dr1_breaks++;
     flush();
     draw_3d = 0; /* the 2D rectangle follows; tri_raw must not flush the empty batch with the rectangle state in place */
     rect_ec = ec; rect_zb = rect_z; rect_open = 1;
