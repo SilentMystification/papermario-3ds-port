@@ -111,6 +111,8 @@ for r in ("linear_peak_KB", "tex_fail", "grabs_max", "splits_max", "cpu_p99_ms",
 tot_c["vram_free_min_KB"] = min(s["vram_free_min_KB"] for s in tc); tot_p["vram_free_min_KB"] = min(s["vram_free_min_KB"] for s in tp)
 tot_c["gbi_ms"] = sum(s["gbi_ms"] * s["frames"] for s in tc) / max(1, tot_c["frames"]); tot_p["gbi_ms"] = sum(s["gbi_ms"] * s["frames"] for s in tp) / max(1, tot_p["frames"])
 tot_c["audio_ms"] = sum(s["audio_ms"] * s["frames"] for s in tc) / max(1, tot_c["frames"]); tot_p["audio_ms"] = sum(s["audio_ms"] * s["frames"] for s in tp) / max(1, tot_p["frames"])
+for wa, wb in ((1700, 1800),):
+    block("WINDOW intro dip (frames %d to %d, not in the total)" % (wa, wb), stats(cur, wa, wb), stats(pre, wa, wb))
 block("TOTAL (whole cycle; gbi_ms and audio_ms are per-frame averages)", tot_c, tot_p)
 for lab, d in (("pre-PO2", pre), ("current", cur)):
     po = [l for l in open(pc_ if lab == "current" else pp_, errors="replace") if "PO2 f" in l]
