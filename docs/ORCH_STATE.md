@@ -131,7 +131,7 @@ Done this session (local commits, nothing pushed): F03, V06, V10, V12 to V12d, V
 Open rows to work next, in order: V23 (finish), F06-5 and F06-6 (overload skip, last 60 fps slices; the fps60 pace in Azahar is 11 to 14 steps/s so F06-5 matters), F07-7, F11-4 (wire fps60 and wide to the menu rows, part of F06/F07), then group: V16+V17 (box around flickering sprites and star boxes, intro partial fade at f3626: leads in docs/plans/V16_diag.md and V17_V21_diag.md), V18 (road flicker on camera tilt: not reproduced, maybe hardware only), V19 (Sushie shadows, scene jan_04 demo, `demoscene=<n>` switch needs checked indices), V20 (nok_12 brick block, probably fixed by H06c, user must confirm), FX2a (fxtest flame), V22b (D8014EA48), H06a2 (is_host margin), H06a3 (warning flags), H06b (combiner and format coverage tour, one Azahar run), H06d (tour name cut iwa_0), C2R (63 battle stages and effects tour). Then the H05 final-state steps and one full tour plus golden if a change needs it. Then S28.
 Needs the user: (1) look at effect sheets 3ds/logs/fx/sheet_1..11.png, (2) check the golden toad and yard pictures (re-saved by G01R), (3) confirm V20 and V18 and V19 on a test build, (4) the O3DS has no ZR, so N64 R loses a button (stopgap?), (5) F11 decisions D1 (place of the Options item, plan default taken), D2 (Select at any time or file select only), D4 (debug toggles), D5 (rebind scope), (6) S28: O3DS on at 192.168.1.168, dspfirm.cdc and papermario.z64 on the SD card, FTP app, Luma dump path.
 Decisions of this session: F09 US only (languages from a PAL ROM later, no 25/50 Hz). F06 and F07 are toggles on both models, built before S28, default off, 4:3 at 30 fps default. Controls: D-pad, X (C-up), Y (C-down), C-stick (N3DS) = C buttons; L and R = Z; ZL and ZR (N3DS) = N64 L and R; Select opens the Options panel. Rebinding (F11-5) and Select at any time (F11-6) come after S28. The 3dsx holds code and code-side data only. The ROM papermario.z64 must be on the SD card at sdmc:/3ds/PaperMario/.
-Build number (BN1): V0 + commit count - C0, constants in 3ds/build_base.txt, set by 3ds/build.sh, header 3ds/include/pm_build.h. Suffix -dirty, -laneB.
+Build number (BN1): V0 + commit count - C0, constants in 3ds/build_base.txt, set by 3ds/build.sh, header 3ds/include/pm_build.h. Suffix -laneB only (no -dirty since 2026-10-19).
 
 ## 9a. V23 result (added at the pause)
 V23 stays open (commits 3dcc56320, 1de1f7643). Map: G_TEXRECT now honours its tile argument (path dots tile 1). Not seen in a shot: new row V23b (debug switch for GF_MAP_* flags). Party portrait cut (about 30 of 150 px): NOT found. Ruled out: box panels, scissor, image 2, texrect uv, portrait bytes, palette. Suspect: GPU upload or sampling of the 256x16 CI8 texture, or the slot cache in pm_tex. Next step: one start that dumps the uploaded texel row in pm_tex load_inner (reset the V23 budget first). A user screenshot of the cut party screen would help. All agents are stopped at this point. Nothing runs.
@@ -170,7 +170,7 @@ Lane-b was merged into main at commit 07c1d7ab1. Goldens after the merge: battle
 F11 D1 plan default, D2 Select at any time, D4 choice A (four debug rows), D5 choice A (all 18 inputs). F07-7 option A (400 columns). O3DS Z key: the agent chose X (changeable by `o3dsz=1`). Fixed seed and logging become Options rows. Test budget raised from 4 to 8 starts per row. The intro golden stays as saved.
 
 ### Build and budget
-- Build number = 797 + (commit count - 3172), constants in 3ds/build_base.txt (tracked). Suffix -dirty (tracked files changed) and -laneB. The boot log, the bottom screen and the Options footer show it. HEAD had 3173 commits, so the next clean build prints 798. The old Docker counters are not used any more.
+- Build number = 797 + (commit count - 3172), constants in 3ds/build_base.txt (tracked). Suffix -laneB only (the -dirty suffix was removed by the user on 2026-10-19). The boot log, the bottom screen and the Options footer show it. HEAD had 3173 commits, so the next clean build prints 798. The old Docker counters are not used any more.
 - Budget: 8 Azahar starts per row. The count is in 3ds/logs/test_budget.csv of each folder. Lane B has its own copy in papermario-3ds-port-laneB: run `-ResetBudget <row>` from that folder. Only the orchestrator resets, once per row (the user approved extra resets for V23, FX2a, V25).
 - Docker commands in Git Bash need `MSYS_NO_PATHCONV=1`.
 - Lane B is behind main after the merge. Merge main into lane-b before any lane B work. Lane B agent id a230bb016a984a094 can be resumed with SendMessage. The session rate limit stopped it once (reset 3:40pm Eastern). Container awesome_johnson is gone. Agent a78e72286b2383811 was stopped by the user (it had finished BN1, BS1, rules 10 and 11).
@@ -180,3 +180,36 @@ Effect sheets 3ds/logs/fx/sheet_1.png to sheet_11.png (checked, mostly correct).
 
 ### Start prompt for the new chat
 Read docs/ORCH_STATE.md section 10, then docs/handoff/ORCH_RULES.txt, 3ds/AGENT_RULES.md and 3ds/ORCHESTRATOR.md section 1. You are the orchestrator only. Reply in ASD-STE100 English, no praise, no agreement. Nothing runs now. Step 1: print the eleven rules in 11 short lines and one status block (RUNNING, READY-NOT-LAUNCHED with the conflict, BLOCKED-ON-USER). Step 2: resume agent a230bb016a984a094 with SendMessage (merge main into lane-b first) for V16b, V18, V19. Launch one main-tree code agent for the fall-through fix and FX3f. Ask the user to test with you when a merged build is ready. Do not start S28.
+
+## 11. HANDOFF STATE (2026-10-20, written for a new orchestrator chat). Newest section. Section 10 is obsolete.
+Start here: read this section, then docs/handoff/ORCH_RULES.txt (eleven rules), 3ds/AGENT_RULES.md, 3ds/SLICES.md (truth for open rows). Check `git status` first. CLAUDE.md in the main folder is untracked on purpose. All commits are local. Nothing is pushed. No agent runs. No Azahar window is open. The user runs the performance test on the O3DS next. Work is paused until the user sends the numbers.
+
+### Build number
+837 on the build made before commit c69750409 (BN1b). The next build prints 838. No suffix, not even for changed tracked files. Only `-laneB` stays (lane-b branch or PM_LANE set). The number is 797 + (commit count - 3172), constants in 3ds/build_base.txt.
+
+### S28
+The user booted the game on a console. S28 is done (marked in docs/SLICES_DONE.md). Optimization and F11-5, F11-6 rows are open.
+
+### Done since section 10 (all local commits)
+FALLTHRU (c07ea8805), FX3f (48e01329a), FX3g (a1e52dbac), FX3h (no code fault), F11-7 Fixed seed row (9cf0ff1c8), F11-9 Options stick dead zone and repeat (188abb388), F11-10 live apply of 60 FPS, Widescreen, No light (3b39d3d99), V24c palettes ok, DARK darkness stencil mirror fold in pm_gbi.c (23cf1cdf6), WIDEHUD wide HP label (5f43bb0a4), F11-5 and F11-6 Select menu with controls rows and options.txt `map.*` keys (11cc3fffa), PO2 vertex transform shared per vertex (27.9M vs 50.5M corners at f12000 preset=toad, speed not measured on O3DS), decalbias switch (default 0.001), AU1a (7022d34c6), PERF0 (merge bd39c87dc, lane-b through e0f697d45), B7-0 debug log lines, BN1b (c69750409), plans: V16b_azahar.md, V18_V19_azahar.md, V23c_azahar.md, open_rows_azahar.md, post_s28_optimization.md (7200e5852), post_s28_gaps.md (989261035). Goldens after the merge: toad 0.00%, yard 0.00%, battle 1.07%.
+
+### Performance run (the user does this now)
+Checklist: docs/plans/perf_run.md. One command: 3ds/tools/perf_capture.ps1. It runs A, B, C, D, F, E1, E2 and G (G is B7) and writes 3ds/logs/perf/baseline_<build>.txt. The parse and the writer were checked, not on a console. The baseline includes PO2. Runs A and C need `loglevel=debug`. The user sends the baseline file back.
+
+### Open rows
+- V23c: second hand cursor on the map. Likely cause: drop shadow flag in src/pause/pause_main.c:625 (+2,+2 dark copy, original game does it). Test not run: fps60 + wide + 3D, pause map, 2x shot. Plan docs/plans/V23c_azahar.md.
+- V16b: white box on the hit enemy sprite. Not seen in Azahar. Suspects: 3ds/src/pm_tex.c:152 (CI texel to opaque white when tlut NULL), make_flash_palettes (src/battle/actor_rendering.c:2041-2058). Next step T3: log lines there, forced heavy flash on kmr Monty Mole. Plan docs/plans/V16b_azahar.md.
+- V18 and V19: flicker. Azahar shows no difference for decalbias 0.001, 0.00003, 0. Device test: `-GameDebug decalbias=0.00003` in jan_04 (V19) and the star spirit intro pan (V18).
+- AU1b to AU1d (audio to core 1). AU1b was reverted. AU1a stays. MA1 step 0 (`statehash=` switch in pm_warp.c), then MA1 sites. PO3 (needs golden.py --extra, PO3b). WIDEHUD2 (message box, pause text, Options in wide). Merge order is in docs/plans/post_s28_gaps.md.
+- Questions for the user in 3ds/QUESTIONS.md: Q-F10 (endless script on tst_12), Q-PO2 (A do PO2, B skip, C decide after O3DS numbers, recommend A). Each MA1 logic change needs a Q-MA1-<site> yes.
+- F09: no console test (US only). B7, V07 and V09: B7 needs the O3DS, V07 and V09 are shelved by the user.
+- Not tested: B7 non-zero counters (debug battle has no swirl), F11-5 with real key presses and the bottom screen, V16c on Parakarry, glow exactly at the screen edge in wide, turning 60 FPS off again.
+
+### Agents
+All idle or stopped. Lane B agent a71be838a065f75fb is resumable (lane B at e0f697d45, merged into main). Main-tree agent adf26294238ad81da was stopped by the user on 2026-10-20. Resume agents by SendMessage. Read-only planner agents are finished.
+
+### User style (hard rules)
+Rules 10 and 11 in docs/handoff/ORCH_RULES.txt. Do not over-test: a text-only or number-only change gets a build check only. Golden runs only for renderer changes, on touched scenes. Never wait on an agent when the user said to do a step here. Close Azahar yourself when an agent needs the lock. Ask the user nothing that you can work out. Reply in ASD-STE100 English, no praise, no agreement.
+
+### Start prompt for the new chat
+Read docs/ORCH_STATE.md section 11, then docs/handoff/ORCH_RULES.txt, 3ds/AGENT_RULES.md and 3ds/ORCHESTRATOR.md section 1. You are the orchestrator only. Reply in ASD-STE100 English, no praise, no agreement. Nothing runs now. Step 1: print the eleven rules in 11 short lines and one status block. Step 2: ask the user for the O3DS baseline file (3ds/logs/perf/baseline_*.txt), the Q-PO2 and Q-F10 answers, and the console results for V16b, V18, V19. Step 3: when the baseline arrives, resume the main-tree work: V23c, V16b, AU1b to AU1d, MA1 step 0 by SendMessage to the right agents.
