@@ -99,3 +99,13 @@ Host test: `3ds/tests/au2/test_queue.c` runs the ring (producer thread, consumer
 1. AU2a: queue, render thread, commands, switch `au2off`. Gate: hash equal, counters equal, host test.
 2. AU2b: metrics, drain callers, shutdown and suspend. Azahar numbers at cpulimit 80 and 30.
 3. AU2c: default on after the gate passes.
+
+## 8. Result (Azahar, lane B, 2026-10-20)
+
+Build: `/tmp/claude-1000/pm_au2_d.3dsx` (AU2 on by default, `au2off` switch for the old path). Full demo cycle, `fixedseed statehash=10`, frame limit 5000.
+- Hash gate: `audiohash audiolock` against the reference build (HEAD 42f40d643): all `fnv` values at equal post counts are equal (143 of 143 checkpoints in the last run, 144 of 144 in the first run). `statehash` and the `pc` counter line are equal. Host test `sh 3ds/tests/au2/run.sh` (ThreadSanitizer): 1,055,293 commands, no loss, no reorder, drain exact.
+- Cost of the control part: audio job 0.23 to 0.77 ms per step (was 5.5 ms in Azahar with `au2off`). Commands per job: average 2, maximum 9. Copy cost: 4 us per job. Ring fill: 1 to 2 jobs (the ring was never full: 0 full waits).
+- Core 0 join wait per step, average of the 300-step lines: `au2off` 651 us (max 23.9 ms) at cpulimit 80, 5231 us (max 45.4 ms) at cpulimit 30. AU2 on: 13 to 20 us (max 2 to 8.8 ms) at cpulimit 80, 44 us (max 17.4 ms) at cpulimit 30. The remaining maxima come from map loads and bank loads (drain).
+- Render thread busy time per job: average 1.4 to 2.1 ms, maximum 6.0 ms at cpulimit 80. At cpulimit 30: average 3.7 ms, maximum 15.6 ms.
+- Underruns in Azahar are not 0 in the old path either: `au2off` 157 of 17055 posts at 80, 143 of 15967 at 30. The first AU2 build gave 202 of 17048 at 80 and 387 of 17047 at 30: the first post of a step waited for a wake of the render thread (the queue holds only about one frame at the start of a step). Fix: when the render thread is idle and nothing is open, `nuAuCleanDMABuffers` and the post run at once on the control thread (`pm_au2_idle`), so the first post has no thread hop. After the fix: 98 of 16797 (audiolock run, real queue level measured by `pending_raw`). The non-lock numbers for the fixed build need 2 more Azahar starts (test budget of row AU2 is used).
+- Not tested: HOME menu and sleep hooks, exit through HOME with the render thread, `romfull` (file ROM lock), O3DS.
