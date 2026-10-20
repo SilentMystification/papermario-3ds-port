@@ -11,6 +11,9 @@
 
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
 enum { SIZ_4, SIZ_8, SIZ_16, SIZ_32 };
+#include "pm_tex_tx1.h" /* TX1 */
+static unsigned tx1_miss, tx1_kb, tx1_ticks, tx1_mismatch; /* per 300 frames, see tc_report */
+static u8* tx1_chk; /* switch tx1check: the new result, compared with the old path */
 
 /* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
@@ -419,6 +422,10 @@ static void tc_report(void) {
     for (int t = 0; t < 3; t++)
         if (top[t] >= 0) pm_log_d("texstat largest %d: %dx%d fmt %u siz %u %uKB uses %u age %u", t, slots[top[t]].w, slots[top[t]].h, slots[top[t]].fmt, slots[top[t]].siz,
                                   slots[top[t]].bytes >> 10, slots[top[t]].uses, tc_frame - slots[top[t]].last_frame);
+    pm_log_hw("tx1 f%u miss %u KB %u us %u ns/B %u%s", tc_frame, tx1_miss, tx1_kb, tx1_ticks / 268u, tx1_kb ? (unsigned)((unsigned long long)tx1_ticks * 1000ull / 268ull / (tx1_kb * 1024ull)) : 0u,
+              PMDL("notx1") ? " (old path)" : "");
+    if (PMDL("tx1check")) pm_log_hw("tx1check mismatch %u", tx1_mismatch);
+    tx1_miss = tx1_kb = tx1_ticks = 0;
     tc_hits = tc_miss = tc_evict = tc_evict_ev0 = tc_inval = tc_up_bytes = tc_evict_bytes = tc_ev0_bytes = 0;
 }
 
@@ -642,8 +649,16 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             if (tr) tb_hits++; else tb_miss++;
         }
     }
+    /* TX1: one pass expand and tile into the texture. Switch notx1 keeps the old path, switch tx1check runs both and compares. */
+    unsigned bpp0 = (gf == GPU_RGBA8) ? 4u : 2u;
+    int tx1 = !tb_use && !tr && !tb_mode && !PMDL("notx1") && (unsigned)pw * (unsigned)ph * bpp0 <= 256u * 256u * 4u && pw <= TX1_MAXD && ph <= TX1_MAXD;
+    int tx1_chkon = tx1 && PMDL("tx1check");
+    if (tx1_chkon && !tx1_chk) { tx1_chk = (u8*)malloc(512 * 1024); if (!tx1_chk) { tx1 = 0; tx1_chkon = 0; } }
+    unsigned tx1_t0 = tc_on > 0 ? pm_ticks() : 0;
     if (tb_use) {
         /* the bytes are in the second scratch half already */
+    } else if (tx1 && !tx1_chkon) {
+        /* TX1: decoded after the texture exists */
     } else if (lut) {
         if (!expand_dual((const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph)) return 0;
     } else if (!expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf)) return 0;
@@ -674,6 +689,17 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     }
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
+    if (tx1) { /* TX1 */
+        u8* t1dst = tx1_chkon ? tx1_chk : (u8*)s->tex.data;
+        if (lut) tx1_build_dual(t1dst, (const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph);
+        else {
+            int mw1 = (mk_on && mk_ws && (int)mk_ws < width) ? (int)mk_ws : 0;
+            int mh1 = (mk_on && mk_wt && (int)mk_wt < height) ? (int)mk_wt : 0;
+            tx1_build(t1dst, (const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, (int)bpp0, mw1, mh1, (int)mk_ms, (int)mk_mt, src_native);
+            if (tx1_bad_ci) { static int nb; if (nb++ < 8) pm_log_w("V16b2: %u CI texels with an index outside the palette (tlut %p n %d), drawn white", tx1_bad_ci, (const void*)tlut, tlut_n); }
+        }
+    }
+    if (!tx1 || tx1_chkon) {
     const void* upload = scratch;
     /* Scratch is two 256KB halves. The linear image fills the first, the
      * Morton copy the second. A 512x256 RGBA5551 background is 256KB, so the
@@ -728,6 +754,12 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (tb_bad++ < 8) pm_log_w("PG2L: baked bytes differ fmt %u siz %u %dx%d stride %d", fmt, siz, width, height, stride);
     }
     C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
+    }
+    if (tx1 && !tx1_chkon) C3D_TexFlush(&s->tex);
+    if (tx1_chkon && memcmp(tx1_chk, s->tex.data, bytes) != 0) {
+        if (tx1_mismatch++ < 8) pm_log_w("tx1check: bytes differ fmt %u siz %u %dx%d stride %d lut %d", fmt, siz, width, height, stride, lut != NULL);
+    }
+    if (tx1_t0) { tx1_miss++; tx1_kb += bytes >> 10; tx1_ticks += pm_ticks() - tx1_t0; }
     s->img = img;
     s->tlut = tlut;
     addr_add(img);
