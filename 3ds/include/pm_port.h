@@ -86,12 +86,17 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned rate);
 void pm_au_thread_start(void (*entry)(void*), void* arg);
 int pm_au_thread_started(void);
 int pm_au_thread_yield(void);
-void pm_au_thread_resume(void);
+void pm_audio_kick(unsigned n);
+void pm_audio_join_at(int site); /* 0 kick, 1 pm_gfx_retrace, 2 step_game_loop, 3 main loop */
+#define pm_audio_join() pm_audio_join_at(3)
+int pm_on_audio(void);
+int pm_audio_serve(void);
+void pm_audio_retrace_send(void);
+void pm_audio_tick_end(void);
 unsigned pm_audio_retraces(void);
 unsigned pm_audio_pending(void);
 int pm_audio_lock(void);
 void pm_audio_hash_log(void);
-void pm_audio_tick(void);
 void pm_audio_step(void); /* AU1b: once per drawn step */
 /* B7-0: swirl capture (pm_cfb_capture_prev) and F03 depth query timing, read and cleared by the b7 line in pm_gbi.c. ticks of the ARM11 clock */
 typedef struct PmB7 { unsigned cap_n, cap_ticks, cap_max, dq_n, dq_ticks, dq_max; } PmB7;

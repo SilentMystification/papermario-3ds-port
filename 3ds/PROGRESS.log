@@ -566,3 +566,4 @@ HH DARK fixed (fold of mirror clamp tile on off-screen texrect), WIDEHUD row add
 HH WIDEHUD fixed (gbi.h SCIS macro keeps negative xl in wide)
 HH WIDEHUD2 no fault
 HH F10 cause written, question Q-F10
+01:48 AU1b-d: tick at kick point, audio thread on core 1 with kick/join, driver in yield; hash equal B1 in 3 runs, counters equal, core 0 audio 8.68 -> 0.74 ms per step at cpulimit=80 (Azahar)

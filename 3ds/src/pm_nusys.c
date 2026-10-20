@@ -106,5 +106,6 @@ int pm_interp_key_draw(void) {
 }
 
 void pm_gfx_retrace(void) {
+    pm_audio_join_at(1); /* AU1d: the game function below runs game code */
     if (display_on && gfx_func) gfx_func(0);
 }

@@ -238,9 +238,10 @@ void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
     if (pm_debug_has("noaudio")) return;
-    PH_PUSH(PH_AUDIO);
-    for (unsigned n = pm_audio_lock() ? 2u : pm_audio_retraces(); n; n--) { pm_audio_tick(); PH_ADD(C_ATICK, 1); pace_ticks++; }
-    PH_POP();
+    unsigned n = pm_audio_lock() ? 2u : pm_audio_retraces();
+    PH_ADD(C_ATICK, n);
+    pace_ticks += n;
+    pm_audio_kick(n); /* AU1d: runs on core 1 until the next join */
 }
 static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 or more */
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
@@ -331,6 +332,7 @@ void pm_frame_loop(void) {
         pm_ph_frame_end();
         frame++;
         pm_frame_n = frame;
+        pm_audio_join_at(3); /* AU1d: warp and fxtest can call game code */
         pm_warp_tick(frame);
         { extern void pm_fxtest_tick(unsigned); pm_fxtest_tick(frame); } /* FX1a, switch fxtest */
         presents++;

@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -415,8 +416,11 @@ void pm_log_start(void) {
     LightEvent_Init(&ev_flushed, RESET_ONESHOT);
     LightLock_Init(&drain_lock);
     /* Core 1 (system core): a thread there is allowed only after APT_SetAppCpuTimeLimit (libctru thread.h). */
-    Result r = APT_SetAppCpuTimeLimit(30);
-    pm_log_d("log: APT_SetAppCpuTimeLimit(30) = %08lx", (unsigned long)r);
+    /* AU1d: the audio thread runs on core 1 too. Switch cpulimit=<30..80> sets the share (default 30 as before; AU1e tries 50 and 80 on the O3DS). */
+    int lim = 30;
+    { char v[16]; if (pm_debug_value("cpulimit", v, sizeof v)) lim = atoi(v); if (lim < 5 || lim > 80) lim = 30; }
+    Result r = APT_SetAppCpuTimeLimit(lim);
+    pm_log_d("log: APT_SetAppCpuTimeLimit(%d) = %08lx", lim, (unsigned long)r);
     int ok = start_writer(1, 1);
     if (!ok) {
         pm_log_w("log: writer thread on core 1 %s, using core 0", writer_th ? "did not start" : "not created");

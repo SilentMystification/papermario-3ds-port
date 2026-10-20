@@ -97,23 +97,32 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
     ndspChnWaveBufAdd(0, &wb[slot]);
 }
 
-/* The N64 audio manager is a thread that blocks on a message queue. Run it as a real thread,
- * but hand control back and forth so that only one of the two threads runs at a time.
- * The game thread resumes it once per retrace and waits until it blocks again. */
+/* AU1c/AU1d: the N64 audio manager (nuAuMgr) is a thread that blocks on a message queue. It runs as a real thread on core 1.
+ * The game thread does two things only: pm_audio_kick(n) (start n 60 Hz ticks) and pm_audio_join() (wait until they are done).
+ * The audio thread plays the driver role in pm_au_thread_yield: when nuAuMgr blocks it answers the audio tasks it submitted,
+ * sends the next retrace message while ticks are left, and when nothing is left it signals "done" and sleeps until the next kick.
+ * Game code and the audio thread never run at the same time: kick at the main nuGfxTaskStart, join at the next entry of
+ * pm_gfx_retrace, step_game_loop and pm_warp_tick. Same code and same order as the lockstep version, so the PCM hash is equal. */
 static Thread au_thread;
-static LightSemaphore au_run, au_idle;
+static LightEvent au_start, au_done;
+static volatile int au_ticks_left, au_busy;
+static int au_core = -2;
 static void (*au_entry)(void*);
 static void* au_arg;
 static unsigned long long au_last;
+static unsigned au_w_n, au_w_sum, au_w_max, au_j_sum, au_j_max, au_j_t0, au_g_sum;
 
 static u8 au_crash_stack[0x4000] __attribute__((aligned(8)));
+
+int pm_on_audio(void) { return au_thread && threadGetCurrent() == au_thread; }
 
 static void au_main(void* unused) {
     (void)unused;
     pm_crash_install(au_crash_stack, sizeof(au_crash_stack)); /* the engine runs here: a fault needs its own trace */
     pm_stack_register(1, "audio", 64 * 1024);
     pm_fpscr_setup("audio");
-    pm_log_d("threads: audio on core %d (svcGetProcessorID)", (int)svcGetProcessorID());
+    au_core = (int)svcGetProcessorID();
+    pm_log_d("threads: audio on core %d (svcGetProcessorID)", au_core);
     au_entry(au_arg);
 }
 
@@ -121,16 +130,21 @@ void pm_au_thread_start(void (*entry)(void*), void* arg) {
     if (au_thread) return;
     au_entry = entry;
     au_arg = arg;
-    LightSemaphore_Init(&au_run, 0, 1);
-    LightSemaphore_Init(&au_idle, 0, 1);
+    LightEvent_Init(&au_start, RESET_ONESHOT);
+    LightEvent_Init(&au_done, RESET_STICKY);
     s32 prio = 0x30;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
-    au_thread = threadCreate(au_main, NULL, 64 * 1024, prio, -2, false);
+    /* core 1 (system core) works after APT_SetAppCpuTimeLimit in pm_log_start. If it fails, core 0 (same protocol, runs when the game thread waits). */
+    if (!pm_debug_has("audiocore0")) au_thread = threadCreate(au_main, NULL, 64 * 1024, prio, 1, false);
+    if (!au_thread) {
+        pm_log_w("audio thread on core 1 not created, using core 0");
+        au_thread = threadCreate(au_main, NULL, 64 * 1024, prio, -2, false);
+    }
     if (!au_thread) {
         pm_log_e("audio thread failed\n");
         return;
     }
-    LightSemaphore_Acquire(&au_idle, 1);
+    LightEvent_Wait(&au_done); /* nuAuMgr ran its init and blocked for the first time */
     pm_log("audio manager thread ready");
 }
 
@@ -144,14 +158,56 @@ int pm_au_thread_yield(void) {
         if (yields == 299 && pm_debug_has("crashtest_audio_call")) pm_crash_selftest();
         if (++yields == 300 && pm_debug_has("crashtest_audio")) __asm__ volatile(".word 0xe7f000f0"); /* class E: deliberate undefined instruction on the audio thread */
     }
-    LightSemaphore_Release(&au_idle, 1);
-    LightSemaphore_Acquire(&au_run, 1);
-    return 1;
+    for (;;) {
+        if (pm_audio_serve()) return 1; /* an audio task was answered: nuAuMgr can go on */
+        pm_audio_tick_end();
+        if (au_ticks_left > 0) {
+            au_ticks_left--;
+            pm_audio_retrace_send();
+            return 1;
+        }
+        if (au_busy) {
+            unsigned dt = pm_ticks() - au_j_t0;
+            au_j_sum += dt;
+            if (dt > au_j_max) au_j_max = dt;
+            au_busy = 0;
+        }
+        LightEvent_Signal(&au_done);
+        LightEvent_Wait(&au_start);
+    }
 }
 
-void pm_au_thread_resume(void) {
-    LightSemaphore_Release(&au_run, 1);
-    LightSemaphore_Acquire(&au_idle, 1);
+/* Game thread: start n ticks on the audio thread. */
+void pm_audio_kick(unsigned n) {
+    if (!au_thread || !n) return;
+    pm_audio_join_at(0);
+    au_ticks_left = (int)n;
+    au_busy = 1;
+    au_j_t0 = pm_ticks();
+    LightEvent_Clear(&au_done);
+    LightEvent_Signal(&au_start);
+}
+
+/* Game thread: wait until the audio thread is idle. Free when it is idle already. */
+static unsigned au_site_n[4], au_site_sum[4];
+void pm_audio_join_at(int site) {
+    if (!au_busy) return;
+    unsigned t0 = pm_ticks();
+    au_g_sum += t0 - au_j_t0; /* core 0 work between kick and join */
+    PH_PUSH(PH_AUDIO);
+    LightEvent_Wait(&au_done);
+    PH_POP();
+    unsigned dt = pm_ticks() - t0;
+    au_site_n[site & 3]++; au_site_sum[site & 3] += dt;
+    au_w_sum += dt;
+    if (dt > au_w_max) au_w_max = dt;
+    if (++au_w_n == (pm_debug_has("audiostat") ? 60u : 600u)) { /* L01: per 2 s (30 joins per second) with audiostat */
+        pm_log_d("audio wait avg %u us max %u us (core 0 join), job avg %u us max %u us, kick to join avg %u us, audio thread core %d",
+                 (unsigned)((unsigned long long)au_w_sum * 1000 / au_w_n / 268112), (unsigned)((unsigned long long)au_w_max * 1000 / 268112),
+                 (unsigned)((unsigned long long)au_j_sum * 1000 / au_w_n / 268112), (unsigned)((unsigned long long)au_j_max * 1000 / 268112), (unsigned)((unsigned long long)au_g_sum * 1000 / au_w_n / 268112), au_core);
+        pm_log_d("audio join sites (count, avg us): kick %u %u, retrace %u %u, step %u %u, main %u %u", au_site_n[0], au_site_n[0] ? au_site_sum[0] / au_site_n[0] / 268 : 0, au_site_n[1], au_site_n[1] ? au_site_sum[1] / au_site_n[1] / 268 : 0, au_site_n[2], au_site_n[2] ? au_site_sum[2] / au_site_n[2] / 268 : 0, au_site_n[3], au_site_n[3] ? au_site_sum[3] / au_site_n[3] / 268 : 0);
+        au_w_n = au_w_sum = au_w_max = au_j_sum = au_j_max = au_g_sum = 0;
+    }
 }
 
 /* Number of 60 Hz retraces that passed since the last call, at most 6. */

@@ -129,41 +129,47 @@ void nuScAddClient(NUScClient* c, OSMesgQueue* mq, NUScMsg msgType) {
     if (msgType & NU_SC_RETRACE_MSG) au_client = c;
 }
 
-/* One retrace. Wakes the audio manager, then plays the part of the RSP and the scheduler: each audio task it
- * submits is finished at once (the work already ran in pm_rsp_audio.c) and its reply message is sent. */
-void pm_audio_tick(void) {
-    static unsigned ticks, worst;
-    static unsigned long long sum;
-    unsigned t0;
-    if (!au_client || !pm_au_thread_started()) return;
-    t0 = pm_ticks();
+/* AU1c: the driver role, called on the audio thread from pm_au_thread_yield. nusys is not built: this plays the part of the retrace
+ * source, the RSP and the scheduler. Each audio task nuAuMgr submits is finished at once (the work ran in pm_rsp_audio.c). */
+int pm_audio_serve(void) {
+    int any = 0;
+    OSMesg m;
+    if (!nusched.audioRequestMQ.msgCount) return 0;
+    while (osRecvMesg(&nusched.audioRequestMQ, &m, OS_MESG_NOBLOCK) == 0) {
+        NUScTask* t = (NUScTask*)m;
+        osSendMesg(t->msgQ, t->msg, OS_MESG_NOBLOCK);
+        any = 1;
+    }
+    return any;
+}
+
+static unsigned a_t0;
+static int a_in;
+void pm_audio_retrace_send(void) {
+    if (!au_client) return;
     if (!nusched.audioRequestMQ.msgCount) {
         osCreateMesgQueue(&nusched.audioRequestMQ, nusched.audioRequestBuf, NU_SC_MAX_MESGS);
         nusched.retraceMsg = NU_SC_RETRACE_MSG;
     }
+    a_t0 = pm_ticks();
+    a_in = 1;
     osSendMesg(au_client->msgQ, (OSMesg)&nusched.retraceMsg, OS_MESG_NOBLOCK);
-    for (int i = 0; i < 8; i++) {
-        int any = 0;
-        OSMesg m;
-        pm_au_thread_resume();
-        while (osRecvMesg(&nusched.audioRequestMQ, &m, OS_MESG_NOBLOCK) == 0) {
-            NUScTask* t = (NUScTask*)m;
-            osSendMesg(t->msgQ, t->msg, OS_MESG_NOBLOCK);
-            any = 1;
-        }
-        if (!any) break;
-    }
-    {
-        /* Frame cost of the audio engine. 268111856 ticks per second on the ARM11. */
-        unsigned dt = pm_ticks() - t0;
-        sum += dt;
-        if (dt > worst) worst = dt;
-        /* L01: every 2 s with the audiostat switch, else every 20 s (S28 reads this line on hardware) */
-        if (++ticks == (pm_debug_has("audiostat") ? 120u : 1200u)) {
-            pm_log_d("audio cost avg %u us max %u us per 60 Hz tick", (unsigned)((unsigned long long)sum * 1000 / ticks / 268112), (unsigned)((unsigned long long)worst * 1000 / 268112));
-            ticks = worst = 0;
-            sum = 0;
-        }
+}
+
+/* The retrace is finished (nuAuMgr is waiting for the next one): add its cost. 268111856 ticks per second on the ARM11. */
+void pm_audio_tick_end(void) {
+    static unsigned ticks, worst;
+    static unsigned long long sum;
+    if (!a_in) return;
+    a_in = 0;
+    unsigned dt = pm_ticks() - a_t0;
+    sum += dt;
+    if (dt > worst) worst = dt;
+    /* L01: every 2 s with the audiostat switch, else every 20 s (S28 reads this line on hardware) */
+    if (++ticks == (pm_debug_has("audiostat") ? 120u : 1200u)) {
+        pm_log_d("audio cost avg %u us max %u us per 60 Hz tick", (unsigned)((unsigned long long)sum * 1000 / ticks / 268112), (unsigned)((unsigned long long)worst * 1000 / 268112));
+        ticks = worst = 0;
+        sum = 0;
     }
 }
 
@@ -282,8 +288,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     }
     if (!rom_tried) pm_rom_init();
     PH_PUSH(PH_ROM);
-    PH_ADD(C_ROMN, 1);
-    PH_ADD(C_ROMB, size);
+    if (!pm_on_audio()) { PH_ADD(C_ROMN, 1); PH_ADD(C_ROMB, size); } /* AU1c: the counters belong to the game thread */
     if (rom_addr < 0x1000u) rom_suspect("AT TINY OFFSET", rom_addr, size, rom_addr, size);
     /* Walk the request over the original offsets. A byte in a dropped range is a hard error. */
     u8* out = (u8*)buf;
@@ -324,7 +329,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
         }
         out += n; addr += n; left -= n;
     }
-    pm_tex_invalidate(buf, size);
+    if (!pm_on_audio()) pm_tex_invalidate(buf, size); /* AU1c: the audio thread reads sound data, never a texture. The cache belongs to core 0. */
     PH_POP();
 }
 
