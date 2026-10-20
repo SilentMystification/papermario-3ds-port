@@ -36,13 +36,22 @@ SCENES = {
     "pause4":     (f"fast preset=toad padscript={PAUSE},R*3,wait80,R*3,wait80,R*3,wait80", 51 + 255),
 }
 
+def x3_path():
+    return os.path.join(ROOT, "build3ds", *(["lane-" + LANE] if LANE else []), "pm_3ds.3dsx")
+
 def run(name):
     sw, f = SCENES[name]
     dbg = f"{sw} fixedseed shots shotwin={f}:3"  # R-SEED: a normal boot has a random RNG seed, tests use the fixed one
     if os.path.exists(SHOT): os.remove(SHOT)  # a stale shot from an earlier run must never be read
-    r = subprocess.run(["powershell", "-File", os.path.join(ROOT, "3ds", "run_azahar.ps1"), "-Turbo", "-FaultStop",
-                        "-Timeout", "90", "-Until", "shot 2 frame", "-Debug", dbg], capture_output=True, text=True, cwd=ROOT)
-    if "matched 'shot 2 frame'" not in r.stdout or not os.path.exists(SHOT):
+    if sys.platform.startswith("win"):
+        r = subprocess.run(["powershell", "-File", os.path.join(ROOT, "3ds", "run_azahar.ps1"), "-Turbo", "-FaultStop",
+                            "-Timeout", "90", "-Until", "shot 2 frame", "-Debug", dbg], capture_output=True, text=True, cwd=ROOT)
+        hit = "matched 'shot 2 frame'"
+    else:  # Linux: flatpak Azahar through run_azahar.sh (flock, budget CSV). -F is the fast mode. The shots go next to the log file.
+        r = subprocess.run(["sh", os.path.join(ROOT, "3ds", "run_azahar.sh"), "-F", "-x", x3_path(), "-t", "90", "-u", "shot 2 frame",
+                            "-o", os.path.join(os.path.dirname(os.path.dirname(SHOT)), "last_log.txt"), "-d", dbg + " loglevel=debug"], capture_output=True, text=True, cwd=ROOT)
+        hit = "matched shot 2 frame"
+    if hit not in r.stdout or not os.path.exists(SHOT):
         return None, r.stdout.strip().splitlines()[-3:]
     return Image.open(SHOT).convert("RGB"), None
 

@@ -128,6 +128,9 @@ static unsigned tiled16(int x, int y, int pw) {
     return (tile * 64u + morton) * 2u;
 }
 
+/* P13: y % m for y >= 0 and m >= 1. A power of two m needs no divide. Same result as the % operator. */
+static inline int wrap_mod(int y, int m) { return (m & (m - 1)) == 0 ? (y & (m - 1)) : y % m; }
+
 static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int stride,
                   const u8* tlut, int tlut_n, int pw, int ph, GPU_TEXCOLOR gf) {
     unsigned out_bpp = (gf == GPU_RGBA8) ? 4 : (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4) ? 1 : 2;
@@ -137,10 +140,10 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
     int mh = (mk_on && mk_wt && (int)mk_wt < h) ? (int)mk_wt : 0;
     for (int y = 0; y < h; y++) {
         int sy = y;
-        if (mh) { int r = mk_mt ? y % (2 * mh) : y % mh; sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
+        if (mh) { int r = wrap_mod(y, mk_mt ? 2 * mh : mh); sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
         for (int x = 0; x < w; x++) {
             int sx = x;
-            if (mw) { int r = mk_ms ? x % (2 * mw) : x % mw; sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
+            if (mw) { int r = wrap_mod(x, mk_ms ? 2 * mw : mw); sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
             if (fmt == FMT_CI) {
                 unsigned idx = 0;
                 if (siz == SIZ_4) {
@@ -200,10 +203,10 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
      * so the pad follows the mask. */
     for (int y = 0; y < ph; y++) {
         int sy = y < h ? y : h - 1;
-        if (mh) { int r = mk_mt ? y % (2 * mh) : y % mh; sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
+        if (mh) { int r = wrap_mod(y, mk_mt ? 2 * mh : mh); sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
         for (int x = (y < h ? w : 0); x < pw; x++) {
             int sx = x < w ? x : w - 1;
-            if (mw) { int r = mk_ms ? x % (2 * mw) : x % mw; sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
+            if (mw) { int r = wrap_mod(x, mk_ms ? 2 * mw : mw); sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
             memcpy(scratch + ((size_t)y * pw + x) * out_bpp, scratch + ((size_t)sy * pw + sx) * out_bpp, out_bpp);
         }
     }
@@ -215,7 +218,8 @@ static int nib(const u8* src, int stride, int x, int y) {
     return (x & 1) ? (byte & 15) : (byte >> 4);
 }
 
-static int floor4(int v) { return v >= 0 ? v / 4 : -((-v + 3) / 4); }
+/* P14: arithmetic shift right is floor(v / 4) for every int v (same as the old sign split with two divides). */
+static int floor4(int v) { return v >> 2; }
 
 static int expand_dual(const u8* src, int w, int h, int stride, const unsigned* lut, int dx4, int dy4,
                        int pw, int ph) {
@@ -350,8 +354,14 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             if (!offt[i].base) continue;
             unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[i].base), row = offt[i].stride * bpp;
             if ((unsigned)offt[i].siz == gs && (const u8*)img >= offt[i].base && d < row * (unsigned)offt[i].h) {
-                off_oy = (int)(d / row);
-                off_ox = (int)((d % row) / bpp);
+                /* P15: a power of two row (and bpp) needs no divide. Same result. */
+                if ((row & (row - 1)) == 0) {
+                    off_oy = (int)(d >> __builtin_ctz(row));
+                    off_ox = (int)((d & (row - 1)) / bpp);
+                } else {
+                    off_oy = (int)(d / row);
+                    off_ox = (int)((d % row) / bpp);
+                }
                 off_cur = i;
                 if (offt[i].w == 64) { static int n; if (n++ < 6) pm_log_d("X02: overlay reads 64x64 slot %d bits %d addr %p", i, gs == 3 ? 32 : gs == 2 ? 16 : 8, img); }
                 have = 1;

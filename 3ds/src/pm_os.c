@@ -79,7 +79,9 @@ s32 osSendMesg(OSMesgQueue* mq, OSMesg mesg, s32 block) {
     (void)block;
     if (!mq || mq->msgCount <= 0 || !mq->msg) return -1;
     if (mq->validCount >= mq->msgCount) return -1;
-    s32 i = (mq->first + mq->validCount) % mq->msgCount;
+    /* P18: first < msgCount and validCount < msgCount, so one subtract replaces the modulo. Same result. */
+    s32 i = mq->first + mq->validCount;
+    if (i >= mq->msgCount) i -= mq->msgCount;
     mq->msg[i] = mesg;
     mq->validCount++;
     return 0;
@@ -92,7 +94,8 @@ s32 osRecvMesg(OSMesgQueue* mq, OSMesg* mesg, s32 block) {
         if (!block || !pm_au_thread_yield()) return -1;
     }
     if (mesg) *mesg = mq->msg[mq->first];
-    mq->first = (mq->first + 1) % mq->msgCount;
+    mq->first = mq->first + 1;
+    if (mq->first >= mq->msgCount) mq->first = 0; /* P18: same result as the modulo */
     mq->validCount--;
     return 0;
 }

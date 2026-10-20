@@ -131,3 +131,15 @@ Columns: ID, file and function, line, operation, call frequency guess, replaceme
 - Rows that change audio output only: P20, D5, D6, D7.
 - Rows with no output change: P18, P21, D4.
 - Rows that can change game logic: D8, D9, D10, D11, D12, D16 (depends on caller), and P16 if it sets NPC or model position.
+
+## MA1-R result (lane B, 2026-10-20)
+Azahar cannot show the speed gain of these sites. It runs on a fast x86 host. Check the gain on the O3DS with perf counters in a later session.
+- P13 DONE (pm_tex.c, wrap_mod): `& (m - 1)` for a power of two mask size, else the old `%`. Mask path only (bulb glow and similar). Expected gain: one __aeabi_idivmod (about 30 to 60 cycles on ARM11) saved per texel of a masked texture, on the miss path only. Small: few masked textures.
+- P14 DONE (pm_tex.c, floor4): `v >> 2`. Expected gain: two divides and one branch per texel of dual-texture expansion. Rare path.
+- P15 DONE (pm_tex.c, load_inner): shift and mask when the row is a power of two. Expected gain: two divides per matched off-screen window load. Very small.
+- P16 SKIPPED: pm_gu.c guRotateRPYF already calls sin_rad and cos_rad (table based, decomp), not libm sinf and cosf. No libm call is left. No Q-MA1-P16 needed.
+- P17 SKIPPED: the ARM11 VFP has vsqrt and vdiv in hardware. An integer bit trick plus Newton step gives other float bits, so the output would not be identical. No safe change.
+- P18 DONE (pm_os.c, osSendMesg, osRecvMesg): compare and subtract instead of `%`. Same result. Expected gain: one __aeabi_uidivmod (about 30 to 60 cycles) per message, tens per frame: under 0.1 ms per frame.
+- P20 DONE (pm_audio.c, pm_audio_retraces): at most 7 compare and subtract steps instead of a u64 divide (__aeabi_uldivmod, about 100 to 200 cycles). Same n and au_last, including the cap at 6. Expected gain: once per drawn step, under 0.05 ms.
+- Checks (full cycle, fast, O3DS mode, switches in 3ds/logs/perf/ma1r_azahar.txt): statehash equal to a build without the changes (862 samples, run hash equal); per frame counters equal over 8557 frames (triout, vtxslot, draws, texmiss, texKB), and equal to baseline_azahar_840.txt in every segment I compared; audiohash FNV equal at all 142 checkpoints (only the dropped and underrun counters differ late in the cycle, queue timing). Host test: wrap_mod, floor4, the P18 wrap and the P20 count equal the old code for all tested values.
+- Not checked: golden toad and yard (golden.py needs powershell, no Linux port). The counters and statehash do not hash texel content, so P13 texel layout rests on the host test and code review.

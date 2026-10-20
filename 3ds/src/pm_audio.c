@@ -215,11 +215,14 @@ unsigned pm_audio_retraces(void) {
     unsigned long long now = svcGetSystemTick();
     unsigned long long per = SYSCLOCK_ARM11 / 60ull;
     if (!au_last) au_last = now;
-    unsigned long long n = (now - au_last) / per;
-    au_last += n * per;
-    if (n > 6) { /* AU1b: one call per drawn step now, so the cap is 6 (it was 3 for each of the two iterations of a step) */
+    /* P20: n = (now - au_last) / per without a u64 divide. n is capped at 6, so count up to 7 steps. Same n, same au_last. */
+    unsigned long long d = now - au_last, n = 0;
+    if (d >= 7ull * per) { /* n >= 7: cap */
         n = 6;
         au_last = now;
+    } else {
+        while (d >= per) { d -= per; n++; }
+        au_last += n * per;
     }
     return (unsigned)n;
 }
