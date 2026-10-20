@@ -392,6 +392,27 @@ static int find_asset(const char* name, u32* rom_off, u32* comp_len, u32* dec_le
     AssetEntry first;
     AssetEntry* table;
     u32 bytes, i, n;
+    /* HW3: the table is resident ROM. Scan the names in place, no 128 KB copy and no chunked reads per asset. */
+    {
+        const u8* hdr = pm_rom_ptr(ASSET_TABLE, sizeof(first));
+        if (hdr) {
+            bytes = rbe(hdr + 0x10);
+            const u8* t = (bytes >= sizeof(first) && bytes <= 0x20000) ? pm_rom_ptr(ASSET_TABLE, bytes) : NULL;
+            if (t) {
+                n = bytes / sizeof(AssetEntry);
+                for (i = 0; i < n; i++) {
+                    const u8* e = t + i * sizeof(AssetEntry);
+                    if (strncmp((const char*)e, name, 0x10) == 0 && strlen(name) < 16) {
+                        *rom_off = ASSET_TABLE + rbe(e + 0x10);
+                        *comp_len = rbe(e + 0x14);
+                        *dec_len = rbe(e + 0x18);
+                        return 1;
+                    }
+                }
+                return 0;
+            }
+        }
+    }
     dma_copy((u8*)ASSET_TABLE, (u8*)ASSET_TABLE + sizeof(first), &first);
     bytes = first.offset;
     if (bytes < sizeof(first) || bytes > 0x20000) return 0;

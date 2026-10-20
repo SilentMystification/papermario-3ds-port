@@ -279,6 +279,39 @@ static void rom_suspect(const char* why, u32 addr, u32 n, u32 req, u32 size) {
     }
 }
 
+/* HW3: both tables are generated sorted and without overlap (121 entries each). A read used to scan all 242 entries. The binary
+ * search gives the same n and the same offset. pm_rom_sorted is checked once; an unsorted table keeps the linear scan. */
+static int pm_rom_sorted = -1;
+static void rom_check_sorted(void) {
+    int ok = 1;
+    unsigned i, nk = sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]), nd = sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0]);
+    for (i = 0; i + 1 < nk; i++) if (pm_rom_keep[i].start + pm_rom_keep[i].len > pm_rom_keep[i + 1].start) ok = 0;
+    for (i = 0; i + 1 < nd; i++) if (pm_rom_drop[i].end > pm_rom_drop[i + 1].start) ok = 0;
+    for (i = 0; i < nd; i++) if (pm_rom_drop[i].start >= pm_rom_drop[i].end) ok = 0;
+    pm_rom_sorted = ok;
+    if (!ok) pm_log_e("rom_remap tables are not sorted, linear scan");
+}
+/* First drop entry with end > addr, or nd. */
+static unsigned rom_drop_first(u32 addr) {
+    unsigned lo = 0, hi = sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0]);
+    while (lo < hi) {
+        unsigned m = (lo + hi) >> 1;
+        if (pm_rom_drop[m].end > addr) hi = m; else lo = m + 1;
+    }
+    return lo;
+}
+/* Index of the keep entry that holds addr, or -1. */
+static int rom_keep_find(u32 addr) {
+    int lo = 0, hi = (int)(sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0])) - 1;
+    while (lo <= hi) {
+        int m = (lo + hi) >> 1;
+        if (addr < pm_rom_keep[m].start) hi = m - 1;
+        else if (addr >= pm_rom_keep[m].start + pm_rom_keep[m].len) lo = m + 1;
+        else return m;
+    }
+    return -1;
+}
+
 static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     if (!buf || !size) return;
     if ((unsigned)buf < 0x00100000u) {
@@ -305,6 +338,15 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
         }
         if (n > rom_size - addr) n = rom_size - addr;
         int dropped = 0;
+        if (pm_rom_sorted < 0) rom_check_sorted();
+        if (pm_rom_sorted) {
+            unsigned i = rom_drop_first(addr);
+            if (i < sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0])) {
+                u32 ds = pm_rom_drop[i].start, de = pm_rom_drop[i].end;
+                if (addr >= ds) { dropped = 1; if (n > de - addr) n = de - addr; }
+                else if (ds < addr + n) n = ds - addr;
+            }
+        } else
         for (unsigned i = 0; i < sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0]); i++) {
             u32 ds = pm_rom_drop[i].start, de = pm_rom_drop[i].end;
             if (addr >= ds && addr < de) { dropped = 1; if (n > de - addr) n = de - addr; }
@@ -315,7 +357,13 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
             memset(out, 0, n);
         } else if (rom_bytes) {
             u32 off = addr;
-            if (rom_remap) {
+            if (rom_remap && pm_rom_sorted) {
+                int k = rom_keep_find(addr);
+                if (k >= 0) {
+                    off = pm_rom_keep[k].packed_off + (addr - pm_rom_keep[k].start);
+                    if (n > pm_rom_keep[k].start + pm_rom_keep[k].len - addr) n = pm_rom_keep[k].start + pm_rom_keep[k].len - addr;
+                }
+            } else if (rom_remap) {
                 for (unsigned i = 0; i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)
                     if (addr >= pm_rom_keep[i].start && addr < pm_rom_keep[i].start + pm_rom_keep[i].len) {
                         off = pm_rom_keep[i].packed_off + (addr - pm_rom_keep[i].start);
@@ -334,6 +382,20 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     }
     if (!pm_on_audio()) pm_tex_invalidate(buf, size); /* AU1c: the audio thread reads sound data, never a texture. The cache belongs to core 0. */
     PH_POP();
+}
+
+/* HW3: pointer to len bytes of the resident ROM image at ROM address addr, or NULL (file stream, dropped range, range not in one
+ * kept block). The bytes are raw big-endian ROM bytes, without the swaps nuPiReadRom does. Read only. */
+const unsigned char* pm_rom_ptr(unsigned addr, unsigned len) {
+    if (!rom_tried) pm_rom_init();
+    if (!rom_bytes || !len || addr >= rom_size || len > rom_size - addr) return NULL;
+    for (unsigned i = 0; i < sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0]); i++)
+        if (addr < pm_rom_drop[i].end && addr + len > pm_rom_drop[i].start) return NULL;
+    if (!rom_remap) return rom_bytes + addr;
+    for (unsigned i = 0; i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)
+        if (addr >= pm_rom_keep[i].start && addr + len <= pm_rom_keep[i].start + pm_rom_keep[i].len)
+            return rom_bytes + pm_rom_keep[i].packed_off + (addr - pm_rom_keep[i].start);
+    return NULL;
 }
 
 /* The map asset table (28-byte entries, see AssetHeader in src/world/world.c) is read by the real load_asset_by_name and

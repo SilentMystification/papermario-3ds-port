@@ -257,8 +257,30 @@ static int expand_dual(const u8* src, int w, int h, int stride, const unsigned* 
     return 1;
 }
 
+/* HW3: pm_tex_invalidate runs for every ROM read (6946 in one step at the NPC spawn). A count per hashed 4 KB page of the
+ * start addresses (img, tlut) of the live slots lets a read that touches none of them return before the slot scan.
+ * A hash collision only gives a false yes. The count of an address is removed when the slot drops or goes stale. */
+#define ADDR_HASH 4096u
+static unsigned short addr_cnt[ADDR_HASH];
+static unsigned addr_live;
+static inline unsigned addr_h(unsigned a) { return ((a >> 12) * 2654435761u) >> 20; }
+static void addr_add(const void* p) {
+    if (!p) return;
+    addr_cnt[addr_h((unsigned)p)]++;
+    addr_live++;
+}
+static void addr_sub(const void* p) {
+    unsigned h;
+    if (!p) return;
+    h = addr_h((unsigned)p);
+    if (addr_cnt[h]) addr_cnt[h]--;
+    if (addr_live) addr_live--;
+}
+
 static void drop(Slot* s) {
     if (!s->live) return;
+    addr_sub(s->img);
+    addr_sub(s->tlut);
     if (aux == (int)(s - slots)) aux = -1;
     C3D_TexDelete(&s->tex);
     if (used >= s->bytes) used -= s->bytes;
@@ -373,6 +395,14 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
     start = (unsigned)ptr;
     end = start + size;
     if (end < start) end = 0xffffffffu;
+    if (addr_live == 0) return;
+    if (size < (64u << 12)) {
+        unsigned a;
+        int hit = 0;
+        for (a = start >> 12; a <= (end - 1) >> 12; a++)
+            if (addr_cnt[addr_h(a << 12)]) { hit = 1; break; }
+        if (!hit) return;
+    }
     for (i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
         unsigned img, pal;
@@ -387,6 +417,8 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         }
         if (s->epoch == epoch) {
             /* A draw of this frame may still sample it (the GPU runs at FrameEnd). Hide it from the cache and free it later. */
+            addr_sub(s->img);
+            addr_sub(s->tlut);
             s->img = NULL;
             s->tlut = NULL;
             s->stale = 1;
@@ -648,6 +680,8 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
     s->img = img;
     s->tlut = tlut;
+    addr_add(img);
+    addr_add(tlut);
     s->phash = phash;
     s->fmt = fmt;
     s->siz = siz;

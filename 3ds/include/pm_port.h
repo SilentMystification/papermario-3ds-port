@@ -85,6 +85,7 @@ int pm_mem_crash_line(char* buf, int cap);
 void pm_gpu_log_stats(const char* tag);
 void* pm_soc_buffer(unsigned* size);
 int pm_started_by_netload(void);
+const unsigned char* pm_rom_ptr(unsigned addr, unsigned len);
 void pm_flash_mark(unsigned off, unsigned len);
 void pm_flash_attach(unsigned char* mem, unsigned size);
 void pm_flash_flush(const char* why);
