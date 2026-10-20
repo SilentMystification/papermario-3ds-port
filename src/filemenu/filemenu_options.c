@@ -1,16 +1,20 @@
 #include "common.h"
 #include "filemenu.h"
+#include "game_modes.h"
 
 // port: Options panel of the file select screen (F11-3). TARGET_3DS only.
-// Rows 0 to 5 are settings (60 FPS, Widescreen, HUD, Stats, No fog, No light). Row 6 is Logging (On or Off), row 7 is Log level (Error, Warn, Info, Debug), row 8 is Fixed seed (On or Off), row 9 is Back.
-// The panel holds no setting logic. It reads and flips the values in the port layer (pm_options.c).
+// UI1a: three tabs (General, Controls, Debug), L and R change the tab. The rows, values and actions come from the port layer (pm_options.c, pm_optui_*).
 #ifdef TARGET_3DS
 
-#define OPT_ROWS 10
-#define OPT_ROW_BACK 9
+#define OPT_ROWS 22 // longest tab (Controls, 20 rows) with spare
+#define OPT_TABS 3
+#define OPT_VIS 10 // rows shown at once
+
+static s32 optTab;
+static s32 optTop;
 
 u8 filemenu_options_gridData[] = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
 };
 
 MenuWindowBP filemenu_options_windowBPs[] = {
@@ -50,11 +54,15 @@ void filemenu_options_open(void) {
     MenuPanel* menu = &filemenu_options_menuBP;
 
     sfx_play_sound(SOUND_MENU_NEXT);
-    gWindows[WIN_FILES_OPTIONS_PANEL].width = 200;
+    gWindows[WIN_FILES_OPTIONS_PANEL].width = 220;
     gWindows[WIN_FILES_OPTIONS_PANEL].height = 214;
     gWindows[WIN_FILES_OPTIONS_PANEL].pos.x = CENTER_WINDOW_X(WIN_FILES_OPTIONS_PANEL);
     gWindows[WIN_FILES_OPTIONS_PANEL].pos.y = CENTER_WINDOW_Y(WIN_FILES_OPTIONS_PANEL);
     menu->state = 0;
+    optTab = 0;
+    optTop = 0;
+    menu->numRows = pm_optui_rows(0);
+    pm_pad_take_tab();
     filemenu_set_selected(menu, 0, 0);
     set_window_update(WIN_FILES_STEREO, (s32)filemenu_update_hidden_options_left);
     set_window_update(WIN_FILES_MONO, (s32)filemenu_update_hidden_options_right);
@@ -92,29 +100,31 @@ void filemenu_draw_contents_options_panel(
     s32 opacity, s32 darkening
 ) {
     MenuPanel* panel = &filemenu_options_menuBP;
-    static const s32 labels[OPT_ROWS] = {
-        FILE_MESSAGE_OPT_FPS60, FILE_MESSAGE_OPT_WIDE, FILE_MESSAGE_OPT_HUD, FILE_MESSAGE_OPT_STATS,
-        FILE_MESSAGE_OPT_NOFOG, FILE_MESSAGE_OPT_NOLIGHT, FILE_MESSAGE_OPT_LOG, FILE_MESSAGE_OPT_LOGLEVEL, FILE_MESSAGE_OPT_FIXEDSEED, FILE_MESSAGE_OPT_BACK
-    };
+    static const char* tabNames[OPT_TABS] = { "General", "Controls", "Debug" };
+    static const s32 tabX[OPT_TABS] = { 12, 76, 150 };
+    s32 rows = pm_optui_rows(optTab);
     s32 i;
 
-    for (i = 0; i < OPT_ROWS; i++) {
-        s32 y = baseY + 8 + i * 17;
+    // UI1a: tab strip (L and R change the tab), the active tab has the second palette
+    for (i = 0; i < OPT_TABS; i++) {
+        filemenu_draw_message((u8*)pm_options_msg(tabNames[i], 4 + i), baseX + tabX[i], baseY + 8, 255, i == optTab ? 4 : 0, 1);
+    }
+    if (optTop > 0) {
+        filemenu_draw_message((u8*)pm_options_msg("-", 3), baseX + 6, baseY + 8 + 17, 255, 0, 1);
+    }
+    for (i = optTop; i < rows && i < optTop + OPT_VIS; i++) {
+        s32 y = baseY + 8 + 17 * (1 + i - optTop);
+        const char* value = pm_optui_value(optTab, i);
 
-        filemenu_draw_message(filemenu_get_menu_message(labels[i]), baseX + 24, y, 255, 0, 1);
-        if (i != OPT_ROW_BACK) {
-            static const s32 levelMsgs[4] = {
-                FILE_MESSAGE_OPT_LV_ERROR, FILE_MESSAGE_OPT_LV_WARN, FILE_MESSAGE_OPT_LV_INFO, FILE_MESSAGE_OPT_LV_DEBUG
-            };
-            s32 msg = i == 7 ? levelMsgs[pm_options_get(i) & 3] : pm_options_get(i) ? FILE_MESSAGE_OPT_ON : FILE_MESSAGE_OPT_OFF;
-
-            filemenu_draw_message(filemenu_get_menu_message(msg), baseX + 140, y, 255, 0, 1);
+        filemenu_draw_message((u8*)pm_options_msg(pm_optui_label(optTab, i), 0), baseX + 24, y, 255, 0, 1);
+        if (value != nullptr) {
+            filemenu_draw_message((u8*)pm_options_msg(value, 1), baseX + 120, y, 255, 0, 1);
         }
         if (panel->row == i) {
             filemenu_set_cursor_goal_pos(WIN_FILES_OPTIONS_PANEL, baseX + 12, y + 8);
         }
     }
-    filemenu_draw_message((u8*)pm_options_build_msg(), baseX + 24, baseY + 8 + OPT_ROWS * 17, 255, 0, 1);
+    filemenu_draw_message((u8*)pm_options_build_msg(), baseX + 24, baseY + 8 + 17 * (OPT_VIS + 1), 255, 0, 1);
 }
 
 void filemenu_options_init(MenuPanel* tab) {
@@ -137,6 +147,24 @@ void filemenu_options_handle_input(MenuPanel* menu) {
     s32 held = filemenu_heldButtons;
     s32 up = (held & BUTTON_D_UP) || ((held & BUTTON_STICK_UP) && sy >= 56);
     s32 down = (held & BUTTON_D_DOWN) || ((held & BUTTON_STICK_DOWN) && sy <= -56);
+    s32 tabMove = pm_pad_take_tab();
+
+    if (filemenu_pressedButtons & BUTTON_L) {
+        tabMove = -1;
+    } else if (filemenu_pressedButtons & BUTTON_R) {
+        tabMove = 1;
+    }
+    if (tabMove != 0) {
+        // UI1a: L and R change the section
+        optTab = (optTab + tabMove + OPT_TABS) % OPT_TABS;
+        optTop = 0;
+        menu->row = 0;
+        menu->numRows = pm_optui_rows(optTab);
+        filemenu_set_selected(menu, 0, 0);
+        pm_log_d("options: tab %d", optTab);
+        sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
+        return;
+    }
 
     if (moveGap > 0) {
         moveGap--;
@@ -153,6 +181,12 @@ void filemenu_options_handle_input(MenuPanel* menu) {
     }
     if (oldRow != menu->row) {
         filemenu_set_selected(menu, 0, menu->row);
+        if (menu->row < optTop) {
+            optTop = menu->row;
+        }
+        if (menu->row >= optTop + OPT_VIS) {
+            optTop = menu->row - OPT_VIS + 1;
+        }
         pm_log_d("options: row %d", menu->row);
         sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
     }
@@ -160,11 +194,18 @@ void filemenu_options_handle_input(MenuPanel* menu) {
     if (filemenu_pressedButtons & BUTTON_B) {
         filemenu_options_close();
     } else if (filemenu_pressedButtons & BUTTON_A) {
-        if (menu->selected == OPT_ROW_BACK) {
+        s32 result;
+
+        sfx_play_sound(SOUND_MENU_NEXT);
+        result = pm_optui_act(optTab, menu->selected);
+        if (result == 1) {
             filemenu_options_close();
-        } else {
-            sfx_play_sound(SOUND_MENU_NEXT);
-            pm_options_flip(menu->selected);
+        } else if (result == 2) {
+            // Warp now: leave the file select as the Cancel button does, the exit mode of the file select is set by pm_warp_pending
+            set_window_update(WIN_FILES_TITLE, (s32)filemenu_update_hidden_title);
+            set_window_update(WIN_FILES_OPTIONS_PANEL, WINDOW_UPDATE_HIDE);
+            sfx_play_sound(SOUND_FILE_MENU_OUT);
+            set_game_mode(GAME_MODE_END_FILE_SELECT);
         }
     }
 }

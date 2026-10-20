@@ -173,6 +173,13 @@ int pm_pad_take_select(void); // port layer, pm_input.c
 int pm_options_get(int row);
 void pm_options_flip(int row);
 void pm_options_close(void);
+const unsigned char* pm_options_msg(const char* text, int slot); // UI1a
+int pm_optui_rows(int tab);
+const char* pm_optui_label(int tab, int row);
+const char* pm_optui_value(int tab, int row);
+int pm_optui_act(int tab, int row);
+int pm_pad_take_tab(void);
+extern int pm_warp_pending;
 void filemenu_options_init(MenuPanel*);
 void filemenu_options_handle_input(MenuPanel*);
 void filemenu_options_update(MenuPanel*);

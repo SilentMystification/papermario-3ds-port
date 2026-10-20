@@ -566,6 +566,20 @@ s32 _update_message(MessagePrintState* printer) {
     return printer->windowState;
 }
 
+#ifdef TARGET_3DS
+// port UI1c: 1 while a message printer is shown (a message box counts as a menu for the D-pad mode)
+s32 pm_msg_active(void) {
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(gMessagePrinters); i++) {
+        if (gMessagePrinters[i].stateFlags & MSG_STATE_FLAG_2) {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 void render_messages(void) {
     Mtx* matrix = &gMessageWindowProjMatrix[gCurrentDisplayContextIndex];
     s32 i;
