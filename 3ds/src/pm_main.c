@@ -286,7 +286,10 @@ void pm_frame_loop(void) {
     unsigned stat_n = 0;
     u64 stat_t0 = 0;
     const int pace_on = pm_debug_has("pacestat");
+    char exv[16];
+    const unsigned exit_at = pm_debug_value("exitframe", exv, sizeof exv) ? (unsigned)atoi(exv) : 0; /* HW7 test switch: leave the loop like an APT exit request */
     while (aptMainLoop()) {
+        if (exit_at && frame >= exit_at) { pm_log("exitframe: leaving the main loop at frame %u", frame); break; }
         u64 now = svcGetSystemTick();
         /* The retrace builds a display list only every other call. Presenting
          * the idle call shows the other framebuffer, which was never drawn. */
@@ -451,6 +454,36 @@ static void game_thread(void* arg) {
     pm_log("boot_main returned");
 }
 
+/* HW7: libctru exit frees the heap, and the GSP event thread (stack in that heap) still runs unless gfxExit stops it. Dump 37 on the
+ * O3DS was that crash at HOME close. Reverse order of the init: flash, audio job, ndsp, log writer, citro3d, gfx, soc. One call (guard).
+ * Called after the game thread ended, that is after aptMainLoop returned false (also for the APT exit request from HOME). */
+void pm_exit_mark(const char* what) {
+    char v[16];
+    if (!pm_debug_value("exitframe", v, sizeof v)) return; /* test only */
+    FILE* f = fopen("exit_done.txt", "a");
+    if (f) { fputs(what, f); fputs("\n", f); fclose(f); }
+}
+
+static void pm_shutdown(void) {
+    static int done;
+    if (done) return;
+    done = 1;
+    pm_flash_flush("exit");
+    pm_audio_join_at(0);
+    pm_cpu_limit_exit(); /* CPULIM-UI: core 1 limit back to 30 */
+    pm_log("exit: audio job done, saving flushed, shutting down ndsp, citro3d, gfx, soc");
+    pm_audio_shutdown();
+    pm_exit_mark("audio");
+    pm_log_stop(); /* write what is left, then stop the writer thread. The last log line. */
+    pm_exit_mark("log");
+    C3D_Fini();
+    pm_exit_mark("c3d");
+    gfxExit();
+    pm_exit_mark("gfx");
+    pm_log_soc_exit();
+    pm_exit_mark("soc: shutdown complete");
+}
+
 int main(int argc, char** argv) {
     netloaded = __3dslink_host.s_addr != 0 || (argc > 0 && argv[0] && strncmp(argv[0], "3dslink:", 8) == 0);
     args[0] = 0;
@@ -467,8 +500,6 @@ int main(int argc, char** argv) {
     if (!t) return 1;
     threadJoin(t, U64_MAX);
     threadFree(t);
-    pm_flash_flush("exit");
-    pm_cpu_limit_exit(); /* CPULIM-UI: core 1 limit back to 30 */
-    pm_log_stop(); /* write what is left, then stop the writer thread */
+    pm_shutdown();
     return 0;
 }

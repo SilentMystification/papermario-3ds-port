@@ -17,6 +17,9 @@
 
 static int log_fd = -1;
 static int listen_fd = -1;
+static int soc_up;
+static u32 live_eagain, live_stall_close;
+static u64 live_ok_tick;
 static int client = -1;
 static unsigned seq;
 static char ring[RING];
@@ -71,6 +74,7 @@ static void accept_client(void) {
     fcntl(fd, F_SETFL, O_NONBLOCK);
     if (client >= 0) close(client);
     client = fd;
+    live_ok_tick = 0;
     ring_replay(fd);
 }
 
@@ -189,6 +193,7 @@ void pm_log_init(int live) {
         if (live) pm_log_w("live log: off (buffer %p, %u bytes, alloc %08lx, socInit %08lx, netload %d)", (void*)soc, soc_bytes, (unsigned long)pm_soc_alloc_rc(), (unsigned long)soc_rc, pm_started_by_netload());
         return;
     }
+    soc_up = 1;
     listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_fd < 0) {
         pm_log_e("live log: socket failed errno %d\n", errno);
@@ -229,8 +234,8 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs) {
     int dn = snprintf(dbg, sizeof(dbg), "logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s)", frames, avg_ms,
                       secs * 1000.f / (float)frames, dl, (float)dl / (float)frames, (float)dl / secs);
     svcOutputDebugString(dbg, dn);
-    pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u", frames, avg_ms, secs * 1000.f / (float)frames, dl,
-           (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped);
+    pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u live eagain %u stall closes %u", frames, avg_ms, secs * 1000.f / (float)frames, dl,
+           (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped, live_eagain, live_stall_close);
 }
 
 void pm_log_top(void) {
@@ -352,6 +357,10 @@ PM_LOG_FN(pm_log_i, 2)
 PM_LOG_FN(pm_log_d, 3)
 PM_LOG_FN(pm_log, 2) /* an old call is info */
 
+/* HW8: a client that only returns EAGAIN (stalled Wi-Fi, a reader that stopped) is closed after 3 s without one successful send.
+ * The PC script reconnects and the ring replay fills the gap. Counters go to the logstat line. */
+#define LIVE_STALL_TICKS (3ull * 268111856ull)
+
 /* Output of one batch: log.txt, replay ring, live socket, stdout. Writer thread (or crash flush) only. */
 static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     if (n <= 0) return;
@@ -360,14 +369,28 @@ static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     if (client >= 0) {
         int off = 0;
         while (off < n) {
-            int r = send(client, lines + off, (size_t)(n - off), 0);
+            static int stall_test = -1; /* test switch livestall: every send fails with EAGAIN (a reader that stopped) */
+            if (stall_test < 0) stall_test = strstr(switches, "livestall") != NULL;
+            int r = stall_test ? (errno = EAGAIN, -1) : send(client, lines + off, (size_t)(n - off), 0);
             if (r > 0) {
                 off += r;
+                live_ok_tick = 0;
                 continue;
             }
             if (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
                 close(client);
                 client = -1;
+            } else {
+                u64 now = svcGetSystemTick();
+                live_eagain++;
+                if (!live_ok_tick) live_ok_tick = now;
+                else if (now - live_ok_tick > LIVE_STALL_TICKS) {
+                    close(client);
+                    client = -1;
+                    live_ok_tick = 0;
+                    live_stall_close++;
+                    pm_log_w("live log: client closed, 3 s of only EAGAIN (%u EAGAIN, %u closes)", live_eagain, live_stall_close);
+                }
             }
             break; /* a full socket drops the rest for the live view only, log.txt has it */
         }
@@ -531,6 +554,12 @@ void pm_log_start(void) {
     }
     pm_log_d("log: writer thread on core %d, game thread on core %d", writer_core, (int)svcGetProcessorID());
     __atomic_store_n(&writer_on, 1, __ATOMIC_RELEASE);
+}
+
+/* HW7: after pm_log_stop. Close the listen socket, socExit, free the socket buffer (ours, at 0x08000000). */
+void pm_log_soc_exit(void) {
+    if (listen_fd >= 0) { close(listen_fd); listen_fd = -1; }
+    if (soc_up) { socExit(); soc_up = 0; pm_soc_free(); }
 }
 
 /* Normal exit: stop the writer after it has written everything. */

@@ -19,6 +19,16 @@ void pm_audio_hash_log(void) {
 static ndspWaveBuf wb[SLOTS];
 static s16* data[SLOTS];
 
+/* HW7: stop the DSP use before libctru frees the heap. The audio thread stays blocked on its event and never runs again. */
+void pm_audio_shutdown(void) {
+    if (!ready) return;
+    ready = 0;
+    pm_exit_mark("audio: reset");
+    ndspChnReset(0);
+    pm_exit_mark("audio: exit");
+    ndspExit();
+}
+
 void pm_audio_init(void) {
     static int tried;
     if (ready || tried) return; /* fail once, log once, run silent: no ndspInit retry on every audio tick */

@@ -115,6 +115,14 @@ void __system_allocateHeaps(void) {
     fake_heap_end = fake_heap_start + __ctru_heap_size;
 }
 
+/* HW7: after socExit. The 128 KB block is ours (MEMOP_ALLOC at 0x08000000). */
+void pm_soc_free(void) {
+    u32 out;
+    if (soc_buf) svcControlMemory(&out, (u32)soc_buf, 0, soc_size, MEMOP_FREE, 0);
+    soc_buf = NULL;
+    soc_size = 0;
+}
+
 void* pm_soc_buffer(unsigned* size) {
     if (size) *size = soc_size;
     return soc_buf;
