@@ -28,6 +28,8 @@ typedef struct {
     unsigned dkey; /* 0 for a plain texture, else the hash of a shaded one */
     unsigned stamp;
     unsigned epoch;
+    unsigned uses; /* TC1: hits since the upload */
+    unsigned last_frame; /* TC1: frame of the last hit, bind or upload */
     int live;
     int stale; /* invalidated while this frame's draws still use it: freed at the next frame start */
     C3D_Tex tex;
@@ -46,6 +48,10 @@ static unsigned frame_bytes, map_wmax;
 #define TOUCH(s) do { if ((s)->epoch != epoch) { frame_bytes += (s)->bytes; if (frame_bytes > map_wmax) map_wmax = frame_bytes; } (s)->epoch = epoch; } while (0)
 static unsigned stamp;
 static unsigned epoch;
+/* TC1: cache statistics. The counters are plain increments. The report line (every 300 frames) prints with switch texstat or loglevel=debug. */
+static unsigned tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_ev0, tc_inval, tc_up_bytes, tc_evict_bytes, tc_ev0_bytes;
+static int tc_on = -1;
+#define TC_HIT(s) do { (s)->uses++; (s)->last_frame = tc_frame; tc_hits++; } while (0)
 static u8* scratch;
 static int cur = -1;
 static int aux = -1; /* S25: the second texture (TEXEL1), bound at unit 1 */
@@ -300,6 +306,9 @@ static int evict_oldest_done(void) {
     }
     if (oldest < 0) return 0;
     if (oldest == cur) cur = -1;
+    tc_evict++;
+    tc_evict_bytes += slots[oldest].bytes;
+    if (slots[oldest].uses == 0) { tc_evict_ev0++; tc_ev0_bytes += slots[oldest].bytes; }
     drop(&slots[oldest]);
     return 1;
 }
@@ -378,8 +387,46 @@ unsigned pm_tex_peak(void) { return used_peak; }
 /* V13c: highest cache use since the last call, then restart from the current use. */
 unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }
 
+static void tc_report(void) {
+    unsigned n = 0, bytes = 0, u0n = 0, u0b = 0, rec_b = 0, rec_n = 0;
+    unsigned an[5] = { 0 }, ab[5] = { 0 }; /* age in frames: <=1, <=10, <=100, <=300, older */
+    int top[3] = { -1, -1, -1 };
+    for (int i = 0; i < slot_hi; i++) {
+        Slot* s = &slots[i];
+        unsigned age, b;
+        if (!s->live) continue;
+        age = tc_frame - s->last_frame;
+        b = s->bytes;
+        n++;
+        bytes += b;
+        if (s->uses == 0) { u0n++; u0b += b; }
+        if (age <= 300) { rec_n++; rec_b += b; }
+        int k = age <= 1 ? 0 : age <= 10 ? 1 : age <= 100 ? 2 : age <= 300 ? 3 : 4;
+        an[k]++;
+        ab[k] += b;
+        for (int t = 0; t < 3; t++)
+            if (top[t] < 0 || b > slots[top[t]].bytes) {
+                for (int u = 2; u > t; u--) top[u] = top[u - 1];
+                top[t] = i;
+                break;
+            }
+    }
+    pm_log_d("texstat f%u: hits %u miss %u evict %u (%uKB) never hit before evict %u (%uKB) invalidated %u uploaded %uKB",
+             tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_bytes >> 10, tc_evict_ev0, tc_ev0_bytes >> 10, tc_inval, tc_up_bytes >> 10);
+    pm_log_d("texstat live: %u slots %uKB, never hit %u (%uKB), used in last 300 frames %u (%uKB)", n, bytes >> 10, u0n, u0b >> 10, rec_n, rec_b >> 10);
+    pm_log_d("texstat age (frames since last use) <=1: %u/%uKB, <=10: %u/%uKB, <=100: %u/%uKB, <=300: %u/%uKB, older: %u/%uKB",
+             an[0], ab[0] >> 10, an[1], ab[1] >> 10, an[2], ab[2] >> 10, an[3], ab[3] >> 10, an[4], ab[4] >> 10);
+    for (int t = 0; t < 3; t++)
+        if (top[t] >= 0) pm_log_d("texstat largest %d: %dx%d fmt %u siz %u %uKB uses %u age %u", t, slots[top[t]].w, slots[top[t]].h, slots[top[t]].fmt, slots[top[t]].siz,
+                                  slots[top[t]].bytes >> 10, slots[top[t]].uses, tc_frame - slots[top[t]].last_frame);
+    tc_hits = tc_miss = tc_evict = tc_evict_ev0 = tc_inval = tc_up_bytes = tc_evict_bytes = tc_ev0_bytes = 0;
+}
+
 void pm_tex_begin_frame(void) {
     pm_tex_epoch_v++;
+    tc_frame++;
+    if (tc_on < 0) tc_on = pm_debug_has("texstat") || pm_log_level() >= 3;
+    if (tc_on && tc_frame % 300 == 0) tc_report();
     epoch++;
     frame_bytes = 0;
     /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
@@ -410,6 +457,7 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         img = (unsigned)s->img;
         pal = (unsigned)s->tlut;
         if (!((img >= start && img < end) || (pal && pal >= start && pal < end))) continue;
+        tc_inval++;
         if (aux == i) aux = -1;
         if (cur == i) {
             cur = -1;
@@ -543,6 +591,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
             s->stamp = ++stamp;
+            TC_HIT(s);
             TOUCH(s);
             cur = i;
             have = 1;
@@ -554,6 +603,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
             s->stamp = ++stamp;
+            TC_HIT(s);
             TOUCH(s);
             cur = i;
             have = 1;
@@ -693,6 +743,10 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     PH_ADD(C_TEXBYTE, bytes >> 10);
     s->stamp = ++stamp;
     s->epoch = epoch;
+    s->uses = 0;
+    s->last_frame = tc_frame;
+    tc_miss++;
+    tc_up_bytes += bytes;
     frame_bytes += bytes;
     if (frame_bytes > map_wmax) map_wmax = frame_bytes;
     s->live = 1;
@@ -738,6 +792,7 @@ int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigne
             if (s->live && s->img == buf && s->dkey == key && s->fmt == FMT_RGBA && s->siz == SIZ_32 && s->w == w &&
                 s->h == h && s->stride == w) {
                 s->stamp = ++stamp;
+                TC_HIT(s);
                 TOUCH(s);
                 cur = i;
                 have = 1;
@@ -760,6 +815,7 @@ int pm_tex_bind(void) {
     }
     if (!have || cur < 0 || !slots[cur].live) return 0;
     slots[cur].stamp = ++stamp;
+    slots[cur].last_frame = tc_frame;
     C3D_TexSetFilter(&slots[cur].tex, tex_filt, tex_filt);
     C3D_TexSetWrap(&slots[cur].tex, shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t);
     C3D_TexBind(0, &slots[cur].tex);
