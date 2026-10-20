@@ -27,6 +27,7 @@ flock -w 900 9 || { echo "LOCK TIMEOUT"; exit 3; }
 if flatpak ps 2>/dev/null | grep -q $APP; then echo "Azahar already runs (not started by this script). Stop."; exit 4; fi
 sha=$(sha256sum "$X" | cut -c1-64); stamp=$(date +%Y-%m-%dT%H:%M:%S)
 echo "$stamp,$ROW,$sha,x=$X d=$D,start,," >> $B
+rm -rf "$SD/shots" "$(dirname "$O")/shots"   # the "shots" switch writes $SD/shots; golden.py reads it next to the log
 mkdir -p "$SD"; cp -f "$X" "$SD/pm_3ds.3dsx"; rm -f "$SD/log.txt"
 if [ -n "$D" ]; then printf '%s' "$D" > "$SD/debug3ds.txt"; else rm -f "$SD/debug3ds.txt"; fi
 echo "budget: row $ROW run $((used+1))/$MAX; flatpak run $APP $SD/pm_3ds.3dsx; switches: $D"
@@ -55,6 +56,7 @@ done
 sleep 1; flatpak kill $APP >/dev/null 2>&1; wait 2>/dev/null; restore_cfg
 rm -f "$SD/debug3ds.txt"
 [ -f "$SD/log.txt" ] && cp -f "$SD/log.txt" "$O"
+[ -d "$SD/shots" ] && cp -r "$SD/shots" "$(dirname "$O")/shots"
 echo "stopped after $(( $(date +%s) - start )) s: $reason"
 echo "$(date +%Y-%m-%dT%H:%M:%S),$ROW,$sha,x=$X d=$D,end,0,$reason" >> $B
 tail -n 8 "$O" 2>/dev/null
