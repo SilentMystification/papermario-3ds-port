@@ -908,7 +908,11 @@ void au_bus_set_volume(u8 busID, u16 value) {
 }
 
 void au_bus_set_effect(u8 busID, u8 effectType) {
-    if (pm_au2_active) { AuCmd c = { AUC_BUS_EFFECT, busID, effectType }; pm_au2_emit(&c); } else au_bus_set_effect_x(busID, effectType);
+    /* The custom presets read AU_FX_CUSTOM_PARAMS, a pointer that sfx_player.c changes at any time: load them now, with the render thread drained. */
+    if (pm_au2_active && effectType >= AU_FX_CUSTOM_0 && effectType <= AU_FX_CUSTOM_3) {
+        pm_au2_sync(AU2_SYNC_BANK);
+        au_bus_set_effect_x(busID, effectType);
+    } else if (pm_au2_active) { AuCmd c = { AUC_BUS_EFFECT, busID, effectType }; pm_au2_emit(&c); } else au_bus_set_effect_x(busID, effectType);
 }
 
 void au_bus_set_fx_params(u8 busID, s16 delayIndex, s16 paramID, s32 value) {

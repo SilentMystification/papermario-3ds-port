@@ -186,6 +186,7 @@ int pm_au_thread_yield(void) {
             pm_audio_retrace_send();
             return 1;
         }
+        pm_au2_commit(); /* before au_busy = 0: after that the game thread may emit or commit */
         if (au_busy) {
             unsigned dt = pm_ticks() - au_j_t0;
             if ((int)dt < 0) dt = 0; /* the tick counters of two cores can differ by a few ticks */
@@ -194,7 +195,6 @@ int pm_au_thread_yield(void) {
             if (dt > au_j_max) au_j_max = dt;
             au_busy = 0;
         }
-        pm_au2_commit();
         LightEvent_Signal(&au_done);
         /* AU1f core share probe: every 16th job, after "done", the audio thread runs a fixed loop and times it. The shortest time is
          * the speed of a free core. A longer average means core 1 gives the audio thread less than the whole core (APT limit, system
