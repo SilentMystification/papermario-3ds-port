@@ -391,6 +391,7 @@ static void set_leg(int m) { leg_mode = m; }
 static int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 static PmPlan cur_plan;
 static void sync_combine(void);
+static void sync_combine_work(void);
 static void sync_legacy(void) {
     unsigned cc;
     if (const_rgb_tex_alpha(&cc)) {
@@ -944,7 +945,29 @@ static Dec* decide(int two) {
 }
 
 static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
+static unsigned sc_sig; static int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
 static void sync_combine(void) {
+    {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
+         * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
+        unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
+                             (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
+        unsigned sg = 2166136261u;
+        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+        if (sc_ok && sg == sc_sig && !PMD("nodip2")) { GP_SET(5, 1); return; }
+        sc_sig = sg;
+        sc_ok = 0; /* set again below when the work is done */
+    }
+    sync_combine_work();
+    sc_ok = 1;
+    {   /* the work may change leg_mode (an input): the signature of the next call must start from the new value */
+        unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
+                             (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
+        unsigned sg = 2166136261u;
+        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+        sc_sig = sg;
+    }
+}
+static void sync_combine_work(void) {
     if (gp_on()) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
         static unsigned last_sig;
         unsigned parts[] = { comb_w0, comb_w1, omode_h, omode_l, prim, envc, (unsigned)aud_prim_lod, tile_fmt[0] * 4 + tile_siz[0], (unsigned)(tex_on | use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), geom };
@@ -1805,6 +1828,7 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     int cx0 = X0 < 0 ? 0 : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > 320 ? 320 : X1, cy1 = Y1 > 240 ? 240 : Y1;
     pm_gpu_flush();
     pm_gpu_set_combine(5);
+    sc_ok = 0; /* DIP2: pm_gpu holds a combine mode sync_combine did not set */
     for (int ys = cy0; ys < cy1; ys += 128) {
         for (int xs = cx0; xs < cx1; xs += 128) {
             int cw = cx1 - xs < 128 ? cx1 - xs : 128, ch = cy1 - ys < 128 ? cy1 - ys : 128;
@@ -1849,6 +1873,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     Gfx* pc = (Gfx*)list;
     Gfx* end = (nbytes >= 8) ? pc + nbytes / 8 : NULL;
     unsigned guard = 0;
+    sc_ok = 0; /* DIP2: a new display list starts with a full sync */
     if (!pc) return;
     dd_end();
     if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }
