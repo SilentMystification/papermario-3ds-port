@@ -1,5 +1,8 @@
 #include "audio.h"
 #include "audio/core.h"
+#ifdef TARGET_3DS
+#include "pm_au2.h"
+#endif
 #include "ld_addrs.h"
 
 AuCallback BeginSoundUpdateCallback;
@@ -1100,6 +1103,9 @@ enum BKParseState {
 /// Instruments in the bank will be configured to use DMA streaming for sample/codebook data.
 /// This is the standard loader for streamed instrument banks.
 BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 bankIndex, BankSet bankSet) {
+#ifdef TARGET_3DS
+    pm_au2_sync(AU2_SYNC_BANK); /* AU2: the mixer reads these instruments */
+#endif
     ALHeap* heap = gSynDriverPtr->heap;
     BKHeader localHeader;
     BKHeader* header = &localHeader;
@@ -1234,6 +1240,9 @@ void au_swizzle_BK_instruments(s32 bkFileOffset, BKFileBuffer* file, InstrumentB
 /// Instruments are configured to always bypass DMA: sample and codebook data is assumed to be already present in RAM.
 /// Use this only for banks whose sample data is guaranteed to be preloaded, not for standard streaming.
 BKFileBuffer* au_load_static_BK_to_bank(s32* inAddr, void* outAddr, s32 bankIndex, BankSet bankSet) {
+#ifdef TARGET_3DS
+    pm_au2_sync(AU2_SYNC_BANK); /* AU2: the mixer reads these instruments */
+#endif
     ALHeap* heap = gSynDriverPtr->heap;
     BKFileBuffer* bkFile = outAddr;
     BKHeader localHeader;
@@ -1311,6 +1320,9 @@ s32 au_load_aux_bank(s32 bkFileOffset, s32 bankIndex) {
 
 /// unused. resets all instruments in (bankIndex, bankSet) to default
 void au_clear_instrument_group(s32 bankIndex, BankSet bankSet) {
+#ifdef TARGET_3DS
+    pm_au2_sync(AU2_SYNC_BANK); /* AU2: the mixer reads these instruments */
+#endif
     Instrument* instrument = gSoundGlobals->defaultInstrument;
     InstrumentBank* group =  au_get_BK_instruments(bankSet, bankIndex);
     Instrument** ptr = *group;

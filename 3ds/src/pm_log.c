@@ -504,11 +504,11 @@ static Result cpu_apply(int v, const char* why) {
 static void cpu_hook(APT_HookType h, void* param) {
     (void)param;
     switch (h) {
-    case APTHOOK_ONSUSPEND: pm_flash_flush("HOME menu opens"); cpu_apply(30, "HOME menu opens"); break;
-    case APTHOOK_ONSLEEP: pm_flash_flush("sleep"); cpu_apply(30, "sleep"); break;
+    case APTHOOK_ONSUSPEND: pm_audio_drain(3); pm_flash_flush("HOME menu opens"); cpu_apply(30, "HOME menu opens"); break;
+    case APTHOOK_ONSLEEP: pm_audio_drain(3); pm_flash_flush("sleep"); cpu_apply(30, "sleep"); break;
     case APTHOOK_ONRESTORE: cpu_apply(cpu_game, "HOME menu closed"); break;
     case APTHOOK_ONWAKEUP: cpu_apply(cpu_game, "wake"); break;
-    case APTHOOK_ONEXIT: pm_flash_flush("exit hook"); if (cpu_now != 30) cpu_apply(30, "exit"); break;
+    case APTHOOK_ONEXIT: pm_audio_drain(3); pm_flash_flush("exit hook"); if (cpu_now != 30) cpu_apply(30, "exit"); break;
     default: break;
     }
 }

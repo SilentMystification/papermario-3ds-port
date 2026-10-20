@@ -23,7 +23,7 @@ static char args[256];
  * A thread registers itself with the address of a local at its entry. The fill stops below the live frames. */
 #define STACK_PAT 0xA5A5A5A5u
 typedef struct { u32 lo, hi; const char* name; } StackRec;
-static StackRec recs[2];
+static StackRec recs[3];
 
 void pm_stack_register(int id, const char* name, unsigned size) {
     volatile u32 here;
