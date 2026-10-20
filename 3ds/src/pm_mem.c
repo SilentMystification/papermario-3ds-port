@@ -164,6 +164,7 @@ void pm_mem_log(const char* tag) {
     else
         pm_log_d("mem %s linear used %uKB peak %uKB (fixed part %uKB) texture failures %u", tag, lin_used >> 10, lin_peak >> 10,
                (lin_used - pm_tex_used()) >> 10, pm_tex_fail_count());
+    pm_log_d("mem %s vram free %uKB of %uKB (B7-0)", tag, (unsigned)(vramSpaceFree() >> 10), (unsigned)(6u * 1024u)); /* the PICA has 6 MB of VRAM */
     struct mallinfo mi = mallinfo();
     pm_log_d("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB tex-cache %uKB peak %uKB", tag,
            pm_heap_bytes() >> 10, (unsigned)mi.uordblks >> 10, (unsigned)mi.fordblks >> 10,

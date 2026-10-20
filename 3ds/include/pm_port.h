@@ -92,6 +92,9 @@ unsigned pm_audio_pending(void);
 int pm_audio_lock(void);
 void pm_audio_hash_log(void);
 void pm_audio_tick(void);
+/* B7-0: swirl capture (pm_cfb_capture_prev) and F03 depth query timing, read and cleared by the b7 line in pm_gbi.c. ticks of the ARM11 clock */
+typedef struct PmB7 { unsigned cap_n, cap_ticks, cap_max, dq_n, dq_ticks, dq_max; } PmB7;
+extern PmB7 pm_b7;
 
 /* MS01: static data of a map is restored when the map is entered again (pm_mapdata.c, map_restore_table.c is generated). */
 typedef struct PmMapRst {

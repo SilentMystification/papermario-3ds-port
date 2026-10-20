@@ -1298,9 +1298,20 @@ static unsigned n_ops; /* PT01: display list ops run this frame */
 void pm_gbi_end_frame(void) {
     /* One second of presented frames, summed. Identical seconds are not written. */
     static int frames, acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x;
+    static unsigned b7_frames, b7_grabs, b7_grab_max, b7_splits, b7_split_max;
     static char prev[112];
     snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d o%d k%d x%d sp%u sl%d gr%u",
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0, n_splits, pm_gpu_off_count(), n_grabs);
+    /* B7-0: one debug line per 30 presented frames: grabs and splits (sum, worst frame), swirl capture and F03 query count, total and worst us */
+    b7_grabs += n_grabs; b7_splits += n_splits;
+    if (n_grabs > b7_grab_max) b7_grab_max = n_grabs;
+    if (n_splits > b7_split_max) b7_split_max = n_splits;
+    if (++b7_frames >= 30) {
+        pm_log_d("b7 f%d: grabs %u (max %u per frame) splits %u (max %u) | swirl capture %u x %u us max %u us | F03 query %u x %u us max %u us", rm_frame, b7_grabs, b7_grab_max, b7_splits, b7_split_max,
+                 pm_b7.cap_n, pm_b7.cap_ticks / 268u, pm_b7.cap_max / 268u, pm_b7.dq_n, pm_b7.dq_ticks / 268u, pm_b7.dq_max / 268u);
+        b7_frames = b7_grabs = b7_grab_max = b7_splits = b7_split_max = 0;
+        memset(&pm_b7, 0, sizeof pm_b7);
+    }
     PH_ADD(C_CMD, n_ops);
     n_ops = 0;
     PH_ADD(C_TRI, n_cmd);

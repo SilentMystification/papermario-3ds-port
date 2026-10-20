@@ -209,6 +209,7 @@ unsigned pm_frame_count(void) { return pm_frame_n; }
 /* D03: copy the last finished frame into the frame buffer that is not being drawn (the N64 "previous
  * color buffer"). The PICA color buffer holds that frame until C3D_FrameEnd of this frame runs the
  * command list, so any time during this frame's display list build or run is right. Once per frame. */
+PmB7 pm_b7;
 void pm_cfb_capture_prev(void) {
     static unsigned done = ~0u;
     unsigned i;
@@ -220,6 +221,7 @@ void pm_cfb_capture_prev(void) {
             unsigned t0 = pm_ticks();
             static unsigned nlog;
             pm_gpu_read_frame(prev);
+            { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
             if (nlog++ < 6) pm_log("D03: last frame copied to a frame buffer in %u us (ARM11 tick, Azahar timing)", (unsigned)((pm_ticks() - t0) / 268u));
             pm_tex_invalidate(prev, CFB_PIXELS * 2);
             return;
