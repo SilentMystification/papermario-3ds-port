@@ -1095,6 +1095,9 @@ static void dual_bind(void) {
  * kept inside the window when it fits. The wrap inside one draw is not reproduced, the part past the window edge reads the
  * neighbour pixels of the slot. Tile 0 uv range of the draw: u0..u1 and v0..v1. */
 static void t1_fold(float u0, float u1, float v0, float v1) {
+    static int foldall = -1; /* V20: switch t1foldall restores the old behaviour (fold every TEXEL1) */
+    if (foldall < 0) foldall = pm_debug_has("t1foldall");
+    if (!foldall && pm_tex_aux_off_idx() < 0) return; /* an ordinary texture: the GPU repeat and mirror give the RDP wrap, the fold moved the start by the mask size (wrong for a mirrored axis, period twice the mask) */
     float o[2] = { t1_p[2], t1_p[3] };
     const float lo[2] = { u0, v0 }, ex[2] = { (u1 - u0) * t1_p[0] * (float)t1_w, (v1 - v0) * t1_p[1] * (float)t1_h };
     const float sc[2] = { t1_p[0], t1_p[1] };
