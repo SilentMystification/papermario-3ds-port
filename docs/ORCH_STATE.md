@@ -213,3 +213,42 @@ Rules 10 and 11 in docs/handoff/ORCH_RULES.txt. Do not over-test: a text-only or
 
 ### Start prompt for the new chat
 Read docs/ORCH_STATE.md section 11, then docs/handoff/ORCH_RULES.txt, 3ds/AGENT_RULES.md and 3ds/ORCHESTRATOR.md section 1. You are the orchestrator only. Reply in ASD-STE100 English, no praise, no agreement. Nothing runs now. Step 1: print the eleven rules in 11 short lines and one status block. Step 2: ask the user for the O3DS baseline file (3ds/logs/perf/baseline_*.txt), the Q-PO2 and Q-F10 answers, and the console results for V16b, V18, V19. Step 3: when the baseline arrives, resume the main-tree work: V23c, V16b, AU1b to AU1d, MA1 step 0 by SendMessage to the right agents.
+
+## 12. STATE UPDATE (2026-10-20). Newest section. Section 11 stays as written.
+
+### User decisions 2026-10-20
+- H05 and V17 are done. Their rows moved to docs/SLICES_DONE.md.
+- H06a, H06b and H06d belong to the optimization work. Their rows in 3ds/SLICES.md carry the tag.
+- V19b is later.
+- The O3DS baseline is dropped. The console Wi-Fi is flaky and the push failed.
+- The baseline now comes from Azahar in the O3DS config: 3ds/logs/perf/baseline_azahar_840.txt. It covers the full intro and demo cycle, 8232 frames. Pre-PO2 and current: all counters equal. PO2 transforms about 55 percent of the old vertex work. Host time changes by -0.7 percent of wall time.
+
+### PERF-BASE tooling (commits d7bfe2d9c, 00b89ecc6, e021d8ce4, f19883e59)
+- push_3ds.sh builds only when stale. It has a send timeout and prints PUSH OK or PUSH FAILED.
+- run_azahar.sh runs Azahar as a flatpak in fast mode (-F).
+- perf_az_full.py writes the per segment table.
+
+### Status of optimization rows
+| Row | Status | Commit | Note |
+|---|---|---|---|
+| PO2 | DONE 2026-10-20 | see docs/SLICES_DONE.md | 12.98M vertices transformed vs 23.81M corners read |
+| AU1b to AU1d | DONE | 5ae29eac3, e02051bfa | Audio ticks on a core 1 thread. Switch cpulimit=<5..80>, default 30. PCM hash equals the AU1b reference. |
+| AU1e | OPEN, needs the user | none | O3DS test at cpulimit 30, 50, 80 |
+| MA1 step 0 | DONE | e52bf5929 | Switch statehash=<n> (FNV-1a, default every 10 steps). 858 samples, 0 differences in 2 cycles. |
+| PO3a | DONE | 5a98914d5 | Log 3ds/logs/perf/po3a_azahar_845.txt. Next step: the PO3a gates (user instruction). |
+| PO3b | WAITS | none | Needs an O3DS GBI-interpret number after PO2. User decision pending. |
+
+AU1 numbers (Azahar): at cpulimit=80, core 0 audio time is 8.68 to 0.74 ms per step. Audio posts 21120 against 22200 (wall ticks). Default cpulimit 30 is slower than the overlap on Azahar. Not tested: crashtest_audio on core 1, warp=nok_01:0.
+Benchmark runs use cpulimit=80. With cpulimit=30 the game timeline differs from the baseline timeline.
+
+PO3a numbers (Azahar): mixed matrix ids 0.0 percent. 20.7 distinct matrix ids per frame against 136 CPU draws per frame. 85.8 percent plain triangles. The CPU rejects 63.7 percent of triangle commands.
+
+MA1 open questions in 3ds/QUESTIONS.md: Q-MA1-D8, Q-MA1-D9, Q-MA1-D10, Q-MA1-D11-D12, P16.
+
+### Running now
+- Lane B row MA1-R: MA1 render sites P13 to P18 and P20.
+- Read-only audit H06a: docs/plans/H06a.md.
+
+### Rules that stay
+- Do not start S28.
+- Do not push.

@@ -19,3 +19,13 @@ V16V17: V21 fixed (fire dlist fall-through, CMake EFFECT_GFX_SRC), shot checked.
 V16 and V17 stay open with leads in SLICES.md (f2070 box is the tape graphic, no battle flicker frame found, partial fade open).
 V22: scan of src/ for dlists and Vtx arrays read past their end. 5 effect gfx files added to EFFECT_GFX_SRC. screen_overlays D_8014EA48 unsure (docs/plans/dlist_noend.md). Not run in Azahar.
 H06c: -fno-toplevel-reorder on GAME_SRC, lists removed, check 3ds/tools/check_data_order.py. Open: fxtest 40-80, nok_12 V20 shot, 14 tour maps, then move H06c and H06a1.
+H05 and V17 (2026-10-20): done by user decision. Rows moved to docs/SLICES_DONE.md.
+PO2 (2026-10-20): done. Counters equal to pre-PO2. 12.98M vertices transformed vs 23.81M corners read.
+PO2 baseline: 3ds/logs/perf/baseline_azahar_840.txt (8232 frames). PO2 transforms about 55 percent of the old vertex work. Host time -0.7 percent of wall.
+PERF-BASE (2026-10-20): O3DS baseline dropped (console Wi-Fi flaky, push failed). Tools: push_3ds.sh, run_azahar.sh (flatpak, -F), perf_az_full.py.
+AU1b to AU1d (2026-10-20, 5ae29eac3, e02051bfa): audio ticks on a core 1 thread. Switch cpulimit=<5..80>, default 30. PCM hash equals AU1b reference.
+AU1 Azahar at cpulimit=80: core 0 audio time 8.68 to 0.74 ms per step. Audio posts 21120 vs 22200. Not tested: crashtest_audio on core 1, warp=nok_01:0.
+AU1e open (needs the user). cpulimit=30 changes the game timeline, so benchmark runs use cpulimit=80.
+MA1 step 0 (e52bf5929): switch statehash=<n> (FNV-1a, default every 10 steps). 858 samples, 0 differences in 2 cycles.
+PO3a (5a98914d5): log 3ds/logs/perf/po3a_azahar_845.txt. Mixed matrix ids 0.0 percent. 20.7 matrix ids per frame vs 136 CPU draws per frame.
+PO3a: 85.8 percent plain triangles. CPU rejects 63.7 percent of triangle commands. PO3b waits for an O3DS GBI-interpret number (user decision pending).
