@@ -11,7 +11,7 @@ Contents (all committed on main):
 - HW5 ELF of the build: 3ds/logs/builds/pm_3ds_<build>.elf. Decode a dump: `python3 3ds/tools/decode_dump.py <dump> --elf 3ds/logs/builds/pm_3ds_<build>.elf`.
 - AU1f mixer. New log line `audio core probe` (switch audiostat or coreprobe): shortest, average and longest time of a fixed loop on the audio thread. Average over shortest above 1.0 means core 1 gives the audio thread less than a whole core.
 - TC1 texture cache statistics: lines `texstat` every 300 drawn frames (switch texstat or loglevel=debug).
-- UI-1 (lane-b commit 3aa8abf4f): Options tabs and D-pad modes. NOT merged yet. The auto mode classifier denied the merge command in the HW-FIX session. The orchestrator or the user must run `git merge lane-b` on main (clean merge expected, lane-b does not touch map_restore_table.c). After the merge: build, run one full Azahar cycle without input, compare triout, vtxslot, draws, texmiss, texKB and statehash f1800 5a6bb12a, f4000 bcd4e3ea, f8000 1325de7e. Report the 3dsx size change.
+- UI-1 (lane-b commit 3aa8abf4f): Options tabs, D-pad modes, padscript tokens k_dup k_ddown k_dleft k_dright k_L k_R. Merged as 2773574de. The auto mode classifier denied the merge command in the HW-FIX session. The orchestrator or the user must run `git merge lane-b` on main (clean merge expected, lane-b does not touch map_restore_table.c). After the merge: build, run one full Azahar cycle without input, compare triout, vtxslot, draws, texmiss, texKB and statehash f1800 5a6bb12a, f4000 bcd4e3ea, f8000 1325de7e. Report the 3dsx size change.
 
 Build command (excludes the user's uncommitted map_restore_table.c):
 ```
@@ -48,12 +48,14 @@ Command:
 ```
 sh 3ds/push_3ds.sh --no-build --ip $O -t 480 loglevel=debug audiostat texstat
 ```
-Needs the merged UI-1 build (item 1). The live log is the read channel. FTP only if lines are missing.
+Build 902 (main 2773574de + HW-FIX, without map_restore_table.c) has the UI-1 work. The live log is the read channel. FTP only if lines are missing.
 
 User hands, minute list:
 - 0:00 to 0:40 boot, title. Wait for the title screen.
 - 0:40 File select. Start a new game or load slot 1.
-- 1:00 Pause menu (START). Move by D-pad: every entry. Open Options. Open each tab (General, Controls, Debug) with L and R. Change D-pad mode to each of Multifunction, C-Stick, Analog and move once in each.
+- 1:00 File select: move by D-pad. Pause menu (START): move by D-pad through every entry. Open Options. Open each tab (General, Controls, Debug) with L and R.
+- 1:45 Controls tab: the D-PAD mode row shows two modes on the O3DS (Multifunction, C-Stick; no Analog). Set each and check it. Rebind one control and check that the new binding works.
+- 2:15 Overworld: the D-pad moves the camera (C-stick mode and Multifunction), it does not walk Mario.
 - 2:30 Save: save the game in a slot (save block). Wait 3 seconds. Read in the live log: `save.flash written ... (core 1 idle)`. Save a second time in the same slot. The game must not stall.
 - 3:30 Enter a battle (any enemy). Navigate the battle menu by D-pad (Fight, Items, Strategies).
 - 5:00 Press HOME. Wait 5 seconds. Return to the game (tap the game icon).
