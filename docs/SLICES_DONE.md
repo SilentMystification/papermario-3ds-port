@@ -259,3 +259,4 @@ All rows marked [x], moved unchanged from 3ds/SLICES.md on 2026-10-17. Append on
 [x] AU1f | DONE 2026-10-20, 55adcdba6 | mixer bit exact (host test 3ds/tests/au1f, audiohash equal), Azahar audio cost 4606 to 3317 us per tick; O3DS gain waits for Push 1
 [x] TC1 | DONE 2026-10-20, f5f34afef | texstat lines; cache 99.3 percent hit, 44 percent of evicted bytes never hit, full in 4 scenes
 [x] UI1a UI1c | DONE 2026-10-20, 3aa8abf4f merged as 2773574de | Options tabs, D-pad modes; hand tests in Push 2 of docs/plans/hw_batch.md
+[x] AU2 | DONE 2026-10-20, lane-b | command queue and render thread (docs/plans/AU2_design.md); demo cycle audiohash and statehash equal, join wait 630 us to 14 us, underruns 84 vs 93 (on vs off); OPEN: tour with a battle at frame 700 gives a different audiohash from au2off (statehash equal), cause not found, needs one more au2off repeat run
