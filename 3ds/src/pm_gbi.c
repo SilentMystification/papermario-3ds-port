@@ -277,6 +277,15 @@ static int is_host(u32 p) {
     return 0;
 }
 
+/* PG3 A15: the host range that holds p (same three ranges as is_host). 0 when p is not host memory. */
+static int host_range(u32 p, u32* lo, u32* hi) {
+    u32 heap = __ctru_heap, hend = __ctru_heap + __ctru_heap_size, lin = __ctru_linear_heap, lend = lin + __ctru_linear_heap_size;
+    if (p >= heap && p < hend) { *lo = heap; *hi = hend; return 1; }
+    if (p >= lin && p < lend) { *lo = lin; *hi = lend; return 1; }
+    if (p >= 0x00100000u && p < (u32)(uintptr_t)__end__) { *lo = 0x00100000u; *hi = (u32)(uintptr_t)__end__; return 1; }
+    return 0;
+}
+
 static void* ptr_of(u32 w) {
     if (!w) return NULL;
     if (is_host(w)) return (void*)w;
@@ -1877,16 +1886,19 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     Gfx* pc = (Gfx*)list;
     Gfx* end = (nbytes >= 8) ? pc + nbytes / 8 : NULL;
     unsigned guard = 0;
+    u32 pc_lo = 0, pc_hi = 0;
     sc_ok = 0; /* DIP2: a new display list starts with a full sync */
     if (!pc) return;
     dd_end();
     if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }
     while (pc && guard++ < 200000) {
         if (end && sp == 0 && pc >= end) break;
-        if (!is_host((u32)pc)) {
+        if ((u32)pc < pc_lo || (u32)pc >= pc_hi) { /* PG3 A15: the range of pc is looked up when pc leaves the last range (list entry, G_DL, return), not at every op */
+            if (!host_range((u32)pc, &pc_lo, &pc_hi)) { pc_lo = pc_hi = 0;
             static int bad_dl;
             if (bad_dl++ < 6) pm_log_e("bad dl pc %08x list %08x n %u sp %d", (u32)pc, (u32)list, nbytes, sp);
             return;
+            }
         }
         u32 w0 = pc->words.w0;
         u32 w1 = pc->words.w1;
