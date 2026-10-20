@@ -74,6 +74,7 @@ static int nkey;
 void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     (void)ucode;
     int swap = (flag & NU_SC_SWAPBUFFER) != 0;
+    if (swap) pm_audio_step(); /* AU1b: the game logic and the display list of this step are done: audio ticks here */
     PH_PUSH(PH_GBI);
     if (pm_interp_on > 0) {
         /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. pm_interp_key_draw replays every task of the

@@ -154,15 +154,15 @@ void pm_au_thread_resume(void) {
     LightSemaphore_Acquire(&au_idle, 1);
 }
 
-/* Number of 60 Hz retraces that passed since the last call, at most 3. */
+/* Number of 60 Hz retraces that passed since the last call, at most 6. */
 unsigned pm_audio_retraces(void) {
     unsigned long long now = svcGetSystemTick();
     unsigned long long per = SYSCLOCK_ARM11 / 60ull;
     if (!au_last) au_last = now;
     unsigned long long n = (now - au_last) / per;
     au_last += n * per;
-    if (n > 3) {
-        n = 3;
+    if (n > 6) { /* AU1b: one call per drawn step now, so the cap is 6 (it was 3 for each of the two iterations of a step) */
+        n = 6;
         au_last = now;
     }
     return (unsigned)n;

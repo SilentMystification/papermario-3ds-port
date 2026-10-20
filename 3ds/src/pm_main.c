@@ -231,6 +231,17 @@ void pm_cfb_capture_prev(void) {
 /* PC01: once per second (switch `pacestat`): game steps, drawn frames, vblanks and audio ticks since the last line. */
 extern unsigned pm_step_calls;
 static unsigned pace_ticks;
+/* AU1b: the audio ticks of a step run at the kick point (entry of the main nuGfxTaskStart, after the game logic of the step), not at the top of
+ * the iteration. pm_audio_step is called once per drawn step. The main loop calls it after pm_gfx_retrace when the step sent no main task. */
+static int au_kicked;
+void pm_audio_step(void) {
+    if (au_kicked) return;
+    au_kicked = 1;
+    if (pm_debug_has("noaudio")) return;
+    PH_PUSH(PH_AUDIO);
+    for (unsigned n = pm_audio_lock() ? 2u : pm_audio_retraces(); n; n--) { pm_audio_tick(); PH_ADD(C_ATICK, 1); pace_ticks++; }
+    PH_POP();
+}
 static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 or more */
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
@@ -276,11 +287,6 @@ void pm_frame_loop(void) {
         pm_log_poll();
         pm_pad_scan();
         if (pace_on) pace_stat(now, tick_hz, frame);
-        if (!pm_debug_has("noaudio")) {
-            PH_PUSH(PH_AUDIO);
-            for (unsigned n = pm_audio_lock() ? (draw ? 2u : 0u) : pm_audio_retraces(); n; n--) { pm_audio_tick(); PH_ADD(C_ATICK, 1); pace_ticks++; }
-            PH_POP();
-        }
         if (!draw) {
             pm_gfx_retrace();
             /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
@@ -313,7 +319,9 @@ void pm_frame_loop(void) {
             step_vb = vb;
             step_vb_ok = 1;
         }
+        au_kicked = 0;
         pm_gfx_retrace();
+        pm_audio_step(); /* AU1b: no main task in this step: run the ticks now */
         if (!pm_gpu_drew()) {
             if (!ever) pm_gbi_fallback();
         } else {
