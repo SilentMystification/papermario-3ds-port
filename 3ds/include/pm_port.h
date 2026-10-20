@@ -84,6 +84,8 @@ void pm_fpscr_setup(const char* who);
 int pm_mem_crash_line(char* buf, int cap);
 void pm_gpu_log_stats(const char* tag);
 void* pm_soc_buffer(unsigned* size);
+int pm_started_by_netload(void);
+unsigned pm_soc_alloc_rc(void);
 unsigned pm_heap_bytes(void);
 unsigned pm_linear_bytes(void);
 void pm_mem_log(const char* tag);

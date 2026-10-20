@@ -186,11 +186,14 @@ void pm_log_init(int live) {
     u32* soc = (u32*)pm_soc_buffer(&soc_bytes);
     Result soc_rc = (!live || !soc || soc_bytes < 0x1000) ? -1 : socInit(soc, soc_bytes);
     if (soc_rc != 0) {
-        if (live) pm_log_w("live log: off (buffer %p, %u bytes, socInit %08lx)", (void*)soc, soc_bytes, (unsigned long)soc_rc);
+        if (live) pm_log_w("live log: off (buffer %p, %u bytes, alloc %08lx, socInit %08lx, netload %d)", (void*)soc, soc_bytes, (unsigned long)pm_soc_alloc_rc(), (unsigned long)soc_rc, pm_started_by_netload());
         return;
     }
     listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listen_fd < 0) return;
+    if (listen_fd < 0) {
+        pm_log_e("live log: socket failed errno %d\n", errno);
+        return;
+    }
     int yes = 1;
     setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     struct sockaddr_in addr;
@@ -199,13 +202,14 @@ void pm_log_init(int live) {
     addr.sin_port = htons(17492);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0 || listen(listen_fd, 1) < 0) {
+        int bind_errno = errno;
         close(listen_fd);
         listen_fd = -1;
-        pm_log_e("live log: bind 17492 failed\n");
+        pm_log_e("live log: bind 17492 or listen failed errno %d\n", bind_errno);
         return;
     }
     fcntl(listen_fd, F_SETFL, O_NONBLOCK);
-    pm_log_w("live log: port 17492\n");
+    pm_log_w("live log: port 17492 (buffer %p, %u bytes, alloc %08lx, socInit %08lx)\n", (void*)soc, soc_bytes, (unsigned long)pm_soc_alloc_rc(), (unsigned long)soc_rc);
 }
 
 static void stat_site(const char* fmt) {

@@ -28,8 +28,10 @@ extern u32 __ctru_linear_heap, __ctru_linear_heap_size;
 static u8* soc_buf;
 static s64 commit_max, commit_cur; /* M02 measurement: what the OS offered before the 64MB cap */
 static u32 soc_size;
+static Result soc_rc_alloc = -1;
+unsigned pm_soc_alloc_rc(void) { return (unsigned)soc_rc_alloc; }
 
-static int started_by_netload(void) {
+int pm_started_by_netload(void) {
     const char* p = envGetSystemArgList();
     if (!p) return 0;
     u32 argc = *(const u32*)p;
@@ -82,7 +84,12 @@ void __system_allocateHeaps(void) {
     u32 avail = (u32)(max_commit - cur_commit) & ~0xFFFu;
     if (avail > PM_FCRAM) avail = PM_FCRAM;
 
-    u32 soc = started_by_netload() ? PM_SOC : 0;
+    /* HW1: socInit needs a memory block in the normal heap area (0x08000000 and up). The linear block is at 0x14000000 and
+     * above, so socInit returns e0e01bf5 (invalid address) with a linear buffer. The old code called MEMOP_ALLOC with
+     * address 0, which the kernel refuses. This port keeps its heap in the linear block, so the normal heap area is free:
+     * allocate the socket buffer there at 0x08000000. The 128 KB come out of the commit before the linear block, as before.
+     * Always reserved, not only after a netload, so the livelog switch works from the SD card too. */
+    u32 soc = PM_SOC;
     if (avail <= soc + PM_OURS) boot_fail("commit too small", avail, soc + PM_OURS, 0);
     avail -= soc;
     u32 ours = PM_OURS - soc;
@@ -96,12 +103,11 @@ void __system_allocateHeaps(void) {
     __ctru_heap = base + ours;
     __ctru_heap_size = avail - ours;
 
-    if (soc) {
-        u32 soc_base = 0;
-        if (R_SUCCEEDED(svcControlMemory(&soc_base, 0, 0, soc, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE))) {
-            soc_buf = (u8*)soc_base;
-            soc_size = soc;
-        }
+    u32 soc_base = 0;
+    soc_rc_alloc = svcControlMemory(&soc_base, 0x08000000, 0, soc, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
+    if (R_SUCCEEDED(soc_rc_alloc)) {
+        soc_buf = (u8*)soc_base;
+        soc_size = soc;
     }
 
     mappableInit(OS_MAP_AREA_BEGIN, OS_MAP_AREA_END);
