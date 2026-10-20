@@ -75,3 +75,7 @@ Q-MA1-D9 (2026-10-20) PARKED until O3DS runs, no answer needed now: Site D9 (src
 Q-MA1-D10 (2026-10-20) PARKED until O3DS runs, no answer needed now: Site D10 (about 20 sqrtf and 40 divides in collision.c, walk.c, land.c, entity.c and others) is game logic. Allow squared-distance compares only where the result is exactly equal and the hash is equal? Default: no change.
 Q-MA1-D11-D12 (2026-10-20) PARKED until O3DS runs, no answer needed now: Sites D11 (camera math) and D12 (battle actor movement, 63 divides) are game logic. Keep as is unless a profile shows a hot spot. Allow a profile first? Default: profile only, no edit.
 Q-MA1-P16 (2026-10-20) PARKED until O3DS runs, no answer needed now: P16 (guRotateRPYF: 6 sinf or cosf calls) may move NPCs and animations. Allow a table version if the state hash and the golden pictures stay equal? Default: no change.
+
+## UI1 (D-pad modes, Options tabs)
+- Q: A diagonal D-pad press in a menu with four directions. Default: both stick axes are sent at 80, the menu code takes the axis it tests first (up or down before left or right in most menus). Change it if a menu behaves wrong on hardware.
+- Q: Azahar runs as an O3DS, so the mode D-PAD to Analog and the real C-stick are not tested. Default: build check only.

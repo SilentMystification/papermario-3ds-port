@@ -9,7 +9,7 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed */
+PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off) */
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
 static const struct { const char* name; unsigned short mask; } n64_btn[] = { {"NONE", 0}, {"A", 0x8000}, {"B", 0x4000}, {"Z", 0x2000}, {"START", 0x1000}, {"L", 0x0020}, {"R", 0x0010},
@@ -25,6 +25,16 @@ const char* pm_n64_name(unsigned short mask) {
 unsigned short pm_n64_next(unsigned short mask) {
     for (int i = 0; i < N_BTN; i++) if (n64_btn[i].mask == mask) return n64_btn[(i + 1) % N_BTN].mask;
     return n64_btn[0].mask;
+}
+/* UI1c: D-pad mode. One setting, two views (the Controls tab and the Select menu). The O3DS has no analog choice. */
+static const char* const dpad_name[3] = { "multi", "cstick", "analog" };
+static const char* const dpad_label[3] = { "Multifunction", "To C-Stick", "To Analog" };
+static int dpad_eff(void) { return pm_opt.dpad_mode == 2 && !pm_new3ds ? 0 : pm_opt.dpad_mode; }
+const char* pm_dpad_mode_name(void) { return dpad_label[dpad_eff()]; }
+void pm_dpad_mode_next(void) {
+    pm_opt.dpad_mode = (dpad_eff() + 1) % (pm_new3ds ? 3 : 2);
+    pm_options_touch();
+    pm_log("options: dpad_mode %s", dpad_name[pm_opt.dpad_mode]);
 }
 void pm_map_reset(void) { memcpy(pm_map, map_def, sizeof pm_map); }
 
@@ -48,8 +58,9 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "version=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed);
+    fprintf(f, "version=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode]);
+    if (pm_opt.warp > 0) fprintf(f, "warp=%s\n", pm_warp_preset_name(pm_opt.warp - 1));
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -84,6 +95,18 @@ void pm_options_init(void) {
                 for (bt = 0; bt < N_BTN && strcmp(eq + 1, n64_btn[bt].name); bt++) {}
                 if (in == PM_NIN || bt == N_BTN) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
                 else { pm_map[in] = n64_btn[bt].mask; pm_log("options: map %s = %s", line + 4, eq + 1); }
+                continue;
+            }
+            if (!strcmp(line, "dpad_mode")) { /* UI1c */
+                int m;
+                for (m = 0; m < 3 && strcmp(eq + 1, dpad_name[m]); m++) {}
+                if (m == 3) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else pm_opt.dpad_mode = m;
+                continue;
+            }
+            if (!strcmp(line, "warp")) { /* UI1a: warp=<preset name> */
+                int m;
+                for (m = 0; m < pm_warp_preset_count() && strcmp(eq + 1, pm_warp_preset_name(m)); m++) {}
+                if (m == pm_warp_preset_count()) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else pm_opt.warp = m + 1;
                 continue;
             }
             fld = opt_field(line);
@@ -153,15 +176,56 @@ void pm_options_close(void) {
     pm_options_write();
 }
 
-/* BN1: "Build <n><suffix>" as a game message (0-9 = 0x10, A = 0x21, a = 0x41, '-' = 0x0D, space = 0xF7, end = 0xFD) for the Options panel footer. */
-const unsigned char* pm_options_build_msg(void) {
-    static unsigned char m[40];
-    const char* t = "Build " PM_BUILD_STR;
+/* Text to game message (0-9 = 0x10, A = 0x21, a = 0x41, '-' = 0x0D, space = 0xF7, end = 0xFD). Other characters become a space. */
+const unsigned char* pm_options_msg(const char* t, int slot) {
+    static unsigned char m[8][40];
+    unsigned char* o = m[slot & 7];
     int n = 0;
     for (; *t && n < 38; t++, n++) {
         char c = *t;
-        m[n] = c >= '0' && c <= '9' ? 0x10 + (c - '0') : c >= 'A' && c <= 'Z' ? 0x21 + (c - 'A') : c >= 'a' && c <= 'z' ? 0x41 + (c - 'a') : c == '-' ? 0x0D : 0xF7;
+        o[n] = c >= '0' && c <= '9' ? 0x10 + (c - '0') : c >= 'A' && c <= 'Z' ? 0x21 + (c - 'A') : c >= 'a' && c <= 'z' ? 0x41 + (c - 'a') : c == '-' ? 0x0D : 0xF7;
     }
-    m[n] = 0xFD;
-    return m;
+    o[n] = 0xFD;
+    return o;
+}
+
+/* BN1: "Build <n><suffix>" for the Options panel footer. */
+const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build " PM_BUILD_STR, 7); }
+
+/* UI1a: the rows of the Options panel in tabs. Both the file select panel and the Select menu use the same value and action code.
+ * Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. */
+static const char* const lvl_name[4] = { "Error", "Warn", "Info", "Debug" };
+int pm_optui_rows(int tab) { return tab == 0 ? 3 : tab == 1 ? PM_NIN + 3 : 10; }
+static const char* const gen_lbl[2] = { "60 FPS", "Widescreen" };
+static const char* const dbg_lbl[7] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed" };
+const char* pm_optui_label(int tab, int row) {
+    if (row == pm_optui_rows(tab) - 1) return "Back";
+    if (tab == 0) return gen_lbl[row];
+    if (tab == 1) return row == 0 ? "D-PAD" : row <= PM_NIN ? pm_in_name[row - 1] : "Reset controls";
+    return row < 7 ? dbg_lbl[row] : row == 7 ? "Warp to" : "Warp now";
+}
+const char* pm_optui_value(int tab, int row) {
+    if (row == pm_optui_rows(tab) - 1) return NULL;
+    if (tab == 0) return pm_options_get(row) ? "On" : "Off";
+    if (tab == 1) return row == 0 ? pm_dpad_mode_name() : row <= PM_NIN ? pm_n64_name(pm_map[row - 1]) : NULL;
+    if (row == 8) return NULL;
+    if (row == 7) return pm_opt.warp ? pm_warp_preset_name(pm_opt.warp - 1) : "Off";
+    return row == 5 ? lvl_name[pm_options_get(7) & 3] : pm_options_get(row + 2) ? "On" : "Off"; /* debug rows 0 to 6 are option rows 2 to 8 */
+}
+/* result: 0 nothing more, 1 close the panel (Back), 2 leave the file select now (Warp now) */
+int pm_optui_act(int tab, int row) {
+    if (row == pm_optui_rows(tab) - 1) return 1;
+    if (tab == 0) { pm_options_flip(row); return 0; }
+    if (tab == 1) {
+        if (row == 0) pm_dpad_mode_next();
+        else if (row <= PM_NIN) { pm_map[row - 1] = pm_n64_next(pm_map[row - 1]); pm_options_touch(); pm_log("options: map %s = %s", pm_in_name[row - 1], pm_n64_name(pm_map[row - 1])); }
+        else { pm_map_reset(); pm_options_touch(); pm_log("options: controls reset"); }
+        return 0;
+    }
+    if (row < 7) { pm_options_flip(row + 2); return 0; }
+    if (row == 7) { pm_opt.warp = (pm_opt.warp + 1) % (pm_warp_preset_count() + 1); pm_options_touch(); return 0; }
+    if (pm_opt.warp == 0) return 0;
+    pm_options_close();
+    pm_warp_now(pm_opt.warp - 1);
+    return pm_warp_pending ? 2 : 0;
 }

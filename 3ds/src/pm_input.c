@@ -16,6 +16,13 @@ static int rand_on, rand_x, rand_y; /* padrand switch */
 static unsigned select_scan = 0x80000000u; /* F11-3: scan of the last Select press. A port flag, never an N64 bit. */
 static int select_pending; /* F11-6: a Select press that no game code took opens the port menu */
 static unsigned ps_menu_edge; /* F11-6: padscript edge of this scan, drives the port menu in tests */
+static unsigned tab_scan = 0x80000000u; /* UI1a: scan of the last L or R press (3DS keys), for the Options tabs */
+static int tab_dir;
+int pm_pad_take_tab(void) {
+    int r = pm_pad_scans - tab_scan <= 4u ? tab_dir : 0;
+    tab_scan = 0x80000000u;
+    return r;
+}
 int pm_pad_take_select(void) {
     int r = pm_pad_scans - select_scan <= 4u; /* a press older than 2 game frames is stale */
     select_scan = 0x80000000u;
@@ -29,10 +36,19 @@ int pm_pad_take_select(void) {
  * The unit is a pad scan: the game reads the pad on every second scan, so 2 scans are 1 game frame (30 Hz). With `warp` the script
  * starts on the first frame of the scene (pm_padscript_start), without it on the first scan. After the last token the real pad is back. */
 #define PS_MAX 450
-static struct { unsigned short b; signed char x, y; unsigned short n; } ps[PS_MAX];
+static struct { unsigned short b; signed char x, y; unsigned short n; unsigned keys; } ps[PS_MAX];
+static unsigned ps_pkeys; /* UI1: 3DS keys of the script step in the last scan */
 static int ps_n, ps_i, ps_run, ps_wait_start;
 static unsigned ps_left;
 static unsigned short ps_prev;
+
+/* UI1: tokens k_dup k_ddown k_dleft k_dright k_L k_R k_A k_B k_X k_Y k_START press a 3DS key before the mapping (D-pad modes, tabs) */
+static unsigned ps_key(const char* t) {
+    static const struct { const char* n; unsigned k; } kt[] = { { "dup", KEY_DUP }, { "ddown", KEY_DDOWN }, { "dleft", KEY_DLEFT }, { "dright", KEY_DRIGHT }, { "L", KEY_L }, { "R", KEY_R },
+        { "A", KEY_A }, { "B", KEY_B }, { "X", KEY_X }, { "Y", KEY_Y }, { "START", KEY_START }, { "csup", KEY_CSTICK_UP } };
+    for (unsigned i = 0; i < sizeof(kt) / sizeof(kt[0]); i++) if (strcasecmp(t, kt[i].n) == 0) return kt[i].k;
+    return 0;
+}
 
 static int ps_button(const char* t, unsigned short* b, signed char* x, signed char* y) {
     static const struct { const char* n; unsigned short bit; } bt[] = {
@@ -55,16 +71,18 @@ static void ps_parse(char* s) {
         char* star = strchr(tok, '*');
         if (star) { *star = 0; n = (unsigned)atoi(star + 1); }
         unsigned short b = 0;
+        unsigned keys = 0;
         signed char x = 0, y = 0;
         if (strncasecmp(tok, "wait", 4) == 0) {
             n = (unsigned)atoi(tok + 4);
         } else {
             char* sv2 = NULL;
             for (char* p = strtok_r(tok, "+", &sv2); p; p = strtok_r(NULL, "+", &sv2))
-                if (!ps_button(p, &b, &x, &y)) pm_log_w("padscript: unknown button '%s'", p);
+                if (!strncmp(p, "k_", 2) && ps_key(p + 2)) keys |= ps_key(p + 2);
+                else if (!ps_button(p, &b, &x, &y)) pm_log_w("padscript: unknown button '%s'", p);
         }
         if (n == 0) n = 1;
-        ps[ps_n].b = b; ps[ps_n].x = x; ps[ps_n].y = y; ps[ps_n].n = (unsigned short)n;
+        ps[ps_n].keys = keys; ps[ps_n].b = b; ps[ps_n].x = x; ps[ps_n].y = y; ps[ps_n].n = (unsigned short)n;
         ps_n++;
     }
 }
@@ -121,10 +139,21 @@ void pm_pad_scan(void) {
     hidScanInput();
     u32 k = hidKeysHeld();
     u32 d = hidKeysDown();
+    {   /* UI1: scripted 3DS keys (padscript k_ tokens), loaded here so they act before the mapping */
+        static int ps_init0;
+        if (!ps_init0) { ps_init0 = 1; ps_load(); }
+        if (ps_run) { k |= ps[ps_i].keys; d |= ps[ps_i].keys & ~ps_pkeys; ps_pkeys = ps[ps_i].keys; } else ps_pkeys = 0;
+    }
+    if (d & (KEY_L | KEY_R)) { tab_scan = pm_pad_scans; tab_dir = (d & KEY_L) ? -1 : 1; }
+    /* UI1c: D-pad modes. cbtn: the D-pad gives its C buttons. emu: it gives the stick. Multifunction: stick and C in every state but the free overworld. */
+    const int dmode = pm_opt.dpad_mode == 2 && !pm_new3ds ? 0 : pm_opt.dpad_mode;
+    const int cbtn = dmode != 2;
+    const int emu = dmode == 2 || (dmode == 0 && !pm_free_overworld());
     unsigned short b = 0;
     unsigned short edge = 0;
     for (int i = 0; i < PM_NIN; i++) {
         if (i >= PM_IN_L && i <= PM_IN_ZR) continue; /* shoulders below */
+        if (i >= PM_IN_DUP && i <= PM_IN_DRIGHT && (pm_map[i] & 0x000F) && !cbtn) continue; /* D-pad to analog only */
         if (k & in_key[i]) b |= pm_map[i];
         if (d & in_key[i]) edge |= pm_map[i];
     }
@@ -167,8 +196,6 @@ void pm_pad_scan(void) {
             if (pm_pad_scans % 211 < 3) { b |= 0x2000; edge |= 0x2000; }
         }
         {
-            static int ps_init;
-            if (!ps_init) { ps_init = 1; ps_load(); }
             if (ps_run) {
                 ps_menu_edge = ps[ps_i].b & ~ps_prev;
                 if ((ps_menu_edge & 0x0040) && !pm_menu_open) { select_scan = pm_pad_scans; select_pending = 1; } /* SELECT token: bit 0x40 is the script's own flag */
@@ -212,6 +239,12 @@ void pm_pad_scan(void) {
     if (rand_on) {
         stick_x = (signed char)rand_x;
         stick_y = (signed char)rand_y;
+    }
+    if (emu) {   /* UI1c: full cardinal value, both axes for a diagonal, the circle pad wins when it is pushed further */
+        int ex = ((k & KEY_DRIGHT) && (pm_map[PM_IN_DRIGHT] & 0x000F) ? 80 : 0) - ((k & KEY_DLEFT) && (pm_map[PM_IN_DLEFT] & 0x000F) ? 80 : 0);
+        int ey = ((k & KEY_DUP) && (pm_map[PM_IN_DUP] & 0x000F) ? 80 : 0) - ((k & KEY_DDOWN) && (pm_map[PM_IN_DDOWN] & 0x000F) ? 80 : 0);
+        if (ex && abs(ex) > abs(stick_x)) stick_x = (signed char)ex;
+        if (ey && abs(ey) > abs(stick_y)) stick_y = (signed char)ey;
     }
     if (pm_menu_open) stick_x = stick_y = 0;
 }

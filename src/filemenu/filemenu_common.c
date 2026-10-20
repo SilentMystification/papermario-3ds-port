@@ -1162,6 +1162,11 @@ void filemenu_cleanup(void) {
 }
 
 s32 filemenu_get_exit_mode() {
+#ifdef TARGET_3DS
+    if (pm_warp_pending) {
+        return 1; // port UI1a: Warp now leaves the file select as a file load does
+    }
+#endif
     if (filemenu_menus[FILE_MENU_MAIN]->state == FM_MAIN_SELECT_FILE
         && filemenu_currentMenu == FILE_MENU_CONFIRM
         && filemenu_menus[FILE_MENU_CONFIRM]->selected == 0

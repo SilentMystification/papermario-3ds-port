@@ -130,6 +130,8 @@ typedef struct PmOpt {
     int o3ds_z; /* C-O3DS: 0 = X is the Z key on the O3DS, 1 = Y (options.txt o3dsz) */
     int log, loglevel; /* L02, F11-8: log file on or off (default 1), level 0 error, 1 warn (default), 2 info, 3 debug */
     int fixedseed; /* F11-7: 1 = same random start seed every boot (as the switch fixedseed), read at boot */
+    int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.txt dpad_mode=multi|cstick|analog */
+    int warp; /* UI1a: 0 = off, n = warp preset n-1 at boot (options.txt warp=<name>) */
 } PmOpt;
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
@@ -140,6 +142,12 @@ int pm_options_get(int row);
 void pm_options_flip(int row);
 void pm_options_close(void);
 const unsigned char* pm_options_build_msg(void); /* BN1 footer text */
+const unsigned char* pm_options_msg(const char* text, int slot); /* UI1a: text as game message, slot 0 to 7 */
+int pm_optui_rows(int tab); /* UI1a: tab 0 General, 1 Controls, 2 Debug */
+const char* pm_optui_label(int tab, int row);
+const char* pm_optui_value(int tab, int row);
+int pm_optui_act(int tab, int row); /* 0 done, 1 close (Back), 2 leave the file select (Warp now) */
+int pm_pad_take_tab(void); /* UI1a: -1 for L, +1 for R (3DS keys) since the last call */
 void pm_log_switch(const char* word, int on);
 int pm_pad_take_select(void);
 /* F11-5: rebinding. 17 3DS inputs, each gives one N64 button mask (0 = none). SELECT opens the port menu and is not in the table. */
@@ -150,6 +158,13 @@ extern const char* const pm_in_name[PM_NIN];
 const char* pm_n64_name(unsigned short mask);
 unsigned short pm_n64_next(unsigned short mask); /* the next N64 button in the cycle NONE A B Z START L R CUP CDOWN CLEFT CRIGHT */
 void pm_map_reset(void);
+int pm_free_overworld(void); /* UI1c: 1 when the player has free control in the world (pm_dpad.c) */
+const char* pm_dpad_mode_name(void); /* UI1c: name of the mode for the device */
+void pm_dpad_mode_next(void);
+int pm_warp_preset_count(void);
+const char* pm_warp_preset_name(int i); /* UI1a */
+extern int pm_warp_pending; /* UI1a: set by pm_warp_now, read by filemenu_get_exit_mode */
+void pm_warp_now(int preset); /* UI1a: warp from the file select to preset i */
 void pm_options_touch(void); /* mark the settings changed, saved at pm_options_close */
 /* F11-6: the port menu on the bottom screen (3ds/src/pm_options_ui.c). Select, when no game code takes it, opens it in any game mode. */
 extern volatile int pm_menu_open;

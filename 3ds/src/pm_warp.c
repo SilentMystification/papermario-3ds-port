@@ -89,6 +89,13 @@ static s32 w_entry, w_flag, w_partner;
 int pm_warp_active(void) {
     char v[40];
     int has_preset = pm_debug_value("preset", v, sizeof v);
+    if (!has_preset && pm_opt.warp > 0 && pm_opt.warp <= (int)ARRAY_COUNT(presets)) { /* UI1a: options.txt warp=<preset>, a switch wins */
+        char t[8];
+        if (!pm_debug_value("warp", t, sizeof t) && !pm_debug_value("story", t, sizeof t)) {
+            strncpy(v, presets[pm_opt.warp - 1].name, sizeof v - 1);
+            has_preset = 1;
+        }
+    }
     if (has_preset) {
         int i, found = 0;
         for (i = 0; i < (int)ARRAY_COUNT(presets); i++) {
@@ -161,6 +168,8 @@ int pm_warp_active(void) {
     return has_preset || has_warp || has_story;
 }
 
+static void warp_setup(s16 areaID, s16 mapID);
+
 /* Called from the set_game_mode wrapper. Returns the mode to enter (the caller then calls the real set_game_mode). */
 s16 pm_warp_hook(s16 mode) {
     s16 areaID, mapID;
@@ -171,6 +180,11 @@ s16 pm_warp_hook(s16 mode) {
         pm_log_w("warp: map %s not found, normal start", w_map);
         return mode;
     }
+    warp_setup(areaID, mapID);
+    return GAME_MODE_ENTER_WORLD;
+}
+
+static void warp_setup(s16 areaID, s16 mapID) {
     if (w_loadslot >= 0) { /* E02: load the file as the file select does (name, save count), then override map and story */
         fio_fetch_saved_file_info();
         pm_log("warp: loadslot %d %s", w_loadslot, fio_load_game(w_loadslot) ? "loaded" : "FAILED");
@@ -199,7 +213,29 @@ s16 pm_warp_hook(s16 mode) {
     fio_serialize_state();
     warp_on = 1;
     pm_log("warp: %s entry %d (area %d map %d) story %d flag %x", w_map, w_entry, areaID, mapID, w_story, w_flag);
-    return GAME_MODE_ENTER_WORLD;
+}
+
+int pm_warp_preset_count(void) { return (int)ARRAY_COUNT(presets); }
+const char* pm_warp_preset_name(int i) { return presets[i].name; }
+/* UI1a: Warp now from the Options panel of the file select. The state is set as a file load does it, the caller leaves the file select
+ * through the normal exit (pm_warp_pending makes filemenu_get_exit_mode return 1: curtain, cleanup, ENTER_WORLD). */
+int pm_warp_pending;
+void pm_warp_now(int i) {
+    s16 areaID, mapID;
+    const WarpPreset* pr = &presets[i];
+    w_story = pr->story;
+    w_map[0] = 0;
+    strncat(w_map, pr->map, sizeof w_map - 1);
+    w_entry = pr->entry;
+    w_flag = pr->flag;
+    w_loadslot = -1;
+    if (strncmp(w_map, "kmr_", 4) != 0 && w_partner == 0) w_partner = 1;
+    if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) {
+        pm_log_w("warp: map %s not found", w_map);
+        return;
+    }
+    warp_setup(areaID, mapID);
+    pm_warp_pending = 1;
 }
 
 void pm_padscript_start(void);
