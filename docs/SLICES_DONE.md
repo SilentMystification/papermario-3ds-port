@@ -255,7 +255,7 @@ All rows marked [x], moved unchanged from 3ds/SLICES.md on 2026-10-17. Append on
 [x] PG3b | O11: exact float tables for /255.f and /127.f (put4, unpack8, vert_color) | DONE 2026-10-20: all 256 table values equal the divide (host test). Counters, statehash, golden equal. With PG3c: window gbi 13.67 to 12.66 ms, steps over 33.3 ms 7 to 2
 [x] PG3c | A15: the host range of pc is looked up when pc leaves the last range, not at every op (bad dl guard kept) | DONE 2026-10-20: see PG3b numbers (host time 52.44 s against 53.81 s, 2.5 percent, one run)
 [x] PG4 | Per-op dispatch cost. gbiprof ranking (inflated 2.3 times by tick reads, intro f1800-2099, gbi 13.1 ms real): G_TRI2 42 percent, G_TEXRECT 17, G_SETTILESIZE 10, G_VTX 10, G_SETCOMBINE 8, G_SETTILE 4, rest each under 3 (trivial ops cost the tick floor 1.6 us). Fixes: TRI2 second triangle skips off_screen_check and box_fold_sync, sync_combine hashes once, G_VTX copy only for drawlog | DONE 2026-10-20: gbi per step window 12.66 to 12.18 ms, cycle 9.64 to 9.39 ms, counters statehash golden equal
-HW5 | done 2026-10-20, f63d9cb41 | ELF kept per build in 3ds/logs/builds, 3ds/tools/decode_dump.py (no devkitPro or Luma tool exists); waits for a real dump from a kept-ELF build
-AU1f | done 2026-10-20, 55adcdba6 | mixer bit exact (host test 3ds/tests/au1f, audiohash equal), Azahar audio cost 4606 to 3317 us per tick; O3DS gain waits for Push 1
-TC1 | done 2026-10-20, f5f34afef | texstat lines; cache 99.3 percent hit, 44 percent of evicted bytes never hit, full in 4 scenes
-UI1a UI1c | done 2026-10-20, 3aa8abf4f merged as 2773574de | Options tabs, D-pad modes; hand tests in Push 2 of docs/plans/hw_batch.md
+[x] HW5 | DONE 2026-10-20, f63d9cb41 | ELF kept per build in 3ds/logs/builds, 3ds/tools/decode_dump.py (no devkitPro or Luma tool exists); waits for a real dump from a kept-ELF build
+[x] AU1f | DONE 2026-10-20, 55adcdba6 | mixer bit exact (host test 3ds/tests/au1f, audiohash equal), Azahar audio cost 4606 to 3317 us per tick; O3DS gain waits for Push 1
+[x] TC1 | DONE 2026-10-20, f5f34afef | texstat lines; cache 99.3 percent hit, 44 percent of evicted bytes never hit, full in 4 scenes
+[x] UI1a UI1c | DONE 2026-10-20, 3aa8abf4f merged as 2773574de | Options tabs, D-pad modes; hand tests in Push 2 of docs/plans/hw_batch.md
