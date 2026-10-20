@@ -382,12 +382,18 @@ static void game_thread(void* arg) {
     (void)arg;
     pm_crash_install(crash_stack, sizeof(crash_stack));
     pm_stack_register(0, "game", 256 * 1024);
-    char sw[256];
+    char sw[256]; /* H06d: a bigger array here stops the boot (FX3a, H06d: _svfprintf_r PC 0), so the limit stays and a cut is handled */
     memset(sw, 0, sizeof(sw));
     FILE* f = fopen("debug3ds.txt", "r");
+    int sw_cut = 0;
     if (f) {
-        fread(sw, 1, sizeof(sw) - 1, f);
+        size_t got = fread(sw, 1, sizeof(sw) - 1, f);
+        sw_cut = got == sizeof(sw) - 1 && fgetc(f) != EOF;
         fclose(f);
+        if (sw_cut) { /* H06d: never keep half a word (tour=...iwa_01 became iwa_0): cut back to the last space */
+            char* sp = strrchr(sw, ' ');
+            if (sp) *sp = 0;
+        }
     }
     int live = netloaded || strstr(sw, "livelog") != NULL;
     if (args[0]) {
@@ -410,6 +416,7 @@ static void game_thread(void* arg) {
     pm_log_w("build %s", PM_BUILD_STR);
     pm_log_w("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
+    if (sw_cut) pm_log_e("switches: debug3ds.txt is longer than 255 bytes. The last word and the rest are cut. Use tour=@file for a long map list.");
     pm_options_init();
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
