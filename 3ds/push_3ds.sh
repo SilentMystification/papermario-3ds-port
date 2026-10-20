@@ -82,20 +82,30 @@ echo "3DS at $ip"
 # the very first version of this, timeout-only, still hung past its own timeout).
 attempts=3
 stall_secs=15
+# SEND_SECS: the whole upload (13 MB) must end within this time once the console has answered.
+# A flaky Wi-Fi link can hang 3dslink after "Sending ..." for ever (confirmed on the O3DS).
+# The user decision 2026-10-20 overrides the old rule "never kill after the first answer":
+# kill by PID after SEND_SECS, count the attempt as failed, retry.
+send_secs=${SEND_SECS:-60}
+LINK=${PM_3DSLINK:-/opt/devkitpro/tools/bin/3dslink}
 ok=0
+stage=connect
+reason=""
 i=1
 while [ "$i" -le "$attempts" ]; do
-    echo "netload attempt $i/$attempts (killable only before the console responds, ${stall_secs}s)..."
+    echo "netload attempt $i/$attempts (connect timeout ${stall_secs}s, send timeout ${send_secs}s)..."
     cname="pm3ds_netload_$$_$i"
     outfile="build3ds/.netload_attempt_$$_$i.log"
     : > "$outfile"
-    if [ -x /opt/devkitpro/tools/bin/3dslink ]; then
-        echo "+ /opt/devkitpro/tools/bin/3dslink -a $ip build3ds/pm_3ds.3dsx -- --verbose $*"
-        ( stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" build3ds/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 ) &
+    usedocker=0
+    if [ -x "$LINK" ]; then
+        echo "+ $LINK -a $ip build3ds/pm_3ds.3dsx -- --verbose $*"
+        stdbuf -oL "$LINK" -a "$ip" build3ds/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 &
     else
+        usedocker=1
         echo "+ docker run devkitpro/devkitarm 3dslink -a $ip /out/pm_3ds.3dsx -- --verbose $*"
-        ( MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$(pwd)/build3ds:/out:ro" devkitpro/devkitarm:latest \
-            stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" /out/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 ) &
+        MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$(pwd)/build3ds:/out:ro" devkitpro/devkitarm:latest \
+            stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" /out/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 &
     fi
     dpid=$!
     tail -n +1 -f "$outfile" &
@@ -104,25 +114,38 @@ while [ "$i" -le "$attempts" ]; do
     stalled=0
     started=0
     killed=0
+    sent_for=0
     while kill -0 "$dpid" 2>/dev/null; do
         sleep 1
         cur_size=$(wc -c <"$outfile" 2>/dev/null || echo 0)
         if [ "$cur_size" -gt "$last_size" ]; then
             last_size=$cur_size
             stalled=0
-            started=1 # the console has responded - this attempt is no longer killable, ever
+            started=1
         elif [ "$started" -eq 0 ]; then
             stalled=$((stalled + 1))
         fi
+        [ "$started" -eq 1 ] && sent_for=$((sent_for + 1))
         if [ "$started" -eq 0 ] && [ "$stalled" -ge "$stall_secs" ]; then
-            echo "attempt $i: no response for ${stall_secs}s - force-killing (console never answered, nothing to corrupt)"
-            docker kill "$cname" >/dev/null 2>&1
+            echo "attempt $i: no response for ${stall_secs}s - killing (console never answered)"
+            stage=connect; reason="no answer from $ip in ${stall_secs}s"
             killed=1
+        elif [ "$started" -eq 1 ] && [ "$sent_for" -ge "$send_secs" ]; then
+            echo "attempt $i: send not finished after ${send_secs}s - killing 3dslink"
+            stage=send; reason="send stalled for ${send_secs}s"
+            killed=1
+        fi
+        if [ "$killed" -eq 1 ]; then
+            # set -e is on: every kill here ends with || true
+            kill "$dpid" 2>/dev/null || true
+            if [ "$usedocker" -eq 1 ]; then docker kill "$cname" >/dev/null 2>&1 || true; fi
+            sleep 1
+            kill -9 "$dpid" 2>/dev/null || true
             break
         fi
     done
     rc=0
-    wait "$dpid" || rc=$?
+    wait "$dpid" 2>/dev/null || rc=$?
     kill "$tpid" 2>/dev/null || true
     wait "$tpid" 2>/dev/null || true
     rm -f "$outfile"
@@ -130,17 +153,26 @@ while [ "$i" -le "$attempts" ]; do
         ok=1
         break
     fi
+    if [ "$killed" -eq 0 ]; then
+        if [ "$started" -eq 1 ]; then stage=send; reason="3dslink exit $rc after the console answered"
+        else stage=connect; reason="3dslink exit $rc, console did not answer"; fi
+    fi
     i=$((i + 1))
     [ "$i" -le "$attempts" ] && sleep 2
 done
 if [ "$ok" -ne 1 ]; then
-    echo "netload failed after $attempts attempts - the console at $ip is most likely not sitting in the"
-    echo "Homebrew Launcher (press Y there first), not a tooling problem. Not the game's own log server -"
-    echo "that only starts once netload succeeds."
+    echo "PUSH FAILED stage=$stage: $reason (after $attempts attempts, $ip)"
     exit 1
 fi
 
 echo "reading the game's log from $ip:17492 for $secs s"
 log="build3ds/hw_live_log_${ip##*.}.txt"
-py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log"
+py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log" || true
 echo "--- log saved to $log"
+nlines=$(wc -l <"$log" 2>/dev/null || echo 0)
+if [ "$nlines" -eq 0 ]; then
+    echo "NO LOG: no line from $ip:17492 in $secs s (game did not start or log server not reached)"
+    echo "PUSH FAILED stage=no log"
+    exit 1
+fi
+echo "PUSH OK, $nlines log lines"
