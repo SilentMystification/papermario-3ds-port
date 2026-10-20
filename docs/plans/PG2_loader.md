@@ -1,6 +1,6 @@
 # PG2 loader design (texture bake, step 2)
 
-Status: design only (PG2a). The loader edit goes to 3ds/src/pm_tex.c when the shared files are free. Line numbers are for pm_tex.c at commit 3e722a275 and must be checked again before the edit.
+Status: loader coded (PG2L, switches texdump, texbaked, texbakecheck, default off). Result at the end of this file. The loader edit goes to 3ds/src/pm_tex.c when the shared files are free. Line numbers are for pm_tex.c at commit 3e722a275 and must be checked again before the edit.
 
 ## What PG2a delivered
 - 3ds/src/pm_texbake.h: pack format (TbHead, TbRec), request format (TbReq), key (tb_key), source length (tb_src_len). Plain C. The loader includes it.
@@ -37,3 +37,11 @@ The cache compare at lines 442 to 466 uses img, tlut pointers and stays unchange
 
 ## Done check for the loader row
 texdump full cycle writes texreq.bin. texbake bake writes the pack and prints its size. texbaked with texbakecheck full cycle: tb_bad 0, hit rate, texmiss and texKB per frame equal (0 frames differ), statehash equal, golden toad yard battle 0 differences. Then texbaked alone: host time by the recipe in 3ds/logs/perf/speed_recipe.txt and the tex phase ms from phase_report.py.
+
+## Result of PG2L (Azahar, 2026-10-20)
+- texdump full cycle: 3074 distinct plain textures, 5.2 MB of requests. texbake bake: pack 21.4 MB (CI4 grows 4 times), index 74 KB.
+- texbakecheck full cycle: 5653 baked hits, 0 not in the pack, 0 mismatches. Counters (triout, vtxslot, draws, texmiss, texKB) and statehash equal to the run without the switch.
+- texbaked, host time from the first log line: 53.58 s (stdio fread) and 53.82 s (read), run without the switch 53.81 s. No change.
+- Map entry cpu (phase_report enter_demo avg ms, base then texbaked with read()): a6m5 26.8 then 29.8, a7m9 17.3 then 19.6, a17m4 27.2 then 30.8. The file read per miss costs more than the decode. stdio fread was worse (33.8, 23.2, 33.6).
+- Steps over 33.3 ms rise with texbaked (window pc 1700 to 1800: 7 then 23 with stdio fread).
+- Conclusion: no gain, a loss at map entry. The loader stays in the code, off by default. A faster variant needs the pack in RAM per map (up to the map working set, peak 1.2 MB) and a read once at map load. The O3DS SD speed is not known.

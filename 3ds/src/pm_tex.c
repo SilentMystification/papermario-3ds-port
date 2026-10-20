@@ -1,7 +1,12 @@
 #include <3ds.h>
 #include <citro3d.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "pm_tex.h"
+#include "pm_texbake.h"
 #include "pm_port.h"
 
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
@@ -277,9 +282,68 @@ static int evict_oldest_done(void) {
     return 1;
 }
 
+/* PG2L: baked textures (docs/plans/PG2_loader.md). Switches: texdump (write every plain miss as a request to texreq.bin), texbaked (read the pack
+ * texbake.pak on a miss), texbakecheck (as texbaked, but decode too and compare). A plain texture is one without lut, not a frame buffer image. */
+enum { TBM_DUMP = 1, TBM_USE = 2, TBM_CHECK = 4 };
+static int tb_mode;
+static FILE *tb_pak, *tb_dump;
+static TbRec* tb_idx;
+static unsigned tb_n, tb_hits, tb_miss, tb_bad, tb_dumped;
+static u8* tb_cmp;
+static int tb_fd = -1; /* data reads use read(): one file system call for the whole texture (stdio reads in small chunks) */
+static uint64_t* tb_seen; /* texdump: keys already written (open addressing, 0 = empty) */
+#define TB_SEEN_N 16384u
+
+static void tb_init(void) {
+    tb_mode = (pm_debug_has("texdump") ? TBM_DUMP : 0) | (pm_debug_has("texbaked") ? TBM_USE : 0) | (pm_debug_has("texbakecheck") ? TBM_CHECK : 0);
+    if (tb_mode & TBM_DUMP) {
+        tb_dump = fopen("texreq.bin", "wb");
+        tb_seen = (uint64_t*)calloc(TB_SEEN_N, sizeof(uint64_t));
+        if (tb_dump && tb_seen) { uint32_t h[2] = { TB_REQ_MAGIC, 0xffffffffu }; fwrite(h, 4, 2, tb_dump); fflush(tb_dump); }
+        else { pm_log_w("PG2L: texdump cannot start"); if (tb_dump) fclose(tb_dump); tb_dump = NULL; tb_mode &= ~TBM_DUMP; }
+    }
+    if (tb_mode & (TBM_USE | TBM_CHECK)) {
+        TbHead h;
+        tb_pak = fopen("texbake.pak", "rb");
+        if (tb_pak && fread(&h, sizeof h, 1, tb_pak) == 1 && h.magic == TB_MAGIC && h.version == TB_VERSION && h.count && h.count < 200000u) {
+            tb_idx = (TbRec*)malloc(h.count * sizeof(TbRec));
+            if (tb_idx && fread(tb_idx, sizeof(TbRec), h.count, tb_pak) == h.count) tb_n = h.count;
+        }
+        if (tb_mode & TBM_CHECK) tb_cmp = (u8*)malloc(256 * 256 * 4);
+        if (!tb_n || ((tb_mode & TBM_CHECK) && !tb_cmp)) {
+            pm_log_w("PG2L: texbake.pak not usable, decode as before");
+            if (tb_pak) fclose(tb_pak);
+            tb_pak = NULL; tb_mode &= ~(TBM_USE | TBM_CHECK); tb_n = 0;
+        } else { tb_fd = open("texbake.pak", O_RDONLY); if (tb_fd < 0) { pm_log_w("PG2L: texbake.pak not usable, decode as before"); tb_mode &= ~(TBM_USE | TBM_CHECK); tb_n = 0; } else pm_log_d("PG2L: pack %u textures", tb_n); }
+    }
+}
+
+static const TbRec* tb_find(uint64_t key) {
+    unsigned lo = 0, hi = tb_n;
+    while (lo < hi) {
+        unsigned m = (lo + hi) / 2;
+        if (tb_idx[m].key < key) lo = m + 1; else hi = m;
+    }
+    return (lo < tb_n && tb_idx[lo].key == key) ? &tb_idx[lo] : NULL;
+}
+
+static void tb_dump_req(uint64_t key, const TbReq* q, const u8* tl, const u8* src) {
+    unsigned i = (unsigned)(key >> 7) & (TB_SEEN_N - 1);
+    while (tb_seen[i]) { if (tb_seen[i] == key) return; i = (i + 1) & (TB_SEEN_N - 1); }
+    if (tb_dumped * 2u >= TB_SEEN_N) return; /* table half full: stop writing, the list is long enough to report */
+    tb_seen[i] = key;
+    TbReq r = *q; r.src_len = tb_src_len(q);
+    fwrite(&r, sizeof r, 1, tb_dump);
+    if (q->tlut_n) fwrite(tl, 2, q->tlut_n, tb_dump);
+    fwrite(src, 1, r.src_len, tb_dump);
+    fflush(tb_dump);
+    tb_dumped++;
+}
+
 void pm_tex_init(void) {
     /* Linear image, then a second copy in PICA tile order. */
     scratch = (u8*)linearAlloc(256 * 256 * 4 * 2);
+    tb_init();
 }
 
 unsigned pm_tex_used(void) { return used; }
@@ -341,6 +405,7 @@ static unsigned tprof_hit_t, tprof_hit_n, tprof_miss_t, tprof_miss_n;
 void pm_tex_prof_report(unsigned frames) {
     pm_log("gbiprof tex per frame: hit calls %u ticks-us %u (%u us per call), miss calls %u ticks-us %u (%u us per call)", tprof_hit_n / frames, tprof_hit_t / 268 / frames,
            tprof_hit_n ? tprof_hit_t / 268 / tprof_hit_n : 0, tprof_miss_n / frames, tprof_miss_t / 268 / frames, tprof_miss_n ? tprof_miss_t / 268 / tprof_miss_n : 0);
+    if (tb_mode) pm_log("PG2L: baked hits %u, not in pack %u, check mismatches %u, requests written %u", tb_hits, tb_miss, tb_bad, tb_dumped);
     tprof_hit_t = tprof_hit_n = tprof_miss_t = tprof_miss_n = 0;
 }
 static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int height,
@@ -473,7 +538,31 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     GPU_TEXCOLOR gf = gpu_fmt(fmt, siz);
     if (fmt == FMT_CI) gf = GPU_RGBA5551;
     if (lut) gf = GPU_RGBA8;
-    if (lut) {
+    const TbRec* tr = NULL; /* PG2L: the baked record of this texture, tb_use = its bytes are in the upload buffer and the decode is skipped */
+    int tb_use = 0;
+    if (tb_mode && !lut && !src_native) {
+        TbReq q;
+        memset(&q, 0, sizeof q);
+        q.fmt = (u8)fmt; q.siz = (u8)siz; q.ms = (u8)mk_ms; q.mt = (u8)mk_mt; q.w = (u16)width; q.h = (u16)height; q.stride = (u16)stride;
+        q.mw = (u16)((mk_on && mk_ws && (int)mk_ws < width) ? mk_ws : 0); q.mh = (u16)((mk_on && mk_wt && (int)mk_wt < height) ? mk_wt : 0);
+        q.tlut_n = (u16)((fmt == FMT_CI && tlut) ? tlut_n : 0);
+        uint64_t key = tb_key(&q, (const u8*)tlut, (const u8*)img);
+        if (tb_mode & TBM_DUMP) tb_dump_req(key, &q, (const u8*)tlut, (const u8*)img);
+        if (tb_mode & (TBM_USE | TBM_CHECK)) {
+            unsigned bb = (gf == GPU_RGBA8) ? 4u : 2u;
+            tr = tb_find(key);
+            if (tr && (tr->pw != pw || tr->ph != ph || tr->bytes != (unsigned)pw * (unsigned)ph * bb || tr->gf != (gf == GPU_RGBA8 ? TB_GF_RGBA8 : gf == GPU_LA8 ? TB_GF_LA8 : TB_GF_RGBA5551))) tr = NULL;
+            if (tr) {
+                u8* dst = (tb_mode & TBM_CHECK) ? tb_cmp : scratch + (256 * 256 * 4);
+                if (lseek(tb_fd, (off_t)tr->off, SEEK_SET) == (off_t)tr->off && read(tb_fd, dst, tr->bytes) == (ssize_t)tr->bytes) tb_use = !(tb_mode & TBM_CHECK);
+                else tr = NULL;
+            }
+            if (tr) tb_hits++; else tb_miss++;
+        }
+    }
+    if (tb_use) {
+        /* the bytes are in the second scratch half already */
+    } else if (lut) {
         if (!expand_dual((const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph)) return 0;
     } else if (!expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf)) return 0;
     unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8) ? 1u : 2u;
@@ -507,7 +596,9 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     /* Scratch is two 256KB halves. The linear image fills the first, the
      * Morton copy the second. A 512x256 RGBA5551 background is 256KB, so the
      * old 128KB tile buffer skipped tiling and the GPU scattered the pixels. */
-    if (bpp == 2u && (unsigned)pw * (unsigned)ph * 2u <= 256u * 256u * 4u) {
+    if (tb_use) {
+        upload = scratch + (256 * 256 * 4);
+    } else if (bpp == 2u && (unsigned)pw * (unsigned)ph * 2u <= 256u * 256u * 4u) {
         u8* tiled = scratch + (256 * 256 * 4);
         /* PICA samples t = 0 from the last row. Store row 0 there so the
          * game's top-left UV is the top of the image. */
@@ -550,6 +641,9 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             }
         }
         upload = tiled;
+    }
+    if (tr && !tb_use && memcmp(upload, tb_cmp, tr->bytes) != 0) { /* texbakecheck */
+        if (tb_bad++ < 8) pm_log_w("PG2L: baked bytes differ fmt %u siz %u %dx%d stride %d", fmt, siz, width, height, stride);
     }
     C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
     s->img = img;
