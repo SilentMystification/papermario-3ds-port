@@ -11,12 +11,43 @@
 set -e
 cd "$(dirname "$0")/.."
 secs=60
-if [ "$1" = "-t" ]; then secs=$2; shift 2; fi
+ipopt=""
+nobuild=0
+while :; do
+    case "$1" in
+        -t) secs=$2; shift 2 ;;
+        --ip) ipopt=$2; shift 2 ;;
+        --no-build) nobuild=1; shift ;;
+        *) break ;;
+    esac
+done
+
+# Build only when build3ds/pm_3ds.3dsx is older than its inputs (same input list as Invoke-Build in
+# 3ds/go.ps1) or the build number in pm_build.h differs from the one build.sh would write now.
+# This script never stashes or changes user files.
+if [ "$nobuild" -eq 0 ]; then
+    OUT=build3ds; [ -n "$PM_LANE" ] && OUT=build3ds/lane-$PM_LANE
+    read V0 C0 <<EOF2
+$(tr -d '\015' < 3ds/build_base.txt)
+EOF2
+    BN=$((V0 + $(git rev-list --count HEAD) - C0))
+    if [ -n "$PM_LANE" ] || [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
+    stale=0
+    if [ ! -f "$OUT/pm_3ds.3dsx" ] || [ ! -f 3ds/include/pm_build.h ]; then stale=1
+    elif ! grep -q "\"$BN\"" 3ds/include/pm_build.h; then stale=1
+    elif [ -n "$(find 3ds/src 3ds/include 3ds/shaders src include 3ds/CMakeLists.txt 3ds/build_base.txt -type f -newer "$OUT/pm_3ds.3dsx" -not -name pm_build.h 2>/dev/null | head -1)" ]; then stale=1
+    fi
+    if [ "$stale" -eq 1 ]; then echo "--- building (3dsx older than inputs) ---"; sh 3ds/build.sh
+    else echo "--- build up to date, skipping ---"; fi
+fi
 # PYTHON_EXE lets a caller (3ds/go.ps1) pass a reliably-resolved interpreter path: bash's own PATH
 # (MSYS) does not always see the Windows "py" launcher even when PowerShell's PATH does.
 PY=${PYTHON_EXE:-py}
+if [ -z "$PYTHON_EXE" ] && ! command -v py >/dev/null 2>&1; then PY=python3; fi
+# "py -3" is the Windows launcher form. python3 takes no -3.
+py3() { if [ "$PY" = python3 ]; then python3 "$@"; else "$PY" -3 "$@"; fi; }
 
-ip=${N3DS_IP:-$("$PY" -3 - <<'EOF'
+ip=${ipopt:-${N3DS_IP:-${PM_O3DS_IP:-$(py3 - <<'EOF'
 import socket
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -31,7 +62,7 @@ for _ in range(8):
     except socket.timeout:
         pass
 EOF
-)}
+)}}}
 if [ -z "$ip" ]; then echo "no 3DS netloader found (press Y in the Homebrew Launcher)"; exit 1; fi
 echo "3DS at $ip"
 
@@ -58,8 +89,14 @@ while [ "$i" -le "$attempts" ]; do
     cname="pm3ds_netload_$$_$i"
     outfile="build3ds/.netload_attempt_$$_$i.log"
     : > "$outfile"
-    ( MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$(pwd)/build3ds:/out:ro" devkitpro/devkitarm:latest \
-        stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" /out/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 ) &
+    if [ -x /opt/devkitpro/tools/bin/3dslink ]; then
+        echo "+ /opt/devkitpro/tools/bin/3dslink -a $ip build3ds/pm_3ds.3dsx -- --verbose $*"
+        ( stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" build3ds/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 ) &
+    else
+        echo "+ docker run devkitpro/devkitarm 3dslink -a $ip /out/pm_3ds.3dsx -- --verbose $*"
+        ( MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$(pwd)/build3ds:/out:ro" devkitpro/devkitarm:latest \
+            stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" /out/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 ) &
+    fi
     dpid=$!
     tail -n +1 -f "$outfile" &
     tpid=$!
@@ -105,5 +142,5 @@ fi
 
 echo "reading the game's log from $ip:17492 for $secs s"
 log="build3ds/hw_live_log_${ip##*.}.txt"
-"$PY" -3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log"
+py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log"
 echo "--- log saved to $log"
