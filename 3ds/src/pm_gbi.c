@@ -224,6 +224,11 @@ static u8 vert_scr[64];
 static s16 vert_sx[64], vert_sy[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
 static float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
+/* PO3a (switch po3a): counters for the go or no-go of PO3b. Matrix id = FNV-1a of the 16 bits of `combined` at each G_VTX. One log line per drawn frame. No rendering change. */
+static int po3a_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("po3a"); return v; }
+static unsigned vert_mid[64], mid_list[256], mid_n;
+static unsigned p_cmd, p_mixed, p_vload, p_vcmd, p_lit, p_tgen, p_scr, p_drawn, p_primz, p_env, p_plan, p_a255, p_fog, p_boost, p_plain, p_plain2;
+static int p_cur_mixed;
 static unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
 static u8 seen[256];
 /* i = every corner in front of the eye, drawn where it projected.
@@ -1078,6 +1083,14 @@ static void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
+    if (po3a_on()) {
+        p_cmd++;
+        p_cur_mixed = vert_mid[i0] != vert_mid[i1] || vert_mid[i0] != vert_mid[i2];
+        p_mixed += (unsigned)p_cur_mixed;
+        if (geom & G_LIGHTING) p_lit++;
+        if (geom & G_TEXTURE_GEN) p_tgen++;
+        if (vert_scr[i0] | vert_scr[i1] | vert_scr[i2]) p_scr++;
+    }
     off_screen_check();
     box_fold_sync();
     comb_audit();
@@ -1170,6 +1183,19 @@ static void draw_tri(unsigned w) {
         float en[4];
         unpack8(envc, en);
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
+    }
+    if (po3a_on()) { /* a triangle that reaches the draw: which colour and depth overrides apply (the cases a PO3b GPU path must handle) */
+        int env = comb_mode5 && !plan_active;
+        int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
+        int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
+        int fog = fogmix_on && (geom & G_FOG);
+        int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
+        int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL)) && !pm_debug_has("noprimz");
+        int scr = vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]];
+        int base = !p_cur_mixed && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !primz && !env && !plan && !fog && !boost;
+        p_drawn++; p_env += env; p_plan += plan; p_a255 += a255; p_fog += fog; p_boost += boost; p_primz += primz;
+        p_plain2 += base;          /* plain except alpha 255 (cheap override) */
+        p_plain += base && !a255;  /* plain: one matrix, unlit, no override at all */
     }
     if (dd_skip()) return;
     sync_render();
@@ -1333,6 +1359,22 @@ void pm_gbi_end_frame(void) {
         }
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
     }
+    if (po3a_on()) { /* one line per 10 frames (a line per frame overflows the log queue in a fast run). Sums over the window, ids: sum and max of the per frame distinct matrix ids. */
+        static unsigned w_n, w_ids, w_idmax, w_cmd, w_drawn, w_mixed, w_vcmd, w_vload, w_lit, w_tgen, w_scr, w_primz, w_env, w_plan, w_a255, w_fog, w_boost, w_plain, w_plain2;
+        extern unsigned pm_frame_count(void);
+        if (p_cmd) {
+            w_n++; w_ids += mid_n; if (mid_n > w_idmax) w_idmax = mid_n;
+            w_cmd += p_cmd; w_drawn += p_drawn; w_mixed += p_mixed; w_vcmd += p_vcmd; w_vload += p_vload; w_lit += p_lit; w_tgen += p_tgen; w_scr += p_scr;
+            w_primz += p_primz; w_env += p_env; w_plan += p_plan; w_a255 += p_a255; w_fog += p_fog; w_boost += p_boost; w_plain += p_plain; w_plain2 += p_plain2;
+        }
+        if (pm_frame_count() % 10 == 9 && w_n) {
+            pm_log("po3a f%u frames %u cmd %u drawn %u mixed %u ids %u idmax %u vcmd %u vload %u lit %u tgen %u scr %u primz %u env %u plan %u a255 %u fog %u boost %u plain %u plain2 %u",
+                   pm_frame_count(), w_n, w_cmd, w_drawn, w_mixed, w_ids, w_idmax, w_vcmd, w_vload, w_lit, w_tgen, w_scr, w_primz, w_env, w_plan, w_a255, w_fog, w_boost, w_plain, w_plain2);
+            w_n = w_ids = w_idmax = w_cmd = w_drawn = w_mixed = w_vcmd = w_vload = w_lit = w_tgen = w_scr = w_primz = w_env = w_plan = w_a255 = w_fog = w_boost = w_plain = w_plain2 = 0;
+        }
+    }
+    p_cmd = p_mixed = p_vload = p_vcmd = p_lit = p_tgen = p_scr = p_drawn = p_primz = p_env = p_plan = p_a255 = p_fog = p_boost = p_plain = p_plain2 = 0;
+    mid_n = 0;
     n_cmd = n_in = n_cut = n_drop = n_out = n_keep = 0;
     n_splits = n_grabs = 0;
     have_sample = 0;
@@ -1681,7 +1723,17 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
                 tri_since_vtx = 0;
                 if (v0 == 0 && dd_on()) { dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1; }
+                unsigned po3a_mid = 0;
+                if (po3a_on()) {
+                    po3a_mid = 2166136261u;
+                    for (int q = 0; q < 16; q++) { unsigned u; memcpy(&u, &((const float*)combined)[q], 4); po3a_mid = (po3a_mid ^ u) * 16777619u; }
+                    unsigned k;
+                    for (k = 0; k < mid_n; k++) if (mid_list[k] == po3a_mid) break;
+                    if (k == mid_n && mid_n < 256) mid_list[mid_n++] = po3a_mid;
+                    p_vload += n; p_vcmd++;
+                }
                 for (unsigned i = 0; i < n; i++) {
+                    vert_mid[v0 + i] = po3a_mid;
                     vert_live[v0 + i] = 1;
                     vert_scr[v0 + i] = 0;
                     vert_st[v0 + i][0] = (float)src[i].v.tc[0] * (float)tex_ss / 65536.f; /* T02: the RSP scales S and T */
