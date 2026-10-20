@@ -951,6 +951,9 @@ static void sync_combine(void) {
     pm_gpu_set_combine(leg_mode);
 }
 
+static int noaudit_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("noaudit"); return v; }
+/* PERF-GBI: the audit only feeds debug log lines (comb new, comb count, comb total). Below log level debug it did work for nothing on every triangle. */
+static int audit_on(void) { return pm_log_level() >= 3 && !noaudit_on(); }
 static void comb_audit(void) {
     unsigned cyc = (omode_h >> G_MDSFT_CYCLETYPE) & 3;
     unsigned key, i;
@@ -1073,6 +1076,14 @@ static void t1_fold(float u0, float u1, float v0, float v1) {
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
 static const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
+/* PERF-GBI (switch gbiprof, default off): cycle laps inside draw_tri, a tick read costs 1.3 us in Azahar so the totals are inflated, the ranking holds. One load and one branch when off. */
+static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
+static unsigned gp_acc[8], gp_last, gp_ntri, gp_frames;
+static unsigned gp_opt[256], gp_opn[256], gp_opt_last; static int gp_prev_op = -1; /* time between two ops, charged to the first */
+enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_N };
+#define GP_START() do { if (gp_on()) gp_last = pm_ticks(); } while (0)
+#define GP_LAP(id) do { if (gp_on()) { unsigned n_ = pm_ticks(); gp_acc[id] += n_ - gp_last; gp_last = n_; } } while (0)
+
 static int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
     int b = 0;
     float w = p[3];
@@ -1133,6 +1144,8 @@ static void draw_tri(unsigned w) {
     ClipV poly[12];
     int n, i;
     int gpu_plain = 0, was_in = 0; /* PO3b */
+    GP_START();
+    gp_ntri++;
     n_cmd++;
     tri_since_vtx = 1;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
@@ -1156,7 +1169,8 @@ static void draw_tri(unsigned w) {
     }
     off_screen_check();
     box_fold_sync();
-    comb_audit();
+    if (audit_on()) comb_audit();
+    GP_LAP(GPL_A);
     st_tri++;
     if (geom & G_LIGHTING) st_lit++;
     if (geom & G_FOG) st_fogg++;
@@ -1168,8 +1182,11 @@ static void draw_tri(unsigned w) {
         if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) st_fogb++;
         if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) st_blc++;
     }
+    GP_LAP(GPL_A);
     ensure_tile(use_t1 ? 1 : 0);
+    GP_LAP(GPL_ENSURE);
     dual_bind();
+    GP_LAP(GPL_DUAL);
     int early = 0; /* PO3b2: reject and cull from the clip positions of PO2 alone, before any uv, colour or ClipV is built. Same tests, same order, same counters. */
     if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
         const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
@@ -1181,6 +1198,7 @@ static void draw_tri(unsigned w) {
         }
         if (clip_bits4(a) & clip_bits4(b) & clip_bits4(c)) {
             n_out++;
+            GP_LAP(GPL_EARLY);
             return;
         }
         if ((geom & G_CULL_BOTH) && !cull_off()) {
@@ -1191,6 +1209,7 @@ static void draw_tri(unsigned w) {
             if ((a[3] < 0) ^ (b[3] < 0) ^ (c[3] < 0)) cross = -cross;
             if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
                 n_out++;
+                GP_LAP(GPL_EARLY);
                 return;
             }
         }
@@ -1208,12 +1227,15 @@ static void draw_tri(unsigned w) {
                 vert_tss[idx[0]] == vert_tss[idx[1]] && vert_tss[idx[0]] == vert_tss[idx[2]] &&
                 img_role(0) != ROLE_DEPTH && !dd_on() && !xt_on() && !rmlog_on()) {
                 if (po3a_on()) goto early_flags; /* the counters of PO3a need the flags block below: build the ClipV path */
+                GP_LAP(GPL_EARLY);
                 sync_render();
-                if (gpu_emit(idx)) { n_in++; st_gpu_tri++; return; }
+                GP_LAP(GPL_SYNC);
+                if (gpu_emit(idx)) { n_in++; st_gpu_tri++; GP_LAP(GPL_EMIT); return; }
             }
         }
     }
     early_flags:;
+    GP_LAP(GPL_EARLY);
     for (i = 0; i < 3; i++) {
         if (!early) st_cor++;
         xform_vtx(vert_p[idx[i]], tex_on ? vert_st[idx[i]] : st_off, vert_c[idx[i]], &poly[i]);
@@ -1392,7 +1414,8 @@ static void draw_tri(unsigned w) {
         }
     }
 no_boost:
-    if (gpu_plain && was_in && gpu_emit(idx)) { st_gpu_tri++; return; } /* PO3b: the raw Vtx path, same triangle, the GPU transforms it */
+    GP_LAP(GPL_OLD);
+    if (gpu_plain && was_in && gpu_emit(idx)) { st_gpu_tri++; GP_LAP(GPL_EMIT); return; } /* PO3b: the raw Vtx path, same triangle, the GPU transforms it */
     if (po3b_on()) st_cpu_tri++;
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
     for (i = 1; i < n - 1; i++) {
@@ -1492,6 +1515,22 @@ void pm_gbi_end_frame(void) {
                    pm_frame_count(), w_n, w_cmd, w_drawn, w_mixed, w_ids, w_idmax, w_vcmd, w_vload, w_lit, w_tgen, w_scr, w_primz, w_env, w_plan, w_a255, w_fog, w_boost, w_plain, w_plain2);
             w_n = w_ids = w_idmax = w_cmd = w_drawn = w_mixed = w_vcmd = w_vload = w_lit = w_tgen = w_scr = w_primz = w_env = w_plan = w_a255 = w_fog = w_boost = w_plain = w_plain2 = 0;
         }
+    }
+    if (gp_on() && ++gp_frames == 300) { /* PERF-GBI: per frame average in 0.1 ms units (ticks / 26811), tick reads inflate the sections */
+        static const char* nm[8] = { "validity,off_screen,box_fold,comb_audit", "ensure_tile", "dual_bind", "reject,cull", "sync_render", "gpu_emit", "old path", "G_VTX" };
+        char b[200]; int n = 0;
+        for (int k = 0; k < 8; k++) n += snprintf(b + n, sizeof b - n, "%s %u ", k == 3 ? "early" : k == 0 ? "A" : k == 1 ? "ens" : k == 2 ? "dual" : k == 4 ? "sync" : k == 5 ? "emit" : k == 6 ? "old" : "gvtx", gp_acc[k] / 26811 / 300);
+        pm_log("gbiprof f%d per frame 0.1ms: %s tris/frame %u", rm_frame, b, gp_ntri / 300);
+        for (int r = 0; r < 8; r++) { /* the eight most expensive op codes: per frame time in 0.1 ms and count */
+            int best = -1; unsigned bt = 0;
+            for (int k = 0; k < 256; k++) if (gp_opt[k] > bt) { bt = gp_opt[k]; best = k; }
+            if (best < 0) break;
+            pm_log("gbiprof op %02x per frame 0.1ms %u count %u", best, gp_opt[best] / 26811 / 300, gp_opn[best] / 300);
+            gp_opt[best] = 0;
+        }
+        memset(gp_opt, 0, sizeof gp_opt); memset(gp_opn, 0, sizeof gp_opn);
+        (void)nm;
+        memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
     gm_n = 0;
     memset(vert_ring, 0xff, sizeof vert_ring);
@@ -1797,6 +1836,12 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         int fp = 0;
         pc++;
         n_ops++;
+        if (gp_on()) {
+            unsigned t = pm_ticks();
+            if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += t - gp_opt_last; gp_opn[gp_prev_op]++; }
+            gp_opt_last = t;
+            gp_prev_op = (int)op;
+        }
         if (pm_ph_fine) {
             /* only these three: the thousands of state ops stay in the gbi phase (a tick read costs 1.3 us in Azahar) */
             fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
@@ -1827,6 +1872,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         }
         case G_VTX: {
+            unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
             unsigned n = (w0 >> 12) & 0xff;
             unsigned v0n = (w0 >> 1) & 0x7f;
             unsigned v0 = (v0n >= n) ? v0n - n : 0;
@@ -1889,6 +1935,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     }
                 }
             }
+            if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;
             break;
         }
         case G_MODIFYVTX: { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
@@ -2157,7 +2204,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             else if (img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
             off_screen_check();
             box_fold_sync();
-            comb_audit();
+            if (audit_on()) comb_audit();
             sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
             if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
             /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */

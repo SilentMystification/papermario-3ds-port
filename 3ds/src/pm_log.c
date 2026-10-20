@@ -75,9 +75,12 @@ void pm_log_poll(void) {
     if (!__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) accept_client(); /* the writer thread accepts once it runs */
 }
 
-int pm_debug_has(const char* word) {
-    PH_ADD(C_DBG, 1);
-    if (!word || !switches[0]) return 0;
+/* PERF-GBI: a test run has a switch string, and every pm_debug_has call scanned it (4.6 us in Azahar). Real play has none and returns at once. The cache makes a
+ * test run cost what real play costs. Entries hold a copy of the word, so a word in a changing buffer is safe. The cache is cleared when the string changes. */
+typedef struct { char w[20]; signed char v; } DbgEnt;
+static DbgEnt dbg_cache[64];
+static void dbg_cache_clear(void) { memset(dbg_cache, 0, sizeof dbg_cache); }
+static int debug_scan(const char* word) {
     const char* p = switches;
     size_t n = strlen(word);
     while ((p = strstr(p, word)) != NULL) {
@@ -89,11 +92,25 @@ int pm_debug_has(const char* word) {
     }
     return 0;
 }
+int pm_debug_has(const char* word) {
+    PH_ADD(C_DBG, 1);
+    if (!word || !switches[0]) return 0;
+    unsigned h = 5381;
+    size_t n = 0;
+    for (; word[n] && n < 19; n++) h = h * 33u + (unsigned char)word[n];
+    if (word[n]) return debug_scan(word); /* a long word: no cache */
+    DbgEnt* e = &dbg_cache[h & 63u];
+    if (e->v && strcmp(e->w, word) == 0) return e->v > 0;
+    int r = debug_scan(word);
+    memcpy(e->w, word, n + 1);
+    e->v = r ? 1 : -1;
+    return r;
+}
 
 const char* pm_debug_text(void) { return switches; }
 
 /* F11-3: add or remove one word at run time (the options panel). Every pm_debug_has call sees it at once. */
-void pm_log_switch(const char* word, int on) {
+static void sw_impl(const char* word, int on) {
     size_t n = strlen(word), len = strlen(switches);
     char* p = switches;
     if (pm_debug_has(word) == (on != 0)) return;
@@ -112,7 +129,14 @@ void pm_log_switch(const char* word, int on) {
     }
 }
 
+void pm_log_switch(const char* word, int on) {
+    dbg_cache_clear();
+    sw_impl(word, on);
+    dbg_cache_clear();
+}
+
 void pm_log_set_switches(const char* s) {
+    dbg_cache_clear();
     switches[0] = 0;
     if (s) strncat(switches, s, sizeof(switches) - 1);
     st_on = pm_debug_has("logstat") ? 1 : 2;
