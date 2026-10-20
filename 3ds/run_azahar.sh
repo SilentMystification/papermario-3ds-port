@@ -37,15 +37,16 @@ trap 'flatpak kill $APP >/dev/null 2>&1; restore_cfg; exit 130' INT TERM
 restore_cfg   # a killed earlier run left a backup: put the user file back first
 if [ "$FAST" -eq 1 ]; then
     cp -f "$QC" /tmp/claude-1000/qt-config.user
-    sed -i -e 's/^frame_limit=.*/frame_limit=1000/' -e 's/^frame_limit\\default=.*/frame_limit\\default=false/' \
+    sed -i -e "s/^frame_limit=.*/frame_limit=${PM_FL:-1000}/" -e 's/^frame_limit\\default=.*/frame_limit\\default=false/' \
            -e 's/^use_vsync=.*/use_vsync=false/' -e 's/^use_vsync\\default=.*/use_vsync\\default=false/' "$QC"
     echo "fast: $(grep -E '^(frame_limit|use_vsync|is_new_3ds)=' "$QC" | tr '\n' ' ')"
 fi
 flatpak run $APP "$SD/pm_3ds.3dsx" >/tmp/claude-1000/azahar_stdout.txt 2>&1 &
-start=$(date +%s); reason="timeout ($T s)"; last=-1; lastgrow=$start
+start=$(date +%s); t0=$(date +%s%N); tl=0; reason="timeout ($T s)"; last=-1; lastgrow=$start
 while [ $(( $(date +%s) - start )) -lt "$T" ]; do
-    sleep 1
+    sleep 0.2
     if [ -f "$SD/log.txt" ]; then
+        [ "$tl" = 0 ] && tl=$(date +%s%N)
         sz=$(wc -c < "$SD/log.txt")
         if [ "$sz" != "$last" ]; then last=$sz; lastgrow=$(date +%s)
         elif [ $(( $(date +%s) - lastgrow )) -gt 10 ]; then reason="game log silent for 10 s"; break; fi
@@ -57,6 +58,8 @@ sleep 1; flatpak kill $APP >/dev/null 2>&1; wait 2>/dev/null; restore_cfg
 rm -f "$SD/debug3ds.txt"
 [ -f "$SD/log.txt" ] && cp -f "$SD/log.txt" "$O"
 [ -d "$SD/shots" ] && cp -r "$SD/shots" "$(dirname "$O")/shots"
-echo "stopped after $(( $(date +%s) - start )) s: $reason"
+t1=$(date +%s%N); run_ms=$(( (t1 - t0) / 1000000 )); log_ms=0
+[ "$tl" != 0 ] && log_ms=$(( (t1 - tl) / 1000000 ))
+echo "stopped after $(( $(date +%s) - start )) s: $reason (run ms $run_ms, from first log line ms $log_ms)"
 echo "$(date +%Y-%m-%dT%H:%M:%S),$ROW,$sha,x=$X d=$D,end,0,$reason" >> $B
 tail -n 8 "$O" 2>/dev/null
