@@ -467,6 +467,7 @@ int main(int argc, char** argv) {
     if (!t) return 1;
     threadJoin(t, U64_MAX);
     threadFree(t);
+    pm_flash_flush("exit");
     pm_cpu_limit_exit(); /* CPULIM-UI: core 1 limit back to 30 */
     pm_log_stop(); /* write what is left, then stop the writer thread */
     return 0;

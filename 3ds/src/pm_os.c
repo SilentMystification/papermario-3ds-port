@@ -424,30 +424,51 @@ static u8 flash_mem[FLASH_SIZE];
 static int flash_ready;
 static const void* flash_wr_src;
 
-static void flash_sync(u32 off, u32 len) {
-    static unsigned fails;
-    FILE* f = fopen("save.flash", "r+b");
-    if (!f) f = fopen("save.flash", "w+b");
-    int ok = f != NULL && fseek(f, (long)off, SEEK_SET) == 0 && fwrite(flash_mem + off, 1, len, f) == len;
-    /* fclose flushes: a full SD card shows up here. The save stays in RAM, the game goes on. */
-    if (f && fclose(f) != 0) ok = 0;
-    if (!ok && fails++ < 5) pm_log_e("save.flash write FAILED (off %u len %u, SD full or missing?), save kept in RAM only", off, len);
-}
+/* HW2: the SD file work is in pm_flash.c (thread on core 1). */
+static void flash_sync(u32 off, u32 len) { pm_flash_mark(off, len); }
+
+static void flash_selftest(void);
+s32 osFlashWriteArray(u32 pageNum);
+s32 osFlashSectorErase(u32 pageNum);
 
 static void flash_init(void) {
     FILE* f;
     if (flash_ready) return;
     flash_ready = 1;
+    pm_flash_attach(flash_mem, sizeof(flash_mem));
     memset(flash_mem, 0xFF, sizeof(flash_mem));
     f = pm_debug_has("freshsave") ? NULL : fopen("save.flash", "rb");
     if (f) {
         size_t n = fread(flash_mem, 1, sizeof(flash_mem), f);
         fclose(f);
         pm_log("save.flash loaded %u bytes", (unsigned)n);
+        if (pm_debug_has("flashselftest")) { u32 h = 0, k; for (k = 0; k < FLASH_SIZE; k++) h = h * 31u + flash_mem[k]; pm_log("flash selftest: loaded hash %08x", h); }
     } else {
         flash_sync(0, FLASH_SIZE);
+        pm_flash_flush("new file");
         pm_log("save.flash new");
     }
+    if (pm_debug_has("flashselftest")) flash_selftest();
+}
+
+/* Test switch flashselftest: one save pattern through the real osFlash calls (erase sector 3, 39 pages, erase sector 0, one
+ * page), then flashfake joins at once, like a HOME press during the 70 ms wait. 3ds/tools/flash_selftest.py checks save.flash. */
+static void flash_selftest(void) {
+    u8 pg[FLASH_PAGE];
+    u32 i, p, crc = 0;
+    osFlashSectorErase(3 * 128);
+    for (p = 0; p < 39; p++) {
+        for (i = 0; i < FLASH_PAGE; i++) pg[i] = (u8)(p * 7 + i);
+        flash_wr_src = pg;
+        osFlashWriteArray(3 * 128 + p);
+    }
+    osFlashSectorErase(0);
+    for (i = 0; i < FLASH_PAGE; i++) pg[i] = (u8)(0xA5 + i);
+    flash_wr_src = pg;
+    osFlashWriteArray(0);
+    if (pm_debug_has("flashfake")) pm_flash_flush("fake suspend");
+    for (i = 0; i < FLASH_SIZE; i++) crc = crc * 31u + flash_mem[i];
+    pm_log("flash selftest: ram hash %08x", crc);
 }
 
 void osFlashReadArray(OSIoMesg* mb, s32 pri, u32 pageNum, void* dramAddr, u32 pageCount, OSMesgQueue* mq) {
