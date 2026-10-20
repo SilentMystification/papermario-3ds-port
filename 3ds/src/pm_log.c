@@ -30,6 +30,9 @@ static unsigned st_lines, st_bytes, st_prev_lines, st_prev_bytes;
 static const char* st_fmt[SITES];
 static unsigned st_cnt[SITES];
 static int st_nsites;
+static char con_pend[3072]; /* lines logged before the bottom console exists (MODE, memory): the console is created later in pm_gpu_init */
+static unsigned con_pend_n;
+static int con_up;
 static LightLock con_lock; /* the bottom screen console (stdout) is not thread safe: writer, HUD and console setup take this */
 static int st_on;
 static int writer_on;
@@ -263,6 +266,13 @@ static LightLock drain_lock;
 void pm_con_lock(void) { LightLock_Lock(&con_lock); }
 int pm_con_trylock(void) { return LightLock_TryLock(&con_lock); }
 void pm_con_unlock(void) { LightLock_Unlock(&con_lock); }
+void pm_log_console_ready(void) {
+    LightLock_Lock(&con_lock);
+    if (!pm_menu_open && con_pend_n) { fwrite(con_pend, 1, con_pend_n, stdout); fflush(stdout); }
+    con_pend_n = 0;
+    con_up = 1;
+    LightLock_Unlock(&con_lock);
+}
 static LightEvent ev_wake, ev_started, ev_flushed;
 
 static void direct_write(const char* line, int n, const char* body, size_t bl) {
@@ -274,7 +284,8 @@ static void direct_write(const char* line, int n, const char* body, size_t bl) {
         close(client);
         client = -1;
     }
-    if (!pm_menu_open) { fwrite(body, 1, bl, stdout); fflush(stdout); }
+    if (!con_up) { if (con_pend_n + bl < sizeof con_pend) { memcpy(con_pend + con_pend_n, body, bl); con_pend_n += (unsigned)bl; } }
+    else if (!pm_menu_open) { fwrite(body, 1, bl, stdout); fflush(stdout); }
 }
 
 static void vlog(int lv, const char* fmt, va_list ap) {
@@ -359,7 +370,8 @@ static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     }
     /* After a crash the lock owner may be the dead thread: then skip the console. */
     if (__atomic_load_n(&crashed, __ATOMIC_ACQUIRE) ? LightLock_TryLock(&con_lock) == 0 : (LightLock_Lock(&con_lock), 1)) {
-        if (!pm_menu_open) { fwrite(bodies, 1, (size_t)bn, stdout); fflush(stdout); } /* F11-6: the menu owns the bottom screen */
+        if (!con_up) { if (con_pend_n + (unsigned)bn < sizeof con_pend) { memcpy(con_pend + con_pend_n, bodies, (size_t)bn); con_pend_n += (unsigned)bn; } }
+        else if (!pm_menu_open) { fwrite(bodies, 1, (size_t)bn, stdout); fflush(stdout); } /* F11-6: the menu owns the bottom screen */
         LightLock_Unlock(&con_lock);
     }
 }
@@ -446,6 +458,39 @@ static int start_writer(int id, int core) {
     return ran;
 }
 
+/* CPULIM-UI: app core 1 time limit. pm_cpu_game_value = value the game set last (HUD), pm_cpu_state 0 = ok, -1 = the last call failed. */
+volatile int pm_cpu_game_value = 30;
+volatile int pm_cpu_state;
+static int cpu_game = 80;
+static int cpu_now = -1;
+static aptHookCookie cpu_cookie;
+
+static Result cpu_apply(int v, const char* why) {
+    Result r = APT_SetAppCpuTimeLimit((u32)v);
+    pm_log("cpu limit: set %d (%s) result %08lx", v, why, (unsigned long)r);
+    if (R_SUCCEEDED(r)) { cpu_now = v; if (v == cpu_game) pm_cpu_game_value = v; pm_cpu_state = 0; }
+    else pm_cpu_state = -1;
+    return r;
+}
+
+/* Hook runs in the thread that calls aptMainLoop (the game thread). Suspend and sleep: 30, so the HOME menu stays responsive. Restore and wake: the game value. */
+static void cpu_hook(APT_HookType h, void* param) {
+    (void)param;
+    switch (h) {
+    case APTHOOK_ONSUSPEND: cpu_apply(30, "HOME menu opens"); break;
+    case APTHOOK_ONSLEEP: cpu_apply(30, "sleep"); break;
+    case APTHOOK_ONRESTORE: cpu_apply(cpu_game, "HOME menu closed"); break;
+    case APTHOOK_ONWAKEUP: cpu_apply(cpu_game, "wake"); break;
+    case APTHOOK_ONEXIT: if (cpu_now != 30) cpu_apply(30, "exit"); break;
+    default: break;
+    }
+}
+
+/* Called once at normal exit (main), after the game thread ended. */
+void pm_cpu_limit_exit(void) {
+    if (cpu_now != 30 && cpu_now != -1) cpu_apply(30, "exit (main)");
+}
+
 /* Start the writer thread. Call once, after pm_log_init. */
 void pm_log_start(void) {
     if (writer_on || writer_th) return;
@@ -454,11 +499,21 @@ void pm_log_start(void) {
     LightEvent_Init(&ev_flushed, RESET_ONESHOT);
     LightLock_Init(&drain_lock);
     /* Core 1 (system core): a thread there is allowed only after APT_SetAppCpuTimeLimit (libctru thread.h). */
-    /* AU1d: the audio thread runs on core 1 too. Switch cpulimit=<30..80> sets the share (default 30 as before; AU1e tries 50 and 80 on the O3DS). */
-    int lim = 30;
-    { char v[16]; if (pm_debug_value("cpulimit", v, sizeof v)) lim = atoi(v); if (lim < 5 || lim > 80) lim = 30; }
-    Result r = APT_SetAppCpuTimeLimit(lim);
-    pm_log_d("log: APT_SetAppCpuTimeLimit(%d) = %08lx", lim, (unsigned long)r);
+    /* CPULIM-UI: the game value is 80 (try 79 when 80 fails). Switch cpulimit=<5..80> overrides. HOME menu and sleep set 30, resume sets the game value. */
+    {
+        int lim = 80;
+        char v[16];
+        if (pm_debug_value("cpulimit", v, sizeof v)) { lim = atoi(v); if (lim < 5 || lim > 80) lim = 30; }
+        cpu_game = lim;
+        Result r = cpu_apply(lim, "start");
+        if (R_FAILED(r) && lim == 80) {
+            cpu_game = 79;
+            r = cpu_apply(79, "start retry");
+        }
+        if (R_FAILED(r)) pm_cpu_state = -1; /* HUD marker: the call failed */
+        else pm_log_w("cpu limit: game value %d (APT result %08lx)", pm_cpu_game_value, (unsigned long)r);
+        aptHook(&cpu_cookie, cpu_hook, NULL);
+    }
     int ok = start_writer(1, 1);
     if (!ok) {
         pm_log_w("log: writer thread on core 1 %s, using core 0", writer_th ? "did not start" : "not created");

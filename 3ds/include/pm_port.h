@@ -21,6 +21,10 @@ int pm_con_trylock(void);
 void pm_con_unlock(void);
 void pm_log_start(void);
 void pm_log_stop(void);
+void pm_log_console_ready(void); /* CPULIM-UI: the bottom console exists now: print the lines that were logged before it did */
+extern volatile int pm_cpu_game_value; /* app core 1 time limit the game set (HUD) */
+extern volatile int pm_cpu_state;      /* 0 = ok, -1 = the last APT_SetAppCpuTimeLimit call failed */
+void pm_cpu_limit_exit(void);
 int pm_log_writer_core(void);
 unsigned pm_log_writer_hb(void);
 unsigned pm_log_dropped(void);

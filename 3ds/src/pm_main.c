@@ -363,14 +363,29 @@ void pm_frame_loop(void) {
                 stat_t0 = now;
             }
         }
+        if (pm_debug_has("shotbottom") && frame == 400) { /* CPULIM-UI test aid: dump the bottom screen framebuffer (240x320 RGB565 as the libctru console sets it, rotated) as shotbottom.ppm */
+            u16 bw, bh;
+            u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &bw, &bh);
+            FILE* sf = fopen("shotbottom.ppm", "wb");
+            if (sf && fb) {
+                fprintf(sf, "P6\n%u %u\n255\n", (unsigned)bh, (unsigned)bw);
+                for (unsigned y = 0; y < bw; y++) /* screen row y, screen column x: the buffer is column major, bottom row first */
+                    for (unsigned x = 0; x < bh; x++) { const u8* px = fb + ((size_t)x * bw + (bw - 1 - y)) * 2; unsigned c = px[0] | (px[1] << 8); fputc(((c >> 11) & 31) * 255 / 31, sf); fputc(((c >> 5) & 63) * 255 / 63, sf); fputc((c & 31) * 255 / 31, sf); }
+                pm_log_w("shotbottom: wrote shotbottom.ppm %ux%u", (unsigned)bh, (unsigned)bw);
+            }
+            if (sf) fclose(sf);
+        }
         if (frame == 300 && pm_debug_has("crashtest_call")) pm_crash_selftest();
         if (frame == 300 && pm_debug_has("crashtest")) __asm__ volatile(".word 0xe7f000f0"); /* class E: deliberate undefined instruction on the game thread */
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
             char top[40];
             char bot[40];
-            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f  #%s", fps, PM_BUILD_STR);
-            else snprintf(top, sizeof(top), "FPS ...  #%s", PM_BUILD_STR);
+            /* CPULIM-UI: line 1 = fps, app core 1 time limit the game set (? when the last APT call failed), 3DS mode, build */
+            char lim[8];
+            if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "L%d?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "L%d", pm_cpu_game_value);
+            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f %s %s #%s", fps, lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
+            else snprintf(top, sizeof(top), "FPS ... %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
             if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast"))
                 snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
             else
@@ -444,6 +459,7 @@ int main(int argc, char** argv) {
     if (!t) return 1;
     threadJoin(t, U64_MAX);
     threadFree(t);
+    pm_cpu_limit_exit(); /* CPULIM-UI: core 1 limit back to 30 */
     pm_log_stop(); /* write what is left, then stop the writer thread */
     return 0;
 }

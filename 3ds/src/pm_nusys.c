@@ -8,6 +8,7 @@ static int display_on;
 
 void nuGfxInitEX2(void) {
     pm_gpu_init();
+    pm_log_console_ready(); /* CPULIM-UI: the bottom console exists now */
     pm_gbi_init();
     pm_audio_init();
 }
