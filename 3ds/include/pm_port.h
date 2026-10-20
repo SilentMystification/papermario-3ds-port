@@ -10,6 +10,7 @@ void pm_log_e(const char* fmt, ...);
 void pm_log_w(const char* fmt, ...);
 void pm_log_i(const char* fmt, ...);
 void pm_log_d(const char* fmt, ...);
+void pm_log_hw(const char* fmt, ...); /* HWM1: debug level measurement line, kept longest by the queue */
 int pm_log_level(void);
 int pm_log_file(void);
 void pm_log_set_level(int lv);
@@ -57,7 +58,7 @@ unsigned pm_ticks(void);
 
 /* PT01: per-frame phase timer. Switch `phase` turns it on (pm_ph_on). Exclusive time: a nested phase takes its time from
  * the phase that was running. Counters are per drawn frame. All macros are one load and one branch when the switch is off. */
-enum { PH_OTHER, PH_LOGIC, PH_DL, PH_GBI, PH_GPU, PH_TEX, PH_AUDIO, PH_ROM, PH_YAY0, PH_FBEGIN, PH_FEND, PH_IDLE, PH_GCACHE, PH_GDRAW, PH_GVTX, PH_GTRI, PH_GMTX, PH_GOP, PH_FBREAD, PH_N };
+enum { PH_OTHER, PH_LOGIC, PH_DL, PH_GBI, PH_GPU, PH_TEX, PH_AUDIO, PH_ROM, PH_YAY0, PH_FBEGIN, PH_FEND, PH_IDLE, PH_GCACHE, PH_GDRAW, PH_GVTX, PH_GTRI, PH_GMTX, PH_GOP, PH_FBREAD, PH_GTEV, PH_GBIND, PH_GST, PH_N }; /* HWM1: PH_GTEV, PH_GBIND, PH_GST split the draw state cost, timed only with phasegbi */
 enum { C_TRI, C_TRIOUT, C_VTXLOAD, C_VTXSLOT, C_DRAW, C_FLUSH, C_TEXCALL, C_TEXMISS, C_TEXBYTE, C_ROMN, C_ROMB, C_YAYN, C_YAYB, C_DBG, C_ATICK, C_CMD, C_AJOB, C_N };
 extern int pm_ph_on;
 extern int pm_ph_fine; /* switch phasegbi: time G_VTX, triangle and G_MTX ops on their own (two tick reads per op, so it inflates the frame) */
@@ -66,6 +67,15 @@ void pm_ph_init(void);
 void pm_ph_push(int id);
 void pm_ph_pop(void);
 void pm_ph_frame_end(void);
+/* HWM1: scene tag for the phs lines, GPU numbers of the last frame, command buffer fill */
+int pm_ph_abtog_has(const char* word);
+void pm_ph_scene_mode(int mode);
+void pm_ph_scene_map(int area, int map);
+extern unsigned pm_ph_gpu_us[2]; /* previous frame: citro3d GPU drawing time and citro3d processing time (us), read after C3D_FrameBegin returns */
+extern unsigned pm_ph_cmd_pm;    /* command buffer fill of this frame in 1/1000 */
+void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
+#define PHF_PUSH(id) do { if (pm_ph_fine) pm_ph_push(id); } while (0)
+#define PHF_POP() do { if (pm_ph_fine) pm_ph_pop(); } while (0)
 #define PH_PUSH(id) do { if (pm_ph_on) pm_ph_push(id); } while (0)
 #define PH_POP() do { if (pm_ph_on) pm_ph_pop(); } while (0)
 #define PH_ADD(c, n) do { if (pm_ph_on) pm_ph_cnt[c] += (unsigned)(n); } while (0)

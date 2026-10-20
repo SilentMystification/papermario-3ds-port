@@ -53,7 +53,7 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 - Draw trace: `rmlog` (render mode changes), `drawlog=<f>:<n>` (one line per mesh chunk), `ddonly=<lo>:<hi>`, `ddverb`, `depthview=<1|2|3>`, `xtrace=<f>:<n>` (fills, texrects, state), `prevtest` (previous frame blur test).
 - Checks: `ptrcheck` and `ptrtest` (N64 address assumptions), `romstrict`, `romtrace`, `romfull` (no packed ROM), `dataprobe` (map statics), `assets` (log asset loads), `scripts` (script dump every 120 frames), `faulttest`, `crashtest`, `crashtest_call`, `crashtest_audio`, `crashtest_audio_call`.
 - Log level (L02): `loglevel=<0..3 or error, warn, info, debug>` (default warn), `log=off` (no log.txt). pm_log_e, pm_log_w, pm_log_i, pm_log_d, pm_log is info. The Options panel has the same two rows.
-- Timing and log: `phase`, `phasecsv`, `phasegbi`, `stats` (gbi counters), `audiostat`, `pacestat` (pacing), `texmax` (texture cache peak and one-frame use per map, one log line at each map load), `logstat`, `lognull`, `logflood` (10000 lines per frame), `noaudio`.
+- Timing and log: `phase`, `phasecsv[=<from>:<to>]`, `phasegbi`, `phsum` (phs, phh, phc lines per scene and A/B state, 3ds/tools/phs_report.py), `abtog=<base|gpuvtx|nodr1|nokick|notx1|phasegbi,...>:<n>` (rotate states every n drawn steps), `stats` (gbi counters), `audiostat`, `pacestat` (pacing), `texmax` (texture cache peak and one-frame use per map, one log line at each map load), `logstat`, `lognull`, `logflood` (10000 lines per frame), `noaudio`.
 
 ## Assets and generated paths
 - ROM: `C:\Users\Andrew\AppData\Roaming\Azahar\sdmc\3ds\PaperMario\papermario.z64` and copy `ver/us/baserom.z64` (git-ignored).

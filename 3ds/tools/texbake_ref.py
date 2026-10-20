@@ -12,8 +12,10 @@ def func(name):
         c = src[i]; d += (c == "{") - (c == "}"); i += 1
     return src[m.start():i]
 out = ["/* generated from pm_tex.c by texbake_ref.py */"]
-for n in ("pot_at_least_8", "rd16", "rd16s", "write5551", "gpu_fmt", "tiled16", "wrap_mod", "expand"): out.append(func(n))
+for n in ("pot_at_least_8", "rd16", "rd16s", "write5551", "gpu_fmt", "tiled16", "wrap_mod", "expand", "nib", "floor4", "expand_dual"): out.append(func(n))
 a = src.index("const void* upload = scratch;"); b = src.index("C3D_TexLoadImage(&s->tex, upload")
 blk = src[a:b]
+blk = blk.replace("if (tb_use) {", "if (0) {")  # the baked pack branch and the check block are not part of the decode
+blk = blk[:blk.index("    if (tr && !tb_use")] if "    if (tr && !tb_use" in blk else blk
 out.append("static const void* ref_tile(unsigned bpp, int pw, int ph) {\n" + blk + "    return upload;\n}")
 open(sys.argv[2], "w").write("\n".join(out) + "\n")

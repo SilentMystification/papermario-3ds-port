@@ -317,6 +317,7 @@ static void flush_impl(void) {
     }
     PH_ADD(C_FLUSH, 1);
     PH_PUSH(PH_GPU);
+    PHF_PUSH(PH_GBIND);
     if (graw) { /* PO3b */
         C3D_BindProgram(&prog3);
         C3D_SetAttrInfo(&attr3);
@@ -338,6 +339,8 @@ static void flush_impl(void) {
     if (tex && snap0) C3D_TexBind(0, &offs[off_cur].snap);
     if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
     if (tex1 && u_uvx >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
+    PHF_POP();
+    PHF_PUSH(PH_GTEV);
     /* PG3 O4: the texenv stages are a function of the values in the key. When the key repeats and nothing else touched the stages since the last build,
      * the stages are what a rebuild would give: skip it (the rebuild marks the stages dirty and the GPU gets them again). tev_valid is cleared at frame and target changes. */
     int memb = 0;
@@ -488,6 +491,8 @@ static void flush_impl(void) {
         }
         tev_key = tk; tev_valid = 1; tev_memb = memb;
     }
+    PHF_POP();
+    PHF_PUSH(PH_GST);
     dv_draw++;
     int z = z_on && (!rect_2d || rect_z) && !off_active;
     { static int nozt = -1; if (nozt < 0) nozt = pm_debug_has("nozt"); if (nozt) z = 0; } /* V27 debug: no depth test or write at all */
@@ -547,6 +552,7 @@ static void flush_impl(void) {
             GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     else
         sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+    PHF_POP();
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
     if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
         PH_PUSH(PH_GDRAW);
@@ -726,7 +732,7 @@ void pm_gpu_init(void) {
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     attr_cpu = *ai;
-    if (pm_debug_has("gpuvtx") && !pm_debug_has("nogpuvtx")) { /* PO3b: the raw Vtx path. Off by default, nothing is allocated with the switch off. */
+    if ((pm_debug_has("gpuvtx") || pm_ph_abtog_has("gpuvtx")) && !pm_debug_has("nogpuvtx")) { /* PO3b: the raw Vtx path. Off by default, nothing is allocated with the switch off. */
         shaderProgramInit(&prog3);
         dvlb3 = DVLB_ParseFile((u32*)pm_shader3_shbin, pm_shader3_shbin_size);
         shaderProgramSetVsh(&prog3, &dvlb3->DVLE[0]);
@@ -1096,6 +1102,7 @@ void pm_gpu_begin(int clear) {
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
     sh_clear(); C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     PH_POP();
+    pm_ph_gpu_note();
     dump_shot();
     PH_PUSH(PH_TEX);
     pm_tex_begin_frame();
@@ -1135,6 +1142,7 @@ void pm_gpu_end(void) {
         if (draws_frame > draws_max) draws_max = draws_frame;
         if (used > verts_max) verts_max = used;
         if (cmd > cmd_max) cmd_max = cmd;
+        pm_ph_cmd_pm = (unsigned)(cmd * 1000.f);
         if ((used * 10u > VERT_SLOTS * 9u || cmd > 0.9f || vert_drops) && (warned < 5 || frames_seen % 600 == 0)) {
             warned++;
             pm_log_w("GPU LIMIT NEAR: vertex slots %u of %u (dropped %u), command buffer %d%%, draws %u", used,

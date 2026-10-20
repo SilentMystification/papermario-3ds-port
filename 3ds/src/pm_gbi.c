@@ -244,7 +244,7 @@ static int p_cur_mixed;
 /* PO3b (switch gpuvtx, default off): plain triangles are drawn from the raw Vtx ring by the GPU transform. The CPU path keeps its checks (reject, cull, near clip) from the
  * per vertex transform of PO2, so the decisions are the same. Per slot: ring index, matrix table index, texture scale (s and t) at the load. */
 #define GV_NONE 0xffffu
-static int po3b_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gpuvtx") && !pm_debug_has("nogpuvtx"); return v; }
+static int po3b_on(void) { return PMDL("gpuvtx") && !PMDL("nogpuvtx"); } /* HWM1: follows abtog */
 static unsigned short vert_ring[64], vert_gmi[64];
 static unsigned vert_tss[64];
 static float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
