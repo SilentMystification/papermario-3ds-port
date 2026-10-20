@@ -230,6 +230,17 @@ void pm_gpu_gbiprof_report(unsigned frames) { /* the six most frequent causes si
     fl_rects = fl_consec = 0;
     for (int i = 0; i < fl_nt; i++) fl_tab[i].n = fl_tab[i].e = 0;
 }
+/* V19: decal depth bias, switch decalbias=<float> (default 0.001 as before; 0.00003 is about 2 float24 steps at mid range, to test on the device) */
+static float decal_bias(void) {
+    static float dbias = -1.f;
+    if (dbias < 0.f) { char dv[24]; dbias = pm_debug_value("decalbias", dv, sizeof dv) ? (float)atof(dv) : 0.001f; }
+    return dbias;
+}
+/* V16b: an N64 decal (Z_CMP, ZMODE_DEC) passes only where the stored depth is close to the depth of the decal. GPU_GEQUAL with a bias passes everywhere the decal is
+ * nearer, so an overlay on a sprite also landed on the wall behind it (Thunder Rage on Shy Guys: a flickering rectangle). Two passes with the stencil: pass 1 marks the
+ * pixels where the stored depth is not farther than decal - DECAL_EPS, pass 2 draws where the mark is set and the usual test (decal + bias is not behind) passes. */
+#define DECAL_EPS 0.003f
+static int decal2_on(void) { static int v = -1; if (v < 0) v = !pm_debug_has("nodecal2"); return v; }
 static void flush_impl(void);
 #define flush() do { fl_fn = __func__; fl_line = __LINE__; flush_impl(); } while (0)
 static void flush_impl(void) {
@@ -439,11 +450,7 @@ static void flush_impl(void) {
         C3D_DepthTest(false, GPU_GREATER, GPU_WRITE_COLOR);
     /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
     if (stencil_on && !(z && r_zmark)) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
-    { /* V19: decal depth bias, switch decalbias=<float> (default 0.001 as before; 0.00003 is about 2 float24 steps at mid range, to test on the device) */
-        static float dbias = -1.f;
-        if (dbias < 0.f) { char dv[24]; dbias = pm_debug_value("decalbias", dv, sizeof dv) ? (float)atof(dv) : 0.001f; }
-        C3D_DepthMap(true, -1.0f, r_decal ? dbias : 0.0f);
-    }
+    C3D_DepthMap(true, -1.0f, r_decal ? decal_bias() : 0.0f);
     C3D_EarlyDepthTest(false, GPU_EARLYDEPTH_GREATER, 0);
     if (r_atest >= 0) C3D_AlphaTest(true, GPU_GREATER, r_atest);
     else C3D_AlphaTest(false, GPU_ALWAYS, 0);
@@ -514,7 +521,21 @@ static void flush_impl(void) {
     C3D_BufInfo* buf = C3D_GetBufInfo();
     BufInfo_Init(buf);
     BufInfo_Add(buf, batch, sizeof(Vert), 3, 0x210);
+    int decal2 = z && r_zcmp && r_decal && r_blend && !r_zmark && !r_nocol && draw_3d && decal2_on();
+    if (decal2) { /* V16b pass 1: no colour, no depth write, mark the stencil where the stored depth is not behind the decal */
+        C3D_DepthMap(true, -1.0f, -DECAL_EPS);
+        C3D_DepthTest(true, GPU_LEQUAL, (GPU_WRITEMASK)0);
+        C3D_StencilTest(true, GPU_ALWAYS, 1, 0xff, 0xff);
+        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
+        C3D_DrawArrays(GPU_TRIANGLES, 0, count);
+        C3D_DepthMap(true, -1.0f, decal_bias());
+        C3D_DepthTest(true, GPU_GEQUAL, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+        C3D_StencilTest(true, GPU_EQUAL, 1, 0xff, 0xff);
+        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_ZERO, GPU_STENCIL_ZERO);
+        draws_frame++;
+    }
     C3D_DrawArrays(GPU_TRIANGLES, 0, count);
+    if (decal2) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); }
     PH_POP();
     verts = batch + count;
     /* 16-byte aligned start for the next batch (a vertex is 40 bytes, so every other batch start moves one slot). */
@@ -1125,6 +1146,7 @@ int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
 int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], unsigned i0, unsigned i1, unsigned i2) {
     if (!gpu_vtx_on || !gpu_ok) return 0;
     if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
+    if (r_decal && r_blend && decal2_on()) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
     if (pm_wide && !off_active && ui_ortho) return 0; /* F07-7: the CPU path moves edge vertices of UI quads */
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
