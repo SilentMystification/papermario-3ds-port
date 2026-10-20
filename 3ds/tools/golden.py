@@ -5,6 +5,7 @@
   python 3ds/tools/golden.py --milestone     full set, once per 3dsx sha256
   A scene that passed on the same 3dsx sha256 is not run again ("cached ok").
   python 3ds/tools/golden.py --update [..]   save the frame as the new reference
+  python 3ds/tools/golden.py --extra "gpuvtx" yard   compare with extra game switches (PO3 A/B; --update is refused with it)
   python 3ds/tools/golden.py --list
 
 Each scene is one Azahar run (about 25 s, turbo). The frame number is absolute (pm_frame_count), the game is frame
@@ -39,9 +40,11 @@ SCENES = {
 def x3_path():
     return os.path.join(ROOT, "build3ds", *(["lane-" + LANE] if LANE else []), "pm_3ds.3dsx")
 
+EXTRA = ""  # --extra "<switches>": added to every scene (PO3: --extra gpuvtx). The cache keeps one entry per 3dsx and extra.
+
 def run(name):
     sw, f = SCENES[name]
-    dbg = f"{sw} fixedseed shots shotwin={f}:3"  # R-SEED: a normal boot has a random RNG seed, tests use the fixed one
+    dbg = f"{sw} fixedseed shots shotwin={f}:3 {EXTRA}".strip()  # R-SEED: a normal boot has a random RNG seed, tests use the fixed one
     if os.path.exists(SHOT): os.remove(SHOT)  # a stale shot from an earlier run must never be read
     if sys.platform.startswith("win"):
         r = subprocess.run(["powershell", "-File", os.path.join(ROOT, "3ds", "run_azahar.ps1"), "-Turbo", "-FaultStop",
@@ -65,7 +68,10 @@ def img_bytes(img):
     b = io.BytesIO(); img.save(b, "PNG"); return b.getvalue()
 
 def main():
+    global EXTRA
     a = sys.argv[1:]
+    if "--extra" in a:
+        i = a.index("--extra"); EXTRA = a[i + 1]; del a[i:i + 2]
     update = "--update" in a
     milestone = "--milestone" in a
     names = [x for x in a if not x.startswith("--")]
@@ -75,7 +81,8 @@ def main():
     x3 = os.path.join(ROOT, "build3ds", *(["lane-" + LANE] if LANE else []), "pm_3ds.3dsx")
     sha = hashlib.sha256(open(x3, "rb").read()).hexdigest()
     cache = load_cache()
-    ent = cache.setdefault(sha, {"ok": [], "milestone": False})
+    if EXTRA and update: print("REFUSED: --update with --extra would save a reference made with the extra switches."); return 2
+    ent = cache.setdefault(sha + (":" + EXTRA if EXTRA else ""), {"ok": [], "milestone": False})
     if milestone:
         if ent["milestone"]: print(f"REFUSED: --milestone already ran on this 3dsx ({sha[:12]})."); return 2
         names = list(SCENES); ent["milestone"] = True

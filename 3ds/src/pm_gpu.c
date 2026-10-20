@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "pm_shader_shbin.h"
+#include "pm_shader3_shbin.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
 #include "pm_tex.h"
@@ -64,6 +65,17 @@ static unsigned draws_frame, draws_max, verts_max, vert_drops, frames_seen;
 static float cmd_max;
 static shaderProgram_s prog;
 static DVLB_s* dvlb;
+/* PO3b (switch gpuvtx): raw Vtx path. A ring of the 16 byte Vtx records of this frame and a u16 index ring. A batch is the triangles that share one
+ * matrix and one uv map. Program prog3 (main3 in pm.v.pica) reads the Vtx as they are. The batch is drawn by flush() when gni > 0. */
+enum { GRING_VTX = 16384, GRING_IDX = 65536 };
+static shaderProgram_s prog3;
+static DVLB_s* dvlb3;
+static C3D_AttrInfo attr_cpu, attr3;
+static unsigned char* gring; /* GRING_VTX x 16 bytes, linear */
+static unsigned short* gidx; /* GRING_IDX, linear */
+static unsigned gring_n, gidx_n, gi_start, gni; /* ring fill, index fill, first index of the open batch, indices in the open batch */
+static float g_mtx[4][4], g_uvso[4], g_vp[4];
+static int u_uvso = -1, gpu_vtx_on;
 
 int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
@@ -192,19 +204,23 @@ static void off_snapshot(int i) {
 }
 
 static void flush(void) {
-    if (nverts <= 0 || !gpu_ok) {
+    int graw = gni > 0; /* PO3b: the open batch is a raw Vtx batch */
+    if ((nverts <= 0 && !graw) || !gpu_ok) {
         nverts = 0;
+        gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
     }
     if (r_nocol && !(z_on && (!rect_2d || rect_z) && r_zupd)) {
         nverts = 0;
+        gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
     }
     /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
     if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
         nverts = 0;
+        gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
     }
@@ -216,6 +232,11 @@ static void flush(void) {
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
     PH_PUSH(PH_GPU);
+    if (graw) { /* PO3b */
+        C3D_BindProgram(&prog3);
+        C3D_SetAttrInfo(&attr3);
+        C3D_FVUnifSet(GPU_VERTEX_SHADER, u_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]);
+    }
     /* 2D batches are already pixels. 3D batches are object space. */
     if (u_proj >= 0)
         C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, draw_3d ? &shader_3d : off_active ? &off_proj : &projection); /* V05: shader_3d follows off_active, see rebuild_3d */
@@ -429,6 +450,30 @@ static void flush(void) {
     else
         C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
+    if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
+        PH_PUSH(PH_GDRAW);
+        C3D_BufInfo* gb = C3D_GetBufInfo();
+        BufInfo_Init(gb);
+        BufInfo_Add(gb, gring, 16, 3, 0x210);
+        C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
+        PH_POP();
+        draws_frame++;
+        PH_ADD(C_DRAW, 1);
+        PH_ADD(C_VTXSLOT, gni);
+        PH_POP();
+        C3D_BindProgram(&prog);
+        C3D_SetAttrInfo(&attr_cpu);
+        gi_start = gidx_n;
+        gni = 0;
+        batch_identity = 0;
+        drew = 1;
+        if (!off_active) { /* B2: the main target changed, the grab slot is old */
+            if (rect_y1 <= rect_y0) grab_dirty = 1;
+            else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
+            else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
+        }
+        return;
+    }
     Vert* batch = verts;
     int count = nverts;
     PH_PUSH(PH_GDRAW);
@@ -561,6 +606,22 @@ void pm_gpu_init(void) {
     AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 4);
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
+    attr_cpu = *ai;
+    if (pm_debug_has("gpuvtx") && !pm_debug_has("nogpuvtx")) { /* PO3b: the raw Vtx path. Off by default, nothing is allocated with the switch off. */
+        shaderProgramInit(&prog3);
+        dvlb3 = DVLB_ParseFile((u32*)pm_shader3_shbin, pm_shader3_shbin_size);
+        shaderProgramSetVsh(&prog3, &dvlb3->DVLE[0]);
+        u_uvso = shaderInstanceGetUniformLocation(prog3.vertexShader, "uvso");
+        AttrInfo_Init(&attr3);
+        AttrInfo_AddLoader(&attr3, 0, GPU_SHORT, 4);
+        AttrInfo_AddLoader(&attr3, 1, GPU_SHORT, 2);
+        AttrInfo_AddLoader(&attr3, 2, GPU_UNSIGNED_BYTE, 4);
+        gring = (unsigned char*)linearAlloc(GRING_VTX * 16);
+        gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
+        gpu_vtx_on = gring && gidx && u_uvso >= 0 && prog3.vertexShader;
+        pm_log("gpuvtx: raw Vtx path %s (ring %u vtx, %u idx, uvso %d, uniforms proj %d uvx %d)", gpu_vtx_on ? "on" : "FAILED", (unsigned)GRING_VTX, (unsigned)GRING_IDX, u_uvso,
+               prog3.vertexShader ? shaderInstanceGetUniformLocation(prog3.vertexShader, "projection") : -1, prog3.vertexShader ? shaderInstanceGetUniformLocation(prog3.vertexShader, "uvx") : -1);
+    }
     vert_base = (Vert*)linearAlloc(sizeof(Vert) * VERT_SLOTS);
     verts = vert_base;
     ident(game_mvp);
@@ -902,6 +963,7 @@ void pm_gpu_begin(int clear) {
     draws_frame = 0;
     drew = 0;
     nverts = 0;
+    gni = 0; gidx_n = 0; gi_start = 0; gring_n = 0; /* PO3b */
     verts = vert_base;
     sci_x0 = 0;
     sci_y0 = 0;
@@ -1002,7 +1064,7 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
     int ortho = memcmp(m, id4, sizeof(id4)) == 0 ? ui_ortho : (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f);
     if (sx == vp_sx && sy == vp_sy && tx == vp_tx && ty == vp_ty && ortho == ui_ortho &&
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
-    if (draw_3d && nverts > 0) flush();
+    if (draw_3d && (nverts > 0 || gni > 0)) flush();
     ui_ortho = ortho;
     memcpy(game_mvp, m, sizeof(game_mvp));
     vp_sx = sx;
@@ -1010,6 +1072,38 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
     vp_tx = tx;
     vp_ty = ty;
     rebuild_3d();
+}
+
+/* PO3b: copy n raw Vtx records into the frame ring. Returns the ring index of the first one, or -1 (path off or ring full). */
+int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
+    if (!gpu_vtx_on || !gpu_ok || gring_n + n > GRING_VTX) return -1;
+    memcpy(gring + gring_n * 16, vtx, n * 16);
+    unsigned b = gring_n;
+    gring_n += n;
+    return (int)b;
+}
+
+/* PO3b: one triangle of ring vertices i0 i1 i2. mtx is the row vector game matrix of the three vertices, uvso the uv map, vp the viewport.
+ * Returns 0 when the raw path cannot take it now (the caller draws it on the CPU path). A batch is the triangles with the same matrix, viewport and uv map. */
+int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], unsigned i0, unsigned i1, unsigned i2) {
+    if (!gpu_vtx_on || !gpu_ok) return 0;
+    if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
+    if (pm_wide && !off_active && ui_ortho) return 0; /* F07-7: the CPU path moves edge vertices of UI quads */
+    if (gidx_n + 3 > GRING_IDX) return 0;
+    if (!draw_3d) { flush(); draw_3d = 1; }
+    if (nverts > 0) flush(); /* the CPU batch in flight comes first, draw order */
+    if (gni > 0 && (memcmp(g_mtx, mtx, sizeof(g_mtx)) || memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)))) flush();
+    if (gni == 0) {
+        memcpy(g_mtx, mtx, sizeof(g_mtx));
+        memcpy(g_uvso, uvso, sizeof(g_uvso));
+        memcpy(g_vp, vp, sizeof(g_vp));
+        pm_gpu_set_mvp(mtx, vp[0], vp[1], vp[2], vp[3]); /* flushes nothing: no batch is open */
+    }
+    gidx[gidx_n++] = (unsigned short)i0;
+    gidx[gidx_n++] = (unsigned short)i1;
+    gidx[gidx_n++] = (unsigned short)i2;
+    gni += 3;
+    return 1;
 }
 
 void pm_gpu_set_mode(int zbuffer, int lighting) {

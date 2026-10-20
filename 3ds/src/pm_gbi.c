@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <math.h>
 #include "ultra64.h"
 #include "pm_gbi.h"
@@ -229,6 +230,15 @@ static int po3a_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("po3a"
 static unsigned vert_mid[64], mid_list[256], mid_n;
 static unsigned p_cmd, p_mixed, p_vload, p_vcmd, p_lit, p_tgen, p_scr, p_drawn, p_primz, p_env, p_plan, p_a255, p_fog, p_boost, p_plain, p_plain2;
 static int p_cur_mixed;
+/* PO3b (switch gpuvtx, default off): plain triangles are drawn from the raw Vtx ring by the GPU transform. The CPU path keeps its checks (reject, cull, near clip) from the
+ * per vertex transform of PO2, so the decisions are the same. Per slot: ring index, matrix table index, texture scale (s and t) at the load. */
+#define GV_NONE 0xffffu
+static int po3b_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gpuvtx") && !pm_debug_has("nogpuvtx"); return v; }
+static unsigned short vert_ring[64], vert_gmi[64];
+static unsigned vert_tss[64];
+static float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
+static unsigned gm_n;
+static unsigned st_gpu_tri, st_cpu_tri; /* plain triangles drawn by the raw path, triangles that reached the draw and took the CPU path */
 static unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
 static u8 seen[256];
 /* i = every corner in front of the eye, drawn where it projected.
@@ -1070,6 +1080,7 @@ static void draw_tri(unsigned w) {
     int idx[3];
     ClipV poly[12];
     int n, i;
+    int gpu_plain = 0, was_in = 0; /* PO3b */
     n_cmd++;
     tri_since_vtx = 1;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
@@ -1161,6 +1172,7 @@ static void draw_tri(unsigned w) {
     if (poly[0].w > 0.05f && poly[1].w > 0.05f && poly[2].w > 0.05f) {
         n_in++;
         n = 3;
+        was_in = 1;
     } else {
         n = clip_near(poly, 3);
         if (n < 3) {
@@ -1184,7 +1196,7 @@ static void draw_tri(unsigned w) {
         unpack8(envc, en);
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
-    if (po3a_on()) { /* a triangle that reaches the draw: which colour and depth overrides apply (the cases a PO3b GPU path must handle) */
+    if (po3a_on() || po3b_on()) { /* a triangle that reaches the draw: which colour and depth overrides apply (the cases a PO3b GPU path must handle) */
         int env = comb_mode5 && !plan_active;
         int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
         int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
@@ -1192,10 +1204,19 @@ static void draw_tri(unsigned w) {
         int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
         int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL)) && !pm_debug_has("noprimz");
         int scr = vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]];
-        int base = !p_cur_mixed && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !primz && !env && !plan && !fog && !boost;
-        p_drawn++; p_env += env; p_plan += plan; p_a255 += a255; p_fog += fog; p_boost += boost; p_primz += primz;
-        p_plain2 += base;          /* plain except alpha 255 (cheap override) */
-        p_plain += base && !a255;  /* plain: one matrix, unlit, no override at all */
+        int cm = p_cur_mixed;
+        if (po3b_on()) cm = vert_gmi[idx[0]] != vert_gmi[idx[1]] || vert_gmi[idx[0]] != vert_gmi[idx[2]];
+        int base = !cm && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !primz && !env && !plan && !fog && !boost;
+        if (po3a_on()) {
+            p_drawn++; p_env += env; p_plan += plan; p_a255 += a255; p_fog += fog; p_boost += boost; p_primz += primz;
+            p_plain2 += base;          /* plain except alpha 255 (cheap override) */
+            p_plain += base && !a255;  /* plain: one matrix, unlit, no override at all */
+        }
+        if (po3b_on()) {
+            gpu_plain = base && !a255 && vert_ring[idx[0]] != GV_NONE && vert_ring[idx[1]] != GV_NONE && vert_ring[idx[2]] != GV_NONE &&
+                        vert_gmi[idx[0]] != GV_NONE && vert_tss[idx[0]] == vert_tss[idx[1]] && vert_tss[idx[0]] == vert_tss[idx[2]] &&
+                        img_role(0) != ROLE_DEPTH && !(plan_active && cur_plan.uses_tex1) && !dd_on();
+        }
     }
     if (dd_skip()) return;
     sync_render();
@@ -1274,6 +1295,28 @@ static void draw_tri(unsigned w) {
         }
     }
 no_boost:
+    if (gpu_plain && was_in) { /* PO3b: the raw Vtx path, same triangle, the GPU transforms it */
+        int tw = 1, th = 1;
+        pm_tex_size(&tw, &th);
+        if (tw < 1) tw = 1;
+        if (th < 1) th = 1;
+        unsigned st = use_t1 ? 1 : 0;
+        float ms = shift_mul(tile_shift[st][0]), mt = shift_mul(tile_shift[st][1]);
+        unsigned tss = vert_tss[idx[0]];
+        float uvso[4], vp[4] = { vp_sx, vp_sy, vp_tx, vp_ty };
+        if (tex_on) {
+            uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms / (float)tw;
+            uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt / (float)th;
+            uvso[2] = -(float)tile_x0 / (float)tw;
+            uvso[3] = -(float)tile_y0 / (float)th;
+        } else { /* H06b1: the vertex texcoords are 0, texel (0, 0) centre */
+            uvso[0] = uvso[1] = 0.f;
+            uvso[2] = -(float)tile_x0 / (float)tw + 0.5f / (float)tw;
+            uvso[3] = -(float)tile_y0 / (float)th + 0.5f / (float)th;
+        }
+        if (pm_gpu_gtri(gm_tab[vert_gmi[idx[0]]], vp, uvso, vert_ring[idx[0]], vert_ring[idx[1]], vert_ring[idx[2]])) { st_gpu_tri++; return; }
+    }
+    if (po3b_on()) st_cpu_tri++;
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
     for (i = 1; i < n - 1; i++) {
         if (!(poly[0].w > 0.05f && poly[i].w > 0.05f && poly[i + 1].w > 0.05f)) continue;
@@ -1373,6 +1416,8 @@ void pm_gbi_end_frame(void) {
             w_n = w_ids = w_idmax = w_cmd = w_drawn = w_mixed = w_vcmd = w_vload = w_lit = w_tgen = w_scr = w_primz = w_env = w_plan = w_a255 = w_fog = w_boost = w_plain = w_plain2 = 0;
         }
     }
+    gm_n = 0;
+    memset(vert_ring, 0xff, sizeof vert_ring);
     p_cmd = p_mixed = p_vload = p_vcmd = p_lit = p_tgen = p_scr = p_drawn = p_primz = p_env = p_plan = p_a255 = p_fog = p_boost = p_plain = p_plain2 = 0;
     mid_n = 0;
     n_cmd = n_in = n_cut = n_drop = n_out = n_keep = 0;
@@ -1381,6 +1426,7 @@ void pm_gbi_end_frame(void) {
     rm_frame++;
     if ((rm_frame % 600) == 0 && aud_cnt_total) {
         pm_log_d("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners | tris %u lit %u fogmode %u fogblend %u blendcol %u texgen %u", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n, st_tri, st_lit, st_fogg, st_fogb, st_blc, st_tgen);
+        if (po3b_on()) pm_log_d("PO3b f%d: %u plain triangles drawn by the raw path, %u triangles on the CPU path", rm_frame, st_gpu_tri, st_cpu_tri);
         pm_log_d("PO2 f%d: %u vertices transformed at G_VTX, %u triangle corners read (before PO2: one matrix product per corner)", rm_frame, st_vx, st_cor);
     }
 }
@@ -1732,7 +1778,22 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     if (k == mid_n && mid_n < 256) mid_list[mid_n++] = po3a_mid;
                     p_vload += n; p_vcmd++;
                 }
+                int gring0 = -1;
+                unsigned gmi = GV_NONE;
+                if (po3b_on() && n) {
+                    if (!gm_tab) gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
+                    if (gm_tab) {
+                        unsigned k;
+                        for (k = gm_n; k > 0; k--) if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0) break; /* newest first */
+                        if (k > 0) gmi = k - 1;
+                        else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); gmi = gm_n++; }
+                    }
+                    if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
+                }
                 for (unsigned i = 0; i < n; i++) {
+                    vert_ring[v0 + i] = gring0 >= 0 ? (unsigned short)(gring0 + (int)i) : GV_NONE;
+                    vert_gmi[v0 + i] = (unsigned short)gmi;
+                    vert_tss[v0 + i] = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu);
                     vert_mid[v0 + i] = po3a_mid;
                     vert_live[v0 + i] = 1;
                     vert_scr[v0 + i] = 0;
