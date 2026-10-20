@@ -47,7 +47,10 @@ static int have;
 static struct { const u8* base; unsigned stride; C3D_Tex* tex; int siz, w, h; } offt[10]; /* siz as pm_gpu_off_begin */
 static int offt_n, off_cur = -1, off_ox, off_oy;
 static int aux_off = -1, aux_ox, aux_oy; /* V12c: TEXEL1 is an off-screen slot (the grab of the frame buffer) */
+unsigned pm_tex_epoch_v; /* PG1: bumped by every call that changes what pm_tex_bind or pm_tex_size would give, so a caller can skip a repeated identical load */
+unsigned pm_tex_epoch(void) { return pm_tex_epoch_v; }
 void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, int siz, int w, int h) {
+    pm_tex_epoch_v++;
     offt[i].siz = siz;
     offt[i].w = w;
     offt[i].h = h;
@@ -61,6 +64,7 @@ int pm_tex_off_idx(void) { return (have && off_cur >= 0) ? off_cur : -1; }
 int pm_tex_aux_off_idx(void) { return (aux_off >= 0 && aux_off < offt_n) ? aux_off : -1; }
 void pm_tex_clear_offscreen(void) { for (int k = 0; k < 10; k++) offt[k].base = NULL; offt_n = 0; off_cur = -1; aux_off = -1; }
 void pm_tex_origin(int* x, int* y) {
+    pm_tex_epoch_v++;
     *x = (have && off_cur >= 0) ? off_ox : 0;
     *y = (have && off_cur >= 0) ? off_oy : 0;
 }
@@ -83,6 +87,7 @@ static unsigned mk_ms, mk_mt;  /* mirror flags */
 static int mk_on;              /* the next load is a render tile load (pm_tex_load), not the shaded or rgba8 loads */
 
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
+    pm_tex_epoch_v++;
     mk_ws = masks ? 1u << masks : 0;
     mk_wt = maskt ? 1u << maskt : 0;
     mk_ms = cms & 1u;
@@ -285,6 +290,7 @@ unsigned pm_tex_peak(void) { return used_peak; }
 unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }
 
 void pm_tex_begin_frame(void) {
+    pm_tex_epoch_v++;
     epoch++;
     frame_bytes = 0;
     /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
@@ -293,6 +299,7 @@ void pm_tex_begin_frame(void) {
 }
 
 void pm_tex_invalidate(const void* ptr, unsigned size) {
+    pm_tex_epoch_v++;
     unsigned start, end;
     int i;
     if (!ptr || !size) return;
@@ -330,6 +337,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
 static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int height,
                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                      unsigned dkey) {
+    pm_tex_epoch_v++;
     int r;
     ph_miss = 0;
     PH_ADD(C_TEXCALL, 1);
@@ -549,6 +557,7 @@ int pm_tex_load_shaded(const void* img, int width, int height, int stride, const
 /* D03: a texture the port composed on the CPU (RGBA8, w x h, tightly packed in rgba). key names the content.
  * rgba NULL: only look for a cached copy and bind it. Returns 1 if bound. */
 int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigned char* rgba) {
+    pm_tex_epoch_v++;
     key |= 1u;
     if (!rgba) {
         have = 0;
@@ -602,6 +611,7 @@ void pm_tex_size(int* w, int* h) {
 
 /* S25: the texture just loaded becomes TEXEL1 (unit 1). Wrap is that tile's own. */
 int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
+    pm_tex_epoch_v++;
     aux_off = -1;
     if (have && off_cur >= 0) { aux = -1; aux_off = off_cur; aux_ox = off_ox; aux_oy = off_oy; return 1; }
     if (!have || cur < 0 || !slots[cur].live) { aux = -1; return 0; }
@@ -627,6 +637,7 @@ int pm_tex_bind_aux(void) {
 void pm_tex_unbind_aux(void) { C3D_TexBind(1, NULL); }
 
 void pm_tex_aux_size(int* w, int* h) {
+    pm_tex_epoch_v++;
     int pw = 1, ph = 1;
     if (aux_off >= 0 && aux_off < offt_n) {
         pw = offt[aux_off].w;

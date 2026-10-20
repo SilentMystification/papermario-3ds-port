@@ -24,7 +24,7 @@ used=$(awk -F, -v r="$ROW" '$2==r && $5=="start"' $B | wc -l)
 if [ "$used" -ge "$MAX" ]; then echo "BUDGET: row $ROW used $used runs. Stop and report what blocks you."; exit 9; fi
 exec 9>/tmp/pm_azahar_run.lock
 flock -w 900 9 || { echo "LOCK TIMEOUT"; exit 3; }
-if flatpak ps 2>/dev/null | grep -q $APP; then echo "Azahar already runs (not started by this script). Stop."; exit 4; fi
+w=0; while flatpak ps 2>/dev/null | grep -q $APP; do [ $w -ge 600 ] && { echo "Azahar already runs (not started by this script) for 600 s. Stop."; exit 4; }; [ $w -eq 0 ] && echo "Azahar of another user runs, waiting up to 600 s"; sleep 5; w=$((w+5)); done
 sha=$(sha256sum "$X" | cut -c1-64); stamp=$(date +%Y-%m-%dT%H:%M:%S)
 echo "$stamp,$ROW,$sha,x=$X d=$D,start,," >> $B
 rm -rf "$SD/shots" "$(dirname "$O")/shots"   # the "shots" switch writes $SD/shots; golden.py reads it next to the log

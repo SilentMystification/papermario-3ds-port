@@ -206,28 +206,32 @@ static void off_snapshot(int i) {
 /* PG0 (switch gbiprof): flush count by caller. The macro below records the function and line of the call. */
 static const char* fl_fn = "?";
 static int fl_line;
-typedef struct { const char* fn; int line; unsigned n; } FlCause;
+typedef struct { const char* fn; int line; unsigned n, e; } FlCause; /* n = flush calls, e = calls that found an empty batch */
 static FlCause fl_tab[48];
 static int fl_nt;
 static int fl_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
-static void fl_count(void) {
-    for (int i = 0; i < fl_nt; i++) if (fl_tab[i].fn == fl_fn && fl_tab[i].line == fl_line) { fl_tab[i].n++; return; }
-    if (fl_nt < 48) { fl_tab[fl_nt].fn = fl_fn; fl_tab[fl_nt].line = fl_line; fl_tab[fl_nt].n = 1; fl_nt++; }
+static void fl_count(int empty) {
+    for (int i = 0; i < fl_nt; i++) if (fl_tab[i].fn == fl_fn && fl_tab[i].line == fl_line) { fl_tab[i].n++; fl_tab[i].e += empty; return; }
+    if (fl_nt < 48) { fl_tab[fl_nt].fn = fl_fn; fl_tab[fl_nt].line = fl_line; fl_tab[fl_nt].n = 1; fl_tab[fl_nt].e = empty; fl_nt++; }
 }
 void pm_gpu_gbiprof_report(unsigned frames) { /* the six most frequent causes since the last report, per frame in 0.01 */
-    for (int r = 0; r < 6; r++) {
+    unsigned tn = 0, te = 0;
+    for (int i = 0; i < fl_nt; i++) { tn += fl_tab[i].n; te += fl_tab[i].e; }
+    pm_log("gbiprof flush total calls per frame x100 %u, empty batch x100 %u, drawn x100 %u", tn * 100 / (frames ? frames : 1), te * 100 / (frames ? frames : 1), (tn - te) * 100 / (frames ? frames : 1));
+    for (int r = 0; r < 8; r++) {
         int best = -1; unsigned bn = 0;
         for (int i = 0; i < fl_nt; i++) if (fl_tab[i].n > bn) { bn = fl_tab[i].n; best = i; }
         if (best < 0) break;
-        pm_log("gbiprof flush %s line %d per frame x100 %u", fl_tab[best].fn, fl_tab[best].line, bn * 100 / (frames ? frames : 1));
+        pm_log("gbiprof flush %s line %d calls per frame x100 %u empty x100 %u", fl_tab[best].fn, fl_tab[best].line, bn * 100 / (frames ? frames : 1), fl_tab[best].e * 100 / (frames ? frames : 1));
         fl_tab[best].n = 0;
     }
-    for (int i = 0; i < fl_nt; i++) fl_tab[i].n = 0;
+    for (int i = 0; i < fl_nt; i++) fl_tab[i].n = fl_tab[i].e = 0;
 }
 static void flush_impl(void);
 #define flush() do { fl_fn = __func__; fl_line = __LINE__; flush_impl(); } while (0)
 static void flush_impl(void) {
     int graw = gni > 0; /* PO3b: the open batch is a raw Vtx batch */
+    if (fl_on() && gpu_ok) fl_count(nverts <= 0 && !graw);
     if ((nverts <= 0 && !graw) || !gpu_ok) {
         nverts = 0;
         gni = 0; gi_start = gidx_n;
@@ -255,7 +259,6 @@ static void flush_impl(void) {
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
     PH_ADD(C_FLUSH, 1);
-    if (fl_on()) fl_count();
     PH_PUSH(PH_GPU);
     if (graw) { /* PO3b */
         C3D_BindProgram(&prog3);

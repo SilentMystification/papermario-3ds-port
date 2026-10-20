@@ -5,6 +5,7 @@
 #define PM_OFF_W 512
 #define PM_OFF_H 256
 void pm_tex_init(void);
+unsigned pm_tex_epoch(void); /* PG1 */
 /* V05: image i holds the colour image at base (width stride pixels). A load inside it binds the render texture. */
 void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* c3d_tex, int siz, int w, int h);
 void pm_tex_clear_offscreen(void);

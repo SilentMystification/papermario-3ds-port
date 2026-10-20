@@ -10,6 +10,9 @@
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (switch gbiprof) */
+struct TszLast { const u8* src; unsigned fmt, siz; int w, h, stride; const void* pal; int pal_n; unsigned ep; int ox, oy; int ok; };
+static struct TszLast tsz_last; /* PG1 */
+static unsigned st0_ep; static int st0_ok;
 static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
 static unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
 #define GP_SET(k, same) do { if (gp_on()) { gp_set[k]++; if (same) gp_same[k]++; } } while (0)
@@ -941,7 +944,14 @@ static Dec* decide(int two) {
 
 static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 static void sync_combine(void) {
-    GP_SET(5, 0);
+    if (gp_on()) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
+        static unsigned last_sig;
+        unsigned parts[] = { comb_w0, comb_w1, omode_h, omode_l, prim, envc, (unsigned)aud_prim_lod, tile_fmt[0] * 4 + tile_siz[0], (unsigned)(tex_on | use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), geom };
+        unsigned sg = 2166136261u;
+        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+        GP_SET(5, sg == last_sig);
+        last_sig = sg;
+    }
     unsigned cyc = (omode_h >> G_MDSFT_CYCLETYPE) & 3;
     sync_legacy();
     plan_active = 0;
@@ -1537,8 +1547,8 @@ void pm_gbi_end_frame(void) {
             gp_opt[best] = 0;
         }
         memset(gp_opt, 0, sizeof gp_opt); memset(gp_opn, 0, sizeof gp_opn);
-        pm_log("gbiprof same per frame (calls/same): combine %u/%u prim %u/%u env %u/%u tile0 %u/%u tilesize %u/%u sync_combine calls %u sync_render calls %u", gp_set[0] / 300, gp_same[0] / 300,
-               gp_set[1] / 300, gp_same[1] / 300, gp_set[2] / 300, gp_same[2] / 300, gp_set[3] / 300, gp_same[3] / 300, gp_set[4] / 300, gp_same[4] / 300, gp_set[5] / 300, gp_set[6] / 300);
+        pm_log("gbiprof same per frame (calls/same): combine %u/%u prim %u/%u env %u/%u tile0 %u/%u tilesize %u/%u sync_combine calls %u (of them equal inputs %u) sync_render calls %u tilesize loads skipped %u of %u", gp_set[0] / 300, gp_same[0] / 300,
+               gp_set[1] / 300, gp_same[1] / 300, gp_set[2] / 300, gp_same[2] / 300, gp_set[3] / 300, gp_same[3] / 300, gp_set[4] / 300, gp_same[4] / 300, gp_set[5] / 300, gp_same[5] / 300, gp_set[6] / 300, gp_same[7] / 300, gp_set[7] / 300);
         memset(gp_same, 0, sizeof gp_same); memset(gp_set, 0, sizeof gp_set);
         pm_gpu_gbiprof_report(300);
         { extern void pm_debug_report(unsigned); pm_debug_report(300); }
@@ -2292,11 +2302,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_SETTILE: {
             unsigned tile = (w1 >> 24) & 7;
-            if (tile == 0 && gp_on()) {
-                GP_SET(3, tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
+            int same_tile = !PMD("nopg1") && !PMD("nopg1a") && tile == 0 && st0_ok && pm_tex_epoch() == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
                           tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
-                          tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15));
-            }
+                          tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15);
+            if (tile == 0) GP_SET(3, same_tile);
             tile_fmt[tile] = (w0 >> 21) & 7;
             tile_siz[tile] = (w0 >> 19) & 3;
             tile_tmem[tile] = w0 & 0x1ff;
@@ -2309,9 +2318,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             tile_shift[tile][1] = (w1 >> 10) & 15;
             /* The render tile's wrap belongs to the triangles already queued.
              * Draw them before this tile replaces it. */
-            if (tile == 0) {
+            if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
                 pm_gpu_flush();
                 pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
+                st0_ep = pm_tex_epoch(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
             }
             break;
         }
@@ -2500,6 +2510,25 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             tile_x0 = x0;
             tile_y0 = y0;
+            /* PG1: the same texture again (same source, format, size, palette, stride) and nothing touched the texture state since the last load (pm_tex_epoch):
+             * the load would find the same cache slot. Skip the flush and the load, the batch in flight samples the same image. A frame buffer image is
+             * excluded (its content changes under the same pointer, grab_cur). */
+            {
+                struct TszLast* lp = &tsz_last;
+                const void* palc = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
+                if (!PMD("nopg1") && !PMD("nopg1b") && lp->ok && src == lp->src && tile_fmt[0] == lp->fmt && tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
+                    palc == lp->pal && tlut_n == lp->pal_n && pm_tex_epoch() == lp->ep && !pm_is_cfb(src) && src && w > 0 && h > 1) {
+                    tile_x0 = x0 - lp->ox;
+                    tile_y0 = y0 - lp->oy;
+                    td[0].valid = 1; td[0].src = src; td[0].fmt = tile_fmt[0]; td[0].siz = tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
+                    td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
+                    GP_SET(7, 1);
+                    break;
+                }
+                GP_SET(7, 0);
+                lp->ok = 0;
+                lp->src = src; lp->fmt = tile_fmt[0]; lp->siz = tile_siz[0]; lp->w = w; lp->h = h; lp->stride = stride; lp->pal = palc; lp->pal_n = tlut_n;
+            }
             /* One batch can only sample one image. The last load of the frame
              * was being bound for every surface, so the house wore one fence. */
             pm_gpu_flush();
@@ -2513,6 +2542,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     pm_tex_origin(&ox, &oy);
                     tile_x0 = x0 - ox;
                     tile_y0 = y0 - oy;
+                    tsz_last.ox = ox; tsz_last.oy = oy; tsz_last.ep = pm_tex_epoch(); tsz_last.ok = pm_tex_off_idx() < 0; /* an off-screen slot is a render target whose content changes under the same key: never skipped */ /* PG1: the state the next identical G_SETTILESIZE may skip */
                 }
                 td[0].valid = 1;
                 td[0].src = src;
