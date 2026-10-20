@@ -126,7 +126,7 @@ static void render_main(void* unused) {
 
 int pm_au2_start(void) {
     if (rthread) return 1;
-    if (pm_debug_has("au2off")) { pm_log("audio2: off (switch au2off), mixer runs inside the audio job"); return 0; }
+    if (!pm_debug_has("au2") || pm_debug_has("au2off")) { pm_log("audio2: off (default; switch au2 turns it on), mixer runs inside the audio job"); return 0; }
     LightSemaphore_Init(&sem_free, AU2_SLOTS, AU2_SLOTS);
     LightSemaphore_Init(&sem_full, 0, AU2_SLOTS + 1);
     LightEvent_Init(&ev_idle, RESET_STICKY);

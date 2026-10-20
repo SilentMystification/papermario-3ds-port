@@ -16,9 +16,11 @@ int pm_audio_lock(void) { static int v = -1; if (v < 0) v = pm_debug_has("audiol
 static unsigned au_hash = 2166136261u, au_posts, au_dropped, au_underrun;
 #define au_posts_all au_posts_n
 static volatile unsigned au_posts_n, au_underrun_all, au_dropped_all;
+void au2_trace_dump(void);
 void au2_post_exec(void* pcm, unsigned bytes) { pm_audio_post(pcm, bytes, 0); }
 void pm_audio_hash_log(void) {
     pm_au2_sync(AU2_SYNC_SHUTDOWN); /* AU2: count the posts the render thread still owes */
+    au2_trace_dump();
     if (pm_debug_has("audiohash")) pm_log("audiohash posts %u fnv %08x dropped %u underrun %u (final)", au_posts, au_hash, au_dropped, au_underrun);
 }
 static unsigned pending_raw(void);

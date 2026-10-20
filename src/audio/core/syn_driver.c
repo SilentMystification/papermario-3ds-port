@@ -48,6 +48,45 @@ extern Acmd* AlCmdListBuffers[3];
 /* Control copies. The render copies are AuSynUseStereo, AuGlobalVolume. */
 static u8 AuStereoReq = true, AuStereoPending;
 static u16 AuGlobalVolumeCtl = AU_MAX_VOLUME_16;
+
+/* AU2 trace (switch au2trace): per audio block, FNV of the commands as the control side makes them (c), as the render side runs them (r),
+ * and of the PCM block (p). Same code for au2off and AU2 on. Commands hash by value: pointers are replaced by the instrument content. */
+static int au2_tr = -1;
+#define AU2_TR_MAX 8192
+static u32 au2_tr_c[AU2_TR_MAX], au2_tr_r[AU2_TR_MAX], au2_tr_p[AU2_TR_MAX], au2_tr_nc, au2_tr_nr, au2_cur_c = 2166136261u, au2_cur_r = 2166136261u;
+static u32 au2_fnv(u32 h, const void* p, u32 n) { const u8* q = p; while (n--) h = (h ^ *q++) * 16777619u; return h; }
+static u32 au2_cmd_hash(const AuCmd* c) {
+    u32 h = 2166136261u;
+    AuCmd t = *c;
+    if (t.op == AUC_BLOCK || t.op == AUC_START_PARAMS || t.op == AUC_SET_WAVETABLE) t.v0 = 0;
+    h = au2_fnv(h, &t, sizeof t);
+    if ((c->op == AUC_START_PARAMS || c->op == AUC_SET_WAVETABLE) && c->v0) {
+        const Instrument* in = (const Instrument*)(uintptr_t)c->v0;
+        h = au2_fnv(h, &in->wavData, 4); h = au2_fnv(h, &in->wavDataLength, 4); h = au2_fnv(h, &in->loopStart, 4); h = au2_fnv(h, &in->loopEnd, 4);
+        h = au2_fnv(h, &in->loopCount, 4); h = au2_fnv(h, &in->codebookSize, 4); h = au2_fnv(h, &in->type, 1);
+        if (in->predictor) h = au2_fnv(h, in->predictor, 64);
+        if (in->loopState) h = au2_fnv(h, in->loopState, 32);
+    }
+    return h;
+}
+static void au2_put(AuCmd* c) {
+    if (au2_tr < 0) au2_tr = pm_debug_has("au2trace");
+    if (au2_tr) {
+        u32 h = au2_cmd_hash(c);
+        au2_cur_c = au2_fnv(au2_cur_c, &h, 4);
+        if (c->op == AUC_BLOCK) { if (au2_tr_nc < AU2_TR_MAX) au2_tr_c[au2_tr_nc] = au2_cur_c; au2_tr_nc++; au2_cur_c = 2166136261u; }
+    }
+    if (pm_au2_active) pm_au2_emit(c); else au2_exec(c);
+}
+void au2_trace_dump(void) {
+    u32 t;
+    if (!au2_tr) return;
+    pm_log("au2trace blocks control %u render %u", au2_tr_nc, au2_tr_nr);
+    for (t = 1400; t < 1600 && t * 3 + 2 < au2_tr_nr && t * 3 + 2 < AU2_TR_MAX; t++) {
+        u32 b = t * 3;
+        pm_log("au2trace tick %u c %08x %08x %08x r %08x %08x %08x p %08x %08x %08x", t, au2_tr_c[b], au2_tr_c[b + 1], au2_tr_c[b + 2], au2_tr_r[b], au2_tr_r[b + 1], au2_tr_r[b + 2], au2_tr_p[b], au2_tr_p[b + 1], au2_tr_p[b + 2]);
+    }
+}
 #else
 #define AU2_X(name) name
 #endif
@@ -298,18 +337,12 @@ Acmd* alAudioFrame(Acmd* cmdList, s32* cmdLen, s16* outBuf, s32 outLen) {
         return cmdListPos;
     }
 
-#ifdef TARGET_3DS
-    if (pm_au2_active && AuStereoPending) { /* game code wrote the flag before this tick */
-        AuCmd c = { AUC_STEREO_SET }; c.b1 = AuStereoReq; pm_au2_emit(&c);
-        AuStereoPending = false;
-    }
-#endif
     au_update_clients_for_video_frame();
 
     // reapply panning if dirty
     if (AuSynStereoDirty) {
 #ifdef TARGET_3DS
-        if (pm_au2_active) { AuCmd c = { AUC_STEREO_REPAN }; pm_au2_emit(&c); } else au_repan_x();
+        { AuCmd c = { AUC_STEREO_REPAN }; au2_put(&c); }
 #else
         s32 busID;
         for (busID = 0; busID < gSynDriverPtr->num_pvoice; busID++) {
@@ -326,12 +359,10 @@ Acmd* alAudioFrame(Acmd* cmdList, s32* cmdLen, s16* outBuf, s32 outLen) {
     while (outLen > 0) {
         au_update_clients_for_audio_frame();
 #ifdef TARGET_3DS
-        if (pm_au2_active) {
-            AuCmd c = { AUC_BLOCK }; c.v0 = (s32)(uintptr_t)bufPos; pm_au2_emit(&c);
-            cmdListPos++;
-        } else
-#endif
+        { AuCmd c = { AUC_BLOCK }; c.v0 = (s32)(uintptr_t)bufPos; au2_put(&c); cmdListPos++; }
+#else
         cmdListPos = au_render_block_x(cmdListPos, bufPos);
+#endif
         outLen -= AUDIO_SAMPLES;
         bufPos += 2 * AUDIO_SAMPLES;
     }
@@ -883,117 +914,111 @@ static u32 au2_f2u(f32 f) { u32 u; memcpy(&u, &f, 4); return u; }
 static f32 au2_u2f(u32 u) { f32 f; memcpy(&f, &u, 4); return f; }
 
 void au_use_global_volume(void) {
-    if (pm_au2_active) { AuCmd c = { AUC_GVOL_USE }; pm_au2_emit(&c); } else au_use_global_volume_x();
+    AuCmd c = { AUC_GVOL_USE }; au2_put(&c);
 }
 
 void au_set_global_volume(s16 volume) {
+    AuCmd c = { AUC_GVOL_SET };
     AuGlobalVolumeCtl = volume;
-    if (pm_au2_active) { AuCmd c = { AUC_GVOL_SET }; c.s1 = volume; pm_au2_emit(&c); } else au_set_global_volume_x(volume);
+    c.s1 = volume; au2_put(&c);
 }
 
 s16 au_get_global_volume(void) { return AuGlobalVolumeCtl; }
 
 void au_set_stereo_enabled(b8 enabled) {
-    if (pm_au2_active) { /* the render copy changes at the next alAudioFrame, before the video frame update */
-        AuStereoReq = enabled;
-        AuStereoPending = true;
-    } else {
-        AuSynUseStereo = enabled;
-    }
+    /* May run on the control thread in the middle of a tick (a music event): the render copy must change at that point of the stream. */
+    AuCmd c = { AUC_STEREO_SET }; c.b1 = enabled; au2_put(&c);
     AuSynStereoDirty = true;
 }
 
 void au_bus_set_volume(u8 busID, u16 value) {
-    if (pm_au2_active) { AuCmd c = { AUC_BUS_VOL, busID }; c.v0 = value; pm_au2_emit(&c); } else au_bus_set_volume_x(busID, value);
+    AuCmd c = { AUC_BUS_VOL, busID }; c.v0 = value; au2_put(&c);
 }
 
 void au_bus_set_effect(u8 busID, u8 effectType) {
+    AuCmd c = { AUC_BUS_EFFECT, busID, effectType };
     /* The custom presets read AU_FX_CUSTOM_PARAMS, a pointer that sfx_player.c changes at any time: load them now, with the render thread drained. */
     if (pm_au2_active && effectType >= AU_FX_CUSTOM_0 && effectType <= AU_FX_CUSTOM_3) {
         pm_au2_sync(AU2_SYNC_BANK);
         au_bus_set_effect_x(busID, effectType);
-    } else if (pm_au2_active) { AuCmd c = { AUC_BUS_EFFECT, busID, effectType }; pm_au2_emit(&c); } else au_bus_set_effect_x(busID, effectType);
+        return;
+    }
+    au2_put(&c);
 }
 
 void au_bus_set_fx_params(u8 busID, s16 delayIndex, s16 paramID, s32 value) {
-    if (pm_au2_active) { AuCmd c = { AUC_BUS_FXPARAM, busID }; c.s1 = delayIndex; c.s2 = paramID; c.v0 = value; pm_au2_emit(&c); }
-    else au_bus_set_fx_params_x(busID, delayIndex, paramID, value);
+    AuCmd c = { AUC_BUS_FXPARAM, busID }; c.s1 = delayIndex; c.s2 = paramID; c.v0 = value; au2_put(&c);
 }
 
 void au_pvoice_set_bus(u8 voiceIdx, s8 busID) {
-    if (pm_au2_active) { AuCmd c = { AUC_PVOICE_BUS, voiceIdx, (u8)busID }; pm_au2_emit(&c); } else au_pvoice_set_bus_x(voiceIdx, busID);
+    AuCmd c = { AUC_PVOICE_BUS, voiceIdx, (u8)busID }; au2_put(&c);
 }
 
 void au_syn_stop_voice(u8 voiceIdx) {
-    if (pm_au2_active) { AuCmd c = { AUC_STOP_VOICE, voiceIdx }; pm_au2_emit(&c); } else au_syn_stop_voice_x(voiceIdx);
+    AuCmd c = { AUC_STOP_VOICE, voiceIdx }; au2_put(&c);
 }
 
 void au_syn_start_voice(u8 voiceIdx) {
-    if (pm_au2_active) { AuCmd c = { AUC_START_VOICE, voiceIdx }; pm_au2_emit(&c); } else au_syn_start_voice_x(voiceIdx);
+    AuCmd c = { AUC_START_VOICE, voiceIdx }; au2_put(&c);
 }
 
 void au_syn_start_voice_params(u8 voiceIdx, u8 busID, Instrument* instrument, f32 pitchRatio, s16 vol, u8 pan, u8 fxMix, s32 delta) {
-    if (pm_au2_active) {
-        AuCmd c = { AUC_START_PARAMS, voiceIdx, busID, pan };
-        c.s1 = vol; c.s2 = fxMix; c.v0 = (s32)(uintptr_t)instrument; c.v1 = (s32)au2_f2u(pitchRatio); c.v2 = delta;
-        pm_au2_emit(&c);
-    } else {
-        au_syn_start_voice_params_x(voiceIdx, busID, instrument, pitchRatio, vol, pan, fxMix, delta);
-    }
+    AuCmd c = { AUC_START_PARAMS, voiceIdx, busID, pan };
+    c.s1 = vol; c.s2 = fxMix; c.v0 = (s32)(uintptr_t)instrument; c.v1 = (s32)au2_f2u(pitchRatio); c.v2 = delta;
+    au2_put(&c);
 }
 
 void au_syn_set_wavetable(u8 voiceIdx, Instrument* instrument) {
-    if (pm_au2_active) { AuCmd c = { AUC_SET_WAVETABLE, voiceIdx }; c.v0 = (s32)(uintptr_t)instrument; pm_au2_emit(&c); }
-    else au_syn_set_wavetable_x(voiceIdx, instrument);
+    AuCmd c = { AUC_SET_WAVETABLE, voiceIdx }; c.v0 = (s32)(uintptr_t)instrument; au2_put(&c);
 }
 
 void au_syn_set_pitch(u8 voiceIdx, f32 pitch) {
-    if (pm_au2_active) { AuCmd c = { AUC_PITCH, voiceIdx }; c.v1 = (s32)au2_f2u(pitch); pm_au2_emit(&c); } else au_syn_set_pitch_x(voiceIdx, pitch);
+    AuCmd c = { AUC_PITCH, voiceIdx }; c.v1 = (s32)au2_f2u(pitch); au2_put(&c);
 }
 
 void au_syn_set_mixer_params(u8 voiceIdx, s16 volume, s32 delta, u8 pan, u8 fxMix) {
-    if (pm_au2_active) { AuCmd c = { AUC_MIXER, voiceIdx, pan, fxMix }; c.s1 = volume; c.v2 = delta; pm_au2_emit(&c); }
-    else au_syn_set_mixer_params_x(voiceIdx, volume, delta, pan, fxMix);
+    AuCmd c = { AUC_MIXER, voiceIdx, pan, fxMix }; c.s1 = volume; c.v2 = delta; au2_put(&c);
 }
 
 void au_syn_set_pan_fxmix(u8 voiceIdx, u8 pan, u8 fxMix) {
-    if (pm_au2_active) { AuCmd c = { AUC_PAN_FXMIX, voiceIdx, pan, fxMix }; pm_au2_emit(&c); } else au_syn_set_pan_fxmix_x(voiceIdx, pan, fxMix);
+    AuCmd c = { AUC_PAN_FXMIX, voiceIdx, pan, fxMix }; au2_put(&c);
 }
 
 void au_syn_set_volume_delta(u8 voiceIdx, s16 vol, s32 delta) {
-    if (pm_au2_active) { AuCmd c = { AUC_VOL_DELTA, voiceIdx }; c.s1 = vol; c.v2 = delta; pm_au2_emit(&c); } else au_syn_set_volume_delta_x(voiceIdx, vol, delta);
+    AuCmd c = { AUC_VOL_DELTA, voiceIdx }; c.s1 = vol; c.v2 = delta; au2_put(&c);
 }
 
 void au_syn_set_pan(u8 voiceIdx, u8 pan) {
-    if (pm_au2_active) { AuCmd c = { AUC_PAN, voiceIdx, pan }; pm_au2_emit(&c); } else au_syn_set_pan_x(voiceIdx, pan);
+    AuCmd c = { AUC_PAN, voiceIdx, pan }; au2_put(&c);
 }
 
 void au_syn_set_fxmix(u8 voiceIdx, u8 fxMix) {
-    if (pm_au2_active) { AuCmd c = { AUC_FXMIX, voiceIdx, 0, fxMix }; pm_au2_emit(&c); } else au_syn_set_fxmix_x(voiceIdx, fxMix);
+    AuCmd c = { AUC_FXMIX, voiceIdx, 0, fxMix }; au2_put(&c);
 }
 
 void au_set_delay_time(s32 numFrames) {
-    if (pm_au2_active) { AuCmd c = { AUC_DELAY_TIME }; c.v0 = numFrames; pm_au2_emit(&c); } else au_set_delay_time_x(numFrames);
+    AuCmd c = { AUC_DELAY_TIME }; c.v0 = numFrames; au2_put(&c);
 }
 
 void au_delay_left_channel(u8 busID) {
-    if (pm_au2_active) { AuCmd c = { AUC_DELAY_LEFT, 0, busID }; pm_au2_emit(&c); } else au_delay_left_channel_x(busID);
+    AuCmd c = { AUC_DELAY_LEFT, 0, busID }; au2_put(&c);
 }
 
 void au_delay_right_channel(u8 busID) {
-    if (pm_au2_active) { AuCmd c = { AUC_DELAY_RIGHT, 0, busID }; pm_au2_emit(&c); } else au_delay_right_channel_x(busID);
+    AuCmd c = { AUC_DELAY_RIGHT, 0, busID }; au2_put(&c);
 }
 
 void au_disable_channel_delay(void) {
-    if (pm_au2_active) { AuCmd c = { AUC_DELAY_OFF }; pm_au2_emit(&c); } else au_disable_channel_delay_x();
+    AuCmd c = { AUC_DELAY_OFF }; au2_put(&c);
 }
 
 void au_init_delay_channel(s16 channel) {
-    if (pm_au2_active) { AuCmd c = { AUC_DELAY_INIT }; c.s1 = channel; pm_au2_emit(&c); } else au_init_delay_channel_x(channel);
+    AuCmd c = { AUC_DELAY_INIT }; c.s1 = channel; au2_put(&c);
 }
 
 /* Render side: run one command. Same functions, same arguments, same order as the calls above. */
 void au2_exec(const AuCmd* c) {
+    if (au2_tr > 0 && c->op != AUC_CLEAN_DMA && c->op != AUC_POST) { u32 h = au2_cmd_hash(c); au2_cur_r = au2_fnv(au2_cur_r, &h, 4); }
     switch (c->op) {
         case AUC_STOP_VOICE: au_syn_stop_voice_x(c->idx); break;
         case AUC_START_VOICE: au_syn_start_voice_x(c->idx); break;
@@ -1018,7 +1043,14 @@ void au2_exec(const AuCmd* c) {
         case AUC_STEREO_REPAN: au_repan_x(); break;
         case AUC_GVOL_USE: au_use_global_volume_x(); break;
         case AUC_GVOL_SET: au_set_global_volume_x(c->s1); break;
-        case AUC_BLOCK: au_render_block_x(AlCmdListBuffers[0], (s16*)(uintptr_t)c->v0); break;
+        case AUC_BLOCK:
+            au_render_block_x(AlCmdListBuffers[0], (s16*)(uintptr_t)c->v0);
+            if (au2_tr > 0) {
+                if (au2_tr_nr < AU2_TR_MAX) { au2_tr_r[au2_tr_nr] = au2_cur_r; au2_tr_p[au2_tr_nr] = au2_fnv(2166136261u, (void*)(uintptr_t)c->v0, 4 * AUDIO_SAMPLES); }
+                au2_tr_nr++;
+                au2_cur_r = 2166136261u;
+            }
+            break;
         case AUC_CLEAN_DMA: au2_clean_dma_exec(); break;
         case AUC_POST: au2_post_exec((void*)(uintptr_t)c->v0, (unsigned)c->v1); break;
         default: break;
