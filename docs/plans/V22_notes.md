@@ -1,0 +1,6 @@
+# V22: horizontal line at the seam between the intro picture and the curtain (not reproduced in Azahar)
+
+- Two intro runs with shots every 30 frames (normal and `wide`), top screen render target: 133 shots each. An automatic row scan (rows 0 to 70, rows that differ from both neighbours by more than 5 times) found no line. Zoomed shots (3ds/logs/perf/v20/seams.png and seams_wide.png: grey, space, castle, ice room scenes) show a clean seam between the gold fringe and the picture.
+- Not covered: frames between the 30 frame steps (scene transitions at f270, f640, f1010, f1380, f2010, f3150 to f3200 and the white fades at f3600 to f3630), 3D mode and the real screen (the shot is the render target before the GX transfer). A line on hardware only would come from the GPU edge (bilinear or alpha edge of the picture quad) or from the transfer.
+- Side note: in `wide` mode the left edge of the screen (x < 60 in the shot) shows the starry sky in every frame, also in the grey scenes. This is outside the curtain and has another cause (wide stretch of the 320 frame against a 400 target). Not part of this row.
+- Next step: shotwin through one transition (for example 1000:60), and a hardware shot of the seam with the options menu (wide and 2D) off and on.
