@@ -35,6 +35,7 @@ typedef struct {
     unsigned uses; /* TC1: hits since the upload */
     unsigned last_frame; /* TC1: frame of the last hit, bind or upload */
     int live;
+    int slab; /* FL1: the image lives in the texture slab */
     int stale; /* invalidated while this frame's draws still use it: freed at the next frame start */
     C3D_Tex tex;
 } Slot;
@@ -290,12 +291,70 @@ static void addr_sub(const void* p) {
     if (addr_live) addr_live--;
 }
 
+
+/* FL1: texture slab. The images of all textures live in one linear block. A miss writes its image there and records the span. One
+ * GSPGPU_FlushDataCache per merged span runs before each command list submit (pm_tex_flush_pending), not one per texture (E: 0.9 ms per call
+ * on the O3DS). Switch nofl1 keeps one linearAlloc and one C3D_TexFlush per texture. Free list: address ordered extents, best fit, merge on free. */
+#define SLAB_BYTES (BUDGET + 768u * 1024u)
+#define SLAB_EXT 640
+#define PEND_N 24
+#define PEND_GAP (64u * 1024u)
+static u8* slab; static unsigned slab_n; /* slab_n: extents in use */
+static struct { unsigned off, len; } slab_ext[SLAB_EXT];
+static struct { u8* p; unsigned len; } pend[PEND_N]; static int pend_n;
+static C3D_Tex slab_proto[16];
+static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
+static int fl1_on(void) { if (fl1_state < 0) fl1_state = !PMDL("nofl1") && slab != NULL; return fl1_state; }
+static void slab_init(void) {
+    slab = (u8*)linearMemAlign(SLAB_BYTES, 0x80);
+    if (slab && PMDL("fl1poison")) memset(slab, 0xA5, SLAB_BYTES);
+    if (slab) { slab_ext[0].off = 0; slab_ext[0].len = SLAB_BYTES; slab_n = 1; }
+}
+static unsigned slab_size(unsigned bytes) { bytes = (bytes + 127u) & ~127u; return bytes < 512u ? 512u : bytes; } /* the GPU reads whole 8 x 8 tiles */
+static u8* slab_alloc(unsigned bytes0) {
+    unsigned bytes = slab_size(bytes0);
+    int best = -1;
+    for (unsigned i = 0; i < slab_n; i++) if (slab_ext[i].len >= bytes && (best < 0 || slab_ext[i].len < slab_ext[best].len)) best = (int)i;
+    if (best < 0) return NULL;
+    u8* r = slab + slab_ext[best].off;
+    if (PMDL("fl1poison")) memset(r, 0xA5, bytes); else memset(r + bytes0, 0, bytes - bytes0); /* the old path had zero bytes there (fresh linearAlloc) */
+    slab_ext[best].off += bytes; slab_ext[best].len -= bytes;
+    if (!slab_ext[best].len) { for (unsigned i = (unsigned)best; i + 1 < slab_n; i++) slab_ext[i] = slab_ext[i + 1]; slab_n--; }
+    return r;
+}
+static void slab_free(void* p, unsigned bytes) {
+    bytes = slab_size(bytes);
+    unsigned off = (unsigned)((u8*)p - slab), i = 0;
+    while (i < slab_n && slab_ext[i].off < off) i++;
+    if (i > 0 && slab_ext[i - 1].off + slab_ext[i - 1].len == off) { slab_ext[i - 1].len += bytes; i--; }
+    else if (slab_n < SLAB_EXT) { for (unsigned k = slab_n; k > i; k--) slab_ext[k] = slab_ext[k - 1]; slab_ext[i].off = off; slab_ext[i].len = bytes; slab_n++; }
+    else return; /* extent table full: the block is lost until the next boot */
+    if (i + 1 < slab_n && slab_ext[i].off + slab_ext[i].len == slab_ext[i + 1].off) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
+}
+static void pend_flush_one(u8* p, unsigned len) { GSPGPU_FlushDataCache(p, len); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, len >> 10); }
+void pm_tex_flush_pending(void) {
+    for (int i = 0; i < pend_n; i++) pend_flush_one(pend[i].p, pend[i].len);
+    pend_n = 0;
+}
+static void pend_add(u8* p, unsigned len) {
+    for (int i = 0; i < pend_n; i++) { /* merge with a span that is near */
+        u8* a = pend[i].p; u8* e = a + pend[i].len;
+        if (p <= e + PEND_GAP && p + len + PEND_GAP >= a) {
+            u8* lo = p < a ? p : a; u8* hi = (p + len) > e ? (p + len) : e;
+            pend[i].p = lo; pend[i].len = (unsigned)(hi - lo);
+            return;
+        }
+    }
+    if (pend_n == PEND_N) pm_tex_flush_pending();
+    pend[pend_n].p = p; pend[pend_n].len = len; pend_n++;
+}
+
 static void drop(Slot* s) {
     if (!s->live) return;
     addr_sub(s->img);
     addr_sub(s->tlut);
     if (aux == (int)(s - slots)) aux = -1;
-    C3D_TexDelete(&s->tex);
+    if (s->slab) { slab_free(s->tex.data, s->bytes); s->slab = 0; memset(&s->tex, 0, sizeof s->tex); } else C3D_TexDelete(&s->tex);
     tb_last = NULL;
     if (used >= s->bytes) used -= s->bytes;
     else used = 0;
@@ -382,6 +441,7 @@ static void tb_dump_req(uint64_t key, const TbReq* q, const u8* tl, const u8* sr
 void pm_tex_init(void) {
     /* Linear image, then a second copy in PICA tile order. */
     scratch = (u8*)linearAlloc(256 * 256 * 4 * 2);
+    if (!PMDL("nofl1")) slab_init();
     tb_init();
 }
 
@@ -689,7 +749,18 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     }
     Slot* s = &slots[slot];
     tb_last = NULL; /* DR1 */
-    if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
+    s->slab = 0;
+    if (fl1_on()) { /* FL1: the image goes to the slab. The slot copies a citro3d texture header made once per format. */
+        u8* sp = slab_alloc(bytes);
+        while (!sp && evict_oldest_done()) { static int nev; if (nev++ < 8) pm_log_w("FL1: slab full for %u bytes (used %u), evicted one texture", bytes, used); sp = slab_alloc(bytes); }
+        if (!sp) { static int once; fail_last = 1; fail_n++; if (!once) { once = 1; pm_log_w("tex slab full %dx%d", width, height); } return 0; }
+        if (!slab_proto[gf].data) {
+            if (!C3D_TexInit(&slab_proto[gf], 8, 8, gf)) { slab_free(sp, bytes); fail_last = 1; fail_n++; return 0; }
+        }
+        s->tex = slab_proto[gf];
+        s->tex.data = sp; s->tex.width = (u16)pw; s->tex.height = (u16)ph; s->tex.size = bytes;
+        s->slab = 1;
+    } else if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
         pm_log_e("tex init failed %dx%d\n", pw, ph);
         fail_last = 1;
         fail_n++;
@@ -763,7 +834,9 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     }
     C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
     }
-    if (tx1 && !tx1_chkon) C3D_TexFlush(&s->tex);
+    if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < bytes; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p", fl1_n, slot, pw, ph, fmt, siz, bytes, h, width, height, stride, img); }
+    if (s->slab) pend_add((u8*)s->tex.data, bytes); /* FL1 */
+    else if (tx1 && !tx1_chkon) { C3D_TexFlush(&s->tex); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, bytes >> 10); }
     if (tx1_chkon && memcmp(tx1_chk, s->tex.data, bytes) != 0) {
         if (tx1_mismatch++ < 8) pm_log_w("tx1check: bytes differ fmt %u siz %u %dx%d stride %d lut %d", fmt, siz, width, height, stride, lut != NULL);
     }
