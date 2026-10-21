@@ -25,7 +25,8 @@
 .alias inuv v1
 .alias inclr v2
 
-.proc main
+.entry main3
+.proc main3
 	mov r1.xyz, inpos
 	mov r1.w, ones
 	dp4 r5.x, projection[0], r1

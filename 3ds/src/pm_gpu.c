@@ -9,6 +9,7 @@
 #include "pm_shader_shbin.h"
 #include "pm_shader3_shbin.h"
 #include "pm_shader4_shbin.h"
+#include "pm_shaderall_shbin.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
 #include "pm_tex.h"
@@ -106,6 +107,13 @@ enum { GPAL = 21 };
 static shaderProgram_s prog4;
 static DVLB_s* dvlb4;
 static C3D_AttrInfo attr4;
+/* RAW1: lean binding. bound = the program citro3d has (0 unknown, 1 cpu, 2 pm3, 3 pm4), buf_cur = the buffer info (0 unknown, 1 CPU pool, 2 raw ring). shadows of the pm4 uniforms
+ * and of the palette entries skip a set that holds the value already. They restart at every frame begin. Switch raw1 (A/B), default off. */
+static int bound, buf_cur, raw_dvlb_ok; static DVLB_s* dvlb_all;
+static int raw1_on(void) { return raw_dvlb_ok; } /* decided once at init */
+static float sh_uvso[4], sh_cmul[4], sh_cadd[4], sh_zmix[2]; static int sh_ok;
+static unsigned sh_pal_gm[32], sh_pal_gen[32]; static unsigned char sh_pal_ok[32];
+static void raw1_reset(void) { bound = 0; buf_cur = 0; sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); }
 static int u4_pal = -1, u4_uvx = -1, u4_uvso = -1, u4_cmul = -1, u4_cadd = -1, u4_zmix = -1, u4_nzo = -1, g_pal, gv4_on;
 static unsigned pal_n, pal_g[GPAL], pal_gen = 1, post_gen = 1;
 static unsigned* rgen;          /* per ring vertex: the palette generation in which its flag was set (0 = never) */
@@ -447,12 +455,13 @@ static void flush_draw(void) {
     if (graw) { /* PO3b */
         proj_ok = 0; pool_buf_ok = 0; /* DR1: the program and the buffer change */
         if (gpal) {
-            C3D_BindProgram(&prog4);
-            C3D_SetAttrInfo(&attr4);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_zmix, g_zmix[0], g_zmix[1], 0.f, 0.f);
+            const int lean = raw1_on();
+            if (!lean || bound != 3) { C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
+            if (!lean || !sh_ok || memcmp(sh_uvso, g_uvso, sizeof sh_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh_uvso, g_uvso, sizeof sh_uvso); PH_ADD(C_RAWCALL, 1); }
+            if (!lean || !sh_ok || memcmp(sh_cmul, g_cmul, sizeof sh_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh_cmul, g_cmul, sizeof sh_cmul); PH_ADD(C_RAWCALL, 1); }
+            if (!lean || !sh_ok || memcmp(sh_cadd, g_cadd, sizeof sh_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh_cadd, g_cadd, sizeof sh_cadd); PH_ADD(C_RAWCALL, 1); }
+            if (!lean || !sh_ok || memcmp(sh_zmix, g_zmix, sizeof sh_zmix)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_zmix, g_zmix[0], g_zmix[1], 0.f, 0.f); memcpy(sh_zmix, g_zmix, sizeof sh_zmix); PH_ADD(C_RAWCALL, 1); }
+            sh_ok = 1;
             for (unsigned k = 0; k < pal_n; k++) {
                 unsigned gm = pal_g[k];
                 if (pcomp_gen[gm] != post_gen) {
@@ -462,7 +471,10 @@ static void flush_draw(void) {
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
                 }
+                if (lean && sh_pal_ok[k] && sh_pal_gm[k] == gm && sh_pal_gen[k] == post_gen) continue; /* the register block holds this matrix already */
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u4_pal + 4 * (int)k, &pcomp[gm]);
+                sh_pal_ok[k] = 1; sh_pal_gm[k] = gm; sh_pal_gen[k] = post_gen;
+                PH_ADD(C_RAWCALL, 1);
                 gv_palup_n++;
             }
         } else {
@@ -479,7 +491,7 @@ static void flush_draw(void) {
         const C3D_Mtx* pm_ = draw_3d ? &shader_3d : off_active ? &off_proj : &projection; /* V05: shader_3d follows off_active, see rebuild_3d */
         if (DR1X("nodr1u") && !graw && proj_ok && memcmp(&proj_last, pm_, sizeof proj_last) == 0) dr1_skips++; /* DR1: same value as the last draw */
         else {
-            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, pm_);
+            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, pm_); sh_pal_ok[0] = sh_pal_ok[1] = 0; /* RAW1: registers 0 to 3 are also pal 0 */
             proj_last = *pm_; proj_ok = !graw;
         }
     }
@@ -492,6 +504,7 @@ static void flush_draw(void) {
     int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
     if (tex && snap0) { C3D_TexBind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
     if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
+    if (!gpal) sh_pal_ok[0] = sh_pal_ok[1] = 0; /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
     if (tex1 && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
     int noise = combine == 8 && plan.uses_noise && noise_init();
     if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
@@ -719,17 +732,20 @@ static void flush_draw(void) {
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
     if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
         PH_PUSH(PH_GDRAW);
-        C3D_BufInfo* gb = C3D_GetBufInfo();
-        BufInfo_Init(gb);
-        BufInfo_Add(gb, gring, 16, 3, 0x210);
+        if (!raw1_on() || buf_cur != 2) {
+            C3D_BufInfo* gb = C3D_GetBufInfo();
+            BufInfo_Init(gb);
+            BufInfo_Add(gb, gring, 16, 3, 0x210);
+            buf_cur = 2; PH_ADD(C_RAWCALL, 2);
+        }
         C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
+        PH_ADD(C_RAWD, 1); PH_ADD(C_RAWCALL, 1);
         PH_POP();
         draws_frame++;
         PH_ADD(C_DRAW, 1);
         PH_ADD(C_VTXSLOT, gni);
         PH_POP();
-        C3D_BindProgram(&prog);
-        C3D_SetAttrInfo(&attr_cpu);
+        if (!raw1_on()) { C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; } /* RAW1: the cpu program is bound when a cpu draw needs it */
         gi_start = gidx_n;
         gni = 0; pal_n = 0;
         batch_identity = 0;
@@ -742,6 +758,7 @@ static void flush_draw(void) {
         kick_check();
         return;
     }
+    if (raw1_on() && bound != 1) { C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
     Vert* batch = verts;
     int count = nverts;
     PH_PUSH(PH_GDRAW);
@@ -749,7 +766,7 @@ static void flush_draw(void) {
     const int dr1 = DR1X("nodr1b");
     const int first = dr1 ? (int)(batch - vert_base) : 0; /* DR1: one buffer info for the whole pool, the draw starts at the batch */
     if (!dr1 || !pool_buf_ok) {
-        BufInfo_Init(buf);
+        BufInfo_Init(buf); buf_cur = 1;
         BufInfo_Add(buf, dr1 ? vert_base : batch, sizeof(Vert), 3, 0x210);
         pool_buf_ok = dr1;
     }
@@ -780,7 +797,7 @@ static void flush_draw(void) {
         C3D_StencilTest(true, GPU_EQUAL, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_ZERO);
         if (!dr1) {
-            BufInfo_Init(buf);
+            BufInfo_Init(buf); buf_cur = 1;
             BufInfo_Add(buf, b2, sizeof(Vert), 3, 0x210);
         }
         C3D_DrawArrays(GPU_TRIANGLES, dr1 ? (int)(b2 - vert_base) : 0, count);
@@ -890,7 +907,12 @@ void pm_gpu_init(void) {
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
         GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) |
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
-    dvlb = DVLB_ParseFile((u32*)pm_shader_shbin, pm_shader_shbin_size);
+    if ((pm_debug_has("raw1") || pm_ph_abtog_has("raw1")) && !pm_debug_has("noraw1")) { /* RAW1: one DVLB for the three programs */
+        dvlb_all = DVLB_ParseFile((u32*)pm_shaderall_shbin, pm_shaderall_shbin_size);
+        raw_dvlb_ok = dvlb_all && dvlb_all->numDVLE >= 3;
+        pm_log("raw1: one DVLB %s (%d entries)", raw_dvlb_ok ? "on" : "FAILED", dvlb_all ? (int)dvlb_all->numDVLE : 0);
+    }
+    dvlb = raw_dvlb_ok ? dvlb_all : DVLB_ParseFile((u32*)pm_shader_shbin, pm_shader_shbin_size);
     shaderProgramInit(&prog);
     shaderProgramSetVsh(&prog, &dvlb->DVLE[0]);
     C3D_BindProgram(&prog);
@@ -907,8 +929,8 @@ void pm_gpu_init(void) {
     attr_cpu = *ai;
     if ((pm_debug_has("gpuvtx") || pm_ph_abtog_has("gpuvtx") || pm_debug_has("gv1") || pm_ph_abtog_has("gv1")) && !pm_debug_has("nogpuvtx")) { /* PO3b: the raw Vtx path. Off by default, nothing is allocated with the switch off. */
         shaderProgramInit(&prog3);
-        dvlb3 = DVLB_ParseFile((u32*)pm_shader3_shbin, pm_shader3_shbin_size);
-        shaderProgramSetVsh(&prog3, &dvlb3->DVLE[0]);
+        dvlb3 = raw_dvlb_ok ? dvlb_all : DVLB_ParseFile((u32*)pm_shader3_shbin, pm_shader3_shbin_size);
+        shaderProgramSetVsh(&prog3, &dvlb3->DVLE[raw_dvlb_ok ? 1 : 0]);
         u_uvso = shaderInstanceGetUniformLocation(prog3.vertexShader, "uvso");
         u_cmul = shaderInstanceGetUniformLocation(prog3.vertexShader, "cmul");
         u_cadd = shaderInstanceGetUniformLocation(prog3.vertexShader, "cadd");
@@ -923,8 +945,8 @@ void pm_gpu_init(void) {
         gpu_vtx_on = gring && gidx && u_uvso >= 0 && u_cmul >= 0 && u_cadd >= 0 && u_zmix >= 0 && prog3.vertexShader;
         if (gpu_vtx_on && (pm_debug_has("gv1") || pm_ph_abtog_has("gv1"))) { /* GV1c: the palette program */
             shaderProgramInit(&prog4);
-            dvlb4 = DVLB_ParseFile((u32*)pm_shader4_shbin, pm_shader4_shbin_size);
-            shaderProgramSetVsh(&prog4, &dvlb4->DVLE[0]);
+            dvlb4 = raw_dvlb_ok ? dvlb_all : DVLB_ParseFile((u32*)pm_shader4_shbin, pm_shader4_shbin_size);
+            shaderProgramSetVsh(&prog4, &dvlb4->DVLE[raw_dvlb_ok ? 2 : 0]);
             u4_pal = shaderInstanceGetUniformLocation(prog4.vertexShader, "pal");
             u4_uvx = shaderInstanceGetUniformLocation(prog4.vertexShader, "uvx");
             u4_uvso = shaderInstanceGetUniformLocation(prog4.vertexShader, "uvso");
@@ -1325,7 +1347,7 @@ void pm_gpu_begin(int clear) {
     draw_3d = 0;
     if (!gpu_ok) return;
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
-    sh_clear(); C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    raw1_reset(); sh_clear(); C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     PH_POP();
     pm_ph_gpu_note();
     dump_shot();

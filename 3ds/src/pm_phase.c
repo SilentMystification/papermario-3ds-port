@@ -309,11 +309,11 @@ void pm_ph_frame_end(void) {
     frame_t0 = now;
     if (ps_on) ps_step(r);
     if (csv && r->f >= (unsigned)csv_from && r->f <= (unsigned)csv_to) {
-        pm_log_d("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d gv %d gt %d gm %d go %d | %u %u %u %u %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),
+        pm_log_d("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d gv %d gt %d gm %d go %d | %u %u %u %u %u %u %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),
                (int)(r->ms[PH_IDLE] * 10.f), (int)(r->ms[PH_LOGIC] * 10.f), (int)(r->ms[PH_DL] * 10.f), (int)(r->ms[PH_GBI] * 10.f),
                (int)(r->ms[PH_GPU] * 10.f), (int)(r->ms[PH_TEX] * 10.f), (int)(r->ms[PH_AUDIO] * 10.f), (int)(r->ms[PH_ROM] * 10.f),
                (int)(r->ms[PH_YAY0] * 10.f), (int)(r->ms[PH_FBEGIN] * 10.f), (int)(r->ms[PH_FEND] * 10.f), (int)(r->ms[PH_OTHER] * 10.f),
-               (int)(r->ms[PH_GCACHE] * 10.f), (int)(r->ms[PH_GDRAW] * 10.f), (int)(r->ms[PH_GVTX] * 10.f), (int)(r->ms[PH_GTRI] * 10.f), (int)(r->ms[PH_GMTX] * 10.f), (int)(r->ms[PH_GOP] * 10.f), r->c[C_TRIOUT], r->c[C_VTXSLOT], r->c[C_DRAW], r->c[C_TEXMISS], r->c[C_TEXBYTE], r->c[C_ROMN], r->c[C_ROMB], r->c[C_ATICK], r->c[C_FLUSH], r->c[C_DBG], r->c[C_CMD], r->c[C_AJOB]);
+               (int)(r->ms[PH_GCACHE] * 10.f), (int)(r->ms[PH_GDRAW] * 10.f), (int)(r->ms[PH_GVTX] * 10.f), (int)(r->ms[PH_GTRI] * 10.f), (int)(r->ms[PH_GMTX] * 10.f), (int)(r->ms[PH_GOP] * 10.f), r->c[C_TRIOUT], r->c[C_VTXSLOT], r->c[C_DRAW], r->c[C_TEXMISS], r->c[C_TEXBYTE], r->c[C_ROMN], r->c[C_ROMB], r->c[C_ATICK], r->c[C_FLUSH], r->c[C_DBG], r->c[C_CMD], r->c[C_AJOB], r->c[C_RAWD], r->c[C_RAWCALL]);
         pm_log_hw("pcx %u rd %d tev %d bind %d st %d gpu %u %u cmd %u flushcalls %u flushkb %u", r->f, (int)(r->ms[PH_FBREAD] * 10.f), (int)(r->ms[PH_GTEV] * 10.f), (int)(r->ms[PH_GBIND] * 10.f),
                   (int)(r->ms[PH_GST] * 10.f), pm_ph_gpu_us[0], pm_ph_gpu_us[1], pm_ph_cmd_pm, r->c[C_FLCALL], r->c[C_FLKB]);
     }

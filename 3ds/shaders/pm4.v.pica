@@ -25,7 +25,8 @@
 .alias inuv v1
 .alias inclr v2
 
-.proc main
+.entry main4
+.proc main4
 	mul r8.x, myconst.w, inpos.w
 	mova a0.x, r8.x
 	mov r1.xyz, inpos
