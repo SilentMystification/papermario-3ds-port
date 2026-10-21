@@ -242,6 +242,16 @@ void func_80027774(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
             }
         }
     }
+#ifdef TARGET_3DS
+    /* PT52: the loops skip the edge pixels. The z-buffer image of the 3DS is not cleared, so the edge showed stale colours. */
+    for (y = 0; y < SCREEN_HEIGHT; y++) {
+        for (x = 0; x < SCREEN_WIDTH; x++) {
+            if (y == 0 || y == SCREEN_HEIGHT - 1 || x < 1 || x >= SCREEN_WIDTH - 1) {
+                zBuffer[SCREEN_WIDTH * y + x] = frameBuffer0[SCREEN_WIDTH * y + x] | 1;
+            }
+        }
+    }
+#endif
 }
 
 // transfers the framebuffer into the depth buffer and applies filters
@@ -276,6 +286,16 @@ void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuf
             }
         }
     }
+#ifdef TARGET_3DS
+    /* PT52: the loops skip row 0, row 239 and the columns 0, 1, 318, 319. Copy them from the frame. */
+    for (y = 0; y < SCREEN_HEIGHT; y++) {
+        for (x = 0; x < SCREEN_WIDTH; x++) {
+            if (y == 0 || y == SCREEN_HEIGHT - 1 || x < 2 || x >= SCREEN_WIDTH - 2) {
+                zBuffer[SCREEN_WIDTH * y + x] = frameBuffer0[SCREEN_WIDTH * y + x] | 1;
+            }
+        }
+    }
+#endif
 }
 
 void func_80027BAC(s32 arg0, s32 arg1) {
