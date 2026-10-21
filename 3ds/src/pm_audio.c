@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include "pm_port.h"
 #include "pm_au2.h"
+#include "pm_dsptest.h"
 
 #define CAP 8192
 #define SLOTS 8
@@ -71,6 +72,7 @@ void pm_audio_init(void) {
     }
     ready = 1;
     pm_log("ndsp ready %u Hz\n", rate);
+    if (pm_debug_has("dsptest")) pm_dsptest_start();
 }
 
 void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
@@ -86,6 +88,7 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
     }
     if (!ready) pm_audio_init();
     if (!ready) return;
+    if (pm_dsptest_active()) return; /* A2: the test owns all 24 channels */
     {
         /* Log once per 120 posts: how many were queued and the loudest sample, to check the output in an emulator. */
         static unsigned posts;
