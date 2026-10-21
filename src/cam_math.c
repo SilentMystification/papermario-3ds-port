@@ -2,6 +2,8 @@
 #include "camera.h"
 
 extern int pm_wide; /* F07-2 */
+extern f32 pm_wide_vfov(Camera* c);
+extern f32 pm_wide_lead_ratio(Camera* c);
 s32 gCurrentCameraID = CAM_DEFAULT;
 
 CameraControlSettings* test_ray_zone(f32 posX, f32 posY, f32 posZ, Collider** zone) {
@@ -393,7 +395,7 @@ void apply_constraints_to_lead_amount(Camera* camera) {
             || (s2 = func_800328A4(settings, camera->targetPos.x, camera->targetPos.z)) != 0
         ) {
             if (camera->needsInitialConstrainDir) {
-                guPerspectiveF(camera->mtxPerspective, &camera->perspNorm, camera->vfov,
+                guPerspectiveF(camera->mtxPerspective, &camera->perspNorm, pm_wide_vfov(camera),
                     (f32)camera->viewportW / (f32)camera->viewportH * (pm_wide && (camera == &gCameras[CAM_DEFAULT] || camera == &gCameras[CAM_BATTLE]) ? 1.25f : 1.0f), camera->nearClip, camera->farClip, 1.0f);
                 guMtxCatF(camera->mtxViewPlayer, camera->mtxPerspective, camera->mtxPerspective);
                 transform_point(camera->mtxPerspective, camera->targetPos.x, camera->targetPos.y, camera->targetPos.z,
@@ -522,7 +524,7 @@ void create_camera_leadplayer_matrix(Camera* camera) {
     f32 distTanTheta = dist * sin_rad(theta);
     distTanTheta /= cos_rad(theta);
 
-    update_camera_lead_amount(camera, (distTanTheta * camera->viewportW / camera->viewportH) * camera->leadAmtScale);
+    update_camera_lead_amount(camera, (distTanTheta * pm_wide_lead_ratio(camera)) * camera->leadAmtScale);
     apply_constraints_to_lead_amount(camera);
     guTranslateF(camera->mtxViewLeading, -camera->leadAmount, 0.0f, 0.0f);
 }

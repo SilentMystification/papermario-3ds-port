@@ -83,6 +83,7 @@ u16 blend_background_channel(u16 arg0, s32 arg1, s32 alpha) {
 }
 
 extern int pm_wide;
+extern s32 pm_wide_cam(Camera* c);
 /* F07-4: with wide the 296 px sky tiles over the 400 px screen (game x -40 to 360). The pattern repeats every 296 px. */
 static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
     s32 shift;
@@ -297,6 +298,26 @@ void appendGfx_background_texture(void) {
             bg_texrect( (bgXOffset + bgMinX) * 4, (lineHeight * i + bgMinY) * 4,
                                                  (bgMaxX + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4,
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
+        }
+        if (pm_wide_cam(&gCameras[gCurrentCameraID]) && bgMinY == 20 && bgMaxY == 200 && bgMaxX == 296) {
+            /* PT54: the 296 x 200 sky image is shown on 20 to 219. With wide the view is 240 rows. The first image row fills the rows above and the last image row the rows below. */
+            s32 k;
+            for (k = 0; k < 2; k++) {
+                s32 row = k == 0 ? gBackroundTextureYOffset : gBackroundTextureYOffset + bgMaxY - 1;
+                s32 y0 = k == 0 ? 0 : bgMinY + bgMaxY;
+                s32 y1 = k == 0 ? bgMinY - 1 : SCREEN_HEIGHT - 1;
+                if (row > bgMaxY) {
+                    row -= bgMaxY;
+                }
+                gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster + bgMaxX * row,
+                                   G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, 1,
+                                   0, 0, 295, 0, 0,
+                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                bg_texrect( bgMinX * 4, y0 * 4, (bgXOffset + bgMinX - 1) * 4, y1 * 4,
+                                                     G_TX_RENDERTILE, (bgMaxX - bgXOffset) * 32, 0, 4096, 0);
+                bg_texrect( (bgXOffset + bgMinX) * 4, y0 * 4, (bgMaxX + bgMinX - 1) * 4, y1 * 4,
+                                                     G_TX_RENDERTILE, 0, 0, 4096, 0);
+            }
         }
     } else {
         lineHeight = 6;

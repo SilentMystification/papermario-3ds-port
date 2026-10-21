@@ -1,10 +1,26 @@
 #include "common.h"
+#ifdef TARGET_3DS
+extern float tanf(float);
+extern float atanf(float);
+#endif
 #include "camera.h"
 #include "nu/nusys.h"
 #include "hud_element.h"
 #include "camera.h"
 
 extern int pm_wide; /* F07-2 */
+/* PT53, PT54: with wide the standard game view (12 20 296 200) becomes the whole 320 x 240 picture. The pixel scale stays the same, so the vertical
+ * field of view grows by 240 / 200 and the aspect is 320 / 240 * 1.25. The world then reaches the screen edges and the black bars are gone. */
+s32 pm_wide_cam(Camera* c) {
+    return pm_wide && (c == &gCameras[CAM_DEFAULT] || c == &gCameras[CAM_BATTLE]) && c->viewportStartX == 0 && c->viewportStartY == 0 && c->viewportW == 320 && c->viewportH == 240;
+}
+f32 pm_wide_vfov(Camera* c) {
+    if (!pm_wide_cam(c)) return c->vfov;
+    return 2.0f * atanf(tanf(c->vfov * (PI / 360.0f)) * (240.0f / 200.0f)) * (180.0f / PI);
+}
+f32 pm_wide_lead_ratio(Camera* c) { /* the camera lead keeps the ratio of the original 296 x 200 view */
+    return pm_wide_cam(c) ? 296.0f / 200.0f : (f32)c->viewportW / (f32)c->viewportH;
+}
 extern void pm_interp_open(unsigned a, unsigned b); /* F06-2 */
 extern void pm_interp_close(void);
 extern void pm_interp_dont_camera(void); /* F06-4 */
@@ -68,7 +84,7 @@ void update_cameras(void) {
                 create_camera_leadplayer_matrix(cam);
             }
 
-            guPerspectiveF(cam->mtxPerspective, &cam->perspNorm, cam->vfov, (f32) cam->viewportW / (f32) cam->viewportH * (pm_wide && i <= CAM_BATTLE ? 1.25f : 1.0f), (f32) cam->nearClip, (f32) cam->farClip, 1.0f);
+            guPerspectiveF(cam->mtxPerspective, &cam->perspNorm, pm_wide_vfov(cam), (f32) cam->viewportW / (f32) cam->viewportH * (pm_wide && i <= CAM_BATTLE ? 1.25f : 1.0f), (f32) cam->nearClip, (f32) cam->farClip, 1.0f);
 
             if (cam->flags & CAMERA_FLAG_SHAKING) {
                 guMtxCatF(cam->mtxViewShaking, cam->mtxPerspective, cam->mtxPerspective);
@@ -435,6 +451,10 @@ Camera* initialize_next_camera(CameraInitData* initData) {
 
 void set_cam_viewport(s16 id, s16 x, s16 y, s16 width, s16 height) {
     Camera* camera = &gCameras[id];
+
+    if (pm_wide && (id == CAM_DEFAULT || id == CAM_BATTLE) && x == 12 && y == 20 && width == 296 && height == 200) {
+        x = 0; y = 0; width = 320; height = 240; /* PT53, PT54 */
+    }
 
     camera->viewportW = width;
     camera->viewportH = height;

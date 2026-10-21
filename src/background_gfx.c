@@ -7,6 +7,7 @@
 
 extern s32 gPauseBackgroundFade;
 extern int pm_wide; /* F07-4 */
+extern s32 pm_wide_cam(Camera* c);
 
 Vp D_80074200 = {
     .vp = {
@@ -480,6 +481,10 @@ void gfx_draw_background(void) {
             if (pm_wide && (gCurrentCameraID == CAM_DEFAULT || gCurrentCameraID == CAM_BATTLE)) {
                 backgroundMinX = 0; /* F07-4: the sky covers the whole screen, no side bar */
                 backgroundMaxX = SCREEN_WIDTH;
+                if (pm_wide_cam(camera)) { /* PT54: and no bar above and below */
+                    backgroundMinY = 0;
+                    backgroundMaxY = SCREEN_HEIGHT;
+                }
             }
 
             if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE)) {
