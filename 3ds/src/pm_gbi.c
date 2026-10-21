@@ -990,7 +990,7 @@ static void sync_combine_work(void) {
     sync_legacy();
     plan_active = 0;
     ls_use = -1; ls_cyc = (int)cyc; ls_dual = dual_on | box_prod << 1 | box_pat << 2; ls_frame = rm_frame;
-    if (cyc <= 1 && comb_set && !dual_on && !box_prod && !box_pat && !PMD("nocomb")) {
+    if (cyc <= 1 && comb_set && !dual_on && ((!box_prod || !box_folded) && (!(box_prod || box_pat) || !PMD("nobox1"))) && !PMD("nocomb")) { /* VIS1: a draw_box window with a pattern in tile 0 reads TEXEL0 * TEXEL1 on the GPU plan too. Triangles (rotated and scaled windows) have no CPU composite like box_pattern_rect, so they lost the corner image: no border, no round corners */
         Dec* d = decide((int)cyc);
         ls_use = d->use; ls_why = d->why;
         if (d->use) {
