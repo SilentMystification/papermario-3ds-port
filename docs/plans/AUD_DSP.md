@@ -157,3 +157,12 @@ Play the same scene twice, once without and once with `dspaudio`.
 6. Mono and stereo: switch the sound mode in the options. Stereo spread must change.
 7. Late notes: at the first play of a scene a note can start up to 36 ms late once (decode). Note it if it is audible.
 8. Numbers to pull: `audio dsp:` lines (block cost, backlog, cache, aux core and cost), `audio cost` per tick (control only), `dsptest:` lines.
+
+## 16. PT22 distortion: cause and fix (2026-10-21)
+
+- Cause found: the cache decode (`vadpcm`) updated the two history samples after every sample. The N64 decode (aADPCMdecImpl) keeps the history of a block of 8 samples fixed and takes the last two samples of the block before. Every sample after the first in a block was wrong by a small amount. The result sounds like noise on the whole signal. Azahar could not show this because nobody listened to the Azahar run. Build 970 had the fault in the cache for every sample.
+- Fix: `3ds/src/pm_vadpcm.h` (decode moved out of pm_dspaud.c). Host test `sh 3ds/tests/dspdec/run.sh`: 4000 random cases, equal to aADPCMdecImpl (plain C path). Before the fix: 3998 of 4000 differ.
+- The aux callback did not run on the console or in Azahar. Cause candidate: libctru sets the aux volume to 0.0 at start. The code now sets 1.0. If the callback still does not run, the wet and delay sends go to the main mix (`mix_out` in pm_dspaud.c), so no part of the sound is lost. The log line `dspaudio: first aux callback ran` shows the change to the effect path.
+- New switches: `dspfx=off` (no aux, wet to main), `dspgain=<percent>` (scale the mix, for a clip test), `dspflush` (flush the sample before every wave buffer add), `dspaux=<mask>` (1 keep volume 0.0, 2 front bypass off, 4 output count 2, 8 register the callbacks after the first voice start). The log line `dspaudio: aux mask ...` shows the state.
+- Console test, three combinations: (1) `dspaudio` alone. (2) `dspaudio dspfx=off`. (3) `dspaudio dspgain=50 dspflush`. Add `audiostat loglevel=debug` and read `audio dsp: aux callbacks`.
+- Not changed: hard voice stops (the old mixer stops a voice at the same point), loop cap of 4 repeats for a finite loop count above 3.
