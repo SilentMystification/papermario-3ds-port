@@ -137,3 +137,23 @@ The AU2 command queue (`AuCmd`, ring of jobs, render thread on core 1) already c
 3. Reverb return: reserve channel 23 and 23 voices (default) against a voice limit of 24 with no reverb.
 4. Cache budget 1.5 MB (default) against 1.0 MB.
 5. Bus 2 and 3 refused with a log line (default), as the game never uses them.
+
+## 14. A2 and A3 results (Azahar, 2026-10-21)
+
+- A2 (`dsptest`, commit a7a9c7bb0): 24 channels, 600 ticks in 10 s. One tick of 24 SetMix + 24 SetRate + 4 restarts costs 361 us in Azahar (about 2.7 us per call, one spike of 40 ms). The frame callback runs every 4.9 ms and costs 1 us. The aux 0 callback never runs in Azahar (n 0). The console numbers come from the next push (lines `dsptest:` in the pulled log).
+- A3 (switch `dspaudio`, default off): tour of 3 maps and a battle, 2500 frames, no crash. Voices average 4 to 8, maximum 14. Cache: 15 decodes at the start, then hits only. Cache peak 702 KB of 1536 KB. Decode: 0.5 to 14 ms average, 36 ms for the largest sample (synchronous on the DSP thread, the backlog of 57 ms covers it). Block cost on the DSP thread: average 12 to 76 us. ndsp parameter write: about 1 us. Backlog: 10 blocks (about 1840 samples), stable. Late resyncs: 3 at the first window, then 0. ndsp frames dropped: 0.
+- Not tested in Azahar: the effect return and the channel delay (the aux callback does not run there), the old path after the change (the only change is a flag test), the sound itself.
+- Files: src/audio/core/dsp_voice.c (shadow voices to ndsp), 3ds/src/pm_dspaud.c (cache, decode, ndsp calls, effects, stats), hooks in syn_driver.c (AUC_BLOCK, no wait for the render thread) and pm_audio.c (init, post, pending, stats).
+- Log lines for the console: `dspaudio:` (on, effect type per bus, channel delay), `audio dsp:` per 300 steps (voices, block cost, backlog, param writes, cache hits and misses and bytes, decodes, aux callbacks with core and cost, frames queued and dropped), `dsptest:` (switch dsptest). Control cost per tick: the existing `audio cost` and `audio2:` lines.
+
+## 15. A/B list for the console (switch `dspaudio` in debug3ds.txt, add `audiostat loglevel=debug` for numbers)
+
+Play the same scene twice, once without and once with `dspaudio`.
+1. Music: title, a town, a battle. Listen for the same pitch and tempo, no clicks at note starts, no hum.
+2. Held notes and loops: long BGM instruments and ambience (wind, water) must not stop or click at the loop point.
+3. Sound effects: jump, hammer, many hits at once in a battle (more than 8 voices). Nothing may cut off early or stay on.
+4. Reverb: BGM with the small room (most maps). Expect a short room tail. If the tail is missing, the aux callback did not run: read `aux callbacks` in `audio dsp:`. Dry sound is then the expected fallback.
+5. Pauses and fades: open and close the pause menu, change maps (fade out and in), start a battle. Volume must follow without a jump.
+6. Mono and stereo: switch the sound mode in the options. Stereo spread must change.
+7. Late notes: at the first play of a scene a note can start up to 36 ms late once (decode). Note it if it is audible.
+8. Numbers to pull: `audio dsp:` lines (block cost, backlog, cache, aux core and cost), `audio cost` per tick (control only), `dsptest:` lines.

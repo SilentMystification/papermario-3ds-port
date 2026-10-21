@@ -95,6 +95,7 @@ set(GAME_SRC
     ${DECOMP}/src/audio/sfx_player.c
     ${DECOMP}/src/audio/snd_interface.c
     ${DECOMP}/src/audio/core/engine.c
+    ${DECOMP}/src/audio/core/dsp_voice.c
     ${DECOMP}/src/audio/core/pull_voice.c
     ${DECOMP}/src/audio/core/reverb.c
     ${DECOMP}/src/audio/core/syn_driver.c
@@ -367,6 +368,7 @@ set(PORT_SRC
     src/pm_audio.c
     src/pm_au2.c
     src/pm_dsptest.c
+    src/pm_dspaud.c
     src/pm_rsp_audio.c
     src/pm_later.c
     src/pm_map.c
@@ -390,7 +392,7 @@ endforeach()
 # those libraries were built with it and their structures hold enums.
 set(PM_NO_SHORT_ENUM_SRC ${PORT_SRC} ${GAME_SRC})
 list(REMOVE_DUPLICATES PM_NO_SHORT_ENUM_SRC)
-list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dsptest.c)
+list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dsptest.c src/pm_dspaud.c)
 set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
 
 add_executable(pm_3ds
