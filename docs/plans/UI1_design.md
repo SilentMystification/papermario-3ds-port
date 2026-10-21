@@ -37,3 +37,9 @@ Not covered: a world screen that is not one of these (none known). A script that
 
 ## Tests
 - Azahar cannot press keys. `padscript` tokens `k_*` inject 3DS keys. Shots: tabs (normal, wide), L/R, D-pad in file select, pause menu, a battle menu, overworld camera (C button). Statehash and counters against `baseline_azahar_840.txt` in a run without inputs.
+
+## Select menu mirror (PT59)
+- The Select menu (`3ds/src/pm_options_ui.c`) and the Options panel of the file select (`src/filemenu/filemenu_options.c`) show the same three tabs: General, Controls, Debug. L and R change the tab. Both menus read one row table in `3ds/src/pm_options.c` (`pm_optui_rows`, `pm_optui_label`, `pm_optui_value`, `pm_optui_step`, `pm_optui_act`). Each function takes `mode`: 0 is the file select panel, 1 is the Select menu.
+- The two menus keep no row code of their own. They only draw and read the pad. A change in one menu is the same change in the other: both write `pm_opt`, `pm_map` and options.ini (saved when the menu closes), and the live apply code in `pm_options_flip` runs in both.
+- Mode 1 adds rows to the General tab: `Return to Title Screen` and `Exit to Homebrew` (A twice). In mode 1 `Warp now` changes the map at once (`pm_warp_live`). In mode 0 it leaves the file select. The Warp choice is not saved.
+- Test: padscript tokens `SELECT` (opens the menu), `ddown`, `dup`, `dleft`, `dright`, `A`, `B`, `L`, `R` act on the menu. The log shows `menu: tab <t> row <r> <label> = <value>` at debug level.

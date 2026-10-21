@@ -61,7 +61,7 @@ void filemenu_options_open(void) {
     menu->state = 0;
     optTab = 0;
     optTop = 0;
-    menu->numRows = pm_optui_rows(0);
+    menu->numRows = pm_optui_rows(0, 0);
     pm_pad_take_tab();
     filemenu_set_selected(menu, 0, 0);
     set_window_update(WIN_FILES_STEREO, (s32)filemenu_update_hidden_options_left);
@@ -102,7 +102,7 @@ void filemenu_draw_contents_options_panel(
     MenuPanel* panel = &filemenu_options_menuBP;
     static const char* tabNames[OPT_TABS] = { "General", "Controls", "Debug" };
     static const s32 tabX[OPT_TABS] = { 12, 76, 150 };
-    s32 rows = pm_optui_rows(optTab);
+    s32 rows = pm_optui_rows(optTab, 0);
     s32 i;
 
     // UI1a: tab strip (L and R change the tab), the active tab has the second palette
@@ -114,9 +114,9 @@ void filemenu_draw_contents_options_panel(
     }
     for (i = optTop; i < rows && i < optTop + OPT_VIS; i++) {
         s32 y = baseY + 8 + 17 * (1 + i - optTop);
-        const char* value = pm_optui_value(optTab, i);
+        const char* value = pm_optui_value(optTab, i, 0);
 
-        filemenu_draw_message((u8*)pm_options_msg(pm_optui_label(optTab, i), 0), baseX + 24, y, 255, 0, 1);
+        filemenu_draw_message((u8*)pm_options_msg(pm_optui_label(optTab, i, 0), 0), baseX + 24, y, 255, 0, 1);
         if (value != nullptr) {
             filemenu_draw_message((u8*)pm_options_msg(value, 1), baseX + 120, y, 255, 0, 1);
         }
@@ -159,7 +159,7 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         optTab = (optTab + tabMove + OPT_TABS) % OPT_TABS;
         optTop = 0;
         menu->row = 0;
-        menu->numRows = pm_optui_rows(optTab);
+        menu->numRows = pm_optui_rows(optTab, 0);
         filemenu_set_selected(menu, 0, 0);
         pm_log_d("options: tab %d", optTab);
         sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
@@ -204,7 +204,7 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         } else {
             lrGap = lrRep == 0 ? 15 : 4;
             lrRep++;
-            if (pm_optui_step(optTab, menu->row, lr * (lrRep > 12 ? 5 : 1))) {
+            if (pm_optui_step(optTab, menu->row, lr * (lrRep > 12 ? 5 : 1), 0)) {
                 sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
             }
         }
@@ -215,7 +215,7 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         s32 result;
 
         sfx_play_sound(SOUND_MENU_NEXT);
-        result = pm_optui_act(optTab, menu->selected);
+        result = pm_optui_act(optTab, menu->selected, 0);
         if (result == 1) {
             filemenu_options_close();
         } else if (result == 2) {

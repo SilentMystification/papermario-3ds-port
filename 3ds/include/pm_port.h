@@ -161,10 +161,13 @@ void pm_options_flip(int row);
 void pm_options_close(void);
 const unsigned char* pm_options_build_msg(void); /* BN1 footer text */
 const unsigned char* pm_options_msg(const char* text, int slot); /* UI1a: text as game message, slot 0 to 7 */
-int pm_optui_rows(int tab); /* UI1a: tab 0 General, 1 Controls, 2 Debug */
-const char* pm_optui_label(int tab, int row);
-const char* pm_optui_value(int tab, int row);
-int pm_optui_act(int tab, int row); /* 0 done, 1 close (Back), 2 leave the file select (Warp now) */
+/* UI1a, PT59: tab 0 General, 1 Controls, 2 Debug. mode 0 = file select panel, mode 1 = Select menu (port menu): the same rows, plus Return to Title and Exit to Homebrew */
+int pm_optui_rows(int tab, int mode);
+const char* pm_optui_label(int tab, int row, int mode);
+const char* pm_optui_value(int tab, int row, int mode);
+int pm_optui_step(int tab, int row, int dir, int mode); /* left or right on a row, 1 when the value changed */
+int pm_optui_act(int tab, int row, int mode); /* 0 done, 1 close (Back), 2 leave the file select (Warp now), 3 exit to Homebrew, 4 return to title, 5 warp started */
+void pm_optui_disarm(void);
 int pm_pad_take_tab(void); /* UI1a: -1 for L, +1 for R (3DS keys) since the last call */
 void pm_log_switch(const char* word, int on);
 int pm_pad_take_select(void);
@@ -189,7 +192,8 @@ int pm_warp_map_index(const char* name);
 int pm_warp_is_test_map(const char* id); /* PT01b */
 int pm_warp_choice_count(void);
 const char* pm_warp_choice_text(int choice, int entry);
-int pm_optui_step(int tab, int row, int dir); /* PT01: left or right on a row. 1 = the value changed */
+int pm_warp_live(int choice, int entry); /* PT63: warp at once from the Select menu (no file select). 1 = started */
+void pm_title_return(void); /* PT66: soft reset to the title, as the game own reset does */
 void pm_options_touch(void); /* mark the settings changed, saved at pm_options_close */
 /* F11-6: the port menu on the bottom screen (3ds/src/pm_options_ui.c). Select, when no game code takes it, opens it in any game mode. */
 extern volatile int pm_menu_open;

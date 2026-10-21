@@ -192,36 +192,75 @@ const unsigned char* pm_options_msg(const char* t, int slot) {
 /* BN1: "Build <n><suffix>" for the Options panel footer. */
 const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build " PM_BUILD_STR, 7); }
 
-/* UI1a: the rows of the Options panel in tabs. Both the file select panel and the Select menu use the same value and action code.
- * Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. */
+/* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
+ * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
+ * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_MAP = 100, RW_DBG = 200 };
 static const char* const lvl_name[4] = { "Error", "Warn", "Info", "Debug" };
-int pm_optui_rows(int tab) { return tab == 0 ? 3 : tab == 1 ? PM_NIN + 3 : 11; }
-static const char* const gen_lbl[2] = { "60 FPS", "Widescreen" };
 static const char* const dbg_lbl[7] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed" };
-const char* pm_optui_label(int tab, int row) {
-    if (row == pm_optui_rows(tab) - 1) return "Back";
-    if (tab == 0) return gen_lbl[row];
-    if (tab == 1) return row == 0 ? "D-PAD" : row <= PM_NIN ? pm_in_name[row - 1] : "Reset controls";
-    return row < 7 ? dbg_lbl[row] : row == 7 ? "Warp to" : row == 8 ? "Entry" : "Warp now";
-}
-const char* pm_optui_value(int tab, int row) {
-    if (row == pm_optui_rows(tab) - 1) return NULL;
-    if (tab == 0) return pm_options_get(row) ? "On" : "Off";
-    if (tab == 1) return row == 0 ? pm_dpad_mode_name() : row <= PM_NIN ? pm_n64_name(pm_map[row - 1]) : NULL;
-    if (row == 9) return NULL;
-    if (row == 7 || row == 8) { /* PT01: < value > shows that left and right change it */
-        static char wb[32];
-        if (row == 7) snprintf(wb, sizeof wb, "< %s >", pm_warp_choice_text(pm_opt.warp, pm_opt.warp_entry));
-        else if (pm_opt.warp > pm_warp_preset_count()) snprintf(wb, sizeof wb, "< %d >", pm_opt.warp_entry);
-        else return "-";
-        return wb;
+static int tab_ids(int tab, int mode, int* ids) {
+    int n = 0, i;
+    if (tab == 0) {
+        ids[n++] = RW_FPS; ids[n++] = RW_WIDE;
+        if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_EXIT; }
+    } else if (tab == 1) {
+        ids[n++] = RW_DPAD;
+        for (i = 0; i < PM_NIN; i++) ids[n++] = RW_MAP + i;
+        ids[n++] = RW_RESET;
+    } else {
+        for (i = 0; i < 7; i++) ids[n++] = RW_DBG + i;
+        ids[n++] = RW_WARPTO; ids[n++] = RW_ENTRY; ids[n++] = RW_WARPNOW;
     }
-    return row == 5 ? lvl_name[pm_options_get(7) & 3] : pm_options_get(row + 2) ? "On" : "Off"; /* debug rows 0 to 6 are option rows 2 to 8 */
+    ids[n++] = RW_BACK;
+    return n;
+}
+static int row_id(int tab, int row, int mode) {
+    int ids[48], n = tab_ids(tab, mode, ids);
+    return row >= 0 && row < n ? ids[row] : RW_BACK;
+}
+static int exit_armed;
+void pm_optui_disarm(void) { exit_armed = 0; }
+int pm_optui_rows(int tab, int mode) { int ids[48]; return tab_ids(tab, mode, ids); }
+const char* pm_optui_label(int tab, int row, int mode) {
+    int id = row_id(tab, row, mode);
+    if (id >= RW_DBG) return dbg_lbl[id - RW_DBG];
+    if (id >= RW_MAP) return pm_in_name[id - RW_MAP];
+    switch (id) {
+        case RW_FPS: return "60 FPS";
+        case RW_WIDE: return "Widescreen";
+        case RW_TITLE: return "Return to Title Screen";
+        case RW_EXIT: return "Exit to Homebrew";
+        case RW_DPAD: return "D-PAD";
+        case RW_RESET: return "Reset controls";
+        case RW_WARPTO: return "Warp to";
+        case RW_ENTRY: return "Entry";
+        case RW_WARPNOW: return "Warp now";
+        default: return "Back";
+    }
+}
+const char* pm_optui_value(int tab, int row, int mode) {
+    int id = row_id(tab, row, mode);
+    if (id >= RW_DBG) return id == RW_DBG + 5 ? lvl_name[pm_options_get(7) & 3] : pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows 0 to 6 are option rows 2 to 8 */
+    if (id >= RW_MAP) return pm_n64_name(pm_map[id - RW_MAP]);
+    switch (id) {
+        case RW_FPS: case RW_WIDE: return pm_options_get(id == RW_FPS ? 0 : 1) ? "On" : "Off";
+        case RW_DPAD: return pm_dpad_mode_name();
+        case RW_EXIT: return exit_armed ? "A again" : NULL;
+        case RW_WARPTO: case RW_ENTRY: { /* PT01: < value > shows that left and right change it */
+            static char wb[32];
+            if (id == RW_WARPTO) snprintf(wb, sizeof wb, "< %s >", pm_warp_choice_text(pm_opt.warp, pm_opt.warp_entry));
+            else if (pm_opt.warp > pm_warp_preset_count()) snprintf(wb, sizeof wb, "< %d >", pm_opt.warp_entry);
+            else return "-";
+            return wb;
+        }
+        default: return NULL;
+    }
 }
 /* PT01: left (dir < 0) or right (dir > 0) on a row. Warp to walks the choices (off, presets, every map of gAreas) with wrap. Entry walks 0 to 15. */
-int pm_optui_step(int tab, int row, int dir) {
-    if (tab != 2 || (row != 7 && row != 8)) return 0;
-    if (row == 7) {
+int pm_optui_step(int tab, int row, int dir, int mode) {
+    int id = row_id(tab, row, mode);
+    if (id != RW_WARPTO && id != RW_ENTRY) return 0;
+    if (id == RW_WARPTO) {
         int n = pm_warp_choice_count();
         pm_opt.warp = ((pm_opt.warp + dir) % n + n) % n;
         if (pm_opt.warp <= pm_warp_preset_count()) pm_opt.warp_entry = 0;
@@ -229,24 +268,37 @@ int pm_optui_step(int tab, int row, int dir) {
         if (pm_opt.warp <= pm_warp_preset_count()) return 0;
         pm_opt.warp_entry = ((pm_opt.warp_entry + dir) % 16 + 16) % 16;
     }
-    pm_options_touch();
-    return 1;
+    return 1; /* the warp choice is not saved (PT32): no pm_options_touch */
 }
-/* result: 0 nothing more, 1 close the panel (Back), 2 leave the file select now (Warp now) */
-int pm_optui_act(int tab, int row) {
-    if (row == pm_optui_rows(tab) - 1) return 1;
-    if (tab == 0) { pm_options_flip(row); return 0; }
-    if (tab == 1) {
-        if (row == 0) pm_dpad_mode_next();
-        else if (row <= PM_NIN) { pm_map[row - 1] = pm_n64_next(pm_map[row - 1]); pm_options_touch(); pm_log("options: map %s = %s", pm_in_name[row - 1], pm_n64_name(pm_map[row - 1])); }
-        else { pm_map_reset(); pm_options_touch(); pm_log("options: controls reset"); }
+/* result: 0 nothing more, 1 close the panel (Back), 2 leave the file select now (Warp now, mode 0),
+ * 3 exit to Homebrew (mode 1, second press), 4 return to the title (mode 1), 5 warp started (mode 1, close the menu) */
+int pm_optui_act(int tab, int row, int mode) {
+    int id = row_id(tab, row, mode);
+    if (id != RW_EXIT) exit_armed = 0;
+    if (id >= RW_DBG) { pm_options_flip(id - RW_DBG + 2); return 0; }
+    if (id >= RW_MAP) {
+        int i = id - RW_MAP;
+        pm_map[i] = pm_n64_next(pm_map[i]); pm_options_touch(); pm_log("options: map %s = %s", pm_in_name[i], pm_n64_name(pm_map[i]));
         return 0;
     }
-    if (row < 7) { pm_options_flip(row + 2); return 0; }
-    if (row == 7) { pm_optui_step(tab, row, 1); return 0; }
-    if (row == 8) { pm_optui_step(tab, row, 1); return 0; }
-    if (pm_opt.warp == 0) return 0;
-    pm_options_close();
-    pm_warp_now(pm_opt.warp, pm_opt.warp_entry);
-    return pm_warp_pending ? 2 : 0;
+    switch (id) {
+        case RW_BACK: return 1;
+        case RW_FPS: pm_options_flip(0); return 0;
+        case RW_WIDE: pm_options_flip(1); return 0;
+        case RW_DPAD: pm_dpad_mode_next(); return 0;
+        case RW_RESET: pm_map_reset(); pm_options_touch(); pm_log("options: controls reset"); return 0;
+        case RW_TITLE: return 4;
+        case RW_EXIT:
+            if (!exit_armed) { exit_armed = 1; return 0; }
+            exit_armed = 0;
+            return 3;
+        case RW_WARPTO: case RW_ENTRY: pm_optui_step(tab, row, 1, mode); return 0;
+        case RW_WARPNOW:
+            if (pm_opt.warp == 0) return 0;
+            if (mode) return pm_warp_live(pm_opt.warp, pm_opt.warp_entry) ? 5 : 0;
+            pm_options_close();
+            pm_warp_now(pm_opt.warp, pm_opt.warp_entry);
+            return pm_warp_pending ? 2 : 0;
+    }
+    return 0;
 }

@@ -35,6 +35,7 @@ static const WarpPreset presets[] = {
     { "toad_west", STORY_CH0_ARRIVED_AT_TOAD_TOWN, "mac_00", 0, 0 }, /* Toad Town west side: kmr_10 zone */
     { "osr",      STORY_CH0_ARRIVED_AT_TOAD_TOWN, "osr_00", 1, 0 },
     { "kmr02",    STORY_CH0_WAKE_UP,              "kmr_02", 0, 0 },
+    { "credits",  STORY_EPILOGUE,                 "end_00", 0, 0 }, /* PT63: the parade and the credits (kkj_00 scene_ending goes here with GotoMapSpecial end_00 entry 0) */
 };
 
 typedef struct { const char* name; s32 value; } StoryName;
@@ -291,6 +292,41 @@ void pm_warp_now(int c, int entry) {
     }
     warp_setup(areaID, mapID);
     pm_warp_pending = 1;
+}
+
+/* PT63: warp from the Select menu in any game mode that has a world to leave. A map change from the world, ENTER_WORLD from the title or the intro
+ * (as pm_warp_hook does at boot). The state is set as a preset sets it (new player data at the story value). Nothing is written to disk. */
+int pm_warp_live(int c, int entry) {
+    int mode = get_game_mode();
+    int ok = mode == GAME_MODE_WORLD || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_INTRO || mode == GAME_MODE_DEMO;
+    if (!ok) {
+        pm_log_w("warp: not possible in game mode %d", mode);
+        return 0;
+    }
+    pm_warp_pending = 0;
+    pm_warp_now(c, entry);
+    if (!pm_warp_pending) return 0;
+    pm_warp_pending = 0;
+    if (mode == GAME_MODE_WORLD) {
+        set_map_transition_effect(TRANSITION_STANDARD);
+        set_game_mode(GAME_MODE_CHANGE_MAP);
+    } else {
+        set_game_mode(GAME_MODE_ENTER_WORLD);
+    }
+    pm_log("warp: live to choice %d entry %d from mode %d", c, entry, mode);
+    return 1;
+}
+
+/* PT66: Return to Title Screen. The game own soft reset: the Mario overlay fades in, the game sounds stop, then GAME_MODE_STARTUP runs
+ * the engine setup again and the logos lead to the title. The flash is flushed and the audio drained first, as for the HOME menu. */
+extern s16 SoftResetOverlayAlpha, SoftResetState;
+void pm_title_return(void) {
+    pm_flash_flush("return to title");
+    pm_audio_drain(3);
+    SoftResetOverlayAlpha = 0;
+    SoftResetState = 0;
+    gOverrideFlags |= GLOBAL_OVERRIDES_SOFT_RESET;
+    pm_log("title: soft reset requested");
 }
 
 void pm_padscript_start(void);

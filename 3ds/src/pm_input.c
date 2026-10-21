@@ -265,7 +265,8 @@ void pm_pad_scan(void) {
     }
     {   /* F11-6: the port menu. A Select press that no game code took in 5 scans opens it. While open the game gets no button and no stick. */
         unsigned md = d | ((ps_menu_edge & 0x8000) ? KEY_A : 0) | ((ps_menu_edge & 0x4000) ? KEY_B : 0) | ((ps_menu_edge & 0x0800) ? KEY_DUP : 0) |
-                      ((ps_menu_edge & 0x0400) ? KEY_DDOWN : 0) | ((ps_menu_edge & 0x0040) ? KEY_SELECT : 0);
+                      ((ps_menu_edge & 0x0400) ? KEY_DDOWN : 0) | ((ps_menu_edge & 0x0200) ? KEY_DLEFT : 0) | ((ps_menu_edge & 0x0100) ? KEY_DRIGHT : 0) |
+                      ((ps_menu_edge & 0x0020) ? KEY_L : 0) | ((ps_menu_edge & 0x0010) ? KEY_R : 0) | ((ps_menu_edge & 0x0040) ? KEY_SELECT : 0);
         ps_menu_edge = 0;
         if (!pm_menu_open) {
             if (select_pending && pm_pad_scans - select_scan >= 5u) { select_pending = 0; pm_menu_set(1); }

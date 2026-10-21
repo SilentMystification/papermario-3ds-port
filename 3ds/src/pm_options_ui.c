@@ -1,7 +1,7 @@
-/* F11-6: the port menu. Select, when no game code takes the press (file select takes it for its own Options panel), opens a text menu on the
- * bottom screen in any game mode. While it is open pm_pad_scan gives the game no button and no stick and the log writer prints nothing on
- * the bottom screen. It reads and writes the same settings as the Options panel (pm_options_get, pm_options_flip) and holds the F11-5 controls:
- * one row per 3DS input, A gives it the next N64 button. Port layer only, no game logic. */
+/* F11-6, PT59: the port menu. Select, when no game code takes the press (file select takes it for its own Options panel), opens a text menu on
+ * the bottom screen in any game mode. While it is open pm_pad_scan gives the game no button and no stick. The menu is the mirror of the Options
+ * panel of the file select (src/filemenu/filemenu_options.c): the tabs, the rows, the values and the actions come from the same table in
+ * pm_options.c (pm_optui_*, mode 1 adds Return to Title and Exit to Homebrew). Port layer only, no game logic. */
 #include <3ds.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,45 +10,33 @@
 
 volatile int pm_menu_open;
 volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
-static int exit_confirm;
 
-#define N_OPT 9
-#define N_ROWS (N_OPT + 1 + PM_NIN + 2) /* last row: Exit to Homebrew (PT28) */ /* UI1c: row N_OPT is the D-pad mode */
-#define VIS 24
-static int sel, top;
-
-static const char* const opt_lbl[N_OPT] = { "60 FPS", "Widescreen", "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed" };
-static const char* const lvl_name[4] = { "Error", "Warn", "Info", "Debug" };
+#define OPT_TABS 3
+#define VIS 10
+#define MODE 1
+static int tab, sel[OPT_TABS], top[OPT_TABS];
+static const char* const tab_name[OPT_TABS] = { "General", "Controls", "Debug" };
 
 static void draw(void) {
     char out[1500];
-    int n = snprintf(out, sizeof out, "SETTINGS  dpad: move  A: change  B/Select: close\n\n");
-    if (sel < top) top = sel;
-    if (sel >= top + VIS) top = sel - VIS + 1;
-    for (int r = top; r < top + VIS && r < N_ROWS; r++) {
-        char line[48];
-        if (r < N_OPT) {
-            int v = pm_options_get(r);
-            snprintf(line, sizeof line, "%-12s %s", opt_lbl[r], r == 7 ? lvl_name[v & 3] : v ? "On" : "Off");
-        } else if (r == N_OPT) {
-            snprintf(line, sizeof line, "D-PAD mode   %s", pm_dpad_mode_name());
-        } else if (r < N_OPT + 1 + PM_NIN) {
-            int i = r - N_OPT - 1;
-            snprintf(line, sizeof line, "Ctl %-7s %s", pm_in_name[i], pm_n64_name(pm_map[i]));
-        } else if (r == N_ROWS - 1) {
-            snprintf(line, sizeof line, exit_confirm ? "Exit to Homebrew: A again" : "Exit to Homebrew");
-        } else snprintf(line, sizeof line, "Reset controls");
-        n += snprintf(out + n, sizeof out - (size_t)n, "%c %s\n", r == sel ? '>' : ' ', line);
+    int n = 0, rows = pm_optui_rows(tab, MODE);
+    if (sel[tab] < top[tab]) top[tab] = sel[tab];
+    if (sel[tab] >= top[tab] + VIS) top[tab] = sel[tab] - VIS + 1;
+    for (int t = 0; t < OPT_TABS; t++) n += snprintf(out + n, sizeof out - (size_t)n, t == tab ? "[%s] " : " %s  ", tab_name[t]);
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n");
+    for (int r = top[tab]; r < top[tab] + VIS && r < rows; r++) {
+        const char* v = pm_optui_value(tab, r, MODE);
+        n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
+    pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
 }
 
 void pm_menu_set(int on) {
     if (on == pm_menu_open) return;
     pm_menu_open = on;
-    exit_confirm = 0;
+    pm_optui_disarm();
     if (on) {
-        sel = top = 0;
         pm_log("menu: open");
         draw();
     } else {
@@ -59,30 +47,32 @@ void pm_menu_set(int on) {
 }
 
 void pm_menu_key(unsigned k) {
-    if (k & (KEY_B | KEY_SELECT)) { pm_menu_set(0); return; }
-    if (k & (KEY_DDOWN | KEY_DUP)) exit_confirm = 0;
-    if (k & KEY_DDOWN) sel = (sel + 1) % N_ROWS;
-    else if (k & KEY_DUP) sel = (sel + N_ROWS - 1) % N_ROWS;
-    else if (k & KEY_A) {
-        if (sel == N_ROWS - 1) { /* PT28: A twice. The main loop ends, pm_shutdown runs (HW7 order), main returns to the Homebrew Launcher. */
-            if (!exit_confirm) exit_confirm = 1;
-            else {
-                pm_log("menu: exit to Homebrew requested");
-                pm_menu_set(0); /* saves options.ini */
-                pm_exit_request = 1;
-                return;
-            }
-        } else if (sel < N_OPT) pm_options_flip(sel);
-        else if (sel == N_OPT) pm_dpad_mode_next();
-        else if (sel < N_OPT + 1 + PM_NIN) {
-            int i = sel - N_OPT - 1;
-            pm_map[i] = pm_n64_next(pm_map[i]);
-            pm_options_touch();
-            pm_log("menu: map %s = %s", pm_in_name[i], pm_n64_name(pm_map[i]));
-        } else if (sel == N_ROWS - 2) {
-            pm_map_reset();
-            pm_options_touch();
-            pm_log("menu: controls reset");
+    int rows = pm_optui_rows(tab, MODE);
+    if (k & KEY_SELECT) { pm_menu_set(0); return; }
+    if (k & (KEY_L | KEY_R)) {
+        tab = (tab + ((k & KEY_L) ? OPT_TABS - 1 : 1)) % OPT_TABS;
+        pm_optui_disarm();
+    } else if (k & (KEY_DDOWN | KEY_DUP)) {
+        pm_optui_disarm();
+        sel[tab] = (sel[tab] + ((k & KEY_DDOWN) ? 1 : rows - 1)) % rows;
+    } else if (k & (KEY_DLEFT | KEY_DRIGHT)) {
+        if (!pm_optui_step(tab, sel[tab], (k & KEY_DRIGHT) ? 1 : -1, MODE)) return;
+    } else if (k & KEY_B) {
+        pm_menu_set(0);
+        return;
+    } else if (k & KEY_A) {
+        int r = pm_optui_act(tab, sel[tab], MODE);
+        if (r == 1 || r == 5) { pm_menu_set(0); return; }
+        if (r == 3) { /* PT28: the main loop ends, pm_shutdown runs (HW7 order), main returns to the Homebrew Launcher. */
+            pm_log("menu: exit to Homebrew requested");
+            pm_menu_set(0); /* saves options.ini */
+            pm_exit_request = 1;
+            return;
+        }
+        if (r == 4) {
+            pm_menu_set(0);
+            pm_title_return();
+            return;
         }
     } else return;
     draw();

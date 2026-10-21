@@ -174,11 +174,11 @@ int pm_options_get(int row);
 void pm_options_flip(int row);
 void pm_options_close(void);
 const unsigned char* pm_options_msg(const char* text, int slot); // UI1a
-int pm_optui_rows(int tab);
-const char* pm_optui_label(int tab, int row);
-const char* pm_optui_value(int tab, int row);
-int pm_optui_act(int tab, int row);
-int pm_optui_step(int tab, int row, int dir);
+int pm_optui_rows(int tab, int mode);
+const char* pm_optui_label(int tab, int row, int mode);
+const char* pm_optui_value(int tab, int row, int mode);
+int pm_optui_act(int tab, int row, int mode);
+int pm_optui_step(int tab, int row, int dir, int mode);
 int pm_pad_take_tab(void);
 extern int pm_warp_pending;
 void filemenu_options_init(MenuPanel*);
