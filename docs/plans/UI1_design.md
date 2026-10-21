@@ -57,3 +57,6 @@ Not covered: a world screen that is not one of these (none known). A script that
 - Debug tab: `Warp to` (Off, the presets, every map without the `tst_*` maps), `Entry`, `Warp now`. The choice is a runtime value only and is never written to options.ini.
 - `Credits` is the preset `credits`: map `end_00` entry 0, story 96 (`STORY_EPILOGUE`), no partner, flag or item. The kkj_00 ending scene reaches end_00 the same way (`GotoMapSpecial`). It also works as the debug switch `preset=credits`.
 - `Warp now` in the Select menu calls `pm_warp_live` (`pm_warp.c`): from the world a normal map change, from the title, the intro or the demo `GAME_MODE_ENTER_WORLD`. Other game modes refuse (a warning in the log). The player data is new at the story value, as for a preset.
+
+## Return to Title Screen (PT66)
+- General tab of the Select menu. `pm_title_return` (`pm_warp.c`) flushes the flash (`pm_flash_flush`), drains the audio (`pm_audio_drain(3)`), then sets `GLOBAL_OVERRIDES_SOFT_RESET`. This is the soft reset of the game itself (`main_loop.c`): the Mario overlay fades in, then `GAME_MODE_STARTUP` runs the engine setup again, then the logos, the intro and the title screen, as at boot. The boot warp does not run a second time.
