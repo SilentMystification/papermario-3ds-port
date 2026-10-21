@@ -231,10 +231,11 @@ int pm_rom_init(void) {
     /* M01: keep only the ranges in pm_rom_keep, packed back to back. Offsets the game uses stay the original ones. */
     int can_pack = sz == (long)PM_ROM_FULL && !pm_debug_has("romfull");
     unsigned need = can_pack ? PM_ROM_PACKED : (unsigned)sz;
-    /* Heap is 44MB. Leave 4MB of it for the game. */
-    unsigned leave = 4u * 1024u * 1024u;
+    /* ROMFIT: leave 3.5MB of the heap for the game (build 1011: 4MB left a cap 38KB under the packed image). */
+    unsigned leave = 3584u * 1024u;
     unsigned heap = pm_heap_bytes();
     unsigned cap = heap > leave ? heap - leave : 0;
+    if (sz > 0 && need > cap) pm_log_e("ROM does not fit: need %u KB cap %u KB, streaming from the SD card", need >> 10, cap >> 10);
     if (sz > 0 && need <= cap) {
         u8* block = (u8*)memalign(16, (size_t)need);
         int ok = block != NULL;
@@ -250,7 +251,7 @@ int pm_rom_init(void) {
             rom_size = (u32)sz;
             rom_remap = can_pack;
             fclose(f);
-            pm_log_d("rom resident %uKB of %uKB%s", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "");
+            pm_log_w("rom resident %uKB of %uKB%s, cap %uKB, margin %uKB", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "", cap >> 10, (cap - need) >> 10);
             pm_log_d("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
             return 1;
         }
@@ -258,7 +259,8 @@ int pm_rom_init(void) {
     }
     rewind(f);
     rom = f;
-    pm_log_d("rom streaming (%ld bytes, cap %uKB)", sz, cap >> 10);
+    rom_size = (u32)sz; /* ROMFIT: the streaming read checks rom_size, 0 turned every read into PAST END plus zeros */
+    pm_log_w("rom streaming (%ld bytes, need %uKB, cap %uKB)", sz, need >> 10, cap >> 10);
     pm_log_d("ram n64 4MB, port %uMB", pm_linear_bytes() >> 20);
     return 1;
 }
