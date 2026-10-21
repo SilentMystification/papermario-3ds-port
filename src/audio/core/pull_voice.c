@@ -30,7 +30,7 @@ s16 AuEqPower[AUEQPOWER_LENGTH] = {
 };
 
 static Acmd* _decodeChunk(Acmd* cmdBufPos, AuLoadFilter* filter, s32 tsam, s32 nbytes, s16 output, s16 input, s32 flags);
-static s16 _getRate(f64 vol, f64 tgt, s32 count, u16* ratel);
+s16 _getRate(f64 vol, f64 tgt, s32 count, u16* ratel);
 
 // decode, resample, and mix
 Acmd* au_pull_voice(AuPVoice* pvoice, Acmd* cmdBufPos) {
@@ -350,7 +350,7 @@ static Acmd* _decodeChunk(Acmd* cmdBufPos, AuLoadFilter* filter, s32 tsam, s32 n
 
 // computes an audio volume ramp rate
 // used for smooth volume transitions in envelope segments
-static s16 _getRate(f64 vol, f64 tgt, s32 count, u16* ratel) {
+s16 _getRate(f64 vol, f64 tgt, s32 count, u16* ratel) {
     f64 inv;
     f64 a;
     f64 b;

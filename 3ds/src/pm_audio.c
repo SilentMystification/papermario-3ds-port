@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include "pm_port.h"
 #include "pm_au2.h"
+#include "pm_dsptest.h"
+#include "pm_dspaud.h"
 
 #define CAP 8192
 #define SLOTS 8
@@ -34,6 +36,7 @@ static s16* data[SLOTS];
 /* HW7: stop the DSP use before libctru frees the heap. The audio thread stays blocked on its event and never runs again. */
 void pm_audio_shutdown(void) {
     pm_au2_stop(); /* AU2: drain and end the render thread before the DSP goes away */
+    pm_dspa_shutdown();
     if (!ready) return;
     ready = 0;
     pm_exit_mark("audio: reset");
@@ -54,6 +57,11 @@ void pm_audio_init(void) {
         return;
     }
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+    if (pm_debug_has("dspaudio")) {
+        if (pm_debug_has("au2off")) pm_log_w("dspaudio needs the AU2 queue: switch au2off turns it off, the old mixer plays");
+        else if (pm_dspa_init()) { ready = 1; return; }
+        else pm_log_e("dspaudio: init failed, the old mixer plays");
+    }
     ndspChnReset(0);
     ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
     ndspChnSetRate(0, (float)rate);
@@ -71,9 +79,11 @@ void pm_audio_init(void) {
     }
     ready = 1;
     pm_log("ndsp ready %u Hz\n", rate);
+    if (pm_debug_has("dsptest")) pm_dsptest_start();
 }
 
 void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
+    if (pm_dspa_enabled) return; /* dspaudio: the voices play on ndsp channels, nothing is posted */
     if (hz && hz != rate) {
         rate = hz;
         if (ready) ndspChnSetRate(0, (float)rate);
@@ -86,6 +96,7 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
     }
     if (!ready) pm_audio_init();
     if (!ready) return;
+    if (pm_dsptest_active()) return; /* A2: the test owns all 24 channels */
     {
         /* Log once per 120 posts: how many were queued and the loudest sample, to check the output in an emulator. */
         static unsigned posts;
@@ -264,6 +275,7 @@ static void au_stats_log(void) {
     f_iv_min = f_pend_min = 0xFFFFFFFFu;
     f_t_first = f_t_last = 0;
     pm_au2_stats_log();
+    pm_dspa_stats_log();
     au_w_n = au_w_sum = au_w_max = au_j_sum = au_j_max = au_g_sum = au_k_n = 0;
     for (int i = 0; i < 4; i++) au_site_n[i] = au_site_sum[i] = 0;
 }
@@ -319,6 +331,7 @@ unsigned pm_audio_retraces(void) {
 
 /* Bytes of PCM that were posted and not played yet. This is what osAiGetLength reports. */
 unsigned pm_audio_pending(void) {
+    if (pm_dspa_enabled) { unsigned n = pm_dspa_backlog_blocks() * 184u; return n > PM_AU_LEAD ? (n - PM_AU_LEAD) * 4 : 0; } /* dspaudio: samples the timeline still has to play */
     if (pm_audio_lock()) return 0; /* audiolock: osAiGetLength 0 so the PCM does not depend on the clock */
     /* PT14: the game mixes a full frame (552 samples) when this value is below 184 samples and a short frame (368) otherwise. The N64 value is the
      * rest of one DMA buffer, so the game keeps about 184 samples ahead. Here the value is the whole ndsp backlog, and two ticks come in one burst per

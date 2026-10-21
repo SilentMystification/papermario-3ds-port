@@ -489,6 +489,9 @@ void au_syn_begin_audio_frame(AuGlobals* globals) {
         if (voiceUpdateFlags & AU_VOICE_SYNC_FLAG_ALL) {
             au_voice_start(voice, &voice->envelope);
             au_syn_start_voice_params(i, voice->busID, voice->instrument, voice->pitchRatio, voice->volume, voice->pan, voice->reverb, voice->delta);
+#ifdef TARGET_3DS
+            pm_au2_vstart((unsigned)(uintptr_t)voice->instrument->wavData, voice->instrument->wavDataLength);
+#endif
             // priority may be AU_PRIORITY_FREE if this voice was stolen and reset
             voice->priority = voice->clientPriority;
         } else {
@@ -504,6 +507,22 @@ void au_syn_begin_audio_frame(AuGlobals* globals) {
         }
         voice->syncFlags = 0;
     }
+#ifdef TARGET_3DS
+    {   /* AUDDSP A1: voice statistics for docs/plans/AUD_DSP.md (pm_au2.c prints them with audiostat) */
+        int used = 0, bus[4] = {0, 0, 0, 0}, adpcm = 0, loop = 0, hi = 0;
+        for (i = 0; i < ARRAY_COUNT(globals->voices); i++) {
+            AuVoice* v = &globals->voices[i];
+            if (v->priority == AU_PRIORITY_FREE || v->instrument == nullptr) continue;
+            used++;
+            if (v->busID < 4) bus[v->busID]++;
+            if (v->instrument->type == AL_ADPCM_WAVE) adpcm++;
+            if (v->instrument->loopEnd != 0) loop++;
+            if (v->pitchRatio > 2.0f) hi++;
+        }
+        pm_au2_vstat(used, bus, adpcm, loop, hi,
+                     globals->effectChanges[0].type, globals->effectChanges[1].type, globals->effectChanges[2].type, globals->effectChanges[3].type);
+    }
+#endif
 }
 
 void au_reset_nonfree_voice(AuVoice* voice, u8 index) {
@@ -1232,6 +1251,24 @@ void au_swizzle_BK_instruments(s32 bkFileOffset, BKFileBuffer* file, InstrumentB
             }
         }
         header->swizzled = true;
+#ifdef TARGET_3DS
+        {   /* AUDDSP A1: size of the sample data one bank brings (unique wavData) */
+            u32 bytes = 0, nunique = 0, nloop = 0, nraw = 0, maxlen = 0;
+            s32 j;
+            for (i = 0; i < instrumentCount; i++) {
+                Instrument* a = instruments[i];
+                if (a == nullptr || a == defaultInstrument || a->wavData == 0) continue;
+                for (j = 0; j < i; j++) if (instruments[j] != nullptr && instruments[j]->wavData == a->wavData) break;
+                if (j < i) continue;
+                nunique++;
+                bytes += a->wavDataLength;
+                if (a->wavDataLength > maxlen) maxlen = a->wavDataLength;
+                if (a->loopEnd != 0) nloop++;
+                if (a->type != AL_ADPCM_WAVE) nraw++;
+            }
+            pm_au2_bankstat(bkFileOffset, instrumentCount, nunique, bytes, maxlen, nloop, nraw);
+        }
+#endif
     }
 }
 

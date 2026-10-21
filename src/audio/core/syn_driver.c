@@ -22,6 +22,7 @@ extern s16 AuEqPower[128];
 #ifdef TARGET_3DS
 /* AU2: the render part of every call below runs as a command (docs/plans/AU2_design.md). */
 #include "pm_au2.h"
+#include "pm_dspaud.h"
 #define AU2_X(name) name##_x
 void au_use_global_volume_x(void);
 void au_set_global_volume_x(s16 volume);
@@ -34,6 +35,8 @@ static Au2Stop au2_stopq[AU2_STOPQ];
 static u32 au2_sq_w, au2_sq_r;
 static u32 au2_blk_emit, au2_blk_done;
 static u32 au2_vgen_c[24], au2_vgen_r[24];
+u32 au2_vgen_get(int idx) { return au2_vgen_r[idx]; }
+unsigned au2_blk_backlog(void) { return au2_blk_emit - au2_blk_done; }
 static u32 au2_hist_blk[4], au2_hist_job[4], au2_frame_no;
 
 void au_bus_set_volume_x(u8 busID, u16 value);
@@ -107,7 +110,7 @@ void au2_stop_record(int voiceIdx) {
 static void au2_apply_stops(void) {
     u32 h = (au2_frame_no - 2) & 3;
     if (au2_frame_no < 2) return;
-    pm_au2_wait_jobs(au2_hist_job[h]);
+    if (!pm_dspa_enabled) pm_au2_wait_jobs(au2_hist_job[h]); /* dspaudio: the timeline runs behind real time, the control side must not wait for it */
     for (;;) {
         u32 rd = au2_sq_r;
         Au2Stop* r;
@@ -1093,7 +1096,8 @@ void au2_exec(const AuCmd* c) {
         case AUC_GVOL_USE: au_use_global_volume_x(); break;
         case AUC_GVOL_SET: au_set_global_volume_x(c->s1); break;
         case AUC_BLOCK:
-            au_render_block_x(AlCmdListBuffers[0], (s16*)(uintptr_t)c->v0);
+            if (pm_dspa_enabled) { pm_dspa_pace(); au_dsp_block(); }
+            else au_render_block_x(AlCmdListBuffers[0], (s16*)(uintptr_t)c->v0);
             au2_blk_done++;
             if (au2_tr > 0) {
                 if (au2_tr_nr < AU2_TR_MAX) { au2_tr_r[au2_tr_nr] = au2_cur_r; au2_tr_p[au2_tr_nr] = au2_fnv(2166136261u, (void*)(uintptr_t)c->v0, 4 * AUDIO_SAMPLES); }

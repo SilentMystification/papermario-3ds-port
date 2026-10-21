@@ -57,6 +57,9 @@ void pm_au2_wait_jobs(uint32_t target);    /* wait until `target` jobs ran (a va
 int pm_au2_start(void);                    /* create the render thread; 0 = not started (au2off or failure) */
 void pm_au2_stop(void);                    /* drain and end the render thread */
 int pm_au2_on_render(void);                /* 1 on the render thread */
+void pm_au2_vstat(int used, const int bus[4], int adpcm, int loop, int hi, int fx0, int fx1, int fx2, int fx3); /* AUDDSP A1, control thread, once per tick */
+void pm_au2_bankstat(int romOfs, int ninst, int nunique, unsigned bytes, unsigned maxlen, int nloop, int nraw); /* AUDDSP A1 */
+void pm_au2_vstart(unsigned wav, unsigned len); /* AUDDSP A1: a voice starts this sample */
 void pm_au2_stats_log(void);               /* called at each 300th control join */
 void pm_au2_rom_lock(void);                /* LightLock around the ROM file read while the queue is active */
 void pm_au2_rom_unlock(void);

@@ -170,7 +170,54 @@ void pm_au2_stop(void) {
     rthread = NULL;
 }
 
+/* AUDDSP A1: voices in use per audio tick, window of one stats line */
+static unsigned vs_n, vs_sum, vs_max, vs_hist[5], vs_bus[4], vs_adpcm, vs_loop, vs_hi, vs_full, vs_fx[4][12];
+void pm_au2_vstat(int used, const int bus[4], int adpcm, int loop, int hi, int fx0, int fx1, int fx2, int fx3) {
+    if (!pm_debug_has("audiostat")) return;
+    vs_n++; vs_sum += used; if ((unsigned)used > vs_max) vs_max = used;
+    vs_hist[used <= 8 ? 0 : used <= 12 ? 1 : used <= 16 ? 2 : used <= 23 ? 3 : 4]++;
+    if (used >= 24) vs_full++;
+    for (int i = 0; i < 4; i++) vs_bus[i] += bus[i];
+    vs_adpcm += adpcm; vs_loop += loop; vs_hi += hi;
+    int fx[4] = {fx0, fx1, fx2, fx3};
+    for (int i = 0; i < 4; i++) vs_fx[i][fx[i] > 11 ? 11 : fx[i]]++;
+}
+
+void pm_au2_bankstat(int romOfs, int ninst, int nunique, unsigned bytes, unsigned maxlen, int nloop, int nraw) {
+    static unsigned total;
+    total += bytes;
+    pm_log("auddsp bank: rom 0x%x slots %d unique samples %d adpcm bytes %u max sample %u looped %d non-adpcm %d, sum of banks loaded so far %u",
+           (unsigned)romOfs, ninst, nunique, bytes, maxlen, nloop, nraw, total);
+}
+
+static unsigned vu_wav[1024], vu_len[1024], vu_n, vu_starts, vu_bytes;
+void pm_au2_vstart(unsigned wav, unsigned len) {
+    if (!pm_debug_has("audiostat")) return;
+    vu_starts++;
+    for (unsigned i = 0; i < vu_n; i++) if (vu_wav[i] == wav) return;
+    if (vu_n < 1024) { vu_wav[vu_n] = wav; vu_len[vu_n++] = len; vu_bytes += len; }
+}
+
 void pm_au2_stats_log(void) {
+    if (pm_debug_has("audiostat") && vu_starts) {
+        unsigned mx = 0;
+        for (unsigned i = 0; i < vu_n; i++) if (vu_len[i] > mx) mx = vu_len[i];
+        pm_log_d("audio vsamples: voice starts %u unique samples %u adpcm bytes %u (pcm16 equal %u) largest %u", vu_starts, vu_n, vu_bytes, vu_bytes * 32 / 9, mx);
+        vu_n = vu_starts = vu_bytes = 0;
+    }
+    if (pm_debug_has("audiostat") && vs_n) {
+        pm_log_d("audio vstat: ticks %u voices avg x100 %u max %u, ticks with <=8 %u, 9-12 %u, 13-16 %u, 17-23 %u, 24 %u; avg x100 per bus b0 %u b1 %u b2 %u b3 %u; adpcm %u loop %u pitch>2 %u (x100 avg)",
+                 vs_n, vs_sum * 100 / vs_n, vs_max, vs_hist[0], vs_hist[1], vs_hist[2], vs_hist[3], vs_hist[4],
+                 vs_bus[0] * 100 / vs_n, vs_bus[1] * 100 / vs_n, vs_bus[2] * 100 / vs_n, vs_bus[3] * 100 / vs_n,
+                 vs_adpcm * 100 / vs_n, vs_loop * 100 / vs_n, vs_hi * 100 / vs_n);
+        pm_log_d("audio vfx: ticks per fx type (0 none 1 small 2 big 3 chorus 4 flange 5 echo 6-9 custom 10 otherbig) bus0 %u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u bus1 %u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u bus2 %u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u bus3 %u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u",
+                 vs_fx[0][0], vs_fx[0][1], vs_fx[0][2], vs_fx[0][3], vs_fx[0][4], vs_fx[0][5], vs_fx[0][6], vs_fx[0][7], vs_fx[0][8], vs_fx[0][9], vs_fx[0][10],
+                 vs_fx[1][0], vs_fx[1][1], vs_fx[1][2], vs_fx[1][3], vs_fx[1][4], vs_fx[1][5], vs_fx[1][6], vs_fx[1][7], vs_fx[1][8], vs_fx[1][9], vs_fx[1][10],
+                 vs_fx[2][0], vs_fx[2][1], vs_fx[2][2], vs_fx[2][3], vs_fx[2][4], vs_fx[2][5], vs_fx[2][6], vs_fx[2][7], vs_fx[2][8], vs_fx[2][9], vs_fx[2][10],
+                 vs_fx[3][0], vs_fx[3][1], vs_fx[3][2], vs_fx[3][3], vs_fx[3][4], vs_fx[3][5], vs_fx[3][6], vs_fx[3][7], vs_fx[3][8], vs_fx[3][9], vs_fx[3][10]);
+        vs_n = vs_sum = vs_max = vs_adpcm = vs_loop = vs_hi = vs_full = 0;
+        memset(vs_hist, 0, sizeof vs_hist); memset(vs_bus, 0, sizeof vs_bus); memset(vs_fx, 0, sizeof vs_fx);
+    }
     if (!stats() || !pm_au2_active) return;
     unsigned j = st_jobs ? st_jobs : 1, rj = r_jobs ? r_jobs : 1;
     pm_log_d("audio2: jobs %u cmds/job avg %u max %u, emit cost %u us per job, ring fill min %u avg %u (jobs queued at commit), render busy avg %u us max %u us per job, ring full waits %u (%u us)",
