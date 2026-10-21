@@ -48,3 +48,11 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] PT18 | O3DS Push 3 A/B run was played by hand, repeat it hands-off if needed. Text: docs/plans/playtest_2026-10-20.md | no bug in the same scene on hardware or Azahar shots
 [ ] PT19 | N3DS at 192.168.10.107 is on another subnet: push needs same network or SD card route. Text: docs/plans/playtest_2026-10-20.md | no bug in the same scene on hardware or Azahar shots
 [ ] PT20 | Merlon door, summit and Peach room need a hardware or Azahar shot. Attach shot paths here when found. Text: docs/plans/playtest_2026-10-20.md | no bug in the same scene on hardware or Azahar shots
+[ ] PT21 | Water in Toad Town shows the background behind it. Text: docs/plans/playtest_2026-10-20.md, section Playtest 2 | water shows its own surface, not the background, on hardware or Azahar shots
+[ ] PT22 | Audio with dspaudio is "sorta correct, but highly distorted". Text: docs/plans/playtest_2026-10-20.md, section Playtest 2 | audio plays without distortion in a hardware play push run
+[ ] PT23 | Certain geometry flickers in Toad Town. Text: docs/plans/playtest_2026-10-20.md, section Playtest 2 | no flicker in the same scene on hardware or Azahar shots
+[ ] PT24 | FPS counter says 30 FPS, game is not at 30 FPS. Show internal and external frame rate, e.g. 15/30 FPS. Text: docs/plans/playtest_2026-10-20.md, section Playtest 2 | counter shows internal and external frame rate on screen
+[ ] PT25 | Dust effect that follows Mario is a rectangle. Text: docs/plans/playtest_2026-10-20.md, section Playtest 2 | dust effect is not a rectangle on hardware or Azahar shots
+[ ] PT26 | Merlon's house camera bug (PT05) is still there. Text: docs/plans/playtest_2026-10-20.md, section Playtest 2 | camera does not move weirdly when talking to Merlon's door, on hardware or Azahar
+[ ] PT27 | Frame rate is still pretty low (build 970). Text: docs/plans/playtest_2026-10-20.md, section Playtest 2 | measured frame rate in the same scene is higher than build 970 and is recorded in the row text
+[ ] PT28 | Add a shortcut to close back into the Homebrew menu from the Select menu. Text: docs/plans/playtest_2026-10-20.md, section Playtest 2 | the shortcut in the Select menu returns to the Homebrew menu on hardware
