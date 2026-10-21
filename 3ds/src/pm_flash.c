@@ -71,6 +71,7 @@ void pm_flash_flush(const char* why) {
 
 void pm_flash_mark(unsigned off, unsigned len) {
     if (len == 0) return;
+    pm_audio_drain(2); /* AU2: a save drains the mixer queue */
     LightLock_Lock(&flash_lock);
     if (off < flash_dirty_lo) flash_dirty_lo = off;
     if (off + len > flash_dirty_hi) flash_dirty_hi = off + len;

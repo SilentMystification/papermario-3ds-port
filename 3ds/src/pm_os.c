@@ -7,6 +7,7 @@
 #include "enums.h"
 #include "pm_port.h"
 #include "pm_tex.h"
+#include "pm_au2.h"
 #include "rom_remap.h"
 
 void osInvalICache(void* addr, s32 nbytes) {
@@ -375,7 +376,9 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
             /* Byte stream, not word-swapped. A display list copied out of the ROM is still
              * big-endian until the loader that knows the type swaps it once. */
             size_t got = 0;
+            if (pm_au2_active) pm_au2_rom_lock(); /* AU2: the render thread reads samples while the game thread loads */
             if (rom && fseek(rom, (long)addr, SEEK_SET) == 0) got = fread(out, 1, n, rom);
+            if (pm_au2_active) pm_au2_rom_unlock();
             if (got < n) memset(out + got, 0, n - got);
         }
         out += n; addr += n; left -= n;
@@ -469,6 +472,14 @@ s32 osAiSetFrequency(u32 hz) {
 }
 
 s32 osAiSetNextBuffer(void* buf, u32 nbytes) {
+    if (pm_au2_active && !pm_au2_idle()) { /* AU2: the render thread posts it after it rendered the frame (queue order). Idle render thread: post at once, no wake. */
+        AuCmd c = { AUC_POST };
+        c.v0 = (s32)(uintptr_t)buf;
+        c.v1 = (s32)nbytes;
+        pm_au2_emit(&c);
+        pm_au2_commit();
+        return 0;
+    }
     pm_audio_post(buf, (unsigned)nbytes, 0);
     return 0;
 }

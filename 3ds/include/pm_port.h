@@ -125,6 +125,7 @@ unsigned pm_audio_retraces(void);
 unsigned pm_audio_pending(void);
 int pm_audio_lock(void);
 void pm_audio_hash_log(void);
+void pm_audio_drain(int reason); /* AU2: join the control job, then wait for the render thread (reason: AU2_SYNC_* in pm_au2.h) */
 void pm_audio_step(void); /* AU1b: once per drawn step */
 /* B7-0: swirl capture (pm_cfb_capture_prev) and F03 depth query timing, read and cleared by the b7 line in pm_gbi.c. ticks of the ARM11 clock */
 typedef struct PmB7 { unsigned cap_n, cap_ticks, cap_max, dq_n, dq_ticks, dq_max; } PmB7;

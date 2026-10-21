@@ -565,6 +565,7 @@ void __wrap_set_game_mode(s16 mode) {
 }
 
 void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
+    pm_audio_drain(1); /* AU2: map change drains the mixer queue */
     {
         extern unsigned pm_pad_scans;
         pm_log_d("load map area %d map %d scan %u", areaID, mapID, pm_pad_scans);
