@@ -132,52 +132,36 @@ Lines to grep in the pull:
 
 ## 8. Build 970 (main d54053ce5 without map_restore_table.c): the new defaults and four pushes
 
-### 8.0 Push PLAY: the one planned push (the user plays by hand)
-Build 981 (main 962af8d5e with LB-2 and VIS-3, without map_restore_table.c). No automated test runs on the console (user decision). gv1, raw1, fl1 and FS1 are on, no abtog. Azahar gate for build 981: statehash f1800 53090ae9, f4000 d95fd1a4, f8000 82add753 equal, golden yard 0.00, toad 0.01, pause1 0.06, battle 2.56, host tests dspdec and au2 ok.
+### 8.0 Two pushes for build 1011: PLAY and SAVE (the user plays by hand)
+Build 1011 (main 702308b3f with LB-3 and VIS-4, without map_restore_table.c). No automated test runs on the console. Azahar gate for build 1011: the full cycle boots through the intro (no `warp=` at boot since LB-3). Statehash references for this start: f1800 5a6bb12a, f4000 bcd4e3ea, f8000 1325de7e. The set 53090ae9, d95fd1a4, 82add753 belongs to the old `warp=osr` start (intro skipped). Do not mix the two sets. Host tests dspdec and au2 ok. No golden run for this build.
+Options: the game now reads `options.ini`. An old `options.txt` on the card is migrated. The `warp=` line is ignored. The user can delete it.
+Common start:
 ```
-cp 3ds/logs/builds/pm_3ds_981.3dsx build3ds/pm_3ds.3dsx
-export O=<ip> B=981; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum camlog loglevel=debug
+cp 3ds/logs/builds/pm_3ds_1011.3dsx build3ds/pm_3ds.3dsx
+export O=<ip> B=1011
 ```
-`camlog` writes up to 60 lines per second (one per game step). It logs the camera and the player for the Merlon door scene. After that scene, push again without `camlog` if the log gets long.
-Audio fallbacks. Use them in this order, one per push, only if the audio is wrong:
-1. As is (the command above).
-2. Add `dspfx=off` (no effect path, the wet sends go to the main mix).
-3. Add `dspgain=50 dspflush` (half mix level and a data cache flush before every wave buffer add).
-The user plays as long as they want. Then press HOME, or use the Select menu last row Exit to Homebrew. Start the FTP app (port 5000) and pull:
+#### Push PLAY (speed and DLC data)
+```
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum abtog=base,dlc:60 loglevel=debug
+```
+`abtog` switches the display-list cache `dlc` on and off every 60 drawn steps. Both states draw the same picture. The user plays as long as they want, then HOME or the Select menu row Exit to Homebrew. Start the FTP app (port 5000) and pull:
 ```
 python3 -u 3ds/tools/ftppull.py $O o build3ds; cp build3ds/hw_o3ds_log.txt 3ds/logs/perf/hw_${B}_PLAY_pull.txt
 ```
-What the user checks and tells:
-- The audio distortion is gone (PT22 VADPCM decode fix).
-- The effects (reverb, echo) are on.
-- The HUD shows drawn/steps (PT24).
-- The Select menu has the last row Exit to Homebrew and it leaves the game (PT28).
-- Note the minute of anything odd.
 Read-out (P = the pull file):
-- `grep -E "dspaudio: (first aux callback ran|aux mask|aux callbacks)" P` and `grep "audio dsp: aux callbacks" P`: the aux callback runs (bus0 and bus1 counts above 0, core number). Without the first line the wet part goes to the main mix.
-- `grep "audio dsp:" P`, `grep "audio2:" P`, `grep "audio cost" P`: DSP audio state, underruns, cost per 60 Hz tick.
-- `grep "pace:" P`: steps per second and late steps. The last `late steps ... of ...` gives the total share.
-- `grep -i camlog P | head`: the camera lines of the door scene (the format is in pm_warp.c, PT26L).
-- `grep texstat P`, `grep " spike " P`, `grep -E "^#[0-9]+ (phs|phc) " P`: texture cache, steps over 50 ms, phase averages and flush/raw counters.
+- `grep "abtog " P`: each state change. `grep -E "^#[0-9]+ (phs|phh|phc) " P`: phase averages per scene and per state (base against dlc: gb, gd, gp columns). `grep " dlc" P`: the dlc counters.
+- `grep "pace:" P`, `grep " spike " P`, `grep texstat P`.
+- `grep -E "dspaudio: (first aux callback ran|aux mask)|audio dsp:|audio2:|audio cost" P`.
 - `grep -E "FAIL|CRASH|lines dropped" P` must be empty or 0. `grep "exit:" P` shows a clean shutdown.
-Other fallbacks: drop `dspaudio` (old audio path). Graphics wrong: add one of `nogv1`, `noraw1`, `nofl1`, `nonoise`, `nodecal2`.
-
-### 8.0d Push DLC: the map display list replay (DLC1), the user plays in Toad Town
-Build 984 (main 6e2cb90ce, without map_restore_table.c). File: 3ds/logs/builds/pm_3ds_984.3dsx (ELF and map next to it). The switch `dlc` is off by default. `abtog=base,dlc:30` turns it on and off every 30 drawn steps, so one run gives both states in the same scene.
+The HUD may not show the abtog state: use the `abtog` lines of the log with their frame numbers.
+Audio fallbacks: add `dspfx=off`, then `dspgain=50 dspflush`, or drop `dspaudio`.
+#### Push SAVE (save block faults, pipe faults, Merlon door)
 ```
-cp 3ds/logs/builds/pm_3ds_984.3dsx build3ds/pm_3ds.3dsx
-export O=<ip> B=984; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio pacestat logstat phase phsum dlsrc loglevel=debug abtog=base,dlc:30
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat pacestat logstat phase phsum camlog entlog mtxlog nogv1 noraw1 nofl1 fs1off loglevel=debug
 ```
-The user walks in Toad Town (mac_00) and then in the plaza (mac_01) for about 2 minutes in each, then leaves with the Select menu. Pull as in 8.0. Do not use `dlccheck` on the console (it hashes every list).
-Azahar numbers for the same change (route play1, same switches with and without dlc): Toad Town walk gbi 10.47 to 8.67 ms per drawn step, gbiops 7138 to 5848 per step, plaza gbi 11.00 to 9.41 ms. With the ratio 3.5 the console should show about 6 ms less in town.
-Read-out (P = the pull file). A phs or phc line holds the SUM over n drawn steps (n is in the line). Divide by n.
-- `grep -E "^#[0-9]+ phs " P`: one line per state (base, dlc) and scene. The third number after the first bar is gb (the gbi phase) in 0.1 ms, summed. Gate: gb per step with dlc lower than with base by 4 ms or more in the town scene (game mode 4, area 1, map 0 or 1). Town gb was 38.8 to 40.4 ms in build 970.
-- `grep -E "^#[0-9]+ phc " P`: the counters per state. The 16th number after the bar is gbiops. It falls by about 1000 per step with dlc. The first number (tri) falls by about 900 per step and the third (vtxload) by about 1500. The fifth (draw) stays equal within 2 percent.
-- `grep -E "^#[0-9]+ phh " P`: the histogram of cpu ms per step. The bins over 40 ms shrink with dlc.
-- `grep -E "^#[0-9]+ dlc2? " P`: lines of the dlc state only. `skip` over 70 percent of `grp` and `near` under 2 percent show that the box test works. `hashbad`, `exitbad`, `missing` read 0 on the console because `dlccheck` is off there.
-- `grep -E "^#[0-9]+ dlsrc2? " P` (tool: python3 3ds/tools/dlsrc_report.py P): the share of ops, triangles and vertex loads by list class. It shows the work that stays after DLC1: the state ops of the main list and of the texture lists.
-- The user checks the picture: no missing floor, wall or roof piece at the edge of the screen and no flicker while walking. If something is wrong: write the minute and add `nodlc` to the next push.
-- Fallback: `nodlc`, or no `abtog` word. The `dlc` word is the only change from build 981 in the render path.
+This push turns off GV1, RAW1, FL1 and FS1. The user plays the Toad Town save block scenes, the Yoshi village save block and the Merlon door. If the faults vanish with these switches, they come from GV1, RAW1, FL1 or FS1: then push again with one switch dropped at a time (`nogv1`, `noraw1`, `nofl1`, `fs1off`) to find the one. `camlog` writes up to 60 lines per second and `mtxlog` at most 50 lines per 30 frames: the log gets long, so keep the session short and note the minute of each fault. Pull as for PLAY (copy to `hw_${B}_SAVE_pull.txt`). Read-out:
+- `grep -i camlog P | head`, `grep -i entlog P`, `grep -i mtxlog P`: camera, entity and matrix lines around the noted minute.
+- `grep "pace:" P`, `grep -E "FAIL|CRASH|lines dropped" P`, `grep "exit:" P`.
 
 ### 8.0b Optional pushes, not planned (the user chose hand play)
 Push R (route), A (full cycle abtog), B (dspaudio listening) and C (bench, dsptest) stay for later use. They are in sections 8.1 to 8.4. Each needs the run time and hands listed there. Section 8.4 explains `play1_nosave` and the route file upload.
