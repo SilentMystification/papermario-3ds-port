@@ -110,3 +110,22 @@ Same scene as H4 in commands_hw_891.txt, three runs of 60 s: cpulimit=30, 50, 80
 - Whether `socInit` and the accept path work on the console (Azahar: yes, buffer at 0x08000000).
 - The ms of a save on the SD card of the console.
 - The HOME and sleep behaviour of the flash thread (tested only with the switch `flashfake` in Azahar).
+
+## 7. Push BENCH: micro-benchmarks on the console (pulled log only)
+
+Build: the file is 3ds/logs/builds/pm_3ds_bench_<build>.3dsx in the main folder (lane C, branch lane-c, without the uncommitted map_restore_table.c change). Copy it to build3ds/pm_3ds.3dsx before the push. The benches run at the start of the frame loop, after the GPU and audio init, and end the game with `benchexit`. Time: about 30 to 60 s on the console. User hands: none, except start the FTP app after the run.
+
+Command:
+```
+export O=<ip> B=<build>; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 bench benchexit loglevel=debug
+```
+Wait 90 s. Start the FTP app (port 5000). Then pull:
+```
+python3 -u 3ds/tools/ftppull.py $O o build3ds; cp build3ds/hw_o3ds_log.txt 3ds/logs/perf/hw_${B}_BENCH_pull.txt
+```
+Optional second push, only after the first one ended well: add `bench=r2` (GPU call of a sub command buffer) or `bench=svcflush` (SVC may end the process: the last line is then `bench: svcflush start`). Both are not in `bench`.
+
+Lines to grep in the pull:
+- `grep "bench:" <pull>` all results. Draw ladder: `grep "bench: draw" <pull>`. Flush: `grep "bench: flush" <pull>`. Texture and writes: `grep -E "bench: (tex|wr) " <pull>`. Replay: `grep "bench: replay" <pull>`. Frame wait: `grep "bench: fbwait" <pull>`.
+- `grep -E "bench: (begin|end)" <pull>` must show `console O3DS` and a total time.
+- How to read each line and the decision rules: docs/plans/bench_notes.md.
