@@ -17,7 +17,7 @@
  */
 #define PM_FCRAM (64u * 1024u * 1024u)
 #define PM_OURS  (14u * 1024u * 1024u)
-#define PM_LINEAR_FIXED_KB 7528u /* measured, H03 */
+#define PM_LINEAR_FIXED_KB 4968u /* H03 measured 7528, MEM1 command buffer 4096 KB to 1536 KB: minus 2560 */
 #define PM_SOC   0x20000u
 
 extern char* fake_heap_start;

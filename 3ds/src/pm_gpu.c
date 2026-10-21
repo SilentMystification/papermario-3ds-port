@@ -791,12 +791,12 @@ void pm_gpu_init(void) {
     pm_wide = pm_wide_cfg = pm_debug_has("wide") || pm_opt.wide;
     pm_log("gpu: wide=%d", pm_wide);
     gfxInitDefault();
-    if (!C3D_Init(0x400000)) {
+    if (!C3D_Init(0x180000)) { /* MEM1: 1.5 MB command buffer. The worst fill seen was 9 percent of 4 MB (369 KB), the new size keeps 4 times that. 2.5 MB of linear memory come back */
         pm_con_lock();
         consoleInit(GFX_BOTTOM, &bottom_con);
         printf("C3D_Init failed. No graphics.");
         pm_con_unlock();
-        pm_log_e("C3D_Init failed (command buffer 4MB), no graphics");
+        pm_log_e("C3D_Init failed (command buffer 1.5MB), no graphics");
         return;
     }
     /* Width 240, height 400: that is the top screen's rotated framebuffer.
