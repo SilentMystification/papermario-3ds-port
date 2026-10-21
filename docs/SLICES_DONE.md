@@ -259,3 +259,8 @@ All rows marked [x], moved unchanged from 3ds/SLICES.md on 2026-10-17. Append on
 [x] AU1f | DONE 2026-10-20, 55adcdba6 | mixer bit exact (host test 3ds/tests/au1f, audiohash equal), Azahar audio cost 4606 to 3317 us per tick; O3DS gain waits for Push 1
 [x] TC1 | DONE 2026-10-20, f5f34afef | texstat lines; cache 99.3 percent hit, 44 percent of evicted bytes never hit, full in 4 scenes
 [x] UI1a UI1c | DONE 2026-10-20, 3aa8abf4f merged as 2773574de | Options tabs, D-pad modes; hand tests in Push 2 of docs/plans/hw_batch.md
+[x] HWM1 | DONE 2026-10-20, 619cd7757 | phsum, abtog, phasecsv range, pcx line, log queue 1024 slots, phs_report.py; statehash f8540 equal, 0 lines dropped
+[x] TX1 | DONE 2026-10-20, e4304f855 | one pass expand and tile, host test 0 differences, Azahar tex step 332 62.5 to 16.4 ms, step 337 85.8 to 21.8 ms
+[x] DR1 O2 | DONE 2026-10-20, 90968031f | one buffer info, uniform and texture bind shadow, rectangle merge; golden pause1 pause2 pause3 battle yard toad ok
+[x] KICK1 GV0 | DONE 2026-10-20, 362746be7 | one early split, vertex and ring flush before every split; golden yard pause1 battle ok also with gpuvtx
+[x] FS1 | DONE 2026-10-20, 56e654a2d | frame skip safety net, default on; draw-coupled state gRandSeed only
