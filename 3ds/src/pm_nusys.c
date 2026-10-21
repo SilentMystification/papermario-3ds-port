@@ -106,6 +106,13 @@ int pm_interp_key_draw(void) {
     return 1;
 }
 
+/* FS1: the same call with gfxTaskNum 3. gfxRetrace_Callback (src/main.c) then runs step_game_loop and skips gfx_task_background and gfx_draw_frame,
+ * as it does on the N64 when 3 graphics tasks are pending. It sets D_80073E08 for the game. */
+void pm_gfx_retrace_skip(void) {
+    pm_audio_join_at(1);
+    if (display_on && gfx_func) gfx_func(3);
+}
+
 void pm_gfx_retrace(void) {
     pm_audio_join_at(1); /* AU1d: the game function below runs game code */
     if (display_on && gfx_func) gfx_func(0);

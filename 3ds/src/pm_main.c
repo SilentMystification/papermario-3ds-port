@@ -246,6 +246,10 @@ void pm_audio_step(void) {
     pm_audio_kick(n); /* AU1d: runs on core 1 until the next join */
 }
 static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 or more */
+/* FS1 */
+#define FS1_MAX_RUN 2
+static unsigned fs1_steps, fs1_skipped, fs1_logged, fs1_last_iv, fs1_run, fs1_force, fs1_delay;
+static int fs1_off, fs1_on_log;
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
 #define PM_VBLANKS_PER_STEP 2
@@ -286,6 +290,13 @@ void pm_frame_loop(void) {
     unsigned stat_n = 0;
     u64 stat_t0 = 0;
     const int pace_on = pm_debug_has("pacestat");
+    { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep at the start of every step) */
+        char fv[16];
+        fs1_off = pm_debug_has("fs1off");
+        fs1_force = pm_debug_value("fs1force", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
+        fs1_delay = pm_debug_value("fs1delay", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
+        fs1_on_log = pm_log_level() >= 3;
+    }
     char exv[16];
     const unsigned exit_at = pm_debug_value("exitframe", exv, sizeof exv) ? (unsigned)atoi(exv) : 0; /* HW7 test switch: leave the loop like an APT exit request */
     while (aptMainLoop()) {
@@ -318,6 +329,25 @@ void pm_frame_loop(void) {
         }
         step_start = now;
         nuGfxCfb_ptr = nuGfxCfb[frame % nuGfxCfbNum];
+        /* FS1: N64 frame skip as a safety net. Skip the draw of this step only when the machine is really late: the last drawn step took more than
+         * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
+         * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
+        int fs_skip = 0;
+        if (ever && step_vb_ok && !fs1_off && pm_interp_on <= 0 && !PMD("fast")) { /* not with fast (uncapped debug runs) and not with fps60 (F06 has its own late path) */
+            if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow step */
+            fs1_steps++;
+            fs_skip = (fs1_last_iv > PM_VBLANKS_PER_STEP && C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP) || (fs1_force && fs1_steps % fs1_force == 0);
+            if (fs_skip && fs1_run >= FS1_MAX_RUN) fs_skip = 0;
+        }
+        if (fs_skip) {
+            fs1_run++;
+            fs1_skipped++;
+            step_vb += PM_VBLANKS_PER_STEP; /* the skipped step used its share of the schedule */
+            au_kicked = 0;
+            pm_gfx_retrace_skip();
+            pm_audio_step(); /* the audio ticks of the step still run */
+        } else {
+        fs1_run = 0;
         pm_gpu_begin(1);
         {
             unsigned vb = C3D_FrameCounter(0);
@@ -325,6 +355,7 @@ void pm_frame_loop(void) {
                 unsigned iv = vb - step_vb;
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
                 pm_interp_skip = iv > PM_VBLANKS_PER_STEP; /* F06-5 */
+                fs1_last_iv = iv;
             }
             step_vb = vb;
             step_vb_ok = 1;
@@ -339,6 +370,8 @@ void pm_frame_loop(void) {
         }
         pm_gpu_end();
         pm_ph_frame_end();
+        }
+        if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
         frame++;
         pm_frame_n = frame;
         pm_audio_join_at(3); /* AU1d: warp and fxtest can call game code */
