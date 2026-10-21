@@ -95,7 +95,7 @@ static int tex_on;
 static const void* timg;
 static unsigned timg_fmt, timg_siz;
 static int timg_stride;
-static int ld_valid, ld_x, ld_y, ld_h; /* last LoadTile window, in 8-bit texels of the source image */
+static int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
 /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
  * the image that was loaded to its TMEM address, not the image of the load that came last. */
 static struct { unsigned tmem; const void* img; int stride, x, y; } ldrec[4];
@@ -2407,6 +2407,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             ld_y = (int)(w0 & 0xfff) >> 2;
             ld_h = (((int)(w1 & 0xfff) - (int)(w0 & 0xfff)) >> 2) + 1;
+            ld_w = ((((int)(w1 >> 12) & 0xfff) - ((int)(w0 >> 12) & 0xfff)) >> 2) + 1;
             break;
         case G_LOADTLUT:
             tlut = timg;
@@ -2534,6 +2535,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (tile_wrap[0][3] && (tile_wrap[0][1] & 3) && ld_valid) {
                 int per = 1 << tile_wrap[0][3];
                 if (per > h && per <= 256 && ld_h >= per) h = per;
+            }
+            if (tile_wrap[0][2] && !(tile_wrap[0][0] & 2) && ld_valid) { /* PT09: a sprite sheet read through a window narrower than the mask period (emote icons): bind the loaded width up to the period */
+                int per = 1 << tile_wrap[0][2];
+                if (per > w && per <= 256 && ld_w > w) w = ld_w < per ? ld_w : per;
             }
             int stride = timg_stride > w ? timg_stride : w;
             int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
