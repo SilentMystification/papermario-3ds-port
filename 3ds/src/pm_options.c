@@ -9,7 +9,7 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off) */
+PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 500, 200}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off) */
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
 static const struct { const char* name; unsigned short mask; } n64_btn[] = { {"NONE", 0}, {"A", 0x8000}, {"B", 0x4000}, {"Z", 0x2000}, {"START", 0x1000}, {"L", 0x0020}, {"R", 0x0010},
@@ -25,6 +25,15 @@ const char* pm_n64_name(unsigned short mask) {
 unsigned short pm_n64_next(unsigned short mask) {
     for (int i = 0; i < N_BTN; i++) if (n64_btn[i].mask == mask) return n64_btn[(i + 1) % N_BTN].mask;
     return n64_btn[0].mask;
+}
+/* PT60: one hold repeat for the Options panel and the Select menu, for the D-pad and the circle pad. The first step fires at once, the second after
+ * rep_delay ms (500 = 15 game updates), the next ones every rep_rate ms (200 = 6 updates, the F11-9 gap of the panel). */
+int pm_repeat(PmRepeat* r, int dir, int tps) {
+    int delay = pm_opt.rep_delay * tps / 1000, rate = pm_opt.rep_rate * tps / 1000;
+    if (dir == 0) { r->dir = 0; r->t = 0; r->n = 0; return 0; }
+    if (dir != r->dir) { r->dir = dir; r->t = 0; r->n = 1; return 1; }
+    if (++r->t >= (r->n == 1 ? delay : rate)) { r->t = 0; r->n++; return 1; }
+    return 0;
 }
 /* UI1c: D-pad mode. One setting, two views (the Controls tab and the Select menu). The O3DS has no analog choice. */
 static const char* const dpad_name[3] = { "multi", "cstick", "analog" };
@@ -59,8 +68,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode]);
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -103,6 +112,14 @@ void pm_options_init(void) {
                 int m;
                 for (m = 0; m < 3 && strcmp(eq + 1, dpad_name[m]); m++) {}
                 if (m == 3) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else pm_opt.dpad_mode = m;
+                continue;
+            }
+            if (!strcmp(line, "dz_pad") || !strcmp(line, "dz_cs") || !strcmp(line, "rep_delay") || !strcmp(line, "rep_rate")) { /* PT61, PT60 */
+                int k = !strcmp(line, "dz_pad") ? 0 : !strcmp(line, "dz_cs") ? 1 : !strcmp(line, "rep_delay") ? 2 : 3;
+                static const int lo[4] = { 0, 0, 200, 50 }, hi[4] = { 50, 50, 1000, 500 };
+                int* tf = k == 0 ? &pm_opt.dz_pad : k == 1 ? &pm_opt.dz_cs : k == 2 ? &pm_opt.rep_delay : &pm_opt.rep_rate;
+                v = strtol(eq + 1, &end, 10);
+                if (end == eq + 1 || *end || v < lo[k] || v > hi[k]) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else *tf = (int)v;
                 continue;
             }
             if (!strcmp(line, "warp")) { /* PT01b: an old file can hold warp=. A boot-time warp is only for the debug switches. */
@@ -195,7 +212,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_MAP = 100, RW_DBG = 200 };
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200 };
 static const char* const lvl_name[4] = { "Error", "Warn", "Info", "Debug" };
 static const char* const dbg_lbl[7] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed" };
 static int tab_ids(int tab, int mode, int* ids) {
@@ -204,7 +221,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_FPS; ids[n++] = RW_WIDE;
         if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_EXIT; }
     } else if (tab == 1) {
-        ids[n++] = RW_DPAD;
+        ids[n++] = RW_DPAD; ids[n++] = RW_DZPAD; ids[n++] = RW_DZCS; ids[n++] = RW_RDELAY; ids[n++] = RW_RRATE;
         for (i = 0; i < PM_NIN; i++) ids[n++] = RW_MAP + i;
         ids[n++] = RW_RESET;
     } else {
@@ -231,6 +248,10 @@ const char* pm_optui_label(int tab, int row, int mode) {
         case RW_TITLE: return "Return to Title Screen";
         case RW_EXIT: return "Exit to Homebrew";
         case RW_DPAD: return "D-PAD";
+        case RW_DZPAD: return "Circle pad dead zone";
+        case RW_DZCS: return "C-Stick dead zone";
+        case RW_RDELAY: return "Repeat delay";
+        case RW_RRATE: return "Repeat rate";
         case RW_RESET: return "Reset controls";
         case RW_WARPTO: return "Warp to";
         case RW_ENTRY: return "Entry";
@@ -245,6 +266,12 @@ const char* pm_optui_value(int tab, int row, int mode) {
     switch (id) {
         case RW_FPS: case RW_WIDE: return pm_options_get(id == RW_FPS ? 0 : 1) ? "On" : "Off";
         case RW_DPAD: return pm_dpad_mode_name();
+        case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: {
+            static char nb[4][12];
+            char* b = nb[id - RW_DZPAD];
+            snprintf(b, 12, id == RW_DZPAD ? "%d%%" : id == RW_DZCS ? "%d%%" : "%d ms", id == RW_DZPAD ? pm_opt.dz_pad : id == RW_DZCS ? pm_opt.dz_cs : id == RW_RDELAY ? pm_opt.rep_delay : pm_opt.rep_rate);
+            return b;
+        }
         case RW_EXIT: return exit_armed ? "A again" : NULL;
         case RW_WARPTO: case RW_ENTRY: { /* PT01: < value > shows that left and right change it */
             static char wb[32];
@@ -259,6 +286,18 @@ const char* pm_optui_value(int tab, int row, int mode) {
 /* PT01: left (dir < 0) or right (dir > 0) on a row. Warp to walks the choices (off, presets, every map of gAreas) with wrap. Entry walks 0 to 15. */
 int pm_optui_step(int tab, int row, int dir, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_DZPAD && id <= RW_RRATE) { /* PT61, PT60: a number row. Left and right step it, A steps up and wraps. */
+        static const struct { int lo, hi, st; } rg[4] = { { 0, 50, 5 }, { 0, 50, 5 }, { 200, 1000, 100 }, { 50, 500, 50 } };
+        int* f = id == RW_DZPAD ? &pm_opt.dz_pad : id == RW_DZCS ? &pm_opt.dz_cs : id == RW_RDELAY ? &pm_opt.rep_delay : &pm_opt.rep_rate;
+        int k = id - RW_DZPAD, v = *f + dir * rg[k].st;
+        if (dir > 0 && *f >= rg[k].hi) v = rg[k].lo; /* wrap with A, stop at the end with right? both wrap */
+        if (dir < 0 && *f <= rg[k].lo) v = rg[k].hi;
+        if (v < rg[k].lo) v = rg[k].lo;
+        if (v > rg[k].hi) v = rg[k].hi;
+        *f = v;
+        pm_options_touch();
+        return 1;
+    }
     if (id != RW_WARPTO && id != RW_ENTRY) return 0;
     if (id == RW_WARPTO) {
         int n = pm_warp_choice_count();
@@ -292,7 +331,7 @@ int pm_optui_act(int tab, int row, int mode) {
             if (!exit_armed) { exit_armed = 1; return 0; }
             exit_armed = 0;
             return 3;
-        case RW_WARPTO: case RW_ENTRY: pm_optui_step(tab, row, 1, mode); return 0;
+        case RW_WARPTO: case RW_ENTRY: case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;
         case RW_WARPNOW:
             if (pm_opt.warp == 0) return 0;
             if (mode) return pm_warp_live(pm_opt.warp, pm_opt.warp_entry) ? 5 : 0;

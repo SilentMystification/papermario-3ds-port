@@ -142,7 +142,7 @@ void filemenu_options_handle_input(MenuPanel* menu) {
     s32 oldRow = menu->row;
     // F11-9: the panel moved one row per stick jitter. Gate the direction: the pad must be pushed to 56 of 80 (the game dead zone and
     // button threshold are 32), a d-pad press always counts, and two moves are at least 6 updates apart (the held repeat is 15 then 4).
-    static s32 moveGap;
+    static PmRepeat udRep;
     s32 sy = gGameStatusPtr->stickY[0];
     s32 held = filemenu_heldButtons;
     s32 up = (held & BUTTON_D_UP) || ((held & BUTTON_STICK_UP) && sy >= 56);
@@ -166,17 +166,17 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         return;
     }
 
-    if (moveGap > 0) {
-        moveGap--;
-    }
-    if (moveGap == 0 && (up || down)) {
-        menu->row += down ? 1 : -1;
-        moveGap = 6;
-        if (menu->row < 0) {
-            menu->row = 0;
-        }
-        if (menu->row >= menu->numRows) {
-            menu->row = menu->numRows - 1;
+    {   // PT60: the same hold repeat as the Select menu (pm_repeat): first step at once, then after the delay, then at the steady rate
+        s32 dir = up ? -1 : down ? 1 : 0;
+
+        if (pm_repeat(&udRep, dir, 30)) {
+            menu->row += dir;
+            if (menu->row < 0) {
+                menu->row = 0;
+            }
+            if (menu->row >= menu->numRows) {
+                menu->row = menu->numRows - 1;
+            }
         }
     }
     if (oldRow != menu->row) {
@@ -191,22 +191,13 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
     }
 
-    {   // PT01: left and right change a value (Warp to, Entry). Press steps once, hold repeats (15 updates, then every 4, 5 maps a step after 12 repeats).
-        static s32 lrGap, lrRep;
+    {   // PT01: left and right change a value (Warp to, Entry). PT60: same hold repeat, 5 maps a step after 12 repeats.
+        static PmRepeat lrRep;
         s32 sx = gGameStatusPtr->stickX[0];
         s32 lr = ((held & BUTTON_D_RIGHT) || ((held & BUTTON_STICK_RIGHT) && sx >= 56)) ? 1 : ((held & BUTTON_D_LEFT) || ((held & BUTTON_STICK_LEFT) && sx <= -56)) ? -1 : 0;
 
-        if (lr == 0) {
-            lrGap = 0;
-            lrRep = 0;
-        } else if (lrGap > 0) {
-            lrGap--;
-        } else {
-            lrGap = lrRep == 0 ? 15 : 4;
-            lrRep++;
-            if (pm_optui_step(optTab, menu->row, lr * (lrRep > 12 ? 5 : 1), 0)) {
-                sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
-            }
+        if (pm_repeat(&lrRep, lr, 30) && pm_optui_step(optTab, menu->row, lr * (lrRep.n > 12 ? 5 : 1), 0)) {
+            sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
         }
     }
     if (filemenu_pressedButtons & BUTTON_B) {

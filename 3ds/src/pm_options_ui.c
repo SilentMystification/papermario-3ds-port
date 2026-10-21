@@ -15,6 +15,7 @@ volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, rea
 #define VIS 10
 #define MODE 1
 static int tab, sel[OPT_TABS], top[OPT_TABS];
+static PmRepeat rep_y, rep_x;
 static const char* const tab_name[OPT_TABS] = { "General", "Controls", "Debug" };
 
 static void draw(void) {
@@ -36,6 +37,8 @@ void pm_menu_set(int on) {
     if (on == pm_menu_open) return;
     pm_menu_open = on;
     pm_optui_disarm();
+    memset(&rep_x, 0, sizeof rep_x);
+    memset(&rep_y, 0, sizeof rep_y);
     if (on) {
         pm_log("menu: open");
         draw();
@@ -46,17 +49,23 @@ void pm_menu_set(int on) {
     }
 }
 
+/* PT60: direction from the D-pad or the circle pad, called every pad scan (60 Hz) while the menu is open. Same hold repeat as the Options panel. */
+void pm_menu_hold(int dx, int dy) {
+    int rows = pm_optui_rows(tab, MODE), ch = 0;
+    if (pm_repeat(&rep_y, dy, 60)) {
+        pm_optui_disarm();
+        sel[tab] = (sel[tab] + (dy > 0 ? 1 : rows - 1)) % rows;
+        ch = 1;
+    }
+    if (pm_repeat(&rep_x, dx, 60) && pm_optui_step(tab, sel[tab], dx * (rep_x.n > 12 ? 5 : 1), MODE)) ch = 1;
+    if (ch) draw();
+}
+
 void pm_menu_key(unsigned k) {
-    int rows = pm_optui_rows(tab, MODE);
     if (k & KEY_SELECT) { pm_menu_set(0); return; }
     if (k & (KEY_L | KEY_R)) {
         tab = (tab + ((k & KEY_L) ? OPT_TABS - 1 : 1)) % OPT_TABS;
         pm_optui_disarm();
-    } else if (k & (KEY_DDOWN | KEY_DUP)) {
-        pm_optui_disarm();
-        sel[tab] = (sel[tab] + ((k & KEY_DDOWN) ? 1 : rows - 1)) % rows;
-    } else if (k & (KEY_DLEFT | KEY_DRIGHT)) {
-        if (!pm_optui_step(tab, sel[tab], (k & KEY_DRIGHT) ? 1 : -1, MODE)) return;
     } else if (k & KEY_B) {
         pm_menu_set(0);
         return;

@@ -43,3 +43,8 @@ Not covered: a world screen that is not one of these (none known). A script that
 - The two menus keep no row code of their own. They only draw and read the pad. A change in one menu is the same change in the other: both write `pm_opt`, `pm_map` and options.ini (saved when the menu closes), and the live apply code in `pm_options_flip` runs in both.
 - Mode 1 adds rows to the General tab: `Return to Title Screen` and `Exit to Homebrew` (A twice). In mode 1 `Warp now` changes the map at once (`pm_warp_live`). In mode 0 it leaves the file select. The Warp choice is not saved.
 - Test: padscript tokens `SELECT` (opens the menu), `ddown`, `dup`, `dleft`, `dright`, `A`, `B`, `L`, `R` act on the menu. The log shows `menu: tab <t> row <r> <label> = <value>` at debug level.
+
+## Hold repeat and dead zones (PT60, PT61)
+- `pm_repeat` (`pm_options.c`) is the one hold repeat of both menus, for the D-pad and the circle pad: the first step fires at once, the next after `rep_delay` ms (default 500 = 15 game updates), then every `rep_rate` ms (default 200 = 6 updates). Left and right on a list row go 5 steps after 12 repeats. The pad gate is 56 of 80.
+- Controls tab rows: `Circle pad dead zone` (`dz_pad`, 0 to 50 percent, step 5), `C-Stick dead zone` (`dz_cs`, N3DS), `Repeat delay` (`rep_delay`, 200 to 1000 ms), `Repeat rate` (`rep_rate`, 50 to 500 ms). All four are options.ini keys and apply at once.
+- Before: the port had no dead zone for the circle pad (`clamp_stick` only scales 154 to 80). The game removes 4 of 80 (`STICK_DEADZONE_THRESHOLD`) and counts a stick button from 32 of 80. The C-Stick keys came from libctru with its own fixed threshold. Default 0 for both new rows keeps this behavior.

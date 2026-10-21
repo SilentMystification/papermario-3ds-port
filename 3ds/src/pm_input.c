@@ -153,6 +153,12 @@ void pm_padscript_start(void) {
     if (ps_n && !ps_run && ps_wait_start && ps_i == 0) { ps_run = 1; pm_log("padscript: start at scan %u f%u", pm_pad_scans, pm_frame_count()); ps_run_marks(); }
 }
 
+/* PT61: circle pad dead zone, radial, percent of full travel (raw range 154). 0 = none, as before. */
+static void pad_deadzone(int* x, int* y) {
+    int z = pm_opt.dz_pad * 154 / 100;
+    if (z > 0 && (*x) * (*x) + (*y) * (*y) < z * z) *x = *y = 0;
+}
+
 static int clamp_stick(int v) {
     v = v * 80 / 154;
     if (v > 80) v = 80;
@@ -177,6 +183,21 @@ void pm_pad_scan(void) {
     hidScanInput();
     u32 k = hidKeysHeld();
     u32 d = hidKeysDown();
+    if (pm_opt.dz_cs > 0 && pm_new3ds) {   /* PT61: C-Stick dead zone: a C-Stick key counts only when the stick is pushed past dz_cs percent (raw range 156) */
+        static u32 cs_prev;
+        circlePosition cs;
+        int z = pm_opt.dz_cs * 156 / 100;
+        const u32 m = KEY_CSTICK_UP | KEY_CSTICK_DOWN | KEY_CSTICK_LEFT | KEY_CSTICK_RIGHT;
+        u32 keep = 0;
+        irrstCstickRead(&cs);
+        if (cs.dx >= z) keep |= KEY_CSTICK_RIGHT;
+        if (cs.dx <= -z) keep |= KEY_CSTICK_LEFT;
+        if (cs.dy >= z) keep |= KEY_CSTICK_UP;
+        if (cs.dy <= -z) keep |= KEY_CSTICK_DOWN;
+        k = (k & ~m) | (k & keep);
+        d = (d & ~m) | (k & m & ~cs_prev);
+        cs_prev = k & m;
+    }
     {   /* UI1: scripted 3DS keys (padscript k_ tokens), loaded here so they act before the mapping */
         static int ps_init0;
         if (!ps_init0) { ps_init0 = 1; ps_load(); }
@@ -264,13 +285,24 @@ void pm_pad_scan(void) {
         pm_pad_scans++;
     }
     {   /* F11-6: the port menu. A Select press that no game code took in 5 scans opens it. While open the game gets no button and no stick. */
-        unsigned md = d | ((ps_menu_edge & 0x8000) ? KEY_A : 0) | ((ps_menu_edge & 0x4000) ? KEY_B : 0) | ((ps_menu_edge & 0x0800) ? KEY_DUP : 0) |
-                      ((ps_menu_edge & 0x0400) ? KEY_DDOWN : 0) | ((ps_menu_edge & 0x0200) ? KEY_DLEFT : 0) | ((ps_menu_edge & 0x0100) ? KEY_DRIGHT : 0) |
+        unsigned md = (d & ~(KEY_DUP | KEY_DDOWN | KEY_DLEFT | KEY_DRIGHT)) | ((ps_menu_edge & 0x8000) ? KEY_A : 0) | ((ps_menu_edge & 0x4000) ? KEY_B : 0) |
                       ((ps_menu_edge & 0x0020) ? KEY_L : 0) | ((ps_menu_edge & 0x0010) ? KEY_R : 0) | ((ps_menu_edge & 0x0040) ? KEY_SELECT : 0);
         ps_menu_edge = 0;
         if (!pm_menu_open) {
             if (select_pending && pm_pad_scans - select_scan >= 5u) { select_pending = 0; pm_menu_set(1); }
-        } else pm_menu_key(md);
+        } else {
+            /* PT60: direction held: D-pad keys, scripted keys and buttons, circle pad (same 56 of 80 gate as the Options panel), scripted stick */
+            unsigned hk = k | (ps_run ? ((ps[ps_i].b & 0x0800) ? KEY_DUP : 0) | ((ps[ps_i].b & 0x0400) ? KEY_DDOWN : 0) | ((ps[ps_i].b & 0x0200) ? KEY_DLEFT : 0) | ((ps[ps_i].b & 0x0100) ? KEY_DRIGHT : 0) : 0);
+            circlePosition mc;
+            int sx, sy, dx, dy;
+            hidCircleRead(&mc);
+            sx = clamp_stick(mc.dx); sy = clamp_stick(mc.dy);
+            if (ps_run) { if (ps[ps_i].x) sx = ps[ps_i].x; if (ps[ps_i].y) sy = ps[ps_i].y; }
+            dy = (hk & KEY_DDOWN) || sy <= -56 ? 1 : (hk & KEY_DUP) || sy >= 56 ? -1 : 0;
+            dx = (hk & KEY_DRIGHT) || sx >= 56 ? 1 : (hk & KEY_DLEFT) || sx <= -56 ? -1 : 0;
+            pm_menu_key(md);
+            if (pm_menu_open) pm_menu_hold(dx, dy);
+        }
         if (pm_menu_open) { b = 0; edge = 0; }
     }
     held = b;
@@ -280,8 +312,7 @@ void pm_pad_scan(void) {
     press_seen |= edge;
     circlePosition c;
     hidCircleRead(&c);
-    stick_x = (signed char)clamp_stick(c.dx);
-    stick_y = (signed char)clamp_stick(c.dy);
+    { int rx = c.dx, ry = c.dy; pad_deadzone(&rx, &ry); stick_x = (signed char)clamp_stick(rx); stick_y = (signed char)clamp_stick(ry); }
     if (rand_on) {
         stick_x = (signed char)rand_x;
         stick_y = (signed char)rand_y;

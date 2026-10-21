@@ -150,6 +150,8 @@ typedef struct PmOpt {
     int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.ini dpad_mode=multi|cstick|analog */
     int warp; /* UI1a, PT01: 0 = off, 1 to P = warp preset, P+1 and up = map k of gAreas (options.ini warp=<preset> or warp=<map>:<entry>) */
     int warp_entry; /* PT01: entry of a map choice */
+    int dz_pad, dz_cs; /* PT61: dead zone in percent of full travel, circle pad and C-Stick (N3DS). 0 = as before (no port dead zone) */
+    int rep_delay, rep_rate; /* PT60: menu key repeat in ms, the first step is at once, the next after rep_delay, then every rep_rate */
 } PmOpt;
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
@@ -168,6 +170,9 @@ const char* pm_optui_value(int tab, int row, int mode);
 int pm_optui_step(int tab, int row, int dir, int mode); /* left or right on a row, 1 when the value changed */
 int pm_optui_act(int tab, int row, int mode); /* 0 done, 1 close (Back), 2 leave the file select (Warp now), 3 exit to Homebrew, 4 return to title, 5 warp started */
 void pm_optui_disarm(void);
+/* PT60: hold repeat of both menus. dir is -1, 0 or 1. tps is the call rate (30 game updates, 60 pad scans). Returns 1 when a step fires. n counts the steps of this hold. */
+typedef struct { int dir, t, n; } PmRepeat;
+int pm_repeat(PmRepeat* r, int dir, int tps);
 int pm_pad_take_tab(void); /* UI1a: -1 for L, +1 for R (3DS keys) since the last call */
 void pm_log_switch(const char* word, int on);
 int pm_pad_take_select(void);
@@ -199,6 +204,7 @@ void pm_options_touch(void); /* mark the settings changed, saved at pm_options_c
 extern volatile int pm_menu_open;
 void pm_menu_set(int on);
 void pm_menu_key(unsigned hid_keys_down);
+void pm_menu_hold(int dx, int dy); /* PT60 */
 void pm_gpu_menu_draw(const char* text);
 
 #endif
