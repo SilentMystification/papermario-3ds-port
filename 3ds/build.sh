@@ -12,13 +12,13 @@ cd "$(dirname "$0")/.."
 OUT=build3ds; VOL=pm3ds-work
 if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-work-$PM_LANE; fi
 mkdir -p $OUT
-# BN1: one build number = V0 + (commit count - C0), V0 and C0 in 3ds/build_base.txt. No -dirty suffix (user decision 2026-10-19). Suffix -laneB only (branch lane-b or PM_LANE set).
+# BN1: one build number = V0 + (commit count - C0), V0 and C0 in 3ds/build_base.txt. No -dirty suffix (user decision 2026-10-19). Suffix -<lane> (PM_LANE set) or -laneB (branch lane-b).
 # Written to 3ds/include/pm_build.h (ignored by git). The boot log and the Options panel show PM_BUILD_STR.
 read V0 C0 <<EOF
 $(tr -d '\015' < 3ds/build_base.txt)
 EOF
 BN=$((V0 + $(git rev-list --count HEAD) - C0))
-if [ -n "$PM_LANE" ] || [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
+if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
 printf '#define PM_BUILD_STR "%s"
 ' "$BN" > 3ds/include/pm_build.h
 MSYS_NO_PATHCONV=1 docker run --rm \
