@@ -455,8 +455,27 @@ static void battle_hooks(unsigned f) {
     }
 }
 
+/* PT26L: switch camlog logs the default camera and the player once per game step: step, map, area, story, camera update mode, target, lookAt eye and
+ * object, yaw, boom yaw, pitch, length, settings pointer, interp alpha, player pos and action state. At most 30 lines per second (one per step). No cost when off. */
+static void pm_camlog(unsigned f) {
+    static int on = -1;
+    static unsigned sec0, n_sec;
+    if (on < 0) on = pm_debug_has("camlog");
+    if (!on) return;
+    unsigned now = pm_uptime_ms();
+    if (now - sec0 >= 1000u) { sec0 = now; n_sec = 0; }
+    if (n_sec++ >= 60) return;
+    Camera* c = &gCameras[CAM_DEFAULT];
+    pm_log("camlog f%u map %d area %d story %d mode %d tgt %.1f %.1f %.1f eye %.1f %.1f %.1f obj %.1f %.1f %.1f yaw %.1f byaw %.1f pitch %.1f len %.1f set %08x alpha %.3f pl %.1f %.1f %.1f as %d",
+           f, (int)gGameStatusPtr->mapID, (int)gGameStatusPtr->areaID, (int)evt_get_variable(NULL, GB_StoryProgress), (int)c->updateMode,
+           c->targetPos.x, c->targetPos.y, c->targetPos.z, c->lookAt_eye.x, c->lookAt_eye.y, c->lookAt_eye.z, c->lookAt_obj.x, c->lookAt_obj.y, c->lookAt_obj.z,
+           c->curYaw, c->curBoomYaw, c->curBoomPitch, c->curBoomLength, (unsigned)(uintptr_t)c->curSettings, c->interpAlpha,
+           gPlayerStatus.pos.x, gPlayerStatus.pos.y, gPlayerStatus.pos.z, (int)gPlayerStatus.actionState);
+}
+
 /* Once per drawn frame (pm_frame_loop). */
 static void pm_statehash(unsigned f) {
+    pm_camlog(f);
     { /* MA1 step 0: switch statehash=<n> logs an FNV-1a hash of the game state every n steps (default 10), and a running hash over all samples.
          * Fields only, no pointers, so the value is equal between builds when the game logic is equal. Use it as the replay check for MA1 edits. */
         static unsigned sh_every, sh_run = 2166136261u, sh_n;
