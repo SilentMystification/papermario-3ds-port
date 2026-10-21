@@ -1738,6 +1738,14 @@ no_boost:
     }
 }
 
+/* PT42 diagnostic, switch mtxlog: the matrix of every G_MTX and the matrix table slot of every vertex load, at most 50 lines per 30 frames. One flag test when off. */
+static int mtxlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("mtxlog"); return v; }
+static int mtxlog_ok(void) {
+    static int win = -1, n;
+    int w = rm_frame / 30;
+    if (w != win) { win = w; n = 0; }
+    return n++ < 50;
+}
 static void load_mtx(u32 w0, u32 w1) {
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
@@ -1747,6 +1755,8 @@ static void load_mtx(u32 w0, u32 w1) {
     if (lm) memcpy(in, lm, sizeof(in));
     else unpack(src, in);
     int is_proj = (flags & G_MTX_PROJECTION) != 0;
+    if (mtxlog_on() && mtxlog_ok()) pm_log_d("mtx f%d src %p w0 %02x sp %d t %.1f %.1f %.1f%s", rm_frame, (void*)src, (unsigned)(w0 & 0xff), mv_sp, in[3][0], in[3][1], in[3][2],
+                                          (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 >= 10) ? " push dropped" : "");
     if (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 < 10) {
         memcpy(mv[mv_sp + 1], mv[mv_sp], sizeof(mv[0]));
         mv_sp++;
@@ -2272,6 +2282,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                                 gm_last = gmi;
                             }
                         }
+                        if (mtxlog_on() && mtxlog_ok()) pm_log_d("mtxv f%d vtx %p n %u gmi %u gmn %u t %.1f %.1f %.1f", rm_frame, (void*)src, n, gmi, gm_n, combined[3][0], combined[3][1], combined[3][2]);
                         if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
                         if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
                     }

@@ -367,6 +367,28 @@ void render_entities(void) {
             }
 
             if (!(entity->flags & ENTITY_FLAG_HIDDEN)) {
+#ifdef TARGET_3DS
+                { /* PT42 diagnostic, switch entlog: position and matrix of a save block or a pipe, one line per frame and entity (the console log answers PT42, PT45, PT46) */
+                    extern int pm_debug_has(const char*);
+                    extern void pm_log_d(const char*, ...);
+                    extern unsigned pm_frame_count(void);
+                    static int entlog = -1;
+                    if (entlog < 0) entlog = pm_debug_has("entlog");
+                    static unsigned elwin = 0xffffffffu, eln;
+                    if (entlog && pm_frame_count() / 30 != elwin) { elwin = pm_frame_count() / 30; eln = 0; }
+                    if (entlog && eln < 58) {
+                        s32 t = get_entity_type(entity->listIndex);
+                        if (t == ENTITY_TYPE_SAVE_POINT || t == ENTITY_TYPE_BLUE_WARP_PIPE) {
+                            Matrix4f em;
+                            eln++;
+                            guMtxL2F(em, &entity->transformMatrix);
+                            pm_log_d("entlog f%u t%d i%d pos %.1f %.1f %.1f tm %.1f %.1f %.1f sc %.2f %.2f %.2f al %d fl %x mlp %d", pm_frame_count(), (int)t, (int)i,
+                                     entity->pos.x, entity->pos.y, entity->pos.z, em[3][0], em[3][1], em[3][2],
+                                     entity->scale.x, entity->scale.y, entity->scale.z, (int)entity->alpha, (unsigned)entity->flags, (int)gMatrixListPos);
+                        }
+                    }
+                }
+#endif
                 FI_OPEN("entity", (uintptr_t)entity);
                 if (entity->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
                     if (D_8014AFB0 == 255) {
