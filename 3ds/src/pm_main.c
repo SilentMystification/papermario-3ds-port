@@ -247,9 +247,9 @@ void pm_audio_step(void) {
 }
 static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 or more */
 /* FS1 */
-#define FS1_MAX_RUN 2
+#define FS1_MAX_RUN 3 /* FS1b: 3 skips cover a stall of 7 vblanks */
 static unsigned fs1_steps, fs1_skipped, fs1_logged, fs1_last_iv, fs1_run, fs1_force, fs1_delay;
-static int fs1_off, fs1_on_log;
+static int fs1_off, fs1_on_log, fs1_old;
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
 #define PM_VBLANKS_PER_STEP 2
@@ -292,9 +292,10 @@ void pm_frame_loop(void) {
     unsigned stat_n = 0;
     u64 stat_t0 = 0;
     const int pace_on = pm_debug_has("pacestat");
-    { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep at the start of every step) */
+    { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep after every drawn step), fs1old (the old rule) */
         char fv[16];
         fs1_off = pm_debug_has("fs1off");
+        fs1_old = pm_debug_has("fs1old"); /* FS1b: the FS1 rule of build 926 (skip only after a drawn step of 3 or more vblanks, 2 in a row), for comparison */
         fs1_force = pm_debug_value("fs1force", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
         fs1_delay = pm_debug_value("fs1delay", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
         fs1_on_log = pm_log_level() >= 3;
@@ -336,10 +337,11 @@ void pm_frame_loop(void) {
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
         int fs_skip = 0;
         if (ever && step_vb_ok && !fs1_off && pm_interp_on <= 0 && !PMD("fast")) { /* not with fast (uncapped debug runs) and not with fps60 (F06 has its own late path) */
-            if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow step */
             fs1_steps++;
-            fs_skip = (fs1_last_iv > PM_VBLANKS_PER_STEP && C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP) || (fs1_force && fs1_steps % fs1_force == 0);
-            if (fs_skip && fs1_run >= FS1_MAX_RUN) fs_skip = 0;
+            /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
+             * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
+            fs_skip = (C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP && (!fs1_old || fs1_last_iv > PM_VBLANKS_PER_STEP)) || (fs1_force && fs1_steps % fs1_force == 0);
+            if (fs_skip && fs1_run >= (fs1_old ? 2u : FS1_MAX_RUN)) fs_skip = 0;
         }
         if (fs_skip) {
             fs1_run++;
@@ -372,6 +374,7 @@ void pm_frame_loop(void) {
             ever = 1;
         }
         pm_gpu_end();
+        if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow draw (a skipped step does not pay it) */
         pm_ph_frame_end();
         }
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
