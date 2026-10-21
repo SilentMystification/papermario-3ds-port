@@ -183,7 +183,8 @@ extern int pm_wide;
 int pm_is_cur_cfb(const void* p) { return nuGfxCfb_ptr && (in_buf(p, nuGfxCfb_ptr) || (pm_wide && in_buf((const u8*)p + 80, nuGfxCfb_ptr))); }
 /* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
-int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)); }
+extern unsigned short pm_wide_side_pause[2][40 * 240]; /* PT56 */
+int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)) || ((const unsigned short*)p >= &pm_wide_side_pause[0][0] && (const unsigned short*)p < &pm_wide_side_pause[0][0] + 2 * 40 * 240); }
 /* D03: the z-buffer memory the pause code saves the last frame into. Allocated when first needed. */
 void pm_zbuf_need(void) {
     if (!nuGfxZBuffer) {

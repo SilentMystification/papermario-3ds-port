@@ -256,6 +256,11 @@ void func_80027774(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
 }
 
 // transfers the framebuffer into the depth buffer and applies filters
+#ifdef TARGET_3DS
+extern u16 pm_wide_side[2][40 * 240]; /* PT56: the gutters of the last frame read */
+extern u16 pm_wide_side_pause[2][40 * 240]; /* the gutters of the paused picture */
+extern void pm_tex_invalidate(const void* ptr, unsigned size);
+#endif
 void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
     Color_RGBA8 filterBuf0[6];
     Color_RGBA8 filterBuf1;
@@ -296,6 +301,7 @@ void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuf
             }
         }
     }
+    { s32 k; for (k = 0; k < 2; k++) for (y = 0; y < 40 * 240; y++) pm_wide_side_pause[k][y] = pm_wide_side[k][y]; pm_tex_invalidate(pm_wide_side_pause, sizeof pm_wide_side_pause); }
 #endif
 }
 
@@ -406,6 +412,23 @@ void gfx_draw_background(void) {
                                     -1 << 5, 0 << 5, 1 << 10, 1 << 10);
                 gDPPipeSync(gMainGfxPos++);
             }
+#ifdef TARGET_3DS
+            if (pm_wide) { /* PT56: the saved picture is 320 wide. The gutters come from their own copy, so the paused picture keeps the wide coverage. */
+                s32 side;
+                for (side = 0; side < 2; side++) {
+                    for (i = 0; i < 40; i++) {
+                        gDPLoadTextureTile(gMainGfxPos++, pm_wide_side_pause[side] + (i * 40 * SCREEN_COPY_TILE_HEIGHT), G_IM_FMT_RGBA, G_IM_SIZ_16b, 40,
+                                           SCREEN_HEIGHT, 0, 0, 39, SCREEN_COPY_TILE_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
+                                           G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                        gSPTextureRectangle(gMainGfxPos++,
+                                            (side == 0 ? -40 : SCREEN_WIDTH) << 2, i * a, (side == 0 ? 0 : SCREEN_WIDTH + 40) << 2, a + (i * (SCREEN_COPY_TILE_HEIGHT << 2)),
+                                            G_TX_RENDERTILE,
+                                            -1 << 5, 0 << 5, 1 << 10, 1 << 10);
+                        gDPPipeSync(gMainGfxPos++);
+                    }
+                }
+            }
+#endif
             break;
         default:
             // Draw the scene's background as normal

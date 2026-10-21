@@ -1089,6 +1089,9 @@ static void dump_shot(void) {
  * reads the frame buffer. Reads the PICA color buffer (tiled RGBA8, 240 wide x 400 tall, the screen rotated;
  * game x is the long axis shifted by 40, game y runs backwards on the short axis). Costs one pass over 76800
  * pixels of VRAM, so it runs only when the game asks (pause screen, previous-frame draws). */
+/* PT56: with wide the 40 screen columns on each side of the game picture (game x -40 to -1 and 320 to 359), saved with every frame read. The pause screen draws them beside the saved frame. Layout: [side][row * 40 + column], row 0 is the top. */
+unsigned short pm_wide_side[2][40 * 240];
+unsigned short pm_wide_side_pause[2][40 * 240]; /* the copy the pause screen draws (src/background_gfx.c) */
 void pm_gpu_read_frame(unsigned short* dst) {
     if (rect_open) flush(); /* DR1 */
     const unsigned char* src;
@@ -1106,6 +1109,16 @@ void pm_gpu_read_frame(unsigned short* dst) {
                          ((mx & 4u) << 2) | ((my & 4u) << 3);
             const unsigned char* p = src + ((((fy >> 3) * 30u + (fx >> 3)) * 64u + m) * 4u);
             dst[y * 320 + x] = (unsigned short)(((p[3] >> 3) << 11) | ((p[2] >> 3) << 6) | ((p[1] >> 3) << 1) | 1u);
+        }
+        if (pm_wide) {
+            for (x = 0; x < 80; x++) {
+                unsigned fy = (unsigned)(x < 40 ? x : 360 + (x - 40));
+                unsigned mx = fx & 7u, my = fy & 7u;
+                unsigned m = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) |
+                             ((mx & 4u) << 2) | ((my & 4u) << 3);
+                const unsigned char* p = src + ((((fy >> 3) * 30u + (fx >> 3)) * 64u + m) * 4u);
+                pm_wide_side[x >= 40][y * 40 + (x % 40)] = (unsigned short)(((p[3] >> 3) << 11) | ((p[2] >> 3) << 6) | ((p[1] >> 3) << 1) | 1u);
+            }
         }
     }
     PH_POP();
