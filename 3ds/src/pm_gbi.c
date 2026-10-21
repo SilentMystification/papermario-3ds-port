@@ -1445,6 +1445,8 @@ static void dls_report(void) {
 }
 
 static int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
+static void draw_tri(unsigned w);
+#include "pm_dlc.inc.c"
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
@@ -1464,6 +1466,7 @@ static void draw_tri(unsigned w) {
     }
     if (!vert_live[i0] || !vert_live[i1] || !vert_live[i2]) {
         n_drop++;
+        if (dlc_dirty) dlc_c.slotfix++; /* DLC1: a vertex that the interpreter would have kept live after a replayed list */
         return;
     }
     idx[0] = i0;
@@ -1789,6 +1792,7 @@ void pm_gbi_end_frame(void) {
         memset(&pm_b7, 0, sizeof pm_b7);
     }
     PH_ADD(C_CMD, n_ops);
+    { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); } }
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
@@ -2139,7 +2143,8 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
 void pm_gbi_run(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     dls_on = PMDL("dlsrc");
-    if (dls_on) {
+    dlc_on = dlc_enabled();
+    if (dls_on && !dlc_depth) {
         if (!dls_rd_lo) dls_init_ranges();
         dls_main_lo = (u32)list; dls_main_hi = (u32)list + nbytes;
         dls_pc = dls_class((u32)list);
@@ -2203,6 +2208,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
             if (dls_on) dls_target(next);
+            if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
+                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
+                break;
+            }
             if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = next;
             else if (sp < 12) {
                 stack[sp++] = pc;

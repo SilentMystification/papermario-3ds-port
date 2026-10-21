@@ -1569,6 +1569,8 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     return 1;
 }
 
+/* DLC1: 1 when the ring has room for n more vertices (and the path is on) */
+int pm_gpu_gv_room(unsigned n) { return gpu_vtx_on && gpu_ok && gring_n + n <= GRING_VTX; }
 int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
     if (!gpu_vtx_on || !gpu_ok || gring_n + n > GRING_VTX) return -1;
     memcpy(gring + gring_n * 16, vtx, n * 16);

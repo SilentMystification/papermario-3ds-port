@@ -1,0 +1,335 @@
+/* DLC1: compile and replay of the map shape display lists (docs/plans/DLC.md, kind G). Included by pm_gbi.c after draw_tri, so it reads the statics of the interpreter.
+ * Switch `dlc` (default off, `nodlc` turns it off), `dlccheck` (hash, exit state and the reject proof of every skipped group, counters in the `dlc` line).
+ * A shape list is cut into groups: a group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices that it loads itself. The compiler keeps the box of the
+ * object coordinates of each group. At replay a group whose box lies outside one clip plane is skipped: the interpreter rejects every triangle of it as well. A group in view runs
+ * the same code as the interpreter (G_VTX copy to the GV1 ring, draw_tri) without the CPU transform of the vertices. A group that is near the camera plane, lit, or does not
+ * fit the ring runs through the interpreter itself (pm_gbi_run on the op range of the group). */
+unsigned pm_dlc_gen = 1; /* bumped when the shape buffer is written (pm_tex_invalidate, decode_yay0) */
+
+typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng; u8 tsv_exit; } DlcGrp;
+typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; } DlcEnt;
+enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
+#define DLC_TAB 2048
+#define DLC_MAXOPS 4096
+static DlcEnt* dlc_tab[DLC_TAB];
+static unsigned dlc_nent;
+static int dlc_on, dlc_depth;
+static struct {
+    unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail;
+} dlc_c;
+static unsigned dlc_dirty; /* the last replay left vert_live cleared although the interpreter would have left slots live */
+static const Gfx dlc_end[1] = { { { (u32)G_ENDDL << 24, 0 } } };
+
+static int dlc_enabled(void) {
+    return (PM_DLC_DEFAULT || PMDL("dlc")) && !PMDL("nodlc") && gv1_on() && !dd_on() && !xt_on() && !rmlog_on() && !po3a_on();
+}
+static int dlcchk_on(void) { return PMDL("dlccheck"); }
+static void dlc_free(DlcEnt* e) { free(e->grp); free(e->gop); e->grp = NULL; e->gop = NULL; e->ngrp = 0; }
+
+static DlcGrp dlc_sg[1024];
+static u32 dlc_sgop[2048][2];
+/* Cut the list into groups. Fills e. Returns the reason to refuse (DLR_OK when compiled). */
+static int dlc_compile(DlcEnt* e, const Gfx* l) {
+    unsigned ng = 0, ngop = 0, i;
+    u32 cam = 0xffffffffu, com = 0;
+    unsigned char live[64];
+    int tsv = -1, in = 0;
+    DlcGrp* g = NULL;
+    memset(live, 2, sizeof live);
+    for (i = 0; i < DLC_MAXOPS; i++) {
+        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+        unsigned op = w0 >> 24;
+        if (op == G_ENDDL) break;
+        switch (op) {
+        case G_VTX: {
+            unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
+            const Vtx* src = (const Vtx*)ptr_of(w1);
+            if (!src || (u32)src - (u32)gMapShapeData >= 0x40000u || n == 0 || n > 64 || v0 >= 64) return DLR_VTX;
+            if (v0 + n > 64) n = 64 - v0;
+            if (!in || (v0 == 0 && tsv == 1)) {
+                if (g) { g->op1 = i; g->tsv_exit = (u8)(tsv == 1); }
+                if (ng >= 1024) return DLR_LONG;
+                g = &dlc_sg[ng++];
+                memset(g, 0, sizeof *g);
+                g->op0 = i; g->am = cam; g->om = com; g->goff = (u16)ngop;
+                for (int q = 0; q < 3; q++) { g->lo[q] = 32767; g->hi[q] = -32768; }
+                if (in) memset(live, 0, sizeof live);
+                in = 1;
+            }
+            tsv = 0;
+            for (unsigned k = 0; k < n; k++) {
+                for (int q = 0; q < 3; q++) { s16 o = src[k].v.ob[q]; if (o < g->lo[q]) g->lo[q] = o; if (o > g->hi[q]) g->hi[q] = o; }
+                live[v0 + k] = 1;
+            }
+            g->nvtx += (u16)n;
+            break;
+        }
+        case G_TRI1:
+        case G_TRI2: {
+            if (!in) return DLR_SLOT;
+            for (int t = 0; t < (op == G_TRI2 ? 2 : 1); t++) {
+                u32 w = t ? w1 : w0;
+                int ix[3] = { (int)((w >> 16) & 0xff) / 2, (int)((w >> 8) & 0xff) / 2, (int)(w & 0xff) / 2 };
+                for (int k = 0; k < 3; k++) if (ix[k] <= 63 && live[ix[k]] == 2) return DLR_SLOT; /* a slot that the list did not load */
+                g->ntri++;
+            }
+            tsv = 1;
+            break;
+        }
+        case G_GEOMETRYMODE: {
+            u32 am = w0 & 0xffffffu;
+            cam &= am; com = (com & am) | w1;
+            if (in) { if (ngop >= 2048) return DLR_LONG; dlc_sgop[ngop][0] = am; dlc_sgop[ngop][1] = w1; ngop++; g->ng++; }
+            break;
+        }
+        case G_NOOP: case G_SPNOOP: case G_RDPFULLSYNC: case G_RDPTILESYNC: case G_RDPPIPESYNC: case G_RDPLOADSYNC:
+            break;
+        default:
+            return DLR_OP;
+        }
+    }
+    if (i >= DLC_MAXOPS) return DLR_LONG;
+    if (g) { g->op1 = i; g->tsv_exit = (u8)(tsv == 1); }
+    e->ngrp = (u16)ng; e->nops = i + 1; e->exit_am = cam; e->exit_om = com;
+    e->grp = ng ? (DlcGrp*)malloc(ng * sizeof(DlcGrp)) : NULL;
+    e->gop = ngop ? (u32(*)[2])malloc(ngop * 8) : NULL;
+    if ((ng && !e->grp) || (ngop && !e->gop)) { dlc_free(e); return DLR_LONG; }
+    if (ng) memcpy(e->grp, dlc_sg, ng * sizeof(DlcGrp));
+    if (ngop) memcpy(e->gop, dlc_sgop, ngop * 8);
+    return DLR_OK;
+}
+
+static DlcEnt* dlc_find(const Gfx* l) {
+    u32 a = (u32)l;
+    unsigned k = ((a >> 3) * 2654435761u) >> 21 & (DLC_TAB - 1);
+    for (unsigned n = 0; n < DLC_TAB; n++, k = (k + 1) & (DLC_TAB - 1)) {
+        DlcEnt* e = dlc_tab[k];
+        if (!e) {
+            if (dlc_nent >= DLC_TAB * 3 / 4) { dlc_c.full++; return NULL; }
+            e = (DlcEnt*)calloc(1, sizeof *e);
+            if (!e) return NULL;
+            e->addr = a; dlc_tab[k] = e; dlc_nent++;
+            return e;
+        }
+        if (e->addr == a) return e;
+    }
+    return NULL;
+}
+
+static void dlc_set_geom(u32 g) {
+    if (g == geom) return;
+    geom = g;
+    pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
+    gv_epoch++;
+}
+
+/* The matrix id of `combined` (the same search as the G_VTX code), GV_NONE when the table is full. */
+static unsigned dlc_gmi(void) {
+    unsigned gmi = GV_NONE;
+    if (!gm_tab) gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
+    if (!gm_tab) return GV_NONE;
+    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0) return gm_last;
+    unsigned k;
+    for (k = gm_n; k > 0; k--) if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0) break;
+    if (k > 0) gmi = k - 1;
+    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); gmi = gm_n++; }
+    gm_last = gmi;
+    return gmi;
+}
+
+/* Box test against the clip planes of clip_bits4. Returns 1 when every vertex of the box is outside one plane (by a margin for the float error of the interpreter).
+ * *near is set when the smallest w of the box is at or under the near limit of the interpreter. */
+static int dlc_box_out(const DlcGrp* g, const float (*m)[4], int* near) {
+    static const struct { signed char a, b; } pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } }; /* coordinate, sign of w: x + w < 0, x - w > 0, y + w < 0, y - w > 0, z - w > 0 */
+    float lo[3] = { g->lo[0], g->lo[1], g->lo[2] }, hi[3] = { g->hi[0], g->hi[1], g->hi[2] };
+    int out = 0;
+    for (int p = 0; p < 5; p++) {
+        float k = m[3][pl[p].a] + (float)pl[p].b * m[3][3], mn = k, mx = k, mag = k < 0 ? -k : k;
+        for (int q = 0; q < 3; q++) {
+            float c = m[q][pl[p].a] + (float)pl[p].b * m[q][3], x = c * lo[q], y = c * hi[q];
+            if (x < y) { mn += x; mx += y; } else { mn += y; mx += x; }
+            mag += (x < 0 ? -x : x) > (y < 0 ? -y : y) ? (x < 0 ? -x : x) : (y < 0 ? -y : y);
+        }
+        float eps = mag * 1e-5f + 1e-3f;
+        if (pl[p].b > 0 ? mx < -eps : mn > eps) out = 1;
+    }
+    {
+        float k = m[3][3], mn = k, mag = k < 0 ? -k : k;
+        for (int q = 0; q < 3; q++) {
+            float c = m[q][3], x = c * lo[q], y = c * hi[q];
+            mn += x < y ? x : y;
+            mag += (x < 0 ? -x : x) > (y < 0 ? -y : y) ? (x < 0 ? -x : x) : (y < 0 ? -y : y);
+        }
+        *near = mn <= 0.05f + mag * 1e-5f + 1e-3f;
+    }
+    return out;
+}
+
+/* dlccheck: the interpreter rejects every triangle of a skipped group (all three clip bits share one plane). Counts the triangles that it would not reject. */
+static void dlc_verify_skip(const Gfx* l, const DlcGrp* g, const float (*m)[4]) {
+    unsigned char cb[64], live[64] = { 0 };
+    int tsv = 1;
+    for (u32 j = g->op0; j < g->op1; j++) {
+        u32 w0 = l[j].words.w0, w1 = l[j].words.w1;
+        unsigned op = w0 >> 24;
+        if (op == G_VTX) {
+            unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
+            const Vtx* src = (const Vtx*)ptr_of(w1);
+            if (v0 + n > 64) n = 64 - v0;
+            if (v0 == 0 && tsv) memset(live, 0, sizeof live);
+            tsv = 0;
+            for (unsigned k = 0; k < n; k++) {
+                float x = src[k].v.ob[0], y = src[k].v.ob[1], z = src[k].v.ob[2], p[4];
+                for (int q = 0; q < 4; q++) p[q] = m[0][q] * x + m[1][q] * y + m[2][q] * z + m[3][q];
+                cb[v0 + k] = (unsigned char)clip_bits4(p); live[v0 + k] = 1;
+            }
+        } else if (op == G_TRI1 || op == G_TRI2) {
+            tsv = 1;
+            for (int t = 0; t < (op == G_TRI2 ? 2 : 1); t++) {
+                u32 w = t ? w1 : w0;
+                int a = (int)((w >> 16) & 0xff) / 2, b = (int)((w >> 8) & 0xff) / 2, c = (int)(w & 0xff) / 2;
+                if (a > 63 || b > 63 || c > 63 || !live[a] || !live[b] || !live[c]) continue;
+                if (!(cb[a] & cb[b] & cb[c] & 0x2f)) dlc_c.missing++;
+            }
+        }
+    }
+}
+
+/* One group in view: the interpreter code for G_VTX (GV1 ring copy, no CPU transform) and draw_tri. Returns 0 on success. */
+static void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
+    unsigned tss = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu);
+    for (u32 j = g->op0; j < g->op1; j++) {
+        u32 w0 = l[j].words.w0, w1 = l[j].words.w1;
+        switch (w0 >> 24) {
+        case G_VTX: {
+            unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
+            const Vtx* src = (const Vtx*)ptr_of(w1);
+            if (v0 + n > 64) n = 64 - v0;
+            PH_ADD(C_VTXLOAD, n);
+            if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
+            tri_since_vtx = 0;
+            int r = pm_gpu_gvtx_load(src, n);
+            if (r < 0) { dlc_c.ringfail++; gv_fb[GVR_RING]++; break; } /* cannot happen: the room test counted every vertex and every copy */
+            gv_load_n += n; PH_ADD(C_GVLOAD, n);
+            for (unsigned i = 0; i < n; i++) {
+                unsigned s = v0 + i;
+                vert_ring[s] = (unsigned short)(r + (int)i);
+                vert_gmi[s] = (unsigned short)gmi;
+                vert_tss[s] = tss;
+                vert_mid[s] = 0;
+                vert_live[s] = 1;
+                vert_scr[s] = 0;
+                vert_gvf[s] = 0;
+                vert_cb[s] = 0;
+            }
+            break;
+        }
+        case G_TRI1:
+            tri_prep_ok = 0;
+            draw_tri(w0);
+            break;
+        case G_TRI2:
+            tri_prep_ok = 0;
+            draw_tri(w0);
+            draw_tri(w1);
+            break;
+        case G_GEOMETRYMODE:
+            geom = (geom & (w0 & 0xffffffu)) | w1;
+            pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
+            gv_epoch++;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+/* the shape buffer was written: every entry is stale */
+static void dlc_reset(void) {
+    for (unsigned k = 0; k < DLC_TAB; k++) if (dlc_tab[k]) { dlc_free(dlc_tab[k]); free(dlc_tab[k]); dlc_tab[k] = NULL; }
+    dlc_nent = 0;
+}
+static unsigned dlc_seen_gen;
+/* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
+static int dlc_try(const Gfx* l) {
+    if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
+    if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
+    DlcEnt* e = dlc_find(l);
+    if (!e) return 0;
+    int chk = dlcchk_on();
+    if (e->gen != pm_dlc_gen) {
+        dlc_free(e);
+        e->gen = pm_dlc_gen; e->refused = 0;
+        int r = dlc_compile(e, l);
+        e->hash = dls_hash(l);
+        dlc_c.compile++;
+        if (r) { e->refused = (u8)r; dlc_c.refused[r]++; }
+    } else dlc_c.hit++;
+    if (e->refused) return 0;
+    if (chk && dls_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
+    const float(*m)[4] = combined;
+    u32 entry = geom;
+    unsigned gmi = GV_NONE;
+    int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
+    dlc_c.lists++;
+    dlc_c.opsrep += e->nops;
+    for (unsigned k = 0; k < e->ngrp; k++) {
+        const DlcGrp* g = &e->grp[k];
+        int near = 0;
+        dlc_c.grp++;
+        if (dlc_box_out(g, m, &near)) {
+            if (chk) dlc_verify_skip(l, g, m);
+            tri_since_vtx = g->tsv_exit;
+            skipped_last = skipped_any = 1;
+            dlc_c.skip++;
+            continue;
+        }
+        skipped_last = 0;
+        u32 gg = (entry & g->am) | g->om;
+        int why = near ? 1 : 0;
+        if (!why) {
+            u32 x = gg;
+            int lit = (x & G_LIGHTING) != 0;
+            for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if (x & G_LIGHTING) lit = 1; }
+            if (lit) why = 2;
+        }
+        if (!why && !pm_gpu_gv_room(g->nvtx + 3u * g->ntri)) why = 3;
+        if (!why) {
+            if (!gmi_ready) { gmi = dlc_gmi(); gmi_ready = 1; }
+            if (gmi == GV_NONE) why = 4;
+        }
+        dlc_set_geom(gg);
+        if (why) {
+            if (why == 1) dlc_c.i_near++; else if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else dlc_c.i_mat++;
+            dlc_depth++;
+            pm_gbi_run((void*)(l + g->op0), (g->op1 - g->op0) * 8u);
+            dlc_depth--;
+            continue;
+        }
+        dlc_c.replay++; dlc_c.tri += g->ntri;
+        dlc_run_group(l, g, gmi);
+    }
+    dlc_set_geom((entry & e->exit_am) | e->exit_om);
+    if (skipped_last) memset(vert_live, 0, sizeof vert_live);
+    if (skipped_any) dlc_dirty = 1;
+    if (chk) { /* the exit state against a plain walk of the list */
+        u32 g2 = entry;
+        int anyg = 0;
+        for (unsigned i = 0; i < DLC_MAXOPS; i++) {
+            u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+            if ((w0 >> 24) == G_ENDDL) break;
+            if ((w0 >> 24) == G_GEOMETRYMODE) g2 = (g2 & (w0 & 0xffffffu)) | w1;
+            if ((w0 >> 24) == G_VTX) anyg = 1;
+        }
+        if (g2 != geom) dlc_c.exitbad++;
+        if (anyg && e->ngrp && tri_since_vtx != e->grp[e->ngrp - 1].tsv_exit) dlc_c.exitbad++;
+    }
+    return 1;
+}
+
+static void dlc_report(void) {
+    pm_log_hw("dlc f%d hit %u comp %u ref op %u slot %u vtx %u long %u full %u | lists %u grp %u skip %u repl %u near %u lit %u ring %u mat %u", rm_frame, dlc_c.hit, dlc_c.compile,
+              dlc_c.refused[DLR_OP], dlc_c.refused[DLR_SLOT], dlc_c.refused[DLR_VTX], dlc_c.refused[DLR_LONG], dlc_c.full, dlc_c.lists, dlc_c.grp, dlc_c.skip, dlc_c.replay, dlc_c.i_near, dlc_c.i_lit, dlc_c.i_ring, dlc_c.i_mat);
+    pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent);
+    memset(&dlc_c, 0, sizeof dlc_c);
+}

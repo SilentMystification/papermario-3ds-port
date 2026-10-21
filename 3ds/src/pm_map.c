@@ -376,6 +376,7 @@ void decode_yay0(void* src, void* dst) {
     /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
     if (dst == (void*)pm_shape_buf) {
         fix_shape(dst, dec);
+        { extern unsigned pm_dlc_gen; pm_dlc_gen++; } /* DLC1: the shape file is final now */
     } else if (src == last_asset_src) {
         u32 n = strlen(last_asset_name);
         if (n > 4 && strcmp(last_asset_name + n - 4, "_hit") == 0) swap_hit_file(dst, dec);

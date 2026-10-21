@@ -16,6 +16,7 @@ void pm_gpu_set_mvp(const float m[4][4], float vp_sx, float vp_sy, float vp_tx, 
 void pm_gpu_set_mode(int zbuffer, int lighting);
 /* PO3b: the raw Vtx path (switch gpuvtx, off by default) */
 int pm_gpu_gvtx_load(const void* vtx, unsigned n);
+int pm_gpu_gv_room(unsigned n);
 int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, unsigned i0, unsigned i1, unsigned i2);
 const unsigned char* pm_gpu_gring(void);
 unsigned pm_gpu_flush_gen(void);
@@ -113,3 +114,5 @@ extern float pm_f255[256], pm_f127[256]; /* PG3 O11: i / 255.f and (signed char)
 /* GV1g: the defaults of the full GPU path. 1 = on unless the switch nogv1 / noraw1 is set. 0 = off unless the switch gv1 / raw1 is set. */
 #define PM_GV1_DEFAULT 1
 #define PM_RAW1_DEFAULT 1
+/* DLC: compiled replay of the map shape display lists. 1 = on unless the switch nodlc is set. 0 = off unless the switch dlc is set. */
+#define PM_DLC_DEFAULT 0

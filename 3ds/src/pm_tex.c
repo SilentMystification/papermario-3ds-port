@@ -507,8 +507,11 @@ void pm_tex_begin_frame(void) {
         if (slots[i].live && slots[i].stale) drop(&slots[i]);
 }
 
+extern unsigned pm_dlc_gen; /* DLC1: a write into the map shape buffer (ROM read, Yay0 decode) makes the compiled display lists stale */
+extern unsigned char gMapShapeData[];
 void pm_tex_invalidate(const void* ptr, unsigned size) {
     pm_tex_epoch_v++;
+    if (ptr && size && (unsigned)ptr < (unsigned)gMapShapeData + 0x40000u && (unsigned)ptr + size > (unsigned)gMapShapeData) pm_dlc_gen++;
     unsigned start, end;
     int i;
     if (!ptr || !size) return;
