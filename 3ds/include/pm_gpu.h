@@ -16,7 +16,10 @@ void pm_gpu_set_mvp(const float m[4][4], float vp_sx, float vp_sy, float vp_tx, 
 void pm_gpu_set_mode(int zbuffer, int lighting);
 /* PO3b: the raw Vtx path (switch gpuvtx, off by default) */
 int pm_gpu_gvtx_load(const void* vtx, unsigned n);
-int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], unsigned i0, unsigned i1, unsigned i2);
+int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, unsigned i0, unsigned i1, unsigned i2);
+const unsigned char* pm_gpu_gring(void);
+int pm_gpu_gv_wind(void);
+void pm_gpu_gv_post(const float p[4], float o[4]); /* GV1: the 16 byte Vtx copies of this frame */
 void pm_gpu_set_rgb_scale(int scale); /* 1 or 2, texture stage only */
 void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
 

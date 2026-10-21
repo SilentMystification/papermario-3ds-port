@@ -18,7 +18,7 @@ int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
 
 static const char* const pname[PH_N] = { "other", "logic", "dl", "gbi", "gpu", "tex", "audio", "rom", "yay0", "fbegin", "fend", "idle", "gcache", "gdraw", "g_vtx", "g_tri", "g_mtx", "g_op", "fbread", "g_tev", "g_bind", "g_state" };
-static const char* const cname[C_N] = { "tri", "triout", "vtxload", "vtxslot", "draw", "flush", "texcall", "texmiss", "texKB", "romn", "romKB", "yayn", "yayKB", "dbgcall", "atick", "gbiops", "ajob" };
+static const char* const cname[C_N] = { "tri", "triout", "vtxload", "vtxslot", "draw", "flush", "texcall", "texmiss", "texKB", "romn", "romKB", "yayn", "yayKB", "dbgcall", "atick", "gbiops", "ajob", "gvload", "gvtri", "gvrej", "gvfb", "gvxf" };
 
 static int stk[16], depth, cur;
 static unsigned last, frame_t0, acc[PH_N];
@@ -60,7 +60,7 @@ typedef struct {
 } Bucket;
 static Bucket bk[BK_N];
 static int ps_on;
-static const char* const ab_words[] = { "base", "gpuvtx", "nodr1", "nokick", "notx1", "phasegbi" };
+static const char* const ab_words[] = { "base", "gpuvtx", "nodr1", "nokick", "notx1", "phasegbi", "gv1" };
 static int ab_st[BK_N], ab_n, ab_every, ab_cur, ab_steps, ab_skip, ab_seq;
 static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buckets */
 static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */

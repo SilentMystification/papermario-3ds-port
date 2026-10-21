@@ -98,6 +98,9 @@ static unsigned short* gidx; /* GRING_IDX, linear */
 static unsigned gring_n, gidx_n, gi_start, gni; /* ring fill, index fill, first index of the open batch, indices in the open batch */
 static float g_mtx[4][4], g_uvso[4], g_vp[4], g_cmul[4], g_cadd[4], g_zmix[2];
 static int u_uvso = -1, u_cmul = -1, u_cadd = -1, u_zmix = -1, gpu_vtx_on;
+static int g_ct, g_cullm; /* GV1a: the N64 cull type of the open raw batch (0 none, 1 G_CULL_FRONT, 2 G_CULL_BACK) and the PICA mode made from it */
+static C3D_Mtx gv_post;
+static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the matrix after the game matrix: +1 keeps the orientation of N64 clip space */
 
 int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
@@ -137,6 +140,13 @@ static void rebuild_3d(void) {
     view.r[3].w = 1.f;
     Mtx_Multiply(&tmp, &view, &game);
     Mtx_Multiply(&shader_3d, off_active ? &off_proj : &projection, &tmp);
+    {   /* GV1a: orientation of the map from N64 clip (x y w) to PICA clip. The game matrix is applied before, so it does not count. */
+        C3D_Mtx* post = &gv_post;
+        Mtx_Multiply(post, off_active ? &off_proj : &projection, &view);
+        const C3D_FVec *a = &post->r[0], *b = &post->r[1], *c = &post->r[3];
+        float det = a->x * (b->y * c->w - b->w * c->y) - a->y * (b->x * c->w - b->w * c->x) + a->w * (b->x * c->y - b->y * c->x);
+        gv_wind = det < 0.f ? -1 : 1;
+    }
 }
 
 /* The PICA constant colour register is 0xAABBGGRR. The port keeps colours as 0xRRGGBBAA. */
@@ -653,7 +663,7 @@ static void flush_draw(void) {
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
-    sh_cull(GPU_CULL_NONE);
+    sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
     if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
         sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
     else if (off_active) /* alpha accumulates as source over destination: a covered pixel becomes opaque */
@@ -854,7 +864,7 @@ void pm_gpu_init(void) {
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     attr_cpu = *ai;
-    if ((pm_debug_has("gpuvtx") || pm_ph_abtog_has("gpuvtx")) && !pm_debug_has("nogpuvtx")) { /* PO3b: the raw Vtx path. Off by default, nothing is allocated with the switch off. */
+    if ((pm_debug_has("gpuvtx") || pm_ph_abtog_has("gpuvtx") || pm_debug_has("gv1") || pm_ph_abtog_has("gv1")) && !pm_debug_has("nogpuvtx")) { /* PO3b: the raw Vtx path. Off by default, nothing is allocated with the switch off. */
         shaderProgramInit(&prog3);
         dvlb3 = DVLB_ParseFile((u32*)pm_shader3_shbin, pm_shader3_shbin_size);
         shaderProgramSetVsh(&prog3, &dvlb3->DVLE[0]);
@@ -1361,6 +1371,11 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
 }
 
 /* PO3b: copy n raw Vtx records into the frame ring. Returns the ring index of the first one, or -1 (path off or ring full). */
+const unsigned char* pm_gpu_gring(void) { return gring; }
+int pm_gpu_gv_wind(void) { return gv_wind; }
+void pm_gpu_gv_post(const float p[4], float o[4]) { /* gv1check: the clip position after the viewport and tilt (the game matrix is already in p) */
+    for (int r = 0; r < 4; r++) o[r] = gv_post.r[r].x * p[0] + gv_post.r[r].y * p[1] + gv_post.r[r].z * p[2] + gv_post.r[r].w * p[3];
+}
 int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
     if (!gpu_vtx_on || !gpu_ok || gring_n + n > GRING_VTX) return -1;
     memcpy(gring + gring_n * 16, vtx, n * 16);
@@ -1371,7 +1386,7 @@ int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
 
 /* PO3b: one triangle of ring vertices i0 i1 i2. mtx is the row vector game matrix of the three vertices, uvso the uv map, vp the viewport.
  * Returns 0 when the raw path cannot take it now (the caller draws it on the CPU path). A batch is the triangles with the same matrix, viewport and uv map. */
-int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], unsigned i0, unsigned i1, unsigned i2) {
+int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, unsigned i0, unsigned i1, unsigned i2) {
     if (!gpu_vtx_on || !gpu_ok) return 0;
     if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
     if (r_decal && r_blend && decal2_on()) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
@@ -1380,7 +1395,7 @@ int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], c
     if (!draw_3d) { flush(); draw_3d = 1; }
     if (nverts > 0) flush(); /* the CPU batch in flight comes first, draw order */
     if (gni > 0 && (memcmp(g_mtx, mtx, sizeof(g_mtx)) || memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) ||
-                    memcmp(g_cmul, cmul, sizeof(g_cmul)) || memcmp(g_cadd, cadd, sizeof(g_cadd)) || memcmp(g_zmix, zmix, sizeof(g_zmix)))) flush();
+                    memcmp(g_cmul, cmul, sizeof(g_cmul)) || memcmp(g_cadd, cadd, sizeof(g_cadd)) || memcmp(g_zmix, zmix, sizeof(g_zmix)) || g_ct != ct)) flush();
     if (gni == 0) {
         memcpy(g_mtx, mtx, sizeof(g_mtx));
         memcpy(g_uvso, uvso, sizeof(g_uvso));
@@ -1388,7 +1403,13 @@ int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], c
         memcpy(g_cmul, cmul, sizeof(g_cmul));
         memcpy(g_cadd, cadd, sizeof(g_cadd));
         memcpy(g_zmix, zmix, sizeof(g_zmix));
+        g_ct = ct;
         pm_gpu_set_mvp(mtx, vp[0], vp[1], vp[2], vp[3]); /* flushes nothing: no batch is open */
+        if (ct) { /* GV1a: keep the triangles with N64 cross > 0 (G_CULL_FRONT) or < 0 (G_CULL_BACK). The PICA culls in window space. */
+            int ccw = (gv_wind > 0) != (PMDL("gv1flip") != 0);
+            if (ct == 2) ccw = !ccw;
+            g_cullm = ccw ? GPU_CULL_BACK_CCW : GPU_CULL_FRONT_CCW;
+        } else g_cullm = GPU_CULL_NONE;
     }
     gidx[gidx_n++] = (unsigned short)i0;
     gidx[gidx_n++] = (unsigned short)i1;
