@@ -52,3 +52,8 @@ Not covered: a world screen that is not one of these (none known). A script that
 ## Select menu screen (PT64, PT65)
 - The menu uses rows 3 to 14 of the bottom console. The log keeps rows 16 to 30 and goes on while the menu is open (the log writer no longer checks `pm_menu_open`). On close the menu rows are blank and the log window is the full window again, the next line comes at the bottom.
 - The flicker (PT64) came from `consoleClear` and a full redraw at each move: the 3DS could show the empty frame. `pm_gpu_menu_draw` in `pm_gpu.c` does not clear. It rewrites only the lines whose text changed, padded with spaces.
+
+## Select menu warp (PT63)
+- Debug tab: `Warp to` (Off, the presets, every map without the `tst_*` maps), `Entry`, `Warp now`. The choice is a runtime value only and is never written to options.ini.
+- `Credits` is the preset `credits`: map `end_00` entry 0, story 96 (`STORY_EPILOGUE`), no partner, flag or item. The kkj_00 ending scene reaches end_00 the same way (`GotoMapSpecial`). It also works as the debug switch `preset=credits`.
+- `Warp now` in the Select menu calls `pm_warp_live` (`pm_warp.c`): from the world a normal map change, from the title, the intro or the demo `GAME_MODE_ENTER_WORLD`. Other game modes refuse (a warning in the log). The player data is new at the story value, as for a preset.
