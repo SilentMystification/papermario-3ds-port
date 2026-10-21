@@ -65,7 +65,7 @@ static int dd_on(void) {
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
 static struct {
-    unsigned idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri, tex;
+    unsigned vc, gm, idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri, tex;
     float x0, y0, x1, y1, w0, w1;
 } dd;
 static unsigned dd_idx, dd_dl0, dd_dl1, dd_top;
@@ -80,9 +80,9 @@ static int dd_skip(void) {
 }
 static void dd_end(void) {
     if (dd.ntri)
-        pm_log_d("dd f%u #%u top %08x vtx %08x dl %08x %08x oml %08x omh %08x zb %u tex %u img %08x fmt %u/%u %ux%u prim %08x tris %u box %d %d %d %d w %d %d",
+        pm_log_d("dd f%u #%u top %08x vtx %08x dl %08x %08x oml %08x omh %08x zb %u tex %u img %08x fmt %u/%u %ux%u prim %08x tris %u box %d %d %d %d w %d %d vc0 %08x gm %08x",
                pm_frame_count(), dd.idx, dd.top, dd.src, dd.dl0, dd.dl1, dd.oml, dd.omh, dd.zb, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.prim,
-               dd.ntri, (int)dd.x0, (int)dd.y0, (int)dd.x1, (int)dd.y1, (int)dd.w0, (int)dd.w1);
+               dd.ntri, (int)dd.x0, (int)dd.y0, (int)dd.x1, (int)dd.y1, (int)dd.w0, (int)dd.w1, dd.vc, dd.gm);
     dd.ntri = 0;
 }
 
@@ -104,6 +104,7 @@ static unsigned ldrec_n;
 static struct { unsigned tmem, bytes; const void* img; } blk[4];
 static unsigned blk_n;
 static int tile_x0, tile_y0;
+static float tile_fx, tile_fy; /* PT38: the quarter texel part of SetTileSize uls and ult (a pan moves in quarter texels) */
 static const void* tlut;
 static int tlut_n;
 /* RDP state the shaded-sprite path needs: color image, TLUT per palette slot, per-tile TMEM
@@ -631,8 +632,8 @@ static void vert_uv(const float* tc, float* u, float* vcoord) {
     unsigned st = use_t1 ? 1 : 0;
     float ms = shift_mul(tile_shift[st][0]);
     float mt = shift_mul(tile_shift[st][1]);
-    *u = (tc[0] / 32.f * ms - (float)tile_x0) / (float)tw;
-    *vcoord = (tc[1] / 32.f * mt - (float)tile_y0) / (float)th;
+    *u = (tc[0] / 32.f * ms - (float)tile_x0 - tile_fx) / (float)tw;
+    *vcoord = (tc[1] / 32.f * mt - (float)tile_y0 - tile_fy) / (float)th;
 }
 
 typedef struct {
@@ -1191,12 +1192,12 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     if (tex_on) {
         o->uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms / (float)tw;
         o->uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt / (float)th;
-        o->uvso[2] = -(float)tile_x0 / (float)tw;
-        o->uvso[3] = -(float)tile_y0 / (float)th;
+        o->uvso[2] = -((float)tile_x0 + tile_fx) / (float)tw;
+        o->uvso[3] = -((float)tile_y0 + tile_fy) / (float)th;
     } else { /* H06b1: the vertex texcoords are 0, texel (0, 0) centre */
         o->uvso[0] = o->uvso[1] = 0.f;
-        o->uvso[2] = -(float)tile_x0 / (float)tw + 0.5f / (float)tw;
-        o->uvso[3] = -(float)tile_y0 / (float)th + 0.5f / (float)th;
+        o->uvso[2] = -((float)tile_x0 + tile_fx) / (float)tw + 0.5f / (float)tw;
+        o->uvso[3] = -((float)tile_y0 + tile_fy) / (float)th + 0.5f / (float)th;
     }
     if (env) { for (int q = 0; q < 4; q++) { o->cm[q] = 0.f; o->ca[q] = en[q]; } } /* the CPU order: ENV or the plan constant, then alpha 255, then boost */
     else if (plan) { float vc[4]; unpack8(cur_plan.vtx, vc); for (int q = 0; q < 4; q++) { o->cm[q] = 0.f; o->ca[q] = vc[q]; } }
@@ -2045,6 +2046,8 @@ static void ensure_tile(int n) {
         tile_x0 = td[n].x0 - ox;
         tile_y0 = td[n].y0 - oy;
     }
+    tile_fx = (float)(tile_sz[n][0] & 3) * 0.25f; /* PT38 */
+    tile_fy = (float)(tile_sz[n][1] & 3) * 0.25f;
     cur_tile = n;
 }
 
@@ -2241,7 +2244,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                  * list append above it and keep the earlier slots. */
                 if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
                 tri_since_vtx = 0;
-                if (v0 == 0 && dd_on()) { dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1; }
+                if (v0 == 0 && dd_on()) { dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.vc = __builtin_bswap32(*(const u32*)((const u8*)src + 12)); dd.gm = geom; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1; }
                 unsigned po3a_mid = 0;
                 if (po3a_on()) {
                     po3a_mid = 2166136261u;
@@ -2638,8 +2641,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             /* V12b: the tile shift scales a texrect coordinate too (bulb glow uses shift 1 1). It applies after the interpolation, so it scales the step as well. */
             float ms = shift_mul(tile_shift[rtile][0]);
             float mt = shift_mul(tile_shift[rtile][1]);
-            float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)tile_x0) / (float)tw;
-            float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)tile_y0) / (float)th;
+            float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)tile_x0 - tile_fx) / (float)tw;
+            float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)tile_y0 - tile_fy) / (float)th;
             float dsdx = (float)(s16)(hd >> 16) / 1024.f * ms;
             float dtdy = (float)(s16)(hd & 0xffff) / 1024.f * mt;
             float width = (float)(xh - xl) / 4.f;
@@ -2867,6 +2870,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 pm_gpu_flush();
                 tile_x0 = m1.x0;
                 tile_y0 = m1.y0;
+                tile_fx = tile_fy = 0.f;
                 if (load_shaded_sprite(dx4, dy4)) {
                     dual_on = 1;
                     sync_combine();
@@ -2878,7 +2882,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int y0 = ult >> 2;
             int w = ((lrs - uls) >> 2) + 1;
             int h = ((lrt - ult) >> 2) + 1;
-            /* FX3f, PT37: a T wrap tile too (confetti: 16 rows of a 256 row sheet moved by ult). The RDP reads TMEM row (t - SetTileSize ult) wrapped by the T mask. A window shorter than the mask period (shape_spell:
+            /* FX3f, PT37: a T wrap tile too (confetti: 16 rows of a 256 row sheet moved by ult). the RDP reads TMEM row (t - SetTileSize ult) wrapped by the T mask. A window shorter than the mask period (shape_spell:
              * 65 rows of a 256 row image, ult 256) reads rows outside the window, so the whole period must be bound. */
             if (tile_wrap[0][3] && !(tile_wrap[0][1] & 2) && ld_valid) {
                 int per = 1 << tile_wrap[0][3];
@@ -2918,6 +2922,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             tile_x0 = x0;
             tile_y0 = y0;
+            tile_fx = (float)(uls & 3) * 0.25f; /* PT38 */
+            tile_fy = (float)(ult & 3) * 0.25f;
             /* PG1: the same texture again (same source, format, size, palette, stride) and nothing touched the texture state since the last load (pm_tex_epoch):
              * the load would find the same cache slot. Skip the flush and the load, the batch in flight samples the same image. A frame buffer image is
              * excluded (its content changes under the same pointer, grab_cur). */
