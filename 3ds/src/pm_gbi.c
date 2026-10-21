@@ -2306,6 +2306,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                  * The lower right corner is inclusive, one more pixel (as in libultraship). */
                 dsdx /= 4.f;
                 width += 1.f;
+                height += 1.f; /* PT06: the lower edge is inclusive too. Without this a 6 row background strip showed 5 rows and every 6th screen row repeated the row above */
             }
             float s1 = s0 + dsdx * width / (float)tw;
             float t1 = t0 + dtdy * height / (float)th;
