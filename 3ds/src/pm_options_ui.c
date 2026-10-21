@@ -29,6 +29,8 @@ static void draw(void) {
         const char* v = pm_optui_value(tab, r, MODE);
         n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
+    for (int r = (rows < VIS ? rows : VIS) - 0; r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
+    n += snprintf(out + n, sizeof out - (size_t)n, "L R: tab  < > A: change  B: close\n");
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
 }

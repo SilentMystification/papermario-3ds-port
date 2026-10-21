@@ -283,7 +283,7 @@ int pm_con_trylock(void) { return LightLock_TryLock(&con_lock); }
 void pm_con_unlock(void) { LightLock_Unlock(&con_lock); }
 void pm_log_console_ready(void) {
     LightLock_Lock(&con_lock);
-    if (!pm_menu_open && con_pend_n) { fwrite(con_pend, 1, con_pend_n, stdout); fflush(stdout); }
+    if (con_pend_n) { fwrite(con_pend, 1, con_pend_n, stdout); fflush(stdout); }
     con_pend_n = 0;
     con_up = 1;
     LightLock_Unlock(&con_lock);
@@ -300,7 +300,7 @@ static void direct_write(const char* line, int n, const char* body, size_t bl) {
         client = -1;
     }
     if (!con_up) { if (con_pend_n + bl < sizeof con_pend) { memcpy(con_pend + con_pend_n, body, bl); con_pend_n += (unsigned)bl; } }
-    else if (!pm_menu_open) { fwrite(body, 1, bl, stdout); fflush(stdout); }
+    else { fwrite(body, 1, bl, stdout); fflush(stdout); }
 }
 
 static void vlog(int lv, const char* fmt, va_list ap) {
@@ -415,7 +415,7 @@ static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     /* After a crash the lock owner may be the dead thread: then skip the console. */
     if (__atomic_load_n(&crashed, __ATOMIC_ACQUIRE) ? LightLock_TryLock(&con_lock) == 0 : (LightLock_Lock(&con_lock), 1)) {
         if (!con_up) { if (con_pend_n + (unsigned)bn < sizeof con_pend) { memcpy(con_pend + con_pend_n, bodies, (size_t)bn); con_pend_n += (unsigned)bn; } }
-        else if (!pm_menu_open) { fwrite(bodies, 1, (size_t)bn, stdout); fflush(stdout); } /* F11-6: the menu owns the bottom screen */
+        else { fwrite(bodies, 1, (size_t)bn, stdout); fflush(stdout); } /* PT65: the log goes on while the menu is open (it owns rows 3 to 14) */
         LightLock_Unlock(&con_lock);
     }
     { u32 d = us_since(t0); if (d > wr_con_max) wr_con_max = d; }
