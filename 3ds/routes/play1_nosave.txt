@@ -1,0 +1,84 @@
+# route play1: a play-through of about 90 s of game time (see docs/plans/route_notes.md)
+# start: warp=mac_00:4 story=ch0_toad_town partner=1 (Toad Town Gate District, from the pipe)
+# Units: wait<n> and *<n> are pad scans, 2 scans = 1 game step. go_<x>_<z>_<max scans> walks to a point with the circle pad.
+seg_town_walk
+wait40
+go_-100_-100_200
+go_-280_-28_200
+go_-310_-140_200
+go_-319_-203_100
+go_-306_-264_100
+go_-358_-359_150
+go_-400_-430_100
+go_-387_-462_100
+go_-450_-500_150
+left*60
+seg_map_entry_field
+wait100
+seg_field_walk
+go_300_108_300
+goto_mac_01:0
+seg_map_entry_plaza
+wait80
+seg_plaza_walk
+go_-300_0_180
+goto_kmr_09:0
+seg_map_entry_road
+wait100
+seg_road_walk
+go_150_24_300
+go_260_30_300
+seg_battle_transition
+wait160
+seg_battle
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 k_dup*4 wait12 A*6 wait40
+seg_battle_exit
+wait20
+seg_road_back
+go_-100_24_300
+left*60
+seg_map_entry_village
+wait100
+seg_village_walk
+go_100_10_100
+goto_dgb_01:1
+seg_map_entry_interior
+wait80
+seg_interior_walk
+go_-100_0_200
+go_200_0_100
+goto_hos_00:0
+seg_map_entry_bigbg
+wait100
+seg_bigbg_walk
+go_100_-45_200
+seg_pause_menu
+wait30
+START*4
+wait60
+k_dright*4
+wait30
+k_dright*4
+wait30
+A*4
+wait60
+k_ddown*4
+wait30
+B*4
+wait40
+B*4
+wait60
+seg_save
+wait60
+seg_walk_on
+go_300_-45_150
+seg_end

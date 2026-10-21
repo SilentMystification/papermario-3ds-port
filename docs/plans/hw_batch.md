@@ -130,9 +130,25 @@ Lines to grep in the pull:
 - `grep -E "bench: (begin|end)" <pull>` must show `console O3DS` and a total time.
 - How to read each line and the decision rules: docs/plans/bench_notes.md.
 
-## 8. GV1g build 967 (main 537a7b6b3 without map_restore_table.c): the new defaults and three pushes
+## 8. Build 970 (main d54053ce5 without map_restore_table.c): the new defaults and four pushes
 
-File: 3ds/logs/builds/pm_3ds_967.3dsx (ELF and map next to it). Copy it to build3ds/pm_3ds.3dsx before each push. The orchestrator pushes. Defaults in this build: the full GPU path gv1, the lean draw path raw1 (one DVLB, lazy program and buffer binding, uniform shadows) and the texture slab fl1 (one data cache flush per command list submit) are ON. Switches `nogv1`, `noraw1`, `nofl1` turn each off. `dspaudio` and `bench` are OFF unless the switch is set. Lane B (AUD-DSP) and lane C (BENCH) are merged.
+### 8.0 Order of the pushes
+Copy 3ds/logs/builds/pm_3ds_970.3dsx to build3ds/pm_3ds.3dsx. Set `export O=<ip> B=970`. Do the pushes in this order. Azahar gate for build 970: statehash f1800 53090ae9, f4000 d95fd1a4, f8000 82add753, route run hash 2440c7c2.
+
+| # | Push | Command (after `sh 3ds/push_3ds.sh --no-build --ip $O -t 20`) | Seconds | User hands | Pull | Report or grep |
+|---|---|---|---|---|---|---|
+| 1 | R route | `warp=mac_00:4 story=ch0_toad_town partner=1 route=play1_nosave phase phsum phasecsv loglevel=debug fixedseed statehash=300` | 150 | none (FTP app on for the curl and the pull) | `python3 -u 3ds/tools/ftppull.py $O o build3ds; cp build3ds/hw_o3ds_log.txt 3ds/logs/perf/hw_${B}_ROUTE_pull.txt` | `python3 3ds/tools/route_report.py 3ds/logs/perf/hw_${B}_ROUTE_pull.txt --title "ROUTE play1 O3DS $B"` and `grep -E "route: (seg\|goto\|leg\|end)" <pull>` |
+| 2 | A full cycle | `audiostat pacestat logstat phase phsum noaudit loglevel=debug fixedseed statehash=10 phasecsv=300:400 abtog=base,nogv1,noraw1,nofl1:30` | 420 | none | same ftppull, copy to `hw_${B}_A_pull.txt` | section 8.1 greps |
+| 3 | B dspaudio | `dspaudio audiostat loglevel=debug` | live | listen, A/B list in AUD_DSP.md section 15 | same ftppull | `grep -E "audio dsp:\|dspaudio:\|audio cost\|audio2:" <pull>` |
+| 4 | C bench | `bench benchexit loglevel=debug`, then `dsptest loglevel=debug` | 90 each | none | same ftppull after each push | `grep "bench:" <pull>`, `grep "dsptest:" <pull>` |
+
+Console steps for push R (one time per route change). Start the FTP app on the console (port 5000). Then:
+```
+curl -T 3ds/routes/play1_nosave.txt --ftp-create-dirs ftp://$O:5000/3ds/PaperMario/routes/play1_nosave.txt
+```
+The game reads `sdmc:/3ds/PaperMario/routes/play1_nosave.txt`. Real save slot 3 stays untouched with `play1_nosave`. Details and the report: section 8.4.
+
+File: 3ds/logs/builds/pm_3ds_970.3dsx (build 967 files stay in the same folder; the text below was written for build 967 and is valid for 970) (ELF and map next to it). Copy it to build3ds/pm_3ds.3dsx before each push. The orchestrator pushes. Defaults in this build: the full GPU path gv1, the lean draw path raw1 (one DVLB, lazy program and buffer binding, uniform shadows) and the texture slab fl1 (one data cache flush per command list submit) are ON. Switches `nogv1`, `noraw1`, `nofl1` turn each off. `dspaudio` and `bench` are OFF unless the switch is set. Lane B (AUD-DSP) and lane C (BENCH) are merged.
 New statehash references (Azahar, fixedseed statehash=10 cpulimit=80, equal with the three paths on and off): f1800 53090ae9, f4000 d95fd1a4, f8000 82add753. The old values 5a6bb12a, bcd4e3ea, 1325de7e are from before PT07. Do not use them.
 Azahar numbers (dip window pc 1702 to 1850, noaudit): gb 13.20 (all three off) to 11.05 (on), gd 2.01 to 2.08, gp 1.21 to 1.24, draws 150.6 to 152.4, triout 290 to 389, citro3d calls per raw draw 10 to 2.2. Whole cycle 8233 steps: gbi 8.32 to 6.64 ms per step, draws 89.8 to 91.8 per step, statehash equal.
 
@@ -161,14 +177,13 @@ export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 bench benchexit
 sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dsptest loglevel=debug
 ```
 Read as in section 7 (bench lines, decision rules in docs/plans/bench_notes.md). The second push gives the `dsptest:` lines (control call costs, aux callback core).
-No route benchmark exists in main at this build (no 3ds/routes, no status_ROUTE.txt). Add a Route push section when it exists.
 
-## 8. Route push: play-through benchmark on the console (pulled log only, no hands)
-Build: any build with ROUTE (branch lane-c, file `pm_route.c`). Route file: `3ds/routes/play1.txt`. One time per route change, put it on the SD card (FTP app on the console, port 5000):
+### 8.4 Push R: route play1, play-through benchmark on the console (pulled log only, no hands)
+Build: 970 or later (ROUTE is merged in main, file `pm_route.c`). Route file: `3ds/routes/play1.txt`. One time per route change, put it on the SD card (FTP app on the console, port 5000):
 ```
 export O=<ip>; curl -T 3ds/routes/play1.txt --ftp-create-dirs ftp://$O:5000/3ds/PaperMario/routes/play1.txt
 ```
-The game reads `sdmc:/3ds/PaperMario/routes/play1.txt` (`route=play1`, same as `padscript=@routes/play1.txt`). The route saves to slot 3 (`save_3`): copy the save files from the SD card first if slot 3 holds data. User hands: none, except start the FTP app before the curl and again for the pull.
+The game reads `sdmc:/3ds/PaperMario/routes/play1.txt` (`route=play1`, same as `padscript=@routes/play1.txt`). WARNING: `play1` saves to the real save slot 3 (`save_3`) on the console. To avoid it, use `play1_nosave` instead (same route without `save_3`, same run hash 2440c7c2 in Azahar): put `3ds/routes/play1_nosave.txt` on the SD card with the same curl command and set `route=play1_nosave`. The report then shows no `save.flash` line. If you use `play1`, copy the save files from the SD card first if slot 3 holds data. User hands: none, except start the FTP app before the curl and again for the pull.
 Push (short live log, the route runs on after the log ends):
 ```
 export O=<ip> B=<build>; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 warp=mac_00:4 story=ch0_toad_town partner=1 route=play1 phase phsum phasecsv loglevel=debug fixedseed statehash=300
