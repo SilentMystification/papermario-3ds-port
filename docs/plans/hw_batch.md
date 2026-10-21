@@ -133,27 +133,34 @@ Lines to grep in the pull:
 ## 8. Build 970 (main d54053ce5 without map_restore_table.c): the new defaults and four pushes
 
 ### 8.0 Push PLAY: the one planned push (the user plays by hand)
-Build 970. No automated test runs on the console (user decision). Every picture and speed is the shipping configuration: gv1, raw1, fl1 and FS1 are on, no abtog.
+Build 981 (main 962af8d5e with LB-2 and VIS-3, without map_restore_table.c). No automated test runs on the console (user decision). gv1, raw1, fl1 and FS1 are on, no abtog. Azahar gate for build 981: statehash f1800 53090ae9, f4000 d95fd1a4, f8000 82add753 equal, golden yard 0.00, toad 0.01, pause1 0.06, battle 2.56, host tests dspdec and au2 ok.
 ```
-cp 3ds/logs/builds/pm_3ds_970.3dsx build3ds/pm_3ds.3dsx
-export O=<ip> B=970; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum loglevel=debug
+cp 3ds/logs/builds/pm_3ds_981.3dsx build3ds/pm_3ds.3dsx
+export O=<ip> B=981; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum camlog loglevel=debug
 ```
-The user plays as long as they want. Then press HOME to leave the game. Start the FTP app (port 5000) and pull:
+`camlog` writes up to 60 lines per second (one per game step). It logs the camera and the player for the Merlon door scene. After that scene, push again without `camlog` if the log gets long.
+Audio fallbacks. Use them in this order, one per push, only if the audio is wrong:
+1. As is (the command above).
+2. Add `dspfx=off` (no effect path, the wet sends go to the main mix).
+3. Add `dspgain=50 dspflush` (half mix level and a data cache flush before every wave buffer add).
+The user plays as long as they want. Then press HOME, or use the Select menu last row Exit to Homebrew. Start the FTP app (port 5000) and pull:
 ```
 python3 -u 3ds/tools/ftppull.py $O o build3ds; cp build3ds/hw_o3ds_log.txt 3ds/logs/perf/hw_${B}_PLAY_pull.txt
 ```
-Azahar check (build 970, 60 s, same switches): no crash, no FAIL, 0 dropped lines. The log holds `audio dsp:` 129, `audio2:` 87, `audio cost` 221, `texstat` 262, `pace:` 437, `spike` 2, `phs` and `phc` 45 each. `phase` and `phsum` give the phs and phc lines and the spike line (every step over 50 ms, at most 10 per second). `phasecsv` is not in the command, so the log stays small. The HUD shows FPS and the late share.
+What the user checks and tells:
+- The audio distortion is gone (PT22 VADPCM decode fix).
+- The effects (reverb, echo) are on.
+- The HUD shows drawn/steps (PT24).
+- The Select menu has the last row Exit to Homebrew and it leaves the game (PT28).
+- Note the minute of anything odd.
 Read-out (P = the pull file):
+- `grep -E "dspaudio: (first aux callback ran|aux mask|aux callbacks)" P` and `grep "audio dsp: aux callbacks" P`: the aux callback runs (bus0 and bus1 counts above 0, core number). Without the first line the wet part goes to the main mix.
 - `grep "audio dsp:" P`, `grep "audio2:" P`, `grep "audio cost" P`: DSP audio state, underruns, cost per 60 Hz tick.
-- `grep texstat P`: texture cache hits, misses, uploads every 300 frames.
-- `grep "pace:" P`: steps per second and late steps (3 or more vblanks) per second. The last `late steps ... of ...` gives the total share.
-- `grep " spike " P`: every step over 50 ms with its cause (rom, texmiss, ph columns).
-- `grep -E "^#[0-9]+ (phs|phc) " P`: phase averages per scene and the counters (flushcalls, flushkb, rawd, rawcall).
-- `grep -E "FAIL|CRASH|lines dropped" P` must be empty or 0. `grep "exit:" P` shows a clean shutdown (without it the game ended by HOME kill or crash: read the Luma dump with pull-o).
-- `statehash` is not in this push: it needs `fixedseed statehash=<n>`, which the free play does not use.
-Fallbacks when something looks wrong. Push again with one change:
-- Audio is bad: drop `dspaudio` (the old audio path).
-- Graphics or speed is wrong: add one kill switch: `nogv1`, `noraw1`, `nofl1`, `nonoise`, `nodecal2` (one at a time, to find the cause).
+- `grep "pace:" P`: steps per second and late steps. The last `late steps ... of ...` gives the total share.
+- `grep -i camlog P | head`: the camera lines of the door scene (the format is in pm_warp.c, PT26L).
+- `grep texstat P`, `grep " spike " P`, `grep -E "^#[0-9]+ (phs|phc) " P`: texture cache, steps over 50 ms, phase averages and flush/raw counters.
+- `grep -E "FAIL|CRASH|lines dropped" P` must be empty or 0. `grep "exit:" P` shows a clean shutdown.
+Other fallbacks: drop `dspaudio` (old audio path). Graphics wrong: add one of `nogv1`, `noraw1`, `nofl1`, `nonoise`, `nodecal2`.
 
 ### 8.0b Optional pushes, not planned (the user chose hand play)
 Push R (route), A (full cycle abtog), B (dspaudio listening) and C (bench, dsptest) stay for later use. They are in sections 8.1 to 8.4. Each needs the run time and hands listed there. Section 8.4 explains `play1_nosave` and the route file upload.
