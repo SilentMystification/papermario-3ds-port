@@ -6,6 +6,7 @@
 
 #define CAP 8192
 #define SLOTS 8
+#define PM_AU_LEAD 1416u /* PT14: ndsp backlog (samples) where the game switches to short frames: about 1600 samples, 50 ms, before a burst */
 
 static int ready;
 static unsigned rate = 32000;
@@ -24,6 +25,9 @@ void pm_audio_hash_log(void) {
     if (pm_debug_has("audiohash")) pm_log("audiohash posts %u fnv %08x dropped %u underrun %u (final)", au_posts, au_hash, au_dropped, au_underrun);
 }
 static unsigned pending_raw(void);
+/* PT14: feed statistics (switch audiostat), written by the posting thread, read by the stats line. */
+static volatile unsigned f_n, f_samples, f_small, f_iv_sum, f_iv_min = 0xFFFFFFFFu, f_iv_max, f_pend_sum, f_pend_min = 0xFFFFFFFFu, f_pend_max, f_empty;
+static unsigned long long f_t_first, f_t_last;
 static ndspWaveBuf wb[SLOTS];
 static s16* data[SLOTS];
 
@@ -104,6 +108,23 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
         }
     }
     au_posts_n++;
+    {   /* PT14: interval between posts, ndsp backlog in samples at the post, size of the buffer */
+        unsigned long long now = svcGetSystemTick();
+        unsigned pend = pending_raw() / 4;
+        if (f_t_last) {
+            unsigned iv = (unsigned)((now - f_t_last) / 268ull);
+            f_iv_sum += iv;
+            if (iv < f_iv_min) f_iv_min = iv;
+            if (iv > f_iv_max) f_iv_max = iv;
+        } else f_t_first = now;
+        f_t_last = now;
+        f_n++;
+        f_samples += (bytes > CAP ? CAP : bytes) / 4;
+        if (bytes < 552 * 4) f_small++;
+        f_pend_sum += pend;
+        if (pend < f_pend_min) f_pend_min = pend;
+        if (pend > f_pend_max) f_pend_max = pend;
+    }
     if (slot < 0) { au_dropped++; au_dropped_all++; return; }
     if (pending_raw() == 0) { au_underrun++; au_underrun_all++; } /* nothing queued: the DSP ran dry before this post */
     if (bytes > CAP) bytes = CAP;
@@ -233,6 +254,15 @@ static void au_stats_log(void) {
     au_pr_n = au_pr_sum = au_pr_max = 0; /* min stays: it is the free core speed */
     pm_log_d("audio join sites (count, avg us): kick %u %u, retrace %u %u, step %u %u, main %u %u", au_site_n[0], au_site_n[0] ? au_site_sum[0] / au_site_n[0] / 268 : 0, au_site_n[1], au_site_n[1] ? au_site_sum[1] / au_site_n[1] / 268 : 0, au_site_n[2], au_site_n[2] ? au_site_sum[2] / au_site_n[2] / 268 : 0, au_site_n[3], au_site_n[3] ? au_site_sum[3] / au_site_n[3] / 268 : 0);
     pm_log_d("audio pcm: posts %u underrun %u dropped %u (ndsp queue empty at a post / full at a post)", au_posts_all, au_underrun_all, au_dropped_all);
+    if (f_n > 1) {
+        unsigned long long wall = (f_t_last - f_t_first) / 268ull; /* us */
+        pm_log_d("audio feed: posts %u small(<552) %u interval us min %u avg %u max %u, ndsp backlog at post (samples) min %u avg %u max %u, supply %u Hz (32000 needed), empty %u",
+                 f_n, f_small, f_iv_min, f_iv_sum / (f_n - 1), f_iv_max, f_pend_min, f_pend_sum / f_n, f_pend_max,
+                 wall ? (unsigned)((unsigned long long)f_samples * 1000000ull / wall) : 0, au_underrun_all);
+    }
+    f_n = f_samples = f_small = f_iv_sum = f_iv_max = f_pend_sum = f_pend_max = 0;
+    f_iv_min = f_pend_min = 0xFFFFFFFFu;
+    f_t_first = f_t_last = 0;
     pm_au2_stats_log();
     au_w_n = au_w_sum = au_w_max = au_j_sum = au_j_max = au_g_sum = au_k_n = 0;
     for (int i = 0; i < 4; i++) au_site_n[i] = au_site_sum[i] = 0;
@@ -290,7 +320,12 @@ unsigned pm_audio_retraces(void) {
 /* Bytes of PCM that were posted and not played yet. This is what osAiGetLength reports. */
 unsigned pm_audio_pending(void) {
     if (pm_audio_lock()) return 0; /* audiolock: osAiGetLength 0 so the PCM does not depend on the clock */
-    return pending_raw();
+    /* PT14: the game mixes a full frame (552 samples) when this value is below 184 samples and a short frame (368) otherwise. The N64 value is the
+     * rest of one DMA buffer, so the game keeps about 184 samples ahead. Here the value is the whole ndsp backlog, and two ticks come in one burst per
+     * step at 30 FPS: with the plain backlog the short frame came every second tick (supply 27.6 kHz of 32 kHz, the DSP ran dry in every step).
+     * The offset moves the regulation point: full frames until the backlog holds PM_AU_LEAD samples, then the game's own servo keeps it there. */
+    unsigned n = pending_raw() / 4;
+    return n > PM_AU_LEAD ? (n - PM_AU_LEAD) * 4 : 0;
 }
 
 static unsigned pending_raw(void) {

@@ -9,7 +9,7 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off) */
+PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off) */
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
 static const struct { const char* name; unsigned short mask; } n64_btn[] = { {"NONE", 0}, {"A", 0x8000}, {"B", 0x4000}, {"Z", 0x2000}, {"START", 0x1000}, {"L", 0x0020}, {"R", 0x0010},
@@ -60,7 +60,8 @@ void pm_options_write(void) {
     }
     fprintf(f, "version=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
             pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode]);
-    if (pm_opt.warp > 0) fprintf(f, "warp=%s\n", pm_warp_preset_name(pm_opt.warp - 1));
+    if (pm_opt.warp > 0 && pm_opt.warp <= pm_warp_preset_count()) fprintf(f, "warp=%s\n", pm_warp_preset_name(pm_opt.warp - 1));
+    else if (pm_opt.warp > pm_warp_preset_count()) fprintf(f, "warp=%s:%d\n", pm_warp_map_name(pm_opt.warp - 1 - pm_warp_preset_count()), pm_opt.warp_entry);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -106,7 +107,17 @@ void pm_options_init(void) {
             if (!strcmp(line, "warp")) { /* UI1a: warp=<preset name> */
                 int m;
                 for (m = 0; m < pm_warp_preset_count() && strcmp(eq + 1, pm_warp_preset_name(m)); m++) {}
-                if (m == pm_warp_preset_count()) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else pm_opt.warp = m + 1;
+                if (m < pm_warp_preset_count()) pm_opt.warp = m + 1;
+                else { /* PT01: warp=<map>:<entry> */
+                    char nm[16];
+                    char* c = strchr(eq + 1, ':');
+                    int k;
+                    nm[0] = 0;
+                    strncat(nm, eq + 1, c && c - (eq + 1) < 15 ? (size_t)(c - (eq + 1)) : 15);
+                    k = pm_warp_map_index(nm);
+                    if (k < 0) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
+                    else { pm_opt.warp = pm_warp_preset_count() + 1 + k; pm_opt.warp_entry = c ? atoi(c + 1) & 15 : 0; }
+                }
                 continue;
             }
             fld = opt_field(line);
@@ -176,14 +187,14 @@ void pm_options_close(void) {
     pm_options_write();
 }
 
-/* Text to game message (0-9 = 0x10, A = 0x21, a = 0x41, '-' = 0x0D, space = 0xF7, end = 0xFD). Other characters become a space. */
+/* Text to game message (0-9 = 0x10, A = 0x21, a = 0x41, '-' = 0x0D, ':' '<' '>' '_', space = 0xF7, end = 0xFD). Other characters become a space. */
 const unsigned char* pm_options_msg(const char* t, int slot) {
     static unsigned char m[8][40];
     unsigned char* o = m[slot & 7];
     int n = 0;
     for (; *t && n < 38; t++, n++) {
         char c = *t;
-        o[n] = c >= '0' && c <= '9' ? 0x10 + (c - '0') : c >= 'A' && c <= 'Z' ? 0x21 + (c - 'A') : c >= 'a' && c <= 'z' ? 0x41 + (c - 'a') : c == '-' ? 0x0D : 0xF7;
+        o[n] = c >= '0' && c <= '9' ? 0x10 + (c - '0') : c >= 'A' && c <= 'Z' ? 0x21 + (c - 'A') : c >= 'a' && c <= 'z' ? 0x41 + (c - 'a') : c == '-' ? 0x0D : c == ':' ? 0x1A : c == '<' ? 0x1C : c == '>' ? 0x1E : c == '_' ? 0x3F : 0xF7;
     }
     o[n] = 0xFD;
     return o;
@@ -195,22 +206,42 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a: the rows of the Options panel in tabs. Both the file select panel and the Select menu use the same value and action code.
  * Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. */
 static const char* const lvl_name[4] = { "Error", "Warn", "Info", "Debug" };
-int pm_optui_rows(int tab) { return tab == 0 ? 3 : tab == 1 ? PM_NIN + 3 : 10; }
+int pm_optui_rows(int tab) { return tab == 0 ? 3 : tab == 1 ? PM_NIN + 3 : 11; }
 static const char* const gen_lbl[2] = { "60 FPS", "Widescreen" };
 static const char* const dbg_lbl[7] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed" };
 const char* pm_optui_label(int tab, int row) {
     if (row == pm_optui_rows(tab) - 1) return "Back";
     if (tab == 0) return gen_lbl[row];
     if (tab == 1) return row == 0 ? "D-PAD" : row <= PM_NIN ? pm_in_name[row - 1] : "Reset controls";
-    return row < 7 ? dbg_lbl[row] : row == 7 ? "Warp to" : "Warp now";
+    return row < 7 ? dbg_lbl[row] : row == 7 ? "Warp to" : row == 8 ? "Entry" : "Warp now";
 }
 const char* pm_optui_value(int tab, int row) {
     if (row == pm_optui_rows(tab) - 1) return NULL;
     if (tab == 0) return pm_options_get(row) ? "On" : "Off";
     if (tab == 1) return row == 0 ? pm_dpad_mode_name() : row <= PM_NIN ? pm_n64_name(pm_map[row - 1]) : NULL;
-    if (row == 8) return NULL;
-    if (row == 7) return pm_opt.warp ? pm_warp_preset_name(pm_opt.warp - 1) : "Off";
+    if (row == 9) return NULL;
+    if (row == 7 || row == 8) { /* PT01: < value > shows that left and right change it */
+        static char wb[32];
+        if (row == 7) snprintf(wb, sizeof wb, "< %s >", pm_warp_choice_text(pm_opt.warp, pm_opt.warp_entry));
+        else if (pm_opt.warp > pm_warp_preset_count()) snprintf(wb, sizeof wb, "< %d >", pm_opt.warp_entry);
+        else return "-";
+        return wb;
+    }
     return row == 5 ? lvl_name[pm_options_get(7) & 3] : pm_options_get(row + 2) ? "On" : "Off"; /* debug rows 0 to 6 are option rows 2 to 8 */
+}
+/* PT01: left (dir < 0) or right (dir > 0) on a row. Warp to walks the choices (off, presets, every map of gAreas) with wrap. Entry walks 0 to 15. */
+int pm_optui_step(int tab, int row, int dir) {
+    if (tab != 2 || (row != 7 && row != 8)) return 0;
+    if (row == 7) {
+        int n = pm_warp_choice_count();
+        pm_opt.warp = ((pm_opt.warp + dir) % n + n) % n;
+        if (pm_opt.warp <= pm_warp_preset_count()) pm_opt.warp_entry = 0;
+    } else {
+        if (pm_opt.warp <= pm_warp_preset_count()) return 0;
+        pm_opt.warp_entry = ((pm_opt.warp_entry + dir) % 16 + 16) % 16;
+    }
+    pm_options_touch();
+    return 1;
 }
 /* result: 0 nothing more, 1 close the panel (Back), 2 leave the file select now (Warp now) */
 int pm_optui_act(int tab, int row) {
@@ -223,9 +254,10 @@ int pm_optui_act(int tab, int row) {
         return 0;
     }
     if (row < 7) { pm_options_flip(row + 2); return 0; }
-    if (row == 7) { pm_opt.warp = (pm_opt.warp + 1) % (pm_warp_preset_count() + 1); pm_options_touch(); return 0; }
+    if (row == 7) { pm_optui_step(tab, row, 1); return 0; }
+    if (row == 8) { pm_optui_step(tab, row, 1); return 0; }
     if (pm_opt.warp == 0) return 0;
     pm_options_close();
-    pm_warp_now(pm_opt.warp - 1);
+    pm_warp_now(pm_opt.warp, pm_opt.warp_entry);
     return pm_warp_pending ? 2 : 0;
 }

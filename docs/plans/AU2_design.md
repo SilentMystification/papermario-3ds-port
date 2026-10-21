@@ -109,3 +109,10 @@ Build: `/tmp/claude-1000/pm_au2_d.3dsx` (AU2 on by default, `au2off` switch for 
 - Render thread busy time per job: average 1.4 to 2.1 ms, maximum 6.0 ms at cpulimit 80. At cpulimit 30: average 3.7 ms, maximum 15.6 ms.
 - Underruns in Azahar are not 0 in the old path either: `au2off` 157 of 17055 posts at 80, 143 of 15967 at 30. The first AU2 build gave 202 of 17048 at 80 and 387 of 17047 at 30: the first post of a step waited for a wake of the render thread (the queue holds only about one frame at the start of a step). Fix: when the render thread is idle and nothing is open, `nuAuCleanDMABuffers` and the post run at once on the control thread (`pm_au2_idle`), so the first post has no thread hop. After the fix: 98 of 16797 (audiolock run, real queue level measured by `pending_raw`). The non-lock numbers for the fixed build need 2 more Azahar starts (test budget of row AU2 is used).
 - Not tested: HOME menu and sleep hooks, exit through HOME with the render thread, `romfull` (file ROM lock), O3DS.
+
+## 9. Feed and latency (PT14)
+- osAiGetLength reports the ndsp backlog minus PM_AU_LEAD (1416 samples, 3ds/src/pm_audio.c), or 0 below that.
+- Reason: the game (nuAuMgr in src/audio/core/system.c) mixes a full frame of 552 samples when the value is below 184, else a short frame of 368. On the N64 the value is the rest of one DMA buffer. Here it was the whole backlog, and at 30 FPS two ticks come in one burst per step. So every second tick was a short frame: supply 27.6 kHz against 32 kHz, and the DSP ran dry in every step (O3DS build 926: 9.6 percent of posts underran).
+- Now the game mixes full frames until the backlog holds about 1600 samples (50 ms) and then keeps it there with its own regulator. Azahar: short frames 281 to 59 of 568 posts, supply 27646 to 31957 Hz.
+- Cost: the audio is 50 to 80 ms later than before. The switch audiolock still returns 0, so the PCM hash gate does not change.
+- The switch audiostat logs `audio feed:` (posts, short frames, post interval, backlog at post, supply Hz).

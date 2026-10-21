@@ -567,3 +567,6 @@ HH WIDEHUD fixed (gbi.h SCIS macro keeps negative xl in wide)
 HH WIDEHUD2 no fault
 HH F10 cause written, question Q-F10
 01:48 AU1b-d: tick at kick point, audio thread on core 1 with kick/join, driver in yield; hash equal B1 in 3 runs, counters equal, core 0 audio 8.68 -> 0.74 ms per step at cpulimit=80 (Azahar)
+00:13 PT01 PT15 Warp list of all maps with < > arrows, HUD steps per vblank, spike line
+00:16 PT14 osAiGetLength offset: backlog lead 1416 samples, audio feed stats line
+00:19 FS1b PT-all | FS1b world-like test: 22 -> 30 steps/s (fs1delay=60)

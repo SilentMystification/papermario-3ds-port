@@ -269,9 +269,9 @@ void pm_audio_step(void) {
 }
 static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 or more */
 /* FS1 */
-#define FS1_MAX_RUN 2
+#define FS1_MAX_RUN 3 /* FS1b: 3 skips cover a stall of 7 vblanks */
 static unsigned fs1_steps, fs1_skipped, fs1_logged, fs1_last_iv, fs1_run, fs1_force, fs1_delay;
-static int fs1_off, fs1_on_log;
+static int fs1_off, fs1_on_log, fs1_old;
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
 #define PM_VBLANKS_PER_STEP 2
@@ -297,6 +297,8 @@ void pm_frame_loop(void) {
     unsigned presents = 0;
     int ever = 0;
     int have_fps = 0;
+    unsigned fps_vb0 = 0, late_n = 0, spike_ticks0 = 0; /* PT15 */
+    int late_pct = 0;
     u64 step_start = 0;
     unsigned step_vb = 0; /* vblank counter when the last drawn iteration got past FrameBegin */
     int step_vb_ok = 0;
@@ -312,9 +314,10 @@ void pm_frame_loop(void) {
     unsigned stat_n = 0;
     u64 stat_t0 = 0;
     const int pace_on = pm_debug_has("pacestat");
-    { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep at the start of every step) */
+    { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep after every drawn step), fs1old (the old rule) */
         char fv[16];
         fs1_off = pm_debug_has("fs1off");
+        fs1_old = pm_debug_has("fs1old"); /* FS1b: the FS1 rule of build 926 (skip only after a drawn step of 3 or more vblanks, 2 in a row), for comparison */
         fs1_force = pm_debug_value("fs1force", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
         fs1_delay = pm_debug_value("fs1delay", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
         fs1_on_log = pm_log_level() >= 3;
@@ -356,10 +359,11 @@ void pm_frame_loop(void) {
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
         int fs_skip = 0;
         if (ever && step_vb_ok && !fs1_off && pm_interp_on <= 0 && !PMD("fast")) { /* not with fast (uncapped debug runs) and not with fps60 (F06 has its own late path) */
-            if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow step */
             fs1_steps++;
-            fs_skip = (fs1_last_iv > PM_VBLANKS_PER_STEP && C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP) || (fs1_force && fs1_steps % fs1_force == 0);
-            if (fs_skip && fs1_run >= FS1_MAX_RUN) fs_skip = 0;
+            /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
+             * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
+            fs_skip = (C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP && (!fs1_old || fs1_last_iv > PM_VBLANKS_PER_STEP)) || (fs1_force && fs1_steps % fs1_force == 0);
+            if (fs_skip && fs1_run >= (fs1_old ? 2u : FS1_MAX_RUN)) fs_skip = 0;
         }
         if (fs_skip) {
             fs1_run++;
@@ -378,6 +382,7 @@ void pm_frame_loop(void) {
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
                 pm_interp_skip = iv > PM_VBLANKS_PER_STEP; /* F06-5 */
                 fs1_last_iv = iv;
+                if (iv >= 3) late_n++; /* PT15 */
             }
             step_vb = vb;
             step_vb_ok = 1;
@@ -391,6 +396,7 @@ void pm_frame_loop(void) {
             ever = 1;
         }
         pm_gpu_end();
+        if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow draw (a skipped step does not pay it) */
         pm_ph_frame_end();
         }
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
@@ -402,13 +408,27 @@ void pm_frame_loop(void) {
         presents++;
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;
-        if (!fps_mark) fps_mark = now;
-        if (now - fps_mark >= tick_hz) {
-            fps = (float)presents * (float)tick_hz / (float)(now - fps_mark);
-            presents = 0;
-            fps_mark = now;
-            have_fps = 1;
+        if (frame_ms > 50.f) { /* PT15: spike line, at most 10 per second */
+            extern void pm_ph_spike(unsigned, float, unsigned, unsigned);
+            static unsigned long long sp_t0;
+            static unsigned sp_n;
+            if (now - sp_t0 >= tick_hz) { sp_t0 = now; sp_n = 0; }
+            if (sp_n++ < 10) pm_ph_spike(frame, frame_ms, C3D_FrameCounter(0) - step_vb, pace_ticks - spike_ticks0);
+        }
+        spike_ticks0 = pace_ticks;
+        { /* PT15: steps per second against the retrace (steps * 60 / vblanks, 120 vblanks) and the share of steps that took 3 or more vblanks */
+            unsigned vbn = C3D_FrameCounter(0);
+            if (!fps_vb0) fps_vb0 = vbn;
+            if (vbn - fps_vb0 >= 120) {
+                fps = (float)presents * 60.f / (float)(vbn - fps_vb0);
+                late_pct = presents ? (int)(100u * late_n / presents) : 0;
+                presents = 0;
+                late_n = 0;
+                fps_vb0 = vbn;
+                fps_mark = now;
+                have_fps = 1;
             reg_free = (unsigned)(osGetMemRegionFree(MEMREGION_APPLICATION) >> 20);
+            }
         }
         if (frame % 3600 == 0) {
             pm_mem_log("tick");
@@ -450,8 +470,9 @@ void pm_frame_loop(void) {
             /* HUD2: "FPS 29.8 L80 O3DS 96/96M C96M #861". R part = free/total application region, C = APT commit limit. At most 39 columns, the build text is cut last. */
             char mem[24];
             snprintf(mem, sizeof mem, "%u/%uM C%uM", reg_free, reg_total, lim_mb);
-            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f %s %s %s #%s", fps, lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
+            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f late%d%% %s %s %s #%s", fps, late_pct, lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
             else snprintf(top, sizeof(top), "FPS ... %s %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
+            top[39] = 0; /* PT15: 39 columns, the build text is cut first */
             if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast"))
                 snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
             else
