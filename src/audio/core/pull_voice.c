@@ -1,5 +1,8 @@
 #include "audio.h"
 #include "audio/core.h"
+#ifdef TARGET_3DS
+#include "pm_au2.h"
+#endif
 
 #define LFSAMPLES       4
 #define AUEQPOWER_LENGTH 128
@@ -310,7 +313,11 @@ Acmd* au_pull_voice(AuPVoice* pvoice, Acmd* cmdBufPos) {
         decoder->sample = 0;
         decoder->memin = (s32) decoder->instrument->wavData;
         decoder->loop.count = decoder->instrument->loopCount;
+#ifdef TARGET_3DS
+        au2_stop_record(pvoice->index); /* control state: the control side frees the voice at a fixed frame (au2_apply_stops) */
+#else
         au_release_voice(pvoice->index);
+#endif
     }
     return ptr;
 }

@@ -5,7 +5,7 @@
 - Render part (mixer) runs on a new thread (core 1) from a queue of 20-byte commands (AuCmd, 8 jobs of 256).
 - Each au_syn_*, bus, delay, stereo, global volume call, the DMA clean and the PCM post is a command. The render thread replays the original function in call order.
 - Bank loads, map change, save, suspend, exit drain the queue (pm_au2_sync, pm_audio_drain). An idle render thread lets CLEAN_DMA and POST run inline (pm_au2_idle).
-- Default OFF now. Switch `au2` turns it on. `au2off` also forces off.
+- Default ON now (see AU2 FINAL below). Switch `au2off` turns it off.
 
 ## Built (commits on lane-b, last e3f094673)
 - 3ds/src/pm_au2.c, 3ds/include/pm_au2.h (queue, render thread, stats). 3ds/tests/au2/ (host test: sh 3ds/tests/au2/run.sh).
@@ -32,3 +32,10 @@ Per tick print: soundID of each request consumed in au_sfx_begin_video_frame (sf
 
 ## Budget
 Row AU2: all granted starts are used (last: i_on_tour). Ask the orchestrator for a reset. Default stays OFF until the battle tour fnv equals au2off at all checkpoints and the full-cycle hash passes.
+
+## AU2 FINAL f4c8f49e (battle tour final hash, AU2 on and au2off equal at all 32 checkpoints; full demo cycle final fnv bef03f47 at posts 17520, 148 of 148 equal; statehash equal)
+- Cause: au_pull_voice (pull_voice.c) called au_release_voice when a sample ran out. That call wrote AuVoice cmdPtr and priority from the mixer. The earlier note "control reads no mixer field" was wrong. With AU2 the render thread wrote it later, so the SFX player freed a player at a different block (first seen: sound 141 on voice 23 at block 1700, next sound took voice 22).
+- Fix: the mixer only records the stop (au2_stop_record: block number, voice start count). The control side applies the records of frames F-2 and older at the start of frame F (au2_apply_stops in alAudioFrame), in both modes. A restart of the voice since the stop cancels the record. The control side waits for the render thread to finish frame F-2 (pm_au2_wait_jobs).
+- au2off now frees a finished voice up to 2 frames later than HEAD 42f40d643. Its hash differs from ref1 on the tour (bc0edea7 and 97de973b before the fix). AU2 on equals au2off.
+- Full cycle: underrun 19 in both modes, late steps 65 of 8809 (on) and 66 of 8783 (off). Join wait at the main site: 0 us (on), 3062 us average (off).
+- Default is ON now. Switch au2off turns it off.

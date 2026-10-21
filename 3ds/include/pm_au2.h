@@ -52,6 +52,8 @@ void pm_au2_emit(const AuCmd* c);          /* control thread (or game thread whi
 int pm_au2_idle(void);                     /* 1: render thread idle and no open job. Control thread only. */
 void pm_au2_commit(void);                  /* publish the open job */
 void pm_au2_sync(int reason);              /* commit and wait until the render thread ran everything. Any thread but the render thread. */
+uint32_t pm_au2_committed(void);           /* number of jobs committed so far */
+void pm_au2_wait_jobs(uint32_t target);    /* wait until `target` jobs ran (a value of pm_au2_committed). Not on the render thread. */
 int pm_au2_start(void);                    /* create the render thread; 0 = not started (au2off or failure) */
 void pm_au2_stop(void);                    /* drain and end the render thread */
 int pm_au2_on_render(void);                /* 1 on the render thread */
@@ -61,6 +63,7 @@ void pm_au2_rom_unlock(void);
 void au2_exec(const AuCmd* c);             /* syn_driver.c: run one command (render thread, or inline) */
 void au2_post_exec(void* pcm, unsigned bytes); /* pm_audio.c: AUC_POST body */
 void au2_clean_dma_exec(void);             /* system.c */
+void au2_stop_record(int voiceIdx);        /* syn_driver.c: render side, the sample of a voice ended. Control applies it two frames later (au2_apply_stops). */
 
 enum { AU2_SYNC_BANK = 0, AU2_SYNC_MAP, AU2_SYNC_SAVE, AU2_SYNC_SHUTDOWN, AU2_SYNC_FULL, AU2_SYNC_N };
 

@@ -25,6 +25,17 @@ extern s16 AuEqPower[128];
 #define AU2_X(name) name##_x
 void au_use_global_volume_x(void);
 void au_set_global_volume_x(s16 volume);
+/* AU2: the mixer ends a voice when its sample runs out (pull_voice.c). That is a write to control state (AuVoice cmdPtr and priority).
+ * The mixer only records it (au2_stop_record). The control side applies the records of the blocks of frame F-2 at the start of frame F
+ * (au2_apply_stops), in both modes. A restart of the voice since the stop (generation count) cancels the record. */
+typedef struct { u32 blk; u32 gen; u32 idx; } Au2Stop;
+#define AU2_STOPQ 1024
+static Au2Stop au2_stopq[AU2_STOPQ];
+static u32 au2_sq_w, au2_sq_r;
+static u32 au2_blk_emit, au2_blk_done;
+static u32 au2_vgen_c[24], au2_vgen_r[24];
+static u32 au2_hist_blk[4], au2_hist_job[4], au2_frame_no;
+
 void au_bus_set_volume_x(u8 busID, u16 value);
 void au_bus_set_effect_x(u8 busID, u8 effectType);
 void au_bus_set_fx_params_x(u8 busID, s16 delayIndex, s16 paramID, s32 value);
@@ -77,7 +88,40 @@ static void au2_put(AuCmd* c) {
         au2_cur_c = au2_fnv(au2_cur_c, &h, 4);
         if (c->op == AUC_BLOCK) { if (au2_tr_nc < AU2_TR_MAX) au2_tr_c[au2_tr_nc] = au2_cur_c; au2_tr_nc++; au2_cur_c = 2166136261u; }
     }
+    if (c->op == AUC_START_VOICE || c->op == AUC_START_PARAMS) au2_vgen_c[c->idx]++;
+    if (c->op == AUC_BLOCK) au2_blk_emit++;
     if (pm_au2_active) pm_au2_emit(c); else au2_exec(c);
+}
+/* Render side. Called from au_pull_voice when the sample of a voice ended. */
+void au2_stop_record(int voiceIdx) {
+    u32 w = __atomic_load_n(&au2_sq_w, __ATOMIC_RELAXED);
+    Au2Stop* r;
+    if (w - __atomic_load_n(&au2_sq_r, __ATOMIC_ACQUIRE) >= AU2_STOPQ) { pm_log_w("audio2: stop record queue full, voice %d", voiceIdx); return; }
+    r = &au2_stopq[w % AU2_STOPQ];
+    r->blk = au2_blk_done;
+    r->gen = au2_vgen_r[voiceIdx];
+    r->idx = (u32)voiceIdx;
+    __atomic_store_n(&au2_sq_w, w + 1, __ATOMIC_RELEASE);
+}
+/* Control side, start of alAudioFrame: free the voices that the mixer ended in frame F-2 or before. Waits for the render thread to finish frame F-2. */
+static void au2_apply_stops(void) {
+    u32 h = (au2_frame_no - 2) & 3;
+    if (au2_frame_no < 2) return;
+    pm_au2_wait_jobs(au2_hist_job[h]);
+    for (;;) {
+        u32 rd = au2_sq_r;
+        Au2Stop* r;
+        if (rd == __atomic_load_n(&au2_sq_w, __ATOMIC_ACQUIRE)) break;
+        r = &au2_stopq[rd % AU2_STOPQ];
+        if ((s32)(r->blk - au2_hist_blk[h]) >= 0) break;
+        if (r->gen == au2_vgen_c[r->idx]) au_release_voice((u8)r->idx);
+        __atomic_store_n(&au2_sq_r, rd + 1, __ATOMIC_RELEASE);
+    }
+}
+static void au2_frame_end(void) {
+    au2_hist_blk[au2_frame_no & 3] = au2_blk_emit;
+    au2_hist_job[au2_frame_no & 3] = pm_au2_committed();
+    au2_frame_no++;
 }
 void au2_trace_dump(void) {
     u32 t;
@@ -338,6 +382,9 @@ Acmd* alAudioFrame(Acmd* cmdList, s32* cmdLen, s16* outBuf, s32 outLen) {
         return cmdListPos;
     }
 
+#ifdef TARGET_3DS
+    au2_apply_stops();
+#endif
     au_update_clients_for_video_frame();
 
     // reapply panning if dirty
@@ -369,6 +416,7 @@ Acmd* alAudioFrame(Acmd* cmdList, s32* cmdLen, s16* outBuf, s32 outLen) {
     }
 #ifdef TARGET_3DS
     pm_au2_commit(); /* one job per audio frame */
+    au2_frame_end();
 #endif
     *cmdLen = (cmdListPos - cmdList);
 
@@ -1022,8 +1070,8 @@ void au2_exec(const AuCmd* c) {
     if (au2_tr > 0 && c->op != AUC_CLEAN_DMA && c->op != AUC_POST) { u32 h = au2_cmd_hash(c); au2_cur_r = au2_fnv(au2_cur_r, &h, 4); }
     switch (c->op) {
         case AUC_STOP_VOICE: au_syn_stop_voice_x(c->idx); break;
-        case AUC_START_VOICE: au_syn_start_voice_x(c->idx); break;
-        case AUC_START_PARAMS: au_syn_start_voice_params_x(c->idx, c->b1, (Instrument*)(uintptr_t)c->v0, au2_u2f((u32)c->v1), c->s1, c->b2, (u8)c->s2, c->v2); break;
+        case AUC_START_VOICE: au2_vgen_r[c->idx]++; au_syn_start_voice_x(c->idx); break;
+        case AUC_START_PARAMS: au2_vgen_r[c->idx]++; au_syn_start_voice_params_x(c->idx, c->b1, (Instrument*)(uintptr_t)c->v0, au2_u2f((u32)c->v1), c->s1, c->b2, (u8)c->s2, c->v2); break;
         case AUC_SET_WAVETABLE: au_syn_set_wavetable_x(c->idx, (Instrument*)(uintptr_t)c->v0); break;
         case AUC_PITCH: au_syn_set_pitch_x(c->idx, au2_u2f((u32)c->v1)); break;
         case AUC_MIXER: au_syn_set_mixer_params_x(c->idx, c->s1, c->v2, c->b1, c->b2); break;
@@ -1046,6 +1094,7 @@ void au2_exec(const AuCmd* c) {
         case AUC_GVOL_SET: au_set_global_volume_x(c->s1); break;
         case AUC_BLOCK:
             au_render_block_x(AlCmdListBuffers[0], (s16*)(uintptr_t)c->v0);
+            au2_blk_done++;
             if (au2_tr > 0) {
                 if (au2_tr_nr < AU2_TR_MAX) { au2_tr_r[au2_tr_nr] = au2_cur_r; au2_tr_p[au2_tr_nr] = au2_fnv(2166136261u, (void*)(uintptr_t)c->v0, 4 * AUDIO_SAMPLES); }
                 au2_tr_nr++;

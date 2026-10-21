@@ -80,11 +80,8 @@ void pm_au2_emit(const AuCmd* c) {
     if (st) st_emit_ticks += pm_ticks() - t0;
 }
 
-void pm_au2_sync(int reason) {
-    if (!pm_au2_active || pm_au2_on_render()) return;
-    unsigned t0 = pm_ticks();
-    pm_au2_commit();
-    uint32_t target = __atomic_load_n(&committed, __ATOMIC_ACQUIRE);
+/* Wait until the render thread ran the first `target` jobs (target = a value of pm_au2_committed). Not on the render thread. */
+static int wait_jobs(uint32_t target) {
     int waited = 0;
     while ((int32_t)(__atomic_load_n(&executed, __ATOMIC_ACQUIRE) - target) < 0) {
         LightEvent_Clear(&ev_idle);
@@ -92,6 +89,21 @@ void pm_au2_sync(int reason) {
         LightEvent_Wait(&ev_idle);
         waited = 1;
     }
+    return waited;
+}
+
+uint32_t pm_au2_committed(void) { return __atomic_load_n(&committed, __ATOMIC_ACQUIRE); }
+
+void pm_au2_wait_jobs(uint32_t target) {
+    if (!pm_au2_active || pm_au2_on_render()) return;
+    wait_jobs(target);
+}
+
+void pm_au2_sync(int reason) {
+    if (!pm_au2_active || pm_au2_on_render()) return;
+    unsigned t0 = pm_ticks();
+    pm_au2_commit();
+    int waited = wait_jobs(__atomic_load_n(&committed, __ATOMIC_ACQUIRE));
     if (stats() && reason >= 0 && reason < AU2_SYNC_N) { st_sync_n[reason]++; if (waited) st_sync_ticks[reason] += pm_ticks() - t0; }
 }
 
@@ -126,7 +138,7 @@ static void render_main(void* unused) {
 
 int pm_au2_start(void) {
     if (rthread) return 1;
-    if (!pm_debug_has("au2") || pm_debug_has("au2off")) { pm_log("audio2: off (default; switch au2 turns it on), mixer runs inside the audio job"); return 0; }
+    if (pm_debug_has("au2off")) { pm_log("audio2: off (switch au2off), mixer runs inside the audio job"); return 0; }
     LightSemaphore_Init(&sem_free, AU2_SLOTS, AU2_SLOTS);
     LightSemaphore_Init(&sem_full, 0, AU2_SLOTS + 1);
     LightEvent_Init(&ev_idle, RESET_STICKY);
