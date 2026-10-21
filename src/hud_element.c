@@ -1877,7 +1877,7 @@ void draw_hud_element_internal(s32 id, s32 clipMode) {
         if (!(elem->flags & (HUD_ELEMENT_FLAG_INVISIBLE | HUD_ELEMENT_FLAG_HIDDEN)) && (elem->drawSizePreset >= 0)) {
             if (clipMode != HUD_ELEMENT_DRAW_NEXT) {
                 if (clipMode == HUD_ELEMENT_DRAW_FIRST_WITH_CLIPPING) {
-                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
+                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20) /* PT58: the wide view is the whole 240 rows */;
                 }
                 gDPPipeSync(gMainGfxPos++);
                 gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);

@@ -745,7 +745,7 @@ void update_status_bar(void) {
             break;
     }
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
+    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20) /* PT58: the wide view is the whole 240 rows */;
     x = statusBar->drawPosX;
     y = statusBar->drawPosY;
     draw_box(0, WINDOW_STYLE_5, x,       y, 0, 174, 35, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);

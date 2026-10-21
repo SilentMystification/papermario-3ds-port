@@ -1529,11 +1529,16 @@ void msg_printer_set_origin_pos(MessagePrintState* msgPrintState, s32 x, s32 y) 
     msgPrintState->initOpenPos.x = x;
     msgPrintState->initOpenPos.y = y;
 
-    if (msgPrintState->initOpenPos.x < 0) {
-        msgPrintState->initOpenPos.x = 0;
-    }
-    if (msgPrintState->initOpenPos.x > SCREEN_WIDTH) {
-        msgPrintState->initOpenPos.x = SCREEN_WIDTH;
+    { /* PT58: with wide an NPC in the gutter (x -40 to -1 or 320 to 359) keeps its bubble origin */
+        extern int pm_wide;
+        s32 minX = pm_wide ? -40 : 0;
+        s32 maxX = pm_wide ? SCREEN_WIDTH + 40 : SCREEN_WIDTH;
+        if (msgPrintState->initOpenPos.x < minX) {
+            msgPrintState->initOpenPos.x = minX;
+        }
+        if (msgPrintState->initOpenPos.x > maxX) {
+            msgPrintState->initOpenPos.x = maxX;
+        }
     }
     if (msgPrintState->initOpenPos.y < 0) {
         msgPrintState->initOpenPos.y = 0;
