@@ -2878,9 +2878,9 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             int y0 = ult >> 2;
             int w = ((lrs - uls) >> 2) + 1;
             int h = ((lrt - ult) >> 2) + 1;
-            /* FX3f: the RDP reads TMEM row (t - SetTileSize ult) wrapped by the T mask. A window shorter than the mask period (shape_spell:
+            /* FX3f, PT37: a T wrap tile too (confetti: 16 rows of a 256 row sheet moved by ult). The RDP reads TMEM row (t - SetTileSize ult) wrapped by the T mask. A window shorter than the mask period (shape_spell:
              * 65 rows of a 256 row image, ult 256) reads rows outside the window, so the whole period must be bound. */
-            if (tile_wrap[0][3] && (tile_wrap[0][1] & 3) && ld_valid) {
+            if (tile_wrap[0][3] && !(tile_wrap[0][1] & 2) && ld_valid) {
                 int per = 1 << tile_wrap[0][3];
                 if (per > h && per <= 256 && ld_h >= per) h = per;
             }
