@@ -89,6 +89,7 @@ int pm_gpu_off_count(void); /* B1: off-screen slots started this frame */
 /* B2: T2 grab. Copies the full width of the frame being drawn (rows y0..y1-1 are the window: the copy is reused when texrects drew only other rows) into the upright slot (cfb, siz 2).
  * Returns 0 = no slot, 1 = slot reused, 2 = new copy (the command list was split). */
 int pm_gpu_grab(const void* cfb, int y0, int y1);
+int pm_gpu_grab_prev(const void* prev_cfb); /* PT12 */
 void pm_gpu_set_replace(int on); /* off-screen fill: write the pixel, no blend */
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba);
 void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d); /* B3: depth write only, d 0 near .. 1 far */

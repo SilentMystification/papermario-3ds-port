@@ -212,9 +212,29 @@ unsigned pm_frame_count(void) { return pm_frame_n; }
  * color buffer"). The PICA color buffer holds that frame until C3D_FrameEnd of this frame runs the
  * command list, so any time during this frame's display list build or run is right. Once per frame. */
 PmB7 pm_b7;
-void pm_cfb_capture_prev(void) {
-    static unsigned done = ~0u;
+/* PT12: cpu = 0 is a texture read of the old frame (G_SETTIMG): a GPU copy into the slot of the old frame buffer, no CPU pixels. cpu = 1 is game
+ * code that reads the pixels (the pause filter): the CPU readback. Switch prevcpu forces the readback for the texture read too. */
+int pm_gpu_grab_prev(const void* prev_cfb);
+static void cfb_capture_prev(int cpu) {
+    static unsigned done = ~0u, done_gpu = ~0u;
+    static int nocpu = -1;
     unsigned i;
+    if (nocpu < 0) nocpu = pm_debug_has("prevcpu");
+    if (!cpu && !nocpu) {
+        if (done_gpu == pm_frame_n || done == pm_frame_n) return;
+        for (i = 0; i < nuGfxCfbNum; i++) {
+            if (nuGfxCfb[i] == nuGfxCfb_ptr) {
+                unsigned t0 = pm_ticks();
+                if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
+                    unsigned dt = pm_ticks() - t0;
+                    done_gpu = pm_frame_n;
+                    pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt;
+                    return;
+                }
+                break;
+            }
+        }
+    }
     if (done == pm_frame_n) return;
     done = pm_frame_n;
     for (i = 0; i < nuGfxCfbNum; i++) {
@@ -230,6 +250,8 @@ void pm_cfb_capture_prev(void) {
         }
     }
 }
+void pm_cfb_capture_prev(void) { cfb_capture_prev(0); }
+void pm_cfb_capture_prev_cpu(void) { cfb_capture_prev(1); }
 /* PC01: once per second (switch `pacestat`): game steps, drawn frames, vblanks and audio ticks since the last line. */
 extern unsigned pm_step_calls;
 static unsigned pace_ticks;

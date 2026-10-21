@@ -1072,14 +1072,46 @@ void pm_gpu_set_memblend(int on) { if (on == r_memblend) return; flush(); r_memb
  * split part, so it sees every draw so far), then draw the copy rotated upright into the slot (cfb, siz 2). Later loads of that
  * address find the slot (T1). citro3d stops the GX queue in a frame and runs it at C3D_FrameEnd, so the order is the order of
  * these calls. The end-of-frame clear of the main target is a queue entry too: it has to come before the first split. */
-int pm_gpu_grab(const void* cfb, int y0, int y1) {
+static int grab_impl(const void* cfb, int y0, int y1, int prev_frame);
+static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
+static int grab_tex_init(void) {
+    if (grab_ready) return grab_ready > 0;
+    if (!C3D_TexInitVRAM(&grab_tex, 256, 512, GPU_RGBA8)) {
+        pm_log_e("B2: no VRAM for the 256 x 512 grab copy, grabs stay off");
+        grab_ready = -1;
+        return 0;
+    }
+    C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
+    C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    grab_ready = 1;
+    return 1;
+}
+/* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
+static void grab_queue_copy(void) {
+    const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
+    int s0 = mo >> 3, s1 = (mo + x1 - 1) >> 3;
+    GX_TextureCopy((u32*)((u8*)target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
+                   (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
+}
+int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1, 0); }
+/* PT12: role T3. The old frame buffer is the finished frame that is still in the colour buffer at the start of the frame. The clear of the
+ * main target is queued at the first split (KICK1 makes one at 55 percent of the draws, the overlay comes after it) and wipes that frame.
+ * So a request sets prev_want, and the next frame queues the copy into grab_tex at pm_gpu_begin, before any other entry (prev_pre). The
+ * first frame of a run of requests, or a frame with an earlier T2 grab (it overwrites grab_tex), returns 0: the caller reads with the CPU.
+ * Returns 2 if the old frame is in the slot of prev_cfb. */
+int pm_gpu_grab_prev(const void* prev_cfb) {
+    prev_want = 1;
+    if (!target || !gpu_ok) return 0;
+    return grab_impl(prev_cfb, 0, 240, 1);
+}
+static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     if (rect_open) flush(); /* DR1 */
-    int was_off = off_active, prev = off_cur, s0, s1;
+    int was_off = off_active, prev = off_cur;
     static int once;
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
     const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
     if (!gpu_ok || off_fail || grab_ready < 0 || y1 <= y0) return 0;
-    if (grab_n) {
+    if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) return 1;
         if (grab_n >= GRAB_MAX) {
@@ -1088,27 +1120,18 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) {
         }
     }
     flush();
-    if (!grab_ready) {
-        if (!C3D_TexInitVRAM(&grab_tex, 256, 512, GPU_RGBA8)) {
-            pm_log_e("B2: no VRAM for the 256 x 512 grab copy, grabs stay off");
-            grab_ready = -1;
-            return 0;
-        }
-        C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
-        C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-        grab_ready = 1;
-    }
+    if (prev_frame && (!prev_pre || grab_n)) return 0;
+    if (!grab_tex_init()) return 0;
     if (!pm_gpu_off_begin(cfb, 320, 2)) return 0; /* no free slot: the load reads the frame buffer memory as before */
     pm_gpu_off_end(); /* the slot exists (cleared on first use); the copy goes before the quad */
-    if (!grab_split++ && want_clear) { /* queue entry order: clear, part 1, copy, part 2 */
-        C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
-        want_clear = 0;
+    if (!prev_frame) {
+        if (!grab_split++ && want_clear) { /* queue entry order: clear, part 1, copy, part 2 */
+            C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+            want_clear = 0;
+        }
+        sh_clear(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
     }
-    sh_clear(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
-    s0 = (mo + x0) >> 3; /* one tile row strip = 8 target rows = 8 game columns = 30 tiles = 7680 bytes */
-    s1 = (mo + x1 - 1) >> 3;
-    GX_TextureCopy((u32*)((u8*)target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
-                   (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
+    if (!prev_frame) grab_queue_copy(); /* PT12: the old frame was copied at pm_gpu_begin */
     pm_gpu_off_begin(cfb, 320, 2);
     {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
@@ -1130,9 +1153,11 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) {
     }
     if (was_off) pm_gpu_off_begin(offs[prev].base, offs[prev].w == 64 ? 64 : 320, offs[prev].siz);
     else pm_gpu_off_end();
-    grab_dirty = 0;
-    grab_dy0 = grab_dy1 = 0;
-    grab_n++;
+    if (!prev_frame) { /* PT12: the old frame in grab_tex does not stand for the current frame */
+        grab_dirty = 0;
+        grab_dy0 = grab_dy1 = 0;
+        grab_n++;
+    }
     return 2;
 }
 
@@ -1207,6 +1232,9 @@ void pm_gpu_begin(int clear) {
     PH_POP();
     PH_PUSH(PH_GPU);
     want_clear = clear;
+    prev_pre = 0;
+    if (prev_want && !pm_debug_has("prevcpu") && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
+    prev_want = 0;
     sh_clear(); C3D_FrameDrawOn(target);
     PH_POP();
 }
