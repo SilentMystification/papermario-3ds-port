@@ -753,7 +753,7 @@ static int clip_bits(const ClipV* p) {
  * is checked once against the combine mode pm_gpu got. The check is numeric: the RDP equation
  * (A-B)*C+D per cycle, on random inputs, against what that mode draws. A difference is logged once
  * ("comb new") and then with a draw count at 1, 10, 100, ... draws ("comb count"). COMBINED is 0 in
- * cycle 1. LOD fraction, noise, key and convert read 0. */
+ * cycle 1. LOD fraction, key and convert read 0. NOISE reads 0.5 (PT07). */
 typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; float k4; } CcIn;
 
 static float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* cb, int alpha, float prlod) {
@@ -778,7 +778,7 @@ static float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* c
     case 4: return in->sh[ch];
     case 5: return in->en[ch];
     case 6: return slot == 1 ? in->ke[ch] : slot == 2 ? in->ks[ch] : slot == 0 || slot == 3 ? 1.f : 0.f;
-    case 7: return slot == 1 ? in->k4 : rgb_c ? cb[3] : 0.f;
+    case 7: return slot == 1 ? in->k4 : slot == 0 ? 0.5f /* PT07: NOISE, the audit uses the mean */ : rgb_c ? cb[3] : 0.f;
     case 8: return rgb_c ? in->t0[3] : 0.f;
     case 9: return rgb_c ? in->t1[3] : 0.f;
     case 10: return rgb_c ? in->pr[3] : 0.f;

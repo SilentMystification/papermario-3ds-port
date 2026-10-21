@@ -1,5 +1,7 @@
 # PT07: Star Spirit static effect only dims the sprite (root cause found, fix is in main-owned files)
 
+Status: FIXED by VIS-2 (PT07). TN_NOISE on texture unit 2 (64 x 64 L8 random bytes, fixed seed, screen position plus a random offset per frame, uniform nzo in both vertex shaders). The hologram form (NOISE - B) * C + D lowers to D - B * C, then NOISE * C + previous. The combiner audit gives NOISE the mean 0.5. Switch nonoise reads NOISE as 0 (A/B). Shots: 3ds/logs/perf/vis2/noise_ab.png (top nonoise, bottom fixed). Test scene: warp=kmr_00:0 story=-128, shot frame 1225.
+
 Status: root cause proven by code. Fix not applied. Evidence level: proven (code), not yet checked by a shot of the scene.
 
 ## Cause

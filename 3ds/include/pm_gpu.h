@@ -21,7 +21,7 @@ void pm_gpu_set_rgb_scale(int scale); /* 1 or 2, texture stage only */
 void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
 
 /* S25: a general RDP combiner as PICA texenv stages (mode 8). The stages are built by pm_comb.c. */
-enum { PM_S_TEX0, PM_S_VTX, PM_S_CONST, PM_S_PREV, PM_S_BUF, PM_S_TEX1 };
+enum { PM_S_TEX0, PM_S_VTX, PM_S_CONST, PM_S_PREV, PM_S_BUF, PM_S_TEX1, PM_S_TEX2 }; /* PT07: TEX2 is the noise texture of the RDP NOISE input */
 enum { PM_O_C, PM_O_1MC, PM_O_A, PM_O_1MA };
 enum { PM_F_REPLACE, PM_F_MODULATE, PM_F_ADD, PM_F_SUBTRACT, PM_F_INTERP, PM_F_MULADD, PM_F_ADDSIGNED };
 enum { PM_NM_NONE, PM_NM_ZERO, PM_NM_PRIM, PM_NM_ENV, PM_NM_PLOD, PM_NM_SHADE, PM_NM_PK, PM_NM_KEYC, PM_NM_KEYS, PM_NM_HALF, PM_NM_K4, PM_NM_FC, PM_NM_FKP, PM_NM_FKN, PM_NM_KH, PM_NM_X0, PM_NM_X1, PM_NM_X2, PM_NM_X3 }; /* PK: PRIM - CENTER, B6 */
@@ -39,7 +39,7 @@ typedef struct {
     PmTevStage st[6];
     unsigned char bufname, vtxname; /* PM_NM_*: the buffer colour, and what the vertex colour carries */
     unsigned buf, vtx;   /* RGBA, from the names */
-    unsigned char uses_tex, uses_sha, uses_tex1; /* a stage reads TEXTURE0, the vertex alpha as shade alpha, TEXTURE1 */
+    unsigned char uses_tex, uses_sha, uses_tex1, uses_noise; /* a stage reads TEXTURE0, the vertex alpha as shade alpha, TEXTURE1, TEXTURE2 (noise) */
     unsigned char ks[4][5]; /* FX2a, FX3c: derived constants PM_NM_X0..X3, see x_colour in pm_comb.c */
     unsigned char fold[6]; /* H06b3: B, C, D of the folded form (TN_* and alpha flag), see pm_comb.c; fold[2] is 0 when unused */
 } PmPlan;

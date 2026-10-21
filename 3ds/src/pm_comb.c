@@ -12,7 +12,7 @@
 #include <string.h>
 #include "pm_gpu.h"
 
-enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN, TN_KH, TN_X0, TN_X1, TN_X2, TN_X3 };
+enum { TN_ZERO, TN_ONE, TN_T0, TN_SH, TN_PR, TN_EN, TN_CMB, TN_PLOD, TN_PRV, TN_T1, TN_KEY, TN_PK, TN_KS, TN_HALF, TN_K4, TN_FC, TN_FKP, TN_FKN, TN_KH, TN_X0, TN_X1, TN_X2, TN_X3, TN_NOISE };
 typedef struct { unsigned char n, a; } Term; /* a: 1 = the alpha part of the source */
 typedef struct { unsigned char func, scale; Term t[3]; unsigned char inv[3]; } Sk;
 
@@ -48,6 +48,7 @@ static Term term_rgb(int slot, unsigned sel, int cyc2, int t1only) {
         return slot == 1 ? TM(TN_KEY, 0) : slot == 2 ? TM(TN_KS, 0) : slot == 0 || slot == 3 ? TM(TN_ONE, 0) : TM(TN_ZERO, 0);
     default: break;
     }
+    if (slot == 0 && sel == 7) return TM(TN_NOISE, 0); /* PT07: the RDP noise input, a random value per pixel */
     if (slot == 1 && sel == 7) return TM(TN_K4, 0); /* the convert constant K4 (flame: (TEXEL1 - K4) * PRIM alpha) */
     if (slot == 2) {
         switch (sel) {
@@ -202,6 +203,13 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
         return 3;
     }
     if (C.n == TN_CMB || D.n == TN_CMB) return -3;
+    if (A.n == TN_NOISE && is_k(B) && !isz(B) && is_k(C) && !isz(C) && !iso(C) && D.n != TN_NOISE) {
+        /* PT07: (NOISE - B) * C + D with B, C constants (the hologram: (NOISE - PRIM) * PRIM + TEXEL0) is D - B * C + NOISE * C. The PICA clamps at 0 after each
+         * stage, so the stage order keeps the carry positive: D - B * C first (clamped only where D < B * C), then NOISE * C + that. */
+        out[0] = mk(PM_F_SUBTRACT, D, kterm(2, B, C), kterm(2, B, C), 0, 0, 0);
+        out[1] = mk(PM_F_MULADD, A, C, prv, 0, 0, 0);
+        return 2;
+    }
     out[0] = mk(PM_F_SUBTRACT, A, B, B, 0, 0, 0);
     if (isz(D)) out[1] = mk(PM_F_MODULATE, prv, C, C, 0, 0, 0);
     else out[1] = mk(PM_F_MULADD, prv, C, D, 0, 0, 0);
@@ -243,6 +251,7 @@ static int src_of(Term t, int inv, int grp, int stage, Alloc* al, unsigned char*
     switch (t.n) {
     case TN_T0: *src = PM_S_TEX0; pl->uses_tex = 1; break;
     case TN_T1: *src = PM_S_TEX1; pl->uses_tex1 = 1; break;
+    case TN_NOISE: *src = PM_S_TEX2; pl->uses_noise = 1; break;
     case TN_SH:
         *src = PM_S_VTX;
         if (al->vtx != PM_NM_SHADE) return 5;
@@ -428,15 +437,15 @@ static unsigned kh_colour(const PmPlan* p, unsigned prim, unsigned env, unsigned
     return o;
 }
 
-/* FX2a, FX3c: a derived constant, spec p->ks[i] = kind, B term, B alpha flag, C term, C alpha flag. Kind 0 is B * C / 2, kind 1 is C / 2, per channel. */
+/* FX2a, FX3c: a derived constant, spec p->ks[i] = kind, B term, B alpha flag, C term, C alpha flag. Kind 0 is B * C / 2, kind 1 is C / 2, kind 2 is B * C, per channel. */
 static unsigned x_colour(const PmPlan* p, int i, unsigned prim, unsigned env, unsigned plod) {
     float pr[4], en[4];
     unsigned o = 0;
     unp(prim, pr); unp(env, en);
     for (int ch = 0; ch < 4; ch++) {
         int c3 = ch < 3 ? ch : 0;
-        float v = k_val(p->ks[i][3], p->ks[i][4], c3, pr, en, plod) * .5f;
-        if (p->ks[i][0] == 0) v *= k_val(p->ks[i][1], p->ks[i][2], c3, pr, en, plod);
+        float v = k_val(p->ks[i][3], p->ks[i][4], c3, pr, en, plod) * (p->ks[i][0] == 2 ? 1.f : .5f);
+        if (p->ks[i][0] != 1) v *= k_val(p->ks[i][1], p->ks[i][2], c3, pr, en, plod); /* kind 2: B * C (PT07) */
         o = o << 8 | (unsigned)(v * 255.f + .5f);
     }
     return o;
@@ -477,7 +486,7 @@ static void unp(unsigned c, float o[4]) {
 static float cl(float v) { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
 
 void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const float shade[4], float out[4]) {
-    float prev[4], vtx[4], buf[4];
+    float prev[4], vtx[4], buf[4], noise[4] = { .5f, .5f, .5f, 1.f }; /* PT07: the audit gives NOISE its mean */
     memcpy(vtx, shade, sizeof vtx);
     if (p->vtxname != PM_NM_SHADE) unp(p->vtx, vtx);
     unp(p->buf, buf);
@@ -489,7 +498,7 @@ void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const f
             const PmTevCh* ch = &p->st[i].g[g];
             float in[3][3];
             for (int k = 0; k < 3; k++) {
-                const float* sv = ch->src[k] == PM_S_TEX0 ? t0 : ch->src[k] == PM_S_TEX1 ? t1 : ch->src[k] == PM_S_VTX ? vtx : ch->src[k] == PM_S_CONST ? cst
+                const float* sv = ch->src[k] == PM_S_TEX0 ? t0 : ch->src[k] == PM_S_TEX1 ? t1 : ch->src[k] == PM_S_TEX2 ? noise : ch->src[k] == PM_S_VTX ? vtx : ch->src[k] == PM_S_CONST ? cst
                                 : ch->src[k] == PM_S_PREV ? prev : buf;
                 for (int c = 0; c < 3; c++) {
                     float x;

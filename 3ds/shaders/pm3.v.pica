@@ -7,6 +7,7 @@
 .fvec uvso
 .fvec cmul ; PO3c: colour = vertex colour * cmul + cadd (overrides: ENV, plan constant, alpha 255, boost)
 .fvec cadd
+.fvec nzo ; PT07: noise coordinates = ndc * nzo.xy + nzo.zw
 .fvec zmix ; PO3c: z = z * zmix.x + w * zmix.y (G_ZS_PRIM: x 0, y = prim depth; else x 1, y 0)
 
 .constf myconst(0.0, 1.0, 0.00392156862745098, 0.0)
@@ -18,6 +19,7 @@
 .out outclr color
 .out outtc0 texcoord0
 .out outtc1 texcoord1
+.out outtc2 texcoord2
 
 .alias inpos v0
 .alias inuv v1
@@ -36,6 +38,11 @@
 	mul r7.x, zmix.y, r5.w
 	add outpos.z, r6.x, r7.x
 	mov outpos.w, r5.w
+	rcp r4, r5.w
+	mul r4.xy, r5.xy, r4.xy
+	mul r4.xy, nzo.xy, r4.xy
+	add outtc2.xy, nzo.zw, r4.xy
+	mov outtc2.zw, zeros
 	mul r3, inv255, inclr
 	mul r3, cmul, r3
 	add outclr, cadd, r3

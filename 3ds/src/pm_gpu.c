@@ -57,7 +57,28 @@ static C3D_Mtx shader_3d;
 /* N64 scissor, y down. The 400-wide target is the 320 game plus 40px bars. */
 static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 static C3D_Mtx projection;
-static int u_proj = -1, u_uvx = -1;
+static int u_proj = -1, u_uvx = -1, u_nzo = -1, u_nzo3 = -1;
+/* PT07: the RDP NOISE input. A 64 x 64 L8 texture of random bytes (fixed seed) on unit 2. The vertex shader gives it the screen position
+ * (one texel per pixel) plus a random offset per drawn frame, so every pixel reads a new random value every frame. */
+static C3D_Tex noise_tex;
+static int noise_ready; /* 1 ready, -1 failed */
+static float noise_off[2];
+static unsigned noise_lcg = 0x2545f491u;
+static unsigned noise_next(void) { noise_lcg = noise_lcg * 1664525u + 1013904223u; return noise_lcg >> 8; }
+static int noise_init(void) {
+    if (noise_ready) return noise_ready > 0;
+    if (!C3D_TexInit(&noise_tex, 64, 64, GPU_L8)) { pm_log_e("PT07: no memory for the noise texture, NOISE stays 0"); noise_ready = -1; return 0; }
+    {   /* random bytes: any order of independent random bytes is the same picture, so the tiled layout needs no swizzle */
+        unsigned char* d = (unsigned char*)noise_tex.data;
+        const int zero = pm_debug_has("nonoise"); /* A/B switch: NOISE reads 0, as before PT07 */
+        for (int i = 0; i < 64 * 64; i++) d[i] = zero ? 0 : (unsigned char)(noise_next() & 255u);
+        GSPGPU_FlushDataCache(d, 64 * 64);
+    }
+    C3D_TexSetFilter(&noise_tex, GPU_NEAREST, GPU_NEAREST);
+    C3D_TexSetWrap(&noise_tex, GPU_REPEAT, GPU_REPEAT);
+    noise_ready = 1;
+    return 1;
+}
 static float t1_s[4] = { 1.f, 1.f, 0.f, 0.f };
 static int aux_bound;
 static C3D_RenderTarget* target;
@@ -127,6 +148,7 @@ static GPU_TEVSRC tev_src(int s) {
     switch (s) {
     case PM_S_TEX0: return GPU_TEXTURE0;
     case PM_S_TEX1: return GPU_TEXTURE1;
+    case PM_S_TEX2: return GPU_TEXTURE2;
     case PM_S_VTX: return GPU_PRIMARY_COLOR;
     case PM_S_CONST: return GPU_CONSTANT;
     case PM_S_PREV: return GPU_PREVIOUS;
@@ -420,6 +442,12 @@ static void flush_draw(void) {
     if (tex && snap0) { C3D_TexBind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
     if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
     if (tex1 && u_uvx >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
+    int noise = combine == 8 && plan.uses_noise && noise_init();
+    if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
+        int u = graw ? u_nzo3 : u_nzo;
+        C3D_TexBind(2, &noise_tex);
+        if (u >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u, 120.f / 64.f, 200.f / 64.f, noise_off[0], noise_off[1]);
+    }
     PHF_POP();
     PHF_PUSH(PH_GTEV);
     /* PG3 O4: the texenv stages are a function of the values in the key. When the key repeats and nothing else touched the stages since the last build,
@@ -441,7 +469,7 @@ static void flush_draw(void) {
         env_hi = 1;
         C3D_TexEnvInit(env);
         /* Unit 1 stays bound to the last TEXEL1 texture: C3D_TexBind(1, NULL) crashes. No stage reads it. */
-        if (combine == 8 && (!plan.uses_tex || tex) && (!plan.uses_tex1 || tex1)) {
+        if (combine == 8 && (!plan.uses_tex || tex) && (!plan.uses_tex1 || tex1) && (!plan.uses_noise || noise)) {
             /* S25: general combiner. A stage reads the texture, the vertex colour, its constant, the previous
              * stage or the buffer colour. The buffer is never updated by a stage, so it holds one constant. */
             C3D_TexEnvBufUpdate(C3D_Both, 0);
@@ -817,6 +845,7 @@ void pm_gpu_init(void) {
     C3D_BindProgram(&prog);
     u_proj = shaderInstanceGetUniformLocation(prog.vertexShader, "projection");
     u_uvx = shaderInstanceGetUniformLocation(prog.vertexShader, "uvx");
+    u_nzo = shaderInstanceGetUniformLocation(prog.vertexShader, "nzo");
     /* y grows up, matching the citro3d immediate example. 320 game pixels sit in the middle. */
     Mtx_OrthoTilt(&projection, 0.f, 400.f, 0.f, 240.f, 0.f, 1.f, true);
     C3D_AttrInfo* ai = C3D_GetAttrInfo();
@@ -833,6 +862,7 @@ void pm_gpu_init(void) {
         u_cmul = shaderInstanceGetUniformLocation(prog3.vertexShader, "cmul");
         u_cadd = shaderInstanceGetUniformLocation(prog3.vertexShader, "cadd");
         u_zmix = shaderInstanceGetUniformLocation(prog3.vertexShader, "zmix");
+        u_nzo3 = shaderInstanceGetUniformLocation(prog3.vertexShader, "nzo");
         AttrInfo_Init(&attr3);
         AttrInfo_AddLoader(&attr3, 0, GPU_SHORT, 4);
         AttrInfo_AddLoader(&attr3, 1, GPU_SHORT, 2);
@@ -1232,6 +1262,7 @@ void pm_gpu_begin(int clear) {
     PH_POP();
     PH_PUSH(PH_GPU);
     want_clear = clear;
+    noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
     if (prev_want && !pm_debug_has("prevcpu") && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
     prev_want = 0;

@@ -1,5 +1,7 @@
 # PT08: Star Spirit text boxes, text effects (findings)
 
+Status: STATIC and NOISE_OUTLINE FIXED by VIS-2 with the PT07 noise input (see PT07_fix.md). STATIC lowers to one INTERP stage. Switch msgtest shows MSG_MAC_Bridge_0026 at scene frame 60. Shot: 3ds/logs/perf/vis2/msg_zoom.png (top nonoise, bottom fixed). G_AC_DITHER (DitherFade) is unchanged: plain alpha 217/255, no grain.
+
 Status: partial. One root cause proven (NOISE input). The other effects are CPU side and were not shown broken. Evidence level per effect below.
 
 ## What the Star Spirit boxes use

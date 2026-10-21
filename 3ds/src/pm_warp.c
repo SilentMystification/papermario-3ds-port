@@ -534,6 +534,12 @@ void pm_warp_tick(unsigned frame) {
         set_screen_overlay_center(0, 0, 20, 20);
         set_screen_overlay_center(0, 1, 300, 220);
     }
+    /* PT08 check: switch msgtest shows MSG_MAC_Bridge_0026 ([Static 50][Shake][Wave][PrintRising]) at the screen position 100, 100 at scene frame 60. */
+    if (f == 60 && pm_debug_has("msgtest")) {
+        static bool msg_done;
+        MessagePrintState* pr = msg_get_printer_for_msg(MSG_MAC_Bridge_0026, &msg_done);
+        msg_printer_set_origin_pos(pr, 100, 100);
+    }
     /* P02 control: switch ptrtest feeds a host pointer value to each ptrcheck site once, to prove the check logs. Needs ptrcheck. */
     if (f == 50 && pm_debug_has("ptrtest")) {
         get_npc_safe(0x200000);

@@ -4,6 +4,7 @@
 
 .fvec projection[4]
 .fvec uvx ; S25: second texture coordinates = uv * uvx.xy + uvx.zw
+.fvec nzo ; PT07: noise coordinates = ndc * nzo.xy + nzo.zw (nzo.xy: pixels per axis / 64, nzo.zw: a random offset per frame)
 
 .constf myconst(0.0, 1.0, 0.0, 0.0)
 .alias zeros myconst.xxxx
@@ -12,6 +13,7 @@
 .out outclr color
 .out outtc0 texcoord0
 .out outtc1 texcoord1
+.out outtc2 texcoord2
 
 .alias inpos v0
 .alias inuv v1
@@ -20,10 +22,16 @@
 .proc main
 	; Each configured output component is written once. A second write freezes the PICA.
 	; inpos.w is 1 for object-space vertices. A clipped vertex keeps its clip w.
-	dp4 outpos.x, projection[0], inpos
-	dp4 outpos.y, projection[1], inpos
-	dp4 outpos.z, projection[2], inpos
-	dp4 outpos.w, projection[3], inpos
+	dp4 r4.x, projection[0], inpos
+	dp4 r4.y, projection[1], inpos
+	dp4 r4.z, projection[2], inpos
+	dp4 r4.w, projection[3], inpos
+	mov outpos, r4
+	rcp r5, r4.w
+	mul r5.xy, r4.xy, r5.xy
+	mul r5.xy, nzo.xy, r5.xy
+	add outtc2.xy, nzo.zw, r5.xy
+	mov outtc2.zw, zeros
 	mov outclr, inclr
 	mov outtc0.xy, inuv.xy
 	mov outtc0.zw, zeros
