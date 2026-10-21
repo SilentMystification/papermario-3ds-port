@@ -246,7 +246,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
         case RW_FPS: return "60 FPS";
         case RW_WIDE: return "Widescreen";
         case RW_TITLE: return "Return to Title Screen";
-        case RW_EXIT: return "Exit to Homebrew";
+        case RW_EXIT: return "Exit to Homebrew Menu";
         case RW_DPAD: return "D-PAD";
         case RW_DZPAD: return "Circle pad dead zone";
         case RW_DZCS: return "C-Stick dead zone";
