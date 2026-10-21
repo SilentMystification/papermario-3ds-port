@@ -265,3 +265,7 @@ All rows marked [x], moved unchanged from 3ds/SLICES.md on 2026-10-17. Append on
 [x] KICK1 GV0 | DONE 2026-10-20, 362746be7 | one early split, vertex and ring flush before every split; golden yard pause1 battle ok also with gpuvtx
 [x] FS1 | DONE 2026-10-20, 56e654a2d | frame skip safety net, default on; draw-coupled state gRandSeed only
 [x] AU2 | DONE 2026-10-20, lane-b | command queue and render thread (docs/plans/AU2_design.md); demo cycle audiohash and statehash equal, join wait 630 us to 14 us, underruns 84 vs 93 (on vs off); OPEN: tour with a battle at frame 700 gives a different audiohash from au2off (statehash equal), cause not found, needs one more au2off repeat run
+[x] PT01 | DONE 2026-10-21, lane-b | Warp to lists off, presets and every map of gAreas with left and right and < > arrows, Entry row, options.txt warp=<map>:<entry>
+[x] PT14 | DONE 2026-10-21, lane-b | audio crackle: osAiGetLength reports backlog minus 1416 samples, supply 27.6 kHz to 32.0 kHz in Azahar, audiohash 26 of 26 equal; O3DS check open (docs/plans/AU2_design.md part 9)
+[x] PT15 | DONE 2026-10-21, lane-b | HUD shows steps*60/vblanks over 120 vblanks and late share, spike line for steps over 50 ms
+[x] FS1b | DONE 2026-10-21, lane-b | skip a draw whenever a whole step has passed, up to 3 in a row, fs1old keeps the old rule; fs1delay=60: 22 to 30 steps per second in Azahar
