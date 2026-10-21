@@ -46,7 +46,7 @@ Read:
 
 Command:
 ```
-sh 3ds/push_3ds.sh --no-build --ip $O -t 20 loglevel=debug audiostat texstat   # build 913; then pull log.txt by FTP. The live log is optional.
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 loglevel=debug audiostat texstat   # build 926; then pull log.txt by FTP. The live log is optional.
 ```
 Build 902 (main 2773574de + HW-FIX, without map_restore_table.c) has the UI-1 work. The live log is the read channel. FTP only if lines are missing.
 
@@ -70,13 +70,13 @@ Read:
 - Step times during the save: `grep "pace: wall" <live>` is not available without phase. Judge the hitch by hand: the user reports if the game froze at the save.
 - New dump after HOME or sleep: FTP pull of the dump folder, then decode_dump.py with the ELF of B.
 
-## 4. Push 3 (build 913): one full cycle that rotates the A/B states, pulled log only
+## 4. Push 3 (build 926): one full cycle that rotates the A/B states, pulled log only
 
-Build 913 is main 56e654a2d without map_restore_table.c. The audio path is the old one (AU2 not merged). The file is 3ds/logs/builds/pm_3ds_913.3dsx (copy it to build3ds/pm_3ds.3dsx before the push). The live log is optional: the pulled log.txt is the data. It has no dropped lines (queue 1024 slots, console skipped under backlog). Check `grep -c "lines dropped" <pull>` is 0.
+Build 926 is main 725afa478 (G1 rows and AU2 merged) without map_restore_table.c. Audio now has `audio2:` lines (jobs, ring fill, render busy, drains), and a finished voice is freed up to 2 frames later (stop records). The file is 3ds/logs/builds/pm_3ds_926.3dsx (copy it to build3ds/pm_3ds.3dsx before the push). The live log is optional: the pulled log.txt is the data. It has no dropped lines (queue 1024 slots, console skipped under backlog). Check `grep -c "lines dropped" <pull>` is 0.
 
 Command (full cycle, 420 s; Push 2 uses the same form with its own switches and `-t 20`):
 ```
-export O=<ip> B=913; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat pacestat logstat phase phsum noaudit loglevel=debug fixedseed statehash=10 phasecsv=300:400 abtog=base,gpuvtx,nodr1,nokick,notx1,phasegbi:30
+export O=<ip> B=926; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat pacestat logstat phase phsum noaudit loglevel=debug fixedseed statehash=10 phasecsv=300:400 abtog=base,gpuvtx,nodr1,nokick,notx1,phasegbi:30
 ```
 Wait 7 minutes (the game runs the intro cycle). Then start the FTP app and pull:
 ```
