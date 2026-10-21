@@ -129,3 +129,36 @@ Lines to grep in the pull:
 - `grep "bench:" <pull>` all results. Draw ladder: `grep "bench: draw" <pull>`. Flush: `grep "bench: flush" <pull>`. Texture and writes: `grep -E "bench: (tex|wr) " <pull>`. Replay: `grep "bench: replay" <pull>`. Frame wait: `grep "bench: fbwait" <pull>`.
 - `grep -E "bench: (begin|end)" <pull>` must show `console O3DS` and a total time.
 - How to read each line and the decision rules: docs/plans/bench_notes.md.
+
+## 8. GV1g build 967 (main 537a7b6b3 without map_restore_table.c): the new defaults and three pushes
+
+File: 3ds/logs/builds/pm_3ds_967.3dsx (ELF and map next to it). Copy it to build3ds/pm_3ds.3dsx before each push. The orchestrator pushes. Defaults in this build: the full GPU path gv1, the lean draw path raw1 (one DVLB, lazy program and buffer binding, uniform shadows) and the texture slab fl1 (one data cache flush per command list submit) are ON. Switches `nogv1`, `noraw1`, `nofl1` turn each off. `dspaudio` and `bench` are OFF unless the switch is set. Lane B (AUD-DSP) and lane C (BENCH) are merged.
+New statehash references (Azahar, fixedseed statehash=10 cpulimit=80, equal with the three paths on and off): f1800 53090ae9, f4000 d95fd1a4, f8000 82add753. The old values 5a6bb12a, bcd4e3ea, 1325de7e are from before PT07. Do not use them.
+Azahar numbers (dip window pc 1702 to 1850, noaudit): gb 13.20 (all three off) to 11.05 (on), gd 2.01 to 2.08, gp 1.21 to 1.24, draws 150.6 to 152.4, triout 290 to 389, citro3d calls per raw draw 10 to 2.2. Whole cycle 8233 steps: gbi 8.32 to 6.64 ms per step, draws 89.8 to 91.8 per step, statehash equal.
+
+### 8.1 Push A: full cycle that rotates gv1, raw1 and fl1 (420 s, pulled log only)
+```
+export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat pacestat logstat phase phsum noaudit loglevel=debug fixedseed statehash=10 phasecsv=300:400 abtog=base,nogv1,noraw1,nofl1:30
+```
+Wait 7 minutes. Start the FTP app. Pull and make the tables as in section 4 (phs_report.py with --hw). State base = all three on, nogv1 = full GPU path off (and so raw1 has no raw draws), noraw1 = only the lean binding off, nofl1 = only the slab flush off. Do not press a button.
+Read:
+- `grep -E "^#[0-9]+ (phs|phh|phc) " <pull>`: gb (gbi), gp, gd, gc columns per state. Gate for gv1: base gb lower than nogv1 gb by 6 ms or more at the O3DS (Azahar says 2 ms, weighted 4 to 7 ms).
+- phc line, last counters: flushcalls and flushkb (all GSPGPU_FlushDataCache calls per step and KB), rawd (raw draws per step), rawcall (citro3d calls in the raw draw path). Expected: rawcall about 2.2 per rawd with raw1, about 10 without. flushcalls: 4 or fewer per step in a texture spawn step with fl1, up to 120 without.
+- `grep -E "^#[0-9]+ pc 33[0-9] " <pull>` and `grep "pcx " <pull>`: the spawn steps 331, 332, 337. The pcx line now ends with flushcalls and flushkb. Goal with fl1: tex ms per miss under 0.4 ms (was 1.21), step 332 under 40 ms.
+- gd per draw in the raw1 state against noraw1 (the GPU command part), and gpu time (us) in the phc line.
+- `grep statehash <pull>`: f1800 53090ae9, f4000 d95fd1a4, f8000 82add753.
+- `grep -c "lines dropped" <pull>` is 0. `grep -E "FAIL|CRASH" <pull>` is empty.
+
+### 8.2 Push B: DSP audio, interactive listening
+```
+export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat loglevel=debug
+```
+Play the A/B list of docs/plans/AUD_DSP.md section 15 with the live log or the pulled log. Then push once without `dspaudio` for the second half of each comparison. Pull and read `audio dsp:`, `dspaudio:`, `audio cost` and `audio2:` lines.
+
+### 8.3 Push C: BENCH and the DSP test
+```
+export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 bench benchexit loglevel=debug
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dsptest loglevel=debug
+```
+Read as in section 7 (bench lines, decision rules in docs/plans/bench_notes.md). The second push gives the `dsptest:` lines (control call costs, aux callback core).
+No route benchmark exists in main at this build (no 3ds/routes, no status_ROUTE.txt). Add a Route push section when it exists.
