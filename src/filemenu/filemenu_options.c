@@ -191,6 +191,24 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
     }
 
+    {   // PT01: left and right change a value (Warp to, Entry). Press steps once, hold repeats (15 updates, then every 4, 5 maps a step after 12 repeats).
+        static s32 lrGap, lrRep;
+        s32 sx = gGameStatusPtr->stickX[0];
+        s32 lr = ((held & BUTTON_D_RIGHT) || ((held & BUTTON_STICK_RIGHT) && sx >= 56)) ? 1 : ((held & BUTTON_D_LEFT) || ((held & BUTTON_STICK_LEFT) && sx <= -56)) ? -1 : 0;
+
+        if (lr == 0) {
+            lrGap = 0;
+            lrRep = 0;
+        } else if (lrGap > 0) {
+            lrGap--;
+        } else {
+            lrGap = lrRep == 0 ? 15 : 4;
+            lrRep++;
+            if (pm_optui_step(optTab, menu->row, lr * (lrRep > 12 ? 5 : 1))) {
+                sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
+            }
+        }
+    }
     if (filemenu_pressedButtons & BUTTON_B) {
         filemenu_options_close();
     } else if (filemenu_pressedButtons & BUTTON_A) {

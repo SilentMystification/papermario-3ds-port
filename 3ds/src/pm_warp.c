@@ -10,6 +10,7 @@
 #include "fio.h"
 #include "battle/battle.h"
 extern bool fio_fetch_saved_file_info(void);
+#include "map.h"
 #include "pm_port.h"
 #include <stdio.h>
 #include <string.h>
@@ -109,6 +110,18 @@ int pm_warp_active(void) {
         }
         if (!found) pm_log_w("warp: unknown preset '%s'", v);
     }
+    int opt_map = 0;
+    if (!has_preset && pm_opt.warp > (int)ARRAY_COUNT(presets)) { /* PT01: options.txt warp=<map>:<entry>, a switch wins */
+        char t[8];
+        const char* nm = pm_warp_map_name(pm_opt.warp - 1 - (int)ARRAY_COUNT(presets));
+        if (nm && !pm_debug_value("warp", t, sizeof t) && !pm_debug_value("story", t, sizeof t)) {
+            w_map[0] = 0;
+            strncat(w_map, nm, sizeof w_map - 1);
+            w_entry = pm_opt.warp_entry;
+            w_story = STORY_CH0_ARRIVED_AT_TOAD_TOWN;
+            opt_map = 1;
+        }
+    }
     int has_warp = pm_debug_value("warp", v, sizeof v);
     if (has_warp) {
         char* c = strchr(v, ':');
@@ -160,12 +173,12 @@ int pm_warp_active(void) {
     /* F01: a tour visits maps at story 0 with a new file (no partner). The real game has a partner at trd_06 and later maps (trd_06 InitializeFallingPartner, partner_walking_enable need one), so the tour uses Goombario unless partner= says otherwise. */
     if (tour_next != NULL && w_partner == 0) w_partner = 1;
     /* H06e: a warp past the prologue also needs a partner. tik_01_CheckDripCollisionWithNPC reads the partner npc, the real game has one in the sewers. */
-    if (has_warp && w_partner == 0 && strncmp(w_map, "kmr_", 4) != 0) w_partner = 1;
+    if ((has_warp || opt_map) && w_partner == 0 && strncmp(w_map, "kmr_", 4) != 0) w_partner = 1;
     smoke_on = pm_debug_has("smoke");
     if (pm_debug_value("loadslot", v, sizeof v)) w_loadslot = atoi(v); /* E02: loadslot=<n> loads save slot n first */
     if (pm_debug_value("smokeframes", v, sizeof v)) smoke_frames = atoi(v); /* E02: smoke length, default 300 */
     padscript_log = pm_debug_has("padlog") || pm_debug_value("padscript", v, sizeof v); /* position every 2 frames while a script runs */
-    return has_preset || has_warp || has_story;
+    return has_preset || has_warp || has_story || opt_map;
 }
 
 static void warp_setup(s16 areaID, s16 mapID);
@@ -216,18 +229,62 @@ static void warp_setup(s16 areaID, s16 mapID) {
 }
 
 int pm_warp_preset_count(void) { return (int)ARRAY_COUNT(presets); }
+
+/* PT01: every map of gAreas as one flat list (area order, map order). */
+int pm_warp_map_count(void) {
+    int i, n = 0;
+    for (i = 0; gAreas[i].maps != NULL; i++) n += gAreas[i].mapCount;
+    return n;
+}
+const char* pm_warp_map_name(int k) {
+    int i;
+    for (i = 0; gAreas[i].maps != NULL; i++) {
+        if (k < gAreas[i].mapCount) return k >= 0 ? gAreas[i].maps[k].id : NULL;
+        k -= gAreas[i].mapCount;
+    }
+    return NULL;
+}
+int pm_warp_map_index(const char* name) {
+    int i, j, n = 0;
+    for (i = 0; gAreas[i].maps != NULL; i++) {
+        for (j = 0; j < gAreas[i].mapCount; j++, n++) if (strcmp(gAreas[i].maps[j].id, name) == 0) return n;
+    }
+    return -1;
+}
+/* A warp choice: 0 = off, 1 to P = preset, P+1 and up = map k = choice - P - 1. */
+int pm_warp_choice_count(void) { return 1 + (int)ARRAY_COUNT(presets) + pm_warp_map_count(); }
+const char* pm_warp_choice_text(int c, int entry) {
+    static char b[24];
+    int P = (int)ARRAY_COUNT(presets);
+    if (c <= 0) return "Off";
+    if (c <= P) return presets[c - 1].name;
+    snprintf(b, sizeof b, "%s", pm_warp_map_name(c - 1 - P));
+    (void)entry;
+    return b;
+}
 const char* pm_warp_preset_name(int i) { return presets[i].name; }
 /* UI1a: Warp now from the Options panel of the file select. The state is set as a file load does it, the caller leaves the file select
  * through the normal exit (pm_warp_pending makes filemenu_get_exit_mode return 1: curtain, cleanup, ENTER_WORLD). */
 int pm_warp_pending;
-void pm_warp_now(int i) {
+void pm_warp_now(int c, int entry) {
     s16 areaID, mapID;
-    const WarpPreset* pr = &presets[i];
-    w_story = pr->story;
-    w_map[0] = 0;
-    strncat(w_map, pr->map, sizeof w_map - 1);
-    w_entry = pr->entry;
-    w_flag = pr->flag;
+    int P = (int)ARRAY_COUNT(presets);
+    if (c >= 1 && c <= P) {
+        const WarpPreset* pr = &presets[c - 1];
+        w_story = pr->story;
+        w_map[0] = 0;
+        strncat(w_map, pr->map, sizeof w_map - 1);
+        w_entry = pr->entry;
+        w_flag = pr->flag;
+    } else {
+        const char* nm = pm_warp_map_name(c - 1 - P);
+        if (!nm) return;
+        w_story = STORY_CH0_ARRIVED_AT_TOAD_TOWN;
+        w_map[0] = 0;
+        strncat(w_map, nm, sizeof w_map - 1);
+        w_entry = entry;
+        w_flag = 0;
+    }
     w_loadslot = -1;
     if (strncmp(w_map, "kmr_", 4) != 0 && w_partner == 0) w_partner = 1;
     if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) {

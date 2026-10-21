@@ -26,6 +26,18 @@ static int csv, csv_from, csv_to = 0x7fffffff;
 static unsigned frame_no;
 
 typedef struct { float ms[PH_N]; float wall; unsigned c[C_N]; unsigned f; } Rec;
+static Rec spike_rec;
+/* PT15: one line for a step over 50 ms: the phases of the step above 2 ms (only with the phase switch), texture misses and ROM reads. */
+void pm_ph_spike(unsigned frame, float ms, unsigned vb, unsigned ticks) {
+    char b[200];
+    int n = 0;
+    if (pm_ph_on) {
+        for (int k = 0; k < PH_N && n < (int)sizeof b - 24; k++)
+            if (k != PH_IDLE && spike_rec.ms[k] >= 2.f) n += snprintf(b + n, sizeof b - n, " %s %.1f", pname[k], spike_rec.ms[k]);
+    }
+    b[n] = 0;
+    pm_log_hw("spike f %u ms %.1f vb %u ticks %u texmiss %u/%uKB rom %u/%uB ph%s", frame, ms, vb, ticks, spike_rec.c[C_TEXMISS], spike_rec.c[C_TEXBYTE] >> 10, spike_rec.c[C_ROMN], spike_rec.c[C_ROMB], pm_ph_on ? b : " off");
+}
 static Rec win[MAXW];
 static int nwin;
 static unsigned win_t0;
@@ -293,6 +305,7 @@ void pm_ph_frame_end(void) {
     memcpy(r->c, pm_ph_cnt, sizeof r->c);
     memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
     r->f = ++frame_no;
+    spike_rec = *r; /* PT15: the spike line in pm_main.c reads the phases of the step that just ended */
     frame_t0 = now;
     if (ps_on) ps_step(r);
     if (csv && r->f >= (unsigned)csv_from && r->f <= (unsigned)csv_to) {

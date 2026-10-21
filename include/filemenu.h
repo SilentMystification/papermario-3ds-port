@@ -178,6 +178,7 @@ int pm_optui_rows(int tab);
 const char* pm_optui_label(int tab, int row);
 const char* pm_optui_value(int tab, int row);
 int pm_optui_act(int tab, int row);
+int pm_optui_step(int tab, int row, int dir);
 int pm_pad_take_tab(void);
 extern int pm_warp_pending;
 void filemenu_options_init(MenuPanel*);

@@ -147,7 +147,8 @@ typedef struct PmOpt {
     int log, loglevel; /* L02, F11-8: log file on or off (default 1), level 0 error, 1 warn (default), 2 info, 3 debug */
     int fixedseed; /* F11-7: 1 = same random start seed every boot (as the switch fixedseed), read at boot */
     int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.txt dpad_mode=multi|cstick|analog */
-    int warp; /* UI1a: 0 = off, n = warp preset n-1 at boot (options.txt warp=<name>) */
+    int warp; /* UI1a, PT01: 0 = off, 1 to P = warp preset, P+1 and up = map k of gAreas (options.txt warp=<preset> or warp=<map>:<entry>) */
+    int warp_entry; /* PT01: entry of a map choice */
 } PmOpt;
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
@@ -180,7 +181,13 @@ void pm_dpad_mode_next(void);
 int pm_warp_preset_count(void);
 const char* pm_warp_preset_name(int i); /* UI1a */
 extern int pm_warp_pending; /* UI1a: set by pm_warp_now, read by filemenu_get_exit_mode */
-void pm_warp_now(int preset); /* UI1a: warp from the file select to preset i */
+void pm_warp_now(int choice, int entry); /* UI1a, PT01: warp from the file select to a choice (preset or map) */
+int pm_warp_map_count(void);
+const char* pm_warp_map_name(int k);
+int pm_warp_map_index(const char* name);
+int pm_warp_choice_count(void);
+const char* pm_warp_choice_text(int choice, int entry);
+int pm_optui_step(int tab, int row, int dir); /* PT01: left or right on a row. 1 = the value changed */
 void pm_options_touch(void); /* mark the settings changed, saved at pm_options_close */
 /* F11-6: the port menu on the bottom screen (3ds/src/pm_options_ui.c). Select, when no game code takes it, opens it in any game mode. */
 extern volatile int pm_menu_open;
