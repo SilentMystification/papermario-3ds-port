@@ -286,7 +286,7 @@ void pm_gpu_gbiprof_report(unsigned frames) { /* the six most frequent causes si
     unsigned tn = 0, te = 0;
     for (int i = 0; i < fl_nt; i++) { tn += fl_tab[i].n; te += fl_tab[i].e; }
     pm_log("gbiprof flush total calls per frame x100 %u, empty batch x100 %u, drawn x100 %u", tn * 100 / (frames ? frames : 1), te * 100 / (frames ? frames : 1), (tn - te) * 100 / (frames ? frames : 1));
-    for (int r = 0; r < 8; r++) {
+    for (int r = 0; r < 24; r++) {
         int best = -1; unsigned bn = 0;
         for (int i = 0; i < fl_nt; i++) if (fl_tab[i].n > bn) { bn = fl_tab[i].n; best = i; }
         if (best < 0) break;
