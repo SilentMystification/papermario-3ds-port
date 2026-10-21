@@ -211,3 +211,11 @@ Not part of DLC: logic cost (8 ms), FS1 pacing, the HUD counter fix (hw_p4 6.2).
 8. 64 slots in the port against 32 in F3DEX2. Default: the compiler copies the port rule (64), so it equals the interpreter. Map loads never pass 32 (1.2).
 9. Two command buffers (arch_review stage 3 says they go with DLC-G). Default: not in DLC1 or DLC2. The static vertex area is written only at compile, so the single buffer is safe. Revisit with DLC5.
 10. Lane: DLC1 to DLC3 touch pm_gbi.c, which the graphics agent (VIS-3) also edits now (the working tree has uncommitted pm_gbi.c changes). Default: DLC starts after VIS-3 merges, in lane A.
+
+## 7. Results (DLC code agent)
+
+### DLC0 (switch `dlsrc`, tool 3ds/tools/dlsrc_report.py, Azahar route play1, logs 3ds/logs/dlc/d0_route.txt)
+Two lines per 300 drawn frames: `dlsrc` (ops by class, geometry, flow, state) and `dlsrc2` (triangles, triangles by vertex class, vertex loads, distinct G_DL targets, stable targets). Class "other" holds lists that no range names (not main, shape, TextureHeap, model lists, entity, general or sprite heap).
+Per drawn frame, Toad Town walk (mac_00): ops 6249, of which main 2185, shape 1157, texheap 1551, rodata 581, other 774. Static ops (shape, texheap, rodata) 53 percent, not the 70 to 80 percent of the estimate. Triangles 1266, 93 percent from static lists. Vertex loads 2106, 92 percent static. 137 distinct G_DL targets per frame. All static targets stay equal over 30 frames (1122 of 1122).
+Other scenes (static share of ops, triangles, vertex loads): plaza 47, 84, 84 percent. Battle (3 windows) 40 to 45, 93 to 98, 89 to 96 percent. Field 44, 88, 86 percent.
+Reading: DLC-G (shape geometry) covers the triangles and vertex loads (stop rule 1 does not apply: 93 percent is over 50). The main list is 35 percent of the ops and "other" 12 percent, so DLC-S can save at most about half of the ops.

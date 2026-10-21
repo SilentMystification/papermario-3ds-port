@@ -1358,6 +1358,92 @@ static int gv_tri(const int* idx) {
     return 0;
 }
 
+/* DLC0 (switch dlsrc): where the work of a frame comes from. Class of an address: 0 main list, 1 map shape buffer, 2 TextureHeap, 3 model lists in .data (render modes, combine modes), 4 entity heap, 5 general heap, 6 sprite heap, 7 other.
+ * Classes 1 to 3 are static. Counters per class: ops (geometry, flow, state), triangles (by list class and by vertex class), vertex loads, distinct G_DL targets and the share of static targets whose list and vertices did not change in 30 frames.
+ * One line `dlsrc` every 300 drawn frames. No cost without the switch: one load and one branch per site. */
+extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
+extern Gfx SolidCombineModes[][5], AlphaTestCombineModes[][5], Gfx_RM1_SURFACE_OPA[], Gfx_RM3_CLOUD_NO_ZB[], Gfx_RM3_SURFACE_XLU_NO_ZB[], Gfx_RM3_CLOUD[];
+#define DLS_N 8
+static int dls_on;
+static unsigned dls_pc; /* class of the list that runs now */
+static unsigned dls_ops[DLS_N][3], dls_tri[DLS_N], dls_triv[DLS_N], dls_vtx[DLS_N], dls_dl, dls_stab_ok, dls_stab_chg, dls_frames, dls_fno;
+static unsigned char dls_vcls[64];
+static u32 dls_main_lo, dls_main_hi, dls_rd_lo, dls_rd_hi;
+static u32 dls_set_a[512], dls_set_s[512], dls_stamp = 1;
+static struct { u32 a, h, f; } dls_tab[1024];
+static unsigned dls_class(u32 p) {
+    if (p >= dls_main_lo && p < dls_main_hi) return 0;
+    if (p - (u32)gMapShapeData < 0x40000u) return 1;
+    if (p - (u32)TextureHeap < 0x68000u) return 2;
+    if (p >= dls_rd_lo && p < dls_rd_hi) return 3;
+    if (p - (u32)pm_world_entity_heap < 0x18000u) return 4;
+    if (p - (u32)heap_generalHead < 0x180000u) return 5;
+    if (p - (u32)heap_spriteHead < 0x100000u) return 6;
+    return 7;
+}
+static unsigned dls_kind(unsigned op) {
+    switch (op) {
+    case G_VTX: case G_TRI1: case G_TRI2: case G_MTX: case G_POPMTX: case G_GEOMETRYMODE: case G_MODIFYVTX: return 0;
+    case G_DL: case G_ENDDL: return 1;
+    default: return 2;
+    }
+}
+/* hash of a list (words up to G_ENDDL) and of the Vtx bytes of its G_VTX ops */
+static u32 dls_hash(const Gfx* l) {
+    u32 h = 2166136261u;
+    for (unsigned i = 0; i < 4096; i++) {
+        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+        h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
+        unsigned op = w0 >> 24;
+        if (op == G_VTX) {
+            unsigned n = (w0 >> 12) & 0xff;
+            const unsigned char* v = (const unsigned char*)ptr_of(w1);
+            if (v && is_host((u32)v) && n <= 64) for (unsigned k = 0; k < n * 16; k++) h = (h ^ v[k]) * 16777619u;
+        }
+        if (op == G_ENDDL) break;
+    }
+    return h;
+}
+static void dls_target(const Gfx* t) { /* a G_DL target: distinct count and the stable test of a static list */
+    u32 a = (u32)t;
+    unsigned k = (a >> 3) * 2654435761u >> 23 & 511;
+    for (unsigned n = 0; n < 512; n++, k = (k + 1) & 511) {
+        if (dls_set_s[k] == dls_stamp && dls_set_a[k] == a) return;
+        if (dls_set_s[k] != dls_stamp) break;
+    }
+    dls_set_a[k] = a; dls_set_s[k] = dls_stamp; dls_dl++;
+    unsigned c = dls_class(a);
+    if (c < 1 || c > 3 || !is_host(a)) return;
+    u32 h = dls_hash(t);
+    unsigned j = (a >> 3) * 2654435761u >> 22 & 1023;
+    for (unsigned n = 0; n < 1024; n++, j = (j + 1) & 1023) if (!dls_tab[j].a || dls_tab[j].a == a) break;
+    if (dls_tab[j].a != a) { dls_tab[j].a = a; dls_tab[j].h = h; dls_tab[j].f = dls_fno; return; }
+    if (dls_fno - dls_tab[j].f >= 30) { if (dls_tab[j].h == h) dls_stab_ok++; else dls_stab_chg++; dls_tab[j].h = h; dls_tab[j].f = dls_frames; }
+}
+static void dls_init_ranges(void) {
+    u32 lo = (u32)SolidCombineModes, hi = (u32)Gfx_RM3_CLOUD_NO_ZB;
+    u32 c[] = { (u32)AlphaTestCombineModes, (u32)Gfx_RM1_SURFACE_OPA, (u32)Gfx_RM3_SURFACE_XLU_NO_ZB, (u32)Gfx_RM3_CLOUD };
+    for (unsigned i = 0; i < 4; i++) { if (c[i] < lo) lo = c[i]; if (c[i] > hi) hi = c[i]; }
+    dls_rd_lo = lo; dls_rd_hi = hi + 0x200;
+}
+static void dls_report(void) {
+    int m = 0, a = 0, mp = 0;
+    pm_ph_scene_get(&m, &a, &mp);
+    char b[250];
+    int n = snprintf(b, sizeof b, "dlsrc %d %d:%d n %u ops", m, a, mp, dls_frames);
+#define DLS_ROW(arr) for (unsigned i = 0; i < DLS_N; i++) n += snprintf(b + n, sizeof b - n, " %u", arr[i]);
+    for (unsigned k = 0; k < 3; k++) { n += snprintf(b + n, sizeof b - n, " |"); for (unsigned i = 0; i < DLS_N; i++) n += snprintf(b + n, sizeof b - n, " %u", dls_ops[i][k]); }
+    pm_log_hw("%s", b);
+    n = snprintf(b, sizeof b, "dlsrc2 %d %d:%d n %u tri", m, a, mp, dls_frames);
+    DLS_ROW(dls_tri);
+    n += snprintf(b + n, sizeof b - n, " | trivs"); DLS_ROW(dls_triv);
+    n += snprintf(b + n, sizeof b - n, " | vtx"); DLS_ROW(dls_vtx);
+    snprintf(b + n, sizeof b - n, " | dl %u stable %u/%u", dls_dl, dls_stab_ok, dls_stab_ok + dls_stab_chg);
+    pm_log_hw("%s", b);
+    memset(dls_ops, 0, sizeof dls_ops); memset(dls_tri, 0, sizeof dls_tri); memset(dls_triv, 0, sizeof dls_triv); memset(dls_vtx, 0, sizeof dls_vtx);
+    dls_dl = dls_stab_ok = dls_stab_chg = 0; dls_frames = 0;
+}
+
 static int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
@@ -1370,6 +1456,7 @@ static void draw_tri(unsigned w) {
     GP_START();
     gp_ntri++;
     n_cmd++;
+    if (dls_on) { dls_tri[dls_pc]++; dls_triv[(i0 >= 0 && i0 < 64) ? dls_vcls[i0] : 7]++; }
     tri_since_vtx = 1;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
         n_drop++;
@@ -1702,6 +1789,7 @@ void pm_gbi_end_frame(void) {
         memset(&pm_b7, 0, sizeof pm_b7);
     }
     PH_ADD(C_CMD, n_ops);
+    if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
     if (gv1_on() && (rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
@@ -2050,6 +2138,12 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
 
 void pm_gbi_run(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
+    dls_on = PMDL("dlsrc");
+    if (dls_on) {
+        if (!dls_rd_lo) dls_init_ranges();
+        dls_main_lo = (u32)list; dls_main_hi = (u32)list + nbytes;
+        dls_pc = dls_class((u32)list);
+    }
     Gfx* stack[12];
     int sp = 0;
     Gfx* pc = (Gfx*)list;
@@ -2076,6 +2170,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         int fp = 0;
         pc++;
         n_ops++;
+        if (dls_on) dls_ops[dls_pc][dls_kind(op)]++;
         if (gp_on()) {
             unsigned t = pm_ticks();
             if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += t - gp_opt_last; gp_opn[gp_prev_op]++; }
@@ -2097,6 +2192,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 return;
             }
             pc = stack[--sp];
+            if (dls_on) dls_pc = dls_class((u32)pc);
             break;
         case G_DL: {
             Gfx* next = (Gfx*)ptr_of(w1);
@@ -2106,11 +2202,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 break;
             }
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
+            if (dls_on) dls_target(next);
             if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = next;
             else if (sp < 12) {
                 stack[sp++] = pc;
                 pc = next;
             }
+            if (dls_on) dls_pc = dls_class((u32)pc);
             break;
         }
         case G_VTX: {
@@ -2128,6 +2226,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (v0 >= 64) n = 0; /* S30: a vertex load that starts past the buffer (garbage list) copied 4 GB */
                 else if (v0 + n > 64) n = 64 - v0;
                 PH_ADD(C_VTXLOAD, n);
+                if (dls_on) { unsigned dc = dls_class((u32)src); dls_vtx[dc] += n; memset(&dls_vcls[v0], (int)dc, n); }
                 if (dd_on()) memcpy(&verts[v0], src, n * sizeof(Vtx)); /* PG4: verts is read only by the drawlog statistics */
                 /* A load at slot 0 starts a new mesh. Later loads in the same
                  * list append above it and keep the earlier slots. */

@@ -69,6 +69,7 @@ unsigned pm_ph_cmd_pm;
 
 void pm_ph_scene_mode(int mode) { cur_mode = mode; }
 void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; }
+void pm_ph_scene_get(int* mode, int* area, int* map) { *mode = cur_mode; *area = cur_area; *map = cur_map; }
 void pm_ph_gpu_note(void) {
     if (!pm_ph_on) return;
     pm_ph_gpu_us[0] = (unsigned)(C3D_GetDrawingTime() * 1000.f);

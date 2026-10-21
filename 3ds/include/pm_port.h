@@ -71,6 +71,7 @@ void pm_ph_frame_end(void);
 int pm_ph_abtog_has(const char* word);
 void pm_ph_scene_mode(int mode);
 void pm_ph_scene_map(int area, int map);
+void pm_ph_scene_get(int* mode, int* area, int* map);
 extern unsigned pm_ph_gpu_us[2]; /* previous frame: citro3d GPU drawing time and citro3d processing time (us), read after C3D_FrameBegin returns */
 extern unsigned pm_ph_cmd_pm;    /* command buffer fill of this frame in 1/1000 */
 void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
