@@ -79,3 +79,4 @@ Q-MA1-P16 (2026-10-20) PARKED until O3DS runs, no answer needed now: P16 (guRota
 ## UI1 (D-pad modes, Options tabs)
 - Q: A diagonal D-pad press in a menu with four directions. Default: both stick axes are sent at 80, the menu code takes the axis it tests first (up or down before left or right in most menus). Change it if a menu behaves wrong on hardware.
 - Q: Azahar runs as an O3DS, so the mode D-PAD to Analog and the real C-stick are not tested. Default: build check only.
+Q-F10 | answered B by the orchestrator (hide tst_* maps from Warp-to and the tour; switch warptest allows them). The user can revert. Warp-to is also no longer saved or applied at boot (PT01b).

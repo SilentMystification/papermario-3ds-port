@@ -3,7 +3,7 @@
 ## Existing code (file:line)
 - Options panel (file select only): `src/filemenu/filemenu_options.c`. Window 200x214 at `filemenu_options_open` (line 56). Draw: `filemenu_draw_contents_options_panel` (line 100), 10 rows, 17 px pitch, label at baseX+24, value at baseX+140, labels are message arrays `filemenu_msg_opt_*` in `src/filemenu/filemenu_msg.c` (line 442 on) with ids `FILE_MESSAGE_OPT_*` in `include/enums.h` (line 5414). Input: `filemenu_options_handle_input` (line 150). F11-9: stick gate 56 of 80 and a 6 update move gap. F11-10: live apply in `pm_options_flip`.
 - Settings: `3ds/src/pm_options.c`. `pm_opt` (`PmOpt` in `3ds/include/pm_port.h` line 122), `pm_options_get`/`pm_options_flip` (row numbers 0 to 8), `pm_options_write`, `pm_options_init`, `pm_options_close`, `pm_options_build_msg` (text to game message, BN1 footer).
-- options.txt keys today: `version fps60 wide hud stats nofog nolight o3dsz log loglevel fixedseed` and `map.<A B X Y L R ZL ZR START DUP DDOWN DLEFT DRIGHT CSUP CSDOWN CSLEFT CSRIGHT>=<NONE A B Z START L R CUP CDOWN CLEFT CRIGHT>` (written only when different from the default). The key names are the debug switch names (`nofog`, `nolight`, `hud`, `stats`, `log`, `loglevel`, `fixedseed`).
+- options.ini keys today: `version fps60 wide hud stats nofog nolight o3dsz log loglevel fixedseed` and `map.<A B X Y L R ZL ZR START DUP DDOWN DLEFT DRIGHT CSUP CSDOWN CSLEFT CSRIGHT>=<NONE A B Z START L R CUP CDOWN CLEFT CRIGHT>` (written only when different from the default). The key names are the debug switch names (`nofog`, `nolight`, `hud`, `stats`, `log`, `loglevel`, `fixedseed`).
 - Select menu (port text menu, bottom screen): `3ds/src/pm_options_ui.c`. It uses `pm_options_get/flip`, `pm_map[]`, `pm_n64_next`, `pm_map_reset`.
 - Input layer: `3ds/src/pm_input.c`, `pm_pad_scan` (line 120, called each retrace from `pm_main.c` line 295). `hidScanInput`, `hidKeysHeld/Down`, `in_key[]` table, `pm_map[]` loop, circle pad `hidCircleRead` and `clamp_stick` (v*80/154, clamp 80). The N64 has one stick. The "C-stick" of the game is the four N64 C buttons. The 3DS C-stick (N3DS) is `KEY_CSTICK_*`. Default map: D-pad and C-stick and X, Y give N64 C buttons. `pm_new3ds` (`pm_main.c` line 436, `APT_CheckNew3DS`) is the device test, also used by the HUD.
 - Test input: `padscript` (`pm_input.c` line 31). It already gives N64 buttons and stick values. It cannot press 3DS keys, so UI1 adds tokens `k_dup k_ddown k_dleft k_dright k_L k_R` (3DS keys, before the mapping).
@@ -13,7 +13,7 @@
 - General: 60 FPS (row 0), Widescreen (row 1), Back.
 - Controls: D-pad mode (new, `dpad_mode`), 17 rebind rows, Reset controls, Back.
 - Debug: HUD, Stats, No fog, No light, Logging, Log level, Fixed seed, Warp preset, Warp now, Back.
-- `o3dsz` stays an options.txt key only (it has no row today). The Select menu keeps all rows and gets the D-pad mode row.
+- `o3dsz` stays an options.ini key only (it has no row today). The Select menu keeps all rows and gets the D-pad mode row.
 - New keys: `dpad_mode=multi|cstick|analog` (default multi, O3DS has no `analog`), `warp=<preset name>` (absent = off; warps at boot like `preset=`; a switch wins).
 
 ## Panel model
@@ -37,3 +37,26 @@ Not covered: a world screen that is not one of these (none known). A script that
 
 ## Tests
 - Azahar cannot press keys. `padscript` tokens `k_*` inject 3DS keys. Shots: tabs (normal, wide), L/R, D-pad in file select, pause menu, a battle menu, overworld camera (C button). Statehash and counters against `baseline_azahar_840.txt` in a run without inputs.
+
+## Select menu mirror (PT59)
+- The Select menu (`3ds/src/pm_options_ui.c`) and the Options panel of the file select (`src/filemenu/filemenu_options.c`) show the same three tabs: General, Controls, Debug. L and R change the tab. Both menus read one row table in `3ds/src/pm_options.c` (`pm_optui_rows`, `pm_optui_label`, `pm_optui_value`, `pm_optui_step`, `pm_optui_act`). Each function takes `mode`: 0 is the file select panel, 1 is the Select menu.
+- The two menus keep no row code of their own. They only draw and read the pad. A change in one menu is the same change in the other: both write `pm_opt`, `pm_map` and options.ini (saved when the menu closes), and the live apply code in `pm_options_flip` runs in both.
+- Mode 1 adds rows to the General tab: `Return to Title Screen` and `Exit to Homebrew Menu` (A twice). In mode 1 `Warp now` changes the map at once (`pm_warp_live`). In mode 0 it leaves the file select. The Warp choice is not saved.
+- Test: padscript tokens `SELECT` (opens the menu), `ddown`, `dup`, `dleft`, `dright`, `A`, `B`, `L`, `R` act on the menu. The log shows `menu: tab <t> row <r> <label> = <value>` at debug level.
+
+## Hold repeat and dead zones (PT60, PT61)
+- `pm_repeat` (`pm_options.c`) is the one hold repeat of both menus, for the D-pad and the circle pad: the first step fires at once, the next after `rep_delay` ms (default 500 = 15 game updates), then every `rep_rate` ms (default 200 = 6 updates). Left and right on a list row go 5 steps after 12 repeats. The pad gate is 56 of 80.
+- Controls tab rows: `Circle pad dead zone` (`dz_pad`, 0 to 50 percent, step 5), `C-Stick dead zone` (`dz_cs`, N3DS), `Repeat delay` (`rep_delay`, 200 to 1000 ms), `Repeat rate` (`rep_rate`, 50 to 500 ms). All four are options.ini keys and apply at once.
+- Before: the port had no dead zone for the circle pad (`clamp_stick` only scales 154 to 80). The game removes 4 of 80 (`STICK_DEADZONE_THRESHOLD`) and counts a stick button from 32 of 80. The C-Stick keys came from libctru with its own fixed threshold. Default 0 for both new rows keeps this behavior.
+
+## Select menu screen (PT64, PT65)
+- The menu uses rows 3 to 14 of the bottom console. The log keeps rows 16 to 30 and goes on while the menu is open (the log writer no longer checks `pm_menu_open`). On close the menu rows are blank and the log window is the full window again, the next line comes at the bottom.
+- The flicker (PT64) came from `consoleClear` and a full redraw at each move: the 3DS could show the empty frame. `pm_gpu_menu_draw` in `pm_gpu.c` does not clear. It rewrites only the lines whose text changed, padded with spaces.
+
+## Select menu warp (PT63)
+- Debug tab: `Warp to` (Off, the presets, every map without the `tst_*` maps), `Entry`, `Warp now`. The choice is a runtime value only and is never written to options.ini.
+- `Credits` is the preset `credits`: map `end_00` entry 0, story 96 (`STORY_EPILOGUE`), no partner, flag or item. The kkj_00 ending scene reaches end_00 the same way (`GotoMapSpecial`). It also works as the debug switch `preset=credits`.
+- `Warp now` in the Select menu calls `pm_warp_live` (`pm_warp.c`): from the world a normal map change, from the title, the intro or the demo `GAME_MODE_ENTER_WORLD`. Other game modes refuse (a warning in the log). The player data is new at the story value, as for a preset.
+
+## Return to Title Screen (PT66)
+- General tab of the Select menu. `pm_title_return` (`pm_warp.c`) flushes the flash (`pm_flash_flush`), drains the audio (`pm_audio_drain(3)`), then sets `GLOBAL_OVERRIDES_SOFT_RESET`. This is the soft reset of the game itself (`main_loop.c`): the Mario overlay fades in, then `GAME_MODE_STARTUP` runs the engine setup again, then the logos, the intro and the title screen, as at boot. The boot warp does not run a second time.

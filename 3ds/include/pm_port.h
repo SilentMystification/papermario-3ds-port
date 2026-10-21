@@ -141,15 +141,17 @@ typedef struct PmMapRst {
 } PmMapRst;
 void pm_mapdata_enter(const char* id);
 
-/* F11-1: port settings (pm_options.c). The file is options.txt in the working folder. */
+/* F11-1: port settings (pm_options.c). The file is options.ini in the working folder (options.txt is read once as a fallback). */
 typedef struct PmOpt {
     int fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight;
-    int o3ds_z; /* C-O3DS: 0 = X is the Z key on the O3DS, 1 = Y (options.txt o3dsz) */
+    int o3ds_z; /* C-O3DS: 0 = X is the Z key on the O3DS, 1 = Y (options.ini o3dsz) */
     int log, loglevel; /* L02, F11-8: log file on or off (default 1), level 0 error, 1 warn (default), 2 info, 3 debug */
     int fixedseed; /* F11-7: 1 = same random start seed every boot (as the switch fixedseed), read at boot */
-    int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.txt dpad_mode=multi|cstick|analog */
-    int warp; /* UI1a, PT01: 0 = off, 1 to P = warp preset, P+1 and up = map k of gAreas (options.txt warp=<preset> or warp=<map>:<entry>) */
+    int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.ini dpad_mode=multi|cstick|analog */
+    int warp; /* UI1a, PT01: 0 = off, 1 to P = warp preset, P+1 and up = map k of gAreas (options.ini warp=<preset> or warp=<map>:<entry>) */
     int warp_entry; /* PT01: entry of a map choice */
+    int dz_pad, dz_cs; /* PT61: dead zone in percent of full travel, circle pad and C-Stick (N3DS). 0 = as before (no port dead zone) */
+    int rep_delay, rep_rate; /* PT60: menu key repeat in ms, the first step is at once, the next after rep_delay, then every rep_rate */
 } PmOpt;
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
@@ -161,10 +163,16 @@ void pm_options_flip(int row);
 void pm_options_close(void);
 const unsigned char* pm_options_build_msg(void); /* BN1 footer text */
 const unsigned char* pm_options_msg(const char* text, int slot); /* UI1a: text as game message, slot 0 to 7 */
-int pm_optui_rows(int tab); /* UI1a: tab 0 General, 1 Controls, 2 Debug */
-const char* pm_optui_label(int tab, int row);
-const char* pm_optui_value(int tab, int row);
-int pm_optui_act(int tab, int row); /* 0 done, 1 close (Back), 2 leave the file select (Warp now) */
+/* UI1a, PT59: tab 0 General, 1 Controls, 2 Debug. mode 0 = file select panel, mode 1 = Select menu (port menu): the same rows, plus Return to Title and Exit to Homebrew */
+int pm_optui_rows(int tab, int mode);
+const char* pm_optui_label(int tab, int row, int mode);
+const char* pm_optui_value(int tab, int row, int mode);
+int pm_optui_step(int tab, int row, int dir, int mode); /* left or right on a row, 1 when the value changed */
+int pm_optui_act(int tab, int row, int mode); /* 0 done, 1 close (Back), 2 leave the file select (Warp now), 3 exit to Homebrew, 4 return to title, 5 warp started */
+void pm_optui_disarm(void);
+/* PT60: hold repeat of both menus. dir is -1, 0 or 1. tps is the call rate (30 game updates, 60 pad scans). Returns 1 when a step fires. n counts the steps of this hold. */
+typedef struct { int dir, t, n; } PmRepeat;
+int pm_repeat(PmRepeat* r, int dir, int tps);
 int pm_pad_take_tab(void); /* UI1a: -1 for L, +1 for R (3DS keys) since the last call */
 void pm_log_switch(const char* word, int on);
 int pm_pad_take_select(void);
@@ -186,14 +194,17 @@ void pm_warp_now(int choice, int entry); /* UI1a, PT01: warp from the file selec
 int pm_warp_map_count(void);
 const char* pm_warp_map_name(int k);
 int pm_warp_map_index(const char* name);
+int pm_warp_is_test_map(const char* id); /* PT01b */
 int pm_warp_choice_count(void);
 const char* pm_warp_choice_text(int choice, int entry);
-int pm_optui_step(int tab, int row, int dir); /* PT01: left or right on a row. 1 = the value changed */
+int pm_warp_live(int choice, int entry); /* PT63: warp at once from the Select menu (no file select). 1 = started */
+void pm_title_return(void); /* PT66: soft reset to the title, as the game own reset does */
 void pm_options_touch(void); /* mark the settings changed, saved at pm_options_close */
 /* F11-6: the port menu on the bottom screen (3ds/src/pm_options_ui.c). Select, when no game code takes it, opens it in any game mode. */
 extern volatile int pm_menu_open;
 void pm_menu_set(int on);
 void pm_menu_key(unsigned hid_keys_down);
+void pm_menu_hold(int dx, int dy); /* PT60 */
 void pm_gpu_menu_draw(const char* text);
 
 #endif

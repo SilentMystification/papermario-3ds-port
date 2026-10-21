@@ -986,16 +986,59 @@ void pm_gpu_init(void) {
            (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
 
-/* F11-6: draw the port menu text on the bottom console (rows 3 to 30). The log writer is silent while the menu is open. */
+/* F11-6, PT64, PT65: the port menu text on the bottom console. The menu owns rows 3 to 14 (MENU_ROWS lines), the log keeps rows 16 to 30 and keeps
+ * scrolling there while the menu is open. Nothing is cleared: a line is rewritten, padded with spaces, only when its text changed, so the
+ * screen never shows an empty frame between a clear and a redraw (PT64). On close the menu rows are blanked and the log gets its old window back. */
+#define MENU_ROWS 12
+#define MENU_W 39
+static char menu_prev[MENU_ROWS][MENU_W + 1];
+static int menu_on;
+static void menu_put_line(PrintConsole* c, int i, const char* s) {
+    char b[MENU_W + 1];
+    snprintf(b, sizeof b, "%-*.*s", MENU_W - 1, MENU_W - 1, s); /* one column spare: the last column never wraps the 1 row window */
+    if (menu_on && !strcmp(b, menu_prev[i])) return;
+    memcpy(menu_prev[i], b, sizeof b);
+    consoleSetWindow(c, 1, 3 + i, MENU_W, 1);
+    fputs(b, stdout);
+}
 void pm_gpu_menu_draw(const char* text) {
     PrintConsole* c = &bottom_con;
+    int i = 0, was_on = menu_on, cx, cy, wx, wy, ww, wh;
     if (!c->consoleInitialised) return;
     pm_con_lock();
+    cx = c->cursorX; cy = c->cursorY; wx = c->windowX; wy = c->windowY; ww = c->windowWidth; wh = c->windowHeight;
     consoleSelect(c);
-    consoleSetWindow(c, 1, 3, 40, 28);
-    consoleClear();
-    fputs(text, stdout);
+    if (!text || !text[0]) {
+        if (menu_on) {
+            for (i = 0; i < MENU_ROWS; i++) { menu_prev[i][0] = 1; menu_put_line(c, i, ""); }
+            menu_on = 0;
+            consoleSetWindow(c, 1, 3, 40, 28); /* the log window again, new lines come at the bottom */
+            c->cursorX = 0; c->cursorY = 27;
+            fflush(stdout);
+        }
+        pm_con_unlock();
+        return;
+    }
+    while (*text && i < MENU_ROWS) {
+        char ln[MENU_W + 1];
+        size_t n = strcspn(text, "\n");
+        if (n > MENU_W) n = MENU_W;
+        memcpy(ln, text, n);
+        ln[n] = 0;
+        menu_put_line(c, i++, ln);
+        text += strcspn(text, "\n");
+        if (*text == '\n') text++;
+    }
+    for (; i < MENU_ROWS; i++) menu_put_line(c, i, "");
+    menu_on = 1;
     fflush(stdout);
+    if (!was_on) { /* the log shrinks to rows 16 to 30, its next line comes at the bottom */
+        consoleSetWindow(c, 1, 16, 40, 15);
+        c->cursorX = 0; c->cursorY = 14;
+    } else { /* the log window and its cursor stay as they were */
+        consoleSetWindow(c, wx, wy, ww, wh);
+        c->cursorX = cx; c->cursorY = cy;
+    }
     pm_con_unlock();
 }
 
