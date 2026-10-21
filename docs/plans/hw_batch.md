@@ -132,27 +132,37 @@ Lines to grep in the pull:
 
 ## 8. Build 970 (main d54053ce5 without map_restore_table.c): the new defaults and four pushes
 
-### 8.0 Order of the pushes
-Copy 3ds/logs/builds/pm_3ds_970.3dsx to build3ds/pm_3ds.3dsx. Set `export O=<ip> B=970`. Do the pushes in this order. Azahar gate for build 970: statehash f1800 53090ae9, f4000 d95fd1a4, f8000 82add753, route run hash 2440c7c2.
-
-| # | Push | Command (after `sh 3ds/push_3ds.sh --no-build --ip $O -t 20`) | Seconds | User hands | Pull | Report or grep |
-|---|---|---|---|---|---|---|
-| 1 | R route | `warp=mac_00:4 story=ch0_toad_town partner=1 route=play1_nosave phase phsum phasecsv loglevel=debug fixedseed statehash=300` | 150 | none (FTP app on for the curl and the pull) | `python3 -u 3ds/tools/ftppull.py $O o build3ds; cp build3ds/hw_o3ds_log.txt 3ds/logs/perf/hw_${B}_ROUTE_pull.txt` | `python3 3ds/tools/route_report.py 3ds/logs/perf/hw_${B}_ROUTE_pull.txt --title "ROUTE play1 O3DS $B"` and `grep -E "route: (seg\|goto\|leg\|end)" <pull>` |
-| 2 | A full cycle | `audiostat pacestat logstat phase phsum noaudit loglevel=debug fixedseed statehash=10 phasecsv=300:400 abtog=base,nogv1,noraw1,nofl1:30` | 420 | none | same ftppull, copy to `hw_${B}_A_pull.txt` | section 8.1 greps |
-| 3 | B dspaudio | `dspaudio audiostat loglevel=debug` | live | listen, A/B list in AUD_DSP.md section 15 | same ftppull | `grep -E "audio dsp:\|dspaudio:\|audio cost\|audio2:" <pull>` |
-| 4 | C bench | `bench benchexit loglevel=debug`, then `dsptest loglevel=debug` | 90 each | none | same ftppull after each push | `grep "bench:" <pull>`, `grep "dsptest:" <pull>` |
-
-Console steps for push R (one time per route change). Start the FTP app on the console (port 5000). Then:
+### 8.0 Push PLAY: the one planned push (the user plays by hand)
+Build 970. No automated test runs on the console (user decision). Every picture and speed is the shipping configuration: gv1, raw1, fl1 and FS1 are on, no abtog.
 ```
-curl -T 3ds/routes/play1_nosave.txt --ftp-create-dirs ftp://$O:5000/3ds/PaperMario/routes/play1_nosave.txt
+cp 3ds/logs/builds/pm_3ds_970.3dsx build3ds/pm_3ds.3dsx
+export O=<ip> B=970; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum loglevel=debug
 ```
-The game reads `sdmc:/3ds/PaperMario/routes/play1_nosave.txt`. Real save slot 3 stays untouched with `play1_nosave`. Details and the report: section 8.4.
+The user plays as long as they want. Then press HOME to leave the game. Start the FTP app (port 5000) and pull:
+```
+python3 -u 3ds/tools/ftppull.py $O o build3ds; cp build3ds/hw_o3ds_log.txt 3ds/logs/perf/hw_${B}_PLAY_pull.txt
+```
+Azahar check (build 970, 60 s, same switches): no crash, no FAIL, 0 dropped lines. The log holds `audio dsp:` 129, `audio2:` 87, `audio cost` 221, `texstat` 262, `pace:` 437, `spike` 2, `phs` and `phc` 45 each. `phase` and `phsum` give the phs and phc lines and the spike line (every step over 50 ms, at most 10 per second). `phasecsv` is not in the command, so the log stays small. The HUD shows FPS and the late share.
+Read-out (P = the pull file):
+- `grep "audio dsp:" P`, `grep "audio2:" P`, `grep "audio cost" P`: DSP audio state, underruns, cost per 60 Hz tick.
+- `grep texstat P`: texture cache hits, misses, uploads every 300 frames.
+- `grep "pace:" P`: steps per second and late steps (3 or more vblanks) per second. The last `late steps ... of ...` gives the total share.
+- `grep " spike " P`: every step over 50 ms with its cause (rom, texmiss, ph columns).
+- `grep -E "^#[0-9]+ (phs|phc) " P`: phase averages per scene and the counters (flushcalls, flushkb, rawd, rawcall).
+- `grep -E "FAIL|CRASH|lines dropped" P` must be empty or 0. `grep "exit:" P` shows a clean shutdown (without it the game ended by HOME kill or crash: read the Luma dump with pull-o).
+- `statehash` is not in this push: it needs `fixedseed statehash=<n>`, which the free play does not use.
+Fallbacks when something looks wrong. Push again with one change:
+- Audio is bad: drop `dspaudio` (the old audio path).
+- Graphics or speed is wrong: add one kill switch: `nogv1`, `noraw1`, `nofl1`, `nonoise`, `nodecal2` (one at a time, to find the cause).
+
+### 8.0b Optional pushes, not planned (the user chose hand play)
+Push R (route), A (full cycle abtog), B (dspaudio listening) and C (bench, dsptest) stay for later use. They are in sections 8.1 to 8.4. Each needs the run time and hands listed there. Section 8.4 explains `play1_nosave` and the route file upload.
 
 File: 3ds/logs/builds/pm_3ds_970.3dsx (build 967 files stay in the same folder; the text below was written for build 967 and is valid for 970) (ELF and map next to it). Copy it to build3ds/pm_3ds.3dsx before each push. The orchestrator pushes. Defaults in this build: the full GPU path gv1, the lean draw path raw1 (one DVLB, lazy program and buffer binding, uniform shadows) and the texture slab fl1 (one data cache flush per command list submit) are ON. Switches `nogv1`, `noraw1`, `nofl1` turn each off. `dspaudio` and `bench` are OFF unless the switch is set. Lane B (AUD-DSP) and lane C (BENCH) are merged.
 New statehash references (Azahar, fixedseed statehash=10 cpulimit=80, equal with the three paths on and off): f1800 53090ae9, f4000 d95fd1a4, f8000 82add753. The old values 5a6bb12a, bcd4e3ea, 1325de7e are from before PT07. Do not use them.
 Azahar numbers (dip window pc 1702 to 1850, noaudit): gb 13.20 (all three off) to 11.05 (on), gd 2.01 to 2.08, gp 1.21 to 1.24, draws 150.6 to 152.4, triout 290 to 389, citro3d calls per raw draw 10 to 2.2. Whole cycle 8233 steps: gbi 8.32 to 6.64 ms per step, draws 89.8 to 91.8 per step, statehash equal.
 
-### 8.1 Push A: full cycle that rotates gv1, raw1 and fl1 (420 s, pulled log only)
+### 8.1 Push A: full cycle that rotates gv1, raw1 and fl1 (420 s, pulled log only) (optional, not planned)
 ```
 export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat pacestat logstat phase phsum noaudit loglevel=debug fixedseed statehash=10 phasecsv=300:400 abtog=base,nogv1,noraw1,nofl1:30
 ```
@@ -165,20 +175,20 @@ Read:
 - `grep statehash <pull>`: f1800 53090ae9, f4000 d95fd1a4, f8000 82add753.
 - `grep -c "lines dropped" <pull>` is 0. `grep -E "FAIL|CRASH" <pull>` is empty.
 
-### 8.2 Push B: DSP audio, interactive listening
+### 8.2 Push B: DSP audio, interactive listening (optional, not planned)
 ```
 export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat loglevel=debug
 ```
 Play the A/B list of docs/plans/AUD_DSP.md section 15 with the live log or the pulled log. Then push once without `dspaudio` for the second half of each comparison. Pull and read `audio dsp:`, `dspaudio:`, `audio cost` and `audio2:` lines.
 
-### 8.3 Push C: BENCH and the DSP test
+### 8.3 Push C: BENCH and the DSP test (optional, not planned)
 ```
 export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 bench benchexit loglevel=debug
 sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dsptest loglevel=debug
 ```
 Read as in section 7 (bench lines, decision rules in docs/plans/bench_notes.md). The second push gives the `dsptest:` lines (control call costs, aux callback core).
 
-### 8.4 Push R: route play1, play-through benchmark on the console (pulled log only, no hands)
+### 8.4 Push R: route play1, play-through benchmark on the console (pulled log only, no hands) (optional, not planned)
 Build: 970 or later (ROUTE is merged in main, file `pm_route.c`). Route file: `3ds/routes/play1.txt`. One time per route change, put it on the SD card (FTP app on the console, port 5000):
 ```
 export O=<ip>; curl -T 3ds/routes/play1.txt --ftp-create-dirs ftp://$O:5000/3ds/PaperMario/routes/play1.txt
