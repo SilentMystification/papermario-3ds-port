@@ -30,6 +30,14 @@ static Ent ents[MAXENT];
 static unsigned cache_budget = 1536u * 1024u, cache_used, cache_peak;
 static unsigned c_hit, c_miss, c_evict, c_fail, c_late, dec_us_sum, dec_us_max, dec_n;
 
+static int fx_off, aux_late;
+static float gain_scale = 1.0f; /* switch dspgain=<percent>: scales every voice mix (clip test) */
+static int dsp_flush_each; /* switch dspflush: flush the sample before every wave buffer add */
+static volatile unsigned ax_total; /* aux callbacks since the start */
+static volatile int fx_flip;       /* the first aux callback ran: the render thread sets the mixes again */
+static unsigned ax_core;
+static void aux0_cb(void* d, int n, void* smp[4]);
+static void aux1_cb(void* d, int n, void* smp[4]);
 typedef struct { Ent* e; ndspWaveBuf wb[MAXBUF]; int nb; int active; } Chan;
 static Chan chn[PM_DSPA_VOICES];
 
@@ -49,36 +57,7 @@ void pm_dspa_log_once(const char* fmt, ...) {
     pm_log_w("dspaudio: %s", b);
 }
 
-/* ---------- VADPCM decode (same arithmetic as aADPCMdecImpl, scalar) ---------- */
-static inline s16 clamp16(int v) { return v < -32768 ? -32768 : v > 32767 ? 32767 : (s16)v; }
-static void vadpcm(const unsigned char* in, int nframes, const s16* book, s16 h2, s16 h1, s16* out) {
-    for (int f = 0; f < nframes; f++) {
-        int shift = in[0] >> 4, ti = in[0] & 0xF;
-        const s16* tbl0;
-        const s16* tbl1;
-        if (ti > 7) ti = 7;
-        tbl0 = book + ti * 16;
-        tbl1 = tbl0 + 8;
-        in++;
-        for (int half = 0; half < 2; half++) {
-            s16 ins[8];
-            for (int j = 0; j < 4; j++) {
-                ins[j * 2] = (s16)((((int)(*in >> 4) << 28) >> 28) << shift);
-                ins[j * 2 + 1] = (s16)((((int)(*in & 0xF) << 28) >> 28) << shift);
-                in++;
-            }
-            for (int j = 0; j < 8; j++) {
-                int acc = tbl0[j] * h2 + tbl1[j] * h1 + (ins[j] << 11);
-                for (int k = 0; k < j; k++) acc += tbl1[(j - k) - 1] * ins[k];
-                acc >>= 11;
-                s16 o = clamp16(acc);
-                *out++ = o;
-                h2 = h1;
-                h1 = o;
-            }
-        }
-    }
-}
+#include "pm_vadpcm.h"
 
 static void ent_free(Ent* e) {
     if (e->mem) linearFree(e->mem);
@@ -155,6 +134,19 @@ static Ent* cache_get(const DspaSample* s) {
 }
 
 /* ---------- channels ---------- */
+/* PT22: the aux callback never ran on the O3DS (build 970 log), so the wet part of every voice was lost. While no aux callback has run (or with dspfx=off)
+ * the wet and the delay sends are added to the main mix. dspgain=<percent> scales the result. */
+static float raw_mix[PM_DSPA_VOICES][12];
+static void mix_out(const float in[12], float out[12]) {
+    int fold = fx_off || ax_total == 0;
+    for (int k = 0; k < 12; k++) out[k] = in[k];
+    if (fold) {
+        out[0] = in[0] + in[4] + in[6] + in[8] + in[10];
+        out[1] = in[1] + in[5] + in[7] + in[9] + in[11];
+        for (int k = 4; k < 12; k++) out[k] = 0.0f;
+    }
+    if (gain_scale != 1.0f) for (int k = 0; k < 12; k++) out[k] *= gain_scale;
+}
 static void chan_add(int ch, s16* data, unsigned n, int loop) {
     Chan* c = &chn[ch];
     if (!n || c->nb >= MAXBUF) return;
@@ -164,12 +156,14 @@ static void chan_add(int ch, s16* data, unsigned n, int loop) {
     w->nsamples = n;
     w->looping = loop;
     w->status = NDSP_WBUF_FREE;
+    if (dsp_flush_each) DSP_FlushDataCache(data, n * 2);
     ndspChnWaveBufAdd(ch, w);
 }
 
 void pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]) {
     Chan* c = &chn[ch];
     Ent* e = cache_get(s);
+    if (aux_late) { aux_late = 0; ndspAuxSetCallback(0, aux0_cb, NULL); ndspAuxSetCallback(1, aux1_cb, NULL); pm_log("dspaudio: aux callbacks registered after the first voice start"); }
     if (c->e) { c->e->pins--; c->e = NULL; }
     ndspChnWaveBufClear(ch);
     c->nb = 0;
@@ -180,7 +174,8 @@ void pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mi
     ndspChnSetFormat(ch, NDSP_FORMAT_MONO_PCM16);
     ndspChnSetInterp(ch, NDSP_INTERP_POLYPHASE);
     ndspChnSetRate(ch, rate);
-    ndspChnSetMix(ch, (float*)mix);
+    memcpy(raw_mix[ch], mix, sizeof raw_mix[ch]);
+    { float m2[12]; mix_out(mix, m2); ndspChnSetMix(ch, m2); }
     if (!e->looped) chan_add(ch, e->pre, e->npre, 0);
     else {
         chan_add(ch, e->pre, e->npre, 0);
@@ -199,7 +194,8 @@ void pm_dspa_voice_update(int ch, float rate, const float mix[12]) {
     if (!chn[ch].active) return;
     unsigned long long t = svcGetSystemTick();
     ndspChnSetRate(ch, rate);
-    ndspChnSetMix(ch, (float*)mix);
+    memcpy(raw_mix[ch], mix, sizeof raw_mix[ch]);
+    { float m2[12]; mix_out(mix, m2); ndspChnSetMix(ch, m2); }
     st_sets++;
     st_set_us += tk_us(svcGetSystemTick() - t);
 }
@@ -243,7 +239,7 @@ static float acc[2][FXFRAME];
 static int acc_got;
 static ndspWaveBuf fxw[FXR_BUFS];
 static s16* fxmem;
-static unsigned ax_n[2], ax_us_sum, ax_us_max, ax_core, fx_emitted, fx_dropped, fx_lastflip;
+static unsigned ax_n[2], ax_us_sum, ax_us_max, fx_emitted, fx_dropped, fx_lastflip;
 static volatile unsigned fx_started;
 
 static void fx_build(int bus) {
@@ -318,6 +314,7 @@ static void aux_frame(int bus, int n, void* smp[4]) {
     unsigned long long t0 = svcGetSystemTick();
     ax_core = (unsigned)svcGetProcessorID();
     ax_n[bus]++;
+    if (!ax_total++) fx_flip = 1;
     if (n > FXFRAME) n = FXFRAME;
     LightLock_Lock(&fx_lock);
     if (fx_have[bus] != fx_gen[bus]) { fx_have[bus] = fx_gen[bus]; fx_build(bus); }
@@ -375,6 +372,11 @@ int pm_dspa_init(void) {
     unsigned want = pm_debug_value("dspcache", kv, sizeof kv) > 0 ? (unsigned)atoi(kv) : 1536u;
     if (want < 256) want = 256;
     cache_budget = want * 1024u;
+    { char v[16];
+      fx_off = pm_debug_value("dspfx", v, sizeof v) && strcmp(v, "off") == 0;
+      if (pm_debug_value("dspgain", v, sizeof v)) { int pc = atoi(v); if (pc > 0 && pc <= 400) gain_scale = (float)pc / 100.0f; }
+      dsp_flush_each = pm_debug_has("dspflush"); }
+    if (gain_scale != 1.0f || dsp_flush_each) pm_log("dspaudio: switches gain %.2f flush each add %d", gain_scale, dsp_flush_each);
     LightLock_Init(&fx_lock);
     fxmem = (s16*)linearMemAlign(FXR_BUFS * FXFRAME * 4, 128);
     if (!fxmem) { pm_log_e("dspaudio: linearAlloc for the effect return failed"); return 0; }
@@ -391,10 +393,19 @@ int pm_dspa_init(void) {
         float m[12] = { 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
         ndspChnSetMix(23, m);
     }
-    ndspAuxSetEnable(0, true);
-    ndspAuxSetEnable(1, true);
-    ndspAuxSetCallback(0, aux0_cb, NULL);
-    ndspAuxSetCallback(1, aux1_cb, NULL);
+    if (!fx_off) {
+        char av[16];
+        unsigned am = pm_debug_value("dspaux", av, sizeof av) ? (unsigned)atoi(av) : 0; /* PT22 test: bit 0 keep the aux volume at the libctru default 0.0 (the old build 970 behaviour; now the volume is set to 1.0), bit 1 front bypass off, bit 2 output count 2, bit 3 callbacks after the first voice start */
+        for (int i = 0; i < 2; i++) {
+            ndspAuxSetEnable(i, true);
+            if (!(am & 1)) ndspAuxSetVolume(i, 1.0f); /* the libctru default is 0.0 */
+            if (am & 2) ndspAuxSetFrontBypass(i, false);
+        }
+        if (am & 4) ndspSetOutputCount(2);
+        aux_late = (am & 8) != 0;
+        if (!aux_late) { ndspAuxSetCallback(0, aux0_cb, NULL); ndspAuxSetCallback(1, aux1_cb, NULL); }
+        pm_log("dspaudio: aux mask %u enabled %d %d volume %.2f %.2f late %d", am, ndspAuxIsEnabled(0), ndspAuxIsEnabled(1), ndspAuxGetVolume(0), ndspAuxGetVolume(1), aux_late);
+    } else pm_log("dspaudio: dspfx off, no aux callback, the wet part of every voice goes to the main mix");
     ndspSetMasterVol(1.0f);
     pm_dspa_enabled = 1;
     pm_log("dspaudio: on, 23 voices on ndsp channels 0 to 22, effect return on channel 23, cache %u KB", cache_budget / 1024);
@@ -424,6 +435,11 @@ void pm_dspa_pace(void) {
 
 void pm_dspa_block_done(int voices, int starts, int stops, int ends, unsigned costTicks) {
     (void)costTicks;
+    if (fx_flip) { /* PT22: the first aux callback ran: stop adding the wet part to the main mix */
+        fx_flip = 0;
+        pm_log("dspaudio: first aux callback ran (core %u), wet sends go to the effect path now", ax_core);
+        for (int c = 0; c < PM_DSPA_VOICES; c++) if (chn[c].active) { float m2[12]; mix_out(raw_mix[c], m2); ndspChnSetMix(c, m2); }
+    }
     unsigned us = tk_us(svcGetSystemTick() - t_blk0);
     unsigned bl = au2_blk_backlog();
     st_blocks++;
