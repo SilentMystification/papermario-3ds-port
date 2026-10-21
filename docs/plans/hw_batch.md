@@ -162,6 +162,23 @@ Read-out (P = the pull file):
 - `grep -E "FAIL|CRASH|lines dropped" P` must be empty or 0. `grep "exit:" P` shows a clean shutdown.
 Other fallbacks: drop `dspaudio` (old audio path). Graphics wrong: add one of `nogv1`, `noraw1`, `nofl1`, `nonoise`, `nodecal2`.
 
+### 8.0d Push DLC: the map display list replay (DLC1), the user plays in Toad Town
+Build 984 (main 6e2cb90ce, without map_restore_table.c). File: 3ds/logs/builds/pm_3ds_984.3dsx (ELF and map next to it). The switch `dlc` is off by default. `abtog=base,dlc:30` turns it on and off every 30 drawn steps, so one run gives both states in the same scene.
+```
+cp 3ds/logs/builds/pm_3ds_984.3dsx build3ds/pm_3ds.3dsx
+export O=<ip> B=984; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio pacestat logstat phase phsum dlsrc loglevel=debug abtog=base,dlc:30
+```
+The user walks in Toad Town (mac_00) and then in the plaza (mac_01) for about 2 minutes in each, then leaves with the Select menu. Pull as in 8.0. Do not use `dlccheck` on the console (it hashes every list).
+Azahar numbers for the same change (route play1, same switches with and without dlc): Toad Town walk gbi 10.47 to 8.67 ms per drawn step, gbiops 7138 to 5848 per step, plaza gbi 11.00 to 9.41 ms. With the ratio 3.5 the console should show about 6 ms less in town.
+Read-out (P = the pull file). A phs or phc line holds the SUM over n drawn steps (n is in the line). Divide by n.
+- `grep -E "^#[0-9]+ phs " P`: one line per state (base, dlc) and scene. The third number after the first bar is gb (the gbi phase) in 0.1 ms, summed. Gate: gb per step with dlc lower than with base by 4 ms or more in the town scene (game mode 4, area 1, map 0 or 1). Town gb was 38.8 to 40.4 ms in build 970.
+- `grep -E "^#[0-9]+ phc " P`: the counters per state. The 16th number after the bar is gbiops. It falls by about 1000 per step with dlc. The first number (tri) falls by about 900 per step and the third (vtxload) by about 1500. The fifth (draw) stays equal within 2 percent.
+- `grep -E "^#[0-9]+ phh " P`: the histogram of cpu ms per step. The bins over 40 ms shrink with dlc.
+- `grep -E "^#[0-9]+ dlc2? " P`: lines of the dlc state only. `skip` over 70 percent of `grp` and `near` under 2 percent show that the box test works. `hashbad`, `exitbad`, `missing` read 0 on the console because `dlccheck` is off there.
+- `grep -E "^#[0-9]+ dlsrc2? " P` (tool: python3 3ds/tools/dlsrc_report.py P): the share of ops, triangles and vertex loads by list class. It shows the work that stays after DLC1: the state ops of the main list and of the texture lists.
+- The user checks the picture: no missing floor, wall or roof piece at the edge of the screen and no flicker while walking. If something is wrong: write the minute and add `nodlc` to the next push.
+- Fallback: `nodlc`, or no `abtog` word. The `dlc` word is the only change from build 981 in the render path.
+
 ### 8.0b Optional pushes, not planned (the user chose hand play)
 Push R (route), A (full cycle abtog), B (dspaudio listening) and C (bench, dsptest) stay for later use. They are in sections 8.1 to 8.4. Each needs the run time and hands listed there. Section 8.4 explains `play1_nosave` and the route file upload.
 
