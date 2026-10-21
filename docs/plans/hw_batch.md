@@ -133,6 +133,7 @@ Lines to grep in the pull:
 ## 8. Build 970 (main d54053ce5 without map_restore_table.c): the new defaults and four pushes
 
 ### 8.0 Two pushes for build 1011: PLAY and SAVE (the user plays by hand)
+Build 1015 fixes the O3DS boot crash (ROM did not fit the RAM cap by 38 KB: ROMFIT). Push PLAY as before. Use 3ds/logs/builds/pm_3ds_1015.3dsx and `B=1015` for the commands below (the text says 1011). Check in the pull: the boot line `rom resident ... cap ... margin` and no `ROM does not fit` line.
 Build 1011 (main 702308b3f with LB-3 and VIS-4, without map_restore_table.c). No automated test runs on the console. Azahar gate for build 1011: the full cycle boots through the intro (no `warp=` at boot since LB-3). Statehash references for this start: f1800 5a6bb12a, f4000 bcd4e3ea, f8000 1325de7e. The set 53090ae9, d95fd1a4, 82add753 belongs to the old `warp=osr` start (intro skipped). Do not mix the two sets. Host tests dspdec and au2 ok. No golden run for this build.
 Options: the game now reads `options.ini`. An old `options.txt` on the card is migrated. The `warp=` line is ignored. The user can delete it.
 Common start:
@@ -162,6 +163,14 @@ sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat pacestat logstat 
 This push turns off GV1, RAW1, FL1 and FS1. The user plays the Toad Town save block scenes, the Yoshi village save block and the Merlon door. If the faults vanish with these switches, they come from GV1, RAW1, FL1 or FS1: then push again with one switch dropped at a time (`nogv1`, `noraw1`, `nofl1`, `fs1off`) to find the one. `camlog` writes up to 60 lines per second and `mtxlog` at most 50 lines per 30 frames: the log gets long, so keep the session short and note the minute of each fault. Pull as for PLAY (copy to `hw_${B}_SAVE_pull.txt`). Read-out:
 - `grep -i camlog P | head`, `grep -i entlog P`, `grep -i mtxlog P`: camera, entity and matrix lines around the noted minute.
 - `grep "pace:" P`, `grep -E "FAIL|CRASH|lines dropped" P`, `grep "exit:" P`.
+
+#### Push CRASHTEST (optional, only if the user asks)
+Tests the crash handler (`svcExitProcess`) and the watchdog (`wdog`). Details and expected lines: docs/plans/crash_exit.md.
+```
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 crashtest=1 loglevel=debug
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 crashtest=2 wdog=5 loglevel=debug
+```
+Check: after `crashtest=1` the game must leave to the Homebrew menu (no frozen screen, no reboot) and the log must end with the crash handler lines. After `crashtest=2 wdog=5` the log must show `watchdog: no progress for 5 s ...` and `watchdog: exiting the process`, and the console must return to the menu. Pull both logs with ftppull.py.
 
 ### 8.0b Optional pushes, not planned (the user chose hand play)
 Push R (route), A (full cycle abtog), B (dspaudio listening) and C (bench, dsptest) stay for later use. They are in sections 8.1 to 8.4. Each needs the run time and hands listed there. Section 8.4 explains `play1_nosave` and the route file upload.
