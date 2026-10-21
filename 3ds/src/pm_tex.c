@@ -303,6 +303,7 @@ static u8* slab; static unsigned slab_n; /* slab_n: extents in use */
 static struct { unsigned off, len; } slab_ext[SLAB_EXT];
 static struct { u8* p; unsigned len; } pend[PEND_N]; static int pend_n;
 static C3D_Tex slab_proto[16];
+static unsigned fl1_srchash(const void* img, int w, int h, int stride, unsigned siz) { if (siz != 2) return 0; unsigned x = 2166136261u; const u8* q = (const u8*)img; for (int y = 0; y < h; y++) for (int i = 0; i < w * 2; i++) x = (x ^ q[y * stride * 2 + i]) * 16777619u; return x; }
 static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
 static int fl1_on(void) { if (fl1_state < 0) fl1_state = !PMDL("nofl1") && slab != NULL; return fl1_state; }
 static void slab_init(void) {
@@ -834,7 +835,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     }
     C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
     }
-    if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < bytes; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p", fl1_n, slot, pw, ph, fmt, siz, bytes, h, width, height, stride, img); }
+    if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < bytes; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, bytes, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
     if (s->slab) pend_add((u8*)s->tex.data, bytes); /* FL1 */
     else if (tx1 && !tx1_chkon) { C3D_TexFlush(&s->tex); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, bytes >> 10); }
     if (tx1_chkon && memcmp(tx1_chk, s->tex.data, bytes) != 0) {
