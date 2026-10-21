@@ -1167,7 +1167,9 @@ static int noprimz_on(void) { static int v = -1; if (v < 0) v = PMD("noprimz"); 
 /* PO3b, PO3c: one triangle of the raw Vtx path. The caller checked that the three vertices have a ring slot, one matrix and one texture scale, and that
  * the triangle is plain (unlit, no texgen, no screen vertex, no fog). The colour and depth overrides of the CPU path become uniforms: ENV or the plan
  * constant replace the colour, alpha 255, the boost of the second cycle, and G_ZS_PRIM replaces the depth. Returns 0 when the path refuses. */
-static int gpu_emit(const int* idx, int ct) {
+typedef struct { float uvso[4], vp[4], cm[4], ca[4], zm[2]; int boost; } GvP;
+/* The draw parameters of a raw triangle from the state and the texture scale `tss` of its vertices. */
+static void gv_params_calc(unsigned tss, GvP* o) {
     int env = comb_mode5 && !plan_active;
     int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
     int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
@@ -1179,42 +1181,55 @@ static int gpu_emit(const int* idx, int ct) {
     if (th < 1) th = 1;
     unsigned st = use_t1 ? 1 : 0;
     float ms = shift_mul(tile_shift[st][0]), mt = shift_mul(tile_shift[st][1]);
-    unsigned tss = vert_tss[idx[0]];
-    float uvso[4], vp[4] = { vp_sx, vp_sy, vp_tx, vp_ty };
-    float cm[4] = { 1.f, 1.f, 1.f, 1.f }, ca[4] = { 0.f, 0.f, 0.f, 0.f }, zm[2] = { 1.f, 0.f }, en[4];
+    float en[4];
+    o->vp[0] = vp_sx; o->vp[1] = vp_sy; o->vp[2] = vp_tx; o->vp[3] = vp_ty;
+    for (int q = 0; q < 4; q++) { o->cm[q] = 1.f; o->ca[q] = 0.f; }
+    o->zm[0] = 1.f; o->zm[1] = 0.f;
     unpack8(envc, en);
     if (tex_on) {
-        uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms / (float)tw;
-        uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt / (float)th;
-        uvso[2] = -(float)tile_x0 / (float)tw;
-        uvso[3] = -(float)tile_y0 / (float)th;
+        o->uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms / (float)tw;
+        o->uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt / (float)th;
+        o->uvso[2] = -(float)tile_x0 / (float)tw;
+        o->uvso[3] = -(float)tile_y0 / (float)th;
     } else { /* H06b1: the vertex texcoords are 0, texel (0, 0) centre */
-        uvso[0] = uvso[1] = 0.f;
-        uvso[2] = -(float)tile_x0 / (float)tw + 0.5f / (float)tw;
-        uvso[3] = -(float)tile_y0 / (float)th + 0.5f / (float)th;
+        o->uvso[0] = o->uvso[1] = 0.f;
+        o->uvso[2] = -(float)tile_x0 / (float)tw + 0.5f / (float)tw;
+        o->uvso[3] = -(float)tile_y0 / (float)th + 0.5f / (float)th;
     }
-    if (env) { for (int k = 0; k < 4; k++) { cm[k] = 0.f; ca[k] = en[k]; } } /* the CPU order: ENV or the plan constant, then alpha 255, then boost */
-    else if (plan) { float vc[4]; unpack8(cur_plan.vtx, vc); for (int k = 0; k < 4; k++) { cm[k] = 0.f; ca[k] = vc[k]; } }
-    if (a255) { cm[3] = 0.f; ca[3] = 1.f; }
-    if (boost) for (int k = 0; k < 3; k++) { ca[k] = ca[k] * 0.5f + (1.f - en[k]) * 0.5f; cm[k] *= 0.5f; }
-    if (primz) { zm[0] = 0.f; zm[1] = 2.f * (float)prim_z / 32767.f - 1.f; }
-    pm_gpu_set_rgb_scale(boost ? 2 : 1);
-    return pm_gpu_gtri(gm_tab[vert_gmi[idx[0]]], vp, uvso, cm, ca, zm, ct, vert_ring[idx[0]], vert_ring[idx[1]], vert_ring[idx[2]]);
+    if (env) { for (int q = 0; q < 4; q++) { o->cm[q] = 0.f; o->ca[q] = en[q]; } } /* the CPU order: ENV or the plan constant, then alpha 255, then boost */
+    else if (plan) { float vc[4]; unpack8(cur_plan.vtx, vc); for (int q = 0; q < 4; q++) { o->cm[q] = 0.f; o->ca[q] = vc[q]; } }
+    if (a255) { o->cm[3] = 0.f; o->ca[3] = 1.f; }
+    if (boost) for (int q = 0; q < 3; q++) { o->ca[q] = o->ca[q] * 0.5f + (1.f - en[q]) * 0.5f; o->cm[q] *= 0.5f; }
+    if (primz) { o->zm[0] = 0.f; o->zm[1] = 2.f * (float)prim_z / 32767.f - 1.f; }
+    o->boost = boost;
+}
+static int gpu_emit(const int* idx, int ct) {
+    GvP p;
+    gv_params_calc(vert_tss[idx[0]], &p);
+    pm_gpu_set_rgb_scale(p.boost ? 2 : 1);
+    return pm_gpu_gtri(gm_tab[vert_gmi[idx[0]]], p.vp, p.uvso, p.cm, p.ca, p.zm, ct, vert_ring[idx[0]], vert_ring[idx[1]], vert_ring[idx[2]]);
 }
 
-static void tri_stats(void) {
-    st_tri++;
-    if (geom & G_LIGHTING) st_lit++;
-    if (geom & G_FOG) st_fogg++;
-    if (geom & G_TEXTURE_GEN) st_tgen++;
-    {
-        unsigned bl = omode_l;
-        int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
-        unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
-        if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) st_fogb++;
-        if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) st_blc++;
-    }
+static unsigned tri_flags(void) {
+    unsigned f = 0, bl = omode_l;
+    int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
+    unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
+    if (geom & G_LIGHTING) f |= 1;
+    if (geom & G_FOG) f |= 2;
+    if (geom & G_TEXTURE_GEN) f |= 4;
+    if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) f |= 8;
+    if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) f |= 16;
+    return f;
 }
+static void tri_stats_add(unsigned f, unsigned n) {
+    st_tri += n;
+    if (f & 1) st_lit += n;
+    if (f & 2) st_fogg += n;
+    if (f & 4) st_tgen += n;
+    if (f & 8) st_fogb += n;
+    if (f & 16) st_blc += n;
+}
+static void tri_stats(void) { tri_stats_add(tri_flags(), 1); }
 
 /* GV1: make what the CPU path reads from the ring copy of a vertex: the clip position with its exact reject bits (and the near bit), S and T, the colour. */
 static void gv_xf(int sl) {
@@ -1242,6 +1257,26 @@ static void gv_xf(int sl) {
 
 static int gv1chk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gv1check"); return v; }
 
+/* GV1b: state epoch. gv_epoch goes up at every display list op that is not a vertex load, a triangle, a matrix op or a list jump. The decision that depends on state
+ * only (fallback reason, cull mode, the combiner, texture and render sync, the draw parameters) is made once per epoch and per texture scale, not per triangle. */
+static unsigned gv_epoch = 1, ep_epoch, ep_osc, ep_fl, ep_n, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
+static int ep_why, ep_ct, ep_cullboth, ep_open;
+static GvP ep_p;
+static unsigned gv_chk_stale;
+static void ep_flush_stats(void) { if (ep_n) { tri_stats_add(ep_fl, ep_n); ep_n = 0; } }
+/* what the state alone says: a reason to leave the GPU path (or -1), the cull type, CULL_BOTH */
+static int gv_state_why(int* ct, int* both) {
+    unsigned cg = geom & G_CULL_BOTH;
+    *ct = cull_off() ? 0 : cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
+    *both = cg == G_CULL_BOTH && !cull_off();
+    if (geom & (G_LIGHTING | G_TEXTURE_GEN)) return GVR_LIT;
+    if (fogmix_on && (geom & G_FOG)) return GVR_FOG;
+    if (img_role(0) == ROLE_DEPTH) return GVR_ZMARK;
+    if (plan_active && cur_plan.uses_tex1) return GVR_TEX1;
+    if (dd_on() || xt_on() || rmlog_on() || po3a_on()) return GVR_DBG;
+    return -1;
+}
+
 /* GV1: one triangle of ring vertices. Returns 1 when it is done (rejected or sent to the GPU). Returns 0 when the CPU path must take it (reason in gv_fb). */
 static int gv_tri(const int* idx) {
     int a = idx[0], b = idx[1], c = idx[2];
@@ -1251,15 +1286,28 @@ static int gv_tri(const int* idx) {
     else if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_gmi[a] != vert_gmi[b] || vert_gmi[a] != vert_gmi[c]) why = GVR_MIXED;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;
-    else if (geom & (G_LIGHTING | G_TEXTURE_GEN)) why = GVR_LIT;
-    else if (fogmix_on && (geom & G_FOG)) why = GVR_FOG;
-    else if (img_role(0) == ROLE_DEPTH) why = GVR_ZMARK;
-    else if (plan_active && cur_plan.uses_tex1) why = GVR_TEX1;
-    else if (dd_on() || xt_on() || rmlog_on() || po3a_on()) why = GVR_DBG;
     if (why < 0) {
-        unsigned cg = geom & G_CULL_BOTH;
-        int ct = cull_off() ? 0 : cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
-        if (cg == G_CULL_BOTH && !cull_off()) { n_out++; GP_LAP(GPL_EARLY); return 1; }
+        if (ep_epoch != gv_epoch) { /* the first triangle after a state change */
+            ep_flush_stats();
+            ep_why = gv_state_why(&ep_ct, &ep_cullboth);
+            if (ep_why < 0 && !ep_cullboth) {
+                if (audit_on()) comb_audit();
+                ep_fl = tri_flags();
+                ensure_tile(use_t1 ? 1 : 0);
+                dual_bind();
+                sync_render();
+            }
+            ep_epoch = gv_epoch;
+            ep_pepoch = 0;
+        } else if (gv1chk_on()) { /* the stored decision against a fresh one */
+            int ct, both, w = gv_state_why(&ct, &both);
+            if (w != ep_why || ct != ep_ct || both != ep_cullboth) gv_chk_stale++;
+        }
+        why = ep_why;
+    }
+    if (why < 0) {
+        unsigned tss = vert_tss[a], gmi = vert_gmi[a];
+        if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); return 1; }
         if (gv1chk_on()) { /* Azahar check: the old rule and the old cull for this triangle, against the GPU rule */
             gv_xf(a); gv_xf(b); gv_xf(c);
             const float *pa = vert_p[a], *pb = vert_p[b], *pc = vert_p[c];
@@ -1267,7 +1315,7 @@ static int gv_tri(const int* idx) {
             float ex2 = pc[0] * pb[3] - pb[0] * pc[3], ey2 = pc[1] * pb[3] - pb[1] * pc[3];
             float cross = (ex1 * ey2 - ey1 * ex2) * (pa[3] * pc[3]);
             if ((pa[3] < 0) ^ (pb[3] < 0) ^ (pc[3] < 0)) cross = -cross;
-            int old_cull = ct == 1 ? cross <= 0 : ct == 2 ? cross >= 0 : 0;
+            int old_cull = ep_ct == 1 ? cross <= 0 : ep_ct == 2 ? cross >= 0 : 0;
             int old_rej = (vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f;
             gv_chk_tri++;
             if (!old_rej && !old_cull) gv_chk_out++;
@@ -1282,12 +1330,24 @@ static int gv_tri(const int* idx) {
                 }
             }
         }
-        if (audit_on()) comb_audit();
-        tri_stats();
-        ensure_tile(use_t1 ? 1 : 0);
-        dual_bind();
-        sync_render();
-        if (gpu_emit(idx, ct)) { n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1; }
+        if (ep_pepoch != gv_epoch || ep_ptss != tss) {
+            gv_params_calc(tss, &ep_p);
+            pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
+            ep_pepoch = gv_epoch; ep_ptss = tss;
+        } else if (gv1chk_on()) {
+            GvP f;
+            gv_params_calc(tss, &f);
+            if (memcmp(&f, &ep_p, sizeof f) != 0) gv_chk_stale++;
+        }
+        ep_n++;
+        if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && ep_open_gmi == gmi && pm_gpu_gappend((unsigned)vert_ring[a], (unsigned)vert_ring[b], (unsigned)vert_ring[c])) {
+            n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
+        }
+        if (pm_gpu_gtri(gm_tab[gmi], ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, vert_ring[a], vert_ring[b], vert_ring[c])) {
+            ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss; ep_open_gmi = gmi;
+            n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
+        }
+        ep_n--; ep_open = 0;
         why = GVR_REFUSE;
     }
     gv_fb[why]++;
@@ -1327,7 +1387,7 @@ static void draw_tri(unsigned w) {
         if (geom & G_TEXTURE_GEN) p_tgen++;
         if (vert_scr[i0] | vert_scr[i1] | vert_scr[i2]) p_scr++;
     }
-    if (!tri_prep_ok) { off_screen_check(); box_fold_sync(); tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    if (!tri_prep_ok) { if (!gv1_on() || ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
     if (gv1_on()) { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
         for (i = 0; i < 3; i++) gv_xf(idx[i]);
@@ -1640,10 +1700,11 @@ void pm_gbi_end_frame(void) {
     }
     PH_ADD(C_CMD, n_ops);
     n_ops = 0;
+    ep_flush_stats(); gv_epoch++; ep_open = 0;
     if (gv1_on() && (rm_frame % 300) == 0)
-        pm_log_d("gv1 f%d load %u tri %u rej %u fb %u (near %u scr %u mixed %u tss %u lit %u fog %u zmark %u tex1 %u dbg %u refuse %u) litload %u ring %u xf %u | check tri %u out %u cull %u", rm_frame, gv_load_n, gv_tri_n, gv_rej_n,
+        pm_log_d("gv1 f%d load %u tri %u rej %u fb %u (near %u scr %u mixed %u tss %u lit %u fog %u zmark %u tex1 %u dbg %u refuse %u) litload %u ring %u xf %u | check tri %u out %u cull %u stale %u", rm_frame, gv_load_n, gv_tri_n, gv_rej_n,
                  gv_fb[0] + gv_fb[1] + gv_fb[2] + gv_fb[3] + gv_fb[4] + gv_fb[5] + gv_fb[6] + gv_fb[7] + gv_fb[8] + gv_fb[9], gv_fb[GVR_NEAR], gv_fb[GVR_SCR], gv_fb[GVR_MIXED], gv_fb[GVR_TSS], gv_fb[GVR_LIT], gv_fb[GVR_FOG], gv_fb[GVR_ZMARK],
-                 gv_fb[GVR_TEX1], gv_fb[GVR_DBG], gv_fb[GVR_REFUSE], gv_fb[GVR_LITLOAD], gv_fb[GVR_RING], gv_xf_n, gv_chk_tri, gv_chk_out, gv_chk_cull);
+                 gv_fb[GVR_TEX1], gv_fb[GVR_DBG], gv_fb[GVR_REFUSE], gv_fb[GVR_LITLOAD], gv_fb[GVR_RING], gv_xf_n, gv_chk_tri, gv_chk_out, gv_chk_cull, gv_chk_stale);
     PH_ADD(C_TRI, n_cmd);
     PH_ADD(C_TRIOUT, n_in + n_cut);
     acc_t += n_cmd;
@@ -1984,6 +2045,7 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
 }
 
 void pm_gbi_run(void* list, unsigned nbytes) {
+    gv_epoch++; /* GV1b */
     Gfx* stack[12];
     int sp = 0;
     Gfx* pc = (Gfx*)list;
@@ -2021,6 +2083,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
             if (fp) pm_ph_push(fp);
         }
+        if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_ENDDL && op != G_MODIFYVTX) gv_epoch++; /* GV1b */
         switch (op) {
         case G_ENDDL:
             if (sp == 0) {

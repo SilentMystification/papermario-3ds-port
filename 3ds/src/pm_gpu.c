@@ -392,8 +392,10 @@ static void flush_impl(void) {
     }
     flush_draw();
 }
+static unsigned flush_gen; /* GV1b: counts the raw batches closed */
 static void flush_draw(void) {
-    int graw = gni > 0; /* PO3b: the open batch is a raw Vtx batch */
+    int graw = gni > 0;
+    if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
     if (fl_on() && gpu_ok) { fl_count(nverts <= 0 && !graw); if (fl_fn != (const char*)"pm_gpu_tex_rect" && strcmp(fl_fn, "pm_gpu_tex_rect") != 0) fl_prev_rect = 0; }
     if ((nverts <= 0 && !graw) || !gpu_ok) {
         nverts = 0;
@@ -1372,6 +1374,16 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
 
 /* PO3b: copy n raw Vtx records into the frame ring. Returns the ring index of the first one, or -1 (path off or ring full). */
 const unsigned char* pm_gpu_gring(void) { return gring; }
+unsigned pm_gpu_flush_gen(void) { return flush_gen; }
+/* GV1b: add one triangle to the open raw batch. The caller knows that the batch has the same matrix, uv map, colour overrides and cull mode (it saw no flush since its last gtri). */
+int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2) {
+    if (gni == 0 || gidx_n + 3 > GRING_IDX) return 0;
+    gidx[gidx_n++] = (unsigned short)i0;
+    gidx[gidx_n++] = (unsigned short)i1;
+    gidx[gidx_n++] = (unsigned short)i2;
+    gni += 3;
+    return 1;
+}
 int pm_gpu_gv_wind(void) { return gv_wind; }
 void pm_gpu_gv_post(const float p[4], float o[4]) { /* gv1check: the clip position after the viewport and tilt (the game matrix is already in p) */
     for (int r = 0; r < 4; r++) o[r] = gv_post.r[r].x * p[0] + gv_post.r[r].y * p[1] + gv_post.r[r].z * p[2] + gv_post.r[r].w * p[3];
@@ -1539,6 +1551,7 @@ void pm_gpu_tri(float x0, float y0, float z0, float u0, float v0, unsigned c0,
 void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
                   float x1, float y1, float z1, float u1, float v1, unsigned c1,
                   float x2, float y2, float z2, float u2, float v2, unsigned c2) {
+    if (gni > 0) flush(); /* GV1: a raw batch is open, it was queued first */
     if (!draw_3d) {
         flush();
         draw_3d = 1;
@@ -1549,6 +1562,7 @@ void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
 }
 
 void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsigned c) {
+    if (gni > 0) flush(); /* GV1: a raw batch is open, it was queued first */
     if (!draw_3d) {
         flush();
         draw_3d = 1;
