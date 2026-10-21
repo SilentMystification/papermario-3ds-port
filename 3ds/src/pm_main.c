@@ -276,27 +276,29 @@ static int fs1_off, fs1_on_log, fs1_old;
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
 #define PM_VBLANKS_PER_STEP 2
+unsigned pm_pace_drawn; /* PT24: all steps with a draw since the start (the pace line prints the difference) */
 static void pace_stat(u64 now, u64 hz, unsigned frame) {
     static u64 t0;
-    static unsigned s0, f0, v0, a0, i0[4];
+    static unsigned s0, f0, v0, a0, d0, i0[4];
     unsigned v = C3D_FrameCounter(0);
-    if (!t0) { t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; for (int i = 0; i < 4; i++) i0[i] = pace_iv[i]; return; }
+    if (!t0) { t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; d0 = pm_pace_drawn; for (int i = 0; i < 4; i++) i0[i] = pace_iv[i]; return; }
     if (now - t0 < hz) return;
     float wall = (float)(now - t0) * 1000.f / (float)hz;
-    pm_log_d("pace: wall %.1f ms steps %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u total 1:%u 2:%u 3:%u 4+:%u late steps (3+, over 33.3 ms) %u of %u", wall, pm_step_calls - s0,
-           frame - f0, v - v0, pace_ticks - a0, (float)(pm_step_calls - s0) * 1000.f / wall, pace_iv[0] - i0[0],
+    pm_log_d("pace: wall %.1f ms steps %u iterations %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u total 1:%u 2:%u 3:%u 4+:%u late steps (3+, over 33.3 ms) %u of %u", wall, pm_step_calls - s0,
+           frame - f0, pm_pace_drawn - d0, v - v0, pace_ticks - a0, (float)(pm_step_calls - s0) * 1000.f / wall, pace_iv[0] - i0[0],
            pace_iv[1] - i0[1], pace_iv[2] - i0[2], pace_iv[3] - i0[3], pace_iv[0], pace_iv[1], pace_iv[2], pace_iv[3], pace_iv[2] + pace_iv[3], pace_iv[0] + pace_iv[1] + pace_iv[2] + pace_iv[3]);
     for (int i = 0; i < 4; i++) i0[i] = pace_iv[i];
-    t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks;
+    t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; d0 = pm_pace_drawn;
 }
 int pm_interp_key_draw(void);
+extern volatile int pm_exit_request; /* PT28 */
 void pm_frame_loop(void) {
     unsigned frame = 0;
     if (pm_bench_run()) return; /* S0 BENCH: switch bench or bench=<list> runs the micro-benchmarks first, benchexit leaves here */
     pm_uptime_ms(); /* start the clock */
     { extern unsigned gRandSeed; pm_log("rng start seed %08x%s", gRandSeed, pm_debug_has("fixedseed") ? " (fixedseed)" : ""); } /* R-SEED */
     nuGfxCfb = cfb_list;
-    unsigned presents = 0;
+    unsigned presents = 0, drawn = 0; /* PT24: presents = logic steps, drawn = steps with a draw */
     int ever = 0;
     int have_fps = 0;
     unsigned fps_vb0 = 0, late_n = 0, spike_ticks0 = 0; /* PT15 */
@@ -305,7 +307,7 @@ void pm_frame_loop(void) {
     unsigned step_vb = 0; /* vblank counter when the last drawn iteration got past FrameBegin */
     int step_vb_ok = 0;
     u64 fps_mark = 0;
-    float fps = 0.f;
+    float fps = 0.f, fps_draw = 0.f; /* PT24: steps/s (internal) and drawn frames/s (external) */
     /* HUD2: application memory region (free and total, MB) and the APT commit limit (MB). The free value is read once per second with the fps. */
     extern unsigned pm_mem_commit_limit_mb(void);
     const unsigned reg_total = (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20), lim_mb = pm_mem_commit_limit_mb();
@@ -326,7 +328,7 @@ void pm_frame_loop(void) {
     }
     char exv[16];
     const unsigned exit_at = pm_debug_value("exitframe", exv, sizeof exv) ? (unsigned)atoi(exv) : 0; /* HW7 test switch: leave the loop like an APT exit request */
-    while (aptMainLoop()) {
+    while (aptMainLoop() && !pm_exit_request) {
         if (exit_at && frame >= exit_at) { pm_log("exitframe: leaving the main loop at frame %u", frame); break; }
         u64 now = svcGetSystemTick();
         /* The retrace builds a display list only every other call. Presenting
@@ -340,6 +342,7 @@ void pm_frame_loop(void) {
             /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
             if (pm_interp_on > 0 && pm_interp_key_draw()) {
                 presents++;
+                drawn++; pm_pace_drawn++;
                 continue;
             }
             /* PC01: keep PM_VBLANKS_PER_STEP vblanks between game steps. The counter is citro3d's own vblank
@@ -376,6 +379,7 @@ void pm_frame_loop(void) {
             pm_audio_step(); /* the audio ticks of the step still run */
         } else {
         fs1_run = 0;
+        drawn++; pm_pace_drawn++;
         pm_gpu_begin(1);
         {
             unsigned vb = C3D_FrameCounter(0);
@@ -423,8 +427,11 @@ void pm_frame_loop(void) {
             if (!fps_vb0) fps_vb0 = vbn;
             if (vbn - fps_vb0 >= 120) {
                 fps = (float)presents * 60.f / (float)(vbn - fps_vb0);
-                late_pct = presents ? (int)(100u * late_n / presents) : 0;
+                fps_draw = (float)drawn * 60.f / (float)(vbn - fps_vb0);
+                if (pm_debug_has("fpslog")) pm_log_d("hud fps: drawn %u steps %u vblanks %u -> %.1f/%.1f", drawn, presents, vbn - fps_vb0, fps_draw, fps);
+                late_pct = drawn ? (int)(100u * late_n / drawn) : 0; /* late_n counts drawn steps only */
                 presents = 0;
+                drawn = 0;
                 late_n = 0;
                 fps_vb0 = vbn;
                 fps_mark = now;
@@ -472,8 +479,8 @@ void pm_frame_loop(void) {
             /* HUD2: "FPS 29.8 L80 O3DS 96/96M C96M #861". R part = free/total application region, C = APT commit limit. At most 39 columns, the build text is cut last. */
             char mem[24];
             snprintf(mem, sizeof mem, "%u/%uM C%uM", reg_free, reg_total, lim_mb);
-            if (have_fps) snprintf(top, sizeof(top), "FPS %4.1f late%d%% %s %s %s #%s", fps, late_pct, lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
-            else snprintf(top, sizeof(top), "FPS ... %s %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
+            if (have_fps) snprintf(top, sizeof(top), "%.0f/%.0f FPS late%d%% %s %s %s #%s", fps_draw, fps, late_pct, lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
+            else snprintf(top, sizeof(top), "-/- FPS %s %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
             top[39] = 0; /* PT15: 39 columns, the build text is cut first */
             if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast"))
                 snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());

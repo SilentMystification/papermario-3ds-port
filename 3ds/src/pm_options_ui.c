@@ -9,9 +9,11 @@
 #include "pm_port.h"
 
 volatile int pm_menu_open;
+volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
+static int exit_confirm;
 
 #define N_OPT 9
-#define N_ROWS (N_OPT + 1 + PM_NIN + 1) /* UI1c: row N_OPT is the D-pad mode */
+#define N_ROWS (N_OPT + 1 + PM_NIN + 2) /* last row: Exit to Homebrew (PT28) */ /* UI1c: row N_OPT is the D-pad mode */
 #define VIS 24
 static int sel, top;
 
@@ -33,6 +35,8 @@ static void draw(void) {
         } else if (r < N_OPT + 1 + PM_NIN) {
             int i = r - N_OPT - 1;
             snprintf(line, sizeof line, "Ctl %-7s %s", pm_in_name[i], pm_n64_name(pm_map[i]));
+        } else if (r == N_ROWS - 1) {
+            snprintf(line, sizeof line, exit_confirm ? "Exit to Homebrew: A again" : "Exit to Homebrew");
         } else snprintf(line, sizeof line, "Reset controls");
         n += snprintf(out + n, sizeof out - (size_t)n, "%c %s\n", r == sel ? '>' : ' ', line);
     }
@@ -42,6 +46,7 @@ static void draw(void) {
 void pm_menu_set(int on) {
     if (on == pm_menu_open) return;
     pm_menu_open = on;
+    exit_confirm = 0;
     if (on) {
         sel = top = 0;
         pm_log("menu: open");
@@ -55,17 +60,26 @@ void pm_menu_set(int on) {
 
 void pm_menu_key(unsigned k) {
     if (k & (KEY_B | KEY_SELECT)) { pm_menu_set(0); return; }
+    if (k & (KEY_DDOWN | KEY_DUP)) exit_confirm = 0;
     if (k & KEY_DDOWN) sel = (sel + 1) % N_ROWS;
     else if (k & KEY_DUP) sel = (sel + N_ROWS - 1) % N_ROWS;
     else if (k & KEY_A) {
-        if (sel < N_OPT) pm_options_flip(sel);
+        if (sel == N_ROWS - 1) { /* PT28: A twice. The main loop ends, pm_shutdown runs (HW7 order), main returns to the Homebrew Launcher. */
+            if (!exit_confirm) exit_confirm = 1;
+            else {
+                pm_log("menu: exit to Homebrew requested");
+                pm_menu_set(0); /* saves options.txt */
+                pm_exit_request = 1;
+                return;
+            }
+        } else if (sel < N_OPT) pm_options_flip(sel);
         else if (sel == N_OPT) pm_dpad_mode_next();
         else if (sel < N_OPT + 1 + PM_NIN) {
             int i = sel - N_OPT - 1;
             pm_map[i] = pm_n64_next(pm_map[i]);
             pm_options_touch();
             pm_log("menu: map %s = %s", pm_in_name[i], pm_n64_name(pm_map[i]));
-        } else {
+        } else if (sel == N_ROWS - 2) {
             pm_map_reset();
             pm_options_touch();
             pm_log("menu: controls reset");
