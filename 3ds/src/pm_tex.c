@@ -305,7 +305,7 @@ static struct { u8* p; unsigned len; } pend[PEND_N]; static int pend_n;
 static C3D_Tex slab_proto[16];
 static unsigned fl1_srchash(const void* img, int w, int h, int stride, unsigned siz) { if (siz != 2) return 0; unsigned x = 2166136261u; const u8* q = (const u8*)img; for (int y = 0; y < h; y++) for (int i = 0; i < w * 2; i++) x = (x ^ q[y * stride * 2 + i]) * 16777619u; return x; }
 static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
-static int fl1_on(void) { if (fl1_state < 0) fl1_state = !PMDL("nofl1") && slab != NULL; return fl1_state; }
+static int fl1_on(void) { return slab != NULL && !PMDL("nofl1"); } /* per upload, so abtog can toggle it: a slot knows where its image is */
 static void slab_init(void) {
     slab = (u8*)linearMemAlign(SLAB_BYTES, 0x80);
     if (slab && PMDL("fl1poison")) memset(slab, 0xA5, SLAB_BYTES);

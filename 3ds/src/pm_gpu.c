@@ -109,8 +109,9 @@ static DVLB_s* dvlb4;
 static C3D_AttrInfo attr4;
 /* RAW1: lean binding. bound = the program citro3d has (0 unknown, 1 cpu, 2 pm3, 3 pm4), buf_cur = the buffer info (0 unknown, 1 CPU pool, 2 raw ring). shadows of the pm4 uniforms
  * and of the palette entries skip a set that holds the value already. They restart at every frame begin. Switch raw1 (A/B), default off. */
+static int gv1_wanted(void) { return (PM_GV1_DEFAULT || pm_debug_has("gv1") || pm_ph_abtog_has("gv1") || pm_ph_abtog_has("nogv1")) && !(pm_debug_has("nogv1") && !pm_ph_abtog_has("nogv1")); }
 static int bound, buf_cur, raw_dvlb_ok; static DVLB_s* dvlb_all;
-static int raw1_on(void) { return raw_dvlb_ok; } /* decided once at init */
+static int raw1_on(void) { return raw_dvlb_ok && (PM_RAW1_DEFAULT || PMDL("raw1")) && !PMDL("noraw1"); } /* the DVLB is loaded at init when wanted; the switches (abtog) pick per flush */
 static float sh_uvso[4], sh_cmul[4], sh_cadd[4], sh_zmix[2]; static int sh_ok;
 static unsigned sh_pal_gm[32], sh_pal_gen[32]; static unsigned char sh_pal_ok[32];
 static void raw1_reset(void) { bound = 0; buf_cur = 0; sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); }
@@ -456,6 +457,7 @@ static void flush_draw(void) {
         proj_ok = 0; pool_buf_ok = 0; /* DR1: the program and the buffer change */
         if (gpal) {
             const int lean = raw1_on();
+            { static int lean_prev; if (lean != lean_prev) { raw1_reset(); lean_prev = lean; } } /* abtog switched it */
             if (!lean || bound != 3) { C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
             if (!lean || !sh_ok || memcmp(sh_uvso, g_uvso, sizeof sh_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh_uvso, g_uvso, sizeof sh_uvso); PH_ADD(C_RAWCALL, 1); }
             if (!lean || !sh_ok || memcmp(sh_cmul, g_cmul, sizeof sh_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh_cmul, g_cmul, sizeof sh_cmul); PH_ADD(C_RAWCALL, 1); }
@@ -758,7 +760,7 @@ static void flush_draw(void) {
         kick_check();
         return;
     }
-    if (raw1_on() && bound != 1) { C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
+    if (bound != 1) { C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
     Vert* batch = verts;
     int count = nverts;
     PH_PUSH(PH_GDRAW);
@@ -907,7 +909,7 @@ void pm_gpu_init(void) {
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
         GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) |
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
-    if ((pm_debug_has("raw1") || pm_ph_abtog_has("raw1")) && !pm_debug_has("noraw1")) { /* RAW1: one DVLB for the three programs */
+    if ((PM_RAW1_DEFAULT || pm_debug_has("raw1") || pm_ph_abtog_has("raw1") || pm_ph_abtog_has("noraw1")) && !(pm_debug_has("noraw1") && !pm_ph_abtog_has("noraw1"))) { /* RAW1: one DVLB for the three programs */
         dvlb_all = DVLB_ParseFile((u32*)pm_shaderall_shbin, pm_shaderall_shbin_size);
         raw_dvlb_ok = dvlb_all && dvlb_all->numDVLE >= 3;
         pm_log("raw1: one DVLB %s (%d entries)", raw_dvlb_ok ? "on" : "FAILED", dvlb_all ? (int)dvlb_all->numDVLE : 0);
@@ -927,7 +929,7 @@ void pm_gpu_init(void) {
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     attr_cpu = *ai;
-    if ((pm_debug_has("gpuvtx") || pm_ph_abtog_has("gpuvtx") || pm_debug_has("gv1") || pm_ph_abtog_has("gv1")) && !pm_debug_has("nogpuvtx")) { /* PO3b: the raw Vtx path. Off by default, nothing is allocated with the switch off. */
+    if ((pm_debug_has("gpuvtx") || pm_ph_abtog_has("gpuvtx") || gv1_wanted()) && !pm_debug_has("nogpuvtx")) { /* PO3b: the raw Vtx path. Off by default, nothing is allocated with the switch off. */
         shaderProgramInit(&prog3);
         dvlb3 = raw_dvlb_ok ? dvlb_all : DVLB_ParseFile((u32*)pm_shader3_shbin, pm_shader3_shbin_size);
         shaderProgramSetVsh(&prog3, &dvlb3->DVLE[raw_dvlb_ok ? 1 : 0]);
@@ -943,7 +945,7 @@ void pm_gpu_init(void) {
         gring = (unsigned char*)linearAlloc(GRING_VTX * 16);
         gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
         gpu_vtx_on = gring && gidx && u_uvso >= 0 && u_cmul >= 0 && u_cadd >= 0 && u_zmix >= 0 && prog3.vertexShader;
-        if (gpu_vtx_on && (pm_debug_has("gv1") || pm_ph_abtog_has("gv1"))) { /* GV1c: the palette program */
+        if (gpu_vtx_on && gv1_wanted()) { /* GV1c: the palette program */
             shaderProgramInit(&prog4);
             dvlb4 = raw_dvlb_ok ? dvlb_all : DVLB_ParseFile((u32*)pm_shader4_shbin, pm_shader4_shbin_size);
             shaderProgramSetVsh(&prog4, &dvlb4->DVLE[raw_dvlb_ok ? 2 : 0]);

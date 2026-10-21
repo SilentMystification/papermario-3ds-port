@@ -248,7 +248,7 @@ static int p_cur_mixed;
 /* GV1 (switch gv1, default off, nogv1 turns it off): the full GPU geometry path. G_VTX of an unlit load copies the 16 byte Vtx to the ring and makes only the reject bits.
  * A triangle of ring vertices goes to the GPU as three indices. The GPU transforms, clips and culls. The CPU path stays for the rare cases and reads the ring copy
  * (gv_xf makes vert_p, vert_st and vert_c on demand). It replaces gpuvtx (PO3b) when both are on. */
-static int gv1_on(void) { return PMDL("gv1") && !PMDL("nogv1"); }
+static int gv1_on(void) { return (PM_GV1_DEFAULT || PMDL("gv1")) && !PMDL("nogv1"); }
 static int po3b_on(void) { return PMDL("gpuvtx") && !PMDL("nogpuvtx") && !gv1_on(); } /* HWM1: follows abtog */
 static u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. vert_cb bit 64 = a corner at w <= 0.05 (near) */
 enum { GVR_NEAR, GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_DBG, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
