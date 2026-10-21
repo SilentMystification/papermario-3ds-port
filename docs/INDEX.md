@@ -40,6 +40,7 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 - `tools/check_data_layout.py`: D02 check of adjacent variables in the ELF. `map_data_sizes.py`: static data of linked maps from the link map.
 - `tools/golden.py`: golden frames (G01g), 10 scenes, pixel compare against `3ds/golden/*.png`, `--update` saves new references.
 - `tools/phase_report.py`: tables from a `phase phasecsv` log.
+- `tools/route_report.py`: per-segment table of a `route=<name>` run, and the `--compare` determinism check. Route files: `3ds/routes/*.txt`. Notes: `docs/plans/route_notes.md`. Code: `3ds/src/pm_route.c` and the route tokens in `3ds/src/pm_input.c`. Console push: `docs/plans/hw_batch.md` section 8.
 - `tools/dedup_stubs.py`: drop stubs that a real file now defines (old). `tools/c01.sh`: C01 build helper (old).
 - `tools/livelog.py`: live log over the network (TCP 17492). `tools/ftppull.py`: pull log and crash dumps over FTP (skills `pull-o`, `pull-n`).
 - `build3ds/sheet.py`: contact sheet from shots. Other `build3ds/*.py`: sprite and shape helpers.

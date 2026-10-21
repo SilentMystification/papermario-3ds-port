@@ -129,3 +129,22 @@ Lines to grep in the pull:
 - `grep "bench:" <pull>` all results. Draw ladder: `grep "bench: draw" <pull>`. Flush: `grep "bench: flush" <pull>`. Texture and writes: `grep -E "bench: (tex|wr) " <pull>`. Replay: `grep "bench: replay" <pull>`. Frame wait: `grep "bench: fbwait" <pull>`.
 - `grep -E "bench: (begin|end)" <pull>` must show `console O3DS` and a total time.
 - How to read each line and the decision rules: docs/plans/bench_notes.md.
+
+## 8. Route push: play-through benchmark on the console (pulled log only, no hands)
+Build: any build with ROUTE (branch lane-c, file `pm_route.c`). Route file: `3ds/routes/play1.txt`. One time per route change, put it on the SD card (FTP app on the console, port 5000):
+```
+export O=<ip>; curl -T 3ds/routes/play1.txt --ftp-create-dirs ftp://$O:5000/3ds/PaperMario/routes/play1.txt
+```
+The game reads `sdmc:/3ds/PaperMario/routes/play1.txt` (`route=play1`, same as `padscript=@routes/play1.txt`). The route saves to slot 3 (`save_3`): copy the save files from the SD card first if slot 3 holds data. User hands: none, except start the FTP app before the curl and again for the pull.
+Push (short live log, the route runs on after the log ends):
+```
+export O=<ip> B=<build>; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 warp=mac_00:4 story=ch0_toad_town partner=1 route=play1 phase phsum phasecsv loglevel=debug fixedseed statehash=300
+```
+Wait 150 s (boot 10 s, route 91 s at 30 steps per second, slower steps make it longer, the end line is `route: end`). Start the FTP app. Pull and report:
+```
+python3 -u 3ds/tools/ftppull.py $O o build3ds; cp build3ds/hw_o3ds_log.txt 3ds/logs/perf/hw_${B}_ROUTE_pull.txt
+python3 3ds/tools/route_report.py 3ds/logs/perf/hw_${B}_ROUTE_pull.txt --title "ROUTE play1 O3DS $B" > 3ds/logs/perf/route_hw_${B}.txt
+python3 3ds/tools/route_report.py 3ds/logs/perf/hw_${B}_ROUTE_pull.txt --compare 3ds/logs/perf/hw_<other build or run>_ROUTE_pull.txt
+grep -E "route: (seg|goto|save|leg|end)|save.flash" 3ds/logs/perf/hw_${B}_ROUTE_pull.txt
+```
+Read: the `wall36` column (late steps the player sees), `wall_p95`, the `save` segment and the `save.flash written ... ms` line (the save hitch), the map entries and the battle segments. The seg lines of the console must match Azahar within 2 steps (3ds/logs/perf/route_ref_*.txt). If `route: leg blocked` appears, the route left its path: tell the ROUTE agent. Notes: docs/plans/route_notes.md.
