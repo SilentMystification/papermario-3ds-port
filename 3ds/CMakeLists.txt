@@ -340,6 +340,8 @@ ctr_add_shader_library(pm_shader shaders/pm.v.pica)
 dkp_add_embedded_binary_library(pm_shader_lib pm_shader)
 ctr_add_shader_library(pm_shader3 shaders/pm3.v.pica) # PO3b: raw Vtx program
 dkp_add_embedded_binary_library(pm_shader3_lib pm_shader3)
+ctr_add_shader_library(pm_shader4 shaders/pm4.v.pica) # GV1c: raw Vtx program with a matrix palette
+dkp_add_embedded_binary_library(pm_shader4_lib pm_shader4)
 
 set(PORT_SRC
     src/pm_main.c
@@ -471,7 +473,7 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
 set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds;${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore.ld")
-target_link_libraries(pm_3ds pm_shader_lib pm_shader3_lib citro3d ctru m)
+target_link_libraries(pm_3ds pm_shader_lib pm_shader3_lib pm_shader4_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")
 ctr_generate_smdh("${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh"

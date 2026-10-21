@@ -19,7 +19,11 @@ int pm_gpu_gvtx_load(const void* vtx, unsigned n);
 int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, unsigned i0, unsigned i1, unsigned i2);
 const unsigned char* pm_gpu_gring(void);
 unsigned pm_gpu_flush_gen(void);
-int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2);
+int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2);
+int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const unsigned ri[3], unsigned ro[3]);
+void pm_gpu_gv_reset(void);
+void pm_gpu_gv_stats(unsigned o[4]);
+void pm_gpu_note_mvp(const float m[4][4], float sx, float sy, float tx, float ty);
 int pm_gpu_gv_wind(void);
 void pm_gpu_gv_post(const float p[4], float o[4]); /* GV1: the 16 byte Vtx copies of this frame */
 void pm_gpu_set_rgb_scale(int scale); /* 1 or 2, texture stage only */

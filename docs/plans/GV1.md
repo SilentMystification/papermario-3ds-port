@@ -220,3 +220,12 @@ Pass: gb lower by 8 ms or more per world step (hw_rerank.md row GV1), draws per 
 | KICK1 | the flush of the range written since the last split must cover gring and gidx (GV0a, GV0b) | pm_gpu.c:1125 to 1148, split_frame 185 to 192 |
 | TX1 | none. GV1 calls pm_tex_size and pm_tex_bind only (same API) | pm_tex.c: none |
 Order: HWM1, TX1, DR1, KICK1 (with GV0) commit first. GV1a starts on the next main. All GV1 code edits pm_gbi.c, pm_gpu.c, pm_gpu.h, a new shader and CMakeLists.txt (shader list), so the GV1 rows run in sequence with the G1 rows, not in parallel.
+
+## 8. Result notes (GV1 agent, 2026-10-21, Azahar intro dip window pc 1702 to 1850, noaudit, ms per step)
+
+- GV1a (box reject for loads of 16 or more vertices, full prep per triangle): gb 12.7 (base) to 13.6, triout 290 to 568, draws 150.6 to 156.6. Cause: the box test and the GPU cull let 278 more triangles reach the full prep (ensure_tile, dual_bind, sync_render, stats, gpu_emit).
+- GV1b (state epoch, 3 index stores per triangle): gb 11.5, gd 2.0 to 2.7. Pictures equal, gvstale 0.
+- GV1c (palette): palmax is 1 in the dip window, so the palette removes no draw there. The box reject made gb worse than the per-vertex reject bits (12.4 against 11.9 with the palette). Default is now per-vertex bits (switch gv1box turns the box on). A slow path per triangle with first-use vertices (gappend refused them) cost 0.9 ms. gappend now assigns the palette index itself. Result: gb 11.2, gp 1.2, gd 2.6, triout 389, draws 152.6 (+2).
+- Experiment gv1raw (no reject bits, only a near test per load): gb 14.6, triout 1075, draws 192.6 (+42). A reject that costs a few instructions per vertex saves a full state prep and a draw for every run that is off screen. The floor without reject is higher than base.
+- Weighted by the hardware ratios (gb 3.5, gp 3.7, gd 1.9): base 52.7, GV1b 50.2, GV1c final 48.6 (about -4 ms in the dip window).
+- Golden yard and toad with gv1 showed a wrong picture: the first cull sign was inverted (the dip window has no culled surfaces, so it could not show it). The sign is flipped now. Not yet verified.

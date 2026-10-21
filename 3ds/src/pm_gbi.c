@@ -335,7 +335,8 @@ static void unpack(const Mtx* src, float d[4][4]) {
 static void upload_mvp(void) {
     /* Row-vector matrices, same as transform_point: modelview first, then projection. */
     mul(combined, mv[mv_sp], proj);
-    pm_gpu_set_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty);
+    if (gv1_on()) pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
+    else pm_gpu_set_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty);
 }
 
 /* Combiner input as a constant, or -1 when it needs a texel or the shade, -2 for COMBINED.
@@ -1284,7 +1285,6 @@ static int gv_tri(const int* idx) {
     if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; gv_rej_n++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 64) why = GVR_NEAR;
     else if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
-    else if (vert_gmi[a] != vert_gmi[b] || vert_gmi[a] != vert_gmi[c]) why = GVR_MIXED;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;
     if (why < 0) {
         if (ep_epoch != gv_epoch) { /* the first triangle after a state change */
@@ -1306,7 +1306,7 @@ static int gv_tri(const int* idx) {
         why = ep_why;
     }
     if (why < 0) {
-        unsigned tss = vert_tss[a], gmi = vert_gmi[a];
+        unsigned tss = vert_tss[a];
         if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); return 1; }
         if (gv1chk_on()) { /* Azahar check: the old rule and the old cull for this triangle, against the GPU rule */
             gv_xf(a); gv_xf(b); gv_xf(c);
@@ -1340,11 +1340,13 @@ static int gv_tri(const int* idx) {
             if (memcmp(&f, &ep_p, sizeof f) != 0) gv_chk_stale++;
         }
         ep_n++;
-        if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && ep_open_gmi == gmi && pm_gpu_gappend((unsigned)vert_ring[a], (unsigned)vert_ring[b], (unsigned)vert_ring[c])) {
+        if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && pm_gpu_gappend((unsigned)vert_ring[a], (unsigned)vert_ring[b], (unsigned)vert_ring[c], vert_gmi[a], vert_gmi[b], vert_gmi[c])) {
             n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
         }
-        if (pm_gpu_gtri(gm_tab[gmi], ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, vert_ring[a], vert_ring[b], vert_ring[c])) {
-            ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss; ep_open_gmi = gmi;
+        unsigned gg[3] = { vert_gmi[a], vert_gmi[b], vert_gmi[c] }, ri[3] = { vert_ring[a], vert_ring[b], vert_ring[c] }, ro[3];
+        if (pm_gpu_gtrip((const float(*)[4][4])gm_tab, gg, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ri, ro)) {
+            vert_ring[a] = (unsigned short)ro[0]; vert_ring[b] = (unsigned short)ro[1]; vert_ring[c] = (unsigned short)ro[2];
+            ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss;
             n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
         }
         ep_n--; ep_open = 0;
@@ -1701,8 +1703,9 @@ void pm_gbi_end_frame(void) {
     PH_ADD(C_CMD, n_ops);
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
+    if (gv1_on() && (rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
     if (gv1_on() && (rm_frame % 300) == 0)
-        pm_log_d("gv1 f%d load %u tri %u rej %u fb %u (near %u scr %u mixed %u tss %u lit %u fog %u zmark %u tex1 %u dbg %u refuse %u) litload %u ring %u xf %u | check tri %u out %u cull %u stale %u", rm_frame, gv_load_n, gv_tri_n, gv_rej_n,
+        pm_log_d("gv1 f%d load %u tri %u rej %u fb %u (near %u scr %u mixed(old) %u tss %u lit %u fog %u zmark %u tex1 %u dbg %u refuse %u) litload %u ring %u xf %u | check tri %u out %u cull %u stale %u", rm_frame, gv_load_n, gv_tri_n, gv_rej_n,
                  gv_fb[0] + gv_fb[1] + gv_fb[2] + gv_fb[3] + gv_fb[4] + gv_fb[5] + gv_fb[6] + gv_fb[7] + gv_fb[8] + gv_fb[9], gv_fb[GVR_NEAR], gv_fb[GVR_SCR], gv_fb[GVR_MIXED], gv_fb[GVR_TSS], gv_fb[GVR_LIT], gv_fb[GVR_FOG], gv_fb[GVR_ZMARK],
                  gv_fb[GVR_TEX1], gv_fb[GVR_DBG], gv_fb[GVR_REFUSE], gv_fb[GVR_LITLOAD], gv_fb[GVR_RING], gv_xf_n, gv_chk_tri, gv_chk_out, gv_chk_cull, gv_chk_stale);
     PH_ADD(C_TRI, n_cmd);
@@ -1760,7 +1763,7 @@ void pm_gbi_end_frame(void) {
         (void)nm;
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
-    gm_n = 0; gm_last = GV_NONE;
+    gm_n = 0; gm_last = GV_NONE; pm_gpu_gv_reset();
     memset(vert_ring, 0xff, sizeof vert_ring);
     memset(vert_gvf, 3, sizeof vert_gvf);
     p_cmd = p_mixed = p_vload = p_vcmd = p_lit = p_tgen = p_scr = p_drawn = p_primz = p_env = p_plan = p_a255 = p_fog = p_boost = p_plain = p_plain2 = 0;
@@ -2161,7 +2164,16 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                         if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
                     }
                 }
-                if (gv && n >= 16) { /* the 8 corners of the box of the object coordinates: bits all corners share, near bit 64 if a corner has w <= 0.05 */
+                if (gv && PMDL("gv1raw")) { /* experiment: no reject bits. Only the near test of the whole load: the smallest w of the box of object coordinates (w is linear). */
+                    const float(*m)[4] = combined;
+                    short lo[3] = { 32767, 32767, 32767 }, hi[3] = { -32768, -32768, -32768 };
+                    for (unsigned i = 0; i < n; i++)
+                        for (int q = 0; q < 3; q++) { short o = src[i].v.ob[q]; if (o < lo[q]) lo[q] = o; if (o > hi[q]) hi[q] = o; }
+                    float mw = m[3][3];
+                    for (int q = 0; q < 3; q++) { float a = m[q][3] * (float)lo[q], b = m[q][3] * (float)hi[q]; mw += a < b ? a : b; }
+                    gbits = mw <= 0.05f ? 64 : 0;
+                    gbox = 1;
+                } else if (gv && n >= 16 && PMDL("gv1box")) { /* the 8 corners of the box of the object coordinates: bits all corners share, near bit 64 if a corner has w <= 0.05 */
                     const float(*m)[4] = combined;
                     short lo[3] = { 32767, 32767, 32767 }, hi[3] = { -32768, -32768, -32768 };
                     for (unsigned i = 0; i < n; i++)
