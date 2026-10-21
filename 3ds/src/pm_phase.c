@@ -314,8 +314,8 @@ void pm_ph_frame_end(void) {
                (int)(r->ms[PH_GPU] * 10.f), (int)(r->ms[PH_TEX] * 10.f), (int)(r->ms[PH_AUDIO] * 10.f), (int)(r->ms[PH_ROM] * 10.f),
                (int)(r->ms[PH_YAY0] * 10.f), (int)(r->ms[PH_FBEGIN] * 10.f), (int)(r->ms[PH_FEND] * 10.f), (int)(r->ms[PH_OTHER] * 10.f),
                (int)(r->ms[PH_GCACHE] * 10.f), (int)(r->ms[PH_GDRAW] * 10.f), (int)(r->ms[PH_GVTX] * 10.f), (int)(r->ms[PH_GTRI] * 10.f), (int)(r->ms[PH_GMTX] * 10.f), (int)(r->ms[PH_GOP] * 10.f), r->c[C_TRIOUT], r->c[C_VTXSLOT], r->c[C_DRAW], r->c[C_TEXMISS], r->c[C_TEXBYTE], r->c[C_ROMN], r->c[C_ROMB], r->c[C_ATICK], r->c[C_FLUSH], r->c[C_DBG], r->c[C_CMD], r->c[C_AJOB]);
-        pm_log_hw("pcx %u rd %d tev %d bind %d st %d gpu %u %u cmd %u", r->f, (int)(r->ms[PH_FBREAD] * 10.f), (int)(r->ms[PH_GTEV] * 10.f), (int)(r->ms[PH_GBIND] * 10.f),
-                  (int)(r->ms[PH_GST] * 10.f), pm_ph_gpu_us[0], pm_ph_gpu_us[1], pm_ph_cmd_pm);
+        pm_log_hw("pcx %u rd %d tev %d bind %d st %d gpu %u %u cmd %u flushcalls %u flushkb %u", r->f, (int)(r->ms[PH_FBREAD] * 10.f), (int)(r->ms[PH_GTEV] * 10.f), (int)(r->ms[PH_GBIND] * 10.f),
+                  (int)(r->ms[PH_GST] * 10.f), pm_ph_gpu_us[0], pm_ph_gpu_us[1], pm_ph_cmd_pm, r->c[C_FLCALL], r->c[C_FLKB]);
     }
     if (++nwin >= MAXW || (now - win_t0) >= 536223712u /* 2 s */) summarize(now);
 }

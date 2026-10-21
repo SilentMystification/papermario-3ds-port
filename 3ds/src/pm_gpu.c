@@ -236,14 +236,15 @@ static int want_clear; /* see below */
 static Vert* v_fl;
 static unsigned gring_fl, gidx_fl;
 static void gpu_flush_written(void) {
+    pm_tex_flush_pending(); /* FL1 */
     if (verts && v_fl && verts > v_fl) {
         PH_PUSH(PH_GCACHE);
-        GSPGPU_FlushDataCache(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl));
+        GSPGPU_FlushDataCache(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl)); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (unsigned)((uintptr_t)verts - (uintptr_t)v_fl) >> 10);
         PH_POP();
         v_fl = verts;
     }
-    if (gring && gring_n > gring_fl) { GSPGPU_FlushDataCache(gring + gring_fl * 16, (gring_n - gring_fl) * 16); gring_fl = gring_n; }
-    if (gidx && gidx_n > gidx_fl) { GSPGPU_FlushDataCache(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); gidx_fl = gidx_n; }
+    if (gring && gring_n > gring_fl) { GSPGPU_FlushDataCache(gring + gring_fl * 16, (gring_n - gring_fl) * 16); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gring_n - gring_fl) * 16 >> 10); gring_fl = gring_n; }
+    if (gidx && gidx_n > gidx_fl) { GSPGPU_FlushDataCache(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gidx_n - gidx_fl) * 2 >> 10); gidx_fl = gidx_n; }
 }
 /* B2: queue order is clear of the main target, then every part. The first split of a frame queues the clear first. */
 static void split_frame(void) {
@@ -1229,6 +1230,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
             C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
             want_clear = 0;
         }
+        pm_tex_flush_pending(); /* FL1 */
         sh_clear(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
     }
     if (!prev_frame) grab_queue_copy(); /* PT12: the old frame was copied at pm_gpu_begin */

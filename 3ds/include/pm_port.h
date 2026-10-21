@@ -59,7 +59,7 @@ unsigned pm_ticks(void);
 /* PT01: per-frame phase timer. Switch `phase` turns it on (pm_ph_on). Exclusive time: a nested phase takes its time from
  * the phase that was running. Counters are per drawn frame. All macros are one load and one branch when the switch is off. */
 enum { PH_OTHER, PH_LOGIC, PH_DL, PH_GBI, PH_GPU, PH_TEX, PH_AUDIO, PH_ROM, PH_YAY0, PH_FBEGIN, PH_FEND, PH_IDLE, PH_GCACHE, PH_GDRAW, PH_GVTX, PH_GTRI, PH_GMTX, PH_GOP, PH_FBREAD, PH_GTEV, PH_GBIND, PH_GST, PH_N }; /* HWM1: PH_GTEV, PH_GBIND, PH_GST split the draw state cost, timed only with phasegbi */
-enum { C_TRI, C_TRIOUT, C_VTXLOAD, C_VTXSLOT, C_DRAW, C_FLUSH, C_TEXCALL, C_TEXMISS, C_TEXBYTE, C_ROMN, C_ROMB, C_YAYN, C_YAYB, C_DBG, C_ATICK, C_CMD, C_AJOB, C_GVLOAD, C_GVTRI, C_GVREJ, C_GVFB, C_GVXF, C_N };
+enum { C_TRI, C_TRIOUT, C_VTXLOAD, C_VTXSLOT, C_DRAW, C_FLUSH, C_TEXCALL, C_TEXMISS, C_TEXBYTE, C_ROMN, C_ROMB, C_YAYN, C_YAYB, C_DBG, C_ATICK, C_CMD, C_AJOB, C_GVLOAD, C_GVTRI, C_GVREJ, C_GVFB, C_GVXF, C_FLCALL, C_FLKB, C_N };
 extern int pm_ph_on;
 extern int pm_ph_fine; /* switch phasegbi: time G_VTX, triangle and G_MTX ops on their own (two tick reads per op, so it inflates the frame) */
 extern unsigned pm_ph_cnt[C_N];

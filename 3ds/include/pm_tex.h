@@ -46,3 +46,5 @@ void pm_tex_unbind_aux(void);
 void pm_tex_aux_size(int* w, int* h);
 
 #endif
+
+void pm_tex_flush_pending(void); /* FL1: one data cache flush for the textures written since the last call. Call before every command list submit. */
