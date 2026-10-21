@@ -111,5 +111,5 @@ extern float pm_f255[256], pm_f127[256]; /* PG3 O11: i / 255.f and (signed char)
 #endif
 
 /* GV1g: the defaults of the full GPU path. 1 = on unless the switch nogv1 / noraw1 is set. 0 = off unless the switch gv1 / raw1 is set. */
-#define PM_GV1_DEFAULT 0
-#define PM_RAW1_DEFAULT 0
+#define PM_GV1_DEFAULT 1
+#define PM_RAW1_DEFAULT 1
