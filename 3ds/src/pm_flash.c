@@ -33,6 +33,7 @@ static void flash_write_dirty(const char* why) {
     }
     LightLock_Unlock(&flash_lock);
     if (lo < hi) {
+        __atomic_add_fetch(&pm_wd_hold, 1, __ATOMIC_RELAXED); /* LB4: the watchdog and the crash exit wait for a running save */
         u64 t0 = svcGetSystemTick();
         const u8* src = copy ? copy : flash_mem + lo; /* no memory for a copy: write from the RAM chip (a later call can only mark it dirty again) */
         FILE* f = fopen("save.flash", "r+b");
@@ -46,6 +47,7 @@ static void flash_write_dirty(const char* why) {
                    (unsigned)((svcGetSystemTick() - t0) / CPU_TICKS_PER_MSEC), why);
         }
         free(copy);
+        __atomic_sub_fetch(&pm_wd_hold, 1, __ATOMIC_RELAXED);
     }
     LightLock_Unlock(&flash_wr_lock);
 }

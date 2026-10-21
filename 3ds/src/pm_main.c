@@ -15,6 +15,7 @@
 
 
 extern void boot_main(void* data);
+const char* pm_wd_phase_name(unsigned p);
 
 static u8 crash_stack[0x4000] __attribute__((aligned(8)));
 static int netloaded;
@@ -65,6 +66,7 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     static const char* names[] = { "prefetch abort", "data abort", "undefined instruction", "VFP" };
     char buf[200];
     int n;
+    pm_wd_crash_tick = (unsigned)(svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull)) | 1u; /* LB4: the monitor thread ends the process if this handler does not finish in 3 s */
     const StackRec* st = NULL;
     for (int i = 0; i < 2; i++)
         if (recs[i].hi && regs->sp >= recs[i].lo && regs->sp <= recs[i].hi + 512) st = &recs[i];
@@ -108,8 +110,11 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
         n = snprintf(buf, sizeof(buf), "[CRASH] sp %08lx is outside the known thread stacks, no stack walk\n", (unsigned long)regs->sp);
         pm_crash_line(buf, n);
     }
-    svcBreak(USERBREAK_PANIC);
-    for (;;) {}
+    n = snprintf(buf, sizeof(buf), "[CRASH] last game loop phase %u (%s), steps %u\n[CRASH] exiting the process\n",
+                 pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count());
+    pm_crash_line(buf, n);
+    /* LB4: svcBreak(USERBREAK_PANIC) left the console frozen. End the process: the system returns to the menu. */
+    pm_exit_process();
 }
 
 /* R01: stop the program on purpose from a debug check (switch romstrict). Azahar never calls the guest handler on a real
@@ -329,12 +334,20 @@ void pm_frame_loop(void) {
     }
     char exv[16];
     const unsigned exit_at = pm_debug_value("exitframe", exv, sizeof exv) ? (unsigned)atoi(exv) : 0; /* HW7 test switch: leave the loop like an APT exit request */
+    char cv[16];
+    const int crash_n = pm_debug_value("crashtest", cv, sizeof cv) ? atoi(cv) : pm_debug_has("crashtest") ? 3 : 0;
+    unsigned crash_at = crash_n ? 300u : 0xFFFFFFFFu;
+    if (crash_n && pm_debug_value("crashframe", cv, sizeof cv)) crash_at = (unsigned)atoi(cv);
     while (aptMainLoop() && !pm_exit_request) {
         if (exit_at && frame >= exit_at) { pm_log("exitframe: leaving the main loop at frame %u", frame); break; }
+        pm_wd_prog++;
+        pm_wd_armed = 1;
+        PM_WD_PHASE(1);
         u64 now = svcGetSystemTick();
         /* The retrace builds a display list only every other call. Presenting
          * the idle call shows the other framebuffer, which was never drawn. */
         int draw = D_80073E0A != 0 || !ever;
+        PM_WD_PHASE(2);
         pm_log_poll();
         pm_pad_scan();
         if (pace_on) pace_stat(now, tick_hz, frame);
@@ -351,6 +364,7 @@ void pm_frame_loop(void) {
              * waits until the counter is PM_VBLANKS_PER_STEP - 1 past the last drawn iteration. A slow frame is
              * already past it: no wait and no extra step to catch up. `fast` stays uncapped (debug). */
             if (!PMD("fast") && step_vb_ok) {
+                PM_WD_PHASE(3);
                 int guard = PM_VBLANKS_PER_STEP + 1;
                 PH_PUSH(PH_IDLE);
                 while ((int)(C3D_FrameCounter(0) - step_vb) < PM_VBLANKS_PER_STEP - 1 && guard--) gspWaitForVBlank();
@@ -381,6 +395,7 @@ void pm_frame_loop(void) {
         } else {
         fs1_run = 0;
         drawn++; pm_pace_drawn++;
+        PM_WD_PHASE(4);
         pm_gpu_begin(1);
         {
             unsigned vb = C3D_FrameCounter(0);
@@ -395,8 +410,11 @@ void pm_frame_loop(void) {
             step_vb_ok = 1;
         }
         au_kicked = 0;
+        PM_WD_PHASE(5);
         pm_gfx_retrace();
+        PM_WD_PHASE(6);
         pm_audio_step(); /* AU1b: no main task in this step: run the ticks now */
+        PM_WD_PHASE(7);
         if (!pm_gpu_drew()) {
             if (!ever) pm_gbi_fallback();
         } else {
@@ -409,7 +427,10 @@ void pm_frame_loop(void) {
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
         frame++;
         pm_frame_n = frame;
+        pm_wd_prog++;
+        PM_WD_PHASE(8);
         pm_audio_join_at(3); /* AU1d: warp and fxtest can call game code */
+        PM_WD_PHASE(9);
         pm_warp_tick(frame);
         { extern void pm_fxtest_tick(unsigned); pm_fxtest_tick(frame); } /* FX1a, switch fxtest */
         presents++;
@@ -468,8 +489,14 @@ void pm_frame_loop(void) {
             }
             if (sf) fclose(sf);
         }
+        PM_WD_PHASE(10);
         if (frame == 300 && pm_debug_has("crashtest_call")) pm_crash_selftest();
-        if (frame == 300 && pm_debug_has("crashtest")) __asm__ volatile(".word 0xe7f000f0"); /* class E: deliberate undefined instruction on the game thread */
+        if (frame == crash_at) { /* LB4: crashtest=1 null write (data abort), crashtest=2 busy hang loop, crashtest=3 undefined instruction. crashframe=<n> (default 300). */
+            pm_log("crashtest=%d at frame %u", crash_n, frame);
+            if (crash_n == 1) { *(volatile int*)0 = 1; }
+            else if (crash_n == 2) { for (;;) { __asm__ volatile("" ::: "memory"); } }
+            else __asm__ volatile(".word 0xe7f000f0");
+        }
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
             char top[48];
@@ -519,6 +546,7 @@ static void game_thread(void* arg) {
     pm_log_init(live);
     pm_log_start();
     pm_ph_init();
+    pm_wd_start();
     pm_fpscr_setup("game");
     bool is_new = false;
     APT_CheckNew3DS(&is_new);

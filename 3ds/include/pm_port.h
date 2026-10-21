@@ -33,6 +33,13 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs);
 void pm_log_top(void);
 void pm_log_set_switches(const char* s);
 void pm_crash_line(const char* s, int n);
+/* LB4: crash exit and hang watchdog (src/pm_wdog.c). The phase marker is one store to a global. */
+extern volatile unsigned pm_wd_prog, pm_wd_phase, pm_wd_hold, pm_wd_armed, pm_wd_crash_tick;
+#define PM_WD_PHASE(n) (pm_wd_phase = (n))
+void pm_wd_start(void);
+void pm_exit_process(void);
+void pm_log_crash_close(void);
+unsigned pm_frame_count(void);
 void pm_fatal_stop(const char* msg); /* R01: log FATAL, flush, [CRASH] line, svcBreak */
 void pm_frame_loop(void);
 

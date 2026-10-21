@@ -352,6 +352,7 @@ set(PORT_SRC
     src/pm_mem.c
     src/pm_log.c
     src/pm_flash.c
+    src/pm_wdog.c
     src/pm_phase.c
     src/pm_input.c
     src/pm_warp.c
@@ -396,7 +397,7 @@ endforeach()
 # those libraries were built with it and their structures hold enums.
 set(PM_NO_SHORT_ENUM_SRC ${PORT_SRC} ${GAME_SRC})
 list(REMOVE_DUPLICATES PM_NO_SHORT_ENUM_SRC)
-list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_bench.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dsptest.c src/pm_dspaud.c)
+list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_bench.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_wdog.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dsptest.c src/pm_dspaud.c)
 set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
 
 add_executable(pm_3ds

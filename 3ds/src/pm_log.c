@@ -619,6 +619,11 @@ void pm_assert_fail(const char* statement) {
     pm_log_e("assert %s", statement);
 }
 
+/* LB4: before svcExitProcess. Every crash line is already fsynced. Close the file so the SD card entry is complete. */
+void pm_log_crash_close(void) {
+    if (log_fd >= 0) { fsync(log_fd); close(log_fd); log_fd = -1; }
+}
+
 void pm_crash_line(const char* s, int n) {
     static int crash_fd = -1;
     static int flushed;
