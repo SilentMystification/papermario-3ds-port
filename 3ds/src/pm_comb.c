@@ -109,6 +109,18 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
         }
         return 1;
     }
+    if (!cur_grp && is_k(B) && !isz(B) && is_k(C) && !isz(C) && !iso(C) && (A.n == TN_T0 || A.n == TN_T1) && D.n == TN_CMB && !D.a) {
+        /* VIS1 (PT11): (T - K1) * K2 + COMBINED, cycle 2 of the draw_box style 0 window (T1 - ENV) * ENVA + T0 * PRIM. The sum T * K2 + COMBINED may pass 1 before
+         * K1 * K2 comes off, and the PICA clamps each stage. Halved: H = COMBINED / 2, G = T * K2 / 2 + H (under 1), 2 * (G - K1 * K2 / 2) is exact. The clamp at 0 is the RDP clamp. */
+        Term h = TM(TN_HALF, 0);
+        Term kh = kterm(1, C, C);
+        Term kb = kterm(0, B, C);
+        out[0] = mk(PM_F_MODULATE, prv, h, h, 0, 0, 0);
+        out[1] = mk(PM_F_MULADD, A, kh, prv, 0, 0, 0);
+        out[2] = mk(PM_F_SUBTRACT, prv, kb, kb, 0, 0, 0); out[2].scale = 2;
+        hold_alpha = 1;
+        return 3;
+    }
     if (B.n == TN_K4 && C.n == TN_CMB && C.a && D.n == TN_CMB && !D.a) {
         /* (X - K4) * COMBINED alpha + COMBINED, cycle 2. y = K4 * a + (1 - P), then X * a + (1 - y) = X * a + P - K4 * a.
          * The alpha of the first stage passes the cycle 1 alpha on to the second (the alpha group is placed last). */
