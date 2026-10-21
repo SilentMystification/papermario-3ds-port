@@ -3,6 +3,10 @@
 #include "hud_element.h"
 
 #define FULLY_EXTENDED_Y  18
+/* PT55: with wide the four stat groups (HP, FP, star points, coins) have equal gaps. The widths (79, 75, 40, 47 px) come from a battle shot. The 4:3 layout is unchanged (the offsets are 0). */
+#define PM_HUD_FP_DX   (pm_wide ? 26 : 0)
+#define PM_HUD_SP_DX   (pm_wide ? -29 : 0)
+#define PM_HUD_COIN_DX (pm_wide ? -3 : 0)
 #define FULLY_RETRACTED_Y -100
 
 enum BlinkModes {
@@ -805,18 +809,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->fpIconHIDs[0];
-        x = statusBar->drawPosX + 110;
+        x = statusBar->drawPosX + 110 + PM_HUD_FP_DX;
         y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->fpIconHIDs[1];
-        x = statusBar->drawPosX + 125;
+        x = statusBar->drawPosX + 125 + PM_HUD_FP_DX;
         y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + 136;
+        x = statusBar->drawPosX + 136 + PM_HUD_FP_DX;
         y = statusBar->drawPosY + 8;
         status_bar_draw_stat(statusBar->fpTimesHID, x, y, statusBar->displayFP, playerData->curMaxFP);
     }
@@ -839,18 +843,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->spIconHID;
-        x = pm_wide_right(207);
+        x = pm_wide_right(207) + PM_HUD_SP_DX;
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->spShineHID;
-        x = pm_wide_right(207);
+        x = pm_wide_right(207) + PM_HUD_SP_DX;
         y = statusBar->drawPosY + 9;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = pm_wide_right(212);
+        x = pm_wide_right(212) + PM_HUD_SP_DX;
         y = statusBar->drawPosY + 8;
         status_bar_draw_number(statusBar->spTimesHID, x, y, playerData->starPoints, 2);
     }
@@ -876,18 +880,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->coinIconHID;
-        x = pm_wide_right(256);
+        x = pm_wide_right(256) + PM_HUD_COIN_DX;
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->coinSparkleHID;
-        x = pm_wide_right(256);
+        x = pm_wide_right(256) + PM_HUD_COIN_DX;
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = pm_wide_right(259);
+        x = pm_wide_right(259) + PM_HUD_COIN_DX;
         y = statusBar->drawPosY + 8;
         status_bar_draw_number(statusBar->coinTimesHID, x, y, statusBar->displayCoins, 3);
     }
