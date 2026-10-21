@@ -406,10 +406,10 @@ static void pm_statehash(unsigned f) {
         char sv[12];
         if (!sh_every) sh_every = pm_debug_value("statehash", sv, sizeof sv) ? (unsigned)(atoi(sv) > 0 ? atoi(sv) : 10) : 0xFFFFFFFFu;
         if (sh_every != 0xFFFFFFFFu && f % sh_every == 0) {
-            unsigned h = 2166136261u;
-            #define SHF(v) do { float fv_ = (float)(v); unsigned u_; memcpy(&u_, &fv_, 4); h = (h ^ u_) * 16777619u; } while (0)
-            #define SHI(v) do { h = (h ^ (unsigned)(int)(v)) * 16777619u; } while (0)
-            SHI(gRandSeed);
+            unsigned h = 2166136261u, h2 = 2166136261u; /* h2: the same fields without gRandSeed (FS1: a skipped draw does not run the effect draw code that calls the random number generator) */
+            #define SHF(v) do { float fv_ = (float)(v); unsigned u_; memcpy(&u_, &fv_, 4); h = (h ^ u_) * 16777619u; h2 = (h2 ^ u_) * 16777619u; } while (0)
+            #define SHI(v) do { h = (h ^ (unsigned)(int)(v)) * 16777619u; h2 = (h2 ^ (unsigned)(int)(v)) * 16777619u; } while (0)
+            h = (h ^ (unsigned)(int)gRandSeed) * 16777619u;
             SHF(gPlayerStatus.pos.x); SHF(gPlayerStatus.pos.y); SHF(gPlayerStatus.pos.z);
             SHF(gPlayerStatus.targetYaw); SHF(gPlayerStatus.curYaw);
             SHI(gPlayerStatus.actionState); SHI(gPlayerStatus.flags);
@@ -422,7 +422,7 @@ static void pm_statehash(unsigned f) {
             }
             sh_run = (sh_run ^ h) * 16777619u;
             sh_n++;
-            pm_log("statehash f%u %08x run %08x n %u", f, h, sh_run, sh_n);
+            pm_log("statehash f%u %08x run %08x n %u norand %08x", f, h, sh_run, sh_n, h2);
         }
     }
 }
