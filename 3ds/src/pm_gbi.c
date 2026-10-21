@@ -393,6 +393,7 @@ static int const_rgb_tex_alpha(unsigned* out) {
         rgb[ch] = (a - b) * c + d;
         rgb[ch] = rgb[ch] < 0.f ? 0.f : rgb[ch] > 1.f ? 1.f : rgb[ch];
     }
+    if (comb_aa == 2 && td[1].valid) return 0; /* VIS3: (T1 - T0) * E + T0 reads tile 1 when it is loaded */
     k = cc_alpha_k(comb_aa, comb_ab, comb_ac, comb_ad, pr, en);
     if (k < 0.f) return 0;
     if (two) {
@@ -2699,6 +2700,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             if (tile == 1) {
                 int w = ((lrs - uls) >> 2) + 1, h = ((lrt - ult) >> 2) + 1;
+                if (tile_wrap[1][2] && !(tile_wrap[1][0] & 2) && ld_valid) { /* VIS3: the same as PT09 for tile 1. The RDP reads (s - sl) through the mask, a mirrored or wrapped read of a window to the right of the image start (walking dust frame i + 1) needs the sheet from its start. */
+                    int per = 1 << tile_wrap[1][2];
+                    int ldw = tile_siz[1] == 0 ? ld_w * 2 : ld_w;
+                    if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
+                }
                 int stride = timg_stride > w ? timg_stride : w;
                 int bpp = tile_siz[1] >= 3 ? 4 : tile_siz[1] == 2 ? 2 : tile_siz[1] == 0 ? 0 : 1;
                 const u8* src = (const u8*)timg;
@@ -2772,7 +2778,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             if (tile_wrap[0][2] && !(tile_wrap[0][0] & 2) && ld_valid) { /* PT09: a sprite sheet read through a window narrower than the mask period (emote icons): bind the loaded width up to the period */
                 int per = 1 << tile_wrap[0][2];
-                if (per > w && per <= 256 && ld_w > w) w = ld_w < per ? ld_w : per;
+                int ldw = tile_siz[0] == 0 ? ld_w * 2 : ld_w; /* VIS3: a 4 bit image loads through an 8 bit tile, ld_w counts bytes (walking dust: 88 for 176 texels) */
+                if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
             }
             int stride = timg_stride > w ? timg_stride : w;
             int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
