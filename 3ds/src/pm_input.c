@@ -160,8 +160,8 @@ static int clamp_stick(int v) {
     return v;
 }
 
-/* C-O3DS and F11-5: pm_map[i] is the N64 button of 3DS input i (options.txt map.*, the Select menu). Default: A, B, START as is, the D-pad and
- * X, Y and the C-stick give N64 C, L and R give Z, ZL and ZR give N64 L and R. O3DS (no ZL, ZR): with the Z key held (X, or Y by options.txt
+/* C-O3DS and F11-5: pm_map[i] is the N64 button of 3DS input i (options.ini map.*, the Select menu). Default: A, B, START as is, the D-pad and
+ * X, Y and the C-stick give N64 C, L and R give Z, ZL and ZR give N64 L and R. O3DS (no ZL, ZR): with the Z key held (X, or Y by options.ini
  * o3dsz=1) L gives N64 L and R gives N64 R. SELECT is reserved for the port menu. */
 int pm_new3ds;
 static unsigned short prev_sh;

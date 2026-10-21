@@ -9,7 +9,7 @@
 - A CPU triangle now closes an open raw batch first (pm_gpu_vert_clip, tri3d).
 
 ## Commands
-- Options: Azahar options.txt has warp=osr. Set warp=0 for the dip run, restore after (backup first).
+- Options: Azahar options.ini has warp=osr. Set warp=0 for the dip run, restore after (backup first).
 - Dip window: `PM_ROW=<row> sh 3ds/run_azahar.sh -F -t 600 -u "pc 1850 " -o <dir>/log.txt -d "fixedseed phase phasecsv=1650:1850 noaudit loglevel=debug gv1 shots shotwin=1740:2"` (12 s). Average pc 1702 to 1850 with a small script over the `pc` lines (gb gp gd, triout, draw = last columns).
 - Work split: add `gbiprof`, read `gbiprof f1799 per frame` (laps early, emit, gvtx). Do not use it for ms (timer reads inflate).
 - Golden: `PM_ROW=<row> python3 3ds/tools/golden.py --extra gv1 toad yard` then `battle pause1`. Without --extra the default must stay 0 differences (not run).

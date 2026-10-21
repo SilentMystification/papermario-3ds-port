@@ -90,13 +90,7 @@ static s32 w_entry, w_flag, w_partner;
 int pm_warp_active(void) {
     char v[40];
     int has_preset = pm_debug_value("preset", v, sizeof v);
-    if (!has_preset && pm_opt.warp > 0 && pm_opt.warp <= (int)ARRAY_COUNT(presets)) { /* UI1a: options.txt warp=<preset>, a switch wins */
-        char t[8];
-        if (!pm_debug_value("warp", t, sizeof t) && !pm_debug_value("story", t, sizeof t)) {
-            strncpy(v, presets[pm_opt.warp - 1].name, sizeof v - 1);
-            has_preset = 1;
-        }
-    }
+    /* PT01b: the Warp-to choice of the options (pm_opt.warp) is not used at boot. Only the switches preset, warp and story warp at boot. */
     if (has_preset) {
         int i, found = 0;
         for (i = 0; i < (int)ARRAY_COUNT(presets); i++) {
@@ -111,17 +105,6 @@ int pm_warp_active(void) {
         if (!found) pm_log_w("warp: unknown preset '%s'", v);
     }
     int opt_map = 0;
-    if (!has_preset && pm_opt.warp > (int)ARRAY_COUNT(presets)) { /* PT01: options.txt warp=<map>:<entry>, a switch wins */
-        char t[8];
-        const char* nm = pm_warp_map_name(pm_opt.warp - 1 - (int)ARRAY_COUNT(presets));
-        if (nm && !pm_debug_value("warp", t, sizeof t) && !pm_debug_value("story", t, sizeof t)) {
-            w_map[0] = 0;
-            strncat(w_map, nm, sizeof w_map - 1);
-            w_entry = pm_opt.warp_entry;
-            w_story = STORY_CH0_ARRIVED_AT_TOAD_TOWN;
-            opt_map = 1;
-        }
-    }
     int has_warp = pm_debug_value("warp", v, sizeof v);
     if (has_warp) {
         char* c = strchr(v, ':');
@@ -132,6 +115,10 @@ int pm_warp_active(void) {
         }
         w_map[0] = 0;
         strncat(w_map, v, sizeof w_map - 1);
+        if (pm_warp_is_test_map(w_map)) { /* PT01b */
+            pm_log_w("warp: map %s is a test map, ignored", w_map);
+            w_map[0] = 0; has_warp = 0;
+        }
     }
     int has_story = pm_debug_value("story", v, sizeof v);
     if (has_story) {
@@ -230,24 +217,35 @@ static void warp_setup(s16 areaID, s16 mapID) {
 
 int pm_warp_preset_count(void) { return (int)ARRAY_COUNT(presets); }
 
-/* PT01: every map of gAreas as one flat list (area order, map order). */
+/* PT01b: test maps (area_tst, ids tst_*) are cut content. tst_12 fills the 96 effect slots and crashed the N3DS (docs/plans/n3crash.md, Q-F10 option B).
+ * The list of maps for the Warp-to option and the options.ini reader do not offer them, and a saved or switch value is ignored. Switch warptest allows them. */
+int pm_warp_is_test_map(const char* id) { return id && strncmp(id, "tst_", 4) == 0 && !pm_debug_has("warptest"); }
+
+/* PT01: every map of gAreas as one flat list (area order, map order), without the test maps. */
 int pm_warp_map_count(void) {
-    int i, n = 0;
-    for (i = 0; gAreas[i].maps != NULL; i++) n += gAreas[i].mapCount;
+    int i, j, n = 0;
+    for (i = 0; gAreas[i].maps != NULL; i++)
+        for (j = 0; j < gAreas[i].mapCount; j++) if (!pm_warp_is_test_map(gAreas[i].maps[j].id)) n++;
     return n;
 }
 const char* pm_warp_map_name(int k) {
-    int i;
-    for (i = 0; gAreas[i].maps != NULL; i++) {
-        if (k < gAreas[i].mapCount) return k >= 0 ? gAreas[i].maps[k].id : NULL;
-        k -= gAreas[i].mapCount;
-    }
+    int i, j;
+    if (k < 0) return NULL;
+    for (i = 0; gAreas[i].maps != NULL; i++)
+        for (j = 0; j < gAreas[i].mapCount; j++) {
+            if (pm_warp_is_test_map(gAreas[i].maps[j].id)) continue;
+            if (k-- == 0) return gAreas[i].maps[j].id;
+        }
     return NULL;
 }
 int pm_warp_map_index(const char* name) {
     int i, j, n = 0;
     for (i = 0; gAreas[i].maps != NULL; i++) {
-        for (j = 0; j < gAreas[i].mapCount; j++, n++) if (strcmp(gAreas[i].maps[j].id, name) == 0) return n;
+        for (j = 0; j < gAreas[i].mapCount; j++) {
+            if (pm_warp_is_test_map(gAreas[i].maps[j].id)) continue;
+            if (strcmp(gAreas[i].maps[j].id, name) == 0) return n;
+            n++;
+        }
     }
     return -1;
 }

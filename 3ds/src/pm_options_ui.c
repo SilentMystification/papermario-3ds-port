@@ -52,7 +52,7 @@ void pm_menu_set(int on) {
         pm_log("menu: open");
         draw();
     } else {
-        pm_options_close(); /* saves options.txt when something changed */
+        pm_options_close(); /* saves options.ini when something changed */
         pm_gpu_menu_draw("");
         pm_log("menu: close");
     }
@@ -68,7 +68,7 @@ void pm_menu_key(unsigned k) {
             if (!exit_confirm) exit_confirm = 1;
             else {
                 pm_log("menu: exit to Homebrew requested");
-                pm_menu_set(0); /* saves options.txt */
+                pm_menu_set(0); /* saves options.ini */
                 pm_exit_request = 1;
                 return;
             }

@@ -79,7 +79,7 @@ void filemenu_options_open(void) {
 
 static void filemenu_options_close(void) {
     sfx_play_sound(SOUND_MENU_BACK);
-    pm_options_close(); // writes options.txt if a value changed
+    pm_options_close(); // writes options.ini if a value changed
     filemenu_currentMenu = FILE_MENU_MAIN;
     set_window_update(WIN_FILES_STEREO, (s32)filemenu_update_show_options_left);
     set_window_update(WIN_FILES_MONO, (s32)filemenu_update_show_options_right);

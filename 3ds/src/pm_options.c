@@ -1,4 +1,4 @@
-/* F11-1: port settings. options.txt in the working folder (sdmc:/3ds/PaperMario). One key=value per line. */
+/* F11-1: port settings. options.ini in the working folder (PT30: was options.txt, read as a fallback once) (sdmc:/3ds/PaperMario). One key=value per line. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,27 +54,28 @@ static int* opt_field(const char* key) {
 
 void pm_options_write(void) {
     FILE* f = fopen("options.tmp", "w");
+    /* PT30: INI file, key=value lines. The Warp-to choice is not saved (PT01b): a boot-time warp is only for the debug switches. */
     if (!f) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "version=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\n", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
             pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode]);
-    if (pm_opt.warp > 0 && pm_opt.warp <= pm_warp_preset_count()) fprintf(f, "warp=%s\n", pm_warp_preset_name(pm_opt.warp - 1));
-    else if (pm_opt.warp > pm_warp_preset_count()) fprintf(f, "warp=%s:%d\n", pm_warp_map_name(pm_opt.warp - 1 - pm_warp_preset_count()), pm_opt.warp_entry);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
         return;
     }
-    unlink("options.txt"); /* FAT rename does not replace an existing file */
-    if (rename("options.tmp", "options.txt") != 0) pm_log_e("options: rename to options.txt failed");
+    unlink("options.ini"); /* FAT rename does not replace an existing file */
+    if (rename("options.tmp", "options.ini") != 0) pm_log_e("options: rename to options.ini failed");
 }
 
 void pm_options_init(void) {
     char line[64];
     int have = 0;
-    FILE* f = fopen("options.txt", "r");
+    FILE* f = fopen("options.ini", "r");
+    int from_txt = 0;
+    if (!f && (f = fopen("options.txt", "r")) != NULL) from_txt = 1; /* PT30: old name, read once, options.ini is written below */
     if (f) {
         have = 1;
         while (fgets(line, sizeof(line), f)) {
@@ -83,7 +84,7 @@ void pm_options_init(void) {
             long v;
             int* fld;
             line[strcspn(line, "\r\n")] = 0;
-            if (!line[0]) continue;
+            if (!line[0] || line[0] == ';' || line[0] == '#' || line[0] == '[') continue; /* PT30: INI comment and section lines */
             if (!eq) {
                 pm_log_w("options: skip line '%s'", line);
                 continue;
@@ -104,20 +105,8 @@ void pm_options_init(void) {
                 if (m == 3) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else pm_opt.dpad_mode = m;
                 continue;
             }
-            if (!strcmp(line, "warp")) { /* UI1a: warp=<preset name> */
-                int m;
-                for (m = 0; m < pm_warp_preset_count() && strcmp(eq + 1, pm_warp_preset_name(m)); m++) {}
-                if (m < pm_warp_preset_count()) pm_opt.warp = m + 1;
-                else { /* PT01: warp=<map>:<entry> */
-                    char nm[16];
-                    char* c = strchr(eq + 1, ':');
-                    int k;
-                    nm[0] = 0;
-                    strncat(nm, eq + 1, c && c - (eq + 1) < 15 ? (size_t)(c - (eq + 1)) : 15);
-                    k = pm_warp_map_index(nm);
-                    if (k < 0) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
-                    else { pm_opt.warp = pm_warp_preset_count() + 1 + k; pm_opt.warp_entry = c ? atoi(c + 1) & 15 : 0; }
-                }
+            if (!strcmp(line, "warp")) { /* PT01b: an old file can hold warp=. A boot-time warp is only for the debug switches. */
+                pm_log_w("options: warp= ignored at boot (value '%s')", eq + 1);
                 continue;
             }
             fld = opt_field(line);
@@ -130,16 +119,16 @@ void pm_options_init(void) {
         }
         fclose(f);
     }
-    {   /* L02: a log switch wins over options.txt. The panel and the switches use pm_log_set_level and pm_log_set_file. */
+    {   /* L02: a log switch wins over options.ini. The panel and the switches use pm_log_set_level and pm_log_set_file. */
         char v[16];
         if (pm_debug_value("loglevel", v, sizeof v)) pm_opt.loglevel = pm_log_level(); else pm_log_set_level(pm_opt.loglevel);
         if (pm_debug_value("log", v, sizeof v)) pm_opt.log = pm_log_file(); else pm_log_set_file(pm_opt.log);
     }
     pm_log("options: fps60=%d wide=%d hud=%d stats=%d nofog=%d nolight=%d (%s)", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-           pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, have ? "read from options.txt" : "defaults");
+           pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, have ? (from_txt ? "read from options.txt, written as options.ini" : "read from options.ini") : "defaults");
     pm_log_switch("nofog", pm_opt.dbg_nofog); /* a debug word that the code reads each frame */
     pm_log_switch("nolight", pm_opt.dbg_nolight);
-    if (!have) pm_options_write();
+    if (!have || from_txt) pm_options_write();
 }
 
 /* F11-3: the panel. nofog is live. nolight is cached in pm_gbi.c at first use, so it takes effect at the next boot. */
