@@ -356,6 +356,7 @@ set(PORT_SRC
     src/pm_phase.c
     src/pm_input.c
     src/pm_warp.c
+    src/pm_dbg_game.c
     src/pm_options.c
     src/pm_options_ui.c
     src/pm_dpad.c

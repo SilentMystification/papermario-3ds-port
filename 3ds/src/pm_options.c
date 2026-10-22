@@ -212,7 +212,10 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200 };
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310 };
+void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
+static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
+static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
 static const char* const lvl_name[4] = { "Error", "Warn", "Info", "Debug" };
 static const char* const dbg_lbl[7] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed" };
 static int tab_ids(int tab, int mode, int* ids) {
@@ -226,6 +229,8 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_RESET;
     } else {
         for (i = 0; i < 7; i++) ids[n++] = RW_DBG + i;
+        for (i = 0; i < 3; i++) ids[n++] = RW_GIVE + i; /* PT67 */
+        for (i = 0; i < 6; i++) ids[n++] = RW_STAT + i;
         ids[n++] = RW_WARPTO; ids[n++] = RW_ENTRY; ids[n++] = RW_WARPNOW;
     }
     ids[n++] = RW_BACK;
@@ -240,6 +245,8 @@ void pm_optui_disarm(void) { exit_armed = 0; }
 int pm_optui_rows(int tab, int mode) { int ids[48]; return tab_ids(tab, mode, ids); }
 const char* pm_optui_label(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_STAT) return stat_lbl[id - RW_STAT];
+    if (id >= RW_GIVE) return give_lbl[id - RW_GIVE];
     if (id >= RW_DBG) return dbg_lbl[id - RW_DBG];
     if (id >= RW_MAP) return pm_in_name[id - RW_MAP];
     switch (id) {
@@ -261,6 +268,13 @@ const char* pm_optui_label(int tab, int row, int mode) {
 }
 const char* pm_optui_value(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_GIVE) {
+        static char gb[16][16];
+        char* b = gb[id - RW_GIVE];
+        if (id >= RW_STAT) snprintf(b, 16, "%d", pm_dbgg_stat_get(id - RW_STAT));
+        else { int h, t; pm_dbgg_count(id - RW_GIVE, &h, &t); snprintf(b, 16, "%d/%d", h, t); }
+        return b;
+    }
     if (id >= RW_DBG) return id == RW_DBG + 5 ? lvl_name[pm_options_get(7) & 3] : pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows 0 to 6 are option rows 2 to 8 */
     if (id >= RW_MAP) return pm_n64_name(pm_map[id - RW_MAP]);
     switch (id) {
@@ -286,6 +300,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
 /* PT01: left (dir < 0) or right (dir > 0) on a row. Warp to walks the choices (off, presets, every map of gAreas) with wrap. Entry walks 0 to 15. */
 int pm_optui_step(int tab, int row, int dir, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, dir); return 1; } /* PT67c: live, not saved */
     if (id >= RW_DZPAD && id <= RW_RRATE) { /* PT61, PT60: a number row. Left and right step it, A steps up and wraps. */
         static const struct { int lo, hi, st; } rg[4] = { { 0, 50, 5 }, { 0, 50, 5 }, { 200, 1000, 100 }, { 50, 500, 50 } };
         int* f = id == RW_DZPAD ? &pm_opt.dz_pad : id == RW_DZCS ? &pm_opt.dz_cs : id == RW_RDELAY ? &pm_opt.rep_delay : &pm_opt.rep_rate;
@@ -314,6 +329,8 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
 int pm_optui_act(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
     if (id != RW_EXIT) exit_armed = 0;
+    if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, 1); return 0; }
+    if (id >= RW_GIVE) { pm_dbgg_give(id - RW_GIVE); pm_log("options: debug give %d", id - RW_GIVE); return 0; }
     if (id >= RW_DBG) { pm_options_flip(id - RW_DBG + 2); return 0; }
     if (id >= RW_MAP) {
         int i = id - RW_MAP;
