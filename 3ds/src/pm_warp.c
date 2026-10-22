@@ -312,6 +312,17 @@ static int bypass_begin(int kind, int a, int b) {
 extern void pm_menu_set(int on);
 static int pm_boss_launch_now(int i);
 static int pm_warp_live_now(int c, int entry);
+/* PT80: the intro (stage curtain, subtitle callback, screen overlay, message boxes) stays alive when a warp leaves it through ENTER_WORLD. End it as the
+ * tour does between maps: curtain open and its draw callback off, overlays and message printers cleared. */
+static void warp_end_intro(int mode) {
+    if (mode != GAME_MODE_INTRO && mode != GAME_MODE_TITLE_SCREEN) return;
+    set_curtain_scale_goal(2.0f);
+    set_curtain_draw_callback(NULL);
+    clear_screen_overlays();
+    clear_printers();
+    gGameStatusPtr->introPart = INTRO_PART_NONE;
+    pm_log("warp: intro or title state ended (curtain, overlays, message printers) from mode %d", mode);
+}
 static void bypass_tick(void) {
     if (!bypass_kind) return;
     if (get_game_mode() == GAME_MODE_WORLD) {
@@ -339,6 +350,7 @@ static int pm_warp_live_now(int c, int entry) {
     pm_warp_pending = 0;
     pm_warp_now(c, entry);
     if (!pm_warp_pending) return 0;
+    warp_end_intro(mode);
     pm_warp_pending = 0;
     if (mode == GAME_MODE_WORLD) {
         set_map_transition_effect(TRANSITION_STANDARD);
@@ -384,6 +396,7 @@ static int pm_boss_launch_now(int i) {
     gPlayerData.hardMaxHP = gPlayerData.curMaxHP = gPlayerData.curHP = 75;
     gPlayerData.hardMaxFP = gPlayerData.curMaxFP = gPlayerData.curFP = 30;
     fio_serialize_state();
+    warp_end_intro(mode);
     boss_pending = i;
     boss_frames = 0;
     if (mode == GAME_MODE_WORLD) {
