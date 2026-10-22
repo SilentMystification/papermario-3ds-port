@@ -20,13 +20,13 @@ APP=org.azahar_emu.Azahar
 SD=$HOME/.var/app/$APP/data/azahar-emu/sdmc/3ds/PaperMario
 ROW=${PM_ROW:-adhoc}; MAX=${PM_BUDGET:-8}; [ "$ROW" = adhoc ] && MAX=12
 B=3ds/logs/test_budget.csv; mkdir -p 3ds/logs; touch $B
-used=$(awk -F, -v r="$ROW" '$2==r && $5=="start"' $B | wc -l)
+used=$(awk -F, -v r="$ROW" '$2==r && /,start,,/' $B | wc -l) # a comma in the switches must not move the kind column
 if [ "$used" -ge "$MAX" ]; then echo "BUDGET: row $ROW used $used runs. Stop and report what blocks you."; exit 9; fi
 exec 9>/tmp/pm_azahar_run.lock
 flock -w 900 9 || { echo "LOCK TIMEOUT"; exit 3; }
 w=0; while flatpak ps 2>/dev/null | grep -q $APP; do [ $w -ge 600 ] && { echo "Azahar already runs (not started by this script) for 600 s. Stop."; exit 4; }; [ $w -eq 0 ] && echo "Azahar of another user runs, waiting up to 600 s"; sleep 5; w=$((w+5)); done
 sha=$(sha256sum "$X" | cut -c1-64); stamp=$(date +%Y-%m-%dT%H:%M:%S)
-echo "$stamp,$ROW,$sha,x=$X d=$D,start,," >> $B
+echo "$stamp,$ROW,$sha,x=$X d=$(printf %s "$D" | tr , ';'),start,," >> $B
 rm -rf "$SD/shots" "$(dirname "$O")/shots"   # the "shots" switch writes $SD/shots; golden.py reads it next to the log
 mkdir -p "$SD"; cp -f "$X" "$SD/pm_3ds.3dsx"; rm -f "$SD/log.txt"
 if [ -n "$D" ]; then printf '%s' "$D" > "$SD/debug3ds.txt"; else rm -f "$SD/debug3ds.txt"; fi

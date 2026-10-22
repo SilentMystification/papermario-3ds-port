@@ -1759,6 +1759,14 @@ static void load_mtx(u32 w0, u32 w1) {
     if (lm) memcpy(in, lm, sizeof(in));
     else unpack(src, in);
     int is_proj = (flags & G_MTX_PROJECTION) != 0;
+    { /* PT70 diagnostic, switch pipelog: every matrix load with the stack depth, at most 400 per frame */
+        static int pl = -1, plf = -1, pln;
+        if (pl < 0) pl = pm_debug_has("pipelog");
+        if (pl) {
+            if (plf != rm_frame) { plf = rm_frame; pln = 0; }
+            if (pln++ < 400) pm_log_d("pipemtx rm %d src %p w0 %02x fl %02x sp %d t %.1f %.1f %.1f", rm_frame, (void*)src, (unsigned)(w0 & 0xff), flags, mv_sp, in[3][0], in[3][1], in[3][2]);
+        }
+    }
     if (mtxlog_on() && mtxlog_ok()) pm_log_d("mtx f%d src %p w0 %02x sp %d t %.1f %.1f %.1f%s", rm_frame, (void*)src, (unsigned)(w0 & 0xff), mv_sp, in[3][0], in[3][1], in[3][2],
                                           (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 >= 10) ? " push dropped" : "");
     if (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 < 10) {
@@ -1871,6 +1879,7 @@ void pm_gbi_end_frame(void) {
         (void)nm;
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
+    mv_sp = 0; /* PT70: the RSP matrix stack starts empty in every task. A push without pop in the message draw leaked one level per frame, then the 10 level cap dropped the pad push of the blue pipe and its pop left the wrong matrix (the sunk pipe showed up while a text box waited) */
     gm_n = 0; gm_last = GV_NONE; pm_gpu_gv_reset();
     memset(vert_ring, 0xff, sizeof vert_ring);
     memset(vert_gvf, 3, sizeof vert_gvf);
@@ -2267,6 +2276,22 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     for (k = 0; k < mid_n; k++) if (mid_list[k] == po3a_mid) break;
                     if (k == mid_n && mid_n < 256) mid_list[mid_n++] = po3a_mid;
                     p_vload += n; p_vcmd++;
+                }
+                { /* PT70 diagnostic, switch pipelog: the vertex load of the blue pipe (vertices at 0x5eb3xx): clip position of every vertex, clip bits, scissor, geometry mode */
+                    static int pl = -1;
+                    if (pl < 0) pl = pm_debug_has("pipelog");
+                    if (pl && n && (uintptr_t)src >= 0x5eb300u && (uintptr_t)src < 0x5eb700u) {
+                        const Vtx* pv = (const Vtx*)src;
+                        unsigned k2, all = 0x3f;
+                        float t0[4] = { 0, 0, 0, 0 };
+                        for (k2 = 0; k2 < n; k2++) {
+                            float x = (float)pv[k2].v.ob[0], y = (float)pv[k2].v.ob[1], z = (float)pv[k2].v.ob[2], q[4];
+                            for (int c = 0; c < 4; c++) q[c] = combined[0][c] * x + combined[1][c] * y + combined[2][c] * z + combined[3][c];
+                            all &= (unsigned)clip_bits4(q);
+                            if (!k2) memcpy(t0, q, sizeof t0);
+                        }
+                        pm_log_d("pipelog f%u rm %d src %p n %u v0 clip %.1f %.1f %.1f %.1f allbits %02x sci %d %d %d %d geom %08x", pm_frame_count(), rm_frame, (void*)src, n, t0[0], t0[1], t0[2], t0[3], all, sci_x0, sci_y0, sci_x1, sci_y1, (unsigned)geom);
+                    }
                 }
                 int gring0 = -1;
                 unsigned gmi = GV_NONE;

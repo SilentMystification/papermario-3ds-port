@@ -41,7 +41,7 @@ param(
     [switch]$Interactive, # a person plays: no timeout, no log-silence stop, settings windows allowed
     [string]$GdbScript = "",
     [switch]$Milestone, # allows tour= with more than 40 maps (budget rule)
-    [switch]$Force, # run an identical rerun anyway (counts double in the budget)
+    [switch]$Force, # run an identical rerun anyway (counts as one start, like every real Azahar start; a cached run that skips Azahar counts nothing)
     [string]$ResetBudget = "", # orchestrator only: reset the run count of one row, then exit
     [string]$Debug = ""  # render debug switches for the game, see pm_main.c (nofog nolight notex texonly logtev)
 )
@@ -86,9 +86,8 @@ if (-not $Force) {
 }
 New-Item -ItemType Directory -Force -Path (Split-Path $budgetFile) | Out-Null
 $stamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
-$nStart = if ($Force) { 2 } else { 1 }
-1..$nStart | ForEach-Object { Add-Content $budgetFile "$stamp,$row,$sha,$argStr,start,," }
-$used += $nStart
+Add-Content $budgetFile "$stamp,$row,$sha,$argStr,start,," # one real Azahar start, one line (-Force too)
+$used += 1
 function End-Run([int]$rc, [string]$res) {
     Add-Content $budgetFile "$((Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')),$row,$sha,$argStr,end,$rc,$($res.Replace(',', ';'))"
     Write-Output "budget: row $row run $used/$max"
