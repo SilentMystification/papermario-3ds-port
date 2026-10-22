@@ -1,0 +1,13 @@
+# route credits: plays the credits cutscene (end_00 parade, then end_01). See docs/plans/sweep_notes.md.
+# start: warp=end_00:0 story=epilogue partner=1 (Mario is not controlled, so the route only waits). 60 scans = 1 s.
+seg_end00_start
+wait3600
+seg_min1
+wait3600
+seg_min2
+wait3600
+seg_min3
+wait3600
+seg_min4
+wait3600
+seg_end

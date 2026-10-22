@@ -359,6 +359,7 @@ set(PORT_SRC
     src/pm_options_ui.c
     src/pm_dpad.c
     src/pm_route.c
+    src/pm_sweep.c
     src/pm_fxtest.c
     src/pm_gpu.c
     src/pm_depth.c

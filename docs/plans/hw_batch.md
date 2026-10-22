@@ -230,3 +230,6 @@ python3 3ds/tools/route_report.py 3ds/logs/perf/hw_${B}_ROUTE_pull.txt --compare
 grep -E "route: (seg|goto|save|leg|end)|save.flash" 3ds/logs/perf/hw_${B}_ROUTE_pull.txt
 ```
 Read: the `wall36` column (late steps the player sees), `wall_p95`, the `save` segment and the `save.flash written ... ms` line (the save hitch), the map entries and the battle segments. The seg lines of the console must match Azahar within 2 steps (3ds/logs/perf/route_ref_*.txt). If `route: leg blocked` appears, the route left its path: tell the ROUTE agent. Notes: docs/plans/route_notes.md.
+
+### 8.5 Push SWEEP: the full sweep (bosses, cutscenes, credits) (only on a user request, never planned)
+The full sweep runs only when the user asks for it. No gate, no feature test and no other agent runs it. Commands for the console (one push, chain list, pulled log): docs/plans/sweep_notes.md, section Console. Azahar: `python3 3ds/tools/sweep.py run all`.
