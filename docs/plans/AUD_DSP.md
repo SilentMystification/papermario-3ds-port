@@ -1,7 +1,7 @@
 # AUD-DSP design: audio mixing on the 3DS DSP (ndsp)
 
 Written 2026-10-21 (lane B). Tags: M = measured (Azahar, this session), C = read in code, E = estimate, H = only the console can settle it.
-Switch: `dspaudio` (default off). The AU2 mixer stays as the fallback. Logs of the measurements: 3ds/logs/perf/auddsp/a1_tour.txt, a1_bank.txt, a1_ws.txt.
+A5: the DSP path is the only audio path at every boot, there is no `dspaudio` switch and no old CPU mixer output (the sections below that name the switch describe the work before A5). If ndsp or the DSP init fails the game logs one error and runs without sound. The AU2 queue is the base of the DSP path and stays. Test switches that tune the DSP path stay: `dspfx`, `dspgain`, `dspflush`, `dspaux`. Logs of the measurements: 3ds/logs/perf/auddsp/a1_tour.txt, a1_bank.txt, a1_ws.txt.
 
 ## 1. Summary
 
@@ -166,3 +166,9 @@ Play the same scene twice, once without and once with `dspaudio`.
 - New switches: `dspfx=off` (no aux, wet to main), `dspgain=<percent>` (scale the mix, for a clip test), `dspflush` (flush the sample before every wave buffer add), `dspaux=<mask>` (1 keep volume 0.0, 2 front bypass off, 4 output count 2, 8 register the callbacks after the first voice start). The log line `dspaudio: aux mask ...` shows the state.
 - Console test, three combinations: (1) `dspaudio` alone. (2) `dspaudio dspfx=off`. (3) `dspaudio dspgain=50 dspflush`. Add `audiostat loglevel=debug` and read `audio dsp: aux callbacks`.
 - Not changed: hard voice stops (the old mixer stops a voice at the same point), loop cap of 4 repeats for a finite loop count above 3.
+
+## A5 (default and only path)
+- `dspaudio` and the old mixer output (ndsp channel 0 with posted PCM) are removed. `pm_audio_post` does nothing: the voices play on ndsp channels. `audiohash` and the posts counters no longer measure audio. `au2off` now means silent audio (DSP needs the queue).
+- The wet fold stays (the user hears it and it sounds right). One log line `dspaudio: the folded wet sends of a voice reach gain ...` the first time a voice sum is above 1.0.
+- The aux callback of ndsp still did not run on the O3DS (log of build 1036): cause not found, code reading only is open.
+- Boot check: the log shows `dspaudio: on, 23 voices on ndsp channels ...` with no switch.
