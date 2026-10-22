@@ -1,0 +1,372 @@
+diff --git a/3ds/src/map_restore_table.c b/3ds/src/map_restore_table.c
+index d71c1beeb..1bdabd418 100644
+--- a/3ds/src/map_restore_table.c
++++ b/3ds/src/map_restore_table.c
+@@ -36,6 +36,26 @@ extern unsigned char __ms_dro_01_d0[], __ms_dro_01_d1[], __ms_dro_01_b0[], __ms_
+ extern unsigned char __ms_dro_02_d0[], __ms_dro_02_d1[], __ms_dro_02_b0[], __ms_dro_02_b1[];
+ extern unsigned char __ms_end_00_d0[], __ms_end_00_d1[], __ms_end_00_b0[], __ms_end_00_b1[];
+ extern unsigned char __ms_end_01_d0[], __ms_end_01_d1[], __ms_end_01_b0[], __ms_end_01_b1[];
++extern unsigned char __ms_flo_00_d0[], __ms_flo_00_d1[], __ms_flo_00_b0[], __ms_flo_00_b1[];
++extern unsigned char __ms_flo_03_d0[], __ms_flo_03_d1[], __ms_flo_03_b0[], __ms_flo_03_b1[];
++extern unsigned char __ms_flo_07_d0[], __ms_flo_07_d1[], __ms_flo_07_b0[], __ms_flo_07_b1[];
++extern unsigned char __ms_flo_08_d0[], __ms_flo_08_d1[], __ms_flo_08_b0[], __ms_flo_08_b1[];
++extern unsigned char __ms_flo_09_d0[], __ms_flo_09_d1[], __ms_flo_09_b0[], __ms_flo_09_b1[];
++extern unsigned char __ms_flo_10_d0[], __ms_flo_10_d1[], __ms_flo_10_b0[], __ms_flo_10_b1[];
++extern unsigned char __ms_flo_11_d0[], __ms_flo_11_d1[], __ms_flo_11_b0[], __ms_flo_11_b1[];
++extern unsigned char __ms_flo_12_d0[], __ms_flo_12_d1[], __ms_flo_12_b0[], __ms_flo_12_b1[];
++extern unsigned char __ms_flo_13_d0[], __ms_flo_13_d1[], __ms_flo_13_b0[], __ms_flo_13_b1[];
++extern unsigned char __ms_flo_14_d0[], __ms_flo_14_d1[], __ms_flo_14_b0[], __ms_flo_14_b1[];
++extern unsigned char __ms_flo_15_d0[], __ms_flo_15_d1[], __ms_flo_15_b0[], __ms_flo_15_b1[];
++extern unsigned char __ms_flo_16_d0[], __ms_flo_16_d1[], __ms_flo_16_b0[], __ms_flo_16_b1[];
++extern unsigned char __ms_flo_17_d0[], __ms_flo_17_d1[], __ms_flo_17_b0[], __ms_flo_17_b1[];
++extern unsigned char __ms_flo_18_d0[], __ms_flo_18_d1[], __ms_flo_18_b0[], __ms_flo_18_b1[];
++extern unsigned char __ms_flo_19_d0[], __ms_flo_19_d1[], __ms_flo_19_b0[], __ms_flo_19_b1[];
++extern unsigned char __ms_flo_21_d0[], __ms_flo_21_d1[], __ms_flo_21_b0[], __ms_flo_21_b1[];
++extern unsigned char __ms_flo_22_d0[], __ms_flo_22_d1[], __ms_flo_22_b0[], __ms_flo_22_b1[];
++extern unsigned char __ms_flo_23_d0[], __ms_flo_23_d1[], __ms_flo_23_b0[], __ms_flo_23_b1[];
++extern unsigned char __ms_flo_24_d0[], __ms_flo_24_d1[], __ms_flo_24_b0[], __ms_flo_24_b1[];
++extern unsigned char __ms_flo_25_d0[], __ms_flo_25_d1[], __ms_flo_25_b0[], __ms_flo_25_b1[];
+ extern unsigned char __ms_gv_01_d0[], __ms_gv_01_d1[], __ms_gv_01_b0[], __ms_gv_01_b1[];
+ extern unsigned char __ms_hos_00_d0[], __ms_hos_00_d1[], __ms_hos_00_b0[], __ms_hos_00_b1[];
+ extern unsigned char __ms_hos_01_d0[], __ms_hos_01_d1[], __ms_hos_01_b0[], __ms_hos_01_b1[];
+@@ -70,7 +90,28 @@ extern unsigned char __ms_iwa_03_d0[], __ms_iwa_03_d1[], __ms_iwa_03_b0[], __ms_
+ extern unsigned char __ms_iwa_04_d0[], __ms_iwa_04_d1[], __ms_iwa_04_b0[], __ms_iwa_04_b1[];
+ extern unsigned char __ms_iwa_10_d0[], __ms_iwa_10_d1[], __ms_iwa_10_b0[], __ms_iwa_10_b1[];
+ extern unsigned char __ms_iwa_11_d0[], __ms_iwa_11_d1[], __ms_iwa_11_b0[], __ms_iwa_11_b1[];
++extern unsigned char __ms_jan_00_d0[], __ms_jan_00_d1[], __ms_jan_00_b0[], __ms_jan_00_b1[];
++extern unsigned char __ms_jan_01_d0[], __ms_jan_01_d1[], __ms_jan_01_b0[], __ms_jan_01_b1[];
++extern unsigned char __ms_jan_02_d0[], __ms_jan_02_d1[], __ms_jan_02_b0[], __ms_jan_02_b1[];
++extern unsigned char __ms_jan_03_d0[], __ms_jan_03_d1[], __ms_jan_03_b0[], __ms_jan_03_b1[];
+ extern unsigned char __ms_jan_04_d0[], __ms_jan_04_d1[], __ms_jan_04_b0[], __ms_jan_04_b1[];
++extern unsigned char __ms_jan_05_d0[], __ms_jan_05_d1[], __ms_jan_05_b0[], __ms_jan_05_b1[];
++extern unsigned char __ms_jan_06_d0[], __ms_jan_06_d1[], __ms_jan_06_b0[], __ms_jan_06_b1[];
++extern unsigned char __ms_jan_07_d0[], __ms_jan_07_d1[], __ms_jan_07_b0[], __ms_jan_07_b1[];
++extern unsigned char __ms_jan_08_d0[], __ms_jan_08_d1[], __ms_jan_08_b0[], __ms_jan_08_b1[];
++extern unsigned char __ms_jan_09_d0[], __ms_jan_09_d1[], __ms_jan_09_b0[], __ms_jan_09_b1[];
++extern unsigned char __ms_jan_10_d0[], __ms_jan_10_d1[], __ms_jan_10_b0[], __ms_jan_10_b1[];
++extern unsigned char __ms_jan_11_d0[], __ms_jan_11_d1[], __ms_jan_11_b0[], __ms_jan_11_b1[];
++extern unsigned char __ms_jan_12_d0[], __ms_jan_12_d1[], __ms_jan_12_b0[], __ms_jan_12_b1[];
++extern unsigned char __ms_jan_13_d0[], __ms_jan_13_d1[], __ms_jan_13_b0[], __ms_jan_13_b1[];
++extern unsigned char __ms_jan_14_d0[], __ms_jan_14_d1[], __ms_jan_14_b0[], __ms_jan_14_b1[];
++extern unsigned char __ms_jan_15_d0[], __ms_jan_15_d1[], __ms_jan_15_b0[], __ms_jan_15_b1[];
++extern unsigned char __ms_jan_16_d0[], __ms_jan_16_d1[], __ms_jan_16_b0[], __ms_jan_16_b1[];
++extern unsigned char __ms_jan_17_d0[], __ms_jan_17_d1[], __ms_jan_17_b0[], __ms_jan_17_b1[];
++extern unsigned char __ms_jan_18_d0[], __ms_jan_18_d1[], __ms_jan_18_b0[], __ms_jan_18_b1[];
++extern unsigned char __ms_jan_19_d0[], __ms_jan_19_d1[], __ms_jan_19_b0[], __ms_jan_19_b1[];
++extern unsigned char __ms_jan_22_d0[], __ms_jan_22_d1[], __ms_jan_22_b0[], __ms_jan_22_b1[];
++extern unsigned char __ms_jan_23_d0[], __ms_jan_23_d1[], __ms_jan_23_b0[], __ms_jan_23_b1[];
+ extern unsigned char __ms_kgr_01_d0[], __ms_kgr_01_d1[], __ms_kgr_01_b0[], __ms_kgr_01_b1[];
+ extern unsigned char __ms_kgr_02_d0[], __ms_kgr_02_d1[], __ms_kgr_02_b0[], __ms_kgr_02_b1[];
+ extern unsigned char __ms_kkj_00_d0[], __ms_kkj_00_d1[], __ms_kkj_00_b0[], __ms_kkj_00_b1[];
+@@ -114,8 +155,73 @@ extern unsigned char __ms_kmr_22_d0[], __ms_kmr_22_d1[], __ms_kmr_22_b0[], __ms_
+ extern unsigned char __ms_kmr_23_d0[], __ms_kmr_23_d1[], __ms_kmr_23_b0[], __ms_kmr_23_b1[];
+ extern unsigned char __ms_kmr_24_d0[], __ms_kmr_24_d1[], __ms_kmr_24_b0[], __ms_kmr_24_b1[];
+ extern unsigned char __ms_kmr_30_d0[], __ms_kmr_30_d1[], __ms_kmr_30_b0[], __ms_kmr_30_b1[];
++extern unsigned char __ms_kpa_01_d0[], __ms_kpa_01_d1[], __ms_kpa_01_b0[], __ms_kpa_01_b1[];
++extern unsigned char __ms_kpa_03_d0[], __ms_kpa_03_d1[], __ms_kpa_03_b0[], __ms_kpa_03_b1[];
++extern unsigned char __ms_kpa_04_d0[], __ms_kpa_04_d1[], __ms_kpa_04_b0[], __ms_kpa_04_b1[];
++extern unsigned char __ms_kpa_08_d0[], __ms_kpa_08_d1[], __ms_kpa_08_b0[], __ms_kpa_08_b1[];
++extern unsigned char __ms_kpa_09_d0[], __ms_kpa_09_d1[], __ms_kpa_09_b0[], __ms_kpa_09_b1[];
++extern unsigned char __ms_kpa_10_d0[], __ms_kpa_10_d1[], __ms_kpa_10_b0[], __ms_kpa_10_b1[];
++extern unsigned char __ms_kpa_100_d0[], __ms_kpa_100_d1[], __ms_kpa_100_b0[], __ms_kpa_100_b1[];
++extern unsigned char __ms_kpa_101_d0[], __ms_kpa_101_d1[], __ms_kpa_101_b0[], __ms_kpa_101_b1[];
++extern unsigned char __ms_kpa_102_d0[], __ms_kpa_102_d1[], __ms_kpa_102_b0[], __ms_kpa_102_b1[];
++extern unsigned char __ms_kpa_11_d0[], __ms_kpa_11_d1[], __ms_kpa_11_b0[], __ms_kpa_11_b1[];
++extern unsigned char __ms_kpa_111_d0[], __ms_kpa_111_d1[], __ms_kpa_111_b0[], __ms_kpa_111_b1[];
++extern unsigned char __ms_kpa_112_d0[], __ms_kpa_112_d1[], __ms_kpa_112_b0[], __ms_kpa_112_b1[];
++extern unsigned char __ms_kpa_113_d0[], __ms_kpa_113_d1[], __ms_kpa_113_b0[], __ms_kpa_113_b1[];
++extern unsigned char __ms_kpa_114_d0[], __ms_kpa_114_d1[], __ms_kpa_114_b0[], __ms_kpa_114_b1[];
++extern unsigned char __ms_kpa_115_d0[], __ms_kpa_115_d1[], __ms_kpa_115_b0[], __ms_kpa_115_b1[];
++extern unsigned char __ms_kpa_116_d0[], __ms_kpa_116_d1[], __ms_kpa_116_b0[], __ms_kpa_116_b1[];
++extern unsigned char __ms_kpa_117_d0[], __ms_kpa_117_d1[], __ms_kpa_117_b0[], __ms_kpa_117_b1[];
++extern unsigned char __ms_kpa_118_d0[], __ms_kpa_118_d1[], __ms_kpa_118_b0[], __ms_kpa_118_b1[];
++extern unsigned char __ms_kpa_119_d0[], __ms_kpa_119_d1[], __ms_kpa_119_b0[], __ms_kpa_119_b1[];
++extern unsigned char __ms_kpa_12_d0[], __ms_kpa_12_d1[], __ms_kpa_12_b0[], __ms_kpa_12_b1[];
++extern unsigned char __ms_kpa_121_d0[], __ms_kpa_121_d1[], __ms_kpa_121_b0[], __ms_kpa_121_b1[];
++extern unsigned char __ms_kpa_13_d0[], __ms_kpa_13_d1[], __ms_kpa_13_b0[], __ms_kpa_13_b1[];
++extern unsigned char __ms_kpa_130_d0[], __ms_kpa_130_d1[], __ms_kpa_130_b0[], __ms_kpa_130_b1[];
++extern unsigned char __ms_kpa_133_d0[], __ms_kpa_133_d1[], __ms_kpa_133_b0[], __ms_kpa_133_b1[];
++extern unsigned char __ms_kpa_134_d0[], __ms_kpa_134_d1[], __ms_kpa_134_b0[], __ms_kpa_134_b1[];
++extern unsigned char __ms_kpa_14_d0[], __ms_kpa_14_d1[], __ms_kpa_14_b0[], __ms_kpa_14_b1[];
++extern unsigned char __ms_kpa_15_d0[], __ms_kpa_15_d1[], __ms_kpa_15_b0[], __ms_kpa_15_b1[];
++extern unsigned char __ms_kpa_16_d0[], __ms_kpa_16_d1[], __ms_kpa_16_b0[], __ms_kpa_16_b1[];
++extern unsigned char __ms_kpa_17_d0[], __ms_kpa_17_d1[], __ms_kpa_17_b0[], __ms_kpa_17_b1[];
++extern unsigned char __ms_kpa_32_d0[], __ms_kpa_32_d1[], __ms_kpa_32_b0[], __ms_kpa_32_b1[];
++extern unsigned char __ms_kpa_33_d0[], __ms_kpa_33_d1[], __ms_kpa_33_b0[], __ms_kpa_33_b1[];
++extern unsigned char __ms_kpa_40_d0[], __ms_kpa_40_d1[], __ms_kpa_40_b0[], __ms_kpa_40_b1[];
++extern unsigned char __ms_kpa_41_d0[], __ms_kpa_41_d1[], __ms_kpa_41_b0[], __ms_kpa_41_b1[];
++extern unsigned char __ms_kpa_50_d0[], __ms_kpa_50_d1[], __ms_kpa_50_b0[], __ms_kpa_50_b1[];
++extern unsigned char __ms_kpa_51_d0[], __ms_kpa_51_d1[], __ms_kpa_51_b0[], __ms_kpa_51_b1[];
++extern unsigned char __ms_kpa_52_d0[], __ms_kpa_52_d1[], __ms_kpa_52_b0[], __ms_kpa_52_b1[];
++extern unsigned char __ms_kpa_53_d0[], __ms_kpa_53_d1[], __ms_kpa_53_b0[], __ms_kpa_53_b1[];
++extern unsigned char __ms_kpa_60_d0[], __ms_kpa_60_d1[], __ms_kpa_60_b0[], __ms_kpa_60_b1[];
++extern unsigned char __ms_kpa_61_d0[], __ms_kpa_61_d1[], __ms_kpa_61_b0[], __ms_kpa_61_b1[];
++extern unsigned char __ms_kpa_62_d0[], __ms_kpa_62_d1[], __ms_kpa_62_b0[], __ms_kpa_62_b1[];
++extern unsigned char __ms_kpa_63_d0[], __ms_kpa_63_d1[], __ms_kpa_63_b0[], __ms_kpa_63_b1[];
++extern unsigned char __ms_kpa_70_d0[], __ms_kpa_70_d1[], __ms_kpa_70_b0[], __ms_kpa_70_b1[];
++extern unsigned char __ms_kpa_81_d0[], __ms_kpa_81_d1[], __ms_kpa_81_b0[], __ms_kpa_81_b1[];
++extern unsigned char __ms_kpa_82_d0[], __ms_kpa_82_d1[], __ms_kpa_82_b0[], __ms_kpa_82_b1[];
++extern unsigned char __ms_kpa_83_d0[], __ms_kpa_83_d1[], __ms_kpa_83_b0[], __ms_kpa_83_b1[];
++extern unsigned char __ms_kpa_90_d0[], __ms_kpa_90_d1[], __ms_kpa_90_b0[], __ms_kpa_90_b1[];
++extern unsigned char __ms_kpa_91_d0[], __ms_kpa_91_d1[], __ms_kpa_91_b0[], __ms_kpa_91_b1[];
++extern unsigned char __ms_kpa_94_d0[], __ms_kpa_94_d1[], __ms_kpa_94_b0[], __ms_kpa_94_b1[];
++extern unsigned char __ms_kpa_95_d0[], __ms_kpa_95_d1[], __ms_kpa_95_b0[], __ms_kpa_95_b1[];
++extern unsigned char __ms_kpa_96_d0[], __ms_kpa_96_d1[], __ms_kpa_96_b0[], __ms_kpa_96_b1[];
++extern unsigned char __ms_kzn_01_d0[], __ms_kzn_01_d1[], __ms_kzn_01_b0[], __ms_kzn_01_b1[];
+ extern unsigned char __ms_kzn_02_d0[], __ms_kzn_02_d1[], __ms_kzn_02_b0[], __ms_kzn_02_b1[];
++extern unsigned char __ms_kzn_03_d0[], __ms_kzn_03_d1[], __ms_kzn_03_b0[], __ms_kzn_03_b1[];
++extern unsigned char __ms_kzn_04_d0[], __ms_kzn_04_d1[], __ms_kzn_04_b0[], __ms_kzn_04_b1[];
++extern unsigned char __ms_kzn_05_d0[], __ms_kzn_05_d1[], __ms_kzn_05_b0[], __ms_kzn_05_b1[];
++extern unsigned char __ms_kzn_06_d0[], __ms_kzn_06_d1[], __ms_kzn_06_b0[], __ms_kzn_06_b1[];
++extern unsigned char __ms_kzn_07_d0[], __ms_kzn_07_d1[], __ms_kzn_07_b0[], __ms_kzn_07_b1[];
++extern unsigned char __ms_kzn_08_d0[], __ms_kzn_08_d1[], __ms_kzn_08_b0[], __ms_kzn_08_b1[];
++extern unsigned char __ms_kzn_09_d0[], __ms_kzn_09_d1[], __ms_kzn_09_b0[], __ms_kzn_09_b1[];
++extern unsigned char __ms_kzn_10_d0[], __ms_kzn_10_d1[], __ms_kzn_10_b0[], __ms_kzn_10_b1[];
++extern unsigned char __ms_kzn_11_d0[], __ms_kzn_11_d1[], __ms_kzn_11_b0[], __ms_kzn_11_b1[];
++extern unsigned char __ms_kzn_17_d0[], __ms_kzn_17_d1[], __ms_kzn_17_b0[], __ms_kzn_17_b1[];
++extern unsigned char __ms_kzn_18_d0[], __ms_kzn_18_d1[], __ms_kzn_18_b0[], __ms_kzn_18_b1[];
+ extern unsigned char __ms_kzn_19_d0[], __ms_kzn_19_d1[], __ms_kzn_19_b0[], __ms_kzn_19_b1[];
++extern unsigned char __ms_kzn_20_d0[], __ms_kzn_20_d1[], __ms_kzn_20_b0[], __ms_kzn_20_b1[];
++extern unsigned char __ms_kzn_22_d0[], __ms_kzn_22_d1[], __ms_kzn_22_b0[], __ms_kzn_22_b1[];
++extern unsigned char __ms_kzn_23_d0[], __ms_kzn_23_d1[], __ms_kzn_23_b0[], __ms_kzn_23_b1[];
+ extern unsigned char __ms_mac_00_d0[], __ms_mac_00_d1[], __ms_mac_00_b0[], __ms_mac_00_b1[];
+ extern unsigned char __ms_mac_01_d0[], __ms_mac_01_d1[], __ms_mac_01_b0[], __ms_mac_01_b1[];
+ extern unsigned char __ms_mac_02_d0[], __ms_mac_02_d1[], __ms_mac_02_b0[], __ms_mac_02_b1[];
+@@ -179,6 +285,50 @@ extern unsigned char __ms_osr_01_d0[], __ms_osr_01_d1[], __ms_osr_01_b0[], __ms_
+ extern unsigned char __ms_osr_02_d0[], __ms_osr_02_d1[], __ms_osr_02_b0[], __ms_osr_02_b1[];
+ extern unsigned char __ms_osr_03_d0[], __ms_osr_03_d1[], __ms_osr_03_b0[], __ms_osr_03_b1[];
+ extern unsigned char __ms_osr_04_d0[], __ms_osr_04_d1[], __ms_osr_04_b0[], __ms_osr_04_b1[];
++extern unsigned char __ms_pra_01_d0[], __ms_pra_01_d1[], __ms_pra_01_b0[], __ms_pra_01_b1[];
++extern unsigned char __ms_pra_02_d0[], __ms_pra_02_d1[], __ms_pra_02_b0[], __ms_pra_02_b1[];
++extern unsigned char __ms_pra_03_d0[], __ms_pra_03_d1[], __ms_pra_03_b0[], __ms_pra_03_b1[];
++extern unsigned char __ms_pra_04_d0[], __ms_pra_04_d1[], __ms_pra_04_b0[], __ms_pra_04_b1[];
++extern unsigned char __ms_pra_05_d0[], __ms_pra_05_d1[], __ms_pra_05_b0[], __ms_pra_05_b1[];
++extern unsigned char __ms_pra_06_d0[], __ms_pra_06_d1[], __ms_pra_06_b0[], __ms_pra_06_b1[];
++extern unsigned char __ms_pra_09_d0[], __ms_pra_09_d1[], __ms_pra_09_b0[], __ms_pra_09_b1[];
++extern unsigned char __ms_pra_10_d0[], __ms_pra_10_d1[], __ms_pra_10_b0[], __ms_pra_10_b1[];
++extern unsigned char __ms_pra_11_d0[], __ms_pra_11_d1[], __ms_pra_11_b0[], __ms_pra_11_b1[];
++extern unsigned char __ms_pra_12_d0[], __ms_pra_12_d1[], __ms_pra_12_b0[], __ms_pra_12_b1[];
++extern unsigned char __ms_pra_13_d0[], __ms_pra_13_d1[], __ms_pra_13_b0[], __ms_pra_13_b1[];
++extern unsigned char __ms_pra_14_d0[], __ms_pra_14_d1[], __ms_pra_14_b0[], __ms_pra_14_b1[];
++extern unsigned char __ms_pra_15_d0[], __ms_pra_15_d1[], __ms_pra_15_b0[], __ms_pra_15_b1[];
++extern unsigned char __ms_pra_16_d0[], __ms_pra_16_d1[], __ms_pra_16_b0[], __ms_pra_16_b1[];
++extern unsigned char __ms_pra_18_d0[], __ms_pra_18_d1[], __ms_pra_18_b0[], __ms_pra_18_b1[];
++extern unsigned char __ms_pra_19_d0[], __ms_pra_19_d1[], __ms_pra_19_b0[], __ms_pra_19_b1[];
++extern unsigned char __ms_pra_20_d0[], __ms_pra_20_d1[], __ms_pra_20_b0[], __ms_pra_20_b1[];
++extern unsigned char __ms_pra_21_d0[], __ms_pra_21_d1[], __ms_pra_21_b0[], __ms_pra_21_b1[];
++extern unsigned char __ms_pra_22_d0[], __ms_pra_22_d1[], __ms_pra_22_b0[], __ms_pra_22_b1[];
++extern unsigned char __ms_pra_27_d0[], __ms_pra_27_d1[], __ms_pra_27_b0[], __ms_pra_27_b1[];
++extern unsigned char __ms_pra_28_d0[], __ms_pra_28_d1[], __ms_pra_28_b0[], __ms_pra_28_b1[];
++extern unsigned char __ms_pra_29_d0[], __ms_pra_29_d1[], __ms_pra_29_b0[], __ms_pra_29_b1[];
++extern unsigned char __ms_pra_31_d0[], __ms_pra_31_d1[], __ms_pra_31_b0[], __ms_pra_31_b1[];
++extern unsigned char __ms_pra_32_d0[], __ms_pra_32_d1[], __ms_pra_32_b0[], __ms_pra_32_b1[];
++extern unsigned char __ms_pra_33_d0[], __ms_pra_33_d1[], __ms_pra_33_b0[], __ms_pra_33_b1[];
++extern unsigned char __ms_pra_34_d0[], __ms_pra_34_d1[], __ms_pra_34_b0[], __ms_pra_34_b1[];
++extern unsigned char __ms_pra_35_d0[], __ms_pra_35_d1[], __ms_pra_35_b0[], __ms_pra_35_b1[];
++extern unsigned char __ms_pra_36_d0[], __ms_pra_36_d1[], __ms_pra_36_b0[], __ms_pra_36_b1[];
++extern unsigned char __ms_pra_37_d0[], __ms_pra_37_d1[], __ms_pra_37_b0[], __ms_pra_37_b1[];
++extern unsigned char __ms_pra_38_d0[], __ms_pra_38_d1[], __ms_pra_38_b0[], __ms_pra_38_b1[];
++extern unsigned char __ms_pra_39_d0[], __ms_pra_39_d1[], __ms_pra_39_b0[], __ms_pra_39_b1[];
++extern unsigned char __ms_pra_40_d0[], __ms_pra_40_d1[], __ms_pra_40_b0[], __ms_pra_40_b1[];
++extern unsigned char __ms_sam_01_d0[], __ms_sam_01_d1[], __ms_sam_01_b0[], __ms_sam_01_b1[];
++extern unsigned char __ms_sam_02_d0[], __ms_sam_02_d1[], __ms_sam_02_b0[], __ms_sam_02_b1[];
++extern unsigned char __ms_sam_03_d0[], __ms_sam_03_d1[], __ms_sam_03_b0[], __ms_sam_03_b1[];
++extern unsigned char __ms_sam_04_d0[], __ms_sam_04_d1[], __ms_sam_04_b0[], __ms_sam_04_b1[];
++extern unsigned char __ms_sam_05_d0[], __ms_sam_05_d1[], __ms_sam_05_b0[], __ms_sam_05_b1[];
++extern unsigned char __ms_sam_06_d0[], __ms_sam_06_d1[], __ms_sam_06_b0[], __ms_sam_06_b1[];
++extern unsigned char __ms_sam_07_d0[], __ms_sam_07_d1[], __ms_sam_07_b0[], __ms_sam_07_b1[];
++extern unsigned char __ms_sam_08_d0[], __ms_sam_08_d1[], __ms_sam_08_b0[], __ms_sam_08_b1[];
++extern unsigned char __ms_sam_09_d0[], __ms_sam_09_d1[], __ms_sam_09_b0[], __ms_sam_09_b1[];
++extern unsigned char __ms_sam_10_d0[], __ms_sam_10_d1[], __ms_sam_10_b0[], __ms_sam_10_b1[];
++extern unsigned char __ms_sam_11_d0[], __ms_sam_11_d1[], __ms_sam_11_b0[], __ms_sam_11_b1[];
++extern unsigned char __ms_sam_12_d0[], __ms_sam_12_d1[], __ms_sam_12_b0[], __ms_sam_12_b1[];
+ extern unsigned char __ms_sbk_00_d0[], __ms_sbk_00_d1[], __ms_sbk_00_b0[], __ms_sbk_00_b1[];
+ extern unsigned char __ms_sbk_01_d0[], __ms_sbk_01_d1[], __ms_sbk_01_b0[], __ms_sbk_01_b1[];
+ extern unsigned char __ms_sbk_02_d0[], __ms_sbk_02_d1[], __ms_sbk_02_b0[], __ms_sbk_02_b1[];
+@@ -308,6 +458,26 @@ PmMapRst pm_map_rst[] = {
+     { "dro_02", __ms_dro_02_d0, __ms_dro_02_d1, __ms_dro_02_b0, __ms_dro_02_b1, 0 },
+     { "end_00", __ms_end_00_d0, __ms_end_00_d1, __ms_end_00_b0, __ms_end_00_b1, 0 },
+     { "end_01", __ms_end_01_d0, __ms_end_01_d1, __ms_end_01_b0, __ms_end_01_b1, 0 },
++    { "flo_00", __ms_flo_00_d0, __ms_flo_00_d1, __ms_flo_00_b0, __ms_flo_00_b1, 0 },
++    { "flo_03", __ms_flo_03_d0, __ms_flo_03_d1, __ms_flo_03_b0, __ms_flo_03_b1, 0 },
++    { "flo_07", __ms_flo_07_d0, __ms_flo_07_d1, __ms_flo_07_b0, __ms_flo_07_b1, 0 },
++    { "flo_08", __ms_flo_08_d0, __ms_flo_08_d1, __ms_flo_08_b0, __ms_flo_08_b1, 0 },
++    { "flo_09", __ms_flo_09_d0, __ms_flo_09_d1, __ms_flo_09_b0, __ms_flo_09_b1, 0 },
++    { "flo_10", __ms_flo_10_d0, __ms_flo_10_d1, __ms_flo_10_b0, __ms_flo_10_b1, 0 },
++    { "flo_11", __ms_flo_11_d0, __ms_flo_11_d1, __ms_flo_11_b0, __ms_flo_11_b1, 0 },
++    { "flo_12", __ms_flo_12_d0, __ms_flo_12_d1, __ms_flo_12_b0, __ms_flo_12_b1, 0 },
++    { "flo_13", __ms_flo_13_d0, __ms_flo_13_d1, __ms_flo_13_b0, __ms_flo_13_b1, 0 },
++    { "flo_14", __ms_flo_14_d0, __ms_flo_14_d1, __ms_flo_14_b0, __ms_flo_14_b1, 0 },
++    { "flo_15", __ms_flo_15_d0, __ms_flo_15_d1, __ms_flo_15_b0, __ms_flo_15_b1, 0 },
++    { "flo_16", __ms_flo_16_d0, __ms_flo_16_d1, __ms_flo_16_b0, __ms_flo_16_b1, 0 },
++    { "flo_17", __ms_flo_17_d0, __ms_flo_17_d1, __ms_flo_17_b0, __ms_flo_17_b1, 0 },
++    { "flo_18", __ms_flo_18_d0, __ms_flo_18_d1, __ms_flo_18_b0, __ms_flo_18_b1, 0 },
++    { "flo_19", __ms_flo_19_d0, __ms_flo_19_d1, __ms_flo_19_b0, __ms_flo_19_b1, 0 },
++    { "flo_21", __ms_flo_21_d0, __ms_flo_21_d1, __ms_flo_21_b0, __ms_flo_21_b1, 0 },
++    { "flo_22", __ms_flo_22_d0, __ms_flo_22_d1, __ms_flo_22_b0, __ms_flo_22_b1, 0 },
++    { "flo_23", __ms_flo_23_d0, __ms_flo_23_d1, __ms_flo_23_b0, __ms_flo_23_b1, 0 },
++    { "flo_24", __ms_flo_24_d0, __ms_flo_24_d1, __ms_flo_24_b0, __ms_flo_24_b1, 0 },
++    { "flo_25", __ms_flo_25_d0, __ms_flo_25_d1, __ms_flo_25_b0, __ms_flo_25_b1, 0 },
+     { "gv_01", __ms_gv_01_d0, __ms_gv_01_d1, __ms_gv_01_b0, __ms_gv_01_b1, 0 },
+     { "hos_00", __ms_hos_00_d0, __ms_hos_00_d1, __ms_hos_00_b0, __ms_hos_00_b1, 0 },
+     { "hos_01", __ms_hos_01_d0, __ms_hos_01_d1, __ms_hos_01_b0, __ms_hos_01_b1, 0 },
+@@ -342,7 +512,28 @@ PmMapRst pm_map_rst[] = {
+     { "iwa_04", __ms_iwa_04_d0, __ms_iwa_04_d1, __ms_iwa_04_b0, __ms_iwa_04_b1, 0 },
+     { "iwa_10", __ms_iwa_10_d0, __ms_iwa_10_d1, __ms_iwa_10_b0, __ms_iwa_10_b1, 0 },
+     { "iwa_11", __ms_iwa_11_d0, __ms_iwa_11_d1, __ms_iwa_11_b0, __ms_iwa_11_b1, 0 },
++    { "jan_00", __ms_jan_00_d0, __ms_jan_00_d1, __ms_jan_00_b0, __ms_jan_00_b1, 0 },
++    { "jan_01", __ms_jan_01_d0, __ms_jan_01_d1, __ms_jan_01_b0, __ms_jan_01_b1, 0 },
++    { "jan_02", __ms_jan_02_d0, __ms_jan_02_d1, __ms_jan_02_b0, __ms_jan_02_b1, 0 },
++    { "jan_03", __ms_jan_03_d0, __ms_jan_03_d1, __ms_jan_03_b0, __ms_jan_03_b1, 0 },
+     { "jan_04", __ms_jan_04_d0, __ms_jan_04_d1, __ms_jan_04_b0, __ms_jan_04_b1, 0 },
++    { "jan_05", __ms_jan_05_d0, __ms_jan_05_d1, __ms_jan_05_b0, __ms_jan_05_b1, 0 },
++    { "jan_06", __ms_jan_06_d0, __ms_jan_06_d1, __ms_jan_06_b0, __ms_jan_06_b1, 0 },
++    { "jan_07", __ms_jan_07_d0, __ms_jan_07_d1, __ms_jan_07_b0, __ms_jan_07_b1, 0 },
++    { "jan_08", __ms_jan_08_d0, __ms_jan_08_d1, __ms_jan_08_b0, __ms_jan_08_b1, 0 },
++    { "jan_09", __ms_jan_09_d0, __ms_jan_09_d1, __ms_jan_09_b0, __ms_jan_09_b1, 0 },
++    { "jan_10", __ms_jan_10_d0, __ms_jan_10_d1, __ms_jan_10_b0, __ms_jan_10_b1, 0 },
++    { "jan_11", __ms_jan_11_d0, __ms_jan_11_d1, __ms_jan_11_b0, __ms_jan_11_b1, 0 },
++    { "jan_12", __ms_jan_12_d0, __ms_jan_12_d1, __ms_jan_12_b0, __ms_jan_12_b1, 0 },
++    { "jan_13", __ms_jan_13_d0, __ms_jan_13_d1, __ms_jan_13_b0, __ms_jan_13_b1, 0 },
++    { "jan_14", __ms_jan_14_d0, __ms_jan_14_d1, __ms_jan_14_b0, __ms_jan_14_b1, 0 },
++    { "jan_15", __ms_jan_15_d0, __ms_jan_15_d1, __ms_jan_15_b0, __ms_jan_15_b1, 0 },
++    { "jan_16", __ms_jan_16_d0, __ms_jan_16_d1, __ms_jan_16_b0, __ms_jan_16_b1, 0 },
++    { "jan_17", __ms_jan_17_d0, __ms_jan_17_d1, __ms_jan_17_b0, __ms_jan_17_b1, 0 },
++    { "jan_18", __ms_jan_18_d0, __ms_jan_18_d1, __ms_jan_18_b0, __ms_jan_18_b1, 0 },
++    { "jan_19", __ms_jan_19_d0, __ms_jan_19_d1, __ms_jan_19_b0, __ms_jan_19_b1, 0 },
++    { "jan_22", __ms_jan_22_d0, __ms_jan_22_d1, __ms_jan_22_b0, __ms_jan_22_b1, 0 },
++    { "jan_23", __ms_jan_23_d0, __ms_jan_23_d1, __ms_jan_23_b0, __ms_jan_23_b1, 0 },
+     { "kgr_01", __ms_kgr_01_d0, __ms_kgr_01_d1, __ms_kgr_01_b0, __ms_kgr_01_b1, 0 },
+     { "kgr_02", __ms_kgr_02_d0, __ms_kgr_02_d1, __ms_kgr_02_b0, __ms_kgr_02_b1, 0 },
+     { "kkj_00", __ms_kkj_00_d0, __ms_kkj_00_d1, __ms_kkj_00_b0, __ms_kkj_00_b1, 0 },
+@@ -386,8 +577,73 @@ PmMapRst pm_map_rst[] = {
+     { "kmr_23", __ms_kmr_23_d0, __ms_kmr_23_d1, __ms_kmr_23_b0, __ms_kmr_23_b1, 0 },
+     { "kmr_24", __ms_kmr_24_d0, __ms_kmr_24_d1, __ms_kmr_24_b0, __ms_kmr_24_b1, 0 },
+     { "kmr_30", __ms_kmr_30_d0, __ms_kmr_30_d1, __ms_kmr_30_b0, __ms_kmr_30_b1, 0 },
++    { "kpa_01", __ms_kpa_01_d0, __ms_kpa_01_d1, __ms_kpa_01_b0, __ms_kpa_01_b1, 0 },
++    { "kpa_03", __ms_kpa_03_d0, __ms_kpa_03_d1, __ms_kpa_03_b0, __ms_kpa_03_b1, 0 },
++    { "kpa_04", __ms_kpa_04_d0, __ms_kpa_04_d1, __ms_kpa_04_b0, __ms_kpa_04_b1, 0 },
++    { "kpa_08", __ms_kpa_08_d0, __ms_kpa_08_d1, __ms_kpa_08_b0, __ms_kpa_08_b1, 0 },
++    { "kpa_09", __ms_kpa_09_d0, __ms_kpa_09_d1, __ms_kpa_09_b0, __ms_kpa_09_b1, 0 },
++    { "kpa_10", __ms_kpa_10_d0, __ms_kpa_10_d1, __ms_kpa_10_b0, __ms_kpa_10_b1, 0 },
++    { "kpa_100", __ms_kpa_100_d0, __ms_kpa_100_d1, __ms_kpa_100_b0, __ms_kpa_100_b1, 0 },
++    { "kpa_101", __ms_kpa_101_d0, __ms_kpa_101_d1, __ms_kpa_101_b0, __ms_kpa_101_b1, 0 },
++    { "kpa_102", __ms_kpa_102_d0, __ms_kpa_102_d1, __ms_kpa_102_b0, __ms_kpa_102_b1, 0 },
++    { "kpa_11", __ms_kpa_11_d0, __ms_kpa_11_d1, __ms_kpa_11_b0, __ms_kpa_11_b1, 0 },
++    { "kpa_111", __ms_kpa_111_d0, __ms_kpa_111_d1, __ms_kpa_111_b0, __ms_kpa_111_b1, 0 },
++    { "kpa_112", __ms_kpa_112_d0, __ms_kpa_112_d1, __ms_kpa_112_b0, __ms_kpa_112_b1, 0 },
++    { "kpa_113", __ms_kpa_113_d0, __ms_kpa_113_d1, __ms_kpa_113_b0, __ms_kpa_113_b1, 0 },
++    { "kpa_114", __ms_kpa_114_d0, __ms_kpa_114_d1, __ms_kpa_114_b0, __ms_kpa_114_b1, 0 },
++    { "kpa_115", __ms_kpa_115_d0, __ms_kpa_115_d1, __ms_kpa_115_b0, __ms_kpa_115_b1, 0 },
++    { "kpa_116", __ms_kpa_116_d0, __ms_kpa_116_d1, __ms_kpa_116_b0, __ms_kpa_116_b1, 0 },
++    { "kpa_117", __ms_kpa_117_d0, __ms_kpa_117_d1, __ms_kpa_117_b0, __ms_kpa_117_b1, 0 },
++    { "kpa_118", __ms_kpa_118_d0, __ms_kpa_118_d1, __ms_kpa_118_b0, __ms_kpa_118_b1, 0 },
++    { "kpa_119", __ms_kpa_119_d0, __ms_kpa_119_d1, __ms_kpa_119_b0, __ms_kpa_119_b1, 0 },
++    { "kpa_12", __ms_kpa_12_d0, __ms_kpa_12_d1, __ms_kpa_12_b0, __ms_kpa_12_b1, 0 },
++    { "kpa_121", __ms_kpa_121_d0, __ms_kpa_121_d1, __ms_kpa_121_b0, __ms_kpa_121_b1, 0 },
++    { "kpa_13", __ms_kpa_13_d0, __ms_kpa_13_d1, __ms_kpa_13_b0, __ms_kpa_13_b1, 0 },
++    { "kpa_130", __ms_kpa_130_d0, __ms_kpa_130_d1, __ms_kpa_130_b0, __ms_kpa_130_b1, 0 },
++    { "kpa_133", __ms_kpa_133_d0, __ms_kpa_133_d1, __ms_kpa_133_b0, __ms_kpa_133_b1, 0 },
++    { "kpa_134", __ms_kpa_134_d0, __ms_kpa_134_d1, __ms_kpa_134_b0, __ms_kpa_134_b1, 0 },
++    { "kpa_14", __ms_kpa_14_d0, __ms_kpa_14_d1, __ms_kpa_14_b0, __ms_kpa_14_b1, 0 },
++    { "kpa_15", __ms_kpa_15_d0, __ms_kpa_15_d1, __ms_kpa_15_b0, __ms_kpa_15_b1, 0 },
++    { "kpa_16", __ms_kpa_16_d0, __ms_kpa_16_d1, __ms_kpa_16_b0, __ms_kpa_16_b1, 0 },
++    { "kpa_17", __ms_kpa_17_d0, __ms_kpa_17_d1, __ms_kpa_17_b0, __ms_kpa_17_b1, 0 },
++    { "kpa_32", __ms_kpa_32_d0, __ms_kpa_32_d1, __ms_kpa_32_b0, __ms_kpa_32_b1, 0 },
++    { "kpa_33", __ms_kpa_33_d0, __ms_kpa_33_d1, __ms_kpa_33_b0, __ms_kpa_33_b1, 0 },
++    { "kpa_40", __ms_kpa_40_d0, __ms_kpa_40_d1, __ms_kpa_40_b0, __ms_kpa_40_b1, 0 },
++    { "kpa_41", __ms_kpa_41_d0, __ms_kpa_41_d1, __ms_kpa_41_b0, __ms_kpa_41_b1, 0 },
++    { "kpa_50", __ms_kpa_50_d0, __ms_kpa_50_d1, __ms_kpa_50_b0, __ms_kpa_50_b1, 0 },
++    { "kpa_51", __ms_kpa_51_d0, __ms_kpa_51_d1, __ms_kpa_51_b0, __ms_kpa_51_b1, 0 },
++    { "kpa_52", __ms_kpa_52_d0, __ms_kpa_52_d1, __ms_kpa_52_b0, __ms_kpa_52_b1, 0 },
++    { "kpa_53", __ms_kpa_53_d0, __ms_kpa_53_d1, __ms_kpa_53_b0, __ms_kpa_53_b1, 0 },
++    { "kpa_60", __ms_kpa_60_d0, __ms_kpa_60_d1, __ms_kpa_60_b0, __ms_kpa_60_b1, 0 },
++    { "kpa_61", __ms_kpa_61_d0, __ms_kpa_61_d1, __ms_kpa_61_b0, __ms_kpa_61_b1, 0 },
++    { "kpa_62", __ms_kpa_62_d0, __ms_kpa_62_d1, __ms_kpa_62_b0, __ms_kpa_62_b1, 0 },
++    { "kpa_63", __ms_kpa_63_d0, __ms_kpa_63_d1, __ms_kpa_63_b0, __ms_kpa_63_b1, 0 },
++    { "kpa_70", __ms_kpa_70_d0, __ms_kpa_70_d1, __ms_kpa_70_b0, __ms_kpa_70_b1, 0 },
++    { "kpa_81", __ms_kpa_81_d0, __ms_kpa_81_d1, __ms_kpa_81_b0, __ms_kpa_81_b1, 0 },
++    { "kpa_82", __ms_kpa_82_d0, __ms_kpa_82_d1, __ms_kpa_82_b0, __ms_kpa_82_b1, 0 },
++    { "kpa_83", __ms_kpa_83_d0, __ms_kpa_83_d1, __ms_kpa_83_b0, __ms_kpa_83_b1, 0 },
++    { "kpa_90", __ms_kpa_90_d0, __ms_kpa_90_d1, __ms_kpa_90_b0, __ms_kpa_90_b1, 0 },
++    { "kpa_91", __ms_kpa_91_d0, __ms_kpa_91_d1, __ms_kpa_91_b0, __ms_kpa_91_b1, 0 },
++    { "kpa_94", __ms_kpa_94_d0, __ms_kpa_94_d1, __ms_kpa_94_b0, __ms_kpa_94_b1, 0 },
++    { "kpa_95", __ms_kpa_95_d0, __ms_kpa_95_d1, __ms_kpa_95_b0, __ms_kpa_95_b1, 0 },
++    { "kpa_96", __ms_kpa_96_d0, __ms_kpa_96_d1, __ms_kpa_96_b0, __ms_kpa_96_b1, 0 },
++    { "kzn_01", __ms_kzn_01_d0, __ms_kzn_01_d1, __ms_kzn_01_b0, __ms_kzn_01_b1, 0 },
+     { "kzn_02", __ms_kzn_02_d0, __ms_kzn_02_d1, __ms_kzn_02_b0, __ms_kzn_02_b1, 0 },
++    { "kzn_03", __ms_kzn_03_d0, __ms_kzn_03_d1, __ms_kzn_03_b0, __ms_kzn_03_b1, 0 },
++    { "kzn_04", __ms_kzn_04_d0, __ms_kzn_04_d1, __ms_kzn_04_b0, __ms_kzn_04_b1, 0 },
++    { "kzn_05", __ms_kzn_05_d0, __ms_kzn_05_d1, __ms_kzn_05_b0, __ms_kzn_05_b1, 0 },
++    { "kzn_06", __ms_kzn_06_d0, __ms_kzn_06_d1, __ms_kzn_06_b0, __ms_kzn_06_b1, 0 },
++    { "kzn_07", __ms_kzn_07_d0, __ms_kzn_07_d1, __ms_kzn_07_b0, __ms_kzn_07_b1, 0 },
++    { "kzn_08", __ms_kzn_08_d0, __ms_kzn_08_d1, __ms_kzn_08_b0, __ms_kzn_08_b1, 0 },
++    { "kzn_09", __ms_kzn_09_d0, __ms_kzn_09_d1, __ms_kzn_09_b0, __ms_kzn_09_b1, 0 },
++    { "kzn_10", __ms_kzn_10_d0, __ms_kzn_10_d1, __ms_kzn_10_b0, __ms_kzn_10_b1, 0 },
++    { "kzn_11", __ms_kzn_11_d0, __ms_kzn_11_d1, __ms_kzn_11_b0, __ms_kzn_11_b1, 0 },
++    { "kzn_17", __ms_kzn_17_d0, __ms_kzn_17_d1, __ms_kzn_17_b0, __ms_kzn_17_b1, 0 },
++    { "kzn_18", __ms_kzn_18_d0, __ms_kzn_18_d1, __ms_kzn_18_b0, __ms_kzn_18_b1, 0 },
+     { "kzn_19", __ms_kzn_19_d0, __ms_kzn_19_d1, __ms_kzn_19_b0, __ms_kzn_19_b1, 0 },
++    { "kzn_20", __ms_kzn_20_d0, __ms_kzn_20_d1, __ms_kzn_20_b0, __ms_kzn_20_b1, 0 },
++    { "kzn_22", __ms_kzn_22_d0, __ms_kzn_22_d1, __ms_kzn_22_b0, __ms_kzn_22_b1, 0 },
++    { "kzn_23", __ms_kzn_23_d0, __ms_kzn_23_d1, __ms_kzn_23_b0, __ms_kzn_23_b1, 0 },
+     { "mac_00", __ms_mac_00_d0, __ms_mac_00_d1, __ms_mac_00_b0, __ms_mac_00_b1, 0 },
+     { "mac_01", __ms_mac_01_d0, __ms_mac_01_d1, __ms_mac_01_b0, __ms_mac_01_b1, 0 },
+     { "mac_02", __ms_mac_02_d0, __ms_mac_02_d1, __ms_mac_02_b0, __ms_mac_02_b1, 0 },
+@@ -451,6 +707,50 @@ PmMapRst pm_map_rst[] = {
+     { "osr_02", __ms_osr_02_d0, __ms_osr_02_d1, __ms_osr_02_b0, __ms_osr_02_b1, 0 },
+     { "osr_03", __ms_osr_03_d0, __ms_osr_03_d1, __ms_osr_03_b0, __ms_osr_03_b1, 0 },
+     { "osr_04", __ms_osr_04_d0, __ms_osr_04_d1, __ms_osr_04_b0, __ms_osr_04_b1, 0 },
++    { "pra_01", __ms_pra_01_d0, __ms_pra_01_d1, __ms_pra_01_b0, __ms_pra_01_b1, 0 },
++    { "pra_02", __ms_pra_02_d0, __ms_pra_02_d1, __ms_pra_02_b0, __ms_pra_02_b1, 0 },
++    { "pra_03", __ms_pra_03_d0, __ms_pra_03_d1, __ms_pra_03_b0, __ms_pra_03_b1, 0 },
++    { "pra_04", __ms_pra_04_d0, __ms_pra_04_d1, __ms_pra_04_b0, __ms_pra_04_b1, 0 },
++    { "pra_05", __ms_pra_05_d0, __ms_pra_05_d1, __ms_pra_05_b0, __ms_pra_05_b1, 0 },
++    { "pra_06", __ms_pra_06_d0, __ms_pra_06_d1, __ms_pra_06_b0, __ms_pra_06_b1, 0 },
++    { "pra_09", __ms_pra_09_d0, __ms_pra_09_d1, __ms_pra_09_b0, __ms_pra_09_b1, 0 },
++    { "pra_10", __ms_pra_10_d0, __ms_pra_10_d1, __ms_pra_10_b0, __ms_pra_10_b1, 0 },
++    { "pra_11", __ms_pra_11_d0, __ms_pra_11_d1, __ms_pra_11_b0, __ms_pra_11_b1, 0 },
++    { "pra_12", __ms_pra_12_d0, __ms_pra_12_d1, __ms_pra_12_b0, __ms_pra_12_b1, 0 },
++    { "pra_13", __ms_pra_13_d0, __ms_pra_13_d1, __ms_pra_13_b0, __ms_pra_13_b1, 0 },
++    { "pra_14", __ms_pra_14_d0, __ms_pra_14_d1, __ms_pra_14_b0, __ms_pra_14_b1, 0 },
++    { "pra_15", __ms_pra_15_d0, __ms_pra_15_d1, __ms_pra_15_b0, __ms_pra_15_b1, 0 },
++    { "pra_16", __ms_pra_16_d0, __ms_pra_16_d1, __ms_pra_16_b0, __ms_pra_16_b1, 0 },
++    { "pra_18", __ms_pra_18_d0, __ms_pra_18_d1, __ms_pra_18_b0, __ms_pra_18_b1, 0 },
++    { "pra_19", __ms_pra_19_d0, __ms_pra_19_d1, __ms_pra_19_b0, __ms_pra_19_b1, 0 },
++    { "pra_20", __ms_pra_20_d0, __ms_pra_20_d1, __ms_pra_20_b0, __ms_pra_20_b1, 0 },
++    { "pra_21", __ms_pra_21_d0, __ms_pra_21_d1, __ms_pra_21_b0, __ms_pra_21_b1, 0 },
++    { "pra_22", __ms_pra_22_d0, __ms_pra_22_d1, __ms_pra_22_b0, __ms_pra_22_b1, 0 },
++    { "pra_27", __ms_pra_27_d0, __ms_pra_27_d1, __ms_pra_27_b0, __ms_pra_27_b1, 0 },
++    { "pra_28", __ms_pra_28_d0, __ms_pra_28_d1, __ms_pra_28_b0, __ms_pra_28_b1, 0 },
++    { "pra_29", __ms_pra_29_d0, __ms_pra_29_d1, __ms_pra_29_b0, __ms_pra_29_b1, 0 },
++    { "pra_31", __ms_pra_31_d0, __ms_pra_31_d1, __ms_pra_31_b0, __ms_pra_31_b1, 0 },
++    { "pra_32", __ms_pra_32_d0, __ms_pra_32_d1, __ms_pra_32_b0, __ms_pra_32_b1, 0 },
++    { "pra_33", __ms_pra_33_d0, __ms_pra_33_d1, __ms_pra_33_b0, __ms_pra_33_b1, 0 },
++    { "pra_34", __ms_pra_34_d0, __ms_pra_34_d1, __ms_pra_34_b0, __ms_pra_34_b1, 0 },
++    { "pra_35", __ms_pra_35_d0, __ms_pra_35_d1, __ms_pra_35_b0, __ms_pra_35_b1, 0 },
++    { "pra_36", __ms_pra_36_d0, __ms_pra_36_d1, __ms_pra_36_b0, __ms_pra_36_b1, 0 },
++    { "pra_37", __ms_pra_37_d0, __ms_pra_37_d1, __ms_pra_37_b0, __ms_pra_37_b1, 0 },
++    { "pra_38", __ms_pra_38_d0, __ms_pra_38_d1, __ms_pra_38_b0, __ms_pra_38_b1, 0 },
++    { "pra_39", __ms_pra_39_d0, __ms_pra_39_d1, __ms_pra_39_b0, __ms_pra_39_b1, 0 },
++    { "pra_40", __ms_pra_40_d0, __ms_pra_40_d1, __ms_pra_40_b0, __ms_pra_40_b1, 0 },
++    { "sam_01", __ms_sam_01_d0, __ms_sam_01_d1, __ms_sam_01_b0, __ms_sam_01_b1, 0 },
++    { "sam_02", __ms_sam_02_d0, __ms_sam_02_d1, __ms_sam_02_b0, __ms_sam_02_b1, 0 },
++    { "sam_03", __ms_sam_03_d0, __ms_sam_03_d1, __ms_sam_03_b0, __ms_sam_03_b1, 0 },
++    { "sam_04", __ms_sam_04_d0, __ms_sam_04_d1, __ms_sam_04_b0, __ms_sam_04_b1, 0 },
++    { "sam_05", __ms_sam_05_d0, __ms_sam_05_d1, __ms_sam_05_b0, __ms_sam_05_b1, 0 },
++    { "sam_06", __ms_sam_06_d0, __ms_sam_06_d1, __ms_sam_06_b0, __ms_sam_06_b1, 0 },
++    { "sam_07", __ms_sam_07_d0, __ms_sam_07_d1, __ms_sam_07_b0, __ms_sam_07_b1, 0 },
++    { "sam_08", __ms_sam_08_d0, __ms_sam_08_d1, __ms_sam_08_b0, __ms_sam_08_b1, 0 },
++    { "sam_09", __ms_sam_09_d0, __ms_sam_09_d1, __ms_sam_09_b0, __ms_sam_09_b1, 0 },
++    { "sam_10", __ms_sam_10_d0, __ms_sam_10_d1, __ms_sam_10_b0, __ms_sam_10_b1, 0 },
++    { "sam_11", __ms_sam_11_d0, __ms_sam_11_d1, __ms_sam_11_b0, __ms_sam_11_b1, 0 },
++    { "sam_12", __ms_sam_12_d0, __ms_sam_12_d1, __ms_sam_12_b0, __ms_sam_12_b1, 0 },
+     { "sbk_00", __ms_sbk_00_d0, __ms_sbk_00_d1, __ms_sbk_00_b0, __ms_sbk_00_b1, 0 },
+     { "sbk_01", __ms_sbk_01_d0, __ms_sbk_01_d1, __ms_sbk_01_b0, __ms_sbk_01_b1, 0 },
+     { "sbk_02", __ms_sbk_02_d0, __ms_sbk_02_d1, __ms_sbk_02_b0, __ms_sbk_02_b1, 0 },
+@@ -544,4 +844,4 @@ PmMapRst pm_map_rst[] = {
+     { "tst_13", __ms_tst_13_d0, __ms_tst_13_d1, __ms_tst_13_b0, __ms_tst_13_b1, 0 },
+     { "tst_20", __ms_tst_20_d0, __ms_tst_20_d1, __ms_tst_20_b0, __ms_tst_20_b1, 0 },
+ };
+-const int pm_map_rst_n = 271;
++const int pm_map_rst_n = 421;

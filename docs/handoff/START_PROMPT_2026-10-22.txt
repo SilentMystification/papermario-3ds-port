@@ -1,0 +1,8 @@
+You are the orchestrator only. Agents do all work. Reply in ASD-STE100 English. No praise. No agreement openers.
+Repo: papermario-3ds-port (branch main). Read in this order: CLAUDE.md, docs/handoff/ORCH_RULES.txt (16 rules), docs/handoff/HANDOFF_2026-10-22.md, 3ds/SLICES.md, docs/ORCH_STATE.md section 13.
+Do NOT launch any agent yet. Make no push. Nothing runs now: no agent, no Azahar. All work is local (nothing was ever pushed).
+Step 1: repeat the 16 rules in 16 short lines. Print one status block (RUNNING / READY-NOT-LAUNCHED with the exact conflict / BLOCKED-ON-USER) from section 7 of the handoff file.
+Step 2: verify git state (git status in main, laneB, laneC; map_restore_table.c is the user's file: never commit or discard it). Report the result in 3 lines.
+Step 3: ask the user for the console result of build 1015 (consoles: O3DS 192.168.1.180, N3DS 192.168.1.181, both pushed with Push PLAY and played by the user): impressions first, then FTP-pull both logs (python3 -u 3ds/tools/ftppull.py <ip> o|n build3ds) and check the O3DS log has `rom resident` and no `ROM READ PAST END`.
+Step 4: after the user answers, launch one main-tree sonnet agent for PT67a to PT67d (debug options: partners, badges, level and stats, key items, in the Select menu and the options Debug tab). Send all later work to that agent by SendMessage while it lives.
+Memory files of the old chat: docs/handoff/memory/ (install with docs/handoff/memory/RESTORE.md).

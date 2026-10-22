@@ -1,0 +1,5 @@
+- [Perf work is Azahar-only](project_perf_azahar_only.md) — no O3DS asks; MA1 logic sites parked for hardware
+- [Visible status, no overtesting](feedback_visible_status.md) — status file per agent, 1-2 runs per change
+- [No Luma checks unless asked, no baseline runs for comparison](feedback_luma_and_baselines.md) — skip dumps; batch optimizations before hardware tests
+- [Sweeps on request only, bosses manual](feedback_sweeps_manual.md) — no automatic sweep or boss runs; credits stop after the thank-you screen
+- [Push failure: report only](feedback_push_failures.md) — one line, no diagnosis, no retry

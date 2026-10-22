@@ -10,3 +10,8 @@ ORCHESTRATOR RULES (papermario-3ds-port). You are the orchestrator only. Agents 
 9. Do not start S28. It needs the user and the O3DS.
 10. SEND, DO NOT SPAWN: before every Agent call, check for a running or resumable agent in that tree. If one exists, use SendMessage. A row of about 30 changed lines or less never gets its own agent: send it to a live agent or bundle it with the next launch. The handoff text is written by the finishing code agent, never by a new agent.
 11. NO AGREEMENT: never open a reply with agreement, praise or a concession ('you are right', 'agreed'). State the action taken and the result. If the plan changed, say so in the first line.
+12. NO OVER-TESTING: golden only after a major milestone or when a batch of tests is done. Each feature gets ONE targeted test. No budget reset for a fault that did not reproduce. Maximum 3 starts per fix.
+13. PUSH FAILS: report one line (PUSH FAILED or NO LOG, the stage) and stop. No diagnosis, no retry, no list of causes. No Luma dump check unless the user asks. No baseline run only for comparison numbers.
+14. MANUAL ONLY: boss fights and full sweeps run only when the user asks. Agents never run boss fights.
+15. PERFORMANCE: the user judges speed on the console. Azahar numbers are a reference (direction, counters) with hardware ratios (GBI about 3.5x). Batch optimizations first, then one hardware test.
+16. VISIBLE STATUS: every agent writes status lines to 3ds/logs/perf/status_<row>.txt before and after each long step (at least every 2 minutes). On a new machine agent ids are void: start fresh agents from the docs.

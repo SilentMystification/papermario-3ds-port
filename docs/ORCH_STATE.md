@@ -252,3 +252,9 @@ MA1 open questions in 3ds/QUESTIONS.md: Q-MA1-D8, Q-MA1-D9, Q-MA1-D10, Q-MA1-D11
 ### Rules that stay
 - Do not start S28.
 - Do not push.
+
+## 13. HANDOFF TO ANOTHER MACHINE (2026-10-22). Newest section.
+Read docs/handoff/HANDOFF_2026-10-22.md first (state, trees, builds, consoles, user rules, performance, PT table, pending requests, resume steps, START PROMPT file docs/handoff/START_PROMPT_2026-10-22.txt). Rules 1 to 16: docs/handoff/ORCH_RULES.txt.
+Everything is local (nothing pushed): the package /home/andrew/papermario_handoff_2026-10-22/ (all.bundle, files archive, memory, README.txt) carries it. Lane C holds the unmerged SWEEP commit ffc2b722a. The user file 3ds/src/map_restore_table.c stays uncommitted (patch in docs/handoff/).
+Build 1015 is on both consoles (O3DS .180, N3DS .181), pushed with Push PLAY. Next: FTP pull of both logs. New rows: PT67a to PT67d in 3ds/SLICES.md.
+
