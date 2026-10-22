@@ -2604,6 +2604,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
                 ? rgba_from_5551(fill & 0xffff) : prim;
             off_screen_check();
+            if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
             pm_gpu_set_replace(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
             /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
             if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !PMD("noprimz")) {
