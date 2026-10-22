@@ -232,3 +232,10 @@ sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat 
 `abtog` rotates three states every 60 drawn steps: `base` (no dlc), `dlc1` (display-list compile and box skip, vertices through the ring) and `dlc` (DLC1 plus the static vertex area, DLC2). All states draw the same picture. Play in Toad Town (mac_00, mac_01) for at least 3 minutes so each state has 300 or more steps per scene, then HOME or the Select menu row Exit to Homebrew. Start the FTP app and pull as in 8.0d (`hw_${B}_PLAY2_pull.txt`).
 Read-out: `grep "abtog " P`, then `python3 3ds/tools/phs_report.py P` and compare the rows `base`, `dlc1`, `dlc` of the town scene (columns gb, gd, gp, cpu50). `grep -E " dlc2? f" P` gives the counters (`static grp` must be close to `repl`, `fail`, `hashbad`, `exitbad`, `missing`, `slotfix` 0).
 Gate: gb of `dlc` lower than `base` by 6 ms or more in town (expected from Azahar x3.5: DLC1 about 7 ms, DLC2 a further 2 ms). The CPU part (cpu50) must fall under 50 ms for 20 drawn steps per second. If the gate holds, the orchestrator sets `PM_DLC_DEFAULT` to 1 in a later row. Azahar results (docs/plans/DLC.md section 7): gbi 11.11 (base), 9.10 (dlc1), 8.51 ms (dlc).
+
+### 8.0f Push PLAY3 (PF1 prefetch against none)
+Same build and commands as 8.0e with this `abtog` (DLC on in both states through the switch `dlc`):
+```
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum dlc abtog=base,nopf:60 loglevel=debug
+```
+`base` has the prefetch on, `nopf` turns it off. Read the town rows of `phs_report.py` for `base` and `nopf` (columns gb, dl, cpu50). Gate: base lower than nopf by 0.5 ms or more in gb. A smaller difference means the stalls are not memory bound: remove nothing, the prefetch costs under 0.1 ms.
