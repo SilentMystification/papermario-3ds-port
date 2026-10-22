@@ -250,13 +250,11 @@ static void cfb_capture_prev(int cpu) {
     for (i = 0; i < nuGfxCfbNum; i++) {
         /* PT78: the pause reads the frame from the buffer that is not the fill target, whatever the parity of the drawn step (a step skipped by FS1 moves the
          * BEGIN_PAUSED draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the fill target and the filter read a stale frame).
-         * Switch nopausefix keeps the old rule. */
-        static int nofix = -1;
+         */
         const void* ref = nuGfxCfb_ptr;
-        if (nofix < 0) nofix = pm_debug_has("nopausefix");
-        if (cpu && cap_fill && !nofix) ref = cap_fill;
+        if (cpu && cap_fill) ref = cap_fill;
         if (nuGfxCfb[i] == ref) {
-            unsigned short* prev = cpu && cap_fill && !nofix ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
+            unsigned short* prev = cpu && cap_fill ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
             unsigned t0 = pm_ticks();
             static unsigned nlog;
             pm_gpu_read_frame(prev);
