@@ -994,12 +994,14 @@ void pm_gpu_init(void) {
 #define MENU_W 39
 static char menu_prev[MENU_ROWS][MENU_W + 1];
 static int menu_on;
+static char menu_l0[MENU_W + 1];
 static void menu_put_line(PrintConsole* c, int i, const char* s) {
     char b[MENU_W + 1];
     snprintf(b, sizeof b, "%-*.*s", MENU_W - 1, MENU_W - 1, s); /* one column spare: the last column never wraps the 1 row window */
     if (menu_on && !strcmp(b, menu_prev[i])) return;
     memcpy(menu_prev[i], b, sizeof b);
-    consoleSetWindow(c, 0, i, MENU_W + 1, 1);
+    consoleSetWindow(c, 0, 0, 40, 30); /* PT79: the whole screen as the window and an absolute cursor move: a 1 row window on row 29 scrolled the text up by a row */
+    printf("\x1b[%d;1H", i + 1);
     fputs(b, stdout);
 }
 void pm_gpu_menu_draw(const char* text) {
@@ -1021,18 +1023,20 @@ void pm_gpu_menu_draw(const char* text) {
         return;
     }
     if (!menu_on) { consoleSetWindow(c, 0, 0, 40, 30); consoleClear(); for (int k = 0; k < MENU_ROWS; k++) menu_prev[k][0] = 1; } /* once at open: no old log text in the last columns */
-    while (*text && i < MENU_ROWS) {
+    for (; i < MENU_ROWS; i++) { /* one text line per row, an empty line stays an empty row */
+        const char* e = strchr(text, '\n');
         char ln[MENU_W + 1];
-        size_t n = strcspn(text, "\n");
-        if (n > MENU_W) n = MENU_W;
-        memcpy(ln, text, n);
-        ln[n] = 0;
-        menu_put_line(c, i++, ln);
-        text += strcspn(text, "\n");
-        if (*text == '\n') text++;
+        size_t n = e ? (size_t)(e - text) : strlen(text);
+        size_t k = n > MENU_W ? MENU_W : n;
+        memcpy(ln, text, k);
+        ln[k] = 0;
+        if (i == 0) memcpy(menu_l0, ln, k + 1);
+        menu_put_line(c, i, ln);
+        text += e ? n + 1 : n;
     }
     for (; i < MENU_ROWS; i++) menu_put_line(c, i, "");
     menu_on = 1;
+    if (!was_on) { menu_prev[0][0] = 1; menu_put_line(c, 0, menu_l0); } /* PT75: row 0 (the tab line) was lost on the first draw: write it again */
     fflush(stdout);
     (void)was_on;
     consoleSetWindow(c, wx, wy, ww, wh); /* the log window and its cursor stay as they were (the log is not printed while the menu is open) */

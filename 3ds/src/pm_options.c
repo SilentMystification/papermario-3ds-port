@@ -354,7 +354,7 @@ int pm_optui_act(int tab, int row, int mode) {
             return 3;
         case RW_WARPTO: case RW_ENTRY: case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;
         case RW_WARPNOW:
-            if (pm_opt.warp == 0) return 0;
+            if (pm_opt.warp == 0) { if (mode) pm_menu_msg("Warp to is Off: pick a target first"); return 0; }
             if (mode) return pm_warp_live(pm_opt.warp, pm_opt.warp_entry) ? 5 : 0;
             pm_options_close();
             pm_warp_now(pm_opt.warp, pm_opt.warp_entry);
