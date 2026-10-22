@@ -2749,7 +2749,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_SETTILE: {
             unsigned tile = (w1 >> 24) & 7;
-            int same_tile = !PMD("nopg1") && !PMD("nopg1a") && tile == 0 && st0_ok && pm_tex_epoch() == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
+            int same_tile = !PMD("nopg1") && !PMD("nopg1a") && tile == 0 && st0_ok && (PMD("nowg") ? pm_tex_epoch() : pm_tex_wrap_gen()) == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
                           tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
                           tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15);
             if (tile == 0) GP_SET(3, same_tile);
@@ -2768,7 +2768,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
                 pm_gpu_flush();
                 pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
-                st0_ep = pm_tex_epoch(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
+                st0_ep = PMD("nowg") ? pm_tex_epoch() : pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
             }
             break;
         }

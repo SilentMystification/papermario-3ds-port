@@ -60,7 +60,7 @@ typedef struct {
 } Bucket;
 static Bucket bk[BK_N];
 static int ps_on;
-static const char* const ab_words[] = { "base", "gpuvtx", "nodr1", "nokick", "notx1", "phasegbi", "gv1", "nogv1", "raw1", "noraw1", "nofl1", "dlc", "dlc1", "nopf" };
+static const char* const ab_words[] = { "base", "gpuvtx", "nodr1", "nokick", "notx1", "phasegbi", "gv1", "nogv1", "raw1", "noraw1", "nofl1", "dlc", "dlc1", "nopf", "nowg" };
 static int ab_st[BK_N], ab_n, ab_every, ab_cur, ab_steps, ab_skip, ab_seq;
 static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buckets */
 static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */
