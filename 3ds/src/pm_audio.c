@@ -6,8 +6,6 @@
 #include "pm_dsptest.h"
 #include "pm_dspaud.h"
 
-#define CAP 8192
-#define SLOTS 8
 #define PM_AU_LEAD 1416u /* PT14: ndsp backlog (samples) where the game switches to short frames: about 1600 samples, 50 ms, before a burst */
 
 static int ready;
@@ -26,12 +24,7 @@ void pm_audio_hash_log(void) {
     au2_trace_dump();
     if (pm_debug_has("audiohash")) pm_log("audiohash posts %u fnv %08x dropped %u underrun %u (final)", au_posts, au_hash, au_dropped, au_underrun);
 }
-static unsigned pending_raw(void);
 /* PT14: feed statistics (switch audiostat), written by the posting thread, read by the stats line. */
-static volatile unsigned f_n, f_samples, f_small, f_iv_sum, f_iv_min = 0xFFFFFFFFu, f_iv_max, f_pend_sum, f_pend_min = 0xFFFFFFFFu, f_pend_max, f_empty;
-static unsigned long long f_t_first, f_t_last;
-static ndspWaveBuf wb[SLOTS];
-static s16* data[SLOTS];
 
 /* HW7: stop the DSP use before libctru frees the heap. The audio thread stays blocked on its event and never runs again. */
 void pm_audio_shutdown(void) {
@@ -57,97 +50,15 @@ void pm_audio_init(void) {
         return;
     }
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-    if (pm_debug_has("dspaudio")) {
-        if (pm_debug_has("au2off")) pm_log_w("dspaudio needs the AU2 queue: switch au2off turns it off, the old mixer plays");
-        else if (pm_dspa_init()) { ready = 1; return; }
-        else pm_log_e("dspaudio: init failed, the old mixer plays");
-    }
-    ndspChnReset(0);
-    ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
-    ndspChnSetRate(0, (float)rate);
-    ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
-    for (int i = 0; i < SLOTS; i++) {
-        data[i] = (s16*)linearAlloc(CAP);
-        memset(&wb[i], 0, sizeof(wb[i]));
-        wb[i].status = NDSP_WBUF_DONE;
-        if (!data[i]) {
-            pm_log_e("audio linearAlloc %d of %d failed, audio is silent", i, SLOTS);
-            for (int j = 0; j < i; j++) linearFree(data[j]);
-            ndspExit();
-            return;
-        }
-    }
-    ready = 1;
-    pm_log("ndsp ready %u Hz\n", rate);
-    if (pm_debug_has("dsptest")) pm_dsptest_start();
+    /* A5: the 3DS DSP is the only audio path (docs/plans/AUD_DSP.md). It needs the AU2 queue. A failure is logged once and the game runs without sound. */
+    if (pm_debug_has("au2off")) pm_log_e("dspaudio: needs the AU2 queue, switch au2off is set: audio is silent");
+    else if (pm_dspa_init()) { ready = 1; if (pm_debug_has("dsptest")) pm_dsptest_start(); return; }
+    else pm_log_e("dspaudio: init failed, audio is silent");
+    ndspExit();
 }
 
-void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) {
-    if (pm_dspa_enabled) return; /* dspaudio: the voices play on ndsp channels, nothing is posted */
-    if (hz && hz != rate) {
-        rate = hz;
-        if (ready) ndspChnSetRate(0, (float)rate);
-    }
-    if (!pcm || bytes < 4) return;
-    if (pm_debug_has("audiohash")) {
-        const unsigned char* q = (const unsigned char*)pcm;
-        for (unsigned i = 0; i < bytes; i++) au_hash = (au_hash ^ q[i]) * 16777619u;
-        if (++au_posts % 120 == 0) pm_log("audiohash posts %u fnv %08x dropped %u underrun %u", au_posts, au_hash, au_dropped, au_underrun);
-    }
-    if (!ready) pm_audio_init();
-    if (!ready) return;
-    if (pm_dsptest_active()) return; /* A2: the test owns all 24 channels */
-    {
-        /* Log once per 120 posts: how many were queued and the loudest sample, to check the output in an emulator. */
-        static unsigned posts;
-        static int peak;
-        const s16* p = (const s16*)pcm;
-        for (unsigned i = 0; i < bytes / 2; i++) {
-            int v = p[i] < 0 ? -p[i] : p[i];
-            if (v > peak) peak = v;
-        }
-        if (++posts % 120 == 0) {
-            if (pm_debug_has("audiostat")) pm_log_d("audio posts %u peak %d\n", posts, peak);
-            peak = 0;
-        }
-    }
-    int slot = -1;
-    for (int i = 0; i < SLOTS; i++) {
-        if (wb[i].status != NDSP_WBUF_QUEUED && wb[i].status != NDSP_WBUF_PLAYING) {
-            slot = i;
-            break;
-        }
-    }
-    au_posts_n++;
-    {   /* PT14: interval between posts, ndsp backlog in samples at the post, size of the buffer */
-        unsigned long long now = svcGetSystemTick();
-        unsigned pend = pending_raw() / 4;
-        if (f_t_last) {
-            unsigned iv = (unsigned)((now - f_t_last) / 268ull);
-            f_iv_sum += iv;
-            if (iv < f_iv_min) f_iv_min = iv;
-            if (iv > f_iv_max) f_iv_max = iv;
-        } else f_t_first = now;
-        f_t_last = now;
-        f_n++;
-        f_samples += (bytes > CAP ? CAP : bytes) / 4;
-        if (bytes < 552 * 4) f_small++;
-        f_pend_sum += pend;
-        if (pend < f_pend_min) f_pend_min = pend;
-        if (pend > f_pend_max) f_pend_max = pend;
-    }
-    if (slot < 0) { au_dropped++; au_dropped_all++; return; }
-    if (pending_raw() == 0) { au_underrun++; au_underrun_all++; } /* nothing queued: the DSP ran dry before this post */
-    if (bytes > CAP) bytes = CAP;
-    bytes &= ~3u;
-    memcpy(data[slot], pcm, bytes);
-    DSP_FlushDataCache(data[slot], bytes);
-    memset(&wb[slot], 0, sizeof(wb[slot]));
-    wb[slot].data_vaddr = data[slot];
-    wb[slot].nsamples = bytes / 4;
-    wb[slot].status = NDSP_WBUF_FREE;
-    ndspChnWaveBufAdd(0, &wb[slot]);
-}
+/* A5: the mixer output of the old path is not used any more: the voices play on ndsp channels (pm_dspaud.c) and no PCM is posted. */
+void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) { (void)pcm; (void)bytes; (void)hz; }
 
 /* AU1c/AU1d: the N64 audio manager (nuAuMgr) is a thread that blocks on a message queue. It runs as a real thread on core 1.
  * The game thread does two things only: pm_audio_kick(n) (start n 60 Hz ticks) and pm_audio_join() (wait until they are done).
@@ -264,16 +175,6 @@ static void au_stats_log(void) {
                           (unsigned)((unsigned long long)au_pr_max * 1000 / 268112), au_core);
     au_pr_n = au_pr_sum = au_pr_max = 0; /* min stays: it is the free core speed */
     pm_log_d("audio join sites (count, avg us): kick %u %u, retrace %u %u, step %u %u, main %u %u", au_site_n[0], au_site_n[0] ? au_site_sum[0] / au_site_n[0] / 268 : 0, au_site_n[1], au_site_n[1] ? au_site_sum[1] / au_site_n[1] / 268 : 0, au_site_n[2], au_site_n[2] ? au_site_sum[2] / au_site_n[2] / 268 : 0, au_site_n[3], au_site_n[3] ? au_site_sum[3] / au_site_n[3] / 268 : 0);
-    pm_log_d("audio pcm: posts %u underrun %u dropped %u (ndsp queue empty at a post / full at a post)", au_posts_all, au_underrun_all, au_dropped_all);
-    if (f_n > 1) {
-        unsigned long long wall = (f_t_last - f_t_first) / 268ull; /* us */
-        pm_log_d("audio feed: posts %u small(<552) %u interval us min %u avg %u max %u, ndsp backlog at post (samples) min %u avg %u max %u, supply %u Hz (32000 needed), empty %u",
-                 f_n, f_small, f_iv_min, f_iv_sum / (f_n - 1), f_iv_max, f_pend_min, f_pend_sum / f_n, f_pend_max,
-                 wall ? (unsigned)((unsigned long long)f_samples * 1000000ull / wall) : 0, au_underrun_all);
-    }
-    f_n = f_samples = f_small = f_iv_sum = f_iv_max = f_pend_sum = f_pend_max = 0;
-    f_iv_min = f_pend_min = 0xFFFFFFFFu;
-    f_t_first = f_t_last = 0;
     pm_au2_stats_log();
     pm_dspa_stats_log();
     au_w_n = au_w_sum = au_w_max = au_j_sum = au_j_max = au_g_sum = au_k_n = 0;
@@ -331,23 +232,8 @@ unsigned pm_audio_retraces(void) {
 
 /* Bytes of PCM that were posted and not played yet. This is what osAiGetLength reports. */
 unsigned pm_audio_pending(void) {
-    if (pm_dspa_enabled) { unsigned n = pm_dspa_backlog_blocks() * 184u; return n > PM_AU_LEAD ? (n - PM_AU_LEAD) * 4 : 0; } /* dspaudio: samples the timeline still has to play */
+    if (pm_dspa_enabled) { unsigned n = pm_dspa_backlog_blocks() * 184u; return n > PM_AU_LEAD ? (n - PM_AU_LEAD) * 4 : 0; } /* samples the timeline still has to play */
     if (pm_audio_lock()) return 0; /* audiolock: osAiGetLength 0 so the PCM does not depend on the clock */
-    /* PT14: the game mixes a full frame (552 samples) when this value is below 184 samples and a short frame (368) otherwise. The N64 value is the
-     * rest of one DMA buffer, so the game keeps about 184 samples ahead. Here the value is the whole ndsp backlog, and two ticks come in one burst per
-     * step at 30 FPS: with the plain backlog the short frame came every second tick (supply 27.6 kHz of 32 kHz, the DSP ran dry in every step).
-     * The offset moves the regulation point: full frames until the backlog holds PM_AU_LEAD samples, then the game's own servo keeps it there. */
-    unsigned n = pending_raw() / 4;
-    return n > PM_AU_LEAD ? (n - PM_AU_LEAD) * 4 : 0;
+    return 0; /* no DSP: nothing is queued */
 }
 
-static unsigned pending_raw(void) {
-    unsigned n = 0;
-    if (!ready) return 0;
-    for (int i = 0; i < SLOTS; i++) {
-        if (wb[i].status == NDSP_WBUF_QUEUED || wb[i].status == NDSP_WBUF_PLAYING) n += wb[i].nsamples;
-    }
-    unsigned pos = ndspChnGetSamplePos(0);
-    n = n > pos ? n - pos : 0;
-    return n * 4;
-}

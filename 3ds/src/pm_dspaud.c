@@ -141,6 +141,11 @@ static void mix_out(const float in[12], float out[12]) {
     int fold = fx_off || ax_total == 0;
     for (int k = 0; k < 12; k++) out[k] = in[k];
     if (fold) {
+        { /* A5: the fold adds up to 5 sends to the dry gain and ndsp has no limiter. The user hears this mix and it sounds right: no behaviour change, one log line when a voice can pass 1.0 */
+            static int warned;
+            float l = in[0] + in[4] + in[6] + in[8] + in[10], r = in[1] + in[5] + in[7] + in[9] + in[11];
+            if (!warned && (l > 1.0f || r > 1.0f)) { warned = 1; pm_log("dspaudio: the folded wet sends of a voice reach gain %.2f (left) %.2f (right), above 1.0, ndsp sums the voices without a limiter", l, r); }
+        }
         out[0] = in[0] + in[4] + in[6] + in[8] + in[10];
         out[1] = in[1] + in[5] + in[7] + in[9] + in[11];
         for (int k = 4; k < 12; k++) out[k] = 0.0f;
