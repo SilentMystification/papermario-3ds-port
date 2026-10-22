@@ -87,10 +87,21 @@ API_CALLABLE(SetMusic) {
     s32 variation = evt_get_variable(script, *args++);
     s16 volume = evt_get_variable(script, *args++);
 
-    if (bgm_set_song(musicPlayer, songID, variation, 500, volume)) {
-        return ApiStatus_DONE2;
-    } else {
-        return ApiStatus_BLOCK;
+    {
+        s32 ok = bgm_set_song(musicPlayer, songID, variation, 500, volume);
+#ifdef TARGET_3DS
+        { /* PT81 diagnostic: one log line per SetMusic call and its result (0 = the player is busy, the script blocks and asks again) */
+            extern void pm_log_d(const char*, ...);
+            extern unsigned pm_frame_count(void);
+            static s32 last_song = -2, last_ok = -2;
+            if (songID != last_song || ok != last_ok) { last_song = songID; last_ok = ok; pm_log_d("bgm: SetMusic player %d song %d variation %d result %d f%u", (int)musicPlayer, (int)songID, (int)variation, (int)ok, pm_frame_count()); }
+        }
+#endif
+        if (ok) {
+            return ApiStatus_DONE2;
+        } else {
+            return ApiStatus_BLOCK;
+        }
     }
 }
 

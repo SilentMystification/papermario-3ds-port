@@ -105,3 +105,12 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [x] BUDGET | run_azahar.ps1: -Force counted two starts, now one; run_azahar.sh counts a start line also when the switches hold a comma. A cached run counts nothing (already so) | -
 [x] CSEEK | switch creditsseek=<step> (pm_main.c): no draw until the step, FS1 skip path. warp=end_00:0 story=96 creditsseek=1000 shows Toad banners at step 1012 in 35 s | -
 [x] BOSS | Select menu tab Boss (33 boss formations, pm_boss_table.h, data of lane-c sweep_gen.py bosses): A warps to mac_00:4 with the story of the area and starts the battle 30 world frames later, Mario 75 HP 30 FP. Menu checked by one shot. The launch itself was not run (boss fights are manual) | USER: try one boss on the console or Azahar
+[x] PT73 | All badges and All key items: real ranges (IS_BADGE, key range) and entries with a name message only: 100 badges with name and BP in the pause list. Azahar pause shot | -
+[x] PT74 | Warp and boss launch from a battle: BATTLE_STATE_END_BATTLE, then the action. Azahar: battle to battle and warp from a battle | -
+[x] PT75 | tab line on the first draw of the Select menu | -
+[x] PT76 | feedback area (2 rows), pm_menu_msg, used by warp and boss failures and Warp now Off. Azahar shot | -
+[x] PT77 | gap of 2 rows between the options and the controls | -
+[x] PT78 | pause background stale after an FS1 skipped step: capture buffer follows the fill target (pm_main.c). Switches pauseskip, nopausefix. Azahar: forced skip shows black with the old rule, the current frame with the new one; golden toad 0.02 yard 0.00 | console look
+[x] PT79 | Select menu rows scrolled up by one (row 29 in a 1 row window): absolute cursor rows. Azahar shots of the General and Debug tab | -
+[x] PT80 | warp from the intro ends the intro state (commit 8df79dec7); the user reports the warp from the demo to Toad Town works | -
+[ ] PT81 | music of the previous scene plays after a Select menu warp. Diagnostic log line bgm: SetMusic (commit after 8df79dec7); next: one Azahar run warp to jan_03 and read the SetMusic lines (result 0 = player busy, the script blocks) | HOLD

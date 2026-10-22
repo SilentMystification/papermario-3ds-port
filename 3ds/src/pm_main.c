@@ -222,6 +222,9 @@ PmB7 pm_b7;
 /* PT12: cpu = 0 is a texture read of the old frame (G_SETTIMG): a GPU copy into the slot of the old frame buffer, no CPU pixels. cpu = 1 is game
  * code that reads the pixels (the pause filter): the CPU readback. Switch prevcpu forces the readback for the texture read too. */
 int pm_gpu_grab_prev(const void* prev_cfb);
+extern short get_game_mode(void);
+static int pm_game_mode_now(void) { return (int)get_game_mode(); }
+static const void* cap_fill; /* PT78: the frame buffer the pause coverage fill writes (the game fixes it to nuGfxCfb[1]) */
 static void cfb_capture_prev(int cpu) {
     static unsigned done = ~0u, done_gpu = ~0u;
     static int nocpu = -1;
@@ -245,8 +248,15 @@ static void cfb_capture_prev(int cpu) {
     if (done == pm_frame_n) return;
     done = pm_frame_n;
     for (i = 0; i < nuGfxCfbNum; i++) {
-        if (nuGfxCfb[i] == nuGfxCfb_ptr) {
-            unsigned short* prev = nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
+        /* PT78: the pause reads the frame from the buffer that is not the fill target, whatever the parity of the drawn step (a step skipped by FS1 moves the
+         * BEGIN_PAUSED draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the fill target and the filter read a stale frame).
+         * Switch nopausefix keeps the old rule. */
+        static int nofix = -1;
+        const void* ref = nuGfxCfb_ptr;
+        if (nofix < 0) nofix = pm_debug_has("nopausefix");
+        if (cpu && cap_fill && !nofix) ref = cap_fill;
+        if (nuGfxCfb[i] == ref) {
+            unsigned short* prev = cpu && cap_fill && !nofix ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
             unsigned t0 = pm_ticks();
             static unsigned nlog;
             pm_gpu_read_frame(prev);
@@ -258,7 +268,8 @@ static void cfb_capture_prev(int cpu) {
     }
 }
 void pm_cfb_capture_prev(void) { cfb_capture_prev(0); }
-void pm_cfb_capture_prev_cpu(void) { cfb_capture_prev(1); }
+void pm_cfb_capture_prev_cpu(void) { cap_fill = NULL; cfb_capture_prev(1); }
+void pm_cfb_capture_prev_cpu_for(const void* fill) { cap_fill = fill; cfb_capture_prev(1); cap_fill = NULL; }
 /* PC01: once per second (switch `pacestat`): game steps, drawn frames, vblanks and audio ticks since the last line. */
 extern unsigned pm_step_calls;
 static unsigned pace_ticks;
@@ -377,12 +388,17 @@ void pm_frame_loop(void) {
         /* FS1: N64 frame skip as a safety net. Skip the draw of this step only when the machine is really late: the last drawn step took more than
          * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
-        int fs_skip = 0;
+        int fs_skip = 0, fs_force_skip = 0;
         if (ever && step_vb_ok && !fs1_off && pm_interp_on <= 0 && !PMD("fast")) { /* not with fast (uncapped debug runs) and not with fps60 (F06 has its own late path) */
             fs1_steps++;
             /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
              * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
-            fs_skip = (C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP && (!fs1_old || fs1_last_iv > PM_VBLANKS_PER_STEP)) || (fs1_force && fs1_steps % fs1_force == 0);
+            { /* PT78 test switch pauseskip: skip the draw of the first step that has the pause state 0 on frame buffer 1 (the parity test of state_step_pause passes in a skipped step) */
+                static int ps = -1, ps_done;
+                if (ps < 0) ps = pm_debug_has("pauseskip");
+                if (ps && !ps_done && pm_game_mode_now() == 10 /* GAME_MODE_PAUSE */ && nuGfxCfb[1] == nuGfxCfb_ptr) { ps_done = 1; fs_force_skip = 1; pm_log("pauseskip: draw of step %u skipped", frame); }
+            }
+            fs_skip = fs_force_skip || (C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP && (!fs1_old || fs1_last_iv > PM_VBLANKS_PER_STEP)) || (fs1_force && fs1_steps % fs1_force == 0);
             if (fs_skip && fs1_run >= (fs1_old ? 2u : FS1_MAX_RUN)) fs_skip = 0;
         }
         { /* PT33 debug switch creditsseek=<step>: no draw until the game has run <step> steps since boot (the credits parade of warp=end_00:0 scrolls with the steps, so the 1000 step wait costs only the game logic). The game logic runs as in an FS1 skip. */
