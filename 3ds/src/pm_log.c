@@ -411,7 +411,7 @@ static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     }
     { u32 d = us_since(t0); if (d > wr_sock_max) wr_sock_max = d; }
     /* HWM1: the console (bottom screen text, slow) is for a reader on the device. When more than 128 lines wait, skip it for this batch: log.txt has the lines. */
-    if (__atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED) > 128) { con_skipped++; return; }
+    if (pm_menu_open || __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED) > 128) { con_skipped++; return; } /* PT69: the open menu owns the console */
     t0 = svcGetSystemTick();
     /* After a crash the lock owner may be the dead thread: then skip the console. */
     if (__atomic_load_n(&crashed, __ATOMIC_ACQUIRE) ? LightLock_TryLock(&con_lock) == 0 : (LightLock_Lock(&con_lock), 1)) {

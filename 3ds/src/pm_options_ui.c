@@ -12,25 +12,25 @@ volatile int pm_menu_open;
 volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
 
 #define OPT_TABS 3
-#define VIS 10
+#define VIS 24 /* PT69: 30 text rows: tab line, blank, VIS rows, blank lines, footer */
 #define MODE 1
 static int tab, sel[OPT_TABS], top[OPT_TABS];
 static PmRepeat rep_y, rep_x;
 static const char* const tab_name[OPT_TABS] = { "General", "Controls", "Debug" };
 
 static void draw(void) {
-    char out[1500];
+    char out[2400];
     int n = 0, rows = pm_optui_rows(tab, MODE);
     if (sel[tab] < top[tab]) top[tab] = sel[tab];
     if (sel[tab] >= top[tab] + VIS) top[tab] = sel[tab] - VIS + 1;
     for (int t = 0; t < OPT_TABS; t++) n += snprintf(out + n, sizeof out - (size_t)n, t == tab ? "[%s] " : " %s  ", tab_name[t]);
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n");
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n");
     for (int r = top[tab]; r < top[tab] + VIS && r < rows; r++) {
         const char* v = pm_optui_value(tab, r, MODE);
         n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS) - 0; r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "L R: tab  < > A: change  B: close\n");
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n\nL R: tab  < > A: change  B: close\n");
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
 }

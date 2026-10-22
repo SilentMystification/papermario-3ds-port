@@ -989,7 +989,7 @@ void pm_gpu_init(void) {
 /* F11-6, PT64, PT65: the port menu text on the bottom console. The menu owns rows 3 to 14 (MENU_ROWS lines), the log keeps rows 16 to 30 and keeps
  * scrolling there while the menu is open. Nothing is cleared: a line is rewritten, padded with spaces, only when its text changed, so the
  * screen never shows an empty frame between a clear and a redraw (PT64). On close the menu rows are blanked and the log gets its old window back. */
-#define MENU_ROWS 12
+#define MENU_ROWS 30 /* PT69: the menu fills the whole bottom screen (rows 0 to 29); the log and the HUD wait while it is open */
 #define MENU_W 39
 static char menu_prev[MENU_ROWS][MENU_W + 1];
 static int menu_on;
@@ -998,7 +998,7 @@ static void menu_put_line(PrintConsole* c, int i, const char* s) {
     snprintf(b, sizeof b, "%-*.*s", MENU_W - 1, MENU_W - 1, s); /* one column spare: the last column never wraps the 1 row window */
     if (menu_on && !strcmp(b, menu_prev[i])) return;
     memcpy(menu_prev[i], b, sizeof b);
-    consoleSetWindow(c, 1, 3 + i, MENU_W, 1);
+    consoleSetWindow(c, 0, i, MENU_W + 1, 1);
     fputs(b, stdout);
 }
 void pm_gpu_menu_draw(const char* text) {
@@ -1019,6 +1019,7 @@ void pm_gpu_menu_draw(const char* text) {
         pm_con_unlock();
         return;
     }
+    if (!menu_on) { consoleSetWindow(c, 0, 0, 40, 30); consoleClear(); for (int k = 0; k < MENU_ROWS; k++) menu_prev[k][0] = 1; } /* once at open: no old log text in the last columns */
     while (*text && i < MENU_ROWS) {
         char ln[MENU_W + 1];
         size_t n = strcspn(text, "\n");
@@ -1032,20 +1033,16 @@ void pm_gpu_menu_draw(const char* text) {
     for (; i < MENU_ROWS; i++) menu_put_line(c, i, "");
     menu_on = 1;
     fflush(stdout);
-    if (!was_on) { /* the log shrinks to rows 16 to 30, its next line comes at the bottom */
-        consoleSetWindow(c, 1, 16, 40, 15);
-        c->cursorX = 0; c->cursorY = 14;
-    } else { /* the log window and its cursor stay as they were */
-        consoleSetWindow(c, wx, wy, ww, wh);
-        c->cursorX = cx; c->cursorY = cy;
-    }
+    (void)was_on;
+    consoleSetWindow(c, wx, wy, ww, wh); /* the log window and its cursor stay as they were (the log is not printed while the menu is open) */
+    c->cursorX = cx; c->cursorY = cy;
     pm_con_unlock();
 }
 
 void pm_gpu_hud(const char* line0, const char* line1) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
-    if (!c->consoleInitialised) return;
+    if (!c->consoleInitialised || menu_on) return; /* PT69: the menu owns all rows */
     /* The log writer thread prints on this console. Skip the HUD update when it is busy: the game thread never waits for it. */
     if (pm_con_trylock() != 0) return;
     cx = c->cursorX;
