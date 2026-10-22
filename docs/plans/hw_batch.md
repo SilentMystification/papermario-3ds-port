@@ -223,3 +223,12 @@ python3 3ds/tools/route_report.py 3ds/logs/perf/hw_${B}_ROUTE_pull.txt --compare
 grep -E "route: (seg|goto|save|leg|end)|save.flash" 3ds/logs/perf/hw_${B}_ROUTE_pull.txt
 ```
 Read: the `wall36` column (late steps the player sees), `wall_p95`, the `save` segment and the `save.flash written ... ms` line (the save hitch), the map entries and the battle segments. The seg lines of the console must match Azahar within 2 steps (3ds/logs/perf/route_ref_*.txt). If `route: leg blocked` appears, the route left its path: tell the ROUTE agent. Notes: docs/plans/route_notes.md.
+
+### 8.0e Push PLAY2 (DLC1 and DLC2 against base, lane B build)
+Build the lane B tip with `PM_LANE=laneB sh 3ds/build.sh` (3dsx in build3ds/lane-laneB/), copy it to build3ds/pm_3ds.3dsx, set `B=<build number>` and `export O=<ip>` as in 8.0d. DLC stays off by default. The switch below turns it on per state.
+```
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum abtog=base,dlc1,dlc:60 loglevel=debug
+```
+`abtog` rotates three states every 60 drawn steps: `base` (no dlc), `dlc1` (display-list compile and box skip, vertices through the ring) and `dlc` (DLC1 plus the static vertex area, DLC2). All states draw the same picture. Play in Toad Town (mac_00, mac_01) for at least 3 minutes so each state has 300 or more steps per scene, then HOME or the Select menu row Exit to Homebrew. Start the FTP app and pull as in 8.0d (`hw_${B}_PLAY2_pull.txt`).
+Read-out: `grep "abtog " P`, then `python3 3ds/tools/phs_report.py P` and compare the rows `base`, `dlc1`, `dlc` of the town scene (columns gb, gd, gp, cpu50). `grep -E " dlc2? f" P` gives the counters (`static grp` must be close to `repl`, `fail`, `hashbad`, `exitbad`, `missing`, `slotfix` 0).
+Gate: gb of `dlc` lower than `base` by 6 ms or more in town (expected from Azahar x3.5: DLC1 about 7 ms, DLC2 a further 2 ms). The CPU part (cpu50) must fall under 50 ms for 20 drawn steps per second. If the gate holds, the orchestrator sets `PM_DLC_DEFAULT` to 1 in a later row. Azahar results (docs/plans/DLC.md section 7): gbi 11.11 (base), 9.10 (dlc1), 8.51 ms (dlc).
