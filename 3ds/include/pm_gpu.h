@@ -17,6 +17,12 @@ void pm_gpu_set_mode(int zbuffer, int lighting);
 /* PO3b: the raw Vtx path (switch gpuvtx, off by default) */
 int pm_gpu_gvtx_load(const void* vtx, unsigned n);
 int pm_gpu_gv_room(unsigned n);
+int pm_gpu_gstat_alloc(unsigned n, unsigned char** out); /* DLC2 */
+void pm_gpu_gstat_commit(unsigned first, unsigned n);
+void pm_gpu_gstat_reset(void);
+unsigned pm_gpu_gstat_used(void);
+int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const unsigned short* idx, unsigned nidx);
+int pm_gpu_gidx_room(unsigned n);
 int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, unsigned i0, unsigned i1, unsigned i2);
 const unsigned char* pm_gpu_gring(void);
 unsigned pm_gpu_flush_gen(void);
