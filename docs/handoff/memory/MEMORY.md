@@ -3,3 +3,4 @@
 - [No Luma checks unless asked, no baseline runs for comparison](feedback_luma_and_baselines.md) — skip dumps; batch optimizations before hardware tests
 - [Sweeps on request only, bosses manual](feedback_sweeps_manual.md) — no automatic sweep or boss runs; credits stop after the thank-you screen
 - [Push failure: report only](feedback_push_failures.md) — one line, no diagnosis, no retry
+- [Do small tasks inline](feedback_inline_small_tasks.md) — handoffs, summaries, bundles: no agent
