@@ -143,7 +143,7 @@ export O=<ip> B=1011
 ```
 #### Push PLAY (speed and DLC data)
 ```
-sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum abtog=base,dlc:60 loglevel=debug
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat texstat pacestat logstat phase phsum abtog=base,dlc:60 loglevel=debug
 ```
 `abtog` switches the display-list cache `dlc` on and off every 60 drawn steps. Both states draw the same picture. The user plays as long as they want, then HOME or the Select menu row Exit to Homebrew. Start the FTP app (port 5000) and pull:
 ```
@@ -155,10 +155,10 @@ Read-out (P = the pull file):
 - `grep -E "dspaudio: (first aux callback ran|aux mask)|audio dsp:|audio2:|audio cost" P`.
 - `grep -E "FAIL|CRASH|lines dropped" P` must be empty or 0. `grep "exit:" P` shows a clean shutdown.
 The HUD may not show the abtog state: use the `abtog` lines of the log with their frame numbers.
-Audio fallbacks: add `dspfx=off`, then `dspgain=50 dspflush`, or drop `dspaudio`.
+Audio fallbacks: add `dspfx=off`, then `dspgain=50 dspflush`. The DSP is the only audio path since A5 (no `dspaudio` switch).
 #### Push SAVE (save block faults, pipe faults, Merlon door)
 ```
-sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat pacestat logstat phase phsum camlog entlog mtxlog nogv1 noraw1 nofl1 fs1off loglevel=debug
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat pacestat logstat phase phsum camlog entlog mtxlog nogv1 noraw1 nofl1 fs1off loglevel=debug
 ```
 This push turns off GV1, RAW1, FL1 and FS1. The user plays the Toad Town save block scenes, the Yoshi village save block and the Merlon door. If the faults vanish with these switches, they come from GV1, RAW1, FL1 or FS1: then push again with one switch dropped at a time (`nogv1`, `noraw1`, `nofl1`, `fs1off`) to find the one. `camlog` writes up to 60 lines per second and `mtxlog` at most 50 lines per 30 frames: the log gets long, so keep the session short and note the minute of each fault. Pull as for PLAY (copy to `hw_${B}_SAVE_pull.txt`). Read-out:
 - `grep -i camlog P | head`, `grep -i entlog P`, `grep -i mtxlog P`: camera, entity and matrix lines around the noted minute.
@@ -194,7 +194,7 @@ Read:
 
 ### 8.2 Push B: DSP audio, interactive listening (optional, not planned)
 ```
-export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat loglevel=debug
+export O=<ip> B=967; sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat loglevel=debug
 ```
 Play the A/B list of docs/plans/AUD_DSP.md section 15 with the live log or the pulled log. Then push once without `dspaudio` for the second half of each comparison. Pull and read `audio dsp:`, `dspaudio:`, `audio cost` and `audio2:` lines.
 
@@ -227,7 +227,7 @@ Read: the `wall36` column (late steps the player sees), `wall_p95`, the `save` s
 ### 8.0e Push PLAY2 (DLC1 and DLC2 against base, lane B build)
 Build the lane B tip with `PM_LANE=laneB sh 3ds/build.sh` (3dsx in build3ds/lane-laneB/), copy it to build3ds/pm_3ds.3dsx, set `B=<build number>` and `export O=<ip>` as in 8.0d. DLC stays off by default. The switch below turns it on per state.
 ```
-sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum abtog=base,dlc1,dlc:60 loglevel=debug
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat texstat pacestat logstat phase phsum abtog=base,dlc1,dlc:60 loglevel=debug
 ```
 `abtog` rotates three states every 60 drawn steps: `base` (no dlc), `dlc1` (display-list compile and box skip, vertices through the ring) and `dlc` (DLC1 plus the static vertex area, DLC2). All states draw the same picture. Play in Toad Town (mac_00, mac_01) for at least 3 minutes so each state has 300 or more steps per scene, then HOME or the Select menu row Exit to Homebrew. Start the FTP app and pull as in 8.0d (`hw_${B}_PLAY2_pull.txt`).
 Read-out: `grep "abtog " P`, then `python3 3ds/tools/phs_report.py P` and compare the rows `base`, `dlc1`, `dlc` of the town scene (columns gb, gd, gp, cpu50). `grep -E " dlc2? f" P` gives the counters (`static grp` must be close to `repl`, `fail`, `hashbad`, `exitbad`, `missing`, `slotfix` 0).
@@ -236,7 +236,7 @@ Gate: gb of `dlc` lower than `base` by 6 ms or more in town (expected from Azaha
 ### 8.0f Push PLAY3 (PF1 prefetch against none)
 Same build and commands as 8.0e with this `abtog` (DLC on in both states through the switch `dlc`):
 ```
-sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum dlc abtog=base,nopf:60 loglevel=debug
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat texstat pacestat logstat phase phsum dlc abtog=base,nopf:60 loglevel=debug
 ```
 `base` has the prefetch on, `nopf` turns it off. Read the town rows of `phs_report.py` for `base` and `nopf` (columns gb, dl, cpu50). Gate: base lower than nopf by 0.5 ms or more in gb. A smaller difference means the stalls are not memory bound: remove nothing, the prefetch costs under 0.1 ms.
 Result of build 1036 (O3DS, log 3ds/logs/perf/hw_1036_PLAY2_o3ds_pull.txt, clean exit, phs_report.py --hw). World mode (4), town mac_01 (scene 1:1), ms per drawn step, n = drawn steps: base n 232: gb 46.59, gd 4.03, gp 4.82, cpu50 76.6. dlc1 n 232: gb 40.71 (gain 5.88), gd 4.15, gp 4.88, cpu50 70.3. dlc n 268: gb 38.58 (gain 8.01), gd 4.24, gp 4.95, cpu50 66.1. Other worlds, gb base to dlc: 23:0 32.57 to 24.25 (gain 8.32, n 45 and 52), 0:7 31.23 to 28.08 (n 88 and 36), 0:5 25.73 to 23.39 (n 44 and 31). Counters: hashbad 0, exitbad 0, missing 0, slotfix 0, ringfail 0, static fail 0 in the three dlc2 lines read (f1799, f2279, f2699). GATE gb: PASS (dlc gb is 8.01 ms lower than base in town, limit 6 ms). cpu50 limit 50 ms: NOT met in town (66.1 ms); it is met in 23:0 (42.1 ms).
@@ -244,6 +244,6 @@ Result of build 1036 (O3DS, log 3ds/logs/perf/hw_1036_PLAY2_o3ds_pull.txt, clean
 ### 8.0g Push PLAY4 (PF1 prefetch and OPT-TS texture state skip against the old paths)
 Same build and commands as 8.0e. DLC on in all states through the switch `dlc`:
 ```
-sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum dlc abtog=base,nopf,nowg:60 loglevel=debug
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat texstat pacestat logstat phase phsum dlc abtog=base,nopf,nowg:60 loglevel=debug
 ```
 `base`: prefetch on, texture state skip on. `nopf`: no prefetch. `nowg`: old epoch test in G_SETTILE. Read the town rows of `phs_report.py` (columns gb, gp, cpu50). Gates: base lower than nopf in gb by 0.5 ms or more (PF1). base lower than nowg in gb by 0.2 ms or more (OPT-TS, Azahar expects 0.4 ms). A smaller difference means no gain on the console. Nothing needs to be removed, the pictures are equal.

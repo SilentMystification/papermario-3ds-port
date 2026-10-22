@@ -114,3 +114,4 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [x] PT79 | Select menu rows scrolled up by one (row 29 in a 1 row window): absolute cursor rows. Azahar shots of the General and Debug tab | -
 [x] PT80 | warp from the intro ends the intro state (commit 8df79dec7); the user reports the warp from the demo to Toad Town works | -
 [ ] PT81 | music of the previous scene plays after a Select menu warp. Diagnostic log line bgm: SetMusic (commit after 8df79dec7); next: one Azahar run warp to jan_03 and read the SetMusic lines (result 0 = player busy, the script blocks) | HOLD
+[ ] AUDDSP_A5 | DSP only audio path in code (commit 2e18a5987), docs and Push lines updated. Open: boot check with no switch must log dspaudio: on (one Azahar start, waits for a free Azahar), statehash unchanged | HOLD for Azahar
