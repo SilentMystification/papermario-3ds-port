@@ -204,6 +204,7 @@ int pm_warp_map_index(const char* name);
 int pm_warp_is_test_map(const char* id); /* PT01b */
 int pm_warp_choice_count(void);
 const char* pm_warp_choice_text(int choice, int entry);
+int pm_boss_count(void); const char* pm_boss_label(int i); int pm_boss_launch(int i); /* Boss tab of the Select menu: warp to mac_00 and start the battle, the player fights */
 int pm_warp_live(int choice, int entry); /* PT63: warp at once from the Select menu (no file select). 1 = started */
 void pm_title_return(void); /* PT66: soft reset to the title, as the game own reset does */
 void pm_options_touch(void); /* mark the settings changed, saved at pm_options_close */

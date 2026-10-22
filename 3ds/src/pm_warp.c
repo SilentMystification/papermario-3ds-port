@@ -317,6 +317,67 @@ int pm_warp_live(int c, int entry) {
     return 1;
 }
 
+/* Boss tab of the Select menu: a manual launcher (the player fights). Warp to mac_00 entry 4 with the story value of the area, 30 world frames
+ * later start the battle as the debug switch `battle=` does. Mario gets 75 HP and 30 FP so the fight can be tried. Nothing is written to disk. */
+static s32 battle_name_value(const char* s, unsigned n, s32 dflt);
+static const struct { const char* label; const char* battle; s32 story; } boss_tab[] = {
+#include "pm_boss_table.h"
+};
+static int boss_pending = -1;
+static unsigned boss_frames;
+int pm_boss_count(void) { return (int)ARRAY_COUNT(boss_tab); }
+const char* pm_boss_label(int i) { return i >= 0 && i < pm_boss_count() ? boss_tab[i].label : ""; }
+int pm_boss_launch(int i) {
+    s16 areaID, mapID;
+    int mode = get_game_mode();
+    if (i < 0 || i >= pm_boss_count()) return 0;
+    if (mode != GAME_MODE_WORLD && mode != GAME_MODE_TITLE_SCREEN && mode != GAME_MODE_INTRO && mode != GAME_MODE_DEMO) {
+        pm_log_w("boss: not possible in game mode %d", mode);
+        return 0;
+    }
+    w_story = boss_tab[i].story;
+    w_map[0] = 0;
+    strncat(w_map, "mac_00", sizeof w_map - 1);
+    w_entry = 4;
+    w_flag = 0;
+    w_loadslot = -1;
+    if (w_partner == 0) w_partner = 1;
+    if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) return 0;
+    warp_setup(areaID, mapID);
+    gPlayerData.hardMaxHP = gPlayerData.curMaxHP = gPlayerData.curHP = 75;
+    gPlayerData.hardMaxFP = gPlayerData.curMaxFP = gPlayerData.curFP = 30;
+    fio_serialize_state();
+    boss_pending = i;
+    boss_frames = 0;
+    if (mode == GAME_MODE_WORLD) {
+        set_map_transition_effect(TRANSITION_STANDARD);
+        set_game_mode(GAME_MODE_CHANGE_MAP);
+    } else {
+        set_game_mode(GAME_MODE_ENTER_WORLD);
+    }
+    pm_log("boss: %s (%s) story %d", boss_tab[i].label, boss_tab[i].battle, (int)boss_tab[i].story);
+    return 1;
+}
+static void boss_tick(void) {
+    char v[96];
+    const char* c;
+    s32 formation, stage;
+    s16 areaID, mapID;
+    if (boss_pending < 0) return;
+    if (get_game_mode() != GAME_MODE_WORLD || !get_map_IDs_by_name("mac_00", &areaID, &mapID) || gGameStatusPtr->mapID != mapID || gGameStatusPtr->areaID != areaID) { boss_frames = 0; return; }
+    if (++boss_frames < 30) return;
+    v[0] = 0;
+    strncat(v, boss_tab[boss_pending].battle, sizeof v - 1);
+    c = strchr(v, ':');
+    formation = battle_name_value(v, c ? (unsigned)(c - v) : (unsigned)strlen(v), BTL_KMR_1_FORMATION_00);
+    stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
+    pm_log("boss: start battle formation %d stage %d", (int)formation, (int)stage);
+    boss_pending = -1;
+    gEncounterState = ENCOUNTER_STATE_NONE;
+    set_battle_stage(stage);
+    load_battle(formation);
+}
+
 /* PT66: Return to Title Screen. The game own soft reset: the Mario overlay fades in, the game sounds stop, then GAME_MODE_STARTUP runs
  * the engine setup again and the logos lead to the title. The flash is flushed and the audio drained first, as for the HOME menu. */
 extern s16 SoftResetOverlayAlpha, SoftResetState;
@@ -539,6 +600,7 @@ static void pm_statehash(unsigned f) {
 
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
+    boss_tick();
     if (scene_f0 < 0) return;
     if (tour_next && !tour_wait && frame - tour_f0 >= TOUR_FRAMES) {
         tour_ts = frame;

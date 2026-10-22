@@ -212,7 +212,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310 };
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400 };
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
@@ -233,6 +233,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         for (i = 0; i < 6; i++) ids[n++] = RW_STAT + i;
         ids[n++] = RW_WARPTO; ids[n++] = RW_ENTRY; ids[n++] = RW_WARPNOW;
     }
+    if (tab == 3) { n = 0; for (i = 0; i < pm_boss_count(); i++) ids[n++] = RW_BOSS + i; } /* Select menu only (mode 1): the Boss tab */
     ids[n++] = RW_BACK;
     return n;
 }
@@ -245,6 +246,7 @@ void pm_optui_disarm(void) { exit_armed = 0; }
 int pm_optui_rows(int tab, int mode) { int ids[48]; return tab_ids(tab, mode, ids); }
 const char* pm_optui_label(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_BOSS) return pm_boss_label(id - RW_BOSS);
     if (id >= RW_STAT) return stat_lbl[id - RW_STAT];
     if (id >= RW_GIVE) return give_lbl[id - RW_GIVE];
     if (id >= RW_DBG) return dbg_lbl[id - RW_DBG];
@@ -268,6 +270,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
 }
 const char* pm_optui_value(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_BOSS) return "A: fight";
     if (id >= RW_GIVE) {
         static char gb[16][16];
         char* b = gb[id - RW_GIVE];
@@ -329,6 +332,7 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
 int pm_optui_act(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
     if (id != RW_EXIT) exit_armed = 0;
+    if (id >= RW_BOSS) return pm_boss_launch(id - RW_BOSS) ? 5 : 0; /* 5: started, the menu closes */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, 1); return 0; }
     if (id >= RW_GIVE) { pm_dbgg_give(id - RW_GIVE); pm_log("options: debug give %d", id - RW_GIVE); return 0; }
     if (id >= RW_DBG) { pm_options_flip(id - RW_DBG + 2); return 0; }

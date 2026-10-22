@@ -11,12 +11,12 @@
 volatile int pm_menu_open;
 volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
 
-#define OPT_TABS 3
+#define OPT_TABS 4
 #define VIS 24 /* PT69: 30 text rows: tab line, blank, VIS rows, blank lines, footer */
 #define MODE 1
 static int tab, sel[OPT_TABS], top[OPT_TABS];
 static PmRepeat rep_y, rep_x;
-static const char* const tab_name[OPT_TABS] = { "General", "Controls", "Debug" };
+static const char* const tab_name[OPT_TABS] = { "General", "Controls", "Debug", "Boss" };
 
 static void draw(void) {
     char out[2400];
