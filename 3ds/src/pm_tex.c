@@ -558,6 +558,8 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
 }
 
 static int ph_miss;
+#define LIDX_N 256
+static short lidx[LIDX_N]; /* OPT-LK */
 static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, int height,
                       const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                       unsigned dkey);
@@ -659,8 +661,35 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         else { /* PG2: two palette entries per step (the key is internal, only its stability matters). Any in-place edit still changes it. */
             const u16* pl = (const u16*)tlut;
             int i = 0;
+            if (!((unsigned)(uintptr_t)tlut & 3u) && !PMDL("noph32")) { /* OPT-PH: the same value as the u16 pairs below (little endian), one word load per step, four steps per loop */
+                const u32* pw = (const u32*)tlut;
+                int nw = tlut_n >> 1, k = 0;
+                for (; k + 4 <= nw; k += 4) {
+                    phash = (phash ^ pw[k]) * 16777619u;
+                    phash = (phash ^ pw[k + 1]) * 16777619u;
+                    phash = (phash ^ pw[k + 2]) * 16777619u;
+                    phash = (phash ^ pw[k + 3]) * 16777619u;
+                }
+                for (; k < nw; k++) phash = (phash ^ pw[k]) * 16777619u;
+                i = nw * 2;
+            }
             for (; i + 1 < tlut_n; i += 2) phash = (phash ^ ((unsigned)pl[i] | ((unsigned)pl[i + 1] << 16))) * 16777619u;
             if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u;
+        }
+    }
+    /* OPT-LK: one probe of a direct mapped index from the key to the slot, before the recent list and the scan. The slot is compared in full, so a stale entry only misses. */
+    const unsigned lk = (((unsigned)(uintptr_t)img >> 2) ^ ((unsigned)(uintptr_t)tlut >> 3) ^ (unsigned)(width * 31 + height * 131 + (int)fmt * 7 + (int)siz * 3 + stride * 17) ^ dkey) & (LIDX_N - 1);
+    if (!PMDL("nolk")) {
+        int i = lidx[lk];
+        Slot* s = &slots[i];
+        if (i < slot_hi && s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
+            s->stamp = ++stamp;
+            TC_HIT(s);
+            TOUCH(s);
+            cur = i;
+            have = 1;
+            return 1;
         }
     }
     /* PG2: most loads repeat one of the last few textures. Check those slots first (same full compare), then the whole table. */
@@ -690,6 +719,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             cur = i;
             have = 1;
             recent_slot[recent_n++ % RECENT_N] = (short)i;
+            lidx[lk] = (short)i;
             return 1;
         }
     }
@@ -877,6 +907,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     if (used > map_peak) map_peak = used;
     cur = slot;
     recent_slot[recent_n++ % RECENT_N] = (short)slot; /* PG2 */
+    lidx[lk] = (short)slot;
     have = 1;
     return 1;
 }

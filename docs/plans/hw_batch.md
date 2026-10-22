@@ -247,3 +247,5 @@ Same build and commands as 8.0e. DLC on in all states through the switch `dlc`:
 sh 3ds/push_3ds.sh --no-build --ip $O -t 20 dspaudio audiostat texstat pacestat logstat phase phsum dlc abtog=base,nopf,nowg:60 loglevel=debug
 ```
 `base`: prefetch on, texture state skip on. `nopf`: no prefetch. `nowg`: old epoch test in G_SETTILE. Read the town rows of `phs_report.py` (columns gb, gp, cpu50). Gates: base lower than nopf in gb by 0.5 ms or more (PF1). base lower than nowg in gb by 0.2 ms or more (OPT-TS, Azahar expects 0.4 ms). A smaller difference means no gain on the console. Nothing needs to be removed, the pictures are equal.
+
+Row OPT-LK (G_SETTILESIZE slot lookup index) and OPT-PH (palette hash by words): extend the abtog of 8.0g with the state `nolk`: `abtog=base,nopf,nowg,nolk:60`. Gate: base lower than nolk in gb by 0.5 ms or more on the console (Azahar 0.28 ms, console x3.5 to x4.5 = 1.0 to 1.3 ms).
