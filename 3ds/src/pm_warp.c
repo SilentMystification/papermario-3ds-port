@@ -288,6 +288,7 @@ void pm_warp_now(int c, int entry) {
     if (strncmp(w_map, "kmr_", 4) != 0 && w_partner == 0) w_partner = 1;
     if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) {
         pm_log_w("warp: map %s not found", w_map);
+        pm_menu_msg("Warp failed: map %s not found", w_map);
         return;
     }
     warp_setup(areaID, mapID);
@@ -296,11 +297,43 @@ void pm_warp_now(int c, int entry) {
 
 /* PT63: warp from the Select menu in any game mode that has a world to leave. A map change from the world, ENTER_WORLD from the title or the intro
  * (as pm_warp_hook does at boot). The state is set as a preset sets it (new player data at the story value). Nothing is written to disk. */
+/* PT74: a warp or a boss launch from the Select menu while a battle runs. The battle is ended through the real BATTLE_STATE_END_BATTLE (the way
+ * battlelist ends one), the game returns to the world, then the action runs. The state does not need to be exact. 0 none, 1 warp, 2 boss. */
+static int bypass_kind, bypass_a, bypass_b;
+static unsigned bypass_n;
+static int bypass_begin(int kind, int a, int b) {
+    if (bypass_kind) { pm_menu_msg("A battle end is already running"); return 0; }
+    bypass_kind = kind; bypass_a = a; bypass_b = b; bypass_n = 0;
+    btl_set_state(BATTLE_STATE_END_BATTLE);
+    pm_menu_msg("Ending the battle, then %s", kind == 1 ? "warp" : "boss");
+    pm_log("bypass: battle end for kind %d (%d, %d)", kind, a, b);
+    return 0;
+}
+extern void pm_menu_set(int on);
+static int pm_boss_launch_now(int i);
+static int pm_warp_live_now(int c, int entry);
+static void bypass_tick(void) {
+    if (!bypass_kind) return;
+    if (get_game_mode() == GAME_MODE_WORLD) {
+        int k = bypass_kind, a = bypass_a, b = bypass_b, ok;
+        bypass_kind = 0;
+        ok = k == 1 ? pm_warp_live_now(a, b) : pm_boss_launch_now(a);
+        if (ok) pm_menu_set(0);
+    } else if (++bypass_n > 900) {
+        bypass_kind = 0;
+        pm_menu_msg("The battle did not end, mode %d", (int)get_game_mode());
+    }
+}
 int pm_warp_live(int c, int entry) {
+    if (get_game_mode() == GAME_MODE_BATTLE) return bypass_begin(1, c, entry);
+    return pm_warp_live_now(c, entry);
+}
+static int pm_warp_live_now(int c, int entry) {
     int mode = get_game_mode();
     int ok = mode == GAME_MODE_WORLD || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_INTRO || mode == GAME_MODE_DEMO;
     if (!ok) {
         pm_log_w("warp: not possible in game mode %d", mode);
+        pm_menu_msg("Warp not possible in game mode %d", mode);
         return 0;
     }
     pm_warp_pending = 0;
@@ -328,11 +361,15 @@ static unsigned boss_frames;
 int pm_boss_count(void) { return (int)ARRAY_COUNT(boss_tab); }
 const char* pm_boss_label(int i) { return i >= 0 && i < pm_boss_count() ? boss_tab[i].label : ""; }
 int pm_boss_launch(int i) {
+    if (get_game_mode() == GAME_MODE_BATTLE && i >= 0 && i < pm_boss_count()) return bypass_begin(2, i, 0);
+    return pm_boss_launch_now(i);
+}
+static int pm_boss_launch_now(int i) {
     s16 areaID, mapID;
     int mode = get_game_mode();
     if (i < 0 || i >= pm_boss_count()) return 0;
     if (mode != GAME_MODE_WORLD && mode != GAME_MODE_TITLE_SCREEN && mode != GAME_MODE_INTRO && mode != GAME_MODE_DEMO) {
-        pm_log_w("boss: not possible in game mode %d", mode);
+        pm_menu_msg("Boss launch not possible in game mode %d", mode);
         return 0;
     }
     w_story = boss_tab[i].story;
@@ -342,7 +379,7 @@ int pm_boss_launch(int i) {
     w_flag = 0;
     w_loadslot = -1;
     if (w_partner == 0) w_partner = 1;
-    if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) return 0;
+    if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) { pm_menu_msg("Boss launch failed: map mac_00 not found"); return 0; }
     warp_setup(areaID, mapID);
     gPlayerData.hardMaxHP = gPlayerData.curMaxHP = gPlayerData.curHP = 75;
     gPlayerData.hardMaxFP = gPlayerData.curMaxFP = gPlayerData.curFP = 30;
@@ -601,6 +638,7 @@ static void pm_statehash(unsigned f) {
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
     boss_tick();
+    bypass_tick();
     if (scene_f0 < 0) return;
     if (tour_next && !tour_wait && frame - tour_f0 >= TOUR_FRAMES) {
         tour_ts = frame;
