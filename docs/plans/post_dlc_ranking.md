@@ -1,0 +1,38 @@
+# Ranking of the levers left after DLC2 (lane B, 2026-10-22)
+
+Basis: console build 970 town (hw_p4_findings.md): lo 8.4, dl 3.2, gb 40.4 (about 31 with DLC1 and DLC2 by the Azahar x3.5 estimate), gp+gd+gc 9.9, ot 2.7, fe 1.2, au 0.8, tx 0.2 ms. Gains are console ms per drawn step. Data letters: M measured on the console, A measured in Azahar, E estimate.
+
+| Rank | Lever | Gain (ms) | Risk | Basis | Status |
+|---|---|---|---|---|---|
+| 1 | PF1: software prefetch (PLD) in the interpreter, G_DL targets, G_VTX data and DLC group data. Azahar has no cache model, so only the console shows it | 0.5 to 1.5 (E) | none for the picture (a hint instruction); 0 if the stalls are not memory bound | M: 5.8 us per gbi op on the console against 1.5 us in Azahar. Streaming data per step: display list 46 KB, vertices 38 KB, so 2600 cache lines, at most 0.8 ms of misses (E) | Done in this row (switch `nopf`, abtog state `nopf`) |
+| 2 | GC1: fewer GSPGPU_FlushDataCache calls (6 per step, 60 KB, gc 1.6 ms on the console) | 0.5 to 0.8 (E) | medium | M: gc 1.6 ms. Merge the ring, index and pool flushes with the KICK1 split | Not started, console only |
+| 3 | Lean draw (DLC5, pre-built register packets) | 2 to 4 (E), unproven | high | A: gd 15 us per draw, gp 8.6 us. DR1 and RAW1 did not get below 79 us on the console. The cost is inside C3D_DrawElements | Not started. Needs the citro3d source to see which dirty flags set per draw |
+| 4 | Texture hit path (hash index) | 0.2 to 0.3 | low | A: 162 hits per step, 68 by the recent list, 93 by scan, 5019 slot checks per step = 50 k cycles = 0.2 ms | Too small to do |
+| 5 | Fewer draws (merge draws with equal state) | 0.2 (up to 0.8 if colours could be dynamic) | high | A: 3.6 percent of the 8203 draws per 300 steps have a state equal to the draw before (16 percent when prim, env, matrix and colour are ignored). The flush sites that draw are G_SETTILE (35 per step) and G_LOADTLUT (20 per step): real texture changes | Dropped. An atlas design is out of scale for 0.2 ms |
+| 6 | DLC3 kind S (skip repeated state lists) | 0 | n/a | A: 0 skip candidates in 87614 G_DL targets (DLC.md section 7) | Dropped |
+| 7 | AU1b to AU1d (audio to core 1) | 0 | n/a | M: AU2 already runs the render on core 1. Audio join is 0.6 to 0.8 ms, no more to gain | Superseded by AU2 (done) |
+| 8 | TC1 (cache full in 4 scenes), O13 (VRAM tier), HW6 (NPC spawn reads) | under 0.3 steady | medium | M: texture evictions 0 in the whole 270 s town run, tx 0.2 ms. They act on map load spikes (3 per 270 s) | Not worth a row now |
+| 9 | MA1 logic sites (lo 8.4 ms) | 0 to 0.5 | game logic: needs a Q-MA1 entry | parked | No entry exists. Not touched |
+
+Reading: after DLC2 no Azahar-measurable lever above 1 ms is left. The remaining CPU part is spread over the decomp game code (lo, dl, ot = 14.3 ms), the gbi ops that must run (state ops 4.6 ms in Azahar) and the citro3d draw call. The next real information comes from the console: build 1035 (DLC2) with `phase phsum abtog=base,dlc1,dlc` (hw_batch.md 8.0e) and then `abtog=base,nopf` for PF1.
+
+## Verification in code (lane B, 2026-10-22)
+(a) On the GPU with GV1, RAW1, FL1 on (defaults, 3ds/include/pm_gpu.h:121-122): vertex transform by the matrix palette, viewport and tilt (3ds/shaders/pm4.v.pica: `dp4 r5.x, pal[a0.x], r1`), UV scale (`uvso`), colour scale and offset (`cmul`, `cadd`), z mix (`zmix`), PICA clip, PICA cull (`g_cullm`, pm_gpu.c, set from the geometry mode in pm_gpu_gtrip and pm_gpu_grange), colour combine through the TEV stages (pm_gpu.c flush_draw, TevKey). Fog mix, lighting and texgen are NOT on the GPU: pm_gbi.c:1275-1276 `if (geom & (G_LIGHTING | G_TEXTURE_GEN)) return GVR_LIT; if (fogmix_on && (geom & G_FOG)) return GVR_FOG;` and the lit vertex load at pm_gbi.c:2307 (GVR_LITLOAD). On the CPU per vertex (default, non DLC load): the matrix product and the clip bits (pm_gbi.c:2338-2347: `p[0] = m[0][0] * x + ...; vert_cb = clip_bits4(p) | near`), 8 slot array stores (vert_ring, vert_gmi, vert_tss, vert_mid, vert_live, vert_scr, vert_gvf, vert_cb). On the CPU per triangle: slot checks, box-bit AND reject, near/scr/tss refusals, epoch test (gv_tri, pm_gbi.c:1285-1305) and one index append (pm_gpu_gappend). With DLC the replayed groups skip all of it (pm_dlc.inc.c dlc_static_group: one pm_gpu_grange per segment).
+(b) PO3 slices in the tree: PO3a counters (po3a_on, pm_gbi.c:2279), PO3b raw Vtx ring and u16 index ring (pm_gpu.c gring, gidx, pm_gpu_gtri), PO3c colour, uv and z mix uniforms (cmul, cadd, uvso, zmix in pm4.v.pica), PO3e GPU cull and clip (g_cullm, PICA clipper), PO3g default on in the form of GV1 (PM_GV1_DEFAULT 1, `gpuvtx` kept as switch). Not in the tree: PO3d lighting in the shader (lit loads fall back, GVR_LIT, GVR_LITLOAD) and the per-vertex fog factor (GVR_FOG). PO3f (console picture check) was done through the user hand tests.
+(c) The statement "the PO3 gate is closed" holds for the gate (PO3b/c/e are done and default on through GV1). It does not mean "no CPU work per vertex is left": the CPU transform and clip bits of a non-DLC G_VTX remain. Azahar test of removing them (switches gv1raw: no reject bits; gv1box: one box test per load), toad without DLC, gb: default 10.64 ms, gv1raw 12.46 ms (draws 70 to 131), gv1box 10.77 ms. Letting the GPU reject everything is slower, so PO3 stays closed: no gain.
+
+## Decode profile (Azahar, toad preset, dlc on, `phase gbiprof`; time of nested phases not charged to the op; floor of one empty op 1.83 us)
+| Op | calls per step | net us per call | net ms per step | x3.5 console |
+|---|---|---|---|---|
+| G_SETTILESIZE (tile 0) | 162 | 9.2 | 1.5 | 5.2 |
+| G_DL (list entry and DLC replay) | 381 | 2.5 | 0.95 | 3.3 |
+| G_SETCOMBINE | 186 | 4.8 | 0.89 | 3.1 |
+| G_VTX | 41 | 14.2 | 0.58 | 2.0 |
+| G_SETOTHERMODE_H | 454 | 1.2 | 0.54 | 1.9 |
+| G_SETTILE | 458 | 0.8 | 0.37 | 1.3 |
+| G_LOADTLUT | 118 | 2.7 | 0.32 | 1.1 |
+| G_TEXRECT | 59 | 5.8 | 0.34 | 1.2 |
+Sum of the listed ops 5.5 ms of gb 8.0 ms. The Azahar to console ratio of gb measured on build 1036 is 4.5 (gb 38.6 ms against 8.5), so the console cost of these ops is larger than x3.5.
+
+## OPT-TS: texture state skip (row OPTTS)
+Cause: the PG1 skips in G_SETTILE (same tile 0 definition) and G_SETTILESIZE (same texture) compared pm_tex_epoch(), which every texture load and pm_tex_origin bumps, so they never hit (gbiprof: tile0 same 0 of 161, tilesize loads skipped 0 of 162). The wrap state only changes in pm_tex_set_wrap. New counter pm_tex_wrap_gen (set_wrap and frame start) for the G_SETTILE test. Result: tile0 same 88 of 161, loads skipped 31 of 162, empty flush calls 923 to 804 per step, gb 8.11 to 8.01 ms (-0.10 ms, console about -0.4). Draws unchanged (73). statehash equal with and without (`nowg`) on yard and battle, dlccheck zeros, golden toad and yard 0.00 with `--extra dlc`. Switch `nowg` and abtog state `nowg` give the old behaviour.

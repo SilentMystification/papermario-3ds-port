@@ -1450,6 +1450,8 @@ static void dls_report(void) {
     dls_dl = dls_stab_ok = dls_stab_chg = 0; dls_frames = 0;
 }
 
+/* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Switch nopf turns it off (abtog state nopf). Azahar has no cache model: no change there. */
+static int pf_on;
 static int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 static void draw_tri(unsigned w);
 #include "pm_dlc.inc.c"
@@ -2171,6 +2173,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     dls_on = PMDL("dlsrc");
     dlc_on = dlc_enabled();
+    pf_on = !PMDL("nopf");
     if (dls_on && !dlc_depth) {
         if (!dls_rd_lo) dls_init_ranges();
         dls_main_lo = (u32)list; dls_main_hi = (u32)list + nbytes;
@@ -2201,6 +2204,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         unsigned op = w0 >> 24;
         int fp = 0;
         pc++;
+        if (pf_on && !((u32)pc & 31u)) { __builtin_prefetch(pc + 4); __builtin_prefetch(pc + 8); }
         n_ops++;
         if (dls_on) dls_ops[dls_pc][dls_kind(op)]++;
         if (gp_on()) {
@@ -2235,6 +2239,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
             if (dls_on) dls_target(next);
+            if (pf_on) { __builtin_prefetch(next); __builtin_prefetch(next + 4); }
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
@@ -2259,6 +2264,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 src = NULL;
             }
             if (src && n <= 64) {
+                if (pf_on) for (unsigned pk = 0; pk < n * 16u; pk += 32u) __builtin_prefetch((const char*)src + pk);
                 if (v0 >= 64) n = 0; /* S30: a vertex load that starts past the buffer (garbage list) copied 4 GB */
                 else if (v0 + n > 64) n = 64 - v0;
                 PH_ADD(C_VTXLOAD, n);
@@ -2744,7 +2750,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_SETTILE: {
             unsigned tile = (w1 >> 24) & 7;
-            int same_tile = !PMD("nopg1") && !PMD("nopg1a") && tile == 0 && st0_ok && pm_tex_epoch() == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
+            int same_tile = !PMD("nopg1") && !PMD("nopg1a") && tile == 0 && st0_ok && (PMD("nowg") ? pm_tex_epoch() : pm_tex_wrap_gen()) == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
                           tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
                           tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15);
             if (tile == 0) GP_SET(3, same_tile);
@@ -2763,7 +2769,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
                 pm_gpu_flush();
                 pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
-                st0_ep = pm_tex_epoch(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
+                st0_ep = PMD("nowg") ? pm_tex_epoch() : pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
             }
             break;
         }

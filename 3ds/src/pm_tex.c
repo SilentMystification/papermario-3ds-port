@@ -68,6 +68,8 @@ static int offt_n, off_cur = -1, off_ox, off_oy;
 static int aux_off = -1, aux_ox, aux_oy; /* V12c: TEXEL1 is an off-screen slot (the grab of the frame buffer) */
 unsigned pm_tex_epoch_v; /* PG1: bumped by every call that changes what pm_tex_bind or pm_tex_size would give, so a caller can skip a repeated identical load */
 unsigned pm_tex_epoch(void) { return pm_tex_epoch_v; }
+unsigned pm_tex_wrap_gen_v; /* OPT-TS: bumped only when the wrap state changes (pm_tex_set_wrap) and at a frame start. A texture load does not change it. */
+unsigned pm_tex_wrap_gen(void) { return pm_tex_wrap_gen_v; }
 void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, int siz, int w, int h) {
     pm_tex_epoch_v++;
     offt[i].siz = siz;
@@ -110,6 +112,7 @@ static int mk_on;              /* the next load is a render tile load (pm_tex_lo
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
     pm_gpu_rect_sync(); /* DR1: a queued rectangle batch is drawn with the texture state it was queued in */
     pm_tex_epoch_v++;
+    pm_tex_wrap_gen_v++;
     mk_ws = masks ? 1u << masks : 0;
     mk_wt = maskt ? 1u << maskt : 0;
     mk_ms = cms & 1u;
@@ -497,6 +500,7 @@ static void tc_report(void) {
 
 void pm_tex_begin_frame(void) {
     pm_tex_epoch_v++;
+    pm_tex_wrap_gen_v++;
     tc_frame++;
     if (tc_on < 0) tc_on = pm_debug_has("texstat") || pm_log_level() >= 3;
     if (tc_on && tc_frame % 300 == 0) tc_report();

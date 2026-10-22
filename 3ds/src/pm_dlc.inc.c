@@ -371,9 +371,11 @@ static int dlc_try(const Gfx* l) {
     int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
     dlc_c.lists++;
     dlc_c.opsrep += e->nops;
+    if (pf_on && e->ngrp) { __builtin_prefetch(e->grp); __builtin_prefetch(e->gop); }
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
         int near = 0;
+        if (pf_on && k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
         if (dlc_box_out(g, m, &near)) {
             if (chk) dlc_verify_skip(l, g, m);
