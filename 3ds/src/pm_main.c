@@ -385,6 +385,12 @@ void pm_frame_loop(void) {
             fs_skip = (C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP && (!fs1_old || fs1_last_iv > PM_VBLANKS_PER_STEP)) || (fs1_force && fs1_steps % fs1_force == 0);
             if (fs_skip && fs1_run >= (fs1_old ? 2u : FS1_MAX_RUN)) fs_skip = 0;
         }
+        { /* PT33 debug switch creditsseek=<step>: no draw until the game has run <step> steps since boot (the credits parade of warp=end_00:0 scrolls with the steps, so the 1000 step wait costs only the game logic). The game logic runs as in an FS1 skip. */
+            static unsigned seek = 0xffffffffu;
+            if (seek == 0xffffffffu) { char sv[16]; seek = pm_debug_value("creditsseek", sv, sizeof sv) ? (unsigned)atoi(sv) : 0; if (seek) pm_log("creditsseek: no draw until step %u", seek); }
+            if (ever && frame < seek) fs_skip = 1;
+            else if (seek && frame == seek) { seek = 0; pm_log("creditsseek: reached step %u, drawing again", frame); }
+        }
         if (fs_skip) {
             fs1_run++;
             fs1_skipped++;
