@@ -8,7 +8,13 @@
 enum { PM_DBG_MAXHP, PM_DBG_MAXFP, PM_DBG_BP, PM_DBG_LEVEL, PM_DBG_COINS, PM_DBG_SP, PM_DBG_NSTAT };
 static const struct { int lo, hi, st; } rg[PM_DBG_NSTAT] = { { 5, 75, 5 }, { 0, 75, 5 }, { 0, 30, 1 }, { 1, 27, 1 }, { 0, 999, 10 }, { 0, 99, 1 } };
 
-static int is_item(int id, int flag) { return gItemTable[id].typeFlags & flag; }
+/* PT73: the flag alone also matches entries outside the real ranges (one flagged entry sits before ITEM_FIRST_BADGE, it sorts first and the pause badge list
+ * stops at it). The pause menus read only IS_BADGE ids (ITEM_FIRST_BADGE to ITEM_LAST_BADGE) and key items ITEM_FIRST_KEY to ITEM_LAST_KEY. */
+static int is_item(int id, int flag) {
+    if (flag == ITEM_TYPE_FLAG_BADGE ? !IS_BADGE(id) : !(id >= ITEM_FIRST_KEY && id <= ITEM_LAST_KEY)) return 0;
+    if (gItemTable[id].nameMsg == 0) return 0; /* unused entry: the port data has no name message (MSG_ItemName_x is 0), the pause list shows a blank row with BP 0 */
+    return gItemTable[id].typeFlags & flag;
+}
 
 /* owned and total of a group: 0 partners, 1 badges, 2 key items */
 void pm_dbgg_count(int g, int* have, int* total) {
