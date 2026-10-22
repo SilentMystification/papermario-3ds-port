@@ -1280,6 +1280,21 @@ static int gv_state_why(int* ct, int* both) {
     return -1;
 }
 
+/* the first triangle (or DLC2 range) after a state change */
+static void gv_epoch_enter(void) {
+    ep_flush_stats();
+    ep_why = gv_state_why(&ep_ct, &ep_cullboth);
+    if (ep_why < 0 && !ep_cullboth) {
+        if (audit_on()) comb_audit();
+        ep_fl = tri_flags();
+        ensure_tile(use_t1 ? 1 : 0);
+        dual_bind();
+        sync_render();
+    }
+    ep_epoch = gv_epoch;
+    ep_pepoch = 0;
+}
+
 /* GV1: one triangle of ring vertices. Returns 1 when it is done (rejected or sent to the GPU). Returns 0 when the CPU path must take it (reason in gv_fb). */
 static int gv_tri(const int* idx) {
     int a = idx[0], b = idx[1], c = idx[2];
@@ -1289,19 +1304,8 @@ static int gv_tri(const int* idx) {
     else if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;
     if (why < 0) {
-        if (ep_epoch != gv_epoch) { /* the first triangle after a state change */
-            ep_flush_stats();
-            ep_why = gv_state_why(&ep_ct, &ep_cullboth);
-            if (ep_why < 0 && !ep_cullboth) {
-                if (audit_on()) comb_audit();
-                ep_fl = tri_flags();
-                ensure_tile(use_t1 ? 1 : 0);
-                dual_bind();
-                sync_render();
-            }
-            ep_epoch = gv_epoch;
-            ep_pepoch = 0;
-        } else if (gv1chk_on()) { /* the stored decision against a fresh one */
+        if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
+        else if (gv1chk_on()) { /* the stored decision against a fresh one */
             int ct, both, w = gv_state_why(&ct, &both);
             if (w != ep_why || ct != ep_ct || both != ep_cullboth) gv_chk_stale++;
         }

@@ -91,12 +91,13 @@ static shaderProgram_s prog;
 static DVLB_s* dvlb;
 /* PO3b (switch gpuvtx): raw Vtx path. A ring of the 16 byte Vtx records of this frame and a u16 index ring. A batch is the triangles that share one
  * matrix and one uv map. Program prog3 (main3 in pm.v.pica) reads the Vtx as they are. The batch is drawn by flush() when gni > 0. */
-enum { GRING_VTX = 16384, GRING_IDX = 65536 };
+enum { GRING_VTX = 16384, GRING_IDX = 65536, GSTAT_VTX = 16384 }; /* DLC2: the static vertex area follows the ring in the same buffer (indices GRING_VTX and up) */
 static shaderProgram_s prog3;
 static DVLB_s* dvlb3;
 static C3D_AttrInfo attr_cpu, attr3;
 static unsigned char* gring; /* GRING_VTX x 16 bytes, linear */
 static unsigned short* gidx; /* GRING_IDX, linear */
+static unsigned gstat_n; /* DLC2: static vertices in use */
 static unsigned gring_n, gidx_n, gi_start, gni; /* ring fill, index fill, first index of the open batch, indices in the open batch */
 static float g_mtx[4][4], g_uvso[4], g_vp[4], g_cmul[4], g_cadd[4], g_zmix[2];
 static int u_uvso = -1, u_cmul = -1, u_cadd = -1, u_zmix = -1, gpu_vtx_on;
@@ -942,7 +943,7 @@ void pm_gpu_init(void) {
         AttrInfo_AddLoader(&attr3, 0, GPU_SHORT, 4);
         AttrInfo_AddLoader(&attr3, 1, GPU_SHORT, 2);
         AttrInfo_AddLoader(&attr3, 2, GPU_UNSIGNED_BYTE, 4);
-        gring = (unsigned char*)linearAlloc(GRING_VTX * 16);
+        gring = (unsigned char*)linearAlloc((GRING_VTX + GSTAT_VTX) * 16);
         gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
         gpu_vtx_on = gring && gidx && u_uvso >= 0 && u_cmul >= 0 && u_cadd >= 0 && u_zmix >= 0 && prog3.vertexShader;
         if (gpu_vtx_on && gv1_wanted()) { /* GV1c: the palette program */
@@ -1628,6 +1629,58 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     gni += 3;
     return 1;
 }
+
+/* DLC2: static vertex area. A compiled shape group copies its Vtx here once (flag 0 = palette entry 0). The area is rewritten only after pm_gpu_gstat_reset (a new
+ * map), which runs after C3D_FrameBegin(SYNCDRAW) has waited for the GPU. Returns the first vertex index (GRING_VTX and up) or -1. */
+int pm_gpu_gstat_alloc(unsigned n, unsigned char** out) {
+    if (!gpu_vtx_on || !gpu_ok || !gv4_on || gstat_n + n > GSTAT_VTX) return -1;
+    unsigned first = GRING_VTX + gstat_n;
+    gstat_n += n;
+    *out = gring + 16u * first;
+    return (int)first;
+}
+void pm_gpu_gstat_commit(unsigned first, unsigned n) { GSPGPU_FlushDataCache(gring + 16u * first, n * 16u); }
+void pm_gpu_gstat_reset(void) { if (gstat_n) { flush(); gstat_n = 0; } }
+unsigned pm_gpu_gstat_used(void) { return gstat_n; }
+
+/* DLC2: nidx indices of static vertices (all flag 0) drawn with the game matrix tab[gm]. The batch palette must hold gm at entry 0, else a new batch starts.
+ * Returns 0 when the raw path cannot take it (nothing changed, the caller draws the group through the ring). */
+int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
+                  const unsigned short* idx, unsigned nidx) {
+    if (!gv4_on || !gpu_ok) return 0;
+    if (r_zmark) return 0;
+    if (r_decal && r_blend && decal2_on()) return 0;
+    if (pm_wide && !off_active) {
+        const float(*m)[4] = tab[gm];
+        if (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) return 0;
+    }
+    if (gidx_n + nidx > GRING_IDX) return 0;
+    if (!draw_3d) { flush(); draw_3d = 1; }
+    if (nverts > 0) flush();
+    if (gni > 0 && (!g_pal || pal_n == 0 || pal_g[0] != gm || memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) ||
+                    memcmp(g_cadd, cadd, sizeof(g_cadd)) || memcmp(g_zmix, zmix, sizeof(g_zmix)) || g_ct != ct)) flush();
+    if (gni == 0) {
+        memcpy(g_uvso, uvso, sizeof(g_uvso));
+        memcpy(g_vp, vp, sizeof(g_vp));
+        memcpy(g_cmul, cmul, sizeof(g_cmul));
+        memcpy(g_cadd, cadd, sizeof(g_cadd));
+        memcpy(g_zmix, zmix, sizeof(g_zmix));
+        g_ct = ct; g_pal = 1; pal_n = 1; pal_g[0] = gm; pal_gen++;
+        if (gv_palmax < 1) gv_palmax = 1;
+        if (vp[0] != vp_sx || vp[1] != vp_sy || vp[2] != vp_tx || vp[3] != vp_ty) { vp_sx = vp[0]; vp_sy = vp[1]; vp_tx = vp[2]; vp_ty = vp[3]; rebuild_3d(); }
+        if (ct) {
+            int ccw = (gv_wind > 0) == (PMDL("gv1flip") != 0);
+            if (ct == 2) ccw = !ccw;
+            g_cullm = ccw ? GPU_CULL_BACK_CCW : GPU_CULL_FRONT_CCW;
+        } else g_cullm = GPU_CULL_NONE;
+    }
+    pal_tab = tab;
+    memcpy(gidx + gidx_n, idx, nidx * 2u);
+    gidx_n += nidx;
+    gni += nidx;
+    return 1;
+}
+int pm_gpu_gidx_room(unsigned n) { return gv4_on && gpu_ok && gidx_n + n <= GRING_IDX; }
 
 /* DLC1: 1 when the ring has room for n more vertices (and the path is on) */
 int pm_gpu_gv_room(unsigned n) { return gpu_vtx_on && gpu_ok && gring_n + n <= GRING_VTX; }
