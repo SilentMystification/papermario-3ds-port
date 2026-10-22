@@ -1,0 +1,144 @@
+; GV5: raw Vtx path with a matrix palette like pm4, plus RSP lighting, texgen and the per vertex fog factor (docs/plans/post_dlc_ranking.md, GPU path).
+; pal5[7k .. 7k+3] = the 4 rows of (OrthoTilt x viewport x game matrix k), pal5[7k+4 .. 7k+6] = the 3 rows of the model view matrix (rows of m[i][0..2]) for the normal.
+; The Vtx flag field is the palette index k. The vertex colour bytes are the colour (unlit) or the signed normal x y z and the alpha (lit).
+; lflag.x = lighting, lflag.y = texgen (lighting is on too), lflag.z = fog. lamb = ambient colour, lcol[i] light colour (0 to 255), ldir[i] light direction / 127.
+; lk0, lk1 = the look-at vectors / 127 (texgen). fogu: alpha = clamp(fogu.x * z' / w' + fogu.y, 0, 255), z' and w' = the PICA clip z and w before zmix.
+; Output colour = (vertex colour in 0 to 255) / 255 * cmul + cadd, as pm4. Texgen: s = (n . lk0 + 1) / 4 * 65536 in the units of the Vtx tc, so uv = tc * uvso.xy + uvso.zw as for a plain vertex.
+
+.fvec pal5[56]
+.fvec lamb
+.fvec lcol[7]
+.fvec ldir[7]
+.fvec lk0
+.fvec lk1
+.fvec lflag
+.fvec fogu
+.fvec uvso
+.fvec cmul
+.fvec cadd
+.fvec nzo
+.fvec zmix
+
+.constf myc1(0.0, 1.0, 0.00392156862745098, 7.0)
+.constf myc2(127.5, 256.0, 0.007874015748031496, 16384.0)
+.constf myc3(255.0, 1.0e-10, 0.0, 0.0)
+.alias zeros myc1.xxxx
+.alias ones myc1.yyyy
+.alias inv255 myc1.zzzz
+
+.out outpos position
+.out outclr color
+.out outtc0 texcoord0
+.out outtc1 texcoord1
+.out outtc2 texcoord2
+
+.alias inpos v0
+.alias inuv v1
+.alias inclr v2
+
+.entry main5
+.proc main5
+	mul r8.x, myc1.w, inpos.w
+	mova a0.x, r8.x
+	mov r1.xyz, inpos
+	mov r1.w, ones
+	dp4 r5.x, pal5[a0.x], r1
+	dp4 r5.y, pal5[a0.x+1], r1
+	dp4 r5.z, pal5[a0.x+2], r1
+	dp4 r5.w, pal5[a0.x+3], r1
+	mov outpos.x, r5.x
+	mov outpos.y, r5.y
+	mul r6.x, zmix.x, r5.z
+	mul r7.x, zmix.y, r5.w
+	add outpos.z, r6.x, r7.x
+	mov outpos.w, r5.w
+	rcp r15, r5.w
+	mul r4.xy, r5.xy, r15.xy
+	mul r4.xy, nzo.xy, r4.xy
+	add outtc2.xy, nzo.zw, r4.xy
+	mov outtc2.zw, zeros
+
+	; signed normal bytes (raw > 127 is negative), scaled to -1..1
+	slt r9, myc2.xxxx, inclr
+	mul r9, myc2.yyyy, r9
+	add r10, inclr, -r9
+	mul r10, myc2.zzzz, r10
+	; normal x model view (row vector times matrix), then normalised (a zero vector stays zero)
+	mul r11, pal5[a0.x+4], r10.xxxx
+	mul r12, pal5[a0.x+5], r10.yyyy
+	add r11, r11, r12
+	mul r12, pal5[a0.x+6], r10.zzzz
+	add r11, r11, r12
+	dp3 r12.x, r11, r11
+	max r12.x, myc3.yyyy, r12.x
+	rsq r13, r12.x
+	mul r11, r11, r13.xxxx
+
+	; ambient + sum of light colour * max(0, n . dir)
+	mov r14, lamb
+	dp3 r12.x, ldir[0], r11
+	max r12.x, zeros, r12.x
+	mul r13, lcol[0], r12.xxxx
+	add r14, r14, r13
+	dp3 r12.x, ldir[1], r11
+	max r12.x, zeros, r12.x
+	mul r13, lcol[1], r12.xxxx
+	add r14, r14, r13
+	dp3 r12.x, ldir[2], r11
+	max r12.x, zeros, r12.x
+	mul r13, lcol[2], r12.xxxx
+	add r14, r14, r13
+	dp3 r12.x, ldir[3], r11
+	max r12.x, zeros, r12.x
+	mul r13, lcol[3], r12.xxxx
+	add r14, r14, r13
+	dp3 r12.x, ldir[4], r11
+	max r12.x, zeros, r12.x
+	mul r13, lcol[4], r12.xxxx
+	add r14, r14, r13
+	dp3 r12.x, ldir[5], r11
+	max r12.x, zeros, r12.x
+	mul r13, lcol[5], r12.xxxx
+	add r14, r14, r13
+	dp3 r12.x, ldir[6], r11
+	max r12.x, zeros, r12.x
+	mul r13, lcol[6], r12.xxxx
+	add r14, r14, r13
+	min r14, myc3.xxxx, r14
+	mov r14.w, inclr.w
+
+	; colour: vertex bytes, or the lit colour
+	add r9, r14, -inclr
+	mul r9, lflag.xxxx, r9
+	add r3, inclr, r9
+
+	; fog: alpha = clamp(fogu.x * z' / w' + fogu.y)
+	mul r12.x, r5.z, r15.x
+	mul r12.x, fogu.x, r12.x
+	add r12.x, fogu.y, r12.x
+	max r12.x, zeros, r12.x
+	min r12.x, myc3.xxxx, r12.x
+	add r9.x, r12.x, -r3.w
+	mul r9.x, lflag.z, r9.x
+	add r3.w, r3.w, r9.x
+
+	mul r3, inv255, r3
+	mul r3, cmul, r3
+	add outclr, cadd, r3
+
+	; uv: the vertex tc, or the texgen coordinate
+	dp3 r9.x, lk0, r11
+	dp3 r9.y, lk1, r11
+	add r9.xy, ones, r9.xy
+	mul r9.xy, myc2.ww, r9.xy
+	add r10.xy, r9.xy, -inuv.xy
+	mul r10.xy, lflag.yy, r10.xy
+	add r9.xy, inuv.xy, r10.xy
+	mul r0.xy, uvso.xy, r9.xy
+	add r0.xy, uvso.zw, r0.xy
+	mov outtc0.xy, r0.xy
+	mov outtc0.zw, zeros
+	mov outtc1.xy, zeros
+	mov outtc1.zw, zeros
+	end
+.end

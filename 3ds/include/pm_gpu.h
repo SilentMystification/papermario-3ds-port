@@ -17,17 +17,22 @@ void pm_gpu_set_mode(int zbuffer, int lighting);
 /* PO3b: the raw Vtx path (switch gpuvtx, off by default) */
 int pm_gpu_gvtx_load(const void* vtx, unsigned n);
 int pm_gpu_gv_room(unsigned n);
+/* GV5: lighting, texgen and fog of a raw batch (shader pm5). lflag x = lighting, y = texgen, z = fog. */
+typedef struct { float lflag[4], amb[4], col[7][4], dir[7][4], lk0[4], lk1[4], fogu[4]; } PmFx;
+int pm_gpu_gv_zcoef(float* a, float* b);
+void pm_gpu_set_ntab(const float (*ntab)[3][4]); /* the normal rows of the game matrices of the gm table */
+int pm_gpu_gv5_ok(void);
 int pm_gpu_gstat_alloc(unsigned n, unsigned char** out); /* DLC2 */
 void pm_gpu_gstat_commit(unsigned first, unsigned n);
 void pm_gpu_gstat_reset(void);
 unsigned pm_gpu_gstat_used(void);
-int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const unsigned short* idx, unsigned nidx);
+int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const PmFx* fx, const unsigned short* idx, unsigned nidx);
 int pm_gpu_gidx_room(unsigned n);
 int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, unsigned i0, unsigned i1, unsigned i2);
 const unsigned char* pm_gpu_gring(void);
 unsigned pm_gpu_flush_gen(void);
 int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2);
-int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const unsigned ri[3], unsigned ro[3]);
+int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const PmFx* fx, const unsigned ri[3], unsigned ro[3]);
 void pm_gpu_gv_reset(void);
 void pm_gpu_gv_stats(unsigned o[4]);
 void pm_gpu_note_mvp(const float m[4][4], float sx, float sy, float tx, float ty);

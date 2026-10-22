@@ -9,6 +9,7 @@
 #include "pm_shader_shbin.h"
 #include "pm_shader3_shbin.h"
 #include "pm_shader4_shbin.h"
+#include "pm_shader5_shbin.h"
 #include "pm_shaderall_shbin.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
@@ -108,6 +109,18 @@ enum { GPAL = 21 };
 static shaderProgram_s prog4;
 static DVLB_s* dvlb4;
 static C3D_AttrInfo attr4;
+/* GV5: program pm5 (lighting, texgen, fog). A batch with g_use5 holds up to GPAL5 matrices, 7 registers each (4 position rows, 3 normal rows). */
+enum { GPAL5 = 8 };
+static shaderProgram_s prog5;
+static DVLB_s* dvlb5;
+static int u5_pal = -1, u5_lamb = -1, u5_lcol = -1, u5_ldir = -1, u5_lk0 = -1, u5_lk1 = -1, u5_lflag = -1, u5_fogu = -1, u5_uvso = -1, u5_cmul = -1, u5_cadd = -1, u5_nzo = -1, u5_zmix = -1, gv5_on, g_use5;
+static PmFx g_fx, sh5_fx;
+static float sh5_uvso[4], sh5_cmul[4], sh5_cadd[4], sh5_zmix[2];
+static int sh5_ok;
+static unsigned sh5_pal_gm[GPAL5], sh5_pal_gen[GPAL5]; static unsigned char sh5_pal_ok[GPAL5];
+static const float (*pal_ntab)[3][4];
+void pm_gpu_set_ntab(const float (*ntab)[3][4]) { pal_ntab = ntab; }
+int pm_gpu_gv5_ok(void) { return gv5_on; }
 /* RAW1: lean binding. bound = the program citro3d has (0 unknown, 1 cpu, 2 pm3, 3 pm4), buf_cur = the buffer info (0 unknown, 1 CPU pool, 2 raw ring). shadows of the pm4 uniforms
  * and of the palette entries skip a set that holds the value already. They restart at every frame begin. Switch raw1 (A/B), default off. */
 static int gv1_wanted(void) { return (PM_GV1_DEFAULT || pm_debug_has("gv1") || pm_ph_abtog_has("gv1") || pm_ph_abtog_has("nogv1")) && !(pm_debug_has("nogv1") && !pm_ph_abtog_has("nogv1")); }
@@ -115,7 +128,7 @@ static int bound, buf_cur, raw_dvlb_ok; static DVLB_s* dvlb_all;
 static int raw1_on(void) { return raw_dvlb_ok && (PM_RAW1_DEFAULT || PMDL("raw1")) && !PMDL("noraw1"); } /* the DVLB is loaded at init when wanted; the switches (abtog) pick per flush */
 static float sh_uvso[4], sh_cmul[4], sh_cadd[4], sh_zmix[2]; static int sh_ok;
 static unsigned sh_pal_gm[32], sh_pal_gen[32]; static unsigned char sh_pal_ok[32];
-static void raw1_reset(void) { bound = 0; buf_cur = 0; sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); }
+static void raw1_reset(void) { bound = 0; buf_cur = 0; sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); }
 static int u4_pal = -1, u4_uvx = -1, u4_uvso = -1, u4_cmul = -1, u4_cadd = -1, u4_zmix = -1, u4_nzo = -1, g_pal, gv4_on;
 static unsigned pal_n, pal_g[GPAL], pal_gen = 1, post_gen = 1;
 static unsigned* rgen;          /* per ring vertex: the palette generation in which its flag was set (0 = never) */
@@ -456,7 +469,45 @@ static void flush_draw(void) {
     const int gpal = graw && g_pal; /* GV1c: the palette program */
     if (graw) { /* PO3b */
         proj_ok = 0; pool_buf_ok = 0; /* DR1: the program and the buffer change */
-        if (gpal) {
+        if (gpal && g_use5) { /* GV5: lighting, texgen, fog */
+            if (bound != 4) { C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; PH_ADD(C_RAWCALL, 2); }
+            if (!sh5_ok || memcmp(sh5_uvso, g_uvso, sizeof sh5_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh5_uvso, g_uvso, sizeof sh5_uvso); PH_ADD(C_RAWCALL, 1); }
+            if (!sh5_ok || memcmp(sh5_cmul, g_cmul, sizeof sh5_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh5_cmul, g_cmul, sizeof sh5_cmul); PH_ADD(C_RAWCALL, 1); }
+            if (!sh5_ok || memcmp(sh5_cadd, g_cadd, sizeof sh5_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh5_cadd, g_cadd, sizeof sh5_cadd); PH_ADD(C_RAWCALL, 1); }
+            if (!sh5_ok || memcmp(sh5_zmix, g_zmix, sizeof sh5_zmix)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_zmix, g_zmix[0], g_zmix[1], 0.f, 0.f); memcpy(sh5_zmix, g_zmix, sizeof sh5_zmix); PH_ADD(C_RAWCALL, 1); }
+            if (!sh5_ok || memcmp(&sh5_fx, &g_fx, sizeof g_fx)) { /* the light block, the look-at vectors, the fog factor and the flags: one set per change */
+                C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, g_fx.lflag[0], g_fx.lflag[1], g_fx.lflag[2], g_fx.lflag[3]);
+                C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, g_fx.fogu[0], g_fx.fogu[1], g_fx.fogu[2], g_fx.fogu[3]);
+                if (g_fx.lflag[0] != 0.f) { /* lighting: the light table and, for texgen, the look-at vectors */
+                    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lamb, g_fx.amb[0], g_fx.amb[1], g_fx.amb[2], g_fx.amb[3]);
+                    for (int i = 0; i < 7; i++) {
+                        C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lcol + i, g_fx.col[i][0], g_fx.col[i][1], g_fx.col[i][2], g_fx.col[i][3]);
+                        C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_ldir + i, g_fx.dir[i][0], g_fx.dir[i][1], g_fx.dir[i][2], g_fx.dir[i][3]);
+                    }
+                    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk0, g_fx.lk0[0], g_fx.lk0[1], g_fx.lk0[2], g_fx.lk0[3]);
+                    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk1, g_fx.lk1[0], g_fx.lk1[1], g_fx.lk1[2], g_fx.lk1[3]);
+                }
+                sh5_fx = g_fx;
+                PH_ADD(C_RAWCALL, 2 + (g_fx.lflag[0] != 0.f ? 17 : 0));
+            }
+            sh5_ok = 1;
+            for (unsigned k = 0; k < pal_n; k++) {
+                unsigned gm = pal_g[k];
+                if (pcomp_gen[gm] != post_gen) {
+                    C3D_Mtx game;
+                    const float(*m)[4] = pal_tab[gm];
+                    for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
+                    Mtx_Multiply(&pcomp[gm], &gv_post, &game);
+                    pcomp_gen[gm] = post_gen;
+                }
+                if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && sh5_pal_gen[k] == post_gen) continue;
+                C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
+                if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
+                sh5_pal_ok[k] = 1; sh5_pal_gm[k] = gm; sh5_pal_gen[k] = post_gen;
+                PH_ADD(C_RAWCALL, 4);
+                gv_palup_n++;
+            }
+        } else if (gpal) {
             const int lean = raw1_on();
             { static int lean_prev; if (lean != lean_prev) { raw1_reset(); lean_prev = lean; } } /* abtog switched it */
             if (!lean || bound != 3) { C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
@@ -508,10 +559,10 @@ static void flush_draw(void) {
     if (tex && snap0) { C3D_TexBind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
     if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
     if (!gpal) sh_pal_ok[0] = sh_pal_ok[1] = 0; /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
-    if (tex1 && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
+    if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
     int noise = combine == 8 && plan.uses_noise && noise_init();
     if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
-        int u = gpal ? u4_nzo : graw ? u_nzo3 : u_nzo;
+        int u = gpal ? (g_use5 ? u5_nzo : u4_nzo) : graw ? u_nzo3 : u_nzo;
         C3D_TexBind(2, &noise_tex);
         if (u >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u, 120.f / 64.f, 200.f / 64.f, noise_off[0], noise_off[1]);
     }
@@ -964,6 +1015,26 @@ void pm_gpu_init(void) {
             rgen = (unsigned*)calloc(GRING_VTX, sizeof(unsigned));
             rk = (unsigned char*)calloc(GRING_VTX, 1);
             gv4_on = rgen && rk && prog4.vertexShader && u4_pal >= 0 && u4_uvso >= 0 && u4_cmul >= 0 && u4_cadd >= 0 && u4_zmix >= 0;
+            if (gv4_on) { /* GV5 */
+                dvlb5 = DVLB_ParseFile((u32*)pm_shader5_shbin, pm_shader5_shbin_size);
+                shaderProgramInit(&prog5);
+                if (dvlb5) shaderProgramSetVsh(&prog5, &dvlb5->DVLE[0]);
+                u5_pal = shaderInstanceGetUniformLocation(prog5.vertexShader, "pal5");
+                u5_lamb = shaderInstanceGetUniformLocation(prog5.vertexShader, "lamb");
+                u5_lcol = shaderInstanceGetUniformLocation(prog5.vertexShader, "lcol");
+                u5_ldir = shaderInstanceGetUniformLocation(prog5.vertexShader, "ldir");
+                u5_lk0 = shaderInstanceGetUniformLocation(prog5.vertexShader, "lk0");
+                u5_lk1 = shaderInstanceGetUniformLocation(prog5.vertexShader, "lk1");
+                u5_lflag = shaderInstanceGetUniformLocation(prog5.vertexShader, "lflag");
+                u5_fogu = shaderInstanceGetUniformLocation(prog5.vertexShader, "fogu");
+                u5_uvso = shaderInstanceGetUniformLocation(prog5.vertexShader, "uvso");
+                u5_cmul = shaderInstanceGetUniformLocation(prog5.vertexShader, "cmul");
+                u5_cadd = shaderInstanceGetUniformLocation(prog5.vertexShader, "cadd");
+                u5_nzo = shaderInstanceGetUniformLocation(prog5.vertexShader, "nzo");
+                u5_zmix = shaderInstanceGetUniformLocation(prog5.vertexShader, "zmix");
+                gv5_on = prog5.vertexShader && u5_pal >= 0 && u5_lamb >= 0 && u5_lcol >= 0 && u5_ldir >= 0 && u5_lk0 >= 0 && u5_lk1 >= 0 && u5_lflag >= 0 && u5_fogu >= 0 && u5_uvso >= 0 && u5_cmul >= 0 && u5_cadd >= 0 && u5_nzo >= 0 && u5_zmix >= 0;
+                pm_log("gv5: lighting, texgen and fog program %s (pal %d lcol %d ldir %d)", gv5_on ? "on" : "FAILED", u5_pal, u5_lcol, u5_ldir);
+            }
             pm_log("gv1: palette path %s (pal %d uvso %d cmul %d cadd %d zmix %d nzo %d)", gv4_on ? "on" : "FAILED", u4_pal, u4_uvso, u4_cmul, u4_cadd, u4_zmix, u4_nzo);
         }
         pm_log("gpuvtx: raw Vtx path %s (ring %u vtx, %u idx, uvso %d, uniforms proj %d uvx %d)", gpu_vtx_on ? "on" : "FAILED", (unsigned)GRING_VTX, (unsigned)GRING_IDX, u_uvso,
@@ -1549,6 +1620,17 @@ int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned 
     return 1;
 }
 int pm_gpu_gv_wind(void) { return gv_wind; }
+/* GV5: the PICA clip z is a * z + b * w of the N64 clip position and w stays w, when the matrix after the game matrix is a plain depth map. Returns 0 when it is not. */
+int pm_gpu_gv_zcoef(float* a, float* b) {
+    const C3D_FVec *z = &gv_post.r[2], *w = &gv_post.r[3];
+    const float e = 1e-5f;
+    if (!(gv_post.r[2].z > e || gv_post.r[2].z < -e)) return 0;
+    if (z->x > e || z->x < -e || z->y > e || z->y < -e) return 0;
+    if (w->x > e || w->x < -e || w->y > e || w->y < -e || w->z > e || w->z < -e || w->w < 1.f - e || w->w > 1.f + e) return 0;
+    if (a) *a = z->z;
+    if (b) *b = z->w;
+    return 1;
+}
 void pm_gpu_gv_post(const float p[4], float o[4]) { /* gv1check: the clip position after the viewport and tilt (the game matrix is already in p) */
     for (int r = 0; r < 4; r++) o[r] = gv_post.r[r].x * p[0] + gv_post.r[r].y * p[1] + gv_post.r[r].z * p[2] + gv_post.r[r].w * p[3];
 }
@@ -1565,8 +1647,10 @@ void pm_gpu_note_mvp(const float m[4][4], float sx, float sy, float tx, float ty
 /* GV1c: one triangle of ring vertices ri[3], vertex i with game matrix tab[g[i]]. ro[3] gets the ring indices to use from now on (a vertex whose palette index
  * has to change is copied). Returns 0 when the raw path cannot take it now. */
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
-                 const unsigned ri[3], unsigned ro[3]) {
+                 const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
     if (!gv4_on || !gpu_ok) return 0;
+    const int use5 = fx != NULL;
+    if (use5 && !gv5_on) return 0;
     if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
     if (r_decal && r_blend && decal2_on()) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
     if (pm_wide && !off_active) { /* F07-7: the CPU path moves edge vertices of UI quads. The wide post matrix is made for a perspective game matrix. */
@@ -1576,7 +1660,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
     if (nverts > 0) flush(); /* the CPU batch in flight comes first, draw order */
-    if (gni > 0 && (!g_pal || memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) ||
+    if (gni > 0 && (!g_pal || use5 != g_use5 || (use5 && memcmp(&g_fx, fx, sizeof g_fx)) || memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) ||
                     memcmp(g_cadd, cadd, sizeof(g_cadd)) || memcmp(g_zmix, zmix, sizeof(g_zmix)) || g_ct != ct)) flush();
     if (gni > 0) { /* the palette must hold the matrices of the three vertices */
         unsigned miss = 0;
@@ -1584,7 +1668,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
             unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g[i]) break;
             if (k == pal_n && !(i > 0 && g[i] == g[0]) && !(i > 1 && g[i] == g[1])) miss++;
         }
-        if (pal_n + miss > GPAL) { gv_palflush++; flush(); }
+        if (pal_n + miss > (use5 ? GPAL5 : GPAL)) { gv_palflush++; flush(); }
     }
     if (gni == 0) {
         memcpy(g_uvso, uvso, sizeof(g_uvso));
@@ -1593,6 +1677,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
         memcpy(g_cadd, cadd, sizeof(g_cadd));
         memcpy(g_zmix, zmix, sizeof(g_zmix));
         g_ct = ct; g_pal = 1; pal_n = 0; pal_gen++;
+        g_use5 = use5; if (use5) g_fx = *fx;
         if (vp[0] != vp_sx || vp[1] != vp_sy || vp[2] != vp_tx || vp[3] != vp_ty) { vp_sx = vp[0]; vp_sy = vp[1]; vp_tx = vp[2]; vp_ty = vp[3]; rebuild_3d(); }
         if (ct) {
             int ccw = (gv_wind > 0) == (PMDL("gv1flip") != 0); /* golden yard and toad: the first sign was inverted. gv1flip gives that sign back. */
@@ -1650,8 +1735,10 @@ unsigned pm_gpu_gstat_used(void) { return gstat_n; }
 /* DLC2: nidx indices of static vertices (all flag 0) drawn with the game matrix tab[gm]. The batch palette must hold gm at entry 0, else a new batch starts.
  * Returns 0 when the raw path cannot take it (nothing changed, the caller draws the group through the ring). */
 int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
-                  const unsigned short* idx, unsigned nidx) {
+                  const PmFx* fx, const unsigned short* idx, unsigned nidx) {
     if (!gv4_on || !gpu_ok) return 0;
+    const int use5 = fx != NULL;
+    if (use5 && !gv5_on) return 0;
     if (r_zmark) return 0;
     if (r_decal && r_blend && decal2_on()) return 0;
     if (pm_wide && !off_active) {
@@ -1661,7 +1748,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     if (gidx_n + nidx > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
     if (nverts > 0) flush();
-    if (gni > 0 && (!g_pal || pal_n == 0 || pal_g[0] != gm || memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) ||
+    if (gni > 0 && (!g_pal || pal_n == 0 || pal_g[0] != gm || use5 != g_use5 || (use5 && memcmp(&g_fx, fx, sizeof g_fx)) || memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) ||
                     memcmp(g_cadd, cadd, sizeof(g_cadd)) || memcmp(g_zmix, zmix, sizeof(g_zmix)) || g_ct != ct)) flush();
     if (gni == 0) {
         memcpy(g_uvso, uvso, sizeof(g_uvso));
@@ -1670,6 +1757,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
         memcpy(g_cadd, cadd, sizeof(g_cadd));
         memcpy(g_zmix, zmix, sizeof(g_zmix));
         g_ct = ct; g_pal = 1; pal_n = 1; pal_g[0] = gm; pal_gen++;
+        g_use5 = use5; if (use5) g_fx = *fx;
         if (gv_palmax < 1) gv_palmax = 1;
         if (vp[0] != vp_sx || vp[1] != vp_sy || vp[2] != vp_tx || vp[3] != vp_ty) { vp_sx = vp[0]; vp_sy = vp[1]; vp_tx = vp[2]; vp_ty = vp[3]; rebuild_3d(); }
         if (ct) {

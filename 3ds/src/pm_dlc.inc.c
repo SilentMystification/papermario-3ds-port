@@ -166,7 +166,7 @@ static int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
         pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
         ep_pepoch = gv_epoch; ep_ptss = tss;
     }
-    if (!pm_gpu_grange((const float(*)[4][4])gm_tab, gmi, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, idx, 3u * nt)) { ep_open = 0; return 0; }
+    if (!pm_gpu_grange((const float(*)[4][4])gm_tab, gmi, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ep_p.fxon ? &ep_p.fx : NULL, idx, 3u * nt)) { ep_open = 0; return 0; }
     ep_n += nt;
     ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss;
     n_cmd += (int)nt; gp_ntri += nt; n_in += (int)nt; st_gpu_tri += nt; gv_tri_n += nt; PH_ADD(C_GVTRI, nt);
@@ -176,7 +176,7 @@ static int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
 
 /* DLC2: a group in view from the static area. The geometry mode at its start is set. Returns 0 when nothing was queued and the group must run through the ring. */
 static int dlc_static_group(const DlcEnt* e, const DlcGrp* g, unsigned gmi) {
-    u32 bad = G_LIGHTING | G_TEXTURE_GEN | (fogmix_on ? G_FOG : 0), x = geom;
+    u32 bad = G_LIGHTING | G_TEXTURE_GEN | (fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0), x = geom;
     if (x & bad) return 0;
     for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if (x & bad) return 0; }
     if (!pm_gpu_gidx_room(3u * g->sn)) return 0;
@@ -220,18 +220,7 @@ static void dlc_set_geom(u32 g) {
 }
 
 /* The matrix id of `combined` (the same search as the G_VTX code), GV_NONE when the table is full. */
-static unsigned dlc_gmi(void) {
-    unsigned gmi = GV_NONE;
-    if (!gm_tab) gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
-    if (!gm_tab) return GV_NONE;
-    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0) return gm_last;
-    unsigned k;
-    for (k = gm_n; k > 0; k--) if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0) break;
-    if (k > 0) gmi = k - 1;
-    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); gmi = gm_n++; }
-    gm_last = gmi;
-    return gmi;
-}
+static unsigned dlc_gmi(void) { return gv_matrix_id(0); }
 
 /* Box test against the clip planes of clip_bits4. Returns 1 when every vertex of the box is outside one plane (by a margin for the float error of the interpreter).
  * *near is set when the smallest w of the box is at or under the near limit of the interpreter. */

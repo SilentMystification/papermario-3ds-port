@@ -260,6 +260,7 @@ static unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
 static unsigned short vert_ring[64], vert_gmi[64];
 static unsigned vert_tss[64];
 static float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
+static float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each gm_tab entry (the normal matrix), made when the entry is made */
 static unsigned gm_n;
 static unsigned st_gpu_tri, st_cpu_tri; /* plain triangles drawn by the raw path, triangles that reached the draw and took the CPU path */
 static unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
@@ -1171,7 +1172,7 @@ static int noprimz_on(void) { static int v = -1; if (v < 0) v = PMD("noprimz"); 
 /* PO3b, PO3c: one triangle of the raw Vtx path. The caller checked that the three vertices have a ring slot, one matrix and one texture scale, and that
  * the triangle is plain (unlit, no texgen, no screen vertex, no fog). The colour and depth overrides of the CPU path become uniforms: ENV or the plan
  * constant replace the colour, alpha 255, the boost of the second cycle, and G_ZS_PRIM replaces the depth. Returns 0 when the path refuses. */
-typedef struct { float uvso[4], vp[4], cm[4], ca[4], zm[2]; int boost; } GvP;
+typedef struct { float uvso[4], vp[4], cm[4], ca[4], zm[2]; int boost; PmFx fx; int fxon; } GvP;
 /* The draw parameters of a raw triangle from the state and the texture scale `tss` of its vertices. */
 static void gv_params_calc(unsigned tss, GvP* o) {
     int env = comb_mode5 && !plan_active;
@@ -1206,6 +1207,18 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     if (boost) for (int q = 0; q < 3; q++) { o->ca[q] = o->ca[q] * 0.5f + (1.f - en[q]) * 0.5f; o->cm[q] *= 0.5f; }
     if (primz) { o->zm[0] = 0.f; o->zm[1] = 2.f * (float)prim_z / 32767.f - 1.f; }
     o->boost = boost;
+    memset(&o->fx, 0, sizeof o->fx);
+    o->fxon = 0;
+    if (fogmix_on && (geom & G_FOG)) { /* GV5: the RSP fog factor clamp(z / w * fm + fo) is the alpha. z / w of the N64 clip position from the PICA clip z and w. */
+        float za = 1.f, zb = 0.f;
+        if (pm_gpu_gv_zcoef(&za, &zb)) {
+            o->fx.lflag[2] = 1.f;
+            o->fx.fogu[0] = (float)fog_fm / za;
+            o->fx.fogu[1] = (float)fog_fo - (float)fog_fm * zb / za;
+            o->cm[3] = 1.f; o->ca[3] = 0.f; /* the fog factor replaces the alpha, after the alpha 255 rule */
+            o->fxon = 1;
+        }
+    }
 }
 static int gpu_emit(const int* idx, int ct) {
     GvP p;
@@ -1259,6 +1272,27 @@ static void gv_xf(int sl) {
     vert_gvf[sl] = 3;
 }
 
+/* GV1: the id of the matrix of the next vertex load or static group in gm_tab: the combined matrix, and for a lit load also the model view matrix of the normal. -1 when the table is full. */
+static unsigned gv_matrix_id(int need_nm) {
+    if (!gm_tab) {
+        gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
+        gm_nrm = (float(*)[3][4])malloc(256 * sizeof(float[3][4]));
+        if (!gm_tab || !gm_nrm) { free(gm_tab); free(gm_nrm); gm_tab = NULL; gm_nrm = NULL; return GV_NONE; }
+        pm_gpu_set_ntab((const float(*)[3][4])gm_nrm);
+    }
+    float nm[3][4];
+    for (int i = 0; i < 3; i++) { nm[i][0] = mv[mv_sp][i][0]; nm[i][1] = mv[mv_sp][i][1]; nm[i][2] = mv[mv_sp][i][2]; nm[i][3] = 0.f; }
+    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0)) return gm_last;
+    unsigned k, gmi = GV_NONE;
+    for (k = gm_n; k > 0; k--) if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[k - 1], nm, sizeof nm) == 0)) break; /* newest first */
+    if (k > 0) gmi = k - 1;
+    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gmi = gm_n++; }
+    gm_last = gmi;
+    return gmi;
+}
+
+/* GV5: the fog factor can be made on the GPU */
+static int gv_fog_gpu_ok(void) { return pm_gpu_gv5_ok() && pm_gpu_gv_zcoef(NULL, NULL); }
 static int gv1chk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gv1check"); return v; }
 
 /* GV1b: state epoch. gv_epoch goes up at every display list op that is not a vertex load, a triangle, a matrix op or a list jump. The decision that depends on state
@@ -1274,7 +1308,7 @@ static int gv_state_why(int* ct, int* both) {
     *ct = cull_off() ? 0 : cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
     *both = cg == G_CULL_BOTH && !cull_off();
     if (geom & (G_LIGHTING | G_TEXTURE_GEN)) return GVR_LIT;
-    if (fogmix_on && (geom & G_FOG)) return GVR_FOG;
+    if (fogmix_on && (geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
     if (img_role(0) == ROLE_DEPTH) return GVR_ZMARK;
     if (plan_active && cur_plan.uses_tex1) return GVR_TEX1;
     if (dd_on() || xt_on() || rmlog_on() || po3a_on()) return GVR_DBG;
@@ -1351,7 +1385,7 @@ static int gv_tri(const int* idx) {
             n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
         }
         unsigned gg[3] = { vert_gmi[a], vert_gmi[b], vert_gmi[c] }, ri[3] = { vert_ring[a], vert_ring[b], vert_ring[c] }, ro[3];
-        if (pm_gpu_gtrip((const float(*)[4][4])gm_tab, gg, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ri, ro)) {
+        if (pm_gpu_gtrip((const float(*)[4][4])gm_tab, gg, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ep_p.fxon ? &ep_p.fx : NULL, ri, ro)) {
             vert_ring[a] = (unsigned short)ro[0]; vert_ring[b] = (unsigned short)ro[1]; vert_ring[c] = (unsigned short)ro[2];
             ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss;
             n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
@@ -2307,17 +2341,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (gv1_on() && n) { /* GV1: an unlit load goes to the ring as it is. A lit load (or a full ring) takes the old code. */
                     if (geom & G_LIGHTING) gv_fb[GVR_LITLOAD]++;
                     else if (!dd_on() && !xt_on() && !rmlog_on() && !po3a_on()) {
-                        if (!gm_tab) gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
-                        if (gm_tab) {
-                                                        if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0) gmi = gm_last;
-                            else {
-                                unsigned k;
-                                for (k = gm_n; k > 0; k--) if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0) break;
-                                if (k > 0) gmi = k - 1;
-                                else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); gmi = gm_n++; }
-                                gm_last = gmi;
-                            }
-                        }
+                        gmi = gv_matrix_id(0);
                         if (mtxlog_on() && mtxlog_ok()) pm_log_d("mtxv f%d vtx %p n %u gmi %u gmn %u t %.1f %.1f %.1f", rm_frame, (void*)src, n, gmi, gm_n, combined[3][0], combined[3][1], combined[3][2]);
                         if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
                         if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
@@ -2353,13 +2377,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 }
                 if (gv) { gv_load_n += n; PH_ADD(C_GVLOAD, n); }
                 if (po3b_on() && n) {
-                    if (!gm_tab) gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
-                    if (gm_tab) {
-                        unsigned k;
-                        for (k = gm_n; k > 0; k--) if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0) break; /* newest first */
-                        if (k > 0) gmi = k - 1;
-                        else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); gmi = gm_n++; }
-                    }
+                    gmi = gv_matrix_id(0);
                     if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
                 }
                 for (unsigned i = 0; i < n; i++) {
