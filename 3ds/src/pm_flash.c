@@ -52,6 +52,7 @@ static void flash_write_dirty(const char* why) {
     LightLock_Unlock(&flash_wr_lock);
 }
 
+extern volatile int pm_io_quiet; /* PT68: pm_log.c, set while the app is suspended or asleep */
 static void flash_thread(void* arg) {
     (void)arg;
     for (;;) {
@@ -61,6 +62,7 @@ static void flash_thread(void* arg) {
             svcSleepThread(70000000LL);
             if (s == flash_stamp) break;
         }
+        while (pm_io_quiet) svcSleepThread(50000000LL); /* PT68: no SD write while asleep, the span stays dirty */
         flash_write_dirty("core 1 idle");
     }
 }

@@ -39,6 +39,7 @@ static int con_up;
 static LightLock con_lock; /* the bottom screen console (stdout) is not thread safe: writer, HUD and console setup take this */
 static int st_on;
 static int writer_on;
+volatile int pm_io_quiet; /* PT68: set while the app is suspended or asleep, see io_gate */
 static volatile int writer_core = -1;
 static volatile u32 writer_hb;
 static u32 q_dropped, q_drop_total;
@@ -470,6 +471,7 @@ static void writer_main(void* arg) {
         if (__atomic_load_n(&active_id, __ATOMIC_ACQUIRE) != id) return; /* a replacement thread took over */
         writer_hb++;
         if (!__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) continue;
+        if (pm_io_quiet) continue; /* PT68: no SD, socket or console call while the app sleeps */
         accept_client();
         LightLock_Lock(&drain_lock);
         if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) drain_locked();
@@ -519,13 +521,32 @@ static Result cpu_apply(int v, const char* why) {
 }
 
 /* Hook runs in the thread that calls aptMainLoop (the game thread). Suspend and sleep: 30, so the HOME menu stays responsive. Restore and wake: the game value. */
+/* PT68: while the app is suspended or asleep no thread of ours may touch the SD card, the network or the console. The console freezes when the
+ * log writer (fsync, soc) or the flash thread runs into a sleeping system module. The hook drains the queue and syncs the file first, then sets
+ * the gate. The writer and the flash thread idle while it is set. Lines logged after the gate stay in the queue until the gate opens. */
+volatile int pm_io_quiet;
+static void io_gate(int on) {
+    if (on) {
+        if (writer_on) {
+            LightLock_Lock(&drain_lock);
+            if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) drain_locked();
+            if (log_fd >= 0) fsync(log_fd);
+            dirty = 0;
+            LightLock_Unlock(&drain_lock);
+        }
+        pm_io_quiet = 1;
+    } else {
+        pm_io_quiet = 0;
+        LightEvent_Signal(&ev_wake);
+    }
+}
 static void cpu_hook(APT_HookType h, void* param) {
     (void)param;
     switch (h) {
-    case APTHOOK_ONSUSPEND: pm_audio_drain(3); pm_flash_flush("HOME menu opens"); cpu_apply(30, "HOME menu opens"); break;
-    case APTHOOK_ONSLEEP: pm_audio_drain(3); pm_flash_flush("sleep"); cpu_apply(30, "sleep"); break;
-    case APTHOOK_ONRESTORE: cpu_apply(cpu_game, "HOME menu closed"); break;
-    case APTHOOK_ONWAKEUP: cpu_apply(cpu_game, "wake"); break;
+    case APTHOOK_ONSUSPEND: pm_audio_drain(3); pm_flash_flush("HOME menu opens"); cpu_apply(30, "HOME menu opens"); io_gate(1); break;
+    case APTHOOK_ONSLEEP: pm_audio_drain(3); pm_flash_flush("sleep"); cpu_apply(30, "sleep"); io_gate(1); break;
+    case APTHOOK_ONRESTORE: io_gate(0); cpu_apply(cpu_game, "HOME menu closed"); break;
+    case APTHOOK_ONWAKEUP: io_gate(0); cpu_apply(cpu_game, "wake"); break;
     case APTHOOK_ONEXIT: pm_audio_drain(3); pm_flash_flush("exit hook"); if (cpu_now != 30) cpu_apply(30, "exit"); break;
     default: break;
     }
