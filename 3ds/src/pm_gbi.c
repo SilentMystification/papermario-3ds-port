@@ -111,6 +111,7 @@ static int tlut_n;
  * address and palette, tile sizes, scissor, env color and the second combiner cycle. */
 extern int pm_is_cfb(const void* p);
 extern void pm_cfb_capture_prev(void);
+extern void pm_cfb_capture_prev_cpu_for(const void* fill);
 extern void pm_cfb_capture_prev_cpu(void);
 extern void pm_zbuf_need(void);
 extern unsigned pm_frame_count(void);
@@ -2619,7 +2620,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
              * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
             if (img_role(1) == ROLE_CPUFILL) {
                 unsigned short* d = (unsigned short*)cimg;
-                if (!pm_interp_repl) pm_cfb_capture_prev_cpu(); /* F06-5: key pass only. the filter reads the last frame from the other frame buffer */
+                if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
                 for (int y = uly; y <= lry && y < 240; y++)
                     for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
                 break;
