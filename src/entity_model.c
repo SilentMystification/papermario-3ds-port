@@ -247,6 +247,24 @@ void appendGfx_entity_model(EntityModel* model) {
     ImgFXTexture ifxImg;
     Matrix4f imgfxMtx;
 
+#ifdef TARGET_3DS
+    { /* PT70 diagnostic, switch emlog: model, display list and translation at the draw, at most 200 lines per frame */
+        extern int pm_debug_has(const char*);
+        extern void pm_log_d(const char*, ...);
+        extern unsigned pm_frame_count(void);
+        static int emlog = -1;
+        static unsigned emf = 0xffffffffu, emn;
+        if (emlog < 0) emlog = pm_debug_has("emlog");
+        if (emlog) {
+            if (pm_frame_count() != emf) { emf = pm_frame_count(); emn = 0; }
+            if (emn++ < 200) {
+                Matrix4f tm;
+                guMtxL2F(tm, &model->transform);
+                pm_log_d("emdraw f%u model %p dl %p fl %08x rm %d t %.1f %.1f %.1f", emf, (void*)model, (void*)model->gfx.displayList, (unsigned)model->flags, (int)model->renderMode, tm[3][0], tm[3][1], tm[3][2]);
+            }
+        }
+    }
+#endif
     gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) {
@@ -415,6 +433,20 @@ void draw_entity_model_A(s32 modelIdx, Mtx* transformMtx) {
         modelIdx &= ~BATTLE_ENTITY_ID_BIT;
         model = (*gCurrentEntityModelList)[modelIdx];
 
+#ifdef TARGET_3DS
+        { /* PT70 diagnostic, switch emlog: flags of each entity model at the draw call, at most 12 lines per frame */
+            extern int pm_debug_has(const char*);
+            extern void pm_log_d(const char*, ...);
+            extern unsigned pm_frame_count(void);
+            static int emlog = -1;
+            static unsigned emf = 0xffffffffu, emn;
+            if (emlog < 0) emlog = pm_debug_has("emlog");
+            if (emlog && model != nullptr) {
+                if (pm_frame_count() != emf) { emf = pm_frame_count(); emn = 0; }
+                if (emn++ < 200) pm_log_d("emlog f%u idx %d flags %08x cam %d", emf, (int)modelIdx, (unsigned)model->flags, (int)gCurrentCamID);
+            }
+        }
+#endif
         if (model != nullptr) {
             if (model->flags != 0) {
                 if (!(model->flags & ENTITY_MODEL_FLAG_100)) {
