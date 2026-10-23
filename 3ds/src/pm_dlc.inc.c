@@ -176,9 +176,10 @@ static int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
 
 /* DLC2: a group in view from the static area. The geometry mode at its start is set. Returns 0 when nothing was queued and the group must run through the ring. */
 static int dlc_static_group(const DlcEnt* e, const DlcGrp* g, unsigned gmi) {
-    u32 bad = G_LIGHTING | G_TEXTURE_GEN | (fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0), x = geom;
+    u32 bad = (gv_lit_ok() ? 0 : G_LIGHTING) | (fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0), x = geom;
+    const u32 lm = G_LIGHTING | G_TEXTURE_GEN, x0 = x & lm; /* the RSP lights at the vertex load: the lighting state must not change inside the group, else the interpreter runs it */
     if (x & bad) return 0;
-    for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if (x & bad) return 0; }
+    for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if ((x & bad) || (x & lm) != x0) return 0; }
     if (!pm_gpu_gidx_room(3u * g->sn)) return 0;
     const unsigned short* gpos = g->sd + 3u * g->ntri;
     unsigned t = 0;
@@ -376,15 +377,17 @@ static int dlc_try(const Gfx* l) {
         skipped_last = 0;
         u32 gg = (entry & g->am) | g->om;
         int why = near ? 1 : 0;
+        int lit = 0; /* GV5: a lit group is replayed from the static area (the GPU lights it) or runs through the interpreter */
         if (!why) {
             u32 x = gg;
-            int lit = (x & G_LIGHTING) != 0;
+            lit = (x & G_LIGHTING) != 0;
             for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if (x & G_LIGHTING) lit = 1; }
-            if (lit) why = 2;
+            if (lit && !(g->sd && dlc2_on() && gv_lit_ok())) why = 2;
         }
         if (!why && !pm_gpu_gv_room(g->nvtx + 3u * g->ntri)) why = 3;
         if (!why) {
-            if (!gmi_ready) { gmi = dlc_gmi(); gmi_ready = 1; }
+            if (lit) gmi = gv_matrix_id(1); /* the normal matrix is part of the entry */
+            else if (!gmi_ready) { gmi = dlc_gmi(); gmi_ready = 1; }
             if (gmi == GV_NONE) why = 4;
         }
         dlc_set_geom(gg);
@@ -394,6 +397,7 @@ static int dlc_try(const Gfx* l) {
             skipped_last = skipped_any = 1;
             continue;
         }
+        if (!why && lit) why = 2; /* the static group was not taken */
         if (why) {
             if (why == 1) dlc_c.i_near++; else if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else dlc_c.i_mat++;
             dlc_depth++;
