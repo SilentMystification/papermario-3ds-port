@@ -657,8 +657,31 @@ static void pm_statehash(unsigned f) {
 }
 
 void pm_sweep_tick(unsigned f);
+#include "model.h"
+/* Debug tool, switch modeldump=<scene frame>: one log line per model of the map (id, flags, texture id, render mode, display list) and the IA4 texture loads
+ * found in its list. Finds a model that the map has but the draw list does not show (PT40). */
+static void model_dump(unsigned f) {
+    char v[16];
+    int i;
+    if (!pm_debug_value("modeldump", v, sizeof v) || f != (unsigned)atoi(v)) return;
+    for (i = 0; i < MAX_MODELS; i++) {
+        Model* m = (*gCurrentModels)[i];
+        Gfx* dl;
+        int n, ia4 = 0;
+        if (!m) continue;
+        dl = (m->modelNode && m->modelNode->displayData) ? m->modelNode->displayData->displayList : NULL;
+        for (n = 0; dl && n < 400; n++) {
+            u32 w0 = dl[n].words.w0;
+            if ((w0 >> 24) == 0xDF) break; /* G_ENDDL */
+            if ((w0 >> 24) == 0xFD && ((w0 >> 21) & 7) == 3 && ((w0 >> 19) & 3) == 0) ia4++; /* G_SETTIMG IA 4b */
+        }
+        pm_log("modeldump %d id %x flags %04x tex %d var %d rm %d cgfx %d dl %p ia4loads %d", i, (unsigned)m->modelID, (unsigned)m->flags, (int)m->textureID, (int)m->textureVariation, (int)m->renderMode, (int)m->customGfxIndex, (void*)dl, ia4);
+    }
+}
+
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
+    model_dump(frame);
     boss_tick();
     bypass_tick();
     if (scene_f0 < 0) return;
