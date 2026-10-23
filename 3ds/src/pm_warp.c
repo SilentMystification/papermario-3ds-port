@@ -304,7 +304,8 @@ static unsigned bypass_n;
 static int bypass_begin(int kind, int a, int b) {
     if (bypass_kind) { pm_menu_msg("A battle end is already running"); return 0; }
     bypass_kind = kind; bypass_a = a; bypass_b = b; bypass_n = 0;
-    btl_set_state(BATTLE_STATE_END_BATTLE);
+    if (get_game_mode() == GAME_MODE_PAUSE) set_game_mode(GAME_MODE_UNPAUSE); /* PT81: the pause menu closes the way its own close key does, then the action runs in the world */
+    else btl_set_state(BATTLE_STATE_END_BATTLE);
     pm_menu_msg("Ending the battle, then %s", kind == 1 ? "warp" : "boss");
     pm_log("bypass: battle end for kind %d (%d, %d)", kind, a, b);
     return 0;
@@ -315,6 +316,13 @@ static int pm_warp_live_now(int c, int entry);
 /* PT80: the intro (stage curtain, subtitle callback, screen overlay, message boxes) stays alive when a warp leaves it through ENTER_WORLD. End it as the
  * tour does between maps: curtain open and its draw callback off, overlays and message printers cleared. */
 static void warp_end_intro(int mode) {
+    /* PT81: stop the song and the ambient sounds of the scene that is left. _bgm_set_song ignores every request while demoState is set (the title demo
+     * keeps it), so the destination song never started after a warp from the demo. The new map starts its own song with SetMusic. */
+    bgm_set_song(0, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL);
+    bgm_set_song(1, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL);
+    sfx_stop_env_sounds();
+    pm_log("warp: song and ambient sounds stopped, demoState was %d, game mode %d", (int)gGameStatusPtr->demoState, mode);
+    gGameStatusPtr->demoState = DEMO_STATE_NONE;
     if (mode != GAME_MODE_INTRO && mode != GAME_MODE_TITLE_SCREEN) return;
     set_curtain_scale_goal(2.0f);
     set_curtain_draw_callback(NULL);
@@ -336,7 +344,7 @@ static void bypass_tick(void) {
     }
 }
 int pm_warp_live(int c, int entry) {
-    if (get_game_mode() == GAME_MODE_BATTLE) return bypass_begin(1, c, entry);
+    if (get_game_mode() == GAME_MODE_BATTLE || get_game_mode() == GAME_MODE_PAUSE) return bypass_begin(1, c, entry);
     return pm_warp_live_now(c, entry);
 }
 static int pm_warp_live_now(int c, int entry) {
@@ -373,7 +381,7 @@ static unsigned boss_frames;
 int pm_boss_count(void) { return (int)ARRAY_COUNT(boss_tab); }
 const char* pm_boss_label(int i) { return i >= 0 && i < pm_boss_count() ? boss_tab[i].label : ""; }
 int pm_boss_launch(int i) {
-    if (get_game_mode() == GAME_MODE_BATTLE && i >= 0 && i < pm_boss_count()) return bypass_begin(2, i, 0);
+    if ((get_game_mode() == GAME_MODE_BATTLE || get_game_mode() == GAME_MODE_PAUSE) && i >= 0 && i < pm_boss_count()) return bypass_begin(2, i, 0);
     return pm_boss_launch_now(i);
 }
 static int pm_boss_launch_now(int i) {
