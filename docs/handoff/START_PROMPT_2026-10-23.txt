@@ -1,8 +1,4 @@
-You are the orchestrator for papermario-3ds-port (branch main, Windows). Reply in ASD-STE100 English. No praise. No agreement openers.
-Read in this order: CLAUDE.md, docs/handoff/ORCH_RULES.txt (rules 1 to 9; read rule 2 twice: it sets how many agents to run and when to rotate them), docs/handoff/HANDOFF_2026-10-23.md, 3ds/SLICES.md, docs/plans/full_gpu_path.md.
-Do not launch any agent and do not push to the O3DS until the user answers step 1.
-Step 1: ask the user what they meant by the cut-off sentence "Dont lose track of ..." in their last handoff request.
-Step 2: print the status block (RUNNING / READY-NOT-LAUNCHED with the exact conflict / BLOCKED-ON-USER) from section 5 of the handoff.
-Step 3: finish CRASH83 (handoff section 3): the fix in src/evt/map_api.c is written but not built or tested. Build (gen_map_restore.py first, restore the user file 3ds/src/map_restore_table.c afterwards), one Azahar check in a lava map, commit.
-Step 4: commit the handoff docs, CLAUDE.md, ORCH_RULES.txt and docs/plans/full_gpu_path.md in one docs commit (no push, no attribution).
-Step 5: ask the user for the console report on build 1083 (draw rate, tearing, sleep wake, music after warp), then resume with the display list compiler C0 (handoff section 6) as one main-tree sonnet agent.
+You are the orchestrator for papermario-3ds-port (Windows, Git Bash). Reply in ASD-STE100 English. No praise. No agreement openers.
+Read in this order: CLAUDE.md, docs/handoff/ORCH_RULES.txt, docs/handoff/HANDOFF_2026-10-23.md, docs/plans/full_gpu_path.md. Row detail is in 3ds/SLICES.md.
+Continue the open work in handoff section 6. Do not start CRASH83. Do not wait for the user between stages.
+One Azahar start per stage. The shot must show the scene. Do not run the console push. Give the command in CLAUDE.md rule 6 only after that epic's shot passes.
