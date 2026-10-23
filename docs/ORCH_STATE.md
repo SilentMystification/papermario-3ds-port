@@ -258,3 +258,6 @@ Read docs/handoff/HANDOFF_2026-10-22.md first (state, trees, builds, consoles, u
 Everything is local (nothing pushed): the package /home/andrew/papermario_handoff_2026-10-22/ (all.bundle, files archive, memory, README.txt) carries it. Lane C holds the unmerged SWEEP commit ffc2b722a. The user file 3ds/src/map_restore_table.c stays uncommitted (patch in docs/handoff/).
 Build 1015 is on both consoles (O3DS .180, N3DS .181), pushed with Push PLAY. Next: FTP pull of both logs. New rows: PT67a to PT67d in 3ds/SLICES.md.
 
+
+## 14. HANDOFF 2026-10-23. Newest section.
+Read docs/handoff/HANDOFF_2026-10-23.md first, then docs/handoff/START_PROMPT_2026-10-23.txt. Everything is local. No agent runs. CRASH83 fix (src/evt/map_api.c) is written but not built or tested. The compiler work (docs/plans/full_gpu_path.md) has not started.

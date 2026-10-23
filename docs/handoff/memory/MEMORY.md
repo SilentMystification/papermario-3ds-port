@@ -1,6 +1,12 @@
-- [Perf work is Azahar-only](project_perf_azahar_only.md) — no O3DS asks; MA1 logic sites parked for hardware
-- [Visible status, no overtesting](feedback_visible_status.md) — status file per agent, 1-2 runs per change
-- [No Luma checks unless asked, no baseline runs for comparison](feedback_luma_and_baselines.md) — skip dumps; batch optimizations before hardware tests
-- [Sweeps on request only, bosses manual](feedback_sweeps_manual.md) — no automatic sweep or boss runs; credits stop after the thank-you screen
-- [Push failure: report only](feedback_push_failures.md) — one line, no diagnosis, no retry
-- [Do small tasks inline](feedback_inline_small_tasks.md) — handoffs, summaries, bundles: no agent
+- [New-agent handoff rule](feedback_new-agent-handoff.md) — stop at finished slice, short HANDOFF.md, user starts new chat; no unprompted subagents
+- [No attribution](feedback_no-attribution.md) — never add Claude/Anthropic attribution to commits or PRs
+- [Narrow tests](feedback_narrow-tests.md) — short focused tests per slice, no heavy setups, never skip a real fault
+- [Tight prompts](feedback_tight-prompts.md) — short subagent prompts, only needed info, rules by reference
+- [Optimization after hardware](feedback_optimization-after-hardware.md) — plan now, code PO2/PO3/AU1/MA1 only after S28
+- [Hardware after everything](feedback_hardware-after-everything.md) — S28 only after all Azahar-verifiable work is done
+- [Token efficiency](feedback_token-efficiency.md) — batch doc edits, no tiny agents, search history before audits
+- [Port complete before S28](project_port-complete-before-s28.md) — all functionality ported first; H05 Part C finds gaps; S28+ is hardware, fixes, optimization only
+- [No stubs](feedback_no-stubs.md) — never stub or hand-write stand-ins for decomp code without asking; top priority is removing existing stubs
+- [No agreement, small tasks](feedback_no-agreement-small-tasks.md) — never say the user is right; small follow-ups go by SendMessage to a live agent, no new agent
+- [Short relay, test discipline](feedback_short-relay-and-test-discipline.md) — relay in 3 lines, one code agent per tree, golden on touched scenes only
+- [No feature toggles](feedback_no-feature-toggles.md) — finished work replaces the main path; delete switches and old paths after the test
