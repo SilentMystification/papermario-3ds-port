@@ -60,7 +60,7 @@ typedef struct {
 } Bucket;
 static Bucket bk[BK_N];
 static int ps_on;
-static const char* const ab_words[] = { "base", "gpuvtx", "nodr1", "nokick", "notx1", "phasegbi", "gv1", "nogv1", "raw1", "noraw1", "nofl1", "dlc", "dlc1", "nopf", "nowg", "nolk" };
+static const char* const ab_words[] = { "base", "phasegbi" }; /* rule 19: a state is added here only for one console comparison and taken out again after it */
 static int ab_st[BK_N], ab_n, ab_every, ab_cur, ab_steps, ab_skip, ab_seq;
 static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buckets */
 static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */
@@ -76,25 +76,11 @@ void pm_ph_gpu_note(void) {
     pm_ph_gpu_us[1] = (unsigned)(C3D_GetProcessingTime() * 1000.f);
 }
 
-int pm_ph_abtog_has(const char* w) {
-    char v[96];
-    if (!pm_debug_value("abtog", v, sizeof v)) return 0;
-    char* c = strchr(v, ':');
-    if (c) *c = 0;
-    const char* p = v;
-    size_t n = strlen(w);
-    while ((p = strstr(p, w)) != NULL) {
-        if ((p == v || p[-1] == ',') && (p[n] == 0 || p[n] == ',')) return 1;
-        p += n;
-    }
-    return 0;
-}
-
 static void ab_apply(int st, int announce) {
     /* switch off the words of the old state, then the new one. The generation counter makes every PMDL cache see it. */
     for (int i = 1; i < (int)(sizeof ab_words / sizeof *ab_words); i++) pm_log_switch(ab_words[i], 0);
     if (st > 0) pm_log_switch(ab_words[st], 1);
-    pm_ph_fine = pm_ph_on && (st == 5 || pm_debug_has("phasegbi"));
+    pm_ph_fine = pm_ph_on && (st == 1 || pm_debug_has("phasegbi"));
     if (announce) pm_log_hw("abtog %d %s f%u", ab_seq, ab_words[st], frame_no);
     ab_seq++;
 }

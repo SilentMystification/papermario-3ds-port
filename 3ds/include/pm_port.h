@@ -75,7 +75,6 @@ void pm_ph_push(int id);
 void pm_ph_pop(void);
 void pm_ph_frame_end(void);
 /* HWM1: scene tag for the phs lines, GPU numbers of the last frame, command buffer fill */
-int pm_ph_abtog_has(const char* word);
 void pm_ph_scene_mode(int mode);
 void pm_ph_scene_map(int area, int map);
 void pm_ph_scene_get(int* mode, int* area, int* map);

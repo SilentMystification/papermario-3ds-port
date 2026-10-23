@@ -337,20 +337,13 @@ set_property(SOURCE ${DECOMP}/src/world/partners.c APPEND PROPERTY COMPILE_OPTIO
 file(GLOB PAUSE_SRC ${DECOMP}/src/pause/pause_*.c)
 set_property(SOURCE ${PAUSE_SRC} APPEND PROPERTY COMPILE_OPTIONS -include common.h)
 
-ctr_add_shader_library(pm_shader shaders/pm.v.pica)
-dkp_add_embedded_binary_library(pm_shader_lib pm_shader)
-ctr_add_shader_library(pm_shader3 shaders/pm3.v.pica) # PO3b: raw Vtx program
-dkp_add_embedded_binary_library(pm_shader3_lib pm_shader3)
-ctr_add_shader_library(pm_shader4 shaders/pm4.v.pica) # GV1c: raw Vtx program with a matrix palette
-dkp_add_embedded_binary_library(pm_shader4_lib pm_shader4)
-ctr_add_shader_library(pm_shaderall shaders/pm.v.pica shaders/pm3.v.pica shaders/pm4.v.pica) # RAW1: one DVLB, DVLE 0 = pm, 1 = pm3, 2 = pm4: a program switch sends no shader code
+ctr_add_shader_library(pm_shaderall shaders/pm.v.pica shaders/pm4.v.pica) # one DVLB, DVLE 0 = pm (CPU vertices), 1 = pm4 (raw Vtx, matrix palette): a program switch sends no shader code
 dkp_add_embedded_binary_library(pm_shaderall_lib pm_shaderall)
 ctr_add_shader_library(pm_shader5 shaders/pm5.v.pica) # GV5: lighting, texgen and fog (its own DVLB: the uniform space of pm4 and pm5 does not fit together)
 dkp_add_embedded_binary_library(pm_shader5_lib pm_shader5)
 
 set(PORT_SRC
     src/pm_main.c
-    src/pm_bench.c
     src/pm_mem.c
     src/pm_log.c
     src/pm_flash.c
@@ -400,7 +393,7 @@ endforeach()
 # those libraries were built with it and their structures hold enums.
 set(PM_NO_SHORT_ENUM_SRC ${PORT_SRC} ${GAME_SRC})
 list(REMOVE_DUPLICATES PM_NO_SHORT_ENUM_SRC)
-list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_bench.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_wdog.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dsptest.c src/pm_dspaud.c)
+list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_wdog.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dsptest.c src/pm_dspaud.c)
 set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
 
 add_executable(pm_3ds
@@ -484,7 +477,7 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
 set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds;${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore.ld")
-target_link_libraries(pm_3ds pm_shader_lib pm_shader3_lib pm_shader4_lib pm_shaderall_lib pm_shader5_lib citro3d ctru m)
+target_link_libraries(pm_3ds pm_shaderall_lib pm_shader5_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")
 ctr_generate_smdh("${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh"

@@ -297,7 +297,7 @@ static void addr_sub(const void* p) {
 
 /* FL1: texture slab. The images of all textures live in one linear block. A miss writes its image there and records the span. One
  * GSPGPU_FlushDataCache per merged span runs before each command list submit (pm_tex_flush_pending), not one per texture (E: 0.9 ms per call
- * on the O3DS). Switch nofl1 keeps one linearAlloc and one C3D_TexFlush per texture. Free list: address ordered extents, best fit, merge on free. */
+ * on the O3DS). Free list: address ordered extents, best fit, merge on free. */
 #define SLAB_BYTES (BUDGET + 768u * 1024u)
 #define SLAB_EXT 640
 #define PEND_N 24
@@ -308,7 +308,7 @@ static struct { u8* p; unsigned len; } pend[PEND_N]; static int pend_n;
 static C3D_Tex slab_proto[16];
 static unsigned fl1_srchash(const void* img, int w, int h, int stride, unsigned siz) { if (siz != 2) return 0; unsigned x = 2166136261u; const u8* q = (const u8*)img; for (int y = 0; y < h; y++) for (int i = 0; i < w * 2; i++) x = (x ^ q[y * stride * 2 + i]) * 16777619u; return x; }
 static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
-static int fl1_on(void) { return slab != NULL && !PMDL("nofl1"); } /* per upload, so abtog can toggle it: a slot knows where its image is */
+static int fl1_on(void) { return slab != NULL; } /* per upload: a slot knows where its image is */
 static void slab_init(void) {
     slab = (u8*)linearMemAlign(SLAB_BYTES, 0x80);
     if (slab && PMDL("fl1poison")) memset(slab, 0xA5, SLAB_BYTES);
@@ -445,7 +445,7 @@ static void tb_dump_req(uint64_t key, const TbReq* q, const u8* tl, const u8* sr
 void pm_tex_init(void) {
     /* Linear image, then a second copy in PICA tile order. */
     scratch = (u8*)linearAlloc(256 * 256 * 4 * 2);
-    if (!PMDL("nofl1")) slab_init();
+    slab_init();
     tb_init();
 }
 
@@ -491,8 +491,7 @@ static void tc_report(void) {
     for (int t = 0; t < 3; t++)
         if (top[t] >= 0) pm_log_d("texstat largest %d: %dx%d fmt %u siz %u %uKB uses %u age %u", t, slots[top[t]].w, slots[top[t]].h, slots[top[t]].fmt, slots[top[t]].siz,
                                   slots[top[t]].bytes >> 10, slots[top[t]].uses, tc_frame - slots[top[t]].last_frame);
-    pm_log_hw("tx1 f%u miss %u KB %u us %u ns/B %u%s", tc_frame, tx1_miss, tx1_kb, tx1_ticks / 268u, tx1_kb ? (unsigned)((unsigned long long)tx1_ticks * 1000ull / 268ull / (tx1_kb * 1024ull)) : 0u,
-              PMDL("notx1") ? " (old path)" : "");
+    pm_log_hw("tx1 f%u miss %u KB %u us %u ns/B %u%s", tc_frame, tx1_miss, tx1_kb, tx1_ticks / 268u, tx1_kb ? (unsigned)((unsigned long long)tx1_ticks * 1000ull / 268ull / (tx1_kb * 1024ull)) : 0u, "");
     if (PMDL("tx1check")) pm_log_hw("tx1check mismatch %u", tx1_mismatch);
     tx1_miss = tx1_kb = tx1_ticks = 0;
     tc_hits = tc_miss = tc_evict = tc_evict_ev0 = tc_inval = tc_up_bytes = tc_evict_bytes = tc_ev0_bytes = 0;
@@ -655,13 +654,10 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     unsigned phash = 0;
     if (fmt == FMT_CI && tlut) {
         phash = 2166136261u;
-        static int nopg2 = -1;
-        if (nopg2 < 0) nopg2 = pm_debug_has("nopg2");
-        if (nopg2) { for (int i = 0; i < tlut_n * 2; i++) phash = (phash ^ ((const u8*)tlut)[i]) * 16777619u; } /* A/B: the old byte loop */
-        else { /* PG2: two palette entries per step (the key is internal, only its stability matters). Any in-place edit still changes it. */
+        { /* PG2: two palette entries per step (the key is internal, only its stability matters). Any in-place edit still changes it. */
             const u16* pl = (const u16*)tlut;
             int i = 0;
-            if (!((unsigned)(uintptr_t)tlut & 3u) && !PMDL("noph32")) { /* OPT-PH: the same value as the u16 pairs below (little endian), one word load per step, four steps per loop */
+            if (!((unsigned)(uintptr_t)tlut & 3u)) { /* OPT-PH: the same value as the u16 pairs below (little endian), one word load per step, four steps per loop */
                 const u32* pw = (const u32*)tlut;
                 int nw = tlut_n >> 1, k = 0;
                 for (; k + 4 <= nw; k += 4) {
@@ -679,7 +675,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     }
     /* OPT-LK: one probe of a direct mapped index from the key to the slot, before the recent list and the scan. The slot is compared in full, so a stale entry only misses. */
     const unsigned lk = (((unsigned)(uintptr_t)img >> 2) ^ ((unsigned)(uintptr_t)tlut >> 3) ^ (unsigned)(width * 31 + height * 131 + (int)fmt * 7 + (int)siz * 3 + stride * 17) ^ dkey) & (LIDX_N - 1);
-    if (!PMDL("nolk")) {
+    {
         int i = lidx[lk];
         Slot* s = &slots[i];
         if (i < slot_hi && s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
@@ -693,9 +689,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
     }
     /* PG2: most loads repeat one of the last few textures. Check those slots first (same full compare), then the whole table. */
-    static int nopg2r = -1;
-    if (nopg2r < 0) nopg2r = pm_debug_has("nopg2");
-    for (int k = 0; k < (nopg2r ? 0 : RECENT_N); k++) {
+    for (int k = 0; k < RECENT_N; k++) {
         int i = recent_slot[k];
         if (i < 0 || i >= slot_hi) continue;
         Slot* s = &slots[i];
@@ -754,9 +748,9 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             if (tr) tb_hits++; else tb_miss++;
         }
     }
-    /* TX1: one pass expand and tile into the texture. Switch notx1 keeps the old path, switch tx1check runs both and compares. */
+    /* TX1: one pass expand and tile into the texture. Switch tx1check runs the old expand as well and compares (a test tool). */
     unsigned bpp0 = (gf == GPU_RGBA8) ? 4u : 2u;
-    int tx1 = !tb_use && !tr && !tb_mode && !PMDL("notx1") && (unsigned)pw * (unsigned)ph * bpp0 <= 256u * 256u * 4u && pw <= TX1_MAXD && ph <= TX1_MAXD;
+    int tx1 = !tb_use && !tr && !tb_mode && (unsigned)pw * (unsigned)ph * bpp0 <= 256u * 256u * 4u && pw <= TX1_MAXD && ph <= TX1_MAXD;
     int tx1_chkon = tx1 && PMDL("tx1check");
     if (tx1_chkon && !tx1_chk) { tx1_chk = (u8*)malloc(512 * 1024); if (!tx1_chk) { tx1 = 0; tx1_chkon = 0; } }
     unsigned tx1_t0 = tc_on > 0 ? pm_ticks() : 0;
@@ -967,9 +961,8 @@ void pm_tex_set_filter(int linear) {
  * object in another way clears it (frame and target changes through pm_tex_bind_reset, a dropped or loaded slot, the aux bind). */
 void pm_tex_bind_reset(void) { tb_last = NULL; }
 int pm_tex_bind(void) {
-    const int dr1 = !PMDL("nodr1") && !PMDL("nodr1t");
     if (have && off_cur >= 0) {
-        if (dr1 && tb_last == offt[off_cur].tex && tb_f == -2) return 1;
+        if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
         C3D_TexBind(0, offt[off_cur].tex);
         tb_last = offt[off_cur].tex; tb_f = -2;
         return 1;
@@ -978,7 +971,7 @@ int pm_tex_bind(void) {
     slots[cur].stamp = ++stamp;
     slots[cur].last_frame = tc_frame;
     GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
-    if (dr1 && tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
+    if (tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
     C3D_TexSetFilter(&slots[cur].tex, tex_filt, tex_filt);
     C3D_TexSetWrap(&slots[cur].tex, ws, wt);
     C3D_TexBind(0, &slots[cur].tex);

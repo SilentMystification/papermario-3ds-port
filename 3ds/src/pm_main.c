@@ -11,7 +11,6 @@
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #include "pm_gpu.h"
 #include "pm_gbi.h"
-#include "pm_bench.h"
 
 
 extern void boot_main(void* data);
@@ -309,7 +308,6 @@ int pm_interp_key_draw(void);
 extern volatile int pm_exit_request; /* PT28 */
 void pm_frame_loop(void) {
     unsigned frame = 0;
-    if (pm_bench_run()) return; /* S0 BENCH: switch bench or bench=<list> runs the micro-benchmarks first, benchexit leaves here */
     pm_uptime_ms(); /* start the clock */
     { extern unsigned gRandSeed; pm_log("rng start seed %08x%s", gRandSeed, pm_debug_has("fixedseed") ? " (fixedseed)" : ""); } /* R-SEED */
     nuGfxCfb = cfb_list;

@@ -7,7 +7,7 @@
 unsigned pm_dlc_gen = 1; /* bumped when the shape buffer is written (pm_tex_invalidate, decode_yay0) */
 
 typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn; u8 tsv_exit; u16* sd; } DlcGrp; /* DLC2: sd = 3 x sn static vertex indices, then ng triangle counts (the position of each geometry op) */
-typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused, s2; DlcGrp* grp; u32 (*gop)[2]; } DlcEnt;
+typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; } DlcEnt;
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 #define DLC_TAB 2048
 #define DLC_MAXOPS 4096
@@ -21,9 +21,8 @@ static unsigned dlc_dirty; /* the last replay left vert_live cleared although th
 static const Gfx dlc_end[1] = { { { (u32)G_ENDDL << 24, 0 } } };
 
 static int dlc_enabled(void) {
-    return (PM_DLC_DEFAULT || PMDL("dlc") || PMDL("dlc1")) && !PMDL("nodlc") && gv1_on() && !dd_on() && !xt_on() && !rmlog_on() && !po3a_on();
+    return !dd_on() && !xt_on() && !rmlog_on() && !po3a_on();
 }
-static int dlc2_on(void) { return !PMDL("nodlc2") && !PMDL("dlc1"); } /* DLC2: static vertex area, switch nodlc2 turns it off (abtog state dlc1 = dlc without it) */
 static int dlcchk_on(void) { return PMDL("dlccheck"); }
 static void dlc_free(DlcEnt* e) { for (unsigned k = 0; k < e->ngrp; k++) free(e->grp[k].sd); free(e->grp); free(e->gop); e->grp = NULL; e->gop = NULL; e->ngrp = 0; }
 
@@ -346,14 +345,14 @@ static int dlc_try(const Gfx* l) {
     int chk = dlcchk_on();
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
-        e->gen = pm_dlc_gen; e->refused = 0; e->s2 = 0;
+        e->gen = pm_dlc_gen; e->refused = 0;
         int r = dlc_compile(e, l);
         e->hash = dls_hash(l);
         dlc_c.compile++;
         if (r) { e->refused = (u8)r; dlc_c.refused[r]++; }
+        else dlc_static_build(e, l);
     } else dlc_c.hit++;
     if (e->refused) return 0;
-    if (!e->s2 && dlc2_on()) { e->s2 = 1; dlc_static_build(e, l); }
     if (chk && dls_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
     const float(*m)[4] = combined;
     u32 entry = geom;
@@ -361,11 +360,11 @@ static int dlc_try(const Gfx* l) {
     int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
     dlc_c.lists++;
     dlc_c.opsrep += e->nops;
-    if (pf_on && e->ngrp) { __builtin_prefetch(e->grp); __builtin_prefetch(e->gop); }
+    if (e->ngrp) { __builtin_prefetch(e->grp); __builtin_prefetch(e->gop); }
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
         int near = 0;
-        if (pf_on && k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
+        if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
         if (dlc_box_out(g, m, &near)) {
             if (chk) dlc_verify_skip(l, g, m);
@@ -382,7 +381,7 @@ static int dlc_try(const Gfx* l) {
             u32 x = gg;
             lit = (x & G_LIGHTING) != 0;
             for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if (x & G_LIGHTING) lit = 1; }
-            if (lit && !(g->sd && dlc2_on() && gv_lit_ok())) why = 2;
+            if (lit && !(g->sd && gv_lit_ok())) why = 2;
         }
         if (!why && !pm_gpu_gv_room(g->nvtx + 3u * g->ntri)) why = 3;
         if (!why) {
@@ -391,7 +390,7 @@ static int dlc_try(const Gfx* l) {
             if (gmi == GV_NONE) why = 4;
         }
         dlc_set_geom(gg);
-        if (!why && g->sd && dlc2_on() && dlc_static_group(e, g, gmi)) {
+        if (!why && g->sd && dlc_static_group(e, g, gmi)) {
             dlc_c.replay++; dlc_c.srep++; dlc_c.tri += g->ntri;
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;

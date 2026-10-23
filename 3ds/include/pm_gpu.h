@@ -28,7 +28,6 @@ void pm_gpu_gstat_reset(void);
 unsigned pm_gpu_gstat_used(void);
 int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const PmFx* fx, const unsigned short* idx, unsigned nidx);
 int pm_gpu_gidx_room(unsigned n);
-int pm_gpu_gtri(const float mtx[4][4], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, unsigned i0, unsigned i1, unsigned i2);
 const unsigned char* pm_gpu_gring(void);
 unsigned pm_gpu_flush_gen(void);
 int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2);
@@ -126,4 +125,3 @@ extern float pm_f255[256], pm_f127[256]; /* PG3 O11: i / 255.f and (signed char)
 #define PM_GV1_DEFAULT 1
 #define PM_RAW1_DEFAULT 1
 /* DLC: compiled replay of the map shape display lists. 1 = on unless the switch nodlc is set. 0 = off unless the switch dlc is set. */
-#define PM_DLC_DEFAULT 0

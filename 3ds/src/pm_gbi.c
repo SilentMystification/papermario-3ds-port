@@ -250,8 +250,6 @@ static int p_cur_mixed;
 /* GV1 (switch gv1, default off, nogv1 turns it off): the full GPU geometry path. G_VTX of an unlit load copies the 16 byte Vtx to the ring and makes only the reject bits.
  * A triangle of ring vertices goes to the GPU as three indices. The GPU transforms, clips and culls. The CPU path stays for the rare cases and reads the ring copy
  * (gv_xf makes vert_p, vert_st and vert_c on demand). It replaces gpuvtx (PO3b) when both are on. */
-static int gv1_on(void) { return (PM_GV1_DEFAULT || PMDL("gv1")) && !PMDL("nogv1"); }
-static int po3b_on(void) { return PMDL("gpuvtx") && !PMDL("nogpuvtx") && !gv1_on(); } /* HWM1: follows abtog */
 static u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
 static u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. vert_cb bit 64 = a corner at w <= 0.05 (near) */
 enum { GVR_NEAR, GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_DBG, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
@@ -263,7 +261,7 @@ static unsigned vert_tss[64];
 static float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
 static float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each gm_tab entry (the normal matrix), made when the entry is made */
 static unsigned gm_n;
-static unsigned st_gpu_tri, st_cpu_tri; /* plain triangles drawn by the raw path, triangles that reached the draw and took the CPU path */
+static unsigned st_gpu_tri; /* triangles drawn by the raw path */
 static unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
 static u8 seen[256];
 /* i = every corner in front of the eye, drawn where it projected.
@@ -339,8 +337,7 @@ static void unpack(const Mtx* src, float d[4][4]) {
 static void upload_mvp(void) {
     /* Row-vector matrices, same as transform_point: modelview first, then projection. */
     mul(combined, mv[mv_sp], proj);
-    if (gv1_on()) pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
-    else pm_gpu_set_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty);
+    pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
 }
 
 /* Combiner input as a constant, or -1 when it needs a texel or the shade, -2 for COMBINED.
@@ -520,7 +517,7 @@ static void sync_render(void) {
      * world to black this way. Other blenders are not touched. */
     {
         unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
-        if (!PMD("nomix") && (p == 2u || p == 3u) && a == 1u && mm == 0u && b == 0u)
+        if ((p == 2u || p == 3u) && a == 1u && mm == 0u && b == 0u)
             pm_gpu_set_mix(1, ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu));
         else if (!PMDL("nofog") && p == 3u && a == 2u && mm == 0u && b == 0u) {
             /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
@@ -756,7 +753,7 @@ static int clip_near_k(ClipV* poly, int n, int zplane) {
 static int clip_near(ClipV* poly, int n) {
     int i, close = 0;
     for (i = 0; i < n; i++) if (poly[i].w < 1.f && poly[i].z + poly[i].w < 0.f) close = 1;
-    if (close && !PMD("nozclip")) { n = clip_near_k(poly, n, 1); if (n < 3) return 0; }
+    if (close) { n = clip_near_k(poly, n, 1); if (n < 3) return 0; }
     return clip_near_k(poly, n, 0);
 }
 
@@ -1012,7 +1009,7 @@ static void sync_combine(void) {
                              (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
         unsigned sg = 2166136261u;
         for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
-        if (sc_ok && sg == sc_sig && !PMD("nodip2")) { GP_SET(5, 1); return; }
+        if (sc_ok && sg == sc_sig) { GP_SET(5, 1); return; }
         sc_sig = sg; sg_in = sg;
         sc_ok = 0; /* set again below when the work is done */
     }
@@ -1040,7 +1037,7 @@ static void sync_combine_work(void) {
     sync_legacy();
     plan_active = 0;
     ls_use = -1; ls_cyc = (int)cyc; ls_dual = dual_on | box_prod << 1 | box_pat << 2; ls_frame = rm_frame;
-    if (cyc <= 1 && comb_set && !dual_on && ((!box_prod || !box_folded) && (!(box_prod || box_pat) || !PMD("nobox1"))) && !PMD("nocomb")) { /* VIS1: a draw_box window with a pattern in tile 0 reads TEXEL0 * TEXEL1 on the GPU plan too. Triangles (rotated and scaled windows) have no CPU composite like box_pattern_rect, so they lost the corner image: no border, no round corners */
+    if (cyc <= 1 && comb_set && !dual_on && (!box_prod || !box_folded)) { /* VIS1: a draw_box window with a pattern in tile 0 reads TEXEL0 * TEXEL1 on the GPU plan too. Triangles (rotated and scaled windows) have no CPU composite like box_pattern_rect, so they lost the corner image: no border, no round corners */
         Dec* d = decide((int)cyc);
         ls_use = d->use; ls_why = d->why;
         if (d->use) {
@@ -1202,7 +1199,6 @@ static int clip_bits4(const float* p) { /* the same bits as clip_bits, from a cl
 }
 static int cull_off(void) { static int v = -1; if (v < 0) v = pm_debug_has("nocull"); return v; }
 static int rmlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("rmlog"); return v; }
-static int noprimz_on(void) { static int v = -1; if (v < 0) v = PMD("noprimz"); return v; }
 
 /* PO3b, PO3c: one triangle of the raw Vtx path. The caller checked that the three vertices have a ring slot, one matrix and one texture scale, and that
  * the triangle is plain (unlit, no texgen, no screen vertex, no fog). The colour and depth overrides of the CPU path become uniforms: ENV or the plan
@@ -1214,7 +1210,7 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
     int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
     int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
-    int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL)) && !noprimz_on();
+    int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL));
     int tw = 1, th = 1;
     pm_tex_size(&tw, &th);
     if (tw < 1) tw = 1;
@@ -1264,12 +1260,6 @@ static void gv_params_calc(unsigned tss, GvP* o) {
             o->fxon = 1;
         }
     }
-}
-static int gpu_emit(const int* idx, int ct) {
-    GvP p;
-    gv_params_calc(vert_tss[idx[0]], &p);
-    pm_gpu_set_rgb_scale(p.boost ? 2 : 1);
-    return pm_gpu_gtri(gm_tab[vert_gmi[idx[0]]], p.vp, p.uvso, p.cm, p.ca, p.zm, ct, vert_ring[idx[0]], vert_ring[idx[1]], vert_ring[idx[2]]);
 }
 
 static unsigned tri_flags(void) {
@@ -1552,8 +1542,7 @@ static void dls_report(void) {
     dls_dl = dls_stab_ok = dls_stab_chg = 0; dls_frames = 0;
 }
 
-/* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Switch nopf turns it off (abtog state nopf). Azahar has no cache model: no change there. */
-static int pf_on;
+/* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
 static int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 static void draw_tri(unsigned w);
 #include "pm_dlc.inc.c"
@@ -1564,7 +1553,6 @@ static void draw_tri(unsigned w) {
     int idx[3];
     ClipV poly[12];
     int n, i;
-    int gpu_plain = 0, was_in = 0; /* PO3b */
     GP_START();
     gp_ntri++;
     n_cmd++;
@@ -1590,8 +1578,8 @@ static void draw_tri(unsigned w) {
         if (geom & G_TEXTURE_GEN) p_tgen++;
         if (vert_scr[i0] | vert_scr[i1] | vert_scr[i2]) p_scr++;
     }
-    if (!tri_prep_ok) { if (!gv1_on() || ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
-    if (gv1_on()) { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
+    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
         for (i = 0; i < 3; i++) gv_xf(idx[i]);
     }
@@ -1638,23 +1626,6 @@ static void draw_tri(unsigned w) {
     GP_LAP(GPL_ENSURE);
     dual_bind();
     GP_LAP(GPL_DUAL);
-    if (early) {
-        const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
-        if (a[3] > 0.05f && b[3] > 0.05f && c[3] > 0.05f && po3b_on()) { /* the raw path needs no ClipV */
-            int fog = fogmix_on && (geom & G_FOG);
-            if (!(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !fog && vert_ring[idx[0]] != GV_NONE && vert_ring[idx[1]] != GV_NONE && vert_ring[idx[2]] != GV_NONE &&
-                vert_gmi[idx[0]] != GV_NONE && vert_gmi[idx[0]] == vert_gmi[idx[1]] && vert_gmi[idx[0]] == vert_gmi[idx[2]] &&
-                vert_tss[idx[0]] == vert_tss[idx[1]] && vert_tss[idx[0]] == vert_tss[idx[2]] &&
-                img_role(0) != ROLE_DEPTH && !dd_on() && !xt_on() && !rmlog_on()) {
-                if (po3a_on()) goto early_flags; /* the counters of PO3a need the flags block below: build the ClipV path */
-                GP_LAP(GPL_EARLY);
-                sync_render();
-                GP_LAP(GPL_SYNC);
-                if (gpu_emit(idx, 0)) { n_in++; st_gpu_tri++; GP_LAP(GPL_EMIT); return; }
-            }
-        }
-    }
-    early_flags:;
     GP_LAP(GPL_EARLY);
     for (i = 0; i < 3; i++) {
         if (!early) st_cor++;
@@ -1710,7 +1681,6 @@ static void draw_tri(unsigned w) {
     if (poly[0].w > 0.05f && poly[1].w > 0.05f && poly[2].w > 0.05f) {
         n_in++;
         n = 3;
-        was_in = 1;
     } else {
         n = clip_near(poly, 3);
         if (n < 3) {
@@ -1734,27 +1704,20 @@ static void draw_tri(unsigned w) {
         unpack8(envc, en);
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
-    if (po3a_on() || po3b_on()) { /* a triangle that reaches the draw: which colour and depth overrides apply (the cases a PO3b GPU path must handle) */
+    if (po3a_on()) { /* a triangle that reaches the draw: which colour and depth overrides apply */
         int env = comb_mode5 && !plan_active;
         int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
         int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
         int fog = fogmix_on && (geom & G_FOG);
         int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
-        int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL)) && !PMD("noprimz");
+        int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL));
         int scr = vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]];
         int cm = p_cur_mixed;
-        if (po3b_on()) cm = vert_gmi[idx[0]] != vert_gmi[idx[1]] || vert_gmi[idx[0]] != vert_gmi[idx[2]];
         int base = !cm && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !primz && !env && !plan && !fog && !boost;
         if (po3a_on()) {
             p_drawn++; p_env += env; p_plan += plan; p_a255 += a255; p_fog += fog; p_boost += boost; p_primz += primz;
             p_plain2 += base;          /* plain except alpha 255 (cheap override) */
             p_plain += base && !a255;  /* plain: one matrix, unlit, no override at all */
-        }
-        if (po3b_on()) {
-            int gbase = !cm && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !fog; /* PO3c: lit, texgen, screen vertices and fog stay on the CPU path */
-            gpu_plain = gbase && vert_ring[idx[0]] != GV_NONE && vert_ring[idx[1]] != GV_NONE && vert_ring[idx[2]] != GV_NONE &&
-                        vert_gmi[idx[0]] != GV_NONE && vert_tss[idx[0]] == vert_tss[idx[1]] && vert_tss[idx[0]] == vert_tss[idx[2]] &&
-                        img_role(0) != ROLE_DEPTH && !(plan_active && cur_plan.uses_tex1) && !dd_on();
         }
     }
     if (dd_skip()) return;
@@ -1788,7 +1751,7 @@ static void draw_tri(unsigned w) {
             if (poly[i].w > dd.w1) dd.w1 = poly[i].w;
         }
     }
-    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && !PMD("noprimz")) { /* noprimz: A/B check */
+    if ((omode_l & (1u << G_MDSFT_ZSRCSEL))) {
         /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
         float zn = 2.f * (float)prim_z / 32767.f - 1.f;
         for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
@@ -1835,8 +1798,6 @@ static void draw_tri(unsigned w) {
     }
 no_boost:
     GP_LAP(GPL_OLD);
-    if (gpu_plain && was_in && gpu_emit(idx, 0)) { st_gpu_tri++; GP_LAP(GPL_EMIT); return; } /* PO3b: the raw Vtx path, same triangle, the GPU transforms it */
-    if (po3b_on()) st_cpu_tri++;
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
     for (i = 1; i < n - 1; i++) {
         if (!(poly[0].w > 0.05f && poly[i].w > 0.05f && poly[i + 1].w > 0.05f)) continue;
@@ -1924,8 +1885,8 @@ void pm_gbi_end_frame(void) {
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
-    if (gv1_on() && (rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
-    if (gv1_on() && (rm_frame % 300) == 0)
+    if ((rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
+    if ((rm_frame % 300) == 0)
         pm_log_d("gv1 f%d load %u tri %u rej %u fb %u (near %u scr %u mixed(old) %u tss %u lit %u fog %u zmark %u tex1 %u dbg %u refuse %u) litload %u ring %u xf %u | check tri %u out %u cull %u stale %u", rm_frame, gv_load_n, gv_tri_n, gv_rej_n,
                  gv_fb[0] + gv_fb[1] + gv_fb[2] + gv_fb[3] + gv_fb[4] + gv_fb[5] + gv_fb[6] + gv_fb[7] + gv_fb[8] + gv_fb[9], gv_fb[GVR_NEAR], gv_fb[GVR_SCR], gv_fb[GVR_MIXED], gv_fb[GVR_TSS], gv_fb[GVR_LIT], gv_fb[GVR_FOG], gv_fb[GVR_ZMARK],
                  gv_fb[GVR_TEX1], gv_fb[GVR_DBG], gv_fb[GVR_REFUSE], gv_fb[GVR_LITLOAD], gv_fb[GVR_RING], gv_xf_n, gv_chk_tri, gv_chk_out, gv_chk_cull, gv_chk_stale);
@@ -1996,7 +1957,6 @@ void pm_gbi_end_frame(void) {
     rm_frame++;
     if ((rm_frame % 600) == 0 && aud_cnt_total) {
         pm_log_d("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners | tris %u lit %u fogmode %u fogblend %u blendcol %u texgen %u", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n, st_tri, st_lit, st_fogg, st_fogb, st_blc, st_tgen);
-        if (po3b_on()) pm_log_d("PO3b f%d: %u plain triangles drawn by the raw path, %u triangles on the CPU path", rm_frame, st_gpu_tri, st_cpu_tri);
         pm_log_d("PO2 f%d: %u vertices transformed at G_VTX, %u triangle corners read (before PO2: one matrix product per corner)", rm_frame, st_vx, st_cor);
     }
 }
@@ -2275,7 +2235,6 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     dls_on = PMDL("dlsrc");
     dlc_on = dlc_enabled();
-    pf_on = !PMDL("nopf");
     if (dls_on && !dlc_depth) {
         if (!dls_rd_lo) dls_init_ranges();
         dls_main_lo = (u32)list; dls_main_hi = (u32)list + nbytes;
@@ -2306,7 +2265,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         unsigned op = w0 >> 24;
         int fp = 0;
         pc++;
-        if (pf_on && !((u32)pc & 31u)) { __builtin_prefetch(pc + 4); __builtin_prefetch(pc + 8); }
+        if (!((u32)pc & 31u)) { __builtin_prefetch(pc + 4); __builtin_prefetch(pc + 8); }
         n_ops++;
         if (dls_on) dls_ops[dls_pc][dls_kind(op)]++;
         if (gp_on()) {
@@ -2341,7 +2300,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
             if (dls_on) dls_target(next);
-            if (pf_on) { __builtin_prefetch(next); __builtin_prefetch(next + 4); }
+            __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
@@ -2366,7 +2325,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 src = NULL;
             }
             if (src && n <= 64) {
-                if (pf_on) for (unsigned pk = 0; pk < n * 16u; pk += 32u) __builtin_prefetch((const char*)src + pk);
+                for (unsigned pk = 0; pk < n * 16u; pk += 32u) __builtin_prefetch((const char*)src + pk);
                 if (v0 >= 64) n = 0; /* S30: a vertex load that starts past the buffer (garbage list) copied 4 GB */
                 else if (v0 + n > 64) n = 64 - v0;
                 PH_ADD(C_VTXLOAD, n);
@@ -2404,10 +2363,9 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 }
                 int gring0 = -1;
                 unsigned gmi = GV_NONE;
-                int gv = 0, gbox = 0;
-                unsigned char gbits = 0;
+                int gv = 0;
                 const int lit_ld = (geom & G_LIGHTING) != 0;
-                if (gv1_on() && n) { /* GV1: a load goes to the ring as it is (GV5: also a lit load, the GPU lights it). A full ring takes the old code. */
+                if (n) { /* GV1: a load goes to the ring as it is (GV5: also a lit load, the GPU lights it). A full ring takes the old code. */
                     if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
                     else if (!dd_on() && !xt_on() && !rmlog_on() && !po3a_on()) {
                         gmi = gv_matrix_id(lit_ld);
@@ -2416,39 +2374,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                         if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
                     }
                 }
-                if (gv && PMDL("gv1raw")) { /* experiment: no reject bits. Only the near test of the whole load: the smallest w of the box of object coordinates (w is linear). */
-                    const float(*m)[4] = combined;
-                    short lo[3] = { 32767, 32767, 32767 }, hi[3] = { -32768, -32768, -32768 };
-                    for (unsigned i = 0; i < n; i++)
-                        for (int q = 0; q < 3; q++) { short o = src[i].v.ob[q]; if (o < lo[q]) lo[q] = o; if (o > hi[q]) hi[q] = o; }
-                    float mw = m[3][3];
-                    for (int q = 0; q < 3; q++) { float a = m[q][3] * (float)lo[q], b = m[q][3] * (float)hi[q]; mw += a < b ? a : b; }
-                    gbits = mw <= 0.05f ? 64 : 0;
-                    gbox = 1;
-                } else if (gv && n >= 16 && PMDL("gv1box")) { /* the 8 corners of the box of the object coordinates: bits all corners share, near bit 64 if a corner has w <= 0.05 */
-                    const float(*m)[4] = combined;
-                    short lo[3] = { 32767, 32767, 32767 }, hi[3] = { -32768, -32768, -32768 };
-                    for (unsigned i = 0; i < n; i++)
-                        for (int q = 0; q < 3; q++) { short o = src[i].v.ob[q]; if (o < lo[q]) lo[q] = o; if (o > hi[q]) hi[q] = o; }
-                    unsigned all = 0x2f; int nearf = 0;
-                    for (int cn = 0; cn < 8; cn++) {
-                        float x = (float)((cn & 1) ? hi[0] : lo[0]), y = (float)((cn & 2) ? hi[1] : lo[1]), z = (float)((cn & 4) ? hi[2] : lo[2]);
-                        float p[4];
-                        p[0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
-                        p[1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
-                        p[2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
-                        p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-                        all &= (unsigned)clip_bits4(p);
-                        if (p[3] <= 0.05f) nearf = 1;
-                    }
-                    gbits = (unsigned char)(all | (nearf ? 64 : 0));
-                    gbox = 1;
-                }
                 if (gv) { gv_load_n += n; PH_ADD(C_GVLOAD, n); }
-                if (po3b_on() && n) {
-                    gmi = gv_matrix_id(0);
-                    if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
-                }
                 for (unsigned i = 0; i < n; i++) {
                     vert_ring[v0 + i] = gring0 >= 0 ? (unsigned short)(gring0 + (int)i) : GV_NONE;
                     vert_gmi[v0 + i] = (unsigned short)gmi;
@@ -2459,19 +2385,16 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
                     if (gv && lit_ld) lit_pending = 1;
                     if (gv) { /* GV1: no colour, no S T. Per vertex bits for a small load. */
-                        if (gbox) { vert_gvf[v0 + i] = 0; vert_cb[v0 + i] = gbits; }
-                        else {
-                            const float(*m)[4] = combined;
-                            float x = (float)src[i].v.ob[0], y = (float)src[i].v.ob[1], z = (float)src[i].v.ob[2];
-                            float* p = vert_p[v0 + i];
-                            p[0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
-                            p[1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
-                            p[2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
-                            p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-                            vert_cb[v0 + i] = (unsigned char)(clip_bits4(p) | (p[3] <= 0.05f ? 64 : 0));
-                            vert_gvf[v0 + i] = 1;
-                            st_vx++;
-                        }
+                        const float(*m)[4] = combined;
+                        float x = (float)src[i].v.ob[0], y = (float)src[i].v.ob[1], z = (float)src[i].v.ob[2];
+                        float* p = vert_p[v0 + i];
+                        p[0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
+                        p[1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
+                        p[2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
+                        p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+                        vert_cb[v0 + i] = (unsigned char)(clip_bits4(p) | (p[3] <= 0.05f ? 64 : 0));
+                        vert_gvf[v0 + i] = 1;
+                        st_vx++;
                         continue;
                     }
                     vert_gvf[v0 + i] = 3;
@@ -2733,7 +2656,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
             pm_gpu_set_replace(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
             /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
-            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !PMD("noprimz")) {
+            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
                 sync_render();
                 pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)prim_z / 32767.f);
             } else
@@ -2804,7 +2727,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 2) { ex -= 1; ey -= 1; }
                 if (ex >= xl / 4 && ey >= yl / 4) {
                     /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
-                    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER) && !PMD("noprimz")) {
+                    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
                         sync_render();
                         pm_gpu_tex_rect_z(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1, (float)prim_z / 32767.f);
                     } else
@@ -2840,7 +2763,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             break;
         case G_SETTILE: {
             unsigned tile = (w1 >> 24) & 7;
-            int same_tile = !PMD("nopg1") && !PMD("nopg1a") && tile == 0 && st0_ok && (PMD("nowg") ? pm_tex_epoch() : pm_tex_wrap_gen()) == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
+            int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
                           tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
                           tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15);
             if (tile == 0) GP_SET(3, same_tile);
@@ -2859,7 +2782,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
                 pm_gpu_flush();
                 pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
-                st0_ep = PMD("nowg") ? pm_tex_epoch() : pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
+                st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
             }
             break;
         }
@@ -3069,7 +2992,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             {
                 struct TszLast* lp = &tsz_last;
                 const void* palc = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
-                if (!PMD("nopg1") && !PMD("nopg1b") && lp->ok && src == lp->src && tile_fmt[0] == lp->fmt && tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
+                if (lp->ok && src == lp->src && tile_fmt[0] == lp->fmt && tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
                     palc == lp->pal && tlut_n == lp->pal_n && pm_tex_epoch() == lp->ep && !pm_is_cfb(src) && src && w > 0 && h > 1) {
                     tile_x0 = x0 - lp->ox;
                     tile_y0 = y0 - lp->oy;
