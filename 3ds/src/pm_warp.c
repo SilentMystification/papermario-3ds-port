@@ -675,7 +675,11 @@ static void model_dump(unsigned f) {
             if ((w0 >> 24) == 0xDF) break; /* G_ENDDL */
             if ((w0 >> 24) == 0xFD && ((w0 >> 21) & 7) == 3 && ((w0 >> 19) & 3) == 0) ia4++; /* G_SETTIMG IA 4b */
         }
-        pm_log("modeldump %d id %x flags %04x tex %d var %d rm %d cgfx %d dl %p ia4loads %d", i, (unsigned)m->modelID, (unsigned)m->flags, (int)m->textureID, (int)m->textureVariation, (int)m->renderMode, (int)m->customGfxIndex, (void*)dl, ia4);
+        {
+            ModelNodeProperty* tn = m->modelNode ? get_model_property(m->modelNode, MODEL_PROP_KEY_TEXTURE_NAME) : NULL;
+            pm_log("modeldump %d id %x flags %04x tex %d var %d rm %d cgfx %d dl %p ia4loads %d texname %s", i, (unsigned)m->modelID, (unsigned)m->flags, (int)m->textureID, (int)m->textureVariation, (int)m->renderMode, (int)m->customGfxIndex, (void*)dl, ia4,
+                   tn && tn->data.p ? (const char*)tn->data.p : "-");
+        }
     }
 }
 
