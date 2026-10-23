@@ -1607,7 +1607,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
-    if (use5 && !gv5_on) return 0;
+    if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
     if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
     if (r_decal && r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
     if (pm_wide && !off_active) { /* F07-7: the CPU path moves edge vertices of UI quads. The wide post matrix is made for a perspective game matrix. */
@@ -1695,7 +1695,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
                   const PmFx* fx, const unsigned short* idx, unsigned nidx) {
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
-    if (use5 && !gv5_on) return 0;
+    if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
     if (r_zmark) return 0;
     if (r_decal && r_blend) return 0;
     if (pm_wide && !off_active) {

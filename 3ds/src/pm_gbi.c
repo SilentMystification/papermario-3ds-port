@@ -1364,7 +1364,6 @@ static int gv_state_why(int* ct, int* both) {
     if ((geom & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
     if (fogmix_on && (geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
     if (img_role(0) == ROLE_DEPTH) return GVR_ZMARK;
-    if (plan_active && cur_plan.uses_tex1) return GVR_TEX1;
     if (dd_on() || xt_on() || rmlog_on() || po3a_on()) return GVR_DBG;
     return -1;
 }
@@ -1379,6 +1378,8 @@ static void gv_epoch_enter(void) {
         ensure_tile(use_t1 ? 1 : 0);
         dual_bind();
         sync_render();
+        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). A TEXEL1 that is an off-screen slot needs the fold of the window (t1_fold) per draw: the CPU path. */
+        if (plan_active && cur_plan.uses_tex1 && (!td[0].valid || !td[1].valid || pm_tex_aux_off_idx() >= 0)) ep_why = GVR_TEX1;
     }
     ep_epoch = gv_epoch;
     ep_pepoch = 0;
@@ -1400,7 +1401,7 @@ static int gv_tri(const int* idx) {
         if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
         else if (gv1chk_on()) { /* the stored decision against a fresh one */
             int ct, both, w = gv_state_why(&ct, &both);
-            if (w != ep_why || ct != ep_ct || both != ep_cullboth) gv_chk_stale++;
+            if ((w != ep_why && ep_why != GVR_TEX1) || ct != ep_ct || both != ep_cullboth) gv_chk_stale++;
         }
         why = ep_why;
     }
