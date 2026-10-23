@@ -65,6 +65,13 @@ static void ent_free(Ent* e) {
     memset(e, 0, sizeof *e);
 }
 
+/* PT85: a sound start is dropped when its sample cannot be put in the cache. One warning line per drop (first 40), with the reason. */
+static Ent* sample_drop(const char* why, const DspaSample* s) {
+    static unsigned n;
+    c_fail++;
+    if (n++ < 40) pm_log_w("dspaudio: sound start dropped (%s): key %08x bytes %d cache %u of %u KB", why, (unsigned)s->key, (int)s->bytes, cache_used / 1024, cache_budget / 1024);
+    return NULL;
+}
 static Ent* cache_get(const DspaSample* s) {
     Ent* free_e = NULL;
     unsigned now = now_ms();
@@ -72,7 +79,7 @@ static Ent* cache_get(const DspaSample* s) {
         if (ents[i].mem && ents[i].key == s->key) { ents[i].stamp_ms = now; c_hit++; return &ents[i]; }
         if (!ents[i].mem && !free_e) free_e = &ents[i];
     }
-    if (!s->rom || !s->book || s->bytes < 9) { c_fail++; return NULL; }
+    if (!s->rom || !s->book || s->bytes < 9) return sample_drop("no rom data, book or size", s);
     c_miss++;
     unsigned long long t0 = svcGetSystemTick();
     int nframes = s->bytes / 9, N = nframes * 16;
@@ -80,25 +87,25 @@ static Ent* cache_get(const DspaSample* s) {
     int looped = le != 0 && s->lstate != NULL && le > ls && le <= N && ls >= 0;
     unsigned npre, nbody = 0, ntail = 0;
     s16* lin = (s16*)malloc((size_t)N * 2);
-    if (!lin) { c_fail++; return NULL; }
+    if (!lin) return sample_drop("no heap for the decode", s);
     vadpcm(s->rom, nframes, s->book, 0, 0, lin);
     if (looped) { npre = ls; nbody = le - ls; ntail = endless ? 0 : N - le; }
     else npre = N;
     unsigned total = (npre + nbody + ntail) * 2;
     unsigned need = (total + 127) & ~127u;
-    if (need > cache_budget) { free(lin); c_fail++; return NULL; }
+    if (need > cache_budget) { free(lin); return sample_drop("larger than the cache", s); }
     /* evict the oldest unpinned entries until the sample fits (entries used in the last 60 ms stay: the DSP may still read them) */
     while (cache_used + need > cache_budget || !free_e) {
         Ent* old = NULL;
         for (int i = 0; i < MAXENT; i++)
             if (ents[i].mem && ents[i].pins == 0 && now - ents[i].stamp_ms > 60 && (!old || ents[i].stamp_ms < old->stamp_ms)) old = &ents[i];
-        if (!old) { free(lin); c_fail++; return NULL; }
+        if (!old) { free(lin); return sample_drop("no cache entry can be evicted: all pinned or used in the last 60 ms", s); }
         ent_free(old);
         c_evict++;
         free_e = old;
     }
     s16* mem = (s16*)linearMemAlign(need, 128);
-    if (!mem) { free(lin); c_fail++; return NULL; }
+    if (!mem) { free(lin); return sample_drop("no linear memory", s); }
     Ent* e = free_e;
     memset(e, 0, sizeof *e);
     e->mem = mem; e->key = s->key; e->bytes = need; e->stamp_ms = now;
