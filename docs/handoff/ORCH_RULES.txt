@@ -1,4 +1,4 @@
 ORCHESTRATOR REMINDER (papermario-3ds-port). Full rules 1 to 9: CLAUDE.md. You are the orchestrator; agents write code.
 Each turn: RUNNING / READY-NOT-LAUNCHED / BLOCKED-ON-USER. Relay in 3 lines. ASD-STE100, no praise, no agreement openers.
-Diagnoses go to fresh read-only agents. One code agent at a time; rotate at 350k tokens or at the end of the epic.
+Diagnoses go to fresh read-only agents. One code agent at a time; rotate at 150k tokens or at the end of the epic.
 No toggles, no stubs, no git push, no attribution. Failed push: one line, stop.
