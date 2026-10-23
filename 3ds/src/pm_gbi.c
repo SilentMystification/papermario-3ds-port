@@ -252,6 +252,7 @@ static int p_cur_mixed;
  * (gv_xf makes vert_p, vert_st and vert_c on demand). It replaces gpuvtx (PO3b) when both are on. */
 static int gv1_on(void) { return (PM_GV1_DEFAULT || PMDL("gv1")) && !PMDL("nogv1"); }
 static int po3b_on(void) { return PMDL("gpuvtx") && !PMDL("nogpuvtx") && !gv1_on(); } /* HWM1: follows abtog */
+static u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
 static u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. vert_cb bit 64 = a corner at w <= 0.05 (near) */
 enum { GVR_NEAR, GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_DBG, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
 static unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n, gv_chk_out, gv_chk_cull, gv_chk_tri;
@@ -582,9 +583,9 @@ static unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex i
 /* L01: RSP lighting. The normal goes through the model view matrix, then colour = ambient + sum(light colour * max(0, normal . direction)). Alpha stays the vertex alpha.
  * Debug switch nolight keeps the old fixed light for an A/B. */
 int pm_nolight = -1; /* F11-10: -1 = read the switch at first use, the Options row sets 0 or 1 */
-static unsigned vert_color(const Vtx* v, const float m[4][4]) {
+static unsigned lit_color(const Vtx* v, const float m[4][4], int texgen) {
     tg_ok = 0;
-    if (geom & G_LIGHTING) {
+    {
         float nx = pm_f127[(unsigned char)v->v.cn[0]];
         float ny = pm_f127[(unsigned char)v->v.cn[1]];
         float nz = pm_f127[(unsigned char)v->v.cn[2]];
@@ -601,7 +602,7 @@ static unsigned vert_color(const Vtx* v, const float m[4][4]) {
         float tz = nx * m[0][2] + ny * m[1][2] + nz * m[2][2];
         float l2 = tx * tx + ty * ty + tz * tz;
         if (l2 > 0.f) { float k = 1.f / sqrtf(l2); tx *= k; ty *= k; tz *= k; }
-        if (geom & G_TEXTURE_GEN) { /* T01: F3DEX2 texgen is in the lighting path. Non-linear: (dot + 1) / 4 * scale. G_TEXTURE_GEN_LINEAR has no user in src */
+        if (texgen) { /* T01: F3DEX2 texgen is in the lighting path. Non-linear: (dot + 1) / 4 * scale. G_TEXTURE_GEN_LINEAR has no user in src */
             float dx = (tx * lk[0][0] + ty * lk[0][1] + tz * lk[0][2]) / 127.f;
             float dy = (tx * lk[1][0] + ty * lk[1][1] + tz * lk[1][2]) / 127.f;
             tg_s = (dx + 1.f) / 4.f * (float)tex_ss;
@@ -619,6 +620,10 @@ static unsigned vert_color(const Vtx* v, const float m[4][4]) {
         if (b > 255.f) b = 255.f;
         return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)v->v.cn[3];
     }
+}
+static unsigned vert_color(const Vtx* v, const float m[4][4]) {
+    tg_ok = 0;
+    if (geom & G_LIGHTING) return lit_color(v, m, (geom & G_TEXTURE_GEN) != 0);
     return ((unsigned)v->v.cn[0] << 24) | ((unsigned)v->v.cn[1] << 16) |
            ((unsigned)v->v.cn[2] << 8) | (unsigned)v->v.cn[3];
 }
@@ -1209,6 +1214,15 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     o->boost = boost;
     memset(&o->fx, 0, sizeof o->fx);
     o->fxon = 0;
+    if (geom & G_LIGHTING) { /* GV5: the RSP light table (ambient is slot lt_n), the look-at vectors for texgen */
+        o->fx.lflag[0] = 1.f;
+        if (geom & G_TEXTURE_GEN) o->fx.lflag[1] = 1.f;
+        for (int q = 0; q < 3; q++) o->fx.amb[q] = (float)lt[lt_n].col[q];
+        for (unsigned i = 0; i < lt_n && i < 7; i++)
+            for (int q = 0; q < 3; q++) { o->fx.col[i][q] = (float)lt[i].col[q]; o->fx.dir[i][q] = (float)lt[i].dir[q] / 127.f; }
+        for (int q = 0; q < 3; q++) { o->fx.lk0[q] = (float)lk[0][q] / 127.f; o->fx.lk1[q] = (float)lk[1][q] / 127.f; }
+        o->fxon = 1;
+    }
     if (fogmix_on && (geom & G_FOG)) { /* GV5: the RSP fog factor clamp(z / w * fm + fo) is the alpha. z / w of the N64 clip position from the PICA clip z and w. */
         float za = 1.f, zb = 0.f;
         if (pm_gpu_gv_zcoef(&za, &zb)) {
@@ -1267,9 +1281,22 @@ static void gv_xf(int sl) {
         unsigned tss = vert_tss[sl];
         vert_st[sl][0] = (float)r->v.tc[0] * (float)(tss >> 16) / 65536.f;
         vert_st[sl][1] = (float)r->v.tc[1] * (float)(tss & 0xffffu) / 65536.f;
+        if (vert_litf[sl] & 3) { /* GV5: a vertex that was loaded lit goes to the GPU raw, the CPU path makes its colour from the stored normal matrix (the lights are the ones of the load: lit_freeze) */
+            vert_c[sl] = lit_color(r, gm_nrm[vert_gmi[sl]], (vert_litf[sl] & 2) != 0);
+            if (tg_ok) { vert_st[sl][0] = tg_s; vert_st[sl][1] = tg_t; }
+        } else
         vert_c[sl] = ((unsigned)r->v.cn[0] << 24) | ((unsigned)r->v.cn[1] << 16) | ((unsigned)r->v.cn[2] << 8) | (unsigned)r->v.cn[3];
     }
     vert_gvf[sl] = 3;
+}
+
+/* GV5: the lights are about to change (G_MOVEMEM light, G_MW_NUMLIGHT). A lit vertex that is still in the ring has not seen its colour yet: make it now with the old lights and keep it on the CPU path. */
+static void lit_freeze(void) {
+    for (int s = 0; s < 64; s++) {
+        if (!vert_live[s] || !(vert_litf[s] & 3) || (vert_litf[s] & 4) || vert_ring[s] == GV_NONE) continue;
+        if (vert_gvf[s] != 3) gv_xf(s);
+        vert_litf[s] |= 4;
+    }
 }
 
 /* GV1: the id of the matrix of the next vertex load or static group in gm_tab: the combined matrix, and for a lit load also the model view matrix of the normal. -1 when the table is full. */
@@ -1292,6 +1319,8 @@ static unsigned gv_matrix_id(int need_nm) {
 }
 
 /* GV5: the fog factor can be made on the GPU */
+/* GV5: a lit load can go to the ring: the program is there and the Options row for the fixed light is off */
+static int gv_lit_ok(void) { if (pm_nolight < 0) pm_nolight = pm_debug_has("nolight"); return pm_gpu_gv5_ok() && !pm_nolight; }
 static int gv_fog_gpu_ok(void) { return pm_gpu_gv5_ok() && pm_gpu_gv_zcoef(NULL, NULL); }
 static int gv1chk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gv1check"); return v; }
 
@@ -1307,7 +1336,7 @@ static int gv_state_why(int* ct, int* both) {
     unsigned cg = geom & G_CULL_BOTH;
     *ct = cull_off() ? 0 : cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
     *both = cg == G_CULL_BOTH && !cull_off();
-    if (geom & (G_LIGHTING | G_TEXTURE_GEN)) return GVR_LIT;
+    if ((geom & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
     if (fogmix_on && (geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
     if (img_role(0) == ROLE_DEPTH) return GVR_ZMARK;
     if (plan_active && cur_plan.uses_tex1) return GVR_TEX1;
@@ -1338,6 +1367,10 @@ static int gv_tri(const int* idx) {
     if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 64) why = GVR_NEAR;
     else if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;
+    else { /* GV5: the vertices were loaded with the lighting state of now, and the lights did not change since (the RSP lights at the load) */
+        unsigned want = (geom & G_LIGHTING) ? 1u | ((geom & G_TEXTURE_GEN) ? 2u : 0u) : 0u;
+        if (((vert_litf[a] | vert_litf[b] | vert_litf[c]) & 4) || vert_litf[a] != want || vert_litf[b] != want || vert_litf[c] != want) why = GVR_LIT;
+    }
     if (why < 0) {
         if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
         else if (gv1chk_on()) { /* the stored decision against a fresh one */
@@ -2338,10 +2371,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 unsigned gmi = GV_NONE;
                 int gv = 0, gbox = 0;
                 unsigned char gbits = 0;
-                if (gv1_on() && n) { /* GV1: an unlit load goes to the ring as it is. A lit load (or a full ring) takes the old code. */
-                    if (geom & G_LIGHTING) gv_fb[GVR_LITLOAD]++;
+                const int lit_ld = (geom & G_LIGHTING) != 0;
+                if (gv1_on() && n) { /* GV1: a load goes to the ring as it is (GV5: also a lit load, the GPU lights it). A full ring takes the old code. */
+                    if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
                     else if (!dd_on() && !xt_on() && !rmlog_on() && !po3a_on()) {
-                        gmi = gv_matrix_id(0);
+                        gmi = gv_matrix_id(lit_ld);
                         if (mtxlog_on() && mtxlog_ok()) pm_log_d("mtxv f%d vtx %p n %u gmi %u gmn %u t %.1f %.1f %.1f", rm_frame, (void*)src, n, gmi, gm_n, combined[3][0], combined[3][1], combined[3][2]);
                         if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
                         if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
@@ -2387,6 +2421,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     vert_mid[v0 + i] = po3a_mid;
                     vert_live[v0 + i] = 1;
                     vert_scr[v0 + i] = 0;
+                    vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
                     if (gv) { /* GV1: no colour, no S T. Per vertex bits for a small load. */
                         if (gbox) { vert_gvf[v0 + i] = 0; vert_cb[v0 + i] = gbits; }
                         else {
@@ -2467,6 +2502,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 unsigned ix = w0 & 0xff, n = ++mm_cnt[ix];
                 if (n == 1 || n == 1000 || n == 1000000) pm_log_d("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
             }
+            if ((w0 & 0xff) == G_MV_LIGHT) lit_freeze(); /* GV5 */
             if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
                 int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
                 const u8* l = (const u8*)ptr_of(w1);
@@ -3042,7 +3078,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         case G_MOVEWORD: {
             unsigned index = (w0 >> 16) & 0xff;
             unsigned offset = w0 & 0xffff;
-            if (index == G_MW_NUMLIGHT) { lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; break; } /* L01 */
+            if (index == G_MW_NUMLIGHT) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; break; } /* L01 */
             if (index == G_MW_LIGHTCOL && offset / 24 < 9 && (offset % 24) == 0) { unsigned k = offset / 24; lt[k].col[0] = w1 >> 24; lt[k].col[1] = w1 >> 16; lt[k].col[2] = w1 >> 8; break; } /* L01 */
             if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; } /* F08 */
             if (index != G_MW_SEGMENT) {

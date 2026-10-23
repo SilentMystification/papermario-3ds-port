@@ -491,6 +491,7 @@ static void flush_draw(void) {
                 PH_ADD(C_RAWCALL, 2 + (g_fx.lflag[0] != 0.f ? 17 : 0));
             }
             sh5_ok = 1;
+            sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); /* the uniform registers are one file for all programs: pm5 wrote over what pm4 and pm had */
             for (unsigned k = 0; k < pal_n; k++) {
                 unsigned gm = pal_g[k];
                 if (pcomp_gen[gm] != post_gen) {
@@ -509,6 +510,7 @@ static void flush_draw(void) {
             }
         } else if (gpal) {
             const int lean = raw1_on();
+            sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); /* pm4 writes over the registers of pm5 */
             { static int lean_prev; if (lean != lean_prev) { raw1_reset(); lean_prev = lean; } } /* abtog switched it */
             if (!lean || bound != 3) { C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
             if (!lean || !sh_ok || memcmp(sh_uvso, g_uvso, sizeof sh_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh_uvso, g_uvso, sizeof sh_uvso); PH_ADD(C_RAWCALL, 1); }
@@ -545,7 +547,7 @@ static void flush_draw(void) {
         const C3D_Mtx* pm_ = draw_3d ? &shader_3d : off_active ? &off_proj : &projection; /* V05: shader_3d follows off_active, see rebuild_3d */
         if (DR1X("nodr1u") && !graw && proj_ok && memcmp(&proj_last, pm_, sizeof proj_last) == 0) dr1_skips++; /* DR1: same value as the last draw */
         else {
-            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, pm_); sh_pal_ok[0] = sh_pal_ok[1] = 0; /* RAW1: registers 0 to 3 are also pal 0 */
+            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, pm_); sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; /* RAW1: registers 0 to 3 are also pal 0 */
             proj_last = *pm_; proj_ok = !graw;
         }
     }
@@ -558,7 +560,7 @@ static void flush_draw(void) {
     int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
     if (tex && snap0) { C3D_TexBind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
     if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
-    if (!gpal) sh_pal_ok[0] = sh_pal_ok[1] = 0; /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
+    if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
     if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
     int noise = combine == 8 && plan.uses_noise && noise_init();
     if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
