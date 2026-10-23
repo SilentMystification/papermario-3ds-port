@@ -1451,7 +1451,7 @@ void pm_gpu_begin(int clear) {
     draw_3d = 0;
     if (!gpu_ok) return;
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
-    raw1_reset(); sh_clear(); C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    raw1_reset(); sh_clear(); C3D_FrameBegin(pm_interp_on > 0 ? C3D_FRAME_SYNCDRAW : 0); /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     PH_POP();
     pm_ph_gpu_note();
     dump_shot();

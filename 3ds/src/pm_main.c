@@ -346,6 +346,11 @@ void pm_frame_loop(void) {
     const int crash_n = pm_debug_value("crashtest", cv, sizeof cv) ? atoi(cv) : pm_debug_has("crashtest") ? 3 : 0;
     unsigned crash_at = crash_n ? 300u : 0xFFFFFFFFu;
     if (crash_n && pm_debug_value("crashframe", cv, sizeof cv)) crash_at = (unsigned)atoi(cv);
+    /* PT88: the game step schedule is time, not the vblank count. A step is due every 1/29.92 s (sched_next). The idle pass waits until the next step is due, a pass
+     * draws unless a whole step or more is owed, then only its draw is skipped. The frame begin no longer waits for a vblank (pm_gpu_begin), so a heavy scene
+     * (cpu 55 ms and 11 ms of vblank wait) draws as often as the CPU allows, 18 a second instead of 15. With fps60 the old vblank schedule stays (two draws a step). */
+    u64 sched_next = 0;
+    const u64 step_period = tick_hz * 1000ull / 29920ull;
     while (aptMainLoop() && !pm_exit_request) {
         if (exit_at && frame >= exit_at) { pm_log("exitframe: leaving the main loop at frame %u", frame); break; }
         pm_wd_prog++;
@@ -370,7 +375,19 @@ void pm_frame_loop(void) {
              * counter. The next drawn iteration waits for one more vblank in C3D_FrameBegin(SYNCDRAW), so this
              * waits until the counter is PM_VBLANKS_PER_STEP - 1 past the last drawn iteration. A slow frame is
              * already past it: no wait and no extra step to catch up. `fast` stays uncapped (debug). */
-            if (!PMD("fast") && step_vb_ok) {
+            if (!PMD("fast") && step_vb_ok && pm_interp_on <= 0 && sched_next) { /* PT88: wait until the next step is due (sleep, then a short spin) */
+                PM_WD_PHASE(3);
+                PH_PUSH(PH_IDLE);
+                for (;;) {
+                    u64 t = svcGetSystemTick();
+                    if (t >= sched_next) break;
+                    u64 rem = sched_next - t;
+                    if (rem > tick_hz / 500ull) svcSleepThread((s64)((rem - tick_hz / 1000ull) * 1000000000ull / tick_hz)); /* leave 1 ms */
+                    else if (rem > tick_hz / 5000ull) svcSleepThread(100000ll);
+                    else break;
+                }
+                PH_POP();
+            } else if (!PMD("fast") && step_vb_ok && pm_interp_on > 0) {
                 PM_WD_PHASE(3);
                 int guard = PM_VBLANKS_PER_STEP + 1;
                 PH_PUSH(PH_IDLE);
@@ -380,6 +397,7 @@ void pm_frame_loop(void) {
             continue;
         }
         step_start = now;
+        if (pm_interp_on > 0) sched_next = 0; else if (!sched_next) sched_next = now;
         nuGfxCfb_ptr = nuGfxCfb[frame % nuGfxCfbNum];
         /* FS1: N64 frame skip as a safety net. Skip the draw of this step only when the machine is really late: the last drawn step took more than
          * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
@@ -394,7 +412,8 @@ void pm_frame_loop(void) {
                 if (ps < 0) ps = pm_debug_has("pauseskip");
                 if (ps && !ps_done && pm_game_mode_now() == 10 /* GAME_MODE_PAUSE */ && nuGfxCfb[1] == nuGfxCfb_ptr) { ps_done = 1; fs_force_skip = 1; pm_log("pauseskip: draw of step %u skipped", frame); }
             }
-            fs_skip = fs_force_skip || (C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP && (!fs1_old || fs1_last_iv > PM_VBLANKS_PER_STEP)) || (fs1_force && fs1_steps % fs1_force == 0);
+            if (pm_interp_on <= 0) fs_skip = fs_force_skip || (now >= sched_next + step_period) || (fs1_force && fs1_steps % fs1_force == 0); /* PT88: a whole step or more is owed */
+            else fs_skip = fs_force_skip || (C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP && (!fs1_old || fs1_last_iv > PM_VBLANKS_PER_STEP)) || (fs1_force && fs1_steps % fs1_force == 0);
             if (fs_skip && fs1_run >= (fs1_old ? 2u : FS1_MAX_RUN)) fs_skip = 0;
         }
         { /* PT33 debug switch creditsseek=<step>: no draw until the game has run <step> steps since boot (the credits parade of warp=end_00:0 scrolls with the steps, so the 1000 step wait costs only the game logic). The game logic runs as in an FS1 skip. */
@@ -446,6 +465,11 @@ void pm_frame_loop(void) {
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
         frame++;
         pm_frame_n = frame;
+        if (pm_interp_on <= 0 && sched_next) { /* PT88: one step is used. After a long stall (a load) do not run to catch up: keep at most 3 steps owed. */
+            u64 t = svcGetSystemTick();
+            sched_next += step_period;
+            if (t > sched_next + 3 * step_period) sched_next = t - 3 * step_period;
+        }
         pm_wd_prog++;
         PM_WD_PHASE(8);
         pm_audio_join_at(3); /* AU1d: warp and fxtest can call game code */
