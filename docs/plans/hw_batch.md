@@ -246,5 +246,10 @@ Gates (console, town mac_01): gb below the 1036 value (38.58 ms) by 4 ms or more
 Not done and why (Azahar counters, docs/plans/post_dlc_ranking.md): the GPU only reject and transform (gv1raw: draws 70 to 131 per step, gv1box 70 to 75) raises the draw count, so the per vertex CPU transform and the per triangle reject stay. Static DLC groups already skip both.
 
 
+Result of build 1073 (O3DS, hw_1073_PLAY_o3ds_pull.txt, phs_report.py --hw, one row per map, states are gone): town mac_01 (1:1) gb 31.91 ms (n 334, build 1036: 38.58 ms, 6.67 ms lower), cpu50 55.6 ms (was 66.1), mac_02 (1:2) gb 34.68 (n 1200). Other worlds gb: 17:3 30.21, 6:0 28.05, 17:20 27.18, 20:3 25.32, 5:3 25.18; lightest 22:29 6.67, 21:5 9.35.
+cpu50 under 50 ms (20 steps a second) holds in 21:x, 22:29, 22:19, 22:11, 22:9, 20:2, 18:x, 10:29, 6:6 and 5:3 (46.2) and not in the towns (55.6 and 59.9), 17:3 (50.6), 6:0 (51.7).
+Spikes: 5447 spike lines (more than 50 ms a step), the dominant phase of 5324 of them is gbi (98 percent), logic 54, audio 27, fbegin 26, other 10, tex 5. The spikes are GPU build work, not audio and not the SD.
+The user played many maps, so n per map is small in places; ok% (share of steps up to 34.5 ms) is 0 in most heavy maps: the O3DS still runs those at 15 to 20 steps drawn a second.
+Gate: town gb is lower than build 1036 (31.91 against 38.58 ms): PASS.
 ### 8.5 Push SWEEP: the full sweep (bosses, cutscenes, credits) (only on a user request, never planned)
 The full sweep runs only when the user asks for it. No gate, no feature test and no other agent runs it. Commands for the console (one push, chain list, pulled log): docs/plans/sweep_notes.md, section Console. Azahar: `python3 3ds/tools/sweep.py run all`.

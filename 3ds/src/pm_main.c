@@ -315,6 +315,7 @@ void pm_frame_loop(void) {
     int ever = 0;
     int have_fps = 0;
     unsigned fps_vb0 = 0, late_n = 0, spike_ticks0 = 0; /* PT15 */
+    int last_step_skipped = 0; /* PT87 */
     int late_pct = 0;
     u64 step_start = 0;
     unsigned step_vb = 0; /* vblank counter when the last drawn iteration got past FrameBegin */
@@ -361,8 +362,7 @@ void pm_frame_loop(void) {
         if (!draw) {
             pm_gfx_retrace();
             /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
-            if (pm_interp_on > 0 && pm_interp_key_draw()) {
-                presents++;
+            if (pm_interp_on > 0 && !last_step_skipped && pm_interp_key_draw()) { /* PT87: the key frame is a draw, not a game step (it was counted as a step: the HUD showed x/x) */
                 drawn++; pm_pace_drawn++;
                 continue;
             }
@@ -385,7 +385,7 @@ void pm_frame_loop(void) {
          * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
         int fs_skip = 0, fs_force_skip = 0;
-        if (ever && step_vb_ok && !fs1_off && pm_interp_on <= 0 && !PMD("fast")) { /* not with fast (uncapped debug runs) and not with fps60 (F06 has its own late path) */
+        if (ever && step_vb_ok && !fs1_off && !PMD("fast")) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
             fs1_steps++;
             /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
              * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
@@ -403,6 +403,7 @@ void pm_frame_loop(void) {
             if (ever && frame < seek) fs_skip = 1;
             else if (seek && frame == seek) { seek = 0; pm_log("creditsseek: reached step %u, drawing again", frame); }
         }
+        last_step_skipped = fs_skip;
         if (fs_skip) {
             fs1_run++;
             fs1_skipped++;
@@ -465,7 +466,7 @@ void pm_frame_loop(void) {
         { /* PT15: steps per second against the retrace (steps * 60 / vblanks, 120 vblanks) and the share of steps that took 3 or more vblanks */
             unsigned vbn = C3D_FrameCounter(0);
             if (!fps_vb0) fps_vb0 = vbn;
-            if (vbn - fps_vb0 >= 120) {
+            if (vbn - fps_vb0 >= 60) { /* PT87: a window of one second (was two) */
                 fps = (float)presents * 60.f / (float)(vbn - fps_vb0);
                 fps_draw = (float)drawn * 60.f / (float)(vbn - fps_vb0);
                 if (pm_debug_has("fpslog")) pm_log_d("hud fps: drawn %u steps %u vblanks %u -> %.1f/%.1f", drawn, presents, vbn - fps_vb0, fps_draw, fps);
@@ -525,7 +526,7 @@ void pm_frame_loop(void) {
             /* HUD2: "FPS 29.8 L80 O3DS 96/96M C96M #861". R part = free/total application region, C = APT commit limit. At most 39 columns, the build text is cut last. */
             char mem[24];
             snprintf(mem, sizeof mem, "%u/%uM C%uM", reg_free, reg_total, lim_mb);
-            if (have_fps) snprintf(top, sizeof(top), "%.0f/%.0f FPS late%d%% %s %s %s #%s", fps_draw, fps, late_pct, lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
+            if (have_fps) snprintf(top, sizeof(top), "%.0f/%d FPS late%d%% %s %s %s #%s", fps_draw, pm_interp_on > 0 ? 60 : 30, late_pct, lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
             else snprintf(top, sizeof(top), "-/- FPS %s %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", mem, PM_BUILD_STR);
             top[39] = 0; /* PT15: 39 columns, the build text is cut first */
             if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast"))
