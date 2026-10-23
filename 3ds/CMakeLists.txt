@@ -485,4 +485,5 @@ ctr_generate_smdh("${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh"
     NAME "Paper Mario"
     DESCRIPTION "N64 decomp on O3DS"
     AUTHOR "pmret"
+    ICON "${DECOMP}/LaunchIcon.png"
 )
