@@ -11,13 +11,13 @@ The full sweep runs ONLY when the user asks for a "full sweep". It is not part o
 - `3ds/routes/credits.txt`: route for the credits (see Credits).
 - Output: `3ds/logs/sweep/<item>/` (git-ignored): `log.txt`, `shots/`, `sheet.png` (6 to 12 thumbnails), `time.txt` (Azahar seconds), `azahar.txt` (memory fault lines), `run.txt`. Table: `3ds/logs/sweep/report.txt`.
 
-## How to run a full sweep (Azahar, Linux)
-1. Build the lane or main: `PM_LANE=laneC sh 3ds/build.sh` (3dsx in `build3ds/lane-laneC/`).
+## How to run a full sweep (Azahar; Windows from Git Bash, or Linux)
+1. Build main: `sh 3ds/build.sh` (lane C is merged into main). On Windows the runner starts `3ds/run_azahar.ps1 -Turbo` (it runs `build3ds/pm_3ds.3dsx` or the `PM_LANE` build, `--x` is for Linux only). Start `python 3ds/tools/sweep.py` from Git Bash (a PowerShell tool shell made the child run_azahar.ps1 stop at once with a Release-Lock error).
 2. Run (one Azahar start per item, clean state each time, about 25 to 30 s per item):
 ```
 export PM_ROW=SWEEP PM_BUDGET=200
-python3 3ds/tools/sweep.py run all --x build3ds/lane-laneC/pm_3ds.3dsx        # or: bosses | cutscenes | credits | credits_more | <item,item>
-python3 3ds/tools/sweep.py report                                              # table and sheets again from the logs
+python 3ds/tools/sweep.py run all                                              # or: bosses | cutscenes | credits | credits_more | <item,item>
+python 3ds/tools/sweep.py report                                              # table and sheets again from the logs
 ```
 `--dry` prints the switch strings. `--force` runs an item again (a finished item is skipped). `--chain` runs the whole selection in ONE start (no shots, no clean state, used for the console). The sweep uses its own budget (PM_BUDGET) because one start per item is its design. The user request is the authority for it.
 3. Read `3ds/logs/sweep/report.txt`. Columns: result (ok or FAIL with the reason: crash, unmapped memory access, assert or FAIL line, stuck, nostart), steps, cpu ms per step avg/p95/max, steps over 33.3 ms, texture misses, turns (p = player turns, e = enemy moves, m = player moves), Azahar seconds, thumbnails path. Azahar numbers are host numbers. Only console numbers count.
@@ -44,3 +44,9 @@ Wait until the log has `sweep: chain end` (about 30 s per boss, 40 s per cutscen
 
 ## Status of the items
 See the section "Result of the first run" below.
+
+## Merge into main (lane C) and the Windows runner
+- lane-c (bbd872186) is merged into main. The boss list has ONE source: `python 3ds/tools/sweep_gen.py bosstable` writes `3ds/src/pm_boss_table.h` (Select menu tab Boss). sweep.txt holds no boss lines and the runner never runs a boss (rule 14). The `boss.txt` driver and the padloop text above are history.
+- Credits items start with `creditsseek=900` (credits_full: 14500), so the 900 step Luigi part costs no drawing.
+- sweep_report.py counts only upper case `FAIL` and `assert` lines (the dlc2 counter line holds `fail 0`).
+- Checked once on Windows: cut_trd_06_e0_FallIntoCell ok (1200 steps), credits_toads ends at the cap with Azahar memory faults (row SW1).

@@ -12,7 +12,33 @@ import os, subprocess, sys, shutil, time, argparse
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 DATA = os.path.join(ROOT, '3ds/sweep/sweep.txt')
 OUT = os.path.join(ROOT, '3ds/logs/sweep')
-SD = os.path.expanduser('~/.var/app/org.azahar_emu.Azahar/data/azahar-emu/sdmc/3ds/PaperMario')
+WIN = os.name == 'nt'
+SD = (os.path.join(os.environ.get('APPDATA', ''), 'Azahar', 'sdmc', '3ds', 'PaperMario') if WIN
+      else os.path.expanduser('~/.var/app/org.azahar_emu.Azahar/data/azahar-emu/sdmc/3ds/PaperMario'))
+
+def azahar(sw, timeout, until, log, force, x, env):
+    """One Azahar start. Windows: 3ds/run_azahar.ps1 (-Turbo is the fast mode, it runs build3ds/pm_3ds.3dsx or the PM_LANE build, so x is not used).
+    Linux: 3ds/run_azahar.sh. The game log goes to <log>, the shots next to it (<dir>/shots), memory fault lines to <dir>/azahar.txt."""
+    d = os.path.dirname(log)
+    if WIN:
+        cmd = ['powershell', '-NoProfile', '-File', '3ds/run_azahar.ps1', '-Turbo', '-Timeout', str(timeout), '-Until', until, '-Debug', sw]
+        if force: cmd.append('-Force')
+        r = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True)
+        lane = env.get('PM_LANE')
+        out = os.path.join(ROOT, 'build3ds', 'lane-' + lane) if lane else os.path.join(ROOT, 'build3ds')
+        if os.path.exists(os.path.join(out, 'last_log.txt')): shutil.copy(os.path.join(out, 'last_log.txt'), log)
+        if os.path.isdir(os.path.join(out, 'shots')): shutil.copytree(os.path.join(out, 'shots'), os.path.join(d, 'shots'), dirs_exist_ok=True)
+        try:
+            lines = [l for l in open(os.path.join(out, 'last_unmapped.txt'), errors='replace') if l.strip()]
+            open(os.path.join(d, 'azahar.txt'), 'w').write(''.join(lines[:200]))
+        except OSError: pass
+        return r
+    r = subprocess.run(['sh', '3ds/run_azahar.sh', '-F', '-x', x, '-d', sw, '-t', str(timeout), '-u', until, '-o', log], cwd=ROOT, env=env, capture_output=True, text=True)
+    try:
+        lines = [l for l in open('/tmp/claude-1000/azahar_stdout.txt', errors='replace') if 'Unmapped' in l or 'Crash' in l or 'CRASH' in l]
+        open(os.path.join(d, 'azahar.txt'), 'w').write(''.join(lines[:200]))
+    except OSError: pass
+    return r
 
 def load():
     items = []
@@ -95,11 +121,11 @@ def run_chain(sel, x, timeout, dry):
     if dry: return
     env = dict(os.environ); env.setdefault('PM_ROW', 'SWEEP'); env['PM_BUDGET'] = env.get('PM_BUDGET', '200')
     t0 = time.time()
-    r = subprocess.run(['sh', '3ds/run_azahar.sh', '-F', '-x', x, '-d', s, '-t', str(timeout), '-u', r'sweep: chain end', '-o', os.path.join(d, 'log.txt')], cwd=ROOT, env=env, capture_output=True, text=True)
+    r = azahar(s, timeout, r'sweep: chain end', os.path.join(d, 'log.txt'), False, x, env)
     open(os.path.join(d, 'run.txt'), 'w').write(r.stdout + r.stderr)
     print('chain done in %.0f s' % (time.time() - t0))
 
-def run_item(it, x, timeout, dry):
+def run_item(it, x, timeout, dry, force=False):
     s, cap = switches(it)
     if len(s) > 255 or ',' in s:
         print('SKIP %s: switch string %d bytes or comma: %s' % (it['name'], len(s), s)); return 'skip'
@@ -116,14 +142,8 @@ def run_item(it, x, timeout, dry):
     env.setdefault('PM_ROW', 'SWEEP')
     env['PM_BUDGET'] = env.get('PM_BUDGET', '200')   # the full sweep has its own budget: one start per item, set by the user request
     t0 = time.time()
-    r = subprocess.run(['sh', '3ds/run_azahar.sh', '-F', '-x', x, '-d', s, '-t', str(timeout), '-u', r'sweep: .* end ', '-o', log], cwd=ROOT, env=env,
-                       capture_output=True, text=True)
+    r = azahar(s, timeout, r'sweep: .* end ', log, force, x, env)
     open(os.path.join(d, 'run.txt'), 'w').write(r.stdout + r.stderr)
-    # Azahar stdout: keep the memory fault lines (a data abort on hardware)
-    try:
-        lines = [l for l in open('/tmp/claude-1000/azahar_stdout.txt', errors='replace') if 'Unmapped' in l or 'Crash' in l or 'CRASH' in l]
-        open(os.path.join(d, 'azahar.txt'), 'w').write(''.join(lines[:200]))
-    except OSError: pass
     open(os.path.join(d, 'time.txt'), 'w').write('%.0f\n' % (time.time() - t0 - lockwait(r.stdout)))
     print('   rc %d, %.0f s: %s' % (r.returncode, time.time() - t0, (r.stdout.strip().splitlines() or [''])[-1][:100]), flush=True)
     return 'rc%d' % r.returncode
@@ -131,7 +151,7 @@ def run_item(it, x, timeout, dry):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('cmd'); ap.add_argument('what', nargs='?', default='all')
-    ap.add_argument('--x', default='build3ds/lane-laneC/pm_3ds.3dsx' if os.path.exists(os.path.join(ROOT, 'build3ds/lane-laneC/pm_3ds.3dsx')) else 'build3ds/pm_3ds.3dsx')
+    ap.add_argument('--x', default='build3ds/pm_3ds.3dsx', help='Linux only: the 3dsx to run. Windows runs build3ds/pm_3ds.3dsx (or the PM_LANE build).')
     ap.add_argument('--timeout', type=int, default=240); ap.add_argument('--force', action='store_true'); ap.add_argument('--dry', action='store_true')
     ap.add_argument('--only', default=''); ap.add_argument('--chain', action='store_true', help='all selected items in ONE Azahar start (no shots, no clean state between items)')
     a = ap.parse_args()
@@ -155,7 +175,7 @@ def main():
         d = os.path.join(OUT, it['name'], 'log.txt')
         if not a.force and not a.dry and os.path.exists(d) and ' end ' in open(d, errors='replace').read() and 'sweep: %s end' % it['name'] in open(d, errors='replace').read():
             print('== %s: done before, skip (--force runs again)' % it['name']); continue
-        run_item(it, a.x, int(it.get('timeout', a.timeout)), a.dry)
+        run_item(it, a.x, int(it.get('timeout', a.timeout)), a.dry, a.force)
     print('sweep time %.0f s' % (time.time() - t0))
     if not a.dry: main_report()
 

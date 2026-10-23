@@ -59,9 +59,9 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [ ] PT31 | Dust effect trailing part is the rectangular one. Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | trailing dust is not a rectangle on hardware or Azahar shots
 [ ] PT32 | Options menu warp must not write the location to disk. Boot warp is for debugging only (debug3ds.txt). Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | Options warp leaves no location in debug3ds.txt, and boot warp stays debug only
 [ ] PT33 | Peach not visible in the castle in the final cutscene. Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | Peach is visible in the castle during the final cutscene on hardware or Azahar shots
-[ ] PT34 | Add a warp to the credits cutscene. Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | the warp menu starts the credits cutscene in Azahar
-[ ] PT35 | Add a tour of all boss fights with a couple of attacks each. Full sweep only. Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | boss tour runs every boss with attacks and is not in the routine tests
-[ ] PT36 | Add a tour of all cutscenes. Full sweep only. Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | cutscene tour runs every cutscene and is not in the routine tests
+[x] PT34 | credits warp: Select menu preset Credits (b80dee3bb) and creditsseek=<step> to skip the parade wait | -
+[x] PT35 | boss tab in the Select menu (33 formations, one source: python 3ds/tools/sweep_gen.py bosstable writes 3ds/src/pm_boss_table.h); the user plays each boss. No automated boss tour (user decision, rule 14) | USER plays
+[x] PT36 | cutscene tour: 3ds/tools/sweep.py (Windows and Linux), 3ds/sweep/sweep.txt, pm_sweep.c, report and sheets. Checked on 2 scenes in Azahar (cut_trd_06_e0_FallIntoCell ok). Full sweep only on a user request | USER starts the full sweep
 [ ] PT37 | Credits: confetti around the partners does not rotate, static squares. Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | confetti rotates in a credits shot on hardware or Azahar
 [ ] PT38 | Credits: path part of the ground shakes or stutters horizontally. Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | ground path does not shake or stutter horizontally in the credits
 [ ] PT39 | Credits: star on the Toad banners flickers. Text: docs/plans/playtest_2026-10-20.md, section Playtest 3 | star on the Toad banners does not flicker in the credits
@@ -115,3 +115,4 @@ Model tier: MODEL RULE in 3ds/ORCHESTRATOR.md.
 [x] PT80 | warp from the intro ends the intro state (commit 8df79dec7); the user reports the warp from the demo to Toad Town works | -
 [x] PT81 | music after a Select menu warp: _bgm_set_song ignores every request while demoState is set (title demo), so the new song never started. The warp now stops both songs and the ambient sounds, clears demoState; pause and battle warps go through the bypass (pause closes with UNPAUSE first). Azahar: warp from the intro, SetMusic song 149 then 0 result 1 | console listen
 [x] AUDDSP_A5 | DSP only audio path (commit 2e18a5987). Azahar boot without a switch logs dspaudio: on, statehash f300 aed188c8 f600 97889b07 unchanged | console: aux callback cause open
+[ ] SW1 | sweep finding: credits_toads (end_00, camera jump, creditsseek=900) logs 794 unmapped Read32 per address at 0x80420C1C to 0x80420C58, PC 0x001260BC = load_mtx pm_gbi.c:1823 (a gSPMatrix with an N64 address that ptr_of does not map). The item ends ok at cap. Cause not looked at yet | Azahar

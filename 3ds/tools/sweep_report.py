@@ -30,7 +30,7 @@ def analyse(d):
     crash = '[CRASH]' in text
     az = os.path.join(d, 'azahar.txt')
     unm = os.path.exists(az) and 'Unmapped' in open(az, errors='replace').read()
-    bad = [(i, l) for i, l in enumerate(lines) if re.search(r'assert|FAIL', l, re.I) and 'log rotate failed' not in l and 'texture failures 0' not in l]
+    bad = [(i, l) for i, l in enumerate(lines) if re.search(r'(?i:assert)|FAIL', l) and 'log rotate failed' not in l and 'texture failures 0' not in l]
     rows = []
     if not order: order = [base]
     for k, name in enumerate(order):

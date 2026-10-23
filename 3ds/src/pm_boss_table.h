@@ -1,5 +1,5 @@
-/* PT-boss: the boss formations for the Boss tab of the Select menu. label, battle=<formation>:<stage> (names of battle_names.h and stage_names.h),
- * story value of the area. Data of the lane C sweep list (3ds/tools/sweep_gen.py bosses, commit bbd872186 of lane-c), copied here. */
+/* The boss formations of the Boss tab of the Select menu: label, battle=<formation>:<stage> (names of battle_names.h and stage_names.h), story value of the area.
+ * Written by 3ds/tools/sweep_gen.py bosstable from the decomp (src/battle/area/NAME/area.c). Do not edit. */
     { "Tubbas Heart 0F", "BTL_ARN_FORMATION_0F:BTL_ARN_STAGE_05", -16 },
     { "Tubba Blubba 10", "BTL_ARN_FORMATION_10:BTL_ARN_STAGE_00", -16 },
     { "Tubba Blubba 04", "BTL_DGB_FORMATION_04:BTL_DGB_STAGE_00", -16 },

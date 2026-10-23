@@ -77,17 +77,17 @@ cut_peach_ch7 kind=cut warp=osr_03:4 story=87 cap=1200 note=Peach interlude afte
 cut_peach_kkj14_e3 kind=cut warp=kkj_14:3 story=-107 cap=1200 note=Peach in her room, interlude 1
 cut_peach_kkj14_e9 kind=cut warp=kkj_14:9 story=57 cap=1200 note=Peach in her room, interlude 7
 # credits: credits_full plays the whole chain end_00, end_01, kmr_30 and stops 90 steps after THE END shows (until=thankyou). The scenes below are for fault hunting: each scene = the parade jumped to a phase (jump=<camera x of PARADE_PHASE_*>), 600 steps = 20 s of game time after the jump. Luigi part first (about 910 steps).
-credits_partners kind=credits_scene warp=end_00:0 story=epilogue jump=-2845 cap=600 note=partners phase
-credits_toads kind=credits_scene warp=end_00:0 story=epilogue jump=-2550 cap=600 note=Toad Town phase
-credits_caravan kind=credits_scene warp=end_00:0 story=epilogue jump=-1500 cap=600 note=caravan phase
-credits_boos kind=credits_scene warp=end_00:0 story=epilogue jump=-960 cap=600 note=Boos phase
-credits_yoshis kind=credits_scene warp=end_00:0 story=epilogue jump=-53 cap=600 note=Yoshis phase
-credits_bowser kind=credits_scene warp=end_00:0 story=epilogue jump=1860 cap=600 note=Bowser phase
+credits_partners kind=credits_scene warp=end_00:0 story=epilogue jump=-2845 cap=600 extra=creditsseek=900 note=partners phase
+credits_toads kind=credits_scene warp=end_00:0 story=epilogue jump=-2550 cap=600 extra=creditsseek=900 note=Toad Town phase
+credits_caravan kind=credits_scene warp=end_00:0 story=epilogue jump=-1500 cap=600 extra=creditsseek=900 note=caravan phase
+credits_boos kind=credits_scene warp=end_00:0 story=epilogue jump=-960 cap=600 extra=creditsseek=900 note=Boos phase
+credits_yoshis kind=credits_scene warp=end_00:0 story=epilogue jump=-53 cap=600 extra=creditsseek=900 note=Yoshis phase
+credits_bowser kind=credits_scene warp=end_00:0 story=epilogue jump=1860 cap=600 extra=creditsseek=900 note=Bowser phase
 credits_end01_floats kind=credits_scene warp=end_01:0 story=epilogue cap=600 note=float parade (end_01)
-credits_koopabros kind=credits_more warp=end_00:0 story=epilogue jump=-2150 cap=600 note=Koopa Bros phase
-credits_buzzar kind=credits_more warp=end_00:0 story=epilogue jump=-1355 cap=600 note=Buzzar nest phase
-credits_tutankoopa kind=credits_more warp=end_00:0 story=epilogue jump=-760 cap=600 note=Tutankoopa phase
-credits_goombaking kind=credits_more warp=end_00:0 story=epilogue jump=-310 cap=600 note=Goomba King phase
-credits_huffpuff kind=credits_more warp=end_00:0 story=epilogue jump=750 cap=600 note=Huff N Puff phase
-credits_crystalking kind=credits_more warp=end_00:0 story=epilogue jump=1200 cap=600 note=Crystal King phase
-credits_full kind=credits warp=end_00:0 story=96 until=thankyou cap=22000 timeout=600 extra=shotwin=14600:150 note=whole chain end_00 end_01 kmr_30 to the thank-you screen
+credits_koopabros kind=credits_more warp=end_00:0 story=epilogue jump=-2150 cap=600 extra=creditsseek=900 note=Koopa Bros phase
+credits_buzzar kind=credits_more warp=end_00:0 story=epilogue jump=-1355 cap=600 extra=creditsseek=900 note=Buzzar nest phase
+credits_tutankoopa kind=credits_more warp=end_00:0 story=epilogue jump=-760 cap=600 extra=creditsseek=900 note=Tutankoopa phase
+credits_goombaking kind=credits_more warp=end_00:0 story=epilogue jump=-310 cap=600 extra=creditsseek=900 note=Goomba King phase
+credits_huffpuff kind=credits_more warp=end_00:0 story=epilogue jump=750 cap=600 extra=creditsseek=900 note=Huff N Puff phase
+credits_crystalking kind=credits_more warp=end_00:0 story=epilogue jump=1200 cap=600 extra=creditsseek=900 note=Crystal King phase
+credits_full kind=credits warp=end_00:0 story=96 until=thankyou cap=22000 timeout=600 extra=creditsseek=14500+shotwin=14600:150 note=whole chain end_00 end_01 kmr_30 to the thank-you screen

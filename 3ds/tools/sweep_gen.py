@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """sweep_gen.py - lists the boss formations of the decomp for the full sweep (docs/plans/sweep_notes.md).
-Reads src/battle/area/*/area.c (BattleList, Formation_nn actors, StageList) and src/battle/battle_names.h.
+Reads src/battle/area/NAME/area.c (BattleList, Formation_nn actors, StageList) and src/battle/battle_names.h.
 A formation is a boss formation when one actor blueprint matches BOSS below. Prints one sweep.txt line per formation:
   <name> kind=boss battle=<BTL formation>:<BTL stage> story=<n> cap=<steps> note=<boss actor>
-Use: python3 3ds/tools/sweep_gen.py [bosses|cutscenes] > block.txt  (then merge into 3ds/sweep/sweep.txt).
+Use: python 3ds/tools/sweep_gen.py [bosses|cutscenes] > block.txt  (then merge into 3ds/sweep/sweep.txt).
+  python 3ds/tools/sweep_gen.py bosstable    writes 3ds/src/pm_boss_table.h, the one source of the boss list of the Select menu tab Boss (no boss lines in sweep.txt).
 Mode cutscenes: finds `CaseEq(<map>_ENTRY_<n>)` followed by an `Exec(N(EVS_Scene_...))` or `MV_Scene_` in src/world/area_*/<map>/*.c (the entry scripts of the maps) and prints
   cut_<map>_e<n>_<scene> kind=cut warp=<map>:<n> story=<value of the chapter of the area> cap=<steps>
 The story value is only a start state of the chapter (table AREA_STORY). A scene that needs an exact story value or a game flag is listed as it plays: the report shows an empty or short scene."""
@@ -46,7 +47,7 @@ mode = sys.argv[1] if len(sys.argv) > 1 else 'bosses'
 if mode == 'cutscenes':
     r = cutscenes()
     print('\n'.join(r)); print('%d cutscene entries' % len(r), file=sys.stderr); sys.exit(0)
-names = open(os.path.join(root, 'src/battle/battle_names.h')).read()
+names = open(os.path.join(root, 'src/battle/battle_names.h'), encoding='utf-8', errors='replace').read()
 mode = sys.argv[1] if len(sys.argv) > 1 else 'bosses'
 rows = []
 base = os.path.join(root, 'src/battle/area')
@@ -54,7 +55,7 @@ for d in sorted(os.listdir(base)):
     af = os.path.join(base, d, 'area.c')
     if not os.path.isfile(af): continue
     pre = d.upper().replace('_PART_', '_')
-    t = open(af).read()
+    t = open(af, encoding='utf-8', errors='replace').read()
     forms = {}
     for m in re.finditer(r'Formation\s+A\(Formation_(\w+)\)\s*=\s*\{(.*?)\n\};', t, re.S):
         forms[m.group(1)] = re.findall(r'ACTOR_BY_(?:POS|IDX)\(A\((\w+)\)', m.group(2))
@@ -71,9 +72,22 @@ for d in sorted(os.listdir(base)):
         bf = 'BTL_%s_FORMATION_%02X' % (pre, i)
         si = stages.index(st) if st in stages else (snames.index(st) if st in snames else 0) # a stage that is not in the list: stage 00 (the arena is only a backdrop)
         bs = 'BTL_%s_STAGE_%02X' % (pre, si)
-        if bf not in names or bs not in open(os.path.join(root, 'src/battle/stage_names.h')).read(): continue
+        if bf not in names or bs not in open(os.path.join(root, 'src/battle/stage_names.h'), encoding='utf-8', errors='replace').read(): continue
         key = pre.lower()
         rows.append('boss_%s_f%02X kind=boss battle=%s:%s story=%d cap=1500 note=%s' % (hit[0], i, bf, bs, STORY.get(key, 0), '+'.join(actors)))
-print('\n'.join(rows))
+if mode == 'bosstable':
+    out = []
+    for r in rows:
+        t = r.split()
+        kv = dict(x.split('=', 1) for x in t[1:] if '=' in x)
+        m = re.match(r'boss_(.+)_f([0-9A-F]+)$', t[0])
+        lab = (m.group(1).replace('_', ' ').title().replace('Jr ', 'Jr. ') + ' ' + m.group(2))[:22]
+        out.append('    { "%s", "%s", %s },' % (lab, kv['battle'], kv['story']))
+    hdr = ('/* The boss formations of the Boss tab of the Select menu: label, battle=<formation>:<stage> (names of battle_names.h and stage_names.h), story value of the area.\n'
+           ' * Written by 3ds/tools/sweep_gen.py bosstable from the decomp (src/battle/area/NAME/area.c). Do not edit. */\n')
+    open(os.path.join(root, '3ds', 'src', 'pm_boss_table.h'), 'w', newline='\n').write(hdr + '\n'.join(out) + '\n')
+    print('3ds/src/pm_boss_table.h: %d bosses' % len(out), file=sys.stderr)
+else:
+    print('\n'.join(rows))
 print('%d boss formations' % len(rows), file=sys.stderr)
 
