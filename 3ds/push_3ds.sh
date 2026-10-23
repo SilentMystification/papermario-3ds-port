@@ -10,7 +10,7 @@
 # consoles can be captured at the same time. Run it in the background for long runs.
 set -e
 cd "$(dirname "$0")/.."
-secs=60
+secs=0
 ipopt=""
 nobuild=0
 while :; do
@@ -165,7 +165,7 @@ if [ "$ok" -ne 1 ]; then
     exit 1
 fi
 
-echo "reading the game's log from $ip:17492 for $secs s"
+if [ "$secs" = 0 ]; then echo "reading the game's log from $ip:17492 until the game closes"; else echo "reading the game's log from $ip:17492 for $secs s"; fi
 log="build3ds/hw_live_log_${ip##*.}.txt"
 py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log" || true
 echo "--- log saved to $log"

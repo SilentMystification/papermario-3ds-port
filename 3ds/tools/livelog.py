@@ -16,9 +16,10 @@ SEQ = re.compile(rb"^#(\d+) ")
 
 def main():
     ip = sys.argv[1]
-    secs = float(sys.argv[2]) if len(sys.argv) > 2 else 60
+    secs = float(sys.argv[2]) if len(sys.argv) > 2 else 0
     path = sys.argv[3] if len(sys.argv) > 3 else "build3ds/hw_live_log.txt"
-    end = time.time() + secs
+    forever = secs <= 0
+    end = time.time() + secs if not forever else 0
     out = open(path, "wb")
     stdout = sys.stdout.buffer
     last_seq = -1
@@ -32,7 +33,7 @@ def main():
         stdout.write(line)
         stdout.flush()
 
-    while time.time() < end:
+    while forever or time.time() < end:
         try:
             sock = socket.create_connection((ip, 17492), timeout=2)
         except OSError:
@@ -42,7 +43,7 @@ def main():
         print("[livelog] connected" if connects == 1 else "[livelog] reconnected", flush=True)
         sock.settimeout(1)
         buf = b""
-        while time.time() < end:
+        while forever or time.time() < end:
             try:
                 data = sock.recv(4096)
             except socket.timeout:
