@@ -777,6 +777,9 @@ void spr_load_player_sprite(s32 spriteIndex) {
 
     PlayerSprites[spriteIndex - 1] = playerSprite;
     if (playerSprite == nullptr) {
+#ifdef TARGET_3DS
+        { extern void pm_log_w(const char*, ...); pm_log_w("sprite: player sprite %d failed to load (heap or raster cache full?)", (int)spriteIndex); } /* PT33 diagnostic: Peach not visible */
+#endif
         return;
     }
     if (MaxPlayerSpriteComponents < playerSprite->maxComponents) {
@@ -804,6 +807,9 @@ void spr_init_sprites(s32 playerSpriteSet) {
     }
 
     loadedFlags = (&PlayerSpriteSets[playerSpriteSet])->initiallyLoaded;
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("sprite: player sprite set %d loaded flags %x story %d", (int)playerSpriteSet, (unsigned)loadedFlags, (int)evt_get_variable(NULL, GB_StoryProgress)); } /* PT33 diagnostic */
+#endif
     spr_init_player_raster_cache((&PlayerSpriteSets[playerSpriteSet])->cacheSize,
                   (&PlayerSpriteSets[playerSpriteSet])->rasterSize);
 
