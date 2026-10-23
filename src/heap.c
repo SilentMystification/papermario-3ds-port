@@ -1,5 +1,9 @@
 #include "common.h"
 
+#ifdef TARGET_3DS
+void pm_pdl_genheap_bump(void);
+#endif
+
 extern HeapNode heap_generalHead;
 extern HeapNode heap_collisionHead;
 
@@ -8,7 +12,11 @@ HeapNode* general_heap_create(void) {
 }
 
 void* general_heap_malloc(s32 size) {
-    return _heap_malloc(&heap_generalHead, size);
+    void* p = _heap_malloc(&heap_generalHead, size);
+#ifdef TARGET_3DS
+    if (p) pm_pdl_genheap_bump();
+#endif
+    return p;
 }
 
 void* general_heap_malloc_tail(s32 size) {
@@ -16,7 +24,11 @@ void* general_heap_malloc_tail(s32 size) {
 }
 
 s32 general_heap_free(void* data) {
-    return _heap_free(&heap_generalHead, data);
+    s32 r = _heap_free(&heap_generalHead, data);
+#ifdef TARGET_3DS
+    if (r == 0) pm_pdl_genheap_bump();
+#endif
+    return r;
 }
 
 s32 battle_heap_create(void) {
@@ -32,19 +44,27 @@ s32 func_8002ACDC(void) {
 }
 
 void* heap_malloc(s32 size) {
+    void* p;
     if (gGameStatusPtr->context == CONTEXT_WORLD) {
         return general_heap_malloc(size);
-    } else {
-        return _heap_malloc(&heap_battleHead, size);
     }
+    p = _heap_malloc(&heap_battleHead, size);
+#ifdef TARGET_3DS
+    if (p) pm_pdl_genheap_bump();
+#endif
+    return p;
 }
 
 s32 heap_free(void* data) {
+    s32 r;
     if (gGameStatusPtr->context != CONTEXT_WORLD) {
-        return _heap_free(&heap_battleHead, data);
-    } else {
-        return general_heap_free(data);
+        r = _heap_free(&heap_battleHead, data);
+#ifdef TARGET_3DS
+        if (r == 0) pm_pdl_genheap_bump();
+#endif
+        return r;
     }
+    return general_heap_free(data);
 }
 
 s32 collision_heap_create(void) {

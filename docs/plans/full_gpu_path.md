@@ -94,6 +94,9 @@ LRU by bytes over entries. A map change frees the shape and texheap entries at t
 - Compile on core 1: the compile is bursty (map entry: 174 lists, DLC.md risk 7) and needs no citro3d call. A compile job records ops into a buffer on core 1. The frame that misses interprets the list as today. The next frame replays. Texture handles are resolved on core 0 at the first replay (pm_tex is not thread safe). The O3DS has about 6 to 12 ms of free core 1 per step beside the audio (E, arch_review.md 1.5), which is enough for compile bursts.
 - The full producer and consumer split (gbi on core 1, game on core 0) is section 12 item 6. The compiler makes the gbi smaller, so it fits better in the core 1 budget.
 
+### 2.10 N3DS cores (user decision 2026-10-23)
+Hardware core 0 is full. Hardware core 2 is full and has no APT limit. Hardware core 1 is reduced (`APT_SetAppCpuTimeLimit`, system and GSP). Hardware core 3 is not usable by the app. Game logic stays on core 0. The second worker (audio submit and the display-list walk) is pinned to core 2. The DSP mixes. The GPU does the graphics work the PICA can run. Today the audio thread is on core 1 (`pm_audio.c`). That is the reduced core. This pin is N3DS only. The O3DS has no core 2.
+
 ## 3. Stages (core). Expected console gain is gb in town mac_01, E
 
 Every stage: one code agent, PM_ROW set, at most 8 Azahar starts. Standard Azahar checks: golden toad (0.00 to 0.01), yard (0.00), battle (2.47, limit 3.0); statehash yard 15eea14d and battle 7e1f3949 unchanged; dlccheck zeros; `pdlcheck` counters 0 from C1 on. Standard console gate: push as hw_batch.md 8.0h, town gb against the build before, draws not higher, no new CRASH, FAIL or `lines dropped`.
@@ -163,7 +166,7 @@ Design against the extra-batch problem: (1) lazy state until a triangle survives
 | I8, I4, IA8, IA4 | PICA L8, L4, LA4, alpha from R in the TEV | Possible. Combiner changes in pm_comb.c and flush_draw. Nibble order to check. Near 0 ms on a steady frame |
 | CI4 and CI8 palette lookup | CPU expand once per cache entry (now). A GPU pass needs one pass per palette entry with an alpha test EQUAL (no dependent texture read in the TEV): 16 draws for CI4 (1.3 ms), 256 for CI8. Pre-baked textures: PG2L, no gain (SD reads) | Not possible on the GPU at a gain. CI stays on the CPU, once per cache entry |
 | ETC1 | Needs an encoder. Runtime is slower than the expand. Offline is the PG2L case | Not done |
-| Upload to VRAM | GX TextureCopy (O13) | No CPU gain. Hold until the GPU field passes 15 ms |
+| Upload to VRAM | GX TextureCopy (O13) | No CPU gain. User decision 2026-10-23: the texture cache is part of the GPU path. Shrink it (the 4.75 MB slab is larger than the N64's 4 MB RAM) and place the whole allocation in the 6 MB VRAM, beside the framebuffers and off-screen targets. Do that after the world is on screen again. |
 
 ## 10. GPU stages (after C1, or earlier when pm_gbi.c is free)
 
@@ -201,7 +204,7 @@ Best order:
 1. C0 (or GP1 if pm_gbi.c is busy for C0 but free for a small change).
 2. Console bench of core 1 time (question 9), one push, no game change. Ask the user about one drawn step of latency at the same time.
 3. C1, C2, C3 (static scenery), each with its console gate.
-4. Item 6 (producer and consumer), if the bench shows 25 ms or more of core 1 per step with the audio on core 0 and the user accepts the latency. Gate: statehash equal on route play1, town step time lower by 8 ms or more.
+4. Item 6 (producer and consumer), if the bench shows 25 ms or more of core 1 per step with the audio on core 0 and the user accepts the latency. On N3DS the worker is hardware core 2 (section 2.10), not hardware core 1. Gate: statehash equal on route play1, town step time lower by 8 ms or more.
 5. C4, C5 (models with patch points, main-list templates).
 6. GP1, GP2, GP3 by their counters, where not done in step 1.
 7. C6, C7, item 3, GP5, TX-A, TX-B by console data.

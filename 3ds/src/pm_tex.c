@@ -19,7 +19,7 @@ static u8* tx1_chk; /* switch tx1check: the new result, compared with the old pa
 /* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
 #define SLOTS 512
-#define BUDGET (4u * 1024u * 1024u)
+#define BUDGET (1536u * 1024u) /* VRAM hot set (was 4 MB + 768 KB linear slab) */
 #define MAX_DIM 512
 
 typedef struct {
@@ -32,10 +32,13 @@ typedef struct {
     unsigned dkey; /* 0 for a plain texture, else the hash of a shaded one */
     unsigned stamp;
     unsigned epoch;
+    unsigned sgen; /* C1: bumped at drop and invalidation; TEX records compare this */
     unsigned uses; /* TC1: hits since the upload */
     unsigned last_frame; /* TC1: frame of the last hit, bind or upload */
     int live;
     int slab; /* FL1: the image lives in the texture slab */
+    int vram_up; /* tiled bytes in vram_stage; upload_vram_slot before bind */
+    u8* vram_stage;
     int stale; /* invalidated while this frame's draws still use it: freed at the next frame start */
     C3D_Tex tex;
 } Slot;
@@ -80,8 +83,13 @@ void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, i
     offt[i].tex = (C3D_Tex*)tex;
     if (i >= offt_n) offt_n = i + 1;
 }
-int pm_tex_i8(int aux) { return aux ? (aux_off >= 0 && aux_off < offt_n && offt[aux_off].siz == 1) : (have && off_cur >= 0 && offt[off_cur].siz == 1); }
+int pm_tex_i8(int aux) {
+    if (aux) return aux_off >= 0 && aux_off < offt_n && offt[aux_off].siz == 1;
+    if (have && off_cur >= 0 && off_cur < offt_n && offt[off_cur].siz == 1) return 1;
+    return have && off_cur < 0 && cur >= 0 && cur < slot_hi && slots[cur].live && slots[cur].fmt == FMT_I;
+}
 int pm_tex_off_idx(void) { return (have && off_cur >= 0) ? off_cur : -1; }
+int pm_tex_cur_idx(void) { return (have && off_cur < 0 && cur >= 0) ? cur : -1; }
 int pm_tex_aux_off_idx(void) { return (aux_off >= 0 && aux_off < offt_n) ? aux_off : -1; }
 void pm_tex_clear_offscreen(void) { for (int k = 0; k < 10; k++) offt[k].base = NULL; offt_n = 0; off_cur = -1; aux_off = -1; }
 void pm_tex_origin(int* x, int* y) {
@@ -109,6 +117,128 @@ static unsigned mk_ws, mk_wt;  /* mask width in texels, 0 = none */
 static unsigned mk_ms, mk_mt;  /* mirror flags */
 static int mk_on;              /* the next load is a render tile load (pm_tex_load), not the shaded or rgba8 loads */
 
+/* C7: one GPU texture per message font sheet; consecutive glyphs keep the same bind for DR1 rectangle batches. */
+extern u8 MsgCharImgNormal[];
+extern u8 MsgCharImgTitle[];
+extern u8 MsgCharImgSubtitle[];
+typedef struct {
+    const u8* base;
+    unsigned size;
+    int gw, gh, raster, cols;
+    unsigned id;
+} GlyphSheet;
+
+static const GlyphSheet glyph_sheets[] = {
+    { MsgCharImgNormal, 0x5100u, 16, 16, 128, 16, 1u },
+    { MsgCharImgTitle, 0xF60u, 12, 15, 96, 16, 2u },
+    { MsgCharImgSubtitle, 0xB88u, 12, 12, 72, 16, 3u },
+};
+
+#define GLYPH_DKEY(id) (0xC7000000u | (id))
+
+static unsigned rd16(const u8* p);
+static void write5551(u8* dst, unsigned c);
+
+static int glyph_ox, glyph_oy;
+
+static int glyph_resolve(const u8* img, int w, int h, unsigned fmt, unsigned siz, const GlyphSheet** sh, int* idx) {
+    unsigned i;
+    if (fmt != FMT_CI || siz != SIZ_4) return 0;
+    for (i = 0; i < sizeof glyph_sheets / sizeof glyph_sheets[0]; i++) {
+        const GlyphSheet* g = &glyph_sheets[i];
+        const u8* p = (const u8*)img;
+        if (w != g->gw || h != g->gh || p < g->base || p >= g->base + g->size) continue;
+        if (((unsigned)(p - g->base)) % (unsigned)g->raster) continue;
+        *sh = g;
+        *idx = (int)((p - g->base) / (unsigned)g->raster);
+        return 1;
+    }
+    return 0;
+}
+
+static int glyph_atlas_dims(const GlyphSheet* g, int* aw, int* ah) {
+    int n = (int)(g->size / (unsigned)g->raster);
+    int rows = (n + g->cols - 1) / g->cols;
+    *aw = g->cols * g->gw;
+    *ah = rows * g->gh;
+    return n;
+}
+
+static int glyph_build_atlas(const GlyphSheet* g, const u8* tlut, int tlut_n, int pw, int ph) {
+    int aw, ah, ng, i;
+    ng = glyph_atlas_dims(g, &aw, &ah);
+    if (pw < aw || ph < ah) return 0;
+    memset(scratch, 0, (size_t)pw * (size_t)ph * 2u);
+    for (i = 0; i < ng; i++) {
+        const u8* gsrc = g->base + (size_t)i * (size_t)g->raster;
+        int gx = (i % g->cols) * g->gw;
+        int gy = (i / g->cols) * g->gh;
+        int y;
+        for (y = 0; y < g->gh; y++) {
+            int x;
+            for (x = 0; x < g->gw; x++) {
+                unsigned byte = gsrc[(y * g->gw + x) >> 1];
+                unsigned idx = (x & 1) ? (byte & 15u) : (byte >> 4);
+                unsigned pix = (tlut && (int)idx < tlut_n) ? rd16(tlut + idx * 2) : 0xffffu;
+                write5551(scratch + ((gy + y) * pw + (gx + x)) * 2, pix);
+            }
+        }
+    }
+    return 1;
+}
+
+static int glyph_remap(const void** img, int* width, int* height, int* stride, unsigned* dkey,
+                       unsigned fmt, unsigned siz) {
+    const GlyphSheet* g;
+    int idx;
+    int aw, ah;
+    if (!glyph_resolve((const u8*)*img, *width, *height, fmt, siz, &g, &idx)) {
+        glyph_ox = glyph_oy = 0;
+        return 0;
+    }
+    glyph_atlas_dims(g, &aw, &ah);
+    glyph_ox = (idx % g->cols) * g->gw;
+    glyph_oy = (idx / g->cols) * g->gh;
+    *img = g->base;
+    *width = aw;
+    *height = ah;
+    if (*stride < aw) *stride = aw;
+    *dkey = GLYPH_DKEY(g->id);
+    return 1;
+}
+
+void pm_tex_glyph_ofs(int* x, int* y) {
+    if (x) *x = glyph_ox;
+    if (y) *y = glyph_oy;
+}
+
+int pm_tex_glyph_same(const void* img, unsigned fmt, unsigned siz, int w, int h, const void* tlut, int tlut_n, int* gx, int* gy) {
+    const GlyphSheet* g;
+    int idx, aw, ah;
+    unsigned phash = 0;
+    Slot* s;
+    if (!glyph_resolve((const u8*)img, w, h, fmt, siz, &g, &idx)) return 0;
+    if (!have || cur < 0 || cur >= SLOTS) return 0;
+    s = &slots[cur];
+    glyph_atlas_dims(g, &aw, &ah);
+    if (fmt == FMT_CI && tlut) {
+        phash = 2166136261u;
+        { const u16* pl = (const u16*)tlut; int i = 0;
+          for (; i + 1 < tlut_n; i += 2) phash = (phash ^ ((unsigned)pl[i] | ((unsigned)pl[i + 1] << 16))) * 16777619u;
+          if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u; }
+    }
+    if (!s->live || s->img != g->base || s->dkey != GLYPH_DKEY(g->id) || s->fmt != fmt || s->siz != siz || s->w != aw || s->h != ah ||
+        s->tlut != tlut || s->phash != phash) return 0;
+    glyph_ox = (idx % g->cols) * g->gw;
+    glyph_oy = (idx / g->cols) * g->gh;
+    if (gx) *gx = glyph_ox;
+    if (gy) *gy = glyph_oy;
+    s->stamp = ++stamp;
+    TC_HIT(s);
+    TOUCH(s);
+    return 1;
+}
+
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
     pm_gpu_rect_sync(); /* DR1: a queued rectangle batch is drawn with the texture state it was queued in */
     pm_tex_epoch_v++;
@@ -135,11 +265,17 @@ static unsigned rd16s(const u8* p) { return src_native ? ((unsigned)p[1] << 8) |
 static GPU_TEXCOLOR gpu_fmt(unsigned fmt, unsigned siz) {
     if (fmt == FMT_RGBA && siz == SIZ_32) return GPU_RGBA8;
     if (fmt == FMT_IA && siz == SIZ_16) return GPU_LA8;
-    if (fmt == FMT_IA && siz == SIZ_8) return GPU_LA8;
-    if (fmt == FMT_IA && siz == SIZ_4) return GPU_LA8;
-    /* The RDP gives an I texel an alpha equal to its intensity. PICA L8 has alpha 1. */
-    if (fmt == FMT_I && (siz == SIZ_8 || siz == SIZ_4)) return GPU_LA8;
+    if (fmt == FMT_IA && (siz == SIZ_8 || siz == SIZ_4)) return GPU_LA4;
+    if (fmt == FMT_I && siz == SIZ_8) return GPU_L8;
+    if (fmt == FMT_I && siz == SIZ_4) return GPU_L4;
     return GPU_RGBA5551;
+}
+
+static unsigned tex_gpu_bytes(int pw, int ph, GPU_TEXCOLOR gf) {
+    if (gf == GPU_RGBA8) return (unsigned)pw * (unsigned)ph * 4u;
+    if (gf == GPU_L4) return (unsigned)pw * (unsigned)ph / 2u;
+    if (gf == GPU_L8 || gf == GPU_LA4) return (unsigned)pw * (unsigned)ph;
+    return (unsigned)pw * (unsigned)ph * 2u;
 }
 
 static void write5551(u8* dst, unsigned c) {
@@ -163,6 +299,8 @@ static inline int wrap_mod(int y, int m) { return (m & (m - 1)) == 0 ? (y & (m -
 
 static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int stride,
                   const u8* tlut, int tlut_n, int pw, int ph, GPU_TEXCOLOR gf) {
+    if ((fmt == FMT_I && (siz == SIZ_8 || siz == SIZ_4)) || (fmt == FMT_IA && (siz == SIZ_8 || siz == SIZ_4)))
+        return 0;
     unsigned out_bpp = (gf == GPU_RGBA8) ? 4 : (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4) ? 1 : 2;
     if ((unsigned)pw * (unsigned)ph * out_bpp > 256u * 256u * 4u) return 0;
     memset(scratch, 0, (size_t)pw * (size_t)ph * out_bpp);
@@ -197,32 +335,6 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
                 /* PICA LA8 is alpha, then luminance. */
                 d[0] = (u8)(c & 255);
                 d[1] = (u8)(c >> 8);
-            } else if (fmt == FMT_IA && siz == SIZ_8) {
-                unsigned c = src[sy * stride + sx];
-                unsigned i = (c >> 4) * 17;
-                unsigned a = (c & 15) * 17;
-                u8* d = scratch + (y * pw + x) * 2;
-                d[0] = (u8)a;
-                d[1] = (u8)i;
-            } else if (fmt == FMT_IA && siz == SIZ_4) {
-                unsigned byte = src[(sy * stride + sx) >> 1];
-                unsigned nib = (sx & 1) ? (byte & 15) : (byte >> 4);
-                unsigned i = (nib >> 1) * 36;
-                unsigned a = (nib & 1) ? 255 : 0;
-                u8* d = scratch + (y * pw + x) * 2;
-                d[0] = (u8)a;
-                d[1] = (u8)i;
-            } else if (fmt == FMT_I && siz == SIZ_8) {
-                u8 c = src[sy * stride + sx];
-                u8* d = scratch + (y * pw + x) * 2;
-                d[0] = c;
-                d[1] = c;
-            } else if (fmt == FMT_I && siz == SIZ_4) {
-                unsigned byte = src[(sy * stride + sx) >> 1];
-                unsigned nib = (sx & 1) ? (byte & 15) : (byte >> 4);
-                u8* d = scratch + (y * pw + x) * 2;
-                d[0] = (u8)(nib * 17);
-                d[1] = (u8)(nib * 17);
             } else {
                 write5551(scratch + ((y * pw + x) * 2), 0xffffu);
             }
@@ -295,10 +407,9 @@ static void addr_sub(const void* p) {
 }
 
 
-/* FL1: texture slab. The images of all textures live in one linear block. A miss writes its image there and records the span. One
- * GSPGPU_FlushDataCache per merged span runs before each command list submit (pm_tex_flush_pending), not one per texture (E: 0.9 ms per call
- * on the O3DS). Free list: address ordered extents, best fit, merge on free. */
-#define SLAB_BYTES (BUDGET + 768u * 1024u)
+/* Texture pool in VRAM (GPU path). A miss writes its tiled image into this block. One merged
+ * GSPGPU_FlushDataCache per span before each command list submit (pm_tex_flush_pending). */
+#define SLAB_BYTES BUDGET
 #define SLAB_EXT 640
 #define PEND_N 24
 #define PEND_GAP (64u * 1024u)
@@ -308,11 +419,18 @@ static struct { u8* p; unsigned len; } pend[PEND_N]; static int pend_n;
 static C3D_Tex slab_proto[16];
 static unsigned fl1_srchash(const void* img, int w, int h, int stride, unsigned siz) { if (siz != 2) return 0; unsigned x = 2166136261u; const u8* q = (const u8*)img; for (int y = 0; y < h; y++) for (int i = 0; i < w * 2; i++) x = (x ^ q[y * stride * 2 + i]) * 16777619u; return x; }
 static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
-static int fl1_on(void) { return slab != NULL; } /* per upload: a slot knows where its image is */
+static int fl1_on(void) { return slab != NULL; }
 static void slab_init(void) {
-    slab = (u8*)linearMemAlign(SLAB_BYTES, 0x80);
-    if (slab && PMDL("fl1poison")) memset(slab, 0xA5, SLAB_BYTES);
-    if (slab) { slab_ext[0].off = 0; slab_ext[0].len = SLAB_BYTES; slab_n = 1; }
+    unsigned free0 = (unsigned)vramSpaceFree();
+    slab = (u8*)vramMemAlign(SLAB_BYTES, 0x80);
+    if (slab) {
+        slab_ext[0].off = 0;
+        slab_ext[0].len = SLAB_BYTES;
+        slab_n = 1;
+        pm_log_w("texcache VRAM %uKB at %p (vram free was %uKB now %uKB)", SLAB_BYTES >> 10, (void*)slab, free0 >> 10,
+                 (unsigned)vramSpaceFree() >> 10);
+    } else
+        pm_log_e("texcache VRAM %uKB failed (vram free %uKB)", SLAB_BYTES >> 10, free0 >> 10);
 }
 static unsigned slab_size(unsigned bytes) { bytes = (bytes + 127u) & ~127u; return bytes < 512u ? 512u : bytes; } /* the GPU reads whole 8 x 8 tiles */
 static u8* slab_alloc(unsigned bytes0) {
@@ -321,7 +439,6 @@ static u8* slab_alloc(unsigned bytes0) {
     for (unsigned i = 0; i < slab_n; i++) if (slab_ext[i].len >= bytes && (best < 0 || slab_ext[i].len < slab_ext[best].len)) best = (int)i;
     if (best < 0) return NULL;
     u8* r = slab + slab_ext[best].off;
-    if (PMDL("fl1poison")) memset(r, 0xA5, bytes); else memset(r + bytes0, 0, bytes - bytes0); /* the old path had zero bytes there (fresh linearAlloc) */
     slab_ext[best].off += bytes; slab_ext[best].len -= bytes;
     if (!slab_ext[best].len) { for (unsigned i = (unsigned)best; i + 1 < slab_n; i++) slab_ext[i] = slab_ext[i + 1]; slab_n--; }
     return r;
@@ -336,6 +453,12 @@ static void slab_free(void* p, unsigned bytes) {
     if (i + 1 < slab_n && slab_ext[i].off + slab_ext[i].len == slab_ext[i + 1].off) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
 }
 static void pend_flush_one(u8* p, unsigned len) { GSPGPU_FlushDataCache(p, len); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, len >> 10); }
+static void upload_vram_slot(Slot* s) {
+    if (!s->vram_up || !s->vram_stage || !s->bytes) return;
+    GSPGPU_FlushDataCache(s->vram_stage, s->bytes);
+    C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
+    s->vram_up = 0;
+}
 void pm_tex_flush_pending(void) {
     for (int i = 0; i < pend_n; i++) pend_flush_one(pend[i].p, pend[i].len);
     pend_n = 0;
@@ -358,13 +481,39 @@ static void drop(Slot* s) {
     addr_sub(s->img);
     addr_sub(s->tlut);
     if (aux == (int)(s - slots)) aux = -1;
-    if (s->slab) { slab_free(s->tex.data, s->bytes); s->slab = 0; memset(&s->tex, 0, sizeof s->tex); } else C3D_TexDelete(&s->tex);
+    if (s->vram_stage) {
+        linearFree(s->vram_stage);
+        s->vram_stage = NULL;
+    }
+    s->vram_up = 0;
+    if (s->slab) {
+        slab_free(s->tex.data, s->bytes);
+        s->slab = 0;
+        memset(&s->tex, 0, sizeof s->tex);
+    }
     tb_last = NULL;
     if (used >= s->bytes) used -= s->bytes;
     else used = 0;
+    s->sgen++;
     s->live = 0;
     s->stale = 0;
     while (slot_hi > 0 && !slots[slot_hi - 1].live) slot_hi--;
+}
+
+unsigned pm_tex_slot_gen(int i) {
+    if (i < 0 || i >= SLOTS || !slots[i].live) return 0;
+    return slots[i].sgen;
+}
+
+int pm_tex_bind_slot(int i) {
+    if (i < 0 || i >= SLOTS || !slots[i].live) return 0;
+    upload_vram_slot(&slots[i]);
+    cur = i;
+    TOUCH(&slots[i]);
+    TC_HIT(&slots[i]);
+    C3D_TexBind(0, &slots[i].tex);
+    pm_tex_epoch_v++;
+    return 1;
 }
 
 /* A texture bound in the current command list has to stay alive until the next
@@ -508,9 +657,29 @@ void pm_tex_begin_frame(void) {
     /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
     for (int i = 0; i < slot_hi; i++)
         if (slots[i].live && slots[i].stale) drop(&slots[i]);
+    for (int i = 0; i < slot_hi; i++)
+        upload_vram_slot(&slots[i]); /* after C3D_FrameBegin, before any draw this frame */
 }
 
 extern unsigned pm_dlc_gen; /* DLC1: a write into the map shape buffer (ROM read, Yay0 decode) makes the compiled display lists stale */
+extern u8 TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
+unsigned pm_pdl_heap_gen = 1; /* C1: TextureHeap writes bump this; texheap state-list entries recompile */
+unsigned pm_pdl_entity_gen = 1;
+unsigned pm_pdl_genheap_gen = 1;
+unsigned pm_pdl_sprite_gen = 1;
+
+void pm_pdl_genheap_bump(void) { pm_pdl_genheap_gen++; }
+
+void pm_pdl_touch_range(const void* ptr, unsigned size) {
+    unsigned s, e;
+    if (!ptr || !size) return;
+    s = (unsigned)ptr;
+    e = s + size;
+    if (e < s) e = 0xffffffffu;
+    if (s - (unsigned)pm_world_entity_heap < 0x18000u && e > (unsigned)pm_world_entity_heap) pm_pdl_entity_gen++;
+    if (s - (unsigned)heap_generalHead < 0x180000u && e > (unsigned)heap_generalHead) pm_pdl_genheap_gen++;
+    if (s - (unsigned)heap_spriteHead < 0x100000u && e > (unsigned)heap_spriteHead) pm_pdl_sprite_gen++;
+}
 extern unsigned char gMapShapeData[];
 void pm_tex_invalidate(const void* ptr, unsigned size) {
     pm_tex_epoch_v++;
@@ -518,6 +687,8 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
     unsigned start, end;
     int i;
     if (!ptr || !size) return;
+    if ((unsigned)ptr - (unsigned)TextureHeap < 0x68000u && (unsigned)ptr + size > (unsigned)TextureHeap) pm_pdl_heap_gen++;
+    pm_pdl_touch_range(ptr, size);
     start = (unsigned)ptr;
     end = start + size;
     if (end < start) end = 0xffffffffu;
@@ -549,6 +720,7 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
             addr_sub(s->tlut);
             s->img = NULL;
             s->tlut = NULL;
+            s->sgen++;
             s->stale = 1;
             continue;
         }
@@ -581,6 +753,14 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     unsigned t0 = tp ? pm_ticks() : 0;
     ph_miss = 0;
     PH_ADD(C_TEXCALL, 1);
+    if (!lut && dkey == 0) {
+        const void* gimg = img;
+        int gw = width, gh = height, gstride = stride;
+        unsigned gdkey = dkey;
+        if (glyph_remap(&gimg, &gw, &gh, &gstride, &gdkey, fmt, siz))
+            img = gimg, width = gw, height = gh, stride = gstride, dkey = gdkey;
+    } else
+        glyph_ox = glyph_oy = 0;
     r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
     if (ph_miss) PH_POP();
     if (tp) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
@@ -749,8 +929,10 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
     }
     /* TX1: one pass expand and tile into the texture. Switch tx1check runs the old expand as well and compares (a test tool). */
-    unsigned bpp0 = (gf == GPU_RGBA8) ? 4u : 2u;
-    int tx1 = !tb_use && !tr && !tb_mode && (unsigned)pw * (unsigned)ph * bpp0 <= 256u * 256u * 4u && pw <= TX1_MAXD && ph <= TX1_MAXD;
+    int native_tex = (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4);
+    unsigned bpp0 = (gf == GPU_RGBA8) ? 4u : native_tex ? 1u : 2u;
+    unsigned tex_bytes_need = tex_gpu_bytes(pw, ph, gf);
+    int tx1 = !tb_use && !tr && !tb_mode && tex_bytes_need <= 256u * 256u * 4u && pw <= TX1_MAXD && ph <= TX1_MAXD;
     int tx1_chkon = tx1 && PMDL("tx1check");
     if (tx1_chkon && !tx1_chk) { tx1_chk = (u8*)malloc(512 * 1024); if (!tx1_chk) { tx1 = 0; tx1_chkon = 0; } }
     unsigned tx1_t0 = tc_on > 0 ? pm_ticks() : 0;
@@ -758,11 +940,19 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         /* the bytes are in the second scratch half already */
     } else if (tx1 && !tx1_chkon) {
         /* TX1: decoded after the texture exists */
+    } else if ((dkey & 0xFF000000u) == 0xC7000000u) {
+        const GlyphSheet* gs = NULL;
+        unsigned k;
+        for (k = 0; k < sizeof glyph_sheets / sizeof glyph_sheets[0]; k++)
+            if (glyph_sheets[k].id == (dkey & 0xffu)) { gs = &glyph_sheets[k]; break; }
+        if (!gs || !glyph_build_atlas(gs, (const u8*)tlut, tlut_n, pw, ph)) return 0;
+        gf = GPU_RGBA5551;
     } else if (lut) {
         if (!expand_dual((const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph)) return 0;
-    } else if (!expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf)) return 0;
-    unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8) ? 1u : 2u;
-    unsigned bytes = (unsigned)pw * (unsigned)ph * bpp;
+    } else if (!native_tex && !expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf))
+        return 0;
+    unsigned bytes = tex_gpu_bytes(pw, ph, gf);
+    unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8 || gf == GPU_LA4) ? 1u : (gf == GPU_L4) ? 1u : 2u;
     int slot = -1;
     for (;;) {
         for (int i = 0; i < SLOTS; i++) if (!slots[i].live) { slot = i; break; }
@@ -782,32 +972,68 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     Slot* s = &slots[slot];
     tb_last = NULL; /* DR1 */
     s->slab = 0;
-    if (fl1_on()) { /* FL1: the image goes to the slab. The slot copies a citro3d texture header made once per format. */
-        u8* sp = slab_alloc(bytes);
-        while (!sp && evict_oldest_done()) { static int nev; if (nev++ < 8) pm_log_w("FL1: slab full for %u bytes (used %u), evicted one texture", bytes, used); sp = slab_alloc(bytes); }
-        if (!sp) { static int once; fail_last = 1; fail_n++; if (!once) { once = 1; pm_log_w("tex slab full %dx%d", width, height); } return 0; }
-        if (!slab_proto[gf].data) {
-            if (!C3D_TexInit(&slab_proto[gf], 8, 8, gf)) { slab_free(sp, bytes); fail_last = 1; fail_n++; return 0; }
-        }
-        s->tex = slab_proto[gf];
-        s->tex.data = sp; s->tex.width = (u16)pw; s->tex.height = (u16)ph; s->tex.size = bytes;
-        s->slab = 1;
-    } else if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
-        pm_log_e("tex init failed %dx%d\n", pw, ph);
+    if (!fl1_on()) {
+        static int once;
         fail_last = 1;
         fail_n++;
+        if (!once) {
+            once = 1;
+            pm_log_e("texcache VRAM pool missing");
+        }
         return 0;
+    }
+    { /* image in the VRAM pool; header template per format */
+        u8* sp = slab_alloc(bytes);
+        while (!sp && evict_oldest_done()) {
+            static int nev;
+            if (nev++ < 8) pm_log_w("texcache VRAM full for %u bytes (used %u), evicted one texture", bytes, used);
+            sp = slab_alloc(bytes);
+        }
+        if (!sp) {
+            static int once;
+            fail_last = 1;
+            fail_n++;
+            if (!once) {
+                once = 1;
+                pm_log_w("texcache VRAM full %dx%d", width, height);
+            }
+            return 0;
+        }
+        if (!slab_proto[gf].data) {
+            if (!C3D_TexInit(&slab_proto[gf], 8, 8, gf)) {
+                slab_free(sp, bytes);
+                fail_last = 1;
+                fail_n++;
+                return 0;
+            }
+        }
+        s->tex = slab_proto[gf];
+        s->tex.data = sp;
+        s->tex.width = (u16)pw;
+        s->tex.height = (u16)ph;
+        s->tex.size = bytes;
+        s->slab = 1;
     }
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
-    if (tx1) { /* TX1 */
-        u8* t1dst = tx1_chkon ? tx1_chk : (u8*)s->tex.data;
+    if (tx1) { /* TX1: tile in linear scratch; VRAM slot is filled by C3D_TexLoadImage (O3DS cannot CPU-store into vramMemAlign) */
+        u8* t1dst = tx1_chkon ? tx1_chk : (scratch + (256 * 256 * 4));
         if (lut) tx1_build_dual(t1dst, (const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph);
         else {
             int mw1 = (mk_on && mk_ws && (int)mk_ws < width) ? (int)mk_ws : 0;
             int mh1 = (mk_on && mk_wt && (int)mk_wt < height) ? (int)mk_wt : 0;
-            tx1_build(t1dst, (const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, (int)bpp0, mw1, mh1, (int)mk_ms, (int)mk_mt, src_native);
-            if (tx1_bad_ci) { static int nb; if (nb++ < 8) pm_log_w("V16b2: %u CI texels with an index outside the palette (tlut %p n %d), drawn white", tx1_bad_ci, (const void*)tlut, tlut_n); }
+            if (native_tex)
+                tx1_build_native(t1dst, gf, (const u8*)img, width, height, stride, pw, ph, mw1, mh1, (int)mk_ms, (int)mk_mt);
+            else {
+                tx1_build(t1dst, (const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, (int)bpp0, mw1, mh1,
+                          (int)mk_ms, (int)mk_mt, src_native);
+                if (tx1_bad_ci) {
+                    static int nb;
+                    if (nb++ < 8)
+                        pm_log_w("V16b2: %u CI texels with an index outside the palette (tlut %p n %d), drawn white", tx1_bad_ci,
+                                 (const void*)tlut, tlut_n);
+                }
+            }
         }
     }
     if (!tx1 || tx1_chkon) {
@@ -865,10 +1091,20 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (tb_bad++ < 8) pm_log_w("PG2L: baked bytes differ fmt %u siz %u %dx%d stride %d", fmt, siz, width, height, stride);
     }
     C3D_TexLoadImage(&s->tex, upload, GPU_TEXFACE_2D, 0);
+    } else { /* TX1: linear scratch then synchronous C3D_TexLoadImage into the VRAM pool */
+        const u8* tiled = scratch + (256 * 256 * 4);
+        if (s->vram_stage) linearFree(s->vram_stage);
+        s->vram_stage = (u8*)linearAlloc(bytes);
+        if (!s->vram_stage) {
+            fail_last = 1;
+            fail_n++;
+            return 0;
+        }
+        memcpy(s->vram_stage, tiled, bytes);
+        s->bytes = bytes;
+        s->vram_up = 1;
     }
     if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < bytes; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, bytes, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
-    if (s->slab) pend_add((u8*)s->tex.data, bytes); /* FL1 */
-    else if (tx1 && !tx1_chkon) { C3D_TexFlush(&s->tex); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, bytes >> 10); }
     if (tx1_chkon && memcmp(tx1_chk, s->tex.data, bytes) != 0) {
         if (tx1_mismatch++ < 8) pm_log_w("tx1check: bytes differ fmt %u siz %u %dx%d stride %d lut %d", fmt, siz, width, height, stride, lut != NULL);
     }
@@ -968,10 +1204,11 @@ int pm_tex_bind(void) {
         return 1;
     }
     if (!have || cur < 0 || !slots[cur].live) return 0;
+    upload_vram_slot(&slots[cur]);
     slots[cur].stamp = ++stamp;
     slots[cur].last_frame = tc_frame;
     GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
-    if (tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
+    if (!slots[cur].vram_up && tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
     C3D_TexSetFilter(&slots[cur].tex, tex_filt, tex_filt);
     C3D_TexSetWrap(&slots[cur].tex, ws, wt);
     C3D_TexBind(0, &slots[cur].tex);

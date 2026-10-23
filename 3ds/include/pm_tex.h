@@ -12,6 +12,7 @@ void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* c3d_te
 void pm_tex_clear_offscreen(void);
 int pm_tex_i8(int aux);       /* FX2a: the bound tile 0 (or tile 1 with aux) texture is an 8 bit slot */
 int pm_tex_off_idx(void);     /* FX2a: slot index of the bound tile 0 texture, -1 if it is not a slot */
+int pm_tex_cur_idx(void);     /* C1: resident cache slot for tile 0, -1 if off-screen or none */
 int pm_tex_aux_off_idx(void); /* same for tile 1 */
 /* V05: texel offset of the last loaded image inside its off-screen texture (0, 0 for an ordinary texture) */
 void pm_tex_origin(int* x, int* y);
@@ -45,7 +46,12 @@ int pm_tex_aux_valid(void);
 void pm_tex_aux_origin(int* x, int* y); /* V12c: window start inside an off-screen TEXEL1 slot */
 void pm_tex_unbind_aux(void);
 void pm_tex_aux_size(int* w, int* h);
+/* C7: message and UI font glyphs share one atlas texture per sheet; cell origin in texels for the last load. */
+int pm_tex_glyph_same(const void* img, unsigned fmt, unsigned siz, int w, int h, const void* tlut, int tlut_n, int* gx, int* gy);
+void pm_tex_glyph_ofs(int* x, int* y);
 
 #endif
 
 void pm_tex_flush_pending(void); /* FL1: one data cache flush for the textures written since the last call. Call before every command list submit. */
+unsigned pm_tex_slot_gen(int slot); /* C1: generation of a live slot */
+int pm_tex_bind_slot(int slot); /* C1: bind a cached slot by index */

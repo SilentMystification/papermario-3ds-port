@@ -7,6 +7,8 @@
 #include "pm_gpu.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+#include "variables.h"
+#include "pm_pdl.h"
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (switch gbiprof) */
@@ -251,9 +253,18 @@ static int p_cur_mixed;
  * A triangle of ring vertices goes to the GPU as three indices. The GPU transforms, clips and culls. The CPU path stays for the rare cases and reads the ring copy
  * (gv_xf makes vert_p, vert_st and vert_c on demand). It replaces gpuvtx (PO3b) when both are on. */
 static u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
-static u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. vert_cb bit 64 = a corner at w <= 0.05 (near) */
-enum { GVR_NEAR, GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_DBG, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
+static u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. */
+enum { GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_DBG, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
 static unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n, gv_chk_out, gv_chk_cull, gv_chk_tri;
+static unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
+/* GP3 gate: tile 0 G_SETTILESIZE with td[0] set vs no surviving tri or tile-0 texrect before the next one. */
+static unsigned gp3_t0_ld, gp3_t0_dead, gp3_t0_pending;
+static void gp3_t0_set(void) {
+    if (gp3_t0_pending) gp3_t0_dead++;
+    gp3_t0_ld++;
+    gp3_t0_pending = 1;
+}
+static void gp3_t0_surv(void) { gp3_t0_pending = 0; }
 static float gv_rel_ref[2];
 static unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
 static unsigned short vert_ring[64], vert_gmi[64];
@@ -276,6 +287,15 @@ static int comb_set;
 /* 1 when the alpha combiner reads shade alpha. DECAL and MODULATE modes do not, and imgfx
  * meshes leave cn[3] at 0, so passing it through made them vanish. */
 static int comb_alpha_shade = 1;
+/* C1/C2: state-list compiler (definitions in pm_dlc.inc.c) */
+static unsigned pdl_pso_cur, pdl_ep_pso;
+static int pdl_tex_slot = -1, pdl_tex_gen;
+static int pdl_compile_one;
+static int pdl_try(const Gfx* l);
+static int pdl_try_m(const Gfx* l);
+static int pdl_tpl_drive(void* list, unsigned nbytes);
+static void pdl_pso_use(void);
+static int pdl_lazy_tile(int n);
 
 extern char __end__[]; /* linker: end of .bss */
 static int is_host(u32 p) {
@@ -1004,6 +1024,7 @@ static void scm_replay(const ScMemo* m) {
     else pm_gpu_set_combine(leg_mode);
 }
 static void sync_combine(void) {
+    if (pdl_ep_pso) { sync_combine_work(); sc_ok = 1; return; } /* C2: compiled lists already resolved the combiner at compile */
     unsigned sg_in = 0;
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
@@ -1285,7 +1306,7 @@ static void tri_stats_add(unsigned f, unsigned n) {
 }
 static void tri_stats(void) { tri_stats_add(tri_flags(), 1); }
 
-/* GV1: make what the CPU path reads from the ring copy of a vertex: the clip position with its exact reject bits (and the near bit), S and T, the colour. */
+/* GV1: make what the CPU path reads from the ring copy of a vertex: the clip position with its exact reject bits, S and T, the colour. */
 static void gv_xf(int sl) {
     if (vert_gvf[sl] == 3) return;
     const Vtx* r = (const Vtx*)(pm_gpu_gring() + 16u * vert_ring[sl]);
@@ -1297,7 +1318,7 @@ static void gv_xf(int sl) {
         p[1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
         p[2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
         p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-        vert_cb[sl] = (unsigned char)(clip_bits4(p) | (p[3] <= 0.05f ? 64 : 0));
+        vert_cb[sl] = (unsigned char)clip_bits4(p);
         gv_xf_n++;
     }
     {
@@ -1372,6 +1393,19 @@ static int gv_state_why(int* ct, int* both) {
 
 /* the first triangle (or DLC2 range) after a state change */
 static void gv_epoch_enter(void) {
+    if (pdl_pso_cur && pdl_ep_pso == pdl_pso_cur) {
+        ensure_tile(use_t1 ? 1 : 0);
+        dual_bind();
+        ep_epoch = gv_epoch;
+        return;
+    }
+    if (pdl_pso_cur) {
+        pdl_pso_use();
+        ensure_tile(use_t1 ? 1 : 0);
+        dual_bind();
+        ep_epoch = gv_epoch;
+        return;
+    }
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     if (ep_why < 0 && !ep_cullboth) {
@@ -1392,8 +1426,13 @@ static int gv_tri(const int* idx) {
     int a = idx[0], b = idx[1], c = idx[2];
     int why = -1;
     if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; gv_rej_n++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
-    if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 64) why = GVR_NEAR;
-    else if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
+    if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 0x2f) {
+        if (!(vert_gvf[a] & 1) && vert_cb[a]) gv_xf(a);
+        if (!(vert_gvf[b] & 1) && vert_cb[b]) gv_xf(b);
+        if (!(vert_gvf[c] & 1) && vert_cb[c]) gv_xf(c);
+        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { gp1_subset++; n_out++; gv_rej_n++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+    }
+    if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;
     else if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) || (geom & G_LIGHTING)) { /* GV5: the vertices were loaded with the lighting state of now, and the lights did not change since (the RSP lights at the load) */
         unsigned want = (geom & G_LIGHTING) ? 1u | ((geom & G_TEXTURE_GEN) ? 2u : 0u) : 0u;
@@ -1443,13 +1482,13 @@ static int gv_tri(const int* idx) {
         }
         ep_n++;
         if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && pm_gpu_gappend((unsigned)vert_ring[a], (unsigned)vert_ring[b], (unsigned)vert_ring[c], vert_gmi[a], vert_gmi[b], vert_gmi[c])) {
-            n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
+            gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
         }
         unsigned gg[3] = { vert_gmi[a], vert_gmi[b], vert_gmi[c] }, ri[3] = { vert_ring[a], vert_ring[b], vert_ring[c] }, ro[3];
         if (pm_gpu_gtrip((const float(*)[4][4])gm_tab, gg, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ep_p.fxon ? &ep_p.fx : NULL, ri, ro)) {
             vert_ring[a] = (unsigned short)ro[0]; vert_ring[b] = (unsigned short)ro[1]; vert_ring[c] = (unsigned short)ro[2];
             ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss;
-            n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
+            gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
         }
         ep_n--; ep_open = 0;
         why = GVR_REFUSE;
@@ -1543,6 +1582,124 @@ static void dls_report(void) {
     pm_log_hw("%s", b);
     memset(dls_ops, 0, sizeof dls_ops); memset(dls_tri, 0, sizeof dls_tri); memset(dls_triv, 0, sizeof dls_triv); memset(dls_vtx, 0, sizeof dls_vtx);
     dls_dl = dls_stab_ok = dls_stab_chg = 0; dls_frames = 0;
+}
+
+/* C0: interpreter state that state ops write (DLC3a / full_gpu_path section 3). Used for EXIT snapshots in C1 and for pdl0 profiling. No behaviour change. */
+typedef struct {
+    unsigned geom, omode_h, omode_l;
+    unsigned comb_w0, comb_w1;
+    unsigned comb_aa, comb_ab, comb_ac, comb_ad;
+    unsigned comb2_a, comb2_b, comb2_c, comb2_d, comb2_aa, comb2_ab, comb2_ac, comb2_ad;
+    int comb_mode5, use_t1, comb_set, comb_alpha_shade, leg_mode, dual_on;
+    int tex_on, cur_tile;
+    unsigned tex_ss, tex_ts;
+    unsigned prim, envc, fill, fogc, blendc;
+    int fog_fm, fog_fo, fogmix_on;
+    unsigned conv_k4, keyc, keys, prim_z;
+    int tile_x0, tile_y0;
+    float tile_fx, tile_fy;
+    const void* timg;
+    unsigned timg_fmt, timg_siz;
+    int timg_stride;
+    const void* tlut;
+    int tlut_n;
+    unsigned tile_tmem[8], tile_pal[8];
+    int tile_sz[8][4];
+    unsigned tile_fmt[8], tile_siz[8];
+    unsigned tile_wrap[8][4];
+    unsigned tile_shift[8][2];
+    struct { unsigned tmem; const void* img; int stride, x, y; } ldrec[4];
+    unsigned ldrec_n;
+    struct { unsigned tmem, bytes; const void* img; } blk[4];
+    unsigned blk_n;
+    int ld_valid, ld_x, ld_y, ld_h, ld_w;
+    const void* tlut_pal[16];
+    int sci_x0, sci_y0, sci_x1, sci_y1;
+    struct { u8 col[3]; s8 dir[3]; } lt[9];
+    unsigned lt_n;
+    s8 lk[2][3];
+    struct { int valid; const u8* src; unsigned fmt, siz; int w, h, stride, x0, y0, pal_n; const void* pal; } td[2];
+    struct { int valid; const u8* src; int stride, w, h, x0, y0; } m1;
+    int box_prod, box_folded, box_pat;
+    unsigned box_save[4];
+    float dual_gain[3];
+    void* cimg;
+    int cimg_stride, cimg_siz, cimg_zero, zcol, zslot_on;
+} GbiState;
+
+static void gbi_state_get(GbiState* s) {
+    memset(s, 0, sizeof *s);
+    s->geom = geom; s->omode_h = omode_h; s->omode_l = omode_l;
+    s->comb_w0 = comb_w0; s->comb_w1 = comb_w1;
+    s->comb_aa = comb_aa; s->comb_ab = comb_ab; s->comb_ac = comb_ac; s->comb_ad = comb_ad;
+    s->comb2_a = comb2_a; s->comb2_b = comb2_b; s->comb2_c = comb2_c; s->comb2_d = comb2_d;
+    s->comb2_aa = comb2_aa; s->comb2_ab = comb2_ab; s->comb2_ac = comb2_ac; s->comb2_ad = comb2_ad;
+    s->comb_mode5 = comb_mode5; s->use_t1 = use_t1; s->comb_set = comb_set; s->comb_alpha_shade = comb_alpha_shade;
+    s->leg_mode = leg_mode; s->dual_on = dual_on;
+    s->tex_on = tex_on; s->cur_tile = cur_tile; s->tex_ss = tex_ss; s->tex_ts = tex_ts;
+    s->prim = prim; s->envc = envc; s->fill = fill; s->fogc = fogc; s->blendc = blendc;
+    s->fog_fm = fog_fm; s->fog_fo = fog_fo; s->fogmix_on = fogmix_on;
+    s->conv_k4 = conv_k4; s->keyc = keyc; s->keys = keys; s->prim_z = prim_z;
+    s->tile_x0 = tile_x0; s->tile_y0 = tile_y0; s->tile_fx = tile_fx; s->tile_fy = tile_fy;
+    s->timg = timg; s->timg_fmt = timg_fmt; s->timg_siz = timg_siz; s->timg_stride = timg_stride;
+    s->tlut = tlut; s->tlut_n = tlut_n;
+    memcpy(s->tile_tmem, tile_tmem, sizeof tile_tmem); memcpy(s->tile_pal, tile_pal, sizeof tile_pal);
+    memcpy(s->tile_sz, tile_sz, sizeof tile_sz); memcpy(s->tile_fmt, tile_fmt, sizeof tile_fmt);
+    memcpy(s->tile_siz, tile_siz, sizeof tile_siz); memcpy(s->tile_wrap, tile_wrap, sizeof tile_wrap);
+    memcpy(s->tile_shift, tile_shift, sizeof tile_shift);
+    memcpy(s->ldrec, ldrec, sizeof ldrec); s->ldrec_n = ldrec_n;
+    memcpy(s->blk, blk, sizeof blk); s->blk_n = blk_n;
+    s->ld_valid = ld_valid; s->ld_x = ld_x; s->ld_y = ld_y; s->ld_h = ld_h; s->ld_w = ld_w;
+    memcpy(s->tlut_pal, tlut_pal, sizeof tlut_pal);
+    s->sci_x0 = sci_x0; s->sci_y0 = sci_y0; s->sci_x1 = sci_x1; s->sci_y1 = sci_y1;
+    memcpy(s->lt, lt, sizeof lt); s->lt_n = lt_n; memcpy(s->lk, lk, sizeof lk);
+    memcpy(s->td, td, sizeof td); memcpy(&s->m1, &m1, sizeof m1);
+    s->box_prod = box_prod; s->box_folded = box_folded; s->box_pat = box_pat;
+    memcpy(s->box_save, box_save, sizeof box_save); memcpy(s->dual_gain, dual_gain, sizeof dual_gain);
+    s->cimg = cimg; s->cimg_stride = cimg_stride; s->cimg_siz = cimg_siz; s->cimg_zero = cimg_zero;
+    s->zcol = zcol; s->zslot_on = zslot_on;
+}
+
+static u32 gbi_state_fnv(const void* p, unsigned n) {
+    u32 h = 2166136261u;
+    const u8* b = (const u8*)p;
+    for (unsigned i = 0; i < n; i++) h = (h ^ b[i]) * 16777619u;
+    return h;
+}
+
+static u32 gbi_state_hash(const GbiState* s) { return gbi_state_fnv(s, sizeof *s); }
+
+static void gbi_state_apply(const GbiState* s) {
+    geom = s->geom; omode_h = s->omode_h; omode_l = s->omode_l;
+    comb_w0 = s->comb_w0; comb_w1 = s->comb_w1;
+    comb_aa = s->comb_aa; comb_ab = s->comb_ab; comb_ac = s->comb_ac; comb_ad = s->comb_ad;
+    comb2_a = s->comb2_a; comb2_b = s->comb2_b; comb2_c = s->comb2_c; comb2_d = s->comb2_d;
+    comb2_aa = s->comb2_aa; comb2_ab = s->comb2_ab; comb2_ac = s->comb2_ac; comb2_ad = s->comb2_ad;
+    comb_mode5 = s->comb_mode5; use_t1 = s->use_t1; comb_set = s->comb_set; comb_alpha_shade = s->comb_alpha_shade;
+    leg_mode = s->leg_mode; dual_on = s->dual_on;
+    tex_on = s->tex_on; cur_tile = s->cur_tile; tex_ss = s->tex_ss; tex_ts = s->tex_ts;
+    prim = s->prim; envc = s->envc; fill = s->fill; fogc = s->fogc; blendc = s->blendc;
+    fog_fm = s->fog_fm; fog_fo = s->fog_fo; fogmix_on = s->fogmix_on;
+    conv_k4 = s->conv_k4; keyc = s->keyc; keys = s->keys; prim_z = s->prim_z;
+    tile_x0 = s->tile_x0; tile_y0 = s->tile_y0; tile_fx = s->tile_fx; tile_fy = s->tile_fy;
+    timg = s->timg; timg_fmt = s->timg_fmt; timg_siz = s->timg_siz; timg_stride = s->timg_stride;
+    tlut = s->tlut; tlut_n = s->tlut_n;
+    memcpy(tile_tmem, s->tile_tmem, sizeof tile_tmem); memcpy(tile_pal, s->tile_pal, sizeof tile_pal);
+    memcpy(tile_sz, s->tile_sz, sizeof tile_sz); memcpy(tile_fmt, s->tile_fmt, sizeof tile_fmt);
+    memcpy(tile_siz, s->tile_siz, sizeof tile_siz); memcpy(tile_wrap, s->tile_wrap, sizeof tile_wrap);
+    memcpy(tile_shift, s->tile_shift, sizeof tile_shift);
+    memcpy(ldrec, s->ldrec, sizeof ldrec); ldrec_n = s->ldrec_n;
+    memcpy(blk, s->blk, sizeof blk); blk_n = s->blk_n;
+    ld_valid = s->ld_valid; ld_x = s->ld_x; ld_y = s->ld_y; ld_h = s->ld_h; ld_w = s->ld_w;
+    memcpy(tlut_pal, s->tlut_pal, sizeof tlut_pal);
+    sci_x0 = s->sci_x0; sci_y0 = s->sci_y0; sci_x1 = s->sci_x1; sci_y1 = s->sci_y1;
+    memcpy(lt, s->lt, sizeof lt); lt_n = s->lt_n; memcpy(lk, s->lk, sizeof lk);
+    memcpy(td, s->td, sizeof td); memcpy(&m1, &s->m1, sizeof m1);
+    box_prod = s->box_prod; box_folded = s->box_folded; box_pat = s->box_pat;
+    memcpy(box_save, s->box_save, sizeof box_save); memcpy(dual_gain, s->dual_gain, sizeof dual_gain);
+    cimg = s->cimg; cimg_stride = s->cimg_stride; cimg_siz = s->cimg_siz; cimg_zero = s->cimg_zero;
+    zcol = s->zcol; zslot_on = s->zslot_on;
+    sc_ok = 0;
 }
 
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
@@ -1682,7 +1839,7 @@ static void draw_tri(unsigned w) {
         }
     }
     if (poly[0].w > 0.05f && poly[1].w > 0.05f && poly[2].w > 0.05f) {
-        n_in++;
+        gp3_t0_surv(); n_in++;
         n = 3;
     } else {
         n = clip_near(poly, 3);
@@ -1690,7 +1847,7 @@ static void draw_tri(unsigned w) {
             n_drop++;
             return;
         }
-        n_cut++;
+        gp3_t0_surv(); n_cut++;
     }
     if ((rmlog_on() && (rm_frame % 30) == 1) || xt_on()) {
         static unsigned lo, lg, la, lb, lc, ld, lh, lp, lf;
@@ -1884,15 +2041,24 @@ void pm_gbi_end_frame(void) {
         memset(&pm_b7, 0, sizeof pm_b7);
     }
     PH_ADD(C_CMD, n_ops);
-    { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); } }
+    { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); pdl_report(); } }
+    if (pdl0_on() && n_ops) {
+        pdl0_frame_end();
+        if (++pdl0_frames >= 300) { pdl0_report(); }
+    }
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
     if ((rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
-    if ((rm_frame % 300) == 0)
-        pm_log_d("gv1 f%d load %u tri %u rej %u fb %u (near %u scr %u mixed(old) %u tss %u lit %u fog %u zmark %u tex1 %u dbg %u refuse %u) litload %u ring %u xf %u | check tri %u out %u cull %u stale %u", rm_frame, gv_load_n, gv_tri_n, gv_rej_n,
-                 gv_fb[0] + gv_fb[1] + gv_fb[2] + gv_fb[3] + gv_fb[4] + gv_fb[5] + gv_fb[6] + gv_fb[7] + gv_fb[8] + gv_fb[9], gv_fb[GVR_NEAR], gv_fb[GVR_SCR], gv_fb[GVR_MIXED], gv_fb[GVR_TSS], gv_fb[GVR_LIT], gv_fb[GVR_FOG], gv_fb[GVR_ZMARK],
+    if ((rm_frame % 300) == 0) {
+        pm_log_d("gv1 f%d load %u tri %u rej %u fb %u (scr %u mixed(old) %u tss %u lit %u fog %u zmark %u tex1 %u dbg %u refuse %u) litload %u ring %u xf %u | check tri %u out %u cull %u stale %u", rm_frame, gv_load_n, gv_tri_n, gv_rej_n,
+                 gv_fb[0] + gv_fb[1] + gv_fb[2] + gv_fb[3] + gv_fb[4] + gv_fb[5] + gv_fb[6] + gv_fb[7] + gv_fb[8], gv_fb[GVR_SCR], gv_fb[GVR_MIXED], gv_fb[GVR_TSS], gv_fb[GVR_LIT], gv_fb[GVR_FOG], gv_fb[GVR_ZMARK],
                  gv_fb[GVR_TEX1], gv_fb[GVR_DBG], gv_fb[GVR_REFUSE], gv_fb[GVR_LITLOAD], gv_fb[GVR_RING], gv_xf_n, gv_chk_tri, gv_chk_out, gv_chk_cull, gv_chk_stale);
+        pm_log_d("gp1 f%d ld in %u out %u cross %u vtx in %u out %u cross %u subset %u", rm_frame, gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset);
+        if (gp3_t0_ld)
+            pm_log_d("gp3 f%d tile0 ld %u dead %u pct %u", rm_frame, gp3_t0_ld, gp3_t0_dead, (unsigned)(gp3_t0_dead * 100u / gp3_t0_ld));
+    }
+    if (gp3_t0_pending) { gp3_t0_dead++; gp3_t0_pending = 0; }
     PH_ADD(C_TRI, n_cmd);
     PH_ADD(C_TRIOUT, n_in + n_cut);
     acc_t += n_cmd;
@@ -2126,16 +2292,24 @@ static int load_shaded_sprite(int dx4, int dy4) {
 
 /* Bind the texture of tile n (0 or 1) for the next draw. */
 static void ensure_tile(int n) {
+    if (n == 0 && pdl_lazy_tile(0)) return;
     if (n == cur_tile || !td[n].valid) return;
     pm_gpu_flush();
     pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
     if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w, td[n].h);
     pm_tex_load(td[n].src, td[n].fmt, td[n].siz, td[n].w, td[n].h, td[n].pal, td[n].pal_n, td[n].stride);
     {   /* V05: a window of an off-screen texture starts at (ox, oy) in it */
-        int ox, oy;
+        int ox, oy, gox, goy;
         pm_tex_origin(&ox, &oy);
-        tile_x0 = td[n].x0 - ox;
-        tile_y0 = td[n].y0 - oy;
+        pm_tex_glyph_ofs(&gox, &goy);
+        tile_x0 = td[n].x0 - ox + (n == 0 ? gox : 0);
+        tile_y0 = td[n].y0 - oy + (n == 0 ? goy : 0);
+        if (n == 0) {
+            tsz_last.ox = ox - gox;
+            tsz_last.oy = oy - goy;
+            tsz_last.ep = pm_tex_epoch();
+            tsz_last.ok = pm_tex_off_idx() < 0;
+        }
     }
     tile_fx = (float)(tile_sz[n][0] & 3) * 0.25f; /* PT38 */
     tile_fy = (float)(tile_sz[n][1] & 3) * 0.25f;
@@ -2238,10 +2412,16 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     dls_on = PMDL("dlsrc");
     dlc_on = dlc_enabled();
+    int pdl_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; /* C5: main list only, not backgroundGfx */
     if (dls_on && !dlc_depth) {
         if (!dls_rd_lo) dls_init_ranges();
         dls_main_lo = (u32)list; dls_main_hi = (u32)list + nbytes;
         dls_pc = dls_class((u32)list);
+    }
+    if (dlc_on && pdl_main && !pdl_compile_one && !pdl_depth && !dlc_depth && nbytes >= 8u && pdl_tpl_drive(list, nbytes)) { /* pdl_tpl_active blocks nested partial-main replay */
+        if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_prev_op = -1; }
+        dd_end();
+        return;
     }
     Gfx* stack[12];
     int sp = 0;
@@ -2282,9 +2462,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
             if (fp) pm_ph_push(fp);
         }
-        if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_ENDDL && op != G_MODIFYVTX) gv_epoch++; /* GV1b */
+        if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_ENDDL && op != G_MODIFYVTX) {
+            gv_epoch++; /* GV1b */
+            pdl_pso_cur = 0; pdl_ep_pso = 0; pdl_tex_slot = -1;
+        }
         switch (op) {
         case G_ENDDL:
+            if (pdl0_on()) pdl0_gl_leave();
             if (sp == 0) {
                 if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
                 dd_end();
@@ -2305,6 +2489,15 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (dls_on) dls_target(next);
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
+                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
+                break;
+            }
+            if (pdl0_on()) pdl0_gl_enter(next);
+            if (!pdl_compile_one && dlc_enabled() && pdl_try(next)) {
+                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
+                break;
+            }
+            if (!pdl_compile_one && dlc_enabled() && pdl_try_m(next)) {
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
             }
@@ -2378,6 +2571,21 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     }
                 }
                 if (gv) { gv_load_n += n; PH_ADD(C_GVLOAD, n); }
+                int gp1_cls = GP1_CROSS;
+                unsigned char gp1_p = 0;
+                s16 gp1_lo[3] = { 32767, 32767, 32767 }, gp1_hi[3] = { -32768, -32768, -32768 };
+                if (gv) {
+                    for (unsigned j = 0; j < n; j++)
+                        for (int q = 0; q < 3; q++) {
+                            s16 o = src[j].v.ob[q];
+                            if (o < gp1_lo[q]) gp1_lo[q] = o;
+                            if (o > gp1_hi[q]) gp1_hi[q] = o;
+                        }
+                    gp1_cls = gp1_box_class(gp1_lo, gp1_hi, combined, &gp1_p);
+                    if (gp1_cls == GP1_IN) { gp1_ld_in++; gp1_vx_in += n; }
+                    else if (gp1_cls == GP1_OUT) { gp1_ld_out++; gp1_vx_out += n; }
+                    else { gp1_ld_cross++; gp1_vx_cross += n; }
+                }
                 for (unsigned i = 0; i < n; i++) {
                     vert_ring[v0 + i] = gring0 >= 0 ? (unsigned short)(gring0 + (int)i) : GV_NONE;
                     vert_gmi[v0 + i] = (unsigned short)gmi;
@@ -2387,7 +2595,17 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     vert_scr[v0 + i] = 0;
                     vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
                     if (gv && lit_ld) lit_pending = 1;
-                    if (gv) { /* GV1: no colour, no S T. Per vertex bits for a small load. */
+                    if (gv && gp1_cls == GP1_IN) {
+                        vert_cb[v0 + i] = 0;
+                        vert_gvf[v0 + i] = 0;
+                        continue;
+                    }
+                    if (gv && gp1_cls == GP1_OUT) {
+                        vert_cb[v0 + i] = gp1_p;
+                        vert_gvf[v0 + i] = 0;
+                        continue;
+                    }
+                    if (gv) { /* GP1 cross: per-vertex product and clip bits */
                         const float(*m)[4] = combined;
                         float x = (float)src[i].v.ob[0], y = (float)src[i].v.ob[1], z = (float)src[i].v.ob[2];
                         float* p = vert_p[v0 + i];
@@ -2395,7 +2613,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                         p[1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
                         p[2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
                         p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-                        vert_cb[v0 + i] = (unsigned char)(clip_bits4(p) | (p[3] <= 0.05f ? 64 : 0));
+                        vert_cb[v0 + i] = (unsigned char)clip_bits4(p);
                         vert_gvf[v0 + i] = 1;
                         st_vx++;
                         continue;
@@ -2703,6 +2921,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
             /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
             int rtile = (use_t1 || (((w1 >> 24) & 7) == 1 && td[1].valid)) ? 1 : 0;
+            if (!rtile) gp3_t0_surv();
             ensure_tile(rtile);
             dual_bind();
             int tw = 1, th = 1;
@@ -2928,7 +3147,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (tile == 1) sync_combine(); /* S25: a plan that reads TEXEL1 needs tile 1 */
             if (tile != 0) break;
             td[0].valid = 0;
-            cur_tile = 0;
+            cur_tile = -1; /* GP3: defer pm_tex_load to ensure_tile(0) at first draw */
             if (dual_on) { dual_on = 0; sync_combine(); } /* S25: the plan path is off while the shaded sprite is on */
             if (m1.valid && tile_fmt[0] == 2 && tile_siz[0] == 0 && tile_pal[0] != tile_pal[1] &&
                 comb_a == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_TEXEL1 &&
@@ -3000,34 +3219,35 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             {
                 struct TszLast* lp = &tsz_last;
                 const void* palc = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
+                int ggx = 0, ggy = 0;
+                if (src && w > 0 && h > 0 && tile_fmt[0] == 2 && tile_siz[0] == 0 &&
+                    pm_tex_glyph_same(src, tile_fmt[0], tile_siz[0], w, h, palc, tlut_n, &ggx, &ggy)) {
+                    tile_x0 = x0 + ggx;
+                    tile_y0 = y0 + ggy;
+                    tile_fx = (float)(uls & 3) * 0.25f;
+                    tile_fy = (float)(ult & 3) * 0.25f;
+                    td[0].valid = 1; td[0].src = src; td[0].fmt = tile_fmt[0]; td[0].siz = tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
+                    td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
+                    gp3_t0_set(); GP_SET(7, 1);
+                    break;
+                }
                 if (lp->ok && src == lp->src && tile_fmt[0] == lp->fmt && tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
                     palc == lp->pal && tlut_n == lp->pal_n && pm_tex_epoch() == lp->ep && !pm_is_cfb(src) && src && w > 0 && h > 1) {
                     tile_x0 = x0 - lp->ox;
                     tile_y0 = y0 - lp->oy;
                     td[0].valid = 1; td[0].src = src; td[0].fmt = tile_fmt[0]; td[0].siz = tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
                     td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
-                    GP_SET(7, 1);
+                    gp3_t0_set(); GP_SET(7, 1);
                     break;
                 }
                 GP_SET(7, 0);
                 lp->ok = 0;
                 lp->src = src; lp->fmt = tile_fmt[0]; lp->siz = tile_siz[0]; lp->w = w; lp->h = h; lp->stride = stride; lp->pal = palc; lp->pal_n = tlut_n;
             }
-            /* One batch can only sample one image. The last load of the frame
-             * was being bound for every surface, so the house wore one fence. */
-            pm_gpu_flush();
+            /* GP3: pm_tex_load runs in ensure_tile(0) at the first surviving draw. */
             /* F03: a 1 row tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture (the pause background loads tall z-buffer tiles, those are textures) */
             if (src && w > 0 && h > 0 && (h > 1 || (unsigned)timg - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u)) {
                 const void* pal0 = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
-                if (tile_fmt[0] == 0 && tile_siz[0] == 2) grab_cur(src, w, h);
-                pm_tex_load(src, tile_fmt[0], tile_siz[0], w, h, pal0, tlut_n, stride);
-                {   /* V05 */
-                    int ox, oy;
-                    pm_tex_origin(&ox, &oy);
-                    tile_x0 = x0 - ox;
-                    tile_y0 = y0 - oy;
-                    tsz_last.ox = ox; tsz_last.oy = oy; tsz_last.ep = pm_tex_epoch(); tsz_last.ok = pm_tex_off_idx() < 0; /* an off-screen slot is a render target whose content changes under the same key: never skipped */ /* PG1: the state the next identical G_SETTILESIZE may skip */
-                }
                 td[0].valid = 1;
                 td[0].src = src;
                 td[0].fmt = tile_fmt[0];
@@ -3039,6 +3259,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 td[0].y0 = y0;
                 td[0].pal = pal0;
                 td[0].pal_n = tlut_n;
+                gp3_t0_set();
             }
             break;
         }

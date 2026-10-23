@@ -26,7 +26,7 @@ int pm_gpu_gstat_alloc(unsigned n, unsigned char** out); /* DLC2 */
 void pm_gpu_gstat_commit(unsigned first, unsigned n);
 void pm_gpu_gstat_reset(void);
 unsigned pm_gpu_gstat_used(void);
-int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const PmFx* fx, const unsigned short* idx, unsigned nidx);
+int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const PmFx* fx, const unsigned short* idx, unsigned nidx); /* 0 fail, 1 new batch, 2 extended */
 int pm_gpu_gidx_room(unsigned n);
 const unsigned char* pm_gpu_gring(void);
 unsigned pm_gpu_flush_gen(void);

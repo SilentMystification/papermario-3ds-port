@@ -4,6 +4,7 @@
  * The includer defines u8 u16 u32, FMT_* and SIZ_*. Only RGBA5551, LA8 and RGBA8 targets (2 and 4 bytes per texel). */
 #ifndef PM_TEX_TX1_H
 #define PM_TEX_TX1_H
+#include <string.h>
 
 #define TX1_MAXD 512
 
@@ -71,19 +72,42 @@ static void tx1_build(u8* dst, const u8* src, unsigned fmt, unsigned siz, int w,
         TX1_TILES(unsigned, ({ const u8* p_ = src + (rb + sx) * 4; ((unsigned)p_[0] << 24) | ((unsigned)p_[1] << 16) | ((unsigned)p_[2] << 8) | p_[3]; }));
     } else if (fmt == FMT_IA && siz == SIZ_16) {
         TX1_TILES(unsigned short, tx1_be16(src + (rb + sx) * 2));
-    } else if (fmt == FMT_IA && siz == SIZ_8) {
-        TX1_TILES(unsigned short, tx1_ia8[src[rb + sx]]);
-    } else if (fmt == FMT_IA && siz == SIZ_4) {
-        TX1_TILES(unsigned short, tx1_ia4[tx1_n4(src, rb + sx, sx)]);
-    } else if (fmt == FMT_I && siz == SIZ_8) {
-        TX1_TILES(unsigned short, src[rb + sx] * 0x101u);
-    } else if (fmt == FMT_I && siz == SIZ_4) {
-        TX1_TILES(unsigned short, tx1_n4(src, rb + sx, sx) * 17u * 0x101u);
     } else {
         TX1_TILES(unsigned short, 0xffffu);
     }
     tx1_bad_ci = bad;
     (void)bpp;
+}
+
+/* TX-B: PICA-native L8, L4, LA4 tiles (no LA8 expand). */
+static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, const u8* src, int w, int h, int stride, int pw, int ph, int mw, int mh,
+                             int mir_s, int mir_t) {
+    tx1_init();
+    for (int x = 0; x < pw; x++) tx1_sx[x] = (unsigned short)tx1_map(x, w, mw, mir_s);
+    for (int y = 0; y < ph; y++) tx1_sy[y] = (unsigned short)tx1_map(y, h, mh, mir_t);
+    const int tw = pw >> 3, th = ph >> 3;
+    if (gf == GPU_L4) {
+        for (int ty = 0; ty < th; ty++)
+            for (int tx = 0; tx < tw; tx++) {
+                u8* d = dst + ((size_t)ty * (size_t)tw + (size_t)tx) * 32u;
+                memset(d, 0, 32);
+                const unsigned short* xs = tx1_sx + tx * 8;
+                for (int r = 0; r < 8; r++) {
+                    const int rb = (int)tx1_sy[ph - 1 - (ty * 8 + r)] * stride;
+                    const unsigned char* mo = tx1_mort + r * 8;
+                    for (int c = 0; c < 8; c++) {
+                        int sx = (int)xs[c];
+                        unsigned nib = (unsigned)tx1_n4(src, rb + sx, sx);
+                        unsigned m = mo[c];
+                        unsigned bi = m >> 1;
+                        if (m & 1u) d[bi] = (u8)((d[bi] & 0xf0u) | nib);
+                        else d[bi] = (u8)((d[bi] & 0x0fu) | (nib << 4));
+                    }
+                }
+            }
+    } else {
+        TX1_TILES(unsigned char, src[rb + sx]);
+    }
 }
 
 /* The shaded path (expand_dual): RGBA8 target, texels outside the w x h window are 0. */
