@@ -361,6 +361,29 @@ void appendGfx_background_texture(void) {
                                                  (bgMaxX + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4, /// @bug xh = 2 * bgXOffset + (bgMinX - 1) * 4
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
+        if (pm_wide_cam(&gCameras[gCurrentCameraID]) && bgMinY == 20 && bgMaxY == 200 && bgMaxX == 296) {
+            /* PT58: as the still sky above: with wide the view is 240 rows, the first image row (with the wave offset of the first line) fills the rows above and the last
+             * image row (wave offset of the last line) the rows below. */
+            s32 k;
+            for (k = 0; k < 2; k++) {
+                s32 row = k == 0 ? gBackroundTextureYOffset : gBackroundTextureYOffset + bgMaxY - 1;
+                s32 y0 = k == 0 ? 0 : bgMinY + bgMaxY;
+                s32 y1 = k == 0 ? bgMinY - 1 : SCREEN_HEIGHT - 1;
+                waveOffset = sin_rad(gBackroundWavePhase + (k == 0 ? 0 : numLines) * (TAU / 15)) * 3.0f;
+                bgXOffset = 2.0f * (gGameStatusPtr->backgroundXOffset + waveOffset);
+                if (row > bgMaxY) {
+                    row -= bgMaxY;
+                }
+                gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster + bgMaxX * row,
+                                   G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, 1,
+                                   0, 0, 295, 0, 0,
+                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                bg_texrect( bgMinX * 4, y0 * 4, (2 * bgXOffset + (bgMinX - 1)) * 4, y1 * 4,
+                                                     G_TX_RENDERTILE, bgMaxX * 32 - bgXOffset * 16, 0, 4096, 0);
+                bg_texrect( bgXOffset * 2 + bgMinX * 4, y0 * 4, (bgMaxX + bgMinX - 1) * 4, y1 * 4,
+                                                     G_TX_RENDERTILE, 0, 0, 4096, 0);
+            }
+        }
     }
 }
 
