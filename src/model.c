@@ -1392,6 +1392,19 @@ void appendGfx_model(void* data) {
     mtxLoadMode = G_MTX_LOAD;
     modelNode = model->modelNode;
 
+#ifdef TARGET_3DS
+    { /* PT40 diagnostic, switch modellog=<hex model id>: one line per draw of that model (cap 20 lines) */
+        extern int pm_model_log_id(void);
+        extern void pm_log(const char*, ...);
+        extern unsigned pm_frame_count(void);
+        static int mlog_n;
+        if (pm_model_log_id() == (int)model->modelID && mlog_n < 20) {
+            mlog_n++;
+            pm_log("modellog f%u id %x flags %04x rm %d tex %d var %d gfx %p cam %d node %p type %d", pm_frame_count(), (unsigned)model->modelID, (unsigned)model->flags, (int)model->renderMode, (int)model->textureID,
+                   (int)model->textureVariation, model->textureID ? (void*)TextureHandles[model->textureID + model->textureVariation].gfx : NULL, (int)gCurrentCameraID, (void*)model->modelNode, (int)(model->modelNode ? model->modelNode->type : -1));
+        }
+    }
+#endif
     if (model->textureID != 0) {
         textureHandle = &TextureHandles[model->textureID + model->textureVariation];
         textureHeader = &textureHandle->header;

@@ -660,6 +660,12 @@ void pm_sweep_tick(unsigned f);
 #include "model.h"
 /* Debug tool, switch modeldump=<scene frame>: one log line per model of the map (id, flags, texture id, render mode, display list) and the IA4 texture loads
  * found in its list. Finds a model that the map has but the draw list does not show (PT40). */
+int pm_model_log_id(void) {
+    static int id = -2;
+    char v[16];
+    if (id == -2) id = pm_debug_value("modellog", v, sizeof v) ? (int)strtol(v, NULL, 16) : -1;
+    return id;
+}
 static void model_dump(unsigned f) {
     char v[16];
     int i;
@@ -677,7 +683,7 @@ static void model_dump(unsigned f) {
         }
         {
             ModelNodeProperty* tn = m->modelNode ? get_model_property(m->modelNode, MODEL_PROP_KEY_TEXTURE_NAME) : NULL;
-            pm_log("modeldump %d id %x flags %04x tex %d var %d rm %d cgfx %d dl %p ia4loads %d texname %s", i, (unsigned)m->modelID, (unsigned)m->flags, (int)m->textureID, (int)m->textureVariation, (int)m->renderMode, (int)m->customGfxIndex, (void*)dl, ia4,
+            pm_log("modeldump %d id %x flags %04x tex %d var %d rm %d cgfx %d dl %p ia4loads %d center %.0f %.0f %.0f texname %s", i, (unsigned)m->modelID, (unsigned)m->flags, (int)m->textureID, (int)m->textureVariation, (int)m->renderMode, (int)m->customGfxIndex, (void*)dl, ia4, m->center.x, m->center.y, m->center.z,
                    tn && tn->data.p ? (const char*)tn->data.p : "-");
         }
     }
