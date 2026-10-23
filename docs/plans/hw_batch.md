@@ -245,3 +245,6 @@ What the build contains since 1036 (Azahar gb in town, ms per step: 8.51 at DLC2
 Gates (console, town mac_01): gb below the 1036 value (38.58 ms) by 4 ms or more (Azahar says 1.4 ms x 4.5 = 6 ms), cpu50 below 62 ms. Forever Forest (mim_01): gb lower than the same map in 1036 if it was played there (Azahar 0.9 ms). tik_01 and iwa_00: gb lower and draws not higher. Every map: no new `[CRASH]`, `FAIL` or `lines dropped` line, picture of the fog, the lit objects and the Forever Forest ground (dark green, PT82) as expected.
 Not done and why (Azahar counters, docs/plans/post_dlc_ranking.md): the GPU only reject and transform (gv1raw: draws 70 to 131 per step, gv1box 70 to 75) raises the draw count, so the per vertex CPU transform and the per triangle reject stay. Static DLC groups already skip both.
 
+
+### 8.5 Push SWEEP: the full sweep (bosses, cutscenes, credits) (only on a user request, never planned)
+The full sweep runs only when the user asks for it. No gate, no feature test and no other agent runs it. Commands for the console (one push, chain list, pulled log): docs/plans/sweep_notes.md, section Console. Azahar: `python3 3ds/tools/sweep.py run all`.

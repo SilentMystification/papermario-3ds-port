@@ -1,0 +1,33 @@
+# sweep driver for a boss item: the player picks the first menu entry (jump), then hammer, in turns. The boss turns run by themselves.
+# start in the scene after the battle starts (battlef=<n>). Unit: pad scans, 2 scans = 1 game step. See docs/plans/sweep_notes.md.
+wait200
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12
+A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60
+k_ddown*4 wait12 A*6 wait40 A*6 wait40 A*6 wait40 A*3 wait60 k_dup*4 wait12

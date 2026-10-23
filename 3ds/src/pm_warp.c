@@ -656,6 +656,7 @@ static void pm_statehash(unsigned f) {
     }
 }
 
+void pm_sweep_tick(unsigned f);
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
     boss_tick();
@@ -670,6 +671,7 @@ void pm_warp_tick(unsigned frame) {
         tour_f0 = frame - TOUR_FRAMES + 1;
     }
     unsigned f = frame - (unsigned)scene_f0;
+    pm_sweep_tick(f); /* SWEEP: markers and end of one item of the full sweep (pm_sweep.c, switch sweep=<name>) */
     battle_hooks(f);
     battlelist_tick(f);
     { /* V24b: btlstatus=poison|paralyze|static|dizzy: every frame in a battle the first enemy actor gets that status, to see the palette effect of actor_rendering.c */
