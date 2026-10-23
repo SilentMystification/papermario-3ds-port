@@ -233,19 +233,15 @@ sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat texstat pacestat logstat p
 Read-out: `grep "abtog " P`, then `python3 3ds/tools/phs_report.py P` and compare the rows `base`, `dlc1`, `dlc` of the town scene (columns gb, gd, gp, cpu50). `grep -E " dlc2? f" P` gives the counters (`static grp` must be close to `repl`, `fail`, `hashbad`, `exitbad`, `missing`, `slotfix` 0).
 Gate: gb of `dlc` lower than `base` by 6 ms or more in town (expected from Azahar x3.5: DLC1 about 7 ms, DLC2 a further 2 ms). The CPU part (cpu50) must fall under 50 ms for 20 drawn steps per second. If the gate holds, the orchestrator sets `PM_DLC_DEFAULT` to 1 in a later row. Azahar results (docs/plans/DLC.md section 7): gbi 11.11 (base), 9.10 (dlc1), 8.51 ms (dlc).
 
-### 8.0f Push PLAY3 (PF1 prefetch against none)
-Same build and commands as 8.0e with this `abtog` (DLC on in both states through the switch `dlc`):
-```
-sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat texstat pacestat logstat phase phsum dlc abtog=base,nopf:60 loglevel=debug
-```
-`base` has the prefetch on, `nopf` turns it off. Read the town rows of `phs_report.py` for `base` and `nopf` (columns gb, dl, cpu50). Gate: base lower than nopf by 0.5 ms or more in gb. A smaller difference means the stalls are not memory bound: remove nothing, the prefetch costs under 0.1 ms.
 Result of build 1036 (O3DS, log 3ds/logs/perf/hw_1036_PLAY2_o3ds_pull.txt, clean exit, phs_report.py --hw). World mode (4), town mac_01 (scene 1:1), ms per drawn step, n = drawn steps: base n 232: gb 46.59, gd 4.03, gp 4.82, cpu50 76.6. dlc1 n 232: gb 40.71 (gain 5.88), gd 4.15, gp 4.88, cpu50 70.3. dlc n 268: gb 38.58 (gain 8.01), gd 4.24, gp 4.95, cpu50 66.1. Other worlds, gb base to dlc: 23:0 32.57 to 24.25 (gain 8.32, n 45 and 52), 0:7 31.23 to 28.08 (n 88 and 36), 0:5 25.73 to 23.39 (n 44 and 31). Counters: hashbad 0, exitbad 0, missing 0, slotfix 0, ringfail 0, static fail 0 in the three dlc2 lines read (f1799, f2279, f2699). GATE gb: PASS (dlc gb is 8.01 ms lower than base in town, limit 6 ms). cpu50 limit 50 ms: NOT met in town (66.1 ms); it is met in 23:0 (42.1 ms).
 
-### 8.0g Push PLAY4 (PF1 prefetch and OPT-TS texture state skip against the old paths)
-Same build and commands as 8.0e. DLC on in all states through the switch `dlc`:
+### 8.0h Push PLAY5 (all GPU path and decode rows since build 1036, no switches)
+Rule 19 removed the A/B switches (dlc, nopf, nowg, nolk and the others). The comparison is build against build: the numbers of build 1036 (below, DLC2 only) against the build of the main tip. Build with `sh 3ds/build.sh` (main folder), copy `build3ds/pm_3ds.3dsx` to build3ds, set `B=<build number>` and `export O=<ip>`.
 ```
-sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat texstat pacestat logstat phase phsum dlc abtog=base,nopf,nowg:60 loglevel=debug
+sh 3ds/push_3ds.sh --no-build --ip $O -t 20 audiostat texstat pacestat logstat phase phsum loglevel=debug
 ```
-`base`: prefetch on, texture state skip on. `nopf`: no prefetch. `nowg`: old epoch test in G_SETTILE. Read the town rows of `phs_report.py` (columns gb, gp, cpu50). Gates: base lower than nopf in gb by 0.5 ms or more (PF1). base lower than nowg in gb by 0.2 ms or more (OPT-TS, Azahar expects 0.4 ms). A smaller difference means no gain on the console. Nothing needs to be removed, the pictures are equal.
+Play in Toad Town (mac_00 and mac_01) for at least 3 minutes, then the Forever Forest (mim_01, fog), the Toad Town Tunnels (tik_01) and Mt. Rugged (iwa_00), which have many two texture combiners and one battle. Exit with HOME or the Select menu row Exit to Homebrew, start the FTP app and pull as in 8.0d (`hw_${B}_PLAY5_pull.txt`). Read: `python3 3ds/tools/phs_report.py P --hw`, rows of the maps played.
+What the build contains since 1036 (Azahar gb in town, ms per step: 8.51 at DLC2, 7.09 now): PF1 prefetch, texture state skips (OPT-TS), slot index and palette hash (OPT-LK, OPT-PH), combiner memo (OPT-SC), no per step scan of the vertex slots for lights, fog on the GPU (GV5), lighting and texgen on the GPU, TEXEL1 plans on the GPU, 4 bit aux tile fix (PT82).
+Gates (console, town mac_01): gb below the 1036 value (38.58 ms) by 4 ms or more (Azahar says 1.4 ms x 4.5 = 6 ms), cpu50 below 62 ms. Forever Forest (mim_01): gb lower than the same map in 1036 if it was played there (Azahar 0.9 ms). tik_01 and iwa_00: gb lower and draws not higher. Every map: no new `[CRASH]`, `FAIL` or `lines dropped` line, picture of the fog, the lit objects and the Forever Forest ground (dark green, PT82) as expected.
+Not done and why (Azahar counters, docs/plans/post_dlc_ranking.md): the GPU only reject and transform (gv1raw: draws 70 to 131 per step, gv1box 70 to 75) raises the draw count, so the per vertex CPU transform and the per triangle reject stay. Static DLC groups already skip both.
 
-Row OPT-LK (G_SETTILESIZE slot lookup index) and OPT-PH (palette hash by words): extend the abtog of 8.0g with the state `nolk`: `abtog=base,nopf,nowg,nolk:60`. Gate: base lower than nolk in gb by 0.5 ms or more on the console (Azahar 0.28 ms, console x3.5 to x4.5 = 1.0 to 1.3 ms).
