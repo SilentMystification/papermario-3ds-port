@@ -1212,9 +1212,9 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     if (boost) for (int q = 0; q < 3; q++) { o->ca[q] = o->ca[q] * 0.5f + (1.f - en[q]) * 0.5f; o->cm[q] *= 0.5f; }
     if (primz) { o->zm[0] = 0.f; o->zm[1] = 2.f * (float)prim_z / 32767.f - 1.f; }
     o->boost = boost;
-    memset(&o->fx, 0, sizeof o->fx);
-    o->fxon = 0;
+    o->fxon = 0; /* o->fx is read only when fxon: it is cleared where it is filled */
     if (geom & G_LIGHTING) { /* GV5: the RSP light table (ambient is slot lt_n), the look-at vectors for texgen */
+        memset(&o->fx, 0, sizeof o->fx);
         o->fx.lflag[0] = 1.f;
         if (geom & G_TEXTURE_GEN) o->fx.lflag[1] = 1.f;
         for (int q = 0; q < 3; q++) o->fx.amb[q] = (float)lt[lt_n].col[q];
@@ -1226,6 +1226,7 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     if (fogmix_on && (geom & G_FOG)) { /* GV5: the RSP fog factor clamp(z / w * fm + fo) is the alpha. z / w of the N64 clip position from the PICA clip z and w. */
         float za = 1.f, zb = 0.f;
         if (pm_gpu_gv_zcoef(&za, &zb)) {
+            if (!o->fxon) memset(&o->fx, 0, sizeof o->fx);
             o->fx.lflag[2] = 1.f;
             o->fx.fogu[0] = (float)fog_fm / za;
             o->fx.fogu[1] = (float)fog_fo - (float)fog_fm * zb / za;
@@ -1291,7 +1292,10 @@ static void gv_xf(int sl) {
 }
 
 /* GV5: the lights are about to change (G_MOVEMEM light, G_MW_NUMLIGHT). A lit vertex that is still in the ring has not seen its colour yet: make it now with the old lights and keep it on the CPU path. */
+static int lit_pending; /* a lit vertex was loaded to the ring since the last lit_freeze */
 static void lit_freeze(void) {
+    if (!lit_pending) return; /* no vertex was loaded lit since the last freeze */
+    lit_pending = 0;
     for (int s = 0; s < 64; s++) {
         if (!vert_live[s] || !(vert_litf[s] & 3) || (vert_litf[s] & 4) || vert_ring[s] == GV_NONE) continue;
         if (vert_gvf[s] != 3) gv_xf(s);
@@ -1307,9 +1311,10 @@ static unsigned gv_matrix_id(int need_nm) {
         if (!gm_tab || !gm_nrm) { free(gm_tab); free(gm_nrm); gm_tab = NULL; gm_nrm = NULL; return GV_NONE; }
         pm_gpu_set_ntab((const float(*)[3][4])gm_nrm);
     }
+    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && !need_nm) return gm_last;
     float nm[3][4];
     for (int i = 0; i < 3; i++) { nm[i][0] = mv[mv_sp][i][0]; nm[i][1] = mv[mv_sp][i][1]; nm[i][2] = mv[mv_sp][i][2]; nm[i][3] = 0.f; }
-    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0)) return gm_last;
+    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0) return gm_last;
     unsigned k, gmi = GV_NONE;
     for (k = gm_n; k > 0; k--) if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[k - 1], nm, sizeof nm) == 0)) break; /* newest first */
     if (k > 0) gmi = k - 1;
@@ -1367,7 +1372,7 @@ static int gv_tri(const int* idx) {
     if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 64) why = GVR_NEAR;
     else if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;
-    else { /* GV5: the vertices were loaded with the lighting state of now, and the lights did not change since (the RSP lights at the load) */
+    else if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) || (geom & G_LIGHTING)) { /* GV5: the vertices were loaded with the lighting state of now, and the lights did not change since (the RSP lights at the load) */
         unsigned want = (geom & G_LIGHTING) ? 1u | ((geom & G_TEXTURE_GEN) ? 2u : 0u) : 0u;
         if (((vert_litf[a] | vert_litf[b] | vert_litf[c]) & 4) || vert_litf[a] != want || vert_litf[b] != want || vert_litf[c] != want) why = GVR_LIT;
     }
@@ -2422,6 +2427,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                     vert_live[v0 + i] = 1;
                     vert_scr[v0 + i] = 0;
                     vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
+                    if (gv && lit_ld) lit_pending = 1;
                     if (gv) { /* GV1: no colour, no S T. Per vertex bits for a small load. */
                         if (gbox) { vert_gvf[v0 + i] = 0; vert_cb[v0 + i] = gbits; }
                         else {
