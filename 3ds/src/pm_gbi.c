@@ -303,6 +303,8 @@ static void* ptr_of(u32 w) {
     if (is_host(w)) return (void*)w;
     unsigned seg = (w >> 24) & 0xff;
     if (seg < 16 && segbase[seg]) return (void*)(segbase[seg] + (w & 0x00ffffffu));
+    /* SW1: an N64 K0 or K1 address (OS_PHYSICAL_TO_K0 of a static buffer: the camera projection matrix of the credits parade) names host memory with the top bits set */
+    if ((w & 0xc0000000u) == 0x80000000u && is_host(w & 0x1fffffffu)) return (void*)(w & 0x1fffffffu);
     return (void*)w;
 }
 
@@ -2443,6 +2445,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             draw_tri(w1);
             break;
         case G_MTX:
+            if (!is_host((u32)(uintptr_t)ptr_of(w1))) { /* SW1 diagnostic: a matrix address that names no host memory */
+                static unsigned bad_mtx;
+                if (bad_mtx++ < 6) pm_log_w("gbi: G_MTX w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - (Gfx*)list), rm_frame,
+                                            pc > (Gfx*)list ? pc[-1].words.w0 : 0, pc > (Gfx*)list ? pc[-1].words.w1 : 0, pc > (Gfx*)list + 1 ? pc[-2].words.w0 : 0, pc > (Gfx*)list + 1 ? pc[-2].words.w1 : 0);
+            }
             load_mtx(w0, w1);
             break;
         case G_SETSCISSOR: {
