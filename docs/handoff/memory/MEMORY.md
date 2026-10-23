@@ -1,12 +1,4 @@
-- [New-agent handoff rule](feedback_new-agent-handoff.md) — stop at finished slice, short HANDOFF.md, user starts new chat; no unprompted subagents
+- [Workflow](feedback_workflow.md) — one agent per epic, rotate at 350k tokens, diagnoses to read-only agents; rules in CLAUDE.md
 - [No attribution](feedback_no-attribution.md) — never add Claude/Anthropic attribution to commits or PRs
-- [Narrow tests](feedback_narrow-tests.md) — short focused tests per slice, no heavy setups, never skip a real fault
-- [Tight prompts](feedback_tight-prompts.md) — short subagent prompts, only needed info, rules by reference
-- [Optimization after hardware](feedback_optimization-after-hardware.md) — plan now, code PO2/PO3/AU1/MA1 only after S28
-- [Hardware after everything](feedback_hardware-after-everything.md) — S28 only after all Azahar-verifiable work is done
-- [Token efficiency](feedback_token-efficiency.md) — batch doc edits, no tiny agents, search history before audits
-- [Port complete before S28](project_port-complete-before-s28.md) — all functionality ported first; H05 Part C finds gaps; S28+ is hardware, fixes, optimization only
-- [No stubs](feedback_no-stubs.md) — never stub or hand-write stand-ins for decomp code without asking; top priority is removing existing stubs
-- [No agreement, small tasks](feedback_no-agreement-small-tasks.md) — never say the user is right; small follow-ups go by SendMessage to a live agent, no new agent
-- [Short relay, test discipline](feedback_short-relay-and-test-discipline.md) — relay in 3 lines, one code agent per tree, golden on touched scenes only
+- [No stubs](feedback_no-stubs.md) — never stub or hand-write stand-ins for decomp code without asking
 - [No feature toggles](feedback_no-feature-toggles.md) — finished work replaces the main path; delete switches and old paths after the test
