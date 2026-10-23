@@ -417,10 +417,14 @@ static int plan_active; /* S25: the general combiner (mode 8) draws, not the leg
 static PmPlan cur_plan;
 static void sync_combine(void);
 static void sync_combine_work(void);
+static int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
+static unsigned sl_cc;
 static void sync_legacy(void) {
     unsigned cc;
+    sl_const = sl_env = 0;
     if (const_rgb_tex_alpha(&cc)) {
         pm_gpu_set_const(cc);
+        sl_const = 1; sl_cc = cc;
         set_leg(4);
         return;
     }
@@ -440,6 +444,7 @@ static void sync_legacy(void) {
         comb_d == G_CCMUX_ENVIRONMENT && alpha_tex && comb2_aa != 0) { /* FX2f: a cycle 2 alpha that reads COMBINED (huff_puff_breath, times PRIM) is no window pass */
         comb_mode5 = 1;
         pm_gpu_set_env(envc);
+        sl_env = 1;
         /* D03: draw_box windows with the bg_tile pattern (tile 0, I4 0/F checker) take their alpha from
          * TEXEL1 (the corner image). Tile 0 alpha is the checker itself, so it must not become the alpha:
          * mode 7 draws the body opaque (the 8x8 rounded corner shape is lost). */
@@ -975,7 +980,32 @@ static Dec* decide(int two) {
 
 static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 static unsigned sc_sig; static int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
+/* OPT-SC: the result of sync_combine_work by the signature of its inputs (the same parts as DIP2). A hit repeats the outputs and the calls into pm_gpu: no decision lookup, no
+ * constant colour test, no plan colours. 16 entries, the oldest is replaced. */
+typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
+static ScMemo scm[16];
+static unsigned scm_next;
+static ScMemo* scm_find(unsigned sg) {
+    for (unsigned i = 0; i < 16; i++) if (scm[i].ok && scm[i].sg == sg) return &scm[i];
+    return NULL;
+}
+static void scm_store(unsigned sg) {
+    ScMemo* m = &scm[scm_next++ & 15];
+    m->sg = sg; m->ok = 1; m->leg = leg_mode; m->mode5 = comb_mode5; m->pat = box_pat; m->use = ls_use; m->why = ls_why; m->cyc = ls_cyc; m->dual = ls_dual;
+    m->plan_on = plan_active; m->cc_on = sl_const; m->cc = sl_cc; m->env_on = sl_env;
+    if (plan_active) m->plan = cur_plan;
+}
+static void scm_replay(const ScMemo* m) {
+    if (m->cc_on) pm_gpu_set_const(m->cc);
+    if (m->env_on) pm_gpu_set_env(envc);
+    leg_mode = m->leg; comb_mode5 = m->mode5; box_pat = m->pat;
+    ls_use = m->use; ls_why = m->why; ls_cyc = m->cyc; ls_dual = m->dual; ls_frame = rm_frame;
+    plan_active = m->plan_on;
+    if (m->plan_on) { cur_plan = m->plan; pm_gpu_set_plan(&cur_plan); }
+    else pm_gpu_set_combine(leg_mode);
+}
 static void sync_combine(void) {
+    unsigned sg_in = 0;
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
@@ -983,11 +1013,11 @@ static void sync_combine(void) {
         unsigned sg = 2166136261u;
         for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
         if (sc_ok && sg == sc_sig && !PMD("nodip2")) { GP_SET(5, 1); return; }
-        sc_sig = sg;
+        sc_sig = sg; sg_in = sg;
         sc_ok = 0; /* set again below when the work is done */
     }
     int leg0 = leg_mode, pat0 = box_pat;
-    sync_combine_work();
+    { ScMemo* m = scm_find(sg_in); if (m) scm_replay(m); else { sync_combine_work(); scm_store(sg_in); } }
     sc_ok = 1;
     if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
