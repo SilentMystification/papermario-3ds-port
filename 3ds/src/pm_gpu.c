@@ -293,7 +293,16 @@ static FlCause fl_tab[48];
 static int fl_nt;
 static int fl_prev_rect; static unsigned fl_rects, fl_consec; /* PG0: texture rectangles, and those that follow another with no other flush call between */
 static int fl_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
+extern unsigned pm_frame_count(void);
+/* Debug tool, switch flushlog=<frame>: one log line per flush call of that frame (function, line, raw batch triangles, CPU vertices): finds what ends a batch. */
+static void fl_trace(int empty) {
+    static int fr = -2;
+    char v[16];
+    if (fr == -2) fr = pm_debug_value("flushlog", v, sizeof v) ? atoi(v) : -1;
+    if (fr >= 0 && (int)pm_frame_count() == fr && !empty) pm_log("flushlog f%d %s line %d gni %u nverts %d", fr, fl_fn, fl_line, gni, nverts);
+}
 static void fl_count(int empty) {
+    fl_trace(empty);
     for (int i = 0; i < fl_nt; i++) if (fl_tab[i].fn == fl_fn && fl_tab[i].line == fl_line) { fl_tab[i].n++; fl_tab[i].e += empty; return; }
     if (fl_nt < 48) { fl_tab[fl_nt].fn = fl_fn; fl_tab[fl_nt].line = fl_line; fl_tab[fl_nt].n = 1; fl_tab[fl_nt].e = empty; fl_nt++; }
 }
