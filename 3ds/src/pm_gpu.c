@@ -253,7 +253,7 @@ static int want_clear; /* see below */
 static Vert* v_fl;
 static unsigned gring_fl, gidx_fl;
 static void gpu_flush_written(void) {
-    pm_tex_flush_pending(); /* FL1 */
+    pm_tex_flush_pend_only();
     if (verts && v_fl && verts > v_fl) {
         PH_PUSH(PH_GCACHE);
         GSPGPU_FlushDataCache(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl)); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (unsigned)((uintptr_t)verts - (uintptr_t)v_fl) >> 10);
@@ -711,6 +711,12 @@ static void flush_draw(void) {
     }
     /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
     if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
+        nverts = 0;
+        gni = 0; gi_start = gidx_n;
+        batch_identity = 0;
+        return;
+    }
+    if (combine >= 2 && !grab_bind && pm_tex_cur_vram_pending() && (combine != 8 || plan.uses_tex)) {
         nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
@@ -1489,7 +1495,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
             C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
             want_clear = 0;
         }
-        pm_tex_flush_pending(); /* FL1 */
+        pm_tex_flush_pend_only();
         sh_clear(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
     }
     if (!prev_frame) grab_queue_copy(); /* PT12: the old frame was copied at pm_gpu_begin */
@@ -1583,6 +1589,7 @@ void pm_gpu_begin(int clear) {
     sci_y1 = 240;
     draw_3d = 0;
     if (!gpu_ok) return;
+    pm_tex_upload_vram_before_frame();
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
     raw1_reset(); sh_clear(); C3D_FrameBegin(pm_interp_on > 0 ? C3D_FRAME_SYNCDRAW : 0); /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     PH_POP();

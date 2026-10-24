@@ -459,10 +459,24 @@ static void upload_vram_slot(Slot* s) {
     C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     s->vram_up = 0;
 }
-void pm_tex_flush_pending(void) {
+static void flush_pend_only(void) {
     for (int i = 0; i < pend_n; i++) pend_flush_one(pend[i].p, pend[i].len);
     pend_n = 0;
 }
+int pm_tex_vram_pending(void) {
+    for (int i = 0; i < slot_hi; i++)
+        if (slots[i].vram_up) return 1;
+    return 0;
+}
+int pm_tex_cur_vram_pending(void) {
+    return have && cur >= 0 && cur < SLOTS && slots[cur].live && slots[cur].vram_up;
+}
+void pm_tex_upload_vram_before_frame(void) {
+    for (int i = 0; i < slot_hi; i++) upload_vram_slot(&slots[i]);
+}
+void pm_tex_drain_vram(void) { /* uploads run before C3D_FrameBegin and at bind */ }
+void pm_tex_flush_pending(void) { flush_pend_only(); }
+void pm_tex_flush_pend_only(void) { flush_pend_only(); }
 static void pend_add(u8* p, unsigned len) {
     for (int i = 0; i < pend_n; i++) { /* merge with a span that is near */
         u8* a = pend[i].p; u8* e = a + pend[i].len;
@@ -506,8 +520,7 @@ unsigned pm_tex_slot_gen(int i) {
 }
 
 int pm_tex_bind_slot(int i) {
-    if (i < 0 || i >= SLOTS || !slots[i].live) return 0;
-    upload_vram_slot(&slots[i]);
+    if (i < 0 || i >= SLOTS || !slots[i].live || slots[i].vram_up) return 0;
     cur = i;
     TOUCH(&slots[i]);
     TC_HIT(&slots[i]);
@@ -657,8 +670,6 @@ void pm_tex_begin_frame(void) {
     /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
     for (int i = 0; i < slot_hi; i++)
         if (slots[i].live && slots[i].stale) drop(&slots[i]);
-    for (int i = 0; i < slot_hi; i++)
-        upload_vram_slot(&slots[i]); /* after C3D_FrameBegin, before any draw this frame */
 }
 
 extern unsigned pm_dlc_gen; /* DLC1: a write into the map shape buffer (ROM read, Yay0 decode) makes the compiled display lists stale */
@@ -1203,8 +1214,7 @@ int pm_tex_bind(void) {
         tb_last = offt[off_cur].tex; tb_f = -2;
         return 1;
     }
-    if (!have || cur < 0 || !slots[cur].live) return 0;
-    upload_vram_slot(&slots[cur]);
+    if (!have || cur < 0 || !slots[cur].live || slots[cur].vram_up) return 0;
     slots[cur].stamp = ++stamp;
     slots[cur].last_frame = tc_frame;
     GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
