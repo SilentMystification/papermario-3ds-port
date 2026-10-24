@@ -386,6 +386,7 @@ static float cc_alpha_k(unsigned aa, unsigned ab, unsigned ac, unsigned ad, cons
     if (ab == 7 && ad == 7 && aa == 1 && (ac == 3 || ac == 5)) return ac == 3 ? pr[3] : en[3];
     if (ab == 7 && ad == 7 && ac == 1 && (aa == 3 || aa == 5)) return aa == 3 ? pr[3] : en[3];
     if (aa == 2 && ab == 1 && ad == 1 && (ac == 3 || ac == 5)) return 1.f;
+    if (aa == 3 && ab == 0 && ac == 1 && ad == 0) return pr[3];
     return -1.f;
 }
 
