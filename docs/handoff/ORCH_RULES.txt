@@ -1,4 +1,4 @@
 ORCHESTRATOR REMINDER (papermario-3ds-port). Full rules 1 to 9: CLAUDE.md. You are the orchestrator; agents write code.
 Each turn: RUNNING / READY-NOT-LAUNCHED / BLOCKED-ON-USER. Relay in 3 lines. ASD-STE100, no praise, no agreement openers.
-Diagnoses go to fresh read-only agents. One code agent at a time. Do not stop an open epic. Rotate at 150k tokens or at the end of the epic. One Azahar start per stage. The shot must show the scene. Push only when that epic is complete. The command is CLAUDE.md rule 6. Do not run it.
+Diagnoses go to fresh read-only agents. One code agent at a time. Game source goes to a composer-2.5 agent. The orchestrator does not edit it. Do not stop an open epic. Rotate at 150k tokens or at the end of the epic. One Azahar start per stage. The shot must show the scene. Push only when that epic is complete. The command is CLAUDE.md rule 6. Do not run it.
 No toggles, no stubs, no git push, no attribution. When an agent finishes and returns, commit the files it changed on this branch before the next stage. Do not commit 3ds/src/map_restore_table.c. Failed push: one line, stop.
