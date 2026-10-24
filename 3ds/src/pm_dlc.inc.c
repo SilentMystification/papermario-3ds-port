@@ -814,10 +814,14 @@ static int pdl_lazy_tile(int n) {
     return 1;
 }
 
+static GbiState pdl_comp_gbi_st;
+static GbiState pdl_try_gbi_st;
+static GbiState pdl_try_gbi_chk;
+
 static void pdl_compile_ent(PdlEnt* e, const Gfx* l) {
     e->nops = pdl_nops(l);
-    GbiState st0; gbi_state_get(&st0);
-    e->state_in = gbi_state_in_hash(&st0, pdl_readset_of(l));
+    gbi_state_get(&pdl_comp_gbi_st);
+    e->state_in = gbi_state_in_hash(&pdl_comp_gbi_st, pdl_readset_of(l));
     pdl_compile_one = 1;
     pdl_depth++;
     pm_gbi_run((void*)l, e->nops * 8u);
@@ -846,8 +850,8 @@ static int pdl_try(const Gfx* l) {
     PdlEnt* e = pdl_find((u32)l);
     if (!e) return 0;
     u32 hgen = pdl_heap_gen((u32)l);
-    GbiState st0; gbi_state_get(&st0);
-    u32 sin = gbi_state_in_hash(&st0, pdl_readset_of(l));
+    gbi_state_get(&pdl_try_gbi_st);
+    u32 sin = gbi_state_in_hash(&pdl_try_gbi_st, pdl_readset_of(l));
     if (!e->nops || e->refused || e->heap_gen != hgen || e->state_in != sin) {
         e->heap_gen = hgen; e->refused = 0;
         if (pdl_refuse_ops(l)) { e->refused = 1; pdl_c.refuse++; return 0; }
@@ -855,8 +859,8 @@ static int pdl_try(const Gfx* l) {
     } else pdl_c.hit++;
     gbi_state_apply(&e->exit);
     if (pdlchk_on()) {
-        GbiState chk; gbi_state_get(&chk);
-        if (gbi_state_hash(&chk) != gbi_state_hash(&e->exit)) pdl_c.exitbad++;
+        gbi_state_get(&pdl_try_gbi_chk);
+        if (gbi_state_hash(&pdl_try_gbi_chk) != gbi_state_hash(&e->exit)) pdl_c.exitbad++;
     }
     gv_epoch++;
     pdl_pso_cur = e->pso_id;
