@@ -27,6 +27,7 @@ INCLUDE_IMG("entity/shadow/circle_big.png", D_802E94F0);
 Gfx Entity_Shadow_GfxCommon[] = {
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
     gsDPPipeSync(),
+    gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW),
     gsDPSetTexturePersp(G_TP_PERSP),
     gsDPSetTextureDetail(G_TD_CLAMP),
     gsDPSetTextureLOD(G_TL_TILE),
