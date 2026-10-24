@@ -898,6 +898,7 @@ static int pdl_try(const Gfx* l) {
         return 0;
     } else pdl_c.hit++;
     gbi_state_apply(&e->exit);
+    sync_combine();
     if (pdlchk_on()) {
         gbi_state_get(&pdl_try_gbi_chk);
         if (gbi_state_hash(&pdl_try_gbi_chk) != gbi_state_hash(&e->exit)) pdl_c.exitbad++;
