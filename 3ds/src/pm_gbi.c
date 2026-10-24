@@ -226,6 +226,7 @@ static unsigned box_save[4];
 static float dual_gain[3];
 static void unpack8(unsigned c, float o[4]);
 static void ensure_tile(int n);
+static void ens_clear(void);
 static unsigned tile_fmt[8], tile_siz[8];
 static u32 segbase[16];
 static Vtx verts[64];
@@ -1122,6 +1123,7 @@ static void dual_bind(void) {
         pm_tex_set_aux(tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3]);
         aux_key = key;
         cur_tile = -1;
+        ens_clear();
     }
     ensure_tile(0);
     pm_tex_size(&tw0, &th0);
@@ -2253,10 +2255,24 @@ static int load_shaded_sprite(int dx4, int dy4) {
 
 /* Bind the texture of tile n (0 or 1) for the next draw. */
 static const void* ens_img[2];
+static const void* ens_src;
+static const void* ens_pal;
+static unsigned ens_fmt, ens_siz;
+static unsigned ens_wrap[4];
+static int ens_sz[4];
+static void ens_clear(void) { ens_src = NULL; ens_pal = NULL; }
+static int tile_bound(int n) {
+    if (!td[n].valid || pm_tex_cur_idx() < 0 || !ens_src) return 0;
+    if (ens_src != td[n].src || ens_pal != td[n].pal || ens_fmt != td[n].fmt || ens_siz != td[n].siz) return 0;
+    if (memcmp(tile_wrap[n], ens_wrap, sizeof ens_wrap) || memcmp(tile_sz[n], ens_sz, sizeof ens_sz)) return 0;
+    return 1;
+}
 static void ensure_tile(int n) {
     if (n == 0 && pdl_lazy_tile(0)) return;
-    if (n == cur_tile || !td[n].valid) return;
-    if (ens_img[n] == td[n].src && pm_tex_cur_idx() >= 0) {
+    if (!td[n].valid) return;
+    tile_fx = (float)(tile_sz[n][0] & 3) * 0.25f; /* PT38 */
+    tile_fy = (float)(tile_sz[n][1] & 3) * 0.25f;
+    if (tile_bound(n)) {
         cur_tile = n;
         return;
     }
@@ -2277,8 +2293,12 @@ static void ensure_tile(int n) {
             tsz_last.ok = pm_tex_off_idx() < 0;
         }
     }
-    tile_fx = (float)(tile_sz[n][0] & 3) * 0.25f; /* PT38 */
-    tile_fy = (float)(tile_sz[n][1] & 3) * 0.25f;
+    ens_src = td[n].src;
+    ens_pal = td[n].pal;
+    ens_fmt = td[n].fmt;
+    ens_siz = td[n].siz;
+    memcpy(ens_wrap, tile_wrap[n], sizeof ens_wrap);
+    memcpy(ens_sz, tile_sz[n], sizeof ens_sz);
     ens_img[n] = td[n].src;
     cur_tile = n;
 }
@@ -2371,6 +2391,7 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
         }
     }
     cur_tile = -1; /* the bound texture is the composite */
+    ens_clear();
     sync_combine();
     return 1;
 }

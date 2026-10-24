@@ -1752,6 +1752,21 @@ void pm_gpu_note_mvp(const float m[4][4], float sx, float sy, float tx, float ty
     pm_gpu_set_mvp(m, sx, sy, tx, ty);
 }
 
+static int gtrip_batch_open(int use5, const PmFx* fx, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
+                            const unsigned g[3]) {
+    if (!g_pal || use5 != g_use5) return 0;
+    if (use5 && memcmp(&g_fx, fx, sizeof g_fx)) return 0;
+    if (memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) || memcmp(g_cadd, cadd, sizeof(g_cadd)) ||
+        memcmp(g_zmix, zmix, sizeof(g_zmix)) || g_ct != ct)
+        return 0;
+    unsigned miss = 0;
+    for (int i = 0; i < 3; i++) {
+        unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g[i]) break;
+        if (k == pal_n && !(i > 0 && g[i] == g[0]) && !(i > 1 && g[i] == g[1])) miss++;
+    }
+    return pal_n + miss <= (use5 ? GPAL5 : GPAL);
+}
+
 /* GV1c: one triangle of ring vertices ri[3], vertex i with game matrix tab[g[i]]. ro[3] gets the ring indices to use from now on (a vertex whose palette index
  * has to change is copied). Returns 0 when the raw path cannot take it now. */
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
@@ -1768,15 +1783,16 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
     if (nverts > 0) flush(); /* the CPU batch in flight comes first, draw order */
-    if (gni > 0 && (!g_pal || use5 != g_use5 || (use5 && memcmp(&g_fx, fx, sizeof g_fx)) || memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) ||
-                    memcmp(g_cadd, cadd, sizeof(g_cadd)) || memcmp(g_zmix, zmix, sizeof(g_zmix)) || g_ct != ct)) flush();
-    if (gni > 0) { /* the palette must hold the matrices of the three vertices */
-        unsigned miss = 0;
-        for (int i = 0; i < 3; i++) {
-            unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g[i]) break;
-            if (k == pal_n && !(i > 0 && g[i] == g[0]) && !(i > 1 && g[i] == g[1])) miss++;
+    if (gni > 0 && !gtrip_batch_open(use5, fx, vp, uvso, cmul, cadd, zmix, ct, g)) {
+        if (pal_n) { /* count a palette overflow only when the matrices do not fit */
+            unsigned miss = 0;
+            for (int i = 0; i < 3; i++) {
+                unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g[i]) break;
+                if (k == pal_n && !(i > 0 && g[i] == g[0]) && !(i > 1 && g[i] == g[1])) miss++;
+            }
+            if (pal_n + miss > (use5 ? GPAL5 : GPAL)) gv_palflush++;
         }
-        if (pal_n + miss > (use5 ? GPAL5 : GPAL)) { gv_palflush++; flush(); }
+        flush();
     }
     if (gni == 0) {
         memcpy(g_uvso, uvso, sizeof(g_uvso));
