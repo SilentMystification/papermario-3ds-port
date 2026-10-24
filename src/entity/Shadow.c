@@ -48,6 +48,7 @@ Gfx Entity_Shadow_LoadTexCircle[] = {
     gsSPDisplayList(Entity_Shadow_GfxCommon),
     gsDPSetTextureLUT(G_TT_NONE),
     gsDPLoadTextureTile_4b(D_802E91F0, G_IM_FMT_I, 16, 16, 0, 0, 15, 15, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD),
+    gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW),
     gsSPEndDisplayList(),
 };
 
