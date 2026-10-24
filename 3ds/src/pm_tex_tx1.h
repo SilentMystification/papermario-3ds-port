@@ -116,7 +116,7 @@ static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, unsigned src_fmt, unsigne
                     for (int c = 0; c < 8; c++) {
                         int sx = (int)xs[c];
                         unsigned nib = (unsigned)tx1_n4(src, rb + sx, sx);
-                        d[mo[c]] = (u8)((nib << 4) | 0x0fu);
+                        d[mo[c]] = (u8)((0x0fu << 4) | (nib & 0x0fu));
                     }
                 }
             }
