@@ -3130,7 +3130,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
                 else if (src && tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
                 else if (src && l1v) {
-                    src += (size_t)l1y * (size_t)l1stride + (size_t)l1x;
+                    /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32). */
+                    src += (size_t)(ult >> 2) * (size_t)l1stride + (size_t)(uls >> 2);
                     stride = l1stride * 2;
                 }
                 if (src && w > 0 && h > 0) {
