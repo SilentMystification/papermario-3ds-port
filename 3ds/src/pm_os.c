@@ -246,8 +246,8 @@ int pm_rom_init(void) {
     /* M01: keep only the ranges in pm_rom_keep, packed back to back. Offsets the game uses stay the original ones. */
     int can_pack = sz == (long)PM_ROM_FULL && !pm_debug_has("romfull");
     unsigned need = can_pack ? PM_ROM_PACKED : (unsigned)sz;
-    /* ROMFIT: leave 3.5MB of the heap for the game (build 1011: 4MB left a cap 38KB under the packed image). */
-    unsigned leave = 3584u * 1024u;
+    /* ROMFIT: heap left for the game after packed ROM alloc (3584KB was 94KB short of PM_ROM_PACKED on O3DS). */
+    unsigned leave = 3458u * 1024u;
     unsigned heap = pm_heap_bytes();
     unsigned cap = heap > leave ? heap - leave : 0;
     if (sz > 0 && need > cap) pm_log_e("ROM does not fit: need %u KB cap %u KB, streaming from the SD card", need >> 10, cap >> 10);
