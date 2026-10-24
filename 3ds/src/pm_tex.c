@@ -20,8 +20,6 @@ static u8* tx1_chk; /* switch tx1check: the new result, compared with the old pa
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
 #define SLOTS 512
 #define BUDGET (1536u * 1024u) /* VRAM hot set (was 4 MB + 768 KB linear slab) */
-#define MAX_DIM 512
-
 typedef struct {
     const void* img;
     const void* tlut;
@@ -256,7 +254,7 @@ void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt)
 
 static int pot_at_least_8(int n) {
     int p = 8;
-    while (p < n && p < MAX_DIM) p <<= 1;
+    while (p < n) p <<= 1;
     return p;
 }
 
@@ -419,7 +417,6 @@ static void addr_sub(const void* p) {
 static u8* slab; static unsigned slab_n; /* slab_n: extents in use */
 static struct { unsigned off, len; } slab_ext[SLAB_EXT];
 static struct { u8* p; unsigned len; } pend[PEND_N]; static int pend_n;
-static C3D_Tex slab_proto[16];
 static unsigned fl1_srchash(const void* img, int w, int h, int stride, unsigned siz) { if (siz != 2) return 0; unsigned x = 2166136261u; const u8* q = (const u8*)img; for (int y = 0; y < h; y++) for (int i = 0; i < w * 2; i++) x = (x ^ q[y * stride * 2 + i]) * 16777619u; return x; }
 static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
 static int fl1_on(void) { return slab != NULL; }
@@ -436,6 +433,16 @@ static void slab_init(void) {
         pm_log_e("texcache VRAM %uKB failed (vram free %uKB)", SLAB_BYTES >> 10, free0 >> 10);
 }
 static unsigned slab_size(unsigned bytes) { bytes = (bytes + 127u) & ~127u; return bytes < 512u ? 512u : bytes; } /* the GPU reads whole 8 x 8 tiles */
+/* VRAM slab span for a pw x ph GPU texture (citro3d size, not a clipped 8x8 header). */
+static unsigned tex_slab_reserve(int pw, int ph, GPU_TEXCOLOR gf, unsigned tex_bytes) {
+    C3D_Tex t;
+    unsigned r = tex_bytes;
+    if (C3D_TexInit(&t, (u16)pw, (u16)ph, gf)) {
+        if (t.size > r) r = t.size;
+        C3D_TexDelete(&t);
+    }
+    return slab_size(r);
+}
 static u8* slab_alloc(unsigned bytes0) {
     unsigned bytes = slab_size(bytes0);
     int best = -1;
@@ -874,14 +881,6 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (mw && stride < mw) stride = mw; /* the source row is the mask width, not the tile width */
         else if (!mw && stride < width) stride = width;
     } else if (stride < width) stride = width;
-    if (width > MAX_DIM || height > MAX_DIM) {
-        static int once;
-        if (!once) {
-            once = 1;
-            pm_log_w("tex %dx%d skipped\n", width, height);
-        }
-        return 0;
-    }
     unsigned phash = 0;
     if (fmt == FMT_CI && tlut) {
         phash = 2166136261u;
@@ -1002,12 +1001,13 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (!expand_dual((const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph)) return 0;
     } else if (!native_tex && !expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf))
         return 0;
-    unsigned bytes = tex_gpu_bytes(pw, ph, gf);
+    unsigned tex_bytes = tex_gpu_bytes(pw, ph, gf);
+    unsigned reserve = tex_slab_reserve(pw, ph, gf, tex_bytes);
     unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8 || gf == GPU_LA4) ? 1u : (gf == GPU_L4) ? 1u : 2u;
     int slot = -1;
     for (;;) {
         for (int i = 0; i < SLOTS; i++) if (!slots[i].live) { slot = i; break; }
-        if (slot >= 0 && used + bytes <= BUDGET) break;
+        if (slot >= 0 && used + reserve <= BUDGET) break;
         if (!evict_oldest_done()) {
             static int once;
             fail_last = 1;
@@ -1033,14 +1033,23 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
         return 0;
     }
-    { /* image in the VRAM pool; header template per format */
-        u8* sp = slab_alloc(bytes);
+    { /* image in the VRAM pool; C3D_Tex sized pw x ph (not an 8x8 prototype) */
+        C3D_Tex tex_init;
+        if (!C3D_TexInit(&tex_init, (u16)pw, (u16)ph, gf)) {
+            fail_last = 1;
+            fail_n++;
+            return 0;
+        }
+        u8* init_vram = (u8*)tex_init.data;
+        u8* sp = slab_alloc(reserve);
         while (!sp && evict_oldest_done()) {
             static int nev;
-            if (nev++ < 8) pm_log_w("texcache VRAM full for %u bytes (used %u), evicted one texture", bytes, used);
-            sp = slab_alloc(bytes);
+            if (nev++ < 8) pm_log_w("texcache VRAM full for %u bytes (used %u), evicted one texture", reserve, used);
+            sp = slab_alloc(reserve);
         }
         if (!sp) {
+            tex_init.data = init_vram;
+            C3D_TexDelete(&tex_init);
             static int once;
             fail_last = 1;
             fail_n++;
@@ -1050,20 +1059,14 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             }
             return 0;
         }
-        if (!slab_proto[gf].data) {
-            if (!C3D_TexInit(&slab_proto[gf], 8, 8, gf)) {
-                slab_free(sp, bytes);
-                fail_last = 1;
-                fail_n++;
-                return 0;
-            }
-        }
-        s->tex = slab_proto[gf];
+        s->tex = tex_init;
         s->tex.data = sp;
         s->tex_vram_ptr = sp;
         s->tex.width = (u16)pw;
         s->tex.height = (u16)ph;
-        s->tex.size = bytes;
+        s->tex.size = reserve;
+        tex_init.data = init_vram;
+        C3D_TexDelete(&tex_init);
         s->slab = 1;
     }
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
@@ -1156,22 +1159,23 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         staged = (const u8*)upload;
     }
     if (s->vram_stage) linearFree(s->vram_stage);
-    s->vram_stage = (u8*)linearAlloc(bytes);
+    s->vram_stage = (u8*)linearAlloc(reserve);
     if (!s->vram_stage) {
         fail_last = 1;
         fail_n++;
         return 0;
     }
-    memcpy(s->vram_stage, staged, bytes);
-    pend_add(s->vram_stage, bytes);
-    s->bytes = bytes;
-    slot_tex_lin_build(s, gf, pw, ph, bytes);
+    if (reserve > tex_bytes) memset(s->vram_stage, 0, reserve);
+    memcpy(s->vram_stage, staged, tex_bytes);
+    pend_add(s->vram_stage, reserve);
+    s->bytes = reserve;
+    slot_tex_lin_build(s, gf, pw, ph, reserve);
     s->vram_up = 1;
-    if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < bytes; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, bytes, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
-    if (tx1_chkon && memcmp(tx1_chk, s->vram_stage, bytes) != 0) {
+    if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < reserve; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, reserve, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
+    if (tx1_chkon && memcmp(tx1_chk, s->vram_stage, tex_bytes) != 0) {
         if (tx1_mismatch++ < 8) pm_log_w("tx1check: bytes differ fmt %u siz %u %dx%d stride %d lut %d", fmt, siz, width, height, stride, lut != NULL);
     }
-    if (tx1_t0) { tx1_miss++; tx1_kb += bytes >> 10; tx1_ticks += pm_ticks() - tx1_t0; }
+    if (tx1_t0) { tx1_miss++; tx1_kb += reserve >> 10; tx1_ticks += pm_ticks() - tx1_t0; }
     s->img = img;
     s->tlut = tlut;
     addr_add(img);
@@ -1183,19 +1187,18 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     s->h = height;
     s->stride = stride;
     s->dkey = dkey;
-    s->bytes = bytes;
-    PH_ADD(C_TEXBYTE, bytes >> 10);
+    PH_ADD(C_TEXBYTE, reserve >> 10);
     s->stamp = ++stamp;
     s->epoch = epoch;
     s->uses = 0;
     s->last_frame = tc_frame;
     tc_miss++;
-    tc_up_bytes += bytes;
-    frame_bytes += bytes;
+    tc_up_bytes += reserve;
+    frame_bytes += reserve;
     if (frame_bytes > map_wmax) map_wmax = frame_bytes;
     s->live = 1;
     if (slot >= slot_hi) slot_hi = slot + 1;
-    used += bytes;
+    used += reserve;
     if (used > used_peak) used_peak = used;
     if (used > map_peak) map_peak = used;
     cur = slot;
