@@ -88,7 +88,7 @@ void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, i
 int pm_tex_i8(int aux) {
     if (aux) return aux_off >= 0 && aux_off < offt_n && offt[aux_off].siz == 1;
     if (have && off_cur >= 0 && off_cur < offt_n && offt[off_cur].siz == 1) return 1;
-    return have && off_cur < 0 && cur >= 0 && cur < slot_hi && slots[cur].live && slots[cur].fmt == FMT_I;
+    return have && off_cur < 0 && cur >= 0 && cur < slot_hi && slots[cur].live && slots[cur].fmt == FMT_I && slots[cur].siz == SIZ_8;
 }
 int pm_tex_off_idx(void) { return (have && off_cur >= 0) ? off_cur : -1; }
 int pm_tex_cur_idx(void) { return (have && off_cur < 0 && cur >= 0) ? cur : -1; }
