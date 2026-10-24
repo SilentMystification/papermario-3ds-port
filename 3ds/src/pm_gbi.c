@@ -2303,8 +2303,8 @@ static void ensure_tile(int n) {
         int ox, oy, gox, goy;
         pm_tex_origin(&ox, &oy);
         pm_tex_glyph_ofs(&gox, &goy);
-        tile_x0 = td[n].x0 - ox + (n == 0 ? gox : 0);
-        tile_y0 = td[n].y0 - oy + (n == 0 ? goy : 0);
+        tile_x0 = td[n].x0 - ox - (n == 0 ? gox : 0);
+        tile_y0 = td[n].y0 - oy - (n == 0 ? goy : 0);
         if (n == 0) {
             tsz_last.ox = ox - gox;
             tsz_last.oy = oy - goy;
