@@ -1232,7 +1232,7 @@ typedef struct { float uvso[4], vp[4], cm[4], ca[4], zm[2]; int boost; PmFx fx; 
 static void gv_params_calc(unsigned tss, GvP* o) {
     int env = comb_mode5 && !plan_active;
     int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
-    int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
+    int a255 = !plan_active && !plan && !comb_alpha_shade;
     int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
     int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL));
     int tw = 1, th = 1;
