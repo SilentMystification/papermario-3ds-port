@@ -2469,6 +2469,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         switch (op) {
         case G_ENDDL:
             if (pdl0_on()) pdl0_gl_leave();
+            if (pdl_comp_done(&sp, &pc)) break;
             if (sp == 0) {
                 if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
                 dd_end();
@@ -2497,6 +2498,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
             }
+            if (pdl_compile_one && pdl_comp_sp < 0) pdl_comp_arm(sp, ((w0 >> 16) & 0xff) == G_DL_NOPUSH);
             if (!pdl_compile_one && dlc_enabled() && pdl_try_m(next)) {
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;

@@ -650,15 +650,18 @@ static void pdl_cur_put(u32 addr, u32 state_in, u32 exit_h) {
     }
 }
 
+static GbiState pdl0_gl_enter_st;
+static GbiState pdl0_gl_leave_st;
+
 static void pdl0_gl_enter(const Gfx* l) {
     if (!l || !is_host((u32)l)) return;
     if (!dls_rd_lo) dls_init_ranges();
     unsigned c = dls_class((u32)l);
     if (c != 2 && c != 3) return;
     if (!pdl_kind_s(l)) return;
-    GbiState st; gbi_state_get(&st);
+    gbi_state_get(&pdl0_gl_enter_st);
     unsigned rs = pdl_readset_of(l);
-    u32 sin = gbi_state_in_hash(&st, rs);
+    u32 sin = gbi_state_in_hash(&pdl0_gl_enter_st, rs);
     unsigned rss = 0;
     for (unsigned b = rs; b; b &= b - 1u) rss++;
     if (pdl_sp < 12) { pdl_stk[pdl_sp].addr = (u32)l; pdl_stk[pdl_sp].state_in = sin; pdl_sp++; }
@@ -669,8 +672,8 @@ static void pdl0_gl_leave(void) {
     if (!pdl_sp) return;
     u32 addr = pdl_stk[pdl_sp - 1].addr, sin = pdl_stk[pdl_sp - 1].state_in;
     pdl_sp--;
-    GbiState st; gbi_state_get(&st);
-    u32 ex = gbi_state_hash(&st);
+    gbi_state_get(&pdl0_gl_leave_st);
+    u32 ex = gbi_state_hash(&pdl0_gl_leave_st);
     if (pdl_prv_hit(addr, sin, ex)) pdl0_c.rep_ok++;
     pdl_cur_put(addr, sin, ex);
     unsigned j;
@@ -817,16 +820,19 @@ static int pdl_lazy_tile(int n) {
 static GbiState pdl_comp_gbi_st;
 static GbiState pdl_try_gbi_st;
 static GbiState pdl_try_gbi_chk;
+static PdlEnt* pdl_comp_ent;
+static const Gfx* pdl_comp_list;
+static int pdl_comp_sp;
+static int pdl_comp_nopush;
 
-static void pdl_compile_ent(PdlEnt* e, const Gfx* l) {
-    e->nops = pdl_nops(l);
-    gbi_state_get(&pdl_comp_gbi_st);
-    e->state_in = gbi_state_in_hash(&pdl_comp_gbi_st, pdl_readset_of(l));
-    pdl_compile_one = 1;
-    pdl_depth++;
-    pm_gbi_run((void*)l, e->nops * 8u);
+static void pdl_compile_finish(void) {
+    PdlEnt* e = pdl_comp_ent;
+    if (!e) return;
     pdl_depth--;
     pdl_compile_one = 0;
+    pdl_comp_ent = NULL;
+    pdl_comp_list = NULL;
+    pdl_comp_sp = -1;
     gbi_state_get(&e->exit);
     if (pm_tex_off_idx() >= 0) {
         e->tex_slot = PDL_TEX_OFF;
@@ -839,6 +845,39 @@ static void pdl_compile_ent(PdlEnt* e, const Gfx* l) {
     gv_epoch_enter();
     e->pso_id = (u16)pdl_pso_capture();
     pdl_c.comp++;
+}
+
+static void pdl_compile_begin(PdlEnt* e, const Gfx* l) {
+    e->nops = pdl_nops(l);
+    gbi_state_get(&pdl_comp_gbi_st);
+    e->state_in = gbi_state_in_hash(&pdl_comp_gbi_st, pdl_readset_of(l));
+    pdl_compile_one = 1;
+    pdl_depth++;
+    pdl_comp_ent = e;
+    pdl_comp_list = l;
+    pdl_comp_sp = -1;
+    pdl_comp_nopush = 0;
+}
+
+static void pdl_comp_arm(int sp, int nopush) {
+    if (!pdl_compile_one || !pdl_comp_ent) return;
+    pdl_comp_sp = sp;
+    pdl_comp_nopush = nopush;
+}
+
+static int pdl_comp_done(int* sp, Gfx** pc) {
+    if (!pdl_compile_one || !pdl_comp_ent || !pdl_comp_list || pdl_comp_sp < 0) return 0;
+    Gfx* endl = (*pc) - 1;
+    const Gfx* l = pdl_comp_list;
+    unsigned n = pdl_comp_ent->nops;
+    if (endl < l || endl >= l + n || (endl->words.w0 >> 24) != G_ENDDL) return 0;
+    if (pdl_comp_nopush) {
+        pdl_compile_finish();
+        *pc = (Gfx*)dlc_end;
+        return 1;
+    }
+    if (*sp == pdl_comp_sp + 1) pdl_compile_finish();
+    return 0;
 }
 
 static int pdl_try(const Gfx* l) {
@@ -855,7 +894,8 @@ static int pdl_try(const Gfx* l) {
     if (!e->nops || e->refused || e->heap_gen != hgen || e->state_in != sin) {
         e->heap_gen = hgen; e->refused = 0;
         if (pdl_refuse_ops(l)) { e->refused = 1; pdl_c.refuse++; return 0; }
-        pdl_compile_ent(e, l);
+        pdl_compile_begin(e, l);
+        return 0;
     } else pdl_c.hit++;
     gbi_state_apply(&e->exit);
     if (pdlchk_on()) {
@@ -1248,6 +1288,7 @@ static int pdl_tpl_gdl(Gfx** pc, Gfx* stack[12], int* sp, const Gfx* list_end) {
         if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) *pc = (Gfx*)dlc_end;
         return 1;
     }
+    if (pdl_compile_one && pdl_comp_sp < 0) pdl_comp_arm(*sp, ((w0 >> 16) & 0xff) == G_DL_NOPUSH);
     if (!pdl_compile_one && dlc_on && pdl_try_m(next)) {
         if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) *pc = (Gfx*)dlc_end;
         return 1;
