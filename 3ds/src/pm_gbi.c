@@ -532,7 +532,16 @@ static void box_fold_sync(void) {
  * cut away near-transparent texels. */
 static unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
 static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
+static unsigned sr_sig;
+static int sr_ok;
 static void sync_render(void) {
+    unsigned sg = omode_l ^ (omode_h * 2654435761u) ^ geom ^ (unsigned)img_role(0) ^ (unsigned)PMD("rmoff");
+    if (sr_ok && sg == sr_sig) {
+        GP_SET(6, 1);
+        return;
+    }
+    sr_sig = sg;
+    sr_ok = 1;
     GP_SET(6, 0);
     unsigned m = omode_l;
     /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog
@@ -705,19 +714,6 @@ static void xform_vtx(const float* p, const float* st, unsigned c, ClipV* o) {
     o->a = (float)(c & 255u);
 }
 
-static void lerp_clip(ClipV* o, const ClipV* a, const ClipV* b, float t) {
-    o->x = a->x + (b->x - a->x) * t;
-    o->y = a->y + (b->y - a->y) * t;
-    o->z = a->z + (b->z - a->z) * t;
-    o->w = a->w + (b->w - a->w) * t;
-    o->u = a->u + (b->u - a->u) * t;
-    o->v = a->v + (b->v - a->v) * t;
-    o->r = a->r + (b->r - a->r) * t;
-    o->g = a->g + (b->g - a->g) * t;
-    o->b = a->b + (b->b - a->b) * t;
-    o->a = a->a + (b->a - a->a) * t;
-}
-
 /* Cut only corners that passed behind the eye. A corner that is merely off the
  * side of the screen keeps its projected position, so a pan cannot swap the
  * triangle for a different polygon. */
@@ -749,37 +745,6 @@ static int fold_axis(int plo, float width, float a0, float a1, float mw, int fli
     }
     return n;
 }
-static int clip_near_k(ClipV* poly, int n, int zplane) {
-    ClipV tmp[12];
-    int m = 0;
-    int i;
-    if (n < 3) return 0;
-    for (i = 0; i < n; i++) {
-        ClipV* cur = &poly[i];
-        ClipV* prev = &poly[(i + n - 1) % n];
-        float dc = zplane ? cur->z + cur->w : cur->w - 0.05f;
-        float dp = zplane ? prev->z + prev->w : prev->w - 0.05f;
-        int ic = dc >= 0.f;
-        int ip = dp >= 0.f;
-        if (ic != ip && m < 12) {
-            float denom = dp - dc;
-            float t = (denom != 0.f) ? dp / denom : -1.f;
-            if (t >= 0.f && t <= 1.f) lerp_clip(&tmp[m++], prev, cur, t);
-        }
-        if (ic && m < 12) tmp[m++] = *cur;
-    }
-    for (i = 0; i < m; i++) poly[i] = tmp[i];
-    return m;
-}
-/* V27: clip at the true near plane (z >= -w, as the RSP does) when a corner is close to the eye, then at w > 0.05. Clipping only at w > 0.05 left corners with a
- * tiny w, whose screen coordinates are huge (box -145558 to 21692 in the Sushie dive water plane) and the GPU rasteriser mis-draws them. */
-static int clip_near(ClipV* poly, int n) {
-    int i, close = 0;
-    for (i = 0; i < n; i++) if (poly[i].w < 1.f && poly[i].z + poly[i].w < 0.f) close = 1;
-    if (close) { n = clip_near_k(poly, n, 1); if (n < 3) return 0; }
-    return clip_near_k(poly, n, 0);
-}
-
 /* Same bits as libultraship, except the near plane, which they leave commented out.
  * A triangle is dropped only when every corner is off the same side. */
 static int clip_bits(const ClipV* p) {
@@ -1035,7 +1000,7 @@ static void sync_combine(void) {
         for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
         if (sc_ok && sg == sc_sig) { GP_SET(5, 1); return; }
         sc_sig = sg; sg_in = sg;
-        sc_ok = 0; /* set again below when the work is done */
+        sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
     }
     int leg0 = leg_mode, pat0 = box_pat;
     { ScMemo* m = scm_find(sg_in); if (m) scm_replay(m); else { sync_combine_work(); scm_store(sg_in); } }
@@ -1701,6 +1666,7 @@ static void gbi_state_apply(const GbiState* s) {
     cimg = s->cimg; cimg_stride = s->cimg_stride; cimg_siz = s->cimg_siz; cimg_zero = s->cimg_zero;
     zcol = s->zcol; zslot_on = s->zslot_on;
     sc_ok = 0;
+    sr_ok = 0;
 }
 
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
@@ -1742,10 +1708,11 @@ static void draw_tri(unsigned w) {
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
-        for (i = 0; i < 3; i++) gv_xf(idx[i]);
     }
     int early = 0; /* PO3b2, DIP1: reject and cull from the clip positions of PO2 and the clip bits made at G_VTX, before the statistics, ensure_tile, dual_bind and any ClipV. Same tests and counters as before except the debug statistics (tris lit fog), which now count the triangles that pass. */
     if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
+        for (i = 0; i < 3; i++)
+            if ((vert_gvf[idx[i]] & 1) == 0) gv_xf(idx[i]);
         const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
         early = 1;
         st_cor += 3;
@@ -1790,6 +1757,7 @@ static void draw_tri(unsigned w) {
     GP_LAP(GPL_EARLY);
     for (i = 0; i < 3; i++) {
         if (!early) st_cor++;
+        if (vert_gvf[idx[i]] != 3) gv_xf(idx[i]);
         xform_vtx(vert_p[idx[i]], tex_on ? vert_st[idx[i]] : st_off, vert_c[idx[i]], &poly[i]);
         if (!tex_on) { /* H06b1: texel (0, 0), the centre of the first texel */
             int tw, th;
@@ -1839,17 +1807,9 @@ static void draw_tri(unsigned w) {
                 n_keep++;
         }
     }
-    if (poly[0].w > 0.05f && poly[1].w > 0.05f && poly[2].w > 0.05f) {
-        gp3_t0_surv(); n_in++;
-        n = 3;
-    } else {
-        n = clip_near(poly, 3);
-        if (n < 3) {
-            n_drop++;
-            return;
-        }
-        gp3_t0_surv(); n_cut++;
-    }
+    gp3_t0_surv();
+    n_in++;
+    n = 3;
     if ((rmlog_on() && (rm_frame % 30) == 1) || xt_on()) {
         static unsigned lo, lg, la, lb, lc, ld, lh, lp, lf;
         if (lo != omode_l || lg != (geom & G_ZBUFFER) || la != comb_a || lb != comb_b || lc != comb_c || ld != comb_d ||
@@ -1960,13 +1920,9 @@ static void draw_tri(unsigned w) {
 no_boost:
     GP_LAP(GPL_OLD);
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
-    for (i = 1; i < n - 1; i++) {
-        if (!(poly[0].w > 0.05f && poly[i].w > 0.05f && poly[i + 1].w > 0.05f)) continue;
-        pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
-        pm_gpu_vert_clip(poly[i].x, poly[i].y, poly[i].z, poly[i].w, poly[i].u, poly[i].v, pack_color(&poly[i]));
-        pm_gpu_vert_clip(poly[i + 1].x, poly[i + 1].y, poly[i + 1].z, poly[i + 1].w,
-                         poly[i + 1].u, poly[i + 1].v, pack_color(&poly[i + 1]));
-    }
+    pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
+    pm_gpu_vert_clip(poly[1].x, poly[1].y, poly[1].z, poly[1].w, poly[1].u, poly[1].v, pack_color(&poly[1]));
+    pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
 }
 
 /* PT42 diagnostic, switch mtxlog: the matrix of every G_MTX and the matrix table slot of every vertex load, at most 50 lines per 30 frames. One flag test when off. */
@@ -2292,9 +2248,14 @@ static int load_shaded_sprite(int dx4, int dy4) {
 }
 
 /* Bind the texture of tile n (0 or 1) for the next draw. */
+static const void* ens_img[2];
 static void ensure_tile(int n) {
     if (n == 0 && pdl_lazy_tile(0)) return;
     if (n == cur_tile || !td[n].valid) return;
+    if (ens_img[n] == td[n].src && pm_tex_cur_idx() >= 0) {
+        cur_tile = n;
+        return;
+    }
     pm_gpu_flush();
     pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
     if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w, td[n].h);
@@ -2314,6 +2275,7 @@ static void ensure_tile(int n) {
     }
     tile_fx = (float)(tile_sz[n][0] & 3) * 0.25f; /* PT38 */
     tile_fy = (float)(tile_sz[n][1] & 3) * 0.25f;
+    ens_img[n] = td[n].src;
     cur_tile = n;
 }
 
@@ -2370,7 +2332,7 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     int cx0 = X0 < 0 ? 0 : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > 320 ? 320 : X1, cy1 = Y1 > 240 ? 240 : Y1;
     pm_gpu_flush();
     pm_gpu_set_combine(5);
-    sc_ok = 0; /* DIP2: pm_gpu holds a combine mode sync_combine did not set */
+    sc_ok = 0; sr_ok = 0; /* DIP2: pm_gpu holds a combine mode sync_combine did not set */
     for (int ys = cy0; ys < cy1; ys += 128) {
         for (int xs = cx0; xs < cx1; xs += 128) {
             int cw = cx1 - xs < 128 ? cx1 - xs : 128, ch = cy1 - ys < 128 ? cy1 - ys : 128;
@@ -2431,7 +2393,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     unsigned guard = 0;
     u32 pc_lo = 0, pc_hi = 0;
     gp_prev_op = -1; /* PG4: the time between two lists is not an op cost */
-    sc_ok = 0; /* DIP2: a new display list starts with a full sync */
+    sc_ok = 0; sr_ok = 0; /* DIP2: a new display list starts with a full sync */
     if (!pc) return;
     dd_end();
     if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }

@@ -1009,14 +1009,14 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     int native_tex = (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4);
     unsigned bpp0 = (gf == GPU_RGBA8) ? 4u : native_tex ? 1u : 2u;
     unsigned tex_bytes_need = tex_gpu_bytes(pw, ph, gf);
-    int tx1 = !tb_use && !tr && !tb_mode && tex_bytes_need <= TEX_SCRATCH_PLANE && pw <= TX1_MAXD && ph <= TX1_MAXD;
+    int tx1 = !tb_use && tex_bytes_need <= TEX_SCRATCH_PLANE && pw <= TX1_MAXD && ph <= TX1_MAXD;
     int tx1_chkon = tx1 && PMDL("tx1check");
     if (tx1_chkon && !tx1_chk) { tx1_chk = (u8*)malloc(512 * 1024); if (!tx1_chk) { tx1 = 0; tx1_chkon = 0; } }
     unsigned tx1_t0 = tc_on > 0 ? pm_ticks() : 0;
     if (tb_use) {
         /* the bytes are in the second scratch half already */
     } else if (tx1 && !tx1_chkon && (dkey & 0xFF000000u) != 0xC7000000u) {
-        /* TX1: decoded after the texture exists */
+        /* TX1: Morton-tiled upload buffer filled below, no linear expand */
     } else if ((dkey & 0xFF000000u) == 0xC7000000u) {
         const GlyphSheet* gs = NULL;
         unsigned k;

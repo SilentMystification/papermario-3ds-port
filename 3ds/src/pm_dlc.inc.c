@@ -811,7 +811,7 @@ static int pdl_lazy_tile(int n) {
     if (n != 0) return 0;
     if (td[0].valid) return 0; /* SETTILESIZE/GP3: pm_tex_load from td[0], not a stale PDL cache slot */
     if (pdl_tex_slot == PDL_TEX_OFF) {
-        pm_gpu_flush();
+        if (pm_tex_cur_idx() < 0) pm_gpu_flush();
         if (!pm_tex_bind()) return 0;
         cur_tile = 0;
         pdl_tex_slot = -1;
@@ -819,7 +819,7 @@ static int pdl_lazy_tile(int n) {
     }
     if (pdl_tex_slot < 0) return 0;
     if (pm_tex_slot_gen(pdl_tex_slot) != pdl_tex_gen) { pdl_tex_slot = -1; pdl_c.texbad++; return 0; }
-    pm_gpu_flush();
+    if (pm_tex_cur_idx() != pdl_tex_slot) pm_gpu_flush();
     if (!pm_tex_bind_slot(pdl_tex_slot)) return 0;
     cur_tile = 0;
     pdl_tex_slot = -1;
@@ -912,6 +912,7 @@ static int pdl_try(const Gfx* l) {
     gbi_state_apply(&e->exit);
     comb_w0 = e->exit.comb_w0;
     comb_w1 = e->exit.comb_w1;
+    sync_combine();
     if (pdlchk_on()) {
         gbi_state_get(&pdl_try_gbi_chk);
         if (gbi_state_hash(&pdl_try_gbi_chk) != gbi_state_hash(&e->exit)) pdl_c.exitbad++;
