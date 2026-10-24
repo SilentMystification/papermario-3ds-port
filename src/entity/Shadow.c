@@ -61,6 +61,7 @@ Gfx Entity_RenderSquareShadow[] = {
 
 Gfx Entity_RenderCircularShadow[] = {
     gsSPDisplayList(Entity_Shadow_LoadTexCircle),
+    gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW),
     gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
     gsSPVertex(D_802E9270, 4, 0),
     gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
