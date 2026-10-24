@@ -808,13 +808,17 @@ void spr_init_sprites(s32 playerSpriteSet) {
 
     loadedFlags = (&PlayerSpriteSets[playerSpriteSet])->initiallyLoaded;
 #ifdef TARGET_3DS
-    { extern void pm_log(const char*, ...); pm_log("sprite: player sprite set %d loaded flags %x story %d", (int)playerSpriteSet, (unsigned)loadedFlags, (int)evt_get_variable(NULL, GB_StoryProgress)); } /* PT33 diagnostic */
+    { extern void pm_log(const char*, ...); pm_log("sprite: player sprite set %d loaded flags %x story %d", (int)playerSpriteSet, (unsigned)loadedFlags, (int)evt_get_variable(NULL, GB_StoryProgress)); }
+    { extern void pm_log_w(const char*, ...); pm_log_w("trace spr_init_player_raster_cache"); }
 #endif
     spr_init_player_raster_cache((&PlayerSpriteSets[playerSpriteSet])->cacheSize,
                   (&PlayerSpriteSets[playerSpriteSet])->rasterSize);
 
     for (i = 1; i <= SPR_Peach3; i++) {
         if ((loadedFlags >> i) & 1) {
+#ifdef TARGET_3DS
+            { extern void pm_log_w(const char*, ...); pm_log_w("trace spr_load_player_sprite %d", (int)i); }
+#endif
             spr_load_player_sprite(i);
         }
     }
@@ -838,6 +842,9 @@ void spr_init_sprites(s32 playerSpriteSet) {
     }
 
     spr_init_quad_cache();
+#ifdef TARGET_3DS
+    { extern void pm_log_w(const char*, ...); pm_log_w("trace spr_init_sprites done"); }
+#endif
 }
 
 void spr_render_init(void) {

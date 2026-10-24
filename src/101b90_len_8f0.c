@@ -285,7 +285,13 @@ void spr_init_player_raster_cache(s32 cacheSize, s32 maxRasterSize) {
     void* raster;
     s32 i;
 
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("raster cache enter size %d max %d", (int)cacheSize, (int)maxRasterSize); }
+#endif
     nuPiReadRom(SPRITE_ROM_START, &SpriteDataHeader, sizeof(SpriteDataHeader));
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("raster cache header read"); }
+#endif
     SpriteDataHeader[0] = spr_be32(&SpriteDataHeader[0]);
     SpriteDataHeader[1] = spr_be32(&SpriteDataHeader[1]);
     SpriteDataHeader[2] = spr_be32(&SpriteDataHeader[2]);
@@ -294,7 +300,13 @@ void spr_init_player_raster_cache(s32 cacheSize, s32 maxRasterSize) {
     SpriteDataHeader[0] += SPRITE_ROM_START;
     SpriteDataHeader[1] += SPRITE_ROM_START;
     SpriteDataHeader[2] += SPRITE_ROM_START;
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("raster cache malloc %d", (int)(maxRasterSize * cacheSize)); }
+#endif
     raster = _heap_malloc(&heap_spriteHead, maxRasterSize * cacheSize);
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("raster cache malloc done %p", raster); }
+#endif
 
     for (i = 0; i < ARRAY_COUNT(PlayerRasterCache); i++) {
         PlayerRasterCache[i].raster = raster;
@@ -308,17 +320,29 @@ void spr_init_player_raster_cache(s32 cacheSize, s32 maxRasterSize) {
         PlayerRasterLoadDescBeginSpriteIndex[i] = 0;
     }
     PlayerRasterLoadDescNumLoaded = 0;
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("raster cache desc read"); }
+#endif
     nuPiReadRom(SpriteDataHeader[0], &PlayerRasterHeader, sizeof(PlayerRasterHeader));
     PlayerRasterHeader.indexRanges = spr_be32(&PlayerRasterHeader.indexRanges);
     PlayerRasterHeader.loadDescriptors = spr_be32(&PlayerRasterHeader.loadDescriptors);
     PlayerRasterHeader.imageData = spr_be32(&PlayerRasterHeader.imageData);
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("raster cache sets read %u", (unsigned)sizeof(PlayerSpriteRasterSets)); }
+#endif
     nuPiReadRom(SpriteDataHeader[0] + PlayerRasterHeader.indexRanges, PlayerSpriteRasterSets, sizeof(PlayerSpriteRasterSets));
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("raster cache sets done"); }
+#endif
     {
         s32 n;
         for (n = 0; n < (s32)ARRAY_COUNT(PlayerSpriteRasterSets); n++) {
             PlayerSpriteRasterSets[n] = spr_be32(&PlayerSpriteRasterSets[n]);
         }
     }
+#ifdef TARGET_3DS
+    { extern void pm_log(const char*, ...); pm_log("raster cache exit"); }
+#endif
 }
 
 IMG_PTR spr_get_player_raster(s32 rasterIndex, s32 playerSpriteID) {

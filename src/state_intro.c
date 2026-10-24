@@ -212,9 +212,13 @@ void state_step_intro(void) {
             }
 
             playerData->curPartner = PARTNER_NONE;
+#ifdef TARGET_3DS
+            { extern void pm_log_w(const char*, ...); pm_log_w("trace load_map_by_IDs"); }
+#endif
             load_map_by_IDs(gGameStatusPtr->areaID, gGameStatusPtr->mapID, LOAD_FROM_MAP);
-            /* hos_04 and later have no script linked yet. The retail flow
-             * would keep playing those maps; without a script, go to the title. */
+#ifdef TARGET_3DS
+            { extern void pm_log_w(const char*, ...); pm_log_w("trace does_script_exist"); }
+#endif
             if (!does_script_exist(gGameStatusPtr->mainScriptID)) {
                 /* Run the INTRO_PART_NONE branch above next frame. It clears the model, entity and
                  * script lists before the title screen starts. Without it, wModelList keeps pointers
@@ -224,6 +228,9 @@ void state_step_intro(void) {
                 return;
             }
             gGameStatusPtr->startupState = INTRO_AWAIT_MAIN;
+#ifdef TARGET_3DS
+            { extern void pm_log_w(const char*, ...); pm_log_w("trace disable_player_input"); }
+#endif
             disable_player_input();
             break;
         case INTRO_AWAIT_MAIN:

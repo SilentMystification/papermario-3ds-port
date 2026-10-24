@@ -455,8 +455,16 @@ static void slab_free(void* p, unsigned bytes) {
     if (i + 1 < slab_n && slab_ext[i].off + slab_ext[i].len == slab_ext[i + 1].off) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
 }
 static void pend_flush_one(u8* p, unsigned len) { GSPGPU_FlushDataCache(p, len); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, len >> 10); }
+static int tex_dim_pot(int n) { return n > 0 && (n & (n - 1)) == 0; }
+
 static void upload_vram_slot(Slot* s) {
     if (!s->vram_up || !s->vram_stage || !s->bytes) return;
+    int w = s->w;
+    int h = s->h;
+    if (!tex_dim_pot(w) || !tex_dim_pot(h)) {
+        pm_log_w("texupload skip PICA copy %dx%d", w, h);
+        return;
+    }
     GSPGPU_FlushDataCache(s->vram_stage, s->bytes);
     C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     s->vram_up = 0;

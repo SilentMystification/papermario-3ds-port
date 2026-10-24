@@ -156,10 +156,17 @@ void step_game_loop(void) {
 }
 
 void gfx_task_background(void) {
+#ifdef TARGET_3DS
+    extern int pm_trace_load;
+    if (pm_trace_load) { extern void pm_log_w(const char*, ...); pm_log_w("trace gfx_init_state"); }
+#endif
     gDisplayContext = &D_80164000[gCurrentDisplayContextIndex];
     gMainGfxPos = &gDisplayContext->backgroundGfx[0];
 
     gfx_init_state();
+#ifdef TARGET_3DS
+    if (pm_trace_load) { extern void pm_log_w(const char*, ...); pm_log_w("trace gfx_draw_background"); }
+#endif
     gfx_draw_background();
 
     gDPFullSync(gMainGfxPos++);
@@ -169,8 +176,14 @@ void gfx_task_background(void) {
     ASSERT((s32)((u32)((gMainGfxPos - gDisplayContext->backgroundGfx) << 3) >> 3) < ARRAY_COUNT(
                gDisplayContext->backgroundGfx))
 
+#ifdef TARGET_3DS
+    if (pm_trace_load) { extern void pm_log_w(const char*, ...); pm_log_w("trace nuGfxTaskStart"); }
+#endif
     nuGfxTaskStart(&gDisplayContext->backgroundGfx[0], (u32)(gMainGfxPos - gDisplayContext->backgroundGfx) * 8,
                    NU_GFX_UCODE_F3DEX2, NU_SC_NOSWAPBUFFER);
+#ifdef TARGET_3DS
+    if (pm_trace_load) { extern void pm_log_w(const char*, ...); pm_log_w("trace gfx_task_background done"); pm_trace_load = 0; }
+#endif
 }
 
 extern void pm_interp_open(unsigned a, unsigned b); /* F06-2 */
