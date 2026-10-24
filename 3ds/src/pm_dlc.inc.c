@@ -884,6 +884,9 @@ typedef struct {
 static PdlMEnt* pdl_m_tab[PDL_M_TAB];
 static unsigned pdl_m_nent;
 static struct { unsigned hit, comp, replay, refuse, full; } pdl_m_c;
+static GbiState pdl_m_gbi_st;
+static GbiState pdl_try_m_gbi_st;
+static GbiState pdl_try_m_gbi_chk;
 
 static int pdl_m_state_only(unsigned op) {
     if (op == G_GEOMETRYMODE || op == G_VTX || op == G_TRI1 || op == G_TRI2 || op == G_MTX || op == G_POPMTX) return 0;
@@ -966,9 +969,8 @@ static void pdl_m_compile(PdlMEnt* e, const Gfx* l) {
     pdl_m_free_ins(e);
     e->nops = pdl_nops(l);
     e->content_hash = dls_hash(l);
-    GbiState st0;
-    gbi_state_get(&st0);
-    e->state_in = gbi_state_in_hash(&st0, 0);
+    gbi_state_get(&pdl_m_gbi_st);
+    e->state_in = gbi_state_in_hash(&pdl_m_gbi_st, 0);
     pdl_compile_one = 1;
     unsigned i = 0;
     while (i < e->nops) {
@@ -1013,9 +1015,8 @@ static int pdl_try_m(const Gfx* l) {
     if (!e) return 0;
     u32 hgen = pdl_heap_gen((u32)l);
     u32 hash = dls_hash(l);
-    GbiState st0;
-    gbi_state_get(&st0);
-    u32 sin = gbi_state_in_hash(&st0, 0);
+    gbi_state_get(&pdl_try_m_gbi_st);
+    u32 sin = gbi_state_in_hash(&pdl_try_m_gbi_st, 0);
     if (!e->nins || e->refused || e->heap_gen != hgen || e->state_in != sin || e->content_hash != hash) {
         e->heap_gen = hgen;
         e->refused = 0;
@@ -1038,9 +1039,8 @@ static int pdl_try_m(const Gfx* l) {
     }
     gbi_state_apply(&e->exit);
     if (pdlchk_on()) {
-        GbiState chk;
-        gbi_state_get(&chk);
-        if (gbi_state_hash(&chk) != gbi_state_hash(&e->exit)) pdl_c.exitbad++;
+        gbi_state_get(&pdl_try_m_gbi_chk);
+        if (gbi_state_hash(&pdl_try_m_gbi_chk) != gbi_state_hash(&e->exit)) pdl_c.exitbad++;
     }
     gv_epoch++;
     pdl_m_c.replay++;
