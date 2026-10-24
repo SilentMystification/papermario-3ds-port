@@ -1037,7 +1037,7 @@ static void pdl_m_compile(PdlMEnt* e, const Gfx* l) {
             unsigned j = i;
             while (j < e->nops && pdl_m_state_only(l[j].words.w0 >> 24)) j++;
             pm_gbi_run((void*)(l + i), (j - i) * 8u);
-            if (!pdl_m_ins_add(e, PDLM_PSO, (u16)pdl_pso_capture(), 0)) break;
+            if (!pdl_m_ins_add(e, PDLM_PSO, (u16)i, (u16)(j - 1u))) break;
             i = j;
         } else {
             unsigned j = i;
@@ -1087,7 +1087,10 @@ static int pdl_try_m(const Gfx* l) {
     pdl_tex_gen = e->tex_gen;
     for (unsigned k = 0; k < e->nins; k++) {
         if (e->ins[k].tag == PDLM_PSO) {
-            pdl_pso_cur = e->ins[k].u;
+            unsigned u = e->ins[k].u, v = e->ins[k].v;
+            if (v >= e->nops || u > v) continue;
+            pm_gbi_run((void*)(l + u), (v - u + 1u) * 8u);
+            pdl_pso_cur = 0;
             pdl_ep_pso = 0;
         } else if (e->ins[k].tag == PDLM_RUN) {
             unsigned u = e->ins[k].u, v = e->ins[k].v;
