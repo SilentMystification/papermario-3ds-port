@@ -716,12 +716,6 @@ static void flush_draw(void) {
         batch_identity = 0;
         return;
     }
-    if (combine >= 2 && !grab_bind && pm_tex_cur_vram_pending() && (combine != 8 || plan.uses_tex)) {
-        nverts = 0;
-        gni = 0; gi_start = gidx_n;
-        batch_identity = 0;
-        return;
-    }
     int snap0 = 0, snap1 = 0;
     if (off_active) { /* FX2a: this batch reads the slot it writes */
         snap0 = combine >= 2 && !grab_bind && pm_tex_off_idx() == off_cur;
