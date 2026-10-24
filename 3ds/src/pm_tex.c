@@ -477,14 +477,15 @@ static void slab_free(void* p, unsigned bytes) {
 }
 static void pend_flush_one(u8* p, unsigned len) { GSPGPU_FlushDataCache(p, len); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, len >> 10); }
 static int slot_draws_stage(const Slot* s) {
-    return s->vram_up && s->vram_stage && s->bytes;
+    return s->vram_up && s->vram_stage && s->tex.size;
 }
 
 static void upload_vram_slot(Slot* s) {
-    if (!s->vram_up || !s->vram_stage || !s->bytes) return;
-    GSPGPU_FlushDataCache(s->vram_stage, s->bytes);
-    C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
+    unsigned n = s->tex.size;
+    if (!s->vram_up || !s->vram_stage || !n) return;
     if (s->tex_vram_ptr) s->tex.data = s->tex_vram_ptr;
+    GSPGPU_FlushDataCache(s->vram_stage, n);
+    C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     s->vram_up = 0;
 }
 static void flush_pend_only(void) {
@@ -569,7 +570,7 @@ static void slot_tex_lin_build(Slot* s, GPU_TEXCOLOR gf, int pw, int ph, unsigne
 
 static const C3D_Tex* tex_for_draw(Slot* s) {
     if (slot_draws_stage(s)) {
-        GSPGPU_FlushDataCache(s->vram_stage, s->bytes);
+        GSPGPU_FlushDataCache(s->vram_stage, s->tex.size);
         s->tex.data = s->vram_stage;
         return &s->tex;
     }
@@ -1179,15 +1180,14 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         staged = (const u8*)upload;
     }
     if (s->vram_stage) linearFree(s->vram_stage);
-    s->vram_stage = (u8*)linearAlloc(reserve);
+    s->vram_stage = (u8*)linearAlloc(gpu_size);
     if (!s->vram_stage) {
         fail_last = 1;
         fail_n++;
         return 0;
     }
-    if (reserve > gpu_size) memset(s->vram_stage, 0, reserve);
     memcpy(s->vram_stage, staged, gpu_size);
-    pend_add(s->vram_stage, reserve);
+    pend_add(s->vram_stage, gpu_size);
     s->bytes = reserve;
     slot_tex_lin_build(s, gf, pw, ph, gpu_size);
     s->vram_up = 1;
