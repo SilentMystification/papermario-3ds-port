@@ -365,9 +365,7 @@ void appendGfx_entity_model(EntityModel* model) {
             }
             gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
             if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
-                if (model->renderMode == RENDER_MODE_SHADOW) {
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC1_SHADOW, PM_CC2_SHADOW);
-                } else {
+                if (model->renderMode != RENDER_MODE_SHADOW) {
                     gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
                 }
             } else {
@@ -381,6 +379,13 @@ void appendGfx_entity_model(EntityModel* model) {
 
         if (model->fpSetupGfxCallback != nullptr) {
             model->fpSetupGfxCallback(model->setupGfxCallbackArg0);
+        }
+        if (!(model->flags & ENTITY_MODEL_FLAG_10000)) {
+            if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
+                if (model->renderMode == RENDER_MODE_SHADOW) {
+                    gDPSetCombineMode(gMainGfxPos++, PM_CC1_SHADOW, PM_CC2_SHADOW);
+                }
+            }
         }
         gDPPipeSync(gMainGfxPos++);
 
