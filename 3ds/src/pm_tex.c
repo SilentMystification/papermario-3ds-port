@@ -461,10 +461,8 @@ static void upload_vram_slot(Slot* s) {
     if (!s->vram_up || !s->vram_stage || !s->bytes) return;
     int w = s->w;
     int h = s->h;
-    if (!tex_dim_pot(w) || !tex_dim_pot(h)) {
-        pm_log_w("texupload skip PICA copy %dx%d", w, h);
+    if (!tex_dim_pot(w) || !tex_dim_pot(h))
         return;
-    }
     GSPGPU_FlushDataCache(s->vram_stage, s->bytes);
     C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     s->vram_up = 0;
