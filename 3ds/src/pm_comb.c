@@ -166,7 +166,7 @@ static int lower(Term A, Term B, Term C, Term D, Sk out[4]) {
     if (teq(B, D)) {
         if (cur_grp) {
             out[0] = mk(PM_F_MODULATE, B, C, C, 0, 1, 0);
-            out[1] = mk(PM_F_MULADD, A, C, prv, 0, 0, 0);
+            out[1] = mk(PM_F_MULADD, A, C, prv, 0, 0, 1);
             return 2;
         }
         out[0] = mk(PM_F_INTERP, A, B, C, 0, 0, 0);
