@@ -2041,6 +2041,19 @@ static void pm_tex_header_native(TextureHeader* h) {
         b[i] = (u8)((n << 4) | (n >> 4));
     }
 }
+
+/* HW3: each dma_copy of a 0x30-byte header runs the full ROM read path. Scan the resident image in place. */
+static void load_texture_header_at(u32 romOffset, TextureHeader* out) {
+    extern const unsigned char* pm_rom_ptr(unsigned addr, unsigned len);
+
+    const unsigned char* p = pm_rom_ptr(romOffset, sizeof(TextureHeader));
+    if (p) {
+        memcpy(out, p, sizeof(TextureHeader));
+    } else {
+        dma_copy((u8*)romOffset, (u8*)romOffset + sizeof(TextureHeader), out);
+    }
+    pm_tex_header_native(out);
+}
 #endif
 
 static Gfx pm_tex_unloaded[] = { gsSPEndDisplayList() };
@@ -2108,18 +2121,27 @@ void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 si
     TextureHeader* header;
     TextureHandle* textureHandle;
     s32 mainSize;
+    s32 found;
+    s32 scanStep;
 
     if (textureName == nullptr) {
         (*gCurrentModelTreeNodeInfo)[TreeIterPos].textureID = 0;
         return;
     }
 
+    found = 0;
+    scanStep = 0;
     while (romOffset < startOffset + size) {
-        dma_copy((u8*)romOffset, (u8*)romOffset + sizeof(gCurrentTextureHeader), &gCurrentTextureHeader);
-        header = &gCurrentTextureHeader;
 #ifdef TARGET_3DS
-        pm_tex_header_native(header);
+        if ((scanStep++ & 15) == 0) {
+            extern volatile unsigned pm_wd_prog;
+            pm_wd_prog++;
+        }
+        load_texture_header_at(romOffset, &gCurrentTextureHeader);
+#else
+        dma_copy((u8*)romOffset, (u8*)romOffset + sizeof(gCurrentTextureHeader), &gCurrentTextureHeader);
 #endif
+        header = &gCurrentTextureHeader;
 
         rasterSize = header->mainW * header->mainH;
 
@@ -2199,6 +2221,7 @@ void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 si
 
         if (strcmp(textureName, header->name) == 0) {
             // found the texture with `textureName`
+            found = 1;
             break;
         }
 
@@ -2206,9 +2229,12 @@ void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 si
         mainSize = rasterSize + paletteSize + sizeof(*header);
         romOffset += mainSize;
         romOffset += auxRasterSize + auxPaletteSize;
+        if (romOffset >= startOffset + 0x40000) {
+            break;
+        }
     }
 
-    if (romOffset >= startOffset + 0x40000) {
+    if (!found || romOffset >= startOffset + 0x40000) {
         // did not find the texture with `textureName`
         (*gCurrentModelTreeNodeInfo)[TreeIterPos].textureID = 0;
         return;
@@ -2237,13 +2263,20 @@ void load_texture_variants(u32 romOffset, s32 textureID, s32 baseOffset, s32 siz
     s32 bitDepth;
     s32 mainSize;
     s32 currentTextureID = textureID;
+    s32 variantStep;
 
+    variantStep = 0;
     for (offset = romOffset; offset < baseOffset + size;) {
-        dma_copy((u8*)offset, (u8*)offset + sizeof(iterTextureHeader), &iterTextureHeader);
-        header = &iterTextureHeader;
 #ifdef TARGET_3DS
-        pm_tex_header_native(header);
+        if ((variantStep++ & 15) == 0) {
+            extern volatile unsigned pm_wd_prog;
+            pm_wd_prog++;
+        }
+        load_texture_header_at(offset, &iterTextureHeader);
+#else
+        dma_copy((u8*)offset, (u8*)offset + sizeof(iterTextureHeader), &iterTextureHeader);
 #endif
+        header = &iterTextureHeader;
 
         if (!header->isVariant) {
             // done reading variants
@@ -2332,8 +2365,13 @@ void load_texture_variants(u32 romOffset, s32 textureID, s32 baseOffset, s32 siz
         load_texture_impl(offset + sizeof(*header), textureHandle, header, rasterSize, paletteSize, auxRasterSize, auxPaletteSize);
 
         mainSize = rasterSize + paletteSize + sizeof(*header);
-        offset += mainSize;
-        offset += auxRasterSize + auxPaletteSize;
+        {
+            u32 next = offset + mainSize + auxRasterSize + auxPaletteSize;
+            if (next <= offset) {
+                break;
+            }
+            offset = next;
+        }
     }
 }
 
@@ -2376,6 +2414,11 @@ void load_next_model_textures(ModelNode* model, s32 romOffset, s32 texSize) {
 // load all textures used by models, starting from the root
 void mdl_load_all_textures(ModelNode* rootModel, s32 romOffset, s32 size) {
     s32 baseOffset = 0;
+
+#ifdef TARGET_3DS
+    extern unsigned pm_pdl_heap_gen;
+    pm_pdl_heap_gen++; /* C1: one generation for the whole map texheap fill (DLC.md 3.1) */
+#endif
 
     // textures are loaded to the upper half of the texture heap when not in the world
     if (gGameStatusPtr->context != CONTEXT_WORLD) {
