@@ -445,16 +445,6 @@ static unsigned tex_gpu_object_size(int pw, int ph, GPU_TEXCOLOR gf) {
     if (pw < 8 || ph < 8 || pw > 1024 || ph > 1024) return 0;
     return tex_fmt_bits(gf) * (unsigned)pw * (unsigned)ph / 8u;
 }
-static void tex_slab_object(C3D_Tex* t, u16 pw, u16 ph, GPU_TEXCOLOR gf, unsigned gpu_size, void* vram) {
-    memset(t, 0, sizeof *t);
-    t->data = vram;
-    t->fmt = gf;
-    t->size = gpu_size;
-    t->width = pw;
-    t->height = ph;
-    t->param = GPU_TEXTURE_MODE(GPU_TEX_2D);
-    if (gf == GPU_ETC1) t->param |= GPU_TEXTURE_ETC1_PARAM;
-}
 static unsigned tex_slab_reserve(unsigned gpu_size) { return slab_size(gpu_size); }
 static u8* slab_alloc(unsigned bytes0) {
     unsigned bytes = slab_size(bytes0);
@@ -1086,8 +1076,20 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             }
             return 0;
         }
-        tex_slab_object(&s->tex, (u16)pw, (u16)ph, gf, gpu_size, sp);
-        s->tex_vram_ptr = sp;
+        memset(&s->tex, 0, sizeof s->tex);
+        if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
+            slab_free(sp, reserve);
+            fail_last = 1;
+            fail_n++;
+            return 0;
+        }
+        void* init_data = s->tex.data;
+        s->tex.data = s->tex_vram_ptr = sp;
+        if (init_data) {
+            C3D_Tex tmp = s->tex;
+            tmp.data = init_data;
+            C3D_TexDelete(&tmp);
+        }
         s->slab = 1;
     }
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
