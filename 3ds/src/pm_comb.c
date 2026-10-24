@@ -344,7 +344,8 @@ static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan
     for (int c = 0; c < (two ? 2 : 1); c++)
         if (v[c][0][0].n == TN_PR && v[c][0][1].n == TN_KEY) { v[c][0][0] = TM(TN_PK, 0); v[c][0][1] = TM(TN_ZERO, 0); }
     for (int i = 0; i < lead; i++) { /* a first stage that only passes, so no real stage is stage 0 */
-        R.s[i] = A.s[i] = mk(PM_F_REPLACE, TM(TN_PRV, 0), TM(TN_PRV, 0), TM(TN_PRV, 0), 0, 0, 0);
+        R.s[i] = mk(PM_F_REPLACE, TM(TN_PRV, 0), TM(TN_PRV, 0), TM(TN_PRV, 0), 0, 0, 0);
+        A.s[i] = mk(PM_F_REPLACE, TM(TN_ZERO, 0), TM(TN_ZERO, 0), TM(TN_ZERO, 0), 0, 0, 0);
         R.n = A.n = i + 1;
     }
     rc = add_cycle(&R, &A, lead, lead, v[0]);
