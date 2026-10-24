@@ -606,6 +606,15 @@ static unsigned pdl_readset_of(const Gfx* l) {
     return 0;
 }
 
+static void pdl_exit_comb_from_list(GbiState* ex, const Gfx* l, unsigned n) {
+    for (unsigned i = 0; i < n; i++) {
+        if ((l[i].words.w0 >> 24) == G_SETCOMBINE) {
+            ex->comb_w0 = l[i].words.w0;
+            ex->comb_w1 = l[i].words.w1;
+        }
+    }
+}
+
 static u32 gbi_state_in_hash(const GbiState* s, unsigned readset) {
     if (!readset) return gbi_state_hash(s);
     u32 h = 2166136261u;
@@ -828,12 +837,15 @@ static int pdl_comp_nopush;
 static void pdl_compile_finish(void) {
     PdlEnt* e = pdl_comp_ent;
     if (!e) return;
+    const Gfx* lst = pdl_comp_list;
+    unsigned nops = e->nops;
     pdl_depth--;
     pdl_compile_one = 0;
     pdl_comp_ent = NULL;
     pdl_comp_list = NULL;
     pdl_comp_sp = -1;
     gbi_state_get(&e->exit);
+    if (lst) pdl_exit_comb_from_list(&e->exit, lst, nops);
     if (pm_tex_off_idx() >= 0) {
         e->tex_slot = PDL_TEX_OFF;
         e->tex_gen = 0;
@@ -850,7 +862,7 @@ static void pdl_compile_finish(void) {
 static void pdl_compile_begin(PdlEnt* e, const Gfx* l) {
     e->nops = pdl_nops(l);
     gbi_state_get(&pdl_comp_gbi_st);
-    e->state_in = gbi_state_in_hash(&pdl_comp_gbi_st, pdl_readset_of(l));
+    e->state_in = gbi_state_in_hash(&pdl_comp_gbi_st, pdl_readset_of(l) | GBIG_COMB);
     pdl_compile_one = 1;
     pdl_depth++;
     pdl_comp_ent = e;
@@ -890,7 +902,7 @@ static int pdl_try(const Gfx* l) {
     if (!e) return 0;
     u32 hgen = pdl_heap_gen((u32)l);
     gbi_state_get(&pdl_try_gbi_st);
-    u32 sin = gbi_state_in_hash(&pdl_try_gbi_st, pdl_readset_of(l));
+    u32 sin = gbi_state_in_hash(&pdl_try_gbi_st, pdl_readset_of(l) | GBIG_COMB);
     if (!e->nops || e->refused || e->heap_gen != hgen || e->state_in != sin) {
         e->heap_gen = hgen; e->refused = 0;
         if (pdl_refuse_ops(l)) { e->refused = 1; pdl_c.refuse++; return 0; }
@@ -898,7 +910,8 @@ static int pdl_try(const Gfx* l) {
         return 0;
     } else pdl_c.hit++;
     gbi_state_apply(&e->exit);
-    sync_combine();
+    comb_w0 = e->exit.comb_w0;
+    comb_w1 = e->exit.comb_w1;
     if (pdlchk_on()) {
         gbi_state_get(&pdl_try_gbi_chk);
         if (gbi_state_hash(&pdl_try_gbi_chk) != gbi_state_hash(&e->exit)) pdl_c.exitbad++;
