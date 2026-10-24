@@ -79,12 +79,6 @@ void load_map_script_lib(void) {
     DMA_COPY_SEGMENT(world_script_api);
 }
 
-#ifdef TARGET_3DS
-#define PM_TRACE(fn) do { extern void pm_log_w(const char*, ...); pm_log_w("trace %s", fn); } while (0)
-int pm_trace_load;
-#else
-#define PM_TRACE(fn) ((void)0)
-#endif
 
 void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     s32 skipLoadingAssets = 0;
@@ -93,10 +87,6 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     char texStr[17];
     s32 decompressedSize;
 
-    PM_TRACE("sfx_stop_env_sounds");
-#ifdef TARGET_3DS
-    pm_trace_load = 1;
-#endif
     sfx_stop_env_sounds();
     gOverrideFlags &= ~GLOBAL_OVERRIDES_40;
     gOverrideFlags &= ~GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION;
@@ -104,30 +94,23 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     gGameStatusPtr->playerSpriteSet = PLAYER_SPRITES_MARIO_WORLD;
 
 #if !VERSION_IQUE
-    PM_TRACE("load_obfuscation_shims 1");
     load_obfuscation_shims();
 #endif
-    PM_TRACE("general_heap_create_obfuscated 1");
     shim_general_heap_create_obfuscated();
 
 #if VERSION_JP
     reset_max_rumble_duration();
 #endif
-    PM_TRACE("clear_render_tasks");
     clear_render_tasks();
-    PM_TRACE("clear_worker_list 1");
     clear_worker_list();
-    PM_TRACE("clear_script_list 1");
     clear_script_list();
 
     switch (loadType) {
         case LOAD_FROM_MAP:
-            PM_TRACE("clear_area_flags");
             clear_area_flags();
             gGameStatusPtr->loadType = LOAD_FROM_MAP;
             break;
         case LOAD_FROM_FILE_SELECT:
-            PM_TRACE("fio_deserialize_state");
             fio_deserialize_state();
             areaID = gGameStatusPtr->areaID;
             mapID = gGameStatusPtr->mapID;
@@ -150,11 +133,9 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     if (mapConfig->bgName != nullptr) {
         strcpy(wMapBgName, mapConfig->bgName);
     }
-    PM_TRACE("load_map_script_lib");
     load_map_script_lib();
 
     if (mapConfig->dmaStart != nullptr) {
-        PM_TRACE("dma_copy map");
         dma_copy(mapConfig->dmaStart, mapConfig->dmaEnd, mapConfig->dmaDest);
     }
 
@@ -162,19 +143,15 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
 
     mapSettings = &gMapSettings;
     if (mapConfig->init != nullptr) {
-        PM_TRACE("map init");
         skipLoadingAssets = mapConfig->init();
     }
 
     if (!skipLoadingAssets) {
         ShapeFile* shapeFile = &gMapShapeData;
         void* yay0Asset;
-        PM_TRACE("load_asset_by_name shape");
         yay0Asset = load_asset_by_name(wMapShapeName, &decompressedSize);
 
-        PM_TRACE("decode_yay0 shape");
         decode_yay0(yay0Asset, shapeFile);
-        PM_TRACE("general_heap_free shape");
         general_heap_free(yay0Asset);
 
         mapSettings->modelTreeRoot = shapeFile->header.root;
@@ -184,98 +161,64 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     }
 
     if (mapConfig->bgName != nullptr) {
-        PM_TRACE("load_map_bg");
         load_map_bg(wMapBgName);
     }
 
 #if !VERSION_IQUE
-    PM_TRACE("load_obfuscation_shims 2");
     load_obfuscation_shims();
 #endif
-    PM_TRACE("general_heap_create_obfuscated 2");
     shim_general_heap_create_obfuscated();
 
-    PM_TRACE("sfx_clear_env_sounds");
     sfx_clear_env_sounds(0);
-    PM_TRACE("clear_worker_list 2");
     clear_worker_list();
-    PM_TRACE("clear_script_list 2");
     clear_script_list();
-    PM_TRACE("create_cameras");
     create_cameras();
-    PM_TRACE("spr_init_sprites");
     spr_init_sprites(gGameStatusPtr->playerSpriteSet);
-    PM_TRACE("clear_animator_list");
     clear_animator_list();
-    PM_TRACE("clear_entity_models");
     clear_entity_models();
-    PM_TRACE("clear_npcs");
     clear_npcs();
-    PM_TRACE("hud_element_clear_cache");
     hud_element_clear_cache();
-    PM_TRACE("clear_trigger_data");
     clear_trigger_data();
-    PM_TRACE("clear_model_data");
     clear_model_data();
-    PM_TRACE("clear_sprite_shading_data");
     clear_sprite_shading_data();
-    PM_TRACE("reset_background_settings");
     reset_background_settings();
 
     if (gGameStatusPtr->introPart == INTRO_PART_NONE) {
-        PM_TRACE("reset_back_screen_overlay_progress");
         reset_back_screen_overlay_progress();
     }
 
     if (!skipLoadingAssets) {
-        PM_TRACE("initialize_collision");
         initialize_collision();
-        PM_TRACE("load_map_hit_asset");
         load_map_hit_asset();
     }
 
-    PM_TRACE("reset_battle_status");
     reset_battle_status();
-    PM_TRACE("clear_encounter_status");
     clear_encounter_status();
-    PM_TRACE("clear_entity_data");
     clear_entity_data(true);
-    PM_TRACE("clear_effect_data");
     clear_effect_data();
-    PM_TRACE("clear_player_status");
     clear_player_status();
-    PM_TRACE("player_reset_data");
     player_reset_data();
-    PM_TRACE("partner_reset_data");
     partner_reset_data();
-    PM_TRACE("clear_printers");
     clear_printers();
-    PM_TRACE("clear_item_entity_data");
     clear_item_entity_data();
 
     gPlayerStatus.targetYaw = gPlayerStatus.curYaw;
 
-    PM_TRACE("sfx_set_reverb_mode");
     sfx_set_reverb_mode(WorldReverbModeMapping[*(s32*)mapConfig->unk_1C & 0x3]);
-    PM_TRACE("sfx_reset_door_sounds");
     sfx_reset_door_sounds();
 
     if (!skipLoadingAssets) {
         s32 texturesOffset;
-        PM_TRACE("get_asset_offset tex");
         texturesOffset = get_asset_offset(wMapTexName, &decompressedSize);
 
         if (mapSettings->modelTreeRoot != nullptr) {
-            PM_TRACE("load_data_for_models");
             load_data_for_models(mapSettings->modelTreeRoot, texturesOffset, decompressedSize);
         }
     }
 
     if (mapSettings->background != nullptr) {
-        PM_TRACE("set_background");
         set_background(mapSettings->background);
     } else {
-        PM_TRACE("set_background_size");
         set_background_size(SCREEN_XMAX - SCREEN_XMIN, SCREEN_YMAX - SCREEN_YMIN,
             SCREEN_INSET_X, SCREEN_INSET_Y);
     }
@@ -287,20 +230,15 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     gCameras[CAM_HUD].flags |= CAMERA_FLAG_DISABLED;
 
     if (gGameStatusPtr->introPart == INTRO_PART_NONE) {
-        PM_TRACE("set_cam_viewport");
         set_cam_viewport(CAM_DEFAULT, 12, 20, 296, 200);
     } else {
-        PM_TRACE("set_cam_viewport");
         set_cam_viewport(CAM_DEFAULT, 29, 28, 262, 162);
     }
 
-    PM_TRACE("initialize_status_bar");
     initialize_status_bar();
     gGameStatusPtr->unk_90 = 1000;
     gGameStatusPtr->unk_92 = 1000;
-    PM_TRACE("start_script_in_group");
     gGameStatusPtr->mainScriptID = start_script_in_group(mapSettings->main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE)->id;
-    PM_TRACE("load_map_by_IDs done");
 }
 
 MapConfig* get_current_map_config(void) {
