@@ -37,8 +37,7 @@ typedef struct {
     unsigned last_frame; /* TC1: frame of the last hit, bind or upload */
     int live;
     int slab; /* FL1: the image lives in the texture slab */
-    int vram_up; /* POT: C3D_TexLoadImage pending before FrameBegin */
-    int vram_stage_only; /* non-POT w/h: Morton bytes stay in vram_stage; no VRAM upload */
+    int vram_up; /* C3D_TexLoadImage pending before FrameBegin */
     u8* vram_stage;
     u8* tex_vram_ptr; /* slab VRAM; tex.data may point at vram_stage while staging */
     u8* tex_lin_heap; /* linearAlloc from C3D_TexInit(tex_lin); data points at vram_stage instead */
@@ -457,26 +456,16 @@ static void slab_free(void* p, unsigned bytes) {
     if (i + 1 < slab_n && slab_ext[i].off + slab_ext[i].len == slab_ext[i + 1].off) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
 }
 static void pend_flush_one(u8* p, unsigned len) { GSPGPU_FlushDataCache(p, len); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, len >> 10); }
-static int tex_dim_pot(int n) { return n > 0 && (n & (n - 1)) == 0; }
-
 static int slot_draws_stage(const Slot* s) {
-    return s->vram_stage && s->bytes && (s->vram_up || s->vram_stage_only);
+    return s->vram_up && s->vram_stage && s->bytes;
 }
 
 static void upload_vram_slot(Slot* s) {
     if (!s->vram_up || !s->vram_stage || !s->bytes) return;
-    int w = s->w;
-    int h = s->h;
-    if (!tex_dim_pot(w) || !tex_dim_pot(h)) {
-        s->vram_up = 0;
-        s->vram_stage_only = 1;
-        return;
-    }
     GSPGPU_FlushDataCache(s->vram_stage, s->bytes);
     C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     if (s->tex_vram_ptr) s->tex.data = s->tex_vram_ptr;
     s->vram_up = 0;
-    s->vram_stage_only = 0;
 }
 static void flush_pend_only(void) {
     for (int i = 0; i < pend_n; i++) pend_flush_one(pend[i].p, pend[i].len);
@@ -524,7 +513,6 @@ static void drop(Slot* s) {
     }
     memset(&s->tex_lin, 0, sizeof s->tex_lin);
     s->vram_up = 0;
-    s->vram_stage_only = 0;
     if (s->slab) {
         slab_free(s->tex_vram_ptr ? s->tex_vram_ptr : s->tex.data, s->bytes);
         s->tex_vram_ptr = NULL;
@@ -1178,12 +1166,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     pend_add(s->vram_stage, bytes);
     s->bytes = bytes;
     slot_tex_lin_build(s, gf, pw, ph, bytes);
-    s->vram_stage_only = 0;
     s->vram_up = 1;
-    if (!tex_dim_pot(width) || !tex_dim_pot(height)) {
-        s->vram_up = 0;
-        s->vram_stage_only = 1;
-    }
     if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < bytes; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, bytes, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
     if (tx1_chkon && memcmp(tx1_chk, s->vram_stage, bytes) != 0) {
         if (tx1_mismatch++ < 8) pm_log_w("tx1check: bytes differ fmt %u siz %u %dx%d stride %d lut %d", fmt, siz, width, height, stride, lut != NULL);
