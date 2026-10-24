@@ -269,7 +269,8 @@ static GPU_TEXCOLOR gpu_fmt(unsigned fmt, unsigned siz) {
     if (fmt == FMT_IA && siz == SIZ_16) return GPU_LA8;
     if (fmt == FMT_IA && (siz == SIZ_8 || siz == SIZ_4)) return GPU_LA4;
     if (fmt == FMT_I && siz == SIZ_8) return GPU_L8;
-    if (fmt == FMT_I && siz == SIZ_4) return GPU_L4;
+    /* I4 masks (shadows, message silhouettes): intensity is alpha on the RDP; LA4 carries it in the alpha nibble. */
+    if (fmt == FMT_I && siz == SIZ_4) return GPU_LA4;
     return GPU_RGBA5551;
 }
 
@@ -1111,7 +1112,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             int mw1 = (mk_on && mk_ws && (int)mk_ws < width) ? (int)mk_ws : 0;
             int mh1 = (mk_on && mk_wt && (int)mk_wt < height) ? (int)mk_wt : 0;
             if (native_tex)
-                tx1_build_native(t1dst, gf, (const u8*)img, width, height, stride, pw, ph, mw1, mh1, (int)mk_ms, (int)mk_mt);
+                tx1_build_native(t1dst, gf, fmt, siz, (const u8*)img, width, height, stride, pw, ph, mw1, mh1, (int)mk_ms, (int)mk_mt);
             else {
                 tx1_build(t1dst, (const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, (int)bpp0, mw1, mh1,
                           (int)mk_ms, (int)mk_mt, src_native);

@@ -507,6 +507,8 @@ static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int 
             C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_ALPHA);
             C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
             C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, GPU_TEXTURE0);
+            if (i8_0)
+                C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R);
             C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
             C3D_TexEnvColor(env, abgr(prim));
         } else if (tex && (combine == 5 || combine == 7)) {
@@ -519,6 +521,8 @@ static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int 
                 C3D_TexEnvColor(env, abgr(prim | 0xffu));
             } else {
                 C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, GPU_TEXTURE0);
+                if (i8_0)
+                    C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R);
                 C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
                 C3D_TexEnvColor(env, abgr(prim));
             }
@@ -527,6 +531,8 @@ static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int 
             C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_CONSTANT, GPU_CONSTANT);
             C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
             C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_CONSTANT, GPU_CONSTANT);
+            if (i8_0)
+                C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
             C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
             C3D_TexEnvColor(env, abgr(cconst));
         } else if (tex) {
@@ -537,6 +543,8 @@ static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int 
                 C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
             } else {
                 C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+                if (i8_0)
+                    C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
                 C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
             }
             if (rgb_scale == 2) C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);

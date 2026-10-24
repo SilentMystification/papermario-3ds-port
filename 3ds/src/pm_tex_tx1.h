@@ -80,7 +80,7 @@ static void tx1_build(u8* dst, const u8* src, unsigned fmt, unsigned siz, int w,
 }
 
 /* TX-B: PICA-native L8, L4, LA4 tiles (no LA8 expand). */
-static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, const u8* src, int w, int h, int stride, int pw, int ph, int mw, int mh,
+static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, unsigned src_fmt, unsigned src_siz, const u8* src, int w, int h, int stride, int pw, int ph, int mw, int mh,
                              int mir_s, int mir_t) {
     tx1_init();
     for (int x = 0; x < pw; x++) tx1_sx[x] = (unsigned short)tx1_map(x, w, mw, mir_s);
@@ -102,6 +102,21 @@ static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, const u8* src, int w, int
                         unsigned bi = m >> 1;
                         if (m & 1u) d[bi] = (u8)((d[bi] & 0xf0u) | nib);
                         else d[bi] = (u8)((d[bi] & 0x0fu) | (nib << 4));
+                    }
+                }
+            }
+    } else if (gf == GPU_LA4 && src_fmt == FMT_I && src_siz == SIZ_4) {
+        for (int ty = 0; ty < th; ty++)
+            for (int tx = 0; tx < tw; tx++) {
+                u8* d = dst + ((size_t)ty * (size_t)tw + (size_t)tx) * 64u;
+                const unsigned short* xs = tx1_sx + tx * 8;
+                for (int r = 0; r < 8; r++) {
+                    const int rb = (int)tx1_sy[ph - 1 - (ty * 8 + r)] * stride;
+                    const unsigned char* mo = tx1_mort + r * 8;
+                    for (int c = 0; c < 8; c++) {
+                        int sx = (int)xs[c];
+                        unsigned nib = (unsigned)tx1_n4(src, rb + sx, sx);
+                        d[mo[c]] = (u8)((nib << 4) | 0x0fu);
                     }
                 }
             }
