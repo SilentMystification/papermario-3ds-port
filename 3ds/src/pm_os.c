@@ -39,6 +39,21 @@ static u32 rom_size;
 static int rom_tried;
 static int rom_remap; /* 1: rom_bytes is the packed image (pm_rom_keep), 0: full image or file stream */
 
+/* SD streaming: per drawn frame, time spent in pi_read_raw and the last read offset/size. */
+static u32 rom_sd_last_off, rom_sd_last_sz;
+static unsigned rom_sd_frame_ticks, rom_sd_frame_bytes;
+#define ROM_SD_TICKS_MS 268112.f
+
+void pm_rom_frame_end(void) {
+    const unsigned thr = (unsigned)(500.f * ROM_SD_TICKS_MS);
+    if (rom_sd_frame_ticks > thr) {
+        float ms = (float)rom_sd_frame_ticks / ROM_SD_TICKS_MS;
+        pm_log_w("romstall off %08x sz %u bytes %u ms %.0f", rom_sd_last_off, rom_sd_last_sz, rom_sd_frame_bytes, ms);
+    }
+    rom_sd_frame_ticks = 0;
+    rom_sd_frame_bytes = 0;
+}
+
 /* V26: the N64 counts from the reset, so the game's gRandSeed += osGetCount() (main.c) starts the same on every boot and the demo scenes
  * (Bill Blasters fire by RandInt) play the same way. The 3DS tick counts from the console start, so the seed was random per boot.
  * Count from the first call, in the N64 rate (46.875 MHz). A boot salt (the tick since console start) is added unless the switch fixedseed is set. The 32 bit tick wraps every 16 s, enough for deltas of the seed call. */
@@ -316,6 +331,8 @@ static int rom_keep_find(u32 addr) {
 }
 
 static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
+    unsigned sd_t0 = 0;
+    int sd_path = 0;
     if (!buf || !size) return;
     if ((unsigned)buf < 0x00100000u) {
         static int once;
@@ -326,6 +343,12 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
         return;
     }
     if (!rom_tried) pm_rom_init();
+    if (!rom_bytes) {
+        sd_path = 1;
+        rom_sd_last_off = rom_addr;
+        rom_sd_last_sz = size;
+        sd_t0 = pm_ticks();
+    }
     PH_PUSH(PH_ROM);
     if (!pm_on_audio()) { PH_ADD(C_ROMN, 1); PH_ADD(C_ROMB, size); } /* AU1c: the counters belong to the game thread */
     if (rom_addr < 0x1000u) rom_suspect("AT TINY OFFSET", rom_addr, size, rom_addr, size);
@@ -387,6 +410,10 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     }
     if (!pm_on_audio()) pm_tex_invalidate(buf, size); /* AU1c: the audio thread reads sound data, never a texture. The cache belongs to core 0. */
     PH_POP();
+    if (sd_path) {
+        rom_sd_frame_ticks += pm_ticks() - sd_t0;
+        rom_sd_frame_bytes += size;
+    }
 }
 
 /* HW3: pointer to len bytes of the resident ROM image at ROM address addr, or NULL (file stream, dropped range, range not in one
