@@ -20,6 +20,7 @@ static u8* tx1_chk; /* switch tx1check: the new result, compared with the old pa
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
 #define SLOTS 512
 #define BUDGET (1536u * 1024u) /* VRAM hot set (was 4 MB + 768 KB linear slab) */
+#define TEX_SCRATCH_PLANE (1024u * 512u * 2u) /* one linear or tiled plane (1024x512 RGBA5551) */
 typedef struct {
     const void* img;
     const void* tlut;
@@ -303,7 +304,7 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
     if ((fmt == FMT_I && (siz == SIZ_8 || siz == SIZ_4)) || (fmt == FMT_IA && (siz == SIZ_8 || siz == SIZ_4)))
         return 0;
     unsigned out_bpp = (gf == GPU_RGBA8) ? 4 : (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4) ? 1 : 2;
-    if ((unsigned)pw * (unsigned)ph * out_bpp > 256u * 256u * 4u) return 0;
+    if ((unsigned)pw * (unsigned)ph * out_bpp > TEX_SCRATCH_PLANE) return 0;
     memset(scratch, 0, (size_t)pw * (size_t)ph * out_bpp);
     int mw = (mk_on && mk_ws && (int)mk_ws < w) ? (int)mk_ws : 0;
     int mh = (mk_on && mk_wt && (int)mk_wt < h) ? (int)mk_wt : 0;
@@ -366,7 +367,7 @@ static int floor4(int v) { return v >> 2; }
 
 static int expand_dual(const u8* src, int w, int h, int stride, const unsigned* lut, int dx4, int dy4,
                        int pw, int ph) {
-    if ((unsigned)pw * (unsigned)ph * 4u > 256u * 256u * 4u) return 0;
+    if ((unsigned)pw * (unsigned)ph * 4u > TEX_SCRATCH_PLANE) return 0;
     memset(scratch, 0, (size_t)pw * (size_t)ph * 4u);
     for (int y = 0; y < h; y++) {
         int sy = floor4(4 * y + 2 - dy4);
@@ -433,16 +434,28 @@ static void slab_init(void) {
         pm_log_e("texcache VRAM %uKB failed (vram free %uKB)", SLAB_BYTES >> 10, free0 >> 10);
 }
 static unsigned slab_size(unsigned bytes) { bytes = (bytes + 127u) & ~127u; return bytes < 512u ? 512u : bytes; } /* the GPU reads whole 8 x 8 tiles */
-/* VRAM slab span for a pw x ph GPU texture (citro3d size, not a clipped 8x8 header). */
-static unsigned tex_slab_reserve(int pw, int ph, GPU_TEXCOLOR gf, unsigned tex_bytes) {
-    C3D_Tex t;
-    unsigned r = tex_bytes;
-    if (C3D_TexInit(&t, (u16)pw, (u16)ph, gf)) {
-        if (t.size > r) r = t.size;
-        C3D_TexDelete(&t);
-    }
-    return slab_size(r);
+/* Level-0 byte count (same formula as citro3d C3D_TexInitWithParams). */
+static unsigned tex_fmt_bits(GPU_TEXCOLOR gf) {
+    if (gf == GPU_RGBA8) return 32;
+    if (gf == GPU_L8 || gf == GPU_LA4 || gf == GPU_ETC1A4) return 8;
+    if (gf == GPU_L4 || gf == GPU_ETC1) return 4;
+    return 16;
 }
+static unsigned tex_gpu_object_size(int pw, int ph, GPU_TEXCOLOR gf) {
+    if (pw < 8 || ph < 8 || pw > 1024 || ph > 1024) return 0;
+    return tex_fmt_bits(gf) * (unsigned)pw * (unsigned)ph / 8u;
+}
+static void tex_slab_object(C3D_Tex* t, u16 pw, u16 ph, GPU_TEXCOLOR gf, unsigned gpu_size, void* vram) {
+    memset(t, 0, sizeof *t);
+    t->data = vram;
+    t->fmt = gf;
+    t->size = gpu_size;
+    t->width = pw;
+    t->height = ph;
+    t->param = GPU_TEXTURE_MODE(GPU_TEX_2D);
+    if (gf == GPU_ETC1) t->param |= GPU_TEXTURE_ETC1_PARAM;
+}
+static unsigned tex_slab_reserve(unsigned gpu_size) { return slab_size(gpu_size); }
 static u8* slab_alloc(unsigned bytes0) {
     unsigned bytes = slab_size(bytes0);
     int best = -1;
@@ -653,7 +666,7 @@ static void tb_dump_req(uint64_t key, const TbReq* q, const u8* tl, const u8* sr
 
 void pm_tex_init(void) {
     /* Linear image, then a second copy in PICA tile order. */
-    scratch = (u8*)linearAlloc(256 * 256 * 4 * 2);
+    scratch = (u8*)linearAlloc(TEX_SCRATCH_PLANE * 2u);
     slab_init();
     tb_init();
 }
@@ -956,6 +969,28 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     GPU_TEXCOLOR gf = gpu_fmt(fmt, siz);
     if (fmt == FMT_CI) gf = GPU_RGBA5551;
     if (lut) gf = GPU_RGBA8;
+    unsigned gpu_size;
+    for (;;) {
+        gpu_size = tex_gpu_object_size(pw, ph, gf);
+        if (!gpu_size) {
+            if (pw <= ph && pw < 1024) {
+                pw <<= 1;
+                continue;
+            }
+            if (ph < 1024) {
+                ph <<= 1;
+                continue;
+            }
+            return 0;
+        }
+        if (gpu_size >= tex_gpu_bytes(pw, ph, gf)) break;
+        if (pw <= ph && pw < 1024)
+            pw <<= 1;
+        else if (ph < 1024)
+            ph <<= 1;
+        else
+            return 0;
+    }
     const TbRec* tr = NULL; /* PG2L: the baked record of this texture, tb_use = its bytes are in the upload buffer and the decode is skipped */
     int tb_use = 0;
     if (tb_mode && !lut && !src_native) {
@@ -971,7 +1006,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             tr = tb_find(key);
             if (tr && (tr->pw != pw || tr->ph != ph || tr->bytes != (unsigned)pw * (unsigned)ph * bb || tr->gf != (gf == GPU_RGBA8 ? TB_GF_RGBA8 : gf == GPU_LA8 ? TB_GF_LA8 : TB_GF_RGBA5551))) tr = NULL;
             if (tr) {
-                u8* dst = (tb_mode & TBM_CHECK) ? tb_cmp : scratch + (256 * 256 * 4);
+                u8* dst = (tb_mode & TBM_CHECK) ? tb_cmp : scratch + TEX_SCRATCH_PLANE;
                 if (lseek(tb_fd, (off_t)tr->off, SEEK_SET) == (off_t)tr->off && read(tb_fd, dst, tr->bytes) == (ssize_t)tr->bytes) tb_use = !(tb_mode & TBM_CHECK);
                 else tr = NULL;
             }
@@ -982,7 +1017,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     int native_tex = (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4);
     unsigned bpp0 = (gf == GPU_RGBA8) ? 4u : native_tex ? 1u : 2u;
     unsigned tex_bytes_need = tex_gpu_bytes(pw, ph, gf);
-    int tx1 = !tb_use && !tr && !tb_mode && tex_bytes_need <= 256u * 256u * 4u && pw <= TX1_MAXD && ph <= TX1_MAXD;
+    int tx1 = !tb_use && !tr && !tb_mode && tex_bytes_need <= TEX_SCRATCH_PLANE && pw <= TX1_MAXD && ph <= TX1_MAXD;
     int tx1_chkon = tx1 && PMDL("tx1check");
     if (tx1_chkon && !tx1_chk) { tx1_chk = (u8*)malloc(512 * 1024); if (!tx1_chk) { tx1 = 0; tx1_chkon = 0; } }
     unsigned tx1_t0 = tc_on > 0 ? pm_ticks() : 0;
@@ -1001,8 +1036,8 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (!expand_dual((const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph)) return 0;
     } else if (!native_tex && !expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf))
         return 0;
-    unsigned tex_bytes = tex_gpu_bytes(pw, ph, gf);
-    unsigned reserve = tex_slab_reserve(pw, ph, gf, tex_bytes);
+    unsigned tex_bytes = gpu_size;
+    unsigned reserve = tex_slab_reserve(gpu_size);
     unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8 || gf == GPU_LA4) ? 1u : (gf == GPU_L4) ? 1u : 2u;
     int slot = -1;
     for (;;) {
@@ -1033,14 +1068,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
         return 0;
     }
-    { /* image in the VRAM pool; C3D_Tex sized pw x ph (not an 8x8 prototype) */
-        C3D_Tex tex_init;
-        if (!C3D_TexInit(&tex_init, (u16)pw, (u16)ph, gf)) {
-            fail_last = 1;
-            fail_n++;
-            return 0;
-        }
-        u8* init_vram = (u8*)tex_init.data;
+    { /* image in the VRAM pool; header from a per-format template, data in the slab */
         u8* sp = slab_alloc(reserve);
         while (!sp && evict_oldest_done()) {
             static int nev;
@@ -1048,8 +1076,6 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             sp = slab_alloc(reserve);
         }
         if (!sp) {
-            tex_init.data = init_vram;
-            C3D_TexDelete(&tex_init);
             static int once;
             fail_last = 1;
             fail_n++;
@@ -1059,20 +1085,14 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             }
             return 0;
         }
-        s->tex = tex_init;
-        s->tex.data = sp;
+        tex_slab_object(&s->tex, (u16)pw, (u16)ph, gf, gpu_size, sp);
         s->tex_vram_ptr = sp;
-        s->tex.width = (u16)pw;
-        s->tex.height = (u16)ph;
-        s->tex.size = reserve;
-        tex_init.data = init_vram;
-        C3D_TexDelete(&tex_init);
         s->slab = 1;
     }
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
     if (tx1) { /* TX1: tile in linear scratch; VRAM slot is filled by C3D_TexLoadImage (O3DS cannot CPU-store into vramMemAlign) */
-        u8* t1dst = tx1_chkon ? tx1_chk : (scratch + (256 * 256 * 4));
+        u8* t1dst = tx1_chkon ? tx1_chk : (scratch + TEX_SCRATCH_PLANE);
         if ((dkey & 0xFF000000u) == 0xC7000000u) {
             for (int y = 0; y < ph; y++) {
                 int sy = ph - 1 - y;
@@ -1101,16 +1121,16 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             }
         }
     }
-    const u8* staged = scratch + (256 * 256 * 4);
+    const u8* staged = scratch + TEX_SCRATCH_PLANE;
     if (!tx1 || tx1_chkon) {
         const void* upload = scratch;
         /* Scratch is two 256KB halves. The linear image fills the first, the
          * Morton copy the second. A 512x256 RGBA5551 background is 256KB, so the
          * old 128KB tile buffer skipped tiling and the GPU scattered the pixels. */
         if (tb_use) {
-            upload = scratch + (256 * 256 * 4);
-        } else if (bpp == 2u && (unsigned)pw * (unsigned)ph * 2u <= 256u * 256u * 4u) {
-            u8* tiled = scratch + (256 * 256 * 4);
+            upload = scratch + TEX_SCRATCH_PLANE;
+        } else if (bpp == 2u && (unsigned)pw * (unsigned)ph * 2u <= TEX_SCRATCH_PLANE) {
+            u8* tiled = scratch + TEX_SCRATCH_PLANE;
             /* PICA samples t = 0 from the last row. Store row 0 there so the
              * game's top-left UV is the top of the image. */
             for (int y = 0; y < ph; y++) {
@@ -1123,8 +1143,8 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
                 }
             }
             upload = tiled;
-        } else if (bpp == 4u && (unsigned)pw * (unsigned)ph * 4u <= 256u * 256u * 4u) {
-            u8* tiled = scratch + (256 * 256 * 4);
+        } else if (bpp == 4u && (unsigned)pw * (unsigned)ph * 4u <= TEX_SCRATCH_PLANE) {
+            u8* tiled = scratch + TEX_SCRATCH_PLANE;
             for (int y = 0; y < ph; y++) {
                 int sy = ph - 1 - y;
                 for (int x = 0; x < pw; x++) {
@@ -1138,8 +1158,8 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
                 }
             }
             upload = tiled;
-        } else if (bpp == 1u && (unsigned)pw * (unsigned)ph <= 256u * 256u * 4u) {
-            u8* tiled = scratch + (256 * 256 * 4);
+        } else if (bpp == 1u && (unsigned)pw * (unsigned)ph <= TEX_SCRATCH_PLANE) {
+            u8* tiled = scratch + TEX_SCRATCH_PLANE;
             for (int y = 0; y < ph; y++) {
                 int sy = ph - 1 - y;
                 for (int x = 0; x < pw; x++) {
@@ -1165,14 +1185,14 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         fail_n++;
         return 0;
     }
-    if (reserve > tex_bytes) memset(s->vram_stage, 0, reserve);
-    memcpy(s->vram_stage, staged, tex_bytes);
+    if (reserve > gpu_size) memset(s->vram_stage, 0, reserve);
+    memcpy(s->vram_stage, staged, gpu_size);
     pend_add(s->vram_stage, reserve);
     s->bytes = reserve;
-    slot_tex_lin_build(s, gf, pw, ph, reserve);
+    slot_tex_lin_build(s, gf, pw, ph, gpu_size);
     s->vram_up = 1;
     if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < reserve; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, reserve, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
-    if (tx1_chkon && memcmp(tx1_chk, s->vram_stage, tex_bytes) != 0) {
+    if (tx1_chkon && memcmp(tx1_chk, s->vram_stage, gpu_size) != 0) {
         if (tx1_mismatch++ < 8) pm_log_w("tx1check: bytes differ fmt %u siz %u %dx%d stride %d lut %d", fmt, siz, width, height, stride, lut != NULL);
     }
     if (tx1_t0) { tx1_miss++; tx1_kb += reserve >> 10; tx1_ticks += pm_ticks() - tx1_t0; }

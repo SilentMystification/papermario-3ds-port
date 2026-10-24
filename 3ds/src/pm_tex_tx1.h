@@ -6,7 +6,7 @@
 #define PM_TEX_TX1_H
 #include <string.h>
 
-#define TX1_MAXD 512
+#define TX1_MAXD 1024
 
 static unsigned char tx1_mort[64];
 static unsigned short tx1_ia8[256], tx1_ia4[16];
