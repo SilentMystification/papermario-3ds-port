@@ -365,7 +365,11 @@ void appendGfx_entity_model(EntityModel* model) {
             }
             gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
             if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+                if (model->renderMode == RENDER_MODE_SHADOW) {
+                    gDPSetCombineMode(gMainGfxPos++, PM_CC1_SHADOW, PM_CC2_SHADOW);
+                } else {
+                    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+                }
             } else {
                 gDPSetCombineMode(gMainGfxPos++, PM_CC_42, PM_CC2_MULTIPLY_SHADE);
             }
