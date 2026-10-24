@@ -965,11 +965,18 @@ static Dec* decide(int two) {
 
 static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 static unsigned sc_sig; static int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
-/* OPT-SC: the result of sync_combine_work by the signature of its inputs (the same parts as DIP2). A hit repeats the outputs and the calls into pm_gpu: no decision lookup, no
+/* OPT-SC: the result of sync_combine_work by the PG0 signature of its inputs (the same hash as gbiprof in sync_combine_work). A hit repeats the outputs and the calls into pm_gpu: no decision lookup, no
  * constant colour test, no plan colours. 16 entries, the oldest is replaced. */
 typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
 static ScMemo scm[16];
 static unsigned scm_next;
+static unsigned scm_sig(void) {
+    unsigned parts[] = { comb_w0, comb_w1, omode_h, omode_l, prim, envc, (unsigned)aud_prim_lod, tile_fmt[0] * 4 + tile_siz[0],
+        (unsigned)(tex_on | use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), geom };
+    unsigned sg = 2166136261u;
+    for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+    return sg;
+}
 static ScMemo* scm_find(unsigned sg) {
     for (unsigned i = 0; i < 16; i++) if (scm[i].ok && scm[i].sg == sg) return &scm[i];
     return NULL;
@@ -991,7 +998,6 @@ static void scm_replay(const ScMemo* m) {
 }
 static void sync_combine(void) {
     if (pdl_ep_pso) { sync_combine_work(); sc_ok = 1; return; } /* C2: compiled lists already resolved the combiner at compile */
-    unsigned sg_in = 0;
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
@@ -999,11 +1005,11 @@ static void sync_combine(void) {
         unsigned sg = 2166136261u;
         for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
         if (sc_ok && sg == sc_sig) { GP_SET(5, 1); return; }
-        sc_sig = sg; sg_in = sg;
+        sc_sig = sg;
         sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
     }
     int leg0 = leg_mode, pat0 = box_pat;
-    { ScMemo* m = scm_find(sg_in); if (m) scm_replay(m); else { sync_combine_work(); scm_store(sg_in); } }
+    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig); if (m) scm_replay(m); else { sync_combine_work(); scm_store(sig); } }
     sc_ok = 1;
     if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
@@ -1016,9 +1022,7 @@ static void sync_combine(void) {
 static void sync_combine_work(void) {
     if (gp_on()) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
         static unsigned last_sig;
-        unsigned parts[] = { comb_w0, comb_w1, omode_h, omode_l, prim, envc, (unsigned)aud_prim_lod, tile_fmt[0] * 4 + tile_siz[0], (unsigned)(tex_on | use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), geom };
-        unsigned sg = 2166136261u;
-        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+        unsigned sg = scm_sig();
         GP_SET(5, sg == last_sig);
         last_sig = sg;
     }
