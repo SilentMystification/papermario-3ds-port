@@ -1981,9 +1981,11 @@ void pm_gpu_set_plan(const PmPlan* p) {
     RS_ADD(RS_COMB, 1);
     CS_ADD(CS_PLAN, 1);
     if (combine == 8 && plan_same_layout(&plan, p)) {
+        CS_ADD(CS_CON, 1);
         if (prim != cs_last_prim) CS_ADD(CS_PRIM, 1);
         if (env_col != cs_last_env) CS_ADD(CS_ENV, 1);
-    }
+    } else
+        CS_ADD(CS_LAY, 1);
     flush();
     plan = *p;
     plan_gen++;
