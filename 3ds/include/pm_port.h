@@ -103,7 +103,8 @@ extern unsigned pm_gbi_gv_ticks; /* ticks in G_TRI1/G_TRI2 streaks this drawn fr
 extern unsigned pm_gbi_tex_ticks; /* ticks in texture-command streaks this drawn frame (phase on) */
 extern unsigned pm_gbi_cur_op; /* PI2 */
 int pm_gbi_flush_class(void); /* PI2 */
-extern unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes, empty closes, us per class */
+extern unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6];
+extern unsigned pm_svc_n, pm_ec_n, pm_ec_svc; /* EC2: svc reads, empty closes, svc reads inside empty closes (phase on, per drawn frame) */ /* PI2: batch closes, empty closes, us per class, us of the empty closes */
 void pm_tex_th_frame(unsigned* o); /* PI3 */
 enum {
     CS_PLAN, CS_MODE, CS_PRIM, CS_ENV, CS_LAY, CS_CON,

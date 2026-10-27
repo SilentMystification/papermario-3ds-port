@@ -2095,16 +2095,26 @@ void pm_gpu_set_const(unsigned rgba) {
 }
 
 void pm_gpu_flush(void) { flush(); }
+unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list interpreter, line of the call in pm_gbi.c */
     fl_fn = "gbi"; fl_line = line;
+    /* EC2: no vertex and no raw batch queued: flush_draw returns before any state, texture, cache or GPU call. Only the
+     * rectangle bookkeeping of flush_impl runs. No timer (svc read) here, only a plain count. */
+    if (nverts <= 0 && gni <= 0) {
+        unsigned s0 = pm_svc_n;
+        pm_ec_n++;
+        if (pm_ph_on) { int c = pm_gbi_flush_class(); pm_fl_n[c]++; pm_fl_e[c]++; }
+        flush_impl();
+        pm_ec_svc += pm_svc_n - s0; /* 0 when the path makes no svc call */
+        return;
+    }
     if (!pm_ph_on) { flush_impl(); return; }
     int c = pm_gbi_flush_class();
-    unsigned d0 = pm_ph_cnt[C_DRAW], t0 = pm_ticks();
+    unsigned t0 = pm_ticks();
     flush_impl();
     pm_fl_us[c] += (pm_ticks() - t0) / 268u;
     pm_fl_n[c]++;
-    if (pm_ph_cnt[C_DRAW] == d0) pm_fl_e[c]++;
 }
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {

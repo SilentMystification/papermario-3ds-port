@@ -295,6 +295,7 @@ static void summarize(unsigned now) {
 typedef struct {
     Rec r;
     unsigned rs[RS_N], cs[CS_N], fl_n[6], fl_e[6], fl_us[6], th[6], gbi[3], gpu[2];
+    unsigned ec_n, ec_svc;
     unsigned kick_n, kick_us, draws, cmd, vb, iv, hud_us, log_prev;
 } PhRec;
 static PhRec phr[PHR_N];
@@ -311,6 +312,7 @@ static void ph_format(const PhRec* p) {
               p->cs[CS_PF_N], p->cs[CS_PF_G], p->cs[CS_PF_CNAME], p->cs[CS_PF_BUFNAME], p->cs[CS_PF_VTXNAME],
               p->cs[CS_PF_UTEX], p->cs[CS_PF_USHA], p->cs[CS_PF_UT1], p->cs[CS_PF_UNOISE], p->cs[CS_PF_KS], p->cs[CS_PF_FOLD]);
     pm_log_hw("flsplit f%u tex %u/%u/%u cc %u/%u/%u geo %u/%u/%u rect %u/%u/%u tri %u/%u/%u oth %u/%u/%u", r->f, p->fl_n[0], p->fl_e[0], p->fl_us[0], p->fl_n[1], p->fl_e[1], p->fl_us[1], p->fl_n[2], p->fl_e[2], p->fl_us[2], p->fl_n[3], p->fl_e[3], p->fl_us[3], p->fl_n[4], p->fl_e[4], p->fl_us[4], p->fl_n[5], p->fl_e[5], p->fl_us[5]);
+    pm_log_hw("ecsplit f%u empty %u svc %u", r->f, p->ec_n, p->ec_svc);
     const unsigned* th = p->th;
     pm_log_hw("thsplit f%u hit %u/%u miss %u/%u dc %u/%u", r->f, th[0], th[1], th[2], th[3], th[4], th[5]);
     /* PI4: gdraw and gproc are the GPU times read at this frame's begin, so they belong to frame f-1. */
@@ -361,6 +363,7 @@ void pm_ph_frame_end(void) {
         memcpy(p->fl_n, pm_fl_n, sizeof p->fl_n);
         memcpy(p->fl_e, pm_fl_e, sizeof p->fl_e);
         memcpy(p->fl_us, pm_fl_us, sizeof p->fl_us);
+        p->ec_n = pm_ec_n; p->ec_svc = pm_ec_svc; /* EC2 */
         pm_tex_th_frame(p->th);
         p->gbi[0] = pm_gbi_sync_ticks / 268u;
         p->gbi[1] = pm_gbi_gv_ticks / 268u;
@@ -376,6 +379,7 @@ void pm_ph_frame_end(void) {
     pm_ph_kick_n = pm_ph_kick_us = pm_ph_hud_us = 0;
     pm_ph_log_prev = (pm_ticks() - lg0) / 268u;
     memset(pm_fl_n, 0, sizeof pm_fl_n); memset(pm_fl_e, 0, sizeof pm_fl_e); memset(pm_fl_us, 0, sizeof pm_fl_us);
+    pm_ec_n = pm_ec_svc = 0;
     memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
     pm_gbi_sync_ticks = 0;

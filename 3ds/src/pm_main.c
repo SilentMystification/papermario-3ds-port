@@ -150,7 +150,8 @@ void pm_crash_install(void* stack, unsigned size) {
     threadOnException(crash_handler, (u8*)stack + size, WRITE_DATA_TO_HANDLER_STACK);
 }
 
-unsigned pm_ticks(void) { return (unsigned)svcGetSystemTick(); }
+unsigned pm_svc_n; /* EC2: svc tick reads, counted for the empty close count */
+unsigned pm_ticks(void) { pm_svc_n++; return (unsigned)svcGetSystemTick(); }
 /* milliseconds since the first call (64 bit tick, the 32 bit pm_ticks wraps every 16 s) */
 unsigned pm_uptime_ms(void) {
     static u64 t0;
