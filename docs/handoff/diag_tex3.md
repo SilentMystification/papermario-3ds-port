@@ -47,3 +47,23 @@ The statehash is game state, not pixels. All base values match, so the game stat
 - Run the file select flip. Frames 150 to 152 show a blank screen, so take a later window. The frame of the menu is not measured yet.
 - Run a battle with a jump input (padscript) and a log line for the multibounce text.
 - Decide whether the intro diff (14.75 percent over the whole frame) is a timing difference. Compare with a second run of the reference build.
+
+## Update (row tex4, lane tex3, 2 of 5 starts used, same binary 07ee16b3)
+
+### Fileselect (new frame 400 vs reference, diff 2.46 percent)
+- The diff sits in one strip: the File 1 name text (x 160 to 200) and the box edge at x 100 to 140. Other boxes and labels match.
+- Reference reads "File 1 AAAAAAAA". New frame reads "File 1 AAA" then other glyphs, then "000".
+- Verdict: REGRESSION SUSPECT, not intended. The name glyphs changed and no fix in this branch explains why. Likely cause: fix B slot reuse (the name may draw from an off-screen slot) or fix A glyph read. Not proven. Next check: a run on the base binary (before a03daae9c) with the same switches, and compare the name strip.
+
+### Intro (diff 14.75 percent over the frame, mean 4.79)
+- The sign reads MARIO in both frames: intended.
+- The diff is not a shift (best shift 0,0 is the minimum) and not a brightness fade (new/ref brightness ratio 1.002). Mean signed diff per channel: R -1.6, G -2.9, B -6.4.
+- The reference intro.png was last saved at commit 8a25a4583 (G01g), many commits before this branch. Verdict: STALE REFERENCE LIKELY, the whole-frame change is not from the texture fixes alone. Not proven: no base build was run.
+
+### File select flip (rotation check, window 152 to 331, one shot per frame)
+- Frames 152 to 159: blank. 160 to 178: the title logo fades in. 179 to 262: title with PRESS START.
+- 263 to 273: the logo turns out. 282 to 296: the boxes turn in with their contents.
+- Zoom check (frames 287, 290, 293, 296): the labels (File 3, First Play, File 1 name, Select file to start, Stereo, Delete File, Copy File, Options, Cancel, Mono, File 2, File 4, NEW) stay on their boxes during the turn.
+- Verdict: PASS. The box contents turn with their boxes. No text shows at the top left.
+- The window 330 to 389 from the coordinator is static (menu fully open), so the turn is not in that window.
+- Note: the earlier window 150 to 152 was blank because the title screen had not started.
