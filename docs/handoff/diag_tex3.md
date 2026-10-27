@@ -93,3 +93,21 @@ The statehash is game state, not pixels. All base values match, so the game stat
 - Candidate commits (glyph atlas path, pm_gbi.c and pm_tex.c): 7b7baee8f (2026-10-24, reused glyph moved to its own atlas cell, x0 + ggx), 817cb4c56 (subtract the glyph atlas offset, x0 - ggx), 588b189a5 (glyph-same path introduced). The glyph-same skip alone is not the cause (test above).
 - Repeated letters: the name "AAAAAAAA" is 8 identical glyphs. The first two are right, the third onward break. This fits a reused-glyph path (cell reuse for the same source pointer). Not proven.
 - Draw not found. Next: log glyph_remap idx and glyph_ox/oy per letter for the name (add one log line in pm_tex.c, one shot), then fix the cell offset for reused glyphs.
+
+### Glyph logs (row tex4, imglog, debug lines kept in pm_tex.c)
+- glyph_remap logs "glyphmap sheet idx cell src w h stride" (new-bind path). glyph_resolve misses log "glyphmiss src off" for 16x16 CI4 loads.
+- Shot: frame 400 picture is identical to the earlier frame 400 (diff 0.0). Log is at the shot run's end; the shot line is not in the log, so per-letter mapping to the wrong letters is NOT done.
+- Glyphmiss: 353 lines, all off -1 (sources outside the message sheets). So misses are not the name letters. The glyph path does not cover the name misses.
+- Disabling the glyph-same skip (earlier test) did not fix the name. Reverting fix B did not fix the name. Archived build 1175 has the same name.
+- No fix applied. Open: which draw makes the wrong letters. Next experiment: a log of the glyphmap lines with the letter order of the File 1 box (requires the shot line in the log, so a window shot at frame 400 with the until on 'shot 0 frame' plus the glyph log in the same run).
+- Tool note: runs in the file select do not end without the until line. The tex4 budget file in this worktree is at 8 of 8, so no more starts in this worktree.
+
+### Verdict: File 1 name is the save content (read-only check, no Azahar run)
+- Save file: %APPDATA%\Azahar\sdmc\3ds\PaperMario\save.flash (128 KB, last written 2026-10-23 22:24, not changed by today's runs). Copy in scratch only.
+- Slot 0 is the SaveData at file offset 0 (magic "Mario Story 006"). SaveMetadata at 0x12EC; filename[8] at 0x12F3 (include/common_structs.h).
+- Name bytes: 21 21 91 43 4d 2f 2f 2f.
+- Decode with the message charset (enums.h): 0x21 = upper A, 0x2F = upper O, 0x43 = lower c, 0x4D = lower m, 0x91 not decoded (outside the listed Latin range).
+- Decoded: "AA" + 0x91 + "c" + "m" + "OOO". The screen shows "AAA" + junk + "000" (O and 0 look alike at this size). It matches the bytes in order.
+- Verdict: the picture shows the save bytes. It is not a render bug in the glyph path. The old golden "AAAAAAAA" was shot when the name bytes were 21 x8 (Oct 19 save state). The save changed after that.
+- Confidence: high for the 8 bytes and the first and last groups. The 0x91 glyph and the exact variant were matched by eye.
+- Consequence: fileselect.png golden is stale for the save state, not for the renderer. No golden update was made here (no golden runs by user decision).
