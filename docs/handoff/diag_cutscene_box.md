@@ -45,6 +45,15 @@ Find the intro draw by log: add a read-only log at `pm_gpu.c:901-903` and read `
 - Frame 327 draws: fill d0d0d0 full 0..319 x 0..239 (line 8009); 2D draws prim c6c6c6 r2d 1 nv 6 (8000..8008); 3D textured draws combine 8 tex 1 sci 0..320 x 0..240 (8011..8018). Vertex extent not logged.
 - Edit: boxlog line in pm_gpu.c now also logs vertex bounds (vbox x, y).
 
+## Run 2 result (Azahar start 3 of 8, row box)
+- Shots 0000 to 0009 again, frames 327 to 359. Log has "shot 0 frame 327".
+- Frame 327 vbox (2D draws, screen-side game coords): #8010 fill d0d0d0ff, blend 0, rep 0, vbox x 40..360 y 0..240 (full picture). This is the grey panel source.
+- #8000 to #8008 (c6c6c6ff, blend 1, rep 1): thin strips y 211..240 and full-screen rects. Not the panel edge.
+- #8011 to #8018 (graw 1, combine 8, tex 1, 3D raw batch): vbox -1..-1. The raw batch vertices are in gring (16 bytes per vertex, GPU transforms them). The screen extent is NOT logged.
+- Result: the grey panel is what remains of the d0d0d0 fill (#8010) where the 3D raw batches (#8011 to #8018) do not cover. Panel edge = edge of the 3D raw batch coverage. Not matched to a single draw.
+- BLOCKER: missing log line. The raw batch screen bounds (clip-space or screen x, y per draw from gring after the GPU transform, or the gidx range) are not logged. Add it to the graw path in flush_draw (pm_gpu.c near line 925) to name the draw that ends at the box edge.
+- No fix committed. Box still visible in frames 327 to 359.
+
 ## Handoff (rotation at 219k tokens, 2026-10-27)
 State: BLOCKED. Box not fixed. No box edge pixels measured. No draw matched.
 Commits on worktree-agent-a0f129493821e7d00: c956456dc (boxlog switch, run log), 16bd92aaa (blocker note). Merge of dlc-compiler-c1c2 done at start.
