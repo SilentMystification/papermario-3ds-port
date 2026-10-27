@@ -19,6 +19,7 @@ static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof
 static unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
 #define GP_SET(k, same) do { if (gp_on()) { gp_set[k]++; if (same) gp_same[k]++; } } while (0)
 
+unsigned pm_gbi_sync_ticks;
 
 extern u16 DepthCopyBuffer[16];
 extern unsigned short* nuGfxZBuffer;
@@ -438,6 +439,12 @@ static int plan_active; /* S25: the general combiner (mode 8) draws, not the leg
 static PmPlan cur_plan;
 static void sync_combine(void);
 static void sync_combine_work(void);
+static void sync_combine_work_timed(void) {
+    if (!pm_ph_on) { sync_combine_work(); return; }
+    unsigned t0 = pm_ticks();
+    sync_combine_work();
+    pm_gbi_sync_ticks += pm_ticks() - t0;
+}
 static int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
 static unsigned sl_cc;
 static void sync_legacy(void) {
@@ -998,7 +1005,7 @@ static void scm_replay(const ScMemo* m) {
     else pm_gpu_set_combine(leg_mode);
 }
 static void sync_combine(void) {
-    if (pdl_ep_pso) { sync_combine_work(); sc_ok = 1; return; } /* C2: compiled lists already resolved the combiner at compile */
+    if (pdl_ep_pso) { sync_combine_work_timed(); sc_ok = 1; return; } /* C2: compiled lists already resolved the combiner at compile */
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
@@ -1010,7 +1017,7 @@ static void sync_combine(void) {
         sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
     }
     int leg0 = leg_mode, pat0 = box_pat;
-    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig); if (m) scm_replay(m); else { sync_combine_work(); scm_store(sig); } }
+    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig); if (m) scm_replay(m); else { sync_combine_work_timed(); scm_store(sig); } }
     sc_ok = 1;
     if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
