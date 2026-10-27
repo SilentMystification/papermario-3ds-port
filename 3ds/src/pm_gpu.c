@@ -1393,10 +1393,19 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             if (k == OFF_ALL) for (k = OFF_P; k < OFF_ALL && offs[k].last == pm_frame_count(); k++) {}
             if (k == OFF_ALL) { pm_log_w("FX2a: more than 2 8 bit images in one frame, the rest draw on the screen"); return 0; }
             i = k;
-        } else if (w == 64 ? off_sused >= OFF_N : off_used >= OFF_N) {
+        } else if (w == 64 && off_sused >= OFF_N) {
             static int once;
             if (!once++) pm_log_w("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
             return 0;
+        } else if (w != 64 && off_used >= OFF_N) {
+            /* TEX2 B: the file select flip draws more than 4 boxes into off-screen images in one frame. The 5th drew on the screen
+             * (contents at the top left). Take the full size slots again in turn: the GPU runs the draws in list order, so the strips
+             * of an earlier box have read the slot already. A later read of the earlier image does not find it. */
+            static int once;
+            if (!once++) pm_log_w("V05: more than %d off-screen images in one frame, slots are used again", OFF_N);
+            i = off_used++ % OFF_N;
+            offs[i].base = NULL;
+            pm_tex_set_offscreen(i, NULL, 0, &offs[i].tex, siz, offs[i].w, offs[i].h);
         } else i = w == 64 ? OFF_N + off_sused++ : off_used++;
         if (!offs[i].rt) {
             if (!C3D_TexInitVRAM(&offs[i].tex, w, h, GPU_RGBA8)) {

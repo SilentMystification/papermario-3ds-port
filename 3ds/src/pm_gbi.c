@@ -3142,6 +3142,11 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             tile_sz[tile][1] = ult;
             tile_sz[tile][2] = lrs;
             tile_sz[tile][3] = lrt;
+            {   /* imglog: the SETTILESIZE window and the SETTIMG image of the same tile (role 9 = tile line) */
+                static int on = -1;
+                if (on < 0) on = pm_debug_has("imglog");
+                if (on) pm_log_d("imglog f%d tilesize t%u uls %d ult %d lrs %d lrt %d w %d h %d fmt %u siz %u timg %p timg_stride %d", pm_frame_count(), tile, uls, ult, lrs, lrt, ((lrs - uls) >> 2) + 1, ((lrt - ult) >> 2) + 1, tile_fmt[tile], tile_siz[tile], (void*)timg, timg_stride);
+            }
             if (tile == 1 && tile_fmt[1] == 2 && tile_siz[1] == 0 && ld_valid && timg) {
                 /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
                 m1.valid = 1;
