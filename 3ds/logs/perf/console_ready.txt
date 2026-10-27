@@ -15,4 +15,4 @@ FILE_SEL           1    2384    5958    2562     454     350    1567.0     206.4
 END_FILE           1      39    5800    1448     308     287     930.0     126.3      2.0    46.3
 ENTER_WORLD        1      48    4800    2162     554     278    2646.5     253.2      1.8   297.3
 PI1 sum check 0.947 (no). PI2 sum check 2.617 (no). PI4 yes. PI5 log avg 591 us, max 845 us, hud avg 64 us.
-VERDICT: no. Reason: PI2 has no valid identity check yet (flush time sits in other phases), so the plan cannot close; no console run yet
+VERDICT: no. Reason: PI1 sum is 0.947, a narrow miss of 0.95. PI2 has no valid identity check yet. No console run yet.
