@@ -312,6 +312,7 @@ void pm_ph_frame_end(void) {
               pm_cs_cnt[CS_PF_N], pm_cs_cnt[CS_PF_G], pm_cs_cnt[CS_PF_CNAME], pm_cs_cnt[CS_PF_BUFNAME], pm_cs_cnt[CS_PF_VTXNAME],
               pm_cs_cnt[CS_PF_UTEX], pm_cs_cnt[CS_PF_USHA], pm_cs_cnt[CS_PF_UT1], pm_cs_cnt[CS_PF_UNOISE], pm_cs_cnt[CS_PF_KS], pm_cs_cnt[CS_PF_FOLD]);
     pm_log_hw("flsplit f%u tex %u/%u/%u cc %u/%u/%u geo %u/%u/%u rect %u/%u/%u tri %u/%u/%u oth %u/%u/%u", r->f, pm_fl_n[0], pm_fl_e[0], pm_fl_us[0], pm_fl_n[1], pm_fl_e[1], pm_fl_us[1], pm_fl_n[2], pm_fl_e[2], pm_fl_us[2], pm_fl_n[3], pm_fl_e[3], pm_fl_us[3], pm_fl_n[4], pm_fl_e[4], pm_fl_us[4], pm_fl_n[5], pm_fl_e[5], pm_fl_us[5]);
+    pm_log_hw("fleus f%u tex %u cc %u geo %u rect %u tri %u oth %u", r->f, pm_fl_eus[0], pm_fl_eus[1], pm_fl_eus[2], pm_fl_eus[3], pm_fl_eus[4], pm_fl_eus[5]);
     unsigned th[6];
     pm_tex_th_frame(th);
     pm_log_hw("thsplit f%u hit %u/%u miss %u/%u dc %u/%u", r->f, th[0], th[1], th[2], th[3], th[4], th[5]);
@@ -321,7 +322,7 @@ void pm_ph_frame_end(void) {
               pm_ph_gpu_us[0], pm_ph_gpu_us[1], pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_cmd_pm, pm_ph_vb, pm_ph_iv, pm_ph_hud_us, pm_ph_log_prev);
     pm_ph_kick_n = pm_ph_kick_us = pm_ph_hud_us = 0;
     pm_ph_log_prev = (pm_ticks() - lg0) / 268u; /* PI5: the log lines of this frame, printed by the next gpusplit line */
-    memset(pm_fl_n, 0, sizeof pm_fl_n); memset(pm_fl_e, 0, sizeof pm_fl_e); memset(pm_fl_us, 0, sizeof pm_fl_us);
+    memset(pm_fl_n, 0, sizeof pm_fl_n); memset(pm_fl_e, 0, sizeof pm_fl_e); memset(pm_fl_us, 0, sizeof pm_fl_us); memset(pm_fl_eus, 0, sizeof pm_fl_eus);
     memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
     pm_gbi_sync_ticks = 0;
