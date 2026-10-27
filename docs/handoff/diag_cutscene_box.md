@@ -147,3 +147,4 @@ Next steps and exact commands:
 - Next: build PM_LANE=box5, one Azahar start (PM_ROW=box5, -Timeout 90, -LockWait 180, Debug 'loglevel=debug boxlog shots shotwin=580:25', Until 'shot \d+ frame 604'). Read the cmd and list addresses from the log, then map them to the emitter.
 - Build box5 ok (3ds/build.sh, PM_LANE=box5). No .bak file existed, so no restore step. map_restore_table.c stays modified and uncommitted.
 - Azahar start 1 of 8 (box5): PM_ROW=box5, -Timeout 90, -LockWait 180, Debug 'loglevel=debug boxlog shots shotwin=580:25', Until 'shot \d+ frame 604'.
+- State: boxlog edit done (pm_gbi.c:2965). Build OK in lane box5. Azahar run denied by the permission classifier. Not retried. Next step: the run.
