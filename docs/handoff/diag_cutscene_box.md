@@ -38,6 +38,13 @@ Find the intro draw by log: add a read-only log at `pm_gpu.c:901-903` and read `
 - Start 3 (box, shotwin=327:34, -Timeout 90, Until 'shot \d+ frame 360'): queued behind Azahar pid 28396 (another session, started 16:35:59). Not started. Budget used 3 of 8.
 - BLOCKER: shared Azahar lock held by another session. No frame 327 to 360 shot yet. No fix yet.
 
+## Run 1 result (after handoff)
+- Azahar start 1 of 8 (box, shotwin=327:34). Shots 0000 to 0009 = frames 327, 331, 335, 339, 342, 345, 348, 352, 356, 359.
+- Shot 0000 (240x400, PNG via PIL): grey panel x 50..210, y 70..328 (screen pixels). Black bars y 0..40 and 360..400. Checker wall x 0..50. Gold checker bands y 40..70 and 328..360. Red curtain x 210..240.
+- Screen mapping (non-wide, full scissor): screen x = 240 - game y, screen y = 40 + game x. Panel in game units: x 30..288, y 30..190 (derived, not logged).
+- Frame 327 draws: fill d0d0d0 full 0..319 x 0..239 (line 8009); 2D draws prim c6c6c6 r2d 1 nv 6 (8000..8008); 3D textured draws combine 8 tex 1 sci 0..320 x 0..240 (8011..8018). Vertex extent not logged.
+- Edit: boxlog line in pm_gpu.c now also logs vertex bounds (vbox x, y).
+
 ## Handoff (rotation at 219k tokens, 2026-10-27)
 State: BLOCKED. Box not fixed. No box edge pixels measured. No draw matched.
 Commits on worktree-agent-a0f129493821e7d00: c956456dc (boxlog switch, run log), 16bd92aaa (blocker note). Merge of dlc-compiler-c1c2 done at start.
