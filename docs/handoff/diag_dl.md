@@ -39,3 +39,21 @@ Numbers (yard, preset=yard, 6091 frames in the 2nd run, log build3ds/lane-dl/las
 Named blocker for step 2: no pdl key is compared in the run. pdl_try returns at the class gate (dls_class must be 2 or 3) for the 38 early calls, and dlc_try answers every G_DL after frame 299. There is no miss with key inputs to log. The next question is which lists the walk reaches in class 7 (outside all dls_class ranges) and why dlc_try does not take them.
 
 Not run: statehash (toad, battle) and golden.py (toad, yard). golden.py fails with RUN FAILED when Python starts run_azahar.ps1 (-Turbo -FaultStop). The script trap calls Release-Lock, which is not found, and the TURBO line is not printed. The same script run from a PowerShell shell passes. Starts are at the cap of 5.
+
+## dl2 result (2026-10-27, build dl lane, PM_ROW=dl1, budget reset to 8 starts)
+Counters only (commit 0c3e45321): `dlcsplit` line per drawn frame: G_DL walked (gdl), of them class 1 (gdl1) and class 7 (gdl7), dlc hit, dlc miss (compile), replayed ops, groups, skipped groups. Merged worktree-agent-ac8950c0d9c243322 (golden fix ebda33f20).
+Golden fix: golden.py launched "powershell" from Python. That binary failed on Get-FileHash and trap printed Release-Lock not found. golden.py now launches "pwsh" (3ds/tools/golden.py line 52). After that both scenes pass.
+
+Numbers, yard (frames 40 to 101 from the run with shotmode=4:80, 62 frames):
+- G_DL walked per frame: 238.5 (class 1: 68, class 7: 32.5, other classes: about 138).
+- dlc hit per frame: 68. dlc miss per frame: 0 in steady state. Misses: 166 compiles on frame 36 only (map load).
+- Ops replayed by dlc per frame: 1120 in 109 groups. Groups skipped by box: 66.
+- Interpreter ops per frame (taskpl ops): 3223.
+- Walk per frame: 10.06 ms (bg 2.37, main 7.69). Before (dl1, frames 1 to 6091 average): 11.78 ms. Different frame windows, not a like-for-like before/after.
+- Batch close: tex closes 224.4 per frame, of which 161.4 empty; close time 1.75 ms per frame. Tex streak total 4.11 ms; sync 0.47 ms; gv 0.21 ms.
+- Picture: build3ds/lane-dl/shots/0040.ppm (shotmode 4, frame 210) shows Mario, ground and shadow.
+- golden.py toad: ok (0.01 percent, max 148). golden.py yard: ok (0.00 percent, max 68).
+
+Why dlc misses: no steady-state miss to fix in yard. The only misses are the map-load compiles. No code fix made in step 3.
+Remaining walk: 3223 interpreter ops per frame. dlc covers class 1 only (dlc_try rejects other addresses at its first test). Class 2 to 7 G_DL (about 170 per frame) run the interpreter or pdl. Next row: measure the ops inside those lists, or extend the dlc key to them.
+Not run: statehash toad and battle. Each statehash check needs two Azahar starts per scene; the 8-start budget is used.
