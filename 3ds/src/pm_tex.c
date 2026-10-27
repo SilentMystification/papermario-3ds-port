@@ -1338,6 +1338,34 @@ void pm_tex_size(int* w, int* h) {
     if (h) *h = ph;
 }
 
+/* boxlog: the bound unit 0 slot, its size and format, and the raw bytes of 5 texels (4 corners and the centre) from the source image. */
+void pm_tex_boxinfo(char* out, unsigned n) {
+    static const int px[5] = { 0, -1, 0, -1, -2 }, py[5] = { 0, 0, -1, -1, -2 };
+    const Slot* s;
+    unsigned len, i;
+    if (!out || n == 0) return;
+    out[0] = 0;
+    if (!have || off_cur >= 0 || cur < 0 || !slots[cur].live) { snprintf(out, n, "tex none"); return; }
+    s = &slots[cur];
+    if (!s->img) { snprintf(out, n, "tex %d no img", cur); return; }
+    len = (unsigned)snprintf(out, n, "tex %d w %d h %d fmt %u siz %u stride %d", cur, s->w, s->h, s->fmt, s->siz, s->stride);
+    for (i = 0; i < 5 && len + 40 < n; i++) {
+        int x = px[i] < 0 ? (px[i] == -2 ? s->w / 2 : s->w + px[i]) : px[i];
+        int y = py[i] < 0 ? (py[i] == -2 ? s->h / 2 : s->h + py[i]) : py[i];
+        unsigned off = (unsigned)(y * s->stride), k, bpp = s->siz == 32 ? 4 : s->siz == 16 ? 2 : 1;
+        const unsigned char* b = (const unsigned char*)s->img;
+        if (s->siz == 4) off += (unsigned)(x / 2); else off += (unsigned)(x * (int)bpp);
+        if (s->bytes && off + bpp > s->bytes) { len += (unsigned)snprintf(out + len, n - len, " (%d,%d)=oob", x, y); continue; }
+        len += (unsigned)snprintf(out + len, n - len, " (%d,%d)=", x, y);
+        for (k = 0; k < bpp && len + 3 < n; k++) len += (unsigned)snprintf(out + len, n - len, "%02x", b[off + k]);
+    }
+    if (s->fmt == 2 && s->tlut && len + 80 < n) { /* CI: the first 16 palette entries, 16 bit each (RGBA5551 on N64) */
+        const unsigned char* t = (const unsigned char*)s->tlut;
+        len += (unsigned)snprintf(out + len, n - len, " tlut");
+        for (i = 0; i < 16 && len + 6 < n; i++) len += (unsigned)snprintf(out + len, n - len, " %04x", (unsigned)(t[2 * i] << 8 | t[2 * i + 1]));
+    }
+}
+
 /* S25: the texture just loaded becomes TEXEL1 (unit 1). Wrap is that tile's own. */
 int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
     pm_gpu_rect_sync(); /* DR1: a queued rectangle batch is drawn with the texture state it was queued in */
