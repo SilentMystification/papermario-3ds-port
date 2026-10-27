@@ -170,6 +170,8 @@ void pm_mem_hud(char out[3][40]) {
              (unsigned)(cur >> 20), (unsigned)(commit_max >> 20));
     snprintf(out[1], 40, "used linear %u/%uK heap %u/%uK", lin_used, lin_total, heap_used, heap_total);
     snprintf(out[2], 40, "VRAM used %uK free %uK tex %uK", vram_used, vram_free, pm_tex_used() >> 10);
+    static int hud_logged; /* one line per run: proves the 1 Hz refresh ran */
+    if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s | %s", out[0], out[1], out[2]);
 }
 
 void pm_mem_log(const char* tag) {
