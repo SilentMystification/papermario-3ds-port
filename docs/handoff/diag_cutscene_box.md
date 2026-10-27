@@ -62,6 +62,15 @@ Find the intro draw by log: add a read-only log at `pm_gpu.c:901-903` and read `
 - Not yet proven: whether #8315 texels are transparent inside the panel. Texture id and texel alpha are not logged.
 - Next: log the texture id and texel alpha inside the #8315 extent. No fix committed yet.
 
+## Run 5 and 6 result (Azahar starts 5 and 6 of 8, row box)
+- Draw #8600 (after "box raw f327 ndc x -583..758", gi 192): slot 28, 32 x 16, fmt 2 (CI), siz 0 (CI4), stride 32, blend 1, rep 0, combine 8, prim c5c5c5ff.
+- Corner texels: (0,0) index 9, (31,0) index 2, (0,15) index 0, (31,15) index 0, centre (16,8) index 6.
+- Palette (RGBA5551, first 16 entries): 0 e5d7, 1 9bc9, 2 7285, 3 bccf, 4 ee9f, 5 dd93, 6 a40d, 7 9345, 8 6203, 9 c515, a e61b, b ac4f, c cd11, d 8309, e b4d5, f d555.
+- Entry 0 has alpha bit 1 (opaque). The corner alpha test hypothesis is NOT supported for this draw.
+- Shot 0000 panel pixels are neutral grey (about 208). The palette colours of this draw are tan, so this draw does not show in the panel interior at frame 327. The UV mapping to texels is not logged.
+- BLOCKER: per-vertex UV and the final colour per pixel of raw draw #8600 are not logged. Name for the next log: the raw vertex UV (gring bytes 8 to 11) in pm_gpu.c flush_draw graw path.
+- No fix committed. Box still visible in frames 327 to 359.
+
 ## Handoff (rotation at 219k tokens, 2026-10-27)
 State: BLOCKED. Box not fixed. No box edge pixels measured. No draw matched.
 Commits on worktree-agent-a0f129493821e7d00: c956456dc (boxlog switch, run log), 16bd92aaa (blocker note). Merge of dlc-compiler-c1c2 done at start.
