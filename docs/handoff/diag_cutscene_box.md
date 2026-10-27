@@ -140,3 +140,8 @@ Next steps and exact commands:
   2. Build: python 3ds/tools/gen_map_restore.py, then $env:PM_LANE='box3'; & 'C:\Program Files\Git\bin\bash.exe' 3ds/build.sh (map_restore_table.c stays uncommitted).
   3. Shot: $env:PM_ROW='box3'; $env:PM_LANE='box3'; powershell -File 3ds/run_azahar.ps1 -Until 'shot \d+ frame 6[5-9][0-9]' -Timeout 90 -LockWait 180 -Debug 'shots shotwin=580:24 loglevel=debug boxlog'. Budget: 2 of 8 used.
   4. PNGs: python on the shots in build3ds/lane-box3/shots (PPM) to PNG. Saved copies: 3ds/logs/perf/box3/box3_f580_shot0000.png to box3_f602_shot0006.png (git-ignored, on disk only). The next step is that log line, then compare with the N64 `worker_draw_story_graphics` flow.
+
+## Run log (box5 agent, 2026-10-27)
+- Step 3 edit: `3ds/src/pm_gbi.c` texrect case, line 2965 (boxlog). Filter now also needs `yl/4 == 56` and `yh/4 - yl/4 == 8`. Extra fields: cmd (pc-3), list (pm_gbi_run list start), sp, st0 and st1 (stack[sp-1], stack[sp-2]: return list addresses), tex (timg).
+- Hypothesis to test: the 8-row texrect at y 56..63 is a G_TEXRECT inside a list whose address the log names. Its x1 shrink (263, 221, 179, 128, 46 at frames 584, 588, 591, 594, 598) is the moving edge.
+- Next: build PM_LANE=box5, one Azahar start (PM_ROW=box5, -Timeout 90, -LockWait 180, Debug 'loglevel=debug boxlog shots shotwin=580:25', Until 'shot \d+ frame 604'). Read the cmd and list addresses from the log, then map them to the emitter.
