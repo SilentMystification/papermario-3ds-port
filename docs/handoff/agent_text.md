@@ -10,4 +10,6 @@ UPDATE (fix applied, UNTESTED): pm_gbi.c G_SETTILESIZE glyph path (pm_tex_glyph_
 
 Coordinator update: the bug may also cover periods and spacing. Test shot must include a title/menu line with periods beside see and Boots. Report per glyph: buffer address, size, line stride, offset used by the draw.
 
+TEST 1 (budget 1 of 8, no pass): build PM_LANE=text ok (generated headers copied from the main folder, git-ignored). Azahar run: `-Turbo -Smoke -FaultStop -Debug "fast shots shotwin=130:40 shotmode=1:1"`, result SMOKE FAILED timeout 25 s at map load (area 5 map 5). No shot of see or Boots, so no picture. Next: pick a scene that shows the title or menu text with see and Boots and periods, and log per bind SETTIMG and SETTILESIZE dims, stride, GPU dims, and the glyph buffer address, size and offset per glyph.
+
 Do not flip UV signs. Do not restore the combiner-flush skip or texture-bind skip.
