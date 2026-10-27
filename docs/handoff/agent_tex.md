@@ -21,6 +21,11 @@ Update (runs 2 and 3, budget 3 of 8 used):
 - Multibounce SUPER text: not in run 2 or run 3 shots. Likely source src/battle/move/jump/multibounce.c. Not reached.
 - Bug B: golden.py has a fileselect scene (3ds/tools/golden.py), a candidate warp path. Not run yet.
 - Run 4 (budget 4 of 8, commit eabc25f0f): imglog now prints "tilesize" (SETTILESIZE window, SETTIMG fmt/siz/addr/stride) and "gpubind" (slot w/h/stride, GPU w/h, data address). Frames 212 to 213 of the intro window: no slot is half or double its GPU size in both axes. The 296x6 strip uses GPU 512x8 (padding only). Suspicious: tile 0 windows with uls 1024 ult 1024 (texel origin 256,256) on 32x32 and 48x56 slots (GPU 32x32, 32x64, 64x64). The origin is outside the slot image. Not matched to the candidate sprite yet. Next: map the candidate (full-res 81,264) to one of these binds, then compare its origin with the slot size.
+- Run 5 (budget 5 of 8): ensure_tile wrap of tile_x0/tile_y0 into the slot size (bug A lead). Shot 0005 (frame 215): the orange and white block beside Toad is GONE, and Mario is not visible there. Not a pass. Edit reverted in the worktree (pm_gbi.c untouched, not committed).
+- Run 6 (budget 6 of 8): file select attempt, 30 s cap (turbo divides the timeout). Frame 154 only, logo transition.
+- Run 7 (budget 7 of 8): same, 30 s cap. Not reached.
+- Run 8 (budget 8 of 8, -Turbo -TurboFactor 1, 90 s cap): file select reached. Shots 0000 to 0059 = frames 330 to 389. Shot 0015 (frame 345), upright: the file select shows "File 1 AAAAm000" with the text overlapping the name strip, and "First Play" box. A rotating box glitch is not confirmed in the 60 frames (no rotation seen at this scale). Not logged per draw.
+- Budget is spent (8 of 8). Bug A: no fix. Bug B: no fix. Next agent: start from run 8 window (-Turbo -TurboFactor 1 -Timeout 90, shotwin=330:60 with the fileselect padscript) and add a draw log for the rotating strips.
 
 ## Bug B: file select UI glitch during rotation (draw_box DRAW_FLAG_ROTSCALE into VRAM, then strips)
 
