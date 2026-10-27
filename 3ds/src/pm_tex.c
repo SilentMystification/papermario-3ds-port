@@ -1348,6 +1348,11 @@ void pm_tex_boxinfo(char* out, unsigned n) {
         len += (unsigned)snprintf(out + len, n - len, " (%d,%d)=", x, y);
         for (k = 0; k < bpp && len + 3 < n; k++) len += (unsigned)snprintf(out + len, n - len, "%02x", b[off + k]);
     }
+    if (s->fmt == 2 && s->tlut && len + 80 < n) { /* CI: the first 16 palette entries, 16 bit each (RGBA5551 on N64) */
+        const unsigned char* t = (const unsigned char*)s->tlut;
+        len += (unsigned)snprintf(out + len, n - len, " tlut");
+        for (i = 0; i < 16 && len + 6 < n; i++) len += (unsigned)snprintf(out + len, n - len, " %04x", (unsigned)(t[2 * i] << 8 | t[2 * i + 1]));
+    }
 }
 
 /* S25: the texture just loaded becomes TEXEL1 (unit 1). Wrap is that tile's own. */
