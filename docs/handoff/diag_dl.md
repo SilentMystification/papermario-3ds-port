@@ -23,3 +23,19 @@
 - Build (Git Bash): `PM_LANE=dl sh 3ds/build.sh`
 - Run (PowerShell): `$env:PM_LANE='dl'; $env:PM_ROW='dl1'; powershell -File 3ds/run_azahar.ps1 -Timeout 90 -LockWait 180 -Debug "fast preset=yard phase"`
 - Checks: statehash on toad and battle, `python 3ds/tools/golden.py toad yard` once per merge.
+
+## dl1 result (2026-10-27, Azahar lane dl, build 1178-dl, PM_ROW=dl1, 5 of 5 starts used)
+Step 1: RS_PDL / RS_PDLM now counted in pdl_tpl_gdl (pm_dlc.inc.c). Count-only edit, no change to the draw path.
+Step 2: pdl_try counts its calls per dls_class (`cls` field in the pdl report line). Count-only.
+
+Numbers (yard, preset=yard, 6091 frames in the 2nd run, log build3ds/lane-dl/last_log.txt):
+- taskpl pdl and pdlm: 0 and 0 in every frame. Before (review, attract_s6 WORLD): pdl 0, pdlm 0. The count gap is real but it is not the cause: real hits are 0.
+- pdl report (every 300 frames): hit 0, comp 0, refuse 0, full 0 in all windows after frame 299. m hit 0, comp 0. Frames 1 to 299: m refuse 37 in one window.
+- pdl_try calls per class (frames 1 to 299 only): class 2 1, class 7 37. Classes 0, 1, 3, 4, 5, 6: 0. After frame 299: 0 calls in every window.
+- dlc hit: 20400 per 300 frames after frame 299 (dlc_try runs before pdl_try in pdl_tpl_gdl, so dlc answers the G_DL before pdl sees it).
+- walk per frame (6091 frames): bg 2356 us, main 9425 us, walk 11.78 ms. gbisplit: sync 735 us, tex 4817 us avg.
+- Picture: build3ds/lane-dl/shots/0000.ppm (frame 120) shows Mario, ground and shadow. Frames 120 and 124 are byte-identical. Two runs are byte-identical. Pre-change picture not captured. Both edits are counters, so the draw path is unchanged.
+
+Named blocker for step 2: no pdl key is compared in the run. pdl_try returns at the class gate (dls_class must be 2 or 3) for the 38 early calls, and dlc_try answers every G_DL after frame 299. There is no miss with key inputs to log. The next question is which lists the walk reaches in class 7 (outside all dls_class ranges) and why dlc_try does not take them.
+
+Not run: statehash (toad, battle) and golden.py (toad, yard). golden.py fails with RUN FAILED when Python starts run_azahar.ps1 (-Turbo -FaultStop). The script trap calls Release-Lock, which is not found, and the TURBO line is not printed. The same script run from a PowerShell shell passes. Starts are at the cap of 5.
