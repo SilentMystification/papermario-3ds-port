@@ -89,7 +89,10 @@ void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
 /* RSP split counters (one rsplit line per drawn frame with phase): crossings the phase line does not name. */
 enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
     RS_TK_BG, RS_TK_MAIN, RS_TK_KEY, RS_TUS_BG, RS_TUS_MAIN, RS_TUS_KEY, RS_TOPS, /* PI1: tasks per kind, us per kind (BG no swap flag, MAIN swap, KEY key replay), ops in tasks */
-    RS_PUSH, RS_NOPUSH, RS_RET, RS_RANGE, RS_SPMAX, RS_PDL, RS_PDLM, RS_N };
+    RS_PUSH, RS_NOPUSH, RS_RET, RS_RANGE, RS_SPMAX, RS_PDL, RS_PDLM,
+    RS_GDL, RS_GDL1, RS_GDL7, /* dl2: G_DL ops walked, of them class 1 (map shape) and class 7 (outside every range) */
+    RS_DLCH, RS_DLCM, RS_DLCOPS, RS_DLCG, RS_DLCSKIP, /* dl2: dlc_try hit, compile (miss), ops replayed, groups, groups skipped by box */
+    RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 unsigned pm_gbi_ops_now(void);
 #define RS_ADD(c, n) do { if (pm_ph_on) pm_rs_cnt[c] += (unsigned)(n); } while (0)

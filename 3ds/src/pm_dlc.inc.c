@@ -449,9 +449,10 @@ static int dlc_try(const Gfx* l) {
         int r = dlc_compile(e, l);
         e->hash = dls_hash(l);
         dlc_c.compile++;
+        RS_ADD(RS_DLCM, 1);
         if (r) { e->refused = (u8)r; dlc_c.refused[r]++; }
         else dlc_static_build(e, l);
-    } else dlc_c.hit++;
+    } else { dlc_c.hit++; RS_ADD(RS_DLCH, 1); }
     if (e->refused) return 0;
     if (chk && dls_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
     const float(*m)[4] = combined;
@@ -460,16 +461,19 @@ static int dlc_try(const Gfx* l) {
     int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
     dlc_c.lists++;
     dlc_c.opsrep += e->nops;
+    RS_ADD(RS_DLCOPS, e->nops);
     if (e->ngrp) { __builtin_prefetch(e->grp); __builtin_prefetch(e->gop); }
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
+        RS_ADD(RS_DLCG, 1);
         if (dlc_box_out(g, m)) {
             if (chk) dlc_verify_skip(l, g, m);
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
             dlc_c.skip++;
+            RS_ADD(RS_DLCSKIP, 1);
             continue;
         }
         skipped_last = 0;
