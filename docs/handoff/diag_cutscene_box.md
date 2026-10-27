@@ -134,4 +134,9 @@ Next steps and exact commands:
 - The moving edge is a different texrect: rows y 56..63 (8 rows), x0 0, x1 moving: f584 263, f588 221, f591 179, f594 128, f598 46. Its mode is oml 0f0a4200 omh 00008cc0, prim b2b2b2ff. Its x0 29 x1 293 companion (same rows) is constant.
 - Emitter of the moving 8-row texrect: NOT in src/world/area_hos/hos_05/intro.c (grep finds only the 1388, 1413, 1420 texrects there). Candidates to read next: src/background.c, src/main.c, src/state_logos.c, src/draw_img_util.c. Find the caller with x0 0 and a shrinking x1.
 - Decision needed: is the shrinking x1 the N64 page wipe? Decide from the N64 value of x1 per frame (the game variable that sets it on N64, same decomp code), not from the picture. The port emits the same x1 as the game code computes, so a difference only appears if the 3DS draws the texels differently.
-- Blocker for the fix: the N64 value that ends the story image draw is not yet named. The next step is that log line, then compare with the N64 `worker_draw_story_graphics` flow.
+- Blocker for the fix: the N64 value that ends the story image draw is not yet named.
+- Exact commands for the next agent (worktree root, PowerShell):
+  1. Find the emitter: grep -n "x0 0\|gSPScisTextureRectangle" src/background.c src/main.c src/state_logos.c src/draw_img_util.c, and the callers of the texrect helper in src/world/area_hos/hos_05/intro.c.
+  2. Build: python 3ds/tools/gen_map_restore.py, then $env:PM_LANE='box3'; & 'C:\Program Files\Git\bin\bash.exe' 3ds/build.sh (map_restore_table.c stays uncommitted).
+  3. Shot: $env:PM_ROW='box3'; $env:PM_LANE='box3'; powershell -File 3ds/run_azahar.ps1 -Until 'shot \d+ frame 6[5-9][0-9]' -Timeout 90 -LockWait 180 -Debug 'shots shotwin=580:24 loglevel=debug boxlog'. Budget: 2 of 8 used.
+  4. PNGs: python on the shots in build3ds/lane-box3/shots (PPM) to PNG. Saved copies: 3ds/logs/perf/box3/box3_f580_shot0000.png to box3_f602_shot0006.png (git-ignored, on disk only). The next step is that log line, then compare with the N64 `worker_draw_story_graphics` flow.
