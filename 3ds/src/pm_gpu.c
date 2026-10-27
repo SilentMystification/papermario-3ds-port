@@ -438,6 +438,8 @@ static void dbg_cmp(void) {
  * Switch nokick turns it off. */
 static unsigned prev_draws, kick_at;
 static int kick_done;
+extern int pm_ph_on;
+extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb; /* PI4 */
 static void kick_check(void) {
     if (kick_done || off_active || !kick_at || draws_frame < kick_at || rect_open || nverts > 0 || gni > 0) return;
     kick_done = 1;
@@ -445,9 +447,12 @@ static void kick_check(void) {
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
     sh_clear();
     PH_PUSH(PH_GPU);
-    C3D_FrameSplit(GX_CMDLIST_FLUSH);
+    { unsigned k0 = pm_ph_on ? pm_ticks() : 0; /* PI4: the split is timed on its own */
+      C3D_FrameSplit(GX_CMDLIST_FLUSH);
+      if (pm_ph_on) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
     PH_POP();
     kick_n++;
+    pm_ph_kick_n++;
 }
 static void flush_draw(void);
 static void flush_impl(void) {
@@ -1645,6 +1650,7 @@ void pm_gpu_end(void) {
         if (used > verts_max) verts_max = used;
         if (cmd > cmd_max) cmd_max = cmd;
         pm_ph_cmd_pm = (unsigned)(cmd * 1000.f);
+        pm_ph_draws = draws_frame; pm_ph_vb = used; /* PI4 */
         if ((used * 10u > VERT_SLOTS * 9u || cmd > 0.9f || vert_drops) && (warned < 5 || frames_seen % 600 == 0)) {
             warned++;
             pm_log_w("GPU LIMIT NEAR: vertex slots %u of %u (dropped %u), command buffer %d%%, draws %u", used,

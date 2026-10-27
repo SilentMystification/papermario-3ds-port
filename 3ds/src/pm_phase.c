@@ -68,6 +68,7 @@ static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buc
 static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */
 unsigned pm_ph_gpu_us[2];
 unsigned pm_ph_cmd_pm;
+unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb, pm_ph_iv, pm_ph_hud_us, pm_ph_log_prev; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
 
 void pm_ph_scene_mode(int mode) { cur_mode = mode; }
 void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; }
@@ -301,6 +302,7 @@ void pm_ph_frame_end(void) {
     r->f = ++frame_no;
     spike_rec = *r; /* PT15: the spike line in pm_main.c reads the phases of the step that just ended */
     frame_t0 = now;
+    unsigned lg0 = pm_ticks(); /* PI5 */
     pm_log_hw("rsplit f%u tile %u comb %u xdup %u clip %u pcomp %u dlc %u", r->f, pm_rs_cnt[RS_TILE], pm_rs_cnt[RS_COMB], pm_rs_cnt[RS_XDUP], pm_rs_cnt[RS_CLIP], pm_rs_cnt[RS_PCOMP], pm_rs_cnt[RS_DLC]);
     pm_log_hw("taskpl f%u bg %u main %u key %u us %u %u %u ops %u push %u nopush %u ret %u range %u spmax %u pdl %u pdlm %u", r->f, pm_rs_cnt[RS_TK_BG], pm_rs_cnt[RS_TK_MAIN], pm_rs_cnt[RS_TK_KEY], pm_rs_cnt[RS_TUS_BG], pm_rs_cnt[RS_TUS_MAIN], pm_rs_cnt[RS_TUS_KEY], pm_rs_cnt[RS_TOPS], pm_rs_cnt[RS_PUSH], pm_rs_cnt[RS_NOPUSH], pm_rs_cnt[RS_RET], pm_rs_cnt[RS_RANGE], pm_rs_cnt[RS_SPMAX], pm_rs_cnt[RS_PDL], pm_rs_cnt[RS_PDLM]);
     pm_log_hw("gbisplit f%u sync %u gv %u tex %u", r->f, pm_gbi_sync_ticks / 268u, pm_gbi_gv_ticks / 268u, pm_gbi_tex_ticks / 268u);
@@ -312,6 +314,12 @@ void pm_ph_frame_end(void) {
     unsigned th[6];
     pm_tex_th_frame(th);
     pm_log_hw("thsplit f%u hit %u/%u miss %u/%u dc %u/%u", r->f, th[0], th[1], th[2], th[3], th[4], th[5]);
+    /* PI4: gdraw and gproc are the GPU times read at this frame's begin, so they belong to frame f-1. */
+    pm_log_hw("gpusplit f%u cpu %u fb %u fe %u idle %u gdraw %u gproc %u kick %u/%u draws %u cmd %u vb %u iv %u hud %u log %u",
+              r->f, (unsigned)(r->wall * 1000.f), (unsigned)(r->ms[PH_FBEGIN] * 1000.f), (unsigned)(r->ms[PH_FEND] * 1000.f), (unsigned)(r->ms[PH_IDLE] * 1000.f),
+              pm_ph_gpu_us[0], pm_ph_gpu_us[1], pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_cmd_pm, pm_ph_vb, pm_ph_iv, pm_ph_hud_us, pm_ph_log_prev);
+    pm_ph_kick_n = pm_ph_kick_us = pm_ph_hud_us = 0;
+    pm_ph_log_prev = (pm_ticks() - lg0) / 268u; /* PI5: the log lines of this frame, printed by the next gpusplit line */
     memset(pm_fl_n, 0, sizeof pm_fl_n); memset(pm_fl_e, 0, sizeof pm_fl_e); memset(pm_fl_us, 0, sizeof pm_fl_us);
     memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
