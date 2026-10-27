@@ -37,3 +37,17 @@ Find the intro draw by log: add a read-only log at `pm_gpu.c:901-903` and read `
 - Status: NOT FIXED. Next: a shot with a log window on f327 to f360, then compare the box edge pixels with the draw rectangles (fill x0 y0 x1 y1).
 - Start 3 (box, shotwin=327:34, -Timeout 90, Until 'shot \d+ frame 360'): queued behind Azahar pid 28396 (another session, started 16:35:59). Not started. Budget used 3 of 8.
 - BLOCKER: shared Azahar lock held by another session. No frame 327 to 360 shot yet. No fix yet.
+
+## Handoff (rotation at 219k tokens, 2026-10-27)
+State: BLOCKED. Box not fixed. No box edge pixels measured. No draw matched.
+Commits on worktree-agent-a0f129493821e7d00: c956456dc (boxlog switch, run log), 16bd92aaa (blocker note). Merge of dlc-compiler-c1c2 done at start.
+Box edge pixels: none measured. Frame 327 shot (intro): grey panel centre, black bars top and bottom, checker walls left, red and gold curtain right (build3ds/lane-box/shots/0009.ppm, PNG copy in the agent scratchpad).
+Draws seen at intro frame 327 (boxlog): fill rgba 000000ff x 0..319 y 0..27; draw prim c9c9c9ff combine 0 tex 0 rep 1 blend 1, scissor 0..320 x 0..240. Not yet matched to the box edge.
+Azahar budget (row box): 3 of 8 used. Start 3 (shotwin=327:34) queued behind Azahar pid 28396 (other session, since 16:35:59); the wait may have timed out.
+Open items: (1) frame 327 to 360 shot with boxlog, pixel-measure the box edge; (2) match edge to fill/draw rect, scissor or texture edge; (3) one fix; (4) rebuild, reshoot, commit.
+Next steps and exact commands:
+  cd <worktree>
+  PowerShell: $env:PM_ROW='box'; ='box'; powershell -File 3ds/run_azahar.ps1 -Until 'shot \d+ frame 360' -Timeout 90 -Debug 'shots shotwin=327:34 loglevel=debug boxlog'
+  Build: PowerShell $env:PM_LANE='box'; & 'C:\Program Files\Git\bin\bash.exe' 3ds/build.sh
+  Before build: python 3ds/tools/gen_map_restore.py, then restore 3ds/src/map_restore_table.c (never commit it).
+  Convert PPM to PNG with PIL, read the PNG, measure the edge.
