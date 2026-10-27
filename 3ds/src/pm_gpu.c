@@ -768,6 +768,7 @@ static void flush_draw(void) {
                     for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
+                    RS_ADD(RS_PCOMP, 1);
                 }
                 if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && sh5_pal_gen[k] == post_gen) continue;
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
@@ -792,6 +793,7 @@ static void flush_draw(void) {
                     for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
+                    RS_ADD(RS_PCOMP, 1);
                 }
                 if (sh_pal_ok[k] && sh_pal_gm[k] == gm && sh_pal_gen[k] == post_gen) continue; /* the register block holds this matrix already */
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u4_pal + 4 * (int)k, &pcomp[gm]);
@@ -1966,6 +1968,7 @@ void pm_gpu_set_tex1(float sx, float sy, float ox, float oy) {
 
 void pm_gpu_set_plan(const PmPlan* p) {
     if (combine == 8 && memcmp(&plan, p, sizeof plan) == 0) return;
+    RS_ADD(RS_COMB, 1);
     flush();
     plan = *p;
     plan_gen++;
@@ -1974,6 +1977,7 @@ void pm_gpu_set_plan(const PmPlan* p) {
 
 void pm_gpu_set_combine(int mode) {
     if (mode == combine) return;
+    RS_ADD(RS_COMB, 1);
     flush();
     combine = mode;
 }

@@ -384,6 +384,7 @@ static void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
         u32 w0 = l[j].words.w0, w1 = l[j].words.w1;
         switch (w0 >> 24) {
         case G_VTX: {
+            RS_ADD(RS_DLC, 1);
             unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
             const Vtx* src = (const Vtx*)ptr_of(w1);
             if (v0 + n > 64) n = 64 - v0;
@@ -407,10 +408,12 @@ static void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
             break;
         }
         case G_TRI1:
+            RS_ADD(RS_DLC, 1);
             tri_prep_ok = 0;
             draw_tri(w0);
             break;
         case G_TRI2:
+            RS_ADD(RS_DLC, 2);
             tri_prep_ok = 0;
             draw_tri(w0);
             draw_tri(w1);

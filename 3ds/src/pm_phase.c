@@ -16,6 +16,7 @@
 int pm_ph_on;
 int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
+unsigned pm_rs_cnt[RS_N];
 
 static const char* const pname[PH_N] = { "other", "logic", "dl", "gbi", "gpu", "tex", "audio", "rom", "yay0", "fbegin", "fend", "idle", "gcache", "gdraw", "g_vtx", "g_tri", "g_mtx", "g_op", "fbread", "g_tev", "g_bind", "g_state" };
 static const char* const cname[C_N] = { "tri", "triout", "vtxload", "vtxslot", "draw", "flush", "texcall", "texmiss", "texKB", "romn", "romKB", "yayn", "yayKB", "dbgcall", "atick", "gbiops", "ajob", "gvload", "gvtri", "gvrej", "gvfb", "gvxf", "flcall", "flkb", "rawd", "rawcall" };
@@ -186,6 +187,7 @@ void pm_ph_init(void) {
            (double)dt2 / 2000.0 / 268.112, x & 1);
     last = frame_t0 = win_t0 = pm_ticks();
     memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
+    memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
 }
 
 void pm_ph_push(int id) {
@@ -294,6 +296,8 @@ void pm_ph_frame_end(void) {
     r->f = ++frame_no;
     spike_rec = *r; /* PT15: the spike line in pm_main.c reads the phases of the step that just ended */
     frame_t0 = now;
+    pm_log_hw("rsplit f%u tile %u comb %u xdup %u clip %u pcomp %u dlc %u", r->f, pm_rs_cnt[RS_TILE], pm_rs_cnt[RS_COMB], pm_rs_cnt[RS_XDUP], pm_rs_cnt[RS_CLIP], pm_rs_cnt[RS_PCOMP], pm_rs_cnt[RS_DLC]);
+    memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     if (ps_on) ps_step(r);
     if (csv && r->f >= (unsigned)csv_from && r->f <= (unsigned)csv_to) {
         pm_log_d("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d gv %d gt %d gm %d go %d | %u %u %u %u %u %u %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),

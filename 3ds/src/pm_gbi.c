@@ -1926,8 +1926,11 @@ static void draw_tri(unsigned w) {
 no_boost:
     GP_LAP(GPL_OLD);
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
+    RS_ADD(RS_CLIP, 1);
     pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
+    RS_ADD(RS_CLIP, 1);
     pm_gpu_vert_clip(poly[1].x, poly[1].y, poly[1].z, poly[1].w, poly[1].u, poly[1].v, pack_color(&poly[1]));
+    RS_ADD(RS_CLIP, 1);
     pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
 }
 
@@ -2276,6 +2279,7 @@ static void ensure_tile(int n) {
         cur_tile = n;
         return;
     }
+    RS_ADD(RS_TILE, 1);
     pm_gpu_flush();
     pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
     if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w, td[n].h);
@@ -2606,6 +2610,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                         vert_cb[v0 + i] = (unsigned char)clip_bits4(p);
                         vert_gvf[v0 + i] = 1;
                         st_vx++;
+                        RS_ADD(RS_XDUP, 1);
                         continue;
                     }
                     vert_gvf[v0 + i] = 3;
