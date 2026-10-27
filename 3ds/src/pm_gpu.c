@@ -1966,18 +1966,36 @@ void pm_gpu_set_tex1(float sx, float sy, float ox, float oy) {
     t1_s[0] = sx; t1_s[1] = sy; t1_s[2] = ox; t1_s[3] = oy;
 }
 
+static unsigned cs_last_prim = 0xffffffffu, cs_last_env = 0xffffffffu;
+
+static int plan_same_layout(const PmPlan* a, const PmPlan* b) {
+    PmPlan x = *a, y = *b;
+    x.buf = x.vtx = 0;
+    y.buf = y.vtx = 0;
+    for (int i = 0; i < 6; i++) x.st[i].constant = y.st[i].constant = 0;
+    return memcmp(&x, &y, sizeof x) == 0;
+}
+
 void pm_gpu_set_plan(const PmPlan* p) {
     if (combine == 8 && memcmp(&plan, p, sizeof plan) == 0) return;
     RS_ADD(RS_COMB, 1);
+    CS_ADD(CS_PLAN, 1);
+    if (combine == 8 && plan_same_layout(&plan, p)) {
+        if (prim != cs_last_prim) CS_ADD(CS_PRIM, 1);
+        if (env_col != cs_last_env) CS_ADD(CS_ENV, 1);
+    }
     flush();
     plan = *p;
     plan_gen++;
     combine = 8;
+    cs_last_prim = prim;
+    cs_last_env = env_col;
 }
 
 void pm_gpu_set_combine(int mode) {
     if (mode == combine) return;
     RS_ADD(RS_COMB, 1);
+    CS_ADD(CS_MODE, 1);
     flush();
     combine = mode;
 }
