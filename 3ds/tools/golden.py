@@ -47,7 +47,9 @@ def run(name):
     dbg = f"{sw} fixedseed shots shotwin={f}:3 {EXTRA}".strip()  # R-SEED: a normal boot has a random RNG seed, tests use the fixed one
     if os.path.exists(SHOT): os.remove(SHOT)  # a stale shot from an earlier run must never be read
     if sys.platform.startswith("win"):
-        r = subprocess.run(["powershell", "-File", os.path.join(ROOT, "3ds", "run_azahar.ps1"), "-Turbo", "-FaultStop",
+        # -Force: run_azahar.ps1 returns "cached ok" (exit 0, no shot) for a row, 3dsx and args it already ran. That is the
+        # RUN FAILED without an Azahar start: a scene that differed is not in golden_ok.json, so a rerun hit the ps1 cache.
+        r = subprocess.run(["powershell", "-File", os.path.join(ROOT, "3ds", "run_azahar.ps1"), "-Turbo", "-FaultStop", "-Force",
                             "-Timeout", "90", "-Until", "shot 2 frame", "-Debug", dbg], capture_output=True, text=True, cwd=ROOT)
         hit = "matched 'shot 2 frame'"
     else:  # Linux: flatpak Azahar through run_azahar.sh (flock, budget CSV). -F is the fast mode. The shots go next to the log file.
