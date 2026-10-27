@@ -12,4 +12,6 @@ Coordinator update: the bug may also cover periods and spacing. Test shot must i
 
 TEST 1 (budget 1 of 8, no pass): build PM_LANE=text ok (generated headers copied from the main folder, git-ignored). Azahar run: `-Turbo -Smoke -FaultStop -Debug "fast shots shotwin=130:40 shotmode=1:1"`, result SMOKE FAILED timeout 25 s at map load (area 5 map 5). No shot of see or Boots, so no picture. Next: pick a scene that shows the title or menu text with see and Boots and periods, and log per bind SETTIMG and SETTILESIZE dims, stride, GPU dims, and the glyph buffer address, size and offset per glyph.
 
+PASS (run 4 of 8, pause status menu, preset=toad padscript=wait80,START*3,wait100, until glyphbind f18x, shot 0005 = game frame 181): dialog "Check here to see what Mario's current status is." reads right, see is right, period and spacing right. Boots in the right list reads right. Picture: 3ds/logs/perf/text_run4_0005.png, crops text_run4_dialog_x3.png and text_run4_list_x3.png. Fix commit 8c021240a is kept.
+
 Do not flip UV signs. Do not restore the combiner-flush skip or texture-bind skip.
