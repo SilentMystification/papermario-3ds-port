@@ -195,12 +195,18 @@ static int glyph_remap(const void** img, int* width, int* height, int* stride, u
     int idx;
     int aw, ah;
     if (!glyph_resolve((const u8*)*img, *width, *height, fmt, siz, &g, &idx)) {
+        { static int onf = -1; if (onf < 0) onf = pm_debug_has("imglog");
+          if (onf && fmt == FMT_CI && siz == SIZ_4 && *width == 16 && *height == 16) {
+              unsigned k; long off = -1; for (k = 0; k < sizeof glyph_sheets / sizeof glyph_sheets[0]; k++) if ((const u8*)*img >= glyph_sheets[k].base && (const u8*)*img < glyph_sheets[k].base + glyph_sheets[k].size) off = (long)((const u8*)*img - glyph_sheets[k].base);
+              pm_log_d("glyphmiss src %p off %ld stride %d", (void*)*img, off, *stride); } }
         glyph_ox = glyph_oy = 0;
         return 0;
     }
     glyph_atlas_dims(g, &aw, &ah);
     glyph_ox = (idx % g->cols) * g->gw;
     glyph_oy = (idx / g->cols) * g->gh;
+    { static int on = -1; if (on < 0) on = pm_debug_has("imglog"); /* glyph log: source char index, atlas cell, source address */
+      if (on) pm_log_d("glyphmap sheet %u idx %d cell %d,%d src %p w %d h %d stride %d", g->id, idx, glyph_ox, glyph_oy, (void*)*img, *width, *height, *stride); }
     *img = g->base;
     *width = aw;
     *height = ah;
