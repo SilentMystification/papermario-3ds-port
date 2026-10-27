@@ -1309,6 +1309,11 @@ int pm_tex_bind(void) {
     C3D_TexSetFilter(tp, tex_filt, tex_filt);
     C3D_TexSetWrap(tp, ws, wt);
     C3D_TexBind(0, tp);
+    {   /* imglog: the GPU texture the draw binds (slot size, GPU size and address) */
+        static int on = -1;
+        if (on < 0) on = pm_debug_has("imglog");
+        if (on) pm_log_d("imglog f%d gpubind slot w %d h %d stride %d gpu w %d h %d data %p fmt %u", (int)tc_frame,slots[cur].w, slots[cur].h, slots[cur].stride, (int)tp->width, (int)tp->height, (void*)tp->data, (unsigned)slots[cur].fmt);
+    }
     tb_last = slot_draws_stage(&slots[cur]) ? NULL : &slots[cur].tex;
     tb_f = (int)tex_filt; tb_ws = (int)ws; tb_wt = (int)wt;
     return 1;
