@@ -921,6 +921,8 @@ static void flush_draw(void) {
           }
           pm_log_d("box raw f%u ndc x %d..%d y %d..%d (milli) gi %u n %u", pm_frame_count(), (int)(nx0 * 1000), (int)(nx1 * 1000), (int)(ny0 * 1000), (int)(ny1 * 1000), (unsigned)gi_start, (unsigned)gni);
         }
+        if (graw && tex) { extern void pm_tex_boxinfo(char* out, unsigned n); char tb[512]; pm_tex_boxinfo(tb, sizeof tb);
+          pm_log_d("box tex f%u %s combine %d blend %d rep %d prim %08x", pm_frame_count(), tb, combine, r_blend, r_replace, (unsigned)prim); }
         pm_log_d("box draw f%u graw %d nv %d off %d 3d %d r2d %d wide %d sci x0 %d y0 %d x1 %d y1 %d combine %d tex %d prim %08x blend %d rep %d z %d vbox x %d..%d y %d..%d", pm_frame_count(), graw, nverts, off_active, draw_3d, rect_2d, pm_wide, sci_x0, sci_y0, sci_x1, sci_y1, combine, tex, (unsigned)prim, r_blend, r_replace, z, nverts ? (int)bx0 : -1, nverts ? (int)bx1 : -1, nverts ? (int)by0 : -1, nverts ? (int)by1 : -1); } }
     if (!pso_fast) {
     sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
