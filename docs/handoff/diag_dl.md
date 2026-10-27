@@ -70,3 +70,13 @@ Not run: statehash toad and battle. Each statehash check needs two Azahar starts
 - Note: without fixedseed the rng seed changes per run, so statehash is not comparable (seeds ad8cea4c and 12a52e6a in two runs).
 - golden.py not run (user decision).
 - Starts used: 6 of 8 (dl3).
+
+## dl3 R3 (2026-10-27, PM_ROW=dl3): REVERTED
+- Edit: in pdl_tpl_gdl, the compile arm became a pm_gbi_run(next, 0) walk with pdl_comp_arm(0, 1), as in the spec.
+- Yard shot 40 picture: same as R2 (Mario, ground, shadow).
+- Counters at f107 to f110: taskpl pdl 6, pdlm 11 (R2: 0 and 0). dlcsplit hit 68 unchanged. ops 3235 (R2 3261).
+- Walk at f107 to f110: main 25.6 ms + bg 2.3 ms = about 28.0 ms. R2 at f105: 10.07 ms. Walk rose: spec says revert R3.
+- Cause (not diagnosed): spec section 3 side effect (pdl_tpl_drive one op calls, gv_epoch, pdl_try_m probe). No code agent started.
+- R4 not run (gate was R2 and R3 pass).
+- Statehash toad and battle for R3 not run (budget: 7 of 8 starts used at the yard shot).
+- Tree after revert: R2 only (b99a603ff). Next step per spec: read-only diagnosis of pdl_tpl_drive and pdl_try_m cost.
