@@ -100,6 +100,7 @@ extern unsigned pm_gbi_tex_ticks; /* ticks in texture-command streaks this drawn
 extern unsigned pm_gbi_cur_op; /* PI2 */
 int pm_gbi_flush_class(void); /* PI2 */
 extern unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes, empty closes, us per class */
+void pm_tex_th_frame(unsigned* o); /* PI3 */
 enum {
     CS_PLAN, CS_MODE, CS_PRIM, CS_ENV, CS_LAY, CS_CON,
     CS_PF_N, CS_PF_G, CS_PF_CNAME, CS_PF_BUFNAME, CS_PF_VTXNAME,

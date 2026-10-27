@@ -479,8 +479,11 @@ static void upload_vram_slot(Slot* s) {
     C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     s->vram_up = 0;
 }
+static unsigned pm_th_dc_n, pm_th_dc_us; /* PI3: pend_flush_one calls and us this drawn frame */
 static void flush_pend_only(void) {
+    unsigned t0 = pm_ph_on ? pm_ticks() : 0;
     for (int i = 0; i < pend_n; i++) pend_flush_one(pend[i].p, pend[i].len);
+    if (pm_ph_on && pend_n) { pm_th_dc_n += pend_n; pm_th_dc_us += (pm_ticks() - t0) / 268u; }
     pend_n = 0;
 }
 int pm_tex_vram_pending(void) {
@@ -805,6 +808,11 @@ void pm_tex_prof_report(unsigned frames) {
     if (tb_mode) pm_log("PG2L: baked hits %u, not in pack %u, check mismatches %u, requests written %u", tb_hits, tb_miss, tb_bad, tb_dumped);
     tprof_hit_t = tprof_hit_n = tprof_miss_t = tprof_miss_n = 0;
 }
+/* PI3: this drawn frame's counts: texture hits, hit us, misses, miss us, pend flush calls, pend flush us. Resets them. */
+void pm_tex_th_frame(unsigned* o) {
+    o[0] = tprof_hit_n; o[1] = tprof_hit_t / 268u; o[2] = tprof_miss_n; o[3] = tprof_miss_t / 268u; o[4] = pm_th_dc_n; o[5] = pm_th_dc_us;
+    tprof_hit_t = tprof_hit_n = tprof_miss_t = tprof_miss_n = pm_th_dc_n = pm_th_dc_us = 0;
+}
 static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int height,
                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                      unsigned dkey) {
@@ -813,7 +821,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     int r;
     static int tp = -1;
     if (tp < 0) tp = pm_debug_has("gbiprof");
-    unsigned t0 = tp ? pm_ticks() : 0;
+    unsigned t0 = (tp || pm_ph_on) ? pm_ticks() : 0; /* PI3: timed with phase on too */
     ph_miss = 0;
     PH_ADD(C_TEXCALL, 1);
     if (!lut && dkey == 0) {
@@ -826,7 +834,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
         glyph_ox = glyph_oy = 0;
     r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
     if (ph_miss) PH_POP();
-    if (tp) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
+    if (tp || pm_ph_on) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
         unsigned dt = pm_ticks() - t0;
         if (ph_miss) { tprof_miss_t += dt; tprof_miss_n++; } else { tprof_hit_t += dt; tprof_hit_n++; }
     }
