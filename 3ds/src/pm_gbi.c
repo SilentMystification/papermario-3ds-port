@@ -2280,7 +2280,7 @@ static void ensure_tile(int n) {
         return;
     }
     RS_ADD(RS_TILE, 1);
-    pm_gpu_flush();
+    if (pm_gpu_flush_tile()) RS_ADD(RS_TFULL, 1);
     pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
     if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w, td[n].h);
     pm_tex_load(td[n].src, td[n].fmt, td[n].siz, td[n].w, td[n].h, td[n].pal, td[n].pal_n, td[n].stride);

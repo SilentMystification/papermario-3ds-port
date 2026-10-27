@@ -449,18 +449,18 @@ static void kick_check(void) {
     PH_POP();
     kick_n++;
 }
-static void flush_draw(void);
+static int flush_draw(int tile_swap);
 static void flush_impl(void) {
     if (rect_open && dbg_have) { dbg_cmp(); dbg_have = 0; }
     if (rect_open) { /* DR1: the batch is rectangles: draw it with the state they were queued in */
         int sc = combine, sr = rect_2d, sz = rect_z;
         combine = rect_ec; rect_2d = 1; rect_z = rect_zb; rect_open = 0; rect_tex = -1;
-        flush_draw();
+        (void)flush_draw(0);
         combine = sc; rect_2d = sr; rect_z = sz;
         rect_y0 = rect_y1 = 0; /* the rows of the rectangles in this batch are used up */
         return;
     }
-    flush_draw();
+    (void)flush_draw(0);
 }
 static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int i8_1, int noise, int* memb_out) {
     int memb = 0;
@@ -701,7 +701,8 @@ void pm_pso_bake(unsigned id) {
 }
 
 static unsigned flush_gen; /* GV1b: counts the raw batches closed */
-static void flush_draw(void) {
+static int flush_draw(int tile_swap) {
+    int tfull = 0;
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
     if (fl_on() && gpu_ok) { fl_count(nverts <= 0 && !graw); if (fl_fn != (const char*)"pm_gpu_tex_rect" && strcmp(fl_fn, "pm_gpu_tex_rect") != 0) fl_prev_rect = 0; }
@@ -709,20 +710,20 @@ static void flush_draw(void) {
         nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
-        return;
+        return 0;
     }
     if (r_nocol && !(z_on && (!rect_2d || rect_z) && r_zupd)) {
         nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
-        return;
+        return 0;
     }
     /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
     if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
         nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
-        return;
+        return 0;
     }
     int snap0 = 0, snap1 = 0;
     if (off_active) { /* FX2a: this batch reads the slot it writes */
@@ -769,6 +770,7 @@ static void flush_draw(void) {
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
                     RS_ADD(RS_PCOMP, 1);
+                    if (tile_swap) tfull = 1;
                 }
                 if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && sh5_pal_gen[k] == post_gen) continue;
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
@@ -794,6 +796,7 @@ static void flush_draw(void) {
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
                     RS_ADD(RS_PCOMP, 1);
+                    if (tile_swap) tfull = 1;
                 }
                 if (sh_pal_ok[k] && sh_pal_gm[k] == gm && sh_pal_gen[k] == post_gen) continue; /* the register block holds this matrix already */
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u4_pal + 4 * (int)k, &pcomp[gm]);
@@ -816,14 +819,24 @@ static void flush_draw(void) {
      * Wiping the buffer here let the next 3D batch ignore the house. */
     (void)batch_identity;
     C3D_TexEnv* env = C3D_GetTexEnv(0);
-    int tex = (combine >= 2) && (grab_bind ? (C3D_TexBind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
-    int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
-    int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
-    if (tex && snap0) { C3D_TexBind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
-    if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
-    if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
-    if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
-    int noise = combine == 8 && plan.uses_noise && noise_init();
+    int tex, tex1, i8_0, i8_1, noise;
+    if (tile_swap && tev_valid) {
+        tex = tev_key.tex;
+        tex1 = tev_key.tex1;
+        i8_0 = tev_key.i8_0;
+        i8_1 = tev_key.i8_1;
+        noise = 0; /* unit 0/1/2 and TEV are already on the GPU */
+    } else {
+        tex = (combine >= 2) && (grab_bind ? (C3D_TexBind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
+        tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
+        i8_0 = tex && pm_tex_i8(0);
+        i8_1 = tex1 && pm_tex_i8(1);
+        if (tex && snap0) { C3D_TexBind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
+        if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
+        if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
+        if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
+        noise = combine == 8 && plan.uses_noise && noise_init();
+    }
     if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
         int u = gpal ? (g_use5 ? u5_nzo : u4_nzo) : u_nzo;
         C3D_TexBind(2, &noise_tex);
@@ -836,7 +849,8 @@ static void flush_draw(void) {
     int pso_fast = 0;
     PHF_PUSH(PH_GTEV);
     int memb = 0;
-    if (pso_id && pso_pkt_try(pso_id, z, graw, &memb)) pso_fast = 1;
+    if (tile_swap && tev_valid) memb = tev_memb;
+    else if (pso_id && pso_pkt_try(pso_id, z, graw, &memb)) pso_fast = 1;
     else {
         TevKey tk;
         const size_t tk_n = sizeof tk;
@@ -847,12 +861,12 @@ static void flush_draw(void) {
         tk.plan_gen = combine == 8 ? plan_gen : 0;
         int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
         if (tev_same) memb = tev_memb;
-        else flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb);
+        else { flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); if (tile_swap) tfull = 1; }
     }
     PHF_POP();
     PHF_PUSH(PH_GST);
     dv_draw++;
-    if (!pso_fast) {
+    if (!pso_fast && !(tile_swap && tev_valid)) {
     if (z && r_zmark) {
         /* B3b: pass 1 tests the model with its own depth and marks the stencil where it is nearer than the world. Pass 2 (below) writes the constant there. */
         sh_depth_test(true, GPU_GREATER, GPU_WRITE_DEPTH);
@@ -897,7 +911,7 @@ static void flush_draw(void) {
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
-    if (!pso_fast) {
+    if (!pso_fast && !(tile_swap && tev_valid)) {
     sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
     if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
         sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
@@ -938,7 +952,7 @@ static void flush_draw(void) {
             else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
         }
         kick_check();
-        return;
+        return tfull;
     }
     if (bound != 1) { C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
     Vert* batch = verts;
@@ -995,6 +1009,12 @@ static void flush_draw(void) {
         else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
     }
     kick_check();
+    return tfull;
+}
+
+int pm_gpu_flush_tile(void) {
+    if (nverts <= 0 && gni <= 0) return 0;
+    return flush_draw(1);
 }
 
 /* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
