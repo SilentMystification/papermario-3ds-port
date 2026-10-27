@@ -78,3 +78,10 @@ The statehash is game state, not pixels. All base values match, so the game stat
 
 ### Intro reference
 - No base statehash for the intro is recorded, so the intro cannot be compared to a base. The intro golden is not regenerated.
+
+### Bisect (1): fix B reverted (a03daae9c), tex4 start 5 of 5
+- Lane tex4 built with a03daae9c reverted (not committed). Frame 400, same switches.
+- File 1 name still "AAA" plus unreadable glyphs and "000". Diff vs old golden 2.46 percent (same as with fix B).
+- Verdict: fix B is NOT the cause. Not reverted in the tree.
+- Bisect (2), revert 87b05658d (IA4 nibble), is NOT RUN: the tex4 budget of 5 starts is used up. The revert needs one more start.
+- Tree restored: pm_gpu.c back to the branch state.
