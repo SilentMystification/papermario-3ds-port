@@ -1,0 +1,26 @@
+2026-10-22 22:01 O3DS 192.168.1.170 pushed build 1073 elf=pm_3ds_1073.elf 3dsx=pm_3ds_1073.3dsx sha256=8f8b62e116291f8a head=099433575 (tree dirty: agent edits) result: PUSH OK, 1130 log lines
+2026-10-23 01:08 O3DS 192.168.1.170 pushed build 1083 (PT88 pacing) elf=pm_3ds_1083.elf 3dsx=pm_3ds_1083.3dsx sha256=c193620386f25038 head=7e11600e7 result: PUSH FAILED stage=connect: no answer from 192.168.1.170 in 15s (after 3 attempts, 192.168.1.170)
+2026-10-23 01:17 O3DS 192.168.1.170 pushed build 1083 (PT88 pacing) 3dsx=pm_3ds_1083.3dsx sha256=c193620386f25038 result: PUSH OK, 772 log lines
+2026-10-23 17:20  pm_3ds_1088_gpu.3dsx  13349660 bytes  sha256 f6cef0a374d7249d  git 473538b5d  branch dlc-compiler-c1c2  GPU path Azahar toad frame 251 (VRAM cache). Not a hardware result yet.
+2026-10-23 18:52  pm_3ds_1088_vramkeep.3dsx  13350412 bytes  sha256 d56f19fe057c6dfa  git 473538b5d  WORKING all formats in VRAM via TexLoadImage, Azahar VRAMKEEP 0.21%. FAILING remains pm_3ds_1088_gpu.3dsx sha256 f6cef0a374d7249d CPU store data abort.
+2026-10-23 23:50  pm_3ds_1096_stackdl.3dsx  13351412 bytes  sha256 203cf45b49723b3e  git e2b75e12f  branch dlc-compiler-c1c2  build 1096 (3dsx from 23:32, before the commit stripped failed glyph UV edits). Azahar STACKDL frame 25780 textured floor. Not a hardware result yet.
+2026-10-24 00:53  pm_3ds_1097_upload.3dsx  13351364 bytes  sha256 11b07ab5346b1e49  build 1097  branch dlc-compiler-c1c2  skip non-power-of-two C3D_TexLoadImage (264x162 story CI). Not a hardware result yet.
+2026-10-24 01:20  pm_3ds_1097_raster.3dsx  13351700 bytes  sha256 06ab494222ef9cc3  build string still 1097 (no new commit)  raster-cache logs in spr_init_player_raster_cache. Not a hardware result yet.
+2026-10-24 01:28  pm_3ds_1098_trace.3dsx  13354228 bytes  sha256 b5067593d3a947ea  build 1098  git e4b963d4a  intro map-load trace. Not a hardware result yet.
+2026-10-24 01:45  pm_3ds_1099_models.3dsx  13354524 bytes  sha256 5c094432046480cb  build 1099  git a74635578  texture headers via pm_rom_ptr. Not a hardware result yet.
+2026-10-24 01:57  pm_3ds_1100_notrace.3dsx  13351660 bytes  sha256 07a1484d72e95d93  build 1100  git c4c3fa476  map-load trace removed. Not a hardware result yet.
+2026-10-24 02:04  pm_3ds_1101_texlog.3dsx  13351612 bytes  sha256 2309ea96f7f9494e  build 1101  non-POT skip kept, log removed. Not a hardware result yet.
+2026-10-24 02:25  pm_3ds_1102_texhop.3dsx  13352016 bytes  sha256 914a17869b336b99  build 1102  non-POT uses tiled descriptor, not rewalked. Not a hardware result yet.
+2026-10-24 02:33  pm_3ds_1103_pot.3dsx  13351868 bytes  sha256 60da50224832cb6a  build 1103  all cached textures take TexLoadImage. Not a hardware result yet.
+2026-10-24 02:50  pm_3ds_1104_texblock.3dsx  13351744 bytes  sha256 0c8941f2d28723a0  build 1104  git 60d7783ca  next power-of-two block, C3D_Tex sized to the image. Not a hardware result yet.
+2026-10-24 12:10  pm_3ds_1130_glyph.3dsx  13351276 bytes  sha256 b051724155467be1  build 1130  git 817cb4c56  branch dlc-compiler-c1c2  message glyphs visible at frame 140. Fire shape and yard circle were build 1128. Not a hardware result yet.
+2026-10-24 13:10  pm_3ds_1131_romstall.3dsx  13351636 bytes  sha256 5a9b053fe2a7bf31  build 1131  git 1fa4e38bb  branch dlc-compiler-c1c2  romstall line when a frame spends over 500 ms in SD pi_read. Not a hardware result yet.
+2026-10-24 13:45  pm_3ds_1133_romfit.3dsx  13351644 bytes  sha256 052e177c73fcf228  build 1133  git bbe8301bb  branch dlc-compiler-c1c2  packed ROM reserve 3458 KB, cap 32 KB above need. Not a hardware result yet.
+2026-10-24 14:42  pm_3ds_1134_opt.3dsx  13350564 bytes  sha256 3a0cb87bf43a696f  build 1134  git 481ea16e7  branch dlc-compiler-c1c2  yard frame 206 shows Mario, ground, shadows. CPU clip removed, one texture decode, cached list flush skipped. Includes ROM reserve 3458 KB. Not a hardware result yet.
+2026-10-24 14:55  pm_3ds_1135_scm.3dsx  13350648 bytes  sha256 9dd5e7912aedbc7e  build 1135  git 49629f7d2  branch dlc-compiler-c1c2  yard frame 206 shows Mario, ground, shadow. Combiner memo uses the PG0 signature. Not a hardware result yet.
+2026-10-24 15:12  pm_3ds_1136_batch.3dsx  13351244 bytes  sha256 174905ba957b7c73  build 1136  git 0c63f5f00  branch dlc-compiler-c1c2  yard frame 206 shows Mario, ground, shadows. Batch stays open when texture and uniforms match. Not a hardware result yet.
+2026-10-27 00:31  pm_3ds_1137_rsplit.3dsx  13351956 bytes  sha256 0a99c1eea248a819  build 1137  git ae60862f9  branch dlc-compiler-c1c2  yard frame 206 shows Mario, ground, shadow. rsplit line with phase. Not a hardware result yet.
+2026-10-27 01:27  pm_3ds_1141_tile.3dsx  13354252 bytes  sha256 916a33b1d232c66e  build 1141  git 3e177b05c  branch dlc-compiler-c1c2  yard frame shows Mario, ground, shadow. rsplit tfull 0 tile 62. Not a hardware result yet.
+2026-10-27 01:43  pm_3ds_1143_bind.3dsx  13353816 bytes  sha256 1c70f60e15a20c0f  build 1143  git f971e5dc4  branch dlc-compiler-c1c2  texture bind restored after 1141 frame time stayed 53 ms. Not a hardware result yet.
+2026-10-27 01:52  pm_3ds_1144_log.3dsx  13353384 bytes  sha256 8ac51f4e8ceb401f  build 1144  git de2dc0966  branch dlc-compiler-c1c2  texture bind restored, log waits off the game thread. Not a hardware result yet.
+pm_3ds_1175_instr.3dsx 009b2e14d7d77cbd 63b2fb7f9
