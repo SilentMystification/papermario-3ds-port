@@ -3278,6 +3278,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 int ggx = 0, ggy = 0;
                 if (src && w > 0 && h > 0 && tile_fmt[0] == 2 && tile_siz[0] == 0 &&
                     pm_tex_glyph_same(src, tile_fmt[0], tile_siz[0], w, h, palc, tlut_n, &ggx, &ggy)) {
+                    pm_log_d("glyphbind f%d x0 %d y0 %d ggx %d ggy %d w %d h %d stride %d src %p", pm_frame_count(), x0, y0, ggx, ggy, w, h, stride, (void*)src); /* T02 */
                     tile_x0 = x0 - ggx; /* same sign as ensure_tile's new-bind path (x0 - gox) */
                     tile_y0 = y0 - ggy;
                     tile_fx = (float)(uls & 3) * 0.25f;
