@@ -93,3 +93,11 @@ The statehash is game state, not pixels. All base values match, so the game stat
 - Candidate commits (glyph atlas path, pm_gbi.c and pm_tex.c): 7b7baee8f (2026-10-24, reused glyph moved to its own atlas cell, x0 + ggx), 817cb4c56 (subtract the glyph atlas offset, x0 - ggx), 588b189a5 (glyph-same path introduced). The glyph-same skip alone is not the cause (test above).
 - Repeated letters: the name "AAAAAAAA" is 8 identical glyphs. The first two are right, the third onward break. This fits a reused-glyph path (cell reuse for the same source pointer). Not proven.
 - Draw not found. Next: log glyph_remap idx and glyph_ox/oy per letter for the name (add one log line in pm_tex.c, one shot), then fix the cell offset for reused glyphs.
+
+### Glyph logs (row tex4, imglog, debug lines kept in pm_tex.c)
+- glyph_remap logs "glyphmap sheet idx cell src w h stride" (new-bind path). glyph_resolve misses log "glyphmiss src off" for 16x16 CI4 loads.
+- Shot: frame 400 picture is identical to the earlier frame 400 (diff 0.0). Log is at the shot run's end; the shot line is not in the log, so per-letter mapping to the wrong letters is NOT done.
+- Glyphmiss: 353 lines, all off -1 (sources outside the message sheets). So misses are not the name letters. The glyph path does not cover the name misses.
+- Disabling the glyph-same skip (earlier test) did not fix the name. Reverting fix B did not fix the name. Archived build 1175 has the same name.
+- No fix applied. Open: which draw makes the wrong letters. Next experiment: a log of the glyphmap lines with the letter order of the File 1 box (requires the shot line in the log, so a window shot at frame 400 with the until on 'shot 0 frame' plus the glyph log in the same run).
+- Tool note: runs in the file select do not end without the until line. The tex4 budget file in this worktree is at 8 of 8, so no more starts in this worktree.
