@@ -54,6 +54,14 @@ Find the intro draw by log: add a read-only log at `pm_gpu.c:901-903` and read `
 - BLOCKER: missing log line. The raw batch screen bounds (clip-space or screen x, y per draw from gring after the GPU transform, or the gidx range) are not logged. Add it to the graw path in flush_draw (pm_gpu.c near line 925) to name the draw that ends at the box edge.
 - No fix committed. Box still visible in frames 327 to 359.
 
+## Run 3 result (Azahar start 4 of 8, row box, raw NDC extent log)
+- The "box raw" line is written before its "box draw" line. The raw extent belongs to the next draw line.
+- NDC check (target 240 x 400, shot 0000): panel edge pixel x 50 = NDC -0.583, x 210 = NDC +0.75. Pixel y 70 = NDC +0.65 (flipped), y 328 = NDC -0.64.
+- Match: raw batch gi 192 n 24 (frame 327) has NDC x -583..758, y -649..649. Its draw line is #8315: graw 1, combine 8, tex 1, prim c5c5c5ff, blend 1, rep 0, z 0.
+- The grey panel is the d0d0d0 opaque full-screen fill (#8305, blend 0, rep 0) visible where raw batch #8315 paints nothing. Panel edge = extent of #8315.
+- Not yet proven: whether #8315 texels are transparent inside the panel. Texture id and texel alpha are not logged.
+- Next: log the texture id and texel alpha inside the #8315 extent. No fix committed yet.
+
 ## Handoff (rotation at 219k tokens, 2026-10-27)
 State: BLOCKED. Box not fixed. No box edge pixels measured. No draw matched.
 Commits on worktree-agent-a0f129493821e7d00: c956456dc (boxlog switch, run log), 16bd92aaa (blocker note). Merge of dlc-compiler-c1c2 done at start.
