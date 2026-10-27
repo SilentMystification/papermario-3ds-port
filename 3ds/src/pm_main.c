@@ -306,6 +306,8 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
 }
 int pm_interp_key_draw(void);
 extern volatile int pm_exit_request; /* PT28 */
+extern unsigned pm_ph_iv, pm_ph_hud_us; /* PI4, PI5 */
+extern int pm_ph_on;
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
@@ -439,6 +441,7 @@ void pm_frame_loop(void) {
             unsigned vb = C3D_FrameCounter(0);
             if (step_vb_ok) {
                 unsigned iv = vb - step_vb;
+                pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
                 pm_interp_skip = iv > PM_VBLANKS_PER_STEP; /* F06-5 */
                 fs1_last_iv = iv;
@@ -558,7 +561,11 @@ void pm_frame_loop(void) {
                 snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
             else
                 snprintf(bot, sizeof(bot), "%5.1f ms", frame_ms);
-            if (pm_opt.dbg_hud) pm_gpu_hud(top, bot);
+            if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
+                unsigned h0 = pm_ph_on ? pm_ticks() : 0;
+                pm_gpu_hud(top, bot);
+                if (pm_ph_on) pm_ph_hud_us += (pm_ticks() - h0) / 268u;
+            }
         }
     }
 }

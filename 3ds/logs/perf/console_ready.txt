@@ -1,0 +1,15 @@
+console_ready: row PI4, source 3ds/logs/perf/PI4_run.txt
+Columns (us per frame): W phase gbi walk, C fl sum, X th+tm, G gdraw (f-1), ops C_CMD, closes, tasks, hops (push+ret+range).
+group          segs  frames  W_us/f  C_us/f  X_us/f  G_us/f   ops/f    closes/f  tasks/f  hops/f
+STARTUP            1      15       0       0       0     235       7.5       0.0      0.5     3.3
+LOGOS              1     312     660     221      49     251     199.0      21.0      2.0    32.0
+INTRO              4   14113    9809    2790    2119     339    3118.1     286.9      2.0   314.4
+TITLE              7    3584    4820    2424     708     330    1110.6     196.9      2.0    41.1
+DEMO              64      73    4300     209      55      84     159.1      18.7      1.3    13.5
+DEMO_ENTER        44     766    6640     859     943     162    1246.2      91.4      1.4   150.6
+WORLD             44    7904    9524    1977     854     324    3367.2     263.5      2.0   394.9
+CHANGE_MAP        44     445    8483    1547     537     319    2527.1     199.8      1.9   293.3
+BATTLE            17    3316    6716    1762     895     360    2142.7     168.9      2.0   220.5
+END_BATTLE        16      80    6700       0       0     138      16.0       0.0      1.0     5.0
+PI1 sum check 1.150 (no). PI2 sum check 2.585 (no). PI4 yes. PI5 log avg 586 us, max 829 us, hud avg 63 us.
+VERDICT: no. Reason: the PI1 and PI2 sum checks fail on attract data (fields present, sums do not reconcile); no console run yet
