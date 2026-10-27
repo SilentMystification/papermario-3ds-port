@@ -14,6 +14,13 @@ Blocker: scene not reached yet with a picture that shows the bug.
 
 Next: find the until-line for the house scene (warp or preset that puts Mario on the house steps), take one window on it, read the picture, then log per bind SETTIMG dims, SETTILESIZE dims, stride and GPU dims (the value the draw used).
 
+Update (runs 2 and 3, budget 3 of 8 used):
+- Run 2: preset=intro, shotwin=60:40. until "warp: kmr_20" did not match (no such log line on the intro path). Shots show the intro house exterior and Toad, no quadrant pattern.
+- Run 3: preset=intro, until "warp: scene f200", shotwin=210:40 (exit 0). Shots 0000 to 0039 show the daytime house with Mario walking in front. Shot 0005, crop origin (40,220) at 8x: an orange and white block near full-res (81,264) beside Toad. It may be a garbled Mario sprite with the top half wrong. Not confirmed.
+- Missing: a per-bind log line with SETTIMG and SETTILESIZE dims for the draw at that position.
+- Multibounce SUPER text: not in run 2 or run 3 shots. Likely source src/battle/move/jump/multibounce.c. Not reached.
+- Bug B: golden.py has a fileselect scene (3ds/tools/golden.py), a candidate warp path. Not run yet.
+
 ## Bug B: file select UI glitch during rotation (draw_box DRAW_FLAG_ROTSCALE into VRAM, then strips)
 
 Blocker: not started. No test run. Next: warp to the file select (title, then start), until-line on the file select state log, then shots while the box rotates.
