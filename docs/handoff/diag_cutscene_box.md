@@ -123,3 +123,9 @@ Next steps and exact commands:
   2. Compare with the N64 decomp at the same function. Name the N64 value of the right x at frames 588 to 601, and the frame where the N64 draw ends.
   3. The fix must make the 3DS strip right x match the N64 value at each frame, or stop the strip draw at the frame where the N64 stops it. One change, same row.
   4. Test: PM_ROW=box3 (budget 1 of 8 used), shotwin=327:300, Until 'shot \d+ frame 6[5-9][0-9]'. Pass: frames 588 to 601 show no hard edge at y 303 to 86.
+
+### Box3 follow-up: emitter found (no code change yet)
+- The 7-unit strip set is `appendGfx_image_ci` in `src/world/area_hos/hos_05/intro.c:1403-1424`. It draws the story page image (264 wide, 162 tall, CI, 23 strips of 7 rows plus one remainder row) at `vpX + backImgPosX/frontImgPosX` and `vpY + ...PosY`, from `worker_draw_story_graphics` (intro.c:1426-1475). Strip rows y 50..212 match this image.
+- Called with combine PM_CC_43 and prim 208,208,208 alpha = back overlay alpha when `overlayAlpha != 0` (intro.c:1442-1446). This is where the grey panel and the strip set meet.
+- Open: the logged right vbox x (303, 261, 219, 168, 86) is not 264 wide from a fixed base x 40. So the right edge shrinks per frame. Either the logged vbox is clipped by the texture rectangle, or the positions change per frame. Check `StoryGraphicsPtr` backImgPosX/frontImgPosX and the story page alpha (`storyPageAlpha`, `tapeAlpha`) over frames 584 to 601 in the log (add one log line in `appendGfx_image_ci`).
+- Blocker for the fix: the N64 value that ends the story image draw is not yet named. The next step is that log line, then compare with the N64 `worker_draw_story_graphics` flow.
