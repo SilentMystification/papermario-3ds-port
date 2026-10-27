@@ -308,6 +308,8 @@ void pm_ph_frame_end(void) {
               r->f, pm_cs_cnt[CS_PLAN], pm_cs_cnt[CS_MODE], pm_cs_cnt[CS_PRIM], pm_cs_cnt[CS_ENV], pm_cs_cnt[CS_LAY], pm_cs_cnt[CS_CON],
               pm_cs_cnt[CS_PF_N], pm_cs_cnt[CS_PF_G], pm_cs_cnt[CS_PF_CNAME], pm_cs_cnt[CS_PF_BUFNAME], pm_cs_cnt[CS_PF_VTXNAME],
               pm_cs_cnt[CS_PF_UTEX], pm_cs_cnt[CS_PF_USHA], pm_cs_cnt[CS_PF_UT1], pm_cs_cnt[CS_PF_UNOISE], pm_cs_cnt[CS_PF_KS], pm_cs_cnt[CS_PF_FOLD]);
+    pm_log_hw("flsplit f%u tex %u/%u/%u cc %u/%u/%u geo %u/%u/%u rect %u/%u/%u tri %u/%u/%u oth %u/%u/%u", r->f, pm_fl_n[0], pm_fl_e[0], pm_fl_us[0], pm_fl_n[1], pm_fl_e[1], pm_fl_us[1], pm_fl_n[2], pm_fl_e[2], pm_fl_us[2], pm_fl_n[3], pm_fl_e[3], pm_fl_us[3], pm_fl_n[4], pm_fl_e[4], pm_fl_us[4], pm_fl_n[5], pm_fl_e[5], pm_fl_us[5]);
+    memset(pm_fl_n, 0, sizeof pm_fl_n); memset(pm_fl_e, 0, sizeof pm_fl_e); memset(pm_fl_us, 0, sizeof pm_fl_us);
     memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
     pm_gbi_sync_ticks = 0;

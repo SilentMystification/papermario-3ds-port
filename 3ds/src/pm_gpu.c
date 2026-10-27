@@ -2061,7 +2061,17 @@ void pm_gpu_set_const(unsigned rgba) {
 }
 
 void pm_gpu_flush(void) { flush(); }
-void pm_gpu_flush_at(int line) { fl_fn = "gbi"; fl_line = line; flush_impl(); } /* PG0: a flush asked for by the display list interpreter, line of the call in pm_gbi.c */
+unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
+void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list interpreter, line of the call in pm_gbi.c */
+    fl_fn = "gbi"; fl_line = line;
+    if (!pm_ph_on) { flush_impl(); return; }
+    int c = pm_gbi_flush_class();
+    unsigned d0 = pm_ph_cnt[C_DRAW], t0 = pm_ticks();
+    flush_impl();
+    pm_fl_us[c] += (pm_ticks() - t0) / 268u;
+    pm_fl_n[c]++;
+    if (pm_ph_cnt[C_DRAW] == d0) pm_fl_e[c]++;
+}
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     if (x0 < 0) x0 = 0;

@@ -20,6 +20,18 @@ static unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set
 #define GP_SET(k, same) do { if (gp_on()) { gp_set[k]++; if (same) gp_same[k]++; } } while (0)
 
 unsigned pm_gbi_sync_ticks, pm_gbi_gv_ticks, pm_gbi_tex_ticks;
+unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
+/* PI2: batch class of the op that closes a batch. 0 TEX, 1 CC, 2 GEO, 3 RECT, 4 TRI, 5 other. */
+int pm_gbi_flush_class(void) {
+    switch (pm_gbi_cur_op) {
+    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: return 0;
+    case G_SETCOMBINE: case G_SETPRIMCOLOR: case G_SETENVCOLOR: case G_SETOTHERMODE_L: case G_SETOTHERMODE_H: case G_SETFOGCOLOR: return 1;
+    case G_MTX: case G_POPMTX: case G_GEOMETRYMODE: case G_MOVEWORD: case G_MOVEMEM: return 2;
+    case G_TEXRECT: case G_TEXRECTFLIP: case G_FILLRECT: return 3;
+    case G_TRI1: case G_TRI2: return 4;
+    default: return 5;
+    }
+}
 static int gv_streak;
 static unsigned gv_streak_t0;
 static void gv_streak_flush(void) {
@@ -2477,6 +2489,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         u32 w0 = pc->words.w0;
         u32 w1 = pc->words.w1;
         unsigned op = w0 >> 24;
+        pm_gbi_cur_op = op;
         int fp = 0;
         gv_streak_op(op);
         tex_streak_op(op);
