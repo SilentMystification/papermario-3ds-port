@@ -233,11 +233,8 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs) {
     unsigned dl = all - st_prev_lines, db = st_bytes - st_prev_bytes;
     st_prev_lines = all;
     st_prev_bytes = st_bytes;
-    /* Also to the debugger channel (the Azahar log): under logflood the queue is full and drops the line below. */
-    char dbg[160];
-    int dn = snprintf(dbg, sizeof(dbg), "logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s)", frames, avg_ms,
-                      secs * 1000.f / (float)frames, dl, (float)dl / (float)frames, (float)dl / secs);
-    svcOutputDebugString(dbg, dn);
+    pm_log_hw("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s)", frames, avg_ms,
+              secs * 1000.f / (float)frames, dl, (float)dl / (float)frames, (float)dl / secs);
     pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u live eagain %u stall closes %u", frames, avg_ms, secs * 1000.f / (float)frames, dl,
            (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped, live_eagain, live_stall_close);
     pm_log_d("logstat2 writer max us file %u sock %u console %u, console skipped %u, queue %u of %u",
@@ -290,27 +287,15 @@ void pm_log_console_ready(void) {
     LightLock_Unlock(&con_lock);
 }
 static LightEvent ev_wake, ev_started, ev_flushed;
-
-static void direct_write(const char* line, int n, const char* body, size_t bl) {
-    if (log_fd >= 0 && log_file_on) {
-        if (write(log_fd, line, (size_t)n) > 0) fsync(log_fd);
-    }
-    ring_add(line, n);
-    if (client >= 0 && send(client, line, (size_t)n, 0) < 0) {
-        close(client);
-        client = -1;
-    }
-    if (!con_up) { if (con_pend_n + bl < sizeof con_pend) { memcpy(con_pend + con_pend_n, body, bl); con_pend_n += (unsigned)bl; } }
-    else { fwrite(body, 1, bl, stdout); fflush(stdout); }
-}
+static volatile int io_drain_req;
 
 static void vlog(int lv, const char* fmt, va_list ap) {
     int vip = (lv & VIP) != 0;
     lv &= 15;
     if (lv > log_level) return;
-    int on = __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE);
+    if (!writer_th) return; /* no writer: drop the line, never touch SD, socket or stdout on the caller */
     /* Queue full: one atomic add and out, before any formatting work, so a flood costs almost nothing. */
-    if (on && __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
+    if (__atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
         __atomic_fetch_add(&q_dropped, 1, __ATOMIC_RELAXED);
         return;
     }
@@ -328,14 +313,6 @@ static void vlog(int lv, const char* fmt, va_list ap) {
     __atomic_fetch_add(&st_bytes, (unsigned)bl + 8, __ATOMIC_RELAXED);
     /* lognull: measurement switch, drops every line that is not an error. */
     if (sw_lognull && !strstr(body, "CRASH") && !strstr(body, "FATAL") && !strstr(body, "logstat")) return;
-    if (!on) {
-        char line[280];
-        int n = snprintf(line, sizeof(line), "#%u %s", __atomic_fetch_add(&seq, 1, __ATOMIC_RELAXED), body);
-        if (n < 0) return;
-        if (n >= (int)sizeof(line)) n = (int)sizeof(line) - 1;
-        direct_write(line, n, body, bl);
-        return;
-    }
     u32 h = __atomic_load_n(&q_head, __ATOMIC_RELAXED);
     for (;;) {
         if (h - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
@@ -470,6 +447,18 @@ static void writer_main(void* arg) {
         LightEvent_WaitTimeout(&ev_wake, 250000000LL);
         if (__atomic_load_n(&active_id, __ATOMIC_ACQUIRE) != id) return; /* a replacement thread took over */
         writer_hb++;
+        if (io_drain_req && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
+            LightLock_Lock(&drain_lock);
+            if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) drain_locked();
+            if (log_fd >= 0) {
+                fsync(log_fd);
+                dirty = 0;
+            }
+            io_drain_req = 0;
+            pm_io_quiet = 1;
+            LightLock_Unlock(&drain_lock);
+            continue;
+        }
         if (!__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) continue;
         if (pm_io_quiet) continue; /* PT68: no SD, socket or console call while the app sleeps */
         accept_client();
@@ -527,16 +516,14 @@ static Result cpu_apply(int v, const char* why) {
 volatile int pm_io_quiet;
 static void io_gate(int on) {
     if (on) {
-        if (writer_on) {
-            LightLock_Lock(&drain_lock);
-            if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) drain_locked();
-            if (log_fd >= 0) fsync(log_fd);
-            dirty = 0;
-            LightLock_Unlock(&drain_lock);
-        }
-        pm_io_quiet = 1;
+        if (__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
+            io_drain_req = 1;
+            LightEvent_Signal(&ev_wake);
+        } else
+            pm_io_quiet = 1;
     } else {
         pm_io_quiet = 0;
+        io_drain_req = 0;
         LightEvent_Signal(&ev_wake);
     }
 }

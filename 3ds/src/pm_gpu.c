@@ -1224,6 +1224,14 @@ void pm_gpu_menu_draw(const char* text) {
     pm_con_unlock();
 }
 
+static void hud_put_line(PrintConsole* c, int row, const char* s) {
+    char b[40];
+    snprintf(b, sizeof b, "%-39.39s", s ? s : "");
+    c->cursorX = 1;
+    c->cursorY = row;
+    fputs(b, stdout);
+}
+
 void pm_gpu_hud(const char* line0, const char* line1) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
@@ -1236,14 +1244,10 @@ void pm_gpu_hud(const char* line0, const char* line1) {
     wy = c->windowY;
     ww = c->windowWidth;
     wh = c->windowHeight;
+    consoleSelect(c);
     consoleSetWindow(c, 1, 1, 40, 2);
-    c->cursorX = 1;
-    c->cursorY = 1;
-    printf("%-39.39s", line0 ? line0 : "");
-    c->cursorX = 1;
-    c->cursorY = 2;
-    printf("%-39.39s", line1 ? line1 : "");
-    fflush(stdout);
+    hud_put_line(c, 1, line0);
+    hud_put_line(c, 2, line1);
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;
     c->cursorY = cy;
