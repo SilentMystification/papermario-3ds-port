@@ -85,3 +85,11 @@ The statehash is game state, not pixels. All base values match, so the game stat
 - Verdict: fix B is NOT the cause. Not reverted in the tree.
 - Bisect (2), revert 87b05658d (IA4 nibble), is NOT RUN: the tex4 budget of 5 starts is used up. The revert needs one more start.
 - Tree restored: pm_gpu.c back to the branch state.
+
+### Archived build 1175 (3ds/logs/builds/pm_3ds_1175_instr.3dsx, no texture fixes), tex4 start 6 in this worktree file
+- Same shot, frame 400: File 1 name is the same wrong text ("AAA", unreadable glyphs, "000"). Diff vs old golden 2.46 percent.
+- Verdict: the regression predates both texture fixes. The text is wrong (not legible), so the golden is not updated.
+- Build 1175 is built from commit e83b24014 by the build count (rev 3550). The text path changed between the reference (90228dc6d, 2026-10-19) and that build.
+- Candidate commits (glyph atlas path, pm_gbi.c and pm_tex.c): 7b7baee8f (2026-10-24, reused glyph moved to its own atlas cell, x0 + ggx), 817cb4c56 (subtract the glyph atlas offset, x0 - ggx), 588b189a5 (glyph-same path introduced). The glyph-same skip alone is not the cause (test above).
+- Repeated letters: the name "AAAAAAAA" is 8 identical glyphs. The first two are right, the third onward break. This fits a reused-glyph path (cell reuse for the same source pointer). Not proven.
+- Draw not found. Next: log glyph_remap idx and glyph_ox/oy per letter for the name (add one log line in pm_tex.c, one shot), then fix the cell offset for reused glyphs.
