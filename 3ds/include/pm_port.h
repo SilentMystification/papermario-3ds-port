@@ -87,9 +87,13 @@ void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
 #define PH_POP() do { if (pm_ph_on) pm_ph_pop(); } while (0)
 #define PH_ADD(c, n) do { if (pm_ph_on) pm_ph_cnt[c] += (unsigned)(n); } while (0)
 /* RSP split counters (one rsplit line per drawn frame with phase): crossings the phase line does not name. */
-enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC, RS_N };
+enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
+    RS_TK_BG, RS_TK_MAIN, RS_TK_KEY, RS_TUS_BG, RS_TUS_MAIN, RS_TUS_KEY, RS_TOPS, /* PI1: tasks per kind, us per kind (BG no swap flag, MAIN swap, KEY key replay), ops in tasks */
+    RS_PUSH, RS_NOPUSH, RS_RET, RS_RANGE, RS_SPMAX, RS_PDL, RS_PDLM, RS_N };
 extern unsigned pm_rs_cnt[RS_N];
+unsigned pm_gbi_ops_now(void);
 #define RS_ADD(c, n) do { if (pm_ph_on) pm_rs_cnt[c] += (unsigned)(n); } while (0)
+#define RS_MAX(c, n) do { if (pm_ph_on && (unsigned)(n) > pm_rs_cnt[c]) pm_rs_cnt[c] = (unsigned)(n); } while (0)
 extern unsigned pm_gbi_sync_ticks; /* ticks in sync_combine_work this drawn frame (phase on) */
 extern unsigned pm_gbi_gv_ticks; /* ticks in G_TRI1/G_TRI2 streaks this drawn frame (phase on) */
 extern unsigned pm_gbi_tex_ticks; /* ticks in texture-command streaks this drawn frame (phase on) */

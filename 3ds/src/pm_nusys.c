@@ -72,6 +72,16 @@ void nuContDataGetExAll(NUContData* data) {
 static Gfx* key_list[MAX_KEY];
 static u32 key_size[MAX_KEY];
 static int nkey;
+/* PI1: walk one task and count it. kind 0 = background, 1 = main (swap), 2 = key replay. One tick pair per task, none per op. */
+static void gbi_task(Gfx* gfxList, u32 n, int kind) {
+    if (!pm_ph_on) { pm_gbi_run(gfxList, n); return; }
+    unsigned o0 = pm_gbi_ops_now(), t0 = pm_ticks();
+    pm_gbi_run(gfxList, n);
+    pm_rs_cnt[RS_TK_BG + kind]++;
+    pm_rs_cnt[RS_TUS_BG + kind] += (pm_ticks() - t0) / 268u;
+    pm_rs_cnt[RS_TOPS] += pm_gbi_ops_now() - o0;
+}
+
 void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     (void)ucode;
     int swap = (flag & NU_SC_SWAPBUFFER) != 0;
@@ -83,10 +93,10 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
         if (nkey < MAX_KEY) { key_list[nkey] = gfxList; key_size[nkey++] = gfxListSize; }
         if (swap && pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
         else if (swap) { pm_interp_lerp(0.5f); pm_interp_repl = 1; }
-        pm_gbi_run(gfxList, gfxListSize);
+        gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
         pm_interp_repl = 0;
     } else {
-        pm_gbi_run(gfxList, gfxListSize);
+        gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
     }
     PH_POP();
     if (swap) pm_interp_stop(); /* the background task has no swap flag: the record goes on until the main task */
@@ -99,7 +109,7 @@ int pm_interp_key_draw(void) {
     if (!nkey) return 0;
     pm_gpu_begin(1);
     PH_PUSH(PH_GBI);
-    for (int i = 0; i < nkey; i++) pm_gbi_run(key_list[i], key_size[i]);
+    for (int i = 0; i < nkey; i++) gbi_task(key_list[i], key_size[i], 2);
     PH_POP();
     nkey = 0;
     pm_gpu_end();

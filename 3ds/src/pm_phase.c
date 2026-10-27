@@ -302,6 +302,7 @@ void pm_ph_frame_end(void) {
     spike_rec = *r; /* PT15: the spike line in pm_main.c reads the phases of the step that just ended */
     frame_t0 = now;
     pm_log_hw("rsplit f%u tile %u comb %u xdup %u clip %u pcomp %u dlc %u", r->f, pm_rs_cnt[RS_TILE], pm_rs_cnt[RS_COMB], pm_rs_cnt[RS_XDUP], pm_rs_cnt[RS_CLIP], pm_rs_cnt[RS_PCOMP], pm_rs_cnt[RS_DLC]);
+    pm_log_hw("taskpl f%u bg %u main %u key %u us %u %u %u ops %u push %u nopush %u ret %u range %u spmax %u pdl %u pdlm %u", r->f, pm_rs_cnt[RS_TK_BG], pm_rs_cnt[RS_TK_MAIN], pm_rs_cnt[RS_TK_KEY], pm_rs_cnt[RS_TUS_BG], pm_rs_cnt[RS_TUS_MAIN], pm_rs_cnt[RS_TUS_KEY], pm_rs_cnt[RS_TOPS], pm_rs_cnt[RS_PUSH], pm_rs_cnt[RS_NOPUSH], pm_rs_cnt[RS_RET], pm_rs_cnt[RS_RANGE], pm_rs_cnt[RS_SPMAX], pm_rs_cnt[RS_PDL], pm_rs_cnt[RS_PDLM]);
     pm_log_hw("gbisplit f%u sync %u gv %u tex %u", r->f, pm_gbi_sync_ticks / 268u, pm_gbi_gv_ticks / 268u, pm_gbi_tex_ticks / 268u);
     pm_log_hw("combsplit f%u plan %u mode %u prim %u env %u lay %u con %u n %u g %u cn %u bn %u vn %u ut %u us %u u1 %u un %u ks %u fd %u",
               r->f, pm_cs_cnt[CS_PLAN], pm_cs_cnt[CS_MODE], pm_cs_cnt[CS_PRIM], pm_cs_cnt[CS_ENV], pm_cs_cnt[CS_LAY], pm_cs_cnt[CS_CON],

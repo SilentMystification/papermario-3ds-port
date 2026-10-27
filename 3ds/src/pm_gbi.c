@@ -2021,6 +2021,7 @@ static void note(unsigned op) {
 }
 
 static unsigned n_ops; /* PT01: display list ops run this frame */
+unsigned pm_gbi_ops_now(void) { return n_ops; } /* PI1: ops so far this drawn frame */
 
 void pm_gbi_end_frame(void) {
     /* One second of presented frames, summed. Identical seconds are not written. */
@@ -2464,6 +2465,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     while (pc && guard++ < 200000) {
         if (end && sp == 0 && pc >= end) break;
         if ((u32)pc < pc_lo || (u32)pc >= pc_hi) { /* PG3 A15: the range of pc is looked up when pc leaves the last range (list entry, G_DL, return), not at every op */
+            RS_ADD(RS_RANGE, 1);
             if (!host_range((u32)pc, &pc_lo, &pc_hi)) { pc_lo = pc_hi = 0;
             static int bad_dl;
             if (bad_dl++ < 6) pm_log_e("bad dl pc %08x list %08x n %u sp %d", (u32)pc, (u32)list, nbytes, sp);
@@ -2509,6 +2511,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 tex_streak_flush();
                 return;
             }
+            RS_ADD(RS_RET, 1);
             pc = stack[--sp];
             if (dls_on) dls_pc = dls_class((u32)pc);
             break;
@@ -2528,16 +2531,19 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             }
             if (pdl0_on()) pdl0_gl_enter(next);
             if (!pdl_compile_one && dlc_enabled() && pdl_try(next)) {
+                RS_ADD(RS_PDL, 1);
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
             }
             if (pdl_compile_one && pdl_comp_sp < 0) pdl_comp_arm(sp, ((w0 >> 16) & 0xff) == G_DL_NOPUSH);
             if (!pdl_compile_one && dlc_enabled() && pdl_try_m(next)) {
+                RS_ADD(RS_PDLM, 1);
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
             }
-            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = next;
+            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) { RS_ADD(RS_NOPUSH, 1); pc = next; }
             else if (sp < 12) {
+                RS_ADD(RS_PUSH, 1); RS_MAX(RS_SPMAX, sp + 1);
                 stack[sp++] = pc;
                 pc = next;
             }
