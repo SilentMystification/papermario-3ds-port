@@ -1241,12 +1241,26 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
     fputs(b, stdout);
 }
 
+/* PI6: the game thread only copies the three HUD rows (no printf, no console call). pm_gpu_hud_flush draws them on the
+ * log sink thread, at most 10 times per second. A HUD row written during a draw may show one update late. */
+static char hud_rows[5][40];
+static volatile int hud_new;
 void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
+    if (menu_on) return; /* PT69: the menu owns all rows */
+    strncpy(hud_rows[0], line0 ? line0 : "", 39);
+    strncpy(hud_rows[1], line1 ? line1 : "", 39);
+    for (int r = 0; r < 3; r++) { memcpy(hud_rows[2 + r], mem[r], 39); hud_rows[2 + r][39] = 0; }
+    hud_rows[0][39] = hud_rows[1][39] = 0;
+    hud_new = 1;
+}
+
+/* Log sink thread only. Draws the last HUD rows on the bottom console. */
+void pm_gpu_hud_flush(void) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
-    if (!c->consoleInitialised || menu_on) return; /* PT69: the menu owns all rows */
-    /* The log writer thread prints on this console. Skip the HUD update when it is busy: the game thread never waits for it. */
-    if (pm_con_trylock() != 0) return;
+    if (!hud_new || !c->consoleInitialised || menu_on) return;
+    hud_new = 0;
+    pm_con_lock();
     cx = c->cursorX;
     cy = c->cursorY;
     wx = c->windowX;
@@ -1255,9 +1269,9 @@ void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
     wh = c->windowHeight;
     consoleSelect(c);
     consoleSetWindow(c, 1, 1, 40, 5);
-    hud_put_line(c, 1, line0);
-    hud_put_line(c, 2, line1);
-    for (int r = 0; r < 3; r++) hud_put_line(c, 3 + r, mem[r]);
+    hud_put_line(c, 1, hud_rows[0]);
+    hud_put_line(c, 2, hud_rows[1]);
+    for (int r = 0; r < 3; r++) hud_put_line(c, 3 + r, hud_rows[2 + r]);
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;
     c->cursorY = cy;

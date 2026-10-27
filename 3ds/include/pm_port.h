@@ -74,6 +74,7 @@ void pm_ph_init(void);
 void pm_ph_push(int id);
 void pm_ph_pop(void);
 void pm_ph_frame_end(void);
+void pm_ph_drain(void); /* PI6: log writer thread. Formats the frame records that pm_ph_frame_end copied (the game thread does no printf for them). */
 /* HWM1: scene tag for the phs lines, GPU numbers of the last frame, command buffer fill */
 void pm_ph_scene_mode(int mode);
 void pm_ph_scene_map(int area, int map);
