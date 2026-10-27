@@ -1,5 +1,5 @@
 attract report: row PI4, source 3ds/logs/perf/PI4_run.txt
-frames with split lines: 30608, taskpl: 30608, gpusplit: 30608, phase windows used: 519
+frames with split lines: 30610, taskpl: 30610, gpusplit: 30610, phase windows used: 519
 Units: W, C, X, G, us per frame. G = gdraw, GPU time of frame f-1 (read at begin of f).
 Scene = run of frames after one "game mode" line. Mode map (game_modes.h): 0 STARTUP 1 LOGOS 2 TITLE 3 ENTER_DEMO_WORLD 4 WORLD 5 CHANGE_MAP 8 BATTLE 9 END_BATTLE 16 INTRO 17 DEMO. 14 FILE_SEL not in this log.
 
@@ -246,7 +246,7 @@ idx  name           pm_frame  f_from-f_to  frames  W_us/f  C_us/f  X_us/f  G_us/
 239  WORLD             30602  30184-30337    154    8293    2326     521     333    2922.8     245.6      2.0   265.4
 240  CHANGE_MAP        30756  30338-30345      8      na    1522     304     332    2369.4     178.9      1.9   231.9
 241  DEMO              30764  30346-30346      1      na       0       0      84      16.0       0.0      1.0     5.0
-242  BATTLE            30765  30347-30608    262    5700    1584     523     331    1754.0     154.9      2.0   158.5
+242  BATTLE            30765  30347-82572    264    5700    1595     522     331    1768.8     156.5      2.0   160.1
 
 == per mode group
 group          segs  frames  W_us/f  C_us/f  X_us/f  G_us/f   ops/f    closes/f  tasks/f  hops/f
@@ -258,14 +258,14 @@ DEMO              64      73    4300     209      55      84     159.1      18.7
 DEMO_ENTER        44     766    6640     859     943     162    1246.2      91.4      1.4   150.6
 WORLD             44    7904    9524    1977     854     324    3367.2     263.5      2.0   394.9
 CHANGE_MAP        44     445    8483    1547     537     319    2527.1     199.8      1.9   293.3
-BATTLE            17    3316    6716    1762     895     360    2142.7     168.9      2.0   220.5
+BATTLE            17    3318    6716    1763     895     360    2143.7     169.0      2.0   220.6
 END_BATTLE        16      80    6700       0       0     138      16.0       0.0      1.0     5.0
 
 == plan checks (attract data)
-PI1 fields present: taskpl in 30608 of 30608 frames: yes
-PI1 sum check: sum task us / (gbi+gpu+tex) over 519 windows = 1.150 (pass 0.95-1.05: no)
-PI2 sum check: sum fl us / gpu over same windows = 2.585 (pass 0.95-1.05: no)
+PI1 fields present: taskpl in 30610 of 30610 frames: yes
+PI1 sum check: sum task us / (gbi+gpu+tex) over 519 windows = 0.964 (pass 0.95-1.05: yes)
+PI2 sum check as planned: sum fl us / gpu over same windows = 2.585 (pass 0.95-1.05: no). Definition invalid: fl us is charged to the phase that is current at the flush (gpu, tex, gcache, rom, yay0, audio), so PH_GPU alone is not the sum.
 PI2 TEX n per frame avg = 147.4 (plan about 65, attract run: no)
-PI3 th n + tm n vs texcall (phase count, per window): 299 of 519 windows within 0.5 per frame. Mean diff per frame 0.42
-PI4 gpusplit on every frame: 30608 of 30608 (yes). Kick n per frame max 1 (0 or 1: yes)
+PI3 th n + tm n vs texcall (phase count, per window): 519 of 519 windows within 0.5 per frame. Mean diff per frame 0.42
+PI4 gpusplit on every frame: 30610 of 30610 (yes). Kick n per frame max 1 (0 or 1: yes)
 PI5 log us: log avg 586 us, max 829 us, hud avg 63 us

@@ -9,7 +9,7 @@ DEMO              64      73    4300     209      55      84     159.1      18.7
 DEMO_ENTER        44     766    6640     859     943     162    1246.2      91.4      1.4   150.6
 WORLD             44    7904    9524    1977     854     324    3367.2     263.5      2.0   394.9
 CHANGE_MAP        44     445    8483    1547     537     319    2527.1     199.8      1.9   293.3
-BATTLE            17    3316    6716    1762     895     360    2142.7     168.9      2.0   220.5
+BATTLE            17    3318    6716    1763     895     360    2143.7     169.0      2.0   220.6
 END_BATTLE        16      80    6700       0       0     138      16.0       0.0      1.0     5.0
-PI1 sum check 1.150 (no). PI2 sum check 2.585 (no). PI4 yes. PI5 log avg 586 us, max 829 us, hud avg 63 us.
+PI1 sum check 0.964 (yes). PI2 sum check 2.585 (no). PI4 yes. PI5 log avg 586 us, max 829 us, hud avg 63 us.
 VERDICT: no. Reason: the PI1 and PI2 sum checks fail on attract data (fields present, sums do not reconcile); no console run yet
