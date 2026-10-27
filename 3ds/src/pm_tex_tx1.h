@@ -105,7 +105,7 @@ static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, unsigned src_fmt, unsigne
                     }
                 }
             }
-    } else if (gf == GPU_LA4 && src_fmt == FMT_I && src_siz == SIZ_4) {
+    } else if (gf == GPU_LA4 && src_siz == SIZ_4) { /* I4 (L = A = nibble) and IA4 (3 bit I, 1 bit A): one nibble per texel, not one byte */
         for (int ty = 0; ty < th; ty++)
             for (int tx = 0; tx < tw; tx++) {
                 u8* d = dst + ((size_t)ty * (size_t)tw + (size_t)tx) * 64u;
@@ -116,7 +116,8 @@ static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, unsigned src_fmt, unsigne
                     for (int c = 0; c < 8; c++) {
                         int sx = (int)xs[c];
                         unsigned nib = (unsigned)tx1_n4(src, rb + sx, sx);
-                        d[mo[c]] = (u8)((nib << 4) | nib);
+                        if (src_fmt == FMT_I) d[mo[c]] = (u8)((nib << 4) | nib);
+                        else d[mo[c]] = (u8)((((nib & 14u) | (nib >> 3)) << 4) | ((nib & 1u) ? 15u : 0u));
                     }
                 }
             }
