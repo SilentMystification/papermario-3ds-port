@@ -145,3 +145,5 @@ Next steps and exact commands:
 - Step 3 edit: `3ds/src/pm_gbi.c` texrect case, line 2965 (boxlog). Filter now also needs `yl/4 == 56` and `yh/4 - yl/4 == 8`. Extra fields: cmd (pc-3), list (pm_gbi_run list start), sp, st0 and st1 (stack[sp-1], stack[sp-2]: return list addresses), tex (timg).
 - Hypothesis to test: the 8-row texrect at y 56..63 is a G_TEXRECT inside a list whose address the log names. Its x1 shrink (263, 221, 179, 128, 46 at frames 584, 588, 591, 594, 598) is the moving edge.
 - Next: build PM_LANE=box5, one Azahar start (PM_ROW=box5, -Timeout 90, -LockWait 180, Debug 'loglevel=debug boxlog shots shotwin=580:25', Until 'shot \d+ frame 604'). Read the cmd and list addresses from the log, then map them to the emitter.
+- Build box5 ok (3ds/build.sh, PM_LANE=box5). No .bak file existed, so no restore step. map_restore_table.c stays modified and uncommitted.
+- Azahar start 1 of 8 (box5): PM_ROW=box5, -Timeout 90, -LockWait 180, Debug 'loglevel=debug boxlog shots shotwin=580:25', Until 'shot \d+ frame 604'.
