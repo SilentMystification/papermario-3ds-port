@@ -902,6 +902,8 @@ static void flush_draw(void) {
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
+    { static int boxlog = -1; if (boxlog < 0) boxlog = pm_debug_has("boxlog");
+      if (boxlog) pm_log_d("box draw f%u graw %d nv %d off %d 3d %d r2d %d wide %d sci x0 %d y0 %d x1 %d y1 %d combine %d tex %d prim %08x blend %d rep %d z %d", pm_frame_count(), graw, nverts, off_active, draw_3d, rect_2d, pm_wide, sci_x0, sci_y0, sci_x1, sci_y1, combine, tex, (unsigned)prim, r_blend, r_replace, z); }
     if (!pso_fast) {
     sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
     if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
@@ -2157,6 +2159,8 @@ static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
+    { static int boxlog = -1; if (boxlog < 0) boxlog = pm_debug_has("boxlog");
+      if (boxlog) pm_log_d("box fill f%u x0 %d y0 %d x1 %d y1 %d rgba %08x off %d wide %d", pm_frame_count(), x0, y0, x1, y1, rgba, off_active, pm_wide); }
     rect_begin(0);
     int saved = combine;
     combine = 0;
