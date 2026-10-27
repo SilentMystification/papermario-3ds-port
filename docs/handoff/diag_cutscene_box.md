@@ -54,6 +54,19 @@ Find the intro draw by log: add a read-only log at `pm_gpu.c:901-903` and read `
 - BLOCKER: missing log line. The raw batch screen bounds (clip-space or screen x, y per draw from gring after the GPU transform, or the gidx range) are not logged. Add it to the graw path in flush_draw (pm_gpu.c near line 925) to name the draw that ends at the box edge.
 - No fix committed. Box still visible in frames 327 to 359.
 
+## Summary for the next agent (state at 6 of 8 Azahar starts)
+- Shots: build3ds/lane-box/shots/0000.ppm to 0009.ppm (frames 327, 331, 335, 339, 342, 345, 348, 352, 356, 359). PNG copies: build3ds/lane-box/shots/0000.png to 0009.png (PIL).
+- Box edge pixels (shot 0000, 240 x 400): grey panel x 50..210, y 70..328. Black bars y 0..40 and 360..400. Panel colour about 208 (d0).
+- Log: build3ds/lane-box/last_log.txt (run 6). Frame 327 lines: "shot 0 frame 327" at the first shot.
+- Draw #8315 line is the raw batch gi 192 n 24 (NDC x -583..758, y -649..649), its draw line is #8600 in run 6 numbering. Pixel mapping: x_pix = 120 * (ndc + 1), y_pix = 200 * (1 - ndc) for the 240 x 400 target (fits x 50 and 210, y 70 and 328).
+- Draw #8600 state: slot 28, 32 x 16, fmt 2 (CI), siz 0 (CI4), stride 32, combine 8, blend 1, rep 0, prim c5c5c5ff, tex 1 (unit 0 bound).
+- Texels: (0,0) index 9, (31,0) index 2, (0,15) and (31,15) index 0, (16,8) index 6.
+- Palette RGBA5551, entries 0 to 15: e5d7 9bc9 7285 bccf ee9f dd93 a40d 9345 6203 c515 e61b ac4f cd11 8309 b4d5 d555. Entry 0 alpha bit is 1 (opaque). The alpha-cut hypothesis is not supported.
+- Background draw #8305 (fill d0d0d0ff, blend 0, rep 0, full screen) is the grey source. Draws #8307 to #8319 are 3D raw batches with combine 8 and tex 1.
+- Open question: draw #8600 palette colour is tan, but the panel pixels at frame 327 are neutral grey. So #8600 may not cover the panel interior, or its UV samples another texel area.
+- MISSING LOG (exact): in the graw path of flush_draw (3ds/src/pm_gpu.c, near the "box raw" block, about line 905 to 935), log per raw vertex the UV (gring bytes 8 to 11 as s16 u, v) and the final pixel colour is not available on CPU. Log the UV for gidx range gi_start..gi_start+gni, and read back the framebuffer pixel at the box corner (x 50, y 70) after the draw if possible. Without the UV, the texel for the panel interior is unknown.
+- No fix committed. Box still visible in frames 327 to 359.
+
 ## Run 3 result (Azahar start 4 of 8, row box, raw NDC extent log)
 - The "box raw" line is written before its "box draw" line. The raw extent belongs to the next draw line.
 - NDC check (target 240 x 400, shot 0000): panel edge pixel x 50 = NDC -0.583, x 210 = NDC +0.75. Pixel y 70 = NDC +0.65 (flipped), y 328 = NDC -0.64.
