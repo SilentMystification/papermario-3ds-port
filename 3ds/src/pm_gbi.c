@@ -3278,8 +3278,8 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 int ggx = 0, ggy = 0;
                 if (src && w > 0 && h > 0 && tile_fmt[0] == 2 && tile_siz[0] == 0 &&
                     pm_tex_glyph_same(src, tile_fmt[0], tile_siz[0], w, h, palc, tlut_n, &ggx, &ggy)) {
-                    tile_x0 = x0 + ggx;
-                    tile_y0 = y0 + ggy;
+                    tile_x0 = x0 - ggx; /* same sign as ensure_tile's new-bind path (x0 - gox) */
+                    tile_y0 = y0 - ggy;
                     tile_fx = (float)(uls & 3) * 0.25f;
                     tile_fy = (float)(ult & 3) * 0.25f;
                     td[0].valid = 1; td[0].src = src; td[0].fmt = tile_fmt[0]; td[0].siz = tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
