@@ -20,6 +20,7 @@ Update (runs 2 and 3, budget 3 of 8 used):
 - Missing: a per-bind log line with SETTIMG and SETTILESIZE dims for the draw at that position.
 - Multibounce SUPER text: not in run 2 or run 3 shots. Likely source src/battle/move/jump/multibounce.c. Not reached.
 - Bug B: golden.py has a fileselect scene (3ds/tools/golden.py), a candidate warp path. Not run yet.
+- Run 4 (budget 4 of 8, commit eabc25f0f): imglog now prints "tilesize" (SETTILESIZE window, SETTIMG fmt/siz/addr/stride) and "gpubind" (slot w/h/stride, GPU w/h, data address). Frames 212 to 213 of the intro window: no slot is half or double its GPU size in both axes. The 296x6 strip uses GPU 512x8 (padding only). Suspicious: tile 0 windows with uls 1024 ult 1024 (texel origin 256,256) on 32x32 and 48x56 slots (GPU 32x32, 32x64, 64x64). The origin is outside the slot image. Not matched to the candidate sprite yet. Next: map the candidate (full-res 81,264) to one of these binds, then compare its origin with the slot size.
 
 ## Bug B: file select UI glitch during rotation (draw_box DRAW_FLAG_ROTSCALE into VRAM, then strips)
 
