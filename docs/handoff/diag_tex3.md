@@ -67,3 +67,14 @@ The statehash is game state, not pixels. All base values match, so the game stat
 - Verdict: PASS. The box contents turn with their boxes. No text shows at the top left.
 - The window 330 to 389 from the coordinator is static (menu fully open), so the turn is not in that window.
 - Note: the earlier window 150 to 152 was blank because the title screen had not started.
+
+### File 1 name (row tex4, 4 of 5 starts used)
+- Old golden (2026-10-19): "File 1 AAAAAAAA", 8 legible, evenly spaced A glyphs. New frame 400: "File 1 AAA", then 4 glyphs that are not legible A letters, then "000", uneven spacing.
+- Verdict: NEW IS WORSE. The golden is not updated.
+- The name is CI4 text (imglog glyphbind: tile fmt 2 CI, siz 0). It does not use the IA4 nibble path, so fix A (87b05658d) does not change it.
+- Test: the glyph-same skip (pm_tex_glyph_same branch in pm_gbi.c, commit 8c021240a sign change to x0 - ggx) was disabled in lane tex4. The name still differs (2.53 percent diff vs old golden). So that skip is not the cause. The test edit is reverted, not committed.
+- Not found: the draw that makes the wrong glyphs. The imglog glyphbind lines print x0 0 y0 0 and do not give the letter index.
+- Not tested: fix B (off-screen slot reuse).
+
+### Intro reference
+- No base statehash for the intro is recorded, so the intro cannot be compared to a base. The intro golden is not regenerated.
