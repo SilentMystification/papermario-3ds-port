@@ -87,7 +87,7 @@ void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
 #define PH_POP() do { if (pm_ph_on) pm_ph_pop(); } while (0)
 #define PH_ADD(c, n) do { if (pm_ph_on) pm_ph_cnt[c] += (unsigned)(n); } while (0)
 /* RSP split counters (one rsplit line per drawn frame with phase): crossings the phase line does not name. */
-enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC, RS_TFULL, RS_N };
+enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC, RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 #define RS_ADD(c, n) do { if (pm_ph_on) pm_rs_cnt[c] += (unsigned)(n); } while (0)
 enum {
