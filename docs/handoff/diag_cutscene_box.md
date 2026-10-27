@@ -97,3 +97,13 @@ Next steps and exact commands:
   Build: PowerShell $env:PM_LANE='box'; & 'C:\Program Files\Git\bin\bash.exe' 3ds/build.sh
   Before build: python 3ds/tools/gen_map_restore.py, then restore 3ds/src/map_restore_table.c (never commit it).
   Convert PPM to PNG with PIL, read the PNG, measure the edge.
+
+## Box2 agent (2026-10-27, stopped on user order before any Azahar start)
+- Build: PM_LANE=box2, build3ds/lane-box2/pm_3ds.3dsx (no code change, boxlog as merged). Azahar starts used: 0 of 5.
+- Code finding: frame 327 is GAME_MODE_INTRO (16), intro part 0, map hos_05. src/state_intro.c:36-44 sets the back screen overlay OVERLAY_SCREEN_COLOR, colour 208 208 208 (d0d0d0), alpha 255. This is the fill #8305 (d0d0d0ff, blend 0, full screen). The decomp draws the same grey on N64 until INTRO_FADE_IN lowers the alpha by 4 per step (state_intro.c:246-258).
+- Code finding: draw #8600 (CI4 32x16, tan palette) is theater_floor_png from D_800758A0 (src/curtains.c:35-42). TheaterLeftWallGfx and TheaterRightWallGfx use it (the tan checker walls). Its texels do not cover the grey panel, so it is not the panel source.
+- Code finding: the dark gradient at the panel left and right edges is TheaterInsetShadowsGfx (curtains.c:82-92, G_CC_SHADE, XLU). It also draws on N64.
+- Pixel check (agent-a0f129493821e7d00 shot 0009, frame 359): panel is flat 210 210 210. No line or rectangle edge other than the inset shadow ramp (132 to 198 over 8 px) and the wall and curtain edges. Frames 327 to 359 match the N64 draw order (overlay grey, then theater on top). The box is not visible in the 327:34 window.
+- Value the draw used so far: panel = back overlay fill d0d0d0ff alpha 255 (IntroOverlayAlpha 255 - 4 = 251 or more), theater prim c5c5c5ff (gCurtainFade about 0.23 to 0.3).
+- Open item: the box the user sees is likely after the fade starts (alpha below 255, hos_05 world visible in the panel), or only on the console. Not proven.
+- Next: one Azahar start with PM_ROW=box2 PM_LANE=box2, -Debug 'shots shotwin=327:300 loglevel=debug', -Timeout 90, Until 'shot \d+ frame 6[0-9][0-9]'. Find the first frame where the world shows in the panel and a box edge appears. Then add boxlog lines for the world camera viewport and scissor (pm_gpu.c sci_* near line 903) on that frame.
