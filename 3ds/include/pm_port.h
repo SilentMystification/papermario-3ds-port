@@ -91,6 +91,7 @@ enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC, RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 #define RS_ADD(c, n) do { if (pm_ph_on) pm_rs_cnt[c] += (unsigned)(n); } while (0)
 extern unsigned pm_gbi_sync_ticks; /* ticks in sync_combine_work this drawn frame (phase on) */
+extern unsigned pm_gbi_gv_ticks; /* ticks in G_TRI1/G_TRI2 streaks this drawn frame (phase on) */
 enum {
     CS_PLAN, CS_MODE, CS_PRIM, CS_ENV, CS_LAY, CS_CON,
     CS_PF_N, CS_PF_G, CS_PF_CNAME, CS_PF_BUFNAME, CS_PF_VTXNAME,

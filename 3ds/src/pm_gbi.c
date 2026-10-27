@@ -19,7 +19,20 @@ static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof
 static unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
 #define GP_SET(k, same) do { if (gp_on()) { gp_set[k]++; if (same) gp_same[k]++; } } while (0)
 
-unsigned pm_gbi_sync_ticks;
+unsigned pm_gbi_sync_ticks, pm_gbi_gv_ticks;
+static int gv_streak;
+static unsigned gv_streak_t0;
+static void gv_streak_flush(void) {
+    if (!pm_ph_on || !gv_streak) return;
+    pm_gbi_gv_ticks += pm_ticks() - gv_streak_t0;
+    gv_streak = 0;
+}
+static void gv_streak_op(unsigned op) {
+    if (op == G_TRI1 || op == G_TRI2) {
+        if (pm_ph_on && !gv_streak) { gv_streak_t0 = pm_ticks(); gv_streak = 1; }
+    } else
+        gv_streak_flush();
+}
 
 extern u16 DepthCopyBuffer[16];
 extern unsigned short* nuGfxZBuffer;
@@ -2420,6 +2433,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     if (dlc_on && pdl_main && !pdl_compile_one && !pdl_depth && !dlc_depth && nbytes >= 8u && pdl_tpl_drive(list, nbytes)) { /* pdl_tpl_active blocks nested partial-main replay */
         if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_prev_op = -1; }
         dd_end();
+        gv_streak_flush();
         return;
     }
     Gfx* stack[12];
@@ -2430,7 +2444,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     u32 pc_lo = 0, pc_hi = 0;
     gp_prev_op = -1; /* PG4: the time between two lists is not an op cost */
     sc_ok = 0; sr_ok = 0; /* DIP2: a new display list starts with a full sync */
-    if (!pc) return;
+    if (!pc) { gv_streak_flush(); return; }
     dd_end();
     if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }
     while (pc && guard++ < 200000) {
@@ -2439,6 +2453,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (!host_range((u32)pc, &pc_lo, &pc_hi)) { pc_lo = pc_hi = 0;
             static int bad_dl;
             if (bad_dl++ < 6) pm_log_e("bad dl pc %08x list %08x n %u sp %d", (u32)pc, (u32)list, nbytes, sp);
+            gv_streak_flush();
             return;
             }
         }
@@ -2446,6 +2461,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         u32 w1 = pc->words.w1;
         unsigned op = w0 >> 24;
         int fp = 0;
+        gv_streak_op(op);
         pc++;
         if (!((u32)pc & 31u)) { __builtin_prefetch(pc + 4); __builtin_prefetch(pc + 8); }
         n_ops++;
@@ -2473,6 +2489,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
                 dd_end();
                 if (fp) pm_ph_pop();
+                gv_streak_flush();
                 return;
             }
             pc = stack[--sp];
@@ -3299,6 +3316,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
         }
         if (fp) pm_ph_pop();
     }
+    gv_streak_flush();
 }
 
 static void mtx_elem(Mtx* dst, int r, int c, float v) {
