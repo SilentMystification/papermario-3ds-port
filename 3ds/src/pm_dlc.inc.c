@@ -449,9 +449,10 @@ static int dlc_try(const Gfx* l) {
         int r = dlc_compile(e, l);
         e->hash = dls_hash(l);
         dlc_c.compile++;
+        RS_ADD(RS_DLCM, 1);
         if (r) { e->refused = (u8)r; dlc_c.refused[r]++; }
         else dlc_static_build(e, l);
-    } else dlc_c.hit++;
+    } else { dlc_c.hit++; RS_ADD(RS_DLCH, 1); }
     if (e->refused) return 0;
     if (chk && dls_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
     const float(*m)[4] = combined;
@@ -460,16 +461,19 @@ static int dlc_try(const Gfx* l) {
     int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
     dlc_c.lists++;
     dlc_c.opsrep += e->nops;
+    RS_ADD(RS_DLCOPS, e->nops);
     if (e->ngrp) { __builtin_prefetch(e->grp); __builtin_prefetch(e->gop); }
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
+        RS_ADD(RS_DLCG, 1);
         if (dlc_box_out(g, m)) {
             if (chk) dlc_verify_skip(l, g, m);
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
             dlc_c.skip++;
+            RS_ADD(RS_DLCSKIP, 1);
             continue;
         }
         skipped_last = 0;
@@ -737,6 +741,8 @@ static unsigned pdl_nent;
 static int pdl_depth;
 static struct { unsigned hit, comp, replay, refuse, full, exitbad, drawbad, texbad; } pdl_c;
 
+static unsigned pdl_cls[8]; /* dl1: pdl_try calls per dls_class (before the class gate) */
+
 static int pdlchk_on(void) { return PMDL("pdlcheck"); }
 
 static unsigned pdl_nops(const Gfx* l) {
@@ -899,6 +905,7 @@ static int pdl_try(const Gfx* l) {
     if (!l || !is_host((u32)l) || pdl_depth) return 0;
     if (!dls_rd_lo) dls_init_ranges();
     unsigned c = dls_class((u32)l);
+    pdl_cls[c & 7]++;
     if (c != 2 && c != 3) return 0;
     if (pdl_refuse_ops(l)) { pdl_c.refuse++; return 0; }
     PdlEnt* e = pdl_find((u32)l);
@@ -1306,11 +1313,13 @@ static int pdl_tpl_gdl(Gfx** pc, Gfx* stack[12], int* sp, const Gfx* list_end) {
         return 1;
     }
     if (!pdl_compile_one && dlc_on && pdl_try(next)) {
+        RS_ADD(RS_PDL, 1);
         if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) *pc = (Gfx*)dlc_end;
         return 1;
     }
     if (pdl_compile_one && pdl_comp_sp < 0) pdl_comp_arm(*sp, ((w0 >> 16) & 0xff) == G_DL_NOPUSH);
     if (!pdl_compile_one && dlc_on && pdl_try_m(next)) {
+        RS_ADD(RS_PDLM, 1);
         if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) *pc = (Gfx*)dlc_end;
         return 1;
     }
@@ -1373,7 +1382,8 @@ static int pdl_tpl_drive(void* list, unsigned nbytes) {
 }
 
 static void pdl_report(void) {
-    pm_log_hw("pdl f%d hit %u comp %u replay %u refuse %u full %u | exitbad %u drawbad %u texbad %u pso %u | m hit %u comp %u replay %u refuse %u full %u | tpl hit %u comp %u replay %u seg %u fb %u full %u", rm_frame, pdl_c.hit, pdl_c.comp, pdl_c.replay, pdl_c.refuse, pdl_c.full, pdl_c.exitbad, pdl_c.drawbad, pdl_c.texbad, pso_n, pdl_m_c.hit, pdl_m_c.comp, pdl_m_c.replay, pdl_m_c.refuse, pdl_m_c.full, pdl_tpl_c.hit, pdl_tpl_c.comp, pdl_tpl_c.replay, pdl_tpl_c.seg, pdl_tpl_c.fallback, pdl_tpl_c.full);
+    pm_log_hw("pdl f%d hit %u comp %u replay %u refuse %u full %u | exitbad %u drawbad %u texbad %u pso %u | m hit %u comp %u replay %u refuse %u full %u | tpl hit %u comp %u replay %u seg %u fb %u full %u | cls %u %u %u %u %u %u %u %u", rm_frame, pdl_c.hit, pdl_c.comp, pdl_c.replay, pdl_c.refuse, pdl_c.full, pdl_c.exitbad, pdl_c.drawbad, pdl_c.texbad, pso_n, pdl_m_c.hit, pdl_m_c.comp, pdl_m_c.replay, pdl_m_c.refuse, pdl_m_c.full, pdl_tpl_c.hit, pdl_tpl_c.comp, pdl_tpl_c.replay, pdl_tpl_c.seg, pdl_tpl_c.fallback, pdl_tpl_c.full, pdl_cls[0], pdl_cls[1], pdl_cls[2], pdl_cls[3], pdl_cls[4], pdl_cls[5], pdl_cls[6], pdl_cls[7]);
+    memset(pdl_cls, 0, sizeof pdl_cls);
     memset(&pdl_c, 0, sizeof pdl_c);
     memset(&pdl_m_c, 0, sizeof pdl_m_c);
     memset(&pdl_tpl_c, 0, sizeof pdl_tpl_c);
