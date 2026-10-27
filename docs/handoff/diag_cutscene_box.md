@@ -35,3 +35,5 @@ Find the intro draw by log: add a read-only log at `pm_gpu.c:901-903` and read `
 - Shot 0009 (intro): stage frame, grey panel in the centre, checker walls left, red and gold curtain right, black bars top and bottom. The grey panel matches the per-draw log line: fill rgba c9c9c9 (prim) over full screen, rep 1 blend 1, scissor 0..320 x 0..240, combine 0.
 - Not done: no draw in the log is yet tied to the box edge. The fill rect lines (rgba 000000ff, x 0..319 y 0..27 and y 213..239 range) match the black bars, not a border.
 - Status: NOT FIXED. Next: a shot with a log window on f327 to f360, then compare the box edge pixels with the draw rectangles (fill x0 y0 x1 y1).
+- Start 3 (box, shotwin=327:34, -Timeout 90, Until 'shot \d+ frame 360'): queued behind Azahar pid 28396 (another session, started 16:35:59). Not started. Budget used 3 of 8.
+- BLOCKER: shared Azahar lock held by another session. No frame 327 to 360 shot yet. No fix yet.
