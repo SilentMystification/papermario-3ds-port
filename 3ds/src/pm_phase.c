@@ -299,7 +299,10 @@ void pm_ph_frame_end(void) {
     spike_rec = *r; /* PT15: the spike line in pm_main.c reads the phases of the step that just ended */
     frame_t0 = now;
     pm_log_hw("rsplit f%u tile %u comb %u xdup %u clip %u pcomp %u dlc %u", r->f, pm_rs_cnt[RS_TILE], pm_rs_cnt[RS_COMB], pm_rs_cnt[RS_XDUP], pm_rs_cnt[RS_CLIP], pm_rs_cnt[RS_PCOMP], pm_rs_cnt[RS_DLC]);
-    pm_log_hw("combsplit f%u plan %u mode %u prim %u env %u lay %u con %u", r->f, pm_cs_cnt[CS_PLAN], pm_cs_cnt[CS_MODE], pm_cs_cnt[CS_PRIM], pm_cs_cnt[CS_ENV], pm_cs_cnt[CS_LAY], pm_cs_cnt[CS_CON]);
+    pm_log_hw("combsplit f%u plan %u mode %u prim %u env %u lay %u con %u n %u g %u cn %u bn %u vn %u ut %u us %u u1 %u un %u ks %u fd %u",
+              r->f, pm_cs_cnt[CS_PLAN], pm_cs_cnt[CS_MODE], pm_cs_cnt[CS_PRIM], pm_cs_cnt[CS_ENV], pm_cs_cnt[CS_LAY], pm_cs_cnt[CS_CON],
+              pm_cs_cnt[CS_PF_N], pm_cs_cnt[CS_PF_G], pm_cs_cnt[CS_PF_CNAME], pm_cs_cnt[CS_PF_BUFNAME], pm_cs_cnt[CS_PF_VTXNAME],
+              pm_cs_cnt[CS_PF_UTEX], pm_cs_cnt[CS_PF_USHA], pm_cs_cnt[CS_PF_UT1], pm_cs_cnt[CS_PF_UNOISE], pm_cs_cnt[CS_PF_KS], pm_cs_cnt[CS_PF_FOLD]);
     memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
     if (ps_on) ps_step(r);

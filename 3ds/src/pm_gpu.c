@@ -1976,6 +1976,30 @@ static int plan_same_layout(const PmPlan* a, const PmPlan* b) {
     return memcmp(&x, &y, sizeof x) == 0;
 }
 
+static void plan_layout_field_diffs(const PmPlan* a, const PmPlan* b) {
+    if (a->n != b->n) CS_ADD(CS_PF_N, 1);
+    for (int i = 0; i < 6; i++) {
+        if (memcmp(a->st[i].g, b->st[i].g, sizeof a->st[i].g)) {
+            CS_ADD(CS_PF_G, 1);
+            break;
+        }
+    }
+    for (int i = 0; i < 6; i++) {
+        if (a->st[i].cname != b->st[i].cname) {
+            CS_ADD(CS_PF_CNAME, 1);
+            break;
+        }
+    }
+    if (a->bufname != b->bufname) CS_ADD(CS_PF_BUFNAME, 1);
+    if (a->vtxname != b->vtxname) CS_ADD(CS_PF_VTXNAME, 1);
+    if (a->uses_tex != b->uses_tex) CS_ADD(CS_PF_UTEX, 1);
+    if (a->uses_sha != b->uses_sha) CS_ADD(CS_PF_USHA, 1);
+    if (a->uses_tex1 != b->uses_tex1) CS_ADD(CS_PF_UT1, 1);
+    if (a->uses_noise != b->uses_noise) CS_ADD(CS_PF_UNOISE, 1);
+    if (memcmp(a->ks, b->ks, sizeof a->ks)) CS_ADD(CS_PF_KS, 1);
+    if (memcmp(a->fold, b->fold, sizeof a->fold)) CS_ADD(CS_PF_FOLD, 1);
+}
+
 void pm_gpu_set_plan(const PmPlan* p) {
     if (combine == 8 && memcmp(&plan, p, sizeof plan) == 0) return;
     RS_ADD(RS_COMB, 1);
@@ -1984,8 +2008,10 @@ void pm_gpu_set_plan(const PmPlan* p) {
         CS_ADD(CS_CON, 1);
         if (prim != cs_last_prim) CS_ADD(CS_PRIM, 1);
         if (env_col != cs_last_env) CS_ADD(CS_ENV, 1);
-    } else
+    } else {
         CS_ADD(CS_LAY, 1);
+        if (combine == 8) plan_layout_field_diffs(&plan, p);
+    }
     flush();
     plan = *p;
     plan_gen++;

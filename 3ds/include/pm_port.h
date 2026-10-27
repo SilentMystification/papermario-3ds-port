@@ -90,7 +90,12 @@ void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
 enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC, RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 #define RS_ADD(c, n) do { if (pm_ph_on) pm_rs_cnt[c] += (unsigned)(n); } while (0)
-enum { CS_PLAN, CS_MODE, CS_PRIM, CS_ENV, CS_LAY, CS_CON, CS_N };
+enum {
+    CS_PLAN, CS_MODE, CS_PRIM, CS_ENV, CS_LAY, CS_CON,
+    CS_PF_N, CS_PF_G, CS_PF_CNAME, CS_PF_BUFNAME, CS_PF_VTXNAME,
+    CS_PF_UTEX, CS_PF_USHA, CS_PF_UT1, CS_PF_UNOISE, CS_PF_KS, CS_PF_FOLD,
+    CS_N
+};
 extern unsigned pm_cs_cnt[CS_N];
 #define CS_ADD(c, n) do { if (pm_ph_on) pm_cs_cnt[c] += (unsigned)(n); } while (0)
 
