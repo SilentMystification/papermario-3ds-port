@@ -153,8 +153,24 @@ int pm_mem_crash_line(char* buf, int cap) {
                     (unsigned)(cur >> 10), (unsigned)(commit_max >> 10));
 }
 
-/* HUD2: the commit limit the system gave the app at boot (the same value as the log line `mem commit limit`), in MB. */
-unsigned pm_mem_commit_limit_mb(void) { return (unsigned)(commit_max >> 20); }
+/* Bottom screen memory rows, 40 bytes each with the NUL. Called at 1 Hz from the game thread: mallinfo takes the malloc lock. */
+void pm_mem_hud(char out[3][40]) {
+    s64 cur = 0;
+    Handle rl = 0;
+    ResourceLimitType type = RESLIMIT_COMMIT;
+    if (R_SUCCEEDED(svcGetResourceLimit(&rl, CUR_PROCESS_HANDLE))) {
+        svcGetResourceLimitCurrentValues(&cur, rl, &type, 1);
+        svcCloseHandle(rl);
+    }
+    unsigned lin_total = pm_linear_bytes() >> 10, lin_used = lin_total - ((unsigned)linearSpaceFree() >> 10);
+    unsigned heap_total = pm_heap_bytes() >> 10, heap_used = (unsigned)mallinfo().uordblks >> 10;
+    unsigned vram_free = (unsigned)(vramSpaceFree() >> 10), vram_used = 6u * 1024u - vram_free; /* the PICA has 6 MB of VRAM */
+    snprintf(out[0], 40, "FCRAM free %u/%uM  commit used %u/%uM",
+             (unsigned)(osGetMemRegionFree(MEMREGION_APPLICATION) >> 20), (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20),
+             (unsigned)(cur >> 20), (unsigned)(commit_max >> 20));
+    snprintf(out[1], 40, "used linear %u/%uK heap %u/%uK", lin_used, lin_total, heap_used, heap_total);
+    snprintf(out[2], 40, "VRAM used %uK free %uK tex %uK", vram_used, vram_free, pm_tex_used() >> 10);
+}
 
 void pm_mem_log(const char* tag) {
     if (!strcmp(tag, "map") && pm_debug_has("texmax")) {
@@ -172,6 +188,11 @@ void pm_mem_log(const char* tag) {
     if (!strcmp(tag, "boot"))
         pm_log_d("mem commit limit %uKB used-by-image %uKB offered %uKB cap %uKB", (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10),
                (unsigned)((commit_max - commit_cur) >> 10), PM_FCRAM >> 10);
+    if (!strcmp(tag, "boot")) { /* SOC buffer: 0 when the 128 KB block was not allocated */
+        unsigned sb = 0;
+        pm_soc_buffer(&sb);
+        pm_log_d("mem SOC buffer %uKB at 0x08000000", sb >> 10);
+    }
     unsigned lin_used = pm_linear_bytes() - (unsigned)linearSpaceFree();
     if (strcmp(tag, "boot") && lin_used > lin_peak) lin_peak = lin_used;
     if (!strcmp(tag, "boot"))
@@ -179,8 +200,7 @@ void pm_mem_log(const char* tag) {
                PM_LINEAR_FIXED_KB, pm_tex_budget() >> 10, (pm_linear_bytes() >> 10) - PM_LINEAR_FIXED_KB - (pm_tex_budget() >> 10),
                pm_heap_bytes() >> 10);
     else
-        pm_log_d("mem %s linear used %uKB peak %uKB (fixed part %uKB) texture failures %u", tag, lin_used >> 10, lin_peak >> 10,
-               (lin_used - pm_tex_used()) >> 10, pm_tex_fail_count());
+        pm_log_d("mem %s linear used %uKB peak %uKB texture failures %u", tag, lin_used >> 10, lin_peak >> 10, pm_tex_fail_count());
     pm_log_d("mem %s vram free %uKB of %uKB (B7-0)", tag, (unsigned)(vramSpaceFree() >> 10), (unsigned)(6u * 1024u)); /* the PICA has 6 MB of VRAM */
     struct mallinfo mi = mallinfo();
     pm_log_d("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB tex-cache %uKB peak %uKB", tag,

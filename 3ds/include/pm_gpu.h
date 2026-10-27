@@ -5,7 +5,7 @@ void pm_gpu_init(void);
 void pm_gpu_begin(int clear);
 void pm_gpu_end(void);
 /* Two lines at the top of the bottom screen. The log scrolls underneath. */
-void pm_gpu_hud(const char* line0, const char* line1);
+void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]);
 int pm_gpu_drew(void);
 void pm_gpu_read_frame(unsigned short* dst);
 int pm_gpu_depth_at(int x, int y, unsigned* d24); /* F03 */

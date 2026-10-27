@@ -1159,7 +1159,7 @@ void pm_gpu_init(void) {
     pm_con_lock();
     consoleInit(GFX_BOTTOM, &bottom_con);
     setvbuf(stdout, NULL, _IONBF, 0);
-    consoleSetWindow(&bottom_con, 1, 3, 40, 28);
+    consoleSetWindow(&bottom_con, 1, 6, 40, 25);
     pm_con_unlock();
     gpu_ok = vert_base != NULL;
     if (!vert_base) pm_log_e("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
@@ -1195,7 +1195,7 @@ void pm_gpu_menu_draw(const char* text) {
         if (menu_on) {
             for (i = 0; i < MENU_ROWS; i++) { menu_prev[i][0] = 1; menu_put_line(c, i, ""); }
             menu_on = 0;
-            consoleSetWindow(c, 1, 3, 40, 28); /* the log window again, new lines come at the bottom */
+            consoleSetWindow(c, 1, 6, 40, 25); /* the log window again, new lines come at the bottom */
             c->cursorX = 0; c->cursorY = 27;
             fflush(stdout);
         }
@@ -1232,7 +1232,7 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
     fputs(b, stdout);
 }
 
-void pm_gpu_hud(const char* line0, const char* line1) {
+void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
     if (!c->consoleInitialised || menu_on) return; /* PT69: the menu owns all rows */
@@ -1245,9 +1245,10 @@ void pm_gpu_hud(const char* line0, const char* line1) {
     ww = c->windowWidth;
     wh = c->windowHeight;
     consoleSelect(c);
-    consoleSetWindow(c, 1, 1, 40, 2);
+    consoleSetWindow(c, 1, 1, 40, 5);
     hud_put_line(c, 1, line0);
     hud_put_line(c, 2, line1);
+    for (int r = 0; r < 3; r++) hud_put_line(c, 3 + r, mem[r]);
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;
     c->cursorY = cy;
