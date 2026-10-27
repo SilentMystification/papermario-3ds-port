@@ -57,3 +57,16 @@ Numbers, yard (frames 40 to 101 from the run with shotmode=4:80, 62 frames):
 Why dlc misses: no steady-state miss to fix in yard. The only misses are the map-load compiles. No code fix made in step 3.
 Remaining walk: 3223 interpreter ops per frame. dlc covers class 1 only (dlc_try rejects other addresses at its first test). Class 2 to 7 G_DL (about 170 per frame) run the interpreter or pdl. Next row: measure the ops inside those lists, or extend the dlc key to them.
 Not run: statehash toad and battle. Each statehash check needs two Azahar starts per scene; the 8-start budget is used.
+## dl3 R1 (2026-10-27, PM_ROW=dl3, PM_LANE=dl3, baseline HEAD cc578c8ee)
+- dlsrc steady window (frames 9600-9899): ops/frame 5865. Per class: main 2626, shape 0, texh (class 2) 1647 (geo 0, flow 94, state 1553), rodata 605, entity 0, genh 0, sprh 0, other 987.
+- First window (frames 0-299): class 2 981 per frame.
+- Walk at f300 (taskpl bg + main): 2.37 + 9.19 = 11.56 ms.
+- Gate class 2 state >= 300 per frame: PASS. Proceed to R2.
+
+## dl3 R2 (2026-10-27, PM_ROW=dl3)
+- Edit: pdl_refuse_ops refuses G_MOVEWORD other than FOG. pdl_key() = gbi_state_hash ^ fnv(segbase)*31 replaces the readset hash in pdl_compile_begin and pdl_try.
+- Yard shot 40 picture: Mario, ground, shadow. Walk f105 10.07 ms. pdl hit 0, comp 0. ops 3261 at f105 (R1 f300 also 3261).
+- statehash fixedseed toad f100 94083528, f200 83b272fe, f300 aed188c8: equal to recorded base. Battle f100 94083528, f200 dda688fa, f300 6b6fe648: equal to recorded base. PASS.
+- Note: without fixedseed the rng seed changes per run, so statehash is not comparable (seeds ad8cea4c and 12a52e6a in two runs).
+- golden.py not run (user decision).
+- Starts used: 6 of 8 (dl3).

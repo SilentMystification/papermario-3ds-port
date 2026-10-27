@@ -756,7 +756,7 @@ static int pdl_refuse_ops(const Gfx* l) {
     for (unsigned i = 0; i < DLC_MAXOPS; i++) {
         unsigned op = l[i].words.w0 >> 24;
         if (op == G_ENDDL) return 0;
-        if (op == G_DL || op == G_MODIFYVTX || op == G_SETCIMG || op == G_SETZIMG || op == G_FILLRECT || op == G_TEXRECT || op == G_TEXRECTFLIP || op == G_MTX || op == G_MOVEMEM)
+        if (op == G_DL || op == G_MODIFYVTX || op == G_SETCIMG || op == G_SETZIMG || op == G_FILLRECT || op == G_TEXRECT || op == G_TEXRECTFLIP || op == G_MTX || op == G_MOVEMEM || (op == G_MOVEWORD && ((l[i].words.w0 >> 16) & 0xff) != G_MW_FOG))
             return 1;
         unsigned rd, wr; pdl_op_rw(op, &rd, &wr);
         if (!rd && !wr && op != G_NOOP && op != G_SPNOOP && op != G_RDPFULLSYNC && op != G_RDPTILESYNC && op != G_RDPPIPESYNC && op != G_RDPLOADSYNC)
@@ -843,6 +843,9 @@ static const Gfx* pdl_comp_list;
 static int pdl_comp_sp;
 static int pdl_comp_nopush;
 
+/* pdl key: the replay applies the full exit state, so the full entry state and the segment table must match */
+static u32 pdl_key(const GbiState* s) { return gbi_state_hash(s) ^ gbi_state_fnv(segbase, sizeof segbase) * 31u; }
+
 static void pdl_compile_finish(void) {
     PdlEnt* e = pdl_comp_ent;
     if (!e) return;
@@ -871,7 +874,7 @@ static void pdl_compile_finish(void) {
 static void pdl_compile_begin(PdlEnt* e, const Gfx* l) {
     e->nops = pdl_nops(l);
     gbi_state_get(&pdl_comp_gbi_st);
-    e->state_in = gbi_state_in_hash(&pdl_comp_gbi_st, pdl_readset_of(l) | GBIG_COMB);
+    e->state_in = pdl_key(&pdl_comp_gbi_st);
     pdl_compile_one = 1;
     pdl_depth++;
     pdl_comp_ent = e;
@@ -912,7 +915,7 @@ static int pdl_try(const Gfx* l) {
     if (!e) return 0;
     u32 hgen = pdl_heap_gen((u32)l);
     gbi_state_get(&pdl_try_gbi_st);
-    u32 sin = gbi_state_in_hash(&pdl_try_gbi_st, pdl_readset_of(l) | GBIG_COMB);
+    u32 sin = pdl_key(&pdl_try_gbi_st);
     if (!e->nops || e->refused || e->heap_gen != hgen || e->state_in != sin) {
         e->heap_gen = hgen; e->refused = 0;
         if (pdl_refuse_ops(l)) { e->refused = 1; pdl_c.refuse++; return 0; }
