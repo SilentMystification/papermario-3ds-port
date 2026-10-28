@@ -236,7 +236,8 @@ if ($Gdb) {
     $cmds += @("continue", "echo \n--- stopped ---\n", "bt 30", "info registers", 'x/32wx $sp', "kill")
     Set-Content "$out\gdb_cmds.txt" $cmds
     Start-Sleep -Seconds 2
-    $gdbArgs = "run --rm --add-host=winhost:host-gateway -v ${vol}:/work -v `"${out}:/out`" " +
+    $gdbName = "pm3ds-gdb-$PID"  # named, so the cleanup below can kill this container and no other
+    $gdbArgs = "run --rm --name $gdbName --add-host=winhost:host-gateway -v ${vol}:/work -v `"${out}:/out`" " +
                "devkitpro/devkitarm:latest /opt/devkitpro/devkitARM/bin/arm-none-eabi-gdb -q -batch " +
                "-x /out/gdb_cmds.txt /work/build/pm_3ds.elf"
     $gdbProc = Start-Process docker -ArgumentList $gdbArgs -NoNewWindow -PassThru `
@@ -299,13 +300,14 @@ public class AzWin {
 } finally {
     if ($p) { Kill-Azahar $p.Id }
     if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
+    if ($gdbName) { docker kill $gdbName 2>$null | Out-Null }  # the docker client does not stop its container when stopped
     Restore-Cfg # byte for byte copy of the real config
     Remove-Item $pidFile -ErrorAction SilentlyContinue
     # A later manual launch must not inherit this run's switches (autoa, shots, fast).
     Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue
 }
 
-if (Test-Path "$sd\shots") { Copy-Item "$sd\shots" "$out\shots" -Recurse -Force }
+if (Test-Path "$sd\shots") { Move-Item "$sd\shots" "$out\shots" -Force } # move, not copy: the frames can be hundreds of MB
 $secs = [int]((Get-Date) - $start).TotalSeconds
 Write-Output "stopped after $secs s: $reason"
 if ($marks.Count) { Write-Output "--- wall time at map loads (run start = 0) ---"; $marks | ForEach-Object { Write-Output $_ } }

@@ -165,7 +165,9 @@ if [ "$ok" -ne 1 ]; then
     exit 1
 fi
 
-if [ "$secs" = 0 ]; then echo "reading the game's log from $ip:17492 until the game closes"; else echo "reading the game's log from $ip:17492 for $secs s"; fi
+# -t 0 (default) reads until the game closes. Without a cap a game that never closes hangs this script, so the read
+# stops after PM_LOG_MAX seconds (default 3600).
+if [ "$secs" = 0 ]; then secs=${PM_LOG_MAX:-3600}; echo "reading the game's log from $ip:17492 until the game closes, at most $secs s"; else echo "reading the game's log from $ip:17492 for $secs s"; fi
 log="build3ds/hw_live_log_${ip##*.}.txt"
 py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log" || true
 echo "--- log saved to $log"
