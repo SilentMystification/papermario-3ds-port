@@ -28,3 +28,15 @@ Not run for D1: picture (shots needs the shots switch, a new start), statehash t
 
 ## Next step (not run)
 Stop per plan. The next diagnosis names where class 2 lists enter: a read-only agent counts the caller of each dls_class 2 list (pm_tex.c, pm_model, pm_nusys) for the yard steady state.
+
+## M1 result (lane dlr2, PM_ROW=dlr2, 6 of 8 starts). Gate FAILED, stop.
+Code: pdl_shadow removed. dlr_count (ungated by pdl state, gated by dlc_on && pm_ph_on) at pm_gbi.c G_DL case and pdl_tpl_gdl. Report line `dlr f<n>` in pdl_report. Numbers: 3ds/logs/perf/status_M1.txt.
+- G_DL calls per frame (f300-599): class 1 68.0, class 2 65.0, class 3 73.0, class 7 33.0.
+- Census ops per frame: class 1 1120, class 2 1109, class 3 365, class 7 1803.
+- Refused ops: 0. nend 0. Class 3 lists read nothing (r0 73.0 per frame).
+- Class 2: hits 8.0 per frame (same frame), hitx 0 (cross frame), miss 57.0 per frame. Hit ops 501 per frame. Bytes 456 per class 2 call.
+- Gate: G1 hitops 501 per frame, need 1000: FAIL. G2 hit/acc 58.7 percent, need 70: FAIL. G3 456 bytes per call, need 256: FAIL.
+- Inference [I]: hitx 0 because the class 2 entry is cleared when pm_pdl_heap_gen changes (pm_tex.c:762, TextureHeap writes). The gen changes often, so no entry survives a frame. Not measured.
+- Walk with census on: bg 2.38 ms, main 11.43 ms, walk 13.81 ms, interp ops 3576 per frame. Without census (earlier D1 run): walk 11.91 ms. The main rise is census cost [I].
+- Picture (shot 0040, yard): Mario, grass, shadow present. No pixel baseline file in repo. Statehash toad and battle: equal to bases at f100, f200, f300. Pause status text and file select text: readable.
+- Plan section 7: M1 gate failed. E1 to E4, D5 and D6 not run.
