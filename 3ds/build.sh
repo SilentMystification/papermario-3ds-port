@@ -12,6 +12,13 @@ cd "$(dirname "$0")/.."
 OUT=build3ds; VOL=pm3ds-work
 if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-work-$PM_LANE; fi
 mkdir -p $OUT
+# Copy scope: only what CMake and the compiler read. Measured 2026-10-28: the old list copied 184.8 MB (25339 files).
+# Excluded: git and docs, the ROM and splat cache (42 MB baserom.z64 is read by splat only), ELF/map/3dsx/PPM outputs,
+# logs and screenshots, the root build.ninja, and the Azahar and agent folders.
+RSYNC_EXCLUDES='--exclude .git --exclude build3ds --exclude reference --exclude orig --exclude pc/build* --exclude /3ds/logs --exclude /.claude
+  --exclude /docs --exclude /build.ninja --exclude /ver/*/baserom.z64 --exclude /ver/*/.splat_cache --exclude /ver/*/dump
+  --exclude *.elf --exclude *.map --exclude *.ppm --exclude *.3dsx --exclude /3ds/*.log --exclude /3ds/*.out --exclude /3ds/*.done
+  --exclude /3ds/shots --exclude /3ds/trace --exclude /3ds/build_*.log --exclude /3ds/golden --exclude /3ds/sweep --exclude /3ds/routes'
 # BN1: one build number = V0 + (commit count - C0), V0 and C0 in 3ds/build_base.txt. No -dirty suffix (user decision 2026-10-19). Suffix -<lane> (PM_LANE set) or -laneB (branch lane-b).
 # Written to 3ds/include/pm_build.h (ignored by git). The boot log and the Options panel show PM_BUILD_STR.
 read V0 C0 <<EOF
@@ -22,12 +29,13 @@ if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ "$(git branch --show-curren
 printf '#define PM_BUILD_STR "%s"
 ' "$BN" > 3ds/include/pm_build.h
 MSYS_NO_PATHCONV=1 docker run --rm \
+    -e "RSYNC_EXCLUDES=$RSYNC_EXCLUDES" \
     -v "$(pwd):/host:ro" \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
     devkitpro/devkitarm:latest sh -c '
-    set -e
-    rsync -a --delete --exclude .git --exclude build3ds --exclude reference --exclude orig --exclude "pc/build*" --exclude /3ds/logs --exclude /.claude /host/ /work/src/
+    set -e -f
+    rsync -a --delete $RSYNC_EXCLUDES /host/ /work/src/
     cmake -G Ninja -S /work/src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake
     status=0
     cmake --build /work/build -- -k 0 '"$*"' || status=$?
