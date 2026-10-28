@@ -288,6 +288,7 @@ static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 
 #define FS1_MAX_RUN 3 /* FS1b: 3 skips cover a stall of 7 vblanks */
 static unsigned fs1_steps, fs1_skipped, fs1_logged, fs1_last_iv, fs1_run, fs1_force, fs1_delay;
 static int fs1_off, fs1_on_log, fs1_old;
+void pm_fskip_set(int on) { fs1_off = !on || pm_debug_has("fs1off"); } /* options panel row 9: takes effect at the next step */
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
 #define PM_VBLANKS_PER_STEP 2
@@ -336,7 +337,7 @@ void pm_frame_loop(void) {
     const int pace_on = pm_debug_has("pacestat");
     { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep after every drawn step), fs1old (the old rule) */
         char fv[16];
-        fs1_off = pm_debug_has("fs1off");
+        fs1_off = pm_debug_has("fs1off") || !pm_opt.fskip;
         fs1_old = pm_debug_has("fs1old"); /* FS1b: the FS1 rule of build 926 (skip only after a drawn step of 3 or more vblanks, 2 in a row), for comparison */
         fs1_force = pm_debug_value("fs1force", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
         fs1_delay = pm_debug_value("fs1delay", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
