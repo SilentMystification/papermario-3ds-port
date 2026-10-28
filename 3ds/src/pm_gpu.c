@@ -706,6 +706,28 @@ void pm_pso_bake(unsigned id) {
 }
 
 static unsigned flush_gen; /* GV1b: counts the raw batches closed */
+/* DC1: the sampled close. Marks: 0 start, 1 after the uniforms, 2 after the texture binds, 3 after TEV, 4 after the fragment state,
+ * 5 after the draw call, 6 and 7 around kick_check. Set by pm_gpu_flush_at for one close in 8 (phase on). */
+static int dc_on;
+static unsigned dc_seq, dc_t[8];
+#define DC_T(k) do { if (dc_on) dc_t[k] = pm_ticks(); } while (0)
+static void dc_end(void) {
+    pm_dc_us[DCU_PAL] += (dc_t[1] - dc_t[0]) / 268u;
+    pm_dc_us[DCU_BIND] += (dc_t[2] - dc_t[1]) / 268u;
+    pm_dc_us[DCU_TEV] += (dc_t[3] - dc_t[2]) / 268u;
+    pm_dc_us[DCU_ST] += (dc_t[4] - dc_t[3]) / 268u;
+    pm_dc_us[DCU_DRAW] += (dc_t[5] - dc_t[4]) / 268u;
+    pm_dc_us[DCU_KICK] += (dc_t[7] - dc_t[6]) / 268u;
+    dc_on = 0;
+}
+static void dc_kick(void) {
+    if (!dc_on) { kick_check(); return; }
+    DC_T(6);
+    kick_check();
+    DC_T(7);
+    dc_end();
+}
+static void dc_bind(int unit, C3D_Tex* t) { pm_dc_c[DC_TB0 + unit]++; C3D_TexBind(unit, t); }
 static void flush_draw(void) {
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
@@ -736,6 +758,8 @@ static void flush_draw(void) {
         if (snap0 || snap1) off_snapshot(off_cur);
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
+    pm_dc_c[DC_RAW] += (unsigned)graw;
+    DC_T(0);
     PH_ADD(C_FLUSH, 1);
     PH_PUSH(PH_GPU);
     PHF_PUSH(PH_GBIND);
@@ -773,14 +797,14 @@ static void flush_draw(void) {
                     for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
-                    RS_ADD(RS_PCOMP, 1);
+                    RS_ADD(RS_PCOMP, 1); pm_dc_c[DC_PMUL]++;
                 }
                 if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && sh5_pal_gen[k] == post_gen) continue;
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
                 if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
                 sh5_pal_ok[k] = 1; sh5_pal_gm[k] = gm; sh5_pal_gen[k] = post_gen;
                 PH_ADD(C_RAWCALL, 4);
-                gv_palup_n++;
+                gv_palup_n++; pm_dc_c[DC_PALUP]++;
             }
         } else if (gpal) {
             sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); /* pm4 writes over the registers of pm5 */
@@ -798,13 +822,13 @@ static void flush_draw(void) {
                     for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
-                    RS_ADD(RS_PCOMP, 1);
+                    RS_ADD(RS_PCOMP, 1); pm_dc_c[DC_PMUL]++;
                 }
                 if (sh_pal_ok[k] && sh_pal_gm[k] == gm && sh_pal_gen[k] == post_gen) continue; /* the register block holds this matrix already */
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u4_pal + 4 * (int)k, &pcomp[gm]);
                 sh_pal_ok[k] = 1; sh_pal_gm[k] = gm; sh_pal_gen[k] = post_gen;
                 PH_ADD(C_RAWCALL, 1);
-                gv_palup_n++;
+                gv_palup_n++; pm_dc_c[DC_PALUP]++;
             }
         }
     }
@@ -820,20 +844,22 @@ static void flush_draw(void) {
     /* Rectangles skip the depth test, so a story page already covers the mesh.
      * Wiping the buffer here let the next 3D batch ignore the house. */
     (void)batch_identity;
+    DC_T(1);
     C3D_TexEnv* env = C3D_GetTexEnv(0);
-    int tex = (combine >= 2) && (grab_bind ? (C3D_TexBind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
+    int tex = (combine >= 2) && (grab_bind ? (dc_bind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
     int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
     int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
-    if (tex && snap0) { C3D_TexBind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
-    if (tex1 && snap1) C3D_TexBind(1, &offs[off_cur].snap);
+    if (tex && snap0) { dc_bind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
+    if (tex1 && snap1) dc_bind(1, &offs[off_cur].snap);
     if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
     if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
     int noise = combine == 8 && plan.uses_noise && noise_init();
     if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
         int u = gpal ? (g_use5 ? u5_nzo : u4_nzo) : u_nzo;
-        C3D_TexBind(2, &noise_tex);
+        dc_bind(2, &noise_tex);
         if (u >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u, 120.f / 64.f, 200.f / 64.f, noise_off[0], noise_off[1]);
     }
+    DC_T(2);
     PHF_POP();
     int z = z_on && (!rect_2d || rect_z) && !off_active;
     { static int nozt = -1; if (nozt < 0) nozt = pm_debug_has("nozt"); if (nozt) z = 0; }
@@ -852,8 +878,9 @@ static void flush_draw(void) {
         tk.plan_gen = combine == 8 ? plan_gen : 0;
         int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
         if (tev_same) memb = tev_memb;
-        else flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb);
+        else { pm_dc_c[DC_TEVR]++; flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
     }
+    DC_T(3);
     PHF_POP();
     PHF_PUSH(PH_GST);
     dv_draw++;
@@ -920,6 +947,7 @@ static void flush_draw(void) {
         sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
     }
     PHF_POP();
+    DC_T(4);
     sh_user_clip(graw); /* GP2: near clip on raw batches only */
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
     if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
@@ -932,6 +960,7 @@ static void flush_draw(void) {
         }
         C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
         PH_ADD(C_RAWD, 1); PH_ADD(C_RAWCALL, 1);
+        DC_T(5);
         PH_POP();
         draws_frame++;
         PH_ADD(C_DRAW, 1);
@@ -946,7 +975,7 @@ static void flush_draw(void) {
             else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
             else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
         }
-        kick_check();
+        dc_kick();
         return;
     }
     if (bound != 1) { C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
@@ -975,6 +1004,7 @@ static void flush_draw(void) {
     }
     C3D_DrawArrays(GPU_TRIANGLES, first, count);
     if (decal2) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); }
+    DC_T(5);
     PH_POP();
     verts = batch + count;
     /* 16-byte aligned start for the next batch (a vertex is 40 bytes, so every other batch start moves one slot). */
@@ -1003,7 +1033,7 @@ static void flush_draw(void) {
         else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
         else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
     }
-    kick_check();
+    dc_kick();
 }
 
 /* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
@@ -2097,6 +2127,7 @@ void pm_gpu_set_const(unsigned rgba) {
 void pm_gpu_flush(void) { flush(); }
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
+unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */
 void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list interpreter, line of the call in pm_gbi.c */
     fl_fn = "gbi"; fl_line = line;
     /* EC2: no vertex and no raw batch queued: flush_draw returns before any state, texture, cache or GPU call. Only the
@@ -2109,10 +2140,13 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
         pm_ec_svc += pm_svc_n - s0; /* 0 when the path makes no svc call */
         return;
     }
+    pm_dc_c[DC_CL]++;
+    dc_on = (dc_seq++ & 7) == 0 && pm_ph_on; /* DC1: one close in 8 is sampled */
     if (!pm_ph_on) { flush_impl(); return; }
     int c = pm_gbi_flush_class();
     unsigned t0 = pm_ticks();
     flush_impl();
+    dc_on = 0;
     pm_fl_us[c] += (pm_ticks() - t0) / 268u;
     pm_fl_n[c]++;
 }

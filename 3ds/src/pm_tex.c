@@ -584,6 +584,7 @@ int pm_tex_bind_slot(int i) {
     TOUCH(&slots[i]);
     TC_HIT(&slots[i]);
     const C3D_Tex* tp = tex_for_draw(&slots[i]);
+    pm_dc_c[DC_TB0]++;
     C3D_TexBind(0, tp);
     tb_last = slot_draws_stage(&slots[i]) ? NULL : &slots[i].tex;
     pm_tex_epoch_v++;
@@ -1302,6 +1303,7 @@ void pm_tex_bind_reset(void) { tb_last = NULL; }
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
+        pm_dc_c[DC_TB0]++;
         C3D_TexBind(0, offt[off_cur].tex);
         tb_last = offt[off_cur].tex; tb_f = -2;
         return 1;
@@ -1314,6 +1316,7 @@ int pm_tex_bind(void) {
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);
     C3D_TexSetFilter(tp, tex_filt, tex_filt);
     C3D_TexSetWrap(tp, ws, wt);
+    pm_dc_c[DC_TB0]++; if (slot_draws_stage(&slots[cur])) pm_dc_c[DC_TBS]++;
     C3D_TexBind(0, tp);
     {   /* imglog: the GPU texture the draw binds (slot size, GPU size and address) */
         static int on = -1;
@@ -1354,7 +1357,7 @@ int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
 }
 
 int pm_tex_bind_aux(void) {
-    if (aux_off >= 0 && aux_off < offt_n) { C3D_TexBind(1, offt[aux_off].tex); return 1; }
+    if (aux_off >= 0 && aux_off < offt_n) { pm_dc_c[DC_TB1]++; C3D_TexBind(1, offt[aux_off].tex); return 1; }
     if (aux < 0 || !slots[aux].live) return 0;
     slots[aux].stamp = ++stamp;
     TOUCH(&slots[aux]);
@@ -1362,6 +1365,7 @@ int pm_tex_bind_aux(void) {
     const C3D_Tex* tp = tex_for_draw(&slots[aux]);
     C3D_TexSetFilter(tp, tex_filt, tex_filt);
     C3D_TexSetWrap(tp, aux_shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_ws, aux_shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_wt);
+    pm_dc_c[DC_TB1]++;
     C3D_TexBind(1, tp);
     return 1;
 }
