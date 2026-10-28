@@ -1,0 +1,5 @@
+# Build image for 3ds/build.sh: the devkitARM image plus ccache (object cache, kept in a volume).
+FROM devkitpro/devkitarm:latest
+RUN apt-get update -q \
+    && apt-get install -y -q --no-install-recommends ccache \
+    && rm -rf /var/lib/apt/lists/*
