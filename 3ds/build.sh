@@ -25,9 +25,8 @@ printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
 cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
 
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
-INPUT_FILES="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png"
-INPUT_DIRS="3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include assets/us ver/us/build"
-for p in $INPUT_FILES $INPUT_DIRS; do
+SRC_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include assets/us ver/us/build"
+for p in $SRC_DIRS; do
     [ -e "$p" ] || { echo "missing build input: $p" >&2; exit 1; }
 done
 IMG=pm3ds-build:1
@@ -39,7 +38,7 @@ MAN=$OUT/src_manifest.txt
 # A source volume that was removed makes the manifest wrong. Drop it, so the next sync copies everything.
 docker volume inspect $SRCVOL >/dev/null 2>&1 || rm -f $MAN
 [ -f $MAN ] || : > $MAN
-find $INPUT_FILES $INPUT_DIRS -type f -printf '%p\t%s\t%T@\n' | sort > $OUT/src_now.txt
+find $SRC_DIRS -type f -printf '%p\t%s\t%T@\n' | sort > $OUT/src_now.txt
 # Changed or new: not equal to the manifest. Deleted: in the manifest, not in the current list.
 awk -F'\t' 'FILENAME==ARGV[1]{old[$1]=$2 "\t" $3; next} (old[$1] != $2 "\t" $3){print $1}' $MAN $OUT/src_now.txt > $OUT/src_changed.txt
 awk -F'\t' 'FILENAME==ARGV[1]{now[$1]=1; next} !($1 in now){print $1}' $OUT/src_now.txt $MAN > $OUT/src_deleted.txt
