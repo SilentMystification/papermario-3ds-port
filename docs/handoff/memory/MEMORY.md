@@ -1,4 +1,3 @@
-- [Workflow](feedback_workflow.md) — one agent per epic, rotate at 350k tokens, diagnoses to read-only agents; rules in CLAUDE.md
 - [No attribution](feedback_no-attribution.md) — never add Claude/Anthropic attribution to commits or PRs
 - [No stubs](feedback_no-stubs.md) — never stub or hand-write stand-ins for decomp code without asking
 - [No feature toggles](feedback_no-feature-toggles.md) — finished work replaces the main path; delete switches and old paths after the test
