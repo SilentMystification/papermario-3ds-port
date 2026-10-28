@@ -24,3 +24,4 @@
 2026-10-27 01:43  pm_3ds_1143_bind.3dsx  13353816 bytes  sha256 1c70f60e15a20c0f  build 1143  git f971e5dc4  branch dlc-compiler-c1c2  texture bind restored after 1141 frame time stayed 53 ms. Not a hardware result yet.
 2026-10-27 01:52  pm_3ds_1144_log.3dsx  13353384 bytes  sha256 8ac51f4e8ceb401f  build 1144  git de2dc0966  branch dlc-compiler-c1c2  texture bind restored, log waits off the game thread. Not a hardware result yet.
 pm_3ds_1175_instr.3dsx 009b2e14d7d77cbd 63b2fb7f9 picture ok
+pm_3ds_1227-dc_dc2.3dsx 8c3beaae77ebcfb6 91b225755 picture ok
