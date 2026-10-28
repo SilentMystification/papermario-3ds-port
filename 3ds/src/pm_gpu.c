@@ -374,7 +374,8 @@ static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compa
 static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
 static int pool_buf_ok; /* DR1: the citro3d buffer info holds the vertex pool (set once per frame, cleared by a raw batch and by sh_clear) */
 static int proj_ok; static C3D_Mtx proj_last; /* DR1: the projection uniform of the last draw */
-static void sh_clear(void) { sh.has = 0; tev_valid = 0; pool_buf_ok = 0; proj_ok = 0; pm_tex_bind_reset(); }
+static int noise_bound; /* DC2: unit 2 holds the noise texture (cleared by sh_clear) */
+static void sh_clear(void) { sh.has = 0; tev_valid = 0; pool_buf_ok = 0; proj_ok = 0; noise_bound = 0; pm_tex_bind_reset(); }
 static void sh_depth_test(bool en, GPU_TESTFUNC f, GPU_WRITEMASK m) {
     if ((sh.has & SH_DT) && sh.dt[0] == (int)en && sh.dt[1] == (int)f && sh.dt[2] == (int)m) return;
     sh.dt[0] = en; sh.dt[1] = (int)f; sh.dt[2] = (int)m; sh.has |= SH_DT; C3D_DepthTest(en, f, m);
@@ -845,18 +846,17 @@ static void flush_draw(void) {
      * Wiping the buffer here let the next 3D batch ignore the house. */
     (void)batch_identity;
     DC_T(1);
-    C3D_TexEnv* env = C3D_GetTexEnv(0);
-    int tex = (combine >= 2) && (grab_bind ? (dc_bind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
+    int tex =(combine >= 2) && (grab_bind ? (dc_bind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
     int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
     int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
     if (tex && snap0) { dc_bind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
-    if (tex1 && snap1) dc_bind(1, &offs[off_cur].snap);
+    if (tex1 && snap1) { dc_bind(1, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DC2: unit 1 no longer holds the aux texture */
     if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
     if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
     int noise = combine == 8 && plan.uses_noise && noise_init();
     if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
         int u = gpal ? (g_use5 ? u5_nzo : u4_nzo) : u_nzo;
-        dc_bind(2, &noise_tex);
+        if (!noise_bound) { dc_bind(2, &noise_tex); noise_bound = 1; } /* DC2: unit 2 stays bound until the next sh_clear */
         if (u >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u, 120.f / 64.f, 200.f / 64.f, noise_off[0], noise_off[1]);
     }
     DC_T(2);
@@ -878,7 +878,7 @@ static void flush_draw(void) {
         tk.plan_gen = combine == 8 ? plan_gen : 0;
         int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
         if (tev_same) memb = tev_memb;
-        else { pm_dc_c[DC_TEVR]++; flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
+        else { pm_dc_c[DC_TEVR]++; C3D_TexEnv* env = C3D_GetTexEnv(0); flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
     }
     DC_T(3);
     PHF_POP();
@@ -982,9 +982,9 @@ static void flush_draw(void) {
     Vert* batch = verts;
     int count = nverts;
     PH_PUSH(PH_GDRAW);
-    C3D_BufInfo* buf = C3D_GetBufInfo();
     const int first = (int)(batch - vert_base); /* DR1: one buffer info for the whole pool, the draw starts at the batch */
-    if (!pool_buf_ok) {
+    if (!pool_buf_ok) { /* DC2: C3D_GetBufInfo marks the buffer info dirty, so it is called only when the pool info changes */
+        C3D_BufInfo* buf = C3D_GetBufInfo();
         BufInfo_Init(buf); buf_cur = 1;
         BufInfo_Add(buf, vert_base, sizeof(Vert), 3, 0x210);
         pool_buf_ok = 1;

@@ -101,6 +101,8 @@ void pm_tex_origin(int* x, int* y) {
 }
 static const C3D_Tex* tb_last; /* DR1 bind shadow, see pm_tex_bind */
 static int tb_f, tb_ws, tb_wt;
+static const C3D_Tex* au_last; /* DC2 bind shadow of unit 1, see pm_tex_bind_aux */
+static int au_f, au_ws, au_wt;
 static GPU_TEXTURE_WRAP_PARAM wrap_s = GPU_REPEAT;
 static GPU_TEXTURE_WRAP_PARAM wrap_t = GPU_REPEAT;
 static int shr_s, shr_t, aux_shr_s, aux_shr_t; /* V12c: the texture is only mask wide, the GPU wrap does the mask (set per load) */
@@ -540,7 +542,7 @@ static void drop(Slot* s) {
         s->slab = 0;
         memset(&s->tex, 0, sizeof s->tex);
     }
-    tb_last = NULL;
+    tb_last = NULL; au_last = NULL;
     if (used >= s->bytes) used -= s->bytes;
     else used = 0;
     s->sgen++;
@@ -1063,7 +1065,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         slot = -1;
     }
     Slot* s = &slots[slot];
-    tb_last = NULL; /* DR1 */
+    tb_last = NULL; au_last = NULL; /* DR1 */
     s->slab = 0;
     if (!fl1_on()) {
         static int once;
@@ -1299,7 +1301,7 @@ void pm_tex_set_filter(int linear) {
 /* DR1: citro3d sends the texture unit again at the next draw after every C3D_TexBind, C3D_TexSetFilter and C3D_TexSetWrap call. The shadow below
  * skips the three calls when the texture, filter and wrap are what the last bind set. Anything that can change the unit or the texture
  * object in another way clears it (frame and target changes through pm_tex_bind_reset, a dropped or loaded slot, the aux bind). */
-void pm_tex_bind_reset(void) { tb_last = NULL; }
+void pm_tex_bind_reset(void) { tb_last = NULL; au_last = NULL; }
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
@@ -1356,22 +1358,33 @@ int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
     return 1;
 }
 
+/* DC2: unit 1 keeps the texture of the last aux bind, as unit 0 does (tb_last). A staged slot flushes its data at every bind, so it never skips. */
 int pm_tex_bind_aux(void) {
-    if (aux_off >= 0 && aux_off < offt_n) { pm_dc_c[DC_TB1]++; C3D_TexBind(1, offt[aux_off].tex); return 1; }
+    if (aux_off >= 0 && aux_off < offt_n) {
+        if (au_last == offt[aux_off].tex && au_f == -2) return 1;
+        pm_dc_c[DC_TB1]++; C3D_TexBind(1, offt[aux_off].tex);
+        au_last = offt[aux_off].tex; au_f = -2;
+        return 1;
+    }
     if (aux < 0 || !slots[aux].live) return 0;
     slots[aux].stamp = ++stamp;
     TOUCH(&slots[aux]);
+    GPU_TEXTURE_WRAP_PARAM ws = aux_shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_ws;
+    GPU_TEXTURE_WRAP_PARAM wt = aux_shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_wt;
+    const int staged = slot_draws_stage(&slots[aux]);
+    if (!staged && au_last == &slots[aux].tex && au_f == (int)tex_filt && au_ws == (int)ws && au_wt == (int)wt) return 1;
     tb_last = NULL; /* DR1: this changes the filter and wrap of a texture that unit 0 may use */
     const C3D_Tex* tp = tex_for_draw(&slots[aux]);
     C3D_TexSetFilter(tp, tex_filt, tex_filt);
-    C3D_TexSetWrap(tp, aux_shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_ws, aux_shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_wt);
+    C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB1]++;
     C3D_TexBind(1, tp);
+    au_last = staged ? NULL : tp; au_f = (int)tex_filt; au_ws = (int)ws; au_wt = (int)wt;
     return 1;
 }
 
 void pm_tex_unbind_aux(void) {
-    pm_gpu_rect_sync(); /* DR1 */ C3D_TexBind(1, NULL); }
+    pm_gpu_rect_sync(); /* DR1 */ au_last = NULL; C3D_TexBind(1, NULL); }
 
 void pm_tex_aux_size(int* w, int* h) {
     pm_tex_epoch_v++;
