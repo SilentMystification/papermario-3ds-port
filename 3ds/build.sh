@@ -27,7 +27,7 @@ MSYS_NO_PATHCONV=1 docker run --rm \
     -v $VOL:/work \
     devkitpro/devkitarm:latest sh -c '
     set -e
-    rsync -a --delete --exclude .git --exclude build3ds --exclude reference --exclude orig --exclude "pc/build*" /host/ /work/src/
+    rsync -a --delete --exclude .git --exclude build3ds --exclude reference --exclude orig --exclude "pc/build*" --exclude /3ds/logs /host/ /work/src/
     cmake -G Ninja -S /work/src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake
     status=0
     cmake --build /work/build -- -k 0 '"$*"' || status=$?
