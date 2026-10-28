@@ -541,6 +541,33 @@ enum {
     GBIG_GEOM = 256u, GBIG_TEX = 512u, GBIG_PRIM = 1024u, GBIG_ENV = 2048u, GBIG_FOG = 4096u, GBIG_BLEND = 8192u, GBIG_KEYS = 16384u,
     GBIG_PRIMZ = 32768u, GBIG_SCISSOR = 65536u, GBIG_LIGHT = 131072u, GBIG_CIMG = 262144u
 };
+/* D1: interpreter globals by GBIG group. gbi_pack copies the fields of the groups in mask, in table order, into dst and returns the byte count. */
+typedef struct { void* p; u16 n; u32 grp; } GbiFld;
+static const GbiFld gbi_fld[] = {
+    { &timg, sizeof timg, GBIG_TIMG }, { &timg_fmt, sizeof timg_fmt, GBIG_TIMG }, { &timg_siz, sizeof timg_siz, GBIG_TIMG },
+    { &timg_stride, sizeof timg_stride, GBIG_TIMG }, { &ld_valid, sizeof ld_valid, GBIG_TIMG }, { &ld_x, sizeof ld_x, GBIG_TIMG },
+    { &ld_y, sizeof ld_y, GBIG_TIMG }, { &ld_h, sizeof ld_h, GBIG_TIMG }, { &ld_w, sizeof ld_w, GBIG_TIMG },
+    { tile_fmt, sizeof tile_fmt, GBIG_TILE }, { tile_siz, sizeof tile_siz, GBIG_TILE }, { tile_tmem, sizeof tile_tmem, GBIG_TILE },
+    { tile_pal, sizeof tile_pal, GBIG_TILE }, { tile_wrap, sizeof tile_wrap, GBIG_TILE }, { tile_shift, sizeof tile_shift, GBIG_TILE },
+    { ldrec, sizeof ldrec, GBIG_TMEM }, { &ldrec_n, sizeof ldrec_n, GBIG_TMEM }, { blk, sizeof blk, GBIG_TMEM }, { &blk_n, sizeof blk_n, GBIG_TMEM },
+    { &tlut, sizeof tlut, GBIG_TLUT }, { &tlut_n, sizeof tlut_n, GBIG_TLUT }, { tlut_pal, sizeof tlut_pal, GBIG_TLUT },
+    { tile_sz, sizeof tile_sz, GBIG_TILESZ }, { td, sizeof td, GBIG_TILESZ }, { &m1, sizeof m1, GBIG_TILESZ }, { &tile_x0, sizeof tile_x0, GBIG_TILESZ },
+    { &tile_y0, sizeof tile_y0, GBIG_TILESZ }, { &tile_fx, sizeof tile_fx, GBIG_TILESZ }, { &tile_fy, sizeof tile_fy, GBIG_TILESZ }, { &cur_tile, sizeof cur_tile, GBIG_TILESZ },
+    { &comb_w0, sizeof comb_w0, GBIG_COMB }, { &comb_w1, sizeof comb_w1, GBIG_COMB },
+    { &omode_h, sizeof omode_h, GBIG_OMH }, { &omode_l, sizeof omode_l, GBIG_OML }, { &geom, sizeof geom, GBIG_GEOM },
+    { &tex_on, sizeof tex_on, GBIG_TEX }, { &tex_ss, sizeof tex_ss, GBIG_TEX }, { &tex_ts, sizeof tex_ts, GBIG_TEX },
+    { &prim, sizeof prim, GBIG_PRIM }, { &envc, sizeof envc, GBIG_ENV }, { &fogc, sizeof fogc, GBIG_FOG }, { &fog_fm, sizeof fog_fm, GBIG_FOG },
+    { &fog_fo, sizeof fog_fo, GBIG_FOG }, { &fogmix_on, sizeof fogmix_on, GBIG_FOG }, { &blendc, sizeof blendc, GBIG_BLEND },
+    { &keyc, sizeof keyc, GBIG_KEYS }, { &keys, sizeof keys, GBIG_KEYS }, { &conv_k4, sizeof conv_k4, GBIG_KEYS }, { &prim_z, sizeof prim_z, GBIG_PRIMZ },
+    { &sci_x0, sizeof sci_x0, GBIG_SCISSOR }, { &sci_y0, sizeof sci_y0, GBIG_SCISSOR }, { &sci_x1, sizeof sci_x1, GBIG_SCISSOR }, { &sci_y1, sizeof sci_y1, GBIG_SCISSOR },
+};
+static unsigned gbi_pack(unsigned mask, u8* dst) {
+    unsigned n = 0;
+    for (unsigned i = 0; i < sizeof gbi_fld / sizeof gbi_fld[0]; i++)
+        if (gbi_fld[i].grp & mask) { memcpy(dst + n, gbi_fld[i].p, gbi_fld[i].n); n += gbi_fld[i].n; }
+    return n;
+}
+
 static int pdl0_on(void) { return PMDL("pdl0"); }
 static struct { unsigned calls, rep_ok, rss_sum, sin_new, lists; } pdl0_c;
 static unsigned pdl0_frames;
@@ -558,9 +585,9 @@ static void pdl_op_rw(unsigned op, unsigned* rd, unsigned* wr) {
     switch (op) {
     case G_SETTIMG: *wr = GBIG_TIMG; break;
     case G_SETTILE: *wr = GBIG_TILE; break;
-    case G_LOADBLOCK: case G_LOADTILE: *rd = GBIG_TIMG; *wr = GBIG_TMEM; break;
-    case G_LOADTLUT: *wr = GBIG_TLUT; break;
-    case G_SETTILESIZE: *rd = GBIG_TILE | GBIG_TMEM | GBIG_TLUT; *wr = GBIG_TILESZ | GBIG_TILE; break;
+    case G_LOADBLOCK: case G_LOADTILE: *rd = GBIG_TIMG | GBIG_TILE | GBIG_TMEM; *wr = GBIG_TMEM; break;
+    case G_LOADTLUT: *rd = GBIG_TIMG | GBIG_TILE | GBIG_TLUT | GBIG_TILESZ; *wr = GBIG_TLUT; break;
+    case G_SETTILESIZE: *rd = GBIG_TIMG | GBIG_TILE | GBIG_TMEM | GBIG_TLUT; *wr = GBIG_TILESZ | GBIG_TILE; break;
     case G_SETCOMBINE: *wr = GBIG_COMB; break;
     case G_SETOTHERMODE_H: *wr = GBIG_OMH; break;
     case G_SETOTHERMODE_L: *wr = GBIG_OML; break;
@@ -902,6 +929,35 @@ static int pdl_comp_done(int* sp, Gfx** pc) {
     }
     if (*sp == pdl_comp_sp + 1) pdl_compile_finish();
     return 0;
+}
+
+/* D1 shadow: counts how often the read fields of a state list match one of 4 earlier entries (32-bit hash of the packed bytes). Reads state only, draws nothing. */
+typedef struct { u32 addr, gen, rmask; unsigned n, rr; u32 h[4]; } PdlShEnt;
+static PdlShEnt pdl_sh_tab[256];
+static struct { unsigned calls, vhit, vmiss, ops; u32 rmask0; } pdl_sh_c;
+static u8 pdl_sh_buf[4096];
+
+static void pdl_shadow(const Gfx* l) {
+    if (!is_host((u32)l) || pdl_depth) return;
+    if (!dls_rd_lo) dls_init_ranges();
+    u32 a = (u32)l;
+    if (dls_class(a) != 2 && dls_class(a) != 3) return;
+    if (pdl_refuse_ops(l)) return;
+    unsigned rmask = 0, nops = pdl_nops(l);
+    for (unsigned i = 0; i < nops; i++) { unsigned rd, wr; pdl_op_rw(l[i].words.w0 >> 24, &rd, &wr); rmask |= rd; }
+    u32 h = gbi_state_fnv(pdl_sh_buf, gbi_pack(rmask, pdl_sh_buf));
+    PdlShEnt* e = &pdl_sh_tab[(a >> 3) * 2654435761u >> 24 & 255];
+    u32 gen = pdl_heap_gen(a);
+    if (e->addr != a || e->gen != gen || e->rmask != rmask) { memset(e, 0, sizeof *e); e->addr = a; e->gen = gen; e->rmask = rmask; }
+    pdl_sh_c.calls++; pdl_sh_c.ops += nops; pdl_sh_c.rmask0 = rmask;
+    unsigned i = 0;
+    while (i < e->n && e->h[i] != h) i++;
+    if (i < e->n) pdl_sh_c.vhit++;
+    else {
+        pdl_sh_c.vmiss++;
+        if (e->n < 4) e->h[e->n++] = h;
+        else { e->h[e->rr] = h; e->rr = (e->rr + 1) & 3; }
+    }
 }
 
 static int pdl_try(const Gfx* l) {
@@ -1390,4 +1446,6 @@ static void pdl_report(void) {
     memset(&pdl_c, 0, sizeof pdl_c);
     memset(&pdl_m_c, 0, sizeof pdl_m_c);
     memset(&pdl_tpl_c, 0, sizeof pdl_tpl_c);
+    pm_log_hw("pdlsh f%d calls %u rmask0 %x vhit %u vmiss %u ops_in %u", rm_frame, pdl_sh_c.calls, pdl_sh_c.rmask0, pdl_sh_c.vhit, pdl_sh_c.vmiss, pdl_sh_c.ops);
+    memset(&pdl_sh_c, 0, sizeof pdl_sh_c);
 }

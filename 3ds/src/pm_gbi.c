@@ -2544,6 +2544,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
                 break;
             }
             if (pdl0_on()) pdl0_gl_enter(next);
+            if (!pdl_compile_one && dlc_enabled()) pdl_shadow(next); /* D1: shadow count only */
             if (!pdl_compile_one && dlc_enabled() && pdl_try(next)) {
                 RS_ADD(RS_PDL, 1);
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
