@@ -161,10 +161,19 @@ static void ps_step(const Rec* r) {
     }
 }
 
+/* Phase timing needs the switch (ph_want) and the log (pm_log_file). Logging off: pm_ph_on is 0, so no tick is read and no line is formed. */
+static int ph_want;
+void pm_ph_log_gate(int on) {
+    pm_ph_on = on && ph_want;
+    pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
+}
+
 void pm_ph_init(void) {
     char rv[40];
     ps_on = pm_debug_has("phsum");
-    pm_ph_on = pm_debug_has("phase") || ps_on;
+    ph_want = pm_debug_has("phase") || ps_on;
+    pm_ph_on = ph_want && pm_log_file();
+    ps_init(); /* only parses the abtog switch, so it runs even while logging is off */
     csv = pm_debug_has("phasecsv");
     if (pm_debug_value("phasecsv", rv, sizeof rv)) { /* HWM1: phasecsv=<from>:<to>, pc lines only for these drawn steps */
         csv = 1;
@@ -174,7 +183,6 @@ void pm_ph_init(void) {
     }
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (!pm_ph_on) return;
-    ps_init();
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();
     int hit = 0;

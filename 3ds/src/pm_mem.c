@@ -175,6 +175,7 @@ void pm_mem_hud(char out[3][40]) {
 }
 
 void pm_mem_log(const char* tag) {
+    if (!pm_log_file()) return; /* logging off: no stack walk, no stats formatting */
     if (!strcmp(tag, "map") && pm_debug_has("texmax")) {
         unsigned wmax, pk = pm_tex_map_peak_take(&wmax);
         pm_log_d("texmax %u KB of %u KB before this map load, one frame used %u KB, now %u KB", pk >> 10, pm_tex_budget() >> 10, wmax >> 10, pm_tex_used() >> 10);

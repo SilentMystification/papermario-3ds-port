@@ -57,7 +57,8 @@ static u32 wr_file_max, wr_sock_max, con_skipped; /* HWM1: longest single step o
 static u32 sink_file_max, sink_con_max, fb_full_waits; /* PI6: the sink thread's longest write and console step in us */
 static int sw_lognull;
 static int log_level = 1; /* L02: 0 error, 1 warn, 2 info, 3 debug. A line above this level is dropped before any formatting. Default warn. */
-static int log_file_on = 1; /* L02: 0 = no write to log.txt (switch log=off, options panel) */
+static int log_file_on = 1; /* the logging gate: 0 = off (switch log=off, options panel Logging). No line is formatted, queued, written or sent, and phase timing stops (pm_ph_log_gate). */
+void pm_ph_log_gate(int on);
 
 static void ring_add(const char* s, int n) {
     for (int i = 0; i < n; i++) ring[ring_pos++ % RING] = s[i];
@@ -189,7 +190,12 @@ void pm_log_set_switches(const char* s) {
 int pm_log_level(void) { return log_level; }
 int pm_log_file(void) { return log_file_on; }
 void pm_log_set_level(int lv) { log_level = lv < 0 ? 0 : lv > 3 ? 3 : lv; }
-void pm_log_set_file(int on) { log_file_on = on != 0; }
+static void wake_writer(void);
+void pm_log_set_file(int on) {
+    log_file_on = on != 0;
+    pm_ph_log_gate(log_file_on);
+    wake_writer(); /* the writer drains the queue, then sleeps while logging is off */
+}
 
 void pm_log_init(int live) {
     LightLock_Init(&con_lock);
@@ -298,10 +304,12 @@ void pm_log_console_ready(void) {
 }
 static LightEvent ev_wake, ev_started, ev_flushed;
 static volatile int io_drain_req;
+static void wake_writer(void) { if (writer_th) LightEvent_Signal(&ev_wake); }
 
 static void vlog(int lv, const char* fmt, va_list ap) {
     int vip = (lv & VIP) != 0;
     lv &= 15;
+    if (!log_file_on) return; /* logging off: nothing below runs, not even the level test */
     if (lv > log_level) return;
     if (!writer_th) return; /* no writer: drop the line, never touch SD, socket or stdout on the caller */
     /* Queue full: one atomic add and out, before any formatting work, so a flood costs almost nothing. */
@@ -569,7 +577,8 @@ static void writer_main(void* arg) {
     __atomic_store_n(&writer_started, id, __ATOMIC_RELEASE);
     LightEvent_Signal(&ev_started);
     for (;;) {
-        LightEvent_WaitTimeout(&ev_wake, 250000000LL);
+        if (log_file_on) LightEvent_WaitTimeout(&ev_wake, 250000000LL);
+        else LightEvent_Wait(&ev_wake); /* logging off: asleep until pm_log_set_file or stop signals */
         if (__atomic_load_n(&active_id, __ATOMIC_ACQUIRE) != id) return; /* a replacement thread took over */
         writer_hb++;
         if (io_drain_req && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
@@ -586,7 +595,7 @@ static void writer_main(void* arg) {
         }
         if (!__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) continue;
         if (pm_io_quiet) continue; /* PT68: no SD, socket or console call while the app sleeps */
-        accept_client();
+        if (log_file_on) accept_client();
         LightLock_Lock(&drain_lock);
         if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
             pm_ph_drain();
