@@ -3,13 +3,14 @@
 # Usage (repo root): sh 3ds/build.sh [extra ninja args]
 # Output: build3ds/pm_3ds.3dsx (a lane: build3ds/lane-<PM_LANE>/), also copied to %APPDATA%\Azahar\sdmc\3ds\PaperMario\
 #
-# The container sees only the paths CMake reads. Those are read-only bind mounts at /src (same layout as the repo).
-# Objects, the CMake dir and ccache live in named volumes. A lane (PM_LANE) has its own build volume and output folder.
+# The container reads the CMake inputs from the named volume pm3ds-src at /src (same layout as the repo).
+# Only changed input files are copied into it. The manifest in $OUT/src_manifest.txt holds path, size, mtime.
+# Objects, the CMake dir and ccache live in named volumes. A lane (PM_LANE) has its own volumes and output folder.
 # Hang guard: a watchdog kills this run's container after PM_BUILD_CAP seconds (default 600).
 set -e
 cd "$(dirname "$0")/.."
-OUT=build3ds; VOL=pm3ds-build
-if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-build-$PM_LANE; fi
+OUT=build3ds; VOL=pm3ds-build; SRCVOL=pm3ds-src
+if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-build-$PM_LANE; SRCVOL=pm3ds-src-$PM_LANE; fi
 mkdir -p $OUT
 NAME="pm3ds-build-${PM_LANE:-main}"
 # BN1: one build number = V0 + (commit count - C0), V0 and C0 in 3ds/build_base.txt. No -dirty suffix (user decision 2026-10-19). Suffix -<lane> (PM_LANE set) or -laneB (branch lane-b).
@@ -23,24 +24,34 @@ printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
 # Rewrite pm_build.h only when the number changed: a new mtime would rebuild every file that includes it.
 cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
 
-# The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else is mounted.
+# The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 INPUT_FILES="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png"
 INPUT_DIRS="3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include assets/us ver/us/build"
-SRC_MODE=${PM_SRC_MODE:-mount}
-SFX=""; [ -n "$PM_LANE" ] && SFX="-$PM_LANE"
-if [ "$SRC_MODE" = rsync ]; then
-    # Measurement variant: one rsync of an explicit file list into a volume.
-    { for f in $INPUT_FILES; do echo "$f"; done; for d in $INPUT_DIRS; do find "$d" -type f; done; } > "$OUT/srclist.txt"
-    SRCARGS="-v $(pwd):/host:ro -v pm3ds-src$SFX:/src"
-    RSYNC_SRC=1
-else
-    SRCARGS=""
-    for p in $INPUT_FILES $INPUT_DIRS; do
-        [ -e "$p" ] || { echo "missing build input: $p" >&2; exit 1; }
-        SRCARGS="$SRCARGS -v $(pwd)/$p:/src/$p:ro"
-    done
-    RSYNC_SRC=""
+for p in $INPUT_FILES $INPUT_DIRS; do
+    [ -e "$p" ] || { echo "missing build input: $p" >&2; exit 1; }
+done
+IMG=pm3ds-build:1
+docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
+
+# Sync: copy only files whose size or mtime changed since the last sync.
+t0=$(date +%s)
+MAN=$OUT/src_manifest.txt
+# A source volume that was removed makes the manifest wrong. Drop it, so the next sync copies everything.
+docker volume inspect $SRCVOL >/dev/null 2>&1 || rm -f $MAN
+[ -f $MAN ] || : > $MAN
+find $INPUT_FILES $INPUT_DIRS -type f -printf '%p\t%s\t%T@\n' | sort > $OUT/src_now.txt
+# Changed or new: not equal to the manifest. Deleted: in the manifest, not in the current list.
+awk -F'\t' 'FILENAME==ARGV[1]{old[$1]=$2 "\t" $3; next} (old[$1] != $2 "\t" $3){print $1}' $MAN $OUT/src_now.txt > $OUT/src_changed.txt
+awk -F'\t' 'FILENAME==ARGV[1]{now[$1]=1; next} !($1 in now){print $1}' $OUT/src_now.txt $MAN > $OUT/src_deleted.txt
+nchg=$(wc -l < $OUT/src_changed.txt); ndel=$(wc -l < $OUT/src_deleted.txt)
+if [ -s $OUT/src_changed.txt ]; then
+    tar -cf - -T $OUT/src_changed.txt | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG tar -xf - -C /src
 fi
+if [ -s $OUT/src_deleted.txt ]; then
+    MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c 'while read -r f; do rm -f "/src/$f"; done' < $OUT/src_deleted.txt
+fi
+cp -f $OUT/src_now.txt $MAN
+echo "STAGE sync-host $(( $(date +%s) - t0 )) s (changed $nchg, deleted $ndel)" >&2
 
 # Hang guard: after PM_BUILD_CAP seconds the watchdog kills only this run's container, by name.
 WD=${PM_BUILD_CAP:-600}
@@ -50,11 +61,9 @@ WD=${PM_BUILD_CAP:-600}
       docker kill "$NAME" >/dev/null 2>&1
   fi ) &
 wdpid=$!
-IMG=pm3ds-build:1
-docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 rc=0
-MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" $SRCARGS \
-    -e CCACHE_DIR=/ccache -e RSYNC_SRC="$RSYNC_SRC" \
+MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
+    -e CCACHE_DIR=/ccache \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
     -v pm3ds-ccache:/ccache \
@@ -62,7 +71,6 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" $SRCARGS \
     set -e -f
     t0=$(date +%s)
     stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
-    if [ -n "$RSYNC_SRC" ]; then rsync -a -R --delete --files-from=/out/srclist.txt /host/ /src/; stage rsync; fi
     # Configure only when the build dir is missing, was made with ccache, or points at another source root.
     if ! grep -q "^CMAKE_C_COMPILER_LAUNCHER:STRING=ccache$" /work/build/CMakeCache.txt 2>/dev/null \
         || ! grep -q "^CMAKE_HOME_DIRECTORY:INTERNAL=/src/3ds$" /work/build/CMakeCache.txt 2>/dev/null; then
