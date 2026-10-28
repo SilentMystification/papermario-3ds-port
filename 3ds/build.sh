@@ -77,7 +77,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
     fi
     stage configure
     status=0
-    cmake --build /work/build -- -k 0 '"$*"' || status=$?
+    cmake --build /work/build --parallel "$(nproc)" -- -k 0 '"$*"' || status=$?
     stage compile-link
     cp -f /work/build/pm_3ds.3dsx /work/build/pm_3ds.smdh /work/build/pm_3ds.map /work/build/pm_3ds.elf /out/ 2>/dev/null || true
     stage copy-out
