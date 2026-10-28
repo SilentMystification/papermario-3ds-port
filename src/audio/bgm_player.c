@@ -705,6 +705,7 @@ void au_bgm_player_initialize(BGMPlayer* player) {
     s32 keepReading;
     s32 i;
 
+    { extern void pm_log(const char*, ...); pm_log("V09INIT player %p song %x state %d", player, player->songName, player->masterState); }
     for (i = 0; i < ARRAY_COUNT(player->tracks); i++) {
         BGMPlayerTrack* track = &player->tracks[i];
         track->instrument = NO_INSTRUMENT;
@@ -1314,6 +1315,7 @@ void au_bgm_player_update_playing(BGMPlayer *player) {
                                         * (track->insVolume >> 21)     // 7.24 --> 7.3
                                         * (track->proxVolume >> 21)) >> 20) // 15.16 --> 10.0 (fractional part truncated?)
                                         * (track->volume * note->velocity)) >> 9;
+                                    if (track->instrument == NO_INSTRUMENT) { extern void pm_log(const char*, ...); pm_log("V09DIAG track %d song %d file %p name %x B0 %p B1 %p rd %p player %p A %p Bp %p", (int)(track - player->tracks), player->songID, player->bgmFile, player->bgmFile->name, player->globals->dataBGM[0], player->globals->dataBGM[1], track->bgmReadPos, player, gBGMPlayerA, gBGMPlayerB); }
                                     note->ins = track->instrument;
                                     note->detune =
                                         (notePitch * 100)
@@ -1733,6 +1735,7 @@ void au_BGMCmd_F5_UseInstrument(BGMPlayer* player, BGMPlayerTrack* track) {
     volume = instrument->volume & 0x7F;
     track->patch = patch;
     track->instrument = au_get_instrument(player->globals, bank, patch, &track->envelope);
+    { extern void pm_log(const char*, ...); pm_log("V09F5 player %p trk %d ins %d bank %x patch %d -> %p", player, (int)(track - player->tracks), insIndex, bank, patch, track->instrument); }
     if (volume != 0) {
         volume <<= 24;
     }

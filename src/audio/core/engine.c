@@ -486,6 +486,7 @@ void au_syn_begin_audio_frame(AuGlobals* globals) {
             voice->priority = AU_PRIORITY_FREE;
         }
 
+        if ((voiceUpdateFlags & AU_VOICE_SYNC_FLAG_ALL) && voice->instrument == nullptr) { extern void pm_log(const char*, ...); pm_log("V09DIAG voice %d flags %x prio %d cprio %d bus %d cmd %p vol %d", i, voiceUpdateFlags, voice->priority, voice->clientPriority, voice->busID, voice->cmdPtr, voice->volume); }
         if (voiceUpdateFlags & AU_VOICE_SYNC_FLAG_ALL) {
             au_voice_start(voice, &voice->envelope);
             au_syn_start_voice_params(i, voice->busID, voice->instrument, voice->pitchRatio, voice->volume, voice->pan, voice->reverb, voice->delta);
