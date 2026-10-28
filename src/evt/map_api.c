@@ -615,6 +615,13 @@ s32 get_lava_reset_pos(f32* outX, f32* outY, f32* outZ) {
         return -1;
     }
 
+#ifdef TARGET_3DS
+    /* CRASH83: no map set a lava reset list yet (ResetFromLava runs only in lava maps) while LastSafeFloor is 0 from the start: the N64 read low RAM through the null pointer and
+     * went on by luck, the 3DS data aborts. No list means no reset position: the caller then uses the current position. */
+    if (lavaReset == nullptr) {
+        return 0;
+    }
+#endif
     while (true) {
         if (lavaReset->colliderID == -1) {
             break;
