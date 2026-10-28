@@ -25,3 +25,4 @@
 2026-10-27 01:52  pm_3ds_1144_log.3dsx  13353384 bytes  sha256 8ac51f4e8ceb401f  build 1144  git de2dc0966  branch dlc-compiler-c1c2  texture bind restored, log waits off the game thread. Not a hardware result yet.
 pm_3ds_1175_instr.3dsx 009b2e14d7d77cbd 63b2fb7f9 picture ok
 pm_3ds_1227-dc_dc2.3dsx 8c3beaae77ebcfb6 91b225755 picture ok
+pm_3ds_merge_60e5a06e2.3dsx 99457c4d65dce86e 60e5a06e2 picture ok (mergechk yard: Mario, ground, shadow); includes logging-off gate, frame skip option (untested), 9 merged branches, build pipeline
