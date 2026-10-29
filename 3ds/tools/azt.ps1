@@ -21,7 +21,8 @@ Steps:
     An event with "max" is a numeric gate: capture group 1 of its regex must be <= max. "min" (optional) must be >= min. "pick": "last" takes the last matching line.
     The shot files of this run are listed with the subject. The script never prints a full PASS. The shot must be read by a person.
 Exit codes: 0 log checks pass, 1 expected event, crash or run failure, 2 marker missing, 3 attract loop,
-4 unknown or unverified scenario, 5 argument or build error, 9 test budget of the row used up.
+4 unknown or unverified scenario, 5 argument or build error, 6 no new log line for 40 s (stalled), 7 until static check failed (nothing run), 9 test budget of the row used up.
+-SelfTest runs the static check on bad scenario copies and the stall rule (no start).
 #>
 param(
     [Parameter(Position = 0)][string]$Scenario = "",
@@ -29,13 +30,89 @@ param(
     [string]$Build = "",
     [string]$CheckLog = "",
     [switch]$Try,
-    [switch]$List
+    [switch]$List,
+    [switch]$SelfTest
 )
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $scs = @((Get-Content (Join-Path $PSScriptRoot "azt_scenarios.json") -Raw | ConvertFrom-Json).scenarios)
 $attractRe = 'game mode (2|3|17) frame' # GAME_MODE_TITLE_SCREEN, GAME_MODE_ENTER_DEMO_WORLD, GAME_MODE_DEMO (game_modes.h)
+# UNTILCHK: static check of a scenario's until line (no start). Stall rule: a run with no new log line for $stallSec stops (exit 6).
+$stallSec = 40
+function Test-StallExpired([datetime]$lastNew, [datetime]$now, [int]$limit) { return (($now - $lastNew).TotalSeconds -gt $limit) }
+$script:srcText = $null
+function Get-SourceText {
+    # All C source that can print a log line: the 3DS port, its headers and the decomp source.
+    if ($null -eq $script:srcText) {
+        $sb = New-Object System.Text.StringBuilder
+        foreach ($d in @("3ds\src", "3ds\include", "src")) {
+            $p = Join-Path $repo $d
+            if (Test-Path $p) { foreach ($f in Get-ChildItem -Path $p -Recurse -File -Include *.c, *.h) { [void]$sb.Append([IO.File]::ReadAllText($f.FullName)) } }
+        }
+        $script:srcText = $sb.ToString()
+    }
+    return $script:srcText
+}
+function Get-UntilProblem($s) {
+    # Returns "" when the until line can be printed by this build and its frame is reachable, else the reason.
+    $u = [string]$s.until
+    $dbg = [string]$s.debug
+    $capS = if ($s.cap) { [int]$s.cap } else { 90 }
+    try { [void][regex]::new($u) } catch { return "until is not a valid regex: /$u/" }
+    # Literal runs of the until line: split at regex syntax, classes, groups and digits. Each run of 4 or more letters must occur in the source.
+    $parts = [regex]::Split($u, '\\[dDwWsSbB]|\\.|\[[^\]]*\]|\([^)]*\)|[\+\*\?\|\^\$\{\}\.\-0-9]+')
+    $src = Get-SourceText
+    foreach ($r in $parts) {
+        $t = $r.Trim()
+        if ($t.Length -ge 4 -and $t -match '[A-Za-z]' -and -not $src.Contains($t)) { return "no source line prints '$t' (until /$u/)" }
+    }
+    $fm = [regex]::Match($u, 'frame (\d+)\\b')
+    $sm = [regex]::Match($dbg, 'shotwin=(\d+):(\d+)')
+    if ($fm.Success -and $sm.Success) {
+        $f = [int]$fm.Groups[1].Value; $a = [int]$sm.Groups[1].Value; $b = [int]$sm.Groups[2].Value
+        if ($f -lt $a -or $f -gt ($a + $b - 1)) { return "until frame $f is outside shotwin $a to $($a + $b - 1)" }
+    }
+    foreach ($m in [regex]::Matches($u, '\bf(\d+)\b')) {
+        $n = [int64]$m.Groups[1].Value
+        if ($n -gt ($capS * 60)) { return "until frame f$n is past the run length: cap $capS s at 60 steps per s" }
+    }
+    return ""
+}
 
+if ($SelfTest) {
+    # Self-test: bad scenario copies are written to a temp file and loaded like the real file. No Azahar start.
+    $fails = 0
+    $tmp = Join-Path $env:TEMP "azt_selftest_scenarios.json"
+    $allObj = Get-Content (Join-Path $PSScriptRoot "azt_scenarios.json") -Raw | ConvertFrom-Json
+    $base = @($allObj.scenarios | Where-Object { $_.name -eq "toad_pond" })[0]
+    $cases = @(
+        @{ n = "good until (frame 196 in shotwin 160:40)"; u = 'shot \d+ frame 196\b'; ok = $true },
+        @{ n = "bad frame (300 outside shotwin 160:40)"; u = 'shot \d+ frame 300\b'; ok = $false },
+        @{ n = "bad literal (no source prints it)"; u = 'zzqx nothing prints this \d+'; ok = $false },
+        @{ n = "bad frame past the run length"; u = 'warp: scene f99999'; ok = $false }
+    )
+    foreach ($c in $cases) {
+        $sc2 = @([pscustomobject]@{ name = "selftest"; until = $c.u; debug = $base.debug; cap = $base.cap }) # the copy's fields only
+        $sc2 | ConvertTo-Json -Depth 5 | Set-Content $tmp
+        $cp = (Get-Content $tmp -Raw | ConvertFrom-Json)[0]
+        $p = Get-UntilProblem $cp
+        $good = (($p -eq "") -eq $c.ok)
+        if (-not $good) { $fails++ }
+        Write-Output ("{0} {1}: {2}" -f $(if ($good) { "PASS" } else { "FAIL" }), $c.n, $(if ($p) { $p } else { "accepted" }))
+    }
+    foreach ($s in $scs) {
+        $p = Get-UntilProblem $s
+        if ($p) { Write-Output ("NOTE  current scenario {0}: {1}" -f $s.name, $p) }
+    }
+    $now = Get-Date
+    $stallOk = ((Test-StallExpired ($now.AddSeconds(-41)) $now $stallSec) -and -not (Test-StallExpired ($now.AddSeconds(-39)) $now $stallSec))
+    if (-not $stallOk) { $fails++ }
+    Write-Output ("{0} stall rule: 41 s without a line stops, 39 s does not" -f $(if ($stallOk) { "PASS" } else { "FAIL" }))
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+    if ($fails) { Write-Output "SELFTEST FAILED: $fails case(s)"; exit 1 }
+    Write-Output "SELFTEST PASS"
+    exit 0
+}
 if ($List -or -not $Scenario) {
     foreach ($s in $scs) { Write-Output ("{0,-14} {1,-16} {2}" -f $s.name, $s.status, $s.subject) }
     if (-not $Scenario) { Write-Output "usage: azt.ps1 <scenario> [-Row <id>] [-Build <lane>] [-Try] [-CheckLog <file>]" }
@@ -44,6 +121,8 @@ if ($List -or -not $Scenario) {
 $sc = $scs | Where-Object { $_.name -eq $Scenario } | Select-Object -First 1
 if (-not $sc) { Write-Output "SCENARIO UNKNOWN: $Scenario. See -List."; exit 4 }
 if ($sc.status -eq "unverified" -and -not $Try) { Write-Output "SCENARIO UNVERIFIED: $($sc.name). Reason: $($sc.reason) Use -Try to run it anyway."; exit 4 }
+$uerr = Get-UntilProblem $sc
+if ($uerr) { Write-Output "SCENARIO REJECTED: $($sc.name): $uerr. Nothing was run."; exit 7 }
 if (@($sc.expected_events).Count -eq 0 -or -not $sc.first_marker) { Write-Output "SCENARIO INVALID: $($sc.name) has no expected_events or no first_marker."; exit 5 }
 $expectsWarp = ($sc.expects -eq "warp" -or $sc.expects -eq "tour")
 $cap = if ($sc.cap) { [int]$sc.cap } else { 90 }
@@ -176,11 +255,12 @@ $capGuard = $cap + 120
 while (-not $child.HasExited) {
     Start-Sleep -Milliseconds 500
     if (-not $azStart) {
-        if (Get-AzaharProc $t0) { $azStart = Get-Date; Write-Output "AZT: Azahar started, the deadline clock runs" }
+        if (Get-AzaharProc $t0) { $azStart = Get-Date; $lastNew = $azStart; Write-Output "AZT: Azahar started, the deadline clock runs" }
         continue
     }
     $chunk = Read-LogChunk
     if ($chunk) {
+        $lastNew = Get-Date
         if (-not $markerSeen -and $chunk -match $sc.first_marker) { $markerSeen = $true; Write-Output ("AZT: first marker seen at {0:N1} s" -f ((Get-Date) - $azStart).TotalSeconds) }
         $attract += ([regex]::Matches($chunk, $attractRe)).Count
     }
@@ -188,6 +268,7 @@ while (-not $child.HasExited) {
     if (-not $markerSeen -and $el -gt $deadline) { $stop = "marker"; break }
     if ($expectsWarp -and $attract -gt 2) { $stop = "attract"; break }
     if ($el -gt $capGuard) { $stop = "guard"; break }
+    if (Test-StallExpired $lastNew (Get-Date) $stallSec) { $stop = "stall"; break }
 }
 if ($stop) {
     Write-Output "AZT: stopping the run ($stop). Killing the Azahar of this run."
@@ -225,6 +306,7 @@ if ($stop -eq "attract") {
     Write-Output "ATTRACT LOOP: $attract title or demo mode lines (limit 2) in a run that expects $($sc.expects). Stopped."
     exit 3
 }
+if ($stop -eq "stall") { Write-Output "SCENARIO FAILED: no new log line for $stallSec s. The run was stalled and Azahar was stopped."; exit 6 }
 if ($stop -eq "guard") { Write-Output "SCENARIO FAILED: the run did not end within $capGuard s."; exit 1 }
 if ($rc -eq 2) { Write-Output "SCENARIO FAILED: run_azahar reported crash symbols (rc 2). See $runOut"; exit 1 }
 if ($rc -ne 0) { Write-Output "SCENARIO FAILED: run_azahar rc $rc. See $runOut"; exit 1 }

@@ -22,7 +22,7 @@ yard, tour10, text_menu, battle_start, sewer, ruins, volcano, fileselect_rotate.
 Usage (one line): `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 <scenario>` (add `-Row <id>`, `-Build <lane>`; `-CheckLog <file>` checks an old log without a start; `-List` lists all).
 
 Defaults: PM_ROW `azt`, build `build3ds\pm_3ds.3dsx`, cap 90 s, first marker deadline 20 s after the Azahar start. Each call is one real start (-Force) and counts against the row budget.
-Exit codes: 0 log checks pass, 1 check or run failure, 2 marker missing (stopped), 3 ATTRACT LOOP (stopped), 4 unknown or unverified scenario, 5 argument or build error, 9 budget used.
+Exit codes: 0 log checks pass, 1 check or run failure, 2 marker missing (stopped), 3 ATTRACT LOOP (stopped), 4 unknown or unverified scenario, 5 argument or build error, 6 no new log line for 40 s (stalled, stopped), 7 until static check failed (nothing run), 9 budget used. Self-test (no start): `azt.ps1 -SelfTest`.
 A log pass is not a full pass. Read the shot files and confirm the subject. Shots of each run are copied to build3ds\azt\shots\<scenario>\ (runs before this change: shots are in build3ds\shots and were overwritten).
 
 ## Verified (log checks and picture read by eye)
@@ -168,3 +168,9 @@ Fix: `prim_ndc_z()` in 3ds/src/pm_gbi.c (the zmix and CPU z uses), prim_z - 1, c
 |---|---|---|---|---|
 | toad_pond (PRIMZFIX) | Pond, mac_00 entry 4, route to x -174 z 112. HEAD run 1 and run 2 (lane pzhead): top shots not byte-equal, all 10 diffs in the NPC strip x 92 to 138. Fixed code, switch off (lane pzfix): same as HEAD outside x 92 to 138 in all 10 shots. The water at x 20 to 60 is identical in every run. | `toad_pond -Try -Row PRIMZFIX -Build pzfix` | 3 of 3 log checks, 4 runs | unverified |
 | toad_pond_zround (PRIMZFIX repro) | Old code with zround (lane pzold): pond water unchanged from HEAD (teal water at x 20 to 60). Does not reproduce the console bug at the 2^-16 rounding. Fixed code with zround (lane pzfix): same picture. | `toad_pond_zround -Try -Row PRIMZFIX -Build pzold` | 3 of 3 log checks, 2 runs | unverified (does not reproduce) |
+
+## UNTILCHK (2026-10-29): until check and stall stop (azt.ps1)
+
+- Static check before each start (no start on a fail): the until line must hold each literal run of 4 or more letters in the C source of 3ds/src, 3ds/include or src. A frame in the until (`frame N\b`) must sit in shotwin when the debug string sets one. An `fN` frame must be at most cap times 60. A fail exits 7 with "SCENARIO REJECTED".
+- Stall: no new log line for 40 s after the Azahar start stops the run and exits 6 (SCENARIO FAILED: no new log line). Not seen live: the yard run with `preset=yard` logs fs, dlc and audio lines every few seconds, so no quiet run was made. The rule itself is in the self-test.
+- Self-test (no Azahar start): `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 -SelfTest`. Writes 4 scenario copies to %TEMP% with bad or good until lines and checks the stall rule. Result: SELFTEST PASS (5 of 5). Current scenarios: no NOTE line (0 of 36 rejected).
