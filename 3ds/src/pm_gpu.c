@@ -236,8 +236,9 @@ void pm_vram_alloc_fail(const char* what, unsigned kb); /* pm_mem.c */
 void pm_vram_reg(const void* p, unsigned bytes); /* pm_mem.c: per-bank accounting */
 void pm_vram_unreg(const void* p, unsigned bytes);
 int pm_vram_bank_of(const void* p);
-static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; unsigned stride; unsigned last; C3D_Tex snap; int snap_ready; } offs[OFF_ALL];
-static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8;
+static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; unsigned stride; unsigned last; C3D_Tex snap; int snap_ready; int hdr, snap_hdr; } offs[OFF_ALL];
+static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8; /* off_fail: a VRAM failure, cleared at pm_gpu_begin */
+static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
 extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
@@ -248,7 +249,7 @@ static int r_memblend; /* FX2a: the blender mixes with the memory colour by the 
  * rows per rectangle, the strips do not overlap, so one copy serves them). */
 enum { GRAB_MAX = 8 };
 static C3D_Tex grab_tex;
-static int grab_ready, grab_bind, grab_dirty = 1, grab_dy0, grab_dy1, grab_n, grab_split, rect_y0, rect_y1;
+static int grab_bind, grab_dirty = 1, grab_dy0, grab_dy1, grab_n, grab_split, rect_y0, rect_y1;
 
 static void sh_clear(void);
 static int want_clear; /* see below */
@@ -293,31 +294,100 @@ static void small_arena_init(void) {
         small_blk[small_n++] = p;
     }
 }
-/* Init a VRAM texture. A 64 x 64 one takes an arena block; any other takes a block from vramAlloc. */
-static int tex_init_vram(C3D_Tex* t, int w, int h) {
-    if (w == 64 && h == 64) {
-        if (small_next >= small_n || !C3D_TexInit(t, 64, 64, GPU_RGBA8)) return 0;
-        linearFree(t->data);
-        t->data = small_blk[small_next++];
-        return 1;
-    }
-    if (!C3D_TexInitVRAM(t, w, h, GPU_RGBA8)) return 0;
-    pm_vram_reg(t->data, (unsigned)w * (unsigned)h * 4u);
+/* Row 4: the full images (512 x 256) and the copy buffer (512 KB, grab_tex and the snap of a full image share it). A block goes to
+ * bank A first, then B. IDLE_FREE: a full image or the copy buffer unused for this many frames is freed at pm_gpu_begin. */
+#define BLK_FULL (PM_OFF_W * PM_OFF_H * 4u)
+#define IDLE_FREE 60u
+static u8* copy_blk;
+static unsigned copy_last;
+static u8* bank_block(unsigned bytes) {
+    u8* p = (u8*)vramMemAlignAt(bytes, 0x80, VRAM_ALLOC_A);
+    return p ? p : (u8*)vramMemAlignAt(bytes, 0x80, VRAM_ALLOC_B);
+}
+/* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
+static int tex_hdr(C3D_Tex* t, int w, int h) {
+    if (!C3D_TexInit(t, w, h, GPU_RGBA8)) return 0;
+    linearFree(t->data);
+    t->data = NULL;
     return 1;
+}
+static u8* copy_get(void) {
+    copy_last = pm_frame_count();
+    if (copy_blk) return copy_blk;
+    copy_blk = bank_block(BLK_FULL);
+    if (!copy_blk) { pm_vram_alloc_fail("copy", BLK_FULL >> 10); return NULL; }
+    pm_vram_reg(copy_blk, BLK_FULL);
+    pm_vram_note();
+    pm_log_d("row 4: copy buffer in bank %c (frame %u)", pm_vram_bank_of(copy_blk) ? 'B' : 'A', pm_frame_count());
+    return copy_blk;
+}
+static void copy_free(void) {
+    pm_log_d("row 4: copy buffer freed, idle %u frames", pm_frame_count() - copy_last);
+    pm_vram_unreg(copy_blk, BLK_FULL);
+    vramFree(copy_blk);
+    copy_blk = NULL;
+    grab_tex.data = NULL;
+    for (int i = 0; i < OFF_P; i++) if (offs[i].w != 64) { offs[i].snap.data = NULL; offs[i].snap_ready = 0; }
+}
+/* the data of a full image, bank A first */
+static int full_tex_init(int i) {
+    u8* p;
+    if (!offs[i].hdr) {
+        if (!tex_hdr(&offs[i].tex, PM_OFF_W, PM_OFF_H)) return 0;
+        offs[i].hdr = 1;
+    }
+    p = bank_block(BLK_FULL);
+    if (!p) return 0;
+    offs[i].tex.data = p;
+    pm_vram_reg(p, BLK_FULL);
+    pm_log_d("row 4: full image %d in bank %c (frame %u)", i, pm_vram_bank_of(p) ? 'B' : 'A', pm_frame_count());
+    return 1;
+}
+static void full_free(int i) {
+    if (offs[i].rt) { C3D_RenderTargetDelete(offs[i].rt); offs[i].rt = NULL; }
+    if (offs[i].tex.data) { pm_log_d("row 4: full image %d freed, idle %u frames", i, pm_frame_count() - offs[i].last); pm_vram_unreg(offs[i].tex.data, BLK_FULL); C3D_TexDelete(&offs[i].tex); offs[i].tex.data = NULL; }
+}
+/* a 64 x 64 image takes an arena block (made at boot) */
+static int small_tex_init(C3D_Tex* t) {
+    if (small_next >= small_n || !C3D_TexInit(t, 64, 64, GPU_RGBA8)) return 0;
+    linearFree(t->data);
+    t->data = small_blk[small_next++];
+    return 1;
+}
+static void buffers_idle(void) {
+    unsigned f = pm_frame_count();
+    for (int i = 0; i < OFF_P; i++) if (offs[i].rt && offs[i].w != 64 && f - offs[i].last >= IDLE_FREE) full_free(i);
+    if (copy_blk && f - copy_last >= IDLE_FREE) copy_free();
 }
 /* FX2a: the RDP loads a tile into TMEM before it draws, so a pass that reads the image it writes (the flame blur) sees the pixels from before
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
 static void off_snapshot(int i) {
-    if (!offs[i].snap_ready) {
-        if (!tex_init_vram(&offs[i].snap, offs[i].w, offs[i].h)) { pm_vram_alloc_fail("snap", (unsigned)(offs[i].w * offs[i].h * 4 / 1024)); pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
-        pm_vram_note();
-        C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
-        C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    u8* dst;
+    u32 bytes = (u32)offs[i].w * (u32)offs[i].h * 4u;
+    if (offs[i].w == 64) {
+        if (!offs[i].snap_ready) {
+            if (!small_tex_init(&offs[i].snap)) { pm_vram_alloc_fail("snap", 16); pm_log_e("FX2a: no arena block for the copy of slot %d", i); return; }
+            C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
+            C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+            offs[i].snap_ready = 1;
+        }
+        dst = offs[i].snap.data;
+    } else {
+        /* the copy buffer: this copy overwrites the frame start grab (PT12), so that request is void */
+        prev_pre = 0;
+        dst = copy_get();
+        if (!dst) { offs[i].snap_ready = 0; pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
+        if (!offs[i].snap_hdr) {
+            if (!tex_hdr(&offs[i].snap, PM_OFF_W, PM_OFF_H)) { offs[i].snap_ready = 0; return; }
+            C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
+            C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+            offs[i].snap_hdr = 1;
+        }
+        offs[i].snap.data = dst;
         offs[i].snap_ready = 1;
     }
     split_frame();
-    u32 bytes = (u32)offs[i].w * (u32)offs[i].h * 4u;
-    GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)offs[i].snap.data, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
+    GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)dst, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
 }
 
 /* PG0 (switch gbiprof): flush count by caller. The macro below records the function and line of the call. */
@@ -1511,7 +1581,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             pm_tex_set_offscreen(i, NULL, 0, &offs[i].tex, siz, offs[i].w, offs[i].h);
         } else i = w == 64 ? OFF_N + off_sused++ : off_used++;
         if (!offs[i].rt) {
-            if (!tex_init_vram(&offs[i].tex, w, h)) {
+            if (!(w == 64 ? small_tex_init(&offs[i].tex) : full_tex_init(i))) {
                 pm_vram_alloc_fail("offslot", (unsigned)(w * h * 4 / 1024));
                 pm_log_e("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
                 off_fail = 1;
@@ -1523,8 +1593,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             offs[i].rt = C3D_RenderTargetCreateFromTex(&offs[i].tex, GPU_TEXFACE_2D, 0, -1);
             if (!offs[i].rt) {
                 pm_log_e("V05: off-screen image %d: render target failed", i);
-                pm_vram_unreg(offs[i].tex.data, w * h * 4);
-                C3D_TexDelete(&offs[i].tex);
+                if (w != 64) full_free(i);
                 off_fail = 1;
                 return 0;
             }
@@ -1572,20 +1641,18 @@ void pm_gpu_set_memblend(int on) { if (on == r_memblend) return; flush(); r_memb
  * address find the slot (T1). citro3d stops the GX queue in a frame and runs it at C3D_FrameEnd, so the order is the order of
  * these calls. The end-of-frame clear of the main target is a queue entry too: it has to come before the first split. */
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame);
-static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
+/* grab_tex is the copy buffer seen as 256 x 512. A failure is for this call only: the next grab tries again. */
+static int grab_hdr;
 static int grab_tex_init(void) {
-    if (grab_ready) return grab_ready > 0;
-    if (!C3D_TexInitVRAM(&grab_tex, 256, 512, GPU_RGBA8)) {
-        pm_vram_alloc_fail("grab", 512);
-        pm_log_e("B2: no VRAM for the 256 x 512 grab copy, grabs stay off");
-        grab_ready = -1;
-        return 0;
+    u8* cb = copy_get();
+    if (!cb) return 0;
+    if (!grab_hdr) {
+        if (!tex_hdr(&grab_tex, 256, 512)) return 0;
+        C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
+        C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+        grab_hdr = 1;
     }
-    pm_vram_note();
-    pm_vram_reg(grab_tex.data, 256 * 512 * 4);
-    C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
-    C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-    grab_ready = 1;
+    grab_tex.data = cb;
     return 1;
 }
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
@@ -1612,7 +1679,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     static int once;
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
     const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
-    if (!gpu_ok || off_fail || grab_ready < 0 || y1 <= y0) return 0;
+    if (!gpu_ok || off_fail || y1 <= y0) return 0;
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) return 1;
@@ -1709,6 +1776,7 @@ void pm_gpu_begin(int clear) {
     off_used = off_sused = 0;
     off_active = 0;
     off_i8 = 0;
+    off_fail = 0; /* row 4: a VRAM failure lasts one frame */
     grab_dirty = 1;
     grab_dy0 = grab_dy1 = grab_n = grab_split = 0;
     pm_tex_clear_offscreen();
@@ -1726,6 +1794,7 @@ void pm_gpu_begin(int clear) {
     draw_3d = 0;
     if (!gpu_ok) return;
     pm_tex_upload_vram_before_frame();
+    buffers_idle(); /* row 4: frees the full images and the copy buffer unused for IDLE_FREE frames. C3D_RenderTargetDelete asserts outside a frame, so this is before C3D_FrameBegin */
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
     raw1_reset(); sh_clear(); C3D_FrameBegin(pm_interp_on > 0 ? C3D_FRAME_SYNCDRAW : 0); /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     PH_POP();
@@ -1748,10 +1817,10 @@ void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
     if (off_active) pm_gpu_off_end();
-    if (drew && pm_debug_has("grabtest")) { /* B2 test switch: grab the whole finished frame, `offdump` then shows it next to the shot */
+    { static int gt_once; if (drew && pm_debug_has("grabtest") && !gt_once++) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot */
         extern unsigned short* nuGfxCfb_ptr;
         pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
-    }
+    } }
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
