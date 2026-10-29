@@ -375,7 +375,7 @@
       "status": "verified",
       "subject": "Pause menu, Party tab (col 3, Goombario, 'Check your Party and see each member's abilities.'). Shots at frames 190 to 208 (partner=1 is needed: the Party tab is skipped when no partner is in the save).",
       "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
-      "debug": "preset=toad partner=1 padscript=wait80,START*3,wait100,R*2,wait60,R*2,wait60,R*2,wait60 phase shots shotwin=220:1 loglevel=debug",
+      "debug": "preset=toad partner=1 padscript=wait80,START*3,wait100,R*2,wait60,R*2,wait60,R*2,wait60 phase shots shotwin=200:1 loglevel=debug",
       "until": "phase W f2[0-4]\\d-",
       "cap": 90,
       "deadline": 20,
@@ -396,8 +396,8 @@
           "regex": "ui: partner menu open"
         },
         {
-          "name": "top shot on Party tab (frame 220)",
-          "regex": "shot \\d+ frame 220\\b"
+          "name": "top shot on Party tab (frame 200)",
+          "regex": "shot \\d+ frame 200\\b"
         },
         {
           "name": "walk: cpu ms per frame, window of the until-line",
