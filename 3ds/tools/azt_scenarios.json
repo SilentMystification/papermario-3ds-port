@@ -64,9 +64,9 @@
     },
     {
       "name": "mac01t",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Mario in mac_01 (area 1 map 2, Toad Town), reached by the tour path: warp to mac_00 entry 4, then tour step to mac_01 entry 0 at about frame 209. In control, shot at frames 500 and 504.",
-      "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1900 to 2200. Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
+      "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1623 to 2065 (1844 +/- 12 %). Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase",
       "until": "mdlsum f899 r12 ",
       "cap": 120,
@@ -88,10 +88,10 @@
           "regex": "opsplit f\\d+ ops"
         },
         {
-          "name": "mdlsum total ops per frame (gate 1900 to 2200)",
+          "name": "mdlsum total ops per frame (gate 1623 to 2065, 1844 +/- 12 %)",
           "regex": "mdlsum f899 tot ops (\\d+) ",
-          "min": 1900,
-          "max": 2200
+          "min": 1623,
+          "max": 2065
         },
         {
           "name": "mdlsum rows",

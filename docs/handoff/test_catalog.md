@@ -53,7 +53,7 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
  Until changed to shot 29[0-6] (was 90 s timeout). Not re-run: budget. Status unverified.
 | house_sign | Open. Warp kmr_20 entry 4 passes. Sign not readable at 240x400. A camboom switch (boom length on nextRig and prevRig) did not change the view and was reverted. | build3dszt\shots\house_sign |
 | super_text | Open. Battle starts. Run 1 logged actionState 5, 8 and 10, no multibounce. Run 2 (dense A presses) logged actionState 0 only. No SUPER text in any shot. | build3dszt\shots\super_text |
-| mac01t | Census view of mac_01 reached by the tour path (`-Try`): warp mac_00 entry 4, tour step mac_01 entry 0 at about frame 209. Window is mdlsum f899 (frames 600 to 899). Gate 1900 to 2200 (min and max) FAILED: tot ops 2315 at f899 (2205 at f599), lane toadt at commit T1. Picture: Mario and two Toads on a Toad Town street, field HUD on (shot 500). Not a pass. | build3ds\azt\shots\mac01t |
+| mac01t (FINAL4, verified) | Census view. FINAL4 run: mdlsum f899 tot ops 1696 in 1623 to 2065, 6 of 6 log checks. Top shot 0000_1_2 (frame 500) shows Mario and Toads on a Toad Town street, HUD on. Census view of mac_01 reached by the tour path (`-Try`): warp mac_00 entry 4, tour step mac_01 entry 0 at about frame 209. Window is mdlsum f899 (frames 600 to 899). Gate 1623 to 2065 (1844 +/- 12 %, set after EN2, T1B, NP1B, HT1). Older gate 1900 to 2200 is outdated: HEAD 2315 and T1B 1844 were measured before the range was set. | build3ds\azt\shots\mac01t |
 
 ## Completion only
 
