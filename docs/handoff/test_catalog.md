@@ -63,3 +63,11 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 - text_menu (lane3d, 4 shots, pause status page): dialog and item text read at 6x and 8x. Periods after "is." and the stat labels show no misplacement by eye. No glyph code changed. Frame-178 log check fails because the shot line is not written; the shots exist.
 - intro cutscene box (lane3c, frames 580 to 600, shots every 4 frames, 6 shots): no stage box and no bounding edge visible. The scene is the Mario house with a "Mail call!" message box. Frames 602 and before 580 not captured. Not reproduced in this build.
 - super_text (intro): not reached. The intro cutscene has no battle, so the multibounce path does not run. Unverified.
+
+## Lane 3 note: intro box capture and scenario frame fix (2026-10-29)
+
+- Scenario fix: pause_menu and text_menu waited for "shot N frame 178". Shots land on frames 170, 174, 177, 180, so frame 178 is never written. The regex also had a JSON escape error (`\b` read as backspace). Both now use `shot \d+ frame 180\b`. The regex was checked offline against a log line. The scenario is not re-run: the Azahar lock was held by a run that did not stop (see below).
+- Intro boot path (no preset, lane3a, shotwin=300:400): shots every 4 frames from frame 300 to 699. Frame 300 to 326: not in the stage. Frame 327 onward: stage with grey panel, gold checker bands and red curtain. Frame 588: sky strip rises from the bottom edge (matches diag_cutscene_box.md box3). Frame 620: sky fills the panel inside the gold bands, checker walls and curtain. No border outside the stage frame was seen in these shots. Cause not decided: no N64 reference frame.
+- Not captured: frames 0 to 299 and frame 700 and later.
+- preset=intro (lane3a, shots every 30 calls, turbo): starts in the Mario house with the "Mail call!" box. The stage does not appear in this preset.
+- Run control: the Turbo run and the shotwin run did not stop at -Timeout. A run kept Azahar alive for more than 25 minutes (frame 9905 logged) and held the lock.
