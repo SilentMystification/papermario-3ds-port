@@ -152,3 +152,12 @@
 - settdbg in pause: tile 0 SETTILE field match in 99 percent of lines (only the gen counter moves). Tile 0 SETTILE is not the cause.
 - rsplit tile 96 per frame: ensure_tile flushes (RS_TILE) per frame. flsplit tex closes 122 per frame, sampled us 2477 to 3649 per frame. The e4 cost is the flush and bind work behind these closes, not the handler arithmetic.
 - Open: which ensure_tile call (tile 0 glyph path or tile 1 path dots) makes the 96 flushes. Needs a per-tile counter. Not done.
+
+## R1 probe: what flushes the tile-0 closes (branch dl_r1a, from main with R2a; PM_ROW=dl_r1 2 starts, dl_e4 used 2/8)
+- Yard before/after (logstat, loglevel=debug, PM_ROW=dl_yardlog 2/8): lines per frame 13.7 before (main pre-audit gate), 14.2 after. Comb audit lines 33 before, 0 after. Log lines are not the yard cost. The audit gate removed work, not lines.
+- New counters: RS_T0, RS_T1 (ensure_tile flushes by tile), RS_GA_TD/ENS/WRAP/GLY (glyph_atlas_bound refusals). Printed as tilesplit line (pm_phase.c).
+- Pause frame (per drawn frame): tile 0 flushes 76, tile 1 flushes 20 (sum 96 = rsplit tile). Tile 0 refusals: td 43 (tile 0 holds a non-glyph texture), ens 33 (palette pointer changed), wrap 0, glyph 0.
+- Flush sites per frame (gbiprof flush, calls x100 / drawn x100): gbi 2504 ensure_tile 96 (drawn 15); gbi 2826 SETTILE tile 0 not same 90 (drawn 51); set_plan 2224 66 (drawn 25); gbi TLUT 2876 32 (drawn 21); gbi filter 3107 32 (drawn 16); rect_begin 135 (all empty).
+- Probe edit (drop the ens_pal pointer check in glyph_atlas_bound): ens refusals 33 to 6, but wrap refusals 0 to 26. Tile 0 flushes stay 76. Tex closes stay 122. Walk 9678 us (inside noise). Reverted. Shots 0000 to 0002 equal to R0. Shot 0003 not written in that run.
+- Finding: the tile 0 closes come from texture changes in the pause (non-glyph textures between glyphs, palette and wrap changes). A glyph-only run op does not remove them. The closes target (60 or less) is not reached by a glyph run op alone.
+- R1 run op: NOT built in this pass (time and context). Plan section 2 still open. Next: a per-message glyph run only merges glyphs with no other texture between them. Measure the between-message texture changes first (td refusals 43 per frame).

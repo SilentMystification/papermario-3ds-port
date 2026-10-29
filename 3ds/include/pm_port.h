@@ -101,6 +101,8 @@ enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
     RS_TBN, RS_TBFB, /* C1: G_PM_TEX binds run by tb_run, of them fallback to G_DL */
     RS_TBE, RS_TBG, RS_TBPD, RS_TBPM, RS_TBDL, RS_TBTS, /* probe: emits, G_PM_TEX ops seen by stage */
     RS_GAB, /* GA1: glyph texrects that found the atlas bound (no flush, no wrap call) */
+    RS_T0, RS_T1, /* R1: ensure_tile flushes of tile 0 and tile 1 */
+    RS_GA_TD, RS_GA_ENS, RS_GA_WRAP, RS_GA_GLY, /* R1: glyph_atlas_bound refusals by check (td, ens state, wrap or size, glyph lookup incl. slot state) */
     RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 unsigned pm_gbi_ops_now(void);

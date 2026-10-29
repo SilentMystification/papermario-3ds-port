@@ -2480,10 +2480,11 @@ static int tile_bound(int n) {
  * texture, the glyph needs no flush and no wrap call: tile_bound compares the raster, which differs per glyph. */
 static int glyph_atlas_bound(void) {
     int gx, gy;
-    if (!td[0].valid || !td[0].src || td[0].fmt != 2 || td[0].siz != 0 || !ens_src) return 0;
-    if (ens_pal != td[0].pal || ens_fmt != 2 || ens_siz != 0) return 0;
-    if (memcmp(tile_wrap[0], ens_wrap, sizeof ens_wrap) || memcmp(tile_sz[0], ens_sz, sizeof ens_sz)) return 0;
-    return pm_tex_glyph_same(td[0].src, td[0].fmt, td[0].siz, td[0].w, td[0].h, td[0].pal, td[0].pal_n, &gx, &gy);
+    if (!td[0].valid || !td[0].src || td[0].fmt != 2 || td[0].siz != 0 || !ens_src) { RS_ADD(RS_GA_TD, 1); return 0; }
+    if (ens_pal != td[0].pal || ens_fmt != 2 || ens_siz != 0) { RS_ADD(RS_GA_ENS, 1); return 0; }
+    if (memcmp(tile_wrap[0], ens_wrap, sizeof ens_wrap) || memcmp(tile_sz[0], ens_sz, sizeof ens_sz)) { RS_ADD(RS_GA_WRAP, 1); return 0; }
+    if (!pm_tex_glyph_same(td[0].src, td[0].fmt, td[0].siz, td[0].w, td[0].h, td[0].pal, td[0].pal_n, &gx, &gy)) { RS_ADD(RS_GA_GLY, 1); return 0; }
+    return 1;
 }
 static void ensure_tile(int n) {
     if (n == 0 && pdl_lazy_tile(0)) return;
@@ -2500,6 +2501,7 @@ static void ensure_tile(int n) {
         return;
     }
     RS_ADD(RS_TILE, 1);
+    RS_ADD(n ? RS_T1 : RS_T0, 1);
     pm_gpu_flush();
     pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
     if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w, td[n].h);
