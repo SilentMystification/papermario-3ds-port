@@ -207,6 +207,22 @@ void pm_audio_join_at(int site) {
     if (dt > au_w_max) au_w_max = dt;
 }
 
+/* Sleep hook: wait at most ns for the audio job. 0 = idle, -1 = the job still runs at the deadline. It goes on after the wait. */
+int pm_audio_join_timed(int site, unsigned long long ns) {
+    if (!au_busy) return 0;
+    unsigned t0 = pm_ticks();
+    PH_PUSH(PH_AUDIO);
+    int to = LightEvent_WaitTimeout(&au_done, (s64)ns);
+    PH_POP();
+    if (to) return -1;
+    unsigned dt = pm_ticks() - t0;
+    if ((int)dt < 0) dt = 0;
+    au_site_n[site & 3]++; au_site_sum[site & 3] += dt;
+    au_w_sum += dt;
+    if (dt > au_w_max) au_w_max = dt;
+    return 0;
+}
+
 /* AU2: for map change, save, suspend, sleep and exit. The caller is the game thread. */
 void pm_audio_drain(int reason) {
     pm_audio_join_at(0);

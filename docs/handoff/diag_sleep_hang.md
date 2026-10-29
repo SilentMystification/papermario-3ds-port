@@ -34,3 +34,26 @@ Lower rank: gspWaitForVBlank and C3D_FrameBegin wait on the GSP event with no ti
 
 ## Next step
 Console test for cause 1 first (one log line before and after drain in cpu_hook, sleep 1 s and 30 s). Run cause 2 and 3 tests only if cause 1 passes.
+
+## Fix (sleep lane) and console test
+Code changes (pm_log.c sleep/wake hooks, pm_wdog.c exit, pm_audio.c, pm_au2.c, pm_dspaud.c):
+- ONSLEEP: audio join at most 300 ms, render sync at most 200 ms, flash flush on a worker at most 400 ms. About 0.9 s in all.
+- ONWAKEUP: audio join at most 300 ms, render sync at most 200 ms. If both finish, pm_dspa_rearm clears the 24 ndsp channels and sets them up again. If not, the log says "audio not resumed".
+- Watchdog exit: the close fsync runs on a worker, at most 1 s, then the process ends.
+- A step that times out leaves its worker running. The next request for that step is skipped (log line "skipped"), not queued.
+
+Log lines (log gate on, loglevel=debug to see all):
+- sleep: enter
+- sleep: audio join done, <n> ms  or  sleep: audio join timeout, <n> ms
+- sleep: render sync done, <n> ms  or  sleep: render sync timeout, <n> ms
+- sleep: flash flush done, <n> ms  or  sleep: flash flush timeout, <n> ms  or  sleep: flash flush skipped, ...
+- sleep: gate closed, <n> ms
+- sleep: wake
+- sleep: audio resumed, <n> ms  or  sleep: audio not resumed, <audio join|render sync> timeout, <n> ms
+
+Console test (O3DS, push with loglevel=debug, log=on):
+1. Start the game. Close the lid for 1 s. Open the lid. Pass: the game runs and the log shows "sleep: enter", "sleep: gate closed", "sleep: wake", "sleep: audio resumed". Each step line shows less than 300 ms (audio) or 200 ms (render) or 400 ms (flash).
+2. Close the lid for 30 s. Open the lid. Same lines expected. Pass: the game runs (no hang, console answers). Check every timeout line: each one names the step.
+3. Close the lid for 5 min. Open the lid. Same lines expected. Pass: the game runs and the log file has the wake lines. A missing "sleep: wake" line means the wake hook did not run.
+4. If the console hangs after step 2 or 3: pull the log only after the console answers again (no FTP pull during the test). Note the last "sleep:" line. The last line names the step that hung.
+Not tested in Azahar: Azahar cannot sleep. The Azahar run checks boot and the yard shot only.

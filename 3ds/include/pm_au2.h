@@ -53,6 +53,7 @@ int pm_au2_idle(void);                     /* 1: render thread idle and no open 
 void pm_au2_commit(void);                  /* publish the open job */
 void pm_au2_sync(int reason);              /* commit and wait until the render thread ran everything. Any thread but the render thread. */
 uint32_t pm_au2_committed(void);           /* number of jobs committed so far */
+int pm_au2_sync_timed(int reason, unsigned long long ns); /* as pm_au2_sync, at most ns. 0 = done, -1 = deadline (sleep hook) */
 void pm_au2_wait_jobs(uint32_t target);    /* wait until `target` jobs ran (a value of pm_au2_committed). Not on the render thread. */
 int pm_au2_start(void);                    /* create the render thread; 0 = not started (au2off or failure) */
 void pm_au2_stop(void);                    /* drain and end the render thread */

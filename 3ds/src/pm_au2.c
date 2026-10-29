@@ -96,6 +96,28 @@ void pm_au2_wait_jobs(uint32_t target) {
     wait_jobs(target);
 }
 
+/* Sleep hook: like wait_jobs, but gives up at tick_end (system ticks). 0 = all ran, -1 = deadline. */
+static int wait_jobs_until(uint32_t target, unsigned long long tick_end) {
+    while ((int32_t)(__atomic_load_n(&executed, __ATOMIC_ACQUIRE) - target) < 0) {
+        LightEvent_Clear(&ev_idle);
+        if ((int32_t)(__atomic_load_n(&executed, __ATOMIC_ACQUIRE) - target) >= 0) break;
+        unsigned long long now = svcGetSystemTick();
+        if (now >= tick_end) return -1;
+        if (LightEvent_WaitTimeout(&ev_idle, (s64)((tick_end - now) * 1000000000ull / SYSCLOCK_ARM11)) != 0) return -1;
+    }
+    return 0;
+}
+
+int pm_au2_sync_timed(int reason, unsigned long long ns) {
+    if (!pm_au2_active || pm_au2_on_render()) return 0;
+    unsigned t0 = pm_ticks();
+    unsigned long long tick_end = svcGetSystemTick() + (ns / 1000ull) * SYSCLOCK_ARM11 / 1000000ull;
+    pm_au2_commit();
+    int r = wait_jobs_until(__atomic_load_n(&committed, __ATOMIC_ACQUIRE), tick_end);
+    if (stats() && reason >= 0 && reason < AU2_SYNC_N) { st_sync_n[reason]++; st_sync_ticks[reason] += pm_ticks() - t0; }
+    return r;
+}
+
 void pm_au2_sync(int reason) {
     if (!pm_au2_active || pm_au2_on_render()) return;
     unsigned t0 = pm_ticks();

@@ -657,13 +657,89 @@ static void io_gate(int on) {
         LightEvent_Signal(&ev_wake);
     }
 }
+/* Sleep and exit steps that touch the SD card run on a worker thread, so the caller waits at most ms (pm_step_timed).
+ * One worker per slot, made on first use and kept. The worker signals done before it clears busy: a new request never sees an old signal. */
+typedef struct { void (*fn)(void*); void* arg; LightEvent go, done; volatile int busy, made; Thread th; } PmStep;
+static PmStep steps[2];
+
+static void step_main(void* p) {
+    PmStep* s = (PmStep*)p;
+    for (;;) {
+        LightEvent_Wait(&s->go);
+        s->fn(s->arg);
+        LightEvent_Signal(&s->done);
+        __atomic_store_n(&s->busy, 0, __ATOMIC_RELEASE);
+    }
+}
+
+/* 1 = fn returned in time, 0 = deadline (the worker goes on, the slot stays busy), -1 = not run (slot busy or no thread). */
+int pm_step_timed(int slot, void (*fn)(void*), void* arg, unsigned ms) {
+    PmStep* s = &steps[slot & 1];
+    if (__atomic_load_n(&s->busy, __ATOMIC_ACQUIRE)) return -1;
+    if (!s->made) {
+        s->made = 1;
+        LightEvent_Init(&s->go, RESET_ONESHOT);
+        LightEvent_Init(&s->done, RESET_ONESHOT);
+        s->th = threadCreate(step_main, s, 16 * 1024, 0x30, -2, false);
+    }
+    if (!s->th) return -1;
+    s->fn = fn;
+    s->arg = arg;
+    LightEvent_Clear(&s->done);
+    __atomic_store_n(&s->busy, 1, __ATOMIC_RELEASE);
+    LightEvent_Signal(&s->go);
+    return LightEvent_WaitTimeout(&s->done, (s64)ms * 1000000LL) == 0 ? 1 : 0;
+}
+
+/* Sleep hook budget: audio join 300 ms, render 200 ms, flash 400 ms, about 0.9 s in all. Wake: audio 300 ms, render 200 ms. */
+#define SLEEP_AUDIO_NS 300000000ULL
+#define SLEEP_AU2_NS 200000000ULL
+#define SLEEP_FLASH_MS 400u
+#define WAKE_AUDIO_NS 300000000ULL
+#define WAKE_AU2_NS 200000000ULL
+
+static unsigned ms_since(unsigned long long t0) { return (unsigned)((svcGetSystemTick() - t0) / CPU_TICKS_PER_MSEC); }
+static void flush_step(void* why) { pm_flash_flush((const char*)why); }
+
+/* APT sleep: everything the game thread waits for is bounded. Log lines are queued before the gate; the gate drains them. */
+static void sleep_enter_hook(void) {
+    unsigned long long t0 = svcGetSystemTick();
+    pm_log("sleep: enter");
+    if (pm_audio_join_timed(0, SLEEP_AUDIO_NS) == 0) pm_log("sleep: audio join done, %u ms", ms_since(t0));
+    else pm_log("sleep: audio join timeout, %u ms", ms_since(t0));
+    if (pm_au2_sync_timed(3, SLEEP_AU2_NS) == 0) pm_log("sleep: render sync done, %u ms", ms_since(t0));
+    else pm_log("sleep: render sync timeout, %u ms", ms_since(t0));
+    unsigned long long tf = svcGetSystemTick();
+    int fr = pm_step_timed(PM_STEP_FLASH, flush_step, (void*)"sleep", SLEEP_FLASH_MS);
+    if (fr == 1) pm_log("sleep: flash flush done, %u ms", ms_since(tf));
+    else if (fr == 0) pm_log("sleep: flash flush timeout, %u ms", ms_since(tf));
+    else pm_log("sleep: flash flush skipped, worker busy or not started");
+    cpu_apply(30, "sleep");
+    io_gate(1);
+    pm_log("sleep: gate closed, %u ms", ms_since(t0));
+}
+
+/* APT wake: the gate opens first, then the audio job and the render queue are joined (bounded). Channels are set up again only when both are idle. */
+static void wake_hook(void) {
+    unsigned long long t0 = svcGetSystemTick();
+    io_gate(0);
+    pm_log("sleep: wake");
+    int a = pm_audio_join_timed(0, WAKE_AUDIO_NS);
+    int r = pm_au2_sync_timed(3, WAKE_AU2_NS);
+    if (a == 0 && r == 0) {
+        pm_dspa_rearm();
+        pm_log("sleep: audio resumed, %u ms", ms_since(t0));
+    } else pm_log("sleep: audio not resumed, %s timeout, %u ms", a ? "audio join" : "render sync", ms_since(t0));
+    cpu_apply(cpu_game, "wake");
+}
+
 static void cpu_hook(APT_HookType h, void* param) {
     (void)param;
     switch (h) {
     case APTHOOK_ONSUSPEND: pm_audio_drain(3); pm_flash_flush("HOME menu opens"); cpu_apply(30, "HOME menu opens"); io_gate(1); break;
-    case APTHOOK_ONSLEEP: pm_audio_drain(3); pm_flash_flush("sleep"); cpu_apply(30, "sleep"); io_gate(1); break;
+    case APTHOOK_ONSLEEP: sleep_enter_hook(); break;
     case APTHOOK_ONRESTORE: io_gate(0); cpu_apply(cpu_game, "HOME menu closed"); break;
-    case APTHOOK_ONWAKEUP: io_gate(0); cpu_apply(cpu_game, "wake"); break;
+    case APTHOOK_ONWAKEUP: wake_hook(); break;
     case APTHOOK_ONEXIT: pm_audio_drain(3); pm_flash_flush("exit hook"); if (cpu_now != 30) cpu_apply(30, "exit"); break;
     default: break;
     }

@@ -25,9 +25,15 @@ static Thread wd_th;
 
 /* Wait for a running save to end (at most 1 s), close the log file, end the process. No APT, GSP or ndsp call.
  * svcExitProcess stops every thread of the process: audio, flash, render and log writer. */
+static void close_step(void* unused) {
+    (void)unused;
+    pm_log_crash_close();
+}
+
 void pm_exit_process(void) {
     for (int i = 0; i < 100 && pm_wd_hold; i++) svcSleepThread(10000000LL);
-    pm_log_crash_close();
+    /* The close fsync can block on a sleeping SD card: wait 1 s at most, then end the process (the file may lack its last bytes). */
+    pm_step_timed(PM_STEP_EXIT, close_step, NULL, 1000);
     svcExitProcess();
     for (;;) {}
 }

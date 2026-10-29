@@ -377,6 +377,36 @@ static void aux_frame(int bus, int n, void* smp[4]) {
 static void aux0_cb(void* d, int n, void* smp[4]) { (void)d; aux_frame(0, n, smp); }
 static void aux1_cb(void* d, int n, void* smp[4]) { (void)d; aux_frame(1, n, smp); }
 
+/* Reset all 24 ndsp channels and set the format, interpolation, rate and mix of each. Used at init and after sleep. */
+static void chan_setup(void) {
+    for (int c = 0; c < 24; c++) ndspChnReset(c);
+    for (int c = 0; c < PM_DSPA_VOICES; c++) {
+        ndspChnSetFormat(c, NDSP_FORMAT_MONO_PCM16);
+        ndspChnSetInterp(c, NDSP_INTERP_POLYPHASE);
+    }
+    ndspChnSetFormat(23, NDSP_FORMAT_STEREO_PCM16);
+    ndspChnSetRate(23, 32728.0f);
+    ndspChnSetInterp(23, NDSP_INTERP_NONE);
+    {
+        float m[12] = { 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        ndspChnSetMix(23, m);
+    }
+}
+
+/* After sleep the channels may still hold the wave buffers of the voices played before sleep. Drop them and set the channels up again.
+ * Game thread only, when the audio job and the render queue are idle (the sleep wake hook checks this). */
+void pm_dspa_rearm(void) {
+    if (!pm_dspa_enabled) return;
+    for (int c = 0; c < PM_DSPA_VOICES; c++) {
+        Chan* k = &chn[c];
+        if (k->e) { k->e->pins--; k->e->stamp_ms = now_ms(); k->e = NULL; }
+        k->nb = 0;
+        k->active = 0;
+    }
+    for (int i = 0; i < FXR_BUFS; i++) fxw[i].status = NDSP_WBUF_FREE; /* the effect return buffers are dropped with the channel */
+    chan_setup();
+}
+
 int pm_dspa_init(void) {
     const char* kb = NULL;
     (void)kb;
@@ -393,18 +423,7 @@ int pm_dspa_init(void) {
     fxmem = (s16*)linearMemAlign(FXR_BUFS * FXFRAME * 4, 128);
     if (!fxmem) { pm_log_e("dspaudio: linearAlloc for the effect return failed"); return 0; }
     memset(fxmem, 0, FXR_BUFS * FXFRAME * 4);
-    for (int c = 0; c < 24; c++) ndspChnReset(c);
-    for (int c = 0; c < PM_DSPA_VOICES; c++) {
-        ndspChnSetFormat(c, NDSP_FORMAT_MONO_PCM16);
-        ndspChnSetInterp(c, NDSP_INTERP_POLYPHASE);
-    }
-    ndspChnSetFormat(23, NDSP_FORMAT_STEREO_PCM16);
-    ndspChnSetRate(23, 32728.0f);
-    ndspChnSetInterp(23, NDSP_INTERP_NONE);
-    {
-        float m[12] = { 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        ndspChnSetMix(23, m);
-    }
+    chan_setup();
     if (!fx_off) {
         char av[16];
         unsigned am = pm_debug_value("dspaux", av, sizeof av) ? (unsigned)atoi(av) : 0; /* PT22 test: bit 0 keep the aux volume at the libctru default 0.0 (the old build 970 behaviour; now the volume is set to 1.0), bit 1 front bypass off, bit 2 output count 2, bit 3 callbacks after the first voice start */

@@ -168,6 +168,13 @@ unsigned pm_audio_pending(void);
 int pm_audio_lock(void);
 void pm_audio_hash_log(void);
 void pm_audio_drain(int reason); /* AU2: join the control job, then wait for the render thread (reason: AU2_SYNC_* in pm_au2.h) */
+int pm_audio_join_timed(int site, unsigned long long ns); /* sleep hook: 0 = idle, -1 = deadline */
+int pm_au2_sync_timed(int reason, unsigned long long ns); /* sleep hook: 0 = render queue idle, -1 = deadline */
+void pm_dspa_rearm(void); /* after sleep: channels set up again (pm_dspaud.c) */
+/* sleep and watchdog exit: run fn on a worker thread (slot PM_STEP_*), wait at most ms. 1 = fn done, 0 = deadline, -1 = skipped (slot busy or no thread). */
+#define PM_STEP_FLASH 0
+#define PM_STEP_EXIT 1
+int pm_step_timed(int slot, void (*fn)(void*), void* arg, unsigned ms);
 void pm_audio_step(void); /* AU1b: once per drawn step */
 /* B7-0: swirl capture (pm_cfb_capture_prev) and F03 depth query timing, read and cleared by the b7 line in pm_gbi.c. ticks of the ARM11 clock */
 typedef struct PmB7 { unsigned cap_n, cap_ticks, cap_max, dq_n, dq_ticks, dq_max; } PmB7;

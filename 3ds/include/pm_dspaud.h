@@ -18,6 +18,7 @@ typedef struct {
 
 int pm_dspa_init(void);                                           /* after ndspInit; 0 = failed */
 void pm_dspa_shutdown(void);
+void pm_dspa_rearm(void);                                         /* after sleep: game thread, audio and render idle. Clears and sets up the channels again. */
 void pm_dspa_pace(void);                                          /* render thread: wait until the next block is due */
 void pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]);   /* 0 = sample not available: ch stays silent */
 void pm_dspa_voice_update(int ch, float rate, const float mix[12]);
