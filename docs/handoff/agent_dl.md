@@ -95,3 +95,20 @@
 - W4 (branch dl2-w4, not kept): main walk 7208 -> 7187 us (-21, gate 150 us).
 - H5/H4 (branch dl2-h5, accepted HW-unconfirmed by the coordinator): walk 7202 us (not worse), picture equal by eye. Divides removed: pm_gbi.c:1273-1276 (texrect uvso, 4 divides per rect become 1 reciprocal per axis + multiplies). PLD sites: pm_gbi.c:3215 (G_DL target), pm_gbi.c:3252 (next vertex block).
 - Pause row: next. Volcano kzn_17 and kzn_20: after pause, each on its own branch.
+
+## C1-1 (verify, worktree papermario-3ds-port-c11)
+- Finding: the G_PM_TEX op runs in the yard. Probe build: tbsplit n 65 fb 0 on every frame from f36 on. The earlier n 0 did not reproduce. No bind fix was needed.
+- Cause of the earlier zero: not found. The probe build used the same branch sources.
+- Gate, yard, frame 378, same window, base (MODEL_TEX_OP = gSPDisplayList) vs swap:
+  - dlsrc class 2 ops: 697 per frame lower (209100 -> 0 over 300 frames). Pass (>= 650).
+  - class 2 + SKN: 1018 per frame lower (SKN 828 -> 507). Pass (>= 1000).
+  - main walk us: 9985 -> 9065 (-920 us, Azahar). Direction only.
+  - tbsplit fb 0. Pass.
+  - shots yard: 0 of 96000 px differ, frames 0000 and 0001. Pass.
+  - tour10: 8 of 11 frames identical. 3 frames differ (606, 271, 551 px) on a moving Toad NPC sprite, localized blocks. Judged noise.
+  - pause_menu: 3 of 3 common frames identical. Base had 1 extra frame.
+  - file_select: 12 of 16 common frames identical. 4 frames differ (131 px) on the file box sprite. Judged noise. Swap has 1 extra frame.
+- Merge: dl2-c11 merged into main (main is at f93c91312). Merge with main commit 413deb696 done in the worktree. Conflicts in pm_gbi.c, pm_port.h, pm_phase.c resolved (kept G2 RS_SKS and the C1 counters).
+- Merged build: tbsplit n 65 fb 0 (yard). Shots not re-compared after the merge.
+- I-cache/D-cache: not measured.
+- Budget row c11dbg: 6 of 8 starts used. Row c11g: 6 starts used (no cap reached on c11g in this section).
