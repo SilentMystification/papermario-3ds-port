@@ -134,6 +134,9 @@ static unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 
 static unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
 static unsigned fill = 0xffffffffu;
 static unsigned prim_z; /* X01: G_SETPRIMDEPTH, 15 bit, 0 near, 0x7fff far */
+/* PRIMZFIX: the primitive depth is one unit (512 units of the 24-bit depth) nearer than G_SETPRIMDEPTH. The console rounds a 0x7FF0 blocker
+ * behind the far background (water in the Toad Town pond). One helper for both NDC z uses; clamped at 0. */
+static float prim_ndc_z(void) { return 2.f * (float)(prim_z ? prim_z - 1u : 0u) / 32767.f - 1.f; }
 static int tex_on;
 static const void* timg;
 static unsigned timg_fmt, timg_siz;
@@ -1228,7 +1231,7 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     else if (plan) { float vc[4]; unpack8(cur_plan.vtx, vc); for (int q = 0; q < 4; q++) { o->cm[q] = 0.f; o->ca[q] = vc[q]; } }
     if (a255) { o->cm[3] = 0.f; o->ca[3] = 1.f; }
     if (boost) for (int q = 0; q < 3; q++) { o->ca[q] = o->ca[q] * 0.5f + (1.f - en[q]) * 0.5f; o->cm[q] *= 0.5f; }
-    if (primz) { o->zm[0] = 0.f; o->zm[1] = 2.f * (float)prim_z / 32767.f - 1.f; }
+    if (primz) { o->zm[0] = 0.f; o->zm[1] = prim_ndc_z(); }
     o->boost = boost;
     o->fxon = 0; /* o->fx is read only when fxon: it is cleared where it is filled */
     if (geom & G_LIGHTING) { /* GV5: the RSP light table (ambient is slot lt_n), the look-at vectors for texgen */
@@ -1883,7 +1886,7 @@ static void draw_tri(unsigned w) {
     }
     if ((omode_l & (1u << G_MDSFT_ZSRCSEL))) {
         /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
-        float zn = 2.f * (float)prim_z / 32767.f - 1.f;
+        float zn = prim_ndc_z();
         for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
     } else if (img_role(0) == ROLE_DEPTH) {
         /* B3: case 6, the combiner is PRIM (log: imglog). B3b: the vertices keep their own depth, the GPU tests it against the world and writes zn there */

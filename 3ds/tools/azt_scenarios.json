@@ -1063,6 +1063,34 @@
       }
     ],
     "reason": "TOADFOUNT pond run, not verified. A person must read the shots and the bottom HUD values."
+  },
+  {
+    "name": "toad_pond_zround",
+    "status": "unverified",
+    "subject": "Toad Town pond with the zround repro switch (zmix.y rounded to 2^-16 steps, the console float24 step). Same route and shots as toad_pond. The top shot shows whether the background shows through the pond.",
+    "proves": "PRIMZFIX repro: the old code with zround shows the background through the pond water; the fixed code with zround does not.",
+    "debug": "preset=toad padscript=seg_a,go_-174_112_600,seg_b,wait40,seg_c poshud shots shotwin=160:40 shotbottom=160:40 loglevel=debug zround",
+    "until": "shot 9 frame \\d+\\b",
+    "cap": 40,
+    "deadline": 20,
+    "first_marker": "warp: mac_00 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "warp",
+        "regex": "warp: mac_00 entry 4"
+      },
+      {
+        "name": "route seg b (pond position reached)",
+        "regex": "route: seg b f\\d+"
+      },
+      {
+        "name": "shot",
+        "regex": "shot 9 frame \\d+\\b"
+      }
+    ],
+    "reason": "PRIMZFIX repro, not verified. A person must read the top shots: background through the pond or not."
   }
   ]
 }
