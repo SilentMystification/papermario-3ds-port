@@ -74,7 +74,7 @@ static int noise_init(void) {
     {   /* random bytes: any order of independent random bytes is the same picture, so the tiled layout needs no swizzle */
         unsigned char* d = (unsigned char*)noise_tex.data;
         for (int i = 0; i < 64 * 64; i++) d[i] = (unsigned char)(noise_next() & 255u);
-        GSPGPU_FlushDataCache(d, 64 * 64);
+        pm_fl_dc(d, 64 * 64);
     }
     C3D_TexSetFilter(&noise_tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&noise_tex, GPU_REPEAT, GPU_REPEAT);
@@ -265,12 +265,12 @@ static void gpu_flush_written(void) {
     pm_tex_flush_pend_only();
     if (verts && v_fl && verts > v_fl) {
         PH_PUSH(PH_GCACHE);
-        GSPGPU_FlushDataCache(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl)); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (unsigned)((uintptr_t)verts - (uintptr_t)v_fl) >> 10); dcs_fl++;
+        pm_fl_dc(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl)); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (unsigned)((uintptr_t)verts - (uintptr_t)v_fl) >> 10); dcs_fl++;
         PH_POP();
         v_fl = verts;
     }
-    if (gring && gring_n > gring_fl) { GSPGPU_FlushDataCache(gring + gring_fl * 16, (gring_n - gring_fl) * 16); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gring_n - gring_fl) * 16 >> 10); gring_fl = gring_n; dcs_fl++; }
-    if (gidx && gidx_n > gidx_fl) { GSPGPU_FlushDataCache(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gidx_n - gidx_fl) * 2 >> 10); gidx_fl = gidx_n; dcs_fl++; }
+    if (gring && gring_n > gring_fl) { pm_fl_dc(gring + gring_fl * 16, (gring_n - gring_fl) * 16); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gring_n - gring_fl) * 16 >> 10); gring_fl = gring_n; dcs_fl++; }
+    if (gidx && gidx_n > gidx_fl) { pm_fl_dc(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gidx_n - gidx_fl) * 2 >> 10); gidx_fl = gidx_n; dcs_fl++; }
     if (pm_ph_on) dcs_gt += pm_ticks() - g0;
 }
 /* B2: queue order is clear of the main target, then every part. The first split of a frame queues the clear first. */
@@ -2037,7 +2037,12 @@ int pm_gpu_gstat_alloc(unsigned n, unsigned char** out) {
     *out = gring + 16u * first;
     return (int)first;
 }
-void pm_gpu_gstat_commit(unsigned first, unsigned n) { GSPGPU_FlushDataCache(gring + 16u * first, n * 16u); }
+void pm_gpu_gstat_commit(unsigned first, unsigned n) { pm_fl_dc(gring + 16u * first, n * 16u); }
+/* DS1: svc flush first; the GSP call only when the svc fails. */
+unsigned pm_fl_gsp_n;
+void pm_fl_dc(const void* p, unsigned n) {
+    if (R_FAILED(svcFlushProcessDataCache(CUR_PROCESS_HANDLE, (Handle)(uintptr_t)p, n))) { pm_fl_gsp_n++; GSPGPU_FlushDataCache(p, n); }
+}
 void pm_gpu_gstat_reset(void) { if (gstat_n) { flush(); gstat_n = 0; } }
 unsigned pm_gpu_gstat_used(void) { return gstat_n; }
 
@@ -2275,9 +2280,9 @@ void pm_gpu_dcsum_frame(unsigned frame) {
     for (int k = 0; k < DCU_N; k++) dcs_us[k] += pm_dc_us[k];
     if (++dcs_n < 300) return;
     unsigned smp = dcs_smp ? dcs_smp : 1, cl = dcs_cl ? dcs_cl : 1, fl = dcs_fl ? dcs_fl : 1;
-    pm_log_hw("dcsum f%u cl %u per frame | us per close pal %u bind %u tev %u st %u draw %u | gc %u us per flush, %u flushes per frame | cmd %u permil per sampled close, %u sampled closes",
+    pm_log_hw("dcsum f%u cl %u per frame | us per close pal %u bind %u tev %u st %u draw %u | gc %u us per flush, %u flushes per frame | cmd %u permil per sampled close, %u sampled closes | svc flush fallbacks %u",
               frame, dcs_cl / 300u, dcs_us[DCU_PAL] / smp, dcs_us[DCU_BIND] / smp, dcs_us[DCU_TEV] / smp, dcs_us[DCU_ST] / smp, dcs_us[DCU_DRAW] / smp,
-              (unsigned)(dcs_gt / 268u / fl), dcs_fl / 300u, dcs_cmd / smp, dcs_smp);
+              (unsigned)(dcs_gt / 268u / fl), dcs_fl / 300u, dcs_cmd / smp, dcs_smp, pm_fl_gsp_n);
     dcs_gt = dcs_fl = dcs_cmd = dcs_smp = dcs_cl = dcs_n = 0;
     memset(dcs_us, 0, sizeof dcs_us);
 }

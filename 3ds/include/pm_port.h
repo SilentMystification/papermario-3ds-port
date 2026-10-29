@@ -118,6 +118,9 @@ enum { DC_CL, DC_RAW, DC_PALUP, DC_PMUL, DC_TEVR, DC_TB0, DC_TB1, DC_TB2, DC_TBS
 /* DC1: sample sums in us over the sampled closes (one close in 8 with phase on); the log line multiplies them by 8 */
 enum { DCU_PAL, DCU_BIND, DCU_TEV, DCU_ST, DCU_DRAW, DCU_KICK, DCU_N };
 extern unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N];
+/* DS1: flush a CPU-written range for the GPU with svcFlushProcessDataCache (no GSP IPC). A failed svc falls back to GSPGPU_FlushDataCache, counted in pm_fl_gsp_n. */
+void pm_fl_dc(const void* p, unsigned n);
+extern unsigned pm_fl_gsp_n;
 extern unsigned pm_svc_n, pm_ec_n, pm_ec_svc; /* EC2: svc reads, empty closes, svc reads inside empty closes (phase on, per drawn frame) */ /* PI2: batch closes, empty closes, us per class, us of the empty closes */
 void pm_tex_th_frame(unsigned* o); /* PI3 */
 enum {
