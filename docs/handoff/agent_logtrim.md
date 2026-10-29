@@ -33,3 +33,45 @@
 - Self-test (no start): `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 -SelfTest`.
 - Archive only: `sh 3ds/push_3ds.sh --archive-only --no-build`.
 - Push: not given. The epic is not complete (see Open).
+
+## Pass 2: WARPLOG2 line table and final build (build 1514, git 6ffb3df08)
+- Commit 6ffb3df08 removes 7 noise lines: dspaudio bus (pm_dspaud.c:293, 3 lines), V09INIT (src/audio/bgm_player.c:708), warp scene f5 (pm_warp.c:741, the f==5 part), mem stack high-water (pm_mem.c:249) and mem gpu max per frame (pm_gpu_log_stats call, pm_mem.c:250).
+- Yard warp window (entry line to warp scene f300), yard_pace log, build 1514: 23 lines. Before pass 2 (build 1513 log): 30 lines. HEAD (build 1504): 67 lines. Target under 15 is NOT met.
+
+| # | Line prefix | Source | Kind | Decision and reason |
+|---|---|---|---|---|
+| 1 | warp: kmr_20 entry | pm_warp.c:220 | scene start | keep: first_marker of yard scenarios |
+| 2 | game mode 7 frame | pm_map.c:552 | mode change | keep: attract detector (azt.ps1 attractRe reads game mode 2, 3, 17) |
+| 3 | load map area | pm_map.c:572 | load fact | keep: run_azahar.ps1:273 marker, phase_report.py |
+| 4 | mem map linear | pm_mem.c:263 | load fact | keep: perf_az_full.py reads it |
+| 5 | vram acct map | pm_mem.c:267 | load fact | keep: VRAM accounting per load, fail counter |
+| 6 | mem map vram free | pm_mem.c:271 | load fact | keep: vramfree min per load (HUDVRAM) |
+| 7 | mem map heap | pm_mem.c:273 | load fact | keep: heap budget per load |
+| 8 | sprite: player sprite set | src/sprite.c:823 | load fact (once per load) | keep: player sprite loaded for the map |
+| 9 | bgm: SetMusic | src/evt/audio_api.c:97 | song start | keep: music change at the warp |
+| 10 | spawn npcs | src/encounter.c:2804 | load fact (once per load) | keep: NPC count of the map |
+| 11 | game mode 4 frame | pm_map.c:552 | mode change | keep (see 2) |
+| 12 | warp: scene frame0 | pm_warp.c:469 | scene start | keep: run_azahar.ps1:273 marker |
+| 13 to 18 | pace: wall | pm_main.c:305 | periodic, 1 per 5 s | keep: WARPLOG2 decision. Six lines because the Azahar window lasts about 33 s (5 s each). On the console the window is about 10 s, so about 2 lines |
+| 19 | shot 0 frame 203 | pm_gpu.c:1458 | shot writer | keep: yard expected_events regex |
+| 20 | logstat frames 300 | pm_log.c:252 | periodic, 1 per 300 frames | keep: yard_pace regex |
+| 21 | logstat2 writer | pm_log.c:254 | periodic, 1 per 300 frames | keep: writer health (fbuf waits, drops) |
+| 22 | fs1 skipped | pm_main.c:474 | periodic, 1 per 300 steps | keep: frame-skip count |
+| 23 | warp: scene f300 | pm_warp.c:741 | periodic, 1 per 300 frames | keep: until of yard scenarios |
+
+- Count: 23. Pace 6, load and memory facts 10 (lines 3 to 10), scene and mode 5, periodic stats 3, shot 1.
+- Under 15 needs a user decision. Option A: pace every 10 s (Azahar window 3 pace lines, total 20). Option B: drop the load facts 4 to 10 (total 16 with option A not applied). Option A and B together give 13. Neither was applied.
+
+## Catalog on build 1514 (LOGTRIM budget, 8 starts)
+- toad_pond (-Try): 3 of 3 log checks. Top shot 0009 read: blue-teal pool at the left edge (x 20 to 60 of the rotated shot). The water fills its area. No background shows through the pool. Equal to the 1511 run outside the NPC strip (x 113 to 137).
+- yard 3 of 3, pause_menu 6 of 6, mac01t 6 of 6, mac01 4 of 4, battle_start 4 of 4 (log checks).
+- Not run (budget): partner_menu, file_select, text_menu. Build 1511 passed these 3 (7 of 7, 6 of 6, 3 of 3).
+- Archive: 3ds/logs/builds/pm_3ds_1514_6ffb3df08.3dsx, sha256 9744a4c935f092ebbe5bf97b20b020d408ba2b23d0d9bfba0a509499d9ff1e3e (equal to build3ds/pm_3ds.3dsx). Line in pushed_builds.txt. Not pushed.
+
+## Push line: withheld
+- CLAUDE.md rule 6: no push command for a partial stage. The epic gate (warp under 15) is not met and 3 catalog scenarios are not run on build 1514. The push line is added when the user or the orchestrator accepts the gate.
+
+## Console checks (user, after a push)
+- Toad map pond at x -174 z 112: read the top shot and the water (PRIMZFIX, diag_primz.md).
+- fsplit wm and tk fields: read the f600 line during the steady window. After a battle, the wm value tests diag_batend.md.
+- Warp window line count: count lines from the entry to the scene f300 line on the console.

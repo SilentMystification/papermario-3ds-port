@@ -443,3 +443,9 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 - WMODEL: fsplit line adds wm and tk. yard f600 wm 103.0 tk 2.00; mac01t f900 wm 143.0 tk 2.00. logstat work +0.01 ms against HEAD. Top shots byte-equal (yard 1 of 1, mac01t 2 of 2).
 - Catalog on build 1511, 8 starts (LOGTRIM budget): yard 3 of 3, pause_menu 6 of 6, partner_menu 7 of 7, file_select 6 of 6, text_menu 3 of 3, mac01 4 of 4, mac01t 6 of 6, battle_start 4 of 4 log checks. toad_pond not run (budget).
 - Archive: 3ds/logs/builds/pm_3ds_1511_db9c007f1.3dsx, sha256 2d97e3f34420605813c71b42b4b0a560ce73a0d973b283ff38f5b3e64776d895 (equal to build3ds/pm_3ds.3dsx). Line in pushed_builds.txt. Not pushed. No push command: the epic is not complete.
+
+## LOGTRIM pass 2 (build 1514, git 6ffb3df08; epic still incomplete)
+- Warp window (yard_pace, entry to scene f300): 67 (HEAD) to 30 (build 1511) to 23 lines (build 1514). Target under 15 not met. Table and decision per line: docs/handoff/agent_logtrim.md.
+- Catalog on 1514, 8 starts: toad_pond 3 of 3 (pond: blue-teal pool, no background through it), yard 3 of 3, pause_menu 6 of 6, mac01t 6 of 6, mac01 4 of 4, battle_start 4 of 4. Not run: partner_menu, file_select, text_menu (budget).
+- Archive: 3ds/logs/builds/pm_3ds_1514_6ffb3df08.3dsx, sha256 9744a4c935f092ebbe5bf97b20b020d408ba2b23d0d9bfba0a509499d9ff1e3e (equal to build3ds/pm_3ds.3dsx). Not pushed; push line withheld (rule 6, epic gate not met).
+- Console checks pending: pond at x -174 z 112 (toad map); fsplit wm and tk fields; warp window line count.
