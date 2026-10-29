@@ -2265,6 +2265,7 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     if (!pm_ph_on) { flush_impl(); return; }
     int c = pm_gbi_flush_class();
     pm_fl_n[c]++;
+    { extern void pm_gbi_census_close(void); pm_gbi_census_close(); } /* T2b: non-empty close per producer */
     if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
     unsigned t0 = pm_ticks();
     float cmd0 = C3D_GetCmdBufUsage();

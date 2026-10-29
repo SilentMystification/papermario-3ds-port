@@ -2118,7 +2118,7 @@ static __attribute__((cold, noinline)) void mops_report(void) {
 typedef struct {
     u16 id;
     u8 used, pan, fog, has_prev;
-    unsigned ops, draws, tris, binds, tex_sum, frames, stat; /* window sums */
+    unsigned ops, draws, tris, binds, closes, tex_sum, frames, stat; /* window sums */
     unsigned seen, ntx, tx[8], prev_h, cur_h; /* frame state */
 } mdc_t;
 static mdc_t mdc[MDC_SLOTS];
@@ -2134,6 +2134,21 @@ static __attribute__((cold, noinline)) int mdc_slot(unsigned id) {
     }
     return -1;
 }
+/* T2b: one pseudo ID per task function pointer (first-sight order, 32 entries, 0xF100 + index). A full table gives 0xF0FF. */
+#define MDC_FNS 32
+static const void* mdc_fn[MDC_FNS];
+static int mdc_fn_n;
+static __attribute__((cold, noinline)) unsigned mdc_fn_id(const void* fn) {
+    for (int i = 0; i < mdc_fn_n; i++) if (mdc_fn[i] == fn) return 0xF100u + (unsigned)i;
+    if (mdc_fn_n >= MDC_FNS) return 0xF0FFu;
+    mdc_fn[mdc_fn_n] = fn;
+    return 0xF100u + (unsigned)mdc_fn_n++;
+}
+unsigned pm_gbi_task_id(const void* fn) { return mdc_fn_id(fn); }
+static const void* mdc_fn_of(unsigned id) { return id >= 0xF100u && id - 0xF100u < (unsigned)mdc_fn_n ? mdc_fn[id - 0xF100u] : NULL; }
+/* T2b: a non-empty close (pm_gpu_flush_at) counts on the model or task the op stream is in. */
+void pm_gbi_census_close(void) { int cur = pmx_main ? mdcm_cur : -1; if (cur >= 0) mdc[cur].closes++; }
+
 void pm_gbi_mdl_mark(unsigned id, int pan) { /* called by appendGfx_model under phase */
     const Gfx* p = gMainGfxPos;
     if (mdcm_n && p < mdcm[mdcm_n - 1].p) mdcm_n = 0; /* the main list starts again */
@@ -2218,12 +2233,14 @@ static __attribute__((cold, noinline)) void mdc_report(void) {
         picked[best] = 1;
         mdc_t* m = &mdc[best];
         unsigned tx = m->frames ? m->tex_sum / m->frames : 0;
-        pm_log_hw("mdlsum f%d r%d %s %04x draws %u ops %u tris %u binds %u tex %u static %u/%u pan %u fog %u", rm_frame, r + 1, m->id >= 0xF000 ? "task" : "id", (unsigned)m->id,
-            (unsigned)(m->draws / 300), (unsigned)(m->ops / 300), (unsigned)(m->tris / 300), (unsigned)(m->binds / 300), tx,
+        unsigned key = m->id >= 0xF100u ? (unsigned)(uintptr_t)mdc_fn_of(m->id) : (unsigned)m->id;
+        pm_log_hw("mdlsum f%d r%d %s %08x draws %u ops %u tris %u binds %u closes %u tex %u static %u/%u pan %u fog %u", rm_frame, r + 1,
+            m->id >= 0xF100u ? "fn" : m->id >= 0xF000 ? "task" : "id", key,
+            (unsigned)(m->draws / 300), (unsigned)(m->ops / 300), (unsigned)(m->tris / 300), (unsigned)(m->binds / 300), (unsigned)(m->closes / 300), tx,
             m->frames > 1 ? m->stat : 0u, m->frames > 1 ? m->frames - 1 : 0u, (unsigned)m->pan, (unsigned)m->fog);
     }
     for (int s = 0; s < MDC_SLOTS; s++) {
-        mdc[s].ops = mdc[s].draws = mdc[s].tris = mdc[s].binds = mdc[s].tex_sum = mdc[s].frames = mdc[s].stat = 0;
+        mdc[s].ops = mdc[s].draws = mdc[s].tris = mdc[s].binds = mdc[s].closes = mdc[s].tex_sum = mdc[s].frames = mdc[s].stat = 0;
         mdc[s].fog = 0;
     }
     mdc_tot_ops = mdc_tot_draws = mdc_tot_tris = mdc_tot_binds = mdc_none = 0;

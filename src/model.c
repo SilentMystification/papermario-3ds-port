@@ -4773,9 +4773,11 @@ extern void pm_gbi_mdl_mark(unsigned id, int pan);
 /* MDL1 task census, phase on only: the ops of a task go to a pseudo model ID, not to the last model mark.
  * 0xF001 render_transform_group, 0xF002 appendGfx_model_group, 0xF0FF other task. 0xF0FE is the tail (pm_gbi.c mdc_*). */
 static __attribute__((cold, noinline)) void census_task_mark(void (*fn)(void*)) {
-    unsigned id = 0xF0FF;
+    extern unsigned pm_gbi_task_id(const void* fn);
+    unsigned id;
     if (fn == render_transform_group) id = 0xF001;
     else if (fn == appendGfx_model_group) id = 0xF002;
+    else id = pm_gbi_task_id((const void*)fn); /* T2b: one ID per function pointer */
     pm_gbi_mdl_mark(id, 0);
 }
 #define CENSUS_TASK(fn) do { if (pm_ph_on) census_task_mark(fn); } while (0)
