@@ -705,7 +705,6 @@ void au_bgm_player_initialize(BGMPlayer* player) {
     s32 keepReading;
     s32 i;
 
-    { extern void pm_log(const char*, ...); pm_log("V09INIT player %p song %x state %d", player, player->songName, player->masterState); }
     for (i = 0; i < ARRAY_COUNT(player->tracks); i++) {
         BGMPlayerTrack* track = &player->tracks[i];
         track->instrument = NO_INSTRUMENT;

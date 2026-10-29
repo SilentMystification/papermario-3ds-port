@@ -290,7 +290,6 @@ void pm_dspa_fx_set(int bus, const int* params, int type) {
     fx_type_cfg[bus] = type;
     fx_gen[bus]++;
     LightLock_Unlock(&fx_lock);
-    pm_log("dspaudio: bus %d effect type %d (%d sections)", bus, type, params ? params[0] : 0);
 }
 
 void pm_dspa_delay_set(int bus, int side, int blocks) {

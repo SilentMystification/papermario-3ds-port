@@ -243,12 +243,6 @@ void pm_mem_log(const char* tag) {
           pm_log_d("texmap linear: used %uKB of %uKB peak %uKB stage live %uKB freed cum %uKB slab lost %u B", (unsigned)((pm_linear_bytes() - linearSpaceFree()) >> 10), pm_linear_bytes() >> 10, lin_peak >> 10, stl, stf, stlost); }
         fail_prev = fc;
     }
-    {
-        unsigned gs = 0, as = 0;
-        unsigned gu = pm_stack_used(0, &gs), au = pm_stack_used(1, &as);
-        pm_log_d("mem %s stack high-water game %u of %u B, audio %u of %u B", tag, gu, gs, au, as);
-        pm_gpu_log_stats(tag);
-    }
     if (!strcmp(tag, "boot")) /* BS1: status line, shown at every log level */
         pm_log_w("memory: linear %uKB, heap %uKB, texture budget %uKB, FCRAM cap %uKB", pm_linear_bytes() >> 10, pm_heap_bytes() >> 10, pm_tex_budget() >> 10, PM_FCRAM >> 10);
     if (!strcmp(tag, "boot"))
