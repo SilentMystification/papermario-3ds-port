@@ -153,22 +153,21 @@ int pm_mem_crash_line(char* buf, int cap) {
                     (unsigned)(cur >> 10), (unsigned)(commit_max >> 10));
 }
 
-/* Bottom screen memory rows, 40 bytes each with the NUL. Called at 1 Hz from the game thread: mallinfo takes the malloc lock. */
+/* Bottom screen memory rows, 40 bytes each with the NUL. Called at 1 Hz from the game thread: mallinfo takes the malloc lock.
+ * Row 0 is the game pool: linear pool plus newlib heap (pm_linear_bytes, pm_heap_bytes), in MB with one decimal. */
+static unsigned tenth_mb(u32 bytes) { return (unsigned)((bytes * 10u + (1u << 19)) >> 20); }
 void pm_mem_hud(char out[3][40]) {
-    s64 cur = 0;
-    Handle rl = 0;
-    ResourceLimitType type = RESLIMIT_COMMIT;
-    if (R_SUCCEEDED(svcGetResourceLimit(&rl, CUR_PROCESS_HANDLE))) {
-        svcGetResourceLimitCurrentValues(&cur, rl, &type, 1);
-        svcCloseHandle(rl);
-    }
-    unsigned lin_total = pm_linear_bytes() >> 10, lin_used = lin_total - ((unsigned)linearSpaceFree() >> 10);
-    unsigned heap_total = pm_heap_bytes() >> 10, heap_used = (unsigned)mallinfo().uordblks >> 10;
+    u32 lin_total = pm_linear_bytes(), heap_total = pm_heap_bytes();
+    u32 lin_free = (u32)linearSpaceFree();
+    u32 heap_used = (u32)mallinfo().uordblks;
+    u32 total = lin_total + heap_total;
+    u32 free_b = lin_free + (heap_total - heap_used); /* heap free: arena free plus sbrk-left */
+    u32 used_b = total - free_b;
     unsigned vram_free = (unsigned)(vramSpaceFree() >> 10), vram_used = 6u * 1024u - vram_free; /* the PICA has 6 MB of VRAM */
-    snprintf(out[0], 40, "FCRAM free %u/%uM  commit used %u/%uM",
-             (unsigned)(osGetMemRegionFree(MEMREGION_APPLICATION) >> 20), (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20),
-             (unsigned)(cur >> 20), (unsigned)(commit_max >> 20));
-    snprintf(out[1], 40, "linear %u/%uK heap %u/%uK", lin_used, lin_total, heap_used, heap_total);
+    snprintf(out[0], 40, "MEM used %u.%u / %u.%u MB  free %u.%u MB",
+             tenth_mb(used_b) / 10, tenth_mb(used_b) % 10, tenth_mb(total) / 10, tenth_mb(total) % 10,
+             tenth_mb(free_b) / 10, tenth_mb(free_b) % 10);
+    snprintf(out[1], 40, "linear %u/%uK heap %u/%uK", (lin_total - lin_free) >> 10, lin_total >> 10, heap_used >> 10, heap_total >> 10);
     snprintf(out[2], 40, "VRAM used %uK free %uK tex %uK", vram_used, vram_free, pm_tex_used() >> 10);
     static int hud_logged; /* one line per run: proves the 1 Hz refresh ran */
     if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s | %s", out[0], out[1], out[2]);
