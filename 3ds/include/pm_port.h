@@ -98,6 +98,7 @@ enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
     RS_RMN, RS_RMSK, /* C2: G_PM_RM ops, of them fallback to G_DL */
     RS_SKN, /* G1: sync and no-op ops skipped before the prologue */
     RS_TBN, RS_TBFB, /* C1: G_PM_TEX binds run by tb_run, of them fallback to G_DL */
+    RS_TBE, RS_TBG, RS_TBPD, RS_TBPM, RS_TBDL, RS_TBTS, /* probe: emits, G_PM_TEX ops seen by stage */
     RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 unsigned pm_gbi_ops_now(void);

@@ -462,6 +462,7 @@ static int dlc_try(const Gfx* l) {
     dlc_c.lists++;
     dlc_c.opsrep += e->nops;
     RS_ADD(RS_DLCOPS, e->nops);
+    tb_probe(RS_TBDL, l, e->nops);
     if (e->ngrp) { __builtin_prefetch(e->grp); __builtin_prefetch(e->gop); }
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
@@ -962,6 +963,7 @@ static int pdl_try(const Gfx* l) {
     pdl_ep_pso = 0;
     pdl_tex_slot = e->tex_slot;
     pdl_tex_gen = e->tex_gen;
+    tb_probe(RS_TBPD, l, pdl_nops(l));
     pdl_c.replay++;
     return 1;
 }
@@ -1145,6 +1147,7 @@ static int pdl_try_m(const Gfx* l) {
         if (gbi_state_hash(&pdl_try_m_gbi_chk) != gbi_state_hash(&e->exit)) pdl_c.exitbad++;
     }
     gv_epoch++;
+    tb_probe(RS_TBPM, l, e->nops);
     pdl_m_c.replay++;
     pdl_c.replay++;
     return 1;
@@ -1315,6 +1318,7 @@ static void pdl_tpl_replay(PdlTplEnt* e, const Gfx* seg) {
 static void pdl_tpl_segment(const Gfx* seg, unsigned n) {
     if (!n) return;
     pdl_tpl_c.seg++;
+    tb_probe(RS_TBTS, seg, n);
     if (pdl_tpl_seg_refuse(seg, n)) {
         pdl_tpl_c.fallback++;
         pm_gbi_run((void*)seg, n * 8u);

@@ -1725,6 +1725,12 @@ static void gbi_state_apply(const GbiState* s) {
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
 static int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 static void draw_tri(unsigned w);
+static void tb_probe(unsigned slot, const Gfx* l, unsigned n) {
+    if (!pm_ph_on || !l) return;
+    unsigned c = 0;
+    for (unsigned i = 0; i < n && i < 4096; i++) if ((l[i].words.w0 >> 24) == G_PM_TEX) c++;
+    if (c) RS_ADD(slot, c);
+}
 #include "pm_dlc.inc.c"
 static void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
@@ -3099,6 +3105,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
 
 static void gbi_run_body(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
+    tb_probe(RS_TBG, (const Gfx*)list, nbytes / 8u);
     dls_on = PMDL("dlsrc");
     dlc_on = dlc_enabled();
     int pdl_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; /* C5: main list only, not backgroundGfx */
