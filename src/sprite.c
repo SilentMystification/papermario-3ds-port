@@ -232,12 +232,20 @@ void spr_appendGfx_component_flat(
     Matrix4f mtx,
     s32 alpha
 ) {
+#ifdef TARGET_3DS
+    Gfx* texHdr = gMainGfxPos++; /* NP1: G_PM_TEXI header; the TLUT and load words of this sprite run in tb_inline */
+    Gfx* texFirst = gMainGfxPos;
+#endif
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
     if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
         gDPScrollMultiTile2_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height,
                               0, 0, width - 1, height - 1, 0,
                               G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
                               256, 256);
+#ifdef TARGET_3DS
+        texHdr->words.w0 = ((u32)G_PM_TEXI << 24) | (u32)(gMainGfxPos - texFirst);
+        texHdr->words.w1 = 0;
+#endif
         gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
         gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 63 << 2, 0);
         if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
@@ -267,6 +275,10 @@ void spr_appendGfx_component_flat(
         gDPScrollTextureBlock_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height, 0,
                                  G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
                                  256, 256);
+#ifdef TARGET_3DS
+        texHdr->words.w0 = ((u32)G_PM_TEXI << 24) | (u32)(gMainGfxPos - texFirst);
+        texHdr->words.w1 = 0;
+#endif
         if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
             Camera* camera =  &gCameras[gCurrentCamID];
             if (gGameStatusPtr->context == CONTEXT_PAUSE) {
