@@ -97,6 +97,20 @@ static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s
     }
 }
 
+#ifdef TARGET_3DS
+/* BG (port): rows row0..row0+rows-1 of the screen, sampled from the bound sky from source row t/32. */
+static void bg_sky_rows(s32 minX, s32 minY, s32 xOff, s32 maxX, s32 row0, s32 rows, s32 t) {
+    s32 yl, yh;
+    if (rows <= 0) {
+        return;
+    }
+    yl = (minY + row0) * 4;
+    yh = (minY + row0 + rows - 1) * 4;
+    bg_texrect(minX * 4, yl, (xOff + minX - 1) * 4, yh, G_TX_RENDERTILE, (maxX - xOff) * 32, t, 4096, 1024);
+    bg_texrect((xOff + minX) * 4, yl, (maxX + minX - 1) * 4, yh, G_TX_RENDERTILE, 0, t, 4096, 1024);
+}
+#endif
+
 void appendGfx_background_texture(void) {
     Camera* cam = &gCameras[gCurrentCameraID];
     u16 flags = 0;
@@ -263,6 +277,21 @@ void appendGfx_background_texture(void) {
     }
 
     if (!gBackroundWaveEnabled) {
+#ifdef TARGET_3DS
+        /* BG (port): no TMEM limit, so the whole sky is one bind. The screen rows come from source rows y0.. and then 0..y0-1. */
+        {
+            s32 h = gGameStatusPtr->backgroundMaxY;
+            s32 y0 = gBackroundTextureYOffset;
+            if (y0 >= h) {
+                y0 -= h;
+            }
+            gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster, G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, h,
+                               0, 0, 295, h - 1, 0,
+                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            bg_sky_rows(bgMinX, bgMinY, bgXOffset, bgMaxX, 0, h - y0, y0 * 32);
+            bg_sky_rows(bgMinX, bgMinY, bgXOffset, bgMaxX, h - y0, y0, 0);
+        }
+#else
         lineHeight = 2048 / gGameStatusPtr->backgroundMaxX;
         numLines = gGameStatusPtr->backgroundMaxY / lineHeight;
         extraHeight = gGameStatusPtr->backgroundMaxY % lineHeight;
@@ -299,6 +328,7 @@ void appendGfx_background_texture(void) {
                                                  (bgMaxX + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4,
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
+#endif
         if (pm_wide_cam(&gCameras[gCurrentCameraID]) && bgMinY == 20 && bgMaxY == 200 && bgMaxX == 296) {
             /* PT54: the 296 x 200 sky image is shown on 20 to 219. With wide the view is 240 rows. The first image row fills the rows above and the last image row the rows below. */
             s32 k;
