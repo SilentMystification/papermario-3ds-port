@@ -427,34 +427,38 @@ static void addr_sub(const void* p) {
 
 /* Texture pool in VRAM (GPU path). A miss writes its tiled image into this block. One merged
  * GSPGPU_FlushDataCache per span before each command list submit (pm_tex_flush_pending). */
-#define SLAB_BYTES BUDGET
 #define SLAB_EXT 640
 #define PEND_N 24
 #define PEND_GAP (64u * 1024u)
-/* Two VRAM blocks of BUDGET / SLABS each. One block of the whole budget did not fit: the bank split (boot log: 3072 KB failed with 5394 KB free). */
-#define SLABS 1
+/* One VRAM block: BUDGET at boot. A 3072 KB block did not fit (boot log: failed with 5394 KB free). If the block does not come up, the
+ * cache takes the half size block instead of no textures at all. tex_cap is the size that came up (0: no cache). */
+static unsigned tex_cap;
 static unsigned slab_segs; /* VRAM blocks that came up at boot */
 static unsigned slab_n; /* slab_ext entries in use */
 static struct { u8* p; unsigned len; } slab_ext[SLAB_EXT]; /* free extents, sorted by address */
 static struct { u8* p; unsigned len; } pend[PEND_N]; static int pend_n;
 static unsigned fl1_srchash(const void* img, int w, int h, int stride, unsigned siz) { if (siz != 2) return 0; unsigned x = 2166136261u; const u8* q = (const u8*)img; for (int y = 0; y < h; y++) for (int i = 0; i < w * 2; i++) x = (x ^ q[y * stride * 2 + i]) * 16777619u; return x; }
 static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
-static int fl1_on(void) { return slab != NULL; }
-static void slab_init(void) {
-    unsigned free0 = (unsigned)vramSpaceFree();
-    slab = (u8*)vramMemAlign(SLAB_BYTES, 0x80);
+static int fl1_on(void) { return slab_segs > 0; }
 void pm_vram_note(void); /* pm_mem.c */
 void pm_vram_alloc_fail(const char* what, unsigned kb); /* pm_mem.c */
-    if (slab) {
-        slab_ext[0].off = 0;
-        slab_ext[0].len = SLAB_BYTES;
-    if (slab) pm_vram_note();
-    else pm_vram_alloc_fail("slab", SLAB_BYTES >> 10);
-        slab_n = 1;
-        pm_log_w("texcache VRAM %uKB at %p (vram free was %uKB now %uKB)", SLAB_BYTES >> 10, (void*)slab, free0 >> 10,
-                 (unsigned)vramSpaceFree() >> 10);
-    } else
-        pm_log_e("texcache VRAM %uKB failed (vram free %uKB)", SLAB_BYTES >> 10, free0 >> 10);
+static void slab_init(void) {
+    unsigned free0 = (unsigned)vramSpaceFree();
+    static const unsigned sizes[2] = { BUDGET, BUDGET / 2 };
+    for (unsigned k = 0; k < 2; k++) {
+        u8* p = (u8*)vramMemAlign(sizes[k], 0x80);
+        if (!p) {
+            pm_vram_alloc_fail("slab", sizes[k] >> 10);
+            pm_log_e("TEXCACHE FALLBACK: VRAM block %uKB failed (vram free %uKB), trying %uKB", sizes[k] >> 10, (unsigned)vramSpaceFree() >> 10, sizes[k + 1 < 2 ? k + 1 : k] >> 10);
+            continue;
+        }
+        pm_vram_note();
+        slab_ext[0].p = p; slab_ext[0].len = sizes[k]; slab_n = 1;
+        tex_cap = sizes[k]; slab_segs = 1;
+        pm_log_w("texcache VRAM %uKB at %p (vram free was %uKB now %uKB)", sizes[k] >> 10, (void*)p, free0 >> 10, (unsigned)vramSpaceFree() >> 10);
+        return;
+    }
+    pm_log_e("TEXCACHE OFF: no VRAM block for the texture cache, every texture draw is skipped");
 }
 static unsigned slab_size(unsigned bytes) { bytes = (bytes + 127u) & ~127u; return bytes < 512u ? 512u : bytes; } /* the GPU reads whole 8 x 8 tiles */
 /* Level-0 byte count (same formula as citro3d C3D_TexInitWithParams). */
@@ -474,19 +478,19 @@ static u8* slab_alloc(unsigned bytes0) {
     int best = -1;
     for (unsigned i = 0; i < slab_n; i++) if (slab_ext[i].len >= bytes && (best < 0 || slab_ext[i].len < slab_ext[best].len)) best = (int)i;
     if (best < 0) return NULL;
-    u8* r = slab + slab_ext[best].off;
-    slab_ext[best].off += bytes; slab_ext[best].len -= bytes;
+    u8* r = slab_ext[best].p;
+    slab_ext[best].p += bytes; slab_ext[best].len -= bytes;
     if (!slab_ext[best].len) { for (unsigned i = (unsigned)best; i + 1 < slab_n; i++) slab_ext[i] = slab_ext[i + 1]; slab_n--; }
     return r;
 }
 static void slab_free(void* p, unsigned bytes) {
     bytes = slab_size(bytes);
-    unsigned off = (unsigned)((u8*)p - slab), i = 0;
-    while (i < slab_n && slab_ext[i].off < off) i++;
-    if (i > 0 && slab_ext[i - 1].off + slab_ext[i - 1].len == off) { slab_ext[i - 1].len += bytes; i--; }
-    else if (slab_n < SLAB_EXT) { for (unsigned k = slab_n; k > i; k--) slab_ext[k] = slab_ext[k - 1]; slab_ext[i].off = off; slab_ext[i].len = bytes; slab_n++; }
+    unsigned i = 0;
+    while (i < slab_n && (u32)slab_ext[i].p < (u32)p) i++;
+    if (i > 0 && slab_ext[i - 1].p + slab_ext[i - 1].len == (u8*)p) { slab_ext[i - 1].len += bytes; i--; }
+    else if (slab_n < SLAB_EXT) { for (unsigned k = slab_n; k > i; k--) slab_ext[k] = slab_ext[k - 1]; slab_ext[i].p = p; slab_ext[i].len = bytes; slab_n++; }
     else return; /* extent table full: the block is lost until the next boot */
-    if (i + 1 < slab_n && slab_ext[i].off + slab_ext[i].len == slab_ext[i + 1].off) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
+    if (i + 1 < slab_n && slab_ext[i].p + slab_ext[i].len == slab_ext[i + 1].p) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
 }
 static void pend_flush_one(u8* p, unsigned len) { GSPGPU_FlushDataCache(p, len); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, len >> 10); }
 static int slot_draws_stage(const Slot* s) {
@@ -674,7 +678,7 @@ void pm_tex_init(void) {
 }
 
 unsigned pm_tex_used(void) { return used; }
-unsigned pm_tex_budget(void) { return BUDGET; }
+unsigned pm_tex_budget(void) { return tex_cap; }
 /* H03: the last load failed (cache full or no VRAM). The draw skips the batch, no white quad. */
 static int fail_last, fail_n;
 int pm_tex_failed(void) { return fail_last; }
@@ -1098,7 +1102,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     int slot = -1;
     for (;;) {
         for (int i = 0; i < SLOTS; i++) if (!slots[i].live) { slot = i; break; }
-        if (slot >= 0 && used + reserve <= BUDGET) break;
+        if (slot >= 0 && used + reserve <= tex_cap) break;
         if (!evict_oldest_done()) {
             static int once;
             fail_last = 1;
