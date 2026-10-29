@@ -75,3 +75,12 @@
 - Toad map pond at x -174 z 112: read the top shot and the water (PRIMZFIX, diag_primz.md).
 - fsplit wm and tk fields: read the f600 line during the steady window. After a battle, the wm value tests diag_batend.md.
 - Warp window line count: count lines from the entry to the scene f300 line on the console.
+
+## Verification LOGTRIM3 (build 1514, git 6ffb3df08, archive pm_3ds_1514_6ffb3df08.3dsx)
+- Starts: 3 (one per scenario, PM_ROW=LOGTRIM3). No rebuild, no source edits.
+- partner_menu: log checks 7 of 7 pass. Top shot 0000 (frame 200) shows the Party tab with Goombario. Pass.
+- file_select: log checks 6 of 6 pass. Top shot 0000 (frame 100) shows the file select screen (File 1 "First Play", Select file to start). Pass.
+- text_menu: log checks 3 of 3 pass. Top shot 0000 (frame 170) shows the pause status page with the dialog "Check here to see what Mario's current status is." Pass.
+- Failing checks: none. No rerun against pm_3ds_1504_c294e993f.3dsx was needed.
+- Catalog result on build 1514: 9 of 9 scenarios run (yard, pause_menu, mac01t, mac01, battle_start, toad_pond, partner_menu, file_select, text_menu) with log checks passing.
+- Logs: 3ds/logs/perf/LOGTRIM3_partner_menu.txt, LOGTRIM3_file_select.txt, LOGTRIM3_text_menu.txt.
