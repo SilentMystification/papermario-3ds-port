@@ -175,6 +175,10 @@ static void warp_setup(s16 areaID, s16 mapID);
 /* Called from the set_game_mode wrapper. Returns the mode to enter (the caller then calls the real set_game_mode). */
 s16 pm_warp_hook(s16 mode) {
     s16 areaID, mapID;
+    if (mode == GAME_MODE_LOGOS && pm_debug_has("fileselect")) { /* debug switch fileselect: the boot goes straight to the file select (no title, no pad script) */
+        pm_log("fileselect: direct entry from the logos");
+        return GAME_MODE_FILE_SELECT;
+    }
     if (warp_done || mode != GAME_MODE_LOGOS) return mode;
     warp_done = 1;
     if (!pm_warp_active()) return mode;
