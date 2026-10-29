@@ -143,6 +143,34 @@
       "reason": ""
     },
     {
+      "name": "yard_poshud",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the poshud switch: bottom screen rows 0 and 1 show Mario and camera x y z yaw (POSHUD).",
+      "proves": "poshud shows Mario and camera values on the bottom screen at the hudint refresh, and the yard top picture still draws.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug poshud",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": "POSHUD test. Read the bot_ shots for the values."
+    },
+    {
       "name": "mac01t_fsplit",
       "status": "unverified",
       "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t, with fsplit instead of phase. Split values for FSPLIT.",

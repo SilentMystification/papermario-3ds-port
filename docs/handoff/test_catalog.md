@@ -60,6 +60,15 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 | toad_gate (TOADVIS, unverified) | Toad Town west gate view (mac_00 entry 0, preset toad_west), shots at frames 200 and 204. Three runs: working tree, 29f504d7b, final6 (3dcfc661d). Picture: west gate path, no water, no fountain in view. Budget of TOADVIS used up. See docs/handoff/diag_toadvis.md. | build3dsztshots	oad_gate |
 | mac01s (TOADVIS, unverified) | Same view as mac01t (tour to mac_01 entry 0), until on shot line 504 (cap 40 s). Working tree build: 2 of 2 top shots byte-equal to final6 and 29f504d7b. Strip at the right edge is not confirmed as water. mac01t until mdlsum did not print on 29f504d7b (idled 121 s). | build3dsztshotsmac01s |
 
+## POSHUD (2026-10-29): bottom screen position values
+
+- Switch `poshud` (debug string, or options.ini `poshud=1`, Debug tab row 8 "Position HUD"). Bottom screen rows 0 and 1 show Mario x y z yaw and the camera x y z yaw. Refresh: hudint (the memory rows are replaced by these two rows while on).
+- Mario yaw is gPlayerStatus.targetYaw. Camera values are gCameras[CAM_DEFAULT].lookAt_eye and curYaw.
+
+| Scenario | Flags | Command | Result (build poshud, same code as the commit) | Status |
+|---|---|---|---|---|
+| yard_poshud | `poshud` | `yard_poshud -Try -Row POSHUD -Build poshud` | 3 of 3 log checks. Bottom shot bot_0259: `M x 594 y 30 z -216 yaw 180`, `C x 924 y 161 z 60 yaw 310`. Log at f300 gives Mario pos 594 30 -216. Top shot 0000_0_11 byte-equal to yard_headA (HEAD e16fee4b9). | unverified (one run) |
+
 ## Completion only
 
 | Scenario | Reason | Command | Runtime |

@@ -1,6 +1,7 @@
 /* ROUTE: closed loop walking for the padscript token go_<x>_<z>_<scans> (pm_input.c). The route script gives a world target,
  * this function gives the stick that walks Mario to it. The input depends only on the game state, so a run repeats exactly. */
 #include "common.h"
+#include <stdio.h>
 #include <string.h>
 #include "functions.h"
 #include "game_modes.h"
@@ -79,4 +80,11 @@ void pm_route_save(int slot) {
     unsigned t0 = pm_uptime_ms();
     fio_save_game(slot);
     pm_log("route: save slot %d f%u took %u ms", slot, pm_frame_count(), pm_uptime_ms() - t0);
+}
+
+/* POSHUD: bottom screen text for a walk to a spot. Mario: position and targetYaw. Camera: lookAt_eye and curYaw of CAM_DEFAULT (the camera pm_route_aim uses). */
+void pm_pos_text(char (*out)[40]) {
+    const Camera* c = &gCameras[CAM_DEFAULT];
+    snprintf(out[0], 40, "M x %.0f y %.0f z %.0f yaw %.0f", gPlayerStatus.pos.x, gPlayerStatus.pos.y, gPlayerStatus.pos.z, gPlayerStatus.targetYaw);
+    snprintf(out[1], 40, "C x %.0f y %.0f z %.0f yaw %.0f", c->lookAt_eye.x, c->lookAt_eye.y, c->lookAt_eye.z, c->curYaw);
 }

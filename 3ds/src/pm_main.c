@@ -515,6 +515,7 @@ void pm_frame_loop(void) {
             if (!mem_mark || now - mem_mark >= mem_step) {
                 unsigned dt_ms = mem_mark ? (unsigned)((now - mem_mark) * 1000u / tick_hz) : 0u;
                 pm_mem_hud(mem, dt_ms);
+                if (pm_opt.pos_hud || pm_debug_has("poshud")) pm_pos_text(mem); /* POSHUD: rows 0 and 1 show Mario and the camera */
                 mem_mark = now;
                 mem_step = (u64)pm_opt.hud_ms * tick_hz / 1000u;
             }
