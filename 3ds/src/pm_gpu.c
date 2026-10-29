@@ -231,6 +231,8 @@ static GPU_COMBINEFUNC tev_func(int f) {
 enum { OFF_N = 4, OFF_P = 2 * OFF_N, OFF_ALL = OFF_P + 2 }; /* FX2a: slots OFF_P and OFF_P + 1 are the 8 bit images (flame), they keep their pixels from frame to frame like the N64 memory */ /* V05b: slots 0..3 are full size, 4..7 are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */
 /* X02: w x h is the size of the slot (64 x 64 for a game image up to 64 wide, else PM_OFF_W x PM_OFF_H). siz is the game pixel size
  * (3 = 32 bit, 2 = 16 bit, 1 = 8 bit). The same memory can be a 32 bit image and an 8 bit image in one frame: two slots. */
+void pm_vram_note(void); /* pm_mem.c: VRAM low-water mark */
+void pm_vram_alloc_fail(const char* what, unsigned kb); /* pm_mem.c */
 static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; unsigned stride; unsigned last; C3D_Tex snap; int snap_ready; } offs[OFF_ALL];
 static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8;
 extern unsigned pm_frame_count(void);
@@ -278,7 +280,8 @@ static void split_frame(void) {
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
 static void off_snapshot(int i) {
     if (!offs[i].snap_ready) {
-        if (!C3D_TexInitVRAM(&offs[i].snap, offs[i].w, offs[i].h, GPU_RGBA8)) { pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
+        if (!C3D_TexInitVRAM(&offs[i].snap, offs[i].w, offs[i].h, GPU_RGBA8)) { pm_vram_alloc_fail("snap", (unsigned)(offs[i].w * offs[i].h * 4 / 1024)); pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
+        pm_vram_note();
         C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
         C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
         offs[i].snap_ready = 1;
@@ -1476,10 +1479,12 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         } else i = w == 64 ? OFF_N + off_sused++ : off_used++;
         if (!offs[i].rt) {
             if (!C3D_TexInitVRAM(&offs[i].tex, w, h, GPU_RGBA8)) {
+                pm_vram_alloc_fail("offslot", (unsigned)(w * h * 4 / 1024));
                 pm_log_e("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
                 off_fail = 1;
                 return 0;
             }
+            pm_vram_note();
             C3D_TexSetFilter(&offs[i].tex, GPU_LINEAR, GPU_NEAREST);
             C3D_TexSetWrap(&offs[i].tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
             offs[i].rt = C3D_RenderTargetCreateFromTex(&offs[i].tex, GPU_TEXFACE_2D, 0, -1);
@@ -1537,10 +1542,12 @@ static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
 static int grab_tex_init(void) {
     if (grab_ready) return grab_ready > 0;
     if (!C3D_TexInitVRAM(&grab_tex, 256, 512, GPU_RGBA8)) {
+        pm_vram_alloc_fail("grab", 512);
         pm_log_e("B2: no VRAM for the 256 x 512 grab copy, grabs stay off");
         grab_ready = -1;
         return 0;
     }
+    pm_vram_note();
     C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
     grab_ready = 1;

@@ -157,6 +157,16 @@ int pm_mem_crash_line(char* buf, int cap) {
 /* Bottom screen memory rows, 40 bytes each with the NUL. Called at 1 Hz from the game thread: mallinfo takes the malloc lock.
  * Row 0 is the game pool: linear pool plus newlib heap (pm_linear_bytes, pm_heap_bytes), in MB with one decimal. */
 static unsigned tenth_mb(u32 bytes) { return (unsigned)((bytes * 10u + (1u << 19)) >> 20); }
+/* VRAM low-water mark: the least free VRAM (vramSpaceFree) since the GPU came up. VRAM blocks are never freed, so the
+ * minimum is read right after each allocation (pm_vram_note) and at each HUD refresh. */
+static unsigned vram_min_kb = 6144u;
+void pm_vram_note(void) { unsigned f = (unsigned)(vramSpaceFree() >> 10); if (f < vram_min_kb) vram_min_kb = f; }
+void pm_vram_alloc_fail(const char* what, unsigned kb) {
+    pm_vram_note();
+    pm_log_e("vram alloc fail %s %u KB (vram free %u KB, vramfree min %u KB)", what, kb, (unsigned)(vramSpaceFree() >> 10), vram_min_kb);
+}
+unsigned pm_vram_min_kb(void) { return vram_min_kb; }
+
 void pm_mem_hud(char out[3][40]) {
     u32 lin_total = pm_linear_bytes(), heap_total = pm_heap_bytes();
     u32 lin_free = (u32)linearSpaceFree();
@@ -164,12 +174,13 @@ void pm_mem_hud(char out[3][40]) {
     u32 total = lin_total + heap_total;
     u32 free_b = lin_free + (heap_total - heap_used); /* heap free: arena free plus sbrk-left */
     u32 used_b = total - free_b;
-    unsigned vram_free = (unsigned)(vramSpaceFree() >> 10), vram_used = 6u * 1024u - vram_free; /* the PICA has 6 MB of VRAM */
+    unsigned vram_free = (unsigned)(vramSpaceFree() >> 10); /* the PICA has 6 MB of VRAM */
+    pm_vram_note();
     snprintf(out[0], 40, "MEM used %u.%u / %u.%u MB  free %u.%u MB",
              tenth_mb(used_b) / 10, tenth_mb(used_b) % 10, tenth_mb(total) / 10, tenth_mb(total) % 10,
              tenth_mb(free_b) / 10, tenth_mb(free_b) % 10);
     snprintf(out[1], 40, "linear %u/%uK heap %u/%uK", (lin_total - lin_free) >> 10, lin_total >> 10, heap_used >> 10, heap_total >> 10);
-    snprintf(out[2], 40, "VRAM used %uK free %uK tex %uK", vram_used, vram_free, pm_tex_used() >> 10);
+    snprintf(out[2], 40, "VRAM free %uK min %uK tex %uK", vram_free, vram_min_kb, pm_tex_used() >> 10);
     static int hud_logged; /* one line per run: proves the 1 Hz refresh ran */
     if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s | %s", out[0], out[1], out[2]);
 }
@@ -181,7 +192,7 @@ void pm_mem_log(const char* tag) {
         pm_log_d("texmax %u KB of %u KB before this map load, one frame used %u KB, now %u KB", pk >> 10, pm_tex_budget() >> 10, wmax >> 10, pm_tex_used() >> 10);
         unsigned dl[7];
         pm_tex_map_delta(dl);
-        pm_log_d("texmap since last map: hit %u miss %u up %uKB inval %u same %u diff %u evict %u", dl[0], dl[1], dl[2], dl[3], dl[5], dl[6], dl[4]);
+        pm_log_d("texmap since last map: hit %u miss %u up %uKB inval %u same %u diff %u evict %u vramfree min %u KB", dl[0], dl[1], dl[2], dl[3], dl[5], dl[6], dl[4], vram_min_kb);
     }
     {
         unsigned gs = 0, as = 0;
@@ -207,7 +218,8 @@ void pm_mem_log(const char* tag) {
                pm_heap_bytes() >> 10);
     else
         pm_log_d("mem %s linear used %uKB peak %uKB texture failures %u", tag, lin_used >> 10, lin_peak >> 10, pm_tex_fail_count());
-    pm_log_d("mem %s vram free %uKB of %uKB (B7-0)", tag, (unsigned)(vramSpaceFree() >> 10), (unsigned)(6u * 1024u)); /* the PICA has 6 MB of VRAM */
+    if (strcmp(tag, "boot")) pm_vram_note();
+    pm_log_d("mem %s vram free %uKB of %uKB (B7-0) vramfree min %u KB", tag, (unsigned)(vramSpaceFree() >> 10), (unsigned)(6u * 1024u), vram_min_kb); /* the PICA has 6 MB of VRAM */
     struct mallinfo mi = mallinfo();
     pm_log_d("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB tex-cache %uKB peak %uKB", tag,
            pm_heap_bytes() >> 10, (unsigned)mi.uordblks >> 10, (unsigned)mi.fordblks >> 10,

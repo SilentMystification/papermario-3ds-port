@@ -437,9 +437,13 @@ static int fl1_on(void) { return slab != NULL; }
 static void slab_init(void) {
     unsigned free0 = (unsigned)vramSpaceFree();
     slab = (u8*)vramMemAlign(SLAB_BYTES, 0x80);
+void pm_vram_note(void); /* pm_mem.c */
+void pm_vram_alloc_fail(const char* what, unsigned kb); /* pm_mem.c */
     if (slab) {
         slab_ext[0].off = 0;
         slab_ext[0].len = SLAB_BYTES;
+    if (slab) pm_vram_note();
+    else pm_vram_alloc_fail("slab", SLAB_BYTES >> 10);
         slab_n = 1;
         pm_log_w("texcache VRAM %uKB at %p (vram free was %uKB now %uKB)", SLAB_BYTES >> 10, (void*)slab, free0 >> 10,
                  (unsigned)vramSpaceFree() >> 10);
