@@ -1,23 +1,23 @@
-# agent_dl handoff (W1 done; C1 blocked on plan; order from plan_source_opts.md)
+# agent_dl handoff (lane 2, after C2)
 
 ## State
-- Commit a1a3ced7d: W1 tick calibration (pm_gbi.c). Yard f599 class sum 11618 us against taskpl 12199 us (-4.8%). Ops 3576 unchanged. Picture ok.
-- C1: NOT started. Blocker: the texture DL (handle->gfx) writes walker state that later draws read: timg/timg_fmt/timg_siz/timg_stride, tile_fmt/siz/tmem/pal/wrap/shift/sz, st0_ep and pm_gpu_flush/pm_tex_set_wrap (G_SETTILE), blk[] and ldrec[] (G_LOADBLOCK, G_LOADTILE), tlut_pal[], td[n].pal, cur_tile and pm_gpu_flush (G_LOADTLUT), GP stats. A one-op replay must write the same state in the same order. Opus must list those writes in the plan first.
-- Guideline (docs/handoff/hw_guidelines.md): TexBind record = 64 bytes, aligned to 32, two lines. Handler small, fallback path cold/noinline.
-- Not done: C1, C2 (RM), G-SYNC, BG, C1i + HUD, P1 marks + gbiprof census, G-EQ, ANIM, volcano fog A, W4+W2, W3, W6, GLYPH, pause lag, SPRITE, row (a).
-- Azahar budget: row w1 4/8. Row c1 0/8.
-- Tree: src/map_restore_table.c modified (user file, never commit; restore from .bak after builds). 3ds/tools/azt.ps1 and azt_scenarios.json untracked, not this lane's.
+- Worktree: C:/Users/Andrew/Documents/GitHub/papermario-3ds-port-dl2, branch dl2. Build: PM_LANE=dl2 sh 3ds/build.sh. Assets copied (git-ignored).
+- Main commit a6c525673 = C2 (cherry-pick of dl2 85d2d5b92). Kept.
+- C1: NOT started. Blocker: plan_dl_architecture C1 needs the list of walker writes the texture DL makes (make_texture_gfx, model.c ~3219-3420: LoadTLUT, SetTile, LoadBlock/LoadTile, SetTileSize, SetTImg, combine, othermode). Those writes hit tile_*, blk[], ldrec[], tlut_pal[], td[], cur_tile, pm_gpu_flush and pm_tex_set_wrap (pm_gbi.c 3190-3290). The record approach needs an Opus plan with that list. Not in any plan file yet.
+- C2 result (dl_c2, Azahar yard, frames 300-599): ops/frame 3576 -> 3236; main walk avg 9812 -> 9512 us (-301 us, plan 760 us). Fallback count 0 of 68.
+- C2 first try (equality skip, no effect when state differs) gave 0 skips of 68. Reason: the texture DL before each render mode list changes cycle type or filter bits. Do not retry the skip.
+- Debug tools kept: rmsplit line (pm_phase.c), RS_RMN/RS_RMSK counters (pm_port.h).
 
-## Commands
-- Build: `python 3ds/tools/gen_map_restore.py`, `PM_LANE=dl sh 3ds/build.sh`, then `cp 3ds/src/map_restore_table.c.bak 3ds/src/map_restore_table.c`.
-- Yard test (W1 form): `PM_LANE=dl PM_ROW=<row> powershell -NoProfile -File 3ds/run_azahar.ps1 -Timeout 90 -LockWait 180 -Capture -Until 'opsplit f(59[9]|[6-9][0-9][0-9]|[0-9]{4,})\b' -Debug "fast preset=yard phase fixedseed shotmode=4:80"`. Log: build3ds/lane-dl/last_log.txt.
-- taskpl average frames 300-599: fields $11 (bg) and $12 (main) of `taskpl f` lines.
+## Budget
+- PM_ROW=dl_c2: 5/8 used.
 
 ## Next steps
-1. Opus revises the C1 plan with the exact replay list and the 64-byte record layout.
-2. C1 code agent, PM_ROW=c1, test: class 2 ops down 1000 or more, picture equal, pause text and file select equal. Commit message line on cache behaviour.
-3. Then plan_source_opts.md order: C2 = RM, G-SYNC, BG, C1i + HUD, P1 marks and gbiprof census, G-EQ, ANIM, fog A, W4+W2, W3, W6, GLYPH, pause lag, SPRITE, row (a).
+1. Opus plan for C1 (texture bind record, write list above). Then C1 code agent.
+2. G1 sync skip (opf[256] before the prologue, count as sk n). Unblocked. Test: yard opsplit sync n to about 0.
+3. Then order v2: H1 cold split, BG single bind, G2 + H6, H3, C1i + HUD, H2, fog fix, W4/W2, H5/H4.
 
-## Order v2 (supersedes step 3)
-C1, C2 = RM, G1 sync skip (opf flag table), H1 cold split of gbi_run_body (pm_gbi_cold.c), BG single bind, G2 equality filter + H6 hot-state struct, H3 matrix index, C1i + HUD, H2 flush_draw cold split, fog fix, W4/W2, H5 divides + H4 prefetch, GLYPH/R5, pause lag, SPRITE, then row (a) if yard total > 38 ms. Count skips as `sk n` in opsplit.
-C1 lives on main tree only (no branch, no worktree). Not started.
+## Commands
+- Test: PM_LANE=dl2 PM_ROW=dl_<row> powershell -NoProfile -File 3ds/run_azahar.ps1 -Force -Timeout 90 -LockWait 180 -Capture -Until 'opsplit f(59[9]|[6-9][0-9][0-9]|[0-9]{4,})\b' -Debug "fast preset=yard phase fixedseed shotmode=4:80"
+- Log: build3ds/lane-dl2/last_log.txt. Shot: build3ds/lane-dl2/last_shot.png. Use -Force, or the run returns a cached result.
+- Average: grep "taskpl f" log | awk '{f=substr($3,2)+0; if(f>=300&&f<=599){b+=$11; m+=$12; n++}} END{print b/n, m/n}'
+- Before a build: python 3ds/tools/gen_map_restore.py; after: git checkout -- 3ds/src/map_restore_table.c in the worktree.
