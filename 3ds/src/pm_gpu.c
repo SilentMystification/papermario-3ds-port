@@ -258,16 +258,20 @@ static int want_clear; /* see below */
  * range is flushed once). v_fl, gring_fl and gidx_fl mark what is flushed. They restart at pm_gpu_begin. */
 static Vert* v_fl;
 static unsigned gring_fl, gidx_fl;
+/* DS0: cold counters for pm_gpu_dcsum_frame. Ticks and counts in this file's flushes, sampled closes and cmd words; sums over 300 drawn frames. */
+static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n;
 static void gpu_flush_written(void) {
+    unsigned g0 = pm_ph_on ? pm_ticks() : 0;
     pm_tex_flush_pend_only();
     if (verts && v_fl && verts > v_fl) {
         PH_PUSH(PH_GCACHE);
-        GSPGPU_FlushDataCache(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl)); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (unsigned)((uintptr_t)verts - (uintptr_t)v_fl) >> 10);
+        GSPGPU_FlushDataCache(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl)); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (unsigned)((uintptr_t)verts - (uintptr_t)v_fl) >> 10); dcs_fl++;
         PH_POP();
         v_fl = verts;
     }
-    if (gring && gring_n > gring_fl) { GSPGPU_FlushDataCache(gring + gring_fl * 16, (gring_n - gring_fl) * 16); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gring_n - gring_fl) * 16 >> 10); gring_fl = gring_n; }
-    if (gidx && gidx_n > gidx_fl) { GSPGPU_FlushDataCache(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gidx_n - gidx_fl) * 2 >> 10); gidx_fl = gidx_n; }
+    if (gring && gring_n > gring_fl) { GSPGPU_FlushDataCache(gring + gring_fl * 16, (gring_n - gring_fl) * 16); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gring_n - gring_fl) * 16 >> 10); gring_fl = gring_n; dcs_fl++; }
+    if (gidx && gidx_n > gidx_fl) { GSPGPU_FlushDataCache(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gidx_n - gidx_fl) * 2 >> 10); gidx_fl = gidx_n; dcs_fl++; }
+    if (pm_ph_on) dcs_gt += pm_ticks() - g0;
 }
 /* B2: queue order is clear of the main target, then every part. The first split of a frame queues the clear first. */
 static void split_frame(void) {
@@ -820,6 +824,7 @@ static void dc_end(void) {
     pm_dc_us[DCU_ST] += (dc_t[4] - dc_t[3]) / 268u;
     pm_dc_us[DCU_DRAW] += (dc_t[5] - dc_t[4]) / 268u;
     pm_dc_us[DCU_KICK] += (dc_t[7] - dc_t[6]) / 268u;
+    dcs_smp++;
     dc_on = 0;
 }
 static void dc_kick(void) {
@@ -2257,9 +2262,24 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     pm_fl_n[c]++;
     if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
     unsigned t0 = pm_ticks();
+    float cmd0 = C3D_GetCmdBufUsage();
     flush_impl();
+    float cmd1 = C3D_GetCmdBufUsage();
+    if (cmd1 > cmd0) dcs_cmd += (unsigned)((cmd1 - cmd0) * 1000.f);
     dc_on = 0;
     pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
+}
+/* DS0: cold. Called once per drawn frame from pm_gbi_end_frame, before pm_ph_frame_end clears pm_dc_c and pm_dc_us. Every 300 frames it prints one dcsum line. */
+void pm_gpu_dcsum_frame(unsigned frame) {
+    dcs_cl += pm_dc_c[DC_CL];
+    for (int k = 0; k < DCU_N; k++) dcs_us[k] += pm_dc_us[k];
+    if (++dcs_n < 300) return;
+    unsigned smp = dcs_smp ? dcs_smp : 1, cl = dcs_cl ? dcs_cl : 1, fl = dcs_fl ? dcs_fl : 1;
+    pm_log_hw("dcsum f%u cl %u per frame | us per close pal %u bind %u tev %u st %u draw %u | gc %u us per flush, %u flushes per frame | cmd %u permil per sampled close, %u sampled closes",
+              frame, dcs_cl / 300u, dcs_us[DCU_PAL] / smp, dcs_us[DCU_BIND] / smp, dcs_us[DCU_TEV] / smp, dcs_us[DCU_ST] / smp, dcs_us[DCU_DRAW] / smp,
+              (unsigned)(dcs_gt / 268u / fl), dcs_fl / 300u, dcs_cmd / smp, dcs_smp);
+    dcs_gt = dcs_fl = dcs_cmd = dcs_smp = dcs_cl = dcs_n = 0;
+    memset(dcs_us, 0, sizeof dcs_us);
 }
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
