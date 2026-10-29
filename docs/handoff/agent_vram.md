@@ -94,3 +94,37 @@
 - Shot ids: row 4 runs used the azt default names. Base shots are in C:/Users/Andrew/AppData/Local/Temp/claude/.../scratchpad/r4/pause_base.
 - Build: worktree C:/Users/Andrew/Documents/GitHub/papermario-3ds-port-vram2 is at main 4b0ad69d4 plus pm_gpu.c from the row 4 branch (currently the row 4 build). Copies: main build3ds/lane-vram (row 4), build3ds/lane-vrambase (HEAD base).
 - Not touched: pm_warp.c, azt_scenarios.json, map_restore_table.c (other agents' or user files).
+
+## Session vram4b (row 4 test) and vram5 (row 5 status), handoff at main 43049b4bd
+
+### State
+- Main HEAD 43049b4bd. Row 4 is NOT on main.
+- Branch vram-row4-untested: c3780df51 (main 5531ad768 merged in, clean) and 82e43c29c (log lines only: `row 4: copy buffer in bank X`, `row 4: full image N in bank X`, `... freed, idle N frames`). Branch is checked out in worktree papermario-3ds-port-vram2.
+- Row 5: no code on main. A partial edit was reverted.
+- Budget: vram4b 3 of 8 starts used. vram5 not used.
+
+### Row 4 test results (file_select scene, base = lane vrambase5 = main 5531ad768)
+- Base: log `vram acct tick: A free 1065 min 1065, B free 1065 min 1065`. 16 shots.
+- Row 4, no grabtest (lane vram, pre-log build): 16 of 16 shots byte-equal to base. Log has no full image line. The file select scene allocates no full image in this build.
+- Row 4 with grabtest (lane vram, 82e43c29c), `grabtest` runs the grab, which allocates the full slot and the copy buffer:
+  - Log: `row 4: copy buffer in bank A (frame 0)`, `row 4: full image 0 in bank A (frame 0)`.
+  - HUD: `VRAM A 41K B 1065K min 41/1065 f0` (min A 41 KB, tex fail 0).
+  - Shots: 16 of 16 byte-equal to base.
+- NOT observed: `freed, idle N frames`. The grab runs every frame in this scene, so the buffers never go idle for 60 frames. Branch is not merged, because the idle free is a required check.
+- Premise change: fileselect_rotate does not need 3 full buffers in this build. The grab needs 2 (slot and copy). Both go to bank A (A first).
+
+### Row 4 command (pass to run_azahar directly)
+- `PM_ROW=vram4b PM_LANE=vram powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/run_azahar.ps1 -Until "shot \d+ frame 3[4-9][0-9]\b" -Timeout 90 -Turbo -TurboFactor 1 -Force -Debug "fileselect phase shots shotwin=282:60 grabtest"`
+- Base: `powershell -File 3ds/tools/azt.ps1 file_select -Row vram4b -Build vrambase5`
+- Shots are in build3ds/azt/shots/file_select (copy out after each run). Log: build3ds/lane-<lane>/last_log.txt.
+- Copies: scratchpad r4/fs_base, r4/fs_row4, r4/fs_row4g (log.txt in each).
+
+### Row 5 (not started in code)
+- The trigger (third full buffer fails in both banks) is not reached in file select. The grab gives 2 buffers.
+- Option to decide: add a debug switch `vramfilla=N` (N dummy 512 KB blocks in bank A). With `vramfill=2` (bank B 41 KB) and `vramfilla=1` (bank A 553 KB), the grab slot takes A to 41 KB, the copy buffer fails in both banks, and pm_tex_shrink runs. The plan's design for shrink and regrow (plan_vram_3mb.md row 5) is otherwise unchanged.
+- Regrow: the plan says regrow when bank B holds no full buffer for 120 frames. A simpler rule (120 frames after the half is freed, then retry every 120 frames) is the first build.
+
+### Next steps
+1. Decide whether row 4 merges without the idle-free check, or whether a scene is added where the grab stops (for example a debug switch that stops the grab after N frames).
+2. Decide the row 5 trigger (`vramfilla` above), then implement shrink and regrow on the branch, not on main, and test.
+3. Rule: a full-buffer failure in both banks calls pm_tex_shrink from bank_block in pm_gpu.c. Do not add that call on main before row 4 is merged.
