@@ -30,8 +30,7 @@ void pm_cpu_limit_exit(void);
 int pm_log_writer_core(void);
 unsigned pm_log_writer_hb(void);
 unsigned pm_log_dropped(void);
-void pm_log_stat(float avg_ms, unsigned frames, float secs);
-void pm_log_top(void);
+void pm_log_stat(float avg_ms, unsigned frames, float secs, unsigned spikes, float spike_max);
 void pm_log_set_switches(const char* s);
 void pm_crash_line(const char* s, int n);
 /* LB4: crash exit and hang watchdog (src/pm_wdog.c). The phase marker is one store to a global. */

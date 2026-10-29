@@ -300,7 +300,7 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     static unsigned s0, f0, v0, a0, d0, i0[4];
     unsigned v = C3D_FrameCounter(0);
     if (!t0) { t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; d0 = pm_pace_drawn; for (int i = 0; i < 4; i++) i0[i] = pace_iv[i]; return; }
-    if (now - t0 < hz) return;
+    if (now - t0 < 5u * hz) return; /* WARPLOG2: one pace line per 5 s */
     float wall = (float)(now - t0) * 1000.f / (float)hz;
     pm_log_d("pace: wall %.1f ms steps %u iterations %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u total 1:%u 2:%u 3:%u 4+:%u late steps (3+, over 33.3 ms) %u of %u", wall, pm_step_calls - s0,
            frame - f0, pm_pace_drawn - d0, v - v0, pace_ticks - a0, (float)(pm_step_calls - s0) * 1000.f / wall, pace_iv[0] - i0[0],
@@ -320,7 +320,9 @@ void pm_frame_loop(void) {
     unsigned presents = 0, drawn = 0; /* PT24: presents = logic steps, drawn = steps with a draw */
     int ever = 0;
     int have_fps = 0;
-    unsigned fps_vb0 = 0, late_n = 0, spike_ticks0 = 0; /* PT15 */
+    unsigned fps_vb0 = 0, late_n = 0; /* PT15 */
+    unsigned sp_n = 0; /* WARPLOG2: steps over 50 ms in the 300-frame logstat line */
+    float sp_max = 0.f;
     int last_step_skipped = 0; /* PT87 */
     int late_pct = 0;
     u64 step_start = 0;
@@ -486,14 +488,7 @@ void pm_frame_loop(void) {
         presents++;
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;
-        if (frame_ms > 50.f) { /* PT15: spike line, at most 10 per second */
-            extern void pm_ph_spike(unsigned, float, unsigned, unsigned);
-            static unsigned long long sp_t0;
-            static unsigned sp_n;
-            if (now - sp_t0 >= tick_hz) { sp_t0 = now; sp_n = 0; }
-            if (sp_n++ < 10) pm_ph_spike(frame, frame_ms, C3D_FrameCounter(0) - step_vb, pace_ticks - spike_ticks0);
-        }
-        spike_ticks0 = pace_ticks;
+        if (frame_ms > 50.f) { sp_n++; if (frame_ms > sp_max) sp_max = frame_ms; }
         { /* PT15: steps per second against the retrace (steps * 60 / vblanks, 120 vblanks) and the share of steps that took 3 or more vblanks */
             unsigned vbn = C3D_FrameCounter(0);
             if (!fps_vb0) fps_vb0 = vbn;
@@ -528,8 +523,8 @@ void pm_frame_loop(void) {
             if (!stat_t0) stat_t0 = now;
             stat_ms += frame_ms;
             if (++stat_n == 300) {
-                pm_log_stat(stat_ms / 300.f, 300, (float)(now - stat_t0) / (float)tick_hz);
-                if (frame % 1200 == 0) pm_log_top();
+                pm_log_stat(stat_ms / 300.f, 300, (float)(now - stat_t0) / (float)tick_hz, sp_n, sp_max);
+                sp_n = 0; sp_max = 0.f;
                 stat_ms = 0.f;
                 stat_n = 0;
                 stat_t0 = now;

@@ -2306,20 +2306,9 @@ static void os_report(void) {
 void pm_gbi_end_frame(void) {
     /* One second of presented frames, summed. Identical seconds are not written. */
     static int frames, acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x;
-    static unsigned b7_frames, b7_grabs, b7_grab_max, b7_splits, b7_split_max;
     static char prev[112];
     snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d o%d k%d x%d sp%u sl%d gr%u",
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0, n_splits, pm_gpu_off_count(), n_grabs);
-    /* B7-0: one debug line per 30 presented frames: grabs and splits (sum, worst frame), swirl capture and F03 query count, total and worst us */
-    b7_grabs += n_grabs; b7_splits += n_splits;
-    if (n_grabs > b7_grab_max) b7_grab_max = n_grabs;
-    if (n_splits > b7_split_max) b7_split_max = n_splits;
-    if (++b7_frames >= 30) {
-        pm_log_d("b7 f%d: grabs %u (max %u per frame) splits %u (max %u) | swirl capture %u x %u us max %u us | F03 query %u x %u us max %u us", rm_frame, b7_grabs, b7_grab_max, b7_splits, b7_split_max,
-                 pm_b7.cap_n, pm_b7.cap_ticks / 268u, pm_b7.cap_max / 268u, pm_b7.dq_n, pm_b7.dq_ticks / 268u, pm_b7.dq_max / 268u);
-        b7_frames = b7_grabs = b7_grab_max = b7_splits = b7_split_max = 0;
-        memset(&pm_b7, 0, sizeof pm_b7);
-    }
     PH_ADD(C_CMD, n_ops);
     { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); pdl_report(); } }
     if (pdl0_on() && n_ops) {
@@ -2331,15 +2320,6 @@ void pm_gbi_end_frame(void) {
     if (pm_ph_on) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mops_report(); mdc_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
-    if ((rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
-    if ((rm_frame % 300) == 0) {
-        pm_log_d("gv1 f%d load %u tri %u rej %u fb %u (scr %u mixed(old) %u tss %u lit %u fog %u zmark %u tex1 %u dbg %u refuse %u) litload %u ring %u xf %u | check tri %u out %u cull %u stale %u", rm_frame, gv_load_n, gv_tri_n, gv_rej_n,
-                 gv_fb[0] + gv_fb[1] + gv_fb[2] + gv_fb[3] + gv_fb[4] + gv_fb[5] + gv_fb[6] + gv_fb[7] + gv_fb[8], gv_fb[GVR_SCR], gv_fb[GVR_MIXED], gv_fb[GVR_TSS], gv_fb[GVR_LIT], gv_fb[GVR_FOG], gv_fb[GVR_ZMARK],
-                 gv_fb[GVR_TEX1], gv_fb[GVR_DBG], gv_fb[GVR_REFUSE], gv_fb[GVR_LITLOAD], gv_fb[GVR_RING], gv_xf_n, gv_chk_tri, gv_chk_out, gv_chk_cull, gv_chk_stale);
-        pm_log_d("gp1 f%d ld in %u out %u cross %u vtx in %u out %u cross %u subset %u", rm_frame, gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset);
-        if (gp3_t0_ld)
-            pm_log_d("gp3 f%d tile0 ld %u dead %u pct %u", rm_frame, gp3_t0_ld, gp3_t0_dead, (unsigned)(gp3_t0_dead * 100u / gp3_t0_ld));
-    }
     if (gp3_t0_pending) { gp3_t0_dead++; gp3_t0_pending = 0; }
     PH_ADD(C_TRI, n_cmd);
     PH_ADD(C_TRIOUT, n_in + n_cut);

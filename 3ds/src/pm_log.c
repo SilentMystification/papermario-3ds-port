@@ -38,15 +38,10 @@ static unsigned ring_pos;
 static unsigned ring_len;
 static char switches[256];
 
-/* L01 measurement: lines and bytes logged, and a per call site count (by format string address). */
-#define SITES 96
+/* L01 measurement: lines and bytes logged. */
 static unsigned st_lines, st_bytes, st_prev_lines, st_prev_bytes;
-static const char* st_fmt[SITES];
-static unsigned st_cnt[SITES];
-static int st_nsites;
 static int con_up; /* the bottom console exists: the sink thread prints cb (lines logged before that wait in cb) */
 static LightLock con_lock; /* the bottom screen console (stdout) is not thread safe: writer, HUD and console setup take this */
-static int st_on;
 static int writer_on;
 volatile int pm_io_quiet; /* PT68: set while the app is suspended or asleep, see io_gate */
 static volatile int writer_core = -1;
@@ -175,7 +170,6 @@ void pm_log_set_switches(const char* s) {
     dbg_cache_clear();
     switches[0] = 0;
     if (s) strncat(switches, s, sizeof(switches) - 1);
-    st_on = pm_debug_has("logstat") ? 1 : 2;
     sw_lognull = pm_debug_has("lognull");
     {   /* L02: loglevel=<0..3 or error, warn, info, debug>, log=off */
         extern int pm_debug_value(const char* key, char* out, unsigned n);
@@ -249,36 +243,18 @@ void pm_log_live_status(void) {
     if (live_msg[0]) pm_log_w("%s", live_msg);
 }
 
-static void stat_site(const char* fmt) {
-    int i;
-    for (i = 0; i < st_nsites; i++) if (st_fmt[i] == fmt) { st_cnt[i]++; return; }
-    if (st_nsites < SITES) { st_fmt[st_nsites] = fmt; st_cnt[st_nsites++] = 1; }
-}
-
 /* Called by the frame loop every 300 drawn frames when the logstat switch is on. */
-void pm_log_stat(float avg_ms, unsigned frames, float secs) {
+void pm_log_stat(float avg_ms, unsigned frames, float secs, unsigned spikes, float spike_max) {
     unsigned all = st_lines + q_drop_total + q_dropped;
     unsigned dl = all - st_prev_lines, db = st_bytes - st_prev_bytes;
     st_prev_lines = all;
     st_prev_bytes = st_bytes;
-    pm_log_hw("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s)", frames, avg_ms,
-              secs * 1000.f / (float)frames, dl, (float)dl / (float)frames, (float)dl / secs);
-    pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u live eagain %u stall closes %u", frames, avg_ms, secs * 1000.f / (float)frames, dl,
-           (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped, live_eagain, live_stall_close);
+    pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u live eagain %u stall closes %u spikes %u max %.1f ms", frames, avg_ms, secs * 1000.f / (float)frames, dl,
+           (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped, live_eagain, live_stall_close, spikes, spike_max);
     pm_log_d("logstat2 writer max us fbuf %u sock %u | sink max us file %u console %u, console skipped %u, queue %u of %u, fbuf %u of %u, fbuf waits %u",
            wr_file_max, wr_sock_max, sink_file_max, sink_con_max, con_skipped, __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED), 1024u,
            fb_head - fb_tail, FB_SIZE, fb_full_waits);
     wr_file_max = wr_sock_max = sink_file_max = sink_con_max = 0;
-}
-
-void pm_log_top(void) {
-    for (int k = 0; k < 8; k++) {
-        int best = -1;
-        for (int i = 0; i < st_nsites; i++) if (st_cnt[i] && (best < 0 || st_cnt[i] > st_cnt[best])) best = i;
-        if (best < 0) return;
-        pm_log_d("logtop %u x \"%.60s\"", st_cnt[best], st_fmt[best]);
-        st_cnt[best] = 0;
-    }
 }
 
 /* ---- L01: non-blocking log ----
@@ -331,7 +307,6 @@ static void vlog(int lv, const char* fmt, va_list ap) {
         return;
     }
     __atomic_fetch_add(&st_lines, 1, __ATOMIC_RELAXED);
-    if (st_on == 1 && fmt[0] != 'l') stat_site(fmt);
     char body[SLOT_TEXT];
     vsnprintf(body, sizeof(body), fmt, ap);
     size_t bl = strlen(body);

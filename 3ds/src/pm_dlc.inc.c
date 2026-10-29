@@ -530,8 +530,6 @@ static int dlc_try(const Gfx* l) {
 }
 
 static void dlc_report(void) {
-    pm_log_hw("dlc f%d hit %u comp %u ref op %u slot %u vtx %u long %u full %u | lists %u grp %u skip %u repl %u near %u lit %u ring %u mat %u", rm_frame, dlc_c.hit, dlc_c.compile,
-              dlc_c.refused[DLR_OP], dlc_c.refused[DLR_SLOT], dlc_c.refused[DLR_VTX], dlc_c.refused[DLR_LONG], dlc_c.full, dlc_c.lists, dlc_c.grp, dlc_c.skip, dlc_c.replay, dlc_c.i_near, dlc_c.i_lit, dlc_c.i_ring, dlc_c.i_mat);
     pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u | static grp %u tri %u fail %u full %u batch %u kb %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent, dlc_c.srep, dlc_c.stri, dlc_c.sfail, dlc_c.sfull, dlc_c.batch, pm_gpu_gstat_used() / 64u);
     memset(&dlc_c, 0, sizeof dlc_c);
 }
@@ -1416,7 +1414,6 @@ static int pdl_tpl_drive(void* list, unsigned nbytes) {
 }
 
 static void pdl_report(void) {
-    pm_log_hw("pdl f%d hit %u comp %u replay %u refuse %u full %u | exitbad %u drawbad %u texbad %u pso %u | m hit %u comp %u replay %u refuse %u full %u | tpl hit %u comp %u replay %u seg %u fb %u full %u | cls %u %u %u %u %u %u %u %u", rm_frame, pdl_c.hit, pdl_c.comp, pdl_c.replay, pdl_c.refuse, pdl_c.full, pdl_c.exitbad, pdl_c.drawbad, pdl_c.texbad, pso_n, pdl_m_c.hit, pdl_m_c.comp, pdl_m_c.replay, pdl_m_c.refuse, pdl_m_c.full, pdl_tpl_c.hit, pdl_tpl_c.comp, pdl_tpl_c.replay, pdl_tpl_c.seg, pdl_tpl_c.fallback, pdl_tpl_c.full, pdl_cls[0], pdl_cls[1], pdl_cls[2], pdl_cls[3], pdl_cls[4], pdl_cls[5], pdl_cls[6], pdl_cls[7]);
     memset(pdl_cls, 0, sizeof pdl_cls);
     memset(&pdl_c, 0, sizeof pdl_c);
     memset(&pdl_m_c, 0, sizeof pdl_m_c);

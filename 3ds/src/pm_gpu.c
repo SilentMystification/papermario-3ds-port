@@ -1836,7 +1836,6 @@ void pm_gpu_end(void) {
         float cmd = C3D_GetCmdBufUsage();
         static unsigned warned;
         frames_seen++;
-        if (frames_seen % 300 == 0) pm_log_hw("dr1 f%u merged %u splits %u uniform skips %u rect breaks %u", frames_seen, dr1_merged, kick_n, dr1_skips, dr1_breaks);
         if (draws_frame > draws_max) draws_max = draws_frame;
         prev_draws = draws_frame; kick_at = draws_frame >= 48 ? draws_frame * 55 / 100 : 0; /* KICK1 */
         kick_at2 = draws_frame >= 48 ? draws_frame * 85 / 100 : 0; /* KICK2 */

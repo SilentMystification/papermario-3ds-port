@@ -1735,7 +1735,6 @@ void au_BGMCmd_F5_UseInstrument(BGMPlayer* player, BGMPlayerTrack* track) {
     volume = instrument->volume & 0x7F;
     track->patch = patch;
     track->instrument = au_get_instrument(player->globals, bank, patch, &track->envelope);
-    { extern void pm_log(const char*, ...); pm_log("V09F5 player %p trk %d ins %d bank %x patch %d -> %p", player, (int)(track - player->tracks), insIndex, bank, patch, track->instrument); }
     if (volume != 0) {
         volume <<= 24;
     }
