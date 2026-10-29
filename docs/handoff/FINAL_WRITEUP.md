@@ -363,3 +363,26 @@ Push command (CLAUDE.md rule 6). Run in Git Bash from any folder:
 ```
 PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 audiostat texstat pacestat logstat phase phsum loglevel=debug
 ```
+
+## 7. LIVELOG (build 1462, git 835be2fd7)
+
+Problem: the console live log build3ds/hw_live_log_170.txt was 0 bytes after pm_main_final4. The status line was dropped, so no reason was logged.
+
+- The live status (socInit result, socket, bind) is now written after pm_log_start, so it reaches log.txt and the live log.
+- push_3ds.sh passes the livelog switch to the game. The live socket no longer depends on netload detection.
+- Azahar yard_live: log line 3 is "live log: port 17492 (buffer 0x8000000, 131072 bytes, alloc 00000000, socInit 00000000)". Azahar opens the socket. The picture is not yet read by a person.
+- Cause on the console is not proven. Check the first live log line after the next push. If it shows "live log: off (socInit ...)", the code gives the failing result.
+
+Console check after the push:
+
+```
+grep "live log" build3ds/hw_live_log_170.txt
+```
+
+Expected: "live log: port 17492". The file must be larger than 0 bytes.
+
+Push command:
+
+```
+PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 audiostat texstat pacestat logstat phase phsum loglevel=debug
+```
