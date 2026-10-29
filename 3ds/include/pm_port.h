@@ -94,6 +94,7 @@ void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
 enum { FS_REST, FS_LOGIC, FS_DL, FS_GBI, FS_FLUSH, FS_GWAIT, FS_SWAP, FS_AUDIO, FS_N };
 extern int pm_fs_on;
 extern int pm_fs_q; /* 1 during a key frame draw: no mark */
+extern unsigned pm_fs_tasks; /* WMODEL: gbi tasks walked in this frame (counted only with fsplit) */
 void pm_fs_mark(int cat);
 #define FS_MARK(c) do { if (pm_fs_on) pm_fs_mark(c); } while (0)
 /* RSP split counters (one rsplit line per drawn frame with phase): crossings the phase line does not name. */

@@ -156,6 +156,16 @@ static int fs_want, fs_first;
 static int fs_cur = FS_REST;
 static unsigned fs_last, fs_t0, fs_svc0, fs_max, fs_over, fs_n, fs_frame;
 static unsigned long long fs_sum[FS_N], fs_wall;
+static unsigned long long fs_tk_sum, fs_wm_sum; /* WMODEL: render tasks and world model list entries, summed over the window */
+static unsigned fs_tk_max, fs_wm_max;
+unsigned pm_fs_tasks;
+/* WMODEL: non-null entries of the decomp world model list (wModelList, MAX_MODELS 256). Cold: once per frame, fsplit only. */
+extern void* wModelList[256];
+static __attribute__((cold, noinline)) unsigned fs_count_models(void) {
+    unsigned n = 0;
+    for (int i = 0; i < 256; i++) n += wModelList[i] != 0;
+    return n;
+}
 extern unsigned pm_svc_n;
 #define FS_OVER50 ((unsigned)(50.f * TICKS_MS)) /* 50 ms in ticks */
 #define FSMS(k) ((float)fs_sum[k] / (float)fs_n / TICKS_MS)
@@ -182,6 +192,8 @@ static void fs_frame_end(void) {
     fs_cur = FS_REST;
     unsigned w = now - fs_t0;
     fs_t0 = now;
+    unsigned tk = pm_fs_tasks; /* WMODEL */
+    pm_fs_tasks = 0;
     if (fs_first) { /* the first frame: no sum, no line */
         fs_first = 0;
         memset(fs_sum, 0, sizeof fs_sum);
@@ -192,14 +204,21 @@ static void fs_frame_end(void) {
     fs_wall += w;
     if (w > fs_max) fs_max = w;
     if (w > FS_OVER50) fs_over++;
+    unsigned wm = fs_count_models(); /* WMODEL */
+    fs_tk_sum += tk; fs_wm_sum += wm;
+    if (tk > fs_tk_max) fs_tk_max = tk;
+    if (wm > fs_wm_max) fs_wm_max = wm;
     if (++fs_n < 300) return;
     /* the rest part: wall minus the sum of the other parts, by construction of the chain (every tick belongs to one part) */
-    pm_log_hw("fsplit f%u logic %.1f dl %.1f gbi %.1f flush %.1f gwait %.1f swap %.1f audio %.1f rest %.1f wall %.1f max %.1f over50 %u svc %.1f",
+    pm_log_hw("fsplit f%u logic %.1f dl %.1f gbi %.1f flush %.1f gwait %.1f swap %.1f audio %.1f rest %.1f wall %.1f max %.1f over50 %u svc %.1f wm %.1f max %u tk %.2f max %u",
               fs_frame, FSMS(FS_LOGIC), FSMS(FS_DL), FSMS(FS_GBI), FSMS(FS_FLUSH), FSMS(FS_GWAIT), FSMS(FS_SWAP), FSMS(FS_AUDIO), FSMS(FS_REST),
-              (float)fs_wall / (float)fs_n / TICKS_MS, (float)fs_max / TICKS_MS, fs_over, (float)(pm_svc_n - fs_svc0) / (float)fs_n);
+              (float)fs_wall / (float)fs_n / TICKS_MS, (float)fs_max / TICKS_MS, fs_over, (float)(pm_svc_n - fs_svc0) / (float)fs_n,
+              (float)fs_wm_sum / (float)fs_n, fs_wm_max, (float)fs_tk_sum / (float)fs_n, fs_tk_max);
     memset(fs_sum, 0, sizeof fs_sum);
     fs_wall = 0;
     fs_max = fs_over = fs_n = 0;
+    fs_tk_sum = fs_wm_sum = 0;
+    fs_tk_max = fs_wm_max = 0;
     fs_svc0 = pm_svc_n;
 }
 
