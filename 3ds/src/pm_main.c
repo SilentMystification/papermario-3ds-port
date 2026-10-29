@@ -434,6 +434,7 @@ void pm_frame_loop(void) {
             step_vb += PM_VBLANKS_PER_STEP; /* the skipped step used its share of the schedule */
             au_kicked = 0;
             pm_gfx_retrace_skip();
+            FS_MARK(FS_REST); /* FS2: the skipped step's logic is not a drawn part of the next frame */
             pm_audio_step(); /* the audio ticks of the step still run */
         } else {
         fs1_run = 0;

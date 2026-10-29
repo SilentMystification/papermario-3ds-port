@@ -85,7 +85,8 @@ static void gbi_task(Gfx* gfxList, u32 n, int kind) {
 void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     (void)ucode;
     int swap = (flag & NU_SC_SWAPBUFFER) != 0;
-    if (swap) pm_audio_step(); /* AU1b: the game logic and the display list of this step are done: audio ticks here */
+    if (swap) { FS_MARK(FS_AUDIO); pm_audio_step(); } /* AU1b: the game logic and the display list of this step are done: audio ticks here */
+    FS_MARK(FS_GBI);
     PH_PUSH(PH_GBI);
     if (pm_interp_on > 0) {
         /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. pm_interp_key_draw replays every task of the
@@ -99,6 +100,7 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
         gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
     }
     PH_POP();
+    FS_MARK(swap ? FS_REST : FS_DL);
     if (swap) pm_interp_stop(); /* the background task has no swap flag: the record goes on until the main task */
 }
 
@@ -107,12 +109,14 @@ void pm_interp_drop_keys(void) { nkey = 0; } /* F11-10 */
 /* F06-2: the key frame of the last step, drawn without replacements. Returns 0 when the step built no list. */
 int pm_interp_key_draw(void) {
     if (!nkey) return 0;
+    pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_begin(1);
     PH_PUSH(PH_GBI);
     for (int i = 0; i < nkey; i++) gbi_task(key_list[i], key_size[i], 2);
     PH_POP();
     nkey = 0;
     pm_gpu_end();
+    pm_fs_q = 0;
     return 1;
 }
 

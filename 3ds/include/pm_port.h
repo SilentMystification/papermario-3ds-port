@@ -91,6 +91,12 @@ void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
 #define PH_PUSH(id) do { if (pm_ph_on) pm_ph_push(id); } while (0)
 #define PH_POP() do { if (pm_ph_on) pm_ph_pop(); } while (0)
 #define PH_ADD(c, n) do { if (pm_ph_on) pm_ph_cnt[c] += (unsigned)(n); } while (0)
+/* FS2: switch fsplit. Coarse split of a drawn frame, one tick read per mark (12 per drawn frame). Each mark closes the open part and opens the next. */
+enum { FS_REST, FS_LOGIC, FS_DL, FS_GBI, FS_FLUSH, FS_GWAIT, FS_SWAP, FS_AUDIO, FS_N };
+extern int pm_fs_on;
+extern int pm_fs_q; /* 1 during a key frame draw: no mark */
+void pm_fs_mark(int cat);
+#define FS_MARK(c) do { if (pm_fs_on) pm_fs_mark(c); } while (0)
 /* RSP split counters (one rsplit line per drawn frame with phase): crossings the phase line does not name. */
 enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
     RS_TK_BG, RS_TK_MAIN, RS_TK_KEY, RS_TUS_BG, RS_TUS_MAIN, RS_TUS_KEY, RS_TOPS, /* PI1: tasks per kind, us per kind (BG no swap flag, MAIN swap, KEY key replay), ops in tasks */

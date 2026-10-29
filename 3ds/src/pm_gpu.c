@@ -1777,8 +1777,10 @@ void pm_gpu_begin(int clear) {
     if (!gpu_ok) return;
     pm_tex_upload_vram_before_frame();
     buffers_idle(); /* row 4: frees the full images and the copy buffer unused for IDLE_FREE frames. C3D_RenderTargetDelete asserts outside a frame, so this is before C3D_FrameBegin */
+    FS_MARK(FS_GWAIT);
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
     raw1_reset(); sh_clear(); C3D_FrameBegin(pm_interp_on > 0 ? C3D_FRAME_SYNCDRAW : 0); /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
+    FS_MARK(FS_REST);
     PH_POP();
     pm_ph_gpu_note();
     dump_shot();
@@ -1797,6 +1799,7 @@ void pm_gpu_begin(int clear) {
 
 void pm_gpu_end(void) {
     if (!gpu_ok) return;
+    FS_MARK(FS_FLUSH);
     flush();
     if (off_active) pm_gpu_off_end();
     { static int gt_done; if (drew && pm_debug_has("grabtest") && !gt_done) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot. Row 5: a grab that fails (no VRAM) is tried again next frame */
@@ -1834,6 +1837,7 @@ void pm_gpu_end(void) {
     pm_gbi_end_frame();
     /* Without this flag citro3d flushes the entire linear heap. That heap is
      * the 20MB port pool, so every frame was writing it back through the cache. */
+    FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
     C3D_FrameEnd(GX_CMDLIST_FLUSH);
     PH_POP();

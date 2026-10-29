@@ -161,6 +161,60 @@ static void ps_step(const Rec* r) {
     }
 }
 
+/* FS2: switch fsplit. The open part takes the time since the last mark. A mark reads the tick once, so a drawn frame has 12 reads:
+ * 11 marks in pm_gpu_begin, the step wrap, nuGfxTaskStart, pm_gpu_end and pm_main, plus the frame end. No per-op or per-draw read. */
+int pm_fs_on, pm_fs_q;
+static int fs_want, fs_first;
+static int fs_cur = FS_REST;
+static unsigned fs_last, fs_t0, fs_svc0, fs_max, fs_over, fs_n, fs_frame;
+static unsigned long long fs_sum[FS_N], fs_wall;
+extern unsigned pm_svc_n;
+#define FS_OVER50 ((unsigned)(50.f * TICKS_MS)) /* 50 ms in ticks */
+#define FSMS(k) ((float)fs_sum[k] / (float)fs_n / TICKS_MS)
+
+void pm_fs_mark(int cat) {
+    if (pm_fs_q) return;
+    unsigned now = pm_ticks();
+    fs_sum[fs_cur] += now - fs_last;
+    fs_last = now;
+    fs_cur = cat;
+}
+
+static void fs_arm(void) { /* the first frame end after arming only starts the clock: the boot time is not a frame */
+    fs_last = fs_t0 = pm_ticks();
+    fs_cur = FS_REST;
+    fs_svc0 = pm_svc_n;
+    fs_first = 1;
+}
+
+static void fs_frame_end(void) {
+    unsigned now = pm_ticks();
+    fs_sum[fs_cur] += now - fs_last;
+    fs_last = now;
+    fs_cur = FS_REST;
+    unsigned w = now - fs_t0;
+    fs_t0 = now;
+    if (fs_first) { /* the first frame: no sum, no line */
+        fs_first = 0;
+        memset(fs_sum, 0, sizeof fs_sum);
+        fs_svc0 = pm_svc_n;
+        return;
+    }
+    fs_frame++;
+    fs_wall += w;
+    if (w > fs_max) fs_max = w;
+    if (w > FS_OVER50) fs_over++;
+    if (++fs_n < 300) return;
+    /* the rest part: wall minus the sum of the other parts, by construction of the chain (every tick belongs to one part) */
+    pm_log_hw("fsplit f%u logic %.1f dl %.1f gbi %.1f flush %.1f gwait %.1f swap %.1f audio %.1f rest %.1f wall %.1f max %.1f over50 %u svc %.1f",
+              fs_frame, FSMS(FS_LOGIC), FSMS(FS_DL), FSMS(FS_GBI), FSMS(FS_FLUSH), FSMS(FS_GWAIT), FSMS(FS_SWAP), FSMS(FS_AUDIO), FSMS(FS_REST),
+              (float)fs_wall / (float)fs_n / TICKS_MS, (float)fs_max / TICKS_MS, fs_over, (float)(pm_svc_n - fs_svc0) / (float)fs_n);
+    memset(fs_sum, 0, sizeof fs_sum);
+    fs_wall = 0;
+    fs_max = fs_over = fs_n = 0;
+    fs_svc0 = pm_svc_n;
+}
+
 /* Phase timing needs the switch (ph_want) and the log (pm_log_file). Logging off: pm_ph_on is 0, so no tick is read and no line is formed. */
 static int ph_want, dcs_want;
 int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and the dcsum line; no other phase site */
@@ -168,6 +222,8 @@ void pm_ph_log_gate(int on) {
     pm_ph_on = on && ph_want;
     pm_dcs_on = on && dcs_want;
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
+    if (on && fs_want && !pm_fs_on) fs_arm();
+    pm_fs_on = on && fs_want;
 }
 
 void pm_ph_init(void) {
@@ -179,6 +235,9 @@ void pm_ph_init(void) {
     pm_dcs_on = dcs_want && pm_log_file();
     ps_init(); /* only parses the abtog switch, so it runs even while logging is off */
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
+    fs_want = pm_debug_has("fsplit");
+    pm_fs_on = fs_want && pm_log_file();
+    if (pm_fs_on) fs_arm();
     if (!pm_ph_on) return;
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();
@@ -300,6 +359,7 @@ void pm_ph_ui(const char* what, int v) {
 }
 
 void pm_ph_frame_end(void) {
+    if (pm_fs_on) fs_frame_end();
     if (!pm_ph_on) return;
     unsigned now = pm_ticks();
     Rec* r = &win[nwin];
@@ -336,7 +396,9 @@ void __wrap_step_game_loop(void) {
     pm_step_calls++;
     pm_interp_start();
     PH_PUSH(PH_LOGIC);
+    FS_MARK(FS_LOGIC);
     __real_step_game_loop();
+    FS_MARK(FS_DL);
     PH_POP();
 }
 

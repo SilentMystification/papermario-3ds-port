@@ -36,7 +36,7 @@
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with pacestat logstat only. Frame-time baseline for LOGFIX (yard has no frame-time line).",
       "proves": "pacestat and logstat print the frame time lines on the yard map, and the yard picture still draws.",
       "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug pacestat logstat",
-      "until": "warp: scene f300 ",
+      "until": "logstat frames 300 work [0-9.]+ ms wall 3[0-9]\\.",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
@@ -115,6 +115,98 @@
       "reason": ""
     },
     {
+      "name": "yard_fsplit",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard_pace, with the fsplit set (pacestat logstat fsplit). Cost test for FSPLIT: 12 tick reads per drawn frame.",
+      "proves": "fsplit prints one coarse split line per 300 drawn frames on the yard map, and the yard picture still draws.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug pacestat logstat fsplit",
+      "until": "fsplit f600 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "fsplit window",
+          "regex": "fsplit f300 logic "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "mac01t_fsplit",
+      "status": "unverified",
+      "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t, with fsplit instead of phase. Split values for FSPLIT.",
+      "proves": "fsplit prints the coarse split for the window f600 to f900 on mac_01, and the mac_01 picture still draws.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug fsplit",
+      "until": "fsplit f900 ",
+      "cap": 120,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "fsplit window f600 to f900",
+          "regex": "fsplit f900 logic "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 50[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "pause_fsplit",
+      "status": "unverified",
+      "subject": "Pause status menu open at frames 120 to 137, same as pause_menu, with fsplit instead of phase. Picture compare for FSPLIT.",
+      "proves": "fsplit runs in the pause menu: the window line prints, and the top shot at frame 130 shows the open pause menu.",
+      "debug": "preset=toad padscript=wait80,START*3,wait900 fsplit shots shotwin=130:1 loglevel=debug",
+      "until": "fsplit f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "fsplit window",
+          "regex": "fsplit f300 logic "
+        },
+        {
+          "name": "top shot in open pause menu (frame 130)",
+          "regex": "shot \\d+ frame 130\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "yard_live",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the livelog switch so the socket starts.",
@@ -174,6 +266,42 @@
         {
           "name": "shot",
           "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "forest_mim",
+      "status": "unverified",
+      "subject": "Mario in mim_05 (area 12 map 4, Forever Forest), reached by warp to mim_05 entry 0 (no tour). In control, shot at frames 400 and 404.",
+      "proves": "FOREST diagnostic: opsplit, mdlsum and dlc2 static share for mim_05 at f599 (window f300 to f599), to compare with mac01t (opsplit f599 ops 1732, mdlsum f599 tot ops 1732, dlc2 static tri 91040). Log only, no numeric gate.",
+      "debug": "warp=mim_05:0 shots shotwin=400:6 loglevel=debug phase pacestat logstat dcsum",
+      "until": "mdlsum f599 r12 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mim_05 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mim_05 entry 0"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f599 ops"
+        },
+        {
+          "name": "mdlsum total ops (forest, f599)",
+          "regex": "mdlsum f599 tot ops (\\d+) "
+        },
+        {
+          "name": "dlc2 static tri (forest, f599)",
+          "regex": "dlc2 f599 tri \\d+ .*static grp \\d+ tri \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 40[0-5]\\b"
         }
       ],
       "reason": ""

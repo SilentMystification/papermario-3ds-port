@@ -126,3 +126,21 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 - Picture rule: top shots equal to the FINAL4 baseline (build 6e965c84b; the only later src change is LIVELOG log text). yard, yard_pace, yard_dcsum, yard_phase, mac01 (2 of 2): byte-equal. pause_menu: run 1 differed, run 2 byte-equal to baseline. Run 1 and run 2 of one binary differ, so the difference is run noise.
 - The yard run without flags prints no frame-time line. Its frame time is taken from yard_pace.
 - pause_menu run 1: walk gate failed (12.9 against 12.8). Run 2 passed (11.5). Gate value varies between runs.
+
+## FSPLIT (2026-10-29): fsplit coarse split, 12 tick reads per drawn frame
+
+- Switch `fsplit` (needs the log on and loglevel=debug). Marks at the coarse boundaries only: pm_gpu_begin (GWAIT), the step wrap (LOGIC, DL), nuGfxTaskStart (AUDIO, GBI, DL or REST), pm_gpu_end (FLUSH, SWAP), the pm_main skip path (REST). One line per 300 drawn frames. Values are ms per frame. `svc` is pm_ticks reads per frame.
+- Not in the split: kick flushes (inside gbi), audio joins except the swap-task join (AUDIO), pacing idle (in rest). The 12-read budget does not allow them.
+- Per-op census, per-op timers and PH_PUSH sites stay off (pm_ph_on is 0 with fsplit alone).
+
+| Scenario | Flags | Command | Result (build with fsplit, binary sha256 8a9fdfc9e...) | Status |
+|---|---|---|---|---|
+| yard_pace (until: steady window, `wall 3x`) | pacestat logstat | `yard_pace -Try` | f300 (load): work 11.77 ms. f600 (steady): work 6.99 ms, wall 33.43 ms | unverified (run 3 of FSPLIT) |
+| yard_fsplit (until fsplit f600) | pacestat logstat fsplit | `yard_fsplit -Try` | f300: logstat work 11.79 ms. f600: logic 0.7 dl 0.6 gbi 5.4 flush 0.1 gwait 0.0 swap 0.2 audio 0.0 rest 26.4 wall 33.4 svc 12.0. Sum of parts = logstat work 7.00 ms | unverified |
+| mac01t_fsplit (until fsplit f900) | fsplit (tour to mac_01) | `mac01t_fsplit -Try` | f900 (steady): logic 1.3 dl 1.4 gbi 7.2 flush 0.1 gwait 0.0 swap 0.2 audio 0.0 rest 23.2 wall 33.4 max 34.0 over50 0 svc 12.0. f600: wall 34.8, over50 3 | unverified |
+| pause_fsplit (until fsplit f300) | fsplit (pause open 96 to 140) | `pause_fsplit -Try` | f300: logic 0.8 dl 0.7 gbi 7.0 flush 0.1 gwait 0.0 swap 0.3 audio 0.0 rest 25.3 wall 34.1 over50 7 svc 11.4 | unverified |
+
+- Cost (Azahar, direction only): steady window +0.01 ms (7.00 vs 6.99 ms work). Load window +0.02 ms (11.79 vs 11.77). Limit 0.2 ms: passed.
+- Pictures (shot_cmp.py, top shots, byte-equal): yard 1 of 1 (yard, yard_pace, yard_fsplit). mac01t_fsplit 2 of 2 against shots_base_mac01t (older build). pause_fsplit 1 of 1 against pause_menu (LOGFIX build). The yard_fsplit shot is from the build before the over50 fix (summary arithmetic only). A person must read the shots by eye.
+- Log note: a run that stops on its until-line can lose the last lines of the on-disk log.txt. azt reads the live lines; build3ds/last_log.txt holds the copy used here.
+- Mistakes: mac01t_fsplit run 1 used until `fsplit f899`. That line never prints (windows print at 300, 600, 900). The run ran to the 120 s cap. Fixed to f900. yard_pace run 2 used a window-1 regex and failed the steady-frame check. Fixed in run 3.
