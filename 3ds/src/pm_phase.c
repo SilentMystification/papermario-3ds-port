@@ -325,6 +325,7 @@ static void ph_format(const PhRec* p) {
     pm_log_hw("dlcsplit f%u gdl %u gdl1 %u gdl7 %u | hit %u miss %u | ops %u grp %u skip %u", r->f, p->rs[RS_GDL], p->rs[RS_GDL1], p->rs[RS_GDL7], p->rs[RS_DLCH], p->rs[RS_DLCM], p->rs[RS_DLCOPS], p->rs[RS_DLCG], p->rs[RS_DLCSKIP]);
     pm_log_hw("rmsplit f%u n %u fb %u sk %u sks %u", r->f, p->rs[RS_RMN], p->rs[RS_RMSK], p->rs[RS_SKN], p->rs[RS_SKS]);
     pm_log_hw("tbsplit f%u n %u fb %u", r->f, p->rs[RS_TBN], p->rs[RS_TBFB]);
+    pm_log_hw("gabsplit f%u n %u", r->f, p->rs[RS_GAB]);
     pm_log_hw("tbdbg f%u gbi %u pdl %u pdlm %u dlc %u tpl %u", r->f, p->rs[RS_TBG], p->rs[RS_TBPD], p->rs[RS_TBPM], p->rs[RS_TBDL], p->rs[RS_TBTS]);
     pm_log_hw("combsplit f%u plan %u mode %u prim %u env %u lay %u con %u n %u g %u cn %u bn %u vn %u ut %u us %u u1 %u un %u ks %u fd %u",
               r->f, p->cs[CS_PLAN], p->cs[CS_MODE], p->cs[CS_PRIM], p->cs[CS_ENV], p->cs[CS_LAY], p->cs[CS_CON],

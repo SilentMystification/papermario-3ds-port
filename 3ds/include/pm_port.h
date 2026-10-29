@@ -100,6 +100,7 @@ enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
     RS_SKS, /* G2: state ops that leave the live state as it is, skipped before the prologue */
     RS_TBN, RS_TBFB, /* C1: G_PM_TEX binds run by tb_run, of them fallback to G_DL */
     RS_TBE, RS_TBG, RS_TBPD, RS_TBPM, RS_TBDL, RS_TBTS, /* probe: emits, G_PM_TEX ops seen by stage */
+    RS_GAB, /* GA1: glyph texrects that found the atlas bound (no flush, no wrap call) */
     RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 unsigned pm_gbi_ops_now(void);

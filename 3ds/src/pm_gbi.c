@@ -2477,11 +2477,25 @@ static int tile_bound(int n) {
     if (memcmp(tile_wrap[n], ens_wrap, sizeof ens_wrap) || memcmp(tile_sz[n], ens_sz, sizeof ens_sz)) return 0;
     return 1;
 }
+/* GA1: a glyph (4 bit CI, message font) is one cell of the sheet atlas. When the atlas of its sheet and palette is the bound
+ * texture, the glyph needs no flush and no wrap call: tile_bound compares the raster, which differs per glyph. */
+static int glyph_atlas_bound(void) {
+    int gx, gy;
+    if (!td[0].valid || !td[0].src || td[0].fmt != 2 || td[0].siz != 0 || !ens_src) return 0;
+    if (ens_pal != td[0].pal || ens_fmt != 2 || ens_siz != 0) return 0;
+    if (memcmp(tile_wrap[0], ens_wrap, sizeof ens_wrap) || memcmp(tile_sz[0], ens_sz, sizeof ens_sz)) return 0;
+    return pm_tex_glyph_same(td[0].src, td[0].fmt, td[0].siz, td[0].w, td[0].h, td[0].pal, td[0].pal_n, &gx, &gy);
+}
 static void ensure_tile(int n) {
     if (n == 0 && pdl_lazy_tile(0)) return;
     if (!td[n].valid) return;
     tile_fx = (float)(tile_sz[n][0] & 3) * 0.25f; /* PT38 */
     tile_fy = (float)(tile_sz[n][1] & 3) * 0.25f;
+    if (n == 0 && !tile_bound(0) && glyph_atlas_bound()) {
+        RS_ADD(RS_GAB, 1);
+        cur_tile = 0;
+        return;
+    }
     if (tile_bound(n)) {
         cur_tile = n;
         return;
@@ -2789,6 +2803,13 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                           tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
                           tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15);
             if (tile == 0) GP_SET(3, same_tile);
+            if (tile == 0 && !same_tile) { /* DBG settdbg: which field of tile 0 differs */
+                static int sdb = -1; if (sdb < 0) sdb = pm_debug_has("settdbg");
+                if (sdb) pm_log_d("settdbg f%u ok %d gen %u/%u fmt %d/%d siz %d/%d tmem %d/%d pal %d/%d wrap %d%d%d%d/%d%d%d%d shift %d%d/%d%d",
+                    pm_frame_count(), st0_ok, pm_tex_wrap_gen(), st0_ep, tile_fmt[0], (w0 >> 21) & 7, tile_siz[0], (w0 >> 19) & 3, tile_tmem[0], (int)(w0 & 0x1ff),
+                    tile_pal[0], (w1 >> 20) & 15, tile_wrap[0][0], tile_wrap[0][1], tile_wrap[0][2], tile_wrap[0][3],
+                    (w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15, tile_shift[0][0], tile_shift[0][1], w1 & 15, (w1 >> 10) & 15);
+            }
             tile_fmt[tile] = (w0 >> 21) & 7;
             tile_siz[tile] = (w0 >> 19) & 3;
             tile_tmem[tile] = w0 & 0x1ff;

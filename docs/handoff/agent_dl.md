@@ -125,3 +125,11 @@
 - Azahar pause (azt pause_menu + phase, lanes dl2 and dl2base, 2 starts of dl_glyph): draw_msg ops f599 1504 -> 1092 (-412, need 800; gate half = 400, kept), us 14722 -> 14585.
 - Picture: shots 0000-0002 byte-equal to baseline. Subject: pause status page, dialog text visible.
 - I-cache: one extra noinline call per glyph replaces 5 dispatch rounds; D-cache not measured.
+
+## GLYPH-ATLAS (branch dl2-glyph-atlas from main decf43341, NOT merged, walk gate missed)
+- Diagnosis (pause f599, gbiprof + flsplit + thsplit, PM_ROW=dl_atlas 2/8 before GA1): tex closes 213 (62 empty), texrect consecutive 0, tex lookups hit 197. Top flush site pm_gbi.c:2805 (tile-0 SETTILE, not same_tile), about 181 per frame.
+- Cause: each glyph texrect calls ensure_tile(0). tile_bound compares the per-glyph raster, so it fails. The unbound path calls pm_tex_set_wrap (wrap gen +1), so the next glyph SETTILE fails same_tile and flushes again. Two flushes per glyph.
+- Change (GA1): ensure_tile(0) takes the atlas as bound when pm_tex_glyph_same confirms the bound slot is the atlas of this sheet and palette. No flush, no wrap call. Counter RS_GAB (gabsplit line in pm_phase.c). Debug settdbg line (pm_gbi.c, SETTILE) kept.
+- Result, same scene: tex closes 213 -> 122 (-43 percent; target half 107). Lookups hit 197 -> 96 (half, met). Consecutive texrects 0 -> 82 per frame. Azahar draw_msg us 14585 -> 14215 (-370 us; target 3 ms). Gate missed on the walk.
+- Picture: pause shots 0000-0002 byte-equal to glyph build. 0003 differs in 227 bytes at x 90-101, y 192-202: the spinning coin sprite. Text rows identical at 6x.
+- Next: the rest of the flushes are set_plan (2224), gbi 3105 (filter change), gbi 2875 (TLUT palette change per element). Not started.
