@@ -44,10 +44,10 @@ typedef struct {
     int vram_up; /* C3D_TexLoadImage pending before FrameBegin */
     u8* vram_stage;
     u8* tex_vram_ptr; /* slab VRAM; tex.data may point at vram_stage while staging */
-    u8* tex_lin_heap; /* linearAlloc from C3D_TexInit(tex_lin); data points at vram_stage instead */
+    unsigned up_frame; /* row 1: tc_frame of the last C3D_TexLoadImage; vram_stage is freed two frames later */
+    unsigned stage_n; /* row 1 measure: bytes of vram_stage (0 when freed) */
     int stale; /* invalidated while this frame's draws still use it: freed at the next frame start */
     C3D_Tex tex;
-    C3D_Tex tex_lin;
 } Slot;
 
 static Slot slots[SLOTS];
@@ -488,13 +488,20 @@ static u8* slab_alloc(unsigned bytes0) {
     if (!slab_ext[best].len) { for (unsigned i = (unsigned)best; i + 1 < slab_n; i++) slab_ext[i] = slab_ext[i + 1]; slab_n--; }
     return r;
 }
+static unsigned slab_lost; /* bytes of VRAM the extent table could not take back (row 1 measure) */
+static unsigned stage_freed; /* row 1 measure: vram_stage bytes freed by pm_tex_begin_frame, cumulative */
 static void slab_free(void* p, unsigned bytes) {
     bytes = slab_size(bytes);
     unsigned i = 0;
     while (i < slab_n && (u32)slab_ext[i].p < (u32)p) i++;
     if (i > 0 && slab_ext[i - 1].p + slab_ext[i - 1].len == (u8*)p) { slab_ext[i - 1].len += bytes; i--; }
     else if (slab_n < SLAB_EXT) { for (unsigned k = slab_n; k > i; k--) slab_ext[k] = slab_ext[k - 1]; slab_ext[i].p = p; slab_ext[i].len = bytes; slab_n++; }
-    else return; /* extent table full: the block is lost until the next boot */
+    else { /* extent table full: the block is lost until the next boot. Counted and logged once. */
+        static int lost_once;
+        slab_lost += bytes;
+        if (!lost_once) { lost_once = 1; pm_log_w("texcache: extent table full, %u B lost", bytes); }
+        return;
+    }
     if (i + 1 < slab_n && slab_ext[i].p + slab_ext[i].len == slab_ext[i + 1].p) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
 }
 static void pend_flush_one(u8* p, unsigned len) { GSPGPU_FlushDataCache(p, len); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, len >> 10); }
@@ -509,6 +516,7 @@ static void upload_vram_slot(Slot* s) {
     GSPGPU_FlushDataCache(s->vram_stage, n);
     C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     s->vram_up = 0;
+    s->up_frame = tc_frame;
 }
 static unsigned pm_th_dc_n, pm_th_dc_us; /* PI3: pend_flush_one calls and us this drawn frame */
 static void flush_pend_only(void) {
@@ -559,12 +567,8 @@ static void drop(Slot* s) {
     if (s->vram_stage) {
         linearFree(s->vram_stage);
         s->vram_stage = NULL;
+        s->stage_n = 0;
     }
-    if (s->tex_lin_heap) {
-        linearFree(s->tex_lin_heap);
-        s->tex_lin_heap = NULL;
-    }
-    memset(&s->tex_lin, 0, sizeof s->tex_lin);
     s->vram_up = 0;
     if (s->slab) {
         slab_free(s->tex_vram_ptr ? s->tex_vram_ptr : s->tex.data, s->bytes);
@@ -584,20 +588,6 @@ static void drop(Slot* s) {
 unsigned pm_tex_slot_gen(int i) {
     if (i < 0 || i >= SLOTS || !slots[i].live) return 0;
     return slots[i].sgen;
-}
-
-static void slot_tex_lin_build(Slot* s, GPU_TEXCOLOR gf, int pw, int ph, unsigned bytes) {
-    if (s->tex_lin_heap) {
-        linearFree(s->tex_lin_heap);
-        s->tex_lin_heap = NULL;
-    }
-    memset(&s->tex_lin, 0, sizeof s->tex_lin);
-    if (!C3D_TexInit(&s->tex_lin, (u16)pw, (u16)ph, gf)) return;
-    s->tex_lin_heap = (u8*)s->tex_lin.data;
-    s->tex_lin.data = s->vram_stage;
-    s->tex_lin.size = bytes;
-    s->tex_lin.width = (u16)pw;
-    s->tex_lin.height = (u16)ph;
 }
 
 static const C3D_Tex* tex_for_draw(Slot* s) {
@@ -693,6 +683,14 @@ void pm_tex_map_state(unsigned* out_n, unsigned* out_ev) {
     *out_n = n;
     *out_ev = tot_evict;
 }
+/* row 1 measure: live vram_stage KB, cumulative freed KB, and extent bytes lost to a full table. */
+void pm_tex_stage_state(unsigned* live_kb, unsigned* freed_kb, unsigned* lost_b) {
+    unsigned live = 0;
+    for (int i = 0; i < slot_hi; i++) live += slots[i].stage_n;
+    *live_kb = live >> 10;
+    *freed_kb = stage_freed >> 10;
+    *lost_b = slab_lost;
+}
 unsigned pm_tex_peak(void) { return used_peak; }
 /* V13c: highest cache use since the last call, then restart from the current use. */
 unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }
@@ -750,8 +748,16 @@ void pm_tex_begin_frame(void) {
     epoch++;
     frame_bytes = 0;
     /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
-    for (int i = 0; i < slot_hi; i++)
+    for (int i = 0; i < slot_hi; i++) {
         if (slots[i].live && slots[i].stale) drop(&slots[i]);
+        /* row 1: the linear staging copy is only read by the upload, two frames before it can go */
+        if (slots[i].live && slots[i].vram_stage && !slots[i].vram_up && tc_frame >= slots[i].up_frame + 2) {
+            linearFree(slots[i].vram_stage);
+            slots[i].vram_stage = NULL;
+            stage_freed += slots[i].stage_n;
+            slots[i].stage_n = 0;
+        }
+    }
 }
 
 extern unsigned pm_dlc_gen; /* DLC1: a write into the map shape buffer (ROM read, Yay0 decode) makes the compiled display lists stale */
@@ -1149,6 +1155,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         }
         return 0;
     }
+    u8* sp_keep = NULL;
     { /* image in the VRAM pool; header from a per-format template, data in the slab */
         u8* sp = slab_alloc(reserve);
         while (!sp && evict_oldest_done()) {
@@ -1195,6 +1202,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             C3D_TexDelete(&tmp);
         }
         s->slab = 1;
+        sp_keep = sp;
     }
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
@@ -1283,14 +1291,16 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     if (s->vram_stage) linearFree(s->vram_stage);
     s->vram_stage = (u8*)linearAlloc(gpu_size);
     if (!s->vram_stage) {
+        slab_free(sp_keep, reserve); /* row 1: the VRAM extent taken above goes back, or it is lost */
+        s->tex_vram_ptr = NULL; s->slab = 0; memset(&s->tex, 0, sizeof s->tex);
         fail_last = 1;
         fail_n++;
         return 0;
     }
     memcpy(s->vram_stage, staged, gpu_size);
+    s->stage_n = gpu_size;
     pend_add(s->vram_stage, gpu_size);
     s->bytes = reserve;
-    slot_tex_lin_build(s, gf, pw, ph, gpu_size);
     s->vram_up = 1;
     if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < reserve; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, reserve, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
     if (tx1_chkon && memcmp(tx1_chk, s->vram_stage, gpu_size) != 0) {

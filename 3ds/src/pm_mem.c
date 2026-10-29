@@ -138,6 +138,7 @@ void pm_tex_map_delta(unsigned* o);
 unsigned pm_tex_budget(void);
 unsigned pm_tex_fail_count(void);
 void pm_tex_map_state(unsigned* out_n, unsigned* out_ev);
+void pm_tex_stage_state(unsigned* live_kb, unsigned* freed_kb, unsigned* lost_b);
 static unsigned lin_peak; /* highest linear bytes in use seen at a log call */
 
 /* M01 measurement: newlib heap in use, newlib heap free, linear pool free. All bytes read from the OS now. */
@@ -198,6 +199,8 @@ void pm_mem_log(const char* tag) {
         unsigned sl, evc, fc = pm_tex_fail_count();
         pm_tex_map_state(&sl, &evc);
         pm_log_d("texmap state: slots %u used %uKB evict cum %u tex fail cum %u delta %u vramfree min %u KB", sl, pm_tex_used() >> 10, evc, fc, fc - fail_prev, vram_min_kb);
+        { unsigned stl, stf, stlost; pm_tex_stage_state(&stl, &stf, &stlost);
+          pm_log_d("texmap linear: used %uKB of %uKB peak %uKB stage live %uKB freed cum %uKB slab lost %u B", (unsigned)((pm_linear_bytes() - linearSpaceFree()) >> 10), pm_linear_bytes() >> 10, lin_peak >> 10, stl, stf, stlost); }
         fail_prev = fc;
     }
     {
