@@ -78,3 +78,14 @@
 - Azahar yard f300-599 (PM_ROW=dl_h2, 1/8 used): main walk 8069.6 us (H3 reference 8086 us, inside the 50 us noise). bg 258 us. Picture: yard frame checked by eye (HUD, Mario, partner, house, pipe).
 - Not done: a same-run byte compare of the shot against an H3 shot. lane-dl2/h3_shots has mtimes from another run, so it is not used as a reference.
 - Not done: rest of H2 (dc timers, off-screen and snap paths, pm_tex miss path -Os, dead pdl_try/pdl_try_m).
+
+## Update: lane 2 continuation (2026-10-29, dl_w4 budget 2/8)
+- Worktree dl2 moved to detached main (e1f8847ba). Old docs-only commit 05cdfe665 was off-branch; its text is kept here: fog start 2 (kzn_18 warp showed a Goomba field, not the volcano), H2 part 2 not done.
+- W2 (branch dl2-w2, commit 8ee2d859f, NOT on main): phase streak, sync and flush timers read the tick for one run in 8, scaled x8. New opsplit field pt = all pm_ticks reads per frame.
+  - pt at f599: 1267 -> 631 (2.0x). Plan 5x, keep gate 2.5x. Failed the gate: branch only.
+  - tk (op sampler, W1) unchanged at 60: tk counts only the W1 op sampler, not all reads.
+  - Main walk f300-599: 8069 -> 7208 us (phase timers removed from the walk; console build has none).
+  - Picture: yard shot equal by eye (HUD, Mario, partner, house, pipe). Byte compare differs (debug text overlay).
+- W4 (opf table prologue): not started.
+- H5/H4, pause row, C1i + HUD (dl2-c11 still not on main), fog volcano kzn_17/kzn_20: not started.
+- Next: W4 on detached main, then H5 divides, then pause row.
