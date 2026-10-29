@@ -28,7 +28,7 @@ Status: not run on the console yet. The user pushes in the morning.
 | text_menu | 3 of 3 pass (shot 178) | Status page text, periods and spacing | pass |
 | file_select | 3 of 3 pass (game mode 14, file select enter, shot 302). Run hit the 90 s cap | File 1 box, Select file to start | pass |
 | fileselect_rotate | same run as file_select (shots 282 to 293 in the set) | Box shift read by eye | pass |
-| full411 | see section 1a | no picture check (completion only) | see 1a |
+| full411 | 411 maps, tour done (PASS, 121 s) | completion only | pass |
 
 - Yard log numbers were not captured in the first pass (see section 1a). The phase lines were not on
   these runs, and the log file of each run was overwritten by the next run.
@@ -63,7 +63,9 @@ field. Closes is the first field of `flsplit tex`. Averages are over frames 300 
   Azahar numbers show direction only.
 - Pause, f300 to f599: 7634 us against 15789 us before R0 and 9833 us after R0.
 - Catalog shot lines pass on the new logs: yard `shot 0 frame 200`, pause `shot 2 frame 178`.
-- full411: see the line below.
+- full411 (one run, azt full411, row final, lane final, 412 shots): PASS. Log line
+  `tour: done, 411 maps` at line 20246, run time 121 s. Completion only, no picture check.
+  Tex fail count: see 1a line above (0 on the yard and pause runs).
 
 ## 2. What was done (by area)
 
