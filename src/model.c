@@ -4767,6 +4767,22 @@ RenderTask* queue_render_task(RenderTask* task) {
     return ret;
 }
 
+#ifdef TARGET_3DS
+extern int pm_ph_on;
+extern void pm_gbi_mdl_mark(unsigned id, int pan);
+/* MDL1 task census, phase on only: the ops of a task go to a pseudo model ID, not to the last model mark.
+ * 0xF001 render_transform_group, 0xF002 appendGfx_model_group, 0xF0FF other task. 0xF0FE is the tail (pm_gbi.c mdc_*). */
+static __attribute__((cold, noinline)) void census_task_mark(void (*fn)(void*)) {
+    unsigned id = 0xF0FF;
+    if (fn == render_transform_group) id = 0xF001;
+    else if (fn == appendGfx_model_group) id = 0xF002;
+    pm_gbi_mdl_mark(id, 0);
+}
+#define CENSUS_TASK(fn) do { if (pm_ph_on) census_task_mark(fn); } while (0)
+#else
+#define CENSUS_TASK(fn) ((void)0)
+#endif
+
 void execute_render_tasks(void) {
     s32 i, j, taskCount;
     s32 sorted[ARRAY_COUNT(*ClearRenderTaskLists)];
@@ -4859,6 +4875,7 @@ void execute_render_tasks(void) {
             }
 
             /* the key is (draw function, argument): the argument alone is not always an object pointer (PaperBoat note) */
+            CENSUS_TASK(appendGfx);
             FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
             FI_CLOSE();
@@ -4876,11 +4893,15 @@ void execute_render_tasks(void) {
         for (i = 0; i < taskCount; i++) {
             task = &taskList[sorted[i]];
             appendGfx = task->appendGfx;
+            CENSUS_TASK(appendGfx);
             FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
             FI_CLOSE();
         }
     }
+#ifdef TARGET_3DS
+    if (pm_ph_on) pm_gbi_mdl_mark(0xF0FE, 0); /* tail: ops after the last task */
+#endif
 
     RenderTaskListIdx++;
     if (RenderTaskListIdx > ARRAY_COUNT(RenderTaskLists) - 1) {

@@ -2218,7 +2218,7 @@ static __attribute__((cold, noinline)) void mdc_report(void) {
         picked[best] = 1;
         mdc_t* m = &mdc[best];
         unsigned tx = m->frames ? m->tex_sum / m->frames : 0;
-        pm_log_hw("mdlsum f%d r%d id %04x draws %u ops %u tris %u binds %u tex %u static %u/%u pan %u fog %u", rm_frame, r + 1, (unsigned)m->id,
+        pm_log_hw("mdlsum f%d r%d %s %04x draws %u ops %u tris %u binds %u tex %u static %u/%u pan %u fog %u", rm_frame, r + 1, m->id >= 0xF000 ? "task" : "id", (unsigned)m->id,
             (unsigned)(m->draws / 300), (unsigned)(m->ops / 300), (unsigned)(m->tris / 300), (unsigned)(m->binds / 300), tx,
             m->frames > 1 ? m->stat : 0u, m->frames > 1 ? m->frames - 1 : 0u, (unsigned)m->pan, (unsigned)m->fog);
     }
