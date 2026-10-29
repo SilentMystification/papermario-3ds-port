@@ -899,6 +899,30 @@
         }
       ],
       "reason": "Completion only, not run in this task (budget). The same args ran in budget row sweep420 at 2026-10-29 03:51 (rc 0, tour: done, 143 s). Up to 1800 s per run."
+    },
+    {
+      "name": "toad_gate",
+      "status": "unverified",
+      "subject": "Mario at the Toad Town west gate (mac_00 entry 0, preset toad_west), in control, shots at frames 200 and 204 (one shot every 4 frames).",
+      "proves": "TOADVIS diagnostic: the gate and water view on three builds (29f504d7b, 3dcfc661d, working tree). Compare top shots with shot_cmp.py. Log only, no numeric gate.",
+      "debug": "preset=toad_west shots shotwin=200:6 loglevel=debug",
+      "until": "shot \\d+ frame 204\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-4]\\b"
+        }
+      ],
+      "reason": "TOADVIS, not verified. Water and ground of mac_01 are not confirmed in this view."
     }
   ]
 }
