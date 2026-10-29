@@ -279,13 +279,38 @@ static void split_frame(void) {
     C3D_FrameSplit(GX_CMDLIST_FLUSH);
 }
 
+/* Boot arena for the 64 x 64 RGBA8 textures (4 small slots, 2 eight bit slots, and a snap of each): 12 blocks of 16 KB, 6 per bank.
+ * Made once at boot and never freed, so no 16 KB hole can form in a bank before the cache halves come up. */
+#define SMALL_BLK (64u * 64u * 4u)
+#define SMALL_N 12
+static u8* small_blk[SMALL_N];
+static int small_n, small_next;
+static void small_arena_init(void) {
+    for (int k = 0; k < SMALL_N; k++) {
+        u8* p = (u8*)vramMemAlignAt(SMALL_BLK, 0x80, (k & 1) ? VRAM_ALLOC_B : VRAM_ALLOC_A);
+        if (!p) { pm_vram_alloc_fail("small arena", SMALL_BLK >> 10); pm_log_e("small arena: block %d of %d failed", k, SMALL_N); return; }
+        pm_vram_reg(p, SMALL_BLK);
+        small_blk[small_n++] = p;
+    }
+}
+/* Init a VRAM texture. A 64 x 64 one takes an arena block; any other takes a block from vramAlloc. */
+static int tex_init_vram(C3D_Tex* t, int w, int h) {
+    if (w == 64 && h == 64) {
+        if (small_next >= small_n || !C3D_TexInit(t, 64, 64, GPU_RGBA8)) return 0;
+        linearFree(t->data);
+        t->data = small_blk[small_next++];
+        return 1;
+    }
+    if (!C3D_TexInitVRAM(t, w, h, GPU_RGBA8)) return 0;
+    pm_vram_reg(t->data, (unsigned)w * (unsigned)h * 4u);
+    return 1;
+}
 /* FX2a: the RDP loads a tile into TMEM before it draws, so a pass that reads the image it writes (the flame blur) sees the pixels from before
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
 static void off_snapshot(int i) {
     if (!offs[i].snap_ready) {
-        if (!C3D_TexInitVRAM(&offs[i].snap, offs[i].w, offs[i].h, GPU_RGBA8)) { pm_vram_alloc_fail("snap", (unsigned)(offs[i].w * offs[i].h * 4 / 1024)); pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
+        if (!tex_init_vram(&offs[i].snap, offs[i].w, offs[i].h)) { pm_vram_alloc_fail("snap", (unsigned)(offs[i].w * offs[i].h * 4 / 1024)); pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
         pm_vram_note();
-        pm_vram_reg(offs[i].snap.data, offs[i].w * offs[i].h * 4);
         C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
         C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
         offs[i].snap_ready = 1;
@@ -1147,6 +1172,7 @@ void pm_gpu_init(void) {
     pm_vram_reg(target->frameBuf.colorBuf, 240 * 400 * 4);
     pm_vram_reg(target->frameBuf.depthBuf, 240 * 400 * 4);
     pm_log_d("vram boot: colour in bank %c, depth in bank %c", pm_vram_bank_of(target->frameBuf.colorBuf) ? 'B' : 'A', pm_vram_bank_of(target->frameBuf.depthBuf) ? 'B' : 'A');
+    small_arena_init();
     C3D_RenderTargetSetOutput(target, GFX_TOP, GFX_LEFT,
         GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
@@ -1485,14 +1511,13 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             pm_tex_set_offscreen(i, NULL, 0, &offs[i].tex, siz, offs[i].w, offs[i].h);
         } else i = w == 64 ? OFF_N + off_sused++ : off_used++;
         if (!offs[i].rt) {
-            if (!C3D_TexInitVRAM(&offs[i].tex, w, h, GPU_RGBA8)) {
+            if (!tex_init_vram(&offs[i].tex, w, h)) {
                 pm_vram_alloc_fail("offslot", (unsigned)(w * h * 4 / 1024));
                 pm_log_e("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
                 off_fail = 1;
                 return 0;
             }
             pm_vram_note();
-            pm_vram_reg(offs[i].tex.data, w * h * 4);
             C3D_TexSetFilter(&offs[i].tex, GPU_LINEAR, GPU_NEAREST);
             C3D_TexSetWrap(&offs[i].tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
             offs[i].rt = C3D_RenderTargetCreateFromTex(&offs[i].tex, GPU_TEXFACE_2D, 0, -1);

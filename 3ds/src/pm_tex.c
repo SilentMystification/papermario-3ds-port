@@ -19,7 +19,7 @@ static u8* tx1_chk; /* switch tx1check: the new result, compared with the old pa
 /* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
 #define SLOTS 512
-#define BUDGET (1536u * 1024u) /* VRAM hot set (was 4 MB + 768 KB linear slab) */
+#define BUDGET (3072u * 1024u) /* VRAM hot set: two 1536 KB halves, one per VRAM bank */
 #define TEX_SCRATCH_PLANE (1024u * 512u * 2u) /* one linear or tiled plane (1024x512 RGBA5551) */
 typedef struct {
     const void* img;
@@ -448,24 +448,24 @@ static int fl1_on(void) { return slab_segs > 0; }
 void pm_vram_note(void); /* pm_mem.c */
 void pm_vram_alloc_fail(const char* what, unsigned kb); /* pm_mem.c */
 void pm_vram_reg(const void* p, unsigned bytes); /* pm_mem.c */
+int pm_vram_bank_of(const void* p);
 static void slab_init(void) {
-    unsigned free0 = (unsigned)vramSpaceFree();
-    static const unsigned sizes[2] = { BUDGET, BUDGET / 2 };
+    /* Bank A half first, then bank B: slab_ext stays sorted by address. A half that does not come up is logged; the cache runs on the other. */
+    static const vramAllocPos pos[2] = { VRAM_ALLOC_A, VRAM_ALLOC_B };
     for (unsigned k = 0; k < 2; k++) {
-        u8* p = (u8*)vramMemAlign(sizes[k], 0x80);
+        u8* p = (u8*)vramMemAlignAt(BUDGET / 2, 0x80, pos[k]);
         if (!p) {
-            pm_vram_alloc_fail("slab", sizes[k] >> 10);
-            pm_log_e("TEXCACHE FALLBACK: VRAM block %uKB failed (vram free %uKB), trying %uKB", sizes[k] >> 10, (unsigned)vramSpaceFree() >> 10, sizes[k + 1 < 2 ? k + 1 : k] >> 10);
+            pm_vram_alloc_fail("slab", BUDGET >> 11);
+            pm_log_e("texcache half %u (%uKB) failed (vram free %uKB)", k, BUDGET >> 11, (unsigned)vramSpaceFree() >> 10);
             continue;
         }
+        pm_vram_reg(p, BUDGET / 2);
         pm_vram_note();
-        pm_vram_reg(p, sizes[k]);
-        slab_ext[0].p = p; slab_ext[0].len = sizes[k]; slab_n = 1;
-        tex_cap = sizes[k]; slab_segs = 1;
-        pm_log_w("texcache VRAM %uKB at %p (vram free was %uKB now %uKB)", sizes[k] >> 10, (void*)p, free0 >> 10, (unsigned)vramSpaceFree() >> 10);
-        return;
+        slab_ext[slab_n].p = p; slab_ext[slab_n].len = BUDGET / 2; slab_n++;
+        tex_cap += BUDGET / 2; slab_segs++;
+        pm_log_w("texcache half %u (%uKB) at %p in bank %c", k, BUDGET >> 11, (void*)p, pm_vram_bank_of(p) ? 'B' : 'A');
     }
-    pm_log_e("TEXCACHE OFF: no VRAM block for the texture cache, every texture draw is skipped");
+    if (!slab_segs) pm_log_e("texcache: no VRAM half came up, textures are skipped");
 }
 static unsigned slab_size(unsigned bytes) { bytes = (bytes + 127u) & ~127u; return bytes < 512u ? 512u : bytes; } /* the GPU reads whole 8 x 8 tiles */
 /* Level-0 byte count (same formula as citro3d C3D_TexInitWithParams). */
@@ -496,7 +496,7 @@ static void slab_free(void* p, unsigned bytes) {
     bytes = slab_size(bytes);
     unsigned i = 0;
     while (i < slab_n && (u32)slab_ext[i].p < (u32)p) i++;
-    if (i > 0 && slab_ext[i - 1].p + slab_ext[i - 1].len == (u8*)p) { slab_ext[i - 1].len += bytes; i--; }
+    if (i > 0 && slab_ext[i - 1].p + slab_ext[i - 1].len == (u8*)p && pm_vram_bank_of(p) == pm_vram_bank_of(slab_ext[i - 1].p)) { slab_ext[i - 1].len += bytes; i--; }
     else if (slab_n < SLAB_EXT) { for (unsigned k = slab_n; k > i; k--) slab_ext[k] = slab_ext[k - 1]; slab_ext[i].p = p; slab_ext[i].len = bytes; slab_n++; }
     else { /* extent table full: the block is lost until the next boot. Counted and logged once. */
         static int lost_once;
@@ -504,7 +504,7 @@ static void slab_free(void* p, unsigned bytes) {
         if (!lost_once) { lost_once = 1; pm_log_w("texcache: extent table full, %u B lost", bytes); }
         return;
     }
-    if (i + 1 < slab_n && slab_ext[i].p + slab_ext[i].len == slab_ext[i + 1].p) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
+    if (i + 1 < slab_n && slab_ext[i].p + slab_ext[i].len == slab_ext[i + 1].p && pm_vram_bank_of(slab_ext[i].p) == pm_vram_bank_of(slab_ext[i + 1].p)) { slab_ext[i].len += slab_ext[i + 1].len; for (unsigned k = i + 1; k + 1 < slab_n; k++) slab_ext[k] = slab_ext[k + 1]; slab_n--; }
 }
 static void pend_flush_one(u8* p, unsigned len) { GSPGPU_FlushDataCache(p, len); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, len >> 10); }
 static int slot_draws_stage(const Slot* s) {

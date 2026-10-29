@@ -46,3 +46,14 @@
 - Test (vram2, 1 start, 6-map short tour): boot colour in A, depth in B; `unaccounted 0KB` on every map line (matches vramSpaceFree); fail 0; A 1161 / B 2697 on the map lines (A holds the 1536 KB slab at boot: 3072-375-1536). Row 3 moves the slab to the layout in plan_vram_3mb.md.
 - Worktree C:/Users/Andrew/Documents/GitHub/papermario-3ds-port-vram was stale (base 48792619d, dirty) and was NOT changed. Row 2 built in C:/Users/Andrew/Documents/GitHub/papermario-3ds-port-vram2 (clean at 88a135dfc, plus assets/us and ver/us/build copied from main, both git-ignored).
 - Budget vram2: 1 of 8 starts used.
+
+## Row 3 (main)
+- pm_gpu.c: `small_arena_init` (12 x 16 KB, 6 per bank, at pm_gpu_init after the target), `tex_init_vram` (64x64 takes an arena block, other sizes vramAlloc + reg). Snap and off-screen slot use it.
+- pm_tex.c: BUDGET 3072 KB as two halves via vramMemAlignAt (A, then B). 768 KB fallback removed. slab_free merges only within one bank (bank from the address, no tag field).
+- Test (vram3, 6-map short tour): boot A used 2007 KB free 1065, B same; unaccounted 0 KB; tex fail 0; evict cum 0. Boot log: half 0 in bank A, half 1 in bank B.
+- Picture check DONE (azt yard, azt tour10; base = row 2 binary): yard 0 px differ in 2 of 2 shots; tour10 9 of 11 equal, 2 differ (364 px box x63-146 y308-333; 492 px box x111-140 y134-157), both on moving NPC sprites, background equal. Merged to main.
+- Budget vram3: 2 of 8 starts used.
+- Merged to main after the picture check. Branch vram-row3-untested deleted.
+
+## Blockers seen
+- `git checkout -f` in the stale worktree papermario-3ds-port-vram was denied by the tool permission classifier. That worktree is unchanged (base 48792619d, dirty src).
