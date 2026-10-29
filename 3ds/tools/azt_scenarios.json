@@ -438,7 +438,7 @@
           "regex": "debug battle: formation"
         }
       ],
-      "reason": "Not run. battle_start reaches the battle, but no tested padscript makes a multibounce with jump presses (docs/handoff/diag_tex3.md lists it as missing). Budget used.",
+      "reason": "Open. Run 1 (azt2): warp kmr_03 and battle start pass (formation 0, stage 1, game mode 8 at frame 153). The padscript (A presses) logs actionState 5, 8 and 10 but no multibounce. No SUPER text in the shots (build3ds\u0007zt\\shots\\super_text, 23 files). Needs a timed jump action command (press A at the bounce windows of multibounce.c).",
       "extra": []
     },
     {
