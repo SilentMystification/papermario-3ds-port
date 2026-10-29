@@ -59,7 +59,7 @@ static void tex_streak_flush(void) {
     tex_streak = 0;
 }
 static void tex_streak_op(unsigned op) {
-    if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE || op == G_PM_TEX) {
+    if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE || op == G_PM_TEX || op == G_PM_TEXI) {
         if (pm_ph_on && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
     } else
         tex_streak_flush();
@@ -2122,7 +2122,7 @@ static int os_class_of(unsigned op) {
     case G_VTX: case G_MODIFYVTX: return OS_VTX;
     case G_MTX: case G_POPMTX: return OS_MTX;
     case G_TRI1: case G_TRI2: return OS_TRI;
-    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: case G_PM_TEX: return OS_TEX;
+    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: case G_PM_TEX: case G_PM_TEXI: return OS_TEX;
     case G_SETCOMBINE: case G_SETPRIMCOLOR: case G_SETENVCOLOR: case G_SETOTHERMODE_H: case G_SETOTHERMODE_L: case G_SETFOGCOLOR: return OS_CC;
     case G_GEOMETRYMODE: case G_MOVEWORD: case G_MOVEMEM: case G_SETSCISSOR: return OS_GEO;
     case G_DL: case G_ENDDL: return OS_DL;
@@ -2630,6 +2630,16 @@ static __attribute__((noinline)) void tb_run(const Gfx* g) {
     for (;; g++) {
         unsigned op = g->words.w0 >> 24;
         if (op == G_ENDDL) return;
+        if (g1_skip[op]) continue;
+        pm_gbi_cur_op = op;
+        tex_op(g->words.w0, g->words.w1);
+    }
+}
+
+/* GLYPH: runs n texture-load words after a G_PM_TEXI header, with the tex_op handlers. Syncs are skipped as in G1. */
+static __attribute__((noinline)) void tb_inline(const Gfx* g, unsigned n) {
+    for (; n; n--, g++) {
+        unsigned op = g->words.w0 >> 24;
         if (g1_skip[op]) continue;
         pm_gbi_cur_op = op;
         tex_op(g->words.w0, g->words.w1);
@@ -3232,6 +3242,10 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             RS_ADD(RS_RET, 1);
             pc = stack[--sp];
             if (dls_on) dls_pc = dls_class((u32)pc);
+            break;
+        case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
+            tb_inline(pc, w0 & 0xffffu);
+            pc += w0 & 0xffffu;
             break;
         case G_PM_TEX: /* C1: a texture bind list, run by tb_run when its record matches. */
             if (w1 && tb_list[w0 & 0x7f] == (const Gfx*)w1) { RS_ADD(RS_TBN, 1); tb_run((const Gfx*)w1); break; }

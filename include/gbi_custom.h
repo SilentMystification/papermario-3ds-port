@@ -212,6 +212,8 @@
 /* C1: a model texture bind as one port op. w0 low bits = handle index (TextureHandles[], < 128), w1 = the handle's Gfx list.
  * The 3DS interpreter runs the list through the texture handlers when pm_texbind_set accepted it, else as G_DL. */
 #define G_PM_TEX 0x0A
+/* GLYPH: header of n texture-load words after it (w0 low 16 bits = n). The words run through tex_op, not the dispatch. */
+#define G_PM_TEXI 0x0B
 #define gSPPmTexBind(pkt, idx, dl) {     Gfx *_g = (Gfx *)(pkt);     _g->words.w0 = _SHIFTL(G_PM_TEX, 24, 8) | ((idx) & 0x7f);     _g->words.w1 = (u32)(dl); }
 
 #endif

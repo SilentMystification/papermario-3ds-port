@@ -1754,6 +1754,10 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_802F4560[palette]);
     }
 
+#ifdef TARGET_3DS
+    Gfx* glyphHdr = gMainGfxPos++; /* GLYPH: G_PM_TEXI header, then the load words below */
+    Gfx* glyphFirst = gMainGfxPos;
+#endif
     if (messageCharset->texSize.x >= 16 && messageCharset->texSize.x % 16 == 0) {
 #if VERSION_IQUE
         if (charIndex == MSG_CHAR_ZH_RANK || charIndex == MSG_CHAR_ZH_CHAPTER) {
@@ -1794,6 +1798,10 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
         }
 #endif
     }
+#ifdef TARGET_3DS
+    glyphHdr->words.w0 = ((u32)G_PM_TEXI << 24) | (u32)(gMainGfxPos - glyphFirst);
+    glyphHdr->words.w1 = 0;
+#endif
     gSPTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, G_TX_RENDERTILE, texOffsetX, texOffsetY,
                         dsdx, dtdy);
 

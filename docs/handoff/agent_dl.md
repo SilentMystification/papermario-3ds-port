@@ -118,3 +118,10 @@
 - Pause reduction NOT done: draw_msg glyph = LoadTextureBlock_4b (7 ops) + texrect per glyph (src/msg_draw.c ~1754-1797). A picture-equal cut needs the glyph inline bind (C1i variant for msg_draw). Not on branch.
 - Volcano (PM_ROW=dl_fog2, 2/8 used): kzn_17 (run 1) and kzn_20 (run 2) show the cave with no tiled fog. Not reproduced. Branches dl2-fog17 and dl2-fog20 have no code change.
 - Next: C1-3 (animator/entity render-mode swaps, C2 pattern), then C1i + HUD (hud_backUI, reuse G_PM_TEX tex_op).
+
+## GLYPH (branch dl2-glyph, from main 63c0fcd94)
+- Op G_PM_TEXI 0x0B (include/gbi_custom.h): header word, w0 low 16 bits = n load words after it. msg_draw.c (TARGET_3DS) writes the header, then the same gDPLoadTextureBlock_4b / TextureTile_4b macros, then patches n. pm_gbi.c tb_inline runs those words through tex_op, skipping g1_skip syncs.
+- Fallback: not implemented. The macro expansion is fixed, so the record cannot be invalid.
+- Azahar pause (azt pause_menu + phase, lanes dl2 and dl2base, 2 starts of dl_glyph): draw_msg ops f599 1504 -> 1092 (-412, need 800; gate half = 400, kept), us 14722 -> 14585.
+- Picture: shots 0000-0002 byte-equal to baseline. Subject: pause status page, dialog text visible.
+- I-cache: one extra noinline call per glyph replaces 5 dispatch rounds; D-cache not measured.
