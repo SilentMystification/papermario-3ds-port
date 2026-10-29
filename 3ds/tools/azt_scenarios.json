@@ -148,11 +148,11 @@
     },
     {
       "name": "pause_menu",
-      "status": "verified",
-      "subject": "Pause status menu open at scene frame 178 (dialog: Check here to see what Mario's current status is.).",
-      "proves": "padscript opens the pause menu (START) in the Toad Town map; the pause mode is entered.",
-      "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=170:12 shotbottom=170:60 loglevel=debug",
-      "until": "shot \\d+ frame 181\\b",
+      "status": "unverified",
+      "subject": "Pause status menu open at frames 170 to 181 (dialog: Check here to see what Mario's current status is.); START closes it; field with the HUD at frames 192 to 200 (shot 4-frame step, first one from 192 is the until-line).",
+      "proves": "padscript opens the pause menu (START) in the Toad Town map, the pause mode is entered, and START closes it: the field shot after close shows the HUD on the field.",
+      "debug": "preset=toad padscript=wait80,START*3,wait284,START*3 shots shotwin=170:31 shotbottom=170:31 loglevel=debug",
+      "until": "shot \\d+ frame (19[2-9]|200)\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -170,9 +170,13 @@
         {
           "name": "shot in window 170-181",
           "regex": "shot \\d+ frame (17[0-9]|18[01])\\b"
+        },
+        {
+          "name": "field shot after close (192-200)",
+          "regex": "shot \\d+ frame (19[2-9]|200)\\b"
         }
       ],
-      "reason": "Known-good args from docs/handoff/agent_text.md and diag_dc.md. The shot writer takes one shot every 4 frames (170, 174, 178), so frame 181 is never written."
+      "reason": "Pause shots 170 to 181 (top shots at 173, 177, 181 in the run of 2026-10-29; shotbottom every frame). START at about frame 182 closes the pause (wait284 is an estimate of 2 scans per frame, check the shot). Untested for the close: the until-line is the first shot at 192 or later."
     },
     {
       "name": "battle_start",
@@ -353,7 +357,7 @@
         "-TurboFactor",
         "1"
       ],
-      "until": "shot \\d+ frame 3[4-9][0-9]\\b",
+      "until": "shot \\d+ frame 338\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "boot_main",
@@ -377,7 +381,7 @@
     },
     {
       "name": "fileselect_rotate",
-      "status": "verified",
+      "status": "unverified",
       "subject": "File select box rotation: shots at frames 282 to 296 of the file_select run (same command).",
       "proves": "The file select box turn (frames 282 to 296) is in the shot set of a file select run.",
       "debug": "fileselect phase shots shotwin=282:60",
@@ -386,7 +390,7 @@
         "-TurboFactor",
         "1"
       ],
-      "until": "shot \\d+ frame 3[4-9][0-9]\\b",
+      "until": "shot \\d+ frame 29[0-6]\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "boot_main",
@@ -410,7 +414,7 @@
       "subject": "Pause status menu text: dialog 'Check here to see what Mario's current status is.' and the item names Hammer, Boots, Stats, Items. Periods and spacing read by eye.",
       "proves": "Pause menu text draws (periods and spacing) at shot frame 178.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=170:12",
-      "until": "shot \\d+ frame 181\\b",
+      "until": "shot \\d+ frame (178|179|180|181)\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
