@@ -280,10 +280,10 @@
     },
     {
       "name": "partner_menu",
-      "status": "unverified",
-      "subject": "Pause menu, partner tab, shot frames 200 to 239 (pause from START*3 after wait80, then R*2 three times and A*2).",
+      "status": "verified",
+      "subject": "Pause menu, Party tab (col 3, Goombario, 'Check your Party and see each member's abilities.'). Shots at frames 190 to 208 (partner=1 is needed: the Party tab is skipped when no partner is in the save).",
       "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
-      "debug": "preset=toad padscript=wait80,START*3,wait100,R*6,wait60 phase shots shotwin=190:20",
+      "debug": "preset=toad partner=1 padscript=wait80,START*3,wait100,R*2,wait60,R*2,wait60,R*2,wait60 phase shots shotwin=200:20",
       "until": "shot \\d+ frame 20[0-9]\b",
       "cap": 90,
       "deadline": 20,
@@ -300,7 +300,7 @@
           "regex": "game mode 10 frame"
         },
         {
-          "name": "partner ui line (fires at pause open, not at the tab)",
+          "name": "partner ui line (fires at pause open)",
           "regex": "ui: partner menu open"
         },
         {
@@ -308,7 +308,7 @@
           "regex": "shot \\d+ frame 20[0-9]\b"
         }
       ],
-      "reason": "Open. Run 2 (azt2): pause opens, 'ui: partner menu open' logs at frame 99, but the shot frames 190 to 209 show the Map tab (cursor on Map, col 5), not the partner tab (col 3, pause_tabs.c order Stats, Badges, Items, Party, Spirits, Map). R presses move the tab col by one per held frame. The 'ui: partner menu open' line fires in pause_partners_init at pause open, so it does not prove the tab. Needs a tab-entry debug line (not allowed in pause_tabs.c for this row) or a script that lands on col 3."
+      "reason": "Verified by eye on run 6 (azt2, lane azt2 at HEAD): the shot shows the Party tab with Goombario and the text 'Check your Party and see each member's abilities.' The R presses are R*2 with wait60 between. partner=1 is needed: without it the Party tab is skipped. The 'ui: partner menu open' line fires at pause open, so the picture is the proof."
     },
     {
       "name": "file_select",
