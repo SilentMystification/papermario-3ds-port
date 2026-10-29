@@ -386,3 +386,14 @@ Push command:
 ```
 PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 audiostat texstat pacestat logstat phase phsum loglevel=debug
 ```
+
+## LOGFIX: flag set for the console (build 1467, commit 3dcfc661d)
+
+- Archive: `3ds/logs/builds/pm_3ds_final6_3dcfc661d.3dsx`, 13367852 bytes, sha256 `ebeb49024b539ad2a6a1f155fc3452a6831b2f3257b6063dfe1b7bd8630332f8` (checked equal to build3ds/pm_3ds.3dsx). Boot line says git 06e62c0aa, the tree before the commit. Source is the same. Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
+- Default build (no flags): no tick read in the pixel, texture, depth, audio and GBI paths. Tick reads that remain: main loop pacing (pm_main.c 364, 476, 486) and osGetCount (game RNG and time).
+- New switch `dcsum`: runs the 1-in-8 sampled draw and flush timers and the dcsum line without `phase`.
+- Cost, Azahar, one run each, mean `work` ms per frame from logstat: pacestat logstat 11.66 ms (base). `+ dcsum` 11.79 ms (+0.13 ms, +1.1 %). Full set 12.74 ms (+1.08 ms, +9.3 %). Direction only. The console judges speed.
+- Push command, full set (phase costs about 1 ms per frame on Azahar):
+  `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 audiostat texstat pacestat logstat phase phsum loglevel=debug`
+- Push command, cheap set (frame time and dcsum line, no per-op output):
+  `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum loglevel=debug`
