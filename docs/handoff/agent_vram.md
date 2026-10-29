@@ -30,3 +30,11 @@
 1. Row 2: pm_vram_alloc / pm_vram_free per bank in pm_mem.c, HUD `VRAM A B minA minB fail`.
 2. Row 3, then rows 4 and 5 per plan_vram_3mb.md.
 3. Completion: one 411-map run (-Milestone) after row 5. No push.
+
+## Shot pair, row 1 vs HEAD (6-map kmr tour, shotwin=999999:1 shotmode=4:21, 7 shots)
+- 5 of 7 shots byte-equal.
+- 0003_0_13.ppm: 704 of 96000 pixels differ. 0004_0_14.ppm: 1244 of 96000 differ.
+- Cause not known. Next step: run HEAD twice (base vs base) to see if the emulator is repeatable. Only then decide on row 1.
+- Shot sets: C:/Users/Andrew/AppData/Local/Temp/shots_base and shots_new.
+- Budget vram1: 5 of 8 starts used.
+- Rows 2 to 5: not started. Test catalog (azt.ps1, test_catalog.md) does not exist yet.
