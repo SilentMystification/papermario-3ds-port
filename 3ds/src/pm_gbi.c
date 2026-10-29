@@ -126,10 +126,6 @@ static int dd_skip(void) {
     return lo >= 0 && dd_on() && ((int)dd.idx < lo || (int)dd.idx > hi);
 }
 static void dd_end(void) {
-    if (dd.ntri)
-        pm_log_d("dd f%u #%u top %08x vtx %08x dl %08x %08x oml %08x omh %08x zb %u tex %u img %08x fmt %u/%u %ux%u prim %08x tris %u box %d %d %d %d w %d %d vc0 %08x gm %08x",
-               pm_frame_count(), dd.idx, dd.top, dd.src, dd.dl0, dd.dl1, dd.oml, dd.omh, dd.zb, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.prim,
-               dd.ntri, (int)dd.x0, (int)dd.y0, (int)dd.x1, (int)dd.y1, (int)dd.w0, (int)dd.w1, dd.vc, dd.gm);
     dd.ntri = 0;
 }
 
@@ -209,7 +205,6 @@ static void grab_cur(const void* src, int w, int h) {
     r = pm_gpu_grab(nuGfxCfb_ptr, y, y + (h < 1 ? 1 : h));
     if (r == 2) { n_grabs++; n_splits++; }
     if (on < 0) on = pm_debug_has("imglog");
-    if (on) pm_log_d("imglog f%d grab x%d..%d y%d..%d result %d (0 none, 1 reused, 2 copied) grabs this frame %u", rm_frame, x, x + w - 1, y, y + h - 1, r, n_grabs);
 }
 static void imglog(const char* op, const void* a, int siz, int stride, int role) {
     static int on = -1;
@@ -221,7 +216,6 @@ static void imglog(const char* op, const void* a, int siz, int stride, int role)
     else if (nuGfxZBuffer && (const unsigned short*)a >= nuGfxZBuffer && (const unsigned short*)a < nuGfxZBuffer + 320 * 240) kind = "zbuf";
     else if (pm_is_cfb(a)) kind = ((const unsigned short*)a >= nuGfxCfb_ptr && (const unsigned short*)a < nuGfxCfb_ptr + 320 * 240) ? "cfb_cur" : "cfb_prev";
     else { kind = "other"; if (role < 0) return; } /* settimg: log only frame buffer, z-buffer and depth copy reads */
-    pm_log_d("imglog f%d %s %s %p siz%d stride%d role%d oml %08x", rm_frame, op, kind, a, siz, stride, role, omode_l);
 }
 static void off_screen_check(void) {
     static int nooff = -1;
@@ -946,9 +940,6 @@ static int cc_uses(const unsigned s[2][8], int two, int t) {
     return u;
 }
 
-static struct { unsigned key; unsigned cnt, next; int first, last, bad; } aud[512];
-static int aud_n;
-static unsigned aud_cnt_special, aud_cnt_total, aud_cnt_bad;
 static unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
 static unsigned mm_cnt[256], mw_cnt[256];
 static unsigned lcg_s = 12345u;
@@ -1095,61 +1086,6 @@ static void sync_combine_work(void) {
         }
     }
     pm_gpu_set_combine(leg_mode);
-}
-
-/* PERF-GBI: the audit only feeds debug log lines (comb new, comb count, comb total). Below log level debug it did work for nothing on every triangle. */
-static int audit_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("audit"); return v; } /* R2a: audit lines need the audit switch, not log level 3 (the console push is loglevel=debug) */
-static void comb_audit(void) {
-    unsigned cyc = (omode_h >> G_MDSFT_CYCLETYPE) & 3;
-    unsigned key, i;
-    static unsigned last_key, last_idx = 0xffffffffu;
-    if (cyc > 1 || !comb_set) return;
-    aud_cnt_total++;
-    if (plan_active) plan_draws++;
-    if (dual_on || box_prod || box_pat) { aud_cnt_special++; return; }
-    key = 2166136261u;
-    {
-        unsigned parts[] = { comb_w0, comb_w1, cyc, omode_l & 0xfffffff8u, tile_fmt[0] * 4 + tile_siz[0], (unsigned)leg_mode,
-                             (unsigned)(tex_on | use_t1 << 1 | plan_active << 2), (unsigned)aud_prim_lod };
-        for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
-    }
-    if (key == last_key && last_idx < (unsigned)aud_n && aud[last_idx].key == key) {
-        i = last_idx;
-    } else {
-        for (i = 0; i < (unsigned)aud_n; i++)
-            if (aud[i].key == key) break;
-        if (i == (unsigned)aud_n) {
-            unsigned s[2][8];
-            Dec* d = decide((int)cyc);
-            float err = plan_active ? d->ep : d->el;
-            if (aud_n >= 512) { static int full; if (!full++) pm_log_d("comb audit table full (512)"); return; }
-            aud_n++;
-            aud[i].key = key; aud[i].cnt = 0; aud[i].next = 1; aud[i].first = rm_frame;
-            aud[i].bad = (leg_mode != 4 && err > 0.012f) ? 1 : 0;
-            if (aud[i].bad || plan_active) {
-                char t1[96], t2[96];
-                cc_decode(comb_w0, comb_w1, s);
-                cc_text(s, 0, t1, sizeof t1);
-                cc_text(s, 1, t2, sizeof t2);
-                pm_log_d("comb new f%d %s w %08x %08x cyc %u oml %08x fmt %u/%u tex %d t1only %d uses T0 %d T1 %d leg %d legerr %d plan %s why %d planerr %d nst %d",
-                       rm_frame, aud[i].bad ? "INEXACT" : "PLAN-OK", comb_w0, comb_w1, cyc + 1, omode_l, tile_fmt[0], tile_siz[0], tex_on, use_t1,
-                       cc_uses(s, cyc == 1, 0), cc_uses(s, cyc == 1, 1), leg_mode, (int)(d->el * 1000.f), plan_active ? "USED" : "no", d->why,
-                       (int)(d->ep * 1000.f), d->plan.n);
-                pm_log_d("comb text %08x c1 %s | c2 %s", comb_w0, t1, t2);
-                if (!d->why) pm_log_d("comb dbg %08x act %d use %d lastsync use %d why %d cyc %d special %d at f%d", comb_w0, plan_active, d->use, ls_use, ls_why, ls_cyc, ls_dual, ls_frame);
-            }
-        }
-    }
-    last_key = key;
-    last_idx = i;
-    aud[i].cnt++;
-    aud[i].last = rm_frame;
-    if (aud[i].bad) aud_cnt_bad++;
-    if ((aud[i].bad || plan_active) && aud[i].cnt == aud[i].next) {
-        aud[i].next *= 10;
-        pm_log_d("comb count %08x %08x cyc %u oml %08x fmt %u/%u leg %d plan %d bad %d: %u draws, frames %d to %d", comb_w0, comb_w1, cyc + 1, omode_l,
-               tile_fmt[0], tile_siz[0], leg_mode, plan_active, aud[i].bad, aud[i].cnt, aud[i].first, rm_frame);
-    }
 }
 
 /* S25: a plan that reads TEXEL1. Tile 1 is loaded and kept at unit 1, tile 0 stays the current texture, and the
@@ -1448,7 +1384,6 @@ static void gv_epoch_enter(void) {
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     if (ep_why < 0 && !ep_cullboth) {
-        if (audit_on()) comb_audit();
         ep_fl = tri_flags();
         ensure_tile(use_t1 ? 1 : 0);
         dual_bind();
@@ -1825,7 +1760,6 @@ static void draw_tri(unsigned w) {
         }
     }
     GP_LAP(GPL_EARLY);
-    if (audit_on()) comb_audit();
     GP_LAP(GPL_A);
     tri_stats();
     GP_LAP(GPL_A);
@@ -1895,8 +1829,6 @@ static void draw_tri(unsigned w) {
             lh != omode_h || lp != prim || lf != tile_fmt[0] * 4 + tile_siz[0]) {
             lp = prim; lf = tile_fmt[0] * 4 + tile_siz[0];
             lo = omode_l; lg = geom & G_ZBUFFER; la = comb_a; lb = comb_b; lc = comb_c; ld = comb_d; lh = omode_h;
-            pm_log_d("rm f%d oml %08x omh %08x zb %d comb %x %x %x %x a %x %x %x %x tex %d fmt %u/%u prim %08x env %08x xy %d %d w %d", rm_frame, lo, lh, lg != 0, la, lb, lc, ld, comb_aa, comb_ab, comb_ac, comb_ad, tex_on, tile_fmt[0], tile_siz[0], prim, envc,
-                   (int)(poly[0].x / poly[0].w * vp_sx + vp_tx), (int)(vp_ty - poly[0].y / poly[0].w * vp_sy), (int)poly[0].w);
         }
     }
     if (comb_mode5 && !plan_active) {
@@ -1926,21 +1858,9 @@ static void draw_tri(unsigned w) {
         if (!dd.ntri) {
             dd.oml = omode_l; dd.omh = omode_h; dd.zb = (geom & G_ZBUFFER) != 0; dd.tex = (unsigned)tex_on; dd.timg = (u32)td[0].src; dd.fmt = td[0].fmt;
             dd.siz = td[0].siz; dd.w = td[0].w; dd.h = td[0].h; dd.prim = prim;
-            if (pm_debug_has("ddtex") && td[0].fmt == 2 && td[0].siz == 0) { /* V20 temp */
-                const unsigned char* im = (const unsigned char*)td[0].src; const unsigned char* pl = (const unsigned char*)tlut;
-                pm_log("ddtex #%u img %p %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x tlut %p n %d pal %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x", dd.idx, (void*)im, im?im[0]:0, im?im[1]:0, im?im[2]:0, im?im[3]:0, im?im[64]:0, im?im[65]:0, im?im[66]:0, im?im[67]:0, im?im[128]:0, im?im[129]:0, im?im[130]:0, im?im[131]:0,
-                       (void*)pl, tlut_n, pl?pl[0]:0, pl?pl[1]:0, pl?pl[2]:0, pl?pl[3]:0, pl?pl[4]:0, pl?pl[5]:0, pl?pl[6]:0, pl?pl[7]:0, pl?pl[8]:0, pl?pl[9]:0, pl?pl[10]:0, pl?pl[11]:0);
-            }
             dd.x0 = dd.y0 = dd.w0 = 1e9f; dd.x1 = dd.y1 = dd.w1 = -1e9f;
         }
         dd.ntri++;
-        if (pm_debug_has("ddverb")) {
-            int k;
-            for (k = 0; k < 3 && k < n; k++)
-                pm_log_d("ddv #%u col %d %d %d %d fog %d %d obj %d %d %d clip x %d y %d z %d w %d uv %d %d", dd.idx, (int)poly[k].r, (int)poly[k].g, (int)poly[k].b, (int)poly[k].a, fog_fm, fog_fo, (int)verts[idx[k]].v.ob[0], (int)verts[idx[k]].v.ob[1],
-                       (int)verts[idx[k]].v.ob[2], (int)poly[k].x, (int)poly[k].y, (int)poly[k].z, (int)poly[k].w,
-                       (int)verts[idx[k]].v.tc[0], (int)verts[idx[k]].v.tc[1]);
-        }
         for (i = 0; i < n; i++) {
             float sx = poly[i].x / poly[i].w * vp_sx + vp_tx, sy = vp_ty - poly[i].y / poly[i].w * vp_sy;
             if (sx < dd.x0) dd.x0 = sx;
@@ -1958,10 +1878,6 @@ static void draw_tri(unsigned w) {
     } else if (img_role(0) == ROLE_DEPTH) {
         /* B3: case 6, the combiner is PRIM (log: imglog). B3b: the vertices keep their own depth, the GPU tests it against the world and writes zn there */
         pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(prim)) - 1.f);
-        { static int on = -1, lf = -1, c; /* B3 step 1: the first 3 depth triangles of a frame */
-          if (on < 0) on = pm_debug_has("imglog");
-          if (on && (lf != rm_frame ? (lf = rm_frame, c = 0, 1) : 1) && c++ < 3)
-              pm_log_d("imglog f%d depthtri oml %08x omh %08x comb %x %x %x %x a %x %x %x %x prim %08x word %04x", rm_frame, omode_l, omode_h, comb_a, comb_b, comb_c, comb_d, comb_aa, comb_ab, comb_ac, comb_ad, prim, word_5551(prim)); }
     }
     if (plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE) {
         /* S25: the vertex colour carries a constant (PRIM, ENV or PRIM_LOD_FRAC) because the shade is not read. */
@@ -2007,14 +1923,6 @@ no_boost:
     pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
 }
 
-/* PT42 diagnostic, switch mtxlog: the matrix of every G_MTX and the matrix table slot of every vertex load, at most 50 lines per 30 frames. One flag test when off. */
-static int mtxlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("mtxlog"); return v; }
-static int mtxlog_ok(void) {
-    static int win = -1, n;
-    int w = rm_frame / 30;
-    if (w != win) { win = w; n = 0; }
-    return n++ < 50;
-}
 static void load_mtx(u32 w0, u32 w1) {
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
@@ -2024,16 +1932,6 @@ static void load_mtx(u32 w0, u32 w1) {
     if (lm) memcpy(in, lm, sizeof(in));
     else unpack(src, in);
     int is_proj = (flags & G_MTX_PROJECTION) != 0;
-    { /* PT70 diagnostic, switch pipelog: every matrix load with the stack depth, at most 400 per frame */
-        static int pl = -1, plf = -1, pln;
-        if (pl < 0) pl = pm_debug_has("pipelog");
-        if (pl) {
-            if (plf != rm_frame) { plf = rm_frame; pln = 0; }
-            if (pln++ < 400) pm_log_d("pipemtx rm %d src %p w0 %02x fl %02x sp %d t %.1f %.1f %.1f", rm_frame, (void*)src, (unsigned)(w0 & 0xff), flags, mv_sp, in[3][0], in[3][1], in[3][2]);
-        }
-    }
-    if (mtxlog_on() && mtxlog_ok()) pm_log_d("mtx f%d src %p w0 %02x sp %d t %.1f %.1f %.1f%s", rm_frame, (void*)src, (unsigned)(w0 & 0xff), mv_sp, in[3][0], in[3][1], in[3][2],
-                                          (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 >= 10) ? " push dropped" : "");
     if (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 < 10) {
         memcpy(mv[mv_sp + 1], mv[mv_sp], sizeof(mv[0]));
         mv_sp++;
@@ -2057,7 +1955,6 @@ static unsigned op_cnt[256];
 static void note(unsigned op) {
     unsigned n = ++op_cnt[op];
     seen[op] = 1;
-    if (n == 1 || n == 100 || n == 10000 || n == 1000000) pm_log_d("gbi skip %02x count %u frame %d", op, n, rm_frame);
 }
 
 static unsigned n_ops; /* PT01: display list ops run this frame */
@@ -2257,8 +2154,6 @@ void pm_gbi_end_frame(void) {
             w_primz += p_primz; w_env += p_env; w_plan += p_plan; w_a255 += p_a255; w_fog += p_fog; w_boost += p_boost; w_plain += p_plain; w_plain2 += p_plain2;
         }
         if (pm_frame_count() % 10 == 9 && w_n) {
-            pm_log("po3a f%u frames %u cmd %u drawn %u mixed %u ids %u idmax %u vcmd %u vload %u lit %u tgen %u scr %u primz %u env %u plan %u a255 %u fog %u boost %u plain %u plain2 %u",
-                   pm_frame_count(), w_n, w_cmd, w_drawn, w_mixed, w_ids, w_idmax, w_vcmd, w_vload, w_lit, w_tgen, w_scr, w_primz, w_env, w_plan, w_a255, w_fog, w_boost, w_plain, w_plain2);
             w_n = w_ids = w_idmax = w_cmd = w_drawn = w_mixed = w_vcmd = w_vload = w_lit = w_tgen = w_scr = w_primz = w_env = w_plan = w_a255 = w_fog = w_boost = w_plain = w_plain2 = 0;
         }
     }
@@ -2266,17 +2161,13 @@ void pm_gbi_end_frame(void) {
         static const char* nm[8] = { "validity,off_screen,box_fold,comb_audit", "ensure_tile", "dual_bind", "reject,cull", "sync_render", "gpu_emit", "old path", "G_VTX" };
         char b[200]; int n = 0;
         for (int k = 0; k < 8; k++) n += snprintf(b + n, sizeof b - n, "%s %u ", k == 3 ? "early" : k == 0 ? "A" : k == 1 ? "ens" : k == 2 ? "dual" : k == 4 ? "sync" : k == 5 ? "emit" : k == 6 ? "old" : "gvtx", gp_acc[k] / 26811 / 300);
-        pm_log("gbiprof f%d per frame 0.1ms: %s tris/frame %u", rm_frame, b, gp_ntri / 300);
         for (int r = 0; r < 20; r++) { /* the twenty most expensive op codes: per frame time in 0.1 ms and count */
             int best = -1; unsigned bt = 0;
             for (int k = 0; k < 256; k++) if (gp_opt[k] > bt) { bt = gp_opt[k]; best = k; }
             if (best < 0) break;
-            pm_log("gbiprof op %02x per frame 0.1ms %u count %u, ns per call %u", best, gp_opt[best] / 26811 / 300, gp_opn[best] / 300, gp_opn[best] ? (unsigned)((unsigned long long)gp_opt[best] * 1000ull / 268ull / gp_opn[best]) : 0u);
             gp_opt[best] = 0;
         }
         memset(gp_opt, 0, sizeof gp_opt); memset(gp_opn, 0, sizeof gp_opn);
-        pm_log("gbiprof same per frame (calls/same): combine %u/%u prim %u/%u env %u/%u tile0 %u/%u tilesize %u/%u sync_combine calls %u (of them equal inputs %u) sync_render calls %u tilesize loads skipped %u of %u", gp_set[0] / 300, gp_same[0] / 300,
-               gp_set[1] / 300, gp_same[1] / 300, gp_set[2] / 300, gp_same[2] / 300, gp_set[3] / 300, gp_same[3] / 300, gp_set[4] / 300, gp_same[4] / 300, gp_set[5] / 300, gp_same[5] / 300, gp_set[6] / 300, gp_same[7] / 300, gp_set[7] / 300);
         memset(gp_same, 0, sizeof gp_same); memset(gp_set, 0, sizeof gp_set);
         pm_gpu_gbiprof_report(300);
         { extern void pm_debug_report(unsigned); pm_debug_report(300); }
@@ -2296,10 +2187,6 @@ void pm_gbi_end_frame(void) {
     have_sample = 0;
     rm_frame++;
     os_off = ((unsigned)rm_frame * 37u) & 63u; /* W1: the sample phase changes each frame */
-    if ((rm_frame % 600) == 0 && aud_cnt_total) {
-        pm_log_d("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners | tris %u lit %u fogmode %u fogblend %u blendcol %u texgen %u", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n, st_tri, st_lit, st_fogg, st_fogb, st_blc, st_tgen);
-        pm_log_d("PO2 f%d: %u vertices transformed at G_VTX, %u triangle corners read (before PO2: one matrix product per corner)", rm_frame, st_vx, st_cor);
-    }
 }
 
 const char* pm_gbi_stats(void) { return stats_line; }
@@ -2311,7 +2198,6 @@ void pm_gbi_init(void) {
     memset(vert_live, 0, sizeof vert_live);
     geom = G_SHADE | G_SHADING_SMOOTH;
     upload_mvp();
-    pm_log("is_host bound __end__ %08x, margin below old bound 0x01400000: %d bytes", (unsigned)(uintptr_t)__end__, 0x01400000 - (int)(uintptr_t)__end__);
 }
 
 
@@ -2732,20 +2618,6 @@ static __attribute__((cold, noinline)) void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx
     static unsigned bad; if (bad++ < 6) pm_log_w("gbi: G_MTX w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
         pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
 }
-static __attribute__((cold, noinline)) void gbi_cold_pipelog(const Vtx* src, unsigned n) { /* PT70 diagnostic, switch pipelog: the vertex load of the blue pipe (vertices at 0x5eb3xx) */
-    static int pl = -1;
-    if (pl < 0) pl = pm_debug_has("pipelog");
-    if (!(pl && n && (uintptr_t)src >= 0x5eb300u && (uintptr_t)src < 0x5eb700u)) return;
-    unsigned k2, all = 0x3f;
-    float t0[4] = { 0, 0, 0, 0 };
-    for (k2 = 0; k2 < n; k2++) {
-        float x = (float)src[k2].v.ob[0], y = (float)src[k2].v.ob[1], z = (float)src[k2].v.ob[2], q[4];
-        for (int c = 0; c < 4; c++) q[c] = combined[0][c] * x + combined[1][c] * y + combined[2][c] * z + combined[3][c];
-        all &= (unsigned)clip_bits4(q);
-        if (!k2) memcpy(t0, q, sizeof t0);
-    }
-    pm_log_d("pipelog f%u rm %d src %p n %u v0 clip %.1f %.1f %.1f %.1f allbits %02x sci %d %d %d %d geom %08x", pm_frame_count(), rm_frame, (void*)src, n, t0[0], t0[1], t0[2], t0[3], all, sci_x0, sci_y0, sci_x1, sci_y1, (unsigned)geom);
-}
 static __attribute__((cold, noinline)) unsigned gbi_cold_po3a_hash(void) {
     unsigned h = 2166136261u;
     for (int q = 0; q < 16; q++) { unsigned u; memcpy(&u, &((const float*)combined)[q], 4); h = (h ^ u) * 16777619u; }
@@ -2757,31 +2629,13 @@ static __attribute__((cold, noinline)) unsigned gbi_cold_po3a_hash(void) {
 static __attribute__((cold, noinline)) void gbi_cold_dd_load(const Vtx* src) {
     dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.vc = __builtin_bswap32(*(const u32*)((const u8*)src + 12)); dd.gm = geom; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1;
 }
-static __attribute__((cold, noinline)) void gbi_cold_mtxlog(const Vtx* src, unsigned n, unsigned gmi) {
-    if (mtxlog_ok()) pm_log_d("mtxv f%d vtx %p n %u gmi %u gmn %u t %.1f %.1f %.1f", rm_frame, (void*)src, n, gmi, gm_n, combined[3][0], combined[3][1], combined[3][2]);
-}
-static __attribute__((cold, noinline)) void gbi_cold_xt_fill(int ulx, int uly, int lrx, int lry) {
-    pm_log_d("xt f%u fillrect %d %d %d %d oml %08x omh %08x zb %d prim %08x primz %u cimg %p", pm_frame_count(), ulx, uly, lrx, lry, omode_l, omode_h, (geom & G_ZBUFFER) != 0, prim, prim_z, cimg);
-}
 static __attribute__((cold, noinline)) void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
     unsigned where = (w0 >> 16) & 0xff, vi = (w0 & 0xffffu) / 2;
-    static int lf = -1, lc, bad;
     if (where == G_MWO_POINT_XYSCREEN && vi < 64) {
         vert_sx[vi] = (s16)(w1 >> 16);
         vert_sy[vi] = (s16)(w1 & 0xffffu);
         vert_scr[vi] = 1;
-        if (lf != rm_frame) {
-            if (lf >= 0) pm_log_d("modifyvtx f%d count %d", lf, lc);
-            lf = rm_frame; lc = 0;
-        }
-        if (lc++ < 8) pm_log_d("modifyvtx f%d v%u sx %d sy %d (10.2)", rm_frame, vi, (int)(s16)(w1 >> 16), (int)(s16)(w1 & 0xffffu));
-    } else if (bad++ < 4) pm_log_d("modifyvtx ignored where %02x vtx %u", where, vi);
-}
-static __attribute__((cold, noinline)) void gbi_cold_movemem(unsigned ix, unsigned n) {
-    pm_log_d("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
-}
-static __attribute__((cold, noinline)) void gbi_cold_keylog(void) {
-    static int kl; if (kl < 4) { kl++; pm_log_d("B6 key centre %08x scale %08x frame %d", keyc, keys, rm_frame); }
+    }
 }
 /* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
 static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
@@ -2806,10 +2660,6 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
             if (tile == 0) GP_SET(3, same_tile);
             if (tile == 0 && !same_tile) { /* DBG settdbg: which field of tile 0 differs */
                 static int sdb = -1; if (sdb < 0) sdb = pm_debug_has("settdbg");
-                if (sdb) pm_log_d("settdbg f%u ok %d gen %u/%u fmt %d/%d siz %d/%d tmem %d/%d pal %d/%d wrap %d%d%d%d/%d%d%d%d shift %d%d/%d%d",
-                    pm_frame_count(), st0_ok, pm_tex_wrap_gen(), st0_ep, tile_fmt[0], (w0 >> 21) & 7, tile_siz[0], (w0 >> 19) & 3, tile_tmem[0], (int)(w0 & 0x1ff),
-                    tile_pal[0], (w1 >> 20) & 15, tile_wrap[0][0], tile_wrap[0][1], tile_wrap[0][2], tile_wrap[0][3],
-                    (w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15, tile_shift[0][0], tile_shift[0][1], w1 & 15, (w1 >> 10) & 15);
             }
             tile_fmt[tile] = (w0 >> 21) & 7;
             tile_siz[tile] = (w0 >> 19) & 3;
@@ -2907,7 +2757,6 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
             {   /* imglog: the SETTILESIZE window and the SETTIMG image of the same tile (role 9 = tile line) */
                 static int on = -1;
                 if (on < 0) on = pm_debug_has("imglog");
-                if (on) pm_log_d("imglog f%d tilesize t%u uls %d ult %d lrs %d lrt %d w %d h %d fmt %u siz %u timg %p timg_stride %d", pm_frame_count(), tile, uls, ult, lrs, lrt, ((lrs - uls) >> 2) + 1, ((lrt - ult) >> 2) + 1, tile_fmt[tile], tile_siz[tile], (void*)timg, timg_stride);
             }
             if (tile == 1 && tile_fmt[1] == 2 && tile_siz[1] == 0 && ld_valid && timg) {
                 /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
@@ -3045,8 +2894,6 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                 int ggx = 0, ggy = 0;
                 if (src && w > 0 && h > 0 && tile_fmt[0] == 2 && tile_siz[0] == 0 &&
                     pm_tex_glyph_same(src, tile_fmt[0], tile_siz[0], w, h, palc, tlut_n, &ggx, &ggy)) {
-                    { static int gbl = -1; if (gbl < 0) gbl = pm_debug_has("imglog"); /* R0: per glyph, runs only with the imglog switch */
-                      if (gbl) pm_log_d("glyphbind f%d x0 %d y0 %d ggx %d ggy %d w %d h %d stride %d src %p", pm_frame_count(), x0, y0, ggx, ggy, w, h, stride, (void*)src); } /* T02 */
                     tile_x0 = x0 - ggx; /* same sign as ensure_tile's new-bind path (x0 - gox) */
                     tile_y0 = y0 - ggy;
                     tile_fx = (float)(uls & 3) * 0.25f;
@@ -3347,7 +3194,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                     po3a_mid = gbi_cold_po3a_hash();
                     p_vload += n; p_vcmd++;
                 }
-                gbi_cold_pipelog(src, n);
                 int gring0 = -1;
                 unsigned gmi = GV_NONE;
                 int gv = 0;
@@ -3356,7 +3202,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                     if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
                     else if (!dd_on() && !xt_on() && !rmlog_on() && !po3a_on()) {
                         gmi = gv_matrix_id(lit_ld);
-                        if (mtxlog_on()) gbi_cold_mtxlog(src, n, gmi);
                         if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
                         if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
                     }
@@ -3459,10 +3304,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             break;
         }
         case G_MOVEMEM: {
-            if ((w0 & 0xff) != G_MV_VIEWPORT) {
-                unsigned ix = w0 & 0xff, n = ++mm_cnt[ix];
-                if (n == 1 || n == 1000 || n == 1000000) gbi_cold_movemem(ix, n);
-            }
             if ((w0 & 0xff) == G_MV_LIGHT) lit_freeze(); /* GV5 */
             if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
                 int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
@@ -3525,7 +3366,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_SETKEYGB:
             keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
             keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
-            gbi_cold_keylog();
             sync_combine();
             break;
         case G_SETFOGCOLOR:
@@ -3578,7 +3418,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                 break;
             }
             /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-            if (xt_on()) gbi_cold_xt_fill(ulx, uly, lrx, lry);
             unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
                 ? rgba_from_5551(fill & 0xffff) : prim;
             off_screen_check();
@@ -3608,9 +3447,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (yh & 0x800) yh |= ~0xfff;
             if (xl & 0x800) xl |= ~0xfff;
             if (yl & 0x800) yl |= ~0xfff;
-            if (xt_on()) pm_log_d("xt f%u texrect %d %d %d %d tile %u s %d t %d dsdx %d dtdy %d oml %08x omh %08x tile0 x0 %d y0 %d", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (w1 >> 24) & 7, (int)(s16)(hs >> 16), (int)(s16)(hs & 0xffff), (int)(s16)(hd >> 16), (int)(s16)(hd & 0xffff), omode_l, omode_h, tile_x0, tile_y0);
-            if (PMD("boxlog") && pm_frame_count() >= 580 && pm_frame_count() <= 602 && yl / 4 == 56 && yh / 4 - yl / 4 == 8) pm_log_d("box texrect f%u x0 %d y0 %d x1 %d y1 %d tile %u prim %08x oml %08x omh %08x cmd %08x list %08x sp %d st0 %08x st1 %08x tex %08x", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (w1 >> 24) & 7, prim, omode_l, omode_h, (u32)(pc - 3), (u32)list, sp, (u32)(sp >= 1 ? stack[sp - 1] : NULL), (u32)(sp >= 2 ? stack[sp - 2] : NULL), (u32)timg);
-            if (xt_on()) { int tw_ = 0, th_ = 0; pm_tex_size(&tw_, &th_); pm_log_d("xt   tile0 w %d h %d stride %d fmt %u siz %u tex %dx%d valid %d", td[0].w, td[0].h, td[0].stride, td[0].fmt, td[0].siz, tw_, th_, td[0].valid); }
             /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
             if (cimg == (void*)DepthCopyBuffer) { pm_depth_query(timg, (int)((s16)(hs >> 16) >> 5), sci_x0); break; }
             if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
@@ -3620,7 +3456,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             else if (img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
             off_screen_check();
             box_fold_sync();
-            if (audit_on()) comb_audit();
             sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
             if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
             /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
@@ -3649,7 +3484,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             float s1 = s0 + dsdx * width / (float)tw;
             float t1 = t0 + dtdy * height / (float)th;
             t1_fold(s0 < s1 ? s0 : s1, s0 < s1 ? s1 : s0, t0 < t1 ? t0 : t1, t0 < t1 ? t1 : t0);
-            if (xt_on()) pm_log_d("xt   uv %d/%d  %d %d  s %d t %d (milli) s1 %d t1 %d width %d height %d tw %d th %d", (int)(s0 * 1000), (int)(t0 * 1000), 0, 0, 0, 0, (int)(s1 * 1000), (int)(t1 * 1000), (int)width, (int)height, tw, th);
             {
                 /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
                  * above). In 1-cycle and 2-cycle mode the lower right edge is exclusive: without this the quad was one
@@ -3697,7 +3531,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; } /* F08 */
             if (index != G_MW_SEGMENT) {
                 unsigned n = ++mw_cnt[index];
-                if (n == 1 || n == 1000 || n == 1000000) pm_log_d("gbi ignore moveword index %02x offset %04x count %u frame %d", index, offset, n, rm_frame);
             }
             if (index == G_MW_SEGMENT && (offset / 4) < 16) {
                 unsigned seg = offset / 4;

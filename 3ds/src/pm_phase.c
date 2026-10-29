@@ -1,8 +1,7 @@
 /* PT01: per-frame phase timer (measurement only, port layer). Switch `phase`. See pm_port.h.
  * Reads the ARM11 tick through pm_ticks (268111856 Hz). One drawn frame = from the end of the previous drawn frame to the
  * end of this one, so the phases add up to the wall time. Output goes through pm_log (non-blocking queue):
- *   every ~2 s: wall/work, per phase avg/p95/max, counters avg/max, frames over 34 ms (frame numbers), 3 worst frames.
- *   switch `phasecsv`: one line per drawn frame (analysis runs only). */
+ *   every ~2 s: wall/work, per phase avg/p95/max, counters avg/max, frames over 34 ms (frame numbers), 3 worst frames. */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -26,7 +25,6 @@ static const char* const cname[C_N] = { "tri", "triout", "vtxload", "vtxslot", "
 
 static int stk[16], depth, cur;
 static unsigned last, frame_t0, acc[PH_N];
-static int csv, csv_from, csv_to = 0x7fffffff;
 static unsigned frame_no;
 
 typedef struct { float ms[PH_N]; float wall; unsigned c[C_N]; unsigned f; } Rec;
@@ -70,7 +68,7 @@ static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buc
 static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */
 unsigned pm_ph_gpu_us[2];
 unsigned pm_ph_cmd_pm;
-unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb, pm_ph_iv, pm_ph_hud_us, pm_ph_log_prev; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
+unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb, pm_ph_iv, pm_ph_hud_us; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
 
 void pm_ph_scene_mode(int mode) { cur_mode = mode; }
 void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; }
@@ -176,13 +174,6 @@ void pm_ph_init(void) {
     ph_want = pm_debug_has("phase") || ps_on;
     pm_ph_on = ph_want && pm_log_file();
     ps_init(); /* only parses the abtog switch, so it runs even while logging is off */
-    csv = pm_debug_has("phasecsv");
-    if (pm_debug_value("phasecsv", rv, sizeof rv)) { /* HWM1: phasecsv=<from>:<to>, pc lines only for these drawn steps */
-        csv = 1;
-        csv_from = atoi(rv);
-        const char* c = strchr(rv, ':');
-        if (c) csv_to = atoi(c + 1);
-    }
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (!pm_ph_on) return;
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
@@ -304,69 +295,6 @@ void pm_ph_ui(const char* what, int v) {
     if (pm_ph_on) pm_log_hw("ui: %s v%d f%u", what, v, frame_no);
 }
 
-/* PI6: frame records. pm_ph_frame_end copies the numbers of the frame into a ring (a few microseconds). pm_ph_drain formats
- * them on the log writer thread, so the game thread does no printf for the per-frame phase lines. */
-#define PHR_N 64
-typedef struct {
-    Rec r;
-    unsigned rs[RS_N], cs[CS_N], fl_n[6], fl_e[6], fl_us[6], th[6], gbi[3], gpu[2];
-    unsigned ec_n, ec_svc;
-    unsigned dc_c[DC_N], dc_us[DCU_N];
-    unsigned kick_n, kick_us, draws, cmd, vb, iv, hud_us, log_prev;
-} PhRec;
-static PhRec phr[PHR_N];
-static unsigned phr_head, phr_tail, phr_dropped; /* monotonic: head written by the game thread, tail by the writer */
-
-static void ph_format(const PhRec* p) {
-    const Rec* r = &p->r;
-    pm_log_hw("rsplit f%u tile %u comb %u xdup %u clip %u pcomp %u dlc %u", r->f, p->rs[RS_TILE], p->rs[RS_COMB], p->rs[RS_XDUP], p->rs[RS_CLIP], p->rs[RS_PCOMP], p->rs[RS_DLC]);
-    pm_log_hw("taskpl f%u bg %u main %u key %u us %u %u %u ops %u push %u nopush %u ret %u range %u spmax %u pdl %u pdlm %u", r->f, p->rs[RS_TK_BG], p->rs[RS_TK_MAIN], p->rs[RS_TK_KEY], p->rs[RS_TUS_BG], p->rs[RS_TUS_MAIN], p->rs[RS_TUS_KEY], p->rs[RS_TOPS], p->rs[RS_PUSH], p->rs[RS_NOPUSH], p->rs[RS_RET], p->rs[RS_RANGE], p->rs[RS_SPMAX], p->rs[RS_PDL], p->rs[RS_PDLM]);
-    pm_log_hw("gbisplit f%u sync %u gv %u tex %u", r->f, p->gbi[0], p->gbi[1], p->gbi[2]);
-    pm_log_hw("dlcsplit f%u gdl %u gdl1 %u gdl7 %u | hit %u miss %u | ops %u grp %u skip %u", r->f, p->rs[RS_GDL], p->rs[RS_GDL1], p->rs[RS_GDL7], p->rs[RS_DLCH], p->rs[RS_DLCM], p->rs[RS_DLCOPS], p->rs[RS_DLCG], p->rs[RS_DLCSKIP]);
-    pm_log_hw("rmsplit f%u n %u fb %u sk %u sks %u", r->f, p->rs[RS_RMN], p->rs[RS_RMSK], p->rs[RS_SKN], p->rs[RS_SKS]);
-    pm_log_hw("tbsplit f%u n %u fb %u", r->f, p->rs[RS_TBN], p->rs[RS_TBFB]);
-    pm_log_hw("gabsplit f%u n %u", r->f, p->rs[RS_GAB]);
-    pm_log_hw("tilesplit f%u t0 %u t1 %u ga td %u ens %u wrap %u glyph %u", r->f, p->rs[RS_T0], p->rs[RS_T1], p->rs[RS_GA_TD], p->rs[RS_GA_ENS], p->rs[RS_GA_WRAP], p->rs[RS_GA_GLY]);
-    pm_log_hw("tbdbg f%u gbi %u pdl %u pdlm %u dlc %u tpl %u", r->f, p->rs[RS_TBG], p->rs[RS_TBPD], p->rs[RS_TBPM], p->rs[RS_TBDL], p->rs[RS_TBTS]);
-    pm_log_hw("combsplit f%u plan %u mode %u prim %u env %u lay %u con %u n %u g %u cn %u bn %u vn %u ut %u us %u u1 %u un %u ks %u fd %u",
-              r->f, p->cs[CS_PLAN], p->cs[CS_MODE], p->cs[CS_PRIM], p->cs[CS_ENV], p->cs[CS_LAY], p->cs[CS_CON],
-              p->cs[CS_PF_N], p->cs[CS_PF_G], p->cs[CS_PF_CNAME], p->cs[CS_PF_BUFNAME], p->cs[CS_PF_VTXNAME],
-              p->cs[CS_PF_UTEX], p->cs[CS_PF_USHA], p->cs[CS_PF_UT1], p->cs[CS_PF_UNOISE], p->cs[CS_PF_KS], p->cs[CS_PF_FOLD]);
-    pm_log_hw("flsplit f%u tex %u/%u/%u cc %u/%u/%u geo %u/%u/%u rect %u/%u/%u tri %u/%u/%u oth %u/%u/%u", r->f, p->fl_n[0], p->fl_e[0], p->fl_us[0], p->fl_n[1], p->fl_e[1], p->fl_us[1], p->fl_n[2], p->fl_e[2], p->fl_us[2], p->fl_n[3], p->fl_e[3], p->fl_us[3], p->fl_n[4], p->fl_e[4], p->fl_us[4], p->fl_n[5], p->fl_e[5], p->fl_us[5]);
-    pm_log_hw("ecsplit f%u empty %u svc %u", r->f, p->ec_n, p->ec_svc);
-    /* DC1: the us fields are sample sums x 8 (one close in 8 is sampled). */
-    pm_log_hw("dcsplit f%u n %u raw %u pal %u bind %u tev %u st %u draw %u kick %u palup %u pmul %u tevr %u tb0 %u tb1 %u tb2 %u tbs %u",
-              r->f, p->dc_c[DC_CL], p->dc_c[DC_RAW], p->dc_us[DCU_PAL] * 8u, p->dc_us[DCU_BIND] * 8u, p->dc_us[DCU_TEV] * 8u,
-              p->dc_us[DCU_ST] * 8u, p->dc_us[DCU_DRAW] * 8u, p->dc_us[DCU_KICK] * 8u,
-              p->dc_c[DC_PALUP], p->dc_c[DC_PMUL], p->dc_c[DC_TEVR], p->dc_c[DC_TB0], p->dc_c[DC_TB1], p->dc_c[DC_TB2], p->dc_c[DC_TBS]);
-    const unsigned* th = p->th;
-    pm_log_hw("thsplit f%u hit %u/%u miss %u/%u dc %u/%u", r->f, th[0], th[1], th[2], th[3], th[4], th[5]);
-    /* PI4: gdraw and gproc are the GPU times read at this frame's begin, so they belong to frame f-1. */
-    pm_log_hw("gpusplit f%u cpu %u fb %u fe %u idle %u gdraw %u gproc %u kick %u/%u draws %u cmd %u vb %u iv %u hud %u log %u",
-              r->f, (unsigned)(r->wall * 1000.f), (unsigned)(r->ms[PH_FBEGIN] * 1000.f), (unsigned)(r->ms[PH_FEND] * 1000.f), (unsigned)(r->ms[PH_IDLE] * 1000.f),
-              p->gpu[0], p->gpu[1], p->kick_n, p->kick_us, p->draws, p->cmd, p->vb, p->iv, p->hud_us, p->log_prev);
-    if (csv && r->f >= (unsigned)csv_from && r->f <= (unsigned)csv_to) {
-        pm_log_d("pc %u w %d i %d lo %d dl %d gb %d gp %d tx %d au %d ro %d y %d fb %d fe %d ot %d gc %d gd %d gv %d gt %d gm %d go %d | %u %u %u %u %u %u %u %u %u %u %u %u %u %u", r->f, (int)(r->wall * 10.f),
-               (int)(r->ms[PH_IDLE] * 10.f), (int)(r->ms[PH_LOGIC] * 10.f), (int)(r->ms[PH_DL] * 10.f), (int)(r->ms[PH_GBI] * 10.f),
-               (int)(r->ms[PH_GPU] * 10.f), (int)(r->ms[PH_TEX] * 10.f), (int)(r->ms[PH_AUDIO] * 10.f), (int)(r->ms[PH_ROM] * 10.f),
-               (int)(r->ms[PH_YAY0] * 10.f), (int)(r->ms[PH_FBEGIN] * 10.f), (int)(r->ms[PH_FEND] * 10.f), (int)(r->ms[PH_OTHER] * 10.f),
-               (int)(r->ms[PH_GCACHE] * 10.f), (int)(r->ms[PH_GDRAW] * 10.f), (int)(r->ms[PH_GVTX] * 10.f), (int)(r->ms[PH_GTRI] * 10.f), (int)(r->ms[PH_GMTX] * 10.f), (int)(r->ms[PH_GOP] * 10.f), r->c[C_TRIOUT], r->c[C_VTXSLOT], r->c[C_DRAW], r->c[C_TEXMISS], r->c[C_TEXBYTE], r->c[C_ROMN], r->c[C_ROMB], r->c[C_ATICK], r->c[C_FLUSH], r->c[C_DBG], r->c[C_CMD], r->c[C_AJOB], r->c[C_RAWD], r->c[C_RAWCALL]);
-        pm_log_hw("pcx %u rd %d tev %d bind %d st %d gpu %u %u cmd %u flushcalls %u flushkb %u", r->f, (int)(r->ms[PH_FBREAD] * 10.f), (int)(r->ms[PH_GTEV] * 10.f), (int)(r->ms[PH_GBIND] * 10.f),
-                  (int)(r->ms[PH_GST] * 10.f), p->gpu[0], p->gpu[1], p->cmd, r->c[C_FLCALL], r->c[C_FLKB]);
-    }
-}
-
-/* Log writer thread. */
-void pm_ph_drain(void) {
-    unsigned h = __atomic_load_n(&phr_head, __ATOMIC_ACQUIRE);
-    unsigned d = __atomic_exchange_n(&phr_dropped, 0, __ATOMIC_RELAXED);
-    if (d) pm_log_hw("phrec dropped %u frame records (writer behind)", d);
-    while (phr_tail != h) {
-        ph_format(&phr[phr_tail % PHR_N]);
-        __atomic_store_n(&phr_tail, phr_tail + 1, __ATOMIC_RELEASE);
-    }
-}
-
 void pm_ph_frame_end(void) {
     if (!pm_ph_on) return;
     unsigned now = pm_ticks();
@@ -381,31 +309,7 @@ void pm_ph_frame_end(void) {
     r->f = ++frame_no;
     spike_rec = *r; /* PT15: the spike line in pm_main.c reads the phases of the step that just ended */
     frame_t0 = now;
-    unsigned lg0 = pm_ticks(); /* PI5: cost of the record copy, printed by the next gpusplit line */
-    if (phr_head - __atomic_load_n(&phr_tail, __ATOMIC_ACQUIRE) < PHR_N) {
-        PhRec* p = &phr[phr_head % PHR_N];
-        p->r = *r;
-        memcpy(p->rs, pm_rs_cnt, sizeof p->rs);
-        memcpy(p->cs, pm_cs_cnt, sizeof p->cs);
-        memcpy(p->fl_n, pm_fl_n, sizeof p->fl_n);
-        memcpy(p->fl_e, pm_fl_e, sizeof p->fl_e);
-        memcpy(p->fl_us, pm_fl_us, sizeof p->fl_us);
-        p->ec_n = pm_ec_n; p->ec_svc = pm_ec_svc; /* EC2 */
-        memcpy(p->dc_c, pm_dc_c, sizeof p->dc_c); memcpy(p->dc_us, pm_dc_us, sizeof p->dc_us); /* DC1 */
-        pm_tex_th_frame(p->th);
-        p->gbi[0] = pm_gbi_sync_ticks / 268u;
-        p->gbi[1] = pm_gbi_gv_ticks / 268u;
-        p->gbi[2] = pm_gbi_tex_ticks / 268u;
-        p->gpu[0] = pm_ph_gpu_us[0];
-        p->gpu[1] = pm_ph_gpu_us[1];
-        p->kick_n = pm_ph_kick_n; p->kick_us = pm_ph_kick_us; p->draws = pm_ph_draws; p->cmd = pm_ph_cmd_pm;
-        p->vb = pm_ph_vb; p->iv = pm_ph_iv; p->hud_us = pm_ph_hud_us; p->log_prev = pm_ph_log_prev;
-        __atomic_store_n(&phr_head, phr_head + 1, __ATOMIC_RELEASE);
-    } else {
-        __atomic_fetch_add(&phr_dropped, 1, __ATOMIC_RELAXED);
-    }
     pm_ph_kick_n = pm_ph_kick_us = pm_ph_hud_us = 0;
-    pm_ph_log_prev = (pm_ticks() - lg0) / 268u;
     memset(pm_fl_n, 0, sizeof pm_fl_n); memset(pm_fl_e, 0, sizeof pm_fl_e); memset(pm_fl_us, 0, sizeof pm_fl_us);
     pm_ec_n = pm_ec_svc = 0;
     memset(pm_dc_c, 0, sizeof pm_dc_c); memset(pm_dc_us, 0, sizeof pm_dc_us); /* DC1 */

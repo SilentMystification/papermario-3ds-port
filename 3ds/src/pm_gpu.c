@@ -408,7 +408,6 @@ static void fl_trace(int empty) {
     static int fr = -2;
     char v[16];
     if (fr == -2) fr = pm_debug_value("flushlog", v, sizeof v) ? atoi(v) : -1;
-    if (fr >= 0 && (int)pm_frame_count() == fr && !empty) pm_log("flushlog f%d %s line %d gni %u nverts %d", fr, fl_fn, fl_line, gni, nverts);
 }
 static void fl_count(int empty) {
     fl_trace(empty);
@@ -418,15 +417,12 @@ static void fl_count(int empty) {
 void pm_gpu_gbiprof_report(unsigned frames) { /* the six most frequent causes since the last report, per frame in 0.01 */
     unsigned tn = 0, te = 0;
     for (int i = 0; i < fl_nt; i++) { tn += fl_tab[i].n; te += fl_tab[i].e; }
-    pm_log("gbiprof flush total calls per frame x100 %u, empty batch x100 %u, drawn x100 %u", tn * 100 / (frames ? frames : 1), te * 100 / (frames ? frames : 1), (tn - te) * 100 / (frames ? frames : 1));
     for (int r = 0; r < 24; r++) {
         int best = -1; unsigned bn = 0;
         for (int i = 0; i < fl_nt; i++) if (fl_tab[i].n > bn) { bn = fl_tab[i].n; best = i; }
         if (best < 0) break;
-        pm_log("gbiprof flush %s line %d calls per frame x100 %u empty x100 %u", fl_tab[best].fn, fl_tab[best].line, bn * 100 / (frames ? frames : 1), fl_tab[best].e * 100 / (frames ? frames : 1));
         fl_tab[best].n = 0;
     }
-    pm_log("gbiprof texrect per frame x100: rects %u consecutive (no other flush between) %u", fl_rects * 100 / (frames ? frames : 1), fl_consec * 100 / (frames ? frames : 1));
     fl_rects = fl_consec = 0;
     for (int i = 0; i < fl_nt; i++) fl_tab[i].n = fl_tab[i].e = 0;
 }
@@ -537,7 +533,6 @@ static void dbg_cmp(void) {
     int now[SN_N];
     static int n;
     dbg_take(now);
-    for (int i = 0; i < SN_N - 1; i++) if (i != 33 && now[i] != dbg_snap[i] && n++ < 40) pm_log_w("rectdbg: state %d was %d now %d at the draw of a queued rectangle batch (frame %u) flush from %s line %d", i, dbg_snap[i], now[i], pm_frame_count(), fl_fn, fl_line);
 }
 /* KICK1: citro3d holds the GX queue inside a frame and starts the PICA at C3D_FrameEnd, so the GPU idled for the whole CPU part of the frame. One
  * C3D_FrameSplit when about 55 percent of the draws of the last frame are queued starts the GPU on the first part while the CPU builds the rest.
@@ -835,29 +830,6 @@ static void dc_kick(void) {
     dc_end();
 }
 static void dc_bind(int unit, C3D_Tex* t) { pm_dc_c[DC_TB0 + unit]++; C3D_TexBind(unit, t); }
-/* H2: debug dump of the batch bounds (boxlog switch). Cold: kept out of flush_draw. */
-static void __attribute__((cold, noinline)) flush_boxlog(int graw, int tex, int z) { float bx0 = 1e9f, by0 = 1e9f, bx1 = -1e9f, by1 = -1e9f; int bi;
-        for (bi = 0; bi < nverts; bi++) { if (verts[bi].x < bx0) bx0 = verts[bi].x; if (verts[bi].x > bx1) bx1 = verts[bi].x; if (verts[bi].y < by0) by0 = verts[bi].y; if (verts[bi].y > by1) by1 = verts[bi].y; }
-        if (graw && gni > 0) { /* raw batch: clip position of each open vertex (palette matrix pcomp), NDC x and y in milli units */
-          float nx0 = 1e9f, ny0 = 1e9f, nx1 = -1e9f, ny1 = -1e9f; unsigned gi;
-          for (gi = gi_start; gi < gi_start + gni; gi++) {
-            unsigned v = gidx[gi]; const short* sv = (const short*)(gring + 16u * v); unsigned k = gring[16u * v + 6];
-            if (k >= pal_n) continue;
-            const C3D_Mtx* M = &pcomp[pal_g[k]];
-            float ox = sv[0], oy = sv[1], oz = sv[2];
-            float cw = M->r[3].x * ox + M->r[3].y * oy + M->r[3].z * oz + M->r[3].w;
-            float cx = M->r[0].x * ox + M->r[0].y * oy + M->r[0].z * oz + M->r[0].w;
-            float cy = M->r[1].x * ox + M->r[1].y * oy + M->r[1].z * oz + M->r[1].w;
-            if (cw == 0.f) continue;
-            cx /= cw; cy /= cw;
-            if (cx < nx0) nx0 = cx; if (cx > nx1) nx1 = cx; if (cy < ny0) ny0 = cy; if (cy > ny1) ny1 = cy;
-          }
-          pm_log_d("box raw f%u ndc x %d..%d y %d..%d (milli) gi %u n %u", pm_frame_count(), (int)(nx0 * 1000), (int)(nx1 * 1000), (int)(ny0 * 1000), (int)(ny1 * 1000), (unsigned)gi_start, (unsigned)gni);
-        }
-        if (graw && tex) { extern void pm_tex_boxinfo(char* out, unsigned n); char tb[512]; pm_tex_boxinfo(tb, sizeof tb);
-          pm_log_d("box tex f%u %s combine %d blend %d rep %d prim %08x", pm_frame_count(), tb, combine, r_blend, r_replace, (unsigned)prim); }
-        pm_log_d("box draw f%u graw %d nv %d off %d 3d %d r2d %d wide %d sci x0 %d y0 %d x1 %d y1 %d combine %d tex %d prim %08x blend %d rep %d z %d vbox x %d..%d y %d..%d", pm_frame_count(), graw, nverts, off_active, draw_3d, rect_2d, pm_wide, sci_x0, sci_y0, sci_x1, sci_y1, combine, tex, (unsigned)prim, r_blend, r_replace, z, nverts ? (int)bx0 : -1, nverts ? (int)bx1 : -1, nverts ? (int)by0 : -1, nverts ? (int)by1 : -1); }
-
 static void flush_draw(void) {
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
@@ -1058,8 +1030,6 @@ static void flush_draw(void) {
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
-    { static int boxlog = -1; if (boxlog < 0) boxlog = pm_debug_has("boxlog");
-      if (boxlog) flush_boxlog(graw, tex, z); }
     if (!pso_fast) {
     sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
     if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
@@ -1614,7 +1584,6 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         offs[i].last = pm_frame_count();
         /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
         pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
-        if (w == 64) { static int n; if (n++ < 6) pm_log_d("X02: darkness draw to 64x64 slot %d size %d bits %d addr %p", i, stride, siz == 3 ? 32 : siz == 2 ? 16 : 8, base); }
     }
     off_cur = i;
     off_w = offs[i].w;
@@ -2370,8 +2339,6 @@ static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
-    { static int boxlog = -1; if (boxlog < 0) boxlog = pm_debug_has("boxlog");
-      if (boxlog) pm_log_d("box fill f%u x0 %d y0 %d x1 %d y1 %d rgba %08x off %d wide %d", pm_frame_count(), x0, y0, x1, y1, rgba, off_active, pm_wide); }
     rect_begin(0);
     int saved = combine;
     combine = 0;

@@ -272,7 +272,7 @@ void pm_log_top(void) {
  * Producers (game thread, audio thread) format the line and copy it into a slot of a lock-free queue. They make no
  * SD, socket or stdout call. One low-priority writer thread (core 1, or core 0 when core 1 is not available) drains the queue:
  * socket send first, then copies the bytes into fb and cb. A second low-priority thread (sink, PI6) writes fb to log.txt,
- * fsyncs once per second and prints cb on the bottom screen at 10 per second. Full queue: the new line is dropped and counted.
+ * prints cb on the bottom screen at 10 per second. Full queue: the new line is dropped and counted.
  * Before the writer thread runs, pm_log writes directly (boot lines). */
 #define SLOTS 1024 /* HWM1: was 512. The first O3DS run lost 1207 lines when the writer fell behind. */
 #define SLOT_TEXT 256 /* HWM1: the phs and phq lines are about 200 characters */
@@ -515,19 +515,13 @@ static void con_flush(void) {
 
 static void sink_main(void* arg) {
     (void)arg;
-    u64 last_sync = svcGetSystemTick();
     for (;;) {
         svcSleepThread(100000000LL);
         if (__atomic_load_n(&writer_stop, __ATOMIC_ACQUIRE) || __atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) return;
         if (pm_io_quiet) continue;
+        /* No fsync here: an SD fsync held fsink_lock for 1 to 7 s, and the writer waits on that lock when fb is full. fb_sync_all and the crash path still sync. */
         LightLock_Lock(&fsink_lock);
         fb_write_locked();
-        u64 now = svcGetSystemTick();
-        if (dirty && log_fd >= 0 && now - last_sync >= SYSCLOCK_ARM11) { /* fsync once per second, here and not in the writer */
-            fsync(log_fd);
-            dirty = 0;
-            last_sync = now;
-        }
         LightLock_Unlock(&fsink_lock);
         con_flush();
     }
@@ -584,7 +578,6 @@ static void writer_main(void* arg) {
         if (io_drain_req && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
             LightLock_Lock(&drain_lock);
             if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
-                pm_ph_drain();
                 drain_locked();
             }
             fb_sync_all();
@@ -598,7 +591,6 @@ static void writer_main(void* arg) {
         if (log_file_on) accept_client();
         LightLock_Lock(&drain_lock);
         if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
-            pm_ph_drain();
             drain_locked();
         }
         LightLock_Unlock(&drain_lock);
@@ -806,7 +798,6 @@ void pm_log_stop(void) {
     threadJoin(writer_th, 2000000000ULL);
     __atomic_store_n(&writer_on, 0, __ATOMIC_RELEASE);
     LightLock_Lock(&drain_lock);
-    pm_ph_drain();
     drain_locked(); /* the writer may have stopped on the timeout */
     LightLock_Unlock(&drain_lock);
     fb_sync_all(); /* the sink thread returns on writer_stop; its last bytes go out here */

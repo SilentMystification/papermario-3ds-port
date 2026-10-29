@@ -71,3 +71,9 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 - Not captured: frames 0 to 299 and frame 700 and later.
 - preset=intro (lane3a, shots every 30 calls, turbo): starts in the Mario house with the "Mail call!" box. The stage does not appear in this preset.
 - Run control: the Turbo run and the shotwin run did not stop at -Timeout. A run kept Azahar alive for more than 25 minutes (frame 9905 logged) and held the lock.
+
+## LOGCLEAN note (2026-10-29)
+
+- yard and pause_menu debug strings now add `loglevel=debug` (3ds/tools/azt_scenarios.json). text_menu and house_sign keep the old string.
+- Row LOGCLEAN, build 1417 (git 7ab19330c, uncommitted changes): yard 3 of 3 log checks, pause_menu 3 of 3 log checks. Shots written to build3ds\azt\shots\yard and build3ds\azt\shots\pause_menu. Picture not yet read by a person.
+- Boot line now prints `build <n> git <hash> loglevel <n>`.

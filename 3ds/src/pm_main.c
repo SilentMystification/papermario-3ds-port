@@ -1,4 +1,7 @@
 #include "pm_build.h"
+#ifndef PM_GIT_HASH
+#define PM_GIT_HASH "unknown"
+#endif
 #include <3ds.h>
 #include <citro3d.h>
 #include <stdio.h>
@@ -512,7 +515,6 @@ void pm_frame_loop(void) {
             pm_mem_log("tick");
             pm_log_d("log writer core %d heartbeat %u dropped %u", pm_log_writer_core(), pm_log_writer_hb(), pm_log_dropped());
         }
-        if (pm_debug_has("logflood")) for (int i = 0; i < 10000; i++) pm_log_d("flood %d of frame %u", i, frame);
         if (pm_debug_has("logstat")) {
             if (!stat_t0) stat_t0 = now;
             stat_ms += frame_ms;
@@ -604,7 +606,7 @@ static void game_thread(void* arg) {
     unsigned ram = (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 20);
     pm_log_w("Paper Mario 3DS");
     pm_log_d("threads: game on core %d (svcGetProcessorID), log writer on core %d", (int)svcGetProcessorID(), pm_log_writer_core());
-    pm_log_w("build %s", PM_BUILD_STR);
+    pm_log_w("build %s git %s loglevel %d", PM_BUILD_STR, PM_GIT_HASH, pm_log_level());
     pm_log_w("MODE = %s / 64MB cap (console region %uMB)", is_new ? "N3DS" : "O3DS", ram);
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     if (sw_cut) pm_log_e("switches: debug3ds.txt is longer than 255 bytes. The last word and the rest are cut. Use tour=@file for a long map list.");

@@ -17,5 +17,4 @@ void pm_depth_query(const void* timg, int x, int id) {
     /* near = large d24 (GREATER test), so 0 near .. 1 far is 1 - d24/0xFFFFFF */
     DepthCopyBuffer[id] = ok ? pm_depth_encode((int)((1.0f - (float)d24 / 16777215.0f) * 32704.0f + 0.5f)) : 0;
     { unsigned dt = pm_ticks() - t0; pm_b7.dq_n++; pm_b7.dq_ticks += dt; if (dt > pm_b7.dq_max) pm_b7.dq_max = dt; }
-    if (n++ < 8 || (n % 600) == 0) pm_log_d("F03 query n %d id %d x %d y %d ok %d d24 %06x word %04x", n, id, x, y, ok, d24, DepthCopyBuffer[id]);
 }

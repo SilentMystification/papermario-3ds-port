@@ -21,6 +21,7 @@ EOF2
 BN=$((V0 + $(git rev-list --count HEAD) - C0))
 if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
 printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
+printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short HEAD)" >> 3ds/include/pm_build.h.tmp
 # Rewrite pm_build.h only when the number changed: a new mtime would rebuild every file that includes it.
 cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
 
