@@ -318,9 +318,11 @@ static u8* copy_get(void) {
     if (!copy_blk) { pm_vram_alloc_fail("copy", BLK_FULL >> 10); return NULL; }
     pm_vram_reg(copy_blk, BLK_FULL);
     pm_vram_note();
+    pm_log_d("row 4: copy buffer in bank %c (frame %u)", pm_vram_bank_of(copy_blk) ? 'B' : 'A', pm_frame_count());
     return copy_blk;
 }
 static void copy_free(void) {
+    pm_log_d("row 4: copy buffer freed, idle %u frames", pm_frame_count() - copy_last);
     pm_vram_unreg(copy_blk, BLK_FULL);
     vramFree(copy_blk);
     copy_blk = NULL;
@@ -338,11 +340,12 @@ static int full_tex_init(int i) {
     if (!p) return 0;
     offs[i].tex.data = p;
     pm_vram_reg(p, BLK_FULL);
+    pm_log_d("row 4: full image %d in bank %c (frame %u)", i, pm_vram_bank_of(p) ? 'B' : 'A', pm_frame_count());
     return 1;
 }
 static void full_free(int i) {
     if (offs[i].rt) { C3D_RenderTargetDelete(offs[i].rt); offs[i].rt = NULL; }
-    if (offs[i].tex.data) { pm_vram_unreg(offs[i].tex.data, BLK_FULL); C3D_TexDelete(&offs[i].tex); offs[i].tex.data = NULL; }
+    if (offs[i].tex.data) { pm_log_d("row 4: full image %d freed, idle %u frames", i, pm_frame_count() - offs[i].last); pm_vram_unreg(offs[i].tex.data, BLK_FULL); C3D_TexDelete(&offs[i].tex); offs[i].tex.data = NULL; }
 }
 /* a 64 x 64 image takes an arena block (made at boot) */
 static int small_tex_init(C3D_Tex* t) {
