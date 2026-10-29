@@ -64,7 +64,7 @@ void pm_au2_emit(const AuCmd* c) {
     unsigned t0 = st ? pm_ticks() : 0;
     if (!open_) {
         if (LightSemaphore_TryAcquire(&sem_free, 1) != 0) { /* ring full: the control thread waits for the render thread */
-            unsigned w0 = pm_ticks();
+            unsigned w0 = st ? pm_ticks() : 0;
             LightSemaphore_Acquire(&sem_free, 1);
             if (st) { st_full_n++; st_full_ticks += pm_ticks() - w0; }
         }
@@ -110,7 +110,7 @@ static int wait_jobs_until(uint32_t target, unsigned long long tick_end) {
 
 int pm_au2_sync_timed(int reason, unsigned long long ns) {
     if (!pm_au2_active || pm_au2_on_render()) return 0;
-    unsigned t0 = pm_ticks();
+    unsigned t0 = stats() ? pm_ticks() : 0;
     unsigned long long tick_end = svcGetSystemTick() + (ns / 1000ull) * SYSCLOCK_ARM11 / 1000000ull;
     pm_au2_commit();
     int r = wait_jobs_until(__atomic_load_n(&committed, __ATOMIC_ACQUIRE), tick_end);
@@ -120,7 +120,7 @@ int pm_au2_sync_timed(int reason, unsigned long long ns) {
 
 void pm_au2_sync(int reason) {
     if (!pm_au2_active || pm_au2_on_render()) return;
-    unsigned t0 = pm_ticks();
+    unsigned t0 = stats() ? pm_ticks() : 0;
     pm_au2_commit();
     int waited = wait_jobs(__atomic_load_n(&committed, __ATOMIC_ACQUIRE));
     if (stats() && reason >= 0 && reason < AU2_SYNC_N) { st_sync_n[reason]++; if (waited) st_sync_ticks[reason] += pm_ticks() - t0; }

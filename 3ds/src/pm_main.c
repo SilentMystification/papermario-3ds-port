@@ -237,11 +237,10 @@ static void cfb_capture_prev(int cpu) {
         if (done_gpu == pm_frame_n || done == pm_frame_n) return;
         for (i = 0; i < nuGfxCfbNum; i++) {
             if (nuGfxCfb[i] == nuGfxCfb_ptr) {
-                unsigned t0 = pm_ticks();
+                unsigned t0 = pm_ph_on ? pm_ticks() : 0;
                 if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
-                    unsigned dt = pm_ticks() - t0;
                     done_gpu = pm_frame_n;
-                    pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt;
+                    if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
                     return;
                 }
                 break;
@@ -258,11 +257,11 @@ static void cfb_capture_prev(int cpu) {
         if (cpu && cap_fill) ref = cap_fill;
         if (nuGfxCfb[i] == ref) {
             unsigned short* prev = cpu && cap_fill ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
-            unsigned t0 = pm_ticks();
+            unsigned t0 = pm_ph_on ? pm_ticks() : 0;
             static unsigned nlog;
             pm_gpu_read_frame(prev);
-            { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
-            if (nlog++ < 6) pm_log("D03: last frame copied to a frame buffer in %u us (ARM11 tick, Azahar timing)", (unsigned)((pm_ticks() - t0) / 268u));
+            if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
+            if (pm_ph_on && nlog++ < 6) pm_log("D03: last frame copied to a frame buffer in %u us (ARM11 tick, Azahar timing)", (unsigned)((pm_ticks() - t0) / 268u));
             pm_tex_invalidate(prev, CFB_PIXELS * 2);
             return;
         }

@@ -11,10 +11,10 @@ void pm_depth_query(const void* timg, int x, int id) {
     static int n;
     unsigned d24 = 0;
     int y = (int)(((unsigned)timg - (unsigned)nuGfxZBuffer) / 2u) / 320, ok;
-    unsigned t0 = pm_ticks();
+    unsigned t0 = pm_ph_on ? pm_ticks() : 0; /* timed only with phase on: no tick read in the default build */
     if (id < 0 || id > 15) return;
     ok = pm_gpu_depth_at(x, y, &d24);
     /* near = large d24 (GREATER test), so 0 near .. 1 far is 1 - d24/0xFFFFFF */
     DepthCopyBuffer[id] = ok ? pm_depth_encode((int)((1.0f - (float)d24 / 16777215.0f) * 32704.0f + 0.5f)) : 0;
-    { unsigned dt = pm_ticks() - t0; pm_b7.dq_n++; pm_b7.dq_ticks += dt; if (dt > pm_b7.dq_max) pm_b7.dq_max = dt; }
+    if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.dq_n++; pm_b7.dq_ticks += dt; if (dt > pm_b7.dq_max) pm_b7.dq_max = dt; }
 }

@@ -162,9 +162,11 @@ static void ps_step(const Rec* r) {
 }
 
 /* Phase timing needs the switch (ph_want) and the log (pm_log_file). Logging off: pm_ph_on is 0, so no tick is read and no line is formed. */
-static int ph_want;
+static int ph_want, dcs_want;
+int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and the dcsum line; no other phase site */
 void pm_ph_log_gate(int on) {
     pm_ph_on = on && ph_want;
+    pm_dcs_on = on && dcs_want;
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
 }
 
@@ -173,6 +175,8 @@ void pm_ph_init(void) {
     ps_on = pm_debug_has("phsum");
     ph_want = pm_debug_has("phase") || ps_on;
     pm_ph_on = ph_want && pm_log_file();
+    dcs_want = pm_debug_has("dcsum");
+    pm_dcs_on = dcs_want && pm_log_file();
     ps_init(); /* only parses the abtog switch, so it runs even while logging is off */
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (!pm_ph_on) return;
@@ -312,7 +316,6 @@ void pm_ph_frame_end(void) {
     pm_ph_kick_n = pm_ph_kick_us = pm_ph_hud_us = 0;
     memset(pm_fl_n, 0, sizeof pm_fl_n); memset(pm_fl_e, 0, sizeof pm_fl_e); memset(pm_fl_us, 0, sizeof pm_fl_us);
     pm_ec_n = pm_ec_svc = 0;
-    memset(pm_dc_c, 0, sizeof pm_dc_c); memset(pm_dc_us, 0, sizeof pm_dc_us); /* DC1 */
     memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
     pm_gbi_sync_ticks = 0;

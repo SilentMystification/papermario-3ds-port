@@ -802,7 +802,7 @@ void pm_tex_begin_frame(void) {
     pm_tex_epoch_v++;
     pm_tex_wrap_gen_v++;
     tc_frame++;
-    if (tc_on < 0) tc_on = pm_debug_has("texstat") || pm_log_level() >= 3;
+    if (tc_on < 0) tc_on = pm_debug_has("texstat") || pm_ph_on; /* texture timers: texstat or phase only, not loglevel */
     if (tc_on && tc_frame % 300 == 0) tc_report();
     epoch++;
     frame_bytes = 0;

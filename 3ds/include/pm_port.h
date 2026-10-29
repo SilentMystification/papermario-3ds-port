@@ -73,6 +73,8 @@ extern int pm_ph_fine; /* switch phasegbi: time G_VTX, triangle and G_MTX ops on
 extern unsigned pm_ph_cnt[C_N];
 unsigned pm_ph_prev(int k); /* counter k of the last finished frame */
 void pm_ph_init(void);
+int pm_au_tk(void); /* audio tick reads on: switch audiostat or phase (pm_os.c). 0 in the default build */
+extern int pm_dcs_on; /* switch dcsum (with the log on): the sampled draw and flush timers run without phase */
 void pm_ph_push(int id);
 void pm_ph_pop(void);
 void pm_ph_frame_end(void);

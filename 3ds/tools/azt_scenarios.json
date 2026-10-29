@@ -31,6 +31,90 @@
       "reason": ""
     },
     {
+      "name": "yard_pace",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with pacestat logstat only. Frame-time baseline for LOGFIX (yard has no frame-time line).",
+      "proves": "pacestat and logstat print the frame time lines on the yard map, and the yard picture still draws.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug pacestat logstat",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "yard_phase",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the full push flag set (phase phsum audiostat texstat pacestat logstat). Cost test for LOGFIX.",
+      "proves": "The full push set runs on the yard map: phase, phsum and the stat lines print, and the yard picture still draws.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug phase phsum audiostat texstat pacestat logstat",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "yard_dcsum",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the cheap set pacestat logstat dcsum. Cost test for LOGFIX.",
+      "proves": "dcsum runs without phase: the dcsum line prints from the sampled timers, and the yard picture still draws.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug pacestat logstat dcsum",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "yard_live",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the livelog switch so the socket starts.",

@@ -133,11 +133,13 @@ int pm_au_thread_yield(void) {
         }
         pm_au2_commit(); /* before au_busy = 0: after that the game thread may emit or commit */
         if (au_busy) {
-            unsigned dt = pm_ticks() - au_j_t0;
-            if ((int)dt < 0) dt = 0; /* the tick counters of two cores can differ by a few ticks */
-            if (pm_ph_on) __atomic_fetch_add(&pm_ph_cnt[C_AJOB], dt / 268u, __ATOMIC_RELAXED); /* PG0: kick to done of the job in us, a pc field (core 1 wall time, an upper bound of its CPU time) */
-            au_j_sum += dt;
-            if (dt > au_j_max) au_j_max = dt;
+            if (pm_au_tk()) {
+                unsigned dt = pm_ticks() - au_j_t0;
+                if ((int)dt < 0) dt = 0; /* the tick counters of two cores can differ by a few ticks */
+                if (pm_ph_on) __atomic_fetch_add(&pm_ph_cnt[C_AJOB], dt / 268u, __ATOMIC_RELAXED); /* PG0: kick to done of the job in us, a pc field (core 1 wall time, an upper bound of its CPU time) */
+                au_j_sum += dt;
+                if (dt > au_j_max) au_j_max = dt;
+            }
             au_busy = 0;
         }
         LightEvent_Signal(&au_done);
@@ -187,7 +189,7 @@ void pm_audio_kick(unsigned n) {
     if (++au_k_n == (pm_debug_has("audiostat") ? 300u : 600u)) au_stats_log();
     au_ticks_left = (int)n;
     au_busy = 1;
-    au_j_t0 = pm_ticks();
+    au_j_t0 = pm_au_tk() ? pm_ticks() : 0;
     LightEvent_Clear(&au_done);
     LightEvent_Signal(&au_start);
 }
@@ -195,11 +197,13 @@ void pm_audio_kick(unsigned n) {
 /* Game thread: wait until the audio thread is idle. Free when it is idle already. */
 void pm_audio_join_at(int site) {
     if (!au_busy) return;
-    unsigned t0 = pm_ticks();
-    au_g_sum += (int)(t0 - au_j_t0) > 0 ? t0 - au_j_t0 : 0; /* core 0 work between kick and join */
+    int tk = pm_au_tk(); /* the audio tick reads: audiostat or phase only */
+    unsigned t0 = tk ? pm_ticks() : 0;
+    if (tk) au_g_sum += (int)(t0 - au_j_t0) > 0 ? t0 - au_j_t0 : 0; /* core 0 work between kick and join */
     PH_PUSH(PH_AUDIO);
     LightEvent_Wait(&au_done);
     PH_POP();
+    if (!tk) return;
     unsigned dt = pm_ticks() - t0;
     if ((int)dt < 0) dt = 0;
     au_site_n[site & 3]++; au_site_sum[site & 3] += dt;
@@ -210,11 +214,13 @@ void pm_audio_join_at(int site) {
 /* Sleep hook: wait at most ns for the audio job. 0 = idle, -1 = the job still runs at the deadline. It goes on after the wait. */
 int pm_audio_join_timed(int site, unsigned long long ns) {
     if (!au_busy) return 0;
-    unsigned t0 = pm_ticks();
+    int tk = pm_au_tk();
+    unsigned t0 = tk ? pm_ticks() : 0;
     PH_PUSH(PH_AUDIO);
     int to = LightEvent_WaitTimeout(&au_done, (s64)ns);
     PH_POP();
     if (to) return -1;
+    if (!tk) return 0;
     unsigned dt = pm_ticks() - t0;
     if ((int)dt < 0) dt = 0;
     au_site_n[site & 3]++; au_site_sum[site & 3] += dt;

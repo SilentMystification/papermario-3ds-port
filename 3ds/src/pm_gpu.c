@@ -258,10 +258,12 @@ static int want_clear; /* see below */
  * range is flushed once). v_fl, gring_fl and gidx_fl mark what is flushed. They restart at pm_gpu_begin. */
 static Vert* v_fl;
 static unsigned gring_fl, gidx_fl;
+/* DC1: the sampled close (set in pm_gpu_flush_at). Only one close in 8 reads the tick, so the timers are sampled and scaled by 8. */
+static int dc_on;
 /* DS0: cold counters for pm_gpu_dcsum_frame. Ticks and counts in this file's flushes, sampled closes and cmd words; sums over 300 drawn frames. */
 static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n;
 static void gpu_flush_written(void) {
-    unsigned g0 = pm_ph_on ? pm_ticks() : 0;
+    unsigned g0 = dc_on ? pm_ticks() : 0;
     pm_tex_flush_pend_only();
     if (verts && v_fl && verts > v_fl) {
         PH_PUSH(PH_GCACHE);
@@ -271,7 +273,7 @@ static void gpu_flush_written(void) {
     }
     if (gring && gring_n > gring_fl) { pm_fl_dc(gring + gring_fl * 16, (gring_n - gring_fl) * 16); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gring_n - gring_fl) * 16 >> 10); gring_fl = gring_n; dcs_fl++; }
     if (gidx && gidx_n > gidx_fl) { pm_fl_dc(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gidx_n - gidx_fl) * 2 >> 10); gidx_fl = gidx_n; dcs_fl++; }
-    if (pm_ph_on) dcs_gt += pm_ticks() - g0;
+    if (dc_on) dcs_gt += (pm_ticks() - g0) * 8u;
 }
 /* B2: queue order is clear of the main target, then every part. The first split of a frame queues the clear first. */
 static void split_frame(void) {
@@ -813,8 +815,7 @@ void pm_pso_bake(unsigned id) {
 
 static unsigned flush_gen; /* GV1b: counts the raw batches closed */
 /* DC1: the sampled close. Marks: 0 start, 1 after the uniforms, 2 after the texture binds, 3 after TEV, 4 after the fragment state,
- * 5 after the draw call, 6 and 7 around kick_check. Set by pm_gpu_flush_at for one close in 8 (phase on). */
-static int dc_on;
+ * 5 after the draw call, 6 and 7 around kick_check. Set by pm_gpu_flush_at for one close in 8 (phase or dcsum on). */
 static unsigned dc_seq, dc_t[8];
 #define DC_T(k) do { if (dc_on) dc_t[k] = pm_ticks(); } while (0)
 static void dc_end(void) {
@@ -2262,24 +2263,24 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
         return;
     }
     pm_dc_c[DC_CL]++;
-    dc_on = (dc_seq++ & 7) == 0 && pm_ph_on; /* DC1: one close in 8 is sampled */
-    if (!pm_ph_on) { flush_impl(); return; }
-    int c = pm_gbi_flush_class();
-    pm_fl_n[c]++;
-    { extern void pm_gbi_census_close(void); pm_gbi_census_close(); } /* T2b: non-empty close per producer */
+    int c = 0;
+    if (pm_ph_on) { c = pm_gbi_flush_class(); pm_fl_n[c]++; { extern void pm_gbi_census_close(void); pm_gbi_census_close(); } } /* T2b: non-empty close per producer */
+    dc_on = (dc_seq++ & 7) == 0 && (pm_ph_on || pm_dcs_on); /* DC1: one close in 8 is sampled, with phase or dcsum */
     if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
-    unsigned t0 = pm_ticks();
+    unsigned t0 = pm_ph_on ? pm_ticks() : 0; /* the per-class flush time is phase only */
     float cmd0 = C3D_GetCmdBufUsage();
     flush_impl();
     float cmd1 = C3D_GetCmdBufUsage();
     if (cmd1 > cmd0) dcs_cmd += (unsigned)((cmd1 - cmd0) * 1000.f);
     dc_on = 0;
-    pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
+    if (pm_ph_on) pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
 }
-/* DS0: cold. Called once per drawn frame from pm_gbi_end_frame, before pm_ph_frame_end clears pm_dc_c and pm_dc_us. Every 300 frames it prints one dcsum line. */
+/* DS0: cold. Called once per drawn frame from pm_gbi_end_frame (phase or dcsum on). It takes and clears pm_dc_c and pm_dc_us. Every 300 frames it prints one dcsum line. */
 void pm_gpu_dcsum_frame(unsigned frame) {
     dcs_cl += pm_dc_c[DC_CL];
     for (int k = 0; k < DCU_N; k++) dcs_us[k] += pm_dc_us[k];
+    memset(pm_dc_c, 0, sizeof pm_dc_c);
+    memset(pm_dc_us, 0, sizeof pm_dc_us);
     if (++dcs_n < 300) return;
     unsigned smp = dcs_smp ? dcs_smp : 1, cl = dcs_cl ? dcs_cl : 1, fl = dcs_fl ? dcs_fl : 1;
     pm_log_hw("dcsum f%u cl %u per frame | us per close pal %u bind %u tev %u st %u draw %u | gc %u us per flush, %u flushes per frame | cmd %u permil per sampled close, %u sampled closes | svc flush fallbacks %u",

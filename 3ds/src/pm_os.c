@@ -148,14 +148,15 @@ int pm_audio_serve(void) {
 
 static unsigned a_t0;
 static int a_in;
+int pm_au_tk(void) { static int st = -1; if (st < 0) st = pm_debug_has("audiostat"); return st || pm_ph_on; }
 void pm_audio_retrace_send(void) {
     if (!au_client) return;
     if (!nusched.audioRequestMQ.msgCount) {
         osCreateMesgQueue(&nusched.audioRequestMQ, nusched.audioRequestBuf, NU_SC_MAX_MESGS);
         nusched.retraceMsg = NU_SC_RETRACE_MSG;
     }
-    a_t0 = pm_ticks();
-    a_in = 1;
+    a_in = pm_au_tk();
+    if (a_in) a_t0 = pm_ticks();
     osSendMesg(au_client->msgQ, (OSMesg)&nusched.retraceMsg, OS_MESG_NOBLOCK);
 }
 
