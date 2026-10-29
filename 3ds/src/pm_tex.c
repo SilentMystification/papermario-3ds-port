@@ -684,6 +684,13 @@ unsigned pm_tex_budget(void) { return tex_cap; }
 static int fail_last, fail_n;
 int pm_tex_failed(void) { return fail_last; }
 unsigned pm_tex_fail_count(void) { return (unsigned)fail_n; }
+/* sweep420: live slot count and lifetime evictions, read at each map load. */
+void pm_tex_map_state(unsigned* out_n, unsigned* out_ev) {
+    unsigned n = 0;
+    for (int i = 0; i < slot_hi; i++) if (slots[i].live) n++;
+    *out_n = n;
+    *out_ev = tot_evict;
+}
 unsigned pm_tex_peak(void) { return used_peak; }
 /* V13c: highest cache use since the last call, then restart from the current use. */
 unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }

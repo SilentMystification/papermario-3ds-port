@@ -137,6 +137,7 @@ unsigned pm_tex_map_peak_take(unsigned* wmax);
 void pm_tex_map_delta(unsigned* o);
 unsigned pm_tex_budget(void);
 unsigned pm_tex_fail_count(void);
+void pm_tex_map_state(unsigned* out_n, unsigned* out_ev);
 static unsigned lin_peak; /* highest linear bytes in use seen at a log call */
 
 /* M01 measurement: newlib heap in use, newlib heap free, linear pool free. All bytes read from the OS now. */
@@ -193,6 +194,11 @@ void pm_mem_log(const char* tag) {
         unsigned dl[9];
         pm_tex_map_delta(dl);
         pm_log_d("texmap since last map: hit %u miss %u up %uKB inval %u same %u diff %u evict %u inv_us %u hash_us %u vramfree min %u KB", dl[0], dl[1], dl[2], dl[3], dl[5], dl[6], dl[4], dl[7] / 268, dl[8] / 268, vram_min_kb);
+        static unsigned fail_prev; /* sweep420: tex failures since the previous map */
+        unsigned sl, evc, fc = pm_tex_fail_count();
+        pm_tex_map_state(&sl, &evc);
+        pm_log_d("texmap state: slots %u used %uKB evict cum %u tex fail cum %u delta %u vramfree min %u KB", sl, pm_tex_used() >> 10, evc, fc, fc - fail_prev, vram_min_kb);
+        fail_prev = fc;
     }
     {
         unsigned gs = 0, as = 0;
