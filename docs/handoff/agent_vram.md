@@ -70,3 +70,27 @@
 - Row 5 (shrink and regrow) per plan: pm_tex_shrink, drain through stale, free bank B at begin_frame, regrow after 120 idle frames, debug switch vramfill=N. Test with pause script and vramfill=2.
 - Not done yet: row 4 and row 5. The tour_k30 shot timing is being fixed by the catalog agent (shots after load-done plus 15 frames). Do not use the catalog's tour_k30 scenario for picture checks until that is verified.
 - Hardware rule: every commit message has one line on how the row follows docs/handoff/hw_guidelines.md. Keep slot headers compact, the extent table small, and the LRU scan off the hit path.
+
+## Row 4 (branch vram-row4-untested, commit bb5a86fdd, base main 4b0ad69d4)
+- Code (pm_gpu.c only): `bank_block` (A then B), `copy_get` / `copy_free` (one 512 KB copy block, `copy_last`), `tex_hdr` (C3D_TexInit, linear freed at once, data set later), `full_tex_init` / `full_free` (C3D_RenderTargetDelete then C3D_TexDelete), `buffers_idle` (IDLE_FREE 60, full images with w != 64 and the copy block). `off_snapshot` full branch clears `prev_pre`. `grab_ready` removed. `off_fail` cleared at pm_gpu_begin. Small 64 x 64 path unchanged (`small_tex_init`).
+- Assert found and fixed: `C3D_RenderTargetDelete` breaks (svcBreak, renderqueue.c:364) when a frame is open. `buffers_idle` therefore runs before `C3D_FrameBegin`. First build crashed on that (Azahar "Break", LR in C3D_RenderTargetDelete).
+- Test (vram4, 7 of 8 starts used after full411):
+  - pause_menu: log checks pass. Shots 0000 to 0003 equal to base (vrambase = HEAD 4b0ad69d4): 0 px differ each. Shot 0002 read by eye: status menu.
+  - text_menu: log checks pass. Shots equal to base pause shots: 0 px differ.
+  - battle_start: log checks pass. No base shots taken (budget).
+  - file_select: does not reach file select (game ran to frame 10349 in the 90 s cap). No value.
+  - full411: see the result below.
+  - Min free per bank in these scenes: 1065 / 1065 KB (no change from row 3). No full image was allocated in pause, text or battle: the grab and full-image path did not run. The row 4 path is UNTESTED. The branch stays unmerged.
+- Shot result for the target path: none yet. Needs a scene that allocates full images (pm_gpu_off_begin with stride > 64). The file select path is the known user.
+
+## Row 5 (not started)
+- Not written. Plan: pm_tex_shrink, drain, free, regrow. Trigger problem: no test scene in the list allocates a full image, so the shrink path (called from a full-image failure in `bank_block`) cannot run there. `vramfill=2` alone leaves B at 41 KB free and does not trigger it. Decide the trigger first (for example a forced shrink at the first begin_frame when vramfill is set).
+
+## Next steps
+1. Find a scene that allocates full images (file select or a pause page with stride > 64). Test row 4 there: min per bank at least 41 KB, shots equal to base.
+2. Only after that, merge vram-row4-untested to main (fast-forward or cherry-pick bb5a86fdd). Do not merge while untested.
+3. Row 5 after the trigger is decided.
+4. Budget: vram4 has 1 start left. Use fresh ids for new tests (vram5 budget is fresh).
+- Shot ids: row 4 runs used the azt default names. Base shots are in C:/Users/Andrew/AppData/Local/Temp/claude/.../scratchpad/r4/pause_base.
+- Build: worktree C:/Users/Andrew/Documents/GitHub/papermario-3ds-port-vram2 is at main 4b0ad69d4 plus pm_gpu.c from the row 4 branch (currently the row 4 build). Copies: main build3ds/lane-vram (row 4), build3ds/lane-vrambase (HEAD base).
+- Not touched: pm_warp.c, azt_scenarios.json, map_restore_table.c (other agents' or user files).
