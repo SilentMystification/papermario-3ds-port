@@ -1007,6 +1007,34 @@
       }
     ],
     "reason": "TOADFOUNT, not verified. Run 1 (HEAD, build 1488) gave frames 100 to 149 with no fountain in view. Frame 149 is the until-line. A person must read the shots."
+  },
+  {
+    "name": "toad_water",
+    "status": "unverified",
+    "subject": "Toad Town mac_01 at the fountain candidate (about x -304, z -329). Mario walks from entry 0 to x -300 z -150, then north to z -240, facing the candidate. Shots every 4 frames from frame 140 to 176.",
+    "proves": "TOADFOUNT position: water or fountain in the picture, on HEAD, then the water region on a second build. Log only, no numeric gate.",
+    "debug": "warp=mac_01:0 story=ch0_toad_town padscript=seg_a,go_-300_-150_500,seg_b,go_-300_-240_300,seg_c,wait20,seg_d shots shotwin=140:40 loglevel=debug",
+    "until": "shot \\d+ frame 176\\b",
+    "cap": 40,
+    "deadline": 20,
+    "first_marker": "warp: mac_01 entry 0",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "warp",
+        "regex": "warp: mac_01 entry 0"
+      },
+      {
+        "name": "route seg b (z -150 reached)",
+        "regex": "route: seg b f\\d+"
+      },
+      {
+        "name": "shot",
+        "regex": "shot \\d+ frame 176\\b"
+      }
+    ],
+    "reason": "TOADFOUNT position run 1 (HEAD, build 1488): first shot at frame 140 shows the bulletin board and Mario, no fountain. Stopped by rule. Not verified."
   }
   ]
 }
