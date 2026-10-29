@@ -616,6 +616,7 @@ static void game_thread(void* arg) {
     pm_log_set_switches(sw);
     pm_log_init(live);
     pm_log_start();
+    pm_log_live_status();
     pm_ph_init();
     pm_wd_start();
     pm_fpscr_setup("game");

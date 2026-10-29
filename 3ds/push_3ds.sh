@@ -100,12 +100,12 @@ while [ "$i" -le "$attempts" ]; do
     usedocker=0
     if [ -x "$LINK" ]; then
         echo "+ $LINK -a $ip build3ds/pm_3ds.3dsx -- --verbose $*"
-        stdbuf -oL "$LINK" -a "$ip" build3ds/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 &
+        stdbuf -oL "$LINK" -a "$ip" build3ds/pm_3ds.3dsx -- --verbose livelog "$@" >"$outfile" 2>&1 &
     else
         usedocker=1
         echo "+ docker run devkitpro/devkitarm 3dslink -a $ip /out/pm_3ds.3dsx -- --verbose $*"
         MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$(pwd)/build3ds:/out:ro" devkitpro/devkitarm:latest \
-            stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" /out/pm_3ds.3dsx -- --verbose "$@" >"$outfile" 2>&1 &
+            stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" /out/pm_3ds.3dsx -- --verbose livelog "$@" >"$outfile" 2>&1 &
     fi
     dpid=$!
     tail -n +1 -f "$outfile" &

@@ -21,6 +21,7 @@ void pm_con_lock(void);
 int pm_con_trylock(void);
 void pm_con_unlock(void);
 void pm_log_start(void);
+void pm_log_live_status(void); /* LIVEMSG: the pm_log_init result, written after pm_log_start */
 void pm_log_stop(void);
 void pm_log_console_ready(void); /* CPULIM-UI: the bottom console exists now: print the lines that were logged before it did */
 extern volatile int pm_cpu_game_value; /* app core 1 time limit the game set (HUD) */

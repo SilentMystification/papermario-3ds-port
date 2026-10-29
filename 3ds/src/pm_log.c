@@ -28,6 +28,7 @@ static LightLock fsink_lock; /* every write and fsync of log_fd (sink thread, wr
 static int log_fd = -1;
 static int listen_fd = -1;
 static int soc_up;
+static char live_msg[160]; /* LIVEMSG: the live-log status line, see pm_log_live_status */
 static u32 live_eagain, live_stall_close;
 static u64 live_ok_tick;
 static int client = -1;
@@ -208,14 +209,20 @@ void pm_log_init(int live) {
     unsigned soc_bytes = 0;
     u32* soc = (u32*)pm_soc_buffer(&soc_bytes);
     Result soc_rc = (!live || !soc || soc_bytes < 0x1000) ? -1 : socInit(soc, soc_bytes);
+    /* LIVEMSG: pm_log_w drops lines until pm_log_start, so the result is kept here and written by pm_log_live_status. */
+    if (!live) {
+        snprintf(live_msg, sizeof live_msg, "live log: off (no netload and no livelog switch)");
+        return;
+    }
     if (soc_rc != 0) {
-        if (live) pm_log_w("live log: off (buffer %p, %u bytes, alloc %08lx, socInit %08lx, netload %d)", (void*)soc, soc_bytes, (unsigned long)pm_soc_alloc_rc(), (unsigned long)soc_rc, pm_started_by_netload());
+        snprintf(live_msg, sizeof live_msg, "live log: off (socInit %08lx, buffer %p, %u bytes, alloc %08lx, netload %d)",
+                 (unsigned long)soc_rc, (void*)soc, soc_bytes, (unsigned long)pm_soc_alloc_rc(), pm_started_by_netload());
         return;
     }
     soc_up = 1;
     listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_fd < 0) {
-        pm_log_e("live log: socket failed errno %d\n", errno);
+        snprintf(live_msg, sizeof live_msg, "live log: off (socket failed errno %d, socInit %08lx)", errno, (unsigned long)soc_rc);
         return;
     }
     int yes = 1;
@@ -229,11 +236,17 @@ void pm_log_init(int live) {
         int bind_errno = errno;
         close(listen_fd);
         listen_fd = -1;
-        pm_log_e("live log: bind 17492 or listen failed errno %d\n", bind_errno);
+        snprintf(live_msg, sizeof live_msg, "live log: off (bind 17492 or listen failed errno %d, socInit %08lx)", bind_errno, (unsigned long)soc_rc);
         return;
     }
     fcntl(listen_fd, F_SETFL, O_NONBLOCK);
-    pm_log_w("live log: port 17492 (buffer %p, %u bytes, alloc %08lx, socInit %08lx)\n", (void*)soc, soc_bytes, (unsigned long)pm_soc_alloc_rc(), (unsigned long)soc_rc);
+    snprintf(live_msg, sizeof live_msg, "live log: port 17492 (buffer %p, %u bytes, alloc %08lx, socInit %08lx)", (void*)soc, soc_bytes,
+             (unsigned long)pm_soc_alloc_rc(), (unsigned long)soc_rc);
+}
+
+/* LIVEMSG: write the live-log status from pm_log_init. Call after pm_log_start, when the writer takes lines. */
+void pm_log_live_status(void) {
+    if (live_msg[0]) pm_log_w("%s", live_msg);
 }
 
 static void stat_site(const char* fmt) {

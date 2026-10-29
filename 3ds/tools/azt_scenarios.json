@@ -31,6 +31,38 @@
       "reason": ""
     },
     {
+      "name": "yard_live",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the livelog switch so the socket starts.",
+      "proves": "LIVEMSG: the live-log status line (port 17492 or the socInit failure) is written to log.txt after pm_log_start, and the yard picture still draws.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug livelog",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "live status",
+          "regex": "live log: (port 17492|off \\()"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": "LIVEMSG row. Unverified until the picture is read and the status line is seen."
+    },
+    {
       "name": "mac01",
       "status": "verified",
       "subject": "Mario in mac_01 (area 1 map 2, entry 0), in control, at scene frames 200 and 204 (the shot writer takes one shot every 4 frames).",
