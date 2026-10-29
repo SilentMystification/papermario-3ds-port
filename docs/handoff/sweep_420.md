@@ -45,9 +45,10 @@ Totals over 411 maps (single pass):
 - Evictions cumulative at end: HEAD 8741, baseline 5467.
 
 ## Shots
-- Shot written for every map (shotmode=4:21, last frame per burst). Files: SD folder shots/<entry>_<area>_<map>.ppm, 411 per run.
-- Shot of the first HEAD failure: shots/0153_0_16.ppm. Shot of the first baseline failure: shots/0052_*.ppm (flo_23). Pictures not checked by eye.
-- Run 3 shots copy: scratchpad run3_shots. Run 4 shots copy: scratchpad run4_shots.
+- Shot written for every map (shotmode=4:21, last frame per burst). Files: <entry>_<area>_<map>.ppm.
+- HEAD run shots: build3ds/lane-texmax/shots. First HEAD failure: 0153_0_16.ppm (kmr_30).
+- Baseline run shots: build3ds/lane-sweepbase/shots. First baseline failure: 0052_19_17.ppm (flo_23).
+- Pictures not checked by eye.
 
 ## Open items
 1. Crash in run 1 at tst_12: effect pool full (assert i < ARRAY_COUNT(gEffectInstances)). Test map, excluded. Not analysed.
