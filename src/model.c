@@ -1420,6 +1420,13 @@ void appendGfx_model(void* data) {
         }
     }
 #endif
+#ifdef TARGET_3DS
+    { /* MDL1: model census mark, phase on only (pm_gbi.c mdc_*) */
+        extern int pm_ph_on;
+        extern void pm_gbi_mdl_mark(unsigned id, int pan);
+        if (pm_ph_on) pm_gbi_mdl_mark(model->modelID, (model->flags & MODEL_FLAG_HAS_TEX_PANNER) != 0);
+    }
+#endif
     if (model->textureID != 0) {
         textureHandle = &TextureHandles[model->textureID + model->textureVariation];
         textureHeader = &textureHandle->header;

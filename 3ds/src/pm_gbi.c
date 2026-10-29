@@ -2110,6 +2110,126 @@ static __attribute__((cold, noinline)) void mops_report(void) {
     memset(&mops_c, 0, sizeof(mops_c));
 }
 
+/* MDL1: model census, phase on only, counts only. appendGfx_model marks the model ID at its entry (gMainGfxPos). The cursor
+ * moves as the producer census does (main list, sp == 0). Draw = a run of tri ops (any other op ends the run). Static = the hash
+ * of the G_MTX words of the model is equal to the hash of the last frame. Table 128 slots, mark list 1024 entries. */
+#define MDC_MARKS 1024
+#define MDC_SLOTS 128
+typedef struct {
+    u16 id;
+    u8 used, pan, fog, has_prev;
+    unsigned ops, draws, tris, binds, tex_sum, frames, stat; /* window sums */
+    unsigned seen, ntx, tx[8], prev_h, cur_h; /* frame state */
+} mdc_t;
+static mdc_t mdc[MDC_SLOTS];
+static struct { const Gfx* p; int s; } mdcm[MDC_MARKS];
+static int mdcm_n, mdcm_next, mdcm_cur = -1, mdcm_over, mdc_prev_tri;
+static unsigned mdc_tot_ops, mdc_tot_draws, mdc_tot_tris, mdc_tot_binds, mdc_none;
+
+static __attribute__((cold, noinline)) int mdc_slot(unsigned id) {
+    unsigned h = (id * 2654435761u) >> 25;
+    for (int i = 0; i < MDC_SLOTS; i++, h = (h + 1) & (MDC_SLOTS - 1)) {
+        if (!mdc[h].used) { mdc[h].used = 1; mdc[h].id = (u16)id; mdc[h].cur_h = 2166136261u; return (int)h; }
+        if (mdc[h].id == id) return (int)h;
+    }
+    return -1;
+}
+void pm_gbi_mdl_mark(unsigned id, int pan) { /* called by appendGfx_model under phase */
+    const Gfx* p = gMainGfxPos;
+    if (mdcm_n && p < mdcm[mdcm_n - 1].p) mdcm_n = 0; /* the main list starts again */
+    int s = mdc_slot(id);
+    if (s >= 0) { mdc[s].seen = 1; mdc[s].pan = (u8)(pan != 0); }
+    else mdcm_over++;
+    if (mdcm_n < MDC_MARKS) { mdcm[mdcm_n].p = p; mdcm[mdcm_n].s = s; mdcm_n++; }
+    else mdcm_over++;
+}
+static __attribute__((cold, noinline)) void mdc_op(const Gfx* at, int sp, unsigned op, u32 w0, u32 w1) {
+    if (os_nest == 1 && pmx_main && sp == 0) {
+        while (mdcm_next < mdcm_n && at >= mdcm[mdcm_next].p) { mdcm_cur = mdcm[mdcm_next++].s; mdc_prev_tri = 0; }
+    }
+    int cur = pmx_main ? mdcm_cur : -1;
+    unsigned is_tri = op == G_TRI1 || op == G_TRI2, was_tri = (unsigned)mdc_prev_tri, ntri = op == G_TRI2 ? 2u : 1u;
+    mdc_prev_tri = (int)is_tri;
+    mdc_tot_ops++;
+    if (is_tri) { mdc_tot_tris += ntri; if (!was_tri) mdc_tot_draws++; }
+    if (op == G_PM_TEX) mdc_tot_binds++;
+    if (cur < 0) { mdc_none++; return; }
+    mdc_t* m = &mdc[cur];
+    m->ops++;
+    if (is_tri) { m->tris += ntri; if (!was_tri) m->draws++; }
+    switch (op) {
+    case G_TRI1: case G_TRI2: break;
+    case G_PM_TEX: {
+        m->binds++;
+        unsigned j = 0;
+        while (j < m->ntx && m->tx[j] != w1) j++;
+        if (j == m->ntx && m->ntx < 8) m->tx[m->ntx++] = w1;
+        break;
+    }
+    case G_SETFOGCOLOR: m->fog = 1; break;
+    case G_MTX: {
+        if (!is_host((u32)(uintptr_t)ptr_of(w1))) break;
+        u32 v[16];
+        memcpy(v, ptr_of(w1), sizeof(v));
+        unsigned h = m->cur_h ^ w0;
+        for (int i = 0; i < 16; i++) h = (h ^ v[i]) * 16777619u;
+        m->cur_h = h;
+        break;
+    }
+    default: break;
+    }
+}
+static __attribute__((cold, noinline)) void mdc_frame_end(void) {
+    for (int s = 0; s < MDC_SLOTS; s++) {
+        mdc_t* m = &mdc[s];
+        if (!m->used) continue;
+        if (m->seen) {
+            m->frames++;
+            m->tex_sum += m->ntx;
+            if (m->has_prev && m->cur_h == m->prev_h) m->stat++;
+            m->prev_h = m->cur_h;
+            m->has_prev = 1;
+        } else {
+            m->has_prev = 0;
+        }
+        m->seen = 0; m->ntx = 0; m->cur_h = 2166136261u;
+    }
+    mdcm_n = 0; mdcm_next = 0; mdcm_cur = -1;
+}
+static __attribute__((cold, noinline)) void mdc_report(void) {
+    unsigned long long tot_o = 0, tot_d = 0, tot_t = 0, tot_b = 0;
+    unsigned mdl_n = 0, mdl_st = 0;
+    static unsigned char picked[MDC_SLOTS];
+    memset(picked, 0, sizeof picked);
+    for (int s = 0; s < MDC_SLOTS; s++) {
+        mdc_t* m = &mdc[s];
+        if (!m->used || !m->frames) continue;
+        mdl_n++;
+        if (m->frames > 1 && (unsigned long long)m->stat * 10 >= (unsigned long long)(m->frames - 1) * 9) mdl_st++;
+        tot_o += m->ops; tot_d += m->draws; tot_t += m->tris; tot_b += m->binds;
+    }
+    pm_log_hw("mdlsum f%d tot ops %u draws %u tris %u binds %u | models %u static %u | unattr ops %u over %u", rm_frame,
+        (unsigned)(mdc_tot_ops / 300), (unsigned)(mdc_tot_draws / 300), (unsigned)(mdc_tot_tris / 300), (unsigned)(mdc_tot_binds / 300),
+        mdl_n, mdl_st, (unsigned)(mdc_none / 300), mdcm_over);
+    for (int r = 0; r < 12; r++) {
+        int best = -1; unsigned bv = 0;
+        for (int s = 0; s < MDC_SLOTS; s++) if (!picked[s] && mdc[s].used && mdc[s].ops > bv) { bv = mdc[s].ops; best = s; }
+        if (best < 0) break;
+        picked[best] = 1;
+        mdc_t* m = &mdc[best];
+        unsigned tx = m->frames ? m->tex_sum / m->frames : 0;
+        pm_log_hw("mdlsum f%d r%d id %04x draws %u ops %u tris %u binds %u tex %u static %u/%u pan %u fog %u", rm_frame, r + 1, (unsigned)m->id,
+            (unsigned)(m->draws / 300), (unsigned)(m->ops / 300), (unsigned)(m->tris / 300), (unsigned)(m->binds / 300), tx,
+            m->frames > 1 ? m->stat : 0u, m->frames > 1 ? m->frames - 1 : 0u, (unsigned)m->pan, (unsigned)m->fog);
+    }
+    for (int s = 0; s < MDC_SLOTS; s++) {
+        mdc[s].ops = mdc[s].draws = mdc[s].tris = mdc[s].binds = mdc[s].tex_sum = mdc[s].frames = mdc[s].stat = 0;
+        mdc[s].fog = 0;
+    }
+    mdc_tot_ops = mdc_tot_draws = mdc_tot_tris = mdc_tot_binds = mdc_none = 0;
+    mdcm_over = 0;
+}
+
 static void os_report(void) {
     static unsigned long long est[256], estc[256], pke[PK_SLOTS];
     unsigned long long cls_tk[OS_N] = { 0 }, cls_n[OS_N] = { 0 }, tot_n = 0, tot_fl = 0, tot_sn = 0, psum = 0;
@@ -2176,7 +2296,7 @@ void pm_gbi_end_frame(void) {
         if (++pdl0_frames >= 300) { pdl0_report(); }
     }
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
-    if (pm_ph_on) { pm_gpu_dcsum_frame(rm_frame); if (os_fr == 0) os_calibrate(); if (++os_fr >= 300) { os_report(); mops_report(); os_fr = 0; } pmk_n = 0; }
+    if (pm_ph_on) { pm_gpu_dcsum_frame(rm_frame); if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mops_report(); mdc_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
     if ((rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
@@ -3084,7 +3204,7 @@ static void gbi_run_body(void* list, unsigned nbytes);
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
     if (!pm_ph_on) { gbi_run_body(list, nbytes); return; }
-    if (os_nest == 0) { pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; pmx_cur = pmx_main ? PK_PRE : PK_BG; pmx_next = 0; }
+    if (os_nest == 0) { pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; pmx_cur = pmx_main ? PK_PRE : PK_BG; pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
     os_nest++;
     gbi_run_body(list, nbytes);
     if (os_open && os_nest == 1) os_close();
@@ -3161,6 +3281,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         }
         if (pm_ph_on) os_op_hook(pc - 1, sp, op); /* W1: after the prologue, so a sample is the handler only */
         if (pm_ph_on) mops_count(op, w0, w1); /* R0: counts only */
+        if (pm_ph_on) mdc_op(pc - 1, sp, op, w0, w1); /* MDL1: model census, counts only */
         switch (op) {
         case G_ENDDL:
             if (pdl0_on()) pdl0_gl_leave();
