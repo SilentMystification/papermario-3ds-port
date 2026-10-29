@@ -47,3 +47,8 @@ Cause NOT confirmed. Ranked candidates below. No game source edit. No Azahar run
 ## Azahar check (later row, one quantity per shot)
 - Debug switch: round zmix.y to 2^-16 steps in pm4.v.pica. Scenario toad_pond (azt_scenarios.json:1040).
 - Candidate 1 or 2: pond shows the background colour, as on console. Candidate 3: background at any prim value near 0x7FF0.
+
+## Result (PRIMZFIX, 2026-10-29)
+- Fix applied: prim_z - 1 in prim_ndc_z() (pm_gbi.c). Commit 9c0387c33.
+- Azahar repro, toad_pond_zround (zmix.y rounded to 2^-16, switch zround): old code shows the same pond water as HEAD. Does not reproduce. The rounding moves the stored depth by about 64 units, so only the band 7616 to 7744 flips. The band is not hit here.
+- Candidates 2 and 3 are not tested. Console check remains: the user reads the pond water.

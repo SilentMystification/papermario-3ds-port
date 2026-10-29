@@ -434,3 +434,12 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 - Pictures read by eye: yard (Mario, pipe), pause status page, file select screen, mac01 post office with Mario and Toads, mac01t Toad Town street, partner Party tab, text status page, battle_start 0000 colour test pattern, 0001 to 0003 field, 0004 to 0008 battle HUD.
 - Archive: `3ds/logs/builds/pm_3ds_1504_c294e993f.3dsx`, 13371520 bytes. Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
 - The push command for the user is in the header above.
+
+## LOGTRIM (build 1511, git db9c007f1; epic incomplete)
+- Commits: d99eea457 WARPLOG2, 9c0387c33 PRIMZFIX, 9601f4eaa UNTILCHK, db9c007f1 WMODEL. Handoff: docs/handoff/agent_logtrim.md.
+- WARPLOG2: yard_pace warp window (entry to warp scene f300) 67 lines on HEAD, 30 new. Under 15 not met on Azahar. Console estimate 127.6 to about 12.5 (diag_warpnoise.md). Log checks: yard 3 of 3, pause_menu 6 of 6, mac01t 6 of 6.
+- PRIMZFIX: fix is prim_z - 1 in prim_ndc_z(). Repro (zround switch on the old code) does not show the background through the pond on Azahar. Pond water at x 20 to 60 is unchanged in all runs. HEAD runs differ only in the NPC strip x 92 to 138. Fixed code with switch off equals HEAD outside that strip (10 of 10 shots).
+- UNTILCHK: azt.ps1 rejects an until line that no source prints or an unreachable frame (exit 7). A run with no new log line for 40 s stops (exit 6). Self-test 5 of 5. Live stall not seen.
+- WMODEL: fsplit line adds wm and tk. yard f600 wm 103.0 tk 2.00; mac01t f900 wm 143.0 tk 2.00. logstat work +0.01 ms against HEAD. Top shots byte-equal (yard 1 of 1, mac01t 2 of 2).
+- Catalog on build 1511, 8 starts (LOGTRIM budget): yard 3 of 3, pause_menu 6 of 6, partner_menu 7 of 7, file_select 6 of 6, text_menu 3 of 3, mac01 4 of 4, mac01t 6 of 6, battle_start 4 of 4 log checks. toad_pond not run (budget).
+- Archive: 3ds/logs/builds/pm_3ds_1511_db9c007f1.3dsx, sha256 2d97e3f34420605813c71b42b4b0a560ce73a0d973b283ff38f5b3e64776d895 (equal to build3ds/pm_3ds.3dsx). Line in pushed_builds.txt. Not pushed. No push command: the epic is not complete.
