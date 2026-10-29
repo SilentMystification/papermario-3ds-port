@@ -405,3 +405,11 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 - Cost, Azahar, steady window (yard f600): work 6.99 ms without fsplit, 7.00 ms with it (+0.01 ms). Direction only. Kick flushes, most audio joins and pacing idle are not split (see docs/handoff/test_catalog.md, FSPLIT).
 - Push command, cheap set plus the split (frame time, dcsum, split line, no per-op output):
   `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
+
+## LBR (final8, git f230e46c6)
+- Archive: `3ds/logs/builds/pm_3ds_final8_f230e46c6.3dsx`, 13370840 bytes, sha256 `3c50c58f1761c7c3b33dc38614008072137d2262b19febd22719d9e9382d939b` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
+- R5B (b1d5d425e): equal light MOVEMEM and MOVEWORD skip. Light writes per frame, mac01: 160 to 0. mac01t picture 2 of 2 byte-equal.
+- R2B (f230e46c6): equal SETCOMBINE, TEXTURE and GEOMETRYMODE skip. mac01 cc plus geo 1105 us to 1006 us (one window per build). Pictures: mac01t 2 of 2, yard 1 of 1, pause_menu 1 of 1, mac01 2 of 2 byte-equal.
+- LB1 (lazy FrameBegin) was dropped: battle_start 4 of 7 shots equal (frames 153 and later differ), no run left. See docs/handoff/agent_lbr.md.
+- Push command, cheap set plus the split:
+  `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
