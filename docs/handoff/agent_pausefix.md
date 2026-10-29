@@ -74,3 +74,15 @@
 - Timing: `PM_ROW=PAUSE5B powershell -File 3ds/tools/azt.ps1 pause_pcopen -Row PAUSE5B -Try` (pcopen line), `pause_pcopen_gbi` (pcgbi line), `field_mac00` (gameplay window).
 - Gates: `pause_menu`, `partner_menu`, `file_select` with `-Row PAUSE5A` (budget used: 8 of 8, reset needed).
 - Archive: `PM_ROW=PAUSE5B sh 3ds/push_3ds.sh --archive-only` (done: 3ds/logs/builds/pm_3ds_1520_af0529787.3dsx).
+
+## PAUSE5V (2026-10-29): verification of build 1520 (git af0529787)
+- Build: `build3ds/pm_3ds.3dsx` equals `3ds/logs/builds/pm_3ds_1520_af0529787.3dsx` (sha256 c5a4645f...). No source edits, no rebuild.
+- Budget: reset once for row PAUSE5V. Starts used: 5 of 8 (sewer 1, ruins 1, volcano 1, tour10 1, file_select 1).
+- Log checks: sewer 3 of 3 pass, ruins 3 of 3 pass, volcano 3 of 3 pass, tour10 4 of 4 pass, file_select 6 of 6 pass (walk 8.2 ms in range to 9.5, closes 88 in range to 102, ops 1346 in range to 1548).
+- Pictures (read by agent, a person must confirm):
+  - sewer `build3ds/azt/shots/sewer/0000_2_2.ppm`: Mario at the bottom of the stone tunnel. Subject shown.
+  - ruins `build3ds/azt/shots/ruins/0000_11_3.ppm`: Mario and partner in sandstone walls, story text box on the right. Subject shown.
+  - volcano `build3ds/azt/shots/volcano/0000_18_13.ppm`: Mario in the Mt. Lavalava cave with lava glow. Subject shown.
+  - tour10 last shot `build3ds/azt/shots/tour10/0010_1_1.ppm` (mac_00, last tour map): Mario and partner in Toad Town. Subject shown.
+  - file_select `build3ds/azt/shots/file_select/0000_0_11.ppm`: file select screen, File 1 AAAAAAAA, First Play, "Select file to start." Subject shown.
+- Result: no failing check. No rerun against pm_3ds_1514_6ffb3df08.3dsx was needed.
