@@ -74,6 +74,7 @@ static u32 key_size[MAX_KEY];
 static int nkey;
 /* PI1: walk one task and count it. kind 0 = background, 1 = main (swap), 2 = key replay. One tick pair per task, none per op. */
 static void gbi_task(Gfx* gfxList, u32 n, int kind) {
+    pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
     if (!pm_ph_on) { pm_gbi_run(gfxList, n); return; }
     unsigned o0 = pm_gbi_ops_now(), t0 = pm_ticks();
     pm_gbi_run(gfxList, n);

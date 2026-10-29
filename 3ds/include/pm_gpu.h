@@ -3,6 +3,7 @@
 
 void pm_gpu_init(void);
 void pm_gpu_begin(int clear);
+void pm_gpu_begin_wait(void); /* LB1: the GPU part of a pending frame start; a no-op when none is pending */
 void pm_gpu_end(void);
 /* Two lines at the top of the bottom screen. The log scrolls underneath. */
 void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]);

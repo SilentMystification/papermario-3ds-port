@@ -1488,6 +1488,7 @@ static void dump_shot(void) {
 unsigned short pm_wide_side[2][40 * 240];
 unsigned short pm_wide_side_pause[2][40 * 240]; /* the copy the pause screen draws (src/background_gfx.c) */
 void pm_gpu_read_frame(unsigned short* dst) {
+    pm_gpu_begin_wait();
     if (rect_open) flush(); /* DR1 */
     const unsigned char* src;
     int x, y;
@@ -1523,6 +1524,7 @@ void pm_gpu_read_frame(unsigned short* dst) {
  * drawing goes there now. Each base gets one image for the frame (cleared on first use). */
 extern int pm_is_cfb(const void* p);
 int pm_gpu_off_begin(const void* base, int stride, int siz) {
+    pm_gpu_begin_wait();
     if (rect_open) flush(); /* DR1 */
     int i, w, h;
     if (!gpu_ok || off_fail || stride < 1 || stride > PM_OFF_W) return 0;
@@ -1656,6 +1658,7 @@ int pm_gpu_grab_prev(const void* prev_cfb) {
     return grab_impl(prev_cfb, 0, 240, 1);
 }
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
+    pm_gpu_begin_wait();
     if (rect_open) flush(); /* DR1 */
     int was_off = off_active, prev = off_cur;
     static int once;
@@ -1752,7 +1755,13 @@ static void off_dump(void) {
   }
 }
 
-void pm_gpu_begin(int clear) {
+/* LB1: pm_gpu_begin records the frame start. With fps60 the GPU part runs at once, as before. Otherwise the GPU part runs in
+ * pm_gpu_begin_wait: at the first gbi task, at the first CPU read of GPU memory, at pm_gpu_drew and at pm_gpu_end. So the game
+ * logic and the display list build run before the wait for the GPU tail of the last frame. */
+static int begin_pend, begin_clear;
+void pm_gpu_begin_wait(void) {
+    if (!begin_pend) return;
+    begin_pend = 0;
     off_dump();
     for (int k = 0; k < OFF_P; k++) offs[k].base = NULL; /* FX2a: the 8 bit slots keep their base */
     off_used = off_sused = 0;
@@ -1788,7 +1797,7 @@ void pm_gpu_begin(int clear) {
     pm_tex_begin_frame();
     PH_POP();
     PH_PUSH(PH_GPU);
-    want_clear = clear;
+    want_clear = begin_clear;
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
     if (prev_want && !pm_debug_has("prevcpu") && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
@@ -1797,7 +1806,14 @@ void pm_gpu_begin(int clear) {
     PH_POP();
 }
 
+void pm_gpu_begin(int clear) {
+    begin_clear = clear;
+    begin_pend = 1;
+    if (pm_interp_on > 0) pm_gpu_begin_wait();
+}
+
 void pm_gpu_end(void) {
+    pm_gpu_begin_wait();
     if (!gpu_ok) return;
     FS_MARK(FS_FLUSH);
     flush();
@@ -1844,7 +1860,7 @@ void pm_gpu_end(void) {
 }
 
 void pm_gpu_rect_sync(void) { if (rect_open) flush(); }
-int pm_gpu_drew(void) { if (rect_open) flush(); return drew; }
+int pm_gpu_drew(void) { pm_gpu_begin_wait(); if (rect_open) flush(); return drew; }
 
 void pm_gpu_log_stats(const char* tag) {
     pm_log_d("mem %s gpu max per frame: draws %u, vertex slots %u of %u, command buffer %d%%, vertex drops (total) %u", tag, draws_max,
@@ -2451,6 +2467,7 @@ void pm_gpu_tex_rect_z(int x0, int y0, int x1, int y1, float s0, float t0, float
 
 /* F03: one pixel of the last finished depth buffer (D24S8, same tiling and rotation as pm_gpu_read_frame). */
 int pm_gpu_depth_at(int x, int y, unsigned* d24) {
+    pm_gpu_begin_wait();
     if (rect_open) flush(); /* DR1 */
     const unsigned char* src;
     unsigned fx, fy, mx, my, m;
