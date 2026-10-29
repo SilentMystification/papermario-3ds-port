@@ -15,9 +15,18 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "map", "regex": "warp: kmr_20 entry 4" },
-        { "name": "steady frame", "regex": "warp: scene f300 " },
-        { "name": "shot", "regex": "shot \\d+ frame 20[0-5]\\b" }
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
       ],
       "reason": ""
     },
@@ -34,10 +43,22 @@
       "expects": "tour",
       "needs_picture": true,
       "expected_events": [
-        { "name": "warp", "regex": "warp: mac_00 entry 4" },
-        { "name": "tour step kmr_20", "regex": "tour: next kmr_20 entry 4" },
-        { "name": "tour step trd_01", "regex": "tour: next trd_01 entry 0" },
-        { "name": "tour done", "regex": "tour: done, 10 maps" }
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step kmr_20",
+          "regex": "tour: next kmr_20 entry 4"
+        },
+        {
+          "name": "tour step trd_01",
+          "regex": "tour: next trd_01 entry 0"
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done, 10 maps"
+        }
       ],
       "reason": ""
     },
@@ -54,11 +75,20 @@
       "expects": "tour",
       "needs_picture": true,
       "expected_events": [
-        { "name": "warp", "regex": "warp: arn_02 entry 0" },
-        { "name": "first tour step", "regex": "tour: next kmr_20 entry 0" },
-        { "name": "tour done", "regex": "tour: done, 6 maps" }
+        {
+          "name": "warp",
+          "regex": "warp: arn_02 entry 0"
+        },
+        {
+          "name": "first tour step",
+          "regex": "tour: next kmr_20 entry 0"
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done, 6 maps"
+        }
       ],
-      "reason": "Log checks pass (run 3: tour: done, 6 maps, 17 s). Picture check fails: the file holds 6 maps, not 30, and 4 of 7 shots show no map view (a grey page, the Prologue title card and a text box), so Mario is not in view there. Needs a picture check or a shot window that avoids the cards."
+      "reason": "Log checks pass (tour: done, 6 maps). Picture fails: 4 of 7 shots show a grey page, the Prologue title card and a text box. The shot timing fix (after each map load-done event plus 15 frames) needs a change in game source (pm_warp.c, pm_gpu.c), which this tool does not edit. The file has 6 maps, not 30."
     },
     {
       "name": "tour_no_warp",
@@ -73,7 +103,10 @@
       "expects": "tour",
       "needs_picture": false,
       "expected_events": [
-        { "name": "tour done", "regex": "tour: done" }
+        {
+          "name": "tour done",
+          "regex": "tour: done"
+        }
       ],
       "reason": "Demo of the fail-fast path. Not a test of the map tour."
     },
@@ -90,9 +123,18 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "warp", "regex": "warp: mac_00 entry 4" },
-        { "name": "pause mode", "regex": "game mode 10 frame" },
-        { "name": "shot at 178", "regex": "shot \\d+ frame 178\\b" }
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot at 178",
+          "regex": "shot \\d+ frame 178\\b"
+        }
       ],
       "reason": "Known-good args from docs/handoff/agent_text.md and diag_dc.md. The shot writer takes one shot every 4 frames (170, 174, 178), so frame 181 is never written."
     },
@@ -109,16 +151,28 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "warp", "regex": "warp: kmr_03 entry 0" },
-        { "name": "battle formation", "regex": "debug battle: formation" },
-        { "name": "battle mode", "regex": "game mode 8 frame" },
-        { "name": "shot at 182", "regex": "shot \\d+ frame 182\\b" }
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "battle mode",
+          "regex": "game mode 8 frame"
+        },
+        {
+          "name": "shot at 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
       ],
       "reason": "Run 7 (until shot 29 frame) timed out at 90 s: the shot line holds a burst number, not the frame index. Until and expected event now use frame 182."
     },
     {
       "name": "sewer",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Mario in Toad Town Tunnels (tik_03, entry 0), scene frame 200 to 205.",
       "proves": "A warp into the sewer (tik_*) map loads and runs steady frames.",
       "debug": "warp=tik_03:0 story=ch0_toad_town shots shotwin=200:6",
@@ -129,15 +183,24 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "map", "regex": "warp: tik_03 entry 0" },
-        { "name": "steady frame", "regex": "warp: scene f300 " },
-        { "name": "shot", "regex": "shot \\d+ frame 20[0-5]\\b" }
+        {
+          "name": "map",
+          "regex": "warp: tik_03 entry 0"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
       ],
-      "reason": "Not run in this task: the azt row budget is used up (8 of 8). Switch from docs/handoff/diag_visual_vol_sewer.md, not tested here."
+      "reason": "Verified: log checks pass and the shot shows Mario at the bottom of the Toad Town Tunnels stone tunnel (run 5). Shot at scene frame 200, 20 frames or more after load."
     },
     {
       "name": "ruins",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Mario in Dry Dry Ruins (isk_04, entry 0), scene frame 200 to 205.",
       "proves": "A warp into the ruins (isk_*) map loads and runs steady frames.",
       "debug": "warp=isk_04:0 story=ch0_toad_town shots shotwin=200:6",
@@ -148,15 +211,24 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "map", "regex": "warp: isk_04 entry 0" },
-        { "name": "steady frame", "regex": "warp: scene f300 " },
-        { "name": "shot", "regex": "shot \\d+ frame 20[0-5]\\b" }
+        {
+          "name": "map",
+          "regex": "warp: isk_04 entry 0"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
       ],
-      "reason": "Not run in this task: the azt row budget is used up (8 of 8). Switch from docs/handoff/diag_visual_vol_sewer.md, not tested here."
+      "reason": "Verified: log checks pass and the shot shows Mario in Dry Dry Ruins (sandstone walls) with a story text box over the right side (run 6)."
     },
     {
       "name": "volcano",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Mario in Mt. Lavalava (kzn_19, entry 0).",
       "proves": "A warp into the volcano (kzn_*) map loads and runs steady frames.",
       "debug": "warp=kzn_19:0 story=ch0_toad_town shots shotwin=200:6",
@@ -167,45 +239,202 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "map", "regex": "warp: kzn_19 entry 0" },
-        { "name": "steady frame", "regex": "warp: scene f300 " },
-        { "name": "shot", "regex": "shot \\d+ frame 20[0-5]\\b" }
+        {
+          "name": "map",
+          "regex": "warp: kzn_19 entry 0"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
       ],
-      "reason": "Not run in this task: the azt row budget was used by the other scenarios (8 of 8). The switch is from docs/handoff/diag_visual_vol_sewer.md."
+      "reason": "Verified: log checks pass and the shot shows Mario in the Mt. Lavalava cave with lava glow (run 7)."
+    },
+    {
+      "name": "attract_no_warp",
+      "status": "fail_demo",
+      "subject": "Deliberately wrong: a tour without warp=. The start shows the title and attract (demo) screens and no map is loaded.",
+      "proves": "Attract detector: more than 2 title or demo mode lines in a run that expects a tour stop the run with ATTRACT LOOP.",
+      "debug": "tour=@tour_k30.txt texmax",
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "tour done",
+          "regex": "tour: done"
+        }
+      ],
+      "reason": "ATTRACT LOOP verified live: 3 title or demo mode lines, stop at 39 s, exit 3 (run 1 of the reset budget)."
     },
     {
       "name": "partner_menu",
       "status": "unverified",
-      "subject": "Partner tab of the pause menu. Not defined.",
-      "proves": "Would prove the partner tab of the pause menu opens.",
-      "debug": "preset=toad padscript=START,wait60,R*2,wait30,R*2,wait30,R*2,wait30,A*2,wait60 shots shotwin=170:12",
-      "until": "shot \\d+ frame 181\\b",
+      "subject": "Pause menu, partner tab, shot frames 200 to 239 (pause from START*3 after wait80, then R*2 three times and A*2).",
+      "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100,R*2,wait30,R*2,wait30,R*2,wait30,A*2,wait60 phase shots shotwin=200:40",
+      "until": "shot \\d+ frame 23[0-9]\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "pause mode", "regex": "game mode 10 frame" }
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "partner ui line",
+          "regex": "ui: .*partner"
+        },
+        {
+          "name": "shot 23x",
+          "regex": "shot \\d+ frame 23[0-9]\\b"
+        }
       ],
-      "reason": "No tested command. docs/handoff/diag_pause_closes.md has the padscript, but the partner tab index is not verified there. Not run in this task (budget)."
+      "reason": "Log: pause opens (game mode 10 at frame 96). Picture: the pause menu stays on the map page, not the partner tab, so the R*2 steps do not reach the partner page. The ui: partner line never logs. Needs the exact tab steps."
     },
     {
       "name": "file_select",
       "status": "unverified",
-      "subject": "File select screen. Not defined.",
-      "proves": "Would prove the file select mode is entered.",
-      "debug": "",
-      "until": "game mode 14 frame",
+      "subject": "File select screen, shots at frames 282 to 341 (box rotation at 282 to 296).",
+      "proves": "The golden.py fileselect padscript reaches the file select mode (GAME_MODE_FILE_SELECT, 14) from a boot.",
+      "debug": "padscript=wait200,START*6,wait300,START*6,wait300 phase shots shotwin=282:60",
+      "extra": [
+        "-Turbo",
+        "-TurboFactor",
+        "1"
+      ],
+      "until": "shot \\d+ frame 3[4-9][0-9]\\b",
       "cap": 90,
       "deadline": 20,
-      "first_marker": "game mode 1 frame",
+      "first_marker": "boot_main",
       "expects": "none",
       "needs_picture": true,
       "expected_events": [
-        { "name": "file select mode", "regex": "game mode 14 frame" }
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "file select enter",
+          "regex": "ui: file select enter"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot \\d+ frame 3[0-4][0-9]\\b"
+        }
       ],
-      "reason": "No tested command. docs/handoff/route_test.md: title and file select are not reached in 10 s, and the intro takes about 2 min. Not run in this task (budget)."
+      "reason": "Golden fileselect padscript from a boot does not reach the file select with -Turbo. Log: intro (game mode 16) at frame 327, file select (mode 14) never logged. Shots show the intro logo and a title border."
+    },
+    {
+      "name": "fileselect_rotate",
+      "status": "unverified",
+      "subject": "File select box rotation: shots at frames 282 to 296 of the file_select run (same command).",
+      "proves": "The file select box turn (frames 282 to 296) is in the shot set of a file select run.",
+      "debug": "padscript=wait200,START*6,wait300,START*6,wait300 phase shots shotwin=282:60",
+      "extra": [
+        "-Turbo",
+        "-TurboFactor",
+        "1"
+      ],
+      "until": "shot \\d+ frame 3[4-9][0-9]\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "rotation window shot",
+          "regex": "shot \\d+ frame 29[0-6]\\b"
+        }
+      ],
+      "reason": "Same command as file_select. The file select is not reached, so the rotation frames 282 to 296 are not shown."
+    },
+    {
+      "name": "text_menu",
+      "status": "verified",
+      "subject": "Pause status menu text: dialog 'Check here to see what Mario's current status is.' and the item names Hammer, Boots, Stats, Items. Periods and spacing read by eye.",
+      "proves": "Pause menu text draws (periods and spacing) at shot frame 178.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=170:12",
+      "until": "shot \\d+ frame 178\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot at 178",
+          "regex": "shot \\d+ frame 178\\b"
+        }
+      ],
+      "reason": "Verified: pause dialog and item names read by eye in the shot (run 8). Same command as pause_menu."
+    },
+    {
+      "name": "house_sign",
+      "status": "unverified",
+      "subject": "Mario House sign (4x tiled texture check). Not defined.",
+      "proves": "Would prove the Mario House sign texture draws.",
+      "debug": "",
+      "until": "shot \\d+ frame 200\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        }
+      ],
+      "reason": "Not run. No handoff doc gives the sign position or a camera path for kmr_20. Budget used (8 of 8)."
+    },
+    {
+      "name": "super_text",
+      "status": "unverified",
+      "subject": "Intro multibounce SUPER text. Not defined.",
+      "proves": "Would prove the SUPER text draws during a multibounce in battle.",
+      "debug": "",
+      "until": "",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "debug battle: formation",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        }
+      ],
+      "reason": "Not run. battle_start reaches the battle, but no tested padscript makes a multibounce with jump presses (docs/handoff/diag_tex3.md lists it as missing). Budget used."
     },
     {
       "name": "full411",
@@ -213,7 +442,9 @@
       "subject": "Full tour of the 411 maps in tour_s420.txt (the tst_ maps are not in the file). Completion only: no per-map picture check.",
       "proves": "The whole list runs to tour: done in one Azahar start.",
       "debug": "warp=arn_02:0 story=ch0_toad_town tour=@tour_s420.txt shots shotwin=999999:1 shotmode=4:21 texmax",
-      "extra": ["-Milestone"],
+      "extra": [
+        "-Milestone"
+      ],
       "until": "tour: done",
       "cap": 1800,
       "deadline": 20,
@@ -221,7 +452,10 @@
       "expects": "tour",
       "needs_picture": false,
       "expected_events": [
-        { "name": "tour done", "regex": "tour: done, [0-9]+ maps" }
+        {
+          "name": "tour done",
+          "regex": "tour: done, [0-9]+ maps"
+        }
       ],
       "reason": "Completion only, not run in this task (budget). The same args ran in budget row sweep420 at 2026-10-29 03:51 (rc 0, tour: done, 143 s). Up to 1800 s per run."
     }

@@ -117,6 +117,14 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
     }
     $shotFiles = @()
     if (Test-Path $shots) { $shotFiles = @(Get-ChildItem $shots -File | Where-Object { $_.LastWriteTime -ge $since } | Sort-Object Name) }
+    if ($since -gt [datetime]::MinValue -and $shotFiles.Count -gt 0) {
+        # Keep this run's shots per scenario: the shared shots folder is overwritten by the next run
+        $arch = Join-Path $repo "build3ds\azt\shots\$($sc.name)"
+        New-Item -ItemType Directory -Force -Path $arch | Out-Null
+        Remove-Item (Join-Path $arch "*") -Force -ErrorAction SilentlyContinue
+        foreach ($f in $shotFiles) { Copy-Item $f.FullName $arch }
+        $shotFiles = @(Get-ChildItem $arch -File | Sort-Object Name)
+    }
     Write-Output "SUBJECT: $($sc.subject)"
     Write-Output "SHOTS: $($shotFiles.Count) from this run"
     foreach ($f in $shotFiles) { Write-Output "  $($f.FullName)" }
