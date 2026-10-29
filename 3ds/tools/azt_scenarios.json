@@ -396,10 +396,10 @@
           "regex": "opsplit f\\d+ ops"
         },
         {
-          "name": "mdlsum total ops per frame (gate 1623 to 2065, 1844 +/- 12 %)",
+          "name": "mdlsum total ops per frame (gate 1175 to 1495, 1335 +/- 12 %)",
           "regex": "mdlsum f899 tot ops (\\d+) ",
-          "min": 1623,
-          "max": 2065
+          "min": 1175,
+          "max": 1495
         },
         {
           "name": "mdlsum rows",
