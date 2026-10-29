@@ -17,3 +17,7 @@
 1. Opus revises the C1 plan with the exact replay list and the 64-byte record layout.
 2. C1 code agent, PM_ROW=c1, test: class 2 ops down 1000 or more, picture equal, pause text and file select equal. Commit message line on cache behaviour.
 3. Then plan_source_opts.md order: C2 = RM, G-SYNC, BG, C1i + HUD, P1 marks and gbiprof census, G-EQ, ANIM, fog A, W4+W2, W3, W6, GLYPH, pause lag, SPRITE, row (a).
+
+## Order v2 (supersedes step 3)
+C1, C2 = RM, G1 sync skip (opf flag table), H1 cold split of gbi_run_body (pm_gbi_cold.c), BG single bind, G2 equality filter + H6 hot-state struct, H3 matrix index, C1i + HUD, H2 flush_draw cold split, fog fix, W4/W2, H5 divides + H4 prefetch, GLYPH/R5, pause lag, SPRITE, then row (a) if yard total > 38 ms. Count skips as `sk n` in opsplit.
+C1 lives on main tree only (no branch, no worktree). Not started.
