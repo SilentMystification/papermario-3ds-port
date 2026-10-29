@@ -309,6 +309,7 @@ static float gv_rel_ref[2];
 static unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
 static unsigned short vert_ring[64], vert_gmi[64];
 static unsigned vert_tss[64];
+static unsigned gm_steps; /* W1: entries compared by gv_matrix_id, summed over the report window */
 static float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
 static float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each gm_tab entry (the normal matrix), made when the entry is made */
 static unsigned gm_n;
@@ -1376,7 +1377,7 @@ static unsigned gv_matrix_id(int need_nm) {
     for (int i = 0; i < 3; i++) { nm[i][0] = mv[mv_sp][i][0]; nm[i][1] = mv[mv_sp][i][1]; nm[i][2] = mv[mv_sp][i][2]; nm[i][3] = 0.f; }
     if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0) return gm_last;
     unsigned k, gmi = GV_NONE;
-    for (k = gm_n; k > 0; k--) if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[k - 1], nm, sizeof nm) == 0)) break; /* newest first */
+    for (k = gm_n; k > 0; k--) { gm_steps++; if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[k - 1], nm, sizeof nm) == 0)) break; } /* newest first */
     if (k > 0) gmi = k - 1;
     else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gmi = gm_n++; }
     gm_last = gmi;
@@ -2035,6 +2036,123 @@ static void note(unsigned op) {
 static unsigned n_ops; /* PT01: display list ops run this frame */
 unsigned pm_gbi_ops_now(void) { return n_ops; } /* PI1: ops so far this drawn frame */
 
+/* W1: sampled time per op class. Phase on only. op_n is exact (one increment per op). One tick pair per 64 ops, outer list only.
+ * P1: producer census. Marks come from pm_interp_open (gMainGfxPos at the open). The cursor moves forward at sp == 0 in the
+ * main list. Each op counts to the producer under the cursor. Nested lists count to the calling producer. */
+enum { OS_VTX, OS_MTX, OS_TRI, OS_TEX, OS_CC, OS_GEO, OS_DL, OS_DLC, OS_SYNC, OS_OTH, OS_N };
+static const char* const os_nm[OS_N] = { "vtx", "mtx", "tri", "tex", "cc", "geo", "dl", "dlc", "sync", "oth" };
+#define OS_DLC_OP 0xFF /* pseudo op: a G_DL that dlc_try answered */
+static unsigned os_op_n[256], os_nn[256], os_tk[256], os_sn[256], os_fl[256];
+static unsigned os_fr, os_off, os_nest, os_open, os_op, os_pk, os_t0, os_fl0;
+#define PK_MARKS 256
+#define PK_SLOTS 256
+#define PK_PRE 253 /* main list ops before the first mark */
+#define PK_BG 254 /* ops of a list that is not the main list */
+#define PK_OTHER 255 /* a producer that found no free slot */
+static struct { const Gfx* p; unsigned s; } pmk[PK_MARKS];
+static int pmk_n, pmx_main, pmx_next;
+static unsigned pmx_cur, pk_key[PK_SLOTS], pk_set[PK_SLOTS], pk_ops[PK_SLOTS], pk_tk[PK_SLOTS], pk_sn[PK_SLOTS];
+
+static unsigned pk_slot(unsigned a) {
+    unsigned h = ((a * 2654435761u) >> 16) % PK_PRE;
+    for (int i = 0; i < PK_PRE; i++, h = (h + 1) % PK_PRE) {
+        if (!pk_set[h]) { pk_set[h] = 1; pk_key[h] = a; return h; }
+        if (pk_key[h] == a) return h;
+    }
+    return PK_OTHER;
+}
+void pm_gbi_prod_mark(unsigned a) { /* called by pm_interp_open under phase */
+    const Gfx* p = gMainGfxPos;
+    if (pmk_n && p < pmk[pmk_n - 1].p) pmk_n = 0; /* the main list starts again: marks of the last one are stale */
+    if (pmk_n < PK_MARKS) { pmk[pmk_n].p = p; pmk[pmk_n].s = pk_slot(a); pmk_n++; }
+}
+
+static unsigned os_flsum(void) { unsigned s = 0; for (int i = 0; i < 6; i++) s += pm_fl_us[i]; return s; }
+static void os_close(void) {
+    unsigned t = pm_ticks();
+    os_tk[os_op] += t - os_t0; os_sn[os_op]++; os_fl[os_op] += os_flsum() - os_fl0;
+    pk_tk[os_pk] += t - os_t0; pk_sn[os_pk]++;
+    os_open = 0;
+}
+static void os_dlc_hit(void) { /* a G_DL answered by dlc_try: count it as the dlc pseudo op */
+    unsigned* n = os_nest > 1 ? os_nn : os_op_n;
+    n[G_DL]--; n[OS_DLC_OP]++;
+    if (os_open && os_op == G_DL) os_op = OS_DLC_OP;
+}
+static int os_class_of(unsigned op) {
+    switch (op) {
+    case OS_DLC_OP: return OS_DLC;
+    case G_VTX: case G_MODIFYVTX: return OS_VTX;
+    case G_MTX: case G_POPMTX: return OS_MTX;
+    case G_TRI1: case G_TRI2: return OS_TRI;
+    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: return OS_TEX;
+    case G_SETCOMBINE: case G_SETPRIMCOLOR: case G_SETENVCOLOR: case G_SETOTHERMODE_H: case G_SETOTHERMODE_L: case G_SETFOGCOLOR: return OS_CC;
+    case G_GEOMETRYMODE: case G_MOVEWORD: case G_MOVEMEM: case G_SETSCISSOR: return OS_GEO;
+    case G_DL: case G_ENDDL: return OS_DL;
+    case G_RDPPIPESYNC: case G_RDPTILESYNC: case G_RDPLOADSYNC: case G_RDPFULLSYNC: case G_NOOP: return OS_SYNC;
+    default: return OS_OTH;
+    }
+}
+/* P1 name: a label string when the key reads as printable text, else the hex key (a function address, resolved with the .map file). */
+static void pk_name(unsigned s, char* b, int n) {
+    if (s == PK_PRE) { snprintf(b, n, "pre"); return; }
+    if (s == PK_BG) { snprintf(b, n, "bg"); return; }
+    if (s == PK_OTHER) { snprintf(b, n, "other"); return; }
+    unsigned a = pk_key[s];
+    const char* p = (const char*)(uintptr_t)a;
+    int ok = a && is_host(a) && a >= 0x00100000u;
+    for (int i = 0; ok && i < 40; i++) { if (!p[i]) break; if (p[i] < 32 || p[i] > 126) ok = 0; else if (i == 39) ok = 0; }
+    if (ok && p[0]) snprintf(b, n, "%.40s", p); else snprintf(b, n, "%08x", a);
+}
+static void os_op_hook(const Gfx* at, int sp, unsigned op) { /* one call per op, phase on */
+    if (os_nest == 1) {
+        if (os_open) os_close();
+        if (pmx_main && sp == 0) while (pmx_next < pmk_n && at >= pmk[pmx_next].p) pmx_cur = pmk[pmx_next++].s;
+    }
+    if (os_nest > 1) os_nn[op]++; /* inside a dlc replay: its time is in the outer G_DL sample, so it is not a class term */
+    else os_op_n[op]++;
+    pk_ops[pmx_cur]++;
+    if (os_nest == 1 && ((n_ops + os_off) & 63u) == 0) { os_open = 1; os_op = op; os_pk = pmx_cur; os_fl0 = os_flsum(); os_t0 = pm_ticks(); }
+}
+static void os_report(void) {
+    static unsigned long long est[256], estc[256], pke[PK_SLOTS];
+    unsigned long long cls_tk[OS_N] = { 0 }, cls_n[OS_N] = { 0 }, tot_n = 0, tot_fl = 0, tot_sn = 0, psum = 0;
+    for (int op = 0; op < 256; op++) {
+        est[op] = os_sn[op] ? (unsigned long long)os_tk[op] * os_op_n[op] / os_sn[op] : 0;
+        tot_n += os_op_n[op] + os_nn[op]; tot_fl += os_fl[op]; tot_sn += os_sn[op];
+        cls_tk[os_class_of(op)] += est[op]; cls_n[os_class_of(op)] += os_op_n[op];
+    }
+    char c[480]; int k = 0;
+    for (int i = 0; i < OS_N; i++) k += snprintf(c + k, sizeof c - k, " %s %u/%u", os_nm[i], (unsigned)(cls_tk[i] / 268 / 300), (unsigned)(cls_n[i] / 300));
+    char t[160]; int m = snprintf(t, sizeof t, "top");
+    memcpy(estc, est, sizeof est);
+    for (int r = 0; r < 6; r++) {
+        int best = -1; unsigned long long bv = 0;
+        for (int op = 0; op < 256; op++) if (estc[op] > bv) { bv = estc[op]; best = op; }
+        if (best < 0) break;
+        m += snprintf(t + m, sizeof t - m, " %02x:%u", best, (unsigned)(bv / 268 / 300));
+        estc[best] = 0;
+    }
+    for (int s = 0; s < PK_SLOTS; s++) {
+        pke[s] = pk_sn[s] ? (unsigned long long)pk_tk[s] * pk_ops[s] / pk_sn[s] : 0;
+        psum += pk_ops[s];
+    }
+    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), gm_steps / 300, gm_n);
+    pm_log_hw("prod f%d sum %u ops %u", rm_frame, (unsigned)(psum / 300), (unsigned)(tot_n / 300));
+    for (int r = 0; r < 8; r++) {
+        int best = -1; unsigned long long bv = 0;
+        for (int s = 0; s < PK_SLOTS; s++) if (pk_ops[s] > bv) { bv = pk_ops[s]; best = s; }
+        if (best < 0) break;
+        char nm[48];
+        pk_name((unsigned)best, nm, sizeof nm);
+        pm_log_hw("prod f%d %s ops %u us %u", rm_frame, nm, (unsigned)(bv / 300), (unsigned)(pke[best] / 268 / 300));
+        pk_ops[best] = 0;
+    }
+    memset(os_op_n, 0, sizeof os_op_n); memset(os_nn, 0, sizeof os_nn); memset(os_tk, 0, sizeof os_tk); memset(os_sn, 0, sizeof os_sn); memset(os_fl, 0, sizeof os_fl);
+    memset(pk_ops, 0, sizeof pk_ops); memset(pk_tk, 0, sizeof pk_tk); memset(pk_sn, 0, sizeof pk_sn);
+    gm_steps = 0;
+}
+
 void pm_gbi_end_frame(void) {
     /* One second of presented frames, summed. Identical seconds are not written. */
     static int frames, acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x;
@@ -2059,6 +2177,7 @@ void pm_gbi_end_frame(void) {
         if (++pdl0_frames >= 300) { pdl0_report(); }
     }
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
+    if (pm_ph_on) { if (++os_fr >= 300) { os_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
     if ((rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
@@ -2136,6 +2255,7 @@ void pm_gbi_end_frame(void) {
     n_splits = n_grabs = 0;
     have_sample = 0;
     rm_frame++;
+    os_off = ((unsigned)rm_frame * 37u) & 63u; /* W1: the sample phase changes each frame */
     if ((rm_frame % 600) == 0 && aud_cnt_total) {
         pm_log_d("comb total f%d: %u draws, %u special, %u plan, %u inexact, %d combiners | tris %u lit %u fogmode %u fogblend %u blendcol %u texgen %u", rm_frame, aud_cnt_total, aud_cnt_special, plan_draws, aud_cnt_bad, aud_n, st_tri, st_lit, st_fogg, st_fogb, st_blc, st_tgen);
         pm_log_d("PO2 f%d: %u vertices transformed at G_VTX, %u triangle corners read (before PO2: one matrix product per corner)", rm_frame, st_vx, st_cor);
@@ -2446,7 +2566,18 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     return 1;
 }
 
+static void gbi_run_body(void* list, unsigned nbytes);
+/* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
+    if (!pm_ph_on) { gbi_run_body(list, nbytes); return; }
+    if (os_nest == 0) { pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; pmx_cur = pmx_main ? PK_PRE : PK_BG; pmx_next = 0; }
+    os_nest++;
+    gbi_run_body(list, nbytes);
+    if (os_open && os_nest == 1) os_close();
+    os_nest--;
+}
+
+static void gbi_run_body(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     dls_on = PMDL("dlsrc");
     dlc_on = dlc_enabled();
@@ -2512,6 +2643,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             gv_epoch++; /* GV1b */
             pdl_pso_cur = 0; pdl_ep_pso = 0; pdl_tex_slot = -1;
         }
+        if (pm_ph_on) os_op_hook(pc - 1, sp, op); /* W1: after the prologue, so a sample is the handler only */
         switch (op) {
         case G_ENDDL:
             if (pdl0_on()) pdl0_gl_leave();
@@ -2540,6 +2672,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
             if (pm_ph_on) { unsigned dc = dls_class((u32)next); RS_ADD(RS_GDL, 1); if (dc == 1) RS_ADD(RS_GDL1, 1); else if (dc == 7) RS_ADD(RS_GDL7, 1); }
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
+                if (pm_ph_on) os_dlc_hit();
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
             }

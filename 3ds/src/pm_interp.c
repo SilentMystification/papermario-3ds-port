@@ -56,7 +56,9 @@ static unsigned hash4(unsigned p, unsigned a, unsigned b, unsigned occ) {
     return h;
 }
 
+void pm_gbi_prod_mark(unsigned a);
 void pm_interp_open(unsigned a, unsigned b) {
+    if (pm_ph_on) pm_gbi_prod_mark(a); /* P1: producer census, phase on, recording or not */
     if (!recording) return;
     if (nnode >= MAX_NODES || depth >= MAX_DEPTH - 1) { skipped++; over_nodes++; return; } /* close must pair with it */
     unsigned parent = nodes[stack[depth]].id, occ = 0;
