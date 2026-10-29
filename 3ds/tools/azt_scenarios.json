@@ -120,7 +120,7 @@
       "subject": "Pause status menu open at scene frame 178 (dialog: Check here to see what Mario's current status is.).",
       "proves": "padscript opens the pause menu (START) in the Toad Town map; the pause mode is entered.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=170:12",
-      "until": "shot \\d+ frame 180\\b",
+      "until": "shot \\d+ frame 178\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -137,7 +137,7 @@
         },
         {
           "name": "shot at 180",
-          "regex": "shot \\d+ frame 180\\b"
+          "regex": "shot \\d+ frame 178\\b"
         }
       ],
       "reason": "Known-good args from docs/handoff/agent_text.md and diag_dc.md. The shot writer takes one shot every 4 frames (170, 174, 178), so frame 181 is never written."
@@ -378,7 +378,7 @@
       "subject": "Pause status menu text: dialog 'Check here to see what Mario's current status is.' and the item names Hammer, Boots, Stats, Items. Periods and spacing read by eye.",
       "proves": "Pause menu text draws (periods and spacing) at shot frame 178.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=170:12",
-      "until": "shot \\d+ frame 180\\b",
+      "until": "shot \\d+ frame 178\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -395,7 +395,7 @@
         },
         {
           "name": "shot at 180",
-          "regex": "shot \\d+ frame 180\\b"
+          "regex": "shot \\d+ frame 178\\b"
         }
       ],
       "reason": "Verified: pause dialog and item names read by eye in the shot (run 8). Same command as pause_menu."

@@ -19,18 +19,18 @@ Status: not run on the console yet. The user pushes in the morning.
 |---|---|---|---|
 | yard | steady frame pass. Shot-frame check failed before a regex fix | Mario, partner, pipe, house, ground | pass |
 | tour10 | 4 of 4 pass (10 maps, done at 14730) | Mario in the tour maps | pass |
-| pause_menu | pause mode pass. Shot at frame 180 not logged | Status page, dialog text | FAIL (log) |
+| pause_menu | 3 of 3 pass (shot 178 logged, regex fixed) | Status page, dialog text | pass |
 | partner_menu | 4 of 4 pass | Party tab, Goombario | pass |
 | battle_start | 4 of 4 pass | Battle HUD, Jump menu | pass |
 | sewer | 3 of 3 pass | Mario in tunnel | pass |
 | ruins | 3 of 3 pass | Mario, text box | pass |
 | volcano | 3 of 3 pass | Mario in lava room | pass |
-| text_menu | not run (same command as pause_menu) | from the pause_menu shots | not run |
-| file_select | not run (budget) | not read | not run |
-| fileselect_rotate | not run (budget) | not read | not run |
-| full411 | not run (budget) | not read | not run |
+| text_menu | 3 of 3 pass (shot 178) | Status page text, periods and spacing | pass |
+| file_select | 3 of 3 pass (game mode 14, file select enter, shot 302). Run hit the 90 s cap | File 1 box, Select file to start | pass |
+| fileselect_rotate | same run as file_select (shots 282 to 293 in the set) | Box shift read by eye | pass |
+| full411 | see section 1a | no picture check (completion only) | see 1a |
 
-- Yard log numbers for this batch were not captured. The phase lines were not on
+- Yard log numbers were not captured in the first pass (see section 1a). The phase lines were not on
   these runs, and the log file of each run was overwritten by the next run.
   No walk us, ops/frame, closes, tex fail or vramfree min A/B figure exists for
   lane final. Use the lane numbers in section 2 instead.
@@ -42,6 +42,28 @@ Status: not run on the console yet. The user pushes in the morning.
   The shot check for yard passed on an old log only. Re-check the new yard log.
 - pause_menu log check fails: no `shot N frame 180` line. The picture shows the
   status page, so the subject is present. Open item for the catalog.
+
+## 1a. Second pass on lane final (row final, 5 of 8 starts used before full411)
+
+Numbers from the phase and phsum lines in the runs (`build3ds/lane-final/last_log.txt`
+copied to scratchpad). Walk is the `taskpl main us` field. Ops is the `taskpl ops`
+field. Closes is the first field of `flsplit tex`. Averages are over frames 300 to 599.
+
+| Measure | Starting point (docs) | Final binary, yard | Final binary, pause |
+|---|---|---|---|
+| Main walk us, avg f300-599 | 9812 (lane 2 start) | 6608 | 7634 |
+| Ops per frame (taskpl ops) | 3576 (lane 2 start) | 1204 | 1471 |
+| Tex closes per frame | 122 pause (R0 doc) | 208 | 122 |
+| tex fail | 0 | 0 (all 6 counters read fail 0) | 0 |
+| VRAM free min A/B | 1065/1065 KB (row 3 to 5) | 1065/1065 KB; vramfree min 2130 KB | not read |
+| Log lines per frame | not in docs | 10365 lines / 667 frames, about 15.5 | 10830 lines, about 16 |
+| Bg us per frame | 2126 (before BG) | 243 | 2169 |
+
+- Yard, f300 to f599: the walk is 6608 us against 9812 us at the start of lane 2.
+  Azahar numbers show direction only.
+- Pause, f300 to f599: 7634 us against 15789 us before R0 and 9833 us after R0.
+- Catalog shot lines pass on the new logs: yard `shot 0 frame 200`, pause `shot 2 frame 178`.
+- full411: see the line below.
 
 ## 2. What was done (by area)
 
