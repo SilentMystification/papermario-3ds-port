@@ -10,11 +10,10 @@ Tags: [M] measured in the log, [E] estimate. Ln is the file line.
 - #13 (ln 14): rom mode RAM resident 24.66 MB. #3 (ln 4): live port 17492, socInit 00000000. [M]
 - No timestamps. 418 pace lines sum to 424.8 s. [M]
 - Map loads, no names: #155 area 5 map 5, #261 area 1 map 2, #392 area 1 map 1, #488 area 0 map 8, #805 area 1 map 1, #870 area 1 map 2. [M]
-- Gap: "[livelog] GAP: lines #1792-#1884 missing" (ln 1794). 93 ids lost. Frames f10044 to f10377 are across it. [M]
-- Writer dropped 0 in all windows. live eagain 14, stall closes 1 from #1906. [M]
-- No fatal, crash, panic, abort or sleep line. [M]
+- Gap at ln 1794: #1792-#1884 (93 ids), frames f10044 to f10377. [M]
+- Writer dropped 0. Live eagain 14 and stall 1 from #1906. No fatal, crash or sleep line. [M]
 
-## 2. Frame time per map (logstat 300-frame windows; pace = 1 s lines)
+## 2. Frame time per map (logstat 300-frame windows, pace 1 s lines)
 | Ids | Map | Windows | Wall ms mean (min to max) | fps | pace fps |
 |---|---|---|---|---|---|
 | #144 | pre-map | 1 | 33.34 | 30.0 | 29.9 |
@@ -28,10 +27,10 @@ Tags: [M] measured in the log, [E] estimate. Ln is the file line.
 
 - Toad Town = area 1 map 2 (mac_01, inferred in diag_hwlog2). The log names no map. Yard (kmr_*) is not identified. [M]
 - Steady view is static: dlc2 tri 277040 is equal from f7499 to f11699. [M]
-- Toad Town steady, compared: 60.6 ms (29f504d7b, full set), 57.0 ms (final5, full set), 48.5 ms (this build, cheap set). [M]
-- Change: -12.1 ms (-20 %) against 60.6 and -8.5 ms (-15 %) against 57.0. Builds and scenes differ. [M]
-- Azahar phase cost was 1.08 ms (FINAL_WRITEUP). The console gap is larger. [E]
-- Unlogged 20 fps (user report) is 48.8 to 51.3 ms. The cheap set sits at the fast edge. Residual logging cost is not measured. [E]
+- Toad Town steady: 60.6 ms (29f504d7b, full set), 57.0 ms (final5, full set), 48.5 ms (this build, cheap set). [M]
+- Change: -12.1 ms (-20 %) against 60.6, -8.5 ms (-15 %) against 57.0. Builds and scenes differ. [M]
+- Azahar full-set cost was 1.08 ms. The console gap is larger. [E]
+- Unlogged 20 fps is 48.8 to 51.3 ms. The cheap set sits at the fast edge. Residual logging cost is not measured. [E]
 
 ## 3. dcsum gates (console, f7638 to f11838, 14 lines, ids #1073 to #2136)
 | Field | Value |
