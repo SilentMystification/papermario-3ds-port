@@ -25,7 +25,7 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 
 | Scenario | Reason | Shot paths |
 |---|---|---|
-| tour_k30 | Log passes (tour: done, 6 maps). Picture fails: 4 of 7 shots show a grey page, the Prologue card and a text box. The fix (shot after each map load-done plus 15 frames) is a game source change in pm_warp.c or pm_gpu.c, outside this tool. The file holds 6 maps, not 30. | build3ds\shots (overwritten) |
+| tour_k30 | Log passes (tour: done, 6 maps). Picture fails: 4 of 7 shots show a grey page, the Prologue card and a text box. The fix (shot after each map load-done plus 15 frames) is a game source change in pm_warp.c or pm_gpu.c, outside this tool. The file holds 6 maps, not 30. azt2 tried a shot burst 15 frames after each map is in (tourshot=15:21), then 30 frames (tourshot=30:9): both still show 4 of 7 non-map shots (grey page, Prologue card, dark text box). Edit reverted, not committed. | build3ds\shots (overwritten) |
 | partner_menu | Pause opens. Picture stays on the map page, not the partner tab. R*2 steps do not reach the partner page. The ui: partner line never logs. | build3ds\azt\shots\partner_menu\ (11 shots) |
 | file_select | The golden fileselect padscript from boot does not reach mode 14 with -Turbo. Intro (mode 16) at frame 327. | build3ds\azt\shots\file_select\ (16 shots, intro logo) |
 | fileselect_rotate | Same command as file_select. File select not reached, so frames 282 to 296 are not shown. | same as file_select |
