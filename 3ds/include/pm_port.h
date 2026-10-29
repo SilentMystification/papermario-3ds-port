@@ -97,6 +97,7 @@ enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
     RS_DLCH, RS_DLCM, RS_DLCOPS, RS_DLCG, RS_DLCSKIP, /* dl2: dlc_try hit, compile (miss), ops replayed, groups, groups skipped by box */
     RS_RMN, RS_RMSK, /* C2: G_PM_RM ops, of them fallback to G_DL */
     RS_SKN, /* G1: sync and no-op ops skipped before the prologue */
+    RS_SKS, /* G2: state ops that leave the live state as it is, skipped before the prologue */
     RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 unsigned pm_gbi_ops_now(void);
