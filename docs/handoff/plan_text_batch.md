@@ -40,3 +40,22 @@ Picture checks for every row, byte-equal to the R0 baseline: pause status, items
 
 ## 5. Expected result and risks
 Azahar pause walk [I]: R0 -0.3 to -1.3 ms (log share), R1 -1.5 to -3 ms, R2/R3 -0.5 to -1 ms: total about -2 to -4.5 ms of 14.2 ms; console x2.86: about -6 to -13 ms. Honest: TEXI and GA1 moved the walk only 0.14 and 0.37 ms, so the glyph path may be smaller than the model; if R0 shows 0b+e4+f0 under 1 ms Azahar, drop R1 and look elsewhere (a heavy op gbiprof names, or tick-read overhead). Risks: text colors (palette in the header, new run per COLOR change; rainbow gives 1 glyph per run), drop shadow (state ops split runs; correct, no gain until R3), window scissor and rotscale off-screen (Gfx between runs), alpha/dither fade (ops split the run), size effects RISE/GROW/JITTER (runs of 1), clip offsets carried per record, exit-state invalidation (at most 1 extra bind per message), iQue old path.
+
+## 1a. R0 measured (dl_r0, Azahar, azt pause_menu args + phase gbiprof loglevel=debug, shot frame 180)
+Window: last 300 frames of each log. Base = main 91ed30966 (glyphbind ungated). R0 = same plus the imglog gate on pm_gbi.c glyphbind.
+
+| op | count/frame | base ns/call | base ms/frame | R0 ns/call | R0 ms/frame |
+|---|---|---|---|---|---|
+| 0b (TEXI) | 103 | 61107 | 6.2 | 11212 | 1.1 |
+| e4 (texrect) | 212 | 19408 | 4.1 | 19412 | 4.1 |
+| de | 39 | 4395 | 0.1 | 4414 | 0.1 |
+| f0 | 54 | 12479 | 0.6 | 12587 | 0.6 |
+| e3 | 78 | 13429 | 1.0 | 13435 | 1.0 |
+| fc | 68 | 12853 | 0.9 | 12887 | 0.9 |
+
+- Main walk, last 300 frames: base 15789 us, R0 9833 us (-5956 us, -38 percent). bg 2647 us both. Azahar direction only.
+- Base log: 959549 glyphbind lines in one run. R0 log: 0 glyphbind lines.
+- opsplit f: ops 1471 both. combsplit plan 66 mode 16 prim 11 env 2 lay 53 con 13 both. flsplit tex 122/50 both; tex third field 1929 base, 3649 R0 (field not identified).
+- Picture: pause shots 0000 to 0003 byte-equal (base vs R0).
+- Gate for R1 (0b+e4+f0 at 1 ms or more): 1.1 + 4.1 + 0.6 = 5.8 ms per frame. Met.
+- Other ungated per-op logs in pm_gbi.c, pm_tex.c, pm_gpu.c: none found. Checked and behind a switch or a cached flag: pipelog, mtxv, mtxlog, xt fill and texrect, box texrect, pipemtx, flushlog, rectdbg, glyphmap, glyphmiss, tex ptr, box raw (flush_boxlog).

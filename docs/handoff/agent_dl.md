@@ -133,3 +133,9 @@
 - Result, same scene: tex closes 213 -> 122 (-43 percent; target half 107). Lookups hit 197 -> 96 (half, met). Consecutive texrects 0 -> 82 per frame. Azahar draw_msg us 14585 -> 14215 (-370 us; target 3 ms). Gate missed on the walk.
 - Picture: pause shots 0000-0002 byte-equal to glyph build. 0003 differs in 227 bytes at x 90-101, y 192-202: the spinning coin sprite. Text rows identical at 6x.
 - Next: the rest of the flushes are set_plan (2224), gbi 3105 (filter change), gbi 2875 (TLUT palette change per element). Not started.
+
+## R0 (branch dl_r0, from main 91ed30966)
+- pm_gbi.c glyphbind log (per glyph) gated on the imglog switch (static cached flag). No other ungated per-op log found.
+- Azahar pause (PM_ROW=dl_r0, 2/8 used): 0b 6.2 -> 1.1 ms per frame. Main walk last 300 frames 15789 -> 9833 us. Pause shots 0000-0003 byte-equal.
+- No tool parses glyphbind. imglog runs (diag_tex3, agent_text until-line) still get the line.
+- Gate for R1 met (0b+e4+f0 = 5.8 ms per frame).
