@@ -3161,6 +3161,13 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
             if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
             break;
         }
+        case G_SETPRIMCOLOR:
+            GP_SET(1, prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
+            aud_prim_lod = (u8)(w0 & 0xff);
+            prim = w1;
+            pm_gpu_set_prim(prim);
+            sync_combine();
+            break;
         case G_SETCOMBINE:
             GP_SET(0, comb_w0 == w0 && comb_w1 == w1 && comb_set);
             comb_w0 = w0;
@@ -3547,14 +3554,8 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_SETOTHERMODE_H:
         case G_SETOTHERMODE_L:
         case G_SETCOMBINE:
+        case G_SETPRIMCOLOR: /* HT1: the prim body is in tex_op, so a G_PM_TEXI run can hold it */
             tex_op(w0, w1);
-            break;
-        case G_SETPRIMCOLOR:
-            GP_SET(1, prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
-            aud_prim_lod = (u8)(w0 & 0xff);
-            prim = w1;
-            pm_gpu_set_prim(prim);
-            sync_combine();
             break;
         case G_SETCONVERT:
             conv_k4 = (w1 >> 9) & 0xffu;
