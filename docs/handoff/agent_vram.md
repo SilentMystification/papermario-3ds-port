@@ -38,3 +38,11 @@
 - Shot sets: C:/Users/Andrew/AppData/Local/Temp/shots_base and shots_new.
 - Budget vram1: 5 of 8 starts used.
 - Rows 2 to 5: not started. Test catalog (azt.ps1, test_catalog.md) does not exist yet.
+
+## Row 2 (commit 9403c4edc on detached worktree, 7dea7290c on main)
+- pm_mem.c: bank accounting (`pm_vram_reg`, `pm_vram_unreg`, `pm_vram_bank_of`), per-bank min, `vram_fail_n`. HUD row 2: `VRAM A %uK B %uK min %u/%u f%u`. `vram acct <tag>` log line in pm_mem_log.
+- Registration: boot colour/depth (pm_gpu.c, after C3D_RenderTargetCreate), slab (pm_tex.c slab_init), snap, off-screen slot, grab. Unregister only in the off-screen free.
+- Skipped the `pm_vram_alloc(size, bank, what)` helper: no site places a block by bank yet. Add it in row 3 with vramMemAlignAt.
+- Test (vram2, 1 start, 6-map short tour): boot colour in A, depth in B; `unaccounted 0KB` on every map line (matches vramSpaceFree); fail 0; A 1161 / B 2697 on the map lines (A holds the 1536 KB slab at boot: 3072-375-1536). Row 3 moves the slab to the layout in plan_vram_3mb.md.
+- Worktree C:/Users/Andrew/Documents/GitHub/papermario-3ds-port-vram was stale (base 48792619d, dirty) and was NOT changed. Row 2 built in C:/Users/Andrew/Documents/GitHub/papermario-3ds-port-vram2 (clean at 88a135dfc, plus assets/us and ver/us/build copied from main, both git-ignored).
+- Budget vram2: 1 of 8 starts used.
