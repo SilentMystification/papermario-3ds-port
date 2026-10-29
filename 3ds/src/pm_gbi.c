@@ -1270,10 +1270,11 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     o->zm[0] = 1.f; o->zm[1] = 0.f;
     unpack8(envc, en);
     if (tex_on) {
-        o->uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms / (float)tw;
-        o->uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt / (float)th;
-        o->uvso[2] = -((float)tile_x0 + tile_fx) / (float)tw;
-        o->uvso[3] = -((float)tile_y0 + tile_fy) / (float)th;
+        float itw = 1.f / (float)tw, ith = 1.f / (float)th; /* H5: one divide per axis, not one per term */
+        o->uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms * itw;
+        o->uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt * ith;
+        o->uvso[2] = -((float)tile_x0 + tile_fx) * itw;
+        o->uvso[3] = -((float)tile_y0 + tile_fy) * ith;
     } else { /* H06b1: the vertex texcoords are 0, texel (0, 0) centre */
         o->uvso[0] = o->uvso[1] = 0.f;
         o->uvso[2] = -((float)tile_x0 + tile_fx) / (float)tw + 0.5f / (float)tw;
@@ -3250,6 +3251,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                 gbi_cold_bad_next(w1, w0, (u32)list);
                 break;
             }
+            if (next) { __builtin_prefetch(next); __builtin_prefetch(next + 4); } /* H4: the G_DL target */
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
             if (dls_on) dls_target(next);
             if (pm_ph_on) { unsigned dc = dls_class((u32)next); RS_ADD(RS_GDL, 1); if (dc == 1) RS_ADD(RS_GDL1, 1); else if (dc == 7) RS_ADD(RS_GDL7, 1); }
@@ -3286,6 +3288,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             unsigned v0n = (w0 >> 1) & 0x7f;
             unsigned v0 = (v0n >= n) ? v0n - n : 0;
             Vtx* src = (Vtx*)ptr_of(w1);
+            if (src) __builtin_prefetch(src + n); /* H4: the next vertex block */
             if (src && !is_host((u32)src)) {
                 gbi_cold_bad_vtx(w1, w0, (u32)list);
                 src = NULL;

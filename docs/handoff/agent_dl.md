@@ -89,3 +89,9 @@
 - W4 (opf table prologue): not started.
 - H5/H4, pause row, C1i + HUD (dl2-c11 still not on main), fog volcano kzn_17/kzn_20: not started.
 - Next: W4 on detached main, then H5 divides, then pause row.
+
+## Update: lane 2 continuation (2026-10-29, after W2 merge)
+- W2: kept by the coordinator (main 29016a9e9).
+- W4 (branch dl2-w4, not kept): main walk 7208 -> 7187 us (-21, gate 150 us).
+- H5/H4 (branch dl2-h5, accepted HW-unconfirmed by the coordinator): walk 7202 us (not worse), picture equal by eye. Divides removed: pm_gbi.c:1273-1276 (texrect uvso, 4 divides per rect become 1 reciprocal per axis + multiplies). PLD sites: pm_gbi.c:3215 (G_DL target), pm_gbi.c:3252 (next vertex block).
+- Pause row: next. Volcano kzn_17 and kzn_20: after pause, each on its own branch.
