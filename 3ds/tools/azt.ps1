@@ -18,7 +18,7 @@ Steps:
     - The scenario expects warp or tour and the log has more than 2 title or demo mode lines (game mode 2, 3 or 17):
       the run is stopped. Exit 3, "ATTRACT LOOP".
  5. After the run, each expected_events regex is checked against the run log. A [CRASH] line fails the scenario.
-    An event with "max" is a numeric gate: capture group 1 of its regex must be <= max. "pick": "last" takes the last matching line.
+    An event with "max" is a numeric gate: capture group 1 of its regex must be <= max. "min" (optional) must be >= min. "pick": "last" takes the last matching line.
     The shot files of this run are listed with the subject. The script never prints a full PASS. The shot must be read by a person.
 Exit codes: 0 log checks pass, 1 expected event, crash or run failure, 2 marker missing, 3 attract loop,
 4 unknown or unverified scenario, 5 argument or build error, 9 test budget of the row used up.
@@ -117,12 +117,15 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
         $hits = @($lines | Where-Object { $_ -match $ev.regex })
         $hit = if ($ev.pick -eq "last") { $hits | Select-Object -Last 1 } else { $hits | Select-Object -First 1 }
         if (-not $hit) { Write-Output ("FAIL  {0}: no line matches /{1}/" -f $ev.name, $ev.regex); $fails++; continue }
-        if ($ev.PSObject.Properties.Name -contains "max") {
+        if (($ev.PSObject.Properties.Name -contains "max") -or ($ev.PSObject.Properties.Name -contains "min")) {
             $m = [regex]::Match($hit, $ev.regex)
             if (-not $m.Success -or $m.Groups.Count -lt 2) { Write-Output ("FAIL  {0}: regex has no capture group 1 for the gate" -f $ev.name); $fails++; continue }
             $val = [double]$m.Groups[1].Value
-            if ($val -gt [double]$ev.max) { Write-Output ("FAIL  {0}: {1} is above the limit {2}: {3}" -f $ev.name, $val, $ev.max, $hit.Trim()); $fails++ }
-            else { Write-Output ("PASS  {0}: {1} <= {2}: {3}" -f $ev.name, $val, $ev.max, $hit.Trim()) }
+            $hasMax = $ev.PSObject.Properties.Name -contains "max"
+            $hasMin = $ev.PSObject.Properties.Name -contains "min"
+            if ($hasMax -and $val -gt [double]$ev.max) { Write-Output ("FAIL  {0}: {1} is above the limit {2}: {3}" -f $ev.name, $val, $ev.max, $hit.Trim()); $fails++ }
+            elseif ($hasMin -and $val -lt [double]$ev.min) { Write-Output ("FAIL  {0}: {1} is below the limit {2}: {3}" -f $ev.name, $val, $ev.min, $hit.Trim()); $fails++ }
+            else { Write-Output ("PASS  {0}: {1} in range {2} to {3}: {4}" -f $ev.name, $val, $(if ($hasMin) { $ev.min } else { "-" }), $(if ($hasMax) { $ev.max } else { "-" }), $hit.Trim()) }
         }
         else { Write-Output ("PASS  {0}: {1}" -f $ev.name, $hit.Trim()) }
     }

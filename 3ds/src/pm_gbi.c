@@ -2129,7 +2129,7 @@ static unsigned mdc_tot_ops, mdc_tot_draws, mdc_tot_tris, mdc_tot_binds, mdc_non
 static __attribute__((cold, noinline)) int mdc_slot(unsigned id) {
     unsigned h = (id * 2654435761u) >> 25;
     for (int i = 0; i < MDC_SLOTS; i++, h = (h + 1) & (MDC_SLOTS - 1)) {
-        if (!mdc[h].used) { mdc[h].used = 1; mdc[h].id = (u16)id; mdc[h].cur_h = 2166136261u; return (int)h; }
+        if (!mdc[h].used) { memset(&mdc[h], 0, sizeof mdc[h]); mdc[h].used = 1; mdc[h].id = (u16)id; mdc[h].cur_h = 2166136261u; return (int)h; }
         if (mdc[h].id == id) return (int)h;
     }
     return -1;
@@ -2227,6 +2227,7 @@ static __attribute__((cold, noinline)) void mdc_report(void) {
         mdc[s].fog = 0;
     }
     mdc_tot_ops = mdc_tot_draws = mdc_tot_tris = mdc_tot_binds = mdc_none = 0;
+    for (int s = 0; s < MDC_SLOTS; s++) mdc[s].used = 0; /* each window allocates its own slots; the table filled over several maps before (unattr ops) */
     mdcm_over = 0;
 }
 
