@@ -209,7 +209,86 @@ Numbers to send back:
 
 ## 6. Round 2
 
-Build for this round: build 1433, git b5c7b5226 (FINAL3). Archive: `3ds/logs/builds/pm_3ds_final3_b5c7b5226.3dsx`, sha256 861ab9e6444bf601...(full hash in `3ds/logs/perf/pushed_builds.txt`). Not pushed. The earlier FINAL2 archive is `3ds/logs/builds/pm_3ds_final2_83e903455.3dsx` (build 1428, git 83e903455).
+Current archive (round 2, latest): `3ds/logs/builds/pm_3ds_final4_6e965c84b.3dsx` (build 6e965c84b, see FINAL4 below). Earlier build for this round: build 1433, git b5c7b5226 (FINAL3). Archive: `3ds/logs/builds/pm_3ds_final3_b5c7b5226.3dsx`, sha256 861ab9e6444bf601...(full hash in `3ds/logs/perf/pushed_builds.txt`). Not pushed. The earlier FINAL2 archive is `3ds/logs/builds/pm_3ds_final2_83e903455.3dsx` (build 1428, git 83e903455).
+
+### FINAL4 (HEAD 6e965c84b, build 6e965c84b; current archive)
+
+- Archive: `3ds/logs/builds/pm_3ds_final4_6e965c84b.3dsx`, 13366812 bytes, sha256 `f010c91ff24db35d06094ca6467ca6daead32af0b5f8dfb7a2caec7deb9ab862` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed. Later commits f35192ba9 and 467925c71 touch only tests and docs, so the binary stays valid.
+- Console push command (CLAUDE.md rule 6), run in Git Bash from any folder:
+
+```
+PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 audiostat texstat pacestat logstat phase phsum loglevel=debug
+```
+
+- Azahar catalog run, one start each, picture read by eye (top shots):
+
+| Scenario | Log checks | Picture |
+|---|---|---|
+| yard | 3 of 3 | Green pipe, Mario, partner, house |
+| pause_menu | 6 of 6 | Pause status page |
+| partner_menu | 7 of 7 (after shot window moved to frame 200) | Party tab, Goombario. Frame 220 showed the Star Spirits page, so the window moved |
+| file_select | 6 of 6 | File select screen |
+| text_menu | 3 of 3 | Pause status text |
+| mac01 | 4 of 4 | Post office, Mario, Toads |
+| mac01t | 6 of 6, census gate 1696 in 1623 to 2065 | Toad Town street, Mario, Toads. Verified |
+| battle_start | 4 of 4 | Battle command ring, Mario, Goomba |
+
+- Starts used on row FINAL4: 8 of 8 before the budget reset (one yard start cut off, then 7 scenarios), then 2 more after the reset (partner_menu, yard).
+- Not a hardware result. A person must confirm on the console.
+
+#### Round 2 rows (gates)
+
+- CROSS2 (ec9a7dc13): second kick split at 85 % of draws in pm_gpu.c. Shots byte-equal (mac01 2, mac01t 2). mac01t splits per frame 1.0 to 2.0.
+- EN2 (35b41c5eb): shadow texture load as one G_PM_TEXI run. mac01t shadow draws 795 to 520 ops (26.5 to 17.3 per draw). The plan target was 16 per draw, so the per-draw target is not met. The epic gate (down, pictures equal) passes.
+- T1B (b7e847d8c): task tail rows named 0xF0E0 + k. Census only. Pictures equal.
+- NP1B (64be3494b): sprite texture load as one G_PM_TEXI. mac01t f899 NPC sprite draws 490 to 301 ops (18.1 to 11.1 per draw). Gate 12 or less: pass. The first NP1 was dropped (yard bottom shots differ, see below).
+- HT1 (be50979c1): HUD element and tile texture loads as G_PM_TEXI runs. mac01t f899 ops 319 to 171 (gate 100 or more: pass). Closes unchanged.
+- HUD interval, LOGCLEAN, WARPLOG, DS0 (dcsum line) and DS1 (svc flush) are listed in the sections above.
+
+#### MENULAG gates (base plus 15 %, rounded up)
+
+| Scenario | Walk cpu ms max | Closes max | Ops max |
+|---|---|---|---|
+| pause_menu | 12.8 | 156 | 1692 |
+| partner_menu | 11.0 | 124 | 1324 |
+| file_select | 9.4 | 102 | 1617 |
+
+Walk is `cpu (wall-idle-fbegin)` from the `phase W` line. Closes is the first `phase count` line. Ops is `gbiops`. See `docs/handoff/test_catalog.md`.
+
+#### TOADT census (mac_01, window f899 = frames 600 to 899)
+
+- Baseline census 2315 ops per frame (`docs/handoff/diag_toadt.md`). Model 00b7 holds 32.0 % of ops and changes its matrix every frame. The docs do not name model 00b7 (`docs/handoff/diag_toadmdl.md`).
+- After EN2, T1B, NP1B and HT1: 1844 ops per frame. Gate set to 1623 to 2065 (1844 +/- 12 %).
+
+#### Dropped rows
+
+- CROSS1: one linear block for pool, ring and index. The premise fails (pool 1.31 MB; one flush would cover about 1.8 MB). Reason in `docs/handoff/agent_crossfix.md`.
+- DS3: generation counters for the pal block. Shots equal, but pal close time did not fall 20 % (3 us to 3 us at dcsum resolution 1 us). Reverted.
+- DS2: -Os for pm_gpu.c. Picture equal, but the dcsum stage sum rose 24 to 26 us per close. Reverted. Cold-branch moves not done.
+- MODELOPS R1 to R3: the R0 counts give a ceiling below each gate (R1 max 190 us against 245 us; R2 max 335 us against 500 us; R3 mtx_same about 4 us against 175 us). Not coded (`docs/handoff/agent_modelops.md`).
+- NP1 (first attempt): yard bottom shots differ by 18 to 140 px. A HEAD control run differs by the same order. Top shots equal. The byte-equal gate cannot separate it on yard.
+
+#### Unproven on console (from `docs/handoff/diag_abcmp.md`)
+
+- Wall frame time on console: unproven. The paced walk stays at 33.4 ms in both builds.
+- Split of the pair B non-op drop (about 4 ms logging or DS1, about 2 ms ops): not proven.
+
+#### Yard A/B procedure (console, from diag_abcmp.md section 5)
+
+1. Copy `3ds/logs/builds/pm_3ds_merge_60e5a06e2.3dsx` to build3ds/pm_3ds.3dsx. Save the current file first.
+2. `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 -t 60 audiostat texstat pacestat logstat phase phsum loglevel=debug preset=yard`
+3. Stand Mario still at the yard start for 60 s.
+4. Read build3ds/hw_live_log_170.txt: pace, phase W, phase count, logstat. Skip frames 0 to 299.
+5. Copy `3ds/logs/builds/pm_3ds_final4_6e965c84b.3dsx` to build3ds/pm_3ds.3dsx. Repeat steps 2 to 4.
+6. Add both pushes to 3ds/logs/perf/pushed_builds.txt.
+
+#### Console checklist for build 6e965c84b
+
+1. Boot line: `build 6e965c84b git <hash> loglevel <n>`.
+2. No log gaps. The frame counter runs with no jumps.
+3. `dcsum` line: write down close us per stage (pal, bind, tev, st, draw) and gc us per flush.
+4. HUD interval: set `hudint=` in `options.ini`. Check the bottom memory rows refresh.
+5. VRAM HUD rows: rows 1 and 2 show min free and peak used.
 
 ### FINAL3 (HEAD b5c7b5226, build 1433)
 
