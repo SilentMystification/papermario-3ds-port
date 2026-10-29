@@ -1,10 +1,11 @@
 # Final writeup: overnight batch, 2026-10-29
 
-Build for the console: `build3ds/pm_3ds.3dsx` (from lane final, HEAD 29f504d7b).
-SHA-256: 0df21e8c3a76b2d0db03b1cf1142cb3a0f4f87edcf4cc28215ce7bc50b2d549c
-Archive: `3ds/logs/builds/pm_3ds_bunknown_29f504d7b.3dsx`
+Build for the console: `build3ds/pm_3ds.3dsx` (build 1504, git c294e993f, HEAD with LB1).
+SHA-256: d5a6eddc136735fa7d036b098d80bbd219ff13ba94515b19d4aae70309cd25d7
+Archive: `3ds/logs/builds/pm_3ds_1504_c294e993f.3dsx`
 Push log line: `3ds/logs/perf/pushed_builds.txt`, last line.
-Status: not run on the console yet. The user pushes in the morning.
+Push command: `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
+Status: not run on the console yet. Not pushed. The user pushes in the morning.
 
 ## 1. Verify result
 
@@ -420,3 +421,14 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 - POSHUD option: Debug tab row 8 "Position HUD" (options.ini poshud=0|1). The bottom screen shows Mario x y z yaw and camera x y z yaw, refreshed with hudint. Debug tool, stays.
 - LB1 (lazy FrameBegin): not passed. mac01 and pause_menu not run (budget). Patch in 3ds/logs/perf/lb1_dropped.diff.
 - Push (user runs): `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
+
+## LB1B and FINAL9 (build 1504, git c294e993f)
+- LB1 (lazy FrameBegin) committed as c294e993f. Lane lb1b build 1498 gave the first gate results.
+- Gate, top shots against the HEAD binary of build 1490 (fd05e686a, same src): mac01 2 of 2 byte-equal, mac01t 2 of 2, yard 1 of 1, pause_menu 1 of 1, file_select 1 of 1. battle_start 0000 to 0003 byte-equal.
+- battle_start 0004 to 0007 (lane lb1b) differ in sprite pixels only, in a box near x 58 to 215, y 98 to 302. Read by eye: same scene and HUD. HEAD is not reproducible at these frames (LB1R note). The FINAL9 run gave 0004 byte-equal and 0005 to 0007 sprite-only differences.
+- partner_menu and text_menu: no HEAD baseline in the LB1B budget. Not gated by byte compare.
+- Not run: fsplit gwait on Azahar (gwait shows 0.0 ms on Azahar), sun_sbk (start cap 8 for row FINAL9).
+- FINAL9 catalog, one start each, on build 1504 (default build3ds/pm_3ds.3dsx): yard 3 of 3 log checks, pause_menu 6 of 6, partner_menu 7 of 7, file_select 6 of 6, text_menu 3 of 3, mac01 4 of 4, mac01t 6 of 6, battle_start 4 of 4. Top shots: yard, pause_menu, file_select, mac01, mac01t, partner_menu, text_menu read by eye: subject visible. mac01, mac01t, yard, pause_menu and file_select byte-equal to the build 1490 shots.
+- Pictures read by eye: yard (Mario, pipe), pause status page, file select screen, mac01 post office with Mario and Toads, mac01t Toad Town street, partner Party tab, text status page, battle_start 0000 colour test pattern, 0001 to 0003 field, 0004 to 0008 battle HUD.
+- Archive: `3ds/logs/builds/pm_3ds_1504_c294e993f.3dsx`, 13371520 bytes. Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
+- The push command for the user is in the header above.
