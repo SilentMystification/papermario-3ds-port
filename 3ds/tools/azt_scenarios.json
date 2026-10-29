@@ -283,8 +283,8 @@
       "status": "unverified",
       "subject": "Pause menu, partner tab, shot frames 200 to 239 (pause from START*3 after wait80, then R*2 three times and A*2).",
       "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
-      "debug": "preset=toad padscript=wait80,START*3,wait100,R*2,wait30,R*2,wait30,R*2,wait30,A*2,wait60 phase shots shotwin=200:40",
-      "until": "shot \\d+ frame 23[0-9]\\b",
+      "debug": "preset=toad padscript=wait80,START*3,wait100,R*2,wait30,R*2,wait30,R*2,wait60 phase shots shotwin=190:20",
+      "until": "shot \\d+ frame 20[0-9]\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -300,15 +300,15 @@
           "regex": "game mode 10 frame"
         },
         {
-          "name": "partner ui line",
-          "regex": "ui: .*partner"
+          "name": "partner ui line (fires at pause open, not at the tab)",
+          "regex": "ui: partner menu open"
         },
         {
-          "name": "shot 23x",
-          "regex": "shot \\d+ frame 23[0-9]\\b"
+          "name": "shot 200-209",
+          "regex": "shot \\d+ frame 20[0-9]\b"
         }
       ],
-      "reason": "Log: pause opens (game mode 10 at frame 96). Picture: the pause menu stays on the map page, not the partner tab, so the R*2 steps do not reach the partner page. The ui: partner line never logs. Needs the exact tab steps."
+      "reason": "Open. Run 2 (azt2): pause opens, 'ui: partner menu open' logs at frame 99, but the shot frames 190 to 209 show the Map tab (cursor on Map, col 5), not the partner tab (col 3, pause_tabs.c order Stats, Badges, Items, Party, Spirits, Map). R presses move the tab col by one per held frame. The 'ui: partner menu open' line fires in pause_partners_init at pause open, so it does not prove the tab. Needs a tab-entry debug line (not allowed in pause_tabs.c for this row) or a script that lands on col 3."
     },
     {
       "name": "file_select",
@@ -403,9 +403,9 @@
     {
       "name": "house_sign",
       "status": "unverified",
-      "subject": "Mario House sign (4x tiled texture check). Not defined.",
+      "subject": "Mario House exterior in the yard (kmr_20, entry 4): the house with its sign, shot at frames 200 to 205.",
       "proves": "Would prove the Mario House sign texture draws.",
-      "debug": "",
+      "debug": "preset=yard shots shotwin=200:6",
       "until": "shot \\d+ frame 200\\b",
       "cap": 90,
       "deadline": 20,
@@ -418,15 +418,15 @@
           "regex": "warp: kmr_20 entry 4"
         }
       ],
-      "reason": "Not run. No handoff doc gives the sign position or a camera path for kmr_20. Budget used (8 of 8)."
+      "reason": "Open. Run 1 (azt2): warp to kmr_20 entry 4 passes. The shot (0000, frame 200) shows the yard and the house roof at the top left, but the sign is too small to read at 240x400. The camera is not set by the scenario. Needs a camera or zoom switch (not in this row's allowed files) or a frame where the camera faces the sign."
     },
     {
       "name": "super_text",
       "status": "unverified",
       "subject": "Intro multibounce SUPER text. Not defined.",
       "proves": "Would prove the SUPER text draws during a multibounce in battle.",
-      "debug": "",
-      "until": "",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 padscript=wait150,A*2,wait60,A*2,wait60,A*2,wait30,A*2,wait60 shots shotwin=150:90",
+      "until": "shot \\d+ frame 230\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "debug battle: formation",
@@ -438,7 +438,8 @@
           "regex": "debug battle: formation"
         }
       ],
-      "reason": "Not run. battle_start reaches the battle, but no tested padscript makes a multibounce with jump presses (docs/handoff/diag_tex3.md lists it as missing). Budget used."
+      "reason": "Not run. battle_start reaches the battle, but no tested padscript makes a multibounce with jump presses (docs/handoff/diag_tex3.md lists it as missing). Budget used.",
+      "extra": []
     },
     {
       "name": "full411",
