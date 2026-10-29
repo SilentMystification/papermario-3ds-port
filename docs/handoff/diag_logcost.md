@@ -33,7 +33,7 @@ Counts per frame [M]: gbiops 1708, draw 120, flush 120, texcall 96, dbgcall 29.
 | writer, sink, socket, SD | core 1. vlog takes no lock (pm_log.c:322-386) | 0 on game thread | C |
 | Total, phase and logging | | 3 to 4.5 | E |
 
-Console gap: 9 to 17 ms (20 fps off, 15 to 17 fps with flags). The estimate covers 3 to 4.5 ms. So 5 to 13 ms is not explained. Open.
+Console gap: 9 to 17 ms (20 fps off, 15 to 17 fps with flags). The estimate covers 3 to 4.5 ms. 5 to 13 ms is not explained.
 
 ## 3. Cheapest set for speed
 Keep: `pacestat logstat loglevel=debug`.
@@ -59,9 +59,7 @@ Frame-time overhead of the set: 0.1 to 0.4 ms [E]. Below 0.05 ms after the fix i
 3. pm_audio.c tick sites: gate on audiostat or pm_ph_on.
 
 ## 6. Azahar cost test (item 5)
-Not run. The catalog has no yard scenario with phase on. A phase-on variant needs a new scenario and catalog row in one commit, outside this doc-only commit. 0 of 3 starts used.
-Console A/B: run (a) no flags, (b) `pacestat logstat loglevel=debug`, (c) full push flags. Compare fps.
+Not run. The catalog has no yard scenario with phase on. A new scenario needs a catalog row in the same commit. 0 of 3 starts used.
+Console A/B: (a) no flags, (b) `pacestat logstat loglevel=debug`, (c) full push flags. Compare fps.
 
-## 7. Open
-- Two frame counters. Phase windows end at f4503 (#4399). b7 lines reach f6900 (#4455). [M]
-- 5 to 13 ms of the console gap is not explained. Run section 6.
+Open: two frame counters (phase ends f4503 at #4399, b7 reaches f6900 at #4455). [M]
