@@ -40,3 +40,10 @@
 - Cause: one extra noinline call per tex and tile op. C1-1 needs tex_op. Next: find out whether the call cost or the switch layout costs the walk (e.g. always_inline into a second switch vs a jump table).
 - Next: C1-1 needs C1-0 accepted or the same handler split on main; C1-3 after C1-1.
 - Remaining rows (BG, G2/H6, H3, H2, fog, W4/W2, H5/H4) not started in this session.
+
+## Update: C1-0 merged, C1-1 failed (2026-10-29)
+- C1-0 merged to main as 8d157f28d (merge of dl2-c10). HW-unconfirmed. Azahar walk 8072 -> 8222 us (+1.9%, inside the +2% gate). Picture ok (earlier run).
+- C1-1 built on branch dl2-c11 (commit 6e50f68a0, not on main): G_PM_TEX op, tb_list record, model.c MODEL_TEX_OP swap at the two texture emit sites in the render path (model.c ~1538/1542), tbsplit counter.
+- C1-1 result: tbsplit n 0 fb 0 on every frame of the yard run (PM_ROW=dl_c11, 1/8 used). No G_PM_TEX op runs. The model.c emit path does not run for the yard. The plan_c1_texbind premise (per-model texture DL replay in the yard) does not hold. Quantity not moved. Gate not met. Branch kept, not merged.
+- Open for the next diagnosis: find which lists make the 3866 tex ops/frame in the yard (opsplit f599 tex 3866/556 us). They are not from model.c TextureHandles. Check the map DL source (ROM DLs with inline texture loads) before any C1 row.
+- Rows not started: C1-3, BG, G2 + H6, H3, H2, fog fix, W4/W2, H5/H4, C1i + HUD.
