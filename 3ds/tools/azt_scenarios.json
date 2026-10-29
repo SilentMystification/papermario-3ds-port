@@ -312,10 +312,10 @@
     },
     {
       "name": "file_select",
-      "status": "unverified",
+      "status": "verified",
       "subject": "File select screen, shots at frames 282 to 341 (box rotation at 282 to 296).",
       "proves": "The golden.py fileselect padscript reaches the file select mode (GAME_MODE_FILE_SELECT, 14) from a boot.",
-      "debug": "padscript=wait200,START*6,wait300,START*6,wait300 phase shots shotwin=282:60",
+      "debug": "fileselect phase shots shotwin=282:60",
       "extra": [
         "-Turbo",
         "-TurboFactor",
@@ -341,14 +341,14 @@
           "regex": "shot \\d+ frame 3[0-4][0-9]\\b"
         }
       ],
-      "reason": "Golden fileselect padscript from a boot does not reach the file select with -Turbo. Log: intro (game mode 16) at frame 327, file select (mode 14) never logged. Shots show the intro logo and a title border."
+      "reason": "Verified: log checks pass (game mode 14 at frame 15, ui: file select enter) and the shot read by eye shows the file select screen (File 1 AAAAAAAA, First Play, Select file to start). Boot path: debug switch fileselect (pm_warp.c pm_warp_hook). Shots: build3ds\u0007zt\\shots\file_select (16 shots, frames 282-338)."
     },
     {
       "name": "fileselect_rotate",
       "status": "unverified",
       "subject": "File select box rotation: shots at frames 282 to 296 of the file_select run (same command).",
       "proves": "The file select box turn (frames 282 to 296) is in the shot set of a file select run.",
-      "debug": "padscript=wait200,START*6,wait300,START*6,wait300 phase shots shotwin=282:60",
+      "debug": "fileselect phase shots shotwin=282:60",
       "extra": [
         "-Turbo",
         "-TurboFactor",
@@ -370,7 +370,7 @@
           "regex": "shot \\d+ frame 29[0-6]\\b"
         }
       ],
-      "reason": "Same command as file_select. The file select is not reached, so the rotation frames 282 to 296 are not shown."
+      "reason": "Open: file select is reached (same run as file_select, shots 282-293 exist). The box turn is not seen by eye in shots 0000 and 0004 (both show File 1 at rest). Needs a picture read of shots 0000 to 0003 for the turn."
     },
     {
       "name": "text_menu",
