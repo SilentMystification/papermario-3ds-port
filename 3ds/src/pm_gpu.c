@@ -302,7 +302,9 @@ static u8* copy_blk;
 static unsigned copy_last;
 static u8* bank_block(unsigned bytes) {
     u8* p = (u8*)vramMemAlignAt(bytes, 0x80, VRAM_ALLOC_A);
-    return p ? p : (u8*)vramMemAlignAt(bytes, 0x80, VRAM_ALLOC_B);
+    if (!p) p = (u8*)vramMemAlignAt(bytes, 0x80, VRAM_ALLOC_B);
+    if (!p) pm_tex_shrink(); /* row 5: both banks full. The bank B cache half drains; the next frame has the room */
+    return p;
 }
 /* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
 static int tex_hdr(C3D_Tex* t, int w, int h) {
@@ -358,6 +360,8 @@ static void buffers_idle(void) {
     unsigned f = pm_frame_count();
     for (int i = 0; i < OFF_P; i++) if (offs[i].rt && offs[i].w != 64 && f - offs[i].last >= IDLE_FREE) full_free(i);
     if (copy_blk && f - copy_last >= IDLE_FREE) copy_free();
+    for (int i = 0; i < OFF_P; i++) if (offs[i].rt && offs[i].w != 64) { pm_tex_full_touch(); break; } /* row 5: a full image is still held */
+    if (copy_blk) pm_tex_full_touch();
 }
 /* FX2a: the RDP loads a tile into TMEM before it draws, so a pass that reads the image it writes (the flame blur) sees the pixels from before
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
@@ -1817,9 +1821,9 @@ void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
     if (off_active) pm_gpu_off_end();
-    { static int gt_once; if (drew && pm_debug_has("grabtest") && !gt_once++) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot */
+    { static int gt_done; if (drew && pm_debug_has("grabtest") && !gt_done) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot. Row 5: a grab that fails (no VRAM) is tried again next frame */
         extern unsigned short* nuGfxCfb_ptr;
-        pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
+        gt_done = pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
     } }
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear

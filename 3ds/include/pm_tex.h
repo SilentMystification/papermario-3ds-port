@@ -58,5 +58,7 @@ int pm_tex_cur_vram_pending(void);
 void pm_tex_drain_vram(void); /* TX1: all staged VRAM uploads before the next draw batch */
 void pm_tex_flush_pending(void); /* FL1: one staged VRAM upload (if any) plus one data cache flush span merge */
 void pm_tex_flush_pend_only(void); /* FL1 cache flush without VRAM upload */
+void pm_tex_shrink(void); /* row 5: drain the bank B cache half (both banks full) */
+void pm_tex_full_touch(void); /* row 5: a full buffer is in use this frame */
 unsigned pm_tex_slot_gen(int slot); /* C1: generation of a live slot */
 int pm_tex_bind_slot(int slot); /* C1: bind a cached slot by index */
