@@ -33,29 +33,34 @@ int pm_gbi_flush_class(void) {
     default: return 5;
     }
 }
-static int gv_streak;
+/* W2: phase timers read the tick for one run in 8 and scale the sample by 8. A run is a streak of ops of one class. */
+static unsigned ph_seq;
+static int ph_pick(void) { return (++ph_seq & 7u) == 0; }
+static int gv_run, gv_streak;
 static unsigned gv_streak_t0;
 static void gv_streak_flush(void) {
-    if (!pm_ph_on || !gv_streak) return;
-    pm_gbi_gv_ticks += pm_ticks() - gv_streak_t0;
+    gv_run = 0;
+    if (!gv_streak) return;
+    pm_gbi_gv_ticks += (pm_ticks() - gv_streak_t0) * 8u;
     gv_streak = 0;
 }
 static void gv_streak_op(unsigned op) {
     if (op == G_TRI1 || op == G_TRI2) {
-        if (pm_ph_on && !gv_streak) { gv_streak_t0 = pm_ticks(); gv_streak = 1; }
+        if (pm_ph_on && !gv_run) { gv_run = 1; if (ph_pick()) { gv_streak_t0 = pm_ticks(); gv_streak = 1; } }
     } else
         gv_streak_flush();
 }
-static int tex_streak;
+static int tex_run, tex_streak;
 static unsigned tex_streak_t0;
 static void tex_streak_flush(void) {
-    if (!pm_ph_on || !tex_streak) return;
-    pm_gbi_tex_ticks += pm_ticks() - tex_streak_t0;
+    tex_run = 0;
+    if (!tex_streak) return;
+    pm_gbi_tex_ticks += (pm_ticks() - tex_streak_t0) * 8u;
     tex_streak = 0;
 }
 static void tex_streak_op(unsigned op) {
     if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE || op == G_PM_TEX) {
-        if (pm_ph_on && !tex_streak) { tex_streak_t0 = pm_ticks(); tex_streak = 1; }
+        if (pm_ph_on && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
     } else
         tex_streak_flush();
 }
@@ -480,10 +485,10 @@ static PmPlan cur_plan;
 static void sync_combine(void);
 static void sync_combine_work(void);
 static void sync_combine_work_timed(void) {
-    if (!pm_ph_on) { sync_combine_work(); return; }
+    if (!pm_ph_on || !ph_pick()) { sync_combine_work(); return; }
     unsigned t0 = pm_ticks();
     sync_combine_work();
-    pm_gbi_sync_ticks += pm_ticks() - t0;
+    pm_gbi_sync_ticks += (pm_ticks() - t0) * 8u; /* W2: one call in 8 timed */
 }
 static int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
 static unsigned sl_cc;
@@ -1365,6 +1370,15 @@ static void lit_freeze(void) {
     }
 }
 
+/* H3: open-addressing index of gm_tab by a hash of the combined matrix. Slot holds entry + 1, 0 is empty. 512 slots for at most 256 entries. */
+static unsigned short gm_idx[512];
+static unsigned gm_hash(const float (*m)[4]) {
+    const unsigned* w = (const unsigned*)m;
+    unsigned h = 2166136261u;
+    for (int i = 0; i < 16; i++) h = (h ^ w[i]) * 16777619u;
+    return (h ^ (h >> 16)) & 511u;
+}
+
 /* GV1: the id of the matrix of the next vertex load or static group in gm_tab: the combined matrix, and for a lit load also the model view matrix of the normal. -1 when the table is full. */
 static unsigned gv_matrix_id(int need_nm) {
     if (!gm_tab) {
@@ -1377,10 +1391,16 @@ static unsigned gv_matrix_id(int need_nm) {
     float nm[3][4];
     for (int i = 0; i < 3; i++) { nm[i][0] = mv[mv_sp][i][0]; nm[i][1] = mv[mv_sp][i][1]; nm[i][2] = mv[mv_sp][i][2]; nm[i][3] = 0.f; }
     if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0) return gm_last;
-    unsigned k, gmi = GV_NONE;
-    for (k = gm_n; k > 0; k--) { gm_steps++; if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[k - 1], nm, sizeof nm) == 0)) break; } /* newest first */
-    if (k > 0) gmi = k - 1;
-    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gmi = gm_n++; }
+    unsigned p, best = GV_NONE, gmi;
+    /* H3: the newest entry with the same combined matrix (and normal when needed), found by probing its hash chain */
+    for (p = gm_hash(combined); gm_idx[p]; p = (p + 1) & 511u) {
+        unsigned e = gm_idx[p] - 1u;
+        gm_steps++;
+        if ((best == GV_NONE || e > best) && memcmp(gm_tab[e], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[e], nm, sizeof nm) == 0)) best = e;
+    }
+    if (best != GV_NONE) gmi = best;
+    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gm_idx[p] = (unsigned short)(gm_n + 1); gmi = gm_n++; }
+    else gmi = GV_NONE;
     gm_last = gmi;
     return gmi;
 }
@@ -2153,7 +2173,10 @@ static void os_report(void) {
         pke[s] = pk_sn[s] ? (unsigned long long)pk_tk[s] * pk_ops[s] / pk_sn[s] : 0;
         psum += pk_ops[s];
     }
-    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), gm_steps / 300, gm_n);
+    static unsigned svc_last; /* W2: all pm_ticks reads per frame over the 300 frames (tk is the op sampler only) */
+    unsigned svc_now = pm_svc_n;
+    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | pt %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), (svc_now - svc_last) / 300u, gm_steps / 300, gm_n);
+    svc_last = svc_now;
     pm_log_hw("prod f%d sum %u ops %u", rm_frame, (unsigned)(psum / 300), (unsigned)(tot_n / 300));
     for (int r = 0; r < 8; r++) {
         int best = -1; unsigned long long bv = 0;
@@ -2262,6 +2285,7 @@ void pm_gbi_end_frame(void) {
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
     mv_sp = 0; /* PT70: the RSP matrix stack starts empty in every task. A push without pop in the message draw leaked one level per frame, then the 10 level cap dropped the pad push of the blue pipe and its pop left the wrong matrix (the sunk pipe showed up while a text box waited) */
+    if (gm_n) memset(gm_idx, 0, sizeof gm_idx);
     gm_n = 0; gm_last = GV_NONE; pm_gpu_gv_reset();
     memset(vert_ring, 0xff, sizeof vert_ring);
     memset(vert_gvf, 3, sizeof vert_gvf);
@@ -2608,6 +2632,26 @@ static __attribute__((noinline)) void tb_run(const Gfx* g) {
         if (g1_skip[op]) continue;
         pm_gbi_cur_op = op;
         tex_op(g->words.w0, g->words.w1);
+    }
+}
+
+/* G2: a state op that leaves the live state as it is. The loop skips it before the prologue. Ops that call sync_combine
+ * also need sc_ok: a set sc_ok means that call would do nothing. */
+static int g2_same(unsigned op, u32 w0, u32 w1) {
+    switch (op) {
+    case G_SETPRIMCOLOR: return prim == w1 && aud_prim_lod == (u8)(w0 & 0xff) && sc_ok;
+    case G_SETENVCOLOR: return envc == w1 && sc_ok;
+    case G_SETFOGCOLOR: return fogc == w1;
+    case G_SETBLENDCOLOR: return blendc == w1;
+    case G_SETOTHERMODE_L:
+    case G_SETOTHERMODE_H: {
+        unsigned len = (w0 & 0xff) + 1, field = (w0 >> 8) & 0xff;
+        unsigned sft = 32 - field - len;
+        unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
+        unsigned old = op == G_SETOTHERMODE_H ? omode_h : omode_l;
+        return (w1 & mask) == (old & mask) && (op == G_SETOTHERMODE_L || sc_ok);
+    }
+    default: return 0;
     }
 }
 
@@ -3147,6 +3191,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         u32 w1 = pc->words.w1;
         unsigned op = w0 >> 24;
         if (g1_skip[op]) { pc++; RS_ADD(RS_SKN, 1); continue; }
+        if (g2_same(op, w0, w1)) { pc++; RS_ADD(RS_SKS, 1); continue; }
         pm_gbi_cur_op = op;
         int fp = 0;
         gv_streak_op(op);

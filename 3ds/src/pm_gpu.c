@@ -835,6 +835,29 @@ static void dc_kick(void) {
     dc_end();
 }
 static void dc_bind(int unit, C3D_Tex* t) { pm_dc_c[DC_TB0 + unit]++; C3D_TexBind(unit, t); }
+/* H2: debug dump of the batch bounds (boxlog switch). Cold: kept out of flush_draw. */
+static void __attribute__((cold, noinline)) flush_boxlog(int graw, int tex, int z) { float bx0 = 1e9f, by0 = 1e9f, bx1 = -1e9f, by1 = -1e9f; int bi;
+        for (bi = 0; bi < nverts; bi++) { if (verts[bi].x < bx0) bx0 = verts[bi].x; if (verts[bi].x > bx1) bx1 = verts[bi].x; if (verts[bi].y < by0) by0 = verts[bi].y; if (verts[bi].y > by1) by1 = verts[bi].y; }
+        if (graw && gni > 0) { /* raw batch: clip position of each open vertex (palette matrix pcomp), NDC x and y in milli units */
+          float nx0 = 1e9f, ny0 = 1e9f, nx1 = -1e9f, ny1 = -1e9f; unsigned gi;
+          for (gi = gi_start; gi < gi_start + gni; gi++) {
+            unsigned v = gidx[gi]; const short* sv = (const short*)(gring + 16u * v); unsigned k = gring[16u * v + 6];
+            if (k >= pal_n) continue;
+            const C3D_Mtx* M = &pcomp[pal_g[k]];
+            float ox = sv[0], oy = sv[1], oz = sv[2];
+            float cw = M->r[3].x * ox + M->r[3].y * oy + M->r[3].z * oz + M->r[3].w;
+            float cx = M->r[0].x * ox + M->r[0].y * oy + M->r[0].z * oz + M->r[0].w;
+            float cy = M->r[1].x * ox + M->r[1].y * oy + M->r[1].z * oz + M->r[1].w;
+            if (cw == 0.f) continue;
+            cx /= cw; cy /= cw;
+            if (cx < nx0) nx0 = cx; if (cx > nx1) nx1 = cx; if (cy < ny0) ny0 = cy; if (cy > ny1) ny1 = cy;
+          }
+          pm_log_d("box raw f%u ndc x %d..%d y %d..%d (milli) gi %u n %u", pm_frame_count(), (int)(nx0 * 1000), (int)(nx1 * 1000), (int)(ny0 * 1000), (int)(ny1 * 1000), (unsigned)gi_start, (unsigned)gni);
+        }
+        if (graw && tex) { extern void pm_tex_boxinfo(char* out, unsigned n); char tb[512]; pm_tex_boxinfo(tb, sizeof tb);
+          pm_log_d("box tex f%u %s combine %d blend %d rep %d prim %08x", pm_frame_count(), tb, combine, r_blend, r_replace, (unsigned)prim); }
+        pm_log_d("box draw f%u graw %d nv %d off %d 3d %d r2d %d wide %d sci x0 %d y0 %d x1 %d y1 %d combine %d tex %d prim %08x blend %d rep %d z %d vbox x %d..%d y %d..%d", pm_frame_count(), graw, nverts, off_active, draw_3d, rect_2d, pm_wide, sci_x0, sci_y0, sci_x1, sci_y1, combine, tex, (unsigned)prim, r_blend, r_replace, z, nverts ? (int)bx0 : -1, nverts ? (int)bx1 : -1, nverts ? (int)by0 : -1, nverts ? (int)by1 : -1); }
+
 static void flush_draw(void) {
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
@@ -1036,27 +1059,7 @@ static void flush_draw(void) {
             sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
     { static int boxlog = -1; if (boxlog < 0) boxlog = pm_debug_has("boxlog");
-      if (boxlog) { float bx0 = 1e9f, by0 = 1e9f, bx1 = -1e9f, by1 = -1e9f; int bi;
-        for (bi = 0; bi < nverts; bi++) { if (verts[bi].x < bx0) bx0 = verts[bi].x; if (verts[bi].x > bx1) bx1 = verts[bi].x; if (verts[bi].y < by0) by0 = verts[bi].y; if (verts[bi].y > by1) by1 = verts[bi].y; }
-        if (graw && gni > 0) { /* raw batch: clip position of each open vertex (palette matrix pcomp), NDC x and y in milli units */
-          float nx0 = 1e9f, ny0 = 1e9f, nx1 = -1e9f, ny1 = -1e9f; unsigned gi;
-          for (gi = gi_start; gi < gi_start + gni; gi++) {
-            unsigned v = gidx[gi]; const short* sv = (const short*)(gring + 16u * v); unsigned k = gring[16u * v + 6];
-            if (k >= pal_n) continue;
-            const C3D_Mtx* M = &pcomp[pal_g[k]];
-            float ox = sv[0], oy = sv[1], oz = sv[2];
-            float cw = M->r[3].x * ox + M->r[3].y * oy + M->r[3].z * oz + M->r[3].w;
-            float cx = M->r[0].x * ox + M->r[0].y * oy + M->r[0].z * oz + M->r[0].w;
-            float cy = M->r[1].x * ox + M->r[1].y * oy + M->r[1].z * oz + M->r[1].w;
-            if (cw == 0.f) continue;
-            cx /= cw; cy /= cw;
-            if (cx < nx0) nx0 = cx; if (cx > nx1) nx1 = cx; if (cy < ny0) ny0 = cy; if (cy > ny1) ny1 = cy;
-          }
-          pm_log_d("box raw f%u ndc x %d..%d y %d..%d (milli) gi %u n %u", pm_frame_count(), (int)(nx0 * 1000), (int)(nx1 * 1000), (int)(ny0 * 1000), (int)(ny1 * 1000), (unsigned)gi_start, (unsigned)gni);
-        }
-        if (graw && tex) { extern void pm_tex_boxinfo(char* out, unsigned n); char tb[512]; pm_tex_boxinfo(tb, sizeof tb);
-          pm_log_d("box tex f%u %s combine %d blend %d rep %d prim %08x", pm_frame_count(), tb, combine, r_blend, r_replace, (unsigned)prim); }
-        pm_log_d("box draw f%u graw %d nv %d off %d 3d %d r2d %d wide %d sci x0 %d y0 %d x1 %d y1 %d combine %d tex %d prim %08x blend %d rep %d z %d vbox x %d..%d y %d..%d", pm_frame_count(), graw, nverts, off_active, draw_3d, rect_2d, pm_wide, sci_x0, sci_y0, sci_x1, sci_y1, combine, tex, (unsigned)prim, r_blend, r_replace, z, nverts ? (int)bx0 : -1, nverts ? (int)bx1 : -1, nverts ? (int)by0 : -1, nverts ? (int)by1 : -1); } }
+      if (boxlog) flush_boxlog(graw, tex, z); }
     if (!pso_fast) {
     sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
     if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
@@ -2282,11 +2285,12 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     dc_on = (dc_seq++ & 7) == 0 && pm_ph_on; /* DC1: one close in 8 is sampled */
     if (!pm_ph_on) { flush_impl(); return; }
     int c = pm_gbi_flush_class();
+    pm_fl_n[c]++;
+    if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
     unsigned t0 = pm_ticks();
     flush_impl();
     dc_on = 0;
-    pm_fl_us[c] += (pm_ticks() - t0) / 268u;
-    pm_fl_n[c]++;
+    pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
 }
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
