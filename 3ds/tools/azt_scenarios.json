@@ -65,7 +65,7 @@
     {
       "name": "tour_k30",
       "status": "log_only",
-      "subject": "Texture failure counter on kmr_30, the last map of tour_k30.txt (6 maps). Log subject only. Measured in the run of 2026-10-29 (tourshot=30:9): tex fail cum 420, delta 420 on kmr_30. The expected value of 0 is not met.",
+      "subject": "Texture failure counter on kmr_30, the last map of tour_k30.txt (6 maps). Log subject only. Run on lane azt2 at HEAD 0738350b2: tex fail cum 0, delta 0 on kmr_30 (tour: next kmr_30 at #2924, texmap state at #3573). Picture check not applicable.",
       "proves": "warp= plus a story and a tour file from the SD folder runs to the end of the file.",
       "debug": "warp=arn_02:0 story=ch0_toad_town tour=@tour_k30.txt texmax shots shotwin=999999:1 shotmode=4:21",
       "until": "tour: done",
@@ -84,8 +84,8 @@
           "regex": "tour: next kmr_30 entry 0"
         },
         {
-          "name": "texture counter line",
-          "regex": "texmap state: .*tex fail cum \\d+ delta \\d+"
+          "name": "texture counter line (delta 0)",
+          "regex": "texmap state: .*tex fail cum 0 delta 0"
         },
         {
           "name": "tour done",
@@ -283,7 +283,7 @@
       "status": "unverified",
       "subject": "Pause menu, partner tab, shot frames 200 to 239 (pause from START*3 after wait80, then R*2 three times and A*2).",
       "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
-      "debug": "preset=toad padscript=wait80,START*3,wait100,R*2,wait30,R*2,wait30,R*2,wait60 phase shots shotwin=190:20",
+      "debug": "preset=toad padscript=wait80,START*3,wait100,R*6,wait60 phase shots shotwin=190:20",
       "until": "shot \\d+ frame 20[0-9]\b",
       "cap": 90,
       "deadline": 20,
