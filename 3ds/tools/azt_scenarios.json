@@ -439,6 +439,34 @@
       "reason": "Verified: log checks pass and the shot shows Mario in Dry Dry Ruins (sandstone walls) with a story text box over the right side (run 6)."
     },
     {
+      "name": "sun_sbk",
+      "status": "unverified",
+      "subject": "Dry Dry Desert (sbk_00, entry 0): the sun overlay (SpawnSunEffect, fx_sun, five ray layers) at scene frames 200 to 205. Read the top shot by eye.",
+      "proves": "A warp into a Dry Dry Desert (sbk_*) map loads, the sun effect is spawned, and steady frames run with shots.",
+      "debug": "warp=sbk_00:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: sbk_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: sbk_00 entry 0"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": "Unverified: new scenario for SUNRAYS (diagnostic). Picture not yet read. Run with -Try."
+    },
+    {
       "name": "volcano",
       "status": "verified",
       "subject": "Mario in Mt. Lavalava (kzn_19, entry 0).",
