@@ -2048,7 +2048,7 @@ static void os_op_hook(const Gfx* at, int sp, unsigned op) { /* one call per op,
     if (os_nest == 1 && ((n_ops + os_off) & 63u) == 0) { os_open = 1; os_op = op; os_pk = pmx_cur; os_fl0 = os_flsum(); os_t0 = pm_ticks(); }
 }
 /* R0: counts the state ops that R1 to R3 would skip. Cold, and called only when the phase is on. It counts and never skips. */
-static struct { unsigned bind, bind_w1, cc, cc_same, tex_same, geo_same, mtx, mtx_same, lt, lt_same; } mops_c;
+static struct { unsigned bind, bind_w1, cc, cc_same, tex_same, geo_same, mtx, mtx_same, lt, lt_same, lt_skip; } mops_c;
 static u32 mops_last_bind;
 static __attribute__((cold, noinline)) void mops_count(unsigned op, u32 w0, u32 w1) {
     switch (op) {
@@ -2097,16 +2097,19 @@ static __attribute__((cold, noinline)) void mops_count(unsigned op, u32 w0, u32 
             int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
             const u8* l = (const u8*)ptr_of(w1);
             if (l && slot >= 0 && slot < 9 && lt[slot].col[0] == l[0] && lt[slot].col[1] == l[1] && lt[slot].col[2] == l[2] &&
-                lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10]) mops_c.lt_same++;
+                lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10]) {
+                mops_c.lt_same++;
+                if (!lit_pending) mops_c.lt_skip++; /* R5B: what g2_same skips */
+            }
         }
         break;
     default: break;
     }
 }
 static __attribute__((cold, noinline)) void mops_report(void) {
-    pm_log_hw("mops f%d bind %u bind_w1 %u cc %u cc_same %u tex_same %u geo_same %u mtx %u mtx_same %u lt %u lt_same %u", rm_frame,
+    pm_log_hw("mops f%d bind %u bind_w1 %u cc %u cc_same %u tex_same %u geo_same %u mtx %u mtx_same %u lt %u lt_same %u lt_skip %u", rm_frame,
         mops_c.bind / 300u, mops_c.bind_w1 / 300u, mops_c.cc / 300u, mops_c.cc_same / 300u, mops_c.tex_same / 300u, mops_c.geo_same / 300u,
-        mops_c.mtx / 300u, mops_c.mtx_same / 300u, mops_c.lt / 300u, mops_c.lt_same / 300u);
+        mops_c.mtx / 300u, mops_c.mtx_same / 300u, mops_c.lt / 300u, mops_c.lt_same / 300u, mops_c.lt_skip / 300u);
     memset(&mops_c, 0, sizeof(mops_c));
 }
 
@@ -2751,8 +2754,23 @@ static __attribute__((noinline)) void tb_inline(const Gfx* g, unsigned n) {
 
 /* G2: a state op that leaves the live state as it is. The loop skips it before the prologue. Ops that call sync_combine
  * also need sc_ok: a set sc_ok means that call would do nothing. */
+/* R5B: a G_MOVEMEM light that writes the values already in lt[slot] changes nothing. The same op also runs lit_freeze, which
+ * acts when a lit vertex is pending, so the skip needs lit_pending == 0 (then lit_freeze returns at once). */
+static int lt_mem_same(u32 w0, u32 w1) {
+    int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
+    const u8* l = (const u8*)ptr_of(w1);
+    return l && slot >= 0 && slot < 9 && !lit_pending && lt[slot].col[0] == l[0] && lt[slot].col[1] == l[1] && lt[slot].col[2] == l[2] &&
+           lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10];
+}
+
 static int g2_same(unsigned op, u32 w0, u32 w1) {
     switch (op) {
+    case G_MOVEMEM: return (w0 & 0xff) == G_MV_LIGHT && lt_mem_same(w0, w1);
+    case G_MOVEWORD: { /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
+        unsigned index = (w0 >> 16) & 0xff, offset = w0 & 0xffff, k = offset / 24;
+        return index == G_MW_LIGHTCOL && k < 9 && (offset % 24) == 0 && lt[k].col[0] == (u8)(w1 >> 24) && lt[k].col[1] == (u8)(w1 >> 16) &&
+               lt[k].col[2] == (u8)(w1 >> 8);
+    }
     case G_SETPRIMCOLOR: return prim == w1 && aud_prim_lod == (u8)(w0 & 0xff) && sc_ok;
     case G_SETENVCOLOR: return envc == w1 && sc_ok;
     case G_SETFOGCOLOR: return fogc == w1;
