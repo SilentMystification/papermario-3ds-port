@@ -54,3 +54,9 @@
 - Picture: yard shots 0000 and 0001 byte-equal to baseline (PM_ROW=dl_bg, 3/8 used).
 - Not tested: wide on/off, fog bg map. Open before this row is final for those cases.
 - Next row: G2 equality filter + H6 hot-state struct.
+
+## Update: G2 kept (dl2 07aebffa5, merged to main 76fe66592)
+- g2_same() before the prologue: SETPRIMCOLOR, SETENVCOLOR (sc_ok), SETFOGCOLOR, SETBLENDCOLOR, SETOTHERMODE_L/H (H with sc_ok) when the result equals the live state. Counter RS_SKS (rmsplit sks).
+- Azahar yard f300-599 (PM_ROW=dl_g2): sks 243 per frame. main walk 8270 -> 8111 us (-159, noise about 50 us). ops at f599 2186 -> 1943. Yard shots 0000/0001 byte-equal to BG shots.
+- H6 (GbiState 64 B struct) not done. Not tested: pause, file select (state ops with other values).
+- Next: H3 gv_matrix_id index.
