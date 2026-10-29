@@ -128,3 +128,10 @@
 1. Decide whether row 4 merges without the idle-free check, or whether a scene is added where the grab stops (for example a debug switch that stops the grab after N frames).
 2. Decide the row 5 trigger (`vramfilla` above), then implement shrink and regrow on the branch, not on main, and test.
 3. Rule: a full-buffer failure in both banks calls pm_tex_shrink from bank_block in pm_gpu.c. Do not add that call on main before row 4 is merged.
+
+## Update: idle free observed, row 5 and vramfilla not done
+- Branch vram-row4-untested 6a5766117: grabtest grabs once (debug switch, gt_once). Build lane vram, run vram4b 4 of 8.
+- file_select grabtest: log `row 4: full image 0 freed, idle 60 frames` and `row 4: copy buffer freed, idle 60 frames`. Shots 16 of 16 equal base. HUD min A 41 KB, B 1065 KB, f0.
+- NOT yet shown: bank free back at 1065 after the free (run stopped at the free line). Branch NOT merged until shown. Next: one run with -Until on a later vram acct line.
+- vramfilla=N (bank A dummy blocks) edit is NOT in the tree. Saved as /c/Users/Andrew/AppData/Local/Temp/claude/c--Users-Andrew-Documents-GitHub-papermario-3ds-port/2a92325f-5e95-40c7-adbd-5622d60396de/scratchpad/vramfilla_untested.patch (scratchpad). Re-apply and build before commit.
+- Row 5 code not started (shrink, regrow, bank_block call). Trigger plan: vramfill=2 and vramfilla=2 with grabtest, first grab buffer fails in both banks.
