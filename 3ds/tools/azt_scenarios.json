@@ -148,11 +148,11 @@
     },
     {
       "name": "pause_menu",
-      "status": "unverified",
-      "subject": "Pause status menu open at frames 170 to 181 (dialog: Check here to see what Mario's current status is.); START closes it; field with the HUD at frames 192 to 200 (shot 4-frame step, first one from 192 is the until-line).",
+      "status": "verified",
+      "subject": "Pause status menu open at frames 120 to 137 (dialog: Check here to see what Mario's current status is.); START closes it at about frame 140; field with the HUD at frames 152 to 159 (one shot per frame, first one from 156 is the until-line).",
       "proves": "padscript opens the pause menu (START) in the Toad Town map, the pause mode is entered, and START closes it: the field shot after close shows the HUD on the field.",
-      "debug": "preset=toad padscript=wait80,START*3,wait284,START*3 shots shotwin=170:31 shotbottom=170:31 loglevel=debug",
-      "until": "shot \\d+ frame (19[2-9]|200)\\b",
+      "debug": "preset=toad padscript=wait80,START*3,wait95,START*3,wait200 shots shotwin=120:40 shotbottom=120:40 loglevel=debug",
+      "until": "shot \\d+ frame 15[6-9]\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -168,15 +168,15 @@
           "regex": "game mode 10 frame"
         },
         {
-          "name": "shot in window 170-181",
-          "regex": "shot \\d+ frame (17[0-9]|18[01])\\b"
+          "name": "shot in pause window 120-137",
+          "regex": "shot \\d+ frame (12[0-9]|13[0-7])\\b"
         },
         {
-          "name": "field shot after close (192-200)",
-          "regex": "shot \\d+ frame (19[2-9]|200)\\b"
+          "name": "field shot after close (152-159)",
+          "regex": "shot \\d+ frame 15[2-9]\\b"
         }
       ],
-      "reason": "Pause shots 170 to 181 (top shots at 173, 177, 181 in the run of 2026-10-29; shotbottom every frame). START at about frame 182 closes the pause (wait284 is an estimate of 2 scans per frame, check the shot). Untested for the close: the until-line is the first shot at 192 or later."
+      "reason": "PAUSE2 run, 2 starts: the close START now lands at frame 140 (log: game mode 10 at frame 96, game mode 11 at frame 141, game mode 4 at frame 147). The old wait284 put the close START at about frame 234 (estimate: frame = 51 + (scan - 66) / 2 from the vrambase log), after the old window 170-200. Top shots: frame 123 pause status page, frame 155 field with Mario. The Paper Mario status bar is retracted after a pause close (reset_status_bar); the bottom screen shows the port HUD text. Picture read by the agent of PAUSE2, a person must confirm."
     },
     {
       "name": "battle_start",
