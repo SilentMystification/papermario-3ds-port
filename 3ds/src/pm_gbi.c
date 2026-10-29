@@ -2681,6 +2681,385 @@ static __attribute__((cold, noinline)) void gbi_cold_movemem(unsigned ix, unsign
 static __attribute__((cold, noinline)) void gbi_cold_keylog(void) {
     static int kl; if (kl < 4) { kl++; pm_log_d("B6 key centre %08x scale %08x frame %d", keyc, keys, rm_frame); }
 }
+/* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
+static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
+    unsigned op = w0 >> 24;
+    switch (op) {
+        case G_SETTIMG:
+            timg = ptr_of(w1);
+            if (!w1 && zslot_on && ((w0 >> 19) & 3) == 2) timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
+            imglog("settimg", timg, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1, -1);
+            /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
+            if (timg && pm_is_cfb(timg) && !pm_is_cur_cfb(timg) && !pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
+            timg_fmt = (w0 >> 21) & 7;
+            timg_siz = (w0 >> 19) & 3;
+            timg_stride = (int)(w0 & 0xfff) + 1;
+            ld_valid = 0;
+            break;
+        case G_SETTILE: {
+            unsigned tile = (w1 >> 24) & 7;
+            int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
+                          tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
+                          tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15);
+            if (tile == 0) GP_SET(3, same_tile);
+            tile_fmt[tile] = (w0 >> 21) & 7;
+            tile_siz[tile] = (w0 >> 19) & 3;
+            tile_tmem[tile] = w0 & 0x1ff;
+            tile_pal[tile] = (w1 >> 20) & 15;
+            tile_wrap[tile][0] = (w1 >> 8) & 3;
+            tile_wrap[tile][1] = (w1 >> 18) & 3;
+            tile_wrap[tile][2] = (w1 >> 4) & 15;
+            tile_wrap[tile][3] = (w1 >> 14) & 15;
+            tile_shift[tile][0] = w1 & 15;
+            tile_shift[tile][1] = (w1 >> 10) & 15;
+            /* The render tile's wrap belongs to the triangles already queued.
+             * Draw them before this tile replaces it. */
+            if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
+                pm_gpu_flush();
+                pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
+                st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
+            }
+            break;
+        }
+        case G_LOADBLOCK: { /* V09: a block load replaces what a LoadTile put at that TMEM address */
+            unsigned tm = tile_tmem[(w1 >> 24) & 7];
+            {
+                /* V13: the block also covers the TMEM above it (a half-height aux tile reads there) */
+                unsigned words = ((((w1 >> 12) & 0xfff) + 1u) << tile_siz[(w1 >> 24) & 7]) >> 4;
+                for (unsigned k = 0; k < 4; k++) if (ldrec[k].tmem >= tm && (ldrec[k].tmem == tm || ldrec[k].tmem < tm + words)) ldrec[k].img = NULL;
+            }
+            {
+                unsigned k;
+                for (k = 0; k < 4 && !(blk[k].img && blk[k].tmem == tm); k++) {}
+                if (k == 4) k = blk_n++ & 3;
+                blk[k].tmem = tm; blk[k].img = timg;
+                blk[k].bytes = ((((w1 >> 12) & 0xfff) + 1u) << tile_siz[(w1 >> 24) & 7]) >> 1;
+            }
+            break;
+        }
+        case G_LOADTILE:
+            ld_valid = 1;
+            ld_x = (int)((w0 >> 12) & 0xfff) >> 2;
+            {
+                unsigned tm = tile_tmem[(w1 >> 24) & 7], k;
+                for (k = 0; k < 4 && !(ldrec[k].img && ldrec[k].tmem == tm); k++) {}
+                if (k == 4) k = ldrec_n++ & 3;
+                ldrec[k].tmem = tm; ldrec[k].img = timg; ldrec[k].stride = timg_stride;
+                ldrec[k].x = (int)((w0 >> 12) & 0xfff) >> 2; ldrec[k].y = (int)(w0 & 0xfff) >> 2;
+            }
+            ld_y = (int)(w0 & 0xfff) >> 2;
+            ld_h = (((int)(w1 & 0xfff) - (int)(w0 & 0xfff)) >> 2) + 1;
+            ld_w = ((((int)(w1 >> 12) & 0xfff) - ((int)(w0 >> 12) & 0xfff)) >> 2) + 1;
+            break;
+        case G_LOADTLUT:
+            tlut = timg;
+            tlut_n = (int)((w1 >> 14) & 0x3ff) + 1;
+            {
+                /* The palette slot is the 16-entry block at the load tile's TMEM address. */
+                unsigned slot = (tile_tmem[(w1 >> 24) & 7] - 256u) >> 4;
+                if (slot < 16) {
+                    tlut_pal[slot] = timg;
+                    /* V20: gDPLoadTextureBlock_4b sets the tile size (which binds the texture) BEFORE the palette load. A bound CI tile that
+                     * uses this palette bank must take the new palette, else it keeps the one of the previous model (the brick block was
+                     * drawn with a dark grey palette). */
+                    for (int n = 0; n < 2; n++)
+                        if (td[n].valid && td[n].fmt == 2 && (tile_pal[n] & 15) == (int)slot && td[n].pal != timg) {
+                            pm_gpu_flush();
+                            td[n].pal = timg;
+                            td[n].pal_n = tlut_n;
+                            if (n == cur_tile) cur_tile = -1;
+                        }
+                }
+            }
+            break;
+        case G_SETTILESIZE: {
+            unsigned tile = (w1 >> 24) & 7;
+            int uls = (int)((w0 >> 12) & 0xfff);
+            int ult = (int)(w0 & 0xfff);
+            int lrs = (int)((w1 >> 12) & 0xfff);
+            int lrt = (int)(w1 & 0xfff);
+            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) {
+                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. Texel 0 is
+                 * still the first texel of the loaded image, so keep the size and start at 0. */
+                int su = uls & 0x800 ? uls - 0x1000 : uls, st = ult & 0x800 ? ult - 0x1000 : ult;
+                int sr = lrs & 0x800 ? lrs - 0x1000 : lrs, sl = lrt & 0x800 ? lrt - 0x1000 : lrt;
+                if (sr >= su && sl >= st) {
+                    lrs = (su < 0 ? 0 : su) + (sr - su);
+                    lrt = (st < 0 ? 0 : st) + (sl - st);
+                    uls = su < 0 ? 0 : su;
+                    ult = st < 0 ? 0 : st;
+                }
+            }
+            GP_SET(4, tile_sz[tile][0] == uls && tile_sz[tile][1] == ult && tile_sz[tile][2] == lrs && tile_sz[tile][3] == lrt);
+            tile_sz[tile][0] = uls;
+            tile_sz[tile][1] = ult;
+            tile_sz[tile][2] = lrs;
+            tile_sz[tile][3] = lrt;
+            {   /* imglog: the SETTILESIZE window and the SETTIMG image of the same tile (role 9 = tile line) */
+                static int on = -1;
+                if (on < 0) on = pm_debug_has("imglog");
+                if (on) pm_log_d("imglog f%d tilesize t%u uls %d ult %d lrs %d lrt %d w %d h %d fmt %u siz %u timg %p timg_stride %d", pm_frame_count(), tile, uls, ult, lrs, lrt, ((lrs - uls) >> 2) + 1, ((lrt - ult) >> 2) + 1, tile_fmt[tile], tile_siz[tile], (void*)timg, timg_stride);
+            }
+            if (tile == 1 && tile_fmt[1] == 2 && tile_siz[1] == 0 && ld_valid && timg) {
+                /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
+                m1.valid = 1;
+                m1.src = (const u8*)timg + (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
+                m1.stride = timg_stride * 2;
+                m1.w = ((lrs - uls) >> 2) + 1;
+                m1.h = ((lrt - ult) >> 2) + 1;
+                m1.x0 = uls >> 2;
+                m1.y0 = ult >> 2;
+            }
+            if (tile == 1) {
+                int w = ((lrs - uls) >> 2) + 1, h = ((lrt - ult) >> 2) + 1;
+                if (tile_wrap[1][2] && !(tile_wrap[1][0] & 2) && ld_valid) { /* VIS3: the same as PT09 for tile 1. The RDP reads (s - sl) through the mask, a mirrored or wrapped read of a window to the right of the image start (walking dust frame i + 1) needs the sheet from its start. */
+                    int per = 1 << tile_wrap[1][2];
+                    int ldw = tile_siz[1] == 0 ? ld_w * 2 : ld_w;
+                    if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
+                }
+                int stride = timg_stride > w ? timg_stride : w;
+                int bpp = tile_siz[1] >= 3 ? 4 : tile_siz[1] == 2 ? 2 : tile_siz[1] == 0 ? 0 : 1;
+                const u8* src = (const u8*)timg;
+                int l1x = ld_x, l1y = ld_y, l1stride = timg_stride, l1v = ld_valid;
+                for (unsigned k = 0; k < 4; k++) {
+                    if (ldrec[k].img && ldrec[k].tmem == tile_tmem[1]) {
+                        src = (const u8*)ldrec[k].img; l1x = ldrec[k].x; l1y = ldrec[k].y; l1stride = ldrec[k].stride; l1v = 1;
+                        stride = l1stride > w ? l1stride : w;
+                    }
+                }
+                int boff = 0; /* V13: tile 1 inside an earlier block load: the image start moves by the TMEM difference */
+                for (unsigned k = 0; k < 4; k++)
+                    if (blk[k].img && blk[k].tmem < tile_tmem[1] && (tile_tmem[1] - blk[k].tmem) * 8u < blk[k].bytes && blk[k].tmem == tile_tmem[0] && src == (const u8*)blk[k].img)
+                        boff = (int)((tile_tmem[1] - blk[k].tmem) * 8u);
+                td[1].valid = 0;
+                if (cur_tile == 1) cur_tile = -1; /* a new tile 1 image: bind it again */
+                /* The image offset is the LoadTile origin. SetTileSize uls and ult only place
+                 * it: gDPLoadMultiTile (draw_box corners) loads at 0,0 and moves tiles 1 to 3
+                 * to the far side of the window by SetTileSize. */
+                if (src && bpp && l1v) src += (size_t)(l1y * stride + l1x) * (size_t)bpp;
+                else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
+                else if (src && tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
+                else if (src && l1v) {
+                    /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32). */
+                    src += (size_t)(ult >> 2) * (size_t)l1stride + (size_t)(uls >> 2);
+                    stride = l1stride * 2;
+                }
+                if (src && w > 0 && h > 0) {
+                    td[1].valid = 1;
+                    td[1].src = src;
+                    td[1].fmt = tile_fmt[1];
+                    td[1].siz = tile_siz[1];
+                    td[1].w = w;
+                    td[1].h = h;
+                    td[1].stride = stride;
+                    td[1].x0 = uls >> 2;
+                    td[1].y0 = ult >> 2;
+                    td[1].pal = tlut_pal[tile_pal[1] & 15] ? tlut_pal[tile_pal[1] & 15] : tlut;
+                    td[1].pal_n = tlut_n;
+                }
+            }
+            if (tile == 1) sync_combine(); /* S25: a plan that reads TEXEL1 needs tile 1 */
+            if (tile != 0) break;
+            td[0].valid = 0;
+            cur_tile = -1; /* GP3: defer pm_tex_load to ensure_tile(0) at first draw */
+            if (dual_on) { dual_on = 0; sync_combine(); } /* S25: the plan path is off while the shaded sprite is on */
+            if (m1.valid && tile_fmt[0] == 2 && tile_siz[0] == 0 && tile_pal[0] != tile_pal[1] &&
+                comb_a == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_TEXEL1 &&
+                m1.w > 0 && m1.h > 0) {
+                /* Tile 0 starts 256 texels in (the vertices carry that) plus the light offset. */
+                int dx4 = uls - (m1.x0 << 2);
+                int dy4 = ult - (m1.y0 << 2);
+                m1.valid = 0;
+                pm_gpu_flush();
+                tile_x0 = m1.x0;
+                tile_y0 = m1.y0;
+                tile_fx = tile_fy = 0.f;
+                if (load_shaded_sprite(dx4, dy4)) {
+                    dual_on = 1;
+                    sync_combine();
+                    break;
+                }
+            }
+            m1.valid = 0;
+            int x0 = uls >> 2;
+            int y0 = ult >> 2;
+            int w = ((lrs - uls) >> 2) + 1;
+            int h = ((lrt - ult) >> 2) + 1;
+            /* FX3f, PT37: a T wrap tile too (confetti: 16 rows of a 256 row sheet moved by ult). the RDP reads TMEM row (t - SetTileSize ult) wrapped by the T mask. A window shorter than the mask period (shape_spell:
+             * 65 rows of a 256 row image, ult 256) reads rows outside the window, so the whole period must be bound. */
+            if (tile_wrap[0][3] && !(tile_wrap[0][1] & 2) && ld_valid) {
+                int per = 1 << tile_wrap[0][3];
+                if (per > h && per <= 256 && ld_h >= per) h = per;
+            }
+            if (tile_wrap[0][2] && !(tile_wrap[0][0] & 2) && ld_valid) { /* PT09: a sprite sheet read through a window narrower than the mask period (emote icons): bind the loaded width up to the period */
+                int per = 1 << tile_wrap[0][2];
+                int ldw = tile_siz[0] == 0 ? ld_w * 2 : ld_w; /* VIS3: a 4 bit image loads through an 8 bit tile, ld_w counts bytes (walking dust: 88 for 176 texels) */
+                if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
+            }
+            int stride = timg_stride > w ? timg_stride : w;
+            int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
+            const u8* src = (const u8*)timg;
+            int r_x = ld_x, r_y = ld_y, r_str = timg_stride, r_v = ld_valid;
+            /* V12c: the render tile shows what was loaded at its own TMEM address. A later load of another image at another
+             * address (bulb glow: the frame buffer window into the upper half of TMEM, then SetTileSize of tile 0 for the
+             * next strip) must not replace the image of tile 0. Tile 1 does the same lookup below. */
+            for (unsigned k = 0; k < 4; k++) {
+                if (ldrec[k].img && ldrec[k].tmem == tile_tmem[0] && ldrec[k].img != timg) {
+                    src = (const u8*)ldrec[k].img; r_x = ldrec[k].x; r_y = ldrec[k].y; r_str = ldrec[k].stride; r_v = 1;
+                    stride = r_str > w ? r_str : w;
+                }
+            }
+            /* V12c: a tile window wider than the loaded image only works through the tile mask (it repeats or mirrors the image).
+             * The source rows are as long as the loaded image, not as long as the window (bulb glow: 32 texel image, 65 texel window). */
+            if (tile_wrap[0][2] && (1u << tile_wrap[0][2]) < (unsigned)w && r_str > 0 && r_str < w) stride = r_str;
+            /* V05: the source window starts at the LoadTile origin. SetTileSize only says which texel coordinate that is
+             * (draw_box loads a strip at row idx * 6 and sets the tile origin to (160 - w / 2, 0)). Both are the same
+             * for gDPLoadTextureTile, so this changes no other draw. */
+            if (src && bpp && r_v) src += (size_t)(r_y * stride + r_x) * (size_t)bpp;
+            /* V13: no source offset for a block load. SetTileSize only moves the coordinates (the pan of a lava model). */
+            else if (src && tile_siz[0] == 0 && r_v) {
+                /* 4-bit strips (imgfx meshes) load a window of an 8-bit-wide image. The
+                 * tile size carries only the scroll, so the window comes from LoadTile. */
+                src += (size_t)r_y * (size_t)r_str + (size_t)r_x;
+                stride = r_str * 2;
+            }
+            tile_x0 = x0;
+            tile_y0 = y0;
+            tile_fx = (float)(uls & 3) * 0.25f; /* PT38 */
+            tile_fy = (float)(ult & 3) * 0.25f;
+            /* PG1: the same texture again (same source, format, size, palette, stride) and nothing touched the texture state since the last load (pm_tex_epoch):
+             * the load would find the same cache slot. Skip the flush and the load, the batch in flight samples the same image. A frame buffer image is
+             * excluded (its content changes under the same pointer, grab_cur). */
+            {
+                struct TszLast* lp = &tsz_last;
+                const void* palc = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
+                int ggx = 0, ggy = 0;
+                if (src && w > 0 && h > 0 && tile_fmt[0] == 2 && tile_siz[0] == 0 &&
+                    pm_tex_glyph_same(src, tile_fmt[0], tile_siz[0], w, h, palc, tlut_n, &ggx, &ggy)) {
+                    pm_log_d("glyphbind f%d x0 %d y0 %d ggx %d ggy %d w %d h %d stride %d src %p", pm_frame_count(), x0, y0, ggx, ggy, w, h, stride, (void*)src); /* T02 */
+                    tile_x0 = x0 - ggx; /* same sign as ensure_tile's new-bind path (x0 - gox) */
+                    tile_y0 = y0 - ggy;
+                    tile_fx = (float)(uls & 3) * 0.25f;
+                    tile_fy = (float)(ult & 3) * 0.25f;
+                    td[0].valid = 1; td[0].src = src; td[0].fmt = tile_fmt[0]; td[0].siz = tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
+                    td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
+                    gp3_t0_set(); GP_SET(7, 1);
+                    break;
+                }
+                if (lp->ok && src == lp->src && tile_fmt[0] == lp->fmt && tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
+                    palc == lp->pal && tlut_n == lp->pal_n && pm_tex_epoch() == lp->ep && !pm_is_cfb(src) && src && w > 0 && h > 1) {
+                    tile_x0 = x0 - lp->ox;
+                    tile_y0 = y0 - lp->oy;
+                    td[0].valid = 1; td[0].src = src; td[0].fmt = tile_fmt[0]; td[0].siz = tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
+                    td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
+                    gp3_t0_set(); GP_SET(7, 1);
+                    break;
+                }
+                GP_SET(7, 0);
+                lp->ok = 0;
+                lp->src = src; lp->fmt = tile_fmt[0]; lp->siz = tile_siz[0]; lp->w = w; lp->h = h; lp->stride = stride; lp->pal = palc; lp->pal_n = tlut_n;
+            }
+            /* GP3: pm_tex_load runs in ensure_tile(0) at the first surviving draw. */
+            /* F03: a 1 row tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture (the pause background loads tall z-buffer tiles, those are textures) */
+            if (src && w > 0 && h > 0 && (h > 1 || (unsigned)timg - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u)) {
+                const void* pal0 = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
+                td[0].valid = 1;
+                td[0].src = src;
+                td[0].fmt = tile_fmt[0];
+                td[0].siz = tile_siz[0];
+                td[0].w = w;
+                td[0].h = h;
+                td[0].stride = stride;
+                td[0].x0 = x0;
+                td[0].y0 = y0;
+                td[0].pal = pal0;
+                td[0].pal_n = tlut_n;
+                gp3_t0_set();
+            }
+            break;
+        }
+        case G_TEXTURE:
+            tex_on = (w0 & 0xff) != 0;
+            tex_ss = w1 >> 16;
+            tex_ts = w1 & 0xffffu;
+            sync_combine();
+            break;
+        case G_SETOTHERMODE_H:
+        case G_SETOTHERMODE_L: {
+            unsigned len = (w0 & 0xff) + 1;
+            unsigned field = (w0 >> 8) & 0xff;
+            unsigned sft = 32 - field - len;
+            unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
+            if (op == G_SETOTHERMODE_H) {
+                unsigned old_tf = omode_h & (3u << 12);
+                omode_h = (omode_h & ~mask) | (w1 & mask);
+                if ((omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
+                    pm_gpu_flush();
+                    pm_tex_set_filter((omode_h & (3u << 12)) != 0);
+                }
+            }
+            else omode_l = (omode_l & ~mask) | (w1 & mask);
+            /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
+            if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
+            break;
+        }
+        case G_SETCOMBINE:
+            GP_SET(0, comb_w0 == w0 && comb_w1 == w1 && comb_set);
+            comb_w0 = w0;
+            comb_w1 = w1;
+            comb_a = (w0 >> 20) & 0xf;
+            comb_c = (w0 >> 15) & 0x1f;
+            comb_b = (w1 >> 28) & 0xf;
+            comb_d = (w1 >> 15) & 7;
+            comb_set = 1;
+            comb_aa = (w0 >> 12) & 7;
+            comb_ac = (w0 >> 9) & 7;
+            comb_ab = (w1 >> 12) & 7;
+            comb_ad = (w1 >> 9) & 7;
+            comb2_a = (w0 >> 5) & 0xf;
+            comb2_c = w0 & 0x1f;
+            comb2_b = (w1 >> 24) & 0xf;
+            comb2_d = (w1 >> 6) & 7;
+            comb2_aa = (w1 >> 21) & 7;
+            comb2_ac = (w1 >> 18) & 7;
+            comb2_ab = (w1 >> 3) & 7;
+            comb2_ad = w1 & 7;
+            /* TEXEL1 with no TEXEL0 anywhere: the texture is tile 1. Rename it so one binding serves. */
+            {
+                int t0 = comb_a == 1 || comb_b == 1 || comb_d == 1 || comb_c == 1 || comb_c == 8 ||
+                         comb_aa == 1 || comb_ab == 1 || comb_ac == 1 || comb_ad == 1;
+                int t1 = comb_a == 2 || comb_b == 2 || comb_d == 2 || comb_c == 2 || comb_c == 9 ||
+                         comb_aa == 2 || comb_ab == 2 || comb_ac == 2 || comb_ad == 2;
+                int c2 = comb2_a == 1 || comb2_b == 1 || comb2_d == 1 || comb2_c == 1 || comb2_c == 8 ||
+                         comb2_aa == 1 || comb2_ab == 1 || comb2_ac == 1 || comb2_ad == 1 ||
+                         comb2_a == 2 || comb2_b == 2 || comb2_d == 2 || comb2_c == 2 || comb2_c == 9 ||
+                         comb2_aa == 2 || comb2_ab == 2 || comb2_ac == 2 || comb2_ad == 2;
+                use_t1 = 0;
+                if (t1 && !t0 && !c2) {
+                    use_t1 = 1;
+                    if (comb_a == 2) comb_a = 1;
+                    if (comb_b == 2) comb_b = 1;
+                    if (comb_d == 2) comb_d = 1;
+                    if (comb_c == 2) comb_c = 1;
+                    if (comb_c == 9) comb_c = 8;
+                    if (comb_aa == 2) comb_aa = 1;
+                    if (comb_ab == 2) comb_ab = 1;
+                    if (comb_ac == 2) comb_ac = 1;
+                    if (comb_ad == 2) comb_ad = 1;
+                }
+            }
+            box_folded = 0;
+            box_prod = comb_a == 1 && comb_b >= 7 && comb_c == 2 && comb_d == 7 &&
+                       comb_aa == 7 && comb_ab == 7 && comb_ac == 7 && comb_ad == 2 &&
+                       comb2_a == 3 && comb2_b == 5 && comb2_c == 0 && comb2_d == 5 &&
+                       comb2_aa == 7 && comb2_ab == 7 && comb2_ac == 7 && comb2_ad == 0;
+            comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
+                               ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
+            sync_combine();
+            break;
+    }
+}
+
 static void gbi_run_body(void* list, unsigned nbytes);
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
@@ -2997,83 +3376,10 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
             break;
         case G_TEXTURE:
-            tex_on = (w0 & 0xff) != 0;
-            tex_ss = w1 >> 16;
-            tex_ts = w1 & 0xffffu;
-            sync_combine();
-            break;
         case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L: {
-            unsigned len = (w0 & 0xff) + 1;
-            unsigned field = (w0 >> 8) & 0xff;
-            unsigned sft = 32 - field - len;
-            unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-            if (op == G_SETOTHERMODE_H) {
-                unsigned old_tf = omode_h & (3u << 12);
-                omode_h = (omode_h & ~mask) | (w1 & mask);
-                if ((omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
-                    pm_gpu_flush();
-                    pm_tex_set_filter((omode_h & (3u << 12)) != 0);
-                }
-            }
-            else omode_l = (omode_l & ~mask) | (w1 & mask);
-            /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
-            if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
-            break;
-        }
+        case G_SETOTHERMODE_L:
         case G_SETCOMBINE:
-            GP_SET(0, comb_w0 == w0 && comb_w1 == w1 && comb_set);
-            comb_w0 = w0;
-            comb_w1 = w1;
-            comb_a = (w0 >> 20) & 0xf;
-            comb_c = (w0 >> 15) & 0x1f;
-            comb_b = (w1 >> 28) & 0xf;
-            comb_d = (w1 >> 15) & 7;
-            comb_set = 1;
-            comb_aa = (w0 >> 12) & 7;
-            comb_ac = (w0 >> 9) & 7;
-            comb_ab = (w1 >> 12) & 7;
-            comb_ad = (w1 >> 9) & 7;
-            comb2_a = (w0 >> 5) & 0xf;
-            comb2_c = w0 & 0x1f;
-            comb2_b = (w1 >> 24) & 0xf;
-            comb2_d = (w1 >> 6) & 7;
-            comb2_aa = (w1 >> 21) & 7;
-            comb2_ac = (w1 >> 18) & 7;
-            comb2_ab = (w1 >> 3) & 7;
-            comb2_ad = w1 & 7;
-            /* TEXEL1 with no TEXEL0 anywhere: the texture is tile 1. Rename it so one binding serves. */
-            {
-                int t0 = comb_a == 1 || comb_b == 1 || comb_d == 1 || comb_c == 1 || comb_c == 8 ||
-                         comb_aa == 1 || comb_ab == 1 || comb_ac == 1 || comb_ad == 1;
-                int t1 = comb_a == 2 || comb_b == 2 || comb_d == 2 || comb_c == 2 || comb_c == 9 ||
-                         comb_aa == 2 || comb_ab == 2 || comb_ac == 2 || comb_ad == 2;
-                int c2 = comb2_a == 1 || comb2_b == 1 || comb2_d == 1 || comb2_c == 1 || comb2_c == 8 ||
-                         comb2_aa == 1 || comb2_ab == 1 || comb2_ac == 1 || comb2_ad == 1 ||
-                         comb2_a == 2 || comb2_b == 2 || comb2_d == 2 || comb2_c == 2 || comb2_c == 9 ||
-                         comb2_aa == 2 || comb2_ab == 2 || comb2_ac == 2 || comb2_ad == 2;
-                use_t1 = 0;
-                if (t1 && !t0 && !c2) {
-                    use_t1 = 1;
-                    if (comb_a == 2) comb_a = 1;
-                    if (comb_b == 2) comb_b = 1;
-                    if (comb_d == 2) comb_d = 1;
-                    if (comb_c == 2) comb_c = 1;
-                    if (comb_c == 9) comb_c = 8;
-                    if (comb_aa == 2) comb_aa = 1;
-                    if (comb_ab == 2) comb_ab = 1;
-                    if (comb_ac == 2) comb_ac = 1;
-                    if (comb_ad == 2) comb_ad = 1;
-                }
-            }
-            box_folded = 0;
-            box_prod = comb_a == 1 && comb_b >= 7 && comb_c == 2 && comb_d == 7 &&
-                       comb_aa == 7 && comb_ab == 7 && comb_ac == 7 && comb_ad == 2 &&
-                       comb2_a == 3 && comb2_b == 5 && comb2_c == 0 && comb2_d == 5 &&
-                       comb2_aa == 7 && comb2_ab == 7 && comb2_ac == 7 && comb2_ad == 0;
-            comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
-                               ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
-            sync_combine();
+            tex_op(w0, w1);
             break;
         case G_SETPRIMCOLOR:
             GP_SET(1, prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
@@ -3252,298 +3558,13 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             break;
         }
         case G_SETTIMG:
-            timg = ptr_of(w1);
-            if (!w1 && zslot_on && ((w0 >> 19) & 3) == 2) timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
-            imglog("settimg", timg, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1, -1);
-            /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
-            if (timg && pm_is_cfb(timg) && !pm_is_cur_cfb(timg) && !pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
-            timg_fmt = (w0 >> 21) & 7;
-            timg_siz = (w0 >> 19) & 3;
-            timg_stride = (int)(w0 & 0xfff) + 1;
-            ld_valid = 0;
-            break;
-        case G_SETTILE: {
-            unsigned tile = (w1 >> 24) & 7;
-            int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && tile_fmt[0] == ((w0 >> 21) & 7) && tile_siz[0] == ((w0 >> 19) & 3) && tile_tmem[0] == (w0 & 0x1ff) && tile_pal[0] == ((w1 >> 20) & 15) &&
-                          tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
-                          tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15);
-            if (tile == 0) GP_SET(3, same_tile);
-            tile_fmt[tile] = (w0 >> 21) & 7;
-            tile_siz[tile] = (w0 >> 19) & 3;
-            tile_tmem[tile] = w0 & 0x1ff;
-            tile_pal[tile] = (w1 >> 20) & 15;
-            tile_wrap[tile][0] = (w1 >> 8) & 3;
-            tile_wrap[tile][1] = (w1 >> 18) & 3;
-            tile_wrap[tile][2] = (w1 >> 4) & 15;
-            tile_wrap[tile][3] = (w1 >> 14) & 15;
-            tile_shift[tile][0] = w1 & 15;
-            tile_shift[tile][1] = (w1 >> 10) & 15;
-            /* The render tile's wrap belongs to the triangles already queued.
-             * Draw them before this tile replaces it. */
-            if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
-                pm_gpu_flush();
-                pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
-                st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
-            }
-            break;
-        }
-        case G_LOADBLOCK: { /* V09: a block load replaces what a LoadTile put at that TMEM address */
-            unsigned tm = tile_tmem[(w1 >> 24) & 7];
-            {
-                /* V13: the block also covers the TMEM above it (a half-height aux tile reads there) */
-                unsigned words = ((((w1 >> 12) & 0xfff) + 1u) << tile_siz[(w1 >> 24) & 7]) >> 4;
-                for (unsigned k = 0; k < 4; k++) if (ldrec[k].tmem >= tm && (ldrec[k].tmem == tm || ldrec[k].tmem < tm + words)) ldrec[k].img = NULL;
-            }
-            {
-                unsigned k;
-                for (k = 0; k < 4 && !(blk[k].img && blk[k].tmem == tm); k++) {}
-                if (k == 4) k = blk_n++ & 3;
-                blk[k].tmem = tm; blk[k].img = timg;
-                blk[k].bytes = ((((w1 >> 12) & 0xfff) + 1u) << tile_siz[(w1 >> 24) & 7]) >> 1;
-            }
-            break;
-        }
+        case G_SETTILE:
+        case G_LOADBLOCK:
         case G_LOADTILE:
-            ld_valid = 1;
-            ld_x = (int)((w0 >> 12) & 0xfff) >> 2;
-            {
-                unsigned tm = tile_tmem[(w1 >> 24) & 7], k;
-                for (k = 0; k < 4 && !(ldrec[k].img && ldrec[k].tmem == tm); k++) {}
-                if (k == 4) k = ldrec_n++ & 3;
-                ldrec[k].tmem = tm; ldrec[k].img = timg; ldrec[k].stride = timg_stride;
-                ldrec[k].x = (int)((w0 >> 12) & 0xfff) >> 2; ldrec[k].y = (int)(w0 & 0xfff) >> 2;
-            }
-            ld_y = (int)(w0 & 0xfff) >> 2;
-            ld_h = (((int)(w1 & 0xfff) - (int)(w0 & 0xfff)) >> 2) + 1;
-            ld_w = ((((int)(w1 >> 12) & 0xfff) - ((int)(w0 >> 12) & 0xfff)) >> 2) + 1;
-            break;
         case G_LOADTLUT:
-            tlut = timg;
-            tlut_n = (int)((w1 >> 14) & 0x3ff) + 1;
-            {
-                /* The palette slot is the 16-entry block at the load tile's TMEM address. */
-                unsigned slot = (tile_tmem[(w1 >> 24) & 7] - 256u) >> 4;
-                if (slot < 16) {
-                    tlut_pal[slot] = timg;
-                    /* V20: gDPLoadTextureBlock_4b sets the tile size (which binds the texture) BEFORE the palette load. A bound CI tile that
-                     * uses this palette bank must take the new palette, else it keeps the one of the previous model (the brick block was
-                     * drawn with a dark grey palette). */
-                    for (int n = 0; n < 2; n++)
-                        if (td[n].valid && td[n].fmt == 2 && (tile_pal[n] & 15) == (int)slot && td[n].pal != timg) {
-                            pm_gpu_flush();
-                            td[n].pal = timg;
-                            td[n].pal_n = tlut_n;
-                            if (n == cur_tile) cur_tile = -1;
-                        }
-                }
-            }
+        case G_SETTILESIZE:
+            tex_op(w0, w1);
             break;
-        case G_SETTILESIZE: {
-            unsigned tile = (w1 >> 24) & 7;
-            int uls = (int)((w0 >> 12) & 0xfff);
-            int ult = (int)(w0 & 0xfff);
-            int lrs = (int)((w1 >> 12) & 0xfff);
-            int lrt = (int)(w1 & 0xfff);
-            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) {
-                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. Texel 0 is
-                 * still the first texel of the loaded image, so keep the size and start at 0. */
-                int su = uls & 0x800 ? uls - 0x1000 : uls, st = ult & 0x800 ? ult - 0x1000 : ult;
-                int sr = lrs & 0x800 ? lrs - 0x1000 : lrs, sl = lrt & 0x800 ? lrt - 0x1000 : lrt;
-                if (sr >= su && sl >= st) {
-                    lrs = (su < 0 ? 0 : su) + (sr - su);
-                    lrt = (st < 0 ? 0 : st) + (sl - st);
-                    uls = su < 0 ? 0 : su;
-                    ult = st < 0 ? 0 : st;
-                }
-            }
-            GP_SET(4, tile_sz[tile][0] == uls && tile_sz[tile][1] == ult && tile_sz[tile][2] == lrs && tile_sz[tile][3] == lrt);
-            tile_sz[tile][0] = uls;
-            tile_sz[tile][1] = ult;
-            tile_sz[tile][2] = lrs;
-            tile_sz[tile][3] = lrt;
-            {   /* imglog: the SETTILESIZE window and the SETTIMG image of the same tile (role 9 = tile line) */
-                static int on = -1;
-                if (on < 0) on = pm_debug_has("imglog");
-                if (on) pm_log_d("imglog f%d tilesize t%u uls %d ult %d lrs %d lrt %d w %d h %d fmt %u siz %u timg %p timg_stride %d", pm_frame_count(), tile, uls, ult, lrs, lrt, ((lrs - uls) >> 2) + 1, ((lrt - ult) >> 2) + 1, tile_fmt[tile], tile_siz[tile], (void*)timg, timg_stride);
-            }
-            if (tile == 1 && tile_fmt[1] == 2 && tile_siz[1] == 0 && ld_valid && timg) {
-                /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
-                m1.valid = 1;
-                m1.src = (const u8*)timg + (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
-                m1.stride = timg_stride * 2;
-                m1.w = ((lrs - uls) >> 2) + 1;
-                m1.h = ((lrt - ult) >> 2) + 1;
-                m1.x0 = uls >> 2;
-                m1.y0 = ult >> 2;
-            }
-            if (tile == 1) {
-                int w = ((lrs - uls) >> 2) + 1, h = ((lrt - ult) >> 2) + 1;
-                if (tile_wrap[1][2] && !(tile_wrap[1][0] & 2) && ld_valid) { /* VIS3: the same as PT09 for tile 1. The RDP reads (s - sl) through the mask, a mirrored or wrapped read of a window to the right of the image start (walking dust frame i + 1) needs the sheet from its start. */
-                    int per = 1 << tile_wrap[1][2];
-                    int ldw = tile_siz[1] == 0 ? ld_w * 2 : ld_w;
-                    if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
-                }
-                int stride = timg_stride > w ? timg_stride : w;
-                int bpp = tile_siz[1] >= 3 ? 4 : tile_siz[1] == 2 ? 2 : tile_siz[1] == 0 ? 0 : 1;
-                const u8* src = (const u8*)timg;
-                int l1x = ld_x, l1y = ld_y, l1stride = timg_stride, l1v = ld_valid;
-                for (unsigned k = 0; k < 4; k++) {
-                    if (ldrec[k].img && ldrec[k].tmem == tile_tmem[1]) {
-                        src = (const u8*)ldrec[k].img; l1x = ldrec[k].x; l1y = ldrec[k].y; l1stride = ldrec[k].stride; l1v = 1;
-                        stride = l1stride > w ? l1stride : w;
-                    }
-                }
-                int boff = 0; /* V13: tile 1 inside an earlier block load: the image start moves by the TMEM difference */
-                for (unsigned k = 0; k < 4; k++)
-                    if (blk[k].img && blk[k].tmem < tile_tmem[1] && (tile_tmem[1] - blk[k].tmem) * 8u < blk[k].bytes && blk[k].tmem == tile_tmem[0] && src == (const u8*)blk[k].img)
-                        boff = (int)((tile_tmem[1] - blk[k].tmem) * 8u);
-                td[1].valid = 0;
-                if (cur_tile == 1) cur_tile = -1; /* a new tile 1 image: bind it again */
-                /* The image offset is the LoadTile origin. SetTileSize uls and ult only place
-                 * it: gDPLoadMultiTile (draw_box corners) loads at 0,0 and moves tiles 1 to 3
-                 * to the far side of the window by SetTileSize. */
-                if (src && bpp && l1v) src += (size_t)(l1y * stride + l1x) * (size_t)bpp;
-                else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
-                else if (src && tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
-                else if (src && l1v) {
-                    /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32). */
-                    src += (size_t)(ult >> 2) * (size_t)l1stride + (size_t)(uls >> 2);
-                    stride = l1stride * 2;
-                }
-                if (src && w > 0 && h > 0) {
-                    td[1].valid = 1;
-                    td[1].src = src;
-                    td[1].fmt = tile_fmt[1];
-                    td[1].siz = tile_siz[1];
-                    td[1].w = w;
-                    td[1].h = h;
-                    td[1].stride = stride;
-                    td[1].x0 = uls >> 2;
-                    td[1].y0 = ult >> 2;
-                    td[1].pal = tlut_pal[tile_pal[1] & 15] ? tlut_pal[tile_pal[1] & 15] : tlut;
-                    td[1].pal_n = tlut_n;
-                }
-            }
-            if (tile == 1) sync_combine(); /* S25: a plan that reads TEXEL1 needs tile 1 */
-            if (tile != 0) break;
-            td[0].valid = 0;
-            cur_tile = -1; /* GP3: defer pm_tex_load to ensure_tile(0) at first draw */
-            if (dual_on) { dual_on = 0; sync_combine(); } /* S25: the plan path is off while the shaded sprite is on */
-            if (m1.valid && tile_fmt[0] == 2 && tile_siz[0] == 0 && tile_pal[0] != tile_pal[1] &&
-                comb_a == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_TEXEL1 &&
-                m1.w > 0 && m1.h > 0) {
-                /* Tile 0 starts 256 texels in (the vertices carry that) plus the light offset. */
-                int dx4 = uls - (m1.x0 << 2);
-                int dy4 = ult - (m1.y0 << 2);
-                m1.valid = 0;
-                pm_gpu_flush();
-                tile_x0 = m1.x0;
-                tile_y0 = m1.y0;
-                tile_fx = tile_fy = 0.f;
-                if (load_shaded_sprite(dx4, dy4)) {
-                    dual_on = 1;
-                    sync_combine();
-                    break;
-                }
-            }
-            m1.valid = 0;
-            int x0 = uls >> 2;
-            int y0 = ult >> 2;
-            int w = ((lrs - uls) >> 2) + 1;
-            int h = ((lrt - ult) >> 2) + 1;
-            /* FX3f, PT37: a T wrap tile too (confetti: 16 rows of a 256 row sheet moved by ult). the RDP reads TMEM row (t - SetTileSize ult) wrapped by the T mask. A window shorter than the mask period (shape_spell:
-             * 65 rows of a 256 row image, ult 256) reads rows outside the window, so the whole period must be bound. */
-            if (tile_wrap[0][3] && !(tile_wrap[0][1] & 2) && ld_valid) {
-                int per = 1 << tile_wrap[0][3];
-                if (per > h && per <= 256 && ld_h >= per) h = per;
-            }
-            if (tile_wrap[0][2] && !(tile_wrap[0][0] & 2) && ld_valid) { /* PT09: a sprite sheet read through a window narrower than the mask period (emote icons): bind the loaded width up to the period */
-                int per = 1 << tile_wrap[0][2];
-                int ldw = tile_siz[0] == 0 ? ld_w * 2 : ld_w; /* VIS3: a 4 bit image loads through an 8 bit tile, ld_w counts bytes (walking dust: 88 for 176 texels) */
-                if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
-            }
-            int stride = timg_stride > w ? timg_stride : w;
-            int bpp = tile_siz[0] >= 3 ? 4 : tile_siz[0] == 2 ? 2 : tile_siz[0] == 0 ? 0 : 1;
-            const u8* src = (const u8*)timg;
-            int r_x = ld_x, r_y = ld_y, r_str = timg_stride, r_v = ld_valid;
-            /* V12c: the render tile shows what was loaded at its own TMEM address. A later load of another image at another
-             * address (bulb glow: the frame buffer window into the upper half of TMEM, then SetTileSize of tile 0 for the
-             * next strip) must not replace the image of tile 0. Tile 1 does the same lookup below. */
-            for (unsigned k = 0; k < 4; k++) {
-                if (ldrec[k].img && ldrec[k].tmem == tile_tmem[0] && ldrec[k].img != timg) {
-                    src = (const u8*)ldrec[k].img; r_x = ldrec[k].x; r_y = ldrec[k].y; r_str = ldrec[k].stride; r_v = 1;
-                    stride = r_str > w ? r_str : w;
-                }
-            }
-            /* V12c: a tile window wider than the loaded image only works through the tile mask (it repeats or mirrors the image).
-             * The source rows are as long as the loaded image, not as long as the window (bulb glow: 32 texel image, 65 texel window). */
-            if (tile_wrap[0][2] && (1u << tile_wrap[0][2]) < (unsigned)w && r_str > 0 && r_str < w) stride = r_str;
-            /* V05: the source window starts at the LoadTile origin. SetTileSize only says which texel coordinate that is
-             * (draw_box loads a strip at row idx * 6 and sets the tile origin to (160 - w / 2, 0)). Both are the same
-             * for gDPLoadTextureTile, so this changes no other draw. */
-            if (src && bpp && r_v) src += (size_t)(r_y * stride + r_x) * (size_t)bpp;
-            /* V13: no source offset for a block load. SetTileSize only moves the coordinates (the pan of a lava model). */
-            else if (src && tile_siz[0] == 0 && r_v) {
-                /* 4-bit strips (imgfx meshes) load a window of an 8-bit-wide image. The
-                 * tile size carries only the scroll, so the window comes from LoadTile. */
-                src += (size_t)r_y * (size_t)r_str + (size_t)r_x;
-                stride = r_str * 2;
-            }
-            tile_x0 = x0;
-            tile_y0 = y0;
-            tile_fx = (float)(uls & 3) * 0.25f; /* PT38 */
-            tile_fy = (float)(ult & 3) * 0.25f;
-            /* PG1: the same texture again (same source, format, size, palette, stride) and nothing touched the texture state since the last load (pm_tex_epoch):
-             * the load would find the same cache slot. Skip the flush and the load, the batch in flight samples the same image. A frame buffer image is
-             * excluded (its content changes under the same pointer, grab_cur). */
-            {
-                struct TszLast* lp = &tsz_last;
-                const void* palc = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
-                int ggx = 0, ggy = 0;
-                if (src && w > 0 && h > 0 && tile_fmt[0] == 2 && tile_siz[0] == 0 &&
-                    pm_tex_glyph_same(src, tile_fmt[0], tile_siz[0], w, h, palc, tlut_n, &ggx, &ggy)) {
-                    pm_log_d("glyphbind f%d x0 %d y0 %d ggx %d ggy %d w %d h %d stride %d src %p", pm_frame_count(), x0, y0, ggx, ggy, w, h, stride, (void*)src); /* T02 */
-                    tile_x0 = x0 - ggx; /* same sign as ensure_tile's new-bind path (x0 - gox) */
-                    tile_y0 = y0 - ggy;
-                    tile_fx = (float)(uls & 3) * 0.25f;
-                    tile_fy = (float)(ult & 3) * 0.25f;
-                    td[0].valid = 1; td[0].src = src; td[0].fmt = tile_fmt[0]; td[0].siz = tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
-                    td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
-                    gp3_t0_set(); GP_SET(7, 1);
-                    break;
-                }
-                if (lp->ok && src == lp->src && tile_fmt[0] == lp->fmt && tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
-                    palc == lp->pal && tlut_n == lp->pal_n && pm_tex_epoch() == lp->ep && !pm_is_cfb(src) && src && w > 0 && h > 1) {
-                    tile_x0 = x0 - lp->ox;
-                    tile_y0 = y0 - lp->oy;
-                    td[0].valid = 1; td[0].src = src; td[0].fmt = tile_fmt[0]; td[0].siz = tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
-                    td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
-                    gp3_t0_set(); GP_SET(7, 1);
-                    break;
-                }
-                GP_SET(7, 0);
-                lp->ok = 0;
-                lp->src = src; lp->fmt = tile_fmt[0]; lp->siz = tile_siz[0]; lp->w = w; lp->h = h; lp->stride = stride; lp->pal = palc; lp->pal_n = tlut_n;
-            }
-            /* GP3: pm_tex_load runs in ensure_tile(0) at the first surviving draw. */
-            /* F03: a 1 row tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture (the pause background loads tall z-buffer tiles, those are textures) */
-            if (src && w > 0 && h > 0 && (h > 1 || (unsigned)timg - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u)) {
-                const void* pal0 = tlut_pal[tile_pal[0] & 15] ? tlut_pal[tile_pal[0] & 15] : tlut;
-                td[0].valid = 1;
-                td[0].src = src;
-                td[0].fmt = tile_fmt[0];
-                td[0].siz = tile_siz[0];
-                td[0].w = w;
-                td[0].h = h;
-                td[0].stride = stride;
-                td[0].x0 = x0;
-                td[0].y0 = y0;
-                td[0].pal = pal0;
-                td[0].pal_n = tlut_n;
-                gp3_t0_set();
-            }
-            break;
-        }
         case G_MOVEWORD: {
             unsigned index = (w0 >> 16) & 0xff;
             unsigned offset = w0 & 0xffff;
