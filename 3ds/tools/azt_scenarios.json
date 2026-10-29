@@ -923,6 +923,34 @@
         }
       ],
       "reason": "TOADVIS, not verified. Water and ground of mac_01 are not confirmed in this view."
+    },
+    {
+      "name": "mac01s",
+      "status": "unverified",
+      "subject": "Mario on the mac_01 Toad Town street (tour path, as mac01t), shots at frames 500 and 504. Same view as mac01t for a build without the mdlsum line.",
+      "proves": "TOADVIS: same view on the working tree build, until on a shot line (mac01t until mdlsum never printed on build 29f504d7b and idled 121 s). Log only, no numeric gate.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug",
+      "until": "shot 1 frame 504\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "shot",
+          "regex": "shot 1 frame 504\\b"
+        }
+      ],
+      "reason": "TOADVIS, not verified. The until is a shot line in the window 500 to 524 of shotwin=500:6."
     }
   ]
 }

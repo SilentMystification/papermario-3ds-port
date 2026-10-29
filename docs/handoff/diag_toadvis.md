@@ -1,45 +1,42 @@
-# Diagnosis: TOADVIS (Toad Town ground flicker, fountain water)
+# Diagnosis: TOADVIS (Toad Town ground flicker, water with the gate)
 
 ## Status
-- Azahar budget used: 3 of 3 starts (row TOADVIS). No starts left.
-- Fountain not in view in any shot. Water cause NOT found. Flicker cause NOT found.
-- No game source edit. Scenario toad_gate added (unverified).
+- Cause NOT found. Water not identified in a shot. Flicker not reproduced.
+- Azahar: budget 3 starts after the reset, all used. Starts: toad_gate x3 (earlier budget), mac01t final6 and 29f504d7b, mac01s working tree.
+- No game source edit. Scenarios toad_gate and mac01s added (unverified).
 
 ## Measured [M]
-- Live log build3ds/hw_live_log_170.txt (build 1467, git 06e62c0aa), mac_01 window (lines 261 to 392):
-  - texture failures 0 (line 264). No texfail lines. No evict lines in the map.
-  - vram acct: A used 3031 KB, free 41 KB, min 41 KB (line 265). B the same. Map vram free 82 KB of 6144 KB, min 82 KB (line 266).
-  - tex-cache 1971 KB peak 1971 KB (line 267). Linear used 8008 KB.
-  - grabs 0 on every b7 line. splits: dr1 f900 splits 957 (kick, line 305).
-  - dlc2 f899: static grp 9944, tri 109886, fail 0, full 0, hashbad 0, missing 0.
-  - V05 "slots are used again" (line 243) is on map area 5 map 5, frame 676. Not mac_01.
-  - Frame spikes 51 to 130 ms on mac_01 (frames 741 to 908). Not the picture cause by itself.
-- Azahar toad_gate (preset=toad_west, mac_00 entry 0, shots at frames 200 and 204):
-  - Run 1 working tree (build3ds/pm_3ds.3dsx). Shots kept, log check failed (regex escape, fixed). Log: build3ds/azt/toad_gate_run0_working_log.txt.
-  - Run 2 build 29f504d7b (lane toadA). Log checks 2 of 2.
-  - Run 3 build 3dcfc661d = final6 code (lane toadB). Log checks 2 of 2.
-  - Picture (read by agent): west gate path, grass, stone wall, red edge at right. No water, no fountain.
-  - shot_cmp toadA vs toadB: TOP 0 of 2 byte-equal. Difference 17 px per shot, one column x=120, y 220 to 254. Not the water.
-  - Working tree vs toadA: differs (shot_cmp exit 1). Pixel count not measured.
-- Working tree is not HEAD. It holds uncommitted LB1 edits in 3ds/src/pm_gpu.c (pm_gpu_begin_wait, deferred GPU begin when pm_interp_on > 0) and 3ds/src/pm_nusys.c. Those edits were not in the console build.
+- Live log build3ds/hw_live_log_170.txt (console build 1467, git 06e62c0aa), mac_01 window (lines 261 to 392):
+  - texture failures 0 (line 264). No texfail lines. No texstat or texmap lines (switch off).
+  - vram acct A used 3031 KB, free 41 KB, min 41 KB (line 265). Map vram free 82 KB of 6144 KB.
+  - texcache halves at boot only (lines 32 and 33). No shrink, drain or regrow line in the mac_01 window.
+  - tex-cache 1971 KB peak 1971 KB (line 267). grabs 0 on every b7 line.
+  - dlc2 f899: static grp 9944, tri 109886, fail 0, hashbad 0, missing 0.
+  - V05 "slots are used again" (line 243) is map area 5 map 5, frame 676. Not mac_01.
+- Azahar toad_gate (preset toad_west, mac_00 entry 0, shots 200 and 204): west gate path, grass, wall. No water, no fountain.
+  - 29f504d7b vs final6: 17 px differ per shot, column x=120, y 220 to 254. Not the water.
+- Azahar mac01s (tour to mac_01 entry 0, shots 500 and 504), the Toad Town street. The strip at the right edge (light blue, behind the wall) is the only candidate water. It is not confirmed as water.
+  - final6 (3dcfc661d), 29f504d7b, working tree: 2 of 2 top shots byte-equal across all three.
+- Working tree is not HEAD: uncommitted LB1 in 3ds/src/pm_gpu.c and 3ds/src/pm_nusys.c (deferred GPU begin when pm_interp_on > 0).
+- Fault: mac01t until `mdlsum f899 r12` never printed on 29f504d7b. The run idled 121 s to the timeout (3ds/logs/test_budget.csv, 17:08:15 to 17:10:27). Scenario mac01s uses a shot line instead.
 
-## Code [C]
-- The fountain is not a named model in mac_01. include/mapfs/mac_01_shape.h names are MODEL_o### or group names (no mizu, water or fountain). The gate models are MODEL_west_gate, MODEL_east_gate, MODEL_castle_gate (lines 42 to 46).
-- Water fountain FX (fx_water_fountain, include/effects.h:1590) is called only from src/battle/partner/sushie.c and src/common/SpitInk.inc.c. No mac_01 script calls it. So the map fountain is a shape model, or a script call not found yet.
-- Depth and blend switches for a layer: src/pm_gpu.c:738 to 749 (depth test GREATER or GEQUAL for decal, write mask from r_zupd, decal bias r_decal ? decal_bias() : 0). Rect path 997 to 1007.
-- State skips that can carry a render mode across layers: 3ds/src/pm_gbi.c:2714 (G1 g1_skip, sync and no-op), :2752 (G2, equal-state skip), :3283 (G1 skip in the DL loop).
-- Kick split: 3ds/src/pm_gpu.c:551 to 563 (kick_check, second split at 85 percent, kick_done). split_frame at :280 with a clear only on the first part. The depth buffer is not cleared between parts.
+## Water and fountain in source [C]
+- MODEL_water (0xD6, include/mapfs/mac_00_shape.h:9) is in mac_00: texture-panned (src/world/area_mac/mac_00/main.c:97), custom gfx gfx_build_water (water_gfx.c:6-31, mdl_draw_hidden_panel_surface), collider COLLIDER_water with SURFACE_TYPE_WATER (main.c:95). This is the harbour water, not the mac_01 gate.
+- MODEL_hikari (0x2D, include/mapfs/mac_01_shape.h:161) is in mac_01: texture-panned with two panners (src/world/area_mac/mac_01/main.c:168, 182-183). Candidate for the mac_01 water surface. Its basin or blocker model is not named.
+- mac_01 gate models: MODEL_east_gate (0xA3), MODEL_west_gate (0xA0), MODEL_castle_gate (0xA4) (mac_01_shape.h:42-46), rotated by main.c:82-91.
+- fx_water_fountain (include/effects.h:1590) is called only from src/battle/partner/sushie.c and src/common/SpitInk.inc.c. No mac_01 script calls it.
+- Draw path for a layer: src/pm_gpu.c:738-749 (depth test GREATER or GEQUAL, write mask by r_zupd, decal bias). State skips: pm_gbi.c:2714 (G1), :2752 (G2), :3283.
+- Kick split: pm_gpu.c:551-563, second split at 85 percent. The depth buffer is not cleared between parts (only the first part clears the colour target, split_frame at :280).
 
-## Ranked candidates (static, not measured) [E]
-1. Blocker drawn with the XLU or zupd=0 render mode, so it writes no depth or no colour. The overlay then shows the background. Check: log r_zupd, r_blend and r_zcmp per draw for the fountain draws (model ID from the model tree).
-2. G2 equal-state skip (pm_gbi.c:2752) drops a SETOTHERMODE between blocker and overlay. Check: count G2 skips per draw in the fountain segment against the non-skipped sequence.
-3. Model order in the display list. The 3DS path replays the DL in list order (no sort found in pm_gbi.c). Check: list the MODEL draw order of the fountain against the game DL order.
-4. Ground flicker: VRAM at limit (free 41 KB min on mac_01). A texture slot reuse (V05 path, pm_gpu.c:1556 to 1563) or a cache halve may reuse a slot used this frame. Check: log slot key on each SETTIMG with a hit, on mac_01, for one frame with the flicker.
+## Ranked candidates [E]
+1. Blocker drawn with a transparent or no-depth-write mode, so the overlay shows the background (MODEL_hikari path). Check: log r_zupd, r_blend, r_zcmp per draw of the hikari segment.
+2. G2 equal-state skip (pm_gbi.c:2752) drops a mode word between blocker and overlay. Check: per-draw mode word with and without the skip.
+3. Ground flicker: VRAM at 41 KB free. A slot reuse or eviction of a texture in use is possible, but no texture failure and no shrink line were logged on mac_01. Eviction counts not measured (texstat off).
 
 ## Smallest next step (no edit yet)
-- Find the fountain view: warp mac_01 entry 0 and face the plaza (camboom or preset), or decode mac_01_shape.bin model names to a fountain ID. Then one shot per build (29f504d7b, final6, HEAD clean) with the subject in frame.
-- Picture check: the water overlay shows the blocker colour behind it at the basin edge.
+- One run with `texstat` and the mac_01 window on the console build, and log the per-draw modes of MODEL_hikari.
+- Find a view with MODEL_hikari in frame: a camera on the plaza, not the street. Check the shot before any build compare.
 
 ## Limits
-- Azahar does not reproduce or clear the issue: no shot holds the fountain. Result: not tested.
-- Console differences not checked: depth precision (24 or 16 bit), the second split timing, linear memory timing.
+- Azahar: no fountain or gate water in any shot. Not reproduced. Budget used up.
+- Console items not checked: depth precision (24 or 16 bit), second split timing, linear memory timing.

@@ -58,6 +58,7 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 | forest_mim (FOREST diagnostic, unverified) | Warp to mim_05 entry 0 (area 12 map 4, Forever Forest). Command: `azt.ps1 forest_mim -Row FOREST -Try`. Run 1 (default build): 5 of 5 log checks. f599: opsplit ops 980, mdlsum draws 6, tris 12, dlc2 static tri 55800 of 68100. Picture read by agent: dark forest, Mario and partner. A person must confirm. No numeric gate. Scenario added for diag_forest.md. | build3dszt\shotsorest_mim |
 | sun_sbk (SUNRAYS, unverified) | Dry Dry Desert sun overlay and ray layers (sbk_00, entry 0, story ch0_toad_town). Run with `-Try`. One run (1 of 3 starts): 3 of 3 log checks. Picture read by eye: faint hard-edged cells in the sky strip. See docs/handoff/diag_sunrays.md. | build3ds\azt\shots\sun_sbk |
 | toad_gate (TOADVIS, unverified) | Toad Town west gate view (mac_00 entry 0, preset toad_west), shots at frames 200 and 204. Three runs: working tree, 29f504d7b, final6 (3dcfc661d). Picture: west gate path, no water, no fountain in view. Budget of TOADVIS used up. See docs/handoff/diag_toadvis.md. | build3dsztshots	oad_gate |
+| mac01s (TOADVIS, unverified) | Same view as mac01t (tour to mac_01 entry 0), until on shot line 504 (cap 40 s). Working tree build: 2 of 2 top shots byte-equal to final6 and 29f504d7b. Strip at the right edge is not confirmed as water. mac01t until mdlsum did not print on 29f504d7b (idled 121 s). | build3dsztshotsmac01s |
 
 ## Completion only
 
