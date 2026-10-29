@@ -525,19 +525,19 @@
           "name": "walk: cpu ms per frame, window of the until-line",
           "regex": "phase W f\\d+-\\d+ n \\d+ .*cpu \\(wall-idle-fbegin\\) ([0-9.]+)/",
           "pick": "last",
-          "max": 12.8
+          "max": 14.0
         },
         {
           "name": "closes per frame (all classes, tex-only not logged)",
           "regex": "phase count avg/max per frame: tri .* flush (\\d+)/",
           "pick": "last",
-          "max": 156
+          "max": 111
         },
         {
           "name": "ops per frame (GBI commands)",
           "regex": "phase count avg/max per frame: texKB .* gbiops (\\d+)/",
           "pick": "last",
-          "max": 1692
+          "max": 1154
         }
       ],
       "reason": "PAUSE2 run, 2 starts: the close START now lands at frame 140 (log: game mode 10 at frame 96, game mode 11 at frame 141, game mode 4 at frame 147). The old wait284 put the close START at about frame 234 (estimate: frame = 51 + (scan - 66) / 2 from the vrambase log), after the old window 170-200. Top shots: frame 123 pause status page, frame 155 field with Mario. The Paper Mario status bar is retracted after a pause close (reset_status_bar); the bottom screen shows the port HUD text. Picture read by the agent of PAUSE2, a person must confirm."

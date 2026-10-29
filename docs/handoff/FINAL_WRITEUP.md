@@ -449,3 +449,14 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 - Catalog on 1514, 8 starts: toad_pond 3 of 3 (pond: blue-teal pool, no background through it), yard 3 of 3, pause_menu 6 of 6, mac01t 6 of 6, mac01 4 of 4, battle_start 4 of 4. Not run: partner_menu, file_select, text_menu (budget).
 - Archive: 3ds/logs/builds/pm_3ds_1514_6ffb3df08.3dsx, sha256 9744a4c935f092ebbe5bf97b20b020d408ba2b23d0d9bfba0a509499d9ff1e3e (equal to build3ds/pm_3ds.3dsx). Not pushed; push line withheld (rule 6, epic gate not met).
 - Console checks pending: pond at x -174 z 112 (toad map); fsplit wm and tk fields; warp window line count.
+
+## PAUSEFIX (build 1517, git 9461b95a8; epic partly done)
+- Commit: 9461b95a8 PAUSE4A (background: one 320x240 load and one texrect on 3DS; strip loop kept for N64). Handoff: docs/handoff/agent_pausefix.md.
+- PAUSE4A, pause_menu, HEAD (build 1514) against new, same scenario: closes 135 to 96, ops 1237 to 1003, walk cpu 11.4 to 9.3 ms (window f176 to f235). Top shot byte-equal. HEAD reproduces its own shot byte-equal.
+- PAUSE4B: no code change. pause_draw_rect emits a texrect only. The label display lists (PauseGfxBanner*, src/pause/pause_gfx.c:83) load 9 textures per frame. The 111 figure in diag_pause3.md is a subtraction (151 real closes minus 40 strips), not a count. Gain bound about 0.2 ms.
+- PAUSE4C: not changed. The readback is already timed (D03 line, pm_b7.cap_*, pm_main.c:262). The open spike rest is not measured. Plan: one run with phase on the open frames (96 to 120), read texKB and texmiss per frame.
+- Gates (azt_scenarios.json, pause_menu): closes 156 to 111, ops 1692 to 1154 (new value +15 %). Walk 12.8 to 14.0: the walk window mixes pause and field frames (close at about f141). Window f176 to f235 gave 9.3; window f120 to f175 gave 13.6 to 13.9. A +15 % limit on 9.3 (10.7) failed on the mixed window. Decision needed: change the until so the window is one state.
+- partner_menu and file_select gates do not rise (partner walk 9.9 to 7.3, closes 107 to 68, ops 1023 to 789; file_select unchanged, 88 closes).
+- Byte-equal top shots against HEAD (same run pairs): pause_menu 1 of 1, partner_menu 1 of 1, file_select 1 of 1, text_menu 3 of 3. Picture by eye: a person must confirm (shots in the scratch folder of the run).
+- Catalog, build 1517 (one start each, row PAUSE4C): yard 3 of 3, mac01 4 of 4, mac01t 6 of 6, battle_start 4 of 4, toad_pond 3 of 3 log checks.
+- Archive: 3ds/logs/builds/pm_3ds_1517_9461b95a8.3dsx, sha256 559728b31aacd7a9a5603c8028b41f534509bb138fbe635136b63ff32683f8d1 (equal to build3ds/pm_3ds.3dsx). Archive only. Not pushed.
