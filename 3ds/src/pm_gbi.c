@@ -2047,6 +2047,69 @@ static void os_op_hook(const Gfx* at, int sp, unsigned op) { /* one call per op,
     pk_ops[pmx_cur]++;
     if (os_nest == 1 && ((n_ops + os_off) & 63u) == 0) { os_open = 1; os_op = op; os_pk = pmx_cur; os_fl0 = os_flsum(); os_t0 = pm_ticks(); }
 }
+/* R0: counts the state ops that R1 to R3 would skip. Cold, and called only when the phase is on. It counts and never skips. */
+static struct { unsigned bind, bind_w1, cc, cc_same, tex_same, geo_same, mtx, mtx_same, lt, lt_same; } mops_c;
+static u32 mops_last_bind;
+static __attribute__((cold, noinline)) void mops_count(unsigned op, u32 w0, u32 w1) {
+    switch (op) {
+    case G_PM_TEX:
+        mops_c.bind++;
+        if (w1 == mops_last_bind) mops_c.bind_w1++;
+        mops_last_bind = w1;
+        break;
+    case G_SETCOMBINE:
+        mops_c.cc++;
+        if (comb_w0 == w0 && comb_w1 == w1 && comb_set && sc_ok) mops_c.cc_same++;
+        break;
+    case G_TEXTURE:
+        if (((w0 & 0xff) != 0) == (tex_on != 0) && (w1 >> 16) == tex_ss && (w1 & 0xffffu) == tex_ts && sc_ok) mops_c.tex_same++;
+        break;
+    case G_GEOMETRYMODE:
+        if (((geom & (w0 & 0xffffffu)) | w1) == geom) mops_c.geo_same++;
+        break;
+    case G_MTX: {
+        mops_c.mtx++;
+        if (!is_host((u32)(uintptr_t)ptr_of(w1))) break;
+        unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
+        Mtx* src = (Mtx*)ptr_of(w1);
+        float in[4][4], nt[4][4];
+        const float (*lm)[4] = pm_interp_repl ? pm_interp_find(src) : 0;
+        if (lm) memcpy(in, lm, sizeof(in));
+        else unpack(src, in);
+        int is_proj = (flags & G_MTX_PROJECTION) != 0;
+        const float (*cur)[4] = is_proj ? proj : mv[mv_sp];
+        if (flags & G_MTX_LOAD) memcpy(nt, in, sizeof(nt));
+        else mul(nt, in, cur);
+        if (memcmp(nt, cur, sizeof(nt)) == 0) mops_c.mtx_same++;
+        break;
+    }
+    case G_POPMTX: {
+        mops_c.mtx++;
+        unsigned n = w1 / 64u;
+        if (n == 0) n = 1;
+        if (n > (unsigned)mv_sp) n = (unsigned)mv_sp;
+        if (n == 0 || memcmp(mv[mv_sp - n], mv[mv_sp], sizeof(mv[0])) == 0) mops_c.mtx_same++;
+        break;
+    }
+    case G_MOVEMEM:
+        if ((w0 & 0xff) == G_MV_LIGHT) {
+            mops_c.lt++;
+            int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
+            const u8* l = (const u8*)ptr_of(w1);
+            if (l && slot >= 0 && slot < 9 && lt[slot].col[0] == l[0] && lt[slot].col[1] == l[1] && lt[slot].col[2] == l[2] &&
+                lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10]) mops_c.lt_same++;
+        }
+        break;
+    default: break;
+    }
+}
+static __attribute__((cold, noinline)) void mops_report(void) {
+    pm_log_hw("mops f%d bind %u bind_w1 %u cc %u cc_same %u tex_same %u geo_same %u mtx %u mtx_same %u lt %u lt_same %u", rm_frame,
+        mops_c.bind / 300u, mops_c.bind_w1 / 300u, mops_c.cc / 300u, mops_c.cc_same / 300u, mops_c.tex_same / 300u, mops_c.geo_same / 300u,
+        mops_c.mtx / 300u, mops_c.mtx_same / 300u, mops_c.lt / 300u, mops_c.lt_same / 300u);
+    memset(&mops_c, 0, sizeof(mops_c));
+}
+
 static void os_report(void) {
     static unsigned long long est[256], estc[256], pke[PK_SLOTS];
     unsigned long long cls_tk[OS_N] = { 0 }, cls_n[OS_N] = { 0 }, tot_n = 0, tot_fl = 0, tot_sn = 0, psum = 0;
@@ -2113,7 +2176,7 @@ void pm_gbi_end_frame(void) {
         if (++pdl0_frames >= 300) { pdl0_report(); }
     }
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
-    if (pm_ph_on) { if (os_fr == 0) os_calibrate(); if (++os_fr >= 300) { os_report(); os_fr = 0; } pmk_n = 0; }
+    if (pm_ph_on) { if (os_fr == 0) os_calibrate(); if (++os_fr >= 300) { os_report(); mops_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
     if ((rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
@@ -3097,6 +3160,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pdl_pso_cur = 0; pdl_ep_pso = 0; pdl_tex_slot = -1;
         }
         if (pm_ph_on) os_op_hook(pc - 1, sp, op); /* W1: after the prologue, so a sample is the handler only */
+        if (pm_ph_on) mops_count(op, w0, w1); /* R0: counts only */
         switch (op) {
         case G_ENDDL:
             if (pdl0_on()) pdl0_gl_leave();

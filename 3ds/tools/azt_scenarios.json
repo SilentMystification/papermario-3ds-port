@@ -31,6 +31,38 @@
       "reason": ""
     },
     {
+      "name": "mac01",
+      "status": "verified",
+      "subject": "Mario in mac_01 (area 1 map 2, entry 0), in control, at scene frames 200 and 204 (the shot writer takes one shot every 4 frames).",
+      "proves": "MODELOPS R0 baseline: the phase prints the mops counter line for mac_01, and the shot is the reference picture for R1 to R3.",
+      "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase",
+      "until": "mops f",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f\\d+ ops"
+        },
+        {
+          "name": "mops",
+          "regex": "mops f\\d+ bind "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "tour10",
       "status": "verified",
       "subject": "Mario in each of 10 maps of the tour list. The list starts and ends on mac_00 (Toad Town).",
