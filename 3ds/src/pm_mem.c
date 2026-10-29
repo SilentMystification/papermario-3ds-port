@@ -162,12 +162,34 @@ static unsigned tenth_mb(u32 bytes) { return (unsigned)((bytes * 10u + (1u << 19
 /* VRAM low-water mark: the least free VRAM (vramSpaceFree) since the GPU came up. VRAM blocks are never freed, so the
  * minimum is read right after each allocation (pm_vram_note) and at each HUD refresh. */
 static unsigned vram_min_kb = 6144u;
+static unsigned vram_fail_n; /* VRAM allocation failures since boot */
 void pm_vram_note(void) { unsigned f = (unsigned)(vramSpaceFree() >> 10); if (f < vram_min_kb) vram_min_kb = f; }
 void pm_vram_alloc_fail(const char* what, unsigned kb) {
     pm_vram_note();
+    vram_fail_n++;
     pm_log_e("vram alloc fail %s %u KB (vram free %u KB, vramfree min %u KB)", what, kb, (unsigned)(vramSpaceFree() >> 10), vram_min_kb);
 }
 unsigned pm_vram_min_kb(void) { return vram_min_kb; }
+
+/* Per-bank accounting. The PICA has two 3072 KB banks: A at 0x1F000000, B at 0x1F300000. vramSpaceFree has no bank
+ * argument, so a bank's free space is 3072 KB less the blocks pm registered in it (pm_vram_reg). */
+#define VRAM_BANK_KB 3072u
+#define VRAM_BANK_B_BASE 0x1F300000u
+static unsigned vram_used_b[2]; /* bytes registered per bank */
+static unsigned vram_bank_min_kb[2] = { VRAM_BANK_KB, VRAM_BANK_KB };
+int pm_vram_bank_of(const void* p) { return (u32)p >= VRAM_BANK_B_BASE ? 1 : 0; }
+void pm_vram_reg(const void* p, unsigned bytes) {
+    if (!p) return;
+    int b = pm_vram_bank_of(p);
+    vram_used_b[b] += bytes;
+    unsigned f = VRAM_BANK_KB - (vram_used_b[b] >> 10);
+    if (f < vram_bank_min_kb[b]) vram_bank_min_kb[b] = f;
+}
+void pm_vram_unreg(const void* p, unsigned bytes) {
+    if (!p) return;
+    vram_used_b[pm_vram_bank_of(p)] -= bytes;
+}
+static unsigned bank_free_kb(int b) { return VRAM_BANK_KB - (vram_used_b[b] >> 10); }
 
 void pm_mem_hud(char out[3][40]) {
     u32 lin_total = pm_linear_bytes(), heap_total = pm_heap_bytes();
@@ -176,13 +198,12 @@ void pm_mem_hud(char out[3][40]) {
     u32 total = lin_total + heap_total;
     u32 free_b = lin_free + (heap_total - heap_used); /* heap free: arena free plus sbrk-left */
     u32 used_b = total - free_b;
-    unsigned vram_free = (unsigned)(vramSpaceFree() >> 10); /* the PICA has 6 MB of VRAM */
     pm_vram_note();
     snprintf(out[0], 40, "MEM used %u.%u / %u.%u MB  free %u.%u MB",
              tenth_mb(used_b) / 10, tenth_mb(used_b) % 10, tenth_mb(total) / 10, tenth_mb(total) % 10,
              tenth_mb(free_b) / 10, tenth_mb(free_b) % 10);
     snprintf(out[1], 40, "linear %u/%uK heap %u/%uK", (lin_total - lin_free) >> 10, lin_total >> 10, heap_used >> 10, heap_total >> 10);
-    snprintf(out[2], 40, "VRAM free %uK min %uK tex %uK", vram_free, vram_min_kb, pm_tex_used() >> 10);
+    snprintf(out[2], 40, "VRAM A %uK B %uK min %u/%u f%u", bank_free_kb(0), bank_free_kb(1), vram_bank_min_kb[0], vram_bank_min_kb[1], vram_fail_n);
     static int hud_logged; /* one line per run: proves the 1 Hz refresh ran */
     if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s | %s", out[0], out[1], out[2]);
 }
@@ -228,6 +249,12 @@ void pm_mem_log(const char* tag) {
     else
         pm_log_d("mem %s linear used %uKB peak %uKB texture failures %u", tag, lin_used >> 10, lin_peak >> 10, pm_tex_fail_count());
     if (strcmp(tag, "boot")) pm_vram_note();
+    {
+        unsigned used = (vram_used_b[0] + vram_used_b[1]) >> 10, fr = (unsigned)(vramSpaceFree() >> 10);
+        pm_log_d("vram acct %s: A used %uKB free %uKB min %uKB, B used %uKB free %uKB min %uKB, unaccounted %uKB, fail %u", tag,
+                 vram_used_b[0] >> 10, bank_free_kb(0), vram_bank_min_kb[0], vram_used_b[1] >> 10, bank_free_kb(1), vram_bank_min_kb[1],
+                 (6144u - fr) > used ? (6144u - fr - used) : 0u, vram_fail_n);
+    }
     pm_log_d("mem %s vram free %uKB of %uKB (B7-0) vramfree min %u KB", tag, (unsigned)(vramSpaceFree() >> 10), (unsigned)(6u * 1024u), vram_min_kb); /* the PICA has 6 MB of VRAM */
     struct mallinfo mi = mallinfo();
     pm_log_d("mem %s heap total %uKB used %uKB free-in-arena %uKB sbrk-left %uKB linear total %uKB free %uKB tex-cache %uKB peak %uKB", tag,

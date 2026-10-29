@@ -447,6 +447,7 @@ static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
 static int fl1_on(void) { return slab_segs > 0; }
 void pm_vram_note(void); /* pm_mem.c */
 void pm_vram_alloc_fail(const char* what, unsigned kb); /* pm_mem.c */
+void pm_vram_reg(const void* p, unsigned bytes); /* pm_mem.c */
 static void slab_init(void) {
     unsigned free0 = (unsigned)vramSpaceFree();
     static const unsigned sizes[2] = { BUDGET, BUDGET / 2 };
@@ -458,6 +459,7 @@ static void slab_init(void) {
             continue;
         }
         pm_vram_note();
+        pm_vram_reg(p, sizes[k]);
         slab_ext[0].p = p; slab_ext[0].len = sizes[k]; slab_n = 1;
         tex_cap = sizes[k]; slab_segs = 1;
         pm_log_w("texcache VRAM %uKB at %p (vram free was %uKB now %uKB)", sizes[k] >> 10, (void*)p, free0 >> 10, (unsigned)vramSpaceFree() >> 10);

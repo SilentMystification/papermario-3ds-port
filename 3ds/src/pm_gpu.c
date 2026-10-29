@@ -233,6 +233,9 @@ enum { OFF_N = 4, OFF_P = 2 * OFF_N, OFF_ALL = OFF_P + 2 }; /* FX2a: slots OFF_P
  * (3 = 32 bit, 2 = 16 bit, 1 = 8 bit). The same memory can be a 32 bit image and an 8 bit image in one frame: two slots. */
 void pm_vram_note(void); /* pm_mem.c: VRAM low-water mark */
 void pm_vram_alloc_fail(const char* what, unsigned kb); /* pm_mem.c */
+void pm_vram_reg(const void* p, unsigned bytes); /* pm_mem.c: per-bank accounting */
+void pm_vram_unreg(const void* p, unsigned bytes);
+int pm_vram_bank_of(const void* p);
 static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; unsigned stride; unsigned last; C3D_Tex snap; int snap_ready; } offs[OFF_ALL];
 static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8;
 extern unsigned pm_frame_count(void);
@@ -282,6 +285,7 @@ static void off_snapshot(int i) {
     if (!offs[i].snap_ready) {
         if (!C3D_TexInitVRAM(&offs[i].snap, offs[i].w, offs[i].h, GPU_RGBA8)) { pm_vram_alloc_fail("snap", (unsigned)(offs[i].w * offs[i].h * 4 / 1024)); pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
         pm_vram_note();
+        pm_vram_reg(offs[i].snap.data, offs[i].w * offs[i].h * 4);
         C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
         C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
         offs[i].snap_ready = 1;
@@ -1140,6 +1144,9 @@ void pm_gpu_init(void) {
         pm_log_e("render target failed\n");
         return;
     }
+    pm_vram_reg(target->frameBuf.colorBuf, 240 * 400 * 4);
+    pm_vram_reg(target->frameBuf.depthBuf, 240 * 400 * 4);
+    pm_log_d("vram boot: colour in bank %c, depth in bank %c", pm_vram_bank_of(target->frameBuf.colorBuf) ? 'B' : 'A', pm_vram_bank_of(target->frameBuf.depthBuf) ? 'B' : 'A');
     C3D_RenderTargetSetOutput(target, GFX_TOP, GFX_LEFT,
         GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
@@ -1485,11 +1492,13 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
                 return 0;
             }
             pm_vram_note();
+            pm_vram_reg(offs[i].tex.data, w * h * 4);
             C3D_TexSetFilter(&offs[i].tex, GPU_LINEAR, GPU_NEAREST);
             C3D_TexSetWrap(&offs[i].tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
             offs[i].rt = C3D_RenderTargetCreateFromTex(&offs[i].tex, GPU_TEXFACE_2D, 0, -1);
             if (!offs[i].rt) {
                 pm_log_e("V05: off-screen image %d: render target failed", i);
+                pm_vram_unreg(offs[i].tex.data, w * h * 4);
                 C3D_TexDelete(&offs[i].tex);
                 off_fail = 1;
                 return 0;
@@ -1548,6 +1557,7 @@ static int grab_tex_init(void) {
         return 0;
     }
     pm_vram_note();
+    pm_vram_reg(grab_tex.data, 256 * 512 * 4);
     C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
     grab_ready = 1;
