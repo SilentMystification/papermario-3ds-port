@@ -3,6 +3,8 @@
 # live log over Wi-Fi for -t seconds.
 # Usage (repo root, Git Bash): sh 3ds/push_3ds.sh [-t seconds] [game args...]
 #   e.g. sh 3ds/push_3ds.sh -t 90 gputest
+# Every push first archives build3ds/pm_3ds.3dsx to 3ds/logs/builds/pm_3ds_<build>_<hash>.3dsx and appends
+# a line to 3ds/logs/perf/pushed_builds.txt. "--archive-only" does the archive step and stops (no push).
 # The 3DS address comes from $N3DS_IP, else from a UDP broadcast (the same probe 3dslink uses).
 # The game runs a log server on TCP port 17492 when netloaded (3ds/src/pm_main.c). This PC
 # connects to it, the same direction as the upload, so a PC firewall or VPN does not block it.
@@ -13,14 +15,46 @@ cd "$(dirname "$0")/.."
 secs=0
 ipopt=""
 nobuild=0
+archonly=0
 while :; do
     case "$1" in
         -t) secs=$2; shift 2 ;;
         --ip) ipopt=$2; shift 2 ;;
         --no-build) nobuild=1; shift ;;
+        --archive-only) archonly=1; shift ;;
         *) break ;;
     esac
 done
+
+# Archive the 3dsx this push sends: 3ds/logs/builds/pm_3ds_<build>_<git hash>.3dsx (build = the number
+# before the first "-" in PM_BUILD_STR, the boot line's build number). An existing archive with the same
+# name must have the same sha256, or the push stops. One line goes to 3ds/logs/perf/pushed_builds.txt.
+# PM_SRC3DSX, PM_ARCHIVE_DIR and PM_PUSH_LOG override the paths (tests only).
+archive_build() {
+    src=${PM_SRC3DSX:-build3ds/pm_3ds.3dsx}
+    adir=${PM_ARCHIVE_DIR:-3ds/logs/builds}
+    plog=${PM_PUSH_LOG:-3ds/logs/perf/pushed_builds.txt}
+    [ -f "$src" ] || { echo "ARCHIVE FAILED: no $src"; return 1; }
+    bstr=$(sed -n 's/^#define PM_BUILD_STR "\(.*\)"/\1/p' 3ds/include/pm_build.h)
+    hash=$(sed -n 's/^#define PM_GIT_HASH "\(.*\)"/\1/p' 3ds/include/pm_build.h)
+    build=${bstr%%-*}
+    case "$build" in ''|*[!0-9]*) echo "ARCHIVE FAILED: no build number in 3ds/include/pm_build.h ($bstr)"; return 1 ;; esac
+    [ -n "$hash" ] || { echo "ARCHIVE FAILED: no git hash in 3ds/include/pm_build.h"; return 1; }
+    name="pm_3ds_${build}_${hash}.3dsx"
+    dst="$adir/$name"
+    sha=$(sha256sum "$src" | cut -d' ' -f1)
+    if [ -f "$dst" ]; then
+        dsha=$(sha256sum "$dst" | cut -d' ' -f1)
+        [ "$dsha" = "$sha" ] || { echo "ARCHIVE FAILED: $dst exists with another sha256, not overwritten"; return 1; }
+    else
+        cp -f "$src" "$dst"
+        csha=$(sha256sum "$dst" | cut -d' ' -f1)
+        [ "$csha" = "$sha" ] || { echo "ARCHIVE FAILED: copy $dst sha256 differs from $src"; return 1; }
+    fi
+    bytes=$(wc -c <"$dst" | tr -d ' ')
+    printf '%s  %s  %s bytes  sha256 %s  build %s  git %s  flags: %s\n' "$(date '+%Y-%m-%d %H:%M')" "$name" "$bytes" "$sha" "$build" "$hash" "$1" >>"$plog"
+    echo "ARCHIVED $dst (sha256 $sha)"
+}
 
 # Build only when build3ds/pm_3ds.3dsx is older than its inputs (same input list as Invoke-Build in
 # 3ds/go.ps1) or the build number in pm_build.h differs from the one build.sh would write now.
@@ -40,6 +74,7 @@ EOF2
     if [ "$stale" -eq 1 ]; then echo "--- building (3dsx older than inputs) ---"; sh 3ds/build.sh
     else echo "--- build up to date, skipping ---"; fi
 fi
+if [ "$archonly" -eq 1 ]; then archive_build "archive-only" || exit 1; exit 0; fi
 # PYTHON_EXE lets a caller (3ds/go.ps1) pass a reliably-resolved interpreter path: bash's own PATH
 # (MSYS) does not always see the Windows "py" launcher even when PowerShell's PATH does.
 PY=${PYTHON_EXE:-py}
@@ -65,6 +100,7 @@ EOF
 )}}}
 if [ -z "$ip" ]; then echo "no 3DS netloader found (press Y in the Homebrew Launcher)"; exit 1; fi
 echo "3DS at $ip"
+archive_build "ip=$ip $*" || exit 1
 
 # A console that isn't sitting in the Homebrew Launcher yet (most common cause - this needs a human
 # to open it there) must not cost minutes of silence. A few short attempts instead of one long one.

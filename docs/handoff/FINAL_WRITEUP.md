@@ -2,7 +2,7 @@
 
 Build for the console: `build3ds/pm_3ds.3dsx` (from lane final, HEAD 29f504d7b).
 SHA-256: 0df21e8c3a76b2d0db03b1cf1142cb3a0f4f87edcf4cc28215ce7bc50b2d549c
-Archive: `3ds/logs/builds/pm_3ds_final_29f504d7b.3dsx`
+Archive: `3ds/logs/builds/pm_3ds_bunknown_29f504d7b.3dsx`
 Push log line: `3ds/logs/perf/pushed_builds.txt`, last line.
 Status: not run on the console yet. The user pushes in the morning.
 
@@ -209,11 +209,11 @@ Numbers to send back:
 
 ## 6. Round 2
 
-Current archive (round 2, latest): `3ds/logs/builds/pm_3ds_final4_6e965c84b.3dsx` (build 6e965c84b, see FINAL4 below). Earlier build for this round: build 1433, git b5c7b5226 (FINAL3). Archive: `3ds/logs/builds/pm_3ds_final3_b5c7b5226.3dsx`, sha256 861ab9e6444bf601...(full hash in `3ds/logs/perf/pushed_builds.txt`). Not pushed. The earlier FINAL2 archive is `3ds/logs/builds/pm_3ds_final2_83e903455.3dsx` (build 1428, git 83e903455).
+Current archive (round 2, latest): `3ds/logs/builds/pm_3ds_1456_6e965c84b.3dsx` (build 1456, see FINAL4 below). Earlier build for this round: build 1433, git b5c7b5226 (FINAL3). Archive: `3ds/logs/builds/pm_3ds_1433_b5c7b5226.3dsx`, sha256 861ab9e6444bf601...(full hash in `3ds/logs/perf/pushed_builds.txt`). Not pushed. The earlier FINAL2 archive is `3ds/logs/builds/pm_3ds_1428_83e903455.3dsx` (build 1428, git 83e903455).
 
-### FINAL4 (HEAD 6e965c84b, build 6e965c84b; current archive)
+### FINAL4 (HEAD 6e965c84b, build 1456; current archive)
 
-- Archive: `3ds/logs/builds/pm_3ds_final4_6e965c84b.3dsx`, 13366812 bytes, sha256 `f010c91ff24db35d06094ca6467ca6daead32af0b5f8dfb7a2caec7deb9ab862` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed. Later commits f35192ba9 and 467925c71 touch only tests and docs, so the binary stays valid.
+- Archive: `3ds/logs/builds/pm_3ds_1456_6e965c84b.3dsx`, 13366812 bytes, sha256 `f010c91ff24db35d06094ca6467ca6daead32af0b5f8dfb7a2caec7deb9ab862` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed. Later commits f35192ba9 and 467925c71 touch only tests and docs, so the binary stays valid.
 - Console push command (CLAUDE.md rule 6), run in Git Bash from any folder:
 
 ```
@@ -279,12 +279,12 @@ Walk is `cpu (wall-idle-fbegin)` from the `phase W` line. Closes is the first `p
 2. `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 -t 60 audiostat texstat pacestat logstat phase phsum loglevel=debug preset=yard`
 3. Stand Mario still at the yard start for 60 s.
 4. Read build3ds/hw_live_log_170.txt: pace, phase W, phase count, logstat. Skip frames 0 to 299.
-5. Copy `3ds/logs/builds/pm_3ds_final4_6e965c84b.3dsx` to build3ds/pm_3ds.3dsx. Repeat steps 2 to 4.
+5. Copy `3ds/logs/builds/pm_3ds_1456_6e965c84b.3dsx` to build3ds/pm_3ds.3dsx. Repeat steps 2 to 4.
 6. Add both pushes to 3ds/logs/perf/pushed_builds.txt.
 
-#### Console checklist for build 6e965c84b
+#### Console checklist for build 1456
 
-1. Boot line: `build 6e965c84b git <hash> loglevel <n>`.
+1. Boot line: `build 1456 git <hash> loglevel <n>`.
 2. No log gaps. The frame counter runs with no jumps.
 3. `dcsum` line: write down close us per stage (pal, bind, tev, st, draw) and gc us per flush.
 4. HUD interval: set `hudint=` in `options.ini`. Check the bottom memory rows refresh.
@@ -389,7 +389,7 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 
 ## LOGFIX: flag set for the console (build 1467, commit 3dcfc661d)
 
-- Archive: `3ds/logs/builds/pm_3ds_final6_3dcfc661d.3dsx`, 13367852 bytes, sha256 `ebeb49024b539ad2a6a1f155fc3452a6831b2f3257b6063dfe1b7bd8630332f8` (checked equal to build3ds/pm_3ds.3dsx). Boot line says git 06e62c0aa, the tree before the commit. Source is the same. Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
+- Archive: `3ds/logs/builds/pm_3ds_1467_3dcfc661d.3dsx`, 13367852 bytes, sha256 `ebeb49024b539ad2a6a1f155fc3452a6831b2f3257b6063dfe1b7bd8630332f8` (checked equal to build3ds/pm_3ds.3dsx). Boot line says git 06e62c0aa, the tree before the commit. Source is the same. Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
 - Default build (no flags): no tick read in the pixel, texture, depth, audio and GBI paths. Tick reads that remain: main loop pacing (pm_main.c 364, 476, 486) and osGetCount (game RNG and time).
 - New switch `dcsum`: runs the 1-in-8 sampled draw and flush timers and the dcsum line without `phase`.
 - Cost, Azahar, one run each, mean `work` ms per frame from logstat: pacestat logstat 11.66 ms (base). `+ dcsum` 11.79 ms (+0.13 ms, +1.1 %). Full set 12.74 ms (+1.08 ms, +9.3 %). Direction only. The console judges speed.
@@ -400,14 +400,14 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 
 ## FSPLIT: coarse frame split flag (commit 311532db5)
 
-- Archive: `3ds/logs/builds/pm_3ds_final7_311532db5.3dsx`, 13369788 bytes, sha256 `8a9fdfc9e9eaa5e256f035a742025c613db14518c540583612e8922306b198cf` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
+- Archive: `3ds/logs/builds/pm_3ds_1474_311532db5.3dsx`, 13369788 bytes, sha256 `8a9fdfc9e9eaa5e256f035a742025c613db14518c540583612e8922306b198cf` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
 - Switch `fsplit` times the coarse parts of a drawn frame with 12 tick reads per frame (`svc` in the line). Per-op census and per-op timers stay off. One line per 300 drawn frames: `fsplit f<n> logic dl gbi flush gwait swap audio rest wall max over50 svc`, ms per frame.
 - Cost, Azahar, steady window (yard f600): work 6.99 ms without fsplit, 7.00 ms with it (+0.01 ms). Direction only. Kick flushes, most audio joins and pacing idle are not split (see docs/handoff/test_catalog.md, FSPLIT).
 - Push command, cheap set plus the split (frame time, dcsum, split line, no per-op output):
   `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
 
 ## LBR (final8, git f230e46c6)
-- Archive: `3ds/logs/builds/pm_3ds_final8_f230e46c6.3dsx`, 13370840 bytes, sha256 `3c50c58f1761c7c3b33dc38614008072137d2262b19febd22719d9e9382d939b` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
+- Archive: `3ds/logs/builds/pm_3ds_1488_f230e46c6.3dsx`, 13370840 bytes, sha256 `3c50c58f1761c7c3b33dc38614008072137d2262b19febd22719d9e9382d939b` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
 - R5B (b1d5d425e): equal light MOVEMEM and MOVEWORD skip. Light writes per frame, mac01: 160 to 0. mac01t picture 2 of 2 byte-equal.
 - R2B (f230e46c6): equal SETCOMBINE, TEXTURE and GEOMETRYMODE skip. mac01 cc plus geo 1105 us to 1006 us (one window per build). Pictures: mac01t 2 of 2, yard 1 of 1, pause_menu 1 of 1, mac01 2 of 2 byte-equal.
 - LB1 (lazy FrameBegin) was dropped: battle_start 4 of 7 shots equal (frames 153 and later differ), no run left. See docs/handoff/agent_lbr.md.
@@ -415,7 +415,7 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
   `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
 
 ## LB1R (final9, git fd05e686a)
-- Archive: `3ds/logs/builds/pm_3ds_final9_fd05e686a.3dsx`, 13371296 bytes, sha256 `d0c7cd712e9d4e2959ad564c088f006fb321d92d7a6f575f7d1aa09b5a952c43` (checked equal to build3ds/lane-final9/pm_3ds.3dsx). Build 1490.
+- Archive: `3ds/logs/builds/pm_3ds_1490_fd05e686a.3dsx`, 13371296 bytes, sha256 `d0c7cd712e9d4e2959ad564c088f006fb321d92d7a6f575f7d1aa09b5a952c43` (checked equal to build3ds/lane-final9/pm_3ds.3dsx). Build 1490.
 - Azahar (6 starts): yard 3 of 3, pause_menu 6 of 6, mac01 4 of 4, mac01t 6 of 6 (mdlsum 1335 in 1175 to 1495), battle_start 4 of 4, file_select 6 of 6 log checks. Not run: partner_menu, text_menu (start budget).
 - POSHUD option: Debug tab row 8 "Position HUD" (options.ini poshud=0|1). The bottom screen shows Mario x y z yaw and camera x y z yaw, refreshed with hudint. Debug tool, stays.
 - LB1 (lazy FrameBegin): not passed. mac01 and pause_menu not run (budget). Patch in 3ds/logs/perf/lb1_dropped.diff.
