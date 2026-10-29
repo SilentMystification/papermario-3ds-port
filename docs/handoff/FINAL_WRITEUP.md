@@ -460,3 +460,14 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 - Byte-equal top shots against HEAD (same run pairs): pause_menu 1 of 1, partner_menu 1 of 1, file_select 1 of 1, text_menu 3 of 3. Picture by eye: a person must confirm (shots in the scratch folder of the run).
 - Catalog, build 1517 (one start each, row PAUSE4C): yard 3 of 3, mac01 4 of 4, mac01t 6 of 6, battle_start 4 of 4, toad_pond 3 of 3 log checks.
 - Archive: 3ds/logs/builds/pm_3ds_1517_9461b95a8.3dsx, sha256 559728b31aacd7a9a5603c8028b41f534509bb138fbe635136b63ff32683f8d1 (equal to build3ds/pm_3ds.3dsx). Archive only. Not pushed.
+
+## PAUSEFIX2 (build 1520, git af0529787; epic done, no fix)
+- Commits: a02d5ac09 PAUSE5A (scenario and gates), af0529787 PAUSE5B (cold timing, fsplit only). Handoff: docs/handoff/agent_pausefix.md.
+- PAUSE5A: pause_menu window moved inside the open pause. Close START at frame 400, until on the phase W window that starts at frame 230 to 299 (after the open spike). Cap 40 s. Gates walk 10.7, closes 111, ops 1154 (runs 2 and 3: 9.3, 96, 1003). partner_menu gates 8.8, 79, 908. file_select gates 9.5, 102, 1548. Top shot inside the menu, byte-equal across instrumentation.
+- PAUSE5B: one pcopen line per pause open (60 frames). Azahar, build 1519 and 1520: avg 36.0 ms per frame over the window, worst frame 168 to 175 ms at f128 (open + 32). Readback 8.8 ms (1 call), filter 6.0 ms, setup 9.3 ms (pause_init 7.3 ms). Texture loads 95 (1385 KB), 81.6 ms of tex phase over the window.
+- The worst frame is GBI loop time (141 to 148 ms). The GBI sub-phases (gvtx, gtri, gmtx, gop) read 0.0 ms, so the spike is not in a timed sub-phase. Next step: an op-level census of frame 128 (diagnosis agent, not a code row).
+- Gameplay against pause (Toad Town, Azahar): field closes 16 per frame, gbiops 465, gbi 3.2 ms per frame. Pause steady closes 96, gbiops 1003, gbi about 6.6 ms per frame (derived). Top draw groups in the pause: not measured (no per-group census).
+- No code fix: the readback and filter are small (15 ms of 2160 ms window). Texture loads (0.86 ms each, 95 per open) and the GBI spike are the larger items. Pre-warm and spreading are not allowed (picture).
+- Archive: 3ds/logs/builds/pm_3ds_1520_af0529787.3dsx, sha256 c5a4645faf718e199a4f79d4079a24b55b5a431fba9b40e9c1b1f5ea83cdadf3 (equal to build3ds/pm_3ds.3dsx). Line in pushed_builds.txt. Not pushed.
+- Catalog on 1520, row PAUSE5B, budget 8 of 8: pause_menu 7 of 7, text_menu 3 of 3, yard 3 of 3, battle_start 4 of 4 log checks. Not run (budget): sewer, ruins, volcano, tour10, file_select. Row INCOMPLETE until the budget reset.
+- Console: not measured. Push not given (epic not complete).
