@@ -111,6 +111,13 @@ void update_cameras(void) {
     gCurrentCamID = CAM_DEFAULT;
 }
 
+#ifdef TARGET_3DS
+extern int pm_ph_on;
+extern void pm_gbi_mdl_mark(unsigned id, int pan); /* T1B: names the task tail rows 0xF0E0 + k */
+#define T1_MARK(k) do { if (pm_ph_on) pm_gbi_mdl_mark(0xF0E0u + (k), 0); } while (0)
+#else
+#define T1_MARK(k) ((void)0)
+#endif
 void render_frame(s32 isSecondPass) {
     s32 camID;
 
@@ -238,6 +245,7 @@ void render_frame(s32 isSecondPass) {
                 FI_OPEN("cam_hud_elements", 0);
                 render_transformed_hud_elements();
                 FI_CLOSE();
+                T1_MARK(12);
             } else {
                 guOrthoF(camera->mtxPerspective, 0.0f, SCREEN_WIDTH, -SCREEN_HEIGHT, 0.0f, -1000.0f, 1000.0f,
                             1.0f);
@@ -249,6 +257,7 @@ void render_frame(s32 isSecondPass) {
                 FI_OPEN("cam_hud_elements", 0);
                 render_transformed_hud_elements();
                 FI_CLOSE();
+                T1_MARK(13);
                 FI_OPEN("cam_item_entities", 0);
                 render_item_entities();
                 FI_CLOSE();
@@ -262,6 +271,7 @@ void render_frame(s32 isSecondPass) {
             camera->fpDoPostRender(camera);
         }
 
+        T1_MARK(14);
         gDPPipeSync(gMainGfxPos++);
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
                             osVirtualToPhysical(nuGfxCfb_ptr));

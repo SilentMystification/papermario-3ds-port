@@ -177,6 +177,13 @@ extern void pm_interp_open(unsigned a, unsigned b); /* F06-2 */
 extern void pm_interp_close(void);
 #define FI_OPEN(n) pm_interp_open((unsigned)(n), 0)
 #define FI_CLOSE() pm_interp_close()
+#ifdef TARGET_3DS
+extern int pm_ph_on;
+extern void pm_gbi_mdl_mark(unsigned id, int pan); /* T1B: names the task tail rows 0xF0E0 + k */
+#define T1_MARK(k) do { if (pm_ph_on) pm_gbi_mdl_mark(0xF0E0u + (k), 0); } while (0)
+#else
+#define T1_MARK(k) ((void)0)
+#endif
 void gfx_draw_frame(void) {
     gMatrixListPos = 0;
     gMainGfxPos = &gDisplayContext->mainGfx[0];
@@ -199,9 +206,11 @@ void gfx_draw_frame(void) {
     FI_CLOSE();
 
     FI_OPEN("gfx_interact_prompts");
+    T1_MARK(1);
     player_render_interact_prompts();
     FI_CLOSE();
     FI_OPEN("gfx_back_ui");
+    T1_MARK(2);
     func_802C3EE4();
     render_screen_overlay_backUI();
     render_workers_backUI();
@@ -211,18 +220,21 @@ void gfx_draw_frame(void) {
     FI_CLOSE();
 
     FI_OPEN("gfx_window_root");
+    T1_MARK(3);
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_WINDOWS_OVER_CURTAINS)) {
         render_window_root();
     }
     FI_CLOSE();
 
     FI_OPEN("gfx_world_hud");
+    T1_MARK(4);
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_RENDER_WORLD) && gGameStatusPtr->debugScripts == DEBUG_SCRIPTS_NONE) {
         render_frame(true);
     }
     FI_CLOSE();
 
     FI_OPEN("gfx_messages_mid");
+    T1_MARK(5);
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS)
         && !(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_FRONTUI)
     ) {
@@ -231,12 +243,14 @@ void gfx_draw_frame(void) {
     FI_CLOSE();
 
     FI_OPEN("gfx_front_ui");
+    T1_MARK(6);
     render_workers_frontUI();
     render_hud_elements_frontUI();
     render_screen_overlay_frontUI();
     FI_CLOSE();
 
     FI_OPEN("gfx_messages_front");
+    T1_MARK(7);
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS)
         && (gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_FRONTUI)
     ) {
@@ -245,22 +259,26 @@ void gfx_draw_frame(void) {
     FI_CLOSE();
 
     FI_OPEN("gfx_curtains");
+    T1_MARK(8);
     render_curtains();
     FI_CLOSE();
 
     FI_OPEN("gfx_messages_over_curtains");
+    T1_MARK(9);
     if (gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS) {
         render_messages();
     }
     FI_CLOSE();
 
     FI_OPEN("gfx_window_over_curtains");
+    T1_MARK(10);
     if (gOverrideFlags & GLOBAL_OVERRIDES_WINDOWS_OVER_CURTAINS) {
         render_window_root();
     }
     FI_CLOSE();
 
     FI_OPEN("gfx_game_mode_front_ui");
+    T1_MARK(11);
     render_game_mode_frontUI();
     FI_CLOSE();
 
