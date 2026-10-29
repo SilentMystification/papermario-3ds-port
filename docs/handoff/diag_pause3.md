@@ -1,9 +1,7 @@
 # diag_pause3: pause menu frame cost (row PAUSE3)
 
-Scope: code read, stored Azahar logs. No new Azahar start. No source edit.
-Tags: [M] measured, [C] code read, [E] estimate, [U] not measured.
-Azahar ms show direction only. Console ms not measured.
-
+Scope: code read, stored Azahar logs. No Azahar start, no source edit.
+Tags: [M] measured, [C] code, [E] estimate, [U] not measured. Azahar ms: direction only.
 ## (1) Readback: once per open
 - [C] pm_gpu_read_frame (pm_gpu.c:1490) runs only from cfb_capture_prev (pm_main.c:262).
 - [C] That path runs only from the BEGIN_PAUSED fill (pm_gbi.c:3616, background_gfx.c:353). One time per open.
@@ -49,9 +47,4 @@ Azahar ms show direction only. Console ms not measured.
    Fix: none without timing. Time pm_main.c:262 and background_gfx.c:370 first.
    Expected: once per open, no steady effect. Console [U].
 
-## Not the cause
-- Per-frame readback: absent (1).
-- Steady texture misses: 0 to 1 per frame (4).
-
-## Next step
-- [U] Split the 217 closes by site with the gbiprof switch (pm_gpu.c:298-325) on pause_menu. Needs a catalog row. Not run.
+Next step: [U] Split the 217 closes by site with the gbiprof switch (pm_gpu.c:298-325) on pause_menu. Needs a catalog row. Not run.
