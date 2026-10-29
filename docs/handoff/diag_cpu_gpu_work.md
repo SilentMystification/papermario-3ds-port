@@ -33,7 +33,7 @@ Triangle streak (gv) 2.55 ms yard [M]. Log+HUD 1.4 ms [M]. Vertex and matrix cou
 ## Answers
 1. Transform: GPU when the GV path runs. gpu_vtx_on = ring allocated (pm_gpu.c:1170). No switch check at pm_gbi.c:2619. The comment at pm_gbi.c:292 says gv1 is default off. That comment looks stale [I]. CPU applies MVP only in fallback (items 4-7).
 2. Lighting, fog, texgen, uv scale, clip: GPU in pm5 (items 1-2). CPU only when a triangle falls back (GVR_LIT, GVR_FOG, GVR_TEX1, GVR_ZMARK, GVR_DBG, gv_state_why pm_gbi.c:1400-1410).
-3. Triangle setup: GPU raster. CPU does reject bits (item 3) and the cull cross product only on the CPU path (pm_gbi.c:1800-1806).
+3. Triangle setup: GPU raster. CPU does reject bits (item 3) and the cull cross product only on the CPU path (pm_gbi.c:1776-1806).
 4. Texture decode: CPU (items 15-17). CI and RGBA16 expand on CPU (pm_tex.c:315). tile swizzle is CPU (tiled16, pm_tex.c:303). Per miss, not per frame.
 5. TEV: sync_combine skips by signature (pm_gbi.c:1045-1066), memo at 1019-1044, decide per new key (959), TEV rebuild per key change (pm_gpu.c:474). Per close the TevKey memcmp runs (pm_gpu.c:882).
 6. Vertex buffer: GV path copies 16 B per vertex plus a box scan of 3 compares per vertex (pm_gbi.c:2632-2650). CPU path writes 40 B per vertex (pm_gpu.c:1083). Bytes per frame [U].
@@ -45,7 +45,7 @@ Triangle streak (gv) 2.55 ms yard [M]. Log+HUD 1.4 ms [M]. Vertex and matrix cou
 2. Vertex fallback, items 5-7, [U] ms. PICA200: extend pm5 to cover TEXEL1 fold and ZMARK. Risk: medium. The per-draw fold (pm_gbi.c:1194, t1_fold) is not per vertex.
 3. Matrix combine per G_MTX, item 8, [I] 5-10 us each. PICA200: separate MV and projection uniforms, dp4 chain in pm5. Risk: uniform bank. pm4.v.pica already uses pal[84] of 96 vec4 constants.
 4. Combiner decide and TEV rebuild, items 19-21, sync 2.99 ms yard (overlaps). PICA200: TEV stages already used. Precompute TEV per combine key at display-list compile (PDL path). Risk: low.
-5. Palette index scan, item 11, [U] ms. PICA200: store palette index per vertex at load (already done for ring: pm_gpu.c:1826). Risk: low.
+5. Palette index scan, item 11, [U] ms. PICA200: store palette index per vertex at load (already done for ring: pm_gpu.c:1818). Risk: low.
 
 ## Next step
 Add per-class op timing (console_walk_split.md design, sampled every 64 ops) to split the 13.8 ms (yard) and 18.5 ms (O3DS) residual. No change to the GPU path until that split exists.
