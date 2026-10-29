@@ -307,6 +307,42 @@
       "reason": ""
     },
     {
+      "name": "forest_mim",
+      "status": "unverified",
+      "subject": "Mario in mim_05 (area 12 map 4, Forever Forest), reached by warp to mim_05 entry 0 (no tour). In control, shot at frames 400 and 404.",
+      "proves": "FOREST diagnostic: opsplit, mdlsum and dlc2 static share for mim_05 at f599 (window f300 to f599), to compare with mac01t (opsplit f599 ops 1732, mdlsum f599 tot ops 1732, dlc2 static tri 91040). Log only, no numeric gate.",
+      "debug": "warp=mim_05:0 shots shotwin=400:6 loglevel=debug phase pacestat logstat dcsum",
+      "until": "mdlsum f599 r12 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mim_05 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mim_05 entry 0"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f599 ops"
+        },
+        {
+          "name": "mdlsum total ops (forest, f599)",
+          "regex": "mdlsum f599 tot ops (\\d+) "
+        },
+        {
+          "name": "dlc2 static tri (forest, f599)",
+          "regex": "dlc2 f599 tri \\d+ .*static grp \\d+ tri \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 40[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "mac01t",
       "status": "verified",
       "subject": "Mario in mac_01 (area 1 map 2, Toad Town), reached by the tour path: warp to mac_00 entry 4, then tour step to mac_01 entry 0 at about frame 209. In control, shot at frames 500 and 504.",

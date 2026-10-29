@@ -397,3 +397,11 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
   `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 audiostat texstat pacestat logstat phase phsum loglevel=debug`
 - Push command, cheap set (frame time and dcsum line, no per-op output):
   `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum loglevel=debug`
+
+## FSPLIT: coarse frame split flag (commit 311532db5)
+
+- Archive: `3ds/logs/builds/pm_3ds_final7_311532db5.3dsx`, 13369788 bytes, sha256 `8a9fdfc9e9eaa5e256f035a742025c613db14518c540583612e8922306b198cf` (checked equal to build3ds/pm_3ds.3dsx). Line in `3ds/logs/perf/pushed_builds.txt`. Not pushed.
+- Switch `fsplit` times the coarse parts of a drawn frame with 12 tick reads per frame (`svc` in the line). Per-op census and per-op timers stay off. One line per 300 drawn frames: `fsplit f<n> logic dl gbi flush gwait swap audio rest wall max over50 svc`, ms per frame.
+- Cost, Azahar, steady window (yard f600): work 6.99 ms without fsplit, 7.00 ms with it (+0.01 ms). Direction only. Kick flushes, most audio joins and pacing idle are not split (see docs/handoff/test_catalog.md, FSPLIT).
+- Push command, cheap set plus the split (frame time, dcsum, split line, no per-op output):
+  `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
