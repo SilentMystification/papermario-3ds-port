@@ -29,6 +29,8 @@ typedef struct {
     unsigned bytes;
     unsigned phash; /* V06: FNV-1a of the CI palette, so an in-place palette edit misses */
     unsigned dkey; /* 0 for a plain texture, else the hash of a shaded one */
+    unsigned shash; /* tex_inv1: FNV-1a of the source bytes read at load, over slen bytes */
+    unsigned slen;
     unsigned stamp;
     unsigned epoch;
     unsigned sgen; /* C1: bumped at drop and invalidation; TEX records compare this */
@@ -61,6 +63,7 @@ static unsigned epoch;
 /* TC1: cache statistics. The counters are plain increments. The report line (every 300 frames) prints with switch texstat or loglevel=debug. */
 static unsigned tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_ev0, tc_inval, tc_up_bytes, tc_evict_bytes, tc_ev0_bytes;
 static unsigned tot_hit, tot_miss, tot_inval, tot_evict, tot_up; /* lifetime (up in bytes), read per map by pm_tex_map_delta */
+static unsigned tot_same, tot_diff; /* tex_inv1: at invalidation, the source bytes equal (same) or differ from (diff) the bytes at load */
 static int tc_on = -1;
 /* Every hit (load, bind, glyph, aux, bind_slot) stamps the slot with the use counter. Eviction takes the lowest stamp. */
 #define TC_HIT(s) do { (s)->stamp = ++stamp; (s)->uses++; (s)->last_frame = tc_frame; tc_hits++; tot_hit++; } while (0)
@@ -662,9 +665,9 @@ unsigned pm_tex_peak(void) { return used_peak; }
 unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }
 /* texmap (debug): cache counts since the previous call, at each map load: hits, misses, uploaded KB, invalidated, evicted. */
 void pm_tex_map_delta(unsigned* o) {
-    static unsigned prev[5];
-    unsigned now[5] = { tot_hit, tot_miss, tot_up >> 10, tot_inval, tot_evict };
-    for (int k = 0; k < 5; k++) { o[k] = now[k] - prev[k]; prev[k] = now[k]; }
+    static unsigned prev[7];
+    unsigned now[7] = { tot_hit, tot_miss, tot_up >> 10, tot_inval, tot_evict, tot_same, tot_diff };
+    for (int k = 0; k < 7; k++) { o[k] = now[k] - prev[k]; prev[k] = now[k]; }
 }
 
 static void tc_report(void) {
@@ -738,6 +741,17 @@ void pm_pdl_touch_range(const void* ptr, unsigned size) {
     if (s - (unsigned)heap_spriteHead < 0x100000u && e > (unsigned)heap_spriteHead) pm_pdl_sprite_gen++;
 }
 extern unsigned char gMapShapeData[];
+/* tex_inv1: bytes the expander reads for a w x h source, stride in texels, siz = SIZ_4..SIZ_32 (4 << siz bits per texel) */
+static unsigned src_len(int w, int h, int stride, unsigned siz) {
+    unsigned bits = (unsigned)((h - 1) * stride + w) << (siz + 2);
+    return (bits + 7) >> 3;
+}
+static unsigned src_hash(const void* p, unsigned n) {
+    const u8* q = (const u8*)p;
+    unsigned h = 2166136261u;
+    for (unsigned i = 0; i < n; i++) h = (h ^ q[i]) * 16777619u;
+    return h;
+}
 void pm_tex_invalidate(const void* ptr, unsigned size) {
     pm_tex_epoch_v++;
     if (ptr && size && (unsigned)ptr < (unsigned)gMapShapeData + 0x40000u && (unsigned)ptr + size > (unsigned)gMapShapeData) pm_dlc_gen++;
@@ -764,6 +778,10 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         img = (unsigned)s->img;
         pal = (unsigned)s->tlut;
         if (!((img >= start && img < end) || (pal && pal >= start && pal < end))) continue;
+        if (img >= start && img < end && s->slen) {
+            if (src_hash(s->img, s->slen) == s->shash) tot_same++;
+            else tot_diff++;
+        }
         pm_gpu_rect_sync(); /* DR1: draw a queued rectangle batch before its texture goes away */
         tc_inval++;
         tot_inval++;
@@ -1187,6 +1205,8 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     s->h = height;
     s->stride = stride;
     s->dkey = dkey;
+    s->slen = src_len(width, height, stride, siz);
+    s->shash = src_hash(img, s->slen);
     PH_ADD(C_TEXBYTE, reserve >> 10);
     s->stamp = ++stamp;
     s->epoch = epoch;
