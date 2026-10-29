@@ -47,3 +47,10 @@
 - C1-1 result: tbsplit n 0 fb 0 on every frame of the yard run (PM_ROW=dl_c11, 1/8 used). No G_PM_TEX op runs. The model.c emit path does not run for the yard. The plan_c1_texbind premise (per-model texture DL replay in the yard) does not hold. Quantity not moved. Gate not met. Branch kept, not merged.
 - Open for the next diagnosis: find which lists make the 3866 tex ops/frame in the yard (opsplit f599 tex 3866/556 us). They are not from model.c TextureHandles. Check the map DL source (ROM DLs with inline texture loads) before any C1 row.
 - Rows not started: C1-3, BG, G2 + H6, H3, H2, fog fix, W4/W2, H5/H4, C1i + HUD.
+
+## Update: BG kept (main 78b4d2db1, branch dl2)
+- src/background.c, TARGET_3DS, no-wave path: one bind of the whole sky, screen rows in at most two pieces (source row wraps at the scroll offset). Wave path and N64 strip path unchanged.
+- Azahar yard f300-599: taskpl bg us 2126 -> 259 per frame (target 900 or less). ops at f599 2417 -> 2186. main walk 8223 -> 8270 us (+0.6%, inside the +2% gate).
+- Picture: yard shots 0000 and 0001 byte-equal to baseline (PM_ROW=dl_bg, 3/8 used).
+- Not tested: wide on/off, fog bg map. Open before this row is final for those cases.
+- Next row: G2 equality filter + H6 hot-state struct.
