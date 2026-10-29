@@ -211,6 +211,7 @@ typedef struct PmOpt {
     int dz_pad, dz_cs; /* PT61: dead zone in percent of full travel, circle pad and C-Stick (N3DS). 0 = as before (no port dead zone) */
     int rep_delay, rep_rate; /* PT60: menu key repeat in ms, the first step is at once, the next after rep_delay, then every rep_rate */
     int fskip; /* FS1: 1 = frame skip on (default, a late step skips its draw), 0 = off: every game step is drawn. options.ini fskip=0|1, panel row 9 */
+    int hud_ms; /* HUDINT: refresh interval of the bottom screen memory rows in ms: 250, 500, 1000 (default), 2000, 5000. options.ini hudint=<ms> */
 } PmOpt;
 void pm_fskip_set(int on); /* pm_main.c: applies fskip at once */
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */

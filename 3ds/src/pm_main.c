@@ -329,8 +329,8 @@ void pm_frame_loop(void) {
     int step_vb_ok = 0;
     u64 fps_mark = 0;
     float fps = 0.f, fps_draw = 0.f; /* PT24: steps/s (internal) and drawn frames/s (external) */
-    /* HUD2: bottom screen memory rows, read once per second with the fps (pm_mem_hud). */
-    extern void pm_mem_hud(char out[3][40]);
+    /* HUD2: bottom screen memory rows, refreshed at pm_opt.hud_ms (pm_mem_hud). */
+    extern void pm_mem_hud(char out[3][40], unsigned dt_ms);
     char mem[3][40] = {{0}};
     float frame_ms = 0.f;
     const u64 tick_hz = SYSCLOCK_ARM11;
@@ -508,7 +508,15 @@ void pm_frame_loop(void) {
                 fps_vb0 = vbn;
                 fps_mark = now;
                 have_fps = 1;
-            pm_mem_hud(mem);
+            }
+        }
+        { /* HUDINT: the bottom memory rows refresh every pm_opt.hud_ms (options.ini hudint, default 1 s). The step is in ticks, set once per refresh. */
+            static u64 mem_mark, mem_step;
+            if (!mem_mark || now - mem_mark >= mem_step) {
+                unsigned dt_ms = mem_mark ? (unsigned)((now - mem_mark) * 1000u / tick_hz) : 0u;
+                pm_mem_hud(mem, dt_ms);
+                mem_mark = now;
+                mem_step = (u64)pm_opt.hud_ms * tick_hz / 1000u;
             }
         }
         if (frame % 3600 == 0) {
@@ -526,17 +534,29 @@ void pm_frame_loop(void) {
                 stat_t0 = now;
             }
         }
-        if (pm_debug_has("shotbottom") && frame == 400) { /* CPULIM-UI test aid: dump the bottom screen framebuffer (240x320 RGB565 as the libctru console sets it, rotated) as shotbottom.ppm */
-            u16 bw, bh;
-            u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &bw, &bh);
-            FILE* sf = fopen("shotbottom.ppm", "wb");
-            if (sf && fb) {
-                fprintf(sf, "P6\n%u %u\n255\n", (unsigned)bh, (unsigned)bw);
-                for (unsigned y = 0; y < bw; y++) /* screen row y, screen column x: the buffer is column major, bottom row first */
-                    for (unsigned x = 0; x < bh; x++) { const u8* px = fb + ((size_t)x * bw + (bw - 1 - y)) * 2; unsigned c = px[0] | (px[1] << 8); fputc(((c >> 11) & 31) * 255 / 31, sf); fputc(((c >> 5) & 63) * 255 / 63, sf); fputc((c & 31) * 255 / 31, sf); }
-                pm_log_w("shotbottom: wrote shotbottom.ppm %ux%u", (unsigned)bh, (unsigned)bw);
+        { /* CPULIM-UI test aid, HUDSHOT: shotbottom=<first frame>:<count> dumps the bottom screen framebuffer (240x320 RGB565 as the libctru console sets it, rotated) once per frame of the window, as shots/bot_<frame>.ppm in the shots folder */
+            static int bw0 = -2, bw1;
+            if (bw0 == -2) {
+                char bv[24];
+                bw0 = -1;
+                if (pm_debug_value("shotbottom", bv, sizeof bv) && sscanf(bv, "%d:%d", &bw0, &bw1) == 2) bw1 += bw0;
+                else bw0 = -1;
             }
-            if (sf) fclose(sf);
+            if (bw0 >= 0 && (int)frame >= bw0 && (int)frame < bw1) {
+                u16 bw, bh;
+                u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &bw, &bh);
+                char bpath[64];
+                FILE* sf;
+                mkdir("sdmc:/3ds/PaperMario/shots", 0777);
+                snprintf(bpath, sizeof bpath, "sdmc:/3ds/PaperMario/shots/bot_%04u.ppm", frame);
+                sf = fopen(bpath, "wb");
+                if (sf && fb) {
+                    fprintf(sf, "P6\n%u %u\n255\n", (unsigned)bh, (unsigned)bw);
+                    for (unsigned y = 0; y < bw; y++) /* screen row y, screen column x: the buffer is column major, bottom row first */
+                        for (unsigned x = 0; x < bh; x++) { const u8* px = fb + ((size_t)x * bw + (bw - 1 - y)) * 2; unsigned c = px[0] | (px[1] << 8); fputc(((c >> 11) & 31) * 255 / 31, sf); fputc(((c >> 5) & 63) * 255 / 63, sf); fputc((c & 31) * 255 / 31, sf); }
+                }
+                if (sf) fclose(sf);
+            }
         }
         PM_WD_PHASE(10);
         if (frame == 300 && pm_debug_has("crashtest_call")) pm_crash_selftest();

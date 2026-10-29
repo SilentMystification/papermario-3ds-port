@@ -178,20 +178,38 @@ unsigned pm_vram_min_kb(void) { return vram_min_kb; }
 static unsigned vram_used_b[2]; /* bytes registered per bank */
 static unsigned vram_bank_min_kb[2] = { VRAM_BANK_KB, VRAM_BANK_KB };
 int pm_vram_bank_of(const void* p) { return (u32)p >= VRAM_BANK_B_BASE ? 1 : 0; }
+/* HUDVRAM: the free minimum and the used peak since the last map load (pm_mem_log "map"), both over the two banks. Updated at each
+ * register, so they track every change, not only the refresh. */
+static unsigned scene_min_kb = 2u * VRAM_BANK_KB, scene_peak_kb;
+static unsigned vram_used_kb(void) { return (vram_used_b[0] + vram_used_b[1]) >> 10; }
+static void scene_note(void) {
+    unsigned u = vram_used_kb(), f = 2u * VRAM_BANK_KB - u;
+    if (f < scene_min_kb) scene_min_kb = f;
+    if (u > scene_peak_kb) scene_peak_kb = u;
+}
 void pm_vram_reg(const void* p, unsigned bytes) {
     if (!p) return;
     int b = pm_vram_bank_of(p);
     vram_used_b[b] += bytes;
     unsigned f = VRAM_BANK_KB - (vram_used_b[b] >> 10);
     if (f < vram_bank_min_kb[b]) vram_bank_min_kb[b] = f;
+    scene_note();
 }
 void pm_vram_unreg(const void* p, unsigned bytes) {
     if (!p) return;
     vram_used_b[pm_vram_bank_of(p)] -= bytes;
 }
 static unsigned bank_free_kb(int b) { return VRAM_BANK_KB - (vram_used_b[b] >> 10); }
+void pm_mem_scene_reset(void) { scene_min_kb = 2u * VRAM_BANK_KB - vram_used_kb(); scene_peak_kb = vram_used_kb(); }
 
-void pm_mem_hud(char out[3][40]) {
+/* dt_ms: time since the previous refresh (the caller times it). Rows 1 and 2 are VRAM; row 0 is the pool. */
+void pm_mem_hud(char out[3][40], unsigned dt_ms) {
+    static unsigned ev_prev;
+    unsigned evc = 0, sl = 0, ev_rate = 0;
+    pm_tex_map_state(&sl, &evc);
+    if (dt_ms) ev_rate = (evc - ev_prev) * 1000u / dt_ms; /* evictions per second, one division per refresh */
+    ev_prev = evc;
+
     u32 lin_total = pm_linear_bytes(), heap_total = pm_heap_bytes();
     u32 lin_free = (u32)linearSpaceFree();
     u32 heap_used = (u32)mallinfo().uordblks;
@@ -202,13 +220,14 @@ void pm_mem_hud(char out[3][40]) {
     snprintf(out[0], 40, "MEM used %u.%u / %u.%u MB  free %u.%u MB",
              tenth_mb(used_b) / 10, tenth_mb(used_b) % 10, tenth_mb(total) / 10, tenth_mb(total) % 10,
              tenth_mb(free_b) / 10, tenth_mb(free_b) % 10);
-    snprintf(out[1], 40, "linear %u/%uK heap %u/%uK", (lin_total - lin_free) >> 10, lin_total >> 10, heap_used >> 10, heap_total >> 10);
-    snprintf(out[2], 40, "VRAM A %uK B %uK min %u/%u f%u", bank_free_kb(0), bank_free_kb(1), vram_bank_min_kb[0], vram_bank_min_kb[1], vram_fail_n);
-    static int hud_logged; /* one line per run: proves the 1 Hz refresh ran */
+    snprintf(out[1], 40, "VRAM min %uK pk %uK tex %u/%uK", scene_min_kb, scene_peak_kb, pm_tex_used() >> 10, pm_tex_budget() >> 10);
+    snprintf(out[2], 40, "A %uu/%uf B %uu/%uf ev %u/s", vram_used_b[0] >> 10, bank_free_kb(0), vram_used_b[1] >> 10, bank_free_kb(1), ev_rate);
+    static int hud_logged; /* one line per run: proves the refresh ran */
     if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s | %s", out[0], out[1], out[2]);
 }
 
 void pm_mem_log(const char* tag) {
+    if (!strcmp(tag, "map")) pm_mem_scene_reset(); /* HUDVRAM: the scene minimum and peak start at each map load */
     if (!pm_log_file()) return; /* logging off: no stack walk, no stats formatting */
     if (!strcmp(tag, "map") && pm_debug_has("texmax")) {
         unsigned wmax, pk = pm_tex_map_peak_take(&wmax);

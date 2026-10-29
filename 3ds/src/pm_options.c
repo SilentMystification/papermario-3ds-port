@@ -9,7 +9,7 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 5, 0, 500, 200, 1}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off), warp_entry, dz_pad 5, dz_cs 0, rep_delay, rep_rate, fskip (on) */
+PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 5, 0, 500, 200, 1, 1000}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off), warp_entry, dz_pad 5, dz_cs 0, rep_delay, rep_rate, fskip (on), hud_ms (1 s) */
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
 static const struct { const char* name; unsigned short mask; } n64_btn[] = { {"NONE", 0}, {"A", 0x8000}, {"B", 0x4000}, {"Z", 0x2000}, {"START", 0x1000}, {"L", 0x0020}, {"R", 0x0010},
@@ -69,8 +69,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip);
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -125,6 +125,12 @@ void pm_options_init(void) {
             }
             if (!strcmp(line, "warp")) { /* PT01b: an old file can hold warp=. A boot-time warp is only for the debug switches. */
                 pm_log_w("options: warp= ignored at boot (value '%s')", eq + 1);
+                continue;
+            }
+            if (!strcmp(line, "hudint")) { /* HUDINT: HUD memory rows refresh interval in ms, one of the five steps */
+                v = strtol(eq + 1, &end, 10);
+                if (end == eq + 1 || *end || (v != 250 && v != 500 && v != 1000 && v != 2000 && v != 5000)) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
+                else pm_opt.hud_ms = (int)v;
                 continue;
             }
             fld = opt_field(line);
