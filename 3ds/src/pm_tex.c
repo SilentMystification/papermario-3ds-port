@@ -1157,12 +1157,26 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             sp = slab_alloc(reserve);
         }
         if (!sp) {
-            static int once;
+            static int once, dg_n;
             fail_last = 1;
             fail_n++;
             if (!once) {
                 once = 1;
                 pm_log_w("texcache VRAM full %dx%d", width, height);
+            }
+            if (dg_n++ < 16) { /* row 0 diagnosis: why no extent fits */
+                unsigned live = 0, this_ep = 0, evictable = 0, free_b = 0, hole = 0;
+                for (int k = 0; k < slot_hi; k++) {
+                    if (!slots[k].live) continue;
+                    live++;
+                    if (slots[k].epoch == epoch) this_ep++; else evictable++;
+                }
+                for (unsigned k = 0; k < slab_n; k++) {
+                    free_b += slab_ext[k].len;
+                    if (slab_ext[k].len > hole) hole = slab_ext[k].len;
+                }
+                pm_log_w("texfail slab: want %u B, live %u, this-epoch %u, evictable %u, free %u B, largest hole %u B, extents %u, used %u B",
+                         reserve, live, this_ep, evictable, free_b, hole, slab_n, used);
             }
             return 0;
         }
