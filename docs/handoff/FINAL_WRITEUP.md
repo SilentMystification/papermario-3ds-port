@@ -65,7 +65,8 @@ field. Closes is the first field of `flsplit tex`. Averages are over frames 300 
 - Catalog shot lines pass on the new logs: yard `shot 0 frame 200`, pause `shot 2 frame 178`.
 - full411 (one run, azt full411, row final, lane final, 412 shots): PASS. Log line
   `tour: done, 411 maps` at line 20246, run time 121 s. Completion only, no picture check.
-  Tex fail count: see 1a line above (0 on the yard and pause runs).
+  Tex fail count: 0 (623 fail counters, all fail 0). 57 lines read "ROM READ IN DROPPED RANGE":
+  a ROM read of a dropped range, logged, not a failure of the test. Not investigated.
 
 ## 2. What was done (by area)
 
