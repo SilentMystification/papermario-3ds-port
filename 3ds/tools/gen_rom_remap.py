@@ -2,15 +2,20 @@
 """M01: write 3ds/src/rom_remap.h from ver/us/splat.yaml.
 Dropped ROM ranges: world map overlays mac_01..gv_01 (map code is linked into the 3dsx),
 dead maps, junk gap unk_1C84D30, copy_* segments. Kept ranges become {rom_start,len,packed_off}."""
-import re, sys
+import re, sys, os
 ROM = 0x2800000
 import yaml
 # PyYAML parse: the old line scanner missed 121 segments written as "- type: code / start: / name:".
 Y = yaml.load(open('ver/us/splat.yaml'), Loader=yaml.CSafeLoader)
 segs = []  # (start, name)
+code_keys = set()  # (start, name) of splat type code segments (RR1)
 for s in Y['segments']:
-    if isinstance(s, list): segs.append([s[0], str(s[2] if len(s) > 2 else s[1] if len(s) > 1 else '?')])
-    else: segs.append([s['start'], s.get('name') or s.get('dir', '?')])
+    if isinstance(s, list):
+        segs.append([s[0], str(s[2] if len(s) > 2 else s[1] if len(s) > 1 else '?')])
+        if len(s) > 1 and s[1] == 'code': code_keys.add((s[0], segs[-1][1]))
+    else:
+        segs.append([s['start'], s.get('name') or s.get('dir', '?')])
+        if s.get('type') == 'code': code_keys.add((s['start'], segs[-1][1]))
 segs = [s for s in segs if s[0] is not None]
 segs.sort()
 def end_of(i):  # next segment with a larger start (heaps and others have length 0 and share a start)
@@ -42,6 +47,24 @@ for d in drops:
     else: merged.append(d)
 for m in merged:
     m[2] = m[2].split('+')[0] + ('+' if '+' in m[2] else '')
+# RR1: the code segments are linked as ARM into the 3dsx. Their ROM bytes stay only where the full-ROM trace reads them
+# (3ds/rom_code_keep.txt, written from build3ds/romtrace_full.txt). Every other byte of a code segment is dropped.
+KEEP = [tuple(int(x, 16) for x in l.split()[:2]) for l in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'rom_code_keep.txt')) if l.strip() and not l.startswith('#')]
+for i, (s, n) in enumerate(segs):
+    if s >= ROM or (s, n) not in code_keys: continue
+    e = end_of(i)
+    if e <= s: continue
+    cur = s
+    for ks, ke in sorted(k for k in KEEP if k[0] < e and k[1] > s):
+        if ks > cur: merged.append([cur, min(ks, e), n + '(code)'])
+        cur = max(cur, min(ke, e))
+    if cur < e: merged.append([cur, e, n + '(code)'])
+merged.sort()
+merged2 = []
+for d in merged:
+    if merged2 and d[0] <= merged2[-1][1]: merged2[-1][1] = max(merged2[-1][1], d[1]); merged2[-1][2] = merged2[-1][2]
+    else: merged2.append(d)
+merged = merged2
 kept = []; pos = 0; packed = 0
 for s, e, n in merged:
     if s > pos: kept.append((pos, s - pos, packed)); packed += s - pos

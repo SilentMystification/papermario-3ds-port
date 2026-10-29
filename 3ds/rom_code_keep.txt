@@ -1,0 +1,24 @@
+# RR1: ROM bytes of splat type code segments that the full-ROM trace reads (build3ds/romtrace_full.txt, romfull run).
+# All other bytes of a code segment are dropped by 3ds/tools/gen_rom_remap.py. Format: start end segment(s).
+# Added from the tour run (build3ds/lane-ram/last_log.txt, IN DROPPED RANGE lines, 13 reads): data inside code segments.
+0x00014041 0x00014261 main
+0x000237C1 0x000239E1 main
+0x00026DC1 0x00026FE1 main
+0x000291C1 0x000293E1 main
+0x00029641 0x00029861 main
+0x0002A3C1 0x0002A5E1 main
+0x0002F5C1 0x00030A61 main
+0x0010F1B0 0x001142B0 charset+heaps3
+0x001144B0 0x001149B0 charset+heaps3
+0x001164B8 0x0011A23E charset+heaps3
+0x0011A240 0x0011A440 charset+heaps3
+0x001FE1B0 0x002191B0 logos
+0x00328EA0 0x0032C110 tour-read
+0x0035A5E0 0x0035B9D0 tour-read
+0x00E3B870 0x00E3C320 tour-read
+0x00E3DDB0 0x00E3E260 tour-read
+0x00E4B2E0 0x00E4E7F0 tour-read
+0x00E56BA0 0x00E56E60 entity_model_HiddenPanel
+0x00E58CD0 0x00E59F00 tour-read
+0x00E5AB50 0x00E5CD80 tour-read
+0x00E639C0 0x00E657A0 tour-read
