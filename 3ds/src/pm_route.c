@@ -1,6 +1,7 @@
 /* ROUTE: closed loop walking for the padscript token go_<x>_<z>_<scans> (pm_input.c). The route script gives a world target,
  * this function gives the stick that walks Mario to it. The input depends only on the game state, so a run repeats exactly. */
 #include "common.h"
+#include <string.h>
 #include "functions.h"
 #include "game_modes.h"
 #include "map.h"
@@ -8,6 +9,7 @@
 #include "battle/battle.h"
 #include "pm_port.h"
 extern unsigned pm_frame_count(void);
+extern unsigned pm_uptime_ms(void);
 
 /* Returns 1 when Mario is within 24 units of (tx, tz). Else sets the stick (-80 to 80) toward the target, turned by the camera yaw as player_input_to_move_vector does. */
 int pm_route_aim(int tx, int tz, int* sx, int* sy) {
@@ -41,6 +43,25 @@ void pm_route_goto(const char* name, int entry) {
     gGameStatusPtr->entryID = (s16)entry;
     set_map_transition_effect(TRANSITION_STANDARD);
     set_game_mode(GAME_MODE_CHANGE_MAP);
+}
+
+/* ROUTE: padscript token ev_<name>: waits for a game event, takes no scan. Logs `route: ev <name> f<step>` once it holds. */
+static const char* ev_names[] = { "", "title", "file", "world", "map", "battle", "pause" };
+int pm_route_ev_kind(const char* name) {
+    for (int k = 1; k < 7; k++) if (strcmp(name, ev_names[k]) == 0) return k;
+    return 0;
+}
+int pm_route_ev(int kind) {
+    static int armed, left; /* left: the game left the overworld since the token began (map: the world again after a map change) */
+    int m = get_game_mode();
+    if (!armed) { armed = 1; left = 0; }
+    if (m != GAME_MODE_WORLD) left = 1;
+    int ok = kind == 1 ? m == GAME_MODE_TITLE_SCREEN : kind == 2 ? m == GAME_MODE_FILE_SELECT : kind == 3 ? m == GAME_MODE_WORLD :
+             kind == 4 ? (left && m == GAME_MODE_WORLD) : kind == 5 ? m == GAME_MODE_BATTLE : m == GAME_MODE_PAUSE;
+    if (!ok) return 0;
+    armed = 0;
+    pm_log("route: ev %s f%u t=%u ms", ev_names[kind], pm_frame_count(), pm_uptime_ms());
+    return 1;
 }
 
 /* ROUTE: one state line every 30 scans while a route runs: route: st f<step> mode <game mode> map <area>:<map> bs <battle state> bs2 <battle sub state> hp coins */

@@ -36,11 +36,12 @@ int pm_pad_take_select(void) {
  * The unit is a pad scan: the game reads the pad on every second scan, so 2 scans are 1 game frame (30 Hz). With `warp` the script
  * starts on the first frame of the scene (pm_padscript_start), without it on the first scan. After the last token the real pad is back. */
 #define PS_MAX 2500 /* ROUTE: was 450, a play-through route has about 700 tokens */
-static struct { unsigned short b; signed char x, y; unsigned short n; unsigned keys; unsigned char mark, go; short gx, gz; } ps[PS_MAX]; /* go: token go_<x>_<z>_<scans>, walk to a world point */ /* mark: 1 + index in ps_marks, the entry takes no scan */
+static struct { unsigned short b; signed char x, y; unsigned short n; unsigned keys; unsigned char mark, go, ev; short gx, gz; } ps[PS_MAX]; /* go: token go_<x>_<z>_<scans>, walk to a world point */ /* mark: 1 + index in ps_marks, the entry takes no scan */
 static char ps_marks[96][20]; /* ROUTE: names of the seg_<name> tokens */
 static int ps_nmarks;
 static char ps_route[24]; /* ROUTE: name of the route=<name> switch, empty without it */
 extern unsigned pm_frame_count(void);
+extern unsigned pm_uptime_ms(void);
 static unsigned ps_pkeys; /* UI1: 3DS keys of the script step in the last scan */
 static int ps_n, ps_i, ps_run, ps_wait_start;
 static unsigned ps_left;
@@ -48,13 +49,15 @@ static unsigned short ps_prev;
 void pm_route_goto(const char* map, int entry);
 void pm_route_note(void);
 void pm_route_save(int slot);
+int pm_route_ev(int kind);
+int pm_route_ev_kind(const char* name);
 int pm_route_aim(int tx, int tz, int* sx, int* sy);
 /* ROUTE: run the seg_<name> marks at ps_i: one log line `route: seg <name> f<game step>` each, no scan used */
 static void ps_run_marks(void) {
     while (ps_i < ps_n && ps[ps_i].mark) {
         if (ps[ps_i].go == 2) { pm_log("route: goto %s:%d f%u", ps_marks[ps[ps_i].mark - 1], (int)ps[ps_i].gx, pm_frame_count()); pm_route_goto(ps_marks[ps[ps_i].mark - 1], ps[ps_i].gx); }
         else if (ps[ps_i].go == 3) pm_route_save(ps[ps_i].gx);
-        else pm_log("route: seg %s f%u scan %u", ps_marks[ps[ps_i].mark - 1], pm_frame_count(), pm_pad_scans);
+        else pm_log("route: seg %s f%u scan %u t=%u ms", ps_marks[ps[ps_i].mark - 1], pm_frame_count(), pm_pad_scans, pm_uptime_ms());
         ps_i++;
     }
     if (ps_i < ps_n) ps_left = ps[ps_i].n;
@@ -91,7 +94,7 @@ static void ps_parse(char* s) {
         unsigned short b = 0;
         unsigned keys = 0;
         signed char x = 0, y = 0;
-        unsigned char mk = 0, go = 0;
+        unsigned char mk = 0, go = 0, ev = 0;
         int gx = 0, gz = 0;
         if (strncmp(tok, "seg_", 4) == 0) { /* ROUTE: segment marker */
             if (ps_nmarks < 96) { strncpy(ps_marks[ps_nmarks], tok + 4, 19); mk = (unsigned char)++ps_nmarks; }
@@ -102,6 +105,10 @@ static void ps_parse(char* s) {
             else pm_log_w("padscript: bad goto token '%s'", tok);
         } else if (strncmp(tok, "save_", 5) == 0) { /* ROUTE: save_<slot> runs fio_save_game(slot), as the save block does. Takes no scan. */
             if (ps_nmarks < 96) { strcpy(ps_marks[ps_nmarks], "save"); mk = (unsigned char)++ps_nmarks; go = 3; gx = atoi(tok + 5); n = 1; }
+        } else if (strncmp(tok, "ev_", 3) == 0) { /* ROUTE: wait for a game event (pm_route.c), no scan */
+            ev = (unsigned char)pm_route_ev_kind(tok + 3);
+            if (!ev) pm_log_w("padscript: unknown event '%s'", tok);
+            n = 1;
         } else if (strncmp(tok, "go_", 3) == 0) { /* ROUTE: go_<x>_<z>_<max scans>: stick toward the point until Mario is within 24 units */
             int gn = 0;
             if (sscanf(tok + 3, "%d_%d_%d", &gx, &gz, &gn) == 3 && gn > 0) { go = 1; n = (unsigned)gn; }
@@ -115,7 +122,7 @@ static void ps_parse(char* s) {
                 else if (!ps_button(p, &b, &x, &y)) pm_log_w("padscript: unknown button '%s'", p);
         }
         if (n == 0) n = 1;
-        ps[ps_n].mark = mk; ps[ps_n].go = go; ps[ps_n].gx = (short)gx; ps[ps_n].gz = (short)gz; ps[ps_n].keys = keys; ps[ps_n].b = b; ps[ps_n].x = x; ps[ps_n].y = y; ps[ps_n].n = (unsigned short)n;
+        ps[ps_n].mark = mk; ps[ps_n].go = go; ps[ps_n].ev = ev; ps[ps_n].gx = (short)gx; ps[ps_n].gz = (short)gz; ps[ps_n].keys = keys; ps[ps_n].b = b; ps[ps_n].x = x; ps[ps_n].y = y; ps[ps_n].n = (unsigned short)n;
         ps_n++;
     }
 }
@@ -265,6 +272,7 @@ void pm_pad_scan(void) {
                 rand_y = ps[ps_i].y;
                 rand_on = 1;
                 if (ps_route[0] && pm_pad_scans % 30 == 0) pm_route_note();
+                if (ps[ps_i].ev) ps_left = pm_route_ev(ps[ps_i].ev) ? 1 : 2; /* ROUTE: event token: waits, one more scan while it does not hold */
                 if (ps[ps_i].go) { /* ROUTE: closed loop walk */
                     int ax = 0, ay = 0;
                     if (pm_route_aim(ps[ps_i].gx, ps[ps_i].gz, &ax, &ay)) ps_left = 1;

@@ -485,7 +485,7 @@ static void tour_step(void) {
         pm_log_w("tour: map %s not in gAreas", name);
         return;
     }
-    pm_log("tour: next %s entry %d (area %d map %d)", name, entry, areaID, mapID);
+    pm_log("tour: next %s entry %d (area %d map %d) t=%u ms", name, entry, areaID, mapID, pm_uptime_ms());
     /* F01: the tour skips the exit script of the map (kmr_23 N(func_80240010_907A40)). Do what it does, else the curtain callback runs on the next map. */
     set_curtain_scale_goal(2.0f);
     set_curtain_draw_callback(NULL);
