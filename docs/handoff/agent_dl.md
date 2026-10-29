@@ -26,3 +26,10 @@
 - G1 sync skip: ops/frame 3236 -> 2417, sync 819 -> 0. Main walk avg 9512 -> 8072 us (-1440 us). Picture ok. PM_ROW=dl_g1 at 1/8.
 - Next: H1 cold split of gbi_run_body (pm_gbi_cold.c, -Os). Test: walk not slower, picture ok.
 - C1: check docs/handoff/plan_c1_texbind.md; take it when present.
+
+## Update: H1 kept (main 3449398b0, dl2 ddfea6e6d)
+- H1 cold split: gbi_run_body 0x5cac -> 0x56e8 (-1476 B). Rare paths in gbi_cold_* helpers (cold, noinline). Compiled in pm_gbi.c, not pm_gbi_cold.c with -Os (deviation).
+- Azahar yard f300-599: main walk 8072 -> 8088 us (noise). ops 2417 unchanged. Picture ok (PM_ROW=dl_h1 at 1/8).
+- Not reached: 8 KB target. Remaining inline cases: TEXRECT, SETTILE, LOADBLOCK, LOADTILE, LOADTLUT, SETTILESIZE tail (~3166-3420). Next H1 step if wanted: move the tile/texrect tails into cold-or-noinline helpers.
+- Worktree dl2 is detached at main. Build outputs in build3ds/lane-dl2.
+- Next rows in order: BG single bind, G2 + H6, H3, C1i + HUD, H2, fog fix, W4/W2, H5/H4. C1 still waits on docs/handoff/plan_c1_texbind.md (not present).
