@@ -2,8 +2,8 @@
 
 ## State
 - ARCHIVE: done. Commits d64f39f06 and 00f20b211. Archive names are pm_3ds_<build>_<hash>.3dsx. push_3ds.sh archives on every push (archive_build). --archive-only archives and stops (no push). build.sh keeps the newest 10 .elf/.map pairs.
-- LB1B: committed c294e993f (LB1 lazy FrameBegin). Gate INCOMPLETE: partner_menu and text_menu have no HEAD baseline (budget 8 of 8 used). fsplit gwait not run.
-- FINAL9: build 1504, git c294e993f, archive 3ds/logs/builds/pm_3ds_1504_c294e993f.3dsx (sha256 d5a6eddc...25d7). Catalog run 8 starts: all log checks pass. sun_sbk not run (cap 8). Not pushed.
+- LB1B: PASSED. Committed c294e993f (LB1 lazy FrameBegin). After the budget reset: partner_menu and text_menu HEAD repeats byte-equal (lane final9 = build 1490 binary), patched build 1504 equal to HEAD. fsplit gwait 0.0 ms on HEAD and patched (Azahar does not show the wait; the console must prove it). No code change, so no rebuild.
+- FINAL9: build 1504, git c294e993f, archive 3ds/logs/builds/pm_3ds_1504_c294e993f.3dsx (sha256 d5a6eddc...25d7, equal to build3ds/pm_3ds.3dsx). Catalog: 8 scenarios log checks pass, plus sun_sbk (log 3 of 3, shot read: desert, Mario, partner; sun disc not clearly visible). Not pushed.
 - Working tree: 3ds/src/map_restore_table.c (user file; restored byte-equal to 3ds/src/map_restore_table.c.bak after each build; never committed). docs/handoff/test_catalog.md is modified by the TOADFOUNT agent (unstaged). Not touched by this epic.
 
 ## Archive renames (3ds/logs/builds)
@@ -25,8 +25,8 @@
 - Status: 3ds/logs/perf/status_LB1B.txt.
 
 ## Open
-- LB1B gate: partner_menu and text_menu, 2 starts each (HEAD binary and lane lb1b), byte compare. Then fsplit gwait if visible.
-- FINAL9: sun_sbk not run (cap 8 starts).
+- fsplit gwait is 0.0 ms in Azahar. The console must confirm the wait.
+- sun disc: top shot does not clearly show it. Read on the console.
 - Old docs (agent_*.md, diag_*.md) still name the old archive files. Only FINAL_WRITEUP.md and pushed_builds.txt were updated.
 - test_catalog.md has no pm_3ds_final references. Not edited (TOADFOUNT agent's unstaged edits).
 
