@@ -179,6 +179,14 @@ extern Gfx Gfx_RM3_CLOUD_NO_ZB[];
 #define MODEL_RM_OP(pos, rm) gSPDisplayList(pos, rm)
 #endif
 
+// C1: one port op per model texture bind on 3DS (pm_texbind_set holds the checked list).
+#ifdef TARGET_3DS
+void pm_texbind_set(int idx, const Gfx* l);
+#define MODEL_TEX_OP(pos, h) gSPPmTexBind(pos, (h) - TextureHandles, (h)->gfx)
+#else
+#define MODEL_TEX_OP(pos, h) gSPDisplayList(pos, (h)->gfx)
+#endif
+
 Gfx* ModelRenderModes[] = {
 	[RENDER_MODE_IDX_00] Gfx_RM1_SURFACE_OPA,
 	[RENDER_MODE_IDX_01] Gfx_RM1_SURFACE_OPA_NO_AA,
@@ -1527,11 +1535,11 @@ void appendGfx_model(void* data) {
                         offsetS & 0xFFF, (offsetT >> 12) & 0xFFF);
 
                 } else {
-                    gSPDisplayList((*gfxPos)++, textureHandle->gfx);
+                    MODEL_TEX_OP((*gfxPos)++, textureHandle);
                 }
                 break;
             default:
-                gSPDisplayList((*gfxPos)++, textureHandle->gfx);
+                MODEL_TEX_OP((*gfxPos)++, textureHandle);
                 break;
         }
     } else {
@@ -2115,6 +2123,9 @@ void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* head
 
     temp = (Gfx**) &TextureHeapPos;
     gSPEndDisplayList((*temp)++);
+#ifdef TARGET_3DS
+    pm_texbind_set(handle - TextureHandles, handle->gfx);
+#endif
 }
 
 void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 size) {

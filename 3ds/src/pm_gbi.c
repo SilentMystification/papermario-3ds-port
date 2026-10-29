@@ -54,7 +54,7 @@ static void tex_streak_flush(void) {
     tex_streak = 0;
 }
 static void tex_streak_op(unsigned op) {
-    if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE) {
+    if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE || op == G_PM_TEX) {
         if (pm_ph_on && !tex_streak) { tex_streak_t0 = pm_ticks(); tex_streak = 1; }
     } else
         tex_streak_flush();
@@ -2095,7 +2095,7 @@ static int os_class_of(unsigned op) {
     case G_VTX: case G_MODIFYVTX: return OS_VTX;
     case G_MTX: case G_POPMTX: return OS_MTX;
     case G_TRI1: case G_TRI2: return OS_TRI;
-    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: return OS_TEX;
+    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: case G_PM_TEX: return OS_TEX;
     case G_SETCOMBINE: case G_SETPRIMCOLOR: case G_SETENVCOLOR: case G_SETOTHERMODE_H: case G_SETOTHERMODE_L: case G_SETFOGCOLOR: return OS_CC;
     case G_GEOMETRYMODE: case G_MOVEWORD: case G_MOVEMEM: case G_SETSCISSOR: return OS_GEO;
     case G_DL: case G_ENDDL: return OS_DL;
@@ -2578,6 +2578,32 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
 
 /* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. */
 static const u8 g1_skip[256] = { [G_NOOP] = 1, [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
+
+/* C1: texture bind records. tb_list[idx] holds the handle's Gfx list only when pm_texbind_set has checked it. A list
+ * holds only the ops make_texture_gfx emits (and g1_skip ops). A refused list stores NULL. */
+static const Gfx* tb_list[128];
+void pm_texbind_set(int idx, const Gfx* l) {
+    tb_list[idx & 0x7f] = NULL;
+    if (!l) return;
+    for (int n = 0; n < 64; n++) {
+        unsigned op = l[n].words.w0 >> 24;
+        if (op == G_ENDDL) { tb_list[idx & 0x7f] = l; return; }
+        if (g1_skip[op]) continue;
+        if (op != G_SETTIMG && op != G_SETTILE && op != G_LOADBLOCK && op != G_LOADTILE && op != G_LOADTLUT && op != G_SETTILESIZE &&
+            op != G_TEXTURE && op != G_SETCOMBINE && op != G_SETOTHERMODE_H) return;
+    }
+}
+static __attribute__((noinline)) void tex_op(u32 w0, u32 w1);
+/* C1: runs a checked texture list. The G_PM_TEX op pays the prologue once. The handlers run per word, in list order. */
+static __attribute__((noinline)) void tb_run(const Gfx* g) {
+    for (;; g++) {
+        unsigned op = g->words.w0 >> 24;
+        if (op == G_ENDDL) return;
+        if (g1_skip[op]) continue;
+        pm_gbi_cur_op = op;
+        tex_op(g->words.w0, g->words.w1);
+    }
+}
 
 /* C2: G_PM_RM (gSPPmRenderMode) w1 = a ModelRenderModes list (static, host memory). The list must hold only
  * SETOTHERMODE_L/H, GEOMETRYMODE and ENDDL. Its effects run here in list order, with the same state writes and the same
@@ -3154,12 +3180,18 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc = stack[--sp];
             if (dls_on) dls_pc = dls_class((u32)pc);
             break;
+        case G_PM_TEX: /* C1: a texture bind list, run by tb_run when its record matches. */
+            if (w1 && tb_list[w0 & 0x7f] == (const Gfx*)w1) { RS_ADD(RS_TBN, 1); tb_run((const Gfx*)w1); break; }
+            RS_ADD(RS_TBFB, 1);
+            w0 = (u32)G_DL << 24; /* G_DL_PUSH */
+            goto tex_as_dl;
         case G_PM_RM: /* C2: a render mode list, applied in place (rm_apply). */
             RS_ADD(RS_RMN, 1);
             if (rm_apply(w1)) break;
             RS_ADD(RS_RMSK, 1); /* fallback: the list has another op, run it as G_DL */
             w0 = (u32)G_DL << 24; /* G_DL_PUSH */
             /* fall through */
+        tex_as_dl:
         case G_DL: {
             Gfx* next = (Gfx*)ptr_of(w1);
             if (next && !is_host((u32)next)) {
