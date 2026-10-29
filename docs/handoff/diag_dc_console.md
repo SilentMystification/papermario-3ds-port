@@ -35,7 +35,4 @@ Source: build3ds/hw_pull/hw_o3ds_log.txt. Steady frames f1172-1183 (n 12, 81 dra
 - DC4 (tick reads): not supported. Gate ">10 us per close" fails. 4 ticks x 1.024 us = 4.1 us per close, 0.27 ms per frame.
 - DC5 (merge): not proven. tb0 68 per frame vs 67 closes. Merge count not measured. Range 0 to 0.88 ms per frame (plan ceiling: 9 x 97.4 us).
 - No plan row targets draw (largest stage, includes UpdateContext).
-
-## Caveats
-- One close in 8 timed, values x 8 per frame. 12 frames.
-- No per-frame wall in log. Use p95 60.2 ms.
+- Caveats: one close in 8 timed (values x 8); 12 frames; no per-frame wall in log.
