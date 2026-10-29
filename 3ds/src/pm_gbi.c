@@ -1097,9 +1097,8 @@ static void sync_combine_work(void) {
     pm_gpu_set_combine(leg_mode);
 }
 
-static int noaudit_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("noaudit"); return v; }
 /* PERF-GBI: the audit only feeds debug log lines (comb new, comb count, comb total). Below log level debug it did work for nothing on every triangle. */
-static int audit_on(void) { return pm_log_level() >= 3 && !noaudit_on(); }
+static int audit_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("audit"); return v; } /* R2a: audit lines need the audit switch, not log level 3 (the console push is loglevel=debug) */
 static void comb_audit(void) {
     unsigned cyc = (omode_h >> G_MDSFT_CYCLETYPE) & 3;
     unsigned key, i;

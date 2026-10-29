@@ -139,3 +139,16 @@
 - Azahar pause (PM_ROW=dl_r0, 2/8 used): 0b 6.2 -> 1.1 ms per frame. Main walk last 300 frames 15789 -> 9833 us. Pause shots 0000-0003 byte-equal.
 - No tool parses glyphbind. imglog runs (diag_tex3, agent_text until-line) still get the line.
 - Gate for R1 met (0b+e4+f0 = 5.8 ms per frame).
+
+## R2a log sweep: comb audit gate (branch dl_audit, from main 363a0e8e1)
+- comb_audit (triangles, texrects, draws) ran on every level 3 or higher, so the loglevel=debug push paid it. audit_on now needs the audit switch. noaudit switch removed.
+- Pause (azt args + phase gbiprof logstat loglevel=debug, PM_ROW=dl_audit, 2/8 used): comb audit lines 101 before, 0 after. Main walk last 300 frames 9769 -> 9684 us (inside the noise). Pause shots 0000 to 0003 byte-equal.
+- Other per-op logs (rechecked): flushlog, rectdbg, pipelog, pipemtx, mtxv, xt, box, glyphmap, glyphmiss are behind a switch or cached flag. texfail, texcache VRAM full, tex cache full, GPU LIMIT NEAR, V16b2 are rate-limited.
+- Not changed: tc_on (pm_tex.c:805) is on at loglevel 3 or more (texstat tick reads in slot_valid). Small. Left as is.
+- Yard before/after not run (time).
+
+## E4 texrect cost (dl_e4, PM_ROW=dl_e4 2/8 used)
+- Divide removal in glyph_resolve, glyph_atlas_dims, glyph_same (pm_tex.c): e4 19429 -> 19329 ns per call. Walk 9833 -> 9747 us. Not kept, reverted.
+- settdbg in pause: tile 0 SETTILE field match in 99 percent of lines (only the gen counter moves). Tile 0 SETTILE is not the cause.
+- rsplit tile 96 per frame: ensure_tile flushes (RS_TILE) per frame. flsplit tex closes 122 per frame, sampled us 2477 to 3649 per frame. The e4 cost is the flush and bind work behind these closes, not the handler arithmetic.
+- Open: which ensure_tile call (tile 0 glyph path or tile 1 path dots) makes the 96 flushes. Needs a per-tile counter. Not done.
