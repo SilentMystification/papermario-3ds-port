@@ -4,8 +4,7 @@ Sources: build3ds/ftp_170/hw_o3ds_log.txt (62660 lines), build3ds/hw_live_log_17
 
 ## 1. Build and boot
 - No boot lines in the FTP log. Line 1 is "#11 menu: tab 2 row 4 Logging = On". Build id and loglevel are not logged.
-- Logging gate open. Per-frame lines are present.
-- Live log starts at "#35409 gbisplit f2263". It is a partial capture.
+- Logging gate open (per-frame lines present). Live log starts at "#35409 gbisplit f2263". It is a partial capture.
 
 ## 2. Log gaps
 - Gap A: frames 1854-1959 missing (line 30189). Window 1960-1972: span 3666 ms, max 3006 ms, other 2950 ms.
@@ -40,15 +39,12 @@ Yard label is not in the log. Scene A is inferred from frame time.
 - logic 3.6, dl 3.4, gdraw 2.9, gcache 1.7, fend 1.4, tex 0.3, audio 0.1 ms.
 - other: 12.8 ms, includes gaps A and B. Steady other is 2.3-2.8 ms in scenes B to E.
 - Top 3 named costs: gbi 31.7 ms, fbegin 4.4 ms, gpu 3.8 ms.
-- Flush: 5.8 calls per frame, not timed. Swap: not timed.
-- Walk scenes: idle 3.4-6.9 ms per frame (vblank wait).
+- Flush: 5.8 calls per frame, not timed. Swap: not timed. Walk scenes idle 3.4-6.9 ms per frame.
 
 ## 5. Logging, texture cache, VRAM
-- Log lines: 11.6 per frame at frame 300 (line 3483), 16.2 per frame at frame 2100 (line 13112).
-- Log bytes: 270-386 KB per 300 frames.
+- Log lines: 11.6 per frame at frame 300 (line 3483), 16.2 at frame 2100 (line 13112). Bytes 270-386 KB per 300 frames.
 - Texcache evictions (texstat): f2400 15, f3900 37, f4800 89 (704 KB), f5400 266 (1495 KB).
-- "texcache VRAM full": 8 lines (17872-18045).
-- Texture failures: 0 (line 34136).
+- "texcache VRAM full": 8 lines (17872-18045). Texture failures: 0 (line 34136).
 - VRAM A and B: used 2007 KB, free 1065 KB, min 41 KB, unaccounted 0 KB, fail 0 (line 16338).
 
 ## 6. Crash, fatal, sleep
