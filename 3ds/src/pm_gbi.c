@@ -33,29 +33,34 @@ int pm_gbi_flush_class(void) {
     default: return 5;
     }
 }
-static int gv_streak;
+/* W2: phase timers read the tick for one run in 8 and scale the sample by 8. A run is a streak of ops of one class. */
+static unsigned ph_seq;
+static int ph_pick(void) { return (++ph_seq & 7u) == 0; }
+static int gv_run, gv_streak;
 static unsigned gv_streak_t0;
 static void gv_streak_flush(void) {
-    if (!pm_ph_on || !gv_streak) return;
-    pm_gbi_gv_ticks += pm_ticks() - gv_streak_t0;
+    gv_run = 0;
+    if (!gv_streak) return;
+    pm_gbi_gv_ticks += (pm_ticks() - gv_streak_t0) * 8u;
     gv_streak = 0;
 }
 static void gv_streak_op(unsigned op) {
     if (op == G_TRI1 || op == G_TRI2) {
-        if (pm_ph_on && !gv_streak) { gv_streak_t0 = pm_ticks(); gv_streak = 1; }
+        if (pm_ph_on && !gv_run) { gv_run = 1; if (ph_pick()) { gv_streak_t0 = pm_ticks(); gv_streak = 1; } }
     } else
         gv_streak_flush();
 }
-static int tex_streak;
+static int tex_run, tex_streak;
 static unsigned tex_streak_t0;
 static void tex_streak_flush(void) {
-    if (!pm_ph_on || !tex_streak) return;
-    pm_gbi_tex_ticks += pm_ticks() - tex_streak_t0;
+    tex_run = 0;
+    if (!tex_streak) return;
+    pm_gbi_tex_ticks += (pm_ticks() - tex_streak_t0) * 8u;
     tex_streak = 0;
 }
 static void tex_streak_op(unsigned op) {
     if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE) {
-        if (pm_ph_on && !tex_streak) { tex_streak_t0 = pm_ticks(); tex_streak = 1; }
+        if (pm_ph_on && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
     } else
         tex_streak_flush();
 }
@@ -480,10 +485,10 @@ static PmPlan cur_plan;
 static void sync_combine(void);
 static void sync_combine_work(void);
 static void sync_combine_work_timed(void) {
-    if (!pm_ph_on) { sync_combine_work(); return; }
+    if (!pm_ph_on || !ph_pick()) { sync_combine_work(); return; }
     unsigned t0 = pm_ticks();
     sync_combine_work();
-    pm_gbi_sync_ticks += pm_ticks() - t0;
+    pm_gbi_sync_ticks += (pm_ticks() - t0) * 8u; /* W2: one call in 8 timed */
 }
 static int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
 static unsigned sl_cc;
@@ -2162,7 +2167,10 @@ static void os_report(void) {
         pke[s] = pk_sn[s] ? (unsigned long long)pk_tk[s] * pk_ops[s] / pk_sn[s] : 0;
         psum += pk_ops[s];
     }
-    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), gm_steps / 300, gm_n);
+    static unsigned svc_last; /* W2: all pm_ticks reads per frame over the 300 frames (tk is the op sampler only) */
+    unsigned svc_now = pm_svc_n;
+    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | pt %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), (svc_now - svc_last) / 300u, gm_steps / 300, gm_n);
+    svc_last = svc_now;
     pm_log_hw("prod f%d sum %u ops %u", rm_frame, (unsigned)(psum / 300), (unsigned)(tot_n / 300));
     for (int r = 0; r < 8; r++) {
         int best = -1; unsigned long long bv = 0;

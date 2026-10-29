@@ -2285,11 +2285,12 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     dc_on = (dc_seq++ & 7) == 0 && pm_ph_on; /* DC1: one close in 8 is sampled */
     if (!pm_ph_on) { flush_impl(); return; }
     int c = pm_gbi_flush_class();
+    pm_fl_n[c]++;
+    if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
     unsigned t0 = pm_ticks();
     flush_impl();
     dc_on = 0;
-    pm_fl_us[c] += (pm_ticks() - t0) / 268u;
-    pm_fl_n[c]++;
+    pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
 }
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
