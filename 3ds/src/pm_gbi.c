@@ -260,6 +260,9 @@ static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
  * box_folded is 1 while it is drawn as (PRIM - ENV) * TEXEL1 + ENV, which is exact when tile 0
  * is all white (the flat background of the window styles, `bg_flat`). */
 static int box_prod, box_folded;
+/* R2B: comb_gen counts the writes of the combine state that the SETCOMBINE handler does not make (box_fold_sync toggles, gbi_state_apply);
+ * cmb_gen_seen is comb_gen at the last SETCOMBINE. */
+static unsigned comb_gen, cmb_gen_seen;
 static int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
 static unsigned box_save[4];
 static float dual_gain[3];
@@ -560,6 +563,7 @@ static void box_fold_sync(void) {
     int want = box_prod && td[1].valid && tile0_white();
     if (want == box_folded) return;
     box_folded = want;
+    comb_gen++;
     if (want) {
         box_save[0] = comb_a; box_save[1] = comb_b; box_save[2] = comb_c; box_save[3] = comb_d;
         comb_a = G_CCMUX_PRIMITIVE; comb_b = G_CCMUX_ENVIRONMENT; comb_c = G_CCMUX_TEXEL0; comb_d = G_CCMUX_ENVIRONMENT;
@@ -1040,14 +1044,19 @@ static void scm_replay(const ScMemo* m) {
     if (m->plan_on) { cur_plan = m->plan; pm_gpu_set_plan(&cur_plan); }
     else pm_gpu_set_combine(leg_mode);
 }
+/* R2B: the sync_combine input hash (the fields the skip test reads); sync_combine and the g2_same skip use the same value */
+static unsigned sc_sig_now(void) {
+    unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
+                         (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
+    unsigned sg = 2166136261u;
+    for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+    return sg;
+}
 static void sync_combine(void) {
     if (pdl_ep_pso) { sync_combine_work_timed(); sc_ok = 1; return; } /* C2: compiled lists already resolved the combiner at compile */
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
-        unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
-                             (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
-        unsigned sg = 2166136261u;
-        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
+        unsigned sg = sc_sig_now();
         if (sc_ok && sg == sc_sig) { GP_SET(5, 1); return; }
         sc_sig = sg;
         sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
@@ -1644,6 +1653,7 @@ static u32 gbi_state_fnv(const void* p, unsigned n) {
 static u32 gbi_state_hash(const GbiState* s) { return gbi_state_fnv(s, sizeof *s); }
 
 static void gbi_state_apply(const GbiState* s) {
+    comb_gen++;
     geom = s->geom; omode_h = s->omode_h; omode_l = s->omode_l;
     comb_w0 = s->comb_w0; comb_w1 = s->comb_w1;
     comb_aa = s->comb_aa; comb_ab = s->comb_ab; comb_ac = s->comb_ac; comb_ad = s->comb_ad;
@@ -2765,6 +2775,17 @@ static int lt_mem_same(u32 w0, u32 w1) {
 
 static int g2_same(unsigned op, u32 w0, u32 w1) {
     switch (op) {
+    /* R2B: each case skips only when the handler's writes equal the current state and its calls do nothing (sync_combine: sc_ok and
+     * the same input hash; pm_gpu_set_mode: the mode already set). pdl_ep_pso makes sync_combine work every time, so no skip then. */
+    case G_SETCOMBINE:
+        return comb_set && comb_w0 == w0 && comb_w1 == w1 && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok && !pdl_ep_pso &&
+               sc_sig_now() == sc_sig;
+    case G_TEXTURE:
+        return tex_on == ((w0 & 0xff) != 0) && tex_ss == (w1 >> 16) && tex_ts == (w1 & 0xffffu) && sc_ok && !pdl_ep_pso && sc_sig_now() == sc_sig;
+    case G_GEOMETRYMODE: {
+        unsigned g = (geom & (w0 & 0xffffffu)) | w1;
+        return g == geom && pm_gpu_mode_is((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
+    }
     case G_MOVEMEM: return (w0 & 0xff) == G_MV_LIGHT && lt_mem_same(w0, w1);
     case G_MOVEWORD: { /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
         unsigned index = (w0 >> 16) & 0xff, offset = w0 & 0xffff, k = offset / 24;
@@ -3239,6 +3260,7 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                        comb2_aa == 7 && comb2_ab == 7 && comb2_ac == 7 && comb2_ad == 0;
             comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
                                ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
+            cmb_gen_seen = comb_gen; /* R2B */
             sync_combine();
             break;
     }

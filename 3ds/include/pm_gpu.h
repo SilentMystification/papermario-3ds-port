@@ -14,6 +14,7 @@ int pm_gpu_depth_at(int x, int y, unsigned* d24); /* F03 */
  * vertices by this, then the viewport and the screen tilt. */
 void pm_gpu_set_mvp(const float m[4][4], float vp_sx, float vp_sy, float vp_tx, float vp_ty);
 void pm_gpu_set_mode(int zbuffer, int lighting);
+int pm_gpu_mode_is(int zbuffer, int lighting); /* R2B */
 /* PO3b: the raw Vtx path (switch gpuvtx, off by default) */
 int pm_gpu_gvtx_load(const void* vtx, unsigned n);
 int pm_gpu_gv_room(unsigned n);

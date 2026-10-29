@@ -2122,6 +2122,8 @@ int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
     return (int)b;
 }
 
+/* R2B: 1 when pm_gpu_set_mode with these bits would return at once */
+int pm_gpu_mode_is(int zbuffer, int lighting) { return zbuffer == z_on && lighting == light_on; }
 void pm_gpu_set_mode(int zbuffer, int lighting) {
     if (zbuffer == z_on && lighting == light_on) return;
     flush();
