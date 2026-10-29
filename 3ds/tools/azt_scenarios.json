@@ -499,11 +499,11 @@
     {
       "name": "pause_menu",
       "status": "verified",
-      "subject": "Pause status menu open at frames 120 to 137 (dialog: Check here to see what Mario's current status is.); START closes it at about frame 140; field with the HUD at frames 152 to 159 (one shot per frame, first one from 156 is the until-line).",
-      "proves": "padscript opens the pause menu (START) in the Toad Town map, the pause mode is entered, and START closes it: the field shot after close shows the HUD on the field.",
-      "debug": "preset=toad padscript=wait80,START*3,wait900 phase shots shotwin=130:1 loglevel=debug",
-      "until": "phase W f1[2-9]\\d-",
-      "cap": 90,
+      "subject": "Pause status menu open. The numeric window (phase W, 60 frames) starts at frame 230 to 299 and ends before the close START at frame 400. The top shot at frame 130 is inside the open menu (dialog: Check here to see what Mario's current status is.).",
+      "proves": "padscript opens the pause menu (START, scan 146, frame 91; pause open at frame 96). The walk, closes and ops window lies fully inside the open pause. The close START (scan 424, frame 230) comes after the window.",
+      "debug": "preset=toad padscript=wait80,START*3,wait615,START*3 phase shots shotwin=130:1 loglevel=debug",
+      "until": "phase W f2[3-9]\\d-",
+      "cap": 40,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
       "expects": "warp",
@@ -522,10 +522,16 @@
           "regex": "shot \\d+ frame 130\\b"
         },
         {
+          "name": "window end before the close START (frame 400), window inside the open pause",
+          "regex": "phase W f2[3-9]\\d-(\\d+) n ",
+          "pick": "last",
+          "max": 399
+        },
+        {
           "name": "walk: cpu ms per frame, window of the until-line",
           "regex": "phase W f\\d+-\\d+ n \\d+ .*cpu \\(wall-idle-fbegin\\) ([0-9.]+)/",
           "pick": "last",
-          "max": 14.0
+          "max": 10.7
         },
         {
           "name": "closes per frame (all classes, tex-only not logged)",
@@ -540,7 +546,7 @@
           "max": 1154
         }
       ],
-      "reason": "PAUSE2 run, 2 starts: the close START now lands at frame 140 (log: game mode 10 at frame 96, game mode 11 at frame 141, game mode 4 at frame 147). The old wait284 put the close START at about frame 234 (estimate: frame = 51 + (scan - 66) / 2 from the vrambase log), after the old window 170-200. Top shots: frame 123 pause status page, frame 155 field with Mario. The Paper Mario status bar is retracted after a pause close (reset_status_bar); the bottom screen shows the port HUD text. Picture read by the agent of PAUSE2, a person must confirm."
+      "reason": "PAUSEFIX2 (PAUSE5A). The padscript has two START presses: scan 146 (frame 91, pause open at 96) and scan 764 (frame 400). The until is the first phase W window that starts at frame 230 to 299 (after the open spike, which ends near frame 185 in the PAUSE5A run 1 log). Windows are 60 frames, so the window ends at 289 to 358, before frame 400. The run stops at the until, so the close START is not reached in this run. Gate values: see docs/handoff/test_catalog.md (PAUSE5A). The top shot is inside the open menu; a person must confirm the picture."
     },
     {
       "name": "battle_start",
@@ -739,19 +745,19 @@
           "name": "walk: cpu ms per frame, window of the until-line",
           "regex": "phase W f\\d+-\\d+ n \\d+ .*cpu \\(wall-idle-fbegin\\) ([0-9.]+)/",
           "pick": "last",
-          "max": 11.0
+          "max": 8.8
         },
         {
           "name": "closes per frame (all classes, tex-only not logged)",
           "regex": "phase count avg/max per frame: tri .* flush (\\d+)/",
           "pick": "last",
-          "max": 124
+          "max": 79
         },
         {
           "name": "ops per frame (GBI commands)",
           "regex": "phase count avg/max per frame: texKB .* gbiops (\\d+)/",
           "pick": "last",
-          "max": 1324
+          "max": 908
         }
       ],
       "reason": "Verified by eye on run 6 (azt2, lane azt2 at HEAD): the shot shows the Party tab with Goombario and the text 'Check your Party and see each member's abilities.' The R presses are R*2 with wait60 between. partner=1 is needed: without it the Party tab is skipped. The 'ui: partner menu open' line fires at pause open, so the picture is the proof."
@@ -790,7 +796,7 @@
           "name": "walk: cpu ms per frame, window of the until-line",
           "regex": "phase W f\\d+-\\d+ n \\d+ .*cpu \\(wall-idle-fbegin\\) ([0-9.]+)/",
           "pick": "last",
-          "max": 9.4
+          "max": 9.5
         },
         {
           "name": "closes per frame (all classes, tex-only not logged)",
@@ -802,7 +808,7 @@
           "name": "ops per frame (GBI commands)",
           "regex": "phase count avg/max per frame: texKB .* gbiops (\\d+)/",
           "pick": "last",
-          "max": 1617
+          "max": 1548
         }
       ],
       "reason": "Verified: log checks pass (game mode 14 at frame 15, ui: file select enter) and the shot read by eye shows the file select screen (File 1 AAAAAAAA, First Play, Select file to start). Boot path: debug switch fileselect (pm_warp.c pm_warp_hook). Shots: build3ds\\azt\\shots\file_select (16 shots, frames 282-338)."
