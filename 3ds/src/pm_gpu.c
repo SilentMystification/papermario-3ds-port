@@ -1293,10 +1293,8 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
  * log sink thread, at most 10 times per second. A HUD row written during a draw may show one update late. */
 static char hud_rows[5][40];
 static volatile int hud_new;
-static volatile int hud_sd;
 void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
     if (menu_on) return; /* PT69: the menu owns all rows */
-    hud_sd = pm_rom_sd_flag();
     strncpy(hud_rows[0], line0 ? line0 : "", 39);
     strncpy(hud_rows[1], line1 ? line1 : "", 39);
     for (int r = 0; r < 3; r++) { memcpy(hud_rows[2 + r], mem[r], 39); hud_rows[2 + r][39] = 0; }
@@ -1321,11 +1319,6 @@ void pm_gpu_hud_flush(void) {
     consoleSetWindow(c, 1, 1, 40, 5);
     hud_put_line(c, 1, hud_rows[0]);
     hud_put_line(c, 2, hud_rows[1]);
-    if (hud_sd) { /* red SD flag after the frame time; the row is rewritten with spaces when the flag ends */
-        c->cursorX = 36;
-        c->cursorY = 2;
-        fputs("\x1b[31mSD\x1b[0m", stdout);
-    }
     for (int r = 0; r < 3; r++) hud_put_line(c, 3 + r, hud_rows[2 + r]);
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;

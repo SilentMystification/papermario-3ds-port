@@ -126,9 +126,6 @@ void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsign
 
 void pm_game_bind(void);
 int pm_rom_init(void);
-void pm_rom_frame_end(void); /* SD stream: one line when a drawn frame spends over 500 ms in pi_read */
-void pm_rom_sd_frame(unsigned* n, unsigned* bytes, unsigned* us); /* SD reads of the current frame: count, bytes, us */
-int pm_rom_sd_flag(void); /* 1 for 60 frames after an SD read (HUD SD flag) */
 void pm_fatal_screen(const char* msg);
 void pm_crash_selftest(void);
 void pm_crash_install(void* stack, unsigned size);

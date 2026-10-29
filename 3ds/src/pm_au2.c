@@ -18,9 +18,6 @@ static int quit;
 static Thread rthread;
 static u8 r_crash_stack[0x4000] __attribute__((aligned(8)));
 volatile int pm_au2_active;
-static LightLock rom_lock;
-void pm_au2_rom_lock(void) { LightLock_Lock(&rom_lock); }
-void pm_au2_rom_unlock(void) { LightLock_Unlock(&rom_lock); }
 
 /* Statistics (switch audiostat). The control side writes the first group, the render thread the second. */
 static int st_on = -1;
@@ -142,7 +139,6 @@ int pm_au2_start(void) {
     LightSemaphore_Init(&sem_free, AU2_SLOTS, AU2_SLOTS);
     LightSemaphore_Init(&sem_full, 0, AU2_SLOTS + 1);
     LightEvent_Init(&ev_idle, RESET_STICKY);
-    LightLock_Init(&rom_lock);
     prod = cons = 0;
     open_ = 0;
     s32 prio = 0x30;

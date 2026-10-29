@@ -33,49 +33,10 @@ OSViMode osViModeMpalLan1;
 
 static void* cur_fb;
 extern u16 gFrameBuf0[]; /* M01: the real 150KB frame buffer is the fallback, no second 150KB array */
-static FILE* rom;
 static u8* rom_bytes;
 static u32 rom_size;
 static int rom_tried;
-static int rom_remap; /* 1: rom_bytes is the packed image (pm_rom_keep), 0: full image or file stream */
-
-/* SD streaming: per drawn frame, time spent in pi_read_raw and the last read offset/size. */
-static u32 rom_sd_last_off, rom_sd_last_sz;
-static unsigned rom_sd_frame_ticks, rom_sd_frame_bytes, rom_sd_frame_n;
-static unsigned rom_sd_recent; /* frames left in the HUD SD flag; set to 60 by each SD read */
-#define ROM_SD_TICKS_MS 268112.f
-
-void pm_rom_frame_end(void) {
-    const unsigned thr = (unsigned)(500.f * ROM_SD_TICKS_MS);
-    if (rom_sd_frame_ticks > thr) {
-        float ms = (float)rom_sd_frame_ticks / ROM_SD_TICKS_MS;
-        pm_log_w("romstall off %08x sz %u bytes %u ms %.0f", rom_sd_last_off, rom_sd_last_sz, rom_sd_frame_bytes, ms);
-    }
-    rom_sd_frame_ticks = 0;
-    rom_sd_frame_bytes = 0;
-    rom_sd_frame_n = 0;
-    if (rom_sd_recent) rom_sd_recent--;
-}
-
-/* Current frame SD totals (read by pm_ph_frame_end before pm_rom_frame_end resets them). */
-void pm_rom_sd_frame(unsigned* n, unsigned* bytes, unsigned* us) {
-    *n = rom_sd_frame_n;
-    *bytes = rom_sd_frame_bytes;
-    *us = rom_sd_frame_ticks / 268u;
-}
-
-/* 1 for 60 frames after an SD read. The HUD shows the SD flag while this is 1. */
-int pm_rom_sd_flag(void) { return rom_sd_recent > 0; }
-
-/* Phase on only: one line per SD read, at most 20 lines per second. */
-static void rom_sd_log(u32 off, u32 sz, u32 caller) {
-    static unsigned win_t0, win_n;
-    unsigned now = pm_ticks();
-    if (now - win_t0 > 268112000u) { win_t0 = now; win_n = 0; }
-    if (win_n >= 20) return;
-    win_n++;
-    pm_log_hw("sdread off %08x sz %u caller %08x", (unsigned)off, (unsigned)sz, (unsigned)caller);
-}
+static int rom_remap; /* 1: rom_bytes is the packed image (pm_rom_keep), 0: full image */
 
 /* V26: the N64 counts from the reset, so the game's gRandSeed += osGetCount() (main.c) starts the same on every boot and the demo scenes
  * (Bill Blasters fire by RandInt) play the same way. The 3DS tick counts from the console start, so the seed was random per boot.
@@ -229,7 +190,7 @@ static int rom_fail(FILE* f, const char* msg) {
 
 /* Returns 1 when the ROM can be used. On 0 the reason is on the bottom screen and the game must not run. */
 int pm_rom_init(void) {
-    if (rom_tried) return rom_bytes != NULL || rom != NULL;
+    if (rom_tried) return rom_bytes != NULL;
     rom_tried = 1;
     FILE* f = fopen("papermario.z64", "rb");
     if (!f) f = fopen("baserom.us.z64", "rb");
@@ -273,36 +234,31 @@ int pm_rom_init(void) {
     unsigned leave = 3458u * 1024u;
     unsigned heap = pm_heap_bytes();
     unsigned cap = heap > leave ? heap - leave : 0;
-    if (sz > 0 && need > cap) pm_log_e("ROM does not fit: need %u KB cap %u KB, streaming from the SD card", need >> 10, cap >> 10);
-    const char* why = need > cap ? "does not fit" : "load failed";
-    if (sz > 0 && need <= cap) {
-        u8* block = (u8*)memalign(16, (size_t)need);
-        int ok = block != NULL;
-        if (ok && can_pack) {
-            for (unsigned i = 0; ok && i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)
-                ok = fseek(f, (long)pm_rom_keep[i].start, SEEK_SET) == 0 &&
-                     fread(block + pm_rom_keep[i].packed_off, 1, pm_rom_keep[i].len, f) == pm_rom_keep[i].len;
-        } else if (ok) {
-            ok = fread(block, 1, (size_t)sz, f) == (size_t)sz;
-        }
-        if (ok) {
-            rom_bytes = block;
-            rom_size = (u32)sz;
-            rom_remap = can_pack;
-            fclose(f);
-            pm_log_w("rom resident %uKB of %uKB%s, cap %uKB, margin %uKB", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "", cap >> 10, (cap - need) >> 10);
-            pm_log_w("rom mode: RAM resident %.2f MB", (float)need / 1048576.f);
-            pm_log_d("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
-            return 1;
-        }
-        free(block);
+    /* RR2: the ROM is always resident. No SD streaming: a ROM that does not fit stops the game here. */
+    char nomem[160];
+    snprintf(nomem, sizeof(nomem), "Not enough memory for the ROM: need %u MB, free %u MB", (need + 0xFFFFFu) >> 20, cap >> 20);
+    if (need > cap) return rom_fail(f, nomem);
+    u8* block = (u8*)memalign(16, (size_t)need);
+    if (!block) return rom_fail(f, nomem);
+    int ok = 1;
+    if (can_pack) {
+        for (unsigned i = 0; ok && i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)
+            ok = fseek(f, (long)pm_rom_keep[i].start, SEEK_SET) == 0 &&
+                 fread(block + pm_rom_keep[i].packed_off, 1, pm_rom_keep[i].len, f) == pm_rom_keep[i].len;
+    } else {
+        ok = fread(block, 1, (size_t)sz, f) == (size_t)sz;
     }
-    rewind(f);
-    rom = f;
-    rom_size = (u32)sz; /* ROMFIT: the streaming read checks rom_size, 0 turned every read into PAST END plus zeros */
-    pm_log_w("rom streaming (%ld bytes, need %uKB, cap %uKB)", sz, need >> 10, cap >> 10);
-    pm_log_w("rom mode: SD STREAMING (%s: needed %.2f MB, free %.2f MB)", sz > 0 ? why : "no size", (float)need / 1048576.f, (float)cap / 1048576.f);
-    pm_log_d("ram n64 4MB, port %uMB", pm_linear_bytes() >> 20);
+    if (!ok) {
+        free(block);
+        return rom_fail(f, "Cannot read the ROM. Check the SD card.");
+    }
+    rom_bytes = block;
+    rom_size = (u32)sz;
+    rom_remap = can_pack;
+    fclose(f);
+    pm_log_w("rom resident %uKB of %uKB%s, cap %uKB, margin %uKB", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "", cap >> 10, (cap - need) >> 10);
+    pm_log_w("rom mode: RAM resident %.2f MB", (float)need / 1048576.f);
+    pm_log_d("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
     return 1;
 }
 
@@ -357,8 +313,6 @@ static int rom_keep_find(u32 addr) {
 }
 
 static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
-    unsigned sd_t0 = 0;
-    int sd_path = 0;
     if (!buf || !size) return;
     if ((unsigned)buf < 0x00100000u) {
         static int once;
@@ -369,12 +323,6 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
         return;
     }
     if (!rom_tried) pm_rom_init();
-    if (!rom_bytes) {
-        sd_path = 1;
-        rom_sd_last_off = rom_addr;
-        rom_sd_last_sz = size;
-        sd_t0 = pm_ticks();
-    }
     PH_PUSH(PH_ROM);
     if (!pm_on_audio()) { PH_ADD(C_ROMN, 1); PH_ADD(C_ROMB, size); } /* AU1c: the counters belong to the game thread */
     if (rom_addr < 0x1000u) rom_suspect("AT TINY OFFSET", rom_addr, size, rom_addr, size);
@@ -424,28 +372,15 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
             }
             memcpy(out, rom_bytes + off, n);
         } else {
-            /* Byte stream, not word-swapped. A display list copied out of the ROM is still
-             * big-endian until the loader that knows the type swaps it once. */
-            size_t got = 0;
-            if (pm_au2_active) pm_au2_rom_lock(); /* AU2: the render thread reads samples while the game thread loads */
-            if (rom && fseek(rom, (long)addr, SEEK_SET) == 0) got = fread(out, 1, n, rom);
-            if (pm_au2_active) pm_au2_rom_unlock();
-            if (got < n) memset(out + got, 0, n - got);
+            memset(out, 0, n); /* no resident ROM: pm_rom_init stopped the game */
         }
         out += n; addr += n; left -= n;
     }
     if (!pm_on_audio()) pm_tex_invalidate(buf, size); /* AU1c: the audio thread reads sound data, never a texture. The cache belongs to core 0. */
     PH_POP();
-    if (sd_path) {
-        rom_sd_frame_ticks += pm_ticks() - sd_t0;
-        rom_sd_frame_bytes += size;
-        rom_sd_frame_n++;
-        rom_sd_recent = 60;
-        if (pm_ph_on) rom_sd_log(rom_addr, size, (u32)__builtin_return_address(0));
-    }
 }
 
-/* HW3: pointer to len bytes of the resident ROM image at ROM address addr, or NULL (file stream, dropped range, range not in one
+/* HW3: pointer to len bytes of the resident ROM image at ROM address addr, or NULL (no resident image, dropped range, range not in one
  * kept block). The bytes are raw big-endian ROM bytes, without the swaps nuPiReadRom does. Read only. */
 const unsigned char* pm_rom_ptr(unsigned addr, unsigned len) {
     if (!rom_tried) pm_rom_init();

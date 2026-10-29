@@ -61,8 +61,6 @@ void pm_au2_vstat(int used, const int bus[4], int adpcm, int loop, int hi, int f
 void pm_au2_bankstat(int romOfs, int ninst, int nunique, unsigned bytes, unsigned maxlen, int nloop, int nraw); /* AUDDSP A1 */
 void pm_au2_vstart(unsigned wav, unsigned len); /* AUDDSP A1: a voice starts this sample */
 void pm_au2_stats_log(void);               /* called at each 300th control join */
-void pm_au2_rom_lock(void);                /* LightLock around the ROM file read while the queue is active */
-void pm_au2_rom_unlock(void);
 void au2_exec(const AuCmd* c);             /* syn_driver.c: run one command (render thread, or inline) */
 void au2_post_exec(void* pcm, unsigned bytes); /* pm_audio.c: AUC_POST body */
 void au2_clean_dma_exec(void);             /* system.c */

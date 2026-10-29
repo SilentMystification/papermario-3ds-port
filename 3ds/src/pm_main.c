@@ -465,7 +465,6 @@ void pm_frame_loop(void) {
         pm_gpu_end();
         if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow draw (a skipped step does not pay it) */
         pm_ph_frame_end();
-        pm_rom_frame_end();
         }
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
         frame++;
