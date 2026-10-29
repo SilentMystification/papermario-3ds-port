@@ -283,7 +283,7 @@
       "status": "unverified",
       "subject": "Pause menu, partner tab, shot frames 200 to 239 (pause from START*3 after wait80, then R*2 three times and A*2).",
       "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
-      "debug": "preset=toad padscript=wait80,START*3,wait100,R*2,wait30,R*2,wait30,R*2,wait60 phase shots shotwin=190:20",
+      "debug": "preset=toad padscript=wait80,START*3,wait100,R*6,wait60 phase shots shotwin=190:20",
       "until": "shot \\d+ frame 20[0-9]\b",
       "cap": 90,
       "deadline": 20,

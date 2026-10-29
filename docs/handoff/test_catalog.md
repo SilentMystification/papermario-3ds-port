@@ -25,12 +25,12 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 
 | Scenario | Reason | Shot paths |
 |---|---|---|
-| tour_k30 | Log passes (tour: done, 6 maps). Picture fails: 4 of 7 shots show a grey page, the Prologue card and a text box. The fix (shot after each map load-done plus 15 frames) is a game source change in pm_warp.c or pm_gpu.c, outside this tool. The file holds 6 maps, not 30. azt2 tried a shot burst 15 frames after each map is in (tourshot=15:21), then 30 frames (tourshot=30:9): both still show 4 of 7 non-map shots (grey page, Prologue card, dark text box). Edit reverted, not committed. | build3ds\shots (overwritten) |
-| partner_menu | Pause opens. Picture stays on the map page, not the partner tab. R*2 steps do not reach the partner page. The ui: partner line never logs. | build3ds\azt\shots\partner_menu\ (11 shots) |
+| tour_k30 | Log passes (tour: done, 6 maps). Picture fails: 4 of 7 shots show a grey page, the Prologue card and a text box. The fix (shot after each map load-done plus 15 frames) is a game source change in pm_warp.c or pm_gpu.c, outside this tool. The file holds 6 maps, not 30. azt2 tried a shot burst 15 frames after each map is in (tourshot=15:21), then 30 frames (tourshot=30:9): both still show 4 of 7 non-map shots (grey page, Prologue card, dark text box). Edit reverted. Log-only since 4b0ad69d4: the kmr_30 texture counter line is checked, picture N/A (cutscene overlay on 4 maps). Re-run on HEAD 543df1f47 (azt2 start 7): kmr_30 tex fail delta 420 again, which contradicts lane 1 (tex fail 0 on kmr_30, row 3 binary 16a7dd63d). Open. | build3dszt\shots	our_k30 |
+| partner_menu | Pause opens (game mode 10). 'ui: partner menu open' logs at pause open (frame 99), so it does not prove the tab. R*2 x3 lands on Map (col 5). R*6 once lands on Items (col 2, picture read). Party is col 3, one more step not run: azt2 budget used (8 of 8). | build3ds\azt\shots\partner_menu\ (11 shots) |
 | file_select | The golden fileselect padscript from boot does not reach mode 14 with -Turbo. Intro (mode 16) at frame 327. | build3ds\azt\shots\file_select\ (16 shots, intro logo) |
 | fileselect_rotate | Same command as file_select. File select not reached, so frames 282 to 296 are not shown. | same as file_select |
-| house_sign | Not run. No doc gives the sign position or a camera path in kmr_20. | none |
-| super_text | Not run. No tested padscript makes a multibounce with jump presses. | none |
+| house_sign | Warp kmr_20 entry 4 passes. Shot at frame 200 shows the yard and the house roof; the sign is not readable at 240x400. No camera switch. Open, azt2 budget used. | build3dszt\shots\house_sign |
+| super_text | Battle starts (kmr_03, formation 0, mode 8 at frame 153). Padscript of A presses logs actionState 5, 8 and 10 but no multibounce and no SUPER text in 23 shots. Open, azt2 budget used. | build3dszt\shots\super_text |
 
 ## Completion only
 
