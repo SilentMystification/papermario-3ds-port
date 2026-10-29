@@ -1035,6 +1035,34 @@
       }
     ],
     "reason": "TOADFOUNT position run 1 (HEAD, build 1488): first shot at frame 140 shows the bulletin board and Mario, no fountain. Stopped by rule. Not verified."
+  },
+  {
+    "name": "toad_pond",
+    "status": "unverified",
+    "subject": "Toad Town pond, map mac_00 (preset toad, entry 4). Mario walks by padscript to x -174, y 0, z 112 (console Position HUD). Shots every 4 frames, frames 160 to 196, bottom screen with poshud. The top shot must show the pond.",
+    "proves": "TOADFOUNT pond: water in the picture at the console position, and the bottom HUD reads x -174 and z 112. Log only, no numeric gate.",
+    "debug": "preset=toad padscript=seg_a,go_-174_112_600,seg_b,wait40,seg_c poshud shots shotwin=160:40 shotbottom=160:40 loglevel=debug",
+    "until": "shot 9 frame \\d+\\b",
+    "cap": 40,
+    "deadline": 20,
+    "first_marker": "warp: mac_00 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "warp",
+        "regex": "warp: mac_00 entry 4"
+      },
+      {
+        "name": "route seg b (pond position reached)",
+        "regex": "route: seg b f\\d+"
+      },
+      {
+        "name": "shot",
+        "regex": "shot 9 frame \\d+\\b"
+      }
+    ],
+    "reason": "TOADFOUNT pond run, not verified. A person must read the shots and the bottom HUD values."
   }
   ]
 }
