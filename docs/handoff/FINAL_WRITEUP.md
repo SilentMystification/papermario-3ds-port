@@ -214,7 +214,7 @@ Build for this round: build 1428, git 83e903455. Archive: `3ds/logs/builds/pm_3d
 ### LOGCLEAN
 
 - `loglevel=debug` added to the yard and pause_menu scenario strings.
-- The per-line fsync in the log hot path is removed (`3ds/src/pm_log.c`). An SD fsync held the log lock for 1 to 7 s, so log lines were lost. The code comment at pm_log.c line 522 records the reason. The later catalog runs show no gap check failure.
+- The per-line fsync in the log hot path is removed (`3ds/src/pm_log.c`). An SD fsync held the log lock for 1 to 7 s, so log lines were lost. The code comment at pm_log.c line 522 records the reason. No gap check was run on the FINAL2 logs.
 - Log checks: yard 3 of 3, pause_menu 3 of 3 (earlier run). Pictures were not read by a person in that run.
 
 ### MODELOPS R0
