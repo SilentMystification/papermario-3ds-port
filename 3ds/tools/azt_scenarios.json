@@ -25,7 +25,7 @@
         },
         {
           "name": "shot",
-          "regex": "shot \\d+ frame 20[0-5]\\b"
+          "regex": "shot \\d+ frame 20[0-5]\\\b"
         }
       ],
       "reason": ""
@@ -120,7 +120,7 @@
       "subject": "Pause status menu open at scene frame 178 (dialog: Check here to see what Mario's current status is.).",
       "proves": "padscript opens the pause menu (START) in the Toad Town map; the pause mode is entered.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=170:12",
-      "until": "shot \\d+ frame 178\\b",
+      "until": "shot \\d+ frame 178\\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -137,7 +137,7 @@
         },
         {
           "name": "shot at 178",
-          "regex": "shot \\d+ frame 178\\b"
+          "regex": "shot \\d+ frame 178\\\b"
         }
       ],
       "reason": "Known-good args from docs/handoff/agent_text.md and diag_dc.md. The shot writer takes one shot every 4 frames (170, 174, 178), so frame 181 is never written."
@@ -148,7 +148,7 @@
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",
       "proves": "The battle debug switch starts a real battle from a warp.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30",
-      "until": "shot \\d+ frame 182\\b",
+      "until": "shot \\d+ frame 182\\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: kmr_03 entry 0",
@@ -169,7 +169,7 @@
         },
         {
           "name": "shot at 182",
-          "regex": "shot \\d+ frame 182\\b"
+          "regex": "shot \\d+ frame 182\\\b"
         }
       ],
       "reason": "Run 7 (until shot 29 frame) timed out at 90 s: the shot line holds a burst number, not the frame index. Until and expected event now use frame 182."
@@ -197,7 +197,7 @@
         },
         {
           "name": "shot",
-          "regex": "shot \\d+ frame 20[0-5]\\b"
+          "regex": "shot \\d+ frame 20[0-5]\\\b"
         }
       ],
       "reason": "Verified: log checks pass and the shot shows Mario at the bottom of the Toad Town Tunnels stone tunnel (run 5). Shot at scene frame 200, 20 frames or more after load."
@@ -225,7 +225,7 @@
         },
         {
           "name": "shot",
-          "regex": "shot \\d+ frame 20[0-5]\\b"
+          "regex": "shot \\d+ frame 20[0-5]\\\b"
         }
       ],
       "reason": "Verified: log checks pass and the shot shows Mario in Dry Dry Ruins (sandstone walls) with a story text box over the right side (run 6)."
@@ -253,7 +253,7 @@
         },
         {
           "name": "shot",
-          "regex": "shot \\d+ frame 20[0-5]\\b"
+          "regex": "shot \\d+ frame 20[0-5]\\\b"
         }
       ],
       "reason": "Verified: log checks pass and the shot shows Mario in the Mt. Lavalava cave with lava glow (run 7)."
@@ -284,7 +284,7 @@
       "subject": "Pause menu, Party tab (col 3, Goombario, 'Check your Party and see each member's abilities.'). Shots at frames 190 to 208 (partner=1 is needed: the Party tab is skipped when no partner is in the save).",
       "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
       "debug": "preset=toad partner=1 padscript=wait80,START*3,wait100,R*2,wait60,R*2,wait60,R*2,wait60 phase shots shotwin=200:20",
-      "until": "shot \\d+ frame 20[0-9]\b",
+      "until": "shot \\d+ frame 20[0-9]\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -305,7 +305,7 @@
         },
         {
           "name": "shot 200-209",
-          "regex": "shot \\d+ frame 20[0-9]\b"
+          "regex": "shot \\d+ frame 20[0-9]\\b"
         }
       ],
       "reason": "Verified by eye on run 6 (azt2, lane azt2 at HEAD): the shot shows the Party tab with Goombario and the text 'Check your Party and see each member's abilities.' The R presses are R*2 with wait60 between. partner=1 is needed: without it the Party tab is skipped. The 'ui: partner menu open' line fires at pause open, so the picture is the proof."
@@ -321,7 +321,7 @@
         "-TurboFactor",
         "1"
       ],
-      "until": "shot \\d+ frame 3[4-9][0-9]\\b",
+      "until": "shot \\d+ frame 3[4-9][0-9]\\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "boot_main",
@@ -338,7 +338,7 @@
         },
         {
           "name": "shot in window",
-          "regex": "shot \\d+ frame 3[0-4][0-9]\\b"
+          "regex": "shot \\d+ frame 3[0-4][0-9]\\\b"
         }
       ],
       "reason": "Verified: log checks pass (game mode 14 at frame 15, ui: file select enter) and the shot read by eye shows the file select screen (File 1 AAAAAAAA, First Play, Select file to start). Boot path: debug switch fileselect (pm_warp.c pm_warp_hook). Shots: build3ds\u0007zt\\shots\file_select (16 shots, frames 282-338)."
@@ -354,7 +354,7 @@
         "-TurboFactor",
         "1"
       ],
-      "until": "shot \\d+ frame 3[4-9][0-9]\\b",
+      "until": "shot \\d+ frame 3[4-9][0-9]\\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "boot_main",
@@ -367,7 +367,7 @@
         },
         {
           "name": "rotation window shot",
-          "regex": "shot \\d+ frame 29[0-6]\\b"
+          "regex": "shot \\d+ frame 29[0-6]\\\b"
         }
       ],
       "reason": "Verified from the file_select run (same command, one start): shots at frames 282, 286, 290 and 293 exist (log shot lines). Read by eye on the crop of the File 1 box: the box and label shift between 282 and 293, so the turn is visible. Frames 297 and later are past the window. Shots: build3ds\u0007zt\\shots\file_select\u00000 to 0003."
@@ -378,7 +378,7 @@
       "subject": "Pause status menu text: dialog 'Check here to see what Mario's current status is.' and the item names Hammer, Boots, Stats, Items. Periods and spacing read by eye.",
       "proves": "Pause menu text draws (periods and spacing) at shot frame 178.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=170:12",
-      "until": "shot \\d+ frame 178\\b",
+      "until": "shot \\d+ frame 178\\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -395,7 +395,7 @@
         },
         {
           "name": "shot at 178",
-          "regex": "shot \\d+ frame 178\\b"
+          "regex": "shot \\d+ frame 178\\\b"
         }
       ],
       "reason": "Verified: pause dialog and item names read by eye in the shot (run 8). Same command as pause_menu."
@@ -406,7 +406,7 @@
       "subject": "Mario House exterior in the yard (kmr_20, entry 4): the house with its sign, shot at frames 200 to 205.",
       "proves": "Would prove the Mario House sign texture draws.",
       "debug": "preset=yard shots shotwin=200:6",
-      "until": "shot \\d+ frame 200\\b",
+      "until": "shot \\d+ frame 200\\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
@@ -426,7 +426,7 @@
       "subject": "Intro multibounce SUPER text. Not defined.",
       "proves": "Would prove the SUPER text draws during a multibounce in battle.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 padscript=wait150,A*2,wait60,A*2,wait60,A*2,wait30,A*2,wait60 shots shotwin=150:90",
-      "until": "shot \\d+ frame 230\b",
+      "until": "shot \\d+ frame 230\\b",
       "cap": 90,
       "deadline": 20,
       "first_marker": "debug battle: formation",
