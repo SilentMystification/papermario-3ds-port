@@ -1365,6 +1365,15 @@ static void lit_freeze(void) {
     }
 }
 
+/* H3: open-addressing index of gm_tab by a hash of the combined matrix. Slot holds entry + 1, 0 is empty. 512 slots for at most 256 entries. */
+static unsigned short gm_idx[512];
+static unsigned gm_hash(const float (*m)[4]) {
+    const unsigned* w = (const unsigned*)m;
+    unsigned h = 2166136261u;
+    for (int i = 0; i < 16; i++) h = (h ^ w[i]) * 16777619u;
+    return (h ^ (h >> 16)) & 511u;
+}
+
 /* GV1: the id of the matrix of the next vertex load or static group in gm_tab: the combined matrix, and for a lit load also the model view matrix of the normal. -1 when the table is full. */
 static unsigned gv_matrix_id(int need_nm) {
     if (!gm_tab) {
@@ -1377,10 +1386,16 @@ static unsigned gv_matrix_id(int need_nm) {
     float nm[3][4];
     for (int i = 0; i < 3; i++) { nm[i][0] = mv[mv_sp][i][0]; nm[i][1] = mv[mv_sp][i][1]; nm[i][2] = mv[mv_sp][i][2]; nm[i][3] = 0.f; }
     if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0) return gm_last;
-    unsigned k, gmi = GV_NONE;
-    for (k = gm_n; k > 0; k--) { gm_steps++; if (memcmp(gm_tab[k - 1], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[k - 1], nm, sizeof nm) == 0)) break; } /* newest first */
-    if (k > 0) gmi = k - 1;
-    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gmi = gm_n++; }
+    unsigned p, best = GV_NONE, gmi;
+    /* H3: the newest entry with the same combined matrix (and normal when needed), found by probing its hash chain */
+    for (p = gm_hash(combined); gm_idx[p]; p = (p + 1) & 511u) {
+        unsigned e = gm_idx[p] - 1u;
+        gm_steps++;
+        if ((best == GV_NONE || e > best) && memcmp(gm_tab[e], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[e], nm, sizeof nm) == 0)) best = e;
+    }
+    if (best != GV_NONE) gmi = best;
+    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gm_idx[p] = (unsigned short)(gm_n + 1); gmi = gm_n++; }
+    else gmi = GV_NONE;
     gm_last = gmi;
     return gmi;
 }
@@ -2256,6 +2271,7 @@ void pm_gbi_end_frame(void) {
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
     mv_sp = 0; /* PT70: the RSP matrix stack starts empty in every task. A push without pop in the message draw leaked one level per frame, then the 10 level cap dropped the pad push of the blue pipe and its pop left the wrong matrix (the sunk pipe showed up while a text box waited) */
+    if (gm_n) memset(gm_idx, 0, sizeof gm_idx);
     gm_n = 0; gm_last = GV_NONE; pm_gpu_gv_reset();
     memset(vert_ring, 0xff, sizeof vert_ring);
     memset(vert_gvf, 3, sizeof vert_gvf);
