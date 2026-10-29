@@ -33,3 +33,10 @@
 - Not reached: 8 KB target. Remaining inline cases: TEXRECT, SETTILE, LOADBLOCK, LOADTILE, LOADTLUT, SETTILESIZE tail (~3166-3420). Next H1 step if wanted: move the tile/texrect tails into cold-or-noinline helpers.
 - Worktree dl2 is detached at main. Build outputs in build3ds/lane-dl2.
 - Next rows in order: BG single bind, G2 + H6, H3, C1i + HUD, H2, fog fix, W4/W2, H5/H4. C1 still waits on docs/handoff/plan_c1_texbind.md (not present).
+
+## Update: H1b and C1-0 (not kept on main)
+- H1b (tile cases SETTIMG..SETTILESIZE to gbi_tile_op): gbi_run_body 0x531c, gbi_tile_op 6 KB. Walk 8174 us vs 8088 (+86). Reverted, not committed.
+- C1-0 (tex/combine cases to tex_op, noinline): gbi_run_body 0x4c24 (19.5 KB), tex_op 0x1f14 (7.9 KB). Walk 8222 us vs 8072 (+150). Ops 2417 unchanged. Picture ok. Not on main. Saved as branch dl2-c10 (commit in the dl2 worktree repo).
+- Cause: one extra noinline call per tex and tile op. C1-1 needs tex_op. Next: find out whether the call cost or the switch layout costs the walk (e.g. always_inline into a second switch vs a jump table).
+- Next: C1-1 needs C1-0 accepted or the same handler split on main; C1-3 after C1-1.
+- Remaining rows (BG, G2/H6, H3, H2, fog, W4/W2, H5/H4) not started in this session.
