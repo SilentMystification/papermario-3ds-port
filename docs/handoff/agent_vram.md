@@ -57,3 +57,16 @@
 
 ## Blockers seen
 - `git checkout -f` in the stale worktree papermario-3ds-port-vram was denied by the tool permission classifier. That worktree is unchanged (base 48792619d, dirty src).
+
+## Handoff at row 3 end (next agent starts at row 4)
+- Main HEAD: 16a7dd63d (row 3). Rows 2 and 3 are on main. Row 2 and row 3 handoffs are above.
+- Row 3 picture: azt yard 0 px differ; azt tour10 9 of 11 equal, 2 differ on moving NPC sprites (364 px and 492 px). Read as noise.
+- Build worktree: C:/Users/Andrew/Documents/GitHub/papermario-3ds-port-vram2 (detached, clean). Copy ignored assets/us and ver/us/build exist there. Build: `python 3ds/tools/gen_map_restore.py`, then `PM_LANE=vram PM_ROW=<row> sh 3ds/build.sh`, then `git checkout -- 3ds/src/map_restore_table.c`. Copy the 3dsx to main build3ds/lane-vram/pm_3ds.3dsx.
+- Stale worktree papermario-3ds-port-vram (base 48792619d, dirty): not touched. Remove later with git worktree remove after the user agrees.
+- Tests: use 3ds/tools/azt.ps1 scenarios (yard, tour10, pause_menu, battle_start; file_select and fileselect_rotate when they exist). `-Build vram` runs build3ds/lane-vram. Each scenario writes shots to build3ds/azt/shots/<scenario>, overwritten by the next run of the same scenario: copy the shots out after every run. For a pair, build the base binary in lane vrambase.
+- Pixel diff tool: C:/Users/Andrew/AppData/Local/Temp/vram_row2/ppmdiff.py <dirA> <dirB> (prints per-shot px count and bounding box). Crop sheet with PIL works for a visual look.
+- Budgets: vram2 1 of 8, vram3 2 of 8 (row 3 shot runs with ids v3r3yard, v3r3tour10 and v3r3yardb, v3r3tour10b and v3yard, v3tour10 and base ids v3rbaseyard, v3basetour10 were the pair runs). Use fresh ids for row 4 (e.g. vram4_*).
+- Row 4 (full buffers) per plan_vram_3mb.md: bank-placed helper (A then B) for grab/off-screen/snap full buffers, copy buffer alias (grab_tex and full-slot snap share one 512 KB block; off_snapshot clears prev_pre), free full slots and the copy buffer when idle 60 frames at pm_gpu_begin after C3D_FrameBegin, remove off_fail and grab_ready latches. Test: effect scenes (pause_menu, battle_start, file_select) min bank free at least 41 KB, tex fail 0, shot pairs equal.
+- Row 5 (shrink and regrow) per plan: pm_tex_shrink, drain through stale, free bank B at begin_frame, regrow after 120 idle frames, debug switch vramfill=N. Test with pause script and vramfill=2.
+- Not done yet: row 4 and row 5. The tour_k30 shot timing is being fixed by the catalog agent (shots after load-done plus 15 frames). Do not use the catalog's tour_k30 scenario for picture checks until that is verified.
+- Hardware rule: every commit message has one line on how the row follows docs/handoff/hw_guidelines.md. Keep slot headers compact, the extent table small, and the LRU scan off the hit path.
