@@ -365,6 +365,70 @@ void pm_ph_ui(const char* what, int v) {
     if (pm_ph_on) pm_log_hw("ui: %s v%d f%u", what, v, frame_no);
 }
 
+/* PAUSE5B: cold timing of one pause open, switch fsplit with phase (the counters need phase). pm_pc_begin runs when the pause
+ * starts (state_pause.c, BEGIN_PAUSED). The window is PC_FR drawn frames. The steps add their ticks while it is open. One
+ * line at the end (pcopen). Without fsplit every call returns at once. */
+#define PC_FR 60
+enum { PCS_ROM, PCS_INIT, PCS_SETUP, PCS_FILTER, PCS_N };
+extern void pm_tex_map_state(unsigned* out_n, unsigned* out_ev);
+static int pc_left, pc_mapch, pc_mcur_area, pc_mcur_map;
+static unsigned pc_s[PCS_N], pc_last_t, pc_sum_t, pc_max_t, pc_max_f, pc_tex_n, pc_tex_kb, pc_ev0, pc_b0_t, pc_b0_n, pc_begin_f;
+static unsigned pc_max_tex, pc_max_kb;
+static float pc_ph[PH_N], pc_maxph[PH_N]; /* window sums and the worst frame, ms per phase */
+
+unsigned pm_pc_t(void) { return pm_fs_on ? pm_ticks() : 0u; }
+void pm_pc_add(int k, unsigned t0) { if (pc_left && t0) pc_s[k] += pm_ticks() - t0; }
+
+void pm_pc_begin(void) {
+    unsigned n = 0, ev = 0;
+    if (!pm_fs_on || !pm_ph_on) return;
+    memset(pc_s, 0, sizeof pc_s);
+    memset(pc_ph, 0, sizeof pc_ph);
+    memset(pc_maxph, 0, sizeof pc_maxph);
+    pc_sum_t = pc_max_t = pc_max_f = pc_tex_n = pc_tex_kb = pc_mapch = pc_max_tex = pc_max_kb = 0;
+    pc_last_t = pm_ticks();
+    pc_b0_t = pm_b7.cap_ticks; pc_b0_n = pm_b7.cap_n;
+    pc_begin_f = frame_no;
+    pm_tex_map_state(&n, &ev);
+    pc_ev0 = ev;
+    pc_mcur_area = cur_area; pc_mcur_map = cur_map;
+    pc_left = PC_FR;
+}
+
+static __attribute__((cold, noinline)) void pc_end(void) {
+    unsigned n = 0, ev = 0;
+    pm_tex_map_state(&n, &ev);
+    pm_log_hw("pcopen f%u: %d frames, ms/frame avg %.2f max %.2f (f%u), window %.1f ms | tex loads %u (%u KB) | evictions %u | map changes %u | readback %.2f ms (%u calls) | filter %.2f ms | setup %.2f ms: rom %.2f ms, pause_init %.2f ms, rest %.2f ms",
+              pc_begin_f, PC_FR, (float)pc_sum_t / PC_FR / TICKS_MS, (float)pc_max_t / TICKS_MS, pc_max_f, (float)pc_sum_t / TICKS_MS,
+              pc_tex_n, pc_tex_kb, ev - pc_ev0, pc_mapch,
+              (float)(pm_b7.cap_ticks - pc_b0_t) / TICKS_MS, pm_b7.cap_n - pc_b0_n,
+              (float)pc_s[PCS_FILTER] / TICKS_MS, (float)pc_s[PCS_SETUP] / TICKS_MS, (float)pc_s[PCS_ROM] / TICKS_MS,
+              (float)pc_s[PCS_INIT] / TICKS_MS, (float)(pc_s[PCS_SETUP] - pc_s[PCS_ROM] - pc_s[PCS_INIT]) / TICKS_MS);
+    pm_log_hw("pcphase: worst f%u %.1f ms, tex loads %u (%u KB) | tex %.1f fbread %.1f gpu %.1f gbi %.1f dl %.1f other %.1f idle %.1f | sums ms: tex %.1f fbread %.1f gpu %.1f gbi %.1f dl %.1f other %.1f",
+              pc_max_f, (float)pc_max_t / TICKS_MS, pc_max_tex, pc_max_kb,
+              pc_maxph[PH_TEX], pc_maxph[PH_FBREAD], pc_maxph[PH_GPU], pc_maxph[PH_GBI], pc_maxph[PH_DL], pc_maxph[PH_OTHER], pc_maxph[PH_IDLE],
+              pc_ph[PH_TEX], pc_ph[PH_FBREAD], pc_ph[PH_GPU], pc_ph[PH_GBI], pc_ph[PH_DL], pc_ph[PH_OTHER]);
+    pm_log_hw("pcgbi: worst frame gbi parts ms: gvtx %.1f gtri %.1f gmtx %.1f gop %.1f gtev %.1f gbind %.1f gst %.1f (phasegbi only)",
+              pc_maxph[PH_GVTX], pc_maxph[PH_GTRI], pc_maxph[PH_GMTX], pc_maxph[PH_GOP], pc_maxph[PH_GTEV], pc_maxph[PH_GBIND], pc_maxph[PH_GST]);
+}
+
+/* one drawn frame of the window: the frame record r (ms per phase, counters) is complete */
+static __attribute__((cold, noinline)) void pc_frame(unsigned now, const Rec* r) {
+    unsigned dt = now - pc_last_t;
+    pc_last_t = now;
+    pc_sum_t += dt;
+    for (int k = 0; k < PH_N; k++) pc_ph[k] += r->ms[k];
+    if (dt > pc_max_t) {
+        pc_max_t = dt; pc_max_f = frame_no;
+        for (int k = 0; k < PH_N; k++) pc_maxph[k] = r->ms[k];
+        pc_max_tex = r->c[C_TEXMISS]; pc_max_kb = r->c[C_TEXBYTE];
+    }
+    pc_tex_n += r->c[C_TEXMISS];
+    pc_tex_kb += r->c[C_TEXBYTE];
+    if (cur_area != pc_mcur_area || cur_map != pc_mcur_map) { pc_mapch++; pc_mcur_area = cur_area; pc_mcur_map = cur_map; }
+    if (--pc_left == 0) pc_end();
+}
+
 void pm_ph_frame_end(void) {
     if (pm_fs_on) fs_frame_end();
     if (!pm_ph_on) return;
@@ -375,6 +439,7 @@ void pm_ph_frame_end(void) {
     r->wall = (float)(now - frame_t0) / TICKS_MS;
     for (int k = 0; k < PH_N; k++) { r->ms[k] = (float)acc[k] / TICKS_MS; acc[k] = 0; }
     memcpy(r->c, pm_ph_cnt, sizeof r->c);
+    if (pc_left) pc_frame(now, r);
     memcpy(prev_cnt, pm_ph_cnt, sizeof prev_cnt);
     memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
     r->f = ++frame_no;

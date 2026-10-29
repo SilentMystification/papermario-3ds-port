@@ -549,6 +549,98 @@
       "reason": "PAUSEFIX2 (PAUSE5A). The padscript has two START presses: scan 146 (frame 91, pause open at 96) and scan 764 (frame 400). The until is the first phase W window that starts at frame 230 to 299 (after the open spike, which ends near frame 185 in the PAUSE5A run 1 log). Windows are 60 frames, so the window ends at 289 to 358, before frame 400. The run stops at the until, so the close START is not reached in this run. Gate values: see docs/handoff/test_catalog.md (PAUSE5A). The top shot is inside the open menu; a person must confirm the picture."
     },
     {
+      "name": "pause_pcopen",
+      "status": "unverified",
+      "subject": "Pause status menu open in Toad Town (mac_00 entry 4), the open itself: the cold window of 60 frames after the pause starts (PAUSE5B). Top shot at frame 130 inside the open menu.",
+      "proves": "fsplit with phase prints one pcopen line per pause open: ms per frame, texture loads and KB, evictions, map changes, readback, filter and setup ms.",
+      "debug": "preset=toad padscript=wait80,START*3 fsplit phase shots shotwin=130:1 loglevel=debug",
+      "until": "pcopen f",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "pause open cold window (pcopen line)",
+          "regex": "pcopen f\\d+: 60 frames, ms/frame avg ([0-9.]+) max ([0-9.]+)"
+        },
+        {
+          "name": "top shot in open pause menu (frame 130)",
+          "regex": "shot \\d+ frame 130\\b"
+        }
+      ],
+      "reason": "PAUSE5B timing scenario. The until is the pcopen line (window of the open). Numbers are direction only (Azahar). A person must confirm the top shot."
+    },
+    {
+      "name": "pause_pcopen_gbi",
+      "status": "unverified",
+      "subject": "Same as pause_pcopen (Toad Town, pause open), with phasegbi: the worst frame of the open split into the GBI sub-phases (gvtx, gtri, gmtx, gop, gtev, gbind, gst).",
+      "proves": "phasegbi adds the GBI sub-phase times to the pcgbi line of the worst frame of the pause open. Diagnosis only: the phasegbi timers add cost.",
+      "debug": "preset=toad padscript=wait80,START*3 fsplit phase phasegbi shots shotwin=130:1 loglevel=debug",
+      "until": "pcgbi: ",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause open cold window (pcopen line)",
+          "regex": "pcopen f\\d+: 60 frames"
+        },
+        {
+          "name": "gbi sub-phases of the worst frame (pcgbi line)",
+          "regex": "pcgbi: worst frame gbi parts ms: gvtx ([0-9.]+)"
+        },
+        {
+          "name": "top shot in open pause menu (frame 130)",
+          "regex": "shot \\d+ frame 130\\b"
+        }
+      ],
+      "reason": "PAUSE5B diagnosis run (phasegbi). Numbers are direction only."
+    },
+    {
+      "name": "field_mac00",
+      "status": "unverified",
+      "subject": "Mario in Toad Town (mac_00 entry 4) in the field, no pause: the same map and the same windows as pause_menu, without START. Gameplay comparison for PAUSE5B.",
+      "proves": "The phase windows of a field run on mac_00 (closes, ops, gbi ms per frame) for the pause_menu comparison.",
+      "debug": "preset=toad padscript=wait80 phase shots shotwin=240:1 loglevel=debug",
+      "until": "phase W f2[3-9]\\d-",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "field window (phase W, starts 230 to 299)",
+          "regex": "phase W f2[3-9]\\d-(\\d+) n "
+        },
+        {
+          "name": "top shot in the field (frame 240)",
+          "regex": "shot \\d+ frame 240\\b"
+        }
+      ],
+      "reason": "PAUSE5B gameplay comparison, no pause. Window values are compared with pause_menu (closes, ops, walk) in test_catalog.md."
+    },
+    {
       "name": "battle_start",
       "status": "verified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",

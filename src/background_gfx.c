@@ -367,7 +367,17 @@ void gfx_draw_background(void) {
             break;
         case BACKGROUND_RENDER_STATE_FILTER_PAUSED:
             // Save the framebuffer into the depth buffer and run a filter on it based on the saved coverage values
+#ifdef TARGET_3DS
+            { /* PAUSE5B: filter timing (cold, fsplit only) */
+                extern unsigned pm_pc_t(void);
+                extern void pm_pc_add(int k, unsigned t0);
+                unsigned pc_t0 = pm_pc_t();
+                gfx_transfer_frame_to_depth(nuGfxCfb[0], nuGfxCfb[1], nuGfxZBuffer); // applies filters to the framebuffer
+                pm_pc_add(3, pc_t0);
+            }
+#else
             gfx_transfer_frame_to_depth(nuGfxCfb[0], nuGfxCfb[1], nuGfxZBuffer); // applies filters to the framebuffer
+#endif
             gPauseBackgroundFade = 0;
             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_SHOW_PAUSED;
