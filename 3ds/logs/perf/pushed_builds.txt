@@ -26,3 +26,4 @@
 pm_3ds_1175_instr.3dsx 009b2e14d7d77cbd 63b2fb7f9 picture ok
 pm_3ds_1227-dc_dc2.3dsx 8c3beaae77ebcfb6 91b225755 picture ok
 pm_3ds_merge_60e5a06e2.3dsx 99457c4d65dce86e 60e5a06e2 picture ok (mergechk yard: Mario, ground, shadow); includes logging-off gate, frame skip option (untested), 9 merged branches, build pipeline
+pm_3ds_1297-ram_7b98b8539.3dsx c34937a3ccea67c5 7b98b8539 picture ok (tour 11 scenes, sdrd 0, IN DROPPED 0; shadow faint in W0 shot); log gate, frame skip toggle, RAM resident (MIPS ranges dropped, SD streaming deleted), census removed, rom mode 24.66 MB
