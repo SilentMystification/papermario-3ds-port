@@ -2616,6 +2616,71 @@ static int rm_apply(u32 w1) {
     return 1;
 }
 
+/* H1: rare paths of gbi_run_body. Cold and noinline, so the hot loop does not carry their code. */
+static __attribute__((cold, noinline)) void gbi_cold_bad_dl(u32 pc, u32 list, unsigned nbytes, int sp) {
+    static int bad; if (bad++ < 6) pm_log_e("bad dl pc %08x list %08x n %u sp %d", pc, list, nbytes, sp);
+}
+static __attribute__((cold, noinline)) void gbi_cold_bad_next(u32 w1, u32 w0, u32 list) {
+    static int bad; if (bad++ < 8) pm_log_e("bad dl target %08x w0 %08x list %08x", w1, w0, list);
+}
+static __attribute__((cold, noinline)) void gbi_cold_bad_vtx(u32 w1, u32 w0, u32 list) {
+    static int bad; if (bad++ < 8) pm_log_e("bad vtx %08x w0 %08x list %08x", w1, w0, list);
+}
+static __attribute__((cold, noinline)) void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
+    static unsigned bad; if (bad++ < 6) pm_log_w("gbi: G_MTX w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
+        pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
+}
+static __attribute__((cold, noinline)) void gbi_cold_pipelog(const Vtx* src, unsigned n) { /* PT70 diagnostic, switch pipelog: the vertex load of the blue pipe (vertices at 0x5eb3xx) */
+    static int pl = -1;
+    if (pl < 0) pl = pm_debug_has("pipelog");
+    if (!(pl && n && (uintptr_t)src >= 0x5eb300u && (uintptr_t)src < 0x5eb700u)) return;
+    unsigned k2, all = 0x3f;
+    float t0[4] = { 0, 0, 0, 0 };
+    for (k2 = 0; k2 < n; k2++) {
+        float x = (float)src[k2].v.ob[0], y = (float)src[k2].v.ob[1], z = (float)src[k2].v.ob[2], q[4];
+        for (int c = 0; c < 4; c++) q[c] = combined[0][c] * x + combined[1][c] * y + combined[2][c] * z + combined[3][c];
+        all &= (unsigned)clip_bits4(q);
+        if (!k2) memcpy(t0, q, sizeof t0);
+    }
+    pm_log_d("pipelog f%u rm %d src %p n %u v0 clip %.1f %.1f %.1f %.1f allbits %02x sci %d %d %d %d geom %08x", pm_frame_count(), rm_frame, (void*)src, n, t0[0], t0[1], t0[2], t0[3], all, sci_x0, sci_y0, sci_x1, sci_y1, (unsigned)geom);
+}
+static __attribute__((cold, noinline)) unsigned gbi_cold_po3a_hash(void) {
+    unsigned h = 2166136261u;
+    for (int q = 0; q < 16; q++) { unsigned u; memcpy(&u, &((const float*)combined)[q], 4); h = (h ^ u) * 16777619u; }
+    unsigned k;
+    for (k = 0; k < mid_n; k++) if (mid_list[k] == h) break;
+    if (k == mid_n && mid_n < 256) mid_list[mid_n++] = h;
+    return h;
+}
+static __attribute__((cold, noinline)) void gbi_cold_dd_load(const Vtx* src) {
+    dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.vc = __builtin_bswap32(*(const u32*)((const u8*)src + 12)); dd.gm = geom; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1;
+}
+static __attribute__((cold, noinline)) void gbi_cold_mtxlog(const Vtx* src, unsigned n, unsigned gmi) {
+    if (mtxlog_ok()) pm_log_d("mtxv f%d vtx %p n %u gmi %u gmn %u t %.1f %.1f %.1f", rm_frame, (void*)src, n, gmi, gm_n, combined[3][0], combined[3][1], combined[3][2]);
+}
+static __attribute__((cold, noinline)) void gbi_cold_xt_fill(int ulx, int uly, int lrx, int lry) {
+    pm_log_d("xt f%u fillrect %d %d %d %d oml %08x omh %08x zb %d prim %08x primz %u cimg %p", pm_frame_count(), ulx, uly, lrx, lry, omode_l, omode_h, (geom & G_ZBUFFER) != 0, prim, prim_z, cimg);
+}
+static __attribute__((cold, noinline)) void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
+    unsigned where = (w0 >> 16) & 0xff, vi = (w0 & 0xffffu) / 2;
+    static int lf = -1, lc, bad;
+    if (where == G_MWO_POINT_XYSCREEN && vi < 64) {
+        vert_sx[vi] = (s16)(w1 >> 16);
+        vert_sy[vi] = (s16)(w1 & 0xffffu);
+        vert_scr[vi] = 1;
+        if (lf != rm_frame) {
+            if (lf >= 0) pm_log_d("modifyvtx f%d count %d", lf, lc);
+            lf = rm_frame; lc = 0;
+        }
+        if (lc++ < 8) pm_log_d("modifyvtx f%d v%u sx %d sy %d (10.2)", rm_frame, vi, (int)(s16)(w1 >> 16), (int)(s16)(w1 & 0xffffu));
+    } else if (bad++ < 4) pm_log_d("modifyvtx ignored where %02x vtx %u", where, vi);
+}
+static __attribute__((cold, noinline)) void gbi_cold_movemem(unsigned ix, unsigned n) {
+    pm_log_d("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
+}
+static __attribute__((cold, noinline)) void gbi_cold_keylog(void) {
+    static int kl; if (kl < 4) { kl++; pm_log_d("B6 key centre %08x scale %08x frame %d", keyc, keys, rm_frame); }
+}
 static void gbi_run_body(void* list, unsigned nbytes);
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
@@ -2660,8 +2725,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         if ((u32)pc < pc_lo || (u32)pc >= pc_hi) { /* PG3 A15: the range of pc is looked up when pc leaves the last range (list entry, G_DL, return), not at every op */
             RS_ADD(RS_RANGE, 1);
             if (!host_range((u32)pc, &pc_lo, &pc_hi)) { pc_lo = pc_hi = 0;
-            static int bad_dl;
-            if (bad_dl++ < 6) pm_log_e("bad dl pc %08x list %08x n %u sp %d", (u32)pc, (u32)list, nbytes, sp);
+            gbi_cold_bad_dl((u32)pc, (u32)list, nbytes, sp);
             gv_streak_flush();
             tex_streak_flush();
             return;
@@ -2720,8 +2784,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_DL: {
             Gfx* next = (Gfx*)ptr_of(w1);
             if (next && !is_host((u32)next)) {
-                static int bad_next;
-                if (bad_next++ < 8) pm_log_e("bad dl target %08x w0 %08x list %08x", w1, w0, (u32)list);
+                gbi_cold_bad_next(w1, w0, (u32)list);
                 break;
             }
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
@@ -2761,8 +2824,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             unsigned v0 = (v0n >= n) ? v0n - n : 0;
             Vtx* src = (Vtx*)ptr_of(w1);
             if (src && !is_host((u32)src)) {
-                static int bad_vtx;
-                if (bad_vtx++ < 8) pm_log_e("bad vtx %08x w0 %08x list %08x", w1, w0, (u32)list);
+                gbi_cold_bad_vtx(w1, w0, (u32)list);
                 src = NULL;
             }
             if (src && n <= 64) {
@@ -2776,32 +2838,13 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                  * list append above it and keep the earlier slots. */
                 if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
                 tri_since_vtx = 0;
-                if (v0 == 0 && dd_on()) { dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.vc = __builtin_bswap32(*(const u32*)((const u8*)src + 12)); dd.gm = geom; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1; }
+                if (v0 == 0 && dd_on()) gbi_cold_dd_load(src);
                 unsigned po3a_mid = 0;
                 if (po3a_on()) {
-                    po3a_mid = 2166136261u;
-                    for (int q = 0; q < 16; q++) { unsigned u; memcpy(&u, &((const float*)combined)[q], 4); po3a_mid = (po3a_mid ^ u) * 16777619u; }
-                    unsigned k;
-                    for (k = 0; k < mid_n; k++) if (mid_list[k] == po3a_mid) break;
-                    if (k == mid_n && mid_n < 256) mid_list[mid_n++] = po3a_mid;
+                    po3a_mid = gbi_cold_po3a_hash();
                     p_vload += n; p_vcmd++;
                 }
-                { /* PT70 diagnostic, switch pipelog: the vertex load of the blue pipe (vertices at 0x5eb3xx): clip position of every vertex, clip bits, scissor, geometry mode */
-                    static int pl = -1;
-                    if (pl < 0) pl = pm_debug_has("pipelog");
-                    if (pl && n && (uintptr_t)src >= 0x5eb300u && (uintptr_t)src < 0x5eb700u) {
-                        const Vtx* pv = (const Vtx*)src;
-                        unsigned k2, all = 0x3f;
-                        float t0[4] = { 0, 0, 0, 0 };
-                        for (k2 = 0; k2 < n; k2++) {
-                            float x = (float)pv[k2].v.ob[0], y = (float)pv[k2].v.ob[1], z = (float)pv[k2].v.ob[2], q[4];
-                            for (int c = 0; c < 4; c++) q[c] = combined[0][c] * x + combined[1][c] * y + combined[2][c] * z + combined[3][c];
-                            all &= (unsigned)clip_bits4(q);
-                            if (!k2) memcpy(t0, q, sizeof t0);
-                        }
-                        pm_log_d("pipelog f%u rm %d src %p n %u v0 clip %.1f %.1f %.1f %.1f allbits %02x sci %d %d %d %d geom %08x", pm_frame_count(), rm_frame, (void*)src, n, t0[0], t0[1], t0[2], t0[3], all, sci_x0, sci_y0, sci_x1, sci_y1, (unsigned)geom);
-                    }
-                }
+                gbi_cold_pipelog(src, n);
                 int gring0 = -1;
                 unsigned gmi = GV_NONE;
                 int gv = 0;
@@ -2810,7 +2853,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                     if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
                     else if (!dd_on() && !xt_on() && !rmlog_on() && !po3a_on()) {
                         gmi = gv_matrix_id(lit_ld);
-                        if (mtxlog_on() && mtxlog_ok()) pm_log_d("mtxv f%d vtx %p n %u gmi %u gmn %u t %.1f %.1f %.1f", rm_frame, (void*)src, n, gmi, gm_n, combined[3][0], combined[3][1], combined[3][2]);
+                        if (mtxlog_on()) gbi_cold_mtxlog(src, n, gmi);
                         if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
                         if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
                     }
@@ -2884,21 +2927,9 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;
             break;
         }
-        case G_MODIFYVTX: { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
-            unsigned where = (w0 >> 16) & 0xff, vi = (w0 & 0xffffu) / 2;
-            static int lf = -1, lc, bad;
-            if (where == G_MWO_POINT_XYSCREEN && vi < 64) {
-                vert_sx[vi] = (s16)(w1 >> 16);
-                vert_sy[vi] = (s16)(w1 & 0xffffu);
-                vert_scr[vi] = 1;
-                if (lf != rm_frame) {
-                    if (lf >= 0) pm_log_d("modifyvtx f%d count %d", lf, lc);
-                    lf = rm_frame; lc = 0;
-                }
-                if (lc++ < 8) pm_log_d("modifyvtx f%d v%u sx %d sy %d (10.2)", rm_frame, vi, (int)(s16)(w1 >> 16), (int)(s16)(w1 & 0xffffu));
-            } else if (bad++ < 4) pm_log_d("modifyvtx ignored where %02x vtx %u", where, vi);
+        case G_MODIFYVTX:
+            gbi_cold_modifyvtx(w0, w1);
             break;
-        }
         case G_TRI1:
             tri_prep_ok = 0;
             draw_tri(w0);
@@ -2909,11 +2940,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             draw_tri(w1);
             break;
         case G_MTX:
-            if (!is_host((u32)(uintptr_t)ptr_of(w1))) { /* SW1 diagnostic: a matrix address that names no host memory */
-                static unsigned bad_mtx;
-                if (bad_mtx++ < 6) pm_log_w("gbi: G_MTX w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - (Gfx*)list), rm_frame,
-                                            pc > (Gfx*)list ? pc[-1].words.w0 : 0, pc > (Gfx*)list ? pc[-1].words.w1 : 0, pc > (Gfx*)list + 1 ? pc[-2].words.w0 : 0, pc > (Gfx*)list + 1 ? pc[-2].words.w1 : 0);
-            }
+            if (!is_host((u32)(uintptr_t)ptr_of(w1))) gbi_cold_bad_mtx(w0, w1, (Gfx*)list, pc);
             load_mtx(w0, w1);
             break;
         case G_SETSCISSOR: {
@@ -2931,7 +2958,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_MOVEMEM: {
             if ((w0 & 0xff) != G_MV_VIEWPORT) {
                 unsigned ix = w0 & 0xff, n = ++mm_cnt[ix];
-                if (n == 1 || n == 1000 || n == 1000000) pm_log_d("gbi ignore movemem index %02x count %u frame %d", ix, n, rm_frame);
+                if (n == 1 || n == 1000 || n == 1000000) gbi_cold_movemem(ix, n);
             }
             if ((w0 & 0xff) == G_MV_LIGHT) lit_freeze(); /* GV5 */
             if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
@@ -3068,7 +3095,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_SETKEYGB:
             keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
             keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
-            { static int kl; if (kl < 4) { kl++; pm_log_d("B6 key centre %08x scale %08x frame %d", keyc, keys, rm_frame); } }
+            gbi_cold_keylog();
             sync_combine();
             break;
         case G_SETFOGCOLOR:
@@ -3121,7 +3148,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                 break;
             }
             /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-            if (xt_on()) pm_log_d("xt f%u fillrect %d %d %d %d oml %08x omh %08x zb %d prim %08x primz %u cimg %p", pm_frame_count(), ulx, uly, lrx, lry, omode_l, omode_h, (geom & G_ZBUFFER) != 0, prim, prim_z, cimg);
+            if (xt_on()) gbi_cold_xt_fill(ulx, uly, lrx, lry);
             unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
                 ? rgba_from_5551(fill & 0xffff) : prim;
             off_screen_check();
