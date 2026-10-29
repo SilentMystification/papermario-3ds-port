@@ -542,13 +542,13 @@ static void dbg_cmp(void) {
  * C3D_FrameSplit when about 55 percent of the draws of the last frame are queued starts the GPU on the first part while the CPU builds the rest.
  * Cost: one more cache flush and one more command list submit on the CPU. Only on the main target (an off-screen pass and a grab split on their own).
  * Switch nokick turns it off. */
-static unsigned prev_draws, kick_at;
-static int kick_done;
+static unsigned prev_draws, kick_at, kick_at2;
+static int kick_done; /* splits done in this frame: KICK2 adds a second one at 85 percent */
 extern int pm_ph_on;
 extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb; /* PI4 */
 static void kick_check(void) {
-    if (kick_done || off_active || !kick_at || draws_frame < kick_at || rect_open || nverts > 0 || gni > 0) return;
-    kick_done = 1;
+    if (kick_done >= 2 || off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || rect_open || nverts > 0 || gni > 0) return;
+    kick_done++;
     gpu_flush_written();
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
     sh_clear();
@@ -1819,6 +1819,7 @@ void pm_gpu_end(void) {
         if (frames_seen % 300 == 0) pm_log_hw("dr1 f%u merged %u splits %u uniform skips %u rect breaks %u", frames_seen, dr1_merged, kick_n, dr1_skips, dr1_breaks);
         if (draws_frame > draws_max) draws_max = draws_frame;
         prev_draws = draws_frame; kick_at = draws_frame >= 48 ? draws_frame * 55 / 100 : 0; /* KICK1 */
+        kick_at2 = draws_frame >= 48 ? draws_frame * 85 / 100 : 0; /* KICK2 */
         if (used > verts_max) verts_max = used;
         if (cmd > cmd_max) cmd_max = cmd;
         pm_ph_cmd_pm = (unsigned)(cmd * 1000.f);
