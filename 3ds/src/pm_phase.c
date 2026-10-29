@@ -299,6 +299,11 @@ static void summarize(unsigned now) {
     win_t0 = now;
 }
 
+/* UI: event line for a game menu change (state_pause.c, state_file_select.c, pause_partners.c). Phase gate: no line without the phase switch. */
+void pm_ph_ui(const char* what, int v) {
+    if (pm_ph_on) pm_log_hw("ui: %s v%d f%u", what, v, frame_no);
+}
+
 /* PI6: frame records. pm_ph_frame_end copies the numbers of the frame into a ring (a few microseconds). pm_ph_drain formats
  * them on the log writer thread, so the game thread does no printf for the per-frame phase lines. */
 #define PHR_N 64

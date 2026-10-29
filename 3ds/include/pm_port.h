@@ -78,6 +78,7 @@ void pm_ph_frame_end(void);
 void pm_ph_drain(void); /* PI6: log writer thread. Formats the frame records that pm_ph_frame_end copied (the game thread does no printf for them). */
 /* HWM1: scene tag for the phs lines, GPU numbers of the last frame, command buffer fill */
 void pm_ph_scene_mode(int mode);
+void pm_ph_ui(const char* what, int v); /* UI: menu event line, phase gate */
 void pm_ph_scene_map(int area, int map);
 void pm_ph_scene_get(int* mode, int* area, int* map);
 extern unsigned pm_ph_gpu_us[2]; /* previous frame: citro3d GPU drawing time and citro3d processing time (us), read after C3D_FrameBegin returns */

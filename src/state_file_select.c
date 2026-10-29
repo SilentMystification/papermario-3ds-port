@@ -8,6 +8,7 @@
 #include "sprite.h"
 #include "model.h"
 #include "game_modes.h"
+extern void pm_ph_ui(const char* what, int v);
 
 #if VERSION_JP
 // TODO: split the filemenu segment
@@ -91,6 +92,7 @@ void state_init_language_select(void) {
 void state_init_file_select(void) {
     D_800A0931 = 0;
     D_800A0932 = 0;
+    pm_ph_ui("file select enter", 0);
     disable_player_input();
     set_time_freeze_mode(TIME_FREEZE_FULL);
     general_heap_create();
@@ -301,6 +303,7 @@ void state_init_exit_file_select(void) {
     D_800A0931 = 0;
     D_800A0932 = 0;
     D_800A0930 = 0;
+    pm_ph_ui("file select pick", filemenu_get_exit_mode());
 
     if (filemenu_get_exit_mode() == 0) {
         set_map_transition_effect(TRANSITION_SLOW_FADE_TO_WHITE);

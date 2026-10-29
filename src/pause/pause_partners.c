@@ -10,6 +10,7 @@
 #include "sprite/npc/WorldWatt.h"
 #include "sprite/npc/WorldSushie.h"
 #include "sprite/npc/WorldLakilester.h"
+extern void pm_ph_ui(const char* what, int v);
 
 extern s8 gPauseBufferPal1[512];
 extern s8 gPauseBufferImg1[15752];
@@ -625,6 +626,7 @@ void pause_partners_draw_movelist_flower(MenuPanel* menu, s32 baseX, s32 baseY, 
 
 void pause_partners_init(MenuPanel* panel) {
     s32 i;
+    pm_ph_ui("partner menu open", 0);
     PlayerData* playerData = get_player_data();
 
     gPausePartnersNumPartners = 0;
@@ -825,6 +827,7 @@ void pause_partners_update(MenuPanel* panel) {
 
 void pause_partners_cleanup(MenuPanel* panel) {
     s32 i;
+    pm_ph_ui("partner menu close", 0);
 
     for (i = 0; i < ARRAY_COUNT(gPausePartnersHIDs); i++) {
         hud_element_free(gPausePartnersHIDs[i]);

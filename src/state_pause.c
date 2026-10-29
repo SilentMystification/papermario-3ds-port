@@ -7,6 +7,7 @@
 #include "sprite.h"
 #include "model.h"
 #include "game_modes.h"
+extern void pm_ph_ui(const char* what, int v);
 
 extern u16 gFrameBuf0[];
 extern u16 gFrameBuf1[];
@@ -161,6 +162,7 @@ void state_step_pause(void) {
                     }
 #endif
                     pause_init();
+                    pm_ph_ui("pause menu open", 0);
                     gOverrideFlags &= ~GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
                 }
 
@@ -214,6 +216,7 @@ void state_step_unpause(void) {
                     StepPauseDelay = -1;
                     nuGfxSetCfb(pause_frameBuffers, ARRAY_COUNT(pause_frameBuffers));
                     pause_cleanup();
+                    pm_ph_ui("pause menu close", 0);
                     gOverrideFlags &= ~GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
                     mapSettings = get_current_map_settings();
                     mapConfig = &gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID];
