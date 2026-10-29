@@ -45,6 +45,9 @@ void pm_route_goto(const char* name, int entry) {
     set_game_mode(GAME_MODE_CHANGE_MAP);
 }
 
+/* ROUTE: the area and map of the game status, for the shot file names (pm_gpu.c dump_shot). */
+void pm_route_mapid(int* area, int* map) { *area = gGameStatusPtr->areaID; *map = gGameStatusPtr->mapID; }
+
 /* ROUTE: padscript token ev_<name>: waits for a game event, takes no scan. Logs `route: ev <name> f<step>` once it holds. */
 static const char* ev_names[] = { "", "title", "file", "world", "map", "battle", "pause" };
 int pm_route_ev_kind(const char* name) {

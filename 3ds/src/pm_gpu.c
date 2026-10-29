@@ -1338,6 +1338,8 @@ int pm_debug_value(const char* key, char* out, unsigned n);
 static int want_clear; /* X01: the clear runs at frame end, and only for a frame the game drew */
 static int shot_burst;
 void pm_gpu_shot_burst(int n) { shot_burst = n; }
+void pm_route_mapid(int* area, int* map);
+extern unsigned pm_uptime_ms(void);
 static void dump_shot(void) {
     static unsigned n, frames;
     char path[64];
@@ -1360,9 +1362,12 @@ static void dump_shot(void) {
             if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d", &w0, &w1) == 2) w1 += w0;
             else w0 = -1;
         }
-        if (shot_burst > 0) {
+        if (shot_burst > 0) { /* shotmode: one file per burst, the last frame (the settle frame). Every frame logs t, C_CMD and C_FLUSH of the frame before (pm_ph_cnt is per frame). */
+            int ma, mm;
             shot_burst--;
-            pm_log_d("shot %u frame %u", n, pm_frame_count());
+            pm_route_mapid(&ma, &mm);
+            pm_log_d("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_cnt[C_CMD], pm_ph_cnt[C_FLUSH]);
+            if (shot_burst != 0) return;
         } else if (w0 >= 0) {
             unsigned fc = pm_frame_count();
             if ((int)fc < w0 || (int)fc >= w1) return;
@@ -1370,11 +1375,11 @@ static void dump_shot(void) {
         } else if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
     }
     src = (const unsigned char*)target->frameBuf.colorBuf;
-    if (!src) return;
-    mkdir("shots", 0777);
-    snprintf(path, sizeof path, "shots/%04u.ppm", n++);
+    if (!src) { pm_log_w("shot: no colour buffer (target %p)", (void*)target); return; } /* ROUTE diag */
+    mkdir("sdmc:/3ds/PaperMario/shots", 0777); /* the relative mkdir("shots") left no folder (sdmc: prefix as in pm_main.c) */
+    { int ma, mm; pm_route_mapid(&ma, &mm); snprintf(path, sizeof path, "sdmc:/3ds/PaperMario/shots/%04u_%d_%d.ppm", n++, ma, mm); }
     f = fopen(path, "wb");
-    if (!f) return;
+    if (!f) { pm_log_w("shot: fopen %s failed", path); return; } /* ROUTE diag */
     fputs("P6 240 400 255\n", f);
     row = (unsigned char*)malloc(240 * 3);
     for (y = 0; y < 400; y++) {
