@@ -70,6 +70,7 @@ enum { C_TRI, C_TRIOUT, C_VTXLOAD, C_VTXSLOT, C_DRAW, C_FLUSH, C_TEXCALL, C_TEXM
 extern int pm_ph_on;
 extern int pm_ph_fine; /* switch phasegbi: time G_VTX, triangle and G_MTX ops on their own (two tick reads per op, so it inflates the frame) */
 extern unsigned pm_ph_cnt[C_N];
+unsigned pm_ph_prev(int k); /* counter k of the last finished frame */
 void pm_ph_init(void);
 void pm_ph_push(int id);
 void pm_ph_pop(void);

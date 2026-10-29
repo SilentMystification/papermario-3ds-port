@@ -16,6 +16,8 @@
 int pm_ph_on;
 int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
+static unsigned prev_cnt[C_N]; /* counters of the last finished frame: pm_ph_cnt is zero again at the next frame begin */
+unsigned pm_ph_prev(int k) { return prev_cnt[k]; }
 unsigned pm_rs_cnt[RS_N];
 unsigned pm_cs_cnt[CS_N];
 
@@ -366,6 +368,7 @@ void pm_ph_frame_end(void) {
     r->wall = (float)(now - frame_t0) / TICKS_MS;
     for (int k = 0; k < PH_N; k++) { r->ms[k] = (float)acc[k] / TICKS_MS; acc[k] = 0; }
     memcpy(r->c, pm_ph_cnt, sizeof r->c);
+    memcpy(prev_cnt, pm_ph_cnt, sizeof prev_cnt);
     memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
     r->f = ++frame_no;
     spike_rec = *r; /* PT15: the spike line in pm_main.c reads the phases of the step that just ended */

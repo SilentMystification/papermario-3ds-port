@@ -5,6 +5,7 @@
  * enters the real GAME_MODE_ENTER_WORLD, which loads the map through the real state machine.
  * So logos, intro, title and file select are skipped. Without the switches nothing changes. */
 #include "common.h"
+#include <malloc.h>
 #include "functions.h"
 #include "game_modes.h"
 #include "fio.h"
@@ -456,7 +457,9 @@ void pm_warp_world_mode(unsigned frame) {
     if (tour_next && warp_on) {
         tour_f0 = frame; /* a map of the tour is in */
         tour_wait = 0;
-        pm_log_d("tour: in map area %d map %d entry %d frame %u t=%u ms", gGameStatusPtr->areaID, gGameStatusPtr->mapID, gGameStatusPtr->entryID, frame, pm_uptime_ms());
+        struct mallinfo mi = mallinfo(); /* game heap at the scene start: used KB, and free KB = heap total minus used (free-in-arena alone misses the sbrk part) */
+        unsigned heap_used = (unsigned)mi.uordblks, heap_total = pm_heap_bytes();
+        pm_log_d("tour: in map area %d map %d entry %d frame %u t=%u ms heap used %u KB free %u KB", gGameStatusPtr->areaID, gGameStatusPtr->mapID, gGameStatusPtr->entryID, frame, pm_uptime_ms(), heap_used >> 10, (heap_total - heap_used) >> 10);
     }
     if (!warp_on || scene_f0 >= 0) return;
     scene_f0 = (int)frame;

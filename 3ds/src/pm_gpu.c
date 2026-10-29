@@ -1366,7 +1366,7 @@ static void dump_shot(void) {
             int ma, mm;
             shot_burst--;
             pm_route_mapid(&ma, &mm);
-            pm_log_d("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_cnt[C_CMD], pm_ph_cnt[C_FLUSH]);
+            pm_log_d("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
             if (shot_burst != 0) return;
         } else if (w0 >= 0) {
             unsigned fc = pm_frame_count();
