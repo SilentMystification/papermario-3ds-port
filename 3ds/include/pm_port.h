@@ -95,7 +95,8 @@ enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
     RS_PUSH, RS_NOPUSH, RS_RET, RS_RANGE, RS_SPMAX, RS_PDL, RS_PDLM,
     RS_GDL, RS_GDL1, RS_GDL7, /* dl2: G_DL ops walked, of them class 1 (map shape) and class 7 (outside every range) */
     RS_DLCH, RS_DLCM, RS_DLCOPS, RS_DLCG, RS_DLCSKIP, /* dl2: dlc_try hit, compile (miss), ops replayed, groups, groups skipped by box */
-    RS_RMN, RS_RMSK, /* C2: G_PM_RM ops, of them skipped (state equal) */
+    RS_RMN, RS_RMSK, /* C2: G_PM_RM ops, of them fallback to G_DL */
+    RS_SKN, /* G1: sync and no-op ops skipped before the prologue */
     RS_N };
 extern unsigned pm_rs_cnt[RS_N];
 unsigned pm_gbi_ops_now(void);

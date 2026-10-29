@@ -2576,6 +2576,9 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     return 1;
 }
 
+/* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. */
+static const u8 g1_skip[256] = { [G_NOOP] = 1, [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
+
 /* C2: G_PM_RM (gSPPmRenderMode) w1 = a ModelRenderModes list (static, host memory). The list must hold only
  * SETOTHERMODE_L/H, GEOMETRYMODE and ENDDL. Its effects run here in list order, with the same state writes and the same
  * side-effect calls as the handlers for those ops (filter flush, sync_combine on the cycle type, pm_gpu_set_mode).
@@ -2667,6 +2670,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         u32 w0 = pc->words.w0;
         u32 w1 = pc->words.w1;
         unsigned op = w0 >> 24;
+        if (g1_skip[op]) { pc++; RS_ADD(RS_SKN, 1); continue; }
         pm_gbi_cur_op = op;
         int fp = 0;
         gv_streak_op(op);

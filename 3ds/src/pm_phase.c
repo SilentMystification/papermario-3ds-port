@@ -323,7 +323,7 @@ static void ph_format(const PhRec* p) {
     pm_log_hw("taskpl f%u bg %u main %u key %u us %u %u %u ops %u push %u nopush %u ret %u range %u spmax %u pdl %u pdlm %u", r->f, p->rs[RS_TK_BG], p->rs[RS_TK_MAIN], p->rs[RS_TK_KEY], p->rs[RS_TUS_BG], p->rs[RS_TUS_MAIN], p->rs[RS_TUS_KEY], p->rs[RS_TOPS], p->rs[RS_PUSH], p->rs[RS_NOPUSH], p->rs[RS_RET], p->rs[RS_RANGE], p->rs[RS_SPMAX], p->rs[RS_PDL], p->rs[RS_PDLM]);
     pm_log_hw("gbisplit f%u sync %u gv %u tex %u", r->f, p->gbi[0], p->gbi[1], p->gbi[2]);
     pm_log_hw("dlcsplit f%u gdl %u gdl1 %u gdl7 %u | hit %u miss %u | ops %u grp %u skip %u", r->f, p->rs[RS_GDL], p->rs[RS_GDL1], p->rs[RS_GDL7], p->rs[RS_DLCH], p->rs[RS_DLCM], p->rs[RS_DLCOPS], p->rs[RS_DLCG], p->rs[RS_DLCSKIP]);
-    pm_log_hw("rmsplit f%u n %u fb %u", r->f, p->rs[RS_RMN], p->rs[RS_RMSK]);
+    pm_log_hw("rmsplit f%u n %u fb %u sk %u", r->f, p->rs[RS_RMN], p->rs[RS_RMSK], p->rs[RS_SKN]);
     pm_log_hw("combsplit f%u plan %u mode %u prim %u env %u lay %u con %u n %u g %u cn %u bn %u vn %u ut %u us %u u1 %u un %u ks %u fd %u",
               r->f, p->cs[CS_PLAN], p->cs[CS_MODE], p->cs[CS_PRIM], p->cs[CS_ENV], p->cs[CS_LAY], p->cs[CS_CON],
               p->cs[CS_PF_N], p->cs[CS_PF_G], p->cs[CS_PF_CNAME], p->cs[CS_PF_BUFNAME], p->cs[CS_PF_VTXNAME],
