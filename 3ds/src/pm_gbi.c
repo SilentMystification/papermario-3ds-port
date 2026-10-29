@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "ultra64.h"
+#include "gbi_custom.h"
 #include "pm_gbi.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
@@ -2575,6 +2576,43 @@ static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     return 1;
 }
 
+/* C2: G_PM_RM (gSPPmRenderMode) w1 = a ModelRenderModes list (static, host memory). The list must hold only
+ * SETOTHERMODE_L/H, GEOMETRYMODE and ENDDL. Its effects run here in list order, with the same state writes and the same
+ * side-effect calls as the handlers for those ops (filter flush, sync_combine on the cycle type, pm_gpu_set_mode).
+ * Returns 0 without any effect when the list has another op; the caller then runs it as a G_DL. */
+static int rm_apply(u32 w1) {
+    const Gfx* g = (const Gfx*)w1;
+    int n = 0;
+    for (;;) {
+        unsigned op = g[n].words.w0 >> 24;
+        if (op == G_ENDDL) break;
+        if ((op != G_SETOTHERMODE_L && op != G_SETOTHERMODE_H && op != G_GEOMETRYMODE) || ++n >= 8) return 0;
+    }
+    for (int k = 0; k < n; k++) {
+        u32 a0 = g[k].words.w0, a1 = g[k].words.w1;
+        unsigned op = a0 >> 24;
+        if (op == G_GEOMETRYMODE) {
+            geom = (geom & (a0 & 0xffffffu)) | a1;
+            pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
+            continue;
+        }
+        unsigned len = (a0 & 0xff) + 1, field = (a0 >> 8) & 0xff, sft = 32 - field - len;
+        unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
+        if (op == G_SETOTHERMODE_H) {
+            unsigned old_tf = omode_h & (3u << 12);
+            omode_h = (omode_h & ~mask) | (a1 & mask);
+            if ((omode_h & (3u << 12)) != old_tf) {
+                pm_gpu_flush();
+                pm_tex_set_filter((omode_h & (3u << 12)) != 0);
+            }
+            if (sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
+        } else {
+            omode_l = (omode_l & ~mask) | (a1 & mask);
+        }
+    }
+    return 1;
+}
+
 static void gbi_run_body(void* list, unsigned nbytes);
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
@@ -2669,6 +2707,12 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc = stack[--sp];
             if (dls_on) dls_pc = dls_class((u32)pc);
             break;
+        case G_PM_RM: /* C2: a render mode list, applied in place (rm_apply). */
+            RS_ADD(RS_RMN, 1);
+            if (rm_apply(w1)) break;
+            RS_ADD(RS_RMSK, 1); /* fallback: the list has another op, run it as G_DL */
+            w0 = (u32)G_DL << 24; /* G_DL_PUSH */
+            /* fall through */
         case G_DL: {
             Gfx* next = (Gfx*)ptr_of(w1);
             if (next && !is_host((u32)next)) {

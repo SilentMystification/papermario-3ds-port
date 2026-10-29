@@ -172,6 +172,13 @@ extern Gfx Gfx_RM3_SURFACE_XLU_NO_ZB[];
 extern Gfx Gfx_RM3_CLOUD[];
 extern Gfx Gfx_RM3_CLOUD_NO_ZB[];
 
+// C2: one port op per render mode list on 3DS. The interpreter skips the list when the render state already matches.
+#ifdef TARGET_3DS
+#define MODEL_RM_OP(pos, rm) gSPPmRenderMode(pos, rm)
+#else
+#define MODEL_RM_OP(pos, rm) gSPDisplayList(pos, rm)
+#endif
+
 Gfx* ModelRenderModes[] = {
 	[RENDER_MODE_IDX_00] Gfx_RM1_SURFACE_OPA,
 	[RENDER_MODE_IDX_01] Gfx_RM1_SURFACE_OPA_NO_AA,
@@ -1633,7 +1640,7 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_00;
                     break;
             }
-            gSPDisplayList((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+            MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
             break;
         case RENDER_CLASS_2CYC:
             switch (renderMode) {
@@ -1697,7 +1704,7 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_10;
                     break;
             }
-            gSPDisplayList((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+            MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
             break;
         case RENDER_CLASS_FOG:
             switch (renderMode) {
@@ -1761,7 +1768,7 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_1F;
                     break;
             }
-            gSPDisplayList((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+            MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
             gDPSetFogColor((*gfxPos)++, gFogSettings->color.r, gFogSettings->color.g, gFogSettings->color.b, gFogSettings->color.a);
             gSPFogPosition((*gfxPos)++, gFogSettings->startDistance, gFogSettings->endDistance);
             break;
@@ -1770,7 +1777,7 @@ void appendGfx_model(void* data) {
             if (ShroudTintAmt == 255) {
                 return;
             }
-            gSPDisplayList((*gfxPos)++, ModelRenderModes[RENDER_MODE_IDX_10]);
+            MODEL_RM_OP((*gfxPos)++, ModelRenderModes[RENDER_MODE_IDX_10]);
             switch (renderMode) {
                 case RENDER_MODE_SURFACE_OPA:
                     gDPSetRenderMode(gMainGfxPos++, PM_RM_SHROUD, G_RM_AA_ZB_OPA_SURF2);
@@ -1896,7 +1903,7 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_1F;
                     break;
             }
-            gSPDisplayList((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+            MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
 
             // lerp between scene fog and shroud fog based on ShroudTintAmt
             fogR = (gFogSettings->color.r * (255 - ShroudTintAmt) + ShroudTintR * ShroudTintAmt) / 255;
@@ -1934,7 +1941,7 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_1F;
                     break;
             }
-            gSPDisplayList((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+            MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
             break;
     }
 
