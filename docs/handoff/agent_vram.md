@@ -135,3 +135,14 @@
 - NOT yet shown: bank free back at 1065 after the free (run stopped at the free line). Branch NOT merged until shown. Next: one run with -Until on a later vram acct line.
 - vramfilla=N (bank A dummy blocks) edit is NOT in the tree. Saved as /c/Users/Andrew/AppData/Local/Temp/claude/c--Users-Andrew-Documents-GitHub-papermario-3ds-port/2a92325f-5e95-40c7-adbd-5622d60396de/scratchpad/vramfilla_untested.patch (scratchpad). Re-apply and build before commit.
 - Row 5 code not started (shrink, regrow, bank_block call). Trigger plan: vramfill=2 and vramfilla=2 with grabtest, first grab buffer fails in both banks.
+
+
+## Lane 1 summary (vram5, row 5), main f7cdcf3f3
+- Code: pm_tex.c (bhalf, bdrain, b_idle, pm_tex_shrink, bhalf_release, bhalf_regrow, pm_tex_full_touch, slab_alloc skips a draining B), pm_gpu.c (bank_block calls pm_tex_shrink when both banks fail; buffers_idle touches while a full buffer exists; grabtest retries a failed grab), pm_tex.h (2 prototypes). Debug switches vramfill=N and vramfilla=N in slab_init.
+- Test: file_select grabtest vramfill=2 vramfilla=2, vram5 starts 3 of 8 used (1 base, 2 test).
+  - Log: one `texcache shrink B`, one `texcache B half freed`, copy buffer and full slot in bank B (frame 1), idle-60 frees at f61, one `texcache regrow B` at f178.
+  - HUD: min A 41 KB, min B 41 KB, f1 (the one expected copy alloc failure). No texture fail line in the log.
+  - Shots: 16 of 16 0 px differ from HEAD base (lane vrambase6). Shot 15 read: file select.
+- Not done: the first run stopped at f178 before the shot window (282 to 338), so the shot pair is from the second run (-Until "shot 15 frame").
+- Build note: main build3ds/lane-vrambase was overwritten with the HEAD base binary (lane vrambase6).
+- Open: grab in this scene runs at frame 1 (boot), so the file select shots show the state after the regrow. No change to the lane files outside pm_tex.c, pm_gpu.c, pm_tex.h.
