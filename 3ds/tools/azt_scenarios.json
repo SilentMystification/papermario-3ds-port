@@ -64,8 +64,8 @@
     },
     {
       "name": "tour_k30",
-      "status": "unverified",
-      "subject": "Mario in each map of tour_k30.txt (file has 6 maps: kmr_20, kmr_21, kmr_22, kmr_23, kmr_24, kmr_30) after a warp to arn_02.",
+      "status": "log_only",
+      "subject": "Texture failure counter on kmr_30, the last map of tour_k30.txt (6 maps). Log subject only. Measured in the run of 2026-10-29 (tourshot=30:9): tex fail cum 420, delta 420 on kmr_30. The expected value of 0 is not met.",
       "proves": "warp= plus a story and a tour file from the SD folder runs to the end of the file.",
       "debug": "warp=arn_02:0 story=ch0_toad_town tour=@tour_k30.txt texmax shots shotwin=999999:1 shotmode=4:21",
       "until": "tour: done",
@@ -73,22 +73,26 @@
       "deadline": 20,
       "first_marker": "warp: arn_02 entry 0",
       "expects": "tour",
-      "needs_picture": true,
+      "needs_picture": false,
       "expected_events": [
         {
           "name": "warp",
           "regex": "warp: arn_02 entry 0"
         },
         {
-          "name": "first tour step",
-          "regex": "tour: next kmr_20 entry 0"
+          "name": "tour step kmr_30",
+          "regex": "tour: next kmr_30 entry 0"
+        },
+        {
+          "name": "texture counter line",
+          "regex": "texmap state: .*tex fail cum \\d+ delta \\d+"
         },
         {
           "name": "tour done",
           "regex": "tour: done, 6 maps"
         }
       ],
-      "reason": "Log checks pass (tour: done, 6 maps). Picture fails: 4 of 7 shots show a grey page, the Prologue title card and a text box. The shot timing fix (after each map load-done event plus 15 frames) needs a change in game source (pm_warp.c, pm_gpu.c), which this tool does not edit. The file has 6 maps, not 30."
+      "reason": "Picture check not applicable: the grey page, the Prologue card and the dark text box in 4 of 7 shots are the cutscene overlay of the story state on those maps. Shots: build3ds\u0007zt\\shots\tour_k30 (run tourshot=30:9, 7 files). Log passes; tex fail delta on kmr_30 is 420 in that run, not 0."
     },
     {
       "name": "tour_no_warp",
