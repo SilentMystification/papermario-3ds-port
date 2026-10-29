@@ -1817,10 +1817,10 @@ void pm_gpu_end(void) {
     if (!gpu_ok) return;
     flush();
     if (off_active) pm_gpu_off_end();
-    if (drew && pm_debug_has("grabtest")) { /* B2 test switch: grab the whole finished frame, `offdump` then shows it next to the shot */
+    { static int gt_once; if (drew && pm_debug_has("grabtest") && !gt_once++) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot */
         extern unsigned short* nuGfxCfb_ptr;
         pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
-    }
+    } }
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
