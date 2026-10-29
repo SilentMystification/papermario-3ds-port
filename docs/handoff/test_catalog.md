@@ -56,3 +56,10 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 | Scenario | Reason | Command | Runtime |
 |---|---|---|---|
 | full411 | One start runs tour_s420.txt (411 maps) to tour: done. Not run in this task (lane 1 runs it). Same args ran at 2026-10-29 03:51 (rc 0, 143 s). | `full411` (-Milestone, cap 1800 s) | 143 s (earlier) |
+
+## Lane 3 notes (2026-10-29, lane3a build, rows lane3a to lane3d)
+
+- house_sign (verified by eye, different view): `preset=intro shots shotwin=580:24`, shot 0000 (frame 580) shows the Mario house exterior with the MARIO sign on the roof, readable at 8x crop. Letters are whole and not garbled. Scene is the intro house, not the kmr_20 yard. The yard run (row lane3b, frames 200 and 204) does not show the sign readable.
+- text_menu (lane3d, 4 shots, pause status page): dialog and item text read at 6x and 8x. Periods after "is." and the stat labels show no misplacement by eye. No glyph code changed. Frame-178 log check fails because the shot line is not written; the shots exist.
+- intro cutscene box (lane3c, frames 580 to 600, shots every 4 frames, 6 shots): no stage box and no bounding edge visible. The scene is the Mario house with a "Mail call!" message box. Frames 602 and before 580 not captured. Not reproduced in this build.
+- super_text (intro): not reached. The intro cutscene has no battle, so the multibounce path does not run. Unverified.
