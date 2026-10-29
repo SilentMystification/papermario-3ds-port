@@ -73,7 +73,7 @@ int pm_debug_value(const char* key, char* out, unsigned n) {
 }
 
 static int smoke_frames = 300, w_loadslot = -1;
-static int padscript_log, warp_on, warp_done, scene_f0 = -1, smoke_on;
+static int warp_on, warp_done, scene_f0 = -1, smoke_on;
 /* S30: tour=<map>:<entry>,<map>:<entry>,... After warp= (or preset=) has loaded its first map, the real GotoMap path
    (set_map_transition_effect + set_game_mode(GAME_MODE_CHANGE_MAP), as in src/evt/map_api.c goto_map) visits every
    map of the list, TOUR_FRAMES frames each. Log lines "tour: ...". Debug tool only (class E). */
@@ -166,7 +166,6 @@ int pm_warp_active(void) {
     smoke_on = pm_debug_has("smoke");
     if (pm_debug_value("loadslot", v, sizeof v)) w_loadslot = atoi(v); /* E02: loadslot=<n> loads save slot n first */
     if (pm_debug_value("smokeframes", v, sizeof v)) smoke_frames = atoi(v); /* E02: smoke length, default 300 */
-    padscript_log = pm_debug_has("padlog") || pm_debug_value("padscript", v, sizeof v); /* position every 2 frames while a script runs */
     return has_preset || has_warp || has_story || opt_map;
 }
 
@@ -738,7 +737,7 @@ void pm_warp_tick(unsigned frame) {
     }
     if (pm_debug_has("simlog") && f % 10 == 0) /* V26: game state per 10 steps, to compare default, fps60 and wide */
         pm_log("simlog f%u seed %08x pos %d %d %d state %u dstate %d", f, (unsigned)gRandSeed, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, (unsigned)gPlayerStatus.actionState, (int)gGameStatusPtr->demoState);
-    if (f % (padscript_log ? 2 : 100) == 0 || f == 5) {
+    if (f % 100 == 0 || f == 5) {
         pm_log_d("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d wall %d push %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
                (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,
                (int)(gPlayerStatus.gravityIntegrator[0] * 100), (int)(gPlayerStatus.maxJumpSpeed * 1000), (int)(gPlayerStatus.walkSpeed * 100), (int)(gPlayerStatus.runSpeed * 100), (int)gCollisionStatus.curWall, (int)gCollisionStatus.pushingAgainstWall);
