@@ -60,8 +60,10 @@ static unsigned stamp;
 static unsigned epoch;
 /* TC1: cache statistics. The counters are plain increments. The report line (every 300 frames) prints with switch texstat or loglevel=debug. */
 static unsigned tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_ev0, tc_inval, tc_up_bytes, tc_evict_bytes, tc_ev0_bytes;
+static unsigned tot_hit, tot_miss, tot_inval, tot_evict, tot_up; /* lifetime (up in bytes), read per map by pm_tex_map_delta */
 static int tc_on = -1;
-#define TC_HIT(s) do { (s)->uses++; (s)->last_frame = tc_frame; tc_hits++; } while (0)
+/* Every hit (load, bind, glyph, aux, bind_slot) stamps the slot with the use counter. Eviction takes the lowest stamp. */
+#define TC_HIT(s) do { (s)->stamp = ++stamp; (s)->uses++; (s)->last_frame = tc_frame; tc_hits++; tot_hit++; } while (0)
 static u8* scratch;
 static int cur = -1;
 static int aux = -1; /* S25: the second texture (TEXEL1), bound at unit 1 */
@@ -243,7 +245,6 @@ int pm_tex_glyph_same(const void* img, unsigned fmt, unsigned siz, int w, int h,
     glyph_oy = (idx / g->cols) * g->gh;
     if (gx) *gx = glyph_ox;
     if (gy) *gy = glyph_oy;
-    s->stamp = ++stamp;
     TC_HIT(s);
     TOUCH(s);
     return 1;
@@ -599,11 +600,12 @@ static int evict_oldest_done(void) {
     int oldest = -1;
     for (int i = 0; i < slot_hi; i++) {
         if (!slots[i].live || slots[i].epoch == epoch) continue;
-        if (oldest < 0 || slots[i].stamp < slots[oldest].stamp) oldest = i;
+        if (oldest < 0 || (int)(slots[i].stamp - slots[oldest].stamp) < 0) oldest = i; /* wrap-safe: stamp is a use counter */
     }
     if (oldest < 0) return 0;
     if (oldest == cur) cur = -1;
     tc_evict++;
+    tot_evict++;
     tc_evict_bytes += slots[oldest].bytes;
     if (slots[oldest].uses == 0) { tc_evict_ev0++; tc_ev0_bytes += slots[oldest].bytes; }
     drop(&slots[oldest]);
@@ -658,6 +660,12 @@ unsigned pm_tex_fail_count(void) { return (unsigned)fail_n; }
 unsigned pm_tex_peak(void) { return used_peak; }
 /* V13c: highest cache use since the last call, then restart from the current use. */
 unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }
+/* texmap (debug): cache counts since the previous call, at each map load: hits, misses, uploaded KB, invalidated, evicted. */
+void pm_tex_map_delta(unsigned* o) {
+    static unsigned prev[5];
+    unsigned now[5] = { tot_hit, tot_miss, tot_up >> 10, tot_inval, tot_evict };
+    for (int k = 0; k < 5; k++) { o[k] = now[k] - prev[k]; prev[k] = now[k]; }
+}
 
 static void tc_report(void) {
     unsigned n = 0, bytes = 0, u0n = 0, u0b = 0, rec_b = 0, rec_n = 0;
@@ -758,6 +766,7 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         if (!((img >= start && img < end) || (pal && pal >= start && pal < end))) continue;
         pm_gpu_rect_sync(); /* DR1: draw a queued rectangle batch before its texture goes away */
         tc_inval++;
+        tot_inval++;
         if (aux == i) aux = -1;
         if (cur == i) {
             cur = -1;
@@ -906,7 +915,6 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         Slot* s = &slots[i];
         if (i < slot_hi && s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
-            s->stamp = ++stamp;
             TC_HIT(s);
             TOUCH(s);
             cur = i;
@@ -921,7 +929,6 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         Slot* s = &slots[i];
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
-            s->stamp = ++stamp;
             TC_HIT(s);
             TOUCH(s);
             cur = i;
@@ -933,7 +940,6 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         Slot* s = &slots[i];
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
-            s->stamp = ++stamp;
             TC_HIT(s);
             TOUCH(s);
             cur = i;
@@ -1187,6 +1193,8 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     s->uses = 0;
     s->last_frame = tc_frame;
     tc_miss++;
+    tot_miss++;
+    tot_up += reserve;
     tc_up_bytes += reserve;
     frame_bytes += reserve;
     if (frame_bytes > map_wmax) map_wmax = frame_bytes;
@@ -1234,7 +1242,6 @@ int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigne
             Slot* s = &slots[i];
             if (s->live && s->img == buf && s->dkey == key && s->fmt == FMT_RGBA && s->siz == SIZ_32 && s->w == w &&
                 s->h == h && s->stride == w) {
-                s->stamp = ++stamp;
                 TC_HIT(s);
                 TOUCH(s);
                 cur = i;
