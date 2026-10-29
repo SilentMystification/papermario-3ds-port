@@ -403,7 +403,7 @@
     {
       "name": "house_sign",
       "status": "unverified",
-      "subject": "Mario House exterior in the yard (kmr_20, entry 4): the house with its sign, shot at frames 200 to 205.",
+      "subject": "Mario House sign in the yard (kmr_20, entry 4), close-up by camboom=40 (camera boom length). The sign must read in the shot.",
       "proves": "Would prove the Mario House sign texture draws.",
       "debug": "preset=yard shots shotwin=200:6",
       "until": "shot \\d+ frame 200\\\b",
@@ -418,14 +418,14 @@
           "regex": "warp: kmr_20 entry 4"
         }
       ],
-      "reason": "Open. Run 1 (azt2): warp to kmr_20 entry 4 passes. The shot (0000, frame 200) shows the yard and the house roof at the top left, but the sign is too small to read at 240x400. The camera is not set by the scenario. Needs a camera or zoom switch (not in this row's allowed files) or a frame where the camera faces the sign."
+      "reason": "Open. camboom=40 (a boom length set on nextRig and prevRig, debug only) did not change the view (run 6, azt2): the shot is the same wide yard view. The sign is not readable at 240x400. The camera is reset by the game each frame. The debug switch was reverted (not committed). Needs a camera target or zoom path that the game does not overwrite, or a sign position from a map dump."
     },
     {
       "name": "super_text",
       "status": "unverified",
       "subject": "Intro multibounce SUPER text. Not defined.",
       "proves": "Would prove the SUPER text draws during a multibounce in battle.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 padscript=wait150,A*2,wait60,A*2,wait60,A*2,wait30,A*2,wait60 shots shotwin=150:90",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 padscript=wait150,A*2,wait40,A*2,wait40,A*2,wait40,A*2,wait40,A*2,wait40,A*2,wait40,A*2,wait40,A*2 shots shotwin=150:90",
       "until": "shot \\d+ frame 230\\b",
       "cap": 90,
       "deadline": 20,
@@ -438,7 +438,7 @@
           "regex": "debug battle: formation"
         }
       ],
-      "reason": "Open. Run 1 (azt2): warp kmr_03 and battle start pass (formation 0, stage 1, game mode 8 at frame 153). The padscript (A presses) logs actionState 5, 8 and 10 but no multibounce. No SUPER text in the shots (build3ds\u0007zt\\shots\\super_text, 23 files). Needs a timed jump action command (press A at the bounce windows of multibounce.c).",
+      "reason": "Open. Run 2 (azt2, dense A presses, 8 pairs 40 frames apart after wait150): the battle starts (formation 0, stage 1), but actionState stays 0 in the whole log (no action command started, 6 shot lines). Run 1 logged actionState 5, 8, 10 without a multibounce. No SUPER text. Needs the battle menu path (Jump command, then target) and a timed landing press, which the A-press script does not reach.",
       "extra": []
     },
     {
