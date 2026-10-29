@@ -31,6 +31,8 @@ typedef struct {
     unsigned dkey; /* 0 for a plain texture, else the hash of a shaded one */
     unsigned shash; /* tex_inv1: FNV-1a of the source bytes read at load, over slen bytes */
     unsigned slen;
+    int dirty; /* tex_inv2: invalidated, but the source is kept; slot_valid hashes it at the next lookup */
+    int native; /* tex_inv2: frame buffer source, always dropped on invalidate */
     unsigned stamp;
     unsigned epoch;
     unsigned sgen; /* C1: bumped at drop and invalidation; TEX records compare this */
@@ -48,6 +50,7 @@ typedef struct {
 } Slot;
 
 static Slot slots[SLOTS];
+static int slot_valid(Slot* s);
 static unsigned used;
 #define RECENT_N 12
 static short recent_slot[RECENT_N] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -243,7 +246,7 @@ int pm_tex_glyph_same(const void* img, unsigned fmt, unsigned siz, int w, int h,
           if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u; }
     }
     if (!s->live || s->img != g->base || s->dkey != GLYPH_DKEY(g->id) || s->fmt != fmt || s->siz != siz || s->w != aw || s->h != ah ||
-        s->tlut != tlut || s->phash != phash) return 0;
+        s->tlut != tlut || s->phash != phash || !slot_valid(s)) return 0;
     glyph_ox = (idx % g->cols) * g->gw;
     glyph_oy = (idx / g->cols) * g->gh;
     if (gx) *gx = glyph_ox;
@@ -529,8 +532,17 @@ static void pend_add(u8* p, unsigned len) {
     pend[pend_n].p = p; pend[pend_n].len = len; pend_n++;
 }
 
+/* tex_inv2: a dirty slot has its addresses removed from the page filter. Put them back before the slot goes on. */
+static void undirty(Slot* s) {
+    if (!s->dirty) return;
+    addr_add(s->img);
+    addr_add(s->tlut);
+    s->dirty = 0;
+}
+
 static void drop(Slot* s) {
     if (!s->live) return;
+    undirty(s);
     addr_sub(s->img);
     addr_sub(s->tlut);
     if (aux == (int)(s - slots)) aux = -1;
@@ -782,10 +794,24 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         img = (unsigned)s->img;
         pal = (unsigned)s->tlut;
         if (!((img >= start && img < end) || (pal && pal >= start && pal < end))) continue;
-        if (img >= start && img < end && s->slen) {
-            if (src_hash(s->img, s->slen) == s->shash) tot_same++;
-            else tot_diff++;
+        if (img >= start && img < end && !s->native && s->slen) {
+            /* tex_inv2: keep the slot. Its bytes are hashed at the next lookup, and only a changed hash drops it. */
+            tc_inval++;
+            tot_inval++;
+            if (!s->dirty) {
+                addr_sub(s->img);
+                addr_sub(s->tlut);
+                s->dirty = 1;
+            }
+            if (aux == i) aux = -1;
+            if (cur == i) {
+                cur = -1;
+                have = 0;
+            }
+            s->sgen++;
+            continue;
         }
+        undirty(s);
         pm_gpu_rect_sync(); /* DR1: draw a queued rectangle batch before its texture goes away */
         tc_inval++;
         tot_inval++;
@@ -806,6 +832,37 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
         }
         drop(s);
     }
+}
+
+/* tex_inv2: 1 when the slot may be used. A dirty slot whose source hash changed leaves the cache (stale or drop) and 0 is returned. */
+static int slot_valid(Slot* s) {
+    int i;
+    if (!s->dirty) return 1;
+    if (src_hash(s->img, s->slen) == s->shash) {
+        undirty(s);
+        tot_same++;
+        return 1;
+    }
+    tot_diff++;
+    i = (int)(s - slots);
+    pm_gpu_rect_sync(); /* DR1 */
+    if (aux == i) aux = -1;
+    if (cur == i) {
+        cur = -1;
+        have = 0;
+    }
+    if (s->epoch == epoch) {
+        undirty(s);
+        addr_sub(s->img);
+        addr_sub(s->tlut);
+        s->img = NULL;
+        s->tlut = NULL;
+        s->sgen++;
+        s->stale = 1;
+        return 0;
+    }
+    drop(s);
+    return 0;
 }
 
 static int ph_miss;
@@ -936,7 +993,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         int i = lidx[lk];
         Slot* s = &slots[i];
         if (i < slot_hi && s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
-            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
             TC_HIT(s);
             TOUCH(s);
             cur = i;
@@ -950,7 +1007,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (i < 0 || i >= slot_hi) continue;
         Slot* s = &slots[i];
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
-            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
             TC_HIT(s);
             TOUCH(s);
             cur = i;
@@ -961,7 +1018,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     for (int i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
-            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey) {
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
             TC_HIT(s);
             TOUCH(s);
             cur = i;
@@ -1211,6 +1268,8 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     s->dkey = dkey;
     s->slen = src_len(width, height, stride, siz);
     s->shash = src_hash(img, s->slen);
+    s->dirty = 0;
+    s->native = src_native;
     PH_ADD(C_TEXBYTE, reserve >> 10);
     s->stamp = ++stamp;
     s->epoch = epoch;
