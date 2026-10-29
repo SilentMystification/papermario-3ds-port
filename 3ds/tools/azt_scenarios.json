@@ -979,6 +979,34 @@
         }
       ],
       "reason": "TOADVIS, not verified. The until is a shot line in the window 500 to 524 of shotwin=500:6."
-    }
+    },
+  {
+    "name": "toad_fountain",
+    "status": "unverified",
+    "subject": "Toad Town plaza, mac_01, Mario walks from entry 0 (x -600) east by padscript: stop at x -300 (frame 114), then x -170 (frame about 158). One shot per frame from frame 100 to 149 (the walk). Fountain or water in view: a person must read the shots.",
+    "proves": "TOADFOUNT: same route and frames 100 to 149 on three builds (HEAD f230e46c6 build 1488, 29f504d7b, final6 3dcfc661d). Compare top shots with shot_cmp.py. Log only, no numeric gate.",
+    "debug": "warp=mac_01:0 story=ch0_toad_town padscript=seg_a,go_-300_0_500,seg_b,wait40,go_-150_0_300,seg_c,wait40,seg_d shots shotwin=100:50 loglevel=debug",
+    "until": "shot \\d+ frame 148\\b",
+    "cap": 40,
+    "deadline": 20,
+    "first_marker": "warp: mac_01 entry 0",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "warp",
+        "regex": "warp: mac_01 entry 0"
+      },
+      {
+        "name": "route leg 1 reached (x -300)",
+        "regex": "route: seg b f\\d+"
+      },
+      {
+        "name": "shot",
+        "regex": "shot \\d+ frame 148\\b"
+      }
+    ],
+    "reason": "TOADFOUNT, not verified. Run 1 (HEAD, build 1488) gave frames 100 to 149 with no fountain in view. Frame 149 is the until-line. A person must read the shots."
+  }
   ]
 }
