@@ -345,7 +345,7 @@
     },
     {
       "name": "fileselect_rotate",
-      "status": "unverified",
+      "status": "verified",
       "subject": "File select box rotation: shots at frames 282 to 296 of the file_select run (same command).",
       "proves": "The file select box turn (frames 282 to 296) is in the shot set of a file select run.",
       "debug": "fileselect phase shots shotwin=282:60",
@@ -370,7 +370,7 @@
           "regex": "shot \\d+ frame 29[0-6]\\b"
         }
       ],
-      "reason": "Open: file select is reached (same run as file_select, shots 282-293 exist). The box turn is not seen by eye in shots 0000 and 0004 (both show File 1 at rest). Needs a picture read of shots 0000 to 0003 for the turn."
+      "reason": "Verified from the file_select run (same command, one start): shots at frames 282, 286, 290 and 293 exist (log shot lines). Read by eye on the crop of the File 1 box: the box and label shift between 282 and 293, so the turn is visible. Frames 297 and later are past the window. Shots: build3ds\u0007zt\\shots\file_select\u00000 to 0003."
     },
     {
       "name": "text_menu",
