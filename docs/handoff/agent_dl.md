@@ -60,3 +60,14 @@
 - Azahar yard f300-599 (PM_ROW=dl_g2): sks 243 per frame. main walk 8270 -> 8111 us (-159, noise about 50 us). ops at f599 2186 -> 1943. Yard shots 0000/0001 byte-equal to BG shots.
 - H6 (GbiState 64 B struct) not done. Not tested: pause, file select (state ops with other values).
 - Next: H3 gv_matrix_id index.
+
+## Update: H3 kept (dl2 and main b831aa956, HW-unconfirmed)
+- gv_matrix_id: 512-slot u16 hash index over gm_tab (FNV of the 16 combined words). Newest matching entry still returned. Index cleared at the gm_n reset.
+- Azahar yard f300-599 (PM_ROW=dl_h3): gms 179 -> 8 per frame (counter evidence). main walk 8111 -> 8086 us. Yard shots 0000/0001 byte-equal to G2 shots.
+- Code size not measured.
+
+## Status at this stop (2026-10-29)
+- Done on main: BG (78b4d2db1), G2 (07aebffa5, merge 76fe66592), H3 (b831aa956). Docs after each.
+- Not done: H6 (GbiState struct, part of G2 row), H2 flush_draw cold split, fog fix (volcano repro first), W4/W2, H5/H4.
+- Untested: BG wide on/off and fog bg map; G2 on pause and file select.
+- Next: H2 (flush_draw cold split, code-size evidence from build3ds/lane-dl2/pm_3ds.map).
