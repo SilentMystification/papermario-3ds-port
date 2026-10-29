@@ -206,3 +206,66 @@ Numbers to send back:
 - File select pick time.
 - Lid-close result, pass or fail, with the step where it failed.
 - The last 50 lines of `build3ds/hw_live_log_170.txt`, or the file itself.
+
+## 6. Round 2
+
+Build for this round: build 1428, git 83e903455. Archive: `3ds/logs/builds/pm_3ds_final2_83e903455.3dsx`, sha256 08a67d929e62fdba...(full hash in `3ds/logs/perf/pushed_builds.txt`). Not pushed.
+
+### LOGCLEAN
+
+- `loglevel=debug` added to the yard and pause_menu scenario strings.
+- The per-line fsync in the log hot path is removed (`3ds/src/pm_log.c`). An SD fsync held the log lock for 1 to 7 s, so log lines were lost. The code comment at pm_log.c line 522 records the reason. The later catalog runs show no gap check failure.
+- Log checks: yard 3 of 3, pause_menu 3 of 3 (earlier run). Pictures were not read by a person in that run.
+
+### MODELOPS R0
+
+- R0 is done (commit 25d191c70). It adds the op counters and the mac01 scenario.
+- R1, R2 and R3 are not built. The R0 counts give a ceiling below each gate:
+  - R1: at most 190 us. Gate 245 us.
+  - R2: at most about 335 us. Gate 500 us.
+  - R3: about 4 us. Gate 175 us.
+- Decision: R1 to R3 are closed for mac01. A new plan is needed for the per-model cost.
+
+### DRAWCOST
+
+- DS0 (commit cbab0e929): one `dcsum` line every 300 drawn frames. It gives the close time per stage (pal, bind, tev, st, draw, in us per close), the cache flush time (gc, us per flush and flushes per frame), and the command share per sampled close.
+- DS1 (commit cd248cbc8): CPU cache flush by svc, with a GSP call only on failure. Picture byte-equal on mac01. Fallbacks 0.
+- DS2 reverted: -Os on `pm_gpu.c` gave an equal picture but a close sum of 26 us against 24 us (+8 %, one run). No cold-branch move was made.
+
+### HUD
+
+- Commit b7375d4f0. `options.ini` key `hudint=<ms>`: 250, 500, 1000 (default), 2000, 5000.
+- Bottom rows 1 and 2 are VRAM: min free, peak used since map load, tex fill, A and B used and free, evictions per s.
+- `shotbottom=<first>:<count>` writes one bottom-screen shot per frame.
+
+### FINAL2 catalog run (HEAD 83e903455, build 1428)
+
+| Scenario | Until-line | Wall time (start to until) | Picture |
+|---|---|---|---|
+| yard | scene f300 | 23 s (was 23 s) | Mario, green pipe, partner in yard. OK |
+| mac01 | first mops line | 16 s (was 16 s) | Post office, Mario, Toads. OK |
+| text_menu | shot 178 to 181 | 15 s (was 91 s, timeout) | Pause status page, dialog readable. OK |
+| file_select | shot 338 | 16 s (was 90 s, timeout) | File select screen. OK |
+| pause_menu | field shot 192 to 200 | 18 s (was 17 s) | FAIL for the close. Frames 173 to 193 all show the pause page |
+| fileselect_rotate | shot 29[0-6] | not run | unverified |
+
+- pause_menu: the START close at `wait284` is not done by frame 193. The next run needs a longer wait before the close, after a budget reset.
+- Idle check: yard, sewer, ruins and volcano wait from shot 204 to the scene frame 300 (about 3 s). This is the steady-frame check. Not trimmed, pending a decision on dropping that check.
+
+### Branch and worktree cleanup
+
+- `git worktree list` shows only `main`. `git branch` shows only `main`. Remote branches were not changed.
+
+### Console checklist for build 1428
+
+1. Boot line: `build 1428 git 83e903455 loglevel <n>`. Check that the hash and loglevel are present.
+2. No log gaps. The frame counter in the log runs with no jumps (fsync removed).
+3. `dcsum` line: write down the close us per stage (pal, bind, tev, st, draw) and the gc us per flush.
+4. HUD interval: set `hudint=` in `options.ini`. The bottom memory rows change their refresh step.
+5. VRAM HUD rows: rows 1 and 2 show min free and peak used.
+
+Push command (CLAUDE.md rule 6). Run in Git Bash from any folder:
+
+```
+PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 audiostat texstat pacestat logstat phase phsum loglevel=debug
+```
