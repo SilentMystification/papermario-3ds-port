@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. status = verified | unverified | completion_only | fail_demo | pending.",
+  "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
       "name": "yard",
@@ -151,8 +151,8 @@
       "status": "verified",
       "subject": "Pause status menu open at frames 120 to 137 (dialog: Check here to see what Mario's current status is.); START closes it at about frame 140; field with the HUD at frames 152 to 159 (one shot per frame, first one from 156 is the until-line).",
       "proves": "padscript opens the pause menu (START) in the Toad Town map, the pause mode is entered, and START closes it: the field shot after close shows the HUD on the field.",
-      "debug": "preset=toad padscript=wait80,START*3,wait95,START*3,wait200 shots shotwin=120:40 shotbottom=120:40 loglevel=debug",
-      "until": "shot \\d+ frame 15[6-9]\\b",
+      "debug": "preset=toad padscript=wait80,START*3,wait900 phase shots shotwin=130:1 loglevel=debug",
+      "until": "phase W f1[2-9]\\d-",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -168,12 +168,26 @@
           "regex": "game mode 10 frame"
         },
         {
-          "name": "shot in pause window 120-137",
-          "regex": "shot \\d+ frame (12[0-9]|13[0-7])\\b"
+          "name": "top shot in open pause menu (frame 130)",
+          "regex": "shot \\d+ frame 130\\b"
         },
         {
-          "name": "field shot after close (152-159)",
-          "regex": "shot \\d+ frame 15[2-9]\\b"
+          "name": "walk: cpu ms per frame, window of the until-line",
+          "regex": "phase W f\\d+-\\d+ n \\d+ .*cpu \\(wall-idle-fbegin\\) ([0-9.]+)/",
+          "pick": "last",
+          "max": 12.8
+        },
+        {
+          "name": "closes per frame (all classes, tex-only not logged)",
+          "regex": "phase count avg/max per frame: tri .* flush (\\d+)/",
+          "pick": "last",
+          "max": 156
+        },
+        {
+          "name": "ops per frame (GBI commands)",
+          "regex": "phase count avg/max per frame: texKB .* gbiops (\\d+)/",
+          "pick": "last",
+          "max": 1692
         }
       ],
       "reason": "PAUSE2 run, 2 starts: the close START now lands at frame 140 (log: game mode 10 at frame 96, game mode 11 at frame 141, game mode 4 at frame 147). The old wait284 put the close START at about frame 234 (estimate: frame = 51 + (scan - 66) / 2 from the vrambase log), after the old window 170-200. Top shots: frame 123 pause status page, frame 155 field with Mario. The Paper Mario status bar is retracted after a pause close (reset_status_bar); the bottom screen shows the port HUD text. Picture read by the agent of PAUSE2, a person must confirm."
@@ -319,8 +333,8 @@
       "status": "verified",
       "subject": "Pause menu, Party tab (col 3, Goombario, 'Check your Party and see each member's abilities.'). Shots at frames 190 to 208 (partner=1 is needed: the Party tab is skipped when no partner is in the save).",
       "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
-      "debug": "preset=toad partner=1 padscript=wait80,START*3,wait100,R*2,wait60,R*2,wait60,R*2,wait60 phase shots shotwin=200:20",
-      "until": "shot \\d+ frame 20[0-9]\\b",
+      "debug": "preset=toad partner=1 padscript=wait80,START*3,wait100,R*2,wait60,R*2,wait60,R*2,wait60 phase shots shotwin=220:1 loglevel=debug",
+      "until": "phase W f2[0-4]\\d-",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -340,8 +354,26 @@
           "regex": "ui: partner menu open"
         },
         {
-          "name": "shot 200-209",
-          "regex": "shot \\d+ frame 20[0-9]\\b"
+          "name": "top shot on Party tab (frame 220)",
+          "regex": "shot \\d+ frame 220\\b"
+        },
+        {
+          "name": "walk: cpu ms per frame, window of the until-line",
+          "regex": "phase W f\\d+-\\d+ n \\d+ .*cpu \\(wall-idle-fbegin\\) ([0-9.]+)/",
+          "pick": "last",
+          "max": 11.0
+        },
+        {
+          "name": "closes per frame (all classes, tex-only not logged)",
+          "regex": "phase count avg/max per frame: tri .* flush (\\d+)/",
+          "pick": "last",
+          "max": 124
+        },
+        {
+          "name": "ops per frame (GBI commands)",
+          "regex": "phase count avg/max per frame: texKB .* gbiops (\\d+)/",
+          "pick": "last",
+          "max": 1324
         }
       ],
       "reason": "Verified by eye on run 6 (azt2, lane azt2 at HEAD): the shot shows the Party tab with Goombario and the text 'Check your Party and see each member's abilities.' The R presses are R*2 with wait60 between. partner=1 is needed: without it the Party tab is skipped. The 'ui: partner menu open' line fires at pause open, so the picture is the proof."
@@ -351,13 +383,13 @@
       "status": "verified",
       "subject": "File select screen, shots at frames 282 to 341 (box rotation at 282 to 296).",
       "proves": "The golden.py fileselect padscript reaches the file select mode (GAME_MODE_FILE_SELECT, 14) from a boot.",
-      "debug": "fileselect phase shots shotwin=282:60",
+      "debug": "fileselect phase shots shotwin=100:1 loglevel=debug",
       "extra": [
         "-Turbo",
         "-TurboFactor",
         "1"
       ],
-      "until": "shot \\d+ frame 338\\b",
+      "until": "phase W f(7[5-9]|[89]\\d|1\\d\\d)-",
       "cap": 90,
       "deadline": 20,
       "first_marker": "boot_main",
@@ -373,8 +405,26 @@
           "regex": "ui: file select enter"
         },
         {
-          "name": "shot in window",
-          "regex": "shot \\d+ frame 3[0-4][0-9]\\b"
+          "name": "top shot on file select (frame 100)",
+          "regex": "shot \\d+ frame 100\\b"
+        },
+        {
+          "name": "walk: cpu ms per frame, window of the until-line",
+          "regex": "phase W f\\d+-\\d+ n \\d+ .*cpu \\(wall-idle-fbegin\\) ([0-9.]+)/",
+          "pick": "last",
+          "max": 9.4
+        },
+        {
+          "name": "closes per frame (all classes, tex-only not logged)",
+          "regex": "phase count avg/max per frame: tri .* flush (\\d+)/",
+          "pick": "last",
+          "max": 102
+        },
+        {
+          "name": "ops per frame (GBI commands)",
+          "regex": "phase count avg/max per frame: texKB .* gbiops (\\d+)/",
+          "pick": "last",
+          "max": 1617
         }
       ],
       "reason": "Verified: log checks pass (game mode 14 at frame 15, ui: file select enter) and the shot read by eye shows the file select screen (File 1 AAAAAAAA, First Play, Select file to start). Boot path: debug switch fileselect (pm_warp.c pm_warp_hook). Shots: build3ds\\azt\\shots\file_select (16 shots, frames 282-338)."

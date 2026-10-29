@@ -11,7 +11,7 @@
 
 ### Verified (run with one command each)
 
-yard, tour10, pause_menu, text_menu, battle_start, sewer, ruins, volcano, partner_menu, file_select, fileselect_rotate. Log-only: tour_k30 (texture counter on kmr_30, delta 0 on lane azt2 at HEAD 0738350b2; picture not applicable). Fail demos: tour_no_warp, attract_no_warp. Completion only: full411.
+yard, tour10, text_menu, battle_start, sewer, ruins, volcano, fileselect_rotate. Menu lag tests with numeric gates (picture read by a person): pause_menu, partner_menu, file_select (section MENULAG). Log-only: tour_k30 (texture counter on kmr_30, delta 0 on lane azt2 at HEAD 0738350b2; picture not applicable). Fail demos: tour_no_warp, attract_no_warp. Completion only: full411.
 
 ### Unverified (open, with the console check)
 
@@ -32,7 +32,7 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 | yard | preset=yard loads kmr_20; steady frame; shot | `yard` | `warp: kmr_20 entry 4` | 15 s | build3ds\shots (run before archive; overwritten). Picture: yard, green pipe, Mario and partner. | Shot writer took frames 200 and 204 only (not 6). |
 | tour10 | tour= visits 10 maps by the real map change | `tour10` | `warp: mac_00 entry 4` | 20 s | build3ds\shots (overwritten). Picture: Mario in all 11 shots. | Route list. Phase logging on. |
 | mac01 | warp to mac_01 entry 0; phase prints opsplit and mops (MODELOPS R0 counters); shot at frames 200 and 204 | `mac01` (lane `mops`, `-Row MODELOPS_R0`) | `warp: mac_01 entry 0` | 16 s | build3ds\azt\shots\mac01\0000_1_2.ppm, 0001_1_2.ppm. Picture: Toad Town post office, Mario and Toads. Two runs, both shots byte-identical. | Until is the first mops line (frame 299), not the second: a regex cannot count. Baseline for MODELOPS R1 to R3. |
-| pause_menu | padscript opens pause (START at scan 80), pause shots 120 to 137, START closes it at about frame 140, field shot 152 to 159 (until 156) | `pause_menu` | `warp: mac_00 entry 4` | 19 to 20 s (PAUSE2 run, 2 starts) | build3dszt\shots\pause_menu (0000 to 0009 top, bot_0120 to bot_0159). | Log: game mode 10 at frame 96, game mode 11 at frame 141, game mode 4 at frame 147. Picture read by the agent (PAUSE2): frame 123 pause status page with dialog; frame 155 field with Mario and the green pipe. The Paper Mario status bar stays retracted after a pause close (reset_status_bar). A person must confirm. Earlier FAIL (FINAL2): close START at about frame 234, after the window. See docs/handoff/diag_pause2.md. |
+| pause_menu | Moved to MENULAG (lag gates, not a picture test). | `pause_menu` | `warp: mac_00 entry 4` | 15 to 17 s | build3dszt\shots\pause_menu (top shot frame 130) | See MENULAG. |
 | text_menu | pause dialog text, periods and spacing | `text_menu` | `warp: mac_00 entry 4` | 15 s (until shot 178 to 181; was 91 s timeout) | build3ds\azt\shots\text_menu\0002_1_1.ppm | Text read by eye. Same pause open as pause_menu, until is the first shot at 178 to 181. Picture (FINAL2 run, shot 178): pause status page, dialog text readable. |
 | battle_start | battle switch starts a battle on kmr_03 | `battle_start` | `warp: kmr_03 entry 0` | 15 s | build3ds\shots (overwritten). Picture: field, then battle HUD with Mario and Goomba. | Shot line holds a burst number, not the frame index. |
 | sewer | warp into tik_03 (Toad Town Tunnels) | `sewer` | `warp: tik_03 entry 0` | 15 s | build3ds\azt\shots\sewer\0000_2_2.ppm, 0001_2_2.ppm | One map. Shot at frame 200. |
@@ -46,9 +46,11 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 | Scenario | Reason | Shot paths |
 |---|---|---|
 | tour_k30 | Log passes (tour: done, 6 maps). Picture fails: 4 of 7 shots show a grey page, the Prologue card and a text box. The fix (shot after each map load-done plus 15 frames) is a game source change in pm_warp.c or pm_gpu.c, outside this tool. The file holds 6 maps, not 30. azt2 tried a shot burst 15 frames after each map is in (tourshot=15:21), then 30 frames (tourshot=30:9): both still show 4 of 7 non-map shots (grey page, Prologue card, dark text box). Edit reverted. Log-only since 4b0ad69d4: the kmr_30 texture counter line is checked, picture N/A (cutscene overlay on 4 maps). Re-run on the default build (binary 04:50, before the lane rebuild): delta 420. Rebuilt lane azt2 from HEAD 0738350b2 (-Build azt2, budget reset): tex fail cum 0, delta 0 on kmr_30, same args and tour file; vramfree min 2130 KB (default build: 3858 KB). The 420 came from the older default binary. Closed as log-only. | build3dszt\shots	our_k30 |
-| partner_menu | Verified by eye. Pause opens. Padscript with partner=1 (the Party tab is skipped when no partner is in the save), then R*2 with wait60 three times. Shot (frames 190 to 208) shows the Party tab: Goombario and the text 'Check your Party and see each member's abilities.' | build3dszt\shots\partner_menu (azt2 lane, run 6) |
-| file_select | The golden fileselect padscript from boot does not reach mode 14 with -Turbo. Intro (mode 16) at frame 327. | build3ds\azt\shots\file_select\ (16 shots, intro logo) | FINAL2 run: until is shot 338 (was 3[4-9][0-9], never matched, 90 s timeout). 16 s. Picture read: File select, File 1 AAAAAAAA First Play, Select file to start.
-| fileselect_rotate | Same command as file_select. File select not reached, so frames 282 to 296 are not shown. | same as file_select | Until changed to shot 29[0-6] (was 90 s timeout). Not re-run: budget. Status unverified.
+| partner_menu | Moved to MENULAG (lag gates; top shot frame 220 is the Party tab). | `partner_menu` | `warp: mac_00 entry 4` | 15 to 16 s | build3dszt\shots\partner_menu | See MENULAG. |
+| file_select | Moved to MENULAG (lag gates; top shot frame 100 is the file select screen). | `file_select` | `boot_main` | 15 s | build3dszt\shotsile_select | See MENULAG. |
+ FINAL2 run: until is shot 338 (was 3[4-9][0-9], never matched, 90 s timeout). 16 s. Picture read: File select, File 1 AAAAAAAA First Play, Select file to start.
+| fileselect_rotate | Same command as file_select. File select not reached, so frames 282 to 296 are not shown. | same as file_select |
+ Until changed to shot 29[0-6] (was 90 s timeout). Not re-run: budget. Status unverified.
 | house_sign | Open. Warp kmr_20 entry 4 passes. Sign not readable at 240x400. A camboom switch (boom length on nextRig and prevRig) did not change the view and was reverted. | build3dszt\shots\house_sign |
 | super_text | Open. Battle starts. Run 1 logged actionState 5, 8 and 10, no multibounce. Run 2 (dense A presses) logged actionState 0 only. No SUPER text in any shot. | build3dszt\shots\super_text |
 
@@ -78,3 +80,26 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 - yard and pause_menu debug strings now add `loglevel=debug` (3ds/tools/azt_scenarios.json). text_menu and house_sign keep the old string.
 - Row LOGCLEAN, build 1417 (git 7ab19330c, uncommitted changes): yard 3 of 3 log checks, pause_menu 3 of 3 log checks. Shots written to build3ds\azt\shots\yard and build3ds\azt\shots\pause_menu. Picture not yet read by a person.
 - Boot line now prints `build <n> git <hash> loglevel <n>`.
+
+## MENULAG (2026-10-29): lag gates for the three menu scenarios
+
+- Scope: pause_menu, partner_menu, file_select. The until-line is a `phase W` window line that starts after the menu is open (pause open at frame 96; file select at frame 15). The pause stays open: no close step. One top shot inside the menu.
+- Gate fields (azt_scenarios.json): `max` = numeric limit on capture group 1 of the regex. `pick: last` = the last matching line, which is the window of the until-line.
+- Mapping (no taskpl or flsplit line after LOGCLEAN, so the old baseline names do not exist in the log):
+  - walk = `cpu (wall-idle-fbegin)` avg of the `phase W` line, in ms (not taskpl main us). The baseline 7634 us is taskpl main us and is not comparable.
+  - closes = `flush` avg of the first `phase count` line (all closes). Tex-only closes are counted in pm_fl_n but no line prints them. The tex-only gate is not possible without a new log line.
+  - ops = `gbiops` avg of the second `phase count` line (GBI commands per frame).
+- Azahar, two runs each (the larger value is the base). Build 1433 (git b5c7b5226), binary build3ds\pm_3ds.3dsx, row MENULAG, 6 starts of 8.
+
+| Scenario | Run | Wall (stop after) | Walk cpu ms | Closes | Ops | Limits set (base +15 %, rounded up) |
+|---|---|---|---|---|---|---|
+| pause_menu | 1 | 17 s | 11.1 | 135 | 1471 | |
+| pause_menu | 2 | 15 s | 11.1 | 135 | 1471 | walk 12.8, closes 156, ops 1692 |
+| partner_menu | 1 | 16 s | 9.5 | 107 | 1151 | |
+| partner_menu | 2 | 15 s | 9.2 | 107 | 1151 | walk 11.0, closes 124, ops 1324 |
+| file_select | 1 | 15 s | 8.1 | 88 | 1406 | |
+| file_select | 2 | 15 s | 7.9 | 88 | 1406 | walk 9.4, closes 102, ops 1617 |
+
+- Shots: one top shot per run (`build3dszt\shots\<scenario>`). A person must open each shot and confirm the subject (pause status page, Party tab, file select screen).
+- Walk gate values are in ms in the log. Limits are in the same unit.
+

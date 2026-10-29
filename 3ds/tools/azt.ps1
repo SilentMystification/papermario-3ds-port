@@ -18,6 +18,7 @@ Steps:
     - The scenario expects warp or tour and the log has more than 2 title or demo mode lines (game mode 2, 3 or 17):
       the run is stopped. Exit 3, "ATTRACT LOOP".
  5. After the run, each expected_events regex is checked against the run log. A [CRASH] line fails the scenario.
+    An event with "max" is a numeric gate: capture group 1 of its regex must be <= max. "pick": "last" takes the last matching line.
     The shot files of this run are listed with the subject. The script never prints a full PASS. The shot must be read by a person.
 Exit codes: 0 log checks pass, 1 expected event, crash or run failure, 2 marker missing, 3 attract loop,
 4 unknown or unverified scenario, 5 argument or build error, 9 test budget of the row used up.
@@ -111,9 +112,19 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
     if ($text -match '\[CRASH\]') { Write-Output "FAIL  crash: a [CRASH] line is in the log."; $script:checkRc = 1 }
     $fails = 0
     foreach ($ev in @($sc.expected_events)) {
-        $hit = $lines | Where-Object { $_ -match $ev.regex } | Select-Object -First 1
-        if ($hit) { Write-Output ("PASS  {0}: {1}" -f $ev.name, $hit.Trim()) }
-        else { Write-Output ("FAIL  {0}: no line matches /{1}/" -f $ev.name, $ev.regex); $fails++ }
+        # pick "last" takes the last matching line (the window of the until-line); default "first".
+        # max = numeric gate: group 1 of regex must be <= max.
+        $hits = @($lines | Where-Object { $_ -match $ev.regex })
+        $hit = if ($ev.pick -eq "last") { $hits | Select-Object -Last 1 } else { $hits | Select-Object -First 1 }
+        if (-not $hit) { Write-Output ("FAIL  {0}: no line matches /{1}/" -f $ev.name, $ev.regex); $fails++; continue }
+        if ($ev.PSObject.Properties.Name -contains "max") {
+            $m = [regex]::Match($hit, $ev.regex)
+            if (-not $m.Success -or $m.Groups.Count -lt 2) { Write-Output ("FAIL  {0}: regex has no capture group 1 for the gate" -f $ev.name); $fails++; continue }
+            $val = [double]$m.Groups[1].Value
+            if ($val -gt [double]$ev.max) { Write-Output ("FAIL  {0}: {1} is above the limit {2}: {3}" -f $ev.name, $val, $ev.max, $hit.Trim()); $fails++ }
+            else { Write-Output ("PASS  {0}: {1} <= {2}: {3}" -f $ev.name, $val, $ev.max, $hit.Trim()) }
+        }
+        else { Write-Output ("PASS  {0}: {1}" -f $ev.name, $hit.Trim()) }
     }
     $shotFiles = @()
     if (Test-Path $shots) { $shotFiles = @(Get-ChildItem $shots -File | Where-Object { $_.LastWriteTime -ge $since } | Sort-Object Name) }
