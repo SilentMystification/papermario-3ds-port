@@ -209,7 +209,22 @@ Numbers to send back:
 
 ## 6. Round 2
 
-Build for this round: build 1428, git 83e903455. Archive: `3ds/logs/builds/pm_3ds_final2_83e903455.3dsx`, sha256 08a67d929e62fdba...(full hash in `3ds/logs/perf/pushed_builds.txt`). Not pushed.
+Build for this round: build 1433, git b5c7b5226 (FINAL3). Archive: `3ds/logs/builds/pm_3ds_final3_b5c7b5226.3dsx`, sha256 861ab9e6444bf601...(full hash in `3ds/logs/perf/pushed_builds.txt`). Not pushed. The earlier FINAL2 archive is `3ds/logs/builds/pm_3ds_final2_83e903455.3dsx` (build 1428, git 83e903455).
+
+### FINAL3 (HEAD b5c7b5226, build 1433)
+
+- WARPLOG (commit b5c7b5226): the per-2-frame warp scene line is removed from the padscript output.
+- PAUSE2 fix (commit dc6d75a8f): the pause_menu scenario opens the pause with START at scan 80, shots 120 to 137, START closes it at about frame 140, field shot 152 to 159 (until 156). The FINAL2 failure (close after the window) is fixed. Diagnosis: `docs/handoff/diag_pause2.md`.
+- No-idle rule (commit 2544d4bf1, CLAUDE.md rule 5): no test idles. A test ends within 5 s of its until-line. Each wait in a scenario is the time the subject needs. The yard, sewer, ruins and volcano steady-frame wait noted above is covered by this rule and is a candidate for trimming.
+- Azahar runs, one start each, picture read by the agent:
+
+| Scenario | Log checks | Wall time (start to end) | Picture |
+|---|---|---|---|
+| yard | 3 of 3 | 27.6 s | Yard, green pipe, Mario and partner. OK |
+| pause_menu | 4 of 4 | 26 s | Frame 123: pause status page with dialog. Frame 155: field with Mario and green pipe. OK |
+| mac01 | 4 of 4 | 22 s | Frame 200: Toad Town post office, Mario, Toads. OK |
+
+- Picture ok for the archive. A person must confirm on the console. Not a hardware result yet.
 
 ### LOGCLEAN
 
