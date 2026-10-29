@@ -71,3 +71,10 @@
 - Not done: H6 (GbiState struct, part of G2 row), H2 flush_draw cold split, fog fix (volcano repro first), W4/W2, H5/H4.
 - Untested: BG wide on/off and fog bg map; G2 on pause and file select.
 - Next: H2 (flush_draw cold split, code-size evidence from build3ds/lane-dl2/pm_3ds.map).
+
+## Update: fog repro (vis, no fix) and H2 part 1 (2026-10-29)
+- Fog (diag_visual_vol_sewer.md): azt volcano (kzn_19) run, PM_ROW=dl_fog, 1/8 used. Shot 0000_18_13 shows the cave with lava light and no tiled fog pattern. No fix made. Shot saved to the scratchpad, not in the repo. The tiled look is not reproduced in this run.
+- H2 part 1: boxlog block of flush_draw (pm_gpu.c) moved to cold noinline flush_boxlog. flush_draw 0x3b20 (15136 B) -> 0x35f0 (13808 B), -1328 B. flush_boxlog 0x410 B cold.
+- Azahar yard f300-599 (PM_ROW=dl_h2, 1/8 used): main walk 8069.6 us (H3 reference 8086 us, inside the 50 us noise). bg 258 us. Picture: yard frame checked by eye (HUD, Mario, partner, house, pipe).
+- Not done: a same-run byte compare of the shot against an H3 shot. lane-dl2/h3_shots has mtimes from another run, so it is not used as a reference.
+- Not done: rest of H2 (dc timers, off-screen and snap paths, pm_tex miss path -Os, dead pdl_try/pdl_try_m).
