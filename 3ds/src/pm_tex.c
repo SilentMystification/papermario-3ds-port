@@ -431,8 +431,11 @@ static void addr_sub(const void* p) {
 #define SLAB_EXT 640
 #define PEND_N 24
 #define PEND_GAP (64u * 1024u)
-static u8* slab; static unsigned slab_n; /* slab_n: extents in use */
-static struct { unsigned off, len; } slab_ext[SLAB_EXT];
+/* Two VRAM blocks of BUDGET / SLABS each. One block of the whole budget did not fit: the bank split (boot log: 3072 KB failed with 5394 KB free). */
+#define SLABS 1
+static unsigned slab_segs; /* VRAM blocks that came up at boot */
+static unsigned slab_n; /* slab_ext entries in use */
+static struct { u8* p; unsigned len; } slab_ext[SLAB_EXT]; /* free extents, sorted by address */
 static struct { u8* p; unsigned len; } pend[PEND_N]; static int pend_n;
 static unsigned fl1_srchash(const void* img, int w, int h, int stride, unsigned siz) { if (siz != 2) return 0; unsigned x = 2166136261u; const u8* q = (const u8*)img; for (int y = 0; y < h; y++) for (int i = 0; i < w * 2; i++) x = (x ^ q[y * stride * 2 + i]) * 16777619u; return x; }
 static int fl1_state = -1; static unsigned fl1_sum, fl1_n;
