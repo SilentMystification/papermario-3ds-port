@@ -38,8 +38,7 @@ Tags: [M] measured in the log, [E] estimate. Ln is the file line.
 | Non-empty closes per frame | 76.6 (76 to 77) [M] |
 | pal / bind / tev / st / draw, us per close | 10.0 / 9.0 / 8.9 / 10.9 / 30.6 [M] |
 | gc, us per flush | mean 6.0, median 1, max 28 [M] |
-| Flush calls per frame | 7 on all 14 lines [M] |
-| svc flush fallbacks | 0 on all lines [M] |
+| Flush calls per frame; svc fallbacks | 7 and 0 on all 14 lines [M] |
 | cmd permil per sampled close | 0 on all lines. Field unusable. [M] |
 
 - Build 1456 (diag_hwlog2) read gc 31 and 33 us per flush. Now median 1 us. Gc per frame falls from about 220 us to about 10 us. [M, E]
@@ -50,15 +49,14 @@ Tags: [M] measured in the log, [E] estimate. Ln is the file line.
 - Stage sum with pal is 69.4 us per close, or 5.3 ms per frame. [E]
 
 ## 4. Split of the Toad Town frame (steady)
-- Work 48.18 ms, wall 48.49 ms. Wall minus work is 0.31 ms. [M]
-- No gbi, gpu, flush, swap or logic split exists. The cheap set has no phase. [M]
+- Work 48.18 ms, wall 48.49 ms. Wall minus work is 0.31 ms. The cheap set has no phase, so no gbi, gpu, flush, swap or logic split exists. [M]
 - Top three parts from dcsum, closes times us per close: draw 2.3 ms, st 0.8 ms, pal 0.8 ms. [E]
 - Audio join is 0 us (ln 221, ln 453). [M]
 - The log cannot show gbi ms inside work, GPU wait, swap or logic. About 43 ms of 48.5 ms has no split. [M]
 
 ## 5. Other counters
 - CROSS2 splits: 2.00 per frame in steady state (f8700 to f11700). Zero from f4800 to f6300. [M]
-- texstat is off. texmiss 0/0KB on all spike lines. texture failures 0 (#1984). [M]
+- texstat is off. texmiss 0/0KB on all spike lines. Texture failures 0 (#1984). [M]
 - VRAM A and B: used 2007 KB, free 1065 KB, min 41 KB, fail 0 (#874, #1895). [M]
 - MEM (#114): used 32.2 of 43.6 MB, free 11.3 MB. Heap free-in-arena 62 KB (#876). [M]
 - Writer maxima: console 1142405 us (#146), file 461114 us (#377), socket 333985 us (#708). fbuf 971 of 131072 B, waits 0. [M]
