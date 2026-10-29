@@ -1,8 +1,6 @@
 # Yard frame budget, O3DS build 1227-dc_dc2
 
-Source: build3ds/hw_pull/hw_o3ds_log.txt, steady frames f1172-1183. Ms per frame, median. [M] measured, [W] window average f1157-1183, [I] inference.
-
-## Budget (wall 58.0 ms = 100 %)
+Source: build3ds/hw_pull/hw_o3ds_log.txt, steady frames f1172-1183. Ms per frame, median. [M] measured, [W] window avg f1157-1183, [I] inference.
 
 | bucket | ms | % wall | kind | src |
 |---|---|---|---|---|
@@ -18,30 +16,19 @@ Source: build3ds/hw_pull/hw_o3ds_log.txt, steady frames f1172-1183. Ms per frame
 | Frame end (PH_FEND) | 1.8 | 3.1 | CPU | M |
 | Idle, vsync (PH_IDLE) | 0.0 | 0.0 | vsync wait | M |
 | Other (residual) | 1.3 | 2.2 | CPU | I |
-| **Sum** | **58.0** | **100** | | M |
+| **Sum = wall** | **58.0** | **100** | | M |
 
-Walk parts (inside PH_GBI 34.9, not added):
-
-| walk part | ms | % wall | kind |
-|---|---|---|---|
-| tex streak | 14.9 | 25.7 | CPU |
-| - flush closes at tex ops | 7.2 | 12.5 | CPU (6.5 non-empty, 0.7 empty [I]) |
-| - texture hit lookup | 1.0 | 1.8 | CPU |
-| - tex ops own work | 6.7 | 11.6 | CPU [I] |
-| gv streak | 1.5 | 2.6 | CPU |
-| sync (combiner) | 1.3 | 2.3 | CPU, may overlap |
-| uncounted remainder | 18.5 | 31.9 | CPU [I] |
-| kick_check | 0.01 | 0.0 | CPU |
+Inside PH_GBI (34.9, not added): tex streak 14.9 (25.7 %), of which flush closes 7.2 (12.5 %; 6.5 non-empty, 0.7 empty [I]), hit lookup 1.0, own work 6.7 [I]. gv streak 1.5 (2.6 %). sync 1.3 (2.3 %, may overlap). Uncounted 18.5 (31.9 %) [I]. kick_check 0.01.
 
 Not in sum: GPU gdraw 8.2 ms, gproc 49.7 ms (frame f-1). gproc is a span, not proven busy time [I].
 
 ## Bound type
 
 - CPU-bound. Vsync wait 0.0 ms. GPU wait 1.4 ms.
-- Steady wall 58.0 ms gives 17.2 fps. 69.3 ms (console_numbers.md, mean of 2179 frames) gives 14.4 fps. The mean includes stall frames.
-- Step target 33.4 ms. The pacing wait runs only when the step is still in the future. At 58.0 ms the step is late, so no wait runs.
+- 58.0 ms gives 17.2 fps. 69.3 ms (console_numbers.md, mean of 2179 frames) gives 14.4 fps. The mean includes stall frames.
+- Step target 33.4 ms. The pacing wait runs only when the step is still in the future. At 58.0 ms no wait runs.
 
-## Top 3 reducible (leaf rows, no overlap)
+## Top 3 reducible (leaf rows)
 
 1. Walk uncounted remainder: 18.5 ms. No counter splits it.
 2. Flush closes at tex ops: 7.2 ms.
@@ -50,6 +37,6 @@ Game logic is 5.8 ms (fourth).
 
 ## Caveats
 
-- W rows are window averages. Audio and other are outlier-driven (602 ms frame f1183 in window).
+- W rows are window averages. Audio and other are outlier-driven (602 ms frame f1183).
 - Background walk (taskpl bg 6.6 ms) has no row. Its nesting is not resolved.
 - Flush closes are assumed inside PH_GBI (34.7 window vs 34.9 main walk).
