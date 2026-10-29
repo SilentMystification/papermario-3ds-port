@@ -7,13 +7,12 @@ Modes: game_modes.h (4 ENTER_WORLD, 5 WORLD, 8 BATTLE, 10 PAUSE, 11 UNPAUSE). Mo
 ## 1. Log health
 - Missing ids: #1792-#1884 (93), #2138-#3233 (1096), #3302-#3509 (208). Total 1397 of 5990. [M]
 - Gap 2 hides map loads. Map labels for #3234-#3301 and #3510-#3558 are carried over. [E]
-- Writer dropped 0. Live eagain 0 at #145, 14 at #1906, 31 at #3245. Stall closes 1, then 2. [M]
-- Sink max: file 377.6 ms (#3670), console 366.1 ms (#3542). Queue 3 to 4 of 1024. [M]
+- Writer dropped 0. Live eagain 0 at #145, 14 at #1906, 31 at #3245. Stall closes 1, then 2. Sink max: file 377.6 ms (#3670), console 366.1 ms (#3542). [M]
 - Fatal 0. Sleep 0. hudint 0. Line #3301 holds two pace texts. [M]
 - Soft reset at #5325. Boot restarts at #5329. Exit to Homebrew confirm at #5988, exit not logged. [M]
 - ROM READ IN DROPPED RANGE: 14 lines in the file. [M]
 
-## 2. Segments (pace lines; spikes = frames over 50 ms)
+## 2. Segments (pace lines). Spikes are frames over 50 ms.
 | Ids | Map | Mode | ms/frame (fps) | Spikes | dcsum closes / draw us / gc us |
 |---|---|---|---|---|---|
 | #3234-3301 | MAC2 | ENTER | 47.4 (21.1) | 13, about 4% [E] | 70 / 29 / 28 (f17538) |
@@ -32,8 +31,7 @@ Modes: game_modes.h (4 ENTER_WORLD, 5 WORLD, 8 BATTLE, 10 PAUSE, 11 UNPAUSE). Mo
 | #5680-5813 | MIM4 | BATTLE | 34.1 (29.3) | 20, about 3% [E] | 34 / 33 / 10 |
 
 Menu overlay windows (menu: open, options or debug UI, modes 4 and 5): 33.2 to 38.3 ms. The 8 windows of this kind in the segment list have 0 spikes. [M]
-Mode 10 (PAUSE) occurs once in ids #2138 to #5989. [M]
-Frames: pause 20793 to 21249 (456). MIM4 ENTER 27826 to 28043 (217). [M]
+Mode 10 (PAUSE) occurs once. Frames: pause 20793 to 21249 (456). MIM4 ENTER 27826 to 28043 (217). [M]
 Mode 4 spans 1000 or more frames in field play. The name ENTER_WORLD may not mean load only. [E]
 
 ## 3. Pause (IWA1) against gameplay (IWA1)
@@ -47,21 +45,15 @@ Mode 4 spans 1000 or more frames in field play. The name ENTER_WORLD may not mea
 
 ## 4. Forever Forest (MIM, area 12)
 - MIM4 ENTER #5551-5679: 51.7 ms, 19.4 fps, 46% of frames over 50 ms. Toad Town steady: 48.5 ms (HWLOG3). [M]
-- Pace (1 s) and logstat (300 frames) disagree for #5551-5679: 51.7 ms and 38.9 ms. Not reconciled. [M]
+- Pace (1 s) and logstat (300 frames) disagree for #5551-5679: 51.7 ms and 38.9 ms. Not reconciled. The log does not show the cause of the spikes. [M]
 - Closes per frame: 25 to 27 (Toad Town 70 to 77). Draw us per close: 35 (Toad Town 29 to 31). Logged draw cost: about 1.0 ms (Toad Town about 2.3 ms). [E]
 - dlc2 tri 19539 at f26999 (one sample). Toad Town 277040 (HWLOG3). [M]
-- Texture misses 0 and texture failures 0 on all lines. [M]
 - First Forest load (#5220): VRAM bank A used 3031 KB, free 41 KB. Other loads: 2007 KB used, 1065 KB free. Session minimum 41 KB (acct), 82 KB (vram free min). [M]
 - Tex cache at Forest loads: 1483 KB (#5222), 1589 KB (#5256). Other maps: 2.6 to 3.1 MB. [M]
-- Tex cache evictions: no counter in the log. Row 4 frees at #5237 and #5238. [M]
-- The log does not show the cause of the Forest spikes. [M]
+- Texture misses 0 and texture failures 0 on all lines. No tex cache eviction counter. Row 4 frees at #5237 and #5238. [M]
 
 ## 5. Dry Dry Desert (SBK, area 10)
 - SBK3 and SBK10 ENTER: 33.4 ms, 29.9 fps. Zero spikes in 37 s of SBK10 ENTER. [M]
-- Texture failures 0 and texmiss 0 on all lines. b7 grabs 0 on all 714 b7 lines. [M]
-- No full-image or copy-buffer event from #4592 to #4934. [M]
+- Texture failures 0, texmiss 0, b7 grabs 0 on all 714 b7 lines. No full-image or copy-buffer event from #4592 to #4934. [M]
 - ROM READ IN DROPPED RANGE at #4603 (0040bba0, 2560 bytes). Link to the sun is not known. [E]
 - The log cannot show the transparent texture break. It shows no frame or texture fault in the desert windows. [M]
-
-## 6. Next step
-- Diagnose the pause frame cost outside dcsum, and the Forest spikes at #5551-5679. The log does not name either cause. [E]
