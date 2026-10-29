@@ -112,3 +112,9 @@
 - Merged build: tbsplit n 65 fb 0 (yard). Shots not re-compared after the merge.
 - I-cache/D-cache: not measured.
 - Budget row c11dbg: 6 of 8 starts used. Row c11g: 6 starts used (no cap reached on c11g in this section).
+
+## Update: pause row and volcano check (2026-10-29)
+- Pause (azt pause_menu + phase, PM_ROW=dl_pause 2/8): pause opens at f100 (ui: pause menu open). Pause window prod: draw_msg 1504 of 1883 ops per frame (f599), us 14734. Next: bg 264, gfx_window_root 70, camera_render 29.
+- Pause reduction NOT done: draw_msg glyph = LoadTextureBlock_4b (7 ops) + texrect per glyph (src/msg_draw.c ~1754-1797). A picture-equal cut needs the glyph inline bind (C1i variant for msg_draw). Not on branch.
+- Volcano (PM_ROW=dl_fog2, 2/8 used): kzn_17 (run 1) and kzn_20 (run 2) show the cave with no tiled fog. Not reproduced. Branches dl2-fog17 and dl2-fog20 have no code change.
+- Next: C1-3 (animator/entity render-mode swaps, C2 pattern), then C1i + HUD (hud_backUI, reuse G_PM_TEX tex_op).
