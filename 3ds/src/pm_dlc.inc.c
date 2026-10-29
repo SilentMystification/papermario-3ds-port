@@ -931,50 +931,6 @@ static int pdl_comp_done(int* sp, Gfx** pc) {
     return 0;
 }
 
-/* M1: G_DL census per class and repeat count of the read fields of class 2/3 state lists. Count only, draws nothing. */
-typedef struct { u32 addr, gen, h[4], f[4]; u8 n, rr; } DlrEnt;
-static DlrEnt dlr_tab[1024];
-static struct { unsigned calls[8], ops[8], ref, refops, nend, r0, hitx, hits, miss, hitops, bytes, big, full; unsigned refop[256]; } dlr_c;
-static u8 dlr_buf[8192];
-static void dlr_count(const Gfx* l) {
-    if (!l || !is_host((u32)l)) return;
-    if (!dls_rd_lo) dls_init_ranges();
-    u32 a = (u32)l;
-    unsigned c = dls_class(a) & 7, n = pdl_nops(l);
-    dlr_c.calls[c]++; dlr_c.ops[c] += n;
-    if (c != 2 && c != 3) return;
-    if ((l[n - 1].words.w0 >> 24) != G_ENDDL) { dlr_c.nend++; return; }
-    unsigned rs = 0, wa = 0;
-    for (unsigned i = 0; i + 1 < n; i++) {
-        unsigned op = l[i].words.w0 >> 24, rd, wr;
-        pdl_op_rw(op, &rd, &wr);
-        int bad = op == G_DL || op == G_VTX || op == G_TRI1 || op == G_TRI2 || op == G_MODIFYVTX || op == G_MTX || op == G_MOVEMEM
-            || op == G_SETCIMG || op == G_SETZIMG || op == G_FILLRECT || op == G_TEXRECT || op == G_TEXRECTFLIP
-            || (op == G_MOVEWORD && ((l[i].words.w0 >> 16) & 0xff) != G_MW_FOG)
-            || (!rd && !wr && op != G_NOOP && op != G_SPNOOP && op != G_RDPFULLSYNC && op != G_RDPTILESYNC && op != G_RDPPIPESYNC && op != G_RDPLOADSYNC);
-        if (bad) { dlr_c.ref++; dlr_c.refops += n; dlr_c.refop[op]++; return; }
-        rs |= rd & ~wa; wa |= wr;
-    }
-    if (!rs) { dlr_c.r0++; dlr_c.hitops += n; return; }
-    unsigned need = 0;
-    for (unsigned j = 0; j < sizeof gbi_fld / sizeof gbi_fld[0]; j++) if (gbi_fld[j].grp & rs) need += gbi_fld[j].n;
-    if (need > sizeof dlr_buf) { dlr_c.big++; return; }
-    unsigned nb = gbi_pack(rs, dlr_buf);
-    dlr_c.bytes += nb;
-    u32 h = gbi_state_fnv(dlr_buf, nb), gen = pdl_heap_gen(a);
-    unsigned k = (a >> 3) * 2654435761u >> 22 & 1023, p = 0;
-    while (p < 1024 && dlr_tab[k].addr && dlr_tab[k].addr != a) { k = (k + 1) & 1023; p++; }
-    if (p == 1024) { dlr_c.full++; return; }
-    DlrEnt* e = &dlr_tab[k];
-    if (e->addr != a || e->gen != gen) { memset(e, 0, sizeof *e); e->addr = a; e->gen = gen; }
-    unsigned i = 0;
-    while (i < e->n && e->h[i] != h) i++;
-    if (i < e->n) { if (e->f[i] != (u32)rm_frame) dlr_c.hitx++; else dlr_c.hits++; e->f[i] = (u32)rm_frame; dlr_c.hitops += n; return; }
-    dlr_c.miss++;
-    unsigned s = e->n < 4 ? e->n++ : (e->rr++ & 3);
-    e->h[s] = h; e->f[s] = (u32)rm_frame;
-}
-
 static int pdl_try(const Gfx* l) {
     if (!l || !is_host((u32)l) || pdl_depth) return 0;
     if (!dls_rd_lo) dls_init_ranges();
@@ -1382,7 +1338,6 @@ static int pdl_tpl_gdl(Gfx** pc, Gfx* stack[12], int* sp, const Gfx* list_end) {
     Gfx* next = (Gfx*)ptr_of(w1);
     if (next && !is_host((u32)next)) return 1;
     if (pdl0_on()) pdl0_gl_enter(next);
-    if (dlc_on && pm_ph_on) dlr_count(next);
     if (dlc_on && dlc_try(next)) {
         if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) *pc = (Gfx*)dlc_end;
         return 1;
@@ -1462,14 +1417,4 @@ static void pdl_report(void) {
     memset(&pdl_c, 0, sizeof pdl_c);
     memset(&pdl_m_c, 0, sizeof pdl_m_c);
     memset(&pdl_tpl_c, 0, sizeof pdl_tpl_c);
-    unsigned t1 = 0, t2 = 0, o1 = 0, o2 = 0;
-    for (unsigned i = 0; i < 256; i++) {
-        unsigned v = dlr_c.refop[i];
-        if (v > t1) { t2 = t1; o2 = o1; t1 = v; o1 = i; } else if (v > t2) { t2 = v; o2 = i; }
-    }
-    pm_log_hw("dlr f%d gdl %u %u %u %u %u %u %u %u ops %u %u %u %u %u %u %u %u | ref %u refops %u top %02x:%u %02x:%u nend %u r0 %u hitx %u hits %u miss %u hitops %u bytes %u big %u full %u", rm_frame,
-        dlr_c.calls[0], dlr_c.calls[1], dlr_c.calls[2], dlr_c.calls[3], dlr_c.calls[4], dlr_c.calls[5], dlr_c.calls[6], dlr_c.calls[7],
-        dlr_c.ops[0], dlr_c.ops[1], dlr_c.ops[2], dlr_c.ops[3], dlr_c.ops[4], dlr_c.ops[5], dlr_c.ops[6], dlr_c.ops[7],
-        dlr_c.ref, dlr_c.refops, o1, t1, o2, t2, dlr_c.nend, dlr_c.r0, dlr_c.hitx, dlr_c.hits, dlr_c.miss, dlr_c.hitops, dlr_c.bytes, dlr_c.big, dlr_c.full);
-    memset(&dlr_c, 0, sizeof dlr_c);
 }
