@@ -397,6 +397,17 @@ void gfx_draw_background(void) {
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 40, 40, 40, gPauseBackgroundFade);
             gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
 
+#ifdef TARGET_3DS
+            /* PAUSE4A: the saved picture is one 320 x 240 image. One load and one texrect draw all of it (the strips below are the N64 TMEM split). */
+            gDPLoadTextureTile(gMainGfxPos++, nuGfxZBuffer, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
+                               SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
+                               G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            gSPTextureRectangle(gMainGfxPos++,
+                                0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2,
+                                G_TX_RENDERTILE,
+                                -1 << 5, 0 << 5, 1 << 10, 1 << 10);
+            gDPPipeSync(gMainGfxPos++);
+#else
             for (i = 0; i < 40; i++) {
                 gDPLoadTextureTile(gMainGfxPos++, nuGfxZBuffer + (i * SCREEN_WIDTH * SCREEN_COPY_TILE_HEIGHT), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
                                    SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_COPY_TILE_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
@@ -412,6 +423,7 @@ void gfx_draw_background(void) {
                                     -1 << 5, 0 << 5, 1 << 10, 1 << 10);
                 gDPPipeSync(gMainGfxPos++);
             }
+#endif
 #ifdef TARGET_3DS
             if (pm_wide) { /* PT56: the saved picture is 320 wide. The gutters come from their own copy, so the paused picture keeps the wide coverage. */
                 s32 side;
