@@ -2068,10 +2068,19 @@ void pm_gbi_prod_mark(unsigned a) { /* called by pm_interp_open under phase */
 }
 
 static unsigned os_flsum(void) { unsigned s = 0; for (int i = 0; i < 6; i++) s += pm_fl_us[i]; return s; }
+/* W1 calibration: one tick read costs about os_cal ticks, and each sample window holds one read. Measured at window start. */
+static unsigned os_cal;
+static void os_calibrate(void) {
+    unsigned long long sum = 0;
+    for (int i = 0; i < 16; i++) { unsigned a = pm_ticks(); unsigned b = pm_ticks(); sum += b - a; }
+    os_cal = (unsigned)(sum / 16);
+}
+static unsigned os_win(unsigned t) { return t - os_t0 > os_cal ? t - os_t0 - os_cal : 0; }
 static void os_close(void) {
     unsigned t = pm_ticks();
-    os_tk[os_op] += t - os_t0; os_sn[os_op]++; os_fl[os_op] += os_flsum() - os_fl0;
-    pk_tk[os_pk] += t - os_t0; pk_sn[os_pk]++;
+    unsigned w = os_win(t);
+    os_tk[os_op] += w; os_sn[os_op]++; os_fl[os_op] += os_flsum() - os_fl0;
+    pk_tk[os_pk] += w; pk_sn[os_pk]++;
     os_open = 0;
 }
 static void os_dlc_hit(void) { /* a G_DL answered by dlc_try: count it as the dlc pseudo op */
@@ -2177,7 +2186,7 @@ void pm_gbi_end_frame(void) {
         if (++pdl0_frames >= 300) { pdl0_report(); }
     }
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
-    if (pm_ph_on) { if (++os_fr >= 300) { os_report(); os_fr = 0; } pmk_n = 0; }
+    if (pm_ph_on) { if (os_fr == 0) os_calibrate(); if (++os_fr >= 300) { os_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
     if ((rm_frame % 300) == 0) { unsigned ps[4]; pm_gpu_gv_stats(ps); pm_log_d("gv1pal f%d uploads %u palmax %u palflush %u recopy %u", rm_frame, ps[0], ps[1], ps[2], ps[3]); }
