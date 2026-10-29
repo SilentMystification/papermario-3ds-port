@@ -21,3 +21,8 @@
 - Log: build3ds/lane-dl2/last_log.txt. Shot: build3ds/lane-dl2/last_shot.png. Use -Force, or the run returns a cached result.
 - Average: grep "taskpl f" log | awk '{f=substr($3,2)+0; if(f>=300&&f<=599){b+=$11; m+=$12; n++}} END{print b/n, m/n}'
 - Before a build: python 3ds/tools/gen_map_restore.py; after: git checkout -- 3ds/src/map_restore_table.c in the worktree.
+
+## Update: G1 kept (main 9268569ae)
+- G1 sync skip: ops/frame 3236 -> 2417, sync 819 -> 0. Main walk avg 9512 -> 8072 us (-1440 us). Picture ok. PM_ROW=dl_g1 at 1/8.
+- Next: H1 cold split of gbi_run_body (pm_gbi_cold.c, -Os). Test: walk not slower, picture ok.
+- C1: check docs/handoff/plan_c1_texbind.md; take it when present.
