@@ -41,7 +41,8 @@ static int rom_remap; /* 1: rom_bytes is the packed image (pm_rom_keep), 0: full
 
 /* SD streaming: per drawn frame, time spent in pi_read_raw and the last read offset/size. */
 static u32 rom_sd_last_off, rom_sd_last_sz;
-static unsigned rom_sd_frame_ticks, rom_sd_frame_bytes;
+static unsigned rom_sd_frame_ticks, rom_sd_frame_bytes, rom_sd_frame_n;
+static unsigned rom_sd_recent; /* frames left in the HUD SD flag; set to 60 by each SD read */
 #define ROM_SD_TICKS_MS 268112.f
 
 void pm_rom_frame_end(void) {
@@ -52,6 +53,28 @@ void pm_rom_frame_end(void) {
     }
     rom_sd_frame_ticks = 0;
     rom_sd_frame_bytes = 0;
+    rom_sd_frame_n = 0;
+    if (rom_sd_recent) rom_sd_recent--;
+}
+
+/* Current frame SD totals (read by pm_ph_frame_end before pm_rom_frame_end resets them). */
+void pm_rom_sd_frame(unsigned* n, unsigned* bytes, unsigned* us) {
+    *n = rom_sd_frame_n;
+    *bytes = rom_sd_frame_bytes;
+    *us = rom_sd_frame_ticks / 268u;
+}
+
+/* 1 for 60 frames after an SD read. The HUD shows the SD flag while this is 1. */
+int pm_rom_sd_flag(void) { return rom_sd_recent > 0; }
+
+/* Phase on only: one line per SD read, at most 20 lines per second. */
+static void rom_sd_log(u32 off, u32 sz, u32 caller) {
+    static unsigned win_t0, win_n;
+    unsigned now = pm_ticks();
+    if (now - win_t0 > 268112000u) { win_t0 = now; win_n = 0; }
+    if (win_n >= 20) return;
+    win_n++;
+    pm_log_hw("sdread off %08x sz %u caller %08x", (unsigned)off, (unsigned)sz, (unsigned)caller);
 }
 
 /* V26: the N64 counts from the reset, so the game's gRandSeed += osGetCount() (main.c) starts the same on every boot and the demo scenes
@@ -251,6 +274,7 @@ int pm_rom_init(void) {
     unsigned heap = pm_heap_bytes();
     unsigned cap = heap > leave ? heap - leave : 0;
     if (sz > 0 && need > cap) pm_log_e("ROM does not fit: need %u KB cap %u KB, streaming from the SD card", need >> 10, cap >> 10);
+    const char* why = need > cap ? "does not fit" : "load failed";
     if (sz > 0 && need <= cap) {
         u8* block = (u8*)memalign(16, (size_t)need);
         int ok = block != NULL;
@@ -267,6 +291,7 @@ int pm_rom_init(void) {
             rom_remap = can_pack;
             fclose(f);
             pm_log_w("rom resident %uKB of %uKB%s, cap %uKB, margin %uKB", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "", cap >> 10, (cap - need) >> 10);
+            pm_log_w("rom mode: RAM resident %.2f MB", (float)need / 1048576.f);
             pm_log_d("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
             return 1;
         }
@@ -276,6 +301,7 @@ int pm_rom_init(void) {
     rom = f;
     rom_size = (u32)sz; /* ROMFIT: the streaming read checks rom_size, 0 turned every read into PAST END plus zeros */
     pm_log_w("rom streaming (%ld bytes, need %uKB, cap %uKB)", sz, need >> 10, cap >> 10);
+    pm_log_w("rom mode: SD STREAMING (%s: needed %.2f MB, free %.2f MB)", sz > 0 ? why : "no size", (float)need / 1048576.f, (float)cap / 1048576.f);
     pm_log_d("ram n64 4MB, port %uMB", pm_linear_bytes() >> 20);
     return 1;
 }
@@ -413,6 +439,9 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     if (sd_path) {
         rom_sd_frame_ticks += pm_ticks() - sd_t0;
         rom_sd_frame_bytes += size;
+        rom_sd_frame_n++;
+        rom_sd_recent = 60;
+        if (pm_ph_on) rom_sd_log(rom_addr, size, (u32)__builtin_return_address(0));
     }
 }
 

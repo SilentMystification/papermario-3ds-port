@@ -306,6 +306,7 @@ typedef struct {
     unsigned ec_n, ec_svc;
     unsigned dc_c[DC_N], dc_us[DCU_N];
     unsigned kick_n, kick_us, draws, cmd, vb, iv, hud_us, log_prev;
+    unsigned sd_n, sd_bytes, sd_us; /* SD streaming reads of the frame (pm_os.c) */
 } PhRec;
 static PhRec phr[PHR_N];
 static unsigned phr_head, phr_tail, phr_dropped; /* monotonic: head written by the game thread, tail by the writer */
@@ -322,6 +323,7 @@ static void ph_format(const PhRec* p) {
               p->cs[CS_PF_UTEX], p->cs[CS_PF_USHA], p->cs[CS_PF_UT1], p->cs[CS_PF_UNOISE], p->cs[CS_PF_KS], p->cs[CS_PF_FOLD]);
     pm_log_hw("flsplit f%u tex %u/%u/%u cc %u/%u/%u geo %u/%u/%u rect %u/%u/%u tri %u/%u/%u oth %u/%u/%u", r->f, p->fl_n[0], p->fl_e[0], p->fl_us[0], p->fl_n[1], p->fl_e[1], p->fl_us[1], p->fl_n[2], p->fl_e[2], p->fl_us[2], p->fl_n[3], p->fl_e[3], p->fl_us[3], p->fl_n[4], p->fl_e[4], p->fl_us[4], p->fl_n[5], p->fl_e[5], p->fl_us[5]);
     pm_log_hw("ecsplit f%u empty %u svc %u", r->f, p->ec_n, p->ec_svc);
+    if (p->sd_n) pm_log_hw("sdrd f%u n %u bytes %u us %u", r->f, p->sd_n, p->sd_bytes, p->sd_us);
     /* DC1: the us fields are sample sums x 8 (one close in 8 is sampled). */
     pm_log_hw("dcsplit f%u n %u raw %u pal %u bind %u tev %u st %u draw %u kick %u palup %u pmul %u tevr %u tb0 %u tb1 %u tb2 %u tbs %u",
               r->f, p->dc_c[DC_CL], p->dc_c[DC_RAW], p->dc_us[DCU_PAL] * 8u, p->dc_us[DCU_BIND] * 8u, p->dc_us[DCU_TEV] * 8u,
@@ -387,6 +389,7 @@ void pm_ph_frame_end(void) {
         p->gpu[1] = pm_ph_gpu_us[1];
         p->kick_n = pm_ph_kick_n; p->kick_us = pm_ph_kick_us; p->draws = pm_ph_draws; p->cmd = pm_ph_cmd_pm;
         p->vb = pm_ph_vb; p->iv = pm_ph_iv; p->hud_us = pm_ph_hud_us; p->log_prev = pm_ph_log_prev;
+        pm_rom_sd_frame(&p->sd_n, &p->sd_bytes, &p->sd_us);
         __atomic_store_n(&phr_head, phr_head + 1, __ATOMIC_RELEASE);
     } else {
         __atomic_fetch_add(&phr_dropped, 1, __ATOMIC_RELAXED);
