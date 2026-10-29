@@ -1,40 +1,38 @@
-# diag_toadt: mac_01 producer ranking in the tour view (Azahar)
+# diag_toadt: producer ranking, mac_01 (Azahar, direction only)
 
-Epic TOADT, rows T0 and T1. Diagnostic only. Azahar numbers show direction only.
-Build: lane toadt (HEAD 41662a62a plus the T1 census window reset). Scenario mac01t, window mdlsum f899 (frames 600 to 899, all on mac_01).
+Epic TOADT, rows T0, T1, T2b. Lane toadt. Census fields: mdlsum rows (ops, draws, tris, binds, closes, all per frame).
+Views: warp (mac01, window f299, 300 frames) and tour (mac01t, window f899 = frames 600 to 899, all on mac_01).
 
-## Census state
-- T0 (commit 41662a62a): render task ops go to pseudo IDs. 0xF001 transform group, 0xF002 model group, 0xF0FF other task, 0xF0FE tail.
-- T0 check, scenario mac01 (warp view, f299): total ops 1165 (same as HEAD). 00b7 is out of the top 12 (ops 7 or less). 0xF0FF 439 ops. PPM byte-equal to HEAD.
-- T1 fix: the census table (128 slots) is cleared at each report. Before the fix, 646 ops per frame were unattributed in the tour view. After it, 62 ops per frame.
+## Tour view, total 2315 ops per frame (mdlsum f899)
+| rank | producer (function or bucket) | ops/frame | share | draws | closes | tex binds | tris |
+|---|---|---|---|---|---|---|---|
+| 1 | appendGfx_entity_model (src/entity_model.c:244) | 795 | 34.3 % | 30 | 0 | 0 | 146 |
+| 2 | appendGfx_npc, incl. sprite_component (src/npc.c:835) | 490 | 21.2 % | 27 | 2 | 0 | 54 |
+| 3 | task tail after last task (0xF0FE, not a function) | 332 | 14.3 % | 0 | 19 | 0 | 0 |
+| 4 | model 0006 (census ID) | 37 | 1.6 % | 0 | 1 | 6 | 0 |
+| 5 | appendGfx_player (src/77480.c) | 20 | 0.9 % | 1 | 0 | 0 | 2 |
+| 6 | model 0049 | 9 | 0.4 % | 0 | 0 | 1 | 0 |
 
-## Tour view, mdlsum f899, total 2315 ops per frame
-| rank | producer | ops per frame | share of total | tris per frame | draws per frame | binds per frame |
-|---|---|---|---|---|---|---|
-| 1 | task other (0xF0FF) | 1308 | 56.5 % | 202 | 58 | 0 |
-| 2 | task tail after last task (0xF0FE) | 332 | 14.3 % | 0 | 0 | 0 |
-| 3 | model 0006 | 37 | 1.6 % | 0 | 0 | 6 |
-| 4 | model 0049 | 9 | 0.4 % | 0 | 0 | 1 |
-| 5 | model 0043 | 9 | 0.4 % | 0 | 0 | 1 |
-| 6 | model 0048 | 9 | 0.4 % | 0 | 0 | 1 |
-| 7 | model 0064 | 9 | 0.4 % | 0 | 0 | 1 |
-| 8 | model 0098 | 9 | 0.4 % | 0 | 0 | 1 |
-| 9 | model 0044 | 8 | 0.3 % | 0 | 0 | 1 |
-| 10 | model 0066 | 8 | 0.3 % | 0 | 0 | 1 |
+- Other rows in the top 12: 9 to 8 ops each (models 0043, 0048, 0064, 0098, 0044, 0066), 0.3 % to 0.4 % each.
+- Unattributed: 62 ops per frame (2.7 %). Models in window: 89, static 79.
+- Task other (sum of all function rows) is about 1308 ops per frame (56 %). It has 58 draws and 202 tris in total.
+- sprite_component is not a task pointer. It runs inside appendGfx_npc and appendGfx_player.
+  appendGfx_npc: 490 ops / 27 draws = 18.1 ops per draw. Non-empty closes: 2 per frame / 27 draws = 0.07 per draw.
+  Closes for the whole function, not only sprite draws. Sprite split needs its own mark (T2 row).
+- appendGfx_entity_model: 795 ops / 30 draws = 26.5 ops per draw, 0 closes, 0 binds. Cost is op count, not closes.
 
-- Unattributed ops: 62 per frame (2.7 %). Models in the window: 84, static 77.
-- All 58 draws and all 202 tris are in the task other bucket. Map models replay through dlc, so their draws and tris do not show as model counts.
-- Sum of model rows (84 models): about 613 ops per frame (26 %). Task other plus tail: 1640 ops per frame (71 %).
+## Warp view, total 1165 ops per frame (mdlsum f299, scenario mac01)
+- appendGfx_entity_model 271 ops (23.3 %, 10 draws). appendGfx_npc 80 (6.9 %, 4 draws, 1 close).
+- appendGfx_item_entity (src/item_entity.c, 0x00225890) 69 (5.9 %, 2 draws).
+- Tail 0xF0FE 95 (8.2 %, 0 closes). Model 0006 32 (2.7 %, 5 binds, 4 closes).
 
-## Gate result (T1)
-- mdlsum f899 total 2315 ops per frame. Gate 1900 to 2200 FAILED (above limit).
-- mdlsum f599 total 2205 ops per frame (same run, window 300 to 599, includes the arrival frame).
-- mdlsum f299 total 1684 ops per frame (window includes mac_00 frames). Not a mac_01 window.
-- Picture of shot 500 (build3ds/azt/shots/mac01t/0000_1_2.ppm): Mario and two Toads on a Toad Town street, field HUD on. Subject present.
-- The earlier mac01 warp view gives 1165 ops. The tour arrival gives about 2200 to 2300. The camera and state differ.
+## Top 3 by share and the first change to try
+1. appendGfx_entity_model, 34.3 % (tour). Ops per draw 26.5, no closes. First: add a per-op-class count for this function (G_MTX, G_VTX, G_TRI, other) under phase. Then change: skip a repeated gSPMatrix when the shadow matrix is equal (hw_guidelines rule 6), at the gSPMatrix calls near src/entity_model.c:269.
+2. appendGfx_npc, 21.2 % (tour). Ops per draw 18.1, closes per draw 0.07. First: split sprite_component draws from the rest of appendGfx_npc (T2 mark in src/sprite.c spr_appendGfx_component). Change only after T2 shows sprite ops per draw above 10.
+3. Task tail (0xF0FE), 14.3 %, not a function. It holds 19 closes per frame, 19 of the 22 closes in the top rows. First: give the ops after the last task loop their own mark by caller (__builtin_return_address in execute_render_tasks callers) to name the owner. The change follows the name.
 
-## Reading
-- OPS2 named appendGfx_model as the largest producer (79 to 94 % on console). Its producer census was not re-run here. The model census (mdc) gave task ops to the last model mark before T0.
-- Before T0, mdlsum put 755 ops on models in the warp view. After T0 it puts about 571 (1165 minus 439, 95 and 60).
-- In the tour view the model share is about 26 %. Task other (sprites, entities, custom gfx) is 57 %. The OPS2 share needs a check with the T0 build on console.
-- Next: T2 splits task other into sprite and entity draws. The tail (332 ops) has no owner yet. Console re-measure needed with T0 build (phase on) before the share is used.
+## Checks
+- T0 gate (mac01): total 1165, PPM byte-equal to build3ds/azt/shots_toadbase/mac01 (T2b run, 2 shots). Model 00b7 out of top 12.
+- T2b gate (mac01): total 1165 unchanged. PPM byte-equal to the baseline.
+- T2b gate (mac01t): total 2315 at f899, same as T1. Gate 1900 to 2200 still fails (above limit). Not a pass.
+- Azahar only. Console share for these functions is not measured. Run the T2b build on console (phase on) before a change is judged.
