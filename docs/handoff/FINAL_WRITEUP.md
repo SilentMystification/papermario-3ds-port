@@ -413,3 +413,10 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 - LB1 (lazy FrameBegin) was dropped: battle_start 4 of 7 shots equal (frames 153 and later differ), no run left. See docs/handoff/agent_lbr.md.
 - Push command, cheap set plus the split:
   `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
+
+## LB1R (final9, git fd05e686a)
+- Archive: `3ds/logs/builds/pm_3ds_final9_fd05e686a.3dsx`, 13371296 bytes, sha256 `d0c7cd712e9d4e2959ad564c088f006fb321d92d7a6f575f7d1aa09b5a952c43` (checked equal to build3ds/lane-final9/pm_3ds.3dsx). Build 1490.
+- Azahar (6 starts): yard 3 of 3, pause_menu 6 of 6, mac01 4 of 4, mac01t 6 of 6 (mdlsum 1335 in 1175 to 1495), battle_start 4 of 4, file_select 6 of 6 log checks. Not run: partner_menu, text_menu (start budget).
+- POSHUD option: Debug tab row 8 "Position HUD" (options.ini poshud=0|1). The bottom screen shows Mario x y z yaw and camera x y z yaw, refreshed with hudint. Debug tool, stays.
+- LB1 (lazy FrameBegin): not passed. mac01 and pause_menu not run (budget). Patch in 3ds/logs/perf/lb1_dropped.diff.
+- Push (user runs): `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 pacestat logstat dcsum fsplit loglevel=debug`
