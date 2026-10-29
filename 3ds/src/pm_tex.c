@@ -66,6 +66,7 @@ static unsigned epoch;
 /* TC1: cache statistics. The counters are plain increments. The report line (every 300 frames) prints with switch texstat or loglevel=debug. */
 static unsigned tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_ev0, tc_inval, tc_up_bytes, tc_evict_bytes, tc_ev0_bytes;
 static unsigned tot_hit, tot_miss, tot_inval, tot_evict, tot_up; /* lifetime (up in bytes), read per map by pm_tex_map_delta */
+static unsigned tot_inv_t, tot_hash_t; /* tex_inv3: ticks in pm_tex_invalidate and in the lookup hash (slot_valid), read per map */
 static unsigned tot_same, tot_diff; /* tex_inv1: at invalidation, the source bytes equal (same) or differ from (diff) the bytes at load */
 static int tc_on = -1;
 /* Every hit (load, bind, glyph, aux, bind_slot) stamps the slot with the use counter. Eviction takes the lowest stamp. */
@@ -688,9 +689,9 @@ unsigned pm_tex_peak(void) { return used_peak; }
 unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }
 /* texmap (debug): cache counts since the previous call, at each map load: hits, misses, uploaded KB, invalidated, evicted. */
 void pm_tex_map_delta(unsigned* o) {
-    static unsigned prev[7];
-    unsigned now[7] = { tot_hit, tot_miss, tot_up >> 10, tot_inval, tot_evict, tot_same, tot_diff };
-    for (int k = 0; k < 7; k++) { o[k] = now[k] - prev[k]; prev[k] = now[k]; }
+    static unsigned prev[9];
+    unsigned now[9] = { tot_hit, tot_miss, tot_up >> 10, tot_inval, tot_evict, tot_same, tot_diff, tot_inv_t, tot_hash_t };
+    for (int k = 0; k < 9; k++) { o[k] = now[k] - prev[k]; prev[k] = now[k]; }
 }
 
 static void tc_report(void) {
@@ -775,7 +776,7 @@ static unsigned src_hash(const void* p, unsigned n) {
     for (unsigned i = 0; i < n; i++) h = (h ^ q[i]) * 16777619u;
     return h;
 }
-void pm_tex_invalidate(const void* ptr, unsigned size) {
+static void tex_invalidate_body(const void* ptr, unsigned size) {
     pm_tex_epoch_v++;
     if (ptr && size && (unsigned)ptr < (unsigned)gMapShapeData + 0x40000u && (unsigned)ptr + size > (unsigned)gMapShapeData) pm_dlc_gen++;
     unsigned start, end;
@@ -841,11 +842,21 @@ void pm_tex_invalidate(const void* ptr, unsigned size) {
     }
 }
 
+void pm_tex_invalidate(const void* ptr, unsigned size) {
+    unsigned t0 = tc_on > 0 ? pm_ticks() : 0;
+    tex_invalidate_body(ptr, size);
+    if (t0) tot_inv_t += pm_ticks() - t0;
+}
+
 /* tex_inv2: 1 when the slot may be used. A dirty slot whose source hash changed leaves the cache (stale or drop) and 0 is returned. */
 static int slot_valid(Slot* s) {
     int i;
+    unsigned t0, h;
     if (!s->dirty) return 1;
-    if (src_hash(s->img, s->slen) == s->shash) {
+    t0 = tc_on > 0 ? pm_ticks() : 0;
+    h = src_hash(s->img, s->slen);
+    if (t0) tot_hash_t += pm_ticks() - t0;
+    if (h == s->shash) {
         undirty(s);
         tot_same++;
         return 1;
