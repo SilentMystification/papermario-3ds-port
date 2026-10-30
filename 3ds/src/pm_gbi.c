@@ -43,7 +43,7 @@ static void gv_streak_flush(void) {
     pm_gbi_gv_ticks += (pm_ticks() - gv_streak_t0) * 8u;
     gv_streak = 0;
 }
-static void gv_streak_op(unsigned op) {
+static __attribute__((cold, noinline)) void gv_streak_op(unsigned op) {
     if (op == G_TRI1 || op == G_TRI2) {
         if (pm_ph_on && !gv_run) { gv_run = 1; if (ph_pick()) { gv_streak_t0 = pm_ticks(); gv_streak = 1; } }
     } else
@@ -57,7 +57,7 @@ static void tex_streak_flush(void) {
     pm_gbi_tex_ticks += (pm_ticks() - tex_streak_t0) * 8u;
     tex_streak = 0;
 }
-static void tex_streak_op(unsigned op) {
+static __attribute__((cold, noinline)) void tex_streak_op(unsigned op) {
     if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE || op == G_PM_TEX || op == G_PM_TEXI) {
         if (pm_ph_on && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
     } else
@@ -239,7 +239,7 @@ static void grab_cur(const void* src, int w, int h) {
     if (r == 2) { n_grabs++; n_splits++; }
     if (on < 0) on = pm_debug_has("imglog");
 }
-static void imglog(const char* op, const void* a, int siz, int stride, int role) {
+static __attribute__((cold, noinline)) void imglog(const char* op, const void* a, int siz, int stride, int role) {
     static int on = -1;
     const char* kind;
     if (on < 0) on = pm_debug_has("imglog");
@@ -1545,7 +1545,7 @@ static unsigned char dls_vcls[64];
 static u32 dls_main_lo, dls_main_hi, dls_rd_lo, dls_rd_hi;
 static u32 dls_set_a[512], dls_set_s[512], dls_stamp = 1;
 static struct { u32 a, h, f; } dls_tab[1024];
-static unsigned dls_class(u32 p) {
+static __attribute__((cold, noinline)) unsigned dls_class(u32 p) {
     if (p >= dls_main_lo && p < dls_main_hi) return 0;
     if (p - (u32)gMapShapeData < 0x40000u) return 1;
     if (p - (u32)TextureHeap < 0x68000u) return 2;
@@ -1555,7 +1555,7 @@ static unsigned dls_class(u32 p) {
     if (p - (u32)heap_spriteHead < 0x100000u) return 6;
     return 7;
 }
-static unsigned dls_kind(unsigned op) {
+static __attribute__((cold, noinline)) unsigned dls_kind(unsigned op) {
     switch (op) {
     case G_VTX: case G_TRI1: case G_TRI2: case G_MTX: case G_POPMTX: case G_GEOMETRYMODE: case G_MODIFYVTX: return 0;
     case G_DL: case G_ENDDL: return 1;
@@ -1578,7 +1578,7 @@ static u32 dls_hash(const Gfx* l) {
     }
     return h;
 }
-static void dls_target(const Gfx* t) { /* a G_DL target: distinct count and the stable test of a static list */
+static __attribute__((cold, noinline)) void dls_target(const Gfx* t) { /* a G_DL target: distinct count and the stable test of a static list */
     u32 a = (u32)t;
     unsigned k = (a >> 3) * 2654435761u >> 23 & 511;
     for (unsigned n = 0; n < 512; n++, k = (k + 1) & 511) {
@@ -1594,7 +1594,7 @@ static void dls_target(const Gfx* t) { /* a G_DL target: distinct count and the 
     if (dls_tab[j].a != a) { dls_tab[j].a = a; dls_tab[j].h = h; dls_tab[j].f = dls_fno; return; }
     if (dls_fno - dls_tab[j].f >= 30) { if (dls_tab[j].h == h) dls_stab_ok++; else dls_stab_chg++; dls_tab[j].h = h; dls_tab[j].f = dls_frames; }
 }
-static void dls_init_ranges(void) {
+static __attribute__((cold, noinline)) void dls_init_ranges(void) {
     u32 lo = (u32)SolidCombineModes, hi = (u32)Gfx_RM3_CLOUD_NO_ZB;
     u32 c[] = { (u32)AlphaTestCombineModes, (u32)Gfx_RM1_SURFACE_OPA, (u32)Gfx_RM3_SURFACE_XLU_NO_ZB, (u32)Gfx_RM3_CLOUD };
     for (unsigned i = 0; i < 4; i++) { if (c[i] < lo) lo = c[i]; if (c[i] > hi) hi = c[i]; }
@@ -1894,7 +1894,7 @@ static void load_mtx(u32 w0, u32 w1) {
 
 /* S25: an opcode the interpreter does not run. Counted, logged at 1, 100, 10000 ... uses. */
 static unsigned op_cnt[256];
-static void note(unsigned op) {
+static __attribute__((cold, noinline)) void note(unsigned op) {
     unsigned n = ++op_cnt[op];
     seen[op] = 1;
 }
@@ -1949,7 +1949,7 @@ static void os_close(void) {
     pk_tk[os_pk] += w; pk_sn[os_pk]++;
     os_open = 0;
 }
-static void os_dlc_hit(void) { /* a G_DL answered by dlc_try: count it as the dlc pseudo op */
+static __attribute__((cold, noinline)) void os_dlc_hit(void) { /* a G_DL answered by dlc_try: count it as the dlc pseudo op */
     unsigned* n = os_nest > 1 ? os_nn : os_op_n;
     n[G_DL]--; n[OS_DLC_OP]++;
     if (os_open && os_op == G_DL) os_op = OS_DLC_OP;
@@ -1979,7 +1979,7 @@ static void pk_name(unsigned s, char* b, int n) {
     for (int i = 0; ok && i < 40; i++) { if (!p[i]) break; if (p[i] < 32 || p[i] > 126) ok = 0; else if (i == 39) ok = 0; }
     if (ok && p[0]) snprintf(b, n, "%.40s", p); else snprintf(b, n, "%08x", a);
 }
-static void os_op_hook(const Gfx* at, int sp, unsigned op) { /* one call per op, phase on */
+static __attribute__((cold, noinline)) void os_op_hook(const Gfx* at, int sp, unsigned op) { /* one call per op, phase on */
     if (os_nest == 1) {
         if (os_open) os_close();
         if (pmx_main && sp == 0) while (pmx_next < pmk_n && at >= pmk[pmx_next].p) pmx_cur = pmk[pmx_next++].s;
@@ -2469,7 +2469,7 @@ static void pal_rgba(const void* base, unsigned i, float o[4]) {
 
 /* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
  * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
-static int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
+static __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
     if (!cimg || pm_is_cfb(cimg) || tile >= 8 || tile_tmem[tile] < 256) return 0;
     int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
     if (x0 < sci_x0) x0 = sci_x0;
@@ -2650,7 +2650,7 @@ static int tile_texel(int n, int s, int t, unsigned char o[4]) {
  * CPU into an RGBA texture (cached by content, 128 x 128 pixel chunks), then drawn with (PRIM - ENV) * texel + ENV.
  * Returns 1 if drawn. */
 static unsigned char box_buf[128 * 128 * 4];
-static int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
+static __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
     float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f, dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
@@ -3261,6 +3261,163 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     os_nest--;
 }
 
+static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
+    int xh = (int)((w0 >> 12) & 0xfff);
+    int yh = (int)(w0 & 0xfff);
+    int xl = (int)((w1 >> 12) & 0xfff);
+    int yl = (int)(w1 & 0xfff);
+    if (xh & 0x800) xh |= ~0xfff;
+    if (yh & 0x800) yh |= ~0xfff;
+    if (xl & 0x800) xl |= ~0xfff;
+    if (yl & 0x800) yl |= ~0xfff;
+    /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
+    if (cimg == (void*)DepthCopyBuffer) { pm_depth_query(timg, (int)((s16)(hs >> 16) >> 5), sci_x0); return; }
+    if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) return;
+    /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
+    zcol = cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)cimg >= nuGfxZBuffer && (const unsigned short*)cimg < nuGfxZBuffer + 320 * 240)) && !(omode_l & (1u << G_MDSFT_ZSRCSEL));
+    if (zcol) { zslot_on = 1; sync_render(); }
+    else if (img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
+    off_screen_check();
+    box_fold_sync();
+    sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
+    if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) return;
+    /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
+    int rtile = (use_t1 || (((w1 >> 24) & 7) == 1 && td[1].valid)) ? 1 : 0;
+    if (!rtile) gp3_t0_surv();
+    ensure_tile(rtile);
+    dual_bind();
+    int tw = 1, th = 1;
+    pm_tex_size(&tw, &th);
+    /* V12b: the tile shift scales a texrect coordinate too (bulb glow uses shift 1 1). It applies after the interpolation, so it scales the step as well. */
+    float ms = shift_mul(tile_shift[rtile][0]);
+    float mt = shift_mul(tile_shift[rtile][1]);
+    float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)tile_x0 - tile_fx) / (float)tw;
+    float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)tile_y0 - tile_fy) / (float)th;
+    float dsdx = (float)(s16)(hd >> 16) / 1024.f * ms;
+    float dtdy = (float)(s16)(hd & 0xffff) / 1024.f * mt;
+    float width = (float)(xh - xl) / 4.f;
+    float height = (float)(yh - yl) / 4.f;
+    if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2) {
+        /* COPY mode: the RDP writes 4 pixels per cycle, so dsdx counts 4 texels per pixel (4.0 = 1:1).
+         * The lower right corner is inclusive, one more pixel (as in libultraship). */
+        dsdx /= 4.f;
+        width += 1.f;
+        height += 1.f; /* PT06: the lower edge is inclusive too. Without this a 6 row background strip showed 5 rows and every 6th screen row repeated the row above */
+    }
+    float s1 = s0 + dsdx * width / (float)tw;
+    float t1 = t0 + dtdy * height / (float)th;
+    t1_fold(s0 < s1 ? s0 : s1, s0 < s1 ? s1 : s0, t0 < t1 ? t0 : t1, t0 < t1 ? t1 : t0);
+    {
+        /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
+         * above). In 1-cycle and 2-cycle mode the lower right edge is exclusive: without this the quad was one
+         * pixel too wide and stretched its texture. A previous-frame blur drawn every frame zoomed in. */
+        int ex = xh / 4, ey = yh / 4;
+        if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 2) { ex -= 1; ey -= 1; }
+        if (ex >= xl / 4 && ey >= yl / 4) {
+            /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
+            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
+                sync_render();
+                pm_gpu_tex_rect_z(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1, (float)prim_z / 32767.f);
+            } else
+            if (pm_tex_off_idx() >= 0 && (tile_wrap[rtile][0] & 3) == 3 && (tile_wrap[rtile][1] & 3) == 3 && tile_wrap[rtile][2] && tile_wrap[rtile][3] &&
+                (1 << tile_wrap[rtile][2]) == tw && (1 << tile_wrap[rtile][3]) == th) {
+                FoldSeg fs[8], ft[8];
+                int ns = fold_axis(xl / 4, (float)(ex + 1 - xl / 4), s0 * tw, s1 * tw, (float)tw, 0, 1, fs);
+                int nt = fold_axis(yl / 4, (float)(ey + 1 - yl / 4), t0 * th, t1 * th, (float)th, 0, 1, ft);
+                if (ns && nt) {
+                    for (int a = 0; a < ns; a++)
+                        for (int c = 0; c < nt; c++)
+                            pm_gpu_tex_rect(fs[a].p0, ft[c].p0, fs[a].p1 - 1, ft[c].p1 - 1, fs[a].u0, ft[c].u0, fs[a].u1, ft[c].u1);
+                    goto rect_done;
+                }
+            }
+            pm_gpu_tex_rect(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1);
+        }
+    }
+    rect_done:
+    zcol = 0;
+    return;
+}
+
+static __attribute__((noinline)) void gbi_fillrect(u32 w0, u32 w1) {
+int lrx = (int)((w0 >> 14) & 0x3ff);
+int lry = (int)((w0 >> 2) & 0x3ff);
+int ulx = (int)((w1 >> 14) & 0x3ff);
+int uly = (int)((w1 >> 2) & 0x3ff);
+/* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
+ * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
+ * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
+ * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
+if (img_role(1) == ROLE_CPUFILL) {
+    unsigned short* d = (unsigned short*)cimg;
+    if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
+    for (int y = uly; y <= lry && y < 240; y++)
+        for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
+    return;
+}
+if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
+    pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(fill));
+    return;
+}
+/* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
+unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
+    ? rgba_from_5551(fill & 0xffff) : prim;
+off_screen_check();
+if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
+pm_gpu_set_replace(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
+/* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
+if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
+    sync_render();
+    pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)prim_z / 32767.f);
+} else
+pm_gpu_fill_rect(ulx, uly, lrx, lry, color);
+pm_gpu_set_replace(0);
+return;
+}
+
+static __attribute__((noinline)) void gbi_setcimg(u32 w0, u32 w1) {
+void* nc = ptr_of(w1);
+int ns = (int)((w0 >> 19) & 3);
+if (nc != cimg || ns != cimg_siz) pm_gpu_off_end(); /* V05 */
+cimg = nc;
+cimg_zero = (w1 == 0); zcol = 0;
+cimg_siz = ns;
+cimg_stride = (int)(w0 & 0xfff) + 1;
+imglog("setcimg", cimg, cimg_siz, cimg_stride, img_role(0));
+return;
+}
+
+static __attribute__((noinline)) void gbi_viewport(u32 w1) {
+    Vp* vp = (Vp*)ptr_of(w1);
+    if (vp) {
+        vp_sx = (float)vp->vp.vscale[0] / 4.f;
+        vp_sy = (float)vp->vp.vscale[1] / 4.f;
+        vp_sz = (float)vp->vp.vscale[2] / 4.f;
+        vp_tx = (float)vp->vp.vtrans[0] / 4.f;
+        vp_ty = (float)vp->vp.vtrans[1] / 4.f;
+        vp_tz = (float)vp->vp.vtrans[2] / 4.f;
+        upload_mvp();
+    }
+}
+
+static __attribute__((noinline)) void gbi_vtx_cpu1(const Vtx* s, unsigned k) {
+vert_gvf[k] = 3;
+vert_st[k][0] = (float)s->v.tc[0] * (float)tex_ss / 65536.f; /* T02: the RSP scales S and T */
+vert_st[k][1] = (float)s->v.tc[1] * (float)tex_ts / 65536.f;
+vert_c[k] = vert_color(s, mv[mv_sp]);
+if (tg_ok) { vert_st[k][0] = tg_s; vert_st[k][1] = tg_t; }
+{   /* PO2: the same products as the old per corner code, once per vertex */
+    const float(*m)[4] = combined;
+    float x = (float)s->v.ob[0], y = (float)s->v.ob[1], z = (float)s->v.ob[2];
+    vert_p[k][0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
+    vert_p[k][1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
+    vert_p[k][2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
+    vert_p[k][3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+    vert_cb[k] = (unsigned char)clip_bits4(vert_p[k]);
+    st_vx++;
+}
+}
+
 static void gbi_run_body(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     tb_probe(RS_TBG, (const Gfx*)list, nbytes / 8u);
@@ -3366,7 +3523,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
                 if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
-                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
+                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
                 break;
             }
             if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) { RS_ADD(RS_NOPUSH, 1); pc = next; }
@@ -3467,21 +3624,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                         RS_ADD(RS_XDUP, 1);
                         continue;
                     }
-                    vert_gvf[v0 + i] = 3;
-                    vert_st[v0 + i][0] = (float)src[i].v.tc[0] * (float)tex_ss / 65536.f; /* T02: the RSP scales S and T */
-                    vert_st[v0 + i][1] = (float)src[i].v.tc[1] * (float)tex_ts / 65536.f;
-                    vert_c[v0 + i] = vert_color(&src[i], mv[mv_sp]);
-                    if (tg_ok) { vert_st[v0 + i][0] = tg_s; vert_st[v0 + i][1] = tg_t; }
-                    {   /* PO2: the same products as the old per corner code, once per vertex */
-                        const float(*m)[4] = combined;
-                        float x = (float)src[i].v.ob[0], y = (float)src[i].v.ob[1], z = (float)src[i].v.ob[2];
-                        vert_p[v0 + i][0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
-                        vert_p[v0 + i][1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
-                        vert_p[v0 + i][2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
-                        vert_p[v0 + i][3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-                        vert_cb[v0 + i] = (unsigned char)clip_bits4(vert_p[v0 + i]);
-                        st_vx++;
-                    }
+                    gbi_vtx_cpu1(&src[i], v0 + i);
                 }
             }
             if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;
@@ -3527,18 +3670,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                 const u8* l = (const u8*)ptr_of(w1);
                 if (l && slot >= 0 && slot < 9) { lt[slot].col[0] = l[0]; lt[slot].col[1] = l[1]; lt[slot].col[2] = l[2]; lt[slot].dir[0] = (s8)l[8]; lt[slot].dir[1] = (s8)l[9]; lt[slot].dir[2] = (s8)l[10]; }
             }
-            if ((w0 & 0xff) == G_MV_VIEWPORT) {
-                Vp* vp = (Vp*)ptr_of(w1);
-                if (vp) {
-                    vp_sx = (float)vp->vp.vscale[0] / 4.f;
-                    vp_sy = (float)vp->vp.vscale[1] / 4.f;
-                    vp_sz = (float)vp->vp.vscale[2] / 4.f;
-                    vp_tx = (float)vp->vp.vtrans[0] / 4.f;
-                    vp_ty = (float)vp->vp.vtrans[1] / 4.f;
-                    vp_tz = (float)vp->vp.vtrans[2] / 4.f;
-                    upload_mvp();
-                }
-            }
+            if ((w0 & 0xff) == G_MV_VIEWPORT) gbi_viewport(w1);
             break;
         }
         case G_POPMTX: {
@@ -3586,17 +3718,9 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pm_gpu_set_env(envc);
             sync_combine();
             break;
-        case G_SETCIMG: {
-            void* nc = ptr_of(w1);
-            int ns = (int)((w0 >> 19) & 3);
-            if (nc != cimg || ns != cimg_siz) pm_gpu_off_end(); /* V05 */
-            cimg = nc;
-            cimg_zero = (w1 == 0); zcol = 0;
-            cimg_siz = ns;
-            cimg_stride = (int)(w0 & 0xfff) + 1;
-            imglog("setcimg", cimg, cimg_siz, cimg_stride, img_role(0));
+        case G_SETCIMG:
+            gbi_setcimg(w0, w1);
             break;
-        }
         case G_SETPRIMDEPTH:
             prim_z = (w1 >> 16) & 0x7fffu;
             break;
@@ -3604,38 +3728,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             fill = w1;
             break;
         case G_FILLRECT: {
-            int lrx = (int)((w0 >> 14) & 0x3ff);
-            int lry = (int)((w0 >> 2) & 0x3ff);
-            int ulx = (int)((w1 >> 14) & 0x3ff);
-            int uly = (int)((w1 >> 2) & 0x3ff);
-            /* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
-             * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
-             * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
-             * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
-            if (img_role(1) == ROLE_CPUFILL) {
-                unsigned short* d = (unsigned short*)cimg;
-                if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
-                for (int y = uly; y <= lry && y < 240; y++)
-                    for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
-                break;
-            }
-            if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
-                pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(fill));
-                break;
-            }
-            /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-            unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
-                ? rgba_from_5551(fill & 0xffff) : prim;
-            off_screen_check();
-            if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
-            pm_gpu_set_replace(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
-            /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
-            if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
-                sync_render();
-                pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)prim_z / 32767.f);
-            } else
-            pm_gpu_fill_rect(ulx, uly, lrx, lry, color);
-            pm_gpu_set_replace(0);
+            gbi_fillrect(w0, w1);
             break;
         }
         case G_TEXRECT:
@@ -3645,80 +3738,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc++;
             u32 hd = pc->words.w1;
             pc++;
-            int xh = (int)((w0 >> 12) & 0xfff);
-            int yh = (int)(w0 & 0xfff);
-            int xl = (int)((w1 >> 12) & 0xfff);
-            int yl = (int)(w1 & 0xfff);
-            if (xh & 0x800) xh |= ~0xfff;
-            if (yh & 0x800) yh |= ~0xfff;
-            if (xl & 0x800) xl |= ~0xfff;
-            if (yl & 0x800) yl |= ~0xfff;
-            /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
-            if (cimg == (void*)DepthCopyBuffer) { pm_depth_query(timg, (int)((s16)(hs >> 16) >> 5), sci_x0); break; }
-            if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) break;
-            /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
-            zcol = cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)cimg >= nuGfxZBuffer && (const unsigned short*)cimg < nuGfxZBuffer + 320 * 240)) && !(omode_l & (1u << G_MDSFT_ZSRCSEL));
-            if (zcol) { zslot_on = 1; sync_render(); }
-            else if (img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
-            off_screen_check();
-            box_fold_sync();
-            sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
-            if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) break;
-            /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
-            int rtile = (use_t1 || (((w1 >> 24) & 7) == 1 && td[1].valid)) ? 1 : 0;
-            if (!rtile) gp3_t0_surv();
-            ensure_tile(rtile);
-            dual_bind();
-            int tw = 1, th = 1;
-            pm_tex_size(&tw, &th);
-            /* V12b: the tile shift scales a texrect coordinate too (bulb glow uses shift 1 1). It applies after the interpolation, so it scales the step as well. */
-            float ms = shift_mul(tile_shift[rtile][0]);
-            float mt = shift_mul(tile_shift[rtile][1]);
-            float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)tile_x0 - tile_fx) / (float)tw;
-            float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)tile_y0 - tile_fy) / (float)th;
-            float dsdx = (float)(s16)(hd >> 16) / 1024.f * ms;
-            float dtdy = (float)(s16)(hd & 0xffff) / 1024.f * mt;
-            float width = (float)(xh - xl) / 4.f;
-            float height = (float)(yh - yl) / 4.f;
-            if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2) {
-                /* COPY mode: the RDP writes 4 pixels per cycle, so dsdx counts 4 texels per pixel (4.0 = 1:1).
-                 * The lower right corner is inclusive, one more pixel (as in libultraship). */
-                dsdx /= 4.f;
-                width += 1.f;
-                height += 1.f; /* PT06: the lower edge is inclusive too. Without this a 6 row background strip showed 5 rows and every 6th screen row repeated the row above */
-            }
-            float s1 = s0 + dsdx * width / (float)tw;
-            float t1 = t0 + dtdy * height / (float)th;
-            t1_fold(s0 < s1 ? s0 : s1, s0 < s1 ? s1 : s0, t0 < t1 ? t0 : t1, t0 < t1 ? t1 : t0);
-            {
-                /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
-                 * above). In 1-cycle and 2-cycle mode the lower right edge is exclusive: without this the quad was one
-                 * pixel too wide and stretched its texture. A previous-frame blur drawn every frame zoomed in. */
-                int ex = xh / 4, ey = yh / 4;
-                if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 2) { ex -= 1; ey -= 1; }
-                if (ex >= xl / 4 && ey >= yl / 4) {
-                    /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
-                    if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
-                        sync_render();
-                        pm_gpu_tex_rect_z(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1, (float)prim_z / 32767.f);
-                    } else
-                    if (pm_tex_off_idx() >= 0 && (tile_wrap[rtile][0] & 3) == 3 && (tile_wrap[rtile][1] & 3) == 3 && tile_wrap[rtile][2] && tile_wrap[rtile][3] &&
-                        (1 << tile_wrap[rtile][2]) == tw && (1 << tile_wrap[rtile][3]) == th) {
-                        FoldSeg fs[8], ft[8];
-                        int ns = fold_axis(xl / 4, (float)(ex + 1 - xl / 4), s0 * tw, s1 * tw, (float)tw, 0, 1, fs);
-                        int nt = fold_axis(yl / 4, (float)(ey + 1 - yl / 4), t0 * th, t1 * th, (float)th, 0, 1, ft);
-                        if (ns && nt) {
-                            for (int a = 0; a < ns; a++)
-                                for (int c = 0; c < nt; c++)
-                                    pm_gpu_tex_rect(fs[a].p0, ft[c].p0, fs[a].p1 - 1, ft[c].p1 - 1, fs[a].u0, ft[c].u0, fs[a].u1, ft[c].u1);
-                            goto rect_done;
-                        }
-                    }
-                    pm_gpu_tex_rect(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1);
-                }
-            }
-            rect_done:
-            zcol = 0;
+            gbi_texrect(w0, w1, hs, hd);
             break;
         }
         case G_SETTIMG:

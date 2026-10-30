@@ -31,7 +31,7 @@ static void dlc_free(DlcEnt* e) {
 
 #define DLC_GPU_GEOM(g) ((g) & (G_ZBUFFER | G_LIGHTING))
 
-static u32 dlc_geom_at(const DlcEnt* e, const DlcGrp* g, u32 entry, unsigned sg) {
+static __attribute__((noinline)) u32 dlc_geom_at(const DlcEnt* e, const DlcGrp* g, u32 entry, unsigned sg) {
     u32 x = (entry & g->am) | g->om;
     for (unsigned i = 0; i < sg; i++) {
         const u32* op = e->gop[g->goff + i];
@@ -41,7 +41,7 @@ static u32 dlc_geom_at(const DlcEnt* e, const DlcGrp* g, u32 entry, unsigned sg)
 }
 
 /* C3: adjacent gop segments share the same draw geom for every list entry (PSO inputs unchanged). */
-static int dlc_gop_same_geom(const DlcEnt* e, const DlcGrp* g, unsigned sg) {
+static __attribute__((noinline)) int dlc_gop_same_geom(const DlcEnt* e, const DlcGrp* g, unsigned sg) {
     u32 a0 = dlc_geom_at(e, g, 0, sg);
     u32 a1 = dlc_geom_at(e, g, 0xffffffffu, sg);
     u32 b0 = dlc_geom_at(e, g, 0, sg + 1u);
@@ -50,7 +50,7 @@ static int dlc_gop_same_geom(const DlcEnt* e, const DlcGrp* g, unsigned sg) {
 }
 
 /* C3: record draw ranges at compile; merge segments that share PSO geom (ends + gop index before each range). */
-static void dlc_batch_compile(DlcGrp* g, const DlcEnt* e) {
+static __attribute__((cold, noinline)) void dlc_batch_compile(DlcGrp* g, const DlcEnt* e) {
     unsigned short* ends = g->sd + 3u * g->ntri;
     unsigned sn = g->sn, ng = g->ng;
     g->nbat = 0;
@@ -84,7 +84,7 @@ static void dlc_batch_compile(DlcGrp* g, const DlcEnt* e) {
 static DlcGrp dlc_sg[1024];
 static u32 dlc_sgop[2048][2];
 /* Cut the list into groups. Fills e. Returns the reason to refuse (DLR_OK when compiled). */
-static int dlc_compile(DlcEnt* e, const Gfx* l) {
+static __attribute__((cold, noinline)) int dlc_compile(DlcEnt* e, const Gfx* l) {
     unsigned ng = 0, ngop = 0, i;
     u32 cam = 0xffffffffu, com = 0;
     unsigned char live[64];
@@ -158,7 +158,7 @@ static void dlc_set_geom(u32 g);
 static unsigned dlc_gmi(void);
 /* DLC2: copy the Vtx of each group once into the static vertex area (flag 0) and keep the triangle indices. The slot rules are those of dlc_compile and of the interpreter
  * (a group starts with all slots dead, a triangle on a dead slot is dropped). A group without room keeps sd NULL and runs through the ring. */
-static void dlc_static_build(DlcEnt* e, const Gfx* l) {
+static __attribute__((cold, noinline)) void dlc_static_build(DlcEnt* e, const Gfx* l) {
     unsigned char live[64];
     unsigned short smap[64];
     for (unsigned k = 0; k < e->ngrp; k++) {
@@ -211,7 +211,7 @@ static void dlc_static_build(DlcEnt* e, const Gfx* l) {
 }
 
 /* DLC2: one range of static triangles with the state of the current epoch. Returns 0 when the raw path refuses (nothing was queued). */
-static int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
+static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
     unsigned tss = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu);
     if (ep_epoch != gv_epoch) gv_epoch_enter();
     if (ep_why >= 0) return 0;
@@ -232,7 +232,7 @@ static int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
 }
 
 /* DLC2/C3: a group in view from the static area. Returns 0 when nothing was queued and the group must run through the ring. */
-static int dlc_static_group(const DlcEnt* e, const DlcGrp* g, unsigned gmi, u32 gg) {
+static __attribute__((noinline)) int dlc_static_group(const DlcEnt* e, const DlcGrp* g, unsigned gmi, u32 gg) {
     u32 bad = (gv_lit_ok() ? 0 : G_LIGHTING) | (fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0), x = geom;
     const u32 lm = G_LIGHTING | G_TEXTURE_GEN, x0 = x & lm; /* the RSP lights at the vertex load: the lighting state must not change inside the group, else the interpreter runs it */
     if (x & bad) return 0;
@@ -257,7 +257,7 @@ static int dlc_static_group(const DlcEnt* e, const DlcGrp* g, unsigned gmi, u32 
     return drawn;
 }
 
-static DlcEnt* dlc_find(const Gfx* l) {
+static __attribute__((noinline)) DlcEnt* dlc_find(const Gfx* l) {
     u32 a = (u32)l;
     unsigned k = ((a >> 3) * 2654435761u) >> 21 & (DLC_TAB - 1);
     for (unsigned n = 0; n < DLC_TAB; n++, k = (k + 1) & (DLC_TAB - 1)) {
@@ -274,7 +274,7 @@ static DlcEnt* dlc_find(const Gfx* l) {
     return NULL;
 }
 
-static void dlc_set_geom(u32 g) {
+static __attribute__((noinline)) void dlc_set_geom(u32 g) {
     if (g == geom) return;
     geom = g;
     pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
@@ -282,10 +282,10 @@ static void dlc_set_geom(u32 g) {
 }
 
 /* The matrix id of `combined` (the same search as the G_VTX code), GV_NONE when the table is full. */
-static unsigned dlc_gmi(void) { return gv_matrix_id(0); }
+static __attribute__((noinline)) unsigned dlc_gmi(void) { return gv_matrix_id(0); }
 
 /* Box test against the clip planes of clip_bits4. Returns 1 when every vertex of the box is outside one plane (by a margin for the float error of the interpreter). */
-static int dlc_box_out(const DlcGrp* g, const float (*m)[4]) {
+static __attribute__((noinline)) int dlc_box_out(const DlcGrp* g, const float (*m)[4]) {
     static const struct { signed char a, b; } pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } }; /* coordinate, sign of w: x + w < 0, x - w > 0, y + w < 0, y - w > 0, z - w > 0 */
     float lo[3] = { g->lo[0], g->lo[1], g->lo[2] }, hi[3] = { g->hi[0], g->hi[1], g->hi[2] };
     int out = 0;
@@ -305,7 +305,7 @@ static int dlc_box_out(const DlcGrp* g, const float (*m)[4]) {
 enum { GP1_IN, GP1_OUT, GP1_CROSS };
 
 /* AND of clip_bits4 on the 8 corners of an object-space box (subset P for GP1 out loads). */
-static unsigned char gp1_box_subset(const s16 lo[3], const s16 hi[3], const float (*m)[4]) {
+static __attribute__((noinline)) unsigned char gp1_box_subset(const s16 lo[3], const s16 hi[3], const float (*m)[4]) {
     unsigned bits = 0x3f;
     for (int i = 0; i < 8; i++) {
         float x = (float)((i & 1) ? hi[0] : lo[0]), y = (float)((i & 2) ? hi[1] : lo[1]), z = (float)((i & 4) ? hi[2] : lo[2]);
@@ -317,7 +317,7 @@ static unsigned char gp1_box_subset(const s16 lo[3], const s16 hi[3], const floa
 }
 
 /* 1 when every corner is inside all clip planes of clip_bits4. */
-static int gp1_box_in(const s16 lo[3], const s16 hi[3], const float (*m)[4]) {
+static __attribute__((noinline)) int gp1_box_in(const s16 lo[3], const s16 hi[3], const float (*m)[4]) {
     static const struct { signed char a, b; } pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } };
     for (int p = 0; p < 5; p++) {
         float k = m[3][pl[p].a] + (float)pl[p].b * m[3][3], mn = k, mx = k, mag = k < 0 ? -k : k;
@@ -333,7 +333,7 @@ static int gp1_box_in(const s16 lo[3], const s16 hi[3], const float (*m)[4]) {
 }
 
 /* GP1: exact hybrid box per non-DLC G_VTX load. */
-static int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits) {
+static __attribute__((noinline)) int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits) {
     DlcGrp g;
     g.lo[0] = lo[0]; g.lo[1] = lo[1]; g.lo[2] = lo[2];
     g.hi[0] = hi[0]; g.hi[1] = hi[1]; g.hi[2] = hi[2];
@@ -347,7 +347,7 @@ static int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], 
 }
 
 /* dlccheck: the interpreter rejects every triangle of a skipped group (all three clip bits share one plane). Counts the triangles that it would not reject. */
-static void dlc_verify_skip(const Gfx* l, const DlcGrp* g, const float (*m)[4]) {
+static __attribute__((cold, noinline)) void dlc_verify_skip(const Gfx* l, const DlcGrp* g, const float (*m)[4]) {
     unsigned char cb[64], live[64] = { 0 };
     int tsv = 1;
     for (u32 j = g->op0; j < g->op1; j++) {
@@ -377,7 +377,7 @@ static void dlc_verify_skip(const Gfx* l, const DlcGrp* g, const float (*m)[4]) 
 }
 
 /* One group in view: the interpreter code for G_VTX (GV1 ring copy, no CPU transform) and draw_tri. Returns 0 on success. */
-static void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
+static __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
     unsigned tss = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu);
     for (u32 j = g->op0; j < g->op1; j++) {
         u32 w0 = l[j].words.w0, w1 = l[j].words.w1;
@@ -429,14 +429,14 @@ static void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
 }
 
 /* the shape buffer was written: every entry is stale */
-static void dlc_reset(void) {
+static __attribute__((cold, noinline)) void dlc_reset(void) {
     for (unsigned k = 0; k < DLC_TAB; k++) if (dlc_tab[k]) { dlc_free(dlc_tab[k]); free(dlc_tab[k]); dlc_tab[k] = NULL; }
     dlc_nent = 0;
     pm_gpu_gstat_reset();
 }
 static unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
-static int dlc_try(const Gfx* l) {
+static __attribute__((noinline)) int dlc_try(const Gfx* l) {
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
@@ -528,7 +528,7 @@ static int dlc_try(const Gfx* l) {
     return 1;
 }
 
-static void dlc_report(void) {
+static __attribute__((cold, noinline)) void dlc_report(void) {
     pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u | static grp %u tri %u fail %u full %u batch %u kb %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent, dlc_c.srep, dlc_c.stri, dlc_c.sfail, dlc_c.sfull, dlc_c.batch, pm_gpu_gstat_used() / 64u);
     memset(&dlc_c, 0, sizeof dlc_c);
 }
