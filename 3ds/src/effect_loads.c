@@ -2,6 +2,8 @@
 #include "common.h"
 #include "effects.h"
 #include "effects/effect_macros.h"
+#include "game_modes.h"
+#include "pm_port.h"
 
 void big_smoke_puff_main(f32, f32, f32);
 void fx_big_smoke_puff(f32 a0, f32 a1, f32 a2) {
@@ -293,6 +295,10 @@ void fx_light_rays(s32 a0, f32 a1, f32 a2, f32 a3, f32 a4, EffectInstance** a5) 
 
 EffectInstance* lightning_main(s32, f32, f32, f32, f32, f32);
 EffectInstance* fx_lightning(s32 a0, f32 a1, f32 a2, f32 a3, f32 a4, f32 a5) {
+    /* THUNDER-BOX: one log line per battle lightning hit (Thunder Rage calls fx_lightning once per enemy it hits). */
+    if (a0 >= 3 && get_game_mode() == GAME_MODE_BATTLE) {
+        pm_log("debug lightning hit: arg0 %d pos %d %d %d scale %d %d", (int)a0, (int)a1, (int)a2, (int)a3, (int)a4, (int)a5);
+    }
     load_effect(0x36);
     return lightning_main(a0, a1, a2, a3, a4, a5);
 }

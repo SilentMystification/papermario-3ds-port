@@ -745,28 +745,32 @@
       "reason": "Run 7 (until shot 29 frame) timed out at 90 s: the shot line holds a burst number, not the frame index. Until and expected event now use frame 182."
     },
     {
-      "name": "thunder_box",
-      "status": "unverified",
-      "subject": "Attract-loop demo battle 12 (DemoScenes index 12, load_demo_battle index 3, formation BTL_DIG_FORMATION_03): Thunder Rage on the red Shy Guys at the slot machine, before file select. Shots at every frame in battle mode, 200 frames. The shot must show the red Shy Guys and the lightning.",
-      "proves": "The Thunder Rage lightning on Shy Guys draws in the real attract-loop battle.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town demoscene=12 shotmode=8:200 loglevel=debug",
-      "until": "shot \\d+ frame 260\\b",
-      "cap": 90,
-      "deadline": 20,
-      "first_marker": "debug demo: enter GAME_MODE_DEMO at demo scene 12",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "demo scene",
-          "regex": "debug demo: enter GAME_MODE_DEMO at demo scene 12"
-        },
-        {
-          "name": "shot at 260",
-          "regex": "shot \\d+ frame 260\\b"
-        }
-      ],
-      "reason": "THUNDER-BOX retarget. The first run used the Shy Guy formation battle, which is the wrong scene. Not run on this target yet."
+    "name": "thunder_box",
+    "status": "unverified",
+    "subject": "Attract-loop demo battle 12 (DemoScenes index 12, formation BTL_DIG_FORMATION_03): Thunder Rage lightning hits the four red Shy Guys before file select. Four hits (debug lightning hit, 3ds/src/effect_loads.c) start at battle mode frame 153. Until is the shot at frame 180 to 189. The shot must show the four Shy Guys and the lightning.",
+    "proves": "The Thunder Rage lightning on Shy Guys draws in the real attract-loop battle.",
+    "debug": "warp=kmr_03:0 story=ch0_toad_town demoscene=12 shots shotmode=8:200 loglevel=debug",
+    "until": "shot \\d+ frame 18[0-9]\\b",
+    "cap": 90,
+    "deadline": 20,
+    "first_marker": "debug demo: enter GAME_MODE_DEMO at demo scene 12",
+    "expects": "none",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "demo scene",
+        "regex": "debug demo: enter GAME_MODE_DEMO at demo scene 12"
+      },
+      {
+        "name": "lightning hit",
+        "regex": "debug lightning hit"
+      },
+      {
+        "name": "shot at 180",
+        "regex": "shot \\d+ frame 18[0-9]\\b"
+      }
+    ],
+    "reason": "THUNDER-BOX run 4: the run stopped at the first hit, so no shot was written after it. Battle mode starts at frame 153. Until is now a shot at frame 180 to 189, after the hits."
     },
     {
       "name": "sewer",
