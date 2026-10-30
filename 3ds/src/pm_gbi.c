@@ -700,7 +700,7 @@ static void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls
         pm_log("suntile t0 row %d %08x %08x %08x %08x", r, q[0], q[1], q[2], q[3]);
     }
 }
-static void suntile_tri(const char* path, const int* idx) {
+static __attribute__((cold, noinline)) void suntile_tri(const char* path, const int* idx) {
     if (!suntile_on() || suntile_lines >= 400) return;
     suntile_lines++;
     pm_log("suntile tri %s f%u verts %d %d %d s %.3f %.3f %.3f t %.3f %.3f %.3f tss %08x",
@@ -1628,43 +1628,63 @@ static void tb_probe(unsigned slot, const Gfx* l, unsigned n) {
     if (c) RS_ADD(slot, c);
 }
 #include "pm_dlc.inc.c"
-static void draw_tri(unsigned w) {
-    int i0 = (int)((w >> 16) & 0xff) / 2;
-    int i1 = (int)((w >> 8) & 0xff) / 2;
-    int i2 = (int)(w & 0xff) / 2;
-    int idx[3];
+static __attribute__((cold, noinline)) void tri_po3a_1(int i0, int i1, int i2) {
+    p_cmd++;
+    p_cur_mixed = vert_mid[i0] != vert_mid[i1] || vert_mid[i0] != vert_mid[i2];
+    p_mixed += (unsigned)p_cur_mixed;
+    if (geom & G_LIGHTING) p_lit++;
+    if (geom & G_TEXTURE_GEN) p_tgen++;
+    if (vert_scr[i0] | vert_scr[i1] | vert_scr[i2]) p_scr++;
+}
+
+static __attribute__((cold, noinline)) void tri_po3a_2(const int* idx) {
+    int env = comb_mode5 && !plan_active;
+    int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
+    int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
+    int fog = fogmix_on && (geom & G_FOG);
+    int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
+    int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL));
+    int scr = vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]];
+    int cm = p_cur_mixed;
+    int base = !cm && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !primz && !env && !plan && !fog && !boost;
+    if (po3a_on()) {
+        p_drawn++; p_env += env; p_plan += plan; p_a255 += a255; p_fog += fog; p_boost += boost; p_primz += primz;
+        p_plain2 += base;          /* plain except alpha 255 (cheap override) */
+        p_plain += base && !a255;  /* plain: one matrix, unlit, no override at all */
+    }
+}
+
+static __attribute__((cold, noinline)) void tri_dd_log(const ClipV* poly, int n) {
+    int i;
+    if (!dd.ntri) {
+        dd.oml = omode_l; dd.omh = omode_h; dd.zb = (geom & G_ZBUFFER) != 0; dd.tex = (unsigned)tex_on; dd.timg = (u32)td[0].src; dd.fmt = td[0].fmt;
+        dd.siz = td[0].siz; dd.w = td[0].w; dd.h = td[0].h; dd.prim = prim;
+        dd.x0 = dd.y0 = dd.w0 = 1e9f; dd.x1 = dd.y1 = dd.w1 = -1e9f;
+    }
+    dd.ntri++;
+    for (i = 0; i < n; i++) {
+        float sx = poly[i].x / poly[i].w * vp_sx + vp_tx, sy = vp_ty - poly[i].y / poly[i].w * vp_sy;
+        if (sx < dd.x0) dd.x0 = sx;
+        if (sx > dd.x1) dd.x1 = sx;
+        if (sy < dd.y0) dd.y0 = sy;
+        if (sy > dd.y1) dd.y1 = sy;
+        if (poly[i].w < dd.w0) dd.w0 = poly[i].w;
+        if (poly[i].w > dd.w1) dd.w1 = poly[i].w;
+    }
+}
+
+static __attribute__((cold, noinline)) void tri_rm_log(void) {
+    static unsigned lo, lg, la, lb, lc, ld, lh, lp, lf;
+    if (lo != omode_l || lg != (geom & G_ZBUFFER) || la != comb_a || lb != comb_b || lc != comb_c || ld != comb_d ||
+        lh != omode_h || lp != prim || lf != tile_fmt[0] * 4 + tile_siz[0]) {
+        lp = prim; lf = tile_fmt[0] * 4 + tile_siz[0];
+        lo = omode_l; lg = geom & G_ZBUFFER; la = comb_a; lb = comb_b; lc = comb_c; ld = comb_d; lh = omode_h;
+    }
+}
+
+static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
     ClipV poly[12];
     int n, i;
-    GP_START();
-    gp_ntri++;
-    n_cmd++;
-    if (dls_on) { dls_tri[dls_pc]++; dls_triv[(i0 >= 0 && i0 < 64) ? dls_vcls[i0] : 7]++; }
-    tri_since_vtx = 1;
-    if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
-        n_drop++;
-        return;
-    }
-    if (!vert_live[i0] || !vert_live[i1] || !vert_live[i2]) {
-        n_drop++;
-        if (dlc_dirty) dlc_c.slotfix++; /* DLC1: a vertex that the interpreter would have kept live after a replayed list */
-        return;
-    }
-    idx[0] = i0;
-    idx[1] = i1;
-    idx[2] = i2;
-    suntile_tri("draw", idx);
-    if (po3a_on()) {
-        p_cmd++;
-        p_cur_mixed = vert_mid[i0] != vert_mid[i1] || vert_mid[i0] != vert_mid[i2];
-        p_mixed += (unsigned)p_cur_mixed;
-        if (geom & G_LIGHTING) p_lit++;
-        if (geom & G_TEXTURE_GEN) p_tgen++;
-        if (vert_scr[i0] | vert_scr[i1] | vert_scr[i2]) p_scr++;
-    }
-    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
-    { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
-        if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
-    }
     int early = 0; /* PO3b2, DIP1: reject and cull from the clip positions of PO2 and the clip bits made at G_VTX, before the statistics, ensure_tile, dual_bind and any ClipV. Same tests and counters as before except the debug statistics (tris lit fog), which now count the triangles that pass. */
     if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
         for (i = 0; i < 3; i++)
@@ -1765,54 +1785,16 @@ static void draw_tri(unsigned w) {
     gp3_t0_surv();
     n_in++;
     n = 3;
-    if ((rmlog_on() && (rm_frame % 30) == 1) || xt_on()) {
-        static unsigned lo, lg, la, lb, lc, ld, lh, lp, lf;
-        if (lo != omode_l || lg != (geom & G_ZBUFFER) || la != comb_a || lb != comb_b || lc != comb_c || ld != comb_d ||
-            lh != omode_h || lp != prim || lf != tile_fmt[0] * 4 + tile_siz[0]) {
-            lp = prim; lf = tile_fmt[0] * 4 + tile_siz[0];
-            lo = omode_l; lg = geom & G_ZBUFFER; la = comb_a; lb = comb_b; lc = comb_c; ld = comb_d; lh = omode_h;
-        }
-    }
+    if ((rmlog_on() && (rm_frame % 30) == 1) || xt_on()) tri_rm_log();
     if (comb_mode5 && !plan_active) {
         float en[4];
         unpack8(envc, en);
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
-    if (po3a_on()) { /* a triangle that reaches the draw: which colour and depth overrides apply */
-        int env = comb_mode5 && !plan_active;
-        int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
-        int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
-        int fog = fogmix_on && (geom & G_FOG);
-        int boost = dual_on && comb2_a == G_CCMUX_SHADE && comb2_b == G_CCMUX_ENVIRONMENT && comb2_c == G_CCMUX_COMBINED && comb2_d == G_CCMUX_COMBINED;
-        int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL));
-        int scr = vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]];
-        int cm = p_cur_mixed;
-        int base = !cm && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !primz && !env && !plan && !fog && !boost;
-        if (po3a_on()) {
-            p_drawn++; p_env += env; p_plan += plan; p_a255 += a255; p_fog += fog; p_boost += boost; p_primz += primz;
-            p_plain2 += base;          /* plain except alpha 255 (cheap override) */
-            p_plain += base && !a255;  /* plain: one matrix, unlit, no override at all */
-        }
-    }
+    if (po3a_on()) tri_po3a_2(idx);
     if (dd_skip()) return;
     sync_render();
-    if (dd_on()) {
-        if (!dd.ntri) {
-            dd.oml = omode_l; dd.omh = omode_h; dd.zb = (geom & G_ZBUFFER) != 0; dd.tex = (unsigned)tex_on; dd.timg = (u32)td[0].src; dd.fmt = td[0].fmt;
-            dd.siz = td[0].siz; dd.w = td[0].w; dd.h = td[0].h; dd.prim = prim;
-            dd.x0 = dd.y0 = dd.w0 = 1e9f; dd.x1 = dd.y1 = dd.w1 = -1e9f;
-        }
-        dd.ntri++;
-        for (i = 0; i < n; i++) {
-            float sx = poly[i].x / poly[i].w * vp_sx + vp_tx, sy = vp_ty - poly[i].y / poly[i].w * vp_sy;
-            if (sx < dd.x0) dd.x0 = sx;
-            if (sx > dd.x1) dd.x1 = sx;
-            if (sy < dd.y0) dd.y0 = sy;
-            if (sy > dd.y1) dd.y1 = sy;
-            if (poly[i].w < dd.w0) dd.w0 = poly[i].w;
-            if (poly[i].w > dd.w1) dd.w1 = poly[i].w;
-        }
-    }
+    if (dd_on()) tri_dd_log(poly, n);
     if ((omode_l & (1u << G_MDSFT_ZSRCSEL))) {
         /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
         float zn = prim_ndc_z();
@@ -1863,6 +1845,37 @@ no_boost:
     pm_gpu_vert_clip(poly[1].x, poly[1].y, poly[1].z, poly[1].w, poly[1].u, poly[1].v, pack_color(&poly[1]));
     RS_ADD(RS_CLIP, 1);
     pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
+}
+
+static void draw_tri(unsigned w) {
+    int i0 = (int)((w >> 16) & 0xff) / 2;
+    int i1 = (int)((w >> 8) & 0xff) / 2;
+    int i2 = (int)(w & 0xff) / 2;
+    int idx[3];
+    GP_START();
+    gp_ntri++;
+    n_cmd++;
+    if (dls_on) { dls_tri[dls_pc]++; dls_triv[(i0 >= 0 && i0 < 64) ? dls_vcls[i0] : 7]++; }
+    tri_since_vtx = 1;
+    if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
+        n_drop++;
+        return;
+    }
+    if (!vert_live[i0] || !vert_live[i1] || !vert_live[i2]) {
+        n_drop++;
+        if (dlc_dirty) dlc_c.slotfix++; /* DLC1: a vertex that the interpreter would have kept live after a replayed list */
+        return;
+    }
+    idx[0] = i0;
+    idx[1] = i1;
+    idx[2] = i2;
+    suntile_tri("draw", idx);
+    if (po3a_on()) tri_po3a_1(i0, i1, i2);
+    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
+        if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
+    }
+    draw_tri_cpu(idx);
 }
 
 static void load_mtx(u32 w0, u32 w1) {
