@@ -86,3 +86,9 @@
 - SETCOMBINE lines at frame 260 show alpha_shade 1 for most combines, and 0 for two combines (log lines 221, 223). Plan_active 1 for one draw (log line 228, prim ffffffff).
 - Log edit reverted (git checkout of pm_gbi.c, the gbidump commit 04d6a1acd stays).
 - Next: log the CPU draw path (pm_gbi.c near 1976) for prim d5feb4ff, frame 260: plan_active, a255, and the alpha stage. No starts left.
+
+## Run 14 (temp CPU sparkle log, budget reset, 1 start)
+- Log at pm_gbi.c, after the vertex alpha block (near line 1976), frame 260, prim d5feb4ff.
+- Result: 0 log lines. No draw at frame 260 with prim d5feb4ff reaches this function, and none reached gv_params_calc (run 13). The palette prim is set (dump #1083), but the triangles that follow it take another path.
+- Next: find the draw path that consumes the G_TRI2 after the palette prim (the streak or batch path, pm_gbi.c near 3583 and gv_streak_op), and log there for prim d5feb4ff.
+- Log edit reverted (git checkout of pm_gbi.c).
