@@ -63,3 +63,19 @@ Corrects the first section above. Evidence is from the ROM bytes and the two log
 1. Log td[0] at the tile 0 draw: source pointer offset, stride, w, h, bpp, and the TMEM address (tile_tmem[0]), one line each under 200 characters.
 2. Compare the port tile 0 row layout with the N64 read at line 1 (8 bytes per row, 16 rows per 128-byte source row). Decide from the ROM bytes at 0x40BDA0 (I8 image rows 0 to 7) what the N64 texel rows are.
 3. Only then choose the fix (SUN2). The scenario camera has no sun in view to fix: the sun is a screen overlay. Scenario view change is not the fix.
+
+## SUN2 attempts (row SUN2, 5 starts used of 8). Result: no fix. Edits reverted.
+
+- Model check, ROM bytes (python, not in repo). TMEM rows from a LoadTile of an 8 texel wide I8 source at 0x09000000 (source row pitch 8 bytes, TMEM row pitch 128 bytes), read by the tile 0 line 1 (8 bytes per texel row, I4 16 texels): texel rows 0,4,8,12,16,20,32,40,48,56,63 are a ramp of centre values (0 at T 0, 2 to c at T 4 to 12, 0 at T 16 and T 32, nonzero from T 40). The same read of the 0x09000200 image rows (the port source at the ray draw, rows 0..7 are "cccc"): row T 8 and up show MIPS code bytes (27bdffb0 ...). So the two sources differ by a large amount.
+- Port source at the ray draw (run 4 and run 5 logs, frame 200): the LoadTile of tile 7 at TMEM 0 logged img 0x139b380 stride 296. The ROM decode says the SETTIMG before it is FD880007 (width 8) at 0x09000000. The port value is not the ROM value. The segment 9 mapping or the SETTIMG width in this build is not confirmed. Open.
+- The TMEM record for TMEM 0 is absent at the ray draws ("gather none", run 4). Only the tile 1 record (TMEM 256, img 0x504670, stride 128) is present. Cause not found.
+- Gather patch (tile 0 rows read from the TMEM model): built, run once (run 1 and run 2). Pixel diff of sun_sbk 0000 against the before shot: 0 px changed. Reverted with a reverse patch (no commit).
+- Shot pixels before SUN2 (sun_sbk 0000): unchanged by any SUN2 build. The fault is not yet named.
+
+## Ranked candidates (numbers as far as known)
+1. Tile 0 source image at the ray draw. The port source (0x09000200 region, or img 0x139b380 stride 296) differs from the LoadTile source (8 texel wide I8 at 0x09000000, Model A). Expected effect: large, all rays. Test: log the SETTIMG and the LoadTile values (imglog switch exists) and compare with the ROM.
+2. TMEM row pitch. Tile line 1 (8 bytes) against 128 byte load rows: the port reads source rows; the RDP reads TMEM words. Only matters after 1 is fixed.
+3. Tile 1 quarter texel offset: uls & 3 = 1 (0.25 texel) is not in t1_p[2] (pm_gbi.c dual_bind). Size 0.25 texel. Small.
+
+## Next
+- Resolve candidate 1 first: compare the SETTIMG width and address of the DL in RAM with the ROM at 0x40C490 (run with imglog=200:1 on sun_sbk, one start).
