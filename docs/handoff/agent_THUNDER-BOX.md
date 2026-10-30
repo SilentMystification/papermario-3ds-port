@@ -47,3 +47,10 @@
 - Frame 256 and frame 260 show the four red Shy Guys and the lightning.
 - Box: frame 260 (0002_0_0.ppm) shows a hard-edged bright yellow rectangle behind the top Shy Guy. Frame 256 (0001_0_0.ppm) shows a similar rectangle at the top left.
 - Next: no start left. Read the box source with a code agent (quad or mesh list, see investigate_shockwave_callers.md).
+
+## Run 8 (budget reset, lane thunder, 1 start used)
+- Tried: D_09000FF8_394098 line 36 (group 2, `G_RM_AA_ZB_XLU_SURF`) alpha combine changed from `0,0,0,PRIMITIVE` to `TEXEL0,0,PRIMITIVE,0`. Built and shot.
+- Result: the yellow rectangle is still at frames 256 and 260 (top left of the top Shy Guy). The change is not the cause. Edit reverted (git checkout). Not committed.
+- Texture check: D_09000000_3930A0 is a bolt, zero outside the bolt. Not the source of a full rectangle.
+- Mesh UVs (D_09000CF8_393D98, D_090009F8_393A98) reach about 60 texels (1916/32). Texture load uses MIRROR|WRAP, mask 5 (D_09000950_3939F0.gfx.inc.c:15). Mirror path: pm_tex.c:261-270, 318-371, 1473.
+- Next: find the draw that writes the rectangle. Candidates not yet tested: the mirror wrap state (pm_tex.c:1473, `shr_s` path), or a non-mesh draw in the same frame (lightning world or FadeBackgroundDarken).
