@@ -28,7 +28,15 @@ SECTIONS
 		KEEP( *(.init) )
 		. = ALIGN(4);
 
-		/* .text */
+		/* .text: CF4 hot set first (by function section name, -ffunction-sections), then cold code (.text.unlikely.*), then the rest */
+		*(.text.pm_gbi_run .text.gbi_run_body .text.draw_tri .text.unlikely.gv_tri .text.tex_op .text.tb_run .text.tb_inline)
+		*(.text.ensure_tile .text.ensure_tile.* .text.tile_bound .text.dual_bind .text.dual_bind.*)
+		*(.text.gv_epoch_enter .text.gv_state_why .text.gv_params_calc .text.gv_matrix_id)
+		*(.text.sync_combine .text.sync_combine_work .text.sc_sig_now .text.sync_render .text.dlc_try)
+		*(.text.pm_gpu_grange .text.pm_gpu_gvtx_load .text.pm_gpu_flush_at .text.flush_draw)
+		*(.text.pm_tex_load .text.load_impl .text.pm_tex_bind .text.pm_tex_set_wrap)
+		*libcitro3d.a:*(.text.C3Di_UpdateContext .text.C3D_DrawElements .text.C3D_DrawArrays .text.C3D_TexBind)
+		*(.text.unlikely .text.unlikely.*)
 		*(.text)
 		*(.text.*)
 		*(.glue_7)
