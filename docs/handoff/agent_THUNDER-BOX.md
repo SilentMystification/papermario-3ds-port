@@ -54,3 +54,9 @@
 - Texture check: D_09000000_3930A0 is a bolt, zero outside the bolt. Not the source of a full rectangle.
 - Mesh UVs (D_09000CF8_393D98, D_090009F8_393A98) reach about 60 texels (1916/32). Texture load uses MIRROR|WRAP, mask 5 (D_09000950_3939F0.gfx.inc.c:15). Mirror path: pm_tex.c:261-270, 318-371, 1473.
 - Next: find the draw that writes the rectangle. Candidates not yet tested: the mirror wrap state (pm_tex.c:1473, `shr_s` path), or a non-mesh draw in the same frame (lightning world or FadeBackgroundDarken).
+
+## Run 9 (2 starts left after this run, lane thunder)
+- Confirmed: D_09000950_3939F0 (src/effects/flashing_box_shockwave.c:183-184) has no triangles. It only sets state. It draws no pixels.
+- The battle branch (src/effects/flashing_box_shockwave.c:176-178) never sets the primitive colour. Only the world type sets 255,255,0. So battle PRIM is stale.
+- Tried: skip D_09000950_3939F0 for the battle type. Built and shot at frame 260. The rectangle stays at the top left of the top Shy Guy, and new yellow blocks appear at the top and bottom of the frame. Result: not the cause.
+- Edit reverted in src/effects/flashing_box_shockwave.c. Not committed.
