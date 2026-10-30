@@ -59,7 +59,10 @@ unsigned pm_ph_cmd_pm;
 unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb, pm_ph_iv, pm_ph_hud_us; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
 
 void pm_ph_scene_mode(int mode) { cur_mode = mode; }
-void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; }
+static void fs_win_reset(void);
+void pm_gbi_win_reset(void);
+/* CAP1: a map load starts the opsplit, mr0, ms0 and fsplit windows */
+void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; pm_gbi_win_reset(); fs_win_reset(); }
 void pm_ph_scene_get(int* mode, int* area, int* map) { *mode = cur_mode; *area = cur_area; *map = cur_map; }
 void pm_ph_gpu_note(void) {
     if (!pm_ph_on) return;
@@ -185,6 +188,16 @@ static void fs_arm(void) { /* the first frame end after arming only starts the c
     fs_first = 1;
 }
 
+/* CAP1: clears the fsplit window sums. A map load (pm_ph_scene_map) and the window end both call it. */
+static void fs_win_reset(void) {
+    memset(fs_sum, 0, sizeof fs_sum);
+    fs_wall = 0;
+    fs_max = fs_over = fs_n = 0;
+    fs_tk_sum = fs_wm_sum = 0;
+    fs_tk_max = fs_wm_max = 0;
+    fs_svc0 = pm_svc_n;
+}
+
 static void fs_frame_end(void) {
     unsigned now = pm_ticks();
     fs_sum[fs_cur] += now - fs_last;
@@ -214,12 +227,7 @@ static void fs_frame_end(void) {
               fs_frame, FSMS(FS_LOGIC), FSMS(FS_DL), FSMS(FS_GBI), FSMS(FS_FLUSH), FSMS(FS_GWAIT), FSMS(FS_SWAP), FSMS(FS_AUDIO), FSMS(FS_REST),
               (float)fs_wall / (float)fs_n / TICKS_MS, (float)fs_max / TICKS_MS, fs_over, (float)(pm_svc_n - fs_svc0) / (float)fs_n,
               (float)fs_wm_sum / (float)fs_n, fs_wm_max, (float)fs_tk_sum / (float)fs_n, fs_tk_max);
-    memset(fs_sum, 0, sizeof fs_sum);
-    fs_wall = 0;
-    fs_max = fs_over = fs_n = 0;
-    fs_tk_sum = fs_wm_sum = 0;
-    fs_tk_max = fs_wm_max = 0;
-    fs_svc0 = pm_svc_n;
+    fs_win_reset();
 }
 
 /* CF0: PMU counters, switch pmu (log on). A window is 300 drawn frames. Window A counts CORE_INST_CACHE_MISS (PMN0) and

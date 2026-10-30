@@ -267,6 +267,46 @@
       "reason": ""
     },
     {
+      "name": "mac01t_cap1",
+      "status": "unverified",
+      "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t_fsplit, with phase and fsplit. Window reset at the map load and the pos line (CAP1).",
+      "proves": "The opsplit and fsplit windows restart at the map load (area 1 map 2). The first pos line prints Mario and camera at the window end, 300 frames after the load. The mac_01 picture still draws.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase fsplit",
+      "until": "pos f\\d+ M x ",
+      "cap": 120,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "window reset at map load",
+          "regex": "load map area 1 map 2 "
+        },
+        {
+          "name": "opsplit line",
+          "regex": "opsplit f\\d+ "
+        },
+        {
+          "name": "pos line",
+          "regex": "pos f\\d+ M x "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 50[0-5]\\b"
+        }
+      ],
+      "reason": "CAP1 run: the first window line after the load is the first window. Until is the pos line of that window."
+    },
+    {
       "name": "pause_fsplit",
       "status": "unverified",
       "subject": "Pause status menu open at frames 120 to 137, same as pause_menu, with fsplit instead of phase. Picture compare for FSPLIT.",

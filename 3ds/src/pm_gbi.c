@@ -1923,6 +1923,7 @@ static const char* const os_nm[OS_N] = { "vtx", "mtx", "tri", "tex", "cc", "geo"
 #define OS_DLC_OP 0xFF /* pseudo op: a G_DL that dlc_try answered */
 static unsigned os_op_n[256], os_nn[256], os_tk[256], os_sn[256], os_fl[256];
 static unsigned os_fr, os_off, os_nest, os_open, os_op, os_pk, os_t0, os_fl0;
+static unsigned os_svc_last; /* CAP1: pm_svc_n at the last opsplit line (pt field); pm_gbi_win_reset sets it */
 #define PK_MARKS 256
 #define PK_SLOTS 256
 #define PK_PRE 253 /* main list ops before the first mark */
@@ -2276,6 +2277,12 @@ static __attribute__((cold, noinline)) void mdc_report(void) {
     mdcm_over = 0;
 }
 
+void pm_pos_text(char (*out)[40]); /* pm_route.c */
+static void os_win_clear(void) {
+    memset(os_op_n, 0, sizeof os_op_n); memset(os_nn, 0, sizeof os_nn); memset(os_tk, 0, sizeof os_tk); memset(os_sn, 0, sizeof os_sn); memset(os_fl, 0, sizeof os_fl);
+    memset(pk_ops, 0, sizeof pk_ops); memset(pk_tk, 0, sizeof pk_tk); memset(pk_sn, 0, sizeof pk_sn);
+    gm_steps = 0;
+}
 static void os_report(void) {
     static unsigned long long est[256], estc[256], pke[PK_SLOTS];
     unsigned long long cls_tk[OS_N] = { 0 }, cls_n[OS_N] = { 0 }, tot_n = 0, tot_fl = 0, tot_sn = 0, psum = 0;
@@ -2299,10 +2306,11 @@ static void os_report(void) {
         pke[s] = pk_sn[s] ? (unsigned long long)pk_tk[s] * pk_ops[s] / pk_sn[s] : 0;
         psum += pk_ops[s];
     }
-    static unsigned svc_last; /* W2: all pm_ticks reads per frame over the 300 frames (tk is the op sampler only) */
+    /* W2: all pm_ticks reads per frame over the 300 frames (tk is the op sampler only) */
     unsigned svc_now = pm_svc_n;
-    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | pt %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), (svc_now - svc_last) / 300u, gm_steps / 300, gm_n);
-    svc_last = svc_now;
+    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | pt %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), (svc_now - os_svc_last) / 300u, gm_steps / 300, gm_n);
+    os_svc_last = svc_now;
+    { char p[2][40]; pm_pos_text(p); pm_log_hw("pos f%d %s | %s", rm_frame, p[0], p[1]); } /* CAP1: Mario and camera, one line per window */
     pm_log_hw("prod f%d sum %u ops %u", rm_frame, (unsigned)(psum / 300), (unsigned)(tot_n / 300));
     for (int r = 0; r < 8; r++) {
         int best = -1; unsigned long long bv = 0;
@@ -2313,9 +2321,16 @@ static void os_report(void) {
         pm_log_hw("prod f%d %s ops %u us %u", rm_frame, nm, (unsigned)(bv / 300), (unsigned)(pke[best] / 268 / 300));
         pk_ops[best] = 0;
     }
-    memset(os_op_n, 0, sizeof os_op_n); memset(os_nn, 0, sizeof os_nn); memset(os_tk, 0, sizeof os_tk); memset(os_sn, 0, sizeof os_sn); memset(os_fl, 0, sizeof os_fl);
-    memset(pk_ops, 0, sizeof pk_ops); memset(pk_tk, 0, sizeof pk_tk); memset(pk_sn, 0, sizeof pk_sn);
-    gm_steps = 0;
+    os_win_clear();
+}
+
+/* CAP1: a map load starts a new window. pm_ph_scene_map calls this. os_fr counts from 0 again, so the next report is 300 frames later. */
+void pm_gbi_win_reset(void) {
+    os_fr = 0;
+    os_win_clear();
+    os_svc_last = pm_svc_n;
+    memset(mr0_T, 0, sizeof mr0_T); memset(mr0_F, 0, sizeof mr0_F); mr0_plain_n = 0;
+    ms0_rem = ms0_chg = ms0_ctot = ms0_opm = ms0_runs = 0;
 }
 
 void pm_gbi_end_frame(void) {
@@ -3477,6 +3492,7 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx)
         u32 w1 = q->words.w1;
         unsigned op = w0 >> 24;
         if (g1_skip[op] || g2_same(op, w0, w1)) continue;
+        if (pm_ph_on) os_nn[op]++; /* CAP1: a nested word counts in opsplit ops, as a walker op does */
         pm_gbi_cur_op = op;
         if (op != G_MTX && op != G_POPMTX && op != G_DL) gv_epoch++; /* GV1b, as the walker */
         switch (op) {
