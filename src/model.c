@@ -2454,10 +2454,6 @@ void load_next_model_textures(ModelNode* model, s32 romOffset, s32 texSize) {
 void mdl_load_all_textures(ModelNode* rootModel, s32 romOffset, s32 size) {
     s32 baseOffset = 0;
 
-#ifdef TARGET_3DS
-    extern unsigned pm_pdl_heap_gen;
-    pm_pdl_heap_gen++; /* C1: one generation for the whole map texheap fill (DLC.md 3.1) */
-#endif
 
     // textures are loaded to the upper half of the texture heap when not in the world
     if (gGameStatusPtr->context != CONTEXT_WORLD) {

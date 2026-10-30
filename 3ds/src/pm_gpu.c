@@ -14,7 +14,6 @@
 #include "pm_gbi.h"
 #include "pm_tex.h"
 #include "pm_port.h"
-#include "pm_pdl.h"
 
 typedef struct {
     float x, y, z, w;
@@ -449,16 +448,6 @@ static float decal_bias(void) {
 typedef struct { int combine, tex, tex1, i8_0, i8_1, rgb_scale, r_mix, draw_3d, rect_2d, dview, off_active, off_i8, r_memblend, r_replace, r_blend; unsigned prim, cconst, mixcol; unsigned plan_gen; } TevKey;
 static TevKey tev_key;
 static int tev_valid, tev_memb;
-/* C6: pre-built texenv and fixed GPU state per PSO id (compiled draws). */
-typedef struct {
-    u8 valid, env_hi, memb, z_on;
-    TevKey tk;
-    C3D_TexEnv env[6];
-    struct { int dt[3]; float dm[2]; int dm_on, at[2]; unsigned sc[5]; int bl[6]; int cull, ed[3]; unsigned has; } shsnap;
-    int stencil_on;
-} PsoGpuPkt;
-static PsoGpuPkt pso_pkt[PM_PSO_N];
-static unsigned pso_pkt_napply;
 /* PG3 O4: citro3d marks a state group dirty at every setter call and sends it again at the next draw. These wrappers call the setter only when an
  * argument differs from the last call. sh.has is cleared where citro3d may change the state itself (frame begin, target change, frame split). */
 static struct { int dt[3]; float dm[2]; int dm_on, at[2]; unsigned sc[5]; int bl[6]; int cull, ed[3], uc; unsigned has; } sh;
@@ -524,8 +513,6 @@ static void sh_user_clip(int on) {
 }
 
 static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int i8_1, int noise, int* memb_out);
-static void pso_gst_record(int z, int graw, PsoGpuPkt* p);
-static int pso_pkt_try(unsigned id, int z, int graw, int* memb_out);
 static void flush_impl(void);
 #define flush() do { fl_fn = __func__; fl_line = __LINE__; flush_impl(); } while (0)
 /* switch rectdbg: compare the draw state when a queued rectangle batch is drawn with the state when it was queued (finds a setter that forgot to flush) */
@@ -579,7 +566,7 @@ static void flush_impl(void) {
     }
     flush_draw();
 }
-static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int i8_1, int noise, int* memb_out) {
+static __attribute__((noinline)) void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int i8_1, int noise, int* memb_out) { /* DLF23: out of line, runs only on a TEV key change */
     int memb = 0;
     TevKey tk;
     const size_t tk_n = sizeof tk;
@@ -734,87 +721,6 @@ static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int 
         }
     memcpy(&tev_key, &tk, tk_n); tev_valid = 1; tev_memb = memb;
     if (memb_out) *memb_out = memb;
-}
-
-static void pso_gst_record(int z, int graw, PsoGpuPkt* p) {
-    sh.has = 0;
-    if (z && r_zmark) {
-        sh_depth_test(true, GPU_GREATER, GPU_WRITE_DEPTH);
-        C3D_StencilTest(true, GPU_ALWAYS, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
-        stencil_on = 1;
-    } else if (z && r_zcmp)
-        sh_depth_test(true, r_decal ? GPU_GEQUAL : GPU_GREATER, r_nocol ? GPU_WRITE_DEPTH : r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-    else if (z && r_zupd)
-        sh_depth_test(true, GPU_ALWAYS, r_nocol ? GPU_WRITE_DEPTH : GPU_WRITE_ALL);
-    else
-        sh_depth_test(false, GPU_GREATER, GPU_WRITE_COLOR);
-    if (stencil_on && !(z && r_zmark)) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
-    sh_depth_map(true, -1.0f, r_decal ? decal_bias() : 0.0f);
-    sh_early(false, GPU_EARLYDEPTH_GREATER, 0);
-    if (r_atest >= 0) sh_alpha_test(true, GPU_GREATER, r_atest);
-    else sh_alpha_test(false, GPU_ALWAYS, 0);
-    sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
-    if (off_active && (r_replace || (off_i8 && !r_blend && !tev_memb)))
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-    else if (off_active)
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-    else if (r_blend)
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    else
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-    memcpy(&p->shsnap, &sh, sizeof sh);
-    p->stencil_on = stencil_on;
-    p->z_on = (u8)z;
-}
-
-static void pso_sh_restore(const PsoGpuPkt* p) {
-    sh.has = 0;
-    C3D_DepthTest((bool)p->shsnap.dt[0], (GPU_TESTFUNC)p->shsnap.dt[1], (GPU_WRITEMASK)p->shsnap.dt[2]);
-    C3D_DepthMap((bool)p->shsnap.dm_on, p->shsnap.dm[0], p->shsnap.dm[1]);
-    C3D_AlphaTest((bool)p->shsnap.at[0], GPU_GREATER, p->shsnap.at[1]);
-    C3D_EarlyDepthTest((bool)p->shsnap.ed[0], (GPU_EARLYDEPTHFUNC)p->shsnap.ed[1], (u32)p->shsnap.ed[2]);
-    C3D_CullFace((GPU_CULLMODE)p->shsnap.cull);
-    C3D_AlphaBlend((GPU_BLENDEQUATION)p->shsnap.bl[0], (GPU_BLENDEQUATION)p->shsnap.bl[1], (GPU_BLENDFACTOR)p->shsnap.bl[2], (GPU_BLENDFACTOR)p->shsnap.bl[3], (GPU_BLENDFACTOR)p->shsnap.bl[4], (GPU_BLENDFACTOR)p->shsnap.bl[5]);
-    memcpy(&sh, &p->shsnap, sizeof sh);
-    if (p->stencil_on) {
-        C3D_StencilTest(true, GPU_ALWAYS, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
-        stencil_on = 1;
-    }
-}
-
-static int pso_pkt_try(unsigned id, int z, int graw, int* memb_out) {
-    if (!id || id >= PM_PSO_N || !pso_pkt[id].valid || pso_pkt[id].z_on != (u8)z) return 0;
-    const PsoGpuPkt* p = &pso_pkt[id];
-    env_hi = (int)p->env_hi;
-    for (int i = 0; i < p->env_hi && i < 6; i++) *C3D_GetTexEnv(i) = p->env[i];
-    tev_key = p->tk;
-    tev_valid = 1;
-    tev_memb = p->memb;
-    if (memb_out) *memb_out = p->memb;
-    pso_sh_restore(p);
-    pso_pkt_napply++;
-    return 1;
-}
-
-void pm_pso_bake(unsigned id) {
-    if (!id || id >= PM_PSO_N) return;
-    PsoGpuPkt* p = &pso_pkt[id];
-    memset(p, 0, sizeof *p);
-    int tex = (combine >= 2) && !grab_bind && pm_tex_bind();
-    int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
-    int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
-    int noise = combine == 8 && plan.uses_noise && noise_init();
-    C3D_TexEnv* env = C3D_GetTexEnv(0);
-    flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, NULL);
-    p->env_hi = (u8)env_hi;
-    for (int i = 0; i < env_hi && i < 6; i++) p->env[i] = *C3D_GetTexEnv(i);
-    p->tk = tev_key;
-    p->memb = (u8)tev_memb;
-    int z = z_on && !off_active;
-    pso_gst_record(z, 1, p);
-    p->valid = 1;
 }
 
 static unsigned flush_gen; /* GV1b: counts the raw batches closed */
@@ -981,28 +887,22 @@ static void flush_draw(void) {
     PHF_POP();
     int z = z_on && (!rect_2d || rect_z) && !off_active;
     { static int nozt = -1; if (nozt < 0) nozt = pm_debug_has("nozt"); if (nozt) z = 0; }
-    unsigned pso_id = graw ? pm_pdl_flush_pso() : 0;
-    int pso_fast = 0;
     PHF_PUSH(PH_GTEV);
     int memb = 0;
-    if (pso_id && pso_pkt_try(pso_id, z, graw, &memb)) pso_fast = 1;
-    else {
-        TevKey tk;
-        const size_t tk_n = sizeof tk;
-        memset(&tk, 0, tk_n);
-        tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
-        tk.dview = dview; tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
-        tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
-        tk.plan_gen = combine == 8 ? plan_gen : 0;
-        int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
-        if (tev_same) memb = tev_memb;
-        else { pm_dc_c[DC_TEVR]++; C3D_TexEnv* env = C3D_GetTexEnv(0); flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
-    }
+    TevKey tk;
+    const size_t tk_n = sizeof tk;
+    memset(&tk, 0, tk_n);
+    tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
+    tk.dview = dview; tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
+    tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
+    tk.plan_gen = combine == 8 ? plan_gen : 0;
+    int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
+    if (tev_same) memb = tev_memb;
+    else { pm_dc_c[DC_TEVR]++; C3D_TexEnv* env = C3D_GetTexEnv(0); flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
     DC_T(3);
     PHF_POP();
     PHF_PUSH(PH_GST);
     dv_draw++;
-    if (!pso_fast) {
     if (z && r_zmark) {
         /* B3b: pass 1 tests the model with its own depth and marks the stencil where it is nearer than the world. Pass 2 (below) writes the constant there. */
         sh_depth_test(true, GPU_GREATER, GPU_WRITE_DEPTH);
@@ -1021,7 +921,6 @@ static void flush_draw(void) {
     sh_early(false, GPU_EARLYDEPTH_GREATER, 0);
     if (r_atest >= 0) sh_alpha_test(true, GPU_GREATER, r_atest);
     else sh_alpha_test(false, GPU_ALWAYS, 0);
-    }
     /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide
      * game picture and whatever scissor the display list set inside it. */
     if (off_active) {
@@ -1047,7 +946,6 @@ static void flush_draw(void) {
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
     }
-    if (!pso_fast) {
     sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
     if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
         sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
@@ -1059,7 +957,6 @@ static void flush_draw(void) {
             GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
     else
         sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-    }
     PHF_POP();
     DC_T(4);
     sh_user_clip(graw); /* GP2: near clip on raw batches only */

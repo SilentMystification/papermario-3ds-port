@@ -9,7 +9,6 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
-#include "pm_pdl.h"
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (switch gbiprof) */
@@ -294,7 +293,7 @@ static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
  * box_folded is 1 while it is drawn as (PRIM - ENV) * TEXEL1 + ENV, which is exact when tile 0
  * is all white (the flat background of the window styles, `bg_flat`). */
 static int box_prod, box_folded;
-/* R2B: comb_gen counts the writes of the combine state that the SETCOMBINE handler does not make (box_fold_sync toggles, gbi_state_apply);
+/* R2B: comb_gen counts the writes of the combine state that the SETCOMBINE handler does not make (box_fold_sync toggles);
  * cmb_gen_seen is comb_gen at the last SETCOMBINE. */
 static unsigned comb_gen, cmb_gen_seen;
 static int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
@@ -365,16 +364,6 @@ static int comb_set;
 /* 1 when the alpha combiner reads shade alpha. DECAL and MODULATE modes do not, and imgfx
  * meshes leave cn[3] at 0, so passing it through made them vanish. */
 static int comb_alpha_shade = 1;
-/* C1/C2: state-list compiler (definitions in pm_dlc.inc.c) */
-static unsigned pdl_pso_cur, pdl_ep_pso;
-static int pdl_tex_slot = -1, pdl_tex_gen;
-static int pdl_compile_one;
-static int pdl_try(const Gfx* l);
-static int pdl_try_m(const Gfx* l);
-static int pdl_tpl_drive(void* list, unsigned nbytes);
-static void pdl_pso_use(void);
-static int pdl_lazy_tile(int n);
-
 extern char __end__[]; /* linker: end of .bss */
 static int is_host(u32 p) {
     unsigned int heap = __ctru_heap;
@@ -1115,7 +1104,6 @@ static unsigned sc_sig_now(void) {
     return sg;
 }
 static void sync_combine(void) {
-    if (pdl_ep_pso) { sync_combine_work_timed(); sc_ok = 1; return; } /* C2: compiled lists already resolved the combiner at compile */
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
         unsigned sg = sc_sig_now();
@@ -1452,19 +1440,6 @@ static int gv_state_why(int* ct, int* both) {
 
 /* the first triangle (or DLC2 range) after a state change */
 static void gv_epoch_enter(void) {
-    if (pdl_pso_cur && pdl_ep_pso == pdl_pso_cur) {
-        ensure_tile(use_t1 ? 1 : 0);
-        dual_bind();
-        ep_epoch = gv_epoch;
-        return;
-    }
-    if (pdl_pso_cur) {
-        pdl_pso_use();
-        ensure_tile(use_t1 ? 1 : 0);
-        dual_bind();
-        ep_epoch = gv_epoch;
-        return;
-    }
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     if (ep_why < 0 && !ep_cullboth) {
@@ -1641,126 +1616,6 @@ static void dls_report(void) {
     pm_log_hw("%s", b);
     memset(dls_ops, 0, sizeof dls_ops); memset(dls_tri, 0, sizeof dls_tri); memset(dls_triv, 0, sizeof dls_triv); memset(dls_vtx, 0, sizeof dls_vtx);
     dls_dl = dls_stab_ok = dls_stab_chg = 0; dls_frames = 0;
-}
-
-/* C0: interpreter state that state ops write (DLC3a / full_gpu_path section 3). Used for EXIT snapshots in C1 and for pdl0 profiling. No behaviour change. */
-typedef struct {
-    unsigned geom, omode_h, omode_l;
-    unsigned comb_w0, comb_w1;
-    unsigned comb_aa, comb_ab, comb_ac, comb_ad;
-    unsigned comb2_a, comb2_b, comb2_c, comb2_d, comb2_aa, comb2_ab, comb2_ac, comb2_ad;
-    int comb_mode5, use_t1, comb_set, comb_alpha_shade, leg_mode, dual_on;
-    int tex_on, cur_tile;
-    unsigned tex_ss, tex_ts;
-    unsigned prim, envc, fill, fogc, blendc;
-    int fog_fm, fog_fo, fogmix_on;
-    unsigned conv_k4, keyc, keys, prim_z;
-    int tile_x0, tile_y0;
-    float tile_fx, tile_fy;
-    const void* timg;
-    unsigned timg_fmt, timg_siz;
-    int timg_stride;
-    const void* tlut;
-    int tlut_n;
-    unsigned tile_tmem[8], tile_pal[8];
-    int tile_sz[8][4];
-    unsigned tile_fmt[8], tile_siz[8];
-    unsigned tile_wrap[8][4];
-    unsigned tile_shift[8][2];
-    struct { unsigned tmem; const void* img; int stride, x, y; } ldrec[4];
-    unsigned ldrec_n;
-    struct { unsigned tmem, bytes; const void* img; } blk[4];
-    unsigned blk_n;
-    int ld_valid, ld_x, ld_y, ld_h, ld_w;
-    const void* tlut_pal[16];
-    int sci_x0, sci_y0, sci_x1, sci_y1;
-    struct { u8 col[3]; s8 dir[3]; } lt[9];
-    unsigned lt_n;
-    s8 lk[2][3];
-    struct { int valid; const u8* src; unsigned fmt, siz; int w, h, stride, x0, y0, pal_n; const void* pal; } td[2];
-    struct { int valid; const u8* src; int stride, w, h, x0, y0; } m1;
-    int box_prod, box_folded, box_pat;
-    unsigned box_save[4];
-    float dual_gain[3];
-    void* cimg;
-    int cimg_stride, cimg_siz, cimg_zero, zcol, zslot_on;
-} GbiState;
-
-static void gbi_state_get(GbiState* s) {
-    memset(s, 0, sizeof *s);
-    s->geom = geom; s->omode_h = omode_h; s->omode_l = omode_l;
-    s->comb_w0 = comb_w0; s->comb_w1 = comb_w1;
-    s->comb_aa = comb_aa; s->comb_ab = comb_ab; s->comb_ac = comb_ac; s->comb_ad = comb_ad;
-    s->comb2_a = comb2_a; s->comb2_b = comb2_b; s->comb2_c = comb2_c; s->comb2_d = comb2_d;
-    s->comb2_aa = comb2_aa; s->comb2_ab = comb2_ab; s->comb2_ac = comb2_ac; s->comb2_ad = comb2_ad;
-    s->comb_mode5 = comb_mode5; s->use_t1 = use_t1; s->comb_set = comb_set; s->comb_alpha_shade = comb_alpha_shade;
-    s->leg_mode = leg_mode; s->dual_on = dual_on;
-    s->tex_on = tex_on; s->cur_tile = cur_tile; s->tex_ss = tex_ss; s->tex_ts = tex_ts;
-    s->prim = prim; s->envc = envc; s->fill = fill; s->fogc = fogc; s->blendc = blendc;
-    s->fog_fm = fog_fm; s->fog_fo = fog_fo; s->fogmix_on = fogmix_on;
-    s->conv_k4 = conv_k4; s->keyc = keyc; s->keys = keys; s->prim_z = prim_z;
-    s->tile_x0 = tile_x0; s->tile_y0 = tile_y0; s->tile_fx = tile_fx; s->tile_fy = tile_fy;
-    s->timg = timg; s->timg_fmt = timg_fmt; s->timg_siz = timg_siz; s->timg_stride = timg_stride;
-    s->tlut = tlut; s->tlut_n = tlut_n;
-    memcpy(s->tile_tmem, tile_tmem, sizeof tile_tmem); memcpy(s->tile_pal, tile_pal, sizeof tile_pal);
-    memcpy(s->tile_sz, tile_sz, sizeof tile_sz); memcpy(s->tile_fmt, tile_fmt, sizeof tile_fmt);
-    memcpy(s->tile_siz, tile_siz, sizeof tile_siz); memcpy(s->tile_wrap, tile_wrap, sizeof tile_wrap);
-    memcpy(s->tile_shift, tile_shift, sizeof tile_shift);
-    memcpy(s->ldrec, ldrec, sizeof ldrec); s->ldrec_n = ldrec_n;
-    memcpy(s->blk, blk, sizeof blk); s->blk_n = blk_n;
-    s->ld_valid = ld_valid; s->ld_x = ld_x; s->ld_y = ld_y; s->ld_h = ld_h; s->ld_w = ld_w;
-    memcpy(s->tlut_pal, tlut_pal, sizeof tlut_pal);
-    s->sci_x0 = sci_x0; s->sci_y0 = sci_y0; s->sci_x1 = sci_x1; s->sci_y1 = sci_y1;
-    memcpy(s->lt, lt, sizeof lt); s->lt_n = lt_n; memcpy(s->lk, lk, sizeof lk);
-    memcpy(s->td, td, sizeof td); memcpy(&s->m1, &m1, sizeof m1);
-    s->box_prod = box_prod; s->box_folded = box_folded; s->box_pat = box_pat;
-    memcpy(s->box_save, box_save, sizeof box_save); memcpy(s->dual_gain, dual_gain, sizeof dual_gain);
-    s->cimg = cimg; s->cimg_stride = cimg_stride; s->cimg_siz = cimg_siz; s->cimg_zero = cimg_zero;
-    s->zcol = zcol; s->zslot_on = zslot_on;
-}
-
-static u32 gbi_state_fnv(const void* p, unsigned n) {
-    u32 h = 2166136261u;
-    const u8* b = (const u8*)p;
-    for (unsigned i = 0; i < n; i++) h = (h ^ b[i]) * 16777619u;
-    return h;
-}
-
-static u32 gbi_state_hash(const GbiState* s) { return gbi_state_fnv(s, sizeof *s); }
-
-static void gbi_state_apply(const GbiState* s) {
-    comb_gen++;
-    geom = s->geom; omode_h = s->omode_h; omode_l = s->omode_l;
-    comb_w0 = s->comb_w0; comb_w1 = s->comb_w1;
-    comb_aa = s->comb_aa; comb_ab = s->comb_ab; comb_ac = s->comb_ac; comb_ad = s->comb_ad;
-    comb2_a = s->comb2_a; comb2_b = s->comb2_b; comb2_c = s->comb2_c; comb2_d = s->comb2_d;
-    comb2_aa = s->comb2_aa; comb2_ab = s->comb2_ab; comb2_ac = s->comb2_ac; comb2_ad = s->comb2_ad;
-    comb_mode5 = s->comb_mode5; use_t1 = s->use_t1; comb_set = s->comb_set; comb_alpha_shade = s->comb_alpha_shade;
-    leg_mode = s->leg_mode; dual_on = s->dual_on;
-    tex_on = s->tex_on; cur_tile = s->cur_tile; tex_ss = s->tex_ss; tex_ts = s->tex_ts;
-    prim = s->prim; envc = s->envc; fill = s->fill; fogc = s->fogc; blendc = s->blendc;
-    fog_fm = s->fog_fm; fog_fo = s->fog_fo; fogmix_on = s->fogmix_on;
-    conv_k4 = s->conv_k4; keyc = s->keyc; keys = s->keys; prim_z = s->prim_z;
-    tile_x0 = s->tile_x0; tile_y0 = s->tile_y0; tile_fx = s->tile_fx; tile_fy = s->tile_fy;
-    timg = s->timg; timg_fmt = s->timg_fmt; timg_siz = s->timg_siz; timg_stride = s->timg_stride;
-    tlut = s->tlut; tlut_n = s->tlut_n;
-    memcpy(tile_tmem, s->tile_tmem, sizeof tile_tmem); memcpy(tile_pal, s->tile_pal, sizeof tile_pal);
-    memcpy(tile_sz, s->tile_sz, sizeof tile_sz); memcpy(tile_fmt, s->tile_fmt, sizeof tile_fmt);
-    memcpy(tile_siz, s->tile_siz, sizeof tile_siz); memcpy(tile_wrap, s->tile_wrap, sizeof tile_wrap);
-    memcpy(tile_shift, s->tile_shift, sizeof tile_shift);
-    memcpy(ldrec, s->ldrec, sizeof ldrec); ldrec_n = s->ldrec_n;
-    memcpy(blk, s->blk, sizeof blk); blk_n = s->blk_n;
-    ld_valid = s->ld_valid; ld_x = s->ld_x; ld_y = s->ld_y; ld_h = s->ld_h; ld_w = s->ld_w;
-    memcpy(tlut_pal, s->tlut_pal, sizeof tlut_pal);
-    sci_x0 = s->sci_x0; sci_y0 = s->sci_y0; sci_x1 = s->sci_x1; sci_y1 = s->sci_y1;
-    memcpy(lt, s->lt, sizeof lt); lt_n = s->lt_n; memcpy(lk, s->lk, sizeof lk);
-    memcpy(td, s->td, sizeof td); memcpy(&m1, &s->m1, sizeof m1);
-    box_prod = s->box_prod; box_folded = s->box_folded; box_pat = s->box_pat;
-    memcpy(box_save, s->box_save, sizeof box_save); memcpy(dual_gain, s->dual_gain, sizeof dual_gain);
-    cimg = s->cimg; cimg_stride = s->cimg_stride; cimg_siz = s->cimg_siz; cimg_zero = s->cimg_zero;
-    zcol = s->zcol; zslot_on = s->zslot_on;
-    sc_ok = 0;
-    sr_ok = 0;
 }
 
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
@@ -2457,11 +2312,7 @@ void pm_gbi_end_frame(void) {
     snprintf(stats_line, sizeof stats_line, "t%d i%d c%d d%d o%d k%d x%d sp%u sl%d gr%u",
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0, n_splits, pm_gpu_off_count(), n_grabs);
     PH_ADD(C_CMD, n_ops);
-    { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); pdl_report(); } }
-    if (pdl0_on() && n_ops) {
-        pdl0_frame_end();
-        if (++pdl0_frames >= 300) { pdl0_report(); }
-    }
+    { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); } }
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
     if (pm_ph_on || pm_dcs_on) pm_gpu_dcsum_frame(rm_frame); /* DS0: dcsum runs without phase; it must clear pm_dc_c and pm_dc_us every frame */
     if (pm_ph_on) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mops_report(); mdc_report(); os_fr = 0; } pmk_n = 0; }
@@ -2715,7 +2566,6 @@ static int glyph_atlas_bound(void) {
     return 1;
 }
 static void ensure_tile(int n) {
-    if (n == 0 && pdl_lazy_tile(0)) return;
     if (!td[n].valid) return;
     tile_fx = (float)(tile_sz[n][0] & 3) * 0.25f; /* PT38 */
     tile_fy = (float)(tile_sz[n][1] & 3) * 0.25f;
@@ -2903,12 +2753,12 @@ static int lt_mem_same(u32 w0, u32 w1) {
 static int g2_same(unsigned op, u32 w0, u32 w1) {
     switch (op) {
     /* R2B: each case skips only when the handler's writes equal the current state and its calls do nothing (sync_combine: sc_ok and
-     * the same input hash; pm_gpu_set_mode: the mode already set). pdl_ep_pso makes sync_combine work every time, so no skip then. */
+     * the same input hash; pm_gpu_set_mode: the mode already set). */
     case G_SETCOMBINE:
-        return comb_set && comb_w0 == w0 && comb_w1 == w1 && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok && !pdl_ep_pso &&
+        return comb_set && comb_w0 == w0 && comb_w1 == w1 && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok &&
                sc_sig_now() == sc_sig;
     case G_TEXTURE:
-        return tex_on == ((w0 & 0xff) != 0) && tex_ss == (w1 >> 16) && tex_ts == (w1 & 0xffffu) && sc_ok && !pdl_ep_pso && sc_sig_now() == sc_sig;
+        return tex_on == ((w0 & 0xff) != 0) && tex_ss == (w1 >> 16) && tex_ts == (w1 & 0xffffu) && sc_ok && sc_sig_now() == sc_sig;
     case G_GEOMETRYMODE: {
         unsigned g = (geom & (w0 & 0xffffffu)) | w1;
         return g == geom && pm_gpu_mode_is((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
@@ -3415,18 +3265,10 @@ static void gbi_run_body(void* list, unsigned nbytes) {
     tb_probe(RS_TBG, (const Gfx*)list, nbytes / 8u);
     dls_on = PMDL("dlsrc");
     dlc_on = dlc_enabled();
-    int pdl_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; /* C5: main list only, not backgroundGfx */
     if (dls_on && !dlc_depth) {
         if (!dls_rd_lo) dls_init_ranges();
         dls_main_lo = (u32)list; dls_main_hi = (u32)list + nbytes;
         dls_pc = dls_class((u32)list);
-    }
-    if (dlc_on && pdl_main && !pdl_compile_one && !pdl_depth && !dlc_depth && nbytes >= 8u && pdl_tpl_drive(list, nbytes)) { /* pdl_tpl_active blocks nested partial-main replay */
-        if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_prev_op = -1; }
-        dd_end();
-        gv_streak_flush();
-        tex_streak_flush();
-        return;
     }
     Gfx* stack[12];
     int sp = 0;
@@ -3475,15 +3317,12 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         }
         if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_ENDDL && op != G_MODIFYVTX) {
             gv_epoch++; /* GV1b */
-            pdl_pso_cur = 0; pdl_ep_pso = 0; pdl_tex_slot = -1;
         }
         if (pm_ph_on) os_op_hook(pc - 1, sp, op); /* W1: after the prologue, so a sample is the handler only */
         if (pm_ph_on) mops_count(op, w0, w1); /* R0: counts only */
         if (pm_ph_on) mdc_op(pc - 1, sp, op, w0, w1); /* MDL1: model census, counts only */
         switch (op) {
         case G_ENDDL:
-            if (pdl0_on()) pdl0_gl_leave();
-            if (pdl_comp_done(&sp, &pc)) break;
             if (sp == 0) {
                 if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
                 dd_end();
@@ -3526,18 +3365,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
                 if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
-                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
-                break;
-            }
-            if (pdl0_on()) pdl0_gl_enter(next);
-            if (!pdl_compile_one && dlc_enabled() && pdl_try(next)) {
-                RS_ADD(RS_PDL, 1);
-                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
-                break;
-            }
-            if (pdl_compile_one && pdl_comp_sp < 0) pdl_comp_arm(sp, ((w0 >> 16) & 0xff) == G_DL_NOPUSH);
-            if (!pdl_compile_one && dlc_enabled() && pdl_try_m(next)) {
-                RS_ADD(RS_PDLM, 1);
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
             }

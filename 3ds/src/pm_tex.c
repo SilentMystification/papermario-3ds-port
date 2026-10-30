@@ -823,23 +823,6 @@ void pm_tex_begin_frame(void) {
 
 extern unsigned pm_dlc_gen; /* DLC1: a write into the map shape buffer (ROM read, Yay0 decode) makes the compiled display lists stale */
 extern u8 TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
-unsigned pm_pdl_heap_gen = 1; /* C1: TextureHeap writes bump this; texheap state-list entries recompile */
-unsigned pm_pdl_entity_gen = 1;
-unsigned pm_pdl_genheap_gen = 1;
-unsigned pm_pdl_sprite_gen = 1;
-
-void pm_pdl_genheap_bump(void) { pm_pdl_genheap_gen++; }
-
-void pm_pdl_touch_range(const void* ptr, unsigned size) {
-    unsigned s, e;
-    if (!ptr || !size) return;
-    s = (unsigned)ptr;
-    e = s + size;
-    if (e < s) e = 0xffffffffu;
-    if (s - (unsigned)pm_world_entity_heap < 0x18000u && e > (unsigned)pm_world_entity_heap) pm_pdl_entity_gen++;
-    if (s - (unsigned)heap_generalHead < 0x180000u && e > (unsigned)heap_generalHead) pm_pdl_genheap_gen++;
-    if (s - (unsigned)heap_spriteHead < 0x100000u && e > (unsigned)heap_spriteHead) pm_pdl_sprite_gen++;
-}
 extern unsigned char gMapShapeData[];
 /* tex_inv1: bytes the expander reads for a w x h source, stride in texels, siz = SIZ_4..SIZ_32 (4 << siz bits per texel) */
 static unsigned src_len(int w, int h, int stride, unsigned siz) {
@@ -858,8 +841,6 @@ static void tex_invalidate_body(const void* ptr, unsigned size) {
     unsigned start, end;
     int i;
     if (!ptr || !size) return;
-    if ((unsigned)ptr - (unsigned)TextureHeap < 0x68000u && (unsigned)ptr + size > (unsigned)TextureHeap) pm_pdl_heap_gen++;
-    pm_pdl_touch_range(ptr, size);
     start = (unsigned)ptr;
     end = start + size;
     if (end < start) end = 0xffffffffu;
