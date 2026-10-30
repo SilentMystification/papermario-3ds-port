@@ -72,3 +72,10 @@
 - Shot at frame 260 (0002_0_0.ppm): the bolt is gone. The pale yellow panel is still at the top left. Result: the bolt triangles are not the writer.
 - Source edit reverted. Not committed.
 - Next: Test B1 is not run (no start left). The writer is still open. Candidates: the bolt tile 1 seam (lightning.c:278), the reflected bolt copy (lightning.c:213-218), squirt.c, and the fill path (3ds/src/pm_gbi.c:3774-3807).
+
+## Run 12 (sparkles skip test, lane thunder, 1 start, budget 2 left)
+- Dump (commit 04d6a1acd, frames 259-260): frame 260 has 1258 GBI ops in build3ds/azt/thunder_box_gbidump.txt. No fill rect is pale yellow. Full-screen fill fffc (alpha 0), black borders 0001. The pale yellow PRIM (213,254,180 cycling to 254,172,213) sets a sparkle draw in src/effects/sparkles.c:280-282 (table D_E0022CF0).
+- Edit: skip gSPDisplayList(D_E0022CD0[unk_2C & 7]) at src/effects/sparkles.c:282 in battle mode (get_game_mode() != GAME_MODE_BATTLE). Nothing else changed.
+- Shot at frame 260 (0002_0_0.ppm), viewed: Shy Guys and lightning are shown. The hard-edged pale yellow rectangle at the top left of the top Shy Guy is not visible. A yellow hit burst remains there. No before-shot was kept for a pixel compare.
+- Source edit reverted (git checkout of src/effects/sparkles.c).
+- Next: confirm with a second look at the earlier shot set if needed, or test the next candidate (tile 1 span, lightning.c:278).
