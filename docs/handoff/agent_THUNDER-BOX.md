@@ -79,3 +79,10 @@
 - Shot at frame 260 (0002_0_0.ppm), viewed: Shy Guys and lightning are shown. The hard-edged pale yellow rectangle at the top left of the top Shy Guy is not visible. A yellow hit burst remains there. No before-shot was kept for a pixel compare.
 - Source edit reverted (git checkout of src/effects/sparkles.c).
 - Next: confirm with a second look at the earlier shot set if needed, or test the next candidate (tile 1 span, lightning.c:278).
+
+## Run 13 (temp sparkle log, last start, budget 0 left)
+- Log at pm_gbi.c gv_params_calc (a255 gate, line 1279) and at the SETCOMBINE alpha stage (comb_alpha_shade, line 3391), frame 260. Log: build3ds/azt/thunder_box_sparkle_log.txt (40 lines).
+- Palette prims (d5feb4ff, fefeb4ff, fed5acff, feacacff, feacd5ff) never reached gv_params_calc. No palette-prim line was logged. The sparkle draw takes another path (the CPU draw path near pm_gbi.c:1976), which was not logged.
+- SETCOMBINE lines at frame 260 show alpha_shade 1 for most combines, and 0 for two combines (log lines 221, 223). Plan_active 1 for one draw (log line 228, prim ffffffff).
+- Log edit reverted (git checkout of pm_gbi.c, the gbidump commit 04d6a1acd stays).
+- Next: log the CPU draw path (pm_gbi.c near 1976) for prim d5feb4ff, frame 260: plan_active, a255, and the alpha stage. No starts left.
