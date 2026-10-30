@@ -97,7 +97,7 @@ E(effect_46, fx_effect_46(6, &gPlayerStatus, 1.0f, 60)) \
 E(gather_magic, fx_gather_magic(0, X, Y, Z, 0.5f, 30)) \
 E(attack_result_text, fx_attack_result_text(0, X, Y, Z, 12.0f, 90)) \
 E(small_gold_sparkle, fx_small_gold_sparkle(0, X, Y, Z, 1.0f, 0)) \
-E(flashing_box_shockwave, fx_flashing_box_shockwave(0, X, Y, Z, 0, 0)) \
+E(flashing_box_shockwave, fx_flashing_box_shockwave(1, X, Y, Z, 0, 0)) \
 E(balloon, fx_balloon(2, X, Y, Z, 1.0f, 150)) \
 E(floating_rock, fx_floating_rock(2, X, Y + 100, Z, Y - 25, -0.5f, -0.9f, 0.5f, 60)) \
 E(chomp_drop, fx_chomp_drop(0, X, Y, Z, 0.2f, 0, 1.4f, 255, 0.1f, 150)) \

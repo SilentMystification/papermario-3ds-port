@@ -2141,26 +2141,22 @@ API_CALLABLE(UnlockMessageBoxPosition) {
     return ApiStatus_DONE2;
 }
 
+void apply_shock_effect_part(ActorPart* part) {
+    if (!(part->flags & ACTOR_PART_FLAG_INVISIBLE)
+        && part->idleAnimations != nullptr
+        && !(part->flags & ACTOR_PART_FLAG_SKIP_SHOCK_EFFECT)
+        && part->decorationTable != nullptr
+        && !(part->flags & ACTOR_PART_FLAG_NO_DECORATIONS)
+    ) {
+        part->decorationTable->shockFramesLeft = 30;
+    }
+}
+
 void apply_shock_effect(Actor* actor) {
     ActorPart* part = actor->partsTable;
 
     while (part != nullptr) {
-        if (!(part->flags & ACTOR_PART_FLAG_INVISIBLE)
-            && part->idleAnimations != nullptr
-            && !(part->flags & ACTOR_PART_FLAG_SKIP_SHOCK_EFFECT)
-        ) {
-            f32 x = part->curPos.x;
-            f32 y = part->curPos.y + (actor->size.y / 10);
-            f32 z = part->curPos.z;
-            s32 f1 = (part->size.x + (part->size.x / 4)) * actor->scalingFactor;
-            s32 f2 = (part->size.y - 2) * actor->scalingFactor;
-
-            if (actor->flags & ACTOR_FLAG_HALF_HEIGHT) {
-                y -= actor->size.y / 2;
-            }
-
-            fx_flashing_box_shockwave(0, x, y, z, f1, f2);
-        }
+        apply_shock_effect_part(part);
         part = part->nextPart;
     }
 }

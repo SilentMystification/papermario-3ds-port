@@ -1452,6 +1452,7 @@ void load_player_actor(void) {
 
         part->decorationTable = heap_malloc(sizeof(*decorations));
         decorations = part->decorationTable;
+        decorations->shockFramesLeft = 0;
 
         ASSERT(decorations != nullptr);
 
@@ -1681,6 +1682,7 @@ void load_partner_actor(void) {
 
                 part->decorationTable  = heap_malloc(sizeof(*decorations));
                 decorations = part->decorationTable;
+                decorations->shockFramesLeft = 0;
 
                 ASSERT(decorations != nullptr);
 
@@ -1944,6 +1946,7 @@ Actor* create_actor(Formation formation) {
         if (part->idleAnimations != nullptr && !(part->flags & ACTOR_PART_FLAG_NO_DECORATIONS)) {
             part->decorationTable = heap_malloc(sizeof(*decorations));
             decorations = part->decorationTable;
+            decorations->shockFramesLeft = 0;
             ASSERT(decorations != nullptr);
 
             decorations->paletteAdjustment = ACTOR_PAL_ADJUST_NONE;

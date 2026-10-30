@@ -953,6 +953,7 @@ void disable_actor_blur(Actor*);
 void reset_actor_blur(Actor*);
 void enable_actor_blur(Actor*);
 void apply_shock_effect(Actor*);
+void apply_shock_effect_part(ActorPart*);
 void part_glow_off(bool isNpcSprite, ActorPart* part, s32 yaw, bool isReflection);
 void part_flash_off(bool isNpcSprite, ActorPart* part, s32 yaw, bool isReflection);
 void part_flash_on(bool isNpcSprite, ActorPart* part, s32 yaw, bool isReflection);

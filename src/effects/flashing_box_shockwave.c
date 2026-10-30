@@ -57,7 +57,6 @@ EffectInstance* flashing_box_shockwave_main(
     data->scaleY = sizeY * 0.5;
 
     switch (type) {
-        case FX_SHOCK_OVERLAY_SHOCK_HIT:
         case FX_SHOCK_OVERLAY_LIGHTNING_WORLD:
         case FX_SHOCK_OVERLAY_LIGHTNING_BATTLE:
             data->primCol.r = 255;
@@ -159,7 +158,7 @@ void flashing_box_shockwave_appendGfx(void* effect) {
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primCol.r, data->primCol.g, data->primCol.b, data->unk_18);
     gDPSetEnvColor(gMainGfxPos++, data->envCol.r, data->envCol.g, data->envCol.b, 0);
 
-    if ((type == FX_SHOCK_OVERLAY_SHOCK_HIT || type == FX_SHOCK_OVERLAY_LIGHTNING_WORLD) && time % 2) {
+    if (type == FX_SHOCK_OVERLAY_LIGHTNING_WORLD && time % 2) {
         guScaleF(mtxTransform, data->scaleX, data->scaleY, 15.0f / 14);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 

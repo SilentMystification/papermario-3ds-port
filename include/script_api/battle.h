@@ -183,6 +183,7 @@ API_CALLABLE(ResetActorSounds);
 API_CALLABLE(SetPartSounds);
 API_CALLABLE(SetActorType);
 API_CALLABLE(ShowShockEffect);
+API_CALLABLE(ShowShockPartEffect);
 API_CALLABLE(GetActorAttackBoost);
 API_CALLABLE(GetActorDefenseBoost);
 API_CALLABLE(BoostAttack);

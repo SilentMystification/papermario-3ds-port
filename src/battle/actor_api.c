@@ -3177,6 +3177,19 @@ API_CALLABLE(ShowShockEffect) {
     return ApiStatus_DONE2;
 }
 
+API_CALLABLE(ShowShockPartEffect) {
+    Bytecode* args = script->ptrReadPos;
+    s32 actorID = evt_get_variable(script, *args++);
+    s32 partID = evt_get_variable(script, *args++);
+
+    if (actorID == ACTOR_SELF) {
+        actorID = script->owner1.actorID;
+    }
+
+    apply_shock_effect_part(get_actor_part(get_actor(actorID), partID));
+    return ApiStatus_DONE2;
+}
+
 API_CALLABLE(GetActorAttackBoost) {
     Bytecode* args = script->ptrReadPos;
     s32 enemyID = evt_get_variable(script, *args++);

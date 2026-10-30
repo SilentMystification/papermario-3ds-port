@@ -747,10 +747,10 @@
     {
     "name": "thunder_box",
     "status": "unverified",
-    "subject": "Attract-loop demo battle 12 (DemoScenes index 12, formation BTL_DIG_FORMATION_03): Thunder Rage lightning hits the four red Shy Guys before file select. Four hits (debug lightning hit, 3ds/src/effect_loads.c) start at frame 241. Hits from frame 241. Until is the shot at frame 260. The shot must show the four Shy Guys and the lightning.",
+    "subject": "Attract-loop demo battle 12 (DemoScenes index 12, formation BTL_DIG_FORMATION_03): Thunder Rage lightning hits the four red Shy Guys before file select. Four hits (debug lightning hit, 3ds/src/effect_loads.c) start at frame 241. Hits from frame 241. Until is the shot at frame 252 (tint on from frame 252 to 259). The shot must show the four Shy Guys and the lightning.",
     "proves": "The Thunder Rage lightning on Shy Guys draws in the real attract-loop battle.",
     "debug": "warp=kmr_03:0 story=ch0_toad_town demoscene=12 shots shotwin=252:12 loglevel=debug",
-    "until": "shot \\d+ frame 260\\b",
+    "until": "shot \\d+ frame 252\\b",
     "cap": 90,
     "deadline": 20,
     "first_marker": "debug demo: enter GAME_MODE_DEMO at demo scene 12",
@@ -766,8 +766,12 @@
         "regex": "debug lightning hit"
       },
       {
-        "name": "shot at 260",
-        "regex": "shot \\d+ frame 260\\b"
+        "name": "shock tint on",
+        "regex": "debug shock tint on"
+      },
+      {
+        "name": "shot at 252",
+        "regex": "shot \\d+ frame 252\\b"
       }
     ],
     "reason": "THUNDER-BOX run 6: shotwin=241:10 writes shots at frames 241, 245 and 249 (every 4 frames). Frame 249 shows the four Shy Guys and the lightning. Until is the shot at frame 249."

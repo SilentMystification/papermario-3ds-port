@@ -2053,7 +2053,11 @@ void make_flash_palettes(ActorPart* part) {
             dest = decorations->copiedPalettes[1][i];
 
             for (j = 0; j < SPR_PAL_SIZE; j++) {
-                *dest = PAL_MEM(PAL_MEM(*src) | 0xFFFE); // pure white, not affecting alpha bit (V16: the word is big-endian in memory on the 3DS)
+                if (decorations->shockFramesLeft > 0) {
+                    *dest = PAL_MEM((PAL_MEM(*src) & 1) | 0xFFC0); // yellow shock tint, alpha bit kept
+                } else {
+                    *dest = PAL_MEM(PAL_MEM(*src) | 0xFFFE); // pure white, not affecting alpha bit (V16: the word is big-endian in memory on the 3DS)
+                }
                 src++;
                 dest++;
 
@@ -3470,14 +3474,29 @@ void part_glow_on(bool isNpcSprite, ActorPart* part, s32 yaw, bool isReflection)
 }
 
 s32 update_part_flash(bool isNpcSprite, ActorPart* part, s32 yaw, bool isReflection) {
+    DecorationTable* decorations;
+
     if (!(part->flags & ACTOR_PART_FLAG_NO_DECORATIONS)) {
-        switch (part->decorationTable->flashState) {
+        decorations = part->decorationTable;
+        switch (decorations->flashState) {
             case 0:
                 part_flash_off(isNpcSprite, part, yaw, isReflection);
-                return 0;
+                break;
             case 1:
                 part_flash_on(isNpcSprite, part, yaw, isReflection);
-                return 0;
+                break;
+        }
+        if (decorations->shockFramesLeft > 0) {
+            if (!isReflection) {
+                decorations->shockFramesLeft--;
+            }
+            if (decorations->shockFramesLeft & 1) {
+                decorations->flashEnabled = FLASH_PAL_ON;
+                if (!isReflection) {
+                    extern unsigned pm_frame_count(void);
+                    pm_log_d("debug shock tint on: frame %u left %d", pm_frame_count(), decorations->shockFramesLeft);
+                }
+            }
         }
     }
     return 0;
