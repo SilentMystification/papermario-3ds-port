@@ -278,6 +278,9 @@ void appendGfx_entity_model(EntityModel* model) {
                 gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_POINT | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE | G_CYC_1CYCLE);
             }
 
+#ifdef TARGET_3DS
+            Gfx* rm_first = gMainGfxPos; /* DLF4: a render mode list of one G_DL word becomes one G_PM_RM op */
+#endif
             switch (entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
                 case false:
                     switch (model->renderMode) {
@@ -363,6 +366,9 @@ void appendGfx_entity_model(EntityModel* model) {
                     gSPFogPosition(gMainGfxPos++, entity_fog_dist_min, entity_fog_dist_max);
                     break;
             }
+#ifdef TARGET_3DS
+            if (gMainGfxPos == rm_first + 1 && rm_first->words.w0 == (u32)G_DL << 24) rm_first->words.w0 = (u32)G_PM_RM << 24; /* rm_apply runs the list; a list with another op falls back to G_DL */
+#endif
             gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
             if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
                 if (model->renderMode != RENDER_MODE_SHADOW) {
