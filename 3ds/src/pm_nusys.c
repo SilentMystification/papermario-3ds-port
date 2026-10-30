@@ -76,6 +76,7 @@ static int nkey;
 static void gbi_task(Gfx* gfxList, u32 n, int kind) {
     if (pm_fs_on) pm_fs_tasks++; /* WMODEL: render tasks per frame, fsplit only */
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
+    FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
     if (!pm_ph_on) { pm_gbi_run(gfxList, n); return; }
     unsigned o0 = pm_gbi_ops_now(), t0 = pm_ticks();
     pm_gbi_run(gfxList, n);
@@ -84,27 +85,46 @@ static void gbi_task(Gfx* gfxList, u32 n, int kind) {
     pm_rs_cnt[RS_TOPS] += pm_gbi_ops_now() - o0;
 }
 
+/* LB1b: with pm_interp_on <= 0 the background task (no swap flag) is recorded here and runs with the swap task, after the main list is
+ * built. gbi_task waits for the GPU tail, so the main list build now overlaps that wait. pm_gfx_bg_flush runs a task that no swap took
+ * (a reset tile task, or a frame with no draw) at the end of the retrace call, before the frame goes on. */
+static Gfx* bg_list;
+static u32 bg_size;
+static int bg_pend;
+static void bg_run(void) {
+    bg_pend = 0;
+    gbi_task(bg_list, bg_size, 0);
+}
+
 void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     (void)ucode;
     int swap = (flag & NU_SC_SWAPBUFFER) != 0;
     if (swap) { FS_MARK(FS_AUDIO); pm_audio_step(); } /* AU1b: the game logic and the display list of this step are done: audio ticks here */
     FS_MARK(FS_GBI);
     PH_PUSH(PH_GBI);
-    if (pm_interp_on > 0) {
-        /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. pm_interp_key_draw replays every task of the
-         * step without replacements in the idle iteration. The background task of the step comes before the swap task. */
-        if (nkey < MAX_KEY) { key_list[nkey] = gfxList; key_size[nkey++] = gfxListSize; }
-        if (swap && pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
-        else if (swap) { pm_interp_lerp(0.5f); pm_interp_repl = 1; }
-        gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
-        pm_interp_repl = 0;
+    if (pm_interp_on <= 0 && !swap) {
+        if (bg_pend) bg_run();
+        bg_list = gfxList; bg_size = gfxListSize; bg_pend = 1;
     } else {
-        gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
+        if (bg_pend) bg_run();
+        if (pm_interp_on > 0) {
+            /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. pm_interp_key_draw replays every task of the
+             * step without replacements in the idle iteration. The background task of the step comes before the swap task. */
+            if (nkey < MAX_KEY) { key_list[nkey] = gfxList; key_size[nkey++] = gfxListSize; }
+            if (swap && pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
+            else if (swap) { pm_interp_lerp(0.5f); pm_interp_repl = 1; }
+            gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
+            pm_interp_repl = 0;
+        } else {
+            gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
+        }
     }
     PH_POP();
     FS_MARK(swap ? FS_REST : FS_DL);
     if (swap) pm_interp_stop(); /* the background task has no swap flag: the record goes on until the main task */
 }
+
+void pm_gfx_bg_flush(void) { if (bg_pend) bg_run(); }
 
 void pm_interp_drop_keys(void) { nkey = 0; } /* F11-10 */
 
@@ -127,9 +147,11 @@ int pm_interp_key_draw(void) {
 void pm_gfx_retrace_skip(void) {
     pm_audio_join_at(1);
     if (display_on && gfx_func) gfx_func(3);
+    pm_gfx_bg_flush();
 }
 
 void pm_gfx_retrace(void) {
     pm_audio_join_at(1); /* AU1d: the game function below runs game code */
     if (display_on && gfx_func) gfx_func(0);
+    pm_gfx_bg_flush();
 }
