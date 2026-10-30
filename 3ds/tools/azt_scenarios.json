@@ -747,34 +747,26 @@
     {
       "name": "thunder_box",
       "status": "unverified",
-      "subject": "Shy Guy battle (formation BTL_KPA3_FORMATION_00, stage BTL_KPA3_STAGE_00). Thunder Rage lightning (fx_lightning arg0 3, battle context) on the first enemy, shots at frames 160 to 190. The box must show around the Shy Guy.",
-      "proves": "The lightning effect in battle draws on a Shy Guy. The debug switch thunderfx calls fx_lightning with the same arguments as src/battle/move/item/thunder_rage.c SpawnLightningFX.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_KPA3_FORMATION_00:BTL_KPA3_STAGE_00 battlef=100 thunderfx=160 shotwin=160:30 loglevel=debug",
-      "until": "shot \\d+ frame 180\\b",
+      "subject": "Attract-loop demo battle 12 (DemoScenes index 12, load_demo_battle index 3, formation BTL_DIG_FORMATION_03): Thunder Rage on the red Shy Guys at the slot machine, before file select. Shots at every frame in battle mode, 200 frames. The shot must show the red Shy Guys and the lightning.",
+      "proves": "The Thunder Rage lightning on Shy Guys draws in the real attract-loop battle.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town demoscene=12 shotmode=8:200 loglevel=debug",
+      "until": "shot \\d+ frame 260\\b",
       "cap": 90,
       "deadline": 20,
-      "first_marker": "warp: kmr_03 entry 0",
-      "expects": "warp",
+      "first_marker": "debug demo: enter GAME_MODE_DEMO at demo scene 12",
+      "expects": "none",
       "needs_picture": true,
       "expected_events": [
         {
-          "name": "warp",
-          "regex": "warp: kmr_03 entry 0"
+          "name": "demo scene",
+          "regex": "debug demo: enter GAME_MODE_DEMO at demo scene 12"
         },
         {
-          "name": "battle formation",
-          "regex": "debug battle: formation"
-        },
-        {
-          "name": "lightning spawned",
-          "regex": "debug thunderfx: enemy 0"
-        },
-        {
-          "name": "shot at 180",
-          "regex": "shot \\d+ frame 180\\b"
+          "name": "shot at 260",
+          "regex": "shot \\d+ frame 260\\b"
         }
       ],
-      "reason": "New scenario (THUNDER-BOX). Not run yet. The thunderfx switch is added in the next commit."
+      "reason": "THUNDER-BOX retarget. The first run used the Shy Guy formation battle, which is the wrong scene. Not run on this target yet."
     },
     {
       "name": "sewer",
