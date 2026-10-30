@@ -66,3 +66,9 @@
 - Shot at frame 260 (0002_0_0.ppm): the yellow rectangle is still at the top left, next to the top Shy Guy. Result: the shockwave mesh is not the writer.
 - Source edit reverted. Not committed.
 - Next: Test B (investigate_thunder_box_3.md): skip the bolt triangles gSPDisplayList(dlist) at src/effects/lightning.c:279 for unk_00 >= 3. One start left.
+
+## Run 11 (Test B2, last start, budget 0 left)
+- Edit: skip the bolt triangle draw gSPDisplayList(dlist) for unk_00 < 3 is false, that is for unk_00 >= 3 (src/effects/lightning.c:279 region).
+- Shot at frame 260 (0002_0_0.ppm): the bolt is gone. The pale yellow panel is still at the top left. Result: the bolt triangles are not the writer.
+- Source edit reverted. Not committed.
+- Next: Test B1 is not run (no start left). The writer is still open. Candidates: the bolt tile 1 seam (lightning.c:278), the reflected bolt copy (lightning.c:213-218), squirt.c, and the fill path (3ds/src/pm_gbi.c:3774-3807).
