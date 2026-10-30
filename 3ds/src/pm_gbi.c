@@ -169,6 +169,11 @@ static unsigned prim_z; /* X01: G_SETPRIMDEPTH, 15 bit, 0 near, 0x7fff far */
 static float prim_ndc_z(void) { return 2.f * (float)(prim_z ? prim_z - 1u : 0u) / 32767.f - 1.f; }
 static PM_HOTD int tex_on;
 static const void* timg;
+/* TBREP: tex_gen counts the writes of texture memory and texture state that tb_run does not see. tb_run skips a list that is
+ * the one it ran last when tex_gen and the other keys are unchanged (see tb_run). */
+static unsigned tex_gen;
+static const Gfx* tl_last;
+static unsigned tl_gen, tl_ep, tl_wg, tl_cg, tl_oh, tl_ol, tl_rep;
 static unsigned timg_fmt, timg_siz;
 static int timg_stride;
 static int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
@@ -230,6 +235,7 @@ extern int pm_is_cur_cfb(const void* p);
  * the grab slot before the load, so that the load finds the slot like any off-screen image (T1). A window inside an older frame
  * buffer is T3: G_SETTIMG fetched it with pm_cfb_capture_prev. */
 static void grab_cur(const void* src, int w, int h) {
+    tex_gen++; /* TBREP */
     static int on = -1;
     int x, y, r;
     if (!src || w < 1 || !pm_is_cur_cfb(src)) return;
@@ -1165,6 +1171,7 @@ static void dual_bind(void) {
         pm_gpu_flush();
         pm_tex_set_wrap(tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3]);
         if (td[1].fmt == 0 && td[1].siz == 2) grab_cur(td[1].src, td[1].w, td[1].h);
+        tex_gen++; /* TBREP */
         pm_tex_load(td[1].src, td[1].fmt, td[1].siz, td[1].w, td[1].h, td[1].pal, td[1].pal_n, td[1].stride);
         pm_tex_set_aux(tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3]);
         aux_key = key;
@@ -2142,9 +2149,9 @@ static inline int sp0_tex(unsigned op) {
     }
 }
 static __attribute__((cold, noinline)) void sp0_report(void) {
-    pm_log_hw("sp0c f%d tex %u dlc %u rest %u flush %u skip %u grp %u", rm_frame,
-              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), (unsigned)(sp0_F / 268u / 300u), sp0_skip, sp0_grp);
-    memset(sp0_T, 0, sizeof sp0_T); sp0_F = 0; sp0_skip = sp0_grp = 0;
+    pm_log_hw("sp0c f%d tex %u dlc %u rest %u flush %u skip %u grp %u tl %u", rm_frame,
+              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), (unsigned)(sp0_F / 268u / 300u), sp0_skip, sp0_grp, tl_rep);
+    memset(sp0_T, 0, sizeof sp0_T); sp0_F = 0; sp0_skip = sp0_grp = tl_rep = 0;
 }
 /* MR0: plain static model census, phase on only, cold. A plain model has no fog change, no tint, no custom gfx, no panner and
  * no billboard (set by appendGfx_model through pm_gbi_mr0_plain). The walk cuts time into periods. A period has a kind: 0 ops,
@@ -2526,6 +2533,7 @@ static void pal_rgba(const void* base, unsigned i, float o[4]) {
 /* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
  * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
 static __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
+    tex_gen++; /* TBREP: writes an image */
     if (!cimg || pm_is_cfb(cimg) || tile >= 8 || tile_tmem[tile] < 256) return 0;
     int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
     if (x0 < sci_x0) x0 = sci_x0;
@@ -2639,6 +2647,7 @@ static void ensure_tile(int n) {
     pm_gpu_flush();
     pm_tex_set_wrap(tile_wrap[n][0], tile_wrap[n][1], tile_wrap[n][2], tile_wrap[n][3]);
     if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w, td[n].h);
+    tex_gen++; /* TBREP: a load changes TMEM */
     pm_tex_load(td[n].src, td[n].fmt, td[n].siz, td[n].w, td[n].h, td[n].pal, td[n].pal_n, td[n].stride);
     {   /* V05: a window of an off-screen texture starts at (ox, oy) in it */
         int ox, oy, gox, goy;
@@ -2707,6 +2716,7 @@ static int tile_texel(int n, int s, int t, unsigned char o[4]) {
  * Returns 1 if drawn. */
 static unsigned char box_buf[128 * 128 * 4];
 static __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
+    tex_gen++; /* TBREP */
     int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
     float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f, dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
@@ -2763,6 +2773,7 @@ static const u8 g1_skip[256] = { [G_NOOP] = 1, [G_SPNOOP] = 1, [G_RDPPIPESYNC] =
  * holds only the ops make_texture_gfx emits (and g1_skip ops). A refused list stores NULL. */
 static const Gfx* tb_list[128];
 void pm_texbind_set(int idx, const Gfx* l) {
+    tex_gen++; /* TBREP */
     tb_list[idx & 0x7f] = NULL;
     if (!l) return;
     for (int n = 0; n < 64; n++) {
@@ -2775,14 +2786,24 @@ void pm_texbind_set(int idx, const Gfx* l) {
 }
 static __attribute__((noinline)) void tex_op(u32 w0, u32 w1);
 /* C1: runs a checked texture list. The G_PM_TEX op pays the prologue once. The handlers run per word, in list order. */
+/* TBREP: a list that rebinds the texture of the list run last, with no texture write since (tex_gen), leaves the state it left.
+ * The test runs once per list. The combine sync signature is checked too: a sync that would change it does not skip. */
 static __attribute__((noinline)) void tb_run(const Gfx* g) {
-    for (;; g++) {
-        unsigned op = g->words.w0 >> 24;
-        if (op == G_ENDDL) return;
+    if (g == tl_last && tex_gen == tl_gen && pm_tex_epoch() == tl_ep && pm_tex_wrap_gen() == tl_wg && comb_gen == tl_cg &&
+        omode_h == tl_oh && omode_l == tl_ol && sc_ok && sc_sig_now() == sc_sig) {
+        tl_rep++;
+        return;
+    }
+    tl_last = NULL;
+    for (const Gfx* h = g;; h++) {
+        unsigned op = h->words.w0 >> 24;
+        if (op == G_ENDDL) break;
         if (g1_skip[op]) continue;
         pm_gbi_cur_op = op;
-        tex_op(g->words.w0, g->words.w1);
+        tex_op(h->words.w0, h->words.w1);
     }
+    if (timg && pm_is_cfb(timg)) return; /* a frame buffer texture is read again each bind (D03 capture) */
+    tl_last = g; tl_gen = tex_gen; tl_ep = pm_tex_epoch(); tl_wg = pm_tex_wrap_gen(); tl_cg = comb_gen; tl_oh = omode_h; tl_ol = omode_l;
 }
 
 /* GLYPH: runs n texture-load words after a G_PM_TEXI header, with the tex_op handlers. Syncs are skipped as in G1. */
@@ -2917,6 +2938,7 @@ static __attribute__((cold, noinline)) void gbi_cold_modifyvtx(u32 w0, u32 w1) {
 /* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
 static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
+    tex_gen++; /* TBREP */
     switch (op) {
         case G_SETTIMG:
             timg = ptr_of(w1);
@@ -3319,6 +3341,7 @@ void pm_gbi_run(void* list, unsigned nbytes) {
 }
 
 static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
+    tex_gen++; /* TBREP */
     int xh = (int)((w0 >> 12) & 0xfff);
     int yh = (int)(w0 & 0xfff);
     int xl = (int)((w1 >> 12) & 0xfff);
@@ -3397,6 +3420,7 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
 }
 
 static __attribute__((noinline)) void gbi_fillrect(u32 w0, u32 w1) {
+    tex_gen++; /* TBREP */
 int lrx = (int)((w0 >> 14) & 0x3ff);
 int lry = (int)((w0 >> 2) & 0x3ff);
 int ulx = (int)((w1 >> 14) & 0x3ff);
