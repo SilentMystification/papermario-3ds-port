@@ -33,3 +33,11 @@
 - Self-test (no start): `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 -SelfTest`
 - Shots: build3ds/azt/shots/thunder_box/ (PPM 240 x 400).
 - Azahar log: AppData Roaming Azahar sdmc 3ds PaperMario log.txt.
+
+## Run 6 (2026-10-29, lane thunder)
+- Scenario now: `shots shotwin=241:10` (was shotmode=8:200). Until and check: shot frame 249.
+- shotwin writes a shot every 4 frames: frames 241, 245, 249 (not every frame).
+- Frame 249 (build3ds/azt/shots/thunder_box/0002_0_0.ppm) shows four red Shy Guys and the Thunder Rage lightning on them. Subject shown.
+- Frame 249 shows no visible box around the Shy Guys. The box is not seen yet.
+- Budget: 2 of 3 starts used. One start left.
+- Next: one start with a window on the second hit (frame 256) and later, e.g. `shotwin=252:12`, until shot frame 260. Look for the box.
