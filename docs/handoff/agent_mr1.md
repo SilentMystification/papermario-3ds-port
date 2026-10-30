@@ -20,5 +20,5 @@ Plan: docs/handoff/plan_mr1.md. Rules: CLAUDE.md 2, 5, 7; hw_guidelines.md.
 - Gate: mac01t tot ops 1215 -> 860 (-355), passes 300.
 - Open for the orchestrator: azt_scenarios.json mac01t range 1175 to 1495 now fails (860). Set a new range. Not edited here: the file has other uncommitted changes.
 - Open: forest_mim, sewer, ruins, sun_sbk, volcano were run on HEAD only (baseline shots in build3ds/azt/mr1/base_*). No MR1 run, so no compare.
-- Starts used: MR1base 3 (mac01t 2, yard 1, outside the cut for yard). MR1 2 (mac01t 1, yard 1). Total starts: 8 across both rows (5 extra HEAD starts before the cut).
+- Starts used: MR1base 8 (mac01t 2, yard 1, forest_mim, sewer, ruins, sun_sbk, volcano 5; the last 5 were before the cut). MR1 2 (mac01t 1, yard 1).
 - Console: not measured.
