@@ -22,3 +22,22 @@ Caveat: tick reads cost about 1.3 us each in Azahar. The tex value is one run, n
 Commands (if (b) is chosen):
 - Build: `python 3ds/tools/gen_map_restore.py`, `sh 3ds/build.sh`, restore 3ds/src/map_restore_table.c.
 - Test: `PM_ROW=DREC1 powershell -File 3ds/tools/azt.ps1 mac01t_mr0 -Row DREC1 -Try`
+
+## Update (second agent run, DREC1 re-issued with gate)
+
+State: BLOCKED before code. Starts used 0 of 8. No source edit, no build.
+
+Why the spec cannot pass as written:
+- plan_mr2_record.md section 5 stores exit values under the key (handle index, tb_gen). tex_op reads live entry state
+  (ldrec and blk rings, td, cur_tile, tsz_last, tile 0 wrap). The key does not cover that state. A stored value can be
+  wrong for a new entry state, so tbs bad = 0 is not guaranteed by the design.
+- The apply must still run the tile 0 tail (suntile_t0, pm_tex_glyph_same, tsz_last memo, gp3_t0_set). Most handler cost
+  stays. Expected saving is 50 to 100 us of tex 1912 us (SPLIT0C2 Azahar). The 40 percent gate needs about 765 us.
+- Result without a run: the gate is expected to fail. A drop still needs a valid gate run.
+
+Options for the orchestrator or user:
+- (a) Drop DREC1 on this analysis. Log it as dropped with reason "no entry-state key; expected saving below gate".
+- (b) Add the entry-state key to the record (ring, blk, td, cur_tile, tile 0 wrap and tsz_last fields). Then build the
+  apply, tbcheck, and run the gate. About 250 lines and up to 7 starts.
+
+Baseline for the gate: SPLIT0C2 mac01t_cap1, sp0c f483 tex 1912 flush 406 (tex_op = 1506 us, one run).
