@@ -745,6 +745,38 @@
       "reason": "Run 7 (until shot 29 frame) timed out at 90 s: the shot line holds a burst number, not the frame index. Until and expected event now use frame 182."
     },
     {
+      "name": "thunder_box",
+      "status": "unverified",
+      "subject": "Shy Guy battle (formation BTL_KPA3_FORMATION_00, stage BTL_KPA3_STAGE_00). Thunder Rage lightning (fx_lightning arg0 3, battle context) on the first enemy, shots at frames 160 to 190. The box must show around the Shy Guy.",
+      "proves": "The lightning effect in battle draws on a Shy Guy. The debug switch thunderfx calls fx_lightning with the same arguments as src/battle/move/item/thunder_rage.c SpawnLightningFX.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_KPA3_FORMATION_00:BTL_KPA3_STAGE_00 battlef=100 thunderfx=160 shotwin=160:30 loglevel=debug",
+      "until": "shot \\d+ frame 180\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "lightning spawned",
+          "regex": "debug thunderfx: enemy 0"
+        },
+        {
+          "name": "shot at 180",
+          "regex": "shot \\d+ frame 180\\b"
+        }
+      ],
+      "reason": "New scenario (THUNDER-BOX). Not run yet. The thunderfx switch is added in the next commit."
+    },
+    {
       "name": "sewer",
       "status": "verified",
       "subject": "Mario in Toad Town Tunnels (tik_03, entry 0), scene frame 200 to 205.",
