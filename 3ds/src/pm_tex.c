@@ -988,123 +988,9 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     return r;
 }
 
-static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, int height,
+static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, unsigned siz, int width, int height,
                       const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
-                      unsigned dkey) {
-    have = 0;
-    cur = -1;
-    off_cur = -1;
-    fail_last = 0;
-    if (!img || width < 1 || height < 1 || !scratch) return 0;
-    {
-        /* V05: a window of an off-screen image drawn this frame: sample the render texture, no copy. The load must have the
-         * pixel size of the image (X02: the same memory is a 32 bit and an 8 bit image in one frame). */
-        unsigned gs = (fmt == FMT_RGBA && siz == SIZ_32) ? 3u : (fmt == FMT_RGBA && siz == SIZ_16) ? 2u : (fmt == FMT_I && siz == SIZ_8) ? 1u : 0u;
-        for (int i = 0; gs && i < offt_n; i++) {
-            if (!offt[i].base) continue;
-            unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[i].base), row = offt[i].stride * bpp;
-            if ((unsigned)offt[i].siz == gs && (const u8*)img >= offt[i].base && d < row * (unsigned)offt[i].h) {
-                /* P15: a power of two row (and bpp) needs no divide. Same result. */
-                if ((row & (row - 1)) == 0) {
-                    off_oy = (int)(d >> __builtin_ctz(row));
-                    off_ox = (int)((d & (row - 1)) / bpp);
-                } else {
-                    off_oy = (int)(d / row);
-                    off_ox = (int)((d % row) / bpp);
-                }
-                off_cur = i;
-                if (offt[i].w == 64) { static int n; if (n++ < 6) pm_log_d("X02: overlay reads 64x64 slot %d bits %d addr %p", i, gs == 3 ? 32 : gs == 2 ? 16 : 8, img); }
-                have = 1;
-                return 1;
-            }
-        }
-    }
-    if ((unsigned)img < 0x00100000u) {
-        static int once;
-        if (!once) {
-            once = 1;
-            pm_log_d("tex ptr %08x %dx%d fmt %u", (unsigned)img, width, height, fmt);
-        }
-        return 0;
-    }
-    shr_s = shr_t = 0;
-    if (mk_on && lut == NULL) {
-        int mw = (mk_ws && (int)mk_ws < width) ? (int)mk_ws : 0, mh = (mk_wt && (int)mk_wt < height) ? (int)mk_wt : 0;
-        /* V12c: a tile window far larger than its mask (fright jar: window 501, mask 128, SetTileSize to 2000 only lifts the clamp) cannot be
-         * expanded (512 x 512 is over the build size) and the load failed. The RDP applies the mask after the clamp, so a window larger than
-         * the mask repeats (or mirrors) the mask sized image. Build that image, the GPU wrap repeats it. */
-        if ((mw || mh) && pot_at_least_8(width) * pot_at_least_8(height) > 128 * 1024) {
-            if (mw) { width = mw; shr_s = 1; mw = 0; }
-            if (mh) { height = mh; shr_t = 1; mh = 0; }
-        }
-        if (mw || mh) dkey = (unsigned)(mw | mh << 8 | (int)mk_ms << 16 | (int)mk_mt << 17) | 0x80000000u;
-        if (mw && stride < mw) stride = mw; /* the source row is the mask width, not the tile width */
-        else if (!mw && stride < width) stride = width;
-    } else if (stride < width) stride = width;
-    unsigned phash = 0;
-    if (fmt == FMT_CI && tlut) {
-        phash = 2166136261u;
-        { /* PG2: two palette entries per step (the key is internal, only its stability matters). Any in-place edit still changes it. */
-            const u16* pl = (const u16*)tlut;
-            int i = 0;
-            if (!((unsigned)(uintptr_t)tlut & 3u)) { /* OPT-PH: the same value as the u16 pairs below (little endian), one word load per step, four steps per loop */
-                const u32* pw = (const u32*)tlut;
-                int nw = tlut_n >> 1, k = 0;
-                for (; k + 4 <= nw; k += 4) {
-                    phash = (phash ^ pw[k]) * 16777619u;
-                    phash = (phash ^ pw[k + 1]) * 16777619u;
-                    phash = (phash ^ pw[k + 2]) * 16777619u;
-                    phash = (phash ^ pw[k + 3]) * 16777619u;
-                }
-                for (; k < nw; k++) phash = (phash ^ pw[k]) * 16777619u;
-                i = nw * 2;
-            }
-            for (; i + 1 < tlut_n; i += 2) phash = (phash ^ ((unsigned)pl[i] | ((unsigned)pl[i + 1] << 16))) * 16777619u;
-            if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u;
-        }
-    }
-    /* OPT-LK: one probe of a direct mapped index from the key to the slot, before the recent list and the scan. The slot is compared in full, so a stale entry only misses. */
-    const unsigned lk = (((unsigned)(uintptr_t)img >> 2) ^ ((unsigned)(uintptr_t)tlut >> 3) ^ (unsigned)(width * 31 + height * 131 + (int)fmt * 7 + (int)siz * 3 + stride * 17) ^ dkey) & (LIDX_N - 1);
-    {
-        int i = lidx[lk];
-        Slot* s = &slots[i];
-        if (i < slot_hi && s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
-            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
-            TC_HIT(s);
-            TOUCH(s);
-            cur = i;
-            have = 1;
-            return 1;
-        }
-    }
-    /* PG2: most loads repeat one of the last few textures. Check those slots first (same full compare), then the whole table. */
-    for (int k = 0; k < RECENT_N; k++) {
-        int i = recent_slot[k];
-        if (i < 0 || i >= slot_hi) continue;
-        Slot* s = &slots[i];
-        if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
-            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
-            TC_HIT(s);
-            TOUCH(s);
-            cur = i;
-            have = 1;
-            return 1;
-        }
-    }
-    for (int i = 0; i < slot_hi; i++) {
-        Slot* s = &slots[i];
-        if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
-            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
-            TC_HIT(s);
-            TOUCH(s);
-            cur = i;
-            have = 1;
-            recent_slot[recent_n++ % RECENT_N] = (short)i;
-            lidx[lk] = (short)i;
-            return 1;
-        }
-    }
-    ph_miss = 1;
+                      unsigned dkey, unsigned phash, unsigned lk) {
     src_native = pm_fb_native(img);
     PH_PUSH(PH_TEX);
     PH_ADD(C_TEXMISS, 1);
@@ -1385,6 +1271,126 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
     lidx[lk] = (short)slot;
     have = 1;
     return 1;
+}
+
+static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, int height,
+                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
+                      unsigned dkey) {
+    have = 0;
+    cur = -1;
+    off_cur = -1;
+    fail_last = 0;
+    if (!img || width < 1 || height < 1 || !scratch) return 0;
+    {
+        /* V05: a window of an off-screen image drawn this frame: sample the render texture, no copy. The load must have the
+         * pixel size of the image (X02: the same memory is a 32 bit and an 8 bit image in one frame). */
+        unsigned gs = (fmt == FMT_RGBA && siz == SIZ_32) ? 3u : (fmt == FMT_RGBA && siz == SIZ_16) ? 2u : (fmt == FMT_I && siz == SIZ_8) ? 1u : 0u;
+        for (int i = 0; gs && i < offt_n; i++) {
+            if (!offt[i].base) continue;
+            unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[i].base), row = offt[i].stride * bpp;
+            if ((unsigned)offt[i].siz == gs && (const u8*)img >= offt[i].base && d < row * (unsigned)offt[i].h) {
+                /* P15: a power of two row (and bpp) needs no divide. Same result. */
+                if ((row & (row - 1)) == 0) {
+                    off_oy = (int)(d >> __builtin_ctz(row));
+                    off_ox = (int)((d & (row - 1)) / bpp);
+                } else {
+                    off_oy = (int)(d / row);
+                    off_ox = (int)((d % row) / bpp);
+                }
+                off_cur = i;
+                if (offt[i].w == 64) { static int n; if (n++ < 6) pm_log_d("X02: overlay reads 64x64 slot %d bits %d addr %p", i, gs == 3 ? 32 : gs == 2 ? 16 : 8, img); }
+                have = 1;
+                return 1;
+            }
+        }
+    }
+    if ((unsigned)img < 0x00100000u) {
+        static int once;
+        if (!once) {
+            once = 1;
+            pm_log_d("tex ptr %08x %dx%d fmt %u", (unsigned)img, width, height, fmt);
+        }
+        return 0;
+    }
+    shr_s = shr_t = 0;
+    if (mk_on && lut == NULL) {
+        int mw = (mk_ws && (int)mk_ws < width) ? (int)mk_ws : 0, mh = (mk_wt && (int)mk_wt < height) ? (int)mk_wt : 0;
+        /* V12c: a tile window far larger than its mask (fright jar: window 501, mask 128, SetTileSize to 2000 only lifts the clamp) cannot be
+         * expanded (512 x 512 is over the build size) and the load failed. The RDP applies the mask after the clamp, so a window larger than
+         * the mask repeats (or mirrors) the mask sized image. Build that image, the GPU wrap repeats it. */
+        if ((mw || mh) && pot_at_least_8(width) * pot_at_least_8(height) > 128 * 1024) {
+            if (mw) { width = mw; shr_s = 1; mw = 0; }
+            if (mh) { height = mh; shr_t = 1; mh = 0; }
+        }
+        if (mw || mh) dkey = (unsigned)(mw | mh << 8 | (int)mk_ms << 16 | (int)mk_mt << 17) | 0x80000000u;
+        if (mw && stride < mw) stride = mw; /* the source row is the mask width, not the tile width */
+        else if (!mw && stride < width) stride = width;
+    } else if (stride < width) stride = width;
+    unsigned phash = 0;
+    if (fmt == FMT_CI && tlut) {
+        phash = 2166136261u;
+        { /* PG2: two palette entries per step (the key is internal, only its stability matters). Any in-place edit still changes it. */
+            const u16* pl = (const u16*)tlut;
+            int i = 0;
+            if (!((unsigned)(uintptr_t)tlut & 3u)) { /* OPT-PH: the same value as the u16 pairs below (little endian), one word load per step, four steps per loop */
+                const u32* pw = (const u32*)tlut;
+                int nw = tlut_n >> 1, k = 0;
+                for (; k + 4 <= nw; k += 4) {
+                    phash = (phash ^ pw[k]) * 16777619u;
+                    phash = (phash ^ pw[k + 1]) * 16777619u;
+                    phash = (phash ^ pw[k + 2]) * 16777619u;
+                    phash = (phash ^ pw[k + 3]) * 16777619u;
+                }
+                for (; k < nw; k++) phash = (phash ^ pw[k]) * 16777619u;
+                i = nw * 2;
+            }
+            for (; i + 1 < tlut_n; i += 2) phash = (phash ^ ((unsigned)pl[i] | ((unsigned)pl[i + 1] << 16))) * 16777619u;
+            if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u;
+        }
+    }
+    /* OPT-LK: one probe of a direct mapped index from the key to the slot, before the recent list and the scan. The slot is compared in full, so a stale entry only misses. */
+    const unsigned lk = (((unsigned)(uintptr_t)img >> 2) ^ ((unsigned)(uintptr_t)tlut >> 3) ^ (unsigned)(width * 31 + height * 131 + (int)fmt * 7 + (int)siz * 3 + stride * 17) ^ dkey) & (LIDX_N - 1);
+    {
+        int i = lidx[lk];
+        Slot* s = &slots[i];
+        if (i < slot_hi && s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
+            TC_HIT(s);
+            TOUCH(s);
+            cur = i;
+            have = 1;
+            return 1;
+        }
+    }
+    /* PG2: most loads repeat one of the last few textures. Check those slots first (same full compare), then the whole table. */
+    for (int k = 0; k < RECENT_N; k++) {
+        int i = recent_slot[k];
+        if (i < 0 || i >= slot_hi) continue;
+        Slot* s = &slots[i];
+        if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
+            TC_HIT(s);
+            TOUCH(s);
+            cur = i;
+            have = 1;
+            return 1;
+        }
+    }
+    for (int i = 0; i < slot_hi; i++) {
+        Slot* s = &slots[i];
+        if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
+            TC_HIT(s);
+            TOUCH(s);
+            cur = i;
+            have = 1;
+            recent_slot[recent_n++ % RECENT_N] = (short)i;
+            lidx[lk] = (short)i;
+            return 1;
+        }
+    }
+    ph_miss = 1;
+    return load_miss(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey, phash, lk);
 }
 
 int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height,
