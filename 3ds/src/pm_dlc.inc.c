@@ -17,6 +17,7 @@ static PM_HOTD int dlc_on; static int dlc_depth;
 static struct {
     unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch;
 } dlc_c;
+static unsigned sp0_grp, sp0_skip; /* SPLIT0C: groups and skips per phase window (sp0c line), counted under phase only */
 static unsigned dlc_dirty; /* the last replay left vert_live cleared although the interpreter would have left slots live */
 static const Gfx dlc_end[1] = { { { (u32)G_ENDDL << 24, 0 } } };
 
@@ -467,12 +468,14 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         const DlcGrp* g = &e->grp[k];
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
+        if (pm_ph_on) sp0_grp++;
         RS_ADD(RS_DLCG, 1);
         if (dlc_box_out(g, m)) {
             if (chk) dlc_verify_skip(l, g, m);
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
             dlc_c.skip++;
+            if (pm_ph_on) sp0_skip++;
             RS_ADD(RS_DLCSKIP, 1);
             continue;
         }

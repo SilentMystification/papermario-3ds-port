@@ -2119,6 +2119,32 @@ void pm_gbi_mdl_mark(unsigned id, int pan) { /* called by appendGfx_model under 
     else mdcm_over++;
 }
 
+/* SPLIT0C: group-level split of a G_PM_MODEL run, phase only. A period has a kind: 0 rest, 1 texture op (tex_op, tb_run), 2 replayed
+ * list (dlc_try). A tick is read at the group begin and end and at each kind change, never per op (a tick read costs 1.3 us in
+ * Azahar). sp0_T is in system ticks (268 per us). The sp0c line prints us per frame over the phase window (300 frames). */
+static unsigned sp0_t, sp0_cur;
+static unsigned long long sp0_T[3];
+static __attribute__((noinline)) void sp0_set(unsigned k) {
+    unsigned n = pm_ticks();
+    sp0_T[sp0_cur] += n - sp0_t;
+    sp0_t = n; sp0_cur = k;
+}
+static inline void sp0_kind(unsigned k) { if (k != sp0_cur) sp0_set(k); }
+static __attribute__((noinline)) void sp0_group_begin(void) { sp0_t = pm_ticks(); sp0_cur = 0; }
+static __attribute__((noinline)) void sp0_group_end(void) { unsigned n = pm_ticks(); sp0_T[sp0_cur] += n - sp0_t; }
+static inline int sp0_tex(unsigned op) {
+    switch (op) {
+    case G_PM_TEX: case G_TEXTURE: case G_SETOTHERMODE_H: case G_SETOTHERMODE_L: case G_SETCOMBINE: case G_SETPRIMCOLOR:
+    case G_SETTIMG: case G_SETTILE: case G_LOADBLOCK: case G_LOADTILE: case G_LOADTLUT: case G_SETTILESIZE:
+        return 1;
+    default: return 0;
+    }
+}
+static __attribute__((cold, noinline)) void sp0_report(void) {
+    pm_log_hw("sp0c f%d tex %u dlc %u rest %u skip %u grp %u", rm_frame,
+              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), sp0_skip, sp0_grp);
+    memset(sp0_T, 0, sizeof sp0_T); sp0_skip = sp0_grp = 0;
+}
 /* MR0: plain static model census, phase on only, cold. A plain model has no fog change, no tint, no custom gfx, no panner and
  * no billboard (set by appendGfx_model through pm_gbi_mr0_plain). The walk cuts time into periods. A period has a kind: 0 ops,
  * 1 bind (G_PM_TEX), 2 dlc (a G_DL that dlc_try answers). A tick ends a period when the kind changes or the model changes.
@@ -2331,6 +2357,7 @@ void pm_gbi_win_reset(void) {
     os_svc_last = pm_svc_n;
     memset(mr0_T, 0, sizeof mr0_T); memset(mr0_F, 0, sizeof mr0_F); mr0_plain_n = 0;
     ms0_rem = ms0_chg = ms0_ctot = ms0_opm = ms0_runs = 0;
+    memset(sp0_T, 0, sizeof sp0_T); sp0_skip = sp0_grp = 0; /* SPLIT0C */
 }
 
 void pm_gbi_end_frame(void) {
@@ -2343,7 +2370,7 @@ void pm_gbi_end_frame(void) {
     { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); } }
     if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
     if (pm_ph_on || pm_dcs_on) pm_gpu_dcsum_frame(rm_frame); /* DS0: dcsum runs without phase; it must clear pm_dc_c and pm_dc_us every frame */
-    if (pm_ph_on) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mops_report(); mdc_report(); os_fr = 0; } pmk_n = 0; }
+    if (pm_ph_on) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mops_report(); mdc_report(); sp0_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
     if (gp3_t0_pending) { gp3_t0_dead++; gp3_t0_pending = 0; }
@@ -3492,6 +3519,7 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx)
         u32 w1 = q->words.w1;
         unsigned op = w0 >> 24;
         if (g1_skip[op] || g2_same(op, w0, w1)) continue;
+        if (pm_ph_on) sp0_kind(sp0_tex(op) ? 1u : 0u); /* SPLIT0C */
         if (pm_ph_on) os_nn[op]++; /* CAP1: a nested word counts in opsplit ops, as a walker op does */
         pm_gbi_cur_op = op;
         if (op != G_MTX && op != G_POPMTX && op != G_DL) gv_epoch++; /* GV1b, as the walker */
@@ -3529,6 +3557,7 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx)
             if (!next || !is_host((u32)next) || ((w0 >> 16) & 0xff) == G_DL_NOPUSH) return q;
             __builtin_prefetch(next);
             __builtin_prefetch(next + 4);
+            if (pm_ph_on && dlc_on) sp0_kind(2u); /* SPLIT0C */
             if (dlc_on && dlc_try(next)) break;
             *nx = next;
             return q + 1;
@@ -3620,7 +3649,9 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             const Gfx* nx = NULL;
             unsigned n = w0 & 0xffffu;
             if (end && sp == 0 && pc + n > end) n = (unsigned)(end - pc);
+            if (pm_ph_on) sp0_group_begin(); /* SPLIT0C */
             pc = mg_run(pc, n, &nx);
+            if (pm_ph_on) sp0_group_end();
             if (nx && sp < 12) { stack[sp++] = pc; pc = (Gfx*)nx; }
             break;
         }
