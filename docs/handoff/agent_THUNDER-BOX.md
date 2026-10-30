@@ -41,3 +41,9 @@
 - Frame 249 shows no visible box around the Shy Guys. The box is not seen yet.
 - Budget: 2 of 3 starts used. One start left.
 - Next: one start with a window on the second hit (frame 256) and later, e.g. `shotwin=252:12`, until shot frame 260. Look for the box.
+
+## Run 7 (lane thunder, budget 3 of 3 used)
+- Scenario: `shotwin=252:12`, until and check on shot frame 260. Shots at 252, 256, 260.
+- Frame 256 and frame 260 show the four red Shy Guys and the lightning.
+- Box: frame 260 (0002_0_0.ppm) shows a hard-edged bright yellow rectangle behind the top Shy Guy. Frame 256 (0001_0_0.ppm) shows a similar rectangle at the top left.
+- Next: no start left. Read the box source with a code agent (quad or mesh list, see investigate_shockwave_callers.md).
