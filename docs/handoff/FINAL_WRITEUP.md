@@ -471,3 +471,17 @@ PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds
 - Archive: 3ds/logs/builds/pm_3ds_1520_af0529787.3dsx, sha256 c5a4645faf718e199a4f79d4079a24b55b5a431fba9b40e9c1b1f5ea83cdadf3 (equal to build3ds/pm_3ds.3dsx). Line in pushed_builds.txt. Not pushed.
 - Catalog on 1520, row PAUSE5B, budget 8 of 8: pause_menu 7 of 7, text_menu 3 of 3, yard 3 of 3, battle_start 4 of 4 log checks. Not run (budget): sewer, ruins, volcano, tour10, file_select. Row INCOMPLETE until the budget reset.
 - Console: not measured. Push not given (epic not complete).
+
+## DRAW (build 1526, git 542f2d72d; epic E5 partly done, DRAWFIN INCOMPLETE)
+- Commits: 2d41644a1 DC6 (counters and cmd field; no draw change), 542f2d72d SPK1 (timing line, fsplit only). Handoff: docs/handoff/agent_draw.md.
+- DC6 (1): the cmd field read 0 on HEAD. C3D_GetCmdBufUsage changes only at a split (libcitro3d disassembly). The field now reads the GPUCMD offset: 80 to 82 words per sampled close (Azahar, mac01t_dcsum, f299).
+- DC6 (2): new dcgrp line per 300 drawn frames. Per close, Azahar: shadow miss 1.68, texture bind unit 0 1.01, TEV rebuild 0.62, palette upload 0.53, program bind 0.12, buffer info 0.12. Palette same-content uploads 0.00.
+- DC6 (3): no repeated group left. Every shadow miss, bind and TEV rebuild is a value change, because the setters already compare (DR1, DC2, PG3). Palette uploads always change content. Row dropped. Draw stage 14 us per close on both HEAD and DC6 (Azahar).
+- DC6 gate: top shot mac01t_dcsum 2 of 2 byte-equal to HEAD (fb9e8f0fc). HEAD against HEAD not run (start budget). Picture read: Mario and a Toad on the Toad Town street, HUD on.
+- SPK1: pm_mem_hud costs about 6 us Azahar per refresh (linearSpaceFree 1 us, mallinfo 4 to 5 us), about 17 us on the console. Gate 3 ms not met. HUD code unchanged. HUD memory values equal to HEAD in the log. Frames over 50 ms in the f600 window: 0 in both. The f300 load window: 18 in SPK1, HEAD not kept.
+- Bottom shots are not a clean gate on yard_fsplit: HEAD against HEAD about 670 px, SPK1 against SPK1 about 5000 px.
+- DRAWFIN build: default lane, git 542f2d72d, archive 3ds/logs/builds/pm_3ds_1526_542f2d72d.3dsx, sha256 2ed9666be4437388cc3bd50b9632e06afbb2c7e263222dcc95ae29b1e83cf663 (equal to build3ds/pm_3ds.3dsx). Archive only. Not pushed.
+- DRAWFIN catalog, one start each, 8 of 8 starts used (row cap): yard 3 of 3, pause_menu 7 of 7, partner_menu 7 of 7, file_select 6 of 6, text_menu 3 of 3, mac01 4 of 4, mac01t 6 of 6 (mdlsum tot ops 1335, gate 1175 to 1495), battle_start 4 of 4 log checks.
+- Not run (row cap reached, row INCOMPLETE): toad_pond (unverified, needs -Try), sewer, ruins, volcano, tour10, sun_sbk (unverified, needs -Try).
+- Top shots read by eye: yard, pause_menu, partner_menu, file_select, text_menu, mac01 (frame 500 file 0000), mac01t (0000), battle_start (last shot 0008: field with battle HUD). Not read: mac01 0001, mac01t 0001, battle_start 0000 is a colour test pattern (transition frame), a person must check battle_start 0004 (frame 182).
+- Console: not measured. No push given (epic not complete).
