@@ -133,6 +133,15 @@ void pm_sun_draw(int alpha, int fromRight, const float* scroll, int n) {
     pm_log("sun draw f%u alpha %d fromRight %d scroll %.2f %.2f %.2f %.2f %.2f (n %d)", pm_frame_count(), alpha, fromRight,
            scroll[0], scroll[1], scroll[2], scroll[3], scroll[4], n);
 }
+/* SUN3 debug: the first words of the sun base list (segment 9 + 0x898) and of ray list 0 (+0x7C0), as they are in RAM. */
+void pm_sun_base(const void* graphics) {
+    const unsigned* p;
+    if (!suntile_on() || !graphics) return;
+    p = (const unsigned*)((const u8*)graphics + 0x898);
+    pm_log("sun base gfx %p +898 %08x %08x %08x %08x", graphics, p[0], p[1], p[2], p[3]);
+    p = (const unsigned*)((const u8*)graphics + 0x7C0);
+    pm_log("sun base gfx +7C0 %08x %08x %08x %08x", p[0], p[1], p[2], p[3]);
+}
 static struct {
     unsigned vc, gm, idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri, tex;
     float x0, y0, x1, y1, w0, w1;
@@ -686,6 +695,22 @@ static unsigned lt_n;
 static s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
 static unsigned tex_ss = 0xFFFF, tex_ts = 0xFFFF; /* T02: G_TEXTURE s and t scale, 0x10000 is 1.0 */
 static float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
+/* SUN3 debug (suntile switch): the tile 0 source of a draw, its state, and the first 16 bytes of rows 0 to 11 of the source. */
+static void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls, int ult, int lrs, int lrt) {
+    if (!suntile_on() || suntile_lines >= 400) return;
+    suntile_lines++;
+    pm_log("suntile t0 f%u src %p str %d w %d h %d bpp %d fmt %u siz %u tmem %u win %d %d %d %d",
+           pm_frame_count(), (const void*)src, stride, w, h, bpp, tile_fmt[0], tile_siz[0], tile_tmem[0], uls, ult, lrs, lrt);
+    pm_log("suntile t0 timg %p tstr %d ld %d %d w %d h %d v %d", timg, timg_stride, ld_x, ld_y, ld_w, ld_h, ld_valid);
+    if (!src) return;
+    for (int r = 0; r < 12; r++) {
+        unsigned q[4];
+        if (suntile_lines >= 400) break;
+        suntile_lines++;
+        memcpy(q, src + (size_t)r * (size_t)stride * (bpp > 0 ? (size_t)bpp : 1u), 16); /* stride counts texels */
+        pm_log("suntile t0 row %d %08x %08x %08x %08x", r, q[0], q[1], q[2], q[3]);
+    }
+}
 static void suntile_tri(const char* path, const int* idx) {
     if (!suntile_on() || suntile_lines >= 400) return;
     suntile_lines++;
@@ -693,6 +718,10 @@ static void suntile_tri(const char* path, const int* idx) {
            path, pm_frame_count(), idx[0], idx[1], idx[2],
            (double)vert_st[idx[0]][0], (double)vert_st[idx[1]][0], (double)vert_st[idx[2]][0],
            (double)vert_st[idx[0]][1], (double)vert_st[idx[1]][1], (double)vert_st[idx[2]][1], vert_tss[idx[0]]);
+    if (path[0] == 'd') /* SUN3: the tile 1 state the draw uses */
+        pm_log("suntile t1 draw fmt %u siz %u tmem %u sz %d %d %d %d td1 v %d src %p w %d h %d str %d x0 %d y0 %d tile %u",
+               tile_fmt[1], tile_siz[1], tile_tmem[1], tile_sz[1][0], tile_sz[1][1], tile_sz[1][2], tile_sz[1][3],
+               td[1].valid, (const void*)td[1].src, td[1].w, td[1].h, td[1].stride, td[1].x0, td[1].y0, cur_tile);
 }
 static int tg_ok;
 static float tg_s, tg_t; /* T01: texgen result of the last vert_color call */
@@ -3220,6 +3249,7 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                 src += (size_t)r_y * (size_t)r_str + (size_t)r_x;
                 stride = r_str * 2;
             }
+            suntile_t0(src, stride, w, h, bpp, uls, ult, lrs, lrt);
             tile_x0 = x0;
             tile_y0 = y0;
             tile_fx = (float)(uls & 3) * 0.25f; /* PT38 */

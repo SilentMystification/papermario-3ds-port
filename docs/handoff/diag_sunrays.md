@@ -79,3 +79,19 @@ Corrects the first section above. Evidence is from the ROM bytes and the two log
 
 ## Next
 - Resolve candidate 1 first: compare the SETTIMG width and address of the DL in RAM with the ROM at 0x40C490 (run with imglog=200:1 on sun_sbk, one start).
+
+## SUN3 result (row SUN2, budget reset, 4 starts used of 8). No fix. Data edit reverted.
+
+- Run 1 (debug only, suntile tile 0 row probe): tile 0 at the ray draws is RGBA16 (fmt 0, siz 2) 32 by 32 at 0x56e880, not I4. The SUN1 tile 0 note (I4, 16 by 64) is the base list value, which this log does not show (see fact 2).
+- Fact 1, dropped ROM: "ROM READ IN DROPPED RANGE 0040bba0 n 2560" [M]. 0x40BBA0 to 0x40C5A0 is splat segment effect_gfx_sun (type code). The RR1 code rule in 3ds/tools/gen_rom_remap.py drops it (the drop table entry 0x0035B9D0 to 0x00E3B870). fx_sun gets zeros for the sun list and images.
+- Fact 1, test: keep line `0x0040BBA0 0x0040C5A0 effect_gfx_sun` in 3ds/rom_code_keep.txt, regenerate 3ds/src/rom_remap.h. The RAM sun list at +0x898 then reads e7000000 00000000 / d7000002 ffffffff (RAM words are little-endian; ROM bytes match). Shot sun_sbk 0000: 0 px changed (runs 2 and 4, shot_cmp EQUAL 2 of 2). Edit reverted: keep line removed, rom_remap.h regenerated and equal to HEAD.
+- Fact 2: the base list SETTILESIZE of tile 0 (ROM 0x40C4C0, window 0 0 60 252) is never logged, even with the list read at +0x898 [M]. Logged tile 0 windows after the sun draw are 0 0 124 124 and 0 0 60 60 (other draws). Cause not found. Candidate: the DL compile and replay path (3ds/src/pm_dlc.inc.c, G_SETTILESIZE at lines 589, 1174, 1198), which may skip or replay the op. Not checked.
+- Fact 3, the value the ray draw uses [M]: tile 1 at each sun draw (4 draws at frame 200, log line "suntile t1 draw"): fmt 4 (I4), siz 0, tmem 256, window uls 219 ult 0 lrs 471 lrt 124 (texel 54.75 to 117.75 by 0 to 31), td1 src 0x5046a6, w 256, h 32, stride 256, x0 54, y0 0. cur_tile -1. The tile 1 image is 0x5046a6, not a segment 9 address (segment 9 is 0xd202c0 in this run). Not yet checked: the bytes at 0x5046a6 against ROM 0x40BDA0.
+- Candidates from SUN2 (tile 0 source, TMEM row pitch, quarter texel): tile 0 is not the texture of the ray draws in this run (the draws bind tile 1). Candidate 1 (tile 0 source) is weakened. Candidate 3 (quarter texel of tile 1, uls 219 gives 3) is still open and small. Not tested in SUN3.
+- Debug probes kept (switch suntile): tile 0 row bytes and window (suntile_t0, 3ds/src/pm_gbi.c), tile 1 state at each draw (suntile_tri), sun base words (pm_sun_base, called from src/effects/sun.c under TARGET_3DS).
+
+## Next (SUN4)
+1. Read the bytes at td1.src 0x5046a6 (row 0 and row 1, 16 bytes each, stride 128 bytes) in the RAM log, and the ROM bytes at 0x40BDA0 (I8 rows, 128 bytes each). Decide the source row of the tile 1 image: LOADBLOCK at 0x09000200 (ROM lrs 510 lrt 28) into TMEM 256.
+2. Find which code writes 0x504670 (the tile 1 TMEM record of SUN1, stride 128): the LoadBlock path in pm_gbi.c (G_LOADBLOCK) and the DLC replay.
+3. Check the DLC replay for the base list (pm_dlc.inc.c) with one probe on the base list SETTIMG and SETTILE values.
+4. Restore build3ds/pm_3ds.3dsx from 3ds/logs/builds/pm_3ds_1526_542f2d72d.3dsx after any debug build (sha256 2ed9666b...).
