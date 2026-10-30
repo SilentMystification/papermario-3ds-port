@@ -99,3 +99,13 @@
 - Blend: omL 00553048, omH 00082cf0, 1-cycle (omH cycle bits 0). tex_on 1.
 - Texture coords read 0,0 for all vertices. The verts[] array is not filled on the ring path (pm_gpu_gvtx_load), so the tc values are not valid. Texel coverage is not logged. Use the asset coordinates instead: sprite tc s 2112..2816 and t 0..704 (D_09001088_339048), which is texels x 66..88, y 0..22.
 - Log edit reverted (git checkout of pm_gbi.c). Commit adds only the handoff note.
+
+## Run 16 (box source log, lane thunder, 1 start)
+- Temp log at src/effects/flashing_box_shockwave.c appendGfx (after the local declarations): type, pm_frame_count, lifetime time, primCol, unk_18. Reverted by git checkout after the shot. Not committed.
+- Shots: 0000 (frame 252), 0001 (frame 256), 0002 (frame 260) in build3ds/azt/shots/thunder_box/. All three are even frames. No odd frame was shot.
+- Shot-window fact: the shot frames are the only frames that render in this window. The log has box lines only at 252, 256, 260 (until 263), and every frame from 264 on. Shot frames are 4 apart.
+- Log: type 3 (battle lightning) draws every frame from 242. Type 0 (shock hit) draws at 252, 256, 260, then every frame from 264. PRIM is always 255 255 0. alpha 255 in most lines.
+- Type 0 lifetime at the shot frames is 1, 5, 9 (always odd). The time % 2 gate at line 162 passes on every shot frame here, so the gate does not explain an odd or even difference in this run.
+- Picture: frame 256 and frame 260 show a pale yellow hard-edged block at the top Shy Guy. Frame 252 is not clear.
+- Box source by elimination: type 3 mesh skips (runs 9 and 10) did not remove the block. Type 0 draw lists D_09000600_3936A0 and D_090008E8_393988 are not yet skip-tested. Next: skip type 0 at flashing_box_shockwave.c:162 to 169 in battle, one start, frame 260.
+- Budget: 1 start used in this run.
