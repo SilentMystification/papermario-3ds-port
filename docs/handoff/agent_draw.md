@@ -21,3 +21,18 @@
 - Scenario: `PM_ROW=DRAWFIN powershell -File 3ds/tools/azt.ps1 <scenario> -Row DRAWFIN [-Try]`.
 - Lane HEAD reference used: lane dchead, built in a detached worktree of fb9e8f0fc (not in the main tree).
 - Starts: DC6 7 of 8, SPK1 4 of 8, DRAWFIN 8 of 8 (INCOMPLETE).
+
+## DRAWV: verification of the six DRAWFIN scenarios (build 1526, git 542f2d72d)
+
+- Row DRAWV, budget reset once. Starts used: 6 (one per scenario). Build: build3ds/pm_3ds.3dsx, sha256 2ed9666b...f663, equal to the 1526 archive.
+- Log checks: toad_pond 3 of 3 (-Try), sewer 3 of 3, ruins 3 of 3, volcano 3 of 3, tour10 4 of 4 (tour: done, 10 maps), sun_sbk 3 of 3 (-Try). No failing check. No numeric gate in these six scenarios.
+- Top shot read by agent (0000 unless noted). A person must confirm.
+  - toad_pond 0000: Toad Town plaza, brown pool rim, no water in this frame. 0009: teal water at the left edge (x 20 to 60), Mario and Toads at the pool. Teal, not blue.
+  - sewer 0000: Toad Town Tunnels, Mario at a brick wall with yellow ? blocks.
+  - ruins 0000: Dry Dry Ruins, Mario and a Goomba-type sprite, story text box covers the right side.
+  - volcano 0000: Mt. Lavalava cave, Mario, lava glow in the centre.
+  - tour10 0010 (last of 11 shots): Mario beside grass and a white wall. Consistent with mac_00, the list end map. Not confirmed by eye.
+  - sun_sbk 0000: Dry Dry Desert, sand dune with Mario, blue sky at the right, faint diagonal ray streaks.
+- Rerun against pm_3ds_1520_af0529787.3dsx: not needed. No check failed.
+- Open: the picture gate for toad_pond needs a person to confirm the pool. The water is in the last shot only.
+- Logs: 3ds/logs/perf/drawv_<scenario>.txt. Shots: build3ds/azt/shots/<scenario>/.
