@@ -33,7 +33,9 @@ CODE_OVERLAYS = {'engine1', 'engine2', 'evt', 'engine4', 'entity', 'pause', 'fil
 def isdrop(n, s):
     if n in CODE_OVERLAYS and s < 0x1CC310: return True
     # S19b: the Lava Piranha animation scripts (world_model_anim_kzn_*) are data that dma_copy reads by ROM offset.
-    if BLOCK[0] <= s < BLOCK[1]: return not (n.startswith('effect_gfx_') or n.startswith('world_model_anim_kzn_'))
+    # ROMKEEP: create_audio_system_obfuscated starts at the block start. Its 128 B code is kept by rom_code_keep.txt, the
+    # 34-byte read at 0x3169F0 (sprite_shading_profiles tail) needs these bytes. Stage 1 must not drop them first.
+    if BLOCK[0] <= s < BLOCK[1]: return not (n.startswith('effect_gfx_') or n.startswith('world_model_anim_kzn_') or n == 'create_audio_system_obfuscated')
     return n.startswith('dead_') or n.startswith('copy_') or n == 'unk_1C84D30' or (0x800880 <= s < 0xE20110)
 for i, (s, n) in enumerate(segs):
     if s >= 0x2800000: continue
@@ -65,6 +67,27 @@ for d in merged:
     if merged2 and d[0] <= merged2[-1][1]: merged2[-1][1] = max(merged2[-1][1], d[1]); merged2[-1][2] = merged2[-1][2]
     else: merged2.append(d)
 merged = merged2
+# ROMKEEP guard: a data segment that the source names, and that lies in a dropped range, reads zero bytes at run time.
+# Warn once per segment (the run-time count is 'romdrop' in pm_os.c). Identifiers come from src, include, assets/us, 3ds/src.
+GUARD_PFX = ('effect_gfx_', 'entity_model_', 'world_model_anim_')
+GUARD_SFX = ('_gfx', '_vtx')
+import re as _re
+idents = set()
+for root in ('src', 'include', 'assets/us', '3ds/src'):
+    for dp, _, fs in os.walk(root):
+        for f in fs:
+            if f.endswith(('.c', '.h', '.inc')) and f not in ('rom_remap.h', 'map_restore_table.c'):
+                idents.update(_re.findall(rb'[A-Za-z_]\w*', open(os.path.join(dp, f), 'rb').read()))
+warn = []
+for i, (s, n) in enumerate(segs):
+    if s >= ROM or not (n.startswith(GUARD_PFX) or n.endswith(GUARD_SFX)): continue
+    e = end_of(i)
+    if not any(d[0] < e and d[1] > s for d in merged): continue
+    bare = n[len('entity_model_'):] if n.startswith('entity_model_') else n
+    if n.encode() in idents or bare.encode() in idents: warn.append('%08X..%08X %8d %s' % (s, e, e - s, n))
+if warn:
+    print('ROMKEEP WARN: %d data segments that the source names lie in a dropped range (read as zero bytes):' % len(warn))
+    for w in warn: print('  ' + w)
 kept = []; pos = 0; packed = 0
 for s, e, n in merged:
     if s > pos: kept.append((pos, s - pos, packed)); packed += s - pos

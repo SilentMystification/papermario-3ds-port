@@ -280,6 +280,20 @@ static void rom_suspect(const char* why, u32 addr, u32 n, u32 req, u32 size) {
     }
 }
 
+/* ROMKEEP: a read in a dropped range is counted, not logged per read. pm_rom_drop_stat prints the count of each 300 frames.
+ * romstrict still stops at the first such read (rom_suspect). */
+static u32 rom_drop_n, rom_drop_b, rom_drop_all;
+static void rom_drop_count(u32 addr, u32 n, u32 req, u32 size) {
+    __atomic_fetch_add(&rom_drop_n, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_add(&rom_drop_b, n, __ATOMIC_RELAXED);
+    if (pm_debug_has("romstrict")) rom_suspect("IN DROPPED RANGE", addr, n, req, size);
+}
+void pm_rom_drop_stat(void) {
+    u32 n = __atomic_exchange_n(&rom_drop_n, 0, __ATOMIC_RELAXED), b = __atomic_exchange_n(&rom_drop_b, 0, __ATOMIC_RELAXED);
+    rom_drop_all += n;
+    pm_log_d("romdrop 300 frames: reads %u bytes %u total %u", n, b, rom_drop_all);
+}
+
 /* HW3: both tables are generated sorted and without overlap (121 entries each). A read used to scan all 242 entries. The binary
  * search gives the same n and the same offset. pm_rom_sorted is checked once; an unsorted table keeps the linear scan. */
 static int pm_rom_sorted = -1;
@@ -353,7 +367,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
             if (addr >= ds && addr < de) { dropped = 1; if (n > de - addr) n = de - addr; }
             else if (ds > addr && ds < addr + n) n = ds - addr;
         }
-        if (dropped) rom_suspect("IN DROPPED RANGE", addr, n, rom_addr, size);
+        if (dropped) rom_drop_count(addr, n, rom_addr, size);
         if (dropped && !pm_debug_has("romfull")) {
             memset(out, 0, n);
         } else if (rom_bytes) {

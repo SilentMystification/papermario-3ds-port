@@ -146,6 +146,7 @@ void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsign
 
 void pm_game_bind(void);
 int pm_rom_init(void);
+void pm_rom_drop_stat(void);
 void pm_fatal_screen(const char* msg);
 void pm_crash_selftest(void);
 void pm_crash_install(void* stack, unsigned size);
