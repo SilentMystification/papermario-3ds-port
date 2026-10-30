@@ -29,7 +29,7 @@
 - Top shot read by agent (0000 unless noted). A person must confirm.
   - toad_pond 0000: Toad Town plaza, brown pool rim, no water in this frame. 0009: teal water at the left edge (x 20 to 60), Mario and Toads at the pool. Teal, not blue.
   - sewer 0000: Toad Town Tunnels, Mario at a brick wall with yellow ? blocks.
-  - ruins 0000: Dry Dry Ruins, Mario and a Goomba-type sprite, story text box covers the right side.
+  - ruins 0000: Dry Dry Ruins, Mario and a second character, story text box covers the right side.
   - volcano 0000: Mt. Lavalava cave, Mario, lava glow in the centre.
   - tour10 0010 (last of 11 shots): Mario beside grass and a white wall. Consistent with mac_00, the list end map. Not confirmed by eye.
   - sun_sbk 0000: Dry Dry Desert, sand dune with Mario, blue sky at the right, faint diagonal ray streaks.
