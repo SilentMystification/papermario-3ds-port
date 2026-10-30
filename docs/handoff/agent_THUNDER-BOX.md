@@ -60,3 +60,9 @@
 - The battle branch (src/effects/flashing_box_shockwave.c:176-178) never sets the primitive colour. Only the world type sets 255,255,0. So battle PRIM is stale.
 - Tried: skip D_09000950_3939F0 for the battle type. Built and shot at frame 260. The rectangle stays at the top left of the top Shy Guy, and new yellow blocks appear at the top and bottom of the frame. Result: not the cause.
 - Edit reverted in src/effects/flashing_box_shockwave.c. Not committed.
+
+## Run 10 (Test A, 1 start, budget 1 left)
+- Edit: skip D_09000FF8_394098 for the battle type (src/effects/flashing_box_shockwave.c, after the quad line). Kept the quad line.
+- Shot at frame 260 (0002_0_0.ppm): the yellow rectangle is still at the top left, next to the top Shy Guy. Result: the shockwave mesh is not the writer.
+- Source edit reverted. Not committed.
+- Next: Test B (investigate_thunder_box_3.md): skip the bolt triangles gSPDisplayList(dlist) at src/effects/lightning.c:279 for unk_00 >= 3. One start left.
