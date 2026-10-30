@@ -4,6 +4,9 @@
 /* Plain C seam. Game files include ultra64; GPU files include 3ds.h.
  * Neither side includes the other. */
 
+/* CF5: hot op-loop scalars share one .data.pmhot block (ld/3dsx.ld.in puts it first, 32-byte aligned). */
+#define PM_HOTD __attribute__((section(".data.pmhot")))
+
 /* L02: levels 0 error, 1 warn, 2 info, 3 debug. pm_log is info. Switch loglevel=<0..3>, default warn. log=off stops the write to log.txt. */
 void pm_log(const char* fmt, ...);
 void pm_log_e(const char* fmt, ...);

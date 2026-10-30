@@ -13,7 +13,7 @@ enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 #define DLC_MAXOPS 4096
 static DlcEnt* dlc_tab[DLC_TAB];
 static unsigned dlc_nent;
-static int dlc_on, dlc_depth;
+static PM_HOTD int dlc_on; static int dlc_depth;
 static struct {
     unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch;
 } dlc_c;

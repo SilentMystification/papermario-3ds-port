@@ -83,6 +83,9 @@ SECTIONS
 
 	.data :
 	{
+		/* CF5: hot scalar block first, 32-byte aligned (see PM_HOTD in include/pm_port.h) */
+		. = ALIGN(32);
+		*(.data.pmhot)
 		*(.data)
 		*(.data.*)
 		*(.gnu.linkonce.d*)

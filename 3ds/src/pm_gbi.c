@@ -76,14 +76,14 @@ extern unsigned int __ctru_linear_heap_size;
 static float proj[4][4];
 static float mv[10][4][4];
 static float combined[4][4];
-static int mv_sp;
+static PM_HOTD int mv_sp;
 /* Viewport scale/translate after the 2-bit fraction. Full 320x240 until a display list sets one. */
 static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
 static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
-static unsigned geom;
-static unsigned omode_h;
+static PM_HOTD unsigned geom;
+static PM_HOTD unsigned omode_h;
 void pm_tex_set_filter(int linear);
-static unsigned omode_l = 0x00000030u; /* Z_CMP | Z_UPD until a list sets a mode */
+static PM_HOTD unsigned omode_l = 0x00000030u; /* Z_CMP | Z_UPD until a list sets a mode */
 static int rm_frame;
 /* X01 debug switch xtrace=<first frame>:<count>: log fill rects, prim depth and render state changes in that frame window. */
 extern unsigned pm_frame_count(void);
@@ -159,7 +159,7 @@ static void dd_end(void) {
     dd.ntri = 0;
 }
 
-static unsigned prim = 0xffffffffu;
+static PM_HOTD unsigned prim = 0xffffffffu;
 static unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
 static unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
 static unsigned fill = 0xffffffffu;
@@ -167,7 +167,7 @@ static unsigned prim_z; /* X01: G_SETPRIMDEPTH, 15 bit, 0 near, 0x7fff far */
 /* PRIMZFIX: the primitive depth is one unit (512 units of the 24-bit depth) nearer than G_SETPRIMDEPTH. The console rounds a 0x7FF0 blocker
  * behind the far background (water in the Toad Town pond). One helper for both NDC z uses; clamped at 0. */
 static float prim_ndc_z(void) { return 2.f * (float)(prim_z ? prim_z - 1u : 0u) / 32767.f - 1.f; }
-static int tex_on;
+static PM_HOTD int tex_on;
 static const void* timg;
 static unsigned timg_fmt, timg_siz;
 static int timg_stride;
@@ -262,7 +262,7 @@ static const void* tlut_pal[16];
 static unsigned tile_tmem[8], tile_pal[8];
 static int tile_sz[8][4];
 static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
-static unsigned envc = 0xffffffffu;
+static PM_HOTD unsigned envc = 0xffffffffu;
 static unsigned comb2_a, comb2_b, comb2_c, comb2_d, comb2_aa, comb2_ab, comb2_ac, comb2_ad;
 static unsigned comb_aa, comb_ab, comb_ac, comb_ad;
 /* The sprite raster captured when tile 1 got its size. A shaded sprite sets two tiles on the
@@ -285,17 +285,17 @@ static unsigned tile_shift[8][2]; /* V12: G_SETTILE shifts (s, t) of each tile *
 static float shift_mul(unsigned n) {
     return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
 }
-static int cur_tile;
-static int use_t1;     /* the combiner reads TEXEL1 only: draw with tile 1 (TEXEL1 is renamed TEXEL0) */
+static PM_HOTD int cur_tile;
+static PM_HOTD int use_t1;     /* the combiner reads TEXEL1 only: draw with tile 1 (TEXEL1 is renamed TEXEL0) */
 static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 /* draw_box (H04): cycle 1 = TEXEL0 * TEXEL1 (tile 0 window background, tile 1 corner image),
  * alpha = TEXEL1 alpha, cycle 2 = (PRIM - ENV) * COMBINED + ENV. box_prod marks that form.
  * box_folded is 1 while it is drawn as (PRIM - ENV) * TEXEL1 + ENV, which is exact when tile 0
  * is all white (the flat background of the window styles, `bg_flat`). */
-static int box_prod, box_folded;
+static int box_prod; static PM_HOTD int box_folded;
 /* R2B: comb_gen counts the writes of the combine state that the SETCOMBINE handler does not make (box_fold_sync toggles);
  * cmb_gen_seen is comb_gen at the last SETCOMBINE. */
-static unsigned comb_gen, cmb_gen_seen;
+static PM_HOTD unsigned comb_gen, cmb_gen_seen;
 static int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
 static unsigned box_save[4];
 static float dual_gain[3];
@@ -310,7 +310,7 @@ static Vtx verts[64];
 static u8 vert_live[64];
 /* FX3f: a triangle was issued since the last G_VTX. A load at slot 0 only starts a new mesh then. aura loads slots 2,6 and then
  * 0,4 and draws 4,5,6,7, so the slot 0 load must keep the slots loaded just before it. */
-static int tri_since_vtx;
+static PM_HOTD int tri_since_vtx;
 /* B5: G_MODIFYVTX G_MWO_POINT_XYSCREEN sets the screen position of a loaded vertex (underwater warp). x, y in 10.2 fixed point. */
 static u8 vert_scr[64];
 static s16 vert_sx[64], vert_sy[64];
@@ -358,9 +358,9 @@ static u8 seen[256];
 static int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample;
 static char stats_line[96];
 static unsigned comb_a, comb_b, comb_c, comb_d;
-static unsigned comb_w0, comb_w1; /* S25: raw G_SETCOMBINE words, for the combiner audit */
+static PM_HOTD unsigned comb_w0, comb_w1; /* S25: raw G_SETCOMBINE words, for the combiner audit */
 static int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
-static int comb_set;
+static PM_HOTD int comb_set;
 /* 1 when the alpha combiner reads shade alpha. DECAL and MODULATE modes do not, and imgfx
  * meshes leave cn[3] at 0, so passing it through made them vanish. */
 static int comb_alpha_shade = 1;
@@ -604,10 +604,10 @@ static void box_fold_sync(void) {
  * compare and update come from Z_CMP and Z_UPD, a decal passes equal depth, blending is on when
  * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
  * cut away near-transparent texels. */
-static unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
+static PM_HOTD unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
 static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 static unsigned sr_sig;
-static int sr_ok;
+static PM_HOTD int sr_ok;
 static void sync_render(void) {
     unsigned sg = omode_l ^ (omode_h * 2654435761u) ^ geom ^ (unsigned)img_role(0) ^ (unsigned)PMD("rmoff");
     if (sr_ok && sg == sr_sig) {
@@ -682,7 +682,7 @@ static unsigned rgba_from_5551(unsigned c) {
 static struct { u8 col[3]; s8 dir[3]; } lt[9];
 static unsigned lt_n;
 static s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
-static unsigned tex_ss = 0xFFFF, tex_ts = 0xFFFF; /* T02: G_TEXTURE s and t scale, 0x10000 is 1.0 */
+static PM_HOTD unsigned tex_ss = 0xFFFF, tex_ts = 0xFFFF; /* T02: G_TEXTURE s and t scale, 0x10000 is 1.0 */
 static float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
 /* SUN3 debug (suntile switch): the tile 0 source of a draw, its state, and the first 16 bytes of rows 0 to 11 of the source. */
 static __attribute__((cold, noinline)) void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls, int ult, int lrs, int lrt) {
@@ -1063,7 +1063,7 @@ static Dec* decide(int two) {
 }
 
 static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
-static unsigned sc_sig; static int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
+static unsigned sc_sig; static PM_HOTD int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
 /* OPT-SC: the result of sync_combine_work by the PG0 signature of its inputs (the same hash as gbiprof in sync_combine_work). A hit repeats the outputs and the calls into pm_gpu: no decision lookup, no
  * constant colour test, no plan colours. 16 entries, the oldest is replaced. */
 typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
@@ -1421,7 +1421,7 @@ static int gv1chk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gv1
 
 /* GV1b: state epoch. gv_epoch goes up at every display list op that is not a vertex load, a triangle, a matrix op or a list jump. The decision that depends on state
  * only (fallback reason, cull mode, the combiner, texture and render sync, the draw parameters) is made once per epoch and per texture scale, not per triangle. */
-static unsigned gv_epoch = 1, ep_epoch, ep_osc, ep_fl, ep_n, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
+static PM_HOTD unsigned gv_epoch = 1, ep_epoch; static unsigned ep_osc, ep_fl, ep_n, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
 static int ep_why, ep_ct, ep_cullboth, ep_open;
 static GvP ep_p;
 static unsigned gv_chk_stale;
@@ -1538,7 +1538,7 @@ static int gv_tri(const int* idx) {
 extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
 extern Gfx SolidCombineModes[][5], AlphaTestCombineModes[][5], Gfx_RM1_SURFACE_OPA[], Gfx_RM3_CLOUD_NO_ZB[], Gfx_RM3_SURFACE_XLU_NO_ZB[], Gfx_RM3_CLOUD[];
 #define DLS_N 8
-static int dls_on;
+static PM_HOTD int dls_on;
 static unsigned dls_pc; /* class of the list that runs now */
 static unsigned dls_ops[DLS_N][3], dls_tri[DLS_N], dls_triv[DLS_N], dls_vtx[DLS_N], dls_dl, dls_stab_ok, dls_stab_chg, dls_frames, dls_fno;
 static unsigned char dls_vcls[64];
@@ -1619,7 +1619,7 @@ static void dls_report(void) {
 }
 
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
-static int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
+static PM_HOTD int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 static void draw_tri(unsigned w);
 static void tb_probe(unsigned slot, const Gfx* l, unsigned n) {
     if (!pm_ph_on || !l) return;
@@ -1912,7 +1912,7 @@ static __attribute__((cold, noinline)) void note(unsigned op) {
     seen[op] = 1;
 }
 
-static unsigned n_ops; /* PT01: display list ops run this frame */
+static PM_HOTD unsigned n_ops; /* PT01: display list ops run this frame */
 unsigned pm_gbi_ops_now(void) { return n_ops; } /* PI1: ops so far this drawn frame */
 
 /* W1: sampled time per op class. Phase on only. op_n is exact (one increment per op). One tick pair per 64 ops, outer list only.
@@ -3605,7 +3605,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                     vert_ring[v0 + i] = gring0 >= 0 ? (unsigned short)(gring0 + (int)i) : GV_NONE;
                     vert_gmi[v0 + i] = (unsigned short)gmi;
                     vert_tss[v0 + i] = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu);
-                    vert_mid[v0 + i] = po3a_mid;
+                    if (po3a_on()) vert_mid[v0 + i] = po3a_mid;
                     vert_live[v0 + i] = 1;
                     vert_scr[v0 + i] = 0;
                     vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
