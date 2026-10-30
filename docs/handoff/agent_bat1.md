@@ -14,10 +14,10 @@
 
 - ms0 texture changes 46 -> 33 per frame. Opaque plain models 69, runs 12 (same).
 - Log checks 6 of 6 in both runs.
-- Not run: yard (plan gate names it; not run in this row). Azahar starts used: 4 of 8 (BAT1 mod x1, HEAD x1; no repeats).
+- Yard gate PASSED: top shot 0000_0_11 equal to HEAD (e5802e650) for BAT1 c4ebe5451. HEAD repeat (start 5) also equal to HEAD. Bottom shots differ 60 of 60 for HEAD vs HEAD repeat too, so they are noise. Azahar starts used: 5 of 8.
 
 ## Open items
-- yard byte-equal check not run. Run `azt.ps1 yard -Row BAT1 -Build bat1m -Try` and compare top shots to a HEAD yard run if the orchestrator needs it.
+- Yard byte-equal check done (top shot). No open item for BAT1.
 - Console judges speed. Azahar numbers are direction only.
 - Next row: TBREP (DUP0 counts first, per plan).
 
