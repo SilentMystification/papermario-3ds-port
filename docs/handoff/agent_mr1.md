@@ -13,3 +13,12 @@ Plan: docs/handoff/plan_mr1.md. Rules: CLAUDE.md 2, 5, 7; hw_guidelines.md.
 - MR1base yard (HEAD lane conlb1b2): run made before the cut. It is an overrun of the cut (HEAD runs: 3 of 2).
 - Overrun before the cut (MR1base, same lane): forest_mim, sewer, ruins, sun_sbk, volcano. Not compared with MR1.
 - MR1 yard run 1 (lane mr1): measures yard top shot against the HEAD yard shot (byte-equal test of the G_PM_MODEL path on a second map, the cut scope). Code path: the same header and mg_run path as mac01t. No other run answers it: yard is the second scene of the cut set, and its HEAD shot already exists.
+- MR1 yard run 1 (lane mr1): yard top shot 1 of 1 byte-equal to MR1base yard.
+
+## Result
+- Commit 7d00a451c: gbi_custom.h, model.c, pm_gbi.c, agent_mr1.md. Not map_restore_table.c.
+- Gate: mac01t tot ops 1215 -> 860 (-355), passes 300.
+- Open for the orchestrator: azt_scenarios.json mac01t range 1175 to 1495 now fails (860). Set a new range. Not edited here: the file has other uncommitted changes.
+- Open: forest_mim, sewer, ruins, sun_sbk, volcano were run on HEAD only (baseline shots in build3ds/azt/mr1/base_*). No MR1 run, so no compare.
+- Starts used: MR1base 3 (mac01t 2, yard 1, outside the cut for yard). MR1 2 (mac01t 1, yard 1). Total starts: 8 across both rows (5 extra HEAD starts before the cut).
+- Console: not measured.
