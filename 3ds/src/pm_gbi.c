@@ -3155,6 +3155,7 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                         stride = l1stride > w ? l1stride : w;
                     }
                 }
+                int t1x = uls >> 2; /* texel column of the window origin; the V21 branch lowers it to the loaded origin */
                 int boff = 0; /* V13: tile 1 inside an earlier block load: the image start moves by the TMEM difference */
                 for (unsigned k = 0; k < 4; k++)
                     if (blk[k].img && blk[k].tmem < tile_tmem[1] && (tile_tmem[1] - blk[k].tmem) * 8u < blk[k].bytes && blk[k].tmem == tile_tmem[0] && src == (const u8*)blk[k].img)
@@ -3168,8 +3169,12 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                 else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
                 else if (src && tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
                 else if (src && l1v) {
-                    /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32). */
-                    src += (size_t)(ult >> 2) * (size_t)l1stride + (size_t)(uls >> 2);
+                    /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32).
+                     * This branch is 4 bit only (bpp 0). uls >> 2 counts texels, two per byte, so the byte offset is half of it.
+                     * A byte pointer cannot start on an odd texel: the loaded origin is the even texel at or before the window
+                     * origin. td[1].x0 uses the same origin, so the UV map and the loaded data agree. */
+                    t1x = (uls >> 2) & ~1;
+                    src += (size_t)(ult >> 2) * (size_t)l1stride + (size_t)(t1x >> 1);
                     stride = l1stride * 2;
                 }
                 if (src && w > 0 && h > 0) {
@@ -3180,7 +3185,7 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                     td[1].w = w;
                     td[1].h = h;
                     td[1].stride = stride;
-                    td[1].x0 = uls >> 2;
+                    td[1].x0 = t1x;
                     td[1].y0 = ult >> 2;
                     td[1].pal = tlut_pal[tile_pal[1] & 15] ? tlut_pal[tile_pal[1] & 15] : tlut;
                     td[1].pal_n = tlut_n;
