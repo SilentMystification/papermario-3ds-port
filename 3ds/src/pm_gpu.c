@@ -116,6 +116,7 @@ static PmFx g_fx, sh5_fx;
 static float sh5_uvso[4], sh5_cmul[4], sh5_cadd[4], sh5_zmix[2];
 static int sh5_ok;
 static unsigned sh5_pal_gm[GPAL5], sh5_pal_gen[GPAL5]; static unsigned char sh5_pal_ok[GPAL5];
+static C3D_Mtx sh5_pal_mtx[GPAL5]; /* DC6: the matrix each pm5 palette register holds */
 static const float (*pal_ntab)[3][4];
 void pm_gpu_set_ntab(const float (*ntab)[3][4]) { pal_ntab = ntab; }
 int pm_gpu_gv5_ok(void) { return gv5_on; }
@@ -124,6 +125,7 @@ int pm_gpu_gv5_ok(void) { return gv5_on; }
 static int bound, buf_cur, raw_dvlb_ok; static DVLB_s* dvlb_all;
 static float sh_uvso[4], sh_cmul[4], sh_cadd[4], sh_zmix[2]; static int sh_ok;
 static unsigned sh_pal_gm[32], sh_pal_gen[32]; static unsigned char sh_pal_ok[32];
+static C3D_Mtx sh_pal_mtx[32]; /* DC6: the matrix each pm4 palette register holds */
 static void raw1_reset(void) { bound = 0; buf_cur = 0; sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); }
 static int u4_pal = -1, u4_uvx = -1, u4_uvso = -1, u4_cmul = -1, u4_cadd = -1, u4_zmix = -1, u4_nzo = -1, g_pal, gv4_on;
 static unsigned pal_n, pal_g[GPAL], pal_gen = 1, post_gen = 1;
@@ -263,7 +265,7 @@ static unsigned gring_fl, gidx_fl;
 /* DC1: the sampled close (set in pm_gpu_flush_at). Only one close in 8 reads the tick, so the timers are sampled and scaled by 8. */
 static int dc_on;
 /* DS0: cold counters for pm_gpu_dcsum_frame. Ticks and counts in this file's flushes, sampled closes and cmd words; sums over 300 drawn frames. */
-static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n;
+static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n, dcs_c[DC_N];
 static void gpu_flush_written(void) {
     unsigned g0 = dc_on ? pm_ticks() : 0;
     pm_tex_flush_pend_only();
@@ -488,32 +490,32 @@ static int noise_bound; /* DC2: unit 2 holds the noise texture (cleared by sh_cl
 static void sh_clear(void) { sh.has = 0; tev_valid = 0; pool_buf_ok = 0; proj_ok = 0; noise_bound = 0; pm_tex_bind_reset(); }
 static void sh_depth_test(bool en, GPU_TESTFUNC f, GPU_WRITEMASK m) {
     if ((sh.has & SH_DT) && sh.dt[0] == (int)en && sh.dt[1] == (int)f && sh.dt[2] == (int)m) return;
-    sh.dt[0] = en; sh.dt[1] = (int)f; sh.dt[2] = (int)m; sh.has |= SH_DT; C3D_DepthTest(en, f, m);
+    sh.dt[0] = en; sh.dt[1] = (int)f; sh.dt[2] = (int)m; sh.has |= SH_DT; pm_dc_c[DC_SHM]++; C3D_DepthTest(en, f, m);
 }
 static void sh_depth_map(bool en, float sc, float off) {
     if ((sh.has & SH_DM) && sh.dm_on == (int)en && sh.dm[0] == sc && sh.dm[1] == off) return;
-    sh.dm_on = en; sh.dm[0] = sc; sh.dm[1] = off; sh.has |= SH_DM; C3D_DepthMap(en, sc, off);
+    sh.dm_on = en; sh.dm[0] = sc; sh.dm[1] = off; sh.has |= SH_DM; pm_dc_c[DC_SHM]++; C3D_DepthMap(en, sc, off);
 }
 static void sh_alpha_test(bool en, GPU_TESTFUNC f, int ref) {
     if ((sh.has & SH_AT) && sh.at[0] == (int)en && sh.at[1] == ref) return;
-    sh.at[0] = en; sh.at[1] = ref; sh.has |= SH_AT; C3D_AlphaTest(en, f, ref);
+    sh.at[0] = en; sh.at[1] = ref; sh.has |= SH_AT; pm_dc_c[DC_SHM]++; C3D_AlphaTest(en, f, ref);
 }
 static void sh_scissor(GPU_SCISSORMODE m, u32 l, u32 t, u32 r, u32 b) {
     if ((sh.has & SH_SC) && sh.sc[0] == (unsigned)m && sh.sc[1] == l && sh.sc[2] == t && sh.sc[3] == r && sh.sc[4] == b) return;
-    sh.sc[0] = m; sh.sc[1] = l; sh.sc[2] = t; sh.sc[3] = r; sh.sc[4] = b; sh.has |= SH_SC; C3D_SetScissor(m, l, t, r, b);
+    sh.sc[0] = m; sh.sc[1] = l; sh.sc[2] = t; sh.sc[3] = r; sh.sc[4] = b; sh.has |= SH_SC; pm_dc_c[DC_SHM]++; C3D_SetScissor(m, l, t, r, b);
 }
 static void sh_blend(GPU_BLENDEQUATION c, GPU_BLENDEQUATION a, GPU_BLENDFACTOR sc, GPU_BLENDFACTOR dc, GPU_BLENDFACTOR sa, GPU_BLENDFACTOR da) {
     if ((sh.has & SH_BL) && sh.bl[0] == (int)c && sh.bl[1] == (int)a && sh.bl[2] == (int)sc && sh.bl[3] == (int)dc && sh.bl[4] == (int)sa && sh.bl[5] == (int)da) return;
-    sh.bl[0] = c; sh.bl[1] = a; sh.bl[2] = sc; sh.bl[3] = dc; sh.bl[4] = sa; sh.bl[5] = da; sh.has |= SH_BL; C3D_AlphaBlend(c, a, sc, dc, sa, da);
+    sh.bl[0] = c; sh.bl[1] = a; sh.bl[2] = sc; sh.bl[3] = dc; sh.bl[4] = sa; sh.bl[5] = da; sh.has |= SH_BL; pm_dc_c[DC_SHM]++; C3D_AlphaBlend(c, a, sc, dc, sa, da);
 }
-static void sh_cull(GPU_CULLMODE m) { if ((sh.has & SH_CU) && sh.cull == (int)m) return; sh.cull = (int)m; sh.has |= SH_CU; C3D_CullFace(m); }
+static void sh_cull(GPU_CULLMODE m) { if ((sh.has & SH_CU) && sh.cull == (int)m) return; sh.cull = (int)m; sh.has |= SH_CU; pm_dc_c[DC_SHM]++; C3D_CullFace(m); }
 static void sh_early(bool en, GPU_EARLYDEPTHFUNC f, u32 v) {
     if ((sh.has & SH_ED) && sh.ed[0] == (int)en && sh.ed[1] == (int)f && sh.ed[2] == (int)v) return;
-    sh.ed[0] = en; sh.ed[1] = (int)f; sh.ed[2] = (int)v; sh.has |= SH_ED; C3D_EarlyDepthTest(en, f, v);
+    sh.ed[0] = en; sh.ed[1] = (int)f; sh.ed[2] = (int)v; sh.has |= SH_ED; pm_dc_c[DC_SHM]++; C3D_EarlyDepthTest(en, f, v);
 }
 static void sh_user_clip(int on) {
     if ((sh.has & SH_UC) && sh.uc == on) return;
-    sh.uc = on; sh.has |= SH_UC;
+    sh.uc = on; sh.has |= SH_UC; pm_dc_c[DC_SHM]++;
     if (on) {
         GPUCMD_AddWrite(GPUREG_FRAGOP_CLIP, 1);
         GPUCMD_AddIncrementalWrites(GPUREG_FRAGOP_CLIP_DATA0, gp2_clip_dat, 4);
@@ -819,6 +821,7 @@ static unsigned flush_gen; /* GV1b: counts the raw batches closed */
 /* DC1: the sampled close. Marks: 0 start, 1 after the uniforms, 2 after the texture binds, 3 after TEV, 4 after the fragment state,
  * 5 after the draw call, 6 and 7 around kick_check. Set by pm_gpu_flush_at for one close in 8 (phase or dcsum on). */
 static unsigned dc_seq, dc_t[8];
+static u32 dc_w0; /* DS0: GPUCMD offset (words) at the start of the sampled close; C3D_GetCmdBufUsage updates only at a split, so it is not used */
 #define DC_T(k) do { if (dc_on) dc_t[k] = pm_ticks(); } while (0)
 static void dc_end(void) {
     pm_dc_us[DCU_PAL] += (dc_t[1] - dc_t[0]) / 268u;
@@ -833,6 +836,7 @@ static void dc_end(void) {
 static void dc_kick(void) {
     if (!dc_on) { kick_check(); return; }
     DC_T(6);
+    { u32 w1; GPUCMD_GetBuffer(NULL, NULL, &w1); if (w1 >= dc_w0) dcs_cmd += w1 - dc_w0; } /* DS0: words of the close, before its own kick */
     kick_check();
     DC_T(7);
     dc_end();
@@ -870,6 +874,7 @@ static void flush_draw(void) {
     }
     pm_dc_c[DC_RAW] += (unsigned)graw;
     DC_T(0);
+    if (dc_on) GPUCMD_GetBuffer(NULL, NULL, &dc_w0);
     PH_ADD(C_FLUSH, 1);
     PH_PUSH(PH_GPU);
     PHF_PUSH(PH_GBIND);
@@ -877,7 +882,7 @@ static void flush_draw(void) {
     if (graw) { /* PO3b */
         proj_ok = 0; pool_buf_ok = 0; /* DR1: the program and the buffer change */
         if (gpal && g_use5) { /* GV5: lighting, texgen, fog */
-            if (bound != 4) { C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; PH_ADD(C_RAWCALL, 2); }
+            if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; PH_ADD(C_RAWCALL, 2); }
             if (!sh5_ok || memcmp(sh5_uvso, g_uvso, sizeof sh5_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh5_uvso, g_uvso, sizeof sh5_uvso); PH_ADD(C_RAWCALL, 1); }
             if (!sh5_ok || memcmp(sh5_cmul, g_cmul, sizeof sh5_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh5_cmul, g_cmul, sizeof sh5_cmul); PH_ADD(C_RAWCALL, 1); }
             if (!sh5_ok || memcmp(sh5_cadd, g_cadd, sizeof sh5_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh5_cadd, g_cadd, sizeof sh5_cadd); PH_ADD(C_RAWCALL, 1); }
@@ -910,6 +915,8 @@ static void flush_draw(void) {
                     RS_ADD(RS_PCOMP, 1); pm_dc_c[DC_PMUL]++;
                 }
                 if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && sh5_pal_gen[k] == post_gen) continue;
+                if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && memcmp(&sh5_pal_mtx[k], &pcomp[gm], sizeof(C3D_Mtx)) == 0) pm_dc_c[DC_PKEQ]++; /* DC6 count: this upload writes the matrix the register holds */
+                sh5_pal_mtx[k] = pcomp[gm];
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
                 if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
                 sh5_pal_ok[k] = 1; sh5_pal_gm[k] = gm; sh5_pal_gen[k] = post_gen;
@@ -918,7 +925,7 @@ static void flush_draw(void) {
             }
         } else if (gpal) {
             sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); /* pm4 writes over the registers of pm5 */
-            if (bound != 3) { C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
+            if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
             if (!sh_ok || memcmp(sh_uvso, g_uvso, sizeof sh_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh_uvso, g_uvso, sizeof sh_uvso); PH_ADD(C_RAWCALL, 1); }
             if (!sh_ok || memcmp(sh_cmul, g_cmul, sizeof sh_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh_cmul, g_cmul, sizeof sh_cmul); PH_ADD(C_RAWCALL, 1); }
             if (!sh_ok || memcmp(sh_cadd, g_cadd, sizeof sh_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh_cadd, g_cadd, sizeof sh_cadd); PH_ADD(C_RAWCALL, 1); }
@@ -935,6 +942,8 @@ static void flush_draw(void) {
                     RS_ADD(RS_PCOMP, 1); pm_dc_c[DC_PMUL]++;
                 }
                 if (sh_pal_ok[k] && sh_pal_gm[k] == gm && sh_pal_gen[k] == post_gen) continue; /* the register block holds this matrix already */
+                if (sh_pal_ok[k] && sh_pal_gm[k] == gm && memcmp(&sh_pal_mtx[k], &pcomp[gm], sizeof(C3D_Mtx)) == 0) pm_dc_c[DC_PKEQ]++; /* DC6 count */
+                sh_pal_mtx[k] = pcomp[gm];
                 C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u4_pal + 4 * (int)k, &pcomp[gm]);
                 sh_pal_ok[k] = 1; sh_pal_gm[k] = gm; sh_pal_gen[k] = post_gen;
                 PH_ADD(C_RAWCALL, 1);
@@ -1058,6 +1067,7 @@ static void flush_draw(void) {
     if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
         PH_PUSH(PH_GDRAW);
         if (buf_cur != 2) {
+            pm_dc_c[DC_BUF]++;
             C3D_BufInfo* gb = C3D_GetBufInfo();
             BufInfo_Init(gb);
             BufInfo_Add(gb, gring, 16, 3, 0x210);
@@ -1083,12 +1093,12 @@ static void flush_draw(void) {
         dc_kick();
         return;
     }
-    if (bound != 1) { C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
+    if (bound != 1) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
     Vert* batch = verts;
     int count = nverts;
     PH_PUSH(PH_GDRAW);
     const int first = (int)(batch - vert_base); /* DR1: one buffer info for the whole pool, the draw starts at the batch */
-    if (!pool_buf_ok) { /* DC2: C3D_GetBufInfo marks the buffer info dirty, so it is called only when the pool info changes */
+    if (!pool_buf_ok) { pm_dc_c[DC_BUF]++; /* DC2: C3D_GetBufInfo marks the buffer info dirty, so it is called only when the pool info changes */
         C3D_BufInfo* buf = C3D_GetBufInfo();
         BufInfo_Init(buf); buf_cur = 1;
         BufInfo_Add(buf, vert_base, sizeof(Vert), 3, 0x210);
@@ -2291,10 +2301,7 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     dc_on = (dc_seq++ & 7) == 0 && (pm_ph_on || pm_dcs_on); /* DC1: one close in 8 is sampled, with phase or dcsum */
     if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
     unsigned t0 = pm_ph_on ? pm_ticks() : 0; /* the per-class flush time is phase only */
-    float cmd0 = C3D_GetCmdBufUsage();
     flush_impl();
-    float cmd1 = C3D_GetCmdBufUsage();
-    if (cmd1 > cmd0) dcs_cmd += (unsigned)((cmd1 - cmd0) * 1000.f);
     dc_on = 0;
     if (pm_ph_on) pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
 }
@@ -2302,15 +2309,21 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
 void pm_gpu_dcsum_frame(unsigned frame) {
     dcs_cl += pm_dc_c[DC_CL];
     for (int k = 0; k < DCU_N; k++) dcs_us[k] += pm_dc_us[k];
+    for (int k = 0; k < DC_N; k++) dcs_c[k] += pm_dc_c[k];
     memset(pm_dc_c, 0, sizeof pm_dc_c);
     memset(pm_dc_us, 0, sizeof pm_dc_us);
     if (++dcs_n < 300) return;
     unsigned smp = dcs_smp ? dcs_smp : 1, cl = dcs_cl ? dcs_cl : 1, fl = dcs_fl ? dcs_fl : 1;
-    pm_log_hw("dcsum f%u cl %u per frame | us per close pal %u bind %u tev %u st %u draw %u | gc %u us per flush, %u flushes per frame | cmd %u permil per sampled close, %u sampled closes | svc flush fallbacks %u",
+    pm_log_hw("dcsum f%u cl %u per frame | us per close pal %u bind %u tev %u st %u draw %u | gc %u us per flush, %u flushes per frame | cmd %u words per sampled close, %u sampled closes | svc flush fallbacks %u",
               frame, dcs_cl / 300u, dcs_us[DCU_PAL] / smp, dcs_us[DCU_BIND] / smp, dcs_us[DCU_TEV] / smp, dcs_us[DCU_ST] / smp, dcs_us[DCU_DRAW] / smp,
               (unsigned)(dcs_gt / 268u / fl), dcs_fl / 300u, dcs_cmd / smp, dcs_smp, pm_fl_gsp_n);
+    /* DC6: groups per close (sums over all closes): shadow misses, texture binds unit 0 / 1 / staged, TEV rebuilds, palette uploads */
+    pm_log_hw("dcgrp f%u hundredths per close: shadow miss %u, bind0 %u, bind1 %u, bindstaged %u, tev %u, palup %u, palsame %u, pmul %u, prog %u, bufinfo %u",
+              frame, dcs_c[DC_SHM] * 100u / cl, dcs_c[DC_TB0] * 100u / cl, dcs_c[DC_TB1] * 100u / cl, dcs_c[DC_TBS] * 100u / cl,
+              dcs_c[DC_TEVR] * 100u / cl, dcs_c[DC_PALUP] * 100u / cl, dcs_c[DC_PKEQ] * 100u / cl, dcs_c[DC_PMUL] * 100u / cl, dcs_c[DC_PRG] * 100u / cl, dcs_c[DC_BUF] * 100u / cl);
     dcs_gt = dcs_fl = dcs_cmd = dcs_smp = dcs_cl = dcs_n = 0;
     memset(dcs_us, 0, sizeof dcs_us);
+    memset(dcs_c, 0, sizeof dcs_c);
 }
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {

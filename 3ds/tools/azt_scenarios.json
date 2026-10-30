@@ -87,6 +87,42 @@
       "reason": ""
     },
     {
+      "name": "mac01t_dcsum",
+      "status": "unverified",
+      "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t, with the cheap set pacestat logstat dcsum instead of phase. Shots at frames 500 and 504.",
+      "proves": "DC6: the dcsum line prints the cmd words per sampled close and the dcgrp line prints the group counts per close on the mac_01 view. The picture draws.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug pacestat logstat dcsum",
+      "until": "shot \\d+ frame 504\\b",
+      "cap": 120,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "dcsum line",
+          "regex": "dcsum f\\d+ "
+        },
+        {
+          "name": "dcgrp line",
+          "regex": "dcgrp f\\d+ "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 50[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "yard_dcsum",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the cheap set pacestat logstat dcsum. Cost test for LOGFIX.",

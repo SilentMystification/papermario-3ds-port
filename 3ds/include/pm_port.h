@@ -123,7 +123,7 @@ extern unsigned pm_gbi_cur_op; /* PI2 */
 int pm_gbi_flush_class(void); /* PI2 */
 extern unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6];
 /* DC1: plain counts per drawn frame (closes, raw, palette uploads, matrix multiplies, TEV rebuilds, real binds per unit, staged binds) */
-enum { DC_CL, DC_RAW, DC_PALUP, DC_PMUL, DC_TEVR, DC_TB0, DC_TB1, DC_TB2, DC_TBS, DC_N };
+enum { DC_CL, DC_RAW, DC_PALUP, DC_PMUL, DC_TEVR, DC_TB0, DC_TB1, DC_TB2, DC_TBS, DC_SHM, DC_PRG, DC_BUF, DC_PKEQ, DC_N }; /* DC6: DC_SHM = shadow misses (a setter wrote the GPU) */
 /* DC1: sample sums in us over the sampled closes (one close in 8 with phase on); the log line multiplies them by 8 */
 enum { DCU_PAL, DCU_BIND, DCU_TEV, DCU_ST, DCU_DRAW, DCU_KICK, DCU_N };
 extern unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N];
