@@ -3428,6 +3428,102 @@ if (tg_ok) { vert_st[k][0] = tg_s; vert_st[k][1] = tg_t; }
 }
 }
 
+static __attribute__((noinline)) void gbi_movemem(u32 w0, u32 w1) {
+    if ((w0 & 0xff) == G_MV_LIGHT) lit_freeze(); /* GV5 */
+    if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
+        int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
+        const u8* l = (const u8*)ptr_of(w1);
+        if (l && (ls == -2 || ls == -1)) { lk[ls + 2][0] = (s8)l[8]; lk[ls + 2][1] = (s8)l[9]; lk[ls + 2][2] = (s8)l[10]; }
+    }
+    if ((w0 & 0xff) == G_MV_LIGHT) { /* L01: offset 0 and 24 are the look-at vectors, light n is at n * 24 + 24 */
+        int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
+        const u8* l = (const u8*)ptr_of(w1);
+        if (l && slot >= 0 && slot < 9) { lt[slot].col[0] = l[0]; lt[slot].col[1] = l[1]; lt[slot].col[2] = l[2]; lt[slot].dir[0] = (s8)l[8]; lt[slot].dir[1] = (s8)l[9]; lt[slot].dir[2] = (s8)l[10]; }
+    }
+    if ((w0 & 0xff) == G_MV_VIEWPORT) gbi_viewport(w1);
+}
+
+static __attribute__((noinline)) void gbi_popmtx(u32 w1) {
+    unsigned count = w1 / 64;
+    if (count == 0) count = 1;
+    while (count-- && mv_sp > 0) mv_sp--;
+    upload_mvp();
+}
+
+static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
+    unsigned index = (w0 >> 16) & 0xff;
+    unsigned offset = w0 & 0xffff;
+    if (index == G_MW_NUMLIGHT) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; return; } /* L01 */
+    if (index == G_MW_LIGHTCOL && offset / 24 < 9 && (offset % 24) == 0) { unsigned k = offset / 24; lt[k].col[0] = w1 >> 24; lt[k].col[1] = w1 >> 16; lt[k].col[2] = w1 >> 8; return; } /* L01 */
+    if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; return; } /* F08 */
+    if (index != G_MW_SEGMENT) {
+        unsigned n = ++mw_cnt[index];
+    }
+    if (index == G_MW_SEGMENT && (offset / 4) < 16) {
+        unsigned seg = offset / 4;
+        segbase[seg] = (u32)ptr_of(w1);
+        if (!segbase[seg]) segbase[seg] = w1;
+    }
+}
+
+/* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
+ * same skips. Returns the first word it does not run (g + n when all ran). The walker runs that word and the rest as ops.
+ * A G_DL that is not a dlc hit returns the word after it and sets *nx to the list (the walker pushes it). */
+static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx) {
+    if (dd_on() || dls_on || gp_on() || pm_ph_fine) return g;
+    for (unsigned k = 0; k < n; k++) {
+        Gfx* q = g + k;
+        u32 w0 = q->words.w0;
+        u32 w1 = q->words.w1;
+        unsigned op = w0 >> 24;
+        if (g1_skip[op] || g2_same(op, w0, w1)) continue;
+        pm_gbi_cur_op = op;
+        if (op != G_MTX && op != G_POPMTX && op != G_DL) gv_epoch++; /* GV1b, as the walker */
+        switch (op) {
+        case G_MOVEMEM: gbi_movemem(w0, w1); break;
+        case G_MOVEWORD: gbi_moveword(w0, w1); break;
+        case G_TEXTURE:
+        case G_SETOTHERMODE_H:
+        case G_SETOTHERMODE_L:
+        case G_SETCOMBINE:
+        case G_SETPRIMCOLOR:
+        case G_SETTIMG:
+        case G_SETTILE:
+        case G_LOADBLOCK:
+        case G_LOADTILE:
+        case G_LOADTLUT:
+        case G_SETTILESIZE:
+            tex_op(w0, w1);
+            break;
+        case G_SETFOGCOLOR: fogc = w1; break;
+        case G_SETBLENDCOLOR: blendc = w1; break;
+        case G_PM_TEX:
+            if (w1 && tb_list[w0 & 0x7f] == (const Gfx*)w1) { tb_run((const Gfx*)w1); break; }
+            return q;
+        case G_PM_RM:
+            if (rm_apply(w1)) break;
+            return q;
+        case G_MTX:
+            if (!is_host((u32)(uintptr_t)ptr_of(w1))) return q;
+            load_mtx(w0, w1);
+            break;
+        case G_POPMTX: gbi_popmtx(w1); break;
+        case G_DL: {
+            Gfx* next = (Gfx*)ptr_of(w1);
+            if (!next || !is_host((u32)next) || ((w0 >> 16) & 0xff) == G_DL_NOPUSH) return q;
+            __builtin_prefetch(next);
+            __builtin_prefetch(next + 4);
+            if (dlc_on && dlc_try(next)) break;
+            *nx = next;
+            return q + 1;
+        }
+        default:
+            return q;
+        }
+    }
+    return g + n;
+}
+
 static void gbi_run_body(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     tb_probe(RS_TBG, (const Gfx*)list, nbytes / 8u);
@@ -3504,6 +3600,14 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc = stack[--sp];
             if (dls_on) dls_pc = dls_class((u32)pc);
             break;
+        case G_PM_MODEL: { /* MR1: a model group. Its n words run in mg_run; a G_DL that is not a dlc hit pushes like G_DL. */
+            const Gfx* nx = NULL;
+            unsigned n = w0 & 0xffffu;
+            if (end && sp == 0 && pc + n > end) n = (unsigned)(end - pc);
+            pc = mg_run(pc, n, &nx);
+            if (nx && sp < 12) { stack[sp++] = pc; pc = (Gfx*)nx; }
+            break;
+        }
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
             tb_inline(pc, w0 & 0xffffu);
             pc += w0 & 0xffffu;
@@ -3668,28 +3772,12 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pm_gpu_set_scissor(ulx >> 2, uly >> 2, lrx >> 2, lry >> 2);
             break;
         }
-        case G_MOVEMEM: {
-            if ((w0 & 0xff) == G_MV_LIGHT) lit_freeze(); /* GV5 */
-            if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
-                int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
-                const u8* l = (const u8*)ptr_of(w1);
-                if (l && (ls == -2 || ls == -1)) { lk[ls + 2][0] = (s8)l[8]; lk[ls + 2][1] = (s8)l[9]; lk[ls + 2][2] = (s8)l[10]; }
-            }
-            if ((w0 & 0xff) == G_MV_LIGHT) { /* L01: offset 0 and 24 are the look-at vectors, light n is at n * 24 + 24 */
-                int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
-                const u8* l = (const u8*)ptr_of(w1);
-                if (l && slot >= 0 && slot < 9) { lt[slot].col[0] = l[0]; lt[slot].col[1] = l[1]; lt[slot].col[2] = l[2]; lt[slot].dir[0] = (s8)l[8]; lt[slot].dir[1] = (s8)l[9]; lt[slot].dir[2] = (s8)l[10]; }
-            }
-            if ((w0 & 0xff) == G_MV_VIEWPORT) gbi_viewport(w1);
+        case G_MOVEMEM:
+            gbi_movemem(w0, w1);
             break;
-        }
-        case G_POPMTX: {
-            unsigned count = w1 / 64;
-            if (count == 0) count = 1;
-            while (count-- && mv_sp > 0) mv_sp--;
-            upload_mvp();
+        case G_POPMTX:
+            gbi_popmtx(w1);
             break;
-        }
         case G_GEOMETRYMODE:
             geom = (geom & (w0 & 0xffffffu)) | w1;
             pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
@@ -3759,22 +3847,9 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_SETTILESIZE:
             tex_op(w0, w1);
             break;
-        case G_MOVEWORD: {
-            unsigned index = (w0 >> 16) & 0xff;
-            unsigned offset = w0 & 0xffff;
-            if (index == G_MW_NUMLIGHT) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; break; } /* L01 */
-            if (index == G_MW_LIGHTCOL && offset / 24 < 9 && (offset % 24) == 0) { unsigned k = offset / 24; lt[k].col[0] = w1 >> 24; lt[k].col[1] = w1 >> 16; lt[k].col[2] = w1 >> 8; break; } /* L01 */
-            if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; } /* F08 */
-            if (index != G_MW_SEGMENT) {
-                unsigned n = ++mw_cnt[index];
-            }
-            if (index == G_MW_SEGMENT && (offset / 4) < 16) {
-                unsigned seg = offset / 4;
-                segbase[seg] = (u32)ptr_of(w1);
-                if (!segbase[seg]) segbase[seg] = w1;
-            }
+        case G_MOVEWORD:
+            gbi_moveword(w0, w1);
             break;
-        }
         case G_NOOP:
         case G_SPNOOP:
         case G_RDPFULLSYNC:

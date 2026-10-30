@@ -1402,6 +1402,9 @@ void appendGfx_model(void* data) {
     s32 fogMin, fogMax;
     s32 fogR, fogG, fogB, fogA;
     Gfx** gfxPos = &gMainGfxPos;
+#ifdef TARGET_3DS
+    Gfx* mgHdr = nullptr; /* MR1: header of this model's words (G_PM_MODEL) */
+#endif
 
     mtxPushMode = G_MTX_PUSH;
     mtxLoadMode = G_MTX_LOAD;
@@ -1504,6 +1507,12 @@ void appendGfx_model(void* data) {
             pm_gbi_ms0_mark(plain && renderMode == RENDER_MODE_SURFACE_OPA, model->textureID ? (unsigned)(model->textureID + model->textureVariation) : 0u);
         }
     }
+#endif
+
+#ifdef TARGET_3DS
+    mgHdr = (*gfxPos)++; /* MR1: the header op; n is set at the end of this function */
+    mgHdr->words.w0 = (u32)G_PM_MODEL << 24;
+    mgHdr->words.w1 = 0;
 #endif
 
     gDPPipeSync((*gfxPos)++);
@@ -2054,6 +2063,9 @@ void appendGfx_model(void* data) {
     }
 
     gDPPipeSync((*gfxPos)++);
+#ifdef TARGET_3DS
+    mgHdr->words.w0 = ((u32)G_PM_MODEL << 24) | (u32)((*gfxPos) - mgHdr - 1);
+#endif
 }
 
 #ifdef TARGET_3DS
