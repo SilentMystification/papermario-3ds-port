@@ -685,7 +685,7 @@ static s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) 
 static unsigned tex_ss = 0xFFFF, tex_ts = 0xFFFF; /* T02: G_TEXTURE s and t scale, 0x10000 is 1.0 */
 static float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
 /* SUN3 debug (suntile switch): the tile 0 source of a draw, its state, and the first 16 bytes of rows 0 to 11 of the source. */
-static void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls, int ult, int lrs, int lrt) {
+static __attribute__((cold, noinline)) void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls, int ult, int lrs, int lrt) {
     if (!suntile_on() || suntile_lines >= 400) return;
     suntile_lines++;
     pm_log("suntile t0 f%u src %p str %d w %d h %d bpp %d fmt %u siz %u tmem %u win %d %d %d %d",
@@ -2890,9 +2890,6 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                           tile_wrap[0][0] == ((w1 >> 8) & 3) && tile_wrap[0][1] == ((w1 >> 18) & 3) && tile_wrap[0][2] == ((w1 >> 4) & 15) && tile_wrap[0][3] == ((w1 >> 14) & 15) &&
                           tile_shift[0][0] == (w1 & 15) && tile_shift[0][1] == ((w1 >> 10) & 15);
             if (tile == 0) GP_SET(3, same_tile);
-            if (tile == 0 && !same_tile) { /* DBG settdbg: which field of tile 0 differs */
-                static int sdb = -1; if (sdb < 0) sdb = pm_debug_has("settdbg");
-            }
             tile_fmt[tile] = (w0 >> 21) & 7;
             tile_siz[tile] = (w0 >> 19) & 3;
             tile_tmem[tile] = w0 & 0x1ff;
