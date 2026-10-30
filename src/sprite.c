@@ -331,6 +331,11 @@ void spr_appendGfx_component_flat(
     gDPPipeSync(gMainGfxPos++);
 }
 
+#ifdef TARGET_3DS
+#define SPR_RM_LIST(list) gSPPmRenderMode(gMainGfxPos++, list) /* DLF5: one G_PM_RM op; rm_apply runs the list in place */
+#else
+#define SPR_RM_LIST(list) gSPDisplayList(gMainGfxPos++, list)
+#endif
 void spr_appendGfx_component(
     SpriteRasterCacheEntry* cache,
     f32 dx, f32 dy, f32 dz,
@@ -373,16 +378,16 @@ void spr_appendGfx_component(
 
     if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
         if ((u8) opacity == 255) {
-            gSPDisplayList(gMainGfxPos++, OpaqueShadedSpriteGfx);
+            SPR_RM_LIST(OpaqueShadedSpriteGfx);
         } else {
-            gSPDisplayList(gMainGfxPos++, TranslucentShadedSpriteGfx);
+            SPR_RM_LIST(TranslucentShadedSpriteGfx);
         }
     } else {
         if ((u8) opacity == 255) {
-            gSPDisplayList(gMainGfxPos++, OpaqueSpriteGfx);
+            SPR_RM_LIST(OpaqueSpriteGfx);
         } else {
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u8) opacity);
-            gSPDisplayList(gMainGfxPos++, TranslucentSpriteGfx);
+            SPR_RM_LIST(TranslucentSpriteGfx);
         }
     }
 

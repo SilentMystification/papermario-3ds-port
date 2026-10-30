@@ -2795,7 +2795,7 @@ static int rm_apply(u32 w1) {
     for (;;) {
         unsigned op = g[n].words.w0 >> 24;
         if (op == G_ENDDL) break;
-        if ((op != G_SETOTHERMODE_L && op != G_SETOTHERMODE_H && op != G_GEOMETRYMODE) || ++n >= 8) return 0;
+        if ((op != G_SETOTHERMODE_L && op != G_SETOTHERMODE_H && op != G_GEOMETRYMODE && op != G_SETCOMBINE && op != G_TEXTURE) || ++n >= 8) return 0;
     }
     for (int k = 0; k < n; k++) {
         u32 a0 = g[k].words.w0, a1 = g[k].words.w1;
@@ -2805,6 +2805,7 @@ static int rm_apply(u32 w1) {
             pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
             continue;
         }
+        if (op == G_SETCOMBINE || op == G_TEXTURE) { tex_op(a0, a1); continue; } /* DLF5: the dispatch handler, in list order */
         unsigned len = (a0 & 0xff) + 1, field = (a0 >> 8) & 0xff, sft = 32 - field - len;
         unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
         if (op == G_SETOTHERMODE_H) {
