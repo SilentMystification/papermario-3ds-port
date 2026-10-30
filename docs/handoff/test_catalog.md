@@ -156,6 +156,7 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 | yard_pace (until: steady window, `wall 3x`) | pacestat logstat | `yard_pace -Try` | f300 (load): work 11.77 ms. f600 (steady): work 6.99 ms, wall 33.43 ms | unverified (run 3 of FSPLIT) |
 | yard_fsplit (until fsplit f600) | pacestat logstat fsplit | `yard_fsplit -Try` | f300: logstat work 11.79 ms. f600: logic 0.7 dl 0.6 gbi 5.4 flush 0.1 gwait 0.0 swap 0.2 audio 0.0 rest 26.4 wall 33.4 svc 12.0. Sum of parts = logstat work 7.00 ms | unverified |
 | mac01t_fsplit (until fsplit f900) | fsplit (tour to mac_01) | `mac01t_fsplit -Try` | f900 (steady): logic 1.3 dl 1.4 gbi 7.2 flush 0.1 gwait 0.0 swap 0.2 audio 0.0 rest 23.2 wall 33.4 max 34.0 over50 0 svc 12.0. f600: wall 34.8, over50 3 | unverified |
+| yard_pmu (CF0, unverified) | pmu line (PMU counters, 300-frame windows) with fsplit | `yard_pmu -Try -Row CF0` | `warp: kmr_20 entry 4` | 90 s cap, until pmu f300 | build3ds\azt\shots\yard_pmu | Console rc is the test: nonzero on Azahar is accepted (rule of CF0). |
 | pause_fsplit (until fsplit f300) | fsplit (pause open 96 to 140) | `pause_fsplit -Try` | f300: logic 0.8 dl 0.7 gbi 7.0 flush 0.1 gwait 0.0 swap 0.3 audio 0.0 rest 25.3 wall 34.1 over50 7 svc 11.4 | unverified |
 
 - Cost (Azahar, direction only): steady window +0.01 ms (7.00 vs 6.99 ms work). Load window +0.02 ms (11.79 vs 11.77). Limit 0.2 ms: passed.

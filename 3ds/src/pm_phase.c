@@ -222,6 +222,47 @@ static void fs_frame_end(void) {
     fs_svc0 = pm_svc_n;
 }
 
+/* CF0: PMU counters, switch pmu (log on). A window is 300 drawn frames. Window A counts CORE_INST_CACHE_MISS (PMN0) and
+ * CORE_DATA_CACHE_READ_MISS (PMN1); window B counts CORE_MAIN_TLB_MISS and CORE_STALL_BY_LACK_OF_INST. The counters are read once
+ * at the window end, so a frame costs no svc call. One line per window: per-frame counts, cycles, and the last svc result rc. */
+int pm_pmu_on;
+static int pmu_want, pmu_win, pmu_n;
+static unsigned pmu_f;
+static Result pmu_rc;
+static void pmu_set_window(void) {
+    u64 out;
+    u32 ev0 = pmu_win ? PERFCOUNTEREVT_CORE_MAIN_TLB_MISS : PERFCOUNTEREVT_CORE_INST_CACHE_MISS;
+    u32 ev1 = pmu_win ? PERFCOUNTEREVT_CORE_STALL_BY_LACK_OF_INST : PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS;
+    pmu_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_0, ev0);
+    pmu_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_1, ev1);
+    pmu_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
+    pmu_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
+    pmu_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
+    pmu_n = 0;
+}
+static void pmu_init(void) {
+    u64 out;
+    pmu_want = pm_debug_has("pmu");
+    pm_pmu_on = pmu_want && pm_log_file();
+    if (!pm_pmu_on) return;
+    pmu_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_ENABLE, 0, 0);
+    pmu_set_window();
+}
+static void pmu_frame_end(void) {
+    if (++pmu_n < 300) return;
+    u64 c0, c1, cc;
+    pmu_rc = svcControlPerformanceCounter(&c0, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
+    pmu_rc = svcControlPerformanceCounter(&c1, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
+    pmu_rc = svcControlPerformanceCounter(&cc, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
+    unsigned ev0 = pmu_win ? PERFCOUNTEREVT_CORE_MAIN_TLB_MISS : PERFCOUNTEREVT_CORE_INST_CACHE_MISS;
+    unsigned ev1 = pmu_win ? PERFCOUNTEREVT_CORE_STALL_BY_LACK_OF_INST : PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS;
+    pmu_f += 300;
+    pm_log_hw("pmu f%u ev %u %u per frame %u %u cyc %u rc %08x", pmu_f, ev0, ev1, (unsigned)(c0 / 300), (unsigned)(c1 / 300),
+              (unsigned)(cc / 300), (unsigned)pmu_rc);
+    pmu_win ^= 1;
+    pmu_set_window();
+}
+
 /* Phase timing needs the switch (ph_want) and the log (pm_log_file). Logging off: pm_ph_on is 0, so no tick is read and no line is formed. */
 static int ph_want, dcs_want;
 int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and the dcsum line; no other phase site */
@@ -245,6 +286,7 @@ void pm_ph_init(void) {
     fs_want = pm_debug_has("fsplit");
     pm_fs_on = fs_want && pm_log_file();
     if (pm_fs_on) fs_arm();
+    pmu_init();
     if (!pm_ph_on) return;
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();
@@ -430,6 +472,7 @@ static __attribute__((cold, noinline)) void pc_frame(unsigned now, const Rec* r)
 }
 
 void pm_ph_frame_end(void) {
+    if (pm_pmu_on) pmu_frame_end();
     if (pm_fs_on) fs_frame_end();
     if (!pm_ph_on) return;
     unsigned now = pm_ticks();

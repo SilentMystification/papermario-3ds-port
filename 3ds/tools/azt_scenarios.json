@@ -179,6 +179,34 @@
       "reason": ""
     },
     {
+      "name": "yard_pmu",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), with the pmu switch and fsplit. PMU counters (I-cache miss and D-cache read miss in window A, main TLB miss and stall by lack of inst in window B), one line per 300 drawn frames. CF0.",
+      "proves": "pmu prints one line per 300 frames with the two counts per frame, the cycles and the last svc result rc, and the yard picture still draws.",
+      "debug": "preset=yard shots shotwin=200:6 loglevel=debug fsplit pmu",
+      "until": "pmu f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "pmu window A",
+          "regex": "pmu f300 ev 0 11 per frame \\d+ \\d+ cyc \\d+ rc [0-9a-f]{8}"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "yard_poshud",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the poshud switch: bottom screen rows 0 and 1 show Mario and camera x y z yaw (POSHUD).",
