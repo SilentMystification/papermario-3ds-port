@@ -4807,6 +4807,59 @@ static __attribute__((cold, noinline)) void census_task_mark(void (*fn)(void*)) 
 #define CENSUS_TASK(fn) ((void)0)
 #endif
 
+/* BAT1: plain opaque model task = the MR0/MS0 census test in appendGfx_model (1CYC or 2CYC class, no tint, no custom gfx,
+ * panner, billboard, floor reflection, no fog). Only these tasks are reordered. */
+static s32 bat1_plain(RenderTask* t) {
+    Model* m;
+    if (t->appendGfx != appendGfx_model || (t->renderMode & RENDER_TASK_FLAG_REFLECT_FLOOR)) {
+        return 0;
+    }
+    m = t->appendGfxArg;
+    if (m->renderMode != RENDER_MODE_SURFACE_OPA) {
+        return 0;
+    }
+    if (m->flags & (MODEL_FLAG_USES_CUSTOM_GFX | MODEL_FLAG_HAS_TEX_PANNER | MODEL_FLAG_BILLBOARD)) {
+        return 0;
+    }
+    switch ((u32)(m->customGfxIndex >> 4)) {
+        case ENV_TINT_SHROUD:
+        case ENV_TINT_DEPTH:
+        case ENV_TINT_REMAP:
+            return 0;
+    }
+    if (gFogSettings->enabled && !(m->flags & MODEL_FLAG_IGNORE_FOG)) {
+        return 0;
+    }
+    return 1;
+}
+
+static u32 bat1_key(RenderTask* t) {
+    Model* m = t->appendGfxArg;
+    return m->textureID ? (u32)(m->textureID + m->textureVariation) : 0u;
+}
+
+/* BAT1: each run of plain opaque tasks is stable-sorted by texture, one pass, so a texture is bound once per run.
+ * Insertion sort: runs are short and the order is nearly sorted by distance already. */
+static void bat1_sort_runs(s32* sorted, s32 n, RenderTask* taskList) {
+    s32 i, j, k, m;
+    for (i = 0; i < n;) {
+        if (!bat1_plain(&taskList[sorted[i]])) {
+            i++;
+            continue;
+        }
+        for (j = i + 1; j < n && bat1_plain(&taskList[sorted[j]]); j++) {}
+        for (k = i + 1; k < j; k++) {
+            s32 v = sorted[k];
+            u32 kv = bat1_key(&taskList[v]);
+            for (m = k; m > i && bat1_key(&taskList[sorted[m - 1]]) > kv; m--) {
+                sorted[m] = sorted[m - 1];
+            }
+            sorted[m] = v;
+        }
+        i = j;
+    }
+}
+
 void execute_render_tasks(void) {
     s32 i, j, taskCount;
     s32 sorted[ARRAY_COUNT(*ClearRenderTaskLists)];
@@ -4879,6 +4932,7 @@ void execute_render_tasks(void) {
         }
     }
 
+    bat1_sort_runs(sorted, taskCount, taskList);
     gLastRenderTaskCount = taskCount;
     taskList = RenderTaskLists[RenderTaskListIdx];
     if (gOverrideFlags & GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION) {
