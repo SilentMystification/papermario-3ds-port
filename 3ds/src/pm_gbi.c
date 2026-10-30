@@ -2148,9 +2148,12 @@ static inline int sp0_tex(unsigned op) {
     default: return 0;
     }
 }
+void pm_pmu_sp0(unsigned out[3]); /* pm_phase.c, CAP2 */
 static __attribute__((cold, noinline)) void sp0_report(void) {
-    pm_log_hw("sp0c f%d tex %u dlc %u rest %u flush %u skip %u grp %u tl %u", rm_frame,
-              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), (unsigned)(sp0_F / 268u / 300u), sp0_skip, sp0_grp, tl_rep);
+    unsigned pmv[3];
+    pm_pmu_sp0(pmv); /* CAP2: one read per window, not per op */
+    pm_log_hw("sp0c f%d tex %u dlc %u rest %u flush %u skip %u grp %u tl %u pmu_ic %u pmu_dc %u pmu_cyc %u", rm_frame,
+              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), (unsigned)(sp0_F / 268u / 300u), sp0_skip, sp0_grp, tl_rep, pmv[0], pmv[1], pmv[2]);
     memset(sp0_T, 0, sizeof sp0_T); sp0_F = 0; sp0_skip = sp0_grp = tl_rep = 0;
 }
 /* MR0: plain static model census, phase on only, cold. A plain model has no fog change, no tint, no custom gfx, no panner and

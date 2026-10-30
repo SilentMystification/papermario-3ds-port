@@ -270,6 +270,17 @@ static void pmu_frame_end(void) {
     pmu_win ^= 1;
     pmu_set_window();
 }
+/* CAP2: the counters at the sp0c window end, per frame since the last counter reset (pmu_n frames). Three reads per call, cold.
+ * Window A holds INST_CACHE_MISS and DATA_CACHE_READ_MISS in out[0] and out[1]; window B holds MAIN_TLB_MISS and STALL in those slots. */
+void pm_pmu_sp0(unsigned out[3]) {
+    u64 c0 = 0, c1 = 0, cc = 0;
+    out[0] = out[1] = out[2] = 0;
+    if (!pm_pmu_on || pmu_n == 0) return;
+    pmu_rc = svcControlPerformanceCounter(&c0, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
+    pmu_rc = svcControlPerformanceCounter(&c1, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
+    pmu_rc = svcControlPerformanceCounter(&cc, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
+    out[0] = (unsigned)(c0 / pmu_n); out[1] = (unsigned)(c1 / pmu_n); out[2] = (unsigned)(cc / pmu_n);
+}
 
 /* Phase timing needs the switch (ph_want) and the log (pm_log_file). Logging off: pm_ph_on is 0, so no tick is read and no line is formed. */
 static int ph_want, dcs_want;
