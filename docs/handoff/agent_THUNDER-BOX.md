@@ -92,3 +92,10 @@
 - Result: 0 log lines. No draw at frame 260 with prim d5feb4ff reaches this function, and none reached gv_params_calc (run 13). The palette prim is set (dump #1083), but the triangles that follow it take another path.
 - Next: find the draw path that consumes the G_TRI2 after the palette prim (the streak or batch path, pm_gbi.c near 3583 and gv_streak_op), and log there for prim d5feb4ff.
 - Log edit reverted (git checkout of pm_gbi.c).
+
+## Run 15 (temp triangle log in draw_tri, frame 260, prim d5feb4ff)
+- Log: build3ds/azt/thunder_box_sparkle_tri_log.txt (2 lines, the two triangles of the sprite quad at log #1109 and #1110).
+- Vertex colour alpha (cn[3]) = 0 for all three vertices. Lighting is off (geom 00200005 has no G_LIGHTING bit), so the vertex alpha is not used by the colour path.
+- Blend: omL 00553048, omH 00082cf0, 1-cycle (omH cycle bits 0). tex_on 1.
+- Texture coords read 0,0 for all vertices. The verts[] array is not filled on the ring path (pm_gpu_gvtx_load), so the tc values are not valid. Texel coverage is not logged. Use the asset coordinates instead: sprite tc s 2112..2816 and t 0..704 (D_09001088_339048), which is texels x 66..88, y 0..22.
+- Log edit reverted (git checkout of pm_gbi.c). Commit adds only the handoff note.
