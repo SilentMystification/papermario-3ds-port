@@ -1492,6 +1492,15 @@ void appendGfx_model(void* data) {
             break;
     }
 
+#ifdef TARGET_3DS
+    { /* MR0: plain model flag for the census (pm_gbi.c mr0_*), phase on only */
+        extern int pm_ph_on;
+        extern void pm_gbi_mr0_plain(int plain);
+        if (pm_ph_on) pm_gbi_mr0_plain((renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC)
+            && tintCombineType == TINT_COMBINE_NONE && !(flags & (MODEL_FLAG_USES_CUSTOM_GFX | MODEL_FLAG_HAS_TEX_PANNER | MODEL_FLAG_BILLBOARD)));
+    }
+#endif
+
     gDPPipeSync((*gfxPos)++);
 
     if (model->groupData != nullptr) {

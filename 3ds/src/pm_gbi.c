@@ -2138,8 +2138,8 @@ typedef struct {
     unsigned seen, ntx, tx[8], prev_h, cur_h; /* frame state */
 } mdc_t;
 static mdc_t mdc[MDC_SLOTS];
-static struct { const Gfx* p; int s; } mdcm[MDC_MARKS];
-static int mdcm_n, mdcm_next, mdcm_cur = -1, mdcm_over, mdc_prev_tri;
+static struct { const Gfx* p; int s; u8 plain; } mdcm[MDC_MARKS];
+static int mdcm_n, mdcm_next, mdcm_cur = -1, mdcm_over, mdc_prev_tri, mdcm_last = -1;
 static unsigned mdc_tot_ops, mdc_tot_draws, mdc_tot_tris, mdc_tot_binds, mdc_none;
 
 static __attribute__((cold, noinline)) int mdc_slot(unsigned id) {
@@ -2171,14 +2171,47 @@ void pm_gbi_mdl_mark(unsigned id, int pan) { /* called by appendGfx_model under 
     int s = mdc_slot(id);
     if (s >= 0) { mdc[s].seen = 1; mdc[s].pan = (u8)(pan != 0); }
     else mdcm_over++;
-    if (mdcm_n < MDC_MARKS) { mdcm[mdcm_n].p = p; mdcm[mdcm_n].s = s; mdcm_n++; }
+    mdcm_last = -1;
+    if (mdcm_n < MDC_MARKS) { mdcm[mdcm_n].p = p; mdcm[mdcm_n].s = s; mdcm[mdcm_n].plain = 0; mdcm_last = mdcm_n; mdcm_n++; }
     else mdcm_over++;
 }
+
+/* MR0: plain static model census, phase on only, cold. A plain model has no fog change, no tint, no custom gfx, no panner and
+ * no billboard (set by appendGfx_model through pm_gbi_mr0_plain). The walk cuts time into periods. A period has a kind: 0 ops,
+ * 1 bind (G_PM_TEX), 2 dlc (a G_DL that dlc_try answers). A tick ends a period when the kind changes or the model changes.
+ * Flush time (os_flsum) is cut out of each kind. Ticks are cheap: one per bind or dlc boundary and one per model change. */
+static unsigned mr0_t, mr0_fl0, mr0_plain_n;
+static int mr0_kind, mr0_plain, mr0_dlc_hit;
+static unsigned long long mr0_T[3], mr0_F[3]; /* T in system ticks, F in us */
+void pm_gbi_mr0_plain(int plain) { /* appendGfx_model, under phase, right after its mark */
+    if (mdcm_last >= 0 && plain) { mdcm[mdcm_last].plain = 1; mr0_plain_n++; }
+}
+static __attribute__((cold, noinline)) void mr0_tick(int kind_new, int plain_new) {
+    unsigned now = pm_ticks(), fl = os_flsum();
+    if (mr0_plain) {
+        int k = mr0_kind;
+        if (k == 2 && !mr0_dlc_hit) k = 0; /* a G_DL that nested a list is ops, not dlc */
+        mr0_T[k] += now - mr0_t;
+        mr0_F[k] += fl >= mr0_fl0 ? fl - mr0_fl0 : fl; /* pm_fl_us is cleared by the phase report: a reset counts from 0 */
+    }
+    mr0_t = now; mr0_fl0 = fl; mr0_kind = kind_new; mr0_plain = plain_new; mr0_dlc_hit = 0;
+}
+static __attribute__((cold, noinline)) void mr0_op(unsigned op, int adv, int plain) {
+    int kn = op == G_PM_TEX ? 1 : op == G_DL ? 2 : 0;
+    if (!adv && kn == 0 && mr0_kind == 0) return;
+    mr0_tick(kn, plain);
+}
+/* the main walk ends: the time after it (logic, other producers) is not a model period */
+static __attribute__((cold, noinline)) void mr0_walk_end(void) {
+    if (mr0_plain || mr0_kind) mr0_tick(0, 0);
+}
 static __attribute__((cold, noinline)) void mdc_op(const Gfx* at, int sp, unsigned op, u32 w0, u32 w1) {
+    int adv = 0;
     if (os_nest == 1 && pmx_main && sp == 0) {
-        while (mdcm_next < mdcm_n && at >= mdcm[mdcm_next].p) { mdcm_cur = mdcm[mdcm_next++].s; mdc_prev_tri = 0; }
+        while (mdcm_next < mdcm_n && at >= mdcm[mdcm_next].p) { mdcm_cur = mdcm[mdcm_next++].s; mdc_prev_tri = 0; adv = 1; }
     }
     int cur = pmx_main ? mdcm_cur : -1;
+    mr0_op(op, adv, cur >= 0 && mdcm[mdcm_next - 1].plain);
     unsigned is_tri = op == G_TRI1 || op == G_TRI2, was_tri = (unsigned)mdc_prev_tri, ntri = op == G_TRI2 ? 2u : 1u;
     mdc_prev_tri = (int)is_tri;
     mdc_tot_ops++;
@@ -2259,6 +2292,17 @@ static __attribute__((cold, noinline)) void mdc_report(void) {
         mdc[s].ops = mdc[s].draws = mdc[s].tris = mdc[s].binds = mdc[s].closes = mdc[s].tex_sum = mdc[s].frames = mdc[s].stat = 0;
         mdc[s].fog = 0;
     }
+    { /* MR0: plain model census, us per model. Ticks run at 268 MHz (TICKS_MS 268112). F is pm_fl_us: already x8 for the 1-in-8 sample. */
+        unsigned long long n = mr0_plain_n ? mr0_plain_n : 1;
+        unsigned long long ops = mr0_T[0] / 268u, bind = mr0_T[1] / 268u, dlc = mr0_T[2] / 268u;
+        unsigned long long fo = mr0_F[0] + mr0_F[1] + mr0_F[2];
+        unsigned long long o = ops > mr0_F[0] ? ops - mr0_F[0] : 0, b = bind > mr0_F[1] ? bind - mr0_F[1] : 0;
+        unsigned long long d = dlc > mr0_F[2] ? dlc - mr0_F[2] : 0;
+        pm_log_hw("mr0 f%d plain %u per frame | per model us: ops %u bind %u close %u outside dlc %u dlc %u | console x2.86 outside dlc %u",
+            rm_frame, (unsigned)(mr0_plain_n / 300u), (unsigned)(o / n), (unsigned)(b / n), (unsigned)(fo / n),
+            (unsigned)((o + b + fo) / n), (unsigned)(d / n), (unsigned)((o + b + fo) * 286u / 100u / n));
+    }
+    memset(mr0_T, 0, sizeof mr0_T); memset(mr0_F, 0, sizeof mr0_F); mr0_plain_n = 0;
     mdc_tot_ops = mdc_tot_draws = mdc_tot_tris = mdc_tot_binds = mdc_none = 0;
     for (int s = 0; s < MDC_SLOTS; s++) mdc[s].used = 0; /* each window allocates its own slots; the table filled over several maps before (unattr ops) */
     mdcm_over = 0;
@@ -3338,6 +3382,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (sp == 0) {
                 if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
                 dd_end();
+                if (pm_ph_on) mr0_walk_end(); /* MR0 */
                 if (fp) pm_ph_pop();
                 gv_streak_flush();
                 tex_streak_flush();
@@ -3375,7 +3420,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (pm_ph_on) { unsigned dc = dls_class((u32)next); RS_ADD(RS_GDL, 1); if (dc == 1) RS_ADD(RS_GDL1, 1); else if (dc == 7) RS_ADD(RS_GDL7, 1); }
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
-                if (pm_ph_on) os_dlc_hit();
+                if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = dlc_end;
                 break;
             }
