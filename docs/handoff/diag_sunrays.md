@@ -44,3 +44,22 @@
 ## Next
 - One run of sun_sbk with the logging line (budget left: 2 starts). Then one fix run.
 - Azahar may show the same cells as the console. Azahar lacks an N64 or console reference, so the console shot is needed for the final judgement.
+
+## SUN1 result (row SUN1, debug switch suntile, azt sun_sbk, 2 starts used of 8)
+
+Corrects the first section above. Evidence is from the ROM bytes and the two logs (3ds/logs/perf is not used; logs in the scratchpad).
+
+- Tile 1 is MIRROR in S, not clamp. SETTILE cms=1 is G_TX_MIRROR (bit 0); clamp is bit 1 (cms=2 or 3). The port maps it the same way (pm_tex.c wrap_of: mode & 2 clamp, mode & 1 mirror). Hypothesis 1 as written (clamp at the window edge) is rejected [M].
+- Tile 1 window per layer at f200: uls 981, 986, 985, 174, 219 (10.2), that is texel 245, 246, 246, 43, 54. The window is 63 texels wide, 31 tall. Mask 8 (256 texels), T repeat mask 3 (8 rows). The port loads the image from column 0 at mask width (VIS3 branch, pm_gbi.c near 3067) and offsets by -uls. So the port texel is mirror256(s - uls). This is the N64 model [E]. Not verified on pixels.
+- Open difference: the quarter-texel part of uls (uls & 3, here 1) is not in the tile 1 offset (t1_p[2] uses td[1].x0 = uls >> 2 only). Size: 0.25 texel. Effect on the shot not measured [E].
+- Tile 0 is the ray texture (I4, line 1, window 16 by 64; S repeat mask 4; T mirror mask 6). The SETTIMG image is I8 128 wide at 0x09000200 (ROM 0x40BDA0). The tile 0 source row stride in the port is set at pm_gbi.c near 3224 ("4-bit from 8-bit" branch, stride = 2 * timg_stride). Whether the N64 reads these rows at 8 bytes per tile line (the TMEM layout of the LoadTile with line 1) is NOT checked. This is the next candidate [E].
+- Ray vertices from ROM (group 0, verts 0 to 3): s 0 16 16 0, t 0 0 64 64 texels (tc / 32). The vert_st values in the log were stale: gv_xf fills vert_st only when the CPU path needs it. Do not read vert_st in the GPU path.
+- Sun base list D_09000898 (ROM 0x40C438 to 0x40C518) has no G_TRI and no G_VTX. It sets textures and modes only. The sun disc is therefore not a triangle of this effect. Ray groups 0 and 1 (ROM 0x40C520, 0x40C538) draw two quads each. Groups 2 to 4 were not decoded [M].
+- Effect spawn and draw confirmed: "sun draw f200 alpha 255 fromRight 0 scroll 245.30 235.62 224.41 10.70 10.77" [M]. The camera does not decide the sun position: the effect is a screen ortho overlay (+-1600 by +-1200).
+- Shot 0000 (frame 200), 2x read by eye: blue sky at the right edge, two diagonal dashed light streaks at the right edge, no sun disc. The frame has no clear disc because the effect has none [E].
+- pm_log lines are cut at about 200 characters. Split long log lines.
+
+## Next (SUN1 continues, budget 6 starts)
+1. Log td[0] at the tile 0 draw: source pointer offset, stride, w, h, bpp, and the TMEM address (tile_tmem[0]), one line each under 200 characters.
+2. Compare the port tile 0 row layout with the N64 read at line 1 (8 bytes per row, 16 rows per 128-byte source row). Decide from the ROM bytes at 0x40BDA0 (I8 image rows 0 to 7) what the N64 texel rows are.
+3. Only then choose the fix (SUN2). The scenario camera has no sun in view to fix: the sun is a screen overlay. Scenario view change is not the fix.

@@ -20,6 +20,11 @@ void sun_update(EffectInstance* effect);
 void sun_render(EffectInstance* effect);
 void sun_appendGfx(void* effect);
 
+#ifdef TARGET_3DS
+void pm_sun_spawn(int fromRight, float x, float y, float z, int duration); /* 3ds/src/pm_gbi.c, switch suntile */
+void pm_sun_draw(int alpha, int fromRight, const float* scroll, int n);
+#endif
+
 EffectInstance* sun_main(s32 shineFromRight, f32 offsetX, f32 offsetY, f32 offsetZ, f32 arg4, s32 duration) {
     EffectBlueprint bp;
     EffectInstance* effect;
@@ -64,6 +69,9 @@ EffectInstance* sun_main(s32 shineFromRight, f32 offsetX, f32 offsetY, f32 offse
     }
     data->targetAlpha = 255;
     data->alpha = 0;
+#ifdef TARGET_3DS
+    pm_sun_spawn(shineFromRight, offsetX, offsetY, offsetZ, duration);
+#endif
 
     return effect;
 }
@@ -160,6 +168,9 @@ void sun_appendGfx(void* argEffect) {
     fromRight = data->shineFromRight;
 
     if (alpha != 0) {
+#ifdef TARGET_3DS
+        pm_sun_draw(alpha, fromRight, data->texScrollAmt, ARRAY_COUNT(data->texScrollAmt));
+#endif
         gDPPipeSync(gMainGfxPos++);
         gSPSegment(gMainGfxPos++, 0x9, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
 

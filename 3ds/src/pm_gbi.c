@@ -111,6 +111,28 @@ static int dd_on(void) {
     }
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
+/* SUNFIX debug switch suntile=<first frame>:<count>: tile 1 state at each dual_bind, the vertex S T of each triangle, and the sun
+ * overlay spawn and draws (pm_sun_spawn, pm_sun_draw). At most 400 lines per run. */
+static int suntile_on(void) {
+    static int a = -2, b;
+    if (a == -2) {
+        char v[24];
+        a = -1;
+        if (pm_debug_value("suntile", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
+        else a = -1;
+    }
+    return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
+}
+static int suntile_lines;
+void pm_sun_spawn(int fromRight, float x, float y, float z, int duration) {
+    if (!suntile_on()) return;
+    pm_log("sun spawn f%u fromRight %d pos %.1f %.1f %.1f duration %d", pm_frame_count(), fromRight, x, y, z, duration);
+}
+void pm_sun_draw(int alpha, int fromRight, const float* scroll, int n) {
+    if (!suntile_on()) return;
+    pm_log("sun draw f%u alpha %d fromRight %d scroll %.2f %.2f %.2f %.2f %.2f (n %d)", pm_frame_count(), alpha, fromRight,
+           scroll[0], scroll[1], scroll[2], scroll[3], scroll[4], n);
+}
 static struct {
     unsigned vc, gm, idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri, tex;
     float x0, y0, x1, y1, w0, w1;
@@ -664,6 +686,14 @@ static unsigned lt_n;
 static s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
 static unsigned tex_ss = 0xFFFF, tex_ts = 0xFFFF; /* T02: G_TEXTURE s and t scale, 0x10000 is 1.0 */
 static float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
+static void suntile_tri(const char* path, const int* idx) {
+    if (!suntile_on() || suntile_lines >= 400) return;
+    suntile_lines++;
+    pm_log("suntile tri %s f%u verts %d %d %d s %.3f %.3f %.3f t %.3f %.3f %.3f tss %08x",
+           path, pm_frame_count(), idx[0], idx[1], idx[2],
+           (double)vert_st[idx[0]][0], (double)vert_st[idx[1]][0], (double)vert_st[idx[2]][0],
+           (double)vert_st[idx[0]][1], (double)vert_st[idx[1]][1], (double)vert_st[idx[2]][1], vert_tss[idx[0]]);
+}
 static int tg_ok;
 static float tg_s, tg_t; /* T01: texgen result of the last vert_color call */
 static unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex is loaded, as the RSP does */
@@ -1137,6 +1167,19 @@ static void dual_bind(void) {
         t1_p[3] = ((float)tile_y0 * rt - (float)(td[1].y0 - oy1)) / (float)th1;
         t1_ox = ox1; t1_oy = oy1; t1_w = tw1; t1_h = th1;
         pm_gpu_set_tex1(t1_p[0], t1_p[1], t1_p[2], t1_p[3]);
+        if (suntile_on() && suntile_lines < 400) {
+            suntile_lines++;
+            pm_log("suntile t1 f%u uls %d ult %d lrs %d lrt %d | cms %u cmt %u masks %u maskt %u shifts %u %u | "
+                   "t1 tex %dx%d fmt %u siz %u td.x0 %d td.y0 %d | tile_x0 %d tile_y0 %d fx %.2f fy %.2f | origin %d %d | "
+                   "t0 tex %dx%d tile0 uls %d ult %d lrs %d lrt %d cms %u cmt %u masks %u maskt %u | "
+                   "p %.5f %.5f %.5f %.5f | aux_off %d",
+                   pm_frame_count(), tile_sz[1][0], tile_sz[1][1], tile_sz[1][2], tile_sz[1][3],
+                   tile_wrap[1][0], tile_wrap[1][1], tile_wrap[1][2], tile_wrap[1][3], tile_shift[1][0], tile_shift[1][1],
+                   tw1, th1, td[1].fmt, td[1].siz, td[1].x0, td[1].y0, tile_x0, tile_y0, (double)tile_fx, (double)tile_fy, ox1, oy1,
+                   tw0, th0, tile_sz[0][0], tile_sz[0][1], tile_sz[0][2], tile_sz[0][3],
+                   tile_wrap[0][0], tile_wrap[0][1], tile_wrap[0][2], tile_wrap[0][3],
+                   (double)t1_p[0], (double)t1_p[1], (double)t1_p[2], (double)t1_p[3], pm_tex_aux_off_idx());
+        }
     }
 }
 
@@ -1432,6 +1475,7 @@ static int gv_tri(const int* idx) {
         }
         why = ep_why;
     }
+    suntile_tri(why < 0 ? "gpu" : "cpu-pending", idx);
     if (why < 0) {
         unsigned tss = vert_tss[a];
         if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); return 1; }
@@ -1724,6 +1768,7 @@ static void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
+    suntile_tri("draw", idx);
     if (po3a_on()) {
         p_cmd++;
         p_cur_mixed = vert_mid[i0] != vert_mid[i1] || vert_mid[i0] != vert_mid[i2];

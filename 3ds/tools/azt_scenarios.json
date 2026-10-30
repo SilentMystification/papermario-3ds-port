@@ -805,7 +805,7 @@
       "status": "unverified",
       "subject": "Dry Dry Desert (sbk_00, entry 0): the sun overlay (SpawnSunEffect, fx_sun, five ray layers) at scene frames 200 to 205. Read the top shot by eye.",
       "proves": "A warp into a Dry Dry Desert (sbk_*) map loads, the sun effect is spawned, and steady frames run with shots.",
-      "debug": "warp=sbk_00:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "debug": "warp=sbk_00:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug suntile=200:1",
       "until": "warp: scene f300 ",
       "cap": 90,
       "deadline": 20,
