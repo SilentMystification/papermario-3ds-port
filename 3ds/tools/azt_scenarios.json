@@ -418,7 +418,7 @@
       "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t, with the MR0 plain-model census line (mr0 f899) printed after the mdlsum rows. In control, shot at frames 500 and 504.",
       "proves": "MR0 census: the mr0 line prints with plain models per frame and us per model split into ops, bind, close and dlc, and the mac_01 picture still draws.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase",
-      "until": "mr0 f899 ",
+      "until": "ms0 f899 ",
       "cap": 120,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -436,6 +436,10 @@
         {
           "name": "mr0 census line",
           "regex": "mr0 f899 plain \\d+ per frame"
+        },
+        {
+          "name": "ms0 census line",
+          "regex": "ms0 f899 opaque plain models"
         },
         {
           "name": "shot",

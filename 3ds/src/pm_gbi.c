@@ -2201,6 +2201,28 @@ static __attribute__((cold, noinline)) void mr0_op(unsigned op, int adv, int pla
     if (!adv && kn == 0 && mr0_kind == 0) return;
     mr0_tick(kn, plain);
 }
+/* MS0: removable closes, phase only, an upper bound. A run is consecutive plain opaque model marks (non-model ops between them
+ * are not checked). A stable sort by texture inside a run leaves one close per distinct texture: removable = changes + 1 - distinct. */
+static int ms0_in, ms0_last = -1, ms0_nd;
+static unsigned ms0_d[64];
+static unsigned long long ms0_rem, ms0_chg, ms0_ctot, ms0_opm, ms0_runs;
+static __attribute__((cold, noinline)) void ms0_end(void) {
+    if (!ms0_in) return;
+    int r = (int)ms0_nd > 0 ? (int)ms0_chg + 1 - (int)ms0_nd : 0;
+    if (r > 0) ms0_rem += (unsigned)r;
+    ms0_ctot += ms0_chg;
+    ms0_in = 0; ms0_nd = 0; ms0_chg = 0; ms0_last = -1;
+}
+void pm_gbi_ms0_mark(int opaque, unsigned tex) { /* appendGfx_model, under phase: opaque = plain and RENDER_MODE_SURFACE_OPA */
+    if (!opaque) { ms0_end(); return; }
+    ms0_opm++;
+    if (!ms0_in) { ms0_in = 1; ms0_runs++; }
+    unsigned j = 0;
+    while ((int)j < ms0_nd && ms0_d[j] != tex) j++;
+    if ((int)j == ms0_nd && ms0_nd < 64) ms0_d[ms0_nd++] = tex;
+    if (ms0_last >= 0 && ms0_last != (int)tex) ms0_chg++;
+    ms0_last = (int)tex;
+}
 /* the main walk ends: the time after it (logic, other producers) is not a model period */
 static __attribute__((cold, noinline)) void mr0_walk_end(void) {
     if (mr0_plain || mr0_kind) mr0_tick(0, 0);
@@ -2259,6 +2281,7 @@ static __attribute__((cold, noinline)) void mdc_frame_end(void) {
         m->seen = 0; m->ntx = 0; m->cur_h = 2166136261u;
     }
     mdcm_n = 0; mdcm_next = 0; mdcm_cur = -1;
+    ms0_end();
 }
 static __attribute__((cold, noinline)) void mdc_report(void) {
     unsigned long long tot_o = 0, tot_d = 0, tot_t = 0, tot_b = 0;
@@ -2303,6 +2326,9 @@ static __attribute__((cold, noinline)) void mdc_report(void) {
             (unsigned)((o + b + fo) / n), (unsigned)(d / n), (unsigned)((o + b + fo) * 286u / 100u / n));
     }
     memset(mr0_T, 0, sizeof mr0_T); memset(mr0_F, 0, sizeof mr0_F); mr0_plain_n = 0;
+    pm_log_hw("ms0 f%d opaque plain models %u per frame, runs %u per frame, removable closes %u per frame (texture changes %u per frame)",
+        rm_frame, (unsigned)(ms0_opm / 300u), (unsigned)(ms0_runs / 300u), (unsigned)(ms0_rem / 300u), (unsigned)(ms0_ctot / 300u));
+    ms0_rem = ms0_chg = ms0_ctot = ms0_opm = ms0_runs = 0;
     mdc_tot_ops = mdc_tot_draws = mdc_tot_tris = mdc_tot_binds = mdc_none = 0;
     for (int s = 0; s < MDC_SLOTS; s++) mdc[s].used = 0; /* each window allocates its own slots; the table filled over several maps before (unattr ops) */
     mdcm_over = 0;

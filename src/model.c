@@ -1493,11 +1493,16 @@ void appendGfx_model(void* data) {
     }
 
 #ifdef TARGET_3DS
-    { /* MR0: plain model flag for the census (pm_gbi.c mr0_*), phase on only */
+    { /* MR0 and MS0: plain model flag for the census (pm_gbi.c mr0_*, ms0_*), phase on only */
         extern int pm_ph_on;
         extern void pm_gbi_mr0_plain(int plain);
-        if (pm_ph_on) pm_gbi_mr0_plain((renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC)
-            && tintCombineType == TINT_COMBINE_NONE && !(flags & (MODEL_FLAG_USES_CUSTOM_GFX | MODEL_FLAG_HAS_TEX_PANNER | MODEL_FLAG_BILLBOARD)));
+        extern void pm_gbi_ms0_mark(int opaque, unsigned tex);
+        if (pm_ph_on) {
+            int plain = (renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC)
+                && tintCombineType == TINT_COMBINE_NONE && !(flags & (MODEL_FLAG_USES_CUSTOM_GFX | MODEL_FLAG_HAS_TEX_PANNER | MODEL_FLAG_BILLBOARD));
+            pm_gbi_mr0_plain(plain);
+            pm_gbi_ms0_mark(plain && renderMode == RENDER_MODE_SURFACE_OPA, model->textureID ? (unsigned)(model->textureID + model->textureVariation) : 0u);
+        }
     }
 #endif
 
