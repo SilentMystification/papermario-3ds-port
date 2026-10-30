@@ -2123,15 +2123,16 @@ void pm_gbi_mdl_mark(unsigned id, int pan) { /* called by appendGfx_model under 
  * list (dlc_try). A tick is read at the group begin and end and at each kind change, never per op (a tick read costs 1.3 us in
  * Azahar). sp0_T is in system ticks (268 per us). The sp0c line prints us per frame over the phase window (300 frames). */
 static unsigned sp0_t, sp0_cur;
-static unsigned long long sp0_T[3];
+static unsigned long long sp0_T[3], sp0_F; /* SPLIT0C2: flush ticks inside the tex kind, a subset of sp0_T[1] */
+static int sp0_in; /* SPLIT0C2: 1 between sp0_group_begin and sp0_group_end */
 static __attribute__((noinline)) void sp0_set(unsigned k) {
     unsigned n = pm_ticks();
     sp0_T[sp0_cur] += n - sp0_t;
     sp0_t = n; sp0_cur = k;
 }
 static inline void sp0_kind(unsigned k) { if (k != sp0_cur) sp0_set(k); }
-static __attribute__((noinline)) void sp0_group_begin(void) { sp0_t = pm_ticks(); sp0_cur = 0; }
-static __attribute__((noinline)) void sp0_group_end(void) { unsigned n = pm_ticks(); sp0_T[sp0_cur] += n - sp0_t; }
+static __attribute__((noinline)) void sp0_group_begin(void) { sp0_t = pm_ticks(); sp0_cur = 0; sp0_in = 1; }
+static __attribute__((noinline)) void sp0_group_end(void) { unsigned n = pm_ticks(); sp0_T[sp0_cur] += n - sp0_t; sp0_in = 0; }
 static inline int sp0_tex(unsigned op) {
     switch (op) {
     case G_PM_TEX: case G_TEXTURE: case G_SETOTHERMODE_H: case G_SETOTHERMODE_L: case G_SETCOMBINE: case G_SETPRIMCOLOR:
@@ -2141,9 +2142,9 @@ static inline int sp0_tex(unsigned op) {
     }
 }
 static __attribute__((cold, noinline)) void sp0_report(void) {
-    pm_log_hw("sp0c f%d tex %u dlc %u rest %u skip %u grp %u", rm_frame,
-              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), sp0_skip, sp0_grp);
-    memset(sp0_T, 0, sizeof sp0_T); sp0_skip = sp0_grp = 0;
+    pm_log_hw("sp0c f%d tex %u dlc %u rest %u flush %u skip %u grp %u", rm_frame,
+              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), (unsigned)(sp0_F / 268u / 300u), sp0_skip, sp0_grp);
+    memset(sp0_T, 0, sizeof sp0_T); sp0_F = 0; sp0_skip = sp0_grp = 0;
 }
 /* MR0: plain static model census, phase on only, cold. A plain model has no fog change, no tint, no custom gfx, no panner and
  * no billboard (set by appendGfx_model through pm_gbi_mr0_plain). The walk cuts time into periods. A period has a kind: 0 ops,
@@ -2867,7 +2868,9 @@ static int rm_apply(u32 w1) {
             unsigned old_tf = omode_h & (3u << 12);
             omode_h = (omode_h & ~mask) | (a1 & mask);
             if ((omode_h & (3u << 12)) != old_tf) {
+                int f_on = pm_ph_on && sp0_in && sp0_cur == 1; unsigned f0 = f_on ? pm_ticks() : 0; /* SPLIT0C2: flush time in the tex kind */
                 pm_gpu_flush();
+                if (f_on) sp0_F += (unsigned)(pm_ticks() - f0);
                 pm_tex_set_filter((omode_h & (3u << 12)) != 0);
             }
             if (sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
@@ -2945,7 +2948,9 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
             /* The render tile's wrap belongs to the triangles already queued.
              * Draw them before this tile replaces it. */
             if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
+                int f_on = pm_ph_on && sp0_in && sp0_cur == 1; unsigned f0 = f_on ? pm_ticks() : 0; /* SPLIT0C2: flush time in the tex kind */
                 pm_gpu_flush();
+                if (f_on) sp0_F += (unsigned)(pm_ticks() - f0);
                 pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
                 st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
             }
