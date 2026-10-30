@@ -51,6 +51,13 @@ typedef struct {
 } Slot;
 
 static Slot slots[SLOTS];
+/* CF7: one bit per slot. vup_bits mirrors vram_up (upload pending). att_bits: stale is set, or a vram_stage is held.
+ * The two per-frame passes visit only the set bits, in slot order, instead of every slot below slot_hi. */
+#define SBIT_W (SLOTS / 32)
+static unsigned vup_bits[SBIT_W], att_bits[SBIT_W];
+static void sbit_set(unsigned* b, int i) { b[i >> 5] |= 1u << (i & 31); }
+static void sbit_clr(unsigned* b, int i) { b[i >> 5] &= ~(1u << (i & 31)); }
+static void stale_mark(Slot* s) { s->stale = 1; sbit_set(att_bits, (int)(s - slots)); }
 static int slot_valid(Slot* s);
 static unsigned used;
 #define RECENT_N 12
@@ -538,6 +545,7 @@ static void upload_vram_slot(Slot* s) {
     pm_fl_dc(s->vram_stage, n);
     C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     s->vram_up = 0;
+    sbit_clr(vup_bits, (int)(s - slots));
     s->up_frame = tc_frame;
 }
 static unsigned pm_th_dc_n, pm_th_dc_us; /* PI3: pend_flush_one calls and us this drawn frame */
@@ -548,15 +556,16 @@ static void flush_pend_only(void) {
     pend_n = 0;
 }
 int pm_tex_vram_pending(void) {
-    for (int i = 0; i < slot_hi; i++)
-        if (slots[i].vram_up) return 1;
+    for (int w = 0; w < SBIT_W; w++)
+        if (vup_bits[w]) return 1;
     return 0;
 }
 int pm_tex_cur_vram_pending(void) {
     return have && cur >= 0 && cur < SLOTS && slots[cur].live && slots[cur].vram_up;
 }
 void pm_tex_upload_vram_before_frame(void) {
-    for (int i = 0; i < slot_hi; i++) upload_vram_slot(&slots[i]);
+    for (int w = 0; w < SBIT_W; w++)
+        for (unsigned m = vup_bits[w]; m; m &= m - 1) upload_vram_slot(&slots[w * 32 + (int)__builtin_ctz(m)]);
 }
 void pm_tex_drain_vram(void) { /* uploads run before C3D_FrameBegin and at bind */ }
 void pm_tex_flush_pending(void) { flush_pend_only(); }
@@ -592,6 +601,7 @@ static void drop(Slot* s) {
         s->stage_n = 0;
     }
     s->vram_up = 0;
+    sbit_clr(vup_bits, (int)(s - slots));
     if (s->slab) {
         slab_free(s->tex_vram_ptr ? s->tex_vram_ptr : s->tex.data, s->bytes);
         s->tex_vram_ptr = NULL;
@@ -768,7 +778,7 @@ void pm_tex_shrink(void) {
     bdrain = 1;
     tex_cap -= BUDGET / 2;
     for (int i = 0; i < slot_hi; i++)
-        if (slots[i].live && slots[i].slab && pm_vram_bank_of(slots[i].tex_vram_ptr)) slots[i].stale = 1;
+        if (slots[i].live && slots[i].slab && pm_vram_bank_of(slots[i].tex_vram_ptr)) stale_mark(&slots[i]);
     pm_log_w("texcache shrink B: half draining, cap %uKB", tex_cap >> 10);
 }
 static void bhalf_release(void) {
@@ -807,16 +817,20 @@ void pm_tex_begin_frame(void) {
     epoch++;
     frame_bytes = 0;
     /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
-    for (int i = 0; i < slot_hi; i++) {
-        if (slots[i].live && slots[i].stale) drop(&slots[i]);
-        /* row 1: the linear staging copy is only read by the upload, two frames before it can go */
-        if (slots[i].live && slots[i].vram_stage && !slots[i].vram_up && tc_frame >= slots[i].up_frame + 2) {
-            linearFree(slots[i].vram_stage);
-            slots[i].vram_stage = NULL;
-            stage_freed += slots[i].stage_n;
-            slots[i].stage_n = 0;
+    for (int w = 0; w < SBIT_W; w++)
+        for (unsigned m = att_bits[w]; m; m &= m - 1) {
+            int i = w * 32 + (int)__builtin_ctz(m);
+            Slot* s = &slots[i];
+            if (s->live && s->stale) drop(s);
+            /* row 1: the linear staging copy is only read by the upload, two frames before it can go */
+            if (s->live && s->vram_stage && !s->vram_up && tc_frame >= s->up_frame + 2) {
+                linearFree(s->vram_stage);
+                s->vram_stage = NULL;
+                stage_freed += s->stage_n;
+                s->stage_n = 0;
+            }
+            if (!(s->live && s->vram_stage)) sbit_clr(att_bits, i);
         }
-    }
     if (bdrain) bhalf_release();
     if (!bhalf && !bdrain && tc_frame - b_idle >= 120) bhalf_regrow();
 }
@@ -894,7 +908,7 @@ static void tex_invalidate_body(const void* ptr, unsigned size) {
             s->img = NULL;
             s->tlut = NULL;
             s->sgen++;
-            s->stale = 1;
+            stale_mark(s);
             continue;
         }
         drop(s);
@@ -934,7 +948,7 @@ static int slot_valid(Slot* s) {
         s->img = NULL;
         s->tlut = NULL;
         s->sgen++;
-        s->stale = 1;
+        stale_mark(s);
         return 0;
     }
     drop(s);
@@ -1218,6 +1232,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     }
     if (s->vram_stage) linearFree(s->vram_stage);
     s->vram_stage = (u8*)linearAlloc(gpu_size);
+    sbit_set(att_bits, (int)(s - slots));
     if (!s->vram_stage) {
         slab_free(sp_keep, reserve); /* row 1: the VRAM extent taken above goes back, or it is lost */
         s->tex_vram_ptr = NULL; s->slab = 0; memset(&s->tex, 0, sizeof s->tex);
@@ -1230,6 +1245,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     pend_add(s->vram_stage, gpu_size);
     s->bytes = reserve;
     s->vram_up = 1;
+    sbit_set(vup_bits, (int)(s - slots));
     if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < reserve; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, reserve, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
     if (tx1_chkon && memcmp(tx1_chk, s->vram_stage, gpu_size) != 0) {
         if (tx1_mismatch++ < 8) pm_log_w("tx1check: bytes differ fmt %u siz %u %dx%d stride %d lut %d", fmt, siz, width, height, stride, lut != NULL);
