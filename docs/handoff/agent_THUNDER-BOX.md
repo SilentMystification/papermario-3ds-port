@@ -109,3 +109,11 @@
 - Picture: frame 256 and frame 260 show a pale yellow hard-edged block at the top Shy Guy. Frame 252 is not clear.
 - Box source by elimination: type 3 mesh skips (runs 9 and 10) did not remove the block. Type 0 draw lists D_09000600_3936A0 and D_090008E8_393988 are not yet skip-tested. Next: skip type 0 at flashing_box_shockwave.c:162 to 169 in battle, one start, frame 260.
 - Budget: 1 start used in this run.
+
+## Run 17 (type 0 skip test, lane thunder, 1 start, budget 1 left)
+- Edit: skip the type 0 draw (D_09000600_3936A0 and D_090008E8_393988) in battle. Condition at src/effects/flashing_box_shockwave.c:162 now requires `get_game_mode() != 8` for type 0. Type 1 gate unchanged.
+- Shot at frame 260 (build3ds/azt/shots/thunder_box/0002_0_0.ppm), viewed. Shy Guys and lightning are shown.
+- Yellow box: not seen. No hard-edged yellow rectangle at the top Shy Guy in a 4x crop. No before-shot was kept, so this is not a pixel compare.
+- Hit burst: still present. Yellow star burst at the top Shy Guy and a yellow glow at the centre.
+- Source edit reverted (git checkout of flashing_box_shockwave.c). Map table restored from backup. Not committed.
+- Next: a before-shot at frame 260 on the same binary (unedited) to confirm the box is gone. Burst source not yet found.
