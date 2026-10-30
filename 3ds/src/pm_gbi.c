@@ -99,6 +99,8 @@ static int xt_on(void) {
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
 
+/* THUNDER-BOX diagnostic (temporary): one line per executed GBI op in frames 259 and 260. Remove after the investigation. */
+static int gbidump_on(void) { unsigned f = pm_frame_count(); return f >= 259u && f <= 260u; }
 /* V02 debug switch drawlog=<first frame>:<count>: one line per mesh chunk (a G_VTX load at slot 0 starts one) with the
  * vertex source (the model data address), the two innermost G_DL targets, render mode, texture and screen bounds. */
 static int dd_on(void) {
@@ -3451,6 +3453,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         if (g1_skip[op]) { pc++; RS_ADD(RS_SKN, 1); continue; }
         if (g2_same(op, w0, w1)) { pc++; RS_ADD(RS_SKS, 1); continue; }
         pm_gbi_cur_op = op;
+        if (gbidump_on()) pm_log_d("gbidump f%u op %02x w0 %08x w1 %08x prim %08x env %08x fill %08x omh %08x omL %08x tf %u ts %u", pm_frame_count(), op, w0, w1, prim, envc, fill, omode_h, omode_l, tile_fmt[0], tile_siz[0]);
         int fp = 0;
         gv_streak_op(op);
         tex_streak_op(op);
