@@ -1,12 +1,14 @@
 """livelog.py - read the game's live log from a 3DS (or Azahar) over the network (TCP 17492).
 
-Usage: py -3 -u 3ds/tools/livelog.py <3ds-ip> [seconds] [out-file]
+Usage: py -3 -u 3ds/tools/livelog.py <3ds-ip> [seconds] [out-file] [--silence <seconds>]
 On connect the game sends the last 32 KB of its log, then each new line. Each line starts with
 "#<seq> ". After a reconnect, lines already received are skipped by that number, and a gap in
 the numbers is reported, so a lost line is never silent. Writes raw bytes, so Japanese debug
 text cannot break the Windows console.
 The read stops early on a game end line (END_LINES), or when the connection stays closed for
-GONE_SECS seconds after the last received data. The final line is "live log: ended (<reason>)".
+GONE_SECS seconds after the last received data, or when no byte arrives from the console for
+--silence seconds (default 60; the console may be off with the connection still open).
+The final line is "live log: ended (<reason>)".
 """
 import re
 import socket
@@ -25,9 +27,15 @@ GONE_SECS = 5  # no data for this long after a close or loss ends the read
 
 
 def main():
-    ip = sys.argv[1]
-    secs = float(sys.argv[2]) if len(sys.argv) > 2 else 0
-    path = sys.argv[3] if len(sys.argv) > 3 else "build3ds/hw_live_log.txt"
+    args = sys.argv[1:]
+    silence = 60.0  # no byte for this long ends the read
+    if "--silence" in args:
+        i = args.index("--silence")
+        silence = float(args[i + 1])
+        del args[i:i + 2]
+    ip = args[0]
+    secs = float(args[1]) if len(args) > 1 else 0
+    path = args[2] if len(args) > 2 else "build3ds/hw_live_log.txt"
     forever = secs <= 0
     end = time.time() + secs if not forever else 0
     out = open(path, "wb")
@@ -38,6 +46,7 @@ def main():
     buf = b""
     ended = None  # reason text once the read must stop
     down_since = None  # time of the last close or loss with no data since
+    last_data = 0.0  # time of the last byte from the console (or of the connect)
 
     def emit(line):
         out.write(line)
@@ -58,10 +67,14 @@ def main():
         print("[livelog] connected" if connects == 1 else "[livelog] reconnected", flush=True)
         sock.settimeout(1)
         buf = b""
+        last_data = time.time()
         while ended is None and (forever or time.time() < end):
             try:
                 data = sock.recv(4096)
             except socket.timeout:
+                if time.time() - last_data >= silence:
+                    ended = "silent for %g s" % silence
+                    break
                 continue
             except OSError as e:
                 print("[livelog] connection lost:", e, flush=True)
@@ -74,6 +87,7 @@ def main():
                     down_since = time.time()
                 break
             down_since = None
+            last_data = time.time()
             buf += data.replace(b"\r", b"")
             *lines, buf = buf.split(b"\n")
             for line in lines:
