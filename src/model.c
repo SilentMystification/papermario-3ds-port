@@ -1512,7 +1512,10 @@ void appendGfx_model(void* data) {
 #ifdef TARGET_3DS
     mgHdr = (*gfxPos)++; /* MR1: the header op; n is set at the end of this function */
     mgHdr->words.w0 = (u32)G_PM_MODEL << 24;
-    mgHdr->words.w1 = 0;
+    /* SR2: w1 = pmSlot (bits 0 to 7), static matrix (bit 8: finalMtx is savedMtx, not billboard), pmMtxVer (bits 16 to 31) */
+    mgHdr->words.w1 = (u32)model->pmSlot
+        | ((model->finalMtx == &model->savedMtx && !(flags & MODEL_FLAG_BILLBOARD)) ? 0x100u : 0u)
+        | ((u32)model->pmMtxVer << 16);
 #endif
 
     gDPPipeSync((*gfxPos)++);
@@ -2618,6 +2621,7 @@ void mdl_calculate_model_sizes(void) {
 }
 
 u32 pm_rec_seq;
+u16 pm_mtx_seq; /* SR2: one counter for every matrix version, so a version is never reused by another model */
 
 void mdl_create_model(ModelBlueprint* bp, s32 unused) {
     ModelNode* node = bp->mdlNode;
@@ -2702,6 +2706,7 @@ void mdl_create_model(ModelBlueprint* bp, s32 unused) {
     }
 
     model->pmSlot = modelIdx + 1;
+    model->pmMtxVer = ++pm_mtx_seq; /* SR2: savedMtx is set above */
     PM_REC_BUMP(model);
     guMtxIdentF(model->userTransformMtx);
     model->finalMtx = nullptr;
@@ -2819,6 +2824,7 @@ void mdl_update_transform_matrices(void) {
                     if (model->matrixFreshness == 0) {
                         // since it hasn't changed in a few frames, cache the matrix
                         model->savedMtx = *model->finalMtx;
+                        model->pmMtxVer = ++pm_mtx_seq; /* SR2 */
                     }
                     // copy matrix from previous DisplayContext stack to current one
                     curMtx = model->finalMtx;

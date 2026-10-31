@@ -1750,14 +1750,29 @@ static void draw_tri(unsigned w) {
     draw_tri_cpu(idx);
 }
 
-static void load_mtx(u32 w0, u32 w1) {
+/* SR2: unpacked model matrices by slot (header w1 bits 0 to 7). A tag is 0x10000 | pmMtxVer when valid, 0 when not. */
+static float mtx_cache[256][16];
+static u32 mtx_tag[256];
+
+/* hdr: the G_PM_MODEL header w1 of the group the word is in, 0 outside mg_run. */
+static void load_mtx(u32 w0, u32 w1, u32 hdr) {
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
     if (!src) return;
     float in[4][4];
     const float (*lm)[4] = pm_interp_repl ? pm_interp_find(src) : 0; /* F06-2 */
+    unsigned slot = hdr & 0xffu;
+    int cached = slot != 0 && (hdr & 0x100u) != 0 && !lm; /* a static model matrix: the header says src is that model's savedMtx */
+    u32 tag = 0x10000u | (hdr >> 16);
     if (lm) memcpy(in, lm, sizeof(in));
-    else unpack(src, in);
+    else if (cached && mtx_tag[slot] == tag) memcpy(in, mtx_cache[slot], sizeof(in));
+    else {
+        unpack(src, in);
+        if (cached) {
+            memcpy(mtx_cache[slot], in, sizeof(in));
+            mtx_tag[slot] = tag;
+        }
+    }
     int is_proj = (flags & G_MTX_PROJECTION) != 0;
     if (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 < 10) {
         memcpy(mv[mv_sp + 1], mv[mv_sp], sizeof(mv[0]));
@@ -3327,7 +3342,7 @@ static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
  * same skips. Returns the first word it does not run (g + n when all ran). The walker runs that word and the rest as ops.
  * A G_DL that is not a dlc hit returns the word after it and sets *nx to the list (the walker pushes it). */
-static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx) {
+static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx, u32 hdr) {
     if (dd_on() || gp_on() || pm_ph_fine) return g;
     for (unsigned k = 0; k < n; k++) {
         Gfx* q = g + k;
@@ -3365,7 +3380,7 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx)
             return q;
         case G_MTX:
             if (!is_host((u32)(uintptr_t)ptr_of(w1))) return q;
-            load_mtx(w0, w1);
+            load_mtx(w0, w1, hdr);
             break;
         case G_POPMTX: gbi_popmtx(w1); break;
         case G_DL: {
@@ -3454,7 +3469,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             unsigned n = w0 & 0xffffu;
             if (end && sp == 0 && pc + n > end) n = (unsigned)(end - pc);
             if (pm_ph_on) sp0_group_begin(); /* SPLIT0C */
-            pc = mg_run(pc, n, &nx);
+            pc = mg_run(pc, n, &nx, w1);
             if (pm_ph_on) sp0_group_end();
             if (nx && sp < 12) { stack[sp++] = pc; pc = (Gfx*)nx; }
             break;
@@ -3595,7 +3610,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             break;
         case G_MTX:
             if (!is_host((u32)(uintptr_t)ptr_of(w1))) gbi_cold_bad_mtx(w0, w1, (Gfx*)list, pc);
-            load_mtx(w0, w1);
+            load_mtx(w0, w1, 0);
             break;
         case G_SETSCISSOR: {
             int ulx = (int)((w0 >> 12) & 0xfff);
