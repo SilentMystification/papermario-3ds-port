@@ -282,43 +282,88 @@ void pm_pmu_sp0(unsigned out[3]) {
     out[0] = (unsigned)(c0 / pmu_n); out[1] = (unsigned)(c1 / pmu_n); out[2] = (unsigned)(cc / pmu_n);
 }
 
-/* PF1: switch prof (clean-frame profile) or prof=<N> (sample every N drawn frames, 4 to 255, default 30). profstall picks counter set s (PF3).
+/* PF1, PF2: switch prof (clean-frame profile) or prof=<N> (sample every N drawn frames, 4 to 255, default 30). profstall picks counter set s (PF3).
  * pm_pf_frame runs once per drawn frame in the main loop with two ticks the loop already has. No svc call per frame. One line per 300 drawn frames
- * at warn level. The sampled fields (s, fts, wks, oh, amort, gbi, dlc, tex, gpu) and the pmu fields print 0 until PF2 and PF3. */
+ * at warn level. PF2: one drawn frame in N is a sample. pm_pf_frame arms pm_ph_on for the next drawn frame, so that frame's phase timers run;
+ * pm_ph_frame_end hands its record to pf_take and pm_pf_frame turns pm_ph_on off again. The PMU fields (PF3) print 0 until PF3. */
 extern unsigned pm_step_calls;
 extern unsigned pm_ph_iv;
+unsigned long long pm_gbi_sp0_dlc(void); /* pm_gbi.c: dlc group ticks, summed in sampled frames only */
 int pm_pf_on;
+int pm_pf_arm; /* prof samples: prof on and phase off. pm_gbi.c skips its phase reports while it is set */
 static int pf_want;
 static unsigned pf_every = 30;
+static unsigned pf_cd; /* clean drawn frames left before the next sample */
+static int pf_samp; /* the drawn frame in progress is a sample */
+static int pf_prev_s; /* the previous drawn frame was a sample: its wall belongs to the sample sums */
 static char pf_set = 'm';
 static unsigned long long pf_last, pf_wsum, pf_wmax, pf_wksum;
 static unsigned long long pf_vb0;
 static unsigned pf_st0, pf_total, pf_w, pf_wn, pf_wkn, pf_o34;
 static unsigned pf_iv[4];
+static unsigned pf_s, pf_sw_n; /* sampled frames (work), sampled walls */
+static unsigned long long pf_sw_fts, pf_sw_wks; /* sampled wall and work sums, ticks */
+static float pf_sms[3]; /* sampled gbi, tex, gpu: sums, ms */
+static unsigned long long pf_dlc_t, pf_dlc_prev; /* dlc group ticks: window sum and the last reading */
 #define PF_OVER_T 9115808ull /* 34 ms in ticks: 34 x TICKS_MS */
 static void pf_report(void) {
     unsigned long long vb = C3D_FrameCounter(0) - pf_vb0;
     float fps = vb ? (float)pf_w * 60.f / (float)vb : 0.f;
     float ft = pf_wn ? (float)((double)pf_wsum / pf_wn / TICKS_MS) : 0.f;
     float wk = pf_wkn ? (float)((double)pf_wksum / pf_wkn / TICKS_MS) : 0.f;
-    pm_log_w("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s0 fts 0.00 wks 0.00 oh 0.00 amort 0 | gbi 0.00 dlc 0.00 tex 0.00 gpu 0.00 | pmu %c 0 0 cyc 0 pm 0 0 | st %u vb %u iv %u %u %u %u",
-             pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_set, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
+    float fts = pf_sw_n ? (float)((double)pf_sw_fts / pf_sw_n / TICKS_MS) : 0.f;
+    float wks = pf_s ? (float)((double)pf_sw_wks / pf_s / TICKS_MS) : 0.f;
+    float oh = wks - wk; /* ms that the sampled timers add to one sampled frame */
+    unsigned amort = oh > 0.f ? (unsigned)(oh * 1000.f / (float)pf_every) : 0u; /* us per drawn frame */
+    float sn = pf_s ? (float)pf_s : 1.f;
+    pm_log_w("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c 0 0 cyc 0 pm 0 0 | st %u vb %u iv %u %u %u %u",
+             pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort,
+             pf_sms[0] / sn, (float)((double)pf_dlc_t / TICKS_MS) / sn, pf_sms[1] / sn, pf_sms[2] / sn,
+             pf_set, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
     pf_wsum = pf_wmax = pf_wksum = 0;
     pf_wn = pf_wkn = pf_o34 = pf_w = 0;
     memset(pf_iv, 0, sizeof pf_iv);
+    pf_s = pf_sw_n = 0;
+    pf_sw_fts = pf_sw_wks = 0;
+    pf_sms[0] = pf_sms[1] = pf_sms[2] = 0.f;
+    pf_dlc_t = 0;
     pf_vb0 = C3D_FrameCounter(0);
     pf_st0 = pm_step_calls;
 }
+/* PF2: the next drawn frame is a sample. The phase stack starts clean, so its first push adds no time from before the sample. */
+static void pf_arm(void) {
+    last = frame_t0 = pm_ticks();
+    memset(acc, 0, sizeof acc);
+    depth = 0;
+    cur = PH_OTHER;
+    pf_samp = 1;
+    pm_ph_on = 1;
+}
+/* PF2: one sampled frame, at its end. r is the frame record: it is not stored in the phase window. */
+static void pf_take(const Rec* r) {
+    unsigned long long d = pm_gbi_sp0_dlc();
+    pf_dlc_t += d >= pf_dlc_prev ? d - pf_dlc_prev : d; /* a map load resets the counter: then d is the new value */
+    pf_dlc_prev = d;
+    pf_sms[0] += r->ms[PH_GBI]; pf_sms[1] += r->ms[PH_TEX]; pf_sms[2] += r->ms[PH_GPU];
+}
 void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
+    int cur_s = pf_samp; /* this drawn frame is a sample */
     if (!pf_total) { pf_vb0 = C3D_FrameCounter(0); pf_st0 = pm_step_calls; }
     if (pf_last) { /* wall of the previous drawn frame: its start to this start */
         unsigned long long w = t0 - pf_last;
-        pf_wsum += w; pf_wn++;
-        if (w > pf_wmax) pf_wmax = w;
-        if (w > PF_OVER_T) pf_o34++;
+        if (pf_prev_s) { pf_sw_fts += w; pf_sw_n++; }
+        else { pf_wsum += w; pf_wn++; if (w > pf_wmax) pf_wmax = w; if (w > PF_OVER_T) pf_o34++; }
     }
     pf_last = t0;
-    pf_wksum += t1 - t0; pf_wkn++;
+    pf_prev_s = cur_s;
+    unsigned long long wk = t1 - t0;
+    if (cur_s) { /* sample end: its work, then the phase timers off again */
+        pf_s++; pf_sw_wks += wk;
+        pf_samp = 0; pm_ph_on = 0; pf_cd = pf_every - 1;
+    } else {
+        pf_wksum += wk; pf_wkn++;
+        if (pm_pf_arm && --pf_cd == 0) pf_arm();
+    }
     unsigned iv = pm_ph_iv;
     pf_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
     pf_total++;
@@ -330,6 +375,7 @@ static void pf_init(void) {
     if (pm_debug_value("prof", v, sizeof v)) { unsigned n = (unsigned)atoi(v); if (n >= 4 && n <= 255) pf_every = n; }
     pf_set = pm_debug_has("profstall") ? 's' : 'm';
     pm_pf_on = pf_want && pm_log_file();
+    pf_cd = pf_every - 1;
     if (!pm_pf_on) return;
     unsigned t0 = pm_ticks(); /* cold, once at init: the mean tick read cost for the cal line */
     for (int i = 0; i < 200; i++) pm_ticks();
@@ -343,6 +389,8 @@ int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and 
 void pm_ph_log_gate(int on) {
     pm_ph_on = on && ph_want;
     pm_pf_on = on && pf_want;
+    pm_pf_arm = pm_pf_on && !ph_want;
+    if (!on) pf_samp = 0;
     pm_dcs_on = on && dcs_want;
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (on && fs_want && !pm_fs_on) fs_arm();
@@ -363,6 +411,7 @@ void pm_ph_init(void) {
     if (pm_fs_on) fs_arm();
     pmu_init();
     pf_init();
+    pm_pf_arm = pm_pf_on && !ph_want;
     if (!pm_ph_on) return;
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();
@@ -571,6 +620,7 @@ void pm_ph_frame_end(void) {
     pm_gbi_sync_ticks = 0;
     pm_gbi_gv_ticks = 0;
     pm_gbi_tex_ticks = 0;
+    if (pf_samp) { pf_take(r); return; } /* PF2: a sampled frame is not a phase window row */
     if (ps_on) ps_step(r);
     if (++nwin >= MAXW || (now - win_t0) >= 536223712u /* 2 s */) summarize(now);
 }
