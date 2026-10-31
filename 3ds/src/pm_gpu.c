@@ -1134,9 +1134,12 @@ static void init_f_tables(void) {
  * frame the list gets a jump into a 16-byte sub-buffer in linear memory and back. Layout is INFERRED from the PICA documentation
  * (docs/handoff/inv_citro3d_decode.md section 3), not confirmed on hardware:
  *   frame list tail: SIZE0=2 ADDR0=pa(continuation)>>3 SIZE1=2 ADDR1=pa(sub)>>3 JUMP1=1 [pad: CLIP=0 if needed]
- *   sub (16 B):      CLIP=0, JUMP0=1 (channel 0 returns to the continuation)
+ *   sub (16 B):      CLIP_DATA3=JT_MAGIC, JUMP0=1 (channel 0 returns to the continuation)
  *   continuation:    the 16 bytes GPUCMD_Split appends at frame end (FINALIZE x2)
- * The sub writes CLIP=0 only: no draw follows it in the frame, and sh_clear resets the shadow for the next frame. */
+ * CLIP_DATA3 is the readback register: only the sub writes it after the last user clip write of frame 1. No draw follows it.
+ * JT_HW_BASE: GSPGPU_ReadHWRegs offsets are from 0x1EB00000, PICA regs at 0x1EF00000 (INFERRED, not confirmed). */
+#define JT_MAGIC 0x4A54534Bu
+#define JT_HW_BASE 0x400000u
 static int jt_on;
 static int jt_state; /* 0 not run, 1 list queued (result read at the next frame end), 2 done */
 static u32* jt_sub;
@@ -1145,8 +1148,8 @@ static void jt_queue(void) {
     u32* buf; u32 size, off, pad;
     if (!jt_sub) jt_sub = (u32*)linearAlloc(16 * 2);
     if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
-    jt_sub[0] = 0;                                  /* CLIP param: off */
-    jt_sub[1] = 0xF0000u | GPUREG_FRAGOP_CLIP;     /* header: reg, mask 0xF, single */
+    jt_sub[0] = JT_MAGIC;                           /* CLIP_DATA3 param: the value the readback compares */
+    jt_sub[1] = 0xF0000u | GPUREG_FRAGOP_CLIP_DATA3; /* header: reg, mask 0xF, single */
     jt_sub[2] = 1;                                  /* JUMP0 param: any value */
     jt_sub[3] = 0xF0000u | GPUREG_CMDBUF_JUMP0;
     pm_fl_dc(jt_sub, 16);
@@ -1167,9 +1170,14 @@ static void jt_queue(void) {
  * shows as no line. The values logged are the ones written to the CMDBUF registers, not read back from the GPU: no read path for
  * those registers is in the tree. */
 static void jt_result(void) {
+    u32 v = 0;
     gspWaitForP3D();
-    pm_log("jump test ok size0=2 addr0=%08x size1=2 addr1=%08x jump1=1 cont_word=%u",
-           (unsigned)(jt_cont_pa << 3), (unsigned)(jt_sub_pa << 3), (unsigned)jt_cont_word);
+    Result r = GSPGPU_ReadHWRegs(JT_HW_BASE + GPUREG_FRAGOP_CLIP_DATA3 * 4, &v, 4);
+    if (r) pm_log("jump test none (readback result %08lx)", (unsigned long)r);
+    else if (v == JT_MAGIC) pm_log("jump test ok value %08x", (unsigned)v);
+    else pm_log("jump test fail value %08x", (unsigned)v);
+    pm_log_d("jump test layout: size0=2 addr0=%08x size1=2 addr1=%08x jump1=1 cont_word=%u",
+             (unsigned)(jt_cont_pa << 3), (unsigned)(jt_sub_pa << 3), (unsigned)jt_cont_word);
     jt_state = 2;
 }
 

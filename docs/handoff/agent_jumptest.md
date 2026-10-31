@@ -47,3 +47,12 @@ The continuation size is 16 bytes only if GPUCMD_Split appends exactly the FINAL
 - Confirm on the console: the sub-buffer runs, the frame does not hang, and the picture matches the switch-off build.
 - No GPU-side register readback. Needs a read path for CMDBUF registers (not in the tree).
 - Continuation size 16 B depends on citro3d C3D_FrameEnd adding no writes before the split. Not checked.
+
+## JT2: readback (replaces the JT1 log line)
+
+- Sub-buffer (16 B) now writes `FRAGOP_CLIP_DATA3` (0x4B) = `JT_MAGIC` 0x4A54534B, header 0x000F004B, then JUMP0. The CLIP=0 write is removed from the sub. The tail pad still writes CLIP=0 when needed.
+- Readback at the end of frame 2, after gspWaitForP3D and before C3D_FrameEnd: `GSPGPU_ReadHWRegs(JT_HW_BASE + 0x4B*4, 4)`, JT_HW_BASE 0x400000. Frame 2 is not submitted yet, so the register holds frame 1 plus the sub.
+- Log lines: `jump test ok value <hex>` (equal to JT_MAGIC), `jump test fail value <hex>` (other value), `jump test none (readback result <hex>)` (GSP call failed). The layout line is debug only.
+- INFERRED: GSPGPU_ReadHWRegs base 0x1EB00000 (libctru LCD regs use 0x400478), PICA regs at 0x1EF00000. Not confirmed. A wrong base gives `fail` or `none`, not a false `ok`.
+- Visible mark: NOT built. Register writes alone change no pixel. A mark needs a draw in the sub-buffer (attribute buffer, vertex data, TEV and texture state). Open item.
+- Build: gen_map_restore.py, build.sh exit 0, no pm_gpu.c warning.
