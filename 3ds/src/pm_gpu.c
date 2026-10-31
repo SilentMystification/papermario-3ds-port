@@ -768,7 +768,7 @@ static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
                     for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
-                    RS_ADD(RS_PCOMP, 1); pm_dc_c[DC_PMUL]++;
+                    pm_dc_c[DC_PMUL]++;
 }
 static __attribute__((noinline)) int nozt_on(void) {
     static int nozt = -1;
@@ -2142,7 +2142,6 @@ static void plan_layout_field_diffs(const PmPlan* a, const PmPlan* b) {
 
 void pm_gpu_set_plan(const PmPlan* p) {
     if (combine == 8 && memcmp(&plan, p, sizeof plan) == 0) return;
-    RS_ADD(RS_COMB, 1);
     CS_ADD(CS_PLAN, 1);
     if (combine == 8 && plan_same_layout(&plan, p)) {
         CS_ADD(CS_CON, 1);
@@ -2162,7 +2161,6 @@ void pm_gpu_set_plan(const PmPlan* p) {
 
 void pm_gpu_set_combine(int mode) {
     if (mode == combine) return;
-    RS_ADD(RS_COMB, 1);
     CS_ADD(CS_MODE, 1);
     flush();
     combine = mode;

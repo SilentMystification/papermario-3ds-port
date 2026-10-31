@@ -250,25 +250,12 @@ extern int pm_is_cur_cfb(const void* p);
  * buffer is T3: G_SETTIMG fetched it with pm_cfb_capture_prev. */
 static void grab_cur(const void* src, int w, int h) {
     tex_gen++; /* TBREP */
-    static int on = -1;
     int x, y, r;
     if (!src || w < 1 || !pm_is_cur_cfb(src)) return;
     x = (int)(((const u8*)src - (const u8*)nuGfxCfb_ptr) >> 1) % 320;
     y = (int)(((const u8*)src - (const u8*)nuGfxCfb_ptr) >> 1) / 320; /* rows of the window: a later load of other rows reuses the copy (R13c) */
     r = pm_gpu_grab(nuGfxCfb_ptr, y, y + (h < 1 ? 1 : h));
     if (r == 2) { n_grabs++; n_splits++; }
-    if (on < 0) on = pm_debug_has("imglog");
-}
-static __attribute__((cold, noinline)) void imglog(const char* op, const void* a, int siz, int stride, int role) {
-    static int on = -1;
-    const char* kind;
-    if (on < 0) on = pm_debug_has("imglog");
-    if (!on) return;
-    if (a == (const void*)DepthCopyBuffer) kind = "depthcopy";
-    else if (!a) kind = "zero";
-    else if (nuGfxZBuffer && (const unsigned short*)a >= nuGfxZBuffer && (const unsigned short*)a < nuGfxZBuffer + 320 * 240) kind = "zbuf";
-    else if (pm_is_cfb(a)) kind = ((const unsigned short*)a >= nuGfxCfb_ptr && (const unsigned short*)a < nuGfxCfb_ptr + 320 * 240) ? "cfb_cur" : "cfb_prev";
-    else { kind = "other"; if (role < 0) return; } /* settimg: log only frame buffer, z-buffer and depth copy reads */
 }
 static void off_screen_check(void) {
     static int nooff = -1;
@@ -1634,12 +1621,6 @@ static void dls_report(void) {
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
 static PM_HOTD int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 static void draw_tri(unsigned w);
-static void tb_probe(unsigned slot, const Gfx* l, unsigned n) {
-    if (!pm_ph_on || !l) return;
-    unsigned c = 0;
-    for (unsigned i = 0; i < n && i < 4096; i++) if ((l[i].words.w0 >> 24) == G_PM_TEX) c++;
-    if (c) RS_ADD(slot, c);
-}
 #include "pm_dlc.inc.c"
 static __attribute__((cold, noinline)) void tri_po3a_1(int i0, int i1, int i2) {
     p_cmd++;
@@ -1813,7 +1794,7 @@ static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
         float zn = prim_ndc_z();
         for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
     } else if (img_role(0) == ROLE_DEPTH) {
-        /* B3: case 6, the combiner is PRIM (log: imglog). B3b: the vertices keep their own depth, the GPU tests it against the world and writes zn there */
+        /* B3: case 6, the combiner is PRIM. B3b: the vertices keep their own depth, the GPU tests it against the world and writes zn there */
         pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(prim)) - 1.f);
     }
     if (plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE) {
@@ -1852,11 +1833,8 @@ static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
 no_boost:
     GP_LAP(GPL_OLD);
     pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
-    RS_ADD(RS_CLIP, 1);
     pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
-    RS_ADD(RS_CLIP, 1);
     pm_gpu_vert_clip(poly[1].x, poly[1].y, poly[1].z, poly[1].w, poly[1].u, poly[1].v, pack_color(&poly[1]));
-    RS_ADD(RS_CLIP, 1);
     pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
 }
 
@@ -1926,7 +1904,6 @@ static __attribute__((cold, noinline)) void note(unsigned op) {
 }
 
 static PM_HOTD unsigned n_ops; /* PT01: display list ops run this frame */
-unsigned pm_gbi_ops_now(void) { return n_ops; } /* PI1: ops so far this drawn frame */
 
 /* W1: sampled time per op class. Phase on only. op_n is exact (one increment per op). One tick pair per 64 ops, outer list only.
  * P1: producer census. Marks come from pm_interp_open (gMainGfxPos at the open). The cursor moves forward at sp == 0 in the
@@ -2633,10 +2610,10 @@ static int tile_bound(int n) {
  * texture, the glyph needs no flush and no wrap call: tile_bound compares the raster, which differs per glyph. */
 static int glyph_atlas_bound(void) {
     int gx, gy;
-    if (!td[0].valid || !td[0].src || td[0].fmt != 2 || td[0].siz != 0 || !ens_src) { RS_ADD(RS_GA_TD, 1); return 0; }
-    if (ens_pal != td[0].pal || ens_fmt != 2 || ens_siz != 0) { RS_ADD(RS_GA_ENS, 1); return 0; }
-    if (memcmp(tst1.tile_wrap[0], ens_wrap, sizeof ens_wrap) || memcmp(tst1.tile_sz[0], ens_sz, sizeof ens_sz)) { RS_ADD(RS_GA_WRAP, 1); return 0; }
-    if (!pm_tex_glyph_same(td[0].src, td[0].fmt, td[0].siz, td[0].w, td[0].h, td[0].pal, td[0].pal_n, &gx, &gy)) { RS_ADD(RS_GA_GLY, 1); return 0; }
+    if (!td[0].valid || !td[0].src || td[0].fmt != 2 || td[0].siz != 0 || !ens_src) { return 0; }
+    if (ens_pal != td[0].pal || ens_fmt != 2 || ens_siz != 0) { return 0; }
+    if (memcmp(tst1.tile_wrap[0], ens_wrap, sizeof ens_wrap) || memcmp(tst1.tile_sz[0], ens_sz, sizeof ens_sz)) { return 0; }
+    if (!pm_tex_glyph_same(td[0].src, td[0].fmt, td[0].siz, td[0].w, td[0].h, td[0].pal, td[0].pal_n, &gx, &gy)) { return 0; }
     return 1;
 }
 static void ensure_tile(int n) {
@@ -2644,7 +2621,6 @@ static void ensure_tile(int n) {
     tile_fx = (float)(tst1.tile_sz[n][0] & 3) * 0.25f; /* PT38 */
     tile_fy = (float)(tst1.tile_sz[n][1] & 3) * 0.25f;
     if (n == 0 && !tile_bound(0) && glyph_atlas_bound()) {
-        RS_ADD(RS_GAB, 1);
         cur_tile = 0;
         return;
     }
@@ -2652,8 +2628,6 @@ static void ensure_tile(int n) {
         cur_tile = n;
         return;
     }
-    RS_ADD(RS_TILE, 1);
-    RS_ADD(n ? RS_T1 : RS_T0, 1);
     pm_gpu_flush();
     pm_tex_set_wrap(tst1.tile_wrap[n][0], tst1.tile_wrap[n][1], tst1.tile_wrap[n][2], tst1.tile_wrap[n][3]);
     if (td[n].fmt == 0 && td[n].siz == 2) grab_cur(td[n].src, td[n].w, td[n].h);
@@ -3063,7 +3037,6 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
         case G_SETTIMG:
             timg = ptr_of(w1);
             if (!w1 && zslot_on && ((w0 >> 19) & 3) == 2) timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
-            imglog("settimg", timg, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1, -1);
             /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
             if (timg && pm_is_cfb(timg) && !pm_is_cur_cfb(timg) && !pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
             tst1.timg_fmt = (w0 >> 21) & 7;
@@ -3484,7 +3457,6 @@ cimg = nc;
 cimg_zero = (w1 == 0); zcol = 0;
 cimg_siz = ns;
 cimg_stride = (int)(w0 & 0xfff) + 1;
-imglog("setcimg", cimg, cimg_siz, cimg_stride, img_role(0));
 return;
 }
 
@@ -3620,7 +3592,6 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx)
 
 static void gbi_run_body(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
-    tb_probe(RS_TBG, (const Gfx*)list, nbytes / 8u);
     dls_on = PMDL("dlsrc");
     dlc_on = dlc_enabled();
     if (dls_on && !dlc_depth) {
@@ -3642,7 +3613,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
     while (pc && guard++ < 200000) {
         if (end && sp == 0 && pc >= end) break;
         if ((u32)pc < pc_lo || (u32)pc >= pc_hi) { /* PG3 A15: the range of pc is looked up when pc leaves the last range (list entry, G_DL, return), not at every op */
-            RS_ADD(RS_RANGE, 1);
             if (!host_range((u32)pc, &pc_lo, &pc_hi)) { pc_lo = pc_hi = 0;
             gbi_cold_bad_dl((u32)pc, (u32)list, nbytes, sp);
             gv_streak_flush();
@@ -3653,8 +3623,8 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         u32 w0 = pc->words.w0;
         u32 w1 = pc->words.w1;
         unsigned op = w0 >> 24;
-        if (g1_skip[op]) { pc++; RS_ADD(RS_SKN, 1); continue; }
-        if (g2_same(op, w0, w1)) { pc++; RS_ADD(RS_SKS, 1); continue; }
+        if (g1_skip[op]) { pc++; continue; }
+        if (g2_same(op, w0, w1)) { pc++; continue; }
         pm_gbi_cur_op = op;
         int fp = 0;
         if (pm_ph_on) { gv_streak_op(op); tex_streak_op(op); }
@@ -3690,7 +3660,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                 tex_streak_flush();
                 return;
             }
-            RS_ADD(RS_RET, 1);
             pc = stack[--sp];
             if (dls_on) dls_pc = dls_class((u32)pc);
             break;
@@ -3709,14 +3678,12 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc += w0 & 0xffffu;
             break;
         case G_PM_TEX: /* C1: a texture bind list, run by tb_run when its record matches. */
-            if (w1 && tb_list[w0 & 0x7f] == (const Gfx*)w1) { RS_ADD(RS_TBN, 1); tb_run((const Gfx*)w1); break; }
-            RS_ADD(RS_TBFB, 1);
+            if (w1 && tb_list[w0 & 0x7f] == (const Gfx*)w1) { tb_run((const Gfx*)w1); break; }
             w0 = (u32)G_DL << 24; /* G_DL_PUSH */
             goto tex_as_dl;
         case G_PM_RM: /* C2: a render mode list, applied in place (rm_apply). */
-            RS_ADD(RS_RMN, 1);
             if (rm_apply(w1)) break;
-            RS_ADD(RS_RMSK, 1); /* fallback: the list has another op, run it as G_DL */
+            /* fallback: the list has another op, run it as G_DL */
             w0 = (u32)G_DL << 24; /* G_DL_PUSH */
             /* fall through */
         tex_as_dl:
@@ -3729,16 +3696,14 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (next) { __builtin_prefetch(next); __builtin_prefetch(next + 4); } /* H4: the G_DL target */
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
             if (dls_on) dls_target(next);
-            if (pm_ph_on) { unsigned dc = dls_class((u32)next); RS_ADD(RS_GDL, 1); if (dc == 1) RS_ADD(RS_GDL1, 1); else if (dc == 7) RS_ADD(RS_GDL7, 1); }
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
                 if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
                 break;
             }
-            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) { RS_ADD(RS_NOPUSH, 1); pc = next; }
+            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) { pc = next; }
             else if (sp < 12) {
-                RS_ADD(RS_PUSH, 1); RS_MAX(RS_SPMAX, sp + 1);
                 stack[sp++] = pc;
                 pc = next;
             }
@@ -3831,7 +3796,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                         vert_cb[v0 + i] = (unsigned char)clip_bits4(p);
                         vert_gvf[v0 + i] = 1;
                         st_vx++;
-                        RS_ADD(RS_XDUP, 1);
                         continue;
                     }
                     gbi_vtx_cpu1(&src[i], v0 + i);

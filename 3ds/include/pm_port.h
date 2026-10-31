@@ -103,25 +103,6 @@ extern int pm_fs_q; /* 1 during a key frame draw: no mark */
 extern unsigned pm_fs_tasks; /* WMODEL: gbi tasks walked in this frame (counted only with fsplit) */
 void pm_fs_mark(int cat);
 #define FS_MARK(c) do { if (pm_fs_on) pm_fs_mark(c); } while (0)
-/* RSP split counters (one rsplit line per drawn frame with phase): crossings the phase line does not name. */
-enum { RS_TILE, RS_COMB, RS_XDUP, RS_CLIP, RS_PCOMP, RS_DLC,
-    RS_TK_BG, RS_TK_MAIN, RS_TK_KEY, RS_TUS_BG, RS_TUS_MAIN, RS_TUS_KEY, RS_TOPS, /* PI1: tasks per kind, us per kind (BG no swap flag, MAIN swap, KEY key replay), ops in tasks */
-    RS_PUSH, RS_NOPUSH, RS_RET, RS_RANGE, RS_SPMAX, RS_PDL, RS_PDLM,
-    RS_GDL, RS_GDL1, RS_GDL7, /* dl2: G_DL ops walked, of them class 1 (map shape) and class 7 (outside every range) */
-    RS_DLCH, RS_DLCM, RS_DLCOPS, RS_DLCG, RS_DLCSKIP, /* dl2: dlc_try hit, compile (miss), ops replayed, groups, groups skipped by box */
-    RS_RMN, RS_RMSK, /* C2: G_PM_RM ops, of them fallback to G_DL */
-    RS_SKN, /* G1: sync and no-op ops skipped before the prologue */
-    RS_SKS, /* G2: state ops that leave the live state as it is, skipped before the prologue */
-    RS_TBN, RS_TBFB, /* C1: G_PM_TEX binds run by tb_run, of them fallback to G_DL */
-    RS_TBE, RS_TBG, RS_TBPD, RS_TBPM, RS_TBDL, RS_TBTS, /* probe: emits, G_PM_TEX ops seen by stage */
-    RS_GAB, /* GA1: glyph texrects that found the atlas bound (no flush, no wrap call) */
-    RS_T0, RS_T1, /* R1: ensure_tile flushes of tile 0 and tile 1 */
-    RS_GA_TD, RS_GA_ENS, RS_GA_WRAP, RS_GA_GLY, /* R1: glyph_atlas_bound refusals by check (td, ens state, wrap or size, glyph lookup incl. slot state) */
-    RS_N };
-extern unsigned pm_rs_cnt[RS_N];
-unsigned pm_gbi_ops_now(void);
-#define RS_ADD(c, n) do { if (pm_ph_on) pm_rs_cnt[c] += (unsigned)(n); } while (0)
-#define RS_MAX(c, n) do { if (pm_ph_on && (unsigned)(n) > pm_rs_cnt[c]) pm_rs_cnt[c] = (unsigned)(n); } while (0)
 extern unsigned pm_gbi_sync_ticks; /* ticks in sync_combine_work this drawn frame (phase on) */
 extern unsigned pm_gbi_gv_ticks; /* ticks in G_TRI1/G_TRI2 streaks this drawn frame (phase on) */
 extern unsigned pm_gbi_tex_ticks; /* ticks in texture-command streaks this drawn frame (phase on) */

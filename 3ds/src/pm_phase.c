@@ -17,7 +17,6 @@ int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
 static unsigned prev_cnt[C_N]; /* counters of the last finished frame: pm_ph_cnt is zero again at the next frame begin */
 unsigned pm_ph_prev(int k) { return prev_cnt[k]; }
-unsigned pm_rs_cnt[RS_N];
 unsigned pm_cs_cnt[CS_N];
 
 static const char* const pname[PH_N] = { "other", "logic", "dl", "gbi", "gpu", "tex", "audio", "rom", "yay0", "fbegin", "fend", "idle", "gcache", "gdraw", "g_vtx", "g_tri", "g_mtx", "g_op", "fbread", "g_tev", "g_bind", "g_state" };
@@ -464,7 +463,6 @@ void pm_ph_init(void) {
            (double)dt2 / 2000.0 / 268.112, x & 1);
     last = frame_t0 = win_t0 = pm_ticks();
     memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
-    memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
     pm_gbi_sync_ticks = 0;
     pm_gbi_gv_ticks = 0;
@@ -652,7 +650,6 @@ void pm_ph_frame_end(void) {
     pm_ph_kick_n = pm_ph_kick_us = pm_ph_hud_us = 0;
     memset(pm_fl_n, 0, sizeof pm_fl_n); memset(pm_fl_e, 0, sizeof pm_fl_e); memset(pm_fl_us, 0, sizeof pm_fl_us);
     pm_ec_n = pm_ec_svc = 0;
-    memset(pm_rs_cnt, 0, sizeof pm_rs_cnt);
     memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
     pm_gbi_sync_ticks = 0;
     pm_gbi_gv_ticks = 0;

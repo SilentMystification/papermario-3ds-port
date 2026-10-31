@@ -72,17 +72,12 @@ void nuContDataGetExAll(NUContData* data) {
 static Gfx* key_list[MAX_KEY];
 static u32 key_size[MAX_KEY];
 static int nkey;
-/* PI1: walk one task and count it. kind 0 = background, 1 = main (swap), 2 = key replay. One tick pair per task, none per op. */
-static void gbi_task(Gfx* gfxList, u32 n, int kind) {
+/* PI1: walk one task. */
+static void gbi_task(Gfx* gfxList, u32 n) {
     if (pm_fs_on) pm_fs_tasks++; /* WMODEL: render tasks per frame, fsplit only */
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
-    if (!pm_ph_on) { pm_gbi_run(gfxList, n); return; }
-    unsigned o0 = pm_gbi_ops_now(), t0 = pm_ticks();
     pm_gbi_run(gfxList, n);
-    pm_rs_cnt[RS_TK_BG + kind]++;
-    pm_rs_cnt[RS_TUS_BG + kind] += (pm_ticks() - t0) / 268u;
-    pm_rs_cnt[RS_TOPS] += pm_gbi_ops_now() - o0;
 }
 
 /* LB1b: with pm_interp_on <= 0 the background task (no swap flag) is recorded here and runs with the swap task, after the main list is
@@ -93,7 +88,7 @@ static u32 bg_size;
 static int bg_pend;
 static void bg_run(void) {
     bg_pend = 0;
-    gbi_task(bg_list, bg_size, 0);
+    gbi_task(bg_list, bg_size);
 }
 
 void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
@@ -113,10 +108,10 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
             if (nkey < MAX_KEY) { key_list[nkey] = gfxList; key_size[nkey++] = gfxListSize; }
             if (swap && pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
             else if (swap) { pm_interp_lerp(0.5f); pm_interp_repl = 1; }
-            gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
+            gbi_task(gfxList, gfxListSize);
             pm_interp_repl = 0;
         } else {
-            gbi_task(gfxList, gfxListSize, swap ? 1 : 0);
+            gbi_task(gfxList, gfxListSize);
         }
     }
     PH_POP();
@@ -134,7 +129,7 @@ int pm_interp_key_draw(void) {
     pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_begin(1);
     PH_PUSH(PH_GBI);
-    for (int i = 0; i < nkey; i++) gbi_task(key_list[i], key_size[i], 2);
+    for (int i = 0; i < nkey; i++) gbi_task(key_list[i], key_size[i]);
     PH_POP();
     nkey = 0;
     pm_gpu_end();
