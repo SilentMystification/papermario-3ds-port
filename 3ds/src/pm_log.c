@@ -75,6 +75,26 @@ static void ring_replay(int fd) {
     }
 }
 
+/* QUIT1: the PC sends one line on the live socket. Only "quit" is a command. The writer thread reads it (non-blocking, one line per
+ * connection), pm_log_poll (game thread) acts on it. */
+static char cmd_buf[16];
+static unsigned cmd_n;
+static int cmd_done;
+static volatile int quit_req;
+
+static void read_cmd(void) {
+    if (client < 0 || cmd_done) return;
+    int r = recv(client, cmd_buf + cmd_n, sizeof cmd_buf - 1 - cmd_n, 0);
+    if (r <= 0) return; /* EAGAIN: nothing yet. 0 or an error: the send path sees the close */
+    cmd_n += (unsigned)r;
+    cmd_buf[cmd_n] = 0;
+    char* nl = strchr(cmd_buf, '\n');
+    if (!nl && cmd_n < sizeof cmd_buf - 1) return; /* the line is not complete */
+    cmd_done = 1;
+    if (nl) *nl = 0;
+    if (!strncmp(cmd_buf, "quit", 4) && (cmd_buf[4] == 0 || cmd_buf[4] == '\r')) quit_req = 1;
+}
+
 static void accept_client(void) {
     if (listen_fd < 0) return;
     struct sockaddr_in addr;
@@ -84,12 +104,21 @@ static void accept_client(void) {
     fcntl(fd, F_SETFL, O_NONBLOCK);
     if (client >= 0) close(client);
     client = fd;
+    cmd_n = 0;
+    cmd_done = 0;
     live_ok_tick = 0;
     ring_replay(fd);
 }
 
+extern volatile int pm_exit_request; /* PT28: the main loop ends, pm_shutdown runs, main returns */
+
 void pm_log_poll(void) {
     if (!__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) accept_client(); /* the writer thread accepts once it runs */
+    if (quit_req) { /* QUIT1: the same exit as the menu row Exit to Homebrew */
+        quit_req = 0;
+        pm_log_w("quit received");
+        pm_exit_request = 1;
+    }
 }
 
 /* PERF-GBI: a test run has a switch string, and every pm_debug_has call scanned it (4.6 us in Azahar). Real play has none and returns at once. The cache makes a
@@ -576,7 +605,10 @@ static void writer_main(void* arg) {
         }
         if (!__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) continue;
         if (pm_io_quiet) continue; /* PT68: no SD, socket or console call while the app sleeps */
-        if (log_file_on) accept_client();
+        if (log_file_on) {
+            accept_client();
+            read_cmd(); /* QUIT1 */
+        }
         LightLock_Lock(&drain_lock);
         if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
             drain_locked();
