@@ -748,55 +748,12 @@ static void dc_kick(void) {
     dc_end();
 }
 static void dc_bind(int unit, C3D_Tex* t) { pm_dc_c[DC_TB0 + unit]++; C3D_TexBind(unit, t); }
-static void flush_draw(void) {
-    int graw = gni > 0;
-    if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
-    if (fl_on() && gpu_ok) { fl_count(nverts <= 0 && !graw); if (fl_fn != (const char*)"pm_gpu_tex_rect" && strcmp(fl_fn, "pm_gpu_tex_rect") != 0) fl_prev_rect = 0; }
-    if ((nverts <= 0 && !graw) || !gpu_ok) {
-        nverts = 0;
-        gni = 0; gi_start = gidx_n;
-        batch_identity = 0;
-        return;
-    }
-    if (r_nocol && !(z_on && (!rect_2d || rect_z) && r_zupd)) {
-        nverts = 0;
-        gni = 0; gi_start = gidx_n;
-        batch_identity = 0;
-        return;
-    }
-    /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
-    if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
-        nverts = 0;
-        gni = 0; gi_start = gidx_n;
-        batch_identity = 0;
-        return;
-    }
-    int snap0 = 0, snap1 = 0;
-    if (off_active) { /* FX2a: this batch reads the slot it writes */
-        snap0 = combine >= 2 && !grab_bind && pm_tex_off_idx() == off_cur;
-        snap1 = combine == 8 && plan.uses_tex1 && pm_tex_aux_off_idx() == off_cur;
-        if (snap0 || snap1) off_snapshot(off_cur);
-        if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
-    }
-    pm_dc_c[DC_RAW] += (unsigned)graw;
-    DC_T(0);
-    if (dc_on) GPUCMD_GetBuffer(NULL, NULL, &dc_w0);
-    PH_ADD(C_FLUSH, 1);
-    PH_PUSH(PH_GPU);
-    PHF_PUSH(PH_GBIND);
-    const int gpal = graw && g_pal; /* GV1c: the palette program */
-    if (graw) { /* PO3b */
-        proj_ok = 0; pool_buf_ok = 0; /* DR1: the program and the buffer change */
-        if (gpal && g_use5) { /* GV5: lighting, texgen, fog */
-            if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; PH_ADD(C_RAWCALL, 2); }
-            if (!sh5_ok || memcmp(sh5_uvso, g_uvso, sizeof sh5_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh5_uvso, g_uvso, sizeof sh5_uvso); PH_ADD(C_RAWCALL, 1); }
-            if (!sh5_ok || memcmp(sh5_cmul, g_cmul, sizeof sh5_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh5_cmul, g_cmul, sizeof sh5_cmul); PH_ADD(C_RAWCALL, 1); }
-            if (!sh5_ok || memcmp(sh5_cadd, g_cadd, sizeof sh5_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh5_cadd, g_cadd, sizeof sh5_cadd); PH_ADD(C_RAWCALL, 1); }
-            if (!sh5_ok || memcmp(sh5_zmix, g_zmix, sizeof sh5_zmix)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f); memcpy(sh5_zmix, g_zmix, sizeof sh5_zmix); PH_ADD(C_RAWCALL, 1); }
-            if (!sh5_ok || memcmp(&sh5_fx, &g_fx, sizeof g_fx)) { /* the light block, the look-at vectors, the fog factor and the flags: one set per change */
-                C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, g_fx.lflag[0], g_fx.lflag[1], g_fx.lflag[2], g_fx.lflag[3]);
-                C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, g_fx.fogu[0], g_fx.fogu[1], g_fx.fogu[2], g_fx.fogu[3]);
-                if (g_fx.lflag[0] != 0.f) { /* lighting: the light table and, for texgen, the look-at vectors */
+/* FLH: cold and per-change parts of flush_draw, moved out of line. Same operations, same order. */
+static __attribute__((cold, noinline)) void flush_fl_dbg(int graw) {
+    fl_count(nverts <= 0 && !graw);
+    if (fl_fn != (const char*)"pm_gpu_tex_rect" && strcmp(fl_fn, "pm_gpu_tex_rect") != 0) fl_prev_rect = 0;
+}
+static __attribute__((noinline)) void flush_light_tab(void) {
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lamb, g_fx.amb[0], g_fx.amb[1], g_fx.amb[2], g_fx.amb[3]);
                     for (int i = 0; i < 7; i++) {
                         C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lcol + i, g_fx.col[i][0], g_fx.col[i][1], g_fx.col[i][2], g_fx.col[i][3]);
@@ -804,192 +761,36 @@ static void flush_draw(void) {
                     }
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk0, g_fx.lk0[0], g_fx.lk0[1], g_fx.lk0[2], g_fx.lk0[3]);
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk1, g_fx.lk1[0], g_fx.lk1[1], g_fx.lk1[2], g_fx.lk1[3]);
-                }
-                sh5_fx = g_fx;
-                PH_ADD(C_RAWCALL, 2 + (g_fx.lflag[0] != 0.f ? 17 : 0));
-            }
-            sh5_ok = 1;
-            sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); /* the uniform registers are one file for all programs: pm5 wrote over what pm4 and pm had */
-            for (unsigned k = 0; k < pal_n; k++) {
-                unsigned gm = pal_g[k];
-                if (pcomp_gen[gm] != post_gen) {
+}
+static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
                     C3D_Mtx game;
                     const float(*m)[4] = pal_tab[gm];
                     for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
                     Mtx_Multiply(&pcomp[gm], &gv_post, &game);
                     pcomp_gen[gm] = post_gen;
                     RS_ADD(RS_PCOMP, 1); pm_dc_c[DC_PMUL]++;
-                }
-                if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && sh5_pal_gen[k] == post_gen) continue;
-                if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && memcmp(&sh5_pal_mtx[k], &pcomp[gm], sizeof(C3D_Mtx)) == 0) pm_dc_c[DC_PKEQ]++; /* DC6 count: this upload writes the matrix the register holds */
-                sh5_pal_mtx[k] = pcomp[gm];
-                C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
-                if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
-                sh5_pal_ok[k] = 1; sh5_pal_gm[k] = gm; sh5_pal_gen[k] = post_gen;
-                PH_ADD(C_RAWCALL, 4);
-                gv_palup_n++; pm_dc_c[DC_PALUP]++;
-            }
-        } else if (gpal) {
-            sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); /* pm4 writes over the registers of pm5 */
-            if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
-            if (!sh_ok || memcmp(sh_uvso, g_uvso, sizeof sh_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh_uvso, g_uvso, sizeof sh_uvso); PH_ADD(C_RAWCALL, 1); }
-            if (!sh_ok || memcmp(sh_cmul, g_cmul, sizeof sh_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh_cmul, g_cmul, sizeof sh_cmul); PH_ADD(C_RAWCALL, 1); }
-            if (!sh_ok || memcmp(sh_cadd, g_cadd, sizeof sh_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh_cadd, g_cadd, sizeof sh_cadd); PH_ADD(C_RAWCALL, 1); }
-            if (!sh_ok || memcmp(sh_zmix, g_zmix, sizeof sh_zmix)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f); memcpy(sh_zmix, g_zmix, sizeof sh_zmix); PH_ADD(C_RAWCALL, 1); }
-            sh_ok = 1;
-            for (unsigned k = 0; k < pal_n; k++) {
-                unsigned gm = pal_g[k];
-                if (pcomp_gen[gm] != post_gen) {
-                    C3D_Mtx game;
-                    const float(*m)[4] = pal_tab[gm];
-                    for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
-                    Mtx_Multiply(&pcomp[gm], &gv_post, &game);
-                    pcomp_gen[gm] = post_gen;
-                    RS_ADD(RS_PCOMP, 1); pm_dc_c[DC_PMUL]++;
-                }
-                if (sh_pal_ok[k] && sh_pal_gm[k] == gm && sh_pal_gen[k] == post_gen) continue; /* the register block holds this matrix already */
-                if (sh_pal_ok[k] && sh_pal_gm[k] == gm && memcmp(&sh_pal_mtx[k], &pcomp[gm], sizeof(C3D_Mtx)) == 0) pm_dc_c[DC_PKEQ]++; /* DC6 count */
-                sh_pal_mtx[k] = pcomp[gm];
-                C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u4_pal + 4 * (int)k, &pcomp[gm]);
-                sh_pal_ok[k] = 1; sh_pal_gm[k] = gm; sh_pal_gen[k] = post_gen;
-                PH_ADD(C_RAWCALL, 1);
-                gv_palup_n++; pm_dc_c[DC_PALUP]++;
-            }
-        }
-    }
-    /* 2D batches are already pixels. 3D batches are object space. */
-    if (u_proj >= 0 && !gpal) {
-        const C3D_Mtx* pm_ = draw_3d ? &shader_3d : off_active ? &off_proj : &projection; /* V05: shader_3d follows off_active, see rebuild_3d */
-        if (!graw && proj_ok && memcmp(&proj_last, pm_, sizeof proj_last) == 0) dr1_skips++; /* DR1: same value as the last draw */
-        else {
-            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, pm_); sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; /* RAW1: registers 0 to 3 are also pal 0 */
-            proj_last = *pm_; proj_ok = !graw;
-        }
-    }
-    /* Rectangles skip the depth test, so a story page already covers the mesh.
-     * Wiping the buffer here let the next 3D batch ignore the house. */
-    (void)batch_identity;
-    DC_T(1);
-    int tex =(combine >= 2) && (grab_bind ? (dc_bind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
-    int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
-    int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
-    if (tex && snap0) { dc_bind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
-    if (tex1 && snap1) { dc_bind(1, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DC2: unit 1 no longer holds the aux texture */
-    if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
-    if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
-    int noise = combine == 8 && plan.uses_noise && noise_init();
-    if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
-        int u = gpal ? (g_use5 ? u5_nzo : u4_nzo) : u_nzo;
-        if (!noise_bound) { dc_bind(2, &noise_tex); noise_bound = 1; } /* DC2: unit 2 stays bound until the next sh_clear */
-        if (u >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u, 120.f / 64.f, 200.f / 64.f, noise_off[0], noise_off[1]);
-    }
-    DC_T(2);
-    PHF_POP();
-    int z = z_on && (!rect_2d || rect_z) && !off_active;
-    { static int nozt = -1; if (nozt < 0) nozt = pm_debug_has("nozt"); if (nozt) z = 0; }
-    PHF_PUSH(PH_GTEV);
-    int memb = 0;
-    TevKey tk;
-    const size_t tk_n = sizeof tk;
-    memset(&tk, 0, tk_n);
-    tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
-    tk.dview = dview; tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
-    tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
-    tk.plan_gen = combine == 8 ? plan_gen : 0;
-    int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
-    if (tev_same) memb = tev_memb;
-    else { pm_dc_c[DC_TEVR]++; C3D_TexEnv* env = C3D_GetTexEnv(0); flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
-    DC_T(3);
-    PHF_POP();
-    PHF_PUSH(PH_GST);
-    dv_draw++;
-    if (z && r_zmark) {
-        /* B3b: pass 1 tests the model with its own depth and marks the stencil where it is nearer than the world. Pass 2 (below) writes the constant there. */
-        sh_depth_test(true, GPU_GREATER, GPU_WRITE_DEPTH);
-        C3D_StencilTest(true, GPU_ALWAYS, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
-        stencil_on = 1;
-    } else if (z && r_zcmp)
-        sh_depth_test(true, r_decal ? GPU_GEQUAL : GPU_GREATER, r_nocol ? GPU_WRITE_DEPTH : r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-    else if (z && r_zupd)
-        sh_depth_test(true, GPU_ALWAYS, r_nocol ? GPU_WRITE_DEPTH : GPU_WRITE_ALL);
-    else
-        sh_depth_test(false, GPU_GREATER, GPU_WRITE_COLOR);
-    /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
-    if (stencil_on && !(z && r_zmark)) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
-    sh_depth_map(true, -1.0f, r_decal ? decal_bias() : 0.0f);
-    sh_early(false, GPU_EARLYDEPTH_GREATER, 0);
-    if (r_atest >= 0) sh_alpha_test(true, GPU_GREATER, r_atest);
-    else sh_alpha_test(false, GPU_ALWAYS, 0);
-    /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide
-     * game picture and whatever scissor the display list set inside it. */
-    if (off_active) {
+}
+static __attribute__((noinline)) int nozt_on(void) {
+    static int nozt = -1;
+    if (nozt < 0) nozt = pm_debug_has("nozt");
+    return nozt;
+}
+static __attribute__((noinline)) void scissor_off(void) {
         /* not rotated: x is the game x. GPU y is the game y: row 0 of the image is the last memory row, where v = 0 samples */
         int x1 = sci_x1 > off_w ? off_w : sci_x1, y1 = sci_y1 > off_h ? off_h : sci_y1;
         if (x1 > sci_x0 && y1 > sci_y0)
             sh_scissor(GPU_SCISSOR_NORMAL, (u32)sci_x0, (u32)sci_y0, (u32)x1, (u32)y1);
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, 0, off_w, off_h);
-    } else {
-        int left = 240 - sci_y1;
-        int right = 240 - sci_y0;
-        /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
-        int ui = pm_wide && (!draw_3d || ui_ortho);
-        int top = !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
-        int bottom = !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
-        if (left < 0) left = 0;
-        if (right > 240) right = 240;
-        if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
-        if (bottom > (pm_wide ? 400 : 360)) bottom = pm_wide ? 400 : 360;
-        if (right > left && bottom > top)
-            sh_scissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)(400 - bottom), (u32)right, (u32)(400 - top)); /* V23: the GPU counts the 400 axis from the other end */
-        else
-            sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
-    }
-    sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
-    if (off_active && (r_replace || (off_i8 && !r_blend && !memb)))
+}
+static __attribute__((noinline)) void blend_off(int memb) {
+    if (r_replace || (off_i8 && !r_blend && !memb))
         sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-    else if (off_active) /* alpha accumulates as source over destination: a covered pixel becomes opaque */
+    else /* alpha accumulates as source over destination: a covered pixel becomes opaque */
         sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
             GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-    else if (r_blend) /* V25: a 2D rectangle follows its own blender mode (the story page strips use alpha = PRIM with an opaque blender) */
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-            GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    else
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-    PHF_POP();
-    DC_T(4);
-    sh_user_clip(graw); /* GP2: near clip on raw batches only */
-    /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
-    if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
-        PH_PUSH(PH_GDRAW);
-        if (buf_cur != 2) {
-            pm_dc_c[DC_BUF]++;
-            C3D_BufInfo* gb = C3D_GetBufInfo();
-            BufInfo_Init(gb);
-            BufInfo_Add(gb, gring, 16, 3, 0x210);
-            buf_cur = 2; PH_ADD(C_RAWCALL, 2);
-        }
-        C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
-        PH_ADD(C_RAWD, 1); PH_ADD(C_RAWCALL, 1);
-        DC_T(5);
-        PH_POP();
-        draws_frame++;
-        PH_ADD(C_DRAW, 1);
-        PH_ADD(C_VTXSLOT, gni);
-        PH_POP();
-        gi_start = gidx_n;
-        gni = 0; pal_n = 0;
-        batch_identity = 0;
-        drew = 1;
-        if (!off_active) { /* B2: the main target changed, the grab slot is old */
-            if (rect_y1 <= rect_y0) grab_dirty = 1;
-            else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
-            else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
-        }
-        dc_kick();
-        return;
-    }
+}
+static __attribute__((noinline)) void flush_draw_cpu(int z) {
     if (bound != 1) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
     Vert* batch = verts;
     int count = nverts;
@@ -1046,6 +847,225 @@ static void flush_draw(void) {
         else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
     }
     dc_kick();
+}
+
+static void flush_draw(void) {
+    int graw = gni > 0;
+    if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
+    if (fl_on() && gpu_ok) flush_fl_dbg(graw);
+    if ((nverts <= 0 && !graw) || !gpu_ok) {
+        nverts = 0;
+        gni = 0; gi_start = gidx_n;
+        batch_identity = 0;
+        return;
+    }
+    if (r_nocol && !(z_on && (!rect_2d || rect_z) && r_zupd)) {
+        nverts = 0;
+        gni = 0; gi_start = gidx_n;
+        batch_identity = 0;
+        return;
+    }
+    /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
+    if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
+        nverts = 0;
+        gni = 0; gi_start = gidx_n;
+        batch_identity = 0;
+        return;
+    }
+    int snap0 = 0, snap1 = 0;
+    if (off_active) { /* FX2a: this batch reads the slot it writes */
+        snap0 = combine >= 2 && !grab_bind && pm_tex_off_idx() == off_cur;
+        snap1 = combine == 8 && plan.uses_tex1 && pm_tex_aux_off_idx() == off_cur;
+        if (snap0 || snap1) off_snapshot(off_cur);
+        if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
+    }
+    pm_dc_c[DC_RAW] += (unsigned)graw;
+    DC_T(0);
+    if (dc_on) GPUCMD_GetBuffer(NULL, NULL, &dc_w0);
+    PH_ADD(C_FLUSH, 1);
+    PH_PUSH(PH_GPU);
+    PHF_PUSH(PH_GBIND);
+    const int gpal = graw && g_pal; /* GV1c: the palette program */
+    if (graw) { /* PO3b */
+        proj_ok = 0; pool_buf_ok = 0; /* DR1: the program and the buffer change */
+        if (gpal && g_use5) { /* GV5: lighting, texgen, fog */
+            if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; PH_ADD(C_RAWCALL, 2); }
+            if (!sh5_ok || memcmp(sh5_uvso, g_uvso, sizeof sh5_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh5_uvso, g_uvso, sizeof sh5_uvso); PH_ADD(C_RAWCALL, 1); }
+            if (!sh5_ok || memcmp(sh5_cmul, g_cmul, sizeof sh5_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh5_cmul, g_cmul, sizeof sh5_cmul); PH_ADD(C_RAWCALL, 1); }
+            if (!sh5_ok || memcmp(sh5_cadd, g_cadd, sizeof sh5_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh5_cadd, g_cadd, sizeof sh5_cadd); PH_ADD(C_RAWCALL, 1); }
+            if (!sh5_ok || memcmp(sh5_zmix, g_zmix, sizeof sh5_zmix)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f); memcpy(sh5_zmix, g_zmix, sizeof sh5_zmix); PH_ADD(C_RAWCALL, 1); }
+            if (!sh5_ok || memcmp(&sh5_fx, &g_fx, sizeof g_fx)) { /* the light block, the look-at vectors, the fog factor and the flags: one set per change */
+                C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, g_fx.lflag[0], g_fx.lflag[1], g_fx.lflag[2], g_fx.lflag[3]);
+                C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, g_fx.fogu[0], g_fx.fogu[1], g_fx.fogu[2], g_fx.fogu[3]);
+                if (g_fx.lflag[0] != 0.f) { /* lighting: the light table and, for texgen, the look-at vectors */
+                    flush_light_tab();
+                }
+                sh5_fx = g_fx;
+                PH_ADD(C_RAWCALL, 2 + (g_fx.lflag[0] != 0.f ? 17 : 0));
+            }
+            sh5_ok = 1;
+            sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); /* the uniform registers are one file for all programs: pm5 wrote over what pm4 and pm had */
+            for (unsigned k = 0; k < pal_n; k++) {
+                unsigned gm = pal_g[k];
+                if (pcomp_gen[gm] != post_gen) {
+                    pcomp_calc(gm);
+                }
+                if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && sh5_pal_gen[k] == post_gen) continue;
+                if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && memcmp(&sh5_pal_mtx[k], &pcomp[gm], sizeof(C3D_Mtx)) == 0) pm_dc_c[DC_PKEQ]++; /* DC6 count: this upload writes the matrix the register holds */
+                sh5_pal_mtx[k] = pcomp[gm];
+                C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
+                if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
+                sh5_pal_ok[k] = 1; sh5_pal_gm[k] = gm; sh5_pal_gen[k] = post_gen;
+                PH_ADD(C_RAWCALL, 4);
+                gv_palup_n++; pm_dc_c[DC_PALUP]++;
+            }
+        } else if (gpal) {
+            sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); /* pm4 writes over the registers of pm5 */
+            if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
+            if (!sh_ok || memcmp(sh_uvso, g_uvso, sizeof sh_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh_uvso, g_uvso, sizeof sh_uvso); PH_ADD(C_RAWCALL, 1); }
+            if (!sh_ok || memcmp(sh_cmul, g_cmul, sizeof sh_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh_cmul, g_cmul, sizeof sh_cmul); PH_ADD(C_RAWCALL, 1); }
+            if (!sh_ok || memcmp(sh_cadd, g_cadd, sizeof sh_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh_cadd, g_cadd, sizeof sh_cadd); PH_ADD(C_RAWCALL, 1); }
+            if (!sh_ok || memcmp(sh_zmix, g_zmix, sizeof sh_zmix)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f); memcpy(sh_zmix, g_zmix, sizeof sh_zmix); PH_ADD(C_RAWCALL, 1); }
+            sh_ok = 1;
+            for (unsigned k = 0; k < pal_n; k++) {
+                unsigned gm = pal_g[k];
+                if (pcomp_gen[gm] != post_gen) {
+                    pcomp_calc(gm);
+                }
+                if (sh_pal_ok[k] && sh_pal_gm[k] == gm && sh_pal_gen[k] == post_gen) continue; /* the register block holds this matrix already */
+                if (sh_pal_ok[k] && sh_pal_gm[k] == gm && memcmp(&sh_pal_mtx[k], &pcomp[gm], sizeof(C3D_Mtx)) == 0) pm_dc_c[DC_PKEQ]++; /* DC6 count */
+                sh_pal_mtx[k] = pcomp[gm];
+                C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u4_pal + 4 * (int)k, &pcomp[gm]);
+                sh_pal_ok[k] = 1; sh_pal_gm[k] = gm; sh_pal_gen[k] = post_gen;
+                PH_ADD(C_RAWCALL, 1);
+                gv_palup_n++; pm_dc_c[DC_PALUP]++;
+            }
+        }
+    }
+    /* 2D batches are already pixels. 3D batches are object space. */
+    if (u_proj >= 0 && !gpal) {
+        const C3D_Mtx* pm_ = draw_3d ? &shader_3d : off_active ? &off_proj : &projection; /* V05: shader_3d follows off_active, see rebuild_3d */
+        if (!graw && proj_ok && memcmp(&proj_last, pm_, sizeof proj_last) == 0) dr1_skips++; /* DR1: same value as the last draw */
+        else {
+            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, pm_); sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; /* RAW1: registers 0 to 3 are also pal 0 */
+            proj_last = *pm_; proj_ok = !graw;
+        }
+    }
+    /* Rectangles skip the depth test, so a story page already covers the mesh.
+     * Wiping the buffer here let the next 3D batch ignore the house. */
+    (void)batch_identity;
+    DC_T(1);
+    int tex =(combine >= 2) && (grab_bind ? (dc_bind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
+    int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
+    int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
+    if (tex && snap0) { dc_bind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
+    if (tex1 && snap1) { dc_bind(1, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DC2: unit 1 no longer holds the aux texture */
+    if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
+    if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
+    int noise = combine == 8 && plan.uses_noise && noise_init();
+    if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
+        int u = gpal ? (g_use5 ? u5_nzo : u4_nzo) : u_nzo;
+        if (!noise_bound) { dc_bind(2, &noise_tex); noise_bound = 1; } /* DC2: unit 2 stays bound until the next sh_clear */
+        if (u >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u, 120.f / 64.f, 200.f / 64.f, noise_off[0], noise_off[1]);
+    }
+    DC_T(2);
+    PHF_POP();
+    int z = z_on && (!rect_2d || rect_z) && !off_active;
+    if (nozt_on()) z = 0;
+    PHF_PUSH(PH_GTEV);
+    int memb = 0;
+    TevKey tk;
+    const size_t tk_n = sizeof tk;
+    memset(&tk, 0, tk_n);
+    tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
+    tk.dview = dview; tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
+    tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
+    tk.plan_gen = combine == 8 ? plan_gen : 0;
+    int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
+    if (tev_same) memb = tev_memb;
+    else { pm_dc_c[DC_TEVR]++; C3D_TexEnv* env = C3D_GetTexEnv(0); flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
+    DC_T(3);
+    PHF_POP();
+    PHF_PUSH(PH_GST);
+    dv_draw++;
+    if (z && r_zmark) {
+        /* B3b: pass 1 tests the model with its own depth and marks the stencil where it is nearer than the world. Pass 2 (below) writes the constant there. */
+        sh_depth_test(true, GPU_GREATER, GPU_WRITE_DEPTH);
+        C3D_StencilTest(true, GPU_ALWAYS, 1, 0xff, 0xff);
+        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
+        stencil_on = 1;
+    } else if (z && r_zcmp)
+        sh_depth_test(true, r_decal ? GPU_GEQUAL : GPU_GREATER, r_nocol ? GPU_WRITE_DEPTH : r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+    else if (z && r_zupd)
+        sh_depth_test(true, GPU_ALWAYS, r_nocol ? GPU_WRITE_DEPTH : GPU_WRITE_ALL);
+    else
+        sh_depth_test(false, GPU_GREATER, GPU_WRITE_COLOR);
+    /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
+    if (stencil_on && !(z && r_zmark)) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
+    sh_depth_map(true, -1.0f, r_decal ? decal_bias() : 0.0f);
+    sh_early(false, GPU_EARLYDEPTH_GREATER, 0);
+    if (r_atest >= 0) sh_alpha_test(true, GPU_GREATER, r_atest);
+    else sh_alpha_test(false, GPU_ALWAYS, 0);
+    /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide
+     * game picture and whatever scissor the display list set inside it. */
+    if (off_active) scissor_off();
+    else {
+        int left = 240 - sci_y1;
+        int right = 240 - sci_y0;
+        /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
+        int ui = pm_wide && (!draw_3d || ui_ortho);
+        int top = !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
+        int bottom = !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
+        if (left < 0) left = 0;
+        if (right > 240) right = 240;
+        if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
+        if (bottom > (pm_wide ? 400 : 360)) bottom = pm_wide ? 400 : 360;
+        if (right > left && bottom > top)
+            sh_scissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)(400 - bottom), (u32)right, (u32)(400 - top)); /* V23: the GPU counts the 400 axis from the other end */
+        else
+            sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
+    }
+    sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
+    if (off_active) blend_off(memb);
+    else if (r_blend) /* V25: a 2D rectangle follows its own blender mode (the story page strips use alpha = PRIM with an opaque blender) */
+        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+            GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+    else
+        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+    PHF_POP();
+    DC_T(4);
+    sh_user_clip(graw); /* GP2: near clip on raw batches only */
+    /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
+    if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
+        PH_PUSH(PH_GDRAW);
+        if (buf_cur != 2) {
+            pm_dc_c[DC_BUF]++;
+            C3D_BufInfo* gb = C3D_GetBufInfo();
+            BufInfo_Init(gb);
+            BufInfo_Add(gb, gring, 16, 3, 0x210);
+            buf_cur = 2; PH_ADD(C_RAWCALL, 2);
+        }
+        C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
+        PH_ADD(C_RAWD, 1); PH_ADD(C_RAWCALL, 1);
+        DC_T(5);
+        PH_POP();
+        draws_frame++;
+        PH_ADD(C_DRAW, 1);
+        PH_ADD(C_VTXSLOT, gni);
+        PH_POP();
+        gi_start = gidx_n;
+        gni = 0; pal_n = 0;
+        batch_identity = 0;
+        drew = 1;
+        if (!off_active) { /* B2: the main target changed, the grab slot is old */
+            if (rect_y1 <= rect_y0) grab_dirty = 1;
+            else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
+            else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
+        }
+        dc_kick();
+        return;
+    }
+    flush_draw_cpu(z);
 }
 
 /* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
