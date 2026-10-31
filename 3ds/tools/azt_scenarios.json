@@ -1433,6 +1433,26 @@
       }
     ],
     "reason": "JTB: jump_azahar without jumptest. Until is the shot at frame 330. Cap 45 s."
+  },
+  {
+    "name": "boot_jump_azahar",
+    "status": "unverified",
+    "subject": "Boot from the start with no warp (the intro plays), jump test on. Log subject only: jump result lines from frame 390 on.",
+    "proves": "The game boots without warp, the intro runs, and the jump test prints a result line at frame 390 or later on Azahar.",
+    "debug": "jumptest prof loglevel=debug",
+    "until": "jump f(39\\d|[4-9]\\d\\d) (ok|fail|none) ",
+    "cap": 60,
+    "deadline": 20,
+    "first_marker": "boot_main",
+    "expects": "none",
+    "needs_picture": false,
+    "expected_events": [
+      {
+        "name": "jump result line at frame 390 or later",
+        "regex": "jump f(39\\d|[4-9]\\d\\d) (ok|fail|none)"
+      }
+    ],
+    "reason": "BOOTJ: no warp, so the intro plays. Until is the first jump result at frame 390 or later. Cap 60 s."
   }
   ]
 }
