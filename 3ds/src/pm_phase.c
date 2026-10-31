@@ -305,6 +305,16 @@ static unsigned pf_s, pf_sw_n; /* sampled frames (work), sampled walls */
 static unsigned long long pf_sw_fts, pf_sw_wks; /* sampled wall and work sums, ticks */
 static float pf_sms[3]; /* sampled gbi, tex, gpu: sums, ms */
 static unsigned long long pf_dlc_t, pf_dlc_prev; /* dlc group ticks: window sum and the last reading */
+static Result pf_rc; /* last svc result of the counter edges */
+static u64 pf_base[3]; /* PF3: PMN0, PMN1, CCNT at the last sample end. Zero at init (the counters are reset there). */
+static unsigned long long pf_pe[3]; /* PF3: clean-interval sums of PMN0, PMN1, CCNT in the window */
+static unsigned pf_pfr, pf_run; /* PF3: clean frames summed in the window; clean frames since the last sample end */
+/* PF3: one svc per register. The counters are not reset here, so each edge is a plain read. */
+static void pf_pmu_read(u64 out[3]) {
+    pf_rc = svcControlPerformanceCounter(&out[0], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
+    pf_rc = svcControlPerformanceCounter(&out[1], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
+    pf_rc = svcControlPerformanceCounter(&out[2], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
+}
 #define PF_OVER_T 9115808ull /* 34 ms in ticks: 34 x TICKS_MS */
 static void pf_report(void) {
     unsigned long long vb = C3D_FrameCounter(0) - pf_vb0;
@@ -316,10 +326,17 @@ static void pf_report(void) {
     float oh = wks - wk; /* ms that the sampled timers add to one sampled frame */
     unsigned amort = oh > 0.f ? (unsigned)(oh * 1000.f / (float)pf_every) : 0u; /* us per drawn frame */
     float sn = pf_s ? (float)pf_s : 1.f;
-    pm_log_w("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c 0 0 cyc 0 pm 0 0 | st %u vb %u iv %u %u %u %u",
+    unsigned e0 = pf_pfr ? (unsigned)(pf_pe[0] / pf_pfr) : 0u; /* PMN0 per clean frame */
+    unsigned e1 = pf_pfr ? (unsigned)(pf_pe[1] / pf_pfr) : 0u; /* PMN1 per clean frame */
+    unsigned cy = pf_pfr ? (unsigned)(pf_pe[2] / pf_pfr) : 0u; /* CCNT per clean frame */
+    unsigned p0 = pf_pe[2] ? (unsigned)(pf_pe[0] * 1000ull / pf_pe[2]) : 0u; /* permille of cycles */
+    unsigned p1 = pf_pe[2] ? (unsigned)(pf_pe[1] * 1000ull / pf_pe[2]) : 0u;
+    pm_log_w("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c %u %u cyc %u pm %u %u | st %u vb %u iv %u %u %u %u",
              pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort,
              pf_sms[0] / sn, (float)((double)pf_dlc_t / TICKS_MS) / sn, pf_sms[1] / sn, pf_sms[2] / sn,
-             pf_set, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
+             pf_set, e0, e1, cy, p0, p1, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
+    pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
+    pf_pfr = 0;
     pf_wsum = pf_wmax = pf_wksum = 0;
     pf_wn = pf_wkn = pf_o34 = pf_w = 0;
     memset(pf_iv, 0, sizeof pf_iv);
@@ -332,6 +349,11 @@ static void pf_report(void) {
 }
 /* PF2: the next drawn frame is a sample. The phase stack starts clean, so its first push adds no time from before the sample. */
 static void pf_arm(void) {
+    u64 c[3];
+    pf_pmu_read(c);
+    for (int k = 0; k < 3; k++) pf_pe[k] += (unsigned)(c[k] - pf_base[k]); /* u32 delta: one interval is far below 2^32 cycles */
+    pf_pfr += pf_run;
+    pf_run = 0;
     last = frame_t0 = pm_ticks();
     memset(acc, 0, sizeof acc);
     depth = 0;
@@ -360,8 +382,9 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     if (cur_s) { /* sample end: its work, then the phase timers off again */
         pf_s++; pf_sw_wks += wk;
         pf_samp = 0; pm_ph_on = 0; pf_cd = pf_every - 1;
+        pf_pmu_read(pf_base); pf_run = 0;
     } else {
-        pf_wksum += wk; pf_wkn++;
+        pf_wksum += wk; pf_wkn++; pf_run++;
         if (pm_pf_arm && --pf_cd == 0) pf_arm();
     }
     unsigned iv = pm_ph_iv;
@@ -377,10 +400,24 @@ static void pf_init(void) {
     pm_pf_on = pf_want && pm_log_file();
     pf_cd = pf_every - 1;
     if (!pm_pf_on) return;
+    pm_pmu_on = 0; /* prof owns the two counters: the pmu switch does not change their set */
+    u64 out;
+    u32 ev0 = pf_set == 's' ? PERFCOUNTEREVT_CORE_STALL_BY_LACK_OF_INST : PERFCOUNTEREVT_CORE_INST_CACHE_MISS;
+    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_ENABLE, 0, 0);
+    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_0, ev0);
+    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_1, PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS);
+    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
+    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
+    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
     unsigned t0 = pm_ticks(); /* cold, once at init: the mean tick read cost for the cal line */
     for (int i = 0; i < 200; i++) pm_ticks();
     unsigned dt = pm_ticks() - t0;
-    pm_log_w("prof cal every %u set %c tick %.2f us", pf_every, pf_set, (double)dt / 200.0 / 268.112);
+    unsigned p0 = pm_ticks();
+    for (int i = 0; i < 50; i++) pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
+    unsigned p1 = pm_ticks();
+    double pmu_us = (double)(p1 - p0) / 50.0 / 268.112;
+    pm_log_w("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", pf_every, pf_set, (double)dt / 200.0 / 268.112,
+             pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
 }
 
 /* Phase timing needs the switch (ph_want) and the log (pm_log_file). Logging off: pm_ph_on is 0, so no tick is read and no line is formed. */
