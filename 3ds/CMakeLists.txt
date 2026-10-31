@@ -396,6 +396,8 @@ set(PM_NO_SHORT_ENUM_SRC ${PORT_SRC} ${GAME_SRC})
 list(REMOVE_DUPLICATES PM_NO_SHORT_ENUM_SRC)
 list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_wdog.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dsptest.c src/pm_dspaud.c)
 set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
+# OS1: hot port files at -Os (smaller ARM code for the 16 KB L1I). Source option comes after the directory -O2, so -Os wins for these three files only.
+set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_gbi.c ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_gpu.c ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_tex.c APPEND PROPERTY COMPILE_OPTIONS -Os)
 
 add_executable(pm_3ds
     ${PORT_SRC}
