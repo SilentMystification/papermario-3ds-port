@@ -70,3 +70,10 @@ The continuation size is 16 bytes only if GPUCMD_Split appends exactly the FINAL
 - Interval: 1 s (SYSCLOCK_ARM11 ticks).
 - Only the main loop's drawn step reaches jt_queue. The nusys path (pm_nusys.c) calls pm_gpu_end with the last pm_loop_tick value.
 - Build: gen_map_restore.py, build.sh exit 0, no warning on pm_gpu.c or pm_main.c. Not run on Azahar.
+
+## JT4: size and readback fix (diag_jump_hang, lane JTC)
+
+- CMDBUF_SIZE0 = `drew ? 4 : 2` (32 bytes with a draw, 16 bytes without). `jt_size0` holds the value for the layout line (`size0=`).
+- Readback base JT_HW_BASE = 0x401000: the read is 0x40112C (PICA register 0x4B). INFERRED, not confirmed on hardware.
+- Azahar, scenario jump_azahar, row JTC (1 start): step 1 passes. Result lines `jump f<n> ok value 4a54534b` at f0, f30 to f360 (every 30 frames in the log). No watchdog line. Layout size0=4 at every frame with a draw, size0=2 at f330 (no draw). Highest frame in the log: f375.
+- Azahar does not model jumps (catalog note), so the Azahar `ok` does not prove the jump ran on the console. Console run decides.
