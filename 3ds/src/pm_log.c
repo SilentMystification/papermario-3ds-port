@@ -178,7 +178,7 @@ void pm_log_set_switches(const char* s) {
             int lv = v[0] >= '0' && v[0] <= '3' ? v[0] - '0' : v[0] == 'e' ? 0 : v[0] == 'w' ? 1 : v[0] == 'i' ? 2 : v[0] == 'd' ? 3 : log_level;
             log_level = lv;
         }
-        if (pm_debug_value("log", v, sizeof v) && (!strcmp(v, "off") || !strcmp(v, "0"))) log_file_on = 0;
+        if (pm_debug_value("log", v, sizeof v)) log_file_on = !(!strcmp(v, "off") || !strcmp(v, "0")); /* ARG1: log=on sets the gate too */
     }
 }
 

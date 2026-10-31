@@ -617,7 +617,6 @@ static void game_thread(void* arg) {
     pm_log_init(live);
     pm_log_start();
     pm_log_live_status();
-    pm_ph_init();
     pm_wd_start();
     pm_fpscr_setup("game");
     bool is_new = false;
@@ -632,6 +631,7 @@ static void game_thread(void* arg) {
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     if (sw_cut) pm_log_e("switches: debug3ds.txt is longer than 255 bytes. The last word and the rest are cut. Use tour=@file for a long map list.");
     pm_options_init();
+    pm_ph_init(); /* after the log gate: phase, prof, pmu and fsplit read the final pm_log_file() */
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
     pm_game_bind();

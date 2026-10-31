@@ -10,6 +10,8 @@
 int pm_debug_value(const char* key, char* out, unsigned n);
 
 PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 5, 0, 500, 200, 1, 1000, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off), warp_entry, dz_pad 5, dz_cs 0, rep_delay, rep_rate, fskip (on), hud_ms (1 s), pos_hud (off) */
+/* ARG1: the saved log and loglevel (options.ini, or the defaults). pm_opt.log and pm_opt.loglevel hold the values of this run (a launch argument may differ). */
+static int sv_log = 1, sv_loglevel = 1;
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
 static const struct { const char* name; unsigned short mask; } n64_btn[] = { {"NONE", 0}, {"A", 0x8000}, {"B", 0x4000}, {"Z", 0x2000}, {"START", 0x1000}, {"L", 0x0020}, {"R", 0x0010},
@@ -71,7 +73,7 @@ void pm_options_write(void) {
         return;
     }
     fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, pm_opt.log, pm_opt.loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud);
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -144,10 +146,15 @@ void pm_options_init(void) {
         }
         fclose(f);
     }
-    {   /* L02: a log switch wins over options.ini. The panel and the switches use pm_log_set_level and pm_log_set_file. */
+    sv_log = pm_opt.log;
+    sv_loglevel = pm_opt.loglevel;
+    {   /* ARG1: precedence launch argument > saved option (options.ini) > built-in default. The argument sets this run only, sv_* keep the saved values.
+         * Runs before pm_ph_init (pm_main.c), so phase, prof, pmu and fsplit read the final gate. */
         char v[16];
-        if (pm_debug_value("loglevel", v, sizeof v)) pm_opt.loglevel = pm_log_level(); else pm_log_set_level(pm_opt.loglevel);
-        if (pm_debug_value("log", v, sizeof v)) pm_opt.log = pm_log_file(); else pm_log_set_file(pm_opt.log);
+        if (pm_debug_value("loglevel", v, sizeof v)) pm_opt.loglevel = pm_log_level();
+        if (pm_debug_value("log", v, sizeof v)) pm_opt.log = pm_log_file();
+        pm_log_set_level(pm_opt.loglevel);
+        pm_log_set_file(pm_opt.log);
     }
     pm_log("options: fps60=%d wide=%d hud=%d stats=%d nofog=%d nolight=%d (%s)", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, have ? (from_txt ? "read from options.txt, written as options.ini" : "read from options.ini") : "defaults");
@@ -173,8 +180,8 @@ int pm_options_get(int row) {
 
 void pm_options_flip(int row) {
     if (row == 6 || row == 7) { /* F11-8: Logging On/Off, Log level (A cycles error, warn, info, debug) */
-        if (row == 6) { pm_opt.log = !pm_opt.log; pm_log_set_file(pm_opt.log); }
-        else { pm_opt.loglevel = (pm_opt.loglevel + 1) & 3; pm_log_set_level(pm_opt.loglevel); }
+        if (row == 6) { pm_opt.log = !pm_opt.log; sv_log = pm_opt.log; pm_log_set_file(pm_opt.log); }
+        else { pm_opt.loglevel = (pm_opt.loglevel + 1) & 3; sv_loglevel = pm_opt.loglevel; pm_log_set_level(pm_opt.loglevel); }
         changed = 1;
         return;
     }
