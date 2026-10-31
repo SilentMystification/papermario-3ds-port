@@ -1170,6 +1170,7 @@ static void jt_queue(void) {
     GPUCMD_AddWrite(GPUREG_CMDBUF_ADDR1, jt_sub_pa);
     GPUCMD_AddWrite(GPUREG_CMDBUF_JUMP1, 1);
     if (pad) GPUCMD_AddWrite(GPUREG_FRAGOP_CLIP, 0);
+    if (!drew) GPUCMD_AddWrite(GPUREG_FRAGOP_CLIP, 0);
     jt_state = 1;
 }
 /* JT1: the result. gspWaitForP3D returns when the GPU has finished the list of the frame (libctru has no timeout form), so a hang
