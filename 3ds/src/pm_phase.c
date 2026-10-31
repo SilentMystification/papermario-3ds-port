@@ -282,11 +282,67 @@ void pm_pmu_sp0(unsigned out[3]) {
     out[0] = (unsigned)(c0 / pmu_n); out[1] = (unsigned)(c1 / pmu_n); out[2] = (unsigned)(cc / pmu_n);
 }
 
+/* PF1: switch prof (clean-frame profile) or prof=<N> (sample every N drawn frames, 4 to 255, default 30). profstall picks counter set s (PF3).
+ * pm_pf_frame runs once per drawn frame in the main loop with two ticks the loop already has. No svc call per frame. One line per 300 drawn frames
+ * at warn level. The sampled fields (s, fts, wks, oh, amort, gbi, dlc, tex, gpu) and the pmu fields print 0 until PF2 and PF3. */
+extern unsigned pm_step_calls;
+extern unsigned pm_ph_iv;
+int pm_pf_on;
+static int pf_want;
+static unsigned pf_every = 30;
+static char pf_set = 'm';
+static unsigned long long pf_last, pf_wsum, pf_wmax, pf_wksum;
+static unsigned long long pf_vb0;
+static unsigned pf_st0, pf_total, pf_w, pf_wn, pf_wkn, pf_o34;
+static unsigned pf_iv[4];
+#define PF_OVER_T 9115808ull /* 34 ms in ticks: 34 x TICKS_MS */
+static void pf_report(void) {
+    unsigned long long vb = C3D_FrameCounter(0) - pf_vb0;
+    float fps = vb ? (float)pf_w * 60.f / (float)vb : 0.f;
+    float ft = pf_wn ? (float)((double)pf_wsum / pf_wn / TICKS_MS) : 0.f;
+    float wk = pf_wkn ? (float)((double)pf_wksum / pf_wkn / TICKS_MS) : 0.f;
+    pm_log_w("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s0 fts 0.00 wks 0.00 oh 0.00 amort 0 | gbi 0.00 dlc 0.00 tex 0.00 gpu 0.00 | pmu %c 0 0 cyc 0 pm 0 0 | st %u vb %u iv %u %u %u %u",
+             pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_set, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
+    pf_wsum = pf_wmax = pf_wksum = 0;
+    pf_wn = pf_wkn = pf_o34 = pf_w = 0;
+    memset(pf_iv, 0, sizeof pf_iv);
+    pf_vb0 = C3D_FrameCounter(0);
+    pf_st0 = pm_step_calls;
+}
+void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
+    if (!pf_total) { pf_vb0 = C3D_FrameCounter(0); pf_st0 = pm_step_calls; }
+    if (pf_last) { /* wall of the previous drawn frame: its start to this start */
+        unsigned long long w = t0 - pf_last;
+        pf_wsum += w; pf_wn++;
+        if (w > pf_wmax) pf_wmax = w;
+        if (w > PF_OVER_T) pf_o34++;
+    }
+    pf_last = t0;
+    pf_wksum += t1 - t0; pf_wkn++;
+    unsigned iv = pm_ph_iv;
+    pf_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
+    pf_total++;
+    if (++pf_w >= 300) pf_report();
+}
+static void pf_init(void) {
+    char v[16];
+    pf_want = pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v);
+    if (pm_debug_value("prof", v, sizeof v)) { unsigned n = (unsigned)atoi(v); if (n >= 4 && n <= 255) pf_every = n; }
+    pf_set = pm_debug_has("profstall") ? 's' : 'm';
+    pm_pf_on = pf_want && pm_log_file();
+    if (!pm_pf_on) return;
+    unsigned t0 = pm_ticks(); /* cold, once at init: the mean tick read cost for the cal line */
+    for (int i = 0; i < 200; i++) pm_ticks();
+    unsigned dt = pm_ticks() - t0;
+    pm_log_w("prof cal every %u set %c tick %.2f us", pf_every, pf_set, (double)dt / 200.0 / 268.112);
+}
+
 /* Phase timing needs the switch (ph_want) and the log (pm_log_file). Logging off: pm_ph_on is 0, so no tick is read and no line is formed. */
 static int ph_want, dcs_want;
 int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and the dcsum line; no other phase site */
 void pm_ph_log_gate(int on) {
     pm_ph_on = on && ph_want;
+    pm_pf_on = on && pf_want;
     pm_dcs_on = on && dcs_want;
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (on && fs_want && !pm_fs_on) fs_arm();
@@ -306,6 +362,7 @@ void pm_ph_init(void) {
     pm_fs_on = fs_want && pm_log_file();
     if (pm_fs_on) fs_arm();
     pmu_init();
+    pf_init();
     if (!pm_ph_on) return;
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();

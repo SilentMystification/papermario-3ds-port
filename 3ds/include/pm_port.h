@@ -80,6 +80,8 @@ extern int pm_dcs_on; /* switch dcsum (with the log on): the sampled draw and fl
 void pm_ph_push(int id);
 void pm_ph_pop(void);
 void pm_ph_frame_end(void);
+extern int pm_pf_on; /* PF1: switch prof (clean-frame profile), see pm_phase.c */
+void pm_pf_frame(unsigned long long t0, unsigned long long t1); /* main loop, once per drawn frame: step start and work end ticks */
 /* HWM1: scene tag for the phs lines, GPU numbers of the last frame, command buffer fill */
 void pm_ph_scene_mode(int mode);
 void pm_ph_ui(const char* what, int v); /* UI: menu event line, phase gate */

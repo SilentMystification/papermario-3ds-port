@@ -488,6 +488,7 @@ void pm_frame_loop(void) {
         presents++;
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;
+        if (pm_pf_on && !last_step_skipped) pm_pf_frame(step_start, now); /* PF1: switch prof */
         if (frame_ms > 50.f) { sp_n++; if (frame_ms > sp_max) sp_max = frame_ms; }
         { /* PT15: steps per second against the retrace (steps * 60 / vblanks, 120 vblanks) and the share of steps that took 3 or more vblanks */
             unsigned vbn = C3D_FrameCounter(0);
