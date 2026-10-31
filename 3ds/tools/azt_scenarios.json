@@ -1453,6 +1453,30 @@
       }
     ],
     "reason": "BOOTJ: no warp, so the intro plays. Until is the first jump result at frame 390 or later. Cap 60 s."
+  },
+  {
+    "name": "intro_jump_azahar",
+    "status": "unverified",
+    "subject": "Fresh boot with no warp, preset or story: the intro plays (game mode 16 from frame 327), jumptest on. Log subject only: jump result lines in the intro.",
+    "proves": "The intro sequence runs on Azahar with the jump test on, and a jump result line prints after the intro starts (frame 330 or later).",
+    "debug": "jumptest prof loglevel=debug",
+    "until": "jump f(3[3-9]\\d|[4-9]\\d\\d) (ok|fail|none)",
+    "cap": 90,
+    "deadline": 20,
+    "first_marker": "boot_main",
+    "expects": "none",
+    "needs_picture": false,
+    "expected_events": [
+      {
+        "name": "intro game mode",
+        "regex": "game mode 16 frame"
+      },
+      {
+        "name": "jump result line after intro start",
+        "regex": "jump f(3[3-9]\\d|[4-9]\\d\\d) (ok|fail|none)"
+      }
+    ],
+    "reason": "INTROJ: boot with no warp (same as boot_jump_azahar). Until is the first jump result at frame 330 or later, after the intro starts at frame 327. Cap 90 s."
   }
   ]
 }
