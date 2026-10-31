@@ -410,9 +410,9 @@
       "name": "mac01",
       "status": "verified",
       "subject": "Mario in mac_01 (area 1 map 2, entry 0), in control, at scene frames 200 and 204 (the shot writer takes one shot every 4 frames).",
-      "proves": "MODELOPS R0 baseline: the phase prints the mops counter line for mac_01, and the shot is the reference picture for R1 to R3.",
+      "proves": "Phase prints the opsplit line for mac_01, and the shot is the reference picture. The mops line (MODELOPS R0) was removed in DLX2.",
       "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase",
-      "until": "mops f",
+      "until": "opsplit f",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: mac_01 entry 0",
@@ -426,10 +426,6 @@
         {
           "name": "opsplit",
           "regex": "opsplit f\\d+ ops"
-        },
-        {
-          "name": "mops",
-          "regex": "mops f\\d+ bind "
         },
         {
           "name": "shot",

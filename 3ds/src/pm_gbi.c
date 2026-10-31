@@ -317,11 +317,6 @@ static s16 vert_sx[64], vert_sy[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
 static unsigned char vert_cb[64]; /* DIP1: clip bits of vert_p, made once at G_VTX */
 static float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
-/* PO3a (switch po3a): counters for the go or no-go of PO3b. Matrix id = FNV-1a of the 16 bits of `combined` at each G_VTX. One log line per drawn frame. No rendering change. */
-static int po3a_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("po3a"); return v; }
-static unsigned vert_mid[64], mid_list[256], mid_n;
-static unsigned p_cmd, p_mixed, p_vload, p_vcmd, p_lit, p_tgen, p_scr, p_drawn, p_primz, p_env, p_plan, p_a255, p_fog, p_boost, p_plain, p_plain2;
-static int p_cur_mixed;
 /* PO3b (switch gpuvtx, default off): plain triangles are drawn from the raw Vtx ring by the GPU transform. The CPU path keeps its checks (reject, cull, near clip) from the
  * per vertex transform of PO2, so the decisions are the same. Per slot: ring index, matrix table index, texture scale (s and t) at the load. */
 #define GV_NONE 0xffffu
@@ -1434,7 +1429,7 @@ static int gv_state_why(int* ct, int* both) {
     if ((geom & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
     if (fogmix_on && (geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
     if (img_role(0) == ROLE_DEPTH) return GVR_ZMARK;
-    if (dd_on() || xt_on() || rmlog_on() || po3a_on()) return GVR_DBG;
+    if (dd_on() || xt_on() || rmlog_on()) return GVR_DBG;
     return -1;
 }
 
@@ -1532,122 +1527,11 @@ static int gv_tri(const int* idx) {
     return 0;
 }
 
-/* DLC0 (switch dlsrc): where the work of a frame comes from. Class of an address: 0 main list, 1 map shape buffer, 2 TextureHeap, 3 model lists in .data (render modes, combine modes), 4 entity heap, 5 general heap, 6 sprite heap, 7 other.
- * Classes 1 to 3 are static. Counters per class: ops (geometry, flow, state), triangles (by list class and by vertex class), vertex loads, distinct G_DL targets and the share of static targets whose list and vertices did not change in 30 frames.
- * One line `dlsrc` every 300 drawn frames. No cost without the switch: one load and one branch per site. */
 extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
-extern Gfx SolidCombineModes[][5], AlphaTestCombineModes[][5], Gfx_RM1_SURFACE_OPA[], Gfx_RM3_CLOUD_NO_ZB[], Gfx_RM3_SURFACE_XLU_NO_ZB[], Gfx_RM3_CLOUD[];
-#define DLS_N 8
-static PM_HOTD int dls_on;
-static unsigned dls_pc; /* class of the list that runs now */
-static unsigned dls_ops[DLS_N][3], dls_tri[DLS_N], dls_triv[DLS_N], dls_vtx[DLS_N], dls_dl, dls_stab_ok, dls_stab_chg, dls_frames, dls_fno;
-static unsigned char dls_vcls[64];
-static u32 dls_main_lo, dls_main_hi, dls_rd_lo, dls_rd_hi;
-static u32 dls_set_a[512], dls_set_s[512], dls_stamp = 1;
-static struct { u32 a, h, f; } dls_tab[1024];
-static __attribute__((cold, noinline)) unsigned dls_class(u32 p) {
-    if (p >= dls_main_lo && p < dls_main_hi) return 0;
-    if (p - (u32)gMapShapeData < 0x40000u) return 1;
-    if (p - (u32)TextureHeap < 0x68000u) return 2;
-    if (p >= dls_rd_lo && p < dls_rd_hi) return 3;
-    if (p - (u32)pm_world_entity_heap < 0x18000u) return 4;
-    if (p - (u32)heap_generalHead < 0x180000u) return 5;
-    if (p - (u32)heap_spriteHead < 0x100000u) return 6;
-    return 7;
-}
-static __attribute__((cold, noinline)) unsigned dls_kind(unsigned op) {
-    switch (op) {
-    case G_VTX: case G_TRI1: case G_TRI2: case G_MTX: case G_POPMTX: case G_GEOMETRYMODE: case G_MODIFYVTX: return 0;
-    case G_DL: case G_ENDDL: return 1;
-    default: return 2;
-    }
-}
-/* hash of a list (words up to G_ENDDL) and of the Vtx bytes of its G_VTX ops */
-static u32 dls_hash(const Gfx* l) {
-    u32 h = 2166136261u;
-    for (unsigned i = 0; i < 4096; i++) {
-        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
-        h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
-        unsigned op = w0 >> 24;
-        if (op == G_VTX) {
-            unsigned n = (w0 >> 12) & 0xff;
-            const unsigned char* v = (const unsigned char*)ptr_of(w1);
-            if (v && is_host((u32)v) && n <= 64) for (unsigned k = 0; k < n * 16; k++) h = (h ^ v[k]) * 16777619u;
-        }
-        if (op == G_ENDDL) break;
-    }
-    return h;
-}
-static __attribute__((cold, noinline)) void dls_target(const Gfx* t) { /* a G_DL target: distinct count and the stable test of a static list */
-    u32 a = (u32)t;
-    unsigned k = (a >> 3) * 2654435761u >> 23 & 511;
-    for (unsigned n = 0; n < 512; n++, k = (k + 1) & 511) {
-        if (dls_set_s[k] == dls_stamp && dls_set_a[k] == a) return;
-        if (dls_set_s[k] != dls_stamp) break;
-    }
-    dls_set_a[k] = a; dls_set_s[k] = dls_stamp; dls_dl++;
-    unsigned c = dls_class(a);
-    if (c < 1 || c > 3 || !is_host(a)) return;
-    u32 h = dls_hash(t);
-    unsigned j = (a >> 3) * 2654435761u >> 22 & 1023;
-    for (unsigned n = 0; n < 1024; n++, j = (j + 1) & 1023) if (!dls_tab[j].a || dls_tab[j].a == a) break;
-    if (dls_tab[j].a != a) { dls_tab[j].a = a; dls_tab[j].h = h; dls_tab[j].f = dls_fno; return; }
-    if (dls_fno - dls_tab[j].f >= 30) { if (dls_tab[j].h == h) dls_stab_ok++; else dls_stab_chg++; dls_tab[j].h = h; dls_tab[j].f = dls_frames; }
-}
-static __attribute__((cold, noinline)) void dls_init_ranges(void) {
-    u32 lo = (u32)SolidCombineModes, hi = (u32)Gfx_RM3_CLOUD_NO_ZB;
-    u32 c[] = { (u32)AlphaTestCombineModes, (u32)Gfx_RM1_SURFACE_OPA, (u32)Gfx_RM3_SURFACE_XLU_NO_ZB, (u32)Gfx_RM3_CLOUD };
-    for (unsigned i = 0; i < 4; i++) { if (c[i] < lo) lo = c[i]; if (c[i] > hi) hi = c[i]; }
-    dls_rd_lo = lo; dls_rd_hi = hi + 0x200;
-}
-static void dls_report(void) {
-    int m = 0, a = 0, mp = 0;
-    pm_ph_scene_get(&m, &a, &mp);
-    char b[250];
-    int n = snprintf(b, sizeof b, "dlsrc %d %d:%d n %u ops", m, a, mp, dls_frames);
-#define DLS_ROW(arr) for (unsigned i = 0; i < DLS_N; i++) n += snprintf(b + n, sizeof b - n, " %u", arr[i]);
-    for (unsigned k = 0; k < 3; k++) { n += snprintf(b + n, sizeof b - n, " |"); for (unsigned i = 0; i < DLS_N; i++) n += snprintf(b + n, sizeof b - n, " %u", dls_ops[i][k]); }
-    pm_log_hw("%s", b);
-    n = snprintf(b, sizeof b, "dlsrc2 %d %d:%d n %u tri", m, a, mp, dls_frames);
-    DLS_ROW(dls_tri);
-    n += snprintf(b + n, sizeof b - n, " | trivs"); DLS_ROW(dls_triv);
-    n += snprintf(b + n, sizeof b - n, " | vtx"); DLS_ROW(dls_vtx);
-    snprintf(b + n, sizeof b - n, " | dl %u stable %u/%u", dls_dl, dls_stab_ok, dls_stab_ok + dls_stab_chg);
-    pm_log_hw("%s", b);
-    memset(dls_ops, 0, sizeof dls_ops); memset(dls_tri, 0, sizeof dls_tri); memset(dls_triv, 0, sizeof dls_triv); memset(dls_vtx, 0, sizeof dls_vtx);
-    dls_dl = dls_stab_ok = dls_stab_chg = 0; dls_frames = 0;
-}
-
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
 static PM_HOTD int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 static void draw_tri(unsigned w);
 #include "pm_dlc.inc.c"
-static __attribute__((cold, noinline)) void tri_po3a_1(int i0, int i1, int i2) {
-    p_cmd++;
-    p_cur_mixed = vert_mid[i0] != vert_mid[i1] || vert_mid[i0] != vert_mid[i2];
-    p_mixed += (unsigned)p_cur_mixed;
-    if (geom & G_LIGHTING) p_lit++;
-    if (geom & G_TEXTURE_GEN) p_tgen++;
-    if (vert_scr[i0] | vert_scr[i1] | vert_scr[i2]) p_scr++;
-}
-
-static __attribute__((cold, noinline)) void tri_po3a_2(const int* idx) {
-    int env = comb_mode5 && !plan_active;
-    int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
-    int a255 = !plan && !comb_alpha_shade && !(plan_active && cur_plan.uses_sha);
-    int fog = fogmix_on && (geom & G_FOG);
-    int boost = dual_on && tst1.comb2_a == G_CCMUX_SHADE && tst1.comb2_b == G_CCMUX_ENVIRONMENT && tst1.comb2_c == G_CCMUX_COMBINED && tst1.comb2_d == G_CCMUX_COMBINED;
-    int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL));
-    int scr = vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]];
-    int cm = p_cur_mixed;
-    int base = !cm && !(geom & G_LIGHTING) && !(geom & G_TEXTURE_GEN) && !scr && !primz && !env && !plan && !fog && !boost;
-    if (po3a_on()) {
-        p_drawn++; p_env += env; p_plan += plan; p_a255 += a255; p_fog += fog; p_boost += boost; p_primz += primz;
-        p_plain2 += base;          /* plain except alpha 255 (cheap override) */
-        p_plain += base && !a255;  /* plain: one matrix, unlit, no override at all */
-    }
-}
-
 static __attribute__((cold, noinline)) void tri_dd_log(const ClipV* poly, int n) {
     int i;
     if (!dd.ntri) {
@@ -1785,7 +1669,6 @@ static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
         unpack8(envc, en);
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
-    if (po3a_on()) tri_po3a_2(idx);
     if (dd_skip()) return;
     sync_render();
     if (dd_on()) tri_dd_log(poly, n);
@@ -1846,7 +1729,6 @@ static void draw_tri(unsigned w) {
     GP_START();
     gp_ntri++;
     n_cmd++;
-    if (dls_on) { dls_tri[dls_pc]++; dls_triv[(i0 >= 0 && i0 < 64) ? dls_vcls[i0] : 7]++; }
     tri_since_vtx = 1;
     if (i0 < 0 || i1 < 0 || i2 < 0 || i0 > 63 || i1 > 63 || i2 > 63) {
         n_drop++;
@@ -1861,7 +1743,6 @@ static void draw_tri(unsigned w) {
     idx[1] = i1;
     idx[2] = i2;
     suntile_tri("draw", idx);
-    if (po3a_on()) tri_po3a_1(i0, i1, i2);
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
@@ -1992,71 +1873,6 @@ static __attribute__((cold, noinline)) void os_op_hook(const Gfx* at, int sp, un
     else os_op_n[op]++;
     pk_ops[pmx_cur]++;
     if (os_nest == 1 && ((n_ops + os_off) & 63u) == 0) { os_open = 1; os_op = op; os_pk = pmx_cur; os_fl0 = os_flsum(); os_t0 = pm_ticks(); }
-}
-/* R0: counts the state ops that R1 to R3 would skip. Cold, and called only when the phase is on. It counts and never skips. */
-static struct { unsigned bind, bind_w1, cc, cc_same, tex_same, geo_same, mtx, mtx_same, lt, lt_same, lt_skip; } mops_c;
-static u32 mops_last_bind;
-static __attribute__((cold, noinline)) void mops_count(unsigned op, u32 w0, u32 w1) {
-    switch (op) {
-    case G_PM_TEX:
-        mops_c.bind++;
-        if (w1 == mops_last_bind) mops_c.bind_w1++;
-        mops_last_bind = w1;
-        break;
-    case G_SETCOMBINE:
-        mops_c.cc++;
-        if (comb_w0 == w0 && comb_w1 == w1 && comb_set && sc_ok) mops_c.cc_same++;
-        break;
-    case G_TEXTURE:
-        if (((w0 & 0xff) != 0) == (tex_on != 0) && (w1 >> 16) == tex_ss && (w1 & 0xffffu) == tex_ts && sc_ok) mops_c.tex_same++;
-        break;
-    case G_GEOMETRYMODE:
-        if (((geom & (w0 & 0xffffffu)) | w1) == geom) mops_c.geo_same++;
-        break;
-    case G_MTX: {
-        mops_c.mtx++;
-        if (!is_host((u32)(uintptr_t)ptr_of(w1))) break;
-        unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
-        Mtx* src = (Mtx*)ptr_of(w1);
-        float in[4][4], nt[4][4];
-        const float (*lm)[4] = pm_interp_repl ? pm_interp_find(src) : 0;
-        if (lm) memcpy(in, lm, sizeof(in));
-        else unpack(src, in);
-        int is_proj = (flags & G_MTX_PROJECTION) != 0;
-        const float (*cur)[4] = is_proj ? proj : mv[mv_sp];
-        if (flags & G_MTX_LOAD) memcpy(nt, in, sizeof(nt));
-        else mul(nt, in, cur);
-        if (memcmp(nt, cur, sizeof(nt)) == 0) mops_c.mtx_same++;
-        break;
-    }
-    case G_POPMTX: {
-        mops_c.mtx++;
-        unsigned n = w1 / 64u;
-        if (n == 0) n = 1;
-        if (n > (unsigned)mv_sp) n = (unsigned)mv_sp;
-        if (n == 0 || memcmp(mv[mv_sp - n], mv[mv_sp], sizeof(mv[0])) == 0) mops_c.mtx_same++;
-        break;
-    }
-    case G_MOVEMEM:
-        if ((w0 & 0xff) == G_MV_LIGHT) {
-            mops_c.lt++;
-            int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
-            const u8* l = (const u8*)ptr_of(w1);
-            if (l && slot >= 0 && slot < 9 && lt[slot].col[0] == l[0] && lt[slot].col[1] == l[1] && lt[slot].col[2] == l[2] &&
-                lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10]) {
-                mops_c.lt_same++;
-                if (!lit_pending) mops_c.lt_skip++; /* R5B: what g2_same skips */
-            }
-        }
-        break;
-    default: break;
-    }
-}
-static __attribute__((cold, noinline)) void mops_report(void) {
-    pm_log_hw("mops f%d bind %u bind_w1 %u cc %u cc_same %u tex_same %u geo_same %u mtx %u mtx_same %u lt %u lt_same %u lt_skip %u", rm_frame,
-        mops_c.bind / 300u, mops_c.bind_w1 / 300u, mops_c.cc / 300u, mops_c.cc_same / 300u, mops_c.tex_same / 300u, mops_c.geo_same / 300u,
-        mops_c.mtx / 300u, mops_c.mtx_same / 300u, mops_c.lt / 300u, mops_c.lt_same / 300u, mops_c.lt_skip / 300u);
-    memset(&mops_c, 0, sizeof(mops_c));
 }
 
 /* MDL1: model census, phase on only, counts only. appendGfx_model marks the model ID at its entry (gMainGfxPos). The cursor
@@ -2363,9 +2179,8 @@ void pm_gbi_end_frame(void) {
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0, n_splits, pm_gpu_off_count(), n_grabs);
     PH_ADD(C_CMD, n_ops);
     { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); } }
-    if (dls_on && n_ops) { dls_stamp++; dls_fno++; if (++dls_frames >= 300) dls_report(); }
     if (pm_ph_on || pm_dcs_on) pm_gpu_dcsum_frame(rm_frame); /* DS0: dcsum runs without phase; it must clear pm_dc_c and pm_dc_us every frame */
-    if (pm_ph_on && !pm_pf_arm) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mops_report(); mdc_report(); sp0_report(); os_fr = 0; } pmk_n = 0; }
+    if (pm_ph_on && !pm_pf_arm) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mdc_report(); sp0_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
     if (gp3_t0_pending) { gp3_t0_dead++; gp3_t0_pending = 0; }
@@ -2387,18 +2202,6 @@ void pm_gbi_end_frame(void) {
             snprintf(prev, sizeof prev, "%s", line);
         }
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
-    }
-    if (po3a_on()) { /* one line per 10 frames (a line per frame overflows the log queue in a fast run). Sums over the window, ids: sum and max of the per frame distinct matrix ids. */
-        static unsigned w_n, w_ids, w_idmax, w_cmd, w_drawn, w_mixed, w_vcmd, w_vload, w_lit, w_tgen, w_scr, w_primz, w_env, w_plan, w_a255, w_fog, w_boost, w_plain, w_plain2;
-        extern unsigned pm_frame_count(void);
-        if (p_cmd) {
-            w_n++; w_ids += mid_n; if (mid_n > w_idmax) w_idmax = mid_n;
-            w_cmd += p_cmd; w_drawn += p_drawn; w_mixed += p_mixed; w_vcmd += p_vcmd; w_vload += p_vload; w_lit += p_lit; w_tgen += p_tgen; w_scr += p_scr;
-            w_primz += p_primz; w_env += p_env; w_plan += p_plan; w_a255 += p_a255; w_fog += p_fog; w_boost += p_boost; w_plain += p_plain; w_plain2 += p_plain2;
-        }
-        if (pm_frame_count() % 10 == 9 && w_n) {
-            w_n = w_ids = w_idmax = w_cmd = w_drawn = w_mixed = w_vcmd = w_vload = w_lit = w_tgen = w_scr = w_primz = w_env = w_plan = w_a255 = w_fog = w_boost = w_plain = w_plain2 = 0;
-        }
     }
     if (gp_on() && ++gp_frames == 300) { /* PERF-GBI: per frame average in 0.1 ms units (ticks / 26811), tick reads inflate the sections */
         static const char* nm[8] = { "validity,off_screen,box_fold,comb_audit", "ensure_tile", "dual_bind", "reject,cull", "sync_render", "gpu_emit", "old path", "G_VTX" };
@@ -2423,8 +2226,6 @@ void pm_gbi_end_frame(void) {
     gm_n = 0; gm_last = GV_NONE; pm_gpu_gv_reset();
     memset(vert_ring, 0xff, sizeof vert_ring);
     memset(vert_gvf, 3, sizeof vert_gvf);
-    p_cmd = p_mixed = p_vload = p_vcmd = p_lit = p_tgen = p_scr = p_drawn = p_primz = p_env = p_plan = p_a255 = p_fog = p_boost = p_plain = p_plain2 = 0;
-    mid_n = 0;
     n_cmd = n_in = n_cut = n_drop = n_out = n_keep = 0;
     n_splits = n_grabs = 0;
     have_sample = 0;
@@ -2899,14 +2700,6 @@ static __attribute__((cold, noinline)) void gbi_cold_bad_vtx(u32 w1, u32 w0, u32
 static __attribute__((cold, noinline)) void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
     static unsigned bad; if (bad++ < 6) pm_log_w("gbi: G_MTX w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
         pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
-}
-static __attribute__((cold, noinline)) unsigned gbi_cold_po3a_hash(void) {
-    unsigned h = 2166136261u;
-    for (int q = 0; q < 16; q++) { unsigned u; memcpy(&u, &((const float*)combined)[q], 4); h = (h ^ u) * 16777619u; }
-    unsigned k;
-    for (k = 0; k < mid_n; k++) if (mid_list[k] == h) break;
-    if (k == mid_n && mid_n < 256) mid_list[mid_n++] = h;
-    return h;
 }
 static __attribute__((cold, noinline)) void gbi_cold_dd_load(const Vtx* src) {
     dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.vc = __builtin_bswap32(*(const u32*)((const u8*)src + 12)); dd.gm = geom; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1;
@@ -3533,7 +3326,7 @@ static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
  * same skips. Returns the first word it does not run (g + n when all ran). The walker runs that word and the rest as ops.
  * A G_DL that is not a dlc hit returns the word after it and sets *nx to the list (the walker pushes it). */
 static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx) {
-    if (dd_on() || dls_on || gp_on() || pm_ph_fine) return g;
+    if (dd_on() || gp_on() || pm_ph_fine) return g;
     for (unsigned k = 0; k < n; k++) {
         Gfx* q = g + k;
         u32 w0 = q->words.w0;
@@ -3592,13 +3385,7 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx)
 
 static void gbi_run_body(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
-    dls_on = PMDL("dlsrc");
     dlc_on = dlc_enabled();
-    if (dls_on && !dlc_depth) {
-        if (!dls_rd_lo) dls_init_ranges();
-        dls_main_lo = (u32)list; dls_main_hi = (u32)list + nbytes;
-        dls_pc = dls_class((u32)list);
-    }
     Gfx* stack[12];
     int sp = 0;
     Gfx* pc = (Gfx*)list;
@@ -3631,7 +3418,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         pc++;
         if (!((u32)pc & 31u)) { __builtin_prefetch(pc + 4); __builtin_prefetch(pc + 8); }
         n_ops++;
-        if (dls_on) dls_ops[dls_pc][dls_kind(op)]++;
         if (gp_on()) {
             unsigned t = pm_ticks();
             if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += t - gp_opt_last; gp_opn[gp_prev_op]++; }
@@ -3647,7 +3433,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             gv_epoch++; /* GV1b */
         }
         if (pm_ph_on) os_op_hook(pc - 1, sp, op); /* W1: after the prologue, so a sample is the handler only */
-        if (pm_ph_on) mops_count(op, w0, w1); /* R0: counts only */
         if (pm_ph_on) mdc_op(pc - 1, sp, op, w0, w1); /* MDL1: model census, counts only */
         switch (op) {
         case G_ENDDL:
@@ -3661,7 +3446,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                 return;
             }
             pc = stack[--sp];
-            if (dls_on) dls_pc = dls_class((u32)pc);
             break;
         case G_PM_MODEL: { /* MR1: a model group. Its n words run in mg_run; a G_DL that is not a dlc hit pushes like G_DL. */
             const Gfx* nx = NULL;
@@ -3695,7 +3479,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             }
             if (next) { __builtin_prefetch(next); __builtin_prefetch(next + 4); } /* H4: the G_DL target */
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
-            if (dls_on) dls_target(next);
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
                 if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
@@ -3707,7 +3490,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                 stack[sp++] = pc;
                 pc = next;
             }
-            if (dls_on) dls_pc = dls_class((u32)pc);
             break;
         }
         case G_VTX: {
@@ -3726,25 +3508,19 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                 if (v0 >= 64) n = 0; /* S30: a vertex load that starts past the buffer (garbage list) copied 4 GB */
                 else if (v0 + n > 64) n = 64 - v0;
                 PH_ADD(C_VTXLOAD, n);
-                if (dls_on) { unsigned dc = dls_class((u32)src); dls_vtx[dc] += n; memset(&dls_vcls[v0], (int)dc, n); }
                 if (dd_on()) memcpy(&verts[v0], src, n * sizeof(Vtx)); /* PG4: verts is read only by the drawlog statistics */
                 /* A load at slot 0 starts a new mesh. Later loads in the same
                  * list append above it and keep the earlier slots. */
                 if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
                 tri_since_vtx = 0;
                 if (v0 == 0 && dd_on()) gbi_cold_dd_load(src);
-                unsigned po3a_mid = 0;
-                if (po3a_on()) {
-                    po3a_mid = gbi_cold_po3a_hash();
-                    p_vload += n; p_vcmd++;
-                }
                 int gring0 = -1;
                 unsigned gmi = GV_NONE;
                 int gv = 0;
                 const int lit_ld = (geom & G_LIGHTING) != 0;
                 if (n) { /* GV1: a load goes to the ring as it is (GV5: also a lit load, the GPU lights it). A full ring takes the old code. */
                     if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
-                    else if (!dd_on() && !xt_on() && !rmlog_on() && !po3a_on()) {
+                    else if (!dd_on() && !xt_on() && !rmlog_on()) {
                         gmi = gv_matrix_id(lit_ld);
                         if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
                         if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
@@ -3770,7 +3546,6 @@ static void gbi_run_body(void* list, unsigned nbytes) {
                     vert_ring[v0 + i] = gring0 >= 0 ? (unsigned short)(gring0 + (int)i) : GV_NONE;
                     vert_gmi[v0 + i] = (unsigned short)gmi;
                     vert_tss[v0 + i] = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu);
-                    if (po3a_on()) vert_mid[v0 + i] = po3a_mid;
                     vert_live[v0 + i] = 1;
                     vert_scr[v0 + i] = 0;
                     vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((geom & G_TEXTURE_GEN) ? 2 : 0) : 0);

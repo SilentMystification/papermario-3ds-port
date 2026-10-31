@@ -1,5 +1,5 @@
 /* DLC1: compile and replay of the map shape display lists (docs/plans/DLC.md, kind G). Included by pm_gbi.c after draw_tri, so it reads the statics of the interpreter.
- * Switch `dlc` (default off, `nodlc` turns it off), `dlccheck` (hash, exit state and the reject proof of every skipped group, counters in the `dlc` line).
+ * `dlc` is always on (dlc_enabled turns it off under the dd, xt and rmlog tools), `dlccheck` (hash, exit state and the reject proof of every skipped group, counters in the `dlc` line).
  * A shape list is cut into groups: a group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices that it loads itself. The compiler keeps the box of the
  * object coordinates of each group. At replay a group whose box lies outside one clip plane is skipped: the interpreter rejects every triangle of it as well. A group in view runs
  * the same code as the interpreter (G_VTX copy to the GV1 ring, draw_tri) without the CPU transform of the vertices. A group that is near the camera plane, lit, or does not
@@ -21,8 +21,24 @@ static unsigned sp0_grp, sp0_skip; /* SPLIT0C: groups and skips per phase window
 static unsigned dlc_dirty; /* the last replay left vert_live cleared although the interpreter would have left slots live */
 static const Gfx dlc_end[1] = { { { (u32)G_ENDDL << 24, 0 } } };
 
+/* hash of a list (words up to G_ENDDL) and of the Vtx bytes of its G_VTX ops */
+static u32 dlc_hash(const Gfx* l) {
+    u32 h = 2166136261u;
+    for (unsigned i = 0; i < 4096; i++) {
+        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+        h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
+        unsigned op = w0 >> 24;
+        if (op == G_VTX) {
+            unsigned n = (w0 >> 12) & 0xff;
+            const unsigned char* v = (const unsigned char*)ptr_of(w1);
+            if (v && is_host((u32)v) && n <= 64) for (unsigned k = 0; k < n * 16; k++) h = (h ^ v[k]) * 16777619u;
+        }
+        if (op == G_ENDDL) break;
+    }
+    return h;
+}
 static int dlc_enabled(void) {
-    return !dd_on() && !xt_on() && !rmlog_on() && !po3a_on();
+    return !dd_on() && !xt_on() && !rmlog_on();
 }
 static int dlcchk_on(void) { return PMDL("dlccheck"); }
 static void dlc_free(DlcEnt* e) {
@@ -398,7 +414,6 @@ static __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* 
                 vert_ring[s] = (unsigned short)(r + (int)i);
                 vert_gmi[s] = (unsigned short)gmi;
                 vert_tss[s] = tss;
-                vert_mid[s] = 0;
                 vert_live[s] = 1;
                 vert_scr[s] = 0;
                 vert_gvf[s] = 0;
@@ -444,13 +459,13 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
         int r = dlc_compile(e, l);
-        e->hash = dls_hash(l);
+        e->hash = dlc_hash(l);
         dlc_c.compile++;
         if (r) { e->refused = (u8)r; dlc_c.refused[r]++; }
         else dlc_static_build(e, l);
     } else { dlc_c.hit++; }
     if (e->refused) return 0;
-    if (chk && dls_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
+    if (chk && dlc_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
     const float(*m)[4] = combined;
     u32 entry = geom;
     unsigned gmi = GV_NONE;
