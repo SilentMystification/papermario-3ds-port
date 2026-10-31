@@ -56,3 +56,17 @@ The continuation size is 16 bytes only if GPUCMD_Split appends exactly the FINAL
 - INFERRED: GSPGPU_ReadHWRegs base 0x1EB00000 (libctru LCD regs use 0x400478), PICA regs at 0x1EF00000. Not confirmed. A wrong base gives `fail` or `none`, not a false `ok`.
 - Visible mark: NOT built. Register writes alone change no pixel. A mark needs a draw in the sub-buffer (attribute buffer, vertex data, TEV and texture state). Open item.
 - Build: gen_map_restore.py, build.sh exit 0, no pm_gpu.c warning.
+
+## JT3: repeat once per second (replaces the one-shot run)
+
+- Trigger: in pm_gpu_end, state 0 and (no jump yet or pm_loop_tick - jt_last >= SYSCLOCK_ARM11, one second). pm_loop_tick is the `now` the main loop already reads once per pass (pm_main.c, set after svcGetSystemTick at the top of the loop). No new svc call.
+- Each trigger queues one jump in the frame command list (jt_queue). The next frame end reads the result (jt_result), then state returns to 0.
+- Result lines, warning level, frame = pm_frame_count() at the queue:
+  - `jump f<frame> ok value <hex>` (equal to JT_MAGIC)
+  - `jump f<frame> fail value <hex>`
+  - `jump f<frame> none` (GSP readback call failed; the result code is in a debug line)
+- Layout line stays debug level.
+- Switch off: no change (all code gated by jt_on).
+- Interval: 1 s (SYSCLOCK_ARM11 ticks).
+- Only the main loop's drawn step reaches jt_queue. The nusys path (pm_nusys.c) calls pm_gpu_end with the last pm_loop_tick value.
+- Build: gen_map_restore.py, build.sh exit 0, no warning on pm_gpu.c or pm_main.c. Not run on Azahar.

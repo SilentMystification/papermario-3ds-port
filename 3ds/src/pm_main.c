@@ -153,6 +153,7 @@ void pm_crash_install(void* stack, unsigned size) {
     threadOnException(crash_handler, (u8*)stack + size, WRITE_DATA_TO_HANDLER_STACK);
 }
 
+u64 pm_loop_tick; /* JT: the tick the main loop read in this pass (pm_gpu_end reads it, no svc call of its own) */
 unsigned pm_svc_n; /* EC2: svc tick reads, counted for the empty close count */
 unsigned pm_ticks(void) { pm_svc_n++; return (unsigned)svcGetSystemTick(); }
 /* milliseconds since the first call (64 bit tick, the 32 bit pm_ticks wraps every 16 s) */
@@ -364,6 +365,7 @@ void pm_frame_loop(void) {
         pm_wd_armed = 1;
         PM_WD_PHASE(1);
         u64 now = svcGetSystemTick();
+        pm_loop_tick = now;
         /* The retrace builds a display list only every other call. Presenting
          * the idle call shows the other framebuffer, which was never drawn. */
         int draw = D_80073E0A != 0 || !ever;

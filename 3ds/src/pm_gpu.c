@@ -1130,8 +1130,8 @@ static void init_f_tables(void) {
     for (int i = 0; i < 256; i++) { pm_f255[i] = (float)i / 255.f; pm_f127[i] = (float)(signed char)i / 127.f; }
 }
 
-/* JT1: DEBUG TOOL, not a finished path. Switch jumptest (read once in pm_gpu_init). One test per run: at the end of the first
- * frame the list gets a jump into a 16-byte sub-buffer in linear memory and back. Layout is INFERRED from the PICA documentation
+/* JT1: DEBUG TOOL, not a finished path. Switch jumptest (read once in pm_gpu_init). A jump is queued at the end of a frame when
+ * one second (SYSCLOCK_ARM11 ticks, pm_loop_tick from the main loop) has passed since the last jump. Each jump is a list jump into a 16-byte sub-buffer in linear memory and back. Layout is INFERRED from the PICA documentation
  * (docs/handoff/inv_citro3d_decode.md section 3), not confirmed on hardware:
  *   frame list tail: SIZE0=2 ADDR0=pa(continuation)>>3 SIZE1=2 ADDR1=pa(sub)>>3 JUMP1=1 [pad: CLIP=0 if needed]
  *   sub (16 B):      CLIP_DATA3=JT_MAGIC, JUMP0=1 (channel 0 returns to the continuation)
@@ -1141,13 +1141,18 @@ static void init_f_tables(void) {
 #define JT_MAGIC 0x4A54534Bu
 #define JT_HW_BASE 0x400000u
 static int jt_on;
-static int jt_state; /* 0 not run, 1 list queued (result read at the next frame end), 2 done */
+static int jt_state; /* 0 idle, 1 list queued (result read at the next frame end), 2 stopped (alloc failed) */
 static u32* jt_sub;
 static u32 jt_cont_pa, jt_sub_pa, jt_cont_word;
+static u64 jt_last; /* tick of the last queued jump, 0 before the first */
+static unsigned jt_frame; /* frame of the last queued jump, for the result line */
+extern u64 pm_loop_tick;
 static void jt_queue(void) {
     u32* buf; u32 size, off, pad;
     if (!jt_sub) jt_sub = (u32*)linearAlloc(16 * 2);
     if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
+    jt_last = pm_loop_tick;
+    jt_frame = pm_frame_count();
     jt_sub[0] = JT_MAGIC;                           /* CLIP_DATA3 param: the value the readback compares */
     jt_sub[1] = 0xF0000u | GPUREG_FRAGOP_CLIP_DATA3; /* header: reg, mask 0xF, single */
     jt_sub[2] = 1;                                  /* JUMP0 param: any value */
@@ -1173,12 +1178,12 @@ static void jt_result(void) {
     u32 v = 0;
     gspWaitForP3D();
     Result r = GSPGPU_ReadHWRegs(JT_HW_BASE + GPUREG_FRAGOP_CLIP_DATA3 * 4, &v, 4);
-    if (r) pm_log("jump test none (readback result %08lx)", (unsigned long)r);
-    else if (v == JT_MAGIC) pm_log("jump test ok value %08x", (unsigned)v);
-    else pm_log("jump test fail value %08x", (unsigned)v);
-    pm_log_d("jump test layout: size0=2 addr0=%08x size1=2 addr1=%08x jump1=1 cont_word=%u",
+    if (r) { pm_log_w("jump f%u none", jt_frame); pm_log_d("jump f%u readback result %08lx", jt_frame, (unsigned long)r); }
+    else if (v == JT_MAGIC) pm_log_w("jump f%u ok value %08x", jt_frame, (unsigned)v);
+    else pm_log_w("jump f%u fail value %08x", jt_frame, (unsigned)v);
+    pm_log_d("jump f%u layout: size0=2 addr0=%08x size1=2 addr1=%08x jump1=1 cont_word=%u", jt_frame,
              (unsigned)(jt_cont_pa << 3), (unsigned)(jt_sub_pa << 3), (unsigned)jt_cont_word);
-    jt_state = 2;
+    jt_state = 0;
 }
 
 void pm_gpu_init(void) {
@@ -1834,9 +1839,9 @@ void pm_gpu_end(void) {
     pm_gbi_end_frame();
     /* Without this flag citro3d flushes the entire linear heap. That heap is
      * the 20MB port pool, so every frame was writing it back through the cache. */
-    if (jt_on) { /* JT1: debug tool, see jt_queue */
-        if (jt_state == 0) jt_queue();
-        else if (jt_state == 1) jt_result();
+    if (jt_on) { /* JT1: debug tool, see jt_queue. One action per frame: read the last jump, or queue the next one once a second has passed */
+        if (jt_state == 1) jt_result();
+        else if (jt_state == 0 && (!jt_last || pm_loop_tick - jt_last >= SYSCLOCK_ARM11)) jt_queue();
     }
     FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
