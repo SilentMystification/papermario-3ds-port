@@ -2557,9 +2557,11 @@ static const u8 g1_skip[256] = { [G_NOOP] = 1, [G_SPNOOP] = 1, [G_RDPPIPESYNC] =
 /* C1: texture bind records. tb_list[idx] holds the handle's Gfx list only when pm_texbind_set has checked it. A list
  * holds only the ops make_texture_gfx emits (and g1_skip ops). A refused list stores NULL. */
 static const Gfx* tb_list[128];
+u32 tb_gen[128]; /* SR1: per handle, bumped at each pm_texbind_set */
 void pm_texbind_set(int idx, const Gfx* l) {
     tex_gen++; /* TBREP */
     tb_list[idx & 0x7f] = NULL;
+    tb_gen[idx & 0x7f]++;
     if (!l) return;
     for (int n = 0; n < 64; n++) {
         unsigned op = l[n].words.w0 >> 24;

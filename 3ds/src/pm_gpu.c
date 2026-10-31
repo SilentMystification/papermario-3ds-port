@@ -95,6 +95,7 @@ static C3D_AttrInfo attr_cpu;
 static unsigned char* gring; /* GRING_VTX x 16 bytes, linear */
 static unsigned short* gidx; /* GRING_IDX, linear */
 static unsigned gstat_n; /* DLC2: static vertices in use */
+unsigned gstat_gen; /* SR1: bumped at each static area reset */
 static unsigned gring_n, gidx_n, gi_start, gni; /* ring fill, index fill, first index of the open batch, indices in the open batch */
 static float g_uvso[4], g_vp[4], g_cmul[4], g_cadd[4], g_zmix[2];
 /* PRIMZFIX repro, switch zround (debug only): zmix.y rounded to 2^-16 steps, the float24 z step of the console (diag_primz.md). The shader multiplies this value. */
@@ -1993,7 +1994,7 @@ unsigned pm_fl_gsp_n;
 void pm_fl_dc(const void* p, unsigned n) {
     if (R_FAILED(svcFlushProcessDataCache(CUR_PROCESS_HANDLE, (Handle)(uintptr_t)p, n))) { pm_fl_gsp_n++; GSPGPU_FlushDataCache(p, n); }
 }
-void pm_gpu_gstat_reset(void) { if (gstat_n) { flush(); gstat_n = 0; } }
+void pm_gpu_gstat_reset(void) { if (gstat_n) { flush(); gstat_n = 0; } gstat_gen++; }
 unsigned pm_gpu_gstat_used(void) { return gstat_n; }
 
 /* DLC2: nidx indices of static vertices (all flag 0) drawn with the game matrix tab[gm]. The batch palette must hold gm at entry 0, else a new batch starts.

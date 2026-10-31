@@ -2617,6 +2617,8 @@ void mdl_calculate_model_sizes(void) {
     }
 }
 
+u32 pm_rec_seq;
+
 void mdl_create_model(ModelBlueprint* bp, s32 unused) {
     ModelNode* node = bp->mdlNode;
     ModelNodeProperty* prop;
@@ -2699,6 +2701,8 @@ void mdl_create_model(ModelBlueprint* bp, s32 unused) {
         model->flags |= MODEL_FLAG_IGNORE_MATRIX;
     }
 
+    model->pmSlot = modelIdx + 1;
+    PM_REC_BUMP(model);
     guMtxIdentF(model->userTransformMtx);
     model->finalMtx = nullptr;
     prop = get_model_property(node, MODEL_PROP_KEY_BOUNDING_BOX);
@@ -2839,6 +2843,7 @@ void mdl_update_transform_matrices(void) {
                     guMtxF2L(tempModelMtx, curMtx);
                 }
                 model->flags &= ~MODEL_FLAG_IGNORE_MATRIX;
+                PM_REC_BUMP(model);
 
                 // recalculate the center of the model with transformation applied
                 bb = (ModelBoundingBox*) get_model_property(model->modelNode, MODEL_PROP_KEY_BOUNDING_BOX);
@@ -3170,6 +3175,7 @@ void func_80117D00(Model* model) {
                     newModel.modelNode = modelNode->groupData->childList[i];
                     newModel.texPannerID = mdl->texPannerID;
                     newModel.customGfxIndex = mdl->customGfxIndex;
+                    newModel.pmSlot = 0;
 
                     if (newModel.modelNode->type == SHAPE_TYPE_MODEL) {
                         prop = get_model_property(newModel.modelNode, MODEL_PROP_KEY_RENDER_MODE);
@@ -3806,6 +3812,7 @@ void enable_transform_group(u16 modelID) {
         Model* model = get_model_from_list_index(i);
 
         model->flags |= MODEL_FLAG_TRANSFORM_GROUP_MEMBER;
+        PM_REC_BUMP(model);
 
         if (model->bakedMtx != nullptr) {
             model->flags |= MODEL_FLAG_MATRIX_DIRTY;
@@ -3823,6 +3830,7 @@ void disable_transform_group(u16 modelID) {
         Model* model = get_model_from_list_index(i);
 
         model->flags &= ~MODEL_FLAG_TRANSFORM_GROUP_MEMBER;
+        PM_REC_BUMP(model);
 
         if (model->bakedMtx != nullptr) {
             model->flags |= MODEL_FLAG_MATRIX_DIRTY;
@@ -3950,16 +3958,19 @@ void mdl_group_set_custom_gfx(u16 groupModelID, s32 customGfxIndex, s32 tintType
         for (i = minGroupIndex; i <= maxGroupIndex; i++) {
             Model* model = (*gCurrentModels)[i];
             model->customGfxIndex = (model->customGfxIndex & (maskLow + maskHigh)) + packed;
+            PM_REC_BUMP(model);
         }
     } else {
         for (i = 0; i < minGroupIndex; i++) {
             Model* model = (*gCurrentModels)[i];
             model->customGfxIndex = (model->customGfxIndex & (maskLow + maskHigh)) + packed;
+            PM_REC_BUMP(model);
         }
         for (i = maxGroupIndex + 1; i < MAX_MODELS; i++) {
             Model* model = (*gCurrentModels)[i];
             if (model != nullptr) {
                 model->customGfxIndex = (model->customGfxIndex & (maskLow + maskHigh)) + packed;
+                PM_REC_BUMP(model);
             }
         }
     }
@@ -4023,6 +4034,7 @@ void get_world_fog_color(s32* r, s32* g, s32* b, s32* a) {
 
 void set_tex_panner(Model* model, s32 texPannerID) {
     model->texPannerID = texPannerID;
+    PM_REC_BUMP(model);
 }
 
 void set_main_pan_u(s32 texPannerID, s32 value) {
@@ -4051,6 +4063,7 @@ void set_mdl_custom_gfx_set(Model* model, s32 customGfxIndex, u32 tintType) {
     }
 
     model->customGfxIndex = (customGfxIndex & 0xF) + ((tintType & 0xF) << 4);
+    PM_REC_BUMP(model);
 }
 
 void set_custom_gfx(s32 customGfxIndex, Gfx* pre, Gfx* post) {
@@ -4276,6 +4289,7 @@ void mdl_make_local_vertex_copy(s32 copyIndex, u16 modelID, s32 isMakingCopy) {
             mdl_local_gfx_copy_vertices(baseVtx, numVertices, copy->vtxCopy[i]);
         }
         model->flags |= MODEL_FLAG_HAS_LOCAL_VERTEX_COPY;
+        PM_REC_BUMP(model);
     } else {
         for (i = 0; i < ARRAY_COUNT(copy->gfxCopy); i++) {
             copy->gfxCopy[i] = nullptr;
@@ -5083,6 +5097,7 @@ void parade_wide_setup(s32 which) {
             slot->model = model;
             set_mdl_custom_gfx_set(model, nextSlot, ENV_TINT_UNCHANGED);
             model->flags |= MODEL_FLAG_USES_CUSTOM_GFX;
+            PM_REC_BUMP(model);
             set_custom_gfx_builders(nextSlot, nullptr, parade_build_copies);
             nextSlot++;
         }

@@ -63,7 +63,7 @@ typedef struct Model {
     /* 0x08 */ ModelNode* modelNode;
     /* 0x0C */ ModelGroupData* groupData;
     /* 0x10 */ Mtx* finalMtx; // the matrix actually used while building the display list
-    /* 0x14 */ char unk_14[4];
+    /* 0x14 */ u32 pmRecVer; // PM_REC_BUMP value (SR1)
     /* 0x18 */ Mtx savedMtx;
     /* 0x58 */ Matrix4f userTransformMtx; // provided for user code to apply an additional multiplicative transformation
     /* 0x98 */ Vec3f center;
@@ -73,8 +73,14 @@ typedef struct Model {
     /* 0xA7 */ u8 matrixFreshness;
     /* 0xA8 */ u8 textureID;
     /* 0xA9 */ s8 textureVariation;
-    /* 0xAA */ char unk_AA[6];
+    /* 0xAA */ u8 pmSlot; // gCurrentModels slot + 1, 0 = no record (SR1)
+    /* 0xAB */ u8 pmPad;
+    /* 0xAC */ u16 pmMtxVer; // SR2 matrix version
+    /* 0xAE */ u8 pmPad2[2];
 } Model; // size = 0xB0
+
+extern u32 pm_rec_seq;
+#define PM_REC_BUMP(m) ((m)->pmRecVer = ++pm_rec_seq)
 
 typedef struct ModelTransformGroup {
     /* 0x00 */ u16 flags;

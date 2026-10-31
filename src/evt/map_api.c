@@ -136,6 +136,7 @@ API_CALLABLE(SetTexPanner) {
 
     set_tex_panner(model, var2);
     model->flags |= MODEL_FLAG_HAS_TEX_PANNER;
+    PM_REC_BUMP(model);
     return ApiStatus_DONE2;
 }
 
@@ -150,6 +151,7 @@ API_CALLABLE(SetCustomGfxEnabled) {
     } else {
         model->flags &= ~MODEL_FLAG_USES_CUSTOM_GFX;
     }
+    PM_REC_BUMP(model);
     return ApiStatus_DONE2;
 }
 
@@ -167,6 +169,7 @@ API_CALLABLE(SetModelCustomGfx) {
     if (customGfxUnit != -1) {
         model->flags |= MODEL_FLAG_USES_CUSTOM_GFX;
     }
+    PM_REC_BUMP(model);
     return ApiStatus_DONE2;
 }
 
@@ -178,6 +181,7 @@ API_CALLABLE(SetModelTexVariant) {
     Model* model = get_model_from_list_index(modelIndex);
 
     model->textureVariation = variation;
+    PM_REC_BUMP(model);
     return ApiStatus_DONE2;
 }
 
@@ -193,6 +197,7 @@ API_CALLABLE(EnableTexPanning) {
     } else {
         model->flags &= ~MODEL_FLAG_HAS_TEX_PANNER;
     }
+    PM_REC_BUMP(model);
     return ApiStatus_DONE2;
 }
 
@@ -767,7 +772,10 @@ API_CALLABLE(SetRenderMode) {
     s32 treeIndex = evt_get_variable(script, *args++);
     s8 renderMode = evt_get_variable(script, *args++);
 
-    get_model_from_list_index(get_model_list_index_from_tree_index(treeIndex))->renderMode = renderMode;
+    Model* model = get_model_from_list_index(get_model_list_index_from_tree_index(treeIndex));
+
+    model->renderMode = renderMode;
+    PM_REC_BUMP(model);
 
     return ApiStatus_DONE2;
 }
