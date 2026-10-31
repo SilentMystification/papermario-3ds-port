@@ -1133,7 +1133,7 @@ static void init_f_tables(void) {
 /* JT1: DEBUG TOOL, not a finished path. Switch jumptest (read once in pm_gpu_init). A jump is queued at the end of a frame when
  * one second (SYSCLOCK_ARM11 ticks, pm_loop_tick from the main loop) has passed since the last jump. Each jump is a list jump into a 16-byte sub-buffer in linear memory and back. Layout is INFERRED from the PICA documentation
  * (docs/handoff/inv_citro3d_decode.md section 3), not confirmed on hardware:
- *   frame list tail: SIZE0=2 ADDR0=pa(continuation)>>3 SIZE1=2 ADDR1=pa(sub)>>3 JUMP1=1 [pad: CLIP=0 if needed]
+ *   frame list tail: SIZE0=2 ADDR0=pa(continuation)>>3 SIZE1=2 ADDR1=pa(sub)>>3 JUMP1=1 [pad: CLIP=0 if needed] FINALIZE 0x12345678
  *   sub (16 B):      FRAGOP_SHADOW=JT_MAGIC, JUMP0=1 (channel 0 returns to the continuation)
  *   continuation:    the 16 bytes GPUCMD_Split appends at frame end (FINALIZE x2)
  * FRAGOP_SHADOW (0x130, "Unknown" in libctru registers.h) is the readback register. No file in 3ds/src writes it (JT9). It keeps JT_MAGIC after the run.
@@ -1159,8 +1159,8 @@ static void jt_queue(void) {
     jt_sub[3] = 0xF0000u | GPUREG_CMDBUF_JUMP0;
     pm_fl_dc(jt_sub, 16);
     GPUCMD_GetBuffer(&buf, &size, &off);
-    pad = ((off + 10u) & 3u) ? 2u : 0u; /* 5 writes = 10 words; the continuation starts on a 16-byte boundary */
-    jt_cont_word = off + 10u + pad;
+    pad = ((off + 12u) & 3u) ? 2u : 0u; /* 5 writes = 10 words, pad 0 or 2 words, FINALIZE = 2 words: the list ends on a 16-byte boundary */
+    jt_cont_word = off + 12u + pad;
     jt_cont_pa = osConvertVirtToPhys(buf + jt_cont_word) >> 3;
     jt_sub_pa = osConvertVirtToPhys(jt_sub) >> 3;
     jt_size0 = drew ? 4 : 2;                        /* 32 bytes >> 3 with a draw (FLUSH, INVALIDATE, EARLYDEPTH_CLEAR, FINALIZE), else 16 bytes */
@@ -1170,6 +1170,7 @@ static void jt_queue(void) {
     GPUCMD_AddWrite(GPUREG_CMDBUF_ADDR1, jt_sub_pa);
     GPUCMD_AddWrite(GPUREG_CMDBUF_JUMP1, 1);
     if (pad) GPUCMD_AddWrite(GPUREG_FRAGOP_CLIP, 0);
+    GPUCMD_AddWrite(GPUREG_FINALIZE, 0x12345678u); /* JT10: the finalization write GPUCMD_Split uses; the list ends on it */
     jt_state = 1;
 }
 /* JT1: the result. gspWaitForP3D returns when the GPU has finished the list of the frame (libctru has no timeout form), so a hang
