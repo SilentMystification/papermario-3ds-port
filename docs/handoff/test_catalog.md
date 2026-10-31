@@ -268,3 +268,4 @@ The fsplit line (fsplit flag only) adds `wm <mean> max <max> tk <mean> max <max>
 | Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
 |---|---|---|---|---|---|---|
 | jump_azahar (unverified) | jumptest JT3 result lines (`jump f<frame> ok/fail/none value`) on frames 300 to 399, and the game runs past frame 330 | `azt.ps1 jump_azahar -Row JTA -Try` (debug `jumptest prof loglevel=debug`) | `jump f` | cap 45 s | none (log only, needs_picture false) | Until is the first result line at frame 300 to 399. Azahar GPU does not run jumps (docs/handoff/agent_jumptest.md). |
+| jump_off_azahar (unverified) | Same boot as jump_azahar, no jumptest: the game reaches frame 330 (shot at 330) with no watchdog line (JTB) | `azt.ps1 jump_off_azahar -Row JTB -Try` (debug `shots shotwin=330:1 prof loglevel=debug`) | `boot_main` | cap 45 s | build3ds\azt\shots\jump_off_azahar | Log and shot only. Until is the frame 330 shot. |

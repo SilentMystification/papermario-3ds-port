@@ -1413,6 +1413,26 @@
       }
     ],
     "reason": "JTA: jump test on HEAD, one Azahar start. Until is the first result line at frame 300 to 399. Cap 45 s."
+  },
+  {
+    "name": "jump_off_azahar",
+    "status": "unverified",
+    "subject": "Same boot as jump_azahar with no jump switch: the game runs to frame 330. Log subject only; the shot at frame 330 proves the frame was reached.",
+    "proves": "Whether the game passes frame 330 on Azahar without jumptest, and whether a watchdog line appears (JTB).",
+    "debug": "shots shotwin=330:1 prof loglevel=debug",
+    "until": "shot \\d+ frame 330\\b",
+    "cap": 45,
+    "deadline": 20,
+    "first_marker": "boot_main",
+    "expects": "none",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "frame 330 shot",
+        "regex": "shot \\d+ frame 330\\b"
+      }
+    ],
+    "reason": "JTB: jump_azahar without jumptest. Until is the shot at frame 330. Cap 45 s."
   }
   ]
 }
