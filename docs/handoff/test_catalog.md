@@ -263,3 +263,8 @@ The fsplit line (fsplit flag only) adds `wm <mean> max <max> tk <mean> max <max>
 - fsplit f600 over50: 0 in HEAD and SPK1. fsplit f300 (load) over50: 18 in SPK1 run 2; HEAD f300 not kept (log overwritten). Open.
 - Bottom shots do not reproduce across runs on this scenario: HEAD against HEAD 667 to 670 px differ per bottom shot; SPK1 against SPK1 about 5000 px. Top shot equal HEAD against SPK1 (1 of 1). Bottom shots are not a clean gate here.
 - Starts used on SPK1: 4 of 8.
+## JTA (2026-10-31): jump test on Azahar
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| jump_azahar (unverified) | jumptest JT3 result lines (`jump f<frame> ok/fail/none value`) on frames 300 to 399, and the game runs past frame 330 | `azt.ps1 jump_azahar -Row JTA -Try` (debug `jumptest prof loglevel=debug`) | `jump f` | cap 45 s | none (log only, needs_picture false) | Until is the first result line at frame 300 to 399. Azahar GPU does not run jumps (docs/handoff/agent_jumptest.md). |

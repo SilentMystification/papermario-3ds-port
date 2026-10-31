@@ -1393,6 +1393,26 @@
       }
     ],
     "reason": "PRIMZFIX repro, not verified. A person must read the top shots: background through the pond or not."
+  },
+  {
+    "name": "jump_azahar",
+    "status": "unverified",
+    "subject": "Jump test (JT3) result lines on Azahar: one jump f<frame> line per second with ok, fail or none and the value. Log subject only, no picture.",
+    "proves": "The jumptest switch queues the sub-buffer jump and reads back the CLIP_DATA3 word on Azahar, and the game runs past frame 330 (console: watchdog stop at frame 332 after a readback fail).",
+    "debug": "jumptest prof loglevel=debug",
+    "until": "jump f3\\d\\d ",
+    "cap": 45,
+    "deadline": 20,
+    "first_marker": "jump f",
+    "expects": "none",
+    "needs_picture": false,
+    "expected_events": [
+      {
+        "name": "jump result line",
+        "regex": "jump f\\d+ (ok|fail|none)"
+      }
+    ],
+    "reason": "JTA: jump test on HEAD, one Azahar start. Until is the first result line at frame 300 to 399. Cap 45 s."
   }
   ]
 }
