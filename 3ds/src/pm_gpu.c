@@ -1149,6 +1149,7 @@ static unsigned jt_frame; /* frame of the last queued jump, for the result line 
 extern u64 pm_loop_tick;
 static void jt_queue(void) {
     u32* buf; u32 size, off, pad;
+    if (!drew) return; /* JT7: no jump in a frame without a draw. jt_state stays 0, so the next frame retries */
     if (!jt_sub) jt_sub = (u32*)linearAlloc(16 * 2);
     if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
     jt_last = pm_loop_tick;
@@ -1170,7 +1171,6 @@ static void jt_queue(void) {
     GPUCMD_AddWrite(GPUREG_CMDBUF_ADDR1, jt_sub_pa);
     GPUCMD_AddWrite(GPUREG_CMDBUF_JUMP1, 1);
     if (pad) GPUCMD_AddWrite(GPUREG_FRAGOP_CLIP, 0);
-    if (!drew) GPUCMD_AddWrite(GPUREG_FRAGOP_CLIP, 0);
     jt_state = 1;
 }
 /* JT1: the result. gspWaitForP3D returns when the GPU has finished the list of the frame (libctru has no timeout form), so a hang
