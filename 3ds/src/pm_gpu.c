@@ -1130,10 +1130,54 @@ static void init_f_tables(void) {
     for (int i = 0; i < 256; i++) { pm_f255[i] = (float)i / 255.f; pm_f127[i] = (float)(signed char)i / 127.f; }
 }
 
+/* JT1: DEBUG TOOL, not a finished path. Switch jumptest (read once in pm_gpu_init). One test per run: at the end of the first
+ * frame the list gets a jump into a 16-byte sub-buffer in linear memory and back. Layout is INFERRED from the PICA documentation
+ * (docs/handoff/inv_citro3d_decode.md section 3), not confirmed on hardware:
+ *   frame list tail: SIZE0=2 ADDR0=pa(continuation)>>3 SIZE1=2 ADDR1=pa(sub)>>3 JUMP1=1 [pad: CLIP=0 if needed]
+ *   sub (16 B):      CLIP=0, JUMP0=1 (channel 0 returns to the continuation)
+ *   continuation:    the 16 bytes GPUCMD_Split appends at frame end (FINALIZE x2)
+ * The sub writes CLIP=0 only: no draw follows it in the frame, and sh_clear resets the shadow for the next frame. */
+static int jt_on;
+static int jt_state; /* 0 not run, 1 list queued (result read at the next frame end), 2 done */
+static u32* jt_sub;
+static u32 jt_cont_pa, jt_sub_pa, jt_cont_word;
+static void jt_queue(void) {
+    u32* buf; u32 size, off, pad;
+    if (!jt_sub) jt_sub = (u32*)linearAlloc(16 * 2);
+    if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
+    jt_sub[0] = 0;                                  /* CLIP param: off */
+    jt_sub[1] = 0xF0000u | GPUREG_FRAGOP_CLIP;     /* header: reg, mask 0xF, single */
+    jt_sub[2] = 1;                                  /* JUMP0 param: any value */
+    jt_sub[3] = 0xF0000u | GPUREG_CMDBUF_JUMP0;
+    pm_fl_dc(jt_sub, 16);
+    GPUCMD_GetBuffer(&buf, &size, &off);
+    pad = ((off + 10u) & 3u) ? 2u : 0u; /* 5 writes = 10 words; the continuation starts on a 16-byte boundary */
+    jt_cont_word = off + 10u + pad;
+    jt_cont_pa = osConvertVirtToPhys(buf + jt_cont_word) >> 3;
+    jt_sub_pa = osConvertVirtToPhys(jt_sub) >> 3;
+    GPUCMD_AddWrite(GPUREG_CMDBUF_SIZE0, 2);        /* 16 bytes >> 3 */
+    GPUCMD_AddWrite(GPUREG_CMDBUF_ADDR0, jt_cont_pa);
+    GPUCMD_AddWrite(GPUREG_CMDBUF_SIZE1, 2);
+    GPUCMD_AddWrite(GPUREG_CMDBUF_ADDR1, jt_sub_pa);
+    GPUCMD_AddWrite(GPUREG_CMDBUF_JUMP1, 1);
+    if (pad) GPUCMD_AddWrite(GPUREG_FRAGOP_CLIP, 0);
+    jt_state = 1;
+}
+/* JT1: the result. gspWaitForP3D returns when the GPU has finished the list of the frame (libctru has no timeout form), so a hang
+ * shows as no line. The values logged are the ones written to the CMDBUF registers, not read back from the GPU: no read path for
+ * those registers is in the tree. */
+static void jt_result(void) {
+    gspWaitForP3D();
+    pm_log("jump test ok size0=2 addr0=%08x size1=2 addr1=%08x jump1=1 cont_word=%u",
+           (unsigned)(jt_cont_pa << 3), (unsigned)(jt_sub_pa << 3), (unsigned)jt_cont_word);
+    jt_state = 2;
+}
+
 void pm_gpu_init(void) {
     init_f_tables();
     gp2_clip_init();
     if (gpu_ok) return;
+    jt_on = pm_debug_has("jumptest");
     pm_wide = pm_wide_cfg = pm_debug_has("wide") || pm_opt.wide;
     pm_log("gpu: wide=%d", pm_wide);
     gfxInitDefault();
@@ -1782,6 +1826,10 @@ void pm_gpu_end(void) {
     pm_gbi_end_frame();
     /* Without this flag citro3d flushes the entire linear heap. That heap is
      * the 20MB port pool, so every frame was writing it back through the cache. */
+    if (jt_on) { /* JT1: debug tool, see jt_queue */
+        if (jt_state == 0) jt_queue();
+        else if (jt_state == 1) jt_result();
+    }
     FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
     C3D_FrameEnd(GX_CMDLIST_FLUSH);
