@@ -1138,7 +1138,7 @@ static void init_f_tables(void) {
  *   continuation:    the 16 bytes GPUCMD_Split appends at frame end (FINALIZE x2)
  * CLIP_DATA3 is the readback register: only the sub writes it after the last user clip write of frame 1. No draw follows it.
  * JT_HW_BASE: GSPGPU_ReadHWRegs offsets are from 0x1EB00000. The PICA register block is at 0x1EF01000, so 0x401000 + reg*4 (INFERRED, not confirmed). */
-#define JT_MAGIC 0x4A54534Bu
+#define JT_MAGIC 0x004A5453u
 #define JT_HW_BASE 0x401000u
 static int jt_on;
 static int jt_state; /* 0 idle, 1 list queued (result read at the next frame end), 2 stopped (alloc failed) */
