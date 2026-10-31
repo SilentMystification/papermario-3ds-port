@@ -17,7 +17,8 @@ static struct TszLast tsz_last; /* PG1 */
 static unsigned st0_ep; static int st0_ok;
 static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
 static unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
-#define GP_SET(k, same) do { if (gp_on()) { gp_set[k]++; if (same) gp_same[k]++; } } while (0)
+static __attribute__((cold, noinline)) void gp_note(int k, int same) { gp_set[k]++; if (same) gp_same[k]++; }
+#define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 
 unsigned pm_gbi_sync_ticks, pm_gbi_gv_ticks, pm_gbi_tex_ticks;
 unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
@@ -2938,6 +2939,116 @@ static __attribute__((cold, noinline)) void gbi_cold_modifyvtx(u32 w0, u32 w1) {
         vert_scr[vi] = 1;
     }
 }
+/* TEXH: cold and per-tile parts of tex_op, moved out of line. The same operations run in the same order. */
+static __attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt) {
+    int uls = *p_uls, ult = *p_ult, lrs = *p_lrs, lrt = *p_lrt;
+                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. Texel 0 is
+                 * still the first texel of the loaded image, so keep the size and start at 0. */
+                int su = uls & 0x800 ? uls - 0x1000 : uls, st = ult & 0x800 ? ult - 0x1000 : ult;
+                int sr = lrs & 0x800 ? lrs - 0x1000 : lrs, sl = lrt & 0x800 ? lrt - 0x1000 : lrt;
+                if (sr >= su && sl >= st) {
+                    lrs = (su < 0 ? 0 : su) + (sr - su);
+                    lrt = (st < 0 ? 0 : st) + (sl - st);
+                    uls = su < 0 ? 0 : su;
+                    ult = st < 0 ? 0 : st;
+                }
+    *p_uls = uls; *p_ult = ult; *p_lrs = lrs; *p_lrt = lrt;
+}
+static __attribute__((noinline)) void tlut_v20(unsigned slot) {
+                    for (int n = 0; n < 2; n++)
+                        if (td[n].valid && td[n].fmt == 2 && (tile_pal[n] & 15) == (int)slot && td[n].pal != timg) {
+                            pm_gpu_flush();
+                            td[n].pal = timg;
+                            td[n].pal_n = tlut_n;
+                            if (n == cur_tile) cur_tile = -1;
+                        }
+}
+static __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt) {
+            if (tile == 1 && tile_fmt[1] == 2 && tile_siz[1] == 0 && ld_valid && timg) {
+                /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
+                m1.valid = 1;
+                m1.src = (const u8*)timg + (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
+                m1.stride = timg_stride * 2;
+                m1.w = ((lrs - uls) >> 2) + 1;
+                m1.h = ((lrt - ult) >> 2) + 1;
+                m1.x0 = uls >> 2;
+                m1.y0 = ult >> 2;
+            }
+            if (tile == 1) {
+                int w = ((lrs - uls) >> 2) + 1, h = ((lrt - ult) >> 2) + 1;
+                if (tile_wrap[1][2] && !(tile_wrap[1][0] & 2) && ld_valid) { /* VIS3: the same as PT09 for tile 1. The RDP reads (s - sl) through the mask, a mirrored or wrapped read of a window to the right of the image start (walking dust frame i + 1) needs the sheet from its start. */
+                    int per = 1 << tile_wrap[1][2];
+                    int ldw = tile_siz[1] == 0 ? ld_w * 2 : ld_w;
+                    if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
+                }
+                int stride = timg_stride > w ? timg_stride : w;
+                int bpp = tile_siz[1] >= 3 ? 4 : tile_siz[1] == 2 ? 2 : tile_siz[1] == 0 ? 0 : 1;
+                const u8* src = (const u8*)timg;
+                int l1x = ld_x, l1y = ld_y, l1stride = timg_stride, l1v = ld_valid;
+                for (unsigned k = 0; k < 4; k++) {
+                    if (ldrec[k].img && ldrec[k].tmem == tile_tmem[1]) {
+                        src = (const u8*)ldrec[k].img; l1x = ldrec[k].x; l1y = ldrec[k].y; l1stride = ldrec[k].stride; l1v = 1;
+                        stride = l1stride > w ? l1stride : w;
+                    }
+                }
+                int t1x = uls >> 2; /* texel column of the window origin; the V21 branch lowers it to the loaded origin */
+                int boff = 0; /* V13: tile 1 inside an earlier block load: the image start moves by the TMEM difference */
+                for (unsigned k = 0; k < 4; k++)
+                    if (blk[k].img && blk[k].tmem < tile_tmem[1] && (tile_tmem[1] - blk[k].tmem) * 8u < blk[k].bytes && blk[k].tmem == tile_tmem[0] && src == (const u8*)blk[k].img)
+                        boff = (int)((tile_tmem[1] - blk[k].tmem) * 8u);
+                td[1].valid = 0;
+                if (cur_tile == 1) cur_tile = -1; /* a new tile 1 image: bind it again */
+                /* The image offset is the LoadTile origin. SetTileSize uls and ult only place
+                 * it: gDPLoadMultiTile (draw_box corners) loads at 0,0 and moves tiles 1 to 3
+                 * to the far side of the window by SetTileSize. */
+                if (src && bpp && l1v) src += (size_t)(l1y * stride + l1x) * (size_t)bpp;
+                else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
+                else if (src && tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
+                else if (src && l1v) {
+                    /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32).
+                     * This branch is 4 bit only (bpp 0). uls >> 2 counts texels, two per byte, so the byte offset is half of it.
+                     * A byte pointer cannot start on an odd texel: the loaded origin is the even texel at or before the window
+                     * origin. td[1].x0 uses the same origin, so the UV map and the loaded data agree. */
+                    t1x = (uls >> 2) & ~1;
+                    src += (size_t)(ult >> 2) * (size_t)l1stride + (size_t)(t1x >> 1);
+                    stride = l1stride * 2;
+                }
+                if (src && w > 0 && h > 0) {
+                    td[1].valid = 1;
+                    td[1].src = src;
+                    td[1].fmt = tile_fmt[1];
+                    td[1].siz = tile_siz[1];
+                    td[1].w = w;
+                    td[1].h = h;
+                    td[1].stride = stride;
+                    td[1].x0 = t1x;
+                    td[1].y0 = ult >> 2;
+                    td[1].pal = tlut_pal[tile_pal[1] & 15] ? tlut_pal[tile_pal[1] & 15] : tlut;
+                    td[1].pal_n = tlut_n;
+                }
+            }
+}
+static __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
+            if (m1.valid && tile_fmt[0] == 2 && tile_siz[0] == 0 && tile_pal[0] != tile_pal[1] &&
+                comb_a == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_TEXEL1 &&
+                m1.w > 0 && m1.h > 0) {
+                /* Tile 0 starts 256 texels in (the vertices carry that) plus the light offset. */
+                int dx4 = uls - (m1.x0 << 2);
+                int dy4 = ult - (m1.y0 << 2);
+                m1.valid = 0;
+                pm_gpu_flush();
+                tile_x0 = m1.x0;
+                tile_y0 = m1.y0;
+                tile_fx = tile_fy = 0.f;
+                if (load_shaded_sprite(dx4, dy4)) {
+                    dual_on = 1;
+                    sync_combine();
+                    return 1;
+                }
+            }
+    return 0;
+}
+
 /* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
 static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
@@ -3022,13 +3133,7 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
                     /* V20: gDPLoadTextureBlock_4b sets the tile size (which binds the texture) BEFORE the palette load. A bound CI tile that
                      * uses this palette bank must take the new palette, else it keeps the one of the previous model (the brick block was
                      * drawn with a dark grey palette). */
-                    for (int n = 0; n < 2; n++)
-                        if (td[n].valid && td[n].fmt == 2 && (tile_pal[n] & 15) == (int)slot && td[n].pal != timg) {
-                            pm_gpu_flush();
-                            td[n].pal = timg;
-                            td[n].pal_n = tlut_n;
-                            if (n == cur_tile) cur_tile = -1;
-                        }
+                    tlut_v20(slot);
                 }
             }
             break;
@@ -3038,112 +3143,18 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
             int ult = (int)(w0 & 0xfff);
             int lrs = (int)((w1 >> 12) & 0xfff);
             int lrt = (int)(w1 & 0xfff);
-            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) {
-                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. Texel 0 is
-                 * still the first texel of the loaded image, so keep the size and start at 0. */
-                int su = uls & 0x800 ? uls - 0x1000 : uls, st = ult & 0x800 ? ult - 0x1000 : ult;
-                int sr = lrs & 0x800 ? lrs - 0x1000 : lrs, sl = lrt & 0x800 ? lrt - 0x1000 : lrt;
-                if (sr >= su && sl >= st) {
-                    lrs = (su < 0 ? 0 : su) + (sr - su);
-                    lrt = (st < 0 ? 0 : st) + (sl - st);
-                    uls = su < 0 ? 0 : su;
-                    ult = st < 0 ? 0 : st;
-                }
-            }
+            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt);
             GP_SET(4, tile_sz[tile][0] == uls && tile_sz[tile][1] == ult && tile_sz[tile][2] == lrs && tile_sz[tile][3] == lrt);
             tile_sz[tile][0] = uls;
             tile_sz[tile][1] = ult;
             tile_sz[tile][2] = lrs;
             tile_sz[tile][3] = lrt;
-            {   /* imglog: the SETTILESIZE window and the SETTIMG image of the same tile (role 9 = tile line) */
-                static int on = -1;
-                if (on < 0) on = pm_debug_has("imglog");
-            }
-            if (tile == 1 && tile_fmt[1] == 2 && tile_siz[1] == 0 && ld_valid && timg) {
-                /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
-                m1.valid = 1;
-                m1.src = (const u8*)timg + (size_t)ld_y * (size_t)timg_stride + (size_t)ld_x;
-                m1.stride = timg_stride * 2;
-                m1.w = ((lrs - uls) >> 2) + 1;
-                m1.h = ((lrt - ult) >> 2) + 1;
-                m1.x0 = uls >> 2;
-                m1.y0 = ult >> 2;
-            }
-            if (tile == 1) {
-                int w = ((lrs - uls) >> 2) + 1, h = ((lrt - ult) >> 2) + 1;
-                if (tile_wrap[1][2] && !(tile_wrap[1][0] & 2) && ld_valid) { /* VIS3: the same as PT09 for tile 1. The RDP reads (s - sl) through the mask, a mirrored or wrapped read of a window to the right of the image start (walking dust frame i + 1) needs the sheet from its start. */
-                    int per = 1 << tile_wrap[1][2];
-                    int ldw = tile_siz[1] == 0 ? ld_w * 2 : ld_w;
-                    if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
-                }
-                int stride = timg_stride > w ? timg_stride : w;
-                int bpp = tile_siz[1] >= 3 ? 4 : tile_siz[1] == 2 ? 2 : tile_siz[1] == 0 ? 0 : 1;
-                const u8* src = (const u8*)timg;
-                int l1x = ld_x, l1y = ld_y, l1stride = timg_stride, l1v = ld_valid;
-                for (unsigned k = 0; k < 4; k++) {
-                    if (ldrec[k].img && ldrec[k].tmem == tile_tmem[1]) {
-                        src = (const u8*)ldrec[k].img; l1x = ldrec[k].x; l1y = ldrec[k].y; l1stride = ldrec[k].stride; l1v = 1;
-                        stride = l1stride > w ? l1stride : w;
-                    }
-                }
-                int t1x = uls >> 2; /* texel column of the window origin; the V21 branch lowers it to the loaded origin */
-                int boff = 0; /* V13: tile 1 inside an earlier block load: the image start moves by the TMEM difference */
-                for (unsigned k = 0; k < 4; k++)
-                    if (blk[k].img && blk[k].tmem < tile_tmem[1] && (tile_tmem[1] - blk[k].tmem) * 8u < blk[k].bytes && blk[k].tmem == tile_tmem[0] && src == (const u8*)blk[k].img)
-                        boff = (int)((tile_tmem[1] - blk[k].tmem) * 8u);
-                td[1].valid = 0;
-                if (cur_tile == 1) cur_tile = -1; /* a new tile 1 image: bind it again */
-                /* The image offset is the LoadTile origin. SetTileSize uls and ult only place
-                 * it: gDPLoadMultiTile (draw_box corners) loads at 0,0 and moves tiles 1 to 3
-                 * to the far side of the window by SetTileSize. */
-                if (src && bpp && l1v) src += (size_t)(l1y * stride + l1x) * (size_t)bpp;
-                else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
-                else if (src && tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
-                else if (src && l1v) {
-                    /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32).
-                     * This branch is 4 bit only (bpp 0). uls >> 2 counts texels, two per byte, so the byte offset is half of it.
-                     * A byte pointer cannot start on an odd texel: the loaded origin is the even texel at or before the window
-                     * origin. td[1].x0 uses the same origin, so the UV map and the loaded data agree. */
-                    t1x = (uls >> 2) & ~1;
-                    src += (size_t)(ult >> 2) * (size_t)l1stride + (size_t)(t1x >> 1);
-                    stride = l1stride * 2;
-                }
-                if (src && w > 0 && h > 0) {
-                    td[1].valid = 1;
-                    td[1].src = src;
-                    td[1].fmt = tile_fmt[1];
-                    td[1].siz = tile_siz[1];
-                    td[1].w = w;
-                    td[1].h = h;
-                    td[1].stride = stride;
-                    td[1].x0 = t1x;
-                    td[1].y0 = ult >> 2;
-                    td[1].pal = tlut_pal[tile_pal[1] & 15] ? tlut_pal[tile_pal[1] & 15] : tlut;
-                    td[1].pal_n = tlut_n;
-                }
-            }
-            if (tile == 1) sync_combine(); /* S25: a plan that reads TEXEL1 needs tile 1 */
+            if (tile == 1) { tex_tile1(tile, uls, ult, lrs, lrt); sync_combine(); } /* S25: a plan that reads TEXEL1 needs tile 1 */
             if (tile != 0) break;
             td[0].valid = 0;
             cur_tile = -1; /* GP3: defer pm_tex_load to ensure_tile(0) at first draw */
             if (dual_on) { dual_on = 0; sync_combine(); } /* S25: the plan path is off while the shaded sprite is on */
-            if (m1.valid && tile_fmt[0] == 2 && tile_siz[0] == 0 && tile_pal[0] != tile_pal[1] &&
-                comb_a == G_CCMUX_TEXEL0 && comb_c == G_CCMUX_TEXEL1 &&
-                m1.w > 0 && m1.h > 0) {
-                /* Tile 0 starts 256 texels in (the vertices carry that) plus the light offset. */
-                int dx4 = uls - (m1.x0 << 2);
-                int dy4 = ult - (m1.y0 << 2);
-                m1.valid = 0;
-                pm_gpu_flush();
-                tile_x0 = m1.x0;
-                tile_y0 = m1.y0;
-                tile_fx = tile_fy = 0.f;
-                if (load_shaded_sprite(dx4, dy4)) {
-                    dual_on = 1;
-                    sync_combine();
-                    break;
-                }
-            }
+            if (m1.valid && tex_shaded0(uls, ult)) break;
             m1.valid = 0;
             int x0 = uls >> 2;
             int y0 = ult >> 2;
