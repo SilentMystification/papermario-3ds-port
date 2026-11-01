@@ -3397,6 +3397,7 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
     rec_cap_n++;
     return 1;
 }
+void pm_gpu_stc_ctx_log(const char* at); /* pm_gpu.c, UC2 probe */
 /* UC2D: first differing word outside the 0x2C1 uniform slots (the words pm_gpu_rec_same does not mask), logged once per run. Log only. */
 static int uc2d_done;
 static u8 uc2d_msk[REC_MAX_WORDS];
@@ -3427,6 +3428,7 @@ static __attribute__((noinline, cold)) void uc2d_first(const u32* a, u32 na, con
     const char* role = (j == i) ? "p0" : (j == i + 1u) ? "hdr" : "data"; /* UC2E: word j is the param0, the header, or a data word of the command */
     unsigned ni = (hd >> 31) & 1u, doff = (j > i + 1u) ? j - (i + 2u) : 0u; /* ni 1: non-incremental group, doff: data word index */
     pm_log_d("UC2D first j %u a %08lx b %08lx reg %03lx hdr %08lx cmd %u n %u role %s ni %u doff %u", j, (unsigned long)a[j], (unsigned long)b[j], (unsigned long)(hd & 0x3FFu), (unsigned long)hd, i, na, role, ni, doff);
+    pm_gpu_stc_ctx_log("uc2d_first");
 }
 /* UC2: reccheck. The words this frame wrote for the model are compared with the valid record (pm_gpu_rec_same). The record is kept. */
 static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u32* w, u32 n, int whole) {

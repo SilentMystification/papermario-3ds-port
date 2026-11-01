@@ -102,16 +102,26 @@ static float g_uvso[4], g_vp[4], g_cmul[4], g_cadd[4], g_zmix[2];
 static float zmix_y_dbg(float y) { static int on = -1; if (on < 0) on = pm_debug_has("zround"); return on ? (float)(int)(y * 65536.f + 0.5f) * (1.f / 65536.f) : y; }
 /* UC2 probe, log only: logs the C3D_StencilTest arguments and the 0x105 word the call stores when the word changes (switch stprobe, 200 lines max).
  * Word = im << 24 | ref << 16 | wm << 8 | (fn << 4) & 0x70 | en (encoding from the citro3d disassembly, docs/handoff/diag_uc2_0x110.md section 3). */
-static int stp_on = -1; static unsigned stp_n, stp_lw[8], stp_cnt[8];
+extern unsigned char __C3D_Context[]; /* citro3d context, read only: the 0x105 word is at +0xF4 (diag_uc2_ctxword.md section 2) */
+static int stp_on = -1; static unsigned stp_n, stp_lw[8], stp_cnt[8], stp_last, stp_lc[8];
+static unsigned stc_ctx(void) { return *(volatile unsigned*)(__C3D_Context + 0xF4); }
+static int stp_sw(void) { if (stp_on < 0) stp_on = pm_debug_has("stprobe") ? 1 : 0; return stp_on; }
 static void stc_set(int site, int en, GPU_TESTFUNC fn, int ref, int im, int wm) {
     C3D_StencilTest(en, fn, ref, im, wm);
-    if (stp_on < 0) stp_on = pm_debug_has("stprobe") ? 1 : 0;
-    if (!stp_on) return;
+    if (!stp_sw()) return;
     stp_cnt[site & 7]++;
     unsigned w = ((unsigned)im << 24) | ((unsigned)ref << 16) | ((unsigned)wm << 8) | (((unsigned)fn << 4) & 0x70u) | (en ? 1u : 0u);
-    if ((stp_cnt[site & 7] > 1 && w == stp_lw[site & 7]) || stp_n >= 200) return;
-    stp_lw[site & 7] = w; stp_n++;
-    pm_log_d("UC2P site %d word105 %08x en %d fn %d ref %d im %02x wm %02x frame %u calls %u", site, w, en ? 1 : 0, (int)fn, ref, im, wm, pm_frame_count(), stp_cnt[site & 7]);
+    unsigned c = stc_ctx();
+    stp_last = w;
+    if ((stp_cnt[site & 7] > 1 && w == stp_lw[site & 7] && c == stp_lc[site & 7]) || stp_n >= 200) return;
+    stp_lw[site & 7] = w; stp_lc[site & 7] = c; stp_n++;
+    pm_log_d("UC2P site %d word105 %08x en %d fn %d ref %d im %02x wm %02x ctxF4 %08x frame %u calls %u", site, w, en ? 1 : 0, (int)fn, ref, im, wm, c, pm_frame_count(), stp_cnt[site & 7]);
+}
+/* UC2 probe, log only: reads ctx+0xF4 at a named point (called from pm_gbi.c uc2d_first) beside the last stc_set word. */
+void pm_gpu_stc_ctx_log(const char* at) {
+    if (!stp_sw() || stp_n >= 200) return;
+    stp_n++;
+    pm_log_d("UC2P %s ctxF4 %08x last word105 %08x frame %u", at, stc_ctx(), stp_last, pm_frame_count());
 }
 static int gpu_vtx_on;
 static int g_ct, g_cullm; /* GV1a: the N64 cull type of the open raw batch (0 none, 1 G_CULL_FRONT, 2 G_CULL_BACK) and the PICA mode made from it */
