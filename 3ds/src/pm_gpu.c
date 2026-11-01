@@ -1134,12 +1134,9 @@ static void init_f_tables(void) {
  * one second (SYSCLOCK_ARM11 ticks, pm_loop_tick from the main loop) has passed since the last jump. Each jump is a list jump into a 16-byte sub-buffer in linear memory and back. Layout is INFERRED from the PICA documentation
  * (docs/handoff/inv_citro3d_decode.md section 3), not confirmed on hardware:
  *   frame list tail: SIZE0=2 ADDR0=pa(continuation)>>3 SIZE1=2 ADDR1=pa(sub)>>3 JUMP1=1 [pad: CLIP=0 if needed] FINALIZE 0x12345678
- *   sub (16 B):      FRAGOP_SHADOW=JT_MAGIC, JUMP0=1 (channel 0 returns to the continuation)
+ *   sub (16 B):      FINALIZE=0x12345678, JUMP0=1 (channel 0 returns to the continuation)
  *   continuation:    the 16 bytes GPUCMD_Split appends at frame end (FINALIZE x2)
- * FRAGOP_SHADOW (0x130, "Unknown" in libctru registers.h) is the readback register. No file in 3ds/src writes it (JT9). It keeps JT_MAGIC after the run.
- * JT_HW_BASE: GSPGPU_ReadHWRegs offsets are from 0x1EB00000. The PICA register block is at 0x1EF01000, so 0x401000 + reg*4 (INFERRED, not confirmed). */
-#define JT_MAGIC 0x004A5453u
-#define JT_HW_BASE 0x401000u
+ * JT11: no register write and no readback. The result line only says the jump ran. */
 static int jt_on;
 static int jt_state; /* 0 idle, 1 list queued (result read at the next frame end), 2 stopped (alloc failed) */
 static u32* jt_sub;
@@ -1153,10 +1150,10 @@ static void jt_queue(void) {
     if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
     jt_last = pm_loop_tick;
     jt_frame = pm_frame_count();
-    jt_sub[0] = JT_MAGIC;                           /* FRAGOP_SHADOW param: the value the readback compares */
-    jt_sub[1] = 0xF0000u | GPUREG_FRAGOP_SHADOW;    /* header: reg, mask 0xF, single */
+    jt_sub[0] = 0x12345678u;                        /* FINALIZE param, same value as the frame list tail */
+    jt_sub[1] = 0xF0000u | GPUREG_FINALIZE;         /* header: reg, mask 0xF, single */
     jt_sub[2] = 1;                                  /* JUMP0 param: any value */
-    jt_sub[3] = 0xF0000u | GPUREG_CMDBUF_JUMP0;
+    jt_sub[3] = 0xF0000u | GPUREG_CMDBUF_JUMP0;     /* returns to the continuation: without it the list does not come back */
     pm_fl_dc(jt_sub, 16);
     GPUCMD_GetBuffer(&buf, &size, &off);
     pad = ((off + 12u) & 3u) ? 2u : 0u; /* 5 writes = 10 words, pad 0 or 2 words, FINALIZE = 2 words: the list ends on a 16-byte boundary */
@@ -1174,15 +1171,10 @@ static void jt_queue(void) {
     jt_state = 1;
 }
 /* JT1: the result. gspWaitForP3D returns when the GPU has finished the list of the frame (libctru has no timeout form), so a hang
- * shows as no line. The values logged are the ones written to the CMDBUF registers, not read back from the GPU: no read path for
- * those registers is in the tree. */
+ * shows as no line. */
 static void jt_result(void) {
-    u32 v = 0;
     gspWaitForP3D();
-    Result r = GSPGPU_ReadHWRegs(JT_HW_BASE + GPUREG_FRAGOP_SHADOW * 4, &v, 4);
-    if (r) { pm_log_w("jump f%u none", jt_frame); pm_log_d("jump f%u readback result %08lx", jt_frame, (unsigned long)r); }
-    else if (v == JT_MAGIC) pm_log_w("jump f%u ok value %08x", jt_frame, (unsigned)v);
-    else pm_log_w("jump f%u fail value %08x", jt_frame, (unsigned)v);
+    pm_log_w("jump f%u ran", jt_frame);
     pm_log_d("jump f%u layout: size0=%u addr0=%08x size1=2 addr1=%08x jump1=1 cont_word=%u", jt_frame, (unsigned)jt_size0,
              (unsigned)(jt_cont_pa << 3), (unsigned)(jt_sub_pa << 3), (unsigned)jt_cont_word);
     jt_state = 0;
