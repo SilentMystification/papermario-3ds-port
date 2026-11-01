@@ -3397,6 +3397,35 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
     rec_cap_n++;
     return 1;
 }
+/* UC2D: first differing word outside the 0x2C1 uniform slots (the words pm_gpu_rec_same does not mask), logged once per run. Log only. */
+static int uc2d_done;
+static u8 uc2d_msk[REC_MAX_WORDS];
+static __attribute__((noinline, cold)) void uc2d_first(const u32* a, u32 na, const u32* b, u32 nb) {
+    unsigned i = 0, j;
+    u32 hd = 0, c = 0, len = 0;
+    if (uc2d_done || na != nb || na > REC_MAX_WORDS) return;
+    memset(uc2d_msk, 0, na);
+    while (i + 1 < na) { /* walk over a: mark the uniform vec4 words of each 0x2C1 write */
+        hd = a[i + 1]; c = (hd >> 20) & 0xFFu; len = 2u + c + (c & 1u);
+        if (i + len > na) break;
+        if ((hd & 0x3FFu) == 0x2C1 && !(hd >> 31)) {
+            for (unsigned k = 0; k < ((c + 1u) >> 2); k++) {
+                unsigned o = k ? i + 1u + 4u * k : i;
+                if (k == 0) uc2d_msk[o] = uc2d_msk[o + 2] = uc2d_msk[o + 3] = uc2d_msk[o + 4] = 1;
+                else uc2d_msk[o] = uc2d_msk[o + 1] = uc2d_msk[o + 2] = uc2d_msk[o + 3] = 1;
+            }
+        }
+        i += len;
+    }
+    for (j = 0; j < na; j++) if (!uc2d_msk[j] && a[j] != b[j]) break;
+    if (j == na) return;
+    uc2d_done = 1;
+    for (i = 0; i + 1 < na; i += len) { /* the command of a that holds word j */
+        hd = a[i + 1]; c = (hd >> 20) & 0xFFu; len = 2u + c + (c & 1u);
+        if (j < i + len) break;
+    }
+    pm_log_d("UC2D first j %u a %08lx b %08lx reg %03lx hdr %08lx cmd %u n %u", j, (unsigned long)a[j], (unsigned long)b[j], (unsigned long)(hd & 0x3FFu), (unsigned long)hd, i, na);
+}
 /* UC2: reccheck. The words this frame wrote for the model are compared with the valid record (pm_gpu_rec_same). The record is kept. */
 static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u32* w, u32 n, int whole) {
     unsigned bad = 0, miss = 0;
@@ -3404,6 +3433,7 @@ static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u3
     if (r != 1 || !whole) return;
     if (pm_gpu_rec_same(ra + k->off, k->len, w, n, &bad, &miss) < 0) return;
     rec_hit++; rec_bad += bad; rec_miss += miss;
+    if (bad) uc2d_first(ra + k->off, k->len, w, n);
 }
 static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     u32* w = NULL; u32 n = 0, i = 0;
