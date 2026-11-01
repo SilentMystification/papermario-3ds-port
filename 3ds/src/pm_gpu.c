@@ -888,6 +888,10 @@ static void flush_draw(void) {
     PH_PUSH(PH_GPU);
     PHF_PUSH(PH_GBIND);
     const int gpal = graw && g_pal; /* GV1c: the palette program */
+    if (rec_cap) { /* UC1: a capture sends every uniform of the draw (forced shape). A draw without the palette program refuses the record. */
+        sh_ok = 0; sh5_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
+        if (!gpal) rec_ref = 1;
+    }
     if (graw) { /* PO3b */
         proj_ok = 0; pool_buf_ok = 0; /* DR1: the program and the buffer change */
         if (gpal && g_use5) { /* GV5: lighting, texgen, fog */
@@ -2269,6 +2273,34 @@ int pm_gpu_rec_end(u32** w, u32* n) {
     *w = rb_buf + rb_off; *n = off - rb_off;
     return 1;
 }
+/* UC1: patch table of a captured group. One entry per emitted f32 vec4: off = word offset of its word 0 in the group, idx = uniform
+ * vec4, split = 1 for the first vec4 of a 0x2C1 write (its words sit at off, off+2, off+3, off+4). Held per walk (UC3 stores it per record). */
+typedef struct { u16 off; u8 idx, split; } RecPatch;
+#define REC_PT_MAX 256
+static RecPatch rec_pt[REC_PT_MAX];
+static unsigned rec_pt_n, rec_wbad_n, rec_pk_n;
+/* UC1: walks a group ([param0][header][params], count in header bits 20 to 27, words 2 + c + (c & 1)). Fills rec_pt.
+ * Returns the entry count, -1 when the walk does not end on n (wbad). pk: words of the program registers 0x280 to 0x2DF (not 0x2C0, 0x2C1). */
+int pm_gpu_rec_walk(const u32* w, u32 n) {
+    unsigned i = 0, cur = 0, pt = 0;
+    while (i + 1 < n) {
+        u32 p0 = w[i], hdr = w[i + 1], reg = hdr & 0x3FFu, c = (hdr >> 20) & 0xFFu, d = c + 1u, len = 2u + c + (c & 1u);
+        if (i + len > n) break;
+        if (reg == 0x2C0 && !(hdr >> 31)) { if (!(p0 >> 31)) break; cur = p0 & 0x7Fu; }
+        else if (reg == 0x2C1 && !(hdr >> 31)) {
+            if ((d & 3u) || pt + (d >> 2) > REC_PT_MAX) break;
+            for (unsigned k = 0; k < (d >> 2); k++, cur++, pt++) {
+                rec_pt[pt].off = (u16)(k ? i + 1u + 4u * k : i);
+                rec_pt[pt].idx = (u8)cur; rec_pt[pt].split = k == 0;
+            }
+        } else if (reg >= 0x280 && reg < 0x2E0 && reg != 0x2C0 && reg != 0x2C1) rec_pk_n += d;
+        i += len;
+    }
+    if (i != n) { rec_wbad_n++; return -1; }
+    rec_pt_n += pt;
+    return (int)pt;
+}
+void pm_gpu_rec_count(unsigned* pt, unsigned* wbad, unsigned* pk) { *pt = rec_pt_n; *wbad = rec_wbad_n; *pk = rec_pk_n; rec_pt_n = rec_wbad_n = rec_pk_n = 0; }
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */

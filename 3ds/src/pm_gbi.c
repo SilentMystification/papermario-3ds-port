@@ -3355,7 +3355,7 @@ typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 
 #define REC_MAX_WORDS 1024u
 static RecKey rk[256];
 static u32* ra; static u32 ra_n, ra_gen; static int ra_fail;
-static unsigned rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_wbad, rec_bytes;
+static unsigned rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_bytes;
 static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key, last such slot */
 static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that differs: model version, texture handle, cache slot generation */
 
@@ -3407,8 +3407,7 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
         rec_ref++;
         return;
     }
-    while (i + 1 < n) { unsigned c = (w[i + 1] >> 20) & 0x7ffu; i += 2 + c + (c & 1u); } /* header walk: reg, mask, extra length (bits 20 to 30) */
-    if (i != n) { rec_wbad++; return; }
+    if (pm_gpu_rec_walk(w, n) < 0) return; /* UC1: the walk counts wbad and fills the patch table */
     u32 need = (n + 3u) & ~3u, at;
     if (old_state == 1 && n <= old_len) at = old_off; /* RK2: the slot's old place, no arena growth */
     else if (ra_n + need <= REC_ARENA_WORDS) { at = ra_n; ra_n += need; }
@@ -3419,10 +3418,11 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     rec_build++; rec_bytes += n * 4u;
 }
 static __attribute__((noinline, cold)) void rec_report(void) {
-    unsigned recs = 0;
+    unsigned recs = 0, pt, wbad, pk;
     for (unsigned s = 0; s < 256; s++) recs += rk[s].state == 1;
-    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u);
-    rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_wbad = rec_bytes = rec_rb = rec_mv = rec_mh = rec_mt = 0;
+    pm_gpu_rec_count(&pt, &wbad, &pk);
+    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk);
+    rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_bytes = rec_rb = rec_mv = rec_mh = rec_mt = 0;
 }
 
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the

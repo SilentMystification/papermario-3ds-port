@@ -93,6 +93,8 @@ void pm_gpu_flush(void);
 void pm_gpu_flush_at(int line);
 void pm_gpu_rec_begin(void); /* RC1: start a record capture (flushes, marks the command buffer) */
 int pm_gpu_rec_end(unsigned long** w, unsigned long* n); /* RC1: 1 words *w, *n of the group; 0 refused; -1 empty (u32) */
+int pm_gpu_rec_walk(const unsigned long* w, unsigned long n); /* UC1: patch table of a group; -1 when the walk does not end on n */
+void pm_gpu_rec_count(unsigned* pt, unsigned* wbad, unsigned* pk); /* UC1: patch entries, walk failures, program words of the window; resets them */
 void pm_gpu_dcsum_frame(unsigned frame); /* DS0: per drawn frame; prints the dcsum line every 300 frames */
 void pm_gpu_gbiprof_report(unsigned frames);
 /* N64 pixels, y down. Clipped to the 320x240 picture inside the 400-wide target. */
