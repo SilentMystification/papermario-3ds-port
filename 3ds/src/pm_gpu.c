@@ -100,6 +100,19 @@ static unsigned gring_n, gidx_n, gi_start, gni; /* ring fill, index fill, first 
 static float g_uvso[4], g_vp[4], g_cmul[4], g_cadd[4], g_zmix[2];
 /* PRIMZFIX repro, switch zround (debug only): zmix.y rounded to 2^-16 steps, the float24 z step of the console (diag_primz.md). The shader multiplies this value. */
 static float zmix_y_dbg(float y) { static int on = -1; if (on < 0) on = pm_debug_has("zround"); return on ? (float)(int)(y * 65536.f + 0.5f) * (1.f / 65536.f) : y; }
+/* UC2 probe, log only: logs the C3D_StencilTest arguments and the 0x105 word the call stores when the word changes (switch stprobe, 200 lines max).
+ * Word = im << 24 | ref << 16 | wm << 8 | (fn << 4) & 0x70 | en (encoding from the citro3d disassembly, docs/handoff/diag_uc2_0x110.md section 3). */
+static int stp_on = -1; static unsigned stp_n, stp_lw[8], stp_cnt[8];
+static void stc_set(int site, int en, GPU_TESTFUNC fn, int ref, int im, int wm) {
+    C3D_StencilTest(en, fn, ref, im, wm);
+    if (stp_on < 0) stp_on = pm_debug_has("stprobe") ? 1 : 0;
+    if (!stp_on) return;
+    stp_cnt[site & 7]++;
+    unsigned w = ((unsigned)im << 24) | ((unsigned)ref << 16) | ((unsigned)wm << 8) | (((unsigned)fn << 4) & 0x70u) | (en ? 1u : 0u);
+    if ((stp_cnt[site & 7] > 1 && w == stp_lw[site & 7]) || stp_n >= 200) return;
+    stp_lw[site & 7] = w; stp_n++;
+    pm_log_d("UC2P site %d word105 %08x en %d fn %d ref %d im %02x wm %02x frame %u calls %u", site, w, en ? 1 : 0, (int)fn, ref, im, wm, pm_frame_count(), stp_cnt[site & 7]);
+}
 static int gpu_vtx_on;
 static int g_ct, g_cullm; /* GV1a: the N64 cull type of the open raw batch (0 none, 1 G_CULL_FRONT, 2 G_CULL_BACK) and the PICA mode made from it */
 /* GV1c: matrix palette. A raw batch (switch gv1) holds up to GPAL game matrices. A Vtx copy in the ring carries its palette index in the flag field (bytes 6 and 7).
@@ -808,17 +821,17 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
     if (decal2) { /* V16b pass 1: no colour, no depth write, mark the stencil where the stored depth is not behind the decal */
         sh_depth_map(true, -1.0f, -DECAL_EPS);
         sh_depth_test(true, GPU_LEQUAL, (GPU_WRITEMASK)0);
-        C3D_StencilTest(true, GPU_ALWAYS, 1, 0xff, 0xff);
+        stc_set(1, true, GPU_ALWAYS, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
         C3D_DrawArrays(GPU_TRIANGLES, first, count);
         sh_depth_map(true, -1.0f, decal_bias());
         sh_depth_test(true, GPU_GEQUAL, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-        C3D_StencilTest(true, GPU_EQUAL, 1, 0xff, 0xff);
+        stc_set(2, true, GPU_EQUAL, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_ZERO, GPU_STENCIL_ZERO);
         draws_frame++;
     }
     C3D_DrawArrays(GPU_TRIANGLES, first, count);
-    if (decal2) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); }
+    if (decal2) { stc_set(3, false, GPU_ALWAYS, 0, 0xff, 0); }
     DC_T(5);
     PH_POP();
     verts = batch + count;
@@ -829,7 +842,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         Vert* b2 = verts;
         for (int i = 0; i < count; i++) { b2[i] = batch[i]; b2[i].z = r_zmark_zn * b2[i].w; }
         sh_depth_test(true, GPU_ALWAYS, GPU_WRITE_DEPTH);
-        C3D_StencilTest(true, GPU_EQUAL, 1, 0xff, 0xff);
+        stc_set(4, true, GPU_EQUAL, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_ZERO);
         C3D_DrawArrays(GPU_TRIANGLES, (int)(b2 - vert_base), count);
         verts = b2 + count;
@@ -997,7 +1010,7 @@ static void flush_draw(void) {
     if (z && r_zmark) {
         /* B3b: pass 1 tests the model with its own depth and marks the stencil where it is nearer than the world. Pass 2 (below) writes the constant there. */
         sh_depth_test(true, GPU_GREATER, GPU_WRITE_DEPTH);
-        C3D_StencilTest(true, GPU_ALWAYS, 1, 0xff, 0xff);
+        stc_set(5, true, GPU_ALWAYS, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
         stencil_on = 1;
     } else if (z && r_zcmp)
@@ -1007,7 +1020,7 @@ static void flush_draw(void) {
     else
         sh_depth_test(false, GPU_GREATER, GPU_WRITE_COLOR);
     /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
-    if (stencil_on && !(z && r_zmark)) { C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
+    if (stencil_on && !(z && r_zmark)) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
     sh_depth_map(true, -1.0f, r_decal ? decal_bias() : 0.0f);
     sh_early(false, GPU_EARLYDEPTH_GREATER, 0);
     if (r_atest >= 0) sh_alpha_test(true, GPU_GREATER, r_atest);
