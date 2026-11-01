@@ -3358,6 +3358,9 @@ static u32* ra; static u32 ra_n, ra_gen; static int ra_fail;
 static unsigned rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_bytes;
 static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key, last such slot */
 static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that differs: model version, texture handle, cache slot generation */
+static unsigned rec_hit, rec_bad, rec_miss; /* UC2: reccheck compares (hit), words outside patch slots (bad), patch tables (miss) */
+static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
+static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
 
 static u16 rec_hgen(unsigned m) { unsigned h = pm_rec_tex(m); return h ? (u16)tb_gen[h & 0x7fu] : 0; }
 static u16 rec_tgen(u16 s) { return s == REC_NO_SLOT ? 0 : (u16)pm_tex_slot_gen((int)s); }
@@ -3380,7 +3383,11 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
     if (k->state) {
         u32 ver = pm_rec_ver(slot - 1);
         u16 hg = rec_hgen(slot - 1), t0 = rec_tgen(k->s0), t1 = rec_tgen(k->s1);
-        if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) return 0;
+        if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) {
+            if (!rec_chk_sw() || k->state != 1) return 0;
+            rec_chk = 1; pm_gpu_rec_begin(); /* UC2: the old path still runs; its words are compared with the record */
+            return 1;
+        }
         rec_rb++; rec_ls = slot;
         if (k->ver != ver) rec_mv++;
         if (k->hgen != hg) rec_mh++;
@@ -3390,12 +3397,21 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
     rec_cap_n++;
     return 1;
 }
+/* UC2: reccheck. The words this frame wrote for the model are compared with the valid record (pm_gpu_rec_same). The record is kept. */
+static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u32* w, u32 n, int whole) {
+    unsigned bad = 0, miss = 0;
+    if (r == 0) { rec_ref++; return; }
+    if (r != 1 || !whole) return;
+    if (pm_gpu_rec_same(ra + k->off, k->len, w, n, &bad, &miss) < 0) return;
+    rec_hit++; rec_bad += bad; rec_miss += miss;
+}
 static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     u32* w = NULL; u32 n = 0, i = 0;
     unsigned slot = w1 & 0xffu;
     RecKey* k = &rk[slot - 1];
     int cs, as;
     int r = pm_gpu_rec_end(&w, &n);
+    if (rec_chk) { rec_chk = 0; rec_check(k, r, w, n, whole); return; }
     pm_tex_cur_slots(&cs, &as);
     u16 old_off = k->off, old_len = k->len; u8 old_state = k->state, old_nb = k->nb;
     k->s0 = cs < 0 ? REC_NO_SLOT : (u16)cs; k->s1 = as < 0 ? REC_NO_SLOT : (u16)as;
@@ -3421,8 +3437,9 @@ static __attribute__((noinline, cold)) void rec_report(void) {
     unsigned recs = 0, pt, wbad, pk;
     for (unsigned s = 0; s < 256; s++) recs += rk[s].state == 1;
     pm_gpu_rec_count(&pt, &wbad, &pk);
-    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk);
+    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u hit %u bad %u miss %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk, rec_hit, rec_bad, rec_miss);
     rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_bytes = rec_rb = rec_mv = rec_mh = rec_mt = 0;
+    rec_hit = rec_bad = rec_miss = 0;
 }
 
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the

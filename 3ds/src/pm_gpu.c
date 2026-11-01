@@ -2301,6 +2301,31 @@ int pm_gpu_rec_walk(const u32* w, u32 n) {
     return (int)pt;
 }
 void pm_gpu_rec_count(unsigned* pt, unsigned* wbad, unsigned* pk) { *pt = rec_pt_n; *wbad = rec_wbad_n; *pk = rec_pk_n; rec_pt_n = rec_wbad_n = rec_pk_n = 0; }
+/* UC2: reccheck. a is a valid record, b the words this frame wrote for the same model. Words in patch data slots are not compared
+ * (replay writes them). bad: words outside the slots that differ, or the lengths differ. miss: the patch tables differ. Returns -1 when
+ * a or b fails the walk (wbad). The pt and pk counters are kept as they were. */
+#define REC_CHK_MAX 1024u
+static u8 rec_msk[REC_CHK_MAX];
+static RecPatch rec_pa[REC_PT_MAX];
+int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, unsigned* miss) {
+    unsigned sv_pt = rec_pt_n, sv_pk = rec_pk_n;
+    int pa = pm_gpu_rec_walk(a, na), pb;
+    if (pa < 0 || na > REC_CHK_MAX) return -1;
+    memcpy(rec_pa, rec_pt, pa * sizeof rec_pa[0]);
+    pb = pm_gpu_rec_walk(b, nb);
+    rec_pt_n = sv_pt; rec_pk_n = sv_pk;
+    if (pb < 0) return -1;
+    if (pa != pb || memcmp(rec_pa, rec_pt, pa * sizeof rec_pa[0])) (*miss)++;
+    if (na != nb) { (*bad)++; return 0; }
+    memset(rec_msk, 0, na);
+    for (int e = 0; e < pa; e++) {
+        unsigned o = rec_pa[e].off;
+        if (rec_pa[e].split) rec_msk[o] = rec_msk[o + 2] = rec_msk[o + 3] = rec_msk[o + 4] = 1;
+        else rec_msk[o] = rec_msk[o + 1] = rec_msk[o + 2] = rec_msk[o + 3] = 1;
+    }
+    for (unsigned j = 0; j < na; j++) if (!rec_msk[j] && a[j] != b[j]) (*bad)++;
+    return 0;
+}
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */
