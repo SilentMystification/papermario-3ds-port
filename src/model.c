@@ -5121,4 +5121,8 @@ void parade_wide_setup(s32 which) {
 #ifdef TARGET_3DS
 /* RC1: the record version of a gCurrentModels slot (pm_gbi.c rec_try, rec_done). */
 unsigned pm_rec_ver(unsigned slot) { return (*gCurrentModels)[slot]->pmRecVer; }
+/* RK2: texture handle of a gCurrentModels slot (the handle of the texture gfx list), 0 when none. Same value as pm_gbi_ms0_mark. */
+unsigned pm_rec_tex(unsigned slot) {
+    return (*gCurrentModels)[slot]->textureID ? (unsigned)((*gCurrentModels)[slot]->textureID + (*gCurrentModels)[slot]->textureVariation) : 0u;
+}
 #endif

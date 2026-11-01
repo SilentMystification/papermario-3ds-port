@@ -3346,13 +3346,21 @@ static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
  * change. The capture only observes: the group draws as before. */
 extern unsigned gstat_gen;
 extern unsigned pm_rec_ver(unsigned slot); /* model.c */
-typedef struct { u32 ver; u32 gen; u8 state; u8 pad; u16 off; u16 len; u16 pad2; } RecKey; /* 16 B. state 0 none, 1 record, 2 refused */
+extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slot, 0 none */
+/* 32 B. state 0 none, 1 record, 2 refused, 3 churn guard (4 builds since the arena reset: no capture). RK2: hgen = tb_gen of the
+ * handle, tgen0/tgen1 = generation of the cache slots on unit 0 and 1 at the capture end (REC_NO_SLOT none). nb = builds since reset. */
+typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u8 pad[8]; } RecKey;
+#define REC_NO_SLOT 0xffffu
 #define REC_ARENA_WORDS (64u * 1024u)
 #define REC_MAX_WORDS 1024u
 static RecKey rk[256];
 static u32* ra; static u32 ra_n, ra_gen; static int ra_fail;
 static unsigned rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_wbad, rec_bytes;
 static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key, last such slot */
+static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that differs: model version, texture handle, cache slot generation */
+
+static u16 rec_hgen(unsigned m) { unsigned h = pm_rec_tex(m); return h ? (u16)tb_gen[h & 0x7fu] : 0; }
+static u16 rec_tgen(u16 s) { return s == REC_NO_SLOT ? 0 : (u16)pm_tex_slot_gen((int)s); }
 
 static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
     if (!ra && !ra_fail) {
@@ -3368,8 +3376,16 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
     if (gen != ra_gen || !ra) rec_reset(gen);
     if (ra_fail) return 0;
     RecKey* k = &rk[slot - 1];
-    if (k->state && k->ver == pm_rec_ver(slot - 1) && k->gen == gen) return 0;
-    if (k->state) { rec_rb++; rec_ls = slot; }
+    if (k->state == 3) return 0; /* RK2: churn guard, 4 builds since the arena reset */
+    if (k->state) {
+        u32 ver = pm_rec_ver(slot - 1);
+        u16 hg = rec_hgen(slot - 1), t0 = rec_tgen(k->s0), t1 = rec_tgen(k->s1);
+        if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) return 0;
+        rec_rb++; rec_ls = slot;
+        if (k->ver != ver) rec_mv++;
+        if (k->hgen != hg) rec_mh++;
+        if (k->tgen0 != t0 || k->tgen1 != t1) rec_mt++;
+    }
     pm_gpu_rec_begin();
     rec_cap_n++;
     return 1;
@@ -3378,25 +3394,35 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     u32* w = NULL; u32 n = 0, i = 0;
     unsigned slot = w1 & 0xffu;
     RecKey* k = &rk[slot - 1];
+    int cs, as;
     int r = pm_gpu_rec_end(&w, &n);
-    k->ver = pm_rec_ver(slot - 1); k->gen = ra_gen; k->state = 2;
+    pm_tex_cur_slots(&cs, &as);
+    u16 old_off = k->off, old_len = k->len; u8 old_state = k->state, old_nb = k->nb;
+    k->s0 = cs < 0 ? REC_NO_SLOT : (u16)cs; k->s1 = as < 0 ? REC_NO_SLOT : (u16)as;
+    k->ver = pm_rec_ver(slot - 1); k->gen = ra_gen; k->hgen = rec_hgen(slot - 1);
+    k->tgen0 = rec_tgen(k->s0); k->tgen1 = rec_tgen(k->s1); k->state = 2;
     if (r < 0) { rec_emp++; return; }
-    if (!whole || r == 0 || n > REC_MAX_WORDS || ra_n + ((n + 3u) & ~3u) > REC_ARENA_WORDS) {
+    if (!whole || r == 0 || n > REC_MAX_WORDS) {
         if (!whole) rec_part++;
         rec_ref++;
         return;
     }
     while (i + 1 < n) { unsigned c = (w[i + 1] >> 20) & 0x7ffu; i += 2 + c + (c & 1u); } /* header walk: reg, mask, extra length (bits 20 to 30) */
     if (i != n) { rec_wbad++; return; }
-    memcpy(ra + ra_n, w, n * 4u);
-    k->off = (u16)ra_n; k->len = (u16)n; k->state = 1;
-    ra_n += (n + 3u) & ~3u; rec_build++; rec_bytes += n * 4u;
+    u32 need = (n + 3u) & ~3u, at;
+    if (old_state == 1 && n <= old_len) at = old_off; /* RK2: the slot's old place, no arena growth */
+    else if (ra_n + need <= REC_ARENA_WORDS) { at = ra_n; ra_n += need; }
+    else { rec_ref++; return; }
+    memcpy(ra + at, w, n * 4u);
+    k->off = (u16)at; k->len = (u16)n; k->nb = (u8)(old_nb + 1);
+    k->state = k->nb >= 4 ? 3 : 1; /* RK2: the fourth build of the slot stops its captures */
+    rec_build++; rec_bytes += n * 4u;
 }
 static __attribute__((noinline, cold)) void rec_report(void) {
     unsigned recs = 0;
     for (unsigned s = 0; s < 256; s++) recs += rk[s].state == 1;
-    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls);
-    rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_wbad = rec_bytes = rec_rb = 0;
+    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u);
+    rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_wbad = rec_bytes = rec_rb = rec_mv = rec_mh = rec_mt = 0;
 }
 
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the

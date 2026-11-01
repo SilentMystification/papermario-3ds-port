@@ -61,4 +61,5 @@ void pm_tex_flush_pend_only(void); /* FL1 cache flush without VRAM upload */
 void pm_tex_shrink(void); /* row 5: drain the bank B cache half (both banks full) */
 void pm_tex_full_touch(void); /* row 5: a full buffer is in use this frame */
 unsigned pm_tex_slot_gen(int slot); /* C1: generation of a live slot */
+void pm_tex_cur_slots(int* a, int* b); /* RK2: cache slot of unit 0 and unit 1, -1 none */
 int pm_tex_bind_slot(int slot); /* C1: bind a cached slot by index */

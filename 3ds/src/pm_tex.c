@@ -621,6 +621,8 @@ unsigned pm_tex_slot_gen(int i) {
     if (i < 0 || i >= SLOTS || !slots[i].live) return 0;
     return slots[i].sgen;
 }
+/* RK2: the cache slots bound on unit 0 and unit 1 (-1 when none). The record key compares their generations. */
+void pm_tex_cur_slots(int* a, int* b) { *a = cur; *b = aux; }
 
 static const C3D_Tex* tex_for_draw(Slot* s) {
     if (slot_draws_stage(s)) {
