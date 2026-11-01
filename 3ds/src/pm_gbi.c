@@ -3424,7 +3424,9 @@ static __attribute__((noinline, cold)) void uc2d_first(const u32* a, u32 na, con
         hd = a[i + 1]; c = (hd >> 20) & 0xFFu; len = 2u + c + (c & 1u);
         if (j < i + len) break;
     }
-    pm_log_d("UC2D first j %u a %08lx b %08lx reg %03lx hdr %08lx cmd %u n %u", j, (unsigned long)a[j], (unsigned long)b[j], (unsigned long)(hd & 0x3FFu), (unsigned long)hd, i, na);
+    const char* role = (j == i) ? "p0" : (j == i + 1u) ? "hdr" : "data"; /* UC2E: word j is the param0, the header, or a data word of the command */
+    unsigned ni = (hd >> 31) & 1u, doff = (j > i + 1u) ? j - (i + 2u) : 0u; /* ni 1: non-incremental group, doff: data word index */
+    pm_log_d("UC2D first j %u a %08lx b %08lx reg %03lx hdr %08lx cmd %u n %u role %s ni %u doff %u", j, (unsigned long)a[j], (unsigned long)b[j], (unsigned long)(hd & 0x3FFu), (unsigned long)hd, i, na, role, ni, doff);
 }
 /* UC2: reccheck. The words this frame wrote for the model are compared with the valid record (pm_gpu_rec_same). The record is kept. */
 static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u32* w, u32 n, int whole) {
