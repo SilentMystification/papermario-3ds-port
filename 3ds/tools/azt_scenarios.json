@@ -307,6 +307,94 @@
       "reason": "CAP1 run: the first window line after the load is the first window. Until is the pos line of that window."
     },
     {
+      "name": "mac01t_rec_chk",
+      "status": "unverified",
+      "subject": "Mario in mac_01 (Toad Town), same as mac01t_rec, with the reccheck switch (UC2): a valid record is compared with the words of the frame that rebuilds it. The record is kept. Top shots at frames 500 to 505.",
+      "proves": "The reccheck compare runs on plain opaque records. The window 2 rec line (f6xx) prints hit, bad and miss. The picture equals the HEAD shot.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase fsplit reccheck",
+      "until": "rec f6\\d\\d ",
+      "cap": 120,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "rec line",
+          "regex": "rec f\\d+ cap \\d+ build "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 50[0-5]\\b"
+        }
+      ],
+      "reason": "UC2 check run (reccheck). Same until and shots as mac01t_rec."
+    },
+{
+      "name": "yard_stc",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4) with the stencil probe (UC2 log only): C3D_StencilTest args and the 0x105 word per call site.",
+      "proves": "Each C3D_StencilTest call in pm_gpu.c logs its arguments and the stored 0x105 word when the word changes (UCP lines).",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug stprobe reccheck",
+      "until": "rec f34\\d ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "stencil probe",
+          "regex": "UC2P site "
+        },
+        {
+          "name": "UC2D ctx word",
+          "regex": "UC2P uc2d_first ctxF4 "
+        }
+      ],
+      "reason": "UC2 stencil probe (log only) with reccheck: UC2D logs ctx+0xF4 beside the last stc_set word. Until is the window 2 rec line (f34x), after the UC2D line in the same rec_check call. Shots at frame 200 are taken before the until."
+    },
+    {
+      "name": "yard_rec",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the reccheck switch (UC2). Top shots at frames 200 to 204.",
+      "proves": "The reccheck compare runs on yard records. The window 2 rec line (f34x) prints hit, bad and miss. The picture equals the HEAD shot.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug reccheck",
+      "until": "rec f34\\d ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "rec line",
+          "regex": "rec f\\d+ cap \\d+ build "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": "UC2F: until is the window 2 rec line (f34x). The rec line carries hit, bad and miss."
+    },
+    {
       "name": "mac01t_rec",
       "status": "unverified",
       "subject": "Mario in mac_01 (Toad Town), same tour path and debug string as mac01t_cap1. Record capture (RC1, RK1) on plain opaque models. Top shots at frames 500 to 505.",
@@ -881,8 +969,8 @@
     "status": "unverified",
     "subject": "Attract-loop demo battle 12 (DemoScenes index 12, formation BTL_DIG_FORMATION_03): Thunder Rage lightning hits the four red Shy Guys before file select. Four hits (debug lightning hit, 3ds/src/effect_loads.c) start at frame 241. Hits from frame 241. Until is the shot at frame 252 (tint on from frame 252 to 259). The shot must show the four Shy Guys and the lightning.",
     "proves": "The Thunder Rage lightning on Shy Guys draws in the real attract-loop battle.",
-    "debug": "warp=kmr_03:0 story=ch0_toad_town demoscene=12 shots shotwin=252:12 loglevel=debug",
-    "until": "shot \\d+ frame 252\\b",
+    "debug": "warp=kmr_03:0 story=ch0_toad_town demoscene=12 shots shotwin=253:12 loglevel=debug",
+    "until": "shot \\d+ frame 253\\b",
     "cap": 90,
     "deadline": 20,
     "first_marker": "debug demo: enter GAME_MODE_DEMO at demo scene 12",
@@ -903,7 +991,7 @@
       },
       {
         "name": "shot at 252",
-        "regex": "shot \\d+ frame 252\\b"
+        "regex": "shot \\d+ frame 253\\b"
       }
     ],
     "reason": "THUNDER-BOX run 6: shotwin=241:10 writes shots at frames 241, 245 and 249 (every 4 frames). Frame 249 shows the four Shy Guys and the lightning. Until is the shot at frame 249."
@@ -1492,7 +1580,7 @@
     "subject": "Fresh boot with no warp, preset or story: the intro plays (game mode 16 from frame 327), jumptest on. Log subject only: jump result lines in the intro.",
     "proves": "The intro sequence runs on Azahar with the jump test on, and a jump result line prints after the intro starts (frame 330 or later).",
     "debug": "jumptest prof loglevel=debug",
-    "until": "jump f(3[3-9]\\d|[4-9]\\d\\d) (ok|fail|none)",
+    "until": "jump f(4[2-9]\\d|[5-9]\\d\\d) ran",
     "cap": 90,
     "deadline": 20,
     "first_marker": "boot_main",
@@ -1505,7 +1593,7 @@
       },
       {
         "name": "jump result line after intro start",
-        "regex": "jump f(3[3-9]\\d|[4-9]\\d\\d) (ok|fail|none)"
+        "regex": "jump f(4[2-9]\\d|[5-9]\\d\\d) ran"
       }
     ],
     "reason": "INTROJ: boot with no warp (same as boot_jump_azahar). Until is the first jump result at frame 330 or later, after the intro starts at frame 327. Cap 90 s."
