@@ -2186,6 +2186,7 @@ void pm_gbi_win_reset(void) {
     memset(sp0_T, 0, sizeof sp0_T); sp0_skip = sp0_grp = 0; /* SPLIT0C */
 }
 
+static void rec_report(void); /* RC1 (defined with the record capture) */
 void pm_gbi_end_frame(void) {
     /* One second of presented frames, summed. Identical seconds are not written. */
     static int frames, acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x;
@@ -2194,6 +2195,7 @@ void pm_gbi_end_frame(void) {
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0, n_splits, pm_gpu_off_count(), n_grabs);
     PH_ADD(C_CMD, n_ops);
     { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); } }
+    { static unsigned rec_fr; if (++rec_fr >= 300) { rec_fr = 0; rec_report(); } } /* RC1: one rec line per 300 frames */
     if (pm_ph_on || pm_dcs_on) pm_gpu_dcsum_frame(rm_frame); /* DS0: dcsum runs without phase; it must clear pm_dc_c and pm_dc_us every frame */
     if (pm_ph_on && !pm_pf_arm) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mdc_report(); sp0_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
@@ -3339,6 +3341,64 @@ static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
     }
 }
 
+/* RC1: record capture (copy path). rec_try starts a capture for a plain opaque model (header w1 bit 9) whose key is not current.
+ * rec_done ends it and copies the group words into the arena. Key: pmRecVer of the slot and gen (global word). Cold per model per key
+ * change. The capture only observes: the group draws as before. */
+extern unsigned gstat_gen;
+extern unsigned pm_rec_ver(unsigned slot); /* model.c */
+typedef struct { u32 ver; u32 gen; u8 state; u8 pad; u16 off; u16 len; u16 pad2; } RecKey; /* 16 B. state 0 none, 1 record, 2 refused */
+#define REC_ARENA_WORDS (64u * 1024u)
+#define REC_MAX_WORDS 1024u
+static RecKey rk[256];
+static u32* ra; static u32 ra_n, ra_gen; static int ra_fail;
+static unsigned rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_wbad, rec_bytes;
+static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key, last such slot */
+
+static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
+    if (!ra && !ra_fail) {
+        ra = (u32*)malloc(REC_ARENA_WORDS * 4u);
+        if (!ra) { ra_fail = 1; pm_log_w("RC1: record arena malloc failed, capture off"); }
+    }
+    ra_n = 0; ra_gen = gen; memset(rk, 0, sizeof rk);
+}
+static __attribute__((noinline)) int rec_try(u32 w1) {
+    unsigned slot = w1 & 0xffu;
+    if (!slot) return 0;
+    u32 gen = pm_dlc_gen ^ (gstat_gen << 16);
+    if (gen != ra_gen || !ra) rec_reset(gen);
+    if (ra_fail) return 0;
+    RecKey* k = &rk[slot - 1];
+    if (k->state && k->ver == pm_rec_ver(slot - 1) && k->gen == gen) return 0;
+    if (k->state) { rec_rb++; rec_ls = slot; }
+    pm_gpu_rec_begin();
+    rec_cap_n++;
+    return 1;
+}
+static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
+    u32* w = NULL; u32 n = 0, i = 0;
+    unsigned slot = w1 & 0xffu;
+    RecKey* k = &rk[slot - 1];
+    int r = pm_gpu_rec_end(&w, &n);
+    k->ver = pm_rec_ver(slot - 1); k->gen = ra_gen; k->state = 2;
+    if (r < 0) { rec_emp++; return; }
+    if (!whole || r == 0 || n > REC_MAX_WORDS || ra_n + ((n + 3u) & ~3u) > REC_ARENA_WORDS) {
+        if (!whole) rec_part++;
+        rec_ref++;
+        return;
+    }
+    while (i + 1 < n) { unsigned c = (w[i + 1] >> 20) & 0x7ffu; i += 2 + c + (c & 1u); } /* header walk: reg, mask, extra length (bits 20 to 30) */
+    if (i != n) { rec_wbad++; return; }
+    memcpy(ra + ra_n, w, n * 4u);
+    k->off = (u16)ra_n; k->len = (u16)n; k->state = 1;
+    ra_n += (n + 3u) & ~3u; rec_build++; rec_bytes += n * 4u;
+}
+static __attribute__((noinline, cold)) void rec_report(void) {
+    unsigned recs = 0;
+    for (unsigned s = 0; s < 256; s++) recs += rk[s].state == 1;
+    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls);
+    rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_wbad = rec_bytes = rec_rb = 0;
+}
+
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
  * same skips. Returns the first word it does not run (g + n when all ran). The walker runs that word and the rest as ops.
  * A G_DL that is not a dlc hit returns the word after it and sets *nx to the list (the walker pushes it). */
@@ -3469,7 +3529,10 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             unsigned n = w0 & 0xffffu;
             if (end && sp == 0 && pc + n > end) n = (unsigned)(end - pc);
             if (pm_ph_on) sp0_group_begin(); /* SPLIT0C */
+            Gfx* g0 = pc; /* RC1: the record capture takes the group when bit 9 is set */
+            int rc = (w1 & 0x200u) ? rec_try(w1) : 0;
             pc = mg_run(pc, n, &nx, w1);
+            if (rc) rec_done(w1, pc == g0 + n && !nx);
             if (pm_ph_on) sp0_group_end();
             if (nx && sp < 12) { stack[sp++] = pc; pc = (Gfx*)nx; }
             break;

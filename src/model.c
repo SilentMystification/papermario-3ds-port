@@ -1496,13 +1496,14 @@ void appendGfx_model(void* data) {
     }
 
 #ifdef TARGET_3DS
+    /* RC1: plain flag, hoisted out of the census block below. It is the record capture test (header w1 bit 9). */
+    int plain = (renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC)
+        && tintCombineType == TINT_COMBINE_NONE && !(flags & (MODEL_FLAG_USES_CUSTOM_GFX | MODEL_FLAG_HAS_TEX_PANNER | MODEL_FLAG_BILLBOARD));
     { /* MR0 and MS0: plain model flag for the census (pm_gbi.c mr0_*, ms0_*), phase on only */
         extern int pm_ph_on;
         extern void pm_gbi_mr0_plain(int plain);
         extern void pm_gbi_ms0_mark(int opaque, unsigned tex);
         if (pm_ph_on) {
-            int plain = (renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC)
-                && tintCombineType == TINT_COMBINE_NONE && !(flags & (MODEL_FLAG_USES_CUSTOM_GFX | MODEL_FLAG_HAS_TEX_PANNER | MODEL_FLAG_BILLBOARD));
             pm_gbi_mr0_plain(plain);
             pm_gbi_ms0_mark(plain && renderMode == RENDER_MODE_SURFACE_OPA, model->textureID ? (unsigned)(model->textureID + model->textureVariation) : 0u);
         }
@@ -1512,9 +1513,11 @@ void appendGfx_model(void* data) {
 #ifdef TARGET_3DS
     mgHdr = (*gfxPos)++; /* MR1: the header op; n is set at the end of this function */
     mgHdr->words.w0 = (u32)G_PM_MODEL << 24;
-    /* SR2: w1 = pmSlot (bits 0 to 7), static matrix (bit 8: finalMtx is savedMtx, not billboard), pmMtxVer (bits 16 to 31) */
+    /* SR2: w1 = pmSlot (bits 0 to 7), static matrix (bit 8: finalMtx is savedMtx, not billboard), pmMtxVer (bits 16 to 31).
+     * RC1: bit 9 = plain opaque model (the record capture takes it, pm_gbi.c rec_try) */
     mgHdr->words.w1 = (u32)model->pmSlot
         | ((model->finalMtx == &model->savedMtx && !(flags & MODEL_FLAG_BILLBOARD)) ? 0x100u : 0u)
+        | ((plain && renderMode == RENDER_MODE_SURFACE_OPA) ? 0x200u : 0u)
         | ((u32)model->pmMtxVer << 16);
 #endif
 
@@ -2848,8 +2851,10 @@ void mdl_update_transform_matrices(void) {
                     guMtxCatF(model->userTransformMtx, tempModelMtx, tempModelMtx);
                     guMtxF2L(tempModelMtx, curMtx);
                 }
-                model->flags &= ~MODEL_FLAG_IGNORE_MATRIX;
-                PM_REC_BUMP(model);
+                if (model->flags & MODEL_FLAG_IGNORE_MATRIX) { /* RK1: bump only when the flag changes */
+                    model->flags &= ~MODEL_FLAG_IGNORE_MATRIX;
+                    PM_REC_BUMP(model);
+                }
 
                 // recalculate the center of the model with transformation applied
                 bb = (ModelBoundingBox*) get_model_property(model->modelNode, MODEL_PROP_KEY_BOUNDING_BOX);
@@ -5112,3 +5117,8 @@ void parade_wide_setup(s32 which) {
         }
     }
 }
+
+#ifdef TARGET_3DS
+/* RC1: the record version of a gCurrentModels slot (pm_gbi.c rec_try, rec_done). */
+unsigned pm_rec_ver(unsigned slot) { return (*gCurrentModels)[slot]->pmRecVer; }
+#endif

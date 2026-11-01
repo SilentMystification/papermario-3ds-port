@@ -474,6 +474,7 @@ static void gp2_clip_init(void) {
 static int rect_open, rect_ec, rect_zb, rect_tex; /* C7: rect_tex is the tile-0 cache slot for an open DR1 batch */
 static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compares this instead of the plan */
 static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
+static int rec_cap, rec_ref; static u32* rb_buf; static u32 rb_off; static unsigned rb_kick, rb_draw, rb_raw; /* RC1: record capture (pm_gpu_rec_begin, rec_end); rec_ref: a refusal inside the group */
 static int pool_buf_ok; /* DR1: the citro3d buffer info holds the vertex pool (set once per frame, cleared by a raw batch and by sh_clear) */
 static int proj_ok; static C3D_Mtx proj_last; /* DR1: the projection uniform of the last draw */
 static int noise_bound; /* DC2: unit 2 holds the noise texture (cleared by sh_clear) */
@@ -964,7 +965,7 @@ static void flush_draw(void) {
     if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
     if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
     int noise = combine == 8 && plan.uses_noise && noise_init();
-    if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
+    if (noise) { if (rec_cap) rec_ref = 1; /* RC1: a noise draw refuses the record. PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
         int u = gpal ? (g_use5 ? u5_nzo : u4_nzo) : u_nzo;
         if (!noise_bound) { dc_bind(2, &noise_tex); noise_bound = 1; } /* DC2: unit 2 stays bound until the next sh_clear */
         if (u >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u, 120.f / 64.f, 200.f / 64.f, noise_off[0], noise_off[1]);
@@ -2251,6 +2252,23 @@ void pm_gpu_set_const(unsigned rgba) {
 }
 
 void pm_gpu_flush(void) { flush(); }
+/* RC1: the capture only observes. Begin flushes and marks the command buffer. End flushes and returns the words written since the mark. */
+void pm_gpu_rec_begin(void) {
+    flush(); raw1_reset(); sh_clear();
+    GPUCMD_GetBuffer(&rb_buf, NULL, &rb_off);
+    rb_kick = kick_n; rb_draw = draws_frame; rb_raw = pm_dc_c[DC_RAW];
+    rec_ref = 0; rec_cap = 1;
+}
+int pm_gpu_rec_end(u32** w, u32* n) {
+    u32* b = NULL; u32 off = 0;
+    flush();
+    rec_cap = 0;
+    GPUCMD_GetBuffer(&b, NULL, &off);
+    if (b != rb_buf || off < rb_off || kick_n != rb_kick || draws_frame - rb_draw != pm_dc_c[DC_RAW] - rb_raw || rec_ref || pm_interp_on > 0) return 0;
+    if (pm_dc_c[DC_RAW] == rb_raw) return -1;
+    *w = rb_buf + rb_off; *n = off - rb_off;
+    return 1;
+}
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */

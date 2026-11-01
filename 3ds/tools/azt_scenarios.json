@@ -307,6 +307,38 @@
       "reason": "CAP1 run: the first window line after the load is the first window. Until is the pos line of that window."
     },
     {
+      "name": "mac01t_rec",
+      "status": "unverified",
+      "subject": "Mario in mac_01 (Toad Town), same tour path and debug string as mac01t_cap1. Record capture (RC1, RK1) on plain opaque models. Top shots at frames 500 to 505.",
+      "proves": "The record capture runs on plain opaque models. The window 2 rec line (f6xx) prints cap under 5, wbad 0. The picture equals the HEAD shot.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase fsplit",
+      "until": "rec f6\\d\\d ",
+      "cap": 120,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "rec line",
+          "regex": "rec f\\d+ cap \\d+ build "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 50[0-5]\\b"
+        }
+      ],
+      "reason": "RK1: until is the window 2 rec line (f600 to f699). Shots at frames 500 to 505 are written before the until. rb and ls count the recaptures."
+    },
+    {
       "name": "mac01t_prof",
       "status": "unverified",
       "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t_cap1, with prof=16 (PF2 sampling and PF3 counters).",
