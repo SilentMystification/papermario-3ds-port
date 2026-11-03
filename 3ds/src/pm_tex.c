@@ -590,12 +590,19 @@ static void undirty(Slot* s) {
     s->dirty = 0;
 }
 
+/* probe (log only, TEXGARBLE): a staging copy freed less than 2 frames after its upload was queued. The GPU may still read it. */
+static unsigned early_free_n, early_free_kb;
+static void stage_probe(const Slot* s) {
+    if (!s->vram_up && tc_frame < s->up_frame + 2) { early_free_n++; early_free_kb += s->stage_n >> 10; }
+}
+
 static void drop(Slot* s) {
     if (!s->live) return;
     undirty(s);
     slot_span(s, -1);
     if (aux == (int)(s - slots)) aux = -1;
     if (s->vram_stage) {
+        stage_probe(s);
         linearFree(s->vram_stage);
         s->vram_stage = NULL;
         s->stage_n = 0;
@@ -634,11 +641,29 @@ static const C3D_Tex* tex_for_draw(Slot* s) {
     return &s->tex;
 }
 
+/* probe (log only, TEXGARBLE, switch texbind): each bind logs the slot key (source address, length, sgen, frame) for the first
+ * 200 binds. A bind of a clean slot whose source bytes no longer hash to shash counts as a mismatch: the bytes changed under
+ * a key that was not invalidated. Dirty and native slots are skipped (their change is expected). */
+static int bind_probe = -1; static unsigned bind_n, bind_mis, bind_skip;
+static unsigned probe_fnv(const u8* p, unsigned n) { unsigned x = 2166136261u; for (unsigned k = 0; k < n; k++) x = (x ^ p[k]) * 16777619u; return x; }
+static void bind_probe_one(int i, const Slot* s) {
+    if (bind_n < 200) pm_log_d("texbind f%u slot %d img %p slen %u sgen %u %dx%d fmt %u siz %u dirty %d native %d", (unsigned)tc_frame, i, s->img, s->slen, s->sgen, s->w, s->h, s->fmt, s->siz, s->dirty, s->native);
+    bind_n++;
+    if (s->dirty || s->native || !s->shash || !s->img) { bind_skip++; return; }
+    unsigned h = probe_fnv((const u8*)s->img, s->slen);
+    if (h != s->shash) {
+        if (bind_mis < 8) pm_log_w("texbind MISMATCH f%u slot %d img %p slen %u shash %08x now %08x sgen %u %dx%d fmt %u siz %u", (unsigned)tc_frame, i, s->img, s->slen, s->shash, h, s->sgen, s->w, s->h, s->fmt, s->siz);
+        bind_mis++;
+    }
+}
+
 int pm_tex_bind_slot(int i) {
     if (i < 0 || i >= SLOTS || !slots[i].live) return 0;
     cur = i;
     TOUCH(&slots[i]);
     TC_HIT(&slots[i]);
+    if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
+    if (bind_probe) bind_probe_one(i, &slots[i]);
     const C3D_Tex* tp = tex_for_draw(&slots[i]);
     pm_dc_c[DC_TB0]++;
     C3D_TexBind(0, tp);
@@ -761,6 +786,8 @@ static void tc_report(void) {
     }
     pm_log_d("texstat f%u: hits %u miss %u evict %u (%uKB) never hit before evict %u (%uKB) invalidated %u uploaded %uKB",
              tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_bytes >> 10, tc_evict_ev0, tc_ev0_bytes >> 10, tc_inval, tc_up_bytes >> 10);
+    pm_log_d("texstat stage early free %u (%uKB), freed at age 2 or more %uKB", early_free_n, early_free_kb, stage_freed >> 10);
+    pm_log_d("texbind binds %u mismatch %u skipped %u", bind_n, bind_mis, bind_skip);
     pm_log_d("texstat live: %u slots %uKB, never hit %u (%uKB), used in last 300 frames %u (%uKB)", n, bytes >> 10, u0n, u0b >> 10, rec_n, rec_b >> 10);
     pm_log_d("texstat age (frames since last use) <=1: %u/%uKB, <=10: %u/%uKB, <=100: %u/%uKB, <=300: %u/%uKB, older: %u/%uKB",
              an[0], ab[0] >> 10, an[1], ab[1] >> 10, an[2], ab[2] >> 10, an[3], ab[3] >> 10, an[4], ab[4] >> 10);
@@ -1232,7 +1259,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         }
         staged = (const u8*)upload;
     }
-    if (s->vram_stage) linearFree(s->vram_stage);
+    if (s->vram_stage) { stage_probe(s); linearFree(s->vram_stage); }
     s->vram_stage = (u8*)linearAlloc(gpu_size);
     sbit_set(att_bits, (int)(s - slots));
     if (!s->vram_stage) {
@@ -1477,6 +1504,8 @@ int pm_tex_bind(void) {
     slots[cur].last_frame = tc_frame;
     GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
     if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
+    if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
+    if (bind_probe) bind_probe_one(cur, &slots[cur]);
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);
     C3D_TexSetFilter(tp, tex_filt, tex_filt);
     C3D_TexSetWrap(tp, ws, wt);
