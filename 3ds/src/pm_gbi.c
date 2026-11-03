@@ -2159,7 +2159,7 @@ static __attribute__((cold, noinline)) void mdc_report(void) {
     mdcm_over = 0;
 }
 
-void pm_pos_text(char (*out)[40]); /* pm_route.c */
+void pm_pos_text(char* out); /* pm_route.c */
 static void os_win_clear(void) {
     memset(os_op_n, 0, sizeof os_op_n); memset(os_nn, 0, sizeof os_nn); memset(os_tk, 0, sizeof os_tk); memset(os_sn, 0, sizeof os_sn); memset(os_fl, 0, sizeof os_fl);
     memset(pk_ops, 0, sizeof pk_ops); memset(pk_tk, 0, sizeof pk_tk); memset(pk_sn, 0, sizeof pk_sn);
@@ -2192,7 +2192,7 @@ static void os_report(void) {
     unsigned svc_now = pm_svc_n;
     pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | pt %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), (svc_now - os_svc_last) / 300u, gm_steps / 300, gm_n);
     os_svc_last = svc_now;
-    { char p[2][40]; pm_pos_text(p); pm_log_hw("pos f%d %s | %s", rm_frame, p[0], p[1]); } /* CAP1: Mario and camera, one line per window */
+    { char p[40]; pm_pos_text(p); pm_log_hw("pos f%d %s", rm_frame, p); } /* CAP1: Mario, one line per window */
     pm_log_hw("prod f%d sum %u ops %u", rm_frame, (unsigned)(psum / 300), (unsigned)(tot_n / 300));
     for (int r = 0; r < 8; r++) {
         int best = -1; unsigned long long bv = 0;

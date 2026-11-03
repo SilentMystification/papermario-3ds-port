@@ -309,8 +309,8 @@
     {
       "name": "yard_poshud",
       "status": "unverified",
-      "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the poshud switch: bottom screen rows 0 and 1 show Mario and camera x y z yaw (POSHUD).",
-      "proves": "poshud shows Mario and camera values on the bottom screen at the hudint refresh, and the yard top picture still draws.",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the poshud switch: bottom screen row 5 shows 'Mario x y z yaw' (POSHUD), under a blank row 4.",
+      "proves": "poshud shows the Mario row on every frame, and the yard top picture still draws.",
       "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug poshud",
       "until": "warp: scene f300 ",
       "cap": 90,
@@ -368,9 +368,9 @@
     },
     {
       "name": "mapchange_hud",
-      "status": "verified",
-      "subject": "Bottom screen row 1 (top row, the HUD, on by default) after the tour change to mac_01 (Toad Town, area 1 map 2, change at step 170). Shots at frames 226 to 229 show 'Now in mac_01 (area 1, map 2)'. From frame 230 (end of the 60 step hold) the text reads 'Map mac_01 (area 1, map 2)'.",
-      "proves": "A map change sets the HUD transition text for 2 s (MAPHUD, pm_map_hud_step) and the text returns to the map line when the hold ends.",
+      "status": "unverified",
+      "subject": "Bottom screen rows 1 to 3 after the tour change to mac_01 (Toad Town, area 1 map 2, change at step 170). Shots at frames 226 to 229 show the 3 row map block (MAPHUD). From frame 230 (end of the 60 step hold) the fps, memory and VRAM rows return.",
+      "proves": "A map change shows the 3 row map block on the HUD for 2 s (MAPHUD, pm_map_hud_step) and the normal HUD rows return when the hold ends.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
       "until": "shot \\d+ frame 23[3-7]\\b",
       "cap": 60,
@@ -397,6 +397,38 @@
         }
       ],
       "reason": "MAPHUD run: the until is the top shot at a frame from 233 to 237, after the hold ends at step 230. Bottom shots at frames 226 to 237 show both texts."
+    },
+    {
+      "name": "mapchange_poshud",
+      "status": "verified",
+      "subject": "Bottom screen after the tour change to mac_01 (Toad Town, change at step 170), with the poshud switch. Frames 226 to 229 show the 3 row map block on rows 1 to 3: row 1 'mac_00', row 2 'area 1 map 1 -> mac_01', row 3 'area 1 map 2'. From frame 230 the fps, memory and VRAM rows return, and the Mario row (row 5) shows on every frame.",
+      "proves": "MAPHUD block (pm_map_hud_step, 3 rows during the 60 step hold, then the normal rows) and POSHUD (Mario row 5 with the log window at rows 11 to 26).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 poshud shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
+      "until": "shot \\d+ frame 23[3-7]\\b",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "map change",
+          "regex": "maphud: mac_01 area 1 map 2 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 2[23]\\d\\b"
+        }
+      ],
+      "reason": "POSHUD and MAPHUD run: bottom shots at frames 226 to 237. Frames 226 to 229 show the block, frame 230 on shows the normal rows."
     },
     {
       "name": "exit_armed",
@@ -461,7 +493,7 @@
         },
         {
           "name": "pos line",
-          "regex": "pos f\\d+ M x "
+          "regex": "pos f\\d+ Mario x "
         },
         {
           "name": "shot",
