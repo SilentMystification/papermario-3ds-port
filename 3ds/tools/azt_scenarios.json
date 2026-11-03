@@ -1121,6 +1121,38 @@
       "reason": "Discovery start for the talk route (NPC positions in simstep lines)."
     },
     {
+      "name": "battle_wide",
+      "status": "unverified",
+      "subject": "Battle with wide on (one Goomba, kmr_03): the battle wheel sits next to Mario (UA4). The wheel log line starts a shot burst of 8 frames; the until-line is that shot.",
+      "proves": "UA4: the battle wheel base position follows the zoomed battle view (pm_wide_vx, pm_wide_vy).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 wide shots loglevel=debug",
+      "until": "shot \\d+ frame \\d+ map",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 33 183"
+        },
+        {
+          "name": "shot at wheel",
+          "regex": "shot \\d+ frame \\d+ map"
+        }
+      ],
+      "reason": "UA4 gate. Wide shot of the wheel next to Mario at about (33, 183)."
+    },
+    {
       "name": "battle_target_wide",
       "status": "unverified",
       "subject": "Battle with wide on (one Goomba, kmr_03): the target pointer (hand) of the Jump command sits on the Goomba. The pointer log line starts a shot burst of 8 frames; the until-line is that shot.",

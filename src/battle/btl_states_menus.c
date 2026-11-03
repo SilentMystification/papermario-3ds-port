@@ -1,5 +1,6 @@
 #include "battle/battle.h"
 #include "hud_element.h"
+#include "pm_wide.h"
 #include "battle/action_cmd.h"
 #include "sprite/player.h"
 
@@ -601,8 +602,8 @@ s32 btl_main_menu_update(void) {
 
     switch (BattleMenuState) {
         case BTL_MENU_STATE_CREATE:
-            BattleMenu_BasePosX = 54;
-            BattleMenu_BasePosY = 173;
+            BattleMenu_BasePosX = pm_wide_vx(54); /* UA4: the wheel is placed next to Mario in the zoomed view */
+            BattleMenu_BasePosY = pm_wide_vy(173);
             BattleMenu_WheelSpeed = 0.3f;
             BattleMenu_WheelMoving = 0;
             BattleMenu_HomePos = BattleMenu_PrevSelected;
@@ -759,6 +760,12 @@ s32 btl_main_menu_update(void) {
                     hud_element_set_scale(hid, 0.85f);
                     hud_element_clear_flags(hid, HUD_ELEMENT_FLAG_DISABLED);
                     BattleMenuState = BTL_MENU_STATE_CHOOSING;
+                    { /* UA4 debug: the wheel opens. One log line and one shot burst. */
+                        extern void pm_log_d(const char* fmt, ...);
+                        extern void pm_gpu_shot_burst(int n);
+                        pm_log_d("debug wheel open: base %d %d", BattleMenu_BasePosX, BattleMenu_BasePosY);
+                        pm_gpu_shot_burst(8);
+                    }
                     break;
             }
             break;
