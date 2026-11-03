@@ -89,12 +89,15 @@ void pm_pos_text(char (*out)[40]) {
     snprintf(out[1], 40, "C x %.0f y %.0f z %.0f yaw %.0f", c->lookAt_eye.x, c->lookAt_eye.y, c->lookAt_eye.z, c->curYaw);
 }
 
-/* MAPHUD: bottom row 0 text, the map id of the game status and its area and map index. For `hold` steps after a map change the row says
- * "Now in" (the change), then "Map". Returns the text when it changed, else NULL. Per step: two loads and compares. snprintf runs on a change and at the end of a hold. */
+/* MAPHUD: the HUD top row shows "Now in <id> (area A, map M)" for `hold` steps after a map change, then the fps line again (NULL).
+ * BOTLAYOUT: pm_map_now is the footer map row, "Map: <id> (area A, map M)", always. Per step: two loads and compares. */
+static char map_now[40];
+const char* pm_map_now(void) { return map_now; }
 const char* pm_map_hud_step(unsigned step, unsigned hold) {
     static char txt[40];
     static int a_prev = -1, m_prev = -1;
     static unsigned until;
+    static char from[24] = "none"; /* BOTLAYOUT: the map id before the change, for the info line */
     int a, m;
     pm_route_mapid(&a, &m);
     if (a != a_prev || m != m_prev) {
@@ -103,12 +106,14 @@ const char* pm_map_hud_step(unsigned step, unsigned hold) {
         m_prev = m;
         until = step + hold;
         if (a >= 0 && a < ARRAY_COUNT(gAreas) && gAreas[a].maps && m >= 0 && m < gAreas[a].mapCount) id = gAreas[a].maps[m].id;
+        pm_log_i("map change: %s -> %s (area %d map %d)", from, id, a, m);
+        snprintf(from, sizeof from, "%s", id);
         snprintf(txt, sizeof txt, "Now in %s (area %d, map %d)", id, a, m);
+        snprintf(map_now, sizeof map_now, "Map: %s (area %d, map %d)", id, a, m);
         pm_log_d("maphud: %s area %d map %d step %u until %u", id, a, m, step, until);
-        return txt;
     }
-    if (!until || step < until) return NULL;
+    if (!until) return NULL;
+    if (step < until) return txt;
     until = 0;
-    snprintf(txt, sizeof txt, "Map %s (area %d, map %d)", a >= 0 && a < ARRAY_COUNT(gAreas) && gAreas[a].maps && m >= 0 && m < gAreas[a].mapCount ? gAreas[a].maps[m].id : "none", a, m);
-    return txt;
+    return NULL;
 }
