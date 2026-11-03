@@ -2331,6 +2331,8 @@ void pm_gpu_rec_begin(void) {
     rb_kick = kick_n; rb_draw = draws_frame; rb_raw = pm_dc_c[DC_RAW];
     rec_ref = 0; rec_cap = 1;
 }
+/* UC2: ctx+0xF0 alpha test, +0xF4 stencil test, +0xF8 stencil op, +0xFC depth color mask: the group citro3d sends at each flush (diag_uc2_j75.md). */
+void pm_gpu_grp_get(u32* g) { for (int i = 0; i < 4; i++) g[i] = *(volatile u32*)(__C3D_Context + 0xF0 + 4 * i); }
 int pm_gpu_rec_end(u32** w, u32* n) {
     u32* b = NULL; u32 off = 0;
     flush();
@@ -2390,6 +2392,12 @@ int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, u
         unsigned o = rec_pa[e].off;
         if (rec_pa[e].split) rec_msk[o] = rec_msk[o + 2] = rec_msk[o + 3] = rec_msk[o + 4] = 1;
         else rec_msk[o] = rec_msk[o + 1] = rec_msk[o + 2] = rec_msk[o + 3] = 1;
+    }
+    for (unsigned i = 0; i + 1 < na;) { /* UC2: param0 of each 0x227 index buffer address write (frame ring, new per frame): not compared */
+        u32 hd = a[i + 1]; unsigned c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u);
+        if (i + len > na) break;
+        if ((hd & 0x3FFu) == 0x227 && !(hd >> 31)) rec_msk[i] = 1;
+        i += len;
     }
     for (unsigned j = 0; j < na; j++) if (!rec_msk[j] && a[j] != b[j]) (*bad)++;
     return 0;

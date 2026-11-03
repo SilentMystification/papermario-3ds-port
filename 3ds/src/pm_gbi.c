@@ -3380,7 +3380,8 @@ extern unsigned pm_rec_ver(unsigned slot); /* model.c */
 extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slot, 0 none */
 /* 32 B. state 0 none, 1 record, 2 refused, 3 churn guard (4 builds since the arena reset: no capture). RK2: hgen = tb_gen of the
  * handle, tgen0/tgen1 = generation of the cache slots on unit 0 and 1 at the capture end (REC_NO_SLOT none). nb = builds since reset. */
-typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u8 pad[8]; } RecKey;
+/* UC2: grp = fragment-op group words (ctx+0xF0..0xFC) at capture start. A record is reused only when they match (diag_uc2_j75.md). 40 B. */
+typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[4]; } RecKey;
 #define REC_NO_SLOT 0xffffu
 #define REC_ARENA_WORDS (64u * 1024u)
 #define REC_MAX_WORDS 1024u
@@ -3390,6 +3391,9 @@ static unsigned rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_bytes;
 static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key, last such slot */
 static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that differs: model version, texture handle, cache slot generation */
 static unsigned rec_hit, rec_bad, rec_miss; /* UC2: reccheck compares (hit), words outside patch slots (bad), patch tables (miss) */
+static unsigned rec_mg; /* UC2: valid records not compared, the group words differ at capture start */
+static u32 rec_g0[4]; /* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush */
+void pm_gpu_grp_get(u32* g); /* pm_gpu.c, UC2: ctx+0xF0..0xFC */
 static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
 static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
 
@@ -3416,15 +3420,17 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
         u16 hg = rec_hgen(slot - 1), t0 = rec_tgen(k->s0), t1 = rec_tgen(k->s1);
         if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) {
             if (!rec_chk_sw() || k->state != 1) return 0;
-            rec_chk = 1; pm_gpu_rec_begin(); /* UC2: the old path still runs; its words are compared with the record */
-            return 1;
+            pm_gpu_rec_begin(); pm_gpu_grp_get(rec_g0); /* UC2: the old path still runs; its words are compared with the record */
+            if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) { rec_chk = 1; return 1; }
+            rec_mg++; /* UC2: the group differs at capture start: capture again below */
+        } else {
+            rec_rb++; rec_ls = slot;
+            if (k->ver != ver) rec_mv++;
+            if (k->hgen != hg) rec_mh++;
+            if (k->tgen0 != t0 || k->tgen1 != t1) rec_mt++;
         }
-        rec_rb++; rec_ls = slot;
-        if (k->ver != ver) rec_mv++;
-        if (k->hgen != hg) rec_mh++;
-        if (k->tgen0 != t0 || k->tgen1 != t1) rec_mt++;
     }
-    pm_gpu_rec_begin();
+    pm_gpu_rec_begin(); pm_gpu_grp_get(rec_g0);
     rec_cap_n++;
     return 1;
 }
@@ -3481,6 +3487,7 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     u16 old_off = k->off, old_len = k->len; u8 old_state = k->state, old_nb = k->nb;
     k->s0 = cs < 0 ? REC_NO_SLOT : (u16)cs; k->s1 = as < 0 ? REC_NO_SLOT : (u16)as;
     k->ver = pm_rec_ver(slot - 1); k->gen = ra_gen; k->hgen = rec_hgen(slot - 1);
+    memcpy(k->grp, rec_g0, sizeof k->grp);
     k->tgen0 = rec_tgen(k->s0); k->tgen1 = rec_tgen(k->s1); k->state = 2;
     if (r < 0) { rec_emp++; return; }
     if (!whole || r == 0 || n > REC_MAX_WORDS) {
@@ -3502,9 +3509,9 @@ static __attribute__((noinline, cold)) void rec_report(void) {
     unsigned recs = 0, pt, wbad, pk;
     for (unsigned s = 0; s < 256; s++) recs += rk[s].state == 1;
     pm_gpu_rec_count(&pt, &wbad, &pk);
-    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u hit %u bad %u miss %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk, rec_hit, rec_bad, rec_miss);
+    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u hit %u bad %u miss %u mg %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk, rec_hit, rec_bad, rec_miss, rec_mg);
     rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_bytes = rec_rb = rec_mv = rec_mh = rec_mt = 0;
-    rec_hit = rec_bad = rec_miss = 0;
+    rec_hit = rec_bad = rec_miss = rec_mg = 0;
 }
 
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
