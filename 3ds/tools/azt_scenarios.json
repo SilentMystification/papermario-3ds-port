@@ -1873,6 +1873,46 @@
     "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
   },
   {
+    "name": "logcolor",
+    "status": "unverified",
+    "subject": "Bottom screen log lines in four colours by level: the lvtest error line bright red, warn line yellow, info line white, debug line grey. Shots at frames 115 to 118, the four lines are the last lines of the log window (rows 9 to 26).",
+    "proves": "CONCOL: the console prints one colour per level (escape codes in the console bytes only), and the layout rows stay in place.",
+    "debug": "preset=yard shots shotbottom=115:4 loglevel=debug conlevel=debug lvtest",
+    "until": "lvtest: done",
+    "cap": 45,
+    "deadline": 20,
+    "first_marker": "warp: kmr_20 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "map",
+        "regex": "warp: kmr_20 entry 4"
+      },
+      {
+        "name": "error line",
+        "regex": "lvtest: error line"
+      },
+      {
+        "name": "warn line",
+        "regex": "lvtest: warn line"
+      },
+      {
+        "name": "info line",
+        "regex": "lvtest: info line"
+      },
+      {
+        "name": "debug line",
+        "regex": "lvtest: debug line"
+      },
+      {
+        "name": "done marker (frame 125, after the shots)",
+        "regex": "lvtest: done"
+      }
+    ],
+    "reason": "CONCOL: the colour test. Until is the lvtest done line at frame 125, after the bottom shots at 115 to 118."
+  },
+  {
     "name": "botlayout",
     "status": "unverified",
     "subject": "Bottom screen (BOTLAYOUT) with the log scrolled: HUD rows 1 to 4, row 6 blank, separator row 7, header row 8 (Log (console: Debug) left, (SD: Debug) right), log rows 9 to 26 full of lines (the oldest scrolled off), separator row 27, footer row 28 (Map: id, area, map), row 29 (apt: N% N3DS or O3DS and the build), blank row 30. No menu.",

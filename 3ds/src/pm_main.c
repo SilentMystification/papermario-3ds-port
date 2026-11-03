@@ -517,6 +517,7 @@ void pm_frame_loop(void) {
                 mem_step = (u64)pm_opt.hud_ms * tick_hz / 1000u;
             }
         }
+        pm_log_lvtest(frame);
         if (frame % 300 == 0) pm_rom_drop_stat(); /* ROMKEEP: count of ROM reads in a dropped range, per 300 frames */
         if (frame % 3600 == 0) {
             pm_mem_log("tick");

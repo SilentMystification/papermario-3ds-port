@@ -283,6 +283,18 @@ void pm_log_live_status(void) {
 }
 
 /* Called by the frame loop every 300 drawn frames when the logstat switch is on. */
+/* CONCOL test aid, switch lvtest: one line per level at frame 100, the marker `lvtest: done` at frame 125. The colour check reads the bottom shots between them. */
+void pm_log_lvtest(unsigned frame) {
+    if (frame != 100 && frame != 125) return;
+    if (!pm_debug_has("lvtest")) return;
+    if (frame == 100) {
+        pm_log_e("lvtest: error line");
+        pm_log_w("lvtest: warn line");
+        pm_log_i("lvtest: info line");
+        pm_log_d("lvtest: debug line");
+    } else pm_log("lvtest: done");
+}
+
 void pm_log_stat(float avg_ms, unsigned frames, float secs, unsigned spikes, float spike_max) {
     unsigned all = st_lines + q_drop_total + q_dropped;
     unsigned dl = all - st_prev_lines, db = st_bytes - st_prev_bytes;
@@ -567,6 +579,12 @@ static void report_drops(void) {
     out_batch(m, mn, m, mn);
 }
 
+/* CONCOL: console colour per level (error, warn, info, debug). SGR codes libctru maps: 91 bright red, 33 yellow, 37 white, 90 grey.
+ * Console bytes only: log.txt, the socket and the ring keep the plain text. Each coloured line resets to 0 before its newline. */
+#define CON_SGR_LEN 5 /* ESC [ two digits m */
+static const char con_sgr[4][CON_SGR_LEN + 1] = { "\x1b[91m", "\x1b[33m", "\x1b[37m", "\x1b[90m" };
+#define CON_RESET "\x1b[0m"
+
 /* The caller holds drain_lock. */
 static void drain_locked(void) {
     static char lb[8192], bb[8192];
@@ -584,13 +602,19 @@ static void drain_locked(void) {
             skip = sp ? (int)(sp - sl->text) + 1 : 0;
             cn = n - skip;
         }
-        if ((tf && ln + n > (int)sizeof(lb)) || (tc && bn + cn > (int)sizeof(bb))) {
+        if ((tf && ln + n > (int)sizeof(lb)) || (tc && bn + cn + CON_SGR_LEN + 8 > (int)sizeof(bb))) {
             out_batch(lb, ln, bb, bn);
             ln = bn = 0;
             report_drops(); /* a flood keeps the queue full, so report between batches */
         }
         if (tf) { memcpy(lb + ln, sl->text, (size_t)n); ln += n; }
-        if (tc) { memcpy(bb + bn, sl->text + skip, (size_t)cn); bn += cn; }
+        if (tc) {
+            int keep = (cn > 0 && sl->text[skip + cn - 1] == '\n') ? cn - 1 : cn; /* the newline goes after the reset */
+            memcpy(bb + bn, con_sgr[sl->lv & 3], CON_SGR_LEN); bn += CON_SGR_LEN;
+            memcpy(bb + bn, sl->text + skip, (size_t)keep); bn += keep;
+            memcpy(bb + bn, CON_RESET, 4); bn += 4;
+            if (keep < cn) bb[bn++] = '\n';
+        }
         __atomic_store_n(&sl->state, 0, __ATOMIC_RELEASE);
         t++;
         __atomic_store_n(&q_tail, t, __ATOMIC_RELEASE);
