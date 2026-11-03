@@ -966,9 +966,9 @@
     },
     {
       "name": "mapchange_hud",
-      "status": "unverified",
-      "subject": "Bottom screen rows 1 to 3 after the tour change to mac_01 (Toad Town, area 1 map 2, change at step 170). Shots at frames 226 to 229 show the 3 row map block (MAPHUD). From frame 230 (end of the 60 step hold) the fps, memory and VRAM rows return.",
-      "proves": "A map change shows the 3 row map block on the HUD for 2 s (MAPHUD, pm_map_hud_step) and the normal HUD rows return when the hold ends.",
+      "status": "verified",
+      "subject": "Bottom screen after the tour change to mac_01 (Toad Town, area 1 map 2, change at step 170), poshud and stats off. Rows 1 to 3 fps, memory, VRAM always. Rows 4 to 6 the map block: change text during the 60 step hold, then the current map.",
+      "proves": "A map change shows the 3 row map block in rows 4 to 6 for 2 s (MAPHUD, pm_map_hud_step) without replacing the fps, memory or VRAM rows.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
       "until": "shot \\d+ frame 23[3-7]\\b",
       "cap": 60,
@@ -999,8 +999,8 @@
     {
       "name": "mapchange_poshud",
       "status": "verified",
-      "subject": "Bottom screen after the tour change to mac_01 (Toad Town, change at step 170), with the poshud switch. Frames 226 to 229 show the 3 row map block on rows 1 to 3: row 1 'mac_00', row 2 'area 1 map 1 -> mac_01', row 3 'area 1 map 2'. From frame 230 the fps, memory and VRAM rows return, and the Mario row (row 5) shows on every frame.",
-      "proves": "MAPHUD block (pm_map_hud_step, 3 rows during the 60 step hold, then the normal rows) and POSHUD (Mario row 5 with the log window at rows 11 to 26).",
+      "subject": "Bottom screen after the tour change to mac_01 (Toad Town, change at step 170), with the poshud switch, stats off. Rows 1 to 3 fps, memory, VRAM on every frame. Rows 4 to 6 the map block: during the hold row 4 'mac_00', row 5 'area 1 map 1 -> mac_01', row 6 'area 1 map 2'; after it the current map (row 6 blank). Row 7 the Mario row.",
+      "proves": "All HUD rows visible during the map change (the block uses rows 4 to 6, no HUD row is replaced) and the Mario row at row 7, separator row 8, header row 9, log window from row 10 with stats off.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 poshud shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
       "until": "shot \\d+ frame 23[3-7]\\b",
       "cap": 60,
@@ -1026,7 +1026,39 @@
           "regex": "shot \\d+ frame 2[23]\\d\\b"
         }
       ],
-      "reason": "POSHUD and MAPHUD run: bottom shots at frames 226 to 237. Frames 226 to 229 show the block, frame 230 on shows the normal rows."
+      "reason": "POSHUD and MAPHUD run: bottom shots at frames 226 to 237. Block on the hold frames, normal current map after."
+    },
+    {
+      "name": "mapchange_allrows",
+      "status": "verified",
+      "subject": "Bottom screen after the tour change to mac_01 with poshud and stats on (largest HUD). Rows 1 to 3 fps, memory, VRAM. Rows 4 to 6 the map block (hold: 'mac_00', 'area 1 map 1 -> mac_01', 'area 1 map 2'; after: current map). Row 7 the Mario row, row 8 the stats row, row 9 separator, row 10 log header, log rows 11 to 26.",
+      "proves": "Every HUD row is visible at once with both optional rows on, and the log window shrinks by 2 rows (11 to 26) without losing HUD rows.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 poshud stats shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
+      "until": "shot \\d+ frame 23[3-7]\\b",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "map change",
+          "regex": "maphud: mac_01 area 1 map 2 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 2[23]\\d\\b"
+        }
+      ],
+      "reason": "Layout run: poshud and stats on. Bottom shots at frames 226 to 237, the block shows on the hold frames."
     },
     {
       "name": "exit_armed",

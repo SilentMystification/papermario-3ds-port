@@ -7,9 +7,9 @@ int pm_gpu_stereo(void); /* STEREO: 1 when this frame draws both eyes */
 void pm_gpu_eye(int right); /* STEREO: the next pass draws the right (1) or the left (0) eye */
 void pm_gpu_begin_wait(void); /* LB1: the GPU part of a pending frame start; a no-op when none is pending */
 void pm_gpu_end(void);
-/* The top rows of the bottom screen. The log scrolls underneath. pos: Mario's row (POSHUD), NULL = no row.
- * map: the 3 row map change block on rows 1 to 3 (MAPHUD), NULL = the fps and memory rows. */
-void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40], const char* pos, char (*map)[40]);
+/* The HUD rows at the top of the bottom screen. The log scrolls underneath.
+ * line0: fps row. stats: stats row, NULL = off. mem: memory and VRAM rows. pos: Mario row, NULL = off. map: the 3 row map block (rows 4 to 6). */
+void pm_gpu_hud(const char* line0, const char* stats, char (*mem)[40], const char* pos, char (*map)[40]);
 int pm_gpu_drew(void);
 void pm_gpu_read_frame(unsigned short* dst);
 int pm_gpu_depth_at(int x, int y, unsigned* d24); /* F03 */
