@@ -310,3 +310,9 @@ The fsplit line (fsplit flag only) adds `wm <mean> max <max> tk <mean> max <max>
 |---|---|---|---|---|---|---|
 | kmr10_pos (POSWARP, unverified) | pos= sets gPlayerStatus pos 10 frames after the placement (readback line `poswarp: placed Mario at -142.000 136.000 221.000 on map kmr_10`), and the shot at frames 44 to 59 shows Mario on the kmr_10 terrain | `azt.ps1 kmr10_pos -Row POSWARP -Build POSWARP -Try` | `warp: kmr_10 entry 0` | cap 45 s | build3dszt\shots\kmr10_pos | Until is the first shot after the readback (a log until would stop before the picture). The placement runs 30 world frames after the map entry, once per map load. Padscript token `pos_<x>:<y>:<z>[:<angle>]` is not run by this scenario. |
 
+
+## MISC1 (2026-11-03): console colour by log level, smdh metadata
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| logcolor | CONCOL: the four levels print in four colours on the bottom console (error bright red, warn yellow, info white, debug grey). Lines `lvtest: error/warn/info/debug line` at frame 100, `lvtest: done` at frame 125, bottom shots 115 to 118. Escape codes only in console bytes (log.txt is checked plain). | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 logcolor -Row MISC1 -Build MISC1 -Try` | `warp: kmr_20 entry 4` | about 20 s to the until, cap 45 s | build3ds\azt\shots\logcolor | Switch lvtest is a test aid in pm_log.c (pm_log_lvtest). The smdh is checked by 3ds/tools/smdh_dump.py run on build3ds\lane-MISC1\pm_3ds.3dsx. |
