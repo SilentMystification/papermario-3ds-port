@@ -1308,7 +1308,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     s->h = height;
     s->stride = stride;
     s->dkey = dkey;
-    s->shash = shash0;
+    s->shash = src_hash(img, s->slen); /* after the conversion, as at HEAD: the pre-conversion hash differs for some sources */
     s->dirty = 0;
     s->native = src_native;
     PH_ADD(C_TEXBYTE, reserve >> 10);

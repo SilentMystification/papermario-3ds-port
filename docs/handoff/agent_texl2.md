@@ -5,6 +5,17 @@ blocked on texgarble fix (L2b not started: branch texgarble has no fix commit, o
 - Row L2a done in code (counters and debug switch only). Commit: see `git log texl2 -1`.
 - Row L2b to L2e NOT started. L2b is blocked on the TEXGARBLE fix: branch texgarble has only probe commit 9ca2ec747 (no fix). Check `git log texgarble` for a fix commit and docs/handoff/agent_texgarble.md before L2b.
 
+## L2a picture gate: NOT passed (measured 2026-11-03)
+- HEAD vs HEAD (two volcano runs, shot 0000_18_13): 0 bytes differ. Run noise is ruled out.
+- Every L2a build differs from HEAD volcano in the same 20 bytes (208594-211475, x166-168, y289-293):
+  (a) L2a as committed (source hash before the conversion): 20 bytes.
+  (b) HEAD plus only the early source hash: 20 bytes.
+  (c) L2a with the slot hash after the conversion (HEAD order): 20 bytes.
+  (d) L2a without the ghost hash and check: 20 bytes.
+- Conclusion: the 20 bytes follow the code build, not the ghost logic and not the hash order. Cause not found. Possible: layout or timing sensitivity in the emulator. Not proven.
+- Pre-conversion source hash differs from the post-conversion hash for some sources (variant b). The L2 key must use one hash order (post-conversion, as HEAD).
+- yard: top shot 0000_0_11 byte-equal to HEAD (L2a as committed). Bottom shots differ from frame 210 (bottom screen, not gated).
+
 ## L2a result (Azahar, build L2a, lane TEXL2)
 - volcano_l2 (texcap=256): texghost f300 evict-hit 2/32KB, diff-hit 0/0KB, upload ops 322, upload us 54784. Counters above 0: PASS.
 - Picture, open: volcano_l2 and volcano (default cap, build L2a) differ from HEAD volcano in 20 bytes at x166-168, y289-293 (same bytes in all three runs). Default-cap L2a volcano run equals volcano_l2, so the cap is not the cause. The L2a code does not change pixels by design. Cause not proven: possibly run noise. Test that: one HEAD rerun of volcano (1 start).
