@@ -1128,6 +1128,37 @@
       ]
     },
     {
+      "name": "battle_start_fb",
+      "status": "unverified",
+      "subject": "BTLSTAR FB1 diagnosis: same as battle_start_enc, plus fbbind (one line per RGBA16 bind and load, hit or miss). Battle start through the encounter path: encwarp=120 enters the pre-battle state for the kmr_03 world enemy (the fields START_BATTLE sets; the touch test did not start the battle), and the star transition (OVERLAY_START_BATTLE) draws. One shot per frame for the 40 frames from the pre-battle start.",
+      "proves": "A real world enemy touch starts the battle (START_BATTLE, ENCOUNTER_STATE_PRE_BATTLE), and the star wipe frames are shot. Phase logging gives the frame time and the CPU readback count (pm_b7 cap_n, cap_ticks) for those frames.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town encwarp=120 shots phase phsum grablog fbbind loglevel=debug",
+      "until": "encwarp: window end",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "pre-battle entered",
+          "regex": "encwarp: pre-battle entered"
+        },
+        {
+          "name": "pre-battle start",
+          "regex": "encwarp: pre-battle start at frame"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot \\d+ frame \\d+"
+        }
+      ]
+    },
+    {
       "name": "battle_start",
       "status": "verified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",

@@ -1001,6 +1001,11 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
         unsigned dt = pm_ticks() - t0;
         if (ph_miss) { tprof_miss_t += dt; tprof_miss_n++; } else { tprof_hit_t += dt; tprof_hit_n++; }
     }
+    { /* FB1 debug switch fbbind: the load after its fbbind line, hit or miss */
+        static int fbon = -1;
+        if (fbon < 0) fbon = pm_debug_has("fbbind");
+        if (fbon && fmt == FMT_RGBA && siz == SIZ_16) pm_log_d("fbload img %p %dx%d st %d %s", img, width, height, stride, ph_miss ? "miss" : "hit");
+    }
     return r;
 }
 
