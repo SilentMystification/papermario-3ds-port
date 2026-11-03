@@ -1064,7 +1064,7 @@
       ],
       "reason": "UC2 check run (reccheck). Same until and shots as mac01t_rec."
     },
-{
+    {
       "name": "yard_stc",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4) with the stencil probe (UC2 log only): C3D_StencilTest args and the 0x105 word per call site.",
@@ -1804,36 +1804,36 @@
       "reason": "Run 7 (until shot 29 frame) timed out at 90 s: the shot line holds a burst number, not the frame index. Until and expected event now use frame 182."
     },
     {
-    "name": "thunder_box",
-    "status": "unverified",
-    "subject": "Attract-loop demo battle 12 (DemoScenes index 12, formation BTL_DIG_FORMATION_03): Thunder Rage lightning hits the four red Shy Guys before file select. Four hits (debug lightning hit, 3ds/src/effect_loads.c) start at frame 241. Hits from frame 241. Until is the shot at frame 252 (tint on from frame 252 to 259). The shot must show the four Shy Guys and the lightning.",
-    "proves": "The Thunder Rage lightning on Shy Guys draws in the real attract-loop battle.",
-    "debug": "warp=kmr_03:0 story=ch0_toad_town demoscene=12 shots shotwin=253:12 loglevel=debug",
-    "until": "shot \\d+ frame 253\\b",
-    "cap": 90,
-    "deadline": 20,
-    "first_marker": "debug demo: enter GAME_MODE_DEMO at demo scene 12",
-    "expects": "none",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "demo scene",
-        "regex": "debug demo: enter GAME_MODE_DEMO at demo scene 12"
-      },
-      {
-        "name": "lightning hit",
-        "regex": "debug lightning hit"
-      },
-      {
-        "name": "shock tint on",
-        "regex": "debug shock tint on"
-      },
-      {
-        "name": "shot at 252",
-        "regex": "shot \\d+ frame 253\\b"
-      }
-    ],
-    "reason": "THUNDER-BOX run 6: shotwin=241:10 writes shots at frames 241, 245 and 249 (every 4 frames). Frame 249 shows the four Shy Guys and the lightning. Until is the shot at frame 249."
+      "name": "thunder_box",
+      "status": "unverified",
+      "subject": "Attract-loop demo battle 12 (DemoScenes index 12, formation BTL_DIG_FORMATION_03): Thunder Rage lightning hits the four red Shy Guys before file select. Four hits (debug lightning hit, 3ds/src/effect_loads.c) start at frame 241. Hits from frame 241. Until is the shot at frame 252 (tint on from frame 252 to 259). The shot must show the four Shy Guys and the lightning.",
+      "proves": "The Thunder Rage lightning on Shy Guys draws in the real attract-loop battle.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town demoscene=12 shots shotwin=253:12 loglevel=debug",
+      "until": "shot \\d+ frame 253\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "debug demo: enter GAME_MODE_DEMO at demo scene 12",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "demo scene",
+          "regex": "debug demo: enter GAME_MODE_DEMO at demo scene 12"
+        },
+        {
+          "name": "lightning hit",
+          "regex": "debug lightning hit"
+        },
+        {
+          "name": "shock tint on",
+          "regex": "debug shock tint on"
+        },
+        {
+          "name": "shot at 252",
+          "regex": "shot \\d+ frame 253\\b"
+        }
+      ],
+      "reason": "THUNDER-BOX run 6: shotwin=241:10 writes shots at frames 241, 245 and 249 (every 4 frames). Frame 249 shows the four Shy Guys and the lightning. Until is the shot at frame 249."
     },
     {
       "name": "sewer",
@@ -1948,32 +1948,32 @@
       "reason": "Verified: log checks pass and the shot shows Mario in the Mt. Lavalava cave with lava glow (run 7)."
     },
     {
-          "name": "volcano_nb",
-          "status": "unverified",
-          "subject": "Mario in Mt. Lavalava (kzn_19, entry 0), shots at frames 196 to 204 (every 4 frames).",
-          "proves": "TEXL2 L2a gate: top shots at frames 196, 200 and 204 show whether the 20-byte difference at x166-168 y289-293 is animation phase.",
-          "debug": "warp=kzn_19:0 story=ch0_toad_town shots shotwin=196:9 loglevel=debug",
-          "until": "warp: scene f300 ",
-          "cap": 90,
-          "deadline": 20,
-          "first_marker": "warp: kzn_19 entry 0",
-          "expects": "warp",
-          "needs_picture": true,
-          "expected_events": [
-                {
-                      "name": "map",
-                      "regex": "warp: kzn_19 entry 0"
-                },
-                {
-                      "name": "steady frame",
-                      "regex": "warp: scene f300 "
-                },
-                {
-                      "name": "shot",
-                      "regex": "shot \\d+ frame 20[0-5]\\b"
-                }
-          ],
-          "reason": "Verified: log checks pass and the shot shows Mario in the Mt. Lavalava cave with lava glow (run 7)."
+      "name": "volcano_nb",
+      "status": "unverified",
+      "subject": "Mario in Mt. Lavalava (kzn_19, entry 0), shots at frames 196 to 204 (every 4 frames).",
+      "proves": "TEXL2 L2a gate: top shots at frames 196, 200 and 204 show whether the 20-byte difference at x166-168 y289-293 is animation phase.",
+      "debug": "warp=kzn_19:0 story=ch0_toad_town shots shotwin=196:9 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kzn_19 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kzn_19 entry 0"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": "Verified: log checks pass and the shot shows Mario in the Mt. Lavalava cave with lava glow (run 7)."
     },
     {
       "name": "volcano_l2",
@@ -2331,380 +2331,384 @@
       ],
       "reason": "TOADVIS, not verified. The until is a shot line in the window 500 to 524 of shotwin=500:6."
     },
-  {
-    "name": "toad_fountain",
-    "status": "unverified",
-    "subject": "Toad Town plaza, mac_01, Mario walks from entry 0 (x -600) east by padscript: stop at x -300 (frame 114), then x -170 (frame about 158). One shot per frame from frame 100 to 149 (the walk). Fountain or water in view: a person must read the shots.",
-    "proves": "TOADFOUNT: same route and frames 100 to 149 on three builds (HEAD f230e46c6 build 1488, 29f504d7b, final6 3dcfc661d). Compare top shots with shot_cmp.py. Log only, no numeric gate.",
-    "debug": "warp=mac_01:0 story=ch0_toad_town padscript=seg_a,go_-300_0_500,seg_b,wait40,go_-150_0_300,seg_c,wait40,seg_d shots shotwin=100:50 loglevel=debug",
-    "until": "shot \\d+ frame 148\\b",
-    "cap": 40,
-    "deadline": 20,
-    "first_marker": "warp: mac_01 entry 0",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "warp",
-        "regex": "warp: mac_01 entry 0"
-      },
-      {
-        "name": "route leg 1 reached (x -300)",
-        "regex": "route: seg b f\\d+"
-      },
-      {
-        "name": "shot",
-        "regex": "shot \\d+ frame 148\\b"
-      }
-    ],
-    "reason": "TOADFOUNT, not verified. Run 1 (HEAD, build 1488) gave frames 100 to 149 with no fountain in view. Frame 149 is the until-line. A person must read the shots."
-  },
-  {
-    "name": "toad_water",
-    "status": "unverified",
-    "subject": "Toad Town mac_01 at the fountain candidate (about x -304, z -329). Mario walks from entry 0 to x -300 z -150, then north to z -240, facing the candidate. Shots every 4 frames from frame 140 to 176.",
-    "proves": "TOADFOUNT position: water or fountain in the picture, on HEAD, then the water region on a second build. Log only, no numeric gate.",
-    "debug": "warp=mac_01:0 story=ch0_toad_town padscript=seg_a,go_-300_-150_500,seg_b,go_-300_-240_300,seg_c,wait20,seg_d shots shotwin=140:40 loglevel=debug",
-    "until": "shot \\d+ frame 176\\b",
-    "cap": 40,
-    "deadline": 20,
-    "first_marker": "warp: mac_01 entry 0",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "warp",
-        "regex": "warp: mac_01 entry 0"
-      },
-      {
-        "name": "route seg b (z -150 reached)",
-        "regex": "route: seg b f\\d+"
-      },
-      {
-        "name": "shot",
-        "regex": "shot \\d+ frame 176\\b"
-      }
-    ],
-    "reason": "TOADFOUNT position run 1 (HEAD, build 1488): first shot at frame 140 shows the bulletin board and Mario, no fountain. Stopped by rule. Not verified."
-  },
-  {
-    "name": "toad_pond",
-    "status": "unverified",
-    "subject": "Toad Town pond, map mac_00 (preset toad, entry 4). Mario walks by padscript to x -174, y 0, z 112 (console Position HUD). Shots every 4 frames, frames 160 to 196, bottom screen with poshud. The top shot must show the pond.",
-    "proves": "TOADFOUNT pond: water in the picture at the console position, and the bottom HUD reads x -174 and z 112. Log only, no numeric gate.",
-    "debug": "preset=toad padscript=seg_a,go_-174_112_600,seg_b,wait40,seg_c poshud shots shotwin=160:40 shotbottom=160:40 loglevel=debug",
-    "until": "shot 9 frame \\d+\\b",
-    "cap": 40,
-    "deadline": 20,
-    "first_marker": "warp: mac_00 entry 4",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "warp",
-        "regex": "warp: mac_00 entry 4"
-      },
-      {
-        "name": "route seg b (pond position reached)",
-        "regex": "route: seg b f\\d+"
-      },
-      {
-        "name": "shot",
-        "regex": "shot 9 frame \\d+\\b"
-      }
-    ],
-    "reason": "TOADFOUNT pond run, not verified. A person must read the shots and the bottom HUD values."
-  },
-  {
-    "name": "toad_pond_zround",
-    "status": "unverified",
-    "subject": "Toad Town pond with the zround repro switch (zmix.y rounded to 2^-16 steps, the console float24 step). Same route and shots as toad_pond. The top shot shows whether the background shows through the pond.",
-    "proves": "PRIMZFIX repro: the old code with zround shows the background through the pond water; the fixed code with zround does not.",
-    "debug": "preset=toad padscript=seg_a,go_-174_112_600,seg_b,wait40,seg_c poshud shots shotwin=160:40 shotbottom=160:40 loglevel=debug zround",
-    "until": "shot 9 frame \\d+\\b",
-    "cap": 40,
-    "deadline": 20,
-    "first_marker": "warp: mac_00 entry 4",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "warp",
-        "regex": "warp: mac_00 entry 4"
-      },
-      {
-        "name": "route seg b (pond position reached)",
-        "regex": "route: seg b f\\d+"
-      },
-      {
-        "name": "shot",
-        "regex": "shot 9 frame \\d+\\b"
-      }
-    ],
-    "reason": "PRIMZFIX repro, not verified. A person must read the top shots: background through the pond or not."
-  },
-  {
-    "name": "jump_azahar",
-    "status": "unverified",
-    "subject": "Jump test (JT3) result lines on Azahar: one jump f<frame> line per second with ok, fail or none and the value. Log subject only, no picture.",
-    "proves": "The jumptest switch queues the sub-buffer jump and reads back the CLIP_DATA3 word on Azahar, and the game runs past frame 330 (console: watchdog stop at frame 332 after a readback fail).",
-    "debug": "jumptest prof loglevel=debug",
-    "until": "jump f3\\d\\d ",
-    "cap": 45,
-    "deadline": 20,
-    "first_marker": "jump f",
-    "expects": "none",
-    "needs_picture": false,
-    "expected_events": [
-      {
-        "name": "jump result line",
-        "regex": "jump f\\d+ (ok|fail|none)"
-      }
-    ],
-    "reason": "JTA: jump test on HEAD, one Azahar start. Until is the first result line at frame 300 to 399. Cap 45 s."
-  },
-  {
-    "name": "jump_off_azahar",
-    "status": "unverified",
-    "subject": "Same boot as jump_azahar with no jump switch: the game runs to frame 330. Log subject only; the shot at frame 330 proves the frame was reached.",
-    "proves": "Whether the game passes frame 330 on Azahar without jumptest, and whether a watchdog line appears (JTB).",
-    "debug": "shots shotwin=330:1 prof loglevel=debug",
-    "until": "shot \\d+ frame 330\\b",
-    "cap": 45,
-    "deadline": 20,
-    "first_marker": "boot_main",
-    "expects": "none",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "frame 330 shot",
-        "regex": "shot \\d+ frame 330\\b"
-      }
-    ],
-    "reason": "JTB: jump_azahar without jumptest. Until is the shot at frame 330. Cap 45 s."
-  },
-  {
-    "name": "boot_jump_azahar",
-    "status": "unverified",
-    "subject": "Boot from the start with no warp (the intro plays), jump test on. Log subject only: jump result lines from frame 390 on.",
-    "proves": "The game boots without warp, the intro runs, and the jump test prints a result line at frame 390 or later on Azahar.",
-    "debug": "jumptest prof loglevel=debug",
-    "until": "jump f(39\\d|[4-9]\\d\\d) (ok|fail|none) ",
-    "cap": 60,
-    "deadline": 20,
-    "first_marker": "boot_main",
-    "expects": "none",
-    "needs_picture": false,
-    "expected_events": [
-      {
-        "name": "jump result line at frame 390 or later",
-        "regex": "jump f(39\\d|[4-9]\\d\\d) (ok|fail|none)"
-      }
-    ],
-    "reason": "BOOTJ: no warp, so the intro plays. Until is the first jump result at frame 390 or later. Cap 60 s."
-  },
-  {
-    "name": "boot_opts",
-    "status": "unverified",
-    "subject": "Boot with no options.ini and no options.txt: the OPTFIX boot line prints the saved option values (dz_cs, rep_delay, rep_rate, hud_ms, conlevel, loglevel, log).",
-    "proves": "The PmOpt initializer matches the struct field order: a boot with no ini gives the defaults (dz_cs 0, rep_delay 500, rep_rate 200, hud_ms 1000, conlevel 1, loglevel 1, log 1).",
-    "debug": "loglevel=debug",
-    "until": "options: boot dz_cs=",
-    "cap": 30,
-    "deadline": 20,
-    "first_marker": "boot_main",
-    "expects": "none",
-    "needs_picture": false,
-    "expected_events": [
-      {
-        "name": "boot options line with the defaults",
-        "regex": "options: boot dz_cs=0 rep_delay=500 rep_rate=200 hud_ms=1000 conlevel=1 loglevel=1 log=1"
-      }
-    ],
-    "reason": "OPTFIX: no ini in the sdmc folder (moved aside for the run). Until is the boot options line. Cap 30 s."
-  },
-  {
-    "name": "intro_jump_azahar",
-    "status": "unverified",
-    "subject": "Fresh boot with no warp, preset or story: the intro plays (game mode 16 from frame 327), jumptest on. Log subject only: jump result lines in the intro.",
-    "proves": "The intro sequence runs on Azahar with the jump test on, and a jump result line prints after the intro starts (frame 330 or later).",
-    "debug": "jumptest prof loglevel=debug",
-    "until": "jump f(4[2-9]\\d|[5-9]\\d\\d) ran",
-    "cap": 90,
-    "deadline": 20,
-    "first_marker": "boot_main",
-    "expects": "none",
-    "needs_picture": false,
-    "expected_events": [
-      {
-        "name": "intro game mode",
-        "regex": "game mode 16 frame"
-      },
-      {
-        "name": "jump result line after intro start",
-        "regex": "jump f(4[2-9]\\d|[5-9]\\d\\d) ran"
-      }
-    ],
-    "reason": "INTROJ: boot with no warp (same as boot_jump_azahar). Until is the first jump result at frame 330 or later, after the intro starts at frame 327. Cap 90 s."
-  },
-  {
-    "name": "logcon_err",
-    "status": "unverified",
-    "subject": "Mario in his yard (kmr_20, entry 4), console level error (bottom screen text) with loglevel=debug (log.txt and live log at debug).",
-    "proves": "CONLV: the console level is independent of the file level. log.txt holds the debug lines, and the logstat2 console lines counter follows conlevel=error.",
-    "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug conlevel=error logstat",
-    "until": "logstat2 writer max us",
-    "cap": 90,
-    "deadline": 20,
-    "first_marker": "warp: kmr_20 entry 4",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "map",
-        "regex": "warp: kmr_20 entry 4"
-      },
-      {
-        "name": "debug line in log.txt (file level debug)",
-        "regex": "logstat frames 300 work"
-      },
-      {
-        "name": "console lines printed (logstat2)",
-        "regex": "console lines (\\d+), queue",
-        "pick": "last", "min": 0, "max": 0
-      }
-    ],
-    "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
-  },
-  {
-    "name": "logcon_dbg",
-    "status": "unverified",
-    "subject": "Mario in his yard (kmr_20, entry 4), console level debug (bottom screen text) with loglevel=debug (log.txt and live log at debug).",
-    "proves": "CONLV: the console level is independent of the file level. log.txt holds the debug lines, and the logstat2 console lines counter follows conlevel=debug.",
-    "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug conlevel=debug logstat",
-    "until": "logstat2 writer max us",
-    "cap": 90,
-    "deadline": 20,
-    "first_marker": "warp: kmr_20 entry 4",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "map",
-        "regex": "warp: kmr_20 entry 4"
-      },
-      {
-        "name": "debug line in log.txt (file level debug)",
-        "regex": "logstat frames 300 work"
-      },
-      {
-        "name": "console lines printed (logstat2)",
-        "regex": "console lines (\\d+), queue",
-        "pick": "last", "min": 1, "max": 1000000
-      }
-    ],
-    "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
-  },
-  {
-    "name": "logcolor",
-    "status": "unverified",
-    "subject": "Bottom screen log lines in four colours by level: the lvtest error line bright red, warn line yellow, info line white, debug line grey. Shots at frames 115 to 118, the four lines are the last lines of the log window (rows 9 to 26).",
-    "proves": "CONCOL: the console prints one colour per level (escape codes in the console bytes only), and the layout rows stay in place.",
-    "debug": "preset=yard shots shotbottom=115:4 loglevel=debug conlevel=debug lvtest",
-    "until": "lvtest: done",
-    "cap": 45,
-    "deadline": 20,
-    "first_marker": "warp: kmr_20 entry 4",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "map",
-        "regex": "warp: kmr_20 entry 4"
-      },
-      {
-        "name": "error line",
-        "regex": "lvtest: error line"
-      },
-      {
-        "name": "warn line",
-        "regex": "lvtest: warn line"
-      },
-      {
-        "name": "info line",
-        "regex": "lvtest: info line"
-      },
-      {
-        "name": "debug line",
-        "regex": "lvtest: debug line"
-      },
-      {
-        "name": "done marker (frame 125, after the shots)",
-        "regex": "lvtest: done"
-      }
-    ],
-    "reason": "CONCOL: the colour test. Until is the lvtest done line at frame 125, after the bottom shots at 115 to 118."
-  },
-  {
-    "name": "botlayout",
-    "status": "unverified",
-    "subject": "Bottom screen (BOTLAYOUT) with the log scrolled: HUD rows 1 to 4, row 6 blank, separator row 7, header row 8 (Log (console: Debug) left, (SD: Debug) right), log rows 9 to 26 full of lines (the oldest scrolled off), separator row 27, footer row 28 (Map: id, area, map), row 29 (apt: N% N3DS or O3DS and the build), blank row 30. No menu.",
-    "proves": "BOTLAYOUT: the log scrolls only inside rows 9 to 26; the header, separators and footer stay in place while the log grows past 18 rows.",
-    "debug": "preset=yard padscript=wait420 shots shotbottom=49:6 loglevel=debug conlevel=debug",
-    "until": "padscript: done",
-    "cap": 45,
-    "deadline": 20,
-    "first_marker": "warp: kmr_20 entry 4",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "map",
-        "regex": "warp: kmr_20 entry 4"
-      },
-      {
-        "name": "map change info line",
-        "regex": "map change: .* -> kmr_20 \\(area 0 map 11\\)"
-      },
-      {
-        "name": "script done (frame 200 to 205 shots taken before)",
-        "regex": "padscript: done at scan \\d+ f2[1-9]\\d"
-      }
-    ],
-    "reason": "BOTLAYOUT: the scroll picture. Until is the padscript done line after the bottom shots at 200 to 205 (the script runs 420 scans, about 210 frames)."
-  },
-  {
-    "name": "botlayout_menu",
-    "status": "unverified",
-    "subject": "BOTLAYOUT menu: bottom shots 84 to 129 (the script starts at frame 49, SELECT opens the menu about 40 frames later). The port menu opens (SELECT) at about frame 40 and closes (SELECT) at about frame 60. Shots while open show the menu rows; shots after the close show the layout again (HUD rows 1 to 4, separator 7, header 8, footer rows 28 and 29).",
-    "proves": "The menu owns the bottom screen while open, and the layout (HUD, header, footer, log window) is drawn again after menu: close.",
-    "debug": "preset=yard padscript=wait80,SELECT,wait40,SELECT,wait40 shots shotbottom=84:46 loglevel=debug conlevel=debug",
-    "until": "padscript: done",
-    "cap": 45,
-    "deadline": 20,
-    "first_marker": "warp: kmr_20 entry 4",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "map",
-        "regex": "warp: kmr_20 entry 4"
-      },
-      {
-        "name": "menu open",
-        "regex": "menu: open"
-      },
-      {
-        "name": "menu close",
-        "regex": "menu: close"
-      },
-      {
-        "name": "script done",
-        "regex": "padscript: done at scan \\d+ f\\d+"
-      }
-    ],
-    "reason": "BOTLAYOUT: the menu pictures. Until is the padscript done line after the bottom shots 36 to 79."
-  },
+    {
+      "name": "toad_fountain",
+      "status": "unverified",
+      "subject": "Toad Town plaza, mac_01, Mario walks from entry 0 (x -600) east by padscript: stop at x -300 (frame 114), then x -170 (frame about 158). One shot per frame from frame 100 to 149 (the walk). Fountain or water in view: a person must read the shots.",
+      "proves": "TOADFOUNT: same route and frames 100 to 149 on three builds (HEAD f230e46c6 build 1488, 29f504d7b, final6 3dcfc661d). Compare top shots with shot_cmp.py. Log only, no numeric gate.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=seg_a,go_-300_0_500,seg_b,wait40,go_-150_0_300,seg_c,wait40,seg_d shots shotwin=100:50 loglevel=debug",
+      "until": "shot \\d+ frame 148\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "route leg 1 reached (x -300)",
+          "regex": "route: seg b f\\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 148\\b"
+        }
+      ],
+      "reason": "TOADFOUNT, not verified. Run 1 (HEAD, build 1488) gave frames 100 to 149 with no fountain in view. Frame 149 is the until-line. A person must read the shots."
+    },
+    {
+      "name": "toad_water",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at the fountain candidate (about x -304, z -329). Mario walks from entry 0 to x -300 z -150, then north to z -240, facing the candidate. Shots every 4 frames from frame 140 to 176.",
+      "proves": "TOADFOUNT position: water or fountain in the picture, on HEAD, then the water region on a second build. Log only, no numeric gate.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=seg_a,go_-300_-150_500,seg_b,go_-300_-240_300,seg_c,wait20,seg_d shots shotwin=140:40 loglevel=debug",
+      "until": "shot \\d+ frame 176\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "route seg b (z -150 reached)",
+          "regex": "route: seg b f\\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 176\\b"
+        }
+      ],
+      "reason": "TOADFOUNT position run 1 (HEAD, build 1488): first shot at frame 140 shows the bulletin board and Mario, no fountain. Stopped by rule. Not verified."
+    },
+    {
+      "name": "toad_pond",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00 (preset toad, entry 4). Mario walks by padscript to x -174, y 0, z 112 (console Position HUD). Shots every 4 frames, frames 160 to 196, bottom screen with poshud. The top shot must show the pond.",
+      "proves": "TOADFOUNT pond: water in the picture at the console position, and the bottom HUD reads x -174 and z 112. Log only, no numeric gate.",
+      "debug": "preset=toad padscript=seg_a,go_-174_112_600,seg_b,wait40,seg_c poshud shots shotwin=160:40 shotbottom=160:40 loglevel=debug",
+      "until": "shot 9 frame \\d+\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "route seg b (pond position reached)",
+          "regex": "route: seg b f\\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot 9 frame \\d+\\b"
+        }
+      ],
+      "reason": "TOADFOUNT pond run, not verified. A person must read the shots and the bottom HUD values."
+    },
+    {
+      "name": "toad_pond_zround",
+      "status": "unverified",
+      "subject": "Toad Town pond with the zround repro switch (zmix.y rounded to 2^-16 steps, the console float24 step). Same route and shots as toad_pond. The top shot shows whether the background shows through the pond.",
+      "proves": "PRIMZFIX repro: the old code with zround shows the background through the pond water; the fixed code with zround does not.",
+      "debug": "preset=toad padscript=seg_a,go_-174_112_600,seg_b,wait40,seg_c poshud shots shotwin=160:40 shotbottom=160:40 loglevel=debug zround",
+      "until": "shot 9 frame \\d+\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "route seg b (pond position reached)",
+          "regex": "route: seg b f\\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot 9 frame \\d+\\b"
+        }
+      ],
+      "reason": "PRIMZFIX repro, not verified. A person must read the top shots: background through the pond or not."
+    },
+    {
+      "name": "jump_azahar",
+      "status": "unverified",
+      "subject": "Jump test (JT3) result lines on Azahar: one jump f<frame> line per second with ok, fail or none and the value. Log subject only, no picture.",
+      "proves": "The jumptest switch queues the sub-buffer jump and reads back the CLIP_DATA3 word on Azahar, and the game runs past frame 330 (console: watchdog stop at frame 332 after a readback fail).",
+      "debug": "jumptest prof loglevel=debug",
+      "until": "jump f3\\d\\d ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "jump f",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "jump result line",
+          "regex": "jump f\\d+ (ok|fail|none)"
+        }
+      ],
+      "reason": "JTA: jump test on HEAD, one Azahar start. Until is the first result line at frame 300 to 399. Cap 45 s."
+    },
+    {
+      "name": "jump_off_azahar",
+      "status": "unverified",
+      "subject": "Same boot as jump_azahar with no jump switch: the game runs to frame 330. Log subject only; the shot at frame 330 proves the frame was reached.",
+      "proves": "Whether the game passes frame 330 on Azahar without jumptest, and whether a watchdog line appears (JTB).",
+      "debug": "shots shotwin=330:1 prof loglevel=debug",
+      "until": "shot \\d+ frame 330\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "frame 330 shot",
+          "regex": "shot \\d+ frame 330\\b"
+        }
+      ],
+      "reason": "JTB: jump_azahar without jumptest. Until is the shot at frame 330. Cap 45 s."
+    },
+    {
+      "name": "boot_jump_azahar",
+      "status": "unverified",
+      "subject": "Boot from the start with no warp (the intro plays), jump test on. Log subject only: jump result lines from frame 390 on.",
+      "proves": "The game boots without warp, the intro runs, and the jump test prints a result line at frame 390 or later on Azahar.",
+      "debug": "jumptest prof loglevel=debug",
+      "until": "jump f(39\\d|[4-9]\\d\\d) (ok|fail|none) ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "jump result line at frame 390 or later",
+          "regex": "jump f(39\\d|[4-9]\\d\\d) (ok|fail|none)"
+        }
+      ],
+      "reason": "BOOTJ: no warp, so the intro plays. Until is the first jump result at frame 390 or later. Cap 60 s."
+    },
+    {
+      "name": "boot_opts",
+      "status": "unverified",
+      "subject": "Boot with no options.ini and no options.txt: the OPTFIX boot line prints the saved option values (dz_cs, rep_delay, rep_rate, hud_ms, conlevel, loglevel, log).",
+      "proves": "The PmOpt initializer matches the struct field order: a boot with no ini gives the defaults (dz_cs 0, rep_delay 500, rep_rate 200, hud_ms 1000, conlevel 1, loglevel 1, log 1).",
+      "debug": "loglevel=debug",
+      "until": "options: boot dz_cs=",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "boot options line with the defaults",
+          "regex": "options: boot dz_cs=0 rep_delay=500 rep_rate=200 hud_ms=1000 conlevel=1 loglevel=1 log=1"
+        }
+      ],
+      "reason": "OPTFIX: no ini in the sdmc folder (moved aside for the run). Until is the boot options line. Cap 30 s."
+    },
+    {
+      "name": "intro_jump_azahar",
+      "status": "unverified",
+      "subject": "Fresh boot with no warp, preset or story: the intro plays (game mode 16 from frame 327), jumptest on. Log subject only: jump result lines in the intro.",
+      "proves": "The intro sequence runs on Azahar with the jump test on, and a jump result line prints after the intro starts (frame 330 or later).",
+      "debug": "jumptest prof loglevel=debug",
+      "until": "jump f(4[2-9]\\d|[5-9]\\d\\d) ran",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "intro game mode",
+          "regex": "game mode 16 frame"
+        },
+        {
+          "name": "jump result line after intro start",
+          "regex": "jump f(4[2-9]\\d|[5-9]\\d\\d) ran"
+        }
+      ],
+      "reason": "INTROJ: boot with no warp (same as boot_jump_azahar). Until is the first jump result at frame 330 or later, after the intro starts at frame 327. Cap 90 s."
+    },
+    {
+      "name": "logcon_err",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), console level error (bottom screen text) with loglevel=debug (log.txt and live log at debug).",
+      "proves": "CONLV: the console level is independent of the file level. log.txt holds the debug lines, and the logstat2 console lines counter follows conlevel=error.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug conlevel=error logstat",
+      "until": "logstat2 writer max us",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "debug line in log.txt (file level debug)",
+          "regex": "logstat frames 300 work"
+        },
+        {
+          "name": "console lines printed (logstat2)",
+          "regex": "console lines (\\d+), queue",
+          "pick": "last",
+          "min": 0,
+          "max": 0
+        }
+      ],
+      "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
+    },
+    {
+      "name": "logcon_dbg",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), console level debug (bottom screen text) with loglevel=debug (log.txt and live log at debug).",
+      "proves": "CONLV: the console level is independent of the file level. log.txt holds the debug lines, and the logstat2 console lines counter follows conlevel=debug.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug conlevel=debug logstat",
+      "until": "logstat2 writer max us",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "debug line in log.txt (file level debug)",
+          "regex": "logstat frames 300 work"
+        },
+        {
+          "name": "console lines printed (logstat2)",
+          "regex": "console lines (\\d+), queue",
+          "pick": "last",
+          "min": 1,
+          "max": 1000000
+        }
+      ],
+      "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
+    },
+    {
+      "name": "logcolor",
+      "status": "unverified",
+      "subject": "Bottom screen log lines in four colours by level: the lvtest error line bright red, warn line yellow, info line white, debug line grey. Shots at frames 115 to 118, the four lines are the last lines of the log window (rows 9 to 26).",
+      "proves": "CONCOL: the console prints one colour per level (escape codes in the console bytes only), and the layout rows stay in place.",
+      "debug": "preset=yard shots shotbottom=115:4 loglevel=debug conlevel=debug lvtest",
+      "until": "lvtest: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "error line",
+          "regex": "lvtest: error line"
+        },
+        {
+          "name": "warn line",
+          "regex": "lvtest: warn line"
+        },
+        {
+          "name": "info line",
+          "regex": "lvtest: info line"
+        },
+        {
+          "name": "debug line",
+          "regex": "lvtest: debug line"
+        },
+        {
+          "name": "done marker (frame 125, after the shots)",
+          "regex": "lvtest: done"
+        }
+      ],
+      "reason": "CONCOL: the colour test. Until is the lvtest done line at frame 125, after the bottom shots at 115 to 118."
+    },
+    {
+      "name": "botlayout",
+      "status": "unverified",
+      "subject": "Bottom screen (BOTLAYOUT) with the log scrolled: HUD rows 1 to 4, row 6 blank, separator row 7, header row 8 (Log (console: Debug) left, (SD: Debug) right), log rows 9 to 26 full of lines (the oldest scrolled off), separator row 27, footer row 28 (Map: id, area, map), row 29 (apt: N% N3DS or O3DS and the build), blank row 30. No menu.",
+      "proves": "BOTLAYOUT: the log scrolls only inside rows 9 to 26; the header, separators and footer stay in place while the log grows past 18 rows.",
+      "debug": "preset=yard padscript=wait420 shots shotbottom=49:6 loglevel=debug conlevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "map change info line",
+          "regex": "map change: .* -> kmr_20 \\(area 0 map 11\\)"
+        },
+        {
+          "name": "script done (frame 200 to 205 shots taken before)",
+          "regex": "padscript: done at scan \\d+ f2[1-9]\\d"
+        }
+      ],
+      "reason": "BOTLAYOUT: the scroll picture. Until is the padscript done line after the bottom shots at 200 to 205 (the script runs 420 scans, about 210 frames)."
+    },
+    {
+      "name": "botlayout_menu",
+      "status": "unverified",
+      "subject": "BOTLAYOUT menu: bottom shots 84 to 129 (the script starts at frame 49, SELECT opens the menu about 40 frames later). The port menu opens (SELECT) at about frame 40 and closes (SELECT) at about frame 60. Shots while open show the menu rows; shots after the close show the layout again (HUD rows 1 to 4, separator 7, header 8, footer rows 28 and 29).",
+      "proves": "The menu owns the bottom screen while open, and the layout (HUD, header, footer, log window) is drawn again after menu: close.",
+      "debug": "preset=yard padscript=wait80,SELECT,wait40,SELECT,wait40 shots shotbottom=84:46 loglevel=debug conlevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "menu close",
+          "regex": "menu: close"
+        },
+        {
+          "name": "script done",
+          "regex": "padscript: done at scan \\d+ f\\d+"
+        }
+      ],
+      "reason": "BOTLAYOUT: the menu pictures. Until is the padscript done line after the bottom shots 36 to 79."
+    },
     {
       "name": "kmr10_pos",
       "status": "unverified",
@@ -2729,7 +2733,7 @@
       ],
       "reason": "POSWARP: until is the first shot after the readback line (shot frame 56 to 60), so the picture shows Mario after the placement. Not yet run."
     },
-{
+    {
       "name": "merlon_ball",
       "status": "unverified",
       "subject": "Merlon's room (mac_01) with Mario placed at pos -264 20 -326, the crystal ball in the shots at frames 44 to 59, after the placement readback at frame 40. Grab log lines (grablog) for the crystal ball window.",
@@ -2798,6 +2802,226 @@
         }
       ],
       "reason": "POSWARP (texture garble view, y 136 lands on 20): until is the first shot after the readback line (shot frame 56 to 60), so the picture shows Mario after the placement. Not yet run."
+    },
+    {
+      "name": "mario_proj_off",
+      "status": "unverified",
+      "subject": "Mario in Toad Town (pos -200:30:-370), wide off, one frame (100): the same numeric check as mario_proj_wide.",
+      "proves": "UA1 wide-off: get_screen_coords x (40 + x) equals the 3D draw px.",
+      "debug": "preset=toad pos=-200:30:-370 marlog loglevel=debug",
+      "until": "marlog f100 side 100 ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "side -100",
+          "regex": "marlog f100 side -100 "
+        },
+        {
+          "name": "side +100",
+          "regex": "marlog f100 side 100 "
+        }
+      ],
+      "reason": "UA1 numeric check, wide off."
+    },
+    {
+      "name": "mario_proj_wide",
+      "status": "unverified",
+      "subject": "Mario in Toad Town (pos -200:30:-370, wide on), one frame (100): the 2D px of get_screen_coords and the 3D draw px of two world points 100 units left and right of Mario (UA1 numeric gate, no picture).",
+      "proves": "UA1: get_screen_coords x (40 + x) equals the 3D draw px in wide mode, away from the screen centre.",
+      "debug": "preset=toad wide pos=-200:30:-370 marlog loglevel=debug",
+      "until": "marlog f100 side 100 ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "side -100",
+          "regex": "marlog f100 side -100 "
+        },
+        {
+          "name": "side +100",
+          "regex": "marlog f100 side 100 "
+        }
+      ],
+      "reason": "UA1 numeric gate, wide on. Values in tenths of a px (a10, b10, err10)."
+    },
+    {
+      "name": "pause_spin_wide",
+      "status": "unverified",
+      "subject": "Pause menu open (preset toad, START) with wide on, top shots frames 100 to 119 through the window spin (UA7). Compare the window edges with pause_spin (wide off).",
+      "proves": "UA7: the pause window spin keeps the 4:3 box shape in wide mode (draw_box frustum).",
+      "debug": "preset=toad padscript=wait80,START*3 wide shots shotwin=100:20 loglevel=debug",
+      "until": "shot \\d+ frame 116\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "shot at 116",
+          "regex": "shot \\d+ frame 116\\b"
+        }
+      ],
+      "reason": "UA7 gate: window edges in wide match wide off by eye. Shots every 4 frames (shotwin 100:20): frames 100, 104, 108, 112, 116."
+    },
+    {
+      "name": "talk_wide",
+      "status": "unverified",
+      "subject": "Toad Town (mac_00 entry 4) with wide on: NPC positions for the talk route (discovery), then the speech bubble of a Toad (UA2 and UA1 subject).",
+      "proves": "UA1 and UA2: the speech bubble origin from get_screen_coords (msg_api.c:96) follows the speaker in wide mode.",
+      "debug": "preset=toad wide pos=-66:20:-518:0 padscript=wait300,A,wait150 shots loglevel=debug uiburst",
+      "until": "shot \\d+ frame \\d+ map",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "talk anchor",
+          "regex": "debug talk anchor: speaker"
+        }
+      ],
+      "reason": "Discovery start for the talk route (NPC positions in simstep lines)."
+    },
+    {
+      "name": "battle_wide",
+      "status": "unverified",
+      "subject": "Battle with wide on (one Goomba, kmr_03): the battle wheel sits next to Mario (UA4). The wheel log line starts a shot burst of 8 frames; the until-line is that shot.",
+      "proves": "UA4: the battle wheel base position follows the zoomed battle view (pm_wide_vx, pm_wide_vy).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 wide shots loglevel=debug uiburst",
+      "until": "shot \\d+ frame \\d+ map",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 33 183"
+        },
+        {
+          "name": "shot at wheel",
+          "regex": "shot \\d+ frame \\d+ map"
+        }
+      ],
+      "reason": "UA4 gate. Wide shot of the wheel next to Mario at about (33, 183)."
+    },
+    {
+      "name": "battle_target_wide",
+      "status": "unverified",
+      "subject": "Battle with wide on (one Goomba, kmr_03): the target pointer (hand) of the Jump command sits on the Goomba. The pointer log line starts a shot burst of 8 frames; the until-line is that shot.",
+      "proves": "UA1: get_screen_coords and the world projection in wide mode place the target pointer on the actor.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 wide padscript=wait150,A,wait90,A,wait90 shots loglevel=debug uiburst",
+      "until": "shot \\d+ frame \\d+ map",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "target pointer",
+          "regex": "debug target select: pointer"
+        },
+        {
+          "name": "shot at pointer",
+          "regex": "shot \\d+ frame \\d+ map"
+        }
+      ],
+      "reason": "UA1 gate. Wide shot of the target pointer over the Goomba."
+    },
+    {
+      "name": "talk_off",
+      "status": "unverified",
+      "subject": "Toad Town, Mario speech box (preset toad, pos -66:20:-518:0, A at frame 200), wide off. Byte-equal check of the speech box against main.",
+      "proves": "UA2 wide-off: speech box unchanged against main.",
+      "debug": "preset=toad pos=-66:20:-518:0 padscript=wait300,A,wait150 shots loglevel=debug",
+      "until": "shot \\d+ frame 210\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "speech anchor",
+          "regex": "debug talk anchor: speaker"
+        }
+      ],
+      "reason": "Byte-equal check (wide off) against UAMAIN."
+    },
+    {
+      "name": "coin_wide",
+      "status": "unverified",
+      "subject": "Toad Town, wide on, uishow=coins opens the coin counter window at frame 120 (show_coin_counter). Shots frames 122 to 125. UA3 gate: the counter sits at the bottom left edge (x pm_wide_left(32), y pm_wide_bottom(164)).",
+      "proves": "UA3: the coin counter window follows the wide view (bottom and left).",
+      "debug": "preset=toad wide uishow=coins shots shotwin=122:4 loglevel=debug",
+      "until": "shot \\d+ frame 125\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "coin counter opened",
+          "regex": "debug uishow: coins opened"
+        },
+        {
+          "name": "shot at 125",
+          "regex": "shot \\d+ frame 125\b"
+        }
+      ],
+      "reason": "UA3 gate by eye."
     }
   ]
 }

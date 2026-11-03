@@ -2,6 +2,8 @@
 #include "overlay.h"
 #include "include_asset.h"
 
+extern s32 pm_wide_cam(Camera* c);
+
 #define OVERLAY_RENDER_OFF (-1.0f)
 
 BSS s32 screen_overlay_frontType;
@@ -427,6 +429,9 @@ void set_screen_overlay_center_worldpos(s32 layer, s32 posIdx, s32 worldPosX, s3
             tz *= tw;
             tx = (((tx * camera->viewportW) + camera->viewportW) * 0.5) + camera->viewportStartX;
             ty = (((ty * camera->viewportH) + camera->viewportH) * 0.5) + camera->viewportStartY;
+            if (pm_wide_cam(camera)) { /* UA1: same x rule as get_screen_coords (3D x 1.25, 2D + 40 px) */
+                tx = tx * 1.25f - 40.0f;
+            }
 
             switch (posIdx) {
                 case 0:

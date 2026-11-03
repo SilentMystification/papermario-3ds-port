@@ -1228,7 +1228,7 @@ void show_coin_counter(void) {
     }
 
     if (statusBar->coinCounterHideDelay == 0) {
-        set_window_properties(WIN_CURRENCY_COUNTER, 32, 164, 64, 20, WINDOW_PRIORITY_21, coin_counter_draw_content, 0, -1);
+        set_window_properties(WIN_CURRENCY_COUNTER, pm_wide_left(32), pm_wide_bottom(164), 64, 20, WINDOW_PRIORITY_21, coin_counter_draw_content, 0, -1); /* UA3: bottom and left */
         set_window_update(WIN_CURRENCY_COUNTER, (s32)basic_window_update);
         statusBar->coinCountTimesHID = hid = hud_element_create(&HES_MenuTimes);
         hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER);

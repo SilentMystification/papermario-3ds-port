@@ -460,7 +460,8 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
 
         if (quads != nullptr) {
             gSPViewport(gMainGfxPos++, &gBoxViewport);
-            guFrustumF(mtx1, -80.0f, 80.0f, 60.0f, -60.0f, 160.0f, 480.0f, 1.0f);
+            /* UA7: the port scales perspective x by 1.25 with wide. A 4:3 box frustum of +-100 cancels it, so the box keeps its 4:3 shape (spin included). */
+            guFrustumF(mtx1, pm_wide ? -100.0f : -80.0f, pm_wide ? 100.0f : 80.0f, 60.0f, -60.0f, 160.0f, 480.0f, 1.0f);
             guMtxF2L(mtx1, &gDisplayContext->matrixStack[gMatrixListPos]);
             sp154 = &gDisplayContext->matrixStack[gMatrixListPos];
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);

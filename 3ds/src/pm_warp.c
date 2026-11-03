@@ -892,11 +892,33 @@ void pm_warp_tick(unsigned frame) {
     if (pm_debug_has("simlog") && f >= 110 && f <= 150) { /* V26: every step, Mario and demo Bills */
         extern unsigned pm_step_calls;
         char b[120] = ""; int n = 0, i;
-        for (i = 0; i < 8; i++) { Npc* np = get_npc_safe(i); if (np) n += snprintf(b + n, sizeof b - n, " n%d:%d,%d", i, (int)np->pos.x, (int)np->pos.y); }
+        for (i = 0; i < 8; i++) { Npc* np = get_npc_safe(i); if (np) n += snprintf(b + n, sizeof b - n, " n%d:%d,%d,%d", i, (int)np->pos.x, (int)np->pos.y, (int)np->pos.z); }
         pm_log("simstep f%u steps %u mx %d my %d st %u btn %x%s", f, pm_step_calls, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (unsigned)gPlayerStatus.actionState, (unsigned)gGameStatusPtr->demoButtonInput, b);
     }
     if (pm_debug_has("simlog") && f % 10 == 0) /* V26: game state per 10 steps, to compare default, fps60 and wide */
         pm_log("simlog f%u seed %08x pos %d %d %d state %u dstate %d", f, (unsigned)gRandSeed, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, (unsigned)gPlayerStatus.actionState, (int)gGameStatusPtr->demoState);
+    if (pm_debug_has("marlog") && f == 100) { /* UA1 numeric check: 2D px (40 + get_screen_coords x) and the 3D draw px, 100 units to each side of Mario. Values in tenths of a px. */
+        extern void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* sx, s32* sy, s32* sz);
+        extern float pm_debug_draw_px(s32 camID, float x, float y, float z);
+        s32 sx, sy, sz;
+        int side;
+        for (side = -100; side <= 100; side += 200) {
+            f32 wx = gPlayerStatus.pos.x + side;
+            float a, b;
+            get_screen_coords(gCurrentCameraID, wx, gPlayerStatus.pos.y, gPlayerStatus.pos.z, &sx, &sy, &sz);
+            a = 40.0f + sx;
+            b = pm_debug_draw_px(gCurrentCameraID, wx, gPlayerStatus.pos.y, gPlayerStatus.pos.z);
+            pm_log_d("marlog f%u side %d wide %d a10 %d b10 %d err10 %d", f, side, pm_wide, (int)(a * 10.0f), (int)(b * 10.0f), (int)((a - b) * 10.0f));
+        }
+    }
+    {   /* UA3 debug: uishow=coins opens the coin counter window (show_coin_counter, the pickup's own call) at frame 120 */
+        char uv[16];
+        if (f == 120 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c') {
+            extern void show_coin_counter(void);
+            show_coin_counter();
+            pm_log_d("debug uishow: coins opened f%u", f);
+        }
+    }
     if (f % 300 == 0) {
         pm_log_d("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d wall %d push %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
                (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,

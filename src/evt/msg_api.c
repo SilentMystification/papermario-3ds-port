@@ -102,6 +102,13 @@ s32 _show_message(Evt* script, s32 isInitialCall, s32 mode) {
         msg_printer_set_origin_pos(gCurrentPrintContext,
             screenX + ShowMessageScreenOffsetX,
             screenY + ShowMessageScreenOffsetY);
+        {   /* UA1 debug: the speaker anchor, once per speech. Compare the x with the NPC in the shot. */
+            extern void pm_log_d(const char* fmt, ...);
+            extern void pm_gpu_shot_burst(int n);
+            pm_log_d("debug talk anchor: speaker %d screen %d %d origin %d %d", speakerNpcID, screenX, screenY,
+                     screenX + ShowMessageScreenOffsetX, screenY + ShowMessageScreenOffsetY);
+            pm_gpu_shot_burst(8);
+        }
         script->varTablePtr[12] = speakerNpc;
 
         if (speakerNpc != (Npc*) NPC_PLAYER) {
