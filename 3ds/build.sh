@@ -63,7 +63,7 @@ WD=${PM_BUILD_CAP:-600}
 wdpid=$!
 rc=0
 MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
-    -e CCACHE_DIR=/ccache \
+    -e CCACHE_DIR=/ccache -e PM_BUILD_NUM="$BN" \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
     -v pm3ds-ccache:/ccache \
@@ -71,10 +71,11 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
     set -e -f
     t0=$(date +%s)
     stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
-    # Configure only when the build dir is missing, was made with ccache, or points at another source root.
+    # Configure only when the build dir is missing, was made with ccache, points at another source root, or has another build number (the smdh description).
     if ! grep -q "^CMAKE_C_COMPILER_LAUNCHER:STRING=ccache$" /work/build/CMakeCache.txt 2>/dev/null \
-        || ! grep -q "^CMAKE_HOME_DIRECTORY:INTERNAL=/src/3ds$" /work/build/CMakeCache.txt 2>/dev/null; then
-        cmake -G Ninja -S /src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache
+        || ! grep -q "^CMAKE_HOME_DIRECTORY:INTERNAL=/src/3ds$" /work/build/CMakeCache.txt 2>/dev/null \
+        || ! grep -q "^PM_BUILD_NUM:STRING=$PM_BUILD_NUM\$" /work/build/CMakeCache.txt 2>/dev/null; then
+        cmake -G Ninja -S /src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DPM_BUILD_NUM=$PM_BUILD_NUM
     fi
     stage configure
     status=0

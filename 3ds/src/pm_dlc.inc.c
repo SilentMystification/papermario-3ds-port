@@ -468,6 +468,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
     if (chk && dlc_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
     const float(*m)[4] = combined;
     u32 entry = geom;
+    if (rec_on) { rec_dln++; rec_gin = geom; } /* UC3d: a capture counts its static lists and the geom at entry */
     unsigned gmi = GV_NONE;
     int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
     dlc_c.lists++;
@@ -521,6 +522,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         dlc_run_group(l, g, gmi);
     }
     dlc_set_geom((entry & e->exit_am) | e->exit_om);
+    if (rec_on) { rec_gout = geom; rec_fl = (pm_gpu_gv_wind() <= 0 ? 1u : 0u) | (tri_since_vtx ? 2u : 0u); } /* UC3d: geom at exit, fl bit 0 wind, bit 1 tri_since_vtx */
     if (skipped_last) memset(vert_live, 0, sizeof vert_live);
     if (skipped_any) dlc_dirty = 1;
     if (chk) { /* the exit state against a plain walk of the list */

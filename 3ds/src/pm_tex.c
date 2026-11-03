@@ -563,6 +563,9 @@ int pm_tex_vram_pending(void) {
 int pm_tex_cur_vram_pending(void) {
     return have && cur >= 0 && cur < SLOTS && slots[cur].live && slots[cur].vram_up;
 }
+int pm_tex_aux_vram_pending(void) { /* UC3b: unit 1 slot is in its load frame (draws its linear stage copy) */
+    return have && aux >= 0 && aux < SLOTS && slots[aux].live && slots[aux].vram_up;
+}
 void pm_tex_upload_vram_before_frame(void) {
     for (int w = 0; w < SBIT_W; w++)
         for (unsigned m = vup_bits[w]; m; m &= m - 1) upload_vram_slot(&slots[w * 32 + (int)__builtin_ctz(m)]);
