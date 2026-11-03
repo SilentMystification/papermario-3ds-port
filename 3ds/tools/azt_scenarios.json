@@ -1875,6 +1875,26 @@
     "reason": "BOOTJ: no warp, so the intro plays. Until is the first jump result at frame 390 or later. Cap 60 s."
   },
   {
+    "name": "boot_opts",
+    "status": "unverified",
+    "subject": "Boot with no options.ini and no options.txt: the OPTFIX boot line prints the saved option values (dz_cs, rep_delay, rep_rate, hud_ms, conlevel, loglevel, log).",
+    "proves": "The PmOpt initializer matches the struct field order: a boot with no ini gives the defaults (dz_cs 0, rep_delay 500, rep_rate 200, hud_ms 1000, conlevel 1, loglevel 1, log 1).",
+    "debug": "loglevel=debug",
+    "until": "options: boot dz_cs=",
+    "cap": 30,
+    "deadline": 20,
+    "first_marker": "boot_main",
+    "expects": "none",
+    "needs_picture": false,
+    "expected_events": [
+      {
+        "name": "boot options line with the defaults",
+        "regex": "options: boot dz_cs=0 rep_delay=500 rep_rate=200 hud_ms=1000 conlevel=1 loglevel=1 log=1"
+      }
+    ],
+    "reason": "OPTFIX: no ini in the sdmc folder (moved aside for the run). Until is the boot options line. Cap 30 s."
+  },
+  {
     "name": "intro_jump_azahar",
     "status": "unverified",
     "subject": "Fresh boot with no warp, preset or story: the intro plays (game mode 16 from frame 327), jumptest on. Log subject only: jump result lines in the intro.",
@@ -1955,6 +1975,90 @@
       }
     ],
     "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
-  }
+  },
+  {
+    "name": "botlayout",
+    "status": "unverified",
+    "subject": "Bottom screen (BOTLAYOUT) with the log scrolled: HUD rows 1 to 4, row 6 blank, separator row 7, header row 8 (Log (console: Debug) left, (SD: Debug) right), log rows 9 to 26 full of lines (the oldest scrolled off), separator row 27, footer row 28 (Map: id, area, map), row 29 (apt: N% N3DS or O3DS and the build), blank row 30. No menu.",
+    "proves": "BOTLAYOUT: the log scrolls only inside rows 9 to 26; the header, separators and footer stay in place while the log grows past 18 rows.",
+    "debug": "preset=yard padscript=wait420 shots shotbottom=49:6 loglevel=debug conlevel=debug",
+    "until": "padscript: done",
+    "cap": 45,
+    "deadline": 20,
+    "first_marker": "warp: kmr_20 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "map",
+        "regex": "warp: kmr_20 entry 4"
+      },
+      {
+        "name": "map change info line",
+        "regex": "map change: .* -> kmr_20 \\(area 0 map 11\\)"
+      },
+      {
+        "name": "script done (frame 200 to 205 shots taken before)",
+        "regex": "padscript: done at scan \\d+ f2[1-9]\\d"
+      }
+    ],
+    "reason": "BOTLAYOUT: the scroll picture. Until is the padscript done line after the bottom shots at 200 to 205 (the script runs 420 scans, about 210 frames)."
+  },
+  {
+    "name": "botlayout_menu",
+    "status": "unverified",
+    "subject": "BOTLAYOUT menu: bottom shots 84 to 129 (the script starts at frame 49, SELECT opens the menu about 40 frames later). The port menu opens (SELECT) at about frame 40 and closes (SELECT) at about frame 60. Shots while open show the menu rows; shots after the close show the layout again (HUD rows 1 to 4, separator 7, header 8, footer rows 28 and 29).",
+    "proves": "The menu owns the bottom screen while open, and the layout (HUD, header, footer, log window) is drawn again after menu: close.",
+    "debug": "preset=yard padscript=wait80,SELECT,wait40,SELECT,wait40 shots shotbottom=84:46 loglevel=debug conlevel=debug",
+    "until": "padscript: done",
+    "cap": 45,
+    "deadline": 20,
+    "first_marker": "warp: kmr_20 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "map",
+        "regex": "warp: kmr_20 entry 4"
+      },
+      {
+        "name": "menu open",
+        "regex": "menu: open"
+      },
+      {
+        "name": "menu close",
+        "regex": "menu: close"
+      },
+      {
+        "name": "script done",
+        "regex": "padscript: done at scan \\d+ f\\d+"
+      }
+    ],
+    "reason": "BOTLAYOUT: the menu pictures. Until is the padscript done line after the bottom shots 36 to 79."
+  },
+    {
+      "name": "kmr10_pos",
+      "status": "unverified",
+      "subject": "Mario on the kmr_10 terrain at x -142 y 136 z 221 (the wall band), in the shots at frames 44 to 59, after the placement readback at frame 40.",
+      "proves": "pos=<x>:<y>:<z> places Mario at the given point after the warp, the values read back 10 frames after the placement equal the request, and the picture shows Mario there.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 poshud shots shotwin=40:6 shotbottom=40:6 loglevel=debug",
+      "until": "shot \\d+ frame (4[4-9]|5\\d)\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "placed readback",
+          "regex": "poswarp: placed Mario at -142\\.000 136\\.000 221\\.000 on map kmr_10"
+        }
+      ],
+      "reason": "POSWARP: until is the first shot after the readback line (shot frame 44 to 59), so the picture shows Mario after the placement. Not yet run."
+    }
   ]
 }

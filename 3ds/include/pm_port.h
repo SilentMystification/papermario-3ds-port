@@ -217,8 +217,9 @@ void pm_fskip_set(int on); /* pm_main.c: applies fskip at once */
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
 void pm_pos_text(char (*out)[40]); /* POSHUD: pm_route.c, writes out[0] (Mario) and out[1] (camera) */
-const char* pm_map_hud_step(unsigned step, unsigned hold); /* MAPHUD: pm_route.c, the bottom row 0 text after a change, else NULL */
-void pm_gpu_hud_map(const char* s); /* MAPHUD: pm_gpu.c, copies the row 0 text (the log sink thread draws it) */
+const char* pm_map_hud_step(unsigned step, unsigned hold); /* MAPHUD: pm_route.c, the HUD top row text during the hold after a change, else NULL */
+const char* pm_map_now(void); /* BOTLAYOUT: pm_route.c, the footer map row text */
+void pm_gpu_footer(const char* map, const char* sys); /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build), drawn by the sink thread */
 void pm_options_init(void);
 void pm_options_write(void);
 /* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 11 is Console level. */
