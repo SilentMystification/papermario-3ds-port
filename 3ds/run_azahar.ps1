@@ -72,7 +72,7 @@ $argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "F
     ForEach-Object { "$($_.Key)=$($_.Value)" }) -join " ").Replace(",", ";")
 $budgetRows = @(if (Test-Path $budgetFile) { Get-Content $budgetFile | Where-Object { $_ } | ForEach-Object { $f = $_.Split(","); [pscustomobject]@{ t = [datetime]$f[0]; row = $f[1]; sha = $f[2]; args = $f[3]; kind = $f[4]; rc = $f[5]; res = ($f[6..($f.Count - 1)] -join ",") } } })
 $used = @($budgetRows | Where-Object { $_.row -eq $row -and $_.kind -eq "start" -and ($row -ne "adhoc" -or $_.t -gt (Get-Date).AddHours(-3)) }).Count
-if ($used -ge $max) { Write-Output "BUDGET: row $row used $used runs. Stop and report what blocks you."; exit 9 }
+if ($used -ge $max -and $env:PM_AZT_ATTEMPT -ne "2") { Write-Output "BUDGET: row $row used $used runs. Stop and report what blocks you."; exit 9 }
 if ($Debug -and $Debug.Length -gt 255) { Write-Output "SWITCHES: -Debug is $($Debug.Length) characters. The game reads 255 and cuts the rest, so a map name of a tour list is cut (H06d). Use tour=@file for a long list."; exit 8 }
 if ($Debug -match "tour=(\S+)") {
     $tv = $Matches[1]
@@ -86,13 +86,16 @@ if (-not $Force) {
 }
 New-Item -ItemType Directory -Force -Path (Split-Path $budgetFile) | Out-Null
 $stamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
-Add-Content $budgetFile "$stamp,$row,$sha,$argStr,start,," # one real Azahar start, one line (-Force too)
-$used += 1
-function End-Run([int]$rc, [string]$res) {
-    Add-Content $budgetFile "$((Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')),$row,$sha,$argStr,end,$rc,$($res.Replace(',', ';'))"
+$startKind = if ($env:PM_AZT_ATTEMPT -eq "2") { "retry-start" } else { "start" } # azt retry (AZFIX): not counted in the budget
+Add-Content $budgetFile "$stamp,$row,$sha,$argStr,$startKind,," # one real Azahar start, one line (-Force too)
+if ($startKind -eq "start") { $used += 1 }
+function End-Run([int]$rc, [string]$res, [string]$kind = "end") {
+    Add-Content $budgetFile "$((Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')),$row,$sha,$argStr,$kind,$rc,$($res.Replace(',', ';'))"
     Write-Output "budget: row $row run $used/$max"
     exit $rc
 }
+# azahar.exe processes now: PID, start time, command line (the holder of a shared file is not named, this lists Azahar only)
+function Get-AzaharList { return (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue) | ForEach-Object { "pid $($_.ProcessId), started $($_.CreationDate), cmd: $($_.CommandLine)" }) -join " | " }
 
 function Kill-Azahar([int]$procId) {
     # Scoped to the PID this script itself launched - never kills other azahar.exe processes (a
@@ -185,6 +188,12 @@ if (Test-Path $pidFile) {
     Remove-Item $pidFile -ErrorAction SilentlyContinue
 }
 if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
+# AZFIX: the lock is ours and no run is active, so an azahar.exe open now was not started by a run (an interactive window). Wait 60 s, then stop.
+if (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue).Count) {
+    Write-Output "WARNING: azahar.exe not started by a run is open: $(Get-AzaharList). Waiting up to 60 s for it to close."
+    for ($w = 0; $w -lt 60 -and @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue).Count; $w++) { Start-Sleep -Seconds 1 }
+    if (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue).Count) { Release-Lock; End-Run 3 "STRAY AZAHAR: $(Get-AzaharList) still open after 60 s. Nothing was run." }
+}
 try {
     Set-Content $pidFile $PID # the script PID until Azahar starts, then the Azahar PID
     Copy-Item $cfg $cfgBak -Force # every run edits the config (Set-GdbStub), so every run saves it first
@@ -193,10 +202,12 @@ try {
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
 Copy-Item "$out\pm_3ds.3dsx" "$sd\$x3dsx" -Force
 Remove-Item $log -ErrorAction SilentlyContinue
+if (Test-Path $log) { Release-Lock; End-Run 5 "LOG LOCKED: $log is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
 if ($Smoke -and $Debug -notmatch "fixedseed") { $Debug = "$Debug fixedseed" } # R-SEED: smoke runs use the fixed RNG seed
 if ($Debug) { Set-Content "$sd\debug3ds.txt" $Debug } else { Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue }
 Remove-Item "$sd\shots", "$out\shots" -Recurse -ErrorAction SilentlyContinue # "shots" switch output
 Remove-Item $emuLog -ErrorAction SilentlyContinue # an old exception dump must not stop this run
+if (Test-Path $emuLog) { Release-Lock; End-Run 5 "LOG LOCKED: $emuLog is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
 Set-GdbStub $Gdb.IsPresent
 
 # Visible top-level windows of a process: Azahar's error dialog is a second one
@@ -276,6 +287,9 @@ $marks = @()
         if ($text -match "\[CRASH\]") { Start-Sleep -Seconds 1; $reason = "crash"; break }
         if ($Until -and $text -match $Until) { $reason = "matched '$Until'"; break }
     }
+    # AZFIX: the Azahar exit code is recorded in the result text. An early exit with no game log and an empty emulator log is retried once by azt (kind retry)
+    $azState = if ($p.HasExited) { "exit code $($p.ExitCode)" } else { "running, stopped by this run" }
+    $retryable = $reason -eq "Azahar exited" -and (-not (Test-Path $emuLog) -or (Get-Item $emuLog).Length -eq 0)
     if ($Capture -and -not $p.HasExited) {
         Add-Type -AssemblyName System.Drawing
         Add-Type @"
@@ -386,4 +400,5 @@ if ($addrs) {
     End-Run 2 "crash symbols; stopped: $reason"
 }
 if ($Smoke -and $reason -notmatch "^matched") { Write-Output "SMOKE FAILED: $reason"; End-Run 1 "smoke failed: $reason" }
-End-Run 0 "stopped after ${secs}s: $reason"
+$endKind = if ($retryable -and $env:PM_AZT_ATTEMPT -eq "1") { "retry" } else { "end" }
+End-Run 0 "stopped after ${secs}s: $reason (Azahar $azState)" $endKind
