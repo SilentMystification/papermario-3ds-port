@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ld_addrs.h"
+#include "pm_wide.h"
 #include "message_ids.h"
 #include "sprite.h"
 #include "pm_interp_fi.h"
@@ -1543,8 +1544,8 @@ void msg_printer_set_origin_pos(MessagePrintState* msgPrintState, s32 x, s32 y) 
     if (msgPrintState->initOpenPos.y < 0) {
         msgPrintState->initOpenPos.y = 0;
     }
-    if (msgPrintState->initOpenPos.y > 220) {
-        msgPrintState->initOpenPos.y = 220;
+    if (msgPrintState->initOpenPos.y > pm_wide_bottom(220)) { /* UA2: the wide view bottom is row 239 */
+        msgPrintState->initOpenPos.y = pm_wide_bottom(220);
     }
 }
 

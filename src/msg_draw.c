@@ -418,7 +418,7 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                         if (printer->style == MSG_STYLE_RIGHT || printer->style == MSG_STYLE_LEFT || printer->style == MSG_STYLE_CENTER) {
                             straightWidth = MSG_NORMAL_WIDTH;
                             printer->windowBasePos.x = MSG_NORMAL_X;
-                            printer->windowBasePos.y = 13;
+                            printer->windowBasePos.y = pm_wide_top(13); /* UA2 */
                             printer->windowSize.x = MSG_NORMAL_WIN_WIDTH;
                             printer->windowSize.y = MSG_NORMAL_WIN_HEIGHT;
                             msg_drawState->textStartPos[0] = 26;
@@ -490,18 +490,18 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                             printer->windowSize.y = height;
 
                             temp_a2 = printer->openStartPos.x - printer->windowSize.x / 2;
-                            if (temp_a2 < 18) {
-                                temp_a2 = 18;
+                            if (temp_a2 < pm_wide_left(18)) { /* UA2: bubble clamps follow the wide edges */
+                                temp_a2 = pm_wide_left(18);
                             }
-                            if (temp_a2 + printer->windowSize.x > SCREEN_WIDTH - 18) {
-                                temp_a2 = SCREEN_WIDTH - 18 - printer->windowSize.x;
+                            if (temp_a2 + printer->windowSize.x > pm_wide_right(SCREEN_WIDTH - 18)) {
+                                temp_a2 = pm_wide_right(SCREEN_WIDTH - 18) - printer->windowSize.x;
                             }
                             phi_a0 = printer->openStartPos.y - 38 - printer->windowSize.y;
-                            if (phi_a0 < 20) {
-                                phi_a0 = 20;
+                            if (phi_a0 < pm_wide_top(20)) {
+                                phi_a0 = pm_wide_top(20);
                             }
-                            if (phi_a0 + printer->windowSize.y > 170) {
-                                phi_a0 = 170 - printer->windowSize.y;
+                            if (phi_a0 + printer->windowSize.y > pm_wide_bottom(170)) {
+                                phi_a0 = pm_wide_bottom(170) - printer->windowSize.y;
                             }
                             printer->windowBasePos.x = temp_a2;
                             printer->windowBasePos.y = phi_a0;

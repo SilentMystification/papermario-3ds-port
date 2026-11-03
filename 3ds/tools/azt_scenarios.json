@@ -1477,7 +1477,7 @@
       "status": "unverified",
       "subject": "Toad Town (mac_00 entry 4) with wide on: NPC positions for the talk route (discovery), then the speech bubble of a Toad (UA2 and UA1 subject).",
       "proves": "UA1 and UA2: the speech bubble origin from get_screen_coords (msg_api.c:96) follows the speaker in wide mode.",
-      "debug": "preset=toad wide pos=-66:20:-518:0 padscript=wait120,A,wait150 shots loglevel=debug",
+      "debug": "preset=toad wide pos=-66:20:-518:0 padscript=wait300,A,wait150 shots loglevel=debug",
       "until": "shot \\d+ frame \\d+ map",
       "cap": 45,
       "deadline": 20,
