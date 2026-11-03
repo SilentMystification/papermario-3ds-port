@@ -78,6 +78,7 @@ static void gbi_task(Gfx* gfxList, u32 n) {
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
     pm_gbi_run(gfxList, n);
+    if (pm_gpu_stereo()) { pm_gpu_eye(1); pm_gbi_run(gfxList, n); pm_gpu_eye(0); } /* STEREO: the same task for the right eye */
 }
 
 /* LB1b: with pm_interp_on <= 0 the background task (no swap flag) is recorded here and runs with the swap task, after the main list is

@@ -72,6 +72,11 @@ void update_cameras(void) {
         guLookAtReflectF(cam->mtxViewPlayer, &gDisplayContext->lookAt, cam->lookAt_eye.x, cam->lookAt_eye.y, cam->lookAt_eye.z, cam->lookAt_obj.x, cam->lookAt_obj.y, cam->lookAt_obj.z, 0, 1.0f, 0);
 
         if (!(cam->flags & CAMERA_FLAG_ORTHO)) {
+            if (i <= CAM_BATTLE) { /* STEREO: zero parallax at the camera target */
+                extern float pm_eye_conv;
+                f32 ex = cam->lookAt_eye.x - cam->lookAt_obj.x, ey = cam->lookAt_eye.y - cam->lookAt_obj.y, ez = cam->lookAt_eye.z - cam->lookAt_obj.z;
+                pm_eye_conv = sqrtf(ex * ex + ey * ey + ez * ez);
+            }
             if (cam->flags & CAMERA_FLAG_LEAD_PLAYER) {
                 create_camera_leadplayer_matrix(cam);
             }

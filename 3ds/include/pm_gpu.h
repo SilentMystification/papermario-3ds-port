@@ -3,6 +3,8 @@
 
 void pm_gpu_init(void);
 void pm_gpu_begin(int clear);
+int pm_gpu_stereo(void); /* STEREO: 1 when this frame draws both eyes */
+void pm_gpu_eye(int right); /* STEREO: the next pass draws the right (1) or the left (0) eye */
 void pm_gpu_begin_wait(void); /* LB1: the GPU part of a pending frame start; a no-op when none is pending */
 void pm_gpu_end(void);
 /* Two lines at the top of the bottom screen. The log scrolls underneath. */

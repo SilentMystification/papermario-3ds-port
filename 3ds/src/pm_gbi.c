@@ -417,11 +417,20 @@ static void unpack(const Mtx* src, float d[4][4]) {
         for (int c = 0; c < 4; c++) d[r][c] = elem(src, r, c);
 }
 
+extern float pm_eye_e, pm_eye_conv;
 static void upload_mvp(void) {
     /* Row-vector matrices, same as transform_point: modelview first, then projection. */
-    mul(combined, mv[mv_sp], proj);
+    if (pm_eye_e != 0.f && (proj[0][3] != 0.f || proj[1][3] != 0.f || proj[2][3] != 0.f)) {
+        /* STEREO: a perspective matrix gets the eye shift x' = x + e * (w - conv). Row 3 is the translation row, the vertex has 1 in that place. An orthographic matrix (UI) stays at the screen plane. */
+        float p[4][4], cw = pm_eye_conv * (proj[2][3] < 0.f ? -proj[2][3] : proj[2][3]);
+        memcpy(p, proj, sizeof p);
+        for (int r = 0; r < 4; r++) p[r][0] += pm_eye_e * p[r][3];
+        p[3][0] -= pm_eye_e * cw;
+        mul(combined, mv[mv_sp], p);
+    } else mul(combined, mv[mv_sp], proj);
     pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
 }
+void pm_gbi_eye_changed(void) { upload_mvp(); }
 
 /* Combiner input as a constant, or -1 when it needs a texel or the shade, -2 for COMBINED.
  * slot 0..3 is A, B, C, D of the colour equation. */

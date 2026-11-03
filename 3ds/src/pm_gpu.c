@@ -83,6 +83,13 @@ static int noise_init(void) {
 static float t1_s[4] = { 1.f, 1.f, 0.f, 0.f };
 static int aux_bound;
 static C3D_RenderTarget* target;
+/* STEREO: the right eye target. cur_target is the target of the pass in progress (the left one in a mono frame). pm_eye_e is the signed NDC shift of this eye
+ * (0 in a mono frame: the original perspective, one pass). pm_eye_conv is the eye distance in world units that has zero parallax (set by the camera). */
+static C3D_RenderTarget *targetR, *cur_target;
+static int stereo_frame, r_wantclear, r_cleared;
+static float eye_slider;
+float pm_eye_e, pm_eye_conv = 300.f;
+#define PM_EYE_E 0.015f /* NDC shift per eye at slider 1 for a point at infinity (3 px of 400). The calibration knob. */
 /* H02 GPU limit stats, maxima since the last `mem` log line. Verts and command buffer overflow drop work without a message. */
 static unsigned draws_frame, draws_max, verts_max, vert_drops, frames_seen;
 static float cmd_max;
@@ -1240,6 +1247,17 @@ void pm_gpu_init(void) {
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
         GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) |
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
+    cur_target = target;
+    targetR = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8); /* STEREO: the right eye. It draws only in a frame with the 3D slider up. */
+    if (targetR) {
+        pm_vram_reg(targetR->frameBuf.colorBuf, 240 * 400 * 4);
+        pm_vram_reg(targetR->frameBuf.depthBuf, 240 * 400 * 4);
+        C3D_RenderTargetSetOutput(targetR, GFX_TOP, GFX_RIGHT,
+            GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |
+            GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
+            GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) |
+            GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
+    } else pm_log_w("stereo: right eye target failed, mono only");
     dvlb_all = DVLB_ParseFile((u32*)pm_shaderall_shbin, pm_shaderall_shbin_size); /* RAW1: one DVLB for the programs pm (CPU vertices) and pm4 (raw Vtx, matrix palette): a program switch sends no shader code */
     raw_dvlb_ok = dvlb_all && dvlb_all->numDVLE >= 2;
     pm_log("raw1: one DVLB %s (%d entries)", raw_dvlb_ok ? "on" : "FAILED", dvlb_all ? (int)dvlb_all->numDVLE : 0);
@@ -1465,7 +1483,7 @@ static void dump_shot(void) {
             pm_log_d("shot %u frame %u", n, fc);
         } else if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
     }
-    src = (const unsigned char*)target->frameBuf.colorBuf;
+    src = (const unsigned char*)((pm_debug_has("shoteye") && targetR ? targetR : target)->frameBuf.colorBuf); /* shoteye: the right eye */
     if (!src) { pm_log_w("shot: no colour buffer (target %p)", (void*)target); return; } /* ROUTE diag */
     mkdir("sdmc:/3ds/PaperMario/shots", 0777); /* the relative mkdir("shots") left no folder (sdmc: prefix as in pm_main.c) */
     { int ma, mm; pm_route_mapid(&ma, &mm); snprintf(path, sizeof path, "sdmc:/3ds/PaperMario/shots/%04u_%d_%d.ppm", n++, ma, mm); }
@@ -1622,7 +1640,20 @@ void pm_gpu_off_end(void) {
     off_active = 0;
     off_i8 = 0;
     rebuild_3d();
-    sh_clear(); C3D_FrameDrawOn(target);
+    sh_clear(); C3D_FrameDrawOn(cur_target);
+}
+
+/* STEREO: one task of the frame runs once per eye (pm_nusys.c gbi_task). A mono frame (3D slider at 0) has one pass with pm_eye_e = 0. */
+int pm_gpu_stereo(void) { pm_gpu_begin_wait(); return stereo_frame; }
+void pm_gpu_eye(int right) {
+    if (!stereo_frame || !gpu_ok) return;
+    flush();
+    if (off_active) pm_gpu_off_end();
+    if (right && !r_cleared) { r_cleared = 1; if (r_wantclear) C3D_RenderTargetClear(targetR, C3D_CLEAR_ALL, 0, 0); } /* queue order: the clear comes before every part of the frame */
+    cur_target = right ? targetR : target;
+    pm_eye_e = (right ? PM_EYE_E : -PM_EYE_E) * eye_slider;
+    sh_clear(); C3D_FrameDrawOn(cur_target);
+    pm_gbi_eye_changed();
 }
 
 void pm_gpu_set_replace(int on) { if (on != r_replace) flush(); r_replace = on; } /* DR1: a queued rectangle batch keeps the blender it was queued with */
@@ -1652,7 +1683,7 @@ static int grab_tex_init(void) {
 static void grab_queue_copy(void) {
     const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
     int s0 = mo >> 3, s1 = (mo + x1 - 1) >> 3;
-    GX_TextureCopy((u32*)((u8*)target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
+    GX_TextureCopy((u32*)((u8*)cur_target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
                    (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
 }
 int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1, 0); }
@@ -1811,6 +1842,13 @@ void pm_gpu_begin_wait(void) {
     prev_pre = 0;
     if (prev_want && !pm_debug_has("prevcpu") && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
     prev_want = 0;
+    eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
+    if (pm_debug_has("stereo")) eye_slider = 1.f;
+    stereo_frame = targetR && eye_slider > 0.02f;
+    gfxSet3D(stereo_frame);
+    r_wantclear = begin_clear; r_cleared = 0;
+    cur_target = target;
+    pm_eye_e = stereo_frame ? -PM_EYE_E * eye_slider : 0.f;
     sh_clear(); C3D_FrameDrawOn(target);
     PH_POP();
 }
