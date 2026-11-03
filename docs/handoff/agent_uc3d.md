@@ -67,3 +67,11 @@ Commits in order: ed9165892 (UC3a), a0614a09e (UC3c), 9b4c08cca (UC3d), f3cc7d08
 
 ### Commands
 Same as section 4. New scenarios: yard_rp, mac01t_rp (both debug includes recplay; yard_rp has phase phsum).
+
+## 9. Battle check (thunder_box, replay off vs on) and default off
+- thunder_box (demo battle 12, lightning hits, shots 241 to 253). Off run (start 7) and on run (start 8), same scenario.
+- Shots differ: 0000_0_0 about 34713 bytes, 0002_0_0 about 30372 bytes (of 288015). Replay changes battle pixels, or the lane build differs in another way. Not proven which.
+- The on run printed no rec line before the until-line (shot 253), so the number of replays in the battle is unknown. A refusal for effect scenes is not found.
+- UC3e starts used: 8 of 8. INCOMPLETE for a second battle run. Reset the budget to repeat.
+- Decision: the replay debug switch recplay is back, default off (rec_try candidate needs pm_debug_has("recplay")). yard_rp and mac01t_rp keep recplay in their debug strings. Battle builds run the live path.
+- Next (if the replay is wanted): print the rec line in the battle window (until shot 253 is before the 300-frame rec line), find the first differing battle record, and check shock tint and lightning state (uniform and TEV changes after the record key).
