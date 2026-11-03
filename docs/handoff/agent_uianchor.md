@@ -69,3 +69,10 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - UA1 (talk_wide, pos=-66:20:-518:0 with A): log `debug talk anchor` fired with speaker -1 (NPC_PLAYER), screen 152 143. Speaker is Mario, not the Toad. Shot 0180 is a fade and a wall, not the bubble. Gate not passed. Toad n0 is not talked to by the A press, or the A press reached another message. Next: log the speaker NPC id and the Toad's own screen position; hold the A press longer.
 - UA2, UA3, UA8, UA9: not started.
 - Marker miss at 20 s happens on about half the starts (shared sdmc log.txt). The shots still exist when the run reached the until.
+
+## UA1 Mario test (start 12, mario_proj_wide, wide on)
+
+- marlog: get_screen_coords of Mario = (160, 176) at every frame from 80 to 100. Mario pos -200 0 -370 (readback y 14.8 at place, falls to 0).
+- The camera follows Mario, so Mario projects to the screen centre x 160. At x 160 the fix (1.25 x - 40) gives 160 too. The error is 0 before and after the fix. Mario cannot test the fix at the centre.
+- Next: a subject off the centre. Options: (a) project a fixed world point 100 units to the side of Mario and read a drawn object at that point; (b) a camera with a fixed look-at (none found yet).
+- Derivation (not measured): wide 3D draw px = 200 + 200 ndc (pm_gpu.c:196), 2D px = 40 + game x. Post-fix game x = 1.25 x_raw - 40 gives 2D px = 200 + 200 ndc, the same as the 3D draw.

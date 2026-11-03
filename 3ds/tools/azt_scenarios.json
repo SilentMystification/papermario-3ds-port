@@ -1097,6 +1097,34 @@
       "reason": "PAUSE5B gameplay comparison, no pause. Window values are compared with pause_menu (closes, ops, walk) in test_catalog.md."
     },
     {
+      "name": "mario_proj_wide",
+      "status": "unverified",
+      "subject": "Mario placed 100 units left of the Toad Town spawn (pos -200:30:-370, wide on). Shots frames 100 to 116 (every 4 frames) and marlog lines (get_screen_coords of Mario) per 4 frames from frame 80 (UA1 gate: projected x against Mario's drawn column).",
+      "proves": "UA1: get_screen_coords x matches the 3D draw x in wide mode, away from the screen centre.",
+      "debug": "preset=toad wide pos=-200:30:-370 marlog shots shotwin=100:20 loglevel=debug",
+      "until": "shot \\d+ frame 116\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "mario projection",
+          "regex": "marlog f100 sx "
+        },
+        {
+          "name": "shot at 116",
+          "regex": "shot \\d+ frame 116\\b"
+        }
+      ],
+      "reason": "UA1 Mario-based gate, wide on."
+    },
+    {
       "name": "pause_spin_wide",
       "status": "unverified",
       "subject": "Pause menu open (preset toad, START) with wide on, top shots frames 100 to 119 through the window spin (UA7). Compare the window edges with pause_spin (wide off).",
