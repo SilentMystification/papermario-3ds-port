@@ -211,13 +211,13 @@ typedef struct PmOpt {
     int rep_delay, rep_rate; /* PT60: menu key repeat in ms, the first step is at once, the next after rep_delay, then every rep_rate */
     int fskip; /* FS1: 1 = frame skip on (default, a late step skips its draw), 0 = off: every game step is drawn. options.ini fskip=0|1, panel row 9 */
     int hud_ms; /* HUDINT: refresh interval of the bottom screen memory rows in ms: 250, 500, 1000 (default), 2000, 5000. options.ini hudint=<ms> */
-    int pos_hud; /* POSHUD: 1 = bottom screen rows 0 and 1 show Mario and camera values at the hudint refresh. options.ini poshud=0|1, Debug tab row 8 */
+    int pos_hud; /* POSHUD: 1 = the bottom screen HUD has a Mario position row, drawn every frame. options.ini poshud=0|1, Debug tab row 8 */
 } PmOpt;
 void pm_fskip_set(int on); /* pm_main.c: applies fskip at once */
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
-void pm_pos_text(char (*out)[40]); /* POSHUD: pm_route.c, writes out[0] (Mario) and out[1] (camera) */
-const char* pm_map_hud_step(unsigned step, unsigned hold); /* MAPHUD: pm_route.c, the HUD top row text during the hold after a change, else NULL */
+void pm_pos_text(char* out); /* POSHUD: pm_route.c, writes the Mario row text (40 bytes) */
+int pm_map_hud_step(unsigned step, unsigned hold, char (*rows)[40]); /* MAPHUD: pm_route.c, fills the 3 HUD rows 1 to 3 during the hold after a change, returns 1; else 0 */
 const char* pm_map_now(void); /* BOTLAYOUT: pm_route.c, the footer map row text */
 void pm_gpu_footer(const char* map, const char* sys); /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build), drawn by the sink thread */
 void pm_options_init(void);

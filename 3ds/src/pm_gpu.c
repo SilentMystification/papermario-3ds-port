@@ -16,11 +16,14 @@
 #include "pm_port.h"
 /* BOTLAYOUT: bottom screen rows, 1-based as the cursor and ANSI count them (screen row 1 is the top). Rows 1 to 6: the HUD (pm_gpu_hud_flush).
  * Row 7: separator. Row 8: log header (console and SD level). Rows LOG_TOP to LOG_TOP+LOG_ROWS-1 (9 to 26): the log window, it scrolls
- * only here. Row 27: separator. Rows 28 to 30: reserved, blank. */
-#define LOG_TOP 9
-#define LOG_ROWS 18
+ * only here. Row 27: separator. Rows 28 to 30: reserved, blank.
+ * POSHUD: with the position row the HUD has 2 more rows (8 rows: the blank row 4, Mario row 5, the stats row 6, blank rows 7 and 8).
+ * The separator is row 9, the header row 10, the log window rows 11 to 26 (16 rows). */
+static volatile int pos_on; /* POSHUD: 1 when the position row is drawn, set by pm_gpu_hud on the game thread */
+#define LOG_TOP (9 + 2 * pos_on)
+#define LOG_ROWS (18 - 2 * pos_on)
 extern const char* const pm_lvl_name[5]; /* pm_options.c: Error, Warn, Info, Debug, Off */
-static int frame_con = -1, frame_lg = -1; /* the levels in the drawn header; -1: not drawn yet */
+static int frame_con = -1, frame_lg = -1, frame_pos = -1; /* the levels and the position layout in the drawn header; -1: not drawn yet */
 static volatile int hud_new, foot_new;
 static char foot_row[2][40]; /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build) */
 
@@ -1416,13 +1419,21 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
 
 /* PI6: the game thread only copies the three HUD rows (no printf, no console call). pm_gpu_hud_flush draws them on the
  * log sink thread, at most 10 times per second. A HUD row written during a draw may show one update late. */
-static char hud_rows[4][40]; /* BOTLAYOUT: [0] row 1 fps line or MAPHUD text, [1] and [2] rows 2 and 3 (memory, VRAM), [3] row 4 stats */
-void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
+static char hud_rows[4][40]; /* BOTLAYOUT: [0] row 1 fps line or MAPHUD text, [1] and [2] rows 2 and 3 (memory, VRAM), [3] row 4 stats (row 6 with POSHUD) */
+static char pos_row[40]; /* POSHUD: Mario's row, row 5 (only with pos_on) */
+void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40], const char* pos, char (*map)[40]) {
     if (menu_on) return; /* PT69: the menu owns all rows */
-    strncpy(hud_rows[0], line0 ? line0 : "", 39);
+    if (map) { /* MAPHUD: rows 1 to 3 show the map change block */
+        for (int r = 0; r < 3; r++) { memcpy(hud_rows[r], map[r], 39); hud_rows[r][39] = 0; }
+    } else {
+        strncpy(hud_rows[0], line0 ? line0 : "", 39);
+        for (int r = 0; r < 2; r++) { memcpy(hud_rows[1 + r], mem[r], 39); hud_rows[1 + r][39] = 0; }
+        hud_rows[0][39] = 0;
+    }
     strncpy(hud_rows[3], line1 ? line1 : "", 39);
-    for (int r = 0; r < 2; r++) { memcpy(hud_rows[1 + r], mem[r], 39); hud_rows[1 + r][39] = 0; }
-    hud_rows[0][39] = hud_rows[3][39] = 0;
+    hud_rows[3][39] = 0;
+    pos_on = pos != NULL; /* POSHUD: NULL = the position row is off (the layout stays as it was without it) */
+    if (pos) { strncpy(pos_row, pos, 39); pos_row[39] = 0; }
     hud_new = 1;
 }
 
@@ -1437,13 +1448,14 @@ static void frame_draw(PrintConsole* c) {
     snprintf(right, sizeof right, "(SD: %s)", pm_lvl_name[lg & 3]);
     snprintf(hdr, sizeof hdr, "%-*s%s", 39 - (int)strlen(right), left, right);
     consoleSetWindow(c, 0, 0, 40, 30);
-    printf("\x1b[7;1H\x1b[0m%s", sep);
-    printf("\x1b[8;1H\x1b[0m%s", hdr);
+    printf("\x1b[%d;1H\x1b[0m%s", LOG_TOP - 2, sep);
+    printf("\x1b[%d;1H\x1b[0m%s", LOG_TOP - 1, hdr);
     printf("\x1b[27;1H\x1b[0m%s", sep);
     printf("\x1b[30;1H%39s", "");
     consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS);
     frame_con = con;
     frame_lg = lg;
+    frame_pos = pos_on;
 }
 
 /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build). Set by the game thread, drawn by the sink thread. */
@@ -1461,7 +1473,8 @@ void pm_gpu_hud_flush(void) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
     int hud = hud_new, foot = foot_new;
-    int frame = frame_con != pm_log_conlevel() || frame_lg != pm_log_level();
+    int frame = frame_con != pm_log_conlevel() || frame_lg != pm_log_level() || frame_pos != pos_on;
+    int lay = frame_pos != pos_on; /* POSHUD: the layout changed, the log window and cursor restart at its top */
     if (!(hud || foot || frame) || !c->consoleInitialised || menu_on) return;
     hud_new = 0;
     foot_new = 0;
@@ -1474,13 +1487,21 @@ void pm_gpu_hud_flush(void) {
     wh = c->windowHeight;
     consoleSelect(c);
     if (hud) {
-        consoleSetWindow(c, 1, 1, 40, 6); /* cursor row 1 is the top row of the screen */
+        consoleSetWindow(c, 1, 1, 40, 6 + 2 * pos_on); /* cursor row 1 is the top row of the screen */
         hud_put_line(c, 1, hud_rows[0]);
         hud_put_line(c, 2, hud_rows[1]);
         hud_put_line(c, 3, hud_rows[2]);
-        hud_put_line(c, 4, hud_rows[3]);
-        hud_put_line(c, 5, "");
-        hud_put_line(c, 6, "");
+        if (pos_on) { /* POSHUD: blank row 4, Mario row 5, stats row 6, blank rows 7 and 8 */
+            hud_put_line(c, 4, "");
+            hud_put_line(c, 5, pos_row);
+            hud_put_line(c, 6, hud_rows[3]);
+            hud_put_line(c, 7, "");
+            hud_put_line(c, 8, "");
+        } else {
+            hud_put_line(c, 4, hud_rows[3]);
+            hud_put_line(c, 5, "");
+            hud_put_line(c, 6, "");
+        }
     }
     if (foot) { /* BOTLAYOUT: footer rows 28 and 29 */
         consoleSetWindow(c, 0, 0, 40, 30);
@@ -1488,6 +1509,7 @@ void pm_gpu_hud_flush(void) {
         printf("\x1b[29;1H\x1b[0m%-39.39s", foot_row[1]);
     }
     if (frame) frame_draw(c);
+    if (lay) { wx = 1; wy = LOG_TOP; ww = 40; wh = LOG_ROWS; cx = 1; cy = 1; }
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;
     c->cursorY = cy;

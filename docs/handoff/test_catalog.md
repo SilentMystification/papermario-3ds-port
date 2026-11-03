@@ -75,7 +75,17 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 
 | Scenario | Flags | Command | Result (build poshud, same code as the commit) | Status |
 |---|---|---|---|---|
-| yard_poshud | `poshud` | `yard_poshud -Try -Row POSHUD -Build poshud` | 3 of 3 log checks. Bottom shot bot_0259: `M x 594 y 30 z -216 yaw 180`, `C x 924 y 161 z 60 yaw 310`. Log at f300 gives Mario pos 594 30 -216. Top shot 0000_0_11 byte-equal to yard_headA (HEAD e16fee4b9). | unverified (one run) |
+| yard_poshud | `poshud` | `yard_poshud -Try -Row POSHUD -Build poshud` | 3 of 3 log checks. Bottom shot bot_0259: `M x 594 y 30 z -216 yaw 180`, `C x 924 y 161 z 60 yaw 310`. Log at f300 gives Mario pos 594 30 -216. Top shot 0000_0_11 byte-equal to yard_headA (HEAD e16fee4b9). | unverified (one run, before the POSHUD2 row change; camera row removed since) |
+
+## POSHUD2 (2026-11-03): Mario row 5 on every frame, 3 row map block (rows 1 to 3)
+
+Layout with the position row on: row 1 fps, 2 memory, 3 VRAM, 4 blank, 5 `Mario x y z yaw` (whole numbers), 6 stats, 7 and 8 blank, 9 separator, 10 header, 11 to 26 log, 27 separator, 28 to 30 footer. With the row off: as BOTLAYOUT (rows 1 to 6, separator 7, log 9 to 26).
+
+| Scenario | Flags | Command | Result (build POSHUD, the commit) | Status |
+|---|---|---|---|---|
+| toad_pond | `poshud` | `toad_pond -Try -Row POSHUD -Build POSHUD` | Picture read, bot_0160 `Mario x -142 y 0 z -36 yaw 189`, bot_0162 `x -144 y 0 z -27 yaw 189`, bot_0199 `x -168 y 0 z 93 yaw 195`: row 5 changes between frames 2 apart. Row 4 blank, separator row 9, header row 10, footer rows 28 and 29 in place. Run 1 exit 2 (Azahar exited after 6 s while another azahar.exe ran). Run 2 exit 2 (marker check read a log.txt that the run did not write; the game log `build3ds/lane-POSHUD/last_log.txt` has the warp line). `-CheckLog` 3 of 3. | unverified (picture read, tool exit 2) |
+| mapchange_poshud | `poshud` | `mapchange_poshud -Try -Row POSHUD -Build POSHUD` | 4 of 4 log checks. Picture read: bot_0227 shows row 1 `mac_00`, row 2 `area 1 map 1 -> mac_01`, row 3 `area 1 map 2`, row 5 Mario. bot_0230 still shows the block (the hold ends at frame 231). bot_0232 shows the fps, memory and VRAM rows back, Mario row 5, footer rows 28 and 29. Replaces mapchange_hud (its verified shots show the old `Now in` text). | verified (picture read, 1 run) |
+| botlayout | none (poshud off) | `botlayout -Try -Row POSHUD -Build POSHUD` | 3 of 3 log checks. Pixel compare with the botlayout run (bot_0049 to bot_0054): rows 7, 8, 27, 28 and 30 byte-equal in all 6 frames. Rows 1 to 3, 9 to 17, 24 and 29 differ (fps and memory values, log text, build tag); rows 4 to 6 equal. | unverified (compare, not a picture read) |
 
 ## Completion only
 
