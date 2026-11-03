@@ -217,7 +217,10 @@ void pm_mem_hud(char out[2][40]) {
     snprintf(out[0], 40, "MEM used %u.%u / %u.%u MB  free %u.%u MB",
              tenth_mb(used_b) / 10, tenth_mb(used_b) % 10, tenth_mb(total) / 10, tenth_mb(total) % 10,
              tenth_mb(free_b) / 10, tenth_mb(free_b) % 10);
-    snprintf(out[1], 40, "VRAM min %uK pk %uK tex %u/%uK", scene_min_kb, scene_peak_kb, pm_tex_used() >> 10, pm_tex_budget() >> 10);
+    { /* VRAM row: all VRAM used (6144 KB total less vramSpaceFree) and the texture cache used / budget, KB. */
+        unsigned vf = (unsigned)(vramSpaceFree() >> 10), vused = 6144u > vf ? 6144u - vf : 0u;
+        snprintf(out[1], 40, "VRAM %u/6144K tex %u/%uK", vused, pm_tex_used() >> 10, pm_tex_budget() >> 10);
+    }
     static int hud_logged; /* one line per run: proves the refresh ran */
     if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s", out[0], out[1]);
 }
