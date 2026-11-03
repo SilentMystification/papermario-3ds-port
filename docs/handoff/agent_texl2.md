@@ -1,4 +1,4 @@
-# agent_texl2: TEXL2 epic (level 2 texture cache in RAM), handoff
+blocked on texgarble fix (L2b not started: branch texgarble has no fix commit, only probe 9ca2ec747)
 
 ## State
 - Branch texl2 (worktree ..\papermario-3ds-port-texl2, from main 7d19c5808). Plan: docs/handoff/plan_tex_l2.md (uc2c d6f57e4e8).
