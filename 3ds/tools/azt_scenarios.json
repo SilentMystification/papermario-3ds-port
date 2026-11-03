@@ -3068,8 +3068,8 @@
       "status": "unverified",
       "subject": "Toad Town, wide on, uishow=coins opens the coin counter window at frame 120 (show_coin_counter). Shots frames 122 to 125. UA3 gate: the counter sits at the bottom left edge (x pm_wide_left(32), y pm_wide_bottom(164)).",
       "proves": "UA3: the coin counter window follows the wide view (bottom and left).",
-      "debug": "preset=toad wide uishow=coins shots shotwin=122:4 loglevel=debug",
-      "until": "shot \\d+ frame 125\b",
+      "debug": "preset=toad wide uishow=coins shots shotwin=125:30 loglevel=debug",
+      "until": "shot \\d+ frame 150\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -3085,8 +3085,8 @@
           "regex": "debug uishow: coins opened"
         },
         {
-          "name": "shot at 125",
-          "regex": "shot \\d+ frame 125\b"
+          "name": "shot at 150",
+          "regex": "shot \\d+ frame 150\b"
         }
       ],
       "reason": "UA3 gate by eye."
