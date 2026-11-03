@@ -183,7 +183,7 @@ static void ident(float m[4][4]) {
  * the transpose. Viewport then maps N64 clip/w into upright pixels, and
  * OrthoTilt turns those pixels into the rotated framebuffer. */
 static void rebuild_3d(void) {
-    C3D_Mtx game, view, tmp;
+    C3D_Mtx game, view;
     int r;
     for (r = 0; r < 4; r++) {
         game.r[r].x = game_mvp[0][r];
@@ -204,8 +204,6 @@ static void rebuild_3d(void) {
     view.r[2].z = 0.5f;
     view.r[2].w = 0.5f;
     view.r[3].w = 1.f;
-    Mtx_Multiply(&tmp, &view, &game);
-    Mtx_Multiply(&shader_3d, off_active ? &off_proj : &projection, &tmp);
     {   /* GV1a: orientation of the map from N64 clip (x y w) to PICA clip. The game matrix is applied before, so it does not count. */
         C3D_Mtx* post = &gv_post;
         Mtx_Multiply(post, off_active ? &off_proj : &projection, &view);
@@ -213,6 +211,7 @@ static void rebuild_3d(void) {
         float det = a->x * (b->y * c->w - b->w * c->y) - a->y * (b->x * c->w - b->w * c->x) + a->w * (b->x * c->y - b->y * c->x);
         gv_wind = det < 0.f ? -1 : 1;
         post_gen++;
+        Mtx_Multiply(&shader_3d, post, &game); /* SEAM: the same product, in the same order, as pcomp_calc: post x game. The CPU path and the raw path then give bit-identical positions. */
     }
 }
 

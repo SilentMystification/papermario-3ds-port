@@ -103,6 +103,34 @@
       "reason": ""
     },
     {
+      "name": "mac01_seam",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01) with the CPU path triangle route counts (seam line at frame 240).",
+      "proves": "The CPU path takes the object route for most refused triangles.",
+      "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase seamstat",
+      "until": "opsplit f",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f\\d+ ops"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "yard_pace",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with pacestat logstat only. Frame-time baseline for LOGFIX (yard has no frame-time line).",
