@@ -486,6 +486,14 @@ static void pm_warp_stat(const char* tag) {
     pm_log("%s: slot %d map %d:%d entry %d items %d badges %d coins %d story %d", tag, (int)gGameStatusPtr->saveSlot,
            (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (int)gGameStatusPtr->entryID, items, badges, (int)pd->coins,
            (int)evt_get_variable(NULL, GB_StoryProgress));
+    pm_log("%s hp: HP %d/%d FP %d/%d BP max %d level %d", tag, (int)pd->curHP, (int)pd->curMaxHP, (int)pd->curFP, (int)pd->curMaxFP,
+           (int)pd->maxBP, (int)pd->level);
+}
+
+/* WARPFIX2: the save prompt of the save block opens. Logs whether a save write would be blocked, and by which new-file state. */
+void pm_save_prompt(void) {
+    if (save_block) pm_log_w("save prompt: save blocked (%s), the save will not be written", save_why);
+    else pm_log("save prompt: saving enabled");
 }
 
 int pm_warp_live(int c, int entry) {
