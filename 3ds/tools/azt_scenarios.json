@@ -1454,6 +1454,34 @@
       "reason": "Verified from the file_select run (same command, one start): shots at frames 282, 286, 290 and 293 exist (log shot lines). Read by eye on the crop of the File 1 box: the box and label shift between 282 and 293, so the turn is visible. Frames 297 and later are past the window. Shots: build3ds\\azt\\shots\file_select\u00000 to 0003."
     },
     {
+      "name": "pause_spin",
+      "status": "unverified",
+      "subject": "Pause menu open with the spin animation running. One shot window of 40 frames, frames 140 to 179, all inside the open pause (opened at frame 96).",
+      "proves": "The pause spin frames (GRAB symptom 2) draw with the frame copy path. With the grablog switch the grab lines are written in the same frames.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug",
+      "until": "shot \\d+ frame (17[6-9]|18[01])\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in window 176-181 (inside the 40 frame window 140-179)",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        }
+      ],
+      "reason": "GRAB2 (BTLSTAR row). Same command as text_menu with a 40 frame shot window. Unverified: one start needed. Add grablog to the debug string for the grab line check."
+    },
+    {
       "name": "text_menu",
       "status": "verified",
       "subject": "Pause status menu text: dialog 'Check here to see what Mario's current status is.' and the item names Hammer, Boots, Stats, Items. Periods and spacing read by eye.",
