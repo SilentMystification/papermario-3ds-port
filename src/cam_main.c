@@ -507,10 +507,11 @@ f32 pm_debug_draw_px(s32 camID, f32 x, f32 y, f32 z) {
     if (tW < 0.01f && tW > -0.01f) {
         return -9999.0f;
     }
+    /* the draw centre and half size come from the camera viewport (rebuild_3d: vp_tx, vp_sx), +40 px without wide */
     if (pm_wide_cam(camera)) {
-        return 200.0f + 200.0f * (tX / tW);
+        return 1.25f * ((f32) camera->viewportStartX + (f32) camera->viewportW * 0.5f + (f32) camera->viewportW * 0.5f * (tX / tW));
     }
-    return 200.0f + 160.0f * (tX / tW);
+    return 40.0f + (f32) camera->viewportStartX + (f32) camera->viewportW * 0.5f + (f32) camera->viewportW * 0.5f * (tX / tW);
 }
 
 void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* screenX, s32* screenY, s32* screenZ) {
