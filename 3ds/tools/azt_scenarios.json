@@ -3078,76 +3078,150 @@
       "reason": "WARPFIX: log-only reproduction of the item and story reset on a live warp. Until is the after-line."
     },
     {
+      "name": "yard_texwin0",
       "status": "unverified",
-      "cap": 45,
-      "deadline": 35,
-      "expects": "warp",
-      "needs_picture": false,
-      "name": "warpfix_boot_save",
-      "subject": "Boot warp without loadslot, then padscript save_0. The save write is blocked and the flash hash is unchanged.",
-      "proves": "A boot warp (new-file state) writes no save: saving disabled by boot warp (WARPFIX2 path 3).",
-      "debug": "warp=kmr_20:4 padscript=wait150,save_0 loglevel=debug",
-      "until": "warp: save blocked",
+      "subject": "Scratch before run of yard: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug texwin0",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
       "expected_events": [
         {
-          "name": "block line",
-          "regex": "saving disabled by boot warp"
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
         },
         {
-          "name": "save note",
-          "regex": "warp: save blocked"
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
         }
       ],
-      "reason": "WARPFIX2 log only. Until is the blocked save line."
+      "reason": ""
     },
     {
+      "name": "mac01t_texwin0",
       "status": "unverified",
-      "cap": 45,
-      "deadline": 35,
-      "expects": "warp",
-      "needs_picture": false,
-      "name": "warpfix_fswarp_save",
-      "subject": "Loaded save 0, then the file select warp (fswarp, pm_warp_now) at frame 120, then padscript save_0. The save write is blocked.",
-      "proves": "The file select warp writes no slot: saving disabled by file select or title warp. before and after counts logged.",
-      "debug": "warp=kmr_20:4 loadslot=0 warpitems fswarp=120:kmr_02:0 padscript=wait300,save_0 loglevel=debug",
-      "until": "warp: save blocked",
-      "first_marker": "warp: kmr_20 entry 4",
+      "subject": "Scratch before run of mac01t: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
+      "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1623 to 2065 (1844 +/- 12 %). Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase texwin0",
+      "until": "mdlsum f899 r12 ",
+      "cap": 120,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
       "expected_events": [
         {
-          "name": "fs warp after",
-          "regex": "warpstat after fs warp"
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
         },
         {
-          "name": "save note",
-          "regex": "warp: save blocked"
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f\\d+ ops"
+        },
+        {
+          "name": "mdlsum total ops per frame (gate 757 to 963, 860 +/- 12 %, after MR1 7d00a451c)",
+          "regex": "mdlsum f899 tot ops (\\d+) ",
+          "min": 757,
+          "max": 963
+        },
+        {
+          "name": "mdlsum rows",
+          "regex": "mdlsum f899 r12 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 50[0-5]\\b"
         }
       ],
-      "reason": "WARPFIX2 log only. The state after the fs warp is the new-file state, as designed."
+      "reason": ""
     },
     {
+      "name": "kmr_10_dd_texwin0",
       "status": "unverified",
+      "subject": "kmr_10 entry 0 with texwin0 (TEXWIN rule off), before pair for kmr_10_dd, frames 200 to 205.",
+      "proves": "drawlog=file frame window logs the chunk list of a warped map and the shots show the wall.",
+      "debug": "warp=kmr_10:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texstat texbind texwin0",
+      "until": "shot 5 frame 205",
       "cap": 45,
-      "deadline": 35,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
       "expects": "warp",
-      "needs_picture": false,
-      "name": "warpfix_boss",
-      "subject": "Loaded save 0 with items, then the Boss tab launch in the world at frame 180 (bosstest), battle ends after 60 battle frames (bossend). Story, HP, FP and partner come back.",
-      "proves": "The Boss tab in the world keeps the loaded save: before and after counts equal (WARPFIX2 path 1).",
-      "debug": "warp=kmr_20:4 loadslot=0 warpitems bosstest=180:0 bossend=60 loglevel=debug",
-      "until": "warpstat after boss restore",
-      "first_marker": "warp: kmr_20 entry 4",
+      "needs_picture": true,
       "expected_events": [
         {
-          "name": "before boss",
-          "regex": "warpstat before boss: "
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
         },
         {
-          "name": "after restore",
-          "regex": "warpstat after boss restore"
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
         }
       ],
-      "reason": "WARPFIX2 log only. Until is the restore line after the fight."
+      "reason": ""
+    },
+    {
+      "name": "chapter_wide",
+      "status": "unverified",
+      "subject": "Chapter card (fx_chapter_change, the kmr_22 call args 100 100 0 1 0) spawned by fxtest in Toad Town with wide on. Shots A and B show the card with Mario and the foes (UA8 gate: the card sits where the native card sits, relative to the screen centre).",
+      "proves": "UA8: the chapter card position follows the wide view.",
+      "debug": "preset=toad wide fxtest=113 shots loglevel=debug",
+      "until": "fxtest: shot 2 effect 113 chapter_change",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 113 chapter_change"
+        },
+        {
+          "name": "shot B",
+          "regex": "fxtest: shot 2 effect 113 chapter_change"
+        }
+      ],
+      "reason": "UA8 gate by eye, wide on."
+    },
+    {
+      "name": "intro_native",
+      "status": "unverified",
+      "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on.",
+      "proves": "UA10: the intro mode runs in the native view with wide on.",
+      "debug": "wide shots shotwin=330:20 loglevel=debug",
+      "until": "shot \\d+ frame 334\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "intro on",
+          "regex": "intro: native aspect on"
+        },
+        {
+          "name": "shot in intro",
+          "regex": "shot \\d+ frame 334\\b"
+        }
+      ],
+      "reason": "UA10 gate by eye and the log line."
     }
   ]
 }

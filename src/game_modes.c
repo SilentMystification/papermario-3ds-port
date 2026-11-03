@@ -261,10 +261,19 @@ BSS s16 CurGameMode;
 extern int pm_wide, pm_wide_cfg;
 
 void set_game_mode(s16 mode) {
+    /* UA10: the intro cutscene (state_intro.c) plays in the native 4:3 view with wide on, like logos and title */
+    extern void pm_log_d(const char* fmt, ...);
+    s16 prevMode = CurGameMode;
     CurGameMode = mode;
     /* F07-5: logos, title and file select keep 4:3 */
     pm_wide = pm_wide_cfg && !(mode == GAME_MODE_LOGOS || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_LANGUAGE_SELECT ||
-        mode == GAME_MODE_END_LANGUAGE_SELECT || mode == GAME_MODE_FILE_SELECT || mode == GAME_MODE_END_FILE_SELECT);
+        mode == GAME_MODE_END_LANGUAGE_SELECT || mode == GAME_MODE_FILE_SELECT || mode == GAME_MODE_END_FILE_SELECT ||
+        mode == GAME_MODE_INTRO);
+    if (mode == GAME_MODE_INTRO) {
+        pm_log_d("intro: native aspect on");
+    } else if (prevMode == GAME_MODE_INTRO) {
+        pm_log_d("intro: native aspect off (wide %d)", pm_wide);
+    }
     set_game_mode_slot(0, gameModeMap[mode]);
 }
 
