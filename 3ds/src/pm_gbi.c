@@ -3380,8 +3380,8 @@ extern unsigned pm_rec_ver(unsigned slot); /* model.c */
 extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slot, 0 none */
 /* 32 B. state 0 none, 1 record, 2 refused, 3 churn guard (4 builds since the arena reset: no capture). RK2: hgen = tb_gen of the
  * handle, tgen0/tgen1 = generation of the cache slots on unit 0 and 1 at the capture end (REC_NO_SLOT none). nb = builds since reset. */
-/* UC2: grp = fragment-op group words (ctx+0xF0..0xFC) at capture start. A record is reused only when they match (diag_uc2_j75.md). 40 B. */
-typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[4]; } RecKey;
+/* UC2: grp = fragment-op group words (ctx+0xF0..0xFC, texunit config ctx+0x110) at capture start. A record is reused only when they match (diag_uc2_j75.md). 44 B. */
+typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[5]; } RecKey;
 #define REC_NO_SLOT 0xffffu
 #define REC_ARENA_WORDS (64u * 1024u)
 #define REC_MAX_WORDS 1024u
@@ -3392,8 +3392,9 @@ static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key
 static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that differs: model version, texture handle, cache slot generation */
 static unsigned rec_hit, rec_bad, rec_miss; /* UC2: reccheck compares (hit), words outside patch slots (bad), patch tables (miss) */
 static unsigned rec_mg; /* UC2: valid records not compared, the group words differ at capture start */
-static u32 rec_g0[4]; /* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush */
+static u32 rec_g0[5]; /* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush */
 void pm_gpu_grp_get(u32* g); /* pm_gpu.c, UC2: ctx+0xF0..0xFC */
+unsigned pm_gpu_rec_fj(void); /* pm_gpu.c, UC2: first bad word of the last compare */
 static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
 static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
 
@@ -3437,26 +3438,12 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
 void pm_gpu_stc_ctx_log(const char* at); /* pm_gpu.c, UC2 probe */
 /* UC2D: first differing word outside the 0x2C1 uniform slots (the words pm_gpu_rec_same does not mask), logged once per run. Log only. */
 static int uc2d_done;
-static u8 uc2d_msk[REC_MAX_WORDS];
 static __attribute__((noinline, cold)) void uc2d_first(const u32* a, u32 na, const u32* b, u32 nb) {
     unsigned i = 0, j;
     u32 hd = 0, c = 0, len = 0;
     if (uc2d_done || na != nb || na > REC_MAX_WORDS) return;
-    memset(uc2d_msk, 0, na);
-    while (i + 1 < na) { /* walk over a: mark the uniform vec4 words of each 0x2C1 write */
-        hd = a[i + 1]; c = (hd >> 20) & 0xFFu; len = 2u + c + (c & 1u);
-        if (i + len > na) break;
-        if ((hd & 0x3FFu) == 0x2C1 && !(hd >> 31)) {
-            for (unsigned k = 0; k < ((c + 1u) >> 2); k++) {
-                unsigned o = k ? i + 1u + 4u * k : i;
-                if (k == 0) uc2d_msk[o] = uc2d_msk[o + 2] = uc2d_msk[o + 3] = uc2d_msk[o + 4] = 1;
-                else uc2d_msk[o] = uc2d_msk[o + 1] = uc2d_msk[o + 2] = uc2d_msk[o + 3] = 1;
-            }
-        }
-        i += len;
-    }
-    for (j = 0; j < na; j++) if (!uc2d_msk[j] && a[j] != b[j]) break;
-    if (j == na) return;
+    j = pm_gpu_rec_fj(); /* the first word rec_same counts as bad (same mask) */
+    if (j >= na) return;
     uc2d_done = 1;
     for (i = 0; i + 1 < na; i += len) { /* the command of a that holds word j */
         hd = a[i + 1]; c = (hd >> 20) & 0xFFu; len = 2u + c + (c & 1u);
@@ -3467,6 +3454,19 @@ static __attribute__((noinline, cold)) void uc2d_first(const u32* a, u32 na, con
     pm_log_d("UC2D first j %u a %08lx b %08lx reg %03lx hdr %08lx cmd %u n %u role %s ni %u doff %u", j, (unsigned long)a[j], (unsigned long)b[j], (unsigned long)(hd & 0x3FFu), (unsigned long)hd, i, na, role, ni, doff);
     pm_gpu_stc_ctx_log("uc2d_first");
 }
+/* UC2L: the group lengths differ. Logs the first command whose header differs between the record (a) and this frame (b). Log only. */
+static int uc2l_done;
+static __attribute__((noinline, cold)) void uc2l_first(const u32* a, u32 na, const u32* b, u32 nb) {
+    unsigned ia = 0, ib = 0;
+    if (uc2l_done) return;
+    uc2l_done = 1;
+    while (ia + 1 < na && ib + 1 < nb && a[ia + 1] == b[ib + 1]) {
+        unsigned c = (a[ia + 1] >> 20) & 0xFFu, len = 2u + c + (c & 1u);
+        ia += len; ib += len;
+    }
+    pm_log_d("UC2L len a %u b %u first header diff at a %u b %u: a hdr %08lx b hdr %08lx", na, nb, ia, ib,
+             (unsigned long)(ia + 1 < na ? a[ia + 1] : 0), (unsigned long)(ib + 1 < nb ? b[ib + 1] : 0));
+}
 /* UC2: reccheck. The words this frame wrote for the model are compared with the valid record (pm_gpu_rec_same). The record is kept. */
 static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u32* w, u32 n, int whole) {
     unsigned bad = 0, miss = 0;
@@ -3475,6 +3475,7 @@ static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u3
     if (pm_gpu_rec_same(ra + k->off, k->len, w, n, &bad, &miss) < 0) return;
     rec_hit++; rec_bad += bad; rec_miss += miss;
     if (bad) uc2d_first(ra + k->off, k->len, w, n);
+    if (k->len != n) uc2l_first(ra + k->off, k->len, w, n); /* UC2L: log only, once per run */
 }
 static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     u32* w = NULL; u32 n = 0, i = 0;

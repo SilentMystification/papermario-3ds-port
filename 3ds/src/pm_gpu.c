@@ -2332,7 +2332,13 @@ void pm_gpu_rec_begin(void) {
     rec_ref = 0; rec_cap = 1;
 }
 /* UC2: ctx+0xF0 alpha test, +0xF4 stencil test, +0xF8 stencil op, +0xFC depth color mask: the group citro3d sends at each flush (diag_uc2_j75.md). */
-void pm_gpu_grp_get(u32* g) { for (int i = 0; i < 4; i++) g[i] = *(volatile u32*)(__C3D_Context + 0xF0 + 4 * i); }
+/* UC2: g[4] = the 0x80 texture unit config word citro3d builds at each flush (ctx+0x110): its enable bits come from the unit pointers
+ * at ctx+0x118, 0x11C, 0x120 (C3Di_UpdateContext, base.o 0x1e0 to 0x22c). The pointers are read now, so the bits are the capture start state. */
+void pm_gpu_grp_get(u32* g) {
+    for (int i = 0; i < 4; i++) g[i] = *(volatile u32*)(__C3D_Context + 0xF0 + 4 * i);
+    u32 pm = 0; for (int u = 0; u < 3; u++) if (*(volatile u32*)(__C3D_Context + 0x118 + 4 * u)) pm |= 1u << u;
+    g[4] = (*(volatile u32*)(__C3D_Context + 0x110) & ~7u) | pm;
+}
 int pm_gpu_rec_end(u32** w, u32* n) {
     u32* b = NULL; u32 off = 0;
     flush();
@@ -2377,8 +2383,10 @@ void pm_gpu_rec_count(unsigned* pt, unsigned* wbad, unsigned* pk) { *pt = rec_pt
 #define REC_CHK_MAX 1024u
 static u8 rec_msk[REC_CHK_MAX];
 static RecPatch rec_pa[REC_PT_MAX];
+static unsigned rec_fj;
 int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, unsigned* miss) {
     unsigned sv_pt = rec_pt_n, sv_pk = rec_pk_n;
+    rec_fj = ~0u;
     int pa = pm_gpu_rec_walk(a, na), pb;
     if (pa < 0 || na > REC_CHK_MAX) return -1;
     memcpy(rec_pa, rec_pt, pa * sizeof rec_pa[0]);
@@ -2393,15 +2401,21 @@ int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, u
         if (rec_pa[e].split) rec_msk[o] = rec_msk[o + 2] = rec_msk[o + 3] = rec_msk[o + 4] = 1;
         else rec_msk[o] = rec_msk[o + 1] = rec_msk[o + 2] = rec_msk[o + 3] = 1;
     }
-    for (unsigned i = 0; i + 1 < na;) { /* UC2: param0 of each 0x227 index buffer address write (frame ring, new per frame): not compared */
-        u32 hd = a[i + 1]; unsigned c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u);
+    for (unsigned i = 0; i + 1 < na;) { /* UC2: words that hold a per-frame address, not compared (UC3 patches them): 0x227 index buffer, texture unit 0, 1, 2 address */
+        u32 hd = a[i + 1]; unsigned c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u), base = hd & 0x3FFu, inc = hd >> 31;
         if (i + len > na) break;
-        if ((hd & 0x3FFu) == 0x227 && !(hd >> 31)) rec_msk[i] = 1;
+        if (base == 0x227 && !inc) rec_msk[i] = 1;
+        /* PICA order: param0 (word i) is the header register, the params after the header are reg + k + 1 when incremental */
+        for (unsigned k = 0; k <= c; k++) {
+            unsigned w = k ? i + 2 + (k - 1) : i, r = inc && k ? base + k : base;
+            if (r == 0x85 || r == 0x95 || r == 0x9D) rec_msk[w] = 1;
+        }
         i += len;
     }
-    for (unsigned j = 0; j < na; j++) if (!rec_msk[j] && a[j] != b[j]) (*bad)++;
+    for (unsigned j = 0; j < na; j++) if (!rec_msk[j] && a[j] != b[j]) { (*bad)++; if (rec_fj == ~0u) rec_fj = j; }
     return 0;
 }
+unsigned pm_gpu_rec_fj(void) { return rec_fj; } /* UC2: first word the last pm_gpu_rec_same counted as bad (~0 none) */
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */
