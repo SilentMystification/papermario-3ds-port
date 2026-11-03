@@ -1899,6 +1899,30 @@
       }
     ],
     "reason": "BOTLAYOUT: the menu pictures. Until is the padscript done line after the bottom shots 36 to 79."
-  }
+  },
+    {
+      "name": "kmr10_pos",
+      "status": "unverified",
+      "subject": "Mario on the kmr_10 terrain at x -142 y 136 z 221 (the wall band), in the shots at frames 44 to 59, after the placement readback at frame 40.",
+      "proves": "pos=<x>:<y>:<z> places Mario at the given point after the warp, the values read back 10 frames after the placement equal the request, and the picture shows Mario there.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 poshud shots shotwin=40:6 shotbottom=40:6 loglevel=debug",
+      "until": "shot \\d+ frame (4[4-9]|5\\d)\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "placed readback",
+          "regex": "poswarp: placed Mario at -142\\.000 136\\.000 221\\.000 on map kmr_10"
+        }
+      ],
+      "reason": "POSWARP: until is the first shot after the readback line (shot frame 44 to 59), so the picture shows Mario after the placement. Not yet run."
+    }
   ]
 }

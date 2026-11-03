@@ -15,6 +15,7 @@ extern bool fio_fetch_saved_file_info(void);
 #include "pm_port.h"
 #include <stdio.h>
 #include <string.h>
+float strtof(const char* s, char** end); /* POSWARP: the decomp headers do not declare it (stdlib.h conflicts) */
 
 void fio_serialize_state(void);
 unsigned pm_uptime_ms(void);
@@ -88,6 +89,63 @@ static int tour_n, tour_wait;
 static s32 w_story = STORY_INTRO;
 static char w_map[16] = "kmr_20";
 static s32 w_entry, w_flag, w_partner;
+
+/* POSWARP: switch pos=<x>:<y>:<z>[:<angle>] puts Mario at a point of the map (floats, negatives allowed). Once per map load: POS_DELAY scene
+ * frames after the world entry (the entry code has placed Mario by then), then `poswarp: placed Mario at x y z on map M yaw a (readback)` POS_READBACK
+ * frames later, with the values read back from gPlayerStatus. Padscript token pos_<x>:<y>:<z>[:<angle>] places Mario at its own step (pm_input.c).
+ * The write is the one reset_player_status makes (src/7B440.c): position, yaw, speed 0, time in air 0, no floor, idle state, camera target.
+ * The camera then follows by its normal update (the target is set, the camera moves to it over the next frames, no hard cut). */
+#define POS_DELAY 30
+#define POS_READBACK 10
+static float pos_v[4];
+static int pos_n, pos_on, pos_state, pos_area = -1, pos_map = -1;
+static unsigned pos_f0, pos_t;
+
+int pm_pos_parse(const char* s, float* out) {
+    int n = 0;
+    while (n < 4) {
+        char* e;
+        float f = strtof(s, &e);
+        if (e == s) break;
+        out[n++] = f;
+        if (*e != ':') break;
+        s = e + 1;
+    }
+    return n == 3 || n == 4 ? n : 0;
+}
+
+void pm_pos_set(const float* v, int n) {
+    PlayerStatus* ps = &gPlayerStatus;
+    ps->pos.x = v[0];
+    ps->pos.y = v[1];
+    ps->pos.z = v[2];
+    if (n == 4) ps->curYaw = ps->targetYaw = v[3];
+    ps->curSpeed = 0.0f;
+    ps->timeInAir = 0;
+    gCollisionStatus.curFloor = NO_COLLIDER;
+    set_action_state(ACTION_STATE_IDLE);
+    gCameras[CAM_DEFAULT].targetPos.x = ps->pos.x;
+    gCameras[CAM_DEFAULT].targetPos.y = ps->pos.y;
+    gCameras[CAM_DEFAULT].targetPos.z = ps->pos.z;
+}
+
+void pm_pos_log(const char* how) {
+    PlayerStatus* ps = &gPlayerStatus;
+    pm_log("poswarp: placed Mario at %.3f %.3f %.3f on map %s yaw %.2f (%s)", ps->pos.x, ps->pos.y, ps->pos.z,
+           gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, ps->curYaw, how);
+}
+
+static void pos_tick(unsigned frame) {
+    if (!pos_on || get_game_mode() != GAME_MODE_WORLD) return;
+    if (pos_state == 0 && frame - pos_f0 >= POS_DELAY) {
+        pm_pos_set(pos_v, pos_n);
+        pos_state = 1;
+        pos_t = frame;
+    } else if (pos_state == 1 && frame - pos_t >= POS_READBACK) {
+        pm_pos_log("readback");
+        pos_state = 2;
+    }
+}
 
 int pm_warp_active(void) {
     char v[40];
@@ -166,6 +224,11 @@ int pm_warp_active(void) {
     smoke_on = pm_debug_has("smoke");
     if (pm_debug_value("loadslot", v, sizeof v)) w_loadslot = atoi(v); /* E02: loadslot=<n> loads save slot n first */
     if (pm_debug_value("smokeframes", v, sizeof v)) smoke_frames = atoi(v); /* E02: smoke length, default 300 */
+    if (pm_debug_value("pos", v, sizeof v)) { /* POSWARP: pos=<x>:<y>:<z>[:<angle>] */
+        pos_n = pm_pos_parse(v, pos_v);
+        pos_on = pos_n != 0;
+        if (!pos_on) pm_log_w("poswarp: bad value '%s', need x:y:z or x:y:z:angle", v);
+    }
     return has_preset || has_warp || has_story || opt_map;
 }
 
@@ -457,6 +520,12 @@ extern unsigned pm_pad_scans;
 
 /* The game reaches GAME_MODE_WORLD: first frame of the chosen scene. */
 void pm_warp_world_mode(unsigned frame) {
+    if (pos_on && (gGameStatusPtr->areaID != pos_area || gGameStatusPtr->mapID != pos_map)) { /* POSWARP: a new map load (not a return from battle or pause) */
+        pos_area = gGameStatusPtr->areaID;
+        pos_map = gGameStatusPtr->mapID;
+        pos_f0 = frame;
+        pos_state = 0;
+    }
     if (tour_next && warp_on) {
         tour_f0 = frame; /* a map of the tour is in */
         tour_wait = 0;
@@ -700,6 +769,7 @@ void pm_warp_tick(unsigned frame) {
     model_dump(frame);
     boss_tick();
     bypass_tick();
+    pos_tick(frame); /* POSWARP */
     if (scene_f0 < 0) return;
     if (tour_next && !tour_wait && frame - tour_f0 >= TOUR_FRAMES) {
         tour_ts = frame;

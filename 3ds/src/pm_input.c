@@ -52,11 +52,18 @@ void pm_route_save(int slot);
 int pm_route_ev(int kind);
 int pm_route_ev_kind(const char* name);
 int pm_route_aim(int tx, int tz, int* sx, int* sy);
+/* POSWARP: pos_<x>:<y>:<z>[:<angle>] tokens, parsed here, placed by pm_warp.c at their step (go 4, index into ps_pos) */
+void pm_pos_set(const float* v, int n);
+void pm_pos_log(const char* how);
+int pm_pos_parse(const char* s, float* out);
+static float ps_pos[16][4];
+static int ps_posn[16], ps_npos;
 /* ROUTE: run the seg_<name> marks at ps_i: one log line `route: seg <name> f<game step>` each, no scan used */
 static void ps_run_marks(void) {
     while (ps_i < ps_n && ps[ps_i].mark) {
         if (ps[ps_i].go == 2) { pm_log("route: goto %s:%d f%u", ps_marks[ps[ps_i].mark - 1], (int)ps[ps_i].gx, pm_frame_count()); pm_route_goto(ps_marks[ps[ps_i].mark - 1], ps[ps_i].gx); }
         else if (ps[ps_i].go == 3) pm_route_save(ps[ps_i].gx);
+        else if (ps[ps_i].go == 4) { pm_pos_set(ps_pos[ps[ps_i].gx], ps_posn[ps[ps_i].gx]); pm_pos_log("padscript"); }
         else pm_log("route: seg %s f%u scan %u t=%u ms", ps_marks[ps[ps_i].mark - 1], pm_frame_count(), pm_pad_scans, pm_uptime_ms());
         ps_i++;
     }
@@ -99,6 +106,16 @@ static void ps_parse(char* s) {
         if (strncmp(tok, "seg_", 4) == 0) { /* ROUTE: segment marker */
             if (ps_nmarks < 96) { strncpy(ps_marks[ps_nmarks], tok + 4, 19); mk = (unsigned char)++ps_nmarks; }
             n = 1;
+        } else if (strncmp(tok, "pos_", 4) == 0) { /* POSWARP: pos_<x>:<y>:<z>[:<angle>] places Mario at this step, takes no scan */
+            float pv[4];
+            int pn = pm_pos_parse(tok + 4, pv);
+            if (pn && ps_nmarks < 96 && ps_npos < 16) {
+                memcpy(ps_pos[ps_npos], pv, sizeof pv);
+                ps_posn[ps_npos] = pn;
+                strcpy(ps_marks[ps_nmarks], "pos");
+                mk = (unsigned char)++ps_nmarks;
+                go = 4; gx = ps_npos++; n = 1;
+            } else pm_log_w("padscript: bad pos token '%s'", tok);
         } else if (strncmp(tok, "goto_", 5) == 0) { /* ROUTE: goto_<map>:<entry> starts a real map change (as the tour switch does), takes no scan */
             char* c = strchr(tok + 5, ':');
             if (c && ps_nmarks < 96) { *c = 0; strncpy(ps_marks[ps_nmarks], tok + 5, 19); mk = (unsigned char)++ps_nmarks; go = 2; gx = atoi(c + 1); n = 1; }
