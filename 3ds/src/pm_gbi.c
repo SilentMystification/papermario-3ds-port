@@ -1205,7 +1205,7 @@ static void dual_bind(void) {
     pm_tex_aux_size(&tw1, &th1);
     {   /* V12c: the two tiles may have different shifts (bulb glow: tile 0 shift 1, tile 1 shift 0) and TEXEL1 may be a slot with a window origin */
         int ox1, oy1;
-        float rs = shift_mul(tst1.tile_shift[1][0]) / shift_mul(tst1.tile_shift[0][0]), rt = shift_mul(tst1.tile_shift[1][1]) / shift_mul(tst1.tile_shift[0][1]);
+        float rs = shift_mul(tst1.tile_shift[1][0]) / shift_mul(tst1.tile_shift[0][0]), rt = shift_mul(tst1.tile_shift[1][1]) / shift_mul(tst1.tile_shift[0][1]); if (pm_debug_has("texrt1")) rt = 1.f; /* TEXGARBLE test switch (scratch): ignore the t shift of tile 1 */
         pm_tex_aux_origin(&ox1, &oy1);
         t1_p[0] = (float)tw0 / (float)tw1 * rs;
         t1_p[1] = (float)th0 / (float)th1 * rt;
