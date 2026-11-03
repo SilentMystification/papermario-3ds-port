@@ -1725,7 +1725,7 @@
       "status": "unverified",
       "subject": "BTLSTAR flush cause diagnosis: battle_start_enc with gbiprof (flush count by cause, PG0 report). Battle start through the encounter path: encwarp=120 enters the pre-battle state for the kmr_03 world enemy (the fields START_BATTLE sets; the touch test did not start the battle), and the star transition (OVERLAY_START_BATTLE) draws. One shot per frame for the 40 frames from the pre-battle start.",
       "proves": "A real world enemy touch starts the battle (START_BATTLE, ENCOUNTER_STATE_PRE_BATTLE), and the star wipe frames are shot. Phase logging gives the frame time and the CPU readback count (pm_b7 cap_n, cap_ticks) for those frames.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town encwarp=120 shots phase phsum grablog gbiprof phase phsum loglevel=debug",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town encwarp=120 shots phase phsum grablog gbiprof gbiprofn=40 loglevel=debug",
       "until": "encwarp: window end",
       "cap": 45,
       "deadline": 20,
@@ -2716,6 +2716,29 @@
       "proves": "pos=<x>:<y>:<z> places Mario inside Merlon's house after the warp, the readback equals the request, and the crystal ball window grabs (grab lines) are logged.",
       "debug": "warp=mac_01:0 pos=-264:20:-326 poshud grablog shots shotwin=40:6 shotbottom=40:6 loglevel=debug",
       "until": "shot \\d+ frame (4[4-9]|5\\d)\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "placed readback",
+          "regex": "poswarp: placed Mario at -264\\.000 20\\.000 -326\\.000 on map mac_01"
+        }
+      ]
+    },
+    {
+      "name": "merlon_ball60",
+      "status": "unverified",
+      "subject": "Merlon's room (mac_01) with Mario placed at pos -264 20 -326, the crystal ball in the shots at frames 44 to 59, after the placement readback at frame 40. Grab log lines (grablog) for the crystal ball window.",
+      "proves": "pos=<x>:<y>:<z> places Mario inside Merlon's house after the warp, the readback equals the request, and the crystal ball window grabs (grab lines) are logged.",
+      "debug": "warp=mac_01:0 pos=-264:20:-326 poshud grablog texlog shots shotwin=60:40 shotbottom=60:40 loglevel=debug",
+      "until": "shot \\d+ frame (9[0-9]|100)\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_01 entry 0",

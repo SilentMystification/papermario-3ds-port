@@ -1274,6 +1274,14 @@ static void t1_fold(float u0, float u1, float v0, float v1) {
 static const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
 /* PERF-GBI (switch gbiprof, default off): cycle laps inside draw_tri, a tick read costs 1.3 us in Azahar so the totals are inflated, the ranking holds. One load and one branch when off. */
 static unsigned gp_acc[8], gp_last, gp_ntri, gp_frames;
+/* PG0 period: frames per gbiprof report. Switch gbiprofn=<frames> (default 300); a window of 40 frames gets a report at frame 40. */
+static unsigned gp_period(void) {
+    static unsigned v;
+    char b[16];
+    if (!v) v = pm_debug_value("gbiprofn", b, sizeof b) ? (unsigned)atoi(b) : 300u;
+    if (!v) v = 300u;
+    return v;
+}
 static unsigned gp_opt[256], gp_opn[256], gp_opt_last; static int gp_prev_op = -1; /* time between two ops, charged to the first */
 enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_N };
 #define GP_START() do { if (gp_on()) gp_last = pm_ticks(); } while (0)
@@ -2284,7 +2292,7 @@ void pm_gbi_end_frame(void) {
         }
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
     }
-    if (gp_on() && ++gp_frames == 300) { /* PERF-GBI: per frame average in 0.1 ms units (ticks / 26811), tick reads inflate the sections */
+    if (gp_on() && ++gp_frames == gp_period()) { /* PERF-GBI: per frame average in 0.1 ms units (ticks / 26811), tick reads inflate the sections */
         static const char* nm[8] = { "validity,off_screen,box_fold,comb_audit", "ensure_tile", "dual_bind", "reject,cull", "sync_render", "gpu_emit", "old path", "G_VTX" };
         char b[200]; int n = 0;
         for (int k = 0; k < 8; k++) n += snprintf(b + n, sizeof b - n, "%s %u ", k == 3 ? "early" : k == 0 ? "A" : k == 1 ? "ens" : k == 2 ? "dual" : k == 4 ? "sync" : k == 5 ? "emit" : k == 6 ? "old" : "gvtx", gp_acc[k] / 26811 / 300);
@@ -2296,9 +2304,9 @@ void pm_gbi_end_frame(void) {
         }
         memset(gp_opt, 0, sizeof gp_opt); memset(gp_opn, 0, sizeof gp_opn);
         memset(gp_same, 0, sizeof gp_same); memset(gp_set, 0, sizeof gp_set);
-        pm_gpu_gbiprof_report(300);
-        { extern void pm_debug_report(unsigned); pm_debug_report(300); }
-        { extern void pm_tex_prof_report(unsigned); pm_tex_prof_report(300); }
+        pm_gpu_gbiprof_report(gp_period());
+        { extern void pm_debug_report(unsigned); pm_debug_report(gp_period()); }
+        { extern void pm_tex_prof_report(unsigned); pm_tex_prof_report(gp_period()); }
         (void)nm;
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
@@ -3267,6 +3275,13 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
     /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
     if (cimg == (void*)DepthCopyBuffer) { pm_depth_query(timg, (int)((s16)(hs >> 16) >> 5), sci_x0); return; }
     if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) return;
+    { /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */
+        static int tlon = -1;
+        if (tlon < 0) tlon = pm_debug_has("texlog");
+        if (tlon) pm_log_d("texlog f%u rect %d,%d-%d,%d w%d h%d cyc %u rm %08x zsrc %d ac %u tile0 %d/%d tile1 %d/%d valid1 %d",
+                           pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (xh - xl) / 4 + 1, (yh - yl) / 4 + 1, (omode_h >> G_MDSFT_CYCLETYPE) & 3,
+                           (unsigned)omode_l, (omode_l >> G_MDSFT_ZSRCSEL) & 1, (omode_l >> 0) & 3, tst1.tile_fmt[0], tst1.tile_siz[0], tst1.tile_fmt[1], tst1.tile_siz[1], td[1].valid);
+    }
     /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
     zcol = cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)cimg >= nuGfxZBuffer && (const unsigned short*)cimg < nuGfxZBuffer + 320 * 240)) && !(omode_l & (1u << G_MDSFT_ZSRCSEL));
     if (zcol) { zslot_on = 1; sync_render(); }
