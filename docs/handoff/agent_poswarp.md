@@ -50,3 +50,13 @@ Branch: poswarp (worktree ..\papermario-3ds-port-poswarp, from main 99266ab2d). 
 - kmr10_pos (pos -142 20 221): start 8. Settled -142 20 221 exact, 2 of 2 log checks. Shot at frame 56: Mario on the path by the fence. PASS by log and picture (picture read by the code agent).
 - kmr10_pos_hi (pos -142 136 221): start 9. Readback at frame 40 settled y 97.265 (falling), x and z exact. Shot at frame 56: Mario on the path. Gate x and z only.
 - Azahar starts: 9 used, starts 6 and 7 gave no result.
+
+## WARPFIX2 state (branch warpfix2, from main)
+- Commits on warpfix2: 368800bff (block and boss keep), 32e868095 (HP line and save prompt log), 8e3fbd4a7 (scenario entries re-added after main's entries; JSON validated).
+- Saves blocked by new-file states: boot warp without loadslot, file select or title warp, boss launch outside the world. Log: `saving disabled by ...` at the block, `warp: save blocked, slot N not written (...)` at each write attempt, `save prompt: save blocked (...)` when the save block prompt opens (pm_save_prompt, SaveBlock.c entity_SaveBlock_pause_game).
+- A process restart clears the block. A file load does not lift it (fio_load_game also runs when browsing the file select).
+- Boss tab in the world keeps the loaded save: before and after counts. Azahar start 4 (warpfix_boss): HP 10/10 FP 5/5 before the fight, 75/75 and 30/30 during it, 10/10 and 5/5 after the restore (level 1, BP max 3, items 2, coins 50, story -128 after). Hash unchanged (850cc147...).
+- Scenarios: warpfix_boot_save (start 1, pass), warpfix_fswarp_save (start 2, pass), warpfix_boss (starts 3 and 4, pass). Azahar starts on WARPFIX2: 4 of 8.
+- Not tested: the save prompt log (pm_save_prompt) needs a run that touches a save block. The file menu save path has no prompt log.
+- Next commands: build `PM_LANE=WARPFIX2 sh 3ds/build.sh`; test `PM_ROW=WARPFIX2 powershell -File 3ds/tools/azt.ps1 warpfix_boot_save -Row WARPFIX2 -Build WARPFIX2 -Try` (same for the other two).
+
