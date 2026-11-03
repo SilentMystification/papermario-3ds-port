@@ -156,7 +156,9 @@ static int dd_skip(void) {
     }
     return lo >= 0 && dd_on() && ((int)dd.idx < lo || (int)dd.idx > hi);
 }
+static void dd_line(void);
 static void dd_end(void) {
+    if (dd.ntri && dd_on()) dd_line(); /* TEXGARBLE: one line per chunk, written after tst1 is declared */
     dd.ntri = 0;
 }
 
@@ -192,6 +194,12 @@ static PM_HOTD struct {
     unsigned tile_fmt[8], tile_siz[8];
     unsigned comb_a, comb_b, comb_c, comb_d;
 } tst1 __attribute__((aligned(32)));
+static void dd_line(void) {
+        pm_log("dd f%u #%u src %08x dl %08x %08x geom %08x oml %08x omh %08x tex %u timg %08x fmt %u siz %u %dx%d tri %u scr %.0f %.0f %.0f %.0f w %.2f %.2f tw %08x %08x %08x %08x ts %u %u sz %d %d %d %d",
+               pm_frame_count(), dd.idx, dd.src, dd.dl0, dd.dl1, dd.gm, dd.oml, dd.omh, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.ntri,
+               dd.x0, dd.y0, dd.x1, dd.y1, dd.w0, dd.w1, tst1.tile_wrap[0][0], tst1.tile_wrap[0][1], tst1.tile_wrap[0][2], tst1.tile_wrap[0][3],
+               tst1.tile_shift[0][0], tst1.tile_shift[0][1], tst1.tile_sz[0][0], tst1.tile_sz[0][1], tst1.tile_sz[0][2], tst1.tile_sz[0][3]);
+}
 static int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
 /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
  * the image that was loaded to its TMEM address, not the image of the load that came last. */

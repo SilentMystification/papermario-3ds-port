@@ -159,7 +159,7 @@
       "status": "unverified",
       "subject": "Map kmr_10 at player position -142 136 221 (the wall band, user report). Frames 200 to 205 with the game camera on Mario. Picture: vertical stripes in the top rows of the low terrain wall next to the ? block.",
       "proves": "pos= switch sets Mario to the position at scene frame 30 on a warped map, and the shots show the wall.",
-      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1",
       "until": "shot 5 frame 205",
       "cap": 45,
       "deadline": 20,
@@ -198,6 +198,34 @@
         {
           "name": "map",
           "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_ddonly",
+      "status": "unverified",
+      "subject": "Map kmr_10 at player position -142 136 221, frame 200 with drawlog=200:1 and ddonly=78:78: only chunk 78 (64x32 CI4 wall texture 00ffacd4, scr box 141 136 329 172) draws. Tests whether that chunk alone makes the band (TEXGARBLE).",
+      "proves": "ddonly limits the frame to one chunk, and the shot shows the band or its absence.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 ddonly=78:78",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
         },
         {
           "name": "shot",
