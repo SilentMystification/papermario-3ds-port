@@ -575,7 +575,76 @@ static void battlelist_tick(unsigned f) {
     }
 }
 
+/* encwarp=<scene frame>: enters ENCOUNTER_STATE_PRE_BATTLE for the first world enemy of the map (the fields START_BATTLE sets), so the real
+ * pre-battle update and the star transition OVERLAY_START_BATTLE run. Logs the pre-battle start and shoots the 40 frames from it
+ * (pm_gpu_shot_window). Nothing else is changed. */
+extern void pm_gpu_shot_window(unsigned from, unsigned n);
+extern unsigned pm_frame_count(void);
+static void encwarp_tick(unsigned f) {
+    static int state; /* 0 wait, 1 moved, 2 shooting, 3 done or failed */
+    static unsigned t_move, t0;
+    char v[16];
+    if (state == 0) {
+        Enemy* en = NULL;
+        EncounterStatus* es = &gCurrentEncounter;
+        int i, j;
+        if (!pm_debug_value("encwarp", v, sizeof v) || f < (unsigned)atoi(v) || get_game_mode() != GAME_MODE_WORLD) return;
+        for (i = 0; i < es->numEncounters && !en; i++) {
+            Encounter* e = es->encounterList[i];
+            for (j = 0; e && j < e->count && !en; j++) {
+                Enemy* ej = e->enemy[j];
+                if (ej && !(ej->flags & ENEMY_FLAG_IGNORE_TOUCH) && !(ej->flags & ENEMY_FLAG_DISABLE_AI)) {
+                    en = ej;
+                    es->curEncounter = e;
+                    es->curEnemy = ej;
+                }
+            }
+        }
+        if (!en) { pm_log_w("encwarp: no world enemy in the encounter list at scene frame %u", f); state = 3; return; }
+        /* The touch test does not start the battle (the enemy npc stays at the sentinel y -1000, run 4). The pre-battle state is set with the
+         * fields START_BATTLE sets (firstStrikeType, scriptedBattle, fadeOutAmount, substateDelay, state). Update and draw of the pre-battle
+         * state (update_encounters_pre_battle, OVERLAY_START_BATTLE) are the real code. */
+        es->firstStrikeType = FIRST_STRIKE_PLAYER;
+        es->hitType = 0;
+        es->scriptedBattle = false;
+        es->fadeOutAmount = 0;
+        es->substateDelay = 0;
+        gEncounterState = ENCOUNTER_STATE_PRE_BATTLE;
+        EncounterStateChanged = true;
+        gEncounterSubState = ENCOUNTER_SUBSTATE_PRE_BATTLE_INIT;
+        pm_log("encwarp: pre-battle entered by encwarp at scene frame %u (enemy npc %d)", f, (int)en->npcID);
+        t_move = f;
+        state = 1;
+    } else if (state == 1) {
+        if (f - t_move <= 40 && (f - t_move) % 5 == 0) { /* diag: why the touch does not start the battle */
+            Enemy* en = NULL;
+            Npc* nq = NULL;
+            int i, j;
+            for (i = 0; i < gCurrentEncounter.numEncounters && !en; i++) {
+                Encounter* e = gCurrentEncounter.encounterList[i];
+                for (j = 0; e && j < e->count && !en; j++) en = e->enemy[j];
+            }
+            if (en) nq = get_npc_unsafe(en->npcID);
+            if (en && nq) pm_log("encwarp diag at %u: npc %d %d %d flags %x enemy flags %x susp %d cooldown %d hitType %d encState %d actionState %d pflags %x", f, (int)nq->pos.x, (int)nq->pos.y, (int)nq->pos.z, (unsigned)nq->flags, (unsigned)en->flags, (int)en->aiSuspendTime, (int)gCurrentEncounter.battleTriggerCooldown, (int)gCurrentEncounter.hitType, (int)gEncounterState, (int)gPlayerStatus.actionState, (unsigned)gPlayerStatus.flags);
+            else pm_log("encwarp diag at %u: no enemy or npc in the list", f);
+        }
+        if (gEncounterState == ENCOUNTER_STATE_PRE_BATTLE) {
+            t0 = pm_frame_count();
+            pm_log("encwarp: pre-battle start at frame %u", t0);
+            pm_gpu_shot_window(t0, 40);
+            state = 2;
+        } else if (f - t_move > 600) {
+            pm_log_w("encwarp: no pre-battle start in 600 frames, mode %d", (int)get_game_mode());
+            state = 3;
+        }
+    } else if (state == 2 && pm_frame_count() >= t0 + 45) {
+        pm_log("encwarp: window end at frame %u", pm_frame_count());
+        state = 3;
+    }
+}
+
 static void battle_hooks(unsigned f) {
+    encwarp_tick(f);
     char v[96], vf[16];
     unsigned at = 100;
     if (pm_debug_value("battlef", vf, sizeof vf)) at = (unsigned)atoi(vf);
