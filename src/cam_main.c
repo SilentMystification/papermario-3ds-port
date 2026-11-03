@@ -497,6 +497,22 @@ void get_cam_viewport(s32 camID, u16* x, u16* y, u16* width, u16* height) {
     *y = gCameras[camID].viewportStartY;
 }
 
+/* UA1 numeric check (debug only): 2D px of a world point as the 3D draw puts it on the 400 px screen. The draw maps NDC x to
+ * 200 + 200 ndc with wide (1.25 x 160 viewport, 200 centre) and to 200 + 160 ndc without (rebuild_3d, pm_gpu.c:196-197). */
+f32 pm_debug_draw_px(s32 camID, f32 x, f32 y, f32 z) {
+    Camera* camera = &gCameras[camID];
+    f32 tW, tZ, tY, tX;
+
+    transform_point(camera->mtxPerspective, x, y, z, 1.0f, &tX, &tY, &tZ, &tW);
+    if (tW < 0.01f && tW > -0.01f) {
+        return -9999.0f;
+    }
+    if (pm_wide_cam(camera)) {
+        return 200.0f + 200.0f * (tX / tW);
+    }
+    return 200.0f + 160.0f * (tX / tW);
+}
+
 void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* screenX, s32* screenY, s32* screenZ) {
     Camera* camera = &gCameras[camID];
     f32 tW;

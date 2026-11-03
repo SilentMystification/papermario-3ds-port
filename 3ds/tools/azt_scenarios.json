@@ -1097,32 +1097,60 @@
       "reason": "PAUSE5B gameplay comparison, no pause. Window values are compared with pause_menu (closes, ops, walk) in test_catalog.md."
     },
     {
-      "name": "mario_proj_wide",
+      "name": "mario_proj_off",
       "status": "unverified",
-      "subject": "Mario placed 100 units left of the Toad Town spawn (pos -200:30:-370, wide on). Shots frames 100 to 116 (every 4 frames) and marlog lines (get_screen_coords of Mario) per 4 frames from frame 80 (UA1 gate: projected x against Mario's drawn column).",
-      "proves": "UA1: get_screen_coords x matches the 3D draw x in wide mode, away from the screen centre.",
-      "debug": "preset=toad wide pos=-200:30:-370 marlog shots shotwin=100:20 loglevel=debug",
-      "until": "shot \\d+ frame 116\\b",
-      "cap": 45,
+      "subject": "Mario in Toad Town (pos -200:30:-370), wide off, one frame (100): the same numeric check as mario_proj_wide.",
+      "proves": "UA1 wide-off: get_screen_coords x (40 + x) equals the 3D draw px.",
+      "debug": "preset=toad pos=-200:30:-370 marlog loglevel=debug",
+      "until": "marlog f100 side 100 ",
+      "cap": 30,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
       "expects": "warp",
-      "needs_picture": true,
+      "needs_picture": false,
       "expected_events": [
         {
           "name": "warp",
           "regex": "warp: mac_00 entry 4"
         },
         {
-          "name": "mario projection",
-          "regex": "marlog f100 sx "
+          "name": "side -100",
+          "regex": "marlog f100 side -100 "
         },
         {
-          "name": "shot at 116",
-          "regex": "shot \\d+ frame 116\\b"
+          "name": "side +100",
+          "regex": "marlog f100 side 100 "
         }
       ],
-      "reason": "UA1 Mario-based gate, wide on."
+      "reason": "UA1 numeric check, wide off."
+    },
+    {
+      "name": "mario_proj_wide",
+      "status": "unverified",
+      "subject": "Mario in Toad Town (pos -200:30:-370, wide on), one frame (100): the 2D px of get_screen_coords and the 3D draw px of two world points 100 units left and right of Mario (UA1 numeric gate, no picture).",
+      "proves": "UA1: get_screen_coords x (40 + x) equals the 3D draw px in wide mode, away from the screen centre.",
+      "debug": "preset=toad wide pos=-200:30:-370 marlog loglevel=debug",
+      "until": "marlog f100 side 100 ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "side -100",
+          "regex": "marlog f100 side -100 "
+        },
+        {
+          "name": "side +100",
+          "regex": "marlog f100 side 100 "
+        }
+      ],
+      "reason": "UA1 numeric gate, wide on. Values in tenths of a px (a10, b10, err10)."
     },
     {
       "name": "pause_spin_wide",

@@ -807,11 +807,19 @@ void pm_warp_tick(unsigned frame) {
     }
     if (pm_debug_has("simlog") && f % 10 == 0) /* V26: game state per 10 steps, to compare default, fps60 and wide */
         pm_log("simlog f%u seed %08x pos %d %d %d state %u dstate %d", f, (unsigned)gRandSeed, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, (unsigned)gPlayerStatus.actionState, (int)gGameStatusPtr->demoState);
-    if (pm_debug_has("marlog") && f % 4 == 0 && f >= 80 && f <= 130) { /* UA1: Mario's projected screen x (get_screen_coords) per 4 frames, with the Mario pos */
+    if (pm_debug_has("marlog") && f == 100) { /* UA1 numeric check: 2D px (40 + get_screen_coords x) and the 3D draw px, 100 units to each side of Mario. Values in tenths of a px. */
         extern void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* sx, s32* sy, s32* sz);
-        s32 mx, my, mz;
-        get_screen_coords(gCurrentCameraID, gPlayerStatus.pos.x, gPlayerStatus.pos.y, gPlayerStatus.pos.z, &mx, &my, &mz);
-        pm_log_d("marlog f%u sx %d sy %d pos %d %d %d", f, mx, my, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z);
+        extern float pm_debug_draw_px(s32 camID, float x, float y, float z);
+        s32 sx, sy, sz;
+        int side;
+        for (side = -100; side <= 100; side += 200) {
+            f32 wx = gPlayerStatus.pos.x + side;
+            float a, b;
+            get_screen_coords(gCurrentCameraID, wx, gPlayerStatus.pos.y, gPlayerStatus.pos.z, &sx, &sy, &sz);
+            a = 40.0f + sx;
+            b = pm_debug_draw_px(gCurrentCameraID, wx, gPlayerStatus.pos.y, gPlayerStatus.pos.z);
+            pm_log_d("marlog f%u side %d wide %d a10 %d b10 %d err10 %d", f, side, pm_wide, (int)(a * 10.0f), (int)(b * 10.0f), (int)((a - b) * 10.0f));
+        }
     }
     if (f % 300 == 0) {
         pm_log_d("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d wall %d push %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
