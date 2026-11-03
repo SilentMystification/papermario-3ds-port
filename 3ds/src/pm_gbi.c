@@ -3507,6 +3507,7 @@ static unsigned rec_ibad; /* UC3c: index words differing in reccheck */
 static unsigned rec_runs; /* UC3e: lists replayed from a record (rec_play) */
 static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
 static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
+static int rec_play_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("recplay"); return v; } /* UC3e: replay on only with the debug string recplay (default off) */
 static RecKey* rec_rp; /* UC3e: the record whose static list the next G_DL of this group may replay */
 
 static u16 rec_hgen(unsigned m) { unsigned h = pm_rec_tex(m); return h ? (u16)tb_gen[h & 0x7fu] : 0; }
@@ -3537,7 +3538,7 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
         u32 ver = pm_rec_ver(slot - 1);
         u16 hg = rec_hgen(slot - 1), t0 = rec_tgen(k->s0), t1 = rec_tgen(k->s1);
         if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) {
-            if (k->state == 1 && !rec_chk_sw()) { /* UC3e: replay candidate; the group must match the capture start */
+            if (k->state == 1 && rec_play_sw() && !rec_chk_sw()) { /* UC3e: replay candidate (debug switch recplay, default off: battle shots differ, see agent_uc3d.md section 9); the group must match the capture start */
                 pm_gpu_flush(); rec_g0_set();
                 if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) rec_rp = k;
                 return 0;
