@@ -108,3 +108,10 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - Shot intro_native 0004 (frame 334): the intro stage fills the 4:3 picture with black bars at both ends of the screen (the image is rotated, the bars are at the top and bottom of the PNG).
 - Restore: the next mode (title, then file select 4:3, then GAME_MODE_WORLD or ENTER_WORLD) sets pm_wide from pm_wide_cfg. The first map after the intro is wide again by code, not measured (a second start through the title and file select was not run).
 - Opening story maps (kmr_00 to kmr_03, world mode with the story flag) are NOT covered: they run in GAME_MODE_WORLD like any map. Not changed.
+
+## UA3 and UA8 after the reset (budget rule: 3 starts per row)
+
+- UA3: starts 4, 5 and 6 after the reset were used (coin_wide, hook at 120 and 200). Budget spent. Blocker cause (read in code): the status bar starts with `statusBar->showTimer = 210` (src/inventory.c:343) and `alwaysShown = false` (:347). It retracts when the timer ends. The coin counter draws inside the status bar area, so it does not show with the bar retracted. The yard shot at frame 200 (no wide) also shows no bar, which fits this.
+- Proposed fix (not written, no start left): a debug helper in inventory.c that sets `gStatusBar.alwaysShown = true`, called by the uishow=coins hook before show_coin_counter(). One start at hook frame 150 with shots 160 to 200 would show the counter if this is the cause.
+- UA8: starts 1 and 2 used (fxtest 113). Budget: 1 start left under the 3-per-row rule, not spent. The per-frame chapterPos update (kmr_22/main.c:40-60) is not written. Card position is set in chapter_change_init from the args (chapter_change.c:201-202). Not implemented.
+- UA9: not started.
