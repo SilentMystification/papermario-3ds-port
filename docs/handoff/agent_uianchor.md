@@ -48,3 +48,10 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - Fix: pm_wide.h helpers (pm_wide_left / pm_wide_right / pm_wide_top / pm_wide_bottom) on the price coordinates so they move with their item list. Wide-off must stay byte-equal.
 - Scenario: warp into a shop map (debug string to find: the Toad Town item shop in mac_00 or the map that opens a shop, preset toad plus a padscript walk to the shopkeeper). Shot of the item list with wide on. Until: a log line when the shop list opens (add one debug line if none exists).
 - Status: not started. No test run for UA9 yet. Budget 8 starts per row, UA9 has 0 used.
+
+## Talk route attempt (UA1 option A, UA2 talk_wide), starts 5 and 6
+
+- Start 5 (talk_wide discovery, preset=toad wide simlog): NPC n0 at x -66, y 20; Mario at x -100, y 30 (log simstep f110). The NPC z is not logged.
+- Start 6 (padscript wait20,right*30,A,wait150): Mario did not move (pos -100 30 -370 at f300, f600, f900, f1200). No talk anchor line, no bubble. Cause not known: stick input, a wall at z -370, or the NPC is not at z -370.
+- UA1 budget: 6 of 8 used. The msg_api.c:96 log and pm_gpu_shot_burst(8) are in the working tree, uncommitted.
+- Next: add the NPC z to the simstep line (one line in pm_warp.c), then one start with a route to n0 (dright or the go_ token with the z).
