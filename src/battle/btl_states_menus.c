@@ -763,8 +763,10 @@ s32 btl_main_menu_update(void) {
                     { /* UA4 debug: the wheel opens. One log line and one shot burst. */
                         extern void pm_log_d(const char* fmt, ...);
                         extern void pm_gpu_shot_burst(int n);
+                        extern int pm_debug_has(const char* word);
+            extern int pm_debug_has(const char* word);
                         pm_log_d("debug wheel open: base %d %d", BattleMenu_BasePosX, BattleMenu_BasePosY);
-                        pm_gpu_shot_burst(8);
+                        if (pm_debug_has("uiburst")) pm_gpu_shot_burst(8); /* UA debug, only with uiburst */
                     }
                     break;
             }
@@ -5559,10 +5561,11 @@ void btl_state_draw_select_target(void) {
             static s32 loggedTargetPointer; /* UA1 debug: one log line and one shot burst when the pointer first shows */
             extern void pm_log_d(const char* fmt, ...);
             extern void pm_gpu_shot_burst(int n);
+            extern int pm_debug_has(const char* word);
             if (!loggedTargetPointer) {
                 loggedTargetPointer = 1;
                 pm_log_d("debug target select: pointer %d %d", screenX, screenY);
-                pm_gpu_shot_burst(8);
+                if (pm_debug_has("uiburst")) pm_gpu_shot_burst(8); /* UA debug, only with uiburst */
             }
         }
     } else {
