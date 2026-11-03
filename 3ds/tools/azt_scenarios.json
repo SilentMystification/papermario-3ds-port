@@ -1097,6 +1097,62 @@
       "reason": "PAUSE5B gameplay comparison, no pause. Window values are compared with pause_menu (closes, ops, walk) in test_catalog.md."
     },
     {
+      "name": "talk_wide",
+      "status": "unverified",
+      "subject": "Toad Town (mac_00 entry 4) with wide on: NPC positions for the talk route (discovery), then the speech bubble of a Toad (UA2 and UA1 subject).",
+      "proves": "UA1 and UA2: the speech bubble origin from get_screen_coords (msg_api.c:96) follows the speaker in wide mode.",
+      "debug": "preset=toad wide simlog loglevel=debug",
+      "until": "simlog f150 ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "npc positions",
+          "regex": "simstep f1[1-4]\\d "
+        }
+      ],
+      "reason": "Discovery start for the talk route (NPC positions in simstep lines)."
+    },
+    {
+      "name": "battle_target_wide",
+      "status": "unverified",
+      "subject": "Battle with wide on (one Goomba, kmr_03): the target pointer (hand) of the Jump command sits on the Goomba. The pointer log line starts a shot burst of 8 frames; the until-line is that shot.",
+      "proves": "UA1: get_screen_coords and the world projection in wide mode place the target pointer on the actor.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 wide padscript=wait150,A,wait90,A,wait90 shots loglevel=debug",
+      "until": "shot \\d+ frame \\d+ map",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "target pointer",
+          "regex": "debug target select: pointer"
+        },
+        {
+          "name": "shot at pointer",
+          "regex": "shot \\d+ frame \\d+ map"
+        }
+      ],
+      "reason": "UA1 gate. Wide shot of the target pointer over the Goomba."
+    },
+    {
       "name": "battle_start",
       "status": "verified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",

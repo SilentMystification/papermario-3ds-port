@@ -280,3 +280,10 @@ The fsplit line (fsplit flag only) adds `wm <mean> max <max> tk <mean> max <max>
 |---|---|---|---|---|---|---|
 | logcon_err | `conlevel=error` with `loglevel=debug`: log.txt holds debug lines (`logstat frames 300 work`), the logstat2 line prints `console lines 0` (gate max 0). Until is the logstat2 line at frame 300. | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 logcon_err -Row LOGCON -Build logcon -Try` | `warp: kmr_20 entry 4` | 20 s to the first marker, about 60 s to the until | build3ds\azt\shots\logcon_err | Run 1 (build 1670-logcon): 3 of 3 log checks. logstat2 `console lines 0`; log.txt has the `logstat frames 300` debug line. Live socket log not checked (log.txt only). Picture not read by the agent: the bottom screen must show no log text. |
 | logcon_dbg | Same build with `conlevel=debug`: the logstat2 line prints `console lines` at least 1 (gate min 1). Second start of the pair. | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 logcon_dbg -Row LOGCON -Build logcon -Try` | `warp: kmr_20 entry 4` | as logcon_err | build3ds\azt\shots\logcon_dbg | Run 2 (build 1670-logcon): 3 of 3 log checks. logstat2 `console lines 105` (was 0 in logcon_err). Picture not read by the agent. |
+
+## UIANCHOR (2026-11-03): wide UI anchors, scenarios
+
+| Scenario | Status | Command | First marker | Runtime | What it proves | Known limits |
+|---|---|---|---|---|---|---|
+| battle_target_wide | unverified (gate pending, UA1) | `battle_target_wide -Row UIANCHOR -Build UIANCHOR -Try` | `warp: kmr_03 entry 0` | cap 45 s | target pointer log and shot burst at target select (wide) | Wheel input does not reach target select (starts 2 to 4); see docs/handoff/agent_uianchor.md |
+| talk_wide | unverified (discovery) | `talk_wide -Row UIANCHOR -Build UIANCHOR -Try` | `warp: mac_00 entry 4` | cap 30 s | NPC x y z (simstep lines, wide) | Log only. Mario does not walk by padscript (start 6). |

@@ -520,6 +520,9 @@ void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* screenX, s32* screen
     } else {
         tW = 1.0f / tW;
         *screenX = (s32) ((camera->viewportW / 2) + (tX * tW * camera->viewportW * 0.5f)) + camera->viewportStartX;
+        if (pm_wide_cam(camera)) { /* UA1: the 3D draw scales x by 1.25, a 2D draw adds 40 px: game x = 1.25 x - 40 */
+            *screenX = (s32) (*screenX * 1.25f) - 40;
+        }
         *screenY = (s32) ((camera->viewportH / 2) - (tY * tW * camera->viewportH * 0.5f)) + camera->viewportStartY;
     }
 }

@@ -5548,6 +5548,16 @@ void btl_state_draw_select_target(void) {
         get_screen_coords(CAM_BATTLE, targetX, targetY, targetZ, &screenX, &screenY, &screenZ);
         hud_element_set_render_pos(id, screenX + xOffset, screenY + yOffset);
         hud_element_set_alpha(id, BattleMenu_TargetPointerAlpha);
+        {
+            static s32 loggedTargetPointer; /* UA1 debug: one log line and one shot burst when the pointer first shows */
+            extern void pm_log_d(const char* fmt, ...);
+            extern void pm_gpu_shot_burst(int n);
+            if (!loggedTargetPointer) {
+                loggedTargetPointer = 1;
+                pm_log_d("debug target select: pointer %d %d", screenX, screenY);
+                pm_gpu_shot_burst(8);
+            }
+        }
     } else {
         for (i = 0; i < targetListLength; i++) {
             target = &choosingActor->targetData[targetIndexList[i]];
