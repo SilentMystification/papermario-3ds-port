@@ -27,6 +27,11 @@ void fio_deserialize_state(void);
 void fio_serialize_state(void);
 bool fio_read_flash(s32 pageNum, void* readBuffer, u32 numBytes);
 bool fio_write_flash(s32 pageNum, s8* readBuffer, u32 numBytes);
+#ifdef TARGET_3DS
+/* WARPFIX2 (pm_warp.c): a new-file warp or boss launch blocks every save write */
+int pm_save_blocked(void);
+void pm_save_note(s32 slot);
+#endif
 s32 fio_erase_flash(s32 pageNum);
 
 #if VERSION_PAL
@@ -267,6 +272,12 @@ bool fio_load_game(s32 saveSlot) {
 
 void fio_save_game(s32 saveSlot) {
     SaveData* saveData = &gCurrentSaveFile;
+#ifdef TARGET_3DS
+    if (pm_save_blocked()) {
+        pm_save_note(saveSlot);
+        return;
+    }
+#endif
 #if VERSION_PAL
     int i;
 #endif
