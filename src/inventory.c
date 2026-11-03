@@ -1281,6 +1281,14 @@ API_CALLABLE(ShowCoinCounter) {
 void draw_status_ui(void) {
     update_status_bar();
     update_coin_counter();
+    { /* UA3 debug: bar state per 4 frames after the uishow=coins hook */
+        extern unsigned pm_frame_count(void);
+        extern void pm_log_d(const char* fmt, ...);
+        unsigned f = pm_frame_count();
+        if (gStatusBar.alwaysShown && f >= 200 && f <= 216 && (f % 4) == 0) {
+            pm_log_d("hud f%u drawPosY %d hidden %d showTimer %d", f, (int) gStatusBar.drawPosY, (int) gStatusBar.hidden, (int) gStatusBar.showTimer);
+        }
+    }
 }
 
 void open_status_bar_slowly(void) {

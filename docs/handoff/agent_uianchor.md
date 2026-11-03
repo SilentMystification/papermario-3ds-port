@@ -122,3 +122,11 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - Shot coin_wide 0004 (frame 216): no status bar and no counter. The HUD is not drawn in this scenario at all (frames 149, 216).
 - Code path checked: state_world.c draw_status_ui() runs every world frame; update_status_bar (inventory.c:696) sets hidden false when alwaysShown; the hide branch (:712-721) does not check alwaysShown and sets hidden after showTimer 42 frames. Not explained why the bar is absent in the shot.
 - Next: read the status bar draw (drawPosY, the bar sprite draw calls at inventory.c:780-830) with a log line for drawPosY and hidden at frame 216.
+
+## STATE AT WIND-DOWN (usage limit)
+
+- UA1: passed (f9cc4300a). UA2: passed by eye (411b4f146). UA4: passed by eye (ff2514a14). UA7: passed by eye (39ab85b6b). UA10: passed by eye (a3208bb6e). Byte-equal wide off vs main (yard, talk_off, battle_start 0000-0003): passed, see the byte-equal section above.
+- UA3: BLOCKED. Status bar not in the shot (coin_wide, frames 149 and 216, also with uishow=coins alwaysShown). Start 9 with the draw_status_ui debug log (inventory.c, lines after update_coin_counter) printed NO `hud f` lines at frames 200 to 216, so draw_status_ui did not reach that log with alwaysShown set. Next command: `grep -n "draw_status_ui\|state_drawUI_world" src/*.c` and check which state draws the UI in this scenario; log in pm_warp.c at the hook: gStatusBar.alwaysShown value. If the UI draw is not the world state, the bar is drawn elsewhere. Code is committed (2205d46af plus the debug log in inventory.c, uncommitted at this point).
+- UA8: NOT DONE. chapter_wide (fxtest index 113) shows no card. Next: uishow=chapter hook in pm_warp.c that calls fx_chapter_change(0, 100.0f, 100.0f, 0.0f, 1.0f, 0) and then sets chapterPos.x/y each frame from the kmr_22 update (src/world/area_kmr/kmr_22/main.c:40-60). Budget used: 2 of 2.
+- UA9: NOT STARTED. Shop: uishow=shop calling the function in src/world/script_api/shops.c, or warp to the Toad Town shop map (src/world/area_mac/mac_00/shop.c) and press A. Budget 0 of 2.
+- UA5 and UA6 (action command, 93 token edits): NOT STARTED, later epic.
