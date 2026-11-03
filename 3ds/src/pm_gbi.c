@@ -82,6 +82,7 @@ static PM_HOTD int mv_sp;
 static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
 static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 static PM_HOTD unsigned geom;
+static int rec_on; static unsigned rec_dln, rec_gin, rec_gout, rec_fl; /* UC3d: a capture is open; static lists entered; geom at entry and exit; fl bit 0 wind <= 0, bit 1 tri_since_vtx at exit */
 static PM_HOTD unsigned omode_h;
 void pm_tex_set_filter(int linear);
 static PM_HOTD unsigned omode_l = 0x00000030u; /* Z_CMP | Z_UPD until a list sets a mode */
@@ -3395,7 +3396,10 @@ extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slo
 /* 32 B. state 0 none, 1 record, 2 refused, 3 churn guard (4 builds since the arena reset: no capture). RK2: hgen = tb_gen of the
  * handle, tgen0/tgen1 = generation of the cache slots on unit 0 and 1 at the capture end (REC_NO_SLOT none). nb = builds since reset. */
 /* UC2: grp = fragment-op group words (ctx+0xF0..0xFC, texunit config ctx+0x110, flags ctx+0x20) at capture start. A record is reused only when they match (diag_uc2_j75.md). 48 B. */
-typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[7]; u32 io, ic; } RecKey; /* UC3c: io, ic = index arena span (pm_gpu_rec_idx) */
+typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[7];
+    u32 io, ic; /* UC3c: index arena span (pm_gpu_rec_idx) */
+    u32 gin, gout, view; u16 alen; u8 npt, nd, fl; /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
+} __attribute__((aligned(32))) RecKey;
 #define REC_NO_SLOT 0xffffu
 #define REC_ARENA_WORDS (64u * 1024u)
 #define REC_MAX_WORDS 1024u
@@ -3414,6 +3418,8 @@ void pm_gpu_rec_cls(unsigned* c); /* pm_gpu.c, UC3M: differing words per class (
 int pm_gpu_rec_idx(u32* w, u32 n, u32* io, u32* ic); /* pm_gpu.c, UC3c: copy the indices to the arena, rewrite 0x227 p0 */
 void pm_gpu_rec_idx_reset(void); /* pm_gpu.c, UC3c */
 unsigned pm_gpu_rec_ichk(u32 io, u32 ic); /* pm_gpu.c, UC3c: differing indices of the span against this window */
+unsigned pm_gpu_view_key(void); /* pm_gpu.c, UC3d: hash of the scissor, wide, ortho and off-screen state */
+void pm_gpu_rec_pt_copy(void* dst, unsigned n); /* pm_gpu.c, UC3d: the last walk's patch table (RecPatch, 4 B each) */
 static unsigned rec_ibad; /* UC3c: index words differing in reccheck */
 static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
 static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
@@ -3448,6 +3454,7 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
         if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) {
             if (!rec_chk_sw() || k->state != 1) return 0;
             pm_gpu_rec_begin(); rec_g0_set(); /* UC2: the old path still runs; its words are compared with the record */
+            rec_on = 1; rec_dln = 0;
             if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) { rec_chk = 1; return 1; }
             rec_mg++; /* UC2: the group differs at capture start: capture again below */
         } else {
@@ -3458,6 +3465,7 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
         }
     }
     pm_gpu_rec_begin(); rec_g0_set();
+    rec_on = 1; rec_dln = 0;
     rec_cap_n++;
     return 1;
 }
@@ -3508,10 +3516,11 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     unsigned slot = w1 & 0xffu;
     RecKey* k = &rk[slot - 1];
     int cs, as;
+    unsigned dln = rec_dln; rec_on = 0;
     int r = pm_gpu_rec_end(&w, &n);
     if (rec_chk) { rec_chk = 0; rec_check(k, r, w, n, whole); return; }
     pm_tex_cur_slots(&cs, &as);
-    u16 old_off = k->off, old_len = k->len; u8 old_state = k->state, old_nb = k->nb;
+    u16 old_off = k->off, old_len = k->len, old_alen = k->alen; u8 old_state = k->state, old_nb = k->nb;
     k->s0 = cs < 0 ? REC_NO_SLOT : (u16)cs; k->s1 = as < 0 ? REC_NO_SLOT : (u16)as;
     k->ver = pm_rec_ver(slot - 1); k->gen = ra_gen; k->hgen = rec_hgen(slot - 1);
     memcpy(k->grp, rec_g0, sizeof k->grp);
@@ -3525,13 +3534,19 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
         rec_ref++;
         return;
     }
-    if (pm_gpu_rec_walk(w, n) < 0) return; /* UC1: the walk counts wbad and fills the patch table */
-    u32 need = (n + 3u) & ~3u, at;
-    if (old_state == 1 && n <= old_len) at = old_off; /* RK2: the slot's old place, no arena growth */
+    int npt = pm_gpu_rec_walk(w, n); /* UC1: the walk counts wbad and fills the patch table */
+    if (npt < 0) return;
+    if (npt > 255 || dln != 1) { rec_ref++; return; } /* UC3d: one static list per record, patch count in a byte */
+    u32 need = (n + (u32)npt + 3u) & ~3u, at;
+    if (old_state == 1 && need <= old_alen) at = old_off; /* RK2: the slot's old place, no arena growth */
     else if (ra_n + need <= REC_ARENA_WORDS) { at = ra_n; ra_n += need; }
     else { rec_ref++; return; }
     memcpy(ra + at, w, n * 4u);
-    { u32 io, ic; if (pm_gpu_rec_idx(ra + at, n, &io, &ic) < 0) { rec_ref++; return; } k->io = io; k->ic = ic; } /* UC3c: refused record keeps state 2 */
+    pm_gpu_rec_pt_copy(ra + at + n, (unsigned)npt); /* UC3d: patch table after the body */
+    { u32 io, ic; int nd = pm_gpu_rec_idx(ra + at, n, &io, &ic); /* UC3c: refused record keeps state 2 */
+      if (nd < 0 || nd > 255) { rec_ref++; return; }
+      k->io = io; k->ic = ic; k->nd = (u8)nd; }
+    k->npt = (u8)npt; k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
     k->off = (u16)at; k->len = (u16)n; k->nb = (u8)(old_nb + 1);
     k->state = k->nb >= 4 ? 3 : 1; /* RK2: the fourth build of the slot stops its captures */
     rec_build++; rec_bytes += n * 4u;

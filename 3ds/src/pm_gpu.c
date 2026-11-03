@@ -2379,6 +2379,12 @@ int pm_gpu_rec_idx(u32* w, u32 n, u32* io, u32* ic) {
     return (int)nd;
 }
 void pm_gpu_rec_idx_reset(void) { ia_n = 0; }
+/* UC3d: the state a replay must match (scissor, wide, ortho, off-screen target). Hash only; the record key compares it. */
+unsigned pm_gpu_view_key(void) {
+    unsigned h = (unsigned)sci_x0 * 31u + (unsigned)sci_x1;
+    h = h * 31u + (unsigned)sci_y0; h = h * 31u + (unsigned)sci_y1;
+    return h * 8u + (pm_wide ? 1u : 0u) + (ui_ortho ? 2u : 0u) + (off_active ? 4u : 0u);
+}
 /* UC3c: index check. The record span (io, ic) against the indices of this window (gidx + rb_gi, rb_ge). Returns the differing indices, plus the length difference. */
 unsigned pm_gpu_rec_ichk(u32 io, u32 ic) {
     u32 cnt = rb_ge - rb_gi, m = ic < cnt ? ic : cnt, bad = 0;
@@ -2413,6 +2419,7 @@ int pm_gpu_rec_walk(const u32* w, u32 n) {
     rec_pt_n += pt;
     return (int)pt;
 }
+void pm_gpu_rec_pt_copy(void* dst, unsigned n) { memcpy(dst, rec_pt, n * sizeof rec_pt[0]); } /* UC3d */
 void pm_gpu_rec_count(unsigned* pt, unsigned* wbad, unsigned* pk) { *pt = rec_pt_n; *wbad = rec_wbad_n; *pk = rec_pk_n; rec_pt_n = rec_wbad_n = rec_pk_n = 0; }
 /* UC2: reccheck. a is a valid record, b the words this frame wrote for the same model. Words in patch data slots are not compared
  * (replay writes them). bad: words outside the slots that differ, or the lengths differ. miss: the patch tables differ. Returns -1 when
