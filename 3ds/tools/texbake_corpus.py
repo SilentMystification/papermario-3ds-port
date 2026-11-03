@@ -9,7 +9,10 @@ root, out = sys.argv[1], sys.argv[2]
 rnd = random.Random(7)
 FM = {4: [(2, 0), (3, 0), (4, 0)], 8: [(2, 1), (3, 1), (4, 1)], 16: [(0, 2), (3, 2)], 32: [(0, 3)]}  # fmt, siz by bits per texel
 reqs = []
+names = []  # TEXSELF: source file per request ("synthetic" for the random cases), written as <out>.names
+CUR = ["synthetic"]
 def add(fmt, siz, w, h, stride, mw, mh, ms, mt, tn, tl, src):
+    names.append(CUR[0])
     reqs.append(struct.pack("<BBBBHHHHHHHHI", fmt, siz, ms, mt, w, h, stride, mw, mh, tn, 0, 0, len(src)) + tl + src)
 bd = os.path.join(root, "ver/us/build")
 for dp, _, fs in os.walk(bd):
@@ -30,8 +33,10 @@ for dp, _, fs in os.walk(bd):
                 tl = open(palp, "rb").read()[:n * 2] if os.path.exists(palp) else bytes(rnd.randrange(256) for _ in range(n * 2))
                 tl = tl.ljust(n * 2, b"\0"); tn = len(tl) // 2
             else: tl, tn = b"", 0
+            CUR[0] = os.path.relpath(pb, bd)
             add(fmt, siz, w, h, w, 0, 0, 0, 0, tn, tl, data)
 # synthetic: random bytes, masks, mirror, stride, odd sizes
+CUR[0] = "synthetic"
 for _ in range(400):
     fmt, siz = rnd.choice([(0, 2), (0, 3), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2), (4, 0), (4, 1), (1, 2), (0, 1)])
     w = rnd.choice([1, 3, 8, 13, 16, 31, 32, 48, 64, 100]); h = rnd.choice([1, 5, 8, 16, 24, 32, 63, 64])
@@ -48,3 +53,4 @@ for _ in range(400):
     add(fmt, siz, w, h, stride, mw, mh, rnd.randrange(2), rnd.randrange(2), tn, tl, src)
 open(out, "wb").write(struct.pack("<II", 0x51544d50, len(reqs)) + b"".join(reqs))
 print("requests", len(reqs))
+open(out + ".names", "w", encoding="utf-8").write(chr(10).join(names) + chr(10))

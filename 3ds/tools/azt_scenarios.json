@@ -155,6 +155,296 @@
       "reason": ""
     },
     {
+      "name": "kmr_10_band",
+      "status": "unverified",
+      "subject": "Map kmr_10 at player position -142 136 221 (the wall band, user report). Frames 200 to 205 with the game camera on Mario. Picture: vertical stripes in the top rows of the low terrain wall next to the ? block.",
+      "proves": "pos= switch sets Mario to the position at scene frame 30 on a warped map, and the shots show the wall.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_dd",
+      "status": "unverified",
+      "subject": "Map kmr_10 entry 0, frames 200 to 205 shots, with drawlog=200:1 (one line per mesh chunk of frame 200). Names the chunk and texture of the terrain wall in view (TEXGARBLE).",
+      "proves": "drawlog=file frame window logs the chunk list of a warped map and the shots show the wall.",
+      "debug": "warp=kmr_10:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texstat texbind",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_near",
+      "status": "unverified",
+      "subject": "kmr_10 at -142 136 221, frames 200 to 205, scratch test switch texnear: point filter for every unit 0 bind. Compare with kmr_10_band (TEXGARBLE).",
+      "proves": "The texnear switch changes the sampling of unit 0, and the band shows or not.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texnear",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_clamp",
+      "status": "unverified",
+      "subject": "kmr_10 at -142 136 221, frames 200 to 205, scratch test switch texclamp: clamp to edge for every unit 0 bind. Compare with kmr_10_band (TEXGARBLE).",
+      "proves": "The texclamp switch changes the sampling of unit 0, and the band shows or not.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texclamp",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_clamp1",
+      "status": "unverified",
+      "subject": "kmr_10 at -142 136 221, frames 200 to 205, scratch test switch texclamp1: clamp to edge on the aux unit only. Compare with kmr_10_band (TEXGARBLE).",
+      "proves": "The texclamp1 switch changes the sampling of unit 0, and the band shows or not.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texclamp1",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_rep1",
+      "status": "unverified",
+      "subject": "kmr_10 at -142 136 221, frames 200 to 205, scratch test switch texrep1: aux unit t repeats (N64 clamp of t off). Compare with kmr_10_band (TEXGARBLE).",
+      "proves": "The texrep1 switch changes the sampling of unit 0, and the band shows or not.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texrep1",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_rt1",
+      "status": "unverified",
+      "subject": "kmr_10 at -142 136 221, frames 200 to 205, scratch test switch texrt1: tile 1 t shift ignored (scale 1). Compare with kmr_10_band (TEXGARBLE).",
+      "proves": "The texrt1 switch changes the sampling of unit 0, and the band shows or not.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texrt1",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "yard_texwin0",
+      "status": "unverified",
+      "subject": "Scratch before run of yard: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug texwin0",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "mac01t_texwin0",
+      "status": "unverified",
+      "subject": "Scratch before run of mac01t: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
+      "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1623 to 2065 (1844 +/- 12 %). Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase texwin0",
+      "until": "mdlsum f899 r12 ",
+      "cap": 120,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f\\d+ ops"
+        },
+        {
+          "name": "mdlsum total ops per frame (gate 757 to 963, 860 +/- 12 %, after MR1 7d00a451c)",
+          "regex": "mdlsum f899 tot ops (\\d+) ",
+          "min": 757,
+          "max": 963
+        },
+        {
+          "name": "mdlsum rows",
+          "regex": "mdlsum f899 r12 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 50[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_ddonly",
+      "status": "unverified",
+      "subject": "Map kmr_10 at player position -142 136 221, frame 200 with drawlog=200:1 and ddonly=78:78: only chunk 78 (64x32 CI4 wall texture 00ffacd4, scr box 141 136 329 172) draws. Tests whether that chunk alone makes the band (TEXGARBLE).",
+      "proves": "ddonly limits the frame to one chunk, and the shot shows the band or its absence.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 ddonly=78:78",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "tex_kmr_10",
       "status": "unverified",
       "subject": "Map kmr_10 at frames 200 to 205 (find the map with the garbled wall).",
