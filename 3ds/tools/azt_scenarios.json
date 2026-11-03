@@ -417,6 +417,30 @@
       "reason": ""
     },
     {
+      "name": "kmr_10_dd_texwin0",
+      "status": "unverified",
+      "subject": "kmr_10 entry 0 with texwin0 (TEXWIN rule off), before pair for kmr_10_dd, frames 200 to 205.",
+      "proves": "drawlog=file frame window logs the chunk list of a warped map and the shots show the wall.",
+      "debug": "warp=kmr_10:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texstat texbind texwin0",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "kmr_10_ddonly",
       "status": "unverified",
       "subject": "Map kmr_10 at player position -142 136 221, frame 200 with drawlog=200:1 and ddonly=78:78: only chunk 78 (64x32 CI4 wall texture 00ffacd4, scr box 141 136 329 172) draws. Tests whether that chunk alone makes the band (TEXGARBLE).",
