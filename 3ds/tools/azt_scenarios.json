@@ -2637,6 +2637,30 @@
         }
       ],
       "reason": "UA1 gate. Wide shot of the target pointer over the Goomba."
+    },
+    {
+      "name": "talk_off",
+      "status": "unverified",
+      "subject": "Toad Town, Mario speech box (preset toad, pos -66:20:-518:0, A at frame 200), wide off. Byte-equal check of the speech box against main.",
+      "proves": "UA2 wide-off: speech box unchanged against main.",
+      "debug": "preset=toad pos=-66:20:-518:0 padscript=wait300,A,wait150 shots loglevel=debug",
+      "until": "shot \\d+ frame 209\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "speech anchor",
+          "regex": "debug talk anchor: speaker"
+        }
+      ],
+      "reason": "Byte-equal check (wide off) against UAMAIN."
     }
   ]
 }
