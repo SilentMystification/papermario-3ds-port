@@ -84,14 +84,30 @@ u16 blend_background_channel(u16 arg0, s32 arg1, s32 alpha) {
 
 extern int pm_wide;
 extern s32 pm_wide_cam(Camera* c);
-/* F07-4: with wide the 296 px sky tiles over the 400 px screen (game x -40 to 360). The pattern repeats every 296 px. */
+/* F07-4: with wide the 296 px sky tiles over the 400 px screen. The pattern repeats every 296 px.
+ * ZOOM: with the wide camera the 296 x 200 view is zoomed by 6 / 5 about game (160, 20), so the 200 sky rows fill the 240 screen rows. bg_zoom is set once per sky draw.
+ * The rectangles are made in the unzoomed frame and mapped when they are emitted. An edge maps as an exclusive edge (+4 quarter pixels), so neighbouring rectangles stay seamless. */
+static s32 bg_zoom;
+static void bg_emit(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
+    if (bg_zoom) {
+        xl = (xl - 640) * 6 / 5 + 640;
+        xh = (xh + 4 - 640) * 6 / 5 + 640 - 4;
+        yl = (yl - 80) * 6 / 5;
+        yh = (yh + 4 - 80) * 6 / 5 - 4;
+        dsdx = dsdx * 5 / 6;
+        dtdy = dtdy * 5 / 6;
+    }
+    gSPTextureRectangle(gMainGfxPos++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
+}
 static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
     s32 shift;
-    gSPTextureRectangle(gMainGfxPos++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
+    s32 lo = bg_zoom ? -8 * 4 : -40 * 4; /* the screen edges in the frame of the rectangles: game -40 and 360, zoomed -7 and 327 */
+    s32 hi = bg_zoom ? 328 * 4 : 360 * 4;
+    bg_emit(xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
     if (pm_wide) {
         for (shift = -296 * 4; shift <= 296 * 4; shift += 592 * 4) {
-            if (xh + shift >= -40 * 4 && xl + shift <= 360 * 4) {
-                gSPTextureRectangle(gMainGfxPos++, xl + shift, yl, xh + shift > 360 * 4 - 1 ? 360 * 4 - 1 : xh + shift, yh, tile, s, t, dsdx, dtdy); /* F07-8: the 12 bit field is signed, 512 px and more wrap negative, so the right copy was lost */
+            if (xh + shift >= lo && xl + shift <= hi) {
+                bg_emit(xl + shift, yl, xh + shift > hi - 1 ? hi - 1 : xh + shift, yh, tile, s, t, dsdx, dtdy); /* F07-8: the 12 bit field is signed, 512 px and more wrap negative, so the right copy was lost */
             }
         }
     }
@@ -260,6 +276,7 @@ void appendGfx_background_texture(void) {
     bgMaxY = gGameStatusPtr->backgroundMaxY;
     bgMinX = gGameStatusPtr->backgroundMinX;
     bgMinY = gGameStatusPtr->backgroundMinY;
+    bg_zoom = pm_wide_cam(cam) && bgMinY == 20 && bgMaxY == 200 && bgMaxX == 296;
 
     gDPPipeSync(gMainGfxPos++);
     gDPSetCycleType(gMainGfxPos++, G_CYC_COPY);
@@ -329,26 +346,6 @@ void appendGfx_background_texture(void) {
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
 #endif
-        if (pm_wide_cam(&gCameras[gCurrentCameraID]) && bgMinY == 20 && bgMaxY == 200 && bgMaxX == 296) {
-            /* PT54: the 296 x 200 sky image is shown on 20 to 219. With wide the view is 240 rows. The first image row fills the rows above and the last image row the rows below. */
-            s32 k;
-            for (k = 0; k < 2; k++) {
-                s32 row = k == 0 ? gBackroundTextureYOffset : gBackroundTextureYOffset + bgMaxY - 1;
-                s32 y0 = k == 0 ? 0 : bgMinY + bgMaxY;
-                s32 y1 = k == 0 ? bgMinY - 1 : SCREEN_HEIGHT - 1;
-                if (row > bgMaxY) {
-                    row -= bgMaxY;
-                }
-                gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster + bgMaxX * row,
-                                   G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, 1,
-                                   0, 0, 295, 0, 0,
-                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-                bg_texrect( bgMinX * 4, y0 * 4, (bgXOffset + bgMinX - 1) * 4, y1 * 4,
-                                                     G_TX_RENDERTILE, (bgMaxX - bgXOffset) * 32, 0, 4096, 0);
-                bg_texrect( (bgXOffset + bgMinX) * 4, y0 * 4, (bgMaxX + bgMinX - 1) * 4, y1 * 4,
-                                                     G_TX_RENDERTILE, 0, 0, 4096, 0);
-            }
-        }
     } else {
         lineHeight = 6;
         numLines = gGameStatusPtr->backgroundMaxY / lineHeight;
@@ -390,29 +387,6 @@ void appendGfx_background_texture(void) {
             bg_texrect( bgXOffset * 2  + bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (bgMaxX + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4, /// @bug xh = 2 * bgXOffset + (bgMinX - 1) * 4
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
-        }
-        if (pm_wide_cam(&gCameras[gCurrentCameraID]) && bgMinY == 20 && bgMaxY == 200 && bgMaxX == 296) {
-            /* PT58: as the still sky above: with wide the view is 240 rows, the first image row (with the wave offset of the first line) fills the rows above and the last
-             * image row (wave offset of the last line) the rows below. */
-            s32 k;
-            for (k = 0; k < 2; k++) {
-                s32 row = k == 0 ? gBackroundTextureYOffset : gBackroundTextureYOffset + bgMaxY - 1;
-                s32 y0 = k == 0 ? 0 : bgMinY + bgMaxY;
-                s32 y1 = k == 0 ? bgMinY - 1 : SCREEN_HEIGHT - 1;
-                waveOffset = sin_rad(gBackroundWavePhase + (k == 0 ? 0 : numLines) * (TAU / 15)) * 3.0f;
-                bgXOffset = 2.0f * (gGameStatusPtr->backgroundXOffset + waveOffset);
-                if (row > bgMaxY) {
-                    row -= bgMaxY;
-                }
-                gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster + bgMaxX * row,
-                                   G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, 1,
-                                   0, 0, 295, 0, 0,
-                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-                bg_texrect( bgMinX * 4, y0 * 4, (2 * bgXOffset + (bgMinX - 1)) * 4, y1 * 4,
-                                                     G_TX_RENDERTILE, bgMaxX * 32 - bgXOffset * 16, 0, 4096, 0);
-                bg_texrect( bgXOffset * 2 + bgMinX * 4, y0 * 4, (bgMaxX + bgMinX - 1) * 4, y1 * 4,
-                                                     G_TX_RENDERTILE, 0, 0, 4096, 0);
-            }
         }
     }
 }

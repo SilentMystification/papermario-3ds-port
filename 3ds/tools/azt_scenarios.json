@@ -31,6 +31,30 @@
       "reason": ""
     },
     {
+      "name": "yard_wide",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4) with wide on: zoomed original view, sky fills 240 rows, status bar at the top edge, shot at frames 200 to 205.",
+      "proves": "The wide zoom keeps the original world scale.",
+      "debug": "preset=yard wide shots shotwin=200:6 shotbottom=200:60 loglevel=debug",
+      "until": "shot \\d+ frame 20[0-5]\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "yard_pace",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with pacestat logstat only. Frame-time baseline for LOGFIX (yard has no frame-time line).",

@@ -2,7 +2,8 @@
 #include "common.h"
 #include "hud_element.h"
 
-#define FULLY_EXTENDED_Y  18
+/* ZOOM: the wide world view starts at screen row 0 (the original view started at row 20), so the bar rests 20 rows higher. */
+#define FULLY_EXTENDED_Y  (pm_wide ? -2 : 18)
 /* PT55: with wide the four stat groups (HP, FP, star points, coins) have equal gaps. The widths (79, 75, 40, 47 px) come from a battle shot. The 4:3 layout is unchanged (the offsets are 0). */
 #define PM_HUD_FP_DX   (pm_wide ? 26 : 0)
 #define PM_HUD_SP_DX   (pm_wide ? -29 : 0)

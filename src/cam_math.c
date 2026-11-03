@@ -2,7 +2,6 @@
 #include "camera.h"
 
 extern int pm_wide; /* F07-2 */
-extern f32 pm_wide_vfov(Camera* c);
 extern f32 pm_wide_lead_ratio(Camera* c);
 s32 gCurrentCameraID = CAM_DEFAULT;
 
@@ -395,7 +394,7 @@ void apply_constraints_to_lead_amount(Camera* camera) {
             || (s2 = func_800328A4(settings, camera->targetPos.x, camera->targetPos.z)) != 0
         ) {
             if (camera->needsInitialConstrainDir) {
-                guPerspectiveF(camera->mtxPerspective, &camera->perspNorm, pm_wide_vfov(camera),
+                guPerspectiveF(camera->mtxPerspective, &camera->perspNorm, camera->vfov,
                     (f32)camera->viewportW / (f32)camera->viewportH * (pm_wide && (camera == &gCameras[CAM_DEFAULT] || camera == &gCameras[CAM_BATTLE]) ? 1.25f : 1.0f), camera->nearClip, camera->farClip, 1.0f);
                 guMtxCatF(camera->mtxViewPlayer, camera->mtxPerspective, camera->mtxPerspective);
                 transform_point(camera->mtxPerspective, camera->targetPos.x, camera->targetPos.y, camera->targetPos.z,
