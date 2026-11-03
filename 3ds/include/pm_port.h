@@ -15,8 +15,10 @@ void pm_log_i(const char* fmt, ...);
 void pm_log_d(const char* fmt, ...);
 void pm_log_hw(const char* fmt, ...); /* HWM1: debug level measurement line, kept longest by the queue */
 int pm_log_level(void);
+int pm_log_conlevel(void); /* CONLV: console level 0..4, 4 = off */
 int pm_log_file(void);
 void pm_log_set_level(int lv);
+void pm_log_set_conlevel(int lv);
 void pm_log_set_file(int on);
 void pm_log_init(int live);
 void pm_log_poll(void);
@@ -200,7 +202,7 @@ void pm_mapdata_enter(const char* id);
 typedef struct PmOpt {
     int fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight;
     int o3ds_z; /* C-O3DS: 0 = X is the Z key on the O3DS, 1 = Y (options.ini o3dsz) */
-    int log, loglevel; /* L02, F11-8: log file on or off (default 1), level 0 error, 1 warn (default), 2 info, 3 debug */
+    int log, loglevel, conlevel; /* L02, F11-8: log file on or off (default 1), loglevel 0 error, 1 warn (default), 2 info, 3 debug: log.txt and the live log. CONLV: conlevel 0..3 as loglevel, 4 off: the bottom screen console (default 1 warn) */
     int fixedseed; /* F11-7: 1 = same random start seed every boot (as the switch fixedseed), read at boot */
     int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.ini dpad_mode=multi|cstick|analog */
     int warp; /* UI1a, PT01: 0 = off, 1 to P = warp preset, P+1 and up = map k of gAreas (options.ini warp=<preset> or warp=<map>:<entry>) */
@@ -217,7 +219,7 @@ extern PmOpt pm_opt;
 void pm_pos_text(char (*out)[40]); /* POSHUD: pm_route.c, writes out[0] (Mario) and out[1] (camera) */
 void pm_options_init(void);
 void pm_options_write(void);
-/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed. */
+/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 11 is Console level. */
 int pm_options_get(int row);
 void pm_options_flip(int row);
 void pm_options_close(void);

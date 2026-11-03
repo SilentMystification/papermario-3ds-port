@@ -54,6 +54,10 @@ static u32 sink_file_max, sink_con_max, fb_full_waits; /* PI6: the sink thread's
 static int sw_lognull;
 static int log_level = 1; /* L02: 0 error, 1 warn, 2 info, 3 debug. A line above this level is dropped before any formatting. Default warn. */
 static int log_file_on = 1; /* the logging gate: 0 = off (switch log=off, options panel Logging). No line is formatted, queued, written or sent, and phase timing stops (pm_ph_log_gate). */
+static int con_lv = 1; /* CONLV: console level, 0 error, 1 warn (default), 2 info, 3 debug, 4 off. Switch conlevel=, options.ini conlevel, options panel Console level. */
+static int pass_lv = 1; /* CONLV: the highest level a line can have and still reach log.txt, the socket or the console: max(log_level, con_lv, off as -1). One compare in vlog. */
+static u32 con_lines; /* CONLV: console lines printed by the sink thread since boot (logstat2 console lines) */
+static void pass_recalc(void) { int c = con_lv > 3 ? -1 : con_lv; pass_lv = log_level > c ? log_level : c; }
 void pm_ph_log_gate(int on);
 
 static void ring_add(const char* s, int n) {
@@ -207,13 +211,19 @@ void pm_log_set_switches(const char* s) {
             int lv = v[0] >= '0' && v[0] <= '3' ? v[0] - '0' : v[0] == 'e' ? 0 : v[0] == 'w' ? 1 : v[0] == 'i' ? 2 : v[0] == 'd' ? 3 : log_level;
             log_level = lv;
         }
+        if (pm_debug_value("conlevel", v, sizeof v)) { /* CONLV: 0..4 or error, warn, info, debug, off */
+            con_lv = v[0] >= '0' && v[0] <= '4' ? v[0] - '0' : v[0] == 'e' ? 0 : v[0] == 'w' ? 1 : v[0] == 'i' ? 2 : v[0] == 'd' ? 3 : v[0] == 'o' ? 4 : con_lv;
+        }
+        pass_recalc();
         if (pm_debug_value("log", v, sizeof v)) log_file_on = !(!strcmp(v, "off") || !strcmp(v, "0")); /* ARG1: log=on sets the gate too */
     }
 }
 
 int pm_log_level(void) { return log_level; }
+int pm_log_conlevel(void) { return con_lv; }
 int pm_log_file(void) { return log_file_on; }
-void pm_log_set_level(int lv) { log_level = lv < 0 ? 0 : lv > 3 ? 3 : lv; }
+void pm_log_set_level(int lv) { log_level = lv < 0 ? 0 : lv > 3 ? 3 : lv; pass_recalc(); }
+void pm_log_set_conlevel(int lv) { con_lv = lv < 0 ? 0 : lv > 4 ? 4 : lv; pass_recalc(); }
 static void wake_writer(void);
 void pm_log_set_file(int on) {
     log_file_on = on != 0;
@@ -280,8 +290,8 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs, unsigned spikes, flo
     st_prev_bytes = st_bytes;
     pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u live eagain %u stall closes %u spikes %u max %.1f ms", frames, avg_ms, secs * 1000.f / (float)frames, dl,
            (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped, live_eagain, live_stall_close, spikes, spike_max);
-    pm_log_d("logstat2 writer max us fbuf %u sock %u | sink max us file %u console %u, console skipped %u, queue %u of %u, fbuf %u of %u, fbuf waits %u",
-           wr_file_max, wr_sock_max, sink_file_max, sink_con_max, con_skipped, __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED), 1024u,
+    pm_log_d("logstat2 writer max us fbuf %u sock %u | sink max us file %u console %u, console skipped %u, console lines %u, queue %u of %u, fbuf %u of %u, fbuf waits %u",
+           wr_file_max, wr_sock_max, sink_file_max, sink_con_max, con_skipped, con_lines, __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED), 1024u,
            fb_head - fb_tail, FB_SIZE, fb_full_waits);
     wr_file_max = wr_sock_max = sink_file_max = sink_con_max = 0;
 }
@@ -299,7 +309,8 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs, unsigned spikes, flo
 typedef struct {
     u32 state; /* 0 free, 1 committed (release store by the producer, acquire load by the writer) */
     u16 len;
-    u16 pad;
+    u8 lv; /* CONLV: the level of the line (0 to 3): log.txt and the socket take it within log_level, the console within con_lv */
+    u8 pad;
     char text[SLOT_TEXT];
 } Slot;
 static Slot slots[SLOTS];
@@ -328,7 +339,7 @@ static void vlog(int lv, const char* fmt, va_list ap) {
     int vip = (lv & VIP) != 0;
     lv &= 15;
     if (!log_file_on) return; /* logging off: nothing below runs, not even the level test */
-    if (lv > log_level) return;
+    if (lv > pass_lv) return; /* CONLV: one compare; the sinks check their own level in drain_locked */
     if (!writer_th) return; /* no writer: drop the line, never touch SD, socket or stdout on the caller */
     /* Queue full: one atomic add and out, before any formatting work, so a flood costs almost nothing. */
     if (__atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
@@ -365,6 +376,7 @@ static void vlog(int lv, const char* fmt, va_list ap) {
         sl->text[n - 1] = '\n';
     }
     sl->len = (u16)n;
+    sl->lv = (u8)lv;
     __atomic_store_n(&sl->state, 1, __ATOMIC_RELEASE);
     /* Wake the writer when the queue was empty or is half full. Otherwise its 250 ms timeout collects the lines. */
     u32 t = __atomic_load_n(&q_tail, __ATOMIC_RELAXED);
@@ -468,7 +480,7 @@ static void cb_put(const char* s, unsigned n) {
 }
 
 static void out_batch(const char* lines, int n, const char* bodies, int bn) {
-    if (n <= 0) return;
+    if (n <= 0) { if (bn > 0 && !pm_menu_open) cb_put(bodies, (unsigned)bn); return; } /* CONLV: console lines without file lines */
     u64 t0 = svcGetSystemTick();
     if (log_fd >= 0 && log_file_on) fb_put(lines, (unsigned)n);
     { u32 d = us_since(t0); if (d > wr_file_max) wr_file_max = d; }
@@ -505,7 +517,7 @@ static void out_batch(const char* lines, int n, const char* bodies, int bn) {
     }
     { u32 d = us_since(t0); if (d > wr_sock_max) wr_sock_max = d; }
     /* The console (bottom screen text, slow) is for a reader on the device: the sink thread prints cb at 10 per second. */
-    if (!pm_menu_open) cb_put(bodies, (unsigned)bn); /* PT69: the open menu owns the console */
+    if (bn > 0 && !pm_menu_open) cb_put(bodies, (unsigned)bn); /* PT69: the open menu owns the console */
 }
 
 /* Sink thread: file and console, every 100 ms. Never runs while the app is suspended (pm_io_quiet, PT68). */
@@ -523,6 +535,7 @@ static void con_flush(void) {
         LightLock_Lock(&con_lock); /* PT65: the log goes on while the menu is open (it owns rows 3 to 14) */
         fwrite(cw, 1, n, stdout);
         fflush(stdout);
+        for (unsigned i = 0; i < n; i++) con_lines += cw[i] == '\n';
         LightLock_Unlock(&con_lock);
         u32 d = us_since(t0);
         if (d > sink_con_max) sink_con_max = d;
@@ -558,22 +571,26 @@ static void report_drops(void) {
 static void drain_locked(void) {
     static char lb[8192], bb[8192];
     int ln = 0, bn = 0;
+    int fl = log_level, cl = con_lv > 3 ? -1 : con_lv; /* CONLV: a line goes to log.txt and the socket within fl, to the console within cl (-1 = off) */
     u32 t = q_tail;
     for (;;) {
         Slot* sl = &slots[t % SLOTS];
         if (__atomic_load_n(&sl->state, __ATOMIC_ACQUIRE) != 1) break;
         int n = sl->len;
-        const char* sp = (const char*)memchr(sl->text, ' ', (size_t)n);
-        int skip = sp ? (int)(sp - sl->text) + 1 : 0;
-        if (ln + n > (int)sizeof(lb) || bn + n - skip > (int)sizeof(bb)) {
+        int tf = sl->lv <= fl, tc = sl->lv <= cl;
+        int skip = 0, cn = 0;
+        if (tc) { /* the console text is the line after "#<seq> " */
+            const char* sp = (const char*)memchr(sl->text, ' ', (size_t)n);
+            skip = sp ? (int)(sp - sl->text) + 1 : 0;
+            cn = n - skip;
+        }
+        if ((tf && ln + n > (int)sizeof(lb)) || (tc && bn + cn > (int)sizeof(bb))) {
             out_batch(lb, ln, bb, bn);
             ln = bn = 0;
             report_drops(); /* a flood keeps the queue full, so report between batches */
         }
-        memcpy(lb + ln, sl->text, (size_t)n);
-        ln += n;
-        memcpy(bb + bn, sl->text + skip, (size_t)(n - skip));
-        bn += n - skip;
+        if (tf) { memcpy(lb + ln, sl->text, (size_t)n); ln += n; }
+        if (tc) { memcpy(bb + bn, sl->text + skip, (size_t)cn); bn += cn; }
         __atomic_store_n(&sl->state, 0, __ATOMIC_RELEASE);
         t++;
         __atomic_store_n(&q_tail, t, __ATOMIC_RELEASE);

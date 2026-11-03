@@ -1597,6 +1597,64 @@
       }
     ],
     "reason": "INTROJ: boot with no warp (same as boot_jump_azahar). Until is the first jump result at frame 330 or later, after the intro starts at frame 327. Cap 90 s."
+  },
+  {
+    "name": "logcon_err",
+    "status": "unverified",
+    "subject": "Mario in his yard (kmr_20, entry 4), console level error (bottom screen text) with loglevel=debug (log.txt and live log at debug).",
+    "proves": "CONLV: the console level is independent of the file level. log.txt holds the debug lines, and the logstat2 console lines counter follows conlevel=error.",
+    "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug conlevel=error logstat",
+    "until": "logstat2 writer max us",
+    "cap": 90,
+    "deadline": 20,
+    "first_marker": "warp: kmr_20 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "map",
+        "regex": "warp: kmr_20 entry 4"
+      },
+      {
+        "name": "debug line in log.txt (file level debug)",
+        "regex": "logstat frames 300 work"
+      },
+      {
+        "name": "console lines printed (logstat2)",
+        "regex": "console lines (\\d+), queue",
+        "pick": "last", "min": 0, "max": 0
+      }
+    ],
+    "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
+  },
+  {
+    "name": "logcon_dbg",
+    "status": "unverified",
+    "subject": "Mario in his yard (kmr_20, entry 4), console level debug (bottom screen text) with loglevel=debug (log.txt and live log at debug).",
+    "proves": "CONLV: the console level is independent of the file level. log.txt holds the debug lines, and the logstat2 console lines counter follows conlevel=debug.",
+    "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug conlevel=debug logstat",
+    "until": "logstat2 writer max us",
+    "cap": 90,
+    "deadline": 20,
+    "first_marker": "warp: kmr_20 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "map",
+        "regex": "warp: kmr_20 entry 4"
+      },
+      {
+        "name": "debug line in log.txt (file level debug)",
+        "regex": "logstat frames 300 work"
+      },
+      {
+        "name": "console lines printed (logstat2)",
+        "regex": "console lines (\\d+), queue",
+        "pick": "last", "min": 1, "max": 1000000
+      }
+    ],
+    "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
   }
   ]
 }

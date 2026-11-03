@@ -9,9 +9,9 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 5, 0, 500, 200, 1, 1000, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), fixedseed, dpad_mode (multi), warp (off), warp_entry, dz_pad 5, dz_cs 0, rep_delay, rep_rate, fskip (on), hud_ms (1 s), pos_hud (off) */
-/* ARG1: the saved log and loglevel (options.ini, or the defaults). pm_opt.log and pm_opt.loglevel hold the values of this run (a launch argument may differ). */
-static int sv_log = 1, sv_loglevel = 1;
+PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 5, 0, 500, 200, 1, 1000, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), conlevel (warn), fixedseed, dpad_mode (multi), warp (off), warp_entry, dz_pad 5, dz_cs 0, rep_delay, rep_rate, fskip (on), hud_ms (1 s), pos_hud (off) */
+/* ARG1: the saved log and loglevel (options.ini, or the defaults). pm_opt.log and pm_opt.loglevel hold the values of this run (a launch argument may differ). CONLV: sv_conlevel the same for conlevel. */
+static int sv_log = 1, sv_loglevel = 1, sv_conlevel = 1;
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
 static const struct { const char* name; unsigned short mask; } n64_btn[] = { {"NONE", 0}, {"A", 0x8000}, {"B", 0x4000}, {"Z", 0x2000}, {"START", 0x1000}, {"L", 0x0020}, {"R", 0x0010},
@@ -59,6 +59,7 @@ static int* opt_field(const char* key) {
     if (!strcmp(key, "o3dsz")) return &pm_opt.o3ds_z;
     if (!strcmp(key, "log")) return &pm_opt.log;
     if (!strcmp(key, "loglevel")) return &pm_opt.loglevel;
+    if (!strcmp(key, "conlevel")) return &pm_opt.conlevel;
     if (!strcmp(key, "fixedseed")) return &pm_opt.fixedseed;
     if (!strcmp(key, "fskip")) return &pm_opt.fskip;
     if (!strcmp(key, "poshud")) return &pm_opt.pos_hud;
@@ -72,8 +73,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_loglevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud);
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nconlevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_loglevel, sv_conlevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -138,7 +139,7 @@ void pm_options_init(void) {
             }
             fld = opt_field(line);
             v = strtol(eq + 1, &end, 10);
-            if (!fld || end == eq + 1 || *end || v < 0 || v > (fld == &pm_opt.loglevel ? 3 : 1)) {
+            if (!fld || end == eq + 1 || *end || v < 0 || v > (fld == &pm_opt.conlevel ? 4 : fld == &pm_opt.loglevel ? 3 : 1)) {
                 pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
                 continue;
             }
@@ -148,12 +149,15 @@ void pm_options_init(void) {
     }
     sv_log = pm_opt.log;
     sv_loglevel = pm_opt.loglevel;
+    sv_conlevel = pm_opt.conlevel;
     {   /* ARG1: precedence launch argument > saved option (options.ini) > built-in default. The argument sets this run only, sv_* keep the saved values.
          * Runs before pm_ph_init (pm_main.c), so phase, prof, pmu and fsplit read the final gate. */
         char v[16];
         if (pm_debug_value("loglevel", v, sizeof v)) pm_opt.loglevel = pm_log_level();
+        if (pm_debug_value("conlevel", v, sizeof v)) pm_opt.conlevel = pm_log_conlevel(); /* CONLV */
         if (pm_debug_value("log", v, sizeof v)) pm_opt.log = pm_log_file();
         pm_log_set_level(pm_opt.loglevel);
+        pm_log_set_conlevel(pm_opt.conlevel);
         pm_log_set_file(pm_opt.log);
     }
     pm_log("options: fps60=%d wide=%d hud=%d stats=%d nofog=%d nolight=%d (%s)", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
@@ -170,6 +174,7 @@ void pm_options_touch(void) { changed = 1; }
 int pm_options_get(int row) {
     if (row == 6) return pm_opt.log;
     if (row == 7) return pm_opt.loglevel; /* 0 error, 1 warn, 2 info, 3 debug */
+    if (row == 11) return pm_opt.conlevel; /* CONLV: 0 error, 1 warn, 2 info, 3 debug, 4 off */
     if (row == 8) return pm_opt.fixedseed;
     if (row == 9) return pm_opt.fskip; /* FS1: frame skip */
     if (row == 10) return pm_opt.pos_hud; /* POSHUD */
@@ -185,6 +190,7 @@ void pm_options_flip(int row) {
         changed = 1;
         return;
     }
+    if (row == 11) { pm_opt.conlevel = (pm_opt.conlevel + 1) % 5; sv_conlevel = pm_opt.conlevel; pm_log_set_conlevel(pm_opt.conlevel); changed = 1; return; } /* CONLV: A cycles error, warn, info, debug, off */
     if (row == 8) { pm_opt.fixedseed = !pm_opt.fixedseed; changed = 1; return; } /* F11-7: takes effect at the next boot */
     if (row == 9) { pm_opt.fskip = !pm_opt.fskip; pm_fskip_set(pm_opt.fskip); changed = 1; return; }
     if (row == 10) { pm_opt.pos_hud = !pm_opt.pos_hud; changed = 1; return; } /* POSHUD: the Debug tab row 8 */
@@ -235,8 +241,8 @@ enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
-static const char* const lvl_name[4] = { "Error", "Warn", "Info", "Debug" };
-static const char* const dbg_lbl[9] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed", "Frame skip", "Position HUD" };
+static const char* const lvl_name[5] = { "Error", "Warn", "Info", "Debug", "Off" }; /* Off: only the console level (conlevel 4) */
+static const char* const dbg_lbl[10] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed", "Frame skip", "Position HUD", "Console level" };
 static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
     if (tab == 0) {
@@ -247,7 +253,9 @@ static int tab_ids(int tab, int mode, int* ids) {
         for (i = 0; i < PM_NIN; i++) ids[n++] = RW_MAP + i;
         ids[n++] = RW_RESET;
     } else {
-        for (i = 0; i < 9; i++) ids[n++] = RW_DBG + i;
+        for (i = 0; i < 6; i++) ids[n++] = RW_DBG + i; /* HUD .. Log level */
+        ids[n++] = RW_DBG + 9; /* Console level, next to Log level */
+        for (i = 6; i < 9; i++) ids[n++] = RW_DBG + i; /* Fixed seed, Frame skip, Position HUD */
         for (i = 0; i < 3; i++) ids[n++] = RW_GIVE + i; /* PT67 */
         for (i = 0; i < 6; i++) ids[n++] = RW_STAT + i;
         ids[n++] = RW_WARPTO; ids[n++] = RW_ENTRY; ids[n++] = RW_WARPNOW;
@@ -297,7 +305,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
         else { int h, t; pm_dbgg_count(id - RW_GIVE, &h, &t); snprintf(b, 16, "%d/%d", h, t); }
         return b;
     }
-    if (id >= RW_DBG) return id == RW_DBG + 5 ? lvl_name[pm_options_get(7) & 3] : pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows 0 to 6 are option rows 2 to 8 */
+    if (id >= RW_DBG) return id == RW_DBG + 5 ? lvl_name[pm_options_get(7) & 3] : id == RW_DBG + 9 ? lvl_name[pm_options_get(11) % 5] : pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows 0 to 8 are option rows 2 to 10 */
     if (id >= RW_MAP) return pm_n64_name(pm_map[id - RW_MAP]);
     switch (id) {
         case RW_FPS: case RW_WIDE: return pm_options_get(id == RW_FPS ? 0 : 1) ? "On" : "Off";
@@ -354,7 +362,7 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id >= RW_BOSS) return pm_boss_launch(id - RW_BOSS) ? 5 : 0; /* 5: started, the menu closes */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, 1); return 0; }
     if (id >= RW_GIVE) { pm_dbgg_give(id - RW_GIVE); pm_log("options: debug give %d", id - RW_GIVE); return 0; }
-    if (id >= RW_DBG) { pm_options_flip(id - RW_DBG + 2); return 0; }
+    if (id >= RW_DBG) { pm_options_flip(id == RW_DBG + 9 ? 11 : id - RW_DBG + 2); return 0; } /* RW_DBG + 9 is Console level, option row 11 */
     if (id >= RW_MAP) {
         int i = id - RW_MAP;
         pm_map[i] = pm_n64_next(pm_map[i]); pm_options_touch(); pm_log("options: map %s = %s", pm_in_name[i], pm_n64_name(pm_map[i]));
