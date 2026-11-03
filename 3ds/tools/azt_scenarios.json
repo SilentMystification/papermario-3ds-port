@@ -2381,6 +2381,29 @@
       ]
     },
     {
+      "name": "merlon_ball60",
+      "status": "unverified",
+      "subject": "Merlon's room (mac_01) with Mario placed at pos -264 20 -326, the crystal ball in the shots at frames 44 to 59, after the placement readback at frame 40. Grab log lines (grablog) for the crystal ball window.",
+      "proves": "pos=<x>:<y>:<z> places Mario inside Merlon's house after the warp, the readback equals the request, and the crystal ball window grabs (grab lines) are logged.",
+      "debug": "warp=mac_01:0 pos=-264:20:-326 poshud grablog texlog shots shotwin=60:40 shotbottom=60:40 loglevel=debug",
+      "until": "shot \\d+ frame (9[0-9]|100)\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "placed readback",
+          "regex": "poswarp: placed Mario at -264\\.000 20\\.000 -326\\.000 on map mac_01"
+        }
+      ]
+    },
+    {
       "name": "kmr10_pos_hi",
       "status": "unverified",
       "subject": "Mario at x -142 z 221 on kmr_10 with the y 136 request, lands on the floor at y 20. Texture garble band view., in the shots at frames 56 to 60, after the placement readback at frame 40. Pass rule: x and z settled within 0.5 of the request only (y falls to the floor at 20).",

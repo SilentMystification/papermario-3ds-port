@@ -3257,6 +3257,13 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
     /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
     if (cimg == (void*)DepthCopyBuffer) { pm_depth_query(timg, (int)((s16)(hs >> 16) >> 5), sci_x0); return; }
     if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) return;
+    { /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */
+        static int tlon = -1;
+        if (tlon < 0) tlon = pm_debug_has("texlog");
+        if (tlon) pm_log_d("texlog f%u rect %d,%d-%d,%d w%d h%d cyc %u rm %08x zsrc %d ac %u tile0 %d/%d tile1 %d/%d valid1 %d",
+                           pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (xh - xl) / 4 + 1, (yh - yl) / 4 + 1, (omode_h >> G_MDSFT_CYCLETYPE) & 3,
+                           (unsigned)omode_l, (omode_l >> G_MDSFT_ZSRCSEL) & 1, (omode_l >> 0) & 3, tst1.tile_fmt[0], tst1.tile_siz[0], tst1.tile_fmt[1], tst1.tile_siz[1], td[1].valid);
+    }
     /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
     zcol = cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)cimg >= nuGfxZBuffer && (const unsigned short*)cimg < nuGfxZBuffer + 320 * 240)) && !(omode_l & (1u << G_MDSFT_ZSRCSEL));
     if (zcol) { zslot_on = 1; sync_render(); }
