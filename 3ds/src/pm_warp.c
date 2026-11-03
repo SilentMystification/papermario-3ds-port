@@ -136,8 +136,28 @@ void pm_pos_log(const float* set, const char* how) {
            gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, ps->pos.x, ps->pos.y, ps->pos.z, ps->curYaw, how);
 }
 
+/* POSWARP probe (diagnosis): the floor under the spot at x z, from the ray down from y 400 (test_ray_colliders, the call of the NPC
+ * floor query) and the player ground check (player_check_collision_below), plus the collider count. Logged at the scene frames 0, 30, 60, 120, 180. */
+static void pos_probe(unsigned f) {
+    f32 hx, hy, hz, hd, nx, ny, nz, gy;
+    s32 cid = NO_COLLIDER, pid = NO_COLLIDER;
+    PlayerStatus* ps = &gPlayerStatus;
+    s32 hit;
+    hd = 1000.0f; /* the maximum ray length goes in as hitDepth (player_raycast_down does the same) */
+    hit = test_ray_colliders(COLLIDER_FLAG_IGNORE_PLAYER, pos_v[0], 400.0f, pos_v[2], 0.0f, -1.0f, 0.0f, &hx, &hy, &hz, &hd, &nx, &ny, &nz);
+    if (hit > NO_COLLIDER) { cid = hit; gy = hy; } else gy = -9999.0f;
+    {
+        f32 py = player_check_collision_below(0.0f, &pid);
+        pm_log("poswarp probe f%u mario %.3f %.3f %.3f ray y %.3f id %d ground y %.3f id %d colliders %d", f, ps->pos.x, ps->pos.y, ps->pos.z, gy, (int)cid, py, (int)pid, (int)gCollisionData.numColliders);
+    }
+}
+
 static void pos_tick(unsigned frame) {
     if (!pos_on || get_game_mode() != GAME_MODE_WORLD) return;
+    {
+        unsigned pf = frame - pos_f0;
+        if (pf == 0 || pf == 30 || pf == 60 || pf == 120 || pf == 180) pos_probe(pf);
+    }
     if (pos_state == 0 && frame - pos_f0 >= POS_DELAY) {
         pm_pos_set(pos_v, pos_n);
         pos_state = 1;

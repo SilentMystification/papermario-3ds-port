@@ -30,3 +30,9 @@ Branch: poswarp (worktree ..\papermario-3ds-port-poswarp, from main 99266ab2d). 
 - Top-screen shots at frames 40 and 44 are fully black (all pixel 0). Bottom shot 44 has content.
 - Mario falls: scene f300 pos -142 20 221, vy -1913, actionState 0. He does not stop at 97.265. No floor under this spot near the wall at x -142 z 221, so the map gate (Mario on terrain) fails.
 - Open: find the floor under the spot (ground probe at the placement, or another x z point). Azahar start 3 is not used.
+
+## Start 3 and 4 (probe)
+- Start 3: ray probe returned -1 at every frame, because hitDepth (max ray length) was not set. Start 4: fixed (hitDepth 1000).
+- Start 4 probe: ray from y 400 at x -142 z 221 hits collider 28 at y 20.000 at f30 (before placement), f60, f120, f180. Player ground check returns 20.000 after the fall. kmr_10 has 48 colliders. No collider at y 136 on that spot, so the placement cannot stand at 136.
+- Start 5 (shotwin 56, deadline 35): top shot frame 56 shows Mario on the path by the fence. Log checks pass (2 of 2). Settled y 20, the settle gate of 3 units around 136 is not met.
+- Decision for the orchestrator: keep y 136 (falls to y 20), or change the kmr10_pos y to 20 for a pass on the terrain.
