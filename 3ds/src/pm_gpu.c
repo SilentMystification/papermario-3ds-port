@@ -1331,7 +1331,7 @@ void pm_gpu_init(void) {
     pm_con_lock();
     consoleInit(GFX_BOTTOM, &bottom_con);
     setvbuf(stdout, NULL, _IONBF, 0);
-    consoleSetWindow(&bottom_con, 1, 6, 40, 25);
+    consoleSetWindow(&bottom_con, 1, 7, 40, 24); /* MAPHUD: the log starts one row lower (cursor row 7, screen row 6) */
     pm_con_unlock();
     gpu_ok = vert_base != NULL;
     if (!vert_base) pm_log_e("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
@@ -1353,7 +1353,7 @@ static void menu_put_line(PrintConsole* c, int i, const char* s) {
     if (menu_on && !strcmp(b, menu_prev[i])) return;
     memcpy(menu_prev[i], b, sizeof b);
     consoleSetWindow(c, 0, 0, 40, 30); /* PT79: the whole screen as the window and an absolute cursor move: a 1 row window on row 29 scrolled the text up by a row */
-    printf("\x1b[%d;1H", i + 1);
+    printf("\x1b[%d;1H\x1b[0m", i + 1); /* MAPHUD: the reset ends a red value (pm_options_ui.c) of an earlier line; it is not counted in the 38 columns */
     fputs(b, stdout);
 }
 void pm_gpu_menu_draw(const char* text) {
@@ -1367,7 +1367,7 @@ void pm_gpu_menu_draw(const char* text) {
         if (menu_on) {
             for (i = 0; i < MENU_ROWS; i++) { menu_prev[i][0] = 1; menu_put_line(c, i, ""); }
             menu_on = 0;
-            consoleSetWindow(c, 1, 6, 40, 25); /* the log window again, new lines come at the bottom */
+            consoleSetWindow(c, 1, 7, 40, 24); /* the log window again, new lines come at the bottom */
             c->cursorX = 0; c->cursorY = 27;
             fflush(stdout);
         }
@@ -1406,7 +1406,7 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
 
 /* PI6: the game thread only copies the three HUD rows (no printf, no console call). pm_gpu_hud_flush draws them on the
  * log sink thread, at most 10 times per second. A HUD row written during a draw may show one update late. */
-static char hud_rows[5][40];
+static char hud_rows[6][40]; /* hud_rows[5]: MAPHUD, bottom row 0 */
 static volatile int hud_new;
 void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
     if (menu_on) return; /* PT69: the menu owns all rows */
@@ -1414,6 +1414,13 @@ void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
     strncpy(hud_rows[1], line1 ? line1 : "", 39);
     for (int r = 0; r < 3; r++) { memcpy(hud_rows[2 + r], mem[r], 39); hud_rows[2 + r][39] = 0; }
     hud_rows[0][39] = hud_rows[1][39] = 0;
+    hud_new = 1;
+}
+/* MAPHUD: called on a map change and at the end of its hold only (pm_map_hud_step). */
+void pm_gpu_hud_map(const char* s) {
+    if (menu_on) return;
+    strncpy(hud_rows[5], s, 39);
+    hud_rows[5][39] = 0;
     hud_new = 1;
 }
 
@@ -1431,10 +1438,11 @@ void pm_gpu_hud_flush(void) {
     ww = c->windowWidth;
     wh = c->windowHeight;
     consoleSelect(c);
-    consoleSetWindow(c, 1, 1, 40, 5);
-    hud_put_line(c, 1, hud_rows[0]);
-    hud_put_line(c, 2, hud_rows[1]);
-    for (int r = 0; r < 3; r++) hud_put_line(c, 3 + r, hud_rows[2 + r]);
+    consoleSetWindow(c, 1, 1, 40, 6); /* MAPHUD: cursor row 1 is the top row of the screen, so the map row takes it and the rows below move down one */
+    hud_put_line(c, 1, hud_rows[5]);
+    hud_put_line(c, 2, hud_rows[0]);
+    hud_put_line(c, 3, hud_rows[1]);
+    for (int r = 0; r < 3; r++) hud_put_line(c, 4 + r, hud_rows[2 + r]);
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;
     c->cursorY = cy;

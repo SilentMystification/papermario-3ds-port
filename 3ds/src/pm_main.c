@@ -584,6 +584,7 @@ void pm_frame_loop(void) {
             if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
                 unsigned h0 = pm_ph_on ? pm_ticks() : 0;
                 pm_gpu_hud(top, bot, mem);
+                { const char* mt = pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u)); if (mt) pm_gpu_hud_map(mt); } /* MAPHUD: 2 s of steps after a map change */
                 if (pm_ph_on) pm_ph_hud_us += (pm_ticks() - h0) / 268u;
             }
         }

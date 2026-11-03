@@ -217,6 +217,8 @@ void pm_fskip_set(int on); /* pm_main.c: applies fskip at once */
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
 void pm_pos_text(char (*out)[40]); /* POSHUD: pm_route.c, writes out[0] (Mario) and out[1] (camera) */
+const char* pm_map_hud_step(unsigned step, unsigned hold); /* MAPHUD: pm_route.c, the bottom row 0 text after a change, else NULL */
+void pm_gpu_hud_map(const char* s); /* MAPHUD: pm_gpu.c, copies the row 0 text (the log sink thread draws it) */
 void pm_options_init(void);
 void pm_options_write(void);
 /* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 11 is Console level. */
@@ -232,6 +234,7 @@ const char* pm_optui_value(int tab, int row, int mode);
 int pm_optui_step(int tab, int row, int dir, int mode); /* left or right on a row, 1 when the value changed */
 int pm_optui_act(int tab, int row, int mode); /* 0 done, 1 close (Back), 2 leave the file select (Warp now), 3 exit to Homebrew, 4 return to title, 5 warp started */
 void pm_optui_disarm(void);
+int pm_optui_alert(int tab, int row, int mode); /* 1 when the row asks for the second press (Exit to Homebrew, A again): drawn in red */
 /* PT60: hold repeat of both menus. dir is -1, 0 or 1. tps is the call rate (30 game updates, 60 pad scans). Returns 1 when a step fires. n counts the steps of this hold. */
 typedef struct { int dir, t, n; } PmRepeat;
 int pm_repeat(PmRepeat* r, int dir, int tps);

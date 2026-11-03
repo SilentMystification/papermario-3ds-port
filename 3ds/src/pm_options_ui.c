@@ -32,7 +32,8 @@ static void draw(void) {
     n += snprintf(out + n, sizeof out - (size_t)n, "\n");
     for (int r = top[tab]; r < top[tab] + VIS && r < rows; r++) {
         const char* v = pm_optui_value(tab, r, MODE);
-        n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
+        const char* col = pm_optui_alert(tab, r, MODE) ? "\x1b[31m" : ""; /* the armed exit row: red value (ANSI, the bottom console) */
+        n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s%s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), col, v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
     n += snprintf(out + n, sizeof out - (size_t)n, "\n\nL R: tab  < > A: change  B: close\n\n\n\n%s\n%s", fb[0], fb[1]);

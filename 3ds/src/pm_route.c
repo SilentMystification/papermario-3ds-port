@@ -88,3 +88,27 @@ void pm_pos_text(char (*out)[40]) {
     snprintf(out[0], 40, "M x %.0f y %.0f z %.0f yaw %.0f", gPlayerStatus.pos.x, gPlayerStatus.pos.y, gPlayerStatus.pos.z, gPlayerStatus.targetYaw);
     snprintf(out[1], 40, "C x %.0f y %.0f z %.0f yaw %.0f", c->lookAt_eye.x, c->lookAt_eye.y, c->lookAt_eye.z, c->curYaw);
 }
+
+/* MAPHUD: bottom row 0 text, the map id of the game status and its area and map index. For `hold` steps after a map change the row says
+ * "Now in" (the change), then "Map". Returns the text when it changed, else NULL. Per step: two loads and compares. snprintf runs on a change and at the end of a hold. */
+const char* pm_map_hud_step(unsigned step, unsigned hold) {
+    static char txt[40];
+    static int a_prev = -1, m_prev = -1;
+    static unsigned until;
+    int a, m;
+    pm_route_mapid(&a, &m);
+    if (a != a_prev || m != m_prev) {
+        const char* id = "none";
+        a_prev = a;
+        m_prev = m;
+        until = step + hold;
+        if (a >= 0 && a < ARRAY_COUNT(gAreas) && gAreas[a].maps && m >= 0 && m < gAreas[a].mapCount) id = gAreas[a].maps[m].id;
+        snprintf(txt, sizeof txt, "Now in %s (area %d, map %d)", id, a, m);
+        pm_log_d("maphud: %s area %d map %d step %u until %u", id, a, m, step, until);
+        return txt;
+    }
+    if (!until || step < until) return NULL;
+    until = 0;
+    snprintf(txt, sizeof txt, "Map %s (area %d, map %d)", a >= 0 && a < ARRAY_COUNT(gAreas) && gAreas[a].maps && m >= 0 && m < gAreas[a].mapCount ? gAreas[a].maps[m].id : "none", a, m);
+    return txt;
+}

@@ -367,6 +367,70 @@
       "reason": ""
     },
     {
+      "name": "mapchange_hud",
+      "status": "verified",
+      "subject": "Bottom screen row 1 (top row, the HUD, on by default) after the tour change to mac_01 (Toad Town, area 1 map 2, change at step 170). Shots at frames 226 to 229 show 'Now in mac_01 (area 1, map 2)'. From frame 230 (end of the 60 step hold) the text reads 'Map mac_01 (area 1, map 2)'.",
+      "proves": "A map change sets the HUD transition text for 2 s (MAPHUD, pm_map_hud_step) and the text returns to the map line when the hold ends.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
+      "until": "shot \\d+ frame 23[3-7]\\b",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "map change",
+          "regex": "maphud: mac_01 area 1 map 2 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 2[23]\\d\\b"
+        }
+      ],
+      "reason": "MAPHUD run: the until is the top shot at a frame from 233 to 237, after the hold ends at step 230. Bottom shots at frames 226 to 237 show both texts."
+    },
+    {
+      "name": "exit_armed",
+      "status": "verified",
+      "subject": "Port menu (SELECT), General tab, row 3 Exit to Homebrew Menu after one A press: the value 'A again' is red on the bottom screen. Shots at frames 200 to 205.",
+      "proves": "The armed exit row draws its value in red (ANSI colour 31, pm_options_ui.c draw) and the reset in menu_put_line ends the colour on the next line.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,ddown,wait20,ddown,wait20,ddown,wait20,A,wait60 shots shotwin=200:6 shotbottom=200:6 loglevel=debug",
+      "until": "shot \\d+ frame 20[3-5]\\b",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "exit row armed",
+          "regex": "menu: tab 0 row 3 Exit to Homebrew Menu = A again"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": "EXIT1 run: the menu stays open after the A press. The until is the top shot at frame 205, so the bottom shots at frames 200 to 205 show the armed row."
+    },
+    {
       "name": "mac01t_cap1",
       "status": "unverified",
       "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t_fsplit, with phase and fsplit. Window reset at the map load and the pos line (CAP1).",

@@ -270,6 +270,7 @@ static int row_id(int tab, int row, int mode) {
 }
 static int exit_armed;
 void pm_optui_disarm(void) { exit_armed = 0; }
+int pm_optui_alert(int tab, int row, int mode) { return row_id(tab, row, mode) == RW_EXIT && exit_armed; }
 int pm_optui_rows(int tab, int mode) { int ids[48]; return tab_ids(tab, mode, ids); }
 const char* pm_optui_label(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
