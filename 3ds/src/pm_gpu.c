@@ -2408,7 +2408,7 @@ void pm_gpu_flush(void) { flush(); }
 /* RC1: the capture only observes. Begin flushes and marks the command buffer. End flushes and returns the words written since the mark. */
 /* UC3b2: citro3d dirty bits (ctx+0x20) that a capture marks, so every group the record can write is sent inside the record. Bits from the tst
  * tests in C3Di_UpdateContext (libcitro3d base.o): 0x4 to 0x20000 except 0x1 (TexEnv gate) and 0x2 (DrawUsed); Tex 23 to 25; TexEnv 26 to 31. */
-#define REC_DIRTY_CAP 0xFF800010u
+#define REC_DIRTY_CAP 0xFF80019Cu
 void pm_gpu_rec_begin(void) {
     flush(); raw1_reset(); sh_clear();
     *(volatile u32*)(__C3D_Context + 0x20) |= REC_DIRTY_CAP;

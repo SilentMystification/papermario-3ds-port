@@ -289,3 +289,23 @@ Estimate INFERRED:
 | r8 | Scissor or target change between capture and replay | view word compare |
 | r9 | Command buffer overflow at the copy | room test with 512 words slack |
 | r10 | The Azahar picture is equal and the console differs | console prof at the epic end only |
+
+## 2d. Dirty bit table (ctx+0x20 flags, UC3b2, CONFIRMED from citro3d source)
+Source: devkitPro/citro3d, source/internal.h, enum C3DiF_* (read-only clone, default branch, 2026-11-03).
+| Bit | Mask | Name | Used by REC_DIRTY_CAP |
+|---|---|---|---|
+| 0 | 0x1 | Active | no (TexEnv gate, not a group) |
+| 1 | 0x2 | DrawUsed | no (set by a draw; sends the framebuffer flush) |
+| 2 | 0x4 | AttrInfo | yes |
+| 3 | 0x8 | BufInfo | yes |
+| 4 | 0x10 | Effect | yes |
+| 5 | 0x20 | FrameBuf | no (target state, refused by the walk) |
+| 6 | 0x40 | Viewport | no (viewport, refused by the walk) |
+| 7 | 0x80 | Scissor | yes |
+| 8 | 0x100 | Program | yes |
+| 9 | 0x200 | TexEnvBuf | no |
+| 14 | 0x4000 | TexStatus | no |
+| 17 | 0x20000 | FogLut | no (fog) |
+| 23 to 25 | 0x3800000 | Tex(0..2) | yes |
+| 26 to 31 | 0xFC000000 | TexEnv(0..5) | yes |
+REC_DIRTY_CAP = 0xFF80019C (AttrInfo, BufInfo, Effect, Scissor, Program, Tex, TexEnv). The earlier superset 0xFC3B47FC set FrameBuf (0x20), TexStatus, FogLut and ProcTexColorLut, which sent the framebuffer group and refused every window.
