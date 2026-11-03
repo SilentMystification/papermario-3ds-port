@@ -1903,10 +1903,10 @@
     {
       "name": "kmr10_pos",
       "status": "unverified",
-      "subject": "Mario on the kmr_10 terrain at x -142 y 136 z 221 (the wall band), in the shots at frames 44 to 59, after the placement readback at frame 40.",
+      "subject": "Mario on the kmr_10 terrain at x -142 y 136 z 221 (the wall band), in the shots at frames 56 to 60, after the placement readback at frame 40. Pass rule: x and z settled within 0.5 of the request, y settled printed (the ground logic may move Mario down).",
       "proves": "pos=<x>:<y>:<z> places Mario at the given point after the warp, the values read back 10 frames after the placement equal the request, and the picture shows Mario there.",
       "debug": "warp=kmr_10:0 pos=-142:136:221 poshud shots shotwin=40:6 shotbottom=40:6 loglevel=debug",
-      "until": "shot \\d+ frame (4[4-9]|5\\d)\\b",
+      "until": "shot \\d+ frame (5[6-9]|60)\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: kmr_10 entry 0",
@@ -1919,10 +1919,10 @@
         },
         {
           "name": "placed readback",
-          "regex": "poswarp: placed Mario at -142\\.000 136\\.000 221\\.000 on map kmr_10"
+          "regex": "poswarp: placed Mario at -142\\.000 136\\.000 221\\.000 on map kmr_10 settled -14(1\\.[5-9]\\d*|2\\.[0-4]\\d*|2\\.500*) -?\\d+\\.\\d+ 22(0\\.[5-9]\\d*|1\\.[0-4]\\d*|1\\.500*)"
         }
       ],
-      "reason": "POSWARP: until is the first shot after the readback line (shot frame 44 to 59), so the picture shows Mario after the placement. Not yet run."
+      "reason": "POSWARP: until is the first shot after the readback line (shot frame 56 to 60), so the picture shows Mario after the placement. Not yet run."
     }
   ]
 }

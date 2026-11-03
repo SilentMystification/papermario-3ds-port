@@ -24,3 +24,9 @@ Branch: poswarp (worktree ..\papermario-3ds-port-poswarp, from main 99266ab2d). 
 ## Commands
 - Test: `PM_ROW=POSWARP powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 kmr10_pos -Row POSWARP -Build POSWARP -Try`
 - Justification: 3ds/logs/perf/status_POSWARP.txt, one line per start.
+
+## Start 2 (kmr10_pos, PM_ROW POSWARP, budget 2 of 8)
+- Log line now prints set and settled: `poswarp: placed Mario at -142.000 136.000 221.000 on map kmr_10 settled -142.000 97.265 221.000 yaw 90.00 (readback)`. x and z exact. Until changed to shot frame 56 to 60; the run ended at 21 s (Azahar exited), the until shot was not written. Shots written: frames 40 and 44 only.
+- Top-screen shots at frames 40 and 44 are fully black (all pixel 0). Bottom shot 44 has content.
+- Mario falls: scene f300 pos -142 20 221, vy -1913, actionState 0. He does not stop at 97.265. No floor under this spot near the wall at x -142 z 221, so the map gate (Mario on terrain) fails.
+- Open: find the floor under the spot (ground probe at the placement, or another x z point). Azahar start 3 is not used.

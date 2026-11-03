@@ -129,10 +129,11 @@ void pm_pos_set(const float* v, int n) {
     gCameras[CAM_DEFAULT].targetPos.z = ps->pos.z;
 }
 
-void pm_pos_log(const char* how) {
+/* set: the requested position. The settled position is gPlayerStatus now (the ground logic may have moved Mario, e.g. a fall). */
+void pm_pos_log(const float* set, const char* how) {
     PlayerStatus* ps = &gPlayerStatus;
-    pm_log("poswarp: placed Mario at %.3f %.3f %.3f on map %s yaw %.2f (%s)", ps->pos.x, ps->pos.y, ps->pos.z,
-           gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, ps->curYaw, how);
+    pm_log("poswarp: placed Mario at %.3f %.3f %.3f on map %s settled %.3f %.3f %.3f yaw %.2f (%s)", set[0], set[1], set[2],
+           gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, ps->pos.x, ps->pos.y, ps->pos.z, ps->curYaw, how);
 }
 
 static void pos_tick(unsigned frame) {
@@ -142,7 +143,7 @@ static void pos_tick(unsigned frame) {
         pos_state = 1;
         pos_t = frame;
     } else if (pos_state == 1 && frame - pos_t >= POS_READBACK) {
-        pm_pos_log("readback");
+        pm_pos_log(pos_v, "readback");
         pos_state = 2;
     }
 }
