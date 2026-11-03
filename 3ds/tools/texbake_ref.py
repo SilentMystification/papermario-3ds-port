@@ -13,6 +13,11 @@ def func(name):
     return src[m.start():i]
 out = ["/* generated from pm_tex.c by texbake_ref.py */"]
 for n in ("pot_at_least_8", "rd16", "rd16s", "write5551", "gpu_fmt", "tiled16", "wrap_mod", "expand", "nib", "floor4", "expand_dual"): out.append(func(n))
+if "const void* upload = scratch;" not in src or "C3D_TexLoadImage(&s->tex, upload" not in src:
+    # the tile copy block moved (TEXSELF): the tile harness is off, the decode functions above still come from the source
+    out.append("static const void* ref_tile(unsigned bpp, int pw, int ph) { (void)bpp; (void)pw; (void)ph; return NULL; }")
+    open(sys.argv[2], "w").write(chr(10).join(out) + chr(10))
+    sys.exit(0)
 a = src.index("const void* upload = scratch;"); b = src.index("C3D_TexLoadImage(&s->tex, upload")
 blk = src[a:b]
 blk = blk.replace("if (tb_use) {", "if (0) {")  # the baked pack branch and the check block are not part of the decode
