@@ -80,7 +80,17 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 
 | Scenario | Flags | Command | Result (build poshud, same code as the commit) | Status |
 |---|---|---|---|---|
-| yard_poshud | `poshud` | `yard_poshud -Try -Row POSHUD -Build poshud` | 3 of 3 log checks. Bottom shot bot_0259: `M x 594 y 30 z -216 yaw 180`, `C x 924 y 161 z 60 yaw 310`. Log at f300 gives Mario pos 594 30 -216. Top shot 0000_0_11 byte-equal to yard_headA (HEAD e16fee4b9). | unverified (one run) |
+| yard_poshud | `poshud` | `yard_poshud -Try -Row POSHUD -Build poshud` | 3 of 3 log checks. Bottom shot bot_0259: `M x 594 y 30 z -216 yaw 180`, `C x 924 y 161 z 60 yaw 310`. Log at f300 gives Mario pos 594 30 -216. Top shot 0000_0_11 byte-equal to yard_headA (HEAD e16fee4b9). | unverified (one run, before the POSHUD2 row change; camera row removed since) |
+
+## POSHUD2 (2026-11-03): Mario row 5 on every frame, 3 row map block (rows 1 to 3)
+
+Layout with the position row on: row 1 fps, 2 memory, 3 VRAM, 4 blank, 5 `Mario x y z yaw` (whole numbers), 6 stats, 7 and 8 blank, 9 separator, 10 header, 11 to 26 log, 27 separator, 28 to 30 footer. With the row off: as BOTLAYOUT (rows 1 to 6, separator 7, log 9 to 26).
+
+| Scenario | Flags | Command | Result (build POSHUD, the commit) | Status |
+|---|---|---|---|---|
+| toad_pond | `poshud` | `toad_pond -Try -Row POSHUD -Build POSHUD` | Picture read, bot_0160 `Mario x -142 y 0 z -36 yaw 189`, bot_0162 `x -144 y 0 z -27 yaw 189`, bot_0199 `x -168 y 0 z 93 yaw 195`: row 5 changes between frames 2 apart. Row 4 blank, separator row 9, header row 10, footer rows 28 and 29 in place. Run 1 exit 2 (Azahar exited after 6 s while another azahar.exe ran). Run 2 exit 2 (marker check read a log.txt that the run did not write; the game log `build3ds/lane-POSHUD/last_log.txt` has the warp line). `-CheckLog` 3 of 3. | unverified (picture read, tool exit 2) |
+| mapchange_poshud | `poshud` | `mapchange_poshud -Try -Row POSHUD -Build POSHUD` | 4 of 4 log checks. Picture read: bot_0227 shows row 1 `mac_00`, row 2 `area 1 map 1 -> mac_01`, row 3 `area 1 map 2`, row 5 Mario. bot_0230 still shows the block (the hold ends at frame 231). bot_0232 shows the fps, memory and VRAM rows back, Mario row 5, footer rows 28 and 29. Replaces mapchange_hud (its verified shots show the old `Now in` text). | verified (picture read, 1 run) |
+| botlayout | none (poshud off) | `botlayout -Try -Row POSHUD -Build POSHUD` | 3 of 3 log checks. Pixel compare with the botlayout run (bot_0049 to bot_0054): rows 7, 8, 27, 28 and 30 byte-equal in all 6 frames. Rows 1 to 3, 9 to 17, 24 and 29 differ (fps and memory values, log text, build tag); rows 4 to 6 equal. | unverified (compare, not a picture read) |
 
 ## Completion only
 
@@ -303,5 +313,12 @@ The fsplit line (fsplit flag only) adds `wm <mean> max <max> tk <mean> max <max>
 
 | Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
 |---|---|---|---|---|---|---|
-| kmr10_pos (POSWARP, unverified) | pos= sets gPlayerStatus pos 10 frames after the placement (readback line `poswarp: placed Mario at -142.000 136.000 221.000 on map kmr_10`), and the shot at frames 44 to 59 shows Mario on the kmr_10 terrain | `azt.ps1 kmr10_pos -Row POSWARP -Build POSWARP -Try` | `warp: kmr_10 entry 0` | cap 45 s | build3dszt\shots\kmr10_pos | Until is the first shot after the readback (a log until would stop before the picture). The placement runs 30 world frames after the map entry, once per map load. Padscript token `pos_<x>:<y>:<z>[:<angle>]` is not run by this scenario. |
+| kmr10_pos (POSWARP, unverified) | pos=-142:20:221 places Mario on the kmr_10 floor. Readback line `poswarp: placed Mario at -142.000 20.000 221.000 on map kmr_10 settled x y z`: x and z within 0.5 and y within 3 of 20 (regex gate). Top shot at frame 56 shows Mario on the path by the fence. Floor under the spot: collider 28 at y 20 (ray probe from y 400, start 4). | `azt.ps1 kmr10_pos -Row POSWARP -Build POSWARP -Try` | `warp: kmr_10 entry 0` | cap 45 s, deadline 35 s | build3dszt\shots\kmr10_pos | Start 5 (y 136 request) settled at y 20, picture read. Budget 6 of 8 with this start. Until is the shot at frame 56 or 60. Padscript token not run by this scenario. |
+| kmr10_pos_hi (POSWARP, unverified) | pos=-142:136:221 (texture garble band view): Mario falls to the floor at y 20. Gate on x and z only (within 0.5), y printed. | `azt.ps1 kmr10_pos_hi -Row POSWARP -Build POSWARP -Try` | `warp: kmr_10 entry 0` | cap 45 s, deadline 35 s | build3dszt\shots\kmr10_pos_hi | Not run yet. Same until and shot window as kmr10_pos. |
 
+
+## MISC1 (2026-11-03): console colour by log level, smdh metadata
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| logcolor | CONCOL: the four levels print in four colours on the bottom console (error bright red, warn yellow, info white, debug grey). Lines `lvtest: error/warn/info/debug line` at frame 100, `lvtest: done` at frame 125, bottom shots 115 to 118. Escape codes only in console bytes (log.txt is checked plain). | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 logcolor -Row MISC1 -Build MISC1 -Try` | `warp: kmr_20 entry 4` | about 20 s to the until, cap 45 s | build3ds\azt\shots\logcolor | Switch lvtest is a test aid in pm_log.c (pm_log_lvtest). The smdh is checked by 3ds/tools/smdh_dump.py run on build3ds\lane-MISC1\pm_3ds.3dsx. |
