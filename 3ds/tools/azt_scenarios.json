@@ -441,6 +441,30 @@
       "reason": ""
     },
     {
+      "name": "bowser_intro_fire",
+      "status": "unverified",
+      "subject": "Intro Bowser battle (BTL_KPA2_FORMATION_01, stage 01, entered from kmr_03 with the battle switch at scene frame 100). Shots every 8 frames for 30 bursts: look for the fire (Bowser breath) with a line on the top of the flame.",
+      "proves": "The battle switch loads the Bowser formation and the burst shots cover the Bowser attack.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_KPA2_FORMATION_01:BTL_KPA2_STAGE_01 battlef=100 shots shotmode=8:30 loglevel=debug",
+      "until": "shot \\d+ frame 3\\d\\d\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "kmr_10_ddonly",
       "status": "unverified",
       "subject": "Map kmr_10 at player position -142 136 221, frame 200 with drawlog=200:1 and ddonly=78:78: only chunk 78 (64x32 CI4 wall texture 00ffacd4, scr box 141 136 329 172) draws. Tests whether that chunk alone makes the band (TEXGARBLE).",
