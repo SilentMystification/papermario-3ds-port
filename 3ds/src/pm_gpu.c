@@ -504,6 +504,7 @@ static int rect_open, rect_ec, rect_zb, rect_tex; /* C7: rect_tex is the tile-0 
 static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compares this instead of the plan */
 static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
 static int rec_cap, rec_ref; static u32* rb_buf; static u32 rb_off; static unsigned rb_kick, rb_draw, rb_raw; /* RC1: record capture (pm_gpu_rec_begin, rec_end); rec_ref: a refusal inside the group */
+static unsigned rb_gi, rb_ge; /* UC3c: gidx fill at the window start and end (the first draw of a window reads gidx + rb_gi) */
 static int pool_buf_ok; /* DR1: the citro3d buffer info holds the vertex pool (set once per frame, cleared by a raw batch and by sh_clear) */
 static int proj_ok; static C3D_Mtx proj_last; /* DR1: the projection uniform of the last draw */
 static int noise_bound; /* DC2: unit 2 holds the noise texture (cleared by sh_clear) */
@@ -2328,7 +2329,7 @@ void pm_gpu_flush(void) { flush(); }
 void pm_gpu_rec_begin(void) {
     flush(); raw1_reset(); sh_clear();
     GPUCMD_GetBuffer(&rb_buf, NULL, &rb_off);
-    rb_kick = kick_n; rb_draw = draws_frame; rb_raw = pm_dc_c[DC_RAW];
+    rb_kick = kick_n; rb_draw = draws_frame; rb_raw = pm_dc_c[DC_RAW]; rb_gi = gidx_n;
     rec_ref = 0; rec_cap = 1;
 }
 /* UC2: ctx+0xF0 alpha test, +0xF4 stencil test, +0xF8 stencil op, +0xFC depth color mask: the group citro3d sends at each flush (diag_uc2_j75.md). */
@@ -2344,12 +2345,46 @@ void pm_gpu_grp_get(u32* g) {
 int pm_gpu_rec_end(u32** w, u32* n) {
     u32* b = NULL; u32 off = 0;
     flush();
-    rec_cap = 0;
+    rec_cap = 0; rb_ge = gidx_n;
     GPUCMD_GetBuffer(&b, NULL, &off);
     if (b != rb_buf || off < rb_off || kick_n != rb_kick || draws_frame - rb_draw != pm_dc_c[DC_RAW] - rb_raw || rec_ref || pm_interp_on > 0) return 0;
     if (pm_dc_c[DC_RAW] == rb_raw) return -1;
     *w = rb_buf + rb_off; *n = off - rb_off;
     return 1;
+}
+/* UC3c: index arena. The indices of a captured window are copied once into a linear arena (ia). pm_gpu_rec_idx rewrites the 0x227 p0 words
+ * of the record copy w to the arena (d = arena phys - gidx phys at rb_gi). Returns the rewritten count, -1 when the arena is full or missing,
+ * or the count differs from the window's draws. io, ic: arena index of the span and its length (u16 units). */
+#define REC_IDX_N 65536u
+static unsigned short* ia; static u32 ia_n; static int ia_fail;
+int pm_gpu_rec_idx(u32* w, u32 n, u32* io, u32* ic) {
+    u32 cnt = rb_ge - rb_gi, d, nd = 0;
+    if (!ia && !ia_fail) {
+        ia = (unsigned short*)linearAlloc(REC_IDX_N * 2u);
+        if (!ia) { ia_fail = 1; pm_log_e("UC3c: index arena linearAlloc failed"); }
+        else pm_log_d("UC3c: index arena %u KB", REC_IDX_N * 2u / 1024u);
+    }
+    if (!ia || !gidx || ia_n + cnt > REC_IDX_N || rb_ge > GRING_IDX || rb_ge < rb_gi) return -1;
+    memcpy(ia + ia_n, gidx + rb_gi, cnt * 2u);
+    pm_fl_dc(ia + ia_n, cnt * 2u);
+    d = osConvertVirtToPhys(ia + ia_n) - osConvertVirtToPhys(gidx + rb_gi);
+    for (u32 i = 0; i + 1 < n;) {
+        u32 hd = w[i + 1], c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u);
+        if (i + len > n) break;
+        if ((hd & 0x3FFu) == 0x227 && !(hd >> 31)) { w[i] += d; nd++; }
+        i += len;
+    }
+    if (nd != pm_dc_c[DC_RAW] - rb_raw) return -1;
+    *io = ia_n; *ic = cnt; ia_n += (cnt + 7u) & ~7u;
+    return (int)nd;
+}
+void pm_gpu_rec_idx_reset(void) { ia_n = 0; }
+/* UC3c: index check. The record span (io, ic) against the indices of this window (gidx + rb_gi, rb_ge). Returns the differing indices, plus the length difference. */
+unsigned pm_gpu_rec_ichk(u32 io, u32 ic) {
+    u32 cnt = rb_ge - rb_gi, m = ic < cnt ? ic : cnt, bad = 0;
+    if (!ia || io + ic > REC_IDX_N) return 1;
+    for (u32 j = 0; j < m; j++) bad += ia[io + j] != gidx[rb_gi + j];
+    return bad + (ic > cnt ? ic - cnt : cnt - ic);
 }
 /* UC1: patch table of a captured group. One entry per emitted f32 vec4: off = word offset of its word 0 in the group, idx = uniform
  * vec4, split = 1 for the first vec4 of a 0x2C1 write (its words sit at off, off+2, off+3, off+4). Held per walk (UC3 stores it per record). */
