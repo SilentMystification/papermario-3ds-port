@@ -990,6 +990,8 @@ void pm_warp_tick(unsigned frame) {
         char uv[16];
         if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c') {
             extern void show_coin_counter(void);
+            extern void pm_debug_status_always(void);
+            pm_debug_status_always();
             show_coin_counter();
             pm_log_d("debug uishow: coins opened f%u", f);
         }

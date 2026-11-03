@@ -115,3 +115,10 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - Proposed fix (not written, no start left): a debug helper in inventory.c that sets `gStatusBar.alwaysShown = true`, called by the uishow=coins hook before show_coin_counter(). One start at hook frame 150 with shots 160 to 200 would show the counter if this is the cause.
 - UA8: starts 1 and 2 used (fxtest 113). Budget: 1 start left under the 3-per-row rule, not spent. The per-frame chapterPos update (kmr_22/main.c:40-60) is not written. Card position is set in chapter_change_init from the args (chapter_change.c:201-202). Not implemented.
 - UA9: not started.
+
+## UA3 with alwaysShown (start 7 and 8): blocker
+
+- uishow=coins now calls pm_debug_status_always() (inventory.c, sets gStatusBar.alwaysShown) before show_coin_counter(). Log `debug uishow: coins opened f200` present (start 8).
+- Shot coin_wide 0004 (frame 216): no status bar and no counter. The HUD is not drawn in this scenario at all (frames 149, 216).
+- Code path checked: state_world.c draw_status_ui() runs every world frame; update_status_bar (inventory.c:696) sets hidden false when alwaysShown; the hide branch (:712-721) does not check alwaysShown and sets hidden after showTimer 42 frames. Not explained why the bar is absent in the shot.
+- Next: read the status bar draw (drawPosY, the bar sprite draw calls at inventory.c:780-830) with a log line for drawPosY and hidden at frame 216.

@@ -1209,6 +1209,11 @@ void update_coin_counter(void) {
     }
 }
 
+/* UA3 debug (uishow=coins): keep the status bar out. The bar retracts after showTimer, which hides the coin counter. */
+void pm_debug_status_always(void) {
+    gStatusBar.alwaysShown = true;
+}
+
 void show_coin_counter(void) {
     StatusBar* statusBar = &gStatusBar;
     HudElemID hid;
