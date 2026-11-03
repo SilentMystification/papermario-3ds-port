@@ -296,6 +296,7 @@ The fsplit line (fsplit flag only) adds `wm <mean> max <max> tk <mean> max <max>
 | Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
 |---|---|---|---|---|---|---|
 | volcano_l2 (unverified, `-Try`) | Mt. Lavalava (kzn_19) with `texcap=256` (256 KB texture cache). The `texghost f300` line counts re-misses of evicted textures (evict-hit) and of hash-changed textures (diff-hit). Gate: evict-hit above 0. | `azt.ps1 volcano_l2 -Row TEXL2 -Build TEXL2 -Try` | `warp: kzn_19 entry 0` | 16 s | build3ds\azt\shots\volcano_l2\ | Build L2a. The `texcap=1024` value gave 0 evictions (844 KB uploaded in 300 frames). Run 7 (L2a): evict-hit 2 (32 KB), 322 upload ops, 54784 us. |
+| volcano_nb (L2a gate) | Mt. Lavalava (kzn_19) with top shots at frames 196, 200, 204 (shotwin=196:9). Result (L2a vs main 7b6e3735b, 2026-11-03): frames 196, 200 and 204 equal, 0 bytes each. The spot at x166-168 y289-293 is animated (main frame 200 vs 196 and 204 differ there). | `PM_ROW=TEXL2 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 volcano_nb -Row TEXL2 -Build <lane> -Try` | `warp: kzn_19 entry 0` | 16 s | build3ds\lane-<lane>\shots\ | Shots every 4 frames only. Frame 201 is not shot. Status: verified for the L2a gate (lanes TEXL2M and TEXL2MB). |
 ## OPTFIX (2026-11-03): PmOpt initializer, boot option values
 
 | Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |

@@ -29,3 +29,13 @@
 - Test: `PM_ROW=TEXL2 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 volcano -Row TEXL2 -Build <lane>`.
 - Read shots from build3ds/lane-<lane>/shots/ (a failed marker check does not update build3ds/azt/shots).
 - Diff: scratchpad ppmdiff.py (PPM header is 15 bytes, width 240, height 400).
+
+## Gate closed (2026-11-03, later)
+- Merge main (7b6e3735b) into texl2: conflict in test_catalog.md, both sections kept (commit 35503bd3a).
+- Shots taken every 4 frames only (pm_gpu.c shotwin hook). Frame 201 cannot be shot. Used 196, 200, 204 (scenario volcano_nb).
+- Volcano: texl2 merged (lane TEXL2M) equals main (lane TEXL2MB) at frames 196, 200, 204: 0 bytes each.
+- Yard top shot 0000_0_11: 0 bytes. Yard bottom shots differ (rows 64 to 230, 23 KB): the bottom screen shows the log and build string, not gated. Yard log has no texghost line.
+- The earlier 20 bytes were against the old base (7d19c5808 HUD and older main). Not reproduced against current main. Cause not fully known.
+- L2a gate: CLOSED on current main.
+- Budget: 7 of 8 starts used (VA, VB, VC, MB, M, yard MB, yard M). One start left.
+- L2b to L2d: NOT started. Context rotation point reached. Next agent starts at plan_tex_l2.md section 4, L2b.
