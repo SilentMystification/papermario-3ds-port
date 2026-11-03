@@ -2404,7 +2404,7 @@ int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, u
         u32 ix = rec_pa[e].idx;
         u8 cl = (u4_pal >= 0 && ix >= (u32)u4_pal && ix < (u32)u4_pal + 4u * GPAL) ? 2 : 3;
         unsigned ws[4] = { o, o + s2, o + s2 + 1u, o + s2 + 2u };
-        for (unsigned t = 0; t < 4; t++) { rec_msk[ws[t]] = 1; rec_cl[ws[t]] = cl; }
+        for (unsigned t = 0; t < 4; t++) { rec_msk[ws[t]] = cl == 2; rec_cl[ws[t]] = cl; } /* UC3a: only palette words are masked */
     }
     for (unsigned i = 0; i + 1 < na;) { /* UC2: words that hold a per-frame address, not compared (UC3 patches them): 0x227 index buffer, texture unit 0, 1, 2 address */
         u32 hd = a[i + 1]; unsigned c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u), base = hd & 0x3FFu, inc = hd >> 31;
@@ -2413,7 +2413,7 @@ int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, u
         /* PICA order: param0 (word i) is the header register, the params after the header are reg + k + 1 when incremental */
         for (unsigned k = 0; k <= c; k++) {
             unsigned w = k ? i + 2 + (k - 1) : i, r = inc && k ? base + k : base;
-            if (r == 0x85 || r == 0x95 || r == 0x9D) { rec_msk[w] = 1; rec_cl[w] = 1; }
+            if (r == 0x85 || r == 0x95 || r == 0x9D) rec_cl[w] = 1; /* UC3a: address words are compared, not masked */
         }
         i += len;
     }
