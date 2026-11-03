@@ -14,7 +14,7 @@ Branch `poshud` (worktree `papermario-3ds-port-poshud`). Rework 2 merged from ma
 |---|---|---|
 | 1 | fps, ms, late% | always |
 | 2 | memory | always |
-| 3 | VRAM | always |
+| 3 | VRAM: `VRAM <used>/6144K tex <used>/<budget>K` (all VRAM used = 6144 KB less vramSpaceFree; texture cache used and budget, KB) | always |
 | 4 | map block line 1: old id (change) or current id (idle) | always |
 | 5 | map block line 2: `old area -> new id` (change) or current area and map (idle) | always |
 | 6 | map block line 3: new area and map (change) or blank (idle) | always |
