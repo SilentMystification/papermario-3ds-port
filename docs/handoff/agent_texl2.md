@@ -38,3 +38,12 @@ blocked on texgarble fix (L2b not started: branch texgarble has no fix commit, o
 ## Commands
 - Scenario: `PM_ROW=TEXL2 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 volcano_l2 -Row TEXL2 -Build TEXL2 -Try`
 - Justification line: 3ds/logs/perf/status_TEXL2.txt (before each start).
+
+## L2a bisection (2026-11-03, agent texl2b)
+- Base check: parent 7d19c5808 built in lane TEXL2BASE equals the old HEAD baseline (0 bytes). The base is not the cause.
+- Layout control: parent plus an unused 4 KB static array (lane TEXL2PAD): 0 bytes against HEAD. A bss layout shift alone is not the cause.
+- Part A (load_miss source hash moved to the top, gh_check): removing it from L2a changes nothing. Not run alone; see split below.
+- Split: L2a with only the counters (ghost table, texcap switch, upload timer, report line; lane TEXL2BK): 20 bytes against HEAD, 0 bytes against L2a. The counters part produces the 20 bytes.
+- Open: which line in the counters part. Suspects: the upload timer loop body, the texcap pm_debug_value call in pm_tex_init. Hypothesis, not tested: a timing-dependent texture race (TEXGARBLE stage free) moved by any instruction change.
+- Budget: 7 of 8 starts used for TEXL2 after the reset (ledger). One start left. Gate L2a: NOT passed.
+- Note: a failed azt marker check (TEXL2PAD, TEXL2BK) leaves build3ds/azt/shots unchanged. Read the lane folder build3ds/lane-<lane>/shots/ instead.
