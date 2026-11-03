@@ -3317,6 +3317,30 @@
         }
       ],
       "reason": "WARPFIX2 log only. Until is the restore line after the fight."
+    },
+    {
+      "name": "census_yard",
+      "status": "verified",
+      "subject": "Yard (kmr_20, entry 4): draw census of frame 200 on the old path, one cen line per distinct flush batch and one summary line.",
+      "proves": "CEN1 draw census: the per-frame multiset of (template key, texture ids, triangle count) is printed, and the summary counts equal the lines.",
+      "debug": "preset=yard drawcensus=200 loglevel=debug",
+      "until": "cen f200 summary",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "census summary",
+          "regex": "cen f200 summary batches \\d+ tris \\d+ distinct \\d+ over 0"
+        }
+      ],
+      "reason": "Log only (census). The census is a set of counts, so the picture is not the test."
     }
   ]
 }

@@ -493,6 +493,39 @@ static float decal_bias(void) {
 #define DECAL_EPS 0.003f
 typedef struct { int combine, tex, tex1, i8_0, i8_1, rgb_scale, r_mix, draw_3d, rect_2d, dview, off_active, off_i8, r_memblend, r_replace, r_blend; unsigned prim, cconst, mixcol; unsigned plan_gen; } TevKey;
 static TevKey tev_key;
+unsigned pm_tex_census_id(int unit);
+/* CEN1: draw census (debug tool, switch drawcensus=<frame>). Each flush batch adds one entry: template key (TevKey without plan_gen, z, raw, program, cull), texture ids of unit 0 and 1, triangle count. At the end of the frame the switch frame prints one line per distinct entry and a summary. The accumulation has no switch test. The print runs once per frame and only reads the table. */
+#define CEN_N 256
+typedef struct { unsigned k, tex0, tex1, tris, n; } CenEnt;
+static CenEnt cen_tab[CEN_N];
+static unsigned cen_nt, cen_draws, cen_tris, cen_over;
+static void cen_add(const TevKey* tk, int z, int graw, int prog, unsigned cull, unsigned id0, unsigned id1, unsigned tris) {
+    const unsigned* w = (const unsigned*)tk;
+    unsigned h = 2166136261u;
+    for (unsigned i = 0; i < (sizeof *tk - sizeof tk->plan_gen) / sizeof(unsigned); i++) h = (h ^ w[i]) * 16777619u;
+    h = (h ^ (unsigned)(z | graw << 1 | prog << 2)) * 16777619u;
+    h = (h ^ cull) * 16777619u;
+    cen_draws++; cen_tris += tris;
+    unsigned i = (h ^ id0 * 0x9E3779B1u ^ id1 * 0x85EBCA6Bu ^ tris * 0xC2B2AE35u) & (CEN_N - 1);
+    for (unsigned p = 0; p < CEN_N; p++, i = (i + 1) & (CEN_N - 1)) {
+        CenEnt* e = &cen_tab[i];
+        if (e->n == 0) { e->k = h; e->tex0 = id0; e->tex1 = id1; e->tris = tris; e->n = 1; cen_nt++; return; }
+        if (e->k == h && e->tex0 == id0 && e->tex1 == id1 && e->tris == tris) { e->n++; return; }
+    }
+    cen_over++;
+}
+static void cen_frame_end(void) {
+    static int fr = -2;
+    char v[16];
+    if (fr == -2) fr = pm_debug_value("drawcensus", v, sizeof v) ? atoi(v) : -1;
+    if (fr >= 0 && (int)pm_frame_count() == fr) {
+        for (unsigned i = 0; i < CEN_N; i++) if (cen_tab[i].n)
+            pm_log_d("cen f%u k %08x tex %08x %08x tris %u n %u", fr, cen_tab[i].k, cen_tab[i].tex0, cen_tab[i].tex1, cen_tab[i].tris, cen_tab[i].n);
+        pm_log_d("cen f%u summary batches %u tris %u distinct %u over %u", fr, cen_draws, cen_tris, cen_nt, cen_over);
+    }
+    if (cen_nt) memset(cen_tab, 0, sizeof cen_tab);
+    cen_nt = cen_draws = cen_tris = cen_over = 0;
+}
 static int tev_valid, tev_memb;
 /* PG3 O4: citro3d marks a state group dirty at every setter call and sends it again at the next draw. These wrappers call the setter only when an
  * argument differs from the last call. sh.has is cleared where citro3d may change the state itself (frame begin, target change, frame split). */
@@ -1048,6 +1081,9 @@ static void flush_draw(void) {
     int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
     if (tev_same) memb = tev_memb;
     else { pm_dc_c[DC_TEVR]++; C3D_TexEnv* env = C3D_GetTexEnv(0); flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
+    cen_add(&tk, z, graw, graw ? (gpal ? (g_use5 ? 5 : 4) : 2) : 1, graw ? (unsigned)g_cullm : 0u,
+        grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, tex1 ? pm_tex_census_id(1) : 0u,
+        (unsigned)(graw ? gni / 3 : nverts / 3));
     DC_T(3);
     PHF_POP();
     PHF_PUSH(PH_GST);
@@ -1955,6 +1991,7 @@ void pm_gpu_end(void) {
     if (!gpu_ok) return;
     FS_MARK(FS_FLUSH);
     flush();
+    cen_frame_end();
     if (off_active) pm_gpu_off_end();
     { static int gt_done; if (drew && pm_debug_has("grabtest") && !gt_done) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot. Row 5: a grab that fails (no VRAM) is tried again next frame */
         extern unsigned short* nuGfxCfb_ptr;

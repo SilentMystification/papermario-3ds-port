@@ -663,6 +663,21 @@ unsigned pm_tex_slot_gen(int i) {
 }
 /* RK2: the cache slots bound on unit 0 and unit 1 (-1 when none). The record key compares their generations. */
 void pm_tex_cur_slots(int* a, int* b) { *a = cur; *b = aux; }
+/* CEN1: texture identity for the draw census (pm_gpu.c cen_add). The slot source hash (shash) with format and size, so the id matches across builds. 0 none; 0x40000000 and 0x40000100 mark the off-screen image of unit 0 and unit 1. */
+static unsigned slot_census_id(const Slot* s) {
+    unsigned h = 2166136261u;
+    h = (h ^ s->shash) * 16777619u; h = (h ^ s->fmt) * 16777619u; h = (h ^ s->siz) * 16777619u;
+    h = (h ^ (unsigned)s->w) * 16777619u; h = (h ^ (unsigned)s->h) * 16777619u;
+    return h | 1u;
+}
+unsigned pm_tex_census_id(int unit) {
+    if (unit == 0) {
+        if (have && off_cur >= 0) return 0x40000000u | (unsigned)off_cur;
+        return cur < 0 || !slots[cur].live ? 0u : slot_census_id(&slots[cur]);
+    }
+    if (aux_off >= 0 && aux_off < offt_n) return 0x40000100u | (unsigned)aux_off;
+    return aux < 0 || !slots[aux].live ? 0u : slot_census_id(&slots[aux]);
+}
 /* UC3e: 1 when a record may draw slot s (-1 none): the slot is live and not in its load frame. Touches it as a bind does. */
 int pm_tex_rec_use(int s) {
     if (s < 0) return 1;
