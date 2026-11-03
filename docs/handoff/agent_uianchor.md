@@ -61,3 +61,11 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - Toad n0 at x -66, y 20, z -532. Mario at x -100, y 30, z -370 (f110). Distance about 162 units in z.
 - Plan (coordinator): pos=<x>:<y>:<z> from the POSWARP branch, placing Mario about 40 units in front of n0, then A. Poswarp commit not on branch poswarp at 262fd3c49 time (head 99266ab2d, BOTLAYOUT commits).
 - UA1 budget: 8 of 8 used (starts 1 to 8). Waiting for a reset.
+
+## Status at this report (UA1, UA4, UA7)
+
+- UA4 (battle_wide): gate by eye. Wheel log `debug wheel open: base 33 183`. Wheel beside Mario in wide, same place relative to Mario as battle_start wide off (shot 0007), within a few shot pixels. Byte-equal to HEAD not run.
+- UA7 (pause_spin_wide, pause_spin): gate by eye. Pause window at frame 116 wide on has the same edges and text size as wide off (shot 0004 of both). Code: src/draw_box.c frustum +-100 when pm_wide (cancels the port 1.25 for perspective). Byte-equal wide off by construction (pm_wide 0 keeps +-80). Risk: every draw_box quads window in wide mode changes shape (now equal to wide off). Not checked on other windows.
+- UA1 (talk_wide, pos=-66:20:-518:0 with A): log `debug talk anchor` fired with speaker -1 (NPC_PLAYER), screen 152 143. Speaker is Mario, not the Toad. Shot 0180 is a fade and a wall, not the bubble. Gate not passed. Toad n0 is not talked to by the A press, or the A press reached another message. Next: log the speaker NPC id and the Toad's own screen position; hold the A press longer.
+- UA2, UA3, UA8, UA9: not started.
+- Marker miss at 20 s happens on about half the starts (shared sdmc log.txt). The shots still exist when the run reached the until.
