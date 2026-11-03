@@ -911,6 +911,14 @@ void pm_warp_tick(unsigned frame) {
             pm_log_d("marlog f%u side %d wide %d a10 %d b10 %d err10 %d", f, side, pm_wide, (int)(a * 10.0f), (int)(b * 10.0f), (int)((a - b) * 10.0f));
         }
     }
+    {   /* UA3 debug: uishow=coins opens the coin counter window (show_coin_counter, the pickup's own call) at frame 120 */
+        char uv[16];
+        if (f == 120 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c') {
+            extern void show_coin_counter(void);
+            show_coin_counter();
+            pm_log_d("debug uishow: coins opened f%u", f);
+        }
+    }
     if (f % 300 == 0) {
         pm_log_d("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d wall %d push %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
                (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,

@@ -76,3 +76,16 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - The camera follows Mario, so Mario projects to the screen centre x 160. At x 160 the fix (1.25 x - 40) gives 160 too. The error is 0 before and after the fix. Mario cannot test the fix at the centre.
 - Next: a subject off the centre. Options: (a) project a fixed world point 100 units to the side of Mario and read a drawn object at that point; (b) a camera with a fixed look-at (none found yet).
 - Derivation (not measured): wide 3D draw px = 200 + 200 ndc (pm_gpu.c:196), 2D px = 40 + game x. Post-fix game x = 1.25 x_raw - 40 gives 2D px = 200 + 200 ndc, the same as the 3D draw.
+
+## Byte-equal gate, branch vs main (7b8befae2), wide off
+
+- yard (UA lane vs UAMAIN lane, top shot 0000_0_11): byte-equal.
+- talk_off (wide off speech box, 200 top shots): 200 of 200 byte-equal.
+- battle_start: 0000 to 0003 byte-equal; 0004 differs in x 58 to 110, y 98 to 171 (2510 px). A repeat of the same UA binary also differs from itself at 0004, so the 0004 difference is run noise, not the branch.
+
+## UA3 (coin counter), start 1 and 2
+
+- uishow=coins (pm_warp.c hook at frame 120, calls show_coin_counter). Log `debug uishow: coins opened f120` present.
+- inventory.c: WIN_CURRENCY_COUNTER at pm_wide_left(32), pm_wide_bottom(164).
+- coin_wide shot 0000 (frame 122): no counter visible; the HUD is not drawn in this frame either. Gate not passed. Next: a later frame (the counter draws after the HUD fade-in), or frames where the HUD is on (the yard shot shows HUD at frame 200+).
+- Battle popup (popup_messages.c posY 192) and the other UA3 sites: not done.
