@@ -2547,6 +2547,12 @@ static void ensure_tile(int n) {
             pm_tex_set_wrap(tst1.tile_wrap[n][0], tst1.tile_wrap[n][1], tst1.tile_wrap[n][2], tst1.tile_wrap[n][3]);
             tex_gen++; /* TBREP: a load changes TMEM */
             pm_tex_load(fb, 0, 2, 320, 240, td[n].pal, td[n].pal_n, 320);
+            { /* FB1 debug switch fbbind: the bind as the texture layer gives it: size (pm_tex_size), source, slot (off) or CPU texture (cur) */
+                static int fbon = -1;
+                int tw1 = 0, th1 = 0;
+                if (fbon < 0) fbon = pm_debug_has("fbbind");
+                if (fbon) { pm_tex_size(&tw1, &th1); pm_log_d("fbbind bind n%d fb %p fmt RGBA16 size %dx%d off %d cur %d", n, (const void*)fb, tw1, th1, pm_tex_off_idx(), pm_tex_cur_idx()); }
+            }
             tile_x0 = tile_y0 = 0;
             ens_src = fb; ens_pal = td[n].pal; ens_fmt = 0; ens_siz = 2;
             memcpy(ens_wrap, tst1.tile_wrap[n], sizeof ens_wrap);
