@@ -173,7 +173,7 @@
         },
         {
           "name": "pos",
-          "regex": "pos: Mario to -142 136 221"
+          "regex": "poswarp: placed Mario at -142"
         },
         {
           "name": "shot",
