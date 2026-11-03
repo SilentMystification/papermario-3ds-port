@@ -40,3 +40,11 @@ Azahar budget file: the worktree 3ds/logs/test_budget.csv (starts counted per ro
 ## Rules kept
 
 No push. No stubs. No toggles. The debug log lines and the shot burst in btl_states_menus.c stay (debug tools may stay). No attribution in commits.
+
+## UA9 (item shop prices, new, after UA8)
+
+- Report: in the item shop the coin price numbers sit at native 320x240 positions while the shop panel is placed relative to the wide view.
+- Code to read first: src/world/script_api/shops.c (shop windows: name (100, 66) :972, desc y 184 :974, :976, from the plan; price draw calls there). Per-map shop scripts: src/world/area_mac/mac_00/shop.c, mac_01, mac_04, hos_03, jan_03, nok_01, obk_03, dro_01 (look for draw_number, price positions, SCREEN_WIDTH constants).
+- Fix: pm_wide.h helpers (pm_wide_left / pm_wide_right / pm_wide_top / pm_wide_bottom) on the price coordinates so they move with their item list. Wide-off must stay byte-equal.
+- Scenario: warp into a shop map (debug string to find: the Toad Town item shop in mac_00 or the map that opens a shop, preset toad plus a padscript walk to the shopkeeper). Shot of the item list with wide on. Until: a log line when the shop list opens (add one debug line if none exists).
+- Status: not started. No test run for UA9 yet. Budget 8 starts per row, UA9 has 0 used.
