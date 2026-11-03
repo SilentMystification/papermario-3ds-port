@@ -263,6 +263,62 @@
       "reason": ""
     },
     {
+      "name": "kmr_10_clamp1",
+      "status": "unverified",
+      "subject": "kmr_10 at -142 136 221, frames 200 to 205, scratch test switch texclamp1: clamp to edge on the aux unit only. Compare with kmr_10_band (TEXGARBLE).",
+      "proves": "The texclamp1 switch changes the sampling of unit 0, and the band shows or not.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texclamp1",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_rep1",
+      "status": "unverified",
+      "subject": "kmr_10 at -142 136 221, frames 200 to 205, scratch test switch texrep1: aux unit t repeats (N64 clamp of t off). Compare with kmr_10_band (TEXGARBLE).",
+      "proves": "The texrep1 switch changes the sampling of unit 0, and the band shows or not.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texrep1",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "kmr_10_ddonly",
       "status": "unverified",
       "subject": "Map kmr_10 at player position -142 136 221, frame 200 with drawlog=200:1 and ddonly=78:78: only chunk 78 (64x32 CI4 wall texture 00ffacd4, scr box 141 136 329 172) draws. Tests whether that chunk alone makes the band (TEXGARBLE).",

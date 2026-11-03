@@ -1596,7 +1596,8 @@ int pm_tex_bind_aux(void) {
     if (!staged && au_last == &slots[aux].tex && au_f == (int)tex_filt && au_ws == (int)ws && au_wt == (int)wt) return 1;
     tb_last = NULL; /* DR1: this changes the filter and wrap of a texture that unit 0 may use */
     const C3D_Tex* tp = tex_for_draw(&slots[aux]);
-    if (PMDL("texclamp")) ws = wt = GPU_CLAMP_TO_EDGE; /* TEXGARBLE test switch (scratch): the aux unit too */
+    if (PMDL("texclamp") || PMDL("texclamp1")) ws = wt = GPU_CLAMP_TO_EDGE; /* TEXGARBLE test switches: texclamp1 = aux unit only */
+    if (PMDL("texrep1")) wt = GPU_REPEAT; /* TEXGARBLE test switch: aux unit t repeats (the N64 clamp of t off) */
     C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : tex_filt, PMDL("texnear") ? GPU_NEAREST : tex_filt);
     C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB1]++;

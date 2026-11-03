@@ -194,12 +194,6 @@ static PM_HOTD struct {
     unsigned tile_fmt[8], tile_siz[8];
     unsigned comb_a, comb_b, comb_c, comb_d;
 } tst1 __attribute__((aligned(32)));
-static void dd_line(void) {
-        pm_log("dd f%u #%u src %08x dl %08x %08x geom %08x oml %08x omh %08x tex %u timg %08x fmt %u siz %u %dx%d tri %u scr %.0f %.0f %.0f %.0f w %.2f %.2f tw %08x %08x %08x %08x ts %u %u sz %d %d %d %d",
-               pm_frame_count(), dd.idx, dd.src, dd.dl0, dd.dl1, dd.gm, dd.oml, dd.omh, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.ntri,
-               dd.x0, dd.y0, dd.x1, dd.y1, dd.w0, dd.w1, tst1.tile_wrap[0][0], tst1.tile_wrap[0][1], tst1.tile_wrap[0][2], tst1.tile_wrap[0][3],
-               tst1.tile_shift[0][0], tst1.tile_shift[0][1], tst1.tile_sz[0][0], tst1.tile_sz[0][1], tst1.tile_sz[0][2], tst1.tile_sz[0][3]);
-}
 static int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
 /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
  * the image that was loaded to its TMEM address, not the image of the load that came last. */
@@ -290,6 +284,16 @@ static struct {
     int w, h, stride, x0, y0, pal_n;
     const void* pal;
 } td[2];
+static void dd_line(void) {
+        pm_log("dd f%u #%u src %08x dl %08x %08x geom %08x oml %08x omh %08x tex %u timg %08x fmt %u siz %u %dx%d tri %u scr %.0f %.0f %.0f %.0f w %.2f %.2f tw %08x %08x %08x %08x ts %u %u sz %d %d %d %d",
+               pm_frame_count(), dd.idx, dd.src, dd.dl0, dd.dl1, dd.gm, dd.oml, dd.omh, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.ntri,
+               dd.x0, dd.y0, dd.x1, dd.y1, dd.w0, dd.w1, tst1.tile_wrap[0][0], tst1.tile_wrap[0][1], tst1.tile_wrap[0][2], tst1.tile_wrap[0][3],
+               tst1.tile_shift[0][0], tst1.tile_shift[0][1], tst1.tile_sz[0][0], tst1.tile_sz[0][1], tst1.tile_sz[0][2], tst1.tile_sz[0][3]);
+    pm_log("dd1 f%u #%u tile1 fmt %u siz %u tw %08x %08x %08x %08x ts %u %u sz %d %d %d %d td1 valid %d src %08x %dx%d stride %d xy %d %d pal %d dual %d",
+           pm_frame_count(), dd.idx, tst1.tile_fmt[1], tst1.tile_siz[1], tst1.tile_wrap[1][0], tst1.tile_wrap[1][1], tst1.tile_wrap[1][2], tst1.tile_wrap[1][3],
+           tst1.tile_shift[1][0], tst1.tile_shift[1][1], tst1.tile_sz[1][0], tst1.tile_sz[1][1], tst1.tile_sz[1][2], tst1.tile_sz[1][3],
+           td[1].valid, (unsigned)(uintptr_t)td[1].src, td[1].w, td[1].h, td[1].stride, td[1].x0, td[1].y0, td[1].pal_n, dual_on);
+}
 /* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
 static float shift_mul(unsigned n) {
     return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
