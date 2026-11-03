@@ -332,8 +332,8 @@ void pm_frame_loop(void) {
     u64 fps_mark = 0;
     float fps = 0.f, fps_draw = 0.f; /* PT24: steps/s (internal) and drawn frames/s (external) */
     /* HUD2: bottom screen memory rows, refreshed at pm_opt.hud_ms (pm_mem_hud). */
-    extern void pm_mem_hud(char out[3][40], unsigned dt_ms);
-    char mem[3][40] = {{0}};
+    extern void pm_mem_hud(char out[2][40]);
+    char mem[2][40] = {{0}};
     float frame_ms = 0.f;
     const u64 tick_hz = SYSCLOCK_ARM11;
     float stat_ms = 0.f;
@@ -511,8 +511,7 @@ void pm_frame_loop(void) {
         { /* HUDINT: the bottom memory rows refresh every pm_opt.hud_ms (options.ini hudint, default 1 s). The step is in ticks, set once per refresh. */
             static u64 mem_mark, mem_step;
             if (!mem_mark || now - mem_mark >= mem_step) {
-                unsigned dt_ms = mem_mark ? (unsigned)((now - mem_mark) * 1000u / tick_hz) : 0u;
-                pm_mem_hud(mem, dt_ms);
+                pm_mem_hud(mem);
                 if (pm_opt.pos_hud || pm_debug_has("poshud")) pm_pos_text(mem); /* POSHUD: rows 0 and 1 show Mario and the camera */
                 mem_mark = now;
                 mem_step = (u64)pm_opt.hud_ms * tick_hz / 1000u;
@@ -569,22 +568,20 @@ void pm_frame_loop(void) {
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
             char top[48];
-            char bot[40];
-            /* CPULIM-UI: line 1 = fps, app core 1 time limit the game set (? when the last APT call failed), 3DS mode, build */
-            char lim[8];
+            char stats[40] = "";
+            /* BOTLAYOUT: HUD row 2 = fps, frame time, late%. HUD row 5 = the stats string (stats option only). Footer row 28 = cpu limit, 3DS model, build. */
+            char lim[8], foot[48];
             if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "L%d?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "L%d", pm_cpu_game_value);
-            /* HUD2: "FPS 29.8 L80 O3DS #861". Memory is on the rows below (pm_mem_hud). At most 39 columns, the build text is cut last. */
-            if (have_fps) snprintf(top, sizeof(top), "%.0f/%d FPS late%d%% %s %s #%s", fps_draw, pm_interp_on > 0 ? 60 : 30, late_pct, lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
-            else snprintf(top, sizeof(top), "-/- FPS %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
-            top[39] = 0; /* PT15: 39 columns, the build text is cut first */
-            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast"))
-                snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
-            else
-                snprintf(bot, sizeof(bot), "%5.1f ms", frame_ms);
+            if (have_fps) snprintf(top, sizeof(top), "%.0f/%d FPS late%d%% %5.1f ms", fps_draw, pm_interp_on > 0 ? 60 : 30, late_pct, frame_ms);
+            else snprintf(top, sizeof(top), "-/- FPS %5.1f ms", frame_ms);
+            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast")) snprintf(stats, sizeof stats, "%s", pm_gbi_stats());
+            snprintf(foot, sizeof foot, "%s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
+            pm_gpu_footer(foot);
+            /* MAPHUD map change: the log line (info) and the 2 s HUD text. The step runs with the HUD off too, so the log line stays. */
+            { const char* mt = pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u)); if (mt && pm_opt.dbg_hud) pm_gpu_hud_map(mt); }
             if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
                 unsigned h0 = pm_ph_on ? pm_ticks() : 0;
-                pm_gpu_hud(top, bot, mem);
-                { const char* mt = pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u)); if (mt) pm_gpu_hud_map(mt); } /* MAPHUD: 2 s of steps after a map change */
+                pm_gpu_hud(top, stats, mem);
                 if (pm_ph_on) pm_ph_hud_us += (pm_ticks() - h0) / 268u;
             }
         }

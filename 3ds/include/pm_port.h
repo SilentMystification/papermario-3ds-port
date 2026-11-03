@@ -219,6 +219,7 @@ extern PmOpt pm_opt;
 void pm_pos_text(char (*out)[40]); /* POSHUD: pm_route.c, writes out[0] (Mario) and out[1] (camera) */
 const char* pm_map_hud_step(unsigned step, unsigned hold); /* MAPHUD: pm_route.c, the bottom row 0 text after a change, else NULL */
 void pm_gpu_hud_map(const char* s); /* MAPHUD: pm_gpu.c, copies the row 0 text (the log sink thread draws it) */
+void pm_gpu_footer(const char* s); /* BOTLAYOUT: the bottom footer row 28 (cpu limit, model, build), drawn by the sink thread */
 void pm_options_init(void);
 void pm_options_write(void);
 /* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 11 is Console level. */

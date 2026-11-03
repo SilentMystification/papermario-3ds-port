@@ -241,7 +241,7 @@ enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
-static const char* const lvl_name[5] = { "Error", "Warn", "Info", "Debug", "Off" }; /* Off: only the console level (conlevel 4) */
+const char* const pm_lvl_name[5] = { "Error", "Warn", "Info", "Debug", "Off" }; /* Off: only the console level (conlevel 4) */
 static const char* const dbg_lbl[10] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed", "Frame skip", "Position HUD", "Console level" };
 static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
@@ -306,7 +306,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
         else { int h, t; pm_dbgg_count(id - RW_GIVE, &h, &t); snprintf(b, 16, "%d/%d", h, t); }
         return b;
     }
-    if (id >= RW_DBG) return id == RW_DBG + 5 ? lvl_name[pm_options_get(7) & 3] : id == RW_DBG + 9 ? lvl_name[pm_options_get(11) % 5] : pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows 0 to 8 are option rows 2 to 10 */
+    if (id >= RW_DBG) return id == RW_DBG + 5 ? pm_lvl_name[pm_options_get(7) & 3] : id == RW_DBG + 9 ? pm_lvl_name[pm_options_get(11) % 5] : pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows 0 to 8 are option rows 2 to 10 */
     if (id >= RW_MAP) return pm_n64_name(pm_map[id - RW_MAP]);
     switch (id) {
         case RW_FPS: case RW_WIDE: return pm_options_get(id == RW_FPS ? 0 : 1) ? "On" : "Off";

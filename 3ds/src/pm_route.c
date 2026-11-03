@@ -95,6 +95,7 @@ const char* pm_map_hud_step(unsigned step, unsigned hold) {
     static char txt[40];
     static int a_prev = -1, m_prev = -1;
     static unsigned until;
+    static char from[24] = "none"; /* BOTLAYOUT: the map id before the change, for the info line */
     int a, m;
     pm_route_mapid(&a, &m);
     if (a != a_prev || m != m_prev) {
@@ -103,6 +104,8 @@ const char* pm_map_hud_step(unsigned step, unsigned hold) {
         m_prev = m;
         until = step + hold;
         if (a >= 0 && a < ARRAY_COUNT(gAreas) && gAreas[a].maps && m >= 0 && m < gAreas[a].mapCount) id = gAreas[a].maps[m].id;
+        pm_log_i("map change: %s -> %s (area %d map %d)", from, id, a, m);
+        snprintf(from, sizeof from, "%s", id);
         snprintf(txt, sizeof txt, "Now in %s (area %d, map %d)", id, a, m);
         pm_log_d("maphud: %s area %d map %d step %u until %u", id, a, m, step, until);
         return txt;

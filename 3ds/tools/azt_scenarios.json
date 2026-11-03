@@ -1819,6 +1819,42 @@
       }
     ],
     "reason": "LOGCON: the console level test. Until is the logstat2 line at frame 300 (cap 90 s)."
+  },
+  {
+    "name": "botlayout",
+    "status": "unverified",
+    "subject": "Bottom screen layout (BOTLAYOUT): HUD rows 1 to 4 (map, fps and frame time, memory, VRAM), row 6 blank, separator row 7, header row 8 (Log (console: Debug) left, (SD: Debug) right), log rows 9 to 26 scrolling, separator row 27, footer row 28 (L80 O3DS and the build), blank rows 29 and 30. The port menu is opened (SELECT) and closed again before the shots.",
+    "proves": "BOTLAYOUT: the log scrolls only inside rows 9 to 26, and the HUD, header and footer rows are drawn by absolute position. After menu: close, the layout comes back. The map change info line is written at loglevel info or debug.",
+    "debug": "preset=yard padscript=wait80,SELECT,wait40,SELECT,wait40 shots shotwin=200:6 shotbottom=200:6 loglevel=debug conlevel=debug",
+    "until": "shot \\d+ frame 205\\b",
+    "cap": 90,
+    "deadline": 20,
+    "first_marker": "warp: kmr_20 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "map",
+        "regex": "warp: kmr_20 entry 4"
+      },
+      {
+        "name": "map change info line",
+        "regex": "map change: .* -> kmr_20 \\(area 0 map 11\\)"
+      },
+      {
+        "name": "menu open",
+        "regex": "menu: open"
+      },
+      {
+        "name": "menu close",
+        "regex": "menu: close"
+      },
+      {
+        "name": "shot",
+        "regex": "shot \\d+ frame 20[0-5]\\b"
+      }
+    ],
+    "reason": "BOTLAYOUT: the bottom screen layout test and the map change log line. Until is the top shot at frame 205 (shots switch on). The bottom shots at 200 to 205 are the picture to read."
   }
   ]
 }
