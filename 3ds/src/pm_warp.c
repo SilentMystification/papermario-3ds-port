@@ -87,6 +87,7 @@ static const char* tour_next;
 static unsigned tour_f0, tour_ts;
 static int tour_n, tour_wait;
 static s32 w_story = STORY_INTRO;
+static int w_story_set; /* WARPFIX: story= or preset= given. Without it a loaded save keeps its story progress. */
 static char w_map[16] = "kmr_20";
 static s32 w_entry, w_flag, w_partner;
 
@@ -202,6 +203,7 @@ int pm_warp_active(void) {
         }
     }
     int has_story = pm_debug_value("story", v, sizeof v);
+    if (has_preset || has_story) w_story_set = 1; /* WARPFIX */
     if (has_story) {
         int i, found = 0;
         for (i = 0; i < (int)ARRAY_COUNT(stories); i++) {
@@ -254,6 +256,7 @@ int pm_warp_active(void) {
 }
 
 static void warp_setup(s16 areaID, s16 mapID);
+static void pm_warp_stat(const char* tag);
 
 /* Called from the set_game_mode wrapper. Returns the mode to enter (the caller then calls the real set_game_mode). */
 s16 pm_warp_hook(s16 mode) {
@@ -277,6 +280,7 @@ static void warp_setup(s16 areaID, s16 mapID) {
     if (w_loadslot >= 0) { /* E02: load the file as the file select does (name, save count), then override map and story */
         fio_fetch_saved_file_info();
         pm_log("warp: loadslot %d %s", w_loadslot, fio_load_game(w_loadslot) ? "loaded" : "FAILED");
+        pm_warp_stat("warpstat loaded");
     }
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
@@ -286,13 +290,13 @@ static void warp_setup(s16 areaID, s16 mapID) {
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)w_entry;
-    evt_set_variable(NULL, GB_StoryProgress, w_story);
-    if (w_flag) evt_set_variable(NULL, w_flag, 1);
+    if (w_loadslot < 0 || w_story_set) evt_set_variable(NULL, GB_StoryProgress, w_story); /* WARPFIX: a loaded save keeps its story */
+    if (w_flag && w_loadslot < 0) evt_set_variable(NULL, w_flag, 1);
     if (pm_debug_has("mapflags")) { /* V23b: mapflags sets every GF_MAP_* flag (visited spaces) so the pause map shows the path dots */
         s32 mi;
         for (mi = GF_MAP_ToadTown; mi <= GF_MAP_MariosHouse; mi++) evt_set_variable(NULL, mi, 1);
     }
-    if (w_partner > 0 && w_partner < 12) { /* slice F02: a map script that calls EnablePartnerAI needs a partner */
+    if (w_partner > 0 && w_partner < 12 && w_loadslot < 0) { /* slice F02: a map script that calls EnablePartnerAI needs a partner (WARPFIX: a loaded save keeps its partners) */
         gPlayerData.partners[w_partner].enabled = 1;
         gPlayerData.curPartner = w_partner;
     }
@@ -431,6 +435,39 @@ static void bypass_tick(void) {
         pm_menu_msg("The battle did not end, mode %d", (int)get_game_mode());
     }
 }
+/* WARPFIX: the map and entry of a choice (preset or map list) for a live warp. Sets gGameStatusPtr area, map and entry only. */
+static int warp_live_move(int c, int entry) {
+    int P = (int)ARRAY_COUNT(presets);
+    const char* nm;
+    s16 areaID, mapID;
+    if (c >= 1 && c <= P) {
+        nm = presets[c - 1].map;
+        entry = presets[c - 1].entry;
+    } else {
+        nm = pm_warp_map_name(c - 1 - P);
+    }
+    if (!nm || !get_map_IDs_by_name(nm, &areaID, &mapID)) {
+        pm_log_w("warp: live map not found (choice %d)", c);
+        pm_menu_msg("Warp failed: map not found");
+        return 0;
+    }
+    gGameStatusPtr->areaID = areaID;
+    gGameStatusPtr->mapID = mapID;
+    gGameStatusPtr->entryID = (s16)entry;
+    return 1;
+}
+
+/* WARPFIX: one log line with the player data that a warp must keep (save slot, items, badges, coins, story progress, map). */
+static void pm_warp_stat(const char* tag) {
+    PlayerData* pd = &gPlayerData;
+    int i, items = 0, badges = 0;
+    for (i = 0; i < ARRAY_COUNT(pd->invItems); i++) if (pd->invItems[i] != ITEM_NONE) items++;
+    for (i = 0; i < ARRAY_COUNT(pd->badges); i++) if (pd->badges[i] != ITEM_NONE) badges++;
+    pm_log("%s: slot %d map %d:%d entry %d items %d badges %d coins %d story %d", tag, (int)gGameStatusPtr->saveSlot,
+           (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (int)gGameStatusPtr->entryID, items, badges, (int)pd->coins,
+           (int)evt_get_variable(NULL, GB_StoryProgress));
+}
+
 int pm_warp_live(int c, int entry) {
     if (get_game_mode() == GAME_MODE_BATTLE || get_game_mode() == GAME_MODE_PAUSE) return bypass_begin(1, c, entry);
     return pm_warp_live_now(c, entry);
@@ -444,7 +481,14 @@ static int pm_warp_live_now(int c, int entry) {
         return 0;
     }
     pm_warp_pending = 0;
-    pm_warp_now(c, entry);
+    if (mode == GAME_MODE_WORLD) { /* WARPFIX: in the world a warp changes the map and the entry only (no player data, no story, no save slot) */
+        pm_warp_stat("warpstat before live");
+        if (!warp_live_move(c, entry)) return 0;
+        pm_warp_stat("warpstat after live");
+        pm_warp_pending = 1;
+    } else {
+        pm_warp_now(c, entry);
+    }
     if (!pm_warp_pending) return 0;
     warp_end_intro(mode);
     pm_warp_pending = 0;
@@ -854,6 +898,36 @@ static void model_dump(unsigned f) {
     }
 }
 
+/* WARPFIX test switch livewarp=<scene frame>:<map>:<entry>: at that frame of the scene, the warp of the Select menu (pm_warp_live, the call of
+ * the Warp now row) goes to the map. Debug tool only, no game logic. */
+static void livewarp_hook(unsigned f) {
+    char v[48], name[16];
+    char *c1, *c2;
+    int idx, entry = 0;
+    if (!pm_debug_value("livewarp", v, sizeof v)) return;
+    if (f != (unsigned)atoi(v)) return;
+    c1 = strchr(v, ':');
+    if (!c1) return;
+    c2 = strchr(c1 + 1, ':');
+    if (c2) entry = atoi(c2 + 1);
+    {
+        size_t n = c2 ? (size_t)(c2 - (c1 + 1)) : strlen(c1 + 1);
+        if (n >= sizeof name) n = sizeof name - 1;
+        memcpy(name, c1 + 1, n);
+        name[n] = 0;
+    }
+    idx = pm_warp_map_index(name);
+    if (idx < 0) { pm_log_w("livewarp: map %s not found", name); return; }
+    pm_log("livewarp: scene frame %u to %s entry %d", f, name, entry);
+    if (pm_debug_has("warpitems")) { /* WARPFIX test only: two mushrooms and 50 coins, so the live warp has items to keep (the test save holds none) */
+        gPlayerData.invItems[0] = ITEM_MUSHROOM;
+        gPlayerData.invItems[1] = ITEM_MUSHROOM;
+        gPlayerData.coins = 50;
+        pm_log("warpitems: 2 mushrooms and 50 coins set before the live warp");
+    }
+    pm_warp_live((int)ARRAY_COUNT(presets) + 1 + idx, entry);
+}
+
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
     model_dump(frame);
@@ -873,6 +947,7 @@ void pm_warp_tick(unsigned frame) {
     pm_sweep_tick(f); /* SWEEP: markers and end of one item of the full sweep (pm_sweep.c, switch sweep=<name>) */
     battle_hooks(f);
     battlelist_tick(f);
+    livewarp_hook(f); /* WARPFIX test switch */
     { /* V24b: btlstatus=poison|paralyze|static|dizzy: every frame in a battle the first enemy actor gets that status, to see the palette effect of actor_rendering.c */
         char sv[12];
         if (pm_debug_value("btlstatus", sv, sizeof sv) && get_game_mode() == GAME_MODE_BATTLE && gBattleStatus.enemyActors[0]) {
