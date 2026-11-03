@@ -63,3 +63,6 @@ Write a status line to 3ds/logs/perf/status_TEXGARBLE.txt before each Azahar sta
 Add each new scenario to azt_scenarios.json and the test_catalog.md table in the same commit.
 Report in 3 lines. The console check is the user's.
 ```
+
+## Added 2026-11-03 by the orchestrator: related symptom BGROW
+The user also sees a garbled row, 1 pixel tall, in the background image of many scenes on the console. Diagnosis docs/handoff/diag_bgrow.md (commit 20bd51ac1): NOT FOUND in the code. The sky draws as one texture bind (src/background.c:296-309) with no strip seam, the texel row mapping shows no off-by-one (pm_gbi.c:3229-3244, pm_gpu.c:2590-2597, pm_tex.c:1157/1194), and Azahar shows no bad row. So it is console-only like the wall garble. Treat the VRAM upload timing candidate (upload_vram_slot DMA queued, staging freed at once) as the first suspect for both symptoms. A partial or late DMA of one texture row fits a 1 pixel row. Check it first (docs/handoff/review_tex_cache.md), and include the sky texture in the test.
