@@ -807,7 +807,7 @@
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard_rec, with the replay switch (UC3e) and no reccheck. Top shots at frames 200 to 204.",
       "proves": "Records replay at the G_DL of their group (runs above 0 on the rec line). The picture equals the no-replay HEAD shot.",
-      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug recplay",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug phase phsum recplay",
       "until": "rec f34\\d ",
       "cap": 45,
       "deadline": 20,
@@ -849,6 +849,26 @@
         }
       ],
       "reason": "UC2F: until is the window 2 rec line (f34x). The rec line carries hit, bad and miss."
+    },
+    {
+      "name": "mac01t_rp",
+      "status": "unverified",
+      "subject": "Mario in mac_01 (Toad Town), same tour and debug string as mac01t_rec_chk, with the replay (UC3e) and no reccheck. Top shots at frames 500 to 505.",
+      "proves": "Records replay at the G_DL on mac_01 (rec line runs above 0). The picture equals the no-replay HEAD shot. Phase counters give the replay cost.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase fsplit recplay",
+      "until": "rec f6\\d\\d ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        }
+      ],
+      "reason": "UC3e replay gate on mac_01 and the phase counters for the replay cost. Until is the window 2 rec line (f6xx)."
     },
     {
       "name": "mac01t_rec",

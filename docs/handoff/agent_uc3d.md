@@ -42,3 +42,28 @@ UC3 = replay row. UC3a = pal-only compare mask. UC3b = self-contained capture. U
 - Gates pass: mac01t_rec_chk f307 (bad 0, miss 0, ibad 0, hit 8658, wbad 46 by design, shots byte-equal); yard_rec f348 (bad 0, miss 0, ibad 0, hit 3826, shot byte-equal). Plan row UC3b gate text updated.
 - REC_DIRTY_CAP is 0xFF800010 (Effect bit 4, Tex 23 to 25, TexEnv 26 to 31). Still open: AttrInfo, BufInfo, Scissor, Program bits (identify with the objdump tst list: C3Di_UpdateContext tests 0x4 to 0x20000, bits 0 and 1 excluded; the superset 0xFC3B47FC sent the framebuffer group and broke the walk).
 - UC3e NOT started. Needed before it: ia_hold; rec_rp, rec_try branch, mg_run G_DL branch, rec_play, pm_gpu_rec_play (GPUCMD copy, pal patch from pcomp of the live matrix), pm_tex_rec_use; scenario yard_rp in azt_scenarios.json and the catalog row in one commit. The citro3d and GPU call forms (GPUCMD_AddRawCommands, C3D_FVUnif access) are not verified in this session.
+
+## 8. FINAL STATE (UC3 epic, uc2c)
+Commits in order: ed9165892 (UC3a), a0614a09e (UC3c), 9b4c08cca (UC3d), f3cc7d08b and ba1cce07f (UC3b step two), 755577d7c (UC3b dirty mask and bit table, plan_uc3.md 2d), 4c2fa03bf (UC3e replay main path), then this commit (scenario mac01t_rp, catalog rows, final state).
+
+### Gates
+- UC3a, UC3c, UC3d, UC3b (step two and dirty mask): pass on mac01t_rec_chk f307 and yard_rec f348 (bad 0, miss 0, ibad 0, shots byte-equal). UC3b wbad 46 on mac01t is the 0xE0 refusal (documented in plan row).
+- UC3e: yard_rp f348 runs 1575, top shot byte-equal to HEAD. mac01t_rp f307 runs 1204, top shots (0000_1_2, 0001_1_2) byte-equal. mac01t_rec_chk f307 with the replay code present: bad 0, miss 0, ibad 0, hit 8658, shots byte-equal.
+- Replay is the main path. The debug switch was removed (no toggles). The compare path (reccheck) is unchanged and turns replay off.
+
+### Benefit measurement (phase on, console not measured, Azahar direction only)
+- Matched windows, on and off: yard f216 to f275 cpu 9.7 (on) and 9.6 (off) ms per frame; yard f276 to f335 on only, gbi 4.9 ms. mac01 f294 to f353 cpu 11.9 (on) and 11.9 (off); mac01 f642 to f701 gbi 8.1 (on) and 8.1 (off).
+- Result: no measurable saving in matched windows (within 0.1 ms). The estimate of 0.5 to 3.8 ms per frame is NOT confirmed by Azahar.
+- Replay share: yard f348 window runs 1575 over 300 frames (about 5.3 per frame). mac01 f307 window runs 1204 (about 4.0 per frame) with 213 records built. Valid records per frame and models per frame were not counted; share not computed.
+- Records stop replaying after the early windows (mac01 f614 window has no records, runs 0). Replay is not used in later frames of the measured windows, which explains the flat numbers.
+- yard frames 202 to 215 stall (about 1.5 s per frame, both on and off): a scene artifact, not replay.
+
+### Open items
+1. Find out why replays stop after the early windows (records built only in first ~300 frames on mac01; the f614 window has hit 0). Check record churn (rec_rb, rec_mv, rec_mt counters) in the rec line.
+2. AttrInfo/BufInfo/Scissor/Program bits: now set (plan_uc3.md 2d).
+3. Palette patch not built (plan 2b): replay requires equal game matrix (RecKey gmc). Models with a moving camera get no replay.
+4. Diagnostic log line removed. Off measurement used a temporary edit in rec_try (reverted; not committed).
+5. Azahar early exits (AZFLAKY) remain open.
+
+### Commands
+Same as section 4. New scenarios: yard_rp, mac01t_rp (both debug includes recplay; yard_rp has phase phsum).
