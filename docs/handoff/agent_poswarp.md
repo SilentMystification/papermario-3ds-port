@@ -46,3 +46,7 @@ Branch: poswarp (worktree ..\papermario-3ds-port-poswarp, from main 99266ab2d). 
 - Padscript token pos_<x>:<y>:<z>[:<angle>]: built, not run.
 - Branch poswarp: merged main (4fc505904) into it, then commits 13d73836a, d69a18551 and the y 20 commit.
 
+## Final (budget reset, main 7b6e3735b merged)
+- kmr10_pos (pos -142 20 221): start 8. Settled -142 20 221 exact, 2 of 2 log checks. Shot at frame 56: Mario on the path by the fence. PASS by log and picture (picture read by the code agent).
+- kmr10_pos_hi (pos -142 136 221): start 9. Readback at frame 40 settled y 97.265 (falling), x and z exact. Shot at frame 56: Mario on the path. Gate x and z only.
+- Azahar starts: 9 used, starts 6 and 7 gave no result.

@@ -2498,10 +2498,55 @@ static int glyph_atlas_bound(void) {
     if (!pm_tex_glyph_same(td[0].src, td[0].fmt, td[0].siz, td[0].w, td[0].h, td[0].pal, td[0].pal_n, &gx, &gy)) { return 0; }
     return 1;
 }
+extern unsigned short** nuGfxCfb;
+extern unsigned nuGfxCfbNum;
+extern int pm_wide;
+/* FB1: the frame buffer base of the previous colour buffer when tile n is a clamp window of it (no mask), else NULL. The strip rows
+ * start at base + (y0 * 320 + x0) * 2 (stride 320, 16 bit). */
+static const u8* fb_prev_base(int n) {
+    const u8* base;
+    unsigned i;
+    if (pm_wide || !td[n].valid || td[n].fmt != 0 || td[n].siz != 2 || td[n].stride != 320) return NULL;
+    if (tst1.tile_wrap[n][2] || tst1.tile_wrap[n][3]) return NULL;
+    base = (const u8*)td[n].src - ((size_t)td[n].y0 * 320u + (size_t)td[n].x0) * 2u;
+    for (i = 0; i < nuGfxCfbNum; i++)
+        if ((const u8*)nuGfxCfb[i] == base) break;
+    if (i == nuGfxCfbNum || pm_is_cur_cfb(base)) return NULL;
+    return base;
+}
 static void ensure_tile(int n) {
     if (!td[n].valid) return;
     tile_fx = (float)(tst1.tile_sz[n][0] & 3) * 0.25f; /* PT38 */
     tile_fy = (float)(tst1.tile_sz[n][1] & 3) * 0.25f;
+    { /* FB1 debug switch fbbind: one line per 16 bit RGBA bind (source, window, size); pm_tex.c load_impl adds hit or miss */
+        static int fbon = -1;
+        if (fbon < 0) fbon = pm_debug_has("fbbind");
+        if (fbon && td[n].fmt == 0 && td[n].siz == 2) pm_log_d("fbbind n%d src %p xy %d,%d wh %dx%d st %d", n, (const void*)td[n].src, td[n].x0, td[n].y0, td[n].w, td[n].h, td[n].stride);
+    }
+    {   /* FB1: a clamp window of the previous colour buffer (the transition strips, 6 rows each) samples one texture of the whole 320 x 240
+         * buffer. The key is the buffer, so every strip after the first is a bind hit (no flush, no load). Texels are absolute: tile_x0 = tile_y0 = 0. */
+        const u8* fb = fb_prev_base(n);
+        if (fb) {
+            static const int fb_sz[4] = { -1, -1, -1, -1 }; /* a window size no SetTileSize writes: tile_bound never matches it */
+            if (ens_src == fb && ens_pal == td[n].pal && ens_fmt == 0 && ens_siz == 2 && pm_tex_cur_idx() >= 0 &&
+                !memcmp(ens_sz, fb_sz, sizeof ens_sz) && !memcmp(tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap)) {
+                tile_x0 = tile_y0 = 0;
+                cur_tile = n;
+                return;
+            }
+            pm_gpu_flush();
+            pm_tex_set_wrap(tst1.tile_wrap[n][0], tst1.tile_wrap[n][1], tst1.tile_wrap[n][2], tst1.tile_wrap[n][3]);
+            tex_gen++; /* TBREP: a load changes TMEM */
+            pm_tex_load(fb, 0, 2, 320, 240, td[n].pal, td[n].pal_n, 320);
+            tile_x0 = tile_y0 = 0;
+            ens_src = fb; ens_pal = td[n].pal; ens_fmt = 0; ens_siz = 2;
+            memcpy(ens_wrap, tst1.tile_wrap[n], sizeof ens_wrap);
+            memcpy(ens_sz, fb_sz, sizeof ens_sz);
+            ens_img[n] = fb;
+            cur_tile = n;
+            return;
+        }
+    }
     if (n == 0 && !tile_bound(0) && glyph_atlas_bound()) {
         cur_tile = 0;
         return;
