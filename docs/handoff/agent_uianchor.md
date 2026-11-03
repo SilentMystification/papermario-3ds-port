@@ -89,3 +89,14 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - inventory.c: WIN_CURRENCY_COUNTER at pm_wide_left(32), pm_wide_bottom(164).
 - coin_wide shot 0000 (frame 122): no counter visible; the HUD is not drawn in this frame either. Gate not passed. Next: a later frame (the counter draws after the HUD fade-in), or frames where the HUD is on (the yard shot shows HUD at frame 200+).
 - Battle popup (popup_messages.c posY 192) and the other UA3 sites: not done.
+
+## UA3 coin counter, starts 3 to 6 (blocked)
+
+- coin_wide hook at frame 120 (start 3, shots 125 to 149): shot frame 149 has no HUD at all. Hook at frame 200 (start 6, shots 200 to 216): shot 216 also has no HUD and no counter.
+- The HUD draws in talk_wide shots at frame 200 and later, so the HUD state differs by scenario. Not explained.
+
+## UA8 chapter card, starts 1 and 2 (blocked)
+
+- fxtest=113 (chapter_change, index from the E() list in pm_fxtest.c line 145) spawns fx_chapter_change(0, 100, 100, 0, 1, 0). Shots A and B (shot 2) show no card.
+- Cause (inferred): the card position is set by the caller each frame (kmr_22/main.c:40-60 writes chapterPos and endOfPos). fxtest does not do that, so the card sits off screen.
+- Next: a uishow=chapter hook that repeats the kmr_22 loop (set chapterPos x and y each frame) or a warp to kmr_22 with the story state that runs the card.

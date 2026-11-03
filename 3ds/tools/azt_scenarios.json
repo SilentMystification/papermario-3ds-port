@@ -3068,8 +3068,8 @@
       "status": "unverified",
       "subject": "Toad Town, wide on, uishow=coins opens the coin counter window at frame 120 (show_coin_counter). Shots frames 122 to 125. UA3 gate: the counter sits at the bottom left edge (x pm_wide_left(32), y pm_wide_bottom(164)).",
       "proves": "UA3: the coin counter window follows the wide view (bottom and left).",
-      "debug": "preset=toad wide uishow=coins shots shotwin=125:30 loglevel=debug",
-      "until": "shot \\d+ frame 150\\b",
+      "debug": "preset=toad wide uishow=coins shots shotwin=200:30 loglevel=debug",
+      "until": "shot \\d+ frame 216\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -3085,11 +3085,39 @@
           "regex": "debug uishow: coins opened"
         },
         {
-          "name": "shot at 150",
-          "regex": "shot \\d+ frame 150\\b"
+          "name": "shot at 216",
+          "regex": "shot \\d+ frame 216\\b"
         }
       ],
       "reason": "UA3 gate by eye."
+    },
+    {
+      "name": "chapter_wide",
+      "status": "unverified",
+      "subject": "Chapter card (fx_chapter_change, the kmr_22 call args 100 100 0 1 0) spawned by fxtest in Toad Town with wide on. Shots A and B show the card with Mario and the foes (UA8 gate: the card sits where the native card sits, relative to the screen centre).",
+      "proves": "UA8: the chapter card position follows the wide view.",
+      "debug": "preset=toad wide fxtest=113 shots loglevel=debug",
+      "until": "fxtest: shot 2 effect 113 chapter_change",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 113 chapter_change"
+        },
+        {
+          "name": "shot B",
+          "regex": "fxtest: shot 2 effect 113 chapter_change"
+        }
+      ],
+      "reason": "UA8 gate by eye, wide on."
     }
   ]
 }

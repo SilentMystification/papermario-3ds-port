@@ -913,7 +913,7 @@ void pm_warp_tick(unsigned frame) {
     }
     {   /* UA3 debug: uishow=coins opens the coin counter window (show_coin_counter, the pickup's own call) at frame 120 */
         char uv[16];
-        if (f == 120 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c') {
+        if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c') {
             extern void show_coin_counter(void);
             show_coin_counter();
             pm_log_d("debug uishow: coins opened f%u", f);
