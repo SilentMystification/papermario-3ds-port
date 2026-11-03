@@ -9,7 +9,14 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-PmOpt pm_opt = {0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 5, 0, 500, 200, 1, 1000, 0}; /* fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z, log, loglevel (warn), conlevel (warn), fixedseed, dpad_mode (multi), warp (off), warp_entry, dz_pad 5, dz_cs 0, rep_delay, rep_rate, fskip (on), hud_ms (1 s), pos_hud (off) */
+/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, loglevel warn, conlevel warn, fixedseed off, dpad_mode multi, warp off, warp_entry 0, dz_pad 5, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off. */
+PmOpt pm_opt = {
+    .fps60 = 0, .wide = 0, .dbg_hud = 1, .dbg_stats = 0, .dbg_nofog = 0, .dbg_nolight = 0, .o3ds_z = 0,
+    .log = 1, .loglevel = 1, .conlevel = 1, .fixedseed = 0, .dpad_mode = 0, .warp = 0, .warp_entry = 0,
+    .dz_pad = 5, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0,
+};
+/* Fails the build when PmOpt gains or loses a field without this initializer being updated. */
+_Static_assert(sizeof(PmOpt) == 21 * sizeof(int), "PmOpt field count changed: update pm_opt above");
 /* ARG1: the saved log and loglevel (options.ini, or the defaults). pm_opt.log and pm_opt.loglevel hold the values of this run (a launch argument may differ). CONLV: sv_conlevel the same for conlevel. */
 static int sv_log = 1, sv_loglevel = 1, sv_conlevel = 1;
 
@@ -162,6 +169,8 @@ void pm_options_init(void) {
     }
     pm_log("options: fps60=%d wide=%d hud=%d stats=%d nofog=%d nolight=%d (%s)", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, have ? (from_txt ? "read from options.txt, written as options.ini" : "read from options.ini") : "defaults");
+    pm_log_i("options: boot dz_cs=%d rep_delay=%d rep_rate=%d hud_ms=%d conlevel=%d loglevel=%d log=%d", pm_opt.dz_cs, pm_opt.rep_delay,
+             pm_opt.rep_rate, pm_opt.hud_ms, sv_conlevel, sv_loglevel, sv_log); /* OPTFIX: the saved values, as read from options.ini or the defaults */
     pm_log_switch("nofog", pm_opt.dbg_nofog); /* a debug word that the code reads each frame */
     pm_log_switch("nolight", pm_opt.dbg_nolight);
     if (!have || from_txt) pm_options_write();

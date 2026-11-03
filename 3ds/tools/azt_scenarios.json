@@ -1739,6 +1739,26 @@
     "reason": "BOOTJ: no warp, so the intro plays. Until is the first jump result at frame 390 or later. Cap 60 s."
   },
   {
+    "name": "boot_opts",
+    "status": "unverified",
+    "subject": "Boot with no options.ini and no options.txt: the OPTFIX boot line prints the saved option values (dz_cs, rep_delay, rep_rate, hud_ms, conlevel, loglevel, log).",
+    "proves": "The PmOpt initializer matches the struct field order: a boot with no ini gives the defaults (dz_cs 0, rep_delay 500, rep_rate 200, hud_ms 1000, conlevel 1, loglevel 1, log 1).",
+    "debug": "loglevel=debug",
+    "until": "options: boot dz_cs=",
+    "cap": 30,
+    "deadline": 20,
+    "first_marker": "boot_main",
+    "expects": "none",
+    "needs_picture": false,
+    "expected_events": [
+      {
+        "name": "boot options line with the defaults",
+        "regex": "options: boot dz_cs=0 rep_delay=500 rep_rate=200 hud_ms=1000 conlevel=1 loglevel=1 log=1"
+      }
+    ],
+    "reason": "OPTFIX: no ini in the sdmc folder (moved aside for the run). Until is the boot options line. Cap 30 s."
+  },
+  {
     "name": "intro_jump_azahar",
     "status": "unverified",
     "subject": "Fresh boot with no warp, preset or story: the intro plays (game mode 16 from frame 327), jumptest on. Log subject only: jump result lines in the intro.",
