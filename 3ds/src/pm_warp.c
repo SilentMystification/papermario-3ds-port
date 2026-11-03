@@ -129,20 +129,41 @@ void pm_pos_set(const float* v, int n) {
     gCameras[CAM_DEFAULT].targetPos.z = ps->pos.z;
 }
 
-void pm_pos_log(const char* how) {
+/* set: the requested position. The settled position is gPlayerStatus now (the ground logic may have moved Mario, e.g. a fall). */
+void pm_pos_log(const float* set, const char* how) {
     PlayerStatus* ps = &gPlayerStatus;
-    pm_log("poswarp: placed Mario at %.3f %.3f %.3f on map %s yaw %.2f (%s)", ps->pos.x, ps->pos.y, ps->pos.z,
-           gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, ps->curYaw, how);
+    pm_log("poswarp: placed Mario at %.3f %.3f %.3f on map %s settled %.3f %.3f %.3f yaw %.2f (%s)", set[0], set[1], set[2],
+           gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, ps->pos.x, ps->pos.y, ps->pos.z, ps->curYaw, how);
+}
+
+/* POSWARP probe (diagnosis): the floor under the spot at x z, from the ray down from y 400 (test_ray_colliders, the call of the NPC
+ * floor query) and the player ground check (player_check_collision_below), plus the collider count. Logged at the scene frames 0, 30, 60, 120, 180. */
+static void pos_probe(unsigned f) {
+    f32 hx, hy, hz, hd, nx, ny, nz, gy;
+    s32 cid = NO_COLLIDER, pid = NO_COLLIDER;
+    PlayerStatus* ps = &gPlayerStatus;
+    s32 hit;
+    hd = 1000.0f; /* the maximum ray length goes in as hitDepth (player_raycast_down does the same) */
+    hit = test_ray_colliders(COLLIDER_FLAG_IGNORE_PLAYER, pos_v[0], 400.0f, pos_v[2], 0.0f, -1.0f, 0.0f, &hx, &hy, &hz, &hd, &nx, &ny, &nz);
+    if (hit > NO_COLLIDER) { cid = hit; gy = hy; } else gy = -9999.0f;
+    {
+        f32 py = player_check_collision_below(0.0f, &pid);
+        pm_log("poswarp probe f%u mario %.3f %.3f %.3f ray y %.3f id %d ground y %.3f id %d colliders %d", f, ps->pos.x, ps->pos.y, ps->pos.z, gy, (int)cid, py, (int)pid, (int)gCollisionData.numColliders);
+    }
 }
 
 static void pos_tick(unsigned frame) {
     if (!pos_on || get_game_mode() != GAME_MODE_WORLD) return;
+    {
+        unsigned pf = frame - pos_f0;
+        if (pf == 0 || pf == 30 || pf == 60 || pf == 120 || pf == 180) pos_probe(pf);
+    }
     if (pos_state == 0 && frame - pos_f0 >= POS_DELAY) {
         pm_pos_set(pos_v, pos_n);
         pos_state = 1;
         pos_t = frame;
     } else if (pos_state == 1 && frame - pos_t >= POS_READBACK) {
-        pm_pos_log("readback");
+        pm_pos_log(pos_v, "readback");
         pos_state = 2;
     }
 }
