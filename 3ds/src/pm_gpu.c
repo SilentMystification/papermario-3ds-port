@@ -2383,7 +2383,8 @@ void pm_gpu_rec_count(unsigned* pt, unsigned* wbad, unsigned* pk) { *pt = rec_pt
  * (replay writes them). bad: words outside the slots that differ, or the lengths differ. miss: the patch tables differ. Returns -1 when
  * a or b fails the walk (wbad). The pt and pk counters are kept as they were. */
 #define REC_CHK_MAX 1024u
-static u8 rec_msk[REC_CHK_MAX];
+static u8 rec_msk[REC_CHK_MAX], rec_cl[REC_CHK_MAX]; /* rec_cl: class of each word for the UC3M count (0 other, 1 address, 2 palette, 3 uniform) */
+static unsigned rec_cc[4];
 static RecPatch rec_pa[REC_PT_MAX];
 static unsigned rec_fj;
 int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, unsigned* miss) {
@@ -2397,11 +2398,13 @@ int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, u
     if (pb < 0) return -1;
     if (pa != pb || memcmp(rec_pa, rec_pt, pa * sizeof rec_pa[0])) (*miss)++;
     if (na != nb) { (*bad)++; return 0; }
-    memset(rec_msk, 0, na);
+    memset(rec_msk, 0, na); memset(rec_cl, 0, na);
     for (int e = 0; e < pa; e++) {
-        unsigned o = rec_pa[e].off;
-        if (rec_pa[e].split) rec_msk[o] = rec_msk[o + 2] = rec_msk[o + 3] = rec_msk[o + 4] = 1;
-        else rec_msk[o] = rec_msk[o + 1] = rec_msk[o + 2] = rec_msk[o + 3] = 1;
+        unsigned o = rec_pa[e].off, s2 = rec_pa[e].split ? 2u : 1u; /* split: words o, o+2, o+3, o+4; else o..o+3 */
+        u32 ix = rec_pa[e].idx;
+        u8 cl = (u4_pal >= 0 && ix >= (u32)u4_pal && ix < (u32)u4_pal + 4u * GPAL) ? 2 : 3;
+        unsigned ws[4] = { o, o + s2, o + s2 + 1u, o + s2 + 2u };
+        for (unsigned t = 0; t < 4; t++) { rec_msk[ws[t]] = 1; rec_cl[ws[t]] = cl; }
     }
     for (unsigned i = 0; i + 1 < na;) { /* UC2: words that hold a per-frame address, not compared (UC3 patches them): 0x227 index buffer, texture unit 0, 1, 2 address */
         u32 hd = a[i + 1]; unsigned c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u), base = hd & 0x3FFu, inc = hd >> 31;
@@ -2410,14 +2413,16 @@ int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, u
         /* PICA order: param0 (word i) is the header register, the params after the header are reg + k + 1 when incremental */
         for (unsigned k = 0; k <= c; k++) {
             unsigned w = k ? i + 2 + (k - 1) : i, r = inc && k ? base + k : base;
-            if (r == 0x85 || r == 0x95 || r == 0x9D) rec_msk[w] = 1;
+            if (r == 0x85 || r == 0x95 || r == 0x9D) { rec_msk[w] = 1; rec_cl[w] = 1; }
         }
         i += len;
     }
     for (unsigned j = 0; j < na; j++) if (!rec_msk[j] && a[j] != b[j]) { (*bad)++; if (rec_fj == ~0u) rec_fj = j; }
+    for (unsigned j = 0; j < na; j++) if (a[j] != b[j]) rec_cc[rec_cl[j]]++; /* UC3M: differing words per class, mask not applied */
     return 0;
 }
 unsigned pm_gpu_rec_fj(void) { return rec_fj; } /* UC2: first word the last pm_gpu_rec_same counted as bad (~0 none) */
+void pm_gpu_rec_cls(unsigned* c) { for (int q = 0; q < 4; q++) { c[q] = rec_cc[q]; rec_cc[q] = 0; } } /* UC3M: oth, adr, pal, uni differing words; resets */
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */

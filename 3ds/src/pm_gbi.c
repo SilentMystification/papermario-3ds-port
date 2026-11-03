@@ -3406,9 +3406,11 @@ static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key
 static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that differs: model version, texture handle, cache slot generation */
 static unsigned rec_hit, rec_bad, rec_miss; /* UC2: reccheck compares (hit), words outside patch slots (bad), patch tables (miss) */
 static unsigned rec_mg; /* UC2: valid records not compared, the group words differ at capture start */
+static unsigned rec_stg; /* UC3b: captures refused, a bound texture slot is in its load frame */
 static u32 rec_g0[7]; /* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush */
 void pm_gpu_grp_get(u32* g); /* pm_gpu.c, UC2: ctx+0xF0..0xFC */
 unsigned pm_gpu_rec_fj(void); /* pm_gpu.c, UC2: first bad word of the last compare */
+void pm_gpu_rec_cls(unsigned* c); /* pm_gpu.c, UC3M: differing words per class (oth, adr, pal, uni) */
 static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
 static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
 
@@ -3511,6 +3513,9 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     memcpy(k->grp, rec_g0, sizeof k->grp);
     k->tgen0 = rec_tgen(k->s0); k->tgen1 = rec_tgen(k->s1); k->state = 2;
     if (r < 0) { rec_emp++; return; }
+    if (pm_tex_cur_vram_pending() || pm_tex_aux_vram_pending()) { /* UC3b: a bound slot draws its linear stage copy, the record would hold that address */
+        k->state = 0; rec_stg++; return;
+    }
     if (!whole || r == 0 || n > REC_MAX_WORDS) {
         if (!whole) rec_part++;
         rec_ref++;
@@ -3527,12 +3532,13 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     rec_build++; rec_bytes += n * 4u;
 }
 static __attribute__((noinline, cold)) void rec_report(void) {
-    unsigned recs = 0, pt, wbad, pk;
+    unsigned recs = 0, pt, wbad, pk, cc[4];
     for (unsigned s = 0; s < 256; s++) recs += rk[s].state == 1;
     pm_gpu_rec_count(&pt, &wbad, &pk);
-    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u hit %u bad %u miss %u mg %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk, rec_hit, rec_bad, rec_miss, rec_mg);
+    pm_gpu_rec_cls(cc);
+    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u hit %u bad %u miss %u mg %u stg %u cls oth %u adr %u pal %u uni %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk, rec_hit, rec_bad, rec_miss, rec_mg, rec_stg, cc[0], cc[1], cc[2], cc[3]);
     rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_bytes = rec_rb = rec_mv = rec_mh = rec_mt = 0;
-    rec_hit = rec_bad = rec_miss = rec_mg = 0;
+    rec_hit = rec_bad = rec_miss = rec_mg = rec_stg = 0;
 }
 
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
