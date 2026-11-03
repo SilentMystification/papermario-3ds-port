@@ -1,29 +1,49 @@
-# Agent handoff: POSHUD (Mario position row) and the map change block
+# Agent handoff: POSHUD (Mario position row), stats row and the map change block
 
-Branch `poshud` (worktree `papermario-3ds-port-poshud`, from main 99266ab2d).
+Branch `poshud` (worktree `papermario-3ds-port-poshud`). Rework 2 merged from main 77a63e603.
 
 ## State
-- Done: Mario row 5 on the bottom screen (poshud option, Debug tab row 8, or the poshud switch), drawn every frame. Camera row removed.
-- Done: map change block on HUD rows 1 to 3 for the 2 s hold (MAPHUD). It replaces the fps, memory and VRAM rows during the hold. The log window does not move.
-- Tests: toad_pond, mapchange_poshud, botlayout (see the POSHUD2 section of docs/handoff/test_catalog.md).
+- Done: fixed HUD rows, always visible. The map block never replaces the fps, memory or VRAM rows.
+- Done: Mario row (poshud option, Debug tab row 8, or the poshud switch), drawn every frame. Camera row removed.
+- Done: stats row (stats option) drawn after the Mario row.
+- Done: map block on HUD rows 4 to 6: during the 2 s change it shows old and new map. Otherwise the current map.
+- Tests: mapchange_poshud (poshud on, stats off), mapchange_allrows (both on), mapchange_hud (both off). See the POSHUD2 section of docs/handoff/test_catalog.md.
 
-## Layout
-- Position row off: as BOTLAYOUT. Rows 1 to 6 HUD, 7 separator, 8 header, 9 to 26 log, 27 separator, 28 to 30 footer.
-- Position row on: 1 fps, 2 memory, 3 VRAM, 4 blank, 5 `Mario x <x> y <y> z <z> yaw <a>` (whole numbers, rounded), 6 stats, 7 and 8 blank, 9 separator, 10 header, 11 to 26 log (16 rows), 27 separator, 28 to 30 footer.
-- Map block (2 s): row 1 old id; row 2 old area and map, `->`, new id; row 3 new area and map (right column at col 22).
+## Row table (1-based, bottom screen)
+| Row | Item | When |
+|---|---|---|
+| 1 | fps, ms, late% | always |
+| 2 | memory | always |
+| 3 | VRAM | always |
+| 4 | map block line 1: old id (change) or current id (idle) | always |
+| 5 | map block line 2: `old area -> new id` (change) or current area and map (idle) | always |
+| 6 | map block line 3: new area and map (change) or blank (idle) | always |
+| 7 | Mario `Mario x <x> y <y> z <z> yaw <a>` (whole numbers) | poshud on |
+| 7 or 8 | stats row (`t`, `i`, `c`, `d`, `o`, `k`, `x`, `sp`, `sl`, `gr`) | stats on |
+| 7 + poshud + stats | separator (39 dashes) | always |
+| separator + 1 | log header (console and SD level) | always |
+| separator + 2 to 26 | log window (scrolls) | always |
+| 27 | separator | always |
+| 28 | map (`Map: <id> (area A, map M)`) | always |
+| 29 | apt, model, build | always |
+| 30 | blank | always |
+
+Separator row: 7 with neither option, 8 with poshud, 9 with both (the log window loses one row per option: 18, 17, 16 rows).
 
 ## Code
-- pm_route.c: `pm_pos_text(char*)` (Mario only, integer printf); `pm_map_hud_step(step, hold, rows)` returns 1 and fills the block.
-- pm_main.c: the position text is built each frame in the HUD block (not in the hudint block). The memory rows keep hud_ms.
-- pm_gpu.c: `pos_on` sets LOG_TOP (9 or 11) and LOG_ROWS (18 or 16). `frame_pos` redraws the layout on change and resets the log cursor to the window top.
-- CAP1 log line now prints `pos f<frame> Mario x ...` (scenario mac01t_cap1 regex updated).
+- pm_route.c: `pm_pos_text(char*)` (Mario only, integer printf); `pm_map_hud_step(step, hold, rows)` always fills the 3 map rows, returns 1 during the hold.
+- pm_gpu.c: `pm_gpu_hud(line0, stats, mem, pos, map)`. `stats` and `pos` are NULL when off. `pos_on`, `stats_on` set LOG_TOP (9 + extra) and LOG_ROWS (18 - extra). `frame_lay` (LAY_KEY) redraws the layout on change and resets the log cursor to the window top.
+- pm_main.c: the Mario text is built each frame (not in the hudint block). The memory rows keep hud_ms.
+- CAP1 log line prints `pos f<frame> Mario x ...` (scenario mac01t_cap1 regex updated).
 
 ## Open items
-- Option off when the HUD is off: no position row (the HUD block only runs with dbg_hud on).
-- Layout change on the console clears no text: the rows that become the log window after the position row is turned off keep old separator or header text until the log scrolls.
-- Row 29 of the botlayout compare was not read. It differs in the build tag.
-- Shared Azahar: two starts ended after 6 s while another azahar.exe ran. The lock in run_azahar.ps1 did not stop that run.
+- Turning an option off leaves old text in the rows that become the log window until the log scrolls.
+- No row is dropped: the log window gives its rows (18 to 16).
+- With the HUD off (dbg_hud), no HUD rows draw, including the Mario and stats rows.
+- toad_pond run exit 2 (marker check read a log.txt the run did not write, `-CheckLog` 3 of 3). Two starts ended early while another azahar.exe ran.
+- Azahar budget for POSHUD used: 8 of 8.
+- Not pushed.
 
 ## Commands
 - Build: `PM_LANE=POSHUD sh 3ds/build.sh` (worktree needs assets/us and ver/us/build from the main folder, git-ignored).
-- Test: `PM_ROW=POSHUD powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 <toad_pond|mapchange_poshud|botlayout> -Row POSHUD -Build POSHUD -Try`
+- Test: `PM_ROW=POSHUD powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 <mapchange_poshud|mapchange_allrows|mapchange_hud|toad_pond|botlayout> -Row POSHUD -Build POSHUD -Try`

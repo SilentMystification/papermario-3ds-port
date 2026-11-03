@@ -576,17 +576,18 @@ void pm_frame_loop(void) {
             if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "%d%%?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "%d%%", pm_cpu_game_value);
             if (have_fps) snprintf(top, sizeof(top), "%.0f/%d FPS late%d%% %5.1f ms", fps_draw, pm_interp_on > 0 ? 60 : 30, late_pct, frame_ms);
             else snprintf(top, sizeof(top), "-/- FPS %5.1f ms", frame_ms);
-            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast")) snprintf(stats, sizeof stats, "%s", pm_gbi_stats());
+            const char* stat_p = NULL; /* the stats row exists only with the stats option */
+            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast")) { snprintf(stats, sizeof stats, "%s", pm_gbi_stats()); stat_p = stats; }
             snprintf(sys, sizeof sys, "apt: %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
             { /* MAPHUD: 2 s of steps after a map change. The step runs with the HUD off too (the map info line and the footer map). */
-                char mapb[3][40]; /* MAPHUD: the 3 row block on HUD rows 1 to 3 while map_on */
-                const int map_on = pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u), mapb);
+                char mapb[3][40]; /* MAPHUD: the map block, HUD rows 4 to 6: the change text for 2 s, else the current map */
+                pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u), mapb);
                 pm_gpu_footer(pm_map_now(), sys);
                 if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
                     unsigned h0 = pm_ph_on ? pm_ticks() : 0;
                     char pos[40]; /* POSHUD: Mario's row, every frame (not the hudint refresh) */
                     if (pm_opt.pos_hud || pos_dbg) pm_pos_text(pos);
-                    pm_gpu_hud(top, stats, mem, (pm_opt.pos_hud || pos_dbg) ? pos : NULL, map_on ? mapb : NULL);
+                    pm_gpu_hud(top, stat_p, mem, (pm_opt.pos_hud || pos_dbg) ? pos : NULL, mapb);
                     if (pm_ph_on) pm_ph_hud_us += (pm_ticks() - h0) / 268u;
                 }
             }

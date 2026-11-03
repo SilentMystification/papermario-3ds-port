@@ -347,100 +347,6 @@
       "reason": ""
     },
     {
-      "name": "yard_texwin0",
-      "status": "unverified",
-      "subject": "Scratch before run of yard: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
-      "proves": "A preset start loads the yard map and runs steady frames with shots.",
-      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug texwin0",
-      "until": "warp: scene f300 ",
-      "cap": 90,
-      "deadline": 20,
-      "first_marker": "warp: kmr_20 entry 4",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: kmr_20 entry 4"
-        },
-        {
-          "name": "steady frame",
-          "regex": "warp: scene f300 "
-        },
-        {
-          "name": "shot",
-          "regex": "shot \\d+ frame 20[0-5]\\b"
-        }
-      ],
-      "reason": ""
-    },
-    {
-      "name": "mac01t_texwin0",
-      "status": "unverified",
-      "subject": "Scratch before run of mac01t: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
-      "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1623 to 2065 (1844 +/- 12 %). Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
-      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase texwin0",
-      "until": "mdlsum f899 r12 ",
-      "cap": 120,
-      "deadline": 20,
-      "first_marker": "warp: mac_00 entry 4",
-      "expects": "tour",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_00 entry 4"
-        },
-        {
-          "name": "tour step mac_01",
-          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
-        },
-        {
-          "name": "opsplit",
-          "regex": "opsplit f\\d+ ops"
-        },
-        {
-          "name": "mdlsum total ops per frame (gate 757 to 963, 860 +/- 12 %, after MR1 7d00a451c)",
-          "regex": "mdlsum f899 tot ops (\\d+) ",
-          "min": 757,
-          "max": 963
-        },
-        {
-          "name": "mdlsum rows",
-          "regex": "mdlsum f899 r12 "
-        },
-        {
-          "name": "shot",
-          "regex": "shot \\d+ frame 50[0-5]\\b"
-        }
-      ],
-      "reason": ""
-    },
-    {
-      "name": "kmr_10_dd_texwin0",
-      "status": "unverified",
-      "subject": "kmr_10 entry 0 with texwin0 (TEXWIN rule off), before pair for kmr_10_dd, frames 200 to 205.",
-      "proves": "drawlog=file frame window logs the chunk list of a warped map and the shots show the wall.",
-      "debug": "warp=kmr_10:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texstat texbind texwin0",
-      "until": "shot 5 frame 205",
-      "cap": 45,
-      "deadline": 20,
-      "first_marker": "warp: kmr_10 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: kmr_10 entry 0"
-        },
-        {
-          "name": "shot",
-          "regex": "shot \\d+ frame 20[0-5]\\b"
-        }
-      ],
-      "reason": ""
-    },
-    {
       "name": "bowser_intro_fire",
       "status": "unverified",
       "subject": "Intro Bowser battle (BTL_KPA2_FORMATION_01, stage 01, entered from kmr_03 with the battle switch at scene frame 100). Shots every 8 frames for 30 bursts: look for the fire (Bowser breath) with a line on the top of the flame.",
@@ -966,9 +872,9 @@
     },
     {
       "name": "mapchange_hud",
-      "status": "unverified",
-      "subject": "Bottom screen rows 1 to 3 after the tour change to mac_01 (Toad Town, area 1 map 2, change at step 170). Shots at frames 226 to 229 show the 3 row map block (MAPHUD). From frame 230 (end of the 60 step hold) the fps, memory and VRAM rows return.",
-      "proves": "A map change shows the 3 row map block on the HUD for 2 s (MAPHUD, pm_map_hud_step) and the normal HUD rows return when the hold ends.",
+      "status": "verified",
+      "subject": "Bottom screen after the tour change to mac_01 (Toad Town, area 1 map 2, change at step 170), poshud and stats off. Rows 1 to 3 fps, memory, VRAM always. Rows 4 to 6 the map block: change text during the 60 step hold, then the current map.",
+      "proves": "A map change shows the 3 row map block in rows 4 to 6 for 2 s (MAPHUD, pm_map_hud_step) without replacing the fps, memory or VRAM rows.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
       "until": "shot \\d+ frame 23[3-7]\\b",
       "cap": 60,
@@ -999,8 +905,8 @@
     {
       "name": "mapchange_poshud",
       "status": "verified",
-      "subject": "Bottom screen after the tour change to mac_01 (Toad Town, change at step 170), with the poshud switch. Frames 226 to 229 show the 3 row map block on rows 1 to 3: row 1 'mac_00', row 2 'area 1 map 1 -> mac_01', row 3 'area 1 map 2'. From frame 230 the fps, memory and VRAM rows return, and the Mario row (row 5) shows on every frame.",
-      "proves": "MAPHUD block (pm_map_hud_step, 3 rows during the 60 step hold, then the normal rows) and POSHUD (Mario row 5 with the log window at rows 11 to 26).",
+      "subject": "Bottom screen after the tour change to mac_01 (Toad Town, change at step 170), with the poshud switch, stats off. Rows 1 to 3 fps, memory, VRAM on every frame. Rows 4 to 6 the map block: during the hold row 4 'mac_00', row 5 'area 1 map 1 -> mac_01', row 6 'area 1 map 2'; after it the current map (row 6 blank). Row 7 the Mario row.",
+      "proves": "All HUD rows visible during the map change (the block uses rows 4 to 6, no HUD row is replaced) and the Mario row at row 7, separator row 8, header row 9, log window from row 10 with stats off.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 poshud shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
       "until": "shot \\d+ frame 23[3-7]\\b",
       "cap": 60,
@@ -1026,7 +932,39 @@
           "regex": "shot \\d+ frame 2[23]\\d\\b"
         }
       ],
-      "reason": "POSHUD and MAPHUD run: bottom shots at frames 226 to 237. Frames 226 to 229 show the block, frame 230 on shows the normal rows."
+      "reason": "POSHUD and MAPHUD run: bottom shots at frames 226 to 237. Block on the hold frames, normal current map after."
+    },
+    {
+      "name": "mapchange_allrows",
+      "status": "verified",
+      "subject": "Bottom screen after the tour change to mac_01 with poshud and stats on (largest HUD). Rows 1 to 3 fps, memory, VRAM. Rows 4 to 6 the map block (hold: 'mac_00', 'area 1 map 1 -> mac_01', 'area 1 map 2'; after: current map). Row 7 the Mario row, row 8 the stats row, row 9 separator, row 10 log header, log rows 11 to 26.",
+      "proves": "Every HUD row is visible at once with both optional rows on, and the log window shrinks by 2 rows (11 to 26) without losing HUD rows.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 poshud stats shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
+      "until": "shot \\d+ frame 23[3-7]\\b",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "map change",
+          "regex": "maphud: mac_01 area 1 map 2 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 2[23]\\d\\b"
+        }
+      ],
+      "reason": "Layout run: poshud and stats on. Bottom shots at frames 226 to 237, the block shows on the hold frames."
     },
     {
       "name": "exit_armed",
@@ -1165,7 +1103,7 @@
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard_rec, with the replay switch (UC3e) and no reccheck. Top shots at frames 200 to 204.",
       "proves": "Records replay at the G_DL of their group (runs above 0 on the rec line). The picture equals the no-replay HEAD shot.",
-      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug recplay",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug phase phsum recplay",
       "until": "rec f34\\d ",
       "cap": 45,
       "deadline": 20,
@@ -1207,6 +1145,26 @@
         }
       ],
       "reason": "UC2F: until is the window 2 rec line (f34x). The rec line carries hit, bad and miss."
+    },
+    {
+      "name": "mac01t_rp",
+      "status": "unverified",
+      "subject": "Mario in mac_01 (Toad Town), same tour and debug string as mac01t_rec_chk, with the replay (UC3e) and no reccheck. Top shots at frames 500 to 505.",
+      "proves": "Records replay at the G_DL on mac_01 (rec line runs above 0). The picture equals the no-replay HEAD shot. Phase counters give the replay cost.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase fsplit recplay",
+      "until": "rec f6\\d\\d ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        }
+      ],
+      "reason": "UC3e replay gate on mac_01 and the phase counters for the replay cost. Until is the window 2 rec line (f6xx)."
     },
     {
       "name": "mac01t_rec",
@@ -3068,8 +3026,8 @@
       "status": "unverified",
       "subject": "Toad Town, wide on, uishow=coins opens the coin counter window at frame 120 (show_coin_counter). Shots frames 122 to 125. UA3 gate: the counter sits at the bottom left edge (x pm_wide_left(32), y pm_wide_bottom(164)).",
       "proves": "UA3: the coin counter window follows the wide view (bottom and left).",
-      "debug": "preset=toad wide uishow=coins shots shotwin=200:30 loglevel=debug",
-      "until": "shot \\d+ frame 216\\b",
+      "debug": "preset=toad wide uishow=coins shots shotwin=122:4 loglevel=debug",
+      "until": "shot \\d+ frame 125\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -3085,11 +3043,133 @@
           "regex": "debug uishow: coins opened"
         },
         {
-          "name": "shot at 216",
-          "regex": "shot \\d+ frame 216\\b"
+          "name": "shot at 125",
+          "regex": "shot \\d+ frame 125\b"
         }
       ],
       "reason": "UA3 gate by eye."
+    },
+    {
+      "name": "warpfix_live",
+      "status": "unverified",
+      "subject": "Save slot 0 loaded (loadslot=0), then the Select menu warp (pm_warp_live) to kmr_02 entry 0 at scene frame 180. Log only: the warpstat lines show items, badges, coins and story before and after the live warp.",
+      "proves": "A live warp changes only the map and entry. Items, badges, coins and story progress before and after the live warp are equal (WARPFIX).",
+      "debug": "warp=kmr_20:4 loadslot=0 livewarp=180:kmr_02:0 warpitems loglevel=debug",
+      "until": "warpstat after live",
+      "cap": 45,
+      "deadline": 35,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "before live",
+          "regex": "warpstat before live"
+        },
+        {
+          "name": "after live",
+          "regex": "warpstat after live"
+        }
+      ],
+      "reason": "WARPFIX: log-only reproduction of the item and story reset on a live warp. Until is the after-line."
+    },
+    {
+      "name": "yard_texwin0",
+      "status": "unverified",
+      "subject": "Scratch before run of yard: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug texwin0",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "mac01t_texwin0",
+      "status": "unverified",
+      "subject": "Scratch before run of mac01t: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
+      "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1623 to 2065 (1844 +/- 12 %). Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase texwin0",
+      "until": "mdlsum f899 r12 ",
+      "cap": 120,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f\\d+ ops"
+        },
+        {
+          "name": "mdlsum total ops per frame (gate 757 to 963, 860 +/- 12 %, after MR1 7d00a451c)",
+          "regex": "mdlsum f899 tot ops (\\d+) ",
+          "min": 757,
+          "max": 963
+        },
+        {
+          "name": "mdlsum rows",
+          "regex": "mdlsum f899 r12 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 50[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "kmr_10_dd_texwin0",
+      "status": "unverified",
+      "subject": "kmr_10 entry 0 with texwin0 (TEXWIN rule off), before pair for kmr_10_dd, frames 200 to 205.",
+      "proves": "drawlog=file frame window logs the chunk list of a warped map and the shots show the wall.",
+      "debug": "warp=kmr_10:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texstat texbind texwin0",
+      "until": "shot 5 frame 205",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
     },
     {
       "name": "chapter_wide",
