@@ -468,7 +468,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
     if (chk && dlc_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
     const float(*m)[4] = combined;
     u32 entry = geom;
-    if (rec_on) { rec_dln++; rec_gin = geom; } /* UC3d: a capture counts its static lists and the geom at entry */
+    if (rec_on) { rec_dln++; rec_gin = geom; rec_gdl = (u32)l; } /* UC3d: a capture counts its static lists and the geom at entry */
     unsigned gmi = GV_NONE;
     int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
     dlc_c.lists++;
