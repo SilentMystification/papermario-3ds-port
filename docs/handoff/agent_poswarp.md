@@ -24,3 +24,25 @@ Branch: poswarp (worktree ..\papermario-3ds-port-poswarp, from main 99266ab2d). 
 ## Commands
 - Test: `PM_ROW=POSWARP powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 kmr10_pos -Row POSWARP -Build POSWARP -Try`
 - Justification: 3ds/logs/perf/status_POSWARP.txt, one line per start.
+
+## Start 2 (kmr10_pos, PM_ROW POSWARP, budget 2 of 8)
+- Log line now prints set and settled: `poswarp: placed Mario at -142.000 136.000 221.000 on map kmr_10 settled -142.000 97.265 221.000 yaw 90.00 (readback)`. x and z exact. Until changed to shot frame 56 to 60; the run ended at 21 s (Azahar exited), the until shot was not written. Shots written: frames 40 and 44 only.
+- Top-screen shots at frames 40 and 44 are fully black (all pixel 0). Bottom shot 44 has content.
+- Mario falls: scene f300 pos -142 20 221, vy -1913, actionState 0. He does not stop at 97.265. No floor under this spot near the wall at x -142 z 221, so the map gate (Mario on terrain) fails.
+- Open: find the floor under the spot (ground probe at the placement, or another x z point). Azahar start 3 is not used.
+
+## Start 3 and 4 (probe)
+- Start 3: ray probe returned -1 at every frame, because hitDepth (max ray length) was not set. Start 4: fixed (hitDepth 1000).
+- Start 4 probe: ray from y 400 at x -142 z 221 hits collider 28 at y 20.000 at f30 (before placement), f60, f120, f180. Player ground check returns 20.000 after the fall. kmr_10 has 48 colliders. No collider at y 136 on that spot, so the placement cannot stand at 136.
+- Start 5 (shotwin 56, deadline 35): top shot frame 56 shows Mario on the path by the fence. Log checks pass (2 of 2). Settled y 20, the settle gate of 3 units around 136 is not met.
+- Decision for the orchestrator: keep y 136 (falls to y 20), or change the kmr10_pos y to 20 for a pass on the terrain.
+
+## Final state (orchestrator decision: y 20 gate)
+- Floor probe (start 4, ray from y 400 at x -142 z 221, max length 1000): floor collider 28 at y 20.000 at scene frames 30 (before placement), 60, 120, 180. The ray misses at 136, so no surface exists at y 136 on this spot. kmr_10 has 48 colliders.
+- Start 3 ray results are invalid (hitDepth unset). Start 5 settled at y 20, top shot frame 56 shows Mario on the path by the fence.
+- Scenario kmr10_pos: pos=-142:20:221. Gate: x and z within 0.5, y settled within 3 of 20. Start 6 runs this gate (result in the catalog row).
+- Scenario kmr10_pos_hi: pos=-142:136:221 (texture garble band view). Gate on x and z only. Not run.
+- Azahar starts on POSWARP: 7 of 8. Start 6: Azahar exited at 1 s, no log. Start 7 (retry): Azahar exited at 21 s, no log. Both were not a test result. The shared Azahar log (sdmc log.txt) was written by other runs at 13:41. One start is left. kmr10_pos with the y 20 gate has not run yet.
+- Padscript token pos_<x>:<y>:<z>[:<angle>]: built, not run.
+- Branch poswarp: merged main (4fc505904) into it, then commits 13d73836a, d69a18551 and the y 20 commit.
+

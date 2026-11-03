@@ -54,7 +54,7 @@ int pm_route_ev_kind(const char* name);
 int pm_route_aim(int tx, int tz, int* sx, int* sy);
 /* POSWARP: pos_<x>:<y>:<z>[:<angle>] tokens, parsed here, placed by pm_warp.c at their step (go 4, index into ps_pos) */
 void pm_pos_set(const float* v, int n);
-void pm_pos_log(const char* how);
+void pm_pos_log(const float* set, const char* how);
 int pm_pos_parse(const char* s, float* out);
 static float ps_pos[16][4];
 static int ps_posn[16], ps_npos;
@@ -63,7 +63,7 @@ static void ps_run_marks(void) {
     while (ps_i < ps_n && ps[ps_i].mark) {
         if (ps[ps_i].go == 2) { pm_log("route: goto %s:%d f%u", ps_marks[ps[ps_i].mark - 1], (int)ps[ps_i].gx, pm_frame_count()); pm_route_goto(ps_marks[ps[ps_i].mark - 1], ps[ps_i].gx); }
         else if (ps[ps_i].go == 3) pm_route_save(ps[ps_i].gx);
-        else if (ps[ps_i].go == 4) { pm_pos_set(ps_pos[ps[ps_i].gx], ps_posn[ps[ps_i].gx]); pm_pos_log("padscript"); }
+        else if (ps[ps_i].go == 4) { pm_pos_set(ps_pos[ps[ps_i].gx], ps_posn[ps[ps_i].gx]); pm_pos_log(ps_pos[ps[ps_i].gx], "padscript"); }
         else pm_log("route: seg %s f%u scan %u t=%u ms", ps_marks[ps[ps_i].mark - 1], pm_frame_count(), pm_pad_scans, pm_uptime_ms());
         ps_i++;
     }
