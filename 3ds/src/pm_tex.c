@@ -1507,7 +1507,9 @@ int pm_tex_bind(void) {
     if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
     if (bind_probe) bind_probe_one(cur, &slots[cur]);
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);
-    C3D_TexSetFilter(tp, tex_filt, tex_filt);
+    /* TEXGARBLE test switches (scratch): texnear = point filter, texclamp = clamp to edge, both for every bind of unit 0 */
+    if (PMDL("texclamp")) ws = wt = GPU_CLAMP_TO_EDGE;
+    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : tex_filt, PMDL("texnear") ? GPU_NEAREST : tex_filt);
     C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB0]++; if (slot_draws_stage(&slots[cur])) pm_dc_c[DC_TBS]++;
     C3D_TexBind(0, tp);
@@ -1594,7 +1596,8 @@ int pm_tex_bind_aux(void) {
     if (!staged && au_last == &slots[aux].tex && au_f == (int)tex_filt && au_ws == (int)ws && au_wt == (int)wt) return 1;
     tb_last = NULL; /* DR1: this changes the filter and wrap of a texture that unit 0 may use */
     const C3D_Tex* tp = tex_for_draw(&slots[aux]);
-    C3D_TexSetFilter(tp, tex_filt, tex_filt);
+    if (PMDL("texclamp")) ws = wt = GPU_CLAMP_TO_EDGE; /* TEXGARBLE test switch (scratch): the aux unit too */
+    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : tex_filt, PMDL("texnear") ? GPU_NEAREST : tex_filt);
     C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB1]++;
     C3D_TexBind(1, tp);
