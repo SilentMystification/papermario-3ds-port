@@ -55,3 +55,9 @@ No push. No stubs. No toggles. The debug log lines and the shot burst in btl_sta
 - Start 6 (padscript wait20,right*30,A,wait150): Mario did not move (pos -100 30 -370 at f300, f600, f900, f1200). No talk anchor line, no bubble. Cause not known: stick input, a wall at z -370, or the NPC is not at z -370.
 - UA1 budget: 6 of 8 used. The msg_api.c:96 log and pm_gpu_shot_burst(8) are in the working tree, uncommitted.
 - Next: add the NPC z to the simstep line (one line in pm_warp.c), then one start with a route to n0 (dright or the go_ token with the z).
+
+## NPC position (start 7 and 8, preset=toad wide simlog)
+
+- Toad n0 at x -66, y 20, z -532. Mario at x -100, y 30, z -370 (f110). Distance about 162 units in z.
+- Plan (coordinator): pos=<x>:<y>:<z> from the POSWARP branch, placing Mario about 40 units in front of n0, then A. Poswarp commit not on branch poswarp at 262fd3c49 time (head 99266ab2d, BOTLAYOUT commits).
+- UA1 budget: 8 of 8 used (starts 1 to 8). Waiting for a reset.
