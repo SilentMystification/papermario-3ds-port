@@ -803,6 +803,26 @@
       "reason": "UC2 stencil probe (log only) with reccheck: UC2D logs ctx+0xF4 beside the last stc_set word. Until is the window 2 rec line (f34x), after the UC2D line in the same rec_check call. Shots at frame 200 are taken before the until."
     },
     {
+      "name": "yard_rp",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4), same as yard_rec, with the replay switch (UC3e) and no reccheck. Top shots at frames 200 to 204.",
+      "proves": "Records replay at the G_DL of their group (runs above 0 on the rec line). The picture equals the no-replay HEAD shot.",
+      "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug recplay",
+      "until": "rec f34\\d ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        }
+      ],
+      "reason": "UC3e replay gate: the rec line prints runs (replays), wbad and bad. Until is the window 2 rec line (f34x)."
+    },
+    {
       "name": "yard_rec",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with the reccheck switch (UC2). Top shots at frames 200 to 204.",

@@ -626,6 +626,13 @@ unsigned pm_tex_slot_gen(int i) {
 }
 /* RK2: the cache slots bound on unit 0 and unit 1 (-1 when none). The record key compares their generations. */
 void pm_tex_cur_slots(int* a, int* b) { *a = cur; *b = aux; }
+/* UC3e: 1 when a record may draw slot s (-1 none): the slot is live and not in its load frame. Touches it as a bind does. */
+int pm_tex_rec_use(int s) {
+    if (s < 0) return 1;
+    if (s >= SLOTS || !slots[s].live || slot_draws_stage(&slots[s])) return 0;
+    TOUCH(&slots[s]);
+    return 1;
+}
 
 static const C3D_Tex* tex_for_draw(Slot* s) {
     if (slot_draws_stage(s)) {

@@ -518,6 +518,7 @@ static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (
 static int rec_cap, rec_ref; static u32* rb_buf; static u32 rb_off; static unsigned rb_kick, rb_draw, rb_raw; /* RC1: record capture (pm_gpu_rec_begin, rec_end); rec_ref: a refusal inside the group */
 static unsigned rb_gi, rb_ge; /* UC3c: gidx fill at the window start and end (the first draw of a window reads gidx + rb_gi) */
 static unsigned rec_gm, rec_gm_set, rec_sl_set; static int rec_sa, rec_sb; /* UC3b2: the game matrix and the unit 0, 1 slots of the window's first draw */
+static int ia_hold, ia_rst; /* UC3e: a replay of this frame reads the index arena (ia_hold); an arena reset in the frame waits (ia_rst) */
 void pm_tex_cur_slots(int* a, int* b);
 int pm_tex_cur_vram_pending(void); int pm_tex_aux_vram_pending(void);
 static int pool_buf_ok; /* DR1: the citro3d buffer info holds the vertex pool (set once per frame, cleared by a raw batch and by sh_clear) */
@@ -1939,7 +1940,9 @@ void pm_gpu_begin_wait(void) {
     PH_POP();
 }
 
+void rec_ia_frame(void); /* UC3e: frame start for the index arena (defined with it) */
 void pm_gpu_begin(int clear) {
+    rec_ia_frame(); /* UC3e: the frame before has ended; apply a deferred arena reset */
     begin_clear = clear;
     begin_pend = 1;
     if (pm_interp_on > 0) pm_gpu_begin_wait();
@@ -2463,7 +2466,8 @@ int pm_gpu_rec_idx(u32* w, u32 n, u32* io, u32* ic) {
     *io = ia_n; *ic = cnt; ia_n += (cnt + 7u) & ~7u;
     return (int)nd;
 }
-void pm_gpu_rec_idx_reset(void) { ia_n = 0; }
+void pm_gpu_rec_idx_reset(void) { if (ia_hold) ia_rst = 1; else ia_n = 0; } /* UC3e: deferred while a replay reads the arena */
+void rec_ia_frame(void) { ia_hold = 0; if (ia_rst) { ia_n = 0; ia_rst = 0; } }
 /* UC3d: the state a replay must match (scissor, wide, ortho, off-screen target). Hash only; the record key compares it. */
 unsigned pm_gpu_view_key(void) {
     unsigned h = (unsigned)sci_x0 * 31u + (unsigned)sci_x1;
@@ -2509,6 +2513,24 @@ int pm_gpu_rec_walk(const u32* w, u32 n) {
     return (int)pt;
 }
 void pm_gpu_rec_pt_copy(void* dst, unsigned n) { memcpy(dst, rec_pt, n * sizeof rec_pt[0]); } /* UC3d */
+unsigned pm_gpu_rec_gm_cap(void) { return rec_gm_set ? rec_gm : ~0u; } /* UC3e: game matrix of the window's palette (the capture's gm) */
+/* UC3e: copies a record into the command buffer (libctru GPUCMD_AddRawCommands, words) and re-arms the state the copy leaves stale:
+ * the uniforms of the patch table are resent (citro3d cache), the dirty bits of the capture set and DrawUsed set, shadows reset, draw count kept.
+ * Refuses when the buffer has no room (512 words slack) or the target is off-screen. */
+int pm_gpu_rec_play(const u32* w, u32 n, const RecPatch* pt, unsigned npt, unsigned nd) {
+    u32* b; u32 sz, off;
+    if (off_active || !ia) return 0;
+    flush();
+    GPUCMD_GetBuffer(&b, &sz, &off);
+    if (off + n + 512u > sz) return 0;
+    GPUCMD_AddRawCommands(w, n);
+    raw1_reset(); sh_clear();
+    for (unsigned e = 0; e < npt; e++) C3D_FVUnifDirty[0][pt[e].idx] = true;
+    *(volatile u32*)(__C3D_Context + 0x20) |= REC_DIRTY_CAP | 0x2u;
+    draws_frame += nd; pm_dc_c[DC_RAW] += nd; kick_check();
+    ia_hold = 1;
+    return 1;
+}
 void pm_gpu_rec_count(unsigned* pt, unsigned* wbad, unsigned* pk) { *pt = rec_pt_n; *wbad = rec_wbad_n; *pk = rec_pk_n; rec_pt_n = rec_wbad_n = rec_pk_n = 0; }
 /* UC2: reccheck. a is a valid record, b the words this frame wrote for the same model. Words in patch data slots are not compared
  * (replay writes them). bad: words outside the slots that differ, or the lengths differ. miss: the patch tables differ. Returns -1 when

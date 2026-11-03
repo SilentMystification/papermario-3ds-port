@@ -82,6 +82,7 @@ static PM_HOTD int mv_sp;
 static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
 static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 static PM_HOTD unsigned geom;
+static u32 rec_gdl; /* UC3e: G_DL address of the static list entered in the capture */
 static int rec_on; static unsigned rec_dln, rec_gin, rec_gout, rec_fl; /* UC3d: a capture is open; static lists entered; geom at entry and exit; fl bit 0 wind <= 0, bit 1 tri_since_vtx at exit */
 static PM_HOTD unsigned omode_h;
 void pm_tex_set_filter(int linear);
@@ -3399,6 +3400,7 @@ extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slo
 typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[7];
     u32 io, ic; /* UC3c: index arena span (pm_gpu_rec_idx) */
     u32 gin, gout, view; u16 alen; u8 npt, nd, fl; /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
+    u32 gmc, gdl; /* UC3e: game matrix of the palette at capture, the static list (G_DL address) */
 } __attribute__((aligned(32))) RecKey;
 #define REC_NO_SLOT 0xffffu
 #define REC_ARENA_WORDS (64u * 1024u)
@@ -3420,9 +3422,14 @@ void pm_gpu_rec_idx_reset(void); /* pm_gpu.c, UC3c */
 unsigned pm_gpu_rec_ichk(u32 io, u32 ic); /* pm_gpu.c, UC3c: differing indices of the span against this window */
 unsigned pm_gpu_view_key(void); /* pm_gpu.c, UC3d: hash of the scissor, wide, ortho and off-screen state */
 void pm_gpu_rec_pt_copy(void* dst, unsigned n); /* pm_gpu.c, UC3d: the last walk's patch table (RecPatch, 4 B each) */
+unsigned pm_gpu_rec_gm_cap(void); /* pm_gpu.c, UC3e */
+int pm_gpu_rec_play(const u32* w, u32 n, const void* pt, unsigned npt, unsigned nd); /* pm_gpu.c, UC3e (pt: RecPatch array, 4 B each) */
+int pm_tex_rec_use(int s); /* pm_tex.c, UC3e: slot live and not in its load frame (-1 none) */
 static unsigned rec_ibad; /* UC3c: index words differing in reccheck */
+static unsigned rec_runs; /* UC3e: lists replayed from a record (rec_play) */
 static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
 static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
+static RecKey* rec_rp; /* UC3e: the record whose static list the next G_DL of this group may replay */
 
 static u16 rec_hgen(unsigned m) { unsigned h = pm_rec_tex(m); return h ? (u16)tb_gen[h & 0x7fu] : 0; }
 static u16 rec_tgen(u16 s) { return s == REC_NO_SLOT ? 0 : (u16)pm_tex_slot_gen((int)s); }
@@ -3452,6 +3459,11 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
         u32 ver = pm_rec_ver(slot - 1);
         u16 hg = rec_hgen(slot - 1), t0 = rec_tgen(k->s0), t1 = rec_tgen(k->s1);
         if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) {
+            if (k->state == 1 && !rec_chk_sw()) { /* UC3e: replay candidate; the group must match the capture start */
+                pm_gpu_flush(); rec_g0_set();
+                if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) rec_rp = k;
+                return 0;
+            }
             if (!rec_chk_sw() || k->state != 1) return 0;
             pm_gpu_rec_begin(); rec_g0_set(); /* UC2: the old path still runs; its words are compared with the record */
             rec_on = 1; rec_dln = 0;
@@ -3547,6 +3559,7 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
       if (nd < 0 || nd > 255) { rec_ref++; return; }
       k->io = io; k->ic = ic; k->nd = (u8)nd; }
     k->npt = (u8)npt; k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
+    k->gmc = pm_gpu_rec_gm_cap(); k->gdl = rec_gdl;
     k->off = (u16)at; k->len = (u16)n; k->nb = (u8)(old_nb + 1);
     k->state = k->nb >= 4 ? 3 : 1; /* RK2: the fourth build of the slot stops its captures */
     rec_build++; rec_bytes += n * 4u;
@@ -3556,11 +3569,27 @@ static __attribute__((noinline, cold)) void rec_report(void) {
     for (unsigned s = 0; s < 256; s++) recs += rk[s].state == 1;
     pm_gpu_rec_count(&pt, &wbad, &pk);
     pm_gpu_rec_cls(cc);
-    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u hit %u bad %u miss %u mg %u stg %u cls oth %u adr %u pal %u uni %u ibad %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk, rec_hit, rec_bad, rec_miss, rec_mg, rec_stg, cc[0], cc[1], cc[2], cc[3], rec_ibad);
+    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u hit %u bad %u miss %u mg %u stg %u cls oth %u adr %u pal %u uni %u ibad %u runs %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk, rec_hit, rec_bad, rec_miss, rec_mg, rec_stg, cc[0], cc[1], cc[2], cc[3], rec_ibad, rec_runs);
     rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_bytes = rec_rb = rec_mv = rec_mh = rec_mt = 0;
-    rec_hit = rec_bad = rec_miss = rec_mg = rec_stg = rec_ibad = 0;
+    rec_hit = rec_bad = rec_miss = rec_mg = rec_stg = rec_ibad = rec_runs = 0;
 }
 
+/* UC3e: replays the record at the G_DL of its group (mg_run). Returns 0 (the list runs live) when an input of the record differs: the list
+ * address, geom at entry, wind, interp, scissor and target key, the slots of units 0 and 1, the game matrix of the palette. */
+static __attribute__((noinline)) int rec_play(const Gfx* l) {
+    RecKey* k = rec_rp; rec_rp = NULL;
+    int s0 = k->s0 == REC_NO_SLOT ? -1 : (int)k->s0, s1 = k->s1 == REC_NO_SLOT ? -1 : (int)k->s1;
+    if (k->state != 1 || (u32)l != k->gdl || geom != k->gin) return 0;
+    if ((((pm_gpu_gv_wind() <= 0) ? 1u : 0u) != (k->fl & 1u)) || pm_interp_on > 0 || pm_gpu_view_key() != k->view) return 0;
+    if (!pm_tex_rec_use(s0) || !pm_tex_rec_use(s1)) return 0;
+    if (dlc_gmi() != k->gmc) return 0;
+    if (!pm_gpu_rec_play(ra + k->off, k->len, ra + k->off + k->len, k->npt, k->nd)) return 0;
+    dlc_set_geom(k->gout);
+    memset(vert_live, 0, sizeof vert_live);
+    dlc_dirty = 1; tri_since_vtx = (k->fl >> 1) & 1u; ep_open = 0;
+    rec_runs++;
+    return 1;
+}
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
  * same skips. Returns the first word it does not run (g + n when all ran). The walker runs that word and the rest as ops.
  * A G_DL that is not a dlc hit returns the word after it and sets *nx to the list (the walker pushes it). */
@@ -3611,6 +3640,7 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx,
             __builtin_prefetch(next);
             __builtin_prefetch(next + 4);
             if (pm_ph_on && dlc_on) sp0_kind(2u); /* SPLIT0C */
+            if (rec_rp && rec_play(next)) break; /* UC3e: the record replays this list */
             if (dlc_on && dlc_try(next)) break;
             *nx = next;
             return q + 1;
@@ -3694,6 +3724,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             Gfx* g0 = pc; /* RC1: the record capture takes the group when bit 9 is set */
             int rc = (w1 & 0x200u) ? rec_try(w1) : 0;
             pc = mg_run(pc, n, &nx, w1);
+            rec_rp = NULL; /* UC3e: a replay candidate lasts for its group only */
             if (rc) rec_done(w1, pc == g0 + n && !nx);
             if (pm_ph_on) sp0_group_end();
             if (nx && sp < 12) { stack[sp++] = pc; pc = (Gfx*)nx; }
