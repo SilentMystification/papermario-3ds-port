@@ -468,10 +468,12 @@ static void fl_count(int empty) {
 void pm_gpu_gbiprof_report(unsigned frames) { /* the six most frequent causes since the last report, per frame in 0.01 */
     unsigned tn = 0, te = 0;
     for (int i = 0; i < fl_nt; i++) { tn += fl_tab[i].n; te += fl_tab[i].e; }
-    for (int r = 0; r < 24; r++) {
+    if (frames) pm_log_d("PG0 flush per frame %u.%02u (empty %u.%02u), rects %u consecutive %u, causes:", tn / frames, (tn * 100 / frames) % 100, te / frames, (te * 100 / frames) % 100, fl_rects, fl_consec);
+    for (int r = 0; r < 6; r++) { /* the six most frequent causes: function, line, flushes per frame in 0.01, empty batches */
         int best = -1; unsigned bn = 0;
         for (int i = 0; i < fl_nt; i++) if (fl_tab[i].n > bn) { bn = fl_tab[i].n; best = i; }
         if (best < 0) break;
+        if (frames) pm_log_d("PG0 %s:%d %u.%02u per frame, empty %u", fl_tab[best].fn, fl_tab[best].line, bn / frames, (bn * 100 / frames) % 100, fl_tab[best].e);
         fl_tab[best].n = 0;
     }
     fl_rects = fl_consec = 0;
