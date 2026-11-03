@@ -1659,6 +1659,7 @@ void pm_gpu_eye(int right) {
     flush();
     if (off_active) pm_gpu_off_end();
     if (right && !r_cleared) { r_cleared = 1; if (r_wantclear) C3D_RenderTargetClear(targetR, C3D_CLEAR_ALL, 0, 0); } /* queue order: the clear comes before every part of the frame */
+    grab_dirty = 1; grab_dy0 = grab_dy1 = 0; /* K2: the copy of the other eye is not this eye's frame, so the next grab copies again */
     cur_target = right ? targetR : target;
     pm_eye_e = (right ? PM_EYE_E : -PM_EYE_E) * eye_slider;
     sh_clear(); C3D_FrameDrawOn(cur_target);
@@ -1706,6 +1707,12 @@ int pm_gpu_grab_prev(const void* prev_cfb) {
     if (!target || !gpu_ok) return 0;
     return grab_impl(prev_cfb, 0, 240, 1);
 }
+/* K1: debug switch grablog. One line per grab call: id (grab_n of the frame), source colour buffer, rows, frame, reuse yes or no. */
+static void grab_log(const void* cfb, int y0, int y1, int reuse) {
+    static int on = -1;
+    if (on < 0) on = pm_debug_has("grablog");
+    if (on) pm_log_d("grab %d src %p rows %d-%d frame %u reuse %s", grab_n, cfb, y0, y1, pm_frame_count(), reuse ? "yes" : "no");
+}
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     pm_gpu_begin_wait();
     if (rect_open) flush(); /* DR1 */
@@ -1716,11 +1723,9 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     if (!gpu_ok || off_fail || y1 <= y0) return 0;
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
-        if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) return 1;
-        if (grab_n >= GRAB_MAX) {
-            if (!once++) pm_log_w("B2: more than %d grabs in one frame, the rest reuse the last one", (int)GRAB_MAX);
-            return 1;
-        }
+        if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
+        /* K1: a draw dirtied these rows, so the copy is old. Copy again past GRAB_MAX too (the cap used to return the old copy here). */
+        if (grab_n >= GRAB_MAX && !once++) pm_log_w("B2: %d grabs in one frame, each copies the frame again", (int)GRAB_MAX);
     }
     flush();
     if (prev_frame && (!prev_pre || grab_n)) return 0;
@@ -1757,6 +1762,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     }
     if (was_off) pm_gpu_off_begin(offs[prev].base, offs[prev].w == 64 ? 64 : 320, offs[prev].siz);
     else pm_gpu_off_end();
+    grab_log(cfb, y0, y1, 0);
     if (!prev_frame) { /* PT12: the old frame in grab_tex does not stand for the current frame */
         grab_dirty = 0;
         grab_dy0 = grab_dy1 = 0;
