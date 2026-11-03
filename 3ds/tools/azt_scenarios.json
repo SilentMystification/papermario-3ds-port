@@ -3016,6 +3016,34 @@
         }
       ],
       "reason": "UA3 gate by eye."
+    },
+    {
+      "name": "warpfix_live",
+      "status": "unverified",
+      "subject": "Save slot 0 loaded (loadslot=0), then the Select menu warp (pm_warp_live) to kmr_02 entry 0 at scene frame 180. Log only: the warpstat lines show items, badges, coins and story before and after the live warp.",
+      "proves": "A live warp changes only the map and entry. Items, badges, coins and story progress before and after the live warp are equal (WARPFIX).",
+      "debug": "warp=kmr_20:4 loadslot=0 livewarp=180:kmr_02:0 warpitems loglevel=debug",
+      "until": "warpstat after live",
+      "cap": 45,
+      "deadline": 35,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "before live",
+          "regex": "warpstat before live"
+        },
+        {
+          "name": "after live",
+          "regex": "warpstat after live"
+        }
+      ],
+      "reason": "WARPFIX: log-only reproduction of the item and story reset on a live warp. Until is the after-line."
     }
   ]
 }
