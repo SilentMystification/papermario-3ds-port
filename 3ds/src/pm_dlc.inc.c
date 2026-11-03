@@ -479,7 +479,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
         if (pm_ph_on) sp0_grp++;
-        if (dlc_box_out(g, m)) {
+        if (!rec_on && dlc_box_out(g, m)) { /* UC3b: a capture or check window draws the whole list */
             if (chk) dlc_verify_skip(l, g, m);
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
