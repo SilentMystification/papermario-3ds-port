@@ -2038,6 +2038,7 @@ unsigned pm_gpu_flush_gen(void) { return flush_gen; }
 /* GV1b: add one triangle to the open raw batch. The caller knows that the batch has the same draw parameters (it saw no flush since its last gtrip). The
  * vertices must already carry a flag of the palette of this batch. */
 int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2) {
+    if (rec_cap) rec_ref = 1; /* UC3b: a ring draw (per-frame vertices) refuses the record */
     if (gni == 0 || gidx_n + 3 > GRING_IDX || !g_pal) return 0;
     const unsigned r3[3] = { i0, i1, i2 }, g3[3] = { g0, g1, g2 };
     for (int i = 0; i < 3; i++) {
@@ -2103,6 +2104,7 @@ static int gtrip_batch_open(int use5, const PmFx* fx, const float vp[4], const f
  * has to change is copied). Returns 0 when the raw path cannot take it now. */
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
+    if (rec_cap) rec_ref = 1; /* UC3b: a ring draw (per-frame vertices) refuses the record */
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
     if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
