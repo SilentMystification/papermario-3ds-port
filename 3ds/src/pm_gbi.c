@@ -1037,6 +1037,13 @@ static Dec dec[128];
 static int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
 static unsigned plan_draws, plan_fails;
 
+/* TEXWIN: a clamp axis (cm bit 1) whose window (sz lrt - ult, or lrs - uls, in 10.2) is shorter than its mask period repeats:
+ * the PICA clamp stops at the loaded texture edge, and the texels between the window edge and the mask period are real texture. */
+static unsigned tile_wrap_fix(unsigned cm, unsigned msk, int lo, int hi) {
+    if (PMDL("texwin0")) return cm;
+    if ((cm & 2u) && msk && msk <= 9 && hi > lo && (unsigned)((hi - lo) / 4) < (1u << msk)) return cm & ~2u;
+    return cm;
+}
 static Dec* decide(int two) {
     unsigned key = 2166136261u, i;
     unsigned parts[] = { comb_w0, comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2), (unsigned)comb_alpha_shade };
@@ -1186,7 +1193,8 @@ static void dual_bind(void) {
     if (!plan_active || !cur_plan.uses_tex1 || !td[0].valid || !td[1].valid) return;
     {
         unsigned parts[] = { (unsigned)td[1].src, td[1].fmt, td[1].siz, (unsigned)td[1].w, (unsigned)td[1].h, (unsigned)td[1].stride,
-                             (unsigned)td[1].pal, tst1.tile_wrap[1][0], tst1.tile_wrap[1][1], tst1.tile_wrap[1][2], tst1.tile_wrap[1][3] };
+                             (unsigned)td[1].pal, tst1.tile_wrap[1][0], tst1.tile_wrap[1][1], tst1.tile_wrap[1][2], tst1.tile_wrap[1][3],
+                             (unsigned)tst1.tile_sz[1][0], (unsigned)tst1.tile_sz[1][1], (unsigned)tst1.tile_sz[1][2], (unsigned)tst1.tile_sz[1][3] };
         for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
     }
     if (key != aux_key || !pm_tex_aux_valid()) {
@@ -1195,7 +1203,8 @@ static void dual_bind(void) {
         if (td[1].fmt == 0 && td[1].siz == 2) grab_cur(td[1].src, td[1].w, td[1].h);
         tex_gen++; /* TBREP */
         pm_tex_load(td[1].src, td[1].fmt, td[1].siz, td[1].w, td[1].h, td[1].pal, td[1].pal_n, td[1].stride);
-        pm_tex_set_aux(tst1.tile_wrap[1][0], tst1.tile_wrap[1][1], tst1.tile_wrap[1][2], tst1.tile_wrap[1][3]);
+        pm_tex_set_aux(tile_wrap_fix(tst1.tile_wrap[1][0], tst1.tile_wrap[1][2], tst1.tile_sz[1][0], tst1.tile_sz[1][2]),
+                       tile_wrap_fix(tst1.tile_wrap[1][1], tst1.tile_wrap[1][3], tst1.tile_sz[1][1], tst1.tile_sz[1][3]), tst1.tile_wrap[1][2], tst1.tile_wrap[1][3]);
         aux_key = key;
         cur_tile = -1;
         ens_clear();
