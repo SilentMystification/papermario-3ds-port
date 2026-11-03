@@ -88,6 +88,21 @@ static unsigned tour_f0, tour_ts;
 static int tour_n, tour_wait;
 static s32 w_story = STORY_INTRO;
 static int w_story_set; /* WARPFIX: story= or preset= given. Without it a loaded save keeps its story progress. */
+/* WARPFIX2: a new-file state (boot warp without loadslot, file select or title warp, boss launch outside the world) writes no save.
+ * The block lasts for the run. fio_save_game returns at once (pm_save_blocked). */
+static const char* w_why = "saving disabled by new file warp";
+static int save_block;
+static const char* save_why = "";
+/* WARPFIX2 Boss tab in the world: the values of the loaded save that the fight changes, restored after it */
+static int boss_keep_on, boss_fight, boss_seen_battle, boss_wf, boss_bf;
+static s32 bk_story, bk_hmhp, bk_cmhp, bk_chp, bk_hmfp, bk_cmfp, bk_cfp, bk_pen, bk_cur;
+void pm_save_block(const char* why) {
+    save_block = 1;
+    save_why = why;
+    pm_log("%s", why);
+}
+int pm_save_blocked(void) { return save_block; }
+void pm_save_note(s32 slot) { pm_log_w("warp: save blocked, slot %d not written (%s)", (int)slot, save_why); }
 static char w_map[16] = "kmr_20";
 static s32 w_entry, w_flag, w_partner;
 
@@ -272,6 +287,7 @@ s16 pm_warp_hook(s16 mode) {
         pm_log_w("warp: map %s not found, normal start", w_map);
         return mode;
     }
+    w_why = "saving disabled by boot warp";
     warp_setup(areaID, mapID);
     return GAME_MODE_ENTER_WORLD;
 }
@@ -285,6 +301,7 @@ static void warp_setup(s16 areaID, s16 mapID) {
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)w_entry;
+    if (w_loadslot < 0) pm_save_block(w_why); /* WARPFIX2: a new-file state writes no save */
     if (w_loadslot < 0) clear_player_data();
     if (w_loadslot < 0) clear_saved_variables();
     gGameStatusPtr->areaID = areaID;
@@ -383,7 +400,10 @@ void pm_warp_now(int c, int entry) {
         pm_menu_msg("Warp failed: map %s not found", w_map);
         return;
     }
+    pm_warp_stat("warpstat before fs warp");
+    w_why = "saving disabled by file select or title warp";
     warp_setup(areaID, mapID);
+    pm_warp_stat("warpstat after fs warp");
     pm_warp_pending = 1;
 }
 
@@ -524,6 +544,30 @@ static int pm_boss_launch_now(int i) {
         pm_menu_msg("Boss launch not possible in game mode %d", mode);
         return 0;
     }
+    if (mode == GAME_MODE_WORLD) { /* WARPFIX2: in the world the loaded save stays. Map and entry move, the fight needs story, partner and full HP/FP: they are set here and restored after the fight. */
+        if (boss_keep_on || !get_map_IDs_by_name("mac_00", &areaID, &mapID)) { pm_menu_msg("Boss launch not possible now"); return 0; }
+        boss_keep_on = 1;
+        bk_story = evt_get_variable(NULL, GB_StoryProgress);
+        bk_hmhp = gPlayerData.hardMaxHP; bk_cmhp = gPlayerData.curMaxHP; bk_chp = gPlayerData.curHP;
+        bk_hmfp = gPlayerData.hardMaxFP; bk_cmfp = gPlayerData.curMaxFP; bk_cfp = gPlayerData.curFP;
+        bk_pen = gPlayerData.partners[1].enabled; bk_cur = gPlayerData.curPartner;
+        pm_warp_stat("warpstat before boss");
+        gGameStatusPtr->areaID = areaID;
+        gGameStatusPtr->mapID = mapID;
+        gGameStatusPtr->entryID = 4;
+        evt_set_variable(NULL, GB_StoryProgress, boss_tab[i].story);
+        gPlayerData.partners[1].enabled = 1;
+        gPlayerData.curPartner = 1;
+        gPlayerData.hardMaxHP = gPlayerData.curMaxHP = gPlayerData.curHP = 75;
+        gPlayerData.hardMaxFP = gPlayerData.curMaxFP = gPlayerData.curFP = 30;
+        warp_end_intro(mode);
+        boss_pending = i;
+        boss_frames = 0;
+        set_map_transition_effect(TRANSITION_STANDARD);
+        set_game_mode(GAME_MODE_CHANGE_MAP);
+        pm_log("boss: %s (%s) in the world, the loaded save is kept and restored after the fight", boss_tab[i].label, boss_tab[i].battle);
+        return 1;
+    }
     w_story = boss_tab[i].story;
     w_map[0] = 0;
     strncat(w_map, "mac_00", sizeof w_map - 1);
@@ -532,6 +576,7 @@ static int pm_boss_launch_now(int i) {
     w_loadslot = -1;
     if (w_partner == 0) w_partner = 1;
     if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) { pm_menu_msg("Boss launch failed: map mac_00 not found"); return 0; }
+    w_why = "saving disabled by boss launch outside the world";
     warp_setup(areaID, mapID);
     gPlayerData.hardMaxHP = gPlayerData.curMaxHP = gPlayerData.curHP = 75;
     gPlayerData.hardMaxFP = gPlayerData.curMaxFP = gPlayerData.curFP = 30;
@@ -566,6 +611,31 @@ static void boss_tick(void) {
     gEncounterState = ENCOUNTER_STATE_NONE;
     set_battle_stage(stage);
     load_battle(formation);
+    if (boss_keep_on) { boss_fight = 1; boss_seen_battle = 0; boss_bf = 0; boss_wf = 0; }
+}
+
+/* WARPFIX2: the fight is over when the world is back after the battle. Then the saved story, HP/FP and partner come back. Debug switch
+ * bossend=<n>: the battle ends by the real BATTLE_STATE_END_BATTLE after n battle frames (test only; a player ends the fight in the battle). */
+static void boss_restore_tick(void) {
+    char bv[12];
+    if (!boss_fight) return;
+    if (get_game_mode() == GAME_MODE_BATTLE) {
+        boss_seen_battle = 1;
+        if (pm_debug_value("bossend", bv, sizeof bv) && (unsigned)atoi(bv) == ++boss_bf) {
+            btl_set_state(BATTLE_STATE_END_BATTLE);
+            pm_log("boss: bossend switch, the battle ends now");
+        }
+        return;
+    }
+    if (!boss_seen_battle || get_game_mode() != GAME_MODE_WORLD || ++boss_wf < 10) return;
+    pm_warp_stat("warpstat before boss restore");
+    evt_set_variable(NULL, GB_StoryProgress, bk_story);
+    gPlayerData.hardMaxHP = bk_hmhp; gPlayerData.curMaxHP = bk_cmhp; gPlayerData.curHP = bk_chp;
+    gPlayerData.hardMaxFP = bk_hmfp; gPlayerData.curMaxFP = bk_cmfp; gPlayerData.curFP = bk_cfp;
+    gPlayerData.partners[1].enabled = bk_pen; gPlayerData.curPartner = bk_cur;
+    boss_fight = 0;
+    boss_keep_on = 0;
+    pm_warp_stat("warpstat after boss restore");
 }
 
 /* PT66: Return to Title Screen. The game own soft reset: the Mario overlay fades in, the game sounds stop, then GAME_MODE_STARTUP runs
@@ -928,6 +998,60 @@ static void livewarp_hook(unsigned f) {
     pm_warp_live((int)ARRAY_COUNT(presets) + 1 + idx, entry);
 }
 
+/* WARPFIX2 test switches. fswarp=<scene frame>:<map>:<entry>: the file select warp (pm_warp_now, new-file state) at that frame, then the
+ * map change as the file select exit makes it. bosstest=<scene frame>:<boss index>: the Boss tab launch (pm_boss_launch) at that frame.
+ * Both debug tools only. */
+static int test_frame_args(const char* key, unsigned f, char* name, unsigned nn, int* entry) {
+    char v[48];
+    char *c1, *c2;
+    size_t n;
+    if (!pm_debug_value(key, v, sizeof v) || f != (unsigned)atoi(v)) return 0;
+    c1 = strchr(v, ':');
+    if (!c1) return 0;
+    c2 = strchr(c1 + 1, ':');
+    *entry = c2 ? atoi(c2 + 1) : 0;
+    n = c2 ? (size_t)(c2 - (c1 + 1)) : strlen(c1 + 1);
+    if (n >= nn) n = nn - 1;
+    memcpy(name, c1 + 1, n);
+    name[n] = 0;
+    return 1;
+}
+static void test_items(void) { /* WARPFIX test only: two mushrooms and 50 coins, so a warp or a fight has items to keep */
+    if (!pm_debug_has("warpitems")) return;
+    gPlayerData.invItems[0] = ITEM_MUSHROOM;
+    gPlayerData.invItems[1] = ITEM_MUSHROOM;
+    gPlayerData.coins = 50;
+    pm_log("warpitems: 2 mushrooms and 50 coins set");
+}
+static void fswarp_hook(unsigned f) {
+    char name[16];
+    int entry, idx;
+    if (!test_frame_args("fswarp", f, name, sizeof name, &entry)) return;
+    idx = pm_warp_map_index(name);
+    if (idx < 0) { pm_log_w("fswarp: map %s not found", name); return; }
+    pm_log("fswarp: scene frame %u to %s entry %d", f, name, entry);
+    pm_warp_pending = 0;
+    pm_warp_now((int)ARRAY_COUNT(presets) + 1 + idx, entry);
+    if (pm_warp_pending) {
+        pm_warp_pending = 0;
+        warp_end_intro(GAME_MODE_WORLD);
+        set_map_transition_effect(TRANSITION_STANDARD);
+        set_game_mode(GAME_MODE_CHANGE_MAP);
+    }
+}
+static void bosstest_hook(unsigned f) {
+    char v[16];
+    if (!pm_debug_value("bosstest", v, sizeof v)) return;
+    if (f != (unsigned)atoi(v)) return;
+    {
+        const char* c = strchr(v, ':');
+        int i = c ? atoi(c + 1) : 0;
+        pm_log("bosstest: scene frame %u, boss %d", f, i);
+        test_items();
+        pm_boss_launch(i);
+    }
+}
+
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
     model_dump(frame);
@@ -948,6 +1072,9 @@ void pm_warp_tick(unsigned frame) {
     battle_hooks(f);
     battlelist_tick(f);
     livewarp_hook(f); /* WARPFIX test switch */
+    fswarp_hook(f); /* WARPFIX2 test switch */
+    bosstest_hook(f); /* WARPFIX2 test switch */
+    boss_restore_tick(); /* WARPFIX2 */
     { /* V24b: btlstatus=poison|paralyze|static|dizzy: every frame in a battle the first enemy actor gets that status, to see the palette effect of actor_rendering.c */
         char sv[12];
         if (pm_debug_value("btlstatus", sv, sizeof sv) && get_game_mode() == GAME_MODE_BATTLE && gBattleStatus.enemyActors[0]) {
