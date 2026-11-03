@@ -202,14 +202,8 @@ void pm_vram_unreg(const void* p, unsigned bytes) {
 static unsigned bank_free_kb(int b) { return VRAM_BANK_KB - (vram_used_b[b] >> 10); }
 void pm_mem_scene_reset(void) { scene_min_kb = 2u * VRAM_BANK_KB - vram_used_kb(); scene_peak_kb = vram_used_kb(); }
 
-/* dt_ms: time since the previous refresh (the caller times it). Rows 1 and 2 are VRAM; row 0 is the pool. */
-void pm_mem_hud(char out[3][40], unsigned dt_ms) {
-    static unsigned ev_prev;
-    unsigned evc = 0, sl = 0, ev_rate = 0;
-    pm_tex_map_state(&sl, &evc);
-    if (dt_ms) ev_rate = (evc - ev_prev) * 1000u / dt_ms; /* evictions per second, one division per refresh */
-    ev_prev = evc;
-
+/* Row 0 is the pool, row 1 is VRAM. BOTLAYOUT: the VRAM bank row (bank used and free, evictions per second) is no longer drawn. */
+void pm_mem_hud(char out[2][40]) {
     u32 lin_total = pm_linear_bytes(), heap_total = pm_heap_bytes();
     unsigned spk0 = pm_fs_on ? pm_ticks() : 0u; /* SPK1: cost of the two calls, fsplit only */
     u32 lin_free = (u32)linearSpaceFree();
@@ -224,9 +218,8 @@ void pm_mem_hud(char out[3][40], unsigned dt_ms) {
              tenth_mb(used_b) / 10, tenth_mb(used_b) % 10, tenth_mb(total) / 10, tenth_mb(total) % 10,
              tenth_mb(free_b) / 10, tenth_mb(free_b) % 10);
     snprintf(out[1], 40, "VRAM min %uK pk %uK tex %u/%uK", scene_min_kb, scene_peak_kb, pm_tex_used() >> 10, pm_tex_budget() >> 10);
-    snprintf(out[2], 40, "A %uu/%uf B %uu/%uf ev %u/s", vram_used_b[0] >> 10, bank_free_kb(0), vram_used_b[1] >> 10, bank_free_kb(1), ev_rate);
     static int hud_logged; /* one line per run: proves the refresh ran */
-    if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s | %s", out[0], out[1], out[2]);
+    if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s", out[0], out[1]);
 }
 
 void pm_mem_log(const char* tag) {

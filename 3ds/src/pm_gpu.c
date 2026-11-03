@@ -14,6 +14,15 @@
 #include "pm_gbi.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+/* BOTLAYOUT: bottom screen rows, 1-based as the cursor and ANSI count them (screen row 1 is the top). Rows 1 to 6: the HUD (pm_gpu_hud_flush).
+ * Row 7: separator. Row 8: log header (console and SD level). Rows LOG_TOP to LOG_TOP+LOG_ROWS-1 (9 to 26): the log window, it scrolls
+ * only here. Row 27: separator. Rows 28 to 30: reserved, blank. */
+#define LOG_TOP 9
+#define LOG_ROWS 18
+extern const char* const pm_lvl_name[5]; /* pm_options.c: Error, Warn, Info, Debug, Off */
+static int frame_con = -1, frame_lg = -1; /* the levels in the drawn header; -1: not drawn yet */
+static volatile int hud_new, foot_new;
+static char foot_row[2][40]; /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build) */
 
 typedef struct {
     float x, y, z, w;
@@ -1331,7 +1340,7 @@ void pm_gpu_init(void) {
     pm_con_lock();
     consoleInit(GFX_BOTTOM, &bottom_con);
     setvbuf(stdout, NULL, _IONBF, 0);
-    consoleSetWindow(&bottom_con, 1, 7, 40, 24); /* MAPHUD: the log starts one row lower (cursor row 7, screen row 6) */
+    consoleSetWindow(&bottom_con, 1, LOG_TOP, 40, LOG_ROWS); /* BOTLAYOUT: the log window, rows 9 to 26 */
     pm_con_unlock();
     gpu_ok = vert_base != NULL;
     if (!vert_base) pm_log_e("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
@@ -1367,8 +1376,9 @@ void pm_gpu_menu_draw(const char* text) {
         if (menu_on) {
             for (i = 0; i < MENU_ROWS; i++) { menu_prev[i][0] = 1; menu_put_line(c, i, ""); }
             menu_on = 0;
-            consoleSetWindow(c, 1, 7, 40, 24); /* the log window again, new lines come at the bottom */
-            c->cursorX = 0; c->cursorY = 27;
+            consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS); /* the log window again, new lines come at its top (the rows are blank) */
+            c->cursorX = 1; c->cursorY = 1; /* window-relative: the top row of the log window */
+            hud_new = 1; foot_new = 1; frame_con = -1; /* BOTLAYOUT: the menu blanked the HUD, footer and frame rows: draw them again */
             fflush(stdout);
         }
         pm_con_unlock();
@@ -1406,30 +1416,55 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
 
 /* PI6: the game thread only copies the three HUD rows (no printf, no console call). pm_gpu_hud_flush draws them on the
  * log sink thread, at most 10 times per second. A HUD row written during a draw may show one update late. */
-static char hud_rows[6][40]; /* hud_rows[5]: MAPHUD, bottom row 0 */
-static volatile int hud_new;
+static char hud_rows[4][40]; /* BOTLAYOUT: [0] row 1 fps line or MAPHUD text, [1] and [2] rows 2 and 3 (memory, VRAM), [3] row 4 stats */
 void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
     if (menu_on) return; /* PT69: the menu owns all rows */
     strncpy(hud_rows[0], line0 ? line0 : "", 39);
-    strncpy(hud_rows[1], line1 ? line1 : "", 39);
-    for (int r = 0; r < 3; r++) { memcpy(hud_rows[2 + r], mem[r], 39); hud_rows[2 + r][39] = 0; }
-    hud_rows[0][39] = hud_rows[1][39] = 0;
-    hud_new = 1;
-}
-/* MAPHUD: called on a map change and at the end of its hold only (pm_map_hud_step). */
-void pm_gpu_hud_map(const char* s) {
-    if (menu_on) return;
-    strncpy(hud_rows[5], s, 39);
-    hud_rows[5][39] = 0;
+    strncpy(hud_rows[3], line1 ? line1 : "", 39);
+    for (int r = 0; r < 2; r++) { memcpy(hud_rows[1 + r], mem[r], 39); hud_rows[1 + r][39] = 0; }
+    hud_rows[0][39] = hud_rows[3][39] = 0;
     hud_new = 1;
 }
 
-/* Log sink thread only. Draws the last HUD rows on the bottom console. */
+/* BOTLAYOUT: the separator, the log header and the footer. Absolute rows (ANSI), window the whole screen while they print, then the log window again.
+ * The separator is 39 columns: a 40th column would wrap. */
+static void frame_draw(PrintConsole* c) {
+    char sep[40], left[32], right[16], hdr[40];
+    int con = pm_log_conlevel(), lg = pm_log_level();
+    memset(sep, '-', 39);
+    sep[39] = 0;
+    snprintf(left, sizeof left, "Log (console: %s)", pm_lvl_name[con]);
+    snprintf(right, sizeof right, "(SD: %s)", pm_lvl_name[lg & 3]);
+    snprintf(hdr, sizeof hdr, "%-*s%s", 39 - (int)strlen(right), left, right);
+    consoleSetWindow(c, 0, 0, 40, 30);
+    printf("\x1b[7;1H\x1b[0m%s", sep);
+    printf("\x1b[8;1H\x1b[0m%s", hdr);
+    printf("\x1b[27;1H\x1b[0m%s", sep);
+    printf("\x1b[30;1H%39s", "");
+    consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS);
+    frame_con = con;
+    frame_lg = lg;
+}
+
+/* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build). Set by the game thread, drawn by the sink thread. */
+void pm_gpu_footer(const char* map, const char* sys) {
+    if (!strncmp(foot_row[0], map, 39) && !strncmp(foot_row[1], sys, 39)) return;
+    strncpy(foot_row[0], map, 39);
+    foot_row[0][39] = 0;
+    strncpy(foot_row[1], sys, 39);
+    foot_row[1][39] = 0;
+    foot_new = 1;
+}
+
+/* Log sink thread only. Draws the HUD rows, the footer and the frame (header levels) on the bottom console. */
 void pm_gpu_hud_flush(void) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
-    if (!hud_new || !c->consoleInitialised || menu_on) return;
+    int hud = hud_new, foot = foot_new;
+    int frame = frame_con != pm_log_conlevel() || frame_lg != pm_log_level();
+    if (!(hud || foot || frame) || !c->consoleInitialised || menu_on) return;
     hud_new = 0;
+    foot_new = 0;
     pm_con_lock();
     cx = c->cursorX;
     cy = c->cursorY;
@@ -1438,11 +1473,21 @@ void pm_gpu_hud_flush(void) {
     ww = c->windowWidth;
     wh = c->windowHeight;
     consoleSelect(c);
-    consoleSetWindow(c, 1, 1, 40, 6); /* MAPHUD: cursor row 1 is the top row of the screen, so the map row takes it and the rows below move down one */
-    hud_put_line(c, 1, hud_rows[5]);
-    hud_put_line(c, 2, hud_rows[0]);
-    hud_put_line(c, 3, hud_rows[1]);
-    for (int r = 0; r < 3; r++) hud_put_line(c, 4 + r, hud_rows[2 + r]);
+    if (hud) {
+        consoleSetWindow(c, 1, 1, 40, 6); /* cursor row 1 is the top row of the screen */
+        hud_put_line(c, 1, hud_rows[0]);
+        hud_put_line(c, 2, hud_rows[1]);
+        hud_put_line(c, 3, hud_rows[2]);
+        hud_put_line(c, 4, hud_rows[3]);
+        hud_put_line(c, 5, "");
+        hud_put_line(c, 6, "");
+    }
+    if (foot) { /* BOTLAYOUT: footer rows 28 and 29 */
+        consoleSetWindow(c, 0, 0, 40, 30);
+        printf("\x1b[28;1H\x1b[0m%-39.39s", foot_row[0]);
+        printf("\x1b[29;1H\x1b[0m%-39.39s", foot_row[1]);
+    }
+    if (frame) frame_draw(c);
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;
     c->cursorY = cy;

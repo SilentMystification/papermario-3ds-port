@@ -282,3 +282,23 @@ The fsplit line (fsplit flag only) adds `wm <mean> max <max> tk <mean> max <max>
 |---|---|---|---|---|---|---|
 | logcon_err | `conlevel=error` with `loglevel=debug`: log.txt holds debug lines (`logstat frames 300 work`), the logstat2 line prints `console lines 0` (gate max 0). Until is the logstat2 line at frame 300. | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 logcon_err -Row LOGCON -Build logcon -Try` | `warp: kmr_20 entry 4` | 20 s to the first marker, about 60 s to the until | build3ds\azt\shots\logcon_err | Run 1 (build 1670-logcon): 3 of 3 log checks. logstat2 `console lines 0`; log.txt has the `logstat frames 300` debug line. Live socket log not checked (log.txt only). Picture not read by the agent: the bottom screen must show no log text. |
 | logcon_dbg | Same build with `conlevel=debug`: the logstat2 line prints `console lines` at least 1 (gate min 1). Second start of the pair. | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 logcon_dbg -Row LOGCON -Build logcon -Try` | `warp: kmr_20 entry 4` | as logcon_err | build3ds\azt\shots\logcon_dbg | Run 2 (build 1670-logcon): 3 of 3 log checks. logstat2 `console lines 105` (was 0 in logcon_err). Picture not read by the agent. |
+
+## OPTFIX (2026-11-03): PmOpt initializer, boot option values
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| boot_opts (unverified) | Boot with no options.ini and no options.txt: the `options: boot` line prints dz_cs 0, rep_delay 500, rep_rate 200, hud_ms 1000, conlevel 1, loglevel 1, log 1 (the defaults). Log only. | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 boot_opts -Row OPTFIX -Build OPTFIX -Try` | `boot_main` | cap 30 s, until at the boot line | none | The sdmc options.ini and options.txt must be moved aside for the run. The debug string loglevel=debug lets the info line print. |
+
+## BOTLAYOUT (2026-11-03): bottom screen layout (HUD, separator, log header, scrolling log region, footer)
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| botlayout | Log scroll (BOTLAYOUT): bottom shots at frames 49 to 54 (warp to kmr_20 at frame 49; the map load writes log lines). The log region rows 9 to 26 change between frames 49 and 54 (135 of 144 pixel rows differ). The header and separator bands (rows 7 and 8) and the footer (rows 27 to 29) do not change (0 rows differ). Layout: HUD rows 1 to 4, rows 5 and 6 blank, separator 7, header 8, log 9 to 26, separator 27, row 28 `Map: kmr_20 (area 0, map 11)`, row 29 `apt: 80% O3DS #<build>`, row 30 blank. Top row shows `Now in kmr_20 (area 0, map 11)` in the 2 s hold (frame 54). | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 botlayout -Row BOTLAYOUT -Build botlayout -Try` | `warp: kmr_20 entry 4` | 18 s to the until (`padscript: done`, f259), cap 45 s | build3ds\azt\shots\botlayout | Run 5: 3 of 3 log checks, picture read. Run 4 (shots 200 to 205): the log region was identical across the frames (no new lines), so it is not a scroll proof. No earlier until line exists. |
+| botlayout_menu | Menu owns the bottom screen while open; after `menu: close` the layout returns (BOTLAYOUT). Shots 84 to 129: frame 95 shows the menu (General tab, full screen). Frame 120 shows the layout: HUD rows 1 to 3, separator 7, header 8, `menu: close` in the log region, separator 27, row 28 `Map:`, row 29 `apt:`. | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 botlayout_menu -Row BOTLAYOUT -Build botlayout -Try` | `warp: kmr_20 entry 4` | 22 s to the until (`padscript: done`, f130), cap 45 s | build3ds\azt\shots\botlayout_menu | Run 6: 4 of 4 log checks, picture read (frames 95 and 120). |
+
+## POSWARP (2026-11-03): pos=<x>:<y>:<z>[:<angle>] places Mario after a warp
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| kmr10_pos (POSWARP, unverified) | pos= sets gPlayerStatus pos 10 frames after the placement (readback line `poswarp: placed Mario at -142.000 136.000 221.000 on map kmr_10`), and the shot at frames 44 to 59 shows Mario on the kmr_10 terrain | `azt.ps1 kmr10_pos -Row POSWARP -Build POSWARP -Try` | `warp: kmr_10 entry 0` | cap 45 s | build3dszt\shots\kmr10_pos | Until is the first shot after the readback (a log until would stop before the picture). The placement runs 30 world frames after the map entry, once per map load. Padscript token `pos_<x>:<y>:<z>[:<angle>]` is not run by this scenario. |
+
