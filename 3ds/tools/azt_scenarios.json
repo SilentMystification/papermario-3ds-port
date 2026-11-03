@@ -3222,6 +3222,78 @@
         }
       ],
       "reason": "UA10 gate by eye and the log line."
+    },
+    {
+      "status": "unverified",
+      "cap": 45,
+      "deadline": 35,
+      "expects": "warp",
+      "needs_picture": false,
+      "name": "warpfix_boot_save",
+      "subject": "Boot warp without loadslot, then padscript save_0. The save write is blocked and the flash hash is unchanged.",
+      "proves": "A boot warp (new-file state) writes no save: saving disabled by boot warp (WARPFIX2 path 3).",
+      "debug": "warp=kmr_20:4 padscript=wait150,save_0 loglevel=debug",
+      "until": "warp: save blocked",
+      "first_marker": "warp: kmr_20 entry 4",
+      "expected_events": [
+        {
+          "name": "block line",
+          "regex": "saving disabled by boot warp"
+        },
+        {
+          "name": "save note",
+          "regex": "warp: save blocked"
+        }
+      ],
+      "reason": "WARPFIX2 log only. Until is the blocked save line."
+    },
+    {
+      "status": "unverified",
+      "cap": 45,
+      "deadline": 35,
+      "expects": "warp",
+      "needs_picture": false,
+      "name": "warpfix_fswarp_save",
+      "subject": "Loaded save 0, then the file select warp (fswarp, pm_warp_now) at frame 120, then padscript save_0. The save write is blocked.",
+      "proves": "The file select warp writes no slot: saving disabled by file select or title warp. before and after counts logged.",
+      "debug": "warp=kmr_20:4 loadslot=0 warpitems fswarp=120:kmr_02:0 padscript=wait300,save_0 loglevel=debug",
+      "until": "warp: save blocked",
+      "first_marker": "warp: kmr_20 entry 4",
+      "expected_events": [
+        {
+          "name": "fs warp after",
+          "regex": "warpstat after fs warp"
+        },
+        {
+          "name": "save note",
+          "regex": "warp: save blocked"
+        }
+      ],
+      "reason": "WARPFIX2 log only. The state after the fs warp is the new-file state, as designed."
+    },
+    {
+      "status": "unverified",
+      "cap": 45,
+      "deadline": 35,
+      "expects": "warp",
+      "needs_picture": false,
+      "name": "warpfix_boss",
+      "subject": "Loaded save 0 with items, then the Boss tab launch in the world at frame 180 (bosstest), battle ends after 60 battle frames (bossend). Story, HP, FP and partner come back.",
+      "proves": "The Boss tab in the world keeps the loaded save: before and after counts equal (WARPFIX2 path 1).",
+      "debug": "warp=kmr_20:4 loadslot=0 warpitems bosstest=180:0 bossend=60 loglevel=debug",
+      "until": "warpstat after boss restore",
+      "first_marker": "warp: kmr_20 entry 4",
+      "expected_events": [
+        {
+          "name": "before boss",
+          "regex": "warpstat before boss: "
+        },
+        {
+          "name": "after restore",
+          "regex": "warpstat after boss restore"
+        }
+      ],
+      "reason": "WARPFIX2 log only. Until is the restore line after the fight."
     }
   ]
 }
