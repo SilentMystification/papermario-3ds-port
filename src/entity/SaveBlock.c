@@ -79,7 +79,14 @@ void entity_SaveBlock_idle(Entity* entity) {
     entity_base_block_idle(entity);
 }
 
+#ifdef TARGET_3DS
+void pm_save_prompt(void); /* WARPFIX2: logs a blocked save at the prompt (pm_warp.c) */
+#endif
+
 void entity_SaveBlock_pause_game(void) {
+#ifdef TARGET_3DS
+    pm_save_prompt();
+#endif
     set_time_freeze_mode(TIME_FREEZE_PARTIAL);
     disable_player_input();
     gPlayerStatusPtr->curSpeed = 0.0f;
