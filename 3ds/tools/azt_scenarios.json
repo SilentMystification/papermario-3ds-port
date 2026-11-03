@@ -2805,6 +2805,29 @@
         }
       ]
     },
+{
+      "name": "merlon_door",
+      "status": "unverified",
+      "subject": "Merlon's house entered through the door on mac_01: Mario placed on the street south of the door (-203 20 -206), walks through the doorway (go to -203 -280), and the room with the crystal ball is shot at frames 120 to 179 (grab and texlog lines in the same frames).",
+      "proves": "The door walk loads the room (the ball is in the shot), and the ball quad (32 by 32 texrect) and grab lines appear in those frames.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=-203:20:-206 padscript=go_-203_-280_500,wait20,up*60,wait60 grablog texlog shots shotwin=130:60 shotbottom=130:60 loglevel=debug",
+      "until": "shot \\d+ frame 179\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "placed readback",
+          "regex": "poswarp: placed Mario at -203\\.000 20\\.000 -206\\.000 on map mac_01"
+        }
+      ]
+    },
     {
       "name": "kmr10_pos_hi",
       "status": "unverified",
