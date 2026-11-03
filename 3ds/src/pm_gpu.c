@@ -14,6 +14,18 @@
 #include "pm_gbi.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+/* BOTLAYOUT: bottom screen rows, 1-based as the cursor and ANSI count them (screen row 1 is the top). Rows 1 to 6: the HUD (pm_gpu_hud_flush).
+ * Row 7: separator. Row 8: log header (console and SD level). Rows LOG_TOP to LOG_TOP+LOG_ROWS-1 (9 to 26): the log window, it scrolls
+ * only here. Row 27: separator. Rows 28 to 30: reserved, blank.
+ * POSHUD: with the position row the HUD has 2 more rows (8 rows: the blank row 4, Mario row 5, the stats row 6, blank rows 7 and 8).
+ * The separator is row 9, the header row 10, the log window rows 11 to 26 (16 rows). */
+static volatile int pos_on; /* POSHUD: 1 when the position row is drawn, set by pm_gpu_hud on the game thread */
+#define LOG_TOP (9 + 2 * pos_on)
+#define LOG_ROWS (18 - 2 * pos_on)
+extern const char* const pm_lvl_name[5]; /* pm_options.c: Error, Warn, Info, Debug, Off */
+static int frame_con = -1, frame_lg = -1, frame_pos = -1; /* the levels and the position layout in the drawn header; -1: not drawn yet */
+static volatile int hud_new, foot_new;
+static char foot_row[2][40]; /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build) */
 
 typedef struct {
     float x, y, z, w;
@@ -504,6 +516,7 @@ static int rect_open, rect_ec, rect_zb, rect_tex; /* C7: rect_tex is the tile-0 
 static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compares this instead of the plan */
 static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
 static int rec_cap, rec_ref; static u32* rb_buf; static u32 rb_off; static unsigned rb_kick, rb_draw, rb_raw; /* RC1: record capture (pm_gpu_rec_begin, rec_end); rec_ref: a refusal inside the group */
+static unsigned rb_gi, rb_ge; /* UC3c: gidx fill at the window start and end (the first draw of a window reads gidx + rb_gi) */
 static int pool_buf_ok; /* DR1: the citro3d buffer info holds the vertex pool (set once per frame, cleared by a raw batch and by sh_clear) */
 static int proj_ok; static C3D_Mtx proj_last; /* DR1: the projection uniform of the last draw */
 static int noise_bound; /* DC2: unit 2 holds the noise texture (cleared by sh_clear) */
@@ -1331,7 +1344,7 @@ void pm_gpu_init(void) {
     pm_con_lock();
     consoleInit(GFX_BOTTOM, &bottom_con);
     setvbuf(stdout, NULL, _IONBF, 0);
-    consoleSetWindow(&bottom_con, 1, 7, 40, 24); /* MAPHUD: the log starts one row lower (cursor row 7, screen row 6) */
+    consoleSetWindow(&bottom_con, 1, LOG_TOP, 40, LOG_ROWS); /* BOTLAYOUT: the log window, rows 9 to 26 */
     pm_con_unlock();
     gpu_ok = vert_base != NULL;
     if (!vert_base) pm_log_e("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
@@ -1367,8 +1380,9 @@ void pm_gpu_menu_draw(const char* text) {
         if (menu_on) {
             for (i = 0; i < MENU_ROWS; i++) { menu_prev[i][0] = 1; menu_put_line(c, i, ""); }
             menu_on = 0;
-            consoleSetWindow(c, 1, 7, 40, 24); /* the log window again, new lines come at the bottom */
-            c->cursorX = 0; c->cursorY = 27;
+            consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS); /* the log window again, new lines come at its top (the rows are blank) */
+            c->cursorX = 1; c->cursorY = 1; /* window-relative: the top row of the log window */
+            hud_new = 1; foot_new = 1; frame_con = -1; /* BOTLAYOUT: the menu blanked the HUD, footer and frame rows: draw them again */
             fflush(stdout);
         }
         pm_con_unlock();
@@ -1406,30 +1420,65 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
 
 /* PI6: the game thread only copies the three HUD rows (no printf, no console call). pm_gpu_hud_flush draws them on the
  * log sink thread, at most 10 times per second. A HUD row written during a draw may show one update late. */
-static char hud_rows[6][40]; /* hud_rows[5]: MAPHUD, bottom row 0 */
-static volatile int hud_new;
-void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
+static char hud_rows[4][40]; /* BOTLAYOUT: [0] row 1 fps line or MAPHUD text, [1] and [2] rows 2 and 3 (memory, VRAM), [3] row 4 stats (row 6 with POSHUD) */
+static char pos_row[40]; /* POSHUD: Mario's row, row 5 (only with pos_on) */
+void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40], const char* pos, char (*map)[40]) {
     if (menu_on) return; /* PT69: the menu owns all rows */
-    strncpy(hud_rows[0], line0 ? line0 : "", 39);
-    strncpy(hud_rows[1], line1 ? line1 : "", 39);
-    for (int r = 0; r < 3; r++) { memcpy(hud_rows[2 + r], mem[r], 39); hud_rows[2 + r][39] = 0; }
-    hud_rows[0][39] = hud_rows[1][39] = 0;
-    hud_new = 1;
-}
-/* MAPHUD: called on a map change and at the end of its hold only (pm_map_hud_step). */
-void pm_gpu_hud_map(const char* s) {
-    if (menu_on) return;
-    strncpy(hud_rows[5], s, 39);
-    hud_rows[5][39] = 0;
+    if (map) { /* MAPHUD: rows 1 to 3 show the map change block */
+        for (int r = 0; r < 3; r++) { memcpy(hud_rows[r], map[r], 39); hud_rows[r][39] = 0; }
+    } else {
+        strncpy(hud_rows[0], line0 ? line0 : "", 39);
+        for (int r = 0; r < 2; r++) { memcpy(hud_rows[1 + r], mem[r], 39); hud_rows[1 + r][39] = 0; }
+        hud_rows[0][39] = 0;
+    }
+    strncpy(hud_rows[3], line1 ? line1 : "", 39);
+    hud_rows[3][39] = 0;
+    pos_on = pos != NULL; /* POSHUD: NULL = the position row is off (the layout stays as it was without it) */
+    if (pos) { strncpy(pos_row, pos, 39); pos_row[39] = 0; }
     hud_new = 1;
 }
 
-/* Log sink thread only. Draws the last HUD rows on the bottom console. */
+/* BOTLAYOUT: the separator, the log header and the footer. Absolute rows (ANSI), window the whole screen while they print, then the log window again.
+ * The separator is 39 columns: a 40th column would wrap. */
+static void frame_draw(PrintConsole* c) {
+    char sep[40], left[32], right[16], hdr[40];
+    int con = pm_log_conlevel(), lg = pm_log_level();
+    memset(sep, '-', 39);
+    sep[39] = 0;
+    snprintf(left, sizeof left, "Log (console: %s)", pm_lvl_name[con]);
+    snprintf(right, sizeof right, "(SD: %s)", pm_lvl_name[lg & 3]);
+    snprintf(hdr, sizeof hdr, "%-*s%s", 39 - (int)strlen(right), left, right);
+    consoleSetWindow(c, 0, 0, 40, 30);
+    printf("\x1b[%d;1H\x1b[0m%s", LOG_TOP - 2, sep);
+    printf("\x1b[%d;1H\x1b[0m%s", LOG_TOP - 1, hdr);
+    printf("\x1b[27;1H\x1b[0m%s", sep);
+    printf("\x1b[30;1H%39s", "");
+    consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS);
+    frame_con = con;
+    frame_lg = lg;
+    frame_pos = pos_on;
+}
+
+/* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build). Set by the game thread, drawn by the sink thread. */
+void pm_gpu_footer(const char* map, const char* sys) {
+    if (!strncmp(foot_row[0], map, 39) && !strncmp(foot_row[1], sys, 39)) return;
+    strncpy(foot_row[0], map, 39);
+    foot_row[0][39] = 0;
+    strncpy(foot_row[1], sys, 39);
+    foot_row[1][39] = 0;
+    foot_new = 1;
+}
+
+/* Log sink thread only. Draws the HUD rows, the footer and the frame (header levels) on the bottom console. */
 void pm_gpu_hud_flush(void) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
-    if (!hud_new || !c->consoleInitialised || menu_on) return;
+    int hud = hud_new, foot = foot_new;
+    int frame = frame_con != pm_log_conlevel() || frame_lg != pm_log_level() || frame_pos != pos_on;
+    int lay = frame_pos != pos_on; /* POSHUD: the layout changed, the log window and cursor restart at its top */
+    if (!(hud || foot || frame) || !c->consoleInitialised || menu_on) return;
     hud_new = 0;
+    foot_new = 0;
     pm_con_lock();
     cx = c->cursorX;
     cy = c->cursorY;
@@ -1438,11 +1487,30 @@ void pm_gpu_hud_flush(void) {
     ww = c->windowWidth;
     wh = c->windowHeight;
     consoleSelect(c);
-    consoleSetWindow(c, 1, 1, 40, 6); /* MAPHUD: cursor row 1 is the top row of the screen, so the map row takes it and the rows below move down one */
-    hud_put_line(c, 1, hud_rows[5]);
-    hud_put_line(c, 2, hud_rows[0]);
-    hud_put_line(c, 3, hud_rows[1]);
-    for (int r = 0; r < 3; r++) hud_put_line(c, 4 + r, hud_rows[2 + r]);
+    if (hud) {
+        consoleSetWindow(c, 1, 1, 40, 6 + 2 * pos_on); /* cursor row 1 is the top row of the screen */
+        hud_put_line(c, 1, hud_rows[0]);
+        hud_put_line(c, 2, hud_rows[1]);
+        hud_put_line(c, 3, hud_rows[2]);
+        if (pos_on) { /* POSHUD: blank row 4, Mario row 5, stats row 6, blank rows 7 and 8 */
+            hud_put_line(c, 4, "");
+            hud_put_line(c, 5, pos_row);
+            hud_put_line(c, 6, hud_rows[3]);
+            hud_put_line(c, 7, "");
+            hud_put_line(c, 8, "");
+        } else {
+            hud_put_line(c, 4, hud_rows[3]);
+            hud_put_line(c, 5, "");
+            hud_put_line(c, 6, "");
+        }
+    }
+    if (foot) { /* BOTLAYOUT: footer rows 28 and 29 */
+        consoleSetWindow(c, 0, 0, 40, 30);
+        printf("\x1b[28;1H\x1b[0m%-39.39s", foot_row[0]);
+        printf("\x1b[29;1H\x1b[0m%-39.39s", foot_row[1]);
+    }
+    if (frame) frame_draw(c);
+    if (lay) { wx = 1; wy = LOG_TOP; ww = 40; wh = LOG_ROWS; cx = 1; cy = 1; }
     consoleSetWindow(c, wx, wy, ww, wh);
     c->cursorX = cx;
     c->cursorY = cy;
@@ -2328,18 +2396,68 @@ void pm_gpu_flush(void) { flush(); }
 void pm_gpu_rec_begin(void) {
     flush(); raw1_reset(); sh_clear();
     GPUCMD_GetBuffer(&rb_buf, NULL, &rb_off);
-    rb_kick = kick_n; rb_draw = draws_frame; rb_raw = pm_dc_c[DC_RAW];
+    rb_kick = kick_n; rb_draw = draws_frame; rb_raw = pm_dc_c[DC_RAW]; rb_gi = gidx_n;
     rec_ref = 0; rec_cap = 1;
+}
+/* UC2: ctx+0xF0 alpha test, +0xF4 stencil test, +0xF8 stencil op, +0xFC depth color mask: the group citro3d sends at each flush (diag_uc2_j75.md). */
+/* UC2: g[4] = the 0x80 texture unit config word citro3d builds at each flush (ctx+0x110): its enable bits come from the unit pointers
+ * at ctx+0x118, 0x11C, 0x120 (C3Di_UpdateContext, base.o 0x1e0 to 0x22c). The pointers are read now, so the bits are the capture start state. */
+void pm_gpu_grp_get(u32* g) {
+    for (int i = 0; i < 4; i++) g[i] = *(volatile u32*)(__C3D_Context + 0xF0 + 4 * i);
+    u32 pm = 0; for (int u = 0; u < 3; u++) if (*(volatile u32*)(__C3D_Context + 0x118 + 4 * u)) pm |= 1u << u;
+    g[4] = (*(volatile u32*)(__C3D_Context + 0x110) & ~7u) | pm;
+    /* g[5] = the citro3d flags word (ctx+0x20): bit 0 gates C3D_SetTexEnv (stage 1 emit, START 27 trace), bits 26 to 31 are the TEV dirty bits */
+    g[5] = *(volatile u32*)(__C3D_Context + 0x20);
 }
 int pm_gpu_rec_end(u32** w, u32* n) {
     u32* b = NULL; u32 off = 0;
     flush();
-    rec_cap = 0;
+    rec_cap = 0; rb_ge = gidx_n;
     GPUCMD_GetBuffer(&b, NULL, &off);
     if (b != rb_buf || off < rb_off || kick_n != rb_kick || draws_frame - rb_draw != pm_dc_c[DC_RAW] - rb_raw || rec_ref || pm_interp_on > 0) return 0;
     if (pm_dc_c[DC_RAW] == rb_raw) return -1;
     *w = rb_buf + rb_off; *n = off - rb_off;
     return 1;
+}
+/* UC3c: index arena. The indices of a captured window are copied once into a linear arena (ia). pm_gpu_rec_idx rewrites the 0x227 p0 words
+ * of the record copy w to the arena (d = arena phys - gidx phys at rb_gi). Returns the rewritten count, -1 when the arena is full or missing,
+ * or the count differs from the window's draws. io, ic: arena index of the span and its length (u16 units). */
+#define REC_IDX_N 65536u
+static unsigned short* ia; static u32 ia_n; static int ia_fail;
+int pm_gpu_rec_idx(u32* w, u32 n, u32* io, u32* ic) {
+    u32 cnt = rb_ge - rb_gi, d, nd = 0;
+    if (!ia && !ia_fail) {
+        ia = (unsigned short*)linearAlloc(REC_IDX_N * 2u);
+        if (!ia) { ia_fail = 1; pm_log_e("UC3c: index arena linearAlloc failed"); }
+        else pm_log_d("UC3c: index arena %u KB", REC_IDX_N * 2u / 1024u);
+    }
+    if (!ia || !gidx || ia_n + cnt > REC_IDX_N || rb_ge > GRING_IDX || rb_ge < rb_gi) return -1;
+    memcpy(ia + ia_n, gidx + rb_gi, cnt * 2u);
+    pm_fl_dc(ia + ia_n, cnt * 2u);
+    d = osConvertVirtToPhys(ia + ia_n) - osConvertVirtToPhys(gidx + rb_gi);
+    for (u32 i = 0; i + 1 < n;) {
+        u32 hd = w[i + 1], c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u);
+        if (i + len > n) break;
+        if ((hd & 0x3FFu) == 0x227 && !(hd >> 31)) { w[i] += d; nd++; }
+        i += len;
+    }
+    if (nd != pm_dc_c[DC_RAW] - rb_raw) return -1;
+    *io = ia_n; *ic = cnt; ia_n += (cnt + 7u) & ~7u;
+    return (int)nd;
+}
+void pm_gpu_rec_idx_reset(void) { ia_n = 0; }
+/* UC3d: the state a replay must match (scissor, wide, ortho, off-screen target). Hash only; the record key compares it. */
+unsigned pm_gpu_view_key(void) {
+    unsigned h = (unsigned)sci_x0 * 31u + (unsigned)sci_x1;
+    h = h * 31u + (unsigned)sci_y0; h = h * 31u + (unsigned)sci_y1;
+    return h * 8u + (pm_wide ? 1u : 0u) + (ui_ortho ? 2u : 0u) + (off_active ? 4u : 0u);
+}
+/* UC3c: index check. The record span (io, ic) against the indices of this window (gidx + rb_gi, rb_ge). Returns the differing indices, plus the length difference. */
+unsigned pm_gpu_rec_ichk(u32 io, u32 ic) {
+    u32 cnt = rb_ge - rb_gi, m = ic < cnt ? ic : cnt, bad = 0;
+    if (!ia || io + ic > REC_IDX_N) return 1;
+    for (u32 j = 0; j < m; j++) bad += ia[io + j] != gidx[rb_gi + j];
+    return bad + (ic > cnt ? ic - cnt : cnt - ic);
 }
 /* UC1: patch table of a captured group. One entry per emitted f32 vec4: off = word offset of its word 0 in the group, idx = uniform
  * vec4, split = 1 for the first vec4 of a 0x2C1 write (its words sit at off, off+2, off+3, off+4). Held per walk (UC3 stores it per record). */
@@ -2368,15 +2486,19 @@ int pm_gpu_rec_walk(const u32* w, u32 n) {
     rec_pt_n += pt;
     return (int)pt;
 }
+void pm_gpu_rec_pt_copy(void* dst, unsigned n) { memcpy(dst, rec_pt, n * sizeof rec_pt[0]); } /* UC3d */
 void pm_gpu_rec_count(unsigned* pt, unsigned* wbad, unsigned* pk) { *pt = rec_pt_n; *wbad = rec_wbad_n; *pk = rec_pk_n; rec_pt_n = rec_wbad_n = rec_pk_n = 0; }
 /* UC2: reccheck. a is a valid record, b the words this frame wrote for the same model. Words in patch data slots are not compared
  * (replay writes them). bad: words outside the slots that differ, or the lengths differ. miss: the patch tables differ. Returns -1 when
  * a or b fails the walk (wbad). The pt and pk counters are kept as they were. */
 #define REC_CHK_MAX 1024u
-static u8 rec_msk[REC_CHK_MAX];
+static u8 rec_msk[REC_CHK_MAX], rec_cl[REC_CHK_MAX]; /* rec_cl: class of each word for the UC3M count (0 other, 1 address, 2 palette, 3 uniform) */
+static unsigned rec_cc[4];
 static RecPatch rec_pa[REC_PT_MAX];
+static unsigned rec_fj;
 int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, unsigned* miss) {
     unsigned sv_pt = rec_pt_n, sv_pk = rec_pk_n;
+    rec_fj = ~0u;
     int pa = pm_gpu_rec_walk(a, na), pb;
     if (pa < 0 || na > REC_CHK_MAX) return -1;
     memcpy(rec_pa, rec_pt, pa * sizeof rec_pa[0]);
@@ -2385,15 +2507,31 @@ int pm_gpu_rec_same(const u32* a, u32 na, const u32* b, u32 nb, unsigned* bad, u
     if (pb < 0) return -1;
     if (pa != pb || memcmp(rec_pa, rec_pt, pa * sizeof rec_pa[0])) (*miss)++;
     if (na != nb) { (*bad)++; return 0; }
-    memset(rec_msk, 0, na);
+    memset(rec_msk, 0, na); memset(rec_cl, 0, na);
     for (int e = 0; e < pa; e++) {
-        unsigned o = rec_pa[e].off;
-        if (rec_pa[e].split) rec_msk[o] = rec_msk[o + 2] = rec_msk[o + 3] = rec_msk[o + 4] = 1;
-        else rec_msk[o] = rec_msk[o + 1] = rec_msk[o + 2] = rec_msk[o + 3] = 1;
+        unsigned o = rec_pa[e].off, s2 = rec_pa[e].split ? 2u : 1u; /* split: words o, o+2, o+3, o+4; else o..o+3 */
+        u32 ix = rec_pa[e].idx;
+        u8 cl = (u4_pal >= 0 && ix >= (u32)u4_pal && ix < (u32)u4_pal + 4u * GPAL) ? 2 : 3;
+        unsigned ws[4] = { o, o + s2, o + s2 + 1u, o + s2 + 2u };
+        for (unsigned t = 0; t < 4; t++) { rec_msk[ws[t]] = cl == 2; rec_cl[ws[t]] = cl; } /* UC3a: only palette words are masked */
     }
-    for (unsigned j = 0; j < na; j++) if (!rec_msk[j] && a[j] != b[j]) (*bad)++;
+    for (unsigned i = 0; i + 1 < na;) { /* UC2: words that hold a per-frame address, not compared (UC3 patches them): 0x227 index buffer, texture unit 0, 1, 2 address */
+        u32 hd = a[i + 1]; unsigned c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u), base = hd & 0x3FFu, inc = hd >> 31;
+        if (i + len > na) break;
+        if (base == 0x227 && !inc) rec_msk[i] = 1;
+        /* PICA order: param0 (word i) is the header register, the params after the header are reg + k + 1 when incremental */
+        for (unsigned k = 0; k <= c; k++) {
+            unsigned w = k ? i + 2 + (k - 1) : i, r = inc && k ? base + k : base;
+            if (r == 0x85 || r == 0x95 || r == 0x9D) rec_cl[w] = 1; /* UC3a: address words are compared, not masked */
+        }
+        i += len;
+    }
+    for (unsigned j = 0; j < na; j++) if (!rec_msk[j] && a[j] != b[j]) { (*bad)++; if (rec_fj == ~0u) rec_fj = j; }
+    for (unsigned j = 0; j < na; j++) if (a[j] != b[j]) rec_cc[rec_cl[j]]++; /* UC3M: differing words per class, mask not applied */
     return 0;
 }
+unsigned pm_gpu_rec_fj(void) { return rec_fj; } /* UC2: first word the last pm_gpu_rec_same counted as bad (~0 none) */
+void pm_gpu_rec_cls(unsigned* c) { for (int q = 0; q < 4; q++) { c[q] = rec_cc[q]; rec_cc[q] = 0; } } /* UC3M: oth, adr, pal, uni differing words; resets */
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */

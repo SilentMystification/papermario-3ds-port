@@ -82,33 +82,43 @@ void pm_route_save(int slot) {
     pm_log("route: save slot %d f%u took %u ms", slot, pm_frame_count(), pm_uptime_ms() - t0);
 }
 
-/* POSHUD: bottom screen text for a walk to a spot. Mario: position and targetYaw. Camera: lookAt_eye and curYaw of CAM_DEFAULT (the camera pm_route_aim uses). */
-void pm_pos_text(char (*out)[40]) {
-    const Camera* c = &gCameras[CAM_DEFAULT];
-    snprintf(out[0], 40, "M x %.0f y %.0f z %.0f yaw %.0f", gPlayerStatus.pos.x, gPlayerStatus.pos.y, gPlayerStatus.pos.z, gPlayerStatus.targetYaw);
-    snprintf(out[1], 40, "C x %.0f y %.0f z %.0f yaw %.0f", c->lookAt_eye.x, c->lookAt_eye.y, c->lookAt_eye.z, c->curYaw);
+/* POSHUD: bottom screen row for Mario: position and targetYaw as whole numbers (rounded half away from zero, integer printf only). */
+#define POS_R(v) ((int)((v) + ((v) < 0.f ? -0.5f : 0.5f)))
+void pm_pos_text(char* out) {
+    snprintf(out, 40, "Mario x %d y %d z %d yaw %d", POS_R(gPlayerStatus.pos.x), POS_R(gPlayerStatus.pos.y), POS_R(gPlayerStatus.pos.z), POS_R(gPlayerStatus.targetYaw));
 }
 
-/* MAPHUD: bottom row 0 text, the map id of the game status and its area and map index. For `hold` steps after a map change the row says
- * "Now in" (the change), then "Map". Returns the text when it changed, else NULL. Per step: two loads and compares. snprintf runs on a change and at the end of a hold. */
-const char* pm_map_hud_step(unsigned step, unsigned hold) {
-    static char txt[40];
+/* MAPHUD: the map change block on HUD rows 1 to 3 for `hold` steps after a change. Returns 1 and fills rows, else 0 (the fps and memory rows show).
+ * Row 1: the old map id. Row 2: the old area and map, "->", the new map id. Row 3: the new area and map under the new id.
+ * BOTLAYOUT: pm_map_now is the footer map row, "Map: <id> (area A, map M)", always. Per step: two loads and compares. */
+static char map_now[40];
+const char* pm_map_now(void) { return map_now; }
+int pm_map_hud_step(unsigned step, unsigned hold, char (*rows)[40]) {
+    static char blk[3][40];
     static int a_prev = -1, m_prev = -1;
     static unsigned until;
+    static char from[24] = "none"; /* BOTLAYOUT: the map id before the change, for the info line */
     int a, m;
     pm_route_mapid(&a, &m);
     if (a != a_prev || m != m_prev) {
         const char* id = "none";
+        char oa[20] = "", na[20];
+        if (a_prev >= 0) snprintf(oa, sizeof oa, "area %d map %d", a_prev, m_prev);
         a_prev = a;
         m_prev = m;
         until = step + hold;
         if (a >= 0 && a < ARRAY_COUNT(gAreas) && gAreas[a].maps && m >= 0 && m < gAreas[a].mapCount) id = gAreas[a].maps[m].id;
-        snprintf(txt, sizeof txt, "Now in %s (area %d, map %d)", id, a, m);
+        pm_log_i("map change: %s -> %s (area %d map %d)", from, id, a, m);
+        snprintf(na, sizeof na, "area %d map %d", a, m);
+        snprintf(blk[0], 40, "%.39s", from);
+        snprintf(blk[1], 40, "%-18.18s-> %.18s", oa, id);
+        snprintf(blk[2], 40, "%21s%.18s", "", na);
+        snprintf(from, sizeof from, "%s", id);
+        snprintf(map_now, sizeof map_now, "Map: %s (area %d, map %d)", id, a, m);
         pm_log_d("maphud: %s area %d map %d step %u until %u", id, a, m, step, until);
-        return txt;
     }
-    if (!until || step < until) return NULL;
+    if (!until) return 0;
+    if (step < until) { memcpy(rows, blk, sizeof blk); return 1; }
     until = 0;
-    snprintf(txt, sizeof txt, "Map %s (area %d, map %d)", a >= 0 && a < ARRAY_COUNT(gAreas) && gAreas[a].maps && m >= 0 && m < gAreas[a].mapCount ? gAreas[a].maps[m].id : "none", a, m);
-    return txt;
+    return 0;
 }

@@ -175,7 +175,9 @@ function Get-AzaharProc([datetime]$since) {
     try {
         $id = [int]((Get-Content $pidFile -Raw).Trim())
         $pr = Get-Process -Id $id -ErrorAction Stop
-        if ($pr.ProcessName -eq "azahar" -and $pr.StartTime -ge $since) { return $pr }
+        # AZFIX: only the Azahar that this run's run_azahar.ps1 started (its parent). A run that waits for the lock sees the other run's PID in the shared file.
+        $par = (Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction Stop).ParentProcessId
+        if ($pr.ProcessName -eq "azahar" -and $pr.StartTime -ge $since -and $par -eq $script:childPid) { return $pr }
     } catch {}
     return $null
 }
@@ -240,11 +242,13 @@ if (-not (Test-Path (Join-Path $outDir "pm_3ds.3dsx"))) { Write-Output "BUILD: $
 $cmd = ($argv | ForEach-Object { if ($_ -match '^-[A-Za-z]+$') { $_ } else { '"' + $_ + '"' } }) -join " "
 
 $env:PM_ROW = $Row
+$env:PM_AZT_ATTEMPT = if ($env:PM_AZT_RETRY_RUN) { "2" } else { "1" } # AZFIX: run_azahar.ps1 writes the end line as retry on attempt 1 only
 if ($lane) { $env:PM_LANE = $lane } else { Remove-Item Env:PM_LANE -ErrorAction SilentlyContinue }
-if (Test-Path $lastLog) { Remove-Item $lastLog -Force }
+if (Test-Path $lastLog) { Remove-Item $lastLog -Force -ErrorAction SilentlyContinue } # AZFIX: two azt runs may race here
 $t0 = Get-Date
 # No output redirect: with a redirect the child exit code is lost in this shell. The result is read from the budget file.
 $child = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $cmd -PassThru -WindowStyle Hidden
+$script:childPid = $child.Id
 Write-Output "AZT: scenario $($sc.name), row $Row, lane '$lane', cap $cap s, deadline $deadline s after the Azahar start"
 
 $azStart = $null
@@ -288,13 +292,22 @@ if (Test-Path $bf) {
     $rowsB = @(Get-Content $bf | Where-Object { $_ })
     for ($i = $rowsB.Count - 1; $i -ge 0 -and -not $endRow; $i--) {
         $f = $rowsB[$i].Split(",")
-        if ($f.Count -ge 6 -and $f[1] -eq $Row -and $f[4] -eq "end") {
+        if ($f.Count -ge 6 -and $f[1] -eq $Row -and ($f[4] -eq "end" -or $f[4] -eq "retry")) {
             if ([datetime]$f[0] -ge $t0.AddSeconds(-5)) { $endRow = $f }
             break
         }
     }
 }
 if (-not $endRow) { Write-Output "NO END LINE: run_azahar.ps1 wrote no end line for row $Row after this start. It did not run (lock timeout, switch error or budget). Nothing was checked."; exit 1 }
+if ($endRow[4] -eq "retry" -and -not $env:PM_AZT_RETRY_RUN) {
+    # AZFIX: Azahar exited with an empty emulator log. One retry, its start line is retry-start (not counted).
+    Write-Output "RETRY: Azahar exited with an empty emulator log. Retrying once. The retry is not counted in the row budget."
+    $env:PM_AZT_RETRY_RUN = "1"
+    $ra = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $Scenario, "-Row", $Row, "-Try")
+    if ($Build) { $ra += @("-Build", $Build) }
+    & (Get-Process -Id $PID).Path @ra
+    exit $LASTEXITCODE
+}
 $rc = [int]$endRow[5]
 Write-Output ("run: rc {0}: {1}" -f $rc, (($endRow[6..($endRow.Count - 1)]) -join ","))
 if ($stop -eq "marker") {

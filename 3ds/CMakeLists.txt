@@ -481,9 +481,13 @@ set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(pm_3ds pm_shaderall_lib pm_shader5_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")
+# CONCOL: the build number comes from build.sh (-DPM_BUILD_NUM). It sets the smdh description at configure time.
+if(NOT PM_BUILD_NUM)
+    set(PM_BUILD_NUM "dev")
+endif()
 ctr_generate_smdh("${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh"
-    NAME "Paper Mario"
-    DESCRIPTION "N64 decomp on O3DS"
-    AUTHOR "pmret"
+    NAME "Paper Mario 64 3DS Port"
+    DESCRIPTION "Build ${PM_BUILD_NUM}"
+    AUTHOR "Dadrewster569"
     ICON "${DECOMP}/LaunchIcon.png"
 )

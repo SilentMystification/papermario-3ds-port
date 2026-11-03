@@ -75,7 +75,17 @@ A log pass is not a full pass. Read the shot files and confirm the subject. Shot
 
 | Scenario | Flags | Command | Result (build poshud, same code as the commit) | Status |
 |---|---|---|---|---|
-| yard_poshud | `poshud` | `yard_poshud -Try -Row POSHUD -Build poshud` | 3 of 3 log checks. Bottom shot bot_0259: `M x 594 y 30 z -216 yaw 180`, `C x 924 y 161 z 60 yaw 310`. Log at f300 gives Mario pos 594 30 -216. Top shot 0000_0_11 byte-equal to yard_headA (HEAD e16fee4b9). | unverified (one run) |
+| yard_poshud | `poshud` | `yard_poshud -Try -Row POSHUD -Build poshud` | 3 of 3 log checks. Bottom shot bot_0259: `M x 594 y 30 z -216 yaw 180`, `C x 924 y 161 z 60 yaw 310`. Log at f300 gives Mario pos 594 30 -216. Top shot 0000_0_11 byte-equal to yard_headA (HEAD e16fee4b9). | unverified (one run, before the POSHUD2 row change; camera row removed since) |
+
+## POSHUD2 (2026-11-03): Mario row 5 on every frame, 3 row map block (rows 1 to 3)
+
+Layout with the position row on: row 1 fps, 2 memory, 3 VRAM, 4 blank, 5 `Mario x y z yaw` (whole numbers), 6 stats, 7 and 8 blank, 9 separator, 10 header, 11 to 26 log, 27 separator, 28 to 30 footer. With the row off: as BOTLAYOUT (rows 1 to 6, separator 7, log 9 to 26).
+
+| Scenario | Flags | Command | Result (build POSHUD, the commit) | Status |
+|---|---|---|---|---|
+| toad_pond | `poshud` | `toad_pond -Try -Row POSHUD -Build POSHUD` | Picture read, bot_0160 `Mario x -142 y 0 z -36 yaw 189`, bot_0162 `x -144 y 0 z -27 yaw 189`, bot_0199 `x -168 y 0 z 93 yaw 195`: row 5 changes between frames 2 apart. Row 4 blank, separator row 9, header row 10, footer rows 28 and 29 in place. Run 1 exit 2 (Azahar exited after 6 s while another azahar.exe ran). Run 2 exit 2 (marker check read a log.txt that the run did not write; the game log `build3ds/lane-POSHUD/last_log.txt` has the warp line). `-CheckLog` 3 of 3. | unverified (picture read, tool exit 2) |
+| mapchange_poshud | `poshud` | `mapchange_poshud -Try -Row POSHUD -Build POSHUD` | 4 of 4 log checks. Picture read: bot_0227 shows row 1 `mac_00`, row 2 `area 1 map 1 -> mac_01`, row 3 `area 1 map 2`, row 5 Mario. bot_0230 still shows the block (the hold ends at frame 231). bot_0232 shows the fps, memory and VRAM rows back, Mario row 5, footer rows 28 and 29. Replaces mapchange_hud (its verified shots show the old `Now in` text). | verified (picture read, 1 run) |
+| botlayout | none (poshud off) | `botlayout -Try -Row POSHUD -Build POSHUD` | 3 of 3 log checks. Pixel compare with the botlayout run (bot_0049 to bot_0054): rows 7, 8, 27, 28 and 30 byte-equal in all 6 frames. Rows 1 to 3, 9 to 17, 24 and 29 differ (fps and memory values, log text, build tag); rows 4 to 6 equal. | unverified (compare, not a picture read) |
 
 ## Completion only
 
@@ -286,3 +296,29 @@ The fsplit line (fsplit flag only) adds `wm <mean> max <max> tk <mean> max <max>
 | Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
 |---|---|---|---|---|---|---|
 | volcano_l2 (unverified, `-Try`) | Mt. Lavalava (kzn_19) with `texcap=256` (256 KB texture cache). The `texghost f300` line counts re-misses of evicted textures (evict-hit) and of hash-changed textures (diff-hit). Gate: evict-hit above 0. | `azt.ps1 volcano_l2 -Row TEXL2 -Build TEXL2 -Try` | `warp: kzn_19 entry 0` | 16 s | build3ds\azt\shots\volcano_l2\ | Build L2a. The `texcap=1024` value gave 0 evictions (844 KB uploaded in 300 frames). Run 7 (L2a): evict-hit 2 (32 KB), 322 upload ops, 54784 us. |
+## OPTFIX (2026-11-03): PmOpt initializer, boot option values
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| boot_opts (unverified) | Boot with no options.ini and no options.txt: the `options: boot` line prints dz_cs 0, rep_delay 500, rep_rate 200, hud_ms 1000, conlevel 1, loglevel 1, log 1 (the defaults). Log only. | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 boot_opts -Row OPTFIX -Build OPTFIX -Try` | `boot_main` | cap 30 s, until at the boot line | none | The sdmc options.ini and options.txt must be moved aside for the run. The debug string loglevel=debug lets the info line print. |
+
+## BOTLAYOUT (2026-11-03): bottom screen layout (HUD, separator, log header, scrolling log region, footer)
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| botlayout | Log scroll (BOTLAYOUT): bottom shots at frames 49 to 54 (warp to kmr_20 at frame 49; the map load writes log lines). The log region rows 9 to 26 change between frames 49 and 54 (135 of 144 pixel rows differ). The header and separator bands (rows 7 and 8) and the footer (rows 27 to 29) do not change (0 rows differ). Layout: HUD rows 1 to 4, rows 5 and 6 blank, separator 7, header 8, log 9 to 26, separator 27, row 28 `Map: kmr_20 (area 0, map 11)`, row 29 `apt: 80% O3DS #<build>`, row 30 blank. Top row shows `Now in kmr_20 (area 0, map 11)` in the 2 s hold (frame 54). | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 botlayout -Row BOTLAYOUT -Build botlayout -Try` | `warp: kmr_20 entry 4` | 18 s to the until (`padscript: done`, f259), cap 45 s | build3ds\azt\shots\botlayout | Run 5: 3 of 3 log checks, picture read. Run 4 (shots 200 to 205): the log region was identical across the frames (no new lines), so it is not a scroll proof. No earlier until line exists. |
+| botlayout_menu | Menu owns the bottom screen while open; after `menu: close` the layout returns (BOTLAYOUT). Shots 84 to 129: frame 95 shows the menu (General tab, full screen). Frame 120 shows the layout: HUD rows 1 to 3, separator 7, header 8, `menu: close` in the log region, separator 27, row 28 `Map:`, row 29 `apt:`. | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 botlayout_menu -Row BOTLAYOUT -Build botlayout -Try` | `warp: kmr_20 entry 4` | 22 s to the until (`padscript: done`, f130), cap 45 s | build3ds\azt\shots\botlayout_menu | Run 6: 4 of 4 log checks, picture read (frames 95 and 120). |
+
+## POSWARP (2026-11-03): pos=<x>:<y>:<z>[:<angle>] places Mario after a warp
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| kmr10_pos (POSWARP, unverified) | pos=-142:20:221 places Mario on the kmr_10 floor. Readback line `poswarp: placed Mario at -142.000 20.000 221.000 on map kmr_10 settled x y z`: x and z within 0.5 and y within 3 of 20 (regex gate). Top shot at frame 56 shows Mario on the path by the fence. Floor under the spot: collider 28 at y 20 (ray probe from y 400, start 4). | `azt.ps1 kmr10_pos -Row POSWARP -Build POSWARP -Try` | `warp: kmr_10 entry 0` | cap 45 s, deadline 35 s | build3dszt\shots\kmr10_pos | Start 5 (y 136 request) settled at y 20, picture read. Budget 6 of 8 with this start. Until is the shot at frame 56 or 60. Padscript token not run by this scenario. |
+| kmr10_pos_hi (POSWARP, unverified) | pos=-142:136:221 (texture garble band view): Mario falls to the floor at y 20. Gate on x and z only (within 0.5), y printed. | `azt.ps1 kmr10_pos_hi -Row POSWARP -Build POSWARP -Try` | `warp: kmr_10 entry 0` | cap 45 s, deadline 35 s | build3dszt\shots\kmr10_pos_hi | Not run yet. Same until and shot window as kmr10_pos. |
+
+
+## MISC1 (2026-11-03): console colour by log level, smdh metadata
+
+| Scenario | What it proves | Command | First marker | Runtime | Shot paths | Known limits |
+|---|---|---|---|---|---|---|
+| logcolor | CONCOL: the four levels print in four colours on the bottom console (error bright red, warn yellow, info white, debug grey). Lines `lvtest: error/warn/info/debug line` at frame 100, `lvtest: done` at frame 125, bottom shots 115 to 118. Escape codes only in console bytes (log.txt is checked plain). | `powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 logcolor -Row MISC1 -Build MISC1 -Try` | `warp: kmr_20 entry 4` | about 20 s to the until, cap 45 s | build3ds\azt\shots\logcolor | Switch lvtest is a test aid in pm_log.c (pm_log_lvtest). The smdh is checked by 3ds/tools/smdh_dump.py run on build3ds\lane-MISC1\pm_3ds.3dsx. |

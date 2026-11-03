@@ -332,14 +332,15 @@ void pm_frame_loop(void) {
     u64 fps_mark = 0;
     float fps = 0.f, fps_draw = 0.f; /* PT24: steps/s (internal) and drawn frames/s (external) */
     /* HUD2: bottom screen memory rows, refreshed at pm_opt.hud_ms (pm_mem_hud). */
-    extern void pm_mem_hud(char out[3][40], unsigned dt_ms);
-    char mem[3][40] = {{0}};
+    extern void pm_mem_hud(char out[2][40]);
+    char mem[2][40] = {{0}};
     float frame_ms = 0.f;
     const u64 tick_hz = SYSCLOCK_ARM11;
     float stat_ms = 0.f;
     unsigned stat_n = 0;
     u64 stat_t0 = 0;
     const int pace_on = pm_debug_has("pacestat");
+    const int pos_dbg = pm_debug_has("poshud"); /* POSHUD: the poshud switch, same as the option */
     { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep after every drawn step), fs1old (the old rule) */
         char fv[16];
         fs1_off = pm_debug_has("fs1off") || !pm_opt.fskip;
@@ -511,13 +512,12 @@ void pm_frame_loop(void) {
         { /* HUDINT: the bottom memory rows refresh every pm_opt.hud_ms (options.ini hudint, default 1 s). The step is in ticks, set once per refresh. */
             static u64 mem_mark, mem_step;
             if (!mem_mark || now - mem_mark >= mem_step) {
-                unsigned dt_ms = mem_mark ? (unsigned)((now - mem_mark) * 1000u / tick_hz) : 0u;
-                pm_mem_hud(mem, dt_ms);
-                if (pm_opt.pos_hud || pm_debug_has("poshud")) pm_pos_text(mem); /* POSHUD: rows 0 and 1 show Mario and the camera */
+                pm_mem_hud(mem);
                 mem_mark = now;
                 mem_step = (u64)pm_opt.hud_ms * tick_hz / 1000u;
             }
         }
+        pm_log_lvtest(frame);
         if (frame % 300 == 0) pm_rom_drop_stat(); /* ROMKEEP: count of ROM reads in a dropped range, per 300 frames */
         if (frame % 3600 == 0) {
             pm_mem_log("tick");
@@ -569,23 +569,26 @@ void pm_frame_loop(void) {
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
             char top[48];
-            char bot[40];
-            /* CPULIM-UI: line 1 = fps, app core 1 time limit the game set (? when the last APT call failed), 3DS mode, build */
-            char lim[8];
-            if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "L%d?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "L%d", pm_cpu_game_value);
-            /* HUD2: "FPS 29.8 L80 O3DS #861". Memory is on the rows below (pm_mem_hud). At most 39 columns, the build text is cut last. */
-            if (have_fps) snprintf(top, sizeof(top), "%.0f/%d FPS late%d%% %s %s #%s", fps_draw, pm_interp_on > 0 ? 60 : 30, late_pct, lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
-            else snprintf(top, sizeof(top), "-/- FPS %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
-            top[39] = 0; /* PT15: 39 columns, the build text is cut first */
-            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast"))
-                snprintf(bot, sizeof(bot), "%5.1f %s", frame_ms, pm_gbi_stats());
-            else
-                snprintf(bot, sizeof(bot), "%5.1f ms", frame_ms);
-            if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
-                unsigned h0 = pm_ph_on ? pm_ticks() : 0;
-                pm_gpu_hud(top, bot, mem);
-                { const char* mt = pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u)); if (mt) pm_gpu_hud_map(mt); } /* MAPHUD: 2 s of steps after a map change */
-                if (pm_ph_on) pm_ph_hud_us += (pm_ticks() - h0) / 268u;
+            char stats[40] = "";
+            /* BOTLAYOUT: HUD row 1 = fps, frame time, late% (or the MAPHUD text for 2 s after a map change). Row 4 = the stats string (stats option only).
+             * Footer row 28 = the map, row 29 = apt (the CPU limit the game set, ? when the last APT call failed), 3DS model, build. */
+            char lim[8], sys[40];
+            if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "%d%%?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "%d%%", pm_cpu_game_value);
+            if (have_fps) snprintf(top, sizeof(top), "%.0f/%d FPS late%d%% %5.1f ms", fps_draw, pm_interp_on > 0 ? 60 : 30, late_pct, frame_ms);
+            else snprintf(top, sizeof(top), "-/- FPS %5.1f ms", frame_ms);
+            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast")) snprintf(stats, sizeof stats, "%s", pm_gbi_stats());
+            snprintf(sys, sizeof sys, "apt: %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
+            { /* MAPHUD: 2 s of steps after a map change. The step runs with the HUD off too (the map info line and the footer map). */
+                char mapb[3][40]; /* MAPHUD: the 3 row block on HUD rows 1 to 3 while map_on */
+                const int map_on = pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u), mapb);
+                pm_gpu_footer(pm_map_now(), sys);
+                if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
+                    unsigned h0 = pm_ph_on ? pm_ticks() : 0;
+                    char pos[40]; /* POSHUD: Mario's row, every frame (not the hudint refresh) */
+                    if (pm_opt.pos_hud || pos_dbg) pm_pos_text(pos);
+                    pm_gpu_hud(top, stats, mem, (pm_opt.pos_hud || pos_dbg) ? pos : NULL, map_on ? mapb : NULL);
+                    if (pm_ph_on) pm_ph_hud_us += (pm_ticks() - h0) / 268u;
+                }
             }
         }
     }
