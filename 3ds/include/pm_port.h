@@ -218,7 +218,7 @@ void pm_fskip_set(int on); /* pm_main.c: applies fskip at once */
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
 void pm_pos_text(char* out); /* POSHUD: pm_route.c, writes the Mario row text (40 bytes) */
-int pm_map_hud_step(unsigned step, unsigned hold, char (*rows)[40]); /* MAPHUD: pm_route.c, fills the 3 HUD rows 1 to 3 during the hold after a change, returns 1; else 0 */
+int pm_map_hud_step(unsigned step, unsigned hold, char (*rows)[40]); /* MAPHUD: pm_route.c, fills the 3 map rows (HUD rows 4 to 6) always; returns 1 during the hold after a change */
 const char* pm_map_now(void); /* BOTLAYOUT: pm_route.c, the footer map row text */
 void pm_gpu_footer(const char* map, const char* sys); /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build), drawn by the sink thread */
 void pm_options_init(void);
