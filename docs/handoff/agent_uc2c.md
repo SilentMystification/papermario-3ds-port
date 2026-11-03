@@ -26,7 +26,7 @@ Rule for masks: 0x227 (index buffer address), 0x85, 0x95, 0x9D (texture unit add
 - Word j=75 (window of 0x803F0104 group) is ctx+0xF8 = STENCIL_OP reg 0x106. Frame 0x110 = port C3D_StencilOp(KEEP, ZERO, ZERO) at pm_gpu.c ~846. Earlier 0x105 mapping was wrong.
 - Texunit config reg 0x080 is written by C3Di_UpdateContext (base.o 0x1f0 to 0x22c): ctx+0x110 = (ctx+0x110 & ~7) | bits of pointers ctx+0x118, 0x11C, 0x120 (non-null) | 0x10000.
 
-## Open item (not fixed): light env group length
+## Open item (superseded by session 2): light env group length
 - START 27 log: record captured a light env write (reg 0xC8, incremental, 5 words) at word 118 that the frame did not write. The frame writes DVLE constants (0x2C0) there.
 - Probable cause (INFERRED): the light env dirty bit (ctx+0x20 bit 0x400, C3Di_LightEnvUpdate at ctx+0x10c) is set by a port light call that happens in the capture but not in the frame check. Or the light shadow (sh5_fx) is not cleared by sh_clear. Check: grep the light setters (C3D_LightEnv*) in pm_gpu.c, and whether sh_clear clears the light shadow.
 - Options: (a) clear the light shadow in pm_gpu_rec_begin so the capture and the frame make the same light calls; (b) refuse records with a light env write (pm5 class, plan UC4). Pick by measurement. One start.
@@ -44,3 +44,16 @@ Rule for masks: 0x227 (index buffer address), 0x85, 0x95, 0x9D (texture unit add
 
 ## Acronyms
 UC2 = reccheck row. UC3 = replay row. ctx = citro3d context (`__C3D_Context`). PICA = GPU command set. mg = valid records not compared (group differs at capture start). bad = compared words that differ. miss = patch tables that differ. hit = compares.
+
+## Session 2 (after budget reset, 8 starts)
+- Trace of the START 27 length diff (CONFIRMED): record word 118 = header 0x804F00C8 = GPUREG_TEXENV1_SOURCE (0xC8, TEV stage 1, 5 words), NOT a light env. Frame word 118 = DVLE constants (0x2C0). The 6-word TEV stage 1 write is in the record only.
+- citro3d path (CONFIRMED, texenv.o): C3D_SetTexEnv(unit) does nothing unless ctx+0x20 bit 0 is set. Else it sets dirty bit 26+unit and stores the env at ctx+0x124+20*unit. C3Di_UpdateContext (base.o) emits stage N when bit 26+N is set.
+- Port path (pm_gpu.c): flush_tev_rebuild (line ~600) runs when tev_valid is 0 (sh_clear at rec_begin). tex1 = plan.uses_tex1 && pm_tex_bind_aux() (pm_gpu.c line ~994). So unit 1 aux slot state decides the TEV stage 1 write.
+- START 28 (key adds ctx+0x20 flags word): rec line unchanged (f614 bad 300, mg 0). Flags are equal at start. Kept in the key (harmless, conservative).
+- START 29 (key adds unit 0 and unit 1 slot indices at capture start, rec_g0[6] via rec_g0_set): NOT MEASURED. The run stopped after 6 s ("Azahar exited") while another interactive Azahar (adhoc run, PID 36632, started 01:42:24) was running. No log. Budget ledger: 2 UC2 starts used since reset (01:40:41 and 01:42:18). The second is void.
+- Azahar still runs from another agent or the user at the time of this note (tasklist azahar.exe). Do not kill it. Retry the start when no other azahar.exe runs.
+
+## Next steps (session 2)
+1. Wait until tasklist shows no azahar.exe. Then run mac01t_rec_chk (START 29 build is in lane UC2 now, commit pending).
+2. If bad is still 300: the aux slot is not the cause. Next check: pm_tex_bind_aux() return value at rec start (aux live flag, not only the index).
+3. Gate: yard_rec and mac01t_rec_chk (see gate above).

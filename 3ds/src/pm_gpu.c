@@ -2338,6 +2338,8 @@ void pm_gpu_grp_get(u32* g) {
     for (int i = 0; i < 4; i++) g[i] = *(volatile u32*)(__C3D_Context + 0xF0 + 4 * i);
     u32 pm = 0; for (int u = 0; u < 3; u++) if (*(volatile u32*)(__C3D_Context + 0x118 + 4 * u)) pm |= 1u << u;
     g[4] = (*(volatile u32*)(__C3D_Context + 0x110) & ~7u) | pm;
+    /* g[5] = the citro3d flags word (ctx+0x20): bit 0 gates C3D_SetTexEnv (stage 1 emit, START 27 trace), bits 26 to 31 are the TEV dirty bits */
+    g[5] = *(volatile u32*)(__C3D_Context + 0x20);
 }
 int pm_gpu_rec_end(u32** w, u32* n) {
     u32* b = NULL; u32 off = 0;

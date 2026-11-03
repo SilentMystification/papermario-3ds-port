@@ -99,15 +99,26 @@ static int xt_on(void) {
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
 
-/* V02 debug switch drawlog=<first frame>:<count>: one line per mesh chunk (a G_VTX load at slot 0 starts one) with the
+/* V02 debug switch drawlog=<first frame>:<count> or drawlog=file (see dd_on): one line per mesh chunk (a G_VTX load at slot 0 starts one) with the
  * vertex source (the model data address), the two innermost G_DL targets, render mode, texture and screen bounds. */
 static int dd_on(void) {
-    static int a = -2, b;
+    static int a = -2, b, file;
     if (a == -2) {
         char v[24];
         a = -1;
         if (pm_debug_value("drawlog", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
-        else a = -1;
+        else { a = -1; file = pm_debug_value("drawlog", v, sizeof v) && !strcmp(v, "file"); }
+    }
+    if (file) { /* drawlog=file: create sdmc:/3ds/PaperMario/drawlog.now (Azahar: %APPDATA%/Azahar/sdmc/3ds/PaperMario) and the next frame is logged. For a spot a person walks to. */
+        static unsigned last;
+        unsigned f = pm_frame_count();
+        if (f != last) {
+            last = f;
+            if (f % 10 == 0) {
+                FILE* t = fopen("sdmc:/3ds/PaperMario/drawlog.now", "rb");
+                if (t) { fclose(t); remove("sdmc:/3ds/PaperMario/drawlog.now"); a = (int)f + 1; b = a + 1; }
+            }
+        }
     }
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
@@ -157,6 +168,9 @@ static int dd_skip(void) {
     return lo >= 0 && dd_on() && ((int)dd.idx < lo || (int)dd.idx > hi);
 }
 static void dd_end(void) {
+    if (dd.ntri && dd_on())
+        pm_log("dd f%u #%u src %08x dl %08x %08x geom %08x oml %08x omh %08x tex %u img %08x fmt %u siz %u %ux%u tri %u scr %.0f %.0f %.0f %.0f w %.0f %.0f", pm_frame_count(), dd.idx, dd.src, dd.dl0,
+               dd.dl1, dd.gm, dd.oml, dd.omh, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.ntri, dd.x0, dd.y0, dd.x1, dd.y1, dd.w0, dd.w1);
     dd.ntri = 0;
 }
 
@@ -3380,8 +3394,8 @@ extern unsigned pm_rec_ver(unsigned slot); /* model.c */
 extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slot, 0 none */
 /* 32 B. state 0 none, 1 record, 2 refused, 3 churn guard (4 builds since the arena reset: no capture). RK2: hgen = tb_gen of the
  * handle, tgen0/tgen1 = generation of the cache slots on unit 0 and 1 at the capture end (REC_NO_SLOT none). nb = builds since reset. */
-/* UC2: grp = fragment-op group words (ctx+0xF0..0xFC, texunit config ctx+0x110) at capture start. A record is reused only when they match (diag_uc2_j75.md). 44 B. */
-typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[5]; } RecKey;
+/* UC2: grp = fragment-op group words (ctx+0xF0..0xFC, texunit config ctx+0x110, flags ctx+0x20) at capture start. A record is reused only when they match (diag_uc2_j75.md). 48 B. */
+typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[7]; } RecKey;
 #define REC_NO_SLOT 0xffffu
 #define REC_ARENA_WORDS (64u * 1024u)
 #define REC_MAX_WORDS 1024u
@@ -3392,7 +3406,7 @@ static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key
 static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that differs: model version, texture handle, cache slot generation */
 static unsigned rec_hit, rec_bad, rec_miss; /* UC2: reccheck compares (hit), words outside patch slots (bad), patch tables (miss) */
 static unsigned rec_mg; /* UC2: valid records not compared, the group words differ at capture start */
-static u32 rec_g0[5]; /* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush */
+static u32 rec_g0[7]; /* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush */
 void pm_gpu_grp_get(u32* g); /* pm_gpu.c, UC2: ctx+0xF0..0xFC */
 unsigned pm_gpu_rec_fj(void); /* pm_gpu.c, UC2: first bad word of the last compare */
 static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
@@ -3401,6 +3415,12 @@ static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("re
 static u16 rec_hgen(unsigned m) { unsigned h = pm_rec_tex(m); return h ? (u16)tb_gen[h & 0x7fu] : 0; }
 static u16 rec_tgen(u16 s) { return s == REC_NO_SLOT ? 0 : (u16)pm_tex_slot_gen((int)s); }
 
+/* UC2: rec_g0 = the group words (pm_gpu_grp_get) and the texture slots of units 0 and 1 (pm_tex_cur_slots) at capture start. Unit 1 decides
+ * the TEV stage 1 write (pm_tex_bind_aux in flush_draw), so its slot index is part of the start state (START 28: flags word alone did not change the count). */
+static void rec_g0_set(void) {
+    int a, b; pm_gpu_grp_get(rec_g0); pm_tex_cur_slots(&a, &b);
+    rec_g0[6] = (u32)(a + 1) | ((u32)(b + 1) << 16);
+}
 static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
     if (!ra && !ra_fail) {
         ra = (u32*)malloc(REC_ARENA_WORDS * 4u);
@@ -3421,7 +3441,7 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
         u16 hg = rec_hgen(slot - 1), t0 = rec_tgen(k->s0), t1 = rec_tgen(k->s1);
         if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) {
             if (!rec_chk_sw() || k->state != 1) return 0;
-            pm_gpu_rec_begin(); pm_gpu_grp_get(rec_g0); /* UC2: the old path still runs; its words are compared with the record */
+            pm_gpu_rec_begin(); rec_g0_set(); /* UC2: the old path still runs; its words are compared with the record */
             if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) { rec_chk = 1; return 1; }
             rec_mg++; /* UC2: the group differs at capture start: capture again below */
         } else {
@@ -3431,7 +3451,7 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
             if (k->tgen0 != t0 || k->tgen1 != t1) rec_mt++;
         }
     }
-    pm_gpu_rec_begin(); pm_gpu_grp_get(rec_g0);
+    pm_gpu_rec_begin(); rec_g0_set();
     rec_cap_n++;
     return 1;
 }
