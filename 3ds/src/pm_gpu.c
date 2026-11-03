@@ -22,7 +22,7 @@
 extern const char* const pm_lvl_name[5]; /* pm_options.c: Error, Warn, Info, Debug, Off */
 static int frame_con = -1, frame_lg = -1; /* the levels in the drawn header; -1: not drawn yet */
 static volatile int hud_new, foot_new;
-static char foot_row[40]; /* BOTLAYOUT: footer row 28 text */
+static char foot_row[2][40]; /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build) */
 
 typedef struct {
     float x, y, z, w;
@@ -1416,20 +1416,13 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
 
 /* PI6: the game thread only copies the three HUD rows (no printf, no console call). pm_gpu_hud_flush draws them on the
  * log sink thread, at most 10 times per second. A HUD row written during a draw may show one update late. */
-static char hud_rows[6][40]; /* BOTLAYOUT: [0] row 2 fps line, [1] row 5 stats, [2] and [3] rows 3 and 4 (memory, VRAM), [5] row 1 MAPHUD */
+static char hud_rows[4][40]; /* BOTLAYOUT: [0] row 1 fps line or MAPHUD text, [1] and [2] rows 2 and 3 (memory, VRAM), [3] row 4 stats */
 void pm_gpu_hud(const char* line0, const char* line1, char (*mem)[40]) {
     if (menu_on) return; /* PT69: the menu owns all rows */
     strncpy(hud_rows[0], line0 ? line0 : "", 39);
-    strncpy(hud_rows[1], line1 ? line1 : "", 39);
-    for (int r = 0; r < 2; r++) { memcpy(hud_rows[2 + r], mem[r], 39); hud_rows[2 + r][39] = 0; }
-    hud_rows[0][39] = hud_rows[1][39] = 0;
-    hud_new = 1;
-}
-/* MAPHUD: called on a map change and at the end of its hold only (pm_map_hud_step). */
-void pm_gpu_hud_map(const char* s) {
-    if (menu_on) return;
-    strncpy(hud_rows[5], s, 39);
-    hud_rows[5][39] = 0;
+    strncpy(hud_rows[3], line1 ? line1 : "", 39);
+    for (int r = 0; r < 2; r++) { memcpy(hud_rows[1 + r], mem[r], 39); hud_rows[1 + r][39] = 0; }
+    hud_rows[0][39] = hud_rows[3][39] = 0;
     hud_new = 1;
 }
 
@@ -1447,17 +1440,19 @@ static void frame_draw(PrintConsole* c) {
     printf("\x1b[7;1H\x1b[0m%s", sep);
     printf("\x1b[8;1H\x1b[0m%s", hdr);
     printf("\x1b[27;1H\x1b[0m%s", sep);
-    for (int r = 29; r <= 30; r++) printf("\x1b[%d;1H%39s", r, "");
+    printf("\x1b[30;1H%39s", "");
     consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS);
     frame_con = con;
     frame_lg = lg;
 }
 
-/* BOTLAYOUT: row 28 text. Set by the game thread, drawn by the sink thread. */
-void pm_gpu_footer(const char* s) {
-    if (!strncmp(foot_row, s, 39)) return;
-    strncpy(foot_row, s, 39);
-    foot_row[39] = 0;
+/* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build). Set by the game thread, drawn by the sink thread. */
+void pm_gpu_footer(const char* map, const char* sys) {
+    if (!strncmp(foot_row[0], map, 39) && !strncmp(foot_row[1], sys, 39)) return;
+    strncpy(foot_row[0], map, 39);
+    foot_row[0][39] = 0;
+    strncpy(foot_row[1], sys, 39);
+    foot_row[1][39] = 0;
     foot_new = 1;
 }
 
@@ -1479,17 +1474,18 @@ void pm_gpu_hud_flush(void) {
     wh = c->windowHeight;
     consoleSelect(c);
     if (hud) {
-        consoleSetWindow(c, 1, 1, 40, 6); /* MAPHUD: cursor row 1 is the top row of the screen, so the map row takes it */
-        hud_put_line(c, 1, hud_rows[5]);
-        hud_put_line(c, 2, hud_rows[0]);
+        consoleSetWindow(c, 1, 1, 40, 6); /* cursor row 1 is the top row of the screen */
+        hud_put_line(c, 1, hud_rows[0]);
+        hud_put_line(c, 2, hud_rows[1]);
         hud_put_line(c, 3, hud_rows[2]);
         hud_put_line(c, 4, hud_rows[3]);
-        hud_put_line(c, 5, hud_rows[1]);
+        hud_put_line(c, 5, "");
         hud_put_line(c, 6, "");
     }
-    if (foot) { /* BOTLAYOUT: footer row 28 */
+    if (foot) { /* BOTLAYOUT: footer rows 28 and 29 */
         consoleSetWindow(c, 0, 0, 40, 30);
-        printf("[28;1H[0m%-39.39s", foot_row);
+        printf("\x1b[28;1H\x1b[0m%-39.39s", foot_row[0]);
+        printf("\x1b[29;1H\x1b[0m%-39.39s", foot_row[1]);
     }
     if (frame) frame_draw(c);
     consoleSetWindow(c, wx, wy, ww, wh);

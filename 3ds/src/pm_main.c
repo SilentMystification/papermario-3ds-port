@@ -569,20 +569,22 @@ void pm_frame_loop(void) {
         {
             char top[48];
             char stats[40] = "";
-            /* BOTLAYOUT: HUD row 2 = fps, frame time, late%. HUD row 5 = the stats string (stats option only). Footer row 28 = cpu limit, 3DS model, build. */
-            char lim[8], foot[48];
-            if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "L%d?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "L%d", pm_cpu_game_value);
+            /* BOTLAYOUT: HUD row 1 = fps, frame time, late% (or the MAPHUD text for 2 s after a map change). Row 4 = the stats string (stats option only).
+             * Footer row 28 = the map, row 29 = apt (the CPU limit the game set, ? when the last APT call failed), 3DS model, build. */
+            char lim[8], sys[40];
+            if (pm_cpu_state < 0) snprintf(lim, sizeof lim, "%d%%?", pm_cpu_game_value); else snprintf(lim, sizeof lim, "%d%%", pm_cpu_game_value);
             if (have_fps) snprintf(top, sizeof(top), "%.0f/%d FPS late%d%% %5.1f ms", fps_draw, pm_interp_on > 0 ? 60 : 30, late_pct, frame_ms);
             else snprintf(top, sizeof(top), "-/- FPS %5.1f ms", frame_ms);
             if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast")) snprintf(stats, sizeof stats, "%s", pm_gbi_stats());
-            snprintf(foot, sizeof foot, "%s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
-            pm_gpu_footer(foot);
-            /* MAPHUD map change: the log line (info) and the 2 s HUD text. The step runs with the HUD off too, so the log line stays. */
-            { const char* mt = pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u)); if (mt && pm_opt.dbg_hud) pm_gpu_hud_map(mt); }
-            if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
-                unsigned h0 = pm_ph_on ? pm_ticks() : 0;
-                pm_gpu_hud(top, stats, mem);
-                if (pm_ph_on) pm_ph_hud_us += (pm_ticks() - h0) / 268u;
+            snprintf(sys, sizeof sys, "apt: %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
+            { /* MAPHUD: 2 s of steps after a map change. The step runs with the HUD off too (the map info line and the footer map). */
+                const char* mt = pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u));
+                pm_gpu_footer(pm_map_now(), sys);
+                if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
+                    unsigned h0 = pm_ph_on ? pm_ticks() : 0;
+                    pm_gpu_hud(mt ? mt : top, stats, mem);
+                    if (pm_ph_on) pm_ph_hud_us += (pm_ticks() - h0) / 268u;
+                }
             }
         }
     }

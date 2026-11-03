@@ -1823,11 +1823,11 @@
   {
     "name": "botlayout",
     "status": "unverified",
-    "subject": "Bottom screen layout (BOTLAYOUT): HUD rows 1 to 4 (map, fps and frame time, memory, VRAM), row 6 blank, separator row 7, header row 8 (Log (console: Debug) left, (SD: Debug) right), log rows 9 to 26 scrolling, separator row 27, footer row 28 (L80 O3DS and the build), blank rows 29 and 30. The port menu is opened (SELECT) and closed again before the shots.",
-    "proves": "BOTLAYOUT: the log scrolls only inside rows 9 to 26, and the HUD, header and footer rows are drawn by absolute position. After menu: close, the layout comes back. The map change info line is written at loglevel info or debug.",
-    "debug": "preset=yard padscript=wait80,SELECT,wait40,SELECT,wait40 shots shotwin=200:6 shotbottom=200:6 loglevel=debug conlevel=debug",
-    "until": "shot \\d+ frame 205\\b",
-    "cap": 90,
+    "subject": "Bottom screen (BOTLAYOUT) with the log scrolled: HUD rows 1 to 4, row 6 blank, separator row 7, header row 8 (Log (console: Debug) left, (SD: Debug) right), log rows 9 to 26 full of lines (the oldest scrolled off), separator row 27, footer row 28 (Map: id, area, map), row 29 (apt: N% N3DS or O3DS and the build), blank row 30. No menu.",
+    "proves": "BOTLAYOUT: the log scrolls only inside rows 9 to 26; the header, separators and footer stay in place while the log grows past 18 rows.",
+    "debug": "preset=yard padscript=wait420 shots shotbottom=49:6 loglevel=debug conlevel=debug",
+    "until": "padscript: done",
+    "cap": 45,
     "deadline": 20,
     "first_marker": "warp: kmr_20 entry 4",
     "expects": "warp",
@@ -1842,6 +1842,30 @@
         "regex": "map change: .* -> kmr_20 \\(area 0 map 11\\)"
       },
       {
+        "name": "script done (frame 200 to 205 shots taken before)",
+        "regex": "padscript: done at scan \\d+ f2[1-9]\\d"
+      }
+    ],
+    "reason": "BOTLAYOUT: the scroll picture. Until is the padscript done line after the bottom shots at 200 to 205 (the script runs 420 scans, about 210 frames)."
+  },
+  {
+    "name": "botlayout_menu",
+    "status": "unverified",
+    "subject": "BOTLAYOUT menu: bottom shots 84 to 129 (the script starts at frame 49, SELECT opens the menu about 40 frames later). The port menu opens (SELECT) at about frame 40 and closes (SELECT) at about frame 60. Shots while open show the menu rows; shots after the close show the layout again (HUD rows 1 to 4, separator 7, header 8, footer rows 28 and 29).",
+    "proves": "The menu owns the bottom screen while open, and the layout (HUD, header, footer, log window) is drawn again after menu: close.",
+    "debug": "preset=yard padscript=wait80,SELECT,wait40,SELECT,wait40 shots shotbottom=84:46 loglevel=debug conlevel=debug",
+    "until": "padscript: done",
+    "cap": 45,
+    "deadline": 20,
+    "first_marker": "warp: kmr_20 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "map",
+        "regex": "warp: kmr_20 entry 4"
+      },
+      {
         "name": "menu open",
         "regex": "menu: open"
       },
@@ -1850,11 +1874,11 @@
         "regex": "menu: close"
       },
       {
-        "name": "shot",
-        "regex": "shot \\d+ frame 20[0-5]\\b"
+        "name": "script done",
+        "regex": "padscript: done at scan \\d+ f\\d+"
       }
     ],
-    "reason": "BOTLAYOUT: the bottom screen layout test and the map change log line. Until is the top shot at frame 205 (shots switch on). The bottom shots at 200 to 205 are the picture to read."
+    "reason": "BOTLAYOUT: the menu pictures. Until is the padscript done line after the bottom shots 36 to 79."
   }
   ]
 }
