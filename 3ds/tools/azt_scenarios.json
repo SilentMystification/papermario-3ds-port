@@ -1638,6 +1638,68 @@
       "reason": "Verified: log checks pass and the shot shows Mario in the Mt. Lavalava cave with lava glow (run 7)."
     },
     {
+          "name": "volcano_nb",
+          "status": "unverified",
+          "subject": "Mario in Mt. Lavalava (kzn_19, entry 0), shots at frames 196 to 204 (every 4 frames).",
+          "proves": "TEXL2 L2a gate: top shots at frames 196, 200 and 204 show whether the 20-byte difference at x166-168 y289-293 is animation phase.",
+          "debug": "warp=kzn_19:0 story=ch0_toad_town shots shotwin=196:9 loglevel=debug",
+          "until": "warp: scene f300 ",
+          "cap": 90,
+          "deadline": 20,
+          "first_marker": "warp: kzn_19 entry 0",
+          "expects": "warp",
+          "needs_picture": true,
+          "expected_events": [
+                {
+                      "name": "map",
+                      "regex": "warp: kzn_19 entry 0"
+                },
+                {
+                      "name": "steady frame",
+                      "regex": "warp: scene f300 "
+                },
+                {
+                      "name": "shot",
+                      "regex": "shot \\d+ frame 20[0-5]\\b"
+                }
+          ],
+          "reason": "Verified: log checks pass and the shot shows Mario in the Mt. Lavalava cave with lava glow (run 7)."
+    },
+    {
+      "name": "volcano_l2",
+      "status": "unverified",
+      "subject": "Mario in Mt. Lavalava (kzn_19, entry 0) with a 256 KB texture cache cap, so textures evict and re-miss in one map.",
+      "proves": "TEXL2 L2a: the ghost table counts re-misses of evicted or hash-changed textures (texghost line), with the picture unchanged.",
+      "debug": "warp=kzn_19:0 story=ch0_toad_town shots shotwin=200:6 texstat texcap=256 loglevel=debug",
+      "until": "texghost f300",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kzn_19 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kzn_19 entry 0"
+        },
+        {
+          "name": "steady frame",
+          "regex": "texghost f300"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        },
+        {
+          "name": "evict re-miss",
+          "regex": "texghost f300: evict-hit (\\d+)/",
+          "min": 1,
+          "pick": "last"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "attract_no_warp",
       "status": "fail_demo",
       "subject": "Deliberately wrong: a tour without warp=. The start shows the title and attract (demo) screens and no map is loaded.",

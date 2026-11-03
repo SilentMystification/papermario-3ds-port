@@ -75,6 +75,7 @@ static unsigned epoch;
 static unsigned tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_ev0, tc_inval, tc_up_bytes, tc_evict_bytes, tc_ev0_bytes;
 static unsigned tot_hit, tot_miss, tot_inval, tot_evict, tot_up; /* lifetime (up in bytes), read per map by pm_tex_map_delta */
 static unsigned tot_inv_t, tot_hash_t; /* tex_inv3: ticks in pm_tex_invalidate and in the lookup hash (slot_valid), read per map */
+static unsigned gh_up_n, gh_up_t; /* TEXL2 L2a: upload ops and their ticks, per texghost window */
 static unsigned tot_same, tot_diff; /* tex_inv1: at invalidation, the source bytes equal (same) or differ from (diff) the bytes at load */
 static int tc_on = -1;
 /* Every hit (load, bind, glyph, aux, bind_slot) stamps the slot with the use counter. Eviction takes the lowest stamp. */
@@ -567,8 +568,10 @@ int pm_tex_aux_vram_pending(void) { /* UC3b: unit 1 slot is in its load frame (d
     return have && aux >= 0 && aux < SLOTS && slots[aux].live && slots[aux].vram_up;
 }
 void pm_tex_upload_vram_before_frame(void) {
+    unsigned t0 = tc_on > 0 ? pm_ticks() : 0;
     for (int w = 0; w < SBIT_W; w++)
-        for (unsigned m = vup_bits[w]; m; m &= m - 1) upload_vram_slot(&slots[w * 32 + (int)__builtin_ctz(m)]);
+        for (unsigned m = vup_bits[w]; m; m &= m - 1) { upload_vram_slot(&slots[w * 32 + (int)__builtin_ctz(m)]); gh_up_n++; }
+    if (t0) gh_up_t += pm_ticks() - t0;
 }
 void pm_tex_drain_vram(void) { /* uploads run before C3D_FrameBegin and at bind */ }
 void pm_tex_flush_pending(void) { flush_pend_only(); }
@@ -591,6 +594,34 @@ static void undirty(Slot* s) {
     if (!s->dirty) return;
     slot_span(s, 1);
     s->dirty = 0;
+}
+
+/* TEXL2 L2a (measure only): ghost table of contents that left the cache. Key = the slot identity plus the source hash. A miss whose key is here
+ * was resident less than GH_AGE_KB KB of puts ago. cause 0: evicted, 1: source hash changed (slot_valid). */
+#define GH_N 1024
+#define GH_AGE_KB 4096u
+typedef struct { unsigned key, cum; } GhEnt; /* cum: put KB clock at the put, bit 31 = cause 1 */
+static GhEnt gh[GH_N];
+static unsigned gh_clock_kb, gh_ev_hit, gh_ev_kb, gh_df_hit, gh_df_kb;
+static unsigned gh_key(const void* img, const void* tlut, unsigned phash, unsigned fmt, unsigned siz, int w, int h, int stride, unsigned dkey, unsigned sh) {
+    unsigned v[10] = { (unsigned)(uintptr_t)img, (unsigned)(uintptr_t)tlut, phash, fmt, siz, (unsigned)w, (unsigned)h, (unsigned)stride, dkey, sh };
+    unsigned x = 2166136261u;
+    for (int k = 0; k < 10; k++) x = (x ^ v[k]) * 16777619u;
+    return x | 1u;
+}
+static void gh_put(const Slot* s, int cause) {
+    if (!s->img || s->native || !s->slen) return;
+    unsigned key = gh_key(s->img, s->tlut, s->phash, s->fmt, s->siz, s->w, s->h, s->stride, s->dkey, s->shash);
+    gh_clock_kb += s->bytes >> 10;
+    gh[key & (GH_N - 1)].key = key;
+    gh[key & (GH_N - 1)].cum = gh_clock_kb | (cause ? 0x80000000u : 0u);
+}
+static void gh_check(unsigned key, unsigned bytes) {
+    const GhEnt* e = &gh[key & (GH_N - 1)];
+    unsigned c = e->cum & 0x7fffffffu;
+    if (e->key != key || gh_clock_kb - c >= GH_AGE_KB) return;
+    if (e->cum >> 31) { gh_df_hit++; gh_df_kb += bytes >> 10; }
+    else { gh_ev_hit++; gh_ev_kb += bytes >> 10; }
 }
 
 static void drop(Slot* s) {
@@ -664,6 +695,7 @@ static int evict_oldest_done(void) {
     tot_evict++;
     tc_evict_bytes += slots[oldest].bytes;
     if (slots[oldest].uses == 0) { tc_evict_ev0++; tc_ev0_bytes += slots[oldest].bytes; }
+    gh_put(&slots[oldest], 0);
     drop(&slots[oldest]);
     return 1;
 }
@@ -704,6 +736,11 @@ void pm_tex_init(void) {
     /* Linear image, then a second copy in PICA tile order. */
     scratch = (u8*)linearAlloc(TEX_SCRATCH_PLANE * 2u);
     slab_init();
+    { /* TEXL2 debug switch texcap=<KB> (test tool, may stay): cap the cache so one map evicts */
+        char v[16];
+        unsigned kb = pm_debug_value("texcap", v, sizeof v) ? (unsigned)atoi(v) : 0;
+        if (kb && kb * 1024u < tex_cap) tex_cap = kb * 1024u;
+    }
     tb_init();
 }
 
@@ -773,6 +810,8 @@ static void tc_report(void) {
     pm_log_hw("tx1 f%u miss %u KB %u us %u ns/B %u%s", tc_frame, tx1_miss, tx1_kb, tx1_ticks / 268u, tx1_kb ? (unsigned)((unsigned long long)tx1_ticks * 1000ull / 268ull / (tx1_kb * 1024ull)) : 0u, "");
     if (PMDL("tx1check")) pm_log_hw("tx1check mismatch %u", tx1_mismatch);
     tx1_miss = tx1_kb = tx1_ticks = 0;
+    pm_log_hw("texghost f%u: evict-hit %u/%uKB diff-hit %u/%uKB upload ops %u us %u", tc_frame, gh_ev_hit, gh_ev_kb, gh_df_hit, gh_df_kb, gh_up_n, gh_up_t / 268u);
+    gh_ev_hit = gh_ev_kb = gh_df_hit = gh_df_kb = gh_up_n = gh_up_t = 0;
     tc_hits = tc_miss = tc_evict = tc_evict_ev0 = tc_inval = tc_up_bytes = tc_evict_bytes = tc_ev0_bytes = 0;
 }
 
@@ -940,6 +979,7 @@ static int slot_valid(Slot* s) {
         return 1;
     }
     tot_diff++;
+    gh_put(s, 1);
     i = (int)(s - slots);
     pm_gpu_rect_sync(); /* DR1 */
     if (aux == i) aux = -1;
@@ -1018,6 +1058,8 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     src_native = pm_fb_native(img);
     PH_PUSH(PH_TEX);
     PH_ADD(C_TEXMISS, 1);
+    const unsigned slen0 = src_len(width, height, stride, siz); /* TEXL2: the source hash is computed once here (also the slot hash) */
+    const unsigned shash0 = src_hash(img, slen0);
     int pw = pot_at_least_8(width);
     int ph = pot_at_least_8(height);
     GPU_TEXCOLOR gf = gpu_fmt(fmt, siz);
@@ -1045,6 +1087,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         else
             return 0;
     }
+    gh_check(gh_key(img, tlut, phash, fmt, siz, width, height, stride, dkey, shash0), gpu_size);
     if (tb_mode && !lut && !src_native) {
         TbReq q;
         memset(&q, 0, sizeof q);
@@ -1263,7 +1306,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     if (tx1_t0) { tx1_miss++; tx1_kb += reserve >> 10; tx1_ticks += pm_ticks() - tx1_t0; }
     s->img = img;
     s->tlut = tlut;
-    s->slen = src_len(width, height, stride, siz);
+    s->slen = slen0;
     s->tlen = tlut ? (tlut_n > 0 ? (unsigned)tlut_n * 2u : 2u) : 0u;
     slot_span(s, 1);
     s->phash = phash;
@@ -1273,7 +1316,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     s->h = height;
     s->stride = stride;
     s->dkey = dkey;
-    s->shash = src_hash(img, s->slen);
+    s->shash = src_hash(img, s->slen); /* after the conversion, as at HEAD: the pre-conversion hash differs for some sources */
     s->dirty = 0;
     s->native = src_native;
     PH_ADD(C_TEXBYTE, reserve >> 10);
