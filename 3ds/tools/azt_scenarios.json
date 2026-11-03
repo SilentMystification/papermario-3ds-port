@@ -1097,6 +1097,54 @@
       "reason": "PAUSE5B gameplay comparison, no pause. Window values are compared with pause_menu (closes, ops, walk) in test_catalog.md."
     },
     {
+      "name": "pause_spin_wide",
+      "status": "unverified",
+      "subject": "Pause menu open (preset toad, START) with wide on, top shots frames 100 to 119 through the window spin (UA7). Compare the window edges with pause_spin (wide off).",
+      "proves": "UA7: the pause window spin keeps the 4:3 box shape in wide mode (draw_box frustum).",
+      "debug": "preset=toad padscript=wait80,START*3 wide shots shotwin=100:20 loglevel=debug",
+      "until": "shot \\d+ frame 119\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "shot at 119",
+          "regex": "shot \\d+ frame 119\\b"
+        }
+      ],
+      "reason": "UA7 gate: window edges in wide match wide off by eye."
+    },
+    {
+      "name": "pause_spin",
+      "status": "unverified",
+      "subject": "Pause menu open (preset toad, START) with wide off, top shots frames 100 to 119 (UA7 reference for pause_spin_wide).",
+      "proves": "UA7 reference: 4:3 pause window spin without wide.",
+      "debug": "preset=toad padscript=wait80,START*3 shots shotwin=100:20 loglevel=debug",
+      "until": "shot \\d+ frame 119\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "shot at 119",
+          "regex": "shot \\d+ frame 119\\b"
+        }
+      ],
+      "reason": "UA7 reference shot, wide off."
+    },
+    {
       "name": "talk_wide",
       "status": "unverified",
       "subject": "Toad Town (mac_00 entry 4) with wide on: NPC positions for the talk route (discovery), then the speech bubble of a Toad (UA2 and UA1 subject).",
