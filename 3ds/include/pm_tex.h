@@ -55,6 +55,7 @@ void pm_tex_glyph_ofs(int* x, int* y);
 void pm_tex_upload_vram_before_frame(void); /* TX1: drain staged VRAM before C3D_FrameBegin */
 int pm_tex_vram_pending(void);
 int pm_tex_cur_vram_pending(void);
+int pm_tex_aux_vram_pending(void); /* UC3b: unit 1 slot in its load frame */
 void pm_tex_drain_vram(void); /* TX1: all staged VRAM uploads before the next draw batch */
 void pm_tex_flush_pending(void); /* FL1: one staged VRAM upload (if any) plus one data cache flush span merge */
 void pm_tex_flush_pend_only(void); /* FL1 cache flush without VRAM upload */

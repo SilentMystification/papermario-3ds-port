@@ -131,6 +131,246 @@
       "reason": ""
     },
     {
+      "name": "tex_kmr_11",
+      "status": "unverified",
+      "subject": "Map kmr_11 at frames 200 to 205: garbled band on the terrain wall right of Mario. drawlog lists the mesh chunks of frame 200.",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_11:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_kmr_10",
+      "status": "unverified",
+      "subject": "Map kmr_10 at frames 200 to 205 (find the map with the garbled wall).",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_10:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_kmr_09",
+      "status": "unverified",
+      "subject": "Map kmr_09 at frames 200 to 205 (find the map with the garbled wall).",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_09 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_09 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_kmr_12",
+      "status": "unverified",
+      "subject": "Map kmr_12 at frames 200 to 205 (find the map with the garbled wall).",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_12:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_12 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_12 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_kmr_04",
+      "status": "unverified",
+      "subject": "Map kmr_04 at frames 200 to 205 (find the map with the garbled wall).",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_04:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_04 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_04 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_kmr_05",
+      "status": "unverified",
+      "subject": "Map kmr_05 at frames 200 to 205 (find the map with the garbled wall).",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_05:1 shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_05 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_05 entry 1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_kmr_06",
+      "status": "unverified",
+      "subject": "Map kmr_06 at frames 200 to 205 (find the map with the garbled wall).",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_06:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_06 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_06 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_kmr_07",
+      "status": "unverified",
+      "subject": "Map kmr_07 at frames 200 to 205 (find the map with the garbled wall).",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_07:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_07 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_07 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_kmr_02",
+      "status": "unverified",
+      "subject": "Map kmr_02 at frames 200 to 205 (find the map with the garbled wall).",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_02 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_02 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "tex_hos_01",
+      "status": "unverified",
+      "subject": "Map hos_01 at frames 200 to 240: animated wall texture, garbled.",
+      "proves": "A preset start loads the yard map and runs steady frames with shots.",
+      "debug": "warp=hos_01:0 shots shotwin=200:40 loglevel=debug",
+      "until": "shot \\d+ frame 23[0-9]\\b",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 2[0-3][0-9]\\b"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "yard_pace",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with pacestat logstat only. Frame-time baseline for LOGFIX (yard has no frame-time line).",
@@ -509,7 +749,7 @@
       "proves": "The reccheck compare runs on plain opaque records. The window 2 rec line (f6xx) prints hit, bad and miss. The picture equals the HEAD shot.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase fsplit reccheck",
       "until": "rec f6\\d\\d ",
-      "cap": 120,
+      "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
       "expects": "tour",
@@ -569,7 +809,7 @@
       "proves": "The reccheck compare runs on yard records. The window 2 rec line (f34x) prints hit, bad and miss. The picture equals the HEAD shot.",
       "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug reccheck",
       "until": "rec f34\\d ",
-      "cap": 90,
+      "cap": 45,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
       "expects": "warp",
