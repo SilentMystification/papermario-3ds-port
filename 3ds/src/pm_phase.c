@@ -321,19 +321,19 @@ static unsigned long long pf_nd_t; static unsigned pf_leg; /* S0-6: native emit 
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy) { pf_nd_t += ticks; pf_leg += legacy; }
 /* PROF: the scene of the window. Every prof line of a window ends with it, so runs of one room or event compare by key (map, mode, story, battle).
  * chg 1: the scene changed inside the window, the numbers mix two scenes and do not compare. */
-void pm_prof_where(const char** name, int* story, int* btl); /* pm_route.c */
+void pm_prof_where(const char** name, int* story, int* btl, float pos[3]); /* pm_route.c */
 static int pf_sc[3] = { -1, -1, -1 }, pf_chg;
 static void pf_scene_note(void) {
     if (pf_sc[0] == -1) { pf_sc[0] = cur_area; pf_sc[1] = cur_map; pf_sc[2] = cur_mode; }
     else if (pf_sc[0] != cur_area || pf_sc[1] != cur_map || pf_sc[2] != cur_mode) pf_chg = 1;
 }
 static void pf_where(char* o, unsigned n) {
-    const char* nm = "?"; int story = 0, btl = 0;
-    if (cur_area >= 0 && cur_map >= 0) pm_prof_where(&nm, &story, &btl);
-    snprintf(o, n, " | at %s %d:%d m%d sp%d b%d chg%d", nm, cur_area, cur_map, cur_mode, story, btl, pf_chg);
+    const char* nm = "?"; int story = 0, btl = 0; float pos[3] = { 0.f, 0.f, 0.f };
+    if (cur_area >= 0 && cur_map >= 0) pm_prof_where(&nm, &story, &btl, pos);
+    snprintf(o, n, " | at %s %d:%d m%d sp%d b%d chg%d pos %.0f %.0f %.0f", nm, cur_area, cur_map, cur_mode, story, btl, pf_chg, pos[0], pos[1], pos[2]);
 }
 static void pf_report(void) {
-    char wh[96];
+    char wh[128];
     pf_where(wh, sizeof wh);
     unsigned long long vb = C3D_FrameCounter(0) - pf_vb0;
     float fps = vb ? (float)pf_w * 60.f / (float)vb : 0.f;
