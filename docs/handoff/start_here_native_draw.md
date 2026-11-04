@@ -17,17 +17,12 @@ Replace the N64 display list walker (3ds/src/pm_gbi.c, pm_gpu.c, pm_dlc.inc.c) w
 - Rules: CLAUDE.md rules 5 (tests), 7 (code) and 9 (platform). Read only those.
 
 ## State
-- S0 done: host tests, ndref reference streams (3ds/tests/ndref, 8 files), prof stage line, frame_budget.md.
-- S1-1 done (3e6b19bc2): replay range and PMOD bake deleted. S1-2 done (389d7c16d): nd_core frame driver and LEGACY bridge.
-- S1-3 partial (9fcfee63c): nd_tmpl render state (cull, depth map, alpha test, blend, depth test) passes nd_tmpl_test on 8 files.
-- Not started: S1-4 (nd_mtx, the only red host test), S1-5, S1-6, then S2 to S11.
+- S0 done. S1 done (S1-1 3e6b19bc2, S1-2 389d7c16d, S1-3 c0875db9c, S1-4 and S1-5 8bc56f1cc and 9ee4ad45b, S1-6 a857ddeb2). Details and deviations: docs/handoff/agent_nds_s1e.md.
+- ndref is format v3 (kind 4 context words, kind 5 palette inputs). Host tests pass: sh 3ds/tools/nd_host_test.sh.
+- Next: S2 (NDFRAME) from plan_native_slices.md.
 
-## Next steps (S1-3 finish, then S1-4)
-1. Extend the ndref hook (pm_gpu.c ndref_draw) to also record: z flags (zmark, zcmp, zupd, nocol), stencil mode (stc_set 5/6 and decal sites 1 to 4), w0, w1, two, t1only, and the register writes the old path issues for TEV, early depth and COLOR_OPERATION per draw (register id and value). That register list is the host test ORACLE: you do not need to disassemble libcitro3d.a. Bump FORMAT.md and nd_ref_dump.py, re-capture the 8 files (one Azahar run per scene, justification line first).
-2. Write the failing host test: nd_tmpl output words equal the oracle words for all 8 files. Then add TEV, stencil, early depth and COLOR_OPERATION words to nd_tmpl.c. The template key gains w0, w1, two, t1only. Words are built once at template creation by calling pm_comb_build and the sh_* writes, never per draw. A game pair that pm_comb_build refuses is built from the old path result, not a fallback.
-3. Hints, UNVERIFIED (check against the oracle): TEXENV stage i at register 0xC0+8*i for stages 0 to 3 and 0xF0+8*(i-4) for stages 4 and 5. Offsets: +0 source, +1 operand, +2 combiner, +3 color, +4 scale. Stencil op words verified earlier: 0x105 and 0x106 (C3D_StencilOp = sfail | zfail<<4 | zpass<<8). Headers: $DEVKITPRO/libctru/include/c3d/*.h and 3ds/gpu/registers.h inside docker image pm3ds-build:1.
-4. S1-4 nd_mtx: host test first (red now), then code. Then S1-5, S1-6 per the plan rows.
-5. After S1: S2 to S11 in order from plan_native_slices.md. Each row: host test first and shown failing, code, ARM build, row gate, commit.
+## Next steps
+1. S2-1 nd_gbi.h, S2-2 pass state calls, S2-3 N64-same check. Then S3 to S11 in order. Each row: host test first and shown failing, code, ARM build, row gate, commit.
 
 ## Gates (every row)
 Picture equal first (region_diff, VIEW the picture), triangles equal, batches not above the old path, host tests, hot loop under 8 KB, prof line shows the stage. A picture difference needs a stated cause. Azahar is for pictures and crashes. Speed comes from the console `prof` line only.
