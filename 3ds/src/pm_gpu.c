@@ -286,6 +286,8 @@ void pm_vram_unreg(const void* p, unsigned bytes);
 int pm_vram_bank_of(const void* p);
 static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; unsigned stride; unsigned last; C3D_Tex snap; int snap_ready; int hdr, snap_hdr; } offs[OFF_ALL];
 static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8; /* off_fail: a VRAM failure, cleared at pm_gpu_begin */
+static unsigned off_mask_f; /* VRAM3 trace: bit i set when full image i is drawn in this frame */
+static unsigned off_trace_n;
 static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
 extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
@@ -1729,6 +1731,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
         pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
     }
+    if (i < OFF_N) off_mask_f |= 1u << i; /* VRAM3 trace: which full images a frame uses */
     off_cur = i;
     off_w = offs[i].w;
     off_h = offs[i].h;
@@ -1944,6 +1947,8 @@ static int begin_pend, begin_clear;
 void pm_gpu_begin_wait(void) {
     if (!begin_pend) return;
     begin_pend = 0;
+    if ((off_mask_f || off_sused) && off_trace_n++ < 400) pm_log_d("offuse f%u full %d mask %x small %d", pm_frame_count(), off_used, off_mask_f, off_sused); /* VRAM3 trace */
+    off_mask_f = 0;
     off_dump();
     for (int k = 0; k < OFF_P; k++) offs[k].base = NULL; /* FX2a: the 8 bit slots keep their base */
     off_used = off_sused = 0;
