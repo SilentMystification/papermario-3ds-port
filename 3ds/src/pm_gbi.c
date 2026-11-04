@@ -3562,6 +3562,7 @@ typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 
     u32 gin, gout, view; u16 alen; u8 npt, nd, fl, pp; /* pp: the palette words of the body are the rows of pcomp[gmc] (N1) */ /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
     u32 gmc, gdl; /* UC3e: game matrix of the palette at capture, the static list (G_DL address) */
 } __attribute__((aligned(32))) RecKey;
+u32 pm_gpu_rec_ia_phys(void); /* pm_gpu.c, N4 2b: phys base of the index arena (nat_idx_base) */
 #define REC_NO_SLOT 0xffffu
 #define REC_ARENA_WORDS (64u * 1024u)
 #define REC_MAX_WORDS 1024u
@@ -3617,7 +3618,7 @@ static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
         ra = (u32*)malloc(REC_ARENA_WORDS * 4u);
         if (!ra) { ra_fail = 1; pm_log_w("RC1: record arena malloc failed, capture off"); }
     }
-    ra_n = 0; ra_gen = gen; memset(rk, 0, sizeof rk); pm_gpu_rec_idx_reset();
+    ra_n = 0; ra_gen = gen; memset(rk, 0, sizeof rk); pm_gpu_rec_idx_reset(); memset(nat_tex, 0, sizeof nat_tex); /* N4 2b: handles are per capture generation */
 }
 static __attribute__((noinline)) int rec_try(u32 w1) {
     unsigned slot = w1 & 0xffu;
@@ -3725,7 +3726,7 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     if (gmv != ~0u && gmv >= NAT_MTX_MAX) { if (!nat_logged) { nat_logged = 1; pm_log_d("N1: record refused, game matrix %u, max %u", gmv, NAT_MTX_MAX); } rec_ref++; return; }
     unsigned ncen = pm_gpu_rec_cen_n(); /* N1: census tuples of the window, 4 words each after the patch table */
     if (ncen > REC_CEN_MAX) { rec_ref++; return; }
-    u32 need = (n + (u32)npt + 4u * ncen + 3u) & ~3u, at;
+    u32 need = (n + (u32)npt + 8u * ncen + 3u) & ~3u, at; /* N4 2b: census tuples, then one NatRec (4 words) per draw */
     if (old_state == 1 && need <= old_alen) at = old_off; /* RK2: the slot's old place, no arena growth */
     else if (ra_n + need <= REC_ARENA_WORDS) { at = ra_n; ra_n += need; }
     else { rec_ref++; return; }
@@ -3738,7 +3739,15 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
       int z, de, bl, at_; pm_gpu_rec_rmode(&z, &de, &bl, &at_); /* N4: the template key is the state at entry and the render mode at exit */
       int tid = nat_tmpl_add(rec_g0[7], rec_g0[8], rec_gin, rec_g0[9], rec_g0[10], z, de, bl, at_, use_t1, NULL, NULL);
       int rc = tid < 0 ? -2 : nat_tmpl_strip((unsigned)tid, ra + at, n);
-      pm_log_d("N4 strip slot %u n %u nd %d tmpl %d rc %d", slot, (unsigned)n, nd, tid, rc); } /* N4 step 1: log only, the template is not used yet */
+      pm_log_d("N4 strip slot %u n %u nd %d tmpl %d rc %d", slot, (unsigned)n, nd, tid, rc);
+      NatRec* nr = (NatRec*)(ra + at + n + npt + 4u * ncen); /* N4 2b: NatRec of each draw after the census tuples */
+      if (rc <= 0) { memset(nr, 0, (unsigned)nd * sizeof *nr); } /* no template: the words stay zero, the record is not replayed */
+      else {
+          const NatTmpl* nt = &nat_tmpl[tid];
+          if (gmv == ~0u || !nat_tex_set(rec_g0[6] & 0xFFFFu, nt->grp + 22) || !nat_tex_set(rec_g0[6] >> 16, nt->grp + 28)) { rec_ref++; return; }
+          nat_idx_base = pm_gpu_rec_ia_phys();
+          if (nat_rec_write(nr, (unsigned)nd, ra + at, n, (unsigned)tid, gmv, rec_g0[6], nat_idx_base) != nd) { rec_ref++; return; }
+      } }
     k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
     k->gmc = pm_gpu_rec_gm_cap(); k->gdl = rec_gdl;
     k->off = (u16)at; k->len = (u16)n; k->nb = (u8)(old_nb + 1);

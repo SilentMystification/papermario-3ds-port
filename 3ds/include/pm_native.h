@@ -50,6 +50,14 @@ int nat_tmpl_add(uint32_t cw0, uint32_t cw1, uint32_t geom, uint32_t oh, uint32_
  * record does not split (missing or repeated per-draw command, bad walk, too long). */
 int nat_tmpl_strip(unsigned id, const uint32_t* w, unsigned n);
 
+/* NatRec of each draw of a captured record (n words, arena copy after pm_gpu_rec_idx). The k-th 0x227 p0 is the draw's index address, phys in
+ * the arena: idx_off = address - base (base = phys of the index arena). The k-th 0x228 p0 is nidx. tex: unit 0 handle in the low 16 bits, unit 1
+ * in the high 16 bits (slot + 1, 0 none). Returns nd, -1 when the counts differ from nd or an address is outside the arena (128 KB). */
+int nat_rec_write(NatRec* out, unsigned nd, const uint32_t* w, unsigned n, unsigned tid, unsigned gm, uint32_t tex, uint32_t base);
+
+/* Texture block (4 words) of handle h, set once per capture generation. Returns 1 when set or equal, 0 when h holds other words. Handle 0 is none. */
+int nat_tex_set(unsigned h, const uint32_t* blk);
+
 /* Draw order for n records into ord (indices, 16-bit). Records whose template is ordered keep their place and break runs. Inside
  * each run of unordered records a stable counting sort by tex0 then by tmpl (LSD, two passes). Returns n. */
 unsigned nat_order(const NatRec* rec, unsigned n, uint16_t* ord);

@@ -174,3 +174,38 @@ void nat_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NatMtxL
     memcpy(dst, src, nw * sizeof(uint32_t));
     for (unsigned k = 0; k < nlog; k++) memcpy(dst + log[k].at, nat_mtx[eye][log[k].slot], 16 * sizeof(uint32_t));
 }
+
+/* NatRec writer (N4 step 2b). Pure C. Walk as in nat_tmpl_strip: a command is hd = w[i + 1], its p0 is w[i]. */
+int nat_rec_write(NatRec* out, unsigned nd, const uint32_t* w, unsigned n, unsigned tid, unsigned gm, uint32_t tex, uint32_t base) {
+    if (tid >= NAT_TMPL_MAX || gm >= NAT_MTX_MAX) return -1;
+    unsigned ka = 0, kc = 0, i = 0;
+    while (i + 1 < n) {
+        uint32_t hd = w[i + 1], reg = hd & 0x3FFu, c = (hd >> 20) & 0xFFu;
+        unsigned len = 2u + c + (c & 1u);
+        if (i + len > n) return -1;
+        if (!(hd >> 31) && c == 0 && reg == 0x227) {
+            uint32_t off = w[i] - base;
+            if (ka >= nd || off >= 0x20000u) return -1;
+            out[ka++].idx_off = off;
+        } else if (!(hd >> 31) && c == 0 && reg == 0x228) {
+            if (kc >= nd || w[i] > 0xFFFFu) return -1;
+            out[kc++].nidx = (uint16_t)w[i];
+        }
+        i += len;
+    }
+    if (ka != nd || kc != nd) return -1;
+    for (unsigned k = 0; k < nd; k++) {
+        out[k].tmpl = (uint8_t)tid; out[k].tex0 = (uint8_t)(tex & 0xFFu); out[k].tex1 = (uint8_t)((tex >> 16) & 0xFFu);
+        out[k].flags = 0; out[k].mtx = (uint16_t)gm; out[k].vtx_base = 0;
+    }
+    return (int)nd;
+}
+
+int nat_tex_set(unsigned h, const uint32_t* blk) {
+    if (h == 0) return 1;
+    if (h >= NAT_TEX_MAX) return 0;
+    uint32_t* t = nat_tex[h];
+    if (t[0] || t[1] || t[2] || t[3]) return memcmp(t, blk, 4 * sizeof(uint32_t)) == 0;
+    memcpy(t, blk, 4 * sizeof(uint32_t));
+    return 1;
+}
