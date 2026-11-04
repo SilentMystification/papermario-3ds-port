@@ -1160,6 +1160,18 @@ static void sync_combine(void) {
         sc_sig = sg;
     }
 }
+/* UI1 debug: the PM_CC_07 combiner (flat PRIM colour times TEXEL0 alpha, the drop shadow). Logs the mode the
+ * port chose and the PRIM alpha, so the shadow alpha is known per draw. Remove after UI1. */
+static void cc07_dbg(void) {
+    static int cc07_n;
+    if (cc07_n >= 40) return;
+    if (!(tst1.comb_a == 0 && tst1.comb_b == 0 && tst1.comb_c == 0 && tst1.comb_d == G_CCMUX_PRIMITIVE &&
+          tst1.comb_aa == G_ACMUX_TEXEL0 && tst1.comb_ab == 0 && tst1.comb_ac == G_ACMUX_PRIMITIVE && tst1.comb_ad == 0)) return;
+    cc07_n++;
+    pm_log("cc07 f%u n %d cyc %d leg %d plan %d why %d prim_a %u tex_on %d valid0 %d", pm_frame_count(), cc07_n,
+           (int)((omode_h >> G_MDSFT_CYCLETYPE) & 3), leg_mode, plan_active, ls_why, prim & 0xffu, tex_on, td[0].valid);
+}
+
 static void sync_combine_work(void) {
     if (gp_on()) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
         static unsigned last_sig;
@@ -1179,9 +1191,11 @@ static void sync_combine_work(void) {
             pm_comb_colours(&cur_plan, prim, envc, aud_prim_lod, keyc, keys);
             pm_gpu_set_plan(&cur_plan);
             plan_active = 1;
+            cc07_dbg();
             return;
         }
     }
+    cc07_dbg();
     pm_gpu_set_combine(leg_mode);
 }
 
