@@ -29,9 +29,9 @@ Cause of the +80: S0 added code to pm_gpu.c (S0-1 ndref hook and ndref_draw, S0-
 4. nat_host_test.c calls neither nat_tmpl_strip nor nat_rec_write. The native host test has no capture test to remove, so it stays green after S1-1 with no red step.
 
 ## Next
-1. Planner re-anchors S1-1 items 3 and 4 to the table above and names the full replay range (finding 1).
-2. Planner decides the PMOD bake (finding 3).
-3. Code agent starts S1-1 on branch nds1, one commit for the row.
+1. DONE (planner, 2026-11-04): S1 to S11 re-anchored by symbol at 115a06200 (plan_native_slices.md section 2, "Anchor form"). S1-1 names the full capture and replay range (findings 1, 2).
+2. DONE: PMOD bake deleted in S1-1 item 2 and item 6 (finding 3). Reason: it reads walker state, and no draw uses it.
+3. Code agent starts S1-1 on branch nds1, one commit for the row. A line shift is not a stop (PNS 12, anchor rule).
 
 ## Commands
 - Native host test: `sh 3ds/tools/nat_host_test.sh`
