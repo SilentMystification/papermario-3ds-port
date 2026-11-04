@@ -27,3 +27,10 @@
 - In-frame texture load: C3D_SyncTextureCopy calls C3D_FrameSplit then queues one GX_TextureCopy (renderqueue.c:430-435). C3D_TexLoadImage uses it (texture.c:122).
 - The splash loads one window per particle (water_splash.c:206, 40 parts). That is about 40 queued copies in one frame, more than 32. Grabs add a few more.
 - Fix needs a drain: gxCmdQueueWait on the bound queue when the count nears 32. The bound queue pointer is not public (ctx->gxQueue in C3Di_GetContext). Open decision: (1) expose the queue pointer and wait at about 24 entries, or (2) one full-frame load per splash frame and UV sampling (bigger change in water_splash.c and pm_gbi.c).
+
+## Update (HANG1a done on native)
+- Break fix: pm_gx_room (pm_gpu.c) drains the GX queue past 24 entries. Called before the splash texture copy (pm_tex.c) and grab copies (pm_gpu.c).
+- G_NOOP removed from g1_skip (pm_gbi.c) so the splash marks reach the handler.
+- Azahar nok11_splash lane hang1a3: no break, 21 frames, one grab per frame (rows 0-240). Shot a at frame 412. Picture: faint droplets near Mario at 240x400, needs a person to confirm.
+- Native HEAD: merged hang1a-drain (a4d3a2aed). Starts: HANG1a 4 of 8.
+- Remaining rows: TEX1 (1 start left), UI1 (0 of 8), UI2 rest (3 of 8).
