@@ -2,6 +2,7 @@
 #include "pm_port.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
+#include "nd.h"
 
 static NUGfxFunc gfx_func;
 static int display_on;
@@ -77,8 +78,10 @@ static void gbi_task(Gfx* gfxList, u32 n) {
     if (pm_fs_on) pm_fs_tasks++; /* WMODEL: render tasks per frame, fsplit only */
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
-    pm_gbi_run(gfxList, n);
-    if (pm_gpu_stereo()) { pm_gpu_eye(1); pm_gbi_run(gfxList, n); pm_gpu_eye(0); } /* STEREO: the same task for the right eye */
+    nd_frame_begin();
+    nd_bridge_cut(gfxList, n);
+    nd_emit();
+    if (pm_gpu_stereo()) { pm_gpu_eye(1); nd_emit(); pm_gpu_eye(0); } /* STEREO: the same task for the right eye */
 }
 
 /* LB1b: with pm_interp_on <= 0 the background task (no swap flag) is recorded here and runs with the swap task, after the main list is
