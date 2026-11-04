@@ -45,3 +45,12 @@ Results (pos 250 0 11):
 2. If (a): fix the early clip (pm_gbi.c) so out-plane triangles are rejected; the box skip then matches the interpreter.
 3. If (b): compare the vert_live and geom state before and after a skipped group.
 4. Do not change the skip rule until step 1 names the triangle.
+PMDL bare word: debug_scan needs the word alone, so nobox=1, noboxint=1, dlccheck=1 and skipdump=1 never matched. The switches are now bare words in the scenarios (nobox, noboxint, dlccheck, skipdump).
+
+## Runs 9 to 17 (coordinator request: find the skipped group whose pixels differ)
+- Starts 4, 5, 7 and 8 used broken switches. PMDL needs a bare word; `nobox=1` never matched. Runs 4 and 7 equal skip-on runs plus noise. The 2855 px and 1086 px numbers are not a skip effect. Fixed in the scenarios (bare words).
+- dlccheck with a working check (start 14, 300 frames, pos 250 0 11): skip 12537 of grp 25587, missing 0, xgrp 0. Every skipped triangle has a common out plane of clip_bits4 with the same matrix.
+- skipdump at frames 200 and 204 (start 15): 48 of 99 groups skipped. Screen box with the pm_gbi viewport (vp_sx = vp_tx = 160, so the plane edge is at sx 4 and sx 0 to 4 margin, matching the box). No skipped group overlaps the viewport except at its edge (sx -47 to 4, -41 to -1), and those edge values are the viewport offset.
+- Region pixels, top-right (x 137 to 173, y 52 to 129), 3 runs: skip on (run 1 and run 8) 0 px differ; skip off (start 16) 806 px; out groups through the interpreter (start 17) 1238 px vs skip off and 1036 px vs skip on. Neither route equals skip on. Route choice does not explain the difference.
+- Conclusion: the skip hides only triangles outside one clip plane (proven by missing 0). Running them changes shading in the region. The skip is not the cause of a visible loss. The cause is state or shading of out-of-frustum triangles. Not tested: state after a skipped group (vert_live, geom, tri_since_vtx), and the lighting or depth write of out triangles.
+- No skip rule change. A conservative box test already holds. Next: test the state difference (the same window, skip on, but run only the state side of each skipped group: G_VTX ring loads and G_GEOMETRYMODE, no triangles, switch noboxstate).

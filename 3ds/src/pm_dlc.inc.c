@@ -41,8 +41,37 @@ static int dlc_enabled(void) {
     return !dd_on() && !xt_on() && !rmlog_on();
 }
 static int dlcchk_on(void) { return PMDL("dlccheck"); }
-static int nobox_on(void) { return PMDL("nobox"); } /* FLK1 debug switch nobox=1: the group box skip of dlc_try is off */
-static int noboxint_on(void) { return PMDL("noboxint"); } /* FLK1 debug switch noboxint=1: an out group runs through the interpreter instead of the skip */
+static int nobox_on(void) { return PMDL("nobox"); } /* FLK1 debug switch nobox: the group box skip of dlc_try is off */
+static int skipdump_on(void) { return PMDL("skipdump"); } /* FLK1 debug switch skipdump: at frame 200 each group of a list logs its box, screen box and skip result */
+/* FLK1: the screen box of a group (pixels, pm_gbi vp_ scale) and the first clip plane that rejects it. */
+static __attribute__((cold, noinline)) void dlc_grp_dump(const DlcGrp* g, const float (*m)[4], unsigned k, unsigned gsk, unsigned gop) {
+    static const struct { signed char a, b; } pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } };
+    float smin[2] = { 1e9f, 1e9f }, smax[2] = { -1e9f, -1e9f };
+    int behind = 0, rej = -1;
+    for (int c = 0; c < 8; c++) {
+        float x = (c & 1) ? g->hi[0] : g->lo[0], y = (c & 2) ? g->hi[1] : g->lo[1], z = (c & 4) ? g->hi[2] : g->lo[2];
+        float p[4];
+        for (int q = 0; q < 4; q++) p[q] = m[0][q] * x + m[1][q] * y + m[2][q] * z + m[3][q];
+        if (p[3] <= 0) { behind = 1; continue; }
+        float sx = p[0] / p[3] * vp_sx + vp_tx, sy = vp_ty - p[1] / p[3] * vp_sy;
+        if (sx < smin[0]) smin[0] = sx; if (sx > smax[0]) smax[0] = sx;
+        if (sy < smin[1]) smin[1] = sy; if (sy > smax[1]) smax[1] = sy;
+    }
+    for (int p = 0; p < 5 && rej < 0; p++) {
+        int out = 1;
+        for (int c = 0; c < 8 && out; c++) {
+            float x = (c & 1) ? g->hi[0] : g->lo[0], y = (c & 2) ? g->hi[1] : g->lo[1], z = (c & 4) ? g->hi[2] : g->lo[2];
+            float v = m[0][pl[p].a] * x + m[1][pl[p].a] * y + m[2][pl[p].a] * z + m[3][pl[p].a];
+            float wv = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+            float d = v + (float)pl[p].b * wv;
+            if (pl[p].b > 0 ? !(d < 0) : !(d > 0)) out = 0;
+        }
+        if (out) rej = p;
+    }
+    static unsigned sd_n; if (++sd_n > 400) return;
+    pm_log("skipg f%d k %u op0 %u ntri %u nvtx %u skip %u plane %d behind %d scr x %.0f %.0f y %.0f %.0f box %d %d %d %d %d %d", (int)pm_frame_count(), k, gop, g->ntri, g->nvtx, gsk, rej, behind, smin[0], smax[0], smin[1], smax[1], g->lo[0], g->lo[1], g->lo[2], g->hi[0], g->hi[1], g->hi[2]);
+}
+static int noboxint_on(void) { return PMDL("noboxint"); } /* FLK1 debug switch noboxint: an out group runs through the interpreter instead of the skip */
 static void dlc_free(DlcEnt* e) {
     for (unsigned k = 0; k < e->ngrp; k++) { free(e->grp[k].sd); free(e->grp[k].bat_q); }
     free(e->grp); free(e->gop); e->grp = NULL; e->gop = NULL; e->ngrp = 0;
@@ -490,6 +519,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
         if (pm_ph_on) sp0_grp++;
+        if (skipdump_on() && pm_frame_count() >= 200 && pm_frame_count() < 206) dlc_grp_dump(g, m, k, dlc_box_out(g, m), (unsigned)g->op0);
         if (!rec_on && !nobox_on() && dlc_box_out(g, m)) { /* UC3b: a capture or check window draws the whole list */
             if (chk) dlc_verify_skip(l, g, m);
             if (noboxint_on()) {
