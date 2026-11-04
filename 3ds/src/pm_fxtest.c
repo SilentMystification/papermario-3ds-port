@@ -155,7 +155,8 @@ E(sun, fx_sun(0, 0, 0, 0, 0, 0)) \
 E(star_spirits_energy, fx_star_spirits_energy(2, X, Y, Z, 1.0f, 0)) \
 E(pink_sparkles, fx_pink_sparkles(0, X, Y, Z, 1.0f, 0)) \
 E(star_outline, fx_star_outline(0, X, Y, Z, 1.0f, 0)) \
-E(effect_86, fx_effect_86(0, X, Y, Z, 3.0f, 0))
+E(effect_86, fx_effect_86(0, X, Y, Z, 3.0f, 0)) \
+E(gather_energy_pink_t1, fx_gather_energy_pink(1, X, Y, Z, 1.0f, 30))
 
 static void fxt_lil_oink(void) {
     EffectInstance* o = fx_lil_oink(0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
