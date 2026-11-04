@@ -3,6 +3,34 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "nok02_tri_dd",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frame 200 on the CPU draw path (drawlog turns DLC2 off). Picture: the path end piece near Mario.",
+      "proves": "FLK1: every triangle of frame 200 reaches draw_tri_cpu, with the tritrace line, and the drawlog chunk line names the draw.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 tritrace=200:1",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "trace",
+          "regex": "tri f200 s[0-9]+ (keep|cull|clip|early-cull|early-keep)"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 2b). Forces the CPU draw path for frame 200."
+    },
+    {
       "name": "nok02_tri",
       "status": "unverified",
       "subject": "Map nok_02 at player position 250 0 11 (the path end piece that flickers, triage item 1). Frames 200 to 205 with the game camera on Mario. Picture: the end piece of the path near Mario.",
