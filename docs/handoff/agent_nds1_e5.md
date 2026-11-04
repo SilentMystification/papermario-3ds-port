@@ -42,3 +42,11 @@
 - census_mac01 TEXW: ok 28 / bad 29. Logged mismatches swap the slot tex and the off-screen tex (dim 0x00400020 and 0x00200020, addresses 0305a700 and 0305bf80). The words are read at learn end, not at the window's first flush, so the check compares different textures.
 - Not run: E5-3 emit, E5-4, E5-5, E5-6. Option A (capture the 4 words at flush per slot) is the next step.
 - Starts on NDS1: 5 of 8.
+
+## TEXW option A result (fifth pass, handoff at token limit)
+- pm_gpu.c flush_draw snapshots unit 0 words (pm_tex_slot_words of the bound slot) at each flush of a learn window (rec_fw[16][4], rec_fwn). pm_gpu_rec_fw reads them. dlc_learn_end compares template grp 22 to 25 with any snapshot.
+- census_mac01 TEXW: ok 56 / bad 1. The bad case has one snapshot (nf 1). Template words 00200020 00002206 00000000 0305a940; snapshot 00200040 00000006 00000000 0305c380. The template words come from a flush that the draw-time snapshot does not show (not resolved).
+- Census 64/810/53 PASS with this code.
+- Not done: E5-3 emit (needs per-draw words at emit, the unresolved bad case must be explained first), E5-4, E5-5, E5-6.
+- Starts on NDS1: 8 of 8 used after the reset? Count: E5-1, E5-2, TEXW, TEXW2, TEXW3, TEXW4, TEXW5 = 7 of 8 (budget was reset before this pass).
+- Next: find which flush emitted template words 00200020/0305a940 in the bad case (log the flush address of each snapshot and the 0x081 header order in the window), then E5-3 per the coordinator steps.
