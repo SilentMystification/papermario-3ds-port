@@ -1248,3 +1248,10 @@ void pm_mash_log(s32 posX, s32 posY, s32 fillValue, s32 showHud) {
         pm_log_d("mashlog posX %d posY %d fill %d showHud %d", (int)posX, (int)posY, (int)fillValue, (int)showHud);
     }
 }
+
+/* HUDB1 debug switch mashx=<x>: draw_mash_meter draws at posX x (a slide position the Azahar run did not reach) */
+s32 pm_mash_posx(s32 posX) {
+    char v[16];
+    if (pm_debug_value("mashx", v, sizeof v)) return (s32)atoi(v);
+    return posX;
+}

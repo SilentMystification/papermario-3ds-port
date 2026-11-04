@@ -3383,7 +3383,7 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
 
 static __attribute__((noinline)) void gbi_fillrect(u32 w0, u32 w1) {
     tex_gen++; /* TBREP */
-#define FILL_SX10(v) ((int)((v) & 0x3ff)) /* raw 10-bit field; HUDB1 wrap seen in fillog lines, fix not proven */
+#define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
 int lrx = FILL_SX10(w0 >> 14);
 int lry = FILL_SX10(w0 >> 2);
 int ulx = FILL_SX10(w1 >> 14);
@@ -3403,8 +3403,8 @@ if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrap
 if (img_role(1) == ROLE_CPUFILL) {
     unsigned short* d = (unsigned short*)cimg;
     if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
-    for (int y = uly; y <= lry && y < 240; y++)
-        for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
+    for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
+        for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
     return;
 }
 if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
