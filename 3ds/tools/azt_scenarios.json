@@ -3934,6 +3934,30 @@
       "reason": "Log only (census). The census is a set of counts, so the picture is not the test."
     },
     {
+      "name": "census_toad_rp",
+      "status": "unverified",
+      "subject": "Toad Town (kmr_10 entry 0): census of frame 200 with the raw record replay on (recplay). Replayed draws must reach the census.",
+      "proves": "N1: the raw replay path feeds the census. The cen multiset equals census_toad when the replay is on.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town drawcensus=200 loglevel=debug recplay",
+      "until": "cen f200 summary",
+      "cap": 22,
+      "deadline": 20,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "census summary",
+          "regex": "cen f200 summary batches \\d+ tris \\d+ distinct \\d+ over 0"
+        }
+      ],
+      "reason": "Log only (census). The census is a set of counts, so the picture is not the test."
+    },
+    {
       "name": "golden_multi",
       "status": "unverified",
       "subject": "Six maps in one start: kmr_20 entry 4 (preset), then mac_00 entry 4, tik_03 entry 0, isk_04 entry 0, kzn_19 entry 0, mac_01 entry 0. One shot per map, 30 frames after the map is in.",
