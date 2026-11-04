@@ -187,6 +187,7 @@ void water_splash_appendGfx(void* effect) {
     gSPDisplayList(gMainGfxPos++, D_09000100_3BCB90);
 
     data++;
+    gPmSplashMark(gMainGfxPos++, PM_SPLASH_ON);
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
         s32 temp_t2 = (s32)data->unk_04.x + sp94;
         s32 temp_t3 = (s32)data->unk_04.y + temp_fp;
@@ -217,5 +218,6 @@ void water_splash_appendGfx(void* effect) {
         gSPDisplayList(gMainGfxPos++, D_E00BEAF0[(i + (gGameStatusPtr->frameCounter / 2)) & 3]);
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
+    gPmSplashMark(gMainGfxPos++, PM_SPLASH_OFF);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

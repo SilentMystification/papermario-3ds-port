@@ -263,10 +263,19 @@ extern int pm_is_cur_cfb(const void* p);
 /* B2: role T2. A 16 bit texture window inside the frame buffer being drawn (water ripples, crystal ball, bulb glow). Copy it into
  * the grab slot before the load, so that the load finds the slot like any off-screen image (T1). A window inside an older frame
  * buffer is T3: G_SETTIMG fetched it with pm_cfb_capture_prev. */
+static int splash_on; /* HANG1a: set by the PM_SPLASH_ON / PM_SPLASH_OFF marks (water_splash.c) */
+static unsigned splash_grab_f = ~0u;
 static void grab_cur(const void* src, int w, int h) {
     tex_gen++; /* TBREP */
     int x, y, r;
     if (!src || w < 1 || !pm_is_cur_cfb(src)) return;
+    if (splash_on) { /* HANG1a: a water splash window: one full-height copy per frame, the other windows of the frame read it */
+        if (splash_grab_f == pm_frame_count()) return;
+        splash_grab_f = pm_frame_count();
+        r = pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
+        if (r == 2) { n_grabs++; n_splits++; }
+        return;
+    }
     x = (int)(((const u8*)src - (const u8*)nuGfxCfb_ptr) >> 1) % 320;
     y = (int)(((const u8*)src - (const u8*)nuGfxCfb_ptr) >> 1) / 320; /* rows of the window: a later load of other rows reuses the copy (R13c) */
     r = pm_gpu_grab(nuGfxCfb_ptr, y, y + (h < 1 ? 1 : h));
@@ -4035,6 +4044,9 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             gbi_moveword(w0, w1);
             break;
         case G_NOOP:
+            if ((w0 & 0xffffffu) == PM_SPLASH_ON) splash_on = 1;
+            else if ((w0 & 0xffffffu) == PM_SPLASH_OFF) splash_on = 0;
+            break;
         case G_SPNOOP:
         case G_RDPFULLSYNC:
         case G_RDPTILESYNC:

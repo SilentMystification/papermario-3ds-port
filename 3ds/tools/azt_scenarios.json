@@ -31,6 +31,38 @@
       "reason": ""
     },
     {
+      "name": "nok11_splash",
+      "status": "unverified",
+      "subject": "Mario in nok_11 (entry 0) with the water splash (EFFECT_WATER_SPLASH, fxtest 89) spawned at Mario. Shot a at 12 frames after the spawn shows the splash drops.",
+      "proves": "HANG1a: a water splash makes one full-height colour buffer grab per frame (grablog lines per frame), not one per particle window. The splash picture draws.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog",
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        },
+        {
+          "name": "grab log",
+          "regex": "grab \\d+ src .* rows 0-240 "
+        }
+      ],
+      "reason": "HANG1a gate: grab lines per frame during the splash (count by grep of grab lines per frame) and the picture by eye."
+    },
+    {
       "name": "yard_wide",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4) with wide on: zoomed original view, sky fills 240 rows, status bar at the top edge, shot at frames 200 to 205.",

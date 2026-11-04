@@ -219,4 +219,10 @@
 #define gsSPPmTexInline(n) {{ _SHIFTL(G_PM_TEXI, 24, 8) | ((n) & 0xffff), 0 }}
 #define gSPPmTexBind(pkt, idx, dl) {     Gfx *_g = (Gfx *)(pkt);     _g->words.w0 = _SHIFTL(G_PM_TEX, 24, 8) | ((idx) & 0x7f);     _g->words.w1 = (u32)(dl); }
 
+/* HANG1a: a G_NOOP whose low 24 bits are PM_SPLASH_ON or PM_SPLASH_OFF brackets the water splash draws (water_splash.c).
+ * Between them a colour buffer grab is one full-height copy per frame (pm_gbi.c grab_cur). */
+#define PM_SPLASH_ON 0x535001
+#define PM_SPLASH_OFF 0x535000
+#define gPmSplashMark(pkt, v) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_NOOP, 24, 8) | (v); _g->words.w1 = 0; }
+
 #endif
