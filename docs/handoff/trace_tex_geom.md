@@ -40,3 +40,27 @@ Map: hos_01 = Shooting Star Summit (src/world/area_hos/hos_01/hos_01.h:2). Entry
 | 4 sewer coins | NOT REACHED | none | sewer coin pos= warp, drawlog on coin and item |
 
 Budget left after this report: 7 of 8 starts.
+
+## Update 2 (after the coordinator message)
+
+### Item 4: tik_03 yellow blocks (coin or item sprite group): PARTLY PROVEN, garble NOT PROVEN
+- Run 2 (Azahar starts TRTG 2 of 8): `warp=tik_03:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 texlog texbind texstat`, until shot 205, cap 25 s. Shot: build3ds/shots/0000_2_2.ppm (frame 200). Log: build3ds/last_log.txt, `warp: tik_03 entry 0` at line 116.
+- The shot shows three yellow blocks with a white hook glyph on a brick wall, at the same height. Scratchpad: trtg_tik03_0000.png.
+- Matching draw chunks (drawlog f200): #0, #2, #4 (tri 4) and #1, #3, #5 (tri 2). Screen boxes 121,84-145,108, 66,84-94,108 and 175,84-199,108. Spacing 55 px matches the shot.
+- Format: tile 0 fmt 0 (RGBA), siz 2 (16 bit), 32x32, timg 0x00571b90. Wrap cms 1 (mirror), cmt 1 (mirror), masks 5 and 5. Shift 0 0. Window sz 0 0 124 124 (0 to 31 texels). #5 has window 0 0 124 60 and wrap 0 0 5 4.
+- Tile 1 is not shown in this note (dd1 lines are in the log).
+- Not proven: the picture shows a plausible glyph, not a clear garble. No reference texel dump. The mirror axis is not crossed (window 31 texels, mask period 32).
+- Next gate: texture word dump of 0x00571b90 against the ROM bytes, and one pos= shot on a block.
+
+### Item 1 texture word dump: NOT PROVEN (gate failed, no code allowed)
+- Investigation is read-only. The texdump switch (pm_tex.c:751-766) writes request keys to texreq.bin, not texel bytes. No switch dumps the slot words. A byte dump needs a code change by a code agent.
+- Slot 8 (0x0100066c, 64x64 I4, 2048 bytes) is still the candidate. Next: code agent adds a texword switch (write the slot bytes to a file at bind), then one shot at hos_01.
+
+### Item 2 Quizmo: NOT REACHED
+- Maps with Chuck Quizmo: src/world/area_dro/dro_01/npc.c, dro_02/npc.c, area_end/end_00 (parade_setup.c), area_hos/hos_03. Coordinator hint: mac_02 and kmr_* also. No run yet.
+
+### Item 3 Jr Troopa purple transform: NOT REACHED
+- Code: src/battle/area/kmr_part_3/actor/jr_troopa.c. The transform effect id is not yet found in src/effects. No run yet.
+
+### Budget
+- TRTG starts used: 2 of 8. Remaining: 6. Items 2 and 3 need about 2 starts each. Item 4 garble needs one pos= shot plus the texword dump.
