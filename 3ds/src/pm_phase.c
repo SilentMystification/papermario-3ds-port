@@ -345,6 +345,9 @@ static void pf_report(void) {
         pm_log_prof_line("prof f%u w%u nd %.2f lg %.2f dr %u tc %u tw %u tri %u leg %u gb %.2f",
             pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn,
             (unsigned)(pv[0] / pw), (unsigned)(pv[1] / pw), (unsigned)(pv[2] / pw), (unsigned)(pv[3] / pw), (unsigned)(pf_leg / pw), gbm);
+        /* S0-8: frame budget targets (docs/handoff/frame_budget.md, phase off ms) next to the measured nd, lg and gb of this window. */
+        pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %.2f lg %.2f gb %.2f",
+            pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn, gbm);
     }
     pf_nd_t = 0; pf_leg = 0;
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;

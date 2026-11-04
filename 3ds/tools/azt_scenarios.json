@@ -1608,7 +1608,7 @@
       "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t_cap1, with prof=16 (PF2 sampling and PF3 counters).",
       "proves": "prof samples one drawn frame in 16. The cal line prints the tick, pmu and base costs. One window line (f, w300) prints s, fts, wks, oh, gbi, tex, gpu and the pmu counts. The picture still draws Mario.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=250:1 prof=16",
-      "until": "prof f\\d+ w300 nd ",
+      "until": "prof f\\d+ w300 budget ",
       "cap": 120,
       "deadline": 20,
       "first_marker": "prof cal every 16",
@@ -1626,6 +1626,10 @@
         {
           "name": "prof stage line (S0-6)",
           "regex": "prof f\\d+ w300 nd [0-9.]+ lg [0-9.]+ dr \\d+ tc \\d+ tw \\d+ tri \\d+ leg \\d+ gb [0-9.]+"
+        },
+        {
+          "name": "prof budget line (S0-8)",
+          "regex": "prof f\\d+ w300 budget tgt logic 3\\.3 dl 4\\.4 nd 2\\.0 fe 1\\.5 au 0\\.5 cpu 11\\.7 slack 5\\.0 gb 14\\.0 frame 16\\.7 \\| meas nd [0-9.]+ lg [0-9.]+ gb [0-9.]+"
         }
       ],
       "reason": "PF3 run, updated S0-6. PROF4 prof mode prints only prof lines (no warp, shot or tour lines), so the until is the stage line. Picture not in this mode."
