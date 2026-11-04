@@ -126,3 +126,10 @@ int pm_map_hud_step(unsigned step, unsigned hold, char (*rows)[40]) {
     memcpy(rows, idle_blk, sizeof idle_blk);
     return 0;
 }
+
+/* PROF: where the player is, for the prof lines (pm_phase.c pf_report): map id string, story progress, battle id. Read only. */
+void pm_prof_where(const char** name, int* story, int* btl) {
+    *name = gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id;
+    *story = (int)evt_get_variable(NULL, GB_StoryProgress);
+    *btl = (int)gCurrentBattleID;
+}
