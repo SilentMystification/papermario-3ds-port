@@ -276,7 +276,7 @@ static GPU_COMBINEFUNC tev_func(int f) {
 /* V05: an off-screen colour image. draw_box renders the contents of a rotating window (pause pages, file select panels)
  * into a game buffer with the color image set to it, then draws that buffer as strips through the rotation matrix.
  * Such a pass renders into a PICA render target that is a texture (VRAM), and pm_tex samples it for the strips. */
-enum { OFF_N = 4, OFF_P = 2 * OFF_N, OFF_ALL = OFF_P + 2 }; /* FX2a: slots OFF_P and OFF_P + 1 are the 8 bit images (flame), they keep their pixels from frame to frame like the N64 memory */ /* V05b: slots 0..3 are full size, 4..7 are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */
+enum { OFF_N = 3, OFF_S = 4, OFF_P = OFF_N + OFF_S, OFF_ALL = OFF_P + 2 }; /* FX2a: slots OFF_P and OFF_P + 1 are the 8 bit images (flame), they keep their pixels from frame to frame like the N64 memory */ /* V05b: slots 0..OFF_N-1 are full size, the next OFF_S are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */ /* R5: OFF_N 4 to 3 (one full image, 512 KiB, back to the texture cache). OFF_S stays 4. */
 /* X02: w x h is the size of the slot (64 x 64 for a game image up to 64 wide, else PM_OFF_W x PM_OFF_H). siz is the game pixel size
  * (3 = 32 bit, 2 = 16 bit, 1 = 8 bit). The same memory can be a 32 bit image and an 8 bit image in one frame: two slots. */
 void pm_vram_note(void); /* pm_mem.c: VRAM low-water mark */
@@ -1690,16 +1690,17 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             if (k == OFF_ALL) for (k = OFF_P; k < OFF_ALL && offs[k].last == pm_frame_count(); k++) {}
             if (k == OFF_ALL) { pm_log_w("FX2a: more than 2 8 bit images in one frame, the rest draw on the screen"); return 0; }
             i = k;
-        } else if (w == 64 && off_sused >= OFF_N) {
+        } else if (w == 64 && off_sused >= OFF_S) {
             static int once;
-            if (!once++) pm_log_w("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
+            if (!once++) pm_log_w("V05: more than %d 64 x 64 off-screen images in one frame, the rest draw on the screen", OFF_S);
             return 0;
         } else if (w != 64 && off_used >= OFF_N) {
             /* TEX2 B: the file select flip draws more than 4 boxes into off-screen images in one frame. The 5th drew on the screen
              * (contents at the top left). Take the full size slots again in turn: the GPU runs the draws in list order, so the strips
-             * of an earlier box have read the slot already. A later read of the earlier image does not find it. */
-            static int once;
-            if (!once++) pm_log_w("V05: more than %d off-screen images in one frame, slots are used again", OFF_N);
+             * of an earlier box have read the slot already. A later read of the earlier image does not find it. R5: OFF_N is 3, so
+             * a fourth full image in one frame reuses a slot. This line is the hard record of that demand (first 20 cases). */
+            static int n_over;
+            if (n_over++ < 20) pm_log_e("V05 demand: full image %d in frame %u, OFF_N %d: slot %d is used again", off_used + 1, pm_frame_count(), OFF_N, (int)(off_used % OFF_N));
             i = off_used++ % OFF_N;
             offs[i].base = NULL;
             pm_tex_set_offscreen(i, NULL, 0, &offs[i].tex, siz, offs[i].w, offs[i].h);
