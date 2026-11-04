@@ -493,7 +493,9 @@ static void cen_put(unsigned h, unsigned id0, unsigned id1, unsigned tris) {
     cen_over++;
 }
 static void cen_add(const TevKey* tk, int z, int graw, int prog, unsigned cull, unsigned id0, unsigned id1, unsigned tris) {
-    const unsigned* w = (const unsigned*)tk;
+    TevKey kc = *tk; /* N3: prim reaches the TEV constant only for combine 1, 5, 6, 7; other keys hash without it */
+    if (kc.combine != 1 && kc.combine != 5 && kc.combine != 6 && kc.combine != 7) kc.prim = 0;
+    const unsigned* w = (const unsigned*)&kc;
     unsigned h = 2166136261u;
     for (unsigned i = 0; i < (sizeof *tk - sizeof tk->plan_gen) / sizeof(unsigned); i++) h = (h ^ w[i]) * 16777619u;
     h = (h ^ (unsigned)(z | graw << 1 | prog << 2)) * 16777619u;

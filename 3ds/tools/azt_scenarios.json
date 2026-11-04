@@ -266,6 +266,54 @@
       "reason": ""
     },
     {
+      "name": "yard_shot",
+      "status": "unverified",
+      "subject": "Yard (kmr_20 entry 4): shots at frames 200 and 204, replay off. Control for yard_shot_rp.",
+      "proves": "N3: the old path frames of the yard, compared with yard_shot_rp (region diff).",
+      "debug": "preset=yard shots shotwin=200:6 loglevel=debug",
+      "until": "shot \\d+ frame 204\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": "N3 region diff control. Until is the shot at frame 204."
+    },
+    {
+      "name": "yard_shot_rp",
+      "status": "unverified",
+      "subject": "Yard (kmr_20 entry 4): shots at frames 200 and 204 with the raw record replay on (recplay).",
+      "proves": "N3: the replayed frames of the yard equal yard_shot (region diff).",
+      "debug": "preset=yard shots shotwin=200:6 loglevel=debug recplay",
+      "until": "shot \\d+ frame 204\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        }
+      ],
+      "reason": "N3 region diff. Until is the shot at frame 204."
+    },
+    {
       "name": "nok11_splash",
       "status": "unverified",
       "subject": "Mario in nok_11 (entry 0) with the water splash (EFFECT_WATER_SPLASH, fxtest 89) spawned at Mario. Shot a at 12 frames after the spawn shows the splash drops.",

@@ -3556,7 +3556,7 @@ extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slo
 /* 32 B. state 0 none, 1 record, 2 refused, 3 churn guard (4 builds since the arena reset: no capture). RK2: hgen = tb_gen of the
  * handle, tgen0/tgen1 = generation of the cache slots on unit 0 and 1 at the capture end (REC_NO_SLOT none). nb = builds since reset. */
 /* UC2: grp = fragment-op group words (ctx+0xF0..0xFC, texunit config ctx+0x110, flags ctx+0x20) at capture start. A record is reused only when they match (diag_uc2_j75.md). 48 B. */
-typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[11];
+typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[12];
     u32 io, ic; /* UC3c: index arena span (pm_gpu_rec_idx) */
     u32 gin, gout, view; u16 alen; u8 npt, nd, fl, pp; /* pp: the palette words of the body are the rows of pcomp[gmc] (N1) */ /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
     u32 gmc, gdl; /* UC3e: game matrix of the palette at capture, the static list (G_DL address) */
@@ -3573,7 +3573,7 @@ static unsigned rec_hit, rec_bad, rec_miss; /* UC2: reccheck compares (hit), wor
 static unsigned rec_mg; /* UC2: valid records not compared, the group words differ at capture start */
 static unsigned rec_stg; /* UC3b: captures refused, a bound texture slot is in its load frame */
 /* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush. N1: [7], [8] raw G_SETCOMBINE words, [9], [10] the mode words (omode_h, omode_l) */
-static u32 rec_g0[11];
+static u32 rec_g0[12]; /* N3: [11] the primitive colour when leg_mode is 1, 5, 6 or 7 (TEV constant), else 0 */
 #define NAT_MTX_MAX 96u /* N1: a record holds game matrices below this (pm_gpu.c) */
 #define REC_CEN_MAX 64u /* N1: census tuples of one record window (pm_gpu.c) */
 static int nat_logged; /* N1: the gm refusal is logged once */
@@ -3607,6 +3607,7 @@ static void rec_g0_set(void) {
     int a, b; pm_gpu_grp_get(rec_g0); pm_tex_cur_slots(&a, &b);
     rec_g0[6] = (u32)(a + 1) | ((u32)(b + 1) << 16);
     rec_g0[7] = comb_w0; rec_g0[8] = comb_w1; rec_g0[9] = omode_h; rec_g0[10] = omode_l; /* N1: the combiner and mode words are part of the key */
+    rec_g0[11] = (leg_mode == 1 || leg_mode == 5 || leg_mode == 6 || leg_mode == 7) ? prim : 0; /* N3: prim reaches the TEV constant only in these modes (pm_gpu.c flush_tev_rebuild) */
 }
 static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
     if (!ra && !ra_fail) {
