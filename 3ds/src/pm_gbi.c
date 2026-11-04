@@ -3755,6 +3755,11 @@ static __attribute__((noinline)) int rec_play(const Gfx* l) {
     if (k->state != 1 || (u32)l != k->gdl || geom != k->gin) return 0;
     if ((((pm_gpu_gv_wind() <= 0) ? 1u : 0u) != (k->fl & 1u)) || pm_interp_on > 0 || pm_gpu_view_key() != k->view) return 0;
     if (!pm_tex_rec_use(s0) || !pm_tex_rec_use(s1)) return 0;
+    { /* N2: the replay draws the whole list. A group the live path skips (dlc_box_out) must not be drawn, so the list runs live. */
+        DlcEnt* e = dlc_find(l);
+        if (!e || e->gen != pm_dlc_gen) return 0;
+        if (!nobox_on()) for (unsigned g = 0; g < e->ngrp; g++) if (dlc_box_out(&e->grp[g], combined)) return 0;
+    }
     unsigned gmn = ~0u; /* N1: a palette record of another game matrix replays with the palette patched (pm_gpu_rec_play) */
     if (dlc_gmi() != k->gmc) { if (!k->pp || (gmn = (unsigned)dlc_gmi()) >= NAT_MTX_MAX) return 0; }
     if (!pm_gpu_rec_play(ra + k->off, k->len, ra + k->off + k->len, k->npt, k->nd, gmn, ra + k->off + k->len + k->npt, k->nd)) return 0;
