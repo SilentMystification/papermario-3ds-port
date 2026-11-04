@@ -18,7 +18,7 @@ static u8* tx1_chk; /* switch tx1check: the new result, compared with the old pa
 
 /* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
-#define SLOTS 512
+#define SLOTS 1024 /* SLOT1: peak live 497 (kzn_19, frame 1500, uncapped build); 497 x 1.5 = 746, next power of two */
 #define TEX_SCRATCH_PLANE (1024u * 512u * 2u) /* one linear or tiled plane (1024x512 RGBA5551) */
 typedef struct {
     const void* img;
@@ -54,6 +54,7 @@ static Slot slots[SLOTS];
  * The two per-frame passes visit only the set bits, in slot order, instead of every slot below slot_hi. */
 #define SBIT_W (SLOTS / 32)
 static unsigned vup_bits[SBIT_W], att_bits[SBIT_W];
+static unsigned live_bits[SBIT_W]; /* SLOT1: one bit per live slot; the free slot search reads these words, not the records */
 static void sbit_set(unsigned* b, int i) { b[i >> 5] |= 1u << (i & 31); }
 static void sbit_clr(unsigned* b, int i) { b[i >> 5] &= ~(1u << (i & 31)); }
 static void stale_mark(Slot* s) { s->stale = 1; sbit_set(att_bits, (int)(s - slots)); }
@@ -63,6 +64,7 @@ static unsigned used;
 static short recent_slot[RECENT_N] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static unsigned recent_n;
 static int slot_hi; /* every live slot index is below this, so scans stay short while few slots are live */
+static unsigned slot_nlive, slot_peak; /* SLOT1: live slots now and the highest count of this run */
 static unsigned used_peak; /* M02 measurement */
 static unsigned map_peak;
 /* V13c: bytes of the slots that a draw touched in this frame (the working set that eviction must keep), highest since the last map. */
@@ -653,6 +655,8 @@ static void drop(Slot* s) {
     else used = 0;
     s->sgen++;
     s->live = 0;
+    sbit_clr(live_bits, (int)(s - slots));
+    slot_nlive--;
     s->stale = 0;
     while (slot_hi > 0 && !slots[slot_hi - 1].live) slot_hi--;
 }
@@ -856,6 +860,7 @@ void pm_tex_map_delta(unsigned* o) {
 static void tc_report(void) {
     unsigned n = 0, bytes = 0, u0n = 0, u0b = 0, rec_b = 0, rec_n = 0;
     unsigned an[5] = { 0 }, ab[5] = { 0 }; /* age in frames: <=1, <=10, <=100, <=300, older */
+    unsigned small_n = 0; /* SLOT1: live slots under 1 KB */
     int top[3] = { -1, -1, -1 };
     for (int i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
@@ -865,6 +870,7 @@ static void tc_report(void) {
         b = s->bytes;
         n++;
         bytes += b;
+        if (b < 1024) small_n++;
         if (s->uses == 0) { u0n++; u0b += b; }
         if (age <= 300) { rec_n++; rec_b += b; }
         int k = age <= 1 ? 0 : age <= 10 ? 1 : age <= 100 ? 2 : age <= 300 ? 3 : 4;
@@ -884,6 +890,7 @@ static void tc_report(void) {
     tc_ev_cause[0] = tc_ev_cause[1] = tc_ev_cause[2] = 0;
     pm_log_d("texbind binds %u mismatch %u skipped %u", bind_n, bind_mis, bind_skip);
     pm_log_d("texstat live: %u slots %uKB, never hit %u (%uKB), used in last 300 frames %u (%uKB)", n, bytes >> 10, u0n, u0b >> 10, rec_n, rec_b >> 10);
+    pm_log_d("texstat slots: live %u peak %u limit %u under 1 KB %u, byte cap %uKB", slot_nlive, slot_peak, SLOTS, small_n, tex_cap >> 10);
     pm_log_d("texstat age (frames since last use) <=1: %u/%uKB, <=10: %u/%uKB, <=100: %u/%uKB, <=300: %u/%uKB, older: %u/%uKB",
              an[0], ab[0] >> 10, an[1], ab[1] >> 10, an[2], ab[2] >> 10, an[3], ab[3] >> 10, an[4], ab[4] >> 10);
     for (int t = 0; t < 3; t++)
@@ -1166,7 +1173,8 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8 || gf == GPU_LA4) ? 1u : (gf == GPU_L4) ? 1u : 2u;
     int slot = -1;
     for (;;) {
-        for (int i = 0; i < SLOTS; i++) if (!slots[i].live) { slot = i; break; }
+        slot = -1;
+        for (int w = 0; w < SBIT_W; w++) if (~live_bits[w]) { slot = w * 32 + (int)__builtin_ctz(~live_bits[w]); break; }
         if (slot >= 0 && used + reserve <= tex_cap) break;
         if (!evict_oldest_done(slot < 0 ? 0 : 1)) {
             static int once;
@@ -1374,6 +1382,8 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     frame_bytes += reserve;
     if (frame_bytes > map_wmax) map_wmax = frame_bytes;
     s->live = 1;
+    sbit_set(live_bits, slot);
+    if (++slot_nlive > slot_peak) slot_peak = slot_nlive;
     if (slot >= slot_hi) slot_hi = slot + 1;
     used += reserve;
     if (used > used_peak) used_peak = used;

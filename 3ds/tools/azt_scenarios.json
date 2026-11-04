@@ -3702,6 +3702,111 @@
         }
       ],
       "reason": ""
-    }
+    },
+      {
+        "name": "kzn19_slotpeak",
+        "status": "unverified",
+        "subject": "SLOT1: kzn_19 (heaviest map) with texstat to the frame 1500 report. Log only.",
+        "proves": "Peak live texture slots over the run (slot limit 2048 in this measurement build, so the peak is not capped), live slots under 1 KB, evictions by cause.",
+        "debug": "warp=kzn_19:0 story=ch0_toad_town texstat loglevel=debug",
+        "extra": [
+          "-Turbo"
+        ],
+        "until": "texstat f1500:",
+        "cap": 150,
+        "deadline": 20,
+        "first_marker": "warp: kzn_19 entry 0",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: kzn_19 entry 0"
+          },
+          {
+            "name": "report",
+            "regex": "texstat f1500:"
+          }
+        ],
+        "reason": "Long measurement (SLOT1): frame 1500 shows whether the live slot count stops rising. Turbo: slot counts are per frame, not per second."
+      },
+      {
+        "name": "battle_slotpeak",
+        "status": "unverified",
+        "subject": "SLOT1: battle switch (battle battlef=100 on kmr_03, the verified battle_start path) with texstat to the frame 600 report. Log only.",
+        "proves": "Peak live texture slots during a battle, and the under-1-KB count.",
+        "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 texstat loglevel=debug",
+        "extra": [
+          "-Turbo"
+        ],
+        "until": "texstat f600:",
+        "cap": 90,
+        "deadline": 20,
+        "first_marker": "warp: kmr_03 entry 0",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: kmr_03 entry 0"
+          },
+          {
+            "name": "report",
+            "regex": "texstat f600:"
+          }
+        ],
+        "reason": "Battle texture demand (SLOT1). Turbo: slot counts are per frame."
+      },
+      {
+        "name": "pause_slotpeak",
+        "status": "unverified",
+        "subject": "SLOT1: pause menu open (preset toad, START x3) with texstat to the frame 300 report. Log only.",
+        "proves": "Peak live texture slots with the pause menu open.",
+        "debug": "preset=toad padscript=wait80,START*3,wait100 texstat loglevel=debug",
+        "until": "texstat f300:",
+        "cap": 45,
+        "deadline": 20,
+        "first_marker": "warp: mac_00 entry 4",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: mac_00 entry 4"
+          },
+          {
+            "name": "report",
+            "regex": "texstat f300:"
+          }
+        ],
+        "reason": "Pause texture demand (SLOT1)."
+      },
+      {
+        "name": "chain_slotpeak",
+        "status": "unverified",
+        "subject": "SLOT1: map change chain mac_00 to mac_01 to kzn_19 to mac_01 with texstat to the frame 1500 report. Log only.",
+        "proves": "Peak live texture slots across map changes (slots from the previous map are dropped, so the peak should not add up).",
+        "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,kzn_19:0,mac_01:0 texstat loglevel=debug",
+        "extra": [
+          "-Turbo"
+        ],
+        "until": "texstat f1500:",
+        "cap": 150,
+        "deadline": 20,
+        "first_marker": "warp: mac_00 entry 4",
+        "expects": "tour",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: mac_00 entry 4"
+          },
+          {
+            "name": "report",
+            "regex": "texstat f1500:"
+          }
+        ],
+        "reason": "Long measurement (SLOT1): map change chain at frame 1500. Turbo: slot counts are per frame."
+      }
   ]
 }
