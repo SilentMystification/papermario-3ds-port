@@ -159,6 +159,25 @@
       "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
     },
     {
+      "name": "nok02_behroute",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frame 200 (frames 200 to 205), with debug behroute: visible groups with a box corner at w below 0.05 run through the interpreter. Picture: top-right hedge region (x 137 to 173, y 52 to 129) against nok02_tri.",
+      "proves": "FLK1: a top-right change against nok02_tri means the visible behind-eye groups draw differently on the GPU static path than on the interpreter path.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug behroute",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 behroute test, approved)."
+    },
+    {
       "name": "nok02_skipdump",
       "status": "unverified",
       "subject": "Map nok_02 at player position 250 0 11, frame 200, with debug skipdump=1: each group of the lists of that frame logs its box, its screen box (pixels) and the skip result. The shot gives the picture of the same frame.",

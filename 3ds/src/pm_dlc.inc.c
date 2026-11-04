@@ -41,6 +41,14 @@ static int dlc_enabled(void) {
     return !dd_on() && !xt_on() && !rmlog_on();
 }
 static int dlcchk_on(void) { return PMDL("dlccheck"); }
+static int behroute_on(void) { return PMDL("behroute"); } /* FLK1 debug switch behroute: a visible group with a box corner at w < 0.05 runs through the interpreter, not the static GPU segment */
+static __attribute__((noinline)) int dlc_behind(const DlcGrp* g, const float (*m)[4]) {
+    for (int c = 0; c < 8; c++) {
+        float x = (c & 1) ? g->hi[0] : g->lo[0], y = (c & 2) ? g->hi[1] : g->lo[1], z = (c & 4) ? g->hi[2] : g->lo[2];
+        if (m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3] < 0.05f) return 1;
+    }
+    return 0;
+}
 static int stdump_on(void) { return PMDL("stdump"); } /* FLK1 state dump per visible static segment, frames 200 to 205 */
 int pm_gpu_rgb_scale_get(void);
 static int nobox_on(void) { return PMDL("nobox"); } /* FLK1 debug switch nobox: the group box skip of dlc_try is off */
@@ -555,6 +563,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
             if (gmi == GV_NONE) why = 4;
         }
         dlc_set_geom(gg);
+        if (!why && behroute_on() && dlc_behind(g, m)) why = 5;
         if (!why && g->sd && dlc_static_group(e, g, gmi, gg)) {
             dlc_c.replay++; dlc_c.srep++; dlc_c.tri += g->ntri;
             tri_since_vtx = g->tsv_exit;

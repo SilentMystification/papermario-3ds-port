@@ -70,3 +70,21 @@ PMDL bare word: debug_scan needs the word alone, so nobox=1, noboxint=1, dlcchec
 - Working mechanism (inferred, not yet tested): an out group can have vertices with w <= 0 (behind the eye). The PICA path gets such triangles without a near clip, so they can rasterize mirrored on screen. Skip on removes them. The top-right difference is the shading of those triangles, which depth test partly hides.
 - No fix made. The skip is the correct side for these groups.
 - Proposed next test (needs approval): route a visible group with any box corner w <= 0 to the interpreter (no static GPU segment), frame 200 at pos 250 0 11, and diff against skip on. A change in the top-right region means visible behind-eye groups (not skipped) draw wrong on the GPU path. That path is the candidate flicker source for the end piece as the camera moves.
+
+## Final (behroute test, start 20, approved): no change in the top-right region. FLK1 retired.
+- Switch `behroute` (dlc_try, pm_dlc.inc.c): a visible group with a box corner at w < 0.05 runs through the interpreter instead of the static GPU segment. Scenario nok02_behroute.
+- Result: top-right region (x 137 to 173, y 52 to 129) 0 px differ from nok02_tri (skip on). Remaining 986 px differ only at x 20 to 55, y 89 to 125 (the figure, run-to-run noise).
+- So visible behind-eye groups draw the same on both paths at this camera. They are not the top-right source. The skip-off difference comes from out groups (skip on omits them), and the earlier state diff found no carried state word.
+- GPU near clip: pm_gpu.c GP2 (sh_user_clip, gp2_clip_dat = w - 0.05 >= 0) applies to raw batches, which the static group path uses. So the GPU path has a near clip. The clip itself was not measured against the CPU clip.
+- Fix: none. The skip rule is correct (dlccheck missing 0). Byte-equal scene check not run (no code change to a default path; debug switches only).
+- Azahar does not reproduce the end-piece flicker at pos 250 0 11, frames 200 to 205.
+
+## Console diagnostic switches (no Azahar needed)
+Add a bare word or key=value to debug3ds.txt in the game folder on the SD card (read at boot, max 255 bytes; game_thread in pm_main.c). Use the logs from the live log:
+- `dlccheck`: per 300 frames, a `dlc2 f...` line with grp, skip, missing, xgrp. missing above 0 means a skipped group holds a triangle that the interpreter would keep.
+- `skipdump`: frames 200 to 204 only (edit the window in pm_dlc.inc.c for another frame). One `skipg f... k ... skip ... plane ... behind ... scr x y box` line per group: screen box (pixels) and rejecting clip plane. Use it to name the groups of a visible area.
+- `stdump`: `stseg` line per visible static segment, frames 200 to 205: geom, epoch, pep, tss, boost, fxon, rgb, tsl.
+- `nobox`: skip off. `noboxint`: out groups through the interpreter. `behroute`: visible behind-eye groups through the interpreter.
+- `tritrace=<frame>:<count>` (value form, pm_gbi.c): one line per draw_tri_cpu triangle with corner w, screen X and Y, clip bits, cull sign and decision.
+- Flicker log for the walk (not built): a per-frame line with the group id, skip decision and screen box for all groups near Mario would need a new window in skipdump (frame range from pm_frame_count) and a walk input. Not built in FLK1.
+- Caution: the skipdump, stdump and dlc2 lines use pm_log or pm_log_hw. pm_log_hw keeps only the last lines of its ring.
