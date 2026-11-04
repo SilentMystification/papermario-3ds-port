@@ -351,9 +351,35 @@ Statement:
 
 ## 8. Open items
 
-- Census logger (step 2): per frame multiset of (template, texture id, triangle count), old path. Needed for the template count and the dynamic counts.
-- Template count per scene: measured in step 2, not in this step.
-- Register numbers of the sh_* setters (pm_gpu.c:531-566) and the 0x227 draw trigger: read from a captured record in step 2.
+- Census logger (step 2, done, commit 275a6a2cf): `drawcensus=<frame>` prints one `cen f<n> k ...` line per distinct flush batch and a summary. Scene census_yard: 46 batches, 510 triangles, 39 distinct. Texture ids are slot source hashes. The key is build specific (a hash of TevKey without plan_gen). Still open: the template count per scene for the other scenes (golden_multi census, not run yet).
+- Register numbers of the sh_* setters (pm_gpu.c:531-566) and the 0x227 draw trigger: read from a captured record. Not done in step 2.
 - Confirm 40 cycles per I-cache miss on the console. Section 2.3 is arithmetic on plan figures.
-- RecKey size: 64 B (plan_uc3.md) or about 96 B (agent_uc3d.md). Settle before the record layout is final.
-- Console time for the GPU probe (plan open item).
+- RecKey size: resolved in step 2 (commit 4a2db6d42, host check). `sizeof(RecKey)` is 96 B, aligned 32, grp at 24, gmc at 80 (pm_gbi.c:3476-3480). The 64 B figure in plan_uc3.md is wrong.
+- Console time for the GPU probe (section 9 is the design). Needs the console.
+
+## 9. GPU busy-time probe (design only, step 2 item 4)
+
+Goal: the GPU busy time of one frame, per eye, with no game work in the measured interval. Gate: 3D at 60 fps needs 2 x (per-eye GPU busy) plus CPU work under 16.7 ms (section 7). Output: `gpubusy f<n> median us <x> eyes <1|2>`.
+
+Facts from the tree (current line numbers):
+- The PICA starts at `C3D_FrameEnd(GX_CMDLIST_FLUSH)` (pm_gpu.c:1999). Before that the GX queue is held (KICK1 note, pm_gpu.c:619).
+- The frame begin waits for the GPU in `C3D_FrameBegin(C3D_FRAME_SYNCDRAW)` (pm_gpu.c:1956). The wait is the `gwait` field of fsplit (pm_phase.c:225). The HEAD code uses SYNCDRAW only when `pm_interp_on > 0` (pm_gpu.c:1956); the probe must pass SYNCDRAW itself.
+- A replay of a record block is `pm_gpu_rec_play(w, n, pt, npt, nd)` (pm_gpu.c:2559). It issues the draws of one captured group with the current state.
+- The frame-start path uploads textures first (`pm_tex_upload_vram_before_frame`, pm_gpu.c:1952). Those uploads are CPU and DMA work. The probe must not count them.
+
+Procedure (switch `gpubusy=<n>`, n = frames, 30 for the median):
+1. Capture one frame's draw block once, at a steady scene frame (after the scene settles, no texture load pending: `pm_tex_cur_vram_pending` and `pm_tex_aux_vram_pending` both 0). Keep the words and the patch table in RAM. The capture is a record (UC path) or a copy of the batch (`C3D_DrawArrays` / `C3D_DrawElements` arguments).
+2. Each probe frame: `pm_gpu_begin` without game work (no `gfx` draw, no list build), replay the captured block, call `C3D_FrameEnd(GX_CMDLIST_FLUSH)` at once, then call `C3D_FrameBegin(C3D_FRAME_SYNCDRAW)` and time that call with `svcGetSystemTick`. The time of that call is the GPU busy time of the block, plus the GX queue flush cost. Log the value, skip the first 2 frames (warm-up of the texture slots).
+3. Eyes = 2: replay the block twice in one frame, once with each eye's projection (`pm_gpu_eye`, pm_gpu.c:1731), with the same block and a different projection uniform. Time as in step 2. The two-eye case does not repeat texture work.
+4. Median of n frames. Print the line once when n frames are done.
+
+Controls:
+- Repeat with the same block replayed twice in one frame. Busy time must scale about x2. A value that does not scale shows a fixed overhead (the flush or the vblank wait) and is subtracted in the report, not hidden.
+- Repeat the probe with `gpubusy` off and the normal loop, the `gwait` field of fsplit: it must be below the probe value, because the CPU work hides part of the wait.
+
+Limits (design, not measured):
+- Azahar has no GPU timing model. The probe runs on the console only. Azahar output is not evidence.
+- The vblank wait: `C3D_FrameBegin` with SYNCDRAW waits for the GPU only (pm_gpu.c:1955 comment). If the console shows a vblank wait too, the median includes up to one frame interval (16.7 ms). Check that the reading is under 16.7 ms before it is used.
+- One block is one scene frame. The gate uses the frame of the heaviest scene (battle or the dense town). Pick the scene by the census (section 8).
+
+Console run: not yet done. The probe code does not exist. The push command is given after the code exists and its Azahar check has passed (CLAUDE.md rule 6).

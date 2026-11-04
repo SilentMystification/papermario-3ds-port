@@ -3341,6 +3341,35 @@
         }
       ],
       "reason": "Log only (census). The census is a set of counts, so the picture is not the test."
+    },
+    {
+      "name": "golden_multi",
+      "status": "unverified",
+      "subject": "Six maps in one start: kmr_20 entry 4 (preset), then mac_00 entry 4, tik_03 entry 0, isk_04 entry 0, kzn_19 entry 0, mac_01 entry 0. One shot per map, 30 frames after the map is in.",
+      "proves": "NDT3 multi-scene golden: one Azahar start gives one shot per scene, to compare HEAD and the new build region by region (no stored reference).",
+      "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug",
+      "extra": [ "-Turbo" ],
+      "until": "shot 6 frame",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "first map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "kzn_19 in",
+          "regex": "tour: in map area 18 map 13 entry 0 "
+        },
+        {
+          "name": "last shot",
+          "regex": "shot 6 frame \\d+"
+        }
+      ],
+      "reason": ""
     }
   ]
 }

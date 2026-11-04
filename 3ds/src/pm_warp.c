@@ -672,6 +672,12 @@ void pm_warp_world_mode(unsigned frame) {
     if (tour_next && warp_on) {
         tour_f0 = frame; /* a map of the tour is in */
         tour_wait = 0;
+        { /* NDT3: tourshot=<k> takes one shot k frames after each tour map is in (k below TOUR_FRAMES): one start, one shot per scene */
+            static int tsk = -2; char tsv[16];
+            extern void pm_gpu_shot_window(unsigned from, unsigned n);
+            if (tsk == -2) tsk = pm_debug_value("tourshot", tsv, sizeof tsv) ? atoi(tsv) : -1;
+            if (tsk >= 0) pm_gpu_shot_window(frame + (unsigned)tsk, 1);
+        }
         struct mallinfo mi = mallinfo(); /* game heap at the scene start: used KB, and free KB = heap total minus used (free-in-arena alone misses the sbrk part) */
         unsigned heap_used = (unsigned)mi.uordblks, heap_total = pm_heap_bytes();
         pm_log_d("tour: in map area %d map %d entry %d frame %u t=%u ms heap used %u KB free %u KB", gGameStatusPtr->areaID, gGameStatusPtr->mapID, gGameStatusPtr->entryID, frame, pm_uptime_ms(), heap_used >> 10, (heap_total - heap_used) >> 10);
