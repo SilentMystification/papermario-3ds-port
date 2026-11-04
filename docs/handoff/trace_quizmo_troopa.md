@@ -137,3 +137,11 @@ Starts: none in this update (QJT used 7 of 8 after the reset, 1 left).
 - Keep until the fix is tested: src/effects/quizmo_stage.c:140 (qmtx log line; it shows the matrix after the fix).
 - Revert after the fix test: src/pm_gbi.c (badw line in tri_dd_log). It prints every bad vertex and costs log space.
 - Untracked, not committed: assets/ (copy of main assets/us), build3ds/ and lane binaries.
+
+## Update 5: fix applied and tested (run 13, last QJT start, 8 of 8 used)
+- Fix: src/effects/gfx/quizmo_stage.c, the raw char array at line 31 replaced by `Mtx D_09004148_39CD08[4]` with the 64 big-endian 32-bit words of the ROM bytes. elem() (src/pm_gbi.c:440) is unchanged.
+- Debug edits reverted: pm_gbi.c badw line, src/effects/quizmo_stage.c qmtx line.
+- Kept (committed): src/pm_fxtest.c type 1 entry, appended at the end of FXLIST (index 127). Existing indexes are unchanged: gather_energy_pink 14, quizmo_stage 72 (was 73 in earlier runs), quizmo_audience 78, quizmo_assistant 120.
+- Test: fxtest=72 quizmo_stage, frame 412, drawlog 412 and drawcensus 412 (run 6 settings). Frame 412 logged: no chunk with clip w below 0 or above 1e4. The chunks that had w -7.66e6 to 5.86e6 (run 6, src 004e07c0) now show w 266.79 to 436.21. Other stage chunks: w 287 to 436 (src 004e0640), 295 to 298 (src 004e0700).
+- Shot: docs picture before (run 12 shot 0013, left) and after (run 13 shot 0013, right): build3ds/shots/0013_1_2.ppm after. Scratchpad: qjt_before_after_f412.png. Before: a dark brown block covers the lower left of the frame (the stretched wall). After: the block is gone, the room floor and a striped stage edge show.
+- Other raw arrays in src/effects/gfx (53 total): the splat sections are palette 31, gfx 21 (inside gfx sections), vtx 1 (ice_pillar.c:14 D_09001198_40B358, 16 bytes shown, no consumer found). None of them is named in effect code or in a gfx list. They are reached by segment address (texture loads), not by gSPMatrix. Only quizmo D_09004148 is read as a matrix. Texel byte order for the texture loader is not checked here.
