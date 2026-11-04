@@ -518,8 +518,71 @@ static void cen_add(const TevKey* tk, int z, int graw, int prog, unsigned cull, 
     if (rec_cap) { if (rcw_n < REC_CEN_MAX) { u32* t = rcw + 4u * rcw_n; t[0] = h; t[1] = id0; t[2] = id1; t[3] = tris; } rcw_n++; }
     cen_put(h, id0, id1, tris);
 }
+/* NDREF1: reference draw stream, switch ndref=<frame> (pm_gbi.c pm_gbi_ndref_frame). The draws and producer tags of that frame go to a
+ * buffer. cen_frame_end writes sdmc:/3ds/PaperMario/ndref.bin. Layout: 3ds/tests/ndref/FORMAT.md. */
+int pm_gbi_ndref_frame(void);
+void pm_tex_cur_slots(int* a, int* b);
+int pm_tex_slot_words(int i, uint32_t* out);
+int ndref_on;
+static int ndref_target = -2, ndref_wr, ndref_over;
+static unsigned char* ndref_buf; static unsigned ndref_len, ndref_draws;
+#define NDREF_CAP (2u << 20)
+typedef struct { int z, graw, prog; unsigned cull; int decal, blend, atest, sx0, sy0, sx1, sy1; int sa, sb; uint32_t tw0[4], tw1[4]; } NdrefDraw;
+static void ndref_put(const void* p, unsigned n) {
+    if (ndref_len + n > NDREF_CAP) { ndref_over = 1; return; }
+    memcpy(ndref_buf + ndref_len, p, n); ndref_len += n;
+}
+static void ndref_patch(unsigned at) { /* record size of the record that starts at at (header is 8 bytes) */
+    if (ndref_over) return;
+    unsigned n = ndref_len - at - 8u; memcpy(ndref_buf + at + 4, &n, 4);
+}
+static void ndref_begin(void) { /* per frame, from pm_gpu_begin */
+    if (ndref_target == -2) ndref_target = pm_gbi_ndref_frame();
+    ndref_on = ndref_target >= 0 && (int)pm_frame_count() == ndref_target;
+    if (!ndref_on || ndref_wr) return;
+    if (!ndref_buf) ndref_buf = (unsigned char*)malloc(NDREF_CAP);
+    ndref_wr = ndref_buf != NULL; ndref_len = 0; ndref_draws = 0; ndref_over = 0;
+    if (!ndref_wr) ndref_on = 0;
+}
+void ndref_tag(unsigned kind, unsigned id, unsigned extra) { /* pm_gbi.c producer and model marks, record kind 2 and 3 */
+    unsigned hd[2] = { kind, 8u }, p[2] = { id, extra };
+    ndref_put(hd, 8); ndref_put(p, 8);
+}
+static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, int graw, int prog, unsigned cull) {
+    unsigned at = ndref_len, kind = 1u, n = 0;
+    NdrefDraw d; memset(&d, 0, sizeof d);
+    ndref_put(&kind, 4); ndref_put(&n, 4);
+    d.z = z; d.graw = graw; d.prog = prog; d.cull = cull;
+    d.decal = r_decal; d.blend = r_blend; d.atest = r_atest;
+    d.sx0 = sci_x0; d.sy0 = sci_y0; d.sx1 = sci_x1; d.sy1 = sci_y1;
+    pm_tex_cur_slots(&d.sa, &d.sb);
+    pm_tex_slot_words(d.sa, d.tw0); pm_tex_slot_words(d.sb, d.tw1);
+    ndref_put(tk, sizeof *tk); ndref_put(&d, sizeof d);
+    ndref_put(g_uvso, sizeof g_uvso); ndref_put(g_cmul, sizeof g_cmul); ndref_put(g_cadd, sizeof g_cadd); ndref_put(g_zmix, sizeof g_zmix);
+    ndref_put(&g_fx, sizeof g_fx);
+    unsigned np = graw ? pal_n : 0u; /* palette: game matrix index and the composed matrix pcomp of each entry */
+    ndref_put(&np, 4);
+    for (unsigned k = 0; k < np; k++) { ndref_put(&pal_g[k], 4); ndref_put(&pcomp[pal_g[k]], sizeof(C3D_Mtx)); }
+    unsigned nv = graw ? gni : (unsigned)nverts; /* resolved vertices in draw order: 16-byte ring values or 40-byte CPU Vert */
+    ndref_put(&nv, 4);
+    if (graw) for (unsigned i = 0; i < gni; i++) ndref_put(gring + 16u * gidx[gi_start + i], 16);
+    else ndref_put(verts, (unsigned)nverts * sizeof(Vert));
+    ndref_patch(at);
+    ndref_draws++;
+}
+static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: write the file, one log line when it is written */
+    if (!ndref_wr) return;
+    ndref_wr = 0; ndref_on = 0; ndref_target = -1;
+    unsigned fr = pm_frame_count();
+    uint32_t hdr[5] = { 0x3152444Eu /* NDR1 */, 1u, fr, ndref_draws, ndref_len };
+    FILE* f = fopen("sdmc:/3ds/PaperMario/ndref.bin", "wb");
+    if (f) { fwrite(hdr, 4, 5, f); fwrite(ndref_buf, 1, ndref_len, f); fclose(f); }
+    pm_log_d("ndref f%u done draws %u bytes %u%s%s", fr, ndref_draws, ndref_len, f ? "" : " open failed", ndref_over ? " over" : "");
+    free(ndref_buf); ndref_buf = NULL;
+}
 void nat_why_report(unsigned fr); /* pm_gbi.c, N4 step 1 */
 static void cen_frame_end(void) {
+    ndref_end();
     static int fr = -2;
     char v[16];
     if (fr == -2) fr = pm_debug_value("drawcensus", v, sizeof v) ? atoi(v) : -1;
@@ -1100,6 +1163,7 @@ static void flush_draw(void) {
     cen_add(&tk, z, graw, graw ? (gpal ? (g_use5 ? 5 : 4) : 2) : 1, graw ? (unsigned)g_cullm : 0u,
         grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, tex1 ? pm_tex_census_id(1) : 0u,
         (unsigned)(graw ? gni / 3 : nverts / 3));
+    if (ndref_on) ndref_draw(&tk, z, graw, graw ? (gpal ? (g_use5 ? 5 : 4) : 2) : 1, graw ? (unsigned)g_cullm : 0u);
     DC_T(3);
     PHF_POP();
     PHF_PUSH(PH_GST);
@@ -2042,6 +2106,7 @@ void pm_gpu_begin_wait(void) {
 void rec_ia_frame(void); /* UC3e: frame start for the index arena (defined with it) */
 void pm_gpu_begin(int clear) {
     rec_ia_frame(); /* UC3e: the frame before has ended; apply a deferred arena reset */
+    ndref_begin();
     begin_clear = clear;
     begin_pend = 1;
     if (pm_interp_on > 0) pm_gpu_begin_wait();

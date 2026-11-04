@@ -1940,8 +1940,16 @@ static unsigned pk_slot(unsigned a) {
     }
     return PK_OTHER;
 }
+/* NDREF1 switch ndref=<frame>: the frame whose draw stream pm_gpu.c writes (sdmc:/3ds/PaperMario/ndref.bin). -1 when the switch is off. */
+extern int ndref_on;
+void ndref_tag(unsigned kind, unsigned id, unsigned extra);
+int pm_gbi_ndref_frame(void) {
+    char v[16];
+    return pm_debug_value("ndref", v, sizeof v) ? atoi(v) : -1;
+}
 void pm_gbi_prod_mark(unsigned a) { /* called by pm_interp_open under phase */
     const Gfx* p = gMainGfxPos;
+    if (ndref_on) ndref_tag(2, a, 0); /* NDREF1: producer tag in the reference stream */
     if (pmk_n && p < pmk[pmk_n - 1].p) pmk_n = 0; /* the main list starts again: marks of the last one are stale */
     if (pmk_n < PK_MARKS) { pmk[pmk_n].p = p; pmk[pmk_n].s = pk_slot(a); pmk_n++; }
 }
@@ -2044,6 +2052,7 @@ void pm_gbi_census_close(void) { int cur = pmx_main ? mdcm_cur : -1; if (cur >= 
 
 void pm_gbi_mdl_mark(unsigned id, int pan) { /* called by appendGfx_model under phase */
     const Gfx* p = gMainGfxPos;
+    if (ndref_on) ndref_tag(3, id, (unsigned)(pan != 0)); /* NDREF1: model tag in the reference stream */
     if (mdcm_n && p < mdcm[mdcm_n - 1].p) mdcm_n = 0; /* the main list starts again */
     int s = mdc_slot(id);
     if (s >= 0) { mdc[s].seen = 1; mdc[s].pan = (u8)(pan != 0); }

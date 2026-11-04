@@ -4533,6 +4533,30 @@
         }
       ],
       "reason": "Log only. The picture is not the test. Cap 40 s and deadline 20 s: pf_report prints after 300 frames, so the cap covers boot plus 300 frames."
+    },
+    {
+      "name": "ndref_toad",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 (warp to mac_01 entry 0): the reference draw stream of frame 200 (ndref=200), written to sdmc:/3ds/PaperMario/ndref.bin. Log only.",
+      "proves": "NDREF1 hook: one draw record per flush close of frame 200 and producer and model tags, file written, log line ndref f200 done.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town ndref=200 loglevel=debug",
+      "until": "ndref f200 done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f200 done draws \\d+ bytes \\d+$"
+        }
+      ],
+      "reason": "Log and file only (reference capture, S0-1). The file is checked by nd_ref_dump.py --check (S0-2)."
     }
   ]
 }
