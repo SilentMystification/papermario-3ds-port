@@ -218,6 +218,7 @@ static unsigned dlc_gmi(void);
  * (a group starts with all slots dead, a triangle on a dead slot is dropped). A group without room keeps sd NULL and runs through the ring. */
 static __attribute__((cold, noinline)) void dlc_static_build(DlcEnt* e, const Gfx* l) {
     unsigned char live[64];
+    pm_gpu_nat_pool_init();
     unsigned short smap[64];
     for (unsigned k = 0; k < e->ngrp; k++) {
         DlcGrp* g = &e->grp[k];
@@ -264,8 +265,13 @@ static __attribute__((cold, noinline)) void dlc_static_build(DlcEnt* e, const Gf
         if (nv != g->nvtx || ngo != g->ng) { free(sd); dlc_c.sfull++; continue; } /* cannot happen: the same walk as dlc_compile */
         pm_gpu_gstat_commit((unsigned)first, nv);
         g->sn = (u16)nt; g->sd = sd;
+        nat_pool_put(sd, 3u * nt); /* PMOD P1: linear copy of the indices (the bake). sd stays the draw list */
         dlc_batch_compile(g, e);
     }
+    unsigned bnv = 0, bni = 0, bok = 1;
+    for (unsigned k = 0; k < e->ngrp; k++) { if (!e->grp[k].sd) bok = 0; bnv += e->grp[k].nvtx; bni += 3u * e->grp[k].sn; }
+    nat_model_bake(e->addr, e->ngrp, bnv, bni, bok);
+    { static unsigned p1_n; if (p1_n < 40) { p1_n++; pm_log_d("PM1 bake dl %08lx nseg %u nv %u nidx %u ok %u", (unsigned long)e->addr, (unsigned)e->ngrp, bnv, bni, bok); } }
 }
 
 /* DLC2: one range of static triangles with the state of the current epoch. Returns 0 when the raw path refuses (nothing was queued). */
@@ -495,6 +501,7 @@ static __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* 
 /* the shape buffer was written: every entry is stale */
 static __attribute__((cold, noinline)) void dlc_reset(void) {
     for (unsigned k = 0; k < DLC_TAB; k++) if (dlc_tab[k]) { dlc_free(dlc_tab[k]); free(dlc_tab[k]); dlc_tab[k] = NULL; }
+    nat_model_reset();
     dlc_nent = 0;
     pm_gpu_gstat_reset();
 }

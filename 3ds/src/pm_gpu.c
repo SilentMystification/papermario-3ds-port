@@ -2891,3 +2891,11 @@ int pm_gpu_depth_at(int x, int y, unsigned* d24) {
     *d24 = *(const unsigned*)(src + ((((fy >> 3) * 30u + (fx >> 3)) * 64u + m) * 4u)) & 0xFFFFFFu;
     return 1;
 }
+
+/* PMOD P1: the bake pool (pm_native.c) lives in linear memory. Allocated once; a failed linearAlloc leaves the pool unset. */
+void pm_gpu_nat_pool_init(void) {
+    static int done;
+    if (done) return;
+    done = 1;
+    nat_pool_set(linearAlloc(NAT_POOL_BYTES), NAT_POOL_BYTES);
+}

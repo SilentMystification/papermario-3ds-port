@@ -70,4 +70,16 @@ unsigned nat_emit(const NatRec* rec, unsigned n, const uint16_t* ord, uint32_t* 
 /* Eye 2 without a second walk: copy the eye 1 span, then write the eye 2 palette words at each logged position. */
 void nat_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NatMtxLog* log, unsigned nlog, unsigned eye);
 
+/* PMOD P1: bake record of one static model DL (per map). The index lists are copied into a linear pool set by nat_pool_set. */
+#define NAT_MODEL_MAX 64
+typedef struct { uint32_t dl; uint16_t nseg; uint32_t nv, nidx; uint8_t ok; } NatModel;
+extern NatModel nat_model[NAT_MODEL_MAX];
+extern unsigned nat_nmodel;
+void nat_pool_set(void* base, unsigned bytes); /* base: linear memory (3DS caller); host test: malloc */
+void pm_gpu_nat_pool_init(void);              /* pm_gpu.c: linear pool of NAT_POOL_BYTES, once */
+#define NAT_POOL_BYTES (128u * 1024u)
+void nat_model_reset(void);                    /* clears the models and the pool (per map generation) */
+const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n); /* copies n indices, 32-byte aligned. NULL when full or unset */
+void nat_model_bake(uint32_t dl, unsigned nseg, unsigned nv, unsigned nidx, unsigned ok); /* adds a record; no-op when the table is full */
+
 #endif

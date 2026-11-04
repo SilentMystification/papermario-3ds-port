@@ -210,3 +210,28 @@ int nat_tex_set(unsigned h, const uint32_t* blk) {
     memcpy(t, blk, 4 * sizeof(uint32_t));
     return 1;
 }
+
+/* PMOD P1: bake records. ponytail: bump pool, no free; the map generation resets it. Upgrade to per-DL free when maps grow past the pool. */
+NatModel nat_model[NAT_MODEL_MAX];
+unsigned nat_nmodel;
+static uint8_t* nat_pool_base;
+static unsigned nat_pool_size, nat_pool_used;
+
+void nat_pool_set(void* base, unsigned bytes) { nat_pool_base = (uint8_t*)base; nat_pool_size = bytes; nat_pool_used = 0; }
+
+void nat_model_reset(void) { nat_nmodel = 0; nat_pool_used = 0; }
+
+const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n) {
+    unsigned bytes = (n * 2u + 31u) & ~31u;
+    if (!nat_pool_base || nat_pool_used + bytes > nat_pool_size) return NULL;
+    uint16_t* d = (uint16_t*)(nat_pool_base + nat_pool_used);
+    memcpy(d, idx, n * sizeof(uint16_t));
+    nat_pool_used += bytes;
+    return d;
+}
+
+void nat_model_bake(uint32_t dl, unsigned nseg, unsigned nv, unsigned nidx, unsigned ok) {
+    if (nat_nmodel >= NAT_MODEL_MAX) return;
+    NatModel* m = &nat_model[nat_nmodel++];
+    m->dl = dl; m->nseg = (uint16_t)nseg; m->nv = nv; m->nidx = nidx; m->ok = (uint8_t)(ok != 0);
+}

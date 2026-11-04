@@ -224,12 +224,34 @@ static void test_layout(const char* path) {
     printf("eye: 2 draws, palette words patched %u\n", diff);
 }
 
+/* PMOD P1: the pool copy equals the source, 32-byte aligned; a full pool returns NULL; reset clears the table. */
+static void test_bake(void) {
+    static uint16_t src[100];
+    for (unsigned i = 0; i < 100; i++) src[i] = (uint16_t)(i * 7u + 3u);
+    void* mem = malloc(1024 + 32);
+    nat_pool_set((void*)(((uintptr_t)mem + 31u) & ~(uintptr_t)31u), 1024);
+    const uint16_t* a = nat_pool_put(src, 10);
+    const uint16_t* b = nat_pool_put(src + 10, 33);
+    CHECK(a && b, "bake: pool copy failed");
+    CHECK(a && memcmp(a, src, 10 * sizeof src[0]) == 0, "bake: first copy differs");
+    CHECK(b && memcmp(b, src + 10, 33 * sizeof src[0]) == 0, "bake: second copy differs");
+    CHECK(b && ((uintptr_t)b & 31u) == 0, "bake: second copy not 32-byte aligned");
+    CHECK(nat_pool_put(src, 500) == NULL, "bake: full pool did not refuse");
+    nat_model_bake(0x1234u, 2, 40, 90, 1);
+    CHECK(nat_nmodel == 1 && nat_model[0].nidx == 90 && nat_model[0].ok == 1, "bake: model record");
+    nat_model_reset();
+    CHECK(nat_nmodel == 0, "bake: reset kept models");
+    CHECK(nat_pool_put(src, 4) != NULL, "bake: reset did not free the pool");
+    free(mem);
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) { printf("usage: nat_host_test <fixture.txt>\n"); return 2; }
     test_record();
     test_template();
     test_order();
     test_layout(argv[1]);
+    test_bake();
     if (fails) { printf("NAT HOST TESTS: %d FAIL\n", fails); return 1; }
     printf("NAT HOST TESTS: all pass\n");
     return 0;
