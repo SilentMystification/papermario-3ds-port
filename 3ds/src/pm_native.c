@@ -226,8 +226,9 @@ void nat_model_reset(void) { nat_nmodel = 0; nat_pool_used = 0; }
 /* E3: GPU index address of a physical address (bit 31 set, relative to 0x18000000, map_gdl_walker.md section 0). The caller passes the phys of a pool or arena pointer. */
 uint32_t nat_gpu_addr(uint32_t phys) { return 0x80000000u | (phys - 0x18000000u); }
 
+/* E4a: packed, no 32-byte round, so consecutive groups are contiguous (map_e4.md section 3). */
 const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n) {
-    unsigned bytes = (n * 2u + 31u) & ~31u;
+    unsigned bytes = n * 2u;
     if (!nat_pool_base || nat_pool_used + bytes > nat_pool_size) return NULL;
     uint16_t* d = (uint16_t*)(nat_pool_base + nat_pool_used);
     memcpy(d, idx, n * sizeof(uint16_t));

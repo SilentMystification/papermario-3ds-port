@@ -224,7 +224,7 @@ static void test_layout(const char* path) {
     printf("eye: 2 draws, palette words patched %u\n", diff);
 }
 
-/* PMOD P1: the pool copy equals the source, 32-byte aligned; a full pool returns NULL; reset clears the table. */
+/* PMOD P1: the pool copy equals the source, packed (E4a, no padding); a full pool returns NULL; reset clears the table. */
 static void test_bake(void) {
     static uint16_t src[100];
     for (unsigned i = 0; i < 100; i++) src[i] = (uint16_t)(i * 7u + 3u);
@@ -235,7 +235,7 @@ static void test_bake(void) {
     CHECK(a && b, "bake: pool copy failed");
     CHECK(a && memcmp(a, src, 10 * sizeof src[0]) == 0, "bake: first copy differs");
     CHECK(b && memcmp(b, src + 10, 33 * sizeof src[0]) == 0, "bake: second copy differs");
-    CHECK(b && ((uintptr_t)b & 31u) == 0, "bake: second copy not 32-byte aligned");
+    CHECK(a && b && (const uint8_t*)b == (const uint8_t*)a + 10 * sizeof src[0], "bake: copies not packed (E4a)");
     CHECK(nat_pool_put(src, 500) == NULL, "bake: full pool did not refuse");
     nat_model_bake(0x1234u, 2, 40, 90, 1);
     CHECK(nat_nmodel == 1 && nat_model[0].nidx == 90 && nat_model[0].ok == 1, "bake: model record");
