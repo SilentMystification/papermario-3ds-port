@@ -4124,6 +4124,54 @@
         "reason": "Cap 32 s: hos01_texword (cap 25) stopped before its until line (runs 3 and 4, TEXD3). The shot writer takes frame 203, not 204."
       },
       {
+        "name": "texstride_wall",
+        "status": "unverified",
+        "subject": "TCV: hos_01 wall, the I4 64x64 texture (fmt 4 siz 0). The texword probe (shape) logs the stride the converter gets for the first bind from frame 200 and writes the texsrc and texgpu dumps.",
+        "proves": "The stride field of the texword line for the wall (64 = the texel width of the image, 128 = the doubled 4-bit stride of pm_gbi.c), and the dump files of the same bind.",
+        "debug": "warp=hos_01:0 texword=shape@200 loglevel=debug",
+        "until": "texword f200 img [0-9a-f]+ bind 1:",
+        "cap": 25,
+        "deadline": 20,
+        "first_marker": "warp: hos_01 entry 0",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: hos_01 entry 0"
+          },
+          {
+            "name": "wall bind",
+            "regex": "texword f200 img [0-9a-f]+ bind 1: slot \\d+ 64x64 fmt 4 siz 0 stride \\d+"
+          }
+        ],
+        "reason": "Log-only diagnostic (TCV): the stride of the I4 64x64 wall bind and its texel dumps. No picture is the subject."
+      },
+      {
+        "name": "texdump_coin",
+        "status": "unverified",
+        "subject": "TCV: tik_03 sewer coin, image 0x00571b90 (RGBA16 32x32 in the BIS1 notes). The texword probe for that address writes the texsrc and texgpu dumps of the first 4 binds.",
+        "proves": "The texsrc and texgpu dumps of the coin texture (texture bytes as the converter got them and as uploaded). The address is the one of the BIS1 notes; if it changed in this build, the run stops at the cap with no dump.",
+        "debug": "warp=tik_03:0 texword=00571b90 loglevel=debug",
+        "until": "texword f\\d+ img 00571b90 bind 1:",
+        "cap": 25,
+        "deadline": 20,
+        "first_marker": "warp: tik_03 entry 0",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: tik_03 entry 0"
+          },
+          {
+            "name": "coin bind",
+            "regex": "texword f\\d+ img 00571b90 bind 1:"
+          }
+        ],
+        "reason": "Log-only diagnostic (TCV): the coin texel dumps for the converter check. Address from BIS1; not checked against the build."
+      },
+      {
         "name": "texreg_wall",
         "status": "unverified",
         "subject": "BIS1: hos_01 wall, image 0x0100169c, texword line (wrap, filter, pad, hash) at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe, reverted (BIS1).",
