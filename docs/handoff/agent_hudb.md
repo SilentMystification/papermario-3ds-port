@@ -43,3 +43,25 @@ Budget: reset to 8 starts at this session. Used 6 (status_HUDB1.txt starts 7 to 
 - Run band test: PM_ROW=HUDB1 PM_LANE=hudb powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/run_azahar.ps1 -Debug "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 battlemenu runaway fillog mashlog texrlog mashx=0 loglevel=debug shots shotwin=150:80" -Until "shot \d+ frame 226\b" -Timeout 60 -Force
 - Shots: build3ds/lane-hudb/shots/NNNN_0_2.ppm (240 wide, 400 tall: screen rotated). Shot k = frame in the log line "shot k frame F".
 - Yard and bar: azt.ps1 yard | battle_menu_bar -Row HUDB1 -Build hudb (shots in build3ds/azt/shots/<scenario>/).
+
+## Full-screen fills and edge check (after a677ebc76)
+- Decomp callers of gDPFillRectangle with a full-screen lower right (cycle set in the display list):
+  - 1-cycle, lr SCREEN_WIDTH - 1 / SCREEN_HEIGHT - 1: screen_overlays.c:222 (OVERLAY_SCREEN_COLOR, the screen colour
+    fade). This is the one that now stops one column and one row short (x 319, y 239 stay unfaded).
+  - 1-cycle, lr SCREEN_WIDTH (exclusive style): background_gfx.c:362. The new rule now covers exactly the screen.
+  - FILL cycle (cyc 3, inclusive, unchanged): background_gfx.c:398, 467, 548, 553, 558, 563; state_logos.c:275;
+    draw_box.c:778; 16C8E0.c:849 and 856; hud_element.c:1809; screen_render_util.c:212.
+  - Other callers (43F0.c, tattle_window.c, virtual_entity.c, msg_draw.c, kmr_20 records, mgm_00 scoreboard, screen_overlays
+    :238 viewport) use the cycle set elsewhere or box edges; not all checked.
+- Decision: the strip stays (exclusive, the RDP rule given by the coordinator). The N64 cannot be observed here. The
+  port hid the strip before because pm_gpu_fill_rect extends fills that reach x 319 to the 400 px edge (F07-3). After the
+  change x1 = 318, so that extension no longer fires for this fade. Open for the user: keep the strip (RDP rule) or
+  keep full cover for OVERLAY_SCREEN_COLOR (one line in gbi_fillrect or pm_gpu_fill_rect).
+- Shot check of the 1-cycle fade: not obtained. The warp start and the battle start fade in cyc 3 (FILL), and the
+  battlemenu run did not reproduce the cyc 0 full-screen fade in starts 19 and 20. Budget left: 1 start.
+- Warp start fade (FILL, cyc 3), frames 14 to 22: 9 top shots byte equal, refA (before) against B (after) (starts 17, 18).
+- Title screen: not checked. The boot path is too slow (start 16 reached only shot frame 704 in 150 s).
+- Yard bottom screen (320 by 240, bot_ shots, start 15 against start 10): 60 of 60 differ. Two kinds:
+  (a) a 6 by 7 px glyph at x 178 to 183, y 0 to 6 changes between frames of one run (frame or timer digit), 4 px per frame step;
+  (b) 1 px edge pixels in clusters at x 140 to 230, y 60 to 70 and x 140 to 150, y 220 to 230 (8962 px in total).
+  Kind (b) follows the exclusive rule (1-cycle bottom screen fills). Mask for the glyph: x 162 to 185, y 0 to 8 (4738 px outside it).
