@@ -3758,6 +3758,14 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
       k->io = io; k->ic = ic; k->nd = (u8)nd;
       int z, de, bl, at_; pm_gpu_rec_rmode(&z, &de, &bl, &at_); /* N4: the template key is the state at entry and the render mode at exit */
       int tid = nat_tmpl_add(rec_g0[7], rec_g0[8], rec_gin, rec_g0[9], rec_g0[10], z, de, bl, at_, use_t1, NULL, NULL);
+      { /* PMOD P2: one line per new key (DL, segment, render mode, textured). Measures the key count; the template key is unchanged */
+        static u32 p2k[64][3]; static unsigned p2n;
+        u32 tx = (rec_g0[6] & 0xFFFFu) || (rec_g0[6] >> 16) ? 1u : 0u;
+        u32 rm = (u32)(z ? 1 : 0) | (u32)(de ? 2 : 0) | (u32)(bl ? 4 : 0) | (u32)(at_ ? 8 : 0);
+        u32 kd = rec_gdl ^ ((rec_dln & 0xFFu) << 24), ka = (rm << 1) | tx;
+        unsigned q = 0; while (q < p2n && (p2k[q][0] != kd || p2k[q][1] != ka)) q++;
+        if (q == p2n && p2n < 64) { p2k[p2n][0] = kd; p2k[p2n][1] = ka; p2n++; pm_log_d("PM2 tmpl dl %08lx seg %u rm %u tex %u tid %d", (unsigned long)rec_gdl, (unsigned)rec_dln, (unsigned)rm, (unsigned)tx, tid); }
+      }
       int rc = tid < 0 ? -2 : nat_tmpl_strip((unsigned)tid, ra + at, n);
       pm_log_d("N4 strip slot %u n %u nd %d tmpl %d rc %d", slot, (unsigned)n, nd, tid, rc);
       NatRec* nr = (NatRec*)(ra + at + n + npt + 4u * ncen); /* N4 2b: NatRec of each draw after the census tuples */
