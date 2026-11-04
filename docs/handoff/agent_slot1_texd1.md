@@ -96,3 +96,31 @@
 - Wall texreg values: NOT obtained. No texreg line appeared in any run (runs 1 to 3, 5 to 7), so the values for 0x0100169c and 0x00571b90 are still unknown.
 - Budget TEXD2: 8 of 8 used. Reset needed for further starts. Coin gate (texreg_coin) not run.
 - Not started: VRAM3 step 1 (trace of the four off-screen images), pm_tex_load_rgba8 linear scan fix (bucket lookup, after the test above).
+
+## BIS1: the wall bind (session 4, branch native)
+
+### Determinism (runs 1 to 4, scenario hos01_texword, cap 25 s)
+- 124e1d468 (worktree papermario-3ds-port-bis, lane bis): runs 1 and 2 both bind 0x0100169c at texture frame 200, slot 8, wrap s 3 t 3, shr 0 0, hash 3470b4d1. Deterministic.
+- HEAD 6089edad6 (lane native): runs 3 and 4 both show no bind by frame 204. Deterministic.
+- The two builds differ only in 3ds/src/pm_tex.c (commit 0f156f4c7 TEXD2 hunks; 1413ef8c3 bucket lookup was reverted in ac6df01b5, so HEAD pm_tex.c is 124e1d468 plus the TEXD2 hunks).
+
+### Bisect
+- Run 5, variant V1 = 124e1d468 plus the TEXD2 hunks minus the pm_tex_bind hunk (expand pad guard, texreg_log function and aux override kept): bind at frame 200, wrap 3 3. The bind hunk alone removes the bind.
+- The bind hunk (commit 0f156f4c7) is the first bad change. Its default-path semantics look the same on reading (td2 switches absent, ff equals tex_filt, pm_debug_value has no side effects). The cause is not found in the code. It may be a layout or timing effect of the extra code. Not proven.
+- 1413ef8c3 (bucket lookup) was not built alone. It is not needed: HEAD pm_tex.c without the bucket code still fails.
+
+### Fix
+- pm_tex.c reverted to 124e1d468 (all TEXD2 switches removed from the draw paths). Log-only change: the texword line now prints `filter <tex_filt>` (tentative declaration of tex_filt above texword_dump).
+- Scenarios texreg_wall and texreg_coin now use the texword probe (debug `texword=<addr>`, no frame, first 4 binds from frame 0). The texreg switch no longer exists.
+- Run 6 (fixed HEAD, texreg_wall): `texword f38 img 0100169c bind 1: slot 8 64x64 fmt 4 siz 0 ... gpu 64x64 ... staged 1 wrap s 3 t 3 shr 0 0 filter 1`. The wall binds again. Log checks 4 of 4. Picture not read by the agent.
+
+### Programmed values
+- 0x0100169c (hos_01 wall, I4 64x64): wrap s 3, wrap t 3 (GPU_MIRRORED_REPEAT, shr 0 0), filter 1 (GPU_LINEAR), slot 64x64, GPU 64x64, pad 0 0, mask and mirror flags not in this line.
+- 0x00571b90 (tik_03 coin): NOT obtained. Run 7 (fixed HEAD, texreg_coin, until scene frame 300): no texword line, so the image is not bound by pm_tex_bind in tik_03 entry 0 within 300 frames. Next step: find a position where the coins draw (the display list shows timg 0x00571b90, RGBA16 32x32, cms 1 cmt 1, masks 5 5, see trace_tex_geom.md), then run texreg_coin there.
+
+### Budget
+- BIS1: 7 starts used (runs 1 to 7). Budget cap 8.
+- The bis worktree (papermario-3ds-port-bis, detached at 124e1d468) is a build copy. Remove it with git worktree remove when done.
+
+### VRAM3
+- Not started in this session (see the VRAM3 section above for the planned steps).

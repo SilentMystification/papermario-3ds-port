@@ -3839,9 +3839,9 @@
       {
         "name": "texreg_wall",
         "status": "unverified",
-        "subject": "TEXD2: hos_01 wall, image 0x0100169c, texreg line (wrap, filter, pad, converter) at the first bind of the scene.",
-        "proves": "The texreg line for the image (TEXD2): programmed wrap and filter values, mask, mirror, pad and converter, one line per slot instance.",
-        "debug": "warp=hos_01:0 texreg shots shotwin=200:6 loglevel=debug",
+        "subject": "BIS1: hos_01 wall, image 0x0100169c, texword line (wrap, filter, pad, hash) at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe, reverted (BIS1).",
+        "proves": "The texword line for the image: wrap s and t, shr, filter, slot and GPU sizes (pad), hash.",
+        "debug": "warp=hos_01:0 texword=0100169c shots shotwin=200:6 loglevel=debug",
         "until": "warp: scene f300 ",
         "cap": 60,
         "deadline": 20,
@@ -3854,8 +3854,8 @@
             "regex": "warp: hos_01 entry 0"
           },
           {
-            "name": "texreg line",
-            "regex": "texreg img 0100169c"
+            "name": "texword line",
+            "regex": "texword f\\d+ img 0100169c bind 1"
           },
           {
             "name": "shot",
@@ -3871,9 +3871,9 @@
       {
         "name": "texreg_coin",
         "status": "unverified",
-        "subject": "TEXD2: tik_03 sewer coins, image 0x00571b90, texreg line at the first bind of the scene.",
-        "proves": "The texreg line for the image (TEXD2): programmed wrap and filter values, mask, mirror, pad and converter, one line per slot instance.",
-        "debug": "warp=tik_03:0 texreg shots shotwin=200:6 loglevel=debug",
+        "subject": "BIS1: tik_03 sewer coins, image 0x00571b90, texword line at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe (BIS1).",
+        "proves": "The texword line for the image: wrap s and t, shr, filter, slot and GPU sizes (pad), hash.",
+        "debug": "warp=tik_03:0 texword=00571b90 shots shotwin=200:6 loglevel=debug",
         "until": "warp: scene f300 ",
         "cap": 90,
         "deadline": 20,
@@ -3886,8 +3886,8 @@
             "regex": "warp: tik_03 entry 0"
           },
           {
-            "name": "texreg line",
-            "regex": "texreg img 00571b90"
+            "name": "texword line",
+            "regex": "texword f\\d+ img 00571b90 bind 1"
           },
           {
             "name": "shot",
