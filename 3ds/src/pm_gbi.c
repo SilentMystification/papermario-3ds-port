@@ -3736,6 +3736,13 @@ static __attribute__((noinline, cold)) void p3a_log(const NatRec* nr, unsigned n
                  (unsigned)nr[q].nidx, (unsigned)(tex & 0xFFFFu), (unsigned)(tex >> 16), gm);
     }
 }
+extern unsigned nat_wr_why[6]; /* pm_native.c: refusal counts of nat_rec_write */
+static unsigned p3a_pre_n;
+static __attribute__((noinline, cold)) void p3a_pre(const char* at, unsigned tid, unsigned nd, unsigned gm, u32 tex) {
+    if (p3a_pre_n >= 64) return;
+    p3a_pre_n++;
+    pm_log_d("P3a %s tmpl %u nd %u gm %u tex %04x/%04x", at, tid, nd, gm, (unsigned)(tex & 0xFFFFu), (unsigned)(tex >> 16));
+}
 static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     u32* w = NULL; u32 n = 0, i = 0;
     unsigned slot = w1 & 0xffu;
@@ -3791,10 +3798,11 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
       NatRec* nr = (NatRec*)(ra + at + n + npt + 4u * ncen); /* N4 2b: NatRec of each draw after the census tuples */
       if (rc <= 0) { NW(NW_B_TMPL); memset(nr, 0, (unsigned)nd * sizeof *nr); } /* no template: the words stay zero, the record is not replayed */
       else {
+          p3a_pre("pre", (unsigned)tid, (unsigned)nd, gmv, rec_g0[6]);
           const NatTmpl* nt = &nat_tmpl[tid];
-          if (gmv == ~0u || !nat_tex_set(rec_g0[6] & 0xFFFFu, nt->grp + 22) || !nat_tex_set(rec_g0[6] >> 16, nt->grp + 28)) { NW(gmv == ~0u ? NW_B_GMV : NW_B_TEX); rec_ref++; return; }
+          if (gmv == ~0u || !nat_tex_set(rec_g0[6] & 0xFFFFu, nt->grp + 22) || !nat_tex_set(rec_g0[6] >> 16, nt->grp + 28)) { p3a_pre(gmv == ~0u ? "refuse gm" : "refuse tex", (unsigned)tid, (unsigned)nd, gmv, rec_g0[6]); NW(gmv == ~0u ? NW_B_GMV : NW_B_TEX); rec_ref++; return; }
           nat_idx_base = pm_gpu_rec_ia_phys();
-          if (nat_rec_write(nr, (unsigned)nd, ra + at, n, (unsigned)tid, gmv, rec_g0[6], nat_idx_base) != nd) { NW(NW_B_WRITE); rec_ref++; return; }
+          if (nat_rec_write(nr, (unsigned)nd, ra + at, n, (unsigned)tid, gmv, rec_g0[6], nat_idx_base) != nd) { pm_log_d("P3a write refused why %u %u %u %u %u", nat_wr_why[0], nat_wr_why[1], nat_wr_why[2], nat_wr_why[3], nat_wr_why[4]); NW(NW_B_WRITE); rec_ref++; return; }
           k->nat = 1; NW(NW_B_NAT); p3a_log(nr, (unsigned)nd, (unsigned)tid, rec_g0[6], gmv);
       } }
     k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
