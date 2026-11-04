@@ -878,6 +878,11 @@ static void battle_hooks(unsigned f) {
         set_battle_stage(stage);
         load_battle(formation);
     }
+    if (f >= at && pm_debug_has("runaway") && get_game_mode() == GAME_MODE_BATTLE) { /* HUDB1 debug: every battle frame sets the auto flee contact, so the next BEGIN_TURN (btl_states_actions.c:618) starts the real run-away script EVS_RunAwayStart (mash meter, flee.c N(draw)) */
+        static int once;
+        gGameStatusPtr->debugEnemyContact = DEBUG_CONTACT_AUTO_FLEE;
+        if (!once++) pm_log_d("debug runaway: auto flee contact set per frame from scene frame %u", at);
+    }
     if (f == at + 10 && pm_debug_has("battlemenu") && get_game_mode() == GAME_MODE_BATTLE) { /* UI2 debug: battlemenu sets BS_FLAGS1_MENU_OPEN 10 frames after the battle starts, so the enemy HP bar draws (16C8E0.c:905). The bar also needs the enemy tattled (181810.c is_actor_health_bar_visible): save_tattle_flags is the real Tattle path. */
         int bi;
         extern void save_tattle_flags(s32 actorType);
@@ -1223,5 +1228,14 @@ void pm_x02_log(int isWorld, int alpha, int x, int y) {
         la = alpha;
         ls = (int)gPartnerStatus.partnerActionState;
         pm_log_d("X02: darkness world %d alpha %d pos %d %d partnerAction %d cur %d", isWorld, alpha, x, y, ls, (int)gPlayerData.curPartner);
+    }
+}
+
+/* HUDB1 debug switch mashlog: one line per draw_mash_meter call (the position it gets, the fill value, the HUD flag) */
+void pm_mash_log(s32 posX, s32 posY, s32 fillValue, s32 showHud) {
+    static int nlog = 0;
+    if (nlog < 300 && pm_debug_has("mashlog")) {
+        nlog++;
+        pm_log_d("mashlog posX %d posY %d fill %d showHud %d", (int)posX, (int)posY, (int)fillValue, (int)showHud);
     }
 }
