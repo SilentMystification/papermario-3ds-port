@@ -31,3 +31,9 @@
 - Census on mac_01: no census scenario exists for mac_01 yet. census_yard (kmr_20) and census_toad (kmr_10) exist. Add census_mac01 (preset or warp=mac_01:0 story=ch0_toad_town drawcensus=200 loglevel=debug, until "cen f200 summary") before the P3 census check.
 - P3 code: not started in round 3.
 - Starts on NDS1: 1 more used in round 3 (mac01t baseline). Budget reset to 8 by coordinator, so about 7 left.
+
+## Round 4 (code agent, P3 not started in code)
+- Step 0 done: commit c49063a3b adds census_mac01 (azt_scenarios.json, test_catalog.md row, unverified).
+- census_mac01 reference on HEAD c49063a3b (run 1, -Try): cen f200 summary batches 64 tris 810 distinct 52 over 0. Azahar starts used: 1.
+- P3 blocker: NatModel (bake, pm_dlc.inc.c:268 to 273) stores counts and the index pool only. nat_tmpl_strip (pm_native.c:61) needs the group words of a live capture (rec_done, pm_gbi.c:3719). The emit from the bake needs a template state block without a capture. Decide the source of the state block (a) capture once per template key and keep the capture path until P4, or (b) build the state block from the bake. Option (a) keeps the capture branch that decision 3 removes. Decision needed before code.
+- Next: decide the state block source, then P3 per the plan in section 10.
