@@ -24,3 +24,10 @@
 - Build: `/c/Python314/python 3ds/tools/gen_map_restore.py`, `PM_LANE=nds1 PM_ROW=NDS1 sh 3ds/build.sh`, then `git checkout -- 3ds/src/map_restore_table.c`.
 - Census: `PM_ROW=NDS1 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 census_mac01 -Row NDS1 -Build nds1 -Try`.
 - Host: `sh 3ds/tools/nat_host_test.sh`, `sh 3ds/tools/ndt_host_test.sh`.
+
+## E5-3 reads (second pass, not implemented)
+- Census tuple per draw: cen_add (pm_gpu.c:496) puts h (TevKey hash, z, graw, prog, cull), id0 = pm_tex_census_id(0), id1 = pm_tex_census_id(1), tris (pm_gpu.c:1085). id0/id1 are read from the live slot state at flush (pm_tex.c:681). h is constant per template key. tris is per draw.
+- Index address: nat_idx_base can be set to nat_gpu_addr(osConvertVirtToPhys(pool base)) (pm_native.c:227, same formula as pm_gpu_rec_ia_phys, pm_gpu.c:2534). Pool base set by nat_pool_set (pm_native.c:222). Feasible.
+- Tex block per draw: nat_emit reads nat_tex[tex0] (filled by nat_tex_id from the 4 GPU words of unit 0 / unit 1). No pm_tex accessor returns those 4 words for a slot. Missing: an accessor for the unit config words of the current slot at emit time.
+- Slot per draw: the flush reads pm_tex_cur_slots at flush time (pm_gpu.c:1053), after queueing. The E5-1 key (sl[], entry) is not proven to equal the flush-time slot. Needs a check before E5-3 can use it.
+- Blocker: E5-3 needs the tex-words accessor and a proof that the entry slot equals the flush slot. Neither is implemented. No code change in this pass.
