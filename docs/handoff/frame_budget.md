@@ -35,3 +35,21 @@ Notes:
 | Plan end state (plan 7, phase off) | 10 to 11 | 5 to 6 | yes, if the GPU busy stays under 16.7 |
 
 The end state depends on S1 to S10 and on the GPU busy time. S0-6 measures the GPU busy time. S0-7 (console baseline) gives the starting values.
+
+## 3. Console baseline (starting column, build 2020, commit 42f6fac7e)
+
+Source: build3ds/hw_live_log_131.txt (O3DS XL, pushed by the orchestrator, `prof` on, loglevel 1). 11 prof windows of 300 frames. The scene is not known from this log (no warp line in the file), so the numbers are not tied to a scene. The ranges are the min and max over all 11 windows.
+
+Note: the coordinator message quoted fps 24.3 to 26.2, ft 38 to 41 ms, gbi 27 to 31.5, dlc 5.8 to 6.8, gpu 3.4 to 4.0 and gb 8.9 to 12. The log gives a wider range (fps 24.3 to 30.1, ft 33.4 to 40.9). The 24.3 to 26.2 windows are inside it. The log values are used here. The quoted gbi, dlc and gpu values are matched by the log only in part (gbi 2.2 to 31.5, dlc 0.0 to 6.8, gpu 0.7 to 4.0).
+
+| Measure (prof field) | Baseline range, 11 windows | Stage it matches | Target (section 1) |
+|---|---|---|---|
+| fps (window) | 24.3 to 30.1 | frame rate | 60 |
+| ft (frame time, ms) | 33.4 to 40.9 | CPU total (phase off basis, prof is phase on) | 11.7 CPU, 16.7 frame |
+| gbi (ms per sampled frame, walker plus close) | 2.2 to 31.5 | legacy walker (lg 2.2 to 31.5) | 0.0 at S10 |
+| dlc (ms, learn and replay list) | 0.0 to 6.8 | none (old replay, deleted in S1-1) | not in the budget |
+| gpu (ms, texture and GPU stage) | 0.7 to 4.0 | none direct | not in the budget |
+| nd (native emit) | 0.00 | native emit | 2.0 |
+| gb (GPU busy, submit to sync, ms per sampled frame) | 8.9 to 29.4 | GPU busy (upper bound) | 14.0 |
+
+Reading: the legacy walker is the largest CPU stage in the windows with the walk running. The GPU busy upper bound is above 14.0 in several windows, so the GPU target is not met yet. The native emit is 0 because no native code exists yet. Logic and list build are not in the prof line; the fsplit lines of a console run give them.
