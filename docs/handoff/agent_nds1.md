@@ -119,3 +119,15 @@ Not done in this run (steps 2 to 4):
 - Old path deletion for these models: not done (nothing replaced yet).
 - Gates: census equal on census_yard and census_toad, region diff, fsplit `gbi` and `dl`, hot loop size from the map: not run.
 - Lane build of this code: not rebuilt. pm_native.c compiles in CMake, but nothing calls it yet.
+
+## Retirement handoff (step 2 not started, 2026-11-04)
+State: branch nds1 at 998693eb8. Tree clean except untracked `3ds/src/map_restore_table.c.bak` (never commit). Lane build `nds1` built before the layout change (pm_native not called yet). Azahar starts on NDS1: 3 of 8 (census_yard, census_toad, census_toad dump). No budget reset needed.
+
+Next steps, in order:
+1. Capture to template: in `rec_done` (pm_gbi.c, after `pm_gpu_rec_end`, when `r == 1 && whole`) call `nat_tmpl_strip(id, w, n)`. Key id from the existing rk[] slot or from the flush key (cw0, cw1, mode words). Store `rec_g0`/`comb_w0`/`comb_w1` (pm_gbi.c:390) for the key. One template per key, at most 64.
+2. Per-draw inputs for a record: palette words from the matrix product (pm_gpu.c, pcomp at the flush; `pm_gpu_rec_pt_copy` gives patch positions), texture words `nat_tex[h]` from `pm_tex_cur_slots` and the slot address, index address and count from `pm_gpu_rec_idx` (`io`, `ic`, arena base). The UC3 record machinery already computes all of these; reuse, do not write a second encoder.
+3. Hooks (plan numbering): 1 `model.c` G_PM_MODEL header (≈line 1515 and 2073) writes a NatRec; 2 `pm_gbi.c` `mg_run` (≈3756) skips the walk for native models; 3 `comb_w0/w1` accessor; 4 `pm_gpu.c` census site (≈1064) gets the template words; 5 `pm_gpu.c` palette product (≈834 and 229) writes `nat_mtx[0]`; 6 SEAM product order unchanged; 7 `pm_gbi.c` upload_mvp (≈456) eye shift moves to `nat_mtx`; 8 `pm_nusys.c` gbi_task (≈80) builds once, `nat_emit` eye 0, `nat_eye_copy` eye 1 when stereo; 9 `3ds/ld/3dsx.ld.in` hot span for nat_emit, nat_order.
+4. Old path for these models is deleted in the same row as hook 2.
+5. Gate: census equal (`cen f200` multiset) on census_yard and census_toad with `azt.ps1 <scenario> -Row NDS1 -Build nds1`, justification line first in `3ds/logs/perf/status_NDS1.txt`. Region diff and fsplit after census passes.
+
+Open risk: trailing state after the trigger now runs before it (default 1). The first picture must show it.
