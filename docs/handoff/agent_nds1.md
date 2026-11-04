@@ -267,3 +267,36 @@ State: branch nds1, worktree papermario-3ds-port-nds1. Pushes: none.
 
 ## Next step
 Opus plans E4 (state per batch and merge design). A code agent builds E4 and runs the census gate with a count log line.
+
+## NDS1 handoff after E4a and E4b (map_e4.md section 5)
+
+State: branch nds1. E4a and E4b committed. E5, E6 and the recplay removal are NOT started.
+
+Commits:
+- 381ad1329 E4a: pm_native.c nat_pool_put packed (no 32-byte round). nat_host_test.c bake check now asserts packed copies. Gate: nat_host_test all pass; census_mac01 64 / 810 PASS (distinct 53, noise).
+- f2f01068c E4b: pm_dlc.inc.c nat_seg_add (per-draw NatKey, mirror of grange_batch_open), nat_key_reset per dlc_try, dlc_gr set in dlc_seg (2 = grange extended the open batch, -1 = culled). pm_native.c/.h nat_pool_off. Log NATB at frame 200 (groups, draws, mis).
+
+E4b result (census_mac01, Azahar, 1 start, shot not needed: no draw change):
+- census 64 / 810 PASS.
+- NATB draws sum 44 over 90 DL lines, mis 0 (mirror agrees with grange on every static segment).
+- Gap to 64: census batch count dlc_c.batch also adds an estimate (pm_dlc.inc.c dlc_static_group, ng + 1 - nbat per drawn group). The builder covers static segments only. The 64 gate in map_e4.md section 5 (E4b) does not compare like with like. Do not use it as the E4b gate.
+- Host test for E4b (merge and gap cases) NOT written: nat_seg_add is static in pm_dlc.inc.c (one translation unit with pm_gbi.c) and cannot run on the host. The live mirror check (mis) replaces it.
+
+Open for E5 (map_e4.md section 5, E5):
+- Needs the template id per group (rec_done capture, pm_gbi.c ~3800 nat_tmpl_add / nat_tmpl_strip) and the replay of nat_emit output (pm_gbi.c ~3845, k->nat branch, pm_gpu_rec_play). Read those lines first.
+- Stereo (yard_stereo_r) must match too.
+- The 2-group merged draws (grange merge) need pool contiguity: E4a made it possible. Gap count not yet measured (E4a contiguity check not added).
+- Gates: census_mac01 64/810/52 (distinct), census_toad 26/338/23, shot diff on build3ds/azt/shots/mac01t frames 500 and 504, census_toad_shot 0 px via 3ds/tools/region_diff.py.
+- After the gates pass: remove recplay, nat_rec_write nat branch, RecKey.nat, rec_play nat branch. Keep nat_tmpl_strip and the template table.
+
+Commands:
+- Gen: /c/Python314/python 3ds/tools/gen_map_restore.py
+- Build: PM_LANE=nds1 PM_ROW=NDS1 sh 3ds/build.sh ; then git checkout -- 3ds/src/map_restore_table.c
+- Census: PM_ROW=NDS1 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 census_mac01 -Row NDS1 -Build nds1 -Try
+- Host: sh 3ds/tools/nat_host_test.sh ; sh 3ds/tools/ndt_host_test.sh
+- Log: build3ds/lane-nds1/last_log.txt
+- Azahar starts used on NDS1: 2 of 8 (reset with run_azahar.ps1 -ResetBudget NDS1).
+
+Notes:
+- $S (scratchpad) is not set between Bash calls. Set it in each call.
+- The NATB sum check is `awk '{d+=$8; m+=$10} END {print d, m}'` on the NATB lines.
