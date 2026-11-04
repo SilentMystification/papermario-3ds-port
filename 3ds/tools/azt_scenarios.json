@@ -1855,6 +1855,37 @@
       ]
     },
     {
+      "name": "battle_start_fbvram",
+      "status": "unverified",
+      "subject": "VRAM1: battle_start_fb with two dummy 512 KB blocks in bank B at boot (vramfill=2), so the off-screen image alloc fails in the star transition. Shots of the transition frames (same subject as battle_start_fb).",
+      "proves": "The off-screen VRAM failure (pm_gpu.c off_fail, V05 and vram alloc fail offslot) happens on the star transition frames, and the shots show whether the picture garbles.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town encwarp=120 shots phase phsum grablog fbbind vramfill=2 loglevel=debug",
+      "until": "encwarp: window end",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "pre-battle start",
+          "regex": "encwarp: pre-battle start at frame"
+        },
+        {
+          "name": "vram fail",
+          "regex": "V05: off-screen image|vram alloc fail offslot"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot \\d+ frame \\d+"
+        }
+      ]
+    },
+    {
       "name": "battle_start_gp",
       "status": "unverified",
       "subject": "BTLSTAR flush cause diagnosis: battle_start_enc with gbiprof (flush count by cause, PG0 report). Battle start through the encounter path: encwarp=120 enters the pre-battle state for the kmr_03 world enemy (the fields START_BATTLE sets; the touch test did not start the battle), and the star transition (OVERLAY_START_BATTLE) draws. One shot per frame for the 40 frames from the pre-battle start.",
