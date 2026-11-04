@@ -225,3 +225,14 @@ Recommendation: A first as a measured slice, then B. Ask the user (AskUserQuesti
 - OPEN: no region diff yet. Needs a scenario with recplay and shots (census_toad_rp has no shot). Baseline = commit d44a10944 with the same scenario.
 - Not done: hooks 2/8/9, eye 2 copy in gbi_task, bucketing, old path delete for qualifying records, hot loop size, stereo shot, default switch.
 - Azahar budget NDS1 after the reset: 3 starts used of 8 (census2, census3 = 2; plus census 1 gate earlier after reset? counted as 2 here). Check status_NDS1.txt before the next start.
+
+## N4 step 1 result (code agent, 2026-11-04, handoff)
+- Counters: pm_gbi.c NW_* enum, nat_why_report (line "N4 why fNNN ..." and "grpw", "wr", "wr2" at cen f200). pm_native.c nat_wr_why[0..4] per refusal case of nat_rec_write.
+- census_toad_rp, run 3 (-Try, scenario status unverified in azt_scenarios.json): 26 / 338 / 23 / 0 (same as census_toad).
+- Why the nat branch never ran: no record got k->nat = 1 (b_nat 0). Build refusals: b_write 10 (nat_rec_write case 2, index offset), b_tex 2 (nat_tex_set conflict), b_tmpl 1 (rc -3, record stays non-nat, state 1).
+- nat_rec_write case 2 sample: off-base = 0x68000390 - 0x20747D00, so the 0x227 index address is outside the window index copy (pm_gpu_rec_idx rewrite). Cause not known. Open.
+- The one non-nat state 1 record: lookup 160 of 160 refused at the group compare. Words that differ: 5 (ctx+0x20 flags, 160 of 160, sample ff80019d vs ff80019f: bit 1), 6 (tex slot ids, 160 of 160, sample 000d000a vs 000d0012), 0 (118 of 160, not sampled), 3 (1 of 160).
+- Census equality is trivial: rec_play never replayed, so the live path ran.
+- Open (step 1 fix not done): (a) why 0x227 addresses fall outside the window index copy, (b) nat_tex_set conflict in 2 records, (c) group compare: words 5 and 6 are per-frame state. Idea, not done: for nat records only, skip word 6 (nat replay takes tex handles from NatRec tex0/tex1) and mask word 5 to bit 0. Needs a check that word 0 is also safe.
+- Starts: 5 of 8 used for NDS1 (3 left). Shots: 0.
+- Commands: python 3ds/tools/gen_map_restore.py; PM_LANE=nds1 PM_ROW=NDS1 sh 3ds/build.sh; git checkout -- 3ds/src/map_restore_table.c; PM_ROW=NDS1 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 census_toad_rp -Row NDS1 -Build nds1 -Try. Log: build3ds/lane-nds1/last_log.txt.

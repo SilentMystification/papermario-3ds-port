@@ -176,24 +176,25 @@ void nat_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NatMtxL
 }
 
 /* NatRec writer (N4 step 2b). Pure C. Walk as in nat_tmpl_strip: a command is hd = w[i + 1], its p0 is w[i]. */
+unsigned nat_wr_why[6]; unsigned nat_wr_off, nat_wr_base; /* N4 step 1: last offset refused by case 2 */ /* N4 step 1: refusal counts of nat_rec_write (0 tid or gm, 1 length, 2 index offset, 3 nidx, 4 count) */
 int nat_rec_write(NatRec* out, unsigned nd, const uint32_t* w, unsigned n, unsigned tid, unsigned gm, uint32_t tex, uint32_t base) {
-    if (tid >= NAT_TMPL_MAX || gm >= NAT_MTX_MAX) return -1;
+    if (tid >= NAT_TMPL_MAX || gm >= NAT_MTX_MAX) { nat_wr_why[0]++; return -1; }
     unsigned ka = 0, kc = 0, i = 0;
     while (i + 1 < n) {
         uint32_t hd = w[i + 1], reg = hd & 0x3FFu, c = (hd >> 20) & 0xFFu;
         unsigned len = 2u + c + (c & 1u);
-        if (i + len > n) return -1;
+        if (i + len > n) { nat_wr_why[1]++; return -1; }
         if (!(hd >> 31) && c == 0 && reg == 0x227) {
             uint32_t off = w[i] - base;
-            if (ka >= nd || off >= 0x20000u) return -1;
+            if (ka >= nd || off >= 0x20000u) { nat_wr_why[2]++; nat_wr_off = off; nat_wr_base = base; return -1; }
             out[ka++].idx_off = off;
         } else if (!(hd >> 31) && c == 0 && reg == 0x228) {
-            if (kc >= nd || w[i] > 0xFFFFu) return -1;
+            if (kc >= nd || w[i] > 0xFFFFu) { nat_wr_why[3]++; return -1; }
             out[kc++].nidx = (uint16_t)w[i];
         }
         i += len;
     }
-    if (ka != nd || kc != nd) return -1;
+    if (ka != nd || kc != nd) { nat_wr_why[4]++; return -1; }
     for (unsigned k = 0; k < nd; k++) {
         out[k].tmpl = (uint8_t)tid; out[k].tex0 = (uint8_t)(tex & 0xFFu); out[k].tex1 = (uint8_t)((tex >> 16) & 0xFFu);
         out[k].flags = 0; out[k].mtx = (uint16_t)gm; out[k].vtx_base = 0;

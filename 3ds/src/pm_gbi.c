@@ -3600,12 +3600,21 @@ static unsigned rec_runs; /* UC3e: lists replayed from a record (rec_play) */
 enum { NW_LOOK, NW_KEY, NW_GRP, NW_CALL, NW_STATE, NW_GDL, NW_GEOM, NW_WIND, NW_TEXUSE, NW_DLC, NW_BOX, NW_NAT, NW_GMRP, NW_NO, NW_PLAY, NW_NONAT, NW_B_GM, NW_B_TMPL, NW_B_GMV, NW_B_TEX, NW_B_WRITE, NW_B_NAT, NW_N };
 static const char* const nw_name[NW_N] = {"look", "key", "grp", "call", "state", "gdl", "geom", "wind", "texuse", "dlc", "box", "nat", "gmrp", "no", "play", "nonat", "b_gm", "b_tmpl", "b_gmv", "b_tex", "b_write", "b_nat"};
 static unsigned nat_why[NW_N];
+static unsigned nat_gw[12]; /* N4 step 1: words of the group that differ at a NW_GRP refusal */
+extern unsigned nat_wr_why[6]; /* pm_native.c */
+extern unsigned nat_wr_off, nat_wr_base; /* pm_native.c */
 #define NW(i) (nat_why[i]++)
 void nat_why_report(unsigned fr) {
     char b[512]; unsigned o = 0;
     o += (unsigned)snprintf(b, sizeof b, "N4 why f%u", fr);
     for (unsigned i = 0; i < NW_N; i++) o += (unsigned)snprintf(b + o, sizeof b - o, " %s %u", nw_name[i], nat_why[i]);
     pm_log_d("%s", b);
+    o = (unsigned)snprintf(b, sizeof b, "N4 why f%u grpw", fr);
+    for (unsigned i = 0; i < 12; i++) o += (unsigned)snprintf(b + o, sizeof b - o, " %u", nat_gw[i]);
+    o += (unsigned)snprintf(b + o, sizeof b - o, " wr");
+    for (unsigned i = 0; i < 5; i++) o += (unsigned)snprintf(b + o, sizeof b - o, " %u", nat_wr_why[i]);
+    pm_log_d("%s", b);
+    pm_log_d("N4 why wr2 off %08lx base %08lx", (unsigned long)nat_wr_off, (unsigned long)nat_wr_base);
 }
 static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
 static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
@@ -3645,7 +3654,7 @@ static __attribute__((noinline)) int rec_try(u32 w1) {
         if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) {
             if (k->state == 1 && rec_play_sw() && !rec_chk_sw()) { /* UC3e: replay candidate (debug switch recplay, default off: battle shots differ, see agent_uc3d.md section 9); the group must match the capture start */
                 NW(NW_LOOK); pm_gpu_flush(); rec_g0_set();
-                if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) rec_rp = k; else NW(NW_GRP);
+                if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) rec_rp = k; else { NW(NW_GRP); for (unsigned q = 0; q < 12; q++) nat_gw[q] += k->grp[q] != rec_g0[q]; { static unsigned nat_gn; if (nat_gn < 2) { nat_gn++; char g[200]; unsigned o = (unsigned)snprintf(g, sizeof g, "N4 grp rec"); for (unsigned q = 0; q < 12; q++) o += (unsigned)snprintf(g + o, sizeof g - o, " %08lx", (unsigned long)k->grp[q]); pm_log_d("%s", g); o = (unsigned)snprintf(g, sizeof g, "N4 grp now"); for (unsigned q = 0; q < 12; q++) o += (unsigned)snprintf(g + o, sizeof g - o, " %08lx", (unsigned long)rec_g0[q]); pm_log_d("%s", g); } } }
                 return 0;
             }
             if (!rec_chk_sw() || k->state != 1) return 0;
