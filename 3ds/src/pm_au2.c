@@ -78,12 +78,19 @@ void pm_au2_emit(const AuCmd* c) {
 }
 
 /* Wait until the render thread ran the first `target` jobs (target = a value of pm_au2_committed). Not on the render thread. */
+/* SLP2: after a sleep (pm_wd_slept) each wait is bounded. A render job that does not finish in AU2_STUCK_NS is given up (logged), so the
+ * game thread goes on. Before a sleep the wait is untimed, as before. */
+#define AU2_STUCK_NS 2000000000LL
 static int wait_jobs(uint32_t target) {
     int waited = 0;
     while ((int32_t)(__atomic_load_n(&executed, __ATOMIC_ACQUIRE) - target) < 0) {
         LightEvent_Clear(&ev_idle);
         if ((int32_t)(__atomic_load_n(&executed, __ATOMIC_ACQUIRE) - target) >= 0) break;
-        LightEvent_Wait(&ev_idle);
+        if (!pm_wd_slept) LightEvent_Wait(&ev_idle);
+        else if (LightEvent_WaitTimeout(&ev_idle, AU2_STUCK_NS) != 0) {
+            pm_log_w("au2: render job stuck, waited %u ms, given up", (unsigned)(AU2_STUCK_NS / 1000000LL));
+            break;
+        }
         waited = 1;
     }
     return waited;

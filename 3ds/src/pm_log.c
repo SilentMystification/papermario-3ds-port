@@ -757,6 +757,9 @@ static void flush_step(void* why) { pm_flash_flush((const char*)why); }
 /* APT sleep: everything the game thread waits for is bounded. Log lines are queued before the gate; the gate drains them. */
 static void sleep_enter_hook(void) {
     unsigned long long t0 = svcGetSystemTick();
+    pm_wd_sleep_tick = (unsigned)(t0 / CPU_TICKS_PER_MSEC);
+    pm_wd_asleep = 1; /* SLP2: the watchdog notes the sleep and does not end the process */
+    pm_wd_slept = 1; /* SLP2: the audio and render joins are bounded from now on */
     pm_log("sleep: enter");
     if (pm_audio_join_timed(0, SLEEP_AUDIO_NS) == 0) pm_log("sleep: audio join done, %u ms", ms_since(t0));
     else pm_log("sleep: audio join timeout, %u ms", ms_since(t0));
@@ -773,10 +776,26 @@ static void sleep_enter_hook(void) {
 }
 
 /* APT wake: the gate opens first, then the audio job and the render queue are joined (bounded). Channels are set up again only when both are idle. */
+/* SLP2: the wake line goes straight to crash.txt and is fsynced in a bounded step, so it is on the SD card even when a later wait
+ * blocks. The buffer is static: a step that misses its deadline still uses it. */
+static char wake_buf[120];
+static void wake_line_step(void* unused) {
+    (void)unused;
+    int fd = open("crash.txt", O_WRONLY | O_CREAT | O_APPEND, 0666);
+    if (fd < 0) return;
+    write(fd, wake_buf, strlen(wake_buf));
+    fsync(fd);
+    close(fd);
+}
 static void wake_hook(void) {
     unsigned long long t0 = svcGetSystemTick();
+    pm_wd_asleep = 0;
+    pm_wd_wake_frames = 120; /* SLP2: frame begin without the GPU sync wait for these frames (pm_gpu.c) */
     io_gate(0);
     pm_log("sleep: wake");
+    unsigned wake_ms = (unsigned)(t0 / CPU_TICKS_PER_MSEC);
+    snprintf(wake_buf, sizeof wake_buf, "sleep: wake at tick %u ms, asleep %u ms\n", wake_ms, wake_ms - pm_wd_sleep_tick);
+    pm_step_timed(PM_STEP_FLASH, wake_line_step, NULL, 400);
     int a = pm_audio_join_timed(0, WAKE_AUDIO_NS);
     int r = pm_au2_sync_timed(3, WAKE_AU2_NS);
     if (a == 0 && r == 0) {
@@ -907,20 +926,20 @@ void pm_log_crash_close(void) {
 void pm_crash_line(const char* s, int n) {
     static int crash_fd = -1;
     static int flushed;
+    /* SLP2: the line is written and sent before the first crash_flush, which fsyncs. A blocked fsync (SD card waking up) no longer
+     * keeps the phase line out of crash.txt. The fsyncs come after the writes. */
+    svcOutputDebugString(s, n);
+    /* crash.txt keeps every crash (append), so it stays after the next boot. */
+    if (crash_fd < 0) crash_fd = open("crash.txt", O_WRONLY | O_CREAT | O_APPEND, 0666);
+    if (crash_fd >= 0) write(crash_fd, s, (size_t)n);
+    if (client >= 0) send(client, s, (size_t)n, MSG_DONTWAIT);
     if (!flushed) {
         flushed = 1;
         crash_flush();
     }
-    svcOutputDebugString(s, n);
     if (log_fd >= 0) {
         write(log_fd, s, (size_t)n);
         fsync(log_fd);
     }
-    /* crash.txt keeps every crash (append), so it stays after the next boot. */
-    if (crash_fd < 0) crash_fd = open("crash.txt", O_WRONLY | O_CREAT | O_APPEND, 0666);
-    if (crash_fd >= 0) {
-        write(crash_fd, s, (size_t)n);
-        fsync(crash_fd);
-    }
-    if (client >= 0) send(client, s, (size_t)n, MSG_DONTWAIT);
+    if (crash_fd >= 0) fsync(crash_fd);
 }

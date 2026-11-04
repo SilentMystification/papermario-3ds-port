@@ -41,6 +41,9 @@ void pm_log_set_switches(const char* s);
 void pm_crash_line(const char* s, int n);
 /* LB4: crash exit and hang watchdog (src/pm_wdog.c). The phase marker is one store to a global. */
 extern volatile unsigned pm_wd_prog, pm_wd_phase, pm_wd_hold, pm_wd_armed, pm_wd_crash_tick;
+/* SLP2: sleep state from the APT hooks (pm_log.c). asleep 1 between sleep enter and wake; sleep_tick is the system tick (ms, low word)
+ * at the enter. wake_frames: frames after a wake that begin without the GPU sync wait (pm_gpu.c). */
+extern volatile unsigned pm_wd_asleep, pm_wd_sleep_tick, pm_wd_wake_frames, pm_wd_slept; /* slept: 1 after the first sleep, stays 1 */
 #define PM_WD_PHASE(n) (pm_wd_phase = (n))
 void pm_wd_start(void);
 void pm_exit_process(void);

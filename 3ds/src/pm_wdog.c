@@ -11,6 +11,7 @@ volatile unsigned pm_wd_prog;  /* the game loop adds 1 per iteration and per dra
 volatile unsigned pm_wd_phase; /* the last stage the game loop entered, see names below */
 volatile unsigned pm_wd_hold;  /* more than 0: a save runs, the game thread may wait for it */
 volatile unsigned pm_wd_armed; /* 1 after the first game loop iteration (boot and ROM load are not watched) */
+volatile unsigned pm_wd_asleep, pm_wd_sleep_tick, pm_wd_wake_frames, pm_wd_slept; /* SLP2, see pm_port.h */
 volatile unsigned pm_wd_crash_tick; /* system tick (low word, ms) when a crash handler started, 0 if none */
 
 static const char* const phase_names[] = {
@@ -40,9 +41,18 @@ void pm_exit_process(void) {
 
 static unsigned now_ms(void) { return (unsigned)(svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull)); }
 
+/* SLP2: a note from the monitor thread. It appends to crash.txt directly: no log drain (that would end the queued log), no crash
+ * state, no fsync. The line is written before anything can block. */
+static void wd_note(const char* buf, int n) {
+    FILE* f = fopen("crash.txt", "a");
+    if (!f) return;
+    fwrite(buf, 1, (size_t)n, f);
+    fclose(f);
+}
+
 static void wd_main(void* arg) {
     (void)arg;
-    unsigned last = pm_wd_prog, stalled = 0;
+    unsigned last = pm_wd_prog, stalled = 0, asleep_s = 0, inact_s = 0;
     for (;;) {
         svcSleepThread(1000000000LL);
         unsigned ct = pm_wd_crash_tick;
@@ -55,7 +65,27 @@ static void wd_main(void* arg) {
             continue;
         }
         unsigned p = pm_wd_prog;
-        /* A suspended app (HOME menu, sleep) and a running save are not hangs. The tick does not stop in them, so reset the count. */
+        if (pm_wd_asleep) { /* SLP2: a long sleep is not a hang. Note it every 10 s, never end the process: the wake may come later. */
+            last = p; stalled = 0; inact_s = 0;
+            if (++asleep_s % 10 == 0) {
+                char buf[160];
+                int n = snprintf(buf, sizeof(buf), "watchdog: asleep %u s (since tick %u ms), no wake yet, game thread phase %u (%s)\n",
+                                 asleep_s, pm_wd_sleep_tick, pm_wd_phase, pm_wd_phase_name(pm_wd_phase));
+                wd_note(buf, n);
+            }
+            continue;
+        }
+        asleep_s = 0;
+        /* A suspended app (HOME menu) and a running save are not hangs. The tick does not stop in them, so reset the count. SLP2: the
+         * inactive state is still noted every 10 s, so a stuck HOME menu or wake shows in crash.txt. */
+        if (pm_wd_armed && !aptIsActive()) {
+            if (++inact_s % 10 == 0) {
+                char buf[160];
+                int n = snprintf(buf, sizeof(buf), "watchdog: app not active for %u s, game thread phase %u (%s)\n",
+                                 inact_s, pm_wd_phase, pm_wd_phase_name(pm_wd_phase));
+                wd_note(buf, n);
+            }
+        } else inact_s = 0;
         if (!limit_s || !pm_wd_armed || p != last || pm_wd_hold || !aptIsActive()) { last = p; stalled = 0; continue; }
         if (++stalled < limit_s) continue;
         char buf[200];

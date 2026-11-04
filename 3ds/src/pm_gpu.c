@@ -1967,7 +1967,11 @@ void pm_gpu_begin_wait(void) {
     buffers_idle(); /* row 4: frees the full images and the copy buffer unused for IDLE_FREE frames. C3D_RenderTargetDelete asserts outside a frame, so this is before C3D_FrameBegin */
     FS_MARK(FS_GWAIT);
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
-    raw1_reset(); sh_clear(); C3D_FrameBegin(pm_interp_on > 0 ? C3D_FRAME_SYNCDRAW : 0); /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
+    /* SLP2: for pm_wd_wake_frames frames after a wake, the frame begin does not wait for the GPU. A long sleep may leave the GSP event
+     * unsignalled (not verified); the wait then may never return, and the game thread would not reach aptMainLoop. The flag is set in wake_hook (pm_log.c). */
+    unsigned fb_flags = (pm_interp_on > 0 && !pm_wd_wake_frames) ? C3D_FRAME_SYNCDRAW : 0;
+    if (pm_wd_wake_frames) pm_wd_wake_frames--;
+    raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags); /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     FS_MARK(FS_REST);
     PH_POP();
     pm_ph_gpu_note();

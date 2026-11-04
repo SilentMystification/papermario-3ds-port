@@ -194,14 +194,24 @@ void pm_audio_kick(unsigned n) {
     LightEvent_Signal(&au_start);
 }
 
-/* Game thread: wait until the audio thread is idle. Free when it is idle already. */
+/* Game thread: wait until the audio thread is idle. Free when it is idle already. After a sleep (pm_wd_slept) the wait is bounded (SLP2):
+ * a job that does not finish in AU_STUCK_NS is given up. au_busy is cleared, so the game thread goes on and reaches aptMainLoop. The audio
+ * thread may still run the job; its later "done" sets au_busy to 0 again and signals au_done, which nobody waits for. Before any sleep the
+ * wait is untimed, as before: a 2 s bound fired on every step in Azahar yard (86 times in one run). */
+#define AU_STUCK_NS 2000000000LL
 void pm_audio_join_at(int site) {
     if (!au_busy) return;
     int tk = pm_au_tk(); /* the audio tick reads: audiostat or phase only */
     unsigned t0 = tk ? pm_ticks() : 0;
     if (tk) au_g_sum += (int)(t0 - au_j_t0) > 0 ? t0 - au_j_t0 : 0; /* core 0 work between kick and join */
     PH_PUSH(PH_AUDIO);
-    LightEvent_Wait(&au_done);
+    if (!pm_wd_slept) LightEvent_Wait(&au_done);
+    else if (LightEvent_WaitTimeout(&au_done, AU_STUCK_NS) != 0) {
+        PH_POP();
+        pm_log_w("audio: job stuck, join site %d waited %u ms, given up", site, (unsigned)(AU_STUCK_NS / 1000000LL));
+        au_busy = 0;
+        return;
+    }
     PH_POP();
     if (!tk) return;
     unsigned dt = pm_ticks() - t0;
