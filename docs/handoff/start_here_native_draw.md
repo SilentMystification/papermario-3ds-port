@@ -2,6 +2,9 @@
 
 Read this file first. It points to the plan and lists the next steps. You are the code session. You work until a row set passes or a gate fails validly. A written status message ends your turn, so write one only at that point.
 
+## You are not the orchestrator
+CLAUDE.md opens with orchestrator rules ("you are the orchestrator only, agents do all work"). They do not apply to you. You write the game source yourself. You run the tests, reset Azahar budgets, commit, and decide when to continue. Do not spawn subagents for the code work. Use CLAUDE.md rules 5 (tests), 7 (code) and 9 (platform) only. Rule 6 (console) applies: push only when the user asks.
+
 ## Goal
 Replace the N64 display list walker (3ds/src/pm_gbi.c, pm_gpu.c, pm_dlc.inc.c) with native 3DS draw records. Producers (src/model.c and others) write native data. The walker and interpreter are deleted in slice S10. Target: 60 fps on Old 3DS (30 fps floor), 16.7 ms per frame.
 
@@ -11,7 +14,7 @@ Replace the N64 display list walker (3ds/src/pm_gbi.c, pm_gpu.c, pm_dlc.inc.c) w
 - Rows: docs/handoff/plan_native_slices.md. Anchors are symbols plus a grep string. A line shift never stops a row. Grep the symbol and continue.
 - Budget: docs/handoff/frame_budget.md (per-stage targets and the O3DS XL baseline).
 - Latest state: docs/handoff/agent_nds_s1d.md (S1-3 blockers and probes), agent_nds_s1c.md, agent_nds_s1b.md, agent_nds_s0.md. Picture diff note: diag_s1_1_picture.md.
-- Rules: CLAUDE.md rules 5 (tests) and 7 (code). Read only those two rules.
+- Rules: CLAUDE.md rules 5 (tests), 7 (code) and 9 (platform). Read only those.
 
 ## State
 - S0 done: host tests, ndref reference streams (3ds/tests/ndref, 8 files), prof stage line, frame_budget.md.
