@@ -25,7 +25,8 @@ static void tx1_init(void) {
 }
 
 static inline unsigned tx1_be16(const u8* p) { return ((unsigned)p[0] << 8) | p[1]; }
-static inline unsigned tx1_n4(const u8* src, int idx, int sx) { unsigned b = src[idx >> 1]; return (sx & 1) ? (b & 15u) : (b >> 4); }
+/* idx = row * stride + x in texels (flat nibble stream): the byte is idx >> 1, the low nibble is the odd idx. */
+static inline unsigned tx1_n4(const u8* src, int idx) { unsigned b = src[idx >> 1]; return (idx & 1) ? (b & 15u) : (b >> 4); }
 /* source coordinate of output coordinate v: the tile mask wraps or mirrors, else the edge repeats */
 static inline int tx1_map(int v, int n, int m, int mir) {
     if (m) {
@@ -63,7 +64,7 @@ static void tx1_build(u8* dst, const u8* src, unsigned fmt, unsigned siz, int w,
         int np = siz == SIZ_4 ? 16 : 256;
         for (int i = 0; i < np; i++) pal[i] = (unsigned short)((tlut && i < tlut_n) ? tx1_be16(tlut + i * 2) : 0xffffu);
         int tn = tlut ? tlut_n : 0;
-        if (siz == SIZ_4) TX1_TILES(unsigned short, ({ unsigned i_ = tx1_n4(src, rb + sx, sx); bad += (int)i_ >= tn; pal[i_]; }));
+        if (siz == SIZ_4) TX1_TILES(unsigned short, ({ unsigned i_ = tx1_n4(src, rb + sx); bad += (int)i_ >= tn; pal[i_]; }));
         else TX1_TILES(unsigned short, ({ unsigned i_ = src[rb + sx]; bad += (int)i_ >= tn; pal[i_]; }));
     } else if (fmt == FMT_RGBA && siz == SIZ_16) {
         if (native) TX1_TILES(unsigned short, ({ const u8* p_ = src + (rb + sx) * 2; ((unsigned)p_[1] << 8) | p_[0]; }));
@@ -97,7 +98,7 @@ static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, unsigned src_fmt, unsigne
                     const unsigned char* mo = tx1_mort + r * 8;
                     for (int c = 0; c < 8; c++) {
                         int sx = (int)xs[c];
-                        unsigned nib = (unsigned)tx1_n4(src, rb + sx, sx);
+                        unsigned nib = (unsigned)tx1_n4(src, rb + sx);
                         unsigned m = mo[c];
                         unsigned bi = m >> 1;
                         if (m & 1u) d[bi] = (u8)((d[bi] & 0xf0u) | nib);
@@ -115,7 +116,7 @@ static void tx1_build_native(u8* dst, GPU_TEXCOLOR gf, unsigned src_fmt, unsigne
                     const unsigned char* mo = tx1_mort + r * 8;
                     for (int c = 0; c < 8; c++) {
                         int sx = (int)xs[c];
-                        unsigned nib = (unsigned)tx1_n4(src, rb + sx, sx);
+                        unsigned nib = (unsigned)tx1_n4(src, rb + sx);
                         if (src_fmt == FMT_I) d[mo[c]] = (u8)((nib << 4) | nib);
                         else d[mo[c]] = (u8)((((nib & 14u) | (nib >> 3)) << 4) | ((nib & 1u) ? 15u : 0u));
                     }
@@ -144,7 +145,7 @@ static void tx1_build_dual(u8* dst, const u8* src, int w, int h, int stride, con
                 for (int c = 0; c < 8; c++) {
                     const int x = tx * 8 + c;
                     unsigned v = 0;
-                    if (x < w && y < h) v = lut[tx1_n4(src, y * stride + x, x) * 16 + tx1_n4(src, cy[y] * stride + cx[x], cx[x])];
+                    if (x < w && y < h) v = lut[tx1_n4(src, y * stride + x) * 16 + tx1_n4(src, cy[y] * stride + cx[x])];
                     d[mo[c]] = v;
                 }
             }

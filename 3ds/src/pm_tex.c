@@ -201,7 +201,7 @@ static int glyph_build_atlas(const GlyphSheet* g, const u8* tlut, int tlut_n, in
             int x;
             for (x = 0; x < g->gw; x++) {
                 unsigned byte = gsrc[(y * g->gw + x) >> 1];
-                unsigned idx = (x & 1) ? (byte & 15u) : (byte >> 4);
+                unsigned idx = ((y * g->gw + x) & 1) ? (byte & 15u) : (byte >> 4);
                 unsigned pix = (tlut && (int)idx < tlut_n) ? rd16(tlut + idx * 2) : 0xffffu;
                 write5551(scratch + ((gy + y) * pw + (gx + x)) * 2, pix);
             }
@@ -347,7 +347,7 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
                 unsigned idx = 0;
                 if (siz == SIZ_4) {
                     unsigned byte = src[(sy * stride + sx) >> 1];
-                    idx = (sx & 1) ? (byte & 15) : (byte >> 4);
+                    idx = ((sy * stride + sx) & 1) ? (byte & 15) : (byte >> 4);
                 } else {
                     idx = src[sy * stride + sx];
                 }
@@ -390,7 +390,7 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
 
 static int nib(const u8* src, int stride, int x, int y) {
     unsigned byte = src[(y * stride + x) >> 1];
-    return (x & 1) ? (byte & 15) : (byte >> 4);
+    return ((y * stride + x) & 1) ? (byte & 15) : (byte >> 4);
 }
 
 /* P14: arithmetic shift right is floor(v / 4) for every int v (same as the old sign split with two divides). */
