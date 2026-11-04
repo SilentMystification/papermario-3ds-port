@@ -3556,9 +3556,9 @@ extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slo
 /* 32 B. state 0 none, 1 record, 2 refused, 3 churn guard (4 builds since the arena reset: no capture). RK2: hgen = tb_gen of the
  * handle, tgen0/tgen1 = generation of the cache slots on unit 0 and 1 at the capture end (REC_NO_SLOT none). nb = builds since reset. */
 /* UC2: grp = fragment-op group words (ctx+0xF0..0xFC, texunit config ctx+0x110, flags ctx+0x20) at capture start. A record is reused only when they match (diag_uc2_j75.md). 48 B. */
-typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[7];
+typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[11];
     u32 io, ic; /* UC3c: index arena span (pm_gpu_rec_idx) */
-    u32 gin, gout, view; u16 alen; u8 npt, nd, fl; /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
+    u32 gin, gout, view; u16 alen; u8 npt, nd, fl, pp; /* pp: the palette words of the body are the rows of pcomp[gmc] (N1) */ /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
     u32 gmc, gdl; /* UC3e: game matrix of the palette at capture, the static list (G_DL address) */
 } __attribute__((aligned(32))) RecKey;
 #define REC_NO_SLOT 0xffffu
@@ -3572,8 +3572,15 @@ static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that dif
 static unsigned rec_hit, rec_bad, rec_miss; /* UC2: reccheck compares (hit), words outside patch slots (bad), patch tables (miss) */
 static unsigned rec_mg; /* UC2: valid records not compared, the group words differ at capture start */
 static unsigned rec_stg; /* UC3b: captures refused, a bound texture slot is in its load frame */
-static u32 rec_g0[7]; /* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush */
+/* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush. N1: [7], [8] raw G_SETCOMBINE words, [9], [10] the mode words (omode_h, omode_l) */
+static u32 rec_g0[11];
+#define NAT_MTX_MAX 96u /* N1: a record holds game matrices below this (pm_gpu.c) */
+#define REC_CEN_MAX 64u /* N1: census tuples of one record window (pm_gpu.c) */
+static int nat_logged; /* N1: the gm refusal is logged once */
 void pm_gpu_grp_get(u32* g); /* pm_gpu.c, UC2: ctx+0xF0..0xFC */
+int pm_gpu_rec_palok(const u32* w, unsigned n, const void* pt, unsigned npt, unsigned gm); /* pm_gpu.c, N1 */
+unsigned pm_gpu_rec_cen_n(void); /* pm_gpu.c, N1: census tuples of the window */
+void pm_gpu_rec_cen_copy(u32* dst, unsigned n); /* pm_gpu.c, N1: 4 words each */
 unsigned pm_gpu_rec_fj(void); /* pm_gpu.c, UC2: first bad word of the last compare */
 void pm_gpu_rec_cls(unsigned* c); /* pm_gpu.c, UC3M: differing words per class (oth, adr, pal, uni) */
 int pm_gpu_rec_idx(u32* w, u32 n, u32* io, u32* ic); /* pm_gpu.c, UC3c: copy the indices to the arena, rewrite 0x227 p0 */
@@ -3582,7 +3589,7 @@ unsigned pm_gpu_rec_ichk(u32 io, u32 ic); /* pm_gpu.c, UC3c: differing indices o
 unsigned pm_gpu_view_key(void); /* pm_gpu.c, UC3d: hash of the scissor, wide, ortho and off-screen state */
 void pm_gpu_rec_pt_copy(void* dst, unsigned n); /* pm_gpu.c, UC3d: the last walk's patch table (RecPatch, 4 B each) */
 unsigned pm_gpu_rec_gm_cap(void); /* pm_gpu.c, UC3e */
-int pm_gpu_rec_play(const u32* w, u32 n, const void* pt, unsigned npt, unsigned nd); /* pm_gpu.c, UC3e (pt: RecPatch array, 4 B each) */
+int pm_gpu_rec_play(const u32* w, u32 n, const void* pt, unsigned npt, unsigned nd, unsigned gm, const u32* cen, unsigned ncen); /* pm_gpu.c, UC3e/N1 (pt: RecPatch array, 4 B each; gm ~0 unpatched) */
 int pm_tex_rec_use(int s); /* pm_tex.c, UC3e: slot live and not in its load frame (-1 none) */
 static unsigned rec_ibad; /* UC3c: index words differing in reccheck */
 static unsigned rec_runs; /* UC3e: lists replayed from a record (rec_play) */
@@ -3599,6 +3606,7 @@ static u16 rec_tgen(u16 s) { return s == REC_NO_SLOT ? 0 : (u16)pm_tex_slot_gen(
 static void rec_g0_set(void) {
     int a, b; pm_gpu_grp_get(rec_g0); pm_tex_cur_slots(&a, &b);
     rec_g0[6] = (u32)(a + 1) | ((u32)(b + 1) << 16);
+    rec_g0[7] = comb_w0; rec_g0[8] = comb_w1; rec_g0[9] = omode_h; rec_g0[10] = omode_l; /* N1: the combiner and mode words are part of the key */
 }
 static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
     if (!ra && !ra_fail) {
@@ -3709,16 +3717,21 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     int npt = pm_gpu_rec_walk(w, n); /* UC1: the walk counts wbad and fills the patch table */
     if (npt < 0) return;
     if (npt > 255 || dln != 1) { rec_ref++; return; } /* UC3d: one static list per record, patch count in a byte */
-    u32 need = (n + (u32)npt + 3u) & ~3u, at;
+    unsigned gmv = pm_gpu_rec_gm_cap(); /* N1: refuse a record of a game matrix at or above NAT_MTX_MAX (log once) */
+    if (gmv != ~0u && gmv >= NAT_MTX_MAX) { if (!nat_logged) { nat_logged = 1; pm_log_d("N1: record refused, game matrix %u, max %u", gmv, NAT_MTX_MAX); } rec_ref++; return; }
+    unsigned ncen = pm_gpu_rec_cen_n(); /* N1: census tuples of the window, 4 words each after the patch table */
+    if (ncen > REC_CEN_MAX) { rec_ref++; return; }
+    u32 need = (n + (u32)npt + 4u * ncen + 3u) & ~3u, at;
     if (old_state == 1 && need <= old_alen) at = old_off; /* RK2: the slot's old place, no arena growth */
     else if (ra_n + need <= REC_ARENA_WORDS) { at = ra_n; ra_n += need; }
     else { rec_ref++; return; }
     memcpy(ra + at, w, n * 4u);
     pm_gpu_rec_pt_copy(ra + at + n, (unsigned)npt); /* UC3d: patch table after the body */
+    pm_gpu_rec_cen_copy(ra + at + n + npt, ncen); /* N1: census tuples after the patch table */
     { u32 io, ic; int nd = pm_gpu_rec_idx(ra + at, n, &io, &ic); /* UC3c: refused record keeps state 2 */
-      if (nd < 0 || nd > 255) { rec_ref++; return; }
+      if (nd < 0 || nd > 255 || (unsigned)nd != ncen) { rec_ref++; return; } /* N1: one census tuple per draw */
       k->io = io; k->ic = ic; k->nd = (u8)nd; }
-    k->npt = (u8)npt; k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
+    k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
     k->gmc = pm_gpu_rec_gm_cap(); k->gdl = rec_gdl;
     k->off = (u16)at; k->len = (u16)n; k->nb = (u8)(old_nb + 1);
     k->state = k->nb >= 4 ? 3 : 1; /* RK2: the fourth build of the slot stops its captures */
@@ -3742,8 +3755,9 @@ static __attribute__((noinline)) int rec_play(const Gfx* l) {
     if (k->state != 1 || (u32)l != k->gdl || geom != k->gin) return 0;
     if ((((pm_gpu_gv_wind() <= 0) ? 1u : 0u) != (k->fl & 1u)) || pm_interp_on > 0 || pm_gpu_view_key() != k->view) return 0;
     if (!pm_tex_rec_use(s0) || !pm_tex_rec_use(s1)) return 0;
-    if (dlc_gmi() != k->gmc) return 0;
-    if (!pm_gpu_rec_play(ra + k->off, k->len, ra + k->off + k->len, k->npt, k->nd)) return 0;
+    unsigned gmn = ~0u; /* N1: a palette record of another game matrix replays with the palette patched (pm_gpu_rec_play) */
+    if (dlc_gmi() != k->gmc) { if (!k->pp || (gmn = (unsigned)dlc_gmi()) >= NAT_MTX_MAX) return 0; }
+    if (!pm_gpu_rec_play(ra + k->off, k->len, ra + k->off + k->len, k->npt, k->nd, gmn, ra + k->off + k->len + k->npt, k->nd)) return 0;
     dlc_set_geom(k->gout);
     memset(vert_live, 0, sizeof vert_live);
     dlc_dirty = 1; tri_since_vtx = (k->fl >> 1) & 1u; ep_open = 0;
