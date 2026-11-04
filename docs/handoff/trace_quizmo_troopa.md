@@ -49,3 +49,43 @@ Starts: 5 of 6 used (runs 4 and 5 below). Source edit: src/pm_fxtest.c, one entr
 - Item 2: a drawlog that logs all chunks of the frame (the current log shows only 26 per frame), then the chunk with tri 16 and timg of the effect. Needs a log change in pm_gbi.c (uncommitted).
 - Item 1: a quiz start hook (talk to the NPC or the quiz event) on dro_01 near (-400, 0, 100), then the drawlog at the appearance frames.
 - Budget: 1 start left (QJT).
+
+## Update 3: Quizmo stage show, stretched triangle (PROVEN draw and vertex values, matrix cause PARTLY PROVEN)
+Budget: QJT reset to 8. Starts used after reset: 7 (runs 6 to 12). Uncommitted debug (not in this commit): src/pm_fxtest.c (type 1 entry), src/pm_gbi.c (badw line in tri_dd_log), src/effects/quizmo_stage.c (qmtx line at the left wall matrix). Entries already in pm_fxtest.c: quizmo_stage 73, quizmo_audience 79, quizmo_assistant 121 (no new entries needed for them).
+
+### Run design (mac_01, Mario at -264 20 -326, fxtest spawns the effect at Mario, same as Items 1 and 2)
+- Run 6: quizmo_stage, drawlog 412, census (drawcensus 412). Census summary: 63 batches, 186 tris, 49 distinct, 0 over.
+- Run 7: no effect (baseline), drawlog 412, census: 58 batches, 170 tris, 44 distinct.
+- Run 8: quizmo_audience (79). Adds 8 chunks, all clean: clip w 273 to 290, boxes inside the screen (e.g. scr 32 111 74 188).
+- Run 9: quizmo_assistant (121). Adds 1 chunk, clean (w 343).
+- Run 6 minus run 7, key without chunk index (src, dl, timg): 6 chunks only in the stage run, all at src 004e0640 to 004e07c0 (dl 004dba10 parent, timg 004db810 32x32 I4, 004db550 64x16 CI, 004dcfb0 64x64 CI, 004da270 64x16 IA).
+- Chunks #13 and #14 of run 6 (frame 412): tri 4 each, clip w range -7.66e6 to 5.86e6 (w sign flips inside the triangle). Chunk #15 (same parent, src 004e0640, tri 2) is fine (w 287 to 436).
+
+### Run 10: per vertex dump of the bad triangles (frame 412, badw log, pm_gbi.c tri_dd_log)
+- Chunk #13, tri 1: vertex (1834953, 1987322, -3991221, w -7652123); vertex (-1402742, -1770414, 3059798, w 5858979).
+- Chunk #14, tri 2: vertex (-1403200, -1485473, 3050518, w 5850100); vertex (1952068, 2272300, -4000438, w -7660943).
+- 24 bad vertex lines on frame 412, all in chunks #13 and #14. Clip x, y, z reach 4e6 and w reaches 7.7e6 in magnitude. The triangles straddle the w = 0 plane, so the screen projection blows up (the drawlog box of 125 to 150 px is the clipped result, not the true extent).
+
+### Run 11: frames 402 to 431 (drawlog 402:30)
+- Logged frames with bad triangles: 404, 407, 411, 414, 418, 421 to 431. All logged frames show chunks #13 and #14 with 12 bad vertex lines each. The drawlog did not print lines for frames 402, 403, 405, 406, 408, 409, 410, 412, 413, 415 to 417, 419, 420 in this window (logging gate not resolved). So the bad triangles persist over the whole life of the stage run that was logged.
+
+### Identity of the two draws (display lists, assets/us/effects/gfx)
+- Chunk #13 = D_09006F48_39FB08 (8 vertices, vertex source D_090064E8_39F0A8, 4 triangles). Called by D_09006FB0_39FB70 (left wall), which is drawn at src/effects/quizmo_stage.c:145 after the matrix D_09004148_39CD08[0] at src/effects/quizmo_stage.c:139 and the left wall rotation at lines 141 to 144.
+- Chunk #14 = D_09006EB8_39FA78 (8 vertices, vertex source D_09006568_39F128, 4 triangles). Called by D_09006F20_39FAE0, drawn at src/effects/quizmo_stage.c:153.
+- Both lists load the texture D_090017B8_39A378 (32x32 I4, wrap, mask 5, texture D_090015B8_39A178). This matches timg 004db810.
+- Vertex data is sane in the ROM asset: coordinates within plus or minus 150 (assets/us/effects/gfx/D_090064E8_39F0A8.vtx.inc.c, D_09006568_39F128.vtx.inc.c). So the bad clip values come from the matrix chain, not from the vertex data.
+
+### Run 12: the matrix (frame 404 to 413, qmtx log)
+- guMtxL2F of D_09004148_39CD08[0] (the matrix used by the left wall at quizmo_stage.c:139): row 0 (-1, 0, 0, 0), row 1 (0, 256, 0, 0), row 2 (0, 0, 0, 256), row 3 (0, -31745, 256, 16640). Same on every logged frame.
+- An identity-like matrix has 1.0 where these rows have 256.0 (row 1 col 1, row 2 col 3, row 3 col 2). The value 256 equals 0x0100, the byte-swapped form of 0x0001. The -1 (0xFFFF) does not change under a byte swap, which fits the pattern. Hypothesis: the port reads this ROM Mtx with the integer halves byte-swapped (asset or read path). NOT PROVEN: no ROM bytes were checked (no base ROM in the repo). Each multiply by a matrix with a 256 scale multiplies the coordinates by 256 again, which is consistent with clip values near 6e6 after two or three multiplies (not computed).
+- Run 12 gave no dd or badw lines (the drawlog gate did not fire on frame 412 in this run). The matrix lines are from the same run.
+
+### Verdict
+- Stretched triangle, PROVEN: chunks #13 and #14 at frame 412 (and on logged frames 404 to 431), D_09006F48 (left wall, quizmo_stage.c:145) and D_09006EB8 (quizmo_stage.c:153). Clip w up to 7.7e6, vertex sign flip across w = 0.
+- Bad value, PARTLY PROVEN: the left wall matrix D_09004148_39CD08[0] holds 256.0 where 1.0 belongs. Source: ROM Mtx read path (byte order of the integer halves, hypothesis). Not proven.
+- Lead the coordinator named (stage light D_09001518, 64x16 CI, tile 252x60): the stage light draw is chunk #17 (timg 004db550 64x16 CI, tile 0 window 0 0 252 124). Not stretched (w 295 to 298). The handoff T clamp claim is not confirmed: the log shows cmt mode 1 (mirror), not clamp.
+
+### Fix proposal (not applied, no source commit)
+1. Check the Mtx read path of D_09004148_39CD08 (the effect blob, 0x09004148 in effects/gfx). Compare the integer halves with the N64 layout (big endian). Test: a shot where the left wall is visible (stage raise with leftWallRaiseAmt 255 and the wall in view), or a log of the 16 int halves as raw u16 (1 start).
+2. If the Mtx halves are byte-swapped in the asset, fix the converter for this blob (one row of the asset tool), and test the stage show at frame 412 with the badw count at 0.
+3. Next gate: 1 start left (QJT). Not used.
