@@ -27,3 +27,25 @@ Shots: build3ds/shots/ in the worktree (untracked).
 
 ## Budget
 - QJT starts used: 3 of 6. Remaining: 3 (not used).
+
+## Update 2 (coordinator follow-up)
+Starts: 5 of 6 used (runs 4 and 5 below). Source edit: src/pm_fxtest.c, one entry E(gather_energy_pink_t1, fx_gather_energy_pink(1, X, Y, Z, 1.0f, 30)) after the type 0 line (uncommitted). Lane build qjt (PM_LANE=qjt, gen_map_restore run, table restored, not committed) contains the entry. Quizmo stage index is now 73.
+
+### Item 2, type 1: NOT PROVEN (gate failed: effect not visible)
+- Run 4 (mac_01, Mario at -264 20 -326, fxtest=15, spawn frame 402): shot a (frame 412, alpha at full) and shot b (frame 432) show no pink effect, full frame and 4x crop. Build3ds/shots/0013_1_2.ppm and 0015_1_2.ppm in the worktree.
+- Drawlog at frame 412: no 16 triangle chunk and no 64x16 tile 0 chunk from the effect. Only 26 chunk lines (#125 to #183) are logged for the frame. The effect draw is not in the drawlog, so the type 1 path is not reached on the screen or it is drawn outside the logged list.
+- Ruled out: scale. evt_get_float_variable (src/evt/evt.c:1944) returns a small raw integer as its value, so the scale argument 1 in jr_troopa.c:489 is 1.0.
+- Type 0 (run 2) showed the effect, so the spawn position is valid. Type 1 uses perspective FOV 130 (gather_energy_pink.c appendGfx) and scale unk_20 = 1.0. Not checked further.
+- Edge line: NOT PROVEN for either type.
+
+### Item 1, Quizmo: NOT PROVEN (appearance not reached)
+- Run 5 (dro_01 entry 0, pos=-400:0:130, 30 units from Chuck Quizmo at -400 0 100, shots 200 to 204, drawlog 200). Settled at the position (readback).
+- Drawlog frame 200 (43 chunk lines): no triangle with clip w below 20 and no triangle with a screen box beyond the screen by a large factor that has near-plane w. Large boxes have w 150 to 860, which is normal off-screen floor.
+- Picture: a purple figure at the left edge, not confirmed as Chuck Quizmo. Frame 200 is before the appearance. The quiz start was not triggered.
+- The stretched chunk seen in runs 2 and 3 (mac_01, frame 412, tri 2, box to x 3740 y 8291, w 5.29) is still the only near-plane stretch found. It is not in dro_01.
+- Census (NDT switch) was not run. The census switch name was not found in src (only cen log lines in pm_gpu.c:525).
+
+### Next gates (not run)
+- Item 2: a drawlog that logs all chunks of the frame (the current log shows only 26 per frame), then the chunk with tri 16 and timg of the effect. Needs a log change in pm_gbi.c (uncommitted).
+- Item 1: a quiz start hook (talk to the NPC or the quiz event) on dro_01 near (-400, 0, 100), then the drawlog at the appearance frames.
+- Budget: 1 start left (QJT).
