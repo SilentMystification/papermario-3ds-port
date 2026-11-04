@@ -316,6 +316,9 @@ static void pf_pmu_read(u64 out[3]) {
     pf_rc = svcControlPerformanceCounter(&out[2], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
 }
 #define PF_OVER_T 9115808ull /* 34 ms in ticks: 34 x TICKS_MS */
+void pm_gpu_pf_read(unsigned long long out[6]); /* pm_gpu.c: per frame counters and GPU busy ticks, read and reset */
+static unsigned long long pf_nd_t; static unsigned pf_leg; /* S0-6: native emit ticks and LEGACY records of the window (pm_pf_nd_add, from S1) */
+void pm_pf_nd_add(unsigned long long ticks, unsigned legacy) { pf_nd_t += ticks; pf_leg += legacy; }
 static void pf_report(void) {
     unsigned long long vb = C3D_FrameCounter(0) - pf_vb0;
     float fps = vb ? (float)pf_w * 60.f / (float)vb : 0.f;
@@ -335,6 +338,15 @@ static void pf_report(void) {
              pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort,
              pf_sms[0] / sn, (float)((double)pf_dlc_t / TICKS_MS) / sn, pf_sms[1] / sn, pf_sms[2] / sn,
              pf_set, e0, e1, cy, p0, p1, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
+    { /* S0-6: stage line. nd: native emit ms per sampled frame. lg: legacy walker (gbi) ms per sampled frame. dr, tc, tw, tri: per drawn frame. leg: LEGACY records per drawn frame. gb: GPU busy ms per sampled frame. */
+        unsigned long long pv[6]; pm_gpu_pf_read(pv);
+        float pw = pf_w ? (float)pf_w : 1.f;
+        float gbm = pv[5] ? (float)((double)pv[4] / pv[5] / TICKS_MS) : 0.f;
+        pm_log_prof_line("prof f%u w%u nd %.2f lg %.2f dr %u tc %u tw %u tri %u leg %u gb %.2f",
+            pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn,
+            (unsigned)(pv[0] / pw), (unsigned)(pv[1] / pw), (unsigned)(pv[2] / pw), (unsigned)(pv[3] / pw), (unsigned)(pf_leg / pw), gbm);
+    }
+    pf_nd_t = 0; pf_leg = 0;
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
     pf_pfr = 0;
     pf_wsum = pf_wmax = pf_wksum = 0;

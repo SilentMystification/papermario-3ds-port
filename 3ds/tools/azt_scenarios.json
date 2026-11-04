@@ -1608,35 +1608,27 @@
       "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t_cap1, with prof=16 (PF2 sampling and PF3 counters).",
       "proves": "prof samples one drawn frame in 16. The cal line prints the tick, pmu and base costs. One window line (f, w300) prints s, fts, wks, oh, gbi, tex, gpu and the pmu counts. The picture still draws Mario.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=250:1 prof=16",
-      "until": "prof f\\d+ w300 ",
+      "until": "prof f\\d+ w300 nd ",
       "cap": 120,
       "deadline": 20,
-      "first_marker": "warp: mac_00 entry 4",
-      "expects": "tour",
-      "needs_picture": true,
+      "first_marker": "prof cal every 16",
+      "expects": "none",
+      "needs_picture": false,
       "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_00 entry 4"
-        },
-        {
-          "name": "tour step mac_01",
-          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
-        },
         {
           "name": "prof cal",
           "regex": "prof cal every 16 set m "
         },
         {
-          "name": "shot",
-          "regex": "shot \\d+ frame 250\\b"
+          "name": "prof window line",
+          "regex": "prof f\\d+ w300 fps "
         },
         {
-          "name": "prof line",
-          "regex": "prof f\\d+ w300 "
+          "name": "prof stage line (S0-6)",
+          "regex": "prof f\\d+ w300 nd [0-9.]+ lg [0-9.]+ dr \\d+ tc \\d+ tw \\d+ tri \\d+ leg \\d+ gb [0-9.]+"
         }
       ],
-      "reason": "PF3 run: the until is the first prof window line. The shot at frame 250 must come before it."
+      "reason": "PF3 run, updated S0-6. PROF4 prof mode prints only prof lines (no warp, shot or tour lines), so the until is the stage line. Picture not in this mode."
     },
     {
       "name": "pause_fsplit",
@@ -4557,6 +4549,174 @@
         }
       ],
       "reason": "Log and file only (reference capture, S0-1). The file is checked by nd_ref_dump.py --check (S0-2)."
+    },
+    {
+      "name": "ndref_yard",
+      "status": "unverified",
+      "subject": "Yard (kmr_20 entry 4), frame 200 draw stream and census.",
+      "proves": "NDREF2: reference draw stream of frame 200 (ndref=200) and the census of the same frame.",
+      "debug": "preset=yard ndref=200 drawcensus=200 loglevel=debug",
+      "until": "ndref f200 done",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f200 done draws \\d+ bytes \\d+$"
+        }
+      ],
+      "reason": "Log and file only. Draw count equals the census batch count of the same run (cen f200 summary batches)."
+    },
+    {
+      "name": "ndref_pause",
+      "status": "unverified",
+      "subject": "Pause status menu open, frame 250 draw stream and census.",
+      "proves": "NDREF2: reference draw stream of frame 250 (ndref=250) and the census of the same frame.",
+      "debug": "preset=toad padscript=wait80,START*3,wait615,START*3 ndref=250 drawcensus=250 loglevel=debug",
+      "until": "ndref f250 done",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f250 done draws \\d+ bytes \\d+$"
+        }
+      ],
+      "reason": "Log and file only. Frame 250 is inside the open pause (open at frame 96, close START at frame 400)."
+    },
+    {
+      "name": "ndref_battle",
+      "status": "unverified",
+      "subject": "Battle (kmr_03, one Goomba), frame 180 draw stream and census.",
+      "proves": "NDREF2: reference draw stream of frame 180 (ndref=180) and the census of the same frame.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 ndref=180 drawcensus=180 loglevel=debug",
+      "until": "ndref f180 done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f180 done draws \\d+ bytes \\d+$"
+        }
+      ],
+      "reason": "Log and file only. The battle_start scenario shows the battle at frames 153 to 182."
+    },
+    {
+      "name": "ndref_text",
+      "status": "unverified",
+      "subject": "Pause menu text, frame 178 draw stream and census.",
+      "proves": "NDREF2: reference draw stream of frame 178 (ndref=178) and the census of the same frame.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 ndref=178 drawcensus=178 loglevel=debug",
+      "until": "ndref f178 done",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f178 done draws \\d+ bytes \\d+$"
+        }
+      ],
+      "reason": "Log and file only. Same pause command as text_menu."
+    },
+    {
+      "name": "ndref_title",
+      "status": "unverified",
+      "subject": "Title screen, frame 500 draw stream and census (no warp, boot).",
+      "proves": "NDREF2: reference draw stream of frame 500 (ndref=500) and the census of the same frame.",
+      "debug": "ndref=500 drawcensus=500 loglevel=debug",
+      "until": "ndref f500 done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "game mode 2 frame",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "game mode 2 frame"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f500 done draws \\d+ bytes \\d+$"
+        }
+      ],
+      "reason": "Log and file only. Title mode starts at frame 451 in an older run (game mode 2 frame 451). Frame 500 must show game mode 2 in the log, else the frame is not the title."
+    },
+    {
+      "name": "ndref_splash",
+      "status": "unverified",
+      "subject": "Mario in nok_11 with the water splash (fxtest 89), frame 300 draw stream and census.",
+      "proves": "NDREF2: reference draw stream of frame 300 (ndref=300) and the census of the same frame.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 ndref=300 drawcensus=300 loglevel=debug",
+      "until": "ndref f300 done",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f300 done draws \\d+ bytes \\d+$"
+        }
+      ],
+      "reason": "Log and file only. The splash frame is not known in advance; the log lines fxtest spawn and shot give the frame. Frame 300 is a first guess (see FORMAT.md)."
+    },
+    {
+      "name": "ndref_stereo",
+      "status": "unverified",
+      "subject": "Yard with wide and forced stereo, frame 200 draw stream (both eyes in one frame) and census.",
+      "proves": "NDREF2: reference draw stream of frame 200 (ndref=200) and the census of the same frame.",
+      "debug": "preset=yard wide stereo ndref=200 drawcensus=200 loglevel=debug",
+      "until": "ndref f200 done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f200 done draws \\d+ bytes \\d+$"
+        }
+      ],
+      "reason": "Log and file only. Stereo: both eyes of the frame are in one file, so the draw count is the sum of both eyes."
     }
   ]
 }

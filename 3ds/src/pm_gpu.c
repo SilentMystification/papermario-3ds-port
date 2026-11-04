@@ -580,9 +580,22 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
     pm_log_d("ndref f%u done draws %u bytes %u%s%s", fr, ndref_draws, ndref_len, f ? "" : " open failed", ndref_over ? " over" : "");
     free(ndref_buf); ndref_buf = NULL;
 }
+/* S0-6: prof counters. pfd_add runs at each frame end (cen_frame_end), before pm_dc_c is cleared: draws, TEV rebuilds, texture binds and
+ * triangles of the frame. gb: GPU busy ticks of the sampled frames, from the submit (pm_gpu_end) to the sync (the frame begin after it). */
+static unsigned long long pfd_sum[4], gb_sum, gb_n, gb_sub;
+static int gb_on;
+static void pfd_add(void) {
+    pfd_sum[0] += cen_draws; pfd_sum[1] += pm_dc_c[DC_TEVR]; pfd_sum[2] += pm_dc_c[DC_TB0] + pm_dc_c[DC_TB1]; pfd_sum[3] += cen_tris;
+}
+/* out: draws, TEV rebuilds, texture binds, triangles (summed since the last read), GPU busy ticks and sample count. Reads reset the sums. */
+void pm_gpu_pf_read(unsigned long long out[6]) {
+    for (int k = 0; k < 4; k++) { out[k] = pfd_sum[k]; pfd_sum[k] = 0; }
+    out[4] = gb_sum; out[5] = gb_n; gb_sum = gb_n = 0;
+}
 void nat_why_report(unsigned fr); /* pm_gbi.c, N4 step 1 */
 static void cen_frame_end(void) {
     ndref_end();
+    pfd_add();
     static int fr = -2;
     char v[16];
     if (fr == -2) fr = pm_debug_value("drawcensus", v, sizeof v) ? atoi(v) : -1;
@@ -2078,7 +2091,8 @@ void pm_gpu_begin_wait(void) {
      * unsignalled (not verified); the wait then may never return, and the game thread would not reach aptMainLoop. The flag is set in wake_hook (pm_log.c). */
     unsigned fb_flags = (pm_interp_on > 0 && !pm_wd_wake_frames) ? C3D_FRAME_SYNCDRAW : 0;
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
-    raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags); /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
+    raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
+    if (gb_on) { gb_sum += pm_ticks() - gb_sub; gb_n++; gb_on = 0; } /* S0-6: the sync of the previous frame returned */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     FS_MARK(FS_REST);
     PH_POP();
     pm_ph_gpu_note();
@@ -2160,6 +2174,7 @@ void pm_gpu_end(void) {
     FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
     C3D_FrameEnd(GX_CMDLIST_FLUSH);
+    if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; } /* S0-6: submit tick of a sampled frame */
     PH_POP();
 }
 
