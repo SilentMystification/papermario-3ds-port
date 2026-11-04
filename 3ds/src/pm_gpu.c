@@ -480,6 +480,7 @@ unsigned pm_tex_census_id(int unit);
 typedef struct { unsigned k, tex0, tex1, tris, n; } CenEnt;
 static CenEnt cen_tab[CEN_N];
 static unsigned cen_nt, cen_draws, cen_tris, cen_over;
+static uint32_t rec_fw[16][4]; static unsigned rec_fwn; /* E5-3 TEXW: unit 0 words at the first live flush of the window */
 static int rec_cap; /* RC1: a record capture is in flight (cen_add stores its census tuples) */
 #define REC_CEN_MAX 64u /* N1: census tuples of one record window */
 static u32 rcw[REC_CEN_MAX * 4u]; static unsigned rcw_n; /* N1: tuples (template key, tex0, tex1, tris) of the window in flight */
@@ -1055,6 +1056,7 @@ static void flush_draw(void) {
         else if (sa != rec_sa || sb != rec_sb) rec_ref = 1;
         if (pm_tex_cur_vram_pending() || pm_tex_aux_vram_pending()) rec_ref = 1;
     }
+    if (rec_cap && rec_fwn < 16) { int ca, cb; pm_tex_cur_slots(&ca, &cb); if (pm_tex_slot_words(ca, rec_fw[rec_fwn])) rec_fwn++; } /* E5-3 TEXW: unit 0 words of each flush of the window */
     int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
     if (tex && snap0) { dc_bind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
     if (tex1 && snap1) { dc_bind(1, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DC2: unit 1 no longer holds the aux texture */
@@ -2468,10 +2470,11 @@ void pm_gpu_flush(void) { flush(); }
 /* UC3b2: citro3d dirty bits (ctx+0x20) that a capture marks, so every group the record can write is sent inside the record. Bits from the tst
  * tests in C3Di_UpdateContext (libcitro3d base.o): 0x4 to 0x20000 except 0x1 (TexEnv gate) and 0x2 (DrawUsed); Tex 23 to 25; TexEnv 26 to 31. */
 #define REC_DIRTY_CAP 0xFF80019Cu
+int pm_gpu_rec_fw(uint32_t (*out)[4]) { unsigned n = rec_fwn; if (n) memcpy(out, rec_fw, n * sizeof rec_fw[0]); return (int)n; }
 void pm_gpu_rec_begin(void) {
     flush(); raw1_reset(); sh_clear();
     *(volatile u32*)(__C3D_Context + 0x20) |= REC_DIRTY_CAP;
-    rec_gm_set = rec_sl_set = 0; rcw_n = 0;
+    rec_gm_set = rec_sl_set = 0; rcw_n = 0; rec_fwn = 0;
     GPUCMD_GetBuffer(&rb_buf, NULL, &rb_off);
     rb_kick = kick_n; rb_draw = draws_frame; rb_raw = pm_dc_c[DC_RAW]; rb_gi = gidx_n;
     rec_ref = 0; rec_cap = 1;

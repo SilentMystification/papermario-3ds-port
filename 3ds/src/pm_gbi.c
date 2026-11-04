@@ -3634,6 +3634,7 @@ static void rec_g0_set(void) {
     rec_g0[11] = (leg_mode == 1 || leg_mode == 5 || leg_mode == 6 || leg_mode == 7) ? prim : 0; /* N3: prim reaches the TEV constant only in these modes (pm_gpu.c flush_tev_rebuild) */
 }
 /* E5-2: learning capture of one map static group (dlc_learn, pm_dlc.inc.c). Begin before the group draws live, end after it. */
+int pm_gpu_rec_fw(uint32_t (*out)[4]);
 void dlc_learn_begin(void) { pm_gpu_rec_begin(); rec_g0_set(); }
 int dlc_learn_end(u32 geom, int* rr) {
     u32* w = NULL; u32 n = 0;
@@ -3644,8 +3645,9 @@ int dlc_learn_end(u32 geom, int* rr) {
     if (tid < 0) return -1;
     if (nat_tmpl_strip((unsigned)tid, w, n) <= 0) return -1;
     { /* E5-3 TEXW: the template unit 0 words (grp 22 to 25) against pm_tex_slot_words of the slot at capture start */
-        static unsigned tw_ok, tw_bad; uint32_t sw[4]; int sa = (int)(rec_g0[6] & 0xFFFFu) - 1;
-        if (pm_tex_slot_words(sa, sw)) { if (!memcmp(sw, nat_tmpl[tid].grp + 22, sizeof sw)) tw_ok++; else { tw_bad++; if (tw_bad <= 4) pm_log_d("TEXW bad slot %d sw %08lx %08lx %08lx %08lx tmpl %08lx %08lx %08lx %08lx", sa, (unsigned long)sw[0], (unsigned long)sw[1], (unsigned long)sw[2], (unsigned long)sw[3], (unsigned long)nat_tmpl[tid].grp[22], (unsigned long)nat_tmpl[tid].grp[23], (unsigned long)nat_tmpl[tid].grp[24], (unsigned long)nat_tmpl[tid].grp[25]); } }
+        static unsigned tw_ok, tw_bad; uint32_t sw[4]; 
+        uint32_t fw[16][4]; int nf = pm_gpu_rec_fw(fw), hit = 0; for (int q = 0; q < nf; q++) hit |= !memcmp(fw[q], nat_tmpl[tid].grp + 22, 16);
+        if (nf) { if (hit) tw_ok++; else { tw_bad++; if (tw_bad <= 4) pm_log_d("TEXW bad nf %d tmpl %08lx %08lx %08lx %08lx first %08lx %08lx %08lx %08lx", nf, (unsigned long)nat_tmpl[tid].grp[22], (unsigned long)nat_tmpl[tid].grp[23], (unsigned long)nat_tmpl[tid].grp[24], (unsigned long)nat_tmpl[tid].grp[25], (unsigned long)fw[0][0], (unsigned long)fw[0][1], (unsigned long)fw[0][2], (unsigned long)fw[0][3]); } }
         pm_log_d("TEXW ok %u / bad %u", tw_ok, tw_bad);
     }
     return tid;
