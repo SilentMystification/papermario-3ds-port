@@ -21,6 +21,9 @@ float strtof(const char* s, char** end); /* POSWARP: the decomp headers do not d
 
 void fio_serialize_state(void);
 unsigned pm_uptime_ms(void);
+bool fio_validate_file_checksum(SaveData* saveData); /* fio.c */
+void fio_deserialize_state(void);
+extern SaveData gCurrentSaveFile;
 
 typedef struct {
     const char* name;
@@ -105,6 +108,20 @@ void pm_save_block(const char* why) {
 }
 int pm_save_blocked(void) { return save_block; }
 void pm_save_note(s32 slot) { pm_log_w("warp: save blocked, slot %d not written (%s)", (int)slot, save_why); }
+/* savefile=<path>: a SaveData file as fio_save_game writes it (sdmc:/3ds/PaperMario/). Loaded like loadslot, then the warp overrides map and position. */
+static char w_savefile[128];
+static int sf_ok;
+static int pm_load_savefile(const char* path) {
+    FILE* f = fopen(path, "rb");
+    size_t n;
+    if (!f) return 0;
+    n = fread(&gCurrentSaveFile, 1, sizeof gCurrentSaveFile, f);
+    fclose(f);
+    if (n != sizeof gCurrentSaveFile || !fio_validate_file_checksum(&gCurrentSaveFile)) return 0;
+    if (gGameStatusPtr->saveCount < gCurrentSaveFile.saveCount) gGameStatusPtr->saveCount = gCurrentSaveFile.saveCount;
+    fio_deserialize_state();
+    return 1;
+}
 static char w_map[16] = "kmr_20";
 static s32 w_entry, w_flag, w_partner;
 
@@ -265,6 +282,7 @@ int pm_warp_active(void) {
     if ((has_warp || opt_map) && w_partner == 0 && strncmp(w_map, "kmr_", 4) != 0) w_partner = 1;
     smoke_on = pm_debug_has("smoke");
     if (pm_debug_value("loadslot", v, sizeof v)) w_loadslot = atoi(v); /* E02: loadslot=<n> loads save slot n first */
+    pm_debug_value("savefile", w_savefile, sizeof w_savefile); /* savefile=<path>: empty when not given */
     if (pm_debug_value("smokeframes", v, sizeof v)) smoke_frames = atoi(v); /* E02: smoke length, default 300 */
     if (pm_debug_value("pos", v, sizeof v)) { /* POSWARP: pos=<x>:<y>:<z>[:<angle>] */
         pos_n = pm_pos_parse(v, pos_v);
@@ -302,22 +320,27 @@ static void warp_setup(s16 areaID, s16 mapID) {
         pm_log("warp: loadslot %d %s", w_loadslot, fio_load_game(w_loadslot) ? "loaded" : "FAILED");
         pm_warp_stat("warpstat loaded");
     }
+    if (w_savefile[0]) {
+        sf_ok = pm_load_savefile(w_savefile);
+        pm_log("warp: savefile %s %s", w_savefile, sf_ok ? "loaded" : "FAILED");
+        pm_warp_stat("warpstat savefile");
+    }
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)w_entry;
-    if (w_loadslot < 0) pm_save_block(w_why); /* WARPFIX2: a new-file state writes no save */
-    if (w_loadslot < 0) clear_player_data();
-    if (w_loadslot < 0) clear_saved_variables();
+    if (w_loadslot < 0) pm_save_block(w_why); /* WARPFIX2: a new-file state writes no save. A savefile warp blocks too. */
+    if (w_loadslot < 0 && !sf_ok) clear_player_data();
+    if (w_loadslot < 0 && !sf_ok) clear_saved_variables();
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)w_entry;
-    if (w_loadslot < 0 || w_story_set) evt_set_variable(NULL, GB_StoryProgress, w_story); /* WARPFIX: a loaded save keeps its story */
-    if (w_flag && w_loadslot < 0) evt_set_variable(NULL, w_flag, 1);
+    if ((w_loadslot < 0 && !sf_ok) || w_story_set) evt_set_variable(NULL, GB_StoryProgress, w_story); /* WARPFIX: a loaded save keeps its story */
+    if (w_flag && w_loadslot < 0 && !sf_ok) evt_set_variable(NULL, w_flag, 1);
     if (pm_debug_has("mapflags")) { /* V23b: mapflags sets every GF_MAP_* flag (visited spaces) so the pause map shows the path dots */
         s32 mi;
         for (mi = GF_MAP_ToadTown; mi <= GF_MAP_MariosHouse; mi++) evt_set_variable(NULL, mi, 1);
     }
-    if (w_partner > 0 && w_partner < 12 && w_loadslot < 0) { /* slice F02: a map script that calls EnablePartnerAI needs a partner (WARPFIX: a loaded save keeps its partners) */
+    if (w_partner > 0 && w_partner < 12 && w_loadslot < 0 && !sf_ok) { /* slice F02: a map script that calls EnablePartnerAI needs a partner (WARPFIX: a loaded save keeps its partners) */
         gPlayerData.partners[w_partner].enabled = 1;
         gPlayerData.curPartner = w_partner;
     }

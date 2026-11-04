@@ -4551,6 +4551,38 @@
       "reason": "Log only. Cap 60 s: boot, the yard load and 300 frames. The picture is not the test."
     },
     {
+      "name": "savefile_check",
+      "status": "unverified",
+      "subject": "A savetool file (sdmc:/3ds/PaperMario/savetool.sav: HP 7/13, level 4, 777 coins, story 3) loaded by savefile= with warp=mac_01:0. The log shows the load, the values in RAM, and the save block.",
+      "proves": "savefile= reads a SaveData file, the checksum passes, fio_deserialize_state fills the player data and the story, and the warp keeps the loaded values and blocks saves.",
+      "debug": "savefile=sdmc:/3ds/PaperMario/savetool.sav warp=mac_01:0 loglevel=debug",
+      "until": "warp: \\S+ entry \\d+",
+      "cap": 60,
+      "deadline": 40,
+      "first_marker": "warp: savefile",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "savefile loaded",
+          "regex": "warp: savefile sdmc:/3ds/PaperMario/savetool\\.sav loaded$"
+        },
+        {
+          "name": "HP and level from the file",
+          "regex": "warpstat savefile hp: HP 7/13 FP \\d+/\\d+ BP max \\d+ level 4$"
+        },
+        {
+          "name": "coins and story from the file",
+          "regex": "warpstat savefile: slot -?\\d+ map \\d+:\\d+ entry \\d+ items \\d+ badges \\d+ coins 777 story 3$"
+        },
+        {
+          "name": "saves blocked",
+          "regex": "saving disabled by boot warp"
+        }
+      ],
+      "reason": "Log only. The subject is the RAM state after the load, read from the warpstat lines. Until is the warp line, printed last by warp_setup. The picture is not the test."
+    },
+    {
       "name": "ndref_toad",
       "status": "unverified",
       "subject": "Toad Town mac_01 (warp to mac_01 entry 0): the reference draw stream of frame 200 (ndref=200), written to sdmc:/3ds/PaperMario/ndref.bin. Log only.",
