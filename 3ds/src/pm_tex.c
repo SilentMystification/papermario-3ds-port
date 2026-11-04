@@ -64,11 +64,6 @@ static unsigned used;
 static short recent_slot[RECENT_N] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static unsigned recent_n;
 static int slot_hi; /* every live slot index is below this, so scans stay short while few slots are live */
-/* LCH1: slot lookup by key. lhead[k] is the first live slot of key bucket k, lnext chains the slots of a bucket, lkey is the bucket of a slot.
- * Entries are slot + 1 (0 ends a chain), so zero-filled arrays need no init. load_miss links a slot, drop unlinks it. The lookup walks one
- * bucket (about live / LIDX_N slots). ponytail: 256 buckets, a chain of 4 or more at 1024 live slots: raise LIDX_N to 1024 (2 KB). */
-#define LIDX_N 256
-static unsigned short lhead[LIDX_N], lnext[SLOTS], lkey[SLOTS];
 static unsigned slot_nlive, slot_peak; /* SLOT1: live slots now and the highest count of this run */
 static unsigned used_peak; /* M02 measurement */
 static unsigned map_peak;
@@ -679,12 +674,6 @@ static void drop(Slot* s) {
     if (used >= s->bytes) used -= s->bytes;
     else used = 0;
     s->sgen++;
-    { /* LCH1: unlink the slot from its key bucket */
-        unsigned si = (unsigned)(s - slots);
-        unsigned short* pp = &lhead[lkey[si]];
-        while (*pp && *pp - 1u != si) pp = &lnext[*pp - 1u];
-        if (*pp) *pp = lnext[si];
-    }
     s->live = 0;
     sbit_clr(live_bits, (int)(s - slots));
     slot_nlive--;
@@ -736,7 +725,7 @@ static const C3D_Tex* tex_for_draw(Slot* s) {
  * a key that was not invalidated. Dirty and native slots are skipped (their change is expected). */
 static int bind_probe = -1; static unsigned bind_n, bind_mis, bind_skip;
 static unsigned probe_fnv(const u8* p, unsigned n) { unsigned x = 2166136261u; for (unsigned k = 0; k < n; k++) x = (x ^ p[k]) * 16777619u; return x; }
-/* TEXD1 debug switch texword=<hex image address>: the first 40 binds of that image write the source bytes (texsrc_<addr>_<n>.bin, slen bytes)
+/* TEXD1 debug switch texword=<hex image address>: the first 4 binds of that image write the source bytes (texsrc_<addr>_<n>.bin, slen bytes)
  * and the converted PICA bytes (texgpu_<addr>_<n>.bin, the slot's bytes in VRAM or the staged copy) to the working directory, and log the layout. */
 static void texword_dump(const Slot* s) {
     static long want = -2;
@@ -750,7 +739,7 @@ static void texword_dump(const Slot* s) {
             want = strcmp(tv, "shape") == 0 ? -3 : (long)strtoul(tv, NULL, 16);
         } else want = -1;
     }
-    if (want == -1 || tc_frame < minf || (want == -3 ? !(s->fmt == 4 && s->siz == 0 && s->w == 64 && s->h == 64) : (long)(uintptr_t)s->img != want) || ndump >= 40) return; /* TEXD1: 40 binds (was 4) so frames 200 to 239 show every bind of the image */
+    if (want == -1 || tc_frame < minf || (want == -3 ? !(s->fmt == 4 && s->siz == 0 && s->w == 64 && s->h == 64) : (long)(uintptr_t)s->img != want) || ndump >= 4) return;
     int staged = s->vram_stage && s->vram_up;
     const u8* g = staged ? s->vram_stage : (s->tex_vram_ptr ? s->tex_vram_ptr : (const u8*)s->tex.data);
     unsigned gn = staged ? s->stage_n : (unsigned)s->tex.size;
@@ -1090,6 +1079,8 @@ static int slot_valid(Slot* s) {
 }
 
 static int ph_miss;
+#define LIDX_N 256
+static short lidx[LIDX_N]; /* OPT-LK */
 static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, int height,
                       const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                       unsigned dkey);
@@ -1427,7 +1418,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     if (used > map_peak) map_peak = used;
     cur = slot;
     recent_slot[recent_n++ % RECENT_N] = (short)slot; /* PG2 */
-    lkey[slot] = (unsigned short)lk; lnext[slot] = lhead[lk]; lhead[lk] = (unsigned short)(slot + 1); /* LCH1 */
+    lidx[lk] = (short)slot;
     have = 1;
     return 1;
 }
@@ -1507,8 +1498,20 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u;
         }
     }
-    /* LCH1: the key bucket (see lhead) holds every slot that can match. */
+    /* OPT-LK: one probe of a direct mapped index from the key to the slot, before the recent list and the scan. The slot is compared in full, so a stale entry only misses. */
     const unsigned lk = (((unsigned)(uintptr_t)img >> 2) ^ ((unsigned)(uintptr_t)tlut >> 3) ^ (unsigned)(width * 31 + height * 131 + (int)fmt * 7 + (int)siz * 3 + stride * 17) ^ dkey) & (LIDX_N - 1);
+    {
+        int i = lidx[lk];
+        Slot* s = &slots[i];
+        if (i < slot_hi && s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
+            s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
+            TC_HIT(s);
+            TOUCH(s);
+            cur = i;
+            have = 1;
+            return 1;
+        }
+    }
     /* PG2: most loads repeat one of the last few textures. Check those slots first (same full compare), then the whole table. */
     for (int k = 0; k < RECENT_N; k++) {
         int i = recent_slot[k];
@@ -1523,8 +1526,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             return 1;
         }
     }
-    for (unsigned j = lhead[lk]; j; j = lnext[j - 1u]) {
-        int i = (int)j - 1;
+    for (int i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
@@ -1533,6 +1535,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             cur = i;
             have = 1;
             recent_slot[recent_n++ % RECENT_N] = (short)i;
+            lidx[lk] = (short)i;
             return 1;
         }
     }
