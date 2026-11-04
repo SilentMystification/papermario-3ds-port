@@ -23,3 +23,11 @@
 - Census: `PM_ROW=NDS1 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 census_toad -Row NDS1 -Build nds1`
 - Host: `sh 3ds/tools/nat_host_test.sh`
 - Justification line first in 3ds/logs/perf/status_NDS1.txt (gitignored).
+
+## Round 3 (coordinator: P3 gate scene is mac01t)
+- Gate scene: mac01t (verified, Toad Town mac_01, tour path from mac_00 entry 4). Shots at frames 500 and 504 (shotwin=500:6), not 501.
+- Baseline from HEAD 868397b49 (same code as a77422e8f for draws): build3ds/azt/shots/mac01t/0000_1_2.ppm (frame 500) and 0001_1_2.ppm (frame 504). Viewed frame 500: Mario and partner on the path, white fence, Toad Town grass, HUD. Subject shown.
+- The mdlsum checks FAILED in the baseline run (no "mdlsum f783" line before the deadline). Shots were taken. The mdlsum part is not the P3 gate; the picture gate is the shot.
+- Census on mac_01: no census scenario exists for mac_01 yet. census_yard (kmr_20) and census_toad (kmr_10) exist. Add census_mac01 (preset or warp=mac_01:0 story=ch0_toad_town drawcensus=200 loglevel=debug, until "cen f200 summary") before the P3 census check.
+- P3 code: not started in round 3.
+- Starts on NDS1: 1 more used in round 3 (mac01t baseline). Budget reset to 8 by coordinator, so about 7 left.
