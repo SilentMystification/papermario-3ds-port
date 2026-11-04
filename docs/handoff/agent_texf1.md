@@ -34,3 +34,10 @@
 1. Run mac01 top, hos01 wall, pause_spin and battle_start_fb on new and baseline lanes (budget reset needed: azt.ps1 -ResetBudget TEXF1).
 2. Decide the bottom screen diff.
 3. VRAM3 step 1: count per-frame demand of full images (V05 log) on a pause and a battle run.
+
+## Gate results after the first handoff (8 of 8 starts used on TEXF1)
+- mac_01 seam, shots 0000_1_2 and 0001_1_2 (new vs base): byte equal.
+- yard bottom, digit mask x 162 to 185, y 0 to 8 (new vs base): base-vs-base residual 0 bytes outside the mask. TEXF1-vs-base residual 468 bytes constant in every frame, box x 162 to 231, y 224 to 230. Not the digits. Cause not decided. Possibly a static bottom-screen text line changed.
+- hos_01 wall texreg_wall: texword line for 0100169c missing on the TEXF1 build AND on the baseline 12efe52fc build. Not a TEXF1 regression. The scenario check fails on HEAD. Bind check not decided.
+- pause_spin and battle_start_fb: NOT RUN. Azahar budget of 8 reached. Status INCOMPLETE. Needs ResetBudget TEXF1 from the orchestrator.
+- VRAM3: not started.
