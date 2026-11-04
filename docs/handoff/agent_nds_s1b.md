@@ -45,3 +45,9 @@
 - Build: python 3ds/tools/gen_map_restore.py, save and restore map_restore_table.c byte-equal, then PM_ROW=<row> sh 3ds/build.sh.
 - Azahar: write the justification line to 3ds/logs/perf/status_NDS_S1.txt first, then `PM_ROW=<row> powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 <scenario> -Row <row> -Try`. Use `-Build build3ds/lane-base/pm_3ds.3dsx` for the S0 baseline.
 - Python: use /c/Python314/python (python3 is a Windows stub).
+
+## Later update (coordinator message, 2026-11-04)
+- Continue S1-3 to S1-6 without stopping. The 300 px S1-1 change is deterministic, so it is real.
+- A read-only diagnosis agent writes docs/handoff/diag_s1_1_picture.md. It was not present at this handoff. Read it when it appears. If it names a regression, apply the fix as a small row (30 changed lines or less), gate it on census_toad_shot, and commit.
+- S1-3 anchors (grep, line numbers are hints): pm_gpu.c `static void sh_depth_test(bool en` (L629), pm_gbi.c `static void sync_render(void)` (L647), `static int rm_apply(u32 w1)` (L2840), pm_comb.c `int pm_comb_build(` (L393).
+- Not started at this point: S1-3 code. The template words must match the C3D_* register writes. Read those before coding.
