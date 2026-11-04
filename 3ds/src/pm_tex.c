@@ -331,6 +331,25 @@ static unsigned tiled16(int x, int y, int pw) {
 /* P13: y % m for y >= 0 and m >= 1. A power of two m needs no divide. Same result as the % operator. */
 static inline int wrap_mod(int y, int m) { return (m & (m - 1)) == 0 ? (y & (m - 1)) : y % m; }
 
+/* TEXD2 console switches (debug3ds.txt): wrapov=repeat|mirror|clamp|edge forces the PICA wrap of every bind (clamp = clamp to
+ * border, edge = clamp to edge); texnearest=1 forces nearest filtering; padov=off pads with the plain edge texel (no mask follow).
+ * An absent switch changes nothing. Parsed again when the switch set changes (pm_dbg_gen). */
+static int td2_wrap = -1, td2_near, td2_padoff;
+static void td2_parse(void) {
+    static unsigned g = (unsigned)-1;
+    char v[16];
+    if (g == pm_dbg_gen) return;
+    g = pm_dbg_gen;
+    td2_wrap = -1;
+    if (pm_debug_value("wrapov", v, sizeof v)) {
+        if (!strcmp(v, "repeat")) td2_wrap = GPU_REPEAT;
+        else if (!strcmp(v, "mirror")) td2_wrap = GPU_MIRRORED_REPEAT;
+        else if (!strcmp(v, "clamp")) td2_wrap = GPU_CLAMP_TO_BORDER;
+        else if (!strcmp(v, "edge")) td2_wrap = GPU_CLAMP_TO_EDGE;
+    }
+    td2_near = pm_debug_value("texnearest", v, sizeof v) && v[0] == '1';
+    td2_padoff = pm_debug_value("padov", v, sizeof v) && !strcmp(v, "off");
+}
 static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int stride,
                   const u8* tlut, int tlut_n, int pw, int ph, GPU_TEXCOLOR gf) {
     if ((fmt == FMT_I && (siz == SIZ_8 || siz == SIZ_4)) || (fmt == FMT_IA && (siz == SIZ_8 || siz == SIZ_4)))
@@ -377,12 +396,13 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
     /* Pad to the power-of-two size with the last texel, so a clamped coordinate gets the edge. */
     /* A tile mask makes the image repeat or mirror past the window (bulb glow: window 65 in a 128 texture, mask 64, mirror),
      * so the pad follows the mask. */
+    td2_parse();
     for (int y = 0; y < ph; y++) {
         int sy = y < h ? y : h - 1;
-        if (mh) { int r = wrap_mod(y, mk_mt ? 2 * mh : mh); sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
+        if (mh && !td2_padoff) { int r = wrap_mod(y, mk_mt ? 2 * mh : mh); sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
         for (int x = (y < h ? w : 0); x < pw; x++) {
             int sx = x < w ? x : w - 1;
-            if (mw) { int r = wrap_mod(x, mk_ms ? 2 * mw : mw); sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
+            if (mw && !td2_padoff) { int r = wrap_mod(x, mk_ms ? 2 * mw : mw); sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
             memcpy(scratch + ((size_t)y * pw + x) * out_bpp, scratch + ((size_t)sy * pw + sx) * out_bpp, out_bpp);
         }
     }
@@ -1573,6 +1593,25 @@ void pm_tex_set_filter(int linear) {
  * skips the three calls when the texture, filter and wrap are what the last bind set. Anything that can change the unit or the texture
  * object in another way clears it (frame and target changes through pm_tex_bind_reset, a dropped or loaded slot, the aux bind). */
 void pm_tex_bind_reset(void) { tb_last = NULL; au_last = NULL; }
+/* TEXD2: one line per slot instance for the two images under test (hos_01 wall, tik_03 coin): the programmed wrap and filter values
+ * (PICA field values), mask, mirror, pad sizes and the converter. Logged at the first bind of each slot in a scene (sgen changes on drop). */
+static void texreg_log(int cur, const C3D_Tex* tp, GPU_TEXTURE_WRAP_PARAM ws, GPU_TEXTURE_WRAP_PARAM wt, GPU_TEXTURE_FILTER_PARAM ff) {
+    static const unsigned long addr[2] = { 0x0100169cUL, 0x00571b90UL };
+    static int lslot[2] = { -1, -1 };
+    static unsigned lsg[2];
+    static const char* fn[5] = { "RGBA", "YUV", "CI", "IA", "I" };
+    static const char* sn[4] = { "4", "8", "16", "32" };
+    const Slot* s = &slots[cur];
+    for (int k = 0; k < 2; k++) {
+        if ((unsigned long)(uintptr_t)s->img != addr[k]) continue;
+        if (lslot[k] == cur && lsg[k] == s->sgen) return;
+        lslot[k] = cur; lsg[k] = s->sgen;
+        pm_log_d("texreg img %08lx slot %d conv %s%s native %d w %d h %d gpu %dx%d pad x %d y %d mask s %u t %u mirror s %u t %u shr %d %d wrap s %d t %d filter %d",
+                 addr[k], cur, fn[s->fmt < 5 ? s->fmt : 4], sn[s->siz & 3], s->native, s->w, s->h, (int)tp->width, (int)tp->height,
+                 (int)tp->width - s->w, (int)tp->height - s->h, mk_ws, mk_wt, mk_ms, mk_mt, shr_s, shr_t, (int)ws, (int)wt, (int)ff);
+        return;
+    }
+}
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
@@ -1585,24 +1624,28 @@ int pm_tex_bind(void) {
     slots[cur].stamp = ++stamp;
     slots[cur].last_frame = tc_frame;
     GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
-    if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
+    td2_parse();
+    if (td2_wrap >= 0) ws = wt = (GPU_TEXTURE_WRAP_PARAM)td2_wrap; /* TEXD2 */
+    GPU_TEXTURE_FILTER_PARAM ff = td2_near ? GPU_NEAREST : tex_filt;
+    if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)ff && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
     texword_dump(&slots[cur]); /* TEXD1: pm_tex_bind is the path the draws use (pm_tex_bind_slot is not) */
     if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
     if (bind_probe) bind_probe_one(cur, &slots[cur]);
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);
     /* TEXGARBLE test switches (scratch): texnear = point filter, texclamp = clamp to edge, both for every bind of unit 0 */
     if (PMDL("texclamp")) ws = wt = GPU_CLAMP_TO_EDGE;
-    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : tex_filt, PMDL("texnear") ? GPU_NEAREST : tex_filt);
+    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : ff, PMDL("texnear") ? GPU_NEAREST : ff);
     C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB0]++; if (slot_draws_stage(&slots[cur])) pm_dc_c[DC_TBS]++;
     C3D_TexBind(0, tp);
+    if (PMDL("texreg")) texreg_log(cur, tp, ws, wt, ff);
     {   /* imglog: the GPU texture the draw binds (slot size, GPU size and address) */
         static int on = -1;
         if (on < 0) on = pm_debug_has("imglog");
         if (on) pm_log_d("imglog f%d gpubind slot w %d h %d stride %d gpu w %d h %d data %p fmt %u", (int)tc_frame,slots[cur].w, slots[cur].h, slots[cur].stride, (int)tp->width, (int)tp->height, (void*)tp->data, (unsigned)slots[cur].fmt);
     }
     tb_last = slot_draws_stage(&slots[cur]) ? NULL : &slots[cur].tex;
-    tb_f = (int)tex_filt; tb_ws = (int)ws; tb_wt = (int)wt;
+    tb_f = (int)ff; tb_ws = (int)ws; tb_wt = (int)wt;
     return 1;
 }
 
@@ -1681,7 +1724,10 @@ int pm_tex_bind_aux(void) {
     const C3D_Tex* tp = tex_for_draw(&slots[aux]);
     if (PMDL("texclamp") || PMDL("texclamp1")) ws = wt = GPU_CLAMP_TO_EDGE; /* TEXGARBLE test switches: texclamp1 = aux unit only */
     if (PMDL("texrep1")) wt = GPU_REPEAT; /* TEXGARBLE test switch: aux unit t repeats (the N64 clamp of t off) */
-    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : tex_filt, PMDL("texnear") ? GPU_NEAREST : tex_filt);
+    td2_parse();
+    if (td2_wrap >= 0) ws = wt = (GPU_TEXTURE_WRAP_PARAM)td2_wrap; /* TEXD2 */
+    GPU_TEXTURE_FILTER_PARAM aff = td2_near ? GPU_NEAREST : tex_filt;
+    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : aff, PMDL("texnear") ? GPU_NEAREST : aff);
     C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB1]++;
     C3D_TexBind(1, tp);

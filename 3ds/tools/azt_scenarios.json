@@ -3835,6 +3835,70 @@
           }
         ],
         "reason": ""
+      },
+      {
+        "name": "texreg_wall",
+        "status": "unverified",
+        "subject": "TEXD2: hos_01 wall, image 0x0100169c, texreg line (wrap, filter, pad, converter) at the first bind of the scene.",
+        "proves": "The texreg line for the image (TEXD2): programmed wrap and filter values, mask, mirror, pad and converter, one line per slot instance.",
+        "debug": "warp=hos_01:0 texreg shots shotwin=200:6 loglevel=debug",
+        "until": "warp: scene f300 ",
+        "cap": 60,
+        "deadline": 20,
+        "first_marker": "warp: hos_01 entry 0",
+        "expects": "warp",
+        "needs_picture": true,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: hos_01 entry 0"
+          },
+          {
+            "name": "texreg line",
+            "regex": "texreg img 0100169c"
+          },
+          {
+            "name": "shot",
+            "regex": "shot \\d+ frame 20[0-5]\\b"
+          },
+          {
+            "name": "steady frame",
+            "regex": "warp: scene f300 "
+          }
+        ],
+        "reason": ""
+      },
+      {
+        "name": "texreg_coin",
+        "status": "unverified",
+        "subject": "TEXD2: tik_03 sewer coins, image 0x00571b90, texreg line at the first bind of the scene.",
+        "proves": "The texreg line for the image (TEXD2): programmed wrap and filter values, mask, mirror, pad and converter, one line per slot instance.",
+        "debug": "warp=tik_03:0 texreg shots shotwin=200:6 loglevel=debug",
+        "until": "warp: scene f300 ",
+        "cap": 90,
+        "deadline": 20,
+        "first_marker": "warp: tik_03 entry 0",
+        "expects": "warp",
+        "needs_picture": true,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: tik_03 entry 0"
+          },
+          {
+            "name": "texreg line",
+            "regex": "texreg img 00571b90"
+          },
+          {
+            "name": "shot",
+            "regex": "shot \\d+ frame 20[0-5]\\b"
+          },
+          {
+            "name": "steady frame",
+            "regex": "warp: scene f300 "
+          }
+        ],
+        "reason": ""
       }
   ]
 }

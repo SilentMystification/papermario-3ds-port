@@ -64,3 +64,24 @@
 ### VRAM3: not started
 - Step 1 (trace when each of the 4 off-screen full images is live) is not run. Existing hint: the V05 log lines in pm_gpu.c:1681 to 1691 print when a fifth image is wanted (slots used again).
 - Steps (a) RGBA5551, (b) fewer images, (c) shared depth: not started. Each needs its gates (boot line, yard and mac_01 shots, pause_spin, battle_start_fb frames 0 to 210).
+
+## Session 3 (TEXD2, code agent, branch native)
+
+### TEXD2 switches (code in pm_tex.c, default behaviour unchanged)
+- wrapov=repeat|mirror|clamp|edge: forces the PICA wrap of every unit 0 and aux bind (clamp = CLAMP_TO_BORDER, edge = CLAMP_TO_EDGE).
+- texnearest=1: nearest filter on unit 0 and aux.
+- padov=off: the texture pad (pm_tex.c expand, pad loop) uses the plain edge texel, no mask follow. Other pad paths (tx1 build) are not changed.
+- texreg (debug word): one line per slot instance: `texreg img <addr> slot <n> conv <fmt><siz> native <0|1> w h gpu WxH pad x y mask s t mirror s t shr wrap s t filter <f>`. Logged once per slot instance (sgen).
+- Scenarios texreg_wall (hos_01, until scene frame 300) and texreg_coin (tik_03, until scene frame 300). Catalog rows added.
+- Build passes. No Azahar line has been read yet. The texreg line never appeared (runs 1 to 6).
+
+### Open: the wall is not bound on the bucket lookup build
+- A/B: pm_tex.c from 124e1d468 (before LCH1), scenario hos01_texword: texword bind at frame 200 (wall, wrap 3 3).
+- Bucket lookup build (1413ef8c3 and later, with TEXD2): no bind of 0x0100169c by scene frame 300 (texreg runs 1 to 3, 5 and 6, texword run 2).
+- Temporary check (removed): after a chain miss, a linear scan of the slot table found no slot the chain missed (run 6, zero lchcheck lines). So the chain is not losing a matching slot at lookup.
+- Not yet known: whether the scene path differs (the wall draw never requests the texture) or the lookup does. Next step: A/B again with the same scenario and the frame-300 end. Compare the texbind counts (texstat / texbind lines) of both builds. If the bucket build is at fault, revert 1413ef8c3 (pm_tex.c lookup) and keep the texreg work.
+- Run 4 A/B used the pre-LCH pm_tex.c with the current scenario list (no TEXD2 switches).
+
+### Budgets
+- TEXD2: 6 of 8 starts used (texreg runs 1 to 3 and 5 and 6, A/B run 4).
+- Not started in session 3: VRAM3 (step 1 trace), pm_tex_load_rgba8 linear scan fix (step 3).
