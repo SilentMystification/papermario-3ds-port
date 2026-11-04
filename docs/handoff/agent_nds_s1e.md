@@ -27,3 +27,12 @@ S2-1 nd_gbi.h (macro redirect with bridge dual-write), S2-2 pass state calls and
 
 ## Console (user)
 S1 changes no drawing behaviour. If a console check is wanted: PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.131 -t 150 prof
+
+## Addendum 2026-11-04 (late): S2-1, S2-2 force include, S3-1 done
+- 47cd86791: nd_gbi.h bridge form. 3ds/tools/gen_nd_gbi.sh (docker gcc -E -dM plus gen_nd_gbi.py) writes 3ds/include/nd_gbi_leaf.h: 68 leaf macros get a block form that writes the words into a temporary list, calls nd_words (nd_state.c fills nd_st), then writes the real packet. Compound and alias macros are untouched. 6 leaves are `_Static_assert` (ucode, sprite 2D, lines). Force-included (CMake) for main_loop.c, cam_main.c, background_gfx.c, background.c. Host test nd_gbi_test (57 words equal to plain gbi.h). Azahar: scenario ndst_yard (switch ndst logs nd_st every 100 frames), picture equal to yard_shot.
+- 696b5fa3f: nd_dlc.c compiles a static list into NdObj (groups, boxes, Vtx copies flag 0, indices, geometry ops). Host test on mac_01 and mac_02: 262 lists, 388 groups, 3853 triangles, 83 lists refused for ops other than vertices, triangles and geometry mode (the old compiler refuses them too). Not used by a draw yet.
+- Prof tag: every prof window prints `prof f<n> w<n> at <map> <area>:<map> m<mode> sp<story> b<battle> e<entry> chg0 pos0 x y z pos x y z`, windows restart on a map change and on the pos= placement. 3ds/tools/prof_by_scene.py compares logs per scene. Scenario prof_scene.
+- Save tool (Haiku agent, 23c6ca9ce): 3ds/tools/savetool.py, debug switch savefile=<path> (needs warp=), scenario savefile_check.
+
+## Finding for S3-2 (decide before coding)
+The old raw path is already index-list based. The CPU cost (prof lg 22 to 29 ms on the O3DS XL, Toad Town) is the walker: op decode, state sync, G_PM_MODEL headers, dlc_try. The lowest risk first native step reuses pm_gpu: nd_emit consumes DRAW_IDX records and calls pm_gpu_grange and the existing flush_draw (which owns the TEV rebuild, texture bind, uniforms and the sh_* shadows). Producers (model.c appendGfx_model under TARGET_3DS) then write NdRec (nd_obj_draw with a texture id, a render mode, a matrix) and skip the G_PM_MODEL words. Writing PICA words from templates (nd_tmpl words, nd_tex blocks, nd_mtx pool) directly into the command buffer is a second step, after the producers are native and the pictures are equal. nd_tmpl, nd_tex and nd_mtx are ready for it and host tested against ndref.
