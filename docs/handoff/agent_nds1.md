@@ -216,3 +216,12 @@ Recommendation: A first as a measured slice, then B. Ask the user (AskUserQuesti
 - Correction to the orchestrator decision D2: pcomp_eye does not exist. The eye shift is applied in the projection (pm_gbi.c:459 to 464), not in pcomp. Eye 2 palette = pcomp[gm], the same product as eye 1. nat_mtx[1] = nat_mtx[0] is valid.
 - Not done: nat_emit replay wiring (rec_play still runs), hooks 2/8/9, eye 2 copy, bucketing, old path delete, region diff, hot loop size, stereo shot, default switch. Azahar starts left for NDS1: 3 (this run used 1 of the 4 left).
 - Next: wire nat_emit into rec_play for qualifying records (flag in RecKey), then region diff on toad, then stereo shot.
+
+## N4 steps 1 and 2 (per-eye fill, nat replay branch), handoff (code agent, 2026-11-04, retiring)
+- pm_gpu.c: pal_mul is the shared palette product (pcomp_calc uses it, same order). pm_gpu_pal_fill(m, gm, eye) writes nat_mtx[eye][gm]. pm_eye_idx is 1 for the right eye pass (pm_gpu_eye), 0 otherwise.
+- pm_gbi.c: RecKey.nat (set when nat_rec_write succeeds). rec_play has a nat branch: palette fill from gm_tab[dlc_gmi()] for pm_eye_idx, NatRec mtx and nat_idx_base set, nat_emit, pm_gpu_rec_play with gm ~0. Non-nat records keep the old call. Log line "N4 nat replay" (first 4).
+- Gates so far: host tests pass. nds1 lane build passes (gen_map_restore run before, file restored). census_toad_rp (recplay on): 26 / 338 / 23 / 0 (equal).
+- OPEN: the nat branch did not run in census_toad_rp (no "N4 nat replay" line). 13 records have "N4 strip ... rc 234". Find which condition blocks: rec_play state/geom/tex checks, or k->nat unset (gmv == ~0 or nat_tex_set conflict, both give rec_ref). Count both with a log line before any picture gate.
+- OPEN: no region diff yet. Needs a scenario with recplay and shots (census_toad_rp has no shot). Baseline = commit d44a10944 with the same scenario.
+- Not done: hooks 2/8/9, eye 2 copy in gbi_task, bucketing, old path delete for qualifying records, hot loop size, stereo shot, default switch.
+- Azahar budget NDS1 after the reset: 3 starts used of 8 (census2, census3 = 2; plus census 1 gate earlier after reset? counted as 2 here). Check status_NDS1.txt before the next start.

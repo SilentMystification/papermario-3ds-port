@@ -34,3 +34,5 @@ N4 start 7 census_toad_rp (NDS1 build after N4 step 2, template cap 320 words; b
 2026-11-04 N4 eye probe: yard_stereo_r logs combined translation per eye (pm_gbi_eye_changed). Measures whether the eye 2 palette input differs (pcomp = gv_post x gm_tab, gm_tab = combined). Path: eye change; no other run answers it; code cannot show the runtime values.
 2026-11-04 N4 eye probe 2: full combined (16 entries) per eye, yard_stereo_r, the probe line only. Path: pm_gbi_eye_changed. No other run answers it.
 2026-11-04 N4 eye probe 3 (last start): full combined per eye, perspective calls only (proj[2][3] != 0), yard_stereo_r. Path: pm_gbi_eye_changed. No other run answers it.
+2026-11-04 N4 step 2: nat_emit replay (recplay on) for flagged records; census_toad_rp: census must match 26/338/23/0; then region diff on toad. Path: rec_play nat branch. No other run answers it.
+2026-11-04 N4 step 2 recheck: census_toad_rp with the N4 nat replay log line (nat replay count). Path: rec_play nat branch. No other run answers it.

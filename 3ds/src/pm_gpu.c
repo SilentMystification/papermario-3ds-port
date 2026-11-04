@@ -10,6 +10,7 @@ void pm_gx_room(void); /* HANG1a */
 #include <stdio.h>
 #include <stdlib.h>
 #include "pm_shader5_shbin.h"
+#include "pm_native.h"
 #include "pm_shaderall_shbin.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
@@ -836,13 +837,22 @@ static __attribute__((noinline)) void flush_light_tab(void) {
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk0, g_fx.lk0[0], g_fx.lk0[1], g_fx.lk0[2], g_fx.lk0[3]);
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk1, g_fx.lk1[0], g_fx.lk1[1], g_fx.lk1[2], g_fx.lk1[3]);
 }
+/* N4 2b: the palette product post x game, one function for the live path (pcomp) and the per-eye fill (nat_mtx). Same order of products. */
+static void pal_mul(C3D_Mtx* o, const float (*m)[4]) {
+    C3D_Mtx game;
+    for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
+    Mtx_Multiply(o, &gv_post, &game);
+}
 static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
-                    C3D_Mtx game;
-                    const float(*m)[4] = pal_tab[gm];
-                    for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
-                    Mtx_Multiply(&pcomp[gm], &gv_post, &game);
+                    pal_mul(&pcomp[gm], pal_tab[gm]);
                     pcomp_gen[gm] = post_gen;
                     pm_dc_c[DC_PMUL]++;
+}
+/* N4 2b: palette words of one eye for game matrix gm. m: the gm table entry of that eye's walk. Writes nat_mtx[eye][gm] = post x m. */
+int pm_eye_idx; /* 1 for the right eye pass, else 0 */
+void pm_gpu_pal_fill(const float (*m)[4], unsigned gm, unsigned eye) {
+    C3D_Mtx t; pal_mul(&t, m);
+    memcpy(nat_mtx[eye][gm], &t, sizeof t);
 }
 static __attribute__((noinline)) int nozt_on(void) {
     static int nozt = -1;
@@ -1760,7 +1770,7 @@ void pm_gpu_eye(int right) {
     if (right && !r_cleared) { r_cleared = 1; if (r_wantclear) C3D_RenderTargetClear(targetR, C3D_CLEAR_ALL, 0, 0); } /* queue order: the clear comes before every part of the frame */
     grab_dirty = 1; grab_dy0 = grab_dy1 = 0; /* K2: the copy of the other eye is not this eye's frame, so the next grab copies again */
     cur_target = right ? targetR : target;
-    pm_eye_e = (right ? PM_EYE_E : -PM_EYE_E) * eye_slider;
+    pm_eye_e = (right ? PM_EYE_E : -PM_EYE_E) * eye_slider; pm_eye_idx = right ? 1 : 0;
     sh_clear(); C3D_FrameDrawOn(cur_target);
     pm_gbi_eye_changed();
 }
@@ -1977,7 +1987,7 @@ void pm_gpu_begin_wait(void) {
     gfxSet3D(stereo_frame);
     r_wantclear = begin_clear; r_cleared = 0;
     cur_target = target;
-    pm_eye_e = stereo_frame ? -PM_EYE_E * eye_slider : 0.f;
+    pm_eye_e = stereo_frame ? -PM_EYE_E * eye_slider : 0.f; pm_eye_idx = 0;
     sh_clear(); C3D_FrameDrawOn(target);
     PH_POP();
 }

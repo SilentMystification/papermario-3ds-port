@@ -3559,7 +3559,7 @@ extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slo
 /* UC2: grp = fragment-op group words (ctx+0xF0..0xFC, texunit config ctx+0x110, flags ctx+0x20) at capture start. A record is reused only when they match (diag_uc2_j75.md). 48 B. */
 typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[12];
     u32 io, ic; /* UC3c: index arena span (pm_gpu_rec_idx) */
-    u32 gin, gout, view; u16 alen; u8 npt, nd, fl, pp; /* pp: the palette words of the body are the rows of pcomp[gmc] (N1) */ /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
+    u32 gin, gout, view; u16 alen; u8 npt, nd, fl, pp, nat; /* nat: NatRec words of the draws are valid (N4 2b). pp: the palette words of the body are the rows of pcomp[gmc] (N1) */ /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
     u32 gmc, gdl; /* UC3e: game matrix of the palette at capture, the static list (G_DL address) */
 } __attribute__((aligned(32))) RecKey;
 u32 pm_gpu_rec_ia_phys(void); /* pm_gpu.c, N4 2b: phys base of the index arena (nat_idx_base) */
@@ -3709,7 +3709,7 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     k->s0 = cs < 0 ? REC_NO_SLOT : (u16)cs; k->s1 = as < 0 ? REC_NO_SLOT : (u16)as;
     k->ver = pm_rec_ver(slot - 1); k->gen = ra_gen; k->hgen = rec_hgen(slot - 1);
     memcpy(k->grp, rec_g0, sizeof k->grp);
-    k->tgen0 = rec_tgen(k->s0); k->tgen1 = rec_tgen(k->s1); k->state = 2;
+    k->tgen0 = rec_tgen(k->s0); k->tgen1 = rec_tgen(k->s1); k->state = 2; k->nat = 0;
     if (r < 0) { rec_emp++; return; }
     if (pm_tex_cur_vram_pending() || pm_tex_aux_vram_pending()) { /* UC3b: a bound slot draws its linear stage copy, the record would hold that address */
         k->state = 0; rec_stg++; return;
@@ -3747,6 +3747,7 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
           if (gmv == ~0u || !nat_tex_set(rec_g0[6] & 0xFFFFu, nt->grp + 22) || !nat_tex_set(rec_g0[6] >> 16, nt->grp + 28)) { rec_ref++; return; }
           nat_idx_base = pm_gpu_rec_ia_phys();
           if (nat_rec_write(nr, (unsigned)nd, ra + at, n, (unsigned)tid, gmv, rec_g0[6], nat_idx_base) != nd) { rec_ref++; return; }
+          k->nat = 1;
       } }
     k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
     k->gmc = pm_gpu_rec_gm_cap(); k->gdl = rec_gdl;
@@ -3766,6 +3767,12 @@ static __attribute__((noinline, cold)) void rec_report(void) {
 
 /* UC3e: replays the record at the G_DL of its group (mg_run). Returns 0 (the list runs live) when an input of the record differs: the list
  * address, geom at entry, wind, interp, scissor and target key, the slots of units 0 and 1, the game matrix of the palette. */
+/* N4 2b: buffers of the nat_emit replay. A record holds at most 255 draws (nd is a byte). */
+#define NAT_OUT_WORDS (NAT_TMPL_WORDS + 255u * NAT_GRP_WORDS)
+static uint16_t nat_ord_v[256]; static NatMtxLog nat_log_v[256]; static unsigned nat_nl;
+static uint32_t nat_out[NAT_OUT_WORDS] __attribute__((aligned(32)));
+void pm_gpu_pal_fill(const float (*m)[4], unsigned gm, unsigned eye); /* pm_gpu.c, N4 2b */
+extern int pm_eye_idx; /* pm_gpu.c, N4 2b */
 static __attribute__((noinline)) int rec_play(const Gfx* l) {
     RecKey* k = rec_rp; rec_rp = NULL;
     int s0 = k->s0 == REC_NO_SLOT ? -1 : (int)k->s0, s1 = k->s1 == REC_NO_SLOT ? -1 : (int)k->s1;
@@ -3778,8 +3785,20 @@ static __attribute__((noinline)) int rec_play(const Gfx* l) {
         if (!nobox_on()) for (unsigned g = 0; g < e->ngrp; g++) if (dlc_box_out(&e->grp[g], combined)) return 0;
     }
     unsigned gmn = ~0u; /* N1: a palette record of another game matrix replays with the palette patched (pm_gpu_rec_play) */
-    if (dlc_gmi() != k->gmc) { if (!k->pp || (gmn = (unsigned)dlc_gmi()) >= NAT_MTX_MAX) return 0; }
-    if (!pm_gpu_rec_play(ra + k->off, k->len, ra + k->off + k->len, k->npt, k->nd, gmn, ra + k->off + k->len + k->npt, k->nd)) return 0;
+    if (k->nat) { /* N4 2b: the draws come from nat_emit. The palette of this eye and game matrix, the NatRec mtx and nat_idx_base are set here. */
+        unsigned gm = (unsigned)dlc_gmi();
+        if (gm >= NAT_MTX_MAX) return 0;
+        pm_gpu_pal_fill(gm_tab[gm], gm, (unsigned)pm_eye_idx);
+        NatRec* nr = (NatRec*)(ra + k->off + k->len + k->npt + 4u * k->nd);
+        for (unsigned q = 0; q < k->nd; q++) { nr[q].mtx = (uint16_t)gm; nat_ord_v[q] = (uint16_t)q; }
+        nat_idx_base = pm_gpu_rec_ia_phys();
+        unsigned no = nat_emit(nr, k->nd, nat_ord_v, nat_out, NAT_OUT_WORDS, (unsigned)pm_eye_idx, nat_log_v, &nat_nl);
+        { static unsigned nat_logn; if (nat_logn < 4) { nat_logn++; pm_log_d("N4 nat replay slot %u draws %u words %u eye %d gm %u", (unsigned)(k - rk) + 1u, (unsigned)k->nd, no, pm_eye_idx, gm); } }
+        if (!no || !pm_gpu_rec_play(nat_out, no, NULL, 0, k->nd, ~0u, ra + k->off + k->len + k->npt, k->nd)) return 0;
+    } else {
+        if (dlc_gmi() != k->gmc) { if (!k->pp || (gmn = (unsigned)dlc_gmi()) >= NAT_MTX_MAX) return 0; }
+        if (!pm_gpu_rec_play(ra + k->off, k->len, ra + k->off + k->len, k->npt, k->nd, gmn, ra + k->off + k->len + k->npt, k->nd)) return 0;
+    }
     dlc_set_geom(k->gout);
     memset(vert_live, 0, sizeof vert_live);
     dlc_dirty = 1; tri_since_vtx = (k->fl >> 1) & 1u; ep_open = 0;
