@@ -709,9 +709,17 @@ static unsigned probe_fnv(const u8* p, unsigned n) { unsigned x = 2166136261u; f
  * and the converted PICA bytes (texgpu_<addr>_<n>.bin, the slot's bytes in VRAM or the staged copy) to the working directory, and log the layout. */
 static void texword_dump(const Slot* s) {
     static long want = -2;
+    static unsigned minf; /* texword=<hex>@<frame>: the dumps start at that frame */
     static int ndump;
-    if (want == -2) { char tv[24]; if (pm_debug_value("texword", tv, sizeof tv)) want = strcmp(tv, "shape") == 0 ? -3 : (long)strtoul(tv, NULL, 16); else want = -1; }
-    if (want == -1 || (want == -3 ? !(s->fmt == 4 && s->siz == 0 && s->w == 64 && s->h == 64) : (long)(uintptr_t)s->img != want) || ndump >= 4) return;
+    if (want == -2) {
+        char tv[32];
+        if (pm_debug_value("texword", tv, sizeof tv)) {
+            char* at = strchr(tv, '@');
+            if (at) { minf = (unsigned)strtoul(at + 1, NULL, 10); *at = 0; }
+            want = strcmp(tv, "shape") == 0 ? -3 : (long)strtoul(tv, NULL, 16);
+        } else want = -1;
+    }
+    if (want == -1 || tc_frame < minf || (want == -3 ? !(s->fmt == 4 && s->siz == 0 && s->w == 64 && s->h == 64) : (long)(uintptr_t)s->img != want) || ndump >= 4) return;
     int staged = s->vram_stage && s->vram_up;
     const u8* g = staged ? s->vram_stage : (s->tex_vram_ptr ? s->tex_vram_ptr : (const u8*)s->tex.data);
     unsigned gn = staged ? s->stage_n : (unsigned)s->tex.size;
@@ -1581,6 +1589,7 @@ int pm_tex_bind(void) {
     slots[cur].last_frame = tc_frame;
     GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
     if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
+    texword_dump(&slots[cur]); /* TEXD1: pm_tex_bind is the path the draws use (pm_tex_bind_slot is not) */
     if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
     if (bind_probe) bind_probe_one(cur, &slots[cur]);
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);

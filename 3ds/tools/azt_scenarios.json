@@ -3807,6 +3807,34 @@
           }
         ],
         "reason": "Long measurement (SLOT1): map change chain at frame 1500. Turbo: slot counts are per frame."
+      },
+      {
+        "name": "hos01_texword",
+        "status": "unverified",
+        "subject": "TEXD1: Shooting Star Summit wall (hos_01), the I4 64x64 texture 0x0100169c (this build), bind dump (texword) of the first 4 binds from frame 200, and the drawlog of the wall chunk.",
+        "proves": "The texword line for image 0x0100169c (slot layout, wrap state, hash) and the texsrc and texgpu files written at the bind (pm_tex_bind), frames 200 to 203.",
+        "debug": "warp=hos_01:0 texword=0100169c@200 shots shotwin=200:6 loglevel=debug drawlog=200:1",
+        "until": "shot \\d+ frame 204\\b",
+        "cap": 25,
+        "deadline": 20,
+        "first_marker": "warp: hos_01 entry 0",
+        "expects": "warp",
+        "needs_picture": true,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: hos_01 entry 0"
+          },
+          {
+            "name": "texword bind",
+            "regex": "texword f\\d+ img 0100169c bind 1"
+          },
+          {
+            "name": "last shot",
+            "regex": "shot \\d+ frame 204"
+          }
+        ],
+        "reason": ""
       }
   ]
 }
