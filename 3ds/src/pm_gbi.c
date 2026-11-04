@@ -125,7 +125,7 @@ static int dd_on(void) {
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
 /* SUNFIX debug switch suntile=<first frame>:<count>: tile 1 state at each dual_bind, the vertex S T of each triangle, and the sun
- * overlay spawn and draws (pm_sun_spawn, pm_sun_draw). At most 400 lines per run. */
+ * overlay spawn and draws (pm_sun_spawn, pm_sun_draw). At most 4000 lines per run. */
 static int suntile_on(void) {
     static int a = -2, b;
     if (a == -2) {
@@ -1323,7 +1323,7 @@ static float cull_cross(const float* p1, const float* p2, const float* p3) {
     return cross;
 }
 /* FLK1 debug switch tritrace=<first frame>:<count>: one line per triangle of draw_tri_cpu in the window. Corner w, screen X and Y (x/w),
- * clip bits, the cull area sign and the decision (what). At most 400 lines per run. */
+ * clip bits, the cull area sign and the decision (what). At most 4000 lines per run. */
 static int tritrace_on(void) {
     static int a = -2, b;
     if (a == -2) {
@@ -1335,7 +1335,7 @@ static int tritrace_on(void) {
 }
 static unsigned tritrace_seq, tritrace_lines;
 static void tritrace_tri(const char* what, unsigned seq, const float* p1, const float* p2, const float* p3, int cb1, int cb2, int cb3) {
-    if (tritrace_lines >= 400) return;
+    if (tritrace_lines >= 4000) return;
     tritrace_lines++;
     pm_log("tri f%u s%u %s w %.4f %.4f %.4f X %.3f %.3f %.3f Y %.3f %.3f %.3f cb %x %x %x cross %.6g", pm_frame_count(), seq, what,
            p1[3], p2[3], p3[3], p1[0] / p1[3], p2[0] / p2[3], p3[0] / p3[3], p1[1] / p1[3], p2[1] / p2[3], p3[1] / p3[3], cb1, cb2, cb3,
