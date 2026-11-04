@@ -207,3 +207,12 @@ Recommendation: A first as a measured slice, then B. Ask the user (AskUserQuesti
 - Not done: N4 steps 3 to 7 (NatRec writer at rec_done, nat_emit replay for plain static models, hooks 2, 8, 9, eye 2 copy in gbi_task, delete the old path, region diff, hot loop size, default switch). Nothing in the draw path changed; rec_play still runs.
 - Commands: lane build `PM_LANE=nds1 PM_ROW=NDS1 sh 3ds/build.sh` (gen_map_restore.py first, then `git checkout -- 3ds/src/map_restore_table.c`). Census `PM_ROW=NDS1 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 census_toad_rp -Row NDS1 -Build nds1 -Try`. Host test `sh 3ds/tools/nat_host_test.sh`. Strip lines: `grep "N4 strip" build3ds/lane-nds1/last_log.txt`.
 - Next steps: (1) user decision on slot 36; (2) NatRec writer and per-draw inputs (step 2b, pm_gpu_rec_pt_copy, pm_gpu_rec_idx, pm_tex_cur_slots); (3) nat_emit replay for plain static models; (4) hooks 2, 8, 9; (5) eye 2 copy; (6) delete old path; (7) gates.
+
+## N4 2b done and handoff (code agent, 2026-11-04, commit 34ef68056)
+- nat_rec_write (pm_native.c) fills one NatRec per draw at rec_done (pm_gbi.c), after the census tuples: record words = n + npt + 8 * ncen (4 words per draw). mtx = rec_gm of the window (gm cap). tex0/tex1 = rec_g0[6] (slot + 1). idx_off = 0x227 p0 minus nat_idx_base = phys of the index arena (pm_gpu_rec_ia_phys). nidx = 0x228 p0.
+- nat_tex_set fills nat_tex from the template prototype (grp 22 and 28) per capture generation (memset in rec_reset). A conflict refuses the record (rec_ref).
+- A record with rc <= 0 has zero NatRec words. The consumer must check the rc (add a flag to RecKey before use).
+- Gates: nat_host_test.sh all pass. census_toad_rp: 26 batches, 338 tris, 23 distinct, over 0 (same as before). Lane nds1 build passes. gen_map_restore.py was NOT run before this build (rule 9 deviation).
+- Correction to the orchestrator decision D2: pcomp_eye does not exist. The eye shift is applied in the projection (pm_gbi.c:459 to 464), not in pcomp. Eye 2 palette = pcomp[gm], the same product as eye 1. nat_mtx[1] = nat_mtx[0] is valid.
+- Not done: nat_emit replay wiring (rec_play still runs), hooks 2/8/9, eye 2 copy, bucketing, old path delete, region diff, hot loop size, stereo shot, default switch. Azahar starts left for NDS1: 3 (this run used 1 of the 4 left).
+- Next: wire nat_emit into rec_play for qualifying records (flag in RecKey), then region diff on toad, then stereo shot.
