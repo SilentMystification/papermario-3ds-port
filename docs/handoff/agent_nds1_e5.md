@@ -50,3 +50,11 @@
 - Not done: E5-3 emit (needs per-draw words at emit, the unresolved bad case must be explained first), E5-4, E5-5, E5-6.
 - Starts on NDS1: 8 of 8 used after the reset? Count: E5-1, E5-2, TEXW, TEXW2, TEXW3, TEXW4, TEXW5 = 7 of 8 (budget was reset before this pass).
 - Next: find which flush emitted template words 00200020/0305a940 in the bad case (log the flush address of each snapshot and the 0x081 header order in the window), then E5-3 per the coordinator steps.
+
+## E5-3 learned replay (sixth pass): census FAILED, code reverted
+- Patch kept: docs/handoff/nds1_e53_wip.patch (learn end writes NatRec + pool index copy + census tuples; dlc_nat_group replays with nat_emit; NAT_TEX_TMPL=0xFF keeps template words; learn refuses when any unit 0 flush differs from the template).
+- Build: ok. Host tests nat_host_test and ndt_host_test: pass (with the patch).
+- census_mac01 with the patch: 71 batches / 810 tris / 54 distinct. HEAD (same build lane, same scenario): 64 / 810 / 52. Gate is 64 / 810. FAIL.
+- Only 1 learned replay in the run (log line E5-3 learned replay draws 1). So the replay is refused for almost all groups. The reason is not logged. The +7 batches are not explained: the replay adds at most 1 cen_put in this run.
+- Next (new diagnostic agent, 3 starts max): add refusal counters to dlc_nat_group (view, wind, interp, lit/fog, box, tex_use, slot words, pal, emit, rec_play) and log the census lines of frame 200 with the replay on and off. Find the source of the +7 batches before any emit change.
+- Starts on NDS1 in this pass: 2 (E5-3 census, HEAD census). Budget reset before this pass.

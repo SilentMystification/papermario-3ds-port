@@ -1,0 +1,218 @@
+diff --git a/3ds/include/pm_native.h b/3ds/include/pm_native.h
+index 53bdf9e12..720ad4bb3 100644
+--- a/3ds/include/pm_native.h
++++ b/3ds/include/pm_native.h
+@@ -12,6 +12,8 @@
+ #define NAT_GRP_WORDS  38   /* per-draw group: uniform index 2, palette 18, tex0 6, tex1 6, index address 2, index count 2, trigger 2 */
+ #define NAT_MTX_MAX    96   /* palette slots per eye */
+ #define NAT_TEX_MAX    128  /* texture handles, id 0..127 */
++#define NAT_TEX_TMPL   0xFFu /* E5-3: NatRec tex0/tex1 value that keeps the template words of the group */
++void* nat_pool_ptr(void); /* pm_native.c, E5-3: NAT pool base */
+ 
+ /* 16 bytes. One record per draw. */
+ typedef struct {
+diff --git a/3ds/src/pm_dlc.inc.c b/3ds/src/pm_dlc.inc.c
+index 2543069dd..4e2e86764 100644
+--- a/3ds/src/pm_dlc.inc.c
++++ b/3ds/src/pm_dlc.inc.c
+@@ -6,7 +6,7 @@
+  * fit the ring runs through the interpreter itself (pm_gbi_run on the op range of the group). */
+ unsigned pm_dlc_gen = 1; /* bumped when the shape buffer is written (pm_tex_invalidate, decode_yay0) */
+ 
+-typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16 tid1; u16* sd; u16* bat_q; const u16* pidx; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
++typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16 tid1; u32 lnr_gin, lnr_gout, lnr_view, lnr_pool, lnr_off; u16 lnr_n; s16 lnr_s0; u8 lnr_wind; u16* sd; u16* bat_q; const u16* pidx; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
+ typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; } DlcEnt;
+ enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
+ #define DLC_TAB 2048
+@@ -550,10 +550,14 @@ static __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp*
+     }
+ }
+ 
++static int dlc_nat_group(const DlcEnt* e, DlcGrp* g, unsigned gmi, u32 gg); /* pm_gbi.c, E5-3 */
++#define DLC_LNR_MAX 4096u /* E5-3: draws of all learned groups (NatRec and census tuple, 32 B each) */
++static NatRec* dlc_lnr; static u32* dlc_lcen; static unsigned dlc_lnr_n;
+ /* the shape buffer was written: every entry is stale */
+ static __attribute__((cold, noinline)) void dlc_reset(void) {
+     for (unsigned k = 0; k < DLC_TAB; k++) if (dlc_tab[k]) { dlc_free(dlc_tab[k]); free(dlc_tab[k]); dlc_tab[k] = NULL; }
+     nat_model_reset();
++    dlc_lnr_n = 0;
+     dlc_nent = 0;
+     pm_gpu_gstat_reset();
+ }
+@@ -566,6 +570,20 @@ static __attribute__((noinline)) int dlc_learn(const DlcEnt* e, DlcGrp* g, unsig
+     dlc_learn_begin();
+     int ok = dlc_static_group(e, g, gmi, gg);
+     int rr = 0, tid = dlc_learn_end(gg, &rr);
++    g->lnr_n = 0;
++    if (tid >= 0) { /* E5-3: keep the NatRec and census tuples of the group */
++        extern NatRec ln_tmp[]; extern u32 ln_cen[]; extern unsigned ln_nd, ln_pool, ln_view, ln_wind; extern int ln_s0;
++        if (!dlc_lnr) { dlc_lnr = (NatRec*)malloc(DLC_LNR_MAX * sizeof *dlc_lnr); dlc_lcen = (u32*)malloc(DLC_LNR_MAX * 16u); }
++        if (!dlc_lnr || !dlc_lcen || dlc_lnr_n + ln_nd > DLC_LNR_MAX) tid = -1;
++        else {
++            memcpy(dlc_lnr + dlc_lnr_n, ln_tmp, ln_nd * sizeof *dlc_lnr);
++            memcpy(dlc_lcen + 4u * dlc_lnr_n, ln_cen, ln_nd * 16u);
++            g->lnr_off = dlc_lnr_n; dlc_lnr_n += ln_nd;
++            g->lnr_n = (u16)ln_nd; g->lnr_pool = ln_pool; g->lnr_s0 = (s16)ln_s0; g->lnr_gin = gg; g->lnr_gout = geom;
++            g->lnr_view = ln_view; g->lnr_wind = (u8)ln_wind;
++            pm_log_d("E5-3 LRN nd %u pool %u slot %d", ln_nd, ln_pool, ln_s0);
++        }
++    }
+     g->tid1 = tid < 0 ? 0xFFFF : (u16)(tid + 1);
+     { static unsigned lrn_n; if (lrn_n < 40) { lrn_n++; pm_log_d("E5-2 LRN dl %08lx grp %u ok %d rr %d tid %d", (unsigned long)e->addr, gmi, ok, rr, tid); } }
+     return ok;
+@@ -636,7 +654,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
+         }
+         dlc_set_geom(gg);
+         if (!why && behroute_on() && dlc_behind(g, m)) why = 5;
+-        if (!why && g->sd && (!rec_on && !g->tid1 ? dlc_learn(e, (DlcGrp*)g, gmi, gg) : dlc_static_group(e, g, gmi, gg))) {
++        if (!why && g->sd && (!rec_on && !g->tid1 ? dlc_learn(e, (DlcGrp*)g, gmi, gg) : ((!rec_on && dlc_nat_group(e, (DlcGrp*)g, gmi, gg)) || dlc_static_group(e, g, gmi, gg)))) {
+             dlc_c.replay++; dlc_c.srep++; dlc_c.tri += g->ntri;
+             tri_since_vtx = g->tsv_exit;
+             skipped_last = skipped_any = 1;
+diff --git a/3ds/src/pm_gbi.c b/3ds/src/pm_gbi.c
+index f13d1c22e..8b1cdf68a 100644
+--- a/3ds/src/pm_gbi.c
++++ b/3ds/src/pm_gbi.c
+@@ -3636,20 +3636,36 @@ static void rec_g0_set(void) {
+ /* E5-2: learning capture of one map static group (dlc_learn, pm_dlc.inc.c). Begin before the group draws live, end after it. */
+ int pm_gpu_rec_fw(uint32_t (*out)[4]);
+ void dlc_learn_begin(void) { pm_gpu_rec_begin(); rec_g0_set(); }
++/* E5-3: learn end of one map static group. Writes the template, the NatRec of its draws (index span copied to the NAT pool) and the
++ * census tuples into ln_*. Refuses: unit 1 in use, a flush whose unit 0 words differ from the template, no slot, more than 64 draws. */
++#define LN_MAX 64u
++NatRec ln_tmp[LN_MAX]; u32 ln_cen[LN_MAX * 4u]; unsigned ln_nd, ln_pool, ln_view, ln_wind; int ln_s0;
++int pm_gpu_rec_sa(void); int pm_gpu_rec_pool(u32* w, u32 n, unsigned* off); uint32_t pm_gpu_nat_addr_at(unsigned off);
++unsigned pm_gpu_rec_cen_n(void); void pm_gpu_rec_cen_copy(u32* dst, unsigned n); int pm_tex_slot_words(int i, uint32_t* out);
++int pm_gpu_rec_fw(uint32_t (*out)[4]);
+ int dlc_learn_end(u32 geom, int* rr) {
+     u32* w = NULL; u32 n = 0;
+     int r = pm_gpu_rec_end(&w, &n); *rr = r;
+-    if (r != 1 || n > REC_MAX_WORDS || pm_tex_cur_vram_pending() || pm_tex_aux_vram_pending()) return -1;
++    if (r != 1 || n > REC_MAX_WORDS || pm_tex_cur_vram_pending() || pm_tex_aux_vram_pending() || use_t1) return -1;
+     int z, de, bl, at_; pm_gpu_rec_rmode(&z, &de, &bl, &at_);
+     int tid = nat_tmpl_add(rec_g0[7], rec_g0[8], geom, rec_g0[9], rec_g0[10], z, de, bl, at_, use_t1, NULL, NULL);
+     if (tid < 0) return -1;
+     if (nat_tmpl_strip((unsigned)tid, w, n) <= 0) return -1;
+-    { /* E5-3 TEXW: the template unit 0 words (grp 22 to 25) against pm_tex_slot_words of the slot at capture start */
+-        static unsigned tw_ok, tw_bad; uint32_t sw[4]; 
+-        uint32_t fw[16][4]; int nf = pm_gpu_rec_fw(fw), hit = 0; for (int q = 0; q < nf; q++) hit |= !memcmp(fw[q], nat_tmpl[tid].grp + 22, 16);
+-        if (nf) { if (hit) tw_ok++; else { tw_bad++; if (tw_bad <= 4) pm_log_d("TEXW bad nf %d tmpl %08lx %08lx %08lx %08lx first %08lx %08lx %08lx %08lx", nf, (unsigned long)nat_tmpl[tid].grp[22], (unsigned long)nat_tmpl[tid].grp[23], (unsigned long)nat_tmpl[tid].grp[24], (unsigned long)nat_tmpl[tid].grp[25], (unsigned long)fw[0][0], (unsigned long)fw[0][1], (unsigned long)fw[0][2], (unsigned long)fw[0][3]); } }
+-        pm_log_d("TEXW ok %u / bad %u", tw_ok, tw_bad);
+-    }
++    { /* E5-3: every unit 0 flush word set of the window must equal template words 22 to 25 (else refused) */
++        uint32_t fw[16][4]; int nf = pm_gpu_rec_fw(fw), ok = nf > 0;
++        for (int q = 0; q < nf; q++) ok &= !memcmp(fw[q], nat_tmpl[tid].grp + 22, 16);
++        if (!ok) return -1;
++    }
++    ln_s0 = pm_gpu_rec_sa();
++    unsigned nc = pm_gpu_rec_cen_n();
++    if (ln_s0 < 0 || nc == 0 || nc > LN_MAX) return -1;
++    static u32 lw[REC_MAX_WORDS]; memcpy(lw, w, n * 4u); /* the command buffer copy is rewritten, not the live words */
++    int nd = pm_gpu_rec_pool(lw, n, &ln_pool);
++    if (nd <= 0 || (unsigned)nd != nc) return -1;
++    ln_nd = (unsigned)nd;
++    if (nat_rec_write(ln_tmp, ln_nd, lw, n, (unsigned)tid, 0u, NAT_TEX_TMPL | ((uint32_t)NAT_TEX_TMPL << 16), pm_gpu_nat_addr_at(ln_pool)) != nd) return -1;
++    pm_gpu_rec_cen_copy(ln_cen, ln_nd);
++    ln_view = pm_gpu_view_key(); ln_wind = (pm_gpu_gv_wind() <= 0) ? 1u : 0u;
+     return tid;
+ }
+ static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
+@@ -3849,6 +3865,33 @@ static uint16_t nat_ord_v[256]; static NatMtxLog nat_log_v[256]; static unsigned
+ static uint32_t nat_out[NAT_OUT_WORDS] __attribute__((aligned(32)));
+ void pm_gpu_pal_fill(const float (*m)[4], unsigned gm, unsigned eye); /* pm_gpu.c, N4 2b */
+ extern int pm_eye_idx; /* pm_gpu.c, N4 2b */
++/* E5-3: replays a learned map static group from its NatRec (dlc_learn). 1 when the group is drawn, 0 when the walker runs it.
++ * Refused: another entry geom, view, wind, interp or lighting state, a unit 0 slot whose words differ from the template, a dlc_box_out group. */
++static unsigned lnr_runs;
++static __attribute__((noinline)) int dlc_nat_group(const DlcEnt* e, DlcGrp* g, unsigned gmi, u32 gg) {
++    (void)e;
++    if (!g->lnr_n || g->tid1 == 0 || g->tid1 == 0xFFFFu || gmi >= NAT_MTX_MAX || gg != g->lnr_gin) return 0;
++    if (pm_gpu_view_key() != g->lnr_view || (pm_gpu_gv_wind() <= 0 ? 1u : 0u) != g->lnr_wind || pm_interp_on > 0) return 0;
++    if (!gv_lit_ok() || (fogmix_on && !gv_fog_gpu_ok())) return 0;
++    if (!nobox_on() && dlc_box_out(g, combined)) return 0;
++    if (!pm_tex_rec_use(g->lnr_s0)) return 0;
++    uint32_t sw[4];
++    const NatTmpl* nt = &nat_tmpl[g->tid1 - 1u];
++    if (!pm_tex_slot_words(g->lnr_s0, sw) || memcmp(sw, nt->grp + 22, sizeof sw)) return 0;
++    unsigned nd = g->lnr_n;
++    if (nd > 255u) return 0;
++    pm_gpu_pal_fill(gm_tab[gmi], gmi, (unsigned)pm_eye_idx);
++    NatRec* nr = dlc_lnr + g->lnr_off;
++    for (unsigned q = 0; q < nd; q++) { nr[q].mtx = (uint16_t)gmi; nat_ord_v[q] = (uint16_t)q; }
++    nat_idx_base = pm_gpu_nat_addr_at(g->lnr_pool);
++    unsigned no = nat_emit(nr, nd, nat_ord_v, nat_out, NAT_OUT_WORDS, (unsigned)pm_eye_idx, nat_log_v, &nat_nl);
++    if (!no || !pm_gpu_rec_play(nat_out, no, NULL, 0, nd, ~0u, dlc_lcen + 4u * g->lnr_off, nd)) return 0;
++    { lnr_runs++; if (lnr_runs <= 4) pm_log_d("E5-3 learned replay draws %u words %u eye %d gm %u", nd, no, pm_eye_idx, gmi); }
++    dlc_set_geom(g->lnr_gout);
++    memset(vert_live, 0, sizeof vert_live);
++    dlc_dirty = 1; ep_open = 0;
++    return 1;
++}
+ static __attribute__((noinline)) int rec_play(const Gfx* l) {
+     RecKey* k = rec_rp; rec_rp = NULL; NW(NW_CALL);
+     int s0 = k->s0 == REC_NO_SLOT ? -1 : (int)k->s0, s1 = k->s1 == REC_NO_SLOT ? -1 : (int)k->s1;
+diff --git a/3ds/src/pm_gpu.c b/3ds/src/pm_gpu.c
+index 45d412044..8774eaec8 100644
+--- a/3ds/src/pm_gpu.c
++++ b/3ds/src/pm_gpu.c
+@@ -2499,6 +2499,28 @@ int pm_gpu_rec_end(u32** w, u32* n) {
+     *w = rb_buf + rb_off; *n = off - rb_off;
+     return 1;
+ }
++/* E5-3: unit 0 slot of the learn window (its first draw); -1 when none. */
++int pm_gpu_rec_sa(void) { return rec_sl_set ? rec_sa : -1; }
++/* E5-3: GPU index address of byte offset off in the NAT pool. */
++uint32_t pm_gpu_nat_addr_at(unsigned off) { return nat_gpu_addr(osConvertVirtToPhys((uint8_t*)nat_pool_ptr() + off)); }
++/* E5-3: copies the index span of the learn window into the NAT pool and rewrites its 0x227 p0 words to the copy.
++ * Returns the draw count (-1 refused). *off = pool byte offset of the span. */
++int pm_gpu_rec_pool(u32* w, u32 n, unsigned* off) {
++    if (!gidx || rb_ge > GRING_IDX || rb_ge < rb_gi) return -1;
++    unsigned cnt = rb_ge - rb_gi;
++    const uint16_t* src = gidx + rb_gi;
++    const uint16_t* p = nat_pool_put(src, cnt);
++    if (!p) return -1;
++    *off = (unsigned)nat_pool_off(p);
++    u32 d = osConvertVirtToPhys(p) - osConvertVirtToPhys(src), nd = 0;
++    for (u32 i = 0; i + 1 < n;) {
++        u32 hd = w[i + 1], c = (hd >> 20) & 0xFFu, len = 2u + c + (c & 1u);
++        if (i + len > n) break;
++        if ((hd & 0x3FFu) == 0x227 && !(hd >> 31)) { w[i] += d; nd++; }
++        i += len;
++    }
++    return (int)nd;
++}
+ /* UC3c: index arena. The indices of a captured window are copied once into a linear arena (ia). pm_gpu_rec_idx rewrites the 0x227 p0 words
+  * of the record copy w to the arena (d = arena phys - gidx phys at rb_gi). Returns the rewritten count, -1 when the arena is full or missing,
+  * or the count differs from the window's draws. io, ic: arena index of the span and its length (u16 units). */
+@@ -2624,7 +2646,7 @@ void pm_gpu_rec_cen_copy(u32* dst, unsigned n) { memcpy(dst, rcw, n * 16u); }
+  * Refuses when the buffer has no room (512 words slack) or the target is off-screen. */
+ int pm_gpu_rec_play(const u32* w, u32 n, const void* ptv, unsigned npt, unsigned nd, unsigned gm, const u32* cen, unsigned ncen) {
+     const RecPatch* pt = (const RecPatch*)ptv; u32* b; u32 sz, off;
+-    if (off_active || !ia) return 0;
++    if (off_active) return 0;
+     if (gm != ~0u && (n > REC_NAT_WORDS || gm >= NAT_MTX_MAX)) return 0;
+     flush();
+     GPUCMD_GetBuffer(&b, &sz, &off);
+diff --git a/3ds/src/pm_native.c b/3ds/src/pm_native.c
+index 673e466b6..6d9348b51 100644
+--- a/3ds/src/pm_native.c
++++ b/3ds/src/pm_native.c
+@@ -160,8 +160,8 @@ unsigned nat_emit(const NatRec* rec, unsigned n, const uint16_t* ord, uint32_t*
+         memcpy(d, t->grp, sizeof t->grp);
+         memcpy(d + NAT_GOFF_PAL + 2, nat_mtx[eye][r->mtx], 16 * sizeof(uint32_t));
+         log[nl].at = o + NAT_GOFF_PAL + 2; log[nl].slot = r->mtx; nl++;
+-        memcpy(d + 22, nat_tex[r->tex0], 4 * sizeof(uint32_t));
+-        memcpy(d + 28, nat_tex[r->tex1], 4 * sizeof(uint32_t));
++        if (r->tex0 != NAT_TEX_TMPL) memcpy(d + 22, nat_tex[r->tex0], 4 * sizeof(uint32_t));
++        if (r->tex1 != NAT_TEX_TMPL) memcpy(d + 28, nat_tex[r->tex1], 4 * sizeof(uint32_t));
+         d[32] = nat_idx_base + r->idx_off;
+         d[34] = r->nidx;
+         o += NAT_GRP_WORDS;
+@@ -220,6 +220,7 @@ static uint8_t* nat_pool_base;
+ static unsigned nat_pool_size, nat_pool_used;
+ 
+ void nat_pool_set(void* base, unsigned bytes) { nat_pool_base = (uint8_t*)base; nat_pool_size = bytes; nat_pool_used = 0; }
++void* nat_pool_ptr(void) { return nat_pool_base; }
+ 
+ void nat_model_reset(void) { nat_nmodel = 0; nat_pool_used = 0; }
+ 
