@@ -321,7 +321,10 @@ public class AzWin {
     Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue
 }
 
-if (Test-Path "$sd\shots") { Move-Item "$sd\shots" "$out\shots" -Force } # move, not copy: the frames can be hundreds of MB
+# AZLOCK1: the shot move and the log copy run inside the lock (released at the last read below). A terminating error here would reach the trap, which releases the lock before the move: a caught error keeps the lock and reports instead.
+try {
+    if (Test-Path "$sd\shots") { Move-Item "$sd\shots" "$out\shots" -Force -ErrorAction Stop } # move, not copy: the frames can be hundreds of MB
+} catch { Write-Output "SHOTS MOVE FAILED: $($_.Exception.Message). The shots stay in $sd\shots and the next run deletes them." }
 $secs = [int]((Get-Date) - $start).TotalSeconds
 Write-Output "stopped after $secs s: $reason"
 if ($marks.Count) { Write-Output "--- wall time at map loads (run start = 0) ---"; $marks | ForEach-Object { Write-Output $_ } }
@@ -339,8 +342,7 @@ if (Test-Path $log) {
         $prev = $cur
         Start-Sleep -Milliseconds 300
     }
-    Copy-Item $log "$out\last_log.txt" -Force
-    Get-Content "$out\last_log.txt" | Select-Object -Last 15
+    try { Copy-Item $log "$out\last_log.txt" -Force -ErrorAction Stop; Get-Content "$out\last_log.txt" | Select-Object -Last 15 } catch { Write-Output "LOG COPY FAILED: $($_.Exception.Message)" }
 } else {
     Write-Output "no log.txt written"
 }
