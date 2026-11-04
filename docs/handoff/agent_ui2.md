@@ -37,3 +37,12 @@
 - Bombette charge bar (action_cmd.c:133-222), star meter (status_star_shimmer.c:159-163), blue switch poof (BlueSwitch.c:24-38): not started.
 - UI1 (double menu, investigate_double_menu.md): not started by this agent in round 2.
 - Budget: UI2 7 of 8 starts (ui2base baseline is start 7).
+
+## Round 3 orders (coordinator, after budget reset)
+- Budget: UI2 and UI1 reset by the orchestrator. Starts used since reset: 0 of 8.
+- Order: (1) UI1 first. Read docs/handoff/investigate_double_menu.md. Hypothesis: the drop shadow (alpha 72, +2 px) of text and glove draws opaque. Add a debug log of the PM_CC_07 combine mode and output alpha in the shared combiner path (pm_gbi.c set_leg about line 560, pm_comb.c). Take one shot of a battle menu with a glove and text (battlemenu hook, lane ui2 or a new lane), compare shadow pixel values, fix the combiner alpha path. Do not edit map_restore_table.c.
+- (2) Star points depth (16C8E0.c:217-231, depth 20 for the three battle star point elements): the bar must use the HUD ortho depth, as the in-game HUD does. Fix from source, then one shot in battle_start.
+- (3) Bombette charge bar (action_cmd.c:133-222), HUD star meter (status_star_shimmer.c:159-163), blue switch poof (BlueSwitch.c:24-38). Read source, fix what the evidence shows, one commit each. Mark console-check where no shot is possible.
+- Skip: danger D (no cut seen, round 2).
+- Known facts: enemy bar 16-row rule is not the cause of the red row (round 2, baseline lane ui2base). Lost-HP prim is 16C8E0.c:946-947.
+- Build pattern: gen_map_restore, then PM_LANE=<lane> sh 3ds/build.sh, then restore map_restore_table.c from the user copy (sha 92645afb). Justification line in status_UI2.txt or status_UI1.txt before each start.
