@@ -236,3 +236,34 @@ Recommendation: A first as a measured slice, then B. Ask the user (AskUserQuesti
 - Open (step 1 fix not done): (a) why 0x227 addresses fall outside the window index copy, (b) nat_tex_set conflict in 2 records, (c) group compare: words 5 and 6 are per-frame state. Idea, not done: for nat records only, skip word 6 (nat replay takes tex handles from NatRec tex0/tex1) and mask word 5 to bit 0. Needs a check that word 0 is also safe.
 - Starts: 5 of 8 used for NDS1 (3 left). Shots: 0.
 - Commands: python 3ds/tools/gen_map_restore.py; PM_LANE=nds1 PM_ROW=NDS1 sh 3ds/build.sh; git checkout -- 3ds/src/map_restore_table.c; PM_ROW=NDS1 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 census_toad_rp -Row NDS1 -Build nds1 -Try. Log: build3ds/lane-nds1/last_log.txt.
+
+---
+
+# NDS1 handoff (code agent, map_gdl_walker E1 to E6)
+
+State: branch nds1, worktree papermario-3ds-port-nds1. Pushes: none.
+
+## Commits
+- 7c82c3f45 E1: pm_gpu_rec_ia_phys returns the GPU index address (phys - 0x18000000, bit 31).
+- bc43871e7 E2: nat_tex_id keys texture blocks by content (replaces nat_tex_set). Host test test_tex_id added.
+- a7c40bec7 E3: DlcGrp.pidx (pool copy pointer per group), nat_gpu_addr(phys). Host test checks 0x20389D6E -> 0x88389D6E.
+
+## Gates run (census_mac01 / census_toad, PM_ROW=E1..E3)
+- E1 census_mac01: batches 64, tris 810, distinct 52. P3a write refused 0 (was every draw). P3a refuse tex 16.
+- E2 census_mac01: batches 64, tris 810, distinct 53. P3a refuse tex 0. nat=1 draws (P3a tmpl draw lines) 52.
+- E3 census_mac01: 64 / 810 / 53. E3 census_toad: 26 / 338 / 23. Both pass.
+- Host test (sh 3ds/tools/nat_host_test.sh): all pass after E2 and E3.
+- Open from E2 log: grp_eq 0 on 46 of 52 nat draws (index window differs from sd). grp_eq 1 count 0. Not diagnosed. Needs an investigation agent.
+
+## Not done
+- E4 (DLC2 group to NatRec builder). Open design points: the batch merge test in grange_batch_open (pm_gpu.c:2269) reads global g_* state (gni, g_pal, g_vp, ...). E4 must store vp, uvso, cmul, cadd, zmix, ct, fx per batch, or mirror the merge on a local list. Per-batch params come from ep_p after gv_params_calc (pm_dlc.inc.c:284) at dlc_seg time.
+- E5, E6: depend on E4.
+
+## Commands
+- Build: python 3ds/tools/gen_map_restore.py; PM_LANE=nds1 PM_ROW=<row> sh 3ds/build.sh; restore 3ds/src/map_restore_table.c from a copy (never commit it).
+- Census: PM_ROW=<row> powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 census_mac01 -Row <row> -Build nds1 -Try
+- Host: sh 3ds/tools/nat_host_test.sh
+- Budget: 3ds/run_azahar.ps1 -ResetBudget NDS1. Justification lines: 3ds/logs/perf/status_NDS1.txt.
+
+## Next step
+Opus plans E4 (state per batch and merge design). A code agent builds E4 and runs the census gate with a count log line.
