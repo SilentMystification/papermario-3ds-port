@@ -4381,7 +4381,7 @@
         },
         {
           "name": "shot",
-          "regex": "shot \\d+ frame 204\b"
+          "regex": "shot \\d+ frame 204\\b"
         }
       ],
       "reason": "PMOD gate scene. A person must read the shots; region_diff compares to the HEAD reference."
