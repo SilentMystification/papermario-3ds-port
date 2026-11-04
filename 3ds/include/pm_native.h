@@ -8,7 +8,7 @@
 
 #define NAT_REC_MAX    512  /* records per frame */
 #define NAT_TMPL_MAX   64   /* templates, id 0..63 (6 bits) */
-#define NAT_TMPL_WORDS 256  /* state words of a template (captured records are 272 to 278 words, minus 36), 1 KB */
+#define NAT_TMPL_WORDS 320  /* state words of a template: 234 to 278 for one draw; a two-draw record (376 words) has 300 */
 #define NAT_GRP_WORDS  38   /* per-draw group: uniform index 2, palette 18, tex0 6, tex1 6, index address 2, index count 2, trigger 2 */
 #define NAT_MTX_MAX    96   /* palette slots per eye */
 #define NAT_TEX_MAX    128  /* texture handles, id 0..127 */

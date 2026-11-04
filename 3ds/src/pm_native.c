@@ -56,43 +56,54 @@ static const struct { uint32_t reg, c, goff; } nat_kind[5] = {
 #define NAT_GOFF_IDX 0   /* 0x2C0 index word */
 #define NAT_GOFF_PAL 2   /* 0x2C1 palette command */
 
+/* Returns blen, or -1 (does not split), or -3 (a draw of a multi-draw record has state words between its groups: the template
+ * cannot be emitted once before the groups). Records with one draw keep the old rule (state words anywhere). */
 int nat_tmpl_strip(unsigned id, const uint32_t* w, unsigned n) {
     if (id >= NAT_TMPL_MAX) return -1;
     NatTmpl* t = &nat_tmpl[id];
-    unsigned found[5] = { 0, 0, 0, 0, 0 }, nb = 0, i = 0, pal = ~0u, pidx = ~0u, pal_seen = 0;
-    /* pass 1: the last palette command, and the index command right before it */
+    /* pass 1: palette commands P (the first 0x2C1 of a capture is a state word, the last nd are the draws), per-draw kinds K (one per draw),
+     * the index command before the first draw palette */
+    unsigned P = 0, kc[5] = { 0, 0, 0, 0, 0 }, pal0 = ~0u, pidx0 = ~0u, i = 0;
     while (i + 1 < n) {
         uint32_t hd = w[i + 1], reg = hd & 0x3FFu, c = (hd >> 20) & 0xFFu;
         unsigned len = 2u + c + (c & 1u);
         if (i + len > n) return -1;
-        if (reg == 0x2C1 && c == 15) pal = i;
-        i += len;
-    }
-    if (pal == ~0u || pal < 2 || (w[pal - 1] & 0x3FFu) != 0x2C0u) return -1;
-    pidx = pal - 2;
-    i = 0;
-    while (i + 1 < n) {
-        uint32_t hd = w[i + 1], reg = hd & 0x3FFu, c = (hd >> 20) & 0xFFu;
-        unsigned len = 2u + c + (c & 1u);
-        if (i == pidx) { memcpy(t->grp + NAT_GOFF_IDX, w + i, len * sizeof(uint32_t)); }
-        else if (i == pal) { memcpy(t->grp + NAT_GOFF_PAL, w + i, len * sizeof(uint32_t)); pal_seen++; }
-        else {
-            int k = -1;
-            for (int j = 0; j < 5; j++) if (reg == nat_kind[j].reg && c == nat_kind[j].c) k = j;
-            if (k >= 0) {
-                if (found[k]++) return -1;
-                memcpy(t->grp + nat_kind[k].goff, w + i, len * sizeof(uint32_t));
-            } else {
-                if (nb + len > NAT_TMPL_WORDS) return -1;
-                memcpy(t->blk + nb, w + i, len * sizeof(uint32_t));
-                nb += len;
-            }
-        }
+        if (reg == 0x2C1 && c == 15) P++;
+        else for (int j = 0; j < 5; j++) if (reg == nat_kind[j].reg && c == nat_kind[j].c) kc[j]++;
         i += len;
     }
     if (i != n) return -1;
+    unsigned nd = kc[2]; /* draws = index address commands. A texture or index count command is left out when the draw keeps the state: the group still carries it */
+    if (nd == 0 || nd > P) return -1;
+    if (kc[3] != nd || kc[4] != nd || kc[0] > nd || kc[1] > nd) return -1;
+    unsigned first_draw = P - nd; /* ordinal of the first draw palette */
+    /* pass 2: the draw group prototype (draw 0), state words to blk in order */
+    unsigned found[5] = { 0, 0, 0, 0, 0 }, nb = 0, pal_seen = 0; i = 0;
+    while (i + 1 < n) {
+        uint32_t hd = w[i + 1], reg = hd & 0x3FFu, c = (hd >> 20) & 0xFFu;
+        unsigned len = 2u + c + (c & 1u), nx = i + len;
+        int is_pal = reg == 0x2C1 && c == 15;
+        int next_draw_pal = nx + 1 < n && (w[nx + 1] & 0x3FFu) == 0x2C1u && ((w[nx + 1] >> 20) & 0xFFu) == 15u && pal_seen + 1 > first_draw;
+        int is_draw_pal = is_pal && pal_seen >= first_draw;
+        int k = -1;
+        for (int j = 0; j < 5; j++) if (reg == nat_kind[j].reg && c == nat_kind[j].c) k = j;
+        if (is_pal) {
+            if (is_draw_pal) { if (pal0 == ~0u) pal0 = i; if (i == pal0) memcpy(t->grp + NAT_GOFF_PAL, w + i, len * sizeof(uint32_t)); }
+            else { if (nb + len > NAT_TMPL_WORDS) return -1; memcpy(t->blk + nb, w + i, len * sizeof(uint32_t)); nb += len; }
+            pal_seen++;
+        } else if (next_draw_pal) {
+            if (pidx0 == ~0u) { pidx0 = i; memcpy(t->grp + NAT_GOFF_IDX, w + i, len * sizeof(uint32_t)); }
+        } else if (k >= 0) {
+            if (!found[k]++) memcpy(t->grp + nat_kind[k].goff, w + i, len * sizeof(uint32_t));
+        } else {
+            if (nd > 1 && pidx0 != ~0u) return -3; /* state after the first draw: the template is not emitted once */
+            if (nb + len > NAT_TMPL_WORDS) return -1;
+            memcpy(t->blk + nb, w + i, len * sizeof(uint32_t));
+            nb += len;
+        }
+        i += len;
+    }
     for (int j = 0; j < 5; j++) if (!found[j]) return -1;
-    if (pal_seen != 1) return -1;
     t->blen = (uint16_t)nb;
     return (int)nb;
 }
