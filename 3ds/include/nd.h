@@ -91,6 +91,32 @@ void nd_tex_reset(void);
 int nd_tex_get(const NdTexDesc* d);          /* block id, loading the image through pm_tex.c on a miss; -1 when it fails or the table is full */
 const uint32_t* nd_tex_block(int id);        /* dim, param, lodParam, data address >> 3 */
 
+/* NDST (S2-1): the native state, set by nd_words() from the words the bridge form of nd_gbi.h decodes. In the bridge nothing draws from it yet (S2-2 starts);
+ * it is the state a native draw reads. nd_words never touches the walker state (nd_mv, nd_proj): the N64 word is written too and the walker runs it. */
+typedef struct NdSt {
+    uint32_t geom;
+    uint32_t om_h, om_l;               /* other mode high and low */
+    uint32_t comb_w0, comb_w1;         /* G_SETCOMBINE */
+    uint32_t prim, env, fog, blend, fill; /* 0xRRGGBBAA */
+    uint32_t prim_lod;                 /* prim LOD fraction (m) and min level (l), w0 bits 8 to 15 and 0 to 7 */
+    uint16_t primz, primdz;
+    uint16_t sc_ulx, sc_uly, sc_lrx, sc_lry; /* 10.2 fixed point as the word holds them */
+    uint8_t sc_mode;
+    uint8_t tex_on, tex_level, tex_tile;
+    uint16_t tex_s, tex_t;
+    uint32_t cimg_w0, cimg_w1, zimg_w1;      /* colour image word pair, depth image address */
+    uint32_t timg_w0, timg_w1;               /* texture image */
+    uint32_t tile_w0[8], tile_w1[8];         /* G_SETTILE and G_SETTILESIZE of the 8 tiles (size words in tsz_*) */
+    uint32_t tsz_w0[8], tsz_w1[8];
+    uint32_t vp_addr;                        /* G_MOVEMEM viewport source (game pointer value) */
+    uint32_t segment[16];
+    uint32_t mtx_addr, mtx_flags, n_mtx, n_pop;
+    uint32_t n_rect, n_fill, n_tri, n_vtx, n_dl, n_enddl, n_load, n_unknown, last_unknown;
+} NdSt;
+extern NdSt nd_st;
+void nd_st_reset(void);
+void nd_words(const unsigned* w, unsigned n); /* n word pairs (Gfx), in list order */
+
 /* Eye 2 without a second walk: copy the eye 1 command span, then write the eye 2 matrix words at each logged position. */
 typedef struct NdMtxLog { uint32_t at; uint16_t slot; uint16_t pad; } NdMtxLog;
 void nd_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NdMtxLog* log, unsigned nlog, unsigned eye);

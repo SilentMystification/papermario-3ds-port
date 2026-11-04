@@ -323,6 +323,34 @@
       "reason": "N3 region diff control. Until is the shot at frame 204."
     },
     {
+      "name": "ndst_yard",
+      "status": "unverified",
+      "subject": "Yard (kmr_20 entry 4) with the native state log (ndst): the bridge form of nd_gbi.h decodes the words of the background and frame state files into nd_st, and the shots at frames 200 to 205 look as before.",
+      "proves": "S2: nd_st is filled in the game (geometry mode, other mode, scissor, fill and rect counts), no unknown opcode, picture equal to yard_shot.",
+      "debug": "preset=yard shots shotwin=200:6 ndst loglevel=debug",
+      "until": "shot \\d+ frame 204\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        },
+        {
+          "name": "native state",
+          "regex": "ndst f200 geom [0-9a-f]+ .* unk 0$"
+        }
+      ],
+      "reason": "S2-2 picture and state check. Until is the shot at frame 204."
+    },
+    {
       "name": "yard_shot_rp",
       "status": "unverified",
       "subject": "Yard (kmr_20 entry 4): shots at frames 200 and 204 with the raw record replay on (recplay).",

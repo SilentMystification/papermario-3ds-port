@@ -7,6 +7,11 @@
 #include <string.h>
 #include "nd.h"
 
+/* nd_st log stubs (nd_core.c nd_st_log, debug switch ndst off in the test) */
+int pm_debug_has(const char* key) { (void)key; return 0; }
+void pm_log_d(const char* fmt, ...) { (void)fmt; }
+unsigned pm_frame_count(void) { return 1; }
+
 /* pm_interp.c stubs (nd_mtx.c links them): no replacement table */
 int pm_interp_repl;
 const float (*pm_interp_find(const void* m))[4] { (void)m; return 0; }
