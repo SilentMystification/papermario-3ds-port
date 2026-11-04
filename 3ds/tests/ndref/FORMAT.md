@@ -62,7 +62,7 @@ Draw order is the order of flush_draw closes. Triangles are consecutive vertex t
 | ndref_text.bin | ndref_text | 178 (pause menu text) | 96 | 96 |
 | ndref_title.bin | ndref_title | 800 (boot, game mode 16; not the title, mode 2 not reached) | 70 | 70 |
 | ndref_splash.bin | ndref_splash | 412 (fxtest 89 water splash, effect start at 400) | 141 | 141 |
-| ndref_stereo.bin | ndref_stereo | 200 (yard, wide and stereo) | not run | not run |
-| ndref_toad.bin | ndref_toad | 200 (mac_01 entry 0) | not run (file overwritten) | not run |
+| ndref_stereo.bin | ndref_stereo | 200 (yard, wide and stereo, both eyes) | 88 | 88 |
+| ndref_toad.bin | ndref_toad | 200 (mac_01 entry 0) | 64 (810 triangles) | 64 (census of S1-1 run) |
 
-ndref_stereo and ndref_toad are missing. Each needs one Azahar start (see the status file).
+All eight scenes are present.
