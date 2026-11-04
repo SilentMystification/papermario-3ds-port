@@ -504,6 +504,7 @@ static void cen_add(const TevKey* tk, int z, int graw, int prog, unsigned cull, 
     if (rec_cap) { if (rcw_n < REC_CEN_MAX) { u32* t = rcw + 4u * rcw_n; t[0] = h; t[1] = id0; t[2] = id1; t[3] = tris; } rcw_n++; }
     cen_put(h, id0, id1, tris);
 }
+void nat_why_report(unsigned fr); /* pm_gbi.c, N4 step 1 */
 static void cen_frame_end(void) {
     static int fr = -2;
     char v[16];
@@ -512,6 +513,7 @@ static void cen_frame_end(void) {
         for (unsigned i = 0; i < CEN_N; i++) if (cen_tab[i].n)
             pm_log_d("cen f%u k %08x tex %08x %08x tris %u n %u", fr, cen_tab[i].k, cen_tab[i].tex0, cen_tab[i].tex1, cen_tab[i].tris, cen_tab[i].n);
         pm_log_d("cen f%u summary batches %u tris %u distinct %u over %u", fr, cen_draws, cen_tris, cen_nt, cen_over);
+        nat_why_report((unsigned)fr); /* N4 step 1: refusal counts of the record path */
     }
     if (cen_nt) memset(cen_tab, 0, sizeof cen_tab);
     cen_nt = cen_draws = cen_tris = cen_over = 0;
