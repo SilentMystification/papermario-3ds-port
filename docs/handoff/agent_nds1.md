@@ -181,3 +181,18 @@ Recommendation: A first as a measured slice, then B. Ask the user (AskUserQuesti
 ### Open items
 - Trailing state after the trigger runs before it under the group layout (plan default 1). Needs a shot before any console run.
 - Eye 2 target registers: no patch needed (see Follow-up item 4).
+
+## N3b and handoff (code agent, 2026-11-04, coordinator decisions applied)
+- Decision applied: multi-draw records are SPLIT (one template, one per-draw group per draw). Not built yet.
+- N3b (pm_gbi.c rec_g0_set): sync_combine() runs before leg_mode is read for rec_g0[11]. Gate: census_toad_rp equals census_toad (26 batches, 338 tris, 23 distinct, over 0), keys equal. Starts used: 2 of 8 after reset.
+- NDS1 starts used after reset: 2 of 8 (N3b). Six left.
+
+### N4 remaining, in order (none of these is wired)
+1. Template key from state: rec_done needs geom, oh, ol, z, decal, blend, atest, t1only. Read them from the record start (rec_g0[9], [10] hold oh, ol; geom, z, decal, blend, atest from pm_gpu flush state, needs one accessor in pm_gpu.c).
+2. Split: for nd > 1, one per-draw group per draw from the record patch and index tables (pm_gpu_rec_idx io/ic). Template emitted once.
+3. NatRec writer: one NatRec per draw at rec_done (tmpl, tex0, tex1, mtx, nidx, idx_off).
+4. Per-draw inputs: palette nat_mtx[eye][slot] from pcomp[gm] (pm_gpu.c flush, product at pm_gpu.c:834), tex words nat_tex from pm_tex_cur_slots, index address io/ic.
+5. Hook 2: mg_run (pm_gbi.c, G_PM_MODEL walk) skips the walk for native models; delete that walk in the same commit.
+6. Hook 8: gbi_task (pm_nusys.c:80-81): nat_order, nat_emit eye 0; stereo: nat_eye_copy eye 1 after C3D_FrameDrawOn(targetR).
+7. Hook 9: linker hot span for nat_emit, nat_order (3ds/ld/3dsx.ld.in).
+8. Gates: census equal (census_toad, census_yard, replay path), region diff yard_shot vs native shot, host tests (sh 3ds/tools/nat_host_test.sh, sh 3ds/tools/ndt_host_test.sh), hot loop size under 8 KB from build3ds/lane-nds1/pm_3ds.map.

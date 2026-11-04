@@ -3608,6 +3608,7 @@ static void rec_g0_set(void) {
     int a, b; pm_gpu_grp_get(rec_g0); pm_tex_cur_slots(&a, &b);
     rec_g0[6] = (u32)(a + 1) | ((u32)(b + 1) << 16);
     rec_g0[7] = comb_w0; rec_g0[8] = comb_w1; rec_g0[9] = omode_h; rec_g0[10] = omode_l; /* N1: the combiner and mode words are part of the key */
+    sync_combine(); /* N3b: the key reads the combine state after the pending SETCOMBINE and PRIMCOLOR are applied */
     rec_g0[11] = (leg_mode == 1 || leg_mode == 5 || leg_mode == 6 || leg_mode == 7) ? prim : 0; /* N3: prim reaches the TEV constant only in these modes (pm_gpu.c flush_tev_rebuild) */
 }
 static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
