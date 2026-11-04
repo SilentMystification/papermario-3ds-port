@@ -71,7 +71,15 @@ Files: 3ds/src/pm_phase.c, 3ds/src/pm_gpu.c.
 2. pm_gpu.c: in a prof sample frame, tick at the last submit (pm_gpu_end, 2050) and at the P3D event in the next pm_gpu_begin_wait (1982). gb = difference. Counters dr, tc, tw, tri read from pm_gpu today, from nd_core later. 25 lines.
 Host test: none. Gate: Azahar mac01t_prof (E) prints the new fields. Then the console push at the S0 end (Q1, Q3).
 
-**S0-7 | NDBASE baseline producer costs on the console (user push)**
+**S0-7 | NDBASE console baseline (reinstated 2026-11-04)**
+Build 2020 (commit 42f6fac7e, build3ds/pm_3ds.3dsx) is the baseline. Status line: BASELINE BUILD READY 2020 42f6fac7e in 3ds/logs/perf/status_NDS_S0.txt. The orchestrator pushes it.
+
+**S0-8 | NDBUDGET frame budget file and the prof budget line**
+Files: docs/handoff/frame_budget.md, 3ds/src/pm_phase.c. Done in commit 799307404. The budget line prints the stage targets next to the measured nd, lg and gb.
+
+Changes by the coordinator (2026-11-04): (1) the S0 console push at the end of S0 is dropped and reinstated as S0-7 (baseline). (2) The prof fields (S0-6) and the GPU busy probe stay. (3) S0-8 is the frame budget row. (4) Host tests, code size and instructions per record stay as slice gates.
+
+**S0-7 (original text, superseded):** No code. The orchestrator pushes `phase fsplit` once and `prof` once (Q1). The planner writes the prod top-8 per scene (Toad Town, a battle, pause) into PNS section 7 expected ms for S4 to S9.
 No code. The orchestrator pushes `phase fsplit` once and `prof` once (Q1). The planner writes the prod top-8 per scene (Toad Town, a battle, pause) into PNS section 7 expected ms for S4 to S9.
 
 ### S1 NDCORE

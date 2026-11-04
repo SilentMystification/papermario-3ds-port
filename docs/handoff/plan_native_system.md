@@ -473,3 +473,16 @@ Earlier plan: C:\Users\Andrew\.claude\plans\you-are-not-an-glittery-nautilus.md 
 - Q9. The texture cache size 3136 KB is not a literal in pm_tex.c (the size comes from the VRAM slabs at boot, pm_tex.c:475-484). Which source holds the 3136 KB number?
 - Q10. The rules "fade full cover" and "star depth" are not located in code by this plan. Which rows or files hold them?
 - Q11. A thread on core 1 for the emit loop after S10: allowed, if prof shows emit above 3 ms?
+
+## 15. Answers to the open questions (S0 code agent, 2026-11-04)
+
+- Q1 and Q3: the console baseline is approved (coordinator, 2026-11-04). The baseline build is 2020 (commit 42f6fac7e, build3ds/pm_3ds.3dsx). The orchestrator pushes it. No push by the agent.
+- Q2: the 32-bit host compiler is the docker image pm3ds-host:1 (docker/Dockerfile.host: debian bookworm-slim with gcc-multilib). pm3ds-build:1 has gcc -m32 but cannot link it (no 32-bit libgcc). No host install.
+- Q4: nd_dlc compiles at load time (plan default).
+- Q5: the copy path is final (plan default).
+- Q6: no ETC1 (plan default).
+- Q7: the render target stays RGBA8 (plan default).
+- Q8: the work runs on nds1 (plan default).
+- Q9: the texture cache size 3136 KB is the boot VRAM split: 928 KB in bank A and 2208 KB in bank B. The bank sizes come from pm_vram_bank_free_kb (3ds/src/pm_mem.c:203) at boot. The measured boot cap is in docs/handoff/agent_vram3.md:65. The slab code is 3ds/src/pm_tex.c:470-490.
+- Q10: "fade full cover" is src/screen_overlays.c:222 (OVERLAY_SCREEN_COLOR fills the whole screen under TARGET_3DS, decision in docs/handoff/agent_hudb.md). "Star depth" is src/battle/16C8E0.c:217-231 (hud_element_set_render_depth for the star point HUD elements). docs/handoff/agent_playfix3.md:16 records depth 20 for the star points bar.
+- Q11: a core 1 emit thread is allowed only if the prof line shows nd above 3 ms (plan default).
