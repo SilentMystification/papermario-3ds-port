@@ -10,6 +10,7 @@
 #include "game_modes.h"
 #include "fio.h"
 #include "battle/battle.h"
+#include "message_ids.h"
 extern bool fio_fetch_saved_file_info(void);
 #include "map.h"
 #include "pm_port.h"
@@ -1129,12 +1130,19 @@ void pm_warp_tick(unsigned frame) {
     }
     {   /* UA3 debug: uishow=coins opens the coin counter window (show_coin_counter, the pickup's own call) at frame 120 */
         char uv[16];
-        if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c') {
+        if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c' && uv[1] == 'o') {
             extern void show_coin_counter(void);
             extern void pm_debug_status_always(void);
             pm_debug_status_always();
             show_coin_counter();
             pm_log_d("debug uishow: coins opened f%u", f);
+        }
+        /* UI1 debug: uishow=choice opens the save choice (MSG_Choice_000A, the glove and text menu) at frame 200 */
+        if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c' && uv[1] == 'h') {
+            static bool uishow_choice_closed;
+            extern MessagePrintState* msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteback);
+            msg_get_printer_for_msg(MSG_Choice_000A, &uishow_choice_closed);
+            pm_log_d("debug uishow: choice opened f%u", f);
         }
     }
     if (f % 300 == 0) {

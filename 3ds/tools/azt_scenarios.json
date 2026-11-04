@@ -2446,6 +2446,34 @@
       "reason": "TOADFOUNT, not verified. Run 1 (HEAD, build 1488) gave frames 100 to 149 with no fountain in view. Frame 149 is the until-line. A person must read the shots."
     },
     {
+      "name": "ui1_choice",
+      "status": "unverified",
+      "subject": "Save choice glove menu (MSG_Choice_000A, the message the save block opens) on the yard, opened by the debug hook uishow=choice at frame 200. Shot at frames 200 to 205, 3D slider 0, fps60 off. The glove and the choice text must read in the shot, and the glove count and text draw count is read from the shot.",
+      "proves": "UI1: the glove and text of a choice menu are drawn once on the mono (slider 0) path. A doubled glove or text in the shot means the candidate cause holds on Azahar.",
+      "debug": "preset=yard uishow=choice shots shotwin=200:6 loglevel=debug",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "hook",
+          "regex": "debug uishow: choice opened f200"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "UI1 hook test. The hook is a debug tool (pm_warp.c uishow=choice), not a draw toggle."
+    },
+    {
       "name": "toad_house_menu",
       "status": "unverified",
       "subject": "Toad House keeper in mac_01 (NPC at 488 20 -174, room door near x 467 z -160). Mario walks from entry 1 (600 0) to the door, into the room, faces the keeper and presses A. The keeper talk ends in ShowChoice (yes or no glove menu, MSG_Choice_0006). Shots read the menu text and the glove.",
