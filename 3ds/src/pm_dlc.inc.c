@@ -274,12 +274,48 @@ static __attribute__((cold, noinline)) void dlc_static_build(DlcEnt* e, const Gf
     { static unsigned p1_n; if (p1_n < 40) { p1_n++; pm_log_d("PM1 bake dl %08lx nseg %u nv %u nidx %u ok %u", (unsigned long)e->addr, (unsigned)e->ngrp, bnv, bni, bok); } }
 }
 
+/* E4b: NatRec draws of the static groups, built beside the live path (map_e4.md section 4). The merge key is kept per draw, the same
+ * fields grange_batch_open compares. nat_seg_add takes the live result (dlc_gr, 2 when grange extended the open batch) and counts the
+ * disagreements in nk_mis. No draw is emitted here. */
+typedef struct { unsigned gm; int ct, use5; PmFx fx; float vp[4], uvso[4], cmul[4], cadd[4], zmix[2]; } NatKey;
+static NatKey nk_key;
+static int nk_open, dlc_gr;
+static NatRec nk_draw[255];
+static unsigned nk_nd, nk_end, nk_mis;
+
+static void nat_key_reset(void) { nk_open = 0; nk_nd = 0; nk_end = 0; }
+
+static void nat_seg_add(const DlcGrp* g, unsigned t, unsigned end, unsigned gmi, int merged) {
+    long po = nat_pool_off(g->pidx);
+    if (po < 0 || merged < 0) return; /* culled segment: no draw */
+    NatKey k;
+    memset(&k, 0, sizeof k);
+    k.gm = gmi; k.ct = ep_ct; k.use5 = ep_p.fxon != 0;
+    if (k.use5) k.fx = ep_p.fx;
+    memcpy(k.vp, ep_p.vp, sizeof k.vp); memcpy(k.uvso, ep_p.uvso, sizeof k.uvso); memcpy(k.cmul, ep_p.cm, sizeof k.cmul);
+    memcpy(k.cadd, ep_p.ca, sizeof k.cadd); memcpy(k.zmix, ep_p.zm, sizeof k.zmix);
+    unsigned off = (unsigned)po + 6u * t, nidx = 3u * (end - t);
+    int same = nk_open && nk_end == off && !memcmp(&k.gm, &nk_key.gm, sizeof k.gm) && k.ct == nk_key.ct && k.use5 == nk_key.use5 &&
+               (!k.use5 || !memcmp(&k.fx, &nk_key.fx, sizeof k.fx)) && !memcmp(k.vp, nk_key.vp, sizeof k.vp) &&
+               !memcmp(k.uvso, nk_key.uvso, sizeof k.uvso) && !memcmp(k.cmul, nk_key.cmul, sizeof k.cmul) &&
+               !memcmp(k.cadd, nk_key.cadd, sizeof k.cadd) && !memcmp(k.zmix, nk_key.zmix, sizeof k.zmix);
+    if (!same) {
+        if (nk_nd >= 255) return;
+        memset(&nk_draw[nk_nd], 0, sizeof nk_draw[0]);
+        nk_draw[nk_nd].idx_off = off;
+        nk_nd++; nk_key = k; nk_open = 1;
+    }
+    nk_draw[nk_nd - 1].nidx = (uint16_t)(nk_draw[nk_nd - 1].nidx + nidx);
+    nk_end = off + 6u * (end - t);
+    if ((merged == 2) != same) nk_mis++;
+}
+
 /* DLC2: one range of static triangles with the state of the current epoch. Returns 0 when the raw path refuses (nothing was queued). */
 static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
     unsigned tss = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu);
     if (ep_epoch != gv_epoch) gv_epoch_enter();
     if (ep_why >= 0) return 0;
-    if (ep_cullboth) { n_out += (int)nt; return 1; }
+    if (ep_cullboth) { dlc_gr = -1; n_out += (int)nt; return 1; }
     if (ep_pepoch != gv_epoch || ep_ptss != tss) {
         gv_params_calc(tss, &ep_p);
         pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
@@ -288,6 +324,7 @@ static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned
     if (stdump_on() && pm_frame_count() >= 200 && pm_frame_count() < 206) { static unsigned st_n; if (++st_n <= 300) pm_log("stseg f%u n %u gmi %u geom %08x epoch %u pep %u tss %08x boost %d fxon %d rgb %d tsl %d", (unsigned)pm_frame_count(), nt, gmi, (unsigned)geom, gv_epoch, ep_pepoch, tss, ep_p.boost, ep_p.fxon, pm_gpu_rgb_scale_get(), tri_since_vtx); }
     int gr = pm_gpu_grange((const float(*)[4][4])gm_tab, gmi, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ep_p.fxon ? &ep_p.fx : NULL, idx, 3u * nt);
     if (!gr) { ep_open = 0; return 0; }
+    dlc_gr = gr;
     if (gr == 2) dlc_c.batch++;
     ep_n += nt;
     ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss;
@@ -315,6 +352,7 @@ static __attribute__((noinline)) int dlc_static_group(const DlcEnt* e, const Dlc
             dlc_set_geom(geom_at);
             if (!dlc_seg(g->sd + 3u * t, end - t, gmi)) { if (!drawn) return 0; dlc_c.sfail++; return 1; }
             drawn = 1;
+            nat_seg_add(g, t, end, gmi, dlc_gr);
             t = end;
         }
     }
@@ -532,6 +570,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
     dlc_c.lists++;
     dlc_c.opsrep += e->nops;
     if (e->ngrp) { __builtin_prefetch(e->grp); __builtin_prefetch(e->gop); }
+    nat_key_reset();
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
@@ -588,6 +627,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         dlc_c.replay++; dlc_c.tri += g->ntri;
         dlc_run_group(l, g, gmi);
     }
+    if (pm_frame_count() == 200) pm_log_d("NATB dl %08lx groups %u draws %u mis %u", (unsigned long)e->addr, (unsigned)e->ngrp, nk_nd, nk_mis);
     dlc_set_geom((entry & e->exit_am) | e->exit_om);
     if (rec_on) { rec_gout = geom; rec_fl = (pm_gpu_gv_wind() <= 0 ? 1u : 0u) | (tri_since_vtx ? 2u : 0u); } /* UC3d: geom at exit, fl bit 0 wind, bit 1 tri_since_vtx */
     if (skipped_last) memset(vert_live, 0, sizeof vert_live);

@@ -236,6 +236,13 @@ const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n) {
     return d;
 }
 
+/* E4b: byte offset of p in the pool, -1 when p is not in the pool. */
+long nat_pool_off(const uint16_t* p) {
+    const uint8_t* b = (const uint8_t*)p;
+    if (!nat_pool_base || b < nat_pool_base || b >= nat_pool_base + nat_pool_size) return -1;
+    return (long)(b - nat_pool_base);
+}
+
 void nat_model_bake(uint32_t dl, unsigned nseg, unsigned nv, unsigned nidx, unsigned ok) {
     if (nat_nmodel >= NAT_MODEL_MAX) return;
     NatModel* m = &nat_model[nat_nmodel++];

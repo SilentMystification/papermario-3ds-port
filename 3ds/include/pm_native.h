@@ -79,7 +79,8 @@ void nat_pool_set(void* base, unsigned bytes); /* base: linear memory (3DS calle
 void pm_gpu_nat_pool_init(void);              /* pm_gpu.c: linear pool of NAT_POOL_BYTES, once */
 #define NAT_POOL_BYTES (128u * 1024u)
 void nat_model_reset(void);                    /* clears the models and the pool (per map generation) */
-const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n); /* copies n indices, 32-byte aligned. NULL when full or unset */
+const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n); /* copies n indices, packed (E4a). NULL when full or unset */
+long nat_pool_off(const uint16_t* p); /* E4b: byte offset of p in the pool, -1 when outside */
 uint32_t nat_gpu_addr(uint32_t phys); /* E3: GPU index address word of a phys address */
 void nat_model_bake(uint32_t dl, unsigned nseg, unsigned nv, unsigned nidx, unsigned ok); /* adds a record; no-op when the table is full */
 
