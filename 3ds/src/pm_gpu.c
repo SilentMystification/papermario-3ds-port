@@ -353,6 +353,7 @@ static void small_arena_init(void) {
 /* VRAM2: the full images (512 x 256) and the copy buffer (512 KB, grab_tex and the snap of a full image share it) are reserved at boot
  * (full_reserve) and never freed. A block goes to bank A first, then B. The texture cache takes what is left (pm_tex.c slab_init). */
 #define BLK_FULL (PM_OFF_W * PM_OFF_H * 4u)
+#define BLK_FULL16 (PM_OFF_W * PM_OFF_H * 2u) /* R4: the off-screen full images are RGBA5551 (2 bytes a texel) */
 static u8* copy_blk;
 static u8* full_blk[OFF_N];
 static u8* bank_block(unsigned bytes) {
@@ -364,16 +365,16 @@ static void full_reserve(void) {
     copy_blk = bank_block(BLK_FULL);
     if (copy_blk) { pm_vram_reg(copy_blk, BLK_FULL); pm_log_w("vram reserved: copy buffer in bank %c", pm_vram_bank_of(copy_blk) ? 'B' : 'A'); }
     else { pm_vram_alloc_fail("copy", BLK_FULL >> 10); pm_log_e("vram reserve: copy buffer failed, grabs read on the CPU"); }
-    for (int i = 0; i < OFF_N; i++) {
-        full_blk[i] = bank_block(BLK_FULL);
-        if (full_blk[i]) { pm_vram_reg(full_blk[i], BLK_FULL); pm_log_w("vram reserved: full image %d in bank %c", i, pm_vram_bank_of(full_blk[i]) ? 'B' : 'A'); }
-        else { pm_vram_alloc_fail("full image", BLK_FULL >> 10); pm_log_e("vram reserve: full image %d failed, its off-screen passes draw on the screen", i); }
+    for (int i = 0; i < OFF_N; i++) { /* R4: a full image is RGBA5551, half the block of RGBA8 */
+        full_blk[i] = bank_block(BLK_FULL16);
+        if (full_blk[i]) { pm_vram_reg(full_blk[i], BLK_FULL16); pm_log_w("vram reserved: full image %d in bank %c", i, pm_vram_bank_of(full_blk[i]) ? 'B' : 'A'); }
+        else { pm_vram_alloc_fail("full image", BLK_FULL16 >> 10); pm_log_e("vram reserve: full image %d failed, its off-screen passes draw on the screen", i); }
     }
     pm_vram_note();
 }
 /* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
-static int tex_hdr(C3D_Tex* t, int w, int h) {
-    if (!C3D_TexInit(t, w, h, GPU_RGBA8)) return 0;
+static int tex_hdr(C3D_Tex* t, int w, int h, GPU_TEXCOLOR fmt) {
+    if (!C3D_TexInit(t, w, h, fmt)) return 0;
     linearFree(t->data);
     t->data = NULL;
     return 1;
@@ -393,7 +394,7 @@ static void copy_guard(void) {
 static int full_tex_init(int i) {
     if (!full_blk[i]) return 0;
     if (!offs[i].hdr) {
-        if (!tex_hdr(&offs[i].tex, PM_OFF_W, PM_OFF_H)) return 0;
+        if (!tex_hdr(&offs[i].tex, PM_OFF_W, PM_OFF_H, GPU_RGBA5551)) return 0;
         offs[i].hdr = 1;
     }
     offs[i].tex.data = full_blk[i];
@@ -410,7 +411,7 @@ static int small_tex_init(C3D_Tex* t) {
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
 static void off_snapshot(int i) {
     u8* dst;
-    u32 bytes = (u32)offs[i].w * (u32)offs[i].h * 4u;
+    u32 bytes = (u32)offs[i].w * (u32)offs[i].h * (i < OFF_N ? 2u : 4u); /* R4: a full image is 16 bit */
     if (offs[i].w == 64) {
         if (!offs[i].snap_ready) {
             if (!small_tex_init(&offs[i].snap)) { pm_vram_alloc_fail("snap", 16); pm_log_e("FX2a: no arena block for the copy of slot %d", i); return; }
@@ -425,7 +426,7 @@ static void off_snapshot(int i) {
         dst = copy_get();
         if (!dst) { offs[i].snap_ready = 0; pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
         if (!offs[i].snap_hdr) {
-            if (!tex_hdr(&offs[i].snap, PM_OFF_W, PM_OFF_H)) { offs[i].snap_ready = 0; return; }
+            if (!tex_hdr(&offs[i].snap, PM_OFF_W, PM_OFF_H, GPU_RGBA5551)) { offs[i].snap_ready = 0; return; } /* R4: the copy of a full image is 5551 too */
             C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
             C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
             offs[i].snap_hdr = 1;
@@ -1683,6 +1684,11 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
     }
     if (i == OFF_ALL) {
+        if (stride > 64 && siz != 2) { /* R4: a full slot is RGBA5551, it can hold only a 16 bit image. Other sizes draw on the screen. */
+            static int n_r4;
+            if (n_r4++ < 20) pm_log_e("R4: full off-screen image with siz %d in frame %u, draws on the screen (full slots are 16 bit)", siz, pm_frame_count());
+            return 0;
+        }
         if (siz == 1 && stride <= 64) {
             /* FX2a: the flame writes D_800B32E0 from its own last frame, so 8 bit images keep their slot and pixels. A slot not named in this frame is taken over. */
             int k;
@@ -1785,7 +1791,7 @@ static int grab_tex_init(void) {
     u8* cb = copy_get();
     if (!cb) return 0;
     if (!grab_hdr) {
-        if (!tex_hdr(&grab_tex, 256, 512)) return 0;
+        if (!tex_hdr(&grab_tex, 256, 512, GPU_RGBA8)) return 0;
         C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
         C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
         grab_hdr = 1;
