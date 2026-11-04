@@ -34,3 +34,8 @@
 - Disassembly: docker run --rm pm3ds-build:1 sh -c '$DEVKITPRO/devkitARM/bin/arm-none-eabi-objdump -d --no-show-raw-insn $DEVKITPRO/libctru/lib/libcitro3d.a' (about 8300 lines; write to scratchpad, grep).
 - Headers: $DEVKITPRO/libctru/include/c3d/*.h and include/3ds/gpu/registers.h (same image).
 - Build: /c/Python314/python 3ds/tools/gen_map_restore.py; PM_ROW=<row> sh 3ds/build.sh; restore map_restore_table.c (md5 437b90efe5f32b82394ce2ece094210e). Never commit it.
+
+## Addendum (step 2 probe)
+- No citro3d texenv.c in the repo or the docker image (pm3ds-build:1). Only headers. TEV packing must come from disassembly of the TEV register writer in libcitro3d.a.
+- Register map (registers.h): TEXENV0_SOURCE 0xC0, OPERAND 0xC1, COLOR 0xC3, SCALE 0xC4. FUNC is assumed 0xC2 (not confirmed in the grep output). Stage stride not yet confirmed.
+- Step 1 (ndref hook, Azahar re-capture) and step 4 (S1-4) not started.
