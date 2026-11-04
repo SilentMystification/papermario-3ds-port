@@ -7,6 +7,7 @@
 #include "pm_gbi.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
+#include "pm_native.h"
 #include "pm_port.h"
 #include "variables.h"
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
@@ -3731,7 +3732,8 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     pm_gpu_rec_cen_copy(ra + at + n + npt, ncen); /* N1: census tuples after the patch table */
     { u32 io, ic; int nd = pm_gpu_rec_idx(ra + at, n, &io, &ic); /* UC3c: refused record keeps state 2 */
       if (nd < 0 || nd > 255 || (unsigned)nd != ncen) { rec_ref++; return; } /* N1: one census tuple per draw */
-      k->io = io; k->ic = ic; k->nd = (u8)nd; }
+      k->io = io; k->ic = ic; k->nd = (u8)nd;
+      pm_log_d("N4 strip slot %u n %u nd %d rc %d", slot, (unsigned)n, nd, nat_tmpl_strip((slot - 1u) & 63u, ra + at, n)); } /* N4 step 1: log only, the template is not used yet */
     k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
     k->gmc = pm_gpu_rec_gm_cap(); k->gdl = rec_gdl;
     k->off = (u16)at; k->len = (u16)n; k->nb = (u8)(old_nb + 1);

@@ -147,3 +147,37 @@ Decision needed before code:
 A. Palette patch at play time (smallest): in pm_gpu_rec_play, copy pcomp[gm_now] (16 words) into the body at each palette data position from the patch table, and drop the gmc refusal for static records. This keeps the captured body and needs no NatRec. It does not meet the plan's per-draw NatRec design.
 B. Full nat design as written in the plan (templates, NatRec, nat_order, nat_emit, nat_eye_copy). It needs items 1 to 5 solved first, plus a census line on the raw path. This is several code agents of work.
 Recommendation: A first as a measured slice, then B. Ask the user (AskUserQuestion, rule 10).
+
+## N3 and N4 step 1 (code agent, 2026-11-04)
+
+### N3 (committed 003ef9bcc, gates passed)
+- cen_add (pm_gpu.c) hashes prim only for combine 1, 5, 6, 7.
+- rec_g0[11] (pm_gbi.c) holds prim when leg_mode is 1, 5, 6 or 7, else 0. RecKey grp is 12 words. ndt host test passes, nat host test passes.
+- Census multisets (keys included) equal, replay on and off: census_toad (26 batches, 338 tris, 23 distinct, over 0) and census_yard (46 batches, 510 tris, 39 distinct, over 0).
+- Region diff yard_shot against yard_shot_rp (frames 200, 204): 0 px differ. Shots not yet read by a person.
+- Known limit: leg_mode is set by sync_combine, which runs lazily. At rec_g0_set the value can be one draw behind. Replay of a record whose combine changes mid-group is not measured.
+- Scenarios yard_shot and yard_shot_rp added (unverified, need -Try), catalog rows added.
+
+### N4 step 1 (capture to template, log only, not committed as final: see commit message)
+- rec_done (pm_gbi.c) calls nat_tmpl_strip on each stored record, id (slot-1)&63, log line `N4 strip slot n nd rc`. No draw uses the template.
+- Measured on census_toad_rp (start 1 of the NDS1 budget reset, one start used since N3): 13 captured records. 12 single-draw records split with rc 234 (n 272 words, template 234 words). 1 record (slot 36, n 376, nd 2) refused with rc -1 (two draws in one record).
+- Build: pm_native.c compiles in the lane. The redefinition warnings in the build log come from include/PR headers, not from pm_native.h.
+
+### Wired now
+- Capture of templates from records (log only).
+- Not wired: hooks 1 to 9 of the plan (step 4 above), NatRec writer, nat_emit call, nat_eye_copy, nat_mtx fill, old path deletion.
+
+### Next steps for N4 (in order)
+1. Split or refuse multi-draw records. Decide with the user (AskUserQuestion): refuse keeps the old path for slot 36 type records; split needs one NatRec per draw.
+2. Template key from state, not defaults: nat_tmpl_add needs geom, oh, ol, z, decal, blend, atest, t1only at capture time. Add an accessor in pm_gbi.c (rec_g0 has cw0, cw1, oh, ol; z, decal, blend, atest come from the mode words and the flags, see pm_gpu.c flush_impl).
+3. Per-draw inputs: palette from pcomp[gm] (nat_mtx), tex words (nat_tex from pm_tex_cur_slots), index address and count (pm_gpu_rec_idx io and ic).
+4. Hook mg_run (pm_gbi.c, near the G_PM_MODEL walk) for a native model, then gbi_task (pm_nusys.c:80-81) with nat_order, nat_emit eye 0, nat_eye_copy eye 1 plus C3D_FrameDrawOn(targetR) before the eye 2 span.
+5. Gates after the wiring: census equal on census_toad and census_yard (replay on versus the census of the old path), region diff of yard_shot against a native shot, hot loop size from build3ds/lane-nds1/pm_3ds.map (under 8 KB), host tests.
+6. Delete the old walk for these models in the same commit as hook 2.
+
+### Budget
+- NDS1 budget after the reset: 7 of 8 starts used (N3 six, N4 step 1 one). One start left.
+
+### Open items
+- Trailing state after the trigger runs before it under the group layout (plan default 1). Needs a shot before any console run.
+- Eye 2 target registers: no patch needed (see Follow-up item 4).
