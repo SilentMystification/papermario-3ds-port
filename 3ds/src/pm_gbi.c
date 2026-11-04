@@ -2692,8 +2692,8 @@ static __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, in
     return 1;
 }
 
-/* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. */
-static const u8 g1_skip[256] = { [G_NOOP] = 1, [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
+/* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. G_NOOP is not here: the HANG1a splash marks are G_NOOP words. */
+static const u8 g1_skip[256] = { [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
 
 /* C1: texture bind records. tb_list[idx] holds the handle's Gfx list only when pm_texbind_set has checked it. A list
  * holds only the ops make_texture_gfx emits (and g1_skip ops). A refused list stores NULL. */
