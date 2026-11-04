@@ -216,19 +216,19 @@ void initialize_battle(void) {
     for (i = 0; i < ARRAY_COUNT(BtlStarPointTensHIDs); i++) {
         hid = BtlStarPointTensHIDs[i] = hud_element_create(&HES_Item_StarPoint);
         hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER | HUD_ELEMENT_FLAG_DISABLED);
-        hud_element_set_render_depth(hid, 20);
+        hud_element_set_render_depth(hid, 0); /* HUD ortho depth: the in-game HUD default (hud_element_create resets it to 0) */
     }
 
     for (i = 0; i < ARRAY_COUNT(BtlStarPointShinesHIDs); i++) {
         hid = BtlStarPointShinesHIDs[i] = hud_element_create(&HES_StatusSPShine);
         hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER | HUD_ELEMENT_FLAG_DISABLED);
-        hud_element_set_render_depth(hid, 20);
+        hud_element_set_render_depth(hid, 0); /* HUD ortho depth: the in-game HUD default (hud_element_create resets it to 0) */
     }
 
     for (i = 0; i < ARRAY_COUNT(BtlStarPointOnesHIDs); i++) {
         hid = BtlStarPointOnesHIDs[i] = hud_element_create(&HES_SmallStarPoint);
         hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER | HUD_ELEMENT_FLAG_DISABLED);
-        hud_element_set_render_depth(hid, 20);
+        hud_element_set_render_depth(hid, 0); /* HUD ortho depth: the in-game HUD default (hud_element_create resets it to 0) */
     }
 
     tattleCam->fpDoPreRender = tattle_cam_pre_render;
