@@ -28,3 +28,12 @@
 - Test: `PM_ROW=UI2 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 <scenario> -Row UI2 -Build ui2 -Try`.
 - Justification: one line in 3ds/logs/perf/status_UI2.txt before each start.
 - Picture: PIL (`py`) converts the .ppm; the PPM is 240 by 400 rotated (screen x is PPM y).
+
+## Round 2 (step 2 items)
+- Enemy bar 1 px: baseline lane ui2base (hud_element.c:433 rule off, temporary, restored) shows the same dark red row at the bar end (PPM row 330, x 54 to 58). Red is the lost-HP prim (16C8E0.c:946, 168,0,0, height 1). Decision: the 16-row rule is not the cause. No edit. Open: whether the prim width (temp = 25 - healthFraction) is right is not checked.
+- Danger D clip (hud_element.c:1895): the banner reads DANGER! in full in shots 0001 to 0007 at PPM x 104 to 140 (screen y band, far from scissor x 12). No cut seen. No edit. Console check needed with an actor at the left edge.
+- Star points depth 20 (16C8E0.c:217-231): not tested. No shot. Console check needed (stereo on and off).
+- HP block ramp (inventory.c:640-660): displayHP steps by 1 when frameCounter % 4 == 0. This is the game's own ramp. ignoreChanges (inventory.c:607) gates only the show timer. No edit. Console check needed.
+- Bombette charge bar (action_cmd.c:133-222), star meter (status_star_shimmer.c:159-163), blue switch poof (BlueSwitch.c:24-38): not started.
+- UI1 (double menu, investigate_double_menu.md): not started by this agent in round 2.
+- Budget: UI2 7 of 8 starts (ui2base baseline is start 7).
