@@ -75,10 +75,7 @@ extern unsigned int __ctru_heap_size;
 extern unsigned int __ctru_linear_heap;
 extern unsigned int __ctru_linear_heap_size;
 
-static float proj[4][4];
-static float mv[10][4][4];
 static float combined[4][4];
-static PM_HOTD int mv_sp;
 /* Viewport scale/translate after the 2-bit fraction. Full 320x240 until a display list sets one. */
 static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
 static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
@@ -423,45 +420,9 @@ static void* ptr_of(u32 w) {
     return (void*)w;
 }
 
-static void ident(float m[4][4]) {
-    memset(m, 0, sizeof(float) * 16);
-    m[0][0] = m[1][1] = m[2][2] = m[3][3] = 1.f;
-}
-
-static void mul(float c[4][4], const float a[4][4], const float b[4][4]) {
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            c[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j] + a[i][3] * b[3][j];
-        }
-    }
-}
-
-static float elem(const Mtx* src, int row, int col) {
-    const u32* m = (const u32*)src->m;
-    int idx = row * 2 + (col >> 1);
-    u32 sh = (col & 1) ? 0 : 16;
-    s16 ip = (s16)((m[idx] >> sh) & 0xffff);
-    s16 fp = (s16)((m[idx + 8] >> sh) & 0xffff);
-    s32 fixed = ((s32)ip << 16) | (u16)fp;
-    return (float)fixed / 65536.f;
-}
-
-static void unpack(const Mtx* src, float d[4][4]) {
-    for (int r = 0; r < 4; r++)
-        for (int c = 0; c < 4; c++) d[r][c] = elem(src, r, c);
-}
-
 extern float pm_eye_e, pm_eye_conv;
 static void upload_mvp(void) {
-    /* Row-vector matrices, same as transform_point: modelview first, then projection. */
-    if (pm_eye_e != 0.f && (proj[0][3] != 0.f || proj[1][3] != 0.f || proj[2][3] != 0.f)) {
-        /* STEREO: a perspective matrix gets the eye shift x' = x + e * (w - conv). Row 3 is the translation row, the vertex has 1 in that place. An orthographic matrix (UI) stays at the screen plane. */
-        float p[4][4], cw = pm_eye_conv * (proj[2][3] < 0.f ? -proj[2][3] : proj[2][3]);
-        memcpy(p, proj, sizeof p);
-        for (int r = 0; r < 4; r++) p[r][0] += pm_eye_e * p[r][3];
-        p[3][0] -= pm_eye_e * cw;
-        mul(combined, mv[mv_sp], p);
-    } else mul(combined, mv[mv_sp], proj);
+    nd_mtx_combine(combined, pm_eye_e, pm_eye_conv); /* S1-4: modelview x projection, STEREO eye shift on a perspective matrix */
     pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
 }
 void pm_gbi_eye_changed(void) { upload_mvp(); }
@@ -1466,7 +1427,7 @@ static unsigned gv_matrix_id(int need_nm) {
     }
     if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && !need_nm) return gm_last;
     float nm[3][4];
-    for (int i = 0; i < 3; i++) { nm[i][0] = mv[mv_sp][i][0]; nm[i][1] = mv[mv_sp][i][1]; nm[i][2] = mv[mv_sp][i][2]; nm[i][3] = 0.f; }
+    for (int i = 0; i < 3; i++) { nm[i][0] = nd_mv[nd_mv_sp][i][0]; nm[i][1] = nd_mv[nd_mv_sp][i][1]; nm[i][2] = nd_mv[nd_mv_sp][i][2]; nm[i][3] = 0.f; }
     if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0) return gm_last;
     unsigned p, best = GV_NONE, gmi;
     /* H3: the newest entry with the same combined matrix (and normal when needed), found by probing its hash chain */
@@ -1848,40 +1809,26 @@ static float mtx_cache[256][16];
 static u32 mtx_tag[256];
 
 /* hdr: the G_PM_MODEL header w1 of the group the word is in, 0 outside mg_run. */
+_Static_assert(ND_MTX_PUSH == G_MTX_PUSH && ND_MTX_LOAD == G_MTX_LOAD && ND_MTX_PROJ == G_MTX_PROJECTION, "nd.h matrix flags equal the gbi values");
 static void load_mtx(u32 w0, u32 w1, u32 hdr) {
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
     if (!src) return;
     float in[4][4];
-    const float (*lm)[4] = pm_interp_repl ? pm_interp_find(src) : 0; /* F06-2 */
+    int lm = nd_mtx_replace(src, in); /* F06-2, S1-5: the interpolated matrix of the t = 0.5 pass */
     unsigned slot = hdr & 0xffu;
     int cached = slot != 0 && (hdr & 0x100u) != 0 && !lm; /* a static model matrix: the header says src is that model's savedMtx */
     u32 tag = 0x10000u | (hdr >> 16);
-    if (lm) memcpy(in, lm, sizeof(in));
+    if (lm) {}
     else if (cached && mtx_tag[slot] == tag) memcpy(in, mtx_cache[slot], sizeof(in));
     else {
-        unpack(src, in);
+        nd_mtx_unpack((const u32*)src->m, in);
         if (cached) {
             memcpy(mtx_cache[slot], in, sizeof(in));
             mtx_tag[slot] = tag;
         }
     }
-    int is_proj = (flags & G_MTX_PROJECTION) != 0;
-    if (!is_proj && (flags & G_MTX_PUSH) && mv_sp + 1 < 10) {
-        memcpy(mv[mv_sp + 1], mv[mv_sp], sizeof(mv[0]));
-        mv_sp++;
-    }
-    float (*dst)[4] = is_proj ? proj : mv[mv_sp];
-    if (flags & G_MTX_LOAD) {
-        memcpy(dst, in, sizeof(in));
-    } else {
-        /* Row vector v * incoming * current. The RSP and PaperBoat's
-         * interpreter both premultiply; the other order leaves a child
-         * under the wrong parent. */
-        float cur[4][4];
-        memcpy(cur, dst, sizeof(cur));
-        mul(dst, in, cur);
-    }
+    nd_mtx_load(in, flags); /* S1-4: push, load or premultiply */
     upload_mvp();
 }
 
@@ -2339,7 +2286,7 @@ void pm_gbi_end_frame(void) {
         (void)nm;
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
-    mv_sp = 0; /* PT70: the RSP matrix stack starts empty in every task. A push without pop in the message draw leaked one level per frame, then the 10 level cap dropped the pad push of the blue pipe and its pop left the wrong matrix (the sunk pipe showed up while a text box waited) */
+    nd_mv_sp = 0; /* PT70: the RSP matrix stack starts empty in every task. A push without pop in the message draw leaked one level per frame, then the 10 level cap dropped the pad push of the blue pipe and its pop left the wrong matrix (the sunk pipe showed up while a text box waited) */
     if (gm_n) memset(gm_idx, 0, sizeof gm_idx);
     gm_n = 0; gm_last = GV_NONE; pm_gpu_gv_reset();
     memset(vert_ring, 0xff, sizeof vert_ring);
@@ -2354,9 +2301,7 @@ void pm_gbi_end_frame(void) {
 const char* pm_gbi_stats(void) { return stats_line; }
 
 void pm_gbi_init(void) {
-    ident(proj);
-    ident(mv[0]);
-    mv_sp = 0;
+    nd_mtx_reset();
     memset(vert_live, 0, sizeof vert_live);
     geom = G_SHADE | G_SHADING_SMOOTH;
     upload_mvp();
@@ -3481,7 +3426,7 @@ static __attribute__((noinline)) void gbi_vtx_cpu1(const Vtx* s, unsigned k) {
 vert_gvf[k] = 3;
 vert_st[k][0] = (float)s->v.tc[0] * (float)tex_ss / 65536.f; /* T02: the RSP scales S and T */
 vert_st[k][1] = (float)s->v.tc[1] * (float)tex_ts / 65536.f;
-vert_c[k] = vert_color(s, mv[mv_sp]);
+vert_c[k] = vert_color(s, nd_mv[nd_mv_sp]);
 if (tg_ok) { vert_st[k][0] = tg_s; vert_st[k][1] = tg_t; }
 {   /* PO2: the same products as the old per corner code, once per vertex */
     const float(*m)[4] = combined;
@@ -3511,9 +3456,7 @@ static __attribute__((noinline)) void gbi_movemem(u32 w0, u32 w1) {
 }
 
 static __attribute__((noinline)) void gbi_popmtx(u32 w1) {
-    unsigned count = w1 / 64;
-    if (count == 0) count = 1;
-    while (count-- && mv_sp > 0) mv_sp--;
+    nd_mtx_pop(w1 / 64); /* S1-4: count 0 pops one */
     upload_mvp();
 }
 

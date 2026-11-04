@@ -363,7 +363,7 @@ set(PORT_SRC
     src/pm_tex.c
     src/pm_gbi.c
     src/pm_comb.c
-    src/pm_native.c
+    src/nd_mtx.c
     src/nd_core.c
     src/nd_tmpl.c
     src/pm_gu.c

@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
         unsigned char* buf = malloc((size_t)sz);
         assert(buf && fread(buf, 1, (size_t)sz, f) == (size_t)sz);
         fclose(f);
-        assert(memcmp(buf, "NDR1", 4) == 0 && rd32(buf + 4) == 2);
+        assert(memcmp(buf, "NDR1", 4) == 0 && rd32(buf + 4) == 3);
         uint32_t cnt = rd32(buf + 12);
         size_t pos = 20;
         DrawInfo d;

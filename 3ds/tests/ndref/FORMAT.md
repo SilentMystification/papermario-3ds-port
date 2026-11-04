@@ -1,4 +1,4 @@
-# ndref: reference draw stream (format v2)
+# ndref: reference draw stream (format v3)
 
 Test oracle for the native draw system (docs/handoff/plan_native_system.md 9.2 and 9.3). It is not read by the game.
 Pinned commit: e95b21495 (NDREF1 hook on the walker of 620d457f7; the walker code is the same, the hook is off unless `ndref=<frame>` is set). The files were captured on build 2020 (commit 42f6fac7e). The S0-6 commit adds counters and a prof line only; it does not change the draws.
@@ -10,7 +10,7 @@ Read by 3ds/tools/nd_ref_dump.py. All integers and floats are little-endian. Flo
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 4 | magic `NDR1` (bytes 4E 44 52 31) |
-| 4 | 4 | version = 2 (v1 had no kind 4 records) |
+| 4 | 4 | version = 3 (v1 had no kind 4 records, v2 no kind 5) |
 | 8 | 4 | frame number (pm_frame_count) |
 | 12 | 4 | draw record count |
 | 16 | 4 | payload bytes (everything after this 20-byte header) |
@@ -20,7 +20,7 @@ Read by 3ds/tools/nd_ref_dump.py. All integers and floats are little-endian. Flo
 
 | Offset | Size | Field |
 |---|---|---|
-| 0 | 4 | kind: 1 draw, 2 producer tag, 3 model tag, 4 draw state |
+| 0 | 4 | kind: 1 draw, 2 producer tag, 3 model tag, 4 draw state, 5 palette source |
 | 4 | 4 | size of the body in bytes |
 | 8 | size | body |
 
@@ -38,6 +38,10 @@ One record per GPU draw call, written right before C3D_DrawArrays or C3D_DrawEle
 | 12 to 14 | omode_h, omode_l, depth image flag: the inputs of the last sync_render (pm_gbi.c), which gives zcmp, zupd, blend, atest, decal, nocol, memblend (nd_render_state). Zero before the first sync_render |
 | 15 to 27 | citro3d context bytes 216 to 267, 13 words, the effect block that C3Di_EffectBind turns into register writes (libcitro3d.a disassembly). Index i of the 13: 0 reg 0x100 (colour operation), 1 reg 0x130, 2 reg 0x4D (depth map scale, f24), 3 reg 0x4E (depth map offset, f24), 4 bytes: cull (reg 0x40, low 2 bits), depth map enable (reg 0x6D), early depth enable (regs 0x62 and 0x118), early depth func (reg 0x61), 5 reg 0x6A (early depth ref), 6 reg 0x104 (alpha test), 7 reg 0x105 (stencil test), 8 reg 0x106 (stencil op), 9 reg 0x107 (depth and colour mask; reg 0x126 is derived from it), 10 reg 0x103 (blend colour), 11 reg 0x101 (blend func), 12 reg 0x102 (logic op, low byte) |
 | 28 to 61 | citro3d context bytes 292 to 427 (34 words): TEV stage i at words 5 i to 5 i + 4 = regs 0xC0 + 8 i (0xF0 + 8 (i - 4) for i 4 and 5) +0..+4 (source, operand, combiner, colour, scale); block word 30 = reg 0xE0 (buffer update), 31 = reg 0xFD (buffer colour), 32 = reg 0xFE |
+
+## Palette source body (kind 5, S1-4 oracle)
+
+Written right after the kind 1 record of a raw draw with a palette (np > 0). Size 68 + 68 x np bytes. Body: 16 floats `post` (gv_post, C3D_Mtx memory order), u32 np, then per entry u32 gm (game matrix index, the same order as the kind 1 palette) and 16 floats of `pal_tab[gm]` (the game matrix, row-vector 4 x 4 as the walker stores it). The kind 1 palette holds pcomp[gm] = Mtx_Multiply(post, game) in C3D_Mtx order (pm_gpu.c pal_mul), which nd_mtx_pcomp must reproduce bit for bit.
 
 ## Draw body
 

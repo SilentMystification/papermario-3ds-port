@@ -1,28 +1,76 @@
-/* nd.h: native draw record and frame driver (plan_native_system 2.2, S1-2). Only the LEGACY bridge kind exists so far. */
+/* nd.h: native draw record, frame driver, matrices (plan_native_system 2.2 and 2.5, S1-2 and S1-4). Only the LEGACY bridge kind is emitted so far. */
 #ifndef ND_H
 #define ND_H
 
 #include <stdint.h>
 #include "pm_gpu.h"
 
+#ifdef __arm__
+#define ND_HOTD __attribute__((section(".data.pmhot"))) /* same section as PM_HOTD in pm_port.h */
+#else
+#define ND_HOTD
+#endif
+
 enum {
     ND_DRAW_IDX = 0, /* later rows: indexed static mesh */
     ND_LEGACY = 7    /* bridge only: the walker runs the words of one list span (deleted in S10) */
 };
 
-/* 32 bytes, one cache line. The LEGACY fields use the first 8 bytes; the rest is reserved for the draw fields. */
+/* 32 bytes, one cache line (plan 2.2). LEGACY: aux = list address (32-bit ARM11 pointer), aux2 = byte count. */
 typedef struct NdRec {
     uint8_t kind;
-    uint8_t pad[3];
-    uint32_t a; /* LEGACY: list address (32-bit ARM11 pointer) */
-    uint32_t b; /* LEGACY: byte count */
-    uint32_t rsv[5];
+    uint8_t tmpl;     /* template id */
+    uint8_t tex0;     /* texture unit 0 block id (0 = none) */
+    uint8_t tex1;     /* texture unit 1 block id (0 = none) */
+    uint16_t mtx;     /* matrix slot in the frame matrix pool */
+    uint16_t unif;    /* per-draw uniform block id (0 = the template default) */
+    uint32_t idx_word; /* index buffer address, GPU register form */
+    uint16_t nidx;    /* index count */
+    uint16_t vbuf;    /* attribute buffer id (0 = dynamic ring, 1 = static pool) */
+    uint32_t sort;    /* tmpl << 24, tex0 << 16, tex1 << 8, layer */
+    uint32_t seq;     /* game order index. Bit 31 = ordered (blend, decal or depth off: keep game order) */
+    uint32_t aux;     /* rectangle corners, or the LEGACY list address */
+    uint32_t aux2;    /* second rectangle word, the light block id, or the LEGACY byte count */
 } NdRec;
 _Static_assert(sizeof(NdRec) == 32, "NdRec is one 32-byte line");
+#define ND_SEQ_ORDERED 0x80000000u
+#define ND_REC_MAX 2048u
 
 void nd_frame_begin(void);                    /* empties the record array (once per gbi task) */
 void nd_bridge_cut(void* list, unsigned nbytes); /* appends one LEGACY record for an N64 list span */
 void nd_emit(void);                           /* runs the records in order; LEGACY calls the walker */
+
+/* Draw order for n records into ord (indices). A record with ND_SEQ_ORDERED keeps its place and breaks runs. Inside each run of unordered records a stable
+ * counting sort by tex0, then by tmpl (LSD, two passes). Returns n. n <= ND_REC_MAX. */
+unsigned nd_order(const NdRec* rec, unsigned n, uint16_t* ord);
+
+/* NDMTX (S1-4). Walker matrix stack (the RSP depth is 10), projection, N64 unpack, per-eye matrix pool. */
+#define ND_MV_DEPTH 10
+#define ND_MTX_MAX 512
+#define ND_MTX_PUSH 1u /* values of G_MTX_PUSH, G_MTX_LOAD, G_MTX_PROJECTION */
+#define ND_MTX_LOAD 2u
+#define ND_MTX_PROJ 4u
+extern float nd_mv[ND_MV_DEPTH][4][4];
+extern int nd_mv_sp;
+extern float nd_proj[4][4];
+extern float nd_mtx_pool[2][ND_MTX_MAX][16]; /* matrix slot per eye, C3D_Mtx memory order, 64 bytes, aligned 32 */
+void nd_mtx_ident(float m[4][4]);
+void nd_mtx_mul(float c[4][4], const float a[4][4], const float b[4][4]);
+void nd_mtx_unpack(const uint32_t* n64, float d[4][4]);      /* 16 words of an N64 Mtx */
+void nd_mtx_reset(void);                                     /* projection and stack bottom to identity, stack empty */
+void nd_mtx_load(const float in[4][4], unsigned flags);      /* push (when flagged), then load or premultiply into the top or the projection */
+void nd_mtx_pop(unsigned count);                             /* count 0 pops one */
+void nd_mtx_combine(float c[4][4], float e, float conv);     /* modelview x projection with the eye shift e (0 = no shift) */
+void nd_mtx_cmul(float o[16], const float a[16], const float b[16]); /* citro3d Mtx_Multiply */
+void nd_mtx_pcomp(float o[16], const float post[16], const float game[4][4]); /* pcomp = post x game */
+
+/* S1-5 (fps60): during the t = 0.5 pass (pm_interp_repl) a G_MTX loads the interpolated replacement of the game matrix at src (pm_interp_find) instead of the N64 words.
+ * Returns 1 and fills in[4][4] when a replacement exists, else 0 (the caller unpacks the N64 words). */
+int nd_mtx_replace(const void* src, float in[4][4]);
+
+/* Eye 2 without a second walk: copy the eye 1 command span, then write the eye 2 matrix words at each logged position. */
+typedef struct NdMtxLog { uint32_t at; uint16_t slot; uint16_t pad; } NdMtxLog;
+void nd_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NdMtxLog* log, unsigned nlog, unsigned eye);
 
 /* NDTMPL (S1-3): render state and TEV template per key. The key holds the inputs of flush_draw's state setters and of the TEV builder.
  * Construct it with memset 0 and set the fields; the struct has no padding. pass: 0 main draw, 1 decal pass A, 2 decal pass B, 3 zmark pass 2.

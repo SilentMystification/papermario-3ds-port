@@ -10,7 +10,6 @@ void pm_gx_room(void); /* HANG1a */
 #include <stdio.h>
 #include <stdlib.h>
 #include "pm_shader5_shbin.h"
-#include "pm_native.h"
 #include "nd.h"
 #include "pm_shaderall_shbin.h"
 #include "pm_gpu.h"
@@ -195,14 +194,7 @@ static void ident(float m[4][4]) {
  * the transpose. Viewport then maps N64 clip/w into upright pixels, and
  * OrthoTilt turns those pixels into the rotated framebuffer. */
 static void rebuild_3d(void) {
-    C3D_Mtx game, view;
-    int r;
-    for (r = 0; r < 4; r++) {
-        game.r[r].x = game_mvp[0][r];
-        game.r[r].y = game_mvp[1][r];
-        game.r[r].z = game_mvp[2][r];
-        game.r[r].w = game_mvp[3][r];
-    }
+    C3D_Mtx view;
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
     view.r[0].x = (pm_wide && !off_active && !ui_ortho) ? vp_sx * 1.25f : vp_sx;
@@ -223,7 +215,7 @@ static void rebuild_3d(void) {
         float det = a->x * (b->y * c->w - b->w * c->y) - a->y * (b->x * c->w - b->w * c->x) + a->w * (b->x * c->y - b->y * c->x);
         gv_wind = det < 0.f ? -1 : 1;
         post_gen++;
-        Mtx_Multiply(&shader_3d, post, &game); /* SEAM: the same product, in the same order, as pcomp_calc: post x game. The CPU path and the raw path then give bit-identical positions. */
+        nd_mtx_pcomp(shader_3d.m, post->m, game_mvp); /* S1-4: nd_mtx.c. SEAM: the same product, in the same order, as pcomp_calc: post x game. The CPU path and the raw path then give bit-identical positions. */
     }
 }
 
@@ -516,6 +508,12 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     if (graw) for (unsigned i = 0; i < gni; i++) ndref_put(gring + 16u * gidx[gi_start + i], 16);
     else ndref_put(verts, (unsigned)nverts * sizeof(Vert));
     ndref_patch(at);
+    if (np) { /* S1-4 oracle: kind 5, the inputs of the palette product pcomp = post x game of this draw: post (gv_post), then per entry the game matrix (u32 gm, 16 floats pal_tab[gm]) */
+        unsigned hd[2] = { 5u, 0u }, at5 = ndref_len;
+        ndref_put(hd, 8); ndref_put(&gv_post, sizeof gv_post); ndref_put(&np, 4);
+        for (unsigned k = 0; k < np; k++) { ndref_put(&pal_g[k], 4); ndref_put(pal_tab[pal_g[k]], 64); }
+        ndref_patch(at5);
+    }
     ndref_draws++;
 }
 /* S1-3 oracle: kind 4, one record per GPU draw call (pass). Body: u32 pass (0 main, 1 decal pass A, 2 decal pass B, 3 zmark pass 2), z, zmark, zcmp, zupd, nocol, noise, raw,
@@ -534,7 +532,7 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
     if (!ndref_wr) return;
     ndref_wr = 0; ndref_on = 0; ndref_target = -1;
     unsigned fr = pm_frame_count();
-    uint32_t hdr[5] = { 0x3152444Eu /* NDR1 */, 2u, fr, ndref_draws, ndref_len };
+    uint32_t hdr[5] = { 0x3152444Eu /* NDR1 */, 3u, fr, ndref_draws, ndref_len };
     FILE* f = fopen("sdmc:/3ds/PaperMario/ndref.bin", "wb");
     if (f) { fwrite(hdr, 4, 5, f); fwrite(ndref_buf, 1, ndref_len, f); fclose(f); }
     pm_log_d("ndref f%u done draws %u bytes %u%s%s", fr, ndref_draws, ndref_len, f ? "" : " open failed", ndref_over ? " over" : "");
@@ -757,19 +755,13 @@ static __attribute__((noinline)) void flush_light_tab(void) {
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk0, g_fx.lk0[0], g_fx.lk0[1], g_fx.lk0[2], g_fx.lk0[3]);
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk1, g_fx.lk1[0], g_fx.lk1[1], g_fx.lk1[2], g_fx.lk1[3]);
 }
-/* N4 2b: the palette product post x game, one function for the live path (pcomp) and the per-eye fill (nat_mtx). Same order of products. */
-static void pal_mul(C3D_Mtx* o, const float (*m)[4]) {
-    C3D_Mtx game;
-    for (int r = 0; r < 4; r++) { game.r[r].x = m[0][r]; game.r[r].y = m[1][r]; game.r[r].z = m[2][r]; game.r[r].w = m[3][r]; }
-    Mtx_Multiply(o, &gv_post, &game);
-}
+/* N4 2b: the palette product post x game, one function for the live path (pcomp) and the per-eye fill (nd_mtx_pool). Same order of products. */
+static void pal_mul(C3D_Mtx* o, const float (*m)[4]) { nd_mtx_pcomp(o->m, gv_post.m, m); } /* S1-4 */
 static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
                     pal_mul(&pcomp[gm], pal_tab[gm]);
                     pcomp_gen[gm] = post_gen;
                     pm_dc_c[DC_PMUL]++;
 }
-/* N4 2b: palette words of one eye for game matrix gm. m: the gm table entry of that eye's walk. Writes nat_mtx[eye][gm] = post x m. */
-int pm_eye_idx; /* 1 for the right eye pass, else 0 */
 static __attribute__((noinline)) int nozt_on(void) {
     static int nozt = -1;
     if (nozt < 0) nozt = pm_debug_has("nozt");
@@ -1692,7 +1684,7 @@ void pm_gpu_eye(int right) {
     if (right && !r_cleared) { r_cleared = 1; if (r_wantclear) C3D_RenderTargetClear(targetR, C3D_CLEAR_ALL, 0, 0); } /* queue order: the clear comes before every part of the frame */
     grab_dirty = 1; grab_dy0 = grab_dy1 = 0; /* K2: the copy of the other eye is not this eye's frame, so the next grab copies again */
     cur_target = right ? targetR : target;
-    pm_eye_e = (right ? PM_EYE_E : -PM_EYE_E) * eye_slider; pm_eye_idx = right ? 1 : 0;
+    pm_eye_e = (right ? PM_EYE_E : -PM_EYE_E) * eye_slider;
     sh_clear(); C3D_FrameDrawOn(cur_target);
     pm_gbi_eye_changed();
 }
@@ -1928,7 +1920,7 @@ void pm_gpu_begin_wait(void) {
     gfxSet3D(stereo_frame);
     r_wantclear = begin_clear; r_cleared = 0;
     cur_target = target;
-    pm_eye_e = stereo_frame ? -PM_EYE_E * eye_slider : 0.f; pm_eye_idx = 0;
+    pm_eye_e = stereo_frame ? -PM_EYE_E * eye_slider : 0.f;
     sh_clear(); C3D_FrameDrawOn(target);
     PH_POP();
 }
