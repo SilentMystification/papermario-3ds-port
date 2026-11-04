@@ -1,7 +1,7 @@
 # ndref: reference draw stream (format v1)
 
 Test oracle for the native draw system (docs/handoff/plan_native_system.md 9.2 and 9.3). It is not read by the game.
-Pinned commit: e95b21495 (NDREF1 hook on the walker of 620d457f7; the walker code is the same, the hook is off unless `ndref=<frame>` is set).
+Pinned commit: e95b21495 (NDREF1 hook on the walker of 620d457f7; the walker code is the same, the hook is off unless `ndref=<frame>` is set). The files were captured on build 2020 (commit 42f6fac7e). The S0-6 commit adds counters and a prof line only; it does not change the draws.
 Written by pm_gpu.c (ndref_begin, ndref_draw, ndref_end, ndref_tag) and pm_gbi.c (pm_gbi_ndref_frame, prod and mdl tags).
 Read by 3ds/tools/nd_ref_dump.py. All integers and floats are little-endian. Floats are IEEE 754 single.
 
@@ -54,13 +54,15 @@ Draw order is the order of flush_draw closes. Triangles are consecutive vertex t
 
 ## Scenes (S0-1, S0-2)
 
-| File | Scenario | Frame |
-|---|---|---|
-| ndref_toad.bin | ndref_toad | 200 (Toad Town mac_01 entry 0) |
-| ndref_yard.bin | ndref_yard | 200 (kmr_20 entry 4) |
-| ndref_pause.bin | ndref_pause | 250 (pause menu open) |
-| ndref_battle.bin | ndref_battle | 180 (battle, kmr_03) |
-| ndref_text.bin | ndref_text | 178 (pause menu text) |
-| ndref_title.bin | ndref_title | 500 (title screen) |
-| ndref_splash.bin | ndref_splash | see the scenario reason |
-| ndref_stereo.bin | ndref_stereo | 200 (yard, wide and stereo) |
+| File | Scenario | Frame | Draws | Census batches (same run) |
+|---|---|---|---|---|
+| ndref_yard.bin | ndref_yard | 200 (kmr_20 entry 4) | 46 | 46 |
+| ndref_pause.bin | ndref_pause | 250 (pause menu open) | 96 | 96 |
+| ndref_battle.bin | ndref_battle | 180 (battle, kmr_03) | 73 | 73 |
+| ndref_text.bin | ndref_text | 178 (pause menu text) | 96 | 96 |
+| ndref_title.bin | ndref_title | 800 (boot, game mode 16; not the title, mode 2 not reached) | 70 | 70 |
+| ndref_splash.bin | ndref_splash | 412 (fxtest 89 water splash, effect start at 400) | 141 | 141 |
+| ndref_stereo.bin | ndref_stereo | 200 (yard, wide and stereo) | not run | not run |
+| ndref_toad.bin | ndref_toad | 200 (mac_01 entry 0) | not run (file overwritten) | not run |
+
+ndref_stereo and ndref_toad are missing. Each needs one Azahar start (see the status file).

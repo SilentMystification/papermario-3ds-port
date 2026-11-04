@@ -4649,10 +4649,10 @@
     {
       "name": "ndref_title",
       "status": "unverified",
-      "subject": "Title screen, frame 500 draw stream and census (no warp, boot).",
+      "subject": "Boot screen at frame 800 with no warp: game mode 16 from frame 327 (not the title, mode 2). Draw stream and census of that frame.",
       "proves": "NDREF2: reference draw stream of frame 500 (ndref=500) and the census of the same frame.",
-      "debug": "ndref=500 drawcensus=500 loglevel=debug",
-      "until": "ndref f500 done",
+      "debug": "ndref=800 drawcensus=800 loglevel=debug",
+      "until": "ndref f800 done",
       "cap": 45,
       "deadline": 40,
       "first_marker": "game mode 2 frame",
@@ -4660,23 +4660,23 @@
       "needs_picture": false,
       "expected_events": [
         {
-          "name": "map",
-          "regex": "game mode 2 frame"
+          "name": "mode 16 from frame 327",
+          "regex": "game mode 16 frame 327"
         },
         {
           "name": "ndref done",
-          "regex": "ndref f500 done draws \\d+ bytes \\d+$"
+          "regex": "ndref f800 done draws \\d+ bytes \\d+$"
         }
       ],
-      "reason": "Log and file only. Title mode starts at frame 451 in an older run (game mode 2 frame 451). Frame 500 must show game mode 2 in the log, else the frame is not the title."
+      "reason": "Log and file only. Run 1 (frame 500) and run 2 (frame 800): game mode 16 from frame 327, mode 2 (title) not reached. The file is the boot screen in mode 16. The title scene needs a START press or a longer boot, not run in S0-2."
     },
     {
       "name": "ndref_splash",
       "status": "unverified",
       "subject": "Mario in nok_11 with the water splash (fxtest 89), frame 300 draw stream and census.",
       "proves": "NDREF2: reference draw stream of frame 300 (ndref=300) and the census of the same frame.",
-      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 ndref=300 drawcensus=300 loglevel=debug",
-      "until": "ndref f300 done",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 ndref=412 drawcensus=412 loglevel=debug",
+      "until": "ndref f412 done",
       "cap": 20,
       "deadline": 20,
       "first_marker": "warp: nok_11 entry 0",
@@ -4688,11 +4688,15 @@
           "regex": "warp: nok_11 entry 0"
         },
         {
+          "name": "fxtest start",
+          "regex": "fxtest: 1 effects selected"
+        },
+        {
           "name": "ndref done",
-          "regex": "ndref f300 done draws \\d+ bytes \\d+$"
+          "regex": "ndref f412 done draws \\d+ bytes \\d+$"
         }
       ],
-      "reason": "Log and file only. The splash frame is not known in advance; the log lines fxtest spawn and shot give the frame. Frame 300 is a first guess (see FORMAT.md)."
+      "reason": "Log and file only. fxtest starts at frame 400 (run 1 log: start frame 400). Run 1 at frame 300 was before the effect. Frame 412 is 12 frames after the start, the shot a offset of the base scenario."
     },
     {
       "name": "ndref_stereo",
