@@ -3158,6 +3158,30 @@
       "reason": "JTB: jump_azahar without jumptest. Until is the shot at frame 330. Cap 45 s."
     },
     {
+      "name": "boot_noprof_azahar",
+      "status": "unverified",
+      "subject": "Control for PROF4: same binary and debug words as prof_boot, no prof word. Log subject only.",
+      "proves": "Without the prof word, log.txt is created and the normal boot lines print at debug level.",
+      "debug": "phase fsplit loglevel=debug",
+      "until": "boot_main",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "threads: game on core",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "game thread line",
+          "regex": "threads: game on core"
+        },
+        {
+          "name": "boot_main line",
+          "regex": "boot_main"
+        }
+      ],
+      "reason": "Control for PROF4. Cap 40 s. Log only. The picture is not the test."
+    },
+    {
       "name": "boot_jump_azahar",
       "status": "unverified",
       "subject": "Boot from the start with no warp (the intro plays), jump test on. Log subject only: jump result lines from frame 390 on.",
@@ -4485,6 +4509,30 @@
         }
       ],
       "reason": ""
+    },
+    {
+      "name": "prof_boot",
+      "status": "unverified",
+      "subject": "prof switch (PROF4): launch with prof=4 phase fsplit loglevel=debug. Boot prints prof=1 log=off, the stat words are removed, and the first prof measurement line prints. No other log line from the run is kept.",
+      "proves": "prof forces the log off and removes the stat switches, and the prof line still prints at warn level.",
+      "debug": "prof=4 phase fsplit loglevel=debug",
+      "until": "prof f\\d+ w\\d+ fps",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "boot line",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "prof line",
+          "regex": "prof f\\d+ w\\d+ fps"
+        }
+      ],
+      "reason": "Log only. The picture is not the test. Cap 40 s and deadline 20 s: pf_report prints after 300 frames, so the cap covers boot plus 300 frames."
     }
   ]
 }

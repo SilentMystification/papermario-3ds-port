@@ -347,11 +347,13 @@ static LightEvent ev_wake, ev_started, ev_flushed;
 static volatile int io_drain_req;
 static void wake_writer(void) { if (writer_th) LightEvent_Signal(&ev_wake); }
 
+static int prof_force; /* PROF4: set only by pm_log_prof_line, the one line that prints in prof mode */
+static int prof_mode;
 static void vlog(int lv, const char* fmt, va_list ap) {
     int vip = (lv & VIP) != 0;
     lv &= 15;
     if (!log_file_on) return; /* logging off: nothing below runs, not even the level test */
-    if (lv > pass_lv) return; /* CONLV: one compare; the sinks check their own level in drain_locked */
+    if (lv > pass_lv && !prof_force) return; /* CONLV: one compare; the sinks check their own level in drain_locked */
     if (!writer_th) return; /* no writer: drop the line, never touch SD, socket or stdout on the caller */
     /* Queue full: one atomic add and out, before any formatting work, so a flood costs almost nothing. */
     if (__atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
@@ -389,6 +391,7 @@ static void vlog(int lv, const char* fmt, va_list ap) {
     }
     sl->len = (u16)n;
     sl->lv = (u8)lv;
+    sl->pad = (u8)prof_force;
     __atomic_store_n(&sl->state, 1, __ATOMIC_RELEASE);
     /* Wake the writer when the queue was empty or is half full. Otherwise its 250 ms timeout collects the lines. */
     u32 t = __atomic_load_n(&q_tail, __ATOMIC_RELAXED);
@@ -400,6 +403,47 @@ PM_LOG_FN(pm_log_e, 0)
 PM_LOG_FN(pm_log_w, 1)
 PM_LOG_FN(pm_log_i, 2)
 PM_LOG_FN(pm_log_d, 3)
+/* PROF4: the prof line. Queued at warn level and written to log.txt in prof mode (the only line that prints there). */
+void pm_log_prof_line(const char* fmt, ...) {
+    va_list ap; va_start(ap, fmt);
+    prof_force = 1; vlog(1, fmt, ap); prof_force = 0;
+    va_end(ap);
+    wake_writer();
+}
+/* PROF4: switch prof. Keeps log.txt open; only prof lines are written (level none, console off). Removes the stat words
+ * phase, pmu, fsplit, sp0c, texstat, audiostat, pacestat, logstat, drawcensus, drawlog from the switch string. Without prof it does nothing.
+ * boot_line 1 prints "prof=1 log=off". Ceiling: a later pm_log_set_level or the options panel log toggle is undone by the next call. */
+void pm_log_prof_apply(int boot_line) {
+    static const char* const off_w[] = { "phase", "pmu", "fsplit", "sp0c", "texstat", "audiostat", "pacestat", "logstat", "drawcensus", "drawlog", NULL };
+    char v[16];
+    if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) { prof_mode = 0; return; }
+    prof_mode = 1;
+    static char out[sizeof switches];
+    size_t o = 0;
+    char* p = switches;
+    while (*p) {
+        while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+        char* e = p;
+        while (*e && *e != ' ' && *e != '\t' && *e != '\n' && *e != '\r') e++;
+        size_t L = (size_t)(e - p);
+        int drop = 0;
+        for (const char* const* w = off_w; *w && !drop; w++) {
+            size_t k = strlen(*w);
+            drop = L >= k && !strncmp(p, *w, k) && (L == k || p[k] == '=');
+        }
+        if (L && !drop) { if (o) out[o++] = ' '; memcpy(out + o, p, L); o += L; }
+        p = e;
+    }
+    out[o] = 0;
+    strcpy(switches, out);
+    dbg_cache_clear();
+    if (!log_file_on) pm_log_set_file(1);
+    log_level = -1;
+    con_lv = 4;
+    pass_recalc();
+    if (boot_line) pm_log_prof_line("prof=1 log=off");
+}
+int pm_log_prof_mode(void) { return prof_mode; }
 PM_LOG_FN(pm_log, 2) /* an old call is info */
 PM_LOG_FN(pm_log_hw, 3 | VIP) /* HWM1: a measurement line at debug level that the queue keeps longest */
 
@@ -595,7 +639,7 @@ static void drain_locked(void) {
         Slot* sl = &slots[t % SLOTS];
         if (__atomic_load_n(&sl->state, __ATOMIC_ACQUIRE) != 1) break;
         int n = sl->len;
-        int tf = sl->lv <= fl, tc = sl->lv <= cl;
+        int tf = sl->pad || sl->lv <= fl, tc = !sl->pad && sl->lv <= cl; /* PROF4: pad 1 = prof line, file only */
         int skip = 0, cn = 0;
         if (tc) { /* the console text is the line after "#<seq> " */
             const char* sp = (const char*)memchr(sl->text, ' ', (size_t)n);

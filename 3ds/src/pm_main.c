@@ -610,6 +610,7 @@ void pm_frame_loop(void) {
     }
 }
 
+void pm_log_prof_apply(int boot_line); /* PROF4, pm_log.c */
 static void game_thread(void* arg) {
     (void)arg;
     pm_crash_install(crash_stack, sizeof(crash_stack));
@@ -633,6 +634,14 @@ static void game_thread(void* arg) {
         if (n && n + 1 < sizeof(sw)) sw[n++] = ' ';
         strncat(sw, args, sizeof(sw) - strlen(sw) - 1);
     }
+    { /* PROF4: options.ini prof=1 adds the word prof, as a launch argument does. pm_options_init runs later and re-applies it. */
+        FILE* oi = fopen("options.ini", "r");
+        static char ln[32];
+        if (oi) {
+            while (fgets(ln, sizeof ln, oi)) if (!strncmp(ln, "prof=1", 6) && strlen(sw) + 6 < sizeof sw) { strcat(sw, " prof"); break; }
+            fclose(oi);
+        }
+    }
     pm_log_set_switches(sw);
     pm_log_init(live);
     pm_log_start();
@@ -651,6 +660,7 @@ static void game_thread(void* arg) {
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     if (sw_cut) pm_log_e("switches: debug3ds.txt is longer than 255 bytes. The last word and the rest are cut. Use tour=@file for a long map list.");
     pm_options_init();
+    pm_log_prof_apply(1); /* PROF4: re-applies after pm_options_init set the levels, and prints the boot line */
     pm_ph_init(); /* after the log gate: phase, prof, pmu and fsplit read the final pm_log_file() */
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
