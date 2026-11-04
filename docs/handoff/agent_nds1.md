@@ -131,3 +131,19 @@ Next steps, in order:
 5. Gate: census equal (`cen f200` multiset) on census_yard and census_toad with `azt.ps1 <scenario> -Row NDS1 -Build nds1`, justification line first in `3ds/logs/perf/status_NDS1.txt`. Region diff and fsplit after census passes.
 
 Open risk: trailing state after the trigger now runs before it (default 1). The first picture must show it.
+
+## Step 2 status (code agent, 2026-11-04): no code change, design gaps found
+
+No source change. No Azahar start. Tree at 5f2e56011 plus this section.
+
+Facts from the read (line numbers at 5f2e56011):
+1. Capture key. rec_try (pm_gbi.c ~3597) stores rec_g0 and the slot texture words. comb_w0/comb_w1 (pm_gbi.c:390) and the mode words are not in RecKey. Step 2 must copy them at capture start, next to rec_g0, or the template key is wrong.
+2. Palette words. The 0x2C1 body data is the 16 words of pcomp[gm] (pm_gpu.c:834, uploaded at 987 and 1009 with C3D_FVUnifMtx4x4). So nat_mtx[0][gm] must hold pcomp[gm], and gm must be below NAT_MTX_MAX (96). pal_tab (pm_gpu.c:2194, 2273) sets the table per frame. The gm range is not checked yet. Check it before the slice.
+3. Replay bypasses the census. pm_gpu_rec_play (pm_gpu.c:2555) calls GPUCMD_AddRawCommands and never calls cen_add. cen_add has one call site (pm_gpu.c:1064, flush_draw). So census_yard and census_toad cannot show the replayed draws as they are. The census gate needs a census line for the raw path (per draw: template id, tex0, tex1, triangle count) before the gate can compare the old and new multisets.
+4. Replay refuses on a moving model. rec_play (pm_gbi.c ~3750) requires dlc_gmi() == k->gmc. Any moving model fails that check, so the palette is the only per-draw input that breaks replay. pm_gpu_rec_play copies the captured body and patches nothing except the uniform dirty bits.
+5. The eye loop is in gbi_task (pm_nusys.c:81), which runs pm_gbi_run twice when stereo. Step 2 changes that loop. It is not a local edit.
+
+Decision needed before code:
+A. Palette patch at play time (smallest): in pm_gpu_rec_play, copy pcomp[gm_now] (16 words) into the body at each palette data position from the patch table, and drop the gmc refusal for static records. This keeps the captured body and needs no NatRec. It does not meet the plan's per-draw NatRec design.
+B. Full nat design as written in the plan (templates, NatRec, nat_order, nat_emit, nat_eye_copy). It needs items 1 to 5 solved first, plus a census line on the raw path. This is several code agents of work.
+Recommendation: A first as a measured slice, then B. Ask the user (AskUserQuestion, rule 10).
