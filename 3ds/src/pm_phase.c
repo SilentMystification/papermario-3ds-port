@@ -289,6 +289,7 @@ extern unsigned pm_step_calls;
 extern unsigned pm_ph_iv;
 unsigned long long pm_gbi_sp0_dlc(void); /* pm_gbi.c: dlc group ticks, summed in sampled frames only */
 int pm_pf_on;
+void pm_log_prof_line(const char* fmt, ...); /* PROF4, pm_log.c */
 int pm_pf_arm; /* prof samples: prof on and phase off. pm_gbi.c skips its phase reports while it is set */
 static int pf_want;
 static unsigned pf_every = 30;
@@ -330,7 +331,7 @@ static void pf_report(void) {
     unsigned cy = pf_pfr ? (unsigned)(pf_pe[2] / pf_pfr) : 0u; /* CCNT per clean frame */
     unsigned p0 = pf_pe[2] ? (unsigned)(pf_pe[0] * 1000ull / pf_pe[2]) : 0u; /* permille of cycles */
     unsigned p1 = pf_pe[2] ? (unsigned)(pf_pe[1] * 1000ull / pf_pe[2]) : 0u;
-    pm_log_w("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c %u %u cyc %u pm %u %u | st %u vb %u iv %u %u %u %u",
+    pm_log_prof_line("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c %u %u cyc %u pm %u %u | st %u vb %u iv %u %u %u %u",
              pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort,
              pf_sms[0] / sn, (float)((double)pf_dlc_t / TICKS_MS) / sn, pf_sms[1] / sn, pf_sms[2] / sn,
              pf_set, e0, e1, cy, p0, p1, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
@@ -415,7 +416,7 @@ static void pf_init(void) {
     for (int i = 0; i < 50; i++) pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     unsigned p1 = pm_ticks();
     double pmu_us = (double)(p1 - p0) / 50.0 / 268.112;
-    pm_log_w("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", pf_every, pf_set, (double)dt / 200.0 / 268.112,
+    pm_log_prof_line("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", pf_every, pf_set, (double)dt / 200.0 / 268.112,
              pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
 }
 
