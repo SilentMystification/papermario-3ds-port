@@ -2530,7 +2530,8 @@ unsigned pm_gpu_view_key(void) {
     h = h * 31u + (unsigned)sci_y0; h = h * 31u + (unsigned)sci_y1;
     return h * 8u + (pm_wide ? 1u : 0u) + (ui_ortho ? 2u : 0u) + (off_active ? 4u : 0u);
 }
-u32 pm_gpu_rec_ia_phys(void) { return ia ? (u32)osConvertVirtToPhys(ia) : 0u; } /* N4 2b: nat_idx_base */
+/* N4 2b: nat_idx_base. GPU index address = phys - 0x18000000, bit 31 set (measured, map_gdl_walker.md section 0). */
+u32 pm_gpu_rec_ia_phys(void) { return ia ? (0x80000000u | ((u32)osConvertVirtToPhys(ia) - 0x18000000u)) : 0u; }
 /* P3a: 1 when the n indices at byte offset off of the arena equal sd, -1 when the span is outside the arena, 0 otherwise. */
 int pm_gpu_rec_ia_eq(u32 off, const u16* sd, u32 n) {
     if (!ia || (off & 1u) || (off >> 1) + n > REC_IDX_N) return -1;
