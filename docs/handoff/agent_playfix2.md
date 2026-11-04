@@ -20,3 +20,10 @@
 - Build: `py 3ds/tools/gen_map_restore.py`, then `PM_LANE=<lane> sh 3ds/build.sh`, then restore src/map_restore_table.c from the user copy.
 - Test: `PM_ROW=<row> powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 <scenario> -Row <row> -Build <lane>` (add -Try for an unverified scenario).
 - Justification: one line in 3ds/logs/perf/status_<row>.txt before each start.
+
+## svcBreak cause (INFERRED, from source; not measured)
+- Queue limit: citro3d gxQueue.maxEntries = 32 (pica2 c3d/source/base.c:91). gxCmdQueueAdd breaks when numEntries == maxEntries (libctru gxqueue.c:64).
+- Queue runs only at C3D_FrameBegin or the frame end path (renderqueue.c:122, 240).
+- In-frame texture load: C3D_SyncTextureCopy calls C3D_FrameSplit then queues one GX_TextureCopy (renderqueue.c:430-435). C3D_TexLoadImage uses it (texture.c:122).
+- The splash loads one window per particle (water_splash.c:206, 40 parts). That is about 40 queued copies in one frame, more than 32. Grabs add a few more.
+- Fix needs a drain: gxCmdQueueWait on the bound queue when the count nears 32. The bound queue pointer is not public (ctx->gxQueue in C3Di_GetContext). Open decision: (1) expose the queue pointer and wait at about 24 entries, or (2) one full-frame load per splash frame and UV sampling (bigger change in water_splash.c and pm_gbi.c).
