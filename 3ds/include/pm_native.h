@@ -46,14 +46,7 @@ extern uint32_t nat_idx_base;             /* index arena base address, set per f
 int nat_tmpl_add(uint32_t cw0, uint32_t cw1, uint32_t geom, uint32_t oh, uint32_t ol, int z, int decal, int blend, int atest,
     int t1only, PmPlan* plan_out, int* rc_out);
 
-/* Fill template id from one captured record of n words: the six per-draw commands go to grp, the rest to blk. Returns blen, -1 when the
- * record does not split (missing or repeated per-draw command, bad walk, too long). */
-int nat_tmpl_strip(unsigned id, const uint32_t* w, unsigned n);
 
-/* NatRec of each draw of a captured record (n words, arena copy after pm_gpu_rec_idx). The k-th 0x227 p0 is the draw's index address, phys in
- * the arena: idx_off = address - base (base = phys of the index arena). The k-th 0x228 p0 is nidx. tex: unit 0 handle in the low 16 bits, unit 1
- * in the high 16 bits (slot + 1, 0 none). Returns nd, -1 when the counts differ from nd or an address is outside the arena (128 KB). */
-int nat_rec_write(NatRec* out, unsigned nd, const uint32_t* w, unsigned n, unsigned tid, unsigned gm, uint32_t tex, uint32_t base);
 
 /* E2: texture block (4 words) to id, keyed by content. Returns the id (0..NAT_TEX_MAX-1), or -1 when the table is full. */
 int nat_tex_id(const uint32_t* blk);
@@ -70,18 +63,6 @@ unsigned nat_emit(const NatRec* rec, unsigned n, const uint16_t* ord, uint32_t* 
 /* Eye 2 without a second walk: copy the eye 1 span, then write the eye 2 palette words at each logged position. */
 void nat_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NatMtxLog* log, unsigned nlog, unsigned eye);
 
-/* PMOD P1: bake record of one static model DL (per map). The index lists are copied into a linear pool set by nat_pool_set. */
-#define NAT_MODEL_MAX 64
-typedef struct { uint32_t dl; uint16_t nseg; uint32_t nv, nidx; uint8_t ok; } NatModel;
-extern NatModel nat_model[NAT_MODEL_MAX];
-extern unsigned nat_nmodel;
-void nat_pool_set(void* base, unsigned bytes); /* base: linear memory (3DS caller); host test: malloc */
-void pm_gpu_nat_pool_init(void);              /* pm_gpu.c: linear pool of NAT_POOL_BYTES, once */
-#define NAT_POOL_BYTES (128u * 1024u)
-void nat_model_reset(void);                    /* clears the models and the pool (per map generation) */
-const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n); /* copies n indices, packed (E4a). NULL when full or unset */
-long nat_pool_off(const uint16_t* p); /* E4b: byte offset of p in the pool, -1 when outside */
 uint32_t nat_gpu_addr(uint32_t phys); /* E3: GPU index address word of a phys address */
-void nat_model_bake(uint32_t dl, unsigned nseg, unsigned nv, unsigned nidx, unsigned ok); /* adds a record; no-op when the table is full */
 
 #endif

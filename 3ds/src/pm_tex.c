@@ -740,12 +740,6 @@ unsigned pm_tex_census_id(int unit) {
     return aux < 0 || !slots[aux].live ? 0u : slot_census_id(&slots[aux]);
 }
 /* UC3e: 1 when a record may draw slot s (-1 none): the slot is live and not in its load frame. Touches it as a bind does. */
-int pm_tex_rec_use(int s) {
-    if (s < 0) return 1;
-    if (s >= SLOTS || !slots[s].live || slot_draws_stage(&slots[s])) return 0;
-    TOUCH(&slots[s]);
-    return 1;
-}
 
 static const C3D_Tex* tex_for_draw(Slot* s) {
     if (slot_draws_stage(s)) {

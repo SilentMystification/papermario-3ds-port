@@ -47,66 +47,8 @@ int nat_tmpl_add(uint32_t cw0, uint32_t cw1, uint32_t geom, uint32_t oh, uint32_
     return id;
 }
 
-/* Per-draw commands. Palette: the last 0x2C1 write of 16 words (c 15) and the 0x2C0 index before it (the first 0x2C1 of a capture is the
- * same in every model, so it stays in the template). Others: unit 0 and unit 1 texture blocks (0x081, 0x091, c 4), index address and count
- * (0x227, 0x228, c 0), trigger (0x22F, c 0). goff: word offset in grp. */
-static const struct { uint32_t reg, c, goff; } nat_kind[5] = {
-    { 0x081, 4, 20 }, { 0x091, 4, 26 }, { 0x227, 0, 32 }, { 0x228, 0, 34 }, { 0x22F, 0, 36 },
-};
 #define NAT_GOFF_IDX 0   /* 0x2C0 index word */
 #define NAT_GOFF_PAL 2   /* 0x2C1 palette command */
-
-/* Returns blen, or -1 (does not split), or -3 (a draw of a multi-draw record has state words between its groups: the template
- * cannot be emitted once before the groups). Records with one draw keep the old rule (state words anywhere). */
-int nat_tmpl_strip(unsigned id, const uint32_t* w, unsigned n) {
-    if (id >= NAT_TMPL_MAX) return -1;
-    NatTmpl* t = &nat_tmpl[id];
-    /* pass 1: palette commands P (the first 0x2C1 of a capture is a state word, the last nd are the draws), per-draw kinds K (one per draw),
-     * the index command before the first draw palette */
-    unsigned P = 0, kc[5] = { 0, 0, 0, 0, 0 }, pal0 = ~0u, pidx0 = ~0u, i = 0;
-    while (i + 1 < n) {
-        uint32_t hd = w[i + 1], reg = hd & 0x3FFu, c = (hd >> 20) & 0xFFu;
-        unsigned len = 2u + c + (c & 1u);
-        if (i + len > n) return -1;
-        if (reg == 0x2C1 && c == 15) P++;
-        else for (int j = 0; j < 5; j++) if (reg == nat_kind[j].reg && c == nat_kind[j].c) kc[j]++;
-        i += len;
-    }
-    if (i != n) return -1;
-    unsigned nd = kc[2]; /* draws = index address commands. A texture or index count command is left out when the draw keeps the state: the group still carries it */
-    if (nd == 0 || nd > P) return -1;
-    if (kc[3] != nd || kc[4] != nd || kc[0] > nd || kc[1] > nd) return -1;
-    unsigned first_draw = P - nd; /* ordinal of the first draw palette */
-    /* pass 2: the draw group prototype (draw 0), state words to blk in order */
-    unsigned found[5] = { 0, 0, 0, 0, 0 }, nb = 0, pal_seen = 0; i = 0;
-    while (i + 1 < n) {
-        uint32_t hd = w[i + 1], reg = hd & 0x3FFu, c = (hd >> 20) & 0xFFu;
-        unsigned len = 2u + c + (c & 1u), nx = i + len;
-        int is_pal = reg == 0x2C1 && c == 15;
-        int next_draw_pal = nx + 1 < n && (w[nx + 1] & 0x3FFu) == 0x2C1u && ((w[nx + 1] >> 20) & 0xFFu) == 15u && pal_seen + 1 > first_draw;
-        int is_draw_pal = is_pal && pal_seen >= first_draw;
-        int k = -1;
-        for (int j = 0; j < 5; j++) if (reg == nat_kind[j].reg && c == nat_kind[j].c) k = j;
-        if (is_pal) {
-            if (is_draw_pal) { if (pal0 == ~0u) pal0 = i; if (i == pal0) memcpy(t->grp + NAT_GOFF_PAL, w + i, len * sizeof(uint32_t)); }
-            else { if (nb + len > NAT_TMPL_WORDS) return -1; memcpy(t->blk + nb, w + i, len * sizeof(uint32_t)); nb += len; }
-            pal_seen++;
-        } else if (next_draw_pal) {
-            if (pidx0 == ~0u) { pidx0 = i; memcpy(t->grp + NAT_GOFF_IDX, w + i, len * sizeof(uint32_t)); }
-        } else if (k >= 0) {
-            if (!found[k]++) memcpy(t->grp + nat_kind[k].goff, w + i, len * sizeof(uint32_t));
-        } else {
-            if (nd > 1 && pidx0 != ~0u) return -3; /* state after the first draw: the template is not emitted once */
-            if (nb + len > NAT_TMPL_WORDS) return -1;
-            memcpy(t->blk + nb, w + i, len * sizeof(uint32_t));
-            nb += len;
-        }
-        i += len;
-    }
-    for (int j = 0; j < 5; j++) if (!found[j]) return -1;
-    t->blen = (uint16_t)nb;
-    return (int)nb;
-}
 
 /* One LSD pass: stable counting sort of in[] by tex0 (by_tex) or by tmpl. Keys: tex0 < NAT_TEX_MAX, tmpl < NAT_TMPL_MAX. */
 static void nat_pass(const NatRec* rec, const uint16_t* in, uint16_t* out, unsigned len, int by_tex) {
@@ -175,32 +117,6 @@ void nat_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NatMtxL
     for (unsigned k = 0; k < nlog; k++) memcpy(dst + log[k].at, nat_mtx[eye][log[k].slot], 16 * sizeof(uint32_t));
 }
 
-/* NatRec writer (N4 step 2b). Pure C. Walk as in nat_tmpl_strip: a command is hd = w[i + 1], its p0 is w[i]. */
-unsigned nat_wr_why[6]; unsigned nat_wr_off, nat_wr_base; /* N4 step 1: last offset refused by case 2 */ /* N4 step 1: refusal counts of nat_rec_write (0 tid or gm, 1 length, 2 index offset, 3 nidx, 4 count) */
-int nat_rec_write(NatRec* out, unsigned nd, const uint32_t* w, unsigned n, unsigned tid, unsigned gm, uint32_t tex, uint32_t base) {
-    if (tid >= NAT_TMPL_MAX || gm >= NAT_MTX_MAX) { nat_wr_why[0]++; return -1; }
-    unsigned ka = 0, kc = 0, i = 0;
-    while (i + 1 < n) {
-        uint32_t hd = w[i + 1], reg = hd & 0x3FFu, c = (hd >> 20) & 0xFFu;
-        unsigned len = 2u + c + (c & 1u);
-        if (i + len > n) { nat_wr_why[1]++; return -1; }
-        if (!(hd >> 31) && c == 0 && reg == 0x227) {
-            uint32_t off = w[i] - base;
-            if (ka >= nd || off >= 0x20000u) { nat_wr_why[2]++; nat_wr_off = off; nat_wr_base = base; return -1; }
-            out[ka++].idx_off = off;
-        } else if (!(hd >> 31) && c == 0 && reg == 0x228) {
-            if (kc >= nd || w[i] > 0xFFFFu) { nat_wr_why[3]++; return -1; }
-            out[kc++].nidx = (uint16_t)w[i];
-        }
-        i += len;
-    }
-    if (ka != nd || kc != nd) { nat_wr_why[4]++; return -1; }
-    for (unsigned k = 0; k < nd; k++) {
-        out[k].tmpl = (uint8_t)tid; out[k].tex0 = (uint8_t)(tex & 0xFFu); out[k].tex1 = (uint8_t)((tex >> 16) & 0xFFu);
-        out[k].flags = 0; out[k].mtx = (uint16_t)gm; out[k].vtx_base = 0;
-    }
-    return (int)nd;
-}
 
 /* E2: texture block id by content. Id 0 is the all-zero block; ids 1..NAT_TEX_MAX-1 are found by an equal block or taken by the first empty slot. Returns -1 when full. */
 int nat_tex_id(const uint32_t* blk) {
@@ -213,38 +129,6 @@ int nat_tex_id(const uint32_t* blk) {
     return -1;
 }
 
-/* PMOD P1: bake records. ponytail: bump pool, no free; the map generation resets it. Upgrade to per-DL free when maps grow past the pool. */
-NatModel nat_model[NAT_MODEL_MAX];
-unsigned nat_nmodel;
-static uint8_t* nat_pool_base;
-static unsigned nat_pool_size, nat_pool_used;
-
-void nat_pool_set(void* base, unsigned bytes) { nat_pool_base = (uint8_t*)base; nat_pool_size = bytes; nat_pool_used = 0; }
-
-void nat_model_reset(void) { nat_nmodel = 0; nat_pool_used = 0; }
-
 /* E3: GPU index address of a physical address (bit 31 set, relative to 0x18000000, map_gdl_walker.md section 0). The caller passes the phys of a pool or arena pointer. */
 uint32_t nat_gpu_addr(uint32_t phys) { return 0x80000000u | (phys - 0x18000000u); }
 
-/* E4a: packed, no 32-byte round, so consecutive groups are contiguous (map_e4.md section 3). */
-const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n) {
-    unsigned bytes = n * 2u;
-    if (!nat_pool_base || nat_pool_used + bytes > nat_pool_size) return NULL;
-    uint16_t* d = (uint16_t*)(nat_pool_base + nat_pool_used);
-    memcpy(d, idx, n * sizeof(uint16_t));
-    nat_pool_used += bytes;
-    return d;
-}
-
-/* E4b: byte offset of p in the pool, -1 when p is not in the pool. */
-long nat_pool_off(const uint16_t* p) {
-    const uint8_t* b = (const uint8_t*)p;
-    if (!nat_pool_base || b < nat_pool_base || b >= nat_pool_base + nat_pool_size) return -1;
-    return (long)(b - nat_pool_base);
-}
-
-void nat_model_bake(uint32_t dl, unsigned nseg, unsigned nv, unsigned nidx, unsigned ok) {
-    if (nat_nmodel >= NAT_MODEL_MAX) return;
-    NatModel* m = &nat_model[nat_nmodel++];
-    m->dl = dl; m->nseg = (uint16_t)nseg; m->nv = nv; m->nidx = nidx; m->ok = (uint8_t)(ok != 0);
-}

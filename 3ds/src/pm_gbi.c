@@ -7,7 +7,6 @@
 #include "pm_gbi.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
-#include "pm_native.h"
 #include "pm_port.h"
 #include "variables.h"
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
@@ -83,8 +82,6 @@ static PM_HOTD int mv_sp;
 static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
 static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 static PM_HOTD unsigned geom;
-static u32 rec_gdl; /* UC3e: G_DL address of the static list entered in the capture */
-static int rec_on; static unsigned rec_dln, rec_gin, rec_gout, rec_fl; /* UC3d: a capture is open; static lists entered; geom at entry and exit; fl bit 0 wind <= 0, bit 1 tri_since_vtx at exit */
 static PM_HOTD unsigned omode_h;
 void pm_tex_set_filter(int linear);
 static PM_HOTD unsigned omode_l = 0x00000030u; /* Z_CMP | Z_UPD until a list sets a mode */
@@ -2308,7 +2305,6 @@ void pm_gbi_win_reset(void) {
     memset(sp0_T, 0, sizeof sp0_T); sp0_skip = sp0_grp = 0; /* SPLIT0C */
 }
 
-static void rec_report(void); /* RC1 (defined with the record capture) */
 void pm_gbi_end_frame(void) {
     if (pm_debug_has("seamstat") && pm_frame_count() % 120 == 0) pm_log_d("seam: cpu path triangles, object route %u, clip route %u (totals), raw path %u", seam_obj, seam_clip, gv_tri_n);
     /* One second of presented frames, summed. Identical seconds are not written. */
@@ -2318,7 +2314,6 @@ void pm_gbi_end_frame(void) {
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0, n_splits, pm_gpu_off_count(), n_grabs);
     PH_ADD(C_CMD, n_ops);
     { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); } }
-    { static unsigned rec_fr; if (++rec_fr >= 300) { rec_fr = 0; rec_report(); } } /* RC1: one rec line per 300 frames */
     if (pm_ph_on || pm_dcs_on) pm_gpu_dcsum_frame(rm_frame); /* DS0: dcsum runs without phase; it must clear pm_dc_c and pm_dc_us every frame */
     if (pm_ph_on && !pm_pf_arm) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mdc_report(); sp0_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
@@ -2748,11 +2743,9 @@ static const u8 g1_skip[256] = { [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILE
 /* C1: texture bind records. tb_list[idx] holds the handle's Gfx list only when pm_texbind_set has checked it. A list
  * holds only the ops make_texture_gfx emits (and g1_skip ops). A refused list stores NULL. */
 static const Gfx* tb_list[128];
-u32 tb_gen[128]; /* SR1: per handle, bumped at each pm_texbind_set */
 void pm_texbind_set(int idx, const Gfx* l) {
     tex_gen++; /* TBREP */
     tb_list[idx & 0x7f] = NULL;
-    tb_gen[idx & 0x7f]++;
     if (!l) return;
     for (int n = 0; n < 64; n++) {
         unsigned op = l[n].words.w0 >> 24;
@@ -3557,341 +3550,6 @@ static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
     }
 }
 
-/* RC1: record capture (copy path). rec_try starts a capture for a plain opaque model (header w1 bit 9) whose key is not current.
- * rec_done ends it and copies the group words into the arena. Key: pmRecVer of the slot and gen (global word). Cold per model per key
- * change. The capture only observes: the group draws as before. */
-extern unsigned gstat_gen;
-extern unsigned pm_rec_ver(unsigned slot); /* model.c */
-extern unsigned pm_rec_tex(unsigned slot); /* model.c: texture handle of the slot, 0 none */
-/* 32 B. state 0 none, 1 record, 2 refused, 3 churn guard (4 builds since the arena reset: no capture). RK2: hgen = tb_gen of the
- * handle, tgen0/tgen1 = generation of the cache slots on unit 0 and 1 at the capture end (REC_NO_SLOT none). nb = builds since reset. */
-/* UC2: grp = fragment-op group words (ctx+0xF0..0xFC, texunit config ctx+0x110, flags ctx+0x20) at capture start. A record is reused only when they match (diag_uc2_j75.md). 48 B. */
-typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[12];
-    u32 io, ic; /* UC3c: index arena span (pm_gpu_rec_idx) */
-    u32 gin, gout, view; u16 alen; u8 npt, nd, fl, pp, nat; /* nat: NatRec words of the draws are valid (N4 2b). pp: the palette words of the body are the rows of pcomp[gmc] (N1) */ /* UC3d: geom at list entry and exit, pm_gpu_view_key, arena words used (body, patch table), patch count, draws, fl */
-    u32 gmc, gdl; /* UC3e: game matrix of the palette at capture, the static list (G_DL address) */
-} __attribute__((aligned(32))) RecKey;
-u32 pm_gpu_rec_ia_phys(void); /* pm_gpu.c, N4 2b: phys base of the index arena (nat_idx_base) */
-#define REC_NO_SLOT 0xffffu
-#define REC_ARENA_WORDS (64u * 1024u)
-#define REC_MAX_WORDS 1024u
-static RecKey rk[256];
-static u32* ra; static u32 ra_n, ra_gen; static int ra_fail;
-static unsigned rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, rec_bytes;
-static unsigned rec_rb, rec_ls; /* RK1: recaptures of a slot with an earlier key, last such slot */
-static unsigned rec_mv, rec_mh, rec_mt; /* RK2: recaptures by the field that differs: model version, texture handle, cache slot generation */
-static unsigned rec_hit, rec_bad, rec_miss; /* UC2: reccheck compares (hit), words outside patch slots (bad), patch tables (miss) */
-static unsigned rec_mg; /* UC2: valid records not compared, the group words differ at capture start */
-static unsigned rec_stg; /* UC3b: captures refused, a bound texture slot is in its load frame */
-/* UC2: group words of the capture in flight, read after its pm_gpu_rec_begin flush. N1: [7], [8] raw G_SETCOMBINE words, [9], [10] the mode words (omode_h, omode_l) */
-static u32 rec_g0[12]; /* N3: [11] the primitive colour when leg_mode is 1, 5, 6 or 7 (TEV constant), else 0 */
-#define NAT_MTX_MAX 96u /* N1: a record holds game matrices below this (pm_gpu.c) */
-#define REC_CEN_MAX 64u /* N1: census tuples of one record window (pm_gpu.c) */
-static int nat_logged; /* N1: the gm refusal is logged once */
-void pm_gpu_grp_get(u32* g); /* pm_gpu.c, UC2: ctx+0xF0..0xFC */
-int pm_gpu_rec_palok(const u32* w, unsigned n, const void* pt, unsigned npt, unsigned gm); /* pm_gpu.c, N1 */
-unsigned pm_gpu_rec_cen_n(void); /* pm_gpu.c, N1: census tuples of the window */
-void pm_gpu_rec_rmode(int* z, int* decal, int* blend, int* atest); /* pm_gpu.c, N4: render mode key of a template */
-void pm_gpu_rec_cen_copy(u32* dst, unsigned n); /* pm_gpu.c, N1: 4 words each */
-unsigned pm_gpu_rec_fj(void); /* pm_gpu.c, UC2: first bad word of the last compare */
-void pm_gpu_rec_cls(unsigned* c); /* pm_gpu.c, UC3M: differing words per class (oth, adr, pal, uni) */
-int pm_gpu_rec_idx(u32* w, u32 n, u32* io, u32* ic); /* pm_gpu.c, UC3c: copy the indices to the arena, rewrite 0x227 p0 */
-void pm_gpu_rec_idx_reset(void); /* pm_gpu.c, UC3c */
-unsigned pm_gpu_rec_ichk(u32 io, u32 ic); /* pm_gpu.c, UC3c: differing indices of the span against this window */
-unsigned pm_gpu_view_key(void); /* pm_gpu.c, UC3d: hash of the scissor, wide, ortho and off-screen state */
-void pm_gpu_rec_pt_copy(void* dst, unsigned n); /* pm_gpu.c, UC3d: the last walk's patch table (RecPatch, 4 B each) */
-unsigned pm_gpu_rec_gm_cap(void); /* pm_gpu.c, UC3e */
-int pm_gpu_rec_play(const u32* w, u32 n, const void* pt, unsigned npt, unsigned nd, unsigned gm, const u32* cen, unsigned ncen); /* pm_gpu.c, UC3e/N1 (pt: RecPatch array, 4 B each; gm ~0 unpatched) */
-int pm_tex_rec_use(int s); /* pm_tex.c, UC3e: slot live and not in its load frame (-1 none) */
-static unsigned rec_ibad; /* UC3c: index words differing in reccheck */
-static unsigned rec_runs; /* UC3e: lists replayed from a record (rec_play) */
-/* N4 step 1: counts of each refusal on the record build and replay path (cumulative). nat_why_report prints them at the census frame. */
-enum { NW_LOOK, NW_KEY, NW_GRP, NW_CALL, NW_STATE, NW_GDL, NW_GEOM, NW_WIND, NW_TEXUSE, NW_DLC, NW_BOX, NW_NAT, NW_GMRP, NW_NO, NW_PLAY, NW_NONAT, NW_B_GM, NW_B_TMPL, NW_B_GMV, NW_B_TEX, NW_B_WRITE, NW_B_NAT, NW_N };
-static const char* const nw_name[NW_N] = {"look", "key", "grp", "call", "state", "gdl", "geom", "wind", "texuse", "dlc", "box", "nat", "gmrp", "no", "play", "nonat", "b_gm", "b_tmpl", "b_gmv", "b_tex", "b_write", "b_nat"};
-static unsigned nat_why[NW_N];
-static unsigned nat_gw[12]; /* N4 step 1: words of the group that differ at a NW_GRP refusal */
-extern unsigned nat_wr_why[6]; /* pm_native.c */
-extern unsigned nat_wr_off, nat_wr_base; /* pm_native.c */
-#define NW(i) (nat_why[i]++)
-void nat_why_report(unsigned fr) {
-    char b[512]; unsigned o = 0;
-    o += (unsigned)snprintf(b, sizeof b, "N4 why f%u", fr);
-    for (unsigned i = 0; i < NW_N; i++) o += (unsigned)snprintf(b + o, sizeof b - o, " %s %u", nw_name[i], nat_why[i]);
-    pm_log_d("%s", b);
-    o = (unsigned)snprintf(b, sizeof b, "N4 why f%u grpw", fr);
-    for (unsigned i = 0; i < 12; i++) o += (unsigned)snprintf(b + o, sizeof b - o, " %u", nat_gw[i]);
-    o += (unsigned)snprintf(b + o, sizeof b - o, " wr");
-    for (unsigned i = 0; i < 5; i++) o += (unsigned)snprintf(b + o, sizeof b - o, " %u", nat_wr_why[i]);
-    pm_log_d("%s", b);
-    pm_log_d("N4 why wr2 off %08lx base %08lx", (unsigned long)nat_wr_off, (unsigned long)nat_wr_base);
-}
-static int rec_chk; /* UC2: the capture in flight compares a valid record (reccheck switch) */
-static int rec_chk_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("reccheck"); return v; }
-static int rec_play_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("recplay"); return v; } /* UC3e: replay on only with the debug string recplay (default off) */
-static RecKey* rec_rp; /* UC3e: the record whose static list the next G_DL of this group may replay */
-
-static u16 rec_hgen(unsigned m) { unsigned h = pm_rec_tex(m); return h ? (u16)tb_gen[h & 0x7fu] : 0; }
-static u16 rec_tgen(u16 s) { return s == REC_NO_SLOT ? 0 : (u16)pm_tex_slot_gen((int)s); }
-
-/* UC2: rec_g0 = the group words (pm_gpu_grp_get) and the texture slots of units 0 and 1 (pm_tex_cur_slots) at capture start. Unit 1 decides
- * the TEV stage 1 write (pm_tex_bind_aux in flush_draw), so its slot index is part of the start state (START 28: flags word alone did not change the count). */
-static void rec_g0_set(void) {
-    int a, b; pm_gpu_grp_get(rec_g0); pm_tex_cur_slots(&a, &b);
-    rec_g0[6] = (u32)(a + 1) | ((u32)(b + 1) << 16);
-    rec_g0[7] = comb_w0; rec_g0[8] = comb_w1; rec_g0[9] = omode_h; rec_g0[10] = omode_l; /* N1: the combiner and mode words are part of the key */
-    sync_combine(); /* N3b: the key reads the combine state after the pending SETCOMBINE and PRIMCOLOR are applied */
-    rec_g0[11] = (leg_mode == 1 || leg_mode == 5 || leg_mode == 6 || leg_mode == 7) ? prim : 0; /* N3: prim reaches the TEV constant only in these modes (pm_gpu.c flush_tev_rebuild) */
-}
-/* E5-2: learning capture of one map static group (dlc_learn, pm_dlc.inc.c). Begin before the group draws live, end after it. */
-int pm_gpu_rec_fw(uint32_t (*out)[4]);
-void dlc_learn_begin(void) { pm_gpu_rec_begin(); rec_g0_set(); }
-int dlc_learn_end(u32 geom, int* rr) {
-    u32* w = NULL; u32 n = 0;
-    int r = pm_gpu_rec_end(&w, &n); *rr = r;
-    if (r != 1 || n > REC_MAX_WORDS || pm_tex_cur_vram_pending() || pm_tex_aux_vram_pending()) return -1;
-    int z, de, bl, at_; pm_gpu_rec_rmode(&z, &de, &bl, &at_);
-    int tid = nat_tmpl_add(rec_g0[7], rec_g0[8], geom, rec_g0[9], rec_g0[10], z, de, bl, at_, use_t1, NULL, NULL);
-    if (tid < 0) return -1;
-    if (nat_tmpl_strip((unsigned)tid, w, n) <= 0) return -1;
-    { /* E5-3 TEXW: the template unit 0 words (grp 22 to 25) against pm_tex_slot_words of the slot at capture start */
-        static unsigned tw_ok, tw_bad; uint32_t sw[4]; 
-        uint32_t fw[16][4]; int nf = pm_gpu_rec_fw(fw), hit = 0; for (int q = 0; q < nf; q++) hit |= !memcmp(fw[q], nat_tmpl[tid].grp + 22, 16);
-        if (nf) { if (hit) tw_ok++; else { tw_bad++; if (tw_bad <= 4) pm_log_d("TEXW bad nf %d tmpl %08lx %08lx %08lx %08lx first %08lx %08lx %08lx %08lx", nf, (unsigned long)nat_tmpl[tid].grp[22], (unsigned long)nat_tmpl[tid].grp[23], (unsigned long)nat_tmpl[tid].grp[24], (unsigned long)nat_tmpl[tid].grp[25], (unsigned long)fw[0][0], (unsigned long)fw[0][1], (unsigned long)fw[0][2], (unsigned long)fw[0][3]); } }
-        pm_log_d("TEXW ok %u / bad %u", tw_ok, tw_bad);
-    }
-    return tid;
-}
-static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
-    if (!ra && !ra_fail) {
-        ra = (u32*)malloc(REC_ARENA_WORDS * 4u);
-        if (!ra) { ra_fail = 1; pm_log_w("RC1: record arena malloc failed, capture off"); }
-    }
-    ra_n = 0; ra_gen = gen; memset(rk, 0, sizeof rk); pm_gpu_rec_idx_reset(); memset(nat_tex, 0, sizeof nat_tex); /* N4 2b: handles are per capture generation */
-}
-static __attribute__((noinline)) int rec_try(u32 w1) {
-    unsigned slot = w1 & 0xffu;
-    if (!slot) return 0;
-    u32 gen = pm_dlc_gen ^ (gstat_gen << 16);
-    if (gen != ra_gen || !ra) rec_reset(gen);
-    if (ra_fail) return 0;
-    RecKey* k = &rk[slot - 1];
-    if (k->state == 3) return 0; /* RK2: churn guard, 4 builds since the arena reset */
-    if (k->state) {
-        u32 ver = pm_rec_ver(slot - 1);
-        u16 hg = rec_hgen(slot - 1), t0 = rec_tgen(k->s0), t1 = rec_tgen(k->s1);
-        if (k->ver == ver && k->gen == gen && k->hgen == hg && k->tgen0 == t0 && k->tgen1 == t1) {
-            if (k->state == 1 && rec_play_sw() && !rec_chk_sw()) { /* UC3e: replay candidate (debug switch recplay, default off: battle shots differ, see agent_uc3d.md section 9); the group must match the capture start */
-                NW(NW_LOOK); pm_gpu_flush(); rec_g0_set();
-                if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) rec_rp = k; else { NW(NW_GRP); for (unsigned q = 0; q < 12; q++) nat_gw[q] += k->grp[q] != rec_g0[q]; { static unsigned nat_gn; if (nat_gn < 2) { nat_gn++; char g[200]; unsigned o = (unsigned)snprintf(g, sizeof g, "N4 grp rec"); for (unsigned q = 0; q < 12; q++) o += (unsigned)snprintf(g + o, sizeof g - o, " %08lx", (unsigned long)k->grp[q]); pm_log_d("%s", g); o = (unsigned)snprintf(g, sizeof g, "N4 grp now"); for (unsigned q = 0; q < 12; q++) o += (unsigned)snprintf(g + o, sizeof g - o, " %08lx", (unsigned long)rec_g0[q]); pm_log_d("%s", g); } } }
-                return 0;
-            }
-            if (!rec_chk_sw() || k->state != 1) return 0;
-            pm_gpu_rec_begin(); rec_g0_set(); /* UC2: the old path still runs; its words are compared with the record */
-            rec_on = 1; rec_dln = 0;
-            if (!memcmp(k->grp, rec_g0, sizeof rec_g0)) { rec_chk = 1; return 1; }
-            rec_mg++; /* UC2: the group differs at capture start: capture again below */
-        } else {
-            rec_rb++; rec_ls = slot; NW(NW_KEY);
-            if (k->ver != ver) rec_mv++;
-            if (k->hgen != hg) rec_mh++;
-            if (k->tgen0 != t0 || k->tgen1 != t1) rec_mt++;
-        }
-    }
-    pm_gpu_rec_begin(); rec_g0_set();
-    rec_on = 1; rec_dln = 0;
-    rec_cap_n++;
-    return 1;
-}
-void pm_gpu_stc_ctx_log(const char* at); /* pm_gpu.c, UC2 probe */
-/* UC2D: first differing word outside the 0x2C1 uniform slots (the words pm_gpu_rec_same does not mask), logged once per run. Log only. */
-static int uc2d_done;
-static __attribute__((noinline, cold)) void uc2d_first(const u32* a, u32 na, const u32* b, u32 nb) {
-    unsigned i = 0, j;
-    u32 hd = 0, c = 0, len = 0;
-    if (uc2d_done || na != nb || na > REC_MAX_WORDS) return;
-    j = pm_gpu_rec_fj(); /* the first word rec_same counts as bad (same mask) */
-    if (j >= na) return;
-    uc2d_done = 1;
-    for (i = 0; i + 1 < na; i += len) { /* the command of a that holds word j */
-        hd = a[i + 1]; c = (hd >> 20) & 0xFFu; len = 2u + c + (c & 1u);
-        if (j < i + len) break;
-    }
-    const char* role = (j == i) ? "p0" : (j == i + 1u) ? "hdr" : "data"; /* UC2E: word j is the param0, the header, or a data word of the command */
-    unsigned ni = (hd >> 31) & 1u, doff = (j > i + 1u) ? j - (i + 2u) : 0u; /* ni 1: non-incremental group, doff: data word index */
-    pm_log_d("UC2D first j %u a %08lx b %08lx reg %03lx hdr %08lx cmd %u n %u role %s ni %u doff %u", j, (unsigned long)a[j], (unsigned long)b[j], (unsigned long)(hd & 0x3FFu), (unsigned long)hd, i, na, role, ni, doff);
-    pm_gpu_stc_ctx_log("uc2d_first");
-}
-/* UC2L: the group lengths differ. Logs the first command whose header differs between the record (a) and this frame (b). Log only. */
-static int uc2l_done;
-static __attribute__((noinline, cold)) void uc2l_first(const u32* a, u32 na, const u32* b, u32 nb) {
-    unsigned ia = 0, ib = 0;
-    if (uc2l_done) return;
-    uc2l_done = 1;
-    while (ia + 1 < na && ib + 1 < nb && a[ia + 1] == b[ib + 1]) {
-        unsigned c = (a[ia + 1] >> 20) & 0xFFu, len = 2u + c + (c & 1u);
-        ia += len; ib += len;
-    }
-    pm_log_d("UC2L len a %u b %u first header diff at a %u b %u: a hdr %08lx b hdr %08lx", na, nb, ia, ib,
-             (unsigned long)(ia + 1 < na ? a[ia + 1] : 0), (unsigned long)(ib + 1 < nb ? b[ib + 1] : 0));
-}
-/* UC2: reccheck. The words this frame wrote for the model are compared with the valid record (pm_gpu_rec_same). The record is kept. */
-static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u32* w, u32 n, int whole) {
-    unsigned bad = 0, miss = 0;
-    if (r == 0) { rec_ref++; return; }
-    if (r != 1 || !whole) return;
-    if (pm_gpu_rec_same(ra + k->off, k->len, w, n, &bad, &miss) < 0) return;
-    rec_hit++; rec_bad += bad; rec_miss += miss; rec_ibad += pm_gpu_rec_ichk(k->io, k->ic);
-    if (bad) uc2d_first(ra + k->off, k->len, w, n);
-    if (k->len != n) uc2l_first(ra + k->off, k->len, w, n); /* UC2L: log only, once per run */
-}
-/* P3a: log only. Each draw of a learned template key: does the record index list equal the bake index list of a group of the same
- * DL (dlc_find on the capture's G_DL)? Also the texture pair and the game matrix. No draw change. */
-int pm_gpu_rec_ia_eq(u32 off, const u16* sd, u32 n);
-static unsigned p3a_n;
-static __attribute__((noinline, cold)) void p3a_log(const NatRec* nr, unsigned nd, unsigned tid, u32 tex, unsigned gm) {
-    DlcEnt* e = dlc_find((const Gfx*)(uintptr_t)rec_gdl);
-    if (!e) { if (p3a_n < 64) { p3a_n++; pm_log_d("P3a no bake tmpl %u draws %u", tid, nd); } return; }
-    for (unsigned q = 0; q < nd && p3a_n < 64; q++) {
-        int hit = -1, eq_pos = -1;
-        for (unsigned j = 0; j < e->ngrp && hit < 0; j++) {
-            const DlcGrp* gg = &e->grp[j];
-            if (!gg->sd || 3u * gg->sn != nr[q].nidx) continue;
-            if (pm_gpu_rec_ia_eq(nr[q].idx_off, gg->sd, nr[q].nidx) == 1) hit = (int)j;
-        }
-        eq_pos = (int)nd == (int)e->ngrp ? (int)q : -1;
-        p3a_n++;
-        pm_log_d("P3a tmpl %u draw %u/%u grp_eq %d pos_grp %d ngrp %u nidx %u tex %04x/%04x gm %u", tid, q, nd, hit, eq_pos, (unsigned)e->ngrp,
-                 (unsigned)nr[q].nidx, (unsigned)(tex & 0xFFFFu), (unsigned)(tex >> 16), gm);
-    }
-}
-extern unsigned nat_wr_why[6]; /* pm_native.c: refusal counts of nat_rec_write */
-static unsigned p3a_pre_n;
-static __attribute__((noinline, cold)) void p3a_pre(const char* at, unsigned tid, unsigned nd, unsigned gm, u32 tex) {
-    if (p3a_pre_n >= 64) return;
-    p3a_pre_n++;
-    pm_log_d("P3a %s tmpl %u nd %u gm %u tex %04x/%04x", at, tid, nd, gm, (unsigned)(tex & 0xFFFFu), (unsigned)(tex >> 16));
-}
-static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
-    u32* w = NULL; u32 n = 0, i = 0;
-    unsigned slot = w1 & 0xffu;
-    RecKey* k = &rk[slot - 1];
-    int cs, as;
-    unsigned dln = rec_dln; rec_on = 0;
-    int r = pm_gpu_rec_end(&w, &n);
-    if (rec_chk) { rec_chk = 0; rec_check(k, r, w, n, whole); return; }
-    pm_tex_cur_slots(&cs, &as);
-    u16 old_off = k->off, old_len = k->len, old_alen = k->alen; u8 old_state = k->state, old_nb = k->nb;
-    k->s0 = cs < 0 ? REC_NO_SLOT : (u16)cs; k->s1 = as < 0 ? REC_NO_SLOT : (u16)as;
-    k->ver = pm_rec_ver(slot - 1); k->gen = ra_gen; k->hgen = rec_hgen(slot - 1);
-    memcpy(k->grp, rec_g0, sizeof k->grp);
-    k->tgen0 = rec_tgen(k->s0); k->tgen1 = rec_tgen(k->s1); k->state = 2; k->nat = 0;
-    if (r < 0) { rec_emp++; return; }
-    if (pm_tex_cur_vram_pending() || pm_tex_aux_vram_pending()) { /* UC3b: a bound slot draws its linear stage copy, the record would hold that address */
-        k->state = 0; rec_stg++; return;
-    }
-    if (!whole || r == 0 || n > REC_MAX_WORDS) {
-        if (!whole) rec_part++;
-        rec_ref++;
-        return;
-    }
-    int npt = pm_gpu_rec_walk(w, n); /* UC1: the walk counts wbad and fills the patch table */
-    if (npt < 0) return;
-    if (npt > 255 || dln != 1) { rec_ref++; return; } /* UC3d: one static list per record, patch count in a byte */
-    unsigned gmv = pm_gpu_rec_gm_cap(); /* N1: refuse a record of a game matrix at or above NAT_MTX_MAX (log once) */
-    if (gmv != ~0u && gmv >= NAT_MTX_MAX) { if (!nat_logged) { nat_logged = 1; pm_log_d("N1: record refused, game matrix %u, max %u", gmv, NAT_MTX_MAX); } NW(NW_B_GM); rec_ref++; return; }
-    unsigned ncen = pm_gpu_rec_cen_n(); /* N1: census tuples of the window, 4 words each after the patch table */
-    if (ncen > REC_CEN_MAX) { rec_ref++; return; }
-    u32 need = (n + (u32)npt + 8u * ncen + 3u) & ~3u, at; /* N4 2b: census tuples, then one NatRec (4 words) per draw */
-    if (old_state == 1 && need <= old_alen) at = old_off; /* RK2: the slot's old place, no arena growth */
-    else if (ra_n + need <= REC_ARENA_WORDS) { at = ra_n; ra_n += need; }
-    else { rec_ref++; return; }
-    memcpy(ra + at, w, n * 4u);
-    pm_gpu_rec_pt_copy(ra + at + n, (unsigned)npt); /* UC3d: patch table after the body */
-    pm_gpu_rec_cen_copy(ra + at + n + npt, ncen); /* N1: census tuples after the patch table */
-    { u32 io, ic; int nd = pm_gpu_rec_idx(ra + at, n, &io, &ic); /* UC3c: refused record keeps state 2 */
-      if (nd < 0 || nd > 255 || (unsigned)nd != ncen) { rec_ref++; return; } /* N1: one census tuple per draw */
-      k->io = io; k->ic = ic; k->nd = (u8)nd;
-      int z, de, bl, at_; pm_gpu_rec_rmode(&z, &de, &bl, &at_); /* N4: the template key is the state at entry and the render mode at exit */
-      int tid = nat_tmpl_add(rec_g0[7], rec_g0[8], rec_gin, rec_g0[9], rec_g0[10], z, de, bl, at_, use_t1, NULL, NULL);
-      { /* PMOD P2: one line per new key (DL, segment, render mode, textured). Measures the key count; the template key is unchanged */
-        static u32 p2k[64][3]; static unsigned p2n;
-        u32 tx = (rec_g0[6] & 0xFFFFu) || (rec_g0[6] >> 16) ? 1u : 0u;
-        u32 rm = (u32)(z ? 1 : 0) | (u32)(de ? 2 : 0) | (u32)(bl ? 4 : 0) | (u32)(at_ ? 8 : 0);
-        u32 kd = rec_gdl ^ ((rec_dln & 0xFFu) << 24), ka = (rm << 1) | tx;
-        unsigned q = 0; while (q < p2n && (p2k[q][0] != kd || p2k[q][1] != ka)) q++;
-        if (q == p2n && p2n < 64) { p2k[p2n][0] = kd; p2k[p2n][1] = ka; p2n++; pm_log_d("PM2 tmpl dl %08lx seg %u rm %u tex %u tid %d", (unsigned long)rec_gdl, (unsigned)rec_dln, (unsigned)rm, (unsigned)tx, tid); }
-      }
-      int rc = tid < 0 ? -2 : nat_tmpl_strip((unsigned)tid, ra + at, n);
-      pm_log_d("N4 strip slot %u n %u nd %d tmpl %d rc %d", slot, (unsigned)n, nd, tid, rc);
-      NatRec* nr = (NatRec*)(ra + at + n + npt + 4u * ncen); /* N4 2b: NatRec of each draw after the census tuples */
-      if (rc <= 0) { NW(NW_B_TMPL); memset(nr, 0, (unsigned)nd * sizeof *nr); } /* no template: the words stay zero, the record is not replayed */
-      else {
-          p3a_pre("pre", (unsigned)tid, (unsigned)nd, gmv, rec_g0[6]);
-          const NatTmpl* nt = &nat_tmpl[tid];
-          int i0 = nat_tex_id(nt->grp + 22), i1 = nat_tex_id(nt->grp + 28); /* E2: block ids, unit 0 low half */
-          if (gmv == ~0u || i0 < 0 || i1 < 0) { p3a_pre(gmv == ~0u ? "refuse gm" : "refuse tex", (unsigned)tid, (unsigned)nd, gmv, rec_g0[6]); NW(gmv == ~0u ? NW_B_GMV : NW_B_TEX); rec_ref++; return; }
-          nat_idx_base = pm_gpu_rec_ia_phys();
-          if (nat_rec_write(nr, (unsigned)nd, ra + at, n, (unsigned)tid, gmv, ((uint32_t)i1 << 16) | (uint32_t)i0, nat_idx_base) != nd) { pm_log_d("P3a write refused why %u %u %u %u %u", nat_wr_why[0], nat_wr_why[1], nat_wr_why[2], nat_wr_why[3], nat_wr_why[4]); NW(NW_B_WRITE); rec_ref++; return; }
-          k->nat = 1; NW(NW_B_NAT); p3a_log(nr, (unsigned)nd, (unsigned)tid, rec_g0[6], gmv);
-      } }
-    k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
-    k->gmc = pm_gpu_rec_gm_cap(); k->gdl = rec_gdl;
-    k->off = (u16)at; k->len = (u16)n; k->nb = (u8)(old_nb + 1);
-    k->state = k->nb >= 4 ? 3 : 1; /* RK2: the fourth build of the slot stops its captures */
-    rec_build++; rec_bytes += n * 4u;
-}
-static __attribute__((noinline, cold)) void rec_report(void) {
-    unsigned recs = 0, pt, wbad, pk, cc[4];
-    for (unsigned s = 0; s < 256; s++) recs += rk[s].state == 1;
-    pm_gpu_rec_count(&pt, &wbad, &pk);
-    pm_gpu_rec_cls(cc);
-    pm_log_d("rec f%u cap %u build %u ref %u part %u emp %u wbad %u kb %u n %u rb %u ls %u mv %u mh %u mt %u ak %u pt %u pk %u hit %u bad %u miss %u mg %u stg %u cls oth %u adr %u pal %u uni %u ibad %u runs %u", pm_frame_count(), rec_cap_n, rec_build, rec_ref, rec_part, rec_emp, wbad, rec_bytes / 1024u, recs, rec_rb, rec_ls, rec_mv, rec_mh, rec_mt, ra_n / 256u, pt, pk, rec_hit, rec_bad, rec_miss, rec_mg, rec_stg, cc[0], cc[1], cc[2], cc[3], rec_ibad, rec_runs);
-    rec_cap_n = rec_build = rec_ref = rec_part = rec_emp = rec_bytes = rec_rb = rec_mv = rec_mh = rec_mt = 0;
-    rec_hit = rec_bad = rec_miss = rec_mg = rec_stg = rec_ibad = rec_runs = 0;
-}
-
-/* UC3e: replays the record at the G_DL of its group (mg_run). Returns 0 (the list runs live) when an input of the record differs: the list
- * address, geom at entry, wind, interp, scissor and target key, the slots of units 0 and 1, the game matrix of the palette. */
-/* N4 2b: buffers of the nat_emit replay. A record holds at most 255 draws (nd is a byte). */
-#define NAT_OUT_WORDS (NAT_TMPL_WORDS + 255u * NAT_GRP_WORDS)
-static uint16_t nat_ord_v[256]; static NatMtxLog nat_log_v[256]; static unsigned nat_nl;
-static uint32_t nat_out[NAT_OUT_WORDS] __attribute__((aligned(32)));
-void pm_gpu_pal_fill(const float (*m)[4], unsigned gm, unsigned eye); /* pm_gpu.c, N4 2b */
-extern int pm_eye_idx; /* pm_gpu.c, N4 2b */
-static __attribute__((noinline)) int rec_play(const Gfx* l) {
-    RecKey* k = rec_rp; rec_rp = NULL; NW(NW_CALL);
-    int s0 = k->s0 == REC_NO_SLOT ? -1 : (int)k->s0, s1 = k->s1 == REC_NO_SLOT ? -1 : (int)k->s1;
-    if (k->state != 1 || (u32)l != k->gdl || geom != k->gin) { NW(k->state != 1 ? NW_STATE : (u32)l != k->gdl ? NW_GDL : NW_GEOM); return 0; }
-    if ((((pm_gpu_gv_wind() <= 0) ? 1u : 0u) != (k->fl & 1u)) || pm_interp_on > 0 || pm_gpu_view_key() != k->view) { NW(NW_WIND); return 0; }
-    if (!pm_tex_rec_use(s0) || !pm_tex_rec_use(s1)) { NW(NW_TEXUSE); return 0; }
-    { /* N2: the replay draws the whole list. A group the live path skips (dlc_box_out) must not be drawn, so the list runs live. */
-        DlcEnt* e = dlc_find(l);
-        if (!e || e->gen != pm_dlc_gen) { NW(NW_DLC); return 0; }
-        if (!nobox_on()) for (unsigned g = 0; g < e->ngrp; g++) if (dlc_box_out(&e->grp[g], combined)) { NW(NW_BOX); return 0; }
-    }
-    unsigned gmn = ~0u; /* N1: a palette record of another game matrix replays with the palette patched (pm_gpu_rec_play) */
-    if (k->nat) { /* N4 2b: the draws come from nat_emit. The palette of this eye and game matrix, the NatRec mtx and nat_idx_base are set here. */
-        unsigned gm = (unsigned)dlc_gmi();
-        NW(NW_NAT);
-        if (gm >= NAT_MTX_MAX) { NW(NW_GMRP); return 0; }
-        pm_gpu_pal_fill(gm_tab[gm], gm, (unsigned)pm_eye_idx);
-        NatRec* nr = (NatRec*)(ra + k->off + k->len + k->npt + 4u * k->nd);
-        for (unsigned q = 0; q < k->nd; q++) { nr[q].mtx = (uint16_t)gm; nat_ord_v[q] = (uint16_t)q; }
-        nat_idx_base = pm_gpu_rec_ia_phys();
-        unsigned no = nat_emit(nr, k->nd, nat_ord_v, nat_out, NAT_OUT_WORDS, (unsigned)pm_eye_idx, nat_log_v, &nat_nl);
-        { static unsigned nat_logn; if (nat_logn < 4) { nat_logn++; pm_log_d("N4 nat replay slot %u draws %u words %u eye %d gm %u", (unsigned)(k - rk) + 1u, (unsigned)k->nd, no, pm_eye_idx, gm); } }
-        if (!no || !pm_gpu_rec_play(nat_out, no, NULL, 0, k->nd, ~0u, ra + k->off + k->len + k->npt, k->nd)) { NW(!no ? NW_NO : NW_PLAY); return 0; }
-    } else {
-        NW(NW_NONAT);
-        if (dlc_gmi() != k->gmc) { if (!k->pp || (gmn = (unsigned)dlc_gmi()) >= NAT_MTX_MAX) return 0; }
-        if (!pm_gpu_rec_play(ra + k->off, k->len, ra + k->off + k->len, k->npt, k->nd, gmn, ra + k->off + k->len + k->npt, k->nd)) return 0;
-    }
-    dlc_set_geom(k->gout);
-    memset(vert_live, 0, sizeof vert_live);
-    dlc_dirty = 1; tri_since_vtx = (k->fl >> 1) & 1u; ep_open = 0;
-    rec_runs++;
-    return 1;
-}
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
  * same skips. Returns the first word it does not run (g + n when all ran). The walker runs that word and the rest as ops.
  * A G_DL that is not a dlc hit returns the word after it and sets *nx to the list (the walker pushes it). */
@@ -3942,7 +3600,6 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx,
             __builtin_prefetch(next);
             __builtin_prefetch(next + 4);
             if (pm_ph_on && dlc_on) sp0_kind(2u); /* SPLIT0C */
-            if (rec_rp && rec_play(next)) break; /* UC3e: the record replays this list */
             if (dlc_on && dlc_try(next)) break;
             *nx = next;
             return q + 1;
@@ -4023,11 +3680,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             unsigned n = w0 & 0xffffu;
             if (end && sp == 0 && pc + n > end) n = (unsigned)(end - pc);
             if (pm_ph_on) sp0_group_begin(); /* SPLIT0C */
-            Gfx* g0 = pc; /* RC1: the record capture takes the group when bit 9 is set */
-            int rc = (w1 & 0x200u) ? rec_try(w1) : 0;
             pc = mg_run(pc, n, &nx, w1);
-            rec_rp = NULL; /* UC3e: a replay candidate lasts for its group only */
-            if (rc) rec_done(w1, pc == g0 + n && !nx);
             if (pm_ph_on) sp0_group_end();
             if (nx && sp < 12) { stack[sp++] = pc; pc = (Gfx*)nx; }
             break;
