@@ -61,3 +61,12 @@ PMDL bare word: debug_scan needs the word alone, so nobox=1, noboxint=1, dlcchec
 - Not run: the FLK1 budget reported no starts left when start 18 was tried. The orchestrator must reset it (run_azahar.ps1 -ResetBudget FLK1) before these runs.
 - Candidate words to check first, in the stseg diff: rgb (rgb_scale set only when ep_pepoch changes, pm_gpu.c:2436), boost, epoch, tsl. The skip path never runs dlc_seg for an out group, so ep_pepoch and rgb_scale stay from the previous visible group.
 - Then the fix: keep the state of an out group in the skip path (call the epoch and rgb update for it, or drop the cache for the next visible group), and prove with nok02_nobox against nok02_tri (skip-on repeat noise 0 px in the top-right region).
+
+## State diff result (starts 18 and 19, frames 200 to 205, pos 250 0 11)
+- skip on: 102 stseg lines. skip off: 198 lines.
+- Per line, rgb (1), boost (0), fxon (0), tsl (1) are constant in both runs. tss, epoch and pep differ only as counters. So the state carried between visible segments does not differ. The rgb_scale cache hypothesis is refuted.
+- geom differs by segment content: skip off has 6 extra segments with geom 0x00000405 (lit bit 0x200000 clear) and more 0x00000005 and 0x00200405 segments. These are the out groups that skip on does not draw. So skip off draws geometry that skip on omits.
+- dlccheck (earlier, valid): every skipped triangle lies outside one clip plane for all its vertices (missing 0).
+- Working mechanism (inferred, not yet tested): an out group can have vertices with w <= 0 (behind the eye). The PICA path gets such triangles without a near clip, so they can rasterize mirrored on screen. Skip on removes them. The top-right difference is the shading of those triangles, which depth test partly hides.
+- No fix made. The skip is the correct side for these groups.
+- Proposed next test (needs approval): route a visible group with any box corner w <= 0 to the interpreter (no static GPU segment), frame 200 at pos 250 0 11, and diff against skip on. A change in the top-right region means visible behind-eye groups (not skipped) draw wrong on the GPU path. That path is the candidate flicker source for the end piece as the camera moves.
