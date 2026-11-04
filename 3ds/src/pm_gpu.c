@@ -1,4 +1,5 @@
 #include <3ds.h>
+void pm_gx_room(void); /* HANG1a */
 #include <3ds/gpu/gpu.h>
 #include <3ds/gpu/registers.h>
 #include <citro3d.h>
@@ -444,6 +445,7 @@ static void off_snapshot(int i) {
         offs[i].snap_ready = 1;
     }
     split_frame();
+    pm_gx_room();
     GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)dst, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
 }
 
@@ -1799,10 +1801,23 @@ static int grab_tex_init(void) {
     grab_tex.data = cb;
     return 1;
 }
+/* HANG1a: the GX queue of citro3d holds 32 entries (base.c maxEntries) and runs only at frame begin or end, so a splash frame (one texture
+ * copy per particle) overflows it (svcBreak in gxCmdQueueAdd). Past 24 entries, wait for the queue to empty, as C3Di_WaitAndClearQueue does.
+ * gxQueue is the first member of the citro3d context, so its address is the queue. */
+extern char __C3D_Context[];
+void pm_gx_room(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)__C3D_Context;
+    if (q->numEntries < 24) return;
+    gxCmdQueueRun(q);
+    gxCmdQueueWait(q, -1);
+    gxCmdQueueStop(q);
+    gxCmdQueueClear(q);
+}
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
 static void grab_queue_copy(void) {
     const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
     int s0 = mo >> 3, s1 = (mo + x1 - 1) >> 3;
+    pm_gx_room();
     GX_TextureCopy((u32*)((u8*)cur_target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
                    (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
 }

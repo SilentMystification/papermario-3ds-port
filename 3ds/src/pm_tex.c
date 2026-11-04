@@ -544,6 +544,8 @@ static void upload_vram_slot(Slot* s) {
     if (!s->vram_up || !s->vram_stage || !n) return;
     if (s->tex_vram_ptr) s->tex.data = s->tex_vram_ptr;
     pm_fl_dc(s->vram_stage, n);
+    extern void pm_gx_room(void);
+    pm_gx_room(); /* HANG1a: GX queue room before the copy */
     C3D_TexLoadImage(&s->tex, s->vram_stage, GPU_TEXFACE_2D, 0);
     s->vram_up = 0;
     sbit_clr(vup_bits, (int)(s - slots));
