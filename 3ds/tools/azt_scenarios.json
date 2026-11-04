@@ -1832,7 +1832,7 @@
       "proves": "The battle debug switch starts a real battle from a warp.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30",
       "until": "shot \\d+ frame 182\\b",
-      "cap": 90,
+      "cap": 20,
       "deadline": 20,
       "first_marker": "warp: kmr_03 entry 0",
       "expects": "warp",

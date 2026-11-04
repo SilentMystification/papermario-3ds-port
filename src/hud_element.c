@@ -430,7 +430,7 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
 
         if (lrt + 1 >= texSizeY) {
             lrt = texSizeY - 1;
-            if (texSizeY > 16) {
+            if (texSizeY >= 16) { /* UI2: a 16 row image draws 16 rows (was 17) */
                 lry = baseY + drawSizeY - 1;
             } else {
                 lry = baseY + drawSizeY;
