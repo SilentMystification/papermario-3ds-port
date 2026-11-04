@@ -65,3 +65,8 @@ Budget: reset to 8 starts at this session. Used 6 (status_HUDB1.txt starts 7 to 
   (a) a 6 by 7 px glyph at x 178 to 183, y 0 to 6 changes between frames of one run (frame or timer digit), 4 px per frame step;
   (b) 1 px edge pixels in clusters at x 140 to 230, y 60 to 70 and x 140 to 150, y 220 to 230 (8962 px in total).
   Kind (b) follows the exclusive rule (1-cycle bottom screen fills). Mask for the glyph: x 162 to 185, y 0 to 8 (4738 px outside it).
+
+## Decision (orchestrator): full cover for OVERLAY_SCREEN_COLOR
+- screen_overlays.c:222 now fills 0,0 to SCREEN_WIDTH, SCREEN_HEIGHT under TARGET_3DS (exclusive 1-cycle rule covers the
+  whole screen). The N64 path keeps SCREEN_WIDTH - 1. Build check only (no Azahar start). Not shot.
+- HP bar rule (1-cycle exclusive) unchanged.
