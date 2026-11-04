@@ -671,6 +671,20 @@ unsigned pm_tex_slot_gen(int i) {
 }
 /* RK2: the cache slots bound on unit 0 and unit 1 (-1 when none). The record key compares their generations. */
 void pm_tex_cur_slots(int* a, int* b) { *a = cur; *b = aux; }
+/* E5-3: the unit 0 words C3Di_SetTex sends for a live slot (citro3d texture.c:258 to 289): dim, param, lodParam, phys(data) >> 3. The
+ * data address is the staging copy when the draw stages, else the VRAM copy (tex_for_draw). Returns 0 when the slot is not live. */
+int pm_tex_slot_words(int i, uint32_t* out) {
+    if (have && off_cur >= 0) { /* the off-screen image bound by pm_tex_bind (offt[off_cur].tex) */
+        const C3D_Tex* t = offt[off_cur].tex;
+        out[0] = t->dim; out[1] = t->param; out[2] = t->lodParam; out[3] = (uint32_t)osConvertVirtToPhys(t->data) >> 3;
+        return 1;
+    }
+    if (i < 0 || i >= SLOTS || !slots[i].live) return 0;
+    const Slot* s = &slots[i];
+    void* d = slot_draws_stage(s) ? s->vram_stage : (s->tex_vram_ptr ? s->tex_vram_ptr : s->tex.data);
+    out[0] = s->tex.dim; out[1] = s->tex.param; out[2] = s->tex.lodParam; out[3] = (uint32_t)osConvertVirtToPhys(d) >> 3;
+    return 1;
+}
 /* CEN1: texture identity for the draw census (pm_gpu.c cen_add). The slot source hash (shash) with format and size, so the id matches across builds. 0 none; 0x40000000 and 0x40000100 mark the off-screen image of unit 0 and unit 1. */
 static unsigned slot_census_id(const Slot* s) {
     unsigned h = 2166136261u;

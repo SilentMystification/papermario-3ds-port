@@ -3642,7 +3642,13 @@ int dlc_learn_end(u32 geom, int* rr) {
     int z, de, bl, at_; pm_gpu_rec_rmode(&z, &de, &bl, &at_);
     int tid = nat_tmpl_add(rec_g0[7], rec_g0[8], geom, rec_g0[9], rec_g0[10], z, de, bl, at_, use_t1, NULL, NULL);
     if (tid < 0) return -1;
-    return nat_tmpl_strip((unsigned)tid, w, n) > 0 ? tid : -1;
+    if (nat_tmpl_strip((unsigned)tid, w, n) <= 0) return -1;
+    { /* E5-3 TEXW: the template unit 0 words (grp 22 to 25) against pm_tex_slot_words of the slot at capture start */
+        static unsigned tw_ok, tw_bad; uint32_t sw[4]; int sa = (int)(rec_g0[6] & 0xFFFFu) - 1;
+        if (pm_tex_slot_words(sa, sw)) { if (!memcmp(sw, nat_tmpl[tid].grp + 22, sizeof sw)) tw_ok++; else { tw_bad++; if (tw_bad <= 4) pm_log_d("TEXW bad slot %d sw %08lx %08lx %08lx %08lx tmpl %08lx %08lx %08lx %08lx", sa, (unsigned long)sw[0], (unsigned long)sw[1], (unsigned long)sw[2], (unsigned long)sw[3], (unsigned long)nat_tmpl[tid].grp[22], (unsigned long)nat_tmpl[tid].grp[23], (unsigned long)nat_tmpl[tid].grp[24], (unsigned long)nat_tmpl[tid].grp[25]); } }
+        pm_log_d("TEXW ok %u / bad %u", tw_ok, tw_bad);
+    }
+    return tid;
 }
 static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
     if (!ra && !ra_fail) {

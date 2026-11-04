@@ -61,4 +61,5 @@ void pm_tex_flush_pending(void); /* FL1: one staged VRAM upload (if any) plus on
 void pm_tex_flush_pend_only(void); /* FL1 cache flush without VRAM upload */
 unsigned pm_tex_slot_gen(int slot); /* C1: generation of a live slot */
 void pm_tex_cur_slots(int* a, int* b); /* RK2: cache slot of unit 0 and unit 1, -1 none */
+int pm_tex_slot_words(int i, uint32_t* out); /* E5-3: unit 0 words of a live slot (dim, param, lodParam, data phys >> 3) */
 int pm_tex_bind_slot(int slot); /* C1: bind a cached slot by index */
