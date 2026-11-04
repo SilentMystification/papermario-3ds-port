@@ -57,3 +57,12 @@ Steps:
 2. If R2 passes: commit the pm_gpu.c R2 hunks on native (or merge vram3-r2). If it fails: revert the R2 hunks and keep R5.
 3. Run fileselect_rotate on native once and read the V05 demand line.
 4. R4 after the converter agent (pm_tex.c) is done.
+
+## Update 2 (2026-11-04, after the coordinator reset: budget 8 more starts, used 8 of 8 by the end)
+- R2 FAILED and is reverted (branch vram3-r2 deleted). Gate: yard_stereo_r on native vs r5base shows missing ground and dark stripes at the left edge (base_R.png vs new_R.png in the scratchpad). Top right-eye shot differs in 66156 bytes. Left-eye top shot 0000 is byte equal. Bottom screen differs in about 11300 bytes in both eyes (console text, build string, not compared). Cause not decided. Likely the depth clear (C3D_CLEAR_DEPTH) does not finish before the right draws, or the left depth state is wrong. Do not retry without a diagnosis.
+- R5 open point CLEARED for fileselect_rotate (start 12, R5 build): no V05 demand line in the whole run (pm_log_e always prints). Debug offuse trace was not on (its switch is at debug level). One run only.
+- R4 DONE: commit 4b3e8db7e on native (3ds/src/pm_gpu.c only). Full slots are RGBA5551, 256 KiB each (BLK_FULL16). tex_hdr takes the format. Snap copy of a full image uses w*h*2 bytes. Grab texture stays RGBA8. A full request with siz not 2 draws on the screen (log "R4: full off-screen image with siz", first 20). pm_tex.c unchanged: C3D_TexBind takes the format from the texture.
+- Measured R4 gates: pause_spin (start 14) 10 of 10 shots byte equal to texf1_pause. yard (start 16) top shot byte equal to texf1_yard. Boot cap 3136 KB (928 A + 2208 B). Two starts (13, 15) wrote no shot file to the archive (the run stopped at the until line); the repeats (14, 16) passed.
+- Cap history: 1856 (HEAD) -> 2752 (R5 + R2) -> 3136 (R4 + R5, R2 reverted). Expected with R2 reverted and R4 on: 1856 + 512 (R5) + 768 (R4) = 3136. Matches.
+- Not done: offdump (debug, V05 switch offdump) reads 4 bytes per texel of full images; it prints garbage for full images now. Debug only.
+- Budget: VRAM3 at 8 of 8 (csv). Next starts need a reset.
