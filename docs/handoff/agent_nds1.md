@@ -300,3 +300,21 @@ Commands:
 Notes:
 - $S (scratchpad) is not set between Bash calls. Set it in each call.
 - The NATB sum check is `awk '{d+=$8; m+=$10} END {print d, m}'` on the NATB lines.
+
+## E5 blocked (code agent, 2026-11-04, no code change)
+
+Result: E5 cannot start as written in map_e4.md section 5. No code changed. No Azahar start used (2 of 8 remain used, budget not touched).
+
+Design gaps found:
+1. Template source. nat_tmpl_add and rec_done (pm_gbi.c:3746 to 3810) run only for G_PM_MODEL groups with bit 9 set in w1 (pm_gbi.c:3999, rec_try at 3643). Map static DL groups (dlc_try, pm_dlc.inc.c:574) never call rec_try or rec_done. So a dlc_try segment has no learning path. "Learn it on the live path" needs a new capture hook in dlc_try.
+2. Template key. The key is (cw0, cw1, geom at entry, omode_h, omode_l, z_on, r_decal, r_blend, r_atest at EXIT, use_t1). rec_done reads the exit render mode via pm_gpu_rec_rmode (pm_gpu.c:2617) after the list ran. dlc_try has the entry state only. Exit equals entry only if the list does not set render mode inside. Not verified for map DLs.
+3. Granularity. A template is one per list (one rec_g0 at capture start). dlc_try emits per group (e->grp[k]). Groups in one list can have different entry state (dlc_static_group reads geom_at per batch).
+4. Texture pair. nat_tex_id (E2) takes the 4-word block of unit 0 and unit 1 from the template grp (words 22 and 28). Live path for map groups takes these from pm_tex_cur_slots, not from a template.
+
+Needed before E5 (decision for the orchestrator):
+(a) Add a learning hook in dlc_try for static groups, with the key from the live globals at G_DL entry and the exit render mode read after dlc_run_group. Template per (DL, group) instead of per record. Or
+(b) Use the G_PM_MODEL capture (rec_try/rec_done) and key the dlc_try lookup on the same key. Only works if map DL state equals the model state.
+Recommend (a). It needs a new design doc (plan) from Opus before a code agent starts.
+
+E6 is out of scope in map_e4.md section 5 (design_producer_models.md section 10). Not started.
+Recplay removal: not done (gates for E5 did not run).
