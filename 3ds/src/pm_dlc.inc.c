@@ -15,7 +15,7 @@ static DlcEnt* dlc_tab[DLC_TAB];
 static unsigned dlc_nent;
 static PM_HOTD int dlc_on; static int dlc_depth;
 static struct {
-    unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch;
+    unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch, xgrp;
 } dlc_c;
 static unsigned sp0_grp, sp0_skip; /* SPLIT0C: groups and skips per phase window (sp0c line), counted under phase only */
 static unsigned dlc_dirty; /* the last replay left vert_live cleared although the interpreter would have left slots live */
@@ -41,6 +41,8 @@ static int dlc_enabled(void) {
     return !dd_on() && !xt_on() && !rmlog_on();
 }
 static int dlcchk_on(void) { return PMDL("dlccheck"); }
+static int nobox_on(void) { return PMDL("nobox"); } /* FLK1 debug switch nobox=1: the group box skip of dlc_try is off */
+static int noboxint_on(void) { return PMDL("noboxint"); } /* FLK1 debug switch noboxint=1: an out group runs through the interpreter instead of the skip */
 static void dlc_free(DlcEnt* e) {
     for (unsigned k = 0; k < e->ngrp; k++) { free(e->grp[k].sd); free(e->grp[k].bat_q); }
     free(e->grp); free(e->gop); e->grp = NULL; e->gop = NULL; e->ngrp = 0;
@@ -365,8 +367,16 @@ static __attribute__((noinline)) int gp1_box_class(const s16 lo[3], const s16 hi
 
 /* dlccheck: the interpreter rejects every triangle of a skipped group (all three clip bits share one plane). Counts the triangles that it would not reject. */
 static __attribute__((cold, noinline)) void dlc_verify_skip(const Gfx* l, const DlcGrp* g, const float (*m)[4]) {
-    unsigned char cb[64], live[64] = { 0 };
+    unsigned char cb[64], live[64] = { 0 }, ever[64] = { 0 };
     int tsv = 1;
+    for (u32 j = 0; j < g->op0; j++) { /* FLK1: the slots that an earlier group of this list loaded (the ring keeps them) */
+        u32 w0 = l[j].words.w0;
+        if ((w0 >> 24) == G_ENDDL) break;
+        if ((w0 >> 24) == G_VTX) {
+            unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
+            for (unsigned k = 0; k < n && v0 + k < 64; k++) ever[v0 + k] = 1;
+        }
+    }
     for (u32 j = g->op0; j < g->op1; j++) {
         u32 w0 = l[j].words.w0, w1 = l[j].words.w1;
         unsigned op = w0 >> 24;
@@ -386,7 +396,8 @@ static __attribute__((cold, noinline)) void dlc_verify_skip(const Gfx* l, const 
             for (int t = 0; t < (op == G_TRI2 ? 2 : 1); t++) {
                 u32 w = t ? w1 : w0;
                 int a = (int)((w >> 16) & 0xff) / 2, b = (int)((w >> 8) & 0xff) / 2, c = (int)(w & 0xff) / 2;
-                if (a > 63 || b > 63 || c > 63 || !live[a] || !live[b] || !live[c]) continue;
+                if (a > 63 || b > 63 || c > 63) continue;
+                if (!live[a] || !live[b] || !live[c]) { if (ever[a] || ever[b] || ever[c]) dlc_c.xgrp++; continue; }
                 if (!(cb[a] & cb[b] & cb[c] & 0x2f)) dlc_c.missing++;
             }
         }
@@ -479,8 +490,15 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
         if (pm_ph_on) sp0_grp++;
-        if (!rec_on && dlc_box_out(g, m)) { /* UC3b: a capture or check window draws the whole list */
+        if (!rec_on && !nobox_on() && dlc_box_out(g, m)) { /* UC3b: a capture or check window draws the whole list */
             if (chk) dlc_verify_skip(l, g, m);
+            if (noboxint_on()) {
+                dlc_set_geom((entry & g->am) | g->om);
+                dlc_depth++;
+                pm_gbi_run((void*)(l + g->op0), (g->op1 - g->op0) * 8u);
+                dlc_depth--;
+                continue;
+            }
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
             dlc_c.skip++;
@@ -541,6 +559,6 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
 }
 
 static __attribute__((cold, noinline)) void dlc_report(void) {
-    pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u | static grp %u tri %u fail %u full %u batch %u kb %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent, dlc_c.srep, dlc_c.stri, dlc_c.sfail, dlc_c.sfull, dlc_c.batch, pm_gpu_gstat_used() / 64u);
+    pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u | static grp %u tri %u fail %u full %u batch %u kb %u skip %u grp %u xgrp %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent, dlc_c.srep, dlc_c.stri, dlc_c.sfail, dlc_c.sfull, dlc_c.batch, pm_gpu_gstat_used() / 64u, dlc_c.skip, dlc_c.grp, dlc_c.xgrp);
     memset(&dlc_c, 0, sizeof dlc_c);
 }
