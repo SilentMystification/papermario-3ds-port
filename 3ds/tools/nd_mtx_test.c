@@ -113,12 +113,31 @@ static void test_replace(void) {
     pm_interp_repl = 0;
 }
 
+/* light block: values of the RSP table to the pm5 layout */
+static void test_lights(void) {
+    NdLight lt[9];
+    int8_t lk[2][3] = { { 127, -127, 0 }, { 5, 0, -64 } };
+    PmFx fx;
+    memset(lt, 0, sizeof lt);
+    for (int i = 0; i < 9; i++) { lt[i].col[0] = (uint8_t)(10 + i); lt[i].col[1] = (uint8_t)(20 + i); lt[i].col[2] = (uint8_t)(200 + i); lt[i].dir[0] = (int8_t)(i * 10 - 40); lt[i].dir[1] = -127; lt[i].dir[2] = 127; }
+    nd_mtx_reset();
+    nd_lights(&fx, 1, lt, 3, lk);
+    CHECK(fx.lflag[0] == 1.f && fx.lflag[1] == 1.f && fx.lflag[2] == 0.f, "light flags");
+    CHECK(fx.amb[0] == 13.f && fx.amb[1] == 23.f && fx.amb[2] == 203.f && fx.amb[3] == 0.f, "ambient is slot n");
+    CHECK(fx.col[2][2] == 202.f && fx.col[3][0] == 0.f, "colour of 3 lights");
+    CHECK(fx.dir[1][0] == (float)-30 / 127.f && fx.dir[1][1] == -1.f && fx.dir[1][2] == 1.f, "direction over 127");
+    CHECK(fx.lk0[0] == 1.f && fx.lk0[1] == -1.f && fx.lk1[0] == (float)5 / 127.f && fx.lk1[2] == (float)-64 / 127.f, "look-at vectors");
+    nd_lights(&fx, 0, lt, 8, lk);
+    CHECK(fx.lflag[1] == 0.f && fx.col[6][0] == 16.f && fx.amb[0] == 18.f, "more than 7 lights: 7 kept, ambient is slot 8");
+}
+
 int main(void) {
     test_unpack();
     test_stack();
     test_combine();
     test_cmul();
     test_replace();
+    test_lights();
     puts(fails ? "nd_mtx: FAIL" : "nd_mtx: PASS");
     return fails != 0;
 }

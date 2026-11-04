@@ -44,7 +44,19 @@ int nd_mtx_replace(const void* src, float in[4][4]) {
     return 1;
 }
 
+static float f127[256]; /* byte (a signed char) to value / 127: the same quotient as the division, without the division in the draw path */
+void nd_lights(PmFx* fx, int texgen, const NdLight* lt, unsigned n, const int8_t lk[2][3]) {
+    memset(fx, 0, sizeof *fx);
+    fx->lflag[0] = 1.f;
+    if (texgen) fx->lflag[1] = 1.f;
+    for (int q = 0; q < 3; q++) fx->amb[q] = (float)lt[n].col[q];
+    for (unsigned i = 0; i < n && i < 7; i++)
+        for (int q = 0; q < 3; q++) { fx->col[i][q] = (float)lt[i].col[q]; fx->dir[i][q] = f127[(uint8_t)lt[i].dir[q]]; }
+    for (int q = 0; q < 3; q++) { fx->lk0[q] = f127[(uint8_t)lk[0][q]]; fx->lk1[q] = f127[(uint8_t)lk[1][q]]; }
+}
+
 void nd_mtx_reset(void) {
+    for (int i = 0; i < 256; i++) f127[i] = (float)(int8_t)i / 127.f;
     nd_mtx_ident(nd_proj);
     nd_mtx_ident(nd_mv[0]);
     nd_mv_sp = 0;

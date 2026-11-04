@@ -658,7 +658,7 @@ static unsigned rgba_from_5551(unsigned c) {
 }
 
 /* L01: RSP light table. G_MW_NUMLIGHT sets the count, G_MOVEMEM index G_MV_LIGHT fills slots (slot 0 is light 1, slot nlights is the ambient light). */
-static struct { u8 col[3]; s8 dir[3]; } lt[9];
+static NdLight lt[9];
 static unsigned lt_n;
 static s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
 static PM_HOTD unsigned tex_ss = 0xFFFF, tex_ts = 0xFFFF; /* T02: G_TEXTURE s and t scale, 0x10000 is 1.0 */
@@ -1325,13 +1325,7 @@ static void gv_params_calc(unsigned tss, GvP* o) {
     o->boost = boost;
     o->fxon = 0; /* o->fx is read only when fxon: it is cleared where it is filled */
     if (geom & G_LIGHTING) { /* GV5: the RSP light table (ambient is slot lt_n), the look-at vectors for texgen */
-        memset(&o->fx, 0, sizeof o->fx);
-        o->fx.lflag[0] = 1.f;
-        if (geom & G_TEXTURE_GEN) o->fx.lflag[1] = 1.f;
-        for (int q = 0; q < 3; q++) o->fx.amb[q] = (float)lt[lt_n].col[q];
-        for (unsigned i = 0; i < lt_n && i < 7; i++)
-            for (int q = 0; q < 3; q++) { o->fx.col[i][q] = (float)lt[i].col[q]; o->fx.dir[i][q] = (float)lt[i].dir[q] / 127.f; }
-        for (int q = 0; q < 3; q++) { o->fx.lk0[q] = (float)lk[0][q] / 127.f; o->fx.lk1[q] = (float)lk[1][q] / 127.f; }
+        nd_lights(&o->fx, (geom & G_TEXTURE_GEN) != 0, lt, lt_n, (const int8_t (*)[3])lk); /* S1-4 */
         o->fxon = 1;
     }
     if (fogmix_on && (geom & G_FOG)) { /* GV5: the RSP fog factor clamp(z / w * fm + fo) is the alpha. z / w of the N64 clip position from the PICA clip z and w. */

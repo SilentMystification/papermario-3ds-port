@@ -68,6 +68,11 @@ void nd_mtx_pcomp(float o[16], const float post[16], const float game[4][4]); /*
  * Returns 1 and fills in[4][4] when a replacement exists, else 0 (the caller unpacks the N64 words). */
 int nd_mtx_replace(const void* src, float in[4][4]);
 
+/* Light block (the pm5 vertex shader layout, PmFx): lflag[0] = lit, lflag[1] = texgen, amb = slot n, col and dir of up to 7 lights (dir / 127), look-at vectors lk (/ 127).
+ * lt: the RSP light table (slot n is the ambient light), n lights. Fog is not set here. */
+typedef struct NdLight { uint8_t col[3]; int8_t dir[3]; } NdLight;
+void nd_lights(PmFx* fx, int texgen, const NdLight* lt, unsigned n, const int8_t lk[2][3]);
+
 /* Eye 2 without a second walk: copy the eye 1 command span, then write the eye 2 matrix words at each logged position. */
 typedef struct NdMtxLog { uint32_t at; uint16_t slot; uint16_t pad; } NdMtxLog;
 void nd_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NdMtxLog* log, unsigned nlog, unsigned eye);
