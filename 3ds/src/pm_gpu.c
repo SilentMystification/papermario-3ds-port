@@ -277,7 +277,7 @@ static GPU_COMBINEFUNC tev_func(int f) {
 /* V05: an off-screen colour image. draw_box renders the contents of a rotating window (pause pages, file select panels)
  * into a game buffer with the color image set to it, then draws that buffer as strips through the rotation matrix.
  * Such a pass renders into a PICA render target that is a texture (VRAM), and pm_tex samples it for the strips. */
-enum { OFF_N = 4, OFF_P = 2 * OFF_N, OFF_ALL = OFF_P + 2 }; /* FX2a: slots OFF_P and OFF_P + 1 are the 8 bit images (flame), they keep their pixels from frame to frame like the N64 memory */ /* V05b: slots 0..3 are full size, 4..7 are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */
+enum { OFF_N = 3, OFF_S = 4, OFF_P = OFF_N + OFF_S, OFF_ALL = OFF_P + 2 }; /* FX2a: slots OFF_P and OFF_P + 1 are the 8 bit images (flame), they keep their pixels from frame to frame like the N64 memory */ /* V05b: slots 0..OFF_N-1 are full size, the next OFF_S are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */ /* R5: OFF_N 4 to 3 (one full image, 512 KiB, back to the texture cache). OFF_S stays 4. */
 /* X02: w x h is the size of the slot (64 x 64 for a game image up to 64 wide, else PM_OFF_W x PM_OFF_H). siz is the game pixel size
  * (3 = 32 bit, 2 = 16 bit, 1 = 8 bit). The same memory can be a 32 bit image and an 8 bit image in one frame: two slots. */
 void pm_vram_note(void); /* pm_mem.c: VRAM low-water mark */
@@ -287,6 +287,8 @@ void pm_vram_unreg(const void* p, unsigned bytes);
 int pm_vram_bank_of(const void* p);
 static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; unsigned stride; unsigned last; C3D_Tex snap; int snap_ready; int hdr, snap_hdr; } offs[OFF_ALL];
 static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8; /* off_fail: a VRAM failure, cleared at pm_gpu_begin */
+static unsigned off_mask_f; /* VRAM3 trace: bit i set when full image i is drawn in this frame */
+static unsigned off_trace_n;
 static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
 extern unsigned pm_frame_count(void);
 static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
@@ -352,6 +354,7 @@ static void small_arena_init(void) {
 /* VRAM2: the full images (512 x 256) and the copy buffer (512 KB, grab_tex and the snap of a full image share it) are reserved at boot
  * (full_reserve) and never freed. A block goes to bank A first, then B. The texture cache takes what is left (pm_tex.c slab_init). */
 #define BLK_FULL (PM_OFF_W * PM_OFF_H * 4u)
+#define BLK_FULL16 (PM_OFF_W * PM_OFF_H * 2u) /* R4: the off-screen full images are RGBA5551 (2 bytes a texel) */
 static u8* copy_blk;
 static u8* full_blk[OFF_N];
 static u8* bank_block(unsigned bytes) {
@@ -363,27 +366,36 @@ static void full_reserve(void) {
     copy_blk = bank_block(BLK_FULL);
     if (copy_blk) { pm_vram_reg(copy_blk, BLK_FULL); pm_log_w("vram reserved: copy buffer in bank %c", pm_vram_bank_of(copy_blk) ? 'B' : 'A'); }
     else { pm_vram_alloc_fail("copy", BLK_FULL >> 10); pm_log_e("vram reserve: copy buffer failed, grabs read on the CPU"); }
-    for (int i = 0; i < OFF_N; i++) {
-        full_blk[i] = bank_block(BLK_FULL);
-        if (full_blk[i]) { pm_vram_reg(full_blk[i], BLK_FULL); pm_log_w("vram reserved: full image %d in bank %c", i, pm_vram_bank_of(full_blk[i]) ? 'B' : 'A'); }
-        else { pm_vram_alloc_fail("full image", BLK_FULL >> 10); pm_log_e("vram reserve: full image %d failed, its off-screen passes draw on the screen", i); }
+    for (int i = 0; i < OFF_N; i++) { /* R4: a full image is RGBA5551, half the block of RGBA8 */
+        full_blk[i] = bank_block(BLK_FULL16);
+        if (full_blk[i]) { pm_vram_reg(full_blk[i], BLK_FULL16); pm_log_w("vram reserved: full image %d in bank %c", i, pm_vram_bank_of(full_blk[i]) ? 'B' : 'A'); }
+        else { pm_vram_alloc_fail("full image", BLK_FULL16 >> 10); pm_log_e("vram reserve: full image %d failed, its off-screen passes draw on the screen", i); }
     }
     pm_vram_note();
 }
 /* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
-static int tex_hdr(C3D_Tex* t, int w, int h) {
-    if (!C3D_TexInit(t, w, h, GPU_RGBA8)) return 0;
+static int tex_hdr(C3D_Tex* t, int w, int h, GPU_TEXCOLOR fmt) {
+    if (!C3D_TexInit(t, w, h, fmt)) return 0;
     linearFree(t->data);
     t->data = NULL;
     return 1;
 }
 /* the copy block from full_reserve, NULL when the boot reserve failed */
 static u8* copy_get(void) { return copy_blk; }
+/* TEXF1: copy_blk takes one copy per frame. A second copy in a frame waits for the GPU first (pm_gx_drain), so the part that sampled
+ * the earlier copy is done before the buffer is written. pm_copy_drain counts the waits (texstat). */
+void pm_gx_drain(void);
+unsigned pm_copy_drain;
+static int copy_used;
+static void copy_guard(void) {
+    if (copy_used) { pm_copy_drain++; pm_gx_drain(); }
+    copy_used = 1;
+}
 /* the data of a full image: its reserved block (full_reserve). A failed boot reserve returns 0, the pass draws on the screen. */
 static int full_tex_init(int i) {
     if (!full_blk[i]) return 0;
     if (!offs[i].hdr) {
-        if (!tex_hdr(&offs[i].tex, PM_OFF_W, PM_OFF_H)) return 0;
+        if (!tex_hdr(&offs[i].tex, PM_OFF_W, PM_OFF_H, GPU_RGBA5551)) return 0;
         offs[i].hdr = 1;
     }
     offs[i].tex.data = full_blk[i];
@@ -400,7 +412,7 @@ static int small_tex_init(C3D_Tex* t) {
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
 static void off_snapshot(int i) {
     u8* dst;
-    u32 bytes = (u32)offs[i].w * (u32)offs[i].h * 4u;
+    u32 bytes = (u32)offs[i].w * (u32)offs[i].h * (i < OFF_N ? 2u : 4u); /* R4: a full image is 16 bit */
     if (offs[i].w == 64) {
         if (!offs[i].snap_ready) {
             if (!small_tex_init(&offs[i].snap)) { pm_vram_alloc_fail("snap", 16); pm_log_e("FX2a: no arena block for the copy of slot %d", i); return; }
@@ -415,7 +427,7 @@ static void off_snapshot(int i) {
         dst = copy_get();
         if (!dst) { offs[i].snap_ready = 0; pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
         if (!offs[i].snap_hdr) {
-            if (!tex_hdr(&offs[i].snap, PM_OFF_W, PM_OFF_H)) { offs[i].snap_ready = 0; return; }
+            if (!tex_hdr(&offs[i].snap, PM_OFF_W, PM_OFF_H, GPU_RGBA5551)) { offs[i].snap_ready = 0; return; } /* R4: the copy of a full image is 5551 too */
             C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
             C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
             offs[i].snap_hdr = 1;
@@ -425,6 +437,7 @@ static void off_snapshot(int i) {
     }
     split_frame();
     pm_gx_room();
+    if (dst == copy_blk) copy_guard();
     GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)dst, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
 }
 
@@ -1576,6 +1589,7 @@ extern unsigned pm_uptime_ms(void);
 static void dump_shot(void) {
     static unsigned n, frames;
     char path[64];
+    char msg[160] = ""; /* SHOT1: the shot log line, logged after fclose */
     FILE* f;
     unsigned char* row;
     const unsigned char* src;
@@ -1598,12 +1612,15 @@ static void dump_shot(void) {
             int ma, mm;
             shot_burst--;
             pm_route_mapid(&ma, &mm);
-            pm_log_d("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
-            if (shot_burst != 0) return;
+            if (shot_burst != 0) {
+                pm_log_d("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
+                return;
+            }
+            snprintf(msg, sizeof msg, "shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
         } else if (shot_w0 >= 0) {
             unsigned fc = pm_frame_count();
             if ((int)fc < shot_w0 || (int)fc >= shot_w1) return;
-            pm_log_d("shot %u frame %u", n, fc);
+            snprintf(msg, sizeof msg, "shot %u frame %u", n, fc);
         } else if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
     }
     src = (const unsigned char*)((pm_debug_has("shoteye") && targetR ? targetR : target)->frameBuf.colorBuf); /* shoteye: the right eye */
@@ -1628,6 +1645,7 @@ static void dump_shot(void) {
     }
     free(row);
     fclose(f);
+    if (msg[0]) pm_log_d("%s", msg); /* SHOT1: after fclose, so the until line (run_azahar.ps1) means the file is complete */
 }
 
 /* D03: the last finished frame as N64 RGBA5551 (native u16, alpha bit set), 320x240, for game code that
@@ -1694,6 +1712,11 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
     }
     if (i == OFF_ALL) {
+        if (stride > 64 && siz != 2) { /* R4: a full slot is RGBA5551, it can hold only a 16 bit image. Other sizes draw on the screen. */
+            static int n_r4;
+            if (n_r4++ < 20) pm_log_e("R4: full off-screen image with siz %d in frame %u, draws on the screen (full slots are 16 bit)", siz, pm_frame_count());
+            return 0;
+        }
         if (siz == 1 && stride <= 64) {
             /* FX2a: the flame writes D_800B32E0 from its own last frame, so 8 bit images keep their slot and pixels. A slot not named in this frame is taken over. */
             int k;
@@ -1701,16 +1724,17 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             if (k == OFF_ALL) for (k = OFF_P; k < OFF_ALL && offs[k].last == pm_frame_count(); k++) {}
             if (k == OFF_ALL) { pm_log_w("FX2a: more than 2 8 bit images in one frame, the rest draw on the screen"); return 0; }
             i = k;
-        } else if (w == 64 && off_sused >= OFF_N) {
+        } else if (w == 64 && off_sused >= OFF_S) {
             static int once;
-            if (!once++) pm_log_w("V05: more than %d off-screen images in one frame, the rest draw on the screen", OFF_N);
+            if (!once++) pm_log_w("V05: more than %d 64 x 64 off-screen images in one frame, the rest draw on the screen", OFF_S);
             return 0;
         } else if (w != 64 && off_used >= OFF_N) {
             /* TEX2 B: the file select flip draws more than 4 boxes into off-screen images in one frame. The 5th drew on the screen
              * (contents at the top left). Take the full size slots again in turn: the GPU runs the draws in list order, so the strips
-             * of an earlier box have read the slot already. A later read of the earlier image does not find it. */
-            static int once;
-            if (!once++) pm_log_w("V05: more than %d off-screen images in one frame, slots are used again", OFF_N);
+             * of an earlier box have read the slot already. A later read of the earlier image does not find it. R5: OFF_N is 3, so
+             * a fourth full image in one frame reuses a slot. This line is the hard record of that demand (first 20 cases). */
+            static int n_over;
+            if (n_over++ < 20) pm_log_e("V05 demand: full image %d in frame %u, OFF_N %d: slot %d is used again", off_used + 1, pm_frame_count(), OFF_N, (int)(off_used % OFF_N));
             i = off_used++ % OFF_N;
             offs[i].base = NULL;
             pm_tex_set_offscreen(i, NULL, 0, &offs[i].tex, siz, offs[i].w, offs[i].h);
@@ -1742,6 +1766,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
         pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
     }
+    if (i < OFF_N) off_mask_f |= 1u << i; /* VRAM3 trace: which full images a frame uses */
     off_cur = i;
     off_w = offs[i].w;
     off_h = offs[i].h;
@@ -1794,7 +1819,7 @@ static int grab_tex_init(void) {
     u8* cb = copy_get();
     if (!cb) return 0;
     if (!grab_hdr) {
-        if (!tex_hdr(&grab_tex, 256, 512)) return 0;
+        if (!tex_hdr(&grab_tex, 256, 512, GPU_RGBA8)) return 0;
         C3D_TexSetFilter(&grab_tex, GPU_NEAREST, GPU_NEAREST);
         C3D_TexSetWrap(&grab_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
         grab_hdr = 1;
@@ -1813,11 +1838,26 @@ void pm_gx_room(void) {
     gxCmdQueueStop(q);
     gxCmdQueueClear(q);
 }
+/* TEXF1: 1 when the GX queue has no entries or the GPU has finished them. Does not wait (timeout 0). Used before a frame begins. */
+int pm_gx_done(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    if (!q->numEntries) return 1;
+    return gxCmdQueueWait(q, 0);
+}
+/* TEXF1: run the queue and wait for the GPU, as pm_gx_room does. Every entry added before the call is done after it. */
+void pm_gx_drain(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    gxCmdQueueRun(q);
+    gxCmdQueueWait(q, -1);
+    gxCmdQueueStop(q);
+    gxCmdQueueClear(q);
+}
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
 static void grab_queue_copy(void) {
     const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
     int s0 = mo >> 3, s1 = (mo + x1 - 1) >> 3;
     pm_gx_room();
+    copy_guard(); /* TEXF1: grab_tex is copy_blk */
     GX_TextureCopy((u32*)((u8*)cur_target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
                    (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
 }
@@ -1942,6 +1982,8 @@ static int begin_pend, begin_clear;
 void pm_gpu_begin_wait(void) {
     if (!begin_pend) return;
     begin_pend = 0;
+    if ((off_mask_f || off_sused) && off_trace_n++ < 400) pm_log_d("offuse f%u full %d mask %x small %d", pm_frame_count(), off_used, off_mask_f, off_sused); /* VRAM3 trace */
+    off_mask_f = 0;
     off_dump();
     for (int k = 0; k < OFF_P; k++) offs[k].base = NULL; /* FX2a: the 8 bit slots keep their base */
     off_used = off_sused = 0;
@@ -1949,6 +1991,7 @@ void pm_gpu_begin_wait(void) {
     off_i8 = 0;
     off_fail = 0; /* row 4: a VRAM failure lasts one frame */
     grab_dirty = 1;
+    copy_used = 0; /* TEXF1 */
     grab_dy0 = grab_dy1 = grab_n = grab_split = 0;
     pm_tex_clear_offscreen();
     dv_draw = 0;

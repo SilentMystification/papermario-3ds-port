@@ -201,7 +201,7 @@ static int glyph_build_atlas(const GlyphSheet* g, const u8* tlut, int tlut_n, in
             int x;
             for (x = 0; x < g->gw; x++) {
                 unsigned byte = gsrc[(y * g->gw + x) >> 1];
-                unsigned idx = (x & 1) ? (byte & 15u) : (byte >> 4);
+                unsigned idx = ((y * g->gw + x) & 1) ? (byte & 15u) : (byte >> 4);
                 unsigned pix = (tlut && (int)idx < tlut_n) ? rd16(tlut + idx * 2) : 0xffffu;
                 write5551(scratch + ((gy + y) * pw + (gx + x)) * 2, pix);
             }
@@ -347,7 +347,7 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
                 unsigned idx = 0;
                 if (siz == SIZ_4) {
                     unsigned byte = src[(sy * stride + sx) >> 1];
-                    idx = (sx & 1) ? (byte & 15) : (byte >> 4);
+                    idx = ((sy * stride + sx) & 1) ? (byte & 15) : (byte >> 4);
                 } else {
                     idx = src[sy * stride + sx];
                 }
@@ -390,7 +390,7 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
 
 static int nib(const u8* src, int stride, int x, int y) {
     unsigned byte = src[(y * stride + x) >> 1];
-    return (x & 1) ? (byte & 15) : (byte >> 4);
+    return ((y * stride + x) & 1) ? (byte & 15) : (byte >> 4);
 }
 
 /* P14: arithmetic shift right is floor(v / 4) for every int v (same as the old sign split with two divides). */
@@ -573,8 +573,10 @@ int pm_tex_cur_vram_pending(void) {
 int pm_tex_aux_vram_pending(void) { /* UC3b: unit 1 slot is in its load frame (draws its linear stage copy) */
     return have && aux >= 0 && aux < SLOTS && slots[aux].live && slots[aux].vram_up;
 }
+void pm_tex_gate(void);
 void pm_tex_upload_vram_before_frame(void) {
     unsigned t0 = tc_on > 0 ? pm_ticks() : 0;
+    pm_tex_gate(); /* TEXF1: before this frame's copies join the GX queue, so the queue still holds the previous frame only */
     for (int w = 0; w < SBIT_W; w++)
         for (unsigned m = vup_bits[w]; m; m &= m - 1) { upload_vram_slot(&slots[w * 32 + (int)__builtin_ctz(m)]); gh_up_n++; }
     if (t0) gh_up_t += pm_ticks() - t0;
@@ -635,6 +637,43 @@ static void gh_check(unsigned key, unsigned bytes) {
     else { gh_ev_hit++; gh_ev_kb += bytes >> 10; }
 }
 
+/* TEXF1: a staging copy or a slab extent is freed only after the GPU has finished the frames that sampled it. drop, the stage free
+ * and the stage replace call pf_add. pm_tex_gate runs before C3D_FrameBegin: when the GX queue of the previous frame is done (pm_gx_done,
+ * no wait) the whole list is released. The GPU runs the queue in order, so a done queue covers every entry added before it. */
+enum { PF_N = 128 };
+typedef struct { u8* p; unsigned bytes; unsigned frame; int slab; } PendFree;
+static PendFree pf_ent[PF_N];
+static unsigned pf_n, pf_max, pf_ops, pf_gate_busy, pf_max_age, pf_rel, pf_over;
+extern int pm_gx_done(void);
+extern void pm_gx_drain(void);
+static void pf_release_all(void) {
+    for (unsigned k = 0; k < pf_n; k++) {
+        unsigned age = tc_frame - pf_ent[k].frame;
+        if (age > pf_max_age) pf_max_age = age;
+        if (pf_ent[k].slab) slab_free(pf_ent[k].p, pf_ent[k].bytes);
+        else linearFree(pf_ent[k].p);
+    }
+    pf_rel += pf_n;
+    pf_n = 0;
+}
+static void pf_add(u8* p, unsigned bytes, int slab) {
+    if (!p) return;
+    if (pf_n == PF_N) { /* full: wait for the queue once, then release all. Rare. */
+        pm_gx_drain();
+        pf_over++;
+        pf_release_all();
+    }
+    pf_ent[pf_n].p = p; pf_ent[pf_n].bytes = bytes; pf_ent[pf_n].frame = tc_frame; pf_ent[pf_n].slab = slab;
+    pf_n++;
+    if (pf_n > pf_max) pf_max = pf_n;
+    pf_ops++;
+}
+void pm_tex_gate(void) {
+    if (!pf_n) return;
+    if (!pm_gx_done()) { pf_gate_busy++; return; }
+    pf_release_all();
+}
+
 static void drop(Slot* s) {
     if (!s->live) return;
     undirty(s);
@@ -642,14 +681,14 @@ static void drop(Slot* s) {
     if (aux == (int)(s - slots)) aux = -1;
     if (s->vram_stage) {
         stage_probe(s);
-        linearFree(s->vram_stage);
+        pf_add(s->vram_stage, 0, 0);
         s->vram_stage = NULL;
         s->stage_n = 0;
     }
     s->vram_up = 0;
     sbit_clr(vup_bits, (int)(s - slots));
     if (s->slab) {
-        slab_free(s->tex_vram_ptr ? s->tex_vram_ptr : s->tex.data, s->bytes);
+        pf_add(s->tex_vram_ptr ? s->tex_vram_ptr : s->tex.data, s->bytes, 1);
         s->tex_vram_ptr = NULL;
         s->slab = 0;
         memset(&s->tex, 0, sizeof s->tex);
@@ -913,6 +952,9 @@ static void tc_report(void) {
     pm_log_d("texstat f%u: cap %uKB hits %u miss %u evict %u (%uKB) never hit before evict %u (%uKB) invalidated %u uploaded %uKB",
              tc_frame, tex_cap >> 10, tc_hits, tc_miss, tc_evict, tc_evict_bytes >> 10, tc_evict_ev0, tc_ev0_bytes >> 10, tc_inval, tc_up_bytes >> 10);
     pm_log_d("texstat stage early free %u (%uKB), freed at age 2 or more %uKB", early_free_n, early_free_kb, stage_freed >> 10);
+    extern unsigned pm_copy_drain;
+    pm_log_d("texstat pending free: now %u, max %u, ops %u, gate busy %u, max age %u frames, released %u, overflow %u, copy drains %u",
+             pf_n, pf_max, pf_ops, pf_gate_busy, pf_max_age, pf_rel, pf_over, pm_copy_drain);
     pm_log_d("texstat evict by cause: slot %u cap %u extent %u (since last report)", tc_ev_cause[0], tc_ev_cause[1], tc_ev_cause[2]);
     tc_ev_cause[0] = tc_ev_cause[1] = tc_ev_cause[2] = 0;
     pm_log_d("texbind binds %u mismatch %u skipped %u", bind_n, bind_mis, bind_skip);
@@ -939,7 +981,7 @@ void pm_tex_begin_frame(void) {
     if (tc_on && tc_frame % 300 == 0) tc_report();
     epoch++;
     frame_bytes = 0;
-    /* The previous frame has finished on the GPU (C3D_FRAME_SYNCDRAW), so deferred frees are safe now. */
+    /* Frees of a sampled block go through pf_add (TEXF1): the GPU has not waited for the previous frame by default. */
     for (int w = 0; w < SBIT_W; w++)
         for (unsigned m = att_bits[w]; m; m &= m - 1) {
             int i = w * 32 + (int)__builtin_ctz(m);
@@ -947,7 +989,7 @@ void pm_tex_begin_frame(void) {
             if (s->live && s->stale) drop(s);
             /* row 1: the linear staging copy is only read by the upload, two frames before it can go */
             if (s->live && s->vram_stage && !s->vram_up && tc_frame >= s->up_frame + 2) {
-                linearFree(s->vram_stage);
+                pf_add(s->vram_stage, 0, 0);
                 s->vram_stage = NULL;
                 stage_freed += s->stage_n;
                 s->stage_n = 0;
@@ -1361,7 +1403,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         }
         staged = (const u8*)upload;
     }
-    if (s->vram_stage) { stage_probe(s); linearFree(s->vram_stage); }
+    if (s->vram_stage) { stage_probe(s); pf_add(s->vram_stage, 0, 0); }
     s->vram_stage = (u8*)linearAlloc(gpu_size);
     sbit_set(att_bits, (int)(s - slots));
     if (!s->vram_stage) {

@@ -131,10 +131,22 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {"name": "map", "regex": "warp: nok_02 entry"},
-        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
-        {"name": "seg", "regex": "stseg f200 "},
-        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "seg",
+          "regex": "stseg f200 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
       ],
       "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
     },
@@ -151,10 +163,22 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {"name": "map", "regex": "warp: nok_02 entry"},
-        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
-        {"name": "seg", "regex": "stseg f200 "},
-        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "seg",
+          "regex": "stseg f200 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
       ],
       "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
     },
@@ -171,9 +195,18 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {"name": "map", "regex": "warp: nok_02 entry"},
-        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
-        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
       ],
       "reason": "New scenario (FLK1 behroute test, approved)."
     },
@@ -2200,64 +2233,64 @@
       ]
     },
     {
-          "name": "battle_menu_bar",
-          "status": "unverified",
-          "subject": "Enemy HP bar (HES_HPBar) drawn over the Goomba in the battle, with the battle menu flag set by the debug hook battlemenu at scene frame 110 (battlef 100 plus 10).",
-          "proves": "UI2 step 1: the enemy HP bar draws once BS_FLAGS1_MENU_OPEN is set (16C8E0.c:905). Shot 182 shows the bar; its bottom row is read for the 16-row fix.",
-          "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 battlemenu shots shotmode=8:30 loglevel=debug",
-          "until": "shot \\d+ frame 182\\b",
-          "cap": 20,
-          "deadline": 20,
-          "first_marker": "warp: kmr_03 entry 0",
-          "expects": "warp",
-          "needs_picture": true,
-          "expected_events": [
-                {
-                      "name": "warp",
-                      "regex": "warp: kmr_03 entry 0"
-                },
-                {
-                      "name": "battle formation",
-                      "regex": "debug battle: formation"
-                },
-                {
-                      "name": "menu flag",
-                      "regex": "debug battlemenu: menu flag set"
-                },
-                {
-                      "name": "shot at 182",
-                      "regex": "shot \\d+ frame 182\\b"
-                }
-          ],
-          "reason": "UI2 step 1 hook test. battlemenu is a debug switch (pm_warp.c), not a draw toggle."
+      "name": "battle_menu_bar",
+      "status": "unverified",
+      "subject": "Enemy HP bar (HES_HPBar) drawn over the Goomba in the battle, with the battle menu flag set by the debug hook battlemenu at scene frame 110 (battlef 100 plus 10).",
+      "proves": "UI2 step 1: the enemy HP bar draws once BS_FLAGS1_MENU_OPEN is set (16C8E0.c:905). Shot 182 shows the bar; its bottom row is read for the 16-row fix.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 battlemenu shots shotmode=8:30 loglevel=debug",
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "menu flag",
+          "regex": "debug battlemenu: menu flag set"
+        },
+        {
+          "name": "shot at 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "UI2 step 1 hook test. battlemenu is a debug switch (pm_warp.c), not a draw toggle."
     },
     {
-          "name": "battle_danger",
-          "status": "unverified",
-          "subject": "Battle with Mario at HP 5 (DANGER_THRESHOLD 5, battle.h:272): the danger notifier D (status icon, actor_rendering.c:1596) draws at the Mario actor. Shots at frames 153 to 182.",
-          "proves": "UI2 step 1 low-HP hook: the existing hp= switch sets gPlayerData.curHP, so the danger icon draws. The D is read for the left-edge clip (hud_element.c:1895).",
-          "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 hp=5 shots shotmode=8:30 loglevel=debug",
-          "until": "shot \\d+ frame 182\\b",
-          "cap": 20,
-          "deadline": 20,
-          "first_marker": "warp: kmr_03 entry 0",
-          "expects": "warp",
-          "needs_picture": true,
-          "expected_events": [
-                {
-                      "name": "warp",
-                      "regex": "warp: kmr_03 entry 0"
-                },
-                {
-                      "name": "battle formation",
-                      "regex": "debug battle: formation"
-                },
-                {
-                      "name": "shot at 182",
-                      "regex": "shot \\d+ frame 182\\b"
-                }
-          ],
-          "reason": "UI2 step 1 low-HP test. Uses the existing hp= switch."
+      "name": "battle_danger",
+      "status": "unverified",
+      "subject": "Battle with Mario at HP 5 (DANGER_THRESHOLD 5, battle.h:272): the danger notifier D (status icon, actor_rendering.c:1596) draws at the Mario actor. Shots at frames 153 to 182.",
+      "proves": "UI2 step 1 low-HP hook: the existing hp= switch sets gPlayerData.curHP, so the danger icon draws. The D is read for the left-edge clip (hud_element.c:1895).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 hp=5 shots shotmode=8:30 loglevel=debug",
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "shot at 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "UI2 step 1 low-HP test. Uses the existing hp= switch."
     },
     {
       "name": "battle_start",
@@ -2676,102 +2709,102 @@
       "reason": "GRAB2 (BTLSTAR row). Same command as text_menu with a 40 frame shot window. Unverified: one start needed. Add grablog to the debug string for the grab line check."
     },
     {
-            "name": "pause_spin_grab",
-            "status": "unverified",
-            "subject": "VRAM2: pause_spin with the grablog and texstat switches. Pause open, spin frames 140 to 179. Shows the copy block and full image use in the pause, and the cache cap on the texstat line.",
-            "proves": "Grab lines (grablog) and the texstat cap line (cap constant after boot). The texmap state line is written at each map load.",
-            "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat",
-            "until": "shot \\d+ frame (17[6-9]|18[01])\\b",
-            "cap": 45,
-            "deadline": 20,
-            "first_marker": "warp: mac_00 entry 4",
-            "expects": "warp",
-            "needs_picture": true,
-            "expected_events": [
-                  {
-                        "name": "warp",
-                        "regex": "warp: mac_00 entry 4"
-                  },
-                  {
-                        "name": "pause mode",
-                        "regex": "game mode 10 frame"
-                  },
-                  {
-                        "name": "shot in window 176-181 (inside the 40 frame window 140-179)",
-                        "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
-                  }
-            ],
-            "reason": "GRAB2 (BTLSTAR row). Same command as text_menu with a 40 frame shot window. Unverified: one start needed. Add grablog to the debug string for the grab line check."
-      },
+      "name": "pause_spin_grab",
+      "status": "unverified",
+      "subject": "VRAM2: pause_spin with the grablog and texstat switches. Pause open, spin frames 140 to 179. Shows the copy block and full image use in the pause, and the cache cap on the texstat line.",
+      "proves": "Grab lines (grablog) and the texstat cap line (cap constant after boot). The texmap state line is written at each map load.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat",
+      "until": "shot \\d+ frame (17[6-9]|18[01])\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in window 176-181 (inside the 40 frame window 140-179)",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        }
+      ],
+      "reason": "GRAB2 (BTLSTAR row). Same command as text_menu with a 40 frame shot window. Unverified: one start needed. Add grablog to the debug string for the grab line check."
+    },
     {
-            "name": "yard_vramfill",
-            "status": "unverified",
-            "subject": "VRAM2: yard with vramfill=3 (three 512 KB dummy blocks in bank B, after the texture cache has its boot blocks). Reads the texstat cap line at frame 300.",
-            "proves": "The texture cap stays at the boot value (1856 KB) over 300 frames, so the dummy blocks do not drain the cache. The vramfill blocks fail or fit in the bank left over. No texcache shrink line is written.",
-            "debug": "preset=yard vramfill=3 texstat loglevel=debug",
-            "until": "texstat f300:",
-            "cap": 30,
-            "deadline": 20,
-            "first_marker": "warp: kmr_20 entry 4",
-            "expects": "warp",
-            "needs_picture": false,
-            "expected_events": [
-                  {
-                        "name": "warp",
-                        "regex": "warp: kmr_20 entry 4"
-                  },
-                  {
-                        "name": "texstat f300 cap",
-                        "regex": "texstat f300: cap 1856KB"
-                  }
-            ]
-      },
+      "name": "yard_vramfill",
+      "status": "unverified",
+      "subject": "VRAM2: yard with vramfill=3 (three 512 KB dummy blocks in bank B, after the texture cache has its boot blocks). Reads the texstat cap line at frame 300.",
+      "proves": "The texture cap stays at the boot value (1856 KB) over 300 frames, so the dummy blocks do not drain the cache. The vramfill blocks fail or fit in the bank left over. No texcache shrink line is written.",
+      "debug": "preset=yard vramfill=3 texstat loglevel=debug",
+      "until": "texstat f300:",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "texstat f300 cap",
+          "regex": "texstat f300: cap 1856KB"
+        }
+      ]
+    },
     {
-            "name": "kzn19_texstat",
-            "status": "unverified",
-            "subject": "CACHE1: second heavy map check. kzn_19 with texstat until the frame 600 report.",
-            "proves": "The live texture slot count on kzn_19 against the 512 slot limit (texstat live line), and eviction counts by cause.",
-            "debug": "warp=kzn_19:0 story=ch0_toad_town texstat loglevel=debug",
-            "until": "texstat f600:",
-            "cap": 60,
-            "deadline": 20,
-            "first_marker": "warp: kzn_19 entry 0",
-            "expects": "warp",
-            "needs_picture": false,
-            "expected_events": [
-                  {
-                        "name": "warp",
-                        "regex": "warp: kzn_19 entry 0"
-                  },
-                  {
-                        "name": "texstat f600",
-                        "regex": "texstat f600:"
-                  }
-            ]
-      },
+      "name": "kzn19_texstat",
+      "status": "unverified",
+      "subject": "CACHE1: second heavy map check. kzn_19 with texstat until the frame 600 report.",
+      "proves": "The live texture slot count on kzn_19 against the 512 slot limit (texstat live line), and eviction counts by cause.",
+      "debug": "warp=kzn_19:0 story=ch0_toad_town texstat loglevel=debug",
+      "until": "texstat f600:",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: kzn_19 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kzn_19 entry 0"
+        },
+        {
+          "name": "texstat f600",
+          "regex": "texstat f600:"
+        }
+      ]
+    },
     {
-            "name": "mac01_texstat",
-            "status": "unverified",
-            "subject": "CACHE1: heaviest map check. mac_01 with texstat (live slot count, cap, evict by cause) until the frame 600 report.",
-            "proves": "The live texture slot count on mac_01 against the 512 slot limit (texstat live line), and eviction counts by cause (slot, cap, extent).",
-            "debug": "warp=mac_01:0 texstat loglevel=debug",
-            "until": "texstat f600:",
-            "cap": 60,
-            "deadline": 20,
-            "first_marker": "warp: mac_01 entry 0",
-            "expects": "warp",
-            "needs_picture": false,
-            "expected_events": [
-                  {
-                        "name": "warp",
-                        "regex": "warp: mac_01 entry 0"
-                  },
-                  {
-                        "name": "texstat f600",
-                        "regex": "texstat f600:"
-                  }
-            ]
-      },
+      "name": "mac01_texstat",
+      "status": "unverified",
+      "subject": "CACHE1: heaviest map check. mac_01 with texstat (live slot count, cap, evict by cause) until the frame 600 report.",
+      "proves": "The live texture slot count on mac_01 against the 512 slot limit (texstat live line), and eviction counts by cause (slot, cap, extent).",
+      "debug": "warp=mac_01:0 texstat loglevel=debug",
+      "until": "texstat f600:",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "texstat f600",
+          "regex": "texstat f600:"
+        }
+      ]
+    },
     {
       "name": "text_menu",
       "status": "verified",
@@ -3420,7 +3453,7 @@
         }
       ]
     },
-{
+    {
       "name": "merlon_door",
       "status": "unverified",
       "subject": "Merlon's house entered through the door on mac_01: Mario placed on the street south of the door (-203 20 -206), walks through the doorway (go to -203 -280), and the room with the crystal ball is shot at frames 120 to 179 (grab and texlog lines in the same frames).",
@@ -4035,7 +4068,9 @@
       "subject": "Six maps in one start: kmr_20 entry 4 (preset), then mac_00 entry 4, tik_03 entry 0, isk_04 entry 0, kzn_19 entry 0, mac_01 entry 0. One shot per map, 30 frames after the map is in.",
       "proves": "NDT3 multi-scene golden: one Azahar start gives one shot per scene, to compare HEAD and the new build region by region (no stored reference).",
       "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug",
-      "extra": [ "-Turbo" ],
+      "extra": [
+        "-Turbo"
+      ],
       "until": "shot 6 frame",
       "cap": 90,
       "deadline": 20,
@@ -4058,231 +4093,231 @@
       ],
       "reason": ""
     },
-      {
-        "name": "kzn19_slotpeak",
-        "status": "unverified",
-        "subject": "SLOT1: kzn_19 (heaviest map) with texstat to the frame 1500 report. Log only.",
-        "proves": "Peak live texture slots over the run (slot limit 2048 in this measurement build, so the peak is not capped), live slots under 1 KB, evictions by cause.",
-        "debug": "warp=kzn_19:0 story=ch0_toad_town texstat loglevel=debug",
-        "extra": [
-          "-Turbo"
-        ],
-        "until": "texstat f1500:",
-        "cap": 150,
-        "deadline": 20,
-        "first_marker": "warp: kzn_19 entry 0",
-        "expects": "warp",
-        "needs_picture": false,
-        "expected_events": [
-          {
-            "name": "start",
-            "regex": "warp: kzn_19 entry 0"
-          },
-          {
-            "name": "report",
-            "regex": "texstat f1500:"
-          }
-        ],
-        "reason": "Long measurement (SLOT1): frame 1500 shows whether the live slot count stops rising. Turbo: slot counts are per frame, not per second."
-      },
-      {
-        "name": "battle_slotpeak",
-        "status": "unverified",
-        "subject": "SLOT1: battle switch (battle battlef=100 on kmr_03, the verified battle_start path) with texstat to the frame 600 report. Log only.",
-        "proves": "Peak live texture slots during a battle, and the under-1-KB count.",
-        "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 texstat loglevel=debug",
-        "extra": [
-          "-Turbo"
-        ],
-        "until": "texstat f600:",
-        "cap": 90,
-        "deadline": 20,
-        "first_marker": "warp: kmr_03 entry 0",
-        "expects": "warp",
-        "needs_picture": false,
-        "expected_events": [
-          {
-            "name": "start",
-            "regex": "warp: kmr_03 entry 0"
-          },
-          {
-            "name": "report",
-            "regex": "texstat f600:"
-          }
-        ],
-        "reason": "Battle texture demand (SLOT1). Turbo: slot counts are per frame."
-      },
-      {
-        "name": "pause_slotpeak",
-        "status": "unverified",
-        "subject": "SLOT1: pause menu open (preset toad, START x3) with texstat to the frame 300 report. Log only.",
-        "proves": "Peak live texture slots with the pause menu open.",
-        "debug": "preset=toad padscript=wait80,START*3,wait100 texstat loglevel=debug",
-        "until": "texstat f300:",
-        "cap": 45,
-        "deadline": 20,
-        "first_marker": "warp: mac_00 entry 4",
-        "expects": "warp",
-        "needs_picture": false,
-        "expected_events": [
-          {
-            "name": "start",
-            "regex": "warp: mac_00 entry 4"
-          },
-          {
-            "name": "report",
-            "regex": "texstat f300:"
-          }
-        ],
-        "reason": "Pause texture demand (SLOT1)."
-      },
-      {
-        "name": "chain_slotpeak",
-        "status": "unverified",
-        "subject": "SLOT1: map change chain mac_00 to mac_01 to kzn_19 to mac_01 with texstat to the frame 1500 report. Log only.",
-        "proves": "Peak live texture slots across map changes (slots from the previous map are dropped, so the peak should not add up).",
-        "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,kzn_19:0,mac_01:0 texstat loglevel=debug",
-        "extra": [
-          "-Turbo"
-        ],
-        "until": "texstat f1500:",
-        "cap": 150,
-        "deadline": 20,
-        "first_marker": "warp: mac_00 entry 4",
-        "expects": "tour",
-        "needs_picture": false,
-        "expected_events": [
-          {
-            "name": "start",
-            "regex": "warp: mac_00 entry 4"
-          },
-          {
-            "name": "report",
-            "regex": "texstat f1500:"
-          }
-        ],
-        "reason": "Long measurement (SLOT1): map change chain at frame 1500. Turbo: slot counts are per frame."
-      },
-      {
-        "name": "hos01_texword",
-        "status": "unverified",
-        "subject": "TEXD1: Shooting Star Summit wall (hos_01), the I4 64x64 texture 0x0100169c (this build), bind dump (texword) of the first 4 binds from frame 200, and the drawlog of the wall chunk.",
-        "proves": "The texword line for image 0x0100169c (slot layout, wrap state, hash) and the texsrc and texgpu files written at the bind (pm_tex_bind), frames 200 to 203.",
-        "debug": "warp=hos_01:0 texword=0100169c@200 shots shotwin=200:6 loglevel=debug drawlog=200:1",
-        "until": "shot \\d+ frame 204\\b",
-        "cap": 25,
-        "deadline": 20,
-        "first_marker": "warp: hos_01 entry 0",
-        "expects": "warp",
-        "needs_picture": true,
-        "expected_events": [
-          {
-            "name": "start",
-            "regex": "warp: hos_01 entry 0"
-          },
-          {
-            "name": "texword bind",
-            "regex": "texword f\\d+ img 0100169c bind 1"
-          },
-          {
-            "name": "last shot",
-            "regex": "shot \\d+ frame 204"
-          }
-        ],
-        "reason": ""
-      },
-      {
-        "name": "texwrap_wall",
-        "status": "unverified",
-        "subject": "TEXD3: hos_01 wall, image 0x0100169c, with the console switch wrapov=repeat (unit 0 GPU wrap forced to repeat at pm_tex_bind). Frame 200 to 204 shots.",
-        "proves": "The td3 bind line shows the programmed wrap 2 (repeat) for unit 0, and the texword bind of 0x0100169c at frame 200. The picture shows the wall at frame 200.",
-        "debug": "warp=hos_01:0 texword=0100169c@200 wrapov=repeat shots shotwin=200:6 loglevel=debug",
-        "until": "shot \\d+ frame 203\\b",
-        "cap": 32,
-        "deadline": 20,
-        "first_marker": "warp: hos_01 entry 0",
-        "expects": "warp",
-        "needs_picture": true,
-        "expected_events": [
-          {
-            "name": "start",
-            "regex": "warp: hos_01 entry 0"
-          },
-          {
-            "name": "td3 bind",
-            "regex": "td3 bind unit0 slot \\d+ programmed ws 2 wt 2"
-          },
-          {
-            "name": "last shot",
-            "regex": "shot \\d+ frame 203"
-          }
-        ],
-        "reason": "Cap 32 s: hos01_texword (cap 25) stopped before its until line (runs 3 and 4, TEXD3). The shot writer takes frame 203, not 204."
-      },
-      {
-        "name": "texreg_wall",
-        "status": "unverified",
-        "subject": "BIS1: hos_01 wall, image 0x0100169c, texword line (wrap, filter, pad, hash) at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe, reverted (BIS1).",
-        "proves": "The texword line for the image: wrap s and t, shr, filter, slot and GPU sizes (pad), hash.",
-        "debug": "warp=hos_01:0 texword=0100169c shots shotwin=200:6 loglevel=debug",
-        "until": "warp: scene f300 ",
-        "cap": 60,
-        "deadline": 20,
-        "first_marker": "warp: hos_01 entry 0",
-        "expects": "warp",
-        "needs_picture": true,
-        "expected_events": [
-          {
-            "name": "start",
-            "regex": "warp: hos_01 entry 0"
-          },
-          {
-            "name": "texword line",
-            "regex": "texword f\\d+ img 0100169c bind 1"
-          },
-          {
-            "name": "shot",
-            "regex": "shot \\d+ frame 20[0-5]\\b"
-          },
-          {
-            "name": "steady frame",
-            "regex": "warp: scene f300 "
-          }
-        ],
-        "reason": ""
-      },
-      {
-        "name": "texreg_coin",
-        "status": "unverified",
-        "subject": "BIS1: tik_03 sewer coins, image 0x00571b90, texword line at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe (BIS1).",
-        "proves": "The texword line for the image: wrap s and t, shr, filter, slot and GPU sizes (pad), hash.",
-        "debug": "warp=tik_03:0 texword=00571b90 shots shotwin=200:6 loglevel=debug",
-        "until": "warp: scene f300 ",
-        "cap": 90,
-        "deadline": 20,
-        "first_marker": "warp: tik_03 entry 0",
-        "expects": "warp",
-        "needs_picture": true,
-        "expected_events": [
-          {
-            "name": "start",
-            "regex": "warp: tik_03 entry 0"
-          },
-          {
-            "name": "texword line",
-            "regex": "texword f\\d+ img 00571b90 bind 1"
-          },
-          {
-            "name": "shot",
-            "regex": "shot \\d+ frame 20[0-5]\\b"
-          },
-          {
-            "name": "steady frame",
-            "regex": "warp: scene f300 "
-          }
-        ],
-        "reason": ""
-      },
+    {
+      "name": "kzn19_slotpeak",
+      "status": "unverified",
+      "subject": "SLOT1: kzn_19 (heaviest map) with texstat to the frame 1500 report. Log only.",
+      "proves": "Peak live texture slots over the run (slot limit 2048 in this measurement build, so the peak is not capped), live slots under 1 KB, evictions by cause.",
+      "debug": "warp=kzn_19:0 story=ch0_toad_town texstat loglevel=debug",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "texstat f1500:",
+      "cap": 150,
+      "deadline": 20,
+      "first_marker": "warp: kzn_19 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: kzn_19 entry 0"
+        },
+        {
+          "name": "report",
+          "regex": "texstat f1500:"
+        }
+      ],
+      "reason": "Long measurement (SLOT1): frame 1500 shows whether the live slot count stops rising. Turbo: slot counts are per frame, not per second."
+    },
+    {
+      "name": "battle_slotpeak",
+      "status": "unverified",
+      "subject": "SLOT1: battle switch (battle battlef=100 on kmr_03, the verified battle_start path) with texstat to the frame 600 report. Log only.",
+      "proves": "Peak live texture slots during a battle, and the under-1-KB count.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 texstat loglevel=debug",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "texstat f600:",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "report",
+          "regex": "texstat f600:"
+        }
+      ],
+      "reason": "Battle texture demand (SLOT1). Turbo: slot counts are per frame."
+    },
+    {
+      "name": "pause_slotpeak",
+      "status": "unverified",
+      "subject": "SLOT1: pause menu open (preset toad, START x3) with texstat to the frame 300 report. Log only.",
+      "proves": "Peak live texture slots with the pause menu open.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 texstat loglevel=debug",
+      "until": "texstat f300:",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "report",
+          "regex": "texstat f300:"
+        }
+      ],
+      "reason": "Pause texture demand (SLOT1)."
+    },
+    {
+      "name": "chain_slotpeak",
+      "status": "unverified",
+      "subject": "SLOT1: map change chain mac_00 to mac_01 to kzn_19 to mac_01 with texstat to the frame 1500 report. Log only.",
+      "proves": "Peak live texture slots across map changes (slots from the previous map are dropped, so the peak should not add up).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,kzn_19:0,mac_01:0 texstat loglevel=debug",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "texstat f1500:",
+      "cap": 150,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "report",
+          "regex": "texstat f1500:"
+        }
+      ],
+      "reason": "Long measurement (SLOT1): map change chain at frame 1500. Turbo: slot counts are per frame."
+    },
+    {
+      "name": "hos01_texword",
+      "status": "unverified",
+      "subject": "TEXD1: Shooting Star Summit wall (hos_01), the I4 64x64 texture, content hash 3470b4d1 (slot 8; the address moves between builds, 0x010026ac on TEXF1), bind dump (texword) of the first 4 binds from frame 200, and the drawlog of the wall chunk.",
+      "proves": "The texword line for image 0x0100169c (slot layout, wrap state, hash) and the texsrc and texgpu files written at the bind (pm_tex_bind), frames 200 to 203.",
+      "debug": "warp=hos_01:0 texword=shape@200 shots shotwin=200:6 loglevel=debug drawlog=200:1",
+      "until": "shot \\d+ frame 20[34]\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "texword bind",
+          "regex": "texword f\\d+ img [0-9a-f]{8} bind 1: slot 8 64x64 fmt 4 siz 0 .*hash 3470b4d1"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 20[34]"
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "texwrap_wall",
+      "status": "unverified",
+      "subject": "TEXD3: hos_01 wall, image 0x0100169c, with the console switch wrapov=repeat (unit 0 GPU wrap forced to repeat at pm_tex_bind). Frame 200 to 204 shots.",
+      "proves": "The td3 bind line shows the programmed wrap 2 (repeat) for unit 0, and the texword bind of 0x0100169c at frame 200. The picture shows the wall at frame 200.",
+      "debug": "warp=hos_01:0 texword=shape@200 wrapov=repeat shots shotwin=200:6 loglevel=debug",
+      "until": "shot \\d+ frame 203\\b",
+      "cap": 32,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "td3 bind",
+          "regex": "td3 bind unit0 slot \\d+ programmed ws 2 wt 2"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 203"
+        }
+      ],
+      "reason": "Cap 32 s: hos01_texword (cap 25) stopped before its until line (runs 3 and 4, TEXD3). The shot writer takes frame 203, not 204."
+    },
+    {
+      "name": "texreg_wall",
+      "status": "unverified",
+      "subject": "BIS1: hos_01 wall, image 0x0100169c, texword line (wrap, filter, pad, hash) at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe, reverted (BIS1).",
+      "proves": "The texword line for the image: wrap s and t, shr, filter, slot and GPU sizes (pad), hash.",
+      "debug": "warp=hos_01:0 texword=shape@200 shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "texword line",
+          "regex": "texword f\\d+ img [0-9a-f]{8} bind 1: slot 8 64x64 fmt 4 siz 0 .*hash 3470b4d1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "texreg_coin",
+      "status": "unverified",
+      "subject": "BIS1: tik_03 sewer coins, image 0x00571b90, texword line at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe (BIS1).",
+      "proves": "The texword line for the image: wrap s and t, shr, filter, slot and GPU sizes (pad), hash.",
+      "debug": "warp=tik_03:0 texword=00571b90 shots shotwin=200:6 loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: tik_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: tik_03 entry 0"
+        },
+        {
+          "name": "texword line",
+          "regex": "texword f\\d+ img 00571b90 bind 1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20[0-5]\\b"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        }
+      ],
+      "reason": ""
+    },
     {
       "name": "census_mac01",
       "status": "unverified",
@@ -4330,6 +4365,126 @@
         }
       ],
       "reason": "PMOD gate scene. A person must read the shots; region_diff compares to the HEAD reference."
+    },
+    {
+      "name": "hos01_texmax",
+      "status": "unverified",
+      "subject": "TEXF1: Shooting Star Summit (hos_01) texture cache counts at the map load, with the texmax switch (texmap line per map load) and the TEXF1 pending free counters in texstat.",
+      "proves": "The texmap line prints at the warp load: hits, misses, uploads, evictions and the free VRAM low. The texstat report at frame 300 prints the pending free line (pf now, max, gate busy, max age, released, overflow, copy drains).",
+      "debug": "warp=hos_01:0 texmax texstat loglevel=debug",
+      "until": "texstat pending free",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "texmap",
+          "regex": "texmap since last map"
+        }
+      ],
+      "reason": "New scenario (TEXF1). Audit docs/handoff/audit_tex_upload.md, Count section: the cheap count of evictions at the hos_01 map load."
+    },
+    {
+      "name": "texstride_wall",
+      "status": "unverified",
+      "subject": "TCV: hos_01 wall, the I4 64x64 texture (fmt 4 siz 0). The texword probe (shape) logs the stride the converter gets for the first bind from frame 200 and writes the texsrc and texgpu dumps.",
+      "proves": "The stride field of the texword line for the wall (64 = the texel width of the image, 128 = the doubled 4-bit stride of pm_gbi.c), and the dump files of the same bind.",
+      "debug": "warp=hos_01:0 texword=shape@200 loglevel=debug",
+      "until": "texword f200 img [0-9a-f]+ bind 1:",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "wall bind",
+          "regex": "texword f200 img [0-9a-f]+ bind 1: slot \\d+ 64x64 fmt 4 siz 0 stride \\d+"
+        }
+      ],
+      "reason": "Log-only diagnostic (TCV): the stride of the I4 64x64 wall bind and its texel dumps. No picture is the subject."
+    },
+    {
+      "name": "texdump_coin",
+      "status": "unverified",
+      "subject": "TCV: tik_03 sewer coin, image 0x00571b90 (RGBA16 32x32 in the BIS1 notes). The texword probe for that address writes the texsrc and texgpu dumps of the first 4 binds.",
+      "proves": "The texsrc and texgpu dumps of the coin texture (texture bytes as the converter got them and as uploaded). The address is the one of the BIS1 notes; if it changed in this build, the run stops at the cap with no dump.",
+      "debug": "warp=tik_03:0 texword=00571b90 loglevel=debug",
+      "until": "texword f\\d+ img 00571b90 bind 1:",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: tik_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: tik_03 entry 0"
+        },
+        {
+          "name": "coin bind",
+          "regex": "texword f\\d+ img 00571b90 bind 1:"
+        }
+      ],
+      "reason": "Log-only diagnostic (TCV): the coin texel dumps for the converter check. Address from BIS1; not checked against the build."
+    },
+    {
+      "name": "coin_kmr03",
+      "status": "unverified",
+      "subject": "CIT: field coins (ITEM_COIN, kmr_03 at x 345 z -250, y 205 to 280) above the spring, Mario placed at pos 345 75 -280 (kmr_03), coins above. Picture: the coin sprites and their texture.",
+      "proves": "The coin item entity draw: drawlog lists the chunk of the coin draw (texture, screen box), the shot shows the coin.",
+      "debug": "warp=kmr_03:0 pos=345:75:-280 shots shotwin=280:2 loglevel=debug drawlog=280:1 texword=00d0f7e0@250",
+      "until": "shot \\d+ frame 281\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 28[0-1]\\b"
+        }
+      ],
+      "reason": "CIT: run 5 (texword 00d0f7e0@250, shot 280) log checks 2 of 2 and the texword dumps were written, but no top shot file reached build3ds/azt/shots/coin_kmr03 (picture check failed). Coin texture decoded in docs/handoff/trace_coin_item.md."
+    },
+    {
+      "name": "coin_dgb13",
+      "status": "unverified",
+      "subject": "COIN1: field coins of dgb_13 (ITEM_COIN at x -530 to -490, z -220 to -160, y 55, six coins), Mario placed at pos -490 20 -190 next to them. Picture: the coin sprites whole, the 24x24 coin chunk and its texture.",
+      "proves": "The coin item draw in a view where the coin is on screen: drawlog lists the 24x24 chunk, the shot shows the whole coin.",
+      "debug": "warp=dgb_13:0 pos=-490:20:-190 shots shotwin=280:2 loglevel=debug drawlog=280:1",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 40,
+      "deadline": 40,
+      "first_marker": "warp: dgb_13 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: dgb_13 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 28[0-1]\\b"
+        }
+      ],
+      "reason": ""
     }
-]
+  ]
 }

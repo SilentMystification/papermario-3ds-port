@@ -63,7 +63,7 @@ WD=${PM_BUILD_CAP:-600}
 wdpid=$!
 rc=0
 MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
-    -e CCACHE_DIR=/ccache -e PM_BUILD_NUM="$BN" \
+    -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-2G}" -e PM_BUILD_NUM="$BN" \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
     -v pm3ds-ccache:/ccache \
@@ -82,6 +82,8 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
     cmake --build /work/build --parallel "$(nproc)" -- -k 0 '"$*"' || status=$?
     stage compile-link
     cp -f /work/build/pm_3ds.3dsx /work/build/pm_3ds.smdh /work/build/pm_3ds.map /work/build/pm_3ds.elf /out/ 2>/dev/null || true
+    # Keep the compile cache only: drop object files. ccache restores them on the next build.
+    find /work/build -name "*.o" -delete
     stage copy-out
     exit $status
 ' || rc=$?
@@ -103,3 +105,17 @@ if [ -z "$PM_LANE" ] && [ -n "$APPDATA" ] && [ -f build3ds/pm_3ds.3dsx ]; then
     mkdir -p "$dest"
     cp -f build3ds/pm_3ds.3dsx "$dest/pm_3ds.3dsx"
 fi
+# Cap the lane volume sets: keep the newest PM_LANE_KEEP lanes (default 5), by creation time.
+# The base volumes (pm3ds-build, pm3ds-src, pm3ds-work, pm3ds-ccache) and the current lane are never removed.
+KEEP=${PM_LANE_KEEP:-5}
+docker volume ls -q | sed -n -E 's/^pm3ds-build-(.+)$/\1/p' | while read -r l; do
+    echo "$(docker volume inspect --format '{{.CreatedAt}}' pm3ds-build-$l) $l"
+done | sort -r | awk '{print $2}' | {
+    n=0
+    while read -r l; do
+        n=$((n + 1))
+        if [ "$n" -gt "$KEEP" ] && [ "$l" != "${PM_LANE:-}" ]; then
+            docker volume rm pm3ds-build-$l pm3ds-src-$l pm3ds-work-$l >/dev/null 2>&1 || true
+        fi
+    done
+}
