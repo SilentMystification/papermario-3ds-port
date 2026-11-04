@@ -636,14 +636,13 @@ static void game_thread(void* arg) {
     }
     { /* PROF4: options.ini prof=1 adds the word prof, as a launch argument does. pm_options_init runs later and re-applies it. */
         FILE* oi = fopen("options.ini", "r");
-        char ln[32];
+        static char ln[32];
         if (oi) {
             while (fgets(ln, sizeof ln, oi)) if (!strncmp(ln, "prof=1", 6) && strlen(sw) + 6 < sizeof sw) { strcat(sw, " prof"); break; }
             fclose(oi);
         }
     }
     pm_log_set_switches(sw);
-    pm_log_prof_apply(0);
     pm_log_init(live);
     pm_log_start();
     pm_log_live_status();

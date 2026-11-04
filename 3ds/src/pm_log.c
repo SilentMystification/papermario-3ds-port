@@ -410,7 +410,7 @@ void pm_log_prof_line(const char* fmt, ...) {
     va_end(ap);
     wake_writer();
 }
-/* PROF4: switch prof. Forces every log line off (level none, console off). log.txt stays open for the prof line only. Removes the stat words
+/* PROF4: switch prof. Keeps log.txt open; only prof lines are written (level none, console off). Removes the stat words
  * phase, pmu, fsplit, sp0c, texstat, audiostat, pacestat, logstat, drawcensus, drawlog from the switch string. Without prof it does nothing.
  * boot_line 1 prints "prof=1 log=off". Ceiling: a later pm_log_set_level or the options panel log toggle is undone by the next call. */
 void pm_log_prof_apply(int boot_line) {
@@ -418,7 +418,7 @@ void pm_log_prof_apply(int boot_line) {
     char v[16];
     if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) { prof_mode = 0; return; }
     prof_mode = 1;
-    char out[sizeof switches];
+    static char out[sizeof switches];
     size_t o = 0;
     char* p = switches;
     while (*p) {
