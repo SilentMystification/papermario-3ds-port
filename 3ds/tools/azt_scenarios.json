@@ -2444,6 +2444,52 @@
             ]
       },
     {
+            "name": "kzn19_texstat",
+            "status": "unverified",
+            "subject": "CACHE1: second heavy map check. kzn_19 with texstat until the frame 600 report.",
+            "proves": "The live texture slot count on kzn_19 against the 512 slot limit (texstat live line), and eviction counts by cause.",
+            "debug": "warp=kzn_19:0 story=ch0_toad_town texstat loglevel=debug",
+            "until": "texstat f600:",
+            "cap": 60,
+            "deadline": 20,
+            "first_marker": "warp: kzn_19 entry 0",
+            "expects": "warp",
+            "needs_picture": false,
+            "expected_events": [
+                  {
+                        "name": "warp",
+                        "regex": "warp: kzn_19 entry 0"
+                  },
+                  {
+                        "name": "texstat f600",
+                        "regex": "texstat f600:"
+                  }
+            ]
+      },
+    {
+            "name": "mac01_texstat",
+            "status": "unverified",
+            "subject": "CACHE1: heaviest map check. mac_01 with texstat (live slot count, cap, evict by cause) until the frame 600 report.",
+            "proves": "The live texture slot count on mac_01 against the 512 slot limit (texstat live line), and eviction counts by cause (slot, cap, extent).",
+            "debug": "warp=mac_01:0 texstat loglevel=debug",
+            "until": "texstat f600:",
+            "cap": 60,
+            "deadline": 20,
+            "first_marker": "warp: mac_01 entry 0",
+            "expects": "warp",
+            "needs_picture": false,
+            "expected_events": [
+                  {
+                        "name": "warp",
+                        "regex": "warp: mac_01 entry 0"
+                  },
+                  {
+                        "name": "texstat f600",
+                        "regex": "texstat f600:"
+                  }
+            ]
+      },
+    {
       "name": "text_menu",
       "status": "verified",
       "subject": "Pause status menu text: dialog 'Check here to see what Mario's current status is.' and the item names Hammer, Boots, Stats, Items. Periods and spacing read by eye.",

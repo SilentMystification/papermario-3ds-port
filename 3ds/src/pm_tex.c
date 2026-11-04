@@ -758,14 +758,17 @@ int pm_tex_bind_slot(int i) {
 
 /* A texture bound in the current command list has to stay alive until the next
  * frame begins. Deleting it earlier makes the GPU sample freed VRAM. */
-static int evict_oldest_done(void) {
+/* CACHE1: the current and the previous frame are protected. cause: 0 no free slot (slot limit), 1 cache cap, 2 no extent (slab) */
+static unsigned tc_ev_cause[3];
+static int evict_oldest_done(int cause) {
     int oldest = -1;
     for (int i = 0; i < slot_hi; i++) {
-        if (!slots[i].live || slots[i].epoch == epoch) continue;
-        if (oldest < 0 || (int)(slots[i].stamp - slots[oldest].stamp) < 0) oldest = i; /* wrap-safe: stamp is a use counter */
+        if (!slots[i].live || slots[i].epoch == epoch || slots[i].epoch + 1u == epoch) continue;
+        if (oldest < 0 || (int)(slots[i].stamp - slots[oldest].stamp) < 0) oldest = i; /* wrap-safe: stamp is a use counter, lowest = least recent */
     }
     if (oldest < 0) return 0;
     if (oldest == cur) cur = -1;
+    tc_ev_cause[cause]++;
     tc_evict++;
     tot_evict++;
     tc_evict_bytes += slots[oldest].bytes;
@@ -877,6 +880,8 @@ static void tc_report(void) {
     pm_log_d("texstat f%u: cap %uKB hits %u miss %u evict %u (%uKB) never hit before evict %u (%uKB) invalidated %u uploaded %uKB",
              tc_frame, tex_cap >> 10, tc_hits, tc_miss, tc_evict, tc_evict_bytes >> 10, tc_evict_ev0, tc_ev0_bytes >> 10, tc_inval, tc_up_bytes >> 10);
     pm_log_d("texstat stage early free %u (%uKB), freed at age 2 or more %uKB", early_free_n, early_free_kb, stage_freed >> 10);
+    pm_log_d("texstat evict by cause: slot %u cap %u extent %u (since last report)", tc_ev_cause[0], tc_ev_cause[1], tc_ev_cause[2]);
+    tc_ev_cause[0] = tc_ev_cause[1] = tc_ev_cause[2] = 0;
     pm_log_d("texbind binds %u mismatch %u skipped %u", bind_n, bind_mis, bind_skip);
     pm_log_d("texstat live: %u slots %uKB, never hit %u (%uKB), used in last 300 frames %u (%uKB)", n, bytes >> 10, u0n, u0b >> 10, rec_n, rec_b >> 10);
     pm_log_d("texstat age (frames since last use) <=1: %u/%uKB, <=10: %u/%uKB, <=100: %u/%uKB, <=300: %u/%uKB, older: %u/%uKB",
@@ -1163,7 +1168,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     for (;;) {
         for (int i = 0; i < SLOTS; i++) if (!slots[i].live) { slot = i; break; }
         if (slot >= 0 && used + reserve <= tex_cap) break;
-        if (!evict_oldest_done()) {
+        if (!evict_oldest_done(slot < 0 ? 0 : 1)) {
             static int once;
             fail_last = 1;
             fail_n++;
@@ -1191,7 +1196,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     u8* sp_keep = NULL;
     { /* image in the VRAM pool; header from a per-format template, data in the slab */
         u8* sp = slab_alloc(reserve);
-        while (!sp && evict_oldest_done()) {
+        while (!sp && evict_oldest_done(2)) {
             static int nev;
             if (nev++ < 8) pm_log_w("texcache VRAM full for %u bytes (used %u), evicted one texture", reserve, used);
             sp = slab_alloc(reserve);
