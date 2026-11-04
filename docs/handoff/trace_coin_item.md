@@ -43,3 +43,15 @@ The PPM is 240 x 400 (top screen turned). Fit from runs 2 and 4: shot x = 239 - 
 - Scenario coin_kmr03 is in 3ds/tools/azt_scenarios.json (uncommitted). It needs a catalog row in the same commit (orchestrator).
 - Shots and logs: build3ds/azt/shots/coin_kmr03/, build3ds/lane-native/last_log.txt (run 4).
 - Test status line: 3ds/logs/perf/status_CIT.txt (4 start lines).
+
+## 7. Update after the coordinator note (start 5, CIT 5 of 6)
+
+- Retraction: point 3 (tile window 256 to 263 vs code 256 to 279) is withdrawn. dd_line prints the tile state at the next chunk, so the window belongs to the 8 x 8 sparkle (chunk #21), not the coin. No mismatch is claimed.
+- Run 5: `warp=kmr_03:0 pos=345:75:-280 shotwin=280:2 drawlog=280:1 texword=00d0f7e0@250`. Placement settled at y -289.7 (Mario at z -280). texword binds of 00d0f7e0 at frames 250, 269, 285, 305: slot 61, 24 x 24, CI4 (fmt 2 siz 0), stride 24, slen 288, GPU 32 x 32, gn 2048 (RGBA16 after the palette), wrap 0 0, filter 1, hash c7c2b4f6.
+- Source (texsrc_00d0f7e0_1.bin, CI4 indices, decoded in the scratchpad): a clean coin outline, index 0 outside the disc, indices 1 to 7 inside. The disc spans x 5 to 19 and y 4 to 20.
+- Converted texture (texgpu_00d0f7e0_1.bin, decoded as 8 x 8 Morton tiles, row 0 at the top): the disc has the same shape. Colours: tan, black, blue-violet centre line, cyan rim. The area of index 0 is opaque blue-violet, not transparent. PROVEN for the texel layout and the shape. INFERRED for the palette: the colours do not look like a gold coin, so the palette base or entry 0 alpha is likely wrong. Palette is not dumped, so this is not proven.
+- Picture: no top shot file reached build3ds/azt/shots/coin_kmr03 in run 5 (the azt folder keeps the 01:23 frame). The shot is missing, so the picture check failed. The coin as seen on screen is NOT shown.
+- Coin position on screen: runs 2 (z -240) show the coin clipped at the top edge. Runs 3 and 4 show no coin draw at frame 250. The camera at frame 250 may still be the start camera (runs 3 and 4 shots are equal).
+- Starts used: 5 of 6 (CIT). One start remains.
+
+Decode scripts (scratchpad, not committed): gpu_morton.py (8 x 8 Morton tiles), ci4_idx.py (CI4 index print), rgba16_png.py (linear RGBA16, wrong for PICA tiles).

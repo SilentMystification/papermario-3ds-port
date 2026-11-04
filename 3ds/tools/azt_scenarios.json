@@ -4234,6 +4234,30 @@
           }
         ],
         "reason": ""
-      }
+      },
+    {
+      "name": "coin_kmr03",
+      "status": "unverified",
+      "subject": "CIT: field coins (ITEM_COIN, kmr_03 at x 345 z -250, y 205 to 280) above the spring, Mario placed at pos 345 75 -280 (kmr_03), coins above. Picture: the coin sprites and their texture.",
+      "proves": "The coin item entity draw: drawlog lists the chunk of the coin draw (texture, screen box), the shot shows the coin.",
+      "debug": "warp=kmr_03:0 pos=345:75:-280 shots shotwin=280:2 loglevel=debug drawlog=280:1 texword=00d0f7e0@250",
+      "until": "shot \\d+ frame 281\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 28[0-1]\\b"
+        }
+      ],
+      "reason": "CIT: run 5 (texword 00d0f7e0@250, shot 280) log checks 2 of 2 and the texword dumps were written, but no top shot file reached build3ds/azt/shots/coin_kmr03 (picture check failed). Coin texture decoded in docs/handoff/trace_coin_item.md."
+    }
   ]
 }
