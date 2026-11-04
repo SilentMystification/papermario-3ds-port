@@ -80,6 +80,7 @@ void pm_gpu_nat_pool_init(void);              /* pm_gpu.c: linear pool of NAT_PO
 #define NAT_POOL_BYTES (128u * 1024u)
 void nat_model_reset(void);                    /* clears the models and the pool (per map generation) */
 const uint16_t* nat_pool_put(const uint16_t* idx, unsigned n); /* copies n indices, 32-byte aligned. NULL when full or unset */
+uint32_t nat_gpu_addr(uint32_t phys); /* E3: GPU index address word of a phys address */
 void nat_model_bake(uint32_t dl, unsigned nseg, unsigned nv, unsigned nidx, unsigned ok); /* adds a record; no-op when the table is full */
 
 #endif

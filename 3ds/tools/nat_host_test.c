@@ -253,6 +253,8 @@ static void test_tex_id(void) {
     CHECK(ia > 0 && ib > 0 && ia != ib, "tex_id: different blocks gave ids %d %d", ia, ib);
     CHECK(ia2 == ia, "tex_id: equal block gave id %d, first was %d", ia2, ia);
     CHECK(nat_tex_id(z) == 0, "tex_id: zero block is not id 0");
+    /* E3: GPU index address word, bit 31 set, relative to 0x18000000 (measured 0x20389D6E gives 0x88389D6E) */
+    CHECK(nat_gpu_addr(0x20389D6Eu) == 0x88389D6Eu, "gpu_addr: got 0x%08X", nat_gpu_addr(0x20389D6Eu));
 }
 
 int main(int argc, char** argv) {

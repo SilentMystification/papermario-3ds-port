@@ -6,7 +6,7 @@
  * fit the ring runs through the interpreter itself (pm_gbi_run on the op range of the group). */
 unsigned pm_dlc_gen = 1; /* bumped when the shape buffer is written (pm_tex_invalidate, decode_yay0) */
 
-typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16* sd; u16* bat_q; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
+typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16* sd; u16* bat_q; const u16* pidx; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
 typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; } DlcEnt;
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 #define DLC_TAB 2048
@@ -265,7 +265,7 @@ static __attribute__((cold, noinline)) void dlc_static_build(DlcEnt* e, const Gf
         if (nv != g->nvtx || ngo != g->ng) { free(sd); dlc_c.sfull++; continue; } /* cannot happen: the same walk as dlc_compile */
         pm_gpu_gstat_commit((unsigned)first, nv);
         g->sn = (u16)nt; g->sd = sd;
-        nat_pool_put(sd, 3u * nt); /* PMOD P1: linear copy of the indices (the bake). sd stays the draw list */
+        g->pidx = nat_pool_put(sd, 3u * nt); /* PMOD P1: linear copy of the indices (the bake). sd stays the draw list */
         dlc_batch_compile(g, e);
     }
     unsigned bnv = 0, bni = 0, bok = 1;
