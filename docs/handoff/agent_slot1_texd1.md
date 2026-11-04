@@ -42,3 +42,25 @@
 - Logs: the game log is build3ds/lane-native/last_log.txt (shared with other runs; copy it right after the run).
 - Scenarios added: kzn19_slotpeak, battle_slotpeak, pause_slotpeak, chain_slotpeak (SLOT1), hos01_texword (TEXD1). Catalog rows in docs/handoff/test_catalog.md.
 - Not committed and not touched: 3ds/src/map_restore_table.c, 3ds/logs/perf/pushed_builds.txt. Another agent's DIAG edit in src/evt/script_list.c was in the tree during this session (reverted by its owner before the commits).
+
+## Session 2 (code agent, branch native): TEXD1 result, SLOT1 follow-up, VRAM3 not started
+
+### TEXD1: stale-wrap hypothesis refuted (no wrap fix committed)
+- Tried: ensure_tile sets the tile wrap on every draw (flush before a change), pm_tex_set_wrap skips equal fields. Reverted (no change in the bind wrap).
+- Bind wrap at the texword line: wrap s 3 t 3 (mirror) for all 40 binds of 0x0100169c, frames 200 to 239 (run 8). Same value with and without the fix (runs 3 to 8).
+- The ensure line before a bind shows the same tile wrap (mirror, e.g. tw 1 1 6 6). So the bind already matches the tile state of the draw. The stale-wrap cause is not the reason for this texture.
+- Open: the drawlog tw (cms 0, cmt 0, masks 5) of the wall chunk is not the tile that samples 0x0100169c. The drawlog does not print in the scenario log now (no line with tw or timg). Next diagnosis: find which tile and which draw sample 0x0100169c at frame 200 (drawlog output, or a log line in the draw path with the tile number and the triangle count).
+- Commits: ebc4ac407 (debug), catalog row updated. No code fix.
+- tik_03 coin gate not run (budget). Byte-equal gates for TEXD1 not run (no change to keep).
+- Budget TEXD1: 8 of 8 starts used (runs 1 to 8). Cap reached. Gates not run: tik_03 coin shot. Row state: INCOMPLETE for the coin gate, FAILED for the wall hypothesis.
+
+### SLOT1 follow-up: done (commit 1413ef8c3)
+- pm_tex.c: lookup walks the key bucket (lhead, lnext, lkey; 256 buckets). load_miss links, drop unlinks. The single-entry lidx probe and the linear scan over slot_hi are removed from load_impl.
+- Byte-equal: yard top shot 0000_0_11 and mac_01 0000_1_2 and 0001_1_2 equal to the 1024 slot build (SLOT1 runs 13 and 14, status_SLOT1.txt).
+- Not measured: the time of the lookup on console. The chain length at 497 live slots is about 2 per bucket (not counted in a run).
+- Open: pm_tex_load_rgba8 (the !rgba path, pm_tex.c) still scans slot_hi (linear). Check if it is on a hot path before changing it.
+- Budget SLOT1 since the reset: 6 of 8 used (runs 9 to 14, runs 9 to 12 before this session). Two left.
+
+### VRAM3: not started
+- Step 1 (trace when each of the 4 off-screen full images is live) is not run. Existing hint: the V05 log lines in pm_gpu.c:1681 to 1691 print when a fifth image is wanted (slots used again).
+- Steps (a) RGBA5551, (b) fewer images, (c) shared depth: not started. Each needs its gates (boot line, yard and mac_01 shots, pause_spin, battle_start_fb frames 0 to 210).
