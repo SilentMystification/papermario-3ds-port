@@ -4282,6 +4282,30 @@
           }
         ],
         "reason": ""
-      }
-  ]
+      },
+    {
+      "name": "census_toad_shot",
+      "status": "unverified",
+      "subject": "Toad Town (kmr_10 entry 0, player at -142 136 221), frames 200 and 201 shots: the Toad Town models (houses, props) in view at the census frame.",
+      "proves": "PMOD P3 picture gate: the model draw path of the P3 build against the HEAD reference shots (region_diff.py). Same frames, same route.",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "shot 1 frame 204",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 204\b"
+        }
+      ],
+      "reason": "PMOD gate scene. A person must read the shots; region_diff compares to the HEAD reference."
+    }
+]
 }
