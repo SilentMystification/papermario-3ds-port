@@ -14,7 +14,8 @@ PMFX = 304           # PmFx: 76 floats (pm_gpu.h)
 PAL = 68             # u32 game matrix index + C3D_Mtx (64 bytes)
 VTX_RING = 16        # ring vertex (raw path)
 VTX_CPU = 40         # Vert: x y z w u v r g b a floats (CPU path)
-KIND_DRAW, KIND_PROD, KIND_MDL = 1, 2, 3
+KIND_DRAW, KIND_PROD, KIND_MDL, KIND_ST = 1, 2, 3, 4
+ST_WORDS = 15 + 13 + 34  # kind 4 body: 15 header words, 13 effect words, 34 texenv words (FORMAT.md)
 
 
 def parse(path):
@@ -25,8 +26,8 @@ def parse(path):
     magic, ver, frame, ndraws, plen = struct.unpack_from("<5I", data, 0)
     if magic != MAGIC:
         raise ValueError("bad magic %08x" % magic)
-    if ver != 1:
-        raise ValueError("version %d, expected 1" % ver)
+    if ver != 2:
+        raise ValueError("version %d, expected 2" % ver)
     if len(data) != 20 + plen:
         raise ValueError("payload %d bytes, header says %d" % (len(data) - 20, plen))
     hdr = {"frame": frame, "draws": ndraws, "bytes": plen}
@@ -46,6 +47,11 @@ def parse(path):
         elif kind == KIND_DRAW:
             recs.append(parse_draw(data, body, body + size))
             draws += 1
+        elif kind == KIND_ST:
+            if size != 4 * ST_WORDS:
+                raise ValueError("state record at %d: size %d, expected %d" % (p, size, 4 * ST_WORDS))
+            w = struct.unpack_from("<%dI" % ST_WORDS, data, body)
+            recs.append({"kind": KIND_ST, "hdr": w[:15], "eff": w[15:28], "tev": w[28:]})
         else:
             raise ValueError("unknown record kind %d at %d" % (kind, p))
         p = body + size
@@ -100,6 +106,9 @@ def show(path, hdr, recs):
                 n, key_hash(r["key"]), r["z"], r["graw"], r["cull"], r["decal"], r["blend"], r["atest"],
                 r["sa"], r["sb"], r["nv"] // 3, r["pal"]))
             n += 1
+        elif r["kind"] == KIND_ST:
+            print("state pass %d z %d zmark %d zcmp %d zupd %d nocol %d noise %d raw %d key %08x %08x %d %d eff %s" % (
+                (*r["hdr"][:12], " ".join("%08x" % x for x in r["eff"]))))
         elif r["kind"] == KIND_PROD:
             print("tag prod %d" % r["id"])
         else:

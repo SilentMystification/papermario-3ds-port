@@ -69,6 +69,8 @@ typedef struct {
     unsigned char fold[6]; /* H06b3: B, C, D of the folded form (TN_* and alpha flag), see pm_comb.c; fold[2] is 0 when unused */
 } PmPlan;
 void pm_gpu_set_plan(const PmPlan* p);
+void pm_gpu_render_src(unsigned omode_h, unsigned omode_l, int depth_img); /* S1-3: the inputs of the render flags just set (ndref oracle only) */
+void pm_gpu_plan_key(unsigned w0, unsigned w1, int two, int t1only); /* S1-3: call before pm_gpu_set_plan: the pm_comb_build inputs of that plan */
 /* Plan with TEXTURE1: its coordinates are uv * (sx, sy) + (ox, oy). The caller has made the unit 1 texture (pm_tex_set_aux). */
 void pm_gpu_set_tex1(float sx, float sy, float ox, float oy);
 

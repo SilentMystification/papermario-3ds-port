@@ -1,4 +1,4 @@
-# ndref: reference draw stream (format v1)
+# ndref: reference draw stream (format v2)
 
 Test oracle for the native draw system (docs/handoff/plan_native_system.md 9.2 and 9.3). It is not read by the game.
 Pinned commit: e95b21495 (NDREF1 hook on the walker of 620d457f7; the walker code is the same, the hook is off unless `ndref=<frame>` is set). The files were captured on build 2020 (commit 42f6fac7e). The S0-6 commit adds counters and a prof line only; it does not change the draws.
@@ -10,7 +10,7 @@ Read by 3ds/tools/nd_ref_dump.py. All integers and floats are little-endian. Flo
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 4 | magic `NDR1` (bytes 4E 44 52 31) |
-| 4 | 4 | version = 1 |
+| 4 | 4 | version = 2 (v1 had no kind 4 records) |
 | 8 | 4 | frame number (pm_frame_count) |
 | 12 | 4 | draw record count |
 | 16 | 4 | payload bytes (everything after this 20-byte header) |
@@ -20,11 +20,24 @@ Read by 3ds/tools/nd_ref_dump.py. All integers and floats are little-endian. Flo
 
 | Offset | Size | Field |
 |---|---|---|
-| 0 | 4 | kind: 1 draw, 2 producer tag, 3 model tag |
+| 0 | 4 | kind: 1 draw, 2 producer tag, 3 model tag, 4 draw state |
 | 4 | 4 | size of the body in bytes |
 | 8 | size | body |
 
 Tag body (kinds 2 and 3, size 8): u32 id, u32 extra. Kind 2: id = producer id (pm_gbi_prod_mark), extra = 0. Kind 3: id = model id (pm_gbi_mdl_mark), extra = pan flag.
+
+## State body (kind 4, S1-3 oracle)
+
+One record per GPU draw call, written right before C3D_DrawArrays or C3D_DrawElements, after the kind 1 record of the same flush. Size 248 bytes = 62 x u32.
+
+| Words | Field |
+|---|---|
+| 0 | pass: 0 main draw, 1 decal pass A, 2 decal pass B (final draw of a decal2 batch), 3 zmark pass 2 |
+| 1 to 7 | z, zmark, zcmp, zupd, nocol, noise (a TEXTURE2 noise stage is bound), raw (graw) |
+| 8 to 11 | plan key w0, w1, two, t1only: the inputs of pm_comb_build for the plan. 0 when combine is not 8 |
+| 12 to 14 | omode_h, omode_l, depth image flag: the inputs of the last sync_render (pm_gbi.c), which gives zcmp, zupd, blend, atest, decal, nocol, memblend (nd_render_state). Zero before the first sync_render |
+| 15 to 27 | citro3d context bytes 216 to 267, 13 words, the effect block that C3Di_EffectBind turns into register writes (libcitro3d.a disassembly). Index i of the 13: 0 reg 0x100 (colour operation), 1 reg 0x130, 2 reg 0x4D (depth map scale, f24), 3 reg 0x4E (depth map offset, f24), 4 bytes: cull (reg 0x40, low 2 bits), depth map enable (reg 0x6D), early depth enable (regs 0x62 and 0x118), early depth func (reg 0x61), 5 reg 0x6A (early depth ref), 6 reg 0x104 (alpha test), 7 reg 0x105 (stencil test), 8 reg 0x106 (stencil op), 9 reg 0x107 (depth and colour mask; reg 0x126 is derived from it), 10 reg 0x103 (blend colour), 11 reg 0x101 (blend func), 12 reg 0x102 (logic op, low byte) |
+| 28 to 61 | citro3d context bytes 292 to 427 (34 words): TEV stage i at words 5 i to 5 i + 4 = regs 0xC0 + 8 i (0xF0 + 8 (i - 4) for i 4 and 5) +0..+4 (source, operand, combiner, colour, scale); block word 30 = reg 0xE0 (buffer update), 31 = reg 0xFD (buffer colour), 32 = reg 0xFE |
 
 ## Draw body
 

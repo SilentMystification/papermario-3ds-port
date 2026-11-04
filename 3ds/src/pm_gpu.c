@@ -11,6 +11,7 @@ void pm_gx_room(void); /* HANG1a */
 #include <stdlib.h>
 #include "pm_shader5_shbin.h"
 #include "pm_native.h"
+#include "nd.h"
 #include "pm_shaderall_shbin.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
@@ -58,6 +59,8 @@ int pm_debug_value(const char* key, char* out, unsigned n);
 static int dview = -1; /* V02 depth view mode, see dv_color */
 static unsigned dv_draw;
 static int rect_z; /* X01: the 2D rectangle in flight tests depth (fill rect with G_ZS_PRIM) */
+static unsigned rs_src[3]; /* S1-3: other mode words and depth image flag of the last sync_render, for the ndref oracle */
+static unsigned plan_k[4], plan_kp[4]; /* S1-3: the combiner words of the plan: pm_comb_build(w0, w1, two, t1only) gives plan (pending key from pm_gpu_plan_key, set with the plan) */
 static int r_zmark, stencil_on; /* B3b: case 6 model, see flush */
 static float r_zmark_zn; /* B3b: the constant clip depth (z / w) the model writes */
 static int r_nocol; /* S25: the blender gives back the frame buffer colour: depth only */
@@ -221,49 +224,6 @@ static void rebuild_3d(void) {
         gv_wind = det < 0.f ? -1 : 1;
         post_gen++;
         Mtx_Multiply(&shader_3d, post, &game); /* SEAM: the same product, in the same order, as pcomp_calc: post x game. The CPU path and the raw path then give bit-identical positions. */
-    }
-}
-
-/* The PICA constant colour register is 0xAABBGGRR. The port keeps colours as 0xRRGGBBAA. */
-static unsigned abgr(unsigned c) {
-    return ((c & 255u) << 24) | (((c >> 8) & 255u) << 16) | (((c >> 16) & 255u) << 8) | (c >> 24);
-}
-
-static GPU_TEVSRC tev_src(int s) {
-    switch (s) {
-    case PM_S_TEX0: return GPU_TEXTURE0;
-    case PM_S_TEX1: return GPU_TEXTURE1;
-    case PM_S_TEX2: return GPU_TEXTURE2;
-    case PM_S_VTX: return GPU_PRIMARY_COLOR;
-    case PM_S_CONST: return GPU_CONSTANT;
-    case PM_S_PREV: return GPU_PREVIOUS;
-    default: return GPU_PREVIOUS_BUFFER;
-    }
-}
-static GPU_TEVOP_RGB tev_op_rgb(int o) {
-    return o == PM_O_C ? GPU_TEVOP_RGB_SRC_COLOR : o == PM_O_1MC ? GPU_TEVOP_RGB_ONE_MINUS_SRC_COLOR :
-           o == PM_O_A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_ONE_MINUS_SRC_ALPHA;
-}
-static GPU_TEVOP_A tev_op_a(int o) { return (o == PM_O_1MA || o == PM_O_1MC) ? GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA : GPU_TEVOP_A_SRC_ALPHA; }
-/* FX2a: an 8 bit slot is one channel, I, in R. A blended write leaves the alpha channel as the blend weight, so a read takes I from R, never from A. */
-static int tev_i8(int src, int i8_0, int i8_1) { return (src == PM_S_TEX0 && i8_0) || (src == PM_S_TEX1 && i8_1); }
-static GPU_TEVOP_RGB tev_op_rgb_i(int o, int i8) {
-    if (i8 && (o == PM_O_A || o == PM_O_1MA)) return o == PM_O_A ? GPU_TEVOP_RGB_SRC_R : GPU_TEVOP_RGB_ONE_MINUS_SRC_R;
-    return tev_op_rgb(o);
-}
-static GPU_TEVOP_A tev_op_a_i(int o, int i8) {
-    if (i8) return (o == PM_O_1MA || o == PM_O_1MC) ? GPU_TEVOP_A_ONE_MINUS_SRC_R : GPU_TEVOP_A_SRC_R;
-    return tev_op_a(o);
-}
-static GPU_COMBINEFUNC tev_func(int f) {
-    switch (f) {
-    case PM_F_REPLACE: return GPU_REPLACE;
-    case PM_F_MODULATE: return GPU_MODULATE;
-    case PM_F_ADD: return GPU_ADD;
-    case PM_F_SUBTRACT: return GPU_SUBTRACT;
-    case PM_F_INTERP: return GPU_INTERPOLATE;
-    case PM_F_ADDSIGNED: return GPU_ADD_SIGNED;
-    default: return GPU_MULTIPLY_ADD;
     }
 }
 
@@ -558,11 +518,23 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     ndref_patch(at);
     ndref_draws++;
 }
+/* S1-3 oracle: kind 4, one record per GPU draw call (pass). Body: u32 pass (0 main, 1 decal pass A, 2 decal pass B, 3 zmark pass 2), z, zmark, zcmp, zupd, nocol, noise, raw,
+ * plan key w0, w1, two, t1only (0 when combine is not 8), omode_h, omode_l, depth image flag of the last sync_render, then ctx[216..268) (13 words, the effect block C3Di_EffectBind writes) and ctx[292..428) (34 words: 6 texenv stages of 5 words,
+ * texenv buffer update, buffer colour, third buffer word). The words are read from the citro3d context at the draw call, so they are exactly what the flush turns into register writes. */
+static int ndref_nz, ndref_raw;
+static __attribute__((cold, noinline)) void ndref_state(unsigned pass, int z) {
+    unsigned hd[2] = { 4u, 0u }, b[15] = { pass, (unsigned)z, (unsigned)r_zmark, (unsigned)r_zcmp, (unsigned)r_zupd, (unsigned)r_nocol, (unsigned)ndref_nz, (unsigned)ndref_raw,
+        combine == 8 ? plan_k[0] : 0u, combine == 8 ? plan_k[1] : 0u, combine == 8 ? plan_k[2] : 0u, combine == 8 ? plan_k[3] : 0u, rs_src[0], rs_src[1], rs_src[2] };
+    unsigned at = ndref_len;
+    ndref_put(hd, 8); ndref_put(b, sizeof b);
+    ndref_put(__C3D_Context + 216, 13 * 4); ndref_put(__C3D_Context + 292, 34 * 4);
+    ndref_patch(at);
+}
 static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: write the file, one log line when it is written */
     if (!ndref_wr) return;
     ndref_wr = 0; ndref_on = 0; ndref_target = -1;
     unsigned fr = pm_frame_count();
-    uint32_t hdr[5] = { 0x3152444Eu /* NDR1 */, 1u, fr, ndref_draws, ndref_len };
+    uint32_t hdr[5] = { 0x3152444Eu /* NDR1 */, 2u, fr, ndref_draws, ndref_len };
     FILE* f = fopen("sdmc:/3ds/PaperMario/ndref.bin", "wb");
     if (f) { fwrite(hdr, 4, 5, f); fwrite(ndref_buf, 1, ndref_len, f); fclose(f); }
     pm_log_d("ndref f%u done draws %u bytes %u%s%s", fr, ndref_draws, ndref_len, f ? "" : " open failed", ndref_over ? " over" : "");
@@ -724,150 +696,24 @@ static __attribute__((noinline)) void flush_tev_rebuild(C3D_TexEnv* env, int tex
     tk.dview = dview; tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
     tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
     tk.plan_gen = combine == 8 ? plan_gen : 0;
-        for (int i = 1; i < env_hi; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
-        env_hi = 1;
-        C3D_TexEnvInit(env);
-        /* Unit 1 stays bound to the last TEXEL1 texture: C3D_TexBind(1, NULL) crashes. No stage reads it. */
-        if (combine == 8 && (!plan.uses_tex || tex) && (!plan.uses_tex1 || tex1) && (!plan.uses_noise || noise)) {
-            /* S25: general combiner. A stage reads the texture, the vertex colour, its constant, the previous
-             * stage or the buffer colour. The buffer is never updated by a stage, so it holds one constant. */
-            C3D_TexEnvBufUpdate(C3D_Both, 0);
-            C3D_TexEnvBufColor(abgr(plan.buf));
-            for (int i = 0; i < plan.n && i < 6; i++) {
-                C3D_TexEnv* e = C3D_GetTexEnv(i);
-                const PmTevStage* st = &plan.st[i];
-                C3D_TexEnvInit(e);
-                C3D_TexEnvSrc(e, C3D_RGB, tev_src(st->g[0].src[0]), tev_src(st->g[0].src[1]), tev_src(st->g[0].src[2]));
-                C3D_TexEnvOpRgb(e, tev_op_rgb_i(st->g[0].op[0], tev_i8(st->g[0].src[0], i8_0, i8_1)), tev_op_rgb_i(st->g[0].op[1], tev_i8(st->g[0].src[1], i8_0, i8_1)),
-                                tev_op_rgb_i(st->g[0].op[2], tev_i8(st->g[0].src[2], i8_0, i8_1)));
-                C3D_TexEnvFunc(e, C3D_RGB, tev_func(st->g[0].func));
-                C3D_TexEnvSrc(e, C3D_Alpha, tev_src(st->g[1].src[0]), tev_src(st->g[1].src[1]), tev_src(st->g[1].src[2]));
-                C3D_TexEnvOpAlpha(e, tev_op_a_i(st->g[1].op[0], tev_i8(st->g[1].src[0], i8_0, i8_1)), tev_op_a_i(st->g[1].op[1], tev_i8(st->g[1].src[1], i8_0, i8_1)),
-                                  tev_op_a_i(st->g[1].op[2], tev_i8(st->g[1].src[2], i8_0, i8_1)));
-                C3D_TexEnvFunc(e, C3D_Alpha, tev_func(st->g[1].func));
-                C3D_TexEnvColor(e, abgr(st->constant));
-                if (st->g[0].scale > 1) C3D_TexEnvScale(e, C3D_RGB, st->g[0].scale == 4 ? GPU_TEVSCALE_4 : GPU_TEVSCALE_2);
-                if (st->g[1].scale > 1) C3D_TexEnvScale(e, C3D_Alpha, st->g[1].scale == 4 ? GPU_TEVSCALE_4 : GPU_TEVSCALE_2);
-            }
-            env_hi = plan.n;
-        } else if (combine == 8) {
-            C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-            C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-        } else if (tex && combine == 6) {
-            /* (TEXEL - PRIM) * PRIM_ALPHA + PRIM: the texture fades to the primitive colour (pause screen
-             * background, darkened by gray 40 at alpha 128). Alpha = texel alpha. */
-            C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_TEXTURE0, GPU_CONSTANT);
-            C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_ALPHA);
-            C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
-            C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, GPU_TEXTURE0);
-            if (i8_0)
-                C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R);
-            C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-            C3D_TexEnvColor(env, abgr(prim));
-        } else if (tex && (combine == 5 || combine == 7)) {
-            /* (PRIM - ENV) * TEXEL + ENV, alpha = texel alpha. ENV rides in the vertex colour. */
-            C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_TEXTURE0);
-            C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
-            if (combine == 7) {
-                C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, GPU_CONSTANT, GPU_CONSTANT);
-                C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-                C3D_TexEnvColor(env, abgr(prim | 0xffu));
-            } else {
-                C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_TEXTURE0, GPU_TEXTURE0);
-                if (i8_0)
-                    C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R);
-                C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-                C3D_TexEnvColor(env, abgr(prim));
-            }
-        } else if (tex && combine == 4) {
-            /* Flat colour, alpha = texture alpha times the constant's alpha. */
-            C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_CONSTANT, GPU_CONSTANT);
-            C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
-            C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_CONSTANT, GPU_CONSTANT);
-            if (i8_0)
-                C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
-            C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
-            C3D_TexEnvColor(env, abgr(cconst));
-        } else if (tex) {
-            C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-            C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-            if (combine == 3) {
-                C3D_TexEnvSrc(env, C3D_Alpha, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-                C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-            } else {
-                C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-                if (i8_0)
-                    C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
-                C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
-            }
-            if (rgb_scale == 2) C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);
-        } else if (combine == 1) {
-            C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-            C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-            C3D_TexEnvColor(env, abgr(prim));
-        } else {
-            C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-            C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-        }
-        if (r_mix && draw_3d && !rect_2d && env_hi < 6 && !dview) {
-            /* V06: colour = mix * alpha + previous * (1 - alpha), alpha = the constant's alpha. The alpha channel passes. */
-            C3D_TexEnv* e = C3D_GetTexEnv(env_hi);
-            C3D_TexEnvInit(e);
-            C3D_TexEnvSrc(e, C3D_RGB, GPU_CONSTANT, GPU_PREVIOUS, r_mix == 2 ? GPU_PRIMARY_COLOR : GPU_CONSTANT); /* F08: r_mix 2 = weight is the vertex alpha */
-            C3D_TexEnvOpRgb(e, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_ALPHA);
-            C3D_TexEnvFunc(e, C3D_RGB, GPU_INTERPOLATE);
-            C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
-            C3D_TexEnvFunc(e, C3D_Alpha, GPU_REPLACE);
-            C3D_TexEnvColor(e, abgr(r_mixcol));
-            env_hi++;
-        }
-        /* FX2a: an 8 bit image has memory alpha 0xE0 (7/8). The RDP blender then gives (P*a + M*0.88) / (a + 0.88): the weight of P is
-         * a / (a + 0.88), 0.53 at a = 1. The PICA blends by src alpha, so the fragment alpha becomes 0.532 * (1 - (1 - a)^2), a fit of that weight
-         * (error under 0.04). Pass A of the flame (colour 0, alpha 1) so keeps 0.47 of the old pixel and pass B keeps the old pixel where the blob alpha is 0. */
-        memb = off_active && off_i8 && r_memblend && !r_replace;
-        if (memb && env_hi <= 4) {
-            C3D_TexEnv* e = C3D_GetTexEnv(env_hi++);
-            C3D_TexEnvInit(e);
-            C3D_TexEnvSrc(e, C3D_RGB, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
-            C3D_TexEnvFunc(e, C3D_RGB, GPU_REPLACE);
-            C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
-            C3D_TexEnvOpAlpha(e, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA);
-            C3D_TexEnvFunc(e, C3D_Alpha, GPU_MODULATE);
-            e = C3D_GetTexEnv(env_hi++);
-            C3D_TexEnvInit(e);
-            C3D_TexEnvSrc(e, C3D_RGB, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
-            C3D_TexEnvFunc(e, C3D_RGB, GPU_REPLACE);
-            C3D_TexEnvSrc(e, C3D_Alpha, GPU_PREVIOUS, GPU_CONSTANT, GPU_CONSTANT);
-            C3D_TexEnvOpAlpha(e, GPU_TEVOP_A_ONE_MINUS_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
-            C3D_TexEnvFunc(e, C3D_Alpha, GPU_MODULATE);
-            C3D_TexEnvColor(e, 0x88000000u);
-        } else memb = 0;
-        if (off_active && off_i8 && !(r_blend && !r_replace) && !memb && env_hi < 6) { /* FX2a: a blended 8 bit write keeps the blend weight in A */
-            /* X02: an 8 bit intensity image reads as I in all four channels. The pixel written is (R, R, R, R). */
-            C3D_TexEnv* e = C3D_GetTexEnv(env_hi);
-            C3D_TexEnvInit(e);
-            C3D_TexEnvSrc(e, C3D_Both, GPU_PREVIOUS, GPU_PREVIOUS, GPU_PREVIOUS);
-            C3D_TexEnvOpAlpha(e, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R, GPU_TEVOP_A_SRC_R);
-            C3D_TexEnvFunc(e, C3D_Both, GPU_REPLACE);
-            env_hi++;
-        }
-        /* Fill and texrects ignore the Z buffer. Startup turns G_ZBUFFER on
-         * before the logo, and every 2D quad shares z, so a depth test keeps
-         * only the first rectangle. */
-        if (dview && draw_3d && !rect_2d) { /* V02 depth view: vertex colour only, alpha from the texture */
-            for (int i = 0; i < 6; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
-            env_hi = 6;
-            env = C3D_GetTexEnv(0);
-            C3D_TexEnvSrc(env, C3D_RGB, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-            C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
-            if (tex) {
-                C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-                C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
-            } else {
-                C3D_TexEnvSrc(env, C3D_Alpha, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-                C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-            }
-        }
+    /* S1-3: the stage words come from nd_tmpl.c nd_tev_build (host tested against the ndref oracle). Stages 0 to max(old, new) - 1 are written: the builder
+     * resets every stage, so a stage above the new count returns to the C3D_TexEnvInit words. */
+    NdTmplKey nk;
+    memset(&nk, 0, sizeof nk);
+    nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale;
+    nk.r_mix = (uint8_t)r_mix; nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dview != 0; nk.off_active = (uint8_t)off_active;
+    nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend; nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = noise != 0;
+    NdTevIn ti = { &nk, &plan, prim, cconst, r_mixcol };
+    NdTevOut to;
+    nd_tev_build(&ti, &to);
+    _Static_assert(sizeof(C3D_TexEnv) == 20, "C3D_TexEnv is the 5 register words");
+    if (to.buf_set) {
+        C3D_TexEnvBufUpdate(C3D_Both, 0);
+        C3D_TexEnvBufColor(to.buf_color);
+    }
+    for (int i = 0, hi = env_hi > to.n ? env_hi : to.n; i < hi; i++) memcpy(C3D_GetTexEnv(i), to.st[i], 20);
+    env_hi = to.n;
+    memb = to.memb;
     memcpy(&tev_key, &tk, tk_n); tev_valid = 1; tev_memb = memb;
     if (memb_out) *memb_out = memb;
 }
@@ -962,6 +808,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         sh_depth_test(true, GPU_LEQUAL, (GPU_WRITEMASK)0);
         stc_set(1, true, GPU_ALWAYS, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
+        if (ndref_on) ndref_state(1, z);
         C3D_DrawArrays(GPU_TRIANGLES, first, count);
         sh_depth_map(true, -1.0f, decal_bias());
         sh_depth_test(true, GPU_GEQUAL, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
@@ -969,6 +816,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_ZERO, GPU_STENCIL_ZERO);
         draws_frame++;
     }
+    if (ndref_on) ndref_state(decal2 ? 2 : 0, z);
     C3D_DrawArrays(GPU_TRIANGLES, first, count);
     if (decal2) { stc_set(3, false, GPU_ALWAYS, 0, 0xff, 0); }
     DC_T(5);
@@ -983,6 +831,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         sh_depth_test(true, GPU_ALWAYS, GPU_WRITE_DEPTH);
         stc_set(4, true, GPU_EQUAL, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_ZERO);
+        if (ndref_on) ndref_state(3, z);
         C3D_DrawArrays(GPU_TRIANGLES, (int)(b2 - vert_base), count);
         verts = b2 + count;
         if ((unsigned)(uintptr_t)verts & 15u) verts++;
@@ -1141,6 +990,7 @@ static void flush_draw(void) {
     cen_add(&tk, z, graw, graw ? (gpal ? (g_use5 ? 5 : 4) : 2) : 1, graw ? (unsigned)g_cullm : 0u,
         grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, tex1 ? pm_tex_census_id(1) : 0u,
         (unsigned)(graw ? gni / 3 : nverts / 3));
+    ndref_nz = noise; ndref_raw = graw;
     if (ndref_on) ndref_draw(&tk, z, graw, graw ? (gpal ? (g_use5 ? 5 : 4) : 2) : 1, graw ? (unsigned)g_cullm : 0u);
     DC_T(3);
     PHF_POP();
@@ -1203,6 +1053,7 @@ static void flush_draw(void) {
             BufInfo_Add(gb, gring, 16, 3, 0x210);
             buf_cur = 2; PH_ADD(C_RAWCALL, 2);
         }
+        if (ndref_on) ndref_state(0, z);
         C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
         PH_ADD(C_RAWD, 1); PH_ADD(C_RAWCALL, 1);
         DC_T(5);
@@ -2494,6 +2345,8 @@ static void plan_layout_field_diffs(const PmPlan* a, const PmPlan* b) {
     if (memcmp(a->fold, b->fold, sizeof a->fold)) CS_ADD(CS_PF_FOLD, 1);
 }
 
+void pm_gpu_render_src(unsigned omode_h, unsigned omode_l, int depth_img) { rs_src[0] = omode_h; rs_src[1] = omode_l; rs_src[2] = (unsigned)depth_img; }
+void pm_gpu_plan_key(unsigned w0, unsigned w1, int two, int t1only) { plan_kp[0] = w0; plan_kp[1] = w1; plan_kp[2] = (unsigned)two; plan_kp[3] = (unsigned)t1only; }
 void pm_gpu_set_plan(const PmPlan* p) {
     if (combine == 8 && memcmp(&plan, p, sizeof plan) == 0) return;
     CS_ADD(CS_PLAN, 1);
@@ -2507,6 +2360,7 @@ void pm_gpu_set_plan(const PmPlan* p) {
     }
     flush();
     plan = *p;
+    memcpy(plan_k, plan_kp, sizeof plan_k);
     plan_gen++;
     combine = 8;
     cs_last_prim = prim;

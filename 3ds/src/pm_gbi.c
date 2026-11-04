@@ -6,6 +6,7 @@
 #include "gbi_custom.h"
 #include "pm_gbi.h"
 #include "pm_gpu.h"
+#include "nd.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -671,36 +672,17 @@ static void sync_render(void) {
         fogmix_on = 0;
     }
 mixed:
-    if (img_role(0) == ROLE_DEPTH) { /* B3: a model drawn into the z-buffer image is a depth write: no colour, always pass, constant depth (draw_tri) */
-        pm_gpu_set_nocolor(1);
-        pm_gpu_set_render(0, 1, 0, -1, 0);
-        return;
-    }
-    if (PMD("rmoff")) { /* A/B check: the old always-blend, always-write state */
+    NdRender rs;
+    nd_render_state(omode_h, m, img_role(0) == ROLE_DEPTH, &rs);
+    if (!rs.depth && PMD("rmoff")) { /* A/B check: the old always-blend, always-write state */
         pm_gpu_set_nocolor(0);
         pm_gpu_set_render(1, 1, 1, -1, 0);
         return;
     }
-    int blend = ((m & (3u << 20)) == (1u << 20) && (m & (3u << 16)) == 0) ||
-                ((m & (3u << 22)) == (1u << 22) && (m & (3u << 18)) == 0);
-    int atest = -1;
-    if (m & 0x1000u) { /* CVG_X_ALPHA, texture edge */
-        if (blend) atest = 0x08;
-        else atest = 0x30;
-    } else if ((m & 3u) == 1u) { /* G_AC_THRESHOLD */
-        atest = 0x08;
-    }
-    /* S25: a blender whose both colour inputs are the frame buffer colour (G_BL_CLR_MEM, cycle 1 bits 30 and 22,
-     * cycle 2 bits 28 and 20) writes the old colour back: the draw changes depth only (a stencil pass, the
-     * intro's white square around the Star Rod sparkle drew it as a coloured quad). */
-    {
-        int two = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
-        int nocol = two ? (((m >> 28) & 3u) == 1u && ((m >> 20) & 3u) == 1u) : (((m >> 30) & 3u) == 1u && ((m >> 22) & 3u) == 1u);
-        pm_gpu_set_nocolor(nocol);
-    }
-    /* FX2a: two cycle only. The one cycle darkness stencil (CLD_SURF into an 8 bit slot) reads memory the port does not hold (the z buffer fill), it stays a write. */
-    pm_gpu_set_memblend(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1 && ((m >> 20) & 3u) == 1u && ((m >> 16) & 3u) == 1u);
-    pm_gpu_set_render((m & 0x10u) != 0, (m & 0x20u) != 0, blend, atest, (m & 0xc00u) == 0xc00u);
+    pm_gpu_set_nocolor(rs.nocol);
+    if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
+    pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);
+    pm_gpu_render_src(omode_h, m, rs.depth);
 }
 
 static unsigned rgba_from_5551(unsigned c) {
@@ -1128,7 +1110,7 @@ static void scm_replay(const ScMemo* m) {
     leg_mode = m->leg; comb_mode5 = m->mode5; box_pat = m->pat;
     ls_use = m->use; ls_why = m->why; ls_cyc = m->cyc; ls_dual = m->dual; ls_frame = rm_frame;
     plan_active = m->plan_on;
-    if (m->plan_on) { cur_plan = m->plan; pm_gpu_set_plan(&cur_plan); }
+    if (m->plan_on) { cur_plan = m->plan; pm_gpu_plan_key(comb_w0, comb_w1, ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1, use_t1); pm_gpu_set_plan(&cur_plan); }
     else pm_gpu_set_combine(leg_mode);
 }
 /* R2B: the sync_combine input hash (the fields the skip test reads); sync_combine and the g2_same skip use the same value */
@@ -1187,6 +1169,7 @@ static void sync_combine_work(void) {
         if (d->use) {
             cur_plan = d->plan;
             pm_comb_colours(&cur_plan, prim, envc, aud_prim_lod, keyc, keys);
+            pm_gpu_plan_key(comb_w0, comb_w1, (int)cyc, use_t1);
             pm_gpu_set_plan(&cur_plan);
             plan_active = 1;
             cc07_dbg();
