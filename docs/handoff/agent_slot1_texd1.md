@@ -32,7 +32,7 @@
 4. Also check tik_03 coins (RGBA16 32x32, tex 0x00571b90, mirror masks 5 5). Mirror on a 32 texel image with mask 5 is correct only when the coordinates stay inside 0..31 (window 31 texels). Check the tik_03 texture address in this build first (drawlog f200).
 
 ## Budget and tests
-- SLOT1: reset once (ResetBudget SLOT1, user line). Starts used since the reset: 10 (runs 9 to 12 and the earlier 8 before the reset). Measurement runs 1 to 8 before the reset.
+- SLOT1: reset once (ResetBudget SLOT1, after run 8). Starts used in total: 12 (runs 1 to 8 before the reset, runs 9 to 12 after it: yard, yard baseline, mac_01, mac_01 baseline). Each start has its line in 3ds/logs/perf/status_SLOT1.txt.
 - TEXD1: reset once. Starts used since the reset: 3 (run 1 no line, run 2 frames 38 and 39 only, run 3 frames 200 to 203).
 - AZLOCK1: no Azahar run.
 
