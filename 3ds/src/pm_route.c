@@ -128,7 +128,8 @@ int pm_map_hud_step(unsigned step, unsigned hold, char (*rows)[40]) {
 }
 
 /* PROF: where the player is, for the prof lines (pm_phase.c pf_report): map id string, story progress, battle id, Mario position. Read only. */
-void pm_prof_where(const char** name, int* story, int* btl, float pos[3]) {
+void pm_prof_where(const char** name, int* story, int* btl, int* entry, float pos[3]) {
+    *entry = (int)gGameStatusPtr->entryID; /* the door or entry the player arrived by: tells the rooms of one map apart */
     pos[0] = gPlayerStatus.pos.x; pos[1] = gPlayerStatus.pos.y; pos[2] = gPlayerStatus.pos.z;
     *name = gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id;
     *story = (int)evt_get_variable(NULL, GB_StoryProgress);

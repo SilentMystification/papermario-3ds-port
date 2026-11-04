@@ -4531,6 +4531,26 @@
       "reason": "Log only. The picture is not the test. Cap 40 s and deadline 20 s: pf_report prints after 300 frames, so the cap covers boot plus 300 frames."
     },
     {
+      "name": "prof_scene",
+      "status": "unverified",
+      "subject": "Mario in Toad Town (warp mac_01 entry 0, then pos -264 20 -326) with prof=4: the first prof window line ends with the scene tag: map id, area:map, mode, story, battle, chg 0, Mario position at the window start (pos0) and end (pos).",
+      "proves": "The prof line carries the scene and the start and end Mario position in a loaded map.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=-264:20:-326 prof=4 phase fsplit loglevel=debug",
+      "until": "prof f\\d+ w\\d+ fps",
+      "cap": 60,
+      "deadline": 40,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof line with scene tag",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 -264 20 -326 pos -?\\d+ -?\\d+ -?\\d+$"
+        }
+      ],
+      "reason": "Log only. Cap 60 s: boot, the yard load and 300 frames. The picture is not the test."
+    },
+    {
       "name": "ndref_toad",
       "status": "unverified",
       "subject": "Toad Town mac_01 (warp to mac_01 entry 0): the reference draw stream of frame 200 (ndref=200), written to sdmc:/3ds/PaperMario/ndref.bin. Log only.",

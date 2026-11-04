@@ -320,20 +320,43 @@ void pm_gpu_pf_read(unsigned long long out[6]); /* pm_gpu.c: per frame counters 
 static unsigned long long pf_nd_t; static unsigned pf_leg; /* S0-6: native emit ticks and LEGACY records of the window (pm_pf_nd_add, from S1) */
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy) { pf_nd_t += ticks; pf_leg += legacy; }
 /* PROF: the scene of the window. Every prof line of a window ends with it, so runs of one room or event compare by key (map, mode, story, battle).
- * chg 1: the scene changed inside the window, the numbers mix two scenes and do not compare. */
-void pm_prof_where(const char** name, int* story, int* btl, float pos[3]); /* pm_route.c */
+ * A scene change inside a window drops the window and starts a new one, so chg stays 0 (kept in the line for older readers). */
+void pm_prof_where(const char** name, int* story, int* btl, int* entry, float pos[3]); /* pm_route.c */
 static int pf_sc[3] = { -1, -1, -1 }, pf_chg;
+static float pf_pos0[3]; /* Mario position at the first frame of the window */
+/* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
+static void pf_reset(void) {
+    pf_nd_t = 0; pf_leg = 0;
+    pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; pf_chg = 0; /* the next window starts in the scene now */
+    pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
+    pf_pfr = 0;
+    pf_wsum = pf_wmax = pf_wksum = 0;
+    pf_wn = pf_wkn = pf_o34 = pf_w = 0;
+    memset(pf_iv, 0, sizeof pf_iv);
+    pf_s = pf_sw_n = 0;
+    pf_sw_fts = pf_sw_wks = 0;
+    pf_sms[0] = pf_sms[1] = pf_sms[2] = 0.f;
+    pf_dlc_t = 0;
+    pf_vb0 = C3D_FrameCounter(0);
+    pf_st0 = pm_step_calls;
+}
+/* PROF: the harness placed Mario (pos= switch, pm_warp.c pm_pos_log): a new window starts at the placed position */
+void pm_ph_scene_moved(void) { pf_reset(); }
 static void pf_scene_note(void) {
-    if (pf_sc[0] == -1) { pf_sc[0] = cur_area; pf_sc[1] = cur_map; pf_sc[2] = cur_mode; }
-    else if (pf_sc[0] != cur_area || pf_sc[1] != cur_map || pf_sc[2] != cur_mode) pf_chg = 1;
+    if (pf_sc[0] == -1) {
+        pf_sc[0] = cur_area; pf_sc[1] = cur_map; pf_sc[2] = cur_mode;
+        pf_pos0[0] = pf_pos0[1] = pf_pos0[2] = 0.f;
+        if (cur_area >= 0 && cur_map >= 0) { const char* nm; int story, btl, en; pm_prof_where(&nm, &story, &btl, &en, pf_pos0); }
+    }
+    else if (pf_sc[0] != cur_area || pf_sc[1] != cur_map || pf_sc[2] != cur_mode) { pf_reset(); pf_scene_note(); } /* the scene changed: drop the window, start again in the new scene */
 }
 static void pf_where(char* o, unsigned n) {
-    const char* nm = "?"; int story = 0, btl = 0; float pos[3] = { 0.f, 0.f, 0.f };
-    if (cur_area >= 0 && cur_map >= 0) pm_prof_where(&nm, &story, &btl, pos);
-    snprintf(o, n, " | at %s %d:%d m%d sp%d b%d chg%d pos %.0f %.0f %.0f", nm, cur_area, cur_map, cur_mode, story, btl, pf_chg, pos[0], pos[1], pos[2]);
+    const char* nm = "?"; int story = 0, btl = 0, en = 0; float pos[3] = { 0.f, 0.f, 0.f };
+    if (cur_area >= 0 && cur_map >= 0) pm_prof_where(&nm, &story, &btl, &en, pos);
+    snprintf(o, n, " at %s %d:%d m%d sp%d b%d e%d chg%d pos0 %.0f %.0f %.0f pos %.0f %.0f %.0f", nm, cur_area, cur_map, cur_mode, story, btl, en, pf_chg, pf_pos0[0], pf_pos0[1], pf_pos0[2], pos[0], pos[1], pos[2]);
 }
 static void pf_report(void) {
-    char wh[128];
+    char wh[160];
     pf_where(wh, sizeof wh);
     unsigned long long vb = C3D_FrameCounter(0) - pf_vb0;
     float fps = vb ? (float)pf_w * 60.f / (float)vb : 0.f;
@@ -349,34 +372,23 @@ static void pf_report(void) {
     unsigned cy = pf_pfr ? (unsigned)(pf_pe[2] / pf_pfr) : 0u; /* CCNT per clean frame */
     unsigned p0 = pf_pe[2] ? (unsigned)(pf_pe[0] * 1000ull / pf_pe[2]) : 0u; /* permille of cycles */
     unsigned p1 = pf_pe[2] ? (unsigned)(pf_pe[1] * 1000ull / pf_pe[2]) : 0u;
-    pm_log_prof_line("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c %u %u cyc %u pm %u %u | st %u vb %u iv %u %u %u %u%s",
+    pm_log_prof_line("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c %u %u cyc %u pm %u %u | st %u vb %u iv %u %u %u %u",
              pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort,
              pf_sms[0] / sn, (float)((double)pf_dlc_t / TICKS_MS) / sn, pf_sms[1] / sn, pf_sms[2] / sn,
-             pf_set, e0, e1, cy, p0, p1, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3], wh);
+             pf_set, e0, e1, cy, p0, p1, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
     { /* S0-6: stage line. nd: native emit ms per sampled frame. lg: legacy walker (gbi) ms per sampled frame. dr, tc, tw, tri: per drawn frame. leg: LEGACY records per drawn frame. gb: GPU busy ms per sampled frame. */
         unsigned long long pv[6]; pm_gpu_pf_read(pv);
         float pw = pf_w ? (float)pf_w : 1.f;
         float gbm = pv[5] ? (float)((double)pv[4] / pv[5] / TICKS_MS) : 0.f;
-        pm_log_prof_line("prof f%u w%u nd %.2f lg %.2f dr %u tc %u tw %u tri %u leg %u gb %.2f%s",
+        pm_log_prof_line("prof f%u w%u nd %.2f lg %.2f dr %u tc %u tw %u tri %u leg %u gb %.2f",
             pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn,
-            (unsigned)(pv[0] / pw), (unsigned)(pv[1] / pw), (unsigned)(pv[2] / pw), (unsigned)(pv[3] / pw), (unsigned)(pf_leg / pw), gbm, wh);
+            (unsigned)(pv[0] / pw), (unsigned)(pv[1] / pw), (unsigned)(pv[2] / pw), (unsigned)(pv[3] / pw), (unsigned)(pf_leg / pw), gbm);
         /* S0-8: frame budget targets (docs/handoff/frame_budget.md, phase off ms) next to the measured nd, lg and gb of this window. */
-        pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %.2f lg %.2f gb %.2f%s",
-            pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn, gbm, wh);
+        pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %.2f lg %.2f gb %.2f",
+            pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn, gbm);
+        pm_log_prof_line("prof f%u w%u%s", pf_total, pf_w, wh); /* the scene line: the first line is too long to carry it (256 byte log slot) */
     }
-    pf_nd_t = 0; pf_leg = 0;
-    pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; pf_chg = 0; /* the next window starts in the scene now */
-    pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
-    pf_pfr = 0;
-    pf_wsum = pf_wmax = pf_wksum = 0;
-    pf_wn = pf_wkn = pf_o34 = pf_w = 0;
-    memset(pf_iv, 0, sizeof pf_iv);
-    pf_s = pf_sw_n = 0;
-    pf_sw_fts = pf_sw_wks = 0;
-    pf_sms[0] = pf_sms[1] = pf_sms[2] = 0.f;
-    pf_dlc_t = 0;
-    pf_vb0 = C3D_FrameCounter(0);
-    pf_st0 = pm_step_calls;
+    pf_reset();
 }
 /* PF2: the next drawn frame is a sample. The phase stack starts clean, so its first push adds no time from before the sample. */
 static void pf_arm(void) {

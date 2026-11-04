@@ -148,8 +148,10 @@ void pm_pos_set(const float* v, int n) {
 }
 
 /* set: the requested position. The settled position is gPlayerStatus now (the ground logic may have moved Mario, e.g. a fall). */
+void pm_ph_scene_moved(void); /* pm_phase.c */
 void pm_pos_log(const float* set, const char* how) {
     PlayerStatus* ps = &gPlayerStatus;
+    pm_ph_scene_moved(); /* PROF: the prof window restarts at the placed position */
     pm_log("poswarp: placed Mario at %.3f %.3f %.3f on map %s settled %.3f %.3f %.3f yaw %.2f (%s)", set[0], set[1], set[2],
            gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, ps->pos.x, ps->pos.y, ps->pos.z, ps->curYaw, how);
 }
