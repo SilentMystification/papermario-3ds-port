@@ -3800,9 +3800,10 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
       else {
           p3a_pre("pre", (unsigned)tid, (unsigned)nd, gmv, rec_g0[6]);
           const NatTmpl* nt = &nat_tmpl[tid];
-          if (gmv == ~0u || !nat_tex_set(rec_g0[6] & 0xFFFFu, nt->grp + 22) || !nat_tex_set(rec_g0[6] >> 16, nt->grp + 28)) { p3a_pre(gmv == ~0u ? "refuse gm" : "refuse tex", (unsigned)tid, (unsigned)nd, gmv, rec_g0[6]); NW(gmv == ~0u ? NW_B_GMV : NW_B_TEX); rec_ref++; return; }
+          int i0 = nat_tex_id(nt->grp + 22), i1 = nat_tex_id(nt->grp + 28); /* E2: block ids, unit 0 low half */
+          if (gmv == ~0u || i0 < 0 || i1 < 0) { p3a_pre(gmv == ~0u ? "refuse gm" : "refuse tex", (unsigned)tid, (unsigned)nd, gmv, rec_g0[6]); NW(gmv == ~0u ? NW_B_GMV : NW_B_TEX); rec_ref++; return; }
           nat_idx_base = pm_gpu_rec_ia_phys();
-          if (nat_rec_write(nr, (unsigned)nd, ra + at, n, (unsigned)tid, gmv, rec_g0[6], nat_idx_base) != nd) { pm_log_d("P3a write refused why %u %u %u %u %u", nat_wr_why[0], nat_wr_why[1], nat_wr_why[2], nat_wr_why[3], nat_wr_why[4]); NW(NW_B_WRITE); rec_ref++; return; }
+          if (nat_rec_write(nr, (unsigned)nd, ra + at, n, (unsigned)tid, gmv, ((uint32_t)i1 << 16) | (uint32_t)i0, nat_idx_base) != nd) { pm_log_d("P3a write refused why %u %u %u %u %u", nat_wr_why[0], nat_wr_why[1], nat_wr_why[2], nat_wr_why[3], nat_wr_why[4]); NW(NW_B_WRITE); rec_ref++; return; }
           k->nat = 1; NW(NW_B_NAT); p3a_log(nr, (unsigned)nd, (unsigned)tid, rec_g0[6], gmv);
       } }
     k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;

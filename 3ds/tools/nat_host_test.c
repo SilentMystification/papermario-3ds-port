@@ -245,6 +245,16 @@ static void test_bake(void) {
     free(mem);
 }
 
+/* E2: texture block ids are keyed by content. Equal blocks share an id, different blocks differ, all-zero is 0. */
+static void test_tex_id(void) {
+    memset(nat_tex, 0, sizeof nat_tex);
+    uint32_t a[4] = {1, 2, 3, 4}, b[4] = {1, 2, 3, 5}, z[4] = {0, 0, 0, 0};
+    int ia = nat_tex_id(a), ib = nat_tex_id(b), ia2 = nat_tex_id(a);
+    CHECK(ia > 0 && ib > 0 && ia != ib, "tex_id: different blocks gave ids %d %d", ia, ib);
+    CHECK(ia2 == ia, "tex_id: equal block gave id %d, first was %d", ia2, ia);
+    CHECK(nat_tex_id(z) == 0, "tex_id: zero block is not id 0");
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) { printf("usage: nat_host_test <fixture.txt>\n"); return 2; }
     test_record();
@@ -252,6 +262,7 @@ int main(int argc, char** argv) {
     test_order();
     test_layout(argv[1]);
     test_bake();
+    test_tex_id();
     if (fails) { printf("NAT HOST TESTS: %d FAIL\n", fails); return 1; }
     printf("NAT HOST TESTS: all pass\n");
     return 0;

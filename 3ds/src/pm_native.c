@@ -202,13 +202,15 @@ int nat_rec_write(NatRec* out, unsigned nd, const uint32_t* w, unsigned n, unsig
     return (int)nd;
 }
 
-int nat_tex_set(unsigned h, const uint32_t* blk) {
-    if (h == 0) return 1;
-    if (h >= NAT_TEX_MAX) return 0;
-    uint32_t* t = nat_tex[h];
-    if (t[0] || t[1] || t[2] || t[3]) return memcmp(t, blk, 4 * sizeof(uint32_t)) == 0;
-    memcpy(t, blk, 4 * sizeof(uint32_t));
-    return 1;
+/* E2: texture block id by content. Id 0 is the all-zero block; ids 1..NAT_TEX_MAX-1 are found by an equal block or taken by the first empty slot. Returns -1 when full. */
+int nat_tex_id(const uint32_t* blk) {
+    if (!(blk[0] | blk[1] | blk[2] | blk[3])) return 0;
+    for (unsigned i = 1; i < NAT_TEX_MAX; i++) {
+        uint32_t* t = nat_tex[i];
+        if (!(t[0] | t[1] | t[2] | t[3])) { memcpy(t, blk, 4 * sizeof(uint32_t)); return (int)i; }
+        if (memcmp(t, blk, 4 * sizeof(uint32_t)) == 0) return (int)i;
+    }
+    return -1;
 }
 
 /* PMOD P1: bake records. ponytail: bump pool, no free; the map generation resets it. Upgrade to per-DL free when maps grow past the pool. */
