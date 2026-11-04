@@ -3284,11 +3284,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
 }
 
 /* HUDB1 debug switch texrlog: one line per texrect that returns before pm_gpu_tex_rect. why 1 depth copy, 2 rect_to_image, 3 box_pattern_rect,
- * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines. */
+ * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines, repeats of the last line are not logged. */
 static void texr_early(int why, int xl, int yl, int xh, int yh) {
     static int nlog = 0;
-    if (nlog < 400 && PMD("texrlog")) {
+    static int lwhy = -1, lxl, lyl, lxh, lyh;
+    if (nlog < 400 && PMD("texrlog") && !(why == lwhy && xl == lxl && yl == lyl && xh == lxh && yh == lyh)) {
         nlog++;
+        lwhy = why; lxl = xl; lyl = yl; lxh = xh; lyh = yh;
         pm_log_d("texrlog f%u why %d rect %d,%d-%d,%d cyc %u", pm_frame_count(), why, xl / 4, yl / 4, xh / 4, yh / 4, (unsigned)((omode_h >> G_MDSFT_CYCLETYPE) & 3));
     }
 }
