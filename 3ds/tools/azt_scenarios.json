@@ -119,6 +119,46 @@
       "reason": "New scenario (FLK1 step 3). Splits the nobox difference: interpreter for out groups versus static GPU path."
     },
     {
+      "name": "nok02_stdump_on",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frames 200 to 205, skip on, with the per-segment state dump (stseg lines).",
+      "proves": "FLK1 state: the per-segment state lines (stseg) of frames 200 to 205 at pos 250 0 11 name the state word that differs between skip on and skip off.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug stdump",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "seg", "regex": "stseg f200 "},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
+    },
+    {
+      "name": "nok02_stdump_off",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frames 200 to 205, skip off (nobox), with the per-segment state dump (stseg lines). Reference for nok02_stdump_on.",
+      "proves": "FLK1 state: the per-segment state lines (stseg) of frames 200 to 205 at pos 250 0 11 name the state word that differs between skip on and skip off.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug stdump nobox",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "seg", "regex": "stseg f200 "},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
+    },
+    {
       "name": "nok02_skipdump",
       "status": "unverified",
       "subject": "Map nok_02 at player position 250 0 11, frame 200, with debug skipdump=1: each group of the lists of that frame logs its box, its screen box (pixels) and the skip result. The shot gives the picture of the same frame.",
