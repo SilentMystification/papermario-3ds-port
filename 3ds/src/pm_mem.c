@@ -200,6 +200,7 @@ void pm_vram_unreg(const void* p, unsigned bytes) {
     vram_used_b[pm_vram_bank_of(p)] -= bytes;
 }
 static unsigned bank_free_kb(int b) { return VRAM_BANK_KB - (vram_used_b[b] >> 10); }
+unsigned pm_vram_bank_free_kb(int b) { return bank_free_kb(b); } /* VRAM2: the texture cache sizes itself from this at boot (pm_tex.c slab_init) */
 void pm_mem_scene_reset(void) { scene_min_kb = 2u * VRAM_BANK_KB - vram_used_kb(); scene_peak_kb = vram_used_kb(); }
 
 /* Row 0 is the pool, row 1 is VRAM. BOTLAYOUT: the VRAM bank row (bank used and free, evictions per second) is no longer drawn. */

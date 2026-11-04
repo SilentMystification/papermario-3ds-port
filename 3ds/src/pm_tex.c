@@ -19,7 +19,6 @@ static u8* tx1_chk; /* switch tx1check: the new result, compared with the old pa
 /* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
 #define SLOTS 512
-#define BUDGET (3072u * 1024u) /* VRAM hot set: two 1536 KB halves, one per VRAM bank */
 #define TEX_SCRATCH_PLANE (1024u * 512u * 2u) /* one linear or tiled plane (1024x512 RGBA5551) */
 typedef struct {
     const void* img;
@@ -443,8 +442,8 @@ static void slot_span(const Slot* s, int d) {
 #define SLAB_EXT 640
 #define PEND_N 24
 #define PEND_GAP (64u * 1024u)
-/* One VRAM block: BUDGET at boot. A 3072 KB block did not fit (boot log: failed with 5394 KB free). If the block does not come up, the
- * cache takes the half size block instead of no textures at all. tex_cap is the size that came up (0: no cache). */
+/* VRAM2: the cache is one block per bank, sized at boot from what the bank has left after every boot reservation (pm_mem.c
+ * pm_vram_bank_free_kb). tex_cap is the sum that came up (0: no cache). It does not change after boot. */
 static unsigned tex_cap;
 static unsigned slab_segs; /* VRAM blocks that came up at boot */
 static unsigned slab_n; /* slab_ext entries in use */
@@ -459,28 +458,27 @@ void pm_vram_reg(const void* p, unsigned bytes); /* pm_mem.c */
 int pm_vram_bank_of(const void* p);
 void pm_vram_unreg(const void* p, unsigned bytes); /* pm_mem.c */
 int pm_debug_value(const char* key, char* out, unsigned n);
-/* row 5: the bank B half. bhalf is NULL while it is freed. bdrain is 1 while it drains: no extent in B is handed out, and its slots are stale. */
-static u8* bhalf;
-static int bdrain;
-static unsigned b_idle; /* frame of the last full buffer in use (pm_tex_full_touch); regrow waits 120 frames after it */
+unsigned pm_vram_bank_free_kb(int b); /* pm_mem.c */
 static void slab_init(void) {
-    /* Bank A half first, then bank B: slab_ext stays sorted by address. A half that does not come up is logged; the cache runs on the other. */
+    /* Bank A block first, then bank B: slab_ext stays sorted by address. Each block takes the bank's free space in 32 KB steps. A block
+     * that does not come up is logged, and it takes one step less until it does. */
     static const vramAllocPos pos[2] = { VRAM_ALLOC_A, VRAM_ALLOC_B };
     for (unsigned k = 0; k < 2; k++) {
-        u8* p = (u8*)vramMemAlignAt(BUDGET / 2, 0x80, pos[k]);
+        unsigned kb = pm_vram_bank_free_kb((int)k) & ~31u;
+        u8* p = NULL;
+        while (kb >= 32u && !(p = (u8*)vramMemAlignAt(kb * 1024u, 0x80, pos[k]))) kb -= 32u;
         if (!p) {
-            pm_vram_alloc_fail("slab", BUDGET >> 11);
-            pm_log_e("texcache half %u (%uKB) failed (vram free %uKB)", k, BUDGET >> 11, (unsigned)vramSpaceFree() >> 10);
+            pm_vram_alloc_fail("slab", 0);
+            pm_log_e("texcache bank %c: no VRAM left (free %uKB)", k ? 'B' : 'A', pm_vram_bank_free_kb((int)k));
             continue;
         }
-        pm_vram_reg(p, BUDGET / 2);
+        pm_vram_reg(p, kb * 1024u);
         pm_vram_note();
-        slab_ext[slab_n].p = p; slab_ext[slab_n].len = BUDGET / 2; slab_n++;
-        tex_cap += BUDGET / 2; slab_segs++;
-        if (k == 1) bhalf = p;
-        pm_log_w("texcache half %u (%uKB) at %p in bank %c", k, BUDGET >> 11, (void*)p, pm_vram_bank_of(p) ? 'B' : 'A');
+        slab_ext[slab_n].p = p; slab_ext[slab_n].len = kb * 1024u; slab_n++;
+        tex_cap += kb * 1024u; slab_segs++;
+        pm_log_w("texcache bank %c: %uKB at %p, cap %uKB", k ? 'B' : 'A', kb, (void*)p, tex_cap >> 10);
     }
-    if (!slab_segs) pm_log_e("texcache: no VRAM half came up, textures are skipped");
+    if (!slab_segs) pm_log_e("texcache: no VRAM left, textures are skipped");
     /* debug switches (test tools, may stay): vramfill=N and vramfilla=N make N dummy 512 KB blocks in bank B or bank A at boot, never freed.
      * They make a bank small so a full-buffer failure, and the shrink path, can be forced. */
     for (unsigned b = 0; b < 2; b++) {
@@ -511,7 +509,7 @@ static unsigned tex_slab_reserve(unsigned gpu_size) { return slab_size(gpu_size)
 static u8* slab_alloc(unsigned bytes0) {
     unsigned bytes = slab_size(bytes0);
     int best = -1;
-    for (unsigned i = 0; i < slab_n; i++) if (!(bdrain && pm_vram_bank_of(slab_ext[i].p)) && slab_ext[i].len >= bytes && (best < 0 || slab_ext[i].len < slab_ext[best].len)) best = (int)i;
+    for (unsigned i = 0; i < slab_n; i++) if (slab_ext[i].len >= bytes && (best < 0 || slab_ext[i].len < slab_ext[best].len)) best = (int)i;
     if (best < 0) return NULL;
     u8* r = slab_ext[best].p;
     slab_ext[best].p += bytes; slab_ext[best].len -= bytes;
@@ -876,8 +874,8 @@ static void tc_report(void) {
                 break;
             }
     }
-    pm_log_d("texstat f%u: hits %u miss %u evict %u (%uKB) never hit before evict %u (%uKB) invalidated %u uploaded %uKB",
-             tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_bytes >> 10, tc_evict_ev0, tc_ev0_bytes >> 10, tc_inval, tc_up_bytes >> 10);
+    pm_log_d("texstat f%u: cap %uKB hits %u miss %u evict %u (%uKB) never hit before evict %u (%uKB) invalidated %u uploaded %uKB",
+             tc_frame, tex_cap >> 10, tc_hits, tc_miss, tc_evict, tc_evict_bytes >> 10, tc_evict_ev0, tc_ev0_bytes >> 10, tc_inval, tc_up_bytes >> 10);
     pm_log_d("texstat stage early free %u (%uKB), freed at age 2 or more %uKB", early_free_n, early_free_kb, stage_freed >> 10);
     pm_log_d("texbind binds %u mismatch %u skipped %u", bind_n, bind_mis, bind_skip);
     pm_log_d("texstat live: %u slots %uKB, never hit %u (%uKB), used in last 300 frames %u (%uKB)", n, bytes >> 10, u0n, u0b >> 10, rec_n, rec_b >> 10);
@@ -893,43 +891,6 @@ static void tc_report(void) {
     gh_ev_hit = gh_ev_kb = gh_df_hit = gh_df_kb = gh_up_n = gh_up_t = 0;
     tc_hits = tc_miss = tc_evict = tc_evict_ev0 = tc_inval = tc_up_bytes = tc_evict_bytes = tc_ev0_bytes = 0;
 }
-
-/* row 5: a full buffer found both banks full (pm_gpu.c bank_block). The bank B half drains: its slots go stale, dropped at the next
- * frame start, and no new texture takes space in it. pm_tex_begin_frame frees the half once no slot is left in it. */
-void pm_tex_shrink(void) {
-    if (!bhalf || bdrain) return;
-    bdrain = 1;
-    tex_cap -= BUDGET / 2;
-    for (int i = 0; i < slot_hi; i++)
-        if (slots[i].live && slots[i].slab && pm_vram_bank_of(slots[i].tex_vram_ptr)) stale_mark(&slots[i]);
-    pm_log_w("texcache shrink B: half draining, cap %uKB", tex_cap >> 10);
-}
-static void bhalf_release(void) {
-    unsigned sum = 0, k2 = 0;
-    for (int i = 0; i < slot_hi; i++)
-        if (slots[i].live && slots[i].slab && pm_vram_bank_of(slots[i].tex_vram_ptr)) return;
-    for (unsigned k = 0; k < slab_n; k++) if (pm_vram_bank_of(slab_ext[k].p)) sum += slab_ext[k].len;
-    if (sum != BUDGET / 2) return; /* some B bytes are not back in the extent table yet: next frame */
-    flush_pend_only();
-    for (unsigned k = 0; k < slab_n; k++) if (!pm_vram_bank_of(slab_ext[k].p)) slab_ext[k2++] = slab_ext[k];
-    slab_n = k2;
-    pm_vram_unreg(bhalf, BUDGET / 2);
-    vramFree(bhalf);
-    bhalf = NULL; bdrain = 0;
-    pm_log_w("texcache B half freed, cap %uKB", tex_cap >> 10);
-}
-static void bhalf_regrow(void) {
-    u8* p = (u8*)vramMemAlignAt(BUDGET / 2, 0x80, VRAM_ALLOC_B);
-    if (!p) { b_idle = tc_frame; pm_log_d("texcache B half retry: no VRAM, next try in 120 frames"); return; }
-    pm_vram_reg(p, BUDGET / 2);
-    pm_vram_note();
-    bhalf = p;
-    slab_free(p, BUDGET / 2);
-    tex_cap += BUDGET / 2;
-    pm_log_w("texcache regrow B: half back at %p, cap %uKB", (void*)p, tex_cap >> 10);
-}
-/* row 5: called by pm_gpu.c while any full buffer exists. Regrow waits 120 frames after the last call. */
-void pm_tex_full_touch(void) { b_idle = tc_frame; }
 
 void pm_tex_begin_frame(void) {
     pm_tex_epoch_v++;
@@ -954,8 +915,6 @@ void pm_tex_begin_frame(void) {
             }
             if (!(s->live && s->vram_stage)) sbit_clr(att_bits, i);
         }
-    if (bdrain) bhalf_release();
-    if (!bhalf && !bdrain && tc_frame - b_idle >= 120) bhalf_regrow();
 }
 
 extern unsigned pm_dlc_gen; /* DLC1: a write into the map shape buffer (ROM read, Yay0 decode) makes the compiled display lists stale */

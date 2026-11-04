@@ -2393,6 +2393,57 @@
       "reason": "GRAB2 (BTLSTAR row). Same command as text_menu with a 40 frame shot window. Unverified: one start needed. Add grablog to the debug string for the grab line check."
     },
     {
+            "name": "pause_spin_grab",
+            "status": "unverified",
+            "subject": "VRAM2: pause_spin with the grablog and texstat switches. Pause open, spin frames 140 to 179. Shows the copy block and full image use in the pause, and the cache cap on the texstat line.",
+            "proves": "Grab lines (grablog) and the texstat cap line (cap constant after boot). The texmap state line is written at each map load.",
+            "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat",
+            "until": "shot \\d+ frame (17[6-9]|18[01])\\b",
+            "cap": 45,
+            "deadline": 20,
+            "first_marker": "warp: mac_00 entry 4",
+            "expects": "warp",
+            "needs_picture": true,
+            "expected_events": [
+                  {
+                        "name": "warp",
+                        "regex": "warp: mac_00 entry 4"
+                  },
+                  {
+                        "name": "pause mode",
+                        "regex": "game mode 10 frame"
+                  },
+                  {
+                        "name": "shot in window 176-181 (inside the 40 frame window 140-179)",
+                        "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+                  }
+            ],
+            "reason": "GRAB2 (BTLSTAR row). Same command as text_menu with a 40 frame shot window. Unverified: one start needed. Add grablog to the debug string for the grab line check."
+      },
+    {
+            "name": "yard_vramfill",
+            "status": "unverified",
+            "subject": "VRAM2: yard with vramfill=3 (three 512 KB dummy blocks in bank B, after the texture cache has its boot blocks). Reads the texstat cap line at frame 300.",
+            "proves": "The texture cap stays at the boot value (1856 KB) over 300 frames, so the dummy blocks do not drain the cache. The vramfill blocks fail or fit in the bank left over. No texcache shrink line is written.",
+            "debug": "preset=yard vramfill=3 texstat loglevel=debug",
+            "until": "texstat f300:",
+            "cap": 30,
+            "deadline": 20,
+            "first_marker": "warp: kmr_20 entry 4",
+            "expects": "warp",
+            "needs_picture": false,
+            "expected_events": [
+                  {
+                        "name": "warp",
+                        "regex": "warp: kmr_20 entry 4"
+                  },
+                  {
+                        "name": "texstat f300 cap",
+                        "regex": "texstat f300: cap 1856KB"
+                  }
+            ]
+      },
+    {
       "name": "text_menu",
       "status": "verified",
       "subject": "Pause status menu text: dialog 'Check here to see what Mario's current status is.' and the item names Hammer, Boots, Stats, Items. Periods and spacing read by eye.",

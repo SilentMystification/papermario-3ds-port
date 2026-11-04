@@ -348,17 +348,26 @@ static void small_arena_init(void) {
         small_blk[small_n++] = p;
     }
 }
-/* Row 4: the full images (512 x 256) and the copy buffer (512 KB, grab_tex and the snap of a full image share it). A block goes to
- * bank A first, then B. IDLE_FREE: a full image or the copy buffer unused for this many frames is freed at pm_gpu_begin. */
+/* VRAM2: the full images (512 x 256) and the copy buffer (512 KB, grab_tex and the snap of a full image share it) are reserved at boot
+ * (full_reserve) and never freed. A block goes to bank A first, then B. The texture cache takes what is left (pm_tex.c slab_init). */
 #define BLK_FULL (PM_OFF_W * PM_OFF_H * 4u)
-#define IDLE_FREE 60u
 static u8* copy_blk;
-static unsigned copy_last;
+static u8* full_blk[OFF_N];
 static u8* bank_block(unsigned bytes) {
     u8* p = (u8*)vramMemAlignAt(bytes, 0x80, VRAM_ALLOC_A);
     if (!p) p = (u8*)vramMemAlignAt(bytes, 0x80, VRAM_ALLOC_B);
-    if (!p) pm_tex_shrink(); /* row 5: both banks full. The bank B cache half drains; the next frame has the room */
     return p;
+}
+static void full_reserve(void) {
+    copy_blk = bank_block(BLK_FULL);
+    if (copy_blk) { pm_vram_reg(copy_blk, BLK_FULL); pm_log_w("vram reserved: copy buffer in bank %c", pm_vram_bank_of(copy_blk) ? 'B' : 'A'); }
+    else { pm_vram_alloc_fail("copy", BLK_FULL >> 10); pm_log_e("vram reserve: copy buffer failed, grabs read on the CPU"); }
+    for (int i = 0; i < OFF_N; i++) {
+        full_blk[i] = bank_block(BLK_FULL);
+        if (full_blk[i]) { pm_vram_reg(full_blk[i], BLK_FULL); pm_log_w("vram reserved: full image %d in bank %c", i, pm_vram_bank_of(full_blk[i]) ? 'B' : 'A'); }
+        else { pm_vram_alloc_fail("full image", BLK_FULL >> 10); pm_log_e("vram reserve: full image %d failed, its off-screen passes draw on the screen", i); }
+    }
+    pm_vram_note();
 }
 /* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
 static int tex_hdr(C3D_Tex* t, int w, int h) {
@@ -367,41 +376,17 @@ static int tex_hdr(C3D_Tex* t, int w, int h) {
     t->data = NULL;
     return 1;
 }
-static u8* copy_get(void) {
-    copy_last = pm_frame_count();
-    if (copy_blk) return copy_blk;
-    copy_blk = bank_block(BLK_FULL);
-    if (!copy_blk) { pm_vram_alloc_fail("copy", BLK_FULL >> 10); return NULL; }
-    pm_vram_reg(copy_blk, BLK_FULL);
-    pm_vram_note();
-    pm_log_d("row 4: copy buffer in bank %c (frame %u)", pm_vram_bank_of(copy_blk) ? 'B' : 'A', pm_frame_count());
-    return copy_blk;
-}
-static void copy_free(void) {
-    pm_log_d("row 4: copy buffer freed, idle %u frames", pm_frame_count() - copy_last);
-    pm_vram_unreg(copy_blk, BLK_FULL);
-    vramFree(copy_blk);
-    copy_blk = NULL;
-    grab_tex.data = NULL;
-    for (int i = 0; i < OFF_P; i++) if (offs[i].w != 64) { offs[i].snap.data = NULL; offs[i].snap_ready = 0; }
-}
-/* the data of a full image, bank A first */
+/* the copy block from full_reserve, NULL when the boot reserve failed */
+static u8* copy_get(void) { return copy_blk; }
+/* the data of a full image: its reserved block (full_reserve). A failed boot reserve returns 0, the pass draws on the screen. */
 static int full_tex_init(int i) {
-    u8* p;
+    if (!full_blk[i]) return 0;
     if (!offs[i].hdr) {
         if (!tex_hdr(&offs[i].tex, PM_OFF_W, PM_OFF_H)) return 0;
         offs[i].hdr = 1;
     }
-    p = bank_block(BLK_FULL);
-    if (!p) return 0;
-    offs[i].tex.data = p;
-    pm_vram_reg(p, BLK_FULL);
-    pm_log_d("row 4: full image %d in bank %c (frame %u)", i, pm_vram_bank_of(p) ? 'B' : 'A', pm_frame_count());
+    offs[i].tex.data = full_blk[i];
     return 1;
-}
-static void full_free(int i) {
-    if (offs[i].rt) { C3D_RenderTargetDelete(offs[i].rt); offs[i].rt = NULL; }
-    if (offs[i].tex.data) { pm_log_d("row 4: full image %d freed, idle %u frames", i, pm_frame_count() - offs[i].last); pm_vram_unreg(offs[i].tex.data, BLK_FULL); C3D_TexDelete(&offs[i].tex); offs[i].tex.data = NULL; }
 }
 /* a 64 x 64 image takes an arena block (made at boot) */
 static int small_tex_init(C3D_Tex* t) {
@@ -409,13 +394,6 @@ static int small_tex_init(C3D_Tex* t) {
     linearFree(t->data);
     t->data = small_blk[small_next++];
     return 1;
-}
-static void buffers_idle(void) {
-    unsigned f = pm_frame_count();
-    for (int i = 0; i < OFF_P; i++) if (offs[i].rt && offs[i].w != 64 && f - offs[i].last >= IDLE_FREE) full_free(i);
-    if (copy_blk && f - copy_last >= IDLE_FREE) copy_free();
-    for (int i = 0; i < OFF_P; i++) if (offs[i].rt && offs[i].w != 64) { pm_tex_full_touch(); break; } /* row 5: a full image is still held */
-    if (copy_blk) pm_tex_full_touch();
 }
 /* FX2a: the RDP loads a tile into TMEM before it draws, so a pass that reads the image it writes (the flame blur) sees the pixels from before
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
@@ -1324,6 +1302,7 @@ void pm_gpu_init(void) {
             GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) |
             GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
     } else pm_log_w("stereo: right eye target failed, mono only");
+    full_reserve(); /* VRAM2: the copy block and the full images, after all targets and before the texture cache takes the rest (pm_tex_init) */
     dvlb_all = DVLB_ParseFile((u32*)pm_shaderall_shbin, pm_shaderall_shbin_size); /* RAW1: one DVLB for the programs pm (CPU vertices) and pm4 (raw Vtx, matrix palette): a program switch sends no shader code */
     raw_dvlb_ok = dvlb_all && dvlb_all->numDVLE >= 2;
     pm_log("raw1: one DVLB %s (%d entries)", raw_dvlb_ok ? "on" : "FAILED", dvlb_all ? (int)dvlb_all->numDVLE : 0);
@@ -1726,7 +1705,6 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             offs[i].rt = C3D_RenderTargetCreateFromTex(&offs[i].tex, GPU_TEXFACE_2D, 0, -1);
             if (!offs[i].rt) {
                 pm_log_e("V05: off-screen image %d: render target failed", i);
-                if (w != 64) full_free(i);
                 off_fail = 1;
                 return 0;
             }
@@ -1964,7 +1942,6 @@ void pm_gpu_begin_wait(void) {
     draw_3d = 0;
     if (!gpu_ok) return;
     pm_tex_upload_vram_before_frame();
-    buffers_idle(); /* row 4: frees the full images and the copy buffer unused for IDLE_FREE frames. C3D_RenderTargetDelete asserts outside a frame, so this is before C3D_FrameBegin */
     FS_MARK(FS_GWAIT);
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
     /* SLP2: for pm_wd_wake_frames frames after a wake, the frame begin does not wait for the GPU. A long sleep may leave the GSP event
