@@ -31,3 +31,8 @@
 - Tex block per draw: nat_emit reads nat_tex[tex0] (filled by nat_tex_id from the 4 GPU words of unit 0 / unit 1). No pm_tex accessor returns those 4 words for a slot. Missing: an accessor for the unit config words of the current slot at emit time.
 - Slot per draw: the flush reads pm_tex_cur_slots at flush time (pm_gpu.c:1053), after queueing. The E5-1 key (sl[], entry) is not proven to equal the flush-time slot. Needs a check before E5-3 can use it.
 - Blocker: E5-3 needs the tex-words accessor and a proof that the entry slot equals the flush slot. Neither is implemented. No code change in this pass.
+
+## E5-3 step 1 blocked (third pass)
+- pm_tex_slot_words needs the 4 GPU unit words of a slot. Their format (0x081 / 0x091 data words 22..25) is set by citro3d at flush. citro3d source is not on disk (docs/handoff/inv_citro3d_format.md). No pm_tex function gives these words. A word layout guessed from the header would not be checked until a shot, so no accessor was written.
+- Option for the coordinator: capture the 4 words per slot from the command buffer after a live flush (a per-slot cache keyed by slot generation). That is a new mechanism, not a copy of existing code.
+- Pool index base (nat_gpu_addr(osConvertVirtToPhys(pool))) and census tuple sources are known (see above). They are not enough without the tex words.
