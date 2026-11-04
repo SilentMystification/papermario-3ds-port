@@ -4284,6 +4284,30 @@
         "reason": ""
       },
     {
+      "name": "census_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 (warp to mac_01 entry 0): draw census of frame 200 on the current path. Same census as census_toad on the mac_01 view.",
+      "proves": "Census of mac_01 draws (batches, triangles, distinct tuples). Reference for the PMOD P3 census equality check.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town drawcensus=200 loglevel=debug",
+      "until": "cen f200 summary",
+      "cap": 22,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census summary",
+          "regex": "cen f200 summary batches \\d+ tris \\d+ distinct \\d+ over 0"
+        }
+      ],
+      "reason": "Log only (census). The census is a set of counts, so the picture is not the test."
+    },
+    {
       "name": "census_toad_shot",
       "status": "unverified",
       "subject": "Toad Town (kmr_10 entry 0, player at -142 136 221), frames 200 and 201 shots: the Toad Town models (houses, props) in view at the census frame.",
