@@ -3910,6 +3910,30 @@
       "reason": "Log only (census). The census is a set of counts, so the picture is not the test."
     },
     {
+      "name": "census_yard_rp",
+      "status": "unverified",
+      "subject": "Yard (kmr_20, entry 4): census of frame 200 with the raw record replay on (recplay).",
+      "proves": "N2: the replay census equals census_yard (multiset) with recplay on.",
+      "debug": "preset=yard drawcensus=200 loglevel=debug recplay",
+      "until": "cen f200 summary",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "census summary",
+          "regex": "cen f200 summary batches \\d+ tris \\d+ distinct \\d+ over 0"
+        }
+      ],
+      "reason": "Log only (census). The census is a set of counts, so the picture is not the test."
+    },
+    {
       "name": "census_toad",
       "status": "verified",
       "subject": "Toad Town (kmr_10 entry 0, player at -142 136 221): draw census of frame 200 on the old path, with the NDS1 combine diagnostic (cenc lines).",
