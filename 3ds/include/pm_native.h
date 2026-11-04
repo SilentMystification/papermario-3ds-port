@@ -37,7 +37,7 @@ typedef struct { uint32_t at; uint16_t slot; uint16_t pad; } NatMtxLog;
 typedef struct {
     uint32_t cw0, cw1;             /* N64 combine words of the pair (pm_comb_build input) */
     uint32_t geom, oh, ol;         /* geometry mode and other-mode words */
-    uint8_t  z, decal, blend, atest; /* flags that decide the draw order */
+    uint8_t  z, decal, blend, atest, t1only; /* flags: draw order, and the pm_comb t1only argument */
     uint8_t  used, ordered;        /* ordered: 1 for blend or decal, these keep game order */
     uint32_t blk[NAT_TMPL_WORDS] __attribute__((aligned(32)));
 } NatTmpl;
@@ -54,7 +54,7 @@ void nat_layout_set(const NatPatch* pt, unsigned n, const uint32_t* drw);
 /* Find or add the template for (cw0, cw1, flags). Returns the id (0..63), or -1 when full. The pm_comb plan is built once per new id;
  * when plan_out is not NULL it receives a copy of that plan. rc_out receives the pm_comb_build return code (0 is success). */
 int nat_tmpl_add(uint32_t cw0, uint32_t cw1, uint32_t geom, uint32_t oh, uint32_t ol, int z, int decal, int blend, int atest,
-    PmPlan* plan_out, int* rc_out);
+    int t1only, PmPlan* plan_out, int* rc_out);
 
 /* Draw order for n records into ord (indices, 16-bit). Records whose template is ordered keep their place and break runs. Inside
  * each run of unordered records a stable counting sort by tex0 then by tmpl (LSD, two passes). Returns n. */

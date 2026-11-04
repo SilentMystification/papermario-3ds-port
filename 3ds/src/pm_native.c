@@ -18,16 +18,24 @@ void nat_layout_set(const NatPatch* pt, unsigned n, const uint32_t* drw) {
     memcpy(nat_drw, drw, sizeof nat_drw);
 }
 
+/* pm_gbi.c:504 and :1070: two = the cycle type is 2 CYCLE (1 << G_MDSFT_CYCLETYPE in omode_h, include/PR/gbi.h:579); t1only = the bound
+ * texture is TEXEL1 (pm_gbi.c:632, 636). */
+#define NAT_MDSFT_CYCLETYPE 20
+static int nat_pm_comb(uint32_t cw0, uint32_t cw1, uint32_t oh, int t1only, PmPlan* p) {
+    int two = ((oh >> NAT_MDSFT_CYCLETYPE) & 3) == 1;
+    return pm_comb_build(cw0, cw1, two, t1only, p);
+}
+
 int nat_tmpl_add(uint32_t cw0, uint32_t cw1, uint32_t geom, uint32_t oh, uint32_t ol, int z, int decal, int blend, int atest,
-    PmPlan* plan_out, int* rc_out) {
+    int t1only, PmPlan* plan_out, int* rc_out) {
     int id = -1;
     for (int i = 0; i < NAT_TMPL_MAX; i++) {
         NatTmpl* t = &nat_tmpl[i];
         if (t->used) {
             if (t->cw0 == cw0 && t->cw1 == cw1 && t->geom == geom && t->oh == oh && t->ol == ol && t->z == !!z &&
-                t->decal == !!decal && t->blend == !!blend && t->atest == !!atest) {
+                t->decal == !!decal && t->blend == !!blend && t->atest == !!atest && t->t1only == !!t1only) {
                 if (plan_out || rc_out) {
-                    PmPlan p; int rc = pm_comb_build(cw0, cw1, 0, 0, &p);
+                    PmPlan p; int rc = nat_pm_comb(cw0, cw1, oh, t1only, &p);
                     if (plan_out) *plan_out = p;
                     if (rc_out) *rc_out = rc;
                 }
@@ -37,12 +45,12 @@ int nat_tmpl_add(uint32_t cw0, uint32_t cw1, uint32_t geom, uint32_t oh, uint32_
     }
     if (id < 0) return -1;
     NatTmpl* t = &nat_tmpl[id];
-    PmPlan p; int rc = pm_comb_build(cw0, cw1, 0, 0, &p);
+    PmPlan p; int rc = nat_pm_comb(cw0, cw1, oh, t1only, &p);
     if (plan_out) *plan_out = p;
     if (rc_out) *rc_out = rc;
     memset(t, 0, sizeof *t);
     t->cw0 = cw0; t->cw1 = cw1; t->geom = geom; t->oh = oh; t->ol = ol;
-    t->z = !!z; t->decal = !!decal; t->blend = !!blend; t->atest = !!atest;
+    t->z = !!z; t->decal = !!decal; t->blend = !!blend; t->atest = !!atest; t->t1only = !!t1only; t->oh = oh;
     /* Opaque depth-tested draws may be reordered. Blend, decal and 2D (z off) keep game order. Alpha test writes depth, so it may be reordered. */
     t->ordered = (blend || decal || !z) ? 1 : 0;
     t->used = 1;

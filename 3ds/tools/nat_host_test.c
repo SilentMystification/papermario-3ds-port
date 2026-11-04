@@ -41,7 +41,7 @@ static void test_template(void) {
     int ids[9], bad = 0, rc_bad = 0;
     for (int i = 0; i < 9; i++) {
         PmPlan a, b; int rc = -1;
-        ids[i] = nat_tmpl_add(census_pairs[i][0], census_pairs[i][1], 0x00200405u, 0x0008ac00u, 0x00553078u, 1, 0, 0, 0, &a, &rc);
+        ids[i] = nat_tmpl_add(census_pairs[i][0], census_pairs[i][1], 0x00200405u, 0x0008ac00u, 0x00553078u, 1, 0, 0, 0, 0, &a, &rc);
         if (ids[i] < 0) { bad++; continue; }
         int rc2 = pm_comb_build(census_pairs[i][0], census_pairs[i][1], 0, 0, &b);
         if (rc2 != rc) rc_bad++;
@@ -51,16 +51,16 @@ static void test_template(void) {
     CHECK(bad == 0, "template plan differs from pm_comb_build for %d pairs", bad);
     CHECK(rc_bad == 0, "pm_comb return code differs for %d pairs", rc_bad);
     for (int i = 0; i < 9; i++) {
-        int again = nat_tmpl_add(census_pairs[i][0], census_pairs[i][1], 0x00200405u, 0x0008ac00u, 0x00553078u, 1, 0, 0, 0, NULL, NULL);
+        int again = nat_tmpl_add(census_pairs[i][0], census_pairs[i][1], 0x00200405u, 0x0008ac00u, 0x00553078u, 1, 0, 0, 0, 0, NULL, NULL);
         CHECK(again == ids[i], "same key gave id %d, want %d", again, ids[i]);
     }
-    int blend_id = nat_tmpl_add(census_pairs[0][0], census_pairs[0][1], 0x00200405u, 0x0008ac00u, 0x00553078u, 1, 0, 1, 0, NULL, NULL);
+    int blend_id = nat_tmpl_add(census_pairs[0][0], census_pairs[0][1], 0x00200405u, 0x0008ac00u, 0x00553078u, 1, 0, 1, 0, 0, NULL, NULL);
     CHECK(blend_id >= 0 && blend_id != ids[0], "blend flag gave the same id");
     CHECK(nat_tmpl[blend_id].ordered == 1 && nat_tmpl[ids[0]].ordered == 0, "ordered flag: blend 1, opaque 0");
     memcpy(save, nat_tmpl, sizeof nat_tmpl);
     /* a full table returns -1 */
     int full = 0;
-    for (u32 k = 0; k < 100; k++) if (nat_tmpl_add(0xfc000000u + k, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL) < 0) full++;
+    for (u32 k = 0; k < 100; k++) if (nat_tmpl_add(0xfc000000u + k, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL) < 0) full++;
     CHECK(full > 0, "table did not report full");
     memcpy(nat_tmpl, save, sizeof nat_tmpl);
     printf("template: %d pairs checked, table full at %d extra adds\n", 9, full);
