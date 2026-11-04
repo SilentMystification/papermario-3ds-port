@@ -172,7 +172,7 @@ static void chan_add(int ch, s16* data, unsigned n, int loop) {
     ndspChnWaveBufAdd(ch, w);
 }
 
-void pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]) {
+int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]) {
     Chan* c = &chn[ch];
     Ent* e = cache_get(s);
     if (aux_late) { aux_late = 0; ndspAuxSetCallback(0, aux0_cb, NULL); ndspAuxSetCallback(1, aux1_cb, NULL); pm_log("dspaudio: aux callbacks registered after the first voice start"); }
@@ -180,7 +180,7 @@ void pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mi
     ndspChnWaveBufClear(ch);
     c->nb = 0;
     c->active = 0;
-    if (!e) return;
+    if (!e) return 0;
     e->pins++;
     c->e = e;
     ndspChnSetFormat(ch, NDSP_FORMAT_MONO_PCM16);
@@ -200,6 +200,7 @@ void pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mi
         }
     }
     c->active = c->nb > 0;
+    return c->active;
 }
 
 void pm_dspa_voice_update(int ch, float rate, const float mix[12]) {

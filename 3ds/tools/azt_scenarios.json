@@ -695,6 +695,34 @@
       "reason": ""
     },
     {
+      "name": "aud2_cache",
+      "status": "unverified",
+      "subject": "Mario in his yard (kmr_20, entry 4) with the sound cache at its minimum (dspcache=256 KB) and audiostat. No picture.",
+      "proves": "AUD2: a sound start that gets no cache entry is retried on the next block (up to 16 blocks), and the audio dsp lines print the failures and starts counts for the period.",
+      "debug": "preset=yard dspcache=256 audiostat loglevel=debug",
+      "until": "warp: scene f300 ",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "steady frame",
+          "regex": "warp: scene f300 "
+        },
+        {
+          "name": "audio stats",
+          "regex": "audio dsp: cache hits \\d+ misses \\d+ evictions \\d+ failures \\d+"
+        }
+      ],
+      "reason": ""
+    },
+    {
       "name": "yard_pace",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), same as yard, with pacestat logstat only. Frame-time baseline for LOGFIX (yard has no frame-time line).",

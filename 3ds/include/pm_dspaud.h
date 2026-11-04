@@ -20,7 +20,7 @@ int pm_dspa_init(void);                                           /* after ndspI
 void pm_dspa_shutdown(void);
 void pm_dspa_rearm(void);                                         /* after sleep: game thread, audio and render idle. Clears and sets up the channels again. */
 void pm_dspa_pace(void);                                          /* render thread: wait until the next block is due */
-void pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]);   /* 0 = sample not available: ch stays silent */
+int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]);    /* 1 = started, 0 = no cache entry: ch stays silent, the caller retries */
 void pm_dspa_voice_update(int ch, float rate, const float mix[12]);
 void pm_dspa_voice_stop(int ch);
 int pm_dspa_voice_ended(int ch);                                  /* all wave buffers of the channel are done */

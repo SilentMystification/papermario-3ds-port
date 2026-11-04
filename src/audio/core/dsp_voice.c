@@ -24,8 +24,11 @@ typedef struct {
     float rate;
     float mix[12];
     float curL, curR;
+    u8 retry;
 } DspV;
 static DspV dv[PM_DSPA_VOICES];
+/* a start that gets no cache entry is retried on the next block; 16 blocks (about 90 ms) outlasts the 60 ms eviction guard */
+#define AU2_START_RETRY 16
 static int fx_type[2] = { -1, -1 };
 static const s32* fx_ptr[2];
 static int dl_bus = -1, dl_side, dl_blocks;
@@ -60,7 +63,12 @@ unsigned au2_blk_backlog(void);
 void au_dsp_block(void) {
     AuSynDriver* drv = gSynDriverPtr;
     int nv = 0, starts = 0, stops = 0, ends = 0, i;
+    static u8 warned_pvoice;
     if (drv == nullptr) return;
+    if (!warned_pvoice && drv->num_pvoice > PM_DSPA_VOICES) {
+        warned_pvoice = 1;
+        pm_dspa_log_once("num_pvoice %d: voices %d and up do not play, ndsp channel %d returns the effects", (int)drv->num_pvoice, PM_DSPA_VOICES, PM_DSPA_VOICES);
+    }
 
     /* effects and channel delay */
     for (i = 0; i < 2; i++) {
@@ -158,10 +166,19 @@ void au_dsp_block(void) {
             s.bookBytes = ins->codebookSize;
             s.lstate = (const short*)ins->loopState;
             s.loopStart = ins->loopStart; s.loopEnd = ins->loopEnd; s.loopCount = ins->loopCount;
-            if (v->on) pm_dspa_voice_stop(i);
-            pm_dspa_voice_start(i, &s, rate, mix);
-            v->on = 1; v->gen = au2_vgen_get(i); starts++;
-            memcpy(v->mix, mix, sizeof mix); v->rate = rate;
+            {
+                u32 g = au2_vgen_get(i);
+                if (v->gen != g) v->retry = 0;
+                if (v->on) pm_dspa_voice_stop(i);
+                v->on = 0;
+                if (pm_dspa_voice_start(i, &s, rate, mix)) {
+                    v->on = 1; v->gen = g; v->retry = 0; starts++;
+                    memcpy(v->mix, mix, sizeof mix); v->rate = rate;
+                } else if (++v->retry > AU2_START_RETRY) {
+                    /* give up: silent until the sample generation changes */
+                    v->on = 1; v->gen = g; v->retry = 0;
+                }
+            }
         } else {
             int changed = rate != v->rate, k;
             for (k = 0; k < 12 && !changed; k++) if (mix[k] != v->mix[k]) changed = 1;
