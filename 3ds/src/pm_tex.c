@@ -703,6 +703,34 @@ static const C3D_Tex* tex_for_draw(Slot* s) {
  * a key that was not invalidated. Dirty and native slots are skipped (their change is expected). */
 static int bind_probe = -1; static unsigned bind_n, bind_mis, bind_skip;
 static unsigned probe_fnv(const u8* p, unsigned n) { unsigned x = 2166136261u; for (unsigned k = 0; k < n; k++) x = (x ^ p[k]) * 16777619u; return x; }
+/* TEXD1 debug switch texword=<hex image address>: the first 4 binds of that image write the source bytes (texsrc_<addr>_<n>.bin, slen bytes)
+ * and the converted PICA bytes (texgpu_<addr>_<n>.bin, the slot's bytes in VRAM or the staged copy) to the working directory, and log the layout. */
+static void texword_dump(const Slot* s) {
+    static long want = -2;
+    static int ndump;
+    if (want == -2) { char tv[24]; if (pm_debug_value("texword", tv, sizeof tv)) want = strcmp(tv, "shape") == 0 ? -3 : (long)strtoul(tv, NULL, 16); else want = -1; }
+    if (want == -1 || (want == -3 ? !(s->fmt == 4 && s->siz == 0 && s->w == 64 && s->h == 64) : (long)(uintptr_t)s->img != want) || ndump >= 4) return;
+    int staged = s->vram_stage && s->vram_up;
+    const u8* g = staged ? s->vram_stage : (s->tex_vram_ptr ? s->tex_vram_ptr : (const u8*)s->tex.data);
+    unsigned gn = staged ? s->stage_n : (unsigned)s->tex.size;
+    char fn[48];
+    FILE* f;
+    unsigned hh = 2166136261u;
+    ndump++;
+    long addr = (long)(uintptr_t)s->img;
+    snprintf(fn, sizeof fn, "texsrc_%08lx_%d.bin", addr, ndump);
+    f = fopen(fn, "wb");
+    if (f) { fwrite(s->img, 1, s->slen, f); fclose(f); }
+    snprintf(fn, sizeof fn, "texgpu_%08lx_%d.bin", addr, ndump);
+    f = fopen(fn, "wb");
+    if (f && g) fwrite(g, 1, gn, f);
+    if (f) fclose(f);
+    if (g) for (unsigned k = 0; k < gn; k++) hh = (hh ^ g[k]) * 16777619u;
+    pm_log("texword f%u img %08lx bind %d: slot %d %dx%d fmt %u siz %u stride %d slen %u gpu %ux%u gn %u staged %d wrap s %d t %d shr %d %d hash %08x gpu0 %02x%02x%02x%02x",
+           (unsigned)tc_frame, addr, ndump, (int)(s - slots), s->w, s->h, s->fmt, s->siz, s->stride, s->slen, (unsigned)s->tex.width, (unsigned)s->tex.height, gn, staged,
+           (int)wrap_s, (int)wrap_t, shr_s, shr_t, hh, g ? g[0] : 0, g ? g[1] : 0, g ? g[2] : 0, g ? g[3] : 0);
+}
+
 static void bind_probe_one(int i, const Slot* s) {
     if (bind_n < 200) pm_log_d("texbind f%u slot %d img %p slen %u sgen %u %dx%d fmt %u siz %u dirty %d native %d", (unsigned)tc_frame, i, s->img, s->slen, s->sgen, s->w, s->h, s->fmt, s->siz, s->dirty, s->native);
     bind_n++;
@@ -719,6 +747,7 @@ int pm_tex_bind_slot(int i) {
     cur = i;
     TOUCH(&slots[i]);
     TC_HIT(&slots[i]);
+    texword_dump(&slots[i]);
     if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
     if (bind_probe) bind_probe_one(i, &slots[i]);
     const C3D_Tex* tp = tex_for_draw(&slots[i]);
