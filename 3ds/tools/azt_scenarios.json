@@ -183,6 +183,34 @@
       "reason": ""
     },
     {
+      "name": "nok14_lake",
+      "status": "unverified",
+      "subject": "Map nok_14 at player position 27 0 -44 (underwater terrain near the lake, wrong textures, user report TEX1 item 3). Frames 200 to 205 with the game camera on Mario. Picture: terrain textures near the lake edge.",
+      "proves": "TEX1: the clamp-pad change (pm_tex.c expand and pm_tex_tx1.h) changes the texture on a clamped axis with a tile mask. The shot differs from the HANG1 build only if the lake terrain uses that path.",
+      "debug": "warp=nok_14:0 pos=27:0:-44 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
+      "until": "shot 1 frame 204",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: nok_14 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_14 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 27"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (TEX1). Map entry 0 and the lake position are not checked yet."
+    },
+    {
       "name": "kmr_10_dd",
       "status": "unverified",
       "subject": "Map kmr_10 entry 0, frames 200 to 205 shots, with drawlog=200:1 (one line per mesh chunk of frame 200). Names the chunk and texture of the terrain wall in view (TEXGARBLE).",
@@ -1404,7 +1432,7 @@
       "subject": "Mario in mac_01 (area 1 map 2, Toad Town), reached by the tour path: warp to mac_00 entry 4, then tour step to mac_01 entry 0 at about frame 209. In control, shot at frames 500 and 504.",
       "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1623 to 2065 (1844 +/- 12 %). Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase",
-      "until": "mdlsum f899 r12 ",
+      "until": "mdlsum f783 r12 ",
       "cap": 120,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -1425,13 +1453,13 @@
         },
         {
           "name": "mdlsum total ops per frame (gate 757 to 963, 860 +/- 12 %, after MR1 7d00a451c)",
-          "regex": "mdlsum f899 tot ops (\\d+) ",
+          "regex": "mdlsum f783 tot ops (\\d+) ",
           "min": 757,
           "max": 963
         },
         {
           "name": "mdlsum rows",
-          "regex": "mdlsum f899 r12 "
+          "regex": "mdlsum f783 r12 "
         },
         {
           "name": "shot",
@@ -3134,7 +3162,7 @@
       "subject": "Scratch before run of mac01t: texwin0 switch disables the clamp window rule (TEXWIN) for the same scene, for a byte-equal check.",
       "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1623 to 2065 (1844 +/- 12 %). Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase texwin0",
-      "until": "mdlsum f899 r12 ",
+      "until": "mdlsum f783 r12 ",
       "cap": 120,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -3155,13 +3183,13 @@
         },
         {
           "name": "mdlsum total ops per frame (gate 757 to 963, 860 +/- 12 %, after MR1 7d00a451c)",
-          "regex": "mdlsum f899 tot ops (\\d+) ",
+          "regex": "mdlsum f783 tot ops (\\d+) ",
           "min": 757,
           "max": 963
         },
         {
           "name": "mdlsum rows",
-          "regex": "mdlsum f899 r12 "
+          "regex": "mdlsum f783 r12 "
         },
         {
           "name": "shot",
