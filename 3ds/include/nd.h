@@ -73,6 +73,24 @@ int nd_mtx_replace(const void* src, float in[4][4]);
 typedef struct NdLight { uint8_t col[3]; int8_t dir[3]; } NdLight;
 void nd_lights(PmFx* fx, int texgen, const NdLight* lt, unsigned n, const int8_t lk[2][3]);
 
+/* NDTEX (S1-6): texture descriptor to a texture block id. cms, cmt: the G_SETTILE wrap flags (bit 0 mirror, bit 1 clamp), masks, maskt: the tile mask exponents.
+ * The tile shift is not a texture unit word: it goes to the uv offset and scale of the draw. */
+typedef struct NdTexDesc {
+    const void* img;                 /* raster */
+    const void* pal;                 /* palette (TLUT) or NULL */
+    uint8_t fmt, siz, cms, cmt, masks, maskt;
+    uint16_t w, h, pal_n, stride;
+    uint8_t pad[2];
+} NdTexDesc;
+_Static_assert(sizeof(void*) != 4 || sizeof(NdTexDesc) == 24, "NdTexDesc has no padding on the 32 bit target");
+uint32_t nd_tex_wrap_of(unsigned cm, unsigned mask);
+uint32_t nd_tex_wrap_final(int shr, unsigned mirror, uint32_t wrap);
+uint32_t nd_tex_param(uint32_t param, unsigned filter, uint32_t ws, uint32_t wt);
+uint32_t nd_tex_dim(unsigned w, unsigned h);
+void nd_tex_reset(void);
+int nd_tex_get(const NdTexDesc* d);          /* block id, loading the image through pm_tex.c on a miss; -1 when it fails or the table is full */
+const uint32_t* nd_tex_block(int id);        /* dim, param, lodParam, data address >> 3 */
+
 /* Eye 2 without a second walk: copy the eye 1 command span, then write the eye 2 matrix words at each logged position. */
 typedef struct NdMtxLog { uint32_t at; uint16_t slot; uint16_t pad; } NdMtxLog;
 void nd_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NdMtxLog* log, unsigned nlog, unsigned eye);

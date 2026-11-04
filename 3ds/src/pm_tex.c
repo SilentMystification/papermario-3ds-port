@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "pm_tex.h"
+#include "nd.h"
 #include "pm_texbake.h"
 #include "pm_port.h"
 void pm_gpu_rect_sync(void); /* pm_gpu.c */
@@ -126,12 +127,7 @@ static GPU_TEXTURE_WRAP_PARAM wrap_s = GPU_REPEAT;
 static GPU_TEXTURE_WRAP_PARAM wrap_t = GPU_REPEAT;
 static int shr_s, shr_t, aux_shr_s, aux_shr_t; /* V12c: the texture is only mask wide, the GPU wrap does the mask (set per load) */
 
-static GPU_TEXTURE_WRAP_PARAM wrap_of(unsigned mode, unsigned mask) {
-    /* mask 0 is clamp on the RDP, whatever the wrap field says. */
-    if (mask == 0 || (mode & 2)) return GPU_CLAMP_TO_EDGE;
-    if (mode & 1) return GPU_MIRRORED_REPEAT;
-    return GPU_REPEAT;
-}
+#define wrap_of(mode, mask) ((GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_of(mode, mask)) /* S1-6: the rule lives in nd_tex.c (mask 0 is clamp on the RDP, whatever the wrap field says) */
 
 /* X01: the tile mask. A tile larger than its mask (the star and circle wipes load a 32 texel wide image into a 64 texel
  * tile, mask 5, mirror) reads the image through the mask: s is masked before the texel address, so the part past the
@@ -1652,6 +1648,10 @@ static void td3_parse(void) {
     td3_near = pm_debug_value("texnearest", v, sizeof v) && v[0] == '1';
     td3_padoff = pm_debug_value("padov", v, sizeof v) && !strcmp(v, "off");
 }
+/* S1-6: the wrap and filter pm_tex_bind programs for unit 0 (without the debug overrides): nd_tex_get patches them into the param word of the unit block */
+void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter) {
+    *ws = nd_tex_wrap_final(shr_s, mk_ms, wrap_s); *wt = nd_tex_wrap_final(shr_t, mk_mt, wrap_t); *filter = (unsigned)tex_filt;
+}
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
@@ -1663,7 +1663,7 @@ int pm_tex_bind(void) {
     if (!have || cur < 0 || !slots[cur].live) return 0;
     slots[cur].stamp = ++stamp;
     slots[cur].last_frame = tc_frame;
-    GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
+    GPU_TEXTURE_WRAP_PARAM ws = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(shr_s, mk_ms, wrap_s), wt = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(shr_t, mk_mt, wrap_t);
     td3_parse();
     if (td3_wrap >= 0) ws = wt = (GPU_TEXTURE_WRAP_PARAM)td3_wrap;
     GPU_TEXTURE_FILTER_PARAM ff = td3_near ? GPU_NEAREST : tex_filt;
@@ -1756,8 +1756,8 @@ int pm_tex_bind_aux(void) {
     if (aux < 0 || !slots[aux].live) return 0;
     slots[aux].stamp = ++stamp;
     TOUCH(&slots[aux]);
-    GPU_TEXTURE_WRAP_PARAM ws = aux_shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_ws;
-    GPU_TEXTURE_WRAP_PARAM wt = aux_shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : aux_wt;
+    GPU_TEXTURE_WRAP_PARAM ws = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(aux_shr_s, mk_ms, aux_ws);
+    GPU_TEXTURE_WRAP_PARAM wt = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(aux_shr_t, mk_mt, aux_wt);
     const int staged = slot_draws_stage(&slots[aux]);
     if (!staged && au_last == &slots[aux].tex && au_f == (int)tex_filt && au_ws == (int)ws && au_wt == (int)wt) return 1;
     tb_last = NULL; /* DR1: this changes the filter and wrap of a texture that unit 0 may use */
