@@ -85,3 +85,14 @@
 ### Budgets
 - TEXD2: 6 of 8 starts used (texreg runs 1 to 3 and 5 and 6, A/B run 4).
 - Not started in session 3: VRAM3 (step 1 trace), pm_tex_load_rgba8 linear scan fix (step 3).
+
+### Session 3 update: revert and the regression check (supersedes the bucket-lookup suspicion above)
+- Reverted the bucket lookup: commit ac6df01b5 (git revert of 1413ef8c3). The texword dump cap is back to 4 with it.
+- Reverted HEAD (ac6df01b5, which still contains TEXD2 0f156f4c7): scenario texreg_wall (until scene frame 300): no texreg line, no bind of 0x0100169c. Scenario hos01_texword: no texword bind of 0x0100169c by frame 204.
+- The A/B build (pm_tex.c from 124e1d468, no TEXD2, scenario hos01_texword): texword bind 1 at frame 200, wrap s 3 t 3 (run 4 earlier). This build differs from ac6df01b5 only in pm_tex.c.
+- So the bucket lookup is not the proven cause. The prime suspect is the TEXD2 change to pm_tex.c (commit 0f156f4c7): the switch parser, the pad loop guard, the wrap and filter override (ff), the aux override, texreg_log. The defaults should not change behaviour, but the wall bind does change.
+- Next step (fresh agent): `git diff 124e1d468 ac6df01b5 -- 3ds/src/pm_tex.c` and bisect the TEXD2 hunks (apply each to 124e1d468, run hos01_texword). Check first the bind shortcut in pm_tex_bind (tb_f, tb_ws) and td2_parse calls in the hot path.
+- The bucket lookup stays an open row. Its test must show that the same set of textures binds on hos_01 (A/B on the same scenario) before it is merged again.
+- Wall texreg values: NOT obtained. No texreg line appeared in any run (runs 1 to 3, 5 to 7), so the values for 0x0100169c and 0x00571b90 are still unknown.
+- Budget TEXD2: 8 of 8 used. Reset needed for further starts. Coin gate (texreg_coin) not run.
+- Not started: VRAM3 step 1 (trace of the four off-screen images), pm_tex_load_rgba8 linear scan fix (bucket lookup, after the test above).
