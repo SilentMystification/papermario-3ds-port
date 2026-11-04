@@ -4265,7 +4265,7 @@
       "subject": "COIN1: field coins of dgb_13 (ITEM_COIN at x -530 to -490, z -220 to -160, y 55, six coins), Mario placed at pos -490 20 -190 next to them. Picture: the coin sprites whole, the 24x24 coin chunk and its texture.",
       "proves": "The coin item draw in a view where the coin is on screen: drawlog lists the 24x24 chunk, the shot shows the whole coin.",
       "debug": "warp=dgb_13:0 pos=-490:20:-190 shots shotwin=280:2 loglevel=debug drawlog=280:1",
-      "until": "shot \\d+ frame 281\\b",
+      "until": "shot \\d+ frame 280\\b",
       "cap": 40,
       "deadline": 40,
       "first_marker": "warp: dgb_13 entry 0",
