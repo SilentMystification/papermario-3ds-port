@@ -29,3 +29,19 @@ Branch flk1 (worktree papermario-3ds-port-flk1, from native ca4ea0f46). Budget: 
 - Also: map triangles run through the CPU path only with drawlog. Without it, DLC2 static groups and gv_tri draw the map (run 1: only 10 triangles reached draw_tri_cpu).
 - The nok_02 end piece is still not identified. Steps 3 (two camera positions) and 4 (fix) are not done. The FLK1 diagnostic budget is at 3 of 3. The orchestrator resets it (-ResetBudget FLK1) before further starts.
 - Next: identify the chunk of the end piece in the dd lines (scr bounds around Mario, shot mapping to scr is unverified), then compare the same chunk at pos 250 0 11 and at a point a few units off. Check the GPU path (gv_tri, pm_gpu_gtrip) for that chunk if DLC2 draws it.
+
+## Run 4 to run 8 (2026-11-03, flk1 lane). Debug switches only, no fix
+Added (pm_dlc.inc.c, debug): `nobox=1` (dlc_try box skip off), `noboxint=1` (an out group runs through pm_gbi_run instead of the skip), dlc2 line fields `skip`, `grp`, `xgrp`; dlc_verify_skip counts `xgrp` (triangles of a skipped group that use a slot an earlier group of the list loaded). Scenarios nok02_nobox, nok02_noboxint, nok02_dlccheck (catalog rows added).
+
+Results (pos 250 0 11):
+- Run 4 nok02_nobox vs nok02_tri, frame 200, top-left shot: 2855 px differ (3.0 %), 60 regions. Largest in x 136 to 178, y 52 to 129 (1040 px) and x 185 to 219, y 52 to 113 (327 px). Two skip-on runs (nok02_tri run 1 and run 8 repeat) differ by 534 px, only at the figure x 25 to 55, y 89 to 116 (run-to-run noise). So the top-right regions are a real skip effect.
+- Run 7 nok02_noboxint vs nok02_nobox in the top-right region: 6 px differ. vs nok02_tri: 1086 px. The interpreter draws what the no-skip path draws there.
+- Run 5 and run 8 dlccheck, 300 frames: grp 25502, skip 12452, missing 0, xgrp 0. Every skipped triangle has a common clip plane with the same matrix (clip_bits4), and no skipped group uses a cross-group slot.
+- Contradiction, not solved: the per-vertex plane check says the skipped triangles are outside, but the interpreter draws pixels for them in the top-right region. Causes not yet tested: (a) the interpreter keeps triangles that share an out bit (check draw_tri_cpu early-clip for bit 0x10, not in the 0x2f mask of verify), (b) the skipped group changes state for a later group (vert_live, geom), (c) the picture is from a triangle whose vertices come from the group box but not the verify walk.
+- Flicker frame (camera move, end piece) NOT reproduced. Frame 200 at pos 250 0 11 shows the path in both builds.
+
+## Next steps
+1. Count, in noboxint with tritrace=200:1, the draw_tri_cpu triangles whose clip bits share a plane (they must not be kept), and check whether they produce the top-right pixels. Log the early-clip decision for them.
+2. If (a): fix the early clip (pm_gbi.c) so out-plane triangles are rejected; the box skip then matches the interpreter.
+3. If (b): compare the vert_live and geom state before and after a skipped group.
+4. Do not change the skip rule until step 1 names the triangle.
