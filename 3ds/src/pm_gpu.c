@@ -1804,9 +1804,8 @@ static int grab_tex_init(void) {
 /* HANG1a: the GX queue of citro3d holds 32 entries (base.c maxEntries) and runs only at frame begin or end, so a splash frame (one texture
  * copy per particle) overflows it (svcBreak in gxCmdQueueAdd). Past 24 entries, wait for the queue to empty, as C3Di_WaitAndClearQueue does.
  * gxQueue is the first member of the citro3d context, so its address is the queue. */
-extern char __C3D_Context[];
 void pm_gx_room(void) {
-    gxCmdQueue_s* q = (gxCmdQueue_s*)__C3D_Context;
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     if (q->numEntries < 24) return;
     gxCmdQueueRun(q);
     gxCmdQueueWait(q, -1);
