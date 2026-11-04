@@ -1,12 +1,13 @@
-/* NDS1 phase A host tests for 3ds/src/pm_native.c. No emulator. Runs well under 1 s.
+/* NDS1 host tests for 3ds/src/pm_native.c (layout of 2026-11-04). No emulator. Runs well under 1 s.
  *   1 record: sizeof and offsets of NatRec (16 bytes).
- *   2 template: nat_tmpl_add for the nine combine pairs used on Toad Town and census_yard (NDS1 step 1 dump). The plan
- *     stored in the table equals a direct pm_comb_build of the same pair, the same key gives the same id, a second key
- *     with another flag gets a new id.
+ *   2 template: nat_tmpl_add for the nine combine pairs of census_toad and census_yard. The stored plan equals a direct pm_comb_build.
  *   3 order: nat_order equals a reference stable sort by (tmpl, tex0) inside each run of unordered records. Ordered records keep their index.
- *   4 emit and eye copy: nat_emit for eye 0 equals a reference emitter. The eye 2 span made by nat_eye_copy from the eye 0
- *     span equals a direct nat_emit for eye 1, bit for bit. Words that differ between the eyes are only MTX patch words.
- * Build and run: sh 3ds/tools/nat_host_test.sh. Exit 0 when all gates pass. */
+ *   4 layout (fixture 3ds/tools/nat_fixture_toad.txt, two captured static model records from the rec_done dump): nat_tmpl_strip
+ *     splits each record into template and group. The emitted commands of each record (template plus group) equal the
+ *     captured commands as a multiset, so the same commands are emitted, possibly in another order (trailing state moves
+ *     before the trigger; see docs/handoff/agent_nds1.md).
+ *   5 eye copy: the eye 2 span from nat_eye_copy equals a direct nat_emit for eye 1; words that differ are palette words only.
+ * Build and run: sh 3ds/tools/nat_host_test.sh (passes the fixture path). Exit 0 when all gates pass. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,7 @@ static void test_record(void) {
     CHECK(offsetof(NatRec, tex0) == 1 && offsetof(NatRec, mtx) == 4 && offsetof(NatRec, nidx) == 6, "NatRec 16-bit offsets");
     CHECK(offsetof(NatRec, idx_off) == 8 && offsetof(NatRec, vtx_base) == 12, "NatRec 32-bit offsets");
     CHECK(offsetof(NatTmpl, blk) % 32 == 0, "NatTmpl block not 32-byte aligned");
+    CHECK(NAT_GRP_WORDS == 2 + 18 + 6 + 6 + 2 + 2 + 2, "group size");
     printf("record: sizeof NatRec %zu, NatTmpl %zu\n", sizeof(NatRec), sizeof(NatTmpl));
 }
 
@@ -46,7 +48,6 @@ static void test_template(void) {
         int rc2 = pm_comb_build(census_pairs[i][0], census_pairs[i][1], 0, 0, &b);
         if (rc2 != rc) rc_bad++;
         if (memcmp(&a, &b, sizeof a) != 0) bad++;
-        printf("template: pair %08x %08x -> id %d, pm_comb rc %d\n", census_pairs[i][0], census_pairs[i][1], ids[i], rc);
     }
     CHECK(bad == 0, "template plan differs from pm_comb_build for %d pairs", bad);
     CHECK(rc_bad == 0, "pm_comb return code differs for %d pairs", rc_bad);
@@ -58,7 +59,6 @@ static void test_template(void) {
     CHECK(blend_id >= 0 && blend_id != ids[0], "blend flag gave the same id");
     CHECK(nat_tmpl[blend_id].ordered == 1 && nat_tmpl[ids[0]].ordered == 0, "ordered flag: blend 1, opaque 0");
     memcpy(save, nat_tmpl, sizeof nat_tmpl);
-    /* a full table returns -1 */
     int full = 0;
     for (u32 k = 0; k < 100; k++) if (nat_tmpl_add(0xfc000000u + k, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL) < 0) full++;
     CHECK(full > 0, "table did not report full");
@@ -77,7 +77,6 @@ static void test_order(void) {
             rec[k].tmpl = rnd() % 4; rec[k].tex0 = rnd() % 6; rec[k].mtx = k; rec[k].nidx = k + 1;
         }
         u16 ord[NAT_REC_MAX]; nat_order(rec, n, ord);
-        /* reference */
         u16 ref[40]; for (unsigned k = 0; k < n; k++) ref[k] = (u16)k;
         unsigned i = 0;
         while (i < n) {
@@ -101,78 +100,136 @@ static void test_order(void) {
     printf("order: 200 random sets checked against the reference\n");
 }
 
-/* 4 emit and eye copy */
-static void emit_ref(const NatRec* rec, unsigned n, const u16* ord, u32* out, unsigned eye, u32* nmt, unsigned* nw) {
-    unsigned o = 0; int cur = -1; *nmt = 0;
-    for (unsigned k = 0; k < n; k++) {
-        const NatRec* r = &rec[ord[k]];
-        if (r->tmpl != cur) { memcpy(out + o, nat_tmpl[r->tmpl].blk, NAT_TMPL_WORDS * 4); o += NAT_TMPL_WORDS; cur = r->tmpl; }
-        u32* d = out + o; memcpy(d, nat_drw, NAT_DRAW_WORDS * 4);
-        d[3] = nat_tex_word[r->tex0]; d[4] = nat_tex_word[r->tex1]; d[5] = nat_idx_base + r->idx_off; d[6] = r->nidx;
-        memcpy(d + 8, nat_mtx[eye][r->mtx], 64); (*nmt)++;
-        o += NAT_DRAW_WORDS;
+/* Command split: [p0][header][data...], count in header bits 20 to 27, length 2 + c + (c & 1). */
+typedef struct { u32 len; u32 v[40]; } Cmd;
+static unsigned cmds_of(const u32* w, unsigned n, Cmd* o) {
+    unsigned i = 0, k = 0;
+    while (i + 1 < n) {
+        u32 c = (w[i + 1] >> 20) & 0xFFu; unsigned len = 2u + c + (c & 1u);
+        if (i + len > n || k >= 400) return 0;
+        memset(&o[k], 0, sizeof o[k]); o[k].len = len; memcpy(o[k].v, w + i, len * 4); k++; i += len;
     }
-    *nw = o;
+    return i == n ? k : 0;
 }
-static void test_emit(void) {
-    static NatRec rec[NAT_REC_MAX]; static u16 ord[NAT_REC_MAX];
-    static u32 out0[8192], out1[8192], ref0[8192], copy1[8192];
-    static NatMtxLog log0[NAT_REC_MAX];
-    NatPatch pt[5] = { {3, NAT_P_TEX0, 0}, {4, NAT_P_TEX1, 0}, {5, NAT_P_IDX, 0}, {6, NAT_P_NIDX, 0}, {8, NAT_P_MTX, 0} };
-    u32 drw[NAT_DRAW_WORDS];
-    for (int i = 0; i < NAT_DRAW_WORDS; i++) drw[i] = 0xA5A50000u + i;
-    nat_layout_set(pt, 5, drw);
-    memset(nat_tmpl, 0, sizeof nat_tmpl);
-    for (int t = 0; t < 4; t++) {
-        nat_tmpl[t].used = 1; nat_tmpl[t].ordered = (t == 2);
-        for (int i = 0; i < NAT_TMPL_WORDS; i++) nat_tmpl[t].blk[i] = 0x10000u + t * 1000u + i;
-    }
-    for (int i = 0; i < NAT_TEX_MAX; i++) nat_tex_word[i] = 0x20000u + i * 8u;
-    nat_idx_base = 0x08000000u;
-    for (int e = 0; e < 2; e++) for (int s = 0; s < NAT_MTX_MAX; s++) for (int j = 0; j < 16; j++) nat_mtx[e][s][j] = rnd() * 2654435761u;
-    unsigned n = 60;
-    for (unsigned k = 0; k < n; k++) {
-        memset(&rec[k], 0, sizeof rec[k]);
-        rec[k].tmpl = rnd() % 4; rec[k].tex0 = rnd() % 20; rec[k].tex1 = rnd() % 3; rec[k].mtx = rnd() % NAT_MTX_MAX;
-        rec[k].nidx = 3 + rnd() % 300; rec[k].idx_off = (rnd() % 4096) * 2;
-    }
-    nat_order(rec, n, ord);
-    unsigned nlog = 0;
-    unsigned w0 = nat_emit(rec, n, ord, out0, 8192, 0, log0, &nlog);
-    unsigned rw; u32 rnm;
-    emit_ref(rec, n, ord, ref0, 0, &rnm, &rw);
-    CHECK(w0 == rw, "eye 0 word count %u, reference %u", w0, rw);
-    CHECK(memcmp(out0, ref0, w0 * 4) == 0, "eye 0 span differs from the reference emitter");
-    CHECK(nlog == n, "MTX log count %u, want %u", nlog, n);
-    /* eye 2: copy of the eye 0 span, patched at the logged MTX positions */
-    static NatMtxLog log1[NAT_REC_MAX];
-    unsigned nlog1 = 0;
-    unsigned w1 = nat_emit(rec, n, ord, out1, 8192, 1, log1, &nlog1);
-    CHECK(nlog1 == nlog, "eye 1 MTX log count %u, want %u", nlog1, nlog);
-    nat_eye_copy(copy1, out0, w0, log0, nlog, 1);
-    CHECK(w1 == w0, "eye 1 word count differs");
-    CHECK(memcmp(copy1, out1, w1 * 4) == 0, "eye copy with patch differs from direct eye 1 emission");
-    /* the words that differ between the eyes must sit inside the MTX patches */
-    unsigned diff = 0, outside = 0;
-    for (unsigned k = 0; k < w0; k++) {
-        if (out0[k] == out1[k]) continue;
-        diff++;
-        int inside = 0;
-        for (unsigned m = 0; m < nlog; m++) if (k >= log0[m].at && k < log0[m].at + 16) { inside = 1; break; }
-        if (!inside) outside++;
-    }
-    CHECK(outside == 0, "%u differing words outside the MTX patches", outside);
-    CHECK(diff == 16 * n, "differing words %u, want %u", diff, 16 * n);
-    /* a span that is too small returns 0 */
-    CHECK(nat_emit(rec, n, ord, out1, 100, 0, log0, &nlog) == 0, "small output did not return 0");
-    printf("emit: %u draws, span %u words, MTX patches %u, eye 2 words patched %u\n", n, w0, nlog, diff);
+static int cmp_cmd(const void* a, const void* b) { return memcmp(a, b, sizeof(Cmd)); }
+static int same_commands(const u32* a, unsigned na, const u32* b, unsigned nb) {
+    static Cmd ca[400], cb[400];
+    unsigned ka = cmds_of(a, na, ca), kb = cmds_of(b, nb, cb);
+    if (!ka || ka != kb) return 0;
+    qsort(ca, ka, sizeof(Cmd), cmp_cmd); qsort(cb, kb, sizeof(Cmd), cmp_cmd);
+    return memcmp(ca, cb, ka * sizeof(Cmd)) == 0;
 }
 
-int main(void) {
+/* Fixture: "NDUMP slot S n N" then "NW oooo w w w w w w w w" lines (8 words each). Returns the record count. */
+static unsigned load_fixture(const char* path, u32 rw[2][300], unsigned cnt[2]) {
+    FILE* f = fopen(path, "r");
+    char line[512]; int nrec = -1; unsigned want[2] = { 0, 0 };
+    if (!f) return 0;
+    while (fgets(line, sizeof line, f)) {
+        if (!strncmp(line, "NDUMP", 5)) {
+            unsigned s, n;
+            if (sscanf(line, "NDUMP slot %u n %u", &s, &n) == 2 && nrec < 1) { nrec++; cnt[nrec] = 0; want[nrec] = n; }
+            continue;
+        }
+        if (!strncmp(line, "NW ", 3) && nrec >= 0) {
+            char* p = line + 3; char* e;
+            strtoul(p, &e, 16); p = e;
+            for (;;) {
+                unsigned long v = strtoul(p, &e, 16);
+                if (e == p) break;
+                if (cnt[nrec] < want[nrec]) rw[nrec][cnt[nrec]++] = (u32)v; /* the dump pads its last line with zeros */
+                p = e;
+            }
+        }
+    }
+    fclose(f);
+    return (unsigned)(nrec + 1);
+}
+static u32 find_cmd(const u32* w, unsigned n, u32 reg) {
+    unsigned i = 0;
+    while (i + 1 < n) {
+        u32 hd = w[i + 1], c = (hd >> 20) & 0xFFu;
+        if ((hd & 0x3FFu) == reg) return i;
+        i += 2u + c + (c & 1u);
+    }
+    return ~0u;
+}
+
+static u32 find_last_cmd(const u32* w, unsigned n, u32 reg) {
+    u32 last = ~0u; unsigned i = 0;
+    while (i + 1 < n) {
+        u32 hd = w[i + 1], c = (hd >> 20) & 0xFFu;
+        if ((hd & 0x3FFu) == reg) last = i;
+        i += 2u + c + (c & 1u);
+    }
+    return last;
+}
+
+/* 4 layout on the captured records, and 5 the eye copy */
+static void test_layout(const char* path) {
+    static u32 rw[2][300]; static u32 cnt[2];
+    unsigned nrec = load_fixture(path, rw, cnt);
+    CHECK(nrec == 2 && cnt[0] == 278 && cnt[1] == 272, "fixture: %u records, %u and %u words", nrec, cnt[0], cnt[1]);
+    if (nrec != 2) return;
+    memset(nat_tmpl, 0, sizeof nat_tmpl);
+    NatRec rec[2]; memset(rec, 0, sizeof rec);
+    int ids[2];
+    u32 base = 0;
+    for (int r = 0; r < 2; r++) {
+        ids[r] = nat_tmpl_add(0x100u + (u32)r, 0x200u, 0, 0, 0, 1, 0, 0, 0, 0, NULL, NULL);
+        int blen = nat_tmpl_strip(ids[r], rw[r], cnt[r]);
+        CHECK(blen == (int)cnt[r] - (int)NAT_GRP_WORDS, "record %d: template %d words, want %u", r, blen, cnt[r] - NAT_GRP_WORDS);
+        u32 i81 = find_cmd(rw[r], cnt[r], 0x081), i91 = find_cmd(rw[r], cnt[r], 0x091), i2c = find_last_cmd(rw[r], cnt[r], 0x2C1);
+        u32 i27 = find_cmd(rw[r], cnt[r], 0x227), i28 = find_cmd(rw[r], cnt[r], 0x228);
+        CHECK(i81 != ~0u && i91 != ~0u && i2c != ~0u && i27 != ~0u && i28 != ~0u, "record %d: per-draw command missing", r);
+        if (i81 == ~0u || i91 == ~0u || i2c == ~0u || i27 == ~0u || i28 == ~0u) return;
+        if (r == 0) base = rw[0][i27];
+        for (int k = 0; k < 4; k++) { nat_tex[2 * r][k] = rw[r][i81 + 2 + k]; nat_tex[2 * r + 1][k] = rw[r][i91 + 2 + k]; }
+        memcpy(nat_mtx[0][r], rw[r] + i2c + 2, 16 * sizeof(u32));
+        rec[r].tmpl = (u8)ids[r]; rec[r].tex0 = (u8)(2 * r); rec[r].tex1 = (u8)(2 * r + 1); rec[r].mtx = (u16)r;
+        rec[r].nidx = (u16)rw[r][i28]; rec[r].idx_off = rw[r][i27] - base;
+    }
+    nat_idx_base = base;
+    CHECK(rec[0].idx_off == 0 && rec[1].idx_off == 0xC0u, "index offsets %u %u", rec[0].idx_off, rec[1].idx_off);
+
+    static u32 out[700], out1[700], copy1[700];
+    static NatMtxLog log[2], log1[2];
+    u16 ord[2] = { 0, 1 };
+    unsigned nlog = 0, nlog1 = 0;
+    unsigned w = nat_emit(rec, 2, ord, out, 700, 0, log, &nlog);
+    CHECK(w == cnt[0] + cnt[1], "emit words %u, want %u", w, cnt[0] + cnt[1]);
+    CHECK(same_commands(out, cnt[0], rw[0], cnt[0]), "record A: emitted commands differ from the capture");
+    CHECK(same_commands(out + cnt[0], cnt[1], rw[1], cnt[1]), "record B: emitted commands differ from the capture");
+    CHECK(nlog == 2 && log[0].at == (cnt[0] - NAT_GRP_WORDS) + 4, "palette log A at %u", log[0].at);
+    CHECK(nlog == 2 && log[1].at == cnt[0] + (cnt[1] - NAT_GRP_WORDS) + 4, "palette log B at %u", log[1].at);
+    printf("layout: record A %u words (template %u + group %u), record B %u words (template %u + group %u)\n",
+           cnt[0], cnt[0] - NAT_GRP_WORDS, (unsigned)NAT_GRP_WORDS, cnt[1], cnt[1] - NAT_GRP_WORDS, (unsigned)NAT_GRP_WORDS);
+
+    /* eye 2: palette words differ, everything else equal */
+    for (int r = 0; r < 2; r++) for (int k = 0; k < 16; k++) nat_mtx[1][r][k] = nat_mtx[0][r][k] ^ (0x10000u + (u32)k);
+    unsigned w1 = nat_emit(rec, 2, ord, out1, 700, 1, log1, &nlog1);
+    nat_eye_copy(copy1, out, w, log, nlog, 1);
+    CHECK(w1 == w && memcmp(copy1, out1, w * 4) == 0, "eye copy differs from direct eye 1 emission");
+    unsigned diff = 0, outside = 0;
+    for (unsigned k = 0; k < w; k++) {
+        if (out[k] == out1[k]) continue;
+        diff++;
+        int inside = 0;
+        for (unsigned m = 0; m < nlog; m++) if (k >= log[m].at && k < log[m].at + 16) inside = 1;
+        if (!inside) outside++;
+    }
+    CHECK(outside == 0, "%u differing words outside the palette patches", outside);
+    CHECK(diff == 32, "differing words %u, want 32", diff);
+    CHECK(nat_emit(rec, 2, ord, out1, 100, 0, log1, &nlog1) == 0, "small output did not return 0");
+    printf("eye: 2 draws, palette words patched %u\n", diff);
+}
+
+int main(int argc, char** argv) {
+    if (argc < 2) { printf("usage: nat_host_test <fixture.txt>\n"); return 2; }
     test_record();
     test_template();
     test_order();
-    test_emit();
+    test_layout(argv[1]);
     if (fails) { printf("NAT HOST TESTS: %d FAIL\n", fails); return 1; }
     printf("NAT HOST TESTS: all pass\n");
     return 0;

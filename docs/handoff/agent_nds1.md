@@ -101,3 +101,21 @@ Decision needed (not taken here):
 2. Stop phase B until the layout is reviewed.
 
 Azahar starts used on NDS1: 3 of 8 (census_yard, census_toad, census_toad with the dump).
+
+## Phase B layout update (2026-11-04, coordinator decision: recommended layout)
+Code: `3ds/include/pm_native.h`, `3ds/src/pm_native.c`, `3ds/tools/nat_host_test.c` (round trip on the fixture, PASS).
+- Template = captured record minus the per-draw commands. Fixture: 240 words (record A, 278 minus 38) and 234 words (record B, 272 minus 38). Capacity 256 words, 1216 B per NatTmpl.
+- Per-draw group, 38 words, emitted after the template for each draw: 0x2C0 index (0x5a), 0x2C1 palette (16 data words from `nat_mtx[eye][slot]`), 0x081 unit 0 block (4 words from `nat_tex[tex0]`), 0x091 unit 1 block (`nat_tex[tex1]`), 0x227 index address, 0x228 index count, 0x22F trigger.
+- The record has two 0x2C1 writes of 16 words. The first is the same in both models and stays in the template. The last one (with its 0x2C0 index before it) is the per-draw palette. This is a finding of the layout, not a guess.
+- Host test gates: record size, template key and plan, order, layout round trip (each record's emitted commands equal its captured commands as a multiset), eye copy (32 palette words differ, all in the patches).
+
+Defaults chosen (coordinator said pick and note):
+1. Commands in the template keep their order. The group is placed after the whole template, so trailing state (0x245, 0x229, 0x253, 0x231, 0x25E after the trigger in the capture) now runs before the trigger. Not verified on hardware. Check with a shot before any console run.
+2. Template copy happens once per template change in the emit order. Skip-the-copy rule for repeated templates is in place (`cur`).
+3. The texture block for unit 1 is always written (6 words per draw), even when the template does not bind unit 1.
+
+Not done in this run (steps 2 to 4):
+- Hooks 1 to 9 (model.c, pm_gbi.c, pm_gpu.c, pm_nusys.c): not started. The per-frame inputs (palette from the matrix product, texture words, index arena) have UC3 machinery (`pm_gpu_rec_pt_copy`, `pm_gpu_rec_idx`, `pm_tex_cur_slots`) that a hook can reuse. Not wired.
+- Old path deletion for these models: not done (nothing replaced yet).
+- Gates: census equal on census_yard and census_toad, region diff, fsplit `gbi` and `dl`, hot loop size from the map: not run.
+- Lane build of this code: not rebuilt. pm_native.c compiles in CMake, but nothing calls it yet.
