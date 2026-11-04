@@ -3396,6 +3396,14 @@ if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrap
                  (unsigned)((w0 >> 14) & 0x3ff), (unsigned)((w0 >> 2) & 0x3ff), ulx, uly, lrx, lry);
     }
 }
+if (PMD("fillcyc")) { /* HUDB1 debug switch fillcyc: one line per fill with the cycle type in force (0 1cycle, 1 2cycle, 2 copy, 3 fill) */
+    static int ncyc = 0;
+    if (ncyc < 1500) {
+        ncyc++;
+        pm_log_d("fillcyc f%u cyc %u ul %d,%d lr %d,%d prim %08x fill %08x", pm_frame_count(), (unsigned)((omode_h >> G_MDSFT_CYCLETYPE) & 3),
+                 ulx, uly, lrx, lry, (unsigned)prim, (unsigned)fill);
+    }
+}
 /* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
  * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
  * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
@@ -3411,8 +3419,14 @@ if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth wr
     pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(fill));
     return;
 }
+/* HUDB1: the lower right corner of a fill is inclusive only in G_CYC_FILL and G_CYC_COPY. 1-cycle and 2-cycle fills cover [ul, lr). */
+if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) < 2) {
+    lrx--;
+    lry--;
+    if (lrx < ulx || lry < uly) return; /* empty rectangle */
+}
 /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
+unsigned color =(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
     ? rgba_from_5551(fill & 0xffff) : prim;
 off_screen_check();
 if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */

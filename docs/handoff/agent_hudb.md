@@ -23,15 +23,20 @@ Budget: reset to 8 starts at this session. Used 6 (status_HUDB1.txt starts 7 to 
   (frames 162 to 194) differ. The change cannot touch these frames: fillog finds no wrapped field before frame 206,
   and sign extension changes only fields with bit 9 set. Probably run-to-run timing. Not proven.
 
-## Enemy HP bar (open, no port error found)
-- battle_menu_bar shot 0004 (frame 182, start 12): yellow bar with a dark red line at PPM row 330 (a00000).
-- Code: 16C8E0.c:905-931. HP bar = hud element HES_HPBar (32 by 16, texrect, no early return). The fill and the
-  dark red line are btl_draw_prim_quad (190B20.c:3039): right = left + w, bottom = top + h, passed to gDPFillRectangle.
-- The fill edge is inclusive (background_gfx.c uses SCREEN_WIDTH - 1 for a full-screen fill). So the decomp's
-  quad draws w + 1 by h + 1 pixels on N64 too. The port's pm_gpu_fill_rect (px(x1 + 1)) keeps that rule.
-- Result: the extra pixel is the game's own call, not a port error. A fix changes game code (decomp call) or the port
-  rule for every fill. Needs a decision: match the N64 look (no change) or a 1 px smaller bar (change btl_draw_prim_quad).
-  Reference image needed: the user's console or N64 frame.
+## Enemy HP bar and fill edge (fixed in the next commit, see status)
+- Cycle type: the HP bar fills (btl_draw_prim_quad, 190B20.c:3039) run in G_CYC_1CYCLE (cyc 0, fillcyc log).
+  Screen clears run in G_CYC_FILL (cyc 3, e.g. ul 0,0 lr 319,239).
+- Before: gbi_fillrect gave every cycle the inclusive lower right (pm_gpu_fill_rect px(x1 + 1)). A 1-cycle fill was 1 px
+  too wide and 1 px too tall. Frame 182 bar: red fill ul 277,184 lr 277,188 and dark line ul 277,183 lr 277,184 at width 0
+  drew a 1 px column (5 rows and 2 rows).
+- Change: for cyc 0 and 1, lrx-- and lry--, empty rectangle returns. cyc 2 (COPY) and cyc 3 (FILL) stay inclusive.
+- Shot proof (start 14 vs start 13, battle_menu_bar, frame 182): the 1 px column at the bar end is gone; rows 331 to 335 unchanged.
+  Whole-shot region diff fails (2479 px, 3 regions) from Mario and Goomba motion, which is run-to-run timing (see below).
+- Byte equal: battle frames 153 to 162 (shots 0000 to 0003) equal between start 13 and 14. Yard top shot (start 15) equal to start 10.
+  Yard bottom shots differ (60 of 60, 146 to 231 px scattered, not a fill edge line). Cause not isolated.
+- Title screen: not checked. The boot path reaches game mode 2 late in the log (start 16 hit the 150 s cap at shot frame 704).
+- Run-to-run timing: battle shots 0003 and 0005 to 0011 differ between two runs of the same binary pair (start 8 and start 11),
+  with no wrapped fill before frame 206. Not proven as timing; the cause is outside the fill change.
 
 ## Commands
 - Build: PM_LANE=hudb PM_BUILD_CAP=1500 sh 3ds/build.sh (about 2 min).
