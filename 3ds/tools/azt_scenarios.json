@@ -3,6 +3,241 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "nok02_tri_dd",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frame 200 on the CPU draw path (drawlog turns DLC2 off). Picture: the path end piece near Mario.",
+      "proves": "FLK1: every triangle of frame 200 reaches draw_tri_cpu, with the tritrace line, and the drawlog chunk line names the draw.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 tritrace=200:1",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "trace",
+          "regex": "tri f200 s[0-9]+ (keep|cull|clip|early-cull|early-keep)"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 2b). Forces the CPU draw path for frame 200."
+    },
+    {
+      "name": "nok02_tri",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11 (the path end piece that flickers, triage item 1). Frames 200 to 205 with the game camera on Mario. Picture: the end piece of the path near Mario.",
+      "proves": "FLK1: the tritrace lines of draw_tri_cpu for frame 200 list the corners w, screen X and Y, clip bits, cull sign and decision of each triangle in the window.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug tritrace=200:1",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "trace",
+          "regex": "tri f200 s[0-9]+ (keep|cull|clip|early-cull|early-keep)"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 2). Map entry and trace line not run yet."
+    },
+    {
+      "name": "nok02_dlccheck",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, 300 frames, with dlccheck=1: each group the box skip hides is checked triangle by triangle (clip bits). The dlc2 line counts the groups (grp), the skipped groups (skip) and the triangles the interpreter would keep (missing).",
+      "proves": "FLK1: missing 0 means the group box skip hides no triangle of this camera; missing above 0 names a box that does not cover its vertices.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town loglevel=debug dlccheck",
+      "until": "dlc2 f",
+      "cap": 25,
+      "deadline": 25,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "dlc2",
+          "regex": "dlc2 f[0-9]+ tri"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 3). Counts the group box skip over a full dlc2 window at one camera."
+    },
+    {
+      "name": "nok02_noboxint",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frames 200 to 205, with debug noboxint=1: each group the box test calls out of view runs through the CPU interpreter instead of the skip. Picture: the top-right hedge and rock (x 136 to 219, y 52 to 129 in the shot).",
+      "proves": "FLK1: a picture equal to nok02_tri (skip on) in that region means the skip matches the interpreter; a picture equal to nok02_nobox means the static GPU path draws the out group.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug noboxint",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 3). Splits the nobox difference: interpreter for out groups versus static GPU path."
+    },
+    {
+      "name": "nok02_stdump_on",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frames 200 to 205, skip on, with the per-segment state dump (stseg lines).",
+      "proves": "FLK1 state: the per-segment state lines (stseg) of frames 200 to 205 at pos 250 0 11 name the state word that differs between skip on and skip off.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug stdump",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "seg", "regex": "stseg f200 "},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
+    },
+    {
+      "name": "nok02_stdump_off",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frames 200 to 205, skip off (nobox), with the per-segment state dump (stseg lines). Reference for nok02_stdump_on.",
+      "proves": "FLK1 state: the per-segment state lines (stseg) of frames 200 to 205 at pos 250 0 11 name the state word that differs between skip on and skip off.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug stdump nobox",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "seg", "regex": "stseg f200 "},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
+    },
+    {
+      "name": "nok02_behroute",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frame 200 (frames 200 to 205), with debug behroute: visible groups with a box corner at w below 0.05 run through the interpreter. Picture: top-right hedge region (x 137 to 173, y 52 to 129) against nok02_tri.",
+      "proves": "FLK1: a top-right change against nok02_tri means the visible behind-eye groups draw differently on the GPU static path than on the interpreter path.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug behroute",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 behroute test, approved)."
+    },
+    {
+      "name": "nok02_skipdump",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frame 200, with debug skipdump=1: each group of the lists of that frame logs its box, its screen box (pixels) and the skip result. The shot gives the picture of the same frame.",
+      "proves": "FLK1: the skipped groups whose screen box covers the top-right region (x 136 to 219, y 52 to 129 of the shot) are named by k and op0.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug skipdump",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "dump",
+          "regex": "skipg f200 k "
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 skip dump). Names the skipped groups at frame 200 with screen boxes."
+    },
+    {
+      "name": "nok02_nobox",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frames 200 to 205, with the dlc_try group box skip off (debug nobox=1). Picture: the path end piece near Mario, compared with nok02_tri.",
+      "proves": "FLK1: a visible difference in the picture between nobox=1 and the default build means the group box skip hides geometry at this camera.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug nobox",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 3). Control for the box skip: same window as nok02_tri, skip off."
+    },
+    {
       "name": "yard",
       "status": "verified",
       "subject": "Mario in his yard (kmr_20, entry 4), in control, at scene frames 200 and 204 (the shot writer takes one shot every 4 frames).",

@@ -2414,6 +2414,7 @@ void pm_gpu_set_combine(int mode) {
 }
 
 /* The RDP can brighten past 1 in the second cycle. Texture * color * 2 gives that range. */
+int pm_gpu_rgb_scale_get(void) { return rgb_scale; } /* FLK1 state dump */
 void pm_gpu_set_rgb_scale(int scale) {
     if (scale == rgb_scale) return;
     flush();
