@@ -36,3 +36,9 @@
 - pm_tex_slot_words needs the 4 GPU unit words of a slot. Their format (0x081 / 0x091 data words 22..25) is set by citro3d at flush. citro3d source is not on disk (docs/handoff/inv_citro3d_format.md). No pm_tex function gives these words. A word layout guessed from the header would not be checked until a shot, so no accessor was written.
 - Option for the coordinator: capture the 4 words per slot from the command buffer after a live flush (a per-slot cache keyed by slot generation). That is a new mechanism, not a copy of existing code.
 - Pool index base (nat_gpu_addr(osConvertVirtToPhys(pool))) and census tuple sources are known (see above). They are not enough without the tex words.
+
+## TEXW result (fourth pass)
+- Source: citro3d texture.c:258 to 289 (C3Di_SetTex): unit 0 words dim, param, lodParam, phys(data) >> 3. Template grp 22 to 25 match this layout where the bound tex is the same.
+- census_mac01 TEXW: ok 28 / bad 29. Logged mismatches swap the slot tex and the off-screen tex (dim 0x00400020 and 0x00200020, addresses 0305a700 and 0305bf80). The words are read at learn end, not at the window's first flush, so the check compares different textures.
+- Not run: E5-3 emit, E5-4, E5-5, E5-6. Option A (capture the 4 words at flush per slot) is the next step.
+- Starts on NDS1: 5 of 8.
