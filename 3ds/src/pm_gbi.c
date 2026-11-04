@@ -3716,6 +3716,26 @@ static __attribute__((noinline, cold)) void rec_check(const RecKey* k, int r, u3
     if (bad) uc2d_first(ra + k->off, k->len, w, n);
     if (k->len != n) uc2l_first(ra + k->off, k->len, w, n); /* UC2L: log only, once per run */
 }
+/* P3a: log only. Each draw of a learned template key: does the record index list equal the bake index list of a group of the same
+ * DL (dlc_find on the capture's G_DL)? Also the texture pair and the game matrix. No draw change. */
+int pm_gpu_rec_ia_eq(u32 off, const u16* sd, u32 n);
+static unsigned p3a_n;
+static __attribute__((noinline, cold)) void p3a_log(const NatRec* nr, unsigned nd, unsigned tid, u32 tex, unsigned gm) {
+    DlcEnt* e = dlc_find((const Gfx*)(uintptr_t)rec_gdl);
+    if (!e) { if (p3a_n < 64) { p3a_n++; pm_log_d("P3a no bake tmpl %u draws %u", tid, nd); } return; }
+    for (unsigned q = 0; q < nd && p3a_n < 64; q++) {
+        int hit = -1, eq_pos = -1;
+        for (unsigned j = 0; j < e->ngrp && hit < 0; j++) {
+            const DlcGrp* gg = &e->grp[j];
+            if (!gg->sd || 3u * gg->sn != nr[q].nidx) continue;
+            if (pm_gpu_rec_ia_eq(nr[q].idx_off, gg->sd, nr[q].nidx) == 1) hit = (int)j;
+        }
+        eq_pos = (int)nd == (int)e->ngrp ? (int)q : -1;
+        p3a_n++;
+        pm_log_d("P3a tmpl %u draw %u/%u grp_eq %d pos_grp %d ngrp %u nidx %u tex %04x/%04x gm %u", tid, q, nd, hit, eq_pos, (unsigned)e->ngrp,
+                 (unsigned)nr[q].nidx, (unsigned)(tex & 0xFFFFu), (unsigned)(tex >> 16), gm);
+    }
+}
 static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     u32* w = NULL; u32 n = 0, i = 0;
     unsigned slot = w1 & 0xffu;
@@ -3775,7 +3795,7 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
           if (gmv == ~0u || !nat_tex_set(rec_g0[6] & 0xFFFFu, nt->grp + 22) || !nat_tex_set(rec_g0[6] >> 16, nt->grp + 28)) { NW(gmv == ~0u ? NW_B_GMV : NW_B_TEX); rec_ref++; return; }
           nat_idx_base = pm_gpu_rec_ia_phys();
           if (nat_rec_write(nr, (unsigned)nd, ra + at, n, (unsigned)tid, gmv, rec_g0[6], nat_idx_base) != nd) { NW(NW_B_WRITE); rec_ref++; return; }
-          k->nat = 1; NW(NW_B_NAT);
+          k->nat = 1; NW(NW_B_NAT); p3a_log(nr, (unsigned)nd, (unsigned)tid, rec_g0[6], gmv);
       } }
     k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
     k->gmc = pm_gpu_rec_gm_cap(); k->gdl = rec_gdl;

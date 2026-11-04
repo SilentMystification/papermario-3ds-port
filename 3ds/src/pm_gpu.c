@@ -2531,6 +2531,11 @@ unsigned pm_gpu_view_key(void) {
     return h * 8u + (pm_wide ? 1u : 0u) + (ui_ortho ? 2u : 0u) + (off_active ? 4u : 0u);
 }
 u32 pm_gpu_rec_ia_phys(void) { return ia ? (u32)osConvertVirtToPhys(ia) : 0u; } /* N4 2b: nat_idx_base */
+/* P3a: 1 when the n indices at byte offset off of the arena equal sd, -1 when the span is outside the arena, 0 otherwise. */
+int pm_gpu_rec_ia_eq(u32 off, const u16* sd, u32 n) {
+    if (!ia || (off & 1u) || (off >> 1) + n > REC_IDX_N) return -1;
+    return memcmp(ia + (off >> 1), sd, n * 2u) == 0;
+}
 /* UC3c: index check. The record span (io, ic) against the indices of this window (gidx + rb_gi, rb_ge). Returns the differing indices, plus the length difference. */
 unsigned pm_gpu_rec_ichk(u32 io, u32 ic) {
     u32 cnt = rb_ge - rb_gi, m = ic < cnt ? ic : cnt, bad = 0;
