@@ -24,5 +24,5 @@
 - Native host test: `sh 3ds/tools/nat_host_test.sh`
 - ND host tests (docker pm3ds-host:1): `sh 3ds/tools/nd_host_test.sh`
 - Build: `python 3ds/tools/gen_map_restore.py`, `PM_ROW=S1-1 sh 3ds/build.sh`, then restore map_restore_table.c byte-equal from the scratchpad copy (md5 437b90ef...).
-- Azahar starts used on row S1-1: 4 (census_mac01, census_toad_shot baseline, census_toad_shot S1-1; one of 8 budget left after the picture pair).
+- Azahar starts used on row S1-1: 3 of 8 (census_mac01; census_toad_shot baseline on lane base; census_toad_shot on the S1-1 build). The baseline run's log check failed on the regex bug (fixed in 388210583); its shots are valid.
 - Azahar: write the justification line to 3ds/logs/perf/status_NDS_S1.txt first, then `PM_ROW=S1-1 powershell -NoProfile -ExecutionPolicy Bypass -File 3ds/tools/azt.ps1 census_toad_shot -Row S1-1 -Try`.
