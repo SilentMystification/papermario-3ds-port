@@ -1566,6 +1566,7 @@ extern unsigned pm_uptime_ms(void);
 static void dump_shot(void) {
     static unsigned n, frames;
     char path[64];
+    char msg[160] = ""; /* SHOT1: the shot log line, logged after fclose */
     FILE* f;
     unsigned char* row;
     const unsigned char* src;
@@ -1588,12 +1589,15 @@ static void dump_shot(void) {
             int ma, mm;
             shot_burst--;
             pm_route_mapid(&ma, &mm);
-            pm_log_d("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
-            if (shot_burst != 0) return;
+            if (shot_burst != 0) {
+                pm_log_d("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
+                return;
+            }
+            snprintf(msg, sizeof msg, "shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
         } else if (shot_w0 >= 0) {
             unsigned fc = pm_frame_count();
             if ((int)fc < shot_w0 || (int)fc >= shot_w1) return;
-            pm_log_d("shot %u frame %u", n, fc);
+            snprintf(msg, sizeof msg, "shot %u frame %u", n, fc);
         } else if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
     }
     src = (const unsigned char*)((pm_debug_has("shoteye") && targetR ? targetR : target)->frameBuf.colorBuf); /* shoteye: the right eye */
@@ -1618,6 +1622,7 @@ static void dump_shot(void) {
     }
     free(row);
     fclose(f);
+    if (msg[0]) pm_log_d("%s", msg); /* SHOT1: after fclose, so the until line (run_azahar.ps1) means the file is complete */
 }
 
 /* D03: the last finished frame as N64 RGBA5551 (native u16, alpha bit set), 320x240, for game code that
