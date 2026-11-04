@@ -82,6 +82,8 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
     cmake --build /work/build --parallel "$(nproc)" -- -k 0 '"$*"' || status=$?
     stage compile-link
     cp -f /work/build/pm_3ds.3dsx /work/build/pm_3ds.smdh /work/build/pm_3ds.map /work/build/pm_3ds.elf /out/ 2>/dev/null || true
+    # Keep the compile cache only: drop object files. ccache restores them on the next build.
+    find /work/build -name "*.o" -delete
     stage copy-out
     exit $status
 ' || rc=$?
