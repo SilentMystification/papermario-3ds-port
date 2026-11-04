@@ -3633,6 +3633,17 @@ static void rec_g0_set(void) {
     sync_combine(); /* N3b: the key reads the combine state after the pending SETCOMBINE and PRIMCOLOR are applied */
     rec_g0[11] = (leg_mode == 1 || leg_mode == 5 || leg_mode == 6 || leg_mode == 7) ? prim : 0; /* N3: prim reaches the TEV constant only in these modes (pm_gpu.c flush_tev_rebuild) */
 }
+/* E5-2: learning capture of one map static group (dlc_learn, pm_dlc.inc.c). Begin before the group draws live, end after it. */
+void dlc_learn_begin(void) { pm_gpu_rec_begin(); rec_g0_set(); }
+int dlc_learn_end(u32 geom, int* rr) {
+    u32* w = NULL; u32 n = 0;
+    int r = pm_gpu_rec_end(&w, &n); *rr = r;
+    if (r != 1 || n > REC_MAX_WORDS || pm_tex_cur_vram_pending() || pm_tex_aux_vram_pending()) return -1;
+    int z, de, bl, at_; pm_gpu_rec_rmode(&z, &de, &bl, &at_);
+    int tid = nat_tmpl_add(rec_g0[7], rec_g0[8], geom, rec_g0[9], rec_g0[10], z, de, bl, at_, use_t1, NULL, NULL);
+    if (tid < 0) return -1;
+    return nat_tmpl_strip((unsigned)tid, w, n) > 0 ? tid : -1;
+}
 static __attribute__((noinline, cold)) void rec_reset(u32 gen) {
     if (!ra && !ra_fail) {
         ra = (u32*)malloc(REC_ARENA_WORDS * 4u);

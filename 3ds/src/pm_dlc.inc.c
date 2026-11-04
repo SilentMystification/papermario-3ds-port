@@ -6,7 +6,7 @@
  * fit the ring runs through the interpreter itself (pm_gbi_run on the op range of the group). */
 unsigned pm_dlc_gen = 1; /* bumped when the shape buffer is written (pm_tex_invalidate, decode_yay0) */
 
-typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16* sd; u16* bat_q; const u16* pidx; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
+typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16 tid1; u16* sd; u16* bat_q; const u16* pidx; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
 typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; } DlcEnt;
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 #define DLC_TAB 2048
@@ -559,6 +559,18 @@ static __attribute__((cold, noinline)) void dlc_reset(void) {
 }
 static unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
+void dlc_learn_begin(void);
+int dlc_learn_end(u32 geom, int* rr);
+/* E5-2: learn the template of a map static group (g->tid1: 0 not learned, 1 + template id, 0xFFFF refused). The group draws live once inside the capture. */
+static __attribute__((noinline)) int dlc_learn(const DlcEnt* e, DlcGrp* g, unsigned gmi, u32 gg) {
+    dlc_learn_begin();
+    int ok = dlc_static_group(e, g, gmi, gg);
+    int rr = 0, tid = dlc_learn_end(gg, &rr);
+    g->tid1 = tid < 0 ? 0xFFFF : (u16)(tid + 1);
+    { static unsigned lrn_n; if (lrn_n < 40) { lrn_n++; pm_log_d("E5-2 LRN dl %08lx grp %u ok %d rr %d tid %d", (unsigned long)e->addr, gmi, ok, rr, tid); } }
+    return ok;
+}
+
 static __attribute__((noinline)) int dlc_try(const Gfx* l) {
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
@@ -624,7 +636,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         }
         dlc_set_geom(gg);
         if (!why && behroute_on() && dlc_behind(g, m)) why = 5;
-        if (!why && g->sd && dlc_static_group(e, g, gmi, gg)) {
+        if (!why && g->sd && (!rec_on && !g->tid1 ? dlc_learn(e, (DlcGrp*)g, gmi, gg) : dlc_static_group(e, g, gmi, gg))) {
             dlc_c.replay++; dlc_c.srep++; dlc_c.tri += g->ntri;
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
