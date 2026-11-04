@@ -3581,6 +3581,7 @@ static int nat_logged; /* N1: the gm refusal is logged once */
 void pm_gpu_grp_get(u32* g); /* pm_gpu.c, UC2: ctx+0xF0..0xFC */
 int pm_gpu_rec_palok(const u32* w, unsigned n, const void* pt, unsigned npt, unsigned gm); /* pm_gpu.c, N1 */
 unsigned pm_gpu_rec_cen_n(void); /* pm_gpu.c, N1: census tuples of the window */
+void pm_gpu_rec_rmode(int* z, int* decal, int* blend, int* atest); /* pm_gpu.c, N4: render mode key of a template */
 void pm_gpu_rec_cen_copy(u32* dst, unsigned n); /* pm_gpu.c, N1: 4 words each */
 unsigned pm_gpu_rec_fj(void); /* pm_gpu.c, UC2: first bad word of the last compare */
 void pm_gpu_rec_cls(unsigned* c); /* pm_gpu.c, UC3M: differing words per class (oth, adr, pal, uni) */
@@ -3734,7 +3735,10 @@ static __attribute__((noinline, cold)) void rec_done(u32 w1, int whole) {
     { u32 io, ic; int nd = pm_gpu_rec_idx(ra + at, n, &io, &ic); /* UC3c: refused record keeps state 2 */
       if (nd < 0 || nd > 255 || (unsigned)nd != ncen) { rec_ref++; return; } /* N1: one census tuple per draw */
       k->io = io; k->ic = ic; k->nd = (u8)nd;
-      pm_log_d("N4 strip slot %u n %u nd %d rc %d", slot, (unsigned)n, nd, nat_tmpl_strip((slot - 1u) & 63u, ra + at, n)); } /* N4 step 1: log only, the template is not used yet */
+      int z, de, bl, at_; pm_gpu_rec_rmode(&z, &de, &bl, &at_); /* N4: the template key is the state at entry and the render mode at exit */
+      int tid = nat_tmpl_add(rec_g0[7], rec_g0[8], rec_gin, rec_g0[9], rec_g0[10], z, de, bl, at_, use_t1, NULL, NULL);
+      int rc = tid < 0 ? -2 : nat_tmpl_strip((unsigned)tid, ra + at, n);
+      pm_log_d("N4 strip slot %u n %u nd %d tmpl %d rc %d", slot, (unsigned)n, nd, tid, rc); } /* N4 step 1: log only, the template is not used yet */
     k->npt = (u8)npt; k->pp = (u8)pm_gpu_rec_palok(ra + at, n, ra + at + n, npt, gmv); k->gin = rec_gin; k->gout = rec_gout; k->fl = (u8)rec_fl; k->view = pm_gpu_view_key(); k->alen = (u16)need;
     k->gmc = pm_gpu_rec_gm_cap(); k->gdl = rec_gdl;
     k->off = (u16)at; k->len = (u16)n; k->nb = (u8)(old_nb + 1);

@@ -2594,6 +2594,8 @@ int pm_gpu_rec_palok(const u32* w, unsigned n, const void* ptv, unsigned npt, un
     return 1;
 }
 unsigned pm_gpu_rec_cen_n(void) { return rcw_n; }
+/* N4: the render mode the flush uses for the next draw (template key) */
+void pm_gpu_rec_rmode(int* z, int* decal, int* blend, int* atest) { *z = z_on; *decal = r_decal; *blend = r_blend; *atest = r_atest >= 0; }
 void pm_gpu_rec_cen_copy(u32* dst, unsigned n) { memcpy(dst, rcw, n * 16u); }
 /* UC3e: copies a record into the command buffer (libctru GPUCMD_AddRawCommands, words) and re-arms the state the copy leaves stale:
  * the uniforms of the patch table are resent (citro3d cache), the dirty bits of the capture set and DrawUsed set, shadows reset, draw count kept.
