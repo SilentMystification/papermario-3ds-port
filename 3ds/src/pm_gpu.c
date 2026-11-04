@@ -378,6 +378,15 @@ static int tex_hdr(C3D_Tex* t, int w, int h) {
 }
 /* the copy block from full_reserve, NULL when the boot reserve failed */
 static u8* copy_get(void) { return copy_blk; }
+/* TEXF1: copy_blk takes one copy per frame. A second copy in a frame waits for the GPU first (pm_gx_drain), so the part that sampled
+ * the earlier copy is done before the buffer is written. pm_copy_drain counts the waits (texstat). */
+void pm_gx_drain(void);
+unsigned pm_copy_drain;
+static int copy_used;
+static void copy_guard(void) {
+    if (copy_used) { pm_copy_drain++; pm_gx_drain(); }
+    copy_used = 1;
+}
 /* the data of a full image: its reserved block (full_reserve). A failed boot reserve returns 0, the pass draws on the screen. */
 static int full_tex_init(int i) {
     if (!full_blk[i]) return 0;
@@ -424,6 +433,7 @@ static void off_snapshot(int i) {
     }
     split_frame();
     pm_gx_room();
+    if (dst == copy_blk) copy_guard();
     GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)dst, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
 }
 
@@ -1790,11 +1800,26 @@ void pm_gx_room(void) {
     gxCmdQueueStop(q);
     gxCmdQueueClear(q);
 }
+/* TEXF1: 1 when the GX queue has no entries or the GPU has finished them. Does not wait (timeout 0). Used before a frame begins. */
+int pm_gx_done(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    if (!q->numEntries) return 1;
+    return gxCmdQueueWait(q, 0);
+}
+/* TEXF1: run the queue and wait for the GPU, as pm_gx_room does. Every entry added before the call is done after it. */
+void pm_gx_drain(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    gxCmdQueueRun(q);
+    gxCmdQueueWait(q, -1);
+    gxCmdQueueStop(q);
+    gxCmdQueueClear(q);
+}
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
 static void grab_queue_copy(void) {
     const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
     int s0 = mo >> 3, s1 = (mo + x1 - 1) >> 3;
     pm_gx_room();
+    copy_guard(); /* TEXF1: grab_tex is copy_blk */
     GX_TextureCopy((u32*)((u8*)cur_target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
                    (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
 }
@@ -1926,6 +1951,7 @@ void pm_gpu_begin_wait(void) {
     off_i8 = 0;
     off_fail = 0; /* row 4: a VRAM failure lasts one frame */
     grab_dirty = 1;
+    copy_used = 0; /* TEXF1 */
     grab_dy0 = grab_dy1 = grab_n = grab_split = 0;
     pm_tex_clear_offscreen();
     dv_draw = 0;

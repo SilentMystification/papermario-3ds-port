@@ -4072,6 +4072,30 @@
         "reason": ""
       },
       {
+        "name": "hos01_texmax",
+        "status": "unverified",
+        "subject": "TEXF1: Shooting Star Summit (hos_01) texture cache counts at the map load, with the texmax switch (texmap line per map load) and the TEXF1 pending free counters in texstat.",
+        "proves": "The texmap line prints at the warp load: hits, misses, uploads, evictions and the free VRAM low. The texstat report at frame 300 prints the pending free line (pf now, max, gate busy, max age, released, overflow, copy drains).",
+        "debug": "warp=hos_01:0 texmax texstat loglevel=debug",
+        "until": "texstat pending free",
+        "cap": 25,
+        "deadline": 20,
+        "first_marker": "warp: hos_01 entry 0",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: hos_01 entry 0"
+          },
+          {
+            "name": "texmap",
+            "regex": "texmap since last map"
+          }
+        ],
+        "reason": "New scenario (TEXF1). Audit docs/handoff/audit_tex_upload.md, Count section: the cheap count of evictions at the hos_01 map load."
+      },
+      {
         "name": "texwrap_wall",
         "status": "unverified",
         "subject": "TEXD3: hos_01 wall, image 0x0100169c, with the console switch wrapov=repeat (unit 0 GPU wrap forced to repeat at pm_tex_bind). Frame 200 to 204 shots.",
