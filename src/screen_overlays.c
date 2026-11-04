@@ -219,7 +219,12 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
             gDPSetPrimColor(gMainGfxPos++, 0, 0, colR, colG, colB, progress);
             gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+#ifdef TARGET_3DS
+            /* 1-cycle fill: the lower right is exclusive (HUDB1). The N64 overscan hides the last column and row, the port shows them. */
+            gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+#else
             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
+#endif
             gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
             return;
         case OVERLAY_VIEWPORT_COLOR:

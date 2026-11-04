@@ -3284,11 +3284,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
 }
 
 /* HUDB1 debug switch texrlog: one line per texrect that returns before pm_gpu_tex_rect. why 1 depth copy, 2 rect_to_image, 3 box_pattern_rect,
- * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines. */
+ * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines, repeats of the last line are not logged. */
 static void texr_early(int why, int xl, int yl, int xh, int yh) {
     static int nlog = 0;
-    if (nlog < 400 && PMD("texrlog")) {
+    static int lwhy = -1, lxl, lyl, lxh, lyh;
+    if (nlog < 400 && PMD("texrlog") && !(why == lwhy && xl == lxl && yl == lyl && xh == lxh && yh == lyh)) {
         nlog++;
+        lwhy = why; lxl = xl; lyl = yl; lxh = xh; lyh = yh;
         pm_log_d("texrlog f%u why %d rect %d,%d-%d,%d cyc %u", pm_frame_count(), why, xl / 4, yl / 4, xh / 4, yh / 4, (unsigned)((omode_h >> G_MDSFT_CYCLETYPE) & 3));
     }
 }
@@ -3381,7 +3383,7 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
 
 static __attribute__((noinline)) void gbi_fillrect(u32 w0, u32 w1) {
     tex_gen++; /* TBREP */
-#define FILL_SX10(v) ((int)((v) & 0x3ff)) /* raw 10-bit field; HUDB1 wrap seen in fillog lines, fix not proven */
+#define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
 int lrx = FILL_SX10(w0 >> 14);
 int lry = FILL_SX10(w0 >> 2);
 int ulx = FILL_SX10(w1 >> 14);
@@ -3394,6 +3396,14 @@ if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrap
                  (unsigned)((w0 >> 14) & 0x3ff), (unsigned)((w0 >> 2) & 0x3ff), ulx, uly, lrx, lry);
     }
 }
+if (PMD("fillcyc")) { /* HUDB1 debug switch fillcyc: one line per fill with the cycle type in force (0 1cycle, 1 2cycle, 2 copy, 3 fill) */
+    static int ncyc = 0;
+    if (ncyc < 1500) {
+        ncyc++;
+        pm_log_d("fillcyc f%u cyc %u ul %d,%d lr %d,%d prim %08x fill %08x", pm_frame_count(), (unsigned)((omode_h >> G_MDSFT_CYCLETYPE) & 3),
+                 ulx, uly, lrx, lry, (unsigned)prim, (unsigned)fill);
+    }
+}
 /* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
  * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
  * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
@@ -3401,16 +3411,22 @@ if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrap
 if (img_role(1) == ROLE_CPUFILL) {
     unsigned short* d = (unsigned short*)cimg;
     if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
-    for (int y = uly; y <= lry && y < 240; y++)
-        for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
+    for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
+        for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
     return;
 }
 if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
     pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(fill));
     return;
 }
+/* HUDB1: the lower right corner of a fill is inclusive only in G_CYC_FILL and G_CYC_COPY. 1-cycle and 2-cycle fills cover [ul, lr). */
+if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) < 2) {
+    lrx--;
+    lry--;
+    if (lrx < ulx || lry < uly) return; /* empty rectangle */
+}
 /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
+unsigned color =(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
     ? rgba_from_5551(fill & 0xffff) : prim;
 off_screen_check();
 if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
