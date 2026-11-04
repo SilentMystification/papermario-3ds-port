@@ -125,7 +125,7 @@ static int dd_on(void) {
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
 /* SUNFIX debug switch suntile=<first frame>:<count>: tile 1 state at each dual_bind, the vertex S T of each triangle, and the sun
- * overlay spawn and draws (pm_sun_spawn, pm_sun_draw). At most 400 lines per run. */
+ * overlay spawn and draws (pm_sun_spawn, pm_sun_draw). At most 4000 lines per run. */
 static int suntile_on(void) {
     static int a = -2, b;
     if (a == -2) {
@@ -1314,6 +1314,33 @@ static int clip_bits4(const float* p) { /* the same bits as clip_bits, from a cl
 }
 static int cull_off(void) { static int v = -1; if (v < 0) v = pm_debug_has("nocull"); return v; }
 static int rmlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("rmlog"); return v; }
+/* FLK1: screen area sign of a triangle from clip positions (x y z w, the ClipV and vert_p layout). Both copies of the cull test use it. */
+static float cull_cross(const float* p1, const float* p2, const float* p3) {
+    float ex1 = p1[0] * p2[3] - p2[0] * p1[3], ey1 = p1[1] * p2[3] - p2[1] * p1[3];
+    float ex2 = p3[0] * p2[3] - p2[0] * p3[3], ey2 = p3[1] * p2[3] - p2[1] * p3[3];
+    float cross = (ex1 * ey2 - ey1 * ex2) * (p1[3] * p3[3]);
+    if ((p1[3] < 0) ^ (p2[3] < 0) ^ (p3[3] < 0)) cross = -cross;
+    return cross;
+}
+/* FLK1 debug switch tritrace=<first frame>:<count>: one line per triangle of draw_tri_cpu in the window. Corner w, screen X and Y (x/w),
+ * clip bits, the cull area sign and the decision (what). At most 4000 lines per run. */
+static int tritrace_on(void) {
+    static int a = -2, b;
+    if (a == -2) {
+        char v[24];
+        a = -1;
+        if (pm_debug_value("tritrace", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
+    }
+    return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
+}
+static unsigned tritrace_seq, tritrace_lines;
+static void tritrace_tri(const char* what, unsigned seq, const float* p1, const float* p2, const float* p3, int cb1, int cb2, int cb3) {
+    if (tritrace_lines >= 4000) return;
+    tritrace_lines++;
+    pm_log("tri f%u s%u %s w %.4f %.4f %.4f X %.3f %.3f %.3f Y %.3f %.3f %.3f cb %x %x %x cross %.6g", pm_frame_count(), seq, what,
+           p1[3], p2[3], p3[3], p1[0] / p1[3], p2[0] / p2[3], p3[0] / p3[3], p1[1] / p1[3], p2[1] / p2[3], p3[1] / p3[3], cb1, cb2, cb3,
+           cull_cross(p1, p2, p3));
+}
 
 /* PO3b, PO3c: one triangle of the raw Vtx path. The caller checked that the three vertices have a ring slot, one matrix and one texture scale, and that
  * the triangle is plain (unlit, no texgen, no screen vertex, no fog). The colour and depth overrides of the CPU path become uniforms: ENV or the plan
@@ -1629,6 +1656,7 @@ static __attribute__((cold, noinline)) void tri_rm_log(void) {
 static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
     ClipV poly[12];
     int n, i;
+    const unsigned seq = ++tritrace_seq;
     int early = 0; /* PO3b2, DIP1: reject and cull from the clip positions of PO2 and the clip bits made at G_VTX, before the statistics, ensure_tile, dual_bind and any ClipV. Same tests and counters as before except the debug statistics (tris lit fog), which now count the triangles that pass. */
     if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
         for (i = 0; i < 3; i++)
@@ -1641,17 +1669,16 @@ static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
             have_sample = 1;
         }
         if (vert_cb[idx[0]] & vert_cb[idx[1]] & vert_cb[idx[2]] & 0x2f) {
+            if (tritrace_on()) tritrace_tri("early-clip", seq, a, b, c, vert_cb[idx[0]], vert_cb[idx[1]], vert_cb[idx[2]]);
             n_out++;
             GP_LAP(GPL_EARLY);
             return;
         }
         if ((geom & G_CULL_BOTH) && !cull_off()) {
-            float ex1 = a[0] * b[3] - b[0] * a[3], ey1 = a[1] * b[3] - b[1] * a[3];
-            float ex2 = c[0] * b[3] - b[0] * c[3], ey2 = c[1] * b[3] - b[1] * c[3];
-            float cross = (ex1 * ey2 - ey1 * ex2) * (a[3] * c[3]);
+            float cross = cull_cross(a, b, c);
             unsigned ct = geom & G_CULL_BOTH;
-            if ((a[3] < 0) ^ (b[3] < 0) ^ (c[3] < 0)) cross = -cross;
             if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
+                if (tritrace_on()) tritrace_tri("early-cull", seq, a, b, c, vert_cb[idx[0]], vert_cb[idx[1]], vert_cb[idx[2]]);
                 n_out++;
                 GP_LAP(GPL_EARLY);
                 return;
@@ -1700,6 +1727,7 @@ static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
         have_sample = 1;
     }
     if (!early && (clip_bits(&poly[0]) & clip_bits(&poly[1]) & clip_bits(&poly[2]))) {
+        if (tritrace_on()) tritrace_tri("clip", seq, (float*)&poly[0], (float*)&poly[1], (float*)&poly[2], clip_bits(&poly[0]), clip_bits(&poly[1]), clip_bits(&poly[2]));
         n_out++;
         return;
     }
@@ -1707,13 +1735,10 @@ static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
         /* V02: the RSP culls by the sign of the screen space area (G_CULL_FRONT / G_CULL_BACK / both), same test as
          * libultraship. A one sided wall (the cliff skirt around the Mario house yard, seen from inside) draws only
          * if this test runs. nocull turns it off for A/B checks. */
-        const ClipV *p1 = &poly[0], *p2 = &poly[1], *p3 = &poly[2];
-        float ex1 = p1->x * p2->w - p2->x * p1->w, ey1 = p1->y * p2->w - p2->y * p1->w;
-        float ex2 = p3->x * p2->w - p2->x * p3->w, ey2 = p3->y * p2->w - p2->y * p3->w;
-        float cross = (ex1 * ey2 - ey1 * ex2) * (p1->w * p3->w);
+        float cross = cull_cross((const float*)&poly[0], (const float*)&poly[1], (const float*)&poly[2]);
         unsigned ct = geom & G_CULL_BOTH;
-        if ((p1->w < 0) ^ (p2->w < 0) ^ (p3->w < 0)) cross = -cross;
         if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
+            if (tritrace_on()) tritrace_tri("cull", seq, (float*)&poly[0], (float*)&poly[1], (float*)&poly[2], clip_bits(&poly[0]), clip_bits(&poly[1]), clip_bits(&poly[2]));
             n_out++;
             return;
         }
@@ -1726,6 +1751,7 @@ static __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
                 n_keep++;
         }
     }
+    if (tritrace_on()) tritrace_tri(early ? "early-keep" : "keep", seq, (float*)&poly[0], (float*)&poly[1], (float*)&poly[2], clip_bits(&poly[0]), clip_bits(&poly[1]), clip_bits(&poly[2]));
     gp3_t0_surv();
     n_in++;
     n = 3;
@@ -3284,11 +3310,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
 }
 
 /* HUDB1 debug switch texrlog: one line per texrect that returns before pm_gpu_tex_rect. why 1 depth copy, 2 rect_to_image, 3 box_pattern_rect,
- * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines. */
+ * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines, repeats of the last line are not logged. */
 static void texr_early(int why, int xl, int yl, int xh, int yh) {
     static int nlog = 0;
-    if (nlog < 400 && PMD("texrlog")) {
+    static int lwhy = -1, lxl, lyl, lxh, lyh;
+    if (nlog < 400 && PMD("texrlog") && !(why == lwhy && xl == lxl && yl == lyl && xh == lxh && yh == lyh)) {
         nlog++;
+        lwhy = why; lxl = xl; lyl = yl; lxh = xh; lyh = yh;
         pm_log_d("texrlog f%u why %d rect %d,%d-%d,%d cyc %u", pm_frame_count(), why, xl / 4, yl / 4, xh / 4, yh / 4, (unsigned)((omode_h >> G_MDSFT_CYCLETYPE) & 3));
     }
 }
@@ -3381,7 +3409,7 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
 
 static __attribute__((noinline)) void gbi_fillrect(u32 w0, u32 w1) {
     tex_gen++; /* TBREP */
-#define FILL_SX10(v) ((int)((v) & 0x3ff)) /* raw 10-bit field; HUDB1 wrap seen in fillog lines, fix not proven */
+#define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
 int lrx = FILL_SX10(w0 >> 14);
 int lry = FILL_SX10(w0 >> 2);
 int ulx = FILL_SX10(w1 >> 14);
@@ -3394,6 +3422,14 @@ if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrap
                  (unsigned)((w0 >> 14) & 0x3ff), (unsigned)((w0 >> 2) & 0x3ff), ulx, uly, lrx, lry);
     }
 }
+if (PMD("fillcyc")) { /* HUDB1 debug switch fillcyc: one line per fill with the cycle type in force (0 1cycle, 1 2cycle, 2 copy, 3 fill) */
+    static int ncyc = 0;
+    if (ncyc < 1500) {
+        ncyc++;
+        pm_log_d("fillcyc f%u cyc %u ul %d,%d lr %d,%d prim %08x fill %08x", pm_frame_count(), (unsigned)((omode_h >> G_MDSFT_CYCLETYPE) & 3),
+                 ulx, uly, lrx, lry, (unsigned)prim, (unsigned)fill);
+    }
+}
 /* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
  * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
  * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
@@ -3401,16 +3437,22 @@ if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrap
 if (img_role(1) == ROLE_CPUFILL) {
     unsigned short* d = (unsigned short*)cimg;
     if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
-    for (int y = uly; y <= lry && y < 240; y++)
-        for (int x = ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
+    for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
+        for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
     return;
 }
 if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
     pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(fill));
     return;
 }
+/* HUDB1: the lower right corner of a fill is inclusive only in G_CYC_FILL and G_CYC_COPY. 1-cycle and 2-cycle fills cover [ul, lr). */
+if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) < 2) {
+    lrx--;
+    lry--;
+    if (lrx < ulx || lry < uly) return; /* empty rectangle */
+}
 /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-unsigned color = (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
+unsigned color =(((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
     ? rgba_from_5551(fill & 0xffff) : prim;
 off_screen_check();
 if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */

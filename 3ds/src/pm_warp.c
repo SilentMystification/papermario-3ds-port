@@ -10,6 +10,7 @@
 #include "game_modes.h"
 #include "fio.h"
 #include "battle/battle.h"
+#include "battle/action_cmd.h"
 #include "message_ids.h"
 extern bool fio_fetch_saved_file_info(void);
 #include "map.h"
@@ -878,10 +879,18 @@ static void battle_hooks(unsigned f) {
         set_battle_stage(stage);
         load_battle(formation);
     }
-    if (f >= at && pm_debug_has("runaway") && get_game_mode() == GAME_MODE_BATTLE) { /* HUDB1 debug: every battle frame sets the auto flee contact, so the next BEGIN_TURN (btl_states_actions.c:618) starts the real run-away script EVS_RunAwayStart (mash meter, flee.c N(draw)) */
+    if (f >= at + 10 && pm_debug_has("runaway") && get_game_mode() == GAME_MODE_BATTLE) { /* HUDB1 debug: the menu Run choice (btl_states_menus.c:3802) without input, from the player menu state. It sets the move and enters BATTLE_STATE_RUN_AWAY, which runs EVS_RunAwayStart (mash meter, flee.c N(draw)). The auto flee contact at BEGIN_TURN is never read while the menu waits for input. */
         static int once;
-        gGameStatusPtr->debugEnemyContact = DEBUG_CONTACT_AUTO_FLEE;
-        if (!once++) pm_log_d("debug runaway: auto flee contact set per frame from scene frame %u", at);
+        if (!once && gBattleState == BATTLE_STATE_PLAYER_MENU) {
+            once = 1;
+            gBattleStatus.moveCategory = BTL_MENU_TYPE_RUN_AWAY;
+            gBattleStatus.selectedMoveID = MOVE_RUN_AWAY;
+            gBattleStatus.actionCommandMode = AC_MODE_LEARNED; /* without it EVS_RunAwayStart takes EVS_RunAwayNoCommand: no mash meter */
+            btl_set_state(BATTLE_STATE_RUN_AWAY);
+            pm_log_d("debug runaway: run away chosen from the player menu at scene frame %u", f);
+        } else if (!once && f == at + 60) {
+            pm_log_d("debug runaway: not in the player menu at scene frame %u, state %d", f, (int)gBattleState);
+        }
     }
     if (f == at + 10 && pm_debug_has("battlemenu") && get_game_mode() == GAME_MODE_BATTLE) { /* UI2 debug: battlemenu sets BS_FLAGS1_MENU_OPEN 10 frames after the battle starts, so the enemy HP bar draws (16C8E0.c:905). The bar also needs the enemy tattled (181810.c is_actor_health_bar_visible): save_tattle_flags is the real Tattle path. */
         int bi;
@@ -1238,4 +1247,11 @@ void pm_mash_log(s32 posX, s32 posY, s32 fillValue, s32 showHud) {
         nlog++;
         pm_log_d("mashlog posX %d posY %d fill %d showHud %d", (int)posX, (int)posY, (int)fillValue, (int)showHud);
     }
+}
+
+/* HUDB1 debug switch mashx=<x>: draw_mash_meter draws at posX x (a slide position the Azahar run did not reach) */
+s32 pm_mash_posx(s32 posX) {
+    char v[16];
+    if (pm_debug_value("mashx", v, sizeof v)) return (s32)atoi(v);
+    return posX;
 }

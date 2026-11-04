@@ -3,6 +3,241 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "nok02_tri_dd",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frame 200 on the CPU draw path (drawlog turns DLC2 off). Picture: the path end piece near Mario.",
+      "proves": "FLK1: every triangle of frame 200 reaches draw_tri_cpu, with the tritrace line, and the drawlog chunk line names the draw.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 tritrace=200:1",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "trace",
+          "regex": "tri f200 s[0-9]+ (keep|cull|clip|early-cull|early-keep)"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 2b). Forces the CPU draw path for frame 200."
+    },
+    {
+      "name": "nok02_tri",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11 (the path end piece that flickers, triage item 1). Frames 200 to 205 with the game camera on Mario. Picture: the end piece of the path near Mario.",
+      "proves": "FLK1: the tritrace lines of draw_tri_cpu for frame 200 list the corners w, screen X and Y, clip bits, cull sign and decision of each triangle in the window.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug tritrace=200:1",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "trace",
+          "regex": "tri f200 s[0-9]+ (keep|cull|clip|early-cull|early-keep)"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 2). Map entry and trace line not run yet."
+    },
+    {
+      "name": "nok02_dlccheck",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, 300 frames, with dlccheck=1: each group the box skip hides is checked triangle by triangle (clip bits). The dlc2 line counts the groups (grp), the skipped groups (skip) and the triangles the interpreter would keep (missing).",
+      "proves": "FLK1: missing 0 means the group box skip hides no triangle of this camera; missing above 0 names a box that does not cover its vertices.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town loglevel=debug dlccheck",
+      "until": "dlc2 f",
+      "cap": 25,
+      "deadline": 25,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "dlc2",
+          "regex": "dlc2 f[0-9]+ tri"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 3). Counts the group box skip over a full dlc2 window at one camera."
+    },
+    {
+      "name": "nok02_noboxint",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frames 200 to 205, with debug noboxint=1: each group the box test calls out of view runs through the CPU interpreter instead of the skip. Picture: the top-right hedge and rock (x 136 to 219, y 52 to 129 in the shot).",
+      "proves": "FLK1: a picture equal to nok02_tri (skip on) in that region means the skip matches the interpreter; a picture equal to nok02_nobox means the static GPU path draws the out group.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug noboxint",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 3). Splits the nobox difference: interpreter for out groups versus static GPU path."
+    },
+    {
+      "name": "nok02_stdump_on",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frames 200 to 205, skip on, with the per-segment state dump (stseg lines).",
+      "proves": "FLK1 state: the per-segment state lines (stseg) of frames 200 to 205 at pos 250 0 11 name the state word that differs between skip on and skip off.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug stdump",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "seg", "regex": "stseg f200 "},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
+    },
+    {
+      "name": "nok02_stdump_off",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frames 200 to 205, skip off (nobox), with the per-segment state dump (stseg lines). Reference for nok02_stdump_on.",
+      "proves": "FLK1 state: the per-segment state lines (stseg) of frames 200 to 205 at pos 250 0 11 name the state word that differs between skip on and skip off.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug stdump nobox",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "seg", "regex": "stseg f200 "},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 state test). Per-segment state dump with skip on or off."
+    },
+    {
+      "name": "nok02_behroute",
+      "status": "unverified",
+      "subject": "Map nok_02 at 250 0 11, frame 200 (frames 200 to 205), with debug behroute: visible groups with a box corner at w below 0.05 run through the interpreter. Picture: top-right hedge region (x 137 to 173, y 52 to 129) against nok02_tri.",
+      "proves": "FLK1: a top-right change against nok02_tri means the visible behind-eye groups draw differently on the GPU static path than on the interpreter path.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug behroute",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "map", "regex": "warp: nok_02 entry"},
+        {"name": "pos", "regex": "poswarp: placed Mario at 250"},
+        {"name": "shot", "regex": "shot [0-9]+ frame 20[0-5]"}
+      ],
+      "reason": "New scenario (FLK1 behroute test, approved)."
+    },
+    {
+      "name": "nok02_skipdump",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frame 200, with debug skipdump=1: each group of the lists of that frame logs its box, its screen box (pixels) and the skip result. The shot gives the picture of the same frame.",
+      "proves": "FLK1: the skipped groups whose screen box covers the top-right region (x 136 to 219, y 52 to 129 of the shot) are named by k and op0.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug skipdump",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "dump",
+          "regex": "skipg f200 k "
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 skip dump). Names the skipped groups at frame 200 with screen boxes."
+    },
+    {
+      "name": "nok02_nobox",
+      "status": "unverified",
+      "subject": "Map nok_02 at player position 250 0 11, frames 200 to 205, with the dlc_try group box skip off (debug nobox=1). Picture: the path end piece near Mario, compared with nok02_tri.",
+      "proves": "FLK1: a visible difference in the picture between nobox=1 and the default build means the group box skip hides geometry at this camera.",
+      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug nobox",
+      "until": "shot 1 frame 204",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: nok_02 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: nok_02 entry"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at 250"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 20[0-5]"
+        }
+      ],
+      "reason": "New scenario (FLK1 step 3). Control for the box skip: same window as nok02_tri, skip off."
+    },
+    {
       "name": "yard",
       "status": "verified",
       "subject": "Mario in his yard (kmr_20, entry 4), in control, at scene frames 200 and 204 (the shot writer takes one shot every 4 frames).",
@@ -3726,6 +3961,231 @@
         }
       ],
       "reason": ""
-    }
+    },
+      {
+        "name": "kzn19_slotpeak",
+        "status": "unverified",
+        "subject": "SLOT1: kzn_19 (heaviest map) with texstat to the frame 1500 report. Log only.",
+        "proves": "Peak live texture slots over the run (slot limit 2048 in this measurement build, so the peak is not capped), live slots under 1 KB, evictions by cause.",
+        "debug": "warp=kzn_19:0 story=ch0_toad_town texstat loglevel=debug",
+        "extra": [
+          "-Turbo"
+        ],
+        "until": "texstat f1500:",
+        "cap": 150,
+        "deadline": 20,
+        "first_marker": "warp: kzn_19 entry 0",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: kzn_19 entry 0"
+          },
+          {
+            "name": "report",
+            "regex": "texstat f1500:"
+          }
+        ],
+        "reason": "Long measurement (SLOT1): frame 1500 shows whether the live slot count stops rising. Turbo: slot counts are per frame, not per second."
+      },
+      {
+        "name": "battle_slotpeak",
+        "status": "unverified",
+        "subject": "SLOT1: battle switch (battle battlef=100 on kmr_03, the verified battle_start path) with texstat to the frame 600 report. Log only.",
+        "proves": "Peak live texture slots during a battle, and the under-1-KB count.",
+        "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 texstat loglevel=debug",
+        "extra": [
+          "-Turbo"
+        ],
+        "until": "texstat f600:",
+        "cap": 90,
+        "deadline": 20,
+        "first_marker": "warp: kmr_03 entry 0",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: kmr_03 entry 0"
+          },
+          {
+            "name": "report",
+            "regex": "texstat f600:"
+          }
+        ],
+        "reason": "Battle texture demand (SLOT1). Turbo: slot counts are per frame."
+      },
+      {
+        "name": "pause_slotpeak",
+        "status": "unverified",
+        "subject": "SLOT1: pause menu open (preset toad, START x3) with texstat to the frame 300 report. Log only.",
+        "proves": "Peak live texture slots with the pause menu open.",
+        "debug": "preset=toad padscript=wait80,START*3,wait100 texstat loglevel=debug",
+        "until": "texstat f300:",
+        "cap": 45,
+        "deadline": 20,
+        "first_marker": "warp: mac_00 entry 4",
+        "expects": "warp",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: mac_00 entry 4"
+          },
+          {
+            "name": "report",
+            "regex": "texstat f300:"
+          }
+        ],
+        "reason": "Pause texture demand (SLOT1)."
+      },
+      {
+        "name": "chain_slotpeak",
+        "status": "unverified",
+        "subject": "SLOT1: map change chain mac_00 to mac_01 to kzn_19 to mac_01 with texstat to the frame 1500 report. Log only.",
+        "proves": "Peak live texture slots across map changes (slots from the previous map are dropped, so the peak should not add up).",
+        "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,kzn_19:0,mac_01:0 texstat loglevel=debug",
+        "extra": [
+          "-Turbo"
+        ],
+        "until": "texstat f1500:",
+        "cap": 150,
+        "deadline": 20,
+        "first_marker": "warp: mac_00 entry 4",
+        "expects": "tour",
+        "needs_picture": false,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: mac_00 entry 4"
+          },
+          {
+            "name": "report",
+            "regex": "texstat f1500:"
+          }
+        ],
+        "reason": "Long measurement (SLOT1): map change chain at frame 1500. Turbo: slot counts are per frame."
+      },
+      {
+        "name": "hos01_texword",
+        "status": "unverified",
+        "subject": "TEXD1: Shooting Star Summit wall (hos_01), the I4 64x64 texture 0x0100169c (this build), bind dump (texword) of the first 4 binds from frame 200, and the drawlog of the wall chunk.",
+        "proves": "The texword line for image 0x0100169c (slot layout, wrap state, hash) and the texsrc and texgpu files written at the bind (pm_tex_bind), frames 200 to 203.",
+        "debug": "warp=hos_01:0 texword=0100169c@200 shots shotwin=200:6 loglevel=debug drawlog=200:1",
+        "until": "shot \\d+ frame 204\\b",
+        "cap": 25,
+        "deadline": 20,
+        "first_marker": "warp: hos_01 entry 0",
+        "expects": "warp",
+        "needs_picture": true,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: hos_01 entry 0"
+          },
+          {
+            "name": "texword bind",
+            "regex": "texword f\\d+ img 0100169c bind 1"
+          },
+          {
+            "name": "last shot",
+            "regex": "shot \\d+ frame 204"
+          }
+        ],
+        "reason": ""
+      },
+      {
+        "name": "texwrap_wall",
+        "status": "unverified",
+        "subject": "TEXD3: hos_01 wall, image 0x0100169c, with the console switch wrapov=repeat (unit 0 GPU wrap forced to repeat at pm_tex_bind). Frame 200 to 204 shots.",
+        "proves": "The td3 bind line shows the programmed wrap 2 (repeat) for unit 0, and the texword bind of 0x0100169c at frame 200. The picture shows the wall at frame 200.",
+        "debug": "warp=hos_01:0 texword=0100169c@200 wrapov=repeat shots shotwin=200:6 loglevel=debug",
+        "until": "shot \\d+ frame 203\\b",
+        "cap": 32,
+        "deadline": 20,
+        "first_marker": "warp: hos_01 entry 0",
+        "expects": "warp",
+        "needs_picture": true,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: hos_01 entry 0"
+          },
+          {
+            "name": "td3 bind",
+            "regex": "td3 bind unit0 slot \\d+ programmed ws 2 wt 2"
+          },
+          {
+            "name": "last shot",
+            "regex": "shot \\d+ frame 203"
+          }
+        ],
+        "reason": "Cap 32 s: hos01_texword (cap 25) stopped before its until line (runs 3 and 4, TEXD3). The shot writer takes frame 203, not 204."
+      },
+      {
+        "name": "texreg_wall",
+        "status": "unverified",
+        "subject": "BIS1: hos_01 wall, image 0x0100169c, texword line (wrap, filter, pad, hash) at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe, reverted (BIS1).",
+        "proves": "The texword line for the image: wrap s and t, shr, filter, slot and GPU sizes (pad), hash.",
+        "debug": "warp=hos_01:0 texword=0100169c shots shotwin=200:6 loglevel=debug",
+        "until": "warp: scene f300 ",
+        "cap": 60,
+        "deadline": 20,
+        "first_marker": "warp: hos_01 entry 0",
+        "expects": "warp",
+        "needs_picture": true,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: hos_01 entry 0"
+          },
+          {
+            "name": "texword line",
+            "regex": "texword f\\d+ img 0100169c bind 1"
+          },
+          {
+            "name": "shot",
+            "regex": "shot \\d+ frame 20[0-5]\\b"
+          },
+          {
+            "name": "steady frame",
+            "regex": "warp: scene f300 "
+          }
+        ],
+        "reason": ""
+      },
+      {
+        "name": "texreg_coin",
+        "status": "unverified",
+        "subject": "BIS1: tik_03 sewer coins, image 0x00571b90, texword line at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe (BIS1).",
+        "proves": "The texword line for the image: wrap s and t, shr, filter, slot and GPU sizes (pad), hash.",
+        "debug": "warp=tik_03:0 texword=00571b90 shots shotwin=200:6 loglevel=debug",
+        "until": "warp: scene f300 ",
+        "cap": 90,
+        "deadline": 20,
+        "first_marker": "warp: tik_03 entry 0",
+        "expects": "warp",
+        "needs_picture": true,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: tik_03 entry 0"
+          },
+          {
+            "name": "texword line",
+            "regex": "texword f\\d+ img 00571b90 bind 1"
+          },
+          {
+            "name": "shot",
+            "regex": "shot \\d+ frame 20[0-5]\\b"
+          },
+          {
+            "name": "steady frame",
+            "regex": "warp: scene f300 "
+          }
+        ],
+        "reason": ""
+      }
   ]
 }

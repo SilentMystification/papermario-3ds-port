@@ -18,7 +18,7 @@ static u8* tx1_chk; /* switch tx1check: the new result, compared with the old pa
 
 /* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
-#define SLOTS 512
+#define SLOTS 1024 /* SLOT1: peak live 497 (kzn_19, frame 1500, uncapped build); 497 x 1.5 = 746, next power of two */
 #define TEX_SCRATCH_PLANE (1024u * 512u * 2u) /* one linear or tiled plane (1024x512 RGBA5551) */
 typedef struct {
     const void* img;
@@ -54,6 +54,7 @@ static Slot slots[SLOTS];
  * The two per-frame passes visit only the set bits, in slot order, instead of every slot below slot_hi. */
 #define SBIT_W (SLOTS / 32)
 static unsigned vup_bits[SBIT_W], att_bits[SBIT_W];
+static unsigned live_bits[SBIT_W]; /* SLOT1: one bit per live slot; the free slot search reads these words, not the records */
 static void sbit_set(unsigned* b, int i) { b[i >> 5] |= 1u << (i & 31); }
 static void sbit_clr(unsigned* b, int i) { b[i >> 5] &= ~(1u << (i & 31)); }
 static void stale_mark(Slot* s) { s->stale = 1; sbit_set(att_bits, (int)(s - slots)); }
@@ -63,6 +64,7 @@ static unsigned used;
 static short recent_slot[RECENT_N] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static unsigned recent_n;
 static int slot_hi; /* every live slot index is below this, so scans stay short while few slots are live */
+static unsigned slot_nlive, slot_peak; /* SLOT1: live slots now and the highest count of this run */
 static unsigned used_peak; /* M02 measurement */
 static unsigned map_peak;
 /* V13c: bytes of the slots that a draw touched in this frame (the working set that eviction must keep), highest since the last map. */
@@ -324,6 +326,8 @@ static unsigned tiled16(int x, int y, int pw) {
 /* P13: y % m for y >= 0 and m >= 1. A power of two m needs no divide. Same result as the % operator. */
 static inline int wrap_mod(int y, int m) { return (m & (m - 1)) == 0 ? (y & (m - 1)) : y % m; }
 
+static void td3_parse(void); /* TEXD3, defined before pm_tex_bind */
+static int td3_padoff;
 static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int stride,
                   const u8* tlut, int tlut_n, int pw, int ph, GPU_TEXCOLOR gf) {
     if ((fmt == FMT_I && (siz == SIZ_8 || siz == SIZ_4)) || (fmt == FMT_IA && (siz == SIZ_8 || siz == SIZ_4)))
@@ -370,12 +374,14 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
     /* Pad to the power-of-two size with the last texel, so a clamped coordinate gets the edge. */
     /* A tile mask makes the image repeat or mirror past the window (bulb glow: window 65 in a 128 texture, mask 64, mirror),
      * so the pad follows the mask. */
+    td3_parse(); /* TEXD3 switch padov=off: no mask follow in the pad */
+    int pmh = td3_padoff ? 0 : mh, pmw = td3_padoff ? 0 : mw;
     for (int y = 0; y < ph; y++) {
         int sy = y < h ? y : h - 1;
-        if (mh) { int r = wrap_mod(y, mk_mt ? 2 * mh : mh); sy = (mk_mt && r >= mh) ? 2 * mh - 1 - r : r; }
+        if (pmh) { int r = wrap_mod(y, mk_mt ? 2 * pmh : pmh); sy = (mk_mt && r >= pmh) ? 2 * pmh - 1 - r : r; }
         for (int x = (y < h ? w : 0); x < pw; x++) {
             int sx = x < w ? x : w - 1;
-            if (mw) { int r = wrap_mod(x, mk_ms ? 2 * mw : mw); sx = (mk_ms && r >= mw) ? 2 * mw - 1 - r : r; }
+            if (pmw) { int r = wrap_mod(x, mk_ms ? 2 * pmw : pmw); sx = (mk_ms && r >= pmw) ? 2 * pmw - 1 - r : r; }
             memcpy(scratch + ((size_t)y * pw + x) * out_bpp, scratch + ((size_t)sy * pw + sx) * out_bpp, out_bpp);
         }
     }
@@ -653,6 +659,8 @@ static void drop(Slot* s) {
     else used = 0;
     s->sgen++;
     s->live = 0;
+    sbit_clr(live_bits, (int)(s - slots));
+    slot_nlive--;
     s->stale = 0;
     while (slot_hi > 0 && !slots[slot_hi - 1].live) slot_hi--;
 }
@@ -703,11 +711,20 @@ static int bind_probe = -1; static unsigned bind_n, bind_mis, bind_skip;
 static unsigned probe_fnv(const u8* p, unsigned n) { unsigned x = 2166136261u; for (unsigned k = 0; k < n; k++) x = (x ^ p[k]) * 16777619u; return x; }
 /* TEXD1 debug switch texword=<hex image address>: the first 4 binds of that image write the source bytes (texsrc_<addr>_<n>.bin, slen bytes)
  * and the converted PICA bytes (texgpu_<addr>_<n>.bin, the slot's bytes in VRAM or the staged copy) to the working directory, and log the layout. */
+static GPU_TEXTURE_FILTER_PARAM tex_filt; /* BIS1: tentative, the definition with the value is below (log only) */
 static void texword_dump(const Slot* s) {
     static long want = -2;
+    static unsigned minf; /* texword=<hex>@<frame>: the dumps start at that frame */
     static int ndump;
-    if (want == -2) { char tv[24]; if (pm_debug_value("texword", tv, sizeof tv)) want = strcmp(tv, "shape") == 0 ? -3 : (long)strtoul(tv, NULL, 16); else want = -1; }
-    if (want == -1 || (want == -3 ? !(s->fmt == 4 && s->siz == 0 && s->w == 64 && s->h == 64) : (long)(uintptr_t)s->img != want) || ndump >= 4) return;
+    if (want == -2) {
+        char tv[32];
+        if (pm_debug_value("texword", tv, sizeof tv)) {
+            char* at = strchr(tv, '@');
+            if (at) { minf = (unsigned)strtoul(at + 1, NULL, 10); *at = 0; }
+            want = strcmp(tv, "shape") == 0 ? -3 : (long)strtoul(tv, NULL, 16);
+        } else want = -1;
+    }
+    if (want == -1 || tc_frame < minf || (want == -3 ? !(s->fmt == 4 && s->siz == 0 && s->w == 64 && s->h == 64) : (long)(uintptr_t)s->img != want) || ndump >= 4) return;
     int staged = s->vram_stage && s->vram_up;
     const u8* g = staged ? s->vram_stage : (s->tex_vram_ptr ? s->tex_vram_ptr : (const u8*)s->tex.data);
     unsigned gn = staged ? s->stage_n : (unsigned)s->tex.size;
@@ -724,9 +741,9 @@ static void texword_dump(const Slot* s) {
     if (f && g) fwrite(g, 1, gn, f);
     if (f) fclose(f);
     if (g) for (unsigned k = 0; k < gn; k++) hh = (hh ^ g[k]) * 16777619u;
-    pm_log("texword f%u img %08lx bind %d: slot %d %dx%d fmt %u siz %u stride %d slen %u gpu %ux%u gn %u staged %d wrap s %d t %d shr %d %d hash %08x gpu0 %02x%02x%02x%02x",
+    pm_log("texword f%u img %08lx bind %d: slot %d %dx%d fmt %u siz %u stride %d slen %u gpu %ux%u gn %u staged %d wrap s %d t %d shr %d %d filter %d hash %08x gpu0 %02x%02x%02x%02x",
            (unsigned)tc_frame, addr, ndump, (int)(s - slots), s->w, s->h, s->fmt, s->siz, s->stride, s->slen, (unsigned)s->tex.width, (unsigned)s->tex.height, gn, staged,
-           (int)wrap_s, (int)wrap_t, shr_s, shr_t, hh, g ? g[0] : 0, g ? g[1] : 0, g ? g[2] : 0, g ? g[3] : 0);
+           (int)wrap_s, (int)wrap_t, shr_s, shr_t, (int)tex_filt, hh, g ? g[0] : 0, g ? g[1] : 0, g ? g[2] : 0, g ? g[3] : 0);
 }
 
 static void bind_probe_one(int i, const Slot* s) {
@@ -856,6 +873,7 @@ void pm_tex_map_delta(unsigned* o) {
 static void tc_report(void) {
     unsigned n = 0, bytes = 0, u0n = 0, u0b = 0, rec_b = 0, rec_n = 0;
     unsigned an[5] = { 0 }, ab[5] = { 0 }; /* age in frames: <=1, <=10, <=100, <=300, older */
+    unsigned small_n = 0; /* SLOT1: live slots under 1 KB */
     int top[3] = { -1, -1, -1 };
     for (int i = 0; i < slot_hi; i++) {
         Slot* s = &slots[i];
@@ -865,6 +883,7 @@ static void tc_report(void) {
         b = s->bytes;
         n++;
         bytes += b;
+        if (b < 1024) small_n++;
         if (s->uses == 0) { u0n++; u0b += b; }
         if (age <= 300) { rec_n++; rec_b += b; }
         int k = age <= 1 ? 0 : age <= 10 ? 1 : age <= 100 ? 2 : age <= 300 ? 3 : 4;
@@ -884,6 +903,7 @@ static void tc_report(void) {
     tc_ev_cause[0] = tc_ev_cause[1] = tc_ev_cause[2] = 0;
     pm_log_d("texbind binds %u mismatch %u skipped %u", bind_n, bind_mis, bind_skip);
     pm_log_d("texstat live: %u slots %uKB, never hit %u (%uKB), used in last 300 frames %u (%uKB)", n, bytes >> 10, u0n, u0b >> 10, rec_n, rec_b >> 10);
+    pm_log_d("texstat slots: live %u peak %u limit %u under 1 KB %u, byte cap %uKB", slot_nlive, slot_peak, SLOTS, small_n, tex_cap >> 10);
     pm_log_d("texstat age (frames since last use) <=1: %u/%uKB, <=10: %u/%uKB, <=100: %u/%uKB, <=300: %u/%uKB, older: %u/%uKB",
              an[0], ab[0] >> 10, an[1], ab[1] >> 10, an[2], ab[2] >> 10, an[3], ab[3] >> 10, an[4], ab[4] >> 10);
     for (int t = 0; t < 3; t++)
@@ -1166,7 +1186,8 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     unsigned bpp = (gf == GPU_RGBA8) ? 4u : (gf == GPU_L8 || gf == GPU_LA4) ? 1u : (gf == GPU_L4) ? 1u : 2u;
     int slot = -1;
     for (;;) {
-        for (int i = 0; i < SLOTS; i++) if (!slots[i].live) { slot = i; break; }
+        slot = -1;
+        for (int w = 0; w < SBIT_W; w++) if (~live_bits[w]) { slot = w * 32 + (int)__builtin_ctz(~live_bits[w]); break; }
         if (slot >= 0 && used + reserve <= tex_cap) break;
         if (!evict_oldest_done(slot < 0 ? 0 : 1)) {
             static int once;
@@ -1374,6 +1395,8 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     frame_bytes += reserve;
     if (frame_bytes > map_wmax) map_wmax = frame_bytes;
     s->live = 1;
+    sbit_set(live_bits, slot);
+    if (++slot_nlive > slot_peak) slot_peak = slot_nlive;
     if (slot >= slot_hi) slot_hi = slot + 1;
     used += reserve;
     if (used > used_peak) used_peak = used;
@@ -1558,6 +1581,27 @@ void pm_tex_set_filter(int linear) {
  * skips the three calls when the texture, filter and wrap are what the last bind set. Anything that can change the unit or the texture
  * object in another way clears it (frame and target changes through pm_tex_bind_reset, a dropped or loaded slot, the aux bind). */
 void pm_tex_bind_reset(void) { tb_last = NULL; au_last = NULL; }
+/* TEXD3 console switches (debug string): wrapov=repeat|mirror|clamp|edge forces the GPU wrap of unit 0 in pm_tex_bind; texnearest=1
+ * forces nearest filter on unit 0; padov=off pads the texture with the plain window edge (no mask follow). Parsed when the switch
+ * string changes (pm_dbg_gen). Absent switches change nothing. */
+extern unsigned pm_dbg_gen;
+int pm_debug_value(const char* key, char* out, unsigned n);
+static unsigned td3_gen;
+static int td3_wrap = -1, td3_near, td3_nlog;
+static void td3_parse(void) {
+    char v[16];
+    if (td3_gen == pm_dbg_gen) return;
+    td3_gen = pm_dbg_gen;
+    td3_wrap = -1;
+    if (pm_debug_value("wrapov", v, sizeof v)) {
+        if (!strcmp(v, "repeat")) td3_wrap = GPU_REPEAT;
+        else if (!strcmp(v, "mirror")) td3_wrap = GPU_MIRRORED_REPEAT;
+        else if (!strcmp(v, "clamp")) td3_wrap = GPU_CLAMP_TO_BORDER;
+        else if (!strcmp(v, "edge")) td3_wrap = GPU_CLAMP_TO_EDGE;
+    }
+    td3_near = pm_debug_value("texnearest", v, sizeof v) && v[0] == '1';
+    td3_padoff = pm_debug_value("padov", v, sizeof v) && !strcmp(v, "off");
+}
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
@@ -1570,14 +1614,19 @@ int pm_tex_bind(void) {
     slots[cur].stamp = ++stamp;
     slots[cur].last_frame = tc_frame;
     GPU_TEXTURE_WRAP_PARAM ws = shr_s ? (mk_ms ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_s, wt = shr_t ? (mk_mt ? GPU_MIRRORED_REPEAT : GPU_REPEAT) : wrap_t;
-    if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)tex_filt && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
+    td3_parse();
+    if (td3_wrap >= 0) ws = wt = (GPU_TEXTURE_WRAP_PARAM)td3_wrap;
+    GPU_TEXTURE_FILTER_PARAM ff = td3_near ? GPU_NEAREST : tex_filt;
+    if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)ff && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
+    texword_dump(&slots[cur]); /* TEXD1: pm_tex_bind is the path the draws use (pm_tex_bind_slot is not) */
     if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
     if (bind_probe) bind_probe_one(cur, &slots[cur]);
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);
     /* TEXGARBLE test switches (scratch): texnear = point filter, texclamp = clamp to edge, both for every bind of unit 0 */
     if (PMDL("texclamp")) ws = wt = GPU_CLAMP_TO_EDGE;
-    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : tex_filt, PMDL("texnear") ? GPU_NEAREST : tex_filt);
+    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : ff, PMDL("texnear") ? GPU_NEAREST : ff);
     C3D_TexSetWrap(tp, ws, wt);
+    if ((td3_wrap >= 0 || td3_near) && td3_nlog < 16) { td3_nlog++; pm_log_d("td3 bind unit0 slot %d programmed ws %d wt %d filter %d", cur, (int)ws, (int)wt, (int)ff); } /* first 16 binds only */
     pm_dc_c[DC_TB0]++; if (slot_draws_stage(&slots[cur])) pm_dc_c[DC_TBS]++;
     C3D_TexBind(0, tp);
     {   /* imglog: the GPU texture the draw binds (slot size, GPU size and address) */
@@ -1586,7 +1635,7 @@ int pm_tex_bind(void) {
         if (on) pm_log_d("imglog f%d gpubind slot w %d h %d stride %d gpu w %d h %d data %p fmt %u", (int)tc_frame,slots[cur].w, slots[cur].h, slots[cur].stride, (int)tp->width, (int)tp->height, (void*)tp->data, (unsigned)slots[cur].fmt);
     }
     tb_last = slot_draws_stage(&slots[cur]) ? NULL : &slots[cur].tex;
-    tb_f = (int)tex_filt; tb_ws = (int)ws; tb_wt = (int)wt;
+    tb_f = (int)ff; tb_ws = (int)ws; tb_wt = (int)wt;
     return 1;
 }
 
