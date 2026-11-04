@@ -117,6 +117,40 @@ extern NdSt nd_st;
 void nd_st_reset(void);
 void nd_words(const unsigned* w, unsigned n); /* n word pairs (Gfx), in list order */
 
+/* NDDLC (S3-1): a static display list (a map shape list) compiled once into an NdObj. A group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices
+ * it loads itself. The compiler keeps the box of the object coordinates per group, the geometry mode ops with the triangle index they apply before, the Vtx copies
+ * (flag 0, a palette index 0) and the triangle indices into those copies. Moved from pm_dlc.inc.c dlc_compile and dlc_static_build. Returns a refusal reason, NDR_OK when compiled. */
+enum { NDR_OK, NDR_OP, NDR_SLOT, NDR_VTX, NDR_LONG };
+#define ND_DLC_MAXOPS 4096u
+#define ND_DLC_MAXGRP 1024u
+#define ND_DLC_MAXGOP 2048u
+typedef struct NdGrp {
+    int16_t lo[3], hi[3];       /* box of the object coordinates of the vertices the group loads */
+    uint16_t nvtx, ntri;        /* vertices loaded, triangles kept (a triangle on a dead slot is dropped) */
+    uint16_t ng;                /* geometry mode ops inside the group */
+    uint32_t op0, op1;          /* op range of the group in the source list */
+    uint32_t am, om;            /* geometry mode and-mask and or-value at the group start, relative to the list entry */
+    uint32_t vbase, ibase, gbase; /* first vertex in obj->vtx, first index in obj->idx, first geometry op in obj->gop */
+    uint8_t tsv_exit;           /* the last op of the group was a triangle */
+} NdGrp;
+typedef struct NdObj {
+    uint32_t nops, exit_am, exit_om;
+    uint16_t ngrp;
+    NdGrp* grp;
+    uint32_t (*gop)[2];         /* per geometry op: and-mask, or-value */
+    uint16_t* gat;              /* per geometry op: the triangle index (inside its group) it applies before */
+    uint32_t ngop;
+    uint8_t* vtx;               /* 16 byte Vtx copies, flag word 0 */
+    uint32_t nvtx;
+    uint16_t* idx;              /* triangle corner indices into vtx (3 per triangle) */
+    uint32_t nidx;
+} NdObj;
+typedef struct NdDlcEnv {
+    const void* (*vtx)(uint32_t w1, unsigned n); /* the n Vtx (16 bytes, host order) at the list address w1, or NULL when it is not shape data */
+} NdDlcEnv;
+int nd_dlc_compile(NdObj* o, const uint32_t* list, const NdDlcEnv* env); /* list: word pairs in host order, up to G_ENDDL */
+void nd_dlc_free(NdObj* o);
+
 /* Eye 2 without a second walk: copy the eye 1 command span, then write the eye 2 matrix words at each logged position. */
 typedef struct NdMtxLog { uint32_t at; uint16_t slot; uint16_t pad; } NdMtxLog;
 void nd_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NdMtxLog* log, unsigned nlog, unsigned eye);
