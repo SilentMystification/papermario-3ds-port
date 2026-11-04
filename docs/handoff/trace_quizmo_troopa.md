@@ -89,3 +89,51 @@ Budget: QJT reset to 8. Starts used after reset: 7 (runs 6 to 12). Uncommitted d
 1. Check the Mtx read path of D_09004148_39CD08 (the effect blob, 0x09004148 in effects/gfx). Compare the integer halves with the N64 layout (big endian). Test: a shot where the left wall is visible (stage raise with leftWallRaiseAmt 255 and the wall in view), or a log of the 16 int halves as raw u16 (1 start).
 2. If the Mtx halves are byte-swapped in the asset, fix the converter for this blob (one row of the asset tool), and test the stage show at frame 412 with the badw count at 0.
 3. Next gate: 1 start left (QJT). Not used.
+
+## Update 4: why the effect Mtx reads 256.0 (code reading, no Azahar start)
+Starts: none in this update (QJT used 7 of 8 after the reset, 1 left).
+
+### 1. Where the blob comes from
+- Symbol: src/effects/gfx/quizmo_stage.c:31, declared `char D_09004148_39CD08[] = { ... }` (256 bytes, comment "what's this?"). It is not typed as Mtx.
+- Located inside the gfx section of the splat, not a separate blob: ver/us/splat.yaml, effect_gfx_quizmo_stage, entry `[0x39CC68, gfx, D_090040A8_39CC68]` covers ROM 0x39CC68 to 0x39CE08. The Mtx starts at ROM 0x39CD08 (offset 0xA0 in that gfx) and is 0x100 bytes: four Mtx of 64 bytes each.
+- The splat has no matrix type. The gfx type writes Gfx arrays. The raw bytes were written as a char array by hand (no converter writes them). Other effect data in the same file uses typed arrays (vtx, gfx, ci4, ia4), which the C compiler lays out correctly.
+- Only the quizmo effect refers to this symbol: `extern Mtx D_09004148_39CD08[]` in src/effects/quizmo_stage.c:6. Four uses: gSPMatrix at lines 128 ([2]), 139 ([0]), 148 ([1]), 161 ([3]). Only one `extern Mtx` exists in src/effects (count 1).
+
+### 2. Port read path (proof of the byte order)
+- G_MTX handler: src/pm_gbi.c:1846 to 1847 (flags, `Mtx* src = ptr_of(w1)`), then load_mtx calls unpack() at src/pm_gbi.c:1869 to 1880 region.
+- ptr_of: src/pm_gbi.c:417. A segment 0x09 address resolves to segbase[9] plus offset. The blob is read in place, no copy.
+- Element read: src/pm_gbi.c:440 to 447 (elem). It reads host u32 words. For element (row, col): word idx = row*2 + col/2, integer half = high half for even col, low half for odd col; the fraction half is at word idx+8. On a little-endian host the u32 is assembled from bytes in little-endian order.
+- Runtime matrices: guMtxF2L (src/pm_gu.c:38 to 49) writes host u32 words: integer word = (e1>>16)<<16 | (e2>>16), fraction word = (e1<<16)|(e2 & 0xffff). elem() reads that layout correctly. guMtxL2F (pm_gu.c:55 onward) uses the same reader.
+- Static literals: RDP_MATRIX (include/macros.h:272 to 290, _RDP_PACK_WHOLE at line 262) packs the same host word layout (word = whole(A) << 16 | whole(B)). Static matrices in draw_box.c:327, main_loop.c:36 and model.c:600 use it, so they are correct.
+- The effect blob is N64 big-endian bytes in a char array. On a little-endian host each 32-bit word has its two halves swapped, and each half is read little-endian. That gives exactly the logged floats.
+
+### 3. Proof with the first 64 bytes (from src/effects/gfx/quizmo_stage.c:32, print from the source)
+```
+00: 00 00 FF FF 00 00 00 00 00 01 00 00 00 00 00 00
+10: 00 00 00 00 00 01 00 00 FF 83 00 00 00 41 00 01
+20: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+30: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+- Read as N64 big-endian 16-bit integer halves (bytes 0-1 = column 0, 2-3 = column 1, and so on, row by row), Mtx[0] integer parts are: row 0 (0, -1, 0, 0); row 1 (0, 1, 0, 0); row 2 (0, 0, 1, 0); row 3 (-125, 0, 65, 1). Fraction halves (bytes 32-63) are all zero.
+- Read as the port reads now (elem() on the same bytes, emulated in Python, script in the scratchpad mtx_check.py): row 0 (-1, 0, 0, 0); row 1 (0, 256, 0, 0); row 2 (0, 0, 0, 256); row 3 (0, -31745, 256, 16640). This equals the run 12 qmtx log line exactly.
+- The value 256 is 0x0100, which is the little-endian reading of the bytes 00 01. The value -31745 is the reading of FF 83. The value 16640 is the reading of 00 41.
+- Fix check (same script): reverse the bytes of each 32-bit word, then run elem(). Mtx[0] becomes row 0 (0, -1, 0, 0), row 1 (1, 0, 0, 0), row 2 (0, 0, 1, 0), row 3 (-125, 0, 65, 1). All four matrices become unit rotations (entries 0, +1, -1) with clean translations.
+  - Mtx[1] after fix: (0,1,0,0), (-1,0,0,0), (0,0,1,0), (125,0,65,1).
+  - Mtx[2] after fix: (1,0,0,0), (0,-1,0,0), (0,0,-1,0), (125,0,-85,1).
+  - Mtx[3] after fix: (1,0,0,0), (0,0,-1,0), (0,1,0,0), (-50,0,10,1).
+
+### 4. Other effects with the same read
+- Only this blob is read as a Mtx by an effect (see section 1). Other raw char/u8 blobs in src/effects/gfx (17 files, e.g. ice_pillar.c:14, partner_buff.c:8) are textures or vertex-like data, not gSPMatrix sources.
+- Static matrices used by gSPMatrix outside effects: D_8009BAA8 (curtains.c:220, BSS, written by guMtxF2L at runtime, correct) and gBoxMatrix, MasterIdentityMtx, ReferenceIdentityMtx (RDP_MATRIX, correct).
+- Runtime matrices from guMtxF2L (camera, billboard, dust, emote) are correct by the same reader.
+
+### 5. Fix location (not applied, source not committed)
+- Primary: src/effects/gfx/quizmo_stage.c:31. Replace the char array with `Mtx D_09004148_39CD08[4]` built from the four matrices above (RDP_MATRIX, or a guMtxF2L-compatible word layout). The four matrices above are in the port's [row][col] convention used by elem().
+- Do not change elem() (src/pm_gbi.c:440). It is right for runtime matrices. Changing it would break every guMtxF2L matrix.
+- Structural (later): the splat gfx path does not know Mtx. The gfx section at ver/us/splat.yaml 0x39CC68 needs a type that emits Mtx for 0x39CD08 (four 64-byte blocks), or a byte-swap step in the converter for that range.
+
+### 6. Uncommitted debug edits (list, nothing reverted)
+- Keep: src/pm_fxtest.c (type 1 entry, index 15; it is the only way to spawn that path without a hook).
+- Keep until the fix is tested: src/effects/quizmo_stage.c:140 (qmtx log line; it shows the matrix after the fix).
+- Revert after the fix test: src/pm_gbi.c (badw line in tri_dd_log). It prints every bad vertex and costs log space.
+- Untracked, not committed: assets/ (copy of main assets/us), build3ds/ and lane binaries.
