@@ -1858,6 +1858,66 @@
       ]
     },
     {
+          "name": "battle_menu_bar",
+          "status": "unverified",
+          "subject": "Enemy HP bar (HES_HPBar) drawn over the Goomba in the battle, with the battle menu flag set by the debug hook battlemenu at scene frame 110 (battlef 100 plus 10).",
+          "proves": "UI2 step 1: the enemy HP bar draws once BS_FLAGS1_MENU_OPEN is set (16C8E0.c:905). Shot 182 shows the bar; its bottom row is read for the 16-row fix.",
+          "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 battlemenu shots shotmode=8:30 loglevel=debug",
+          "until": "shot \\d+ frame 182\\b",
+          "cap": 20,
+          "deadline": 20,
+          "first_marker": "warp: kmr_03 entry 0",
+          "expects": "warp",
+          "needs_picture": true,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: kmr_03 entry 0"
+                },
+                {
+                      "name": "battle formation",
+                      "regex": "debug battle: formation"
+                },
+                {
+                      "name": "menu flag",
+                      "regex": "debug battlemenu: menu flag set"
+                },
+                {
+                      "name": "shot at 182",
+                      "regex": "shot \\d+ frame 182\\b"
+                }
+          ],
+          "reason": "UI2 step 1 hook test. battlemenu is a debug switch (pm_warp.c), not a draw toggle."
+    },
+    {
+          "name": "battle_danger",
+          "status": "unverified",
+          "subject": "Battle with Mario at HP 5 (DANGER_THRESHOLD 5, battle.h:272): the danger notifier D (status icon, actor_rendering.c:1596) draws at the Mario actor. Shots at frames 153 to 182.",
+          "proves": "UI2 step 1 low-HP hook: the existing hp= switch sets gPlayerData.curHP, so the danger icon draws. The D is read for the left-edge clip (hud_element.c:1895).",
+          "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 hp=5 shots shotmode=8:30 loglevel=debug",
+          "until": "shot \\d+ frame 182\\b",
+          "cap": 20,
+          "deadline": 20,
+          "first_marker": "warp: kmr_03 entry 0",
+          "expects": "warp",
+          "needs_picture": true,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: kmr_03 entry 0"
+                },
+                {
+                      "name": "battle formation",
+                      "regex": "debug battle: formation"
+                },
+                {
+                      "name": "shot at 182",
+                      "regex": "shot \\d+ frame 182\\b"
+                }
+          ],
+          "reason": "UI2 step 1 low-HP test. Uses the existing hp= switch."
+    },
+    {
       "name": "battle_start",
       "status": "verified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",

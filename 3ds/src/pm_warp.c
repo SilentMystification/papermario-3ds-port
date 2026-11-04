@@ -878,6 +878,15 @@ static void battle_hooks(unsigned f) {
         set_battle_stage(stage);
         load_battle(formation);
     }
+    if (f == at + 10 && pm_debug_has("battlemenu") && get_game_mode() == GAME_MODE_BATTLE) { /* UI2 debug: battlemenu sets BS_FLAGS1_MENU_OPEN 10 frames after the battle starts, so the enemy HP bar draws (16C8E0.c:905). The bar also needs the enemy tattled (181810.c is_actor_health_bar_visible): save_tattle_flags is the real Tattle path. */
+        int bi;
+        extern void save_tattle_flags(s32 actorType);
+        gBattleStatus.flags1 |= BS_FLAGS1_MENU_OPEN;
+        for (bi = 0; bi < ARRAY_COUNT(gBattleStatus.enemyActors); bi++) {
+            if (gBattleStatus.enemyActors[bi] != nullptr) save_tattle_flags(gBattleStatus.enemyActors[bi]->actorType);
+        }
+        pm_log_d("debug battlemenu: menu flag set and enemies tattled f%u", f);
+    }
     if (pm_debug_value("flashheavy", v, sizeof v)) { /* V16b2: `flashheavy=<scene frame>` forces a heavy flash (damage 7) on every enemy part, again every 40 frames, with the real part_flash_on path */
         unsigned ff = (unsigned)atoi(v);
         if (f >= ff && (f - ff) % 40 == 0 && get_game_mode() == GAME_MODE_BATTLE) {
