@@ -277,13 +277,21 @@ static __attribute__((cold, noinline)) void dlc_static_build(DlcEnt* e, const Gf
 /* E4b: NatRec draws of the static groups, built beside the live path (map_e4.md section 4). The merge key is kept per draw, the same
  * fields grange_batch_open compares. nat_seg_add takes the live result (dlc_gr, 2 when grange extended the open batch) and counts the
  * disagreements in nk_mis. No draw is emitted here. */
-typedef struct { unsigned gm; int ct, use5; PmFx fx; float vp[4], uvso[4], cmul[4], cadd[4], zmix[2]; } NatKey;
+void pm_gpu_rec_rmode(int* z, int* decal, int* blend, int* atest);
+void pm_tex_cur_slots(int* a, int* b);
+typedef struct { unsigned gm; int ct, use5; PmFx fx; float vp[4], uvso[4], cmul[4], cadd[4], zmix[2]; int rm[4], sl[2]; } NatKey;
 static NatKey nk_key;
 static int nk_open, dlc_gr;
+static int nk_rm_in[4], nk_sl_in[2]; /* E5-1: render mode and tex slot pair at segment entry (before dlc_seg) */
 static NatRec nk_draw[255];
 static unsigned nk_nd, nk_end, nk_mis;
 
 static void nat_key_reset(void) { nk_open = 0; nk_nd = 0; nk_end = 0; }
+
+static void nat_entry_state(void) {
+    pm_gpu_rec_rmode(&nk_rm_in[0], &nk_rm_in[1], &nk_rm_in[2], &nk_rm_in[3]);
+    pm_tex_cur_slots(&nk_sl_in[0], &nk_sl_in[1]);
+}
 
 static void nat_seg_add(const DlcGrp* g, unsigned t, unsigned end, unsigned gmi, int merged) {
     long po = nat_pool_off(g->pidx);
@@ -294,6 +302,10 @@ static void nat_seg_add(const DlcGrp* g, unsigned t, unsigned end, unsigned gmi,
     if (k.use5) k.fx = ep_p.fx;
     memcpy(k.vp, ep_p.vp, sizeof k.vp); memcpy(k.uvso, ep_p.uvso, sizeof k.uvso); memcpy(k.cmul, ep_p.cm, sizeof k.cmul);
     memcpy(k.cadd, ep_p.ca, sizeof k.cadd); memcpy(k.zmix, ep_p.zm, sizeof k.zmix);
+    memcpy(k.rm, nk_rm_in, sizeof k.rm); memcpy(k.sl, nk_sl_in, sizeof k.sl);
+    int rm_out[4];
+    pm_gpu_rec_rmode(&rm_out[0], &rm_out[1], &rm_out[2], &rm_out[3]);
+    int refuse = memcmp(rm_out, nk_rm_in, sizeof rm_out) != 0; /* E5-1: render mode changed inside the segment: the draw walks */
     unsigned off = (unsigned)po + 6u * t, nidx = 3u * (end - t);
     int same = nk_open && nk_end == off && !memcmp(&k.gm, &nk_key.gm, sizeof k.gm) && k.ct == nk_key.ct && k.use5 == nk_key.use5 &&
                (!k.use5 || !memcmp(&k.fx, &nk_key.fx, sizeof k.fx)) && !memcmp(k.vp, nk_key.vp, sizeof k.vp) &&
@@ -306,6 +318,7 @@ static void nat_seg_add(const DlcGrp* g, unsigned t, unsigned end, unsigned gmi,
         nk_nd++; nk_key = k; nk_open = 1;
     }
     nk_draw[nk_nd - 1].nidx = (uint16_t)(nk_draw[nk_nd - 1].nidx + nidx);
+    if (refuse) nk_draw[nk_nd - 1].flags |= 1;
     nk_end = off + 6u * (end - t);
     if ((merged == 2) != same) nk_mis++;
 }
@@ -350,6 +363,7 @@ static __attribute__((noinline)) int dlc_static_group(const DlcEnt* e, const Dlc
         unsigned end = ends[b];
         if (end > t) {
             dlc_set_geom(geom_at);
+            nat_entry_state();
             if (!dlc_seg(g->sd + 3u * t, end - t, gmi)) { if (!drawn) return 0; dlc_c.sfail++; return 1; }
             drawn = 1;
             nat_seg_add(g, t, end, gmi, dlc_gr);
