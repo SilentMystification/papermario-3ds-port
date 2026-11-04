@@ -310,6 +310,16 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; d0 = pm_pace_drawn;
 }
 int pm_interp_key_draw(void);
+/* HANG1: gspWaitForVBlank has no timeout, so a GSP that stops sending vblanks blocks the game thread with no line. This poll
+ * waits at most 40 ms (200 x 0.2 ms) for the citro3d vblank counter to change. */
+static int vblank_wait_timed(void) {
+    u32 c0 = C3D_FrameCounter(0);
+    for (int i = 0; i < 200; i++) {
+        if (C3D_FrameCounter(0) != c0) return 1;
+        svcSleepThread(200000ll);
+    }
+    return 0;
+}
 extern volatile int pm_exit_request; /* PT28 */
 extern unsigned pm_ph_iv, pm_ph_hud_us; /* PI4, PI5 */
 extern int pm_ph_on;
@@ -401,7 +411,12 @@ void pm_frame_loop(void) {
                 PM_WD_PHASE(3);
                 int guard = PM_VBLANKS_PER_STEP + 1;
                 PH_PUSH(PH_IDLE);
-                while ((int)(C3D_FrameCounter(0) - step_vb) < PM_VBLANKS_PER_STEP - 1 && guard--) gspWaitForVBlank();
+                while ((int)(C3D_FrameCounter(0) - step_vb) < PM_VBLANKS_PER_STEP - 1 && guard--) {
+                    if (vblank_wait_timed()) continue;
+                    static int vb_logs; /* HANG1: the first 20 timeouts only */
+                    if (vb_logs++ < 20) pm_log_w("gpu: no vblank for 40 ms in the idle wait (counter %u, last drawn %u)", (unsigned)C3D_FrameCounter(0), step_vb);
+                    break;
+                }
                 PH_POP();
             }
             continue;
