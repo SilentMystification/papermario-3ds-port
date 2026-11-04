@@ -3837,6 +3837,34 @@
         "reason": ""
       },
       {
+        "name": "texwrap_wall",
+        "status": "unverified",
+        "subject": "TEXD3: hos_01 wall, image 0x0100169c, with the console switch wrapov=repeat (unit 0 GPU wrap forced to repeat at pm_tex_bind). Frame 200 to 204 shots.",
+        "proves": "The td3 bind line shows the programmed wrap 2 (repeat) for unit 0, and the texword bind of 0x0100169c at frame 200. The picture shows the wall at frame 200.",
+        "debug": "warp=hos_01:0 texword=0100169c@200 wrapov=repeat shots shotwin=200:6 loglevel=debug",
+        "until": "shot \\d+ frame 203\\b",
+        "cap": 32,
+        "deadline": 20,
+        "first_marker": "warp: hos_01 entry 0",
+        "expects": "warp",
+        "needs_picture": true,
+        "expected_events": [
+          {
+            "name": "start",
+            "regex": "warp: hos_01 entry 0"
+          },
+          {
+            "name": "td3 bind",
+            "regex": "td3 bind unit0 slot \\d+ programmed ws 2 wt 2"
+          },
+          {
+            "name": "last shot",
+            "regex": "shot \\d+ frame 203"
+          }
+        ],
+        "reason": "Cap 32 s: hos01_texword (cap 25) stopped before its until line (runs 3 and 4, TEXD3). The shot writer takes frame 203, not 204."
+      },
+      {
         "name": "texreg_wall",
         "status": "unverified",
         "subject": "BIS1: hos_01 wall, image 0x0100169c, texword line (wrap, filter, pad, hash) at the first 4 binds (from frame 0). Replaces the TEXD2 texreg probe, reverted (BIS1).",
