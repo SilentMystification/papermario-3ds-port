@@ -15,6 +15,8 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -w /w pm3ds-host:1 sh -c '
   gcc -m32 -Wall -Wextra -o /tmp/ndseam 3ds/tools/nd_seam_test.c
   gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndc 3ds/tools/nd_core_test.c 3ds/src/nd_core.c
   /tmp/ndc
+  gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndt 3ds/tools/nd_tmpl_test.c 3ds/src/nd_tmpl.c
+  /tmp/ndt 3ds/tests/ndref/ndref_*.bin
   /tmp/ndseam assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin
 ' || fail=1
 [ "$fail" = 0 ] && echo "ND HOST TESTS PASS" || echo "ND HOST TESTS FAIL"
