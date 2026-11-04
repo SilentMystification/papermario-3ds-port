@@ -78,3 +78,26 @@ Gates: 1 record size and offsets, 2 template plan equals a direct pm_comb_build 
 - Item 4 (eye-2 target registers): the target is not a word in the record span. `pm_gpu_eye` (pm_gpu.c:1747) calls `C3D_FrameDrawOn(cur_target)`, which writes the framebuffer registers. The record path marks 0x112 to 0x117 and 0x11C to 0x11E as foreign (pm_gpu.c:2528, rec_foreign). So the eye 2 span copy needs no register patch. Phase B calls `C3D_FrameDrawOn(targetR)` before it plays the eye 2 span, as `pm_gpu_eye` does now.
 - Item 5 (rect batch): a 2D rect batch does not use `comb_w0`/`comb_w1` as its state. flush_impl sets `combine = rect_ec`, `rect_z = rect_zb` and `rect_2d = 1` for the batch (pm_gpu.c:625 to 628). The template key for a rect batch must come from `rect_ec` and `rect_zb`, not the SETCOMBINE words.
 - Items 1 and 2 (capture of real PICA words, draw block offsets, patch values) are NOT done. No switch prints captured words. `rec_done` (pm_gbi.c:3650) holds the capture (`w`, `n`) after `pm_gpu_rec_end`. A dump needs a call from that function, which is an old file. Phase A rules forbid the edit. Choose one: (a) a temporary, uncommitted hook in `rec_done` that calls a dump function in pm_native.c, reverted before commit (the same method as the step 1 `cenc` dump); or (b) stop until the other branches merge.
+
+## Phase B step 1 result (2026-11-04, census_toad, Azahar start 3 of 8)
+Quantity: word layout of two captured static plain model records (rec_done, temp dump, reverted, not committed). Fixture: `3ds/tools/nat_fixture_toad.txt`. Check: `python -I 3ds/tools/nat_layout_check.py 3ds/tools/nat_fixture_toad.txt` (PASS).
+
+Measured:
+- One captured record is 278 words (75 PICA commands) for slot 25, and 272 words (72 commands) for slot 15. Both on census_toad.
+- Commands that match between the two models: 0x047, 0x048, 0x065, 0x229 to 0x25E (state), 0x04F, 0x064, 0x06F, 0x0D0 to 0x0F8, 0x100 to 0x130, 0x203 (36 words), and the draw trigger 0x22F. These are template words.
+- Words that differ, by register: 0x081 (unit 0 texture block, 4 words: dims, param, border, address), 0x2C1 (palette uniform, 16 words, c = 15), 0x227 (index address), 0x228 (index count).
+- Words that differ because the TEV key differs (template key, not per draw): 0x0C0, 0x0C8, 0x0E0, 0x0E1, 0x0FD. Slot 25 has three extra TEV commands (0x0E0, 0x0FD, 0x0E1), so the two templates have different combine pairs.
+- Unit 1 block (0x091) is equal in the two records (same unit 1 texture here).
+
+Consequence for phase A (the design is wrong here):
+- NAT_TMPL_WORDS = 96 cannot hold the template. The state is about 240 to 260 words per record. Use the record size as the template size (about 1.1 KB per template, 64 templates = about 72 KB in RAM).
+- A per-draw block of 32 contiguous words is wrong. The per-draw words sit at different offsets of the record. Per draw the emit must write the per-draw command group only: palette 0x2C1 (16 words), unit 0 texture block 0x081 (4 words), index address and count 0x227, 0x228 (2 words), and the draw trigger (0x22F). About 30 words per draw. Template state is not repeated because the GPU keeps register state between draws.
+- The palette offset and the texture offset are per template (they move with the TEV command count), so the patch offsets are stored per template.
+
+Not done in this run: the host test on the real bytes (pm_native.c and nat_host_test.c still use the 96 and 32 word layout), hooks 1 to 9, census equal, region diff, old path deletion. Each depends on the layout decision above.
+
+Decision needed (not taken here):
+1. Adopt the record-size template plus per-draw command group layout above (recommended). Phase A code changes to NAT_TMPL_WORDS about 256 and a per-draw group, with the host test on the fixture bytes.
+2. Stop phase B until the layout is reviewed.
+
+Azahar starts used on NDS1: 3 of 8 (census_yard, census_toad, census_toad with the dump).
