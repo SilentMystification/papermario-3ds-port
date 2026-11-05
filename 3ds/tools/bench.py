@@ -16,6 +16,10 @@ This is the entry point for every test and profiling run (it replaces the text t
   python 3ds/tools/bench.py ingest-last --log <log> --scenario <name> --row <row> --rc <n> [--label L] [--build N] [--commit H] [--shots DIR]
         Called by azt.ps1 after each scenario start that wrote a log. A scenario with a bench records under that bench;
         any other scenario records as bench "adhoc:<scenario>".
+  python 3ds/tools/bench.py build-at <commit> <bench> --row R [--why "<text>"] [--label L]
+        Azahar benches only. Builds <commit> from a git archive folder build3ds/at_<short>/ (the main folder is not changed),
+        runs the bench on that build, records the run with that commit and dirty false, then deletes the folder.
+        The Azahar build copy is put back after the run. --why is optional: a line is written from the bench purpose.
   python 3ds/tools/bench.py import-csv                      (docs/handoff/perf_history.csv rows as runs, tag legacy_import; rows already imported are skipped)
   python 3ds/tools/bench.py where --map <name> [area filters] [--chg]
         Per build (build, commit, date, host): windows, mean fps, ft_ms, nd_ms, lg_ms, gb_ms, delta against the first row.
@@ -36,6 +40,10 @@ Area filters (where, spots, compare, trend): --map NAME --mode N --story N --bat
   --host azahar|o3ds|n3ds|host --chg (include chg1 windows; default excluded). Use the = form for negative ranges (--x=-300..0).
   Position bounds filter on the window end position. Imported history rows have no window positions: a position filter drops them.
 
+dirty (run record, true | false | null for old runs): true when git status shows a changed tracked file other than
+3ds/src/map_restore_table.c and 3ds/logs/. Set at ingest time (the tree when the log is read). build-at records false.
+Default: a bench with "default": false is listed after the others by list (absent = true).
+
 Hosts: azahar, o3ds (Old 3DS, XL included; the old value o3dsxl is read as o3ds), n3ds, host (host tests).
 Files: 3ds/tools/bench_defs.json (benches, tracked, hand edited). 3ds/logs/perf/runs.jsonl (one JSON line per run, append only,
 the source of truth, tracked; each run holds its windows with map, area, mode, story, battle, entry, pos0, pos).
@@ -44,7 +52,7 @@ sample has one row per window (win "f<frame> w<size>"; ts is the run wall time; 
 a window count and no window records (imported history) gets one row with win "agg" and extra_json agg_windows = count.
 Gate: {metric, op, value} or {metric, op, ref: baseline}. The baseline is the earliest run of the bench with that metric.
 """
-import argparse, collections, csv, datetime, json, os, re, sqlite3, subprocess, sys
+import argparse, collections, csv, datetime, io, json, os, re, shutil, sqlite3, subprocess, sys, tarfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -62,6 +70,7 @@ CSV = REPO / "docs" / "handoff" / "perf_history.csv"
 SHOTS = REPO / "build3ds" / "azt" / "shots"
 OUT = REPO / "build3ds" / "bench"
 HOSTS = ("azahar", "o3ds", "n3ds", "host")
+BUILD_UNTRACKED = ("assets/us", "ver/us/build")  # build.sh inputs that are not in git (build-at copies them)
 HOST_ALIAS = {"o3dsxl": "o3ds"}
 DEVICE = {"azahar": "azahar emulator on pc", "host": "host pc (docker)", "o3ds": "o3ds xl 192.168.1.131"}
 RENAME = {"fps": "fps", "ft": "ft_ms", "nd": "nd_ms", "lg": "lg_ms", "gb": "gb_ms", "dr": "draws", "tri": "tris"}
@@ -81,7 +90,7 @@ CREATE TABLE bench(name TEXT PRIMARY KEY, kind TEXT, purpose TEXT, defs_json TEX
 CREATE TABLE build(build_no INTEGER, commit_hash TEXT, date TEXT);
 CREATE TABLE run(id INTEGER PRIMARY KEY, bench TEXT, kind TEXT, host TEXT, device TEXT, build_no INTEGER, commit_hash TEXT, date TEXT, ts TEXT,
   row TEXT, label TEXT, result TEXT, scene TEXT, log_path TEXT, shot_path TEXT, note TEXT, tags TEXT, x_range TEXT, y_range TEXT, z_range TEXT,
-  speed TEXT, frame_limit REAL);
+  speed TEXT, frame_limit REAL, dirty INTEGER);
 CREATE TABLE metric(run_id INTEGER, win TEXT, key TEXT, value REAL);
 CREATE TABLE sample(run_id INTEGER, win TEXT, frame INTEGER, ts TEXT, build_no INTEGER, host TEXT, map TEXT, area TEXT, mode INTEGER,
   story INTEGER, battle INTEGER, entry INTEGER, chg INTEGER, x0 REAL, y0 REAL, z0 REAL, x REAL, y REAL, z REAL,
@@ -106,6 +115,27 @@ def git_head():
         return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, text=True).strip()
     except Exception:
         return "?"
+
+
+def git_dirty():
+    """True when a tracked file has changes, except 3ds/src/map_restore_table.c and 3ds/logs/. None when git fails."""
+    try:
+        out = subprocess.check_output(["git", "status", "--porcelain"], cwd=REPO, text=True)
+    except Exception:
+        return None
+    for ln in out.splitlines():
+        if not ln.strip() or ln[:2] in ("??", "!!"):
+            continue
+        path = ln[3:].split(" -> ")[-1].strip().strip('"')
+        if path == "3ds/src/map_restore_table.c" or path.startswith("3ds/logs/"):
+            continue
+        return True
+    return False
+
+
+def md5_of(p):
+    import hashlib
+    return hashlib.md5(Path(p).read_bytes()).hexdigest()
 
 
 def posix(p):
@@ -216,11 +246,11 @@ def rebuild_db():
     runs = read_runs()
     nm = ns = 0
     for r in runs:
-        con.execute("INSERT INTO run VALUES (%s)" % ",".join("?" * 22),
+        con.execute("INSERT INTO run VALUES (%s)" % ",".join("?" * 23),
                     (r["run_id"], r["bench"], r.get("kind"), r.get("host"), r.get("device", ""), r.get("build_no"), r.get("commit"), r.get("date"),
                      r.get("ts"), r.get("row"), r.get("label"), r.get("result"), r.get("scene", ""), r.get("log_path"), r.get("shot_path"),
                      r.get("note"), ",".join(r.get("tags", [])), r.get("x_range", ""), r.get("y_range", ""), r.get("z_range", ""),
-                     r.get("speed") or "unknown", r.get("frame_limit")))
+                     r.get("speed") or "unknown", r.get("frame_limit"), r.get("dirty")))
         rows = [(r["run_id"], "run", k, float(v)) for k, v in r.get("run", {}).items()]
         for w in r.get("windows", []):
             rows += [(r["run_id"], w["win"], k, float(v)) for k, v in w["m"].items()]
@@ -409,12 +439,12 @@ def pos_ranges(ws):
 
 
 def make_run(bench, kind, host, build, commit, row, label, result, scene, log, shot, note, tags, run, windows, x="", z="", y="", device="", date=None,
-             speed="unknown", frame_limit=None):
+             speed="unknown", frame_limit=None, dirty=None):
     host = norm_host(host)
     return {"bench": bench, "kind": kind, "host": host, "device": device or device_note(host), "build_no": build,
             "commit": commit, "date": date or today(), "ts": now_iso(), "row": row, "label": label, "result": result, "scene": scene,
             "log_path": log, "shot_path": shot, "note": note, "tags": tags, "x_range": x, "y_range": y, "z_range": z,
-            "speed": speed, "frame_limit": frame_limit, "run": run, "windows": windows}
+            "speed": speed, "frame_limit": frame_limit, "dirty": dirty, "run": run, "windows": windows}
 
 
 def log_build(text):
@@ -447,8 +477,9 @@ def resolve_build(path, text, build, commit):
 
 
 def ingest_file(path, bench, host, build, commit, row, label, result="imported", note="", shot=None, tags=None, device="", kind=None,
-                speed="unknown", frame_limit=None):
+                speed="unknown", frame_limit=None, dirty=None):
     p = Path(path)
+    dirty = git_dirty() if dirty is None else dirty
     text = p.read_text(encoding="utf-8", errors="replace")
     wins = pb.parse_windows(str(p))
     bd = bench_def(bench) or {}
@@ -473,7 +504,7 @@ def ingest_file(path, bench, host, build, commit, row, label, result="imported",
         run.update(lm)
         x, y, z = pos_ranges(good)
         recs.append(make_run(bench, kind, host, build, commit, row, label, result, scene, rel, shot, note, tags or [], run,
-                             [window_rec(w) for w in ws], x, z, y=y, device=device, speed=speed, frame_limit=frame_limit))
+                             [window_rec(w) for w in ws], x, z, y=y, device=device, speed=speed, frame_limit=frame_limit, dirty=dirty))
     n = append_runs(recs)
     print("ingested %s: %d scene run(s), scene-change windows dropped %d, run ids up to %d, build %s, commit %s" % (
         path, len(recs), dropped, n[1], build if build is not None else "-", commit))
@@ -487,12 +518,12 @@ def cmd_list(a):
     defs = load_defs()
     con = open_db()
     n = 0
-    print("%-16s %-14s %5s %5s  %s" % ("bench", "kind", "cap", "runs", "purpose"))
-    for b in defs["benches"]:
+    print("%-16s %-14s %5s %5s %-4s %s" % ("bench", "kind", "cap", "runs", "dflt", "purpose"))
+    for b in sorted(defs["benches"], key=lambda x: x.get("default", True) is False):
         if a.tag and a.tag not in b.get("tags", []):
             continue
         runs = con.execute("SELECT COUNT(*) FROM run WHERE bench = ?", (b["name"],)).fetchone()[0]
-        print("%-16s %-14s %5s %5d  %s" % (b["name"], b["kind"], b["cap"], runs, b["purpose"]))
+        print("%-16s %-14s %5s %5d %-4s %s" % (b["name"], b["kind"], b["cap"], runs, "yes" if b.get("default", True) else "no", b["purpose"]))
         n += 1
     con.close()
     print("%d bench(es)" % n)
@@ -519,6 +550,7 @@ def cmd_show(a):
         print("recipe: scenario %s (status %s)" % (bd["scenario"], s["status"] if s else "MISSING"))
         print("run: python 3ds/tools/bench.py run %s --row <row> --why \"<text>\"" % bd["name"])
         print("     (azt.ps1 %s -Row <row>%s)" % (bd["scenario"], tryf))
+        print("build-at: python 3ds/tools/bench.py build-at <commit> %s --row <row>" % bd["name"])
     elif bd["kind"] == "host_test":
         print("command: %s" % bd["command"])
     else:
@@ -585,7 +617,7 @@ def cmd_run(a):
         text_metrics["rc"] = float(rc)
         commit = a.commit or git_head()
         recs = [make_run(bd["name"], kind, "host", a.build, commit, a.row, a.label or bd["name"], "pass" if rc == 0 else "fail:%d" % rc,
-                         "", posix(log.relative_to(REPO)), None, "", [], text_metrics, [], speed="normal")]
+                         "", posix(log.relative_to(REPO)), None, "", [], text_metrics, [], speed="normal", dirty=git_dirty())]
         n = append_runs(recs)
         print("run %d: %s rc %d, %s" % (n[1], bd["name"], rc, "PASS" if rc == 0 else "FAIL"))
         return rc
@@ -595,6 +627,76 @@ def cmd_run(a):
     print("then: python 3ds/tools/bench.py ingest build3ds/hw_live_log_%s.txt --bench %s --host %s --row %s --label \"%s\""
           % (ip.split(".")[-1], bd["name"], bd["host"], a.row, a.label or bd["name"]))
     return 0
+
+
+def app_3dsx():
+    """The 3dsx that Azahar loads (build.sh copies it here)."""
+    return Path(os.environ.get("APPDATA", "")) / "Azahar" / "sdmc" / "3ds" / "PaperMario" / "pm_3ds.3dsx"
+
+
+def cmd_build_at(a):
+    bd = bench_def(a.bench)
+    if not bd or not bd["kind"].startswith("azahar"):
+        print("build-at runs an Azahar bench (azahar_pic, azahar_stream). %s is not one. Nothing was built." % a.bench)
+        return 5
+    r = subprocess.run(["git", "rev-parse", "--verify", "--quiet", a.commit + "^{commit}"], cwd=REPO, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("no commit %s. Nothing was built." % a.commit)
+        return 5
+    commit = r.stdout.strip()
+    short = commit[:7]
+    gitdir = subprocess.check_output(["git", "rev-parse", "--absolute-git-dir"], cwd=REPO, text=True).strip()
+    main_map = REPO / "3ds" / "src" / "map_restore_table.c"
+    md5_before = md5_of(main_map)
+    scratch = REPO / "build3ds" / ("at_" + short)
+    shutil.rmtree(scratch, ignore_errors=True)
+    scratch.mkdir(parents=True)
+    dst = app_3dsx()
+    prev = scratch.parent / ("at_%s_prev.3dsx" % short)
+    had_prev = dst.exists()
+    if had_prev:
+        shutil.copy2(dst, prev)
+    rc = 0
+    try:
+        arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
+        tarfile.open(fileobj=io.BytesIO(arc)).extractall(scratch)
+        gen = scratch / "3ds" / "src" / "map_restore_table.c"
+        shutil.copy2(main_map, gen)
+        subprocess.run([sys.executable, str(scratch / "3ds" / "tools" / "gen_map_restore.py")], cwd=scratch, check=True,
+                       stdout=subprocess.DEVNULL)
+        # The build inputs that git does not track (ROM-derived assets) come from the main folder. Read only.
+        for rel in BUILD_UNTRACKED:
+            if not (scratch / rel).exists() and (REPO / rel).exists():
+                shutil.copytree(REPO / rel, scratch / rel)
+        print("build-at %s: generated map_restore_table.c md5 %s, user file md5 %s (%s)" % (
+            short, md5_of(gen), md5_before, "same" if md5_of(gen) == md5_before else "differs"))
+        env = dict(os.environ, GIT_DIR=gitdir, PM_BUILD_REV=commit, PM_ROW=a.row)
+        env.pop("PM_LANE", None)
+        rc = subprocess.run([shutil.which("sh") or "sh", "3ds/build.sh"], cwd=scratch, env=env).returncode
+        if rc != 0:
+            print("build-at %s: build.sh exit %d. Nothing was run." % (short, rc))
+            return rc
+        hdr = (scratch / "3ds" / "include" / "pm_build.h").read_text(encoding="utf-8")
+        bstr = re.search(r'PM_BUILD_STR "(\d+)', hdr)
+        build_no = int(bstr.group(1)) if bstr else None
+        why = a.why or ("build-at %s of %s: the committed code at %s, no working tree change, picture on an older build"
+                        % (short, a.bench, short))
+        os.environ["PM_BENCH_DIRTY"] = "0"
+        try:
+            rc = cmd_run(argparse.Namespace(bench=a.bench, row=a.row, why=why, label=a.label or ("build-at " + short),
+                                            build=build_no, commit=commit, speed=None))
+        finally:
+            os.environ.pop("PM_BENCH_DIRTY", None)
+    finally:
+        if had_prev:
+            shutil.copy2(prev, dst)
+            prev.unlink()
+        elif dst.exists():
+            dst.unlink()
+        shutil.rmtree(scratch, ignore_errors=True)
+    print("build-at %s: map_restore_table.c md5 before %s after %s (%s)" % (
+        short, md5_before, md5_of(main_map), "unchanged" if md5_of(main_map) == md5_before else "CHANGED"))
+    return rc
 
 
 def cmd_ingest(a):
@@ -625,8 +727,10 @@ def cmd_ingest_last(a):
     result = "log_pass" if a.rc == 0 else "fail:%d" % a.rc
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
     shot = a.shots or str(SHOTS / s)
+    dv = os.environ.get("PM_BENCH_DIRTY")
     return ingest_file(p, bench, "azahar", b, c, a.row, a.label or s, result, note, shot, [], device=DEVICE["azahar"],
-                       kind=bd["kind"] if bd else "adhoc", speed=a.speed, frame_limit=a.frame_limit)
+                       kind=bd["kind"] if bd else "adhoc", speed=a.speed, frame_limit=a.frame_limit,
+                       dirty=None if dv is None else dv == "1")
 
 
 def cmd_import_csv(a):
@@ -937,6 +1041,9 @@ def main(argv):
     x.add_argument("--build", type=int); x.add_argument("--commit"); x.add_argument("--shots", default="")
     x.add_argument("--speed", choices=SPEEDS, default="unknown"); x.add_argument("--frame-limit", type=float)
     x.set_defaults(f=cmd_ingest_last)
+    x = sub.add_parser("build-at"); x.add_argument("commit"); x.add_argument("bench"); x.add_argument("--row", required=True)
+    x.add_argument("--why", default=""); x.add_argument("--label", default="")
+    x.set_defaults(f=cmd_build_at)
     x = sub.add_parser("import-csv"); x.set_defaults(f=cmd_import_csv)
     x = sub.add_parser("where"); add_area(x); x.set_defaults(f=cmd_where)
     x = sub.add_parser("spots"); add_area(x); x.add_argument("--top", type=int, default=20); x.set_defaults(f=cmd_spots)

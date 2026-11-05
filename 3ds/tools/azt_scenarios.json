@@ -5155,5 +5155,79 @@
       ],
       "reason": "Log and file only. Stereo: both eyes of the frame are in one file, so the draw count is the sum of both eyes."
     }
+
+,
+    {
+      "name": "spot_mac01_pic",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+$"
+        }
+      ],
+      "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
+    },
+    {
+      "name": "spot_mac00_pic",
+      "status": "unverified",
+      "subject": "mac_00 (preset toad), Mario placed at pos -135 0 85 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 -135 0 85 pos -?\\d+ -?\\d+ -?\\d+$"
+        }
+      ],
+      "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
+    },
+    {
+      "name": "spot_sbk56_pic",
+      "status": "unverified",
+      "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+$"
+        }
+      ],
+      "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
+    }
   ]
 }

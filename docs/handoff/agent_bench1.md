@@ -9,11 +9,10 @@
 - Open: console benches need a live push by the orchestrator or user (not run here).
 - Commands: python 3ds/tools/bench.py list | show <bench> | run <bench> --row R --why "..." | ingest <log> --bench B --host H | compare B A B | trend B | rebuild.
 
-## STATE BENCH3
-- Row BENCH3 (speed mode of every run): done criteria 1 to 4 checked.
-- Tools: bench.py (speed and frame_limit fields; --speed on run, where, spots, compare, trend; check and show per speed), azt.ps1 -Speed turbo|normal (a scenario with -Turbo records turbo), bench_defs.json speed per bench (normal for all).
-- Data: run 21 (boot_mem turbo, build 2123 b553ce977, frame_limit 1000), run 22 (boot_mem normal, build 2123), run 23 (boot_opts normal, lane base binary, build 2099 b729b930b). Runs 1 to 20: speed unknown (not guessed).
-- Open: where has no rows for the boot runs (no windows, no sample rows). Use trend and show.
-- Open: console runs stay unknown. The default (normal) toad_standing query shows none until a console run is ingested with --speed normal.
-- Open: runs 18 to 20 in runs.jsonl (other session, builds 2122 and 2123) are not in the BENCH3 commit.
-- Commands: bench.py trend boot_mem --speed turbo | show boot_mem | compare boot_mem b729b930b b553ce977 --speed any.
+## STATE BENCH4
+- Row BENCH4 (three spots, build-at, dirty field, best-effort archive): done criteria 1 to 5 checked.
+- Tools: bench.py (default flag, dirty field, build-at; copies assets/us and ver/us/build from the main folder), build.sh (PM_BUILD_REV, source volume dropped before and after), push_3ds.sh (archive best effort).
+- Spots: spot_mac01_pic, spot_mac00_pic, spot_sbk56_pic log_pass (runs 34, 37, 41), shots opened. Prof spot benches not run (console push).
+- build-at c62660a42 (15 back) spot_mac01_pic: run 42, build 2136, dirty False, map_restore_table.c md5 unchanged.
+- Open: runs 33 (prof first marker, fixed) and 39 (shot lost, shared shots folder with another session) stay in runs.jsonl as fail records.
+- Commands: bench.py build-at <commit> <bench> --row R; bench.py run spot_mac01_pic --row R --why "..."; bench.py list.

@@ -1,11 +1,116 @@
 {
   "version": 1,
-  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. host (console_prof): azahar | o3ds | n3ds | host (o3dsxl is read as o3ds). scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted). speed: turbo | normal, the speed the bench runs at (bench.py run --speed overrides it for one run; azt.ps1 -Speed). Azahar benches: normal (no scenario runs -Turbo today). Console and host benches: normal. Queries use it as the default.",
+  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. host (console_prof): azahar | o3ds | n3ds | host (o3dsxl is read as o3ds). scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted). speed: turbo | normal, the speed the bench runs at (bench.py run --speed overrides it for one run; azt.ps1 -Speed). Azahar benches: normal (no scenario runs -Turbo today). Console and host benches: normal. Queries use it as the default. default: true (absent = true) shows the bench in bench.py list before the others; false is listed last. Spot benches (spot_*) are the defaults for every frame cost query.",
   "push_base": "audiostat texstat pacestat logstat",
   "consoles": {
     "o3ds": "192.168.1.131"
   },
   "benches": [
+    {
+      "name": "spot_mac01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": true,
+      "purpose": "Toad Town mac_01, Mario at pos 0 0 200. Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot.",
+      "scenario": "spot_mac01_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": true,
+      "purpose": "Toad Town mac_01, Mario at pos 0 0 200. Console prof mode (O3DS XL): frame cost at the spot.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 pos=0:0:200 prof=4",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ fps",
+      "tags": [
+        "console",
+        "prof",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac00_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": true,
+      "purpose": "mac_00 (preset toad), Mario at pos -135 0 85. Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot.",
+      "scenario": "spot_mac00_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac00_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": true,
+      "purpose": "mac_00 (preset toad), Mario at pos -135 0 85. Console prof mode (O3DS XL): frame cost at the spot.",
+      "scene_match": null,
+      "recipe": "warp=mac_00:0 pos=-135:0:85 prof=4",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ fps",
+      "tags": [
+        "console",
+        "prof",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_sbk56_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": true,
+      "purpose": "sbk_56, Mario at pos 20 0 440. Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot.",
+      "scenario": "spot_sbk56_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_sbk56_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": true,
+      "purpose": "sbk_56, Mario at pos 20 0 440. Console prof mode (O3DS XL): frame cost at the spot.",
+      "scene_match": null,
+      "recipe": "warp=sbk_56:0 pos=20:0:440 prof=4",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ fps",
+      "tags": [
+        "console",
+        "prof",
+        "spot"
+      ],
+      "gates": []
+    },
     {
       "name": "boot_mem",
       "kind": "azahar_stream",
@@ -43,7 +148,7 @@
       "name": "toad_standing",
       "kind": "console_prof",
       "speed": "normal",
-      "purpose": "Toad Town street, Mario standing at pos -264 20 -326, prof mode: the baseline of frame_budget.md.",
+      "purpose": "Toad Town street, Mario standing at pos -264 20 -326, prof mode: the baseline of frame_budget.md. Not a default spot (use spot_*).",
       "scene_match": "mac_01 m4 sp-107 b0 e0",
       "recipe": "warp=mac_01:0 story=ch0_toad_town pos=-264:20:-326 prof=4 loglevel=debug",
       "scenario": "prof_scene",
@@ -66,7 +171,8 @@
           "op": "<=",
           "ref": "baseline"
         }
-      ]
+      ],
+      "default": false
     },
     {
       "name": "toad_walk",

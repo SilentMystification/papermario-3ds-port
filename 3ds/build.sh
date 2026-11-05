@@ -18,10 +18,12 @@ NAME="pm3ds-build-${PM_LANE:-main}"
 read V0 C0 <<EOF2
 $(tr -d '\015' < 3ds/build_base.txt)
 EOF2
-BN=$((V0 + $(git rev-list --count HEAD) - C0))
-if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
+# BENCH4: PM_BUILD_REV = the commit to build (bench.py build-at: a git archive folder, GIT_DIR set by the caller). Unset: HEAD.
+REV=${PM_BUILD_REV:-HEAD}
+BN=$((V0 + $(git rev-list --count "$REV") - C0))
+if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ -z "$PM_BUILD_REV" ] && [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
 printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
-printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short HEAD)" >> 3ds/include/pm_build.h.tmp
+printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/include/pm_build.h.tmp
 # Rewrite pm_build.h only when the number changed: a new mtime would rebuild every file that includes it.
 cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
 
@@ -33,6 +35,9 @@ done
 IMG=pm3ds-build:1
 docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 
+# BENCH4: a build of another commit drops the shared source volume first, so no file of the main folder stays in it. The
+# main sync compares against its own manifest, so the volume is dropped again after the build (the next main sync copies all).
+if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; fi
 # Sync: copy only files whose size or mtime changed since the last sync.
 t0=$(date +%s)
 MAN=$OUT/src_manifest.txt
@@ -88,6 +93,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
     exit $status
 ' || rc=$?
 kill "$wdpid" 2>/dev/null || true
+if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; fi
 if [ "$rc" -ne 0 ]; then echo "BUILD FAILED exit $rc (container $NAME; stage timings above)" >&2; exit "$rc"; fi
 # HW5: keep the ELF of each build under its build number, so a Luma crash dump can be decoded later (3ds/tools/decode_dump.py).
 if [ -f $OUT/pm_3ds.elf ]; then

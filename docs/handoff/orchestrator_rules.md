@@ -27,5 +27,5 @@ Every turn: RUNNING / READY-NOT-LAUNCHED (with the exact conflict) / BLOCKED-ON-
 ## Console
 - The user judges speed on the console. Azahar numbers show direction only.
 - The orchestrator runs the push when the user asks, or after an epic is complete and its Azahar check passed. The user opens netloader first. Command: `PM_ROW=PUSH sh 3ds/push_3ds.sh --no-build --ip 192.168.1.131 -t 150 prof` (O3DS XL). The live log goes to build3ds/hw_live_log_131.txt. Do not FTP-pull logs.
-- push_3ds.sh archives each pushed 3dsx to 3ds/logs/builds/ and records it in 3ds/logs/perf/pushed_builds.txt. Agents do not archive by hand.
+- push_3ds.sh archives each pushed 3dsx to 3ds/logs/builds/ and records it in 3ds/logs/perf/pushed_builds.txt. The archive is optional: a failed archive prints one ARCHIVE WARNING line and the push goes on. Agents do not archive by hand.
 - A failed push gets one line (PUSH FAILED or NO LOG, the stage), then stop. No Luma dump decode, no boss fight and no full sweep unless the user asks.
