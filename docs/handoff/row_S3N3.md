@@ -4,7 +4,10 @@
 Build `nd_model_draw` (3ds/src/nd_model.c) in 3 small steps and prove each one. Design: docs/handoff/plan_s3n_native_models.md (read sections Design and Fallback only). Decisions B4 to B7: docs/handoff/agent_s3n.md (read its STATE and B-list only).
 
 ## Start state
-Branch nds1. Last commit d13be1856. Done: nd_gv_params (moved gv_params_calc), nd_native_submit (pm_gpu.c), nd_tex_handle_set (model.c load_texture_impl), nd_mode_compile (render mode lists). The draw still goes through the walker.
+Branch nds1. Last commit a890e3d96. 3a, 3b and S3N-3d are DONE: ndmcheck eq 15084/12896/10675, diff 0 at mac_01/mac_00/sbk_56 (state, TEV, unit 0 words, uniforms). Do row 3c only. Read the STATE block of docs/handoff/agent_s3n.md (B4 to B10) first.
+3c must also remove two walker reads, because after the switch (S3N-4) no walker binds or culls:
+- unit 0 slot: today nd_model_state takes the walker-bound slot and checks it by content key (pm_tex_slot_key). Find the slot from the desc itself (content key lookup in pm_tex.c, load on a miss through nd_tex_get), then pm_tex_slot_unit for the draw-time words.
+- cull: today the walker cull is injected (cull_set, cullskip count). Take it per group from the DlcEnt geometry ops (geom_at, as dlc_static_group), and compare it per group in ndmcheck (cullskip must go to 0).
 
 ## Rows (in order, one commit each)
 3a. STATE RESOLVE. `int nd_model_state(const Gfx* rec, NdDraw* d, NdMState* st)` fills, from the record and the compiled tables only (no walker global): NdTmplKey -> nd_tmpl_build -> d->tmpl; TEV colours (nd_tev_build, B7: combine 8 from the R4 words via pm_comb_build); d->u[0] from nd_tex_get(handle desc) + nd_tex_block; uvso, cmul, cadd, zmix from nd_gv_params. Returns 0 (fallback) for the B4 to B7 cases. Host case in the nd_host test: a hand-made record of a plain 1CYC SURFACE_OPA textured model gives the key fields that nd_raw_native would set for that state (write the expected values in the test from the rules in nd_raw_native, grep `static int nd_raw_native(void)` in pm_gpu.c). Gate: build, nd_host PASS.
