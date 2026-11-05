@@ -10,6 +10,8 @@
 - Where (per build, one area): `bench.py where --map <name> [--mode N --story N --battle N --entry N --x=LO..HI --y=LO..HI --z=LO..HI --host H]`. Chg1 windows are excluded (`--chg` adds them).
 - Spots (route comparison): `bench.py spots [--map <name>]` lists (map, entry, x, z rounded to 10) with run counts.
 - Compare and trend take the same area filters: `bench.py compare <bench> <buildA> <buildB> --map <name>`, `bench.py trend <bench> [<metric>] --map <name>`.
+- Speed: every run records `speed` (turbo, normal or unknown) and `frame_limit`. `bench.py run <bench> --speed turbo|normal` sets it (default: the bench `speed` in bench_defs.json, normal today). Old runs are `unknown`.
+- Queries (where, spots, compare, trend) take `--speed turbo|normal|unknown|any`. Default: the bench speed; where and spots: any, one block per speed. Turbo and normal rows are never averaged. A compare of builds with different speeds prints WARNING and no delta.
 - Gates of one run: `bench.py check <run_id>`. Unverified scenarios run with `-Try` (bench.py adds it).
 - A log pass of an azahar_pic bench is not a pass. A person reads the shot in build3ds/azt/shots/<scenario>/.
 

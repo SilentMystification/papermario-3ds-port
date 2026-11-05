@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. host (console_prof): azahar | o3ds | n3ds | host (o3dsxl is read as o3ds). scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted).",
+  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. host (console_prof): azahar | o3ds | n3ds | host (o3dsxl is read as o3ds). scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted). speed: turbo | normal, the speed the bench runs at (bench.py run --speed overrides it for one run; azt.ps1 -Speed). Azahar benches: normal (no scenario runs -Turbo today). Console and host benches: normal. Queries use it as the default.",
   "push_base": "audiostat texstat pacestat logstat",
   "consoles": {
     "o3ds": "192.168.1.131"
@@ -9,6 +9,7 @@
     {
       "name": "boot_mem",
       "kind": "azahar_stream",
+      "speed": "normal",
       "purpose": "Boot with no warp: boot options line and the memory line (linear and heap KB).",
       "scenario": "boot_opts",
       "cap": 30,
@@ -41,6 +42,7 @@
     {
       "name": "toad_standing",
       "kind": "console_prof",
+      "speed": "normal",
       "purpose": "Toad Town street, Mario standing at pos -264 20 -326, prof mode: the baseline of frame_budget.md.",
       "scene_match": "mac_01 m4 sp-107 b0 e0",
       "recipe": "warp=mac_01:0 story=ch0_toad_town pos=-264:20:-326 prof=4 loglevel=debug",
@@ -69,6 +71,7 @@
     {
       "name": "toad_walk",
       "kind": "console_prof",
+      "speed": "normal",
       "purpose": "Toad Town street, fixed walk by padscript, prof mode: cost while Mario moves.",
       "scene_match": null,
       "recipe": "warp=mac_01:0 story=ch0_toad_town padscript=go_91_87_900,wait60,go_-300_-300_700 prof=4 loglevel=debug",
@@ -86,6 +89,7 @@
     {
       "name": "battle_console",
       "kind": "console_prof",
+      "speed": "normal",
       "purpose": "Battle scene (one Goomba on kmr_03), prof mode: frame cost in battle.",
       "scene_match": null,
       "recipe": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 prof=4 loglevel=debug",
@@ -103,6 +107,7 @@
     {
       "name": "menu_console",
       "kind": "console_prof",
+      "speed": "normal",
       "purpose": "Pause status menu open, phase windows: cpu ms per frame and closes per frame.",
       "scene_match": null,
       "recipe": "preset=toad padscript=wait80,START*3,wait615,START*3 prof=4 phase loglevel=debug",
@@ -132,6 +137,7 @@
     {
       "name": "seam_pic",
       "kind": "azahar_pic",
+      "speed": "normal",
       "purpose": "Toad Town street picture with the CPU path triangle route counts (opsplit line). A person reads the shot.",
       "scenario": "mac01_seam",
       "cap": 90,
@@ -164,6 +170,7 @@
     {
       "name": "texdiff",
       "kind": "azahar_stream",
+      "speed": "normal",
       "purpose": "Toad Town street, M4 texture bind state-diff check over 6000 runs.",
       "scenario": "mac01_texdiff",
       "cap": 60,
@@ -197,6 +204,7 @@
     {
       "name": "mdldiff",
       "kind": "azahar_stream",
+      "speed": "normal",
       "purpose": "Toad Town street, M4-2 producer record check over 6000 records: record consumer state equals the old words.",
       "scenario": "mac01_mdldiff",
       "cap": 45,
@@ -235,6 +243,7 @@
     {
       "name": "ndplan",
       "kind": "azahar_stream",
+      "speed": "normal",
       "purpose": "Toad Town street walk, native plan layout check against the old path (ndplan line).",
       "scenario": "mac01_ndplan",
       "cap": 90,
@@ -268,6 +277,7 @@
     {
       "name": "ndunit",
       "kind": "azahar_stream",
+      "speed": "normal",
       "purpose": "Toad Town street walk, texture unit 0 register check against the native unit words (ndunit line).",
       "scenario": "mac01_ndunit",
       "cap": 90,
@@ -301,6 +311,7 @@
     {
       "name": "nd_host",
       "kind": "host_test",
+      "speed": "normal",
       "purpose": "Native draw host tests in docker pm3ds-host:1 (gate G1). Needs the docker daemon.",
       "command": "sh 3ds/tools/nd_host_test.sh",
       "cap": 600,
@@ -320,6 +331,7 @@
     {
       "name": "ndt_host",
       "kind": "host_test",
+      "speed": "normal",
       "purpose": "NDT2 host tests: combiner, matrix, fp24 dp4, record. Replaces nat_host_test.sh (not in the tree).",
       "command": "sh 3ds/tools/ndt_host_test.sh",
       "cap": 120,

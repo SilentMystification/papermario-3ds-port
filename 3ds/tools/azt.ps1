@@ -1,7 +1,7 @@
 <#
 azt.ps1 - run one named test scenario in Azahar through run_azahar.ps1, with fail-fast and a subject check.
 
-  powershell -File 3ds/tools/azt.ps1 <scenario> [-Row <PM_ROW>] [-Build <lane or build3ds/lane-<name>/*.3dsx>] [-Try]
+  powershell -File 3ds/tools/azt.ps1 <scenario> [-Row <PM_ROW>] [-Build <lane or build3ds/lane-<name>/*.3dsx>] [-Try] [-Speed turbo|normal]
   powershell -File 3ds/tools/azt.ps1 -List
   powershell -File 3ds/tools/azt.ps1 <scenario> -CheckLog <file>     (checks an existing log, starts nothing)
 
@@ -30,6 +30,7 @@ param(
     [string]$Build = "",
     [string]$CheckLog = "",
     [switch]$Try,
+    [ValidateSet("", "turbo", "normal")][string]$Speed = "", # BENCH3: speed of this start (default: -Turbo in the scenario, else normal)
     [switch]$List,
     [switch]$SelfTest
 )
@@ -115,7 +116,7 @@ if ($SelfTest) {
 }
 if ($List -or -not $Scenario) {
     foreach ($s in $scs) { Write-Output ("{0,-14} {1,-16} {2}" -f $s.name, $s.status, $s.subject) }
-    if (-not $Scenario) { Write-Output "usage: azt.ps1 <scenario> [-Row <id>] [-Build <lane>] [-Try] [-CheckLog <file>]" }
+    if (-not $Scenario) { Write-Output "usage: azt.ps1 <scenario> [-Row <id>] [-Build <lane>] [-Try] [-Speed turbo|normal] [-CheckLog <file>]" }
     exit 0
 }
 $sc = $scs | Where-Object { $_.name -eq $Scenario } | Select-Object -First 1
@@ -235,6 +236,8 @@ function Exit-Run([int]$code) {
     if ($env:PM_BENCH_LABEL) { $ia += @("--label", $env:PM_BENCH_LABEL) }
     if ($env:PM_BENCH_BUILD) { $ia += @("--build", $env:PM_BENCH_BUILD) }
     if ($env:PM_BENCH_COMMIT) { $ia += @("--commit", $env:PM_BENCH_COMMIT) }
+    $ia += @("--speed", $speed)
+    if ($null -ne $frameLimit) { $ia += @("--frame-limit", [string]$frameLimit) }
     & python @ia
     if ($LASTEXITCODE -ne 0) { Write-Output "BENCH: run not recorded (bench.py exit $LASTEXITCODE)" }
     exit $code
@@ -249,6 +252,18 @@ if ($CheckLog) {
 $argv = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $repo "3ds\run_azahar.ps1"),
           "-Until", [string]$sc.until, "-Timeout", [string]$cap, "-Force", "-Debug", [string]$sc.debug)
 if ($sc.extra) { $argv += @($sc.extra) }
+# BENCH3: the speed of this start, recorded by Exit-Run. Turbo: frame_limit is the TurboLimit of the run (run_azahar default 1000)
+$extraArgs = @($sc.extra)
+$scTurbo = $extraArgs -contains "-Turbo"
+if ($Speed -eq "normal" -and $scTurbo) { Write-Output "SPEED CONFLICT: scenario $($sc.name) has -Turbo in its extra args, -Speed normal asks for normal. Nothing was run."; exit 5 }
+$speed = if ($Speed -eq "turbo" -or $scTurbo) { "turbo" } else { "normal" }
+$frameLimit = $null
+if ($speed -eq "turbo") {
+    if (-not $scTurbo) { $argv += @("-Turbo") }
+    $frameLimit = 1000
+    $li = [array]::IndexOf($extraArgs, "-TurboLimit")
+    if ($li -ge 0 -and $li + 1 -lt $extraArgs.Count) { $frameLimit = [double]$extraArgs[$li + 1] }
+}
 foreach ($a in $argv) { if ($a -match '"') { Write-Output "ARG: a value has a double quote, not allowed: $a"; exit 5 } }
 if (-not (Test-Path (Join-Path $outDir "pm_3ds.3dsx"))) { Write-Output "BUILD: $outDir\pm_3ds.3dsx is missing. Build first. Nothing was run."; exit 5 }
 $cmd = ($argv | ForEach-Object { if ($_ -match '^-[A-Za-z]+$') { $_ } else { '"' + $_ + '"' } }) -join " "
