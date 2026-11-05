@@ -500,6 +500,3 @@ ctr_generate_smdh("${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh"
     AUTHOR "Dadrewster569"
     ICON "${DECOMP}/LaunchIcon.png"
 )
-
-# M4: the model walk is bound by instruction cache misses (16 KB L1I, hot code about 50 KB): the walker, the GPU layer and the texture layer build for size
-set_property(SOURCE src/pm_gbi.c src/pm_gpu.c src/pm_tex.c APPEND PROPERTY COMPILE_OPTIONS -Os)
