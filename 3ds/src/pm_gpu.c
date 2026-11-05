@@ -608,7 +608,17 @@ int pm_tex_cur_vram_pending(void); int pm_tex_aux_vram_pending(void);
 static int pool_buf_ok; /* DR1: the citro3d buffer info holds the vertex pool (set once per frame, cleared by a raw batch and by sh_clear) */
 static int proj_ok; static C3D_Mtx proj_last; /* DR1: the projection uniform of the last draw */
 static int noise_bound; /* DC2: unit 2 holds the noise texture (cleared by sh_clear) */
-static void sh_clear(void) { sh.has = 0; tev_valid = 0; pool_buf_ok = 0; proj_ok = 0; noise_bound = 0; pm_tex_bind_reset(); }
+/* S3 M3: the native raw draw (nd_raw_native) writes the effect, TEV, texture unit and uniform registers itself. The GPU then holds state that citro3d did not write. nd_leave_native
+ * marks the context parts a native draw touched as dirty, so the next citro3d draw re-emits what the walker staged (its shadows still match that staged copy), and clears the
+ * program binding, which makes C3D_BindProgram mark every uniform dirty. Runs at a frame begin and a split (sh_clear) and before a draw that citro3d makes. */
+static int ndn_mode; /* 1: the GPU registers hold native state */
+static void nd_leave_native(void) {
+    if (!ndn_mode) return;
+    ndn_mode = 0;
+    *(volatile unsigned*)(__C3D_Context + 32) |= 0x10u | 0x200u | 0x20000u | 0x3800000u | 0xFC000000u; /* effect, texenv buffer, texenv stages, texture units */
+    bound = 0; buf_cur = 0; pool_buf_ok = 0; proj_ok = 0;
+}
+static void sh_clear(void) { nd_leave_native(); sh.has = 0; tev_valid = 0; pool_buf_ok = 0; proj_ok = 0; noise_bound = 0; pm_tex_bind_reset(); }
 static void sh_depth_test(bool en, GPU_TESTFUNC f, GPU_WRITEMASK m) {
     if ((sh.has & SH_DT) && sh.dt[0] == (int)en && sh.dt[1] == (int)f && sh.dt[2] == (int)m) return;
     sh.dt[0] = en; sh.dt[1] = (int)f; sh.dt[2] = (int)m; sh.has |= SH_DT; pm_dc_c[DC_SHM]++; C3D_DepthTest(en, f, m);
@@ -870,6 +880,113 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
     dc_kick();
 }
 
+/* the scissor of the main target (flush_draw and the native draw): the game scissor in the rotated 240 x 400 buffer */
+static void stage_scissor(void) {
+        int left = 240 - sci_y1;
+        int right = 240 - sci_y0;
+        /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
+        int ui = pm_wide && (!draw_3d || ui_ortho);
+        int top = !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
+        int bottom = !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
+        if (left < 0) left = 0;
+        if (right > 240) right = 240;
+        if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
+        if (bottom > (pm_wide ? 400 : 360)) bottom = pm_wide ? 400 : 360;
+        if (right > left && bottom > top)
+            sh_scissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)(400 - bottom), (u32)right, (u32)(400 - top)); /* V23: the GPU counts the 400 axis from the other end */
+        else
+            sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
+}
+static inline int graw_is_pm4(void) { return gni > 0 && g_pal && !g_use5 && gv4_on; }
+/* S3 M3: the native raw close. A raw batch with the palette program (pm4, no lights) on the main target, one texture unit at most, no stencil pass: the effect, TEV, texture unit
+ * and uniform words come from nd_emit_draw (host tested against the real command stream) and go into the command buffer with GPUCMD_AddRawCommands. The state that is not in
+ * those words (program, buffer info, scissor, user clip) is staged through citro3d as before, and C3Di_UpdateContext writes it first. Returns 0 when the batch needs the old close. */
+extern void C3Di_UpdateContext(void);
+int pm_tex_native_unit0(NdUnit* u);
+static NdShadow ndn_sh; static TevKey ndn_tk; static NdTevOut ndn_to; static int ndn_to_ok;
+unsigned nd_native_draws, nd_native_refused;
+static int nd_raw_native(void) {
+    if (!graw_is_pm4()) return 0;
+    if (off_active || grab_bind || r_zmark || nozt_on() || (combine == 8 && (plan.uses_tex1 || plan.uses_noise))) { nd_native_refused++; return 0; }
+    int z = z_on && (!rect_2d || rect_z);
+    NdUnit u0;
+    memset(&u0, 0, sizeof u0);
+    int t = 0;
+    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; return 0; } }
+    const int tex = t > 0, i8_0 = tex && pm_tex_i8(0);
+    NdTmplKey nk;
+    memset(&nk, 0, sizeof nk);
+    nk.pass = 0; nk.raw = 1; nk.cull = (uint8_t)g_cullm;
+    nk.z = (uint8_t)z; nk.zmark = 0; nk.zcmp = (uint8_t)r_zcmp; nk.zupd = (uint8_t)r_zupd; nk.nocol = (uint8_t)r_nocol; nk.decal = (uint8_t)r_decal;
+    { float db = decal_bias(); memcpy(&nk.dbias, &db, 4); }
+    nk.atest_on = r_atest >= 0; nk.aref = (uint8_t)(r_atest >= 0 ? r_atest : 0);
+    nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = 0; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = 0; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
+    nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dview != 0; nk.off_active = 0; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
+    nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = 0;
+    if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
+    int id = nd_tmpl_build(&nk);
+    if (id < 0) { nd_native_refused++; return 0; }
+    /* from here the batch is drawn natively */
+    TevKey tk;
+    memset(&tk, 0, sizeof tk);
+    tk.combine = combine; tk.tex = tex; tk.tex1 = 0; tk.i8_0 = i8_0; tk.i8_1 = 0; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
+    tk.dview = dview; tk.off_active = 0; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
+    tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol; tk.plan_gen = combine == 8 ? plan_gen : 0;
+    if (!ndn_to_ok || memcmp(&tk, &ndn_tk, sizeof tk) != 0) { /* the stage words with the colours, built when the TEV key changes (as tev_same does for citro3d) */
+        NdTevIn ti = { &nk, &plan, prim, cconst, r_mixcol };
+        nd_tev_build(&ti, &ndn_to);
+        ndn_tk = tk; ndn_to_ok = 1;
+    }
+    if (ndref_on) { ndref_nz = 0; ndref_raw = 1; ndref_draw(&tk, z, 1, 4, (unsigned)g_cullm); ndref_state(0, z); }
+    cen_add(&tk, z, 1, 4, (unsigned)g_cullm, tex ? pm_tex_census_id(0) : 0u, 0u, gni / 3u);
+    dc_on = 0;
+    proj_ok = 0; pool_buf_ok = 0;
+    sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
+    if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; }
+    if (buf_cur != 2) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, gring, 16, 3, 0x210); buf_cur = 2; }
+    stage_scissor();
+    sh_user_clip(1);
+    stencil_on = 0; /* the template writes the stencil test off */
+    float palk[ND_NPAL][16];
+    unsigned npal = pal_n < ND_NPAL ? pal_n : ND_NPAL;
+    for (unsigned k = 0; k < npal; k++) {
+        unsigned gm = pal_g[k];
+        if (pcomp_gen[gm] != post_gen) pcomp_calc(gm);
+        memcpy(palk[k], pcomp[gm].m, 64);
+        gv_palup_n++; pm_dc_c[DC_PALUP]++;
+    }
+    NdDraw d;
+    memset(&d, 0, sizeof d);
+    d.tmpl = id;
+    for (int i = 0; i < 6; i++) d.tev_col[i] = ndn_to.st[i][3];
+    d.buf_col = ndn_to.buf_color; d.has_buf = (uint8_t)ndn_to.buf_set;
+    d.u[0] = u0;
+    d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
+    memcpy(d.uvso, g_uvso, 16); memcpy(d.cmul, g_cmul, 16); memcpy(d.cadd, g_cadd, 16);
+    d.zmix[0] = g_zmix[0]; d.zmix[1] = zmix_y_dbg(g_zmix[1]);
+    d.idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(gidx + gi_start) - 0x18000000u);
+    d.nidx = gni;
+    if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
+    C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
+    uint32_t out[512];
+    unsigned nw = nd_emit_draw(out, &ndn_sh, &d);
+    GPUCMD_AddRawCommands(out, nw);
+    if (ndref_on) ndref_cmd();
+    nd_native_draws++;
+    dv_draw++;
+    draws_frame++;
+    PH_ADD(C_DRAW, 1);
+    PH_ADD(C_VTXSLOT, gni);
+    gi_start = gidx_n;
+    gni = 0; pal_n = 0;
+    batch_identity = 0;
+    drew = 1;
+    if (rect_y1 <= rect_y0) grab_dirty = 1;
+    else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
+    else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
+    dc_kick();
+    return 1;
+}
 static void flush_draw(void) {
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
@@ -900,6 +1017,8 @@ static void flush_draw(void) {
         if (snap0 || snap1) off_snapshot(off_cur);
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
+    if (graw && nd_raw_native()) return;
+    nd_leave_native(); /* a draw that citro3d makes: it re-emits what the native draws changed */
     pm_dc_c[DC_RAW] += (unsigned)graw;
     DC_T(0);
     if (dc_on) GPUCMD_GetBuffer(NULL, NULL, &dc_w0);
@@ -1035,22 +1154,7 @@ static void flush_draw(void) {
     /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide
      * game picture and whatever scissor the display list set inside it. */
     if (off_active) scissor_off();
-    else {
-        int left = 240 - sci_y1;
-        int right = 240 - sci_y0;
-        /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
-        int ui = pm_wide && (!draw_3d || ui_ortho);
-        int top = !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
-        int bottom = !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
-        if (left < 0) left = 0;
-        if (right > 240) right = 240;
-        if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
-        if (bottom > (pm_wide ? 400 : 360)) bottom = pm_wide ? 400 : 360;
-        if (right > left && bottom > top)
-            sh_scissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)(400 - bottom), (u32)right, (u32)(400 - top)); /* V23: the GPU counts the 400 axis from the other end */
-        else
-            sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
-    }
+    else stage_scissor();
     sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
     if (off_active) blend_off(memb);
     else if (r_blend) /* V25: a 2D rectangle follows its own blender mode (the story page strips use alpha = PRIM with an opaque blender) */

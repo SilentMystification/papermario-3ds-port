@@ -420,7 +420,7 @@
         },
         {
           "name": "native state",
-          "regex": "ndst f200 geom [0-9a-f]+ .* unk 0$"
+          "regex": "ndst native \\d+ refused \\d+ f200 geom [0-9a-f]+ .* unk 0$"
         }
       ],
       "reason": "S2-2 picture and state check. Until is the shot at frame 204."

@@ -11,6 +11,7 @@ uint64_t svcGetSystemTick(void);
 static NdRec nd_rec[ND_REC_MAX] __attribute__((aligned(32)));
 static unsigned nd_n;
 
+extern unsigned nd_native_draws, nd_native_refused;
 extern int pm_debug_has(const char* key);
 extern void pm_log_d(const char* fmt, ...);
 extern unsigned pm_frame_count(void);
@@ -19,8 +20,9 @@ static __attribute__((cold, noinline)) void nd_st_log(void) {
     static int on = -1;
     if (on < 0) on = pm_debug_has("ndst");
     if (!on || pm_frame_count() % 100u) return;
-    pm_log_d("ndst f%u geom %08x omh %08x oml %08x comb %08x %08x prim %08x scis %u %u %u %u mtx %u pop %u fill %u rect %u dl %u end %u load %u unk %u", pm_frame_count(), nd_st.geom, nd_st.om_h, nd_st.om_l,
+    pm_log_d("ndst native %u refused %u f%u geom %08x omh %08x oml %08x comb %08x %08x prim %08x scis %u %u %u %u mtx %u pop %u fill %u rect %u dl %u end %u load %u unk %u", nd_native_draws, nd_native_refused, pm_frame_count(), nd_st.geom, nd_st.om_h, nd_st.om_l,
              nd_st.comb_w0, nd_st.comb_w1, nd_st.prim, nd_st.sc_ulx, nd_st.sc_uly, nd_st.sc_lrx, nd_st.sc_lry, nd_st.n_mtx, nd_st.n_pop, nd_st.n_fill, nd_st.n_rect, nd_st.n_dl, nd_st.n_enddl, nd_st.n_load, nd_st.n_unknown);
+    nd_native_draws = nd_native_refused = 0;
     nd_st.n_mtx = nd_st.n_pop = nd_st.n_fill = nd_st.n_rect = nd_st.n_dl = nd_st.n_enddl = nd_st.n_load = nd_st.n_unknown = 0;
 }
 void nd_frame_begin(void) { nd_n = 0; nd_st_log(); }
