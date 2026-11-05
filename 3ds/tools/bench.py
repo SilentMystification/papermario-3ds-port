@@ -1,29 +1,45 @@
 #!/usr/bin/env python3
-"""bench.py: named benchmarks, a run log and an index for comparing profiling numbers between builds.
+"""bench.py: named benchmarks, a run log, a per-window sample index and area queries for comparing profiling numbers between builds.
 This is the entry point for every test and profiling run (it replaces the text test catalog).
 
   python 3ds/tools/bench.py list [--tag T]
   python 3ds/tools/bench.py show <bench>
   python 3ds/tools/bench.py run <bench> --row <row> --why "<text>" [--label L] [--build N] [--commit H]
         azahar_pic, azahar_stream: needs --why. Writes the justification line to 3ds/logs/perf/status_<row>.txt,
-        then starts the scenario through azt.ps1 and ingests build3ds/last_log.txt.
+        then starts the scenario through azt.ps1. azt.ps1 records the run itself (ingest-last), so run does not ingest.
         host_test: runs the command, ingests its output (metric rc = exit code).
         console_prof: prints the push command only. Run `ingest` on the log after the push.
-  python 3ds/tools/bench.py ingest <log> --bench <bench> --host azahar|o3dsxl|n3ds [--build N] [--commit H] [--row R] [--label L] [--note N]
-        Parses the prof lines (prof_by_scene.py) and the log_metrics regexes of the bench. One run per scene.
-  python 3ds/tools/bench.py import-csv
-        Appends docs/handoff/perf_history.csv rows as runs (tag legacy_import). Rows already imported are skipped.
-  python 3ds/tools/bench.py compare <bench> <buildA> <buildB>      (build = commit prefix or build number)
-  python 3ds/tools/bench.py compare <bench> --last 2
-  python 3ds/tools/bench.py trend <bench> [<metric>]          (no metric: the prof_record.py trend layout, fps and ft)
+  python 3ds/tools/bench.py ingest <log> --bench <bench> --host azahar|o3ds|n3ds|host [--build N] [--commit H] [--row R] [--label L] [--note N] [--device D]
+        Parses the prof windows (prof_by_scene.py) and the log_metrics regexes of the bench. One run per scene.
+        Build and commit come from the log's "build N git H" line when not given. Without that line, from
+        3ds/logs/perf/pushed_builds.txt (last push at or before the log's write time). Else null with a warning.
+  python 3ds/tools/bench.py ingest-last --log <log> --scenario <name> --row <row> --rc <n> [--label L] [--build N] [--commit H] [--shots DIR]
+        Called by azt.ps1 after each scenario start that wrote a log. A scenario with a bench records under that bench;
+        any other scenario records as bench "adhoc:<scenario>".
+  python 3ds/tools/bench.py import-csv                      (docs/handoff/perf_history.csv rows as runs, tag legacy_import; rows already imported are skipped)
+  python 3ds/tools/bench.py where --map <name> [area filters] [--chg]
+        Per build (build, commit, date, host): windows, mean fps, ft_ms, nd_ms, lg_ms, gb_ms, delta against the first row.
+  python 3ds/tools/bench.py spots [--map <name>] [area filters] [--top N]
+        Distinct (map, entry, end x and z rounded to 10 units) spots with run and window counts.
+  python 3ds/tools/bench.py compare <bench> <buildA> <buildB> [area filters]   (build = commit prefix or build number)
+  python 3ds/tools/bench.py compare <bench> --last 2 [area filters]
+  python 3ds/tools/bench.py trend <bench> [<metric>] [area filters]           (no metric: the prof_record.py trend layout, fps and ft)
   python 3ds/tools/bench.py check <run_id>                    (evaluate the gates of one run)
   python 3ds/tools/bench.py rebuild                           (drop and rebuild bench.db from runs.jsonl and bench_defs.json)
 
+Area filters (where, spots, compare, trend): --map NAME --mode N --story N --battle N --entry N --x=LO..HI --y=LO..HI --z=LO..HI
+  --host azahar|o3ds|n3ds|host --chg (include chg1 windows; default excluded). Use the = form for negative ranges (--x=-300..0).
+  Position bounds filter on the window end position. Imported history rows have no window positions: a position filter drops them.
+
+Hosts: azahar, o3ds (Old 3DS, XL included; the old value o3dsxl is read as o3ds), n3ds, host (host tests).
 Files: 3ds/tools/bench_defs.json (benches, tracked, hand edited). 3ds/logs/perf/runs.jsonl (one JSON line per run, append only,
-the source of truth, tracked). 3ds/logs/perf/bench.db (SQLite index, untracked, rebuilt after every write).
+the source of truth, tracked; each run holds its windows with map, area, mode, story, battle, entry, pos0, pos).
+3ds/logs/perf/bench.db (SQLite index, untracked, rebuilt after every write: tables bench, build, run, metric, sample).
+sample has one row per window (win "f<frame> w<size>"; ts is the run wall time; frame is the window frame number). A run with
+a window count and no window records (imported history) gets one row with win "agg" and extra_json agg_windows = count.
 Gate: {metric, op, value} or {metric, op, ref: baseline}. The baseline is the earliest run of the bench with that metric.
 """
-import argparse, csv, datetime, json, math, os, re, sqlite3, subprocess, sys
+import argparse, collections, csv, datetime, json, os, re, sqlite3, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -36,23 +52,36 @@ SCEN = HERE / "azt_scenarios.json"
 PERF = REPO / "3ds" / "logs" / "perf"
 RUNS = PERF / "runs.jsonl"
 DB = PERF / "bench.db"
+PUSHED = PERF / "pushed_builds.txt"
 CSV = REPO / "docs" / "handoff" / "perf_history.csv"
-LAST_LOG = REPO / "build3ds" / "last_log.txt"
 SHOTS = REPO / "build3ds" / "azt" / "shots"
 OUT = REPO / "build3ds" / "bench"
-HOSTS = ("azahar", "o3dsxl", "n3ds")
+HOSTS = ("azahar", "o3ds", "n3ds", "host")
+HOST_ALIAS = {"o3dsxl": "o3ds"}
+DEVICE = {"azahar": "azahar emulator on pc", "host": "host pc (docker)", "o3ds": "o3ds xl 192.168.1.131"}
 RENAME = {"fps": "fps", "ft": "ft_ms", "nd": "nd_ms", "lg": "lg_ms", "gb": "gb_ms", "dr": "draws", "tri": "tris"}
 ORDER = ["fps", "ft_ms", "nd_ms", "lg_ms", "gb_ms", "draws", "tris", "windows"]
+MET = ("fps", "ft_ms", "nd_ms", "lg_ms", "gb_ms")
+AREA = ("mode", "story", "battle", "entry")
+SPOT_STEP = 10
 OPS = {"==": lambda a, b: a == b, "!=": lambda a, b: a != b, "<": lambda a, b: a < b,
        "<=": lambda a, b: a <= b, ">": lambda a, b: a > b, ">=": lambda a, b: a >= b}
+SCENE_KEY = re.compile(r"^(\S+) m(-?\d+) sp(-?\d+) b(-?\d+) e(-?\d+)$")
+BUILD_LINE = re.compile(r"\bbuild (\d+) git (\S+)")
+PUSHED_LINE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d)\s.*?\bbuild (\d+)\s+git (\S+)")
 SCHEMA = """
 CREATE TABLE bench(name TEXT PRIMARY KEY, kind TEXT, purpose TEXT, defs_json TEXT);
 CREATE TABLE build(build_no INTEGER, commit_hash TEXT, date TEXT);
-CREATE TABLE run(id INTEGER PRIMARY KEY, bench TEXT, kind TEXT, host TEXT, build_no INTEGER, commit_hash TEXT, date TEXT, ts TEXT,
-  row TEXT, label TEXT, result TEXT, scene TEXT, log_path TEXT, shot_path TEXT, note TEXT, tags TEXT, x_range TEXT, z_range TEXT);
+CREATE TABLE run(id INTEGER PRIMARY KEY, bench TEXT, kind TEXT, host TEXT, device TEXT, build_no INTEGER, commit_hash TEXT, date TEXT, ts TEXT,
+  row TEXT, label TEXT, result TEXT, scene TEXT, log_path TEXT, shot_path TEXT, note TEXT, tags TEXT, x_range TEXT, y_range TEXT, z_range TEXT);
 CREATE TABLE metric(run_id INTEGER, win TEXT, key TEXT, value REAL);
+CREATE TABLE sample(run_id INTEGER, win TEXT, frame INTEGER, ts TEXT, build_no INTEGER, host TEXT, map TEXT, area TEXT, mode INTEGER,
+  story INTEGER, battle INTEGER, entry INTEGER, chg INTEGER, x0 REAL, y0 REAL, z0 REAL, x REAL, y REAL, z REAL,
+  fps REAL, ft_ms REAL, nd_ms REAL, lg_ms REAL, gb_ms REAL, extra_json TEXT);
 CREATE INDEX run_bench ON run(bench);
 CREATE INDEX metric_run ON metric(run_id);
+CREATE INDEX sample_run ON sample(run_id);
+CREATE INDEX sample_map ON sample(map, entry);
 """
 
 
@@ -76,6 +105,17 @@ def posix(p):
     return "/" + s[0].lower() + s[2:].replace("\\", "/") if len(s) > 2 and s[1] == ":" else s.replace("\\", "/")
 
 
+def norm_host(h):
+    return HOST_ALIAS.get(h or "", h or "")
+
+
+def device_note(host):
+    if host in DEVICE:
+        return DEVICE[host]
+    ip = (load_defs().get("consoles") or {}).get(host)
+    return ("%s %s" % (host, ip)) if ip else (host or "")
+
+
 def load_defs():
     return json.loads(DEFS.read_text(encoding="utf-8"))
 
@@ -97,7 +137,15 @@ def scenario(name):
 def read_runs():
     if not RUNS.exists():
         return []
-    return [json.loads(x) for x in RUNS.read_text(encoding="utf-8").splitlines() if x.strip()]
+    out = []
+    for x in RUNS.read_text(encoding="utf-8").splitlines():
+        if not x.strip():
+            continue
+        r = json.loads(x)
+        r["host"] = norm_host(r.get("host"))
+        r.setdefault("device", "")
+        out.append(r)
+    return out
 
 
 def append_runs(recs):
@@ -107,8 +155,42 @@ def append_runs(recs):
         for r in recs:
             n += 1
             r["run_id"] = n
+            r["host"] = norm_host(r.get("host"))
+            r["device"] = r.get("device") or device_note(r["host"])
             f.write(json.dumps(r, separators=(",", ":")) + "\n")
     return rebuild_db()
+
+
+def scene_fields(scene):
+    """Map and mode/story/battle/entry of a run's scene key (`<map> m<mode> sp<story> b<battle> e<entry>`). Other keys: map untagged."""
+    m = SCENE_KEY.match(scene or "")
+    if not m:
+        return {"map": "untagged", "area": None, "mode": None, "story": None, "battle": None, "entry": None}
+    return {"map": m.group(1), "area": None, "mode": int(m.group(2)), "story": int(m.group(3)), "battle": int(m.group(4)), "entry": int(m.group(5))}
+
+
+def sample_rows(r):
+    """Sample rows of one run record (the sample table, see the module docstring)."""
+    rid, ts, bn, host = r["run_id"], r.get("ts"), r.get("build_no"), r.get("host")
+    base = scene_fields(r.get("scene"))
+    rows = []
+    for w in r.get("windows", []):
+        f = {k: w.get(k) for k in ("map", "area", "mode", "story", "battle", "entry")}
+        if w.get("map") is None:
+            f = base
+        p0 = w.get("pos0") or [None, None, None]
+        p = w.get("pos") or [None, None, None]
+        m = w.get("m", {})
+        rows.append((rid, w["win"], w.get("frame"), ts, bn, host, f["map"], f["area"], f["mode"], f["story"], f["battle"], f["entry"],
+                     1 if w.get("chg") else 0, p0[0], p0[1], p0[2], p[0], p[1], p[2],
+                     m.get("fps"), m.get("ft_ms"), m.get("nd_ms"), m.get("lg_ms"), m.get("gb_ms"), json.dumps({"wsize": w.get("wsize")})))
+    nw = int((r.get("run") or {}).get("windows") or 0)
+    if not r.get("windows") and nw > 0:
+        m = r.get("run", {})
+        rows.append((rid, "agg", None, ts, bn, host, base["map"], base["area"], base["mode"], base["story"], base["battle"], base["entry"], 0,
+                     None, None, None, None, None, None,
+                     m.get("fps"), m.get("ft_ms"), m.get("nd_ms"), m.get("lg_ms"), m.get("gb_ms"), json.dumps({"agg_windows": nw})))
+    return rows
 
 
 def rebuild_db():
@@ -121,21 +203,24 @@ def rebuild_db():
     for b in defs["benches"]:
         con.execute("INSERT INTO bench VALUES (?,?,?,?)", (b["name"], b["kind"], b["purpose"], json.dumps(b, sort_keys=True)))
     runs = read_runs()
-    nm = 0
+    nm = ns = 0
     for r in runs:
-        con.execute("INSERT INTO run VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (r["run_id"], r["bench"], r.get("kind"), r.get("host"), r.get("build_no"), r.get("commit"), r.get("date"), r.get("ts"),
-                     r.get("row"), r.get("label"), r.get("result"), r.get("scene", ""), r.get("log_path"), r.get("shot_path"), r.get("note"),
-                     ",".join(r.get("tags", [])), r.get("x_range", ""), r.get("z_range", "")))
+        con.execute("INSERT INTO run VALUES (%s)" % ",".join("?" * 20),
+                    (r["run_id"], r["bench"], r.get("kind"), r.get("host"), r.get("device", ""), r.get("build_no"), r.get("commit"), r.get("date"),
+                     r.get("ts"), r.get("row"), r.get("label"), r.get("result"), r.get("scene", ""), r.get("log_path"), r.get("shot_path"),
+                     r.get("note"), ",".join(r.get("tags", [])), r.get("x_range", ""), r.get("y_range", ""), r.get("z_range", "")))
         rows = [(r["run_id"], "run", k, float(v)) for k, v in r.get("run", {}).items()]
         for w in r.get("windows", []):
             rows += [(r["run_id"], w["win"], k, float(v)) for k, v in w["m"].items()]
         con.executemany("INSERT INTO metric VALUES (?,?,?,?)", rows)
         nm += len(rows)
+        srows = sample_rows(r)
+        con.executemany("INSERT INTO sample VALUES (%s)" % ",".join("?" * 25), srows)
+        ns += len(srows)
     con.execute("INSERT INTO build SELECT MAX(build_no), commit_hash, MIN(date) FROM run GROUP BY commit_hash")
     con.commit()
     con.close()
-    return len(defs["benches"]), len(runs), nm
+    return len(defs["benches"]), len(runs), nm, ns
 
 
 def open_db():
@@ -144,6 +229,23 @@ def open_db():
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     return con
+
+
+def mean_vals(vals):
+    vals = [v for v in vals if v is not None]
+    return sum(vals) / len(vals) if vals else None
+
+
+def wmean(rows, k):
+    """Mean of column k over sample rows. Each row counts n windows (an agg row counts its windows)."""
+    num = den = 0.0
+    for r in rows:
+        v = r.get(k)
+        if v is None:
+            continue
+        num += v * r["n"]
+        den += r["n"]
+    return num / den if den else None
 
 
 def bench_runs(name):
@@ -165,6 +267,66 @@ def bench_runs(name):
         if x["key"] is not None:
             d["m"][x["key"]] = x["value"]
     return list(out.values())
+
+
+def select_samples(con, f, bench=None):
+    """Sample rows that pass the area filter f (see flt_of). Each row gets n, its window count."""
+    wh, args = [], []
+    if bench:
+        wh.append("r.bench = ?")
+        args.append(bench)
+    if "map" in f:
+        wh.append("s.map = ?")
+        args.append(f["map"])
+    for k in AREA:
+        if k in f:
+            wh.append("s.%s = ?" % k)
+            args.append(f[k])
+    for ax in ("x", "y", "z"):
+        if ax in f:
+            wh.append("s.%s BETWEEN ? AND ?" % ax)
+            args += list(f[ax])
+    if "host" in f:
+        wh.append("s.host = ?")
+        args.append(f["host"])
+    if not f.get("chg"):
+        wh.append("s.chg = 0")
+    sql = ("SELECT s.run_id, s.win, s.ts, s.build_no, s.host, s.map, s.area, s.mode, s.story, s.battle, s.entry, s.chg, "
+           "s.x0, s.y0, s.z0, s.x, s.y, s.z, s.fps, s.ft_ms, s.nd_ms, s.lg_ms, s.gb_ms, s.extra_json, "
+           "r.bench, r.date, r.commit_hash, r.scene FROM sample s JOIN run r ON r.id = s.run_id")
+    if wh:
+        sql += " WHERE " + " AND ".join(wh)
+    out = []
+    for x in con.execute(sql, args).fetchall():
+        d = dict(x)
+        d["n"] = json.loads(d.pop("extra_json") or "{}").get("agg_windows", 1)
+        out.append(d)
+    return out
+
+
+def filtered_runs(name, f):
+    """Run records of one bench, built from the sample rows that pass f. Same shape as bench_runs()."""
+    bd = bench_def(name) or {}
+    sm = bd.get("scene_match")
+    con = open_db()
+    rows = select_samples(con, f, bench=name)
+    info = {x["id"]: dict(x) for x in con.execute("SELECT id, date, commit_hash, build_no, scene, host, result, row, label, x_range, z_range, note "
+                                                  "FROM run WHERE bench = ?", (name,))}
+    con.close()
+    by = collections.OrderedDict()
+    for r in rows:
+        by.setdefault(r["run_id"], []).append(r)
+    out = []
+    for rid in sorted(by):
+        i = info.get(rid)
+        if not i or (sm and sm not in (i["scene"] or "")):
+            continue
+        m = {k: v for k, v in ((k, wmean(by[rid], k)) for k in MET) if v is not None}
+        m["windows"] = float(sum(r["n"] for r in by[rid]))
+        out.append({"id": rid, "date": i["date"], "commit": i["commit_hash"], "build_no": i["build_no"], "scene": i["scene"] or "",
+                    "host": i["host"], "result": i["result"], "row": i["row"], "label": i["label"] or "", "x_range": i["x_range"] or "",
+                    "z_range": i["z_range"] or "", "note": i["note"] or "", "m": m})
+    return out
 
 
 def baseline(runs, metric):
@@ -191,11 +353,6 @@ def gate_lines(bd, runs, vals):
     return ok_all, lines
 
 
-def mean_of(ws, k):
-    v = [w["m"][k] for w in ws if k in w["m"]]
-    return sum(v) / len(v) if v else None
-
-
 def log_metric_values(bd, text):
     out = {}
     for lm in (bd or {}).get("log_metrics", []):
@@ -218,41 +375,90 @@ def win_metrics(w):
     return m
 
 
+def window_rec(w):
+    """One window of a run record: the scene line (map, area, mode, story, battle, entry, pos0, pos) and the metrics."""
+    return {"win": "f%d w%d" % (w["frame"], w.get("wsize", 0)), "frame": w["frame"], "wsize": w.get("wsize", 0), "chg": bool(w["chg"]),
+            "map": w["map"], "area": w["area"], "mode": w["mode"], "story": w["story"], "battle": w["battle"], "entry": w["entry"],
+            "pos0": list(w["pos0"]) if w["pos0"] else None, "pos": list(w["pos"]) if w["pos"] else None, "m": win_metrics(w)}
+
+
 def pos_ranges(ws):
     ps = [q for w in ws for q in (w.get("pos0"), w.get("pos")) if q]
     if not ps:
-        return "", ""
-    return ("%d..%d" % (min(p[0] for p in ps), max(p[0] for p in ps)), "%d..%d" % (min(p[2] for p in ps), max(p[2] for p in ps)))
+        return "", "", ""
+
+    def rng(i):
+        return "%d..%d" % (min(p[i] for p in ps), max(p[i] for p in ps))
+    return rng(0), rng(1), rng(2)
 
 
-def make_run(bench, kind, host, build, commit, row, label, result, scene, log, shot, note, tags, run, windows, x="", z="", date=None):
-    return {"bench": bench, "kind": kind, "host": host, "build_no": build, "commit": commit, "date": date or today(), "ts": now_iso(),
-            "row": row, "label": label, "result": result, "scene": scene, "log_path": log, "shot_path": shot, "note": note, "tags": tags,
-            "x_range": x, "z_range": z, "run": run, "windows": windows}
+def make_run(bench, kind, host, build, commit, row, label, result, scene, log, shot, note, tags, run, windows, x="", z="", y="", device="", date=None):
+    host = norm_host(host)
+    return {"bench": bench, "kind": kind, "host": host, "device": device or device_note(host), "build_no": build,
+            "commit": commit, "date": date or today(), "ts": now_iso(), "row": row, "label": label, "result": result, "scene": scene,
+            "log_path": log, "shot_path": shot, "note": note, "tags": tags, "x_range": x, "y_range": y, "z_range": z,
+            "run": run, "windows": windows}
 
 
-def ingest_file(path, bench, host, build, commit, row, label, result="imported", note="", shot=None, tags=None, extra=None):
-    text = Path(path).read_text(encoding="utf-8", errors="replace")
-    by, dropped = pb.parse(str(path))
+def log_build(text):
+    m = BUILD_LINE.search(text)
+    return (int(m.group(1)), m.group(2)) if m else (None, None)
+
+
+def pushed_build(path):
+    """Build and hash of the last push line at or before the log's write time (pushed_builds.txt)."""
+    if not PUSHED.exists():
+        return None, None
+    t = datetime.datetime.fromtimestamp(Path(path).stat().st_mtime)
+    best = (None, None)
+    for ln in PUSHED.read_text(encoding="utf-8", errors="replace").splitlines():
+        m = PUSHED_LINE.match(ln)
+        if m and datetime.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M") <= t:
+            best = (int(m.group(2)), m.group(3))
+    return best
+
+
+def resolve_build(path, text, build, commit):
+    """Build number and commit of a log: the arguments, then the log's build line, then pushed_builds.txt, then git HEAD."""
+    lb, lc = log_build(text)
+    pbld, pc = (None, None) if (lb is not None or build is not None) else pushed_build(path)
+    b = build if build is not None else (lb if lb is not None else pbld)
+    c = commit or lc or pc or git_head()
+    if b is None:
+        print("WARNING: no build number in %s and none in %s. build left null." % (path, PUSHED.name))
+    return b, c
+
+
+def ingest_file(path, bench, host, build, commit, row, label, result="imported", note="", shot=None, tags=None, device="", kind=None):
+    p = Path(path)
+    text = p.read_text(encoding="utf-8", errors="replace")
+    wins = pb.parse_windows(str(p))
     bd = bench_def(bench) or {}
     lm = log_metric_values(bd, text)
-    lm.update(extra or {})
-    kind = bd.get("kind", "ingest")
-    recs = []
+    kind = kind or bd.get("kind", "ingest")
+    rel = posix(p.resolve().relative_to(REPO)) if REPO in p.resolve().parents else str(path)
+    by = collections.OrderedDict()
+    for w in wins:
+        if "fps" in w:
+            by.setdefault(w["key"], []).append(w)
+    dropped = sum(1 for w in wins if "fps" in w and w["chg"])
     if not by:
         by = {"": []}
+    recs = []
     for scene, ws in by.items():
-        wins = [{"win": "f%d w%d" % (w["frame"], w.get("wsize", 0)), "m": win_metrics(w)} for w in ws]
-        keys = sorted({k for w in wins for k in w["m"]})
-        run = {k: mean_of(wins, k) for k in keys}
+        good = [w for w in ws if not w["chg"]]
+        gm = [win_metrics(w) for w in good]
+        keys = sorted({k for m in gm for k in m})
+        run = {k: mean_vals([m[k] for m in gm if k in m]) for k in keys}
         run = {k: v for k, v in run.items() if v is not None}
-        run["windows"] = float(len(ws))
+        run["windows"] = float(len(good))
         run.update(lm)
-        x, z = pos_ranges(ws)
-        recs.append(make_run(bench, kind, host, build, commit, row, label, result, scene, posix(Path(path).resolve().relative_to(REPO)) if REPO in Path(path).resolve().parents else str(path),
-                             shot, note, tags or [], run, wins, x, z))
+        x, y, z = pos_ranges(good)
+        recs.append(make_run(bench, kind, host, build, commit, row, label, result, scene, rel, shot, note, tags or [], run,
+                             [window_rec(w) for w in ws], x, z, y=y, device=device))
     n = append_runs(recs)
-    print("ingested %s: %d scene run(s), scene-change windows dropped %d, run ids up to %d" % (path, len(recs), dropped, n[1]))
+    print("ingested %s: %d scene run(s), scene-change windows dropped %d, run ids up to %d, build %s, commit %s" % (
+        path, len(recs), dropped, n[1], build if build is not None else "-", commit))
     for r in recs:
         print("  scene %-30s windows %3d fps %s ft %s" % (r["scene"] or "-", int(r["run"]["windows"]),
               "%.1f" % r["run"]["fps"] if "fps" in r["run"] else "-", "%.1f" % r["run"]["ft_ms"] if "ft_ms" in r["run"] else "-"))
@@ -318,7 +524,6 @@ def cmd_run(a):
         print("no bench named %s. See: bench.py list" % a.bench)
         return 4
     kind = bd["kind"]
-    commit = a.commit or git_head()
     env = dict(os.environ, PM_ROW=a.row)
     if kind.startswith("azahar"):
         if not a.why:
@@ -332,17 +537,18 @@ def cmd_run(a):
         PERF.mkdir(parents=True, exist_ok=True)
         with (PERF / ("status_%s.txt" % a.row)).open("a", encoding="utf-8", newline="\n") as f:
             f.write("%s %s scenario %s: measures %s; path azt.ps1 -> run_azahar.ps1; why %s\n" % (now_iso(), bd["name"], s["name"], ", ".join(measured), a.why))
+        for k in ("PM_BENCH_LABEL", "PM_BENCH_BUILD", "PM_BENCH_COMMIT"):
+            env.pop(k, None)
+        env["PM_BENCH_LABEL"] = a.label or bd["name"]
+        if a.build is not None:
+            env["PM_BENCH_BUILD"] = str(a.build)
+        if a.commit:
+            env["PM_BENCH_COMMIT"] = a.commit
         cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(REPO / "3ds" / "tools" / "azt.ps1"), s["name"], "-Row", a.row]
         if s["status"] == "unverified":
             cmd.append("-Try")
         rc = subprocess.run(cmd, cwd=REPO, env=env).returncode
-        result = "log_pass" if rc == 0 else "fail:%d" % rc
-        note = "picture: a person reads the shot" if kind == "azahar_pic" else ""
-        shot = str(SHOTS / s["name"])
-        if not LAST_LOG.exists():
-            print("no log at %s. Nothing ingested." % LAST_LOG)
-            return 1
-        ingest_file(LAST_LOG, bd["name"], "azahar", a.build, commit, a.row, a.label or s["name"], result, note, shot, [])
+        print("bench %s: azt.ps1 exit %d. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl." % (bd["name"], rc))
         return rc
     if kind == "host_test":
         OUT.mkdir(parents=True, exist_ok=True)
@@ -356,6 +562,7 @@ def cmd_run(a):
         print(out[-2000:])
         text_metrics = log_metric_values(bd, out)
         text_metrics["rc"] = float(rc)
+        commit = a.commit or git_head()
         recs = [make_run(bd["name"], kind, "host", a.build, commit, a.row, a.label or bd["name"], "pass" if rc == 0 else "fail:%d" % rc,
                          "", posix(log.relative_to(REPO)), None, "", [], text_metrics, [])]
         n = append_runs(recs)
@@ -364,20 +571,40 @@ def cmd_run(a):
     print("console_prof: push, then ingest the live log. Run this in Git Bash:")
     print(push_cmd(bd))
     ip = load_defs()["consoles"][bd["host"]]
-    print("then: python 3ds/tools/bench.py ingest build3ds/hw_live_log_%s.txt --bench %s --host %s --commit %s --row %s --label \"%s\""
-          % (ip.split(".")[-1], bd["name"], bd["host"], commit, a.row, a.label or bd["name"]))
+    print("then: python 3ds/tools/bench.py ingest build3ds/hw_live_log_%s.txt --bench %s --host %s --row %s --label \"%s\""
+          % (ip.split(".")[-1], bd["name"], bd["host"], a.row, a.label or bd["name"]))
     return 0
 
 
 def cmd_ingest(a):
-    if a.host not in HOSTS:
-        print("host must be one of %s" % ", ".join(HOSTS))
+    host = norm_host(a.host)
+    if host not in HOSTS:
+        print("host must be one of %s (got %s)" % (", ".join(HOSTS), a.host))
         return 5
     p = Path(a.log)
     if not p.exists():
         print("no such log: %s" % a.log)
         return 5
-    return ingest_file(p, a.bench, a.host, a.build, a.commit or git_head(), a.row, a.label, "imported", a.note, None, [])
+    text = p.read_text(encoding="utf-8", errors="replace")
+    b, c = resolve_build(p, text, a.build, a.commit)
+    return ingest_file(p, a.bench, host, b, c, a.row, a.label, "imported", a.note, None, [], device=a.device or device_note(host))
+
+
+def cmd_ingest_last(a):
+    p = Path(a.log)
+    if not p.exists():
+        print("no log at %s. Nothing ingested." % a.log)
+        return 0
+    s = a.scenario
+    bd = next((b for b in load_defs()["benches"] if b.get("scenario") == s and b["kind"].startswith("azahar")), None)
+    bench = bd["name"] if bd else "adhoc:" + s
+    text = p.read_text(encoding="utf-8", errors="replace")
+    b, c = resolve_build(p, text, a.build, a.commit)
+    result = "log_pass" if a.rc == 0 else "fail:%d" % a.rc
+    note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
+    shot = a.shots or str(SHOTS / s)
+    return ingest_file(p, bench, "azahar", b, c, a.row, a.label or s, result, note, shot, [], device=DEVICE["azahar"],
+                       kind=bd["kind"] if bd else "adhoc")
 
 
 def cmd_import_csv(a):
@@ -391,8 +618,10 @@ def cmd_import_csv(a):
             bench = "toad_standing" if "mac_01 m4 sp-107" in row["scene"] else "untagged"
             run = {k: float(row[c]) for k, c in (("fps", "fps"), ("ft_ms", "ft_ms"), ("nd_ms", "nd_ms"), ("lg_ms", "lg_ms"), ("gb_ms", "gb_ms")) if row[c]}
             run["windows"] = float(row["windows"])
-            rec = make_run(bench, "console_prof", row["console"], None, row["commit"], "legacy_import", row["label"], "imported", row["scene"],
-                           None, None, row["note"], ["legacy_import"], run, [], row["x_range"], row["z_range"], date=row["date"])
+            host = norm_host(row["console"])
+            rec = make_run(bench, "console_prof", host, None, row["commit"], "legacy_import", row["label"], "imported", row["scene"],
+                           None, None, row["note"], ["legacy_import"], run, [], row["x_range"], row["z_range"],
+                           device=DEVICE["o3ds"] if host == "o3ds" else device_note(host), date=row["date"])
             rec["ts"] = row["date"] + "T00:00:00"
             rec["src"] = src
             recs.append(rec)
@@ -401,6 +630,98 @@ def cmd_import_csv(a):
         return 0
     n = append_runs(recs)
     print("imported %d row(s) from %s as runs (run ids up to %d)" % (len(recs), CSV.name, n[1]))
+    return 0
+
+
+def flt_of(a):
+    """Area filter dict from the parsed arguments (where, spots, compare, trend)."""
+    f = {}
+    if getattr(a, "map", None):
+        f["map"] = a.map
+    for k in AREA:
+        v = getattr(a, k, None)
+        if v is not None:
+            f[k] = int(v)
+    for ax in ("x", "y", "z"):
+        v = getattr(a, ax, None)
+        if v:
+            lo, hi = v.split("..", 1)
+            f[ax] = (float(lo), float(hi))
+    if getattr(a, "host", None):
+        f["host"] = norm_host(a.host)
+    if getattr(a, "chg", False):
+        f["chg"] = True
+    return f
+
+
+def add_area(x):
+    x.add_argument("--map")
+    for k in AREA:
+        x.add_argument("--" + k, type=int)
+    for ax in ("x", "y", "z"):
+        x.add_argument("--" + ax, help="LO..HI; use the = form for negatives: --%s=-300..0" % ax)
+    x.add_argument("--host", choices=HOSTS + tuple(HOST_ALIAS))
+    x.add_argument("--chg", action="store_true")
+
+
+def fmt(v, spec):
+    return "-" if v is None else format(v, spec)
+
+
+def area_desc(f):
+    return " ".join("%s=%s" % (k, "%g..%g" % v if isinstance(v, tuple) else v) for k, v in f.items()) or "all"
+
+
+def cmd_where(a):
+    f = flt_of(a)
+    con = open_db()
+    rows = select_samples(con, f)
+    con.close()
+    desc = area_desc(f)
+    if not rows:
+        print("where %s: no samples" % desc)
+        return 1
+    groups = collections.OrderedDict()
+    for r in rows:
+        groups.setdefault((r["build_no"], r["commit_hash"], r["date"], r["host"]), []).append(r)
+    order = sorted(groups.items(), key=lambda kv: min(x["ts"] or "" for x in kv[1]))
+    print("where %s (chg windows %s)" % (desc, "included" if f.get("chg") else "excluded"))
+    print("  %-6s %-10s %-10s %-6s %7s %6s %7s %6s %6s %6s %7s %7s" % ("build", "commit", "date", "host", "windows", "fps", "ft_ms", "nd_ms", "lg_ms", "gb_ms", "d_fps", "d_ft"))
+    first = None
+    for (bn, commit, date, host), rs in order:
+        m = {k: wmean(rs, k) for k in MET}
+        d_fps = d_ft = ""
+        if first is None:
+            first = m
+        else:
+            d_fps = "" if m["fps"] is None or first["fps"] is None else "%+.1f" % (m["fps"] - first["fps"])
+            d_ft = "" if m["ft_ms"] is None or first["ft_ms"] is None else "%+.1f" % (m["ft_ms"] - first["ft_ms"])
+        print("  %-6s %-10s %-10s %-6s %7d %6s %7s %6s %6s %6s %7s %7s" % (
+            fmt(bn, "d"), (commit or "-")[:10], date or "-", host, sum(r["n"] for r in rs),
+            fmt(m["fps"], ".1f"), fmt(m["ft_ms"], ".1f"), fmt(m["nd_ms"], ".1f"), fmt(m["lg_ms"], ".1f"), fmt(m["gb_ms"], ".1f"), d_fps, d_ft))
+    return 0
+
+
+def cmd_spots(a):
+    f = flt_of(a)
+    con = open_db()
+    rows = select_samples(con, f)
+    con.close()
+    spots = collections.OrderedDict()
+    for r in rows:
+        if r["x"] is None or r["z"] is None:
+            continue
+        key = (r["map"], r["entry"], int(round(r["x"] / SPOT_STEP)) * SPOT_STEP, int(round(r["z"] / SPOT_STEP)) * SPOT_STEP)
+        spots.setdefault(key, []).append(r)
+    if not spots:
+        print("no spots: no window with a position in the selection (imported history has none)")
+        return 1
+    ranked = sorted(spots.items(), key=lambda kv: (-len({r["run_id"] for r in kv[1]}), -sum(r["n"] for r in kv[1])))[:a.top]
+    print("spots (end position rounded to %d units; %d spot(s) in all, area %s)" % (SPOT_STEP, len(spots), area_desc(f)))
+    print("  %-14s %5s %6s %6s %5s %8s %6s %7s" % ("map", "entry", "x", "z", "runs", "windows", "fps", "ft_ms"))
+    for (mp, en, x, z), rs in ranked:
+        print("  %-14s %5s %6d %6d %5d %8d %6s %7s" % (mp, en, x, z, len({r["run_id"] for r in rs}), sum(r["n"] for r in rs),
+              fmt(wmean(rs, "fps"), ".1f"), fmt(wmean(rs, "ft_ms"), ".1f")))
     return 0
 
 
@@ -415,7 +736,8 @@ def cmd_compare(a):
     if not bd:
         print("no bench named %s" % a.bench)
         return 4
-    runs = bench_runs(a.bench)
+    f = flt_of(a)
+    runs = filtered_runs(a.bench, f) if f else bench_runs(a.bench)
     if a.last:
         seen = []
         for r in runs:
@@ -429,14 +751,14 @@ def cmd_compare(a):
         ka, kb = a.A, a.B
     A, B = pick_builds(runs, ka, kb)
     if not A or not B:
-        print("no runs for %s or %s in %s (scene filter %s)" % (ka, kb, a.bench, bd.get("scene_match") or "none"))
+        print("no runs for %s or %s in %s (scene filter %s, area %s)" % (ka, kb, a.bench, bd.get("scene_match") or "none", f or "none"))
         return 1
 
     def mean_m(rs):
         keys = sorted({k for r in rs for k in r["m"]})
         return {k: sum(r["m"][k] for r in rs if k in r["m"]) / len([r for r in rs if k in r["m"]]) for k in keys}
     ma, mb = mean_m(A), mean_m(B)
-    print("compare %s: %s (%d run(s)) vs %s (%d run(s)); delta = B - A" % (a.bench, ka, len(A), kb, len(B)))
+    print("compare %s: %s (%d run(s)) vs %s (%d run(s)); delta = B - A; area %s" % (a.bench, ka, len(A), kb, len(B), f or "all"))
     keys = [k for k in ORDER if k in ma and k in mb] + sorted(k for k in ma if k in mb and k not in ORDER)
     print("  %-14s %10s %10s %10s %9s" % ("metric", ka[:10], kb[:10], "delta", "pct"))
     for k in keys:
@@ -455,9 +777,10 @@ def cmd_trend(a):
     if not bd:
         print("no bench named %s" % a.bench)
         return 4
-    runs = bench_runs(a.bench)
+    f = flt_of(a)
+    runs = filtered_runs(a.bench, f) if f else bench_runs(a.bench)
     if a.metric:
-        print("trend %s %s" % (a.bench, a.metric))
+        print("trend %s %s (area %s)" % (a.bench, a.metric, f or "all"))
         prev = None
         for r in runs:
             if a.metric not in r["m"]:
@@ -504,13 +827,13 @@ def cmd_check(a):
 
 
 def cmd_rebuild(a):
-    nb, nr, nm = rebuild_db()
-    print("rebuilt %s: %d bench(es), %d run(s), %d metric row(s)" % (DB.relative_to(REPO), nb, nr, nm))
+    nb, nr, nm, ns = rebuild_db()
+    print("rebuilt %s: %d bench(es), %d run(s), %d metric row(s), %d sample row(s)" % (DB.relative_to(REPO), nb, nr, nm, ns))
     return 0
 
 
 def main(argv):
-    p = argparse.ArgumentParser(description="named benches, run log and index")
+    p = argparse.ArgumentParser(description="named benches, run log, sample index and area queries")
     sub = p.add_subparsers(dest="cmd", required=True)
     x = sub.add_parser("list"); x.add_argument("--tag"); x.set_defaults(f=cmd_list)
     x = sub.add_parser("show"); x.add_argument("bench"); x.set_defaults(f=cmd_show)
@@ -519,11 +842,17 @@ def main(argv):
     x.set_defaults(f=cmd_run)
     x = sub.add_parser("ingest"); x.add_argument("log"); x.add_argument("--bench", required=True); x.add_argument("--host", required=True)
     x.add_argument("--build", type=int); x.add_argument("--commit"); x.add_argument("--row", default="manual"); x.add_argument("--label", default="")
-    x.add_argument("--note", default=""); x.set_defaults(f=cmd_ingest)
+    x.add_argument("--note", default=""); x.add_argument("--device", default=""); x.set_defaults(f=cmd_ingest)
+    x = sub.add_parser("ingest-last"); x.add_argument("--log", required=True); x.add_argument("--scenario", required=True)
+    x.add_argument("--row", default="azt"); x.add_argument("--rc", type=int, required=True); x.add_argument("--label", default="")
+    x.add_argument("--build", type=int); x.add_argument("--commit"); x.add_argument("--shots", default="")
+    x.set_defaults(f=cmd_ingest_last)
     x = sub.add_parser("import-csv"); x.set_defaults(f=cmd_import_csv)
+    x = sub.add_parser("where"); add_area(x); x.set_defaults(f=cmd_where)
+    x = sub.add_parser("spots"); add_area(x); x.add_argument("--top", type=int, default=20); x.set_defaults(f=cmd_spots)
     x = sub.add_parser("compare"); x.add_argument("bench"); x.add_argument("A", nargs="?"); x.add_argument("B", nargs="?")
-    x.add_argument("--last", type=int); x.set_defaults(f=cmd_compare)
-    x = sub.add_parser("trend"); x.add_argument("bench"); x.add_argument("metric", nargs="?"); x.set_defaults(f=cmd_trend)
+    x.add_argument("--last", type=int); add_area(x); x.set_defaults(f=cmd_compare)
+    x = sub.add_parser("trend"); x.add_argument("bench"); x.add_argument("metric", nargs="?"); add_area(x); x.set_defaults(f=cmd_trend)
     x = sub.add_parser("check"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_check)
     x = sub.add_parser("rebuild"); x.set_defaults(f=cmd_rebuild)
     a = p.parse_args(argv)

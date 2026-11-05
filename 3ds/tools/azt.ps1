@@ -228,6 +228,18 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
     if ($script:checkRc -eq 0) { Write-Output "LOG CHECKS PASS ($(@($sc.expected_events).Count) of $(@($sc.expected_events).Count)). The script does not read the picture. A person must open the shot and confirm the subject." }
 }
 
+function Exit-Run([int]$code) {
+    # Records this scenario start in 3ds/logs/perf/runs.jsonl (bench.py ingest-last): under the bench of this scenario, else adhoc:<scenario>.
+    $ia = @((Join-Path $repo "3ds\tools\bench.py"), "ingest-last", "--log", $lastLog, "--scenario", $sc.name, "--row", $Row,
+            "--rc", [string]$code, "--shots", (Join-Path $repo "build3ds\azt\shots\$($sc.name)"))
+    if ($env:PM_BENCH_LABEL) { $ia += @("--label", $env:PM_BENCH_LABEL) }
+    if ($env:PM_BENCH_BUILD) { $ia += @("--build", $env:PM_BENCH_BUILD) }
+    if ($env:PM_BENCH_COMMIT) { $ia += @("--commit", $env:PM_BENCH_COMMIT) }
+    & python @ia
+    if ($LASTEXITCODE -ne 0) { Write-Output "BENCH: run not recorded (bench.py exit $LASTEXITCODE)" }
+    exit $code
+}
+
 if ($CheckLog) {
     Show-Checks $CheckLog $shotDir ([datetime]::MinValue)
     exit $script:checkRc
@@ -313,16 +325,16 @@ Write-Output ("run: rc {0}: {1}" -f $rc, (($endRow[6..($endRow.Count - 1)]) -joi
 if ($stop -eq "marker") {
     Write-Output "SCENARIO FAILED: marker missing: $($sc.first_marker)"
     Write-Output "Not in the log $deadline s after the Azahar start. Azahar was stopped. Log: $logPath"
-    exit 2
+    Exit-Run 2
 }
 if ($stop -eq "attract") {
     Write-Output "ATTRACT LOOP: $attract title or demo mode lines (limit 2) in a run that expects $($sc.expects). Stopped."
-    exit 3
+    Exit-Run 3
 }
-if ($stop -eq "stall") { Write-Output "SCENARIO FAILED: no new log line for $stallSec s. The run was stalled and Azahar was stopped."; exit 6 }
-if ($stop -eq "guard") { Write-Output "SCENARIO FAILED: the run did not end within $capGuard s."; exit 1 }
-if ($rc -eq 2) { Write-Output "SCENARIO FAILED: run_azahar reported crash symbols (rc 2). See $runOut"; exit 1 }
-if ($rc -ne 0) { Write-Output "SCENARIO FAILED: run_azahar rc $rc. See $runOut"; exit 1 }
+if ($stop -eq "stall") { Write-Output "SCENARIO FAILED: no new log line for $stallSec s. The run was stalled and Azahar was stopped."; Exit-Run 6 }
+if ($stop -eq "guard") { Write-Output "SCENARIO FAILED: the run did not end within $capGuard s."; Exit-Run 1 }
+if ($rc -eq 2) { Write-Output "SCENARIO FAILED: run_azahar reported crash symbols (rc 2). See $runOut"; Exit-Run 1 }
+if ($rc -ne 0) { Write-Output "SCENARIO FAILED: run_azahar rc $rc. See $runOut"; Exit-Run 1 }
 
 Show-Checks $lastLog $shotDir $t0
-exit $script:checkRc
+Exit-Run $script:checkRc

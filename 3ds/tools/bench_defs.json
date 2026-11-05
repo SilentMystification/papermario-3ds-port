@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted).",
+  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. host (console_prof): azahar | o3ds | n3ds | host (o3dsxl is read as o3ds). scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted).",
   "push_base": "audiostat texstat pacestat logstat",
   "consoles": {
-    "o3dsxl": "192.168.1.131"
+    "o3ds": "192.168.1.131"
   },
   "benches": [
     {
@@ -45,7 +45,7 @@
       "scene_match": "mac_01 m4 sp-107 b0 e0",
       "recipe": "warp=mac_01:0 story=ch0_toad_town pos=-264:20:-326 prof=4 loglevel=debug",
       "scenario": "prof_scene",
-      "host": "o3dsxl",
+      "host": "o3ds",
       "cap": 60,
       "until": "prof f\\d+ w300 fps",
       "tags": [
@@ -73,7 +73,7 @@
       "scene_match": null,
       "recipe": "warp=mac_01:0 story=ch0_toad_town padscript=go_91_87_900,wait60,go_-300_-300_700 prof=4 loglevel=debug",
       "scenario": null,
-      "host": "o3dsxl",
+      "host": "o3ds",
       "cap": 60,
       "until": "prof f\\d+ w\\d+ fps",
       "tags": [
@@ -90,7 +90,7 @@
       "scene_match": null,
       "recipe": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 prof=4 loglevel=debug",
       "scenario": "battle_start",
-      "host": "o3dsxl",
+      "host": "o3ds",
       "cap": 60,
       "until": "prof f\\d+ w\\d+ fps",
       "tags": [
@@ -107,7 +107,7 @@
       "scene_match": null,
       "recipe": "preset=toad padscript=wait80,START*3,wait615,START*3 prof=4 phase loglevel=debug",
       "scenario": "pause_menu",
-      "host": "o3dsxl",
+      "host": "o3ds",
       "cap": 60,
       "until": "phase W f2[3-9]\\d-",
       "tags": [

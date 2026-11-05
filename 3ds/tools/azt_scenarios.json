@@ -3571,7 +3571,7 @@
       "expected_events": [
         {
           "name": "boot options line with the defaults",
-          "regex": "options: boot dz_cs=0 rep_delay=500 rep_rate=200 hud_ms=1000 conlevel=1 loglevel=1 log=1"
+          "regex": "options: boot dz_cs=0 rep_delay=500 rep_rate=200 hud_ms=1000 conlevel=1 loglevel=3 log=1"
         }
       ],
       "reason": "OPTFIX: no ini in the sdmc folder (moved aside for the run). Until is the boot options line. Cap 30 s."

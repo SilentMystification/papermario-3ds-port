@@ -3,8 +3,8 @@
 
   python 3ds/tools/prof_by_scene.py <log> [<log2> ...]
 
-The scene line `prof f<n> w<n> at <map> <area>:<map> m<mode> sp<story> b<battle> chg<0|1> pos0 <x y z> pos <x y z>` (Mario at the start and the end of the window) follows the other prof lines of its window (the first line is too long for the 256 byte log slot) (pm_phase.c pf_report).
-Key = (map name, mode, story, battle, entry). The map id names the building or room (each Paper Mario interior is its own map); the entry tells the doors of one map apart. pos = Mario x y z at the end of the window (the table shows the x and z range over the windows of the scene). A window with chg1 mixed two scenes and is dropped. Lines without the tag (older builds) go to the key "untagged".
+The scene line `prof f<n> w<n> at <map> <area>:<map> m<mode> sp<story> b<battle> e<entry> chg<0|1> pos0 <x y z> pos <x y z>` (Mario at the start and the end of the window) follows the other prof lines of its window (the first line is too long for the 256 byte log slot) (pm_phase.c pf_report).
+Key = (map name, mode, story, battle, entry). The map id names the building or room (each Paper Mario interior is its own map); the entry tells the doors of one map apart. pos = Mario x y z at the end of the window (the table shows the x and z range over the windows of the scene). A window with chg1 mixed two scenes: parse() drops it, parse_windows() keeps it with chg True. Lines without the tag (older builds) go to the key "untagged" (map "untagged", no area, no position).
 One log: one row per scene (windows, mean fps, ft, nd, lg, gb). Two or more logs: the same scene side by side, with the change of fps and ft from the first log.
 """
 import re, sys, collections
@@ -32,7 +32,9 @@ def fields(rest):
     return out
 
 
-def parse(path):
+def parse_windows(path):
+    """Every prof window of one log, in frame order (chg windows included). Each window: frame, wsize, fps, ft, nd, lg, gb,
+    fields (the m values), key, map, area (`<area>:<map id>`), mode, story, battle, entry, chg (bool), pos0, pos (x y z tuples or None)."""
     win = collections.OrderedDict()  # frame -> dict
     for ln in open(path, errors="replace"):
         mp = PROF.search(ln)
@@ -50,16 +52,29 @@ def parse(path):
         elif a:
             w = win.setdefault(int(a.group(1)), {})
             w["key"] = "%s m%s sp%s b%s e%s" % (a.group(2), a.group(5), a.group(6), a.group(7), a.group(8))
+            w["map"] = a.group(2)
+            w["area"] = "%s:%s" % (a.group(3), a.group(4))
+            w["mode"], w["story"], w["battle"], w["entry"] = int(a.group(5)), int(a.group(6)), int(a.group(7)), int(a.group(8))
             w["chg"] = a.group(9) == "1"
             w["pos0"] = tuple(int(a.group(i)) for i in (10, 11, 12)) if a.group(10) else None
             w["pos"] = tuple(int(a.group(i)) for i in (13, 14, 15)) if a.group(13) else None
+    out = []
     for frame, w in win.items():
         w["frame"] = frame
         w.setdefault("key", "untagged")
+        w.setdefault("map", "untagged")
+        for k in ("area", "mode", "story", "battle", "entry", "pos0", "pos"):
+            w.setdefault(k, None)
         w.setdefault("chg", False)
+        out.append(w)
+    return out
+
+
+def parse(path):
+    """Measured windows by scene key, without the chg windows. Returns (by, dropped) where dropped counts the chg windows."""
     by = collections.defaultdict(list)
     dropped = 0
-    for w in win.values():
+    for w in parse_windows(path):
         if "fps" not in w:
             continue
         if w["chg"]:

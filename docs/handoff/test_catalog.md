@@ -2,15 +2,16 @@
 
 ## Usage (one page)
 
-- List the benches: `python 3ds/tools/bench.py list`. Show one (recipe, gates, last runs): `python 3ds/tools/bench.py show <bench>`.
-- Azahar bench (kind azahar_pic or azahar_stream): `python 3ds/tools/bench.py run <bench> --row <row> --why "<text>"`. The `--why` text is the justification line. It goes to 3ds/logs/perf/status_<row>.txt before the start. Each start counts against the row budget (8 starts per row).
-- Host test (kind host_test): `python 3ds/tools/bench.py run <bench> --row <row>`. The run records metric rc (the exit code).
-- Console bench (kind console_prof): `run` prints the push command only. Push in Git Bash. Then run `python 3ds/tools/bench.py ingest build3ds/hw_live_log_<last octet>.txt --bench <bench> --host o3dsxl --commit <hash>`.
-- Compare two builds: `bench.py compare <bench> <buildA> <buildB>` (build = commit prefix or build number), or `bench.py compare <bench> --last 2`.
-- Trend: `bench.py trend <bench>` (fps and ft per scene, the prof_record layout) or `bench.py trend <bench> <metric>`.
-- Gates of one run: `bench.py check <run_id>`.
+- List or show: `python 3ds/tools/bench.py list`, `python 3ds/tools/bench.py show <bench>`.
+- Azahar bench: `python 3ds/tools/bench.py run <bench> --row <row> --why "<text>"`. The `--why` text goes to 3ds/logs/perf/status_<row>.txt before the start (8 starts per row).
+- Any azt.ps1 scenario start records its run itself (`bench.py ingest-last`). No bench: bench "adhoc:<scenario>".
+- Host test: `bench.py run <bench> --row <row>` (metric rc). Host values: azahar, o3ds, n3ds, host (o3dsxl reads as o3ds).
+- Console: `run` prints the push command. After the push, push_3ds.sh prints the `bench.py ingest ... --host o3ds --build N` line. Run it.
+- Where (per build, one area): `bench.py where --map <name> [--mode N --story N --battle N --entry N --x=LO..HI --y=LO..HI --z=LO..HI --host H]`. Chg1 windows are excluded (`--chg` adds them).
+- Spots (route comparison): `bench.py spots [--map <name>]` lists (map, entry, x, z rounded to 10) with run counts.
+- Compare and trend take the same area filters: `bench.py compare <bench> <buildA> <buildB> --map <name>`, `bench.py trend <bench> [<metric>] --map <name>`.
+- Gates of one run: `bench.py check <run_id>`. Unverified scenarios run with `-Try` (bench.py adds it).
 - A log pass of an azahar_pic bench is not a pass. A person reads the shot in build3ds/azt/shots/<scenario>/.
-- Unverified scenarios run with `-Try`. bench.py adds the switch.
 
 ## Files
 

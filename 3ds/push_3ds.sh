@@ -214,3 +214,6 @@ if [ "$nlines" -eq 0 ]; then
     exit 1
 fi
 echo "PUSH OK, $nlines log lines"
+# The bench record of this log: bench name from PM_BENCH (else <name>), build number from the log's "build N git H" line.
+bno=$(sed -n 's/.* build \([0-9][0-9]*\) git .*/\1/p' "$log" | head -1)
+echo "record: python 3ds/tools/bench.py ingest $log --bench ${PM_BENCH:-<name>} --host o3ds${bno:+ --build $bno}"
