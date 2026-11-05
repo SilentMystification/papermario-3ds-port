@@ -4176,6 +4176,17 @@ static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
     rec_op((u32)G_SETFOGCOLOR << 24, col);
     rec_fogpos(pos);
 }
+/* S3G-1: a model list of a record (custom gfx pre or post, geometry): run as G_DL does (dlc_try first). The list runs nested
+ * (pm_gbi_run) and returns at its G_ENDDL, as the walker's G_DL push did. */
+static __attribute__((noinline)) void rec_dl(const Gfx* l) {
+    if (!l) return;
+    if (!is_host((u32)(uintptr_t)l)) { gbi_cold_bad_next((u32)(uintptr_t)l, (u32)G_DL << 24, 0); return; }
+    if (dlc_on && dlc_try(l)) { /* DLC1: a compiled list, as G_DL */
+        if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
+        return;
+    }
+    pm_gbi_run((void*)l, 0);
+}
 static __attribute__((noinline)) void rec_apply(const Gfx* q) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
     rec_n++;
@@ -4203,6 +4214,7 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q) {
         rec_fog(q[4].words.w0, q[5].words.w1); /* S3F-2: fog after the render mode, as the old word order */
     }
     if (!(f & 256u)) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
+    rec_dl((const Gfx*)(uintptr_t)q[11].words.w0); /* S3G-1: custom gfx pre, after the matrix as the old order */
     if (q[9].words.w0) rec_op(q[9].words.w0, q[9].words.w1); /* S3F-2c: panner tile size, main then aux, as the old order */
     if (q[10].words.w0) rec_op(q[10].words.w0, q[10].words.w1);
     if (q[8].words.w0) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
@@ -4210,7 +4222,10 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q) {
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     rec_apply(q);
-    return G_PM_REC_WORDS - 1; /* R1 to R10 are the matrix, the lights, the fog, combine, prim, env, blend, shroud, billboard and panner values */
+    rec_dl((const Gfx*)(uintptr_t)q[12].words.w0);  /* S3G-1: geometry (0 when none) */
+    rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
+    if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
+    return G_PM_REC_WORDS - 1; /* R1 to R12: matrix, lights, fog, combine, prim, env, blend, shroud, billboard, panner, custom gfx, geometry, pop */
 }
 
 static void gbi_run_body(void* list, unsigned nbytes) {

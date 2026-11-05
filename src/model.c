@@ -1426,6 +1426,8 @@ void appendGfx_model(void* data) {
     u32 fogColW = 0, fogPosW = 0; /* the fog colour and fog position words (R4 w0, R5 w1) */
     u32 rPrim = 0, rEnv = 0, rBlend = 0, rShC2 = 0; /* R6 w0 and w1, R7 w0 and w1 */
     u32 rBbW[2] = {0, 0}, rPanW[4] = {0, 0, 0, 0}; /* S3F-2c: R8 billboard op words, R9 and R10 panner tile op words (0 when none) */
+    Gfx* recPre = nullptr, *recPost = nullptr, *recGeom = nullptr; /* S3G-1: R11 custom gfx pre and post lists, R12 geometry list (0 when none) */
+    u32 recPop = 0;         /* S3G-1: R12 w1, 1 when the model pops the matrix after its geometry */
 #endif
 
     mtxPushMode = G_MTX_PUSH;
@@ -1537,7 +1539,7 @@ void appendGfx_model(void* data) {
         && (renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC || renderClass == RENDER_CLASS_FOG
             || renderClass == RENDER_CLASS_1CYC_DEPTH || renderClass == RENDER_CLASS_2CYC_DEPTH
             || ((renderClass == RENDER_CLASS_1CYC_SHROUD || renderClass == RENDER_CLASS_2CYC_SHROUD) && ShroudTintAmt != 255))
-        && !(flags & MODEL_FLAG_USES_CUSTOM_GFX) && !(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY);
+        && !(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY);
     recSkip = recOn;
     /* SR2: w1 = pmSlot (bits 0 to 7), static matrix (bit 8: finalMtx is savedMtx, not billboard), pmMtxVer (bits 16 to 31).
      * M4-2: bit 9 = the model has a producer record (pm_gbi.c rec_run). S3F-4: no header op; the value goes to the record (R1 w1). */
@@ -1547,7 +1549,11 @@ void appendGfx_model(void* data) {
         | ((u32)model->pmMtxVer << 16);
 #endif
 
+#ifdef TARGET_3DS
+    if (!recOn) gDPPipeSync((*gfxPos)++);
+#else
     gDPPipeSync((*gfxPos)++);
+#endif
 
 #ifdef TARGET_3DS
     if (recOn) { /* S3F-2: record, 6 words, values set at the end of this function. R0: op, render mode index, texture list index, count of
@@ -2114,6 +2120,10 @@ void appendGfx_model(void* data) {
     // custom gfx 'pre'
     if (flags & MODEL_FLAG_USES_CUSTOM_GFX) {
         customGfxIndex = (model->customGfxIndex & 0xF) * 2;
+#ifdef TARGET_3DS
+        if (recOn) recPre = (*gCurrentCustomModelGfxPtr)[customGfxIndex]; /* S3G-1: the record runs it after the matrix */
+        else
+#endif
         if ((*gCurrentCustomModelGfxPtr)[customGfxIndex] != nullptr) {
             gSPDisplayList((*gfxPos)++, (*gCurrentCustomModelGfxPtr)[customGfxIndex]);
         }
@@ -2191,6 +2201,10 @@ void appendGfx_model(void* data) {
 #endif
 
     // render the model
+#ifdef TARGET_3DS
+    if (recOn) recGeom = modelNode->displayData->displayList; /* S3G-1: the record runs it (no local vertex copy: recOn is 0) */
+    else
+#endif
     if (!(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY)) {
         gSPDisplayList((*gfxPos)++, modelNode->displayData->displayList);
     }
@@ -2198,16 +2212,33 @@ void appendGfx_model(void* data) {
     // custom gfx 'post'
     if (flags & MODEL_FLAG_USES_CUSTOM_GFX) {
         customGfxIndex++;
+#ifdef TARGET_3DS
+        if (recOn) recPost = (*gCurrentCustomModelGfxPtr)[customGfxIndex];
+        else
+#endif
         if ((*gCurrentCustomModelGfxPtr)[customGfxIndex] != nullptr) {
             gSPDisplayList((*gfxPos)++, (*gCurrentCustomModelGfxPtr)[customGfxIndex]);
         }
     }
 
+#ifdef TARGET_3DS
+    recPop = mtxPushMode == G_MTX_NOPUSH;
+    if (recWord != nullptr) { /* S3G-1: record tail. R11: custom gfx pre (w0) and post (w1). R12: geometry (w0), pop flag (w1). */
+        recWord[11].words.w0 = (u32)(uintptr_t)recPre;
+        recWord[11].words.w1 = (u32)(uintptr_t)recPost;
+        recWord[12].words.w0 = (u32)(uintptr_t)recGeom;
+        recWord[12].words.w1 = recPop;
+    } else
+#endif
     if (mtxPushMode == G_MTX_NOPUSH) {
         gSPPopMatrix((*gfxPos)++, G_MTX_MODELVIEW);
     }
 
+#ifdef TARGET_3DS
+    if (!recOn) gDPPipeSync((*gfxPos)++);
+#else
     gDPPipeSync((*gfxPos)++);
+#endif
 }
 
 #ifdef TARGET_3DS
