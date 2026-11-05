@@ -968,7 +968,7 @@ static int nd_raw_native(void) {
     d.nidx = gni;
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
     C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
-    uint32_t out[512];
+    static uint32_t out[ND_EMIT_MAX];
     unsigned nw = nd_emit_draw(out, &ndn_sh, &d);
     GPUCMD_AddRawCommands(out, nw);
     if (ndref_on) ndref_cmd();

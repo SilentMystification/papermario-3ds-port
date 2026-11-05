@@ -141,6 +141,21 @@ int main(int argc, char** argv) {
         free(buf);
         (void)nv;
     }
+    { /* the worst case draw: 21 palette entries that all changed, two units, every uniform, a template of ND_TMPL_WORDS registers (2 words each) */
+        static uint32_t wout[ND_EMIT_MAX * 2];
+        static float wp[ND_NPAL][16];
+        NdShadow wsh;
+        NdDraw wd;
+        nd_shadow_reset(&wsh);
+        memset(&wd, 0, sizeof wd);
+        for (int i = 0; i < ND_NPAL; i++) for (int j = 0; j < 16; j++) wp[i][j] = (float)(i * 16 + j + 1);
+        wd.tmpl = -1; wd.npal = ND_NPAL; wd.pal = (const float(*)[16])wp; wd.loc_pal = 6; wd.loc_var = 0x5A;
+        wd.u[0].dim = 0x00100010; wd.u[0].param = 1; wd.u[0].lod = 2; wd.u[0].addr = 3; wd.u[0].type = 4;
+        wd.u[1] = wd.u[0]; wd.idx_word = 0x80000000u; wd.nidx = 3;
+        unsigned wnw = nd_emit_draw(wout, &wsh, &wd);
+        CHECK(wnw + ND_TMPL_WORDS * 2 <= ND_EMIT_MAX, "worst case draw %u words plus template %u over ND_EMIT_MAX %u", wnw, ND_TMPL_WORDS * 2, (unsigned)ND_EMIT_MAX);
+        printf("nd_emit worst case: %u words without the template, limit %u\n", wnw + ND_TMPL_WORDS * 2, (unsigned)ND_EMIT_MAX);
+    }
     CHECK(n_draw > 100, "too few draws compared: %u", n_draw);
     CHECK(n_words_native < n_words_stream * 2, "native words %u stream words %u", n_words_native, n_words_stream);
     printf("nd_emit: %u raw draws, %u register compares, %u uniform word compares, %u words native, %u stale texture draws not compared, %u skipped %s\n", n_draw, n_cmp, n_ucmp, n_words_native, n_stale, n_skip_draw, fails ? "FAIL" : "PASS");

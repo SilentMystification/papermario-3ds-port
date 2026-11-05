@@ -206,6 +206,8 @@ typedef struct NdTmplKey {
 _Static_assert(sizeof(NdTmplKey) == 44, "NdTmplKey has no padding");
 typedef struct NdTmplWord { uint16_t reg; uint32_t val; } NdTmplWord;
 #define ND_TMPL_WORDS 64
+/* the most words nd_emit_draw writes for one draw: the template (2 words a register), 2 texture units, 21 palette entries (20 words each), the uniforms, the draw tail. nd_emit_test proves it. */
+#define ND_EMIT_MAX 768
 #define ND_DECAL_EPS 0.003f /* decal pass A depth map offset */
 
 /* returns the template id (0..255) of a key, building it on a miss; -1 when the table is full or the combiner words are refused */
