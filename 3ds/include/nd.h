@@ -147,6 +147,7 @@ typedef struct NdSt {
     uint32_t segment[16];
     uint32_t mtx_addr, mtx_flags, n_mtx, n_pop;
     uint32_t n_rect, n_fill, n_tri, n_vtx, n_dl, n_enddl, n_load, n_unknown, last_unknown;
+    uint32_t om_kh, om_kl;                   /* B8: other mode bits this state has a value for (set by SETOTHERMODE, all after RDPSETOTHERMODE) */
 } NdSt;
 extern NdSt nd_st;
 void nd_st_reset(void);
@@ -253,7 +254,7 @@ unsigned nd_tmpl_words(int id, const NdTmplWord** out);
 /* Render state rules of the walker (pm_gbi.c sync_render): other mode words to the draw flags. depth_img: the colour image is the z buffer image (a model drawn into
  * it is a depth write). set_memb 0: the memory blend flag is not changed by this state. atest -1 = off. */
 typedef struct NdRender { uint8_t zcmp, zupd, blend, decal, nocol, memb, set_memb, depth; int16_t atest; } NdRender;
-typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; NdRender r; } NdMode;
+typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; uint32_t wh, wl; NdRender r; } NdMode; /* B8: om_h, om_l = the list bits, wh, wl = the bits it writes; r = the list alone (nd_model_state merges) */
 int nd_mode_compile(NdMode* m, const unsigned* w);
 void nd_render_state(uint32_t omode_h, uint32_t omode_l, int depth_img, NdRender* o);
 
@@ -285,8 +286,9 @@ typedef struct NdMCtx {
     int draw_3d, dview, rgb_scale, r_mix, r_memblend, r_replace; /* sticky walker flags */
     uint32_t prim, env, cconst, mixcol; /* used when the record does not set PRIM (R3 bit 2) */
     uint32_t dbias;            /* decal bias, float bits */
+    uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_st) and the bits it has a value for */
 } NdMCtx;
-typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; } NdMState;
-int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st);
+typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full */
+int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* 1 native, 0 fallback, -1 nost (B8: a read other mode bit has no value) */
 
 #endif

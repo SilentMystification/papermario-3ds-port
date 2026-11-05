@@ -1285,7 +1285,7 @@ static void tritrace_tri(const char* what, unsigned seq, const float* p1, const 
  * constant replace the colour, alpha 255, the boost of the second cycle, and G_ZS_PRIM replaces the depth. Returns 0 when the path refuses. */
 typedef NdGvP GvP; /* S3N-1: the type and the function are in nd_model.c (nd_gv_params) */
 /* The draw parameters of a raw triangle from the state and the texture scale `tss` of its vertices. */
-static void gv_params_calc(unsigned tss, GvP* o) {
+void gv_params_calc(unsigned tss, GvP* o) { /* S3N-3b: not static, the ndmcheck compare calls it */
     NdGvIn in;
     unsigned st = use_t1 ? 1 : 0;
     int tw = 1, th = 1;

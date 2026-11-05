@@ -34,11 +34,11 @@ int main(void) {
     nd_render_state(1u << 20, 0x00FF1C33u | 0x10000000u, 0, &want);
     CHECK(memcmp(&m.r, &want, sizeof want) == 0, "mode 1 render state equal");
 
-    /* 2: cycle type not written (B5): fallback */
+    /* 2: cycle type not written (B8): compiles, the draw merges the rest */
     unsigned L2[2][2];
     oth(L2[0], OP_SETOTHERMODE_L, 0, 32, 0x33u); /* om_l only, om_h never written */
     L2[1][0] = OP_ENDDL << 24; L2[1][1] = 0;
-    CHECK(nd_mode_compile(&m, &L2[0][0]) == 0 && m.ok == 0, "B5: cycle type not written is fallback");
+    CHECK(nd_mode_compile(&m, &L2[0][0]) == 1 && m.ok == 1 && m.wh == 0 && m.wl == 0xFFFFFFFFu, "B8: partial list compiles, written masks kept");
 
     /* 3: a geometry mode op in the list (B6): fallback */
     unsigned L3[3][2];
@@ -89,6 +89,7 @@ int main(void) {
         c.mode = &mode; c.u0 = &u0; c.gv = &gv; c.has_comb = 1; c.comb_w0 = cg.words.w0; c.comb_w1 = cg.words.w1;
         c.z_on = 1; c.cull = 0; c.draw_3d = 1; c.dview = 1; c.rgb_scale = 1; c.r_mix = 0; c.r_memblend = 0; c.r_replace = 0;
         c.prim = 0xffffffffu; c.cconst = 0; c.mixcol = 0;
+        c.known_h = 0x00FFFFFFu; c.known_l = 0xFFFFFFFFu; c.base_oh = 0; c.base_ol = 0; /* B8: nd_st has values for every read bit */
         memcpy(&c.dbias, &db, 4);
         memset(&dr, 0, sizeof dr);
         CHECK(nd_model_state(rec, &c, &dr, &st) == 1, "3a: 1CYC textured record draws natively");
@@ -113,6 +114,17 @@ int main(void) {
         gv.fxon = 0;
         memcpy(rr, rec, sizeof rr); rr[22] = 1;
         CHECK(nd_model_state(rr, &c, &dr, &st) == 0, "3a: custom gfx pre is fallback");
+        { /* B8: a list that writes only om_l bits 16 to 23: the read bits 28 to 31 have no value (nd_st unknown) */
+            unsigned L5[3][2];
+            NdMode pm;
+            oth(L5[0], OP_SETOTHERMODE_L, 16, 8, 0x40u << 16);
+            L5[1][0] = OP_ENDDL << 24; L5[1][1] = 0;
+            CHECK(nd_mode_compile(&pm, &L5[0][0]) == 1, "B8: partial list compiles");
+            c2 = c; c2.mode = &pm; c2.known_l = 0x00FFFFFFu;
+            CHECK(nd_model_state(rec, &c2, &dr, &st) == -1, "B8: read other mode bit with no value is nost");
+            c2.known_l = 0xFFFFFFFFu;
+            CHECK(nd_model_state(rec, &c2, &dr, &st) == 1, "B8: the same list with the bits known draws");
+        }
     }
 
     printf("nd_model: %s\n", fails ? "FAIL" : "PASS");

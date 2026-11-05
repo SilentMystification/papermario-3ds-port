@@ -25,9 +25,10 @@ void nd_words(const unsigned* w, unsigned n) {
             uint32_t mask = len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1u) << sft;
             uint32_t* om = (w0 >> 24) == OP_SETOTHERMODE_H ? &s->om_h : &s->om_l;
             *om = (*om & ~mask) | (w1 & mask);
+            if ((w0 >> 24) == OP_SETOTHERMODE_H) s->om_kh |= mask; else s->om_kl |= mask; /* B8: the bits this state has a value for */
             break;
         }
-        case OP_RDPSETOTHERMODE: s->om_h = w0 & 0xFFFFFFu; s->om_l = w1; break;
+        case OP_RDPSETOTHERMODE: s->om_h = w0 & 0xFFFFFFu; s->om_l = w1; s->om_kh = 0xFFFFFFu; s->om_kl = 0xFFFFFFFFu; break;
         case OP_SETCOMBINE: s->comb_w0 = w0; s->comb_w1 = w1; break;
         case OP_SETPRIMCOLOR: s->prim = w1; s->prim_lod = w0 & 0xFFFFu; break;
         case OP_SETENVCOLOR: s->env = w1; break;

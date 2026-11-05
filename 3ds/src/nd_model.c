@@ -103,8 +103,7 @@ int nd_mode_compile(NdMode* m, const unsigned* w) {
         if (op == OP_SETOTHERMODE_H) { mh |= mask; vh = (vh & ~mask) | (w1 & mask); }
         else { ml |= mask; vl = (vl & ~mask) | (w1 & mask); }
     }
-    if ((mh & ND_OMH_READ) != ND_OMH_READ || (ml & ND_OML_READ) != ND_OML_READ) return 0; /* B5 */
-    m->om_h = vh; m->om_l = vl;
+    m->om_h = vh; m->om_l = vl; m->wh = mh; m->wl = ml; /* B8: partial lists compile; the read bits merge at draw (nd_model_state) */
     nd_render_state(vh, vl, 0, &m->r);
     m->ok = 1;
     return 1;
@@ -112,18 +111,24 @@ int nd_mode_compile(NdMode* m, const unsigned* w) {
 
 /* ---- S3N-3a: the state of one model record as a native draw (pure: record words and NdMCtx) ---- */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
+    st->why = 0;
     const uint32_t f = rec[6]; /* R3 w0 flags */
-    if (!c->mode || !c->mode->ok || !c->has_comb) return 0;
-    if (c->gv && c->gv->fxon) return 0; /* lit or fog: pm5 path, later row */
-    if (rec[26] != 0) return 0;          /* R13: words after the record (special tile list, untextured ops) */
-    if (rec[22] != 0 || rec[23] != 0) return 0; /* R11: custom gfx pre and post */
+    if (!c->mode || !c->mode->ok || !c->has_comb) return (st->why = 1, 0);
+    if (c->gv && c->gv->fxon) return (st->why = 4, 0); /* lit or fog: pm5 path, later row */
+    if (rec[26] != 0) return (st->why = 2, 0);          /* R13: words after the record (special tile list, untextured ops) */
+    if (rec[22] != 0 || rec[23] != 0) return (st->why = 3, 0); /* R11: custom gfx pre and post */
     const int tex = c->u0 != NULL && c->u0->dim != 0;
     const uint32_t w0 = c->comb_w0, w1 = c->comb_w1;
-    const int two = ((c->mode->om_h >> 20) & 3u) == 1u; /* 2 cycle */
+    const uint32_t oh = (c->base_oh & ~c->mode->wh) | c->mode->om_h;
+    const uint32_t ol = (c->base_ol & ~c->mode->wl) | c->mode->om_l;
+    if (((ND_OMH_READ & ~c->mode->wh) & ~c->known_h) || ((ND_OML_READ & ~c->mode->wl) & ~c->known_l)) return -1; /* nost */
+    NdRender rr;
+    nd_render_state(oh, ol, 0, &rr);
+    const NdRender* r = &rr;
+    const int two = ((oh >> 20) & 3u) == 1u; /* 2 cycle (from the merged other mode) */
     PmPlan plan;
-    if (pm_comb_build(w0, w1, two, 0, &plan) != 0) return 0;
-    if (plan.uses_tex1 || plan.uses_noise) return 0;
-    const NdRender* r = &c->mode->r;
+    if (pm_comb_build(w0, w1, two, 0, &plan) != 0) return (st->why = 5, 0);
+    if (plan.uses_tex1 || plan.uses_noise) return (st->why = 6, 0);
     NdTmplKey k;
     memset(&k, 0, sizeof k);
     k.pass = 0; k.raw = 1; k.cull = (uint8_t)c->cull;
@@ -137,7 +142,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     k.r_replace = (uint8_t)c->r_replace; k.r_blend = r->blend; k.noise = 0;
     k.w0 = w0; k.w1 = w1; k.two = (uint8_t)two; k.t1only = 0;
     int id = nd_tmpl_build(&k);
-    if (id < 0) return 0;
+    if (id < 0) return (st->why = 7, 0);
     uint32_t prim = (f & 4u) ? rec[12] : c->prim;
     NdTevIn ti = { &k, &plan, prim, c->cconst, c->mixcol };
     NdTevOut to;
