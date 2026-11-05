@@ -3320,10 +3320,11 @@ typedef struct {
     unsigned comb_w0, comb_w1; int box_folded, box_prod, box_pat, comb_alpha_shade; unsigned cmb_gen_seen; struct TszLast tsz; unsigned st0_ep; int st0_ok;
     unsigned omode_h, omode_l; int leg_mode, plan_active, comb_mode5; PmPlan plan; int sc_ok; unsigned sc_sig;
     unsigned fogc, blendc; int fog_fm, fog_fo; /* S3F-2: the colour and fog state the record writes */
+    unsigned prim, envc;       /* S3F-2b: prim and env colour, the record writes both */
 } TexSnap;
 #define TS_FIELDS(X) X(tst) X(timg) X(tlut) X(tlut_n) X(tlut_pal) X(td) X(tile_x0) X(tile_y0) X(tile_fx) X(tile_fy) X(ld_valid) X(ld_x) X(ld_y) X(ld_h) X(ld_w) X(ldrec_n) X(blk_n) X(m1) \
     X(dual_on) X(cur_tile) X(use_t1) X(tex_on) X(tex_ss) X(tex_ts) X(comb_set) X(comb_w0) X(comb_w1) X(box_folded) X(box_prod) X(box_pat) X(comb_alpha_shade) X(cmb_gen_seen) X(tsz) \
-    X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig)     X(fogc) X(blendc) X(fog_fm) X(fog_fo)
+    X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig)     X(fogc) X(blendc) X(fog_fm) X(fog_fo) X(prim) X(envc)
 static __attribute__((cold, noinline)) void ts_save(TexSnap* o) {
     memset(o, 0, sizeof *o);
     o->tst = tst1; o->timg = timg; o->tlut = tlut; o->tlut_n = tlut_n; memcpy(o->tlut_pal, tlut_pal, sizeof tlut_pal); memcpy(o->td, td, sizeof td);
@@ -3334,6 +3335,7 @@ static __attribute__((cold, noinline)) void ts_save(TexSnap* o) {
     o->cmb_gen_seen = cmb_gen_seen; o->tsz = tsz_last; o->st0_ep = st0_ep == pm_tex_wrap_gen(); o->st0_ok = st0_ok; /* the wrap generation counts calls, the second run advances it: compare whether st0_ep is current */ o->omode_h = omode_h; o->omode_l = omode_l;
     o->leg_mode = leg_mode; o->plan_active = plan_active; o->comb_mode5 = comb_mode5; o->plan = cur_plan; o->sc_ok = sc_ok; o->sc_sig = sc_sig;
     o->fogc = fogc; o->blendc = blendc; o->fog_fm = fog_fm; o->fog_fo = fog_fo;
+    o->prim = prim; o->envc = envc;
 }
 static __attribute__((cold, noinline)) void ts_load(const TexSnap* o) {
     tst1 = o->tst; timg = o->timg; tlut = o->tlut; tlut_n = o->tlut_n; memcpy(tlut_pal, o->tlut_pal, sizeof tlut_pal); memcpy(td, o->td, sizeof td);
@@ -3344,6 +3346,7 @@ static __attribute__((cold, noinline)) void ts_load(const TexSnap* o) {
     cmb_gen_seen = o->cmb_gen_seen; tsz_last = o->tsz; st0_ep = o->st0_ep ? pm_tex_wrap_gen() : ~pm_tex_wrap_gen(); st0_ok = o->st0_ok; omode_h = o->omode_h; omode_l = o->omode_l;
     leg_mode = o->leg_mode; plan_active = o->plan_active; comb_mode5 = o->comb_mode5; cur_plan = o->plan; sc_ok = o->sc_ok; sc_sig = o->sc_sig;
     fogc = o->fogc; blendc = o->blendc; fog_fm = o->fog_fm; fog_fo = o->fog_fo;
+    prim = o->prim; envc = o->envc;
 }
 static __attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
     static TexSnap s0, eg, ef;
@@ -3660,7 +3663,14 @@ static __attribute__((noinline)) void rec_lights(const Lightsn* L, unsigned k) {
         else if (op == G_MOVEMEM) gbi_movemem(w0, w1);
     }
 }
-/* S3F-2: one record op through the skip test and the handler of mg_run (the ops the record writes: MOVEWORD, SETFOGCOLOR, SETCOMBINE). */
+/* S3F-2b: G_SETENVCOLOR, one function for the walker, mg_run and the record. */
+static __attribute__((noinline)) void gbi_setenv(u32 w1) {
+    GP_SET(2, envc == w1);
+    envc = w1;
+    pm_gpu_set_env(envc);
+    sync_combine();
+}
+/* S3F-2: one record op through the skip test and the handler of mg_run (the ops the record writes). */
 static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
     if (g1_skip[op] || g2_same(op, w0, w1)) return;
@@ -3668,31 +3678,49 @@ static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
     switch (op) {
     case G_MOVEWORD: gbi_moveword(w0, w1); break;
     case G_SETFOGCOLOR: fogc = w1; break;
-    case G_SETCOMBINE: tex_op(w0, w1); break;
+    case G_SETBLENDCOLOR: blendc = w1; break;
+    case G_SETENVCOLOR: gbi_setenv(w1); break;
+    case G_SETPRIMCOLOR: case G_SETCOMBINE: case G_SETOTHERMODE_L: case G_SETOTHERMODE_H: tex_op(w0, w1); break;
     default: pm_log("rec: op %u is not a record op f%u", op, pm_frame_count()); break;
     }
 }
 /* S3F-2: the fog of a record: the colour word, then the position word (the MOVEWORD header is built with the gbi macro, no division here). */
-static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
+static __attribute__((noinline)) void rec_fogpos(u32 pos) {
     Gfx t;
-    rec_op((u32)G_SETFOGCOLOR << 24, col);
     gMoveWd(&t, G_MW_FOG, G_MWO_FOG, pos);
     rec_op(t.words.w0, t.words.w1);
 }
+static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
+    rec_op((u32)G_SETFOGCOLOR << 24, col);
+    rec_fogpos(pos);
+}
 static __attribute__((noinline)) void rec_apply(const Gfx* q) {
-    if (q[3].words.w1) rec_lights((const Lightsn*)(uintptr_t)q[3].words.w1, q[2].words.w0); /* S3F-1b: lights first, as the old word order */
+    u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
+    rec_n++;
+    gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
+    if (f & 4u) rec_op((u32)G_SETPRIMCOLOR << 24, q[6].words.w0); /* depth and remap: the old words before the lights */
+    if (f & 8u) rec_op((u32)G_SETENVCOLOR << 24, q[6].words.w1);
+    if (f & 64u) rec_fog(q[4].words.w0, q[5].words.w1);
+    if (q[3].words.w1) rec_lights((const Lightsn*)(uintptr_t)q[3].words.w1, q[2].words.w0); /* S3F-1b: lights, as the old word order */
     u32 w0 = q->words.w0;
     const Gfx* tg = (const Gfx*)(uintptr_t)q->words.w1;
     unsigned tix = (w0 >> 8) & 0x7fu;
-    rec_n++;
-    gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
     if (tb_list[tix] == tg) tb_run(tg); else tb_ops(tg);
     if (q[4].words.w1) { /* S3F-2: the combine word, after the bind as in the old order */
         const Gfx* e = (const Gfx*)(uintptr_t)q[4].words.w1;
         rec_op(e->words.w0, e->words.w1);
     }
     if (!rm_apply((u32)(uintptr_t)ModelRenderModes[(w0 >> 16) & 0xffu])) pm_log("rec: render mode list has another op f%u", pm_frame_count());
-    if (q[3].words.w0 & 2u) rec_fog(q[4].words.w0, q[5].words.w1); /* S3F-2: fog after the render mode, as the old word order */
+    if (f & 32u) { /* S3F-2b: shroud: render mode word, fog colour, blend colour, fog position (the old order) */
+        Gfx t;
+        gDPSetRenderMode(&t, PM_RM_SHROUD, q[7].words.w1);
+        rec_op(t.words.w0, t.words.w1);
+        rec_op((u32)G_SETFOGCOLOR << 24, q[4].words.w0);
+        if (f & 16u) rec_op((u32)G_SETBLENDCOLOR << 24, q[7].words.w0);
+        rec_fogpos(q[5].words.w1);
+    } else if (f & 2u) {
+        rec_fog(q[4].words.w0, q[5].words.w1); /* S3F-2: fog after the render mode, as the old word order */
+    }
     load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX */
 }
 /* mdldiff, switch mdldiff: the record runs from the start state, then the old words after it (mg_run) run from the same start state.
@@ -3711,7 +3739,7 @@ static __attribute__((cold, noinline)) unsigned rec_diff(const Gfx* q, unsigned 
     ts_save(&e1); gm1 = geom; ln1 = lt_n; memcpy(lt1, lt, sizeof lt1);
     ts_load(&s0); geom = gm0; lt_n = ln0; memcpy(lt, lt0, sizeof lt0);
     tl_last = NULL;
-    if (mg_run((Gfx*)(q + 6), cnt, &nx, q[1].words.w1) != (Gfx*)(q + 6) + cnt) n += snprintf(names, sizeof names, "old_not_run ");
+    if (mg_run((Gfx*)(q + 8), cnt, &nx, q[1].words.w1) != (Gfx*)(q + 8) + cnt) n += snprintf(names, sizeof names, "old_not_run ");
     ts_save(&e2); gm2 = geom; ln2 = lt_n; memcpy(lt2, lt, sizeof lt2);
 #define TS_CMP(f) if (memcmp(&e1.f, &e2.f, sizeof e1.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
     TS_FIELDS(TS_CMP)
@@ -3722,13 +3750,13 @@ static __attribute__((cold, noinline)) unsigned rec_diff(const Gfx* q, unsigned 
     if (n) { bad++; if (bad <= 40) pm_log("mdldiff f%u rec %p DIFF: %s", pm_frame_count(), (const void*)q, names); }
     if (!(runs % 500)) pm_log("mdldiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
     ts_load(&e2); geom = gm2; lt_n = ln2; memcpy(lt, lt2, sizeof lt2);
-    return 5 + cnt;
+    return 7 + cnt;
 }
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     unsigned cnt = q->words.w0 & 0xffu;
     if (pm_rec_mode() == 2) return rec_diff(q, cnt);
     rec_apply(q);
-    return 5 + cnt; /* R1 to R5 are the matrix, the lights and the fog and combine values, then the old words */
+    return 7 + cnt; /* R1 to R7 are the matrix, the lights, the fog, combine, prim, env, blend and shroud values, then the old words */
 }
 
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
@@ -3764,6 +3792,7 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx,
             break;
         case G_SETFOGCOLOR: fogc = w1; break;
         case G_SETBLENDCOLOR: blendc = w1; break;
+        case G_SETENVCOLOR: gbi_setenv(w1); break; /* S3F-2b: the walker arm, one function */
         case G_PM_REC: /* M4-2: producer record, the old words after it under mdldiff */
             k += rec_run(q);
             break;
@@ -4061,10 +4090,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             blendc = w1;
             break;
         case G_SETENVCOLOR:
-            GP_SET(2, envc == w1);
-            envc = w1;
-            pm_gpu_set_env(envc);
-            sync_combine();
+            gbi_setenv(w1);
             break;
         case G_SETCIMG:
             gbi_setcimg(w0, w1);
