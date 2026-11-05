@@ -1,14 +1,15 @@
 # Agent S3F: handoff
 
 ## STATE
-branch: nds1 | commits: eeba51266 (S3F-1a), dfbf5d131 (S3F-1b), 6c4dc9e70 (S3F-2a), 771e42d55 (handoff), d0574e0a0 (S3F-2b)
-done: S3F-1a, S3F-1b, S3F-2a (1CYC, 2CYC, FOG, all modes, combine), S3F-2b (shroud, depth, remap; record 8 words)
-gates S3F-2b: mdldiff 9000 runs 0 diffs; seam_pic frame 200 right by eye. Not verified: the mdldiff scene holds each class.
-open: S3F-2c panner, billboard (2 matrix ops: finalMtx then billboard MUL), custom gfx (G_DL words, S3F-3), local vertex copy, IGNORE_MATRIX, specialTex. These keep old words; the record does not carry them yet.
-open: S3F-3 floor reflection (nd_range, execute_render_tasks), custom gfx ranges. open: S3F-4 delete (done grep: 21 hits before S3F-2b).
-open: 3 spot pictures (spot_mac01_pic, spot_mac00_pic, spot_sbk56_pic) not run. Budget: S3F reset once after 8 starts.
-rule: record is 8 words (R0 to R7), values at the end of appendGfx_model; old words after the record count in R0 low byte; R3 w0 flags (see model.c comment).
-next: S3F-2c billboard and panner first (smallest), then decide custom gfx and local copy with S3F-3 item 2.
+branch: nds1 | commits: 560c5759b (S3F-2c billboard, panner, IGNORE_MATRIX in record), c856da583 (S3F-4 walker model path deleted)
+done: S3F-1a, S3F-1b, S3F-2a, S3F-2b, S3F-2c, S3F-4. Done grep (G_PM_MODEL, mg_run, pm_dlc.inc.c in 3ds/src include src) empty.
+gates S3F-2c: mdldiff 13000 runs 0 diffs (before the delete); seam_pic frame 200 right by eye.
+gates S3F-4: spot_mac01_pic, spot_mac00_pic, spot_sbk56_pic (frames 200 to 205) right by eye. Console perf not run (not a gate).
+INCOMPLETE S3F-3: custom gfx not in record (pre and post G_DL stay plain words). Record carry needs a nested DL run from rec_apply, not built, no scene tested.
+INCOMPLETE S3F-3: floor reflection nd_range_begin, nd_range_end, nd_range_repeat do not exist in the tree (plan anchor gone). Not built.
+open: local vertex copy, specialTex, untextured models: plain words through the walker, not in the record (plan default, no test of these classes).
+benches: mdldiff cannot run (its switch went with mg_run). texdiff loses tb_bind. bench_defs.json not edited (user rule).
+budget S3F: reset at 8 starts before spot_sbk56 (status line in 3ds/logs/perf/status_S3F.txt). Since reset: 1 start.
 
 ## S3F-2b design (not built)
 - Record grows to 8 words. R6: w0 prim colour word, w1 env colour word. R7: w0 blend colour word, w1 shroud render mode c2 (gDPSetRenderMode(PM_RM_SHROUD, c2)).
