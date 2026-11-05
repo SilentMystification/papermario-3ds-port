@@ -5061,6 +5061,22 @@ static void bat1_sort_runs(s32* sorted, s32 n, RenderTask* taskList) {
     }
 }
 
+/* S3G-3: a floor reflection range (plan_native_slices S3-5 item 1). The task draws once, then again flipped in Y. Slot: a branch over
+ * the task words (G_DL_NOPUSH to the word after the range end). Built here, not in nd_core.c: that file is host-tested without gbi.h. */
+static Gfx* nd_range_begin(Gfx** pos) {
+    return (*pos)++;
+}
+static void nd_range_end(Gfx** pos, Gfx* slot) {
+    gSPEndDisplayList((*pos)++);
+    gSPBranchList(slot, *pos);
+}
+static void nd_range_repeat(Gfx** pos, Gfx* slot, Mtx* flipMtx, Mtx* projMtx) {
+    gSPDisplayList((*pos)++, slot + 1);
+    gSPMatrix((*pos)++, flipMtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
+    gSPDisplayList((*pos)++, slot + 1);
+    gSPMatrix((*pos)++, projMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+}
+
 void execute_render_tasks(void) {
     s32 i, j, taskCount;
     s32 sorted[ARRAY_COUNT(*ClearRenderTaskLists)];
@@ -5150,7 +5166,7 @@ void execute_render_tasks(void) {
             appendGfx = task->appendGfx;
 
             if (task->renderMode & RENDER_TASK_FLAG_REFLECT_FLOOR) {
-                savedGfxPos = gMainGfxPos++;
+                savedGfxPos = nd_range_begin(&gMainGfxPos);
             }
 
             /* the key is (draw function, argument): the argument alone is not always an object pointer (PaperBoat note) */
@@ -5160,12 +5176,8 @@ void execute_render_tasks(void) {
             FI_CLOSE();
 
             if (task->renderMode & RENDER_TASK_FLAG_REFLECT_FLOOR) {
-                gSPEndDisplayList(gMainGfxPos++);
-                gSPBranchList(savedGfxPos, gMainGfxPos);
-                gSPDisplayList(gMainGfxPos++, savedGfxPos + 1);
-                gSPMatrix(gMainGfxPos++, dispMtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
-                gSPDisplayList(gMainGfxPos++, savedGfxPos + 1);
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+                nd_range_end(&gMainGfxPos, savedGfxPos);
+                nd_range_repeat(&gMainGfxPos, savedGfxPos, dispMtx, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
             }
         }
     } else {
