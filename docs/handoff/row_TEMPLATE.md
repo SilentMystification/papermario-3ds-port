@@ -32,7 +32,7 @@ CLAUDE.md rules 5, 7, 9. No toggles, no stubs, no git push, no attribution. Comm
 - Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <id>
 
 ## Tests
-Entry point: python 3ds/tools/bench.py (see docs/handoff/bench_process.md). Name the benches here: <bench list>. Numbers go to the database, not to prose.
+Entry point: python 3ds/tools/bench.py (process: docs/handoff/test_catalog.md, situations A to F). Name the benches here: <bench list>. Numbers go to the database, not to prose.
 
 ## At the end
 Overwrite docs/handoff/agent_<epic>.md (do not append, do not create a new file) with a STATE block at the top (10 lines or fewer): branch, last commit, done rows, open rows, next command. Delete this row file in the commit that completes the row (CLAUDE.md rule 11).

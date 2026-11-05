@@ -21,6 +21,6 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 
 ## Tests
 - 3ds/tools/bench.py: entry point for every test and profiling run (`bench.py list`, `show`, `run`, `ingest`, `compare`, `trend`). Benches in 3ds/tools/bench_defs.json, runs in 3ds/logs/perf/runs.jsonl.
-- test_catalog.md: bench usage (one page). Old scenario tables: archive/test_catalog.md and archive/test_catalog/<TOPIC>.md.
+- test_catalog.md: THE bench process (situations A to F: check a row, before/after, console run, area lookup, add a bench, rebuild). Read it before any test. Old scenario tables: archive/.
 - route_test.md, sweep_420.md: tour and sweep how-to.
 - work_queue.md: older queue (stale; check git log first).
