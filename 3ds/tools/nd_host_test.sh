@@ -25,6 +25,8 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -w /w pm3ds-host:1 sh -c '
   /tmp/ndx 3ds/tests/ndref/ndref_*.bin
   gcc -m32 -Wall -I 3ds/include -o /tmp/ndcm 3ds/tools/nd_cmd_test.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
   /tmp/ndcm 3ds/tests/ndref/ndref_*.bin
+  gcc -m32 -Wall -Wextra -I 3ds/include -o /tmp/nde 3ds/tools/nd_emit_test.c 3ds/src/nd_emit.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
+  /tmp/nde 3ds/tests/ndref/ndref_*.bin
   gcc -m32 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I 3ds/include -I 3ds/stub_include -I 3ds/tools -o /tmp/ndg 3ds/tools/nd_gbi_test.c 3ds/tools/nd_gbi_ref.c 3ds/src/nd_state.c 2>&1 | grep -E "error" && exit 1
   /tmp/ndg
   gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndl 3ds/tools/nd_dlc_test.c 3ds/src/nd_dlc.c

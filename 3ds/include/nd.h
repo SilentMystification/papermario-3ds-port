@@ -155,6 +155,31 @@ typedef struct NdDlcEnv {
 int nd_dlc_compile(NdObj* o, const uint32_t* list, const NdDlcEnv* env); /* list: word pairs in host order, up to G_ENDDL */
 void nd_dlc_free(NdObj* o);
 
+/* NDEMIT (S3 M3): the command words of one raw draw (pm4 program: static or ring Vtx with the palette matrix at entry 0), written from native data. The PICA command format is
+ * [parameter][header][extra parameters][pad]: header bits 0-15 register, 16-19 byte mask, 20-27 extra count, bit 31 consecutive registers. Only the parts that differ from
+ * the shadow (what the GPU holds after the last emitted draw) are written; a shadow reset writes everything. The vertex shader program, the attribute and buffer
+ * configuration and the frame state stay with citro3d (set up once before the first native draw). Verified against the real command stream (nd_emit_test). */
+typedef struct NdUnit { uint32_t dim, param, lod, addr, type; } NdUnit; /* dim 0: unit off. addr = physical address >> 3, type = the texture format word */
+typedef struct NdDraw {
+    int tmpl;                 /* nd_tmpl id: effect, depth, blend and TEV words */
+    NdUnit u[2];              /* texture units 0 and 1 */
+    float pal[16];            /* palette entry 0: pcomp, C3D_Mtx memory order */
+    float uvso[4], cmul[4], cadd[4], zmix[2]; /* game order x y z w, the words go out in memory order w z y x */
+    uint32_t idx_word;        /* index buffer address word (register 0x227) */
+    uint32_t nidx;            /* index count */
+} NdDraw;
+typedef struct NdShadow {
+    int tmpl;                 /* -1 = unknown */
+    NdUnit u[2]; uint8_t u_on[2], u_valid;
+    float pal[16]; uint8_t pal_valid;
+    float uni[16]; uint8_t uni_valid;
+    uint32_t tmpl_val[64]; /* ND_TMPL_WORDS max, register values of the template last written (for word level deltas) */
+} NdShadow;
+#define ND_UNI_PAL 6u   /* vertex shader float uniform location of palette entry 0 (pm4) */
+#define ND_UNI_VAR 0x5Au /* uvso, cmul, cadd, zmix: 4 consecutive vec4 */
+void nd_shadow_reset(NdShadow* s);
+unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */
+
 /* Eye 2 without a second walk: copy the eye 1 command span, then write the eye 2 matrix words at each logged position. */
 typedef struct NdMtxLog { uint32_t at; uint16_t slot; uint16_t pad; } NdMtxLog;
 void nd_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NdMtxLog* log, unsigned nlog, unsigned eye);

@@ -371,6 +371,7 @@ set(PORT_SRC
     src/nd_tex.c
     src/nd_state.c
     src/nd_dlc.c
+    src/nd_emit.c
     src/pm_gu.c
     src/pm_interp.c
     src/pm_nusys.c
