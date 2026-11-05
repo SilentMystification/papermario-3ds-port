@@ -2514,7 +2514,7 @@ void pm_gpu_ndm_end(void) {
     ndm_live = 0;
     ndm_recs++;
     if (ndm_rec_nost) ndm_nost++;
-    else if (!ndm_rec_ok || !ndm_mode_ok || !ndm_has_comb) ndm_fb++;
+    else if (!ndm_rec_ok || !ndm_mode_ok) ndm_fb++; /* B9: a record without an entry is decided in nd_model_state (why 1) */
     else if (ndm_rec_leg) ndm_legacy++;
     else if (ndm_rec_diff) ndm_diff++;
     else if (ndm_rec_cmp) ndm_eq++;
