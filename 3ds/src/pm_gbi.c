@@ -3138,6 +3138,23 @@ static void op_texture(u32 w0, u32 w1) {
             tex_ss = w1 >> 16;
             tex_ts = w1 & 0xffffu;
 }
+static void op_setothermode(unsigned op, u32 w0, u32 w1) {
+            unsigned len = (w0 & 0xff) + 1;
+            unsigned field = (w0 >> 8) & 0xff;
+            unsigned sft = 32 - field - len;
+            unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
+            if (op == G_SETOTHERMODE_H) {
+                unsigned old_tf = omode_h & (3u << 12);
+                omode_h = (omode_h & ~mask) | (w1 & mask);
+                if ((omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
+                    pm_gpu_flush();
+                    pm_tex_set_filter((omode_h & (3u << 12)) != 0);
+                }
+            }
+            else omode_l = (omode_l & ~mask) | (w1 & mask);
+            /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
+            if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
+}
 static void op_setcombine(u32 w0, u32 w1) {
             GP_SET(0, comb_w0 == w0 && comb_w1 == w1 && comb_set);
             comb_w0 = w0;
@@ -3218,24 +3235,7 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
         case G_SETTILESIZE: op_settilesize(w0, w1); break;
         case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
         case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L: {
-            unsigned len = (w0 & 0xff) + 1;
-            unsigned field = (w0 >> 8) & 0xff;
-            unsigned sft = 32 - field - len;
-            unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-            if (op == G_SETOTHERMODE_H) {
-                unsigned old_tf = omode_h & (3u << 12);
-                omode_h = (omode_h & ~mask) | (w1 & mask);
-                if ((omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
-                    pm_gpu_flush();
-                    pm_tex_set_filter((omode_h & (3u << 12)) != 0);
-                }
-            }
-            else omode_l = (omode_l & ~mask) | (w1 & mask);
-            /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
-            if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
-            break;
-        }
+        case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
         case G_SETPRIMCOLOR:
             GP_SET(1, prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
             aud_prim_lod = (u8)(w0 & 0xff);
@@ -3281,6 +3281,8 @@ static __attribute__((noinline)) void tb_ops(const Gfx* g) {
             if ((n->words.w0 >> 24) != G_TEXTURE) sync_combine();
             break;
         }
+        case G_SETOTHERMODE_H:
+        case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
         default: tex_op(w0, w1); break;
         }
     }
