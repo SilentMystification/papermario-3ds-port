@@ -92,12 +92,18 @@ const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx) {
 
 int nd_mode_compile(NdMode* m, const unsigned* w) {
     uint32_t mh = 0, ml = 0, vh = 0, vl = 0;
-    m->ok = 0;
+    m->ok = 0; m->has_cb = 0; m->has_tx = 0; m->has_g = 0; m->gand = 0xFFFFFFFFu; m->gor = 0; m->bad = 0;
     for (unsigned i = 0; i < 8; i++) {
         uint32_t w0 = w[2 * i], w1 = w[2 * i + 1];
         uint32_t op = w0 >> 24;
         if (op == OP_ENDDL) break;
-        if (op != OP_SETOTHERMODE_H && op != OP_SETOTHERMODE_L) return 0; /* B6: another op is a fallback */
+        if (op == OP_SETCOMBINE) { m->has_cb = 1; m->cw0 = w0; m->cw1 = w1; continue; }
+        if (op == OP_TEXTURE) { m->has_tx = 1; m->tw1 = w1; continue; }
+        if (op == OP_GEOMETRYMODE) { /* B9: compose (geom & gand) | gor over the list */
+            uint32_t a = w0 & 0xFFFFFFu;
+            m->gor = (m->gor & a) | w1; m->gand &= a; m->has_g = 1; continue;
+        }
+        if (op != OP_SETOTHERMODE_H && op != OP_SETOTHERMODE_L) { m->bad = op; return 0; } /* B9: another op is a fallback, its code counted */
         unsigned len = (w0 & 0xFFu) + 1u, field = (w0 >> 8) & 0xFFu, sft = 32u - field - len;
         uint32_t mask = len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1u) << sft;
         if (op == OP_SETOTHERMODE_H) { mh |= mask; vh = (vh & ~mask) | (w1 & mask); }
@@ -109,16 +115,26 @@ int nd_mode_compile(NdMode* m, const unsigned* w) {
     return 1;
 }
 
+/* the GPU_CULLMODE values of citro3d (the register values), the cull of a native draw */
+#define ND_CULL_NONE 0u
+#define ND_CULL_FRONT_CCW 1u
+#define ND_CULL_BACK_CCW 2u
+
 /* ---- S3N-3a: the state of one model record as a native draw (pure: record words and NdMCtx) ---- */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0;
     const uint32_t f = rec[6]; /* R3 w0 flags */
-    if (!c->mode || !c->mode->ok || !c->has_comb) return (st->why = 1, 0);
+    if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
     if (c->gv && c->gv->fxon) return (st->why = 4, 0); /* lit or fog: pm5 path, later row */
     if (rec[26] != 0) return (st->why = 2, 0);          /* R13: words after the record (special tile list, untextured ops) */
     if (rec[22] != 0 || rec[23] != 0) return (st->why = 3, 0); /* R11: custom gfx pre and post */
     const int tex = c->u0 != NULL && c->u0->dim != 0;
-    const uint32_t w0 = c->comb_w0, w1 = c->comb_w1;
+    const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (rm_apply runs after the entry) */
+    const uint32_t geom = (c->geom_base & c->mode->gand) | c->mode->gor; /* B9: geometry after the list ops */
+    const int zb = (geom & 1u) != 0; /* G_ZBUFFER */
+    const unsigned ct = (geom & 0x600u) == 0x200u ? 1u : (geom & 0x600u) == 0x400u ? 2u : 0u; /* G_CULL_FRONT, G_CULL_BACK (pm_gbi ct) */
+    int ccw = c->wind <= 0; if (ct == 2) ccw = !ccw;
+    const uint8_t cull = (uint8_t)(ct ? (ccw ? ND_CULL_BACK_CCW : ND_CULL_FRONT_CCW) : ND_CULL_NONE);
     const uint32_t oh = (c->base_oh & ~c->mode->wh) | c->mode->om_h;
     const uint32_t ol = (c->base_ol & ~c->mode->wl) | c->mode->om_l;
     if (((ND_OMH_READ & ~c->mode->wh) & ~c->known_h) || ((ND_OML_READ & ~c->mode->wl) & ~c->known_l)) return -1; /* nost */
@@ -131,8 +147,8 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     if (plan.uses_tex1 || plan.uses_noise) return (st->why = 6, 0);
     NdTmplKey k;
     memset(&k, 0, sizeof k);
-    k.pass = 0; k.raw = 1; k.cull = (uint8_t)c->cull;
-    k.z = (uint8_t)(c->z_on != 0); k.zmark = 0; k.zcmp = r->zcmp; k.zupd = r->zupd; k.nocol = r->nocol; k.decal = r->decal;
+    k.pass = 0; k.raw = 1; k.cull = cull;
+    k.z = (uint8_t)zb; k.zmark = 0; k.zcmp = r->zcmp; k.zupd = r->zupd; k.nocol = r->nocol; k.decal = r->decal;
     memcpy(&k.dbias, &c->dbias, 4);
     k.atest_on = r->atest >= 0; k.aref = (uint8_t)(r->atest >= 0 ? r->atest : 0);
     k.combine = 8; k.tex = (uint8_t)tex; k.tex1 = 0; k.i8_0 = (uint8_t)(tex && c->i8_0); k.i8_1 = 0;

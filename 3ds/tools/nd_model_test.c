@@ -45,7 +45,9 @@ int main(void) {
     L3[0][0] = OP_GEOMETRYMODE << 24; L3[0][1] = 0;
     oth(L3[1], OP_SETOTHERMODE_H, 20, 2, 0); /* not reached: the list stops at the geometry op */
     L3[2][0] = OP_ENDDL << 24; L3[2][1] = 0;
-    CHECK(nd_mode_compile(&m, &L3[0][0]) == 0 && m.ok == 0, "B6: geometry op is fallback");
+    CHECK(nd_mode_compile(&m, &L3[0][0]) == 1 && m.ok == 1 && m.gand == 0u && m.gor == 0u, "B9: geometry op (and 0) composes");
+    { unsigned bad[2][2] = { { (unsigned)OP_PIPESYNC << 24, 0 }, { (unsigned)OP_ENDDL << 24, 0 } };
+      CHECK(nd_mode_compile(&m, &bad[0][0]) == 0 && m.ok == 0 && m.bad == OP_PIPESYNC, "B9: another op is fallback with its code"); }
 
     /* 4: texture handle descriptor: common case set, found by index and list pointer */
     static const unsigned gfx_a[2] = { 0, 0 }, gfx_b[2] = { 1, 1 };
@@ -87,7 +89,7 @@ int main(void) {
         gv.cm[3] = 1.f; gv.ca[3] = 1.f; gv.zm[0] = 1.f;
         memset(&c, 0, sizeof c);
         c.mode = &mode; c.u0 = &u0; c.gv = &gv; c.has_comb = 1; c.comb_w0 = cg.words.w0; c.comb_w1 = cg.words.w1;
-        c.z_on = 1; c.cull = 0; c.draw_3d = 1; c.dview = 1; c.rgb_scale = 1; c.r_mix = 0; c.r_memblend = 0; c.r_replace = 0;
+        c.geom_base = 1; c.wind = 1; c.draw_3d = 1; c.dview = 1; c.rgb_scale = 1; c.r_mix = 0; c.r_memblend = 0; c.r_replace = 0;
         c.prim = 0xffffffffu; c.cconst = 0; c.mixcol = 0;
         c.known_h = 0x00FFFFFFu; c.known_l = 0xFFFFFFFFu; c.base_oh = 0; c.base_ol = 0; /* B8: nd_st has values for every read bit */
         memcpy(&c.dbias, &db, 4);

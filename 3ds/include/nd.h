@@ -254,7 +254,8 @@ unsigned nd_tmpl_words(int id, const NdTmplWord** out);
 /* Render state rules of the walker (pm_gbi.c sync_render): other mode words to the draw flags. depth_img: the colour image is the z buffer image (a model drawn into
  * it is a depth write). set_memb 0: the memory blend flag is not changed by this state. atest -1 = off. */
 typedef struct NdRender { uint8_t zcmp, zupd, blend, decal, nocol, memb, set_memb, depth; int16_t atest; } NdRender;
-typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; uint32_t wh, wl; NdRender r; } NdMode; /* B8: om_h, om_l = the list bits, wh, wl = the bits it writes; r = the list alone (nd_model_state merges) */
+typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; uint32_t wh, wl; NdRender r; uint8_t has_cb, has_tx; uint32_t cw0, cw1, tw1, gand, gor; uint32_t bad; uint8_t has_g; } NdMode;
+/* B9: has_cb: the list sets the combine (cw0, cw1 = the last G_SETCOMBINE); has_tx: the list sets TEXTURE (tw1 = its w1: s << 16 | t, the walker tss); gand, gor: the geometry ops composed (geom = (geom & gand) | gor); bad: the op code of the first other op (ok 0) */ /* B8: om_h, om_l = the list bits, wh, wl = the bits it writes; r = the list alone (nd_model_state merges) */
 int nd_mode_compile(NdMode* m, const unsigned* w);
 void nd_render_state(uint32_t omode_h, uint32_t omode_l, int depth_img, NdRender* o);
 
@@ -287,6 +288,8 @@ typedef struct NdMCtx {
     uint32_t prim, env, cconst, mixcol; /* used when the record does not set PRIM (R3 bit 2) */
     uint32_t dbias;            /* decal bias, float bits */
     uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_st) and the bits it has a value for */
+    uint32_t geom_base;        /* B9: the geometry mode before the list (nd_st.geom) */
+    int wind;                  /* walker: the sign of the matrix determinant (gv_wind, until the matrix is native in 3c): cull sense */
 } NdMCtx;
 typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* 1 native, 0 fallback, -1 nost (B8: a read other mode bit has no value) */

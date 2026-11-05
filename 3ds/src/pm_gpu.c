@@ -2487,11 +2487,12 @@ static int ndm_on_v = -1, ndm_rec_ok, ndm_rec_cmp, ndm_rec_diff, ndm_rec_leg, nd
 static const uint32_t* ndm_rec; static NdMode ndm_mode; static int ndm_mode_ok, ndm_has_comb, ndm_tex;
 static uint32_t ndm_cw[2]; static NdUnit ndm_u;
 static unsigned ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_legacy, ndm_nodraw, ndm_nost, ndm_lines, ndm_f_last;
-static unsigned ndm_why[8]; /* S3N-3b: fallback draws by nd_model_state reason code (NdMState.why) */
+static unsigned ndm_why[8], ndm_badn; static uint32_t ndm_badop; /* S3N-3b: fallback draws by nd_model_state reason code (NdMState.why) */
 int pm_gpu_ndm_on(void) { if (ndm_on_v < 0) ndm_on_v = pm_debug_has("ndmcheck"); return ndm_on_v; }
 void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx) {
     ndm_rec = rec; ndm_live = 1; ndm_rec_ok = 1; ndm_rec_cmp = ndm_rec_diff = ndm_rec_leg = ndm_rec_nost = 0;
     ndm_mode_ok = modew != NULL && nd_mode_compile(&ndm_mode, (const unsigned*)modew) != 0;
+    if (!ndm_mode_ok && modew) { ndm_badop = ndm_mode.bad; ndm_badn++; } /* B9: the other op of a refused list, last one seen */
     ndm_has_comb = combw != NULL;
     if (combw) { ndm_cw[0] = combw[0]; ndm_cw[1] = combw[1]; }
     ndm_tex = 0; memset(&ndm_u, 0, sizeof ndm_u);
@@ -2506,6 +2507,7 @@ static __attribute__((cold, noinline)) void ndm_end_log(void) {
     if (f % 300u || f == ndm_f_last) return;
     ndm_f_last = f;
     pm_log_prof_line("ndmcheck f%u recs %u eq %u diff %u fb %u legacy %u nodraw %u nost %u why %u %u %u %u %u %u %u", f, ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_legacy, ndm_nodraw, ndm_nost, ndm_why[1], ndm_why[2], ndm_why[3], ndm_why[4], ndm_why[5], ndm_why[6], ndm_why[7]);
+    pm_log_prof_line("ndmcheck badop %02x n %u", ndm_badop >> 24, ndm_badn);
 }
 void pm_gpu_ndm_end(void) {
     flush(); /* the last batch of the record is drawn before its record is classified */
@@ -2534,13 +2536,13 @@ static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw*
     c.u0 = ndm_tex ? &ndm_u : NULL;
     c.i8_0 = pm_tex_i8(0);
     c.has_comb = ndm_has_comb; c.comb_w0 = ndm_cw[0]; c.comb_w1 = ndm_cw[1];
-    c.z_on = z_on; c.cull = (int)g_cullm;
+    c.geom_base = nd_st.geom; c.wind = gv_wind; /* B9: z and cull come from the geometry after the list; the wind sign is the walker matrix (3c) */
     c.draw_3d = draw_3d; c.dview = dview; c.rgb_scale = rgb_scale; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
-    c.prim = prim; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol;
+    c.prim = nd_st.prim; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
     memcpy(&c.dbias, &db, 4);
     c.base_oh = nd_st.om_h; c.base_ol = nd_st.om_l; c.known_h = nd_st.om_kh; c.known_l = nd_st.om_kl; /* B8 */
     NdGvP gvn; /* the draw parameters with the texture scale of the bridge state (tex_s, tex_t = the walker tss words) */
-    gv_params_calc((unsigned)((nd_st.tex_s << 16) | nd_st.tex_t), &gvn);
+    gv_params_calc(ndm_mode.has_tx ? ndm_mode.tw1 : (unsigned)((nd_st.tex_s << 16) | nd_st.tex_t), &gvn); /* B9: the list TEXTURE wins */
     c.gv = &gvn;
     { int rc = nd_model_state(ndm_rec, &c, &ref, &rs); if (rc != 1) { if (rc < 0) ndm_rec_nost = 1; ndm_rec_ok = 0; if (rs.why > 0 && rs.why < 8) ndm_why[rs.why]++; return; } }
     ndm_rec_cmp = 1;
