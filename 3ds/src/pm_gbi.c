@@ -3639,6 +3639,7 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q) {
     gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
     if (tb_list[tix] == tg) tb_run(tg); else tb_ops(tg);
     if (!rm_apply((u32)(uintptr_t)ModelRenderModes[(w0 >> 16) & 0xffu])) pm_log("rec: render mode list has another op f%u", pm_frame_count());
+    load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX */
 }
 /* mdldiff, switch mdldiff: the record runs from the start state, then the old words after it (mg_run) run from the same start state.
  * The end states are compared field by field (TS_FIELDS, geom, lights). The old path state goes on. */
@@ -3656,7 +3657,7 @@ static __attribute__((cold, noinline)) unsigned rec_diff(const Gfx* q, unsigned 
     ts_save(&e1); gm1 = geom; ln1 = lt_n; memcpy(lt1, lt, sizeof lt1);
     ts_load(&s0); geom = gm0; lt_n = ln0; memcpy(lt, lt0, sizeof lt0);
     tl_last = NULL;
-    if (mg_run((Gfx*)(q + 1), cnt, &nx, 0) != (Gfx*)(q + 1) + cnt) n += snprintf(names, sizeof names, "old_not_run ");
+    if (mg_run((Gfx*)(q + 3), cnt, &nx, q[1].words.w1) != (Gfx*)(q + 3) + cnt) n += snprintf(names, sizeof names, "old_not_run ");
     ts_save(&e2); gm2 = geom; ln2 = lt_n; memcpy(lt2, lt, sizeof lt2);
 #define TS_CMP(f) if (memcmp(&e1.f, &e2.f, sizeof e1.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
     TS_FIELDS(TS_CMP)
@@ -3667,13 +3668,13 @@ static __attribute__((cold, noinline)) unsigned rec_diff(const Gfx* q, unsigned 
     if (n) { bad++; if (bad <= 40) pm_log("mdldiff f%u rec %p DIFF: %s", pm_frame_count(), (const void*)q, names); }
     if (!(runs % 500)) pm_log("mdldiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
     ts_load(&e2); geom = gm2; lt_n = ln2; memcpy(lt, lt2, sizeof lt2);
-    return cnt;
+    return 2 + cnt;
 }
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     unsigned cnt = q->words.w0 & 0xffu;
     if (pm_rec_mode() == 2) return rec_diff(q, cnt);
     rec_apply(q);
-    return cnt;
+    return 2 + cnt; /* R1 and R2 are the matrix, then the old words */
 }
 
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
