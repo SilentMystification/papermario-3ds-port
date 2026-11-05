@@ -8,6 +8,8 @@
 #include "pm_build.h"
 
 volatile unsigned pm_wd_prog;  /* the game loop adds 1 per iteration and per drawn step */
+volatile unsigned pm_wd_evt[4]; /* the last script step: Evt, first line, next line, opcode */
+volatile unsigned pm_wd_sub; /* the last numbered call of step_game_loop (src/main_loop.c PM_WDSUB) */
 volatile unsigned pm_wd_phase; /* the last stage the game loop entered, see names below */
 volatile unsigned pm_wd_hold;  /* more than 0: a save runs, the game thread may wait for it */
 volatile unsigned pm_wd_armed; /* 1 after the first game loop iteration (boot and ROM load are not watched) */
@@ -93,7 +95,8 @@ static void wd_main(void* arg) {
                          stalled, pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count(), PM_BUILD_STR);
         pm_crash_line(buf, n); /* flushes the log queue first, so the last log lines are in log.txt */
         { extern unsigned pm_gbi_cur_op; extern unsigned nd_native_draws, nd_native_refused; extern const char* pm_gpu_last_flush(int*); int fl = 0; const char* ff = pm_gpu_last_flush(&fl);
-          n = snprintf(buf, sizeof(buf), "watchdog: walker op %02x, last flush %s:%d, native draws %u refused %u\n", pm_gbi_cur_op, ff ? ff : "?", fl, nd_native_draws, nd_native_refused); pm_crash_line(buf, n); }
+          n = snprintf(buf, sizeof(buf), "watchdog: step_game_loop call %u, walker op %02x, last flush %s:%d, native draws %u refused %u\n", pm_wd_sub, pm_gbi_cur_op, ff ? ff : "?", fl, nd_native_draws, nd_native_refused); pm_crash_line(buf, n); }
+        n = snprintf(buf, sizeof(buf), "watchdog: last script step evt %08x first %08x next %08x op %08x\n", pm_wd_evt[0], pm_wd_evt[1], pm_wd_evt[2], pm_wd_evt[3]); pm_crash_line(buf, n);
         n = snprintf(buf, sizeof(buf), "watchdog: exiting the process\n");
         pm_crash_line(buf, n);
         pm_exit_process();

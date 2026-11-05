@@ -50,6 +50,12 @@ s32 D_800741FC = 0;
 void gfx_init_state(void);
 void gfx_draw_background(void);
 
+#ifdef TARGET_3DS
+extern volatile unsigned pm_wd_sub; /* the hang watchdog prints the last step of step_game_loop */
+#define PM_WDSUB(n) (pm_wd_sub = (n))
+#else
+#define PM_WDSUB(n) ((void)0)
+#endif
 void step_game_loop(void) {
     PlayerData* playerData = &gPlayerData;
     const int MAX_GAME_TIME = 1000*60*60*60 - 1; // 1000 hours minus one frame at 60 fps
@@ -80,20 +86,35 @@ void step_game_loop(void) {
         }
     }
 
+    PM_WDSUB(1);
     mdl_reset_transform_flags();
+    PM_WDSUB(2);
     npc_iter_no_op();
+    PM_WDSUB(3);
     update_workers();
+    PM_WDSUB(4);
     update_triggers();
+    PM_WDSUB(5);
     update_scripts();
+    PM_WDSUB(6);
     update_messages();
+    PM_WDSUB(7);
     update_hud_elements();
+    PM_WDSUB(8);
     step_game_mode();
+    PM_WDSUB(9);
     update_entities();
+    PM_WDSUB(10);
     func_80138198();
+    PM_WDSUB(11);
     bgm_update_music_control();
+    PM_WDSUB(12);
     update_ambient_sounds();
+    PM_WDSUB(13);
     sfx_update_env_sound_params();
+    PM_WDSUB(14);
     update_windows();
+    PM_WDSUB(15);
     update_curtains();
 
     if (gOverrideFlags & GLOBAL_OVERRIDES_SOFT_RESET) {

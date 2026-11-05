@@ -605,6 +605,9 @@ void update_scripts(void) {
                 };
 
                 script->frameCounter -= 1.0;
+#ifdef TARGET_3DS
+                { extern volatile unsigned pm_wd_evt[4]; pm_wd_evt[0] = (unsigned)script; pm_wd_evt[1] = (unsigned)script->ptrFirstLine; pm_wd_evt[2] = (unsigned)script->ptrNextLine; pm_wd_evt[3] = script->ptrNextLine ? (unsigned)script->ptrNextLine[0] : 0u; } /* the hang watchdog prints the last script step */
+#endif
                 status = evt_execute_next_command(script);
                 if (status == EVT_CMD_RESULT_ERROR) {
                     stop = true;
