@@ -1805,11 +1805,23 @@ static u32 mtx_tag[256];
 
 /* hdr: the G_PM_MODEL header w1 of the group the word is in, 0 outside mg_run. */
 _Static_assert(ND_MTX_PUSH == G_MTX_PUSH && ND_MTX_LOAD == G_MTX_LOAD && ND_MTX_PROJ == G_MTX_PROJECTION, "nd.h matrix flags equal the gbi values");
+/* M4-2 diag, switch ndref=<frame>: one line per G_MTX load of that frame (source pointer, first words, interp hit, slot) */
+extern int pm_interp_repl;
+int pm_gbi_ndref_frame(void);
+extern const float (*pm_interp_find(const void* m))[4];
+static __attribute__((cold, noinline)) void mtx_dbg(const Mtx* src, u32 hdr) {
+    static unsigned n;
+    const u32* s = (const u32*)src->m;
+    const float (*lm)[4] = pm_interp_repl ? pm_interp_find(src) : 0;
+    pm_log("gmtx f%u n %u src %p w %08x %08x %08x %08x slot %u tag %u repl %d lm %d", pm_frame_count(), n++, (const void*)src,
+           s[0], s[1], s[2], s[3], hdr & 0xffu, (unsigned)(hdr >> 16), pm_interp_repl, lm != 0);
+}
 static void load_mtx(u32 w0, u32 w1, u32 hdr) {
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
     if (!src) return;
     float in[4][4];
+    if (pm_frame_count() == 200 && pm_gbi_ndref_frame() == 200) mtx_dbg(src, hdr); /* M4-2 diag */
     int lm = nd_mtx_replace(src, in); /* F06-2, S1-5: the interpolated matrix of the t = 0.5 pass */
     unsigned slot = hdr & 0xffu;
     int cached = slot != 0 && (hdr & 0x100u) != 0 && !lm; /* a static model matrix: the header says src is that model's savedMtx */
