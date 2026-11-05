@@ -1537,7 +1537,27 @@ void appendGfx_model(void* data) {
 
     gDPPipeSync((*gfxPos)++);
 
+#ifdef TARGET_3DS
+    if (recOn) { /* M4-2 / S3F-1: record, 4 words. R0: op, render mode index (IDX_00), texture list index, bind list; count of old words set later.
+                  * R1: the G_MTX flags of the matrix (as gSPMatrix stores them) and the header w1. R2: numLights, finalMtx.
+                  * R3: the lights group (0 when none). */
+        recWord = (*gfxPos);
+        (*gfxPos) += 4;
+        recWord->words.w0 = ((u32)G_PM_REC << 24) | ((u32)RENDER_MODE_IDX_00 << 16) | ((((u32)(textureHandle - TextureHandles)) & 0x7fu) << 8);
+        recWord->words.w1 = (u32)textureHandle->gfx;
+        recWord[1].words.w0 = (u32)((((flags & MODEL_FLAG_TRANSFORM_GROUP_MEMBER) ? G_MTX_MUL : G_MTX_LOAD) | G_MTX_PUSH | G_MTX_MODELVIEW) ^ G_MTX_PUSH);
+        recWord[1].words.w1 = mgHdr->words.w1;
+        recWord[2].words.w0 = (model->groupData != nullptr) ? (u32)model->groupData->numLights : 0u;
+        recWord[2].words.w1 = (u32)model->finalMtx;
+        recWord[3].words.w0 = 0;
+        recWord[3].words.w1 = (model->groupData != nullptr && model->groupData->lightingGroup != nullptr) ? (u32)model->groupData->lightingGroup : 0u;
+    }
+#endif
+#ifdef TARGET_3DS
+    if (model->groupData != nullptr && !recSkip) {
+#else
     if (model->groupData != nullptr) {
+#endif
         Lightsn* lights = model->groupData->lightingGroup;
         if (model->groupData->lightingGroup != nullptr) {
             switch (model->groupData->numLights) {
@@ -1569,19 +1589,6 @@ void appendGfx_model(void* data) {
         }
     }
 
-#ifdef TARGET_3DS
-    if (recOn) { /* M4-2: record, 3 words. R0: op, render mode index (IDX_00), texture list index, bind list; count of old words set later.
-                  * R1: the G_MTX load of the matrix (w0 flags as the matrix word below, w1 the header). R2: w1 finalMtx. S3F-1a. */
-        recWord = (*gfxPos);
-        (*gfxPos) += 3;
-        recWord->words.w0 = ((u32)G_PM_REC << 24) | ((u32)RENDER_MODE_IDX_00 << 16) | ((((u32)(textureHandle - TextureHandles)) & 0x7fu) << 8);
-        recWord->words.w1 = (u32)textureHandle->gfx;
-        recWord[1].words.w0 = (u32)((((flags & MODEL_FLAG_TRANSFORM_GROUP_MEMBER) ? G_MTX_MUL : G_MTX_LOAD) | G_MTX_PUSH | G_MTX_MODELVIEW) ^ G_MTX_PUSH); /* as gSPMatrix stores p ^ G_MTX_PUSH */
-        recWord[1].words.w1 = mgHdr->words.w1;
-        recWord[2].words.w0 = 0;
-        recWord[2].words.w1 = (u32)model->finalMtx;
-    }
-#endif
     if (textureHeader != nullptr) {
         switch (extraTileType) {
             case EXTRA_TILE_AUX_INDEPENDENT:
@@ -2069,7 +2076,7 @@ void appendGfx_model(void* data) {
     }
 
 #ifdef TARGET_3DS
-    if (recWord != nullptr) recWord->words.w0 |= (u32)((*gfxPos) - (recWord + 3)) & 0xffu; /* M4-2: old words after the record (mdldiff only, else 0; the matrix word is one of them) */
+    if (recWord != nullptr) recWord->words.w0 |= (u32)((*gfxPos) - (recWord + 4)) & 0xffu; /* M4-2: old words after the record (mdldiff only, else 0; the matrix word is one of them) */
 #endif
     if (flags & MODEL_FLAG_BILLBOARD) {
         gSPMatrix((*gfxPos)++, gCameras[gCurrentCamID].mtxBillboard, mtxLoadMode | mtxPushMode | G_MTX_MODELVIEW);

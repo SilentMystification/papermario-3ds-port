@@ -3631,7 +3631,32 @@ static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
 extern Gfx* ModelRenderModes[];
 static Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx, u32 hdr);
 int pm_rec_mode(void) { return PMD("mdldiff") ? 2 : 1; } /* 2: mdldiff runs the old words after the record from the same start state */
+/* S3F-1b: the lights of a record: the words gSPSetLightsN makes (plain gbi.h macros, the same ones as model.c), run through the walker
+ * handlers gbi_moveword and gbi_movemem with the same skip test as mg_run. No word is copied from the display list. */
+static __attribute__((noinline)) void rec_lights(const Lightsn* L, unsigned k) {
+    Gfx tg[12];
+    Gfx* p = tg;
+    switch (k) {
+    case 0: gSPSetLights0(p++, L[0]); break;
+    case 1: gSPSetLights1(p++, L[0]); break;
+    case 2: gSPSetLights2(p++, L[0]); break;
+    case 3: gSPSetLights3(p++, L[0]); break;
+    case 4: gSPSetLights4(p++, L[0]); break;
+    case 5: gSPSetLights5(p++, L[0]); break;
+    case 6: gSPSetLights6(p++, L[0]); break;
+    case 7: gSPSetLights7(p++, L[0]); break;
+    default: return;
+    }
+    for (const Gfx* h = tg; h < p; h++) {
+        u32 w0 = h->words.w0, w1 = h->words.w1;
+        unsigned op = w0 >> 24;
+        if (g2_same(op, w0, w1)) continue;
+        if (op == G_MOVEWORD) gbi_moveword(w0, w1);
+        else if (op == G_MOVEMEM) gbi_movemem(w0, w1);
+    }
+}
 static __attribute__((noinline)) void rec_apply(const Gfx* q) {
+    if (q[3].words.w1) rec_lights((const Lightsn*)(uintptr_t)q[3].words.w1, q[2].words.w0); /* S3F-1b: lights first, as the old word order */
     u32 w0 = q->words.w0;
     const Gfx* tg = (const Gfx*)(uintptr_t)q->words.w1;
     unsigned tix = (w0 >> 8) & 0x7fu;
@@ -3657,7 +3682,7 @@ static __attribute__((cold, noinline)) unsigned rec_diff(const Gfx* q, unsigned 
     ts_save(&e1); gm1 = geom; ln1 = lt_n; memcpy(lt1, lt, sizeof lt1);
     ts_load(&s0); geom = gm0; lt_n = ln0; memcpy(lt, lt0, sizeof lt0);
     tl_last = NULL;
-    if (mg_run((Gfx*)(q + 3), cnt, &nx, q[1].words.w1) != (Gfx*)(q + 3) + cnt) n += snprintf(names, sizeof names, "old_not_run ");
+    if (mg_run((Gfx*)(q + 4), cnt, &nx, q[1].words.w1) != (Gfx*)(q + 4) + cnt) n += snprintf(names, sizeof names, "old_not_run ");
     ts_save(&e2); gm2 = geom; ln2 = lt_n; memcpy(lt2, lt, sizeof lt2);
 #define TS_CMP(f) if (memcmp(&e1.f, &e2.f, sizeof e1.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
     TS_FIELDS(TS_CMP)
@@ -3668,13 +3693,13 @@ static __attribute__((cold, noinline)) unsigned rec_diff(const Gfx* q, unsigned 
     if (n) { bad++; if (bad <= 40) pm_log("mdldiff f%u rec %p DIFF: %s", pm_frame_count(), (const void*)q, names); }
     if (!(runs % 500)) pm_log("mdldiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
     ts_load(&e2); geom = gm2; lt_n = ln2; memcpy(lt, lt2, sizeof lt2);
-    return 2 + cnt;
+    return 3 + cnt;
 }
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     unsigned cnt = q->words.w0 & 0xffu;
     if (pm_rec_mode() == 2) return rec_diff(q, cnt);
     rec_apply(q);
-    return 2 + cnt; /* R1 and R2 are the matrix, then the old words */
+    return 3 + cnt; /* R1 to R3 are the matrix and the lights, then the old words */
 }
 
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
