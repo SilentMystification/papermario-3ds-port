@@ -15,5 +15,5 @@ Orchestrator sessions: read docs/handoff/orchestrator_rules.md at the start. Cod
    - One handoff file per epic, docs/handoff/agent_<epic>.md. A new handoff overwrites the old text (STATE block at the top, 10 lines or fewer). Do not create agent_<epic>b.md, diag_*.md or dated copies.
    - A finding goes into the file of its subject (plan section, hw_guidelines.md, frame_budget.md) as a replacement of the stale sentence. A wrong or finished statement is deleted, not followed by a correction.
    - A row file (docs/handoff/row_<id>.md) is deleted by the commit that completes the row. Its result is the commit message and the bench runs.
-   - Numbers go into the bench database (python 3ds/tools/bench.py), never into prose. A rerun with the same key (bench, build, host, spot) replaces the earlier run.
+   - Numbers go into the bench database (python 3ds/tools/bench.py), never into prose. The run history is append-only and is never replaced or deleted: every run stays, because the history is the dataset. Queries (compare, trend, where) read the history and pick runs by build, time and position.
    - Before adding a file in docs/handoff, search INDEX.md and the subject files. Add a file only for a new subject, and add its INDEX.md line in the same commit.
