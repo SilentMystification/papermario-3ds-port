@@ -15,7 +15,7 @@ Claude: Sonnet orchestrates. Opus plans. Haiku writes code and does investigatio
 
 ## AGENT STARTUP (keeps the fixed context of a new agent small)
 - Every new agent gets one row file: docs/handoff/row_<id>.md, written from docs/handoff/row_TEMPLATE.md, 60 lines or fewer.
-- The prompt is 10 lines or fewer: "Read docs/handoff/row_<id>.md. Do the rows in it until all done criteria pass. Commit after each passed row."
+- The prompt is 10 lines or fewer: "Read docs/handoff/row_<id>.md. Do the rows in it until all done criteria pass. Commit after each passed row. Chat style: caveman mode. No ASD-STE100."
 - The row file names the exact files, symbols and plan sections. The agent opens only those. It does not read start_here, the whole plan, or older agent files unless the row file names them.
 - The prompt states every known blocker as work with a route. A missing file is not a stop condition. Handback only when the whole row set passes.
 - Rotation: copy the STATE block of the retired agent's handoff into the next row file. The next agent does not re-read the old handoff.

@@ -1,4 +1,7 @@
 {
+  "enabledPlugins": {
+    "ponytail@ponytail": false
+  },
   "permissions": {
     "allow": [
       "Bash(git status:*)",
