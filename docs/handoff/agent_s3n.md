@@ -1,22 +1,11 @@
 # Agent S3N: map model records draw natively
 
 ## STATE
-branch: nds1 | commits: 48dc9ed53 (3a), 7e80630bb (3b), 0cc27f058 (B8), 6f7901630 (handoff), be480ae1d (B9 list ops), e859fd38b (begin classification).
-done: S3N-0, S3N-1, S3N-2, S3N-3a, S3N-3b code: B8 om merge + nost, B9 list ops (SETCOMBINE, TEXTURE, GEOMETRYMODE) into NdMode, geom/z/cull from geom, uvso/cmul/cadd/zmix compare.
-3b gate NOT met: eq 0 on all 3 spots. Benches spot_*_ndmcheck (committed 5d151eb12), budget reset at start, 6 of 8 used:
-  mac_01 (bench, e859fd38b): recs 38886 eq 0 diff 0 fb 3154 legacy 19052 nodraw 16680 nost 0 badop none
-  mac_00: recs 44608 eq 0 diff 0 fb 3243 legacy 16972 nodraw 24393 nost 0
-  sbk_56: recs 23221 eq 0 diff 0 fb 0 legacy 13122 nodraw 10099 nost 0
-  diff 0 is not proof: eq 0 means no draw was compared. The scene line event failed on mac_01 (prof line before the ndmcheck line; coordinator says read the line yourself, do not edit the scenario): reported.
-3c NOT started.
-next: decide B10, then 3b gate and 3c.
-
-B10 (new, BLOCKS 3b gate): the walker draws in these records are almost all legacy class (walker combine != 8, B7: counted, not compared). Native compare is only on combine 8 (plan). The walker never picks combine 8 for these models, so eq stays 0. Also nodraw is large: records whose draws go to flush_draw_cpu or other non-raw paths, not compared.
-  Options for the user:
-  (a) compare the non-TEV fields for legacy class draws (depth, blend, tex, cull, u0, uvso, cmul, cadd, zmix; not tmpl id, TEV words, combine). Gives eq for legacy class with partial compare. Walker combine stays the oracle for those fields only.
-  (b) force combine 8 on the walker for these draws (picture change, not allowed without a check).
-  (c) count legacy as its own gate (picture by eye in S3N-4), and set the 3b gate to eq above 0 on combine 8 draws only (none exist here: gate impossible).
-  Plan default (B7 as written): legacy counted apart, not compared. Taken for now.
+branch: nds1 | last commits: be480ae1d (B9), e859fd38b (begin classification), 77815d8d6 (handoff).
+done: S3N-0, S3N-1, S3N-2, S3N-3a, S3N-3b code (B8, B9). 3b gate NOT met: eq 0 on all 3 spots (last counts in the B10 section).
+B10 DECIDED (coordinator, replaces B7): walker combine choice moves to one pure function nd_comb_decide(const NdCombIn*, NdCombOut*) in nd_model.c. Inputs: combine w0 w1, two, texture facts of tile 0 and 1 (valid, fmt, size), box_pat, box_prod, box_folded, dual_on, leg_mode, prim, env. Walker calls it with its globals (one copy). Host case: random or recorded inputs give the old result bit-equal (as nd_gv). Native path calls it with the record: texture facts from the handle desc (B4), box_* = 0, dual_on = 0, leg_mode from nd_st or 0. Box or dual on at the walker with native inputs unknown: fallback class box. Then ndmcheck compares all fields again, legacy included. nodraw (lit pm5 and CPU path) stays apart (lit is epic S3L).
+  Scope of the move: sync_legacy, decide, const_rgb_tex_alpha, pm_comb_colours inputs in pm_gbi.c (sync_combine ~L1081, decide ~L980). Large; not started. Needs its own row (S3N-3d) before the 3b gate can give eq above 0.
+next: S3N-3d (nd_comb_decide, walker moved to it, host bit-equal), then 3b gate on the 3 spots (bench spot_*_ndmcheck), then 3c.
 
 B8 DECIDED (coordinator): om_l = (nd_st.om_l & ~written) | list bits; om_h likewise. Read bits with no nd_st value: nost (-1). Done in nd_model_state (merge) and nd_state.c (om_kh, om_kl known masks).
   Deviation: cycle type from the merged om_h (not "2CYC flag of the record class"). R3 has no 2CYC flag; the merged cycle type is the only source. ndmcheck would show a wrong cycle type as diff.
@@ -31,7 +20,7 @@ B9 (new, BLOCKS 3b gate, 3c): nd_mode_compile (B6, my default) rejects any rende
   Plan default (B6 as written): fallback. Taken for now.
 B7 (new, BLOCKS S3N-3): the combine mode and the TEV key of a draw come from sync_combine (pm_gbi.c 1081: sync_combine_work_timed, sync_legacy, decide, pm_comb_colours; memo scm_sig/scm_find). Its inputs include walker texture state (td[0..1].valid, tile formats and sizes, ldrec, tex_on, use_t1), box_pat, box_prod, box_folded, dual_on, comb_set, comb_alpha_shade, leg_mode. A native model draw has none of this. ndmcheck would compare a key the native path cannot build. Options: (a) port sync_legacy and decide into a pure function over an input struct the record and the handle desc fill (large; box and dual state need records too); (b) keep the walker combine for models and have nd_model_draw read the mode the walker last set (a stale-state risk); (c) S3N-3 compares only the parts natively derivable (render state, unit words, matrix, palette, geometry ranges) and logs combine and tev as skipped. Plan default NOT chosen: the user decides.
 
-B7 DECIDED (coordinator, plan_native_system.md 2.3): native model draws always use combine 8. The TEV plan comes from pm_comb_build over the record combine words (R4 entry w0, w1; two = 2CYC class; t1only as nd_raw_native sets it). Colours from the record (prim, env, fog, blend). No port of sync_legacy, decide, box or dual. Fallback when pm_comb_build refuses (rc != 0) or the plan uses tex1 or noise. ndmcheck compares all fields including combine and TEV. A diff where the walker chose a legacy mode is logged as class `legacy` (counted apart, not a failure). The gate for those models is the picture by eye in S3N-4.
+B7 (SUPERSEDED by B10): B7 DECIDED (coordinator, plan_native_system.md 2.3): native model draws always use combine 8. The TEV plan comes from pm_comb_build over the record combine words (R4 entry w0, w1; two = 2CYC class; t1only as nd_raw_native sets it). Colours from the record (prim, env, fog, blend). No port of sync_legacy, decide, box or dual. Fallback when pm_comb_build refuses (rc != 0) or the plan uses tex1 or noise. ndmcheck compares all fields including combine and TEV. A diff where the walker chose a legacy mode is logged as class `legacy` (counted apart, not a failure). The gate for those models is the picture by eye in S3N-4.
 
 ## Decisions (coordinator, 2026-11-05)
 B4 DECIDED: option (a). NdModelTex from TextureHandle header (mainW, mainH, mainFmt, mainBitDepth, mainWrapW, mainWrapH, masks by INTEGER_LOG2, extraTiles, aux raster) plus raster and palette. One TARGET_3DS call nd_tex_handle_set(...) at the end of load_texture_impl (model.c). Common case only: extraTiles 0 (one tile), no aux raster, no mipmaps. Everything else fallback. ndmcheck compares NdUnit words with the walker words, so a wrong desc shows as a diff.
