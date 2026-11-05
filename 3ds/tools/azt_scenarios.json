@@ -608,6 +608,24 @@
       "reason": ""
     },
     {
+      "name": "mac01_ndref200",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01) standing, reference draw stream of frame 200 (ndref=200): the draws of the record build and the base build for the M4-2 seam diff.",
+      "proves": "ndref file of frame 200 at the seam_pic position; compare the first differing draw between the two builds.",
+      "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase seamstat ndref=200",
+      "until": "ndref f200 done",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "ndref done", "regex": "ndref f200 done draws" }
+      ],
+      "reason": ""
+    },
+    {
       "name": "mac01_walk",
       "status": "unverified",
       "subject": "Toad Town street (mac_01) at pos -198 20 -355, prof mode (the console hung here with the M4 bind memo).",
