@@ -209,17 +209,11 @@
     _g->words.w1 = (u32)(rm); \
 }
 
-/* C1: a model texture bind as one port op. w0 low bits = handle index (TextureHandles[], < 128), w1 = the handle's Gfx list.
- * The 3DS interpreter runs the list through the texture handlers when pm_texbind_set accepted it, else as G_DL. */
-#define G_PM_TEX 0x0A
 /* GLYPH: header of n texture-load words after it (w0 low 16 bits = n). The words run through tex_op, not the dispatch. */
 #define G_PM_TEXI 0x0B
-/* MR1: header of the n model words after it (w0 low 16 bits = n). The 3DS interpreter runs them with the same handlers (mg_run). */
-#define G_PM_MODEL 0x0C
-#define G_PM_REC 0x0D /* M4-2: producer record of a plain opaque model (model.c), pm_gbi.c rec_run */
+#define G_PM_REC 0x0D /* M4-2, S3F-4: producer record of a model (model.c), pm_gbi.c rec_run */
 #define G_PM_REC_WORDS 11 /* S3F-2c: words of one producer record (R0 to R10) */
 #define gsSPPmTexInline(n) {{ _SHIFTL(G_PM_TEXI, 24, 8) | ((n) & 0xffff), 0 }}
-#define gSPPmTexBind(pkt, idx, dl) {     Gfx *_g = (Gfx *)(pkt);     _g->words.w0 = _SHIFTL(G_PM_TEX, 24, 8) | ((idx) & 0x7f);     _g->words.w1 = (u32)(dl); }
 
 /* HANG1a: a G_NOOP whose low 24 bits are PM_SPLASH_ON or PM_SPLASH_OFF brackets the water splash draws (water_splash.c).
  * Between them a colour buffer grab is one full-height copy per frame (pm_gbi.c grab_cur). */

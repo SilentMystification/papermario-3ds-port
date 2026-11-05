@@ -29,13 +29,13 @@ SECTIONS
 		. = ALIGN(4);
 
 		/* .text: CF4 hot set first (by function section name, -ffunction-sections), then cold code (.text.unlikely.*), then the rest */
-		*(.text.pm_gbi_run .text.gbi_run_body .text.draw_tri .text.unlikely.gv_tri .text.tex_op .text.tb_run .text.tb_inline)
+		*(.text.pm_gbi_run .text.gbi_run_body .text.draw_tri .text.unlikely.gv_tri .text.tex_op .text.tb_inline)
 		*(.text.ensure_tile .text.ensure_tile.* .text.tile_bound .text.dual_bind .text.dual_bind.*)
 		*(.text.gv_epoch_enter .text.gv_state_why .text.gv_params_calc .text.gv_matrix_id)
 		*(.text.sync_combine .text.sync_combine_work .text.sc_sig_now .text.sync_render .text.dlc_try)
 		*(.text.pm_gpu_grange .text.pm_gpu_gvtx_load .text.pm_gpu_flush_at .text.flush_draw)
 		*(.text.pm_tex_load .text.load_impl .text.pm_tex_bind .text.pm_tex_set_wrap)
-		*(.text.mg_run .text.g2_same .text.gbi_movemem .text.gbi_moveword .text.rm_apply .text.pm_gpu_set_mode .text.load_mtx .text.pm_gpu_set_mvp .text.gbi_popmtx .text.dlc_run_group .text.dlc_static_group .text.dlc_box_out.* .text.dlc_seg .text.kick_check .text.flush_impl .text.sh_* .text.pm_tex_i8)
+		*(.text.g2_same .text.gbi_movemem .text.gbi_moveword .text.rm_apply .text.pm_gpu_set_mode .text.load_mtx .text.pm_gpu_set_mvp .text.gbi_popmtx .text.dlc_run_group .text.dlc_static_group .text.dlc_box_out.* .text.dlc_seg .text.kick_check .text.flush_impl .text.sh_* .text.pm_tex_i8)
 		*libcitro3d.a:*(.text.C3Di_UpdateContext .text.C3D_DrawElements .text.C3D_DrawArrays .text.C3D_TexBind .text.C3D_UpdateUniforms)
 		*(.text.flush_draw_cpu .text.tex_tile1.*)
 		*(.text.unlikely .text.unlikely.*)

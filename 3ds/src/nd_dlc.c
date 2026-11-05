@@ -1,4 +1,4 @@
-/* nd_dlc.c: static display list compiler (plan_native_slices S3-1). Moved from pm_dlc.inc.c dlc_compile (the group cut, the slot rules, the boxes) and dlc_static_build
+/* nd_dlc.c: static display list compiler (plan_native_slices S3-1). Moved from the DLC compile code (pm_gbi.c dlc_compile) (the group cut, the slot rules, the boxes) and dlc_static_build
  * (the Vtx copies with flag 0 and the triangle indices). Pure C on host-order word pairs: the host test builds it. The batch merge of dlc_batch_compile is not here:
  * it belongs to the sort and merge of nd_core (S3-5). */
 #include <stdint.h>
