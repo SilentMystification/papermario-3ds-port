@@ -172,23 +172,11 @@ extern Gfx Gfx_RM3_SURFACE_XLU_NO_ZB[];
 extern Gfx Gfx_RM3_CLOUD[];
 extern Gfx Gfx_RM3_CLOUD_NO_ZB[];
 
-// C2: one port op per render mode list on 3DS. The interpreter skips the list when the render state already matches.
-#ifdef TARGET_3DS
-#define MODEL_RM_OP(pos, rm) do { if (!recSkip) gSPPmRenderMode(pos, rm); } while (0) /* M4-2: recSkip leaves the word out */
-#else
+// S3N-0: on 3DS the RM, texture and matrix words of a model are not in the stream. The producer record carries them.
+#ifndef TARGET_3DS
 #define MODEL_RM_OP(pos, rm) gSPDisplayList(pos, rm)
-#endif
-
-// S3F-4: a model texture bind is the G_DL of its texture list on every path (the walker runs it as ops).
-#ifdef TARGET_3DS
-#define MODEL_TEX_OP(pos, h) do { if (!recSkip) gSPDisplayList(pos, (h)->gfx); } while (0) /* M4-2: recSkip leaves the word out */
-#ifdef TARGET_3DS
-#define MODEL_MTX_OP(pos, m, p) do { if (!recSkip) gSPMatrix(pos, m, p); } while (0) /* S3F-1a: the record carries the matrix load */
-#else
-#define MODEL_MTX_OP(pos, m, p) gSPMatrix(pos, m, p)
-#endif
-#else
 #define MODEL_TEX_OP(pos, h) gSPDisplayList(pos, (h)->gfx)
+#define MODEL_MTX_OP(pos, m, p) gSPMatrix(pos, m, p)
 #endif
 
 Gfx* ModelRenderModes[] = {
@@ -1385,13 +1373,6 @@ void load_model_transforms(ModelNode* model, ModelNode* parent, Matrix4f mdlTxMt
 s32 is_identity_fixed_mtx(Mtx* mtx);
 void build_custom_gfx(void);
 
-/* S3F-2: REC_SKIP leaves the old words of a model out of the stream when its record carries them (0 off 3DS, and under mdldiff). */
-#ifdef TARGET_3DS
-#define REC_SKIP recSkip
-#else
-#define REC_SKIP 0
-#endif
-
 void appendGfx_model(void* data) {
     Model* model = data;
     s32 mtxPushMode;
@@ -1419,8 +1400,6 @@ void appendGfx_model(void* data) {
 #ifdef TARGET_3DS
     u32 hdrW1 = 0;          /* S3F-4: header w1 word of the record (R1 w1), set below */
     Gfx* recWord = nullptr; /* M4-2: producer record word (G_PM_REC) of this model, count set at the end */
-    int recOn = 0;          /* M4-2: plain opaque model, the record replaces its texture and render mode words */
-    int recSkip = 0;        /* M4-2: 1 leaves out the old texture and render mode words (mdldiff 0) */
     int specialTex = 0;     /* S3F-2: the special tile list (make_texture_gfx), not in the record */
     u32 rFlags = 0;         /* S3F-2b: R3 w0 bits: 2 fog after the render mode, 4 prim, 8 env, 16 blend, 32 shroud render mode, 64 depth fog before the lights */
     u32 fogColW = 0, fogPosW = 0; /* the fog colour and fog position words (R4 w0, R5 w1) */
@@ -1538,24 +1517,20 @@ void appendGfx_model(void* data) {
         && get_model_property(modelNode, MODEL_PROP_KEY_SPECIAL) != nullptr;
     /* S3G-2: every model is a record. The shroud tint at 255 draws nothing and returns before the record (the old early return). */
     if ((renderClass == RENDER_CLASS_1CYC_SHROUD || renderClass == RENDER_CLASS_2CYC_SHROUD) && ShroudTintAmt == 255) return;
-    recOn = 1;
-    recSkip = recOn;
     /* SR2: w1 = pmSlot (bits 0 to 7), static matrix (bit 8: finalMtx is savedMtx, not billboard), pmMtxVer (bits 16 to 31).
      * M4-2: bit 9 = the model has a producer record (pm_gbi.c rec_run). S3F-4: no header op; the value goes to the record (R1 w1). */
     hdrW1 = (u32)model->pmSlot
         | ((model->finalMtx == &model->savedMtx && !(flags & MODEL_FLAG_BILLBOARD)) ? 0x100u : 0u)
-        | (recOn ? 0x200u : 0u)
+        | 0x200u
         | ((u32)model->pmMtxVer << 16);
 #endif
 
-#ifdef TARGET_3DS
-    if (!recOn) gDPPipeSync((*gfxPos)++);
-#else
+#ifndef TARGET_3DS
     gDPPipeSync((*gfxPos)++);
 #endif
 
 #ifdef TARGET_3DS
-    if (recOn) { /* S3F-2: record, 6 words, values set at the end of this function. R0: op, render mode index, texture list index, count of
+    { /* S3F-2: record, 6 words, values set at the end of this function. R0: op, render mode index, texture list index, count of
                   * the old words after the record (0 unless mdldiff); w1 bind list. R1: the G_MTX flags of the matrix (as gSPMatrix stores them)
                   * and the header w1. R2: numLights, finalMtx. R3: w0 bit 1 = fog words, w1 the lights group (0 when none). R4: w0 fog colour word,
                   * w1 the combine entry (0 when none). R5: w1 fog position word. */
@@ -1571,15 +1546,15 @@ void appendGfx_model(void* data) {
         recWord[3].words.w1 = (model->groupData != nullptr && model->groupData->lightingGroup != nullptr) ? (u32)model->groupData->lightingGroup : 0u;
     }
 #endif
-    /* S3F-2b: the depth and remap tint words. They were before the header; now they are in the group (record values when recOn). */
+    /* S3F-2b: the depth and remap tint words. They were before the header; now they are in the group (record values). */
     if (tintCombineType == TINT_COMBINE_DEPTH) {
         Gfx tw[3];
         gDPSetPrimColor(&tw[0], 0, 0, DepthTintBaseR, DepthTintBaseG, DepthTintBaseB, DepthTintBaseA);
         gDPSetFogColor(&tw[1], DepthTintColR, DepthTintColG, DepthTintColB, 0);
         gSPFogPosition(&tw[2], DepthTintStart, DepthTintEnd);
-        if (!REC_SKIP) {
-            for (s32 k = 0; k < 3; k++) { *(*gfxPos) = tw[k]; (*gfxPos)++; }
-        }
+#ifndef TARGET_3DS
+        for (s32 k = 0; k < 3; k++) { *(*gfxPos) = tw[k]; (*gfxPos)++; }
+#endif
 #ifdef TARGET_3DS
         rFlags |= 64 | 4; rPrim = tw[0].words.w1; fogColW = tw[1].words.w1; fogPosW = tw[2].words.w1;
 #endif
@@ -1587,19 +1562,16 @@ void appendGfx_model(void* data) {
         Gfx tw[2];
         gDPSetPrimColor(&tw[0], 0, 0, RemapTintMaxR, RemapTintMaxG, RemapTintMaxB, 255);
         gDPSetEnvColor(&tw[1], RemapTintMinR, RemapTintMinG, RemapTintMinB, 255);
-        if (!REC_SKIP) {
-            for (s32 k = 0; k < 2; k++) { *(*gfxPos) = tw[k]; (*gfxPos)++; }
-        }
+#ifndef TARGET_3DS
+        for (s32 k = 0; k < 2; k++) { *(*gfxPos) = tw[k]; (*gfxPos)++; }
+#endif
 #ifdef TARGET_3DS
         rFlags |= 4 | 8; rPrim = tw[0].words.w1; rEnv = tw[1].words.w1;
 #endif
     }
 
-#ifdef TARGET_3DS
-    if (model->groupData != nullptr && !recSkip) {
-#else
+#ifndef TARGET_3DS
     if (model->groupData != nullptr) {
-#endif
         Lightsn* lights = model->groupData->lightingGroup;
         if (model->groupData->lightingGroup != nullptr) {
             switch (model->groupData->numLights) {
@@ -1630,6 +1602,7 @@ void appendGfx_model(void* data) {
             }
         }
     }
+#endif
 
     if (textureHeader != nullptr) {
         switch (extraTileType) {
@@ -1647,11 +1620,15 @@ void appendGfx_model(void* data) {
                         offsetS & 0xFFF, (offsetT >> 12) & 0xFFF);
 
                 } else {
+#ifndef TARGET_3DS
                     MODEL_TEX_OP((*gfxPos)++, textureHandle);
+#endif
                 }
                 break;
             default:
+#ifndef TARGET_3DS
                 MODEL_TEX_OP((*gfxPos)++, textureHandle);
+#endif
                 break;
         }
     } else {
@@ -1694,10 +1671,10 @@ void appendGfx_model(void* data) {
         } else {
             combWord = &AlphaTestCombineModes[texCombineType][tintCombineType];
         }
-        if (!REC_SKIP) {
-            *(*gfxPos) = *combWord;
-            (*gfxPos)++;
-        }
+#ifndef TARGET_3DS
+        *(*gfxPos) = *combWord;
+        (*gfxPos)++;
+#endif
     }
 
     // setup geometry modes and render modes
@@ -1767,7 +1744,9 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_00;
                     break;
             }
+#ifndef TARGET_3DS
             MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+#endif
             break;
         case RENDER_CLASS_2CYC:
             switch (renderMode) {
@@ -1831,7 +1810,9 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_10;
                     break;
             }
+#ifndef TARGET_3DS
             MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+#endif
             break;
         case RENDER_CLASS_FOG:
             switch (renderMode) {
@@ -1895,7 +1876,9 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_1F;
                     break;
             }
+#ifndef TARGET_3DS
             MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+#endif
             {
                 Gfx fogWords[2];
                 gDPSetFogColor(&fogWords[0], gFogSettings->color.r, gFogSettings->color.g, gFogSettings->color.b, gFogSettings->color.a);
@@ -1903,10 +1886,10 @@ void appendGfx_model(void* data) {
 #ifdef TARGET_3DS
                 rFlags |= 2; fogColW = fogWords[0].words.w1; fogPosW = fogWords[1].words.w1; /* S3F-2: the values the record carries */
 #endif
-                if (!REC_SKIP) {
-                    *(*gfxPos) = fogWords[0]; (*gfxPos)++;
-                    *(*gfxPos) = fogWords[1]; (*gfxPos)++;
-                }
+#ifndef TARGET_3DS
+                *(*gfxPos) = fogWords[0]; (*gfxPos)++;
+                *(*gfxPos) = fogWords[1]; (*gfxPos)++;
+#endif
             }
             break;
         case RENDER_CLASS_1CYC_SHROUD:
@@ -1915,7 +1898,9 @@ void appendGfx_model(void* data) {
                 return;
             }
             renderModeIdx = RENDER_MODE_IDX_10;
+#ifndef TARGET_3DS
             MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+#endif
             switch (renderMode) {
                 case RENDER_MODE_SURFACE_OPA:
                     shroudC2 = G_RM_AA_ZB_OPA_SURF2; shroudRm = 1;
@@ -1978,7 +1963,9 @@ void appendGfx_model(void* data) {
             if (shroudRm) { /* S3F-2b: the shroud render mode word, then the fog, blend and fog position words */
                 Gfx shRm;
                 gDPSetRenderMode(&shRm, PM_RM_SHROUD, shroudC2);
-                if (!REC_SKIP) { *(*gfxPos) = shRm; (*gfxPos)++; }
+#ifndef TARGET_3DS
+                *(*gfxPos) = shRm; (*gfxPos)++;
+#endif
 #ifdef TARGET_3DS
                 rShC2 = shroudC2; rFlags |= 32;
 #endif
@@ -1991,9 +1978,9 @@ void appendGfx_model(void* data) {
 #ifdef TARGET_3DS
                 rFlags |= 2 | 16; fogColW = sw[0].words.w1; rBlend = sw[1].words.w1; fogPosW = sw[2].words.w1;
 #endif
-                if (!REC_SKIP) {
-                    for (s32 k = 0; k < 3; k++) { *(*gfxPos) = sw[k]; (*gfxPos)++; }
-                }
+#ifndef TARGET_3DS
+                for (s32 k = 0; k < 3; k++) { *(*gfxPos) = sw[k]; (*gfxPos)++; }
+#endif
             }
             break;
         case RENDER_CLASS_FOG_SHROUD:
@@ -2058,7 +2045,9 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_1F;
                     break;
             }
+#ifndef TARGET_3DS
             MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+#endif
 
             // lerp between scene fog and shroud fog based on ShroudTintAmt
             fogR = (gFogSettings->color.r * (255 - ShroudTintAmt) + ShroudTintR * ShroudTintAmt) / 255;
@@ -2075,7 +2064,9 @@ void appendGfx_model(void* data) {
 #ifdef TARGET_3DS
                 rFlags |= 2; fogColW = fc.words.w1; fogPosW = fp.words.w1; /* S3G-2: the fog words of the record (fog after the render mode) */
 #endif
-                if (!REC_SKIP) { *(*gfxPos) = fc; (*gfxPos)++; *(*gfxPos) = fp; (*gfxPos)++; }
+#ifndef TARGET_3DS
+                *(*gfxPos) = fc; (*gfxPos)++; *(*gfxPos) = fp; (*gfxPos)++;
+#endif
             }
             break;
         case RENDER_CLASS_1CYC_DEPTH:
@@ -2103,13 +2094,17 @@ void appendGfx_model(void* data) {
                     renderModeIdx = RENDER_MODE_IDX_1F;
                     break;
             }
+#ifndef TARGET_3DS
             MODEL_RM_OP((*gfxPos)++, ModelRenderModes[renderModeIdx]);
+#endif
             break;
     }
 
     if (!(flags & MODEL_FLAG_TRANSFORM_GROUP_MEMBER)) {
         if (!(flags & MODEL_FLAG_IGNORE_MATRIX)) {
+#ifndef TARGET_3DS
             MODEL_MTX_OP((*gfxPos)++, model->finalMtx, mtxLoadMode | mtxPushMode | G_MTX_MODELVIEW);
+#endif
             if (mtxPushMode != G_MTX_NOPUSH) {
                 mtxPushMode = G_MTX_NOPUSH;
             }
@@ -2120,7 +2115,9 @@ void appendGfx_model(void* data) {
     } else {
         mtxLoadMode = G_MTX_MUL;
         if (!(flags & MODEL_FLAG_IGNORE_MATRIX)) {
+#ifndef TARGET_3DS
             MODEL_MTX_OP((*gfxPos)++, model->finalMtx, mtxLoadMode | mtxPushMode | G_MTX_MODELVIEW);
+#endif
             if (mtxPushMode != G_MTX_NOPUSH) {
                 mtxPushMode = G_MTX_NOPUSH;
             }
@@ -2131,12 +2128,12 @@ void appendGfx_model(void* data) {
     if (flags & MODEL_FLAG_USES_CUSTOM_GFX) {
         customGfxIndex = (model->customGfxIndex & 0xF) * 2;
 #ifdef TARGET_3DS
-        if (recOn) recPre = (*gCurrentCustomModelGfxPtr)[customGfxIndex]; /* S3G-1: the record runs it after the matrix */
-        else
-#endif
+        recPre = (*gCurrentCustomModelGfxPtr)[customGfxIndex]; /* S3G-1: the record runs it after the matrix */
+#else
         if ((*gCurrentCustomModelGfxPtr)[customGfxIndex] != nullptr) {
             gSPDisplayList((*gfxPos)++, (*gCurrentCustomModelGfxPtr)[customGfxIndex]);
         }
+#endif
     }
 
     // add tex panner gfx
@@ -2147,7 +2144,7 @@ void appendGfx_model(void* data) {
             s32 panAuxU = texPannerAuxU[model->texPannerID] >> 8;
             s32 panAuxV = texPannerAuxV[model->texPannerID] >> 8;
 
-            Gfx pt[2]; /* S3F-2c: the tile size words; REC_SKIP leaves them out (the record carries them) */
+            Gfx pt[2]; /* S3F-2c: the tile size words (the record carries them on 3DS) */
             int npt = 0;
             switch (extraTileType) {
                 case EXTRA_TILE_AUX_SAME_AS_MAIN:
@@ -2166,7 +2163,9 @@ void appendGfx_model(void* data) {
                     break;
             }
             for (int k = 0; k < npt; k++) {
-                if (!REC_SKIP) { *(*gfxPos) = pt[k]; (*gfxPos)++; }
+#ifndef TARGET_3DS
+                *(*gfxPos) = pt[k]; (*gfxPos)++;
+#endif
             }
 #ifdef TARGET_3DS
             for (int k = 0; k < npt; k++) { rPanW[2 * k] = pt[k].words.w0; rPanW[2 * k + 1] = pt[k].words.w1; }
@@ -2177,7 +2176,9 @@ void appendGfx_model(void* data) {
     if (flags & MODEL_FLAG_BILLBOARD) {
         Gfx bb; /* S3F-2c: the billboard matrix op (MUL, as the walker runs it) */
         gSPMatrix(&bb, gCameras[gCurrentCamID].mtxBillboard, mtxLoadMode | mtxPushMode | G_MTX_MODELVIEW);
-        if (!REC_SKIP) { *(*gfxPos) = bb; (*gfxPos)++; }
+#ifndef TARGET_3DS
+        *(*gfxPos) = bb; (*gfxPos)++;
+#endif
 #ifdef TARGET_3DS
         rBbW[0] = bb.words.w0; rBbW[1] = bb.words.w1;
 #endif
@@ -2190,7 +2191,7 @@ void appendGfx_model(void* data) {
     }
 
 #ifdef TARGET_3DS
-    if (recWord != nullptr) { /* S3F-2b, S3F-2c: the record values. The count is the old words after the record (mdldiff only, else 0). */
+    { /* S3F-2b, S3F-2c: the record values. The count is the old words after the record (mdldiff only, else 0). */
         recWord->words.w0 = ((u32)G_PM_REC << 24) | ((u32)renderModeIdx << 16) | ((textureHandle != nullptr) ? ((((u32)(textureHandle - TextureHandles)) & 0x7fu) << 8) : 0u);
         recWord[13].words.w0 = recAuxN; /* S3G-2: count of the words after the record (rec_apply runs them in place of the bind) */
         recWord[13].words.w1 = 0;
@@ -2214,41 +2215,40 @@ void appendGfx_model(void* data) {
 
     // render the model
 #ifdef TARGET_3DS
-    if (recOn) recGeom = (flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY) ? nullptr : modelNode->displayData->displayList; /* S3G-1: the record runs it; a local copy's list is the script's own G_DL */
-    else
-#endif
+    recGeom = (flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY) ? nullptr : modelNode->displayData->displayList; /* S3G-1: the record runs it; a local copy's list is the script's own G_DL */
+#else
     if (!(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY)) {
         gSPDisplayList((*gfxPos)++, modelNode->displayData->displayList);
     }
+#endif
 
     // custom gfx 'post'
     if (flags & MODEL_FLAG_USES_CUSTOM_GFX) {
         customGfxIndex++;
 #ifdef TARGET_3DS
-        if (recOn) recPost = (*gCurrentCustomModelGfxPtr)[customGfxIndex];
-        else
-#endif
+        recPost = (*gCurrentCustomModelGfxPtr)[customGfxIndex];
+#else
         if ((*gCurrentCustomModelGfxPtr)[customGfxIndex] != nullptr) {
             gSPDisplayList((*gfxPos)++, (*gCurrentCustomModelGfxPtr)[customGfxIndex]);
         }
+#endif
     }
 
 #ifdef TARGET_3DS
     recPop = mtxPushMode == G_MTX_NOPUSH;
-    if (recWord != nullptr) { /* S3G-1: record tail. R11: custom gfx pre (w0) and post (w1). R12: geometry (w0), pop flag (w1). */
+    { /* S3G-1: record tail. R11: custom gfx pre (w0) and post (w1). R12: geometry (w0), pop flag (w1). */
         recWord[11].words.w0 = (u32)(uintptr_t)recPre;
         recWord[11].words.w1 = (u32)(uintptr_t)recPost;
         recWord[12].words.w0 = (u32)(uintptr_t)recGeom;
         recWord[12].words.w1 = recPop;
-    } else
-#endif
+    }
+#else
     if (mtxPushMode == G_MTX_NOPUSH) {
         gSPPopMatrix((*gfxPos)++, G_MTX_MODELVIEW);
     }
+#endif
 
-#ifdef TARGET_3DS
-    if (!recOn) gDPPipeSync((*gfxPos)++);
-#else
+#ifndef TARGET_3DS
     gDPPipeSync((*gfxPos)++);
 #endif
 }
