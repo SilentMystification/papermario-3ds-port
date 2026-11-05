@@ -734,6 +734,24 @@
       "reason": ""
     },
     {
+      "name": "mac01_ndunit",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01) walk with the ndunit check: texture unit 0 registers in the command buffer against the native unit words.",
+      "proves": "ndunit lines: runs, mismatches, draws whose unit was never written.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500,wait40,go_-500_0_500 ndunit loglevel=debug",
+      "until": "ndunit after: runs 9000",
+      "cap": 90,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "ndunit", "regex": "ndunit after: runs" }
+      ],
+      "reason": "a walk needs about 60 s"
+    },
+    {
       "name": "mac01_seam",
       "status": "unverified",
       "subject": "Toad Town street (mac_01) with the CPU path triangle route counts (seam line at frame 240).",

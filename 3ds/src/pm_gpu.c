@@ -247,6 +247,7 @@ enum { GRAB_MAX = 8 };
 static C3D_Tex grab_tex;
 static int grab_bind, grab_dirty = 1, grab_dy0, grab_dy1, grab_n, grab_split, rect_y0, rect_y1;
 
+static void ndunit_scan(void); /* switch ndunit */
 static void sh_clear(void);
 static int want_clear; /* see below */
 /* GV0 and KICK1: the GPU reads the vertex pool, the raw Vtx ring and the index ring when it runs the command list. Everything written since the last
@@ -279,6 +280,7 @@ static void split_frame(void) {
         want_clear = 0;
     }
     sh_clear();
+    ndunit_scan();
     C3D_FrameSplit(GX_CMDLIST_FLUSH);
 }
 
@@ -690,7 +692,7 @@ static void kick_check(void) {
     sh_clear();
     PH_PUSH(PH_GPU);
     { unsigned k0 = pm_ph_on ? pm_ticks() : 0; /* PI4: the split is timed on its own */
-      C3D_FrameSplit(GX_CMDLIST_FLUSH);
+      ndunit_scan(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
       if (pm_ph_on) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
     PH_POP();
     kick_n++;
@@ -907,6 +909,7 @@ int pm_tex_native_unit0(NdUnit* u);
 static NdShadow ndn_sh; static TevKey ndn_tk; static NdTevOut ndn_to; static int ndn_to_ok;
 unsigned nd_native_draws, nd_native_refused;
 static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
+static void ndunit_after(void);
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) return 0;
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
@@ -915,10 +918,7 @@ static int nd_raw_native(void) {
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
-    /* The texture unit stays with citro3d: pm_tex_bind (the old path's bind, with its skip of an unchanged binding and its filter and wrap programming) stages unit 0, and the C3Di_UpdateContext
-     * below writes it with the unit enable word and the texture cache clear. The native words carry no unit block (d.u[0].dim 0). The words of the unit are checked against the command
-     * stream (nd_emit_test) but the draw does not use them: the console showed flat and wrong textures with them (a unit that citro3d leaves stale in a skipped bind is what the old picture shows). */
-    if (combine >= 2) t = pm_tex_bind();
+    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; return 0; } }
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0);
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
@@ -974,10 +974,12 @@ static int nd_raw_native(void) {
     d.idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(gidx + gi_start) - 0x18000000u);
     d.nidx = gni;
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
+    if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
     C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     static uint32_t out[ND_EMIT_MAX];
     unsigned nw = nd_emit_draw(out, &ndn_sh, &d);
     GPUCMD_AddRawCommands(out, nw);
+    if (tex) ndunit_after();
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as C3D_DrawElements sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
     nd_native_draws++;
@@ -1927,7 +1929,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
             want_clear = 0;
         }
         pm_tex_flush_pend_only();
-        sh_clear(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
+        sh_clear(); ndunit_scan(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
     }
     if (!prev_frame) grab_queue_copy(); /* PT12: the old frame was copied at pm_gpu_begin */
     pm_gpu_off_begin(cfb, 320, 2);
@@ -2118,7 +2120,7 @@ void pm_gpu_end(void) {
     }
     FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
-    C3D_FrameEnd(GX_CMDLIST_FLUSH);
+    ndunit_scan(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; } /* S0-6: submit tick of a sampled frame */
     PH_POP();
 }
@@ -2477,6 +2479,36 @@ static __attribute__((cold, noinline)) void ndplan_check(unsigned w0, unsigned w
     int rc = pm_comb_build(w0, w1, two, t1only, &pp);
     if ((rc != 0 || !plan_same_layout(&plan, &pp)) && bad++ < 40) pm_log("ndplan MISMATCH f%u w0 %08x w1 %08x two %d t1 %d rc %d run %u", pm_frame_count(), w0, w1, two, t1only, rc, runs);
     if (!(runs % 3000)) pm_log("ndplan runs %u mismatches %u", runs, bad);
+}
+
+static uint32_t ndu_reg[0x20], ndu_seen[0x20]; static unsigned ndu_pos; static int ndu_seen_now, ndu_on = -1;
+/* decodes the commands written since the last scan into the register shadow; runs before every command list split too (the unread tail of the old buffer is gone after it) */
+static __attribute__((cold, noinline)) void ndunit_scan(void) {
+    if (ndu_on < 0) ndu_on = pm_debug_has("ndunit");
+    if (!ndu_on) return;
+    u32 *buf, size, off;
+    GPUCMD_GetBuffer(&buf, &size, &off);
+    if (off < ndu_pos) ndu_pos = 0; /* the buffer restarted */
+    while (ndu_pos < off) {
+        uint32_t v = buf[ndu_pos], h = buf[ndu_pos + 1];
+        unsigned r = h & 0xFFFFu, n = ((h >> 20) & 0xFFu) + 1u, cons = h >> 31;
+        for (unsigned i = 0; i < n; i++) {
+            unsigned rr = cons ? r + i : r;
+            uint32_t w = i ? buf[ndu_pos + 1 + i] : v;
+            if (rr >= 0x80 && rr < 0xA0) { unsigned m = (h >> 16) & 0xFu, bm = (m & 1u ? 0xFFu : 0u) | (m & 2u ? 0xFF00u : 0u) | (m & 4u ? 0xFF0000u : 0u) | (m & 8u ? 0xFF000000u : 0u); ndu_reg[rr - 0x80] = (ndu_reg[rr - 0x80] & ~bm) | (w & bm); ndu_seen[rr - 0x80] = 1; if (rr >= 0x81 && rr <= 0x85) ndu_seen_now = 1; }
+        }
+        ndu_pos += n + 1u + ((n & 1u) ? 0u : 1u);
+    }
+}
+/* after the native words of a textured draw: the unit enable word the command buffer ends with must have unit 0 on */
+static __attribute__((cold, noinline)) void ndunit_after(void) {
+    static unsigned bad, runs;
+    if (ndu_on < 0) ndu_on = pm_debug_has("ndunit");
+    if (!ndu_on) return;
+    ndunit_scan();
+    runs++;
+    if (!(ndu_reg[0] & 1u) && bad++ < 30) pm_log("ndunit UNIT 0 OFF after a textured native draw f%u reg80 %08x run %u", pm_frame_count(), ndu_reg[0], runs);
+    if (!(runs % 3000)) pm_log("ndunit after: runs %u unit off %u", runs, bad);
 }
 
 static void plan_layout_field_diffs(const PmPlan* a, const PmPlan* b) {

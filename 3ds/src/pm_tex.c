@@ -1657,25 +1657,26 @@ void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter) {
 /* S3 M3: the unit 0 words of the texture pm_tex_bind would bind, for the native draw (nd_emit): dim, param with the filter and wrap pm_tex_bind programs, lod, data address >> 3,
  * format. The same residency work as the bind (stamp, staging copy), no citro3d call. Returns 1 with the words, 0 when no texture is bound, -1 when the native path cannot take it
  * (an off-screen image, a debug override of the wrap or filter): the caller then uses pm_tex_bind. The GPU unit holds the native words afterwards: the bind shadow is cleared. */
-int pm_tex_native_unit0(NdUnit* u) {
+static int nu0_impl(NdUnit* u, int touch) {
     if (have && off_cur >= 0) return -1;
     if (!have || cur < 0 || !slots[cur].live) return 0;
     td3_parse();
     if (td3_wrap >= 0 || td3_near || PMDL("texclamp") || PMDL("texnear")) return -1;
-    slots[cur].stamp = ++stamp;
-    slots[cur].last_frame = tc_frame;
+    if (touch) { slots[cur].stamp = ++stamp; slots[cur].last_frame = tc_frame; }
     uint32_t ws = nd_tex_wrap_final(shr_s, mk_ms, wrap_s), wt = nd_tex_wrap_final(shr_t, mk_mt, wrap_t);
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);
     u->force = slot_draws_stage(&slots[cur]) || tp != nd_lt || slots[cur].sgen != nd_lsg; /* a staged slot is bound again at every draw by pm_tex_bind */
-    nd_lt = tp; nd_lsg = slots[cur].sgen;
+    if (touch) { nd_lt = tp; nd_lsg = slots[cur].sgen; }
     u->dim = tp->dim;
     u->param = nd_tex_param(tp->param, (unsigned)tex_filt, ws, wt);
     u->lod = tp->lodParam;
     u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
     u->type = (uint32_t)tp->fmt;
-    tb_last = NULL;
+    if (touch) tb_last = NULL;
     return 1;
 }
+int pm_tex_native_unit0(NdUnit* u) { return nu0_impl(u, 1); }
+
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
