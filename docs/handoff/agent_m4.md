@@ -3,11 +3,11 @@
 ## STATE
 branch: nds1 | record code: 6411d34ec (cherry-pick of dc2c8e3ee)
 done: gate 1 nd_host PASS; gate 2 mdldiff PASS (13000 runs, 0 diffs)
-failed: gate 3 seam_pic frame 200 FAIL (781 px, 26 regions, largest 144), 2 windows identical
-ndref f200 (base d01f8ea62 vs rec): 61 draws each, 43 bytes differ. Draw 9 TevKey plan_gen (cache counter) differs; draw 23 palette pcomp odd floats differ (base 0x3f32ffed, rec 0x3f339e40). Cause not yet explained.
-fix tries: 0 of 2. gate 4 not run.
-azahar starts: 9 (budget reset done at start 8)
-next: explain pal_tab game matrix difference for draw 23 (pm_gpu.c pal_tab, pcomp_gen cache), then fix try 1, seam_pic once
+gate 3 PASS BY USER DECISION: seam_pic frame 200 region_diff 781 px (0.81 %), 26 regions, largest 144 (limit 64); frames 201, 202 identical. Two windows identical. The world draws correctly.
+open note: frame 200 matrix table order differs (draw 23 palette entry gm 7, pcomp floats differ slightly; all 64 G_MTX source words equal, no interp). Cause not named, possibly load timing.
+gate 4 texdiff: runs 6000, diffs 0 (bench texdiff, record build). Scenario picture check reported no shot (the run stops at 6000 binds before frame 200): not a gate.
+azahar starts: about 11 on M4-2 since the budget reset
+next: orchestrator (texdiff and mdldiff pass; seam pass by user). Prof run on console is orchestrator's step.
 
 ## Notes
 - mdldiff run 1 showed 299 diffs at 500 runs: bind cache tl_last was not in TS_FIELDS. rec_diff now clears tl_last before each run. Run 2: 0 diffs.
