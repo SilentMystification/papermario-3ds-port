@@ -8,6 +8,7 @@
 #include "nd.h"
 
 /* nd_st log stubs (nd_core.c nd_st_log, debug switch ndst off in the test) */
+unsigned nd_native_draws, nd_native_refused;
 int pm_debug_has(const char* key) { (void)key; return 0; }
 void pm_log_d(const char* fmt, ...) { (void)fmt; }
 unsigned pm_frame_count(void) { return 1; }
