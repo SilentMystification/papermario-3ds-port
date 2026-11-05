@@ -910,6 +910,39 @@ static NdShadow ndn_sh; static TevKey ndn_tk; static NdTevOut ndn_to; static int
 unsigned nd_native_draws, nd_native_refused;
 static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
 static void ndunit_after(void);
+/* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
+ * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
+static void nd_native_submit(const NdDraw* dp, int tex) {
+    const NdDraw* d = dp;
+    if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; }
+    if (buf_cur != 2) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, gring, 16, 3, 0x210); buf_cur = 2; }
+    stage_scissor();
+    sh_user_clip(1);
+    if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
+    if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
+    if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
+    C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
+    static uint32_t out[ND_EMIT_MAX];
+    unsigned nw = nd_emit_draw(out, &ndn_sh, d);
+    GPUCMD_AddRawCommands(out, nw);
+    if (tex) ndunit_after();
+    *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as C3D_DrawElements sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
+    if (ndref_on) ndref_cmd();
+    nd_native_draws++;
+    dv_draw++;
+    draws_frame++;
+    PH_ADD(C_DRAW, 1);
+    PH_ADD(C_VTXSLOT, gni);
+    gi_start = gidx_n;
+    gni = 0; pal_n = 0;
+    batch_identity = 0;
+    drew = 1;
+    if (rect_y1 <= rect_y0) grab_dirty = 1;
+    else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
+    else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
+    dc_kick();
+}
+
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) return 0;
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
@@ -949,11 +982,6 @@ static int nd_raw_native(void) {
     dc_on = 0;
     proj_ok = 0; pool_buf_ok = 0;
     sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
-    if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; }
-    if (buf_cur != 2) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, gring, 16, 3, 0x210); buf_cur = 2; }
-    stage_scissor();
-    sh_user_clip(1);
-    if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
     float palk[ND_NPAL][16];
     unsigned npal = pal_n < ND_NPAL ? pal_n : ND_NPAL;
     for (unsigned k = 0; k < npal; k++) {
@@ -973,28 +1001,7 @@ static int nd_raw_native(void) {
     d.zmix[0] = g_zmix[0]; d.zmix[1] = zmix_y_dbg(g_zmix[1]);
     d.idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(gidx + gi_start) - 0x18000000u);
     d.nidx = gni;
-    if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
-    if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
-    C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
-    static uint32_t out[ND_EMIT_MAX];
-    unsigned nw = nd_emit_draw(out, &ndn_sh, &d);
-    GPUCMD_AddRawCommands(out, nw);
-    if (tex) ndunit_after();
-    *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as C3D_DrawElements sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
-    if (ndref_on) ndref_cmd();
-    nd_native_draws++;
-    dv_draw++;
-    draws_frame++;
-    PH_ADD(C_DRAW, 1);
-    PH_ADD(C_VTXSLOT, gni);
-    gi_start = gidx_n;
-    gni = 0; pal_n = 0;
-    batch_identity = 0;
-    drew = 1;
-    if (rect_y1 <= rect_y0) grab_dirty = 1;
-    else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
-    else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
-    dc_kick();
+    nd_native_submit(&d, tex);
     return 1;
 }
 static void flush_draw(void) {
