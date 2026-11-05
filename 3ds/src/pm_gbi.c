@@ -2007,8 +2007,29 @@ static inline int sp0_tex(unsigned op) {
 }
 unsigned long long pm_gbi_sp0_dlc(void) { return sp0_T[2]; } /* PF2: read by pm_phase.c pf_take, dlc group ticks */
 void pm_pmu_sp0(unsigned out[3]); /* pm_phase.c, CAP2 */
+/* S3-2 measurement: ticks and calls of tex_op per op code, phase on only (line sp0x of sp0_report) */
+static unsigned long long tx_t[256]; static unsigned tx_n[256];
+static void tex_op_impl(u32 w0, u32 w1);
+static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
+    if (!pm_ph_on) { tex_op_impl(w0, w1); return; }
+    unsigned op = w0 >> 24, t0 = pm_ticks();
+    tex_op_impl(w0, w1);
+    tx_t[op] += (unsigned)(pm_ticks() - t0); tx_n[op]++;
+}
 static __attribute__((cold, noinline)) void sp0_report(void) {
     unsigned pmv[3];
+    { /* the six tex ops with the most time: op code, us per frame, calls per frame (window 300 frames) */
+        char b[160]; int n = 0;
+        for (int r = 0; r < 6; r++) {
+            int best = -1; unsigned long long bt = 0;
+            for (int k = 0; k < 256; k++) if (tx_t[k] > bt) { bt = tx_t[k]; best = k; }
+            if (best < 0) break;
+            n += snprintf(b + n, sizeof b - n, "%02x %u/%u ", best, (unsigned)(tx_t[best] / 268u / 300u), tx_n[best] / 300u);
+            tx_t[best] = 0;
+        }
+        memset(tx_t, 0, sizeof tx_t); memset(tx_n, 0, sizeof tx_n);
+        pm_log_hw("sp0x f%d tex ops us/calls per frame: %s", rm_frame, b);
+    }
     pm_pmu_sp0(pmv); /* CAP2: one read per window, not per op */
     pm_log_hw("sp0c f%d tex %u dlc %u rest %u flush %u skip %u grp %u tl %u pmu_ic %u pmu_dc %u pmu_cyc %u", rm_frame,
               (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), (unsigned)(sp0_F / 268u / 300u), sp0_skip, sp0_grp, tl_rep, pmv[0], pmv[1], pmv[2]);
@@ -2931,7 +2952,7 @@ static __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
 }
 
 /* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
-static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
+static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
     tex_gen++; /* TBREP */
     switch (op) {

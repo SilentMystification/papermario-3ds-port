@@ -1755,6 +1755,26 @@
       "reason": ""
     },
     {
+      "name": "mac01_texprof",
+      "status": "verified",
+      "subject": "Toad Town mac_01 with ndst: the per-frame texture hit and miss cost lines (ndst sorted) next to the opsplit line.",
+      "proves": "S3-2: how much of the model class cost is texture hits (per call and per frame).",
+      "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase ndst",
+      "until": "ndst sorted \\d+ f[3-9]\\d\\d",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "tex prof",
+          "regex": "gbiprof tex per frame"
+        }
+      ],
+      "reason": "S3-2 measurement. Log only."
+    },
+    {
       "name": "forest_mim",
       "status": "unverified",
       "subject": "Mario in mim_05 (area 12 map 4, Forever Forest), reached by warp to mim_05 entry 0 (no tour). In control, shot at frames 400 and 404.",
