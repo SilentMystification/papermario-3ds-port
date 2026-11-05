@@ -208,7 +208,7 @@ static void pos_tick(unsigned frame) {
 int pm_warp_active(void) {
     char v[40];
     int has_preset = pm_debug_value("preset", v, sizeof v);
-    /* PT01b: the Warp-to choice of the options (pm_opt.warp) is not used at boot. Only the switches preset, warp and story warp at boot. */
+    /* PT01b: the Warp area choice of the options is not used at boot. Only the switches preset, warp and story warp at boot. */
     if (has_preset) {
         int i, found = 0;
         for (i = 0; i < (int)ARRAY_COUNT(presets); i++) {
@@ -386,18 +386,44 @@ int pm_warp_map_index(const char* name) {
     }
     return -1;
 }
-/* A warp choice: 0 = off, 1 to P = preset, P+1 and up = map k = choice - P - 1. */
-int pm_warp_choice_count(void) { return 1 + (int)ARRAY_COUNT(presets) + pm_warp_map_count(); }
-const char* pm_warp_choice_text(int c, int entry) {
-    static char b[24];
-    int P = (int)ARRAY_COUNT(presets);
-    if (c <= 0) return "Off";
-    if (c <= P) return presets[c - 1].name;
-    snprintf(b, sizeof b, "%s", pm_warp_map_name(c - 1 - P));
-    (void)entry;
-    return b;
-}
+/* A warp choice: 1 to P = preset i+1, P+1 and up = map k = choice - P - 1 (pm_warp_map_name). */
 const char* pm_warp_preset_name(int i) { return presets[i].name; }
+const char* pm_warp_preset_map(int i) { return presets[i].map; }
+
+/* PT01c: the Warp area submenu. The maps of pm_warp_map_name grouped by prefix (the letters before '_' or a digit). Groups in first-seen order
+ * (area order), members in map order. Built on the first call, after the switches are read (warptest). Ceilings: 512 maps, PM_WARP_GROUP_MAX groups. */
+#define WG_MAPS 512
+static char wg_pre[PM_WARP_GROUP_MAX][8];
+static int wg_n = -1, wg_off[PM_WARP_GROUP_MAX + 1], wg_k[WG_MAPS];
+static void wg_build(void) {
+    int of[WG_MAPS], g, i, j, a, k = 0, cnt = 0;
+    wg_n = 0;
+    for (i = 0; gAreas[i].maps != NULL; i++)
+        for (j = 0; j < gAreas[i].mapCount; j++) {
+            const char* id = gAreas[i].maps[j].id;
+            size_t len;
+            if (pm_warp_is_test_map(id)) continue;
+            len = strcspn(id, "_0123456789");
+            if (len > 7) len = 7;
+            for (g = 0; g < wg_n && !(strncmp(wg_pre[g], id, len) == 0 && wg_pre[g][len] == 0); g++) {}
+            if (g == wg_n) {
+                if (wg_n == PM_WARP_GROUP_MAX) { pm_log_w("warp: area list full, %s has no row", id); g = -1; }
+                else { memcpy(wg_pre[wg_n], id, len); wg_pre[wg_n][len] = 0; wg_n++; }
+            }
+            of[k++] = g;
+        }
+    for (g = 0; g < wg_n; g++) {
+        wg_off[g] = cnt;
+        for (a = 0; a < k; a++) if (of[a] == g) wg_k[cnt++] = a;
+    }
+    wg_off[wg_n] = cnt;
+}
+static void wg_ready(void) { if (wg_n < 0) wg_build(); }
+int pm_warp_group_count(void) { wg_ready(); return wg_n; }
+const char* pm_warp_group_name(int g) { wg_ready(); return wg_pre[g]; }
+int pm_warp_group_size(int g) { wg_ready(); return wg_off[g + 1] - wg_off[g]; }
+/* the flat map index k of member j of group g (choice = preset count + 1 + k) */
+int pm_warp_group_map(int g, int j) { wg_ready(); return wg_k[wg_off[g] + j]; }
 /* UI1a: Warp now from the Options panel of the file select. The state is set as a file load does it, the caller leaves the file select
  * through the normal exit (pm_warp_pending makes filemenu_get_exit_mode return 1: curtain, cleanup, ENTER_WORLD). */
 int pm_warp_pending;

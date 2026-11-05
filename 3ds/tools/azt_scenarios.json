@@ -3,6 +3,45 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "warpmenu_sub",
+      "status": "unverified",
+      "subject": "Port menu Debug tab, row Warp area (row 20) opens the Warp area submenu (tab 4, header [Warp area]). Row 8 is the prefix kmr (after the 8 presets). It shows '< kmr_00 >' and one right step shows '< kmr_02 >'. The bottom shot shows the submenu rows and the kmr row with its arrows.",
+      "proves": "WARPMENU: the Warp area submenu lists the map prefixes after the presets, and a prefix row scrolls through its members with left and right at run time.",
+      "debug": "preset=yard padscript=@pad_warpmenu_sub.txt shots shotbottom=284:14 loglevel=debug",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "submenu open",
+          "regex": "menu: tab 4 row 0 intro = kmr_20"
+        },
+        {
+          "name": "prefix row first member",
+          "regex": "menu: tab 4 row 8 kmr = < kmr_00 >"
+        },
+        {
+          "name": "prefix row after right",
+          "regex": "menu: tab 4 row 8 kmr = < kmr_02 >"
+        },
+        {
+          "name": "script done",
+          "regex": "padscript: done at scan \\d+ f\\d+"
+        }
+      ],
+      "reason": "WARPMENU: the submenu rows and the prefix row scroll. Until is the padscript done line. Shot window 284 to 297 covers the right step at about frame 285 and the done line at about frame 295. Calibrated from the run with the same padscript (padscript start at f49 scan 64, 2 scans per frame)."
+    },
+    {
       "name": "profmenu_row",
       "status": "unverified",
       "subject": "Port menu Debug tab, row Profiling (row 10). SELECT opens the menu, R R goes to the Debug tab, ten ddown reach the row, A sets it to Prof (mode 1). The bottom shot shows the row value Prof. The prof lines follow once the change applies at the next drawn frame end.",

@@ -9,14 +9,14 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, loglevel warn, conlevel warn, fixedseed off, dpad_mode multi, warp off, warp_entry 0, dz_pad 5, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off. */
+/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, loglevel warn, conlevel warn, fixedseed off, dpad_mode multi, dz_pad 5, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off. */
 PmOpt pm_opt = {
     .fps60 = 0, .wide = 0, .dbg_hud = 1, .dbg_stats = 0, .dbg_nofog = 0, .dbg_nolight = 0, .o3ds_z = 0,
-    .log = 1, .loglevel = 1, .conlevel = 1, .fixedseed = 0, .dpad_mode = 0, .warp = 0, .warp_entry = 0,
+    .log = 1, .loglevel = 1, .conlevel = 1, .fixedseed = 0, .dpad_mode = 0,
     .dz_pad = 5, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0,
 };
 /* Fails the build when PmOpt gains or loses a field without this initializer being updated. */
-_Static_assert(sizeof(PmOpt) == 21 * sizeof(int), "PmOpt field count changed: update pm_opt above");
+_Static_assert(sizeof(PmOpt) == 19 * sizeof(int), "PmOpt field count changed: update pm_opt above");
 /* ARG1: the saved log and loglevel (options.ini, or the defaults). pm_opt.log and pm_opt.loglevel hold the values of this run (a launch argument may differ). CONLV: sv_conlevel the same for conlevel. */
 static int sv_log = 1, sv_loglevel = 1, sv_conlevel = 1;
 /* PROFROW: the Profiling row. Modes 0 off, 1 prof, 2 phase (the index of prof_name). prof_row is this run, sv_prof the saved value (options.ini profmode=). */
@@ -273,7 +273,9 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220 };
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_SUB = 700 };
+/* PT01c: the Warp area submenu rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per map prefix. Checked before the other ids. */
+static int warp_pos[PM_WARP_GROUP_MAX]; /* this run only: the member that each prefix row shows (not saved, PT32) */
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
@@ -295,22 +297,29 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_PROF; /* PROFROW */
         for (i = 0; i < 3; i++) ids[n++] = RW_GIVE + i; /* PT67 */
         for (i = 0; i < 6; i++) ids[n++] = RW_STAT + i;
-        ids[n++] = RW_WARPTO; ids[n++] = RW_ENTRY; ids[n++] = RW_WARPNOW;
+        ids[n++] = RW_WARPAREA; /* opens the Warp area submenu */
     }
     if (tab == 3) { n = 0; for (i = 0; i < pm_boss_count(); i++) ids[n++] = RW_BOSS + i; } /* Select menu only (mode 1): the Boss tab */
     ids[n++] = RW_BACK;
     return n;
 }
 static int row_id(int tab, int row, int mode) {
-    int ids[48], n = tab_ids(tab, mode, ids);
+    int ids[48], n;
+    if (tab == PM_OPT_SUB) return RW_SUB + row;
+    n = tab_ids(tab, mode, ids);
     return row >= 0 && row < n ? ids[row] : RW_BACK;
 }
 static int exit_armed;
 void pm_optui_disarm(void) { exit_armed = 0; }
 int pm_optui_alert(int tab, int row, int mode) { return row_id(tab, row, mode) == RW_EXIT && exit_armed; }
-int pm_optui_rows(int tab, int mode) { int ids[48]; return tab_ids(tab, mode, ids); }
+int pm_optui_rows(int tab, int mode) {
+    int ids[48];
+    if (tab == PM_OPT_SUB) return pm_warp_preset_count() + pm_warp_group_count();
+    return tab_ids(tab, mode, ids);
+}
 const char* pm_optui_label(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_SUB) { int r = id - RW_SUB, P = pm_warp_preset_count(); return r < P ? pm_warp_preset_name(r) : pm_warp_group_name(r - P); }
     if (id == RW_PROF) return "Profiling";
     if (id >= RW_BOSS) return pm_boss_label(id - RW_BOSS);
     if (id >= RW_STAT) return stat_lbl[id - RW_STAT];
@@ -328,14 +337,22 @@ const char* pm_optui_label(int tab, int row, int mode) {
         case RW_RDELAY: return "Repeat delay";
         case RW_RRATE: return "Repeat rate";
         case RW_RESET: return "Reset controls";
-        case RW_WARPTO: return "Warp to";
-        case RW_ENTRY: return "Entry";
-        case RW_WARPNOW: return "Warp now";
+        case RW_WARPAREA: return "Warp area";
         default: return "Back";
     }
 }
 const char* pm_optui_value(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_SUB) { /* a preset shows its map, a prefix row shows its member (< > when it has more than one) */
+        static char mb[24];
+        int r = id - RW_SUB, P = pm_warp_preset_count(), g, n;
+        if (r < P) return pm_warp_preset_map(r);
+        g = r - P;
+        n = pm_warp_group_size(g);
+        if (n == 1) return pm_warp_map_name(pm_warp_group_map(g, 0));
+        snprintf(mb, sizeof mb, "< %s >", pm_warp_map_name(pm_warp_group_map(g, warp_pos[g])));
+        return mb;
+    }
     if (id == RW_PROF) return prof_label[prof_row];
     if (id >= RW_BOSS) return "A: fight";
     if (id >= RW_GIVE) {
@@ -357,19 +374,22 @@ const char* pm_optui_value(int tab, int row, int mode) {
             return b;
         }
         case RW_EXIT: return exit_armed ? "A again" : NULL;
-        case RW_WARPTO: case RW_ENTRY: { /* PT01: < value > shows that left and right change it */
-            static char wb[32];
-            if (id == RW_WARPTO) snprintf(wb, sizeof wb, "< %s >", pm_warp_choice_text(pm_opt.warp, pm_opt.warp_entry));
-            else if (pm_opt.warp > pm_warp_preset_count()) snprintf(wb, sizeof wb, "< %d >", pm_opt.warp_entry);
-            else return "-";
-            return wb;
-        }
+        case RW_WARPAREA: return "A: open";
         default: return NULL;
     }
 }
-/* PT01: left (dir < 0) or right (dir > 0) on a row. Warp to walks the choices (off, presets, every map of gAreas) with wrap. Entry walks 0 to 15. */
+/* PT01c: left (dir < 0) or right (dir > 0) on a row. A prefix row with more than one map walks its members with wrap. */
 int pm_optui_step(int tab, int row, int dir, int mode) {
     int id = row_id(tab, row, mode);
+    if (id >= RW_SUB) {
+        int r = id - RW_SUB, P = pm_warp_preset_count(), g, n;
+        if (r < P) return 0;
+        g = r - P;
+        n = pm_warp_group_size(g);
+        if (n < 2) return 0;
+        warp_pos[g] = ((warp_pos[g] + dir) % n + n) % n;
+        return 1; /* the warp choice is not saved (PT32): no pm_options_touch */
+    }
     if (id == RW_PROF) { prof_set((prof_row + (dir > 0 ? 1 : 2)) % 3); return 1; } /* PROFROW: left and right cycle off, prof, phase */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, dir); return 1; } /* PT67c: live, not saved */
     if (id >= RW_DZPAD && id <= RW_RRATE) { /* PT61, PT60: a number row. Left and right step it, A steps up and wraps. */
@@ -384,22 +404,19 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
         pm_options_touch();
         return 1;
     }
-    if (id != RW_WARPTO && id != RW_ENTRY) return 0;
-    if (id == RW_WARPTO) {
-        int n = pm_warp_choice_count();
-        pm_opt.warp = ((pm_opt.warp + dir) % n + n) % n;
-        if (pm_opt.warp <= pm_warp_preset_count()) pm_opt.warp_entry = 0;
-    } else {
-        if (pm_opt.warp <= pm_warp_preset_count()) return 0;
-        pm_opt.warp_entry = ((pm_opt.warp_entry + dir) % 16 + 16) % 16;
-    }
-    return 1; /* the warp choice is not saved (PT32): no pm_options_touch */
+    return 0;
 }
-/* result: 0 nothing more, 1 close the panel (Back), 2 leave the file select now (Warp now, mode 0),
- * 3 exit to Homebrew (mode 1, second press), 4 return to the title (mode 1), 5 warp started (mode 1, close the menu) */
+/* result: 0 nothing more, 1 close the panel (Back), 3 exit to Homebrew (second press),
+ * 4 return to the title, 5 warp started (close the menu), 6 open the Warp area submenu */
 int pm_optui_act(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
     if (id != RW_EXIT) exit_armed = 0;
+    if (id >= RW_SUB) { /* PT01c: A warps to the shown preset or map at entry 0 (the same call as before) */
+        int r = id - RW_SUB, P = pm_warp_preset_count(), g;
+        if (r < P) return pm_warp_live(r + 1, 0) ? 5 : 0;
+        g = r - P;
+        return pm_warp_live(P + 1 + pm_warp_group_map(g, warp_pos[g]), 0) ? 5 : 0;
+    }
     if (id == RW_PROF) { prof_set((prof_row + 1) % 3); return 0; } /* PROFROW: A cycles */
     if (id >= RW_BOSS) return pm_boss_launch(id - RW_BOSS) ? 5 : 0; /* 5: started, the menu closes */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, 1); return 0; }
@@ -421,13 +438,8 @@ int pm_optui_act(int tab, int row, int mode) {
             if (!exit_armed) { exit_armed = 1; return 0; }
             exit_armed = 0;
             return 3;
-        case RW_WARPTO: case RW_ENTRY: case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;
-        case RW_WARPNOW:
-            if (pm_opt.warp == 0) { if (mode) pm_menu_msg("Warp to is Off: pick a target first"); return 0; }
-            if (mode) return pm_warp_live(pm_opt.warp, pm_opt.warp_entry) ? 5 : 0;
-            pm_options_close();
-            pm_warp_now(pm_opt.warp, pm_opt.warp_entry);
-            return pm_warp_pending ? 2 : 0;
+        case RW_WARPAREA: return 6; /* the menu opens the submenu (PM_OPT_SUB) */
+        case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;
     }
     return 0;
 }

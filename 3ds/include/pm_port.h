@@ -209,8 +209,6 @@ typedef struct PmOpt {
     int log, loglevel, conlevel; /* L02, F11-8: log file on or off (default 1), loglevel 0 error, 1 warn (default), 2 info, 3 debug: log.txt and the live log. CONLV: conlevel 0..3 as loglevel, 4 off: the bottom screen console (default 1 warn) */
     int fixedseed; /* F11-7: 1 = same random start seed every boot (as the switch fixedseed), read at boot */
     int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.ini dpad_mode=multi|cstick|analog */
-    int warp; /* UI1a, PT01: 0 = off, 1 to P = warp preset, P+1 and up = map k of gAreas (options.ini warp=<preset> or warp=<map>:<entry>) */
-    int warp_entry; /* PT01: entry of a map choice */
     int dz_pad, dz_cs; /* PT61: dead zone in percent of full travel, circle pad and C-Stick (N3DS). 0 = as before (no port dead zone) */
     int rep_delay, rep_rate; /* PT60: menu key repeat in ms, the first step is at once, the next after rep_delay, then every rep_rate */
     int fskip; /* FS1: 1 = frame skip on (default, a late step skips its draw), 0 = off: every game step is drawn. options.ini fskip=0|1, panel row 9 */
@@ -237,7 +235,8 @@ int pm_optui_rows(int tab, int mode);
 const char* pm_optui_label(int tab, int row, int mode);
 const char* pm_optui_value(int tab, int row, int mode);
 int pm_optui_step(int tab, int row, int dir, int mode); /* left or right on a row, 1 when the value changed */
-int pm_optui_act(int tab, int row, int mode); /* 0 done, 1 close (Back), 2 leave the file select (Warp now), 3 exit to Homebrew, 4 return to title, 5 warp started */
+int pm_optui_act(int tab, int row, int mode); /* 0 done, 1 close (Back), 3 exit to Homebrew, 4 return to title, 5 warp started, 6 open the Warp area submenu (tab index PM_OPT_SUB) */
+#define PM_OPT_SUB 4 /* the Warp area submenu: a tab index after General, Controls, Debug and Boss */
 void pm_optui_disarm(void);
 int pm_optui_alert(int tab, int row, int mode); /* 1 when the row asks for the second press (Exit to Homebrew, A again): drawn in red */
 /* PT60: hold repeat of both menus. dir is -1, 0 or 1. tps is the call rate (30 game updates, 60 pad scans). Returns 1 when a step fires. n counts the steps of this hold. */
@@ -259,14 +258,18 @@ const char* pm_dpad_mode_name(void); /* UI1c: name of the mode for the device */
 void pm_dpad_mode_next(void);
 int pm_warp_preset_count(void);
 const char* pm_warp_preset_name(int i); /* UI1a */
+const char* pm_warp_preset_map(int i);
+#define PM_WARP_GROUP_MAX 48 /* PT01c: the most prefix groups (rows of the Warp area submenu) */
+int pm_warp_group_count(void); /* PT01c: the Warp area submenu, one row per map prefix (kmr, tik, ...) in area order */
+const char* pm_warp_group_name(int g);
+int pm_warp_group_size(int g);
+int pm_warp_group_map(int g, int j); /* the flat map index k of member j of group g */
 extern int pm_warp_pending; /* UI1a: set by pm_warp_now, read by filemenu_get_exit_mode */
 void pm_warp_now(int choice, int entry); /* UI1a, PT01: warp from the file select to a choice (preset or map) */
 int pm_warp_map_count(void);
 const char* pm_warp_map_name(int k);
 int pm_warp_map_index(const char* name);
 int pm_warp_is_test_map(const char* id); /* PT01b */
-int pm_warp_choice_count(void);
-const char* pm_warp_choice_text(int choice, int entry);
 void pm_menu_msg(const char* fmt, ...); /* PT76: a message in the 2 row feedback area of the Select menu (and a log warning) */
 int pm_boss_count(void); const char* pm_boss_label(int i); int pm_boss_launch(int i); /* Boss tab of the Select menu: warp to mac_00 and start the battle, the player fights */
 int pm_warp_live(int choice, int entry); /* PT63: warp at once from the Select menu (no file select). 1 = started */

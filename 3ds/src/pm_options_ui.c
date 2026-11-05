@@ -15,9 +15,10 @@ volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, rea
 #define OPT_TABS 4
 #define VIS 21 /* PT69, PT76: 30 text rows, see draw */
 #define MODE 1
-static int tab, sel[OPT_TABS], top[OPT_TABS];
+/* PT01c: tab PM_OPT_SUB is the Warp area submenu. A open sets tab to it and home_tab keeps the tab it was opened from (B returns there). */
+static int tab, home_tab, sel[PM_OPT_SUB + 1], top[PM_OPT_SUB + 1];
 static PmRepeat rep_y, rep_x;
-static const char* const tab_name[OPT_TABS] = { "General", "Controls", "Debug", "Boss" };
+static const char* const tab_name[PM_OPT_SUB + 1] = { "General", "Controls", "Debug", "Boss", "Warp area" };
 
 /* PT75, PT76, PT77: the 30 rows of the bottom screen, from the top: row 0 tab line, rows 1 to VIS the options, 2 empty rows, the controls line,
  * 3 empty rows, then the 2 row feedback area (rows 28 and 29). Every error of the menu goes through pm_menu_msg. */
@@ -28,7 +29,8 @@ static void draw(void) {
     int n = 0, rows = pm_optui_rows(tab, MODE);
     if (sel[tab] < top[tab]) top[tab] = sel[tab];
     if (sel[tab] >= top[tab] + VIS) top[tab] = sel[tab] - VIS + 1;
-    for (int t = 0; t < OPT_TABS; t++) n += snprintf(out + n, sizeof out - (size_t)n, t == tab ? "[%s] " : " %s  ", tab_name[t]);
+    if (tab == PM_OPT_SUB) n += snprintf(out + n, sizeof out - (size_t)n, "[%s]", tab_name[PM_OPT_SUB]);
+    else for (int t = 0; t < OPT_TABS; t++) n += snprintf(out + n, sizeof out - (size_t)n, t == tab ? "[%s] " : " %s  ", tab_name[t]);
     n += snprintf(out + n, sizeof out - (size_t)n, "\n");
     for (int r = top[tab]; r < top[tab] + VIS && r < rows; r++) {
         const char* v = pm_optui_value(tab, r, MODE);
@@ -36,7 +38,7 @@ static void draw(void) {
         n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s%s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), col, v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n\nL R: tab  < > A: change  B: close\n\n\n\n%s\n%s", fb[0], fb[1]);
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? "< > A: warp  B: back" : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
 }
@@ -67,6 +69,7 @@ void pm_menu_set(int on) {
         pm_log("menu: open");
         draw();
     } else {
+        if (tab == PM_OPT_SUB) tab = home_tab; /* the menu opens on the tab it was in */
         pm_options_close(); /* saves options.ini when something changed */
         pm_gpu_menu_draw("");
         pm_log("menu: close");
@@ -88,14 +91,16 @@ void pm_menu_hold(int dx, int dy) {
 void pm_menu_key(unsigned k) {
     if (k & (KEY_A | KEY_B | KEY_L | KEY_R | KEY_SELECT)) memset(fb, 0, sizeof fb); /* a key clears the last message */
     if (k & KEY_SELECT) { pm_menu_set(0); return; }
-    if (k & (KEY_L | KEY_R)) {
+    if ((k & (KEY_L | KEY_R)) && tab != PM_OPT_SUB) { /* the submenu has no tab change */
         tab = (tab + ((k & KEY_L) ? OPT_TABS - 1 : 1)) % OPT_TABS;
         pm_optui_disarm();
     } else if (k & KEY_B) {
-        pm_menu_set(0);
-        return;
+        if (tab != PM_OPT_SUB) { pm_menu_set(0); return; }
+        tab = home_tab; /* B in the submenu goes back to the parent tab, the menu stays open */
+        pm_optui_disarm();
     } else if (k & KEY_A) {
         int r = pm_optui_act(tab, sel[tab], MODE);
+        if (r == 6) { home_tab = tab; tab = PM_OPT_SUB; sel[tab] = 0; top[tab] = 0; pm_optui_disarm(); }
         if (r == 1 || r == 5) { pm_menu_set(0); return; }
         if (r == 3) { /* PT28: the main loop ends, pm_shutdown runs (HW7 order), main returns to the Homebrew Launcher. */
             pm_log("menu: exit to Homebrew requested");
