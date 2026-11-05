@@ -161,7 +161,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     const int zb = (geom & 1u) != 0; /* G_ZBUFFER */
     const unsigned ct = (geom & 0x600u) == 0x200u ? 1u : (geom & 0x600u) == 0x400u ? 2u : 0u; /* G_CULL_FRONT, G_CULL_BACK (pm_gbi ct) */
     int ccw = c->wind <= 0; if (ct == 2) ccw = !ccw;
-    const uint8_t cull = (uint8_t)(ct ? (ccw ? ND_CULL_BACK_CCW : ND_CULL_FRONT_CCW) : ND_CULL_NONE);
+    const uint8_t cull = c->cull_set ? (uint8_t)c->cull : (uint8_t)(ct ? (ccw ? ND_CULL_BACK_CCW : ND_CULL_FRONT_CCW) : ND_CULL_NONE);
     const uint32_t oh = (c->base_oh & ~c->mode->wh) | c->mode->om_h;
     const uint32_t ol = (c->base_ol & ~c->mode->wl) | c->mode->om_l;
     if (((ND_OMH_READ & ~c->mode->wh) & ~c->known_h) || ((ND_OML_READ & ~c->mode->wl) & ~c->known_l)) return -1; /* nost */

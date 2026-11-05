@@ -36,7 +36,7 @@ uint32_t nd_tex_dim(unsigned w, unsigned h) { return (uint32_t)w << 16 | h; }
 /* ---- descriptor table: 128 blocks, open hash with a 256 slot index ---- */
 #define ND_TEX_N 128u
 #define ND_TEX_IDX 256u
-typedef struct { NdTexDesc d; uint32_t w[4]; } NdTexEnt;
+typedef struct { NdTexDesc d; uint32_t w[4]; int slot; unsigned key; } NdTexEnt; /* slot: the pm_tex.c slot the image was loaded to; key: its content identity */
 static NdTexEnt tex_ent[ND_TEX_N];
 static uint16_t tex_idx[ND_TEX_IDX]; /* entry id + 1, 0 = empty */
 static unsigned tex_n;
@@ -44,6 +44,8 @@ static unsigned tex_n;
 int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height, const void* tlut, int tlut_n, int stride); /* pm_tex.h */
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt);
 void pm_tex_cur_slots(int* a, int* b);
+unsigned pm_tex_slot_key(int i);
+int pm_tex_slot_unit(int i, NdUnit* u);
 int pm_tex_slot_words(int i, uint32_t* out);
 void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter);
 
@@ -75,6 +77,7 @@ int nd_tex_get(const NdTexDesc* in) {
     pm_tex_cur_slots(&a, &b);
     NdTexEnt* e = &tex_ent[tex_n];
     if (!pm_tex_slot_words(a, e->w)) return -1;
+    e->slot = a; e->key = pm_tex_slot_key(a);
     uint32_t ws, wt;
     unsigned filter;
     pm_tex_unit0_param(&ws, &wt, &filter);
@@ -85,3 +88,14 @@ int nd_tex_get(const NdTexDesc* in) {
 }
 
 const uint32_t* nd_tex_block(int id) { return tex_ent[id].w; }
+
+/* S3N-3d: the unit words of block id at draw time: the bound unit 0 slot (the one the walker draws from) when it holds this texture (content key and dim). Any other slot gives 0 (fallback). */
+int nd_tex_unit(int id, NdUnit* u) {
+    NdTexEnt* e = &tex_ent[id];
+    NdUnit t;
+    int a, b;
+    pm_tex_cur_slots(&a, &b);
+    if (!e->key || pm_tex_slot_key(a) != e->key || pm_tex_slot_unit(a, &t) != 1 || t.dim != e->w[0]) return 0;
+    u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
+    return 1;
+}

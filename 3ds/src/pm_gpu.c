@@ -2485,7 +2485,7 @@ static int plan_same_layout(const PmPlan* a, const PmPlan* b) {
  * A combine other than 8 is the legacy class (B7): counted, not compared. uvso, cmul, cadd, zmix, palette and index range: not compared in 3b (3c). */
 static int ndm_on_v = -1, ndm_rec_ok, ndm_rec_cmp, ndm_rec_diff, ndm_rec_leg, ndm_rec_nost;
 static int ndm_nodesc; static const uint32_t* ndm_rec; static NdMode ndm_mode; static int ndm_mode_ok, ndm_has_comb, ndm_tex;
-static uint32_t ndm_cw[2]; static NdUnit ndm_u;
+static uint32_t ndm_cw[2]; static int ndm_tid = -1; /* S3N-3d: the block of the texture; its words are read at the compare (nd_tex_unit) */
 static unsigned ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_legacy, ndm_nodraw, ndm_nost, ndm_lines, ndm_f_last;
 static unsigned ndm_why[10], ndm_badn; static uint32_t ndm_badop; /* S3N-3b: fallback draws by nd_model_state reason code (NdMState.why) */
 int pm_gpu_ndm_on(void) { if (ndm_on_v < 0) ndm_on_v = pm_debug_has("ndmcheck"); return ndm_on_v; }
@@ -2495,12 +2495,12 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
     if (!ndm_mode_ok && modew) { ndm_badop = ndm_mode.bad; ndm_badn++; } /* B9: the other op of a refused list, last one seen */
     ndm_has_comb = combw != NULL;
     if (combw) { ndm_cw[0] = combw[0]; ndm_cw[1] = combw[1]; }
-    ndm_tex = 0; memset(&ndm_u, 0, sizeof ndm_u);
+    ndm_tex = 0; ndm_tid = -1;
     const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
     ndm_nodesc = ds == NULL && gfx != NULL; /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
     if (ds) {
         int id = nd_tex_get(ds);
-        if (id >= 0) { const uint32_t* b = nd_tex_block(id); ndm_u.dim = b[0]; ndm_u.param = b[1]; ndm_u.lod = b[2]; ndm_u.addr = b[3]; ndm_u.type = ds->fmt; ndm_tex = 1; }
+        if (id >= 0) { ndm_tid = id; ndm_tex = 1; }
     }
 }
 /* S3N-3d: diff count per compared field (the first 20 lines are printed; the counts show every field) */
@@ -2542,12 +2542,17 @@ static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw*
     float db = decal_bias();
     memset(&c, 0, sizeof c);
     c.mode = ndm_mode_ok ? &ndm_mode : NULL;
-    c.u0 = ndm_tex ? &ndm_u : NULL;
+    NdUnit ndm_un; memset(&ndm_un, 0, sizeof ndm_un); /* S3N-3d: the unit words at this draw, from the slot the block was loaded to */
+    if (ndm_tex && nd_tex_unit(ndm_tid, &ndm_un) != 1) { ndm_rec_ok = 0; ndm_why[9]++; return; }
+    c.u0 = ndm_tex ? &ndm_un : NULL;
     c.i8_0 = pm_tex_i8(0);
     /* S3N-3d: the walker's sticky state at the draw (tss, geometry, combine words when the record has no entry) */
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
     c.has_comb = 1; c.comb_w0 = ndm_has_comb ? ndm_cw[0] : sw_cw0; c.comb_w1 = ndm_has_comb ? ndm_cw[1] : sw_cw1;
-    c.geom_base = sw_geo; c.wind = gv_wind; /* B9: z and cull come from the geometry after the list; the wind sign is the walker matrix (3c) */
+    c.geom_base = sw_geo; c.wind = gv_wind;
+    /* S3N-3d (3b): cull is per geometry group (3c). The key takes the walker cull; a disagreement with the cull derived from the sticky geometry is counted apart (cullskip), not a diff. */
+    c.cull_set = 1; c.cull = wk->cull;
+    { unsigned g = sw_geo & 0x600u; int ct = g == 0x200u ? 1 : g == 0x400u ? 2 : 0; int ccw = gv_wind <= 0; if (ct == 2) ccw = !ccw; if ((ct ? (ccw ? 2 : 1) : 0) != (int)wk->cull) ndm_fn_count("cullskip"); } /* B9: z and cull come from the geometry after the list; the wind sign is the walker matrix (3c) */
     c.draw_3d = draw_3d; c.dview = dview; c.rgb_scale = rgb_scale; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     c.prim = nd_st.prim; c.prim_lod = nd_st.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
     memcpy(&c.dbias, &db, 4);

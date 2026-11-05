@@ -277,6 +277,8 @@ static inline uint32_t nd_abgr(uint32_t c) { return ((c & 255u) << 24) | (((c >>
 /* S3N-3a: the state of one model record (G_PM_REC, 14 pairs of words, R0 to R13) as a native draw. Pure: the record words and NdMCtx only, no walker global.
  * The caller fills NdMCtx from the tables and from the values the record does not carry (the sticky walker flags, the texture unit, the gv params). Returns 1 when
  * the record draws natively (d and st written), 0 for a fallback (lit, custom gfx, aux words, a refused combiner, another render mode, no combine entry). */
+/* S3N-3d: the unit 0 words of block id at draw time, read from its slot (the walker's residency step). 0: the slot no longer holds it (fallback). */
+int nd_tex_unit(int id, NdUnit* u);
 typedef struct NdMCtx {
     const NdMode* mode;        /* compiled render mode list of the record (R0 bits 16 to 23) */
     const NdUnit* u0;          /* texture unit 0 of the draw (nd_tex_get + nd_tex_block), NULL: no texture */
@@ -284,6 +286,7 @@ typedef struct NdMCtx {
     const NdGvP* gv;           /* uvso, cmul, cadd, zmix of the draw (nd_gv_params) */
     int has_comb; uint32_t comb_w0, comb_w1; /* R4 combine entry (words of the G_SETCOMBINE the record points to) */
     int z_on, cull;            /* Z buffer on at the draw, GPU_CULLMODE */
+    int cull_set;              /* S3N-3d: cull is the walker's (ndmcheck, 3b): the key takes it, the derived cull is counted apart */
     int draw_3d, dview, rgb_scale, r_mix, r_memblend, r_replace; /* sticky walker flags */
     uint32_t prim, env, cconst, mixcol; /* used when the record does not set PRIM (R3 bit 2) */
     uint32_t prim_lod;         /* S3N-3d: nd_st.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; aud_prim_lod is the low byte) */

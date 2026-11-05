@@ -1676,6 +1676,17 @@ static int nu0_impl(NdUnit* u, int touch) {
     return 1;
 }
 int pm_tex_native_unit0(NdUnit* u) { return nu0_impl(u, 1); }
+/* S3N-3d: the content identity of a live slot (its source hash, the same one the census uses). 0: none. */
+unsigned pm_tex_slot_key(int i) { if (i < 0 || i >= SLOTS || !slots[i].live) return 0; return slots[i].shash; }
+/* S3N-3d: the unit 0 words of one live slot at draw time, the same residency step as the walker bind (tex_for_draw). param is left to the caller. 0: slot not live, -1: an off-screen image is bound. */
+int pm_tex_slot_unit(int i, NdUnit* u) {
+    if (have && off_cur >= 0) return -1;
+    if (i < 0 || i >= SLOTS || !slots[i].live) return 0;
+    const C3D_Tex* tp = tex_for_draw(&slots[i]);
+    u->dim = tp->dim; u->param = tp->param; u->lod = tp->lodParam;
+    u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3; u->type = (uint32_t)tp->fmt; u->force = 0;
+    return 1;
+}
 
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
