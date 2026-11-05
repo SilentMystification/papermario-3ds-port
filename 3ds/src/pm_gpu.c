@@ -909,6 +909,9 @@ int pm_tex_native_unit0(NdUnit* u);
 static NdShadow ndn_sh; static TevKey ndn_tk; static NdTevOut ndn_to; static int ndn_to_ok;
 unsigned nd_native_draws, nd_native_refused;
 static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
+static void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd); /* S3N-3b: switch ndmcheck */
+static int ndm_live; /* S3N-3b: a model record is open (set by pm_gpu_ndm_begin) */
+void pm_log_prof_line(const char* fmt, ...); /* the one line that prints in prof=4 mode (pm_log.c) */
 static void ndunit_after(void);
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
@@ -1001,6 +1004,7 @@ static int nd_raw_native(void) {
     d.zmix[0] = g_zmix[0]; d.zmix[1] = zmix_y_dbg(g_zmix[1]);
     d.idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(gidx + gi_start) - 0x18000000u);
     d.nidx = gni;
+    if (ndm_live) ndm_cmp(&nk, &d);
     nd_native_submit(&d, tex);
     return 1;
 }
@@ -2474,6 +2478,81 @@ static int plan_same_layout(const PmPlan* a, const PmPlan* b) {
     return memcmp(&x, &y, sizeof x) == 0;
 }
 
+/* S3N-3b: switch ndmcheck (debug). The record arm (pm_gbi.c rec_run) gives the record words and the unit 0 words of the handle (nd_tex_handle_desc, nd_tex_get,
+ * nd_tex_block). nd_raw_native compares the state nd_model_state builds from the record with the NdDraw of the walker: tmpl key, TEV colours, buffer colour, unit 0.
+ * The walker's draw-time values (z, cull, draw_3d, dview, rgb_scale, r_mix, memb, replace, prim, env, cconst, mixcol, decal bias) are inputs of the native state, not checked.
+ * A combine other than 8 is the legacy class (B7): counted, not compared. uvso, cmul, cadd, zmix, palette and index range: not compared in 3b (3c). */
+static int ndm_on_v = -1, ndm_rec_ok, ndm_rec_cmp, ndm_rec_diff, ndm_rec_leg;
+static const uint32_t* ndm_rec; static NdMode ndm_mode; static int ndm_mode_ok, ndm_has_comb, ndm_tex;
+static uint32_t ndm_cw[2]; static NdUnit ndm_u;
+static unsigned ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_legacy, ndm_nodraw, ndm_lines, ndm_f_last;
+int pm_gpu_ndm_on(void) { if (ndm_on_v < 0) ndm_on_v = pm_debug_has("ndmcheck"); return ndm_on_v; }
+void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx) {
+    ndm_rec = rec; ndm_live = 1; ndm_rec_ok = 1; ndm_rec_cmp = ndm_rec_diff = ndm_rec_leg = 0;
+    ndm_mode_ok = modew != NULL && nd_mode_compile(&ndm_mode, (const unsigned*)modew) != 0;
+    ndm_has_comb = combw != NULL;
+    if (combw) { ndm_cw[0] = combw[0]; ndm_cw[1] = combw[1]; }
+    ndm_tex = 0; memset(&ndm_u, 0, sizeof ndm_u);
+    const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
+    if (ds) {
+        int id = nd_tex_get(ds);
+        if (id >= 0) { const uint32_t* b = nd_tex_block(id); ndm_u.dim = b[0]; ndm_u.param = b[1]; ndm_u.lod = b[2]; ndm_u.addr = b[3]; ndm_u.type = ds->fmt; ndm_tex = 1; }
+    }
+}
+static __attribute__((cold, noinline)) void ndm_end_log(void) {
+    unsigned f = pm_frame_count();
+    if (f % 300u || f == ndm_f_last) return;
+    ndm_f_last = f;
+    pm_log_prof_line("ndmcheck f%u recs %u eq %u diff %u fb %u legacy %u nodraw %u", f, ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_legacy, ndm_nodraw);
+}
+void pm_gpu_ndm_end(void) {
+    flush(); /* the last batch of the record is drawn before its record is classified */
+    ndm_live = 0;
+    ndm_recs++;
+    if (!ndm_rec_ok || !ndm_mode_ok || !ndm_has_comb) ndm_fb++;
+    else if (ndm_rec_leg) ndm_legacy++;
+    else if (ndm_rec_diff) ndm_diff++;
+    else if (ndm_rec_cmp) ndm_eq++;
+    else ndm_nodraw++;
+    ndm_end_log();
+}
+#define NDM_CMP(name, a, b) do { if ((unsigned)(a) != (unsigned)(b)) { ndm_rec_diff = 1; if (ndm_lines++ < 20) pm_log_prof_line("ndmcheck diff %s rec %08x nat %x walk %x", name, (unsigned)(uintptr_t)ndm_rec, (unsigned)(a), (unsigned)(b)); } } while (0)
+static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd) {
+    if (!ndm_rec_ok) return;
+    if (combine != 8) { ndm_rec_leg = 1; return; }
+    NdMCtx c;
+    NdDraw ref;
+    NdMState rs;
+    float db = decal_bias();
+    memset(&c, 0, sizeof c);
+    c.mode = ndm_mode_ok ? &ndm_mode : NULL;
+    c.u0 = ndm_tex ? &ndm_u : NULL;
+    c.i8_0 = pm_tex_i8(0);
+    c.has_comb = ndm_has_comb; c.comb_w0 = ndm_cw[0]; c.comb_w1 = ndm_cw[1];
+    c.z_on = z_on; c.cull = (int)g_cullm;
+    c.draw_3d = draw_3d; c.dview = dview; c.rgb_scale = rgb_scale; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
+    c.prim = prim; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol;
+    memcpy(&c.dbias, &db, 4);
+    c.gv = NULL;
+    if (!nd_model_state(ndm_rec, &c, &ref, &rs)) { ndm_rec_ok = 0; return; }
+    ndm_rec_cmp = 1;
+    const NdTmplKey* k = &rs.k;
+    NDM_CMP("k.pass", k->pass, wk->pass); NDM_CMP("k.raw", k->raw, wk->raw); NDM_CMP("k.cull", k->cull, wk->cull);
+    NDM_CMP("k.z", k->z, wk->z); NDM_CMP("k.zmark", k->zmark, wk->zmark); NDM_CMP("k.zcmp", k->zcmp, wk->zcmp); NDM_CMP("k.zupd", k->zupd, wk->zupd);
+    NDM_CMP("k.nocol", k->nocol, wk->nocol); NDM_CMP("k.decal", k->decal, wk->decal); NDM_CMP("k.atest_on", k->atest_on, wk->atest_on); NDM_CMP("k.aref", k->aref, wk->aref);
+    NDM_CMP("k.combine", k->combine, wk->combine); NDM_CMP("k.tex", k->tex, wk->tex); NDM_CMP("k.tex1", k->tex1, wk->tex1);
+    NDM_CMP("k.i8_0", k->i8_0, wk->i8_0); NDM_CMP("k.i8_1", k->i8_1, wk->i8_1); NDM_CMP("k.rgb_scale", k->rgb_scale, wk->rgb_scale); NDM_CMP("k.r_mix", k->r_mix, wk->r_mix);
+    NDM_CMP("k.draw_3d", k->draw_3d, wk->draw_3d); NDM_CMP("k.rect_2d", k->rect_2d, wk->rect_2d); NDM_CMP("k.dview", k->dview, wk->dview);
+    NDM_CMP("k.off_active", k->off_active, wk->off_active); NDM_CMP("k.off_i8", k->off_i8, wk->off_i8);
+    NDM_CMP("k.r_memblend", k->r_memblend, wk->r_memblend); NDM_CMP("k.r_replace", k->r_replace, wk->r_replace); NDM_CMP("k.r_blend", k->r_blend, wk->r_blend);
+    NDM_CMP("k.noise", k->noise, wk->noise); NDM_CMP("k.two", k->two, wk->two); NDM_CMP("k.t1only", k->t1only, wk->t1only);
+    NDM_CMP("k.w0", k->w0, wk->w0); NDM_CMP("k.w1", k->w1, wk->w1); NDM_CMP("k.dbias", k->dbias, wk->dbias);
+    NDM_CMP("tmpl", ref.tmpl, wd->tmpl);
+    for (int i = 0; i < 6; i++) { char nm[16]; snprintf(nm, sizeof nm, "tev%d", i); NDM_CMP(nm, ref.tev_col[i], wd->tev_col[i]); }
+    NDM_CMP("buf_col", ref.buf_col, wd->buf_col); NDM_CMP("has_buf", ref.has_buf, wd->has_buf);
+    NDM_CMP("u0.dim", ref.u[0].dim, wd->u[0].dim); NDM_CMP("u0.param", ref.u[0].param, wd->u[0].param); NDM_CMP("u0.lod", ref.u[0].lod, wd->u[0].lod);
+    NDM_CMP("u0.addr", ref.u[0].addr, wd->u[0].addr); NDM_CMP("u0.type", ref.u[0].type, wd->u[0].type);
+}
 /* debug switch ndplan: the layout of the plan that pm_comb_build gives for the key words of a native draw against the plan the old path draws with. A mismatch means the template of that key holds another TEV layout. */
 extern int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out);
 static __attribute__((cold, noinline)) void ndplan_check(unsigned w0, unsigned w1, int two, int t1only) {

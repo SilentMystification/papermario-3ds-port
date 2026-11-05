@@ -4199,11 +4199,18 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q) {
     if (q[8].words.w0) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
+extern int pm_gpu_ndm_on(void); /* S3N-3b: switch ndmcheck */
+extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx);
+extern void pm_gpu_ndm_end(void);
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     rec_apply(q);
+    int ndm = pm_gpu_ndm_on();
+    if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
+        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu);
     rec_dl((const Gfx*)(uintptr_t)q[12].words.w0);  /* S3G-1: geometry (0 when none) */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
     if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
+    if (ndm) pm_gpu_ndm_end();
     return G_PM_REC_WORDS - 1 + q[13].words.w0; /* R1 to R12: matrix, lights, fog, combine, prim, env, blend, shroud, billboard, panner, custom gfx, geometry, pop; then the R13 words */
 }
 
