@@ -16,13 +16,18 @@ Replace the N64 display list walker (3ds/src/pm_gbi.c, pm_gpu.c, pm_dlc.inc.c) w
 - Latest state: docs/handoff/agent_nds_s1d.md (S1-3 blockers and probes), agent_nds_s1c.md, agent_nds_s1b.md, agent_nds_s0.md. Picture diff note: diag_s1_1_picture.md.
 - Rules: CLAUDE.md rules 5 (tests), 7 (code) and 9 (platform). Read only those.
 
-## State
-- S0 done. S1 done (S1-1 3e6b19bc2, S1-2 389d7c16d, S1-3 c0875db9c, S1-4 and S1-5 8bc56f1cc and 9ee4ad45b, S1-6 a857ddeb2). Details and deviations: docs/handoff/agent_nds_s1e.md.
-- ndref is format v3 (kind 4 context words, kind 5 palette inputs). Host tests pass: sh 3ds/tools/nd_host_test.sh.
-- Next: S2 (NDFRAME) from plan_native_slices.md.
+## State (2026-11-04, end of the long session)
+- S0, S1 (S1-1 to S1-6), S2-1 and the S2 force include, S3-1 (nd_dlc) done. Details: docs/handoff/agent_nds_s1e.md.
+- S3 M1 and M2: shape lists compile with nd_dlc into the static vertex and index pools, dlc uses them (old dlc_compile and dlc_static_build deleted).
+- S3 M3: nd_emit.c plus nd_raw_native in pm_gpu.c: raw pm4 batches (unlit, main target, at most one texture unit, no stencil pass) draw from native command words. Host test nd_emit_test equals the real command stream. Azahar pictures equal. Console prof A/B (Toad Town): fps 23.4 to 24.9, frame 42.6 to 40.0 ms.
+- Console history: docs/handoff/perf_history.csv, python 3ds/tools/prof_record.py add|trend. Use prof mode for every comparison (memory feedback_prof-mode-for-perf-tests).
+- ndref is format v4 (kinds 4, 5, 6). Host tests: sh 3ds/tools/nd_host_test.sh.
 
-## Next steps
-1. S2-1 nd_gbi.h, S2-2 pass state calls, S2-3 N64-same check. Then S3 to S11 in order. Each row: host test first and shown failing, code, ARM build, row gate, commit.
+## What is left (S3 on)
+1. M4 producer records: appendGfx_model writes one record for a plain opaque model (texture handle, render mode index, lights group, matrix, shape list) and the consumer sets the walker state directly. This removes the 5 to 8 texture words, the combine sync and the light words per model: the walker spends 211 us per plain model on the console (phase on), the close only 37 us. Proof method decided with the user: a debug switch that runs the old words and the native setter from the same start state and logs any difference in the texture, tile, combine and other mode state (state-diff), plus the picture.
+2. Cover the batches that still use the old close: lit (pm5 light block, nd_lights is ready), two texture units, off-screen targets, zmark and decal passes.
+3. S3-5: sort and merge needs a per draw matrix: the nd_emit record already carries pal entries per draw.
+4. S4 to S10 as in plan_native_slices.md.
 
 ## Gates (every row)
 Picture equal first (region_diff, VIEW the picture), triangles equal, batches not above the old path, host tests, hot loop under 8 KB, prof line shows the stage. A picture difference needs a stated cause. Azahar is for pictures and crashes. Speed comes from the console `prof` line only.
