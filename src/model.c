@@ -174,7 +174,7 @@ extern Gfx Gfx_RM3_CLOUD_NO_ZB[];
 
 // C2: one port op per render mode list on 3DS. The interpreter skips the list when the render state already matches.
 #ifdef TARGET_3DS
-#define MODEL_RM_OP(pos, rm) do { if (!recSkip) gSPPmRenderMode(pos, rm); } while (0) /* M4-2: recSkip leaves the word out */
+#define MODEL_RM_OP(pos, rm) gSPPmRenderMode(pos, rm)
 #else
 #define MODEL_RM_OP(pos, rm) gSPDisplayList(pos, rm)
 #endif
@@ -182,7 +182,7 @@ extern Gfx Gfx_RM3_CLOUD_NO_ZB[];
 // C1: one port op per model texture bind on 3DS (pm_texbind_set holds the checked list).
 #ifdef TARGET_3DS
 void pm_texbind_set(int idx, const Gfx* l);
-#define MODEL_TEX_OP(pos, h) do { if (!recSkip) gSPPmTexBind(pos, (h) - TextureHandles, (h)->gfx); } while (0) /* M4-2: recSkip leaves the word out */
+#define MODEL_TEX_OP(pos, h) gSPPmTexBind(pos, (h) - TextureHandles, (h)->gfx)
 #else
 #define MODEL_TEX_OP(pos, h) gSPDisplayList(pos, (h)->gfx)
 #endif
@@ -1404,10 +1404,6 @@ void appendGfx_model(void* data) {
     Gfx** gfxPos = &gMainGfxPos;
 #ifdef TARGET_3DS
     Gfx* mgHdr = nullptr; /* MR1: header of this model's words (G_PM_MODEL) */
-    Gfx* recWord = nullptr; /* M4-2: producer record word (G_PM_REC) of this model, count set at the end */
-    int recOn = 0;          /* M4-2: plain opaque model, the record replaces its texture and render mode words */
-    int recSkip = 0;        /* M4-2: 1 leaves out the old texture and render mode words (mdldiff 0) */
-    extern int pm_rec_mode(void);
 #endif
 
     mtxPushMode = G_MTX_PUSH;
@@ -1515,17 +1511,13 @@ void appendGfx_model(void* data) {
 #endif
 
 #ifdef TARGET_3DS
-    /* M4-2: plain opaque model = 1CYC, SURFACE_OPA, one texture bind, no local vertex copy (plain is checked above). The record replaces its texture and render mode words. */
-    recOn = plain && renderMode == RENDER_MODE_SURFACE_OPA && renderClass == RENDER_CLASS_1CYC && textureHeader != nullptr
-        && extraTileType == EXTRA_TILE_NONE && !(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY);
-    recSkip = recOn && pm_rec_mode() != 2;
     mgHdr = (*gfxPos)++; /* MR1: the header op; n is set at the end of this function */
     mgHdr->words.w0 = (u32)G_PM_MODEL << 24;
     /* SR2: w1 = pmSlot (bits 0 to 7), static matrix (bit 8: finalMtx is savedMtx, not billboard), pmMtxVer (bits 16 to 31).
-     * M4-2: bit 9 = the model has a producer record (pm_gbi.c rec_run) */
+     * RC1: bit 9 = plain opaque model (the record capture takes it, pm_gbi.c rec_try) */
     mgHdr->words.w1 = (u32)model->pmSlot
         | ((model->finalMtx == &model->savedMtx && !(flags & MODEL_FLAG_BILLBOARD)) ? 0x100u : 0u)
-        | (recOn ? 0x200u : 0u)
+        | ((plain && renderMode == RENDER_MODE_SURFACE_OPA) ? 0x200u : 0u)
         | ((u32)model->pmMtxVer << 16);
 #endif
 
@@ -1563,13 +1555,6 @@ void appendGfx_model(void* data) {
         }
     }
 
-#ifdef TARGET_3DS
-    if (recOn) { /* M4-2: one record word: op, render mode index (IDX_00 = SURFACE_OPA 1CYC), texture list index, bind list */
-        recWord = (*gfxPos)++;
-        recWord->words.w0 = ((u32)G_PM_REC << 24) | ((u32)RENDER_MODE_IDX_00 << 16) | ((((u32)(textureHandle - TextureHandles)) & 0x7fu) << 8);
-        recWord->words.w1 = (u32)textureHandle->gfx;
-    }
-#endif
     if (textureHeader != nullptr) {
         switch (extraTileType) {
             case EXTRA_TILE_AUX_INDEPENDENT:
@@ -2004,9 +1989,6 @@ void appendGfx_model(void* data) {
             break;
     }
 
-#ifdef TARGET_3DS
-    if (recWord != nullptr) recWord->words.w0 |= (u32)((*gfxPos) - recWord - 1) & 0xffu; /* M4-2: old words after the record (mdldiff only, else 0) */
-#endif
     if (!(flags & MODEL_FLAG_TRANSFORM_GROUP_MEMBER)) {
         if (!(flags & MODEL_FLAG_IGNORE_MATRIX)) {
             gSPMatrix((*gfxPos)++, model->finalMtx, mtxLoadMode | mtxPushMode | G_MTX_MODELVIEW);
