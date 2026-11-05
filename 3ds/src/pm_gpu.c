@@ -615,7 +615,7 @@ static int ndn_mode; /* 1: the GPU registers hold native state */
 static void nd_leave_native(void) {
     if (!ndn_mode) return;
     ndn_mode = 0;
-    *(volatile unsigned*)(__C3D_Context + 32) |= 0x10u | 0x200u | 0x20000u | 0x3800000u | 0xFC000000u; /* effect, texenv buffer, texenv stages, texture units */
+    *(volatile unsigned*)(__C3D_Context + 32) |= 0x10u | 0x200u | 0x20000u | 0x800000u | 0xFC000000u; /* effect, texenv buffer, texenv stages, texture unit 0 (the native draw writes unit 0 only; units 1 and 2 keep their registers) */
     raw1_reset(); /* program, buffer info, and the uniform shadows of pm4 and pm5: the native draw wrote its own palette entries and uniforms over those registers */
     pool_buf_ok = 0; proj_ok = 0;
 }

@@ -688,7 +688,7 @@ static void drop(Slot* s) {
         s->tex_vram_ptr = NULL;
         s->slab = 0;
         memset(&s->tex, 0, sizeof s->tex);
-        C3D_TexBind(0, NULL); C3D_TexBind(1, NULL); /* citro3d must not hold the zeroed texture of this slot: nd_leave_native marks the units dirty and C3Di_UpdateContext would send unit data address 0 */
+        C3D_TexBind(0, NULL); /* citro3d must not hold the zeroed texture of this slot on unit 0: nd_leave_native marks unit 0 dirty and C3Di_UpdateContext would send data address 0. Unit 1 cannot be unbound this way: C3D_TexBind reads the type of the texture for any unit above 0 and a null pointer faults. */
     }
     tb_last = NULL; au_last = NULL;
     if (used >= s->bytes) used -= s->bytes;
