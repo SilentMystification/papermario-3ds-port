@@ -41,7 +41,7 @@ void nd_bridge_cut(void* list, unsigned nbytes); /* appends one LEGACY record fo
 void nd_emit(void);                           /* runs the records in order; LEGACY calls the walker */
 
 /* Draw order for n records into ord (indices). A record with ND_SEQ_ORDERED keeps its place and breaks runs. Inside each run of unordered records a stable
- * counting sort by tex0, then by tmpl (LSD, two passes). Returns n. n <= ND_REC_MAX. */
+ * counting sort by tex1, then tex0, then tmpl (LSD, three passes): the order by (tmpl, tex0, tex1). Returns n. n <= ND_REC_MAX. */
 unsigned nd_order(const NdRec* rec, unsigned n, uint16_t* ord);
 
 /* NDMTX (S1-4). Walker matrix stack (the RSP depth is 10), projection, N64 unpack, per-eye matrix pool. */

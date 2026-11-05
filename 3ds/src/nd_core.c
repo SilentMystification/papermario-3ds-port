@@ -52,18 +52,22 @@ void nd_emit(void) {
     if (pm_ph_on) pm_pf_nd_add(svcGetSystemTick() - t0, legacy);
 }
 
-/* One LSD pass: stable counting sort of in[] by tex0 (by_tex) or by tmpl. Keys are u8. */
-static void nd_pass(const NdRec* rec, const uint16_t* in, uint16_t* out, unsigned len, int by_tex) {
+/* S3G-4: the sort key field of an LSD pass: 0 tex1, 1 tex0, 2 tmpl. */
+static uint8_t nd_field(const NdRec* r, int f) {
+    return f == 0 ? r->tex1 : f == 1 ? r->tex0 : r->tmpl;
+}
+/* One LSD pass: stable counting sort of in[] by one key field (nd_field). Keys are u8. */
+static void nd_pass(const NdRec* rec, const uint16_t* in, uint16_t* out, unsigned len, int f) {
     unsigned cnt[257];
     memset(cnt, 0, sizeof cnt);
     for (unsigned k = 0; k < len; k++) {
         const NdRec* r = &rec[in[k]];
-        cnt[(by_tex ? r->tex0 : r->tmpl) + 1u]++;
+        cnt[nd_field(r, f) + 1u]++;
     }
     for (unsigned b = 0; b < 256; b++) cnt[b + 1] += cnt[b];
     for (unsigned k = 0; k < len; k++) {
         const NdRec* r = &rec[in[k]];
-        out[cnt[by_tex ? r->tex0 : r->tmpl]++] = in[k];
+        out[cnt[nd_field(r, f)]++] = in[k];
     }
 }
 
@@ -74,10 +78,12 @@ unsigned nd_order(const NdRec* rec, unsigned n, uint16_t* ord) {
         if (rec[i].seq & ND_SEQ_ORDERED) { ord[i] = (uint16_t)i; i++; continue; }
         unsigned j = i;
         while (j < n && !(rec[j].seq & ND_SEQ_ORDERED)) j++;
-        /* run [i, j): index list in game order, then the tex0 pass, then the tmpl pass (LSD, stable) */
+        /* run [i, j): index list in game order, then three stable passes (LSD): tex1, tex0, tmpl = the order by (tmpl, tex0, tex1) */
         for (unsigned k = i; k < j; k++) ord[k] = (uint16_t)k;
-        nd_pass(rec, ord + i, tmp, j - i, 1);
-        nd_pass(rec, tmp, ord + i, j - i, 0);
+        nd_pass(rec, ord + i, tmp, j - i, 0);
+        nd_pass(rec, tmp, ord + i, j - i, 1);
+        nd_pass(rec, ord + i, tmp, j - i, 2);
+        memcpy(ord + i, tmp, (j - i) * sizeof *ord);
         i = j;
     }
     return n;

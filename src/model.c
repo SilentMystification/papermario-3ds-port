@@ -5034,9 +5034,13 @@ static s32 bat1_plain(RenderTask* t) {
     return 1;
 }
 
+/* S3G-4: the sort key (tmpl, tex0, tex1) packed as tmpl << 24 | tex0 << 8 | tex1. tmpl is the render mode (bat1_plain allows SURFACE_OPA
+ * only), tex0 the texture, tex1 the extra tile type of that texture (its class 1CYC or 2CYC). */
 static u32 bat1_key(RenderTask* t) {
     Model* m = t->appendGfxArg;
-    return m->textureID ? (u32)(m->textureID + m->textureVariation) : 0u;
+    u32 tex0 = m->textureID ? (u32)(m->textureID + m->textureVariation) : 0u;
+    u32 tex1 = tex0 ? (u32)TextureHandles[tex0].header.extraTiles : 0u;
+    return ((u32)m->renderMode & 0xffu) << 24 | (tex0 & 0xffffu) << 8 | (tex1 & 0xffu);
 }
 
 /* BAT1: each run of plain opaque tasks is stable-sorted by texture, one pass, so a texture is bound once per run.
