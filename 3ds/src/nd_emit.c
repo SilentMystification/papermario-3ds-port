@@ -71,7 +71,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
         const NdUnit* t = &d->u[u];
         unsigned base = 0x80u + 0x10u * u;
         if (!t->dim) continue;
-        if (!sh->u_on[u] || memcmp(&sh->u[u], t, sizeof *t) != 0) {
+        if (!sh->u_on[u] || t->force || memcmp(&sh->u[u], t, sizeof *t) != 0) {
             uint32_t b[5] = { 0, t->dim, t->param, t->lod, t->addr };
             o = cmd(o, base + 1, 0xF, b, 5, 1);
             o = one(o, base + 0xE, 0xF, t->type);

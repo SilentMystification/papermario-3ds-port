@@ -159,7 +159,7 @@ void nd_dlc_free(NdObj* o);
  * [parameter][header][extra parameters][pad]: header bits 0-15 register, 16-19 byte mask, 20-27 extra count, bit 31 consecutive registers. Only the parts that differ from
  * the shadow (what the GPU holds after the last emitted draw) are written; a shadow reset writes everything. The vertex shader program, the attribute and buffer
  * configuration and the frame state stay with citro3d (set up once before the first native draw). Verified against the real command stream (nd_emit_test). */
-typedef struct NdUnit { uint32_t dim, param, lod, addr, type; } NdUnit; /* dim 0: unit off. addr = physical address >> 3, type = the texture format word */
+typedef struct NdUnit { uint32_t dim, param, lod, addr, type, force; } NdUnit; /* dim 0: unit off. addr = physical address >> 3, type = the texture format word. force: write the block and clear the texture cache even when the words equal the shadow (another texture or new texels under the same address, as a citro3d rebind) */
 typedef struct NdDraw {
     int tmpl;                 /* nd_tmpl id: effect, depth, blend and TEV words */
     uint32_t tev_col[6];      /* the colour word of each TEV stage that a colour source sets (the template holds 0 there), ABGR */

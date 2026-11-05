@@ -1627,7 +1627,7 @@ void pm_tex_set_filter(int linear) {
 /* DR1: citro3d sends the texture unit again at the next draw after every C3D_TexBind, C3D_TexSetFilter and C3D_TexSetWrap call. The shadow below
  * skips the three calls when the texture, filter and wrap are what the last bind set. Anything that can change the unit or the texture
  * object in another way clears it (frame and target changes through pm_tex_bind_reset, a dropped or loaded slot, the aux bind). */
-void pm_tex_bind_reset(void) { tb_last = NULL; au_last = NULL; }
+void pm_tex_bind_reset(void) { tb_last = NULL; au_last = NULL; nd_lt = NULL; }
 /* TEXD3 console switches (debug string): wrapov=repeat|mirror|clamp|edge forces the GPU wrap of unit 0 in pm_tex_bind; texnearest=1
  * forces nearest filter on unit 0; padov=off pads the texture with the plain window edge (no mask follow). Parsed when the switch
  * string changes (pm_dbg_gen). Absent switches change nothing. */
@@ -1656,6 +1656,7 @@ void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter) {
 /* S3 M3: the unit 0 words of the texture pm_tex_bind would bind, for the native draw (nd_emit): dim, param with the filter and wrap pm_tex_bind programs, lod, data address >> 3,
  * format. The same residency work as the bind (stamp, staging copy), no citro3d call. Returns 1 with the words, 0 when no texture is bound, -1 when the native path cannot take it
  * (an off-screen image, a debug override of the wrap or filter): the caller then uses pm_tex_bind. The GPU unit holds the native words afterwards: the bind shadow is cleared. */
+static const C3D_Tex* nd_lt; static unsigned nd_lsg; /* the texture and its slot generation of the last native draw: a change forces the unit block and a texture cache clear, as the C3D_TexBind of pm_tex_bind does */
 int pm_tex_native_unit0(NdUnit* u) {
     if (have && off_cur >= 0) return -1;
     if (!have || cur < 0 || !slots[cur].live) return 0;
@@ -1665,6 +1666,8 @@ int pm_tex_native_unit0(NdUnit* u) {
     slots[cur].last_frame = tc_frame;
     uint32_t ws = nd_tex_wrap_final(shr_s, mk_ms, wrap_s), wt = nd_tex_wrap_final(shr_t, mk_mt, wrap_t);
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);
+    u->force = slot_draws_stage(&slots[cur]) || tp != nd_lt || slots[cur].sgen != nd_lsg; /* a staged slot is bound again at every draw by pm_tex_bind */
+    nd_lt = tp; nd_lsg = slots[cur].sgen;
     u->dim = tp->dim;
     u->param = nd_tex_param(tp->param, (unsigned)tex_filt, ws, wt);
     u->lod = tp->lodParam;
@@ -1700,6 +1703,7 @@ int pm_tex_bind(void) {
     if ((td3_wrap >= 0 || td3_near) && td3_nlog < 16) { td3_nlog++; pm_log_d("td3 bind unit0 slot %d programmed ws %d wt %d filter %d", cur, (int)ws, (int)wt, (int)ff); } /* first 16 binds only */
     pm_dc_c[DC_TB0]++; if (slot_draws_stage(&slots[cur])) pm_dc_c[DC_TBS]++;
     C3D_TexBind(0, tp);
+    nd_lt = NULL; /* citro3d holds a texture the native draws did not see: the next native draw writes its unit block and clears the cache */
     {   /* imglog: the GPU texture the draw binds (slot size, GPU size and address) */
         static int on = -1;
         if (on < 0) on = pm_debug_has("imglog");
