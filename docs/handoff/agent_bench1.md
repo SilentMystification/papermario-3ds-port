@@ -1,18 +1,12 @@
-# Agent BENCH1 handoff
+# Bench harness handoff (epic BENCH, orchestrator tooling)
 
 ## STATE
-- Row BENCH1 (bench harness, replaces the text test catalog): done criteria 1 to 6 checked.
-- Tools: 3ds/tools/bench.py (CLI), 3ds/tools/bench_defs.json (11 benches, 179 legacy scenarios), prof_by_scene.py (generic prof fields, frame number).
-- Data: 3ds/logs/perf/runs.jsonl (8 runs: 6 imported from perf_history.csv, 1 console log build 2020, 1 Azahar boot run). bench.db untracked.
-- Open: boot_mem run ended fail:1. Scenario boot_opts expects loglevel=1, the boot line shows loglevel=3. Scenario not changed (row rule).
-- Open: nat_host_test.sh is not in the tree. ndt_host bench replaces it.
-- Open: console benches need a live push by the orchestrator or user (not run here).
-- Commands: python 3ds/tools/bench.py list | show <bench> | run <bench> --row R --why "..." | ingest <log> --bench B --host H | compare B A B | trend B | rebuild.
-
-## STATE BENCH5
-- Row BENCH5 (retire dead benches, clean push recipe): done criteria 1 to 3 checked.
-- Removed benches texdiff and mdldiff; scenarios mac01_texdiff, mac01_mdldiff, mac01_walkdiff; legacy name mac01_walkdiff. runs.jsonl history kept.
-- push_base is "". bench.py push_cmd joins parts without a double space. spot_mac01_prof push line: warp=mac_01:0 pos=0:0:200 prof=4.
-- Commit bd17d699b (tools and test_catalog.md). Row file deleted in the next commit.
-- Open: game source still names texdiff and mdldiff (pm_gbi.c, model.c). Not changed (no game source in this row).
-- Commands: python 3ds/tools/bench.py list | show <bench> | run <bench> --row R --why "..." | rebuild.
+- Branch nds1. Epic BENCH done (rows BENCH1 to BENCH5). No row file open. No agent running.
+- Process: docs/handoff/test_catalog.md (situations A to F). Orchestrator rules: docs/handoff/orchestrator_rules.md.
+- Tools: 3ds/tools/bench.py, bench_defs.json (16 benches), azt_scenarios.json, azt.ps1. Data: 3ds/logs/perf/runs.jsonl (append only), bench.db (untracked, `bench.py rebuild`).
+- Console spots mac_01, mac_00, sbk_56 have normal-speed O3DS prof runs (`bench.py spots`).
+- Open, low: boot_mem runs 21 and 22 have no linear_kb metric. Run 7 is labelled build 2020 but holds the 2099 log (left, history is append only).
+- Open, peer area: game source still names texdiff and mdldiff (pm_gbi.c, model.c).
+- Open: verify a subagent gets the SubagentStart caveman text (check the reply style of the next Haiku agent).
+- Not this epic: M4-2 and S3F (native draw path) run in the peer session. Row files row_M4-2.md and row_S3F.md belong to it.
+- Next command: python 3ds/tools/bench.py list
