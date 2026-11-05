@@ -590,6 +590,42 @@
       "reason": ""
     },
     {
+      "name": "mac01_walk",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01) at pos -198 20 -355, prof mode (the console hung here with the M4 bind memo).",
+      "proves": "The game runs 900 frames at this place and the prof lines print.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=-198:20:-355 prof loglevel=debug",
+      "until": "prof f1",
+      "cap": 90,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "prof", "regex": "prof f\\d+ w\\d+ fps" }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "mac01_walkdiff",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01), Mario walks east and back by padscript, with the texdiff check (generic bind against memo bind).",
+      "proves": "No diff and no hang while the view changes (the console hung after Mario walked with the M4 bind memo).",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500,wait40,go_-500_0_500,wait40,go_-100_-300_500,wait40,go_-500_0_500 texdiff loglevel=debug",
+      "until": "runs 60000 diffs",
+      "cap": 120,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "texdiff", "regex": "texdiff f\\d+ runs" }
+      ],
+      "reason": "A walk with texdiff needs about 100 s."
+    },
+    {
       "name": "mac01_seam",
       "status": "unverified",
       "subject": "Toad Town street (mac_01) with the CPU path triangle route counts (seam line at frame 240).",
