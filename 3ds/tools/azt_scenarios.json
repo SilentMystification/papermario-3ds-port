@@ -5145,10 +5145,6 @@
           "regex": "prof=1 log=off"
         },
         {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+$"
-        },
-        {
           "name": "ndmcheck window: eq above 0 and diff 0",
           "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
           "pick": "last"
@@ -5198,10 +5194,6 @@
           "regex": "prof=1 log=off"
         },
         {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 -135 0 85 pos -?\\d+ -?\\d+ -?\\d+$"
-        },
-        {
           "name": "ndmcheck window: eq above 0 and diff 0",
           "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
           "pick": "last"
@@ -5249,10 +5241,6 @@
         {
           "name": "prof on",
           "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+$"
         },
         {
           "name": "ndmcheck window: eq above 0 and diff 0",
