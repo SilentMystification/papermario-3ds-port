@@ -2705,6 +2705,7 @@ static __attribute__((noinline)) void tex_op(u32 w0, u32 w1);
 /* C1: runs a checked texture list. The G_PM_TEX op pays the prologue once. The handlers run per word, in list order. */
 /* TBREP: a list that rebinds the texture of the list run last, with no texture write since (tex_gen), leaves the state it left.
  * The test runs once per list. The combine sync signature is checked too: a sync that would change it does not skip. */
+static void tb_bind(const Gfx* g); /* M4 */
 static __attribute__((noinline)) void tb_run(const Gfx* g) {
     if (g == tl_last && tex_gen == tl_gen && pm_tex_epoch() == tl_ep && pm_tex_wrap_gen() == tl_wg && comb_gen == tl_cg &&
         omode_h == tl_oh && omode_l == tl_ol && sc_ok && sc_sig_now() == sc_sig) {
@@ -2712,13 +2713,7 @@ static __attribute__((noinline)) void tb_run(const Gfx* g) {
         return;
     }
     tl_last = NULL;
-    for (const Gfx* h = g;; h++) {
-        unsigned op = h->words.w0 >> 24;
-        if (op == G_ENDDL) break;
-        if (g1_skip[op]) continue;
-        pm_gbi_cur_op = op;
-        tex_op(h->words.w0, h->words.w1);
-    }
+    tb_bind(g);
     if (timg && pm_is_cfb(timg)) return; /* a frame buffer texture is read again each bind (D03 capture) */
     tl_last = g; tl_gen = tex_gen; tl_ep = pm_tex_epoch(); tl_wg = pm_tex_wrap_gen(); tl_cg = comb_gen; tl_oh = omode_h; tl_ol = omode_l;
 }
@@ -2955,11 +2950,8 @@ static __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
 }
 
 /* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
-static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
-    unsigned op = w0 >> 24;
-    tex_gen++; /* TBREP */
-    switch (op) {
-        case G_SETTIMG:
+/* M4: the bodies of the texture ops, one function each. tex_op_impl calls them in its switch, tb_plain (fused bind of a plain texture list) calls them in list order. The code is the code of the cases, moved. */
+static void op_settimg(u32 w0, u32 w1) {
             timg = ptr_of(w1);
             if (!w1 && zslot_on && ((w0 >> 19) & 3) == 2) timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
             /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
@@ -2968,8 +2960,8 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
             tst1.timg_siz = (w0 >> 19) & 3;
             tst1.timg_stride = (int)(w0 & 0xfff) + 1;
             ld_valid = 0;
-            break;
-        case G_SETTILE: {
+}
+static void op_settile(u32 w0, u32 w1) {
             unsigned tile = (w1 >> 24) & 7;
             int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && tst1.tile_fmt[0] == ((w0 >> 21) & 7) && tst1.tile_siz[0] == ((w0 >> 19) & 3) && tst1.tile_tmem[0] == (w0 & 0x1ff) && tst1.tile_pal[0] == ((w1 >> 20) & 15) &&
                           tst1.tile_wrap[0][0] == ((w1 >> 8) & 3) && tst1.tile_wrap[0][1] == ((w1 >> 18) & 3) && tst1.tile_wrap[0][2] == ((w1 >> 4) & 15) && tst1.tile_wrap[0][3] == ((w1 >> 14) & 15) &&
@@ -2994,9 +2986,8 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
                 pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
                 st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
             }
-            break;
-        }
-        case G_LOADBLOCK: { /* V09: a block load replaces what a LoadTile put at that TMEM address */
+}
+static void op_loadblock(u32 w0, u32 w1) {
             unsigned tm = tst1.tile_tmem[(w1 >> 24) & 7];
             {
                 /* V13: the block also covers the TMEM above it (a half-height aux tile reads there) */
@@ -3010,23 +3001,8 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
                 tst1.blk[k].tmem = tm; tst1.blk[k].img = timg;
                 tst1.blk[k].bytes = ((((w1 >> 12) & 0xfff) + 1u) << tst1.tile_siz[(w1 >> 24) & 7]) >> 1;
             }
-            break;
-        }
-        case G_LOADTILE:
-            ld_valid = 1;
-            ld_x = (int)((w0 >> 12) & 0xfff) >> 2;
-            {
-                unsigned tm = tst1.tile_tmem[(w1 >> 24) & 7], k;
-                for (k = 0; k < 4 && !(tst1.ldrec[k].img && tst1.ldrec[k].tmem == tm); k++) {}
-                if (k == 4) k = ldrec_n++ & 3;
-                tst1.ldrec[k].tmem = tm; tst1.ldrec[k].img = timg; tst1.ldrec[k].stride = tst1.timg_stride;
-                tst1.ldrec[k].x = (int)((w0 >> 12) & 0xfff) >> 2; tst1.ldrec[k].y = (int)(w0 & 0xfff) >> 2;
-            }
-            ld_y = (int)(w0 & 0xfff) >> 2;
-            ld_h = (((int)(w1 & 0xfff) - (int)(w0 & 0xfff)) >> 2) + 1;
-            ld_w = ((((int)(w1 >> 12) & 0xfff) - ((int)(w0 >> 12) & 0xfff)) >> 2) + 1;
-            break;
-        case G_LOADTLUT:
+}
+static void op_loadtlut(u32 w0, u32 w1) {
             tlut = timg;
             tlut_n = (int)((w1 >> 14) & 0x3ff) + 1;
             {
@@ -3040,8 +3016,8 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
                     tlut_v20(slot);
                 }
             }
-            break;
-        case G_SETTILESIZE: {
+}
+static __attribute__((noinline)) void op_settilesize(u32 w0, u32 w1) {
             unsigned tile = (w1 >> 24) & 7;
             int uls = (int)((w0 >> 12) & 0xfff);
             int ult = (int)(w0 & 0xfff);
@@ -3054,11 +3030,11 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
             tst1.tile_sz[tile][2] = lrs;
             tst1.tile_sz[tile][3] = lrt;
             if (tile == 1) { tex_tile1(tile, uls, ult, lrs, lrt); sync_combine(); } /* S25: a plan that reads TEXEL1 needs tile 1 */
-            if (tile != 0) break;
+            if (tile != 0) return;
             td[0].valid = 0;
             cur_tile = -1; /* GP3: defer pm_tex_load to ensure_tile(0) at first draw */
             if (dual_on) { dual_on = 0; sync_combine(); } /* S25: the plan path is off while the shaded sprite is on */
-            if (m1.valid && tex_shaded0(uls, ult)) break;
+            if (m1.valid && tex_shaded0(uls, ult)) return;
             m1.valid = 0;
             int x0 = uls >> 2;
             int y0 = ult >> 2;
@@ -3123,7 +3099,7 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
                     td[0].valid = 1; td[0].src = src; td[0].fmt = tst1.tile_fmt[0]; td[0].siz = tst1.tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
                     td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
                     gp3_t0_set(); GP_SET(7, 1);
-                    break;
+                    return;
                 }
                 if (lp->ok && src == lp->src && tst1.tile_fmt[0] == lp->fmt && tst1.tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
                     palc == lp->pal && tlut_n == lp->pal_n && pm_tex_epoch() == lp->ep && !pm_is_cfb(src) && src && w > 0 && h > 1) {
@@ -3132,7 +3108,7 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
                     td[0].valid = 1; td[0].src = src; td[0].fmt = tst1.tile_fmt[0]; td[0].siz = tst1.tile_siz[0]; td[0].w = w; td[0].h = h; td[0].stride = stride;
                     td[0].x0 = x0; td[0].y0 = y0; td[0].pal = palc; td[0].pal_n = tlut_n;
                     gp3_t0_set(); GP_SET(7, 1);
-                    break;
+                    return;
                 }
                 GP_SET(7, 0);
                 lp->ok = 0;
@@ -3155,41 +3131,14 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
                 td[0].pal_n = tlut_n;
                 gp3_t0_set();
             }
-            break;
-        }
-        case G_TEXTURE:
+            return;
+}
+static void op_texture(u32 w0, u32 w1) {
             tex_on = (w0 & 0xff) != 0;
             tex_ss = w1 >> 16;
             tex_ts = w1 & 0xffffu;
-            sync_combine();
-            break;
-        case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L: {
-            unsigned len = (w0 & 0xff) + 1;
-            unsigned field = (w0 >> 8) & 0xff;
-            unsigned sft = 32 - field - len;
-            unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-            if (op == G_SETOTHERMODE_H) {
-                unsigned old_tf = omode_h & (3u << 12);
-                omode_h = (omode_h & ~mask) | (w1 & mask);
-                if ((omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
-                    pm_gpu_flush();
-                    pm_tex_set_filter((omode_h & (3u << 12)) != 0);
-                }
-            }
-            else omode_l = (omode_l & ~mask) | (w1 & mask);
-            /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
-            if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
-            break;
-        }
-        case G_SETPRIMCOLOR:
-            GP_SET(1, prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
-            aud_prim_lod = (u8)(w0 & 0xff);
-            prim = w1;
-            pm_gpu_set_prim(prim);
-            sync_combine();
-            break;
-        case G_SETCOMBINE:
+}
+static void op_setcombine(u32 w0, u32 w1) {
             GP_SET(0, comb_w0 == w0 && comb_w1 == w1 && comb_set);
             comb_w0 = w0;
             comb_w1 = w1;
@@ -3242,9 +3191,150 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
             comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
                                ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
             cmb_gen_seen = comb_gen; /* R2B */
+}
+
+static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
+    unsigned op = w0 >> 24;
+    tex_gen++; /* TBREP */
+    switch (op) {
+        case G_SETTIMG: op_settimg(w0, w1); break;
+        case G_SETTILE: op_settile(w0, w1); break;
+        case G_LOADBLOCK: op_loadblock(w0, w1); break;
+        case G_LOADTILE:
+            ld_valid = 1;
+            ld_x = (int)((w0 >> 12) & 0xfff) >> 2;
+            {
+                unsigned tm = tst1.tile_tmem[(w1 >> 24) & 7], k;
+                for (k = 0; k < 4 && !(tst1.ldrec[k].img && tst1.ldrec[k].tmem == tm); k++) {}
+                if (k == 4) k = ldrec_n++ & 3;
+                tst1.ldrec[k].tmem = tm; tst1.ldrec[k].img = timg; tst1.ldrec[k].stride = tst1.timg_stride;
+                tst1.ldrec[k].x = (int)((w0 >> 12) & 0xfff) >> 2; tst1.ldrec[k].y = (int)(w0 & 0xfff) >> 2;
+            }
+            ld_y = (int)(w0 & 0xfff) >> 2;
+            ld_h = (((int)(w1 & 0xfff) - (int)(w0 & 0xfff)) >> 2) + 1;
+            ld_w = ((((int)(w1 >> 12) & 0xfff) - ((int)(w0 >> 12) & 0xfff)) >> 2) + 1;
+            break;
+        case G_LOADTLUT: op_loadtlut(w0, w1); break;
+        case G_SETTILESIZE: op_settilesize(w0, w1); break;
+        case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
+        case G_SETOTHERMODE_H:
+        case G_SETOTHERMODE_L: {
+            unsigned len = (w0 & 0xff) + 1;
+            unsigned field = (w0 >> 8) & 0xff;
+            unsigned sft = 32 - field - len;
+            unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
+            if (op == G_SETOTHERMODE_H) {
+                unsigned old_tf = omode_h & (3u << 12);
+                omode_h = (omode_h & ~mask) | (w1 & mask);
+                if ((omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
+                    pm_gpu_flush();
+                    pm_tex_set_filter((omode_h & (3u << 12)) != 0);
+                }
+            }
+            else omode_l = (omode_l & ~mask) | (w1 & mask);
+            /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
+            if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
+            break;
+        }
+        case G_SETPRIMCOLOR:
+            GP_SET(1, prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
+            aud_prim_lod = (u8)(w0 & 0xff);
+            prim = w1;
+            pm_gpu_set_prim(prim);
             sync_combine();
             break;
+        case G_SETCOMBINE: op_setcombine(w0, w1); sync_combine(); break;
     }
+}
+
+/* M4: the texture bind list of a model (make_texture_gfx: SETTIMG SETTILE LOADTLUT, SETCOMBINE, TEXTURE, SETTIMG SETTILE LOADBLOCK SETTILE SETTILESIZE). tb_ops_generic runs it
+ * word by word through tex_op, as before. tb_ops runs the same op functions in list order without the dispatch (tex_op wrapper, tex_op_impl switch, one tex_gen step per op) and
+ * leaves out the combine sync after a SETCOMBINE that the TEXTURE word after it repeats: that sync would be overwritten by the next one with no draw between. */
+static __attribute__((noinline)) void tb_ops_generic(const Gfx* g) {
+    for (const Gfx* h = g;; h++) {
+        unsigned op = h->words.w0 >> 24;
+        if (op == G_ENDDL) break;
+        if (g1_skip[op]) continue;
+        pm_gbi_cur_op = op;
+        tex_op(h->words.w0, h->words.w1);
+    }
+}
+static __attribute__((noinline)) void tb_ops(const Gfx* g) {
+    tex_gen++;
+    for (const Gfx* h = g;; h++) {
+        u32 w0 = h->words.w0, w1 = h->words.w1;
+        unsigned op = w0 >> 24;
+        if (op == G_ENDDL) break;
+        if (g1_skip[op]) continue;
+        pm_gbi_cur_op = op;
+        switch (op) {
+        case G_SETTIMG: op_settimg(w0, w1); break;
+        case G_SETTILE: op_settile(w0, w1); break;
+        case G_LOADBLOCK: op_loadblock(w0, w1); break;
+        case G_LOADTLUT: op_loadtlut(w0, w1); break;
+        case G_SETTILESIZE: op_settilesize(w0, w1); break;
+        case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
+        case G_SETCOMBINE: {
+            const Gfx* n = h + 1;
+            op_setcombine(w0, w1);
+            while (g1_skip[n->words.w0 >> 24]) n++;
+            if ((n->words.w0 >> 24) != G_TEXTURE) sync_combine();
+            break;
+        }
+        default: tex_op(w0, w1); break;
+        }
+    }
+}
+/* M4 state-diff check, switch texdiff: every bind list runs twice from the same start state, once word by word and once fused. The texture, tile, combine and mode state of both
+ * ends is compared field by field. A difference is one log line (list, field names). The game goes on with the word by word state. */
+typedef struct {
+    __typeof__(tst1) tst; const void *timg, *tlut; int tlut_n; const void* tlut_pal[16]; __typeof__(td) td; int tile_x0, tile_y0; float tile_fx, tile_fy;
+    int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; __typeof__(m1) m1; int dual_on, cur_tile, use_t1, tex_on; unsigned tex_ss, tex_ts; int comb_set;
+    unsigned comb_w0, comb_w1; int box_folded, box_prod, box_pat, comb_alpha_shade; unsigned cmb_gen_seen; struct TszLast tsz; unsigned st0_ep; int st0_ok;
+    unsigned omode_h, omode_l; int leg_mode, plan_active, comb_mode5; PmPlan plan; int sc_ok; unsigned sc_sig;
+} TexSnap;
+#define TS_FIELDS(X) X(tst) X(timg) X(tlut) X(tlut_n) X(tlut_pal) X(td) X(tile_x0) X(tile_y0) X(tile_fx) X(tile_fy) X(ld_valid) X(ld_x) X(ld_y) X(ld_h) X(ld_w) X(ldrec_n) X(blk_n) X(m1) \
+    X(dual_on) X(cur_tile) X(use_t1) X(tex_on) X(tex_ss) X(tex_ts) X(comb_set) X(comb_w0) X(comb_w1) X(box_folded) X(box_prod) X(box_pat) X(comb_alpha_shade) X(cmb_gen_seen) X(tsz) \
+    X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig)
+static __attribute__((cold, noinline)) void ts_save(TexSnap* o) {
+    memset(o, 0, sizeof *o);
+    o->tst = tst1; o->timg = timg; o->tlut = tlut; o->tlut_n = tlut_n; memcpy(o->tlut_pal, tlut_pal, sizeof tlut_pal); memcpy(o->td, td, sizeof td);
+    o->tile_x0 = tile_x0; o->tile_y0 = tile_y0; o->tile_fx = tile_fx; o->tile_fy = tile_fy;
+    o->ld_valid = ld_valid; o->ld_x = ld_x; o->ld_y = ld_y; o->ld_h = ld_h; o->ld_w = ld_w; o->ldrec_n = ldrec_n; o->blk_n = blk_n; o->m1 = m1;
+    o->dual_on = dual_on; o->cur_tile = cur_tile; o->use_t1 = use_t1; o->tex_on = tex_on; o->tex_ss = tex_ss; o->tex_ts = tex_ts; o->comb_set = comb_set;
+    o->comb_w0 = comb_w0; o->comb_w1 = comb_w1; o->box_folded = box_folded; o->box_prod = box_prod; o->box_pat = box_pat; o->comb_alpha_shade = comb_alpha_shade;
+    o->cmb_gen_seen = cmb_gen_seen; o->tsz = tsz_last; o->st0_ep = st0_ep == pm_tex_wrap_gen(); o->st0_ok = st0_ok; /* the wrap generation counts calls, the second run advances it: compare whether st0_ep is current */ o->omode_h = omode_h; o->omode_l = omode_l;
+    o->leg_mode = leg_mode; o->plan_active = plan_active; o->comb_mode5 = comb_mode5; o->plan = cur_plan; o->sc_ok = sc_ok; o->sc_sig = sc_sig;
+}
+static __attribute__((cold, noinline)) void ts_load(const TexSnap* o) {
+    tst1 = o->tst; timg = o->timg; tlut = o->tlut; tlut_n = o->tlut_n; memcpy(tlut_pal, o->tlut_pal, sizeof tlut_pal); memcpy(td, o->td, sizeof td);
+    tile_x0 = o->tile_x0; tile_y0 = o->tile_y0; tile_fx = o->tile_fx; tile_fy = o->tile_fy;
+    ld_valid = o->ld_valid; ld_x = o->ld_x; ld_y = o->ld_y; ld_h = o->ld_h; ld_w = o->ld_w; ldrec_n = o->ldrec_n; blk_n = o->blk_n; m1 = o->m1;
+    dual_on = o->dual_on; cur_tile = o->cur_tile; use_t1 = o->use_t1; tex_on = o->tex_on; tex_ss = o->tex_ss; tex_ts = o->tex_ts; comb_set = o->comb_set;
+    comb_w0 = o->comb_w0; comb_w1 = o->comb_w1; box_folded = o->box_folded; box_prod = o->box_prod; box_pat = o->box_pat; comb_alpha_shade = o->comb_alpha_shade;
+    cmb_gen_seen = o->cmb_gen_seen; tsz_last = o->tsz; st0_ep = o->st0_ep ? pm_tex_wrap_gen() : ~pm_tex_wrap_gen(); st0_ok = o->st0_ok; omode_h = o->omode_h; omode_l = o->omode_l;
+    leg_mode = o->leg_mode; plan_active = o->plan_active; comb_mode5 = o->comb_mode5; cur_plan = o->plan; sc_ok = o->sc_ok; sc_sig = o->sc_sig;
+}
+static __attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
+    static TexSnap s0, eg, ef;
+    static unsigned runs, bad;
+    char names[256]; int n = 0;
+    ts_save(&s0);
+    tb_ops_generic(g);
+    ts_save(&eg);
+    ts_load(&s0);
+    tb_ops(g);
+    ts_save(&ef);
+#define TS_CMP(f) if (memcmp(&eg.f, &ef.f, sizeof eg.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
+    TS_FIELDS(TS_CMP)
+#undef TS_CMP
+    runs++;
+    if (n) { bad++; if (bad <= 40) pm_log("texdiff f%u list %p DIFF: %s", pm_frame_count(), (const void*)g, names); }
+    if (!(runs % 500)) pm_log("texdiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
+    ts_load(&eg);
+}
+static void tb_bind(const Gfx* g) {
+    if (PMD("texdiff")) tb_diff(g); else tb_ops(g);
 }
 
 static void gbi_run_body(void* list, unsigned nbytes);

@@ -554,6 +554,42 @@
       "reason": ""
     },
     {
+      "name": "mac01_sp0",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01) with the sp0c group split and the sp0x per op split (own time and close time).",
+      "proves": "The sp0x line prints, per tex op code, the own time and the draw close time per frame.",
+      "debug": "warp=mac_01:0 loglevel=debug phase sp0c opsplit mr0",
+      "until": "sp0x f",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "sp0x", "regex": "sp0x f\\d+ tex ops" }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "mac01_texdiff",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01) with the M4 texture bind state-diff check (switch texdiff).",
+      "proves": "Every bind list ends in the same texture, tile, combine and mode state word by word and fused. The log shows runs and diffs.",
+      "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug texdiff",
+      "until": "runs 6000 diffs",
+      "cap": 60,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "texdiff", "regex": "texdiff f\\d+ runs" }
+      ],
+      "reason": ""
+    },
+    {
       "name": "mac01_seam",
       "status": "unverified",
       "subject": "Toad Town street (mac_01) with the CPU path triangle route counts (seam line at frame 240).",
