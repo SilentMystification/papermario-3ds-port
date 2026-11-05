@@ -92,6 +92,8 @@ static void wd_main(void* arg) {
         int n = snprintf(buf, sizeof(buf), "\nwatchdog: no progress for %u s, game thread last phase %u (%s), steps %u, build #%s\n",
                          stalled, pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count(), PM_BUILD_STR);
         pm_crash_line(buf, n); /* flushes the log queue first, so the last log lines are in log.txt */
+        { extern unsigned pm_gbi_cur_op; extern unsigned nd_native_draws, nd_native_refused; extern const char* pm_gpu_last_flush(int*); int fl = 0; const char* ff = pm_gpu_last_flush(&fl);
+          n = snprintf(buf, sizeof(buf), "watchdog: walker op %02x, last flush %s:%d, native draws %u refused %u\n", pm_gbi_cur_op, ff ? ff : "?", fl, nd_native_draws, nd_native_refused); pm_crash_line(buf, n); }
         n = snprintf(buf, sizeof(buf), "watchdog: exiting the process\n");
         pm_crash_line(buf, n);
         pm_exit_process();

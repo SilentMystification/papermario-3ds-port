@@ -2540,6 +2540,7 @@ void pm_gpu_set_const(unsigned rgba) {
 }
 
 void pm_gpu_flush(void) { flush(); }
+const char* pm_gpu_last_flush(int* line) { *line = fl_line; return fl_fn; } /* the hang watchdog prints it */
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */

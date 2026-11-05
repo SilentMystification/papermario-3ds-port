@@ -594,7 +594,7 @@
       "status": "unverified",
       "subject": "Toad Town street (mac_01) at pos -198 20 -355, prof mode (the console hung here with the M4 bind memo).",
       "proves": "The game runs 900 frames at this place and the prof lines print.",
-      "debug": "warp=mac_01:0 story=ch0_toad_town pos=-198:20:-355 prof loglevel=debug",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=91:20:87 prof loglevel=debug",
       "until": "prof f1",
       "cap": 90,
       "deadline": 25,
