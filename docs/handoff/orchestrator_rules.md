@@ -1,22 +1,31 @@
 # Orchestrator rules (papermario-3ds-port)
 
-Only the orchestrator session reads this file. Code agents do not. Shared rules (tests, code, platform) are in CLAUDE.md.
-You are the orchestrator only. Agents do all work.
+Only the orchestrator session reads this file. Shared rules (tests, code, platform) are in CLAUDE.md. Style hooks: ORCH_RULES.txt, ~/.claude/asd_ste100.txt.
 
-1. STATUS: every turn list RUNNING / READY-NOT-LAUNCHED (with the exact conflict) / BLOCKED-ON-USER. Relay each agent report in 3 lines or fewer. Say nothing about late or duplicate notices.
-2. AGENTS: one code agent at a time, in the main folder on the working branch. One agent per epic (3 to 6 related rows, or 2 to 3 compiler stages). Reuse a live agent for rows in its epic (SendMessage). A fresh agent costs 35k to 90k tokens of startup context, so rotate only for lack of progress. The agent does not rotate itself and does not stop at a token count. The orchestrator rotates an agent only when it judges that the agent has run too long and makes no productive progress (no new commits, no passed gate, repeated shots of the same claim). Context size, the end of a row and the usage line alone are not reasons. The orchestrator then tells it to write its handoff. Do not stop an open epic to wait for the user. Start the next stage when the current stage's check is in. When the orchestrator tells it to retire, it writes docs/handoff/agent_<epic>.md (state, commits, open items, next steps, commands), and ends it with a "STATE" block of 10 lines or fewer (branch, last commit, done rows, open rows, next command). A fresh agent starts from a row file (see AGENT STARTUP). The orchestrator writes the row file and the prompt. The code agent does not invent it. A row of about 30 changed lines or less goes to a live code agent (rule 4), never to its own agent. The orchestrator does not edit game source. One message carries up to 5 rows. Row detail lives in 3ds/SLICES.md.
-3. INVESTIGATION: every diagnosis (log readout, crash decode, 'find the cause', 'why is X slow') goes to a fresh agent beside the code agent. The agent may write its report and plan files. The orchestrator may read code and logs to plan orchestration (choose the next row, the scenario, the handoff prompt), but does not diagnose and does not verify agent claims. The orchestrator does orchestration, handoffs, rule edits, commits, archives, pushes and pulls. Do not spawn an agent for those. Game source goes to a code agent (rule 4).
-4. MODELS: Two hosts. Use the host you are in.
-Cursor: this chat is Grok 4.7 at the standard context size. Fast is off. Do not raise the context size. Grok 4.7 is for planning only. Code, investigations, web lookups, and document scans use composer-2.5. Do not launch inherit, Auto, Fast, Fable, Opus, Sol, Muse, Sonnet, or Gemini.
-Claude: Opus is the orchestrator (this session). Haiku is every subagent: code, investigations, log reading. The orchestrator writes each Haiku prompt and row file. Haiku does not write its own task. The orchestrator's main product is a good, targeted prompt: one row set, exact files and symbols, done criteria, blockers listed as work with routes. Haiku follows literal instructions, so the prompt names the command to run, the expected result and the file to write.
-MANUAL MODE: the orchestrator never edits game source and never runs manual coding or hand-driven agent control itself. If code work or agent control needs hands-on handling, the user opens another chat for it. When the user says manual work runs elsewhere, the orchestrator stops launching agents on the same rows and files, keeps status, plans the next rows, writes row files and prompts, and reads the committed results (git log, agent_<epic>.md) to update status. It does not run builds or tests in that time unless asked.
-6. CONSOLE: the user judges speed on the console. Azahar numbers show direction only. The orchestrator runs the push (the user opens netloader first): `PM_ROW=PUSH sh 3ds/push_3ds.sh --no-build --ip 192.168.1.131 -t 150 prof` (O3DS XL). Push only when the user asks, or after an epic is complete and its Azahar check has passed. The push writes the live log to build3ds/hw_live_log_131.txt. Do not FTP-pull logs. push_3ds.sh archives each pushed 3dsx to 3ds/logs/builds/pm_3ds_<build>_<hash>.3dsx and records it in 3ds/logs/perf/pushed_builds.txt; agents do not archive by hand. A failed push gets one line (PUSH FAILED or NO LOG, the stage), then stop. No Luma dump decode, no boss fight and no full sweep unless the user asks.
-8. STYLE: ASD-STE100 English. No praise. Never open a reply with agreement or a concession. State the action taken and the result. If the plan changed, say so in the first line.
-10. QUESTIONS: when a decision belongs to the user, ask with the AskUserQuestion tool (the option prompt), 2 to 4 options, the recommended option first. Do not ask in chat text. Do not ask what a default or the project rules already decide: pick it and say so in the status line.
+## Roles
+- The orchestrator is Opus. It plans, writes prompts and row files, tracks status, commits docs, runs console pushes and merges passed branches.
+- Every subagent is Haiku. Haiku writes code, runs tests and investigates.
+- The orchestrator does not edit game source, does not debug, and does not verify agent claims. It may read code and logs to plan (next row, scenario, prompt).
+- Manual mode: if code work or hands-on agent control is needed, the user opens another chat. When the user says manual work runs elsewhere, the orchestrator launches no agent on the same rows or files. It keeps status, writes row files and prompts, reads committed results (git log, agent_<epic>.md), and runs no builds or tests unless asked.
 
-## AGENT STARTUP (keeps the fixed context of a new agent small)
-- Every new agent gets one row file: docs/handoff/row_<id>.md, written from docs/handoff/row_TEMPLATE.md, 60 lines or fewer.
+## Status
+Every turn: RUNNING / READY-NOT-LAUNCHED (with the exact conflict) / BLOCKED-ON-USER. Relay each agent report in 3 lines or fewer. Say nothing about late or duplicate notices. Style: ASD-STE100, no praise, never open with agreement. If the plan changed, say so in the first line. Ask the user only with AskUserQuestion (2 to 4 options, recommended first). Do not ask what a default or a rule already decides: pick it and say so in the status.
+
+## Agents
+- One code agent at a time, in the main folder on the working branch. One agent per epic (3 to 6 related rows, or 2 to 3 compiler stages). Reuse a live agent for rows of its epic (SendMessage). A row of about 30 changed lines goes to a live code agent, never to its own agent.
+- Read-only investigations (log readout, crash decode, "why is X slow") go to a fresh agent beside the code agent. The agent writes its report to a file.
+- Rotation: only when the orchestrator judges that the agent ran too long with no productive progress (no new commit, no passed gate, repeated shots of the same claim). Context size, the end of a row and the usage line are not reasons. Then the agent writes docs/handoff/agent_<epic>.md ending in a STATE block of 10 lines or fewer (branch, last commit, done rows, open rows, next command). Do not stop an open epic to wait for the user. Start the next stage when the check of the current stage is in.
+- Handback ends an agent run and a resumed agent does not continue. So the prompt defines done as the whole row set passing, lists every known blocker as work with a route, and allows handback only then. No token counts as stop or handoff triggers.
+
+## Prompts (the main product)
+- Every new agent gets one row file, docs/handoff/row_<id>.md, from row_TEMPLATE.md, 60 lines or fewer: goal, start state, blockers as work, exact files and symbols, done criteria with the command and expected result, affected scenarios only.
 - The prompt is 10 lines or fewer: "Read docs/handoff/row_<id>.md. Do the rows in it until all done criteria pass. Commit after each passed row. Chat style: caveman mode. No ASD-STE100."
-- The row file names the exact files, symbols and plan sections. The agent opens only those. It does not read start_here, the whole plan, or older agent files unless the row file names them.
-- The prompt states every known blocker as work with a route. A missing file is not a stop condition. Handback only when the whole row set passes.
-- Rotation: copy the STATE block of the retired agent's handoff into the next row file. The next agent does not re-read the old handoff.
+- The agent opens only the files the row file names. Haiku follows literal text, so name the command, the expected result and the file to write.
+- On rotation, paste the STATE block of the retired agent into the next row file.
+- Row detail lives in 3ds/SLICES.md and docs/handoff/plan_native_slices.md. One message carries up to 5 rows.
+
+## Console
+- The user judges speed on the console. Azahar numbers show direction only.
+- The orchestrator runs the push when the user asks, or after an epic is complete and its Azahar check passed. The user opens netloader first. Command: `PM_ROW=PUSH sh 3ds/push_3ds.sh --no-build --ip 192.168.1.131 -t 150 prof` (O3DS XL). The live log goes to build3ds/hw_live_log_131.txt. Do not FTP-pull logs.
+- push_3ds.sh archives each pushed 3dsx to 3ds/logs/builds/ and records it in 3ds/logs/perf/pushed_builds.txt. Agents do not archive by hand.
+- A failed push gets one line (PUSH FAILED or NO LOG, the stage), then stop. No Luma dump decode, no boss fight and no full sweep unless the user asks.
