@@ -1,13 +1,14 @@
 # Agent S3F: handoff
 
 ## STATE
-branch: nds1 | commits: eeba51266 (S3F-1a), dfbf5d131 (S3F-1b), 6c4dc9e70 (S3F-2a: 1CYC, 2CYC, FOG, alpha test, all render modes in the record)
-done: S3F-1a, S3F-1b; S3F-2a (mdldiff 6500 runs 0 diffs, nd_host PASS, seam_pic frame 200 right by eye)
-INCOMPLETE: S3F-2 (shroud, depth, remap, panner, billboard, custom gfx, local vertex copy still outside the record), S3F-3, S3F-4 (not started)
-budget: S3F hit 8 starts at seam_pic; reset once (run_azahar.ps1 -ResetBudget S3F), then seam_pic pass
-open: S3F-2b shroud, depth, remap (design below), S3F-2c panner and billboard, S3F-3 floor reflection and custom gfx ranges, S3F-4 delete
-not checked: matrix stack top is not in TS_FIELDS (mdldiff does not compare it); fog colour, blend colour, fog_fm, fog_fo are now in TS_FIELDS
-rule for next: records are 6 words (R0 to R5), build record words at the end of appendGfx_model; old words after the record count in R0 low byte
+branch: nds1 | commits: eeba51266 (S3F-1a), dfbf5d131 (S3F-1b), 6c4dc9e70 (S3F-2a), 771e42d55 (handoff), d0574e0a0 (S3F-2b)
+done: S3F-1a, S3F-1b, S3F-2a (1CYC, 2CYC, FOG, all modes, combine), S3F-2b (shroud, depth, remap; record 8 words)
+gates S3F-2b: mdldiff 9000 runs 0 diffs; seam_pic frame 200 right by eye. Not verified: the mdldiff scene holds each class.
+open: S3F-2c panner, billboard (2 matrix ops: finalMtx then billboard MUL), custom gfx (G_DL words, S3F-3), local vertex copy, IGNORE_MATRIX, specialTex. These keep old words; the record does not carry them yet.
+open: S3F-3 floor reflection (nd_range, execute_render_tasks), custom gfx ranges. open: S3F-4 delete (done grep: 21 hits before S3F-2b).
+open: 3 spot pictures (spot_mac01_pic, spot_mac00_pic, spot_sbk56_pic) not run. Budget: S3F reset once after 8 starts.
+rule: record is 8 words (R0 to R7), values at the end of appendGfx_model; old words after the record count in R0 low byte; R3 w0 flags (see model.c comment).
+next: S3F-2c billboard and panner first (smallest), then decide custom gfx and local copy with S3F-3 item 2.
 
 ## S3F-2b design (not built)
 - Record grows to 8 words. R6: w0 prim colour word, w1 env colour word. R7: w0 blend colour word, w1 shroud render mode c2 (gDPSetRenderMode(PM_RM_SHROUD, c2)).
