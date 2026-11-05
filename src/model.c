@@ -1427,6 +1427,7 @@ void appendGfx_model(void* data) {
     u32 rFlags = 0;         /* S3F-2b: R3 w0 bits: 2 fog after the render mode, 4 prim, 8 env, 16 blend, 32 shroud render mode, 64 depth fog before the lights */
     u32 fogColW = 0, fogPosW = 0; /* the fog colour and fog position words (R4 w0, R5 w1) */
     u32 rPrim = 0, rEnv = 0, rBlend = 0, rShC2 = 0; /* R6 w0 and w1, R7 w0 and w1 */
+    u32 rBbW[2] = {0, 0}, rPanW[4] = {0, 0, 0, 0}; /* S3F-2c: R8 billboard op words, R9 and R10 panner tile op words (0 when none) */
 #endif
 
     mtxPushMode = G_MTX_PUSH;
@@ -1538,8 +1539,7 @@ void appendGfx_model(void* data) {
         && (renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC || renderClass == RENDER_CLASS_FOG
             || renderClass == RENDER_CLASS_1CYC_DEPTH || renderClass == RENDER_CLASS_2CYC_DEPTH
             || ((renderClass == RENDER_CLASS_1CYC_SHROUD || renderClass == RENDER_CLASS_2CYC_SHROUD) && ShroudTintAmt != 255))
-        && !(flags & (MODEL_FLAG_USES_CUSTOM_GFX | MODEL_FLAG_HAS_TEX_PANNER | MODEL_FLAG_BILLBOARD))
-        && !(flags & MODEL_FLAG_IGNORE_MATRIX) && !(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY);
+        && !(flags & MODEL_FLAG_USES_CUSTOM_GFX) && !(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY);
     recSkip = recOn && pm_rec_mode() != 2;
     mgHdr = (*gfxPos)++; /* MR1: the header op; n is set at the end of this function */
     mgHdr->words.w0 = (u32)G_PM_MODEL << 24;
@@ -1559,7 +1559,7 @@ void appendGfx_model(void* data) {
                   * and the header w1. R2: numLights, finalMtx. R3: w0 bit 1 = fog words, w1 the lights group (0 when none). R4: w0 fog colour word,
                   * w1 the combine entry (0 when none). R5: w1 fog position word. */
         recWord = (*gfxPos);
-        (*gfxPos) += 8;
+        (*gfxPos) += G_PM_REC_WORDS;
         recWord->words.w0 = (u32)G_PM_REC << 24;
         recWord->words.w1 = (u32)textureHandle->gfx;
         recWord[1].words.w0 = (u32)((((flags & MODEL_FLAG_TRANSFORM_GROUP_MEMBER) ? G_MTX_MUL : G_MTX_LOAD) | G_MTX_PUSH | G_MTX_MODELVIEW) ^ G_MTX_PUSH);
@@ -2131,27 +2131,53 @@ void appendGfx_model(void* data) {
             s32 panAuxU = texPannerAuxU[model->texPannerID] >> 8;
             s32 panAuxV = texPannerAuxV[model->texPannerID] >> 8;
 
+            Gfx pt[2]; /* S3F-2c: the tile size words; REC_SKIP leaves them out (the record carries them) */
+            int npt = 0;
             switch (extraTileType) {
                 case EXTRA_TILE_AUX_SAME_AS_MAIN:
-                    gDPSetTileSize((*gfxPos)++, G_TX_RENDERTILE, panMainU, panMainV, (textureHeader->mainW - 1) * 4 + panMainU, (textureHeader->mainH / 2 - 1) * 4 + panMainV);
-                    gDPSetTileSize((*gfxPos)++, G_TX_RENDERTILE + 1, panAuxU, panAuxV, (textureHeader->mainW - 1) * 4 + panAuxU, (textureHeader->mainH / 2 - 1) * 4 + panAuxV);
+                    gDPSetTileSize(&pt[0], G_TX_RENDERTILE, panMainU, panMainV, (textureHeader->mainW - 1) * 4 + panMainU, (textureHeader->mainH / 2 - 1) * 4 + panMainV);
+                    gDPSetTileSize(&pt[1], G_TX_RENDERTILE + 1, panAuxU, panAuxV, (textureHeader->mainW - 1) * 4 + panAuxU, (textureHeader->mainH / 2 - 1) * 4 + panAuxV);
+                    npt = 2;
                     break;
                 case EXTRA_TILE_AUX_INDEPENDENT:
-                    gDPSetTileSize((*gfxPos)++, G_TX_RENDERTILE, panMainU, panMainV, (textureHeader->mainW - 1) * 4 + panMainU, (textureHeader->mainH - 1) * 4 + panMainV);
-                    gDPSetTileSize((*gfxPos)++, G_TX_RENDERTILE + 1, panAuxU, panAuxV, (textureHeader->auxW - 1) * 4 + panAuxU, (textureHeader->auxH - 1) * 4 + panAuxV);
+                    gDPSetTileSize(&pt[0], G_TX_RENDERTILE, panMainU, panMainV, (textureHeader->mainW - 1) * 4 + panMainU, (textureHeader->mainH - 1) * 4 + panMainV);
+                    gDPSetTileSize(&pt[1], G_TX_RENDERTILE + 1, panAuxU, panAuxV, (textureHeader->auxW - 1) * 4 + panAuxU, (textureHeader->auxH - 1) * 4 + panAuxV);
+                    npt = 2;
                     break;
                 default:
-                    gDPSetTileSize((*gfxPos)++, G_TX_RENDERTILE, panMainU, panMainV, (textureHeader->mainW - 1) * 4 + panMainU, (textureHeader->mainH - 1) * 4 + panMainV);
+                    gDPSetTileSize(&pt[0], G_TX_RENDERTILE, panMainU, panMainV, (textureHeader->mainW - 1) * 4 + panMainU, (textureHeader->mainH - 1) * 4 + panMainV);
+                    npt = 1;
                     break;
             }
+            for (int k = 0; k < npt; k++) {
+                if (!REC_SKIP) { *(*gfxPos) = pt[k]; (*gfxPos)++; }
+            }
+#ifdef TARGET_3DS
+            for (int k = 0; k < npt; k++) { rPanW[2 * k] = pt[k].words.w0; rPanW[2 * k + 1] = pt[k].words.w1; }
+#endif
+        }
+    }
+
+    if (flags & MODEL_FLAG_BILLBOARD) {
+        Gfx bb; /* S3F-2c: the billboard matrix op (MUL, as the walker runs it) */
+        gSPMatrix(&bb, gCameras[gCurrentCamID].mtxBillboard, mtxLoadMode | mtxPushMode | G_MTX_MODELVIEW);
+        if (!REC_SKIP) { *(*gfxPos) = bb; (*gfxPos)++; }
+#ifdef TARGET_3DS
+        rBbW[0] = bb.words.w0; rBbW[1] = bb.words.w1;
+#endif
+        if (mtxPushMode != G_MTX_NOPUSH) {
+            mtxPushMode = G_MTX_NOPUSH;
+        }
+        if (mtxLoadMode != G_MTX_MUL) {
+            mtxLoadMode = G_MTX_MUL;
         }
     }
 
 #ifdef TARGET_3DS
-    if (recWord != nullptr) { /* S3F-2b: the record values. The count is the old words after the record (mdldiff only, else 0; the matrix word is one of them) */
+    if (recWord != nullptr) { /* S3F-2b, S3F-2c: the record values. The count is the old words after the record (mdldiff only, else 0). */
         recWord->words.w0 = ((u32)G_PM_REC << 24) | ((u32)renderModeIdx << 16) | ((((u32)(textureHandle - TextureHandles)) & 0x7fu) << 8)
-            | ((u32)((*gfxPos) - (recWord + 8)) & 0xffu);
-        recWord[3].words.w0 = rFlags;
+            | ((u32)((*gfxPos) - (recWord + G_PM_REC_WORDS)) & 0xffu);
+        recWord[3].words.w0 = rFlags | ((flags & MODEL_FLAG_IGNORE_MATRIX) ? 256u : 0u);
         recWord[4].words.w0 = fogColW;
         recWord[4].words.w1 = (u32)(uintptr_t)combWord;
         recWord[5].words.w0 = 0;
@@ -2160,17 +2186,14 @@ void appendGfx_model(void* data) {
         recWord[6].words.w1 = rEnv;
         recWord[7].words.w0 = rBlend;
         recWord[7].words.w1 = rShC2;
+        recWord[8].words.w0 = rBbW[0];
+        recWord[8].words.w1 = rBbW[1];
+        recWord[9].words.w0 = rPanW[0];
+        recWord[9].words.w1 = rPanW[1];
+        recWord[10].words.w0 = rPanW[2];
+        recWord[10].words.w1 = rPanW[3];
     }
 #endif
-    if (flags & MODEL_FLAG_BILLBOARD) {
-        gSPMatrix((*gfxPos)++, gCameras[gCurrentCamID].mtxBillboard, mtxLoadMode | mtxPushMode | G_MTX_MODELVIEW);
-        if (mtxPushMode != G_MTX_NOPUSH) {
-            mtxPushMode = G_MTX_NOPUSH;
-        }
-        if (mtxLoadMode != G_MTX_MUL) {
-            mtxLoadMode = G_MTX_MUL;
-        }
-    }
 
     // render the model
     if (!(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY)) {
