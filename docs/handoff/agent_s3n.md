@@ -1,11 +1,11 @@
 # Agent S3N: map model records draw natively
 
 ## STATE
-branch: nds1 | commits: 1f1839f2c (S3N-0), c48abe457 (S3N-1a gv move), 067a85de9 (S3N-2 nd_native_submit), 662e7d2ae (S3N-1b handle desc B4, render mode compile B5/B6), c8ce0207f + this doc commit (handoff)
-done: S3N-0, S3N-1 (gates: nd_host PASS incl nd_gv and nd_model; spot_mac01 byte-equal after each game-side edit), S3N-2 (spot_mac01 byte-equal).
-open: S3N-3 (nd_model_draw + ndmcheck) BLOCKED on B7. S3N-4, S3N-5 not started.
-budget S3N: 5 of 8 Azahar starts used (baseline HEAD, mac01 x3, mac01 after S3N-2, mac01 after S3N-1b): 5 used. No reset.
-next: user decision on B7, then S3N-3.
+branch: nds1 | S3N-3a committed (nd_model_state, host case 6 in nd_model_test, nd_host PASS). Earlier: 1f1839f2c, c48abe457, 067a85de9, 662e7d2ae, c8ce0207f, d5a641d23.
+done: S3N-0, S3N-1, S3N-2, S3N-3a (pure: NdMCtx from caller; sticky walker flags and uvso inputs are ctx, not native).
+open: S3N-3b (ndmcheck compare), S3N-3c (geometry) not started. S3N-4, S3N-5 not started.
+budget S3N: 5 of 8 Azahar starts used before this session. No Azahar start yet this session.
+next: S3N-3b.
 
 B7 (new, BLOCKS S3N-3): the combine mode and the TEV key of a draw come from sync_combine (pm_gbi.c 1081: sync_combine_work_timed, sync_legacy, decide, pm_comb_colours; memo scm_sig/scm_find). Its inputs include walker texture state (td[0..1].valid, tile formats and sizes, ldrec, tex_on, use_t1), box_pat, box_prod, box_folded, dual_on, comb_set, comb_alpha_shade, leg_mode. A native model draw has none of this. ndmcheck would compare a key the native path cannot build. Options: (a) port sync_legacy and decide into a pure function over an input struct the record and the handle desc fill (large; box and dual state need records too); (b) keep the walker combine for models and have nd_model_draw read the mode the walker last set (a stale-state risk); (c) S3N-3 compares only the parts natively derivable (render state, unit words, matrix, palette, geometry ranges) and logs combine and tev as skipped. Plan default NOT chosen: the user decides.
 
