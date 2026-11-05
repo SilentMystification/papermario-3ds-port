@@ -120,6 +120,33 @@ int nd_mode_compile(NdMode* m, const unsigned* w) {
 #define ND_CULL_FRONT_CCW 1u
 #define ND_CULL_BACK_CCW 2u
 
+/* ---- S3N-3d: the combine inputs of a native draw (nd_comb_decide) ---- */
+/* The 16 combiner fields as op_setcombine (pm_gbi.c) decodes them into tst1, in NdCombIn.tst order. Returns 0 when the draw takes them.
+ * 1: the combine reads tile 1 (the rename of op_setcombine) or the box product; both need tile state the native draw does not have (fallback).
+ * -1: the combine reads KEYCENTER, KEYSCALE or K4, whose values are not native (nost). */
+static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, uint32_t env, uint32_t prim_lod, int tex, NdCombIn* ci) {
+    uint32_t* f = ci->tst;
+    f[0] = (w0 >> 20) & 0xf;  f[1] = (w1 >> 28) & 0xf;  f[2] = (w0 >> 15) & 0x1f; f[3] = (w1 >> 15) & 7;
+    f[4] = (w0 >> 12) & 7;    f[5] = (w1 >> 12) & 7;    f[6] = (w0 >> 9) & 7;      f[7] = (w1 >> 9) & 7;
+    f[8] = (w0 >> 5) & 0xf;   f[9] = (w1 >> 24) & 0xf;  f[10] = w0 & 0x1f;         f[11] = (w1 >> 6) & 7;
+    f[12] = (w1 >> 21) & 7;   f[13] = (w1 >> 3) & 7;    f[14] = (w1 >> 18) & 7;    f[15] = w1 & 7;
+    int t0 = f[0] == 1 || f[1] == 1 || f[3] == 1 || f[2] == 1 || f[2] == 8 || f[4] == 1 || f[5] == 1 || f[6] == 1 || f[7] == 1;
+    int t1 = f[0] == 2 || f[1] == 2 || f[3] == 2 || f[2] == 2 || f[2] == 9 || f[4] == 2 || f[5] == 2 || f[6] == 2 || f[7] == 2;
+    int c2 = f[8] == 1 || f[9] == 1 || f[11] == 1 || f[10] == 1 || f[10] == 8 || f[12] == 1 || f[13] == 1 || f[14] == 1 || f[15] == 1 ||
+             f[8] == 2 || f[9] == 2 || f[11] == 2 || f[10] == 2 || f[10] == 9 || f[12] == 2 || f[13] == 2 || f[14] == 2 || f[15] == 2;
+    if (t1 && !t0 && !c2) return 1;
+    int box = f[0] == 1 && f[1] >= 7 && f[2] == 2 && f[3] == 7 && f[4] == 7 && f[5] == 7 && f[6] == 7 && f[7] == 2 &&
+              f[8] == 3 && f[9] == 5 && f[10] == 0 && f[11] == 5 && f[12] == 7 && f[13] == 7 && f[14] == 7 && f[15] == 0;
+    if (box) return 1;
+    if (f[1] == 6 || f[1] == 7 || f[9] == 6 || f[9] == 7 || f[2] == 6 || f[10] == 6) return -1;
+    ci->w0 = w0; ci->w1 = w1; ci->omode_h = oh; ci->prim = prim; ci->env = env; ci->aud_prim_lod = prim_lod & 0xffu;
+    ci->key_c = 0; ci->key_s = 0; ci->conv_k4 = 0;
+    ci->leg_mode = 0; ci->tex_on = tex; ci->use_t1 = 0; ci->t1_valid = 0; ci->dual_on = 0;
+    ci->box_prod = 0; ci->box_pat = 0; ci->box_folded = 0; ci->comb_set = 1;
+    ci->comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
+    return 0;
+}
+
 /* ---- S3N-3a: the state of one model record as a native draw (pure: record words and NdMCtx) ---- */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0;
@@ -128,7 +155,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     if (c->gv && c->gv->fxon) return (st->why = 4, 0); /* lit or fog: pm5 path, later row */
     if (rec[26] != 0) return (st->why = 2, 0);          /* R13: words after the record (special tile list, untextured ops) */
     if (rec[22] != 0 || rec[23] != 0) return (st->why = 3, 0); /* R11: custom gfx pre and post */
-    const int tex = c->u0 != NULL && c->u0->dim != 0;
+    const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
     const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (rm_apply runs after the entry) */
     const uint32_t geom = (c->geom_base & c->mode->gand) | c->mode->gor; /* B9: geometry after the list ops */
     const int zb = (geom & 1u) != 0; /* G_ZBUFFER */
@@ -142,25 +169,30 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     nd_render_state(oh, ol, 0, &rr);
     const NdRender* r = &rr;
     const int two = ((oh >> 20) & 3u) == 1u; /* 2 cycle (from the merged other mode) */
-    PmPlan plan;
-    if (pm_comb_build(w0, w1, two, 0, &plan) != 0) return (st->why = 5, 0);
-    if (plan.uses_tex1 || plan.uses_noise) return (st->why = 6, 0);
+    const uint32_t prim = (f & 4u) ? rec[12] : c->prim; /* R6: the prim of the draw */
+    /* S3N-3d: the combine choice is the walker's own function (nd_comb_decide) on the native inputs */
+    NdCombIn ci;
+    NdCombOut co;
+    { int rc = nd_comb_native(w0, w1, oh, prim, c->env, c->prim_lod, tex_u, &ci); if (rc == 1) return (st->why = 8, 0); if (rc < 0) return (st->why = 8, -1); }
+    nd_comb_decide(&ci, &co);
+    const int combine = co.plan_on ? 8 : co.leg;
+    const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
+    if (combine == 8 && (co.plan.uses_tex1 || co.plan.uses_noise)) return (st->why = 6, 0);
     NdTmplKey k;
     memset(&k, 0, sizeof k);
     k.pass = 0; k.raw = 1; k.cull = cull;
     k.z = (uint8_t)zb; k.zmark = 0; k.zcmp = r->zcmp; k.zupd = r->zupd; k.nocol = r->nocol; k.decal = r->decal;
     memcpy(&k.dbias, &c->dbias, 4);
     k.atest_on = r->atest >= 0; k.aref = (uint8_t)(r->atest >= 0 ? r->atest : 0);
-    k.combine = 8; k.tex = (uint8_t)tex; k.tex1 = 0; k.i8_0 = (uint8_t)(tex && c->i8_0); k.i8_1 = 0;
+    k.combine = (uint8_t)combine; k.tex = (uint8_t)tex; k.tex1 = 0; k.i8_0 = (uint8_t)(tex && c->i8_0); k.i8_1 = 0;
     k.rgb_scale = (uint8_t)c->rgb_scale; k.r_mix = (uint8_t)c->r_mix; k.draw_3d = (uint8_t)c->draw_3d; k.rect_2d = 0;
     k.dview = c->dview != 0; k.off_active = 0; k.off_i8 = 0;
     k.r_memblend = (uint8_t)(r->set_memb ? r->memb : c->r_memblend);
     k.r_replace = (uint8_t)c->r_replace; k.r_blend = r->blend; k.noise = 0;
-    k.w0 = w0; k.w1 = w1; k.two = (uint8_t)two; k.t1only = 0;
+    k.w0 = combine == 8 ? w0 : 0; k.w1 = combine == 8 ? w1 : 0; k.two = combine == 8 ? (uint8_t)two : 0; k.t1only = 0;
     int id = nd_tmpl_build(&k);
     if (id < 0) return (st->why = 7, 0);
-    uint32_t prim = (f & 4u) ? rec[12] : c->prim;
-    NdTevIn ti = { &k, &plan, prim, c->cconst, c->mixcol };
+    NdTevIn ti = { &k, combine == 8 ? &co.plan : NULL, prim, c->cconst, c->mixcol };
     NdTevOut to;
     nd_tev_build(&ti, &to);
     memset(d, 0, sizeof *d);

@@ -1129,6 +1129,11 @@ static void sync_combine(void) {
         sc_sig = sg;
     }
 }
+/* S3N-3d: the walker's sticky state at a draw (ndmcheck compare only: the native draw takes these as inputs): the TEXTURE scale word, the geometry mode and the combine words. */
+void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) {
+    *tss = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu); *geo = geom; *cw0 = comb_w0; *cw1 = comb_w1;
+}
+
 /* S3N-3d: nd_comb_decide. The combine work (sync_combine_work) on the inputs in. Every global it reads or writes is set from in and put back
  * after the call, so the walker state is the same before and after. comb_dry: no pm_gpu call, no stats, no log. */
 void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
