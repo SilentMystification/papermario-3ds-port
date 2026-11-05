@@ -30,6 +30,18 @@ static const void* env_vtx(uint32_t w1, unsigned n) {
     return vcopy;
 }
 
+/* pooled objects: the vertex and index pools of the game, here plain arrays (vertex numbers start at 5000) */
+static uint8_t pool_v[16u * 40000u];
+static uint16_t pool_i[200000];
+static unsigned pool_vn, pool_in;
+static uint8_t* pool_valloc(unsigned n, unsigned* first) {
+    if (pool_vn + n > 40000u) return NULL;
+    *first = 5000u + pool_vn; uint8_t* p = pool_v + 16u * pool_vn; pool_vn += n; return p;
+}
+static uint16_t* pool_ialloc(unsigned n) {
+    if (pool_in + n > 200000u) return NULL;
+    uint16_t* p = pool_i + pool_in; pool_in += n; return p;
+}
 static int fails;
 #define CHECK(c, ...) do { if (!(c)) { fails++; if (fails < 20) { printf("FAIL: " __VA_ARGS__); printf("\n"); } } } while (0)
 
@@ -41,7 +53,7 @@ static void check_obj(const NdObj* o, uint32_t addr, const uint32_t* l) {
         const NdGrp* g = &o->grp[k];
         int16_t lo[3] = { 32767, 32767, 32767 }, hi[3] = { -32768, -32768, -32768 };
         for (unsigned v = 0; v < g->nvtx; v++) {
-            const int16_t* s = (const int16_t*)(o->vtx + 16u * (g->vbase + v));
+            const int16_t* s = (const int16_t*)(o->vtx + 16u * (g->vbase - o->vfirst + v));
             for (int q = 0; q < 3; q++) { if (s[q] < lo[q]) lo[q] = s[q]; if (s[q] > hi[q]) hi[q] = s[q]; }
             CHECK(s[3] == 0, "list %08x group %u: vertex flag %d", addr, k, s[3]);
         }
@@ -73,7 +85,8 @@ static void check_obj(const NdObj* o, uint32_t addr, const uint32_t* l) {
 
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: nd_dlc_test <shape.bin> ...\n"); return 2; }
-    NdDlcEnv env = { env_vtx };
+    NdDlcEnv env = { env_vtx, NULL, NULL };
+    NdDlcEnv envp = { env_vtx, pool_valloc, pool_ialloc };
     for (int a = 1; a < argc; a++) {
         FILE* f = fopen(argv[a], "rb");
         if (!f) { printf("FAIL: cannot open %s\n", argv[a]); return 1; }
@@ -100,7 +113,14 @@ int main(int argc, char** argv) {
             if (i >= ND_DLC_MAXOPS || off + 8 * (i + 1) > rawlen) { n_ref[NDR_LONG]++; continue; }
             NdObj o;
             int rc = nd_dlc_compile(&o, lw, &env);
-            if (rc == NDR_OK) { n_ok++; check_obj(&o, w1, lw); nd_dlc_free(&o); } else n_ref[rc]++;
+            if (rc == NDR_OK) {
+                n_ok++; check_obj(&o, w1, lw);
+                NdObj p;
+                int rp = nd_dlc_compile(&p, lw, &envp); /* the same list into the pools: same counts, vertex numbers shifted by the pool base */
+                CHECK(rp == NDR_OK && p.nvtx == o.nvtx && p.nidx == o.nidx && p.ngrp == o.ngrp && p.vfirst >= 5000u, "list %08x: pooled compile differs", w1);
+                if (rp == NDR_OK) { check_obj(&p, w1, lw); for (unsigned q = 0; q < p.nidx && q < 64; q++) CHECK(p.idx[q] - p.vfirst == o.idx[q], "list %08x: pooled index %u", w1, q); }
+                nd_dlc_free(&o); nd_dlc_free(&p);
+            } else n_ref[rc]++;
         }
         free(raw);
     }

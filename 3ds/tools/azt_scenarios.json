@@ -1791,6 +1791,26 @@
       "reason": ""
     },
     {
+      "name": "ndobj_mac01",
+      "status": "verified",
+      "subject": "Toad Town mac_01 with the ndobj gate: every shape list that dlc compiles is also compiled by nd_dlc into the static pools; the summary line must show bad 0.",
+      "proves": "S3-1: nd_dlc equals dlc_compile and dlc_static_build in the game (group counts, boxes, geometry ops, index deltas).",
+      "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase ndobj",
+      "until": "ndobj ok \\d+ bad",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "ndobj summary",
+          "regex": "ndobj ok \\d+ bad 0 "
+        }
+      ],
+      "reason": "S3-1 gate. Log only."
+    },
+    {
       "name": "mac01_texprof",
       "status": "verified",
       "subject": "Toad Town mac_01 with ndst: the per-frame texture hit and miss cost lines (ndst sorted) next to the opsplit line.",

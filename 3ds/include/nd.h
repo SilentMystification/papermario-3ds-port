@@ -142,11 +142,15 @@ typedef struct NdObj {
     uint32_t ngop;
     uint8_t* vtx;               /* 16 byte Vtx copies, flag word 0 */
     uint32_t nvtx;
-    uint16_t* idx;              /* triangle corner indices into vtx (3 per triangle) */
+    uint16_t* idx;              /* triangle corner indices (3 per triangle): vertex numbers of the pool, vfirst + the copy number */
     uint32_t nidx;
+    unsigned vfirst;            /* vertex number of vtx[0] in the vertex pool (0 for a malloc object) */
+    uint8_t pooled;             /* vtx and idx belong to the pools, nd_dlc_free does not free them */
 } NdObj;
 typedef struct NdDlcEnv {
     const void* (*vtx)(uint32_t w1, unsigned n); /* the n Vtx (16 bytes, host order) at the list address w1, or NULL when it is not shape data */
+    uint8_t* (*valloc)(unsigned nvtx, unsigned* first); /* optional: room for nvtx Vtx copies in the vertex pool, first = its first vertex number; NULL return refuses */
+    uint16_t* (*ialloc)(unsigned nidx);                 /* optional: room for nidx indices in the index pool; NULL return refuses (both NULL: malloc) */
 } NdDlcEnv;
 int nd_dlc_compile(NdObj* o, const uint32_t* list, const NdDlcEnv* env); /* list: word pairs in host order, up to G_ENDDL */
 void nd_dlc_free(NdObj* o);

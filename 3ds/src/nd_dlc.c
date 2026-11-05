@@ -12,7 +12,8 @@ static NdGrp tg[ND_DLC_MAXGRP];
 static uint32_t tgop[ND_DLC_MAXGOP][2];
 
 void nd_dlc_free(NdObj* o) {
-    free(o->grp); free(o->gop); free(o->gat); free(o->vtx); free(o->idx);
+    free(o->grp); free(o->gop); free(o->gat);
+    if (!o->pooled) { free(o->vtx); free(o->idx); }
     memset(o, 0, sizeof *o);
 }
 
@@ -84,9 +85,15 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
     o->grp = ng ? (NdGrp*)malloc(ng * sizeof(NdGrp)) : NULL;
     o->gop = ngop ? (uint32_t(*)[2])malloc(ngop * 8) : NULL;
     o->gat = ngop ? (uint16_t*)malloc(ngop * 2) : NULL;
-    o->vtx = vtx_total ? (uint8_t*)malloc(vtx_total * 16u) : NULL;
-    o->idx = tri_total ? (uint16_t*)malloc(tri_total * 6u) : NULL;
-    if ((ng && !o->grp) || (ngop && (!o->gop || !o->gat)) || (vtx_total && !o->vtx) || (tri_total && !o->idx)) { nd_dlc_free(o); return NDR_LONG; }
+    if (env->valloc && env->ialloc) { /* the pools: the static vertex area and the static index area */
+        o->pooled = 1;
+        o->vtx = vtx_total ? env->valloc(vtx_total, &o->vfirst) : NULL;
+        o->idx = tri_total ? env->ialloc(tri_total * 3u) : NULL;
+    } else {
+        o->vtx = vtx_total ? (uint8_t*)malloc(vtx_total * 16u) : NULL;
+        o->idx = tri_total ? (uint16_t*)malloc(tri_total * 6u) : NULL;
+    }
+    if ((ng && !o->grp) || (ngop && (!o->gop || !o->gat)) || (vtx_total && !o->vtx) || (tri_total && !o->idx)) { o->pooled = 0; nd_dlc_free(o); return NDR_LONG; }
     if (ng) memcpy(o->grp, tg, ng * sizeof(NdGrp));
     if (ngop) memcpy(o->gop, tgop, ngop * 8);
     /* pass 2: the vertex copies and the triangle indices (dlc_static_build) */
@@ -96,7 +103,7 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
         unsigned short smap[64];
         unsigned gnv = 0, nt = 0;
         memset(live, 0, sizeof live);
-        q->vbase = nv; q->ibase = ni; q->gbase = go;
+        q->vbase = o->vfirst + nv; q->ibase = ni; q->gbase = go;
         for (uint32_t j = q->op0; j < q->op1; j++) {
             uint32_t w0 = l[2 * j], w1 = l[2 * j + 1];
             switch (w0 >> 24) {
@@ -107,7 +114,7 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
                 memcpy(o->vtx + 16u * (nv + gnv), src, 16u * n);
                 for (unsigned t = 0; t < n; t++) {
                     memset(o->vtx + 16u * (nv + gnv + t) + 6, 0, 2); /* flag word 0: palette index 0 */
-                    smap[v0 + t] = (unsigned short)(nv + gnv + t);
+                    smap[v0 + t] = (unsigned short)(o->vfirst + nv + gnv + t);
                     live[v0 + t] = 1;
                 }
                 gnv += n;

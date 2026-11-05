@@ -499,6 +499,52 @@ static __attribute__((cold, noinline)) void dlc_reset(void) {
     dlc_nent = 0;
     pm_gpu_gstat_reset();
 }
+/* S3-1 gate (debug switch ndobj): every list dlc compiles is compiled by nd_dlc as well, into the static pools. Counts, boxes, geometry ops, group ranges and index
+ * deltas must equal the DlcEnt. One log line per mismatch (40 at most) and a summary line every 100 frames. */
+unsigned short* pm_gpu_gidxs_alloc(unsigned n);
+void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
+unsigned pm_gpu_gidxs_used(void);
+static unsigned nd_chk_ok, nd_chk_bad, nd_chk_ref, nd_chk_tri, nd_chk_grp;
+static int nd_obj_check_on(void) { return PMDL("ndobj"); }
+static const void* nd_env_vtx(uint32_t w1, unsigned n) {
+    const Vtx* src = (const Vtx*)ptr_of(w1);
+    if (!src || (u32)src - (u32)gMapShapeData >= 0x40000u || n == 0 || n > 64) return NULL;
+    return src;
+}
+static uint8_t* nd_env_valloc(unsigned n, unsigned* first) {
+    unsigned char* dst = NULL;
+    int f = pm_gpu_gstat_alloc(n, &dst);
+    if (f < 0) return NULL;
+    *first = (unsigned)f;
+    return dst;
+}
+static uint16_t* nd_env_ialloc(unsigned n) { return pm_gpu_gidxs_alloc(n); }
+static __attribute__((cold, noinline)) void nd_obj_check(const DlcEnt* e, const Gfx* l) {
+    NdObj o;
+    NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc };
+    u32 words[2 * (ND_DLC_MAXOPS + 1)];
+    unsigned i;
+    for (i = 0; i < ND_DLC_MAXOPS; i++) { words[2 * i] = l[i].words.w0; words[2 * i + 1] = l[i].words.w1; if ((l[i].words.w0 >> 24) == G_ENDDL) break; }
+    int rc = nd_dlc_compile(&o, words, &env);
+    int bad = 0;
+    if (rc != NDR_OK) { nd_chk_ref++; if (e->ngrp && nd_chk_bad < 40) pm_log("ndobj list %p refused %d but dlc compiled %u groups", (const void*)l, rc, (unsigned)e->ngrp); nd_chk_bad += e->ngrp != 0; return; }
+    if (o.ngrp != e->ngrp || o.ngop != (e->ngrp ? (unsigned)(e->grp[e->ngrp - 1].goff + e->grp[e->ngrp - 1].ng) : 0u) || o.nops != e->nops || o.exit_am != e->exit_am || o.exit_om != e->exit_om) bad = 1;
+    for (unsigned k = 0; !bad && k < e->ngrp; k++) {
+        const DlcGrp* g = &e->grp[k]; const NdGrp* q = &o.grp[k];
+        if (!g->sd) continue; /* the static build was refused for this group (area full) */
+        if (g->nvtx != q->nvtx || g->sn != q->ntri || g->ng != q->ng || g->op0 != q->op0 || g->op1 != q->op1 || g->am != q->am || g->om != q->om || g->tsv_exit != q->tsv_exit ||
+            memcmp(g->lo, q->lo, 6) || memcmp(g->hi, q->hi, 6)) { bad = 2; break; }
+        for (unsigned t = 0; t < 3u * g->sn; t++) if ((int)g->sd[t] - (int)g->sd[0] != (int)o.idx[q->ibase + t] - (int)o.idx[q->ibase]) { bad = 3; break; }
+        nd_chk_grp++; nd_chk_tri += g->sn;
+    }
+    pm_gpu_gidxs_commit(o.idx, o.nidx);
+    if (o.nvtx) pm_gpu_gstat_commit(o.vfirst, o.nvtx);
+    if (bad) { nd_chk_bad++; if (nd_chk_bad < 40) pm_log("ndobj list %p differs (%d): groups %u/%u ops %u/%u", (const void*)l, bad, o.ngrp, (unsigned)e->ngrp, o.nops, (unsigned)e->nops); }
+    else nd_chk_ok++;
+    nd_dlc_free(&o);
+}
+unsigned pm_nd_chk_ok(void) { return nd_chk_ok; }
+void pm_nd_chk_report(void) { if (nd_chk_ok | nd_chk_bad | nd_chk_ref) pm_log("ndobj ok %u bad %u refused %u groups %u triangles %u gidxs %u", nd_chk_ok, nd_chk_bad, nd_chk_ref, nd_chk_grp, nd_chk_tri, pm_gpu_gidxs_used()); }
 static unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
 
@@ -515,7 +561,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
         e->hash = dlc_hash(l);
         dlc_c.compile++;
         if (r) { e->refused = (u8)r; dlc_c.refused[r]++; }
-        else dlc_static_build(e, l);
+        else { dlc_static_build(e, l); if (nd_obj_check_on()) nd_obj_check(e, l); }
     } else { dlc_c.hit++; }
     if (e->refused) return 0;
     if (chk && dlc_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
@@ -601,6 +647,7 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
 }
 
 static __attribute__((cold, noinline)) void dlc_report(void) {
+    pm_nd_chk_report(); /* S3-1: the ndobj gate summary, silent without the switch */
     pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u | static grp %u tri %u fail %u full %u batch %u kb %u skip %u grp %u xgrp %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent, dlc_c.srep, dlc_c.stri, dlc_c.sfail, dlc_c.sfull, dlc_c.batch, pm_gpu_gstat_used() / 64u, dlc_c.skip, dlc_c.grp, dlc_c.xgrp);
     memset(&dlc_c, 0, sizeof dlc_c);
 }

@@ -673,7 +673,17 @@ static void kick_check(void) {
     pm_ph_kick_n++;
 }
 static void flush_draw(void);
+/* S3-2 measurement: ticks spent in flush_impl (phase on), read by the tex_op timer of pm_gbi.c to split the close from the op */
+static unsigned long long fl_acc;
+unsigned long long pm_gpu_fl_acc(void) { return fl_acc; }
+static void flush_impl_body(void);
 static void flush_impl(void) {
+    if (!pm_ph_on) { flush_impl_body(); return; }
+    unsigned t0 = pm_ticks();
+    flush_impl_body();
+    fl_acc += (unsigned)(pm_ticks() - t0);
+}
+static void flush_impl_body(void) {
     if (rect_open && dbg_have) { dbg_cmp(); dbg_have = 0; }
     if (rect_open) { /* DR1: the batch is rectangles: draw it with the state they were queued in */
         int sc = combine, sr = rect_2d, sz = rect_z;
@@ -2190,7 +2200,20 @@ unsigned pm_fl_gsp_n;
 void pm_fl_dc(const void* p, unsigned n) {
     if (R_FAILED(svcFlushProcessDataCache(CUR_PROCESS_HANDLE, (Handle)(uintptr_t)p, n))) { pm_fl_gsp_n++; GSPGPU_FlushDataCache(p, n); }
 }
-void pm_gpu_gstat_reset(void) { if (gstat_n) { flush(); gstat_n = 0; } }
+/* S3-1: the static index area. A compiled object (nd_dlc) keeps its triangle indices here for the whole map: the native draws read them in place. Reset with the vertex area. */
+enum { GSTAT_IDX = 131072 };
+static unsigned short* gidxs; static unsigned gidxs_n;
+unsigned short* pm_gpu_gidxs_alloc(unsigned n) {
+    if (!gpu_vtx_on || !gpu_ok) return NULL;
+    if (!gidxs) gidxs = (unsigned short*)linearAlloc(GSTAT_IDX * 2);
+    if (!gidxs || gidxs_n + n > GSTAT_IDX) return NULL;
+    unsigned short* p = gidxs + gidxs_n;
+    gidxs_n += n;
+    return p;
+}
+void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n) { pm_fl_dc(p, n * 2u); }
+unsigned pm_gpu_gidxs_used(void) { return gidxs_n; }
+void pm_gpu_gstat_reset(void) { gidxs_n = 0; if (gstat_n) { flush(); gstat_n = 0; } }
 unsigned pm_gpu_gstat_used(void) { return gstat_n; }
 
 /* DLC2: nidx indices of static vertices (all flag 0) drawn with the game matrix tab[gm]. The batch palette must hold gm at entry 0, else a new batch starts.
