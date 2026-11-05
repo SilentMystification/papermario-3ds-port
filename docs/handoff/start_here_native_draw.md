@@ -23,6 +23,8 @@ Replace the N64 display list walker (3ds/src/pm_gbi.c, pm_gpu.c, pm_dlc.inc.c) w
 - Console history: docs/handoff/perf_history.csv, python 3ds/tools/prof_record.py add|trend. Use prof mode for every comparison (memory feedback_prof-mode-for-perf-tests).
 - ndref is format v4 (kinds 4, 5, 6). Host tests: sh 3ds/tools/nd_host_test.sh.
 
+- M4 step 1 (commits 507add26f, 8e50af7f3): texture bind lists run fused (tb_ops, op functions without dispatch, one combine sync for SETCOMBINE+TEXTURE). Proof: switch texdiff (scenario mac01_texdiff) runs each bind both ways from the same start state and compares the tile, combine and mode state: 6000 binds, 0 diffs. mac_01 picture pixel equal. Console prof, Toad Town standing at pos -264 20 -326: 26.2 fps, 37.9 ms (3 windows, Mario did not walk; earlier runs walked, so the delta of +1.3 fps is a direction). Next in M4: lights, render mode list and matrix words of a model group; precomputed per list bind data.
+
 ## What is left (S3 on)
 1. M4 producer records: appendGfx_model writes one record for a plain opaque model (texture handle, render mode index, lights group, matrix, shape list) and the consumer sets the walker state directly. This removes the 5 to 8 texture words, the combine sync and the light words per model: the walker spends 211 us per plain model on the console (phase on), the close only 37 us. Proof method decided with the user: a debug switch that runs the old words and the native setter from the same start state and logs any difference in the texture, tile, combine and other mode state (state-diff), plus the picture.
 2. Cover the batches that still use the old close: lit (pm5 light block, nd_lights is ready), two texture units, off-screen targets, zmark and decal passes.
