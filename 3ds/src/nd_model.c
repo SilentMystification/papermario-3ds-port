@@ -109,3 +109,49 @@ int nd_mode_compile(NdMode* m, const unsigned* w) {
     m->ok = 1;
     return 1;
 }
+
+/* ---- S3N-3a: the state of one model record as a native draw (pure: record words and NdMCtx) ---- */
+int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
+    const uint32_t f = rec[6]; /* R3 w0 flags */
+    if (!c->mode || !c->mode->ok || !c->has_comb) return 0;
+    if (c->gv && c->gv->fxon) return 0; /* lit or fog: pm5 path, later row */
+    if (rec[26] != 0) return 0;          /* R13: words after the record (special tile list, untextured ops) */
+    if (rec[22] != 0 || rec[23] != 0) return 0; /* R11: custom gfx pre and post */
+    const int tex = c->u0 != NULL && c->u0->dim != 0;
+    const uint32_t w0 = c->comb_w0, w1 = c->comb_w1;
+    const int two = ((c->mode->om_h >> 20) & 3u) == 1u; /* 2 cycle */
+    PmPlan plan;
+    if (pm_comb_build(w0, w1, two, 0, &plan) != 0) return 0;
+    if (plan.uses_tex1 || plan.uses_noise) return 0;
+    const NdRender* r = &c->mode->r;
+    NdTmplKey k;
+    memset(&k, 0, sizeof k);
+    k.pass = 0; k.raw = 1; k.cull = (uint8_t)c->cull;
+    k.z = (uint8_t)(c->z_on != 0); k.zmark = 0; k.zcmp = r->zcmp; k.zupd = r->zupd; k.nocol = r->nocol; k.decal = r->decal;
+    memcpy(&k.dbias, &c->dbias, 4);
+    k.atest_on = r->atest >= 0; k.aref = (uint8_t)(r->atest >= 0 ? r->atest : 0);
+    k.combine = 8; k.tex = (uint8_t)tex; k.tex1 = 0; k.i8_0 = (uint8_t)(tex && c->i8_0); k.i8_1 = 0;
+    k.rgb_scale = (uint8_t)c->rgb_scale; k.r_mix = (uint8_t)c->r_mix; k.draw_3d = (uint8_t)c->draw_3d; k.rect_2d = 0;
+    k.dview = c->dview != 0; k.off_active = 0; k.off_i8 = 0;
+    k.r_memblend = (uint8_t)(r->set_memb ? r->memb : c->r_memblend);
+    k.r_replace = (uint8_t)c->r_replace; k.r_blend = r->blend; k.noise = 0;
+    k.w0 = w0; k.w1 = w1; k.two = (uint8_t)two; k.t1only = 0;
+    int id = nd_tmpl_build(&k);
+    if (id < 0) return 0;
+    uint32_t prim = (f & 4u) ? rec[12] : c->prim;
+    NdTevIn ti = { &k, &plan, prim, c->cconst, c->mixcol };
+    NdTevOut to;
+    nd_tev_build(&ti, &to);
+    memset(d, 0, sizeof *d);
+    d->tmpl = id;
+    for (int i = 0; i < 6; i++) d->tev_col[i] = to.st[i][3];
+    d->buf_col = to.buf_color; d->has_buf = (uint8_t)to.buf_set;
+    if (tex) d->u[0] = *c->u0;
+    d->u[0].force = 0;
+    if (c->gv) {
+        memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16);
+        d->zmix[0] = c->gv->zm[0]; d->zmix[1] = c->gv->zm[1];
+    }
+    memcpy(&st->k, &k, sizeof k); st->to = to; st->tmpl = id;
+    return 1;
+}

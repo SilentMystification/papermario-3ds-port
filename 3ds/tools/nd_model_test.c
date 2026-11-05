@@ -4,6 +4,8 @@
 #include <string.h>
 #include "nd.h"
 #include "nd_ops.h"
+#include "PR/mbi.h"
+#include "PR/gbi.h"
 
 int pm_interp_repl;
 const float (*pm_interp_find(const void* m))[4] { (void)m; return 0; }
@@ -62,6 +64,56 @@ int main(void) {
     CHECK(nd_tex_handle_desc(6, gfx_a) == NULL, "B4 extra tiles is fallback");
     nd_tex_handle_set(7, gfx_a, raster, 0, 16, 16, 0, 2, 0, 0, 4, 4, 0, 1);
     CHECK(nd_tex_handle_desc(7, gfx_a) == NULL, "B4 aux raster is fallback");
+
+    /* 6 (S3N-3a): one model record, 1CYC textured SURFACE_OPA: the key and the state words nd_raw_native would set (combine 8, B7) */
+    {
+        Gfx cg;
+        unsigned L4[3][2], rec[28], rr[28];
+        NdMode mode;
+        NdUnit u0 = { 0x00200020u, 0x2206u, 0u, 0x0304b340u, 0x3u, 0u };
+        NdGvP gv;
+        NdMCtx c, c2;
+        NdDraw dr;
+        NdMState st;
+        float db = 0.001f;
+        oth(L4[0], OP_SETOTHERMODE_H, 20, 2, 0u);
+        oth(L4[1], OP_SETOTHERMODE_L, 0, 32, 0x00FF1C33u | 0x10000000u);
+        L4[2][0] = OP_ENDDL << 24; L4[2][1] = 0;
+        CHECK(nd_mode_compile(&mode, &L4[0][0]) == 1, "3a: 1CYC mode compiles");
+        gDPSetCombineMode(&cg, G_CC_MODULATERGBA, G_CC_MODULATERGBA);
+        memset(rec, 0, sizeof rec); /* R3 flags 0: no fog, no prim, no env */
+        memset(&gv, 0, sizeof gv);
+        gv.uvso[0] = 0.5f; gv.uvso[1] = 0.25f; gv.uvso[2] = -1.f; gv.uvso[3] = 2.f;
+        gv.cm[3] = 1.f; gv.ca[3] = 1.f; gv.zm[0] = 1.f;
+        memset(&c, 0, sizeof c);
+        c.mode = &mode; c.u0 = &u0; c.gv = &gv; c.has_comb = 1; c.comb_w0 = cg.words.w0; c.comb_w1 = cg.words.w1;
+        c.z_on = 1; c.cull = 0; c.draw_3d = 1; c.dview = 1; c.rgb_scale = 1; c.r_mix = 0; c.r_memblend = 0; c.r_replace = 0;
+        c.prim = 0xffffffffu; c.cconst = 0; c.mixcol = 0;
+        memcpy(&c.dbias, &db, 4);
+        memset(&dr, 0, sizeof dr);
+        CHECK(nd_model_state(rec, &c, &dr, &st) == 1, "3a: 1CYC textured record draws natively");
+        CHECK(st.k.combine == 8 && st.k.raw == 1 && st.k.pass == 0, "3a: key combine 8, raw, pass 0");
+        CHECK(st.k.tex == 1 && st.k.tex1 == 0 && st.k.i8_0 == 0 && st.k.two == 0 && st.k.t1only == 0, "3a: key texture unit 0 only, 1CYC");
+        CHECK(st.k.w0 == cg.words.w0 && st.k.w1 == cg.words.w1, "3a: key carries the combiner words");
+        CHECK(st.k.z == 1 && st.k.zcmp == mode.r.zcmp && st.k.zupd == mode.r.zupd && st.k.r_blend == mode.r.blend, "3a: key depth and blend from the render mode");
+        CHECK(st.k.draw_3d == 1 && st.k.rect_2d == 0 && st.k.off_active == 0 && st.k.off_i8 == 0, "3a: key draw flags");
+        CHECK(dr.tmpl == st.tmpl && dr.tmpl >= 0, "3a: draw template id");
+        CHECK(memcmp(&dr.u[0], &u0, sizeof u0) == 0, "3a: unit 0 words from the texture block");
+        CHECK(dr.uvso[0] == 0.5f && dr.uvso[1] == 0.25f && dr.uvso[2] == -1.f && dr.uvso[3] == 2.f, "3a: uvso from gv");
+        CHECK(dr.zmix[0] == 1.f && dr.zmix[1] == 0.f, "3a: zmix from gv");
+        /* fallbacks */
+        memcpy(rr, rec, sizeof rr); rr[26] = 1;
+        CHECK(nd_model_state(rr, &c, &dr, &st) == 0, "3a: R13 aux words are fallback");
+        c2 = c; c2.has_comb = 0;
+        CHECK(nd_model_state(rec, &c2, &dr, &st) == 0, "3a: no combine entry is fallback");
+        c2 = c; c2.mode = NULL;
+        CHECK(nd_model_state(rec, &c2, &dr, &st) == 0, "3a: no render mode is fallback");
+        c2 = c; gv.fxon = 1;
+        CHECK(nd_model_state(rec, &c2, &dr, &st) == 0, "3a: lit or fog is fallback");
+        gv.fxon = 0;
+        memcpy(rr, rec, sizeof rr); rr[22] = 1;
+        CHECK(nd_model_state(rr, &c, &dr, &st) == 0, "3a: custom gfx pre is fallback");
+    }
 
     printf("nd_model: %s\n", fails ? "FAIL" : "PASS");
     return fails != 0;
