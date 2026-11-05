@@ -626,6 +626,114 @@
       "reason": "A walk with texdiff needs about 100 s."
     },
     {
+      "name": "mac01_walkshots",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01), Mario walks east by padscript, one shot per frame from frame 120 to 179 (compare the native close against the old close frame by frame: flicker while moving).",
+      "proves": "Pictures of a walk, for region_diff between two builds.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500 shots shotwin=120:60 loglevel=debug",
+      "until": "shot \\d+ frame 17\\d" ,
+      "cap": 60,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "shot", "regex": "shot \\d+ frame 17\\d" }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "mac01_ndplan",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01) walk with the ndplan check: the plan layout of the native template key against the plan of the old path.",
+      "proves": "ndplan lines: runs and mismatches.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500,wait40,go_-500_0_500 ndplan loglevel=debug",
+      "until": "ndplan runs 12000",
+      "cap": 90,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "ndplan", "regex": "ndplan runs" }
+      ],
+      "reason": "a walk needs about 60 s"
+    },
+    {
+      "name": "ndwalk_170",
+      "status": "unverified",
+      "subject": "Toad Town (mac_01) while Mario walks: the reference draw stream of frame 170 (ndref=170), for nd_emit_test over moving frames.",
+      "proves": "ndref file of a frame during a padscript walk.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500 ndref=170 loglevel=debug",
+      "until": "ndref f170 done",
+      "cap": 60,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "ndref done", "regex": "ndref f170 done draws" }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "ndwalk_230",
+      "status": "unverified",
+      "subject": "Toad Town (mac_01) while Mario walks: the reference draw stream of frame 230 (ndref=230), for nd_emit_test over moving frames.",
+      "proves": "ndref file of a frame during a padscript walk.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500 ndref=230 loglevel=debug",
+      "until": "ndref f230 done",
+      "cap": 60,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "ndref done", "regex": "ndref f230 done draws" }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "ndwalk_300",
+      "status": "unverified",
+      "subject": "Toad Town (mac_01) while Mario walks: the reference draw stream of frame 300 (ndref=300), for nd_emit_test over moving frames.",
+      "proves": "ndref file of a frame during a padscript walk.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500 ndref=300 loglevel=debug",
+      "until": "ndref f300 done",
+      "cap": 60,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "ndref done", "regex": "ndref f300 done draws" }
+      ],
+      "reason": ""
+    },
+    {
+      "name": "ndwalk_400",
+      "status": "unverified",
+      "subject": "Toad Town (mac_01) while Mario walks: the reference draw stream of frame 400 (ndref=400), for nd_emit_test over moving frames.",
+      "proves": "ndref file of a frame during a padscript walk.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500 ndref=400 loglevel=debug",
+      "until": "ndref f400 done",
+      "cap": 60,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "ndref done", "regex": "ndref f400 done draws" }
+      ],
+      "reason": ""
+    },
+    {
       "name": "mac01_seam",
       "status": "unverified",
       "subject": "Toad Town street (mac_01) with the CPU path triangle route counts (seam line at frame 240).",

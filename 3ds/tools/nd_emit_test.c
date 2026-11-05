@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
                         n_words_native += nw; n_draw++;
                         /* the old path left a texture unit stale in one draw of the 8 files (the slot was reused without a rebind, nd_cmd_test): the native words are the right ones, so that unit is not compared */
                         int stale0 = tw0[0] && (sr.r[0x82] != tw0[0] || sr.r[0x83] != tw0[1] || sr.r[0x85] != tw0[3]);
-                        if (stale0) n_stale++;
+                        if (stale0) { n_stale++; if (n_stale <= 12) printf("stale unit0 draw %u: stream dim %08x param %08x addr %08x | intended dim %08x param %08x addr %08x lod %08x\n", n_draw, sr.r[0x82], sr.r[0x83], sr.r[0x85], tw0[0], tw0[1], tw0[3], tw0[2]); }
                         /* registers both wrote */
                         for (unsigned r = 0; r < 0x300; r++) {
                             if (!nr.set[r] || !sr.set[r]) continue;

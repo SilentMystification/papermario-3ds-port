@@ -906,6 +906,7 @@ extern void C3Di_UpdateContext(void);
 int pm_tex_native_unit0(NdUnit* u);
 static NdShadow ndn_sh; static TevKey ndn_tk; static NdTevOut ndn_to; static int ndn_to_ok;
 unsigned nd_native_draws, nd_native_refused;
+static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) return 0;
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
@@ -914,7 +915,10 @@ static int nd_raw_native(void) {
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
-    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; return 0; } }
+    /* The texture unit stays with citro3d: pm_tex_bind (the old path's bind, with its skip of an unchanged binding and its filter and wrap programming) stages unit 0, and the C3Di_UpdateContext
+     * below writes it with the unit enable word and the texture cache clear. The native words carry no unit block (d.u[0].dim 0). The words of the unit are checked against the command
+     * stream (nd_emit_test) but the draw does not use them: the console showed flat and wrong textures with them (a unit that citro3d leaves stale in a skipped bind is what the old picture shows). */
+    if (combine >= 2) t = pm_tex_bind();
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0);
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
@@ -928,6 +932,7 @@ static int nd_raw_native(void) {
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
     if (id < 0) { nd_native_refused++; return 0; }
+    if (combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
     /* from here the batch is drawn natively */
     TevKey tk;
     memset(&tk, 0, sizeof tk);
@@ -2458,6 +2463,20 @@ static int plan_same_layout(const PmPlan* a, const PmPlan* b) {
     y.buf = y.vtx = 0;
     for (int i = 0; i < 6; i++) x.st[i].constant = y.st[i].constant = 0;
     return memcmp(&x, &y, sizeof x) == 0;
+}
+
+/* debug switch ndplan: the layout of the plan that pm_comb_build gives for the key words of a native draw against the plan the old path draws with. A mismatch means the template of that key holds another TEV layout. */
+extern int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out);
+static __attribute__((cold, noinline)) void ndplan_check(unsigned w0, unsigned w1, int two, int t1only) {
+    static int on = -1; static unsigned bad, runs;
+    if (on < 0) on = pm_debug_has("ndplan");
+    if (!on) return;
+    PmPlan pp;
+    memset(&pp, 0, sizeof pp);
+    runs++;
+    int rc = pm_comb_build(w0, w1, two, t1only, &pp);
+    if ((rc != 0 || !plan_same_layout(&plan, &pp)) && bad++ < 40) pm_log("ndplan MISMATCH f%u w0 %08x w1 %08x two %d t1 %d rc %d run %u", pm_frame_count(), w0, w1, two, t1only, rc, runs);
+    if (!(runs % 3000)) pm_log("ndplan runs %u mismatches %u", runs, bad);
 }
 
 static void plan_layout_field_diffs(const PmPlan* a, const PmPlan* b) {
