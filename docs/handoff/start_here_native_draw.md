@@ -2,6 +2,8 @@
 
 Read this file first. It points to the plan and lists the next steps. You are the code session. You work until a row set passes or a gate fails validly. A written status message ends your turn, so write one only at that point.
 
+Startup cost note: a code agent reads its row file (docs/handoff/row_<id>.md, from row_TEMPLATE.md) first and opens only what that file names. This file is the long-form handoff for a user-started session.
+
 ## You are not the orchestrator
 CLAUDE.md opens with orchestrator rules ("you are the orchestrator only, agents do all work"). They do not apply to you. You write the game source yourself. You run the tests, reset Azahar budgets, commit, and decide when to continue. Do not spawn subagents for the code work. Use CLAUDE.md rules 5 (tests), 7 (code) and 9 (platform) only. Rule 6 (console) applies: push only when the user asks.
 
