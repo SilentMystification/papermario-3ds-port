@@ -1,19 +1,18 @@
 # Agent S3N: map model records draw natively
 
 ## STATE
-branch: nds1 | commits: 1f1839f2c (S3N-0), c48abe457 (S3N-1 part: nd_gv_params moved, nd_shift_mul, nd_prim_ndc_z), 067a85de9 (S3N-2 nd_native_submit)
-done: S3N-0; S3N-2 (gate: spot_mac01 frames 200 to 205 byte equal to HEAD, cmp of the ppm files; build ok).
-part: S3N-1. gv move gated (nd_host PASS incl. nd_gv 200000 random bit-equal cases; spot_mac01 byte-equal). NdMode and NdModelTex compile tables NOT built (see blocker B4).
-open: S3N-3, S3N-4, S3N-5 not started. Spot pictures for the model path not run.
-budget S3N: 4 Azahar starts (build-at HEAD baseline, mac01 x2, mac01 after S3N-2). Limit 8.
-next: user decision on B4 (texture descriptor source), then NdMode and NdModelTex (S3N-1 rest), then S3N-3.
+branch: nds1 | commits: 1f1839f2c (S3N-0), c48abe457 (S3N-1a gv move), 067a85de9 (S3N-2 nd_native_submit), 662e7d2ae (S3N-1b handle desc B4, render mode compile B5/B6), c8ce0207f + this doc commit (handoff)
+done: S3N-0, S3N-1 (gates: nd_host PASS incl nd_gv and nd_model; spot_mac01 byte-equal after each game-side edit), S3N-2 (spot_mac01 byte-equal).
+open: S3N-3 (nd_model_draw + ndmcheck) BLOCKED on B7. S3N-4, S3N-5 not started.
+budget S3N: 5 of 8 Azahar starts used (baseline HEAD, mac01 x3, mac01 after S3N-2, mac01 after S3N-1b): 5 used. No reset.
+next: user decision on B7, then S3N-3.
 
-## Blockers (plan default taken where noted)
-B1. Walker state is global; nd_raw_native reads combine, r_zcmp, ... from walker globals. Plan default: derive from compiled deltas (S3N-1). OPEN.
-B2. Geometry: DLC2 static groups (dlc_find) are reused as is. Plan default kept.
-B3. Merge (S3N-2 in the plan) moved to S3N-3 with its consumer.
-B4 (new, needs user decision). The texture bind list of a model (TextureHandles[i].gfx, built by make_texture_gfx in model.c) is run by the walker through state that is not in the list: ldrec, blk, tlut_pal, tsz_last caches and the V05, V12c, V13, FX3f, PT09, PT37 rules in pm_gbi.c op_settilesize and op_loadblock. nd_words cannot give NdTexDesc (w, h, stride, pal) without copying those rules. Options: (a) build NdTexDesc from TextureHandles[i].header and the raster and palette pointers (model.c), reproducing the common case only and fall back on the rest, verified by ndmcheck; (b) keep the walker texture path for models until S3L. Plan default not chosen because it changes which textures draw.
-B5 (new). Render mode compile: nd_words from zeroed state gives om_h, om_l only for the bits the RM lists write. The cycle type and any other bit the lists do not set come from the walker state at draw time. The native NdMode must either carry those bits from the record or the list must set them. ndmcheck (S3N-3) will show it; plan default: fallback when a bit that nd_render_state reads is not written by the list.
+B7 (new, BLOCKS S3N-3): the combine mode and the TEV key of a draw come from sync_combine (pm_gbi.c 1081: sync_combine_work_timed, sync_legacy, decide, pm_comb_colours; memo scm_sig/scm_find). Its inputs include walker texture state (td[0..1].valid, tile formats and sizes, ldrec, tex_on, use_t1), box_pat, box_prod, box_folded, dual_on, comb_set, comb_alpha_shade, leg_mode. A native model draw has none of this. ndmcheck would compare a key the native path cannot build. Options: (a) port sync_legacy and decide into a pure function over an input struct the record and the handle desc fill (large; box and dual state need records too); (b) keep the walker combine for models and have nd_model_draw read the mode the walker last set (a stale-state risk); (c) S3N-3 compares only the parts natively derivable (render state, unit words, matrix, palette, geometry ranges) and logs combine and tev as skipped. Plan default NOT chosen: the user decides.
+
+## Decisions (coordinator, 2026-11-05)
+B4 DECIDED: option (a). NdModelTex from TextureHandle header (mainW, mainH, mainFmt, mainBitDepth, mainWrapW, mainWrapH, masks by INTEGER_LOG2, extraTiles, aux raster) plus raster and palette. One TARGET_3DS call nd_tex_handle_set(...) at the end of load_texture_impl (model.c). Common case only: extraTiles 0 (one tile), no aux raster, no mipmaps. Everything else fallback. ndmcheck compares NdUnit words with the walker words, so a wrong desc shows as a diff.
+B5 DECIDED: plan default. NdMode is ok only when the list writes every bit nd_render_state reads (om_h bits 20 and 21 (cycle type); om_l bits 0,1,4,5,10,11,12,16-23,28-31 = mask 0xF0FF1C33). Otherwise fallback.
+B6 (my default, not in plan): a render mode list with any op other than SETOTHERMODE_H/L or ENDDL is fallback (GEOMETRYMODE, SETCOMBINE, TEXTURE). Geometry mode from the walker state is not known natively.
 
 ## S3N-0 notes
 - Sites removed: MODEL_RM_OP, MODEL_TEX_OP, MODEL_MTX_OP calls (3DS), REC_SKIP and recSkip writes (tint, combine, fog, shroud, panner, billboard), lights (record R3 w1 carries them), pipesync (recOn was always 1), custom gfx pre/post else-branches, geometry else-branch, gSPPopMatrix else-branch.
