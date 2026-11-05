@@ -293,5 +293,18 @@ typedef struct NdMCtx {
 } NdMCtx;
 typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* 1 native, 0 fallback, -1 nost (B8: a read other mode bit has no value) */
+/* S3N-3d: the combine choice of one draw (pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
+ * comb2_a..d, comb2_aa..ad). Out: leg (legacy mode, or 8 with plan), use and plan (general plan), cc (constant colour of mode 4), and the walker state (mode5, pat, why, cyc, dual). */
+typedef struct NdCombIn {
+    uint32_t w0, w1, omode_h, prim, env, aud_prim_lod, key_c, key_s, conv_k4;
+    uint32_t tst[16];
+    int leg_mode, tex_on, use_t1, t1_valid, dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade;
+} NdCombIn;
+typedef struct NdCombOut {
+    int leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on;
+    uint32_t cc;
+    PmPlan plan;
+} NdCombOut;
+void nd_comb_decide(const NdCombIn* in, NdCombOut* out);
 
 #endif

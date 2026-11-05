@@ -504,13 +504,15 @@ static void sync_combine_work_timed(void) {
     sync_combine_work();
     pm_gbi_sync_ticks += (pm_ticks() - t0) * 8u; /* W2: one call in 8 timed */
 }
+/* S3N-3d: set by nd_comb_decide. The combine work then makes no pm_gpu call, no stats and no log. */
+static int comb_dry;
 static int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
 static unsigned sl_cc;
 static void sync_legacy(void) {
     unsigned cc;
     sl_const = sl_env = 0;
     if (const_rgb_tex_alpha(&cc)) {
-        pm_gpu_set_const(cc);
+        if (!comb_dry) pm_gpu_set_const(cc);
         sl_const = 1; sl_cc = cc;
         set_leg(4);
         return;
@@ -530,7 +532,7 @@ static void sync_legacy(void) {
     if (wants_tex && tst1.comb_a == G_CCMUX_PRIMITIVE && tst1.comb_b == G_CCMUX_ENVIRONMENT && tst1.comb_c == G_CCMUX_TEXEL0 &&
         tst1.comb_d == G_CCMUX_ENVIRONMENT && alpha_tex && tst1.comb2_aa != 0) { /* FX2f: a cycle 2 alpha that reads COMBINED (huff_puff_breath, times PRIM) is no window pass */
         comb_mode5 = 1;
-        pm_gpu_set_env(envc);
+        if (!comb_dry) pm_gpu_set_env(envc);
         sl_env = 1;
         /* D03: draw_box windows with the bg_tile pattern (tile 0, I4 0/F checker) take their alpha from
          * TEXEL1 (the corner image). Tile 0 alpha is the checker itself, so it must not become the alpha:
@@ -986,7 +988,8 @@ static unsigned plan_draws, plan_fails;
 
 static Dec* decide(int two) {
     unsigned key = 2166136261u, i;
-    unsigned parts[] = { comb_w0, comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2), (unsigned)comb_alpha_shade };
+    unsigned parts[] = { comb_w0, comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(tex_on | use_t1 << 1 | td[1].valid << 2), (unsigned)comb_alpha_shade,
+                         (unsigned)aud_prim_lod, keyc, keys, conv_k4 }; /* S3N-3d: pm_comb_colours and the K4 input read these too */
     for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
     {
         static unsigned last_i;
@@ -1078,6 +1081,32 @@ static unsigned sc_sig_now(void) {
     for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
     return sg;
 }
+/* S3N-3d: the combiner fields of tst1 that the combine work reads (nd_comb_decide inputs). */
+static unsigned* const tst_f[16] = { &tst1.comb_a, &tst1.comb_b, &tst1.comb_c, &tst1.comb_d, &tst1.comb_aa, &tst1.comb_ab, &tst1.comb_ac, &tst1.comb_ad,
+    &tst1.comb2_a, &tst1.comb2_b, &tst1.comb2_c, &tst1.comb2_d, &tst1.comb2_aa, &tst1.comb2_ab, &tst1.comb2_ac, &tst1.comb2_ad };
+static void comb_in_walker(NdCombIn* in) {
+    in->w0 = comb_w0; in->w1 = comb_w1; in->omode_h = omode_h; in->prim = prim; in->env = envc; in->aud_prim_lod = aud_prim_lod;
+    in->key_c = keyc; in->key_s = keys; in->conv_k4 = conv_k4;
+    for (int i = 0; i < 16; i++) in->tst[i] = *tst_f[i];
+    in->leg_mode = leg_mode; in->tex_on = tex_on; in->use_t1 = use_t1; in->t1_valid = td[1].valid; in->dual_on = dual_on;
+    in->box_prod = box_prod; in->box_pat = box_pat; in->box_folded = box_folded; in->comb_set = comb_set; in->comb_alpha_shade = comb_alpha_shade;
+}
+/* S3N-3d: debug switch combchk. Each combine work of sync_combine runs nd_comb_decide on its inputs and compares the outputs with the walker state. */
+static int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
+void pm_log_prof_line(const char* fmt, ...); /* pm_log.c: the one line of prof=4 mode */
+static unsigned cc_runs, cc_diff; static int cc_last_b = -1; /* the 300 frame bucket of the last log line */
+static __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked) { /* worked: the work ran (sl_* are set); a memo hit replays the outputs only */
+    NdCombOut o;
+    nd_comb_decide(in, &o);
+    cc_runs++;
+    int bad = o.leg != leg_mode || o.mode5 != comb_mode5 || o.pat != box_pat || o.use != ls_use || o.why != ls_why || o.cyc != ls_cyc ||
+              o.dual != ls_dual || o.plan_on != plan_active || (worked && (o.cc_on != sl_const || o.env_on != sl_env || (sl_const && o.cc != sl_cc))) ||
+              (plan_active && memcmp(&o.plan, &cur_plan, sizeof cur_plan) != 0);
+    if (bad) cc_diff++;
+    unsigned f = pm_frame_count(), b = f / 300u;
+    if ((int)b != cc_last_b) { cc_last_b = (int)b; pm_log_prof_line("combchk f%u runs %u diff %u", f, cc_runs, cc_diff); }
+}
+
 static void sync_combine(void) {
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
@@ -1087,7 +1116,10 @@ static void sync_combine(void) {
         sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
     }
     int leg0 = leg_mode, pat0 = box_pat;
-    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig); if (m) scm_replay(m); else { sync_combine_work_timed(); scm_store(sig); } }
+    NdCombIn cin; int chk = combchk_on() ? (comb_in_walker(&cin), 1) : 0; /* S3N-3d: inputs before the work */
+    int hit = 0;
+    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig); if (m) { scm_replay(m); hit = 1; } else { sync_combine_work_timed(); scm_store(sig); } }
+    if (chk) combchk_run(&cin, !hit);
     sc_ok = 1;
     if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
@@ -1097,10 +1129,41 @@ static void sync_combine(void) {
         sc_sig = sg;
     }
 }
+/* S3N-3d: nd_comb_decide. The combine work (sync_combine_work) on the inputs in. Every global it reads or writes is set from in and put back
+ * after the call, so the walker state is the same before and after. comb_dry: no pm_gpu call, no stats, no log. */
+void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
+    struct { uint32_t w0, w1, omh, prim, env, kc, ks, ck4; unsigned alod, slcc, tst[16]; int leg, tex, use1, t1v, dual, bprod, bpat, bfold, cset, cas;
+             int mode5, pact, use, why, cyc, dualo, lsf, slc, sle; PmPlan plan; } sv;
+    int i;
+    sv.w0 = comb_w0; sv.w1 = comb_w1; sv.omh = omode_h; sv.prim = prim; sv.env = envc; sv.alod = aud_prim_lod; sv.kc = keyc; sv.ks = keys; sv.ck4 = conv_k4;
+    sv.leg = leg_mode; sv.tex = tex_on; sv.use1 = use_t1; sv.t1v = td[1].valid; sv.dual = dual_on; sv.bprod = box_prod; sv.bpat = box_pat; sv.bfold = box_folded;
+    sv.cset = comb_set; sv.cas = comb_alpha_shade;
+    for (i = 0; i < 16; i++) sv.tst[i] = *tst_f[i];
+    sv.mode5 = comb_mode5; sv.pact = plan_active; sv.plan = cur_plan; sv.use = ls_use; sv.why = ls_why; sv.cyc = ls_cyc; sv.dualo = ls_dual; sv.lsf = ls_frame;
+    sv.slc = sl_const; sv.sle = sl_env; sv.slcc = sl_cc;
+    comb_w0 = in->w0; comb_w1 = in->w1; omode_h = in->omode_h; prim = in->prim; envc = in->env; aud_prim_lod = (unsigned char)in->aud_prim_lod;
+    keyc = in->key_c; keys = in->key_s; conv_k4 = in->conv_k4;
+    leg_mode = in->leg_mode; tex_on = in->tex_on; use_t1 = in->use_t1; td[1].valid = in->t1_valid; dual_on = in->dual_on;
+    box_prod = in->box_prod; box_pat = in->box_pat; box_folded = in->box_folded; comb_set = in->comb_set; comb_alpha_shade = in->comb_alpha_shade;
+    for (i = 0; i < 16; i++) *tst_f[i] = in->tst[i];
+    comb_dry = 1;
+    sync_combine_work();
+    comb_dry = 0;
+    out->leg = leg_mode; out->mode5 = comb_mode5; out->pat = box_pat; out->use = ls_use; out->why = ls_why; out->cyc = ls_cyc; out->dual = ls_dual;
+    out->plan_on = plan_active; out->cc_on = sl_const; out->cc = sl_cc; out->env_on = sl_env; out->plan = cur_plan;
+    comb_w0 = sv.w0; comb_w1 = sv.w1; omode_h = sv.omh; prim = sv.prim; envc = sv.env; aud_prim_lod = (unsigned char)sv.alod; keyc = sv.kc; keys = sv.ks; conv_k4 = sv.ck4;
+    leg_mode = sv.leg; tex_on = sv.tex; use_t1 = sv.use1; td[1].valid = sv.t1v; dual_on = sv.dual; box_prod = sv.bprod; box_pat = sv.bpat; box_folded = sv.bfold;
+    comb_set = sv.cset; comb_alpha_shade = sv.cas;
+    for (i = 0; i < 16; i++) *tst_f[i] = sv.tst[i];
+    comb_mode5 = sv.mode5; plan_active = sv.pact; cur_plan = sv.plan; ls_use = sv.use; ls_why = sv.why; ls_cyc = sv.cyc; ls_dual = sv.dualo; ls_frame = sv.lsf;
+    sl_const = sv.slc; sl_env = sv.sle; sl_cc = sv.slcc;
+}
+
 /* UI1 debug: the PM_CC_07 combiner (flat PRIM colour times TEXEL0 alpha, the drop shadow). Logs the mode the
  * port chose and the PRIM alpha, so the shadow alpha is known per draw. Remove after UI1. */
 static void cc07_dbg(void) {
     static int cc07_n;
+    if (comb_dry) return;
     if (cc07_n >= 40) return;
     if (!(tst1.comb_a == 0 && tst1.comb_b == 0 && tst1.comb_c == 0 && tst1.comb_d == G_CCMUX_PRIMITIVE &&
           tst1.comb_aa == G_ACMUX_TEXEL0 && tst1.comb_ab == 0 && tst1.comb_ac == G_ACMUX_PRIMITIVE && tst1.comb_ad == 0)) return;
@@ -1110,7 +1173,7 @@ static void cc07_dbg(void) {
 }
 
 static void sync_combine_work(void) {
-    if (gp_on()) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
+    if (gp_on() && !comb_dry) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
         static unsigned last_sig;
         unsigned sg = scm_sig();
         GP_SET(5, sg == last_sig);
@@ -1126,15 +1189,14 @@ static void sync_combine_work(void) {
         if (d->use) {
             cur_plan = d->plan;
             pm_comb_colours(&cur_plan, prim, envc, aud_prim_lod, keyc, keys);
-            pm_gpu_plan_key(comb_w0, comb_w1, (int)cyc, use_t1);
-            pm_gpu_set_plan(&cur_plan);
+            if (!comb_dry) { pm_gpu_plan_key(comb_w0, comb_w1, (int)cyc, use_t1); pm_gpu_set_plan(&cur_plan); }
             plan_active = 1;
             cc07_dbg();
             return;
         }
     }
     cc07_dbg();
-    pm_gpu_set_combine(leg_mode);
+    if (!comb_dry) pm_gpu_set_combine(leg_mode);
 }
 
 /* S25: a plan that reads TEXEL1. Tile 1 is loaded and kept at unit 1, tile 0 stays the current texture, and the
