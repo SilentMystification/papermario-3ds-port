@@ -178,7 +178,7 @@ static unsigned fill = 0xffffffffu;
 static unsigned prim_z; /* X01: G_SETPRIMDEPTH, 15 bit, 0 near, 0x7fff far */
 /* PRIMZFIX: the primitive depth is one unit (512 units of the 24-bit depth) nearer than G_SETPRIMDEPTH. The console rounds a 0x7FF0 blocker
  * behind the far background (water in the Toad Town pond). One helper for both NDC z uses; clamped at 0. */
-static float prim_ndc_z(void) { return 2.f * (float)(prim_z ? prim_z - 1u : 0u) / 32767.f - 1.f; }
+static float prim_ndc_z(void) { return nd_prim_ndc_z(prim_z); }
 static PM_HOTD int tex_on;
 static const void* timg;
 /* TBREP: tex_gen counts the writes of texture memory and texture state (the bind skip of tb_run is gone, S3F-4; the counter stays). */
@@ -311,9 +311,7 @@ static void dd_line(void) {
            td[1].valid, (unsigned)(uintptr_t)td[1].src, td[1].w, td[1].h, td[1].stride, td[1].x0, td[1].y0, td[1].pal_n, dual_on);
 }
 /* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
-static float shift_mul(unsigned n) {
-    return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
-}
+static float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */
 static PM_HOTD int cur_tile;
 static PM_HOTD int use_t1;     /* the combiner reads TEXEL1 only: draw with tile 1 (TEXEL1 is renamed TEXEL0) */
 static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
@@ -1285,58 +1283,34 @@ static void tritrace_tri(const char* what, unsigned seq, const float* p1, const 
 /* PO3b, PO3c: one triangle of the raw Vtx path. The caller checked that the three vertices have a ring slot, one matrix and one texture scale, and that
  * the triangle is plain (unlit, no texgen, no screen vertex, no fog). The colour and depth overrides of the CPU path become uniforms: ENV or the plan
  * constant replace the colour, alpha 255, the boost of the second cycle, and G_ZS_PRIM replaces the depth. Returns 0 when the path refuses. */
-typedef struct { float uvso[4], vp[4], cm[4], ca[4], zm[2]; int boost; PmFx fx; int fxon; } GvP;
+typedef NdGvP GvP; /* S3N-1: the type and the function are in nd_model.c (nd_gv_params) */
 /* The draw parameters of a raw triangle from the state and the texture scale `tss` of its vertices. */
 static void gv_params_calc(unsigned tss, GvP* o) {
-    int env = comb_mode5 && !plan_active;
-    int plan = plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
-    int a255 = !plan_active && !plan && !comb_alpha_shade;
-    int boost = dual_on && tst1.comb2_a == G_CCMUX_SHADE && tst1.comb2_b == G_CCMUX_ENVIRONMENT && tst1.comb2_c == G_CCMUX_COMBINED && tst1.comb2_d == G_CCMUX_COMBINED;
-    int primz = (omode_l & (1u << G_MDSFT_ZSRCSEL));
+    NdGvIn in;
+    unsigned st = use_t1 ? 1 : 0;
     int tw = 1, th = 1;
     pm_tex_size(&tw, &th);
-    if (tw < 1) tw = 1;
-    if (th < 1) th = 1;
-    unsigned st = use_t1 ? 1 : 0;
-    float ms = shift_mul(tst1.tile_shift[st][0]), mt = shift_mul(tst1.tile_shift[st][1]);
-    float en[4];
-    o->vp[0] = vp_sx; o->vp[1] = vp_sy; o->vp[2] = vp_tx; o->vp[3] = vp_ty;
-    for (int q = 0; q < 4; q++) { o->cm[q] = 1.f; o->ca[q] = 0.f; }
-    o->zm[0] = 1.f; o->zm[1] = 0.f;
-    unpack8(envc, en);
-    if (tex_on) {
-        float itw = 1.f / (float)tw, ith = 1.f / (float)th; /* H5: one divide per axis, not one per term */
-        o->uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms * itw;
-        o->uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt * ith;
-        o->uvso[2] = -((float)tile_x0 + tile_fx) * itw;
-        o->uvso[3] = -((float)tile_y0 + tile_fy) * ith;
-    } else { /* H06b1: the vertex texcoords are 0, texel (0, 0) centre */
-        o->uvso[0] = o->uvso[1] = 0.f;
-        o->uvso[2] = -((float)tile_x0 + tile_fx) / (float)tw + 0.5f / (float)tw;
-        o->uvso[3] = -((float)tile_y0 + tile_fy) / (float)th + 0.5f / (float)th;
-    }
-    if (env) { for (int q = 0; q < 4; q++) { o->cm[q] = 0.f; o->ca[q] = en[q]; } } /* the CPU order: ENV or the plan constant, then alpha 255, then boost */
-    else if (plan) { float vc[4]; unpack8(cur_plan.vtx, vc); for (int q = 0; q < 4; q++) { o->cm[q] = 0.f; o->ca[q] = vc[q]; } }
-    if (a255) { o->cm[3] = 0.f; o->ca[3] = 1.f; }
-    if (boost) for (int q = 0; q < 3; q++) { o->ca[q] = o->ca[q] * 0.5f + (1.f - en[q]) * 0.5f; o->cm[q] *= 0.5f; }
-    if (primz) { o->zm[0] = 0.f; o->zm[1] = prim_ndc_z(); }
-    o->boost = boost;
-    o->fxon = 0; /* o->fx is read only when fxon: it is cleared where it is filled */
-    if (geom & G_LIGHTING) { /* GV5: the RSP light table (ambient is slot lt_n), the look-at vectors for texgen */
-        nd_lights(&o->fx, (geom & G_TEXTURE_GEN) != 0, lt, lt_n, (const int8_t (*)[3])lk); /* S1-4 */
-        o->fxon = 1;
-    }
-    if (fogmix_on && (geom & G_FOG)) { /* GV5: the RSP fog factor clamp(z / w * fm + fo) is the alpha. z / w of the N64 clip position from the PICA clip z and w. */
-        float za = 1.f, zb = 0.f;
-        if (pm_gpu_gv_zcoef(&za, &zb)) {
-            if (!o->fxon) memset(&o->fx, 0, sizeof o->fx);
-            o->fx.lflag[2] = 1.f;
-            o->fx.fogu[0] = (float)fog_fm / za;
-            o->fx.fogu[1] = (float)fog_fo - (float)fog_fm * zb / za;
-            o->cm[3] = 1.f; o->ca[3] = 0.f; /* the fog factor replaces the alpha, after the alpha 255 rule */
-            o->fxon = 1;
-        }
-    }
+    unpack8(envc, in.en);
+    unpack8(cur_plan.vtx, in.vc);
+    in.tss = tss;
+    in.lighting = (geom & G_LIGHTING) != 0; in.texgen = (geom & G_TEXTURE_GEN) != 0; in.fog = (geom & G_FOG) != 0;
+    in.comb5 = comb_mode5; in.plan_active = plan_active;
+    in.plan_vtx_ok = cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
+    in.alpha_shade = comb_alpha_shade;
+    in.boost = dual_on && tst1.comb2_a == G_CCMUX_SHADE && tst1.comb2_b == G_CCMUX_ENVIRONMENT && tst1.comb2_c == G_CCMUX_COMBINED && tst1.comb2_d == G_CCMUX_COMBINED;
+    in.primz = (omode_l & (1u << G_MDSFT_ZSRCSEL)) != 0; in.prim_z = prim_z;
+    in.envc = envc; in.plan_vtx = cur_plan.vtx;
+    in.tw = tw; in.th = th;
+    in.shs = tst1.tile_shift[st][0]; in.sht = tst1.tile_shift[st][1];
+    in.tex_on = tex_on;
+    in.vp[0] = vp_sx; in.vp[1] = vp_sy; in.vp[2] = vp_tx; in.vp[3] = vp_ty;
+    in.tile_x0 = tile_x0; in.tile_y0 = tile_y0; in.tile_fx = tile_fx; in.tile_fy = tile_fy;
+    in.fogmix = fogmix_on && (geom & G_FOG);
+    in.zc_ok = 0; in.za = 1.f; in.zb = 0.f;
+    if (in.fogmix) in.zc_ok = pm_gpu_gv_zcoef(&in.za, &in.zb);
+    in.fog_fm = fog_fm; in.fog_fo = fog_fo;
+    in.lt = lt; in.lt_n = lt_n; in.lk = (const int8_t (*)[3])lk;
+    nd_gv_params(&in, o);
 }
 
 static unsigned tri_flags(void) {

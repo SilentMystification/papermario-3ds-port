@@ -73,6 +73,31 @@ int nd_mtx_replace(const void* src, float in[4][4]);
 typedef struct NdLight { uint8_t col[3]; int8_t dir[3]; } NdLight;
 void nd_lights(PmFx* fx, int texgen, const NdLight* lt, unsigned n, const int8_t lk[2][3]);
 
+/* NDGV (S3N-1): the draw parameters of a raw triangle, moved from pm_gbi.c gv_params_calc. nd_gv_params is pure: the caller reads the walker values into
+ * NdGvIn (the flags are the walker's own tests, written out by the caller), so the walker and the native model path call one function. */
+typedef struct NdGvP { float uvso[4], vp[4], cm[4], ca[4], zm[2]; int boost; PmFx fx; int fxon; } NdGvP;
+typedef struct NdGvIn {
+    uint32_t tss;                       /* texture scale word pair (s in the high half) */
+    int lighting, texgen, fog;          /* geometry mode bits G_LIGHTING, G_TEXTURE_GEN, G_FOG */
+    int comb5, plan_active, plan_vtx_ok, alpha_shade; /* ENV rule, plan rule (vtxname not SHADE or NONE), alpha 255 rule */
+    int boost;                          /* the second cycle boost (caller: dual on and the comb2 operands match) */
+    int primz; unsigned prim_z;         /* depth source is PRIM (omode bit), the primitive depth word */
+    uint32_t envc, plan_vtx;            /* ENV colour, plan vertex colour, RGBA8 words */
+    float en[4], vc[4];                 /* the same two colours, unpacked 0..1 (the caller unpacks) */
+    int tw, th;                         /* texture size (pm_tex_size, at least 1) */
+    unsigned shs, sht;                  /* tile shift s and t of the tile in use */
+    int tex_on;
+    float vp[4];                        /* viewport scale x y, translate x y */
+    int tile_x0, tile_y0; float tile_fx, tile_fy;
+    int fogmix, zc_ok;                  /* fogmix: fog mix on and G_FOG; zc_ok: the caller's pm_gpu_gv_zcoef result (only read when fogmix) */
+    float za, zb;
+    int fog_fm, fog_fo;
+    const NdLight* lt; unsigned lt_n; const int8_t (*lk)[3];
+} NdGvIn;
+void nd_gv_params(const NdGvIn* in, NdGvP* o);
+float nd_shift_mul(unsigned n);     /* tile shift to scale: 1 for 0, 1 / 2^n for n up to 10 */
+float nd_prim_ndc_z(unsigned prim_z);
+
 /* NDTEX (S1-6): texture descriptor to a texture block id. cms, cmt: the G_SETTILE wrap flags (bit 0 mirror, bit 1 clamp), masks, maskt: the tile mask exponents.
  * The tile shift is not a texture unit word: it goes to the uv offset and scale of the draw. */
 typedef struct NdTexDesc {
