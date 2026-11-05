@@ -3275,6 +3275,8 @@ static __attribute__((noinline)) void tb_ops(const Gfx* g) {
         if (op == G_ENDDL) break;
         if (g1_skip[op]) continue;
         pm_gbi_cur_op = op;
+        unsigned pt0 = 0; unsigned long long pf0 = 0;
+        if (pm_ph_on) { pt0 = pm_ticks(); pf0 = pm_gpu_fl_acc(); } /* M4: sp0x own and close time of the fused ops */
         switch (op) {
         case G_SETTIMG: op_settimg(w0, w1); break;
         case G_SETTILE: op_settile(w0, w1); break;
@@ -3293,6 +3295,7 @@ static __attribute__((noinline)) void tb_ops(const Gfx* g) {
         case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
         default: tex_op(w0, w1); break;
         }
+        if (pm_ph_on) { unsigned dt = (unsigned)(pm_ticks() - pt0), df = (unsigned)(pm_gpu_fl_acc() - pf0); tx_t[op] += dt - (df < dt ? df : dt); tx_f[op] += df; tx_n[op]++; }
     }
 }
 /* M4 state-diff check, switch texdiff: every bind list runs twice from the same start state, once word by word and once fused. The texture, tile, combine and mode state of both
