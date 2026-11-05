@@ -24,7 +24,7 @@ uint32_t f32tof24(float vf) {
 
 static uint32_t rd32(const unsigned char* p) { return p[0] | p[1] << 8 | p[2] << 16 | (uint32_t)p[3] << 24; }
 static uint32_t rf[0x300]; static uint8_t rset[0x300];
-static int fails; static unsigned n_draw, n_cmp, n_skip;
+static int fails; static unsigned n_draw, n_cmp, n_skip, n_tex, n_texbad;
 #define CHECK(c, ...) do { if (!(c)) { fails++; if (fails < 100000) { printf("FAIL: " __VA_ARGS__); printf("\n"); } } } while (0)
 
 static void apply(const uint32_t* w, unsigned n) {
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
         fclose(f);
         assert(memcmp(buf, "NDR1", 4) == 0 && rd32(buf + 4) == 4);
         memset(rf, 0, sizeof rf); memset(rset, 0, sizeof rset);
-        uint32_t tk[19] = { 0 }, d_decal = 0, d_atest = 0, d_cull = 0, d_graw = 0;
+        uint32_t tk[19] = { 0 }, d_decal = 0, d_atest = 0, d_cull = 0, d_graw = 0, tw0[4] = { 0 }, tw1[4] = { 0 };
         NdTmplKey key; int have_key = 0;
         for (size_t pos = 20, end = 20 + rd32(buf + 16); pos < end;) {
             uint32_t kind = rd32(buf + pos), size = rd32(buf + pos + 4);
@@ -65,6 +65,7 @@ int main(int argc, char** argv) {
             if (kind == 1) {
                 for (int i = 0; i < 19; i++) tk[i] = rd32(b + 4 * i);
                 d_graw = rd32(b + 80); d_cull = rd32(b + 88); d_decal = rd32(b + 92); d_atest = rd32(b + 100);
+                for (int i = 0; i < 4; i++) { tw0[i] = rd32(b + 128 + 4 * i); tw1[i] = rd32(b + 144 + 4 * i); }
             } else if (kind == 4) {
                 memset(&key, 0, sizeof key);
                 uint32_t pass = rd32(b), hz = rd32(b + 4), zmark = rd32(b + 8), zcmp = rd32(b + 12), zupd = rd32(b + 16), nocol = rd32(b + 20), noise = rd32(b + 24), raw = rd32(b + 28);
@@ -81,6 +82,16 @@ int main(int argc, char** argv) {
                 if (n == 0) memset(rset, 0, sizeof rset); /* the command buffer was split since the draw before: the words of that part are not in the stream */
                 apply((const uint32_t*)(const void*)(b + 4), n); /* little endian host: the words are in file order */
                 n_draw++;
+                /* texture unit 0 and 1 blocks: dim, param, lod, address (regs 0x82 to 0x85 and 0x92 to 0x95) */
+                for (int u = 0; u < 2; u++) {
+                    const uint32_t* tw = u ? tw1 : tw0;
+                    unsigned base = u ? 0x91u : 0x81u;
+                    if (!(tw[0] | tw[1]) || !rset[base + 1] || key.off_active) continue;
+                    n_cmp++; n_tex++;
+                    /* the ndref words are read at the draw call, the stream holds what citro3d wrote: a texture whose slot was reused without a rebind keeps its old unit words
+                     * (one draw of 632 in the 8 files). Up to 1 percent is counted, not failed. */
+                    if (!(rf[base + 1] == tw[0] && rf[base + 2] == tw[1] && rf[base + 3] == tw[2] && rf[base + 4] == tw[3])) n_texbad++;
+                }
                 int id = nd_tmpl_build(&key);
                 if (id >= 0) {
                     const NdTmplWord* w; unsigned nw = nd_tmpl_words(id, &w);
@@ -98,6 +109,7 @@ int main(int argc, char** argv) {
         }
         free(buf);
     }
-    printf("nd_cmd: %u draws, %u register compares, %u skipped %s\n", n_draw, n_cmp, n_skip, fails ? "FAIL" : "PASS");
+    CHECK(n_texbad * 100 <= n_tex, "texture unit words differ in %u of %u blocks", n_texbad, n_tex);
+    printf("nd_cmd: %u draws, %u register compares (%u texture unit blocks, %u stale), %u skipped %s\n", n_draw, n_cmp, n_tex, n_texbad, n_skip, fails ? "FAIL" : "PASS");
     return fails != 0;
 }
