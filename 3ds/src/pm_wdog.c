@@ -88,7 +88,13 @@ static void wd_main(void* arg) {
                 wd_note(buf, n);
             }
         } else inact_s = 0;
+        if (stalled >= 2 && p != last) { char sb[80]; int sn = snprintf(sb, sizeof sb, "watchdog: the game thread moved again after %us\n", stalled + 1); wd_note(sb, sn); }
         if (!limit_s || !pm_wd_armed || p != last || pm_wd_hold || !aptIsActive()) { last = p; stalled = 0; continue; }
+        if (stalled >= 2) { /* a stall note every second from the third: crash.txt shows whether the game thread comes back before the limit */
+            char sb[200];
+            int sn = snprintf(sb, sizeof sb, "watchdog: stall %us phase %u call %u evt %08x op %08x\n", stalled + 1, pm_wd_phase, pm_wd_sub, pm_wd_evt[0], pm_wd_evt[3]);
+            wd_note(sb, sn);
+        }
         if (++stalled < limit_s) continue;
         char buf[200];
         int n = snprintf(buf, sizeof(buf), "\nwatchdog: no progress for %u s, game thread last phase %u (%s), steps %u, build #%s\n",
