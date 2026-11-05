@@ -7,12 +7,8 @@ Today a model record (G_PM_REC, 14 words) is run by the walker (pm_gbi.c rec_app
 Branch nds1. Last commit 5fc6fb083. Tree: user files only. Read the STATE blocks of docs/handoff/agent_s3g.md and agent_s3f.md first (record layout R0 to R13).
 Facts: nd_raw_native (pm_gpu.c grep `static int nd_raw_native(void)`) already builds a template key and calls nd_tmpl_build and nd_emit_draw for about 90 percent of Toad Town batches. nd_dlc compiles shape lists at map load (pm_map.c). nd_emit has no native record kind (nd_core.c nd_emit: LEGACY only).
 
-## Rows (in order, commit after each part)
-0. S3N-0 delete the dead old emission under recSkip and REC_SKIP in appendGfx_model (list in agent_s3g.md). No toggles rule.
-1. S3N-1 compile once per map: each ModelRenderModes list to a state delta (nd_st fields: othermode, geometry, combine), each texture handle bind list to an nd_tex descriptor (plan nd_tex_handle_set, model.c load_texture_impl). Cold code, new file 3ds/src/nd_model.c.
-2. S3N-2 nd_model_draw(rec): build the template key from the record and the compiled deltas, the tex block, the matrix (nd_mtx_pcomp(post, game), seam rule 1), the light block. One NdDraw per NdObj segment. Emit MERGED ranges: adjacent segments with an equal key make one draw (the grange rule, pm_gpu.c grep `grange_batch_open`). nds1_status_2026-11-05.md finding 3: per-batch replay doubled draws.
-3. S3N-3 the record arm calls nd_model_draw instead of rec_apply. Cases nd_model_draw cannot draw (state it does not know yet): keep rec_apply for that record and count it (`ndm fallback <n>` in the prof line or a 300-frame log line). Target: fallback 0 in the 3 spots.
-4. S3N-4 delete rec_apply paths that the count shows unused.
+## Rows
+S3N-0 is DONE (1f1839f2c). The rows S3N-1 to S3N-5 and their design are in docs/handoff/plan_s3n_native_models.md (approved by the user 2026-11-05). Read it in full. It replaces the old row list. Do the rows in its order, one commit each.
 
 ## Proof (small)
 - Host: nd_host passes. Add a host case: for the ndref kind 6 raw draws of Toad Town (3ds/tests/ndref), nd_model_draw words equal nd_raw_native words (pattern: nd_emit_test).
