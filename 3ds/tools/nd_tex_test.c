@@ -65,7 +65,7 @@ static void test_ndref(int argc, char** argv) {
         unsigned char* buf = malloc((size_t)sz);
         assert(buf && fread(buf, 1, (size_t)sz, f) == (size_t)sz);
         fclose(f);
-        assert(memcmp(buf, "NDR1", 4) == 0 && rd32(buf + 4) == 3);
+        assert(memcmp(buf, "NDR1", 4) == 0 && rd32(buf + 4) == 4);
         for (size_t pos = 20, end = 20 + rd32(buf + 16); pos < end;) {
             uint32_t kind = rd32(buf + pos), size = rd32(buf + pos + 4);
             if (kind == 1) { check_unit(buf + pos + 8 + 128, argv[a]); check_unit(buf + pos + 8 + 144, argv[a]); }

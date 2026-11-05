@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
         uint8_t* buf = malloc((size_t)sz);
         if (!buf || fread(buf, 1, (size_t)sz, fp) != (size_t)sz) { printf("FAIL: cannot read %s\n", argv[f]); return 1; }
         fclose(fp);
-        if (memcmp(buf, "NDR1", 4) != 0 || le32(buf + 4) != 3) { printf("FAIL: %s is not ndref version 3\n", argv[f]); return 1; }
+        if (memcmp(buf, "NDR1", 4) != 0 || le32(buf + 4) != 4) { printf("FAIL: %s is not ndref version 4\n", argv[f]); return 1; }
         files++;
         const uint8_t* pal = NULL; unsigned np1 = 0;
         for (size_t pos = 20, end = 20 + le32(buf + 16); pos < end;) {

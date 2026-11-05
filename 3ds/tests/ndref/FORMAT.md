@@ -1,4 +1,4 @@
-# ndref: reference draw stream (format v3)
+# ndref: reference draw stream (format v4)
 
 Test oracle for the native draw system (docs/handoff/plan_native_system.md 9.2 and 9.3). It is not read by the game.
 Pinned commit: e95b21495 (NDREF1 hook on the walker of 620d457f7; the walker code is the same, the hook is off unless `ndref=<frame>` is set). The files were captured on build 2020 (commit 42f6fac7e). The S0-6 commit adds counters and a prof line only; it does not change the draws.
@@ -10,7 +10,7 @@ Read by 3ds/tools/nd_ref_dump.py. All integers and floats are little-endian. Flo
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 4 | magic `NDR1` (bytes 4E 44 52 31) |
-| 4 | 4 | version = 3 (v1 had no kind 4 records, v2 no kind 5) |
+| 4 | 4 | version = 4 (v1 had no kind 4 records, v2 no kind 5, v3 no kind 6) |
 | 8 | 4 | frame number (pm_frame_count) |
 | 12 | 4 | draw record count |
 | 16 | 4 | payload bytes (everything after this 20-byte header) |
@@ -20,7 +20,7 @@ Read by 3ds/tools/nd_ref_dump.py. All integers and floats are little-endian. Flo
 
 | Offset | Size | Field |
 |---|---|---|
-| 0 | 4 | kind: 1 draw, 2 producer tag, 3 model tag, 4 draw state, 5 palette source |
+| 0 | 4 | kind: 1 draw, 2 producer tag, 3 model tag, 4 draw state, 5 palette source, 6 command words |
 | 4 | 4 | size of the body in bytes |
 | 8 | size | body |
 
@@ -42,6 +42,10 @@ One record per GPU draw call, written right before C3D_DrawArrays or C3D_DrawEle
 ## Palette source body (kind 5, S1-4 oracle)
 
 Written right after the kind 1 record of a raw draw with a palette (np > 0). Size 68 + 68 x np bytes. Body: 16 floats `post` (gv_post, C3D_Mtx memory order), u32 np, then per entry u32 gm (game matrix index, the same order as the kind 1 palette) and 16 floats of `pal_tab[gm]` (the game matrix, row-vector 4 x 4 as the walker stores it). The kind 1 palette holds pcomp[gm] = Mtx_Multiply(post, game) in C3D_Mtx order (pm_gpu.c pal_mul), which nd_mtx_pcomp must reproduce bit for bit.
+
+## Command words body (kind 6, S3 oracle)
+
+Written right after each GPU draw call (after its kind 4 record). Body: u32 n, then n u32 words: the words the citro3d command buffer got since the end of the draw call before (the direct GPUCMD writes before the call, the uniform, texture and state updates that C3D_DrawElements or C3D_DrawArrays flushes, and the draw trigger). n is 0 when the buffer was split in between. The words are the PICA command stream format: parameter word, header word (register in bits 0 to 15, byte mask 16 to 19, extra count 20 to 27, bit 31 consecutive writes).
 
 ## Draw body
 

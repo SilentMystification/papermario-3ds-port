@@ -14,7 +14,7 @@ PMFX = 304           # PmFx: 76 floats (pm_gpu.h)
 PAL = 68             # u32 game matrix index + C3D_Mtx (64 bytes)
 VTX_RING = 16        # ring vertex (raw path)
 VTX_CPU = 40         # Vert: x y z w u v r g b a floats (CPU path)
-KIND_DRAW, KIND_PROD, KIND_MDL, KIND_ST, KIND_PAL = 1, 2, 3, 4, 5
+KIND_DRAW, KIND_PROD, KIND_MDL, KIND_ST, KIND_PAL, KIND_CMD = 1, 2, 3, 4, 5, 6
 ST_WORDS = 15 + 13 + 34  # kind 4 body: 15 header words, 13 effect words, 34 texenv words (FORMAT.md)
 
 
@@ -26,8 +26,8 @@ def parse(path):
     magic, ver, frame, ndraws, plen = struct.unpack_from("<5I", data, 0)
     if magic != MAGIC:
         raise ValueError("bad magic %08x" % magic)
-    if ver != 3:
-        raise ValueError("version %d, expected 3" % ver)
+    if ver != 4:
+        raise ValueError("version %d, expected 4" % ver)
     if len(data) != 20 + plen:
         raise ValueError("payload %d bytes, header says %d" % (len(data) - 20, plen))
     hdr = {"frame": frame, "draws": ndraws, "bytes": plen}
@@ -52,6 +52,11 @@ def parse(path):
                 raise ValueError("state record at %d: size %d, expected %d" % (p, size, 4 * ST_WORDS))
             w = struct.unpack_from("<%dI" % ST_WORDS, data, body)
             recs.append({"kind": KIND_ST, "hdr": w[:15], "eff": w[15:28], "tev": w[28:]})
+        elif kind == KIND_CMD:
+            n = struct.unpack_from("<I", data, body)[0]
+            if size != 4 + 4 * n:
+                raise ValueError("command record at %d: size %d, expected %d" % (p, size, 4 + 4 * n))
+            recs.append({"kind": KIND_CMD, "words": struct.unpack_from("<%dI" % n, data, body + 4)})
         elif kind == KIND_PAL:
             np_ = struct.unpack_from("<I", data, body + 64)[0]
             if size != 68 + np_ * 68:

@@ -476,6 +476,7 @@ static void ndref_patch(unsigned at) { /* record size of the record that starts 
     if (ndref_over) return;
     unsigned n = ndref_len - at - 8u; memcpy(ndref_buf + at + 4, &n, 4);
 }
+static unsigned ndcmd_prev;
 static void ndref_begin(void) { /* per frame, from pm_gpu_begin */
     if (ndref_target == -2) ndref_target = pm_gbi_ndref_frame();
     ndref_on = ndref_target >= 0 && (int)pm_frame_count() == ndref_target;
@@ -483,6 +484,7 @@ static void ndref_begin(void) { /* per frame, from pm_gpu_begin */
     if (!ndref_buf) ndref_buf = (unsigned char*)malloc(NDREF_CAP);
     ndref_wr = ndref_buf != NULL; ndref_len = 0; ndref_draws = 0; ndref_over = 0;
     if (!ndref_wr) ndref_on = 0;
+    else { u32 off; GPUCMD_GetBuffer(NULL, NULL, &off); ndcmd_prev = off; }
 }
 void ndref_tag(unsigned kind, unsigned id, unsigned extra) { /* pm_gbi.c producer and model marks, record kind 2 and 3 */
     unsigned hd[2] = { kind, 8u }, p[2] = { id, extra };
@@ -528,11 +530,22 @@ static __attribute__((cold, noinline)) void ndref_state(unsigned pass, int z) {
     ndref_put(__C3D_Context + 216, 13 * 4); ndref_put(__C3D_Context + 292, 34 * 4);
     ndref_patch(at);
 }
+/* S3 oracle: kind 6, the command words the citro3d command buffer got since the end of the draw before, up to the end of this draw call (uniform and state updates, the draw).
+ * Body: u32 n, n words. If the buffer was split in between (offset smaller than before) n is 0. */
+static __attribute__((cold, noinline)) void ndref_cmd(void) {
+    u32 *buf, size, off;
+    GPUCMD_GetBuffer(&buf, &size, &off);
+    unsigned n = off >= ndcmd_prev ? off - ndcmd_prev : 0u, at = ndref_len, hd[2] = { 6u, 0u };
+    ndref_put(hd, 8); ndref_put(&n, 4);
+    if (n) ndref_put(buf + ndcmd_prev, n * 4u);
+    ndref_patch(at);
+    ndcmd_prev = off;
+}
 static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: write the file, one log line when it is written */
     if (!ndref_wr) return;
     ndref_wr = 0; ndref_on = 0; ndref_target = -1;
     unsigned fr = pm_frame_count();
-    uint32_t hdr[5] = { 0x3152444Eu /* NDR1 */, 3u, fr, ndref_draws, ndref_len };
+    uint32_t hdr[5] = { 0x3152444Eu /* NDR1 */, 4u, fr, ndref_draws, ndref_len };
     FILE* f = fopen("sdmc:/3ds/PaperMario/ndref.bin", "wb");
     if (f) { fwrite(hdr, 4, 5, f); fwrite(ndref_buf, 1, ndref_len, f); fclose(f); }
     pm_log_d("ndref f%u done draws %u bytes %u%s%s", fr, ndref_draws, ndref_len, f ? "" : " open failed", ndref_over ? " over" : "");
@@ -812,6 +825,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
         if (ndref_on) ndref_state(1, z);
         C3D_DrawArrays(GPU_TRIANGLES, first, count);
+        if (ndref_on) ndref_cmd();
         sh_depth_map(true, -1.0f, decal_bias());
         sh_depth_test(true, GPU_GEQUAL, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
         stc_set(2, true, GPU_EQUAL, 1, 0xff, 0xff);
@@ -820,6 +834,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
     }
     if (ndref_on) ndref_state(decal2 ? 2 : 0, z);
     C3D_DrawArrays(GPU_TRIANGLES, first, count);
+    if (ndref_on) ndref_cmd();
     if (decal2) { stc_set(3, false, GPU_ALWAYS, 0, 0xff, 0); }
     DC_T(5);
     PH_POP();
@@ -835,6 +850,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_ZERO);
         if (ndref_on) ndref_state(3, z);
         C3D_DrawArrays(GPU_TRIANGLES, (int)(b2 - vert_base), count);
+        if (ndref_on) ndref_cmd();
         verts = b2 + count;
         if ((unsigned)(uintptr_t)verts & 15u) verts++;
         draws_frame++;
@@ -1057,6 +1073,7 @@ static void flush_draw(void) {
         }
         if (ndref_on) ndref_state(0, z);
         C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
+        if (ndref_on) ndref_cmd();
         PH_ADD(C_RAWD, 1); PH_ADD(C_RAWCALL, 1);
         DC_T(5);
         PH_POP();
