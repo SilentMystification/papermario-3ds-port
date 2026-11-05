@@ -1,14 +1,13 @@
 # Agent M4 (row M4-2): handoff
 
 ## STATE
-branch: nds1 | HEAD: 5f6d782f5 (M4-2 code is NOT in HEAD, see open 1)
-record commit: dc2c8e3ee "M4-2: producer record for plain opaque map models" (model.c, pm_gbi.c, gbi_custom.h, bench_defs.json, azt_scenarios.json)
-done: step 1 proof (mdldiff, 13000 runs, 0 diffs), step 2 record write and step 3 consumer (in dc2c8e3ee), host nd_host PASS
-open 1: commit db42729fa (13:10, same author, 1 min after dc2c8e3ee) removed the M4-2 lines from src/model.c, 3ds/src/pm_gbi.c and include/gbi_custom.h. Not restored by this agent. Decide: restore (git cherry-pick dc2c8e3ee on top) or keep the revert
-open 2: gate 3 seam_pic region_diff NOT valid yet. Baseline shots of d01f8ea62 saved in scratchpad seam_base. The seam_rec run was built from the reverted tree: discard it
-open 3: gate 4 texdiff not run. Lights and matrix stay words (not in record, F3DEX2 light macros unverified)
-azahar starts used on M4-2: 4 of 8 (mdldiff x2, seam baseline, seam rec)
-next: after restore, build (PM_ROW=M4-2 sh 3ds/build.sh, restore map_restore_table.c md5 437b90ef...), then python 3ds/tools/bench.py run seam_pic --row M4-2 --why "picture of Toad Town with records", region_diff baseline vs record shots, then bench.py run texdiff --row M4-2 --why "bind lists still equal"
+branch: nds1 | HEAD: see git log (record commit cherry-picked as 6411d34ec, user approved restore)
+done: gate 1 nd_host PASS; gate 2 mdldiff PASS (13000 runs, 0 diffs, record commit dc2c8e3ee, now 6411d34ec)
+failed: gate 3 seam_pic region_diff FAIL on frame 200 (0000_1_2.ppm): 781 px (0.81%), 26 regions, largest 144 (limit 64). Diff cluster x 200-239, y 0-119 (top right sign/building). Frames 201, 202 identical. rec count 17640 (record path ran).
+not run: gate 4 texdiff (handback at failed gate 3)
+open: gate 3 fails the row's scattered-diff rule; row says a failed valid gate drops the row. Coordinator decides: drop (revert 6411d34ec) or diagnose the top-right sign texture (record bind list or rm list)
+azahar starts used on M4-2: 5 of 8 (mdldiff x2, seam base, seam rec x2)
+next: coordinator decision; if continue, diagnose top-right region then rerun seam_pic and texdiff
 
 ## Notes
 - mdldiff run 1 showed 299 diffs at 500 runs: bind cache tl_last was not in TS_FIELDS. rec_diff now clears tl_last before each run. Run 2: 0 diffs.
