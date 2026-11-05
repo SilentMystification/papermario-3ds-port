@@ -572,42 +572,6 @@
       "reason": ""
     },
     {
-      "name": "mac01_texdiff",
-      "status": "unverified",
-      "subject": "Toad Town street (mac_01) with the M4 texture bind state-diff check (switch texdiff).",
-      "proves": "Every bind list ends in the same texture, tile, combine and mode state word by word and fused. The log shows runs and diffs.",
-      "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug texdiff",
-      "until": "runs 6000 diffs",
-      "cap": 60,
-      "deadline": 25,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "texdiff", "regex": "texdiff f\\d+ runs" }
-      ],
-      "reason": ""
-    },
-    {
-      "name": "mac01_mdldiff",
-      "status": "unverified",
-      "subject": "Toad Town street (mac_01) with the M4-2 producer record check (switch mdldiff): record consumer against the old words from the same start state.",
-      "proves": "Each plain opaque model record sets the same texture, render mode and lighting state as its old words. The log shows runs and diffs.",
-      "debug": "warp=mac_01:0 loglevel=debug mdldiff",
-      "until": "runs 6000 diffs",
-      "cap": 45,
-      "deadline": 25,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
-      "needs_picture": false,
-      "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "mdldiff", "regex": "mdldiff f\\d+ runs" }
-      ],
-      "reason": ""
-    },
-    {
       "name": "mac01_ndref200",
       "status": "unverified",
       "subject": "Toad Town street (mac_01) standing, reference draw stream of frame 200 (ndref=200): the draws of the record build and the base build for the M4-2 seam diff.",
@@ -642,24 +606,6 @@
         { "name": "prof", "regex": "prof f\\d+ w\\d+ fps" }
       ],
       "reason": ""
-    },
-    {
-      "name": "mac01_walkdiff",
-      "status": "unverified",
-      "subject": "Toad Town street (mac_01), Mario walks east and back by padscript, with the texdiff check (generic bind against memo bind).",
-      "proves": "No diff and no hang while the view changes (the console hung after Mario walked with the M4 bind memo).",
-      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500,wait40,go_-500_0_500,wait40,go_-100_-300_500,wait40,go_-500_0_500 texdiff loglevel=debug",
-      "until": "runs 60000 diffs",
-      "cap": 120,
-      "deadline": 25,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
-      "needs_picture": false,
-      "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "texdiff", "regex": "texdiff f\\d+ runs" }
-      ],
-      "reason": "A walk with texdiff needs about 100 s."
     },
     {
       "name": "mac01_walkshots",

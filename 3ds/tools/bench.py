@@ -532,7 +532,8 @@ def cmd_list(a):
 
 def push_cmd(bd):
     ip = load_defs()["consoles"][bd["host"]]
-    return "PM_ROW=PUSH sh %s/3ds/push_3ds.sh --no-build --ip %s %s %s" % (posix(REPO), ip, load_defs()["push_base"], bd["recipe"])
+    parts = [load_defs()["push_base"], bd["recipe"]]
+    return "PM_ROW=PUSH sh %s/3ds/push_3ds.sh --no-build --ip %s %s" % (posix(REPO), ip, " ".join(p for p in parts if p))
 
 
 def cmd_show(a):

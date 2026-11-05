@@ -44,7 +44,7 @@ bench, host (azahar, o3ds, n3ds, host), device, build_no, commit, date, ts, row,
 
 ## Rules
 - Turbo and normal rows are never averaged. Old runs have speed unknown.
-- Console comparisons: same switches, same route, prof mode. phase, pmu and sp0c only split a cost.
+- Console recipes carry only the switches named in the bench recipe (prof=4 for spots). No stat switches by default: they change the frame time. Console comparisons: same route, prof mode; phase, pmu and sp0c only split a cost.
 - Scenes without a position tag record map "untagged".
 
 ## Files
