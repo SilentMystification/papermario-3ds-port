@@ -616,7 +616,8 @@ static void nd_leave_native(void) {
     if (!ndn_mode) return;
     ndn_mode = 0;
     *(volatile unsigned*)(__C3D_Context + 32) |= 0x10u | 0x200u | 0x20000u | 0x3800000u | 0xFC000000u; /* effect, texenv buffer, texenv stages, texture units */
-    bound = 0; buf_cur = 0; pool_buf_ok = 0; proj_ok = 0;
+    raw1_reset(); /* program, buffer info, and the uniform shadows of pm4 and pm5: the native draw wrote its own palette entries and uniforms over those registers */
+    pool_buf_ok = 0; proj_ok = 0;
 }
 static void sh_clear(void) { nd_leave_native(); sh.has = 0; tev_valid = 0; pool_buf_ok = 0; proj_ok = 0; noise_bound = 0; pm_tex_bind_reset(); }
 static void sh_depth_test(bool en, GPU_TESTFUNC f, GPU_WRITEMASK m) {
@@ -907,6 +908,7 @@ static NdShadow ndn_sh; static TevKey ndn_tk; static NdTevOut ndn_to; static int
 unsigned nd_native_draws, nd_native_refused;
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) return 0;
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
     if (off_active || grab_bind || r_zmark || nozt_on() || (combine == 8 && (plan.uses_tex1 || plan.uses_noise))) { nd_native_refused++; return 0; }
     int z = z_on && (!rect_2d || rect_z);
     NdUnit u0;
@@ -946,7 +948,7 @@ static int nd_raw_native(void) {
     if (buf_cur != 2) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, gring, 16, 3, 0x210); buf_cur = 2; }
     stage_scissor();
     sh_user_clip(1);
-    stencil_on = 0; /* the template writes the stencil test off */
+    if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
     float palk[ND_NPAL][16];
     unsigned npal = pal_n < ND_NPAL ? pal_n : ND_NPAL;
     for (unsigned k = 0; k < npal; k++) {
@@ -971,6 +973,7 @@ static int nd_raw_native(void) {
     static uint32_t out[ND_EMIT_MAX];
     unsigned nw = nd_emit_draw(out, &ndn_sh, &d);
     GPUCMD_AddRawCommands(out, nw);
+    *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as C3D_DrawElements sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
     nd_native_draws++;
     dv_draw++;

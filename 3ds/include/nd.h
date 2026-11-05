@@ -179,7 +179,7 @@ typedef struct NdShadow {
     float pal[ND_NPAL][16]; uint8_t pal_valid[ND_NPAL];
     float uni[16]; uint8_t uni_valid;
     uint32_t tmpl_val[64]; /* ND_TMPL_WORDS max, register values of the template last written (for word level deltas) */
-    uint32_t col[6], buf_col; uint8_t col_valid;
+    uint32_t col[6], buf_col; uint8_t col_valid, has_buf;
 } NdShadow;
 void nd_shadow_reset(NdShadow* s);
 unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */

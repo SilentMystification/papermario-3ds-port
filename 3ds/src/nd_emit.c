@@ -40,7 +40,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
     if (d->tmpl >= 0) {
         const NdTmplWord* w;
         unsigned nw = nd_tmpl_words(d->tmpl, &w);
-        int same = sh->tmpl == d->tmpl && sh->col_valid && !memcmp(sh->col, d->tev_col, sizeof sh->col);
+        int same = sh->tmpl == d->tmpl && sh->col_valid && !memcmp(sh->col, d->tev_col, sizeof sh->col) && sh->buf_col == d->buf_col && sh->has_buf == d->has_buf;
         if (!same) {
             for (unsigned i = 0; i < nw; i++) {
                 uint32_t val = w[i].val;
@@ -51,19 +51,22 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
                 o = one(o, w[i].reg, 0xF, val);
                 sh->tmpl_val[i] = val;
             }
-            sh->tmpl = d->tmpl; memcpy(sh->col, d->tev_col, sizeof sh->col); sh->col_valid = 1;
+            sh->tmpl = d->tmpl; memcpy(sh->col, d->tev_col, sizeof sh->col); sh->col_valid = 1; sh->buf_col = d->buf_col; sh->has_buf = d->has_buf;
         }
     }
     /* texture units: the enable word when the set changes, then the blocks that changed */
+    int cfg_cleared = 0;
     {
         unsigned en = (d->u[0].dim ? 1u : 0u) | (d->u[1].dim ? 2u : 0u);
         if (en && (!sh->cfg_valid || sh->cfg != en)) {
+            cfg_cleared = 1;
             o = one(o, 0x80, 0xB, 0x11000u | en);
             o = one(o, 0x80, 0x4, 0x10000u);
             o = one(o, 0x8B, 0xF, 1);
             sh->cfg = en; sh->cfg_valid = 1;
         }
     }
+    int unit_chg = 0;
     for (unsigned u = 0; u < 2; u++) {
         const NdUnit* t = &d->u[u];
         unsigned base = 0x80u + 0x10u * u;
@@ -72,9 +75,10 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
             uint32_t b[5] = { 0, t->dim, t->param, t->lod, t->addr };
             o = cmd(o, base + 1, 0xF, b, 5, 1);
             o = one(o, base + 0xE, 0xF, t->type);
-            sh->u[u] = *t; sh->u_on[u] = 1;
+            sh->u[u] = *t; sh->u_on[u] = 1; unit_chg = 1;
         }
     }
+    if (unit_chg && !cfg_cleared) o = one(o, 0x80, 0x4, 0x10000u); /* citro3d clears the texture cache at every bind: a slab that was freed and reused holds new texels under an old address */
     /* palette entries and the per draw uniforms */
     for (unsigned k = 0; k < d->npal && k < ND_NPAL; k++) {
         if (!sh->pal_valid[k] || memcmp(sh->pal[k], d->pal[k], sizeof sh->pal[k]) != 0) {
