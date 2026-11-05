@@ -93,7 +93,13 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
         o->vtx = vtx_total ? (uint8_t*)malloc(vtx_total * 16u) : NULL;
         o->idx = tri_total ? (uint16_t*)malloc(tri_total * 6u) : NULL;
     }
-    if ((ng && !o->grp) || (ngop && (!o->gop || !o->gat)) || (vtx_total && !o->vtx) || (tri_total && !o->idx)) { o->pooled = 0; nd_dlc_free(o); return NDR_LONG; }
+    if ((ng && !o->grp) || (ngop && (!o->gop || !o->gat)) || (vtx_total && !o->vtx) || (tri_total && !o->idx)) {
+        int full = o->pooled; /* a pool refusal is NDR_FULL, a malloc refusal NDR_LONG */
+        o->pooled = 0; free(o->grp); free(o->gop); free(o->gat); /* the pooled arrays are not freed, a malloc pair is */
+        if (!full) { free(o->vtx); free(o->idx); }
+        memset(o, 0, sizeof *o);
+        return full ? NDR_FULL : NDR_LONG;
+    }
     if (ng) memcpy(o->grp, tg, ng * sizeof(NdGrp));
     if (ngop) memcpy(o->gop, tgop, ngop * 8);
     /* pass 2: the vertex copies and the triangle indices (dlc_static_build) */

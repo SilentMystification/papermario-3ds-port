@@ -6,8 +6,8 @@
  * fit the ring runs through the interpreter itself (pm_gbi_run on the op range of the group). */
 unsigned pm_dlc_gen = 1; /* bumped when the shape buffer is written (pm_tex_invalidate, decode_yay0) */
 
-typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16* sd; u16* bat_q; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
-typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; } DlcEnt;
+typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16* sd; u16* bat_q; u16* ends; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
+typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; NdObj o; } DlcEnt;
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 #define DLC_TAB 2048
 #define DLC_MAXOPS 4096
@@ -83,8 +83,9 @@ static __attribute__((cold, noinline)) void dlc_grp_dump(const DlcGrp* g, const 
 }
 static int noboxint_on(void) { return PMDL("noboxint"); } /* FLK1 debug switch noboxint: an out group runs through the interpreter instead of the skip */
 static void dlc_free(DlcEnt* e) {
-    for (unsigned k = 0; k < e->ngrp; k++) { free(e->grp[k].sd); free(e->grp[k].bat_q); }
-    free(e->grp); free(e->gop); e->grp = NULL; e->gop = NULL; e->ngrp = 0;
+    for (unsigned k = 0; k < e->ngrp; k++) { free(e->grp[k].ends); free(e->grp[k].bat_q); }
+    free(e->grp); e->grp = NULL; e->gop = NULL; e->ngrp = 0;
+    nd_dlc_free(&e->o); /* the vertex and index copies live in the static pools until the next pm_gpu_gstat_reset */
 }
 
 #define DLC_GPU_GEOM(g) ((g) & (G_ZBUFFER | G_LIGHTING))
@@ -109,11 +110,16 @@ static __attribute__((noinline)) int dlc_gop_same_geom(const DlcEnt* e, const Dl
 
 /* C3: record draw ranges at compile; merge segments that share PSO geom (ends + gop index before each range). */
 static __attribute__((cold, noinline)) void dlc_batch_compile(DlcGrp* g, const DlcEnt* e) {
-    unsigned short* ends = g->sd + 3u * g->ntri;
     unsigned sn = g->sn, ng = g->ng;
     g->nbat = 0;
     free(g->bat_q);
     g->bat_q = NULL;
+    free(g->ends);
+    g->ends = (u16*)malloc((ng + 1u) * sizeof(u16)); /* the triangle index before each geometry op (nd_dlc gat), then the group triangle count */
+    if (!g->ends) return;
+    unsigned short* ends = g->ends;
+    for (unsigned i = 0; i < ng; i++) ends[i] = e->o.gat[g->goff + i];
+    ends[ng] = (u16)sn;
     if (!sn) return;
     if (!ng) {
         g->nbat = 1;
@@ -139,135 +145,55 @@ static __attribute__((cold, noinline)) void dlc_batch_compile(DlcGrp* g, const D
     g->nbat = (u16)nb;
 }
 
-static DlcGrp dlc_sg[1024];
-static u32 dlc_sgop[2048][2];
-/* Cut the list into groups. Fills e. Returns the reason to refuse (DLR_OK when compiled). */
-static __attribute__((cold, noinline)) int dlc_compile(DlcEnt* e, const Gfx* l) {
-    unsigned ng = 0, ngop = 0, i;
-    u32 cam = 0xffffffffu, com = 0;
-    unsigned char live[64];
-    int tsv = -1, in = 0;
-    DlcGrp* g = NULL;
-    memset(live, 2, sizeof live);
-    for (i = 0; i < DLC_MAXOPS; i++) {
-        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
-        unsigned op = w0 >> 24;
-        if (op == G_ENDDL) break;
-        switch (op) {
-        case G_VTX: {
-            unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
-            const Vtx* src = (const Vtx*)ptr_of(w1);
-            if (!src || (u32)src - (u32)gMapShapeData >= 0x40000u || n == 0 || n > 64 || v0 >= 64) return DLR_VTX;
-            if (v0 + n > 64) n = 64 - v0;
-            if (!in || (v0 == 0 && tsv == 1)) {
-                if (g) { g->op1 = i; g->tsv_exit = (u8)(tsv == 1); }
-                if (ng >= 1024) return DLR_LONG;
-                g = &dlc_sg[ng++];
-                memset(g, 0, sizeof *g);
-                g->op0 = i; g->am = cam; g->om = com; g->goff = (u16)ngop;
-                for (int q = 0; q < 3; q++) { g->lo[q] = 32767; g->hi[q] = -32768; }
-                if (in) memset(live, 0, sizeof live);
-                in = 1;
-            }
-            tsv = 0;
-            for (unsigned k = 0; k < n; k++) {
-                for (int q = 0; q < 3; q++) { s16 o = src[k].v.ob[q]; if (o < g->lo[q]) g->lo[q] = o; if (o > g->hi[q]) g->hi[q] = o; }
-                live[v0 + k] = 1;
-            }
-            g->nvtx += (u16)n;
-            break;
-        }
-        case G_TRI1:
-        case G_TRI2: {
-            if (!in) return DLR_SLOT;
-            for (int t = 0; t < (op == G_TRI2 ? 2 : 1); t++) {
-                u32 w = t ? w1 : w0;
-                int ix[3] = { (int)((w >> 16) & 0xff) / 2, (int)((w >> 8) & 0xff) / 2, (int)(w & 0xff) / 2 };
-                for (int k = 0; k < 3; k++) if (ix[k] <= 63 && live[ix[k]] == 2) return DLR_SLOT; /* a slot that the list did not load */
-                g->ntri++;
-            }
-            tsv = 1;
-            break;
-        }
-        case G_GEOMETRYMODE: {
-            u32 am = w0 & 0xffffffu;
-            cam &= am; com = (com & am) | w1;
-            if (in) { if (ngop >= 2048) return DLR_LONG; dlc_sgop[ngop][0] = am; dlc_sgop[ngop][1] = w1; ngop++; g->ng++; }
-            break;
-        }
-        case G_NOOP: case G_SPNOOP: case G_RDPFULLSYNC: case G_RDPTILESYNC: case G_RDPPIPESYNC: case G_RDPLOADSYNC:
-            break;
-        default:
-            return DLR_OP;
-        }
-    }
-    if (i >= DLC_MAXOPS) return DLR_LONG;
-    if (g) { g->op1 = i; g->tsv_exit = (u8)(tsv == 1); }
-    e->ngrp = (u16)ng; e->nops = i + 1; e->exit_am = cam; e->exit_om = com;
-    e->grp = ng ? (DlcGrp*)malloc(ng * sizeof(DlcGrp)) : NULL;
-    e->gop = ngop ? (u32(*)[2])malloc(ngop * 8) : NULL;
-    if ((ng && !e->grp) || (ngop && !e->gop)) { dlc_free(e); return DLR_LONG; }
-    if (ng) memcpy(e->grp, dlc_sg, ng * sizeof(DlcGrp));
-    if (ngop) memcpy(e->gop, dlc_sgop, ngop * 8);
-    return DLR_OK;
-}
-
 static void dlc_set_geom(u32 g);
 static unsigned dlc_gmi(void);
-/* DLC2: copy the Vtx of each group once into the static vertex area (flag 0) and keep the triangle indices. The slot rules are those of dlc_compile and of the interpreter
- * (a group starts with all slots dead, a triangle on a dead slot is dropped). A group without room keeps sd NULL and runs through the ring. */
-static __attribute__((cold, noinline)) void dlc_static_build(DlcEnt* e, const Gfx* l) {
-    unsigned char live[64];
-    unsigned short smap[64];
-    for (unsigned k = 0; k < e->ngrp; k++) {
-        DlcGrp* g = &e->grp[k];
-        unsigned char* dst = NULL;
-        int first = pm_gpu_gstat_alloc(g->nvtx, &dst);
-        if (first < 0) { dlc_c.sfull++; continue; }
-        unsigned short* sd = (unsigned short*)malloc((3u * g->ntri + g->ng + 1u) * 2u);
-        if (!sd) { dlc_c.sfull++; continue; }
-        memset(live, 0, sizeof live);
-        unsigned nv = 0, nt = 0, ngo = 0;
-        for (u32 j = g->op0; j < g->op1; j++) {
-            u32 w0 = l[j].words.w0, w1 = l[j].words.w1;
-            switch (w0 >> 24) {
-            case G_VTX: {
-                unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
-                const Vtx* src = (const Vtx*)ptr_of(w1);
-                if (v0 + n > 64) n = 64 - v0;
-                memcpy(dst + 16u * nv, src, 16u * n);
-                for (unsigned i = 0; i < n; i++) {
-                    *(unsigned short*)(dst + 16u * (nv + i) + 6) = 0;
-                    smap[v0 + i] = (unsigned short)(first + nv + i);
-                    live[v0 + i] = 1;
-                }
-                nv += n;
-                break;
-            }
-            case G_TRI1:
-            case G_TRI2:
-                for (int t = 0; t < ((w0 >> 24) == G_TRI2 ? 2 : 1); t++) {
-                    u32 w = t ? w1 : w0;
-                    int ix[3] = { (int)((w >> 16) & 0xff) / 2, (int)((w >> 8) & 0xff) / 2, (int)(w & 0xff) / 2 };
-                    if (ix[0] > 63 || ix[1] > 63 || ix[2] > 63 || !live[ix[0]] || !live[ix[1]] || !live[ix[2]]) continue;
-                    for (int q = 0; q < 3; q++) sd[3 * nt + q] = smap[ix[q]];
-                    nt++;
-                }
-                break;
-            case G_GEOMETRYMODE:
-                sd[3u * g->ntri + ngo++] = (unsigned short)nt;
-                break;
-            default:
-                break;
-            }
-        }
-        if (nv != g->nvtx || ngo != g->ng) { free(sd); dlc_c.sfull++; continue; } /* cannot happen: the same walk as dlc_compile */
-        pm_gpu_gstat_commit((unsigned)first, nv);
-        g->sn = (u16)nt; g->sd = sd;
-        dlc_batch_compile(g, e);
-    }
+/* S3 M2: the static list compile is nd_dlc (moved from dlc_compile and dlc_static_build): groups, boxes, geometry ops, the Vtx copies in the static vertex area (flag 0)
+ * and the triangle indices in the static index area. The DlcEnt keeps the NdObj and the per group view the replay loop reads. A group without pool room keeps sd NULL and
+ * runs through the ring (dlc_run_group). */
+unsigned short* pm_gpu_gidxs_alloc(unsigned n);
+void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
+static const void* nd_env_vtx(uint32_t w1, unsigned n) {
+    const Vtx* src = (const Vtx*)ptr_of(w1);
+    if (!src || (u32)src - (u32)gMapShapeData >= 0x40000u || n == 0 || n > 64) return NULL;
+    return src;
 }
-
+static uint8_t* nd_env_valloc(unsigned n, unsigned* first) {
+    unsigned char* dst = NULL;
+    int f = pm_gpu_gstat_alloc(n, &dst);
+    if (f < 0) return NULL;
+    *first = (unsigned)f;
+    return dst;
+}
+static uint16_t* nd_env_ialloc(unsigned n) { return pm_gpu_gidxs_alloc(n); }
+static u32 dlc_words[2 * (ND_DLC_MAXOPS + 1)];
+static __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l) {
+    unsigned i;
+    for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; if ((l[i].words.w0 >> 24) == G_ENDDL) break; }
+    NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc };
+    int rc = nd_dlc_compile(&e->o, dlc_words, &env), pooled = 1;
+    if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring */
+        NdDlcEnv env2 = { nd_env_vtx, NULL, NULL };
+        dlc_c.sfull++;
+        rc = nd_dlc_compile(&e->o, dlc_words, &env2);
+        pooled = 0;
+        if (rc == NDR_OK) { free(e->o.vtx); free(e->o.idx); e->o.vtx = NULL; e->o.idx = NULL; }
+    }
+    if (rc) return rc;
+    e->nops = e->o.nops; e->exit_am = e->o.exit_am; e->exit_om = e->o.exit_om; e->ngrp = e->o.ngrp; e->gop = e->o.gop;
+    e->grp = e->ngrp ? (DlcGrp*)calloc(e->ngrp, sizeof(DlcGrp)) : NULL;
+    if (e->ngrp && !e->grp) { nd_dlc_free(&e->o); e->ngrp = 0; e->gop = NULL; return NDR_LONG; }
+    for (unsigned k = 0; k < e->ngrp; k++) {
+        DlcGrp* g = &e->grp[k]; const NdGrp* q = &e->o.grp[k];
+        g->op0 = q->op0; g->op1 = q->op1; g->am = q->am; g->om = q->om; memcpy(g->lo, q->lo, 6); memcpy(g->hi, q->hi, 6);
+        g->nvtx = q->nvtx; g->ntri = q->ntri; g->goff = (u16)q->gbase; g->ng = q->ng; g->tsv_exit = q->tsv_exit;
+        if (pooled) { g->sn = q->ntri; g->sd = e->o.idx + q->ibase; dlc_batch_compile(g, e); }
+    }
+    if (pooled) {
+        if (e->o.nvtx) pm_gpu_gstat_commit(e->o.vfirst, e->o.nvtx);
+        if (e->o.nidx) pm_gpu_gidxs_commit(e->o.idx, e->o.nidx);
+    }
+    return 0;
+}
 
 /* DLC2: one range of static triangles with the state of the current epoch. Returns 0 when the raw path refuses (nothing was queued). */
 static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
@@ -298,7 +224,7 @@ static __attribute__((noinline)) int dlc_static_group(const DlcEnt* e, const Dlc
     if (x & bad) return 0;
     for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if ((x & bad) || (x & lm) != x0) return 0; }
     if (!g->nbat || !g->bat_q || !pm_gpu_gidx_room(3u * g->sn)) return 0;
-    const unsigned short* ends = g->sd + 3u * g->ntri;
+    const unsigned short* ends = g->ends;
     unsigned t = 0, gop = 0;
     int drawn = 0;
     u32 geom_at = gg;
@@ -499,52 +425,6 @@ static __attribute__((cold, noinline)) void dlc_reset(void) {
     dlc_nent = 0;
     pm_gpu_gstat_reset();
 }
-/* S3-1 gate (debug switch ndobj): every list dlc compiles is compiled by nd_dlc as well, into the static pools. Counts, boxes, geometry ops, group ranges and index
- * deltas must equal the DlcEnt. One log line per mismatch (40 at most) and a summary line every 100 frames. */
-unsigned short* pm_gpu_gidxs_alloc(unsigned n);
-void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
-unsigned pm_gpu_gidxs_used(void);
-static unsigned nd_chk_ok, nd_chk_bad, nd_chk_ref, nd_chk_tri, nd_chk_grp;
-static int nd_obj_check_on(void) { return PMDL("ndobj"); }
-static const void* nd_env_vtx(uint32_t w1, unsigned n) {
-    const Vtx* src = (const Vtx*)ptr_of(w1);
-    if (!src || (u32)src - (u32)gMapShapeData >= 0x40000u || n == 0 || n > 64) return NULL;
-    return src;
-}
-static uint8_t* nd_env_valloc(unsigned n, unsigned* first) {
-    unsigned char* dst = NULL;
-    int f = pm_gpu_gstat_alloc(n, &dst);
-    if (f < 0) return NULL;
-    *first = (unsigned)f;
-    return dst;
-}
-static uint16_t* nd_env_ialloc(unsigned n) { return pm_gpu_gidxs_alloc(n); }
-static __attribute__((cold, noinline)) void nd_obj_check(const DlcEnt* e, const Gfx* l) {
-    NdObj o;
-    NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc };
-    u32 words[2 * (ND_DLC_MAXOPS + 1)];
-    unsigned i;
-    for (i = 0; i < ND_DLC_MAXOPS; i++) { words[2 * i] = l[i].words.w0; words[2 * i + 1] = l[i].words.w1; if ((l[i].words.w0 >> 24) == G_ENDDL) break; }
-    int rc = nd_dlc_compile(&o, words, &env);
-    int bad = 0;
-    if (rc != NDR_OK) { nd_chk_ref++; if (e->ngrp && nd_chk_bad < 40) pm_log("ndobj list %p refused %d but dlc compiled %u groups", (const void*)l, rc, (unsigned)e->ngrp); nd_chk_bad += e->ngrp != 0; return; }
-    if (o.ngrp != e->ngrp || o.ngop != (e->ngrp ? (unsigned)(e->grp[e->ngrp - 1].goff + e->grp[e->ngrp - 1].ng) : 0u) || o.nops != e->nops || o.exit_am != e->exit_am || o.exit_om != e->exit_om) bad = 1;
-    for (unsigned k = 0; !bad && k < e->ngrp; k++) {
-        const DlcGrp* g = &e->grp[k]; const NdGrp* q = &o.grp[k];
-        if (!g->sd) continue; /* the static build was refused for this group (area full) */
-        if (g->nvtx != q->nvtx || g->sn != q->ntri || g->ng != q->ng || g->op0 != q->op0 || g->op1 != q->op1 || g->am != q->am || g->om != q->om || g->tsv_exit != q->tsv_exit ||
-            memcmp(g->lo, q->lo, 6) || memcmp(g->hi, q->hi, 6)) { bad = 2; break; }
-        for (unsigned t = 0; t < 3u * g->sn; t++) if ((int)g->sd[t] - (int)g->sd[0] != (int)o.idx[q->ibase + t] - (int)o.idx[q->ibase]) { bad = 3; break; }
-        nd_chk_grp++; nd_chk_tri += g->sn;
-    }
-    pm_gpu_gidxs_commit(o.idx, o.nidx);
-    if (o.nvtx) pm_gpu_gstat_commit(o.vfirst, o.nvtx);
-    if (bad) { nd_chk_bad++; if (nd_chk_bad < 40) pm_log("ndobj list %p differs (%d): groups %u/%u ops %u/%u", (const void*)l, bad, o.ngrp, (unsigned)e->ngrp, o.nops, (unsigned)e->nops); }
-    else nd_chk_ok++;
-    nd_dlc_free(&o);
-}
-unsigned pm_nd_chk_ok(void) { return nd_chk_ok; }
-void pm_nd_chk_report(void) { if (nd_chk_ok | nd_chk_bad | nd_chk_ref) pm_log("ndobj ok %u bad %u refused %u groups %u triangles %u gidxs %u", nd_chk_ok, nd_chk_bad, nd_chk_ref, nd_chk_grp, nd_chk_tri, pm_gpu_gidxs_used()); }
 static unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
 
@@ -557,11 +437,10 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
-        int r = dlc_compile(e, l);
+        int r = dlc_build(e, l);
         e->hash = dlc_hash(l);
         dlc_c.compile++;
-        if (r) { e->refused = (u8)r; dlc_c.refused[r]++; }
-        else { dlc_static_build(e, l); if (nd_obj_check_on()) nd_obj_check(e, l); }
+        if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
     } else { dlc_c.hit++; }
     if (e->refused) return 0;
     if (chk && dlc_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
@@ -647,7 +526,6 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
 }
 
 static __attribute__((cold, noinline)) void dlc_report(void) {
-    pm_nd_chk_report(); /* S3-1: the ndobj gate summary, silent without the switch */
     pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u | static grp %u tri %u fail %u full %u batch %u kb %u skip %u grp %u xgrp %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent, dlc_c.srep, dlc_c.stri, dlc_c.sfail, dlc_c.sfull, dlc_c.batch, pm_gpu_gstat_used() / 64u, dlc_c.skip, dlc_c.grp, dlc_c.xgrp);
     memset(&dlc_c, 0, sizeof dlc_c);
 }

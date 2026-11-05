@@ -120,7 +120,7 @@ void nd_words(const unsigned* w, unsigned n); /* n word pairs (Gfx), in list ord
 /* NDDLC (S3-1): a static display list (a map shape list) compiled once into an NdObj. A group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices
  * it loads itself. The compiler keeps the box of the object coordinates per group, the geometry mode ops with the triangle index they apply before, the Vtx copies
  * (flag 0, a palette index 0) and the triangle indices into those copies. Moved from pm_dlc.inc.c dlc_compile and dlc_static_build. Returns a refusal reason, NDR_OK when compiled. */
-enum { NDR_OK, NDR_OP, NDR_SLOT, NDR_VTX, NDR_LONG };
+enum { NDR_OK, NDR_OP, NDR_SLOT, NDR_VTX, NDR_LONG, NDR_FULL }; /* NDR_FULL: the vertex or index pool has no room (the list itself is fine) */
 #define ND_DLC_MAXOPS 4096u
 #define ND_DLC_MAXGRP 1024u
 #define ND_DLC_MAXGOP 2048u
