@@ -1,6 +1,12 @@
 {
   "enabledPlugins": {
-    "ponytail@ponytail": false
+    "ponytail@ponytail": false,
+    "caveman@caveman": false
+  },
+  "hooks": {
+    "SubagentStart": [
+      { "hooks": [ { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/docs/handoff/subagent_hook.js\"", "timeout": 5 } ] }
+    ]
   },
   "permissions": {
     "allow": [
