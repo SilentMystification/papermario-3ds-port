@@ -2778,7 +2778,9 @@ static int g2_same(unsigned op, u32 w0, u32 w1) {
  * SETOTHERMODE_L/H, GEOMETRYMODE and ENDDL. Its effects run here in list order, with the same state writes and the same
  * side-effect calls as the handlers for those ops (filter flush, sync_combine on the cycle type, pm_gpu_set_mode).
  * Returns 0 without any effect when the list has another op; the caller then runs it as a G_DL. */
-static int rm_apply(u32 w1) {
+static void op_setcombine(u32 w0, u32 w1); static void op_texture(u32 w0, u32 w1); /* M4 */
+static int rm_gen; /* M4 texdiff: 1 runs the SETCOMBINE and TEXTURE words through tex_op as before */
+static int rm_apply_impl(u32 w1) {
     const Gfx* g = (const Gfx*)w1;
     int n = 0;
     for (;;) {
@@ -2794,7 +2796,13 @@ static int rm_apply(u32 w1) {
             pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
             continue;
         }
-        if (op == G_SETCOMBINE || op == G_TEXTURE) { tex_op(a0, a1); continue; } /* DLF5: the dispatch handler, in list order */
+        if (rm_gen && (op == G_SETCOMBINE || op == G_TEXTURE)) { tex_op(a0, a1); continue; }
+        if (op == G_SETCOMBINE) { /* M4: the op function, no dispatch; the sync is left out when the TEXTURE word after it syncs */
+            tex_gen++; pm_gbi_cur_op = op; op_setcombine(a0, a1);
+            if (!(k + 1 < n && (g[k + 1].words.w0 >> 24) == G_TEXTURE)) sync_combine();
+            continue;
+        }
+        if (op == G_TEXTURE) { tex_gen++; pm_gbi_cur_op = op; op_texture(a0, a1); sync_combine(); continue; }
         unsigned len = (a0 & 0xff) + 1, field = (a0 >> 8) & 0xff, sft = 32 - field - len;
         unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
         if (op == G_SETOTHERMODE_H) {
@@ -3337,6 +3345,19 @@ static __attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
 }
 static void tb_bind(const Gfx* g) {
     if (PMD("texdiff")) tb_diff(g); else tb_ops(g);
+}
+static int rm_apply(u32 w1) { /* M4: with texdiff the list runs both ways from the same start state and the end states are compared */
+    if (!PMD("texdiff")) return rm_apply_impl(w1);
+    static TexSnap s0, eg, ef; static unsigned runs, bad; char names[256]; int n = 0, r;
+    ts_save(&s0); rm_gen = 1; r = rm_apply_impl(w1); rm_gen = 0; ts_save(&eg); ts_load(&s0); rm_apply_impl(w1); ts_save(&ef);
+#define TS_CMP(f) if (memcmp(&eg.f, &ef.f, sizeof eg.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
+    TS_FIELDS(TS_CMP)
+#undef TS_CMP
+    runs++;
+    if (n) { bad++; if (bad <= 40) pm_log("texdiff rm f%u list %08x DIFF: %s", pm_frame_count(), w1, names); }
+    if (!(runs % 500)) pm_log("texdiff rm f%u runs %u diffs %u", pm_frame_count(), runs, bad);
+    ts_load(&eg);
+    return r;
 }
 
 static void gbi_run_body(void* list, unsigned nbytes);
