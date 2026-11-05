@@ -4,7 +4,13 @@
 Every map model (src/model.c appendGfx_model) writes producer records, no N64 words. Then the walker model path (G_PM_MODEL header, mg_run, G_PM_TEX, pm_dlc.inc.c) is deleted. This is slice S3 of the plan to replace the display list walker. User priority: reach the replacement. Per-row speed gains are not a gate.
 
 ## Start state
-Branch nds1. M4-2 done (record for plain opaque 1CYC models: texture list + render mode, commit 6411d34ec; handoff docs/handoff/agent_m4.md). Tree: user files only.
+Branch nds1. Last commit 7a429f463. Tree: user files only. S3F-1 is DONE (eeba51266 matrix, dfbf5d131 lights). Start at S3F-2.
+STATE from the previous agent:
+- done: S3F-1a, S3F-1b (host PASS, mdldiff 0 diffs, seam frame 200 4 px; frames 201, 202 about 1 percent, largest region 519 px, world right by eye)
+- not checked: matrix stack top is not in TS_FIELDS. Add it to the mdldiff compare in S3F-2 (small, a debug check).
+- the record cannot carry yet: panner, billboard, custom gfx, local vertex copy, transform group member, 2CYC, fog, shroud, depth, remap tints (S3F-2 scope)
+- pitfall: gSPMatrix stores params XOR G_MTX_PUSH; record words must equal what the macro writes.
+- next: S3F-2 at `recOn = plain &&` in src/model.c, then mdldiff, seam_pic.
 
 ## Rows (in order, commit after each)
 1. S3F-1 matrix and lights in the record. The record carries model->finalMtx (or the billboard matrix) and the lights group; the consumer does what the G_MTX and gSPSetLights* words did (pm_gbi.c G_MTX handler and gbi_movemem light path, same functions, no copy of their logic). Anchors: appendGfx_model grep `gSPMatrix((*gfxPos)++, model->finalMtx` and `gSPSetLights0((*gfxPos)++`. Extend mdldiff to compare the matrix stack top and the light block.
