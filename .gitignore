@@ -68,6 +68,8 @@ compile_commands.json
 
 /ver/*/asm/data/rsp/*.s
 3ds/logs/
+# bench index: rebuilt from 3ds/logs/perf/runs.jsonl (tracked) by `bench.py rebuild`
+3ds/logs/perf/bench.db
 3ds/*.log
 !3ds/PROGRESS.log
 3ds/*.out

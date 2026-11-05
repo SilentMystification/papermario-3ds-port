@@ -12,11 +12,34 @@ import re, sys, collections
 AT = re.compile(r"prof f(\d+) w\d+ at (\S+) (-?\d+):(-?\d+) m(-?\d+) sp(-?\d+) b(-?\d+) e(-?\d+) chg(\d)(?: pos0 (-?\d+) (-?\d+) (-?\d+))?(?: pos (-?\d+) (-?\d+) (-?\d+))?")
 F1 = re.compile(r"prof f(\d+) w\d+ fps ([\d.]+) \| ft ([\d.]+)")
 F2 = re.compile(r"prof f(\d+) w\d+ nd ([\d.]+) lg ([\d.]+) .* gb ([\d.]+)")
+PROF = re.compile(r"prof f(\d+) w(\d+) (.*)")
+NUM = re.compile(r"-?\d+(\.\d+)?")
+
+
+def fields(rest):
+    """Every name followed by a number on a prof line. Names after `tgt` and `meas` (the budget line) get a tgt_ or meas_ prefix; `|` resets it."""
+    out, pre, toks, i = {}, "", rest.split(), 0
+    while i < len(toks):
+        t = toks[i]
+        if t == "|":
+            pre = ""
+        elif t in ("tgt", "meas"):
+            pre = t + "_"
+        elif re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", t) and i + 1 < len(toks) and NUM.fullmatch(toks[i + 1]):
+            out[pre + t] = float(toks[i + 1])
+            i += 1
+        i += 1
+    return out
 
 
 def parse(path):
     win = collections.OrderedDict()  # frame -> dict
     for ln in open(path, errors="replace"):
+        mp = PROF.search(ln)
+        if mp and not mp.group(3).startswith("at "):
+            w = win.setdefault(int(mp.group(1)), {})
+            w["wsize"] = int(mp.group(2))
+            w.setdefault("fields", {}).update(fields(mp.group(3)))
         m1, m2, a = F1.search(ln), F2.search(ln), AT.search(ln)
         if m1:
             w = win.setdefault(int(m1.group(1)), {})
@@ -30,7 +53,8 @@ def parse(path):
             w["chg"] = a.group(9) == "1"
             w["pos0"] = tuple(int(a.group(i)) for i in (10, 11, 12)) if a.group(10) else None
             w["pos"] = tuple(int(a.group(i)) for i in (13, 14, 15)) if a.group(13) else None
-    for w in win.values():
+    for frame, w in win.items():
+        w["frame"] = frame
         w.setdefault("key", "untagged")
         w.setdefault("chg", False)
     by = collections.defaultdict(list)

@@ -1,0 +1,475 @@
+{
+  "version": 1,
+  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted).",
+  "push_base": "audiostat texstat pacestat logstat",
+  "consoles": {
+    "o3dsxl": "192.168.1.131"
+  },
+  "benches": [
+    {
+      "name": "boot_mem",
+      "kind": "azahar_stream",
+      "purpose": "Boot with no warp: boot options line and the memory line (linear and heap KB).",
+      "scenario": "boot_opts",
+      "cap": 30,
+      "until": "options: boot dz_cs=",
+      "tags": [
+        "azahar",
+        "boot",
+        "memory"
+      ],
+      "log_metrics": [
+        {
+          "name": "linear_kb",
+          "regex": "memory: linear (\\d+)KB",
+          "pick": "last"
+        },
+        {
+          "name": "heap_kb",
+          "regex": "memory: linear \\d+KB, heap (\\d+)KB",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "linear_kb",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "toad_standing",
+      "kind": "console_prof",
+      "purpose": "Toad Town street, Mario standing at pos -264 20 -326, prof mode: the baseline of frame_budget.md.",
+      "scene_match": "mac_01 m4 sp-107 b0 e0",
+      "recipe": "warp=mac_01:0 story=ch0_toad_town pos=-264:20:-326 prof=4 loglevel=debug",
+      "scenario": "prof_scene",
+      "host": "o3dsxl",
+      "cap": 60,
+      "until": "prof f\\d+ w300 fps",
+      "tags": [
+        "console",
+        "prof",
+        "standing"
+      ],
+      "gates": [
+        {
+          "metric": "fps",
+          "op": ">=",
+          "ref": "baseline"
+        },
+        {
+          "metric": "ft_ms",
+          "op": "<=",
+          "ref": "baseline"
+        }
+      ]
+    },
+    {
+      "name": "toad_walk",
+      "kind": "console_prof",
+      "purpose": "Toad Town street, fixed walk by padscript, prof mode: cost while Mario moves.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 story=ch0_toad_town padscript=go_91_87_900,wait60,go_-300_-300_700 prof=4 loglevel=debug",
+      "scenario": null,
+      "host": "o3dsxl",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ fps",
+      "tags": [
+        "console",
+        "prof",
+        "walk"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_console",
+      "kind": "console_prof",
+      "purpose": "Battle scene (one Goomba on kmr_03), prof mode: frame cost in battle.",
+      "scene_match": null,
+      "recipe": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 prof=4 loglevel=debug",
+      "scenario": "battle_start",
+      "host": "o3dsxl",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ fps",
+      "tags": [
+        "console",
+        "prof",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menu_console",
+      "kind": "console_prof",
+      "purpose": "Pause status menu open, phase windows: cpu ms per frame and closes per frame.",
+      "scene_match": null,
+      "recipe": "preset=toad padscript=wait80,START*3,wait615,START*3 prof=4 phase loglevel=debug",
+      "scenario": "pause_menu",
+      "host": "o3dsxl",
+      "cap": 60,
+      "until": "phase W f2[3-9]\\d-",
+      "tags": [
+        "console",
+        "phase",
+        "menu"
+      ],
+      "log_metrics": [
+        {
+          "name": "cpu_ms",
+          "regex": "phase W f\\d+-\\d+ n \\d+ .*cpu \\(wall-idle-fbegin\\) ([0-9.]+)/",
+          "pick": "last"
+        },
+        {
+          "name": "closes",
+          "regex": "phase count avg/max per frame: tri .* flush (\\d+)/",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "seam_pic",
+      "kind": "azahar_pic",
+      "purpose": "Toad Town street picture with the CPU path triangle route counts (opsplit line). A person reads the shot.",
+      "scenario": "mac01_seam",
+      "cap": 90,
+      "until": "opsplit f",
+      "tags": [
+        "azahar",
+        "pic",
+        "seam"
+      ],
+      "log_metrics": [
+        {
+          "name": "ops",
+          "regex": "opsplit f\\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "texdiff",
+      "kind": "azahar_stream",
+      "purpose": "Toad Town street, M4 texture bind state-diff check over 6000 runs.",
+      "scenario": "mac01_texdiff",
+      "cap": 60,
+      "until": "runs 6000 diffs",
+      "tags": [
+        "azahar",
+        "stream",
+        "texdiff",
+        "gate"
+      ],
+      "log_metrics": [
+        {
+          "name": "runs",
+          "regex": "texdiff f\\d+ runs (\\d+) diffs",
+          "pick": "last"
+        },
+        {
+          "name": "diffs",
+          "regex": "texdiff f\\d+ runs \\d+ diffs (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "diffs",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "ndplan",
+      "kind": "azahar_stream",
+      "purpose": "Toad Town street walk, native plan layout check against the old path (ndplan line).",
+      "scenario": "mac01_ndplan",
+      "cap": 90,
+      "until": "ndplan runs 12000",
+      "tags": [
+        "azahar",
+        "stream",
+        "nd",
+        "gate"
+      ],
+      "log_metrics": [
+        {
+          "name": "runs",
+          "regex": "ndplan runs (\\d+) mismatches",
+          "pick": "last"
+        },
+        {
+          "name": "mismatches",
+          "regex": "ndplan runs \\d+ mismatches (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "mismatches",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "ndunit",
+      "kind": "azahar_stream",
+      "purpose": "Toad Town street walk, texture unit 0 register check against the native unit words (ndunit line).",
+      "scenario": "mac01_ndunit",
+      "cap": 90,
+      "until": "ndunit after: runs 9000",
+      "tags": [
+        "azahar",
+        "stream",
+        "nd",
+        "gate"
+      ],
+      "log_metrics": [
+        {
+          "name": "runs",
+          "regex": "ndunit after: runs (\\d+) unit off",
+          "pick": "last"
+        },
+        {
+          "name": "unit_off",
+          "regex": "ndunit after: runs \\d+ unit off (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "unit_off",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "nd_host",
+      "kind": "host_test",
+      "purpose": "Native draw host tests in docker pm3ds-host:1 (gate G1). Needs the docker daemon.",
+      "command": "sh 3ds/tools/nd_host_test.sh",
+      "cap": 600,
+      "tags": [
+        "host",
+        "nd",
+        "gate"
+      ],
+      "gates": [
+        {
+          "metric": "rc",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "ndt_host",
+      "kind": "host_test",
+      "purpose": "NDT2 host tests: combiner, matrix, fp24 dp4, record. Replaces nat_host_test.sh (not in the tree).",
+      "command": "sh 3ds/tools/ndt_host_test.sh",
+      "cap": 120,
+      "tags": [
+        "host",
+        "ndt",
+        "gate"
+      ],
+      "gates": [
+        {
+          "metric": "rc",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    }
+  ],
+  "legacy": {
+    "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",
+    "names": [
+      "warpmenu_sub",
+      "profmenu_row",
+      "nok02_tri_dd",
+      "nok02_tri",
+      "nok02_dlccheck",
+      "nok02_noboxint",
+      "nok02_stdump_on",
+      "nok02_stdump_off",
+      "nok02_behroute",
+      "nok02_skipdump",
+      "nok02_nobox",
+      "yard",
+      "yard_shot",
+      "ndst_yard",
+      "yard_shot_rp",
+      "nok11_splash",
+      "yard_wide",
+      "yard_stereo_l",
+      "yard_stereo_r",
+      "mac01_sp0",
+      "mac01_walk",
+      "mac01_walkdiff",
+      "mac01_walkshots",
+      "ndwalk_170",
+      "ndwalk_230",
+      "ndwalk_300",
+      "ndwalk_400",
+      "tex_kmr_11",
+      "kmr_10_band",
+      "nok14_lake",
+      "kmr_10_dd",
+      "kmr_10_near",
+      "kmr_10_clamp",
+      "kmr_10_clamp1",
+      "kmr_10_rep1",
+      "kmr_10_rt1",
+      "bowser_intro_fire",
+      "intro_bowser_scout",
+      "kmr_10_ddonly",
+      "tex_kmr_10",
+      "tex_kmr_09",
+      "tex_kmr_12",
+      "tex_kmr_04",
+      "tex_kmr_05",
+      "tex_kmr_06",
+      "tex_kmr_07",
+      "tex_kmr_02",
+      "tex_hos_01",
+      "aud2_cache",
+      "yard_pace",
+      "yard_phase",
+      "mac01t_dcsum",
+      "yard_dcsum",
+      "yard_fsplit",
+      "yard_pmu",
+      "yard_poshud",
+      "mac01t_fsplit",
+      "mapchange_hud",
+      "mapchange_poshud",
+      "mapchange_allrows",
+      "exit_armed",
+      "mac01t_cap1",
+      "mac01t_rec_chk",
+      "yard_stc",
+      "yard_rp",
+      "yard_rec",
+      "mac01t_rp",
+      "mac01t_rec",
+      "mac01t_prof",
+      "pause_fsplit",
+      "yard_live",
+      "mac01",
+      "ndobj_mac01",
+      "mac01_texprof",
+      "forest_mim",
+      "mac01t",
+      "mac01t_mr0",
+      "tour10",
+      "tour_k30",
+      "tour_no_warp",
+      "pause_pcopen",
+      "pause_pcopen_gbi",
+      "field_mac00",
+      "battle_start_enc",
+      "battle_start_fb",
+      "battle_start_fbvram",
+      "battle_start_gp",
+      "battle_menu_bar",
+      "battle_danger",
+      "thunder_box",
+      "sewer",
+      "ruins",
+      "sun_sbk",
+      "volcano",
+      "volcano_nb",
+      "volcano_l2",
+      "attract_no_warp",
+      "partner_menu",
+      "file_select",
+      "fileselect_rotate",
+      "pause_spin",
+      "pause_spin_grab",
+      "yard_vramfill",
+      "kzn19_texstat",
+      "mac01_texstat",
+      "text_menu",
+      "house_sign",
+      "super_text",
+      "full411",
+      "toad_gate",
+      "mac01s",
+      "toad_fountain",
+      "ui1_choice",
+      "toad_house_menu",
+      "toad_water",
+      "toad_pond",
+      "toad_pond_zround",
+      "jump_azahar",
+      "jump_off_azahar",
+      "boot_noprof_azahar",
+      "boot_jump_azahar",
+      "intro_jump_azahar",
+      "logcon_err",
+      "logcon_dbg",
+      "logcolor",
+      "botlayout",
+      "botlayout_menu",
+      "kmr10_pos",
+      "merlon_ball",
+      "merlon_ball60",
+      "merlon_door",
+      "kmr10_pos_hi",
+      "mario_proj_off",
+      "mario_proj_wide",
+      "pause_spin_wide",
+      "talk_wide",
+      "battle_wide",
+      "battle_target_wide",
+      "talk_off",
+      "coin_wide",
+      "warpfix_live",
+      "yard_texwin0",
+      "mac01t_texwin0",
+      "kmr_10_dd_texwin0",
+      "chapter_wide",
+      "intro_native",
+      "warpfix_boot_save",
+      "warpfix_fswarp_save",
+      "warpfix_boss",
+      "census_yard",
+      "census_yard_rp",
+      "census_toad",
+      "census_toad_rp",
+      "golden_multi",
+      "kzn19_slotpeak",
+      "battle_slotpeak",
+      "pause_slotpeak",
+      "chain_slotpeak",
+      "hos01_texword",
+      "texwrap_wall",
+      "texreg_wall",
+      "texreg_coin",
+      "census_mac01",
+      "census_toad_shot",
+      "hos01_texmax",
+      "texstride_wall",
+      "texdump_coin",
+      "coin_kmr03",
+      "coin_dgb13",
+      "prof_boot",
+      "savefile_check",
+      "ndref_toad",
+      "ndref_yard",
+      "ndref_pause",
+      "ndref_battle",
+      "ndref_text",
+      "ndref_title",
+      "ndref_splash",
+      "ndref_stereo"
+    ]
+  }
+}
