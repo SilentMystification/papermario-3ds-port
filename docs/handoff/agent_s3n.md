@@ -1,21 +1,28 @@
 # Agent S3N: map model records draw natively
 
 ## STATE
-branch: nds1 | S3N-3a committed (48dc9ed53, nd_model_state + host case 6). S3N-3b committed (ndmcheck switch, pm_gpu.c ndm_*, pm_gbi.c rec_run arm).
-done: S3N-0, S3N-1, S3N-2, S3N-3a, S3N-3b code (the tool works: prints ndmcheck lines in prof=4 via pm_log_prof_line).
-3b gate NOT met in substance: spot_mac01 run (Azahar start 8 of 8, S3N budget at cap, not reset): `ndmcheck f300 recs 38886 eq 0 diff 0 fb 38886 legacy 0 nodraw 0`.
-  diff 0 is vacuous: every record falls back (B8), so no draw was compared. spot_mac00 and spot_sbk56 NOT run.
-open: B8 (blocks a real 3b gate, 3c validation and S3N-4). 3c NOT started (its gate cannot be tested under B8). S3N-4, S3N-5 not started.
-budget S3N: 8 of 8 used (at cap, no reset). Reset only with the coordinator decision on B8.
-next: user decision on B8, then 3b gate on the 3 spots, then 3c.
+branch: nds1 | commits: 48dc9ed53 (3a), 7e80630bb (3b ndmcheck), 0cc27f058 (3b B8 merge, nost, uvso compare, reasons), handoff commits b1cddbdc1, 66e0bf869, and this one.
+done: S3N-0, S3N-1, S3N-2, S3N-3a, S3N-3b code (B8 implemented per coordinator).
+3b gate NOT met (eq 0 on all 3 spots). Azahar on committed 0cc27f058 (budget reset at start, now 6 of 8):
+  mac_01: recs 38886 eq 0 diff 0 fb 38886 nost 0 why 3154 0 0 0 0 0 0 (begin fallback, not counted in why)
+  mac_00: recs 44608 eq 0 diff 0 fb 44608 nost 0 why 3243
+  sbk_56: recs 23221 eq 0 diff 0 fb 23221 nost 0 why 0 (all fallback at record begin)
+  diff 0 is vacuous (no draw compared). nost 0: B8 merge never reached (fallback first).
+3c NOT started (no compare possible until B9 is decided).
+budget S3N: 6 of 8 (reset once at the coordinator's order).
+next: user decision on B9, then 3b gate eq above 0 and diff 0, then 3c.
 
-B8 (new, BLOCKS 3b gate, 3c, S3N-4): the plan rule B5 (om_h bits 20-21 and om_l mask 0xF0FF1C33 must all be written by the render list) fails for every model render list. nd_render_state reads om_l bits 0, 1 (alpha compare), 4, 5, 10-12, 16-23, 28-31 and the om_h cycle type. A list from gDPSetRenderMode writes bits 3-31 of om_l only and no om_h cycle type, so nd_mode_compile returns ok 0 and the record falls back. Measured: 38886 of 38886 records fallback at mac_01 (300 frames).
+B8 DECIDED (coordinator): om_l = (nd_st.om_l & ~written) | list bits; om_h likewise. Read bits with no nd_st value: nost (-1). Done in nd_model_state (merge) and nd_state.c (om_kh, om_kl known masks).
+  Deviation: cycle type from the merged om_h (not "2CYC flag of the record class"). R3 has no 2CYC flag; the merged cycle type is the only source. ndmcheck would show a wrong cycle type as diff.
+  uvso, cmul, cadd, zmix compared: native gv = gv_params_calc (pm_gbi.c, now non-static) with tss from nd_st tex_s, tex_t; the other gv inputs are walker state at compare time (not independent).
+
+B9 (new, BLOCKS 3b gate, 3c): nd_mode_compile (B6, my default) rejects any render list op other than SETOTHERMODE_H/L. The walker's rm_apply_impl (pm_gbi.c) also accepts G_SETCOMBINE, G_TEXTURE and G_GEOMETRYMODE in a render list. Most model render lists hold those ops, so the record falls back at begin (fb 100% at 3 spots).
+  Consequence for a native draw: a SETCOMBINE in the list replaces the record combine entry (rec_apply runs the entry first, then rm_apply), so B7 (combine from the record) is wrong for such lists. A TEXTURE op changes the texture state. A GEOMETRYMODE op changes z and cull and lighting, which are the geometry state the record does not carry.
   Options for the user:
-  (a) producer change (src/model.c): the record writes the full om_h and om_l words the model needs (cycle type, alpha compare, all read bits). Pixel risk: the walker state the model currently inherits must equal the defaults written. Needs picture check.
-  (b) walker sticky values for unwritten bits (ctx from the walker at record entry, not native). Keeps the walker state dependence the plan wants gone.
-  (c) narrow the read mask to the bits every model list writes, and prove the rest is constant for models (needs a walker scan of all ModelRenderModes lists).
-  Plan default (B5 as written): fallback. Taken for now: this is the default and it keeps the 3b check honest (no native draw without the state). Not chosen: any of (a) to (c) without the user.
-
+  (a) keep B6: fallback (current; 3b gate stays vacuous, no native model draws).
+  (b) native list ops: apply SETCOMBINE from the list over the record entry (B7 rule changes), TEXTURE through nd_words, GEOMETRYMODE into the z and cull inputs. Needs nd_model_state to take the list's combine and geometry words, plus compare fields for them.
+  (c) strip those ops from the producer render lists (src/model.c): a picture-changing producer change, needs a picture check.
+  Plan default (B6 as written): fallback. Taken for now.
 B7 (new, BLOCKS S3N-3): the combine mode and the TEV key of a draw come from sync_combine (pm_gbi.c 1081: sync_combine_work_timed, sync_legacy, decide, pm_comb_colours; memo scm_sig/scm_find). Its inputs include walker texture state (td[0..1].valid, tile formats and sizes, ldrec, tex_on, use_t1), box_pat, box_prod, box_folded, dual_on, comb_set, comb_alpha_shade, leg_mode. A native model draw has none of this. ndmcheck would compare a key the native path cannot build. Options: (a) port sync_legacy and decide into a pure function over an input struct the record and the handle desc fill (large; box and dual state need records too); (b) keep the walker combine for models and have nd_model_draw read the mode the walker last set (a stale-state risk); (c) S3N-3 compares only the parts natively derivable (render state, unit words, matrix, palette, geometry ranges) and logs combine and tev as skipped. Plan default NOT chosen: the user decides.
 
 B7 DECIDED (coordinator, plan_native_system.md 2.3): native model draws always use combine 8. The TEV plan comes from pm_comb_build over the record combine words (R4 entry w0, w1; two = 2CYC class; t1only as nd_raw_native sets it). Colours from the record (prim, env, fog, blend). No port of sync_legacy, decide, box or dual. Fallback when pm_comb_build refuses (rc != 0) or the plan uses tex1 or noise. ndmcheck compares all fields including combine and TEV. A diff where the walker chose a legacy mode is logged as class `legacy` (counted apart, not a failure). The gate for those models is the picture by eye in S3N-4.
