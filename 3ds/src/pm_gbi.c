@@ -4187,6 +4187,10 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     }
     pm_gbi_run((void*)l, 0);
 }
+/* S3G-2: the words after a record: n words run in place (no ENDDL needed, pm_gbi_run stops at its end pointer). */
+static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {
+    pm_gbi_run((void*)l, n * 8u);
+}
 static __attribute__((noinline)) void rec_apply(const Gfx* q) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
     rec_n++;
@@ -4197,7 +4201,8 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q) {
     if (q[3].words.w1) rec_lights((const Lightsn*)(uintptr_t)q[3].words.w1, q[2].words.w0); /* S3F-1b: lights, as the old word order */
     u32 w0 = q->words.w0;
     const Gfx* tg = (const Gfx*)(uintptr_t)q->words.w1;
-    tb_ops(tg);
+    if (q[13].words.w0) rec_aux(q + G_PM_REC_WORDS, q[13].words.w0); /* S3G-2: the words after the record (special tile list, untextured ops) run in place of the bind */
+    else if (tg) tb_ops(tg);
     if (q[4].words.w1) { /* S3F-2: the combine word, after the bind as in the old order */
         const Gfx* e = (const Gfx*)(uintptr_t)q[4].words.w1;
         rec_op(e->words.w0, e->words.w1);
@@ -4225,7 +4230,7 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     rec_dl((const Gfx*)(uintptr_t)q[12].words.w0);  /* S3G-1: geometry (0 when none) */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
     if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
-    return G_PM_REC_WORDS - 1; /* R1 to R12: matrix, lights, fog, combine, prim, env, blend, shroud, billboard, panner, custom gfx, geometry, pop */
+    return G_PM_REC_WORDS - 1 + q[13].words.w0; /* R1 to R12: matrix, lights, fog, combine, prim, env, blend, shroud, billboard, panner, custom gfx, geometry, pop; then the R13 words */
 }
 
 static void gbi_run_body(void* list, unsigned nbytes) {

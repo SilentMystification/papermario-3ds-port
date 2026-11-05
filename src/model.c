@@ -1427,6 +1427,7 @@ void appendGfx_model(void* data) {
     u32 rPrim = 0, rEnv = 0, rBlend = 0, rShC2 = 0; /* R6 w0 and w1, R7 w0 and w1 */
     u32 rBbW[2] = {0, 0}, rPanW[4] = {0, 0, 0, 0}; /* S3F-2c: R8 billboard op words, R9 and R10 panner tile op words (0 when none) */
     Gfx* recPre = nullptr, *recPost = nullptr, *recGeom = nullptr; /* S3G-1: R11 custom gfx pre and post lists, R12 geometry list (0 when none) */
+    u32 recAuxN = 0;        /* S3G-2: words after the record that the texture block wrote (special tile list, untextured ops), R13 w0 */
     u32 recPop = 0;         /* S3G-1: R12 w1, 1 when the model pops the matrix after its geometry */
 #endif
 
@@ -1535,11 +1536,9 @@ void appendGfx_model(void* data) {
      * classes shroud, depth and remap, panner, billboard, custom gfx, local vertex copy, IGNORE_MATRIX, the special tile list (its own list). */
     specialTex = textureHeader != nullptr && (extraTileType == EXTRA_TILE_AUX_INDEPENDENT || extraTileType == EXTRA_TILE_4)
         && get_model_property(modelNode, MODEL_PROP_KEY_SPECIAL) != nullptr;
-    recOn = textureHeader != nullptr && !specialTex
-        && (renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC || renderClass == RENDER_CLASS_FOG
-            || renderClass == RENDER_CLASS_1CYC_DEPTH || renderClass == RENDER_CLASS_2CYC_DEPTH
-            || ((renderClass == RENDER_CLASS_1CYC_SHROUD || renderClass == RENDER_CLASS_2CYC_SHROUD) && ShroudTintAmt != 255))
-        && !(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY);
+    /* S3G-2: every model is a record. The shroud tint at 255 draws nothing and returns before the record (the old early return). */
+    if ((renderClass == RENDER_CLASS_1CYC_SHROUD || renderClass == RENDER_CLASS_2CYC_SHROUD) && ShroudTintAmt == 255) return;
+    recOn = 1;
     recSkip = recOn;
     /* SR2: w1 = pmSlot (bits 0 to 7), static matrix (bit 8: finalMtx is savedMtx, not billboard), pmMtxVer (bits 16 to 31).
      * M4-2: bit 9 = the model has a producer record (pm_gbi.c rec_run). S3F-4: no header op; the value goes to the record (R1 w1). */
@@ -1563,7 +1562,7 @@ void appendGfx_model(void* data) {
         recWord = (*gfxPos);
         (*gfxPos) += G_PM_REC_WORDS;
         recWord->words.w0 = (u32)G_PM_REC << 24;
-        recWord->words.w1 = (u32)textureHandle->gfx;
+        recWord->words.w1 = (textureHandle != nullptr) ? (u32)textureHandle->gfx : 0u; /* S3G-2: 0 for an untextured model */
         recWord[1].words.w0 = (u32)((((flags & MODEL_FLAG_TRANSFORM_GROUP_MEMBER) ? G_MTX_MUL : G_MTX_LOAD) | G_MTX_PUSH | G_MTX_MODELVIEW) ^ G_MTX_PUSH);
         recWord[1].words.w1 = hdrW1;
         recWord[2].words.w0 = (model->groupData != nullptr) ? (u32)model->groupData->numLights : 0u;
@@ -1661,6 +1660,10 @@ void appendGfx_model(void* data) {
         gDPSetColorDither((*gfxPos)++, G_CD_MAGICSQ);
         gDPSetAlphaDither((*gfxPos)++, G_AD_PATTERN);
     }
+
+#ifdef TARGET_3DS
+    recAuxN = (u32)(*gfxPos - (recWord + G_PM_REC_WORDS)); /* S3G-2: the texture words sit right after the record */
+#endif
 
     // setup combine modes for main/aux texture blending when fog or tint is enabled
     if (tintCombineType != TINT_COMBINE_NONE
@@ -2065,8 +2068,15 @@ void appendGfx_model(void* data) {
             fogMin = (gFogSettings->startDistance * (255 - ShroudTintAmt) + 900 * ShroudTintAmt) / 255;
             fogMax = (gFogSettings->endDistance * (255 - ShroudTintAmt) + 1000 * ShroudTintAmt) / 255;
 
-            gDPSetFogColor(gMainGfxPos++, fogR, fogG, fogB, gFogSettings->color.a);
-            gSPFogPosition((*gfxPos)++, fogMin, fogMax);
+            {
+                Gfx fc, fp;
+                gDPSetFogColor(&fc, fogR, fogG, fogB, gFogSettings->color.a);
+                gSPFogPosition(&fp, fogMin, fogMax);
+#ifdef TARGET_3DS
+                rFlags |= 2; fogColW = fc.words.w1; fogPosW = fp.words.w1; /* S3G-2: the fog words of the record (fog after the render mode) */
+#endif
+                if (!REC_SKIP) { *(*gfxPos) = fc; (*gfxPos)++; *(*gfxPos) = fp; (*gfxPos)++; }
+            }
             break;
         case RENDER_CLASS_1CYC_DEPTH:
         case RENDER_CLASS_2CYC_DEPTH:
@@ -2181,7 +2191,9 @@ void appendGfx_model(void* data) {
 
 #ifdef TARGET_3DS
     if (recWord != nullptr) { /* S3F-2b, S3F-2c: the record values. The count is the old words after the record (mdldiff only, else 0). */
-        recWord->words.w0 = ((u32)G_PM_REC << 24) | ((u32)renderModeIdx << 16) | ((((u32)(textureHandle - TextureHandles)) & 0x7fu) << 8);
+        recWord->words.w0 = ((u32)G_PM_REC << 24) | ((u32)renderModeIdx << 16) | ((textureHandle != nullptr) ? ((((u32)(textureHandle - TextureHandles)) & 0x7fu) << 8) : 0u);
+        recWord[13].words.w0 = recAuxN; /* S3G-2: count of the words after the record (rec_apply runs them in place of the bind) */
+        recWord[13].words.w1 = 0;
         recWord[3].words.w0 = rFlags | ((flags & MODEL_FLAG_IGNORE_MATRIX) ? 256u : 0u);
         recWord[4].words.w0 = fogColW;
         recWord[4].words.w1 = (u32)(uintptr_t)combWord;
@@ -2202,7 +2214,7 @@ void appendGfx_model(void* data) {
 
     // render the model
 #ifdef TARGET_3DS
-    if (recOn) recGeom = modelNode->displayData->displayList; /* S3G-1: the record runs it (no local vertex copy: recOn is 0) */
+    if (recOn) recGeom = (flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY) ? nullptr : modelNode->displayData->displayList; /* S3G-1: the record runs it; a local copy's list is the script's own G_DL */
     else
 #endif
     if (!(flags & MODEL_FLAG_HAS_LOCAL_VERTEX_COPY)) {
