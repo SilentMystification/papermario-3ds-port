@@ -98,6 +98,10 @@ void nd_gv_params(const NdGvIn* in, NdGvP* o);
 float nd_shift_mul(unsigned n);     /* tile shift to scale: 1 for 0, 1 / 2^n for n up to 10 */
 float nd_prim_ndc_z(unsigned prim_z);
 
+
+/* S3N-1 (B5, B6): a render mode list (ModelRenderModes[i], Gfx pairs ending in G_ENDDL) as a native state. ok 1 only when the list has SETOTHERMODE_H/L ops
+ * alone and writes every bit nd_render_state reads. Then r is the render state of the list (depth_img 0). nd_mode_compile returns m->ok. */
+
 /* NDTEX (S1-6): texture descriptor to a texture block id. cms, cmt: the G_SETTILE wrap flags (bit 0 mirror, bit 1 clamp), masks, maskt: the tile mask exponents.
  * The tile shift is not a texture unit word: it goes to the uv offset and scale of the draw. */
 typedef struct NdTexDesc {
@@ -115,6 +119,12 @@ uint32_t nd_tex_dim(unsigned w, unsigned h);
 void nd_tex_reset(void);
 int nd_tex_get(const NdTexDesc* d);          /* block id, loading the image through pm_tex.c on a miss; -1 when it fails or the table is full */
 const uint32_t* nd_tex_block(int id);        /* dim, param, lodParam, data address >> 3 */
+/* S3N-1 (B4): the texture descriptor of a map model handle, set once when load_texture_impl builds the handle (model.c, TARGET_3DS). Common case only:
+ * one tile (extra 0), no aux raster. Other handles stay unset (nd_tex_handle_desc returns NULL: the walker draws them). masks and maskt are INTEGER_LOG2 of the size (the same macro as make_texture_gfx). */
+void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
+                       unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);
+/* the descriptor of handle index when its list (gfx) is the one set; NULL otherwise */
+const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx);
 
 /* NDST (S2-1): the native state, set by nd_words() from the words the bridge form of nd_gbi.h decodes. In the bridge nothing draws from it yet (S2-2 starts);
  * it is the state a native draw reads. nd_words never touches the walker state (nd_mv, nd_proj): the N64 word is written too and the walker runs it. */
@@ -243,6 +253,8 @@ unsigned nd_tmpl_words(int id, const NdTmplWord** out);
 /* Render state rules of the walker (pm_gbi.c sync_render): other mode words to the draw flags. depth_img: the colour image is the z buffer image (a model drawn into
  * it is a depth write). set_memb 0: the memory blend flag is not changed by this state. atest -1 = off. */
 typedef struct NdRender { uint8_t zcmp, zupd, blend, decal, nocol, memb, set_memb, depth; int16_t atest; } NdRender;
+typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; NdRender r; } NdMode;
+int nd_mode_compile(NdMode* m, const unsigned* w);
 void nd_render_state(uint32_t omode_h, uint32_t omode_l, int depth_img, NdRender* o);
 
 /* TEV stage builder, shared by the template and by pm_gpu.c flush_tev_rebuild. st[i] holds the 5 words of C3D_TexEnv stage i

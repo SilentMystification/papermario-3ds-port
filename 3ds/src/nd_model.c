@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "nd.h"
+#include "nd_ops.h"
 
 float nd_shift_mul(unsigned n) {
     return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
@@ -57,4 +58,54 @@ void nd_gv_params(const NdGvIn* in, NdGvP* o) {
             o->fxon = 1;
         }
     }
+}
+
+/* ---- S3N-1 (B4): texture descriptors of the map model handles ---- */
+#define ND_HANDLE_N 128
+static NdTexDesc hd_desc[ND_HANDLE_N];
+static const void* hd_gfx[ND_HANDLE_N];
+static uint8_t hd_ok[ND_HANDLE_N];
+
+void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
+                       unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux) {
+    if (index < 0 || index >= ND_HANDLE_N) return;
+    hd_ok[index] = 0; hd_gfx[index] = gfx;
+    if (extra != 0 || has_aux || !raster || w == 0 || h == 0 || siz > 3) return; /* B4: common case only */
+    NdTexDesc d;
+    memset(&d, 0, sizeof d);
+    d.img = raster; d.pal = palette;
+    d.fmt = (uint8_t)fmt; d.siz = (uint8_t)siz; d.cms = (uint8_t)wrap_w; d.cmt = (uint8_t)wrap_h; d.masks = (uint8_t)masks; d.maskt = (uint8_t)maskt;
+    d.w = (uint16_t)w; d.h = (uint16_t)h; d.stride = (uint16_t)w;
+    d.pal_n = palette ? (siz == 0 ? 16u : siz == 1 ? 256u : 0u) : 0u; /* gDPLoadTLUT_pal16, pal256 */
+    hd_desc[index] = d; hd_ok[index] = 1;
+}
+
+const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx) {
+    if (index < 0 || index >= ND_HANDLE_N || !hd_ok[index] || hd_gfx[index] != gfx) return NULL;
+    return &hd_desc[index];
+}
+
+/* ---- S3N-1 (B5, B6): render mode lists ---- */
+/* the bits nd_render_state reads: om_h cycle type (bits 20, 21); om_l bits 0, 1, 4, 5, 10, 11, 12, 16 to 23, 28 to 31 */
+#define ND_OMH_READ 0x00300000u
+#define ND_OML_READ 0xF0FF1C33u
+
+int nd_mode_compile(NdMode* m, const unsigned* w) {
+    uint32_t mh = 0, ml = 0, vh = 0, vl = 0;
+    m->ok = 0;
+    for (unsigned i = 0; i < 8; i++) {
+        uint32_t w0 = w[2 * i], w1 = w[2 * i + 1];
+        uint32_t op = w0 >> 24;
+        if (op == OP_ENDDL) break;
+        if (op != OP_SETOTHERMODE_H && op != OP_SETOTHERMODE_L) return 0; /* B6: another op is a fallback */
+        unsigned len = (w0 & 0xFFu) + 1u, field = (w0 >> 8) & 0xFFu, sft = 32u - field - len;
+        uint32_t mask = len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1u) << sft;
+        if (op == OP_SETOTHERMODE_H) { mh |= mask; vh = (vh & ~mask) | (w1 & mask); }
+        else { ml |= mask; vl = (vl & ~mask) | (w1 & mask); }
+    }
+    if ((mh & ND_OMH_READ) != ND_OMH_READ || (ml & ND_OML_READ) != ND_OML_READ) return 0; /* B5 */
+    m->om_h = vh; m->om_l = vl;
+    nd_render_state(vh, vl, 0, &m->r);
+    m->ok = 1;
+    return 1;
 }

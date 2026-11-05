@@ -2341,6 +2341,15 @@ void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* head
 
     temp = (Gfx**) &TextureHeapPos;
     gSPEndDisplayList((*temp)++);
+#ifdef TARGET_3DS
+    { /* S3N-1 (B4): the texture descriptor of this handle for the native model draw (3ds/src/nd_model.c) */
+        extern void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
+                                      unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);
+        nd_tex_handle_set((int)(handle - TextureHandles), handle->gfx, handle->raster, handle->palette, header->mainW, header->mainH, header->mainFmt,
+                          header->mainBitDepth, header->mainWrapW, header->mainWrapH, INTEGER_LOG2(header->mainW), INTEGER_LOG2(header->mainH),
+                          header->extraTiles, handle->auxRaster != nullptr);
+    }
+#endif
 }
 
 void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 size) {

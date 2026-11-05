@@ -8,6 +8,7 @@
 
 /* nd_mtx.c links the interpolation hooks; the gv test does not use them */
 int pm_interp_repl;
+uint32_t f32tof24(float f) { (void)f; return 0; } /* nd_tmpl.c (nd_model.c calls nd_render_state): libctru, not used here */
 const float (*pm_interp_find(const void* m))[4] { (void)m; return 0; }
 
 static uint32_t rs = 0x9e3779b9u;
