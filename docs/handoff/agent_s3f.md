@@ -1,9 +1,10 @@
 # Agent S3F: handoff
 
 ## STATE
-branch: nds1 | HEAD at write time: see git log (row file e84cca737)
-done: nothing committed for S3F-1..4 yet. Analysis only.
-S3F-1 blockers: matrix words (model.c gSPMatrix at finalMtx, two sites) need a 3-word record: w0 G_MTX flags, w1 finalMtx, hdr (header w1). Feasible. Lights (model.c gSPSetLights0/N at ~1539): consumer must emit the same lit state. Word encoding under the nd gbi bridge (3ds/include/nd_gbi.h, nd_gbi_leaf.h) not verified; calling those macros from the consumer may touch nd_st. Needs a decision on the light encoding.
-S3F-2..4: not started. Row 4 spots: bench spot_mac01_pic, spot_mac00_pic, spot_sbk56_pic (other session, BENCH4). Not in bench list when this was written.
-Azahar starts used on S3F: 0.
-next: decide the light path (encode via F3DEX2 macros with nd bridge off, or a direct light record), then S3F-1 matrix record first.
+branch: nds1 | commits: eeba51266 (S3F-1a matrix record), dfbf5d131 (S3F-1b lights record)
+done: S3F-1a, S3F-1b (host PASS, mdldiff 0 diffs, seam frame 200 identical or 4 px; frames 201, 202 about 1 percent diff, world right by eye, passed by rule)
+open: S3F-2 (widen recOn to 2CYC, fog, shroud, depth, remap, all modes), S3F-3 (floor reflection, custom gfx ranges), S3F-4 (delete walker model path, grep in done criteria not empty yet)
+not checked: matrix stack top is not in TS_FIELDS (mdldiff does not compare it); picture covers it
+model classes the record cannot carry yet: panner, billboard, custom gfx, local vertex copy, transform group member (matrix path differs: recOn still excludes billboard/panner/custom/local copy via plain)
+Azahar starts on S3F: about 6 (mdldiff x3, seam x4 incl. 1 failed write)
+next: S3F-2. Start at recOn = plain && ... in src/model.c, then mdldiff, seam_pic.
