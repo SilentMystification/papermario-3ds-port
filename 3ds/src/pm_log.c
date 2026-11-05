@@ -410,37 +410,42 @@ void pm_log_prof_line(const char* fmt, ...) {
     va_end(ap);
     wake_writer();
 }
-/* PROF4: switch prof. Keeps log.txt open; only prof lines are written (level none, console off). Removes the stat words
- * phase, pmu, fsplit, sp0c, texstat, audiostat, pacestat, logstat, drawcensus, drawlog from the switch string. Without prof it does nothing.
- * boot_line 1 prints "prof=1 log=off". Ceiling: a later pm_log_set_level or the options panel log toggle is undone by the next call. */
-void pm_log_prof_apply(int boot_line) {
-    static const char* const off_w[] = { "phase", "pmu", "fsplit", "sp0c", "texstat", "audiostat", "pacestat", "logstat", "drawcensus", "drawlog", NULL };
-    char v[16];
-    if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) { prof_mode = 0; return; }
-    prof_mode = 1;
-    static char out[sizeof switches];
-    size_t o = 0;
-    char* p = switches;
-    while (*p) {
-        while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
-        char* e = p;
-        while (*e && *e != ' ' && *e != '\t' && *e != '\n' && *e != '\r') e++;
-        size_t L = (size_t)(e - p);
-        int drop = 0;
-        for (const char* const* w = off_w; *w && !drop; w++) {
-            size_t k = strlen(*w);
-            drop = L >= k && !strncmp(p, *w, k) && (L == k || p[k] == '=');
-        }
-        if (L && !drop) { if (o) out[o++] = ' '; memcpy(out + o, p, L); o += L; }
-        p = e;
-    }
-    out[o] = 0;
-    strcpy(switches, out);
-    dbg_cache_clear();
-    if (!log_file_on) pm_log_set_file(1);
-    log_level = -1;
-    con_lv = 4;
+/* PROF4, PROFROW: the lean prof mode and the Profiling row (pm_phase.c prof_row_apply). Mode 0 off, 1 prof (prof lines only, as prof=4),
+ * 2 phase set. Each mode sets the words it owns. A word that a mode gives up returns to its state at boot (base_has), so a launch word
+ * such as pmu or drawlog comes back when the row leaves prof. base_save runs at the first call, before any change of the words. */
+static const char* const row_w[] = { "phase", "sp0c", "opsplit", "pacestat", "logstat", NULL }; /* owned by the phase mode */
+static const char* const prof_w[] = { "pmu", "fsplit", "texstat", "audiostat", "drawcensus", "drawlog", NULL }; /* off in prof mode */
+#define ROW_N 5
+#define PROF_N 6
+static char base_has[ROW_N + PROF_N];
+static int base_saved;
+static void base_save(void) {
+    if (base_saved) return;
+    base_saved = 1;
+    int k = 0;
+    for (const char* const* w = row_w; *w; w++) base_has[k++] = pm_debug_has(*w) != 0;
+    for (const char* const* w = prof_w; *w; w++) base_has[k++] = pm_debug_has(*w) != 0;
+}
+/* lv and con: the log level and console level to return to. Prof mode sets log level -1 (prof lines only) and console off.
+ * Ceiling: a Log level or Console level change in the options panel while prof mode is on is undone by the next mode change. */
+void pm_log_prof_row(int mode, int lv, int con) {
+    base_save();
+    for (const char* const* w = row_w; *w; w++) pm_log_switch(*w, mode == 2);
+    int k = ROW_N;
+    for (const char* const* w = prof_w; *w; w++, k++) pm_log_switch(*w, mode != 1 && base_has[k]);
+    pm_log_switch("prof", mode == 1);
+    prof_mode = mode == 1;
+    log_level = mode == 1 ? -1 : lv;
+    con_lv = mode == 1 ? 4 : con;
     pass_recalc();
+}
+/* PROF4: switch prof at boot. boot_line 1 prints "prof=1 log=off". */
+void pm_log_prof_apply(int boot_line) {
+    char v[16];
+    base_save();
+    if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) { prof_mode = 0; return; }
+    pm_log_prof_row(1, log_level, con_lv);
+    if (!log_file_on) pm_log_set_file(1);
     if (boot_line) pm_log_prof_line("prof=1 log=off");
 }
 int pm_log_prof_mode(void) { return prof_mode; }

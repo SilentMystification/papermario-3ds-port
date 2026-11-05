@@ -3,6 +3,42 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "profmenu_row",
+      "status": "unverified",
+      "subject": "Port menu Debug tab, row Profiling (row 10). SELECT opens the menu, R R goes to the Debug tab, ten ddown reach the row, A sets it to Prof (mode 1). The bottom shot shows the row value Prof. The prof lines follow once the change applies at the next drawn frame end.",
+      "proves": "PROFROW: the Profiling row sets the prof mode at run time with no launch word. The prof counter setup runs (prof cal line) and the prof report line prints.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,A,wait900 shots shotbottom=236:12 loglevel=debug",
+      "until": "prof f\\d+ w300 fps",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "row set",
+          "regex": "options: profiling prof"
+        },
+        {
+          "name": "prof setup",
+          "regex": "prof cal every 4 set m "
+        },
+        {
+          "name": "prof line",
+          "regex": "prof f\\d+ w300 fps "
+        }
+      ],
+      "reason": "PROFMENU: the Profiling row turns prof on at run time. Until is the prof report line (300 samples at prof=4, 1200 drawn frames). Shot at frames 236 to 247 is the bottom menu with the row value."
+    },
+    {
       "name": "nok02_tri_dd",
       "status": "unverified",
       "subject": "Map nok_02 at player position 250 0 11, frame 200 on the CPU draw path (drawlog turns DLC2 off). Picture: the path end piece near Mario.",

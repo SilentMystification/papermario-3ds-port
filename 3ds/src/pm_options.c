@@ -19,6 +19,11 @@ PmOpt pm_opt = {
 _Static_assert(sizeof(PmOpt) == 21 * sizeof(int), "PmOpt field count changed: update pm_opt above");
 /* ARG1: the saved log and loglevel (options.ini, or the defaults). pm_opt.log and pm_opt.loglevel hold the values of this run (a launch argument may differ). CONLV: sv_conlevel the same for conlevel. */
 static int sv_log = 1, sv_loglevel = 1, sv_conlevel = 1;
+/* PROFROW: the Profiling row. Modes 0 off, 1 prof, 2 phase (the index of prof_name). prof_row is this run, sv_prof the saved value (options.ini profmode=). */
+static const char* const prof_name[3] = { "off", "prof", "phase" };
+static const char* const prof_label[3] = { "Off", "Prof", "Phase" };
+static int prof_row, sv_prof;
+void pm_prof_row_set(int mode); /* pm_phase.c: applies at the next drawn frame end */
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
 static const struct { const char* name; unsigned short mask; } n64_btn[] = { {"NONE", 0}, {"A", 0x8000}, {"B", 0x4000}, {"Z", 0x2000}, {"START", 0x1000}, {"L", 0x0020}, {"R", 0x0010},
@@ -80,8 +85,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nconlevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_loglevel, sv_conlevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud);
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nconlevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_loglevel, sv_conlevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud, prof_name[sv_prof]);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -134,6 +139,12 @@ void pm_options_init(void) {
                 if (end == eq + 1 || *end || v < lo[k] || v > hi[k]) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else *tf = (int)v;
                 continue;
             }
+            if (!strcmp(line, "profmode")) { /* PROFROW */
+                int m;
+                for (m = 0; m < 3 && strcmp(eq + 1, prof_name[m]); m++) {}
+                if (m == 3) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else prof_row = sv_prof = m;
+                continue;
+            }
             if (!strcmp(line, "warp")) { /* PT01b: an old file can hold warp=. A boot-time warp is only for the debug switches. */
                 pm_log_w("options: warp= ignored at boot (value '%s')", eq + 1);
                 continue;
@@ -179,6 +190,22 @@ void pm_options_init(void) {
 /* F11-3: the panel. nofog is live. nolight is cached in pm_gbi.c at first use, so it takes effect at the next boot. */
 static int changed;
 void pm_options_touch(void) { changed = 1; }
+
+/* PROFROW: a row change saves the mode and applies it at the next drawn frame. */
+static void prof_set(int m) {
+    prof_row = sv_prof = m;
+    pm_options_touch();
+    pm_prof_row_set(m);
+    pm_log("options: profiling %s", prof_name[m]);
+}
+/* PROFROW: at boot a launch word (prof or phase) sets this run's mode, as ARG1 does for the log. Without one the saved mode is applied. */
+void pm_options_prof_boot(void) {
+    char v[16];
+    if (pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v)) { prof_row = 1; return; }
+    if (pm_debug_has("phase")) { prof_row = 2; return; }
+    prof_row = sv_prof;
+    if (prof_row) pm_prof_row_set(prof_row);
+}
 
 int pm_options_get(int row) {
     if (row == 6) return pm_opt.log;
@@ -246,7 +273,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400 };
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPTO, RW_ENTRY, RW_WARPNOW, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220 };
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
@@ -265,6 +292,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         for (i = 0; i < 6; i++) ids[n++] = RW_DBG + i; /* HUD .. Log level */
         ids[n++] = RW_DBG + 9; /* Console level, next to Log level */
         for (i = 6; i < 9; i++) ids[n++] = RW_DBG + i; /* Fixed seed, Frame skip, Position HUD */
+        ids[n++] = RW_PROF; /* PROFROW */
         for (i = 0; i < 3; i++) ids[n++] = RW_GIVE + i; /* PT67 */
         for (i = 0; i < 6; i++) ids[n++] = RW_STAT + i;
         ids[n++] = RW_WARPTO; ids[n++] = RW_ENTRY; ids[n++] = RW_WARPNOW;
@@ -283,6 +311,7 @@ int pm_optui_alert(int tab, int row, int mode) { return row_id(tab, row, mode) =
 int pm_optui_rows(int tab, int mode) { int ids[48]; return tab_ids(tab, mode, ids); }
 const char* pm_optui_label(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
+    if (id == RW_PROF) return "Profiling";
     if (id >= RW_BOSS) return pm_boss_label(id - RW_BOSS);
     if (id >= RW_STAT) return stat_lbl[id - RW_STAT];
     if (id >= RW_GIVE) return give_lbl[id - RW_GIVE];
@@ -307,6 +336,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
 }
 const char* pm_optui_value(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
+    if (id == RW_PROF) return prof_label[prof_row];
     if (id >= RW_BOSS) return "A: fight";
     if (id >= RW_GIVE) {
         static char gb[16][16];
@@ -340,6 +370,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
 /* PT01: left (dir < 0) or right (dir > 0) on a row. Warp to walks the choices (off, presets, every map of gAreas) with wrap. Entry walks 0 to 15. */
 int pm_optui_step(int tab, int row, int dir, int mode) {
     int id = row_id(tab, row, mode);
+    if (id == RW_PROF) { prof_set((prof_row + (dir > 0 ? 1 : 2)) % 3); return 1; } /* PROFROW: left and right cycle off, prof, phase */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, dir); return 1; } /* PT67c: live, not saved */
     if (id >= RW_DZPAD && id <= RW_RRATE) { /* PT61, PT60: a number row. Left and right step it, A steps up and wraps. */
         static const struct { int lo, hi, st; } rg[4] = { { 0, 50, 5 }, { 0, 50, 5 }, { 200, 1000, 100 }, { 50, 500, 50 } };
@@ -369,6 +400,7 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
 int pm_optui_act(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
     if (id != RW_EXIT) exit_armed = 0;
+    if (id == RW_PROF) { prof_set((prof_row + 1) % 3); return 0; } /* PROFROW: A cycles */
     if (id >= RW_BOSS) return pm_boss_launch(id - RW_BOSS) ? 5 : 0; /* 5: started, the menu closes */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, 1); return 0; }
     if (id >= RW_GIVE) { pm_dbgg_give(id - RW_GIVE); pm_log("options: debug give %d", id - RW_GIVE); return 0; }

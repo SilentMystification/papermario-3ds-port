@@ -349,7 +349,7 @@ void pm_frame_loop(void) {
     float stat_ms = 0.f;
     unsigned stat_n = 0;
     u64 stat_t0 = 0;
-    const int pace_on = pm_debug_has("pacestat");
+    int pace_on = 0; /* PROFROW: read each frame below, the Profiling row can switch it */
     const int pos_dbg = pm_debug_has("poshud"); /* POSHUD: the poshud switch, same as the option */
     { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep after every drawn step), fs1old (the old rule) */
         char fv[16];
@@ -383,6 +383,7 @@ void pm_frame_loop(void) {
         PM_WD_PHASE(2);
         pm_log_poll();
         pm_pad_scan();
+        pace_on = pm_debug_has("pacestat");
         if (pace_on) pace_stat(now, tick_hz, frame);
         if (!draw) {
             pm_gfx_retrace();
@@ -611,6 +612,7 @@ void pm_frame_loop(void) {
 }
 
 void pm_log_prof_apply(int boot_line); /* PROF4, pm_log.c */
+void pm_options_prof_boot(void); /* PROFROW, pm_options.c */
 static void game_thread(void* arg) {
     (void)arg;
     pm_crash_install(crash_stack, sizeof(crash_stack));
@@ -662,6 +664,7 @@ static void game_thread(void* arg) {
     pm_options_init();
     pm_log_prof_apply(1); /* PROF4: re-applies after pm_options_init set the levels, and prints the boot line */
     pm_ph_init(); /* after the log gate: phase, prof, pmu and fsplit read the final pm_log_file() */
+    pm_options_prof_boot(); /* PROFROW: the launch word or the saved Profiling row */
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
     pm_game_bind();

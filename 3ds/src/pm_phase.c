@@ -436,16 +436,10 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     pf_scene_note();
     if (++pf_w >= 300) pf_report();
 }
-static void pf_init(void) {
-    char v[16];
-    pf_want = pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v);
-    if (pm_debug_value("prof", v, sizeof v)) { unsigned n = (unsigned)atoi(v); if (n >= 4 && n <= 255) pf_every = n; }
-    pf_set = pm_debug_has("profstall") ? 's' : 'm';
-    pm_pf_on = pf_want && pm_log_file();
-    pf_cd = pf_every - 1;
-    if (!pm_pf_on) return;
-    pm_pmu_on = 0; /* prof owns the two counters: the pmu switch does not change their set */
+/* PROFROW: the prof counter setup and the calibration line. Called at boot (pf_init) and when the Profiling row turns prof on. */
+static void pf_start(void) {
     u64 out;
+    pm_pmu_on = 0; /* prof owns the two counters: the pmu switch does not change their set */
     u32 ev0 = pf_set == 's' ? PERFCOUNTEREVT_CORE_STALL_BY_LACK_OF_INST : PERFCOUNTEREVT_CORE_INST_CACHE_MISS;
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_ENABLE, 0, 0);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_0, ev0);
@@ -464,6 +458,16 @@ static void pf_init(void) {
              pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
 }
 
+static void pf_init(void) {
+    char v[16];
+    pf_want = pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v);
+    if (pm_debug_value("prof", v, sizeof v)) { unsigned n = (unsigned)atoi(v); if (n >= 4 && n <= 255) pf_every = n; }
+    pf_set = pm_debug_has("profstall") ? 's' : 'm';
+    pm_pf_on = pf_want && pm_log_file();
+    pf_cd = pf_every - 1;
+    if (pm_pf_on) pf_start();
+}
+
 /* Phase timing needs the switch (ph_want) and the log (pm_log_file). Logging off: pm_ph_on is 0, so no tick is read and no line is formed. */
 static int ph_want, dcs_want;
 int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and the dcsum line; no other phase site */
@@ -476,6 +480,16 @@ void pm_ph_log_gate(int on) {
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (on && fs_want && !pm_fs_on) fs_arm();
     pm_fs_on = on && fs_want;
+}
+
+/* PROFROW: the phase timers start from now (boot, and a row change to phase). */
+static void ph_start(void) {
+    last = frame_t0 = win_t0 = pm_ticks();
+    memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
+    memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
+    pm_gbi_sync_ticks = 0;
+    pm_gbi_gv_ticks = 0;
+    pm_gbi_tex_ticks = 0;
 }
 
 void pm_ph_init(void) {
@@ -506,12 +520,7 @@ void pm_ph_init(void) {
     unsigned dt2 = pm_ticks() - t1;
     pm_log_d("phase: on. pm_debug_has costs %.3f us per call (hit %d). A tick read costs %.3f us (x %u)", (double)dt / 2000.0 / 268.112, hit,
            (double)dt2 / 2000.0 / 268.112, x & 1);
-    last = frame_t0 = win_t0 = pm_ticks();
-    memset(pm_ph_cnt, 0, sizeof pm_ph_cnt);
-    memset(pm_cs_cnt, 0, sizeof pm_cs_cnt);
-    pm_gbi_sync_ticks = 0;
-    pm_gbi_gv_ticks = 0;
-    pm_gbi_tex_ticks = 0;
+    ph_start();
 }
 
 void pm_ph_push(int id) {
@@ -676,7 +685,28 @@ static __attribute__((cold, noinline)) void pc_frame(unsigned now, const Rec* r)
     if (--pc_left == 0) pc_end();
 }
 
+/* PROFROW: the Debug tab Profiling row (pm_options.c). Mode 0 off, 1 prof (prof lines only, as prof=4), 2 phase set. The change is applied at the
+ * next drawn frame end (pm_ph_frame_end), so no phase push is open while a gate changes. Ceiling: the prof counters stay enabled after prof
+ * mode (no svc call stops them); pm_pmu_on stays 0 after a prof row, so a launch pmu word is not restored. */
+static int prof_pend = -1;
+void pm_prof_row_set(int mode) { prof_pend = mode; }
+void pm_log_prof_row(int mode, int lv, int con); /* PROFROW, pm_log.c */
+static void prof_row_apply(int m) {
+    int pf_was = pm_pf_on;
+    if (m && !pm_log_file()) { pm_opt.log = 1; pm_log_set_file(1); } /* the modes write through the log file, as the boot prof does */
+    pm_log_prof_row(m, pm_opt.loglevel, pm_opt.conlevel);
+    ph_want = m == 2 || ps_on;
+    pf_want = m == 1;
+    if (m == 1) pf_every = 4;
+    pf_cd = pf_every - 1;
+    pm_ph_log_gate(pm_log_file());
+    if (!pm_pf_on) pf_samp = 0;
+    if (pm_pf_on && !pf_was) { pf_reset(); pf_start(); }
+    if (pm_ph_on) ph_start();
+}
+
 void pm_ph_frame_end(void) {
+    if (prof_pend >= 0) { int m = prof_pend; prof_pend = -1; prof_row_apply(m); }
     if (pm_pmu_on) pmu_frame_end();
     if (pm_fs_on) fs_frame_end();
     if (!pm_ph_on) return;
