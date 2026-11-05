@@ -16,16 +16,6 @@
 struct TszLast { const u8* src; unsigned fmt, siz; int w, h, stride; const void* pal; int pal_n; unsigned ep; int ox, oy; int ok; };
 static struct TszLast tsz_last; /* PG1 */
 static unsigned st0_ep; static int st0_ok;
-/* M4 bind memo: while a bind list runs for the first time (tbr_on) the side effects that reach pm_gpu and pm_tex are noted, so a later run of the same list from the same state can
- * replay them and load the end state (tb_cached). A list that does something the notes do not cover sets tbr_bad and is not kept. */
-enum { TE_FLUSH = 1, TE_WRAP, TE_FILTER, TE_SKIP, TE_MEMO };
-typedef struct { unsigned char t; unsigned a[4]; } TbEv;
-static TbEv tbr_ev[8]; static int tbr_n, tbr_on, tbr_bad;
-static inline void tbr_note(int t, unsigned a, unsigned b, unsigned c, unsigned d) {
-    if (!tbr_on) return;
-    if (tbr_n >= 8) { tbr_bad = 1; return; }
-    tbr_ev[tbr_n].t = (unsigned char)t; tbr_ev[tbr_n].a[0] = a; tbr_ev[tbr_n].a[1] = b; tbr_ev[tbr_n].a[2] = c; tbr_ev[tbr_n].a[3] = d; tbr_n++;
-}
 static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
 static unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
 static __attribute__((cold, noinline)) void gp_note(int k, int same) { gp_set[k]++; if (same) gp_same[k]++; }
@@ -1075,13 +1065,13 @@ static void scm_store(unsigned sg) {
     m->plan_on = plan_active; m->cc_on = sl_const; m->cc = sl_cc; m->env_on = sl_env;
     if (plan_active) m->plan = cur_plan;
 }
-static void scm_replay(const ScMemo* m, unsigned kw0, unsigned kw1, int kcyc1, int kt1) {
+static void scm_replay(const ScMemo* m) {
     if (m->cc_on) pm_gpu_set_const(m->cc);
     if (m->env_on) pm_gpu_set_env(envc);
     leg_mode = m->leg; comb_mode5 = m->mode5; box_pat = m->pat;
     ls_use = m->use; ls_why = m->why; ls_cyc = m->cyc; ls_dual = m->dual; ls_frame = rm_frame;
     plan_active = m->plan_on;
-    if (m->plan_on) { cur_plan = m->plan; pm_gpu_plan_key(kw0, kw1, kcyc1, kt1); pm_gpu_set_plan(&cur_plan); }
+    if (m->plan_on) { cur_plan = m->plan; pm_gpu_plan_key(comb_w0, comb_w1, ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1, use_t1); pm_gpu_set_plan(&cur_plan); }
     else pm_gpu_set_combine(leg_mode);
 }
 /* R2B: the sync_combine input hash (the fields the skip test reads); sync_combine and the g2_same skip use the same value */
@@ -1096,15 +1086,12 @@ static void sync_combine(void) {
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
         unsigned sg = sc_sig_now();
-        if (sc_ok && sg == sc_sig) { GP_SET(5, 1); tbr_note(TE_SKIP, 0, 0, 0, 0); return; }
+        if (sc_ok && sg == sc_sig) { GP_SET(5, 1); return; }
         sc_sig = sg;
         sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
     }
     int leg0 = leg_mode, pat0 = box_pat;
-    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig);
-      unsigned kw0 = comb_w0, kw1 = comb_w1; int kc1 = ((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1, kt1 = use_t1;
-      if (m) { scm_replay(m, kw0, kw1, kc1, kt1); tbr_note(TE_MEMO, sig, kw0, (unsigned)(kc1 | kt1 << 1), kw1); }
-      else { sync_combine_work_timed(); scm_store(sig); if (tbr_on) tbr_bad = 1; } }
+    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig); if (m) scm_replay(m); else { sync_combine_work_timed(); scm_store(sig); } }
     sc_ok = 1;
     if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
         unsigned parts[] = { comb_w0, comb_w1, omode_h, prim, envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
@@ -2021,7 +2008,6 @@ static inline int sp0_tex(unsigned op) {
 unsigned long long pm_gbi_sp0_dlc(void) { return sp0_T[2]; } /* PF2: read by pm_phase.c pf_take, dlc group ticks */
 void pm_pmu_sp0(unsigned out[3]); /* pm_phase.c, CAP2 */
 /* S3-2 measurement: ticks and calls of tex_op per op code, phase on only (line sp0x of sp0_report) */
-extern unsigned tb_hit, tb_miss;
 static unsigned long long tx_t[256], tx_f[256]; static unsigned tx_n[256];
 unsigned long long pm_gpu_fl_acc(void); /* pm_gpu.c */
 static void tex_op_impl(u32 w0, u32 w1);
@@ -2048,8 +2034,8 @@ static __attribute__((cold, noinline)) void sp0_report(void) {
         pm_log_hw("sp0x f%d tex ops own+close us/calls per frame: %s", rm_frame, b);
     }
     pm_pmu_sp0(pmv); /* CAP2: one read per window, not per op */
-    pm_log_hw("sp0c f%d tex %u dlc %u rest %u flush %u skip %u grp %u tl %u memo %u/%u pmu_ic %u pmu_dc %u pmu_cyc %u", rm_frame,
-              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), (unsigned)(sp0_F / 268u / 300u), sp0_skip, sp0_grp, tl_rep, tb_hit / 300u, tb_miss / 300u, pmv[0], pmv[1], pmv[2]); tb_hit = tb_miss = 0;
+    pm_log_hw("sp0c f%d tex %u dlc %u rest %u flush %u skip %u grp %u tl %u pmu_ic %u pmu_dc %u pmu_cyc %u", rm_frame,
+              (unsigned)(sp0_T[1] / 268u / 300u), (unsigned)(sp0_T[2] / 268u / 300u), (unsigned)(sp0_T[0] / 268u / 300u), (unsigned)(sp0_F / 268u / 300u), sp0_skip, sp0_grp, tl_rep, pmv[0], pmv[1], pmv[2]);
     memset(sp0_T, 0, sizeof sp0_T); sp0_F = 0; sp0_skip = sp0_grp = tl_rep = 0;
 }
 /* MR0: plain static model census, phase on only, cold. A plain model has no fog change, no tint, no custom gfx, no panner and
@@ -2703,10 +2689,8 @@ static const u8 g1_skip[256] = { [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILE
 /* C1: texture bind records. tb_list[idx] holds the handle's Gfx list only when pm_texbind_set has checked it. A list
  * holds only the ops make_texture_gfx emits (and g1_skip ops). A refused list stores NULL. */
 static const Gfx* tb_list[128];
-void pm_gbi_tb_reset(void);
 void pm_texbind_set(int idx, const Gfx* l) {
     tex_gen++; /* TBREP */
-    pm_gbi_tb_reset(); /* M4 */
     tb_list[idx & 0x7f] = NULL;
     if (!l) return;
     for (int n = 0; n < 64; n++) {
@@ -2881,14 +2865,13 @@ static __attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, 
 static __attribute__((noinline)) void tlut_v20(unsigned slot) {
                     for (int n = 0; n < 2; n++)
                         if (td[n].valid && td[n].fmt == 2 && (tst1.tile_pal[n] & 15) == (int)slot && td[n].pal != timg) {
-                            pm_gpu_flush(); tbr_note(TE_FLUSH, 0, 0, 0, 0);
+                            pm_gpu_flush();
                             td[n].pal = timg;
                             td[n].pal_n = tlut_n;
                             if (n == cur_tile) cur_tile = -1;
                         }
 }
 static __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt) {
-            tbr_bad = 1; /* M4 */
             if (tile == 1 && tst1.tile_fmt[1] == 2 && tst1.tile_siz[1] == 0 && ld_valid && timg) {
                 /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
                 m1.valid = 1;
@@ -2954,7 +2937,6 @@ static __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult,
             }
 }
 static __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
-            tbr_bad = 1; /* M4 */
             if (m1.valid && tst1.tile_fmt[0] == 2 && tst1.tile_siz[0] == 0 && tst1.tile_pal[0] != tst1.tile_pal[1] &&
                 tst1.comb_a == G_CCMUX_TEXEL0 && tst1.comb_c == G_CCMUX_TEXEL1 &&
                 m1.w > 0 && m1.h > 0) {
@@ -2981,7 +2963,6 @@ static void op_settimg(u32 w0, u32 w1) {
             timg = ptr_of(w1);
             if (!w1 && zslot_on && ((w0 >> 19) & 3) == 2) timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
             /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
-            if (timg && pm_is_cfb(timg)) tbr_bad = 1;
             if (timg && pm_is_cfb(timg) && !pm_is_cur_cfb(timg) && !pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
             tst1.timg_fmt = (w0 >> 21) & 7;
             tst1.timg_siz = (w0 >> 19) & 3;
@@ -3008,10 +2989,9 @@ static void op_settile(u32 w0, u32 w1) {
              * Draw them before this tile replaces it. */
             if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
                 int f_on = pm_ph_on && sp0_in && sp0_cur == 1; unsigned f0 = f_on ? pm_ticks() : 0; /* SPLIT0C2: flush time in the tex kind */
-                pm_gpu_flush(); tbr_note(TE_FLUSH, 0, 0, 0, 0);
+                pm_gpu_flush();
                 if (f_on) sp0_F += (unsigned)(pm_ticks() - f0);
                 pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
-                tbr_note(TE_WRAP, (w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
                 st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
             }
 }
@@ -3120,7 +3100,6 @@ static __attribute__((noinline)) void op_settilesize(u32 w0, u32 w1) {
                 int ggx = 0, ggy = 0;
                 if (src && w > 0 && h > 0 && tst1.tile_fmt[0] == 2 && tst1.tile_siz[0] == 0 &&
                     pm_tex_glyph_same(src, tst1.tile_fmt[0], tst1.tile_siz[0], w, h, palc, tlut_n, &ggx, &ggy)) {
-                    tbr_bad = 1; /* M4: the glyph check touches the texture slot */
                     tile_x0 = x0 - ggx; /* same sign as ensure_tile's new-bind path (x0 - gox) */
                     tile_y0 = y0 - ggy;
                     tile_fx = (float)(uls & 3) * 0.25f;
@@ -3176,8 +3155,8 @@ static void op_setothermode(unsigned op, u32 w0, u32 w1) {
                 unsigned old_tf = omode_h & (3u << 12);
                 omode_h = (omode_h & ~mask) | (w1 & mask);
                 if ((omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
-                    pm_gpu_flush(); tbr_note(TE_FLUSH, 0, 0, 0, 0);
-                    pm_tex_set_filter((omode_h & (3u << 12)) != 0); tbr_note(TE_FILTER, (omode_h & (3u << 12)) != 0, 0, 0, 0);
+                    pm_gpu_flush();
+                    pm_tex_set_filter((omode_h & (3u << 12)) != 0);
                 }
             }
             else omode_l = (omode_l & ~mask) | (w1 & mask);
@@ -3314,7 +3293,7 @@ static __attribute__((noinline)) void tb_ops(const Gfx* g) {
         }
         case G_SETOTHERMODE_H:
         case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
-        default: tbr_bad = 1; tex_op(w0, w1); break;
+        default: tex_op(w0, w1); break;
         }
         if (pm_ph_on) { unsigned dt = (unsigned)(pm_ticks() - pt0), df = (unsigned)(pm_gpu_fl_acc() - pf0); tx_t[op] += dt - (df < dt ? df : dt); tx_f[op] += df; tx_n[op]++; }
     }
@@ -3326,21 +3305,19 @@ typedef struct {
     int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; __typeof__(m1) m1; int dual_on, cur_tile, use_t1, tex_on; unsigned tex_ss, tex_ts; int comb_set;
     unsigned comb_w0, comb_w1; int box_folded, box_prod, box_pat, comb_alpha_shade; unsigned cmb_gen_seen; struct TszLast tsz; unsigned st0_ep; int st0_ok;
     unsigned omode_h, omode_l; int leg_mode, plan_active, comb_mode5; PmPlan plan; int sc_ok; unsigned sc_sig;
-    int sl_const, sl_env; unsigned sl_cc; int ls_use, ls_why, ls_cyc, ls_dual;
 } TexSnap;
 #define TS_FIELDS(X) X(tst) X(timg) X(tlut) X(tlut_n) X(tlut_pal) X(td) X(tile_x0) X(tile_y0) X(tile_fx) X(tile_fy) X(ld_valid) X(ld_x) X(ld_y) X(ld_h) X(ld_w) X(ldrec_n) X(blk_n) X(m1) \
     X(dual_on) X(cur_tile) X(use_t1) X(tex_on) X(tex_ss) X(tex_ts) X(comb_set) X(comb_w0) X(comb_w1) X(box_folded) X(box_prod) X(box_pat) X(comb_alpha_shade) X(cmb_gen_seen) X(tsz) \
-    X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig) X(ls_use) X(ls_why) X(ls_cyc) X(ls_dual)
+    X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig)
 static __attribute__((cold, noinline)) void ts_save(TexSnap* o) {
     memset(o, 0, sizeof *o);
     o->tst = tst1; o->timg = timg; o->tlut = tlut; o->tlut_n = tlut_n; memcpy(o->tlut_pal, tlut_pal, sizeof tlut_pal); memcpy(o->td, td, sizeof td);
     o->tile_x0 = tile_x0; o->tile_y0 = tile_y0; o->tile_fx = tile_fx; o->tile_fy = tile_fy;
-    o->ld_valid = ld_valid; o->ld_x = ld_x; o->ld_y = ld_y; o->ld_h = ld_h; o->ld_w = ld_w; o->ldrec_n = ldrec_n & 3u; o->blk_n = blk_n & 3u; /* the counters only pick a slot modulo 4 */ o->m1 = m1;
+    o->ld_valid = ld_valid; o->ld_x = ld_x; o->ld_y = ld_y; o->ld_h = ld_h; o->ld_w = ld_w; o->ldrec_n = ldrec_n; o->blk_n = blk_n; o->m1 = m1;
     o->dual_on = dual_on; o->cur_tile = cur_tile; o->use_t1 = use_t1; o->tex_on = tex_on; o->tex_ss = tex_ss; o->tex_ts = tex_ts; o->comb_set = comb_set;
     o->comb_w0 = comb_w0; o->comb_w1 = comb_w1; o->box_folded = box_folded; o->box_prod = box_prod; o->box_pat = box_pat; o->comb_alpha_shade = comb_alpha_shade;
-    o->cmb_gen_seen = cmb_gen_seen == comb_gen; o->tsz = tsz_last; o->tsz.ep = tsz_last.ep == pm_tex_epoch(); o->st0_ep = st0_ep == pm_tex_wrap_gen(); o->st0_ok = st0_ok; /* the wrap generation counts calls, the second run advances it: compare whether st0_ep is current */ o->omode_h = omode_h; o->omode_l = omode_l;
+    o->cmb_gen_seen = cmb_gen_seen; o->tsz = tsz_last; o->st0_ep = st0_ep == pm_tex_wrap_gen(); o->st0_ok = st0_ok; /* the wrap generation counts calls, the second run advances it: compare whether st0_ep is current */ o->omode_h = omode_h; o->omode_l = omode_l;
     o->leg_mode = leg_mode; o->plan_active = plan_active; o->comb_mode5 = comb_mode5; o->plan = cur_plan; o->sc_ok = sc_ok; o->sc_sig = sc_sig;
-    o->sl_const = sl_const; o->sl_env = sl_env; o->sl_cc = sl_cc; o->ls_use = ls_use; o->ls_why = ls_why; o->ls_cyc = ls_cyc; o->ls_dual = ls_dual;
 }
 static __attribute__((cold, noinline)) void ts_load(const TexSnap* o) {
     tst1 = o->tst; timg = o->timg; tlut = o->tlut; tlut_n = o->tlut_n; memcpy(tlut_pal, o->tlut_pal, sizeof tlut_pal); memcpy(td, o->td, sizeof td);
@@ -3348,12 +3325,9 @@ static __attribute__((cold, noinline)) void ts_load(const TexSnap* o) {
     ld_valid = o->ld_valid; ld_x = o->ld_x; ld_y = o->ld_y; ld_h = o->ld_h; ld_w = o->ld_w; ldrec_n = o->ldrec_n; blk_n = o->blk_n; m1 = o->m1;
     dual_on = o->dual_on; cur_tile = o->cur_tile; use_t1 = o->use_t1; tex_on = o->tex_on; tex_ss = o->tex_ss; tex_ts = o->tex_ts; comb_set = o->comb_set;
     comb_w0 = o->comb_w0; comb_w1 = o->comb_w1; box_folded = o->box_folded; box_prod = o->box_prod; box_pat = o->box_pat; comb_alpha_shade = o->comb_alpha_shade;
-    cmb_gen_seen = o->cmb_gen_seen ? comb_gen : ~0u; /* ~0u never equals a counter */ tsz_last = o->tsz; tsz_last.ep = o->tsz.ep ? pm_tex_epoch() : ~0u; st0_ep = o->st0_ep ? pm_tex_wrap_gen() : ~0u; st0_ok = o->st0_ok; omode_h = o->omode_h; omode_l = o->omode_l;
+    cmb_gen_seen = o->cmb_gen_seen; tsz_last = o->tsz; st0_ep = o->st0_ep ? pm_tex_wrap_gen() : ~pm_tex_wrap_gen(); st0_ok = o->st0_ok; omode_h = o->omode_h; omode_l = o->omode_l;
     leg_mode = o->leg_mode; plan_active = o->plan_active; comb_mode5 = o->comb_mode5; cur_plan = o->plan; sc_ok = o->sc_ok; sc_sig = o->sc_sig;
-    sl_const = o->sl_const; sl_env = o->sl_env; sl_cc = o->sl_cc; ls_use = o->ls_use; ls_why = o->ls_why; ls_cyc = o->ls_cyc; ls_dual = o->ls_dual; ls_frame = rm_frame;
 }
-static void tb_cached(const Gfx* g);
-static void tb_dbg(const Gfx* g);
 static __attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
     static TexSnap s0, eg, ef;
     static unsigned runs, bad;
@@ -3362,97 +3336,18 @@ static __attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
     tb_ops_generic(g);
     ts_save(&eg);
     ts_load(&s0);
-    tb_cached(g);
+    tb_ops(g);
     ts_save(&ef);
 #define TS_CMP(f) if (memcmp(&eg.f, &ef.f, sizeof eg.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
     TS_FIELDS(TS_CMP)
 #undef TS_CMP
     runs++;
     if (n) { bad++; if (bad <= 40) pm_log("texdiff f%u list %p DIFF: %s", pm_frame_count(), (const void*)g, names); }
-    if (n && bad <= 6) pm_log("texdiff tsz eg src %p f%u s%u w%d h%d st%d pal %p n%d ep%u ox%d oy%d ok%d | ef src %p f%u s%u w%d h%d st%d pal %p n%d ep%u ox%d oy%d ok%d | slc %d/%d", (const void*)eg.tsz.src, eg.tsz.fmt, eg.tsz.siz, eg.tsz.w, eg.tsz.h, eg.tsz.stride, eg.tsz.pal, eg.tsz.pal_n, eg.tsz.ep, eg.tsz.ox, eg.tsz.oy, eg.tsz.ok, (const void*)ef.tsz.src, ef.tsz.fmt, ef.tsz.siz, ef.tsz.w, ef.tsz.h, ef.tsz.stride, ef.tsz.pal, ef.tsz.pal_n, ef.tsz.ep, ef.tsz.ox, ef.tsz.oy, ef.tsz.ok, eg.sl_const, ef.sl_const);
-    if (!(runs % 500)) pm_log("texdiff f%u runs %u diffs %u memo hit %u miss %u", pm_frame_count(), runs, bad, tb_hit, tb_miss);
-    if (n && bad <= 6) tb_dbg(g);
+    if (!(runs % 500)) pm_log("texdiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
     ts_load(&eg);
 }
-/* M4 bind memo. The state a bind list reads is the texture, tile, combine and mode state of TexSnap plus the colours the combine sync reads. The hash tb_pre covers it (counters that
- * only drift are cut to the part the code reads). The same list from the same state gives the same end state and the same calls into pm_gpu and pm_tex. The first run records both
- * (tbr_ev, ts_save), later runs replay the calls and load the end state. */
-typedef struct { const Gfx* list; unsigned pre; const void* tlut_rec; int haspal; int valid, nev; TbEv ev[8]; unsigned pv[80]; TexSnap post; } TbEnt;
-static unsigned tb_v[80]; static unsigned tb_dbgn; static int tb_haspal; /* tb_pre: the list holds a LOADTLUT */
-static TbEnt tbe[256]; /* 128 sets of 2 */
-unsigned tb_hit, tb_miss;
-static unsigned tb_pre(const Gfx* g) {
-    unsigned h = 2166136261u;
-        unsigned timg_in = (unsigned)(uintptr_t)timg; /* a list whose first read of the texture image comes after its own SETTIMG does not depend on the old one */
-    int seen = 0, hascomb = 0, hastsz = 0; tb_haspal = 0;
-    for (const Gfx* f = g;; f++) {
-        unsigned fo = f->words.w0 >> 24;
-        if (fo == G_ENDDL) break;
-        if (fo == G_SETTIMG) { if (!seen) timg_in = 0; seen = 1; }
-        else if (fo == G_LOADBLOCK || fo == G_LOADTLUT || fo == G_LOADTILE || fo == G_SETTILESIZE) seen = 1;
-        if (fo == G_LOADTLUT) tb_haspal = 1;
-        if (fo == G_SETCOMBINE) hascomb = 1;
-        if (fo == G_SETTILESIZE && ((f->words.w1 >> 24) & 7) == 0) hastsz = 1;
-    }
-    const unsigned v[] = { (unsigned)(uintptr_t)g, timg_in, 0u, (unsigned)tlut_n, (unsigned)tile_x0, (unsigned)tile_y0, ((const unsigned*)&tile_fx)[0], ((const unsigned*)&tile_fy)[0],
-        (unsigned)ld_valid, 0u, 0u, 0u, 0u, 0u, blk_n & 3u, (unsigned)dual_on, hastsz ? 0u : (unsigned)cur_tile, /* ld_x y h w are read only when ld_valid is set; SETTILESIZE writes cur_tile */ (unsigned)use_t1, (unsigned)tex_on, tex_ss, tex_ts, (unsigned)comb_set,
-        hascomb ? 0u : comb_w0, hascomb ? 0u : comb_w1, (unsigned)box_folded, (unsigned)box_prod, (unsigned)box_pat, (unsigned)comb_alpha_shade, omode_h, omode_l, (unsigned)leg_mode, (unsigned)plan_active, (unsigned)comb_mode5, (unsigned)sc_ok, sc_sig,
-        prim, envc, aud_prim_lod, keyc, keys, conv_k4, geom, blendc, fogc, (unsigned)st0_ok, st0_ep == pm_tex_wrap_gen(), cmb_gen_seen == comb_gen, tsz_last.ok, tsz_last.ep == pm_tex_epoch(),
-        (unsigned)(uintptr_t)tsz_last.src, tsz_last.fmt, tsz_last.siz, (unsigned)tsz_last.w, (unsigned)tsz_last.h, (unsigned)tsz_last.stride, (unsigned)(uintptr_t)tsz_last.pal, (unsigned)tsz_last.pal_n, (unsigned)tsz_last.ox, (unsigned)tsz_last.oy };
-    for (unsigned i = 0; i < sizeof v / sizeof v[0]; i++) { h = (h ^ v[i]) * 16777619u; tb_v[i] = v[i]; }
-    const unsigned* r[] = { (const unsigned*)&tst1, (const unsigned*)td, (const unsigned*)&m1, (const unsigned*)tlut_pal };
-    const unsigned n[] = { sizeof tst1 / 4u, sizeof td / 4u, sizeof m1 / 4u, sizeof tlut_pal / 4u };
-    for (int k = 0; k < 4; k++) { unsigned hk = h; for (unsigned i = 0; i < n[k]; i++) h = (h ^ r[k][i]) * 16777619u; tb_v[70 + k] = h ^ hk; }
-    return h;
-}
-static void tb_dbg(const Gfx* g) { unsigned h = tb_pre(g); const TbEnt* e = &tbe[((h ^ (h >> 7)) & 127u) * 2u]; char b[64]; int q = 0; for (int k = 0; k < e->nev && q < 56; k++) q += snprintf(b + q, sizeof b - (unsigned)q, "%u ", (unsigned)e->ev[k].t); pm_log("texdiff ev valid %d nev %d: %s", e->valid, e->nev, b); }
-static __attribute__((noinline)) int tb_replay(const TbEnt* e) {
-    for (int k = 0; k < e->nev; k++) if (e->ev[k].t == TE_MEMO && !scm_find(e->ev[k].a[0])) return 0; /* the sync memo entry was replaced: run the list */
-    for (int k = 0; k < e->nev; k++) {
-        const TbEv* v = &e->ev[k];
-        switch (v->t) {
-        case TE_FLUSH: pm_gpu_flush(); break;
-        case TE_WRAP: pm_tex_set_wrap(v->a[0], v->a[1], v->a[2], v->a[3]); break;
-        case TE_FILTER: pm_tex_set_filter((int)v->a[0]); break;
-        case TE_MEMO: { /* a[0] memo signature, a[1] SETCOMBINE w0, a[3] w1, a[2] bit 0 cycle type 1, bit 1 use_t1 */
-            const ScMemo* m = scm_find(v->a[0]);
-            scm_replay(m, v->a[1], v->a[3], (int)(v->a[2] & 1u), (int)((v->a[2] >> 1) & 1u));
-            break;
-        }
-        default: break;
-        }
-    }
-    tex_gen++;
-    { const void* keep_tlut = tlut; unsigned keep_ldrec = ldrec_n; int kx = ld_x, ky = ld_y, kh = ld_h, kw = ld_w;
-      ts_load(&e->post);
-      ld_x = kx; ld_y = ky; ld_h = kh; ld_w = kw; /* a replayed list holds no LOADTILE and ld_valid is 0 after its SETTIMG: these are the caller's */
-      ldrec_n = keep_ldrec; /* no LOADTILE in a replayed list: the slot counter is not this list's */
-      if (!e->haspal) { /* no LOADTLUT: the palette pointer is the caller's. The unit and slot records that took it from tlut follow it. */
-          tlut = keep_tlut;
-          for (int n = 0; n < 2; n++) if (td[n].pal == e->tlut_rec) td[n].pal = keep_tlut;
-          if (tsz_last.pal == e->tlut_rec) tsz_last.pal = keep_tlut;
-      } }
-    return 1;
-}
-static void tb_cached(const Gfx* g) {
-    unsigned h = tb_pre(g);
-    TbEnt* e = &tbe[((h ^ (h >> 7)) & 127u) * 2u]; TbEnt* e0p[2] = { &e[0], &e[1] };
-    if (e[0].valid && e[0].list == g && e[0].pre == h && tb_replay(&e[0])) { tb_hit++; return; }
-    if (e[1].valid && e[1].list == g && e[1].pre == h && tb_replay(&e[1])) { tb_hit++; return; }
-    if (e[0].valid && !e[1].valid) e++; /* the second way when the first holds another entry */
-    else if (e[0].valid && e[1].valid) { static unsigned rr; e += rr++ & 1u; }
-    tb_miss++;
-    if (tb_dbgn < 30) { for (int w = 0; w < 2; w++) if (e0p[w]->valid && e0p[w]->list == g) { int d = -1; for (int i = 0; i < 74; i++) if (e0p[w]->pv[i] != tb_v[i]) { d = i; break; } tb_dbgn++; pm_log("tbmiss list %p first diff idx %d", (const void*)g, d); break; } }
-    const void* tlut_pre = tlut; int haspal = tb_haspal;
-    tbr_on = 1; tbr_n = 0; tbr_bad = 0;
-    tb_ops(g);
-    tbr_on = 0;
-    if (tbr_bad || (timg && pm_is_cfb(timg))) { e->valid = 0; return; }
-    e->list = g; e->pre = h; e->tlut_rec = tlut_pre; e->haspal = haspal; memcpy(e->pv, tb_v, sizeof e->pv); e->nev = tbr_n; memcpy(e->ev, tbr_ev, sizeof tbr_ev); ts_save(&e->post); e->valid = 1;
-}
-void pm_gbi_tb_reset(void) { for (int i = 0; i < 256; i++) tbe[i].valid = 0; } /* a bind list was rebuilt (pm_texbind_set) */
 static void tb_bind(const Gfx* g) {
-    if (PMD("texdiff")) tb_diff(g); else tb_cached(g);
+    if (PMD("texdiff")) tb_diff(g); else tb_ops(g);
 }
 static int rm_apply(u32 w1) { /* M4: with texdiff the list runs both ways from the same start state and the end states are compared */
     if (!PMD("texdiff")) return rm_apply_impl(w1);

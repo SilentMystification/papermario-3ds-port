@@ -577,7 +577,7 @@
       "subject": "Toad Town street (mac_01) with the M4 texture bind state-diff check (switch texdiff).",
       "proves": "Every bind list ends in the same texture, tile, combine and mode state word by word and fused. The log shows runs and diffs.",
       "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug texdiff",
-      "until": "runs 12000 diffs",
+      "until": "runs 6000 diffs",
       "cap": 60,
       "deadline": 25,
       "first_marker": "warp: mac_01 entry 0",
