@@ -1,11 +1,19 @@
 # Agent S3N: map model records draw natively
 
 ## STATE
-branch: nds1 | commits: 1f1839f2c (S3N-0 dead model emission deleted in src/model.c, 3DS path, N64 kept under #ifndef TARGET_3DS)
-done: S3N-0. Gate: build ok (PM_ROW=S3N sh 3ds/build.sh, exit 0), nd_host run 66 PASS. No Azahar start (no pixel change expected: every removed site was gated by a value that is 1 on 3DS).
-open: S3N-1, S3N-2, S3N-3, S3N-4 not started (see Blockers).
-budget S3N: 0 of 8 Azahar starts.
-next: S3N-1 (nd_model.c, compile-once deltas and texture descriptors). Needs a consumer before it can be gated by pictures.
+branch: nds1 | commits: 1f1839f2c (S3N-0), c48abe457 (S3N-1 part: nd_gv_params moved, nd_shift_mul, nd_prim_ndc_z), 067a85de9 (S3N-2 nd_native_submit)
+done: S3N-0; S3N-2 (gate: spot_mac01 frames 200 to 205 byte equal to HEAD, cmp of the ppm files; build ok).
+part: S3N-1. gv move gated (nd_host PASS incl. nd_gv 200000 random bit-equal cases; spot_mac01 byte-equal). NdMode and NdModelTex compile tables NOT built (see blocker B4).
+open: S3N-3, S3N-4, S3N-5 not started. Spot pictures for the model path not run.
+budget S3N: 4 Azahar starts (build-at HEAD baseline, mac01 x2, mac01 after S3N-2). Limit 8.
+next: user decision on B4 (texture descriptor source), then NdMode and NdModelTex (S3N-1 rest), then S3N-3.
+
+## Blockers (plan default taken where noted)
+B1. Walker state is global; nd_raw_native reads combine, r_zcmp, ... from walker globals. Plan default: derive from compiled deltas (S3N-1). OPEN.
+B2. Geometry: DLC2 static groups (dlc_find) are reused as is. Plan default kept.
+B3. Merge (S3N-2 in the plan) moved to S3N-3 with its consumer.
+B4 (new, needs user decision). The texture bind list of a model (TextureHandles[i].gfx, built by make_texture_gfx in model.c) is run by the walker through state that is not in the list: ldrec, blk, tlut_pal, tsz_last caches and the V05, V12c, V13, FX3f, PT09, PT37 rules in pm_gbi.c op_settilesize and op_loadblock. nd_words cannot give NdTexDesc (w, h, stride, pal) without copying those rules. Options: (a) build NdTexDesc from TextureHandles[i].header and the raster and palette pointers (model.c), reproducing the common case only and fall back on the rest, verified by ndmcheck; (b) keep the walker texture path for models until S3L. Plan default not chosen because it changes which textures draw.
+B5 (new). Render mode compile: nd_words from zeroed state gives om_h, om_l only for the bits the RM lists write. The cycle type and any other bit the lists do not set come from the walker state at draw time. The native NdMode must either carry those bits from the record or the list must set them. ndmcheck (S3N-3) will show it; plan default: fallback when a bit that nd_render_state reads is not written by the list.
 
 ## S3N-0 notes
 - Sites removed: MODEL_RM_OP, MODEL_TEX_OP, MODEL_MTX_OP calls (3DS), REC_SKIP and recSkip writes (tint, combine, fog, shroud, panner, billboard), lights (record R3 w1 carries them), pipesync (recOn was always 1), custom gfx pre/post else-branches, geometry else-branch, gSPPopMatrix else-branch.
