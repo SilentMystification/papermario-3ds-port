@@ -83,7 +83,10 @@ SPOT_STEP = 10
 OPS = {"==": lambda a, b: a == b, "!=": lambda a, b: a != b, "<": lambda a, b: a < b,
        "<=": lambda a, b: a <= b, ">": lambda a, b: a > b, ">=": lambda a, b: a >= b}
 SCENE_KEY = re.compile(r"^(\S+) m(-?\d+) sp(-?\d+) b(-?\d+) e(-?\d+)$")
-BUILD_LINE = re.compile(r"\bbuild (\d+) git (\S+)")
+BUILD_LINE = re.compile(r"\bbuild (\d+)(?:-\S+)? git (\S+)")  # boot line (pm_main.c): "build 2175 git 19348de70 loglevel 3"; lane: "build 2175-UC1 git ..."
+BUILD_H = REPO / "3ds" / "include" / "pm_build.h"  # written by build.sh for the last build (PM_BUILD_STR, PM_GIT_HASH)
+HDR_BUILD = re.compile(r'#define PM_BUILD_STR "(\d+)')
+HDR_GIT = re.compile(r'#define PM_GIT_HASH "(\S+)"')
 PUSHED_LINE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d)\s.*?\bbuild (\d+)\s+git (\S+)")
 SCHEMA = """
 CREATE TABLE bench(name TEXT PRIMARY KEY, kind TEXT, purpose TEXT, defs_json TEXT);
@@ -465,9 +468,42 @@ def pushed_build(path):
     return best
 
 
-def resolve_build(path, text, build, commit):
-    """Build number and commit of a log: the arguments, then the log's build line, then pushed_builds.txt, then git HEAD."""
+def azahar_3dsx():
+    """The 3dsx azt.ps1 ran: build3ds/lane-<PM_LANE>/pm_3ds.3dsx (azt.ps1 sets PM_LANE for a lane), else build3ds/pm_3ds.3dsx."""
+    lane = os.environ.get("PM_LANE")
+    return (REPO / "build3ds" / ("lane-" + lane) if lane else REPO / "build3ds") / "pm_3ds.3dsx"
+
+
+def header_build():
+    """Build and hash from 3ds/include/pm_build.h, valid for the 3dsx that ran only when the header is not newer than that 3dsx
+    (build.sh writes the header first and the 3dsx last). (None, None) when the header or the 3dsx is missing, or the header is newer."""
+    dx = azahar_3dsx()
+    try:
+        h = BUILD_H.read_text(encoding="utf-8")
+    except OSError:
+        h = ""
+    bm, gm = HDR_BUILD.search(h), HDR_GIT.search(h)
+    if not bm or not gm or not dx.exists():
+        print("WARNING: no build header for %s (%s missing or 3dsx missing). build left null." % (dx, BUILD_H))
+        return None, None
+    if BUILD_H.stat().st_mtime > dx.stat().st_mtime:
+        print("WARNING: %s is newer than %s (a later build that failed or is not the 3dsx that ran). build left null." % (BUILD_H, dx))
+        return None, None
+    return int(bm.group(1)), gm.group(1)
+
+
+def resolve_build(path, text, build, commit, host="host"):
+    """Build number and commit of a log. azahar: the arguments, the log's build line, then pm_build.h of the 3dsx that ran
+    (never pushed_builds.txt, it lists console pushes only). Other hosts: the arguments, the log's build line, then
+    pushed_builds.txt (last push at or before the log's write time), then git HEAD."""
     lb, lc = log_build(text)
+    if host == "azahar":
+        hb, hc = (None, None) if (lb is not None or build is not None) else header_build()
+        b = build if build is not None else (lb if lb is not None else hb)
+        c = commit or lc or hc or git_head()
+        if b is None:
+            print("WARNING: no build line in %s. build left null (pushed_builds.txt is not used for azahar)." % path)
+        return b, c
     pbld, pc = (None, None) if (lb is not None or build is not None) else pushed_build(path)
     b = build if build is not None else (lb if lb is not None else pbld)
     c = commit or lc or pc or git_head()
@@ -710,7 +746,7 @@ def cmd_ingest(a):
         print("no such log: %s" % a.log)
         return 5
     text = p.read_text(encoding="utf-8", errors="replace")
-    b, c = resolve_build(p, text, a.build, a.commit)
+    b, c = resolve_build(p, text, a.build, a.commit, host)
     speed = a.speed or ("unknown" if host == "azahar" else "normal")
     return ingest_file(p, a.bench, host, b, c, a.row, a.label, "imported", a.note, None, [], device=a.device or device_note(host), speed=speed)
 
@@ -724,7 +760,7 @@ def cmd_ingest_last(a):
     bd = next((b for b in load_defs()["benches"] if b.get("scenario") == s and b["kind"].startswith("azahar")), None)
     bench = bd["name"] if bd else "adhoc:" + s
     text = p.read_text(encoding="utf-8", errors="replace")
-    b, c = resolve_build(p, text, a.build, a.commit)
+    b, c = resolve_build(p, text, a.build, a.commit, "azahar")
     result = "log_pass" if a.rc == 0 else "fail:%d" % a.rc
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
     shot = a.shots or str(SHOTS / s)
