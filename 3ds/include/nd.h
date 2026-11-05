@@ -162,21 +162,25 @@ void nd_dlc_free(NdObj* o);
 typedef struct NdUnit { uint32_t dim, param, lod, addr, type; } NdUnit; /* dim 0: unit off. addr = physical address >> 3, type = the texture format word */
 typedef struct NdDraw {
     int tmpl;                 /* nd_tmpl id: effect, depth, blend and TEV words */
+    uint32_t tev_col[6];      /* the colour word of each TEV stage that a colour source sets (the template holds 0 there), ABGR */
+    uint32_t buf_col; uint8_t has_buf; /* texenv buffer colour (register 0xFD), written when has_buf */
     NdUnit u[2];              /* texture units 0 and 1 */
-    float pal[16];            /* palette entry 0: pcomp, C3D_Mtx memory order */
+    const float (*pal)[16];   /* palette entries, pcomp each, C3D_Mtx memory order */
+    unsigned npal;
+    unsigned loc_pal, loc_var; /* vertex shader float uniform locations: palette entry 0 (entries 4 apart), then uvso, cmul, cadd, zmix (4 vec4 in a row) */
     float uvso[4], cmul[4], cadd[4], zmix[2]; /* game order x y z w, the words go out in memory order w z y x */
     uint32_t idx_word;        /* index buffer address word (register 0x227) */
     uint32_t nidx;            /* index count */
 } NdDraw;
+#define ND_NPAL 21
 typedef struct NdShadow {
     int tmpl;                 /* -1 = unknown */
-    NdUnit u[2]; uint8_t u_on[2], u_valid;
-    float pal[16]; uint8_t pal_valid;
+    NdUnit u[2]; uint8_t u_on[2], cfg_valid; uint32_t cfg;
+    float pal[ND_NPAL][16]; uint8_t pal_valid[ND_NPAL];
     float uni[16]; uint8_t uni_valid;
     uint32_t tmpl_val[64]; /* ND_TMPL_WORDS max, register values of the template last written (for word level deltas) */
+    uint32_t col[6], buf_col; uint8_t col_valid;
 } NdShadow;
-#define ND_UNI_PAL 6u   /* vertex shader float uniform location of palette entry 0 (pm4) */
-#define ND_UNI_VAR 0x5Au /* uvso, cmul, cadd, zmix: 4 consecutive vec4 */
 void nd_shadow_reset(NdShadow* s);
 unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */
 

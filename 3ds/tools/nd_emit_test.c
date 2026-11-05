@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
         memset(&sr, 0, sizeof sr); memset(&nr, 0, sizeof nr);
         NdShadow sh; nd_shadow_reset(&sh);
         uint32_t tk[19] = { 0 }, d_graw = 0, d_prog = 0, d_cull = 0, d_decal = 0, d_atest = 0, tw0[4] = { 0 }, tw1[4] = { 0 }, nv = 0;
-        float un[14] = { 0 }, pal[16] = { 0 };
+        float un[14] = { 0 }, pal[ND_NPAL][16]; unsigned npal = 0;
         NdTmplKey key; int have_key = 0;
         for (size_t pos = 20, end = 20 + rd32(buf + 16); pos < end;) {
             uint32_t kind = rd32(buf + pos), size = rd32(buf + pos + 4);
@@ -77,7 +77,8 @@ int main(int argc, char** argv) {
                 memcpy(un, b + 160, sizeof un);
                 uint32_t np = rd32(b + 520);
                 memset(pal, 0, sizeof pal);
-                if (np) memcpy(pal, b + 524 + 4, sizeof pal); /* entry 0: u32 gm, then pcomp */
+                npal = np > ND_NPAL ? ND_NPAL : np;
+                for (unsigned k = 0; k < npal; k++) memcpy(pal[k], b + 524 + 68 * k + 4, 64); /* entry k: u32 gm, then pcomp */
                 nv = rd32(b + 524 + 68 * np);
             } else if (kind == 4) {
                 memset(&key, 0, sizeof key);
@@ -103,7 +104,9 @@ int main(int argc, char** argv) {
                     if (d.tmpl >= 0) {
                         if (tw0[0]) { d.u[0].dim = tw0[0]; d.u[0].param = tw0[1]; d.u[0].lod = tw0[2]; d.u[0].addr = tw0[3]; d.u[0].type = sr.r[0x8E]; }
                         if (tw1[0]) { d.u[1].dim = tw1[0]; d.u[1].param = tw1[1]; d.u[1].lod = tw1[2]; d.u[1].addr = tw1[3]; d.u[1].type = sr.r[0x9E]; }
-                        memcpy(d.pal, pal, sizeof pal);
+                        d.pal = (const float(*)[16])pal; d.npal = npal; d.loc_pal = 6; d.loc_var = 0x5A;
+                        for (int i = 0; i < 6; i++) { unsigned cr = i < 4 ? 0xC3u + 8u * (unsigned)i : 0xF3u + 8u * (unsigned)(i - 4); d.tev_col[i] = sr.set[cr] ? sr.r[cr] : 0; }
+                        d.has_buf = sr.set[0xFD]; d.buf_col = sr.r[0xFD];
                         memcpy(d.uvso, un, 16); memcpy(d.cmul, un + 4, 16); memcpy(d.cadd, un + 8, 16); d.zmix[0] = un[12]; d.zmix[1] = un[13];
                         d.idx_word = sr.r[0x227]; d.nidx = sr.r[0x228];
                         uint32_t out[512];
@@ -117,12 +120,13 @@ int main(int argc, char** argv) {
                         /* registers both wrote */
                         for (unsigned r = 0; r < 0x300; r++) {
                             if (!nr.set[r] || !sr.set[r]) continue;
-                            if (r == 0x227 || r == 0x103 || r == 0x126 || r == 0xFD || r == 0xE0 || (r >= 0xC0 && r < 0x100 && (r & 7) == 3)) continue;
+                            if (r == 0x227 || r == 0x103 || r == 0x126 || r == 0xE0) continue;
                             if (r == 0x106 && !(sr.r[0x105] & 1)) continue;
                             if (r == 0x81 || r == 0x91) continue; /* texture border colour: not in the ndref */
                             if (stale0 && r >= 0x81 && r <= 0x85) continue;
                             n_cmp++;
-                            CHECK(((nr.r[r] ^ sr.r[r]) & nr.wm[r] & sr.wm[r]) == 0, "%s draw %u reg %03x native %08x stream %08x", argv[a], n_draw, r, nr.r[r], sr.r[r]); /* the bytes both wrote */
+                            uint32_t ign = (r == 0x80 && !d.u[1].dim) ? 2u : 0u; /* the old path keeps unit 1 enabled after its first use, whether the draw reads it or not: native enables a unit only for a draw that reads it */
+                            CHECK(((nr.r[r] ^ sr.r[r]) & nr.wm[r] & sr.wm[r] & ~ign) == 0, "%s draw %u reg %03x native %08x stream %08x", argv[a], n_draw, r, nr.r[r], sr.r[r]); /* the bytes both wrote */
                         }
                         for (unsigned q = 0; q < 0x80 * 4; q++) {
                             if (!nr.uset[q] || !sr.uset[q]) continue;
