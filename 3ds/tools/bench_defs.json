@@ -146,9 +146,20 @@
           "name": "ops",
           "regex": "opsplit f\\d+ ops (\\d+)",
           "pick": "last"
+        },
+        {
+          "name": "rec",
+          "regex": "gmn \\d+ \\| rec (\\d+)",
+          "pick": "last"
         }
       ],
-      "gates": []
+      "gates": [
+        {
+          "metric": "rec",
+          "op": ">",
+          "value": 0
+        }
+      ]
     },
     {
       "name": "texdiff",
@@ -176,6 +187,44 @@
         }
       ],
       "gates": [
+        {
+          "metric": "diffs",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "mdldiff",
+      "kind": "azahar_stream",
+      "purpose": "Toad Town street, M4-2 producer record check over 6000 records: record consumer state equals the old words.",
+      "scenario": "mac01_mdldiff",
+      "cap": 45,
+      "until": "runs 6000 diffs",
+      "tags": [
+        "azahar",
+        "stream",
+        "mdldiff",
+        "gate"
+      ],
+      "log_metrics": [
+        {
+          "name": "runs",
+          "regex": "mdldiff f\\d+ runs (\\d+) diffs",
+          "pick": "last"
+        },
+        {
+          "name": "diffs",
+          "regex": "mdldiff f\\d+ runs \\d+ diffs (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "runs",
+          "op": ">=",
+          "value": 6000
+        },
         {
           "metric": "diffs",
           "op": "==",

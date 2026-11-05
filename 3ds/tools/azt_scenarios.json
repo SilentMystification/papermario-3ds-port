@@ -590,6 +590,24 @@
       "reason": ""
     },
     {
+      "name": "mac01_mdldiff",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01) with the M4-2 producer record check (switch mdldiff): record consumer against the old words from the same start state.",
+      "proves": "Each plain opaque model record sets the same texture, render mode and lighting state as its old words. The log shows runs and diffs.",
+      "debug": "warp=mac_01:0 loglevel=debug mdldiff",
+      "until": "runs 6000 diffs",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        { "name": "map", "regex": "warp: mac_01 entry 0" },
+        { "name": "mdldiff", "regex": "mdldiff f\\d+ runs" }
+      ],
+      "reason": ""
+    },
+    {
       "name": "mac01_walk",
       "status": "unverified",
       "subject": "Toad Town street (mac_01) at pos -198 20 -355, prof mode (the console hung here with the M4 bind memo).",

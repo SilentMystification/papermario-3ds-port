@@ -207,6 +207,7 @@ static int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit t
 /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
  * the image that was loaded to its TMEM address, not the image of the load that came last. */
 static unsigned ldrec_n;
+static unsigned rec_n; /* M4-2: records run in the current opsplit window */
 /* V13: a block load keeps its image and TMEM range. A half-height aux tile (tile 1 at TMEM + half) reads the second half. */
 static unsigned blk_n;
 static int tile_x0, tile_y0;
@@ -2227,8 +2228,9 @@ static void os_report(void) {
     }
     /* W2: all pm_ticks reads per frame over the 300 frames (tk is the op sampler only) */
     unsigned svc_now = pm_svc_n;
-    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | pt %u | gms %u gmn %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), (svc_now - os_svc_last) / 300u, gm_steps / 300, gm_n);
+    pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | pt %u | gms %u gmn %u | rec %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), (svc_now - os_svc_last) / 300u, gm_steps / 300, gm_n, rec_n);
     os_svc_last = svc_now;
+    rec_n = 0;
     { char p[40]; pm_pos_text(p); pm_log_hw("pos f%d %s", rm_frame, p); } /* CAP1: Mario, one line per window */
     pm_log_hw("prod f%d sum %u ops %u", rm_frame, (unsigned)(psum / 300), (unsigned)(tot_n / 300));
     for (int r = 0; r < 8; r++) {
@@ -3610,6 +3612,58 @@ static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
     }
 }
 
+/* M4-2: producer record of a plain opaque model (model.c appendGfx_model, TARGET_3DS). One word: w0 = G_PM_REC << 24 | render mode
+ * index << 16 | (texture list index & 0x7f) << 8 | count of old words after it (0; only switch mdldiff writes old words). w1 = the bind
+ * list, the pointer of the G_PM_TEX word it replaces. rec_apply sets the walker state from it: the bind list through the fused ops
+ * (tb_run when tb_list holds it, else tb_ops), the render mode list through rm_apply. Lights and matrix stay words (see docs). */
+extern Gfx* ModelRenderModes[];
+static Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx, u32 hdr);
+int pm_rec_mode(void) { return PMD("mdldiff") ? 2 : 1; } /* 2: mdldiff runs the old words after the record from the same start state */
+static __attribute__((noinline)) void rec_apply(const Gfx* q) {
+    u32 w0 = q->words.w0;
+    const Gfx* tg = (const Gfx*)(uintptr_t)q->words.w1;
+    unsigned tix = (w0 >> 8) & 0x7fu;
+    rec_n++;
+    gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
+    if (tb_list[tix] == tg) tb_run(tg); else tb_ops(tg);
+    if (!rm_apply((u32)(uintptr_t)ModelRenderModes[(w0 >> 16) & 0xffu])) pm_log("rec: render mode list has another op f%u", pm_frame_count());
+}
+/* mdldiff, switch mdldiff: the record runs from the start state, then the old words after it (mg_run) run from the same start state.
+ * The end states are compared field by field (TS_FIELDS, geom, lights). The old path state goes on. */
+static __attribute__((cold, noinline)) unsigned rec_diff(const Gfx* q, unsigned cnt) {
+    static TexSnap s0, e1, e2;
+    static unsigned runs, bad;
+    static unsigned gm0, gm1, gm2, ln0, ln1, ln2;
+    static NdLight lt0[9], lt1[9], lt2[9];
+    char names[256]; int n = 0;
+    const Gfx* nx = NULL;
+    gm0 = geom; ln0 = lt_n; memcpy(lt0, lt, sizeof lt0);
+    tl_last = NULL; /* the bind cache is not in TS_FIELDS: both runs start with it empty */
+    ts_save(&s0);
+    rec_apply(q);
+    ts_save(&e1); gm1 = geom; ln1 = lt_n; memcpy(lt1, lt, sizeof lt1);
+    ts_load(&s0); geom = gm0; lt_n = ln0; memcpy(lt, lt0, sizeof lt0);
+    tl_last = NULL;
+    if (mg_run((Gfx*)(q + 1), cnt, &nx, 0) != (Gfx*)(q + 1) + cnt) n += snprintf(names, sizeof names, "old_not_run ");
+    ts_save(&e2); gm2 = geom; ln2 = lt_n; memcpy(lt2, lt, sizeof lt2);
+#define TS_CMP(f) if (memcmp(&e1.f, &e2.f, sizeof e1.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
+    TS_FIELDS(TS_CMP)
+#undef TS_CMP
+    if (gm1 != gm2 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, "geom ");
+    if ((ln1 != ln2 || memcmp(lt1, lt2, sizeof lt1) != 0) && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, "lights ");
+    runs++;
+    if (n) { bad++; if (bad <= 40) pm_log("mdldiff f%u rec %p DIFF: %s", pm_frame_count(), (const void*)q, names); }
+    if (!(runs % 500)) pm_log("mdldiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
+    ts_load(&e2); geom = gm2; lt_n = ln2; memcpy(lt, lt2, sizeof lt2);
+    return cnt;
+}
+static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
+    unsigned cnt = q->words.w0 & 0xffu;
+    if (pm_rec_mode() == 2) return rec_diff(q, cnt);
+    rec_apply(q);
+    return cnt;
+}
+
 /* MR1: runs the n words of one model group (G_PM_MODEL header, model.c) with the walker handlers, in list order, and the
  * same skips. Returns the first word it does not run (g + n when all ran). The walker runs that word and the rest as ops.
  * A G_DL that is not a dlc hit returns the word after it and sets *nx to the list (the walker pushes it). */
@@ -3643,6 +3697,9 @@ static __attribute__((noinline)) Gfx* mg_run(Gfx* g, unsigned n, const Gfx** nx,
             break;
         case G_SETFOGCOLOR: fogc = w1; break;
         case G_SETBLENDCOLOR: blendc = w1; break;
+        case G_PM_REC: /* M4-2: producer record, the old words after it under mdldiff */
+            k += rec_run(q);
+            break;
         case G_PM_TEX:
             if (w1 && tb_list[w0 & 0x7f] == (const Gfx*)w1) { tb_run((const Gfx*)w1); break; }
             return q;
@@ -3745,6 +3802,9 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (nx && sp < 12) { stack[sp++] = pc; pc = (Gfx*)nx; }
             break;
         }
+        case G_PM_REC: /* M4-2: producer record outside mg_run (the debug switches that leave mg_run) */
+            pc += rec_run(pc - 1);
+            break;
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
             tb_inline(pc, w0 & 0xffffu);
             pc += w0 & 0xffffu;

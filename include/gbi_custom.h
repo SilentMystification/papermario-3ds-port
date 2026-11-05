@@ -216,6 +216,7 @@
 #define G_PM_TEXI 0x0B
 /* MR1: header of the n model words after it (w0 low 16 bits = n). The 3DS interpreter runs them with the same handlers (mg_run). */
 #define G_PM_MODEL 0x0C
+#define G_PM_REC 0x0D /* M4-2: producer record of a plain opaque model (model.c), one word, pm_gbi.c rec_run */
 #define gsSPPmTexInline(n) {{ _SHIFTL(G_PM_TEXI, 24, 8) | ((n) & 0xffff), 0 }}
 #define gSPPmTexBind(pkt, idx, dl) {     Gfx *_g = (Gfx *)(pkt);     _g->words.w0 = _SHIFTL(G_PM_TEX, 24, 8) | ((idx) & 0x7f);     _g->words.w1 = (u32)(dl); }
 
