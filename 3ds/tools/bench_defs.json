@@ -23,6 +23,46 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_ndmcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": true,
+      "purpose": "spot_mac01_pic ndmcheck (S3N-3): native draw record vs walker draw. Gate: diff 0 and eq above 0. A person reads the shot.",
+      "scenario": "spot_mac01_ndmcheck",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "ndmcheck"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_eq",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndm_eq",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "spot_mac01_prof",
       "kind": "console_prof",
       "speed": "normal",
@@ -58,6 +98,46 @@
       "gates": []
     },
     {
+      "name": "spot_mac00_ndmcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": true,
+      "purpose": "spot_mac00_pic ndmcheck (S3N-3): native draw record vs walker draw. Gate: diff 0 and eq above 0. A person reads the shot.",
+      "scenario": "spot_mac00_ndmcheck",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "ndmcheck"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_eq",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndm_eq",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "spot_mac00_prof",
       "kind": "console_prof",
       "speed": "normal",
@@ -91,6 +171,46 @@
         "spot"
       ],
       "gates": []
+    },
+    {
+      "name": "spot_sbk56_ndmcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": true,
+      "purpose": "spot_sbk56_pic ndmcheck (S3N-3): native draw record vs walker draw. Gate: diff 0 and eq above 0. A person reads the shot.",
+      "scenario": "spot_sbk56_ndmcheck",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "ndmcheck"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_eq",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndm_eq",
+          "op": ">",
+          "value": 0
+        }
+      ]
     },
     {
       "name": "spot_sbk56_prof",

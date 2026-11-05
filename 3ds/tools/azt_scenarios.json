@@ -5128,6 +5128,35 @@
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
+      "name": "spot_mac01_ndmcheck",
+      "status": "pending",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "S3N-3 native draw record compare (ndmcheck): each native model draw record matches the walker draw. The gate is diff 0 with eq above 0. The shot shows the spot as in spot_mac01_pic.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 ndmcheck shots shotwin=200:6 loglevel=debug",
+      "until": "ndmcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+$"
+        },
+        {
+          "name": "ndmcheck window: eq above 0 and diff 0",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S3N-3 ndmcheck copy of spot_mac01_pic. Status pending: the build prints the ndmcheck line only after S3N-3 lands. Cap 25 s: boot, warp, placement and the first 300-frame window (the until). A run with eq 0 fails (nothing compared)."
+    },
+    {
       "name": "spot_mac00_pic",
       "status": "unverified",
       "subject": "mac_00 (preset toad), Mario placed at pos -135 0 85 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
@@ -5152,6 +5181,35 @@
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
+      "name": "spot_mac00_ndmcheck",
+      "status": "pending",
+      "subject": "mac_00 (preset toad), Mario placed at pos -135 0 85 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "S3N-3 native draw record compare (ndmcheck): each native model draw record matches the walker draw. The gate is diff 0 with eq above 0. The shot shows the spot as in spot_mac00_pic.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 prof=4 ndmcheck shots shotwin=200:6 loglevel=debug",
+      "until": "ndmcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 -135 0 85 pos -?\\d+ -?\\d+ -?\\d+$"
+        },
+        {
+          "name": "ndmcheck window: eq above 0 and diff 0",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S3N-3 ndmcheck copy of spot_mac00_pic. Status pending: the build prints the ndmcheck line only after S3N-3 lands. Cap 25 s: boot, warp, placement and the first 300-frame window (the until). A run with eq 0 fails (nothing compared)."
+    },
+    {
       "name": "spot_sbk56_pic",
       "status": "unverified",
       "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
@@ -5174,6 +5232,35 @@
         }
       ],
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
+    },
+    {
+      "name": "spot_sbk56_ndmcheck",
+      "status": "pending",
+      "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "S3N-3 native draw record compare (ndmcheck): each native model draw record matches the walker draw. The gate is diff 0 with eq above 0. The shot shows the spot as in spot_sbk56_pic.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 ndmcheck shots shotwin=200:6 loglevel=debug",
+      "until": "ndmcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+$"
+        },
+        {
+          "name": "ndmcheck window: eq above 0 and diff 0",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S3N-3 ndmcheck copy of spot_sbk56_pic. Status pending: the build prints the ndmcheck line only after S3N-3 lands. Cap 25 s: boot, warp, placement and the first 300-frame window (the until). A run with eq 0 fails (nothing compared)."
     }
   ]
 }
