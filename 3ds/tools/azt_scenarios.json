@@ -7070,6 +7070,34 @@
       "reason": "FX1 row 1 (MERLEE). Live warp to dro_02 at frame 120 gives 50 coins (warpitems; plain warp= does not, the coin count was 0 in start 2). Mario is placed by pos_ at -130 0 -370 (30 units from Merlee at -130 0 -400, npc.c), then go_ walks him the last 6 units, facing her. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell. The until line ends the run when the spell ends. Without the fix the run stops at the cap (the hang)."
     },
     {
+      "name": "ui1_sbk56",
+      "status": "unverified",
+      "subject": "UI1: the super block yes/no prompt (sbk_56 at -50 60 275). The Yes/No text and the glove, shot at frames 512 to 524 (shots 6 to 12 of the shotwin 500:240 window).",
+      "proves": "UI1 cause: the drop shadow pass (msg_draw.c, PM_CC_07 prim 40,40,40,72 at +2,+2) and the choice pointer shadow (msg.c) against the picture; ui1log lines give the draw values per frame.",
+      "debug": "warp=sbk_56:0 story=ch0_toad_town pos=-50:0:275 padscript=@pad_sbk56.txt shots shotwin=500:240 loglevel=debug ui1log bglog",
+      "until": "ui1: choice steady end",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "hit",
+          "regex": "superblock: hit f[0-9]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame [0-9]+"
+        }
+      ],
+      "reason": "UI1c measurement (row UI1, Oracle plan). Same prompt as sbk56_superblock with the ui1log debug word (msg.c and msg_draw.c pm_log_d lines, frames 512 to 524). The until line is the same as sbk56_superblock: the run ends when the effects are done, after the prompt. Cap 45 s."
+    },
+    {
       "name": "sbk56_superblock",
       "status": "unverified",
       "subject": "sbk_56 (Dry Dry Desert area, super block at -50 60 275). Mario placed under the block by pos=, jumps by padscript (A). Shots every 30 frames to the hit and the upgrade effects: the energy dots moving to the partner and the white flash.",
