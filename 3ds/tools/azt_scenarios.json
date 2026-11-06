@@ -7258,6 +7258,46 @@
         }
       ],
       "reason": "FADV gate: exactly 5 fa: step lines (one per R press), frame +1 each, audio muted during the hold (audio: muted, no unmute before the done line). The menu: game resumed line is the close."
+    },
+{
+      "name": "menu_frameadv_off",
+      "status": "unverified",
+      "subject": "Select menu, Cheats row 22 Frame advance On, close, three R steps; reopen, row 22 Off, close, three more R presses. The game does not step after fa: off.",
+      "proves": "FADV off: pm_fa_get at the menu close gives fa_state 0; no step line after the off close while R is pressed.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,L,wait20,dup,wait10,dup,wait10,A,wait20,SELECT,wait60,k_R,wait10,k_R,wait10,k_R,wait10,SELECT,wait20,A,wait20,SELECT,wait60,k_R,wait10,k_R,wait10,k_R,wait10,wait30 shots",
+      "until": "padscript: done",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "fa on",
+          "regex": "fa: on"
+        },
+        {
+          "name": "fa off",
+          "regex": "fa: off"
+        },
+        {
+          "name": "resumed",
+          "regex": "menu: game resumed at frame \\d+"
+        },
+        {
+          "name": "step",
+          "regex": "fa: step frame \\d+"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "FADV off check: after fa: off and menu: game resumed, no fa: step line while R is pressed (three presses). Order checked in the log: the three steps come before fa: off."
     }
   ]
 }

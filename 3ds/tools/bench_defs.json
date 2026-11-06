@@ -1192,6 +1192,24 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+{
+      "name": "menu_frameadv_off_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FADV off: Cheats row 22 On, three steps, row 22 Off, three R presses with no step. Log: fa: off, menu: game resumed, no fa: step after fa: off.",
+      "scenario": "menu_frameadv_off",
+      "cap": 40,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "fadv"
+      ],
+      "log_metrics": [],
+      "gates": []
     }
   ],
   "legacy": {
