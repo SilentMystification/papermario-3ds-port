@@ -2613,8 +2613,8 @@ static void ndn_log(void) {
         pm_log_prof_line("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0);
         pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u", f, ndn_nokey, ndn_rng, ndn_texf);
         { static int szd; if (!szd) { szd = 1; pm_log_prof_line("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
-        { unsigned dg[14]; nd_mc_diag_take(dg);
-          pm_log_prof_line("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13]); }
+        { unsigned dg[15]; nd_mc_diag_take(dg);
+          pm_log_prof_line("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
         pm_log_prof_line("ndmt f%u key %.2f rng %.2f miss %.2f fb %.2f upd %.2f emit %.2f add %.2f mtx %.2f draws %u smp %u", f,
             ndt_ms(NDT_KEY, ns), ndt_ms(NDT_RNG, ns), ndt_ms(NDT_MISS, ns), ndt_ms(NDT_FB, ns), ndt_ms(NDT_UPD, ns), ndt_ms(NDT_EMIT, ns), ndt_ms(NDT_ADD, ns), ndt_ms(NDT_MTX, ns), ndn_draws, ns);
         ndn_clr0 = clr; ndn_smp0 = smp;
@@ -2633,10 +2633,15 @@ static int model_ranges_eq(const NdMEnt* e, const NdRng* r, int nr) {
  * sends. hit / miss counts the entries; diff counts the differing fields (the first 20 lines are printed). The unit words are the hinted ones, as the hit sends them. */
 static unsigned ndc_hit, ndc_miss, ndc_diff, ndc_lines, ndc_copy;
 static unsigned ndc_bits(float f) { unsigned u; memcpy(&u, &f, 4); return u; }
+/* S3N-7: the entry and the key of the current check (ndc_compare), and the count per walker word of the diffs (ndmcw line) */
+static const NdMKey* ndc_k; static const NdMEnt* ndc_e; static unsigned ndc_wc[NDMC_RW + NDMC_SW];
 static __attribute__((cold, noinline)) void ndc_cmp(const char* nm, unsigned a, unsigned b) {
     if (a == b) return;
     ndc_diff++;
-    if (ndc_lines++ < 20) pm_log_prof_line("ndmcache diff %s cache %x fresh %x", nm, a, b);
+    unsigned wl[8], nw = 0;
+    if (ndc_e && ndc_k) for (unsigned j = NDMC_RW; j < NDMC_RW + NDMC_SW; j++) if (ndc_e->k.w[j] != ndc_k->w[j]) { ndc_wc[j]++; if (nw < 8) wl[nw++] = j; }
+    if (ndc_lines++ < 20) { char wb[64]; unsigned p = 0; for (unsigned i = 0; i < nw && p < 50; i++) p += (unsigned)snprintf(wb + p, sizeof wb - p, "%u ", wl[i]);
+        pm_log_prof_line("ndmcache diff %s cache %x fresh %x walk %s", nm, a, b, wb); }
 }
 static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg) {
     (void)hs; (void)hg;
@@ -2645,6 +2650,7 @@ static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDes
     int nr = e ? pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX) : -3;
     if (!e || !model_ranges_eq(e, rng, nr)) { ndc_miss++; return 0; }
     ndc_hit++;
+    ndc_k = k; ndc_e = e;
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) { if (!ds || id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndc_diff++; return 1; } }
     unsigned fn = 0;
@@ -2740,6 +2746,7 @@ static __attribute__((cold, noinline)) void ndm_end_log(void) {
     pm_log_prof_line("ndmcheck why9 %u why10 %u why11 %u why12 %u badop %02x n %u", ndm_why[9], ndm_why[10], ndm_why[11], ndm_why[12], ndm_badop >> 24, ndm_badn);
     pm_log_prof_line("ndmcheck refused batches %u", ndm_refused_total);
     pm_log_prof_line("ndmcache f%u hit %u miss %u diff %u copy %u", f, ndc_hit, ndc_miss, ndc_diff, ndc_copy);
+    { char wb[240]; unsigned p = 0; for (unsigned j = NDMC_RW; j < NDMC_RW + NDMC_SW && p < 200; j++) if (ndc_wc[j]) p += (unsigned)snprintf(wb + p, sizeof wb - p, "%u:%u ", j, ndc_wc[j]); pm_log_prof_line("ndmcw f%u %s", f, wb); }
     { char b[200]; unsigned p = 0; for (unsigned i = 0; i < ndm_fn_used && p < 150; i++) p += (unsigned)snprintf(b + p, sizeof b - p, "%s %u ", ndm_fn[i], ndm_fn_n[i]); pm_log_prof_line("ndmcheck fields %s", b); }
 }
 void pm_gpu_ndm_end(void) {

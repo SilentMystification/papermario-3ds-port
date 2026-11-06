@@ -329,7 +329,7 @@ uint32_t nd_mc_hash(const NdMKey* k);                          /* S3N-7: the has
 void nd_mc_miss(const NdMKey* k);                              /* S3N-7: the class of one miss (diagnostic counters) */
 unsigned nd_mc_size(void);                                     /* S3N-7 diagnostic: table size */
 const NdMEnt* nd_mc_ent(unsigned i);                           /* S3N-7 diagnostic: entry i */
-void nd_mc_diag_take(unsigned o[14]);                          /* S3N-7: the miss classes of the window (0 new, 1 clr, 2 rec, 3 st, 4 hd, 5 gv, 6 same, 7 rcap, 8 ncap: stores refused), then reset them; table use */
+void nd_mc_diag_take(unsigned o[15]);                          /* S3N-7: the miss classes of the window (0 new, 1 clr, 2 rec, 3 st, 4 hd, 5 gv, 6 same, 7 rcap, 8 ncap: stores refused), then reset them; table use */
 unsigned nd_mc_clears(void);
 /* S3N-7: exclusive tick timers of the native model path (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed inside it. */
 typedef struct NdtT { uint64_t t, all; int on; } NdtT;
