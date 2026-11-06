@@ -11,6 +11,7 @@ void pm_gx_room(void); /* HANG1a */
 #include <stdlib.h>
 #include "pm_shader5_shbin.h"
 #include "nd.h"
+#include "nd_sprite.h"
 #include "pm_shaderall_shbin.h"
 #include "pm_gpu.h"
 #include "pm_gbi.h"
@@ -976,6 +977,10 @@ void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int
     ndt_mdl = 0;
 }
 
+/* S4-1 sprcheck: the sprite record of the batch that goes out next (pm_gbi.c G_PM_SPR arm, pm_gpu_spr_rec). spr_check compares it with the walker draw. */
+static const uint32_t* spr_pend;
+static unsigned spr_recs_n, spr_eq_n, spr_diff_n, spr_fb_n, spr_why_last, spr_dfield_last, spr_f_last;
+static void spr_check(const NdDraw* w);
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) return 0;
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
@@ -1035,6 +1040,7 @@ static int nd_raw_native(void) {
     d.idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(gidx + gi_start) - 0x18000000u);
     d.nidx = gni;
     if (ndm_live) ndm_cmp(&nk, &d);
+    if (spr_pend) spr_check(&d);
     nd_native_submit(&d, tex);
     return 1;
 }
@@ -1069,6 +1075,7 @@ static void flush_draw(void) {
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
     if (graw && nd_raw_native()) return;
+    if (graw && spr_pend) spr_pend = NULL, spr_fb_n++; /* S4-1: the sprite of this batch fell back to the walker draw */
     if (graw && ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a batch of the record the native raw path refused (the walker drew it on the old path): not compared */
     nd_leave_native(); /* a draw that citro3d makes: it re-emits what the native draws changed */
     pm_dc_c[DC_RAW] += (unsigned)graw;
@@ -3031,6 +3038,79 @@ void pm_gpu_set_const(unsigned rgba) {
 }
 
 void pm_gpu_flush(void) { flush(); }
+
+/* S4-1 sprcheck (debug switch, pm_debug_has): the native state of each sprite record (nd_sprite.c, the record words of sprite.c) against the walker draw of
+ * its batch (nd_raw_native). One record per draw: the batch before a record goes out at the record. Log every 300 frames. */
+void pm_gpu_spr_rec(const uint32_t* rec) {
+    static int on = -1;
+    if (on < 0) on = pm_debug_has("sprcheck");
+    if (!on) return;
+    pm_gpu_flush();
+    spr_pend = rec; spr_recs_n++;
+}
+static void spr_log(void) {
+    unsigned f = pm_frame_count();
+    if (f % 300u || f == spr_f_last) return;
+    spr_f_last = f;
+    pm_log_prof_line("sprcheck f%u recs %u eq %u diff %u fb %u why %u dfield %u", f, spr_recs_n, spr_eq_n, spr_diff_n, spr_fb_n, spr_why_last, spr_dfield_last);
+}
+/* 0 equal, else 1 + the first field that differs (1 key, 2 TEV, 3 unit 0, 4 uv and colour uniforms, 5 z mix) */
+static unsigned spr_cmp(const NdDraw* a, const NdDraw* b) {
+    if (a->tmpl != b->tmpl) return 1;
+    if (memcmp(a->tev_col, b->tev_col, sizeof a->tev_col) || a->buf_col != b->buf_col || a->has_buf != b->has_buf) return 2;
+    if (a->u[0].dim != b->u[0].dim || a->u[0].param != b->u[0].param || a->u[0].lod != b->u[0].lod || a->u[0].addr != b->u[0].addr || a->u[0].type != b->u[0].type) return 3;
+    if (memcmp(a->uvso, b->uvso, 16) || memcmp(a->cmul, b->cmul, 16) || memcmp(a->cadd, b->cadd, 16)) return 4;
+    if (memcmp(a->zmix, b->zmix, sizeof a->zmix)) return 5;
+    return 0;
+}
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+static void spr_check(const NdDraw* w) {
+    const uint32_t* rec = spr_pend;
+    spr_pend = NULL;
+    NdSprRec r;
+    nd_sprite_decode(rec, &r);
+    NdMode mode;
+    if (!nd_sprite_mode(&r, &mode)) { spr_fb_n++; spr_why_last = 1; spr_log(); return; }
+    NdTexDesc ds;
+    NdUnit un;
+    memset(&ds, 0, sizeof ds); memset(&un, 0, sizeof un);
+    const int tex = r.raster != 0;
+    int tw = 8, th = 8;
+    if (tex) { /* the unit 0 words of the record's raster (CI4, clamp), as the walker binds it */
+        ds.img = (const void*)(uintptr_t)r.raster; ds.pal = (const void*)(uintptr_t)r.palette;
+        ds.fmt = 2; ds.siz = 0; ds.cms = 2; ds.cmt = 2; ds.masks = 8; ds.maskt = 8; /* G_IM_FMT_CI, G_IM_SIZ_4b, G_TX_CLAMP (gbi.h values; nd_model.c uses the numbers too) */
+        ds.w = (uint16_t)r.w; ds.h = (uint16_t)r.h; ds.stride = (uint16_t)r.w; ds.pal_n = 16;
+        int id = nd_tex_get(&ds);
+        if (id < 0 || !nd_tex_unit(id, &un)) { spr_fb_n++; spr_why_last = 2; spr_log(); return; }
+        while (tw < (int)r.w) tw <<= 1;
+        while (th < (int)r.h) th <<= 1;
+    }
+    unsigned sw_tss, sw_geo, sw_cw0, sw_cw1;
+    pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
+    const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
+    NdGvP gv;
+    pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv);
+    NdMCtx c;
+    memset(&c, 0, sizeof c);
+    c.mode = &mode; c.u0 = tex ? &un : NULL; c.i8_0 = 0; c.gv = &gv;
+    c.has_comb = 1; c.comb_w0 = sw_cw0; c.comb_w1 = sw_cw1;
+    c.tex_w = tw; c.tex_h = th; c.tss = mode.has_tx ? mode.tw1 : sw_tss;
+    c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;
+    c.draw_3d = 1; c.dview = dview; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
+    uint32_t env, prim;
+    nd_sprite_colors(&r, env_col, nd_st.prim, &env, &prim);
+    c.env = env; c.prim = prim; c.prim_lod = nd_st.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
+    { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
+    c.base_oh = nd_st.om_h; c.base_ol = nd_st.om_l; c.known_h = nd_st.om_kh; c.known_l = nd_st.om_kl;
+    uint32_t zr[27];
+    memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
+    NdDraw n;
+    NdMState st;
+    if (nd_model_state(zr, &c, &n, &st) != 1) { spr_fb_n++; spr_why_last = 10u + (unsigned)st.why; spr_log(); return; }
+    const unsigned df = spr_cmp(&n, w);
+    if (df) { spr_diff_n++; spr_dfield_last = df; } else spr_eq_n++;
+    spr_log();
+}
 const char* pm_gpu_last_flush(int* line) { *line = fl_line; return fl_fn; } /* the hang watchdog prints it */
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
