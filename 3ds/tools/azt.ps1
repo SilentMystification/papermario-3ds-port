@@ -30,6 +30,7 @@ param(
     [string]$Build = "",
     [string]$CheckLog = "",
     [switch]$Try,
+    [switch]$Keep, # AZT-2: leave the slot's Azahar open after the run (a later run on the slot restarts in it, 3 s or more sooner than a cold start)
     [ValidateSet("", "turbo", "normal")][string]$Speed = "", # BENCH3: speed of this start (default: -Turbo in the scenario, else normal)
     [switch]$List,
     [switch]$SelfTest
@@ -147,6 +148,7 @@ $runDir = Join-Path $repo "build3ds\azt"
 # Shared state for the log reader
 $script:pos = 0L
 $script:carry = ""
+$script:logCT = $null
 $script:checkRc = 0
 
 function Read-LogChunk {
@@ -155,6 +157,9 @@ function Read-LogChunk {
     try {
         $fs = [IO.File]::Open($logPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
         try {
+            $ct = (Get-Item $logPath).CreationTimeUtc
+            if ($null -ne $script:logCT -and $ct -ne $script:logCT) { $script:pos = 0; $script:carry = "" } # a new log.txt: the game booted again (warm restart)
+            $script:logCT = $ct
             if ($fs.Length -lt $script:pos) { $script:pos = 0; $script:carry = "" }
             $n = [int]($fs.Length - $script:pos)
             if ($n -le 0) { return "" }
@@ -221,6 +226,13 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
         foreach ($f in $shotFiles) { Copy-Item $f.FullName $arch }
         $shotFiles = @(Get-ChildItem $arch -File | Sort-Object Name)
     }
+    if ($since -gt [datetime]::MinValue) {
+        # The slot is free for the next run once this script ends, and that run overwrites the slot log: read this run's log from this copy
+        $ld = Join-Path $repo "build3ds\azt\logs"
+        New-Item -ItemType Directory -Force -Path $ld | Out-Null
+        Copy-Item $file (Join-Path $ld "$($sc.name).txt") -Force
+        Write-Output "LOG: $(Join-Path $ld "$($sc.name).txt") (copy of this run's log; slot $slotK)"
+    }
     Write-Output "SUBJECT: $($sc.subject)"
     Write-Output "SHOTS: $($shotFiles.Count) from this run"
     foreach ($f in $shotFiles) { Write-Output "  $($f.FullName)" }
@@ -276,6 +288,9 @@ $lastLog = Join-Path $outDir "slot$slotK\last_log.txt"
 $shotDir = Join-Path $outDir "slot$slotK\shots"
 $env:PM_SLOT_HELD = "1"
 $argv += @("-Slot", [string]$slotK)
+if ($Keep) { $argv += @("-Keep") }
+$warmFile = Join-Path $slotInfo.dir "warm.start"
+Remove-Item $warmFile -ErrorAction SilentlyContinue
 $cmd = ($argv | ForEach-Object { if ($_ -match '^-[A-Za-z]+$') { $_ } else { '"' + $_ + '"' } }) -join " "
 
 $env:PM_ROW = $Row
@@ -297,6 +312,12 @@ while (-not $child.HasExited) {
     Start-Sleep -Milliseconds 500
     if (-not $azStart) {
         if (Get-AzaharProc $t0) { $azStart = Get-Date; $lastNew = $azStart; Write-Output "AZT: Azahar started, the deadline clock runs" }
+        elseif (Test-Path $warmFile) {
+            # AZT-2: run_azahar.ps1 restarts emulation in the kept Azahar and wrote warm.start. The old log.txt content does not count.
+            $azStart = Get-Date; $lastNew = $azStart; $script:warm = $true
+            if (Test-Path $logPath) { $script:pos = (Get-Item $logPath).Length; $script:logCT = (Get-Item $logPath).CreationTimeUtc }
+            Write-Output "AZT: warm restart in the kept Azahar, the deadline clock runs"
+        }
         continue
     }
     $chunk = Read-LogChunk
@@ -314,6 +335,7 @@ while (-not $child.HasExited) {
 if ($stop) {
     Write-Output "AZT: stopping the run ($stop). Killing the Azahar of this run."
     $pr = Get-AzaharProc $t0
+    if (-not $pr) { $pr = Get-KeptAzahar $slotK }
     if ($pr) { Stop-Process -Id $pr.Id -Force -ErrorAction SilentlyContinue }
 }
 if (-not $child.WaitForExit(150000)) {

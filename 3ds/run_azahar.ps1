@@ -46,12 +46,19 @@ param(
     [string]$GdbScript = "",
     [switch]$Milestone, # allows tour= with more than 40 maps (budget rule)
     [switch]$Force, # run an identical rerun anyway (counts as one start, like every real Azahar start; a cached run that skips Azahar counts nothing)
+    [switch]$Keep, # AZT-2: leave this slot's Azahar open (paused) after a run that matched its until line; the next run on the slot restarts emulation in it (warm). Env PM_AZ_KEEP=1 does the same.
+    [switch]$NoWarm, # AZT-2: do not restart in a kept Azahar, start a new one
     [int]$Slot = 0, # AZT-1: Azahar slot 1..N (build3ds\azslots\slot<k>); 0 = first free slot. azt.ps1 holds the slot lock and passes -Slot with PM_SLOT_HELD=1
     [string]$ResetBudget = "", # orchestrator only: reset the run count of one row, then exit
     [string]$Debug = ""  # render debug switches for the game, see pm_main.c (nofog nolight notex texonly logtev)
 )
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\tools\azslot.ps1"
+$slotK = 0
+$heldHere = $false
+# The slot covers the later reads of the slot game log and emulator log too: released after the last read (Release-Lock below)
+function Release-Lock { if ($script:heldHere) { $script:heldHere = $false; Exit-Slot $script:slotK } }
+trap { Release-Lock; break }
 if ($Interactive) { $Timeout = [int]::MaxValue }
 $repo = Split-Path -Parent $PSScriptRoot
 $sdMaster = "$env:APPDATA\Azahar\sdmc\3ds\PaperMario" # the user's game folder: only read (tour lists, copied to the slot)
@@ -65,7 +72,7 @@ if ($env:PM_LANE) { $out = "$repo\build3ds\lane-$env:PM_LANE"; $vol = "pm3ds-wor
 # Test budget (3ds/logs/test_budget.csv): columns time,row,sha256,args,kind,rc,result. kind = start or end.
 $budgetFile = "$repo\3ds\logs\test_budget.csv"
 if ($ResetBudget) {
-    if (Test-Path $budgetFile) { $keep = @(Get-Content $budgetFile | Where-Object { $_.Split(",")[1] -ne $ResetBudget }); Set-Content $budgetFile $keep }
+    if (Test-Path $budgetFile) { $rowsLeft = @(Get-Content $budgetFile | Where-Object { $_.Split(",")[1] -ne $ResetBudget }); Set-Content $budgetFile $rowsLeft }
     Write-Output "Budget of row $ResetBudget reset."; exit 0
 }
 $row = if ($env:PM_ROW) { $env:PM_ROW } else { "adhoc" }
@@ -73,7 +80,7 @@ $max = if ($env:PM_BUDGET) { [int]$env:PM_BUDGET } elseif ($row -eq "adhoc") { 1
 if ($row -eq "adhoc") { Write-Output "WARNING: PM_ROW is not set. Set PM_ROW to your row id. Runs count under row adhoc (12 per 3 hours)." }
 $in3dsx = "$out\pm_3ds.3dsx"
 $sha = (Get-FileHash "$out\pm_3ds.3dsx" -Algorithm SHA256).Hash.ToLower()
-$argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "Force", "ResetBudget", "Milestone", "Slot" } | Sort-Object Key |
+$argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "Force", "ResetBudget", "Milestone", "Slot", "Keep", "NoWarm" } | Sort-Object Key |
     ForEach-Object { "$($_.Key)=$($_.Value)" }) -join " ").Replace(",", ";")
 $budgetRows = @(if (Test-Path $budgetFile) { Get-Content $budgetFile | Where-Object { $_ } | ForEach-Object { $f = $_.Split(","); [pscustomobject]@{ t = [datetime]$f[0]; row = $f[1]; sha = $f[2]; args = $f[3]; kind = $f[4]; rc = $f[5]; res = ($f[6..($f.Count - 1)] -join ",") } } })
 $used = @($budgetRows | Where-Object { $_.row -eq $row -and $_.kind -eq "start" -and ($row -ne "adhoc" -or $_.t -gt (Get-Date).AddHours(-3)) }).Count
@@ -189,11 +196,6 @@ if ($Turbo) {
 # azt.ps1 takes the slot itself and passes -Slot with PM_SLOT_HELD=1. A direct call takes the first free slot (waits only when all are busy).
 $p = $null
 $gdbProc = $null
-$slotK = 0
-$heldHere = $false
-# The slot covers the later reads of the slot game log and emulator log too: released after the last read (Release-Lock below)
-function Release-Lock { if ($script:heldHere) { $script:heldHere = $false; Exit-Slot $script:slotK } }
-trap { Release-Lock; break }
 if ($env:PM_SLOT_HELD -and $Slot -gt 0) { $slotK = $Slot }
 else {
     $slotK = Get-Slot $Slot $LockWait
@@ -209,8 +211,16 @@ if (Test-Path "$sdMaster\options.ini") { Copy-Item "$sdMaster\options.ini" $optF
 $outLane = $out
 $out = "$outLane\slot$slotK" # outputs of this slot: no file shared with a run on another slot
 New-Item -ItemType Directory -Force -Path $out | Out-Null
+# AZT-2: an Azahar kept by an earlier run (-Keep) is reused when it is the same build file and the same speed settings
+$keepOn = $Keep.IsPresent -or [bool]$env:PM_AZ_KEEP
+$warm = $false
+$kept = Get-KeptAzahar $slotK
+$keepInfo = Get-KeepInfo $slotK
+if ($kept -and $keepInfo -and -not $NoWarm -and -not $Interactive -and -not $Gdb -and -not $FaultStop -and $keepInfo.pid -eq $kept.Id -and $keepInfo.x3dsx -eq $x3dsx -and
+    [bool]$keepInfo.turbo -eq $Turbo.IsPresent -and [int]$keepInfo.turbolimit -eq $(if ($Turbo) { $TurboLimit } else { 0 })) { $warm = $true }
+if (-not $warm) { Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
 # From here this script owns the slot. Any earlier run on this slot that was killed: kill its Azahar, put the config back.
-if (Test-Path $pidFile) {
+if (-not $warm -and (Test-Path $pidFile)) {
     $old = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
     $op = Get-Process -Id $old -ErrorAction SilentlyContinue
     if ($op -and $op.ProcessName -eq "azahar") { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old }
@@ -219,7 +229,7 @@ if (Test-Path $pidFile) {
 if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
 if (Test-Path $optBak) { Write-Output "Recovery: restoring options.ini saved by a killed run."; Restore-Opt }
 # An azahar.exe of this slot that no run owns (a kill left it): the slot is ours, so stop it.
-foreach ($sp in @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -eq $exe })) {
+foreach ($sp in @(if (-not $warm) { Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -eq $exe } })) {
     Write-Output "Slot ${slotK}: stopping a stray azahar.exe (pid $($sp.ProcessId))."
     Kill-Azahar ([int]$sp.ProcessId)
 }
@@ -230,9 +240,12 @@ try {
     if ($Turbo) { Set-Turbo }
 
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
-Copy-Item $in3dsx "$sd\$x3dsx" -Force
-Remove-Item $log -ErrorAction SilentlyContinue
-if (Test-Path $log) { Release-Lock; End-Run 5 "LOG LOCKED: $log is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
+try { Copy-Item $in3dsx "$sd\$x3dsx" -Force -ErrorAction Stop }
+catch { if ($warm) { Write-Output "Warm: the 3dsx in the kept Azahar is locked ($($_.Exception.Message)). Cold start."; $warm = $false; Kill-Azahar $kept.Id; Copy-Item $in3dsx "$sd\$x3dsx" -Force } else { throw } }
+$oldLogCT = [datetime]::MinValue
+if ($warm) { if (Test-Path $log) { $oldLogCT = (Get-Item $log).CreationTimeUtc } } # the kept game holds log.txt open: the restart makes a new one
+else { Remove-Item $log -ErrorAction SilentlyContinue }
+if (-not $warm -and (Test-Path $log)) { Release-Lock; End-Run 5 "LOG LOCKED: $log is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
 if ($Smoke -and $Debug -notmatch "fixedseed") { $Debug = "$Debug fixedseed" } # R-SEED: smoke runs use the fixed RNG seed
 if ($Debug) { Set-Content "$sd\debug3ds.txt" $Debug } else { Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue }
 if ($Debug -notmatch '\bprof\b' -and (Test-Path $optFile)) { # UI1a: no prof word, so the saved profmode must not apply
@@ -243,8 +256,10 @@ if ($Debug -notmatch '\bprof\b' -and (Test-Path $optFile)) { # UI1a: no prof wor
     Write-Output "options.ini: profmode=off for this run (no prof word in the debug switches)"
 }
 Remove-Item "$sd\shots", "$out\shots" -Recurse -ErrorAction SilentlyContinue # "shots" switch output
-Remove-Item $emuLog -ErrorAction SilentlyContinue # an old exception dump must not stop this run
-if (Test-Path $emuLog) { Release-Lock; End-Run 5 "LOG LOCKED: $emuLog is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
+$emuOff = 0L
+if ($warm) { if (Test-Path $emuLog) { $emuOff = (Get-Item $emuLog).Length } } # the emulator log of a kept Azahar stays open: only text after this offset counts
+else { Remove-Item $emuLog -ErrorAction SilentlyContinue } # an old exception dump must not stop this run
+if (-not $warm -and (Test-Path $emuLog)) { Release-Lock; End-Run 5 "LOG LOCKED: $emuLog is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
 Set-GdbStub $Gdb.IsPresent
 
 # Visible top-level windows of a process: Azahar's error dialog is a second one
@@ -275,8 +290,35 @@ public class AzEnum {
 }
 "@
 
-$p = Start-Process $exe -ArgumentList "`"$sd\$x3dsx`"" -PassThru
-Set-Content $pidFile $p.Id
+$p = $null
+$warmDone = $false
+$start = Get-Date
+if ($warm) {
+    # AZT-2 warm restart: Azahar > Emulation > Restart (hotkey of the slot config) boots the same 3dsx again; the new boot makes a new log.txt
+    Set-Content "$($sl.dir)\warm.start" $start.Ticks # azt.ps1 starts its clock on this file
+    Set-Content $pidFile $kept.Id
+    $hk = Get-SlotHotkey $slotK "Restart Emulation"
+    $sent = Send-AzHotkey $kept $hk
+    if ($sent) {
+        for ($w = 0; $w -lt 60 -and -not $warmDone; $w++) {
+            Start-Sleep -Milliseconds 250
+            # a new boot makes a new log.txt (new creation time) or writes to it; the paused old game wrote nothing since its run ended
+            if (Test-Path $log) { $li = Get-Item $log; if ($li.CreationTimeUtc -ne $oldLogCT -or $li.LastWriteTimeUtc -gt $start.ToUniversalTime()) { $warmDone = $true } }
+        }
+    }
+    if ($warmDone) { $p = $kept; Write-Output ("Warm restart ok after {0:N1} s (hotkey {1})." -f ((Get-Date) - $start).TotalSeconds, $hk) }
+    else {
+        Write-Output "Warm restart failed (hotkey '$hk', sent $sent): no new log.txt after 15 s. Cold start."
+        Kill-Azahar $kept.Id
+        Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
+        $emuOff = 0L
+        $warm = $false
+    }
+}
+if (-not $p) {
+    $p = Start-Process $exe -ArgumentList "`"$sd\$x3dsx`"" -PassThru
+    Set-Content $pidFile $p.Id
+}
 if ($Gdb) {
     # Azahar waits for gdb before it runs the game. winhost = the Windows host (IPv4) seen from Docker.
     $cmds = @("set pagination off", "set confirm off", "set width 0", "target remote winhost:24689")
@@ -291,7 +333,7 @@ if ($Gdb) {
     $gdbProc = Start-Process docker -ArgumentList $gdbArgs -NoNewWindow -PassThru `
         -RedirectStandardOutput "$out\last_gdb.txt" -RedirectStandardError "$out\last_gdb_err.txt"
 }
-$start = Get-Date
+if (-not $warmDone) { $start = Get-Date }
 $reason = "timeout ($Timeout s)"
 $lastSize = -1
 $lastGrow = Get-Date
@@ -349,12 +391,19 @@ public class AzWin {
         $g.Dispose(); $bmp.Dispose()
     }
 } finally {
-    if ($p) { Kill-Azahar $p.Id }
+    $keepNow = $keepOn -and $p -and -not $p.HasExited -and $reason -like "matched*" -and -not $Gdb -and -not $Interactive
+    if ($keepNow) {
+        # AZT-2: pause the game (no CPU while idle) and leave Azahar open; the idle reaper closes it after 10 minutes
+        [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation"))
+        @{ pid = $p.Id; x3dsx = $x3dsx; turbo = $Turbo.IsPresent; turbolimit = $(if ($Turbo) { $TurboLimit } else { 0 }); time = (Get-Date).ToString("s") } | ConvertTo-Json | Set-Content $sl.keepFile
+        Start-SlotReaper $slotK
+    }
+    elseif ($p) { Kill-Azahar $p.Id; Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
     if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
     if ($gdbName) { docker kill $gdbName 2>$null | Out-Null }  # the docker client does not stop its container when stopped
     Restore-Cfg # byte for byte copy of the real config
     if (Test-Path $optBak) { Restore-Opt } # UI1a: options.ini back byte for byte
-    Remove-Item $pidFile -ErrorAction SilentlyContinue
+    if (-not $keepNow) { Remove-Item $pidFile -ErrorAction SilentlyContinue }
     # A later manual launch must not inherit this run's switches (autoa, shots, fast).
     Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue
 }
@@ -413,6 +462,7 @@ $bad = @{}
 $badFull = @{}
 try {
     $sr = New-Object IO.StreamReader([IO.File]::Open($emuLog, "Open", "Read", "ReadWrite"))
+    if ($emuOff -gt 0) { $sr.BaseStream.Seek($emuOff, "Begin") | Out-Null }
     while (($line = $sr.ReadLine()) -ne $null) {
         if ($line -match "UnmappedAccess.* at PC 0x([0-9A-F]{8})") {
             $bad[$Matches[1]] = 1 + [int]$bad[$Matches[1]]
@@ -441,4 +491,4 @@ if ($addrs) {
 }
 if ($Smoke -and $reason -notmatch "^matched") { Write-Output "SMOKE FAILED: $reason"; End-Run 1 "smoke failed: $reason" }
 $endKind = if ($retryable -and $env:PM_AZT_ATTEMPT -eq "1") { "retry" } else { "end" }
-End-Run 0 "stopped after ${secs}s: $reason (Azahar $azState)" $endKind
+End-Run 0 "stopped after ${secs}s: $reason (Azahar $azState)$(if ($warmDone) { ' warm' })$(if ($keepNow) { ' kept' })" $endKind
