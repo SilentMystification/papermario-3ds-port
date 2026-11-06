@@ -98,6 +98,8 @@ PUSHED_LINE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d)\s.*?\bbuild (\d+)\s+git 
 SCHEMA = """
 CREATE TABLE bench(name TEXT PRIMARY KEY, kind TEXT, purpose TEXT, defs_json TEXT);
 CREATE TABLE build(build_no INTEGER, commit_hash TEXT, date TEXT);
+CREATE TABLE note(refers_run_id INTEGER, kind TEXT, row TEXT, ts TEXT, reason TEXT, invalid INTEGER);
+CREATE TABLE run_invalid(id INTEGER PRIMARY KEY, bench TEXT, build_no INTEGER, commit_hash TEXT, reason TEXT);
 CREATE TABLE run(id INTEGER PRIMARY KEY, bench TEXT, kind TEXT, host TEXT, device TEXT, build_no INTEGER, commit_hash TEXT, date TEXT, ts TEXT,
   row TEXT, label TEXT, result TEXT, scene TEXT, log_path TEXT, shot_path TEXT, note TEXT, tags TEXT, x_range TEXT, y_range TEXT, z_range TEXT,
   speed TEXT, frame_limit REAL, dirty INTEGER, wide INTEGER, stereo INTEGER, fps_target INTEGER);
@@ -201,6 +203,7 @@ def scenario(name):
     return None
 
 
+NOTE_LOG = []  # read_runs: the correction records (no run_id, kind correction): notes, not runs (BF-2)
 DUP_LOG = []  # read_runs: (line, file run_id, derived id, bench) of each record whose run_id was used before (rebuild prints them)
 
 
@@ -209,6 +212,7 @@ def read_runs():
     earlier record already has gets the next free id above every id of the file (derived; the file is not changed): the first
     record keeps its id. rebuild prints each derived id."""
     DUP_LOG.clear()
+    NOTE_LOG.clear()
     if not RUNS.exists():
         return []
     raw = []
@@ -217,6 +221,7 @@ def read_runs():
             continue
         r = json.loads(x)
         if "run_id" not in r:
+            NOTE_LOG.append(r)
             continue
         r["line"] = no
         raw.append(r)
@@ -346,6 +351,14 @@ def rebuild_db():
     for b in defs["benches"]:
         con.execute("INSERT INTO bench VALUES (?,?,?,?)", (b["name"], b["kind"], b["purpose"], json.dumps(b, sort_keys=True)))
     runs = read_runs()
+    bad = {n.get("refers_run_id"): n for n in NOTE_LOG if n.get("invalid")}
+    for n in NOTE_LOG:
+        con.execute("INSERT INTO note VALUES (?,?,?,?,?,?)", (n.get("refers_run_id"), n.get("kind"), n.get("row"), n.get("ts") or n.get("date"),
+                                                             n.get("reason"), 1 if n.get("invalid") else 0))
+    for r in [r for r in runs if r["run_id"] in bad]:
+        n = bad[r["run_id"]]
+        con.execute("INSERT INTO run_invalid VALUES (?,?,?,?,?)", (r["run_id"], r["bench"], r.get("build_no"), r.get("commit"), n.get("reason")))
+    runs = [r for r in runs if r["run_id"] not in bad]  # an invalid run is in runs.jsonl and in run_invalid, not in the queries
     nm = ns = 0
     for r in runs:
         con.execute("INSERT INTO run VALUES (%s)" % ",".join("?" * 26),
@@ -1390,7 +1403,8 @@ def cmd_check(a):
     con = open_db()
     row = con.execute("SELECT * FROM run WHERE id = ?", (a.run_id,)).fetchone()
     if not row:
-        print("no run %d" % a.run_id)
+        inv = con.execute("SELECT bench, reason FROM run_invalid WHERE id = ?", (a.run_id,)).fetchone()
+        print("run %d is marked invalid (%s): %s" % (a.run_id, inv[0], inv[1]) if inv else "no run %d" % a.run_id)
         return 4
     bd = bench_def(row["bench"]) or {}
     sp = row["speed"] or "unknown"
@@ -1403,6 +1417,21 @@ def cmd_check(a):
         print("  " + ln)
     print("result: %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
+
+
+def cmd_correct(a):
+    """Appends a correction record (no run_id, kind correction) for run a.run_id: the run stays in runs.jsonl and is marked invalid in the DB."""
+    with runs_lock():
+        if a.run_id not in {r["run_id"] for r in read_runs()}:
+            print("no run %d in runs.jsonl. Nothing was appended." % a.run_id)
+            return 4
+        rec = {"bench": "note", "kind": "correction", "date": today(), "ts": now_iso(), "row": a.row, "refers_run_id": a.run_id,
+               "invalid": True, "reason": a.why}
+        with RUNS.open("a", encoding="utf-8", newline="\n") as f:
+            f.write(json.dumps(rec, separators=(",", ":")) + "\n")
+        rebuild_db()
+    print("correction for run %d appended; run %d is invalid in the queries" % (a.run_id, a.run_id))
+    return 0
 
 
 def cmd_rebuild(a):
@@ -1444,6 +1473,8 @@ def main(argv):
     x = sub.add_parser("trend"); x.add_argument("bench"); x.add_argument("metric", nargs="?"); add_area(x); x.set_defaults(f=cmd_trend)
     x = sub.add_parser("check"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_check)
     x = sub.add_parser("rebuild"); x.set_defaults(f=cmd_rebuild)
+    x = sub.add_parser("correct"); x.add_argument("run_id", type=int); x.add_argument("--why", required=True); x.add_argument("--row", default="BENCHFIX")
+    x.set_defaults(f=cmd_correct)
     a = p.parse_args(argv)
     if a.cmd == "compare" and not a.last and not (a.A and a.B):
         p.error("compare needs <buildA> <buildB> or --last 2")
