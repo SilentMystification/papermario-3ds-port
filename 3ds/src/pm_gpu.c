@@ -1494,12 +1494,34 @@ void pm_gpu_init(void) {
  * screen never shows an empty frame between a clear and a redraw (PT64). On close the menu rows are blanked and the log gets its old window back. */
 #define MENU_ROWS 30 /* PT69: the menu fills the whole bottom screen (rows 0 to 29); the log and the HUD wait while it is open */
 #define MENU_W 39
-static char menu_prev[MENU_ROWS][MENU_W + 1];
+#define MENU_LN 192 /* MN0: a line with ANSI colour codes is longer than its 38 columns */
+static char menu_prev[MENU_ROWS][MENU_LN];
 static int menu_on;
-static char menu_l0[MENU_W + 1];
+static int menu_dirty; /* MN1: a menu draw since the last present (pm_gpu_menu_present) */
+static char menu_l0[MENU_LN];
+/* MN0: pad or cut a line to 38 visible columns. An ESC [ ... letter sequence takes no column, so a coloured line keeps its text. */
+static size_t menu_fit(char* b, size_t cap, const char* s) {
+    const size_t cols = MENU_W - 1;
+    size_t o = 0, vis = 0;
+    const char* p = s;
+    while (*p && o < cap - cols - 2) {
+        if (p[0] == 0x1b && p[1] == '[') {
+            size_t j = 2;
+            while (p[j] && !(p[j] >= 0x40 && p[j] <= 0x7e)) j++;
+            if (!p[j]) break;
+            memcpy(b + o, p, j + 1); o += j + 1; p += j + 1;
+            continue;
+        }
+        if (vis < cols) { b[o++] = *p; vis++; }
+        p++;
+    }
+    while (vis < cols) { b[o++] = ' '; vis++; }
+    b[o] = 0;
+    return o;
+}
 static void menu_put_line(PrintConsole* c, int i, const char* s) {
-    char b[MENU_W + 1];
-    snprintf(b, sizeof b, "%-*.*s", MENU_W - 1, MENU_W - 1, s); /* one column spare: the last column never wraps the 1 row window */
+    char b[MENU_LN];
+    menu_fit(b, sizeof b, s); /* one column spare: the last column never wraps the 1 row window */
     if (menu_on && !strcmp(b, menu_prev[i])) return;
     memcpy(menu_prev[i], b, sizeof b);
     consoleSetWindow(c, 0, 0, 40, 30); /* PT79: the whole screen as the window and an absolute cursor move: a 1 row window on row 29 scrolled the text up by a row */
@@ -1510,6 +1532,7 @@ void pm_gpu_menu_draw(const char* text) {
     PrintConsole* c = &bottom_con;
     int i = 0, was_on = menu_on, cx, cy, wx, wy, ww, wh;
     if (!c->consoleInitialised) return;
+    menu_dirty = 1;
     pm_con_lock();
     cx = c->cursorX; cy = c->cursorY; wx = c->windowX; wy = c->windowY; ww = c->windowWidth; wh = c->windowHeight;
     consoleSelect(c);
@@ -1528,9 +1551,9 @@ void pm_gpu_menu_draw(const char* text) {
     if (!menu_on) { consoleSetWindow(c, 0, 0, 40, 30); consoleClear(); for (int k = 0; k < MENU_ROWS; k++) menu_prev[k][0] = 1; } /* once at open: no old log text in the last columns */
     for (; i < MENU_ROWS; i++) { /* one text line per row, an empty line stays an empty row */
         const char* e = strchr(text, '\n');
-        char ln[MENU_W + 1];
+        char ln[MENU_LN];
         size_t n = e ? (size_t)(e - text) : strlen(text);
-        size_t k = n > MENU_W ? MENU_W : n;
+        size_t k = n > MENU_LN - 1 ? MENU_LN - 1 : n; /* MN0: the colour codes are kept, menu_fit cuts the visible columns */
         memcpy(ln, text, k);
         ln[k] = 0;
         if (i == 0) memcpy(menu_l0, ln, k + 1);
@@ -1545,6 +1568,38 @@ void pm_gpu_menu_draw(const char* text) {
     consoleSetWindow(c, wx, wy, ww, wh); /* the log window and its cursor stay as they were (the log is not printed while the menu is open) */
     c->cursorX = cx; c->cursorY = cy;
     pm_con_unlock();
+}
+
+/* MN1: the game is frozen while the menu is open, so no game frame ends and nothing presents the menu text. This frame has no draw:
+ * the target still holds the last picture (no clear is queued for a frame without draws), the display transfer at C3D_FrameEnd puts it
+ * on the top screen again, and the swap shows the bottom console text. Called by the frozen pass when a menu draw happened. */
+void pm_gpu_menu_present(void) {
+    if (!menu_dirty || !gpu_ok || !target) return;
+    menu_dirty = 0;
+    eye_slider = osGet3DSliderState();
+    stereo_frame = targetR && eye_slider > 0.02f;
+    gfxSet3D(stereo_frame);
+    raw1_reset(); sh_clear(); C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    sh_clear(); C3D_FrameDrawOn(target);
+    if (stereo_frame) C3D_FrameDrawOn(targetR);
+    C3D_FrameEnd(GX_CMDLIST_FLUSH);
+}
+
+/* MN0: the bottom screen as sdmc:/3ds/PaperMario/shots/<name>.ppm (240x320 RGB565 rotated to P6). Used by shotbottom (pm_main.c) and shotmenu (pm_options_ui.c). */
+void pm_gpu_shot_bottom(const char* name) {
+    u16 bw, bh;
+    u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &bw, &bh);
+    char bpath[96];
+    FILE* sf;
+    mkdir("sdmc:/3ds/PaperMario/shots", 0777);
+    snprintf(bpath, sizeof bpath, "sdmc:/3ds/PaperMario/shots/%s.ppm", name);
+    sf = fopen(bpath, "wb");
+    if (sf && fb) {
+        fprintf(sf, "P6\n%u %u\n255\n", (unsigned)bh, (unsigned)bw);
+        for (unsigned y = 0; y < bw; y++) /* screen row y, screen column x: the buffer is column major, bottom row first */
+            for (unsigned x = 0; x < bh; x++) { const u8* px = fb + ((size_t)x * bw + (bw - 1 - y)) * 2; unsigned c = px[0] | (px[1] << 8); fputc(((c >> 11) & 31) * 255 / 31, sf); fputc(((c >> 5) & 63) * 255 / 63, sf); fputc((c & 31) * 255 / 31, sf); }
+    }
+    if (sf) fclose(sf);
 }
 
 static void hud_put_line(PrintConsole* c, int row, const char* s) {

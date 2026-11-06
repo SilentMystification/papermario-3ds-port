@@ -309,9 +309,10 @@ static int row_id(int tab, int row, int mode) {
     n = tab_ids(tab, mode, ids);
     return row >= 0 && row < n ? ids[row] : RW_BACK;
 }
-static int exit_armed;
-void pm_optui_disarm(void) { exit_armed = 0; }
-int pm_optui_alert(int tab, int row, int mode) { return row_id(tab, row, mode) == RW_EXIT && exit_armed; }
+/* MN3: one armed row (Return to Title or Exit to Homebrew Menu). First A arms, the second A on the same row runs it. */
+static int armed_id;
+void pm_optui_disarm(void) { armed_id = 0; }
+int pm_optui_alert(int tab, int row, int mode) { int id = row_id(tab, row, mode); return armed_id && id == armed_id; }
 int pm_optui_rows(int tab, int mode) {
     int ids[48];
     if (tab == PM_OPT_SUB) return pm_warp_preset_count() + pm_warp_group_count();
@@ -373,7 +374,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
             snprintf(b, 12, id == RW_DZPAD ? "%d%%" : id == RW_DZCS ? "%d%%" : "%d ms", id == RW_DZPAD ? pm_opt.dz_pad : id == RW_DZCS ? pm_opt.dz_cs : id == RW_RDELAY ? pm_opt.rep_delay : pm_opt.rep_rate);
             return b;
         }
-        case RW_EXIT: return exit_armed ? "A again" : NULL;
+        case RW_EXIT: case RW_TITLE: return armed_id == id ? "Press A again" : NULL;
         case RW_WARPAREA: return "A: open";
         default: return NULL;
     }
@@ -410,7 +411,7 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
  * 4 return to the title, 5 warp started (close the menu), 6 open the Warp area submenu */
 int pm_optui_act(int tab, int row, int mode) {
     int id = row_id(tab, row, mode);
-    if (id != RW_EXIT) exit_armed = 0;
+    if (id != armed_id) armed_id = 0;
     if (id >= RW_SUB) { /* PT01c: A warps to the shown preset or map at entry 0 (the same call as before) */
         int r = id - RW_SUB, P = pm_warp_preset_count(), g;
         if (r < P) return pm_warp_live(r + 1, 0) ? 5 : 0;
@@ -433,10 +434,13 @@ int pm_optui_act(int tab, int row, int mode) {
         case RW_WIDE: pm_options_flip(1); return 0;
         case RW_DPAD: pm_dpad_mode_next(); return 0;
         case RW_RESET: pm_map_reset(); pm_options_touch(); pm_log("options: controls reset"); return 0;
-        case RW_TITLE: return 4;
+        case RW_TITLE:
+            if (armed_id != RW_TITLE) { armed_id = RW_TITLE; return 0; }
+            armed_id = 0;
+            return 4;
         case RW_EXIT:
-            if (!exit_armed) { exit_armed = 1; return 0; }
-            exit_armed = 0;
+            if (armed_id != RW_EXIT) { armed_id = RW_EXIT; return 0; }
+            armed_id = 0;
             return 3;
         case RW_WARPAREA: return 6; /* the menu opens the submenu (PM_OPT_SUB) */
         case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;

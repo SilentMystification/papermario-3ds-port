@@ -13,7 +13,7 @@ volatile int pm_menu_open;
 volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
 
 #define OPT_TABS 4
-#define VIS 21 /* PT69, PT76: 30 text rows, see draw */
+#define VIS 20 /* PT69, PT76, MN3: 30 text rows (tab, blank, 20 options, 2, controls, 3, 2 feedback), see draw */
 #define MODE 1
 /* PT01c: tab PM_OPT_SUB is the Warp area submenu. A open sets tab to it and home_tab keeps the tab it was opened from (B returns there). */
 static int tab, home_tab, sel[PM_OPT_SUB + 1], top[PM_OPT_SUB + 1];
@@ -31,16 +31,24 @@ static void draw(void) {
     if (sel[tab] >= top[tab] + VIS) top[tab] = sel[tab] - VIS + 1;
     if (tab == PM_OPT_SUB) n += snprintf(out + n, sizeof out - (size_t)n, "[%s]", tab_name[PM_OPT_SUB]);
     else for (int t = 0; t < OPT_TABS; t++) n += snprintf(out + n, sizeof out - (size_t)n, t == tab ? "[%s] " : " %s  ", tab_name[t]);
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n");
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n"); /* MN3: a blank line under the tab line */
     for (int r = top[tab]; r < top[tab] + VIS && r < rows; r++) {
         const char* v = pm_optui_value(tab, r, MODE);
-        const char* col = pm_optui_alert(tab, r, MODE) ? "\x1b[31m" : ""; /* the armed exit row: red value (ANSI, the bottom console) */
-        n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s%s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), col, v ? v : "");
+        /* MN3: the armed row (second A runs it): label bright blue, value "Press A again" bright red (ANSI, bottom console) */
+        if (pm_optui_alert(tab, r, MODE)) n += snprintf(out + n, sizeof out - (size_t)n, "%c \x1b[1;34m%-22s\x1b[1;31m%s\x1b[0m" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
+        else n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
     n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? "< > A: warp  B: back" : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
+    if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
+        static unsigned mseq;
+        char nm[24];
+        snprintf(nm, sizeof nm, "bot_m%04u", mseq++);
+        pm_gpu_shot_bottom(nm);
+        pm_log("menu: shot %s tab %d row %d", nm, tab, sel[tab]);
+    }
 }
 
 /* PT76: the one function for a message to the user. Two rows of 39 characters at the bottom of the menu. A new message replaces the old one, a key press

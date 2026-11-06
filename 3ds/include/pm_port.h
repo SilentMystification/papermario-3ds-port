@@ -281,5 +281,7 @@ void pm_menu_set(int on);
 void pm_menu_key(unsigned hid_keys_down);
 void pm_menu_hold(int dx, int dy); /* PT60 */
 void pm_gpu_menu_draw(const char* text);
+void pm_gpu_shot_bottom(const char* name); /* MN0: writes sdmc:/3ds/PaperMario/shots/<name>.ppm */
+void pm_gpu_menu_present(void); /* MN1: shows a menu change while the game is frozen */
 
 #endif

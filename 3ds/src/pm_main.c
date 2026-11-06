@@ -339,6 +339,7 @@ void pm_frame_loop(void) {
     u64 step_start = 0;
     unsigned step_vb = 0; /* vblank counter when the last drawn iteration got past FrameBegin */
     int step_vb_ok = 0;
+    int menu_frozen = 0; /* MN1: the Select menu is open and the game is paused */
     u64 fps_mark = 0;
     float fps = 0.f, fps_draw = 0.f; /* PT24: steps/s (internal) and drawn frames/s (external) */
     /* HUD2: bottom screen memory rows, refreshed at pm_opt.hud_ms (pm_mem_hud). */
@@ -383,6 +384,18 @@ void pm_frame_loop(void) {
         PM_WD_PHASE(2);
         pm_log_poll();
         pm_pad_scan();
+        if (pm_menu_open) { /* MN1: the Select menu pauses the game: no step, no draw, no audio tick. The menu text is presented here. */
+            if (!menu_frozen) { menu_frozen = 1; pm_log("menu: game paused at frame %u", frame); }
+            gspWaitForVBlank();
+            pm_gpu_menu_present();
+            continue;
+        }
+        if (menu_frozen) { /* MN1: resume: the schedule starts again, no catch-up steps */
+            menu_frozen = 0;
+            sched_next = 0;
+            step_vb_ok = 0;
+            pm_log("menu: game resumed at frame %u", frame);
+        }
         pace_on = pm_debug_has("pacestat");
         if (pace_on) pace_stat(now, tick_hz, frame);
         if (!draw) {
@@ -559,19 +572,9 @@ void pm_frame_loop(void) {
                 else bw0 = -1;
             }
             if (bw0 >= 0 && (int)frame >= bw0 && (int)frame < bw1) {
-                u16 bw, bh;
-                u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &bw, &bh);
-                char bpath[64];
-                FILE* sf;
-                mkdir("sdmc:/3ds/PaperMario/shots", 0777);
-                snprintf(bpath, sizeof bpath, "sdmc:/3ds/PaperMario/shots/bot_%04u.ppm", frame);
-                sf = fopen(bpath, "wb");
-                if (sf && fb) {
-                    fprintf(sf, "P6\n%u %u\n255\n", (unsigned)bh, (unsigned)bw);
-                    for (unsigned y = 0; y < bw; y++) /* screen row y, screen column x: the buffer is column major, bottom row first */
-                        for (unsigned x = 0; x < bh; x++) { const u8* px = fb + ((size_t)x * bw + (bw - 1 - y)) * 2; unsigned c = px[0] | (px[1] << 8); fputc(((c >> 11) & 31) * 255 / 31, sf); fputc(((c >> 5) & 63) * 255 / 63, sf); fputc((c & 31) * 255 / 31, sf); }
-                }
-                if (sf) fclose(sf);
+                char bname[32];
+                snprintf(bname, sizeof bname, "bot_%04u", frame);
+                pm_gpu_shot_bottom(bname); /* MN0: the writer is pm_gpu_shot_bottom */
             }
         }
         PM_WD_PHASE(10);
