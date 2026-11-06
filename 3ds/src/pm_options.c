@@ -178,6 +178,7 @@ void pm_options_init(void) {
         pm_log_set_level(pm_opt.loglevel);
         pm_log_set_conlevel(pm_opt.conlevel);
         pm_log_set_file(pm_opt.log);
+        pm_log_apply_switch_levels(); /* LOG3: livelevel, disklevel, conlevel switches win over the saved levels */
     }
     pm_log("options: fps60=%d wide=%d hud=%d stats=%d nofog=%d nolight=%d (%s)", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, have ? (from_txt ? "read from options.txt, written as options.ini" : "read from options.ini") : "defaults");

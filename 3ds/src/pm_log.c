@@ -53,12 +53,19 @@ static u32 q_tail;    /* next slot to read (writer or crash flush, under drain_l
 static u32 wr_file_max, wr_sock_max, con_skipped; /* HWM1: longest single step of the writer in us, since the last logstat line */
 static u32 sink_file_max, sink_con_max, fb_full_waits; /* PI6: the sink thread's longest write and console step in us */
 static int sw_lognull;
-static int log_level = 1; /* L02: 0 error, 1 warn, 2 info, 3 debug. A line above this level is dropped before any formatting. Default warn. */
+/* LOG3: one level per sink: -1 off, 0 error, 1 warn, 2 info, 3 debug. A line reaches a sink when its level is at or below that sink's level. */
+static int lv_live = 1; /* the live socket and the ring that replays to a reconnect */
+static int lv_disk = 1; /* log.txt (fb) */
+static int lv_con = 1; /* the bottom screen console (cb) */
 static int log_file_on = 1; /* the logging gate: 0 = off (switch log=off, options panel Logging). No line is formatted, queued, written or sent, and phase timing stops (pm_ph_log_gate). */
-static int con_lv = 1; /* CONLV: console level, 0 error, 1 warn (default), 2 info, 3 debug, 4 off. Switch conlevel=, options.ini conlevel, options panel Console level. */
-static int pass_lv = 1; /* CONLV: the highest level a line can have and still reach log.txt, the socket or the console: max(log_level, con_lv, off as -1). One compare in vlog. */
+static int pass_lv = 1; /* LOG3: the highest level an enabled sink takes: max of lv_live, lv_disk, lv_con; -1 when log_file_on is 0. One compare in vlog. */
+static u32 cnt_disk, cnt_live, cnt_con; /* LOG3: slot lines each sink took since boot (beat line: sinks disk live con) */
 static u32 con_lines; /* CONLV: console lines printed by the sink thread since boot (logstat2 console lines) */
-static void pass_recalc(void) { int c = con_lv > 3 ? -1 : con_lv; pass_lv = log_level > c ? log_level : c; }
+static void pass_recalc(void) {
+    int m = lv_live > lv_disk ? lv_live : lv_disk;
+    if (lv_con > m) m = lv_con;
+    pass_lv = log_file_on ? m : -1;
+}
 void pm_ph_log_gate(int on);
 
 static void ring_add(const char* s, int n) {
@@ -200,31 +207,46 @@ void pm_log_switch(const char* word, int on) {
     dbg_cache_clear();
 }
 
+/* LOG3: a level word: 0..3, e error, w warn, i info, d debug; 4, -, o (off) give -1. Other text keeps dflt. */
+static int lv_word(const char* v, int dflt) {
+    if (v[0] >= '0' && v[0] <= '3') return v[0] - '0';
+    if (v[0] == '4' || v[0] == '-' || v[0] == 'o') return -1;
+    if (v[0] == 'e') return 0;
+    if (v[0] == 'w') return 1;
+    if (v[0] == 'i') return 2;
+    if (v[0] == 'd') return 3;
+    return dflt;
+}
+
+/* LOG3: the level switches in this order: loglevel (live and disk), then livelevel, disklevel, conlevel, and log=off.
+ * pm_options_init calls it after the options.ini levels, so a switch wins over the saved value. */
+void pm_log_apply_switch_levels(void) {
+    extern int pm_debug_value(const char* key, char* out, unsigned n);
+    char v[16];
+    if (pm_debug_value("loglevel", v, sizeof v)) lv_live = lv_disk = lv_word(v, lv_disk);
+    if (pm_debug_value("livelevel", v, sizeof v)) lv_live = lv_word(v, lv_live);
+    if (pm_debug_value("disklevel", v, sizeof v)) lv_disk = lv_word(v, lv_disk);
+    if (pm_debug_value("conlevel", v, sizeof v)) lv_con = lv_word(v, lv_con);
+    if (pm_debug_value("log", v, sizeof v)) log_file_on = !(!strcmp(v, "off") || !strcmp(v, "0")); /* ARG1: log=on sets the gate too */
+    pass_recalc();
+}
+
 void pm_log_set_switches(const char* s) {
     dbg_cache_clear();
     switches[0] = 0;
     if (s) strncat(switches, s, sizeof(switches) - 1);
     sw_lognull = pm_debug_has("lognull");
-    {   /* L02: loglevel=<0..3 or error, warn, info, debug>, log=off */
-        extern int pm_debug_value(const char* key, char* out, unsigned n);
-        char v[16];
-        if (pm_debug_value("loglevel", v, sizeof v)) {
-            int lv = v[0] >= '0' && v[0] <= '3' ? v[0] - '0' : v[0] == 'e' ? 0 : v[0] == 'w' ? 1 : v[0] == 'i' ? 2 : v[0] == 'd' ? 3 : log_level;
-            log_level = lv;
-        }
-        if (pm_debug_value("conlevel", v, sizeof v)) { /* CONLV: 0..4 or error, warn, info, debug, off */
-            con_lv = v[0] >= '0' && v[0] <= '4' ? v[0] - '0' : v[0] == 'e' ? 0 : v[0] == 'w' ? 1 : v[0] == 'i' ? 2 : v[0] == 'd' ? 3 : v[0] == 'o' ? 4 : con_lv;
-        }
-        pass_recalc();
-        if (pm_debug_value("log", v, sizeof v)) log_file_on = !(!strcmp(v, "off") || !strcmp(v, "0")); /* ARG1: log=on sets the gate too */
-    }
+    pm_log_apply_switch_levels();
 }
 
-int pm_log_level(void) { return log_level; }
-int pm_log_conlevel(void) { return con_lv; }
+/* The file or socket level, the higher of the two (the old single log level). */
+int pm_log_level(void) { return lv_disk > lv_live ? lv_disk : lv_live; }
+/* The console level, 4 = off (the options panel and prof row convention). */
+int pm_log_conlevel(void) { return lv_con < 0 ? 4 : lv_con; }
 int pm_log_file(void) { return log_file_on; }
-void pm_log_set_level(int lv) { log_level = lv < 0 ? 0 : lv > 3 ? 3 : lv; pass_recalc(); }
-void pm_log_set_conlevel(int lv) { con_lv = lv < 0 ? 0 : lv > 4 ? 4 : lv; pass_recalc(); }
+/* loglevel: sets the live and the disk level together. */
+void pm_log_set_level(int lv) { lv = lv < 0 ? 0 : lv > 3 ? 3 : lv; lv_live = lv_disk = lv; pass_recalc(); }
+void pm_log_set_conlevel(int lv) { lv_con = lv < 0 ? 0 : lv > 3 ? -1 : lv; pass_recalc(); }
 static void wake_writer(void);
 void pm_log_set_file(int on) {
     log_file_on = on != 0;
@@ -453,8 +475,8 @@ void pm_log_prof_row(int mode, int lv, int con) {
     for (const char* const* w = prof_w; *w; w++, k++) pm_log_switch(*w, mode != 1 && base_has[k]);
     pm_log_switch("prof", mode == 1);
     prof_mode = mode == 1;
-    log_level = mode == 1 ? -1 : lv;
-    con_lv = mode == 1 ? 4 : con;
+    lv_live = lv_disk = mode == 1 ? -1 : lv;
+    lv_con = mode == 1 || con > 3 ? -1 : con;
     pass_recalc();
 }
 /* PROF4: switch prof at boot. boot_line 1 prints "prof=1 log=off". */
@@ -462,7 +484,7 @@ void pm_log_prof_apply(int boot_line) {
     char v[16];
     base_save();
     if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) { prof_mode = 0; return; }
-    pm_log_prof_row(1, log_level, con_lv);
+    pm_log_prof_row(1, pm_log_level(), pm_log_conlevel());
     if (!log_file_on) pm_log_set_file(1);
     if (boot_line) pm_log_prof_line("prof=1 log=off");
 }
@@ -499,15 +521,16 @@ void pm_log_bench(void) {
     if (!pm_debug_has("logbench")) return;
     static const char* const names[4] = {"plain", "args", "str2", "dropped"};
     double res[4];
-    int save = log_level;
-    log_level = 3;
+    int save = lv_live, savd = lv_disk;
+    lv_live = lv_disk = 3;
     pass_recalc();
     for (int kind = 0; kind < 3; kind++) { lb_run(kind); res[kind] = (double)lb_ticks / LB_N; }
-    log_level = -1; /* the level test fails: the dropped path */
+    lv_live = lv_disk = -1; /* the level test fails: the dropped path */
     pass_recalc();
     lb_run(3);
     res[3] = (double)lb_ticks / LB_N;
-    log_level = save;
+    lv_live = save;
+    lv_disk = savd;
     pass_recalc();
     for (int kind = 0; kind < 4; kind++) pm_log_w("logbench kind %s cycles %.1f", names[kind], res[kind]);
     pm_log_w("logbench: done");
@@ -601,45 +624,51 @@ static void cb_put(const char* s, unsigned n) {
     LightLock_Unlock(&fb_lock);
 }
 
-static void out_batch(const char* lines, int n, const char* bodies, int bn) {
-    if (n <= 0) { if (bn > 0 && !pm_menu_open) cb_put(bodies, (unsigned)bn); return; } /* CONLV: console lines without file lines */
-    u64 t0 = svcGetSystemTick();
-    if (log_fd >= 0 && log_file_on) fb_put(lines, (unsigned)n);
-    { u32 d = us_since(t0); if (d > wr_file_max) wr_file_max = d; }
-    t0 = svcGetSystemTick();
-    ring_add(lines, n);
-    if (client >= 0) {
-        int off = 0;
-        while (off < n) {
-            static int stall_test = -1; /* test switch livestall: every send fails with EAGAIN (a reader that stopped) */
-            if (stall_test < 0) stall_test = strstr(switches, "livestall") != NULL;
-            int r = stall_test ? (errno = EAGAIN, -1) : send(client, lines + off, (size_t)(n - off), 0);
-            if (r > 0) {
-                off += r;
-                live_ok_tick = 0;
-                continue;
-            }
-            if (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-                close(client);
-                client = -1;
-            } else {
-                u64 now = svcGetSystemTick();
-                live_eagain++;
-                if (!live_ok_tick) live_ok_tick = now;
-                else if (now - live_ok_tick > LIVE_STALL_TICKS) {
+/* LOG3: one buffer per sink. dk: log.txt lines (fb), lv: socket lines (and the ring), cs: console bodies (cb). An empty buffer is skipped. */
+static void out_batch(const char* dk, int dn, const char* lv, int ln, const char* cs, int cn) {
+    if (dn > 0 && log_fd >= 0 && log_file_on) {
+        u64 t0 = svcGetSystemTick();
+        fb_put(dk, (unsigned)dn);
+        u32 d = us_since(t0);
+        if (d > wr_file_max) wr_file_max = d;
+    }
+    if (ln > 0) {
+        u64 t0 = svcGetSystemTick();
+        ring_add(lv, ln);
+        if (client >= 0) {
+            int off = 0;
+            while (off < ln) {
+                static int stall_test = -1; /* test switch livestall: every send fails with EAGAIN (a reader that stopped) */
+                if (stall_test < 0) stall_test = strstr(switches, "livestall") != NULL;
+                int r = stall_test ? (errno = EAGAIN, -1) : send(client, lv + off, (size_t)(ln - off), 0);
+                if (r > 0) {
+                    off += r;
+                    live_ok_tick = 0;
+                    continue;
+                }
+                if (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
                     close(client);
                     client = -1;
-                    live_ok_tick = 0;
-                    live_stall_close++;
-                    pm_log_w("live log: client closed, 3 s of only EAGAIN (%u EAGAIN, %u closes)", live_eagain, live_stall_close);
+                } else {
+                    u64 now = svcGetSystemTick();
+                    live_eagain++;
+                    if (!live_ok_tick) live_ok_tick = now;
+                    else if (now - live_ok_tick > LIVE_STALL_TICKS) {
+                        close(client);
+                        client = -1;
+                        live_ok_tick = 0;
+                        live_stall_close++;
+                        pm_log_w("live log: client closed, 3 s of only EAGAIN (%u EAGAIN, %u closes)", live_eagain, live_stall_close);
+                    }
                 }
+                break; /* a full socket drops the rest for the live view only, log.txt has it */
             }
-            break; /* a full socket drops the rest for the live view only, log.txt has it */
         }
+        u32 d = us_since(t0);
+        if (d > wr_sock_max) wr_sock_max = d;
     }
-    { u32 d = us_since(t0); if (d > wr_sock_max) wr_sock_max = d; }
     /* The console (bottom screen text, slow) is for a reader on the device: the sink thread prints cb at 10 per second. */
-    if (bn > 0 && !pm_menu_open) cb_put(bodies, (unsigned)bn); /* PT69: the open menu owns the console */
+    if (cn > 0 && !pm_menu_open) cb_put(cs, (unsigned)cn); /* PT69: the open menu owns the console */
 }
 
 /* Sink thread: file and console, every 100 ms. Never runs while the app is suspended (pm_io_quiet, PT68). */
@@ -686,7 +715,8 @@ static void report_drops(void) {
     q_drop_total += d;
     char m[80];
     int mn = snprintf(m, sizeof(m), "#%u log: %u lines dropped (queue full)\n", __atomic_fetch_add(&seq, 1, __ATOMIC_RELAXED), d);
-    out_batch(m, mn, m, mn);
+    /* LOG3: a drop report is an error line: each sink that is on takes it */
+    out_batch(m, lv_disk >= 0 ? mn : 0, m, lv_live >= 0 ? mn : 0, m, lv_con >= 0 ? mn : 0);
 }
 
 /* CONCOL: console colour per level (error, warn, info, debug). SGR codes libctru maps: 91 bright red, 33 yellow, 37 white, 90 grey.
@@ -721,18 +751,18 @@ static int line_of(const Slot* sl, char* out, unsigned cap) {
 
 /* The caller holds drain_lock. */
 static void drain_locked(void) {
-    static char lb[8192], bb[8192], line[LINE_MAX];
-    int ln = 0, bn = 0;
-    int fl = log_level, cl = con_lv > 3 ? -1 : con_lv; /* CONLV: a line goes to log.txt and the socket within fl, to the console within cl (-1 = off) */
+    static char lb[8192], sb[8192], bb[8192], line[LINE_MAX];
+    int ln = 0, sn = 0, bn = 0;
+    int dl = lv_disk, ll = lv_live, cl = lv_con; /* LOG3: a sink at -1 takes nothing */
     if (beat_due) {
         beat_due = 0;
         u32 t = q_tail, hd = __atomic_load_n(&q_head, __ATOMIC_ACQUIRE);
         u32 st = __atomic_load_n(&slots[t & (SLOTS - 1)].state, __ATOMIC_ACQUIRE);
         u32 age = stall_on && stall_t == t ? (u32)((svcGetSystemTick() - stall_tick) / (SYSCLOCK_ARM11 / 1000)) : 0;
-        int bl = snprintf(line, sizeof line, "beat hb %u head %u tail %u tstate %u tage_ms %u tthread %08x abandoned %u dropped %u file_on %d pass_lv %d\n",
-                          writer_hb, hd, t, st, age, (u32)(uintptr_t)threadGetCurrent(), q_abandoned, q_drop_total + q_dropped, log_file_on, pass_lv);
+        int bl = snprintf(line, sizeof line, "beat hb %u head %u tail %u tstate %u tage_ms %u tthread %08x abandoned %u dropped %u file_on %d pass_lv %d sinks disk %u live %u con %u\n",
+                          writer_hb, hd, t, st, age, (u32)(uintptr_t)threadGetCurrent(), q_abandoned, q_drop_total + q_dropped, log_file_on, pass_lv, cnt_disk, cnt_live, cnt_con);
         if (bl > (int)sizeof line - 1) bl = sizeof line - 1;
-        out_batch(line, fl >= 3 ? bl : 0, line, cl >= 3 ? bl : 0);
+        out_batch(line, dl >= 2 ? bl : 0, line, ll >= 2 ? bl : 0, line, cl >= 2 ? bl : 0); /* LOG3: the beat is an info line */
     }
     u32 t = q_tail;
     u32 hd = __atomic_load_n(&q_head, __ATOMIC_ACQUIRE);
@@ -758,19 +788,22 @@ static void drain_locked(void) {
             int pad = (sl->flags & 1) != 0, lvl = sl->lv;
             st_bytes += (unsigned)n + 8;
             int skip = sw_lognull && !strstr(line, "CRASH") && !strstr(line, "FATAL") && !strstr(line, "logstat"); /* lognull: writer drops */
-            int tf = !skip && (pad || lvl <= fl), tc = !skip && !pad && lvl <= cl; /* PROF4: pad 1 = prof line, file only */
+            int tf = !skip && (pad || lvl <= dl); /* PROF4: pad 1 = prof line, log.txt only */
+            int tl = !skip && !pad && lvl <= ll, tc = !skip && !pad && lvl <= cl;
+            cnt_disk += (unsigned)tf; cnt_live += (unsigned)tl; cnt_con += (unsigned)tc; /* LOG3: counted per slot, the beat and drop lines are not */
             int cskip = 0, cn = 0;
             if (tc) { /* the console text is the line after "#<seq> " */
                 const char* sp = (const char*)memchr(line, ' ', (size_t)n);
                 cskip = sp ? (int)(sp - line) + 1 : 0;
                 cn = n - cskip;
             }
-            if ((tf && ln + n > (int)sizeof(lb)) || (tc && bn + cn + CON_SGR_LEN + 8 > (int)sizeof(bb))) {
-                out_batch(lb, ln, bb, bn);
-                ln = bn = 0;
+            if ((tf && ln + n > (int)sizeof(lb)) || (tl && sn + n > (int)sizeof(sb)) || (tc && bn + cn + CON_SGR_LEN + 8 > (int)sizeof(bb))) {
+                out_batch(lb, ln, sb, sn, bb, bn);
+                ln = sn = bn = 0;
                 report_drops(); /* a flood keeps the queue full, so report between batches */
             }
             if (tf) { memcpy(lb + ln, line, (size_t)n); ln += n; }
+            if (tl) { memcpy(sb + sn, line, (size_t)n); sn += n; }
             if (tc) {
                 int keep = (cn > 0 && line[cskip + cn - 1] == '\n') ? cn - 1 : cn; /* the newline goes after the reset */
                 memcpy(bb + bn, con_sgr[sl->lv & 3], CON_SGR_LEN); bn += CON_SGR_LEN;
@@ -783,7 +816,7 @@ static void drain_locked(void) {
         t++;
         __atomic_store_n(&q_tail, t, __ATOMIC_RELEASE);
     }
-    out_batch(lb, ln, bb, bn);
+    out_batch(lb, ln, sb, sn, bb, bn);
     report_drops();
 }
 

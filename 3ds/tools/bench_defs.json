@@ -69,6 +69,94 @@
       "gates": []
     },
     {
+      "name": "log_sinks_mixed",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG3 sinks: disk debug, live off, console warn. Gate: live count 0, disk count above 0 (the console count is read from the beat line: it is below the disk count).",
+      "scenario": "log_sinks_mixed",
+      "cap": 30,
+      "until": "beat hb ([4-9]\\d|\\d{3,}) ",
+      "tags": [
+        "azahar",
+        "log",
+        "bench"
+      ],
+      "log_metrics": [
+        {
+          "name": "disk_lines",
+          "regex": "sinks disk (\\d+) live \\d+ con \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "live_lines",
+          "regex": "sinks disk \\d+ live (\\d+) con \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "con_lines",
+          "regex": "sinks disk \\d+ live \\d+ con (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "live_lines",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "disk_lines",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "log_sinks_info",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG3 sinks: all three at info. Gate: live and console counts above 0; the three counts in the last beat line are equal.",
+      "scenario": "log_sinks_info",
+      "cap": 30,
+      "until": "beat hb ([4-9]\\d|\\d{3,}) ",
+      "tags": [
+        "azahar",
+        "log",
+        "bench"
+      ],
+      "log_metrics": [
+        {
+          "name": "disk_lines",
+          "regex": "sinks disk (\\d+) live \\d+ con \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "live_lines",
+          "regex": "sinks disk \\d+ live (\\d+) con \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "con_lines",
+          "regex": "sinks disk \\d+ live \\d+ con (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "live_lines",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "con_lines",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "spot_mac01_pic",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -19,6 +19,7 @@ int pm_log_conlevel(void); /* CONLV: console level 0..4, 4 = off */
 int pm_log_file(void);
 void pm_log_set_level(int lv);
 void pm_log_set_conlevel(int lv);
+void pm_log_apply_switch_levels(void); /* LOG3: re-reads loglevel, livelevel, disklevel, conlevel, log from the switches */
 void pm_log_set_file(int on);
 void pm_log_init(int live);
 void pm_log_poll(void);

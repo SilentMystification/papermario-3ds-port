@@ -18,6 +18,46 @@
       "reason": "LOG1: 40000 timed lines at boot, writer drains between batches. Cap 45 s."
     },
     {
+      "name": "log_sinks_mixed",
+      "status": "unverified",
+      "subject": "Boot with the three sinks at different levels: disk debug, live off, console warn (switches disklevel=debug livelevel=off conlevel=warn). The beat line every 5 s prints the slot lines each sink took so far.",
+      "proves": "LOG3: lv_live -1 takes no line (live count 0); the console takes only warn and error; the disk takes debug.",
+      "debug": "disklevel=debug livelevel=off conlevel=warn",
+      "until": "beat hb ([4-9]\\d|\\d{3,}) ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "beat with the sink counts, live 0",
+          "regex": "beat hb \\d+ .* sinks disk [1-9]\\d* live 0 con \\d+"
+        }
+      ],
+      "reason": "LOG3 gate (decision 2026-11-06). Until is a beat from about 10 s (writer hb steps 4 a second). Cap 30 s: cold boot 12 to 16 s plus the beat."
+    },
+    {
+      "name": "log_sinks_info",
+      "status": "unverified",
+      "subject": "Boot with all three sinks at info (switches disklevel=info livelevel=info conlevel=info). The beat line every 5 s prints the slot lines each sink took: the three counts must be equal.",
+      "proves": "LOG3: the three sinks take the same lines at the same level; the beat is an info line and reaches all three sinks.",
+      "debug": "disklevel=info livelevel=info conlevel=info",
+      "until": "beat hb ([4-9]\\d|\\d{3,}) ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "beat with the sink counts, all on",
+          "regex": "beat hb \\d+ .* sinks disk [1-9]\\d* live [1-9]\\d* con [1-9]\\d*"
+        }
+      ],
+      "reason": "LOG3 gate (decision 2026-11-06). Same until as log_sinks_mixed. Cap 30 s."
+    },
+    {
       "name": "dro_01_walk",
       "status": "unverified",
       "subject": "Dro_01 (warp dro_01 entry 0), Mario walks by padscript; shots at frames 150 to 155 show the paths and fences near Mario. texstale check: per 300 frames, binds of native unit words against their descriptor and the mismatches.",
