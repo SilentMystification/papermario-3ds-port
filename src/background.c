@@ -97,6 +97,16 @@ static void bg_emit(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 
         dsdx = dsdx * 5 / 6;
         dtdy = dtdy * 5 / 6;
     }
+#ifdef TARGET_3DS
+    { /* BG1 debug switch bgrect: one line per sky texrect as the game emits it (raw 10.2 and 10.5 values) */
+        extern void pm_log_d(const char* fmt, ...);
+        extern int pm_debug_has(const char* word);
+        extern unsigned pm_frame_count(void);
+        static int bgl = -1;
+        if (bgl < 0) bgl = pm_debug_has("bgrect");
+        if (bgl) pm_log_d("bgrect f%u xl %d yl %d xh %d yh %d s %d t %d dsdx %d dtdy %d zoom %d", pm_frame_count(), xl, yl, xh, yh, s, t, dsdx, dtdy, bg_zoom);
+    }
+#endif
     gSPTextureRectangle(gMainGfxPos++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
 }
 static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
@@ -301,6 +311,14 @@ void appendGfx_background_texture(void) {
             s32 y0 = gBackroundTextureYOffset;
             if (y0 >= h) {
                 y0 -= h;
+            }
+            { /* BG1 debug switch bgrect: the sky bind and the source row offset of this frame */
+                extern void pm_log_d(const char* fmt, ...);
+                extern int pm_debug_has(const char* word);
+                extern unsigned pm_frame_count(void);
+                static int bgl = -1;
+                if (bgl < 0) bgl = pm_debug_has("bgrect");
+                if (bgl) pm_log_d("bgsky f%u w %d h %d y0 %d xoff %d minx %d miny %d", pm_frame_count(), bgMaxX, h, y0, bgXOffset, bgMinX, bgMinY);
             }
             gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster, G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, h,
                                0, 0, 295, h - 1, 0,

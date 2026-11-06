@@ -17,7 +17,14 @@
 - Texture cache: pm_tex.c (texture slots, keys by address, size, format, palette). Sky raster sits at gGameStatusPtr->backgroundRaster (decoded by load_map_bg, background.c L23).
 
 ## BG1 notes
-(BG1 is filling in)
+- Scenario bg_flicker_mac00 (azt_scenarios.json, bench bg_flicker_mac00, not default). Debug switch bgrect (background.c: bg_emit prints each sky texrect, appendGfx_background_texture prints bgsky w h y0 xoff) with texlog.
+- Build: lane bgf, HEAD 370f67196 plus the bgrect lines only.
+- Runs 1 to 7 (Azahar, budget 7 of 8 used). Run 1 left mac_00 at scan 126 (walk left 60 scans goes through the exit into kmr_10): walk right first. Shots come every 2 frames, not every frame; the until line uses a frame number, the shot index is a burst number.
+- Run 4 (frames 100 to 159, walk right 40 then left 40): the sky scroll was fixed at xoff 25 from frame 91 (Mario stood still). No sky motion, so no flicker expected.
+- Sky scroll (bgsky xoff) moves only when the camera moves: run 6 log: xoff 96 at frames 37 to 80, jump to 14 at frame 81 (camera cut into the street view), 14 to 0 at frame 123, wrap to 295 at frame 124, 295 to 0 at frame 149 (the seam crossings).
+- Emitted texrects (bgrect, 4 per frame, zoom 1, wide cam): s range 0 to 296 texels (s0 200 width 96 for the left copy, s0 0 width 200 for the other), t 0 to 200 (dsdx 3413, dtdy 853). No s above 296 and no t above 200 in the emitted list. The padding (WRAP) hypothesis is not seen in the list. BG2 bglog agrees (mac_00 zoom path).
+- Shots of runs 3 and 7 (frames 100 to 158, walk, seam crossings at 123 and 149): no flicker chunk seen by eye. Sky mask (blue pixels) per frame: no frame where the sky mask differs from both neighbours while the neighbours agree. The moving sprites (Goomba, Mario) give the only A-B-A differences.
+- Not yet: the seam frames with a sky-band crop at full resolution, a non-blue sky colour check (the raster has green and white parts), the pm_tex slot of the sky (texture re-upload or eviction, VRAM at 36 KB free at mac_00). Next code point: the sky texture slot (pm_tex.c, key and reuse) and the palette (gBackgroundPalette rebuilt every call under fog).
 
 ## BG2 notes
 - Shots read (2026-11-06): spot_mac00_pic 0000_1_1 (zoom path, rotated to 400x240), yard_shot 0000_0_11 (letterboxed, plain path). PPM is stored rotated: transpose(ROTATE_90) gives screen orientation.

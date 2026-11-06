@@ -106,6 +106,22 @@
       "gates": []
     },
     {
+      "name": "bg_flicker_mac00",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "mac_00 sky (BG1): Mario walks left then right at -57 0 76. Azahar shots frames 100 to 159, one per frame. A person reads the shot: the flicker chunk of the sky.",
+      "scenario": "bg_flicker_mac00",
+      "cap": 45,
+      "until": "shot \\d+ frame 15[89]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "bg"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac00_pic",
       "kind": "azahar_pic",
       "speed": "normal",
