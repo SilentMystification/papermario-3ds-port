@@ -1,6 +1,10 @@
 # agent_menu: Select menu epic (plan_menu.md sections 2 and 3)
 
-STATE (branch menu, base nds1; rows of MENU2 on branch nds1 main folder)
+STATE (MENU4, branch nds1, main folder; see section 11)
+- MENU4 row 1 MN6 rest: PASS (21ba60d65). Row 2 MN7 rest: PASS (bc6b263a8). Row 3 MN3 check: PASS by eye (menu_shot, blank row under the tab line).
+- Rows 4 (MENU-D cheats CH0 to CH8) and 5 (MENU-E) not started in this run: handback after row 3 as asked.
+
+STATE (older, MENU2 to MENU3)
 - MENU2 row 1 WARPY2: gate FAILED (Mario not in iwa_10 shot). Placement edit discarded. Debug floorscan + column log committed. Section 5.
 - Epic A: MN2 open (grey top screen). Epic B: MN3b, MN4, MN5, MN6 (+ warp restore), MN7 open.
 - Row 2 exit_armed (shotmenu, arm log line): PASS by eye (section 6). Epic B next.
@@ -179,3 +183,7 @@ Row 2 MN7 rest (Debug row "Position log combo"): PASS (log and shot). Commit: se
 - The combo (pm_input.c) fires on pm_opt.poslog or the switch poslog. The line is unchanged (pm_poslog_line, warn level).
 - Gate menu_poslog_row (yard, no switch): `menu: tab 2 row 22 Position log combo = On` (shot bot_m0025 read: row On), `pos: kmr_20 area 0 map 11 entry 4 x 594.000 y 30.000 z -216.000 yaw 180.0`, Off again (last match), saved poslog=0.
 - Starts MENU4 after row 2: 6 (of which 2 lost, see row 1).
+
+Row 3 MN3 check (blank row under the tab line): PASS by eye. Scenario menu_shot (SELECT, General tab, first draw, bot_m0000, status now verified): tab line at row 0, one blank row (row 1), `60 FPS` at row 2. The old menu_close shot (bot_m0004, MENU3 build) had no blank row; the current build has it.
+- Starts MENU4 total: 6 (2 lost to a missing padscript in the sdmc PaperMario folder, the first two runs; the copy step is now in the row work: copy 3ds/tools/pad_*.txt to the sdmc PaperMario folder before a start).
+- Row 4 (CH0 to CH8) and row 5 (MN8, MN9, BT1, BT2, BT3): not started. Named gaps: none opened yet.
