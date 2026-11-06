@@ -21,7 +21,28 @@
         {"name": "str2_cyc", "regex": "logbench kind str2 cycles ([0-9.]+)", "pick": "last"},
         {"name": "dropped_cyc", "regex": "logbench kind dropped cycles ([0-9.]+)", "pick": "last"}
       ],
-      "gates": []
+      "gates": [
+        {
+          "metric": "plain_cyc",
+          "op": "<",
+          "value": 268
+        },
+        {
+          "metric": "args_cyc",
+          "op": "<",
+          "value": 300
+        },
+        {
+          "metric": "str2_cyc",
+          "op": "<",
+          "value": 520
+        },
+        {
+          "metric": "dropped_cyc",
+          "op": "<",
+          "value": 50
+        }
+      ]
     },
     {
       "name": "texstale_prof_line",

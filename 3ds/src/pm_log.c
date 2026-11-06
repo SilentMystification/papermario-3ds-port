@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 
 #include "pm_port.h"
+#include "pm_logfmt.h"
 
 #define RING 32768
 /* PI6: bytes waiting for log.txt (fb) and for the bottom console (cb). The writer copies into them, the sink thread writes them out.
@@ -314,18 +315,30 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs, unsigned spikes, flo
  * socket send first, then copies the bytes into fb and cb. A second low-priority thread (sink, PI6) writes fb to log.txt,
  * prints cb on the bottom screen at 10 per second. Full queue: the new line is dropped and counted.
  * Before the writer thread runs, pm_log writes directly (boot lines). */
-#define SLOTS 1024 /* HWM1: was 512. The first O3DS run lost 1207 lines when the writer fell behind. */
-#define SLOT_TEXT 256 /* HWM1: the phs and phq lines are about 200 characters */
+#define SLOTS 1024 /* HWM1: was 512. The first O3DS run lost 1207 lines when the writer fell behind. LOG2: 1024 slots of 256 B = 256 KB. */
+#define SLOT_BYTES 256
 #define VIP 16 /* level flag: a measurement line (pm_log_hw) keeps the last SLOT_RES slots, other lines are dropped first */
 #define SLOT_RES 128
+#define LINE_MAX 1024 /* the writer's formatted line: "#<seq> " body and newline */
+#define ABANDON_TICKS (268111856ull / 20ull) /* PLAN E: a queue position uncommitted for 50 ms is abandoned */
+/* LOG2/PLAN E: slot state (lap << 2) | k, lap = queue position >> 10 (SLOTS is a power of two). k: 0 free for this lap, 1 reserved,
+ * 2 committed, 3 abandoned. The producer owns a slot from its reserve CAS (0 to 1) to its commit CAS (1 to 2). The writer frees it by
+ * storing (lap + 1) << 2, which is free for the next lap. A producer that stalls past the abandon time loses its commit CAS and drops
+ * the line (counted); the writer moves on. */
 typedef struct {
-    u32 state; /* 0 free, 1 committed (release store by the producer, acquire load by the writer) */
-    u16 len;
-    u8 lv; /* CONLV: the level of the line (0 to 3): log.txt and the socket take it within log_level, the console within con_lv */
-    u8 pad;
-    char text[SLOT_TEXT];
+    u32 state;
+    const char* fmt;
+    u32 seq;
+    u32 th;      /* thread that logged the line (threadGetCurrent) */
+    u8 nargs, nw, lv, flags; /* flags: bit 0 prof line (log.txt only), bit 1 fallback (str holds the formatted text) */
+    u16 slen;    /* string area in use */
+    u8 pad[10];
+    u32 w[LF_MAX_ARGS];
+    char str[LF_STR_SIZE];
 } Slot;
-static Slot slots[SLOTS];
+_Static_assert(sizeof(Slot) == SLOT_BYTES, "Slot is 256 bytes");
+static Slot slots[SLOTS] __attribute__((aligned(32)));
+static LfDesc ldesc[512]; /* LOG2: descriptor cache, direct-mapped on (fmt >> 2) & 511 */
 static int writer_stop;
 static int crashed;
 static int active_id;
@@ -355,44 +368,49 @@ static void vlog(int lv, const char* fmt, va_list ap) {
     if (!log_file_on) return; /* logging off: nothing below runs, not even the level test */
     if (lv > pass_lv && !prof_force) return; /* CONLV: one compare; the sinks check their own level in drain_locked */
     if (!writer_th) return; /* no writer: drop the line, never touch SD, socket or stdout on the caller */
-    /* Queue full: one atomic add and out, before any formatting work, so a flood costs almost nothing. */
-    if (__atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
-        __atomic_fetch_add(&q_dropped, 1, __ATOMIC_RELAXED);
-        return;
-    }
-    __atomic_fetch_add(&st_lines, 1, __ATOMIC_RELAXED);
-    char body[SLOT_TEXT];
-    vsnprintf(body, sizeof(body), fmt, ap);
-    size_t bl = strlen(body);
-    if (bl == 0 || body[bl - 1] != '\n') {
-        if (bl + 1 < sizeof(body)) {
-            body[bl++] = '\n';
-            body[bl] = 0;
-        }
-    }
-    __atomic_fetch_add(&st_bytes, (unsigned)bl + 8, __ATOMIC_RELAXED);
-    /* lognull: measurement switch, drops every line that is not an error. */
-    if (sw_lognull && !strstr(body, "CRASH") && !strstr(body, "FATAL") && !strstr(body, "logstat")) return;
+    u32 lim = vip ? SLOTS : SLOTS - SLOT_RES;
+    /* Queue full: one load and compare, before the descriptor lookup, so a flood costs almost nothing. */
     u32 h = __atomic_load_n(&q_head, __ATOMIC_RELAXED);
     for (;;) {
-        if (h - __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE) >= (vip ? SLOTS : SLOTS - SLOT_RES)) {
+        if (h - __atomic_load_n(&q_tail, __ATOMIC_RELAXED) >= lim) { /* no acquire: the slot CAS below acquires */
             __atomic_fetch_add(&q_dropped, 1, __ATOMIC_RELAXED);
             return;
         }
         if (__atomic_compare_exchange_n(&q_head, &h, h + 1, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) break;
     }
-    /* The number is taken after the slot, so the queue order is the number order. */
-    Slot* sl = &slots[h % SLOTS];
-    int n = snprintf(sl->text, SLOT_TEXT, "#%u %s", __atomic_fetch_add(&seq, 1, __ATOMIC_RELAXED), body);
-    if (n < 0) n = 0;
-    if (n >= SLOT_TEXT) {
-        n = SLOT_TEXT - 1; /* long line cut to the slot, keep the newline */
-        sl->text[n - 1] = '\n';
+    /* The position h is ours. Its slot must be free for this lap (state (lap << 2) | 0). */
+    LfDesc* d = &ldesc[((uintptr_t)fmt >> 2) & 511u];
+    if (d->fmt != fmt) lf_scan(fmt, d);
+    u32 free_st = (h >> 10) << 2;
+    Slot* sl = &slots[h & (SLOTS - 1)];
+    u32 exp = free_st;
+    if (!__atomic_compare_exchange_n(&sl->state, &exp, free_st | 1, 0, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) {
+        __atomic_fetch_add(&q_dropped, 1, __ATOMIC_RELAXED); /* the writer abandoned this position: the line is dropped */
+        return;
     }
-    sl->len = (u16)n;
+    sl->fmt = fmt;
+    sl->seq = __atomic_fetch_add(&seq, 1, __ATOMIC_RELAXED);
+    sl->th = (u32)(uintptr_t)threadGetCurrent();
     sl->lv = (u8)lv;
-    sl->pad = (u8)prof_force;
-    __atomic_store_n(&sl->state, 1, __ATOMIC_RELEASE);
+    sl->flags = (u8)(prof_force ? 1 : 0);
+    sl->slen = 0;
+    if (d->ok) {
+        sl->nargs = d->nargs;
+        sl->nw = d->nw;
+        lf_copy(sl->w, sl->str, &sl->slen, d, ap);
+    } else {
+        sl->flags |= 2; /* refused format: formatted now, the text is in str */
+        sl->nargs = sl->nw = 0;
+        vsnprintf(sl->str, LF_STR_SIZE, fmt, ap);
+        sl->str[LF_STR_SIZE - 1] = 0;
+        sl->slen = (uint16_t)strlen(sl->str);
+    }
+    exp = free_st | 1;
+    if (!__atomic_compare_exchange_n(&sl->state, &exp, free_st | 2, 0, __ATOMIC_RELEASE, __ATOMIC_RELAXED)) {
+        __atomic_fetch_add(&q_dropped, 1, __ATOMIC_RELAXED); /* stalled past the abandon time: the writer took the slot */
+        return;
+    }
+    __atomic_fetch_add(&st_lines, 1, __ATOMIC_RELAXED);
     /* Wake the writer when the queue was empty or is half full. Otherwise its 250 ms timeout collects the lines. */
     u32 t = __atomic_load_n(&q_tail, __ATOMIC_RELAXED);
     if (h == t || h - t == SLOTS / 8) LightEvent_Signal(&ev_wake);
@@ -677,39 +695,91 @@ static void report_drops(void) {
 static const char con_sgr[4][CON_SGR_LEN + 1] = { "\x1b[91m", "\x1b[33m", "\x1b[37m", "\x1b[90m" };
 #define CON_RESET "\x1b[0m"
 
+/* PLAN E: the writer's view of the queue. stall_on: the tail position stayed uncommitted since stall_tick. q_abandoned: positions the
+ * writer gave up on. beat_due: set every 5 s by writer_beat, the drain writes the beat line (no #seq, no vlog). */
+static u32 q_abandoned;
+static int stall_on;
+static u32 stall_t;
+static u64 stall_tick;
+static int beat_due;
+
+/* Writer: format a committed slot into out as "#<seq> <body>\n". Returns the length. */
+static int line_of(const Slot* sl, char* out, unsigned cap) {
+    int n = snprintf(out, cap, "#%u ", sl->seq);
+    unsigned o = (unsigned)n;
+    if (sl->flags & 2) {
+        unsigned l = sl->slen;
+        if (o + l > cap - 2) l = cap - 2 - o;
+        memcpy(out + o, sl->str, l);
+        o += l;
+    } else {
+        o += lf_format(out + o, cap - o - 1, sl->fmt, sl->w, sl->str);
+    }
+    if (o == 0 || out[o - 1] != '\n') out[o++] = '\n';
+    return (int)o;
+}
+
 /* The caller holds drain_lock. */
 static void drain_locked(void) {
-    static char lb[8192], bb[8192];
+    static char lb[8192], bb[8192], line[LINE_MAX];
     int ln = 0, bn = 0;
     int fl = log_level, cl = con_lv > 3 ? -1 : con_lv; /* CONLV: a line goes to log.txt and the socket within fl, to the console within cl (-1 = off) */
+    if (beat_due) {
+        beat_due = 0;
+        u32 t = q_tail, hd = __atomic_load_n(&q_head, __ATOMIC_ACQUIRE);
+        u32 st = __atomic_load_n(&slots[t & (SLOTS - 1)].state, __ATOMIC_ACQUIRE);
+        u32 age = stall_on && stall_t == t ? (u32)((svcGetSystemTick() - stall_tick) / (SYSCLOCK_ARM11 / 1000)) : 0;
+        int bl = snprintf(line, sizeof line, "beat hb %u head %u tail %u tstate %u tage_ms %u tthread %08x abandoned %u dropped %u file_on %d pass_lv %d\n",
+                          writer_hb, hd, t, st, age, (u32)(uintptr_t)threadGetCurrent(), q_abandoned, q_drop_total + q_dropped, log_file_on, pass_lv);
+        if (bl > (int)sizeof line - 1) bl = sizeof line - 1;
+        out_batch(line, fl >= 3 ? bl : 0, line, cl >= 3 ? bl : 0);
+    }
     u32 t = q_tail;
+    u32 hd = __atomic_load_n(&q_head, __ATOMIC_ACQUIRE);
     /* Bounded: at most SLOTS/4 slots per call. A debug flood refills the queue as fast as it drains, and an unbounded drain kept the
      * writer from returning to accept_client (the console could not connect). The rest waits for the next writer pass. */
-    for (int k = 0; k < SLOTS / 4; k++) {
-        Slot* sl = &slots[t % SLOTS];
-        if (__atomic_load_n(&sl->state, __ATOMIC_ACQUIRE) != 1) break;
-        int n = sl->len;
-        int tf = sl->pad || sl->lv <= fl, tc = !sl->pad && sl->lv <= cl; /* PROF4: pad 1 = prof line, file only */
-        int skip = 0, cn = 0;
-        if (tc) { /* the console text is the line after "#<seq> " */
-            const char* sp = (const char*)memchr(sl->text, ' ', (size_t)n);
-            skip = sp ? (int)(sp - sl->text) + 1 : 0;
-            cn = n - skip;
+    for (int k = 0; k < SLOTS / 4 && t != hd; k++) {
+        Slot* sl = &slots[t & (SLOTS - 1)];
+        u32 want = (t >> 10) << 2;
+        u32 st = __atomic_load_n(&sl->state, __ATOMIC_ACQUIRE);
+        if (st != (want | 2) && st != (want | 3)) {
+            /* Reserved, not committed. A producer that stalls past ABANDON_TICKS does not block the queue: the position is abandoned,
+             * its late commit fails and the line is dropped (counted by the producer). */
+            u64 now = svcGetSystemTick();
+            if (!stall_on || stall_t != t) { stall_on = 1; stall_t = t; stall_tick = now; break; }
+            if (now - stall_tick < ABANDON_TICKS) break;
+            u32 e = st;
+            if (__atomic_compare_exchange_n(&sl->state, &e, want | 3, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) q_abandoned++;
+            continue;
         }
-        if ((tf && ln + n > (int)sizeof(lb)) || (tc && bn + cn + CON_SGR_LEN + 8 > (int)sizeof(bb))) {
-            out_batch(lb, ln, bb, bn);
-            ln = bn = 0;
-            report_drops(); /* a flood keeps the queue full, so report between batches */
+        stall_on = 0;
+        if (st == (want | 2)) {
+            int n = line_of(sl, line, sizeof line);
+            int pad = (sl->flags & 1) != 0, lvl = sl->lv;
+            st_bytes += (unsigned)n + 8;
+            int skip = sw_lognull && !strstr(line, "CRASH") && !strstr(line, "FATAL") && !strstr(line, "logstat"); /* lognull: writer drops */
+            int tf = !skip && (pad || lvl <= fl), tc = !skip && !pad && lvl <= cl; /* PROF4: pad 1 = prof line, file only */
+            int cskip = 0, cn = 0;
+            if (tc) { /* the console text is the line after "#<seq> " */
+                const char* sp = (const char*)memchr(line, ' ', (size_t)n);
+                cskip = sp ? (int)(sp - line) + 1 : 0;
+                cn = n - cskip;
+            }
+            if ((tf && ln + n > (int)sizeof(lb)) || (tc && bn + cn + CON_SGR_LEN + 8 > (int)sizeof(bb))) {
+                out_batch(lb, ln, bb, bn);
+                ln = bn = 0;
+                report_drops(); /* a flood keeps the queue full, so report between batches */
+            }
+            if (tf) { memcpy(lb + ln, line, (size_t)n); ln += n; }
+            if (tc) {
+                int keep = (cn > 0 && line[cskip + cn - 1] == '\n') ? cn - 1 : cn; /* the newline goes after the reset */
+                memcpy(bb + bn, con_sgr[sl->lv & 3], CON_SGR_LEN); bn += CON_SGR_LEN;
+                memcpy(bb + bn, line + cskip, (size_t)keep); bn += keep;
+                memcpy(bb + bn, CON_RESET, 4); bn += 4;
+                if (keep < cn) bb[bn++] = '\n';
+            }
         }
-        if (tf) { memcpy(lb + ln, sl->text, (size_t)n); ln += n; }
-        if (tc) {
-            int keep = (cn > 0 && sl->text[skip + cn - 1] == '\n') ? cn - 1 : cn; /* the newline goes after the reset */
-            memcpy(bb + bn, con_sgr[sl->lv & 3], CON_SGR_LEN); bn += CON_SGR_LEN;
-            memcpy(bb + bn, sl->text + skip, (size_t)keep); bn += keep;
-            memcpy(bb + bn, CON_RESET, 4); bn += 4;
-            if (keep < cn) bb[bn++] = '\n';
-        }
-        __atomic_store_n(&sl->state, 0, __ATOMIC_RELEASE);
+        __atomic_store_n(&sl->state, want + 4, __ATOMIC_RELEASE); /* free for the next lap */
         t++;
         __atomic_store_n(&q_tail, t, __ATOMIC_RELEASE);
     }
@@ -717,15 +787,13 @@ static void drain_locked(void) {
     report_drops();
 }
 
-/* logstat, writer: one debug line every 5 s from the writer thread. A stopped count means a hang; queue and fb waits show the flood. */
+/* logstat, writer: a beat every 5 s (see the beat line in drain_locked). A stopped hb means a hang. */
 static u64 beat_tick;
 static void writer_beat(void) {
     u64 now = svcGetSystemTick();
     if (beat_tick && now - beat_tick < 5ull * SYSCLOCK_ARM11) return;
     beat_tick = now;
-    pm_log_d("logstat writer hb %u queue %u of %u fbuf waits %u dropped %u", writer_hb,
-             __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED), SLOTS, fb_full_waits,
-             q_drop_total + q_dropped);
+    beat_due = 1;
 }
 
 static void writer_main(void* arg) {
