@@ -3,6 +3,9 @@
 # live log over Wi-Fi for -t seconds.
 # Usage (repo root, Git Bash): sh 3ds/push_3ds.sh [-t seconds] [game args...]
 #   e.g. sh 3ds/push_3ds.sh -t 90 gputest
+#        sh 3ds/push_3ds.sh --attach --ip <ip> -t <s>   (no send: read the live log of a game already running)
+# A send that fails after the console answered still reads the live log (the game may have started).
+# A live log that ends early (no data for a while, cap not reached) is read again with livelog.py --append, 3 times at most.
 # Every push first archives build3ds/pm_3ds.3dsx to 3ds/logs/builds/pm_3ds_<build>_<hash>.3dsx and appends
 # a line to 3ds/logs/perf/pushed_builds.txt. The archive is best effort: a failed archive prints one
 # ARCHIVE WARNING line and the push goes on. "--archive-only" does the archive step and stops (no push), and fails on error.
@@ -17,12 +20,14 @@ secs=0
 ipopt=""
 nobuild=0
 archonly=0
+attach=0
 while :; do
     case "$1" in
         -t) secs=$2; shift 2 ;;
         --ip) ipopt=$2; shift 2 ;;
         --no-build) nobuild=1; shift ;;
         --archive-only) archonly=1; shift ;;
+        --attach) attach=1; shift ;;
         *) break ;;
     esac
 done
@@ -62,7 +67,7 @@ archive_build() {
 # Build only when build3ds/pm_3ds.3dsx is older than its inputs (same input list as Invoke-Build in
 # 3ds/go.ps1) or the build number in pm_build.h differs from the one build.sh would write now.
 # This script never stashes or changes user files.
-if [ "$nobuild" -eq 0 ]; then
+if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ]; then
     OUT=build3ds; [ -n "$PM_LANE" ] && OUT=build3ds/lane-$PM_LANE
     read V0 C0 <<EOF2
 $(tr -d '\015' < 3ds/build_base.txt)
@@ -85,6 +90,48 @@ if [ -z "$PYTHON_EXE" ] && ! command -v py >/dev/null 2>&1; then PY=python3; fi
 # "py -3" is the Windows launcher form. python3 takes no -3.
 py3() { if [ "$PY" = python3 ]; then python3 "$@"; else "$PY" -3 "$@"; fi; }
 
+# Read the live log of $ip for $secs (0: until the game closes, at most PM_LOG_MAX). A reconnect after an early end
+# (livelog.py exit 3) appends to the same file, one line each, 3 times at most. Sets $log.
+read_live_log() {
+    if [ "$secs" = 0 ]; then secs=${PM_LOG_MAX:-3600}; echo "reading the game's log from $ip:17492 until the game closes, at most $secs s"; else echo "reading the game's log from $ip:17492 for $secs s"; fi
+    log="build3ds/hw_live_log_${ip##*.}.txt"
+    t_end=$(( $(date +%s) + secs ))
+    rc=0
+    py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log" || rc=$?
+    k=0
+    while [ "$rc" -eq 3 ] && [ "$k" -lt 3 ]; do
+        left=$(( t_end - $(date +%s) ))
+        [ "$left" -gt 0 ] || break
+        k=$((k + 1))
+        echo "live log ended early (no data): reconnect $k/3 for $left s, appending to $log"
+        rc=0
+        py3 -u 3ds/tools/livelog.py "$ip" "$left" "$log" --append || rc=$?
+    done
+    echo "--- log saved to $log"
+}
+
+# $1: push | send | attach. Prints the ingest hint and the result, then exits.
+report_log() {
+    nlines=$(wc -l <"$log" 2>/dev/null || echo 0)
+    if [ "$nlines" -eq 0 ]; then
+        echo "NO LOG: no line from $ip:17492 in $secs s (game did not start or log server not reached)"
+        case "$1" in
+            attach) echo "ATTACH FAILED: no live log from $ip" ;;
+            send) echo "PUSH FAILED stage=send, and no live log" ;;
+            *) echo "PUSH FAILED stage=no log" ;;
+        esac
+        exit 1
+    fi
+    # The bench record of this log: bench name from PM_BENCH (else <name>), build number from the log's "build N git H" line.
+    bno=$(sed -n 's/.* build \([0-9][0-9]*\) git .*/\1/p' "$log" | head -1)
+    echo "record: python 3ds/tools/bench.py ingest $log --bench ${PM_BENCH:-<name>} --host o3ds${bno:+ --build $bno}"
+    case "$1" in
+        push) echo "PUSH OK, $nlines log lines"; exit 0 ;;
+        send) echo "PUSH FAILED stage=send, but the live log has $nlines lines (the game ran)"; exit 1 ;;
+        attach) echo "ATTACH OK, $nlines log lines"; exit 0 ;;
+    esac
+}
+
 ip=${ipopt:-${N3DS_IP:-${PM_O3DS_IP:-$(py3 - <<'EOF'
 import socket
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -103,6 +150,11 @@ EOF
 )}}}
 if [ -z "$ip" ]; then echo "no 3DS netloader found (press Y in the Homebrew Launcher)"; exit 1; fi
 echo "3DS at $ip"
+if [ "$attach" -eq 1 ]; then
+    echo "attach: no send, reading the live log of $ip"
+    read_live_log
+    report_log attach
+fi
 if [ -n "$PM_SRC3DSX" ]; then
     echo "archive skipped: PM_SRC3DSX is not the main build (3ds/include/pm_build.h describes the main build)"
 else
@@ -207,23 +259,13 @@ while [ "$i" -le "$attempts" ]; do
     [ "$i" -le "$attempts" ] && sleep 2
 done
 if [ "$ok" -ne 1 ]; then
-    echo "PUSH FAILED stage=$stage: $reason (after $attempts attempts, $ip)"
-    exit 1
+    if [ "$stage" != send ]; then
+        echo "PUSH FAILED stage=$stage: $reason (after $attempts attempts, $ip)"
+        exit 1
+    fi
+    echo "PUSH FAILED stage=send: $reason (after $attempts attempts, $ip). The console answered, so the live log is read anyway: the game may be running."
+    read_live_log
+    report_log send
 fi
-
-# -t 0 (default) reads until the game closes. Without a cap a game that never closes hangs this script, so the read
-# stops after PM_LOG_MAX seconds (default 3600).
-if [ "$secs" = 0 ]; then secs=${PM_LOG_MAX:-3600}; echo "reading the game's log from $ip:17492 until the game closes, at most $secs s"; else echo "reading the game's log from $ip:17492 for $secs s"; fi
-log="build3ds/hw_live_log_${ip##*.}.txt"
-py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log" || true
-echo "--- log saved to $log"
-nlines=$(wc -l <"$log" 2>/dev/null || echo 0)
-if [ "$nlines" -eq 0 ]; then
-    echo "NO LOG: no line from $ip:17492 in $secs s (game did not start or log server not reached)"
-    echo "PUSH FAILED stage=no log"
-    exit 1
-fi
-echo "PUSH OK, $nlines log lines"
-# The bench record of this log: bench name from PM_BENCH (else <name>), build number from the log's "build N git H" line.
-bno=$(sed -n 's/.* build \([0-9][0-9]*\) git .*/\1/p' "$log" | head -1)
-echo "record: python 3ds/tools/bench.py ingest $log --bench ${PM_BENCH:-<name>} --host o3ds${bno:+ --build $bno}"
+read_live_log
+report_log push

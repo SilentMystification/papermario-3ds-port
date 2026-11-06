@@ -1,6 +1,9 @@
 """livelog.py - read the game's live log from a 3DS (or Azahar) over the network (TCP 17492).
 
-Usage: py -3 -u 3ds/tools/livelog.py <3ds-ip> [seconds] [out-file] [--silence <seconds>]
+Usage: py -3 -u 3ds/tools/livelog.py <3ds-ip> [seconds] [out-file] [--silence <seconds>] [--append]
+--append adds to out-file (a reconnect of the same run; the file is not truncated).
+Exit codes: 0 time limit or a game end line, 1 no connection at all, 3 the read ended early (silent, or the connection
+stayed closed), so push_3ds.sh reconnects with --append.
 On connect the game sends the last 32 KB of its log, then each new line. Each line starts with
 "#<seq> ". After a reconnect, lines already received are skipped by that number, and a gap in
 the numbers is reported, so a lost line is never silent. Writes raw bytes, so Japanese debug
@@ -33,12 +36,15 @@ def main():
         i = args.index("--silence")
         silence = float(args[i + 1])
         del args[i:i + 2]
+    append = "--append" in args
+    if append:
+        args.remove("--append")
     ip = args[0]
     secs = float(args[1]) if len(args) > 1 else 0
     path = args[2] if len(args) > 2 else "build3ds/hw_live_log.txt"
     forever = secs <= 0
     end = time.time() + secs if not forever else 0
-    out = open(path, "wb")
+    out = open(path, "ab" if append else "wb")
     stdout = sys.stdout.buffer
     last_seq = -1
     gaps = 0
@@ -114,6 +120,8 @@ def main():
         sys.exit(1)
     print("[livelog] done: last line #%d, %d gaps, %d connects" % (last_seq, gaps, connects), flush=True)
     print("[livelog] live log: ended (%s)" % (ended or "time limit"), flush=True)
+    if ended and ended.startswith(("silent for", "connection closed")):
+        sys.exit(3)
 
 
 if __name__ == "__main__":
