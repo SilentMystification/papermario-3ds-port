@@ -29,3 +29,10 @@ S4-2 fix 3: shaded sprites (flags bit 0) refused, why 3, walker draws them (desi
 - Battle try: record flag bit 2 (battle context, sprite.c) refused as why 4, class spr_battle. Still 180 key diffs (field 1) on battle-scene records outside that flag; eq 25.
 - Texture 32x56 (why 2, 198): fallback, desc logged once (sprtex).
 - mac_01 PASS: eq 2032 diff 0 fb 1. Battle gate FAIL (open): spr_battle class named, walker draws it.
+
+## S4-3 and S4-4 (S4b agent)
+- S4-3 committed 80abea3cd. Native sprite draw at the record arm; vertex and triangle words of the component turned to G_NOOP (header low 16 bits = offset). State words still run.
+- Pictures by eye: mac_01 (Mario and two NPCs on screen, world intact), mac_00 (Mario and an NPC), battle_start (battle view, Mario, Goomba, HUD). battle_start scenario check failed: "shot at 182" line missing in the log, 67 shot files written. No baseline compare by eye with the walker only.
+- Fallback counts (sprnat line, every 300 frames): mac_01 f300 native 3048 fb 1; mac_00 f300 native 3777 fb 224 (why 2 texture 222); battle f1200 native 212 fb 3629 (why 4 battle context 3463, why 2 166).
+- S4-4 delete: fallback is not 0, so the row says name the left classes and delete only dead parts. Left classes on the walker: why 2 texture unit (32x56 and others), why 3 shaded, why 4 spr_battle, why 5 walker state, why 1 mode. The old sprite words stay for them. Dead parts: none found (every helper in nd_sprite.c, pm_gpu.c spr_* has a caller).
+- Open: battle key diffs (180, sprcheck field 1) not fixed.
