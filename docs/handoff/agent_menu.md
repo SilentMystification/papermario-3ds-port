@@ -174,4 +174,8 @@ Row 1 MN6 rest (warp area folder, one row per map with the entry): PASS (log and
 - Named gap: the page scrolls only within VIS rows (long area lists are cut by the menu height, no paging beyond the window). Entries per map are not shown as a window `0 1 [2] 3 4` (plan 2.6 shape); the value is `< n of N >`.
 - Starts MENU4: 5 (2 lost to a shared Azahar log and the padscript file not staged in the sdmc PaperMario folder, 3 valid). Starts for the menu_warp_entry gate: 2 valid (start 3 and the CheckLog pass), menu_warp regression 1.
 
-Row 2 MN7 rest (Debug row "Position log combo"): see below.
+Row 2 MN7 rest (Debug row "Position log combo"): PASS (log and shot). Commit: see git log.
+- Option poslog (pm_opt.poslog, options.ini poslog=0|1, option row 12). Debug row 22 (mode 1 and file select), after the Warp area and Boss folder rows so Profiling, Warp area and Boss keep their row numbers (no pad or scenario changed). Plan default "next to Position HUD" not taken: that would move rows 10 to 22 and five pads. Named choice, not a question.
+- The combo (pm_input.c) fires on pm_opt.poslog or the switch poslog. The line is unchanged (pm_poslog_line, warn level).
+- Gate menu_poslog_row (yard, no switch): `menu: tab 2 row 22 Position log combo = On` (shot bot_m0025 read: row On), `pos: kmr_20 area 0 map 11 entry 4 x 594.000 y 30.000 z -216.000 yaw 180.0`, Off again (last match), saved poslog=0.
+- Starts MENU4 after row 2: 6 (of which 2 lost, see row 1).

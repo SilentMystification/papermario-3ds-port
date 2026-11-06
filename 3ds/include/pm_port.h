@@ -214,6 +214,7 @@ typedef struct PmOpt {
     int fskip; /* FS1: 1 = frame skip on (default, a late step skips its draw), 0 = off: every game step is drawn. options.ini fskip=0|1, panel row 9 */
     int hud_ms; /* HUDINT: refresh interval of the bottom screen memory rows in ms: 250, 500, 1000 (default), 2000, 5000. options.ini hudint=<ms> */
     int pos_hud; /* POSHUD: 1 = the bottom screen HUD has a Mario position row, drawn every frame. options.ini poshud=0|1, Debug tab row 8 */
+    int poslog; /* MN7 rest: 1 = the L+R+Y+B combo logs a position line (pm_input.c). options.ini poslog=0|1, Debug row Position log combo (option row 12) */
 } PmOpt;
 void pm_fskip_set(int on); /* pm_main.c: applies fskip at once */
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
@@ -224,7 +225,7 @@ const char* pm_map_now(void); /* BOTLAYOUT: pm_route.c, the footer map row text 
 void pm_gpu_footer(const char* map, const char* sys); /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build), drawn by the sink thread */
 void pm_options_init(void);
 void pm_options_write(void);
-/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 11 is Console level. */
+/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 11 is Console level, row 12 is Position log combo. */
 int pm_options_get(int row);
 void pm_options_flip(int row);
 void pm_options_close(void);

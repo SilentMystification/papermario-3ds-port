@@ -5787,6 +5787,35 @@
         {"name": "map and entry", "regex": "warpstat after live: slot 0 map 1:1 entry 1 "}
       ],
       "reason": "MENU4 MN6 rest gate. The map page shot is read by eye (row mac_00 shows < 1 of 8 >). mac_00 is area 1 map 1 (log)."
+    },
+    {
+      "name": "menu_poslog_row",
+      "status": "verified",
+      "subject": "Select menu Debug tab, row 22 Position log combo: A sets On (bottom shot shows On), SELECT closes, then L+R+Y+B in the yard gives one position line with no poslog switch. A again sets Off.",
+      "proves": "MENU4 MN7 rest: the Debug row sets pm_opt.poslog and the combo reads it (pm_input.c), the value is saved by the menu close.",
+      "debug": "preset=yard padscript=@pad_poslog_row.txt shotmenu loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "menu: open",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "row on",
+          "regex": "menu: tab 2 row 22 Position log combo = On"
+        },
+        {
+          "name": "pos line",
+          "regex": "pos: \\w+ area \\d+ map \\d+ entry \\d+ x -?\\d+\\.\\d+ y -?\\d+\\.\\d+ z -?\\d+\\.\\d+ yaw"
+        },
+        {
+          "name": "row off",
+          "regex": "menu: tab 2 row 22 Position log combo = Off",
+            "pick": "last"
+        }
+      ],
+      "reason": "MENU4 MN7 rest gate. One pos line for the one combo press (the Debug row is the only switch here). The menu shot of row 22 shows On."
     }
   ]
 }

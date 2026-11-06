@@ -9,14 +9,14 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, loglevel warn, conlevel warn, fixedseed off, dpad_mode multi, dz_pad 5, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off. */
+/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, loglevel warn, conlevel warn, fixedseed off, dpad_mode multi, dz_pad 5, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off, poslog off. */
 PmOpt pm_opt = {
     .fps60 = 0, .wide = 0, .dbg_hud = 1, .dbg_stats = 0, .dbg_nofog = 0, .dbg_nolight = 0, .o3ds_z = 0,
     .log = 1, .loglevel = 1, .conlevel = 1, .fixedseed = 0, .dpad_mode = 0,
-    .dz_pad = 5, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0,
+    .dz_pad = 5, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0, .poslog = 0,
 };
 /* Fails the build when PmOpt gains or loses a field without this initializer being updated. */
-_Static_assert(sizeof(PmOpt) == 19 * sizeof(int), "PmOpt field count changed: update pm_opt above");
+_Static_assert(sizeof(PmOpt) == 20 * sizeof(int), "PmOpt field count changed: update pm_opt above");
 /* ARG1: the saved log and loglevel (options.ini, or the defaults). pm_opt.log and pm_opt.loglevel hold the values of this run (a launch argument may differ). CONLV: sv_conlevel the same for conlevel. */
 static int sv_log = 1, sv_loglevel = 1, sv_conlevel = 1;
 /* PROFROW: the Profiling row. Modes 0 off, 1 prof, 2 phase (the index of prof_name). prof_row is this run, sv_prof the saved value (options.ini profmode=). */
@@ -75,6 +75,7 @@ static int* opt_field(const char* key) {
     if (!strcmp(key, "fixedseed")) return &pm_opt.fixedseed;
     if (!strcmp(key, "fskip")) return &pm_opt.fskip;
     if (!strcmp(key, "poshud")) return &pm_opt.pos_hud;
+    if (!strcmp(key, "poslog")) return &pm_opt.poslog; /* MN7 rest */
     return NULL;
 }
 
@@ -85,8 +86,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nconlevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_loglevel, sv_conlevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud, prof_name[sv_prof]);
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nconlevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\nposlog=%d\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_loglevel, sv_conlevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud, pm_opt.poslog, prof_name[sv_prof]);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -214,6 +215,7 @@ int pm_options_get(int row) {
     if (row == 8) return pm_opt.fixedseed;
     if (row == 9) return pm_opt.fskip; /* FS1: frame skip */
     if (row == 10) return pm_opt.pos_hud; /* POSHUD */
+    if (row == 12) return pm_opt.poslog; /* MN7 rest: Position log combo */
     int* f = row == 0 ? &pm_opt.fps60 : row == 1 ? &pm_opt.wide : row == 2 ? &pm_opt.dbg_hud : row == 3 ? &pm_opt.dbg_stats
            : row == 4 ? &pm_opt.dbg_nofog : row == 5 ? &pm_opt.dbg_nolight : NULL;
     return f ? *f : 0;
@@ -230,6 +232,7 @@ void pm_options_flip(int row) {
     if (row == 8) { pm_opt.fixedseed = !pm_opt.fixedseed; changed = 1; return; } /* F11-7: takes effect at the next boot */
     if (row == 9) { pm_opt.fskip = !pm_opt.fskip; pm_fskip_set(pm_opt.fskip); changed = 1; return; }
     if (row == 10) { pm_opt.pos_hud = !pm_opt.pos_hud; changed = 1; return; } /* POSHUD: the Debug tab row 8 */
+    if (row == 12) { pm_opt.poslog = !pm_opt.poslog; changed = 1; return; } /* MN7 rest: the combo logs a position line */
     int* f = row == 0 ? &pm_opt.fps60 : row == 1 ? &pm_opt.wide : row == 2 ? &pm_opt.dbg_hud : row == 3 ? &pm_opt.dbg_stats
            : row == 4 ? &pm_opt.dbg_nofog : row == 5 ? &pm_opt.dbg_nolight : NULL;
     if (!f) return;
@@ -279,7 +282,7 @@ void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int 
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
 const char* const pm_lvl_name[5] = { "Error", "Warn", "Info", "Debug", "Off" }; /* Off: only the console level (conlevel 4) */
-static const char* const dbg_lbl[10] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed", "Frame skip", "Position HUD", "Console level" };
+static const char* const dbg_lbl[11] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed", "Frame skip", "Position HUD", "Console level", "Position log combo" };
 static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
     if (tab == 0) {
@@ -298,6 +301,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         for (i = 0; i < 6; i++) ids[n++] = RW_STAT + i;
         ids[n++] = RW_WARPAREA; /* opens the Warp area folder */
         if (mode) ids[n++] = RW_BOSSFOLDER; /* MN4: opens the Boss folder (Select menu only) */
+        ids[n++] = RW_DBG + 10; /* MN7 rest: Position log combo, after the folders so the rows above keep their numbers */
     }
     ids[n++] = RW_BACK;
     return n;
