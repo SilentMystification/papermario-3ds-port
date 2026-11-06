@@ -6,6 +6,8 @@
 #include <strings.h>
 
 unsigned pm_pad_scans;
+static unsigned fa_scan = 0x80000000u; /* FADV: scan of the last R press while frame advance is on */
+int pm_fa_get(void);
 static unsigned short held;
 static unsigned short down;
 static unsigned short press_seen; /* presses since the last read: a tap shorter than one game frame still counts as held once */
@@ -21,6 +23,11 @@ static int tab_dir;
 int pm_pad_take_tab(void) {
     int r = pm_pad_scans - tab_scan <= 4u ? tab_dir : 0;
     tab_scan = 0x80000000u;
+    return r;
+}
+int pm_pad_take_step(void) { /* FADV: one R press since the last take (the step key of frame advance) */
+    int r = fa_scan != 0x80000000u && pm_pad_scans - fa_scan <= 4u;
+    fa_scan = 0x80000000u;
     return r;
 }
 int pm_pad_take_select(void) {
@@ -226,6 +233,10 @@ void pm_pad_scan(void) {
         static int ps_init0;
         if (!ps_init0) { ps_init0 = 1; ps_load(); }
         if (ps_run) { k |= ps[ps_i].keys; d |= ps[ps_i].keys & ~ps_pkeys; ps_pkeys = ps[ps_i].keys; } else ps_pkeys = 0;
+    }
+    if (pm_fa_get() && !pm_menu_open) { /* FADV: with frame advance on, R is the step key and the game gets no R (the open menu keeps R for its tabs) */
+        if (d & KEY_R) fa_scan = pm_pad_scans;
+        k &= ~KEY_R; d &= ~KEY_R;
     }
     if (d & (KEY_L | KEY_R)) { tab_scan = pm_pad_scans; tab_dir = (d & KEY_L) ? -1 : 1; }
     { /* MN7: L+R+Y+B held and the fourth key pressed on this scan: one position line (Debug row Position log combo, or the switch poslog) */

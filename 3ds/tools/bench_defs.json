@@ -1142,6 +1142,24 @@
         }
       ],
       "gates": []
+    },
+{
+      "name": "menu_frameadv_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FADV: frame advance hold and single-step (Cheats tab row 22). Log: fa: on, fa: step frame N per press, menu: game resumed.",
+      "scenario": "menu_frameadv",
+      "cap": 40,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "fadv"
+      ],
+      "log_metrics": [],
+      "gates": []
     }
   ],
   "legacy": {

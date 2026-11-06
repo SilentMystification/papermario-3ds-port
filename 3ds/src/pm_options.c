@@ -276,11 +276,12 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_CH8 = 380, RW_BATTLESF = 347, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_CH8 = 380, RW_FADV = 390, RW_BATTLESF = 347, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
 /* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
 int pm_dbgg_spawn_count(void); int pm_dbgg_spawn_id(int row); void pm_dbgg_spawn(int id);
 const char* pm_partner_name(int i); const char* pm_partner_value(int i); int pm_dbgg_partner_on(int i); void pm_dbgg_partner_set(int i, int on); int pm_dbgg_partner_level(int i, int dir);
 int pm_dbgg_level_over(void); int pm_dbgg_level_calc(void);
+int pm_fa_get(void); void pm_fa_set(int on); /* FADV: frame advance row (pm_dbg_game.c) */
 int pm_dbgg_item_count(int g); int pm_dbgg_item_id(int g, int row); int pm_dbgg_item_has(int g, int id); void pm_dbgg_item_set(int g, int id, int on); void pm_dbgg_toggle_all(int g); const char* pm_item_name(int id);
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
@@ -310,6 +311,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_MOON; /* CH6: Moon jump (On or Off) */
         for (i = 0; i < 5; i++) ids[n++] = RW_CHEAT + i; /* CH7: Infinite HP, FP, star power, No battles, Speed x2 */
         for (i = 0; i < 10; i++) ids[n++] = RW_CH8 + i; /* CH8: boots, hammer, spirits, pieces, story, item, fill, save, load, instant win */
+        ids[n++] = RW_FADV; /* FADV: Frame advance (On or Off, takes effect at the menu close) */
     }
     ids[n++] = RW_BACK;
     return n;
@@ -432,6 +434,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id > RW_PART && id <= RW_PART + 11) return pm_partner_name(id - RW_PART); /* CH4 */
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return pm_item_name(pm_dbgg_spawn_id(id - RW_SPAWN)); /* CH5 */
     if (id == RW_MOON) return "Moon jump"; /* CH6 */
+    if (id == RW_FADV) return "Frame advance"; /* FADV */
     if (id == RW_BATTLESF) return "Battles >"; /* BT2 */
     if (id >= RW_BTLAREA && id < RW_BTLAREA + 100) return pm_battle_area_name(id - RW_BTLAREA); /* BT2 */
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_label(id - RW_BTLROW); /* BT2 */
@@ -473,6 +476,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
     if (id == RW_BATTLESF || (id >= RW_BTLAREA && id < RW_BTLAREA + 100)) return "A: open"; /* BT2 */
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return "A: fight"; /* BT2 */
     if (id == RW_MOON) return pm_cheat_moon_get() ? "On" : "Off"; /* CH6 */
+    if (id == RW_FADV) return pm_fa_get() ? "On" : "Off"; /* FADV */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) return pm_cheat_get(id - RW_CHEAT) ? "On" : "Off"; /* CH7 */
     if (id >= RW_CH8 && id < RW_CH8 + 10) return pm_dbgg_ch8_text(id - RW_CH8); /* CH8 */
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "A: all" : pm_dbgg_item_has(g, pm_dbgg_item_id(g, folder_row(id, &g) - 1)) ? "On" : "Off";
@@ -515,6 +519,7 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return 0; /* CH5: one A spawns one item */
     if (id == RW_BATTLESF || (id >= RW_BTLAREA && id < RW_BTLROW + 1000)) return 0; /* BT2: no value */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 1; } /* CH6: left or right flips it */
+    if (id == RW_FADV) { pm_fa_set(!pm_fa_get()); return 1; } /* FADV: flips */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7: flips */
     if (id >= RW_CH8 && id < RW_CH8 + 6) { pm_dbgg_ch8_step(id - RW_CH8, dir); return 1; } /* CH8: value rows step */
     if (id >= RW_CH8 && id < RW_CH8 + 10) return 0;
@@ -562,6 +567,7 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id >= RW_BTLAREA && id < RW_BTLAREA + 100) { bt_row = id - RW_BTLAREA; sub_kind = 13; sub_area = bt_row; return 6; } /* BT2: an area page (formations) */
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_launch(id - RW_BTLROW) ? 5 : 0; /* BT2: queued, the menu closes */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 0; } /* CH6 */
+    if (id == RW_FADV) { pm_fa_set(!pm_fa_get()); return 0; } /* FADV */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 0; } /* CH7 */
     if (id >= RW_CH8 && id < RW_CH8 + 10) { pm_dbgg_ch8_act(id - RW_CH8); return 0; } /* CH8 */
     if (id > RW_PART && id <= RW_PART + 11) { /* CH4: A turns the partner on or off */

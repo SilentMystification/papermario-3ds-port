@@ -340,6 +340,8 @@ void pm_frame_loop(void) {
     unsigned step_vb = 0; /* vblank counter when the last drawn iteration got past FrameBegin */
     int step_vb_ok = 0;
     int menu_frozen = 0; /* MN1: the Select menu is open and the game is paused */
+    int fa_state = 0; /* FADV: 0 off, 1 hold (no game step, no draw, the picture stays), 2 step (one game step runs, then 1 again) */
+    extern int pm_fa_get(void); extern int pm_pad_take_step(void);
     u64 fps_mark = 0;
     float fps = 0.f, fps_draw = 0.f; /* PT24: steps/s (internal) and drawn frames/s (external) */
     /* HUD2: bottom screen memory rows, refreshed at pm_opt.hud_ms (pm_mem_hud). */
@@ -394,15 +396,21 @@ void pm_frame_loop(void) {
             menu_frozen = 0;
             sched_next = 0;
             step_vb_ok = 0;
-            pm_audio_mute(0); /* PAUSE AUDIO: the sound goes on from the paused buffer (before the resumed line: the until line) */
+            fa_state = pm_fa_get() ? 1 : 0; /* FADV: the row decides at the close */
+            pm_audio_mute(fa_state); /* PAUSE AUDIO: the sound goes on from the paused buffer (before the resumed line: the until line); a frame advance hold stays silent */
             pm_log("menu: game resumed at frame %u", frame);
+        }
+        if (fa_state == 1) { /* FADV hold: no game step and no draw, the picture on the top screen stays */
+            if (!pm_pad_take_step()) { gspWaitForVBlank(); continue; }
+            fa_state = 2; /* R: one game step, with no catch-up and no wait (sched_next and step_vb_ok as at a resume) */
+            sched_next = 0; step_vb_ok = 0;
         }
         pace_on = pm_debug_has("pacestat");
         if (pace_on) pace_stat(now, tick_hz, frame);
         if (!draw) {
             pm_gfx_retrace();
             /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
-            if (pm_interp_on > 0 && !last_step_skipped && pm_interp_key_draw()) { /* PT87: the key frame is a draw, not a game step (it was counted as a step: the HUD showed x/x) */
+            if (fa_state == 0 && pm_interp_on > 0 && !last_step_skipped && pm_interp_key_draw()) { /* FADV: a hold or step draws no key frame */ /* PT87: the key frame is a draw, not a game step (it was counted as a step: the HUD showed x/x) */
                 drawn++; pm_pace_drawn++;
                 continue;
             }
@@ -507,6 +515,7 @@ void pm_frame_loop(void) {
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
         frame++;
         pm_frame_n = frame;
+        if (fa_state == 2) { fa_state = 1; pm_log("fa: step frame %u", frame); } /* FADV: the step is done, hold again */
         if (pm_interp_on <= 0 && sched_next) { /* PT88: one step is used. After a long stall (a load) do not run to catch up: keep at most 3 steps owed. */
             u64 t = svcGetSystemTick();
             sched_next += step_period;

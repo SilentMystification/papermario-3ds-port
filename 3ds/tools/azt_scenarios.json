@@ -7170,6 +7170,46 @@
         }
       ],
       "reason": "WCEN: one 300-frame census window per run (os_report prints at 300). The shot at 200 is the subject check."
+    },
+{
+      "name": "menu_frameadv",
+      "status": "unverified",
+      "subject": "Select menu, Cheats tab, row 22 Frame advance On, close. The game holds (no step, audio muted). Each R press (k_R) runs exactly one game step: five presses, five fa: step lines, frame +1 each.",
+      "proves": "FADV: pm_main.c fa_state hold and step (pm_pad_take_step), the step ends at the frame end and holds again; pm_dbg_game.c pm_fa_set at the row.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,L,wait20,dup,wait10,dup,wait10,A,wait20,SELECT,wait80,k_R,wait20,k_R,wait20,k_R,wait20,k_R,wait20,k_R,wait20,wait30 shots loglevel=debug",
+      "until": "padscript: done",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "fa on",
+          "regex": "fa: on"
+        },
+        {
+          "name": "paused",
+          "regex": "menu: game paused at frame \\d+"
+        },
+        {
+          "name": "resumed",
+          "regex": "menu: game resumed at frame \\d+"
+        },
+        {
+          "name": "step",
+          "regex": "fa: step frame \\d+"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "FADV gate: exactly 5 fa: step lines (one per R press), frame +1 each, audio muted during the hold (audio: muted, no unmute before the done line). The menu: game resumed line is the close."
     }
   ]
 }

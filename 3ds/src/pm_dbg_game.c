@@ -157,6 +157,12 @@ void pm_dbgg_spawn(int id) {
     pm_log("dbggame: spawn item 0x%03X at %.1f %.1f %.1f", id, ps->pos.x, ps->pos.y + 40.0f, ps->pos.z);
 }
 
+/* FADV: Frame advance row. pm_fa_on is the requested state (set here, read by the main loop at the menu close: pm_main.c fa_state). On: the game holds
+ * until R steps it one frame (pm_pad_take_step). The menu is opened with Select as before. */
+int pm_fa_on;
+int pm_fa_get(void) { return pm_fa_on; }
+void pm_fa_set(int on) { pm_fa_on = on ? 1 : 0; pm_log("fa: %s", pm_fa_on ? "on" : "off"); }
+
 /* CH6: Moon Jump (RAM only, not saved). The launch switch moonjump turns it on at boot. Per step (pm_warp_tick, after the game logic) while
  * A is held and Mario jumps or falls: the upward velocity is at least 4 and the other integrator terms are zero, so the jump floats. */
 static int moon_on = -1;
@@ -227,7 +233,7 @@ void pm_cheat_tick(void) {
 
 /* CH8: further cheat rows (RAM only, Cheats tab): 0 boots level, 1 hammer level, 2 max star spirits, 3 star pieces, 4 story, 5 inventory item
  * (a row of the consumables), 6 fill the inventory with it, 7 save position, 8 load position (same map), 9 instant win (battle).
- * Frame advance is not here: the frozen loop has no step path while the menu is open (named gap, agent_menu.md). */
+ * Frame advance is the FADV row above (pm_fa_get, pm_fa_set): the loop in pm_main.c steps the game with R while it is on. */
 static const char* const ch8_name[6] = { "boots level", "hammer level", "max star spirits", "star pieces", "story", "inventory item" };
 static int story_i, inv_row, pos_saved, save_area, save_map, save_entry;
 static float save_x, save_y, save_z;
