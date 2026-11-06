@@ -23,6 +23,7 @@ C. Console run (the orchestrator pushes, the user opens netloader first)
 2. After the push, run the `bench.py ingest build3ds/hw_live_log_170.txt --bench <bench> --host o3ds --build <N> --speed normal --row <row> --label "<text>"` line that push_3ds.sh prints.
 3. A walking route is not comparable between runs. Use a padscript route or a standing bench.
 5. `sh 3ds/push_3ds.sh --attach --ip <ip> -t <s>` reads the live log of a game already running (no send). A live log that stops early is read again with livelog.py --append (3 times). A send that fails after the console answered still reads the live log.
+6. After a failed send, push_3ds.sh ingests nothing unless the live log boot line is the sent build (else STALE BINARY). `sh 3ds/push_3ds.sh --check-log <file>` runs that check only (PM_SENT_BUILD, PM_SENT_GIT). bench.py ingest of a console log refuses (ERROR, nothing written) when its boot line differs from --build or --commit.
 4. `PM_SRC3DSX=<3dsx> sh 3ds/push_3ds.sh --no-build --ip 192.168.1.170 <switches>` sends that 3dsx instead of build3ds/pm_3ds.3dsx (no archive: the main pm_build.h does not describe it). build-at uses this.
 
 D. Performance in one place, over time

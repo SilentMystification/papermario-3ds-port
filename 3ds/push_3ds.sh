@@ -6,6 +6,9 @@
 #        sh 3ds/push_3ds.sh --attach --ip <ip> -t <s>   (no send: read the live log of a game already running)
 # A send that fails after the console answered still reads the live log (the game may have started).
 # A live log that ends early (no data for a while, cap not reached) is read again with livelog.py --append, 3 times at most.
+# After a send failure the log's boot line "build N git H" must equal the sent build (PM_SENT_BUILD, PM_SENT_GIT, set by
+# bench.py build-at; else 3ds/include/pm_build.h). Otherwise the log is from another binary: STALE BINARY, no ingest hint.
+# "--check-log <file>" runs only that check (tests).
 # Every push first archives build3ds/pm_3ds.3dsx to 3ds/logs/builds/pm_3ds_<build>_<hash>.3dsx and appends
 # a line to 3ds/logs/perf/pushed_builds.txt. The archive is best effort: a failed archive prints one
 # ARCHIVE WARNING line and the push goes on. "--archive-only" does the archive step and stops (no push), and fails on error.
@@ -21,6 +24,7 @@ ipopt=""
 nobuild=0
 archonly=0
 attach=0
+checklog=""
 while :; do
     case "$1" in
         -t) secs=$2; shift 2 ;;
@@ -28,6 +32,7 @@ while :; do
         --no-build) nobuild=1; shift ;;
         --archive-only) archonly=1; shift ;;
         --attach) attach=1; shift ;;
+        --check-log) checklog=$2; shift 2 ;;
         *) break ;;
     esac
 done
@@ -67,7 +72,7 @@ archive_build() {
 # Build only when build3ds/pm_3ds.3dsx is older than its inputs (same input list as Invoke-Build in
 # 3ds/go.ps1) or the build number in pm_build.h differs from the one build.sh would write now.
 # This script never stashes or changes user files.
-if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ]; then
+if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ]; then
     OUT=build3ds; [ -n "$PM_LANE" ] && OUT=build3ds/lane-$PM_LANE
     read V0 C0 <<EOF2
 $(tr -d '\015' < 3ds/build_base.txt)
@@ -110,6 +115,21 @@ read_live_log() {
     echo "--- log saved to $log"
 }
 
+# boot_check <log>: 0 when the log's boot line (build N git H, lane suffix allowed) equals the sent build.
+# Sets sent_b (full PM_BUILD_STR of the sent 3dsx), sent_h (git hash) and boot_log ("<build> <hash>" or none).
+boot_check() {
+    sent_b=${PM_SENT_BUILD:-$(sed -n 's/^#define PM_BUILD_STR "\(.*\)"/\1/p' 3ds/include/pm_build.h)}
+    sent_h=${PM_SENT_GIT:-$(sed -n 's/^#define PM_GIT_HASH "\(.*\)"/\1/p' 3ds/include/pm_build.h)}
+    boot_log=$(sed -n 's/.* build \([^ ]*\) git \([^ ]*\) .*/\1 \2/p' "$1" 2>/dev/null | head -1)
+    [ -n "$boot_log" ] || boot_log=none
+    [ -n "$sent_b" ] && [ "$boot_log" = "$sent_b $sent_h" ]
+}
+
+if [ -n "$checklog" ]; then
+    if boot_check "$checklog"; then echo "MATCH: log build $boot_log = sent $sent_b $sent_h"; exit 0; fi
+    echo "STALE BINARY: log build ${boot_log}, sent ${sent_b:-none}"; exit 1
+fi
+
 # $1: push | send | attach. Prints the ingest hint and the result, then exits.
 report_log() {
     nlines=$(wc -l <"$log" 2>/dev/null || echo 0)
@@ -122,12 +142,23 @@ report_log() {
         esac
         exit 1
     fi
+    if [ "$1" = send ]; then
+        # The send failed: the live log may be of another binary (an older game still running). Ingest only when it is the sent build.
+        if ! boot_check "$log"; then
+            echo "STALE BINARY: log build ${boot_log}, sent ${sent_b:-none}"
+            echo "PUSH FAILED stage=send, $nlines log lines, not the sent build: nothing to record"
+            exit 1
+        fi
+        bno=${sent_b%%-*}
+        echo "record: python 3ds/tools/bench.py ingest $log --bench ${PM_BENCH:-<name>} --host o3ds --build $bno --commit $sent_h"
+        echo "PUSH FAILED stage=send, but the live log is the sent build ($nlines lines: the game ran)"
+        exit 1
+    fi
     # The bench record of this log: bench name from PM_BENCH (else <name>), build number from the log's "build N git H" line.
     bno=$(sed -n 's/.* build \([0-9][0-9]*\) git .*/\1/p' "$log" | head -1)
     echo "record: python 3ds/tools/bench.py ingest $log --bench ${PM_BENCH:-<name>} --host o3ds${bno:+ --build $bno}"
     case "$1" in
         push) echo "PUSH OK, $nlines log lines"; exit 0 ;;
-        send) echo "PUSH FAILED stage=send, but the live log has $nlines lines (the game ran)"; exit 1 ;;
         attach) echo "ATTACH OK, $nlines log lines"; exit 0 ;;
     esac
 }

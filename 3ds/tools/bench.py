@@ -760,13 +760,19 @@ def build_at_console(bd, a, commit, short, gitdir, scratch, src3dsx, lane):
         if not src3dsx.exists():
             print("build-at %s: no %s after the build. Nothing was pushed." % (short, posix(src3dsx)))
             return 5
-        env = dict(os.environ, PM_ROW=a.row, PM_SRC3DSX=str(src3dsx))
+        hdr = (scratch / "3ds" / "include" / "pm_build.h").read_text(encoding="utf-8")
+        sent_b = re.search(r'PM_BUILD_STR "([^"]+)"', hdr).group(1)  # full: lane suffix included, as the boot line prints it
+        sent_h = re.search(r'PM_GIT_HASH "([^"]+)"', hdr).group(1)
+        env = dict(os.environ, PM_ROW=a.row, PM_SRC3DSX=str(src3dsx), PM_SENT_BUILD=sent_b, PM_SENT_GIT=sent_h)
         t0 = time.time()
         print("build-at %s: build %s pushed to %s" % (short, build_no, ip))
         prc = subprocess.run([shutil.which("sh") or "sh", "3ds/push_3ds.sh", "--no-build", "--ip", ip] + push_switches(bd),
                              cwd=REPO, env=env).returncode
         log = REPO / "build3ds" / ("hw_live_log_%s.txt" % ip.split(".")[-1])
-        if log.exists() and log.stat().st_mtime >= t0:
+        lb, lc = log_build(log.read_text(encoding="utf-8", errors="replace")) if log.exists() else (None, None)
+        if log.exists() and log.stat().st_mtime >= t0 and lb is not None and (lb != build_no or not same_commit(commit, lc)):
+            print("build-at %s: STALE BINARY: log build %s git %s, sent %s git %s. Nothing ingested." % (short, lb, lc, build_no, sent_h))
+        elif log.exists() and log.stat().st_mtime >= t0:
             ingest_file(log, bd["name"], "o3ds", build_no, commit, a.row, a.label or ("build-at " + short),
                         "log_pass" if prc == 0 else "fail:%d" % prc, "", None, [], device=DEVICE["o3ds"], kind=bd["kind"],
                         speed="normal", dirty=False)
@@ -835,6 +841,11 @@ def cmd_build_at(a):
     return rc
 
 
+def same_commit(a, b):
+    """True when two commit ids (full or short, at least 7 characters) name the same commit."""
+    return bool(a) and bool(b) and len(min(a, b, key=len)) >= 7 and (a.startswith(b) or b.startswith(a))
+
+
 def cmd_ingest(a):
     host = norm_host(a.host)
     if host not in HOSTS:
@@ -845,6 +856,18 @@ def cmd_ingest(a):
         print("no such log: %s" % a.log)
         return 5
     text = p.read_text(encoding="utf-8", errors="replace")
+    if host in ("o3ds", "n3ds"):
+        # A console log with a boot line is the binary that wrote it: a different --build or --commit is refused, nothing is written.
+        lb, lc = log_build(text)
+        if lb is not None:
+            bad = []
+            if a.build is not None and a.build != lb:
+                bad.append("--build %s" % a.build)
+            if a.commit and not same_commit(a.commit, lc):
+                bad.append("--commit %s" % a.commit)
+            if bad:
+                print("ERROR: %s boot line is build %d git %s, %s differs. Nothing written." % (a.log, lb, lc, " and ".join(bad)))
+                return 5
     b, c = resolve_build(p, text, a.build, a.commit, host)
     speed = a.speed or ("unknown" if host == "azahar" else "normal")
     dv = os.environ.get("PM_BENCH_DIRTY")  # set by build-at (lane build of a commit: dirty false)
