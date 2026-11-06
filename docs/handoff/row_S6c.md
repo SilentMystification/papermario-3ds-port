@@ -1,0 +1,15 @@
+# Rows S6-2c to S6-4: entity lists as state segments, switch, shadows, items, animators
+
+## Start state
+Branch nds1, main folder. Done: S6-1 (entcheck), S6-2a (cae261f8e: texture desc decode in nd_dlc, texchk 3557 eq 0 diff), S6-2b (1f31155b2: vertex segments static at mac_01, 255 static 0 dyn). Read docs/handoff/agent_s6.md (STATE, named fallbacks), docs/handoff/row_S6.md and row_S6b.md (gates, decisions), docs/handoff/agent_s3n.md (B8, B9, B10: nd_st base, nd_mode_compile with nd_words, nd_comb_decide).
+Blocker you remove: nd_dlc_compile refuses entity lists (NDR_OP), because they mix state ops (SETCOMBINE, SETOTHERMODE_H/L, GEOMETRYMODE, TEXTURE, SETPRIMCOLOR, SETENVCOLOR, the render mode list ops) between the triangles.
+
+## Rows (one commit each)
+S6-2c-1 SEGMENT COMPILE (3ds/src/nd_dlc.c, nd.h): for entity lists a state op ends the current segment and starts a new one. Each segment stores its state delta (decode the op with nd_words, as nd_mode_compile does), its texture desc (S6-2a) and its index range. An op the decoder does not know: the list is refused (fallback, counted by op code). Host test: nd_host case with a small hand-made list (2 segments, one SETCOMBINE between) gives 2 segments with the right deltas.
+S6-2c-2 SEGMENT DRAW + CHECK: walk the segments in order; the state = nd_st base + the deltas so far; nd_model_state per segment (combine via nd_comb_decide, B10); the entity matrix into pal[0]; merge adjacent equal segments; with entcheck compare each segment with the walker draw (diff 0 gate, eq above 0) at mac_01 and kmr_03.
+S6-2c-3 SWITCH: entity records draw natively, refused ones run the old words; delete the G_PM_RM rewrite in entity_model.c (grep `rm_first`). Pictures right by eye at mac_01 and kmr_03.
+S6-3 shadows (Shadow.c gsSPPmTexInline headers go, plain words through the compiler) and item entities (item_entity.c). Pictures at mac_01 and a coin scene.
+S6-4 animators (animator.c lists per node become ranges). battle_start picture right by eye; a hard node form is a named fallback.
+
+## Collision and rules
+Other agents in this folder: MENU5 (pm_options*.c, pm_warp.c, pm_main.c, pm_input.c, menu functions of pm_gpu.c, its own scenario hunks), an effects trace (read-only). Do not edit their files. Keep edits buildable, commit quickly, pathspec commits, own hunks only, JSON files stay valid. If git says index.lock exists, wait 10 s and retry. Build: python 3ds/tools/gen_map_restore.py; PM_ROW=S6 sh 3ds/build.sh; restore 3ds/src/map_restore_table.c (md5 437b90efe5f32b82394ce2ece094210e, never commit). Status line in 3ds/logs/perf/status_S6.txt before each start. The budget never stops a row: reset and continue. Never `git add -N`, `git add -A`, `git commit -a`, `git reset`, `git stash`, `git checkout`, `git restore`, `bench.py build-at`. No toggles (debug switches allowed), no stubs, no git push, no console push, no attribution. Game source only inside `#ifdef TARGET_3DS`. Breadth first: a hard class is a named fallback in agent_s6.md and the row goes on. Update agent_s6.md STATE after each commit. Hand back only after S6-4.
