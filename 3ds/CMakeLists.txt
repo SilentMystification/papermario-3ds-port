@@ -373,6 +373,7 @@ set(PORT_SRC
     src/nd_dlc.c
     src/nd_emit.c
     src/nd_model.c
+    src/nd_sprite.c
     src/pm_gu.c
     src/pm_interp.c
     src/pm_nusys.c

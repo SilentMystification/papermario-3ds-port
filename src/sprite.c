@@ -332,6 +332,35 @@ void spr_appendGfx_component_flat(
 }
 
 #ifdef TARGET_3DS
+/* S4-1: the render mode, combine and dither the flat path leaves for its final draw (the viewport blocks of spr_appendGfx_component_flat).
+ * A: shading with viewport. B: no shading with viewport. Named by the state at the final draw: 255 opaque, T translucent. The record names one; nd_sprite.c reads it. */
+Gfx SprFinalA255[] = {
+    gsDPSetRenderMode(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | G_RM_PASS, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)),
+    gsDPSetCombineMode(PM_CC_0B, PM_CC_0C),
+    gsSPEndDisplayList(),
+};
+Gfx SprFinalAT[] = {
+    gsDPSetRenderMode(G_RM_PASS, G_RM_ZB_CLD_SURF2),
+    gsDPSetCombineMode(PM_CC_0B, PM_CC_0C),
+    gsSPEndDisplayList(),
+};
+Gfx SprFinalB255[] = {
+    gsDPSetRenderMode(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)),
+    gsDPSetCombineMode(PM_CC_3D, PM_CC_3D),
+    gsDPSetColorDither(G_CD_MAGICSQ),
+    gsSPEndDisplayList(),
+};
+Gfx SprFinalBT[] = {
+    gsDPSetRenderMode(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2),
+    gsDPSetCombineMode(PM_CC_3D, PM_CC_3D),
+    gsDPSetColorDither(G_CD_MAGICSQ),
+    gsSPEndDisplayList(),
+};
+static Gfx* spr_final_list(u32 flags, u8 opacity) {
+    if (!(flags & SPR_SHADING_FLAG_SET_VIEWPORT)) return nullptr;
+    if (flags & SPR_SHADING_FLAG_ENABLED) return opacity == 255 ? SprFinalA255 : SprFinalAT;
+    return opacity == 255 ? SprFinalB255 : SprFinalBT;
+}
 #define SPR_RM_LIST(list) gSPPmRenderMode(gMainGfxPos++, list) /* DLF5: one G_PM_RM op; rm_apply runs the list in place */
 #else
 #define SPR_RM_LIST(list) gSPDisplayList(gMainGfxPos++, list)
@@ -376,21 +405,6 @@ void spr_appendGfx_component(
     gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
-    if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
-        if ((u8) opacity == 255) {
-            SPR_RM_LIST(OpaqueShadedSpriteGfx);
-        } else {
-            SPR_RM_LIST(TranslucentShadedSpriteGfx);
-        }
-    } else {
-        if ((u8) opacity == 255) {
-            SPR_RM_LIST(OpaqueSpriteGfx);
-        } else {
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u8) opacity);
-            SPR_RM_LIST(TranslucentSpriteGfx);
-        }
-    }
-
     width = cache->width;
     height = cache->height;
     quadIndex = cache->quadCacheIndex;
@@ -399,6 +413,32 @@ void spr_appendGfx_component(
         quad = spr_get_quad_for_size(&quadIndex, width, height);
         cache->quadCacheIndex = quadIndex;
     }
+
+    Gfx* rmList;
+    if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
+        rmList = ((u8) opacity == 255) ? OpaqueShadedSpriteGfx : TranslucentShadedSpriteGfx;
+    } else {
+        rmList = ((u8) opacity == 255) ? OpaqueSpriteGfx : TranslucentSpriteGfx;
+    }
+#ifdef TARGET_3DS
+    if (quad != nullptr) { /* S4-1: the sprite record (G_PM_SPR). pm_gbi.c reads it; the old words below still draw. */
+        Gfx* rec = gMainGfxPos;
+        gMainGfxPos += G_PM_SPR_WORDS;
+        rec[0].words.w0 = ((u32)G_PM_SPR << 24) | ((((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 1u : 0u) |
+                          ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) ? 2u : 0u)) << 16) | ((u32)(u8) opacity << 8);
+        rec[0].words.w1 = (u32)(uintptr_t) rmList;
+        rec[1].words.w0 = (u32)(uintptr_t) cache->image;
+        rec[1].words.w1 = (u32)(uintptr_t) palette;
+        rec[2].words.w0 = (u32)(uintptr_t) &gDisplayContext->matrixStack[gMatrixListPos - 1];
+        rec[2].words.w1 = (u32)(uintptr_t) quad;
+        rec[3].words.w0 = ((u32) width << 16) | (u32) height;
+        rec[3].words.w1 = (u32)(uintptr_t) spr_final_list(gSpriteShadingProfile->flags, (u8) opacity);
+    }
+#endif
+    if (!(gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) && (u8) opacity != 255) {
+        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u8) opacity);
+    }
+    SPR_RM_LIST(rmList);
 
     if (quad != nullptr) {
         spr_appendGfx_component_flat(quad, cache->image, palette, width, height, rotY, mtxTransform, (u8) opacity);

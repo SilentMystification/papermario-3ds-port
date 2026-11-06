@@ -4360,6 +4360,7 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
 extern int pm_gpu_ndm_on(void); /* S3N-3b: switch ndmcheck */
+void pm_gpu_spr_rec(const uint32_t* rec); /* S4-1: a sprite record (sprcheck; pm_gpu.c) */
 extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk);
 extern void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 */
 extern void pm_gpu_ndm_end(void);
@@ -4473,6 +4474,10 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             break;
         case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
             pc += rec_run(pc - 1);
+            break;
+        case G_PM_SPR: /* S4-1: producer record of a sprite component (sprite.c). The old words after it draw; sprcheck reads the record (pm_gpu.c). */
+            pm_gpu_spr_rec((const uint32_t*)(pc - 1));
+            pc += G_PM_SPR_WORDS - 1;
             break;
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
             tb_inline(pc, w0 & 0xffffu);
