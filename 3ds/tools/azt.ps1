@@ -45,6 +45,11 @@ $attractRe = 'game mode (2|3|17) frame' # GAME_MODE_TITLE_SCREEN, GAME_MODE_ENTE
 # UNTILCHK: static check of a scenario's until line (no start). Stall rule: a run with no new log line for $stallSec stops (exit 6).
 $stallSec = 40
 function Test-StallExpired([datetime]$lastNew, [datetime]$now, [int]$limit) { return (($now - $lastNew).TotalSeconds -gt $limit) }
+function Get-StartDeadline([string]$kind, [int]$scDeadline) {
+    # AZT-DL: the first-marker deadline per start kind. A cold start (new Azahar process) gets at least 45 s under load; a warm restart keeps the scenario deadline.
+    if ($kind -eq "cold") { return [Math]::Max($scDeadline, 45) }
+    return $scDeadline
+}
 $script:srcText = $null
 function Get-SourceText {
     # All C source that can print a log line: the 3DS port, its headers and the decomp source.
@@ -140,6 +145,16 @@ if ($SelfTest) {
     $stallOk = ((Test-StallExpired ($now.AddSeconds(-41)) $now $stallSec) -and -not (Test-StallExpired ($now.AddSeconds(-39)) $now $stallSec))
     if (-not $stallOk) { $fails++ }
     Write-Output ("{0} stall rule: 41 s without a line stops, 39 s does not" -f $(if ($stallOk) { "PASS" } else { "FAIL" }))
+    $dlCases = @(
+        @{ k = "cold"; s = 20; e = 45 }, @{ k = "cold"; s = 30; e = 45 }, @{ k = "cold"; s = 60; e = 60 },
+        @{ k = "warm"; s = 20; e = 20 }, @{ k = "warm"; s = 30; e = 30 }
+    )
+    foreach ($d in $dlCases) {
+        $got = Get-StartDeadline $d.k $d.s
+        $dlOk = ($got -eq $d.e)
+        if (-not $dlOk) { $fails++ }
+        Write-Output ("{0} start deadline: {1} start, scenario {2} s -> {3} s (want {4} s)" -f $(if ($dlOk) { "PASS" } else { "FAIL" }), $d.k, $d.s, $got, $d.e)
+    }
     Remove-Item $tmp -ErrorAction SilentlyContinue
     if ($fails) { Write-Output "SELFTEST FAILED: $fails case(s)"; exit 1 }
     Write-Output "SELFTEST PASS"
@@ -296,9 +311,11 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
         $ld = Join-Path $repo "build3ds\azt\logs"
         New-Item -ItemType Directory -Force -Path $ld | Out-Null
         $dst = Join-Path $ld "$($sc.name).txt"
-        if ($script:azLine) {
-            # AZT2: the warm/cold line goes first in the copy, then the game log unchanged
-            [IO.File]::WriteAllText($dst, $script:azLine + "`r`n")
+        $hdr = ""
+        if ($script:azLine) { $hdr += $script:azLine + "`r`n" } # AZT2: the warm/cold line goes first in the copy
+        if ($script:bootLine) { $hdr += $script:bootLine + "`r`n" } # AZT-DL: then the boot time line, then the game log unchanged
+        if ($hdr) {
+            [IO.File]::WriteAllText($dst, $hdr)
             $fsIn = [IO.File]::OpenRead($file); $fsOut = [IO.File]::Open($dst, [IO.FileMode]::Append)
             try { $fsIn.CopyTo($fsOut) } finally { $fsIn.Dispose(); $fsOut.Dispose() }
         }
@@ -386,26 +403,36 @@ $markerSeen = $false
 $stop = ""
 $attract = 0
 $capGuard = $cap + 120
+$startKind = ""
+$deadlineEff = $deadline
+$script:bootLine = $null
 while (-not $child.HasExited) {
     Start-Sleep -Milliseconds 500
     if (-not $azStart) {
-        if (Get-AzaharProc $t0) { $azStart = Get-Date; $lastNew = $azStart; Write-Output "AZT: Azahar started, the deadline clock runs" }
+        if (Get-AzaharProc $t0) {
+            $azStart = Get-Date; $lastNew = $azStart; $startKind = "cold"; $deadlineEff = Get-StartDeadline "cold" $deadline
+            Write-Output "AZT: Azahar started, cold start, deadline kind cold: $deadlineEff s (scenario $deadline s, cold minimum 45 s). The deadline clock runs"
+        }
         elseif (Test-Path $warmFile) {
             # AZT-2: run_azahar.ps1 restarts emulation in the kept Azahar and wrote warm.start. The old log.txt content does not count.
-            $azStart = Get-Date; $lastNew = $azStart; $script:warm = $true
+            $azStart = Get-Date; $lastNew = $azStart; $script:warm = $true; $startKind = "warm"; $deadlineEff = Get-StartDeadline "warm" $deadline
             if (Test-Path $logPath) { $script:pos = (Get-Item $logPath).Length; $script:logCT = (Get-Item $logPath).CreationTimeUtc }
-            Write-Output "AZT: warm restart in the kept Azahar, the deadline clock runs"
+            Write-Output "AZT: warm restart in the kept Azahar, deadline kind warm: $deadlineEff s (scenario deadline). The deadline clock runs"
         }
         continue
     }
     $chunk = Read-LogChunk
     if ($chunk) {
         $lastNew = Get-Date
-        if (-not $markerSeen -and $chunk -match $sc.first_marker) { $markerSeen = $true; Write-Output ("AZT: first marker seen at {0:N1} s" -f ((Get-Date) - $azStart).TotalSeconds) }
+        if (-not $markerSeen -and $chunk -match $sc.first_marker) {
+            $markerSeen = $true
+            $script:bootLine = ("AZT: boot time {0} start, first marker after {1:N1} s (deadline kind {2}, {3} s)" -f $startKind, ((Get-Date) - $azStart).TotalSeconds, $startKind, $deadlineEff)
+            Write-Output $script:bootLine
+        }
         $attract += ([regex]::Matches($chunk, $attractRe)).Count
     }
     $el = ((Get-Date) - $azStart).TotalSeconds
-    if (-not $markerSeen -and $el -gt $deadline) { $stop = "marker"; break }
+    if (-not $markerSeen -and $el -gt $deadlineEff) { $stop = "marker"; break }
     if ($expectsWarp -and $attract -gt 2) { $stop = "attract"; break }
     if ($el -gt $capGuard) { $stop = "guard"; break }
     if (Test-StallExpired $lastNew (Get-Date) $stallSec) { $stop = "stall"; break }
@@ -458,7 +485,7 @@ $rc = [int]$endRow[5]
 Write-Output ("run: rc {0}: {1}" -f $rc, (($endRow[6..($endRow.Count - 1)]) -join ","))
 if ($stop -eq "marker") {
     Write-Output "SCENARIO FAILED: marker missing: $($sc.first_marker)"
-    Write-Output "Not in the log $deadline s after the Azahar start. Azahar was stopped. Log: $logPath"
+    Write-Output "Not in the log $deadlineEff s after the Azahar start ($startKind start). Azahar was stopped. Log: $logPath"
     Exit-Run 2
 }
 if ($stop -eq "attract") {
