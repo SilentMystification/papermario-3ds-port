@@ -1292,6 +1292,7 @@ void pm_warp_tick(unsigned frame) {
     boss_tick();
     bypass_tick();
     pos_tick(frame); /* POSWARP */
+    pm_cheat_tick(); /* CH6: moon jump, after the game logic of this step */
     if (scene_f0 < 0) return;
     if (tour_next && !tour_wait && frame - tour_f0 >= TOUR_FRAMES) {
         tour_ts = frame;
