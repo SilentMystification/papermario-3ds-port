@@ -83,10 +83,62 @@ static void check_obj(const NdObj* o, uint32_t addr, const uint32_t* l) {
     n_grp += o->ngrp; n_tri += st; n_vtx += sv;
 }
 
+/* S6-2c-1: nd_ent_segments on hand-made lists (host order word pairs). */
+static void ent_seg_test(void) {
+    uint32_t L[8][2];
+    NdEntSeg seg[8];
+    unsigned ns = 0;
+    uint32_t bad = 0;
+    int rc;
+    memset(L, 0, sizeof L);
+    L[0][0] = (OP_VTX << 24) | (3u << 12) | (3u << 1); /* 3 Vtx at slot 0 */
+    L[1][0] = (OP_TRI1 << 24) | (0u << 16) | (2u << 8) | 4u; /* slots 0, 1, 2 */
+    L[2][0] = (OP_SETCOMBINE << 24) | 0x123456u; L[2][1] = 0xABCDEF01u;
+    L[3][0] = (OP_TRI1 << 24) | (0u << 16) | (2u << 8) | 4u;
+    L[4][0] = OP_ENDDL << 24;
+    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    CHECK(rc == NDR_OK && ns == 2, "ent: two segments for one SETCOMBINE between (rc %d, nseg %u)", rc, ns);
+    if (ns == 2) {
+        CHECK(seg[0].op0 == 0 && seg[0].op1 == 2 && seg[0].sop0 == 0 && seg[0].ntri == 1 && seg[0].tri0 == 0, "ent: segment 0 range");
+        CHECK(!seg[0].d.has_comb && seg[0].d.n_tex == 0, "ent: segment 0 has no delta");
+        CHECK(seg[1].op0 == 3 && seg[1].op1 == 4 && seg[1].sop0 == 2 && seg[1].ntri == 1 && seg[1].tri0 == 1, "ent: segment 1 range");
+        CHECK(seg[1].d.has_comb && seg[1].d.cw0 == L[2][0] && seg[1].d.cw1 == L[2][1], "ent: segment 1 combine delta");
+    }
+    /* GEOMETRYMODE and SETOTHERMODE_L in the delta: composed as nd_mode_compile does */
+    L[2][0] = (OP_GEOMETRYMODE << 24) | 0x00FFFFFEu; L[2][1] = 0x4u;
+    L[3][0] = (OP_TRI1 << 24) | (0u << 16) | (2u << 8) | 4u;
+    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    CHECK(rc == NDR_OK && ns == 2 && seg[1].d.has_geom && seg[1].d.gand == 0x00FFFFFEu && seg[1].d.gor == 0x4u, "ent: geometry delta");
+    L[2][0] = (OP_SETOTHERMODE_L << 24) | (8u << 8) | 7u; L[2][1] = 0x00400000u; /* len 8 at sft 16 */
+    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    CHECK(rc == NDR_OK && seg[1].d.has_mode && seg[1].d.wl == 0x00FF0000u && seg[1].d.vl == 0x00400000u, "ent: other mode delta mask and value");
+    /* a sync op is neutral: one segment */
+    L[2][0] = (OP_PIPESYNC << 24); L[2][1] = 0;
+    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    CHECK(rc == NDR_OK && ns == 1 && seg[0].op1 == 4 && seg[0].ntri == 2, "ent: sync op does not cut");
+    /* a DL op (not in the known set) refuses the list with its code */
+    L[2][0] = (OP_DL << 24); L[2][1] = 0x80210000u;
+    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    CHECK(rc == NDR_OP && bad == OP_DL, "ent: unknown op refused with its code (rc %d bad %x)", rc, bad);
+    /* a triangle on a slot the list did not load refuses */
+    L[2][0] = (OP_SETCOMBINE << 24); L[2][1] = 1;
+    L[3][0] = (OP_TRI1 << 24) | (10u << 16) | (2u << 8) | 4u; /* slot 5 is dead */
+    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    CHECK(rc == NDR_SLOT, "ent: triangle on a dead slot is NDR_SLOT");
+    /* state ops after the last triangle: an empty tail segment keeps the exit state */
+    L[3][0] = (OP_TRI1 << 24) | (0u << 16) | (2u << 8) | 4u;
+    L[4][0] = (OP_SETENVCOLOR << 24); L[4][1] = 0xFF00FF00u;
+    L[5][0] = OP_ENDDL << 24;
+    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    CHECK(rc == NDR_OK && ns == 3 && seg[2].ntri == 0 && seg[2].d.has_env && seg[2].d.env == 0xFF00FF00u, "ent: tail segment with the env colour");
+    printf("nd_dlc ent: %s\n", fails ? "FAIL" : "PASS");
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: nd_dlc_test <shape.bin> ...\n"); return 2; }
     NdDlcEnv env = { env_vtx, NULL, NULL };
     NdDlcEnv envp = { env_vtx, pool_valloc, pool_ialloc };
+    ent_seg_test();
     for (int a = 1; a < argc; a++) {
         FILE* f = fopen(argv[a], "rb");
         if (!f) { printf("FAIL: cannot open %s\n", argv[a]); return 1; }

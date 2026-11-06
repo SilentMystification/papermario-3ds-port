@@ -364,4 +364,26 @@ typedef struct NdCombOut {
 } NdCombOut;
 void nd_comb_decide(const NdCombIn* in, NdCombOut* out);
 
+/* S6-2c-1: an entity list cut at its state ops (segment compile, row S6-2c). A segment is the geometry ops [op0, op1) (VTX, TRI1, TRI2; its triangles are
+ * tri0 to tri0 + ntri - 1 in list order) and the state ops [sop0, op0) that come before it, decoded into d (the delta, the nd_mode_compile rules).
+ * tex is the tile 0 texture state at op0 (nd_dlc_tex_decode of the list prefix). Sync ops are neutral. A geometry op after a state op starts a segment.
+ * Any op outside the known set refuses the list: NDR_OP and *bad = the op code. Slots are tracked over the whole list (the walker keeps them). */
+typedef struct NdEntDelta {
+    uint32_t wh, wl, vh, vl;    /* SETOTHERMODE_H/L of the delta: written bits and their values */
+    uint32_t gand, gor;         /* GEOMETRYMODE ops composed: (geom & gand) | gor */
+    uint32_t cw0, cw1;          /* SETCOMBINE (last of the delta) */
+    uint32_t prim, prim_lod, env; /* SETPRIMCOLOR, SETENVCOLOR (last of the delta) */
+    uint32_t tw0, tw1;          /* TEXTURE (last of the delta) */
+    uint8_t has_mode, has_geom, has_comb, has_prim, has_env, has_tex;
+    uint8_t n_tex;              /* texture state ops in the delta: SETTIMG, SETTILE, SETTILESIZE, LOADBLOCK, LOADTLUT, LOADTILE */
+} NdEntDelta;
+typedef struct NdEntSeg {
+    NdEntDelta d;
+    NdTexDec tex;
+    uint32_t sop0, op0, op1;
+    uint32_t tri0, ntri;
+} NdEntSeg;
+#define ND_ENT_MAXSEG 512u
+int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned* nseg, uint32_t* bad);
+
 #endif

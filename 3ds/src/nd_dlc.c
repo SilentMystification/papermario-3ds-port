@@ -151,7 +151,7 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
 
 /* S6-2a: the tile 0 state at the end of a display list, the walker rules of its texture ops (pm_gbi.c op_settimg, op_settile, op_loadblock, op_loadtlut,
  * op_settilesize) for the form an entity model uses. Any other tile, LOADTILE, a window that is not the whole image, or a CI bank without its LOADTLUT is a fallback. */
-int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) {
+static int tex_decode_n(const uint32_t* l, unsigned nops, NdTexDec* o) {
     unsigned i, nbind = 0, ntexop = 0;
     int code = NDTX_NONE, have_timg = 0, have_set0 = 0, have_set7 = 0, have_lb = 0, have_pal = 0, have_ld = 0;
     const void* timg = NULL;
@@ -159,7 +159,7 @@ int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) {
     unsigned uls = 0, ult = 0, lrs = 0, lrt = 0, tlut_n = 0, ld_tm = 0, ld_w = 0, ld_h = 0;
     const void* tlut = NULL;
     memset(o, 0, sizeof *o);
-    for (i = 0; i < ND_DLC_MAXOPS; i++) {
+    for (i = 0; i < nops; i++) {
         uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
         unsigned op = w0 >> 24, tile = (w1 >> 24) & 7u;
         if (op == OP_ENDDL) break;
@@ -235,4 +235,105 @@ int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) {
     }
     if (code == NDTX_NONE) code = NDTX_NOBIND;
     return code;
+}
+
+int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) { return tex_decode_n(l, ND_DLC_MAXOPS, o); }
+
+/* S6-2c-1: the entity list segments (nd.h). */
+static int ent_known(unsigned op) {
+    switch (op) {
+    case OP_VTX: case OP_TRI1: case OP_TRI2:
+    case OP_NOOP: case OP_PIPESYNC: case OP_LOADSYNC: case OP_TILESYNC: case OP_FULLSYNC:
+    case OP_GEOMETRYMODE: case OP_SETOTHERMODE_H: case OP_SETOTHERMODE_L: case OP_SETCOMBINE: case OP_TEXTURE:
+    case OP_SETPRIMCOLOR: case OP_SETENVCOLOR:
+    case OP_SETTIMG: case OP_SETTILE: case OP_SETTILESIZE: case OP_LOADBLOCK: case OP_LOADTLUT: case OP_LOADTILE:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+static void delta_clear(NdEntDelta* d) { memset(d, 0, sizeof *d); d->gand = 0xFFFFFFFFu; }
+
+static void delta_apply(NdEntDelta* d, uint32_t w0, uint32_t w1) {
+    unsigned op = w0 >> 24;
+    switch (op) {
+    case OP_GEOMETRYMODE: {
+        uint32_t a = w0 & 0xFFFFFFu;
+        d->gor = (d->gor & a) | w1; d->gand &= a; d->has_geom = 1;
+        break;
+    }
+    case OP_SETOTHERMODE_H: case OP_SETOTHERMODE_L: {
+        unsigned len = (w0 & 0xFFu) + 1u, field = (w0 >> 8) & 0xFFu, sft = 32u - field - len;
+        uint32_t mask = len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1u) << sft;
+        if (op == OP_SETOTHERMODE_H) { d->wh |= mask; d->vh = (d->vh & ~mask) | (w1 & mask); }
+        else { d->wl |= mask; d->vl = (d->vl & ~mask) | (w1 & mask); }
+        d->has_mode = 1;
+        break;
+    }
+    case OP_SETCOMBINE: d->has_comb = 1; d->cw0 = w0; d->cw1 = w1; break;
+    case OP_TEXTURE: d->has_tex = 1; d->tw0 = w0; d->tw1 = w1; break;
+    case OP_SETPRIMCOLOR: d->has_prim = 1; d->prim_lod = w0 & 0xFFFFu; d->prim = w1; break;
+    case OP_SETENVCOLOR: d->has_env = 1; d->env = w1; break;
+    default: d->n_tex++; break; /* the texture state ops: their state is the tex desc of the segment */
+    }
+}
+
+int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned* nseg, uint32_t* bad) {
+    unsigned i, ns = 0, tri = 0, pend_n = 0, pend0 = 0;
+    unsigned char live[64];
+    NdEntDelta pend;
+    *nseg = 0;
+    if (bad) *bad = 0;
+    memset(live, 0, sizeof live);
+    delta_clear(&pend);
+    for (i = 0; i < ND_DLC_MAXOPS; i++) {
+        uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
+        unsigned op = w0 >> 24;
+        if (op == OP_ENDDL) break;
+        if (!ent_known(op)) { if (bad) *bad = op; return NDR_OP; }
+        if (op == OP_VTX || op == OP_TRI1 || op == OP_TRI2) {
+            NdEntSeg* s;
+            if (ns == 0 || pend_n > 0) { /* a geometry op after state ops starts a segment */
+                if (ns >= maxseg) return NDR_LONG;
+                s = &seg[ns];
+                s->d = pend; s->sop0 = pend_n ? pend0 : i; s->op0 = i; s->op1 = i; s->tri0 = tri; s->ntri = 0;
+                if (ns == 0 || pend.n_tex) tex_decode_n(l, i, &s->tex); /* the tile state of the list before op0 */
+                else s->tex = seg[ns - 1].tex;
+                ns++; pend_n = 0; delta_clear(&pend);
+            }
+            s = &seg[ns - 1];
+            s->op1 = i + 1;
+            if (op == OP_VTX) {
+                unsigned n = (w0 >> 12) & 0xFFu, e = (w0 >> 1) & 0x7Fu, v0 = e >= n ? e - n : 0;
+                if (n == 0 || n > 64 || v0 >= 64) return NDR_VTX;
+                if (v0 + n > 64) n = 64 - v0;
+                for (unsigned k = 0; k < n; k++) live[v0 + k] = 1;
+            } else {
+                for (int t = 0; t < (op == OP_TRI2 ? 2 : 1); t++) {
+                    uint32_t w = t ? w1 : w0;
+                    int ix[3] = { (int)((w >> 16) & 0xFFu) / 2, (int)((w >> 8) & 0xFFu) / 2, (int)(w & 0xFFu) / 2 };
+                    for (int k = 0; k < 3; k++) if (ix[k] > 63 || !live[ix[k]]) return NDR_SLOT;
+                    s->ntri++; tri++;
+                }
+            }
+        } else if (op == OP_NOOP || op == OP_PIPESYNC || op == OP_LOADSYNC || op == OP_TILESYNC || op == OP_FULLSYNC) {
+            /* neutral: no segment, no delta */
+        } else {
+            if (pend_n == 0) pend0 = i;
+            delta_apply(&pend, w0, w1);
+            pend_n++;
+        }
+    }
+    if (i >= ND_DLC_MAXOPS) return NDR_LONG;
+    if (pend_n > 0) { /* state ops after the last geometry op: an empty segment keeps the exit state */
+        if (ns >= maxseg) return NDR_LONG;
+        NdEntSeg* s = &seg[ns];
+        s->d = pend; s->sop0 = pend0; s->op0 = i; s->op1 = i; s->tri0 = tri; s->ntri = 0;
+        if (ns == 0 || pend.n_tex) tex_decode_n(l, i, &s->tex);
+        else s->tex = seg[ns - 1].tex;
+        ns++;
+    }
+    *nseg = ns;
+    return NDR_OK;
 }
