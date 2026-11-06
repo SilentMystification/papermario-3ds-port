@@ -6186,26 +6186,6 @@
       "reason": "POND diagnostic: per draw state of the water passes (pm_gpu.c wl_on, nd_raw_native and flush_draw)."
     },
     {
-      "name": "pond_mac00_zspix",
-      "status": "unverified",
-      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00_wlog) with the zspix switch: G_ZS_PRIM draws (the pass 1 blocker) keep their own vertex depth instead of the primitive depth. The top shot shows whether the pond water comes back.",
-      "proves": "POND bisect: the primitive depth of pass 1 (G_ZS_PRIM, 0x7FF0) hides the water. Water back with zspix means the primitive depth is the cause.",
-      "debug": "warp=mac_00:4 pos=-178:0:88 waterlog zspix shots shotwin=200:6 loglevel=debug",
-      "until": "shot 1 frame 204",
-      "cap": 60,
-      "deadline": 20,
-      "first_marker": "warp: mac_00 entry",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "waterlog lines",
-          "regex": "wdraw f200 "
-        }
-      ],
-      "reason": "POND bisect copy of pond_mac00_wlog with the zspix debug switch (pm_gbi.c poly z of G_ZS_PRIM)."
-    },
-    {
       "name": "pond_mac00_notex1",
       "status": "unverified",
       "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the notex1nat switch: two texture combine draws (plan.uses_tex1) go back to the walker. The top shot shows whether the pond water comes back.",

@@ -74,6 +74,18 @@ static int draw_3d;
 static unsigned prim = 0xffffffffu;
 static unsigned dbg_omode_l; /* FX1-2b: the L othermode word of the current render state (orbdbg log only) */
 void pm_gpu_dbg_mode(unsigned m) { dbg_omode_l = m; }
+/* POND-LOG (debug switch waterlog): one line per submitted batch in frames 200 and 201 (the pond water passes). wl_primz: G_SETPRIMDEPTH (pm_gbi.c). The depth
+ * branch of a draw: fn 0 test off, 1 GREATER, 2 GEQUAL, 3 ALWAYS; wr 0 colour only, 1 depth only, 2 colour and depth (as the walker and the native words set it). */
+static unsigned wl_primz;
+void pm_gpu_dbg_primz(unsigned z) { wl_primz = z; }
+static int wl_on(void) { extern unsigned pm_frame_count(void); unsigned f = pm_frame_count(); return f >= 200u && f <= 201u && PMDL("waterlog"); }
+static void wl_depth(int z, int zmark, int zcmp, int zupd, int decal, int nocol, unsigned* fn, unsigned* wr) {
+    *fn = 0; *wr = 0;
+    if (!z) return;
+    if (zmark) { *fn = 1; *wr = 1; return; }
+    if (zcmp) { *fn = decal ? 2 : 1; *wr = nocol ? 1 : zupd ? 2 : 0; return; }
+    if (zupd) { *fn = 3; *wr = nocol ? 1 : 2; return; }
+}
 static float game_mvp[4][4];
 static float vp_sx = 160.f, vp_sy = 120.f, vp_tx = 160.f, vp_ty = 120.f;
 static C3D_Mtx shader_3d;
@@ -1062,6 +1074,11 @@ static int nd_raw_native(void) {
     d.nidx = gni;
     if (ndm_live) ndm_cmp(&nk, &d);
     if (spr_pend) spr_check(&d);
+    if (wl_on()) { unsigned fn, wr; wl_depth(z, 0, r_zcmp, r_zupd, r_decal, r_nocol, &fn, &wr);
+        pm_log("wdraw f%u nat om %08x zs %u fn %u wr %u dec2 %d zc %d zu %d dec %d z %d bl %d tmpl %d tc %08x t1 %d u0 %08x u1 %08x pz %04x prim %08x cc %08x cmb %u tris %u",
+               pm_frame_count(), dbg_omode_l, (dbg_omode_l >> 2) & 1u, fn, wr, decal2, r_zcmp, r_zupd, r_decal, z, r_blend, id, tex ? pm_tex_census_id(0) : 0u, tex1,
+               (unsigned)u0.addr, (unsigned)u1.addr, wl_primz, prim, cconst, (unsigned)combine, gni / 3u); /* G_MDSFT_ZSRCSEL is 2 */
+    }
     if (decal2) { /* pass A: the stencil mark, no colour, no depth write */
         NdTmplKey ka = nk;
         ka.pass = 1;
@@ -1231,6 +1248,11 @@ static void flush_draw(void) {
         sh_depth_test(true, GPU_ALWAYS, r_nocol ? GPU_WRITE_DEPTH : GPU_WRITE_ALL);
     else
         sh_depth_test(false, GPU_GREATER, GPU_WRITE_COLOR);
+    if (wl_on()) { unsigned fn, wr; wl_depth(z, z && r_zmark, r_zcmp, r_zupd, r_decal, r_nocol, &fn, &wr);
+        pm_log("wdraw f%u walk om %08x zs %u fn %u wr %u dec2 0 zc %d zu %d dec %d z %d bl %d gpal %d tc %08x t1 %d pz %04x prim %08x cc %08x cmb %u tris %u",
+               pm_frame_count(), dbg_omode_l, (dbg_omode_l >> 2) & 1u, fn, wr, r_zcmp, r_zupd, r_decal, z, r_blend, graw, tex ? pm_tex_census_id(0) : 0u, tex1,
+               wl_primz, prim, cconst, (unsigned)combine, (unsigned)(graw ? gni / 3 : nverts / 3));
+    }
     /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
     if (stencil_on && !(z && r_zmark)) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
     sh_depth_map(true, -1.0f, r_decal ? decal_bias() : 0.0f);

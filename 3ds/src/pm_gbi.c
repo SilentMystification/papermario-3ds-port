@@ -5091,6 +5091,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             break;
         case G_SETPRIMDEPTH:
             prim_z = (w1 >> 16) & 0x7fffu;
+            { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(prim_z); } /* POND-LOG: waterlog line of pm_gpu.c */
             break;
         case G_SETFILLCOLOR:
             fill = w1;
