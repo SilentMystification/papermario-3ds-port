@@ -2,7 +2,7 @@
 azreap.ps1 - closes the Azahar that a run kept open (-Keep) in slot <k> after -IdleSec seconds without a run (AZT-2).
 Started hidden by run_azahar.ps1. One reaper per slot (mutex Global\pm_azahar_reaper<k>); it ends when the kept Azahar is gone.
 #>
-param([int]$Slot, [int]$IdleSec = 600)
+param([int]$Slot, [int]$IdleSec = 180)
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\azslot.ps1"
 $rm = New-Object Threading.Mutex($false, "Global\pm_azahar_reaper$Slot")

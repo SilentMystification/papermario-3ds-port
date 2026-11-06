@@ -3,7 +3,7 @@ azslot.ps1 - Azahar slot pool (AZT-1). Dot-sourced by 3ds/run_azahar.ps1 and 3ds
 
 A slot is a private portable copy of the Azahar install: build3ds/azslots/slot<k>/ (gitignored) with azahar.exe and a
 `user` folder next to it. Azahar then keeps config, nand, sdmc, shaders and logs in slot<k>/user and nothing in %APPDATA%.
-One named mutex per slot (Global\pm_azahar_slot<k>) lets one run use a slot at a time. N slots: env PM_AZ_SLOTS (default 3).
+One named mutex per slot (Global\pm_azahar_slot<k>) lets one run use a slot at a time. N slots: env PM_AZ_SLOTS (default 2; the GPU is shared with other apps).
 The user's C:\Program Files\Azahar and %APPDATA%\Azahar are only read (copied from), never written.
 #>
 $script:AzRepo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -11,7 +11,7 @@ $script:AzInstall = "C:\Program Files\Azahar"
 $script:AzMaster = "$env:APPDATA\Azahar"
 $script:SlotMutex = @{}
 
-function Get-SlotCount { if ($env:PM_AZ_SLOTS) { return [int]$env:PM_AZ_SLOTS } else { return 3 } }
+function Get-SlotCount { if ($env:PM_AZ_SLOTS) { return [int]$env:PM_AZ_SLOTS } else { return 2 } }
 
 function Get-SlotPaths([int]$k) {
     $d = Join-Path $script:AzRepo "build3ds\azslots\slot$k"

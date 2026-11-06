@@ -32,7 +32,7 @@ param(
     [string]$Build = "",
     [string]$CheckLog = "",
     [switch]$Try,
-    [switch]$NoKeep, # AZT-3b: default is to leave the slot's Azahar open after a matched run (paused; a later run on the slot restarts in it, warm; azreap closes it after 10 min idle). -NoKeep closes it after the run.
+    [switch]$NoKeep, # AZT-3b: default is to leave the slot's Azahar open after a matched run (paused; a later run on the slot restarts in it, warm; azreap closes it after 3 min idle). -NoKeep closes it after the run.
     [ValidateSet("", "turbo", "normal")][string]$Speed = "", # BENCH3: speed of this start (default: -Turbo in the scenario, else normal)
     [switch]$List,
     [switch]$SelfTest
@@ -374,7 +374,9 @@ if (-not (Test-Path (Join-Path $outDir "pm_3ds.3dsx"))) { Write-Output "BUILD: $
 $azX3 = if ($lane) { "pm_3ds_$lane.3dsx" } else { "pm_3ds.3dsx" }
 $azTurbo = ($speed -eq "turbo")
 $azTL = if ($azTurbo) { [int]$frameLimit } else { 0 }
-$slotK = Get-Slot 0 900 $azX3 $azTurbo $azTL
+# AZT-GPU: the GPU retry takes the slot of the failed start again (the slot number is passed by the retry)
+$wantSlot = if ($env:PM_AZT_RETRY_RUN -and $env:PM_AZT_RETRY_SLOT) { [int]$env:PM_AZT_RETRY_SLOT } else { 0 }
+$slotK = Get-Slot $wantSlot 900 $azX3 $azTurbo $azTL
 if (-not $slotK) { Write-Output "LOCK TIMEOUT: no free Azahar slot after 900 s. Nothing was run."; exit 3 }
 $slotInfo = Ensure-Slot $slotK
 $sd = $slotInfo.sd; $logPath = Join-Path $sd "log.txt"; $pidFile = $slotInfo.pidFile
@@ -470,6 +472,20 @@ if (Test-Path $bf) {
     }
 }
 if (-not $endRow) { Write-Output "NO END LINE: run_azahar.ps1 wrote no end line for row $Row after this start. It did not run (lock timeout, switch error or budget). Nothing was checked."; exit 1 }
+# AZT-GPU: Azahar died before the first marker with the GPU stream buffer failure (Vulkan "Failed to allocate Stream buffer") or exit 0xC000001D (-1073741795).
+$emuTxt = if (Test-Path $slotInfo.emuLog) { Get-Content $slotInfo.emuLog -Raw } else { "" }
+$gpuFault = (-not $markerSeen) -and (($emuTxt -match 'Failed to allocate Stream buffer') -or (($endRow -join ",") -match '-1073741795'))
+if ($gpuFault -and -not $env:PM_AZT_RETRY_RUN) {
+    Write-Output "AZT: GPU memory fault, retry. Same slot $slotK after 10 s (no marker before the Azahar exit)."
+    Start-Sleep -Seconds 10
+    $env:PM_AZT_RETRY_RUN = "1"; $env:PM_AZT_RETRY_SLOT = [string]$slotK
+    Exit-Slot $slotK; $slotK = 0
+    $ga = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $Scenario, "-Row", $Row, "-Try")
+    if ($Build) { $ga += @("-Build", $Build) }
+    if ($NoKeep) { $ga += "-NoKeep" }
+    & (Get-Process -Id $PID).Path @ga
+    exit $LASTEXITCODE
+}
 if ($endRow[4] -eq "retry" -and -not $env:PM_AZT_RETRY_RUN) {
     # AZFIX: Azahar exited with an empty emulator log. One retry, its start line is retry-start (not counted).
     Write-Output "RETRY: Azahar exited with an empty emulator log. Retrying once. The retry is not counted in the row budget."

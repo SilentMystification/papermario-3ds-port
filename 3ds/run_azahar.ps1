@@ -24,7 +24,7 @@ thread works against real time) all change. -Timeout and -Until keep their norma
 -Smoke: warp check. Adds the game switch `smoke`, waits for the log line "smoke done" (300 frames after the first frame in the
 scene, needs warp, story or preset in -Debug), exit status 0 when it appears and no unmapped access was seen.
 -FaultStop: stop at the first "UnmappedAccess" line in Azahar's log (Memory class, Info level, already on).
-AZT-1 slots: a run takes one of N (env PM_AZ_SLOTS, default 3) private portable Azahar copies in build3ds/azslots/slot<k> (user folder
+AZT-1 slots: a run takes one of N (env PM_AZ_SLOTS, default 2) private portable Azahar copies in build3ds/azslots/slot<k> (user folder
 next to azahar.exe: config, nand, sdmc, logs stay in the slot, the user's install and %APPDATA% are only read). Waits only when all slots are busy.
 -Slot <k> picks a slot. Outputs of the run (last_log.txt, shots, last_unmapped.txt) go to <build folder>/slot<k>/; last_log.txt is also copied to the
 build folder (last writer wins). The end line in 3ds/logs/test_budget.csv starts with "slot<k>:".
@@ -397,7 +397,7 @@ public class AzWin {
 } finally {
     $keepNow = $keepOn -and $p -and -not $p.HasExited -and $reason -like "matched*" -and -not $Gdb -and -not $Interactive
     if ($keepNow) {
-        # AZT-2: pause the game (no CPU while idle) and leave Azahar open; the idle reaper closes it after 10 minutes
+        # AZT-2: pause the game (no CPU while idle) and leave Azahar open; the idle reaper closes it after 3 minutes
         [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation"))
         @{ pid = $p.Id; x3dsx = $x3dsx; turbo = $Turbo.IsPresent; turbolimit = $(if ($Turbo) { $TurboLimit } else { 0 }); time = (Get-Date).ToString("s") } | ConvertTo-Json | Set-Content $sl.keepFile
         Start-SlotReaper $slotK
