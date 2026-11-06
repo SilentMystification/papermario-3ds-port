@@ -217,6 +217,12 @@
   * word 1: w0 raster, w1 palette. word 2: w0 matrix (the matrixStack entry), w1 vertices (Quad*). word 3: w0 width << 16 | height. */
 #define G_PM_SPR 0x0F
 #define G_PM_SPR_WORDS 4
+/* S6-1: producer record of one entity model draw (entity_model.c appendGfx_entity_model, TARGET_3DS): 4 Gfx words before the draw's old words.
+ * w0 (header): G_PM_ENT << 24 | render mode index << 16 | fog bit 0. w1: the model display list (Gfx*).
+ * word 1: w0 segment id (vertex segment, 0 when none), w1 physical vertex array (0 when none). word 2: w0 matrix flags, w1 the matrixStack entry (Mtx*).
+ * word 3: w1 the render mode list (Gfx*, the G_DL the switch emitted, 0 when none). The old words still draw (the dispatch skips the record). */
+#define G_PM_ENT 0x11
+#define G_PM_ENT_WORDS 4
 #define G_PM_REC_WORDS 14 /* S3F-2c: words of one producer record (R0 to R10). S3G-1: R11 custom gfx pre (w0) and post (w1), R12 geometry (w0) and pop flag (w1). S3G-2: R13 w0 = words after the record (special tile list or untextured ops), they run in place of the bind */
 #define gsSPPmTexInline(n) {{ _SHIFTL(G_PM_TEXI, 24, 8) | ((n) & 0xffff), 0 }}
 

@@ -3,6 +3,34 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "dro_01_walk",
+      "status": "unverified",
+      "subject": "Dro_01 (warp dro_01 entry 0), Mario walks by padscript; shots at frames 150 to 155 show the paths and fences near Mario. texstale check: per 300 frames, binds of native unit words against their descriptor and the mismatches.",
+      "proves": "texstale lines (binds, bad, dirty, img, pal, hash) and samples for the stale texture cause (TEXSTALE step 1), plus the picture.",
+      "debug": "warp=dro_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500 texstale shots shotwin=150:6 loglevel=debug",
+      "until": "texstale f300 ",
+      "cap": 27,
+      "deadline": 20,
+      "first_marker": "warp: dro_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: dro_01 entry 0"
+        },
+        {
+          "name": "texstale report",
+          "regex": "texstale f300 binds \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 15[0-5]\\b"
+        }
+      ],
+      "reason": "TEXSTALE step 1. Walk coordinates are the generic route of mac01_ndunit (not measured on dro_01): Mario may stop at a wall, the texstale counts still run. Cap 27 s for 300 frames."
+    },
+    {
       "name": "warpmenu_sub",
       "status": "unverified",
       "subject": "Port menu Debug tab, row Warp area (row 20) opens the Warp area submenu (tab 4, header [Warp area]). Row 8 is the prefix kmr (after the 8 presets). It shows '< kmr_00 >' and one right step shows '< kmr_02 >'. The bottom shot shows the submenu rows and the kmr row with its arrows.",
@@ -5207,6 +5235,56 @@
         }
       ],
       "reason": "S3N-3 ndmcheck copy of spot_mac01_pic. Status pending: the build prints the ndmcheck line only after S3N-3 lands. Cap 25 s: boot, warp, placement and the first 300-frame window (the until). A run with eq 0 fails (nothing compared)."
+    },
+    {
+      "name": "entcheck_mac01",
+      "status": "pending",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Entity models on screen (blocks, signs). Shots at frames 200 to 205 and the entcheck window line.",
+      "proves": "S6-1 entity record check (entcheck): each entity model draw record (G_PM_ENT) matches the words the walker emitted for the draw (matrix op, vertex segment, model display list, render mode list). Gate: eq above 0 and diff 0.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 entcheck shots shotwin=200:6 loglevel=debug",
+      "until": "entcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "entcheck window: eq above 0 and diff 0",
+          "regex": "entcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S6-1 copy of spot_mac01_ndmcheck with the entity check. Cap 25 s: boot, warp, placement and the first 300-frame window (the until)."
+    },
+    {
+      "name": "entcheck_kmr03",
+      "status": "pending",
+      "subject": "Koopa Village kmr_03 (warp entry 0, default placement). Coin block and entity models on screen. Shots at frames 200 to 205 and the entcheck window line.",
+      "proves": "S6-1 entity record check (entcheck): each entity model draw record (G_PM_ENT) matches the words the walker emitted for the draw (matrix op, vertex segment, model display list, render mode list). Gate: eq above 0 and diff 0.",
+      "debug": "warp=kmr_03:0 prof=4 entcheck shots shotwin=200:6 loglevel=debug",
+      "until": "entcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "entcheck window: eq above 0 and diff 0",
+          "regex": "entcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S6-1 entity check on the kmr_03 coin block scene (row S6-1 gate). Cap 25 s: boot, warp and the first 300-frame window (the until)."
     },
     {
       "name": "spot_mac00_pic",

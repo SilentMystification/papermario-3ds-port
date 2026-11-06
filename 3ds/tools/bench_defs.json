@@ -597,6 +597,84 @@
     }
 ,
     {
+      "name": "entcheck_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Toad Town mac_01 entcheck (S6-1): entity record (G_PM_ENT) vs the walker words of the draw. Gate eq above 0, diff 0.",
+      "scenario": "entcheck_mac01",
+      "cap": 25,
+      "until": "entcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "entcheck",
+        "entity"
+      ],
+      "log_metrics": [
+        {
+          "name": "ent_eq",
+          "regex": "entcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ dfield",
+          "pick": "last"
+        },
+        {
+          "name": "ent_diff",
+          "regex": "entcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) dfield",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ent_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "ent_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "entcheck_kmr03",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Koopa Village kmr_03 entcheck (S6-1): entity record vs walker words on the coin block scene. Gate eq above 0, diff 0.",
+      "scenario": "entcheck_kmr03",
+      "cap": 25,
+      "until": "entcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "entcheck",
+        "entity"
+      ],
+      "log_metrics": [
+        {
+          "name": "ent_eq",
+          "regex": "entcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ dfield",
+          "pick": "last"
+        },
+        {
+          "name": "ent_diff",
+          "regex": "entcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) dfield",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ent_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "ent_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "spot_mac01_sprcheck",
       "kind": "azahar_pic",
       "speed": "normal",

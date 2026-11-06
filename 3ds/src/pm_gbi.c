@@ -4492,6 +4492,9 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc += G_PM_SPR_WORDS - 1;
             break;
         }
+        case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. */
+            pc += G_PM_ENT_WORDS - 1;
+            break;
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
             tb_inline(pc, w0 & 0xffffu);
             pc += w0 & 0xffffu;

@@ -241,11 +241,50 @@ void make_entity_model_mtx_flipZ(Matrix4f mtx) {
     mtx[3][3] = 1.0f;
 }
 
+#ifdef TARGET_3DS
+/* S6-1 entcheck (debug switch): the entity record (G_PM_ENT, written by appendGfx_entity_model) against the words the walker emitted for the same
+ * draw. Fields: 1 matrix op (the matrixStack entry), 2 vertex segment (0 when the model has no vertex array), 3 model display list, 4 render mode list.
+ * Counts are cumulative. One line per 300 frames: entcheck f<frame> recs <n> eq <n> diff <n> dfield <field of this draw, 0 equal>. */
+extern int pm_debug_has(const char* key);
+extern unsigned pm_frame_count(void);
+extern void pm_log_prof_line(const char* fmt, ...);
+static unsigned ent_recs_n, ent_eq_n, ent_diff_n, ent_next = 300u, ent_dfc[5];
+static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
+    static int on = -1;
+    Gfx e[2];
+    const Gfx* p;
+    int mtxOk = 0, segOk = model->vertexArray == nullptr, dlOk = 0, rmOk = rec[3].words.w1 == 0;
+    unsigned df = 0, f;
+    if (on < 0) on = pm_debug_has("entcheck");
+    if (!on) return;
+    gSPMatrix(&e[0], (Mtx*)(uintptr_t)rec[2].words.w1, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    if (model->vertexArray != nullptr) gSPSegment(&e[1], D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
+    for (p = rec + G_PM_ENT_WORDS; p < gMainGfxPos; p++) {
+        if (!mtxOk && p->words.w0 == e[0].words.w0 && p->words.w1 == e[0].words.w1) mtxOk = 1;
+        if (!segOk && p->words.w0 == e[1].words.w0 && p->words.w1 == e[1].words.w1) segOk = 1;
+        if (!dlOk && p->words.w1 == (u32)(uintptr_t)model->gfx.displayList && (p->words.w0 >> 24) == (u32)G_DL) dlOk = 1;
+        if (!rmOk && p->words.w1 == rec[3].words.w1 && ((p->words.w0 >> 24) == (u32)G_DL || (p->words.w0 >> 24) == (u32)G_PM_RM)) rmOk = 1;
+    }
+    if (!mtxOk) df = 1; else if (!segOk) df = 2; else if (!dlOk) df = 3; else if (!rmOk) df = 4;
+    ent_recs_n++;
+    if (df) { ent_diff_n++; ent_dfc[df]++; } else ent_eq_n++;
+    f = pm_frame_count();
+    if (f >= ent_next) {
+        ent_next = (f / 300u + 1u) * 300u;
+        pm_log_prof_line("entcheck f%u recs %u eq %u diff %u dfield %u", f, ent_recs_n, ent_eq_n, ent_diff_n, df);
+        pm_log_prof_line("entdf f%u by field: 1 %u 2 %u 3 %u 4 %u", f, ent_dfc[1], ent_dfc[2], ent_dfc[3], ent_dfc[4]);
+    }
+}
+#endif
+
 void appendGfx_entity_model(EntityModel* model) {
     Matrix4f mtx;
     Matrix4f mtx2;
     ImgFXTexture ifxImg;
     Matrix4f imgfxMtx;
+#ifdef TARGET_3DS
+    Gfx* entRec = nullptr; /* S6-1: entity record (G_PM_ENT) of a model draw, 4 words, see gbi_custom.h */
+#endif
 
 #ifdef TARGET_3DS
     { /* PT70 diagnostic, switch emlog: model, display list and translation at the draw, at most 200 lines per frame */
@@ -263,6 +302,20 @@ void appendGfx_entity_model(EntityModel* model) {
                 pm_log_d("emdraw f%u model %p dl %p fl %08x rm %d t %.1f %.1f %.1f", emf, (void*)model, (void*)model->gfx.displayList, (unsigned)model->flags, (int)model->renderMode, tm[3][0], tm[3][1], tm[3][2]);
             }
         }
+    }
+#endif
+#ifdef TARGET_3DS
+    if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) { /* S6-1: the entity record. w3 (render mode list) is set after the render mode switch. */
+        entRec = gMainGfxPos;
+        gMainGfxPos += G_PM_ENT_WORDS;
+        entRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (((u32)model->renderMode & 0xffu) << 16) | ((entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) ? 1u : 0u);
+        entRec[0].words.w1 = (u32)(uintptr_t)model->gfx.displayList;
+        entRec[1].words.w0 = (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u;
+        entRec[1].words.w1 = (model->vertexArray != nullptr) ? (u32)VIRTUAL_TO_PHYSICAL(model->vertexArray) : 0u;
+        entRec[2].words.w0 = (u32)(G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        entRec[2].words.w1 = (u32)(uintptr_t)&gDisplayContext->matrixStack[gMatrixListPos];
+        entRec[3].words.w0 = 0;
+        entRec[3].words.w1 = 0;
     }
 #endif
     gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
@@ -367,6 +420,7 @@ void appendGfx_entity_model(EntityModel* model) {
                     break;
             }
 #ifdef TARGET_3DS
+            if (entRec != nullptr && gMainGfxPos > rm_first && rm_first->words.w0 == (u32)G_DL << 24) entRec[3].words.w1 = rm_first->words.w1; /* S6-1 record: the render mode list */
             if (gMainGfxPos == rm_first + 1 && rm_first->words.w0 == (u32)G_DL << 24) rm_first->words.w0 = (u32)G_PM_RM << 24; /* rm_apply runs the list; a list with another op falls back to G_DL */
 #endif
             gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
@@ -398,6 +452,9 @@ void appendGfx_entity_model(EntityModel* model) {
         gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gDPPipeSync(gMainGfxPos++);
+#ifdef TARGET_3DS
+        if (entRec != nullptr) entcheck_draw(entRec, model);
+#endif
 
         if (!(model->flags & ENTITY_MODEL_FLAG_REFLECT)) {
             return;
