@@ -89,7 +89,7 @@ void pm_pos_text(char* out) {
 }
 
 /* MAPHUD: the 3 row map block (HUD rows 4 to 6). Always filled. During `hold` steps after a change (returns 1):
- * row 4 the old map id, row 5 the old area and map, "->", the new map id, row 6 the new area and map under the new id.
+ * row 4 the old map id, then the change on the same line ("<old>     <old> -> <new>"), row 5 the old area and map (no arrow), row 6 blank.
  * Otherwise (returns 0): row 4 the current map id, row 5 its area and map, row 6 blank.
  * BOTLAYOUT: pm_map_now is the footer map row, "Map: <id> (area A, map M)", always. Per step: two loads and compares. */
 static char map_now[40];
@@ -122,9 +122,9 @@ int pm_map_hud_step(unsigned step, unsigned hold, char (*rows)[40]) {
         if (a >= 0 && a < ARRAY_COUNT(gAreas) && gAreas[a].maps && m >= 0 && m < gAreas[a].mapCount) id = gAreas[a].maps[m].id;
         pm_log_i("map change: %s -> %s (area %d map %d)", from, id, a, m);
         if (a >= 0) snprintf(na, sizeof na, "area %d map %d", a, m);
-        snprintf(hold_blk[0], 40, "%.39s", from);
-        snprintf(hold_blk[1], 40, "%-18.18s-> %.18s", oa, id);
-        snprintf(hold_blk[2], 40, "%21s%.18s", "", na);
+        snprintf(hold_blk[0], 40, "%-11.11s%.12s -> %.12s", from, from, id);
+        snprintf(hold_blk[1], 40, "%.39s", oa);
+        hold_blk[2][0] = 0;
         snprintf(idle_blk[0], 40, "%.39s", id);
         snprintf(idle_blk[1], 40, "%.39s", na);
         idle_blk[2][0] = 0;

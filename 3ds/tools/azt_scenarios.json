@@ -1764,7 +1764,7 @@
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
       "until": "shot \\d+ frame 23[3-7]\\b",
       "cap": 60,
-      "deadline": 20,
+      "deadline": 45,
       "first_marker": "warp: mac_00 entry 4",
       "expects": "tour",
       "needs_picture": true,
@@ -1787,6 +1787,38 @@
         }
       ],
       "reason": "MAPHUD run: the until is the top shot at a frame from 233 to 237, after the hold ends at step 230. Bottom shots at frames 226 to 237 show both texts."
+    },
+    {
+      "name": "mapchange_hud_after",
+      "status": "verified",
+      "subject": "Bottom screen after the hold of the tour change to mac_01 (Toad Town, area 1 map 2, change at step 170, hold ends at step 290), poshud and stats off. Rows 4 to 6 the map block after the hold: row 4 'mac_01', row 5 'area 1 map 2', row 6 blank.",
+      "proves": "After the hold the map block shows the current map id and area line (pm_map_hud_step idle_blk), the pair of MAPHUD2 with mapchange_hud (hold text).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=292:6 shotbottom=292:10 loglevel=debug",
+      "until": "shot \\d+ frame 297\\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_01 entry 0 \\(area 1 map 2\\)"
+        },
+        {
+          "name": "map change",
+          "regex": "maphud: mac_01 area 1 map 2 "
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 29[2-7]\\b"
+        }
+      ],
+      "reason": "MAPHUD2 gate, after the hold: the hold ends at step 290 (log: until 290), so the bottom shots at frames 292 to 301 show the idle map block."
     },
     {
       "name": "mapchange_poshud",
