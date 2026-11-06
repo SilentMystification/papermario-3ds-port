@@ -5,6 +5,8 @@ STATE (branch menu, base nds1, HEAD 74dfe57f4)
 - MN0 + MN1 coded in 74dfe57f4 (menu_fit, pm_gpu_shot_bottom, shotmenu, freeze in pm_main.c, pm_gpu_menu_present). Build NOT run, gate NOT run.
 - Build inputs copied into the worktree (assets/us, ver/us/build; gitignored, never commit). Build OK (PM_LANE=menu, build3ds/lane-menu/pm_3ds.3dsx). Build OK, gate not run.
 - Azahar azt.ps1 menu_shot: refused by the permission check (powershell in worktree). Not bypassed.
+- MN3 done in c820149f1 (build OK, gate not run). WARPY done in 501d3b5f1 (build OK, gate not run; iwa_10 scene gate not run).
+- Epic A: MN2 open. Epic B: MN3b, MN4, MN5, MN6 (+ warp last-selection restore, coordinator add), MN7 open. D, E not started.
 - MN2 (grey) not started: needs present and transfer order confirmed on a shot first.
 - Coordinator add (MN6 restore last selection, RAM only): not started.
 - Next: unblock build (assets from orchestrator), build PM_LANE=menu, shot menu_shot, then MN2.
