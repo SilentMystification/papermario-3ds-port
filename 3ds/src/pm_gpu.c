@@ -3526,8 +3526,14 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     float xb = px(x1 + 1);
     if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, the texture continues at the same density */
         float ds = (s1 - s0) / (xb - xa);
+        float bxa = xa, bxb = xb, bs0 = s0, bs1 = s1; /* BG1 debug switch bgedge: the values before the extension */
         if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
         if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
+        if (PMDL("bgedge") && (xa != bxa || xb != bxb)) {
+            static int nbe = 0;
+            unsigned bf = pm_frame_count();
+            if (nbe < 2000 && bf >= 100u && bf <= 160u) { nbe++; pm_log_d("bgedge f%u x0 %d x1 %d xa %.1f>%.1f xb %.1f>%.1f s0 %.3f>%.3f s1 %.3f>%.3f", bf, x0, x1, bxa, xa, bxb, xb, bs0, s0, bs1, s1); }
+        }
     }
     float ya = py(y0);
     float yb = py(y1 + 1);

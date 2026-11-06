@@ -122,6 +122,38 @@
       "gates": []
     },
     {
+      "name": "bg_edge_mac00",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "mac_00 sky (BG1) edge measurement: bgedge line per F07-7 texrect extension beside a shot every frame, frames 115 to 155. A person reads the shot: the strip columns against the logged rects.",
+      "scenario": "bg_edge_mac00",
+      "cap": 45,
+      "until": "shot \\d+ frame 155\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "bg"
+      ],
+      "gates": []
+    },
+    {
+      "name": "bg_edge_early",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "mac_00 sky (BG1) early window: shots every frame 100 to 113 beside the bgedge lines of frames 100 to 112 (F07-7 left edge). A person reads the shot: the columns 0 to 39.",
+      "scenario": "bg_edge_early",
+      "cap": 45,
+      "until": "shot \\d+ frame 113\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "bg"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac00_pic",
       "kind": "azahar_pic",
       "speed": "normal",

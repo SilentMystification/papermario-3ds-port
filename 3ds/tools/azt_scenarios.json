@@ -678,6 +678,54 @@
       "reason": "BG1 flicker: shots while the sky scrolls (the scroll moves with the camera, see bgsky lines with the bgrect switch). Shots are about every 2 frames and the until line is a frame number (shot numbers are burst indices). Cap 45 s."
     },
     {
+      "name": "bg_edge_mac00",
+      "status": "unverified",
+      "subject": "mac_00 (sky background), Mario at pos -57 0 76, the bg_flicker_mac00 walk: shots every frame from frame 115 to 155 with the bgedge switch (one line per F07-7 edge extension of a texrect, frames 100 to 160) and the bgrect and bglog texrect lines. Seams of the sky scroll at frames 123 and 149.",
+      "proves": "BG1 cause naming: which texrect the F07-7 edge extension changes, its columns in the shot, and the s and t of the rect edges.",
+      "debug": "warp=mac_00:0 pos=-57:0:76 padscript=wait120,right*50,left*50 shots shotwin=115:41 bgrect bglog bgedge loglevel=debug",
+      "until": "shot \\d+ frame 155\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 155\\b"
+        }
+      ],
+      "reason": "BG1 cause measurement: one run, every frame of the sky seam window, the F07-7 edge log beside the shot."
+    },
+    {
+      "name": "bg_edge_early",
+      "status": "unverified",
+      "subject": "mac_00 (sky background), Mario at pos -57 0 76, same walk as bg_edge_mac00. Shots every frame from frame 100 to 113 (before the seam window): the bgedge lines of frames 100 to 112 are the F07-7 extension of the left sky rect (x0 0 from xl -3, s0 0 to -0.065). The strip, if any, is the screen columns 0 to 39 of the sky.",
+      "proves": "BG1 cause 1 check on the frames where bgedge fires: the screen columns 0 to 39 against the bgedge line of the same frame.",
+      "debug": "warp=mac_00:0 pos=-57:0:76 padscript=wait120,right*50,left*50 shots shotwin=100:14 bgrect bglog bgedge loglevel=debug",
+      "until": "shot \\d+ frame 113\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 113\\b"
+        }
+      ],
+      "reason": "BG1 cause 1 window check: same binary as bg_edge_mac00, the window of the bgedge lines (frames 100 to 112). Cap 45 s."
+    },
+    {
       "name": "mac01_walkshots",
       "status": "unverified",
       "subject": "Toad Town street (mac_01), Mario walks east by padscript, one shot per frame from frame 120 to 179 (compare the native close against the old close frame by frame: flicker while moving).",
