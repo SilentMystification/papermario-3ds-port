@@ -325,6 +325,12 @@ NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of k
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and ranges of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges */
 NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
 unsigned nd_mc_clears(void);
+/* S3N-7: exclusive tick timers of the native model path (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed inside it. */
+typedef struct NdtT { uint64_t t, all; int on; } NdtT;
+enum { NDT_KEY, NDT_RNG, NDT_MISS, NDT_FB, NDT_UPD, NDT_EMIT, NDT_ADD, NDT_MTX, NDT_N };
+unsigned pm_ph_smp_count(void); /* S3N-7: pm_phase.c, sampled frames so far */
+NdtT pm_gpu_ndt_begin(void);
+void pm_gpu_ndt_end(NdtT s, int k);
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
 /* S3N-3d: the combine choice of one draw (pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,

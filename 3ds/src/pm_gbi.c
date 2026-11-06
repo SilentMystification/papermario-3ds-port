@@ -4367,10 +4367,13 @@ extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const
 extern int pm_gpu_model_hit(const NdMKey* k); /* S3N-6: the cached draws of the key, 1 when drawn */
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     NdMKey mk;
+    NdtT tk = pm_gpu_ndt_begin(); /* S3N-7: key build and lookup */
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
+    int cached = nd_mc_find(&mk) != NULL;
+    pm_gpu_ndt_end(tk, NDT_KEY);
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0;
-    if (nd_mc_find(&mk)) { rec_matrix(q); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
+    if (cached) { NdtT tm = pm_gpu_ndt_begin(); rec_matrix(q); pm_gpu_ndt_end(tm, NDT_MTX); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
     if (!ndm && mdone && pm_gpu_model_hit(&mk)) {
         /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw. */
         rec_n++;
@@ -4378,6 +4381,7 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
         nat = 1;
         sc_ok = 0; sr_ok = 0;
     } else {
+    NdtT tmi = pm_gpu_ndt_begin(); /* S3N-7: the miss: rec_apply and the model draw (exclusive of the submit and the matrix) */
     rec_apply(q, mdone);
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
         q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
@@ -4388,8 +4392,9 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
         nat = 1;
         sc_ok = 0; sr_ok = 0;
     }
+    pm_gpu_ndt_end(tmi, NDT_MISS);
     }
-    if (!nat) rec_dl((const Gfx*)(uintptr_t)q[12].words.w0);  /* S3G-1: geometry (0 when none) */
+    if (!nat) { NdtT tf = pm_gpu_ndt_begin(); rec_dl((const Gfx*)(uintptr_t)q[12].words.w0); pm_gpu_ndt_end(tf, NDT_FB); }  /* S3G-1: geometry (0 when none); S3N-7: the fallback walk */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
     if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     if (ndm) pm_gpu_ndm_end();

@@ -319,6 +319,8 @@ static void pf_pmu_read(u64 out[3]) {
 void pm_gpu_pf_read(unsigned long long out[6]); /* pm_gpu.c: per frame counters and GPU busy ticks, read and reset */
 static unsigned long long pf_nd_t; static unsigned pf_leg; /* S0-6: native emit ticks and LEGACY records of the window (pm_pf_nd_add, from S1) */
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy) { pf_nd_t += ticks; pf_leg += legacy; }
+static unsigned pm_ph_smp_n; /* S3N-7: frames with pm_ph_on (sampled frames, or every frame in phase mode) */
+unsigned pm_ph_smp_count(void) { return pm_ph_smp_n; }
 /* PROF: the scene of the window. Every prof line of a window ends with it, so runs of one room or event compare by key (map, mode, story, battle).
  * A scene change inside a window drops the window and starts a new one, so chg stays 0 (kept in the line for older readers). */
 void pm_prof_where(const char** name, int* story, int* btl, int* entry, float pos[3]); /* pm_route.c */
@@ -710,6 +712,7 @@ void pm_ph_frame_end(void) {
     if (pm_pmu_on) pmu_frame_end();
     if (pm_fs_on) fs_frame_end();
     if (!pm_ph_on) return;
+    pm_ph_smp_n++;
     unsigned now = pm_ticks();
     Rec* r = &win[nwin];
     acc[cur] += now - last;
