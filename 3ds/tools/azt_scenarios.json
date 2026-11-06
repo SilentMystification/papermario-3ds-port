@@ -2026,6 +2026,62 @@
       "reason": "Set Stats Level gate: normal shot (first row 0 draw) and the red shot (row 2 after FP 75) and the skip log line."
     },
     {
+      "name": "menu_moon_on",
+      "status": "verified",
+      "subject": "Toad Town, A held 90 scans (a jump): with the Moon jump on (launch switch moonjump), Mario floats up and stays high while A is held; the top shot in the shotwin window shows him high. Off: a normal jump.",
+      "proves": "CH6: pm_cheat_tick per step (pm_warp_tick): upward velocity at least 4 and zero accelerations while A held and jumping.",
+      "debug": "preset=toad moonjump padscript=@pad_moon.txt shots shotwin=84:12 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "jump",
+          "regex": "cheat: (moon )?jump y -?[0-9.]+"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "CH6 gate: peak y of the moon run (cheat: moon jump y) against the normal run (cheat: jump y), and the top shot at the peak."
+    },
+    {
+      "name": "menu_moon_off",
+      "status": "verified",
+      "subject": "Toad Town, A held 90 scans (a jump): with the Moon jump on (launch switch moonjump), Mario floats up and stays high while A is held; the top shot in the shotwin window shows him high. Off: a normal jump.",
+      "proves": "CH6: pm_cheat_tick per step (pm_warp_tick): upward velocity at least 4 and zero accelerations while A held and jumping.",
+      "debug": "preset=toad padscript=@pad_moon.txt shots shotwin=120:12 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "jump",
+          "regex": "cheat: (moon )?jump y -?[0-9.]+"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "CH6 gate: peak y of the moon run (cheat: moon jump y) against the normal run (cheat: jump y), and the top shot at the peak."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",

@@ -154,6 +154,31 @@ void pm_dbgg_spawn(int id) {
     pm_log("dbggame: spawn item 0x%03X at %.1f %.1f %.1f", id, ps->pos.x, ps->pos.y + 40.0f, ps->pos.z);
 }
 
+/* CH6: Moon Jump (RAM only, not saved). The launch switch moonjump turns it on at boot. Per step (pm_warp_tick, after the game logic) while
+ * A is held and Mario jumps or falls: the upward velocity is at least 4 and the other integrator terms are zero, so the jump floats. */
+static int moon_on = -1;
+int pm_cheat_moon_get(void) {
+    if (moon_on < 0) moon_on = pm_debug_has("moonjump") ? 1 : 0;
+    return moon_on;
+}
+void pm_cheat_moon_set(int on) {
+    moon_on = on ? 1 : 0;
+    pm_log("cheat: moon jump %s", moon_on ? "on" : "off");
+}
+void pm_cheat_tick(void) {
+    PlayerStatus* ps = &gPlayerStatus;
+    if (!(ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING))) return;
+    if (!pm_cheat_moon_get() || !(ps->curButtons & BUTTON_A)) {
+        pm_log_d("cheat: jump y %.1f", ps->pos.y);
+        return;
+    }
+    if (ps->gravityIntegrator[0] < 4.0f) ps->gravityIntegrator[0] = 4.0f;
+    ps->gravityIntegrator[1] = 0.0f;
+    ps->gravityIntegrator[2] = 0.0f;
+    ps->gravityIntegrator[3] = 0.0f;
+    pm_log_d("cheat: moon jump y %.1f", ps->pos.y);
+}
+
 /* owned and total of a group: 0 partners, 1 badges, 2 key items */
 void pm_dbgg_count(int g, int* have, int* total) {
     int i, h = 0, t = 0;
