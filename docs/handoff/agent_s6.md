@@ -43,3 +43,11 @@ Priority per draw: vtxseg (model has a vertex array, the B and D draws), fog, re
 - S6-2 native entity draw: the record arm must draw the model DL natively (nd_dlc static compile keyed on (list, segment base), nd_native_submit). Classes to name when hit: dynamic vertex array (vertexArray != nullptr, the B and D draws: vertex data is CPU side, not static, class `dyn_vtx`), fog (entity_fog_enabled, class `fog`), USE_IMAGE (separate path, not in record), reflect (second draw, class `reflect`), render mode DL refusal (class `rm_list`).
 - S6-3 shadows and item entities: not started.
 - S6-4 animators: not started.
+
+## S6-2c to S6-4 (not done, named fallbacks, row S6b)
+- ent_native_switch (S6-2c): the native entity draw needs an entity record producer for nd_model (the S3N path is map records with the texture handle desc from the header, not from the list). Open parts: (1) texture: NdTexDec of the list (texok 1793 of 1793 at mac_01 f300) to a handle-style unit set (nd_tex_get words) per draw; (2) state: the list state ops (SETCOMBINE, SETOTHERMODE, GEOMETRYMODE, TEXTURE, render mode list) are not split out of the list (nd_dlc_compile refuses them, NDR_OP); (3) geometry: keys static 1 at mac_01 (255 draws), so the static part is one object; (4) combine and fog per entity (entity_fog_enabled, PM_CC_42 path) need the S3N B10 combine decide; (5) the walker word compare (entcheck eq) must be extended to the native draw before the old words go.
+- Dynamic vertex class (ent_dynvtx): not seen at mac_01 (dyn 0); keep as named fallback for other maps.
+- reflect (second draw), USE_IMAGE (separate path, not in record), and render mode list refusal (rm_list): fallback to the walker, count when hit.
+- S6-3 (shadows, item entities): blocked on S6-2c (same switch).
+- S6-4 (animators, src/animator.c appendGfx_animator, vertex buffer per frame via animator_copy_vertices_to_buffer): dynamic vertices (ent_dynvtx) by design; battle_start picture not checked. Blocked on S6-2c and on a dynamic vertex path.
+- Status: S6-2a and S6-2b passed (commits cae261f8e, 1f31155b2). S6-2c, S6-3, S6-4 INCOMPLETE: no entity draw is native, no picture change.
