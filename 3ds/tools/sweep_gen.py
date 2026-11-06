@@ -75,6 +75,45 @@ for d in sorted(os.listdir(base)):
         if bf not in names or bs not in open(os.path.join(root, 'src/battle/stage_names.h'), encoding='utf-8', errors='replace').read(): continue
         key = pre.lower()
         rows.append('boss_%s_f%02X kind=boss battle=%s:%s story=%d cap=1500 note=%s' % (hit[0], i, bf, bs, STORY.get(key, 0), '+'.join(actors)))
+if mode == 'battletable':
+    # BT1: every formation of every area (not only bosses). Label from the actor blueprints (count per name), the formation and the stage.
+    # Written to 3ds/src/pm_battle_table.h (the Battles folder under Boss, BT2). Do not edit the output.
+    out = []
+    stage_txt = open(os.path.join(root, 'src/battle/stage_names.h'), encoding='utf-8', errors='replace').read()
+    for d in sorted(os.listdir(base)):
+        af = os.path.join(base, d, 'area.c')
+        if not os.path.isfile(af): continue
+        pre = d.upper().replace('_PART_', '_')
+        t = open(af, encoding='utf-8', errors='replace').read()
+        forms = {}
+        for m in re.finditer(r'Formation\s+A\(Formation_(\w+)\)\s*=\s*\{(.*?)\n\};', t, re.S):
+            forms[m.group(1)] = re.findall(r'ACTOR_BY_(?:POS|IDX)\(A\((\w+)\)', m.group(2))
+        sl = re.search(r'StageList\s+A\(Stages\)\s*=\s*\{(.*?)\n\};', t, re.S)
+        stages = re.findall(r'STAGE\("[^"]*",\s*A\((\w+)\)', sl.group(1)) if sl else []
+        snames = re.findall(r'STAGE\("([^"]*)"', sl.group(1)) if sl else []
+        bl = re.search(r'BattleList\s+A\(Formations\)\s*=\s*\{(.*?)\n\};', t, re.S)
+        if not bl: continue
+        for i, m in enumerate(re.finditer(r'BATTLE\(A\(Formation_(\w+)\),\s*A\((\w+)\)', bl.group(1))):
+            f, st = m.group(1), m.group(2)
+            actors = forms.get(f, [])
+            if not actors: continue
+            bf = 'BTL_%s_FORMATION_%02X' % (pre, i)
+            si = stages.index(st) if st in stages else (snames.index(st) if st in snames else 0)
+            bs = 'BTL_%s_STAGE_%02X' % (pre, si)
+            if bf not in names or bs not in stage_txt: continue
+            counts = {}
+            for a_ in actors: counts[a_] = counts.get(a_, 0) + 1
+            parts = []
+            for k, v in counts.items():
+                nm = k.replace('_', ' ').title()
+                parts.append('%s x%d' % (nm, v) if v > 1 else nm)
+            lab = ' + '.join(parts)[:22]
+            out.append('    { "%s", "%s:%s", "%s" },' % (lab, bf, bs, d))
+    hdr = ('/* Every battle formation of the decomp (not only bosses): label, battle=<formation>:<stage> (names of battle_names.h and stage_names.h), area dir.\n'
+           ' * Written by 3ds/tools/sweep_gen.py battletable from the decomp (src/battle/area/NAME/area.c). Do not edit. */\n')
+    open(os.path.join(root, '3ds', 'src', 'pm_battle_table.h'), 'w', newline='\n').write(hdr + '\n'.join(out) + '\n')
+    print('3ds/src/pm_battle_table.h: %d battle formations' % len(out), file=sys.stderr)
+    sys.exit(0)
 if mode == 'bosstable':
     out = []
     for r in rows:
