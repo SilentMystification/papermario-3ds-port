@@ -1,12 +1,13 @@
 # Agent S6: entities, items, animators draw from records natively
 
 ## STATE
-S6-1 PASS (2026-11-06, row S6, main folder, nds1). S6-2 to S6-4 not done: the S6-2 census shows every entity draw uses a texture op in its DL (named class tex, see below). Record and check for entity models (G_PM_ENT, 4 words) committed. No draw change: the dispatch skips the record, the old words draw.
-Next: S6-2 (native entity draw) not started. Named open items below.
+S6-2b PASS (2026-11-06, row S6b): vertex segment static check (entcheck only). mac_01 f300: ndobj line: vtx draws static 255, dyn 0, new 1; keys static 1, dyn 0, ovf 0. Gate entcheck diff 0 and texchk diff 0 held. No draw change.
+Next: S6-2c (native switch of entity draws). Not started.
 
-## STATE
-S6-2a PASS (2026-11-06, row S6b, main folder, nds1): texture decode of the entity model list (nd_dlc_tex_decode) and the walker check at the end record (texchk). mac_01 f300: texchk ent 3543 eq 3543 diff 0 nat 3543; entcls texok 1786 (tex class now native-ready form). entcheck eq 2041 diff 0 (unchanged). No draw change (the end record is written only under entcheck; the walker check changes no state).
-Next: S6-2b (vtxseg static check). S6-2c (native switch) not started; see the fallbacks below.
+## S6-2b (done, row S6b)
+- entity_model.c entcheck_vtxseg: per draw with a vertex array, key (list, array). The G_VTX range (off + n * 16 on the vertex segment) hashed once per frame. Equal on two frames: static (sticky dynamic). Line ndobj f<n> vtx draws static/dyn/new, keys static/dyn, ovf.
+- Deviation: NdObj compile not run. nd_dlc_compile refuses texture ops (NDR_OP), so the entity list needs the state-op split first (S6-2c). The keys count is the candidate NdObj count per map.
+- Budget S6 after reset: 3 starts (retry 5 diagnostic, gate run, S6-2b run).
 
 ## S6-2a (done, row S6b)
 - nd.h: NdTexDec, nd_dlc_tex_decode (codes NDTX_NONE, NDTX_OK, NDTX_TIMG, NDTX_TILE, NDTX_MULTI, NDTX_WIN, NDTX_PAL, NDTX_NOLB, NDTX_NOBIND). nd_dlc.c: the decode, walker rules of the form entity lists use: SETTIMG, SETTILE tile 0 and 7, LOADTILE tile 7 (the walker ld_valid form, with the 4 bit window in bytes: ld_w * 2) or LOADBLOCK on tile 7, SETTILESIZE tile 0 (origin 0, height above 1), LOADTLUT tile 7 for CI (palette bank of tile 0).

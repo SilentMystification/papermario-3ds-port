@@ -253,6 +253,44 @@ extern unsigned pm_frame_count(void);
 extern void pm_log_prof_line(const char* fmt, ...);
 static unsigned ent_recs_n, ent_eq_n, ent_diff_n, ent_next = 300u, ent_dfc[5], ent_cls[8];
 static int entcheck_on(void) { static int on = -1; if (on < 0) on = pm_debug_has("entcheck"); return on; }
+/* S6-2b: vertex segment static check. A draw with a vertex array (B and D) is keyed by (list, array). The bytes the list reads through its vertex segment
+ * (the G_VTX ranges, off + n * 16) are hashed once per frame. Equal on two frames: static. A change later makes the key dynamic (sticky). Table of 64 keys. */
+#define ENT_VK_N 64
+static struct { const Gfx* dl; const void* va; u32 range; u32 h; unsigned f; unsigned st; } ent_vk[ENT_VK_N]; /* st: 0 new, 1 static, 2 dynamic */
+static unsigned ent_vk_n, ent_vs_draw[3], ent_vs_ovf;
+static u32 ent_vtx_range(const Gfx* dl, s32 seg) {
+    u32 range = 0;
+    for (int k = 0; k < 2048; k++) {
+        const u32 op = dl[k].words.w0 >> 24;
+        if (op == (u32)G_ENDDL) break;
+        if (op == (u32)G_VTX && (dl[k].words.w1 >> 24) == ((u32)seg & 0xffu)) {
+            const u32 end = (dl[k].words.w1 & 0xffffffu) + (((dl[k].words.w0 >> 12) & 0xffu) * 16u);
+            if (end > range) range = end;
+        }
+    }
+    return range;
+}
+static void entcheck_vtxseg(const EntityModel* model, unsigned f) {
+    unsigned i;
+    for (i = 0; i < ent_vk_n; i++) if (ent_vk[i].dl == model->gfx.displayList && ent_vk[i].va == model->vertexArray) break;
+    if (i == ent_vk_n) {
+        if (ent_vk_n >= ENT_VK_N) { ent_vs_ovf++; return; }
+        ent_vk[i].dl = model->gfx.displayList; ent_vk[i].va = model->vertexArray; ent_vk[i].range = ent_vtx_range(model->gfx.displayList, D_80154374);
+        ent_vk[i].h = 0; ent_vk[i].f = 0; ent_vk[i].st = 0;
+        ent_vk_n++;
+    }
+    if (ent_vk[i].f != f) { /* hash once per frame */
+        const u8* p = (const u8*)model->vertexArray;
+        u32 h = 2166136261u;
+        for (u32 b = 0; b < ent_vk[i].range; b++) h = (h ^ p[b]) * 16777619u;
+        if (ent_vk[i].f != 0 && ent_vk[i].f < f) {
+            if (h != ent_vk[i].h) ent_vk[i].st = 2;
+            else if (ent_vk[i].st == 0) ent_vk[i].st = 1;
+        }
+        ent_vk[i].h = h; ent_vk[i].f = f;
+    }
+    ent_vs_draw[ent_vk[i].st]++;
+}
 static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
     Gfx e[2];
     const Gfx* p;
@@ -293,11 +331,15 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
         ent_cls[cls]++;
     }
     f = pm_frame_count();
+    if (model->vertexArray != nullptr) entcheck_vtxseg(model, f);
     if (f >= ent_next) {
+        unsigned ks = 0, kd = 0;
+        for (unsigned k = 0; k < ent_vk_n; k++) { if (ent_vk[k].st == 1) ks++; else if (ent_vk[k].st == 2) kd++; }
         ent_next = (f / 300u + 1u) * 300u;
         pm_log_prof_line("entcheck f%u recs %u eq %u diff %u dfield %u", f, ent_recs_n, ent_eq_n, ent_diff_n, df);
         pm_log_prof_line("entdf f%u by field: 1 %u 2 %u 3 %u 4 %u", f, ent_dfc[1], ent_dfc[2], ent_dfc[3], ent_dfc[4]);
         pm_log_prof_line("entcls f%u static %u vtxseg %u fog %u reflect %u tex %u nested %u other %u texok %u", f, ent_cls[0], ent_cls[1], ent_cls[2], ent_cls[3], ent_cls[4], ent_cls[5], ent_cls[6], ent_cls[7]);
+        pm_log_prof_line("ndobj f%u vtx draws static %u dyn %u new %u keys static %u dyn %u ovf %u", f, ent_vs_draw[1], ent_vs_draw[2], ent_vs_draw[0], ks, kd, ent_vs_ovf);
     }
 }
 #endif
