@@ -1,6 +1,7 @@
 # Agent S4: sprites draw from records natively
 
 ## STATE
+DRAW2 row 3 (2026-11-05, main folder, nds1; S4-1 is in HEAD already, the lane note below is old): sprcheck key fault FIXED. The 10 first key diffs (`sprkey k<n> tmpl a/b diff ...` lines, pm_gpu.c spr_keylog) showed one field: rgb_scale native 0, walker 1 (spr_check left c.rgb_scale at 0). Fix 1 (plan default: the walker sticky rgb scale at the batch, c.rgb_scale = rgb_scale in spr_check). Gate: spot_mac01_sprcheck `sprcheck f300 recs 3037 eq 2024 diff 0 fb 1 why 0 dfield 0` (was eq 0 diff 2024). Bench spot_mac01_sprcheck added. Starts used on DRAW2: 7 of 8. Next: S4-2 (nd_sprite_draw native), same main folder.
 S4 (2026-11-05). Branch s4 is switched to nds1 (switch -C s4 nds1, no commits of mine before), because row_S4.md exists only on nds1 and the sprite code (nd_* files) is there. The brief said "from the current commit"; the row file says nds1; the row file was followed (plan default). S4-1a (record emit + walker skip) is in the working tree, NOT committed: build OK (lane s4), picture gate NOT run. Azahar blocked: the worktree git guard refused azt.ps1 and bench.py run (the lane build path check). Next: run spot_mac01_pic with -Build s4, view the shot, then commit src/sprite.c, 3ds/src/pm_gbi.c, include/gbi_custom.h (pathspec only).
 
 ## Done

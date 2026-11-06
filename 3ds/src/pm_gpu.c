@@ -980,6 +980,7 @@ void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int
 /* S4-1 sprcheck: the sprite record of the batch that goes out next (pm_gbi.c G_PM_SPR arm, pm_gpu_spr_rec). spr_check compares it with the walker draw. */
 static const uint32_t* spr_pend;
 static unsigned spr_recs_n, spr_eq_n, spr_diff_n, spr_fb_n, spr_why_last, spr_dfield_last, spr_f_last;
+static NdTmplKey spr_wk; /* S4-1 sprcheck: the walker template key of the last raw batch (nd_raw_native), for the key diff log */
 static void spr_check(const NdDraw* w);
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) return 0;
@@ -1003,6 +1004,7 @@ static int nd_raw_native(void) {
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
     if (id < 0) { nd_native_refused++; return 0; }
+    spr_wk = nk;
     if (combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
     /* from here the batch is drawn natively */
     TevKey tk;
@@ -3064,6 +3066,18 @@ static unsigned spr_cmp(const NdDraw* a, const NdDraw* b) {
     return 0;
 }
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+/* S4-1 sprcheck: the template key fields that differ between the native sprite key (a) and the walker key (b), first 10 records */
+static void spr_keylog(const NdTmplKey* a, const NdTmplKey* b, const NdDraw* nd, const NdDraw* wd) {
+    static unsigned kn; if (kn >= 10u) return; kn++;
+    char s[400]; unsigned p = 0; s[0] = 0;
+#define SKF(f) if (a->f != b->f && p < 300u) p += (unsigned)snprintf(s + p, sizeof s - p, " %s %u/%u", #f, (unsigned)a->f, (unsigned)b->f)
+    SKF(pass); SKF(raw); SKF(cull); SKF(z); SKF(zmark); SKF(zcmp); SKF(zupd); SKF(nocol); SKF(decal); SKF(atest_on); SKF(aref);
+    SKF(combine); SKF(tex); SKF(tex1); SKF(i8_0); SKF(i8_1); SKF(rgb_scale); SKF(r_mix); SKF(draw_3d); SKF(rect_2d); SKF(dview);
+    SKF(off_active); SKF(off_i8); SKF(r_memblend); SKF(r_replace); SKF(r_blend); SKF(noise); SKF(two); SKF(t1only); SKF(w0); SKF(w1);
+#undef SKF
+    if (a->dbias != b->dbias && p < 300u) p += (unsigned)snprintf(s + p, sizeof s - p, " dbias %08x/%08x", a->dbias, b->dbias);
+    pm_log_prof_line("sprkey k%u tmpl %u/%u diff%s", kn, (unsigned)nd->tmpl, (unsigned)wd->tmpl, s[0] ? s : " none");
+}
 static void spr_check(const NdDraw* w) {
     const uint32_t* rec = spr_pend;
     spr_pend = NULL;
@@ -3093,6 +3107,7 @@ static void spr_check(const NdDraw* w) {
     NdMCtx c;
     memset(&c, 0, sizeof c);
     c.mode = &mode; c.u0 = tex ? &un : NULL; c.i8_0 = 0; c.gv = &gv;
+    c.rgb_scale = rgb_scale; /* S4-1 fix 1: the walker's sticky rgb scale (1 or 2, set by pm_gpu_set_rgb_scale) at the batch; the key diff showed rgb_scale 0/1 */
     c.has_comb = 1; c.comb_w0 = sw_cw0; c.comb_w1 = sw_cw1;
     c.tex_w = tw; c.tex_h = th; c.tss = mode.has_tx ? mode.tw1 : sw_tss;
     c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;
@@ -3108,6 +3123,7 @@ static void spr_check(const NdDraw* w) {
     NdMState st;
     if (nd_model_state(zr, &c, &n, &st) != 1) { spr_fb_n++; spr_why_last = 10u + (unsigned)st.why; spr_log(); return; }
     const unsigned df = spr_cmp(&n, w);
+    if (df == 1) spr_keylog(&st.k, &spr_wk, &n, w); /* S4-1: the first 10 key diffs, field by field */
     if (df) { spr_diff_n++; spr_dfield_last = df; } else spr_eq_n++;
     spr_log();
 }

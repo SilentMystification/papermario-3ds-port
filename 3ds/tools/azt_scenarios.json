@@ -5410,6 +5410,31 @@
         }
       ],
       "reason": "DRAW2 iwa_10 copy of spot_mac01_ndmcheck. Cap 25 s."
+    },
+    {
+      "name": "spot_mac01_sprcheck",
+      "status": "pending",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200. NPC and Mario sprites on screen. Shots at frames 200 to 205 and the sprcheck window line.",
+      "proves": "S4-1 sprite record check (sprcheck): each sprite record (G_PM_SPR) gives the native template key equal to the walker key of its batch. Gate: eq above 0 and diff 0.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 sprcheck shots shotwin=200:6 loglevel=debug",
+      "until": "sprcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "sprcheck window: eq above 0 and diff 0",
+          "regex": "sprcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S4-1 sprcheck copy of spot_mac01_ndmcheck. Cap 25 s."
     }
   ]
 }

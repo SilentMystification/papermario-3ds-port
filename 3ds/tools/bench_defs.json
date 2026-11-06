@@ -555,6 +555,45 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "spot_mac01_sprcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Toad Town mac_01 sprcheck (S4-1): sprite record key vs walker key. Gate eq above 0, diff 0.",
+      "scenario": "spot_mac01_sprcheck",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "sprcheck",
+        "spot"
+      ],
+      "log_metrics": [
+        {
+          "name": "spr_eq",
+          "regex": "sprcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "spr_diff",
+          "regex": "sprcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "spr_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "spr_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
     }
   ],
   "legacy": {
