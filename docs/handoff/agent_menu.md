@@ -1,12 +1,12 @@
 # agent_menu: Select menu epic (plan_menu.md sections 2 and 3)
 
-STATE (branch menu, base nds1)
-- Branch: menu. Base: nds1 (switched from nds1 at start).
-- Audit: done (section 1 below), commit pending in this session.
-- Epics: MENU-A (MN0 to MN2) next. MENU-B, MENU-D, MENU-E after.
-- MENU-C (RES1 to RES3) not now (Not now list in row_MENU.md).
-- Added by coordinator: MN6 remembers last Warp submenu selection (RAM only, no options.ini; log `menu: warp sub restore area <a> row <r>`). Also for PT01c area submenu if it is the MN6 base.
-- Next: MN0 menu shot tool and visible-width pad.
+STATE (branch menu, base nds1, HEAD 74dfe57f4)
+- Audit done: cc1f68720. in = 0, partial = MN3 MN4 MN6 MN9 CH1 to CH4.
+- MN0 + MN1 coded in 74dfe57f4 (menu_fit, pm_gpu_shot_bottom, shotmenu, freeze in pm_main.c, pm_gpu_menu_present). Build NOT run, gate NOT run.
+- BLOCKER: worktree has no assets/us and no ver/us/build (ignored game data in main folder). Junction link refused by permission check (Modify Shared Resources). Not bypassed. Build and Azahar (menu_shot, menu_pause) cannot run here.
+- MN2 (grey) not started: needs present and transfer order confirmed on a shot first.
+- Coordinator add (MN6 restore last selection, RAM only): not started.
+- Next: unblock build (assets from orchestrator), build PM_LANE=menu, shot menu_shot, then MN2.
 
 ## 1. Audit (HEAD of nds1 at start, commit 0fe0497e4 row file)
 
@@ -44,4 +44,5 @@ Evidence: grep of 3ds/src, 3ds/include, 3ds/tools, 3ds/CMakeLists.txt; git log -
 Summary: in = 0. partial = MN3, MN4, MN6, MN9, CH1, CH2, CH3, CH4. not in = the rest in epics A, B, D, E. MENU-C out of scope by row file.
 
 ## 2. Plan detail changes (plan default taken, noted here)
-- (none yet)
+- MN1 present: a frozen frame with no draw (target kept, plan 2.2 facts) presents a menu change. Plan default kept.
+- MN0 pad: plan said pad by visible width; done in menu_fit (pm_gpu.c), cut at 38 columns.
