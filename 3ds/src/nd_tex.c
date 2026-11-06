@@ -47,7 +47,8 @@ void pm_tex_cur_slots(int* a, int* b);
 unsigned pm_tex_slot_key(int i);
 unsigned pm_tex_slot_gen(int i); /* S3N-6 */
 int pm_tex_slot_unit(int i, NdUnit* u);
-int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, NdUnit* u); /* pm_tex.c, S3N-3c */
+int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, const void* img, const void* tlut, NdUnit* u); /* pm_tex.c, S3N-3c, TEXSTALE */
+int pm_tex_slot_clean(int i, const void* img, const void* tlut); /* pm_tex.c, TEXSTALE */
 int pm_tex_slot_words(int i, uint32_t* out);
 void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter);
 void pm_tex_stale_chk(int i, const void* img, const void* pal, unsigned key); /* pm_tex.c, TEXSTALE step 1 */
@@ -98,23 +99,31 @@ int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u) {
     NdTexEnt* e = &tex_ent[id];
     NdUnit t;
     if (!e->key) return 0;
+    /* TEXSTALE: a slot is drawn only when clean for this descriptor (live, not dirty, same img and palette, as the walker lookup). */
     /* S3N-6: the hinted slot still holds the content (its key and generation) and gives the dim: its words, no search */
-    if (*hs >= 0 && pm_tex_slot_key(*hs) == e->key && pm_tex_slot_gen(*hs) == *hg && pm_tex_slot_unit(*hs, &t) == 1 && t.dim == e->w[0]) {
+    if (*hs >= 0 && pm_tex_slot_clean(*hs, e->d.img, e->d.pal) && pm_tex_slot_key(*hs) == e->key && pm_tex_slot_gen(*hs) == *hg && pm_tex_slot_unit(*hs, &t) == 1 && t.dim == e->w[0]) {
         pm_tex_stale_chk(*hs, e->d.img, e->d.pal, e->key);
         u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
         return 1;
     }
-    int s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], &t);
+    int s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], e->d.img, e->d.pal, &t);
     if (s < 0) {
+        /* a miss or a dirty copy: load through the walker (pm_tex_load validates a dirty slot by its hash), then take the key of the bytes now loaded */
         const NdTexDesc* d = &e->d;
         pm_tex_set_wrap(d->cms, d->cmt, d->masks, d->maskt);
         if (!pm_tex_load(d->img, d->fmt, d->siz, d->w, d->h, d->pal, d->pal_n, d->stride)) return 0;
-        s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], &t);
+        int a, b;
+        pm_tex_cur_slots(&a, &b);
+        if (a >= 0) e->key = pm_tex_slot_key(a);
+        if (!e->key) return 0;
+        s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], e->d.img, e->d.pal, &t);
         if (s < 0) return 0;
     }
-    *hs = s; *hg = pm_tex_slot_gen(s);
+    /* force: the unit words are sent again when the slot or its generation changed (E: a rewritten slab at the same address is not seen by the shadow) */
+    u->force = s != *hs || *hg != pm_tex_slot_gen(s);
     pm_tex_stale_chk(s, e->d.img, e->d.pal, e->key);
-    u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
+    *hs = s; *hg = pm_tex_slot_gen(s);
+    u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type;
     return 1;
 }
 int nd_tex_unit(int id, NdUnit* u) {

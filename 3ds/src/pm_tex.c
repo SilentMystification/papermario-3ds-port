@@ -1718,13 +1718,20 @@ int pm_tex_slot_unit(int i, NdUnit* u) {
     return 1;
 }
 
+/* TEXSTALE: 1 when slot i may be drawn for an image and palette: live, not dirty (its source was overwritten, slot_valid has not rehashed it),
+ * and the same img and tlut as the walker lookup (pm_tex_load compares these). */
+int pm_tex_slot_clean(int i, const void* img, const void* tlut) {
+    if (i < 0 || i >= SLOTS || !slots[i].live || slots[i].dirty) return 0;
+    return slots[i].img == img && slots[i].tlut == tlut;
+}
 /* S3N-3c: the live slot whose content key, format, size and unit 0 dim match (the bound slot need not be it). Equal copies: the most recently used one
- * (the walker binds the copy it loaded last). Fills u with its unit words. -1: none. */
-int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, NdUnit* u) {
+ * (the walker binds the copy it loaded last). TEXSTALE: only a clean slot (pm_tex_slot_clean) for img and tlut. Fills u with its unit words. -1: none. */
+int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, const void* img, const void* tlut, NdUnit* u) {
     int best = -1; unsigned best_stamp = 0; NdUnit t;
     if (!key) return -1;
     for (int i = 0; i < SLOTS; i++) {
         if (!slots[i].live || slots[i].shash != key || slots[i].fmt != fmt || slots[i].siz != siz) continue;
+        if (!pm_tex_slot_clean(i, img, tlut)) continue;
         if (best >= 0 && slots[i].stamp < best_stamp) continue;
         if (pm_tex_slot_unit(i, &t) != 1 || t.dim != dim) continue;
         best = i; best_stamp = slots[i].stamp; *u = t;
