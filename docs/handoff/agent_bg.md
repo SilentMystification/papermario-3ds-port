@@ -1,10 +1,9 @@
 # agent_bg: background image faults (rows BG1, BG2)
 
 ## STATE
-- BG1 and BG2 (one fix): NOMASK clamp of COPY texrect s1, t1 to the tile end (pm_gbi.c gbi_texrect), commit 3bcc90638 on nds1. Gate (lane bgf, bg_clamp_mac00 f100-113): max s end 296.0, max t end 199.92, 46 of 360 COPY lines clamped. Clean build of the commit: rc 0, 0 errors. One shot checked by eye: normal Toad Town frame.
-- Padding (pm_tex.c): the upload already pads with the edge texel (tx1_map and expand clamp to w-1, h-1). No pad change made, so the GPU pad equals column 295.
-- Not yet: BG1 flicker at mac_00 is unverified (no shot shows the strip). BG2 garbled row not shot. Next: shots of mac_00 frames 115-155 on the clamp build, BG2 row check on mac_00, mac_01, sbk_56.
-- Falsified: the F07-7 sky extension (branch bg1-noedge, deleted).
+- BG1 and BG2 audit (code, 2026-11-06): the sky and wave texrects are G_TF_POINT (background.c L297). Mask 0 tiles (sky, G_TX_NOMASK) map to NW_CLAMP_EDGE on the GPU (nd_tex.c nd_tex_wrap_of), and the pad past 296 and 200 is the edge texel (pm_tex.c tx1_map, expand). So samples past the image read column 295 / row 199, and negatives read column 0 (N64 clamp). Wide copies at +-296 game px zoom to +-355.2 px with the texel period, and each copy has the main rect's s range. No other path samples outside the image after the clamp (commit 3bcc90638).
+- The clamp (3bcc90638) is redundant in pixels with the edge pad: it only changes the slope of a rect whose s1 passes 296. Kept (N64 behaviour), not a flicker fix.
+- BG1 flicker: cause not named. No shot showed the strip. Next: none in the scene path; the console check (coordinator) decides.
 
 ## How the background is drawn
 - src/background_gfx.c gfx_draw_background (L336): default branch fills the screen, then calls appendGfx_background_texture (src/background.c L130) when BACKGROUND_FLAG_TEXTURE is set.
