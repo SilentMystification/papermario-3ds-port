@@ -2533,13 +2533,14 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     i += pm_gbi_gvkey(s + i, NDMC_SW - i);
     while (i < NDMC_SW) s[i++] = 0;
 }
+static int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg); /* S3N-6 check: 1 when the entry is valid */
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
-    int tex = 0, i8 = 0, hs = -1; unsigned hg = 0; /* S3N-6: the unit slot hint of the entry */
+    int tex = 0, i8 = 0, hs = -1, id = -1; unsigned hg = 0; /* S3N-6: the unit slot hint of the entry */
     const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
     if (gfx != NULL && ds == NULL) { nd_nat_why = 9; return -1; } /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
     if (ds) { /* S3N-3c: the unit 0 words from the descriptor (nd_tex_get, nd_tex_unit), not from the walker-bound slot */
-        int id = nd_tex_get(ds);
+        id = nd_tex_get(ds);
         if (id < 0 || !nd_tex_unit_hint(id, &hs, &hg, &mdl_un)) { nd_nat_why = 9; return -1; }
         tex = 1;
         i8 = ds->fmt == 4 && ds->siz == 1; /* G_IM_FMT_I, G_IM_SIZ_8b: the unit 0 raster is I8 */
@@ -2560,7 +2561,9 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = nd_st.om_h; c.base_ol = nd_st.om_l; c.known_h = nd_st.om_kh; c.known_l = nd_st.om_kl; /* B8 */
     int n = nd_model_draw(rec, &c, geo, emit);
-    if (n >= 0) nd_mc_store(mk, pm_gbi_combined_ptr(), ds != NULL, hs, hg); /* S3N-6: the draws of this key, with the matrix and the slot they were cut with */
+    int valid = 0;
+    if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
+    if (n >= 0 && !valid) nd_mc_store(mk, ds != NULL, hs, hg); /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
     return n;
 }
 void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
@@ -2576,18 +2579,96 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 }
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
-static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last;
+static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf;
+static void ndn_log(void) {
+    unsigned f = pm_frame_count();
+    if (f % 300u == 0 && f != ndn_f_last) {
+        ndn_f_last = f;
+        pm_log_prof_line("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, nd_mc_clears());
+        pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u", f, ndn_nokey, ndn_rng, ndn_texf);
+    }
+}
+/* S3N-6: the static ranges of a cached entry against the fresh ones (pm_dlc_native_ranges with the list and the geometry of the key). The matrix enters
+ * only here: the box test and the room of the ranges read it. */
+static int model_ranges_eq(const NdMEnt* e, const NdRng* r, int nr) {
+    if (nr != (int)e->nraw) return 0;
+    for (int i = 0; i < nr; i++) if (r[i].sd != e->raw[i].sd || r[i].nidx != e->raw[i].nidx || r[i].geom != e->raw[i].geom) return 0;
+    return 1;
+}
+/* S3N-6 check (ndmcheck, emit 0): a cached entry of key k that the hit would take (same ranges) against the fresh draws of this record: every field the draw
+ * sends. hit / miss counts the entries; diff counts the differing fields (the first 20 lines are printed). The unit words are the hinted ones, as the hit sends them. */
+static unsigned ndc_hit, ndc_miss, ndc_diff, ndc_lines, ndc_copy;
+static unsigned ndc_bits(float f) { unsigned u; memcpy(&u, &f, 4); return u; }
+static __attribute__((cold, noinline)) void ndc_cmp(const char* nm, unsigned a, unsigned b) {
+    if (a == b) return;
+    ndc_diff++;
+    if (ndc_lines++ < 20) pm_log_prof_line("ndmcache diff %s cache %x fresh %x", nm, a, b);
+}
+static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg) {
+    (void)hs; (void)hg;
+    NdMEnt* e = nd_mc_find(k);
+    NdRng rng[ND_RAW_MAX];
+    int nr = e ? pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX) : -3;
+    if (!e || !model_ranges_eq(e, rng, nr)) { ndc_miss++; return 0; }
+    ndc_hit++;
+    NdUnit u; memset(&u, 0, sizeof u);
+    if (e->tex) { if (!ds || id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndc_diff++; return 1; } }
+    unsigned fn = 0;
+    while (nd_model_native(fn)) fn++;
+    ndc_cmp("cache.n", e->n, fn);
+    for (unsigned j = 0; j < e->n && j < fn; j++) {
+        const NdNat* c = nd_mc_nat(e, j);
+        const NdNat* f = nd_model_native(j);
+        ndc_cmp("tmpl", (unsigned)c->d.tmpl, (unsigned)f->d.tmpl);
+        for (int i = 0; i < 6; i++) ndc_cmp("tev", c->d.tev_col[i], f->d.tev_col[i]);
+        ndc_cmp("buf_col", c->d.buf_col, f->d.buf_col); ndc_cmp("has_buf", c->d.has_buf, f->d.has_buf);
+        const NdUnit* cu = e->tex ? &u : &c->d.u[0];
+        ndc_cmp("u0.dim", cu->dim, f->d.u[0].dim); ndc_cmp("u0.param", cu->param, f->d.u[0].param);
+        ndc_cmp("u0.lod", cu->lod, f->d.u[0].lod); ndc_cmp("u0.type", cu->type, f->d.u[0].type);
+        if (cu->addr != f->d.u[0].addr) ndc_copy++; /* an equal copy (same texels) at another address: counted apart */
+        for (int i = 0; i < 4; i++) { ndc_cmp("uvso", ndc_bits(c->d.uvso[i]), ndc_bits(f->d.uvso[i])); ndc_cmp("cmul", ndc_bits(c->d.cmul[i]), ndc_bits(f->d.cmul[i])); ndc_cmp("cadd", ndc_bits(c->d.cadd[i]), ndc_bits(f->d.cadd[i])); }
+        for (int i = 0; i < 2; i++) ndc_cmp("zmix", ndc_bits(c->d.zmix[i]), ndc_bits(f->d.zmix[i]));
+        ndc_cmp("sd", (unsigned)(uintptr_t)c->sd, (unsigned)(uintptr_t)f->sd); ndc_cmp("nidx", c->nidx, f->nidx);
+    }
+    return 1;
+}
 int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     int mode_ok = 0;
     int n = model_draw(rec, modew, combw, gfx, texidx, geo, 1, &mode_ok, mk);
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
     else ndn_fb++;
-    unsigned f = pm_frame_count();
-    if (f % 300u == 0 && f != ndn_f_last) {
-        ndn_f_last = f;
-        pm_log_prof_line("ndm f%u native %u fb %u wref %u", f, ndn_rec, ndn_fb, ndn_draws);
-    }
+    ndn_miss++;
+    ndn_log();
     return n;
+}
+/* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
+ * and, for a textured record, the unit 0 words of the hinted slot (nd_tex_unit_hint). 1: drawn. 0: no entry, other ranges, or no texture: the caller
+ * applies the record (its matrix ops are done). */
+int pm_gpu_model_hit(const NdMKey* k) {
+    NdMEnt* e = nd_mc_find(k);
+    if (!e) { ndn_nokey++; return 0; }
+    NdRng rng[ND_RAW_MAX];
+    int nr = pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX);
+    if (!model_ranges_eq(e, rng, nr)) { ndn_rng++; return 0; }
+    NdUnit u; memset(&u, 0, sizeof u);
+    if (e->tex) {
+        const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);
+        int id = ds ? nd_tex_get(ds) : -1;
+        if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
+    }
+    float comb[4][4], pal0[16];
+    nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
+    pm_gpu_pcomp_native(pal0, comb);
+    pm_gpu_flush();
+    for (unsigned j = 0; j < e->n; j++) {
+        NdNat* q = nd_mc_nat(e, j);
+        memcpy(q->pal, pal0, sizeof pal0);
+        if (e->tex) q->d.u[0] = u;
+        pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
+    }
+    ndn_rec++; ndn_draws += e->n; ndn_hit++;
+    ndn_log();
+    return 1;
 }
 /* S3N-3d: diff count per compared field (the first 20 lines are printed; the counts show every field) */
 static char ndm_fn[48][24]; static unsigned ndm_fn_n[48], ndm_fn_used;
@@ -2602,6 +2683,7 @@ static __attribute__((cold, noinline)) void ndm_end_log(void) {
     pm_log_prof_line("ndmcheck f%u recs %u eq %u diff %u fb %u nodraw %u nost %u why %u %u %u %u %u %u %u %u", f, ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_nodraw, ndm_nost, ndm_why[1], ndm_why[2], ndm_why[3], ndm_why[4], ndm_why[5], ndm_why[6], ndm_why[7], ndm_why[8]);
     pm_log_prof_line("ndmcheck why9 %u why10 %u why11 %u why12 %u badop %02x n %u", ndm_why[9], ndm_why[10], ndm_why[11], ndm_why[12], ndm_badop >> 24, ndm_badn);
     pm_log_prof_line("ndmcheck refused batches %u", ndm_refused_total);
+    pm_log_prof_line("ndmcache f%u hit %u miss %u diff %u copy %u", f, ndc_hit, ndc_miss, ndc_diff, ndc_copy);
     { char b[200]; unsigned p = 0; for (unsigned i = 0; i < ndm_fn_used && p < 150; i++) p += (unsigned)snprintf(b + p, sizeof b - p, "%s %u ", ndm_fn[i], ndm_fn_n[i]); pm_log_prof_line("ndmcheck fields %s", b); }
 }
 void pm_gpu_ndm_end(void) {

@@ -318,13 +318,13 @@ const NdNat* nd_model_native(unsigned j);
 #define NDMC_RW 28
 #define NDMC_SW 64
 typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; } NdMKey;
-typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; float comb[4][4]; int hs; unsigned hg; unsigned off, n; uint8_t used, tex; } NdMEnt;
+#define ND_RAW_MAX 16
+typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; NdRng raw[ND_RAW_MAX]; uint32_t geom; int hs; unsigned hg; unsigned off, n, nraw; uint8_t used, tex; } NdMEnt; /* raw: the static ranges the draws were cut from (the hit compares them with the fresh ones) */
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
 NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k, NULL when none */
-NdMEnt* nd_mc_store(const NdMKey* k, const float comb[4][4], int tex, int hs, unsigned hg); /* the draws of the last nd_model_draw (it returned >= 0) */
+NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and ranges of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges */
 NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
 unsigned nd_mc_clears(void);
-const float (*pm_gbi_combined_ptr(void))[4]; /* S3N-6 (pm_gbi.c): the walker matrix the static ranges are cut with */
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
 /* S3N-3d: the combine choice of one draw (pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,

@@ -70,16 +70,19 @@ static unsigned hd_gen = 1; /* S3N-6: bumped by each handle write */
 void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
                        unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux) {
     if (index < 0 || index >= ND_HANDLE_N) return;
-    hd_gen++; /* S3N-6: the cached model draws of the record see the new handle */
-    hd_ok[index] = 0; hd_gfx[index] = gfx;
-    if (extra != 0 || has_aux || !raster || w == 0 || h == 0 || siz > 3) return; /* B4: common case only */
     NdTexDesc d;
     memset(&d, 0, sizeof d);
-    d.img = raster; d.pal = palette;
-    d.fmt = (uint8_t)fmt; d.siz = (uint8_t)siz; d.cms = (uint8_t)wrap_w; d.cmt = (uint8_t)wrap_h; d.masks = (uint8_t)masks; d.maskt = (uint8_t)maskt;
-    d.w = (uint16_t)w; d.h = (uint16_t)h; d.stride = (uint16_t)w;
-    d.pal_n = palette ? (siz == 0 ? 16u : siz == 1 ? 256u : 0u) : 0u; /* gDPLoadTLUT_pal16, pal256 */
-    hd_desc[index] = d; hd_ok[index] = 1;
+    int ok = !(extra != 0 || has_aux || !raster || w == 0 || h == 0 || siz > 3); /* B4: common case only */
+    if (ok) {
+        d.img = raster; d.pal = palette;
+        d.fmt = (uint8_t)fmt; d.siz = (uint8_t)siz; d.cms = (uint8_t)wrap_w; d.cmt = (uint8_t)wrap_h; d.masks = (uint8_t)masks; d.maskt = (uint8_t)maskt;
+        d.w = (uint16_t)w; d.h = (uint16_t)h; d.stride = (uint16_t)w;
+        d.pal_n = palette ? (siz == 0 ? 16u : siz == 1 ? 256u : 0u) : 0u; /* gDPLoadTLUT_pal16, pal256 */
+    }
+    /* S3N-6: the handle generation moves only when the handle changes (a reload of the same descriptor keeps the cached draws) */
+    if (hd_ok[index] != ok || hd_gfx[index] != gfx || (ok && memcmp(&hd_desc[index], &d, sizeof d) != 0)) hd_gen++;
+    hd_gfx[index] = gfx; hd_ok[index] = (uint8_t)ok;
+    if (ok) hd_desc[index] = d;
 }
 
 const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx) {
@@ -217,6 +220,8 @@ static NdNat nat[ND_NAT_MAX];
 static int nat_n;
 int nd_nat_why; /* the reason of the last fallback: the nd_model_state why, or 11 too many draws, 12 the list is not static */
 const NdNat* nd_model_native(unsigned j) { return j < (unsigned)nat_n ? &nat[j] : NULL; }
+static NdRng nat_rng[ND_RAW_MAX]; /* S3N-6: the static ranges of the last nd_model_draw (copied at its start) */
+static int nat_nr; static uint32_t nat_geom;
 
 /* ---- S3N-6: the native model cache (see nd.h NdMKey). The draws of an entry live in a pool; an entry names its first draw and the count. ---- */
 #define NDMC_N 1024u
@@ -254,11 +259,12 @@ static NdMEnt* mc_slot(const NdMKey* k) {
         h = (h + 1u) & (NDMC_N - 1u);
     }
 }
-NdMEnt* nd_mc_store(const NdMKey* k, const float comb[4][4], int tex, int hs, unsigned hg) {
-    if (nat_n > (int)ND_NAT_MAX) return NULL;
+NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
+    if (nat_n > (int)ND_NAT_MAX || nat_nr > ND_RAW_MAX || nat_nr < 0) return NULL;
     NdMEnt* e = mc_slot(k);
     if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
-    memcpy(e->comb, comb, sizeof e->comb);
+    memcpy(e->raw, nat_rng, sizeof(NdRng) * (unsigned)nat_nr);
+    e->nraw = (unsigned)nat_nr; e->geom = nat_geom;
     e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
     e->off = mc_pool_n; e->n = (unsigned)nat_n;
     for (int j = 0; j < nat_n; j++) {
@@ -288,6 +294,8 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
     const uint32_t entry = (c0->geom_base & c0->mode->gand) | c0->mode->gor;
     int nr = pm_dlc_native_ranges(list, entry, rng, 512u);
     if (nr < 0) return (nd_nat_why = nr == -2 ? 11 : 12, -1);
+    nat_nr = nr <= ND_RAW_MAX ? nr : -1; nat_geom = entry;
+    if (nat_nr >= 0) memcpy(nat_rng, rng, sizeof(NdRng) * (unsigned)nr);
     for (int r = 0; r < nr; r++) {
         NdMCtx c = *c0;
         NdGvP gv;

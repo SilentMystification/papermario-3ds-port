@@ -4318,7 +4318,14 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
 static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {
     pm_gbi_run((void*)l, n * 8u);
 }
-static __attribute__((noinline)) void rec_apply(const Gfx* q) {
+/* S3N-6: the matrix ops of a record (R1, R2 load, R8 billboard), the first part of rec_apply. A cache hit runs them before it decides; a
+ * miss after that skips them (mdone) and runs the rest of rec_apply in the old order. */
+static __attribute__((noinline)) void rec_matrix(const Gfx* q) {
+    u32 f = q[3].words.w0;
+    if (!(f & 256u)) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1);
+    if (q[8].words.w0) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1);
+}
+static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
     rec_n++;
     gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
@@ -4345,11 +4352,11 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q) {
     } else if (f & 2u) {
         rec_fog(q[4].words.w0, q[5].words.w1); /* S3F-2: fog after the render mode, as the old word order */
     }
-    if (!(f & 256u)) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
+    if (!(f & 256u) && !mdone) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w0); /* S3G-1: custom gfx pre, after the matrix as the old order */
     if (q[9].words.w0) rec_op(q[9].words.w0, q[9].words.w1); /* S3F-2c: panner tile size, main then aux, as the old order */
     if (q[10].words.w0) rec_op(q[10].words.w0, q[10].words.w1);
-    if (q[8].words.w0) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
+    if (q[8].words.w0 && !mdone) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
 extern int pm_gpu_ndm_on(void); /* S3N-3b: switch ndmcheck */
@@ -4357,12 +4364,21 @@ extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const u
 extern void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 */
 extern void pm_gpu_ndm_end(void);
 extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
+extern int pm_gpu_model_hit(const NdMKey* k); /* S3N-6: the cached draws of the key, 1 when drawn */
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     NdMKey mk;
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
-    rec_apply(q);
     int ndm = pm_gpu_ndm_on();
-    int nat = 0;
+    int nat = 0, mdone = 0;
+    if (nd_mc_find(&mk)) { rec_matrix(q); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
+    if (!ndm && mdone && pm_gpu_model_hit(&mk)) {
+        /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw. */
+        rec_n++;
+        gv_epoch++;
+        nat = 1;
+        sc_ok = 0; sr_ok = 0;
+    } else {
+    rec_apply(q, mdone);
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
         q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
     else if (pm_gpu_model_native((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
@@ -4371,6 +4387,7 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
          * sends its combine and render mode again at its next op (the shadows of those ops are cleared). */
         nat = 1;
         sc_ok = 0; sr_ok = 0;
+    }
     }
     if (!nat) rec_dl((const Gfx*)(uintptr_t)q[12].words.w0);  /* S3G-1: geometry (0 when none) */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
