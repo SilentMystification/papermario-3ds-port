@@ -810,6 +810,72 @@ static void boss_tick(void) {
     if (boss_keep_on) { boss_fight = 1; boss_seen_battle = 0; boss_bf = 0; boss_wf = 0; }
 }
 
+/* BT2: the Battles folder (Boss and Battles > Battles > area > formation). Every formation of pm_battle_table.h (BT1). A start in the world
+ * is the battle switch of the debug switch battle= (set_battle_stage, load_battle), taken 30 world frames after the menu closes. No warp,
+ * no story change. Other modes: a message (named gap). */
+static const struct { const char* label; const char* battle; const char* area; } battle_tab[] = {
+#include "pm_battle_table.h"
+};
+static int bt_pending = -1;
+static unsigned bt_frames;
+int pm_battle_count(void) { return (int)ARRAY_COUNT(battle_tab); }
+const char* pm_battle_label(int k) { return k >= 0 && k < pm_battle_count() ? battle_tab[k].label : ""; }
+/* the areas, in table order: the distinct area names */
+int pm_battle_area_count(void) {
+    int k, n = 0;
+    for (k = 0; k < pm_battle_count(); k++) if (k == 0 || strcmp(battle_tab[k].area, battle_tab[k - 1].area) != 0) n++;
+    return n;
+}
+static int battle_area_start(int a) {
+    int k, n = -1;
+    for (k = 0; k < pm_battle_count(); k++) if (k == 0 || strcmp(battle_tab[k].area, battle_tab[k - 1].area) != 0) { if (++n == a) return k; }
+    return -1;
+}
+const char* pm_battle_area_name(int a) {
+    static char nb[24];
+    int k = battle_area_start(a), i;
+    if (k < 0) return "";
+    snprintf(nb, sizeof nb, "%s", battle_tab[k].area);
+    for (i = 0; nb[i]; i++) if (nb[i] >= 'a' && nb[i] <= 'z') nb[i] = (char)(nb[i] - 32);
+    return nb;
+}
+/* formations of area a: the count, and the table index of row r */
+int pm_battle_area_rows(int a) {
+    int k = battle_area_start(a), n = 0;
+    if (k < 0) return 0;
+    for (; k < pm_battle_count() && strcmp(battle_tab[k].area, battle_tab[battle_area_start(a)].area) == 0; k++) n++;
+    return n;
+}
+int pm_battle_area_item(int a, int r) {
+    int k = battle_area_start(a);
+    return k < 0 ? -1 : k + r;
+}
+/* the start: in the world, 30 frames later (battle_tick). Returns 1 when it is queued. */
+int pm_battle_launch(int k) {
+    if (get_game_mode() != GAME_MODE_WORLD) { pm_menu_msg("Battle start needs the world"); return 0; }
+    if (k < 0 || k >= pm_battle_count()) return 0;
+    bt_pending = k;
+    bt_frames = 0;
+    return 1;
+}
+static void battle_tick(void) {
+    s32 formation, stage;
+    char v[64], *c;
+    if (bt_pending < 0) return;
+    if (get_game_mode() != GAME_MODE_WORLD) { bt_pending = -1; return; }
+    if (++bt_frames < 30) return;
+    v[0] = 0;
+    strncat(v, battle_tab[bt_pending].battle, sizeof v - 1);
+    c = strchr(v, ':');
+    formation = battle_name_value(v, c ? (unsigned)(c - v) : (unsigned)strlen(v), BTL_KMR_1_FORMATION_00);
+    stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
+    pm_log("battle: start formation %d stage %d", (int)formation, (int)stage);
+    bt_pending = -1;
+    gEncounterState = ENCOUNTER_STATE_NONE;
+    set_battle_stage(stage);
+    load_battle(formation);
+}
+
 /* WARPFIX2: the fight is over when the world is back after the battle. Then the saved story, HP/FP and partner come back. Debug switch
  * bossend=<n>: the battle ends by the real BATTLE_STATE_END_BATTLE after n battle frames (test only; a player ends the fight in the battle). */
 static void boss_restore_tick(void) {
@@ -1297,6 +1363,7 @@ void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
     model_dump(frame);
     boss_tick();
+    battle_tick(); /* BT2 */
     bypass_tick();
     pos_tick(frame); /* POSWARP */
     pm_cheat_tick(); /* CH6: moon jump, after the game logic of this step */

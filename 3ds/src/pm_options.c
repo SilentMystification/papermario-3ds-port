@@ -276,7 +276,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_CH8 = 380, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_CH8 = 380, RW_BATTLESF = 347, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
 /* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
 int pm_dbgg_spawn_count(void); int pm_dbgg_spawn_id(int row); void pm_dbgg_spawn(int id);
 const char* pm_partner_name(int i); const char* pm_partner_value(int i); int pm_dbgg_partner_on(int i); void pm_dbgg_partner_set(int i, int on); int pm_dbgg_partner_level(int i, int dir);
@@ -317,14 +317,14 @@ static int tab_ids(int tab, int mode, int* ids) {
 /* MN4: the folder page (tab PM_OPT_SUB) shows the Warp area rows (0) or the Boss rows (1). CH1: the Set Stats folder (2), stat ids below. */
 static int sub_kind, sub_parent = -1; /* sub_parent: the folder kind a nested page was opened from (Boss, from Boss and Battles), else -1 */
 /* LAYOUT: the Debug and Partners folders (sub kinds 5 to 10). Each row is a row id of this file; the folder rows of the tab are in fold_tab. */
-static const int fl_bossbat[] = { RW_BOSSFOLDER };
+static const int fl_bossbat[] = { RW_BOSSFOLDER, RW_BATTLESF }; /* BT2: Battles next to Boss */
 static const int fl_partners[] = { RW_GIVE + 0, RW_PART + 1, RW_PART + 2, RW_PART + 3, RW_PART + 4, RW_PART + 5, RW_PART + 6, RW_PART + 7, RW_PART + 8, RW_PART + 9, RW_PART + 10, RW_PART + 11 }; /* CH4: Enable partners, then the 11 partners */
 static const int fl_hud[] = { RW_DBG + 0, RW_DBG + 1, RW_DBG + 8, RW_DBG + 10 };
 static const int fl_log[] = { RW_DBG + 4, RW_DBG + 5, RW_DBG + 9, RW_PROF };
 static const int fl_render[] = { RW_DBG + 2, RW_DBG + 3, RW_DBG + 7 };
 static const int fl_game[] = { RW_DBG + 6 };
 static const int* const fl_ids[6] = { fl_bossbat, fl_partners, fl_hud, fl_log, fl_render, fl_game };
-static const int fl_n[6] = { 1, 12, 4, 4, 3, 1 };
+static const int fl_n[6] = { 2, 12, 4, 4, 3, 1 };
 static const char* const fl_name[12] = { "", "", "", "", "", "Boss and Battles", "Partners", "HUD", "Logging and Profiling", "Render", "Game", "Spawn item" };
 static const struct { int id, kind; const char* name; } fold_tab[] = {
     { RW_BOSSBAT, 5, "Boss and Battles >" }, { RW_PARTF, 6, "Partners >" }, { RW_HUDF, 7, "HUD >" },
@@ -332,6 +332,8 @@ static const struct { int id, kind; const char* name; } fold_tab[] = {
 static int fold_index(int id) { for (unsigned k = 0; k < sizeof fold_tab / sizeof fold_tab[0]; k++) if (fold_tab[k].id == id) return (int)k; return -1; }
 static const int setstat_k[5] = { 0, 1, 2, 3, 5 }; /* Max HP, Max FP, BP, Level, Star points (Coins is a Cheats tab row) */
 int pm_optui_sub_kind(void) { return sub_kind; }
+static int bt_row; /* BT2: the area row the formation page was opened from */
+int pm_battle_area_count(void); int pm_battle_area_rows(int a); int pm_battle_area_item(int a, int r); const char* pm_battle_area_name(int a); const char* pm_battle_label(int k); int pm_battle_launch(int k);
 /* Set Stats: the Level row (setstat_k 3) is read only, the cursor skips it */
 int pm_optui_readonly(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < 5 && setstat_k[row] == 3; }
 /* Set Stats: HP, FP, BP and Level draw in red when the computed level is above 27 */
@@ -345,6 +347,8 @@ int pm_optui_warn(void) { return warp_warn; }
 void pm_optui_warn_confirm(void) { warp_warn = 0; }
 /* B or A on the folder: a level 2 page pops to the area list and returns that area row (>= 0); a level 1 page closes the folder (-1). */
 int pm_optui_sub_pop(int row) {
+    if (sub_kind == 13) { sub_kind = 12; sub_area = -1; return bt_row; } /* BT2: formations back to the area list */
+    if (sub_kind == 12) { sub_kind = 5; sub_parent = -1; return 1; } /* BT2: area list back to Boss and Battles (row 1, Battles) */
     if (sub_kind == 1 && sub_parent == 5) { sub_kind = 5; sub_parent = -1; warp_warn = 0; return 0; } /* LAYOUT: Boss page back to Boss and Battles (row 0) */
     if (!sub_kind && sub_area >= 0) {
         warp_mem_area = sub_area; warp_mem_row = row;
@@ -375,6 +379,8 @@ const char* pm_optui_sub_name(void) {
     if (sub_kind == 3) return "Badges";
     if (sub_kind == 4) return "Key items";
     if (sub_kind == 2) return "Set Stats";
+    if (sub_kind == 12) return "Boss and Battles > Battles";
+    if (sub_kind == 13) { static char bn[64]; snprintf(bn, sizeof bn, "Boss and Battles > Battles > %s", pm_battle_area_name(sub_area)); return bn; }
     if (sub_kind >= 5) return fl_name[sub_kind];
     if (sub_kind == 1) return sub_parent == 5 ? "Boss and Battles > Boss" : "Boss";
     if (sub_area < 0) return "Warp area";
@@ -395,6 +401,8 @@ static int folder_row(int id, int* g) {
 static int row_id(int tab, int row, int mode) {
     int ids[48], n;
     if (tab == PM_OPT_SUB && sub_kind == 11) return RW_SPAWN + row; /* CH5 */
+    if (tab == PM_OPT_SUB && sub_kind == 12) return RW_BTLAREA + row; /* BT2 */
+    if (tab == PM_OPT_SUB && sub_kind == 13) return RW_BTLROW + pm_battle_area_item(sub_area, row);
     if (tab == PM_OPT_SUB && sub_kind >= 5) return row >= 0 && row < fl_n[sub_kind - 5] ? fl_ids[sub_kind - 5][row] : RW_BACK;
     if (tab == PM_OPT_SUB && sub_kind == 2) return RW_STAT + setstat_k[row];
     if (tab == PM_OPT_SUB && sub_kind == 3) return RW_BADGE + row;
@@ -410,7 +418,7 @@ int pm_optui_alert(int tab, int row, int mode) { int id = row_id(tab, row, mode)
 int pm_optui_rows(int tab, int mode) {
     int ids[48];
     if (tab == PM_OPT_SUB && warp_warn) return 2;
-    if (tab == PM_OPT_SUB) return sub_kind == 11 ? pm_dbgg_spawn_count() : sub_kind >= 5 ? fl_n[sub_kind - 5] : sub_kind >= 3 ? 1 + pm_dbgg_item_count(sub_kind == 3 ? 1 : 2) : sub_kind == 2 ? 5 : sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_preset_count() + pm_warp_area_count();
+    if (tab == PM_OPT_SUB) return sub_kind == 12 ? pm_battle_area_count() : sub_kind == 13 ? pm_battle_area_rows(sub_area) : sub_kind == 11 ? pm_dbgg_spawn_count() : sub_kind >= 5 ? fl_n[sub_kind - 5] : sub_kind >= 3 ? 1 + pm_dbgg_item_count(sub_kind == 3 ? 1 : 2) : sub_kind == 2 ? 5 : sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_preset_count() + pm_warp_area_count();
     return tab_ids(tab, mode, ids);
 }
 const char* pm_optui_label(int tab, int row, int mode) {
@@ -424,6 +432,9 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id > RW_PART && id <= RW_PART + 11) return pm_partner_name(id - RW_PART); /* CH4 */
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return pm_item_name(pm_dbgg_spawn_id(id - RW_SPAWN)); /* CH5 */
     if (id == RW_MOON) return "Moon jump"; /* CH6 */
+    if (id == RW_BATTLESF) return "Battles >"; /* BT2 */
+    if (id >= RW_BTLAREA && id < RW_BTLAREA + 100) return pm_battle_area_name(id - RW_BTLAREA); /* BT2 */
+    if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_label(id - RW_BTLROW); /* BT2 */
     if (id >= RW_CH8 && id < RW_CH8 + 10) { static const char* const cl8[10] = { "Boots level", "Hammer level", "Max star spirits", "Star pieces", "Story", "Inventory item", "Fill inventory", "Save position", "Load position", "Instant win" }; return cl8[id - RW_CH8]; } /* CH8 */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { static const char* const cl[5] = { "Infinite HP", "Infinite FP", "Infinite star power", "No battles", "Speed x2" }; return cl[id - RW_CHEAT]; } /* CH7 */
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "Toggle all" : pm_item_name(pm_dbgg_item_id(g, folder_row(id, &g) - 1));
@@ -459,6 +470,8 @@ const char* pm_optui_value(int tab, int row, int mode) {
     if (id == RW_CSTATS || id == RW_CBADGES || id == RW_CKEYS || fold_index(id) >= 0) return "A: open";
     if (id > RW_PART && id <= RW_PART + 11) return pm_partner_value(id - RW_PART); /* CH4 */
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return "A: spawn"; /* CH5 */
+    if (id == RW_BATTLESF || (id >= RW_BTLAREA && id < RW_BTLAREA + 100)) return "A: open"; /* BT2 */
+    if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return "A: fight"; /* BT2 */
     if (id == RW_MOON) return pm_cheat_moon_get() ? "On" : "Off"; /* CH6 */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) return pm_cheat_get(id - RW_CHEAT) ? "On" : "Off"; /* CH7 */
     if (id >= RW_CH8 && id < RW_CH8 + 10) return pm_dbgg_ch8_text(id - RW_CH8); /* CH8 */
@@ -500,6 +513,7 @@ int pm_optui_act(int tab, int row, int mode);
 int pm_optui_step(int tab, int row, int dir, int mode) {
     int id = row_id(tab, row, mode), g;
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return 0; /* CH5: one A spawns one item */
+    if (id == RW_BATTLESF || (id >= RW_BTLAREA && id < RW_BTLROW + 1000)) return 0; /* BT2: no value */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 1; } /* CH6: left or right flips it */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7: flips */
     if (id >= RW_CH8 && id < RW_CH8 + 6) { pm_dbgg_ch8_step(id - RW_CH8, dir); return 1; } /* CH8: value rows step */
@@ -544,6 +558,9 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id == RW_CBADGES) { sub_kind = 3; sub_area = -1; return 6; } /* CH2: the Badges folder */
     if (id == RW_CKEYS) { sub_kind = 4; sub_area = -1; return 6; } /* CH3: the Key items folder */
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) { pm_dbgg_spawn(pm_dbgg_spawn_id(id - RW_SPAWN)); return 0; } /* CH5 */
+    if (id == RW_BATTLESF) { sub_parent = tab == PM_OPT_SUB ? sub_kind : -1; sub_kind = 12; sub_area = -1; return 6; } /* BT2: Battles folder (Boss and Battles row 1) */
+    if (id >= RW_BTLAREA && id < RW_BTLAREA + 100) { bt_row = id - RW_BTLAREA; sub_kind = 13; sub_area = bt_row; return 6; } /* BT2: an area page (formations) */
+    if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_launch(id - RW_BTLROW) ? 5 : 0; /* BT2: queued, the menu closes */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 0; } /* CH6 */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 0; } /* CH7 */
     if (id >= RW_CH8 && id < RW_CH8 + 10) { pm_dbgg_ch8_act(id - RW_CH8); return 0; } /* CH8 */

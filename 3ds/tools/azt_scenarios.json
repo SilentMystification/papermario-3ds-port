@@ -2202,6 +2202,34 @@
       "reason": "MN8 gate: bottom shots at frames 200 to 205 show the level colours; the until is the frame 300 scene line."
     },
     {
+      "name": "menu_battle",
+      "status": "verified",
+      "subject": "Select menu: Debug > Boss and Battles > Battles > KMR PART 2 (the first kmr area with formations in the table), formation row 1, A. The battle starts in place 30 frames later (no warp, no story change).",
+      "proves": "BT2: Battles folder pages (depth 2 and 3 breadcrumb), start of a non-boss formation in the world from the menu (set_battle_stage, load_battle).",
+      "debug": "preset=toad padscript=@pad_battles.txt shotmenu shots shotwin=150:8 loglevel=debug",
+      "until": "battle: start formation [0-9]+ stage [0-9]+",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "battles folder",
+          "regex": "menu: page push 4 depth 2"
+        },
+        {
+          "name": "start",
+          "regex": "battle: start formation [0-9]+ stage [0-9]+"
+        }
+      ],
+      "reason": "BT2 gate: the start log line (formation and stage ids) and the battle picture after the start (read by eye)."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",
