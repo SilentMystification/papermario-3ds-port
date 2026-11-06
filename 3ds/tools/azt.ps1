@@ -2,6 +2,7 @@
 azt.ps1 - run one named test scenario in Azahar through run_azahar.ps1, with fail-fast and a subject check.
 
   powershell -File 3ds/tools/azt.ps1 <scenario> [-Row <PM_ROW>] [-Build <lane or build3ds/lane-<name>/*.3dsx>] [-Try] [-Speed turbo|normal]
+  powershell -File 3ds/tools/azt.ps1 a,b,c [-Row ...] [-Build ...] [-Try]    (AZT-3 list: one child start per scenario, one kept slot, warm restart between them; prints LIST wall times)
   powershell -File 3ds/tools/azt.ps1 -List
   powershell -File 3ds/tools/azt.ps1 <scenario> -CheckLog <file>     (checks an existing log, starts nothing)
 
@@ -120,6 +121,42 @@ if ($List -or -not $Scenario) {
     foreach ($s in $scs) { Write-Output ("{0,-14} {1,-16} {2}" -f $s.name, $s.status, $s.subject) }
     if (-not $Scenario) { Write-Output "usage: azt.ps1 <scenario> [-Row <id>] [-Build <lane>] [-Try] [-Speed turbo|normal] [-CheckLog <file>]" }
     exit 0
+}
+if ($Scenario -match ",") {
+    # AZT-3: a list "a,b,c" runs its scenarios one after the other, one child azt.ps1 start each. -Keep leaves the Azahar open,
+    # so the next child restarts emulation in the same slot (warm restart, about 2 s instead of a cold start of 12 to 16 s).
+    $names = @($Scenario.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $refused = @()
+    foreach ($n in $names) {
+        $one = @($scs | Where-Object { $_.name -eq $n })[0]
+        if (-not $one) { $refused += "unknown ${n}"; continue }
+        if ($one.status -eq "unverified" -and -not $Try) { $refused += "unverified ${n} (use -Try)"; continue }
+        $up = Get-UntilProblem $one
+        if ($up) { $refused += "rejected ${n}: $up" }
+    }
+    if ($refused.Count) { Write-Output ("LIST REFUSED: {0}. Nothing was run." -f ($refused -join "; ")); exit 4 }
+    $listT0 = Get-Date
+    $childExe = (Get-Process -Id $PID).Path
+    $summary = @()
+    $worst = 0
+    Write-Output ("LIST: {0} scenarios, one kept slot, warm restart between them: {1}" -f $names.Count, ($names -join ", "))
+    foreach ($n in $names) {
+        $ca = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $n, "-Row", $Row, "-Keep")
+        if ($Build) { $ca += @("-Build", $Build) }
+        if ($Try) { $ca += "-Try" }
+        if ($Speed) { $ca += @("-Speed", $Speed) }
+        $t1 = Get-Date
+        Write-Output ("LIST: start {0} at {1}" -f $n, $t1.ToString("HH:mm:ss"))
+        & $childExe @ca
+        $rc = $LASTEXITCODE
+        $sec = ((Get-Date) - $t1).TotalSeconds
+        Write-Output ("LIST: {0} rc {1}, wall {2:N1} s" -f $n, $rc, $sec)
+        $summary += ("{0} rc {1} {2:N1} s" -f $n, $rc, $sec)
+        if ($rc -gt $worst) { $worst = $rc }
+        if ($rc -eq 9) { Write-Output "LIST: row $Row has no starts left. The rest of the list did not run."; break }
+    }
+    Write-Output ("LIST DONE: wall {0:N1} s. {1}" -f ((Get-Date) - $listT0).TotalSeconds, ($summary -join "; "))
+    exit $worst
 }
 $sc = $scs | Where-Object { $_.name -eq $Scenario } | Select-Object -First 1
 if (-not $sc) { Write-Output "SCENARIO UNKNOWN: $Scenario. See -List."; exit 4 }
