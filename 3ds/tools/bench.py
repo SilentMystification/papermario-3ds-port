@@ -1041,33 +1041,30 @@ def cmd_build_at(a):
         return build_at_console(bd, a, commit, short, gitdir, scratch, src3dsx, lane)
     main_map = REPO / "3ds" / "src" / "map_restore_table.c"
     md5_before = md5_of(main_map)
-    dst = app_3dsx()
-    prev = scratch.parent / ("at_%s_prev.3dsx" % short)
-    had_prev = dst.exists()
-    if had_prev:
-        shutil.copy2(dst, prev)
+    lane_dir = REPO / "build3ds" / ("lane-" + lane)
     rc = 0
     try:
         rc, build_no = scratch_build(commit, gitdir, scratch, lane, a.row)
         if rc != 0:
             print("build-at %s: build.sh exit %d. Nothing was run." % (short, rc))
             return rc
-        # The lane build does not copy its 3dsx to %APPDATA% (build.sh does that for the main build only): copy it for this run.
-        shutil.copy2(src3dsx, dst)
+        if not src3dsx.exists():
+            print("build-at %s: no %s after the build. Nothing was run." % (short, posix(src3dsx)))
+            return 5
+        # BF-4: the run is azt -Build <lane> on this 3dsx (its own lane folder). The main 3dsx and %APPDATA% are not touched.
+        # The ingest refuses the record when the boot line build differs from build_no (ingest-last).
+        lane_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src3dsx, lane_dir / "pm_3ds.3dsx")
         why = a.why or ("build-at %s of %s: the committed code at %s, no working tree change, picture on an older build"
                         % (short, a.bench, short))
         os.environ["PM_BENCH_DIRTY"] = "0"
         try:
             rc = cmd_run(argparse.Namespace(bench=a.bench, row=a.row, why=why, label=a.label or ("build-at " + short),
-                                            build=build_no, commit=commit, speed=None, lane=None))
+                                            build=build_no, commit=commit, speed=None, lane=lane))
         finally:
             os.environ.pop("PM_BENCH_DIRTY", None)
     finally:
-        if had_prev:
-            shutil.copy2(prev, dst)
-            prev.unlink()
-        elif dst.exists():
-            dst.unlink()
+        shutil.rmtree(lane_dir, ignore_errors=True)
         shutil.rmtree(scratch, ignore_errors=True)
     print("build-at %s: map_restore_table.c md5 before %s after %s (%s)" % (
         short, md5_before, md5_of(main_map), "unchanged" if md5_of(main_map) == md5_before else "CHANGED"))
@@ -1122,6 +1119,10 @@ def cmd_ingest_last(a):
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
     shot = a.shots or str(SHOTS / s)
     dv = os.environ.get("PM_BENCH_DIRTY")
+    lb, _ = log_build(text)
+    if a.build is not None and lb is not None and lb != a.build:  # BF-4: the boot line is not the build that was run
+        print("ERROR: %s: boot line build %d, the build run was %d (build-at). Nothing ingested." % (p, lb, a.build))
+        return 1
     return ingest_file(p, bench, "azahar", b, c, a.row, a.label or s, result, note, shot, [], device=DEVICE["azahar"],
                        kind=bd["kind"] if bd else "adhoc", speed=a.speed, frame_limit=a.frame_limit,
                        dirty=None if dv is None else dv == "1", warm=a.warm)
