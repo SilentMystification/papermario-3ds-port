@@ -15,6 +15,7 @@ B. Before and after a change
 1. Run the bench on the base build (record it), change the code, rebuild, run the bench again with the same speed (`--speed`).
 2. `bench.py compare <bench> <buildA> <buildB>`, or `--last 2`. The tool prints the delta of each metric and flags failed gates. It prints WARNING and no delta when the speeds differ.
 3. Console speed claims use console_prof benches (prof mode) only. Azahar numbers show direction.
+3a. Display mode: the prof scene line may end with " disp w<0|1> s<0|1> f<fps target>". where, spots, compare and trend show it as disp (w1s0f30; - for old logs). A query uses one mode: the newest row's by default, `--disp w1s0f30|-|any` to pick. A line tells how many rows of other modes it dropped.
 4. An older commit: `bench.py build-at <commit> <bench> --row R` builds it in build3ds/at_<short>/ and runs an Azahar bench on it. The main folder is not changed. The run records dirty false.
    Console: `bench.py build-at <commit> <console bench> --row R [--dry-run]` builds it as lane at_<short>, pushes that 3dsx to the O3DS 192.168.1.170 and ingests the live log (dirty false). --dry-run prints the 3 commands only.
 
