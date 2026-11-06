@@ -171,6 +171,22 @@
       "gates": []
     },
     {
+      "name": "bg_clamp_mac00",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "mac_00 sky (BG1) clamp gate: bgclamp lines of frames 100 to 113 (no sky end past texel 296 or row 200) and one shot.",
+      "scenario": "bg_clamp_mac00",
+      "cap": 45,
+      "until": "shot \\d+ frame 113\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "bg"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac00_pic",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -741,6 +741,30 @@
       "reason": "BG1 cause 1 window check: same binary as bg_edge_mac00, the window of the bgedge lines (frames 100 to 112). Cap 45 s."
     },
     {
+      "name": "bg_clamp_mac00",
+      "status": "unverified",
+      "subject": "mac_00 (sky background), Mario at -57 0 76, same walk as bg_edge_early. Shots frames 100 to 113 after the NOMASK clamp of COPY texrects (bgclamp lines of the same frames). A person reads one shot for sanity.",
+      "proves": "BG1 cause 3 gate: no sky texrect end past texel 296 or row 200 after the clamp (bgclamp lines), and the picture sanity.",
+      "debug": "warp=mac_00:0 pos=-57:0:76 padscript=wait120,right*50,left*50 shots shotwin=100:14 bgclamp bgrect loglevel=debug",
+      "until": "shot \\d+ frame 113\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 113\\b"
+        }
+      ],
+      "reason": "BG1 cause 3 clamp gate: one run on the clamp commit, frames 100 to 113 (the early window), cap 45 s."
+    },
+    {
       "name": "mac01_walkshots",
       "status": "unverified",
       "subject": "Toad Town street (mac_01), Mario walks east by padscript, one shot per frame from frame 120 to 179 (compare the native close against the old close frame by frame: flicker while moving).",

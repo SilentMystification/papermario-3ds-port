@@ -4467,6 +4467,15 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
     }
     float s1 = s0 + dsdx * width / (float)tw;
     float t1 = t0 + dtdy * height / (float)th;
+    if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2) { /* BG1 cause 3: a NOMASK tile (mask 0) clamps at its lower edge, as the RDP does. The end is the tile lrs (10.2, inclusive) plus one texel, minus the uls part. Samples past it read the clamped edge texel (the GPU texture pad holds that texel, pm_tex.c). */
+        float s1pre = s1, t1pre = t1;
+        if (!tst1.tile_wrap[rtile][2] && s1 > s0) { float smax = ((float)(tst1.tile_sz[rtile][2] >> 2) + 1.f - (float)tile_x0 - tile_fx) / (float)tw; if (s1 > smax) s1 = smax; }
+        if (!tst1.tile_wrap[rtile][3] && t1 > t0) { float tmax = ((float)(tst1.tile_sz[rtile][3] >> 2) + 1.f - (float)tile_y0 - tile_fy) / (float)th; if (t1 > tmax) t1 = tmax; }
+        if (PMDL("bgclamp") && pm_frame_count() >= 100u && pm_frame_count() <= 160u) {
+            static int nbc = 0;
+            if (nbc < 400) { nbc++; pm_log_d("bgclamp f%u rect %d,%d-%d,%d s %.2f>%.2f t %.2f>%.2f tex %dx%d mask %u %u lrs %d lrt %d ux %d fx %.2f", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, s1pre * tw, s1 * tw, t1pre * th, t1 * th, tw, th, (unsigned)tst1.tile_wrap[rtile][2], (unsigned)tst1.tile_wrap[rtile][3], tst1.tile_sz[rtile][2], tst1.tile_sz[rtile][3], tile_x0, tile_fx); }
+        }
+    }
     t1_fold(s0 < s1 ? s0 : s1, s0 < s1 ? s1 : s0, t0 < t1 ? t0 : t1, t0 < t1 ? t1 : t0);
     {
         /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
