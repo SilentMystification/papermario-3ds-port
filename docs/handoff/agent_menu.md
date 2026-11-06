@@ -1,7 +1,7 @@
 # agent_menu: Select menu epic (plan_menu.md sections 2 and 3)
 
 STATE (MENU5, branch nds1, main folder; rows CH0 to CH4, LAYOUT, PAUSE items; section 12)
-- Done and committed: CH0 (generator; committed inside another agent's commit 1f31155b2, see 12), CH1 79cd75bcc... see git log, CH2 5924e6bff, CH3 d6dc1215e, CH4 ae545debc, PAUSE AUDIO 35119c9d4, PAUSE GREY and BOTTOM b9c652897, dead zone default 15 fda1ff97f, LAYOUT 70abc9cb0 (Debug folders, skip 6).
+- Done and committed: CH0 (generator; committed inside another agent's commit 1f31155b2, see 12), CH1 75f7081ea, CH2 5924e6bff, CH3 d6dc1215e, CH4 ae545debc, PAUSE AUDIO 35119c9d4, PAUSE GREY and BOTTOM b9c652897, dead zone default 15 fda1ff97f, LAYOUT 70abc9cb0 (Debug folders, skip 6).
 - Open: CH5 Spawn item, CH6 Moon Jump, CH7, CH8, MN8, MN9, BT1, BT2, BT3.
 - Next command: rebuild lane menu, then CH5 (Spawn item > under Cheats, after Partners; row 5 of the Cheats tab).
 - Named gaps: section 12.
