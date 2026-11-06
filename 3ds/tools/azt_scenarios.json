@@ -2230,6 +2230,38 @@
       "reason": "BT2 gate: the start log line (formation and stage ids) and the battle picture after the start (read by eye)."
     },
     {
+      "name": "menu_battle_hud",
+      "status": "verified",
+      "subject": "Battle started from the Battles folder (KMR PART 2 formation row 1): the bottom screen footer row shows the battle line Battle <AREA> F<formation> S<stage> <label> (not the map line) while the battle runs.",
+      "proves": "BT3: pm_map_hud_step in battle mode builds the battle line (pm_battle_hud_text, table row of the formation and stage), on change only.",
+      "debug": "preset=toad padscript=@pad_battles.txt shotbottom=200:6 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "battle",
+          "regex": "battle: start formation [0-9]+ stage [0-9]+"
+        },
+        {
+          "name": "battle line",
+          "regex": "maphud: battle Battle [A-Z0-9_]+ F[0-9A-F]+ S[0-9A-F]+"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "BT3 gate: the battle line in the log (maphud: battle) and the bottom shots after the battle start (read by eye: footer row)."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",

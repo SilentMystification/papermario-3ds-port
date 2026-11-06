@@ -94,12 +94,23 @@ void pm_pos_text(char* out) {
  * BOTLAYOUT: pm_map_now is the footer map row, "Map: <id> (area A, map M)", always. Per step: two loads and compares. */
 static char map_now[40];
 const char* pm_map_now(void) { return map_now; }
+extern s32 gCurrentBattleID;
+extern s32 gCurrentStageID;
+const char* pm_battle_hud_text(int formation, int stage, char* out, unsigned n); /* BT3, pm_warp.c */
 int pm_map_hud_step(unsigned step, unsigned hold, char (*rows)[40]) {
     static char hold_blk[3][40], idle_blk[3][40];
     static int a_prev = -1, m_prev = -1;
     static unsigned until;
     static char from[24] = "none"; /* BOTLAYOUT: the map id before the change, for the info line */
+    static s32 bt_f = -1, bt_s = -1;
     int a, m;
+    if (get_game_mode() == GAME_MODE_BATTLE) { /* BT3: the footer row is the battle line, built on a change of the formation or stage */
+        if (gCurrentBattleID != bt_f || gCurrentStageID != bt_s) {
+            bt_f = gCurrentBattleID; bt_s = gCurrentStageID;
+            pm_battle_hud_text(bt_f, bt_s, map_now, sizeof map_now);
+            pm_log_d("maphud: battle %s", map_now);
+        }
+    } else if (bt_f != -1) { bt_f = -1; a_prev = -1; } /* back in the world: the map line is built again (the map change path) */
     pm_route_mapid(&a, &m);
     if (a != a_prev || m != m_prev) {
         const char* id = "none";

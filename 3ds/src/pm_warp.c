@@ -858,6 +858,30 @@ int pm_battle_launch(int k) {
     bt_frames = 0;
     return 1;
 }
+/* BT3: the HUD line of a battle: "Battle <AREA> F<formation> S<stage> <label>" from the table row of the formation and stage (label and area),
+ * or "Battle F.. S.." when the table has no row. */
+const char* pm_battle_hud_text(int formation, int stage, char* out, unsigned n) {
+    int k;
+    for (k = 0; k < pm_battle_count(); k++) {
+        char v[64], *c;
+        s32 f, st;
+        v[0] = 0;
+        strncat(v, battle_tab[k].battle, sizeof v - 1);
+        c = strchr(v, ':');
+        f = battle_name_value(v, c ? (unsigned)(c - v) : (unsigned)strlen(v), -1);
+        st = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, -1);
+        if (f == formation && st == stage) {
+            char ar[24];
+            int i;
+            snprintf(ar, sizeof ar, "%s", battle_tab[k].area);
+            for (i = 0; ar[i]; i++) if (ar[i] >= 'a' && ar[i] <= 'z') ar[i] = (char)(ar[i] - 32);
+            snprintf(out, n, "Battle %s F%02X S%02X %s", ar, (unsigned)(formation & 0xFF), (unsigned)(stage & 0xFF), battle_tab[k].label);
+            return out;
+        }
+    }
+    snprintf(out, n, "Battle F%02X S%02X", (unsigned)(formation & 0xFF), (unsigned)(stage & 0xFF));
+    return out;
+}
 static void battle_tick(void) {
     s32 formation, stage;
     char v[64], *c;
