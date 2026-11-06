@@ -21,7 +21,9 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -w /w pm3ds-host:1 sh -c '
   gcc -m32 -w -I 3ds/include -c -o /tmp/ndcomb.o 3ds/src/pm_comb.c
   gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndt 3ds/tools/nd_tmpl_test.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
   /tmp/ndt 3ds/tests/ndref/ndref_*.bin
-  gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndx 3ds/tools/nd_tex_test.c 3ds/src/nd_tex.c
+  printf "#include <nd.h>\nint pm_tex_slot_find(unsigned k, unsigned f, unsigned s, uint32_t d, NdUnit* u) { (void)k; (void)f; (void)s; (void)d; (void)u; return -1; }\nunsigned pm_tex_slot_key(int i) { (void)i; return 0; }
+unsigned pm_tex_slot_gen(int i) { (void)i; return 0; }\nint pm_tex_slot_unit(int i, NdUnit* u) { (void)i; (void)u; return 0; }\n" > /tmp/ndtexs.c
+  gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndx 3ds/tools/nd_tex_test.c 3ds/src/nd_tex.c /tmp/ndtexs.c
   /tmp/ndx 3ds/tests/ndref/ndref_*.bin
   gcc -m32 -Wall -I 3ds/include -o /tmp/ndcm 3ds/tools/nd_cmd_test.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
   /tmp/ndcm 3ds/tests/ndref/ndref_*.bin
@@ -31,9 +33,13 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -w /w pm3ds-host:1 sh -c '
   /tmp/ndg
   gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndl 3ds/tools/nd_dlc_test.c 3ds/src/nd_dlc.c
   /tmp/ndl assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin
-  gcc -m32 -Wall -Wextra -Werror $FP -I 3ds/include -o /tmp/ndgv 3ds/tools/nd_gv_test.c 3ds/src/nd_model.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
+  printf "#include <nd.h>
+#include <string.h>
+void nd_comb_decide(const NdCombIn* in, NdCombOut* out) { (void)in; memset(out, 0, sizeof *out); }
+" > /tmp/ndcombs.c
+  gcc -m32 -Wall -Wextra -Werror $FP -I 3ds/include -o /tmp/ndgv 3ds/tools/nd_gv_test.c 3ds/src/nd_model.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o /tmp/ndcombs.c -lm
   /tmp/ndgv
-  gcc -m32 -Wall -Wextra -Werror $FP -DF3DEX_GBI_2 -D_LANGUAGE_C -D_MIPS_SZLONG=32 -I include -I 3ds/include -I 3ds/stub_include -o /tmp/ndmd 3ds/tools/nd_model_test.c 3ds/src/nd_model.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
+  gcc -m32 -Wall -Wextra -Werror $FP -DF3DEX_GBI_2 -D_LANGUAGE_C -D_MIPS_SZLONG=32 -I include -I 3ds/include -I 3ds/stub_include -o /tmp/ndmd 3ds/tools/nd_model_test.c 3ds/src/nd_model.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o /tmp/ndcombs.c -lm
   /tmp/ndmd
   /tmp/ndseam assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin 3ds/tests/ndref/ndref_*.bin
 ' || fail=1

@@ -4364,17 +4364,20 @@ extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const u
 extern void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 */
 extern void pm_gpu_ndm_end(void);
 extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
-extern int pm_gpu_model_hit(const NdMKey* k); /* S3N-6: the cached draws of the key, 1 when drawn */
+extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
+extern void pm_gpu_model_fb_cached(void); /* S3N-7 */ /* S3N-6: the cached draws of the key, 1 when drawn (e: the entry found by the lookup) */
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     NdMKey mk;
     NdtT tk = pm_gpu_ndt_begin(); /* S3N-7: key build and lookup */
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
-    int cached = nd_mc_find(&mk) != NULL;
+    NdMEnt* mce = nd_mc_find(&mk);
+    int cached = mce != NULL;
     pm_gpu_ndt_end(tk, NDT_KEY);
+    if (!cached) nd_mc_miss(&mk); /* S3N-7: the miss class (diagnostic) */
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0;
     if (cached) { NdtT tm = pm_gpu_ndt_begin(); rec_matrix(q); pm_gpu_ndt_end(tm, NDT_MTX); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
-    if (!ndm && mdone && pm_gpu_model_hit(&mk)) {
+    if (!ndm && mdone && pm_gpu_model_hit(&mk, mce)) {
         /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw. */
         rec_n++;
         gv_epoch++;
@@ -4385,6 +4388,7 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     rec_apply(q, mdone);
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
         q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
+    else if (mce && mce->neg && mce->ep == pm_tex_epoch()) { pm_gpu_model_fb_cached(); } /* S3N-7: a stored fallback: walker geometry, no draw attempt */
     else if (pm_gpu_model_native((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
         q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk) >= 0) {
         /* S3N-4: the record drew natively (nd_model_draw): no walker geometry. The native draws set the TEV and the texture unit, so the walker

@@ -224,48 +224,85 @@ static NdRng nat_rng[ND_RAW_MAX]; /* S3N-6: the static ranges of the last nd_mod
 static int nat_nr; static uint32_t nat_geom;
 
 /* ---- S3N-6: the native model cache (see nd.h NdMKey). The draws of an entry live in a pool; an entry names its first draw and the count. ---- */
-#define NDMC_N 1024u
-#define NDMC_POOL 512u
+#define NDMC_N 2048u
+#define NDMC_POOL 1536u
 static NdMEnt mc_tab[NDMC_N];
 static NdNat mc_pool[NDMC_POOL];
 static unsigned mc_n, mc_pool_n, mc_clears_n;
 unsigned nd_handle_gen(void) { return hd_gen; }
 unsigned nd_mc_clears(void) { return mc_clears_n; }
-static uint32_t mc_hash(const NdMKey* k) {
+uint32_t nd_mc_hash(const NdMKey* k) {
     uint32_t h = 2166136261u;
     for (unsigned i = 0; i < NDMC_RW + NDMC_SW; i++) { h ^= k->w[i]; h *= 16777619u; }
     return h ^ (h >> 15);
+}
+/* S3N-7 diagnostics: the entry last stored per record address (slot = rp >> 2 and 1023), with the clear generation it was stored in. A miss is classed
+ * against that entry: new (no entry for this record), clr (cleared since), else the first key word that differs (rec: record words, st: walker state, hd: handle
+ * and dlc generations, gv: walker gv state), same (equal key, not found). ent and pool: the high water of the table and the pool. */
+#define NDMC_LAST 1024u
+static uint32_t mc_lastp[NDMC_LAST]; static uint16_t mc_lasti[NDMC_LAST]; static unsigned mc_lastg[NDMC_LAST];
+static unsigned mg_cls[9], mc_ent_hi, mc_pool_hi;
+void nd_mc_miss(const NdMKey* k) {
+    unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
+    if (mc_lastp[s] != k->rp) { mg_cls[0]++; return; }
+    if (mc_lastg[s] != mc_clears_n) { mg_cls[1]++; return; }
+    const NdMEnt* e = &mc_tab[mc_lasti[s]];
+    for (unsigned j = 0; j < NDMC_RW + NDMC_SW; j++) {
+        if (e->k.w[j] == k->w[j]) continue;
+        if (j < NDMC_RW) mg_cls[2]++;
+        else if (j == NDMC_RW + 25u || j == NDMC_RW + 26u) mg_cls[4]++;
+        else if (j < NDMC_RW + 27u) mg_cls[3]++;
+        else mg_cls[5]++;
+        return;
+    }
+    mg_cls[6]++;
+}
+void nd_mc_diag_take(unsigned o[14]) {
+    for (unsigned i = 0; i < 9; i++) { o[i] = mg_cls[i]; mg_cls[i] = 0; }
+    o[9] = mc_n; o[10] = mc_pool_n; o[11] = mc_ent_hi; o[12] = mc_pool_hi; o[13] = NDMC_N;
 }
 static void mc_clear_all(void) {
     for (unsigned i = 0; i < NDMC_N; i++) mc_tab[i].used = 0;
     mc_n = 0; mc_pool_n = 0; mc_clears_n++;
 }
+/* the hash is set once per record (pm_gpu_model_key): the probe compares it before the key words */
 NdMEnt* nd_mc_find(const NdMKey* k) {
-    uint32_t h = mc_hash(k) & (NDMC_N - 1u);
+    uint32_t h = k->h & (NDMC_N - 1u);
     for (unsigned p = 0; p < NDMC_N; p++, h = (h + 1u) & (NDMC_N - 1u)) {
         NdMEnt* e = &mc_tab[h];
         if (!e->used) return NULL;
-        if (memcmp(&e->k, k, sizeof *k) == 0) return e;
+        if (e->k.h == k->h && memcmp(e->k.w, k->w, sizeof k->w) == 0) return e;
     }
     return NULL;
 }
 static NdMEnt* mc_slot(const NdMKey* k) {
     if (mc_n >= NDMC_N / 4u * 3u) mc_clear_all();
-    uint32_t h = mc_hash(k) & (NDMC_N - 1u);
+    uint32_t h = k->h & (NDMC_N - 1u);
     for (;;) {
         NdMEnt* e = &mc_tab[h];
-        if (!e->used) { e->used = 1; e->k = *k; mc_n++; return e; }
-        if (memcmp(&e->k, k, sizeof *k) == 0) return e;
+        if (!e->used) { e->used = 1; e->k = *k; mc_n++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; return e; }
+        if (e->k.h == k->h && memcmp(e->k.w, k->w, sizeof k->w) == 0) return e;
         h = (h + 1u) & (NDMC_N - 1u);
     }
 }
+static void mc_note(const NdMKey* k, const NdMEnt* e) { /* S3N-7: the last entry of this record address (diagnostic classes) */
+    unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
+    mc_lastp[s] = k->rp; mc_lasti[s] = (uint16_t)(e - mc_tab); mc_lastg[s] = mc_clears_n;
+}
+NdMEnt* nd_mc_store_neg(const NdMKey* k, unsigned ep) {
+    NdMEnt* e = mc_slot(k);
+    e->neg = 1; e->ep = ep; e->tex = 0; e->hs = -1; e->hg = 0; e->n = 0; e->nraw = 0; e->off = mc_pool_n; e->geom = 0;
+    mc_note(k, e);
+    return e;
+}
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
-    if (nat_n > (int)ND_NAT_MAX || nat_nr > ND_RAW_MAX || nat_nr < 0) return NULL;
+    if (nat_nr > ND_RAW_MAX || nat_nr < 0) { mg_cls[7]++; return NULL; }
+    if (nat_n > (int)ND_NAT_MAX) { mg_cls[8]++; return NULL; }
     NdMEnt* e = mc_slot(k);
     if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
     memcpy(e->raw, nat_rng, sizeof(NdRng) * (unsigned)nat_nr);
     e->nraw = (unsigned)nat_nr; e->geom = nat_geom;
-    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
+    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg; e->neg = 0;
     e->off = mc_pool_n; e->n = (unsigned)nat_n;
     for (int j = 0; j < nat_n; j++) {
         NdNat* q = &mc_pool[mc_pool_n + (unsigned)j];
@@ -273,6 +310,8 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
         q->d.pal = (const float(*)[16])q->pal; /* the pointer of the copy, not of nat[] */
     }
     mc_pool_n += (unsigned)nat_n;
+    if (mc_pool_n > mc_pool_hi) mc_pool_hi = mc_pool_n;
+    mc_note(k, e);
     return e;
 }
 NdNat* nd_mc_nat(NdMEnt* e, unsigned j) { return &mc_pool[e->off + j]; }

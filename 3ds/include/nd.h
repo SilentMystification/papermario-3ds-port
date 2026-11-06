@@ -317,13 +317,17 @@ const NdNat* nd_model_native(unsigned j);
  * Open hash, 1024 entries, no division. Full table (3/4) or a full draw pool: clear all (counted by nd_mc_clears). */
 #define NDMC_RW 28
 #define NDMC_SW 64
-typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; } NdMKey;
-#define ND_RAW_MAX 16
-typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; NdRng raw[ND_RAW_MAX]; uint32_t geom; int hs; unsigned hg; unsigned off, n, nraw; uint8_t used, tex; } NdMEnt; /* raw: the static ranges the draws were cut from (the hit compares them with the fresh ones) */
+typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
+#define ND_RAW_MAX 32
+typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; NdRng raw[ND_RAW_MAX]; uint32_t geom; int hs; unsigned hg; unsigned off, n, nraw; uint8_t used, tex, neg; unsigned ep; } NdMEnt; /* raw: the static ranges the draws were cut from (the hit compares them with the fresh ones) */
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
 NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k, NULL when none */
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and ranges of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges */
 NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
+NdMEnt* nd_mc_store_neg(const NdMKey* k, unsigned ep);         /* S3N-7: a stored fallback (any reason): the record skips the model draw while the texture epoch ep holds */
+uint32_t nd_mc_hash(const NdMKey* k);                          /* S3N-7: the hash of the key words, set in pm_gpu_model_key */
+void nd_mc_miss(const NdMKey* k);                              /* S3N-7: the class of one miss (diagnostic counters) */
+void nd_mc_diag_take(unsigned o[14]);                          /* S3N-7: the miss classes of the window (0 new, 1 clr, 2 rec, 3 st, 4 hd, 5 gv, 6 same, 7 rcap, 8 ncap: stores refused), then reset them; table use */
 unsigned nd_mc_clears(void);
 /* S3N-7: exclusive tick timers of the native model path (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed inside it. */
 typedef struct NdtT { uint64_t t, all; int on; } NdtT;
