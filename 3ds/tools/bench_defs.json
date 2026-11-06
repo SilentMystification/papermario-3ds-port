@@ -1276,6 +1276,38 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+{
+      "name": "menu_moon_hold_log",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOON diagnosis: moon jump held 240 scans; log shows the rise, the snap-back and the step count.",
+      "scenario": "menu_moon_hold",
+      "cap": 40,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "moon"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+{
+      "name": "menu_moon_on_log",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOON fix gate: moon jump on, A on the ground then three A presses in the air. Log: three moon jump restart lines, peak y, no snap-back.",
+      "scenario": "menu_moon_on",
+      "cap": 40,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "moon"
+      ],
+      "log_metrics": [],
+      "gates": []
     }
   ],
   "legacy": {

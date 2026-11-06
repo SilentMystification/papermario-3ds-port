@@ -219,16 +219,39 @@ void pm_cheat_tick(void) {
         for (k = 0; k < 5; k++) if ((cheat_bits & ~cheat_seen) & cheat_bit[k]) pm_log("cheat: %s active, star power %d, walk %.2f", cheat_name[k], (int)p->starPower, ps->walkSpeed);
         cheat_seen = cheat_bits;
     }
-    if (!(ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING))) return;
-    if (!pm_cheat_moon_get() || !(ps->curButtons & BUTTON_A)) {
-        pm_log_d("cheat: jump y %.1f", ps->pos.y);
-        return;
+    /* MOON: each new press of A in the air restarts the jump arc (the start values of a normal jump, src/world/actions.c GravityParamsStartJump,
+     * and the jump flags as initialize_jump sets them). Between presses gravity runs as it does. timeInAir is reset, because update_player puts Mario
+     * back on lastGoodPos at timeInAir > 100 (the old hold kept the jump alive that long: the snap-back). The step before must be in the air without A. */
+    {
+        static int moon_held, moon_air;
+        extern f32 GravityParamsStartJump[];
+        const int air = (ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0;
+        const int held = (ps->curButtons & BUTTON_A) != 0;
+        const int press = held && !moon_held && moon_air;
+        moon_held = held;
+        moon_air = air;
+        if (!air) return;
+        if (!pm_cheat_moon_get()) {
+            pm_log_d("cheat: jump y %.1f", ps->pos.y);
+            return;
+        }
+        if (!press) {
+            pm_log_d("cheat: moon jump y %.1f", ps->pos.y);
+            return;
+        }
+        ps->gravityIntegrator[0] = GravityParamsStartJump[0];
+        ps->gravityIntegrator[1] = GravityParamsStartJump[1];
+        ps->gravityIntegrator[2] = GravityParamsStartJump[2];
+        ps->gravityIntegrator[3] = GravityParamsStartJump[3];
+        ps->flags |= PS_FLAG_JUMPING;
+        ps->flags &= ~PS_FLAG_FALLING;
+        ps->timeInAir = 0;
+        ps->peakJumpTime = 0;
+        ps->jumpFromPos.x = ps->pos.x;
+        ps->jumpFromPos.z = ps->pos.z;
+        ps->jumpFromHeight = ps->pos.y;
+        pm_log("cheat: moon jump restart y %.1f", ps->pos.y);
     }
-    if (ps->gravityIntegrator[0] < 4.0f) ps->gravityIntegrator[0] = 4.0f;
-    ps->gravityIntegrator[1] = 0.0f;
-    ps->gravityIntegrator[2] = 0.0f;
-    ps->gravityIntegrator[3] = 0.0f;
-    pm_log_d("cheat: moon jump y %.1f", ps->pos.y);
 }
 
 /* CH8: further cheat rows (RAM only, Cheats tab): 0 boots level, 1 hammer level, 2 max star spirits, 3 star pieces, 4 story, 5 inventory item

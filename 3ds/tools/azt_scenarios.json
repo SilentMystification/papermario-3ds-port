@@ -2199,9 +2199,9 @@
     {
       "name": "menu_moon_on",
       "status": "unverified",
-      "subject": "Toad Town, A held 90 scans (a jump): with the Moon jump on (launch switch moonjump), Mario floats up and stays high while A is held; the top shot in the shotwin window shows him high. Off: a normal jump.",
-      "proves": "CH6: pm_cheat_tick per step (pm_warp_tick): upward velocity at least 4 and zero accelerations while A held and jumping.",
-      "debug": "preset=toad moonjump padscript=@pad_moon.txt shots shotwin=84:12 loglevel=debug",
+      "subject": "Toad Town, moon jump on: A on the ground (jump), then three presses of A in the air, 8 scans apart (about the apex of each arc). Each press restarts the jump arc: three restarts in the log, no snap-back, Mario lands normally. Peak height is measured (not yet three jump heights).",
+      "proves": "MOON fix: pm_dbg_game.c pm_cheat_tick restarts the jump arc on each new A press in the air (timeInAir 0, start integrator); no per-step gravity override.",
+      "debug": "preset=toad moonjump padscript=wait80,A*3,wait5,A*3,wait5,A*3,wait5,A*3,wait150 shots loglevel=debug",
       "until": "padscript: done",
       "cap": 45,
       "deadline": 25,
@@ -7384,6 +7384,34 @@
         }
       ],
       "reason": "FADV off check: after fa: off and menu: game resumed, no fa: step line while R is pressed (three presses). Order checked in the log: the three steps come before fa: off."
+    },
+{
+      "name": "menu_moon_hold",
+      "status": "unverified",
+      "subject": "Toad Town, moon jump on, A held 240 scans from the ground (no release): the rise must stop after about 100 air steps and Mario returns to the last ground position (the snap-back).",
+      "proves": "MOON diagnosis: update_player (src/77480.c) puts Mario at lastGoodPos when timeInAir > 100; the moon tick keeps the jump arc alive while A is held.",
+      "debug": "preset=toad moonjump padscript=wait80,A*240,wait150 shots",
+      "until": "padscript: done",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "rise",
+          "regex": "cheat: moon jump y -?[0-9.]+"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "MOON diagnosis (log first): count the moon jump y lines of the hold and the y at the last one; the next line after the hold shows the ground position again."
     }
   ]
 }
