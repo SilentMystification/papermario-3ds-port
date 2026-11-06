@@ -1,0 +1,8 @@
+wait400,pos_-130:0:-370,go_-130_-400_200,wait20,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30

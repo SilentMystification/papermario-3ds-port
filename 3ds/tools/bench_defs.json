@@ -7,6 +7,18 @@
   },
   "benches": [
     {
+      "name": "merlee_spell_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FX1 row 1: Merlee upgrade spell in dro_02 (live warp, 50 coins, pad file pad_merlee.txt). Shows the card shuffle and reaches the ritual end (state D). Picture check by eye.",
+      "scenario": "merlee_spell",
+      "cap": 45,
+      "until": "merlee: ritual state D [(]spell done[)]",
+      "tags": ["azahar", "pic", "merlee"],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_pic",
       "kind": "azahar_pic",
       "speed": "normal",

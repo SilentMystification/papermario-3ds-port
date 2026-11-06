@@ -205,7 +205,12 @@ API_CALLABLE(N(DestroyRitualCards)) {
 u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
     Matrix4f mtxTransform;
     Matrix4f mtxTemp;
+#ifdef TARGET_3DS
+    /* The 3DS stack slot is not zero; alpha 0 makes imgfx_appendGfx_component return 0 before any draw. */
+    ImgFXTexture ifxImg = { .alpha = 255 };
+#else
     ImgFXTexture ifxImg;
+#endif
     SpriteRasterInfo rasterInfo;
     s32 ret;
 
@@ -547,6 +552,9 @@ void N(card_worker_update)(void) {
                 N(RitualCards)[1].pos.y = -5.0f;
                 N(RitualStateTime) = 0;
                 evt_set_variable(N(CreatorScript), RITUAL_VAR_STATE, RITUAL_STATE_D);
+#ifdef TARGET_3DS
+                { extern void pm_log(const char* fmt, ...); pm_log("merlee: ritual state D (spell done)"); }
+#endif
                 N(RitualCards)[0].unk_00 = 0;
                 N(RitualCards)[1].unk_00 = 0;
                 N(GetCardOrientation)(1, &sp68, &sp6C, &sp70, &sp74);
@@ -576,6 +584,9 @@ void N(card_worker_render)(void) {
     N(appendGfx_ritual_card)(&N(RitualCards)[1], mtx);
     N(appendGfx_ritual_card)(&N(RitualCards)[2], mtx);
     if ((N(RitualCards)[0].unk_00 == 2) && ((temp_s1 - 1) < 2)) {
+#ifdef TARGET_3DS
+        { extern void pm_log(const char* fmt, ...); pm_log("merlee: shuffle ret %d, state 3", (int)temp_s1); }
+#endif
         evt_set_variable(N(CreatorScript), RITUAL_VAR_STATE, RITUAL_STATE_3);
     }
     if ((N(RitualCards)[0].unk_00 == 3) && ((temp_s1 - 1) < 2)) {

@@ -5956,6 +5956,26 @@
         }
       ],
       "reason": "MENU4 MN7 rest gate. One pos line for the one combo press (the Debug row is the only switch here). The menu shot of row 22 shows On."
+    },
+    {
+      "name": "merlee_spell",
+      "status": "unverified",
+      "subject": "Merlee (dro_02, NPC at -130 0 -400) casts the upgrade spell. Mario walks to her by padscript, talks, picks the first choice (50 coins from warpitems). The card shuffle (3 cards, imgfx SHUFFLE_CARDS) shows in the shots from the cast start.",
+      "proves": "FX1 row 1: the cast reaches state D (log merlee: ritual state D), so the script does not hang; the shuffle ret line shows the card imgfx returns 1 or 2 on the 3DS; the picture shows the shuffle.",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt shots loglevel=debug",
+      "until": "merlee: ritual state D [(]spell done[)]",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "livewarp: scene frame 120 to dro_02 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        { "name": "map", "regex": "livewarp: scene frame 120 to dro_02 entry 0" },
+        { "name": "shuffle start", "regex": "merlee: shuffle ret [12], state 3" },
+        { "name": "spell done", "regex": "merlee: ritual state D [(]spell done[)]" },
+        { "name": "shot", "regex": "shot [0-9]+ frame [0-9]+" }
+      ],
+      "reason": "FX1 row 1 (MERLEE). Live warp to dro_02 at frame 120 gives 50 coins (warpitems; plain warp= does not, the coin count was 0 in start 2). Mario is placed by pos_ at -130 0 -370 (30 units from Merlee at -130 0 -400, npc.c), then go_ walks him the last 6 units, facing her. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell. The until line ends the run when the spell ends. Without the fix the run stops at the cap (the hang)."
     }
   ]
 }
