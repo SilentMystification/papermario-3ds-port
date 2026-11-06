@@ -131,6 +131,16 @@ function Restore-Cfg {
         Remove-Item $cfgBak -Force
     }
 }
+# UI1a: the game's options.ini (sdmc). A saved profmode=prof makes the game log only prof lines (debug lines drop), so a run
+# without a prof word writes profmode=off into the file, and the file is put back byte for byte the same way as the config.
+$optFile = "$sd\options.ini"
+$optBak = "$env:TEMP\pm_azahar_options.orig"
+function Restore-Opt {
+    if (Test-Path $optBak) {
+        Copy-Item $optBak $optFile -Force
+        Remove-Item $optBak -Force
+    }
+}
 
 # Replace "key=value" lines. A missing key stops the run (no silent skip). $insertAfter: section header to add a missing key under.
 function Set-CfgKeys([hashtable]$kv, [string]$insertAfter = "") {
@@ -188,6 +198,7 @@ if (Test-Path $pidFile) {
     Remove-Item $pidFile -ErrorAction SilentlyContinue
 }
 if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
+if (Test-Path $optBak) { Write-Output "Recovery: restoring options.ini saved by a killed run."; Restore-Opt }
 # AZFIX: the lock is ours and no run is active, so an azahar.exe open now was not started by a run (an interactive window). Wait 60 s, then stop.
 if (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue).Count) {
     Write-Output "WARNING: azahar.exe not started by a run is open: $(Get-AzaharList). Waiting up to 60 s for it to close."
@@ -197,6 +208,7 @@ if (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction Sil
 try {
     Set-Content $pidFile $PID # the script PID until Azahar starts, then the Azahar PID
     Copy-Item $cfg $cfgBak -Force # every run edits the config (Set-GdbStub), so every run saves it first
+    if (Test-Path $optFile) { Copy-Item $optFile $optBak -Force } # UI1a: saved before any edit of options.ini
     if ($Turbo) { Set-Turbo }
 
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
@@ -205,6 +217,13 @@ Remove-Item $log -ErrorAction SilentlyContinue
 if (Test-Path $log) { Release-Lock; End-Run 5 "LOG LOCKED: $log is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
 if ($Smoke -and $Debug -notmatch "fixedseed") { $Debug = "$Debug fixedseed" } # R-SEED: smoke runs use the fixed RNG seed
 if ($Debug) { Set-Content "$sd\debug3ds.txt" $Debug } else { Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue }
+if ($Debug -notmatch '\bprof\b' -and (Test-Path $optFile)) { # UI1a: no prof word, so the saved profmode must not apply
+    $optText = Get-Content $optFile -Raw
+    if ($optText -match '(?m)^profmode=[^\r\n]*') { $optText = $optText -replace '(?m)^profmode=[^\r\n]*', 'profmode=off' }
+    else { $optText = $optText.TrimEnd() + "`r`nprofmode=off`r`n" }
+    Set-Content $optFile $optText -NoNewline
+    Write-Output "options.ini: profmode=off for this run (no prof word in the debug switches)"
+}
 Remove-Item "$sd\shots", "$out\shots" -Recurse -ErrorAction SilentlyContinue # "shots" switch output
 Remove-Item $emuLog -ErrorAction SilentlyContinue # an old exception dump must not stop this run
 if (Test-Path $emuLog) { Release-Lock; End-Run 5 "LOG LOCKED: $emuLog is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
@@ -316,6 +335,7 @@ public class AzWin {
     if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
     if ($gdbName) { docker kill $gdbName 2>$null | Out-Null }  # the docker client does not stop its container when stopped
     Restore-Cfg # byte for byte copy of the real config
+    if (Test-Path $optBak) { Restore-Opt } # UI1a: options.ini back byte for byte
     Remove-Item $pidFile -ErrorAction SilentlyContinue
     # A later manual launch must not inherit this run's switches (autoa, shots, fast).
     Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue

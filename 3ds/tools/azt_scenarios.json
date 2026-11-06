@@ -1959,74 +1959,6 @@
     },
     {
       "name": "menu_spawn",
-      "status": "verified",
-      "subject": "Select menu, Cheats tab (L), Spawn item > (5 down, A), the first item row (A): one item spawned over Mario. SELECT closes, the top shot after the resume shows the item above Mario (falling).",
-      "proves": "CH5: Spawn item folder (sub kind 11), one item made over gPlayerStatus.pos (make_item_entity_nodelay) from the frozen menu.",
-      "debug": "preset=toad padscript=@pad_spawn.txt shots shotwin=160:6 loglevel=debug",
-      "until": "padscript: done",
-      "cap": 45,
-      "deadline": 25,
-      "first_marker": "warp: mac_00 entry 4",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: mac_00 entry 4"
-        },
-        {
-          "name": "spawn folder",
-          "regex": "menu: page push 4 depth 1"
-        },
-        {
-          "name": "spawn",
-          "regex": "dbggame: spawn item 0x[0-9A-F]+ at"
-        },
-        {
-          "name": "resumed",
-          "regex": "menu: game resumed at frame [0-9]+"
-        }
-      ],
-      "reason": "CH5 gate: one item spawned (log) and the top shot after the resume shows it over Mario (read by eye)."
-    },
-    {
-      "name": "menu_setstats_level",
-      "status": "verified",
-      "subject": "Select menu, Cheats > Set Stats. First shot: normal values (white, HP 10, FP 5, BP 3, Level 1). After HP up 13 and FP up 14 (level 28 over 27): HP, FP, BP and Level draw in red. The cursor skips the Level row (down from BP goes to Star points).",
-      "proves": "CH4 user change: Level is read only, computed from the stats (level = 1 + (HP-10)/5 + (FP-5)/5 + (BP-3)/3), red over 27, cursor skip.",
-      "debug": "preset=toad padscript=@pad_setstats_level.txt shotmenu loglevel=debug",
-      "until": "menu: shot [A-Za-z0-9_]+ tab 4 row 4",
-      "cap": 60,
-      "deadline": 30,
-      "first_marker": "warp: mac_00 entry 4",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: mac_00 entry 4"
-        },
-        {
-          "name": "folder",
-          "regex": "menu: page push 4 depth 1"
-        },
-        {
-          "name": "fp to 75",
-          "regex": "dbggame: stat 1 = 75"
-        },
-        {
-          "name": "level skip",
-          "regex": "menu: readonly row skipped, 2 -> 4"
-        },
-        {
-          "name": "skip shot",
-          "regex": "menu: shot [A-Za-z0-9_]+ tab 4 row 4"
-        }
-      ],
-      "reason": "Set Stats Level gate: normal shot (first row 0 draw) and the red shot (row 2 after FP 75) and the skip log line."
-    },
-    {
-      "name": "menu_spawn",
       "status": "unverified",
       "subject": "Select menu, Cheats tab (L), Spawn item > (5 down, A), the first item row (A): one item spawned over Mario. SELECT closes, the top shot after the resume shows the item above Mario (falling).",
       "proves": "CH5: Spawn item folder (sub kind 11), one item made over gPlayerStatus.pos (make_item_entity_nodelay) from the frozen menu.",
@@ -6310,6 +6242,26 @@
         }
       ],
       "reason": "FX1 row 2 (SUPERBLOCK). Mario at the block by pos=; A jumps hit the block from below (the block is 60 up). Cap 45 s: 25 s of jumps and partner menu, then the effects of about 4 s. The until line ends the run when the effects are done. Shots every 30 frames (default) find the window; a second run uses shotwin from the hit frame."
+    },
+    {
+      "name": "texstale_prof",
+      "status": "unverified",
+      "subject": "dro_01 (warp entry 0), Mario stands. The texstale summary line in prof mode (prof=4), for the console counts.",
+      "proves": "FX1 row 3: the texstale line (binds, bad, dirty, img, pal, hash) prints in prof mode through pm_log_prof_line.",
+      "debug": "warp=dro_01:0 story=ch0_toad_town prof=4 texstale loglevel=debug",
+      "until": "texstale f300 binds [0-9]+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "texstale line",
+          "regex": "texstale f300 binds [0-9]+"
+        }
+      ],
+      "reason": "FX1 row 3. Only the summary line is checked; the cap is 25 s for 300 frames."
     }
   ]
 }
