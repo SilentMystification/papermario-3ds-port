@@ -339,3 +339,16 @@ int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned*
     *nseg = ns;
     return NDR_OK;
 }
+
+/* S6-2c-2: see nd.h. The state ops of an entity list stay out, the static compile takes the vertex loads and triangles in list order. */
+unsigned nd_ent_strip(const uint32_t* l, uint32_t* out) {
+    unsigned i, n = 0;
+    for (i = 0; i < ND_DLC_MAXOPS; i++) {
+        uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
+        unsigned op = w0 >> 24;
+        if (op == OP_ENDDL) break;
+        if (op == OP_VTX || op == OP_TRI1 || op == OP_TRI2) { out[2 * n] = w0; out[2 * n + 1] = w1; n++; }
+    }
+    out[2 * n] = (uint32_t)OP_ENDDL << 24; out[2 * n + 1] = 0;
+    return i;
+}

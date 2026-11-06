@@ -385,5 +385,7 @@ typedef struct NdEntSeg {
 } NdEntSeg;
 #define ND_ENT_MAXSEG 512u
 int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned* nseg, uint32_t* bad);
+/* S6-2c-2: the geometry ops (VTX, TRI1, TRI2) of an entity list copied into out (word pairs, G_ENDDL last): the list the static compile takes. Returns the op count of l (the index of its G_ENDDL). */
+unsigned nd_ent_strip(const uint32_t* l, uint32_t* out);
 
 #endif

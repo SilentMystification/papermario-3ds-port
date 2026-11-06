@@ -642,6 +642,16 @@
           "name": "tex_diff",
           "regex": "texchk f\\d+ ent \\d+ eq \\d+ diff (\\d+) nat",
           "pick": "last"
+        },
+        {
+          "name": "seg_eq",
+          "regex": "entsegcmp f\\d+ segs \\d+ eq (\\d+) diff \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "seg_diff",
+          "regex": "entsegcmp f\\d+ segs \\d+ eq \\d+ diff (\\d+)",
+          "pick": "last"
         }
       ],
       "gates": [
@@ -663,6 +673,16 @@
         {
           "metric": "tex_eq",
           "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_diff",
+          "op": "==",
           "value": 0
         }
       ]
@@ -701,6 +721,16 @@
           "name": "tex_diff",
           "regex": "texchk f\\d+ ent \\d+ eq \\d+ diff (\\d+) nat",
           "pick": "last"
+        },
+        {
+          "name": "seg_eq",
+          "regex": "entsegcmp f\\d+ segs \\d+ eq (\\d+) diff \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "seg_diff",
+          "regex": "entsegcmp f\\d+ segs \\d+ eq \\d+ diff (\\d+)",
+          "pick": "last"
         }
       ],
       "gates": [
@@ -721,6 +751,54 @@
         },
         {
           "metric": "tex_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "ent_kmr03_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Koopa Village kmr_03 picture of the native entity draw (S6-2c-3): entity lists from the static pools. A person reads the shot. Gate native above 0.",
+      "scenario": "ent_kmr03_pic",
+      "cap": 25,
+      "until": "entnat f\\d+ draws",
+      "tags": [
+        "azahar",
+        "entity"
+      ],
+      "log_metrics": [
+        {
+          "name": "ent_native",
+          "regex": "entnat f\\d+ draws \\d+ native (\\d+) fb",
+          "pick": "last"
+        },
+        {
+          "name": "seg_native",
+          "regex": "entnat f\\d+ draws \\d+ native \\d+ fb \\d+ segs native (\\d+) ",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ent_native",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_native",
           "op": ">",
           "value": 0
         }

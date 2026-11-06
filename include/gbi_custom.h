@@ -225,6 +225,8 @@
 #define G_PM_ENT_WORDS 4
 /* S6-2a: w0 bit 8 on a record written after the entity model display list (entcheck only): the walker checks its tile 0 state against nd_dlc_tex_decode of that list. */
 #define G_PM_ENT_END 0x100u
+/* S6-2c-3: w0 bit 9 on a record written right before the model display list G_DL (w1 = the list, word 1 as the first record). The walker draws the list natively from the static pools and skips that G_DL, or leaves it to run. */
+#define G_PM_ENT_DRAW 0x200u
 #define G_PM_REC_WORDS 14 /* S3F-2c: words of one producer record (R0 to R10). S3G-1: R11 custom gfx pre (w0) and post (w1), R12 geometry (w0) and pop flag (w1). S3G-2: R13 w0 = words after the record (special tile list or untextured ops), they run in place of the bind */
 #define gsSPPmTexInline(n) {{ _SHIFTL(G_PM_TEXI, 24, 8) | ((n) & 0xffff), 0 }}
 

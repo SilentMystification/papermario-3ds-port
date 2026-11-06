@@ -1004,6 +1004,8 @@ static int nd_raw_native(void) {
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = 0; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = 0; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
     nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dview != 0; nk.off_active = 0; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
     nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = 0;
+    const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
+    if (decal2) nk.pass = 2;
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
     if (id < 0) { nd_native_refused++; return 0; }
@@ -1046,6 +1048,12 @@ static int nd_raw_native(void) {
     d.nidx = gni;
     if (ndm_live) ndm_cmp(&nk, &d);
     if (spr_pend) spr_check(&d);
+    if (decal2) { /* pass A: the stencil mark, no colour, no depth write */
+        NdTmplKey ka = nk;
+        ka.pass = 1;
+        int ida = nd_tmpl_build(&ka);
+        if (ida >= 0) { NdDraw da = d; da.tmpl = ida; nd_native_submit(&da, tex); }
+    }
     nd_native_submit(&d, tex);
     return 1;
 }
@@ -2509,13 +2517,14 @@ static int grange_batch_open(unsigned gm, const float vp[4], const float uvso[4]
     return 1;
 }
 
+unsigned char pm_ent_decal_ok; /* S6-2c-3: set by the entity segment draw (pm_gbi.c ent_seg_native) around dlc_seg */
 int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                   const PmFx* fx, const unsigned short* idx, unsigned nidx) {
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
     if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
     if (r_zmark) return 0;
-    if (r_decal && r_blend) return 0;
+    if (r_decal && r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
     if (pm_wide && !off_active) {
         const float(*m)[4] = tab[gm];
         if (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) return 0;

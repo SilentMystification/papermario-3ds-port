@@ -5539,6 +5539,31 @@
       "reason": "S6-1 entity check on the kmr_03 coin block scene (row S6-1 gate). Cap 25 s: boot, warp and the first 300-frame window (the until)."
     },
     {
+      "name": "ent_kmr03_pic",
+      "status": "pending",
+      "subject": "Koopa Village kmr_03 (warp entry 0, default placement). Coin block and entity models on screen, drawn natively from the static pools (S6-2c-3). Shots at frames 200 to 205 and the entnat window line.",
+      "proves": "S6-2c-3 switch: entity model lists draw from the pools (entnat segs native above 0), the picture is the walker picture. Gate: native above 0, the shot shows the scene.",
+      "debug": "warp=kmr_03:0 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "entnat f\\d+ draws",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "native entity draws above 0",
+          "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S6-2c-3 picture of the native entity draw on kmr_03 (copy of entcheck_kmr03 without the check switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
+    },
+    {
       "name": "spot_mac00_pic",
       "status": "unverified",
       "subject": "mac_00 (preset toad), Mario placed at pos -135 0 85 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",

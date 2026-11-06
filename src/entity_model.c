@@ -516,6 +516,17 @@ void appendGfx_entity_model(EntityModel* model) {
         }
         gDPPipeSync(gMainGfxPos++);
 
+#ifdef TARGET_3DS
+        if (entRec != nullptr) { /* S6-2c-3: draw record right before the model list: the walker draws the list from the static pools and skips the G_DL after the record */
+            Gfx* drawRec = gMainGfxPos;
+            gMainGfxPos += G_PM_ENT_WORDS;
+            drawRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_DRAW;
+            drawRec[0].words.w1 = (u32)(uintptr_t)model->gfx.displayList;
+            drawRec[1].words.w0 = entRec[1].words.w0;
+            drawRec[1].words.w1 = entRec[1].words.w1;
+            drawRec[2].words.w0 = drawRec[2].words.w1 = drawRec[3].words.w0 = drawRec[3].words.w1 = 0;
+        }
+#endif
         gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
 #ifdef TARGET_3DS
         if (entRec != nullptr && entcheck_on()) { /* S6-2a: end record, the walker checks its tile 0 state against the decode of the list (pm_gbi.c G_PM_ENT) */

@@ -2282,6 +2282,208 @@ static __attribute__((noinline)) int dlc_try(const Gfx* l) {
     return 1;
 }
 
+/* S6-2c-2, S6-2c-3: entity model lists from the static pools. The record G_PM_ENT with G_PM_ENT_DRAW (entity_model.c) sits right before the model G_DL. The list is compiled once per
+ * key (list address, vertex segment base): nd_ent_segments cuts it at its state ops, nd_ent_strip leaves the vertex loads and triangles, nd_dlc_compile copies them into the static
+ * vertex and index pools (the area of the map shape groups, reset with pm_dlc_gen). The draw runs the state ops of each segment in place on the walker (same words, same order), then
+ * draws the segment triangles from the pool with dlc_seg: the walker state at the segment is the state of the draw, no second copy of it. A segment the static path refuses
+ * (lit, fog without GPU fog, zmark, decal with blend, ring full) runs its old words (the vertex loads before it, then its own ops). Content (the list words and the vertex span of a
+ * vertex array) is hashed once per frame and key; a change recompiles, 4 changes make the key dynamic (walker). entcheck: compile and compare, the walker draws the old words. */
+typedef struct { u32 a0, op0, op1, tri0, ntri; } EntSeg;
+typedef struct {
+    u32 list, vb, nops, hash, fr, vlen, retry;
+    const u8* vp;
+    const u16* idx;
+    const u8* vtx;
+    unsigned vfirst, nvtx;
+    EntSeg* seg;
+    u16 nseg;
+    u8 st, why, nrec;
+} EntKey;
+enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
+#define ENT_TAB 256
+#define ENT_SEGMAX 192
+static EntKey* ent_tab[ENT_TAB];
+static unsigned ent_nent, ent_gen_seen;
+static NdEntSeg ent_sbuf[ENT_SEGMAX];
+static unsigned ent_opc[256];
+static struct { unsigned draws, nat, fb, segn, segi, comp, dyn, why[12], ceq, cdiff, cseg; } ent_c;
+static int entchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("entcheck"); return v; }
+static const void* ent_env_vtx(uint32_t w1, unsigned n) {
+    const Vtx* src = (const Vtx*)ptr_of(w1);
+    if (!src || !is_host((u32)src) || n == 0 || n > 64) return NULL;
+    return src;
+}
+static u32 ent_hash(const Gfx* l, u32 nops, const u8* vp, u32 vlen) {
+    u32 h = 2166136261u;
+    const u32* w = (const u32*)l;
+    for (u32 i = 0; i < nops * 2u; i++) h = (h ^ w[i]) * 16777619u;
+    for (u32 i = 0; i < vlen; i += 4u) { u32 v; memcpy(&v, vp + i, 4); h = (h ^ v) * 16777619u; }
+    return h;
+}
+/* the pool copies against the list: every triangle corner is the vertex the slot holds at the triangle (bytes 0 to 5 and 8 to 15; the flag word is the palette index). Per segment. */
+static void ent_refcheck(const EntKey* k, const Gfx* l) {
+    const u8* slot[64];
+    u8 bad[ENT_SEGMAX];
+    unsigned gt = 0, s = 0;
+    memset(slot, 0, sizeof slot);
+    memset(bad, 0, sizeof bad);
+    for (u32 i = 0; i < k->nops; i++) {
+        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+        unsigned op = w0 >> 24;
+        if (op == G_VTX) {
+            unsigned n = (w0 >> 12) & 0xff, e = (w0 >> 1) & 0x7f, v0 = e >= n ? e - n : 0;
+            const u8* src = (const u8*)ent_env_vtx(w1, n);
+            if (v0 + n > 64) n = 64 - v0;
+            for (unsigned t = 0; t < n; t++) slot[v0 + t] = src ? src + 16u * t : NULL;
+        } else if (op == G_TRI1 || op == G_TRI2) {
+            for (int t = 0; t < (op == G_TRI2 ? 2 : 1); t++, gt++) {
+                u32 w = t ? w1 : w0;
+                int ix[3] = { (int)((w >> 16) & 0xff) / 2, (int)((w >> 8) & 0xff) / 2, (int)(w & 0xff) / 2 };
+                while (s + 1 < k->nseg && gt >= k->seg[s].tri0 + k->seg[s].ntri) s++;
+                for (int c = 0; c < 3; c++) {
+                    const u8* p = ix[c] < 64 ? slot[ix[c]] : NULL;
+                    const u8* q = k->vtx + 16u * (k->idx[3u * gt + (unsigned)c] - k->vfirst);
+                    if (!p || memcmp(p, q, 6) != 0 || memcmp(p + 8, q + 8, 8) != 0) bad[s] = 1;
+                }
+            }
+        }
+    }
+    for (unsigned q = 0; q < k->nseg; q++) {
+        if (!k->seg[q].ntri) continue;
+        ent_c.cseg++;
+        if (bad[q] || gt != k->seg[k->nseg - 1].tri0 + k->seg[k->nseg - 1].ntri) ent_c.cdiff++; else ent_c.ceq++;
+    }
+}
+static void ent_compile(EntKey* k, const Gfx* l) {
+    const u32* w = (const u32*)l;
+    unsigned ns = 0, nops;
+    u32 bad = 0, ntri = 0;
+    const u8 *lo = NULL, *hi = NULL;
+    NdObj o;
+    free(k->seg); k->seg = NULL; k->nseg = 0;
+    k->st = ENT_REF; k->why = 0; k->fr = pm_frame_count(); k->retry = k->fr + 300u;
+    ent_c.comp++;
+    int rc = nd_ent_segments(w, ent_sbuf, ENT_SEGMAX, &ns, &bad);
+    if (rc != NDR_OK) { k->why = (u8)(rc + 1); if (rc == NDR_OP) ent_opc[bad & 0xffu]++; return; }
+    if (ns == 0) { k->why = 8; return; }
+    nops = nd_ent_strip(w, dlc_words);
+    for (unsigned s = 0; s < ns; s++) ntri += ent_sbuf[s].ntri;
+    if (k->vb) for (unsigned i = 0; i < nops; i++) { /* the vertex span of the vertex array: hashed once per frame */
+        if ((l[i].words.w0 >> 24) != G_VTX) continue;
+        const u8* p = (const u8*)ptr_of(l[i].words.w1);
+        unsigned n = (l[i].words.w0 >> 12) & 0xff;
+        if (!p || !is_host((u32)p)) continue;
+        if (!lo || p < lo) lo = p;
+        if (!hi || p + 16u * n > hi) hi = p + 16u * n;
+    }
+    if (lo && (u32)(hi - lo) > 0x20000u) { k->why = 5; return; }
+    NdDlcEnv env = { ent_env_vtx, nd_env_valloc, nd_env_ialloc };
+    rc = nd_dlc_compile(&o, dlc_words, &env);
+    if (rc != NDR_OK) { k->why = (u8)(rc + 1); return; }
+    if (o.nidx != 3u * ntri) { nd_dlc_free(&o); k->why = 7; return; }
+    k->seg = (EntSeg*)malloc(ns * sizeof(EntSeg));
+    if (!k->seg) { nd_dlc_free(&o); k->why = 5; return; }
+    for (unsigned s = 0; s < ns; s++) {
+        k->seg[s].a0 = s ? ent_sbuf[s - 1].op1 : 0u; k->seg[s].op0 = ent_sbuf[s].op0; k->seg[s].op1 = ent_sbuf[s].op1;
+        k->seg[s].tri0 = ent_sbuf[s].tri0; k->seg[s].ntri = ent_sbuf[s].ntri;
+    }
+    k->nseg = (u16)ns; k->nops = nops;
+    k->idx = o.idx; k->vtx = o.vtx; k->vfirst = o.vfirst; k->nvtx = o.nvtx;
+    if (o.nvtx) pm_gpu_gstat_commit(o.vfirst, o.nvtx);
+    if (o.nidx) pm_gpu_gidxs_commit(o.idx, o.nidx);
+    nd_dlc_free(&o); /* the groups and geometry ops; the pool copies stay */
+    k->vp = lo; k->vlen = lo ? (u32)(hi - lo) & ~3u : 0u;
+    k->hash = ent_hash(l, nops, k->vp, k->vlen);
+    k->st = ENT_OK;
+    if (entchk_on()) ent_refcheck(k, l);
+}
+static void ent_reset(void) {
+    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { free(ent_tab[i]->seg); free(ent_tab[i]); ent_tab[i] = NULL; }
+    ent_nent = 0; ent_gen_seen = pm_dlc_gen;
+}
+static EntKey* ent_lookup(const Gfx* l, u32 vb) {
+    unsigned h = (((u32)l >> 3) * 2654435761u ^ vb * 40503u) >> 20 & (ENT_TAB - 1);
+    for (unsigned n = 0; n < ENT_TAB; n++, h = (h + 1) & (ENT_TAB - 1)) {
+        EntKey* k = ent_tab[h];
+        if (!k) {
+            if (ent_nent >= ENT_TAB * 3 / 4) return NULL;
+            k = (EntKey*)calloc(1, sizeof *k);
+            if (!k) return NULL;
+            k->list = (u32)l; k->vb = vb;
+            ent_tab[h] = k; ent_nent++;
+            ent_compile(k, l);
+            return k;
+        }
+        if (k->list == (u32)l && k->vb == vb) return k;
+    }
+    return NULL;
+}
+extern unsigned char pm_ent_decal_ok; /* pm_gpu.c: pm_gpu_grange takes a decal with blend (two native passes at the close) */
+static unsigned ent_sw[16], ent_gw[8]; /* ent_gw: pm_gpu_grange_why of a grange refusal (1 gv or gpu off, 2 zmark, 3 decal and blend, 4 wide, 5 ring) */ /* segments the static path refused, by reason: 1 lit, 2 fog, 3 index room, 4 matrix table, 5 + dlc_seg code (1 + gv state why, 9 grange) */
+static __attribute__((noinline)) int ent_seg_native(const EntKey* k, const EntSeg* s) {
+    if (geom & G_LIGHTING) { ent_sw[1]++; return 0; }
+    if (fogmix_on && (geom & G_FOG) && !gv_fog_gpu_ok()) { ent_sw[2]++; return 0; }
+    if (!pm_gpu_gidx_room(3u * s->ntri)) { ent_sw[3]++; return 0; }
+    pm_gpu_set_mode((geom & G_ZBUFFER) != 0, (geom & G_LIGHTING) != 0);
+    unsigned gmi = dlc_gmi();
+    if (gmi == GV_NONE) { ent_sw[4]++; return 0; }
+    pm_ent_decal_ok = 1;
+    int r = dlc_seg(k->idx + 3u * s->tri0, s->ntri, gmi);
+    pm_ent_decal_ok = 0;
+    if (r) return 1;
+    ent_sw[5 + (dbg_seg < 10 ? dbg_seg : 10)]++;
+    if (dbg_seg == 9) ent_gw[pm_gpu_grange_why(gm_tab[gmi], 3u * s->ntri) & 7]++;
+    return 0;
+}
+static void ent_log(void) {
+    static unsigned next = 300u;
+    unsigned f = pm_frame_count();
+    extern void pm_log_prof_line(const char* fmt, ...);
+    if (f < next) return;
+    next = (f / 300u + 1u) * 300u;
+    pm_log_prof_line("entnat f%u draws %u native %u fb %u segs native %u interp %u keys %u comp %u dyn %u", f, ent_c.draws, ent_c.nat, ent_c.fb, ent_c.segn, ent_c.segi, ent_nent, ent_c.comp, ent_c.dyn);
+    pm_log_prof_line("entnat why 1 table %u 2 op %u 3 slot %u 4 vtx %u 5 long %u 6 pool %u 7 count %u 8 none %u", ent_c.why[1], ent_c.why[2], ent_c.why[3], ent_c.why[4], ent_c.why[5], ent_c.why[6], ent_c.why[7], ent_c.why[8]);
+    for (unsigned q = 0; q < 256u; q++) if (ent_opc[q]) pm_log_prof_line("entnat refused op %02x keys %u", q, ent_opc[q]);
+    pm_log_prof_line("entnat grange why 0 %u 1 %u 2 %u 3 %u 4 %u 5 %u", ent_gw[0], ent_gw[1], ent_gw[2], ent_gw[3], ent_gw[4], ent_gw[5]);
+    pm_log_prof_line("entnat segwhy lit %u fog %u room %u mtx %u | dlc_seg code (0 none, 1 + gv why, 9 grange) 0:%u 1:%u 2:%u 3:%u 4:%u 5:%u 6:%u 7:%u 8:%u 9:%u", ent_sw[1], ent_sw[2], ent_sw[3], ent_sw[4], ent_sw[5], ent_sw[6], ent_sw[7], ent_sw[8], ent_sw[9], ent_sw[10], ent_sw[11], ent_sw[12], ent_sw[13], ent_sw[14]);
+    if (entchk_on()) pm_log_prof_line("entsegcmp f%u segs %u eq %u diff %u", f, ent_c.cseg, ent_c.ceq, ent_c.cdiff);
+}
+/* 1: the list is drawn (the caller skips the G_DL after the record); 0: the walker runs the old words */
+static int ent_draw(const Gfx* rec) {
+    const Gfx* l = (const Gfx*)ptr_of(rec[0].words.w1);
+    const Gfx* nx = rec + G_PM_ENT_WORDS;
+    const unsigned f = pm_frame_count();
+    if (!l || !dlc_on || !is_host((u32)l) || ((u32)l & 7u) || (nx->words.w0 >> 24) != G_DL || nx->words.w1 != rec[0].words.w1) return 0;
+    if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
+    if (ent_gen_seen != pm_dlc_gen) ent_reset();
+    ent_c.draws++;
+    EntKey* k = ent_lookup(l, rec[1].words.w1);
+    if (!k) { ent_c.why[1]++; ent_c.fb++; ent_log(); return 0; }
+    if (k->st == ENT_OK && k->fr != f) { /* content, once per frame */
+        k->fr = f;
+        if (ent_hash(l, k->nops, k->vp, k->vlen) != k->hash) {
+            if (++k->nrec > 3) { k->st = ENT_DYN; ent_c.dyn++; }
+            else { u8 nr = k->nrec; ent_compile(k, l); k->nrec = nr; }
+        }
+    } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { ent_compile(k, l); }
+    if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; ent_log(); return 0; }
+    if (entchk_on()) { ent_c.nat++; ent_log(); return 0; }
+    for (unsigned s = 0; s < k->nseg; s++) {
+        const EntSeg* e = &k->seg[s];
+        if (e->op0 > e->a0) pm_gbi_run((void*)(l + e->a0), (e->op0 - e->a0) * 8u);
+        if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
+        if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; continue; }
+        ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
+        for (u32 i = 0; i < e->op0; i++) if ((l[i].words.w0 >> 24) == G_VTX) pm_gbi_run((void*)(l + i), 8u);
+        if (e->op1 > e->op0) pm_gbi_run((void*)(l + e->op0), (e->op1 - e->op0) * 8u);
+    }
+    { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) pm_gbi_run((void*)(l + e->op1), (k->nops - e->op1) * 8u); }
+    tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of dlc_try */
+    ent_c.nat++;
+    ent_log();
+    return 1;
+}
+
 static __attribute__((cold, noinline)) void dlc_report(void) {
     pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u | static grp %u tri %u fail %u full %u batch %u kb %u skip %u grp %u xgrp %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent, dlc_c.srep, dlc_c.stri, dlc_c.sfail, dlc_c.sfull, dlc_c.batch, pm_gpu_gstat_used() / 64u, dlc_c.skip, dlc_c.grp, dlc_c.xgrp);
     memset(&dlc_c, 0, sizeof dlc_c);
@@ -4556,6 +4758,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         }
         case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. S6-2a: the end record (G_PM_ENT_END, entcheck only) checks the tile 0 state. */
             if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); }
+            else if ((w0 & G_PM_ENT_DRAW) && ent_draw(pc - 1)) { pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
             pc += G_PM_ENT_WORDS - 1;
             break;
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
