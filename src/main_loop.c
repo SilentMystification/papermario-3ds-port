@@ -214,7 +214,9 @@ void gfx_draw_frame(void) {
         return;
     }
 
+    FI_OPEN("gfx_draw_frame"); /* WCEN2: the frame start op (mainGfx[0]) has its own census key */
     gSPMatrix(gMainGfxPos++, &MasterIdentityMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    FI_CLOSE();
 
     FI_OPEN("gfx_sprite_init");
     spr_render_init();

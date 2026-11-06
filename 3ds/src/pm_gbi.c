@@ -2845,6 +2845,7 @@ static unsigned os_svc_last; /* CAP1: pm_svc_n at the last opsplit line (pt fiel
 static struct { const Gfx* p; unsigned s; } pmk[PK_MARKS];
 static int pmk_n, pmx_main, pmx_next;
 static unsigned pmx_cur, pk_key[PK_SLOTS], pk_set[PK_SLOTS], pk_ops[PK_SLOTS], pk_tk[PK_SLOTS], pk_sn[PK_SLOTS];
+static unsigned pk_rec[PK_SLOTS], pk_nat[PK_SLOTS]; /* WCEN2: per producer, record headers run (pk_rec) and records drawn natively (pk_nat) */
 
 static unsigned pk_slot(unsigned a) {
     unsigned h = ((a * 2654435761u) >> 16) % PK_PRE;
@@ -3182,8 +3183,10 @@ void pm_pos_text(char* out); /* pm_route.c */
 static void os_win_clear(void) {
     memset(os_op_n, 0, sizeof os_op_n); memset(os_nn, 0, sizeof os_nn); memset(os_tk, 0, sizeof os_tk); memset(os_sn, 0, sizeof os_sn); memset(os_fl, 0, sizeof os_fl);
     memset(pk_ops, 0, sizeof pk_ops); memset(pk_tk, 0, sizeof pk_tk); memset(pk_sn, 0, sizeof pk_sn);
+    memset(pk_rec, 0, sizeof pk_rec); memset(pk_nat, 0, sizeof pk_nat);
     gm_steps = 0;
 }
+static const Gfx* pre_w0; static const Gfx* pre_mk0; static int pre_mkn; /* WCEN2 diag: the last outer walk's list start, its first mark and mark count */
 static void os_report(void) {
     static unsigned long long est[256], estc[256], pke[PK_SLOTS];
     unsigned long long cls_tk[OS_N] = { 0 }, cls_n[OS_N] = { 0 }, tot_n = 0, tot_fl = 0, tot_sn = 0, psum = 0;
@@ -3214,15 +3217,16 @@ static void os_report(void) {
     rec_n = 0;
     { char p[40]; pm_pos_text(p); pm_log_hw("pos f%d %s", rm_frame, p); } /* CAP1: Mario, one line per window */
     pm_log_hw("prod f%d sum %u ops %u", rm_frame, (unsigned)(psum / 300), (unsigned)(tot_n / 300));
-    for (int r = 0; r < 8; r++) {
+    for (int r = 0; r < 15; r++) {
         int best = -1; unsigned long long bv = 0;
         for (int s = 0; s < PK_SLOTS; s++) if (pk_ops[s] > bv) { bv = pk_ops[s]; best = s; }
         if (best < 0) break;
         char nm[48];
         pk_name((unsigned)best, nm, sizeof nm);
-        pm_log_hw("prod f%d %s ops %u us %u", rm_frame, nm, (unsigned)(bv / 300), (unsigned)(pke[best] / 268 / 300));
+        pm_log_hw("prod f%d %s ops %u us %u rec %u nat %u", rm_frame, nm, (unsigned)(bv / 300), (unsigned)(pke[best] / 268 / 300), (unsigned)(pk_rec[best] / 300), (unsigned)(pk_nat[best] / 300));
         pk_ops[best] = 0;
     }
+    { const Gfx* mb = gDisplayContext ? gDisplayContext->mainGfx : NULL; pm_log_hw("pre f%d walk0 %d mk0 %d marks %d", rm_frame, mb ? (int)(pre_w0 - mb) : -99999, mb && pre_mk0 ? (int)(pre_mk0 - mb) : -99999, pre_mkn); } /* WCEN2 diag */
     os_win_clear();
 }
 
@@ -4322,7 +4326,7 @@ static void gbi_run_body(void* list, unsigned nbytes);
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
     if (!pm_ph_on) { gbi_run_body(list, nbytes); return; }
-    if (os_nest == 0) { pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; pmx_cur = pmx_main ? PK_PRE : PK_BG; pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
+    if (os_nest == 0) { pre_w0 = (const Gfx*)list; pre_mkn = pmk_n; pre_mk0 = pmk_n ? pmk[0].p : NULL; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; pmx_cur = pmx_main ? PK_PRE : pk_slot((unsigned)(uintptr_t)list); /* WCEN2: a non-main list has its own key (its address) */ pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
     os_nest++;
     gbi_run_body(list, nbytes);
     if (os_open && os_nest == 1) os_close();
@@ -4692,6 +4696,7 @@ extern void pm_gpu_ndm_end(void);
 extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
 extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
 extern void pm_gpu_model_fb_cached(unsigned why); /* S3N-7, S3L-1: the code of the stored fallback */ /* S3N-6: the cached draws of the key, 1 when drawn (e: the entry found by the lookup) */
+static int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     NdMKey mk;
     NdtT tk = pm_gpu_ndt_begin(); /* S3N-7: key build */
@@ -4730,6 +4735,7 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
     if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     if (ndm) pm_gpu_ndm_end();
+    rec_nat_last = nat;
     return G_PM_REC_WORDS - 1 + q[13].words.w0; /* R1 to R12: matrix, lights, fog, combine, prim, env, blend, shroud, billboard, panner, custom gfx, geometry, pop; then the R13 words */
 }
 
@@ -4798,11 +4804,15 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc = stack[--sp];
             break;
         case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
+            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             pc += rec_run(pc - 1);
+            if (pm_ph_on && rec_nat_last) pk_nat[pmx_cur]++;
             break;
         case G_PM_SPR: { /* S4-1, S4-3: producer record of a sprite component (sprite.c). A native sprite (pm_gpu_spr_native) draws here; its vertex and triangle words (header offset) become G_NOOP, the state words after the record still run. Else the walker draws the old words. */
             Gfx* srec = pc - 1;
+            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             if (pm_gpu_spr_native((const uint32_t*)srec)) {
+                if (pm_ph_on) pk_nat[pmx_cur]++;
                 const u32 k = srec[0].words.w0 & 0xffffu;
                 srec[k].words.w0 = 0; srec[k].words.w1 = 0;
                 srec[k + 1].words.w0 = 0; srec[k + 1].words.w1 = 0;
@@ -4811,8 +4821,9 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             break;
         }
         case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. S6-2a: the end record (G_PM_ENT_END, entcheck only) checks the tile 0 state. */
+            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); }
-            else if ((w0 & G_PM_ENT_DRAW) && ent_draw(pc - 1)) { pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
+            else if ((w0 & G_PM_ENT_DRAW) && ent_draw(pc - 1)) { if (pm_ph_on) pk_nat[pmx_cur]++; pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
             pc += G_PM_ENT_WORDS - 1;
             break;
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */

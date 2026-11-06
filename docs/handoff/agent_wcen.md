@@ -1,7 +1,9 @@
 # agent_wcen: walker producer census after S3, S4, S6
 
 ## STATE
-WCEN (row done, 2026-11-06): 5 scenes measured, one Azahar start each (benches wcen_mac01, wcen_mac00, wcen_sbk56, wcen_iwa10, wcen_battle; 5 of 8 starts). The walker still runs 8.3 to 15.3 ms gbi per frame (Azahar, phase on) and 439 to 1006 ops per frame at the spots. Top walker producers are the S3, S4 and S6 fallbacks (model.c, sprite.c, entity_model.c, item_entity.c, animator.c, npc.c) plus two unmapped buckets, pre and bg, which hold about 50 percent of the ops. The census prints 8 producers, not 15 (see Gaps). No code change.
+WCEN (2026-11-06, commit a7efce2c1): 5 scenes, walker still 8.3 to 15.3 ms gbi per frame (Azahar, direction only), 439 to 1006 ops per frame. Top fallbacks: model.c (S3), entity_model.c, item_entity.c (S6), npc.c, sprite.c (S4).
+WCEN2 (census code, pm_gbi.c and main_loop.c mark): top 15 printed; per producer rec and nat columns (native records vs walker work); non-main lists keyed by address. mac_01 and iwa_10 tables below are WCEN2. The other scene tables are WCEN (old labels: one bg slot).
+OPEN: "pre" (45 to 48 percent of ops) is not resolved. The gfx_draw_frame mark gets 0 ops; the mark table is empty at walk start in mac_01 and holds 254 marks in iwa_10 (walk starts at mainGfx[0] in both). Marks and walk appear to be out of step. Next: keep the marks with the list until its walk ends (code change, not made here).
 
 ## Method
 - Census: pm_gbi.c os_report (P1), phase switch, one 300-frame window per run (scene frames 0 to 300; battle: battle from scene frame 100). Walker ops and sampled us per producer, printed as `prod f<n> <name> ops <n> us <n>`. us is the average per frame.
@@ -13,19 +15,25 @@ WCEN (row done, 2026-11-06): 5 scenes measured, one Azahar start each (benches w
 ## Slice owners (plan_native_slices.md)
 S2 frame state (cam_main.c, background_gfx.c). S3 models (model.c). S4 sprites and NPCs (sprite.c, npc.c). S5 HUD and text. S6 entities, items, animators (entity_model.c, item_entity.c, animator.c). S7 world and battle. S8 effects (src/effects/*.c, effects.c). "none" = the file is in no slice file list.
 
-## Scene tables (top 8 of the census; ops and us per frame)
+## Scene tables (ops and us per frame; WCEN top 8, WCEN2 top 15 with rec and nat)
 
-### mac_01 (pos 0 0 200): 491 ops/frame, walker gbi 9049 us/frame
-| # | producer | function | file:line | owner | ops | us |
-|---|---|---|---|---|---|---|
-| 1 | pre | none: ops before the first mark | main list | unmapped | 225 | 4504 |
-| 2 | 0017b370 | appendGfx_model | src/model.c:1376 | S3 fallback | 131 | 3450 |
-| 3 | sprite_component | spr_draw_component | src/sprite.c:499 | S4 fallback | 46 | 642 |
-| 4 | bg | none: ops of a non-main list, no mark | - | unmapped | 39 | 258 |
-| 5 | 00243a80 | appendGfx_item_entity | src/item_entity.c | S6 fallback | 32 | 225 |
-| 6 | camera_render | render_frame | src/cam_main.c:118 | S2 | 8 | 34 |
-| 7 | 001eb2e8 | appendGfx_npc | src/npc.c:835 | S4 fallback | 3 | 56 |
-| 8 | 0017ef04 | appendGfx_model_group | src/model.c | S3 fallback | 2 | 179 |
+### mac_01 (pos 0 0 200), WCEN2 (lane wcen, WCEN2 build, window 0 to 300): 492 ops/frame
+Columns: ops per frame, us per frame, rec = record headers run (G_PM_REC, G_PM_SPR, G_PM_ENT), nat = records drawn natively, drew = ops - rec (walker work).
+| # | producer | function | file | owner | ops | us | rec | nat | drew |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | pre | unresolved (see Gaps) | main list | unmapped | 225 | 4500 | 57 | 52 | 168 |
+| 2 | 0017be58 | appendGfx_model | src/model.c | S3 fallback | 136 | 3547 | 49 | 46 | 87 |
+| 3 | 001ebdd0 | appendGfx_npc | src/npc.c:835 | S4 fallback | 41 | 444 | 3 | 2 | 38 |
+| 4 | 00244568 | appendGfx_item_entity | src/item_entity.c | S6 fallback | 32 | 224 | 1 | 1 | 31 |
+| 5 | 015fa3d8 | non-main list, D_80164000+0x124460 | background list (inferred) | S2 | 19 | 98 | 0 | 0 | 19 |
+| 6 | 015561a8 | non-main list, D_80164000+0x80230 | background list (inferred) | S2 | 19 | 147 | 0 | 0 | 19 |
+| 7 | camera_render | render_frame | src/cam_main.c:145 | S2 | 8 | 34 | 0 | 0 | 8 |
+| 8 | sprite_component | spr_draw_component | src/sprite.c:499 | S4 fallback | 4 | 174 | 0 | 0 | 4 |
+| 9 | 0017f9ec | appendGfx_model_group | src/model.c | S3 fallback | 2 | 180 | 2 | 2 | 0 |
+| 10 | model_matrix | mdl_update_transform_matrices (mark only) | src/model.c:2991 | S3 | 0 | 1 | 0 | 0 | 0 |
+| 11 | camera_persp | camera mark, 0 ops | src/cam_main.c | S2 | 0 | 0 | 0 | 0 | 0 |
+| 12 | gfx_draw_frame | frame start mark, 0 ops | src/main_loop.c:208 | S2 | 0 | 2 | 0 | 0 | 0 |
+| 13 | 01250ea8 | data address key (pm_tex_epoch_v), 0 ops | none | none | 0 | 12 | 0 | 0 | 0 |
 
 ### mac_00 (pos -135 0 85): 439 ops/frame, walker gbi 9459 us/frame
 | # | producer | function | file:line | owner | ops | us |
@@ -51,19 +59,26 @@ S2 frame state (cam_main.c, background_gfx.c). S3 models (model.c). S4 sprites a
 | 7 | 0017b370 | appendGfx_model | src/model.c:1376 | S3 fallback | 17 | 1251 |
 | 8 | 001dc690 | stars_shimmer_appendGfx | src/effects/stars_shimmer.c:282 | S8 | 14 | 133 |
 
-### iwa_10 (pos -586 1 530): 1006 ops/frame, walker gbi 15327 us/frame
-| # | producer | function | file:line | owner | ops | us |
-|---|---|---|---|---|---|---|
-| 1 | pre | none | main list | unmapped | 481 | 9196 |
-| 2 | 0022e428 | appendGfx_entity_model | src/entity_model.c:347 | S6 fallback | 240 | 2229 |
-| 3 | sprite_component | spr_draw_component | src/sprite.c:499 | S4 fallback | 121 | 1918 |
-| 4 | 0017b370 | appendGfx_model | src/model.c:1376 | S3 fallback | 84 | 7596 |
-| 5 | bg | none | - | unmapped | 38 | 227 |
-| 6 | WorkerBackUI | render_workers_backUI | src/worker.c:181 | none | 11 | 134 |
-| 7 | 0017ef04 | appendGfx_model_group | src/model.c | S3 fallback | 9 | 1747 |
-| 8 | camera_render | render_frame | src/cam_main.c:118 | S2 | 8 | 48 |
+### iwa_10 (pos -586 1 530), WCEN2 (lane wcen, window 0 to 300): 1006 ops/frame
+| # | producer | function | file | owner | ops | us | rec | nat | drew |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | pre | unresolved (see Gaps) | main list | unmapped | 480 | 9287 | 58 | 40 | 422 |
+| 2 | 0022ef10 | appendGfx_entity_model | src/entity_model.c:347 | S6 fallback | 240 | 2291 | 14 | 6 | 226 |
+| 3 | 001ebdd0 | appendGfx_npc | src/npc.c:835 | S4 fallback | 93 | 1168 | 8 | 4 | 85 |
+| 4 | 0017be58 | appendGfx_model | src/model.c | S3 fallback | 84 | 7628 | 33 | 30 | 51 |
+| 5 | sprite_component | spr_draw_component | src/sprite.c:499 | S4 fallback | 27 | 710 | 3 | 3 | 24 |
+| 6 | 015fa3d8 | non-main list, D_80164000+0x124460 | background list (inferred) | S2 | 18 | 109 | 0 | 0 | 18 |
+| 7 | 015561a8 | non-main list, D_80164000+0x80230 | background list (inferred) | S2 | 18 | 107 | 0 | 0 | 18 |
+| 8 | WorkerBackUI | render_workers_backUI | src/worker.c:181 | none | 11 | 134 | 0 | 0 | 11 |
+| 9 | 0017f9ec | appendGfx_model_group | src/model.c | S3 fallback | 9 | 1748 | 0 | 0 | 9 |
+| 10 | camera_render | render_frame | src/cam_main.c:145 | S2 | 8 | 48 | 0 | 0 | 8 |
+| 11 | 001dd178 | stars_shimmer_appendGfx | src/effects/stars_shimmer.c:282 | S8 | 7 | 168 | 0 | 0 | 7 |
+| 12 | gfx_window_root | window root mark | src/main_loop.c | S9 | 1 | 6 | 0 | 0 | 1 |
+| 13 | WorkerFrontUI | render_workers_frontUI | src/worker.c | none | 0 | 3 | 0 | 0 | 0 |
+| 14 | model_matrix | mdl_update_transform_matrices (mark only) | src/model.c:2991 | S3 | 0 | 1 | 0 | 0 | 0 |
+| 15 | camera_persp | camera mark, 0 ops | src/cam_main.c | S2 | 0 | 3 | 0 | 0 | 0 |
 
-Native draws at iwa_10 (same run): ndm f300 native 15224, fb 2862 (S3 model draws); entnat f300 draws 5545, native 4788, fb 757 (S6). The other scenes did not log these lines.
+Native draws at iwa_10 (WCEN run, old build): ndm f300 native 15224, fb 2862 (S3); entnat f300 draws 5545, native 4788, fb 757 (S6).
 
 ### battle (kmr_03, battle from scene frame 100; window 0 to 300): 698 ops/frame, walker gbi 11428 us/frame
 | # | producer | function | file:line | owner | ops | us |
@@ -86,9 +101,9 @@ Per scene totals (walker ops per frame; walker gbi us per frame = sum of the ops
 4. S8 effects still on the walker: sun, walking_dust, stars_shimmer, effect_renderUI (14 to 28 ops per frame each).
 5. camera_render (cam_main.c render_frame, S2): 8 ops per frame at every scene.
 
-## Gaps (census limits; no code change in WCEN)
-- The census prints 8 producers per window (pm_gbi.c os_report, loop `r < 8`), not 15. Printing 15 is a one-line change in pm_gbi.c (not done here).
-- "pre" and "bg" have no label. Marks at the start of the main list and at each non-main list would name them. Code change (pm_gbi.c and the gfx entry in main_loop.c), not done here.
+## Gaps
+- "pre" (see STATE): unlabelled. Diag line `pre f<n> walk0 <ops> mk0 <ops> marks <n>` in the census log (pm_gbi.c os_report).
+- Non-main lists: keys 015fa3d8 and 015561a8 are addresses in D_80164000 (the display context array, offsets 0x124460 and 0x80230 in the lane map). Two background lists, one per display context (inferred from gfx_task_background; not checked against the struct).
+- rec and nat count headers and native draws only. The ops that a native record skips are not visited by the walker, so they are not in ops (not counted, not measured).
 - One 300-frame window per run. The battle window holds 200 battle frames plus the battle start.
-- The mac_01 log file was overwritten by a later run and not kept. Its numbers come from the run output and its opsplit and pos lines, read before the overwrite.
-- The shots (build3ds/azt/shots/wcen_*/) were not viewed by this agent. The subject lines (pos, warp, battle formation) are in the logs.
+- Shots (build3ds/azt/shots/wcen_*/ and wcen2_*) were not viewed by this agent. The subject lines (pos, warp) are in the logs.
