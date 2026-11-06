@@ -295,7 +295,14 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
         # The slot is free for the next run once this script ends, and that run overwrites the slot log: read this run's log from this copy
         $ld = Join-Path $repo "build3ds\azt\logs"
         New-Item -ItemType Directory -Force -Path $ld | Out-Null
-        Copy-Item $file (Join-Path $ld "$($sc.name).txt") -Force
+        $dst = Join-Path $ld "$($sc.name).txt"
+        if ($script:azLine) {
+            # AZT2: the warm/cold line goes first in the copy, then the game log unchanged
+            [IO.File]::WriteAllText($dst, $script:azLine + "`r`n")
+            $fsIn = [IO.File]::OpenRead($file); $fsOut = [IO.File]::Open($dst, [IO.FileMode]::Append)
+            try { $fsIn.CopyTo($fsOut) } finally { $fsIn.Dispose(); $fsOut.Dispose() }
+        }
+        else { Copy-Item $file $dst -Force }
         Write-Output "LOG: $(Join-Path $ld "$($sc.name).txt") (copy of this run's log; slot $slotK)"
     }
     Write-Output "SUBJECT: $($sc.subject)"
@@ -314,6 +321,7 @@ function Exit-Run([int]$code) {
     if ($env:PM_BENCH_BUILD) { $ia += @("--build", $env:PM_BENCH_BUILD) }
     if ($env:PM_BENCH_COMMIT) { $ia += @("--commit", $env:PM_BENCH_COMMIT) }
     $ia += @("--speed", $speed)
+    if ($null -ne $script:azWarm) { $ia += @("--warm", [string]$script:azWarm) } # AZT2: 1 warm, 0 cold (the azslot line)
     if ($null -ne $frameLimit) { $ia += @("--frame-limit", [string]$frameLimit) }
     & python @ia
     if ($LASTEXITCODE -ne 0) { Write-Output "BENCH: run not recorded (bench.py exit $LASTEXITCODE)" }
@@ -360,6 +368,7 @@ $argv += @("-Slot", [string]$slotK)
 if (-not $NoKeep) { $argv += @("-Keep") } # AZT-3b: kept by default. run_azahar keeps only a run that matched its until line.
 $warmFile = Join-Path $slotInfo.dir "warm.start"
 Remove-Item $warmFile -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $slotInfo.dir "azslot.line") -ErrorAction SilentlyContinue # AZT2: a line of this start only
 $cmd = ($argv | ForEach-Object { if ($_ -match '^-[A-Za-z]+$') { $_ } else { '"' + $_ + '"' } }) -join " "
 
 $env:PM_ROW = $Row
@@ -412,6 +421,13 @@ if (-not $child.WaitForExit(150000)) {
     Write-Output "NOT ENDED: run_azahar.ps1 (PID $($child.Id)) did not end. It was stopped by force. Check for an Azahar with Get-Process azahar."
 }
 $rc = $child.ExitCode
+# AZT2: the warm/cold line run_azahar.ps1 wrote for this start (none when the run ended before the decision)
+$azLineFile = Join-Path $slotInfo.dir "azslot.line"
+if (Test-Path $azLineFile) {
+    $script:azLine = (Get-Content $azLineFile -Raw).Trim()
+    Write-Output $script:azLine
+    if ($script:azLine -match ' warm$') { $script:azWarm = 1 } elseif ($script:azLine -match ' cold \(') { $script:azWarm = 0 }
+}
 if ($rc -eq 9) { Write-Output "BUDGET: row $Row has no starts left. Nothing more was run. The orchestrator resets a row with run_azahar.ps1 -ResetBudget <row>."; exit 9 }
 # The end line of this start in the budget file: rc and the result text of run_azahar.ps1
 $endRow = $null

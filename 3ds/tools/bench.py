@@ -16,7 +16,7 @@ This is the entry point for every test and profiling run (it replaces the text t
         Parses the prof windows (prof_by_scene.py) and the log_metrics regexes of the bench. One run per scene.
         Build and commit come from the log's "build N git H" line when not given. Without that line, from
         3ds/logs/perf/pushed_builds.txt (last push at or before the log's write time). Else null with a warning.
-  python 3ds/tools/bench.py ingest-last --log <log> --scenario <name> --row <row> --rc <n> [--label L] [--build N] [--commit H] [--shots DIR]
+  python 3ds/tools/bench.py ingest-last --log <log> --scenario <name> --row <row> --rc <n> [--label L] [--build N] [--commit H] [--shots DIR] [--warm 0|1]
         Called by azt.ps1 after each scenario start that wrote a log. A scenario with a bench records under that bench;
         any other scenario records as bench "adhoc:<scenario>".
   python 3ds/tools/bench.py build-at <commit> <bench> --row R [--why "<text>"] [--label L] [--dry-run]
@@ -606,7 +606,7 @@ def resolve_build(path, text, build, commit, host="host"):
 
 
 def ingest_file(path, bench, host, build, commit, row, label, result="imported", note="", shot=None, tags=None, device="", kind=None,
-                speed="unknown", frame_limit=None, dirty=None):
+                speed="unknown", frame_limit=None, dirty=None, warm=None):
     p = Path(path)
     dirty = git_dirty() if dirty is None else dirty
     text = p.read_text(encoding="utf-8", errors="replace")
@@ -637,6 +637,8 @@ def ingest_file(path, bench, host, build, commit, row, label, result="imported",
         x, y, z = pos_ranges(good)
         rec = make_run(bench, kind, host, build, commit, row, label, result, scene, rel, shot, note, tags or [], run,
                        [window_rec(w) for w in ws], x, z, y=y, device=device, speed=speed, frame_limit=frame_limit, dirty=dirty)
+        if warm is not None:  # AZT2: 1 the start restarted a kept Azahar, 0 cold (the azslot line of the start)
+            rec["warm"] = int(warm)
         dl = collections.Counter(tuple(w["disp"]) for w in (good or ws) if w.get("disp"))
         if dl:  # the run's display mode: the most common of its windows (old logs: none)
             wide, stereo, fps = dl.most_common(1)[0][0]
@@ -979,7 +981,7 @@ def cmd_build_at(a):
         os.environ["PM_BENCH_DIRTY"] = "0"
         try:
             rc = cmd_run(argparse.Namespace(bench=a.bench, row=a.row, why=why, label=a.label or ("build-at " + short),
-                                            build=build_no, commit=commit, speed=None))
+                                            build=build_no, commit=commit, speed=None, lane=None))
         finally:
             os.environ.pop("PM_BENCH_DIRTY", None)
     finally:
@@ -1044,7 +1046,7 @@ def cmd_ingest_last(a):
     dv = os.environ.get("PM_BENCH_DIRTY")
     return ingest_file(p, bench, "azahar", b, c, a.row, a.label or s, result, note, shot, [], device=DEVICE["azahar"],
                        kind=bd["kind"] if bd else "adhoc", speed=a.speed, frame_limit=a.frame_limit,
-                       dirty=None if dv is None else dv == "1")
+                       dirty=None if dv is None else dv == "1", warm=a.warm)
 
 
 def cmd_import_csv(a):
@@ -1361,6 +1363,7 @@ def main(argv):
     x.add_argument("--row", default="azt"); x.add_argument("--rc", type=int, required=True); x.add_argument("--label", default="")
     x.add_argument("--build", type=int); x.add_argument("--commit"); x.add_argument("--shots", default="")
     x.add_argument("--speed", choices=SPEEDS, default="unknown"); x.add_argument("--frame-limit", type=float)
+    x.add_argument("--warm", type=int, choices=[0, 1])  # AZT2: 1 warm restart in a kept Azahar, 0 cold; absent when unknown
     x.set_defaults(f=cmd_ingest_last)
     x = sub.add_parser("build-at"); x.add_argument("commit"); x.add_argument("bench"); x.add_argument("--row", required=True)
     x.add_argument("--why", default=""); x.add_argument("--label", default=""); x.add_argument("--dry-run", action="store_true")

@@ -213,11 +213,10 @@ $out = "$outLane\slot$slotK" # outputs of this slot: no file shared with a run o
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 # AZT-2: an Azahar kept by an earlier run (-Keep) is reused when it is the same build file and the same speed settings
 $keepOn = $Keep.IsPresent -or [bool]$env:PM_AZ_KEEP
-$warm = $false
 $kept = Get-KeptAzahar $slotK
-$keepInfo = Get-KeepInfo $slotK
-if ($kept -and $keepInfo -and -not $NoWarm -and -not $Interactive -and -not $Gdb -and -not $FaultStop -and $keepInfo.pid -eq $kept.Id -and $keepInfo.x3dsx -eq $x3dsx -and
-    [bool]$keepInfo.turbo -eq $Turbo.IsPresent -and [int]$keepInfo.turbolimit -eq $(if ($Turbo) { $TurboLimit } else { 0 })) { $warm = $true }
+# AZT2: the warm decision and its reason (azslot line below). Reasons: no kept, closed, other lane, turbo, option, restart failed
+$warmWhy = if ($NoWarm -or $Interactive -or $Gdb -or $FaultStop) { "option" } else { Get-WarmState $slotK $x3dsx $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 }) }
+$warm = ($warmWhy -eq "warm")
 if (-not $warm) { Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
 # From here this script owns the slot. Any earlier run on this slot that was killed: kill its Azahar, put the config back.
 if (-not $warm -and (Test-Path $pidFile)) {
@@ -241,7 +240,7 @@ try {
 
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
 try { Copy-Item $in3dsx "$sd\$x3dsx" -Force -ErrorAction Stop }
-catch { if ($warm) { Write-Output "Warm: the 3dsx in the kept Azahar is locked ($($_.Exception.Message)). Cold start."; $warm = $false; Kill-Azahar $kept.Id; Copy-Item $in3dsx "$sd\$x3dsx" -Force } else { throw } }
+catch { if ($warm) { Write-Output "Warm: the 3dsx in the kept Azahar is locked ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id; Copy-Item $in3dsx "$sd\$x3dsx" -Force } else { throw } }
 $oldLogCT = [datetime]::MinValue
 if ($warm) { if (Test-Path $log) { $oldLogCT = (Get-Item $log).CreationTimeUtc } } # the kept game holds log.txt open: the restart makes a new one
 else { Remove-Item $log -ErrorAction SilentlyContinue }
@@ -313,8 +312,13 @@ if ($warm) {
         Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
         $emuOff = 0L
         $warm = $false
+        $warmWhy = "restart failed"
     }
 }
+# AZT2: one line per start: warm, or cold with the reason. azt.ps1 reads it from the slot folder and puts it in the log copy and the run record.
+$azLine = if ($warm) { "azslot: slot $slotK warm" } else { "azslot: slot $slotK cold ($warmWhy)" }
+Set-Content "$($sl.dir)\azslot.line" $azLine
+Write-Output $azLine
 if (-not $p) {
     $p = Start-Process $exe -ArgumentList "`"$sd\$x3dsx`"" -PassThru
     Set-Content $pidFile $p.Id
