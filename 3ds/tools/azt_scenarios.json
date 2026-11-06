@@ -5492,6 +5492,31 @@
       "reason": "DRAW2 iwa_10 copy of spot_mac01_ndmcheck. Cap 25 s."
     },
     {
+      "name": "battle_start_sprcheck",
+      "status": "pending",
+      "subject": "Battle scene (default formation, one Goomba on kmr_03). Sprite records of the battle actors against the walker draw, sprcheck window line at frame 300.",
+      "proves": "S4-2 sprite native build (pal0, index count, key, TEV, uniforms) on battle sprites: eq above 0 and diff 0.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 prof=4 sprcheck loglevel=debug",
+      "until": "sprcheck f\\d+ recs",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "sprcheck window: eq above 0 and diff 0",
+          "regex": "sprcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S4-2 copy of spot_mac01_sprcheck on the battle scene (the battle_start debug line). Cap 40 s with reason: battle start is at frame 153, the window line is frame 300."
+    },
+    {
       "name": "spot_mac01_sprcheck",
       "status": "pending",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200. NPC and Mario sprites on screen. Shots at frames 200 to 205 and the sprcheck window line.",

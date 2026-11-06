@@ -15,3 +15,17 @@ S4 (2026-11-05). Branch s4 is switched to nds1 (switch -C s4 nds1, no commits of
 - S4-1 sprcheck compare (nd_sprite_state, nd_sprite.c, nd_sprite.h) not written. S4-1 gate (eq > 0, diff 0) not met.
 - S4-2, S4-3, S4-4 not started.
 - Design note: the record must carry the walker state the old words set (combine, env, prim, render mode words, tex unit). Current record has the render mode list pointer, raster, palette, matrix, quad, alpha, flags only. The combine words of the flat path are not in the record yet.
+S4-2 fix 3: shaded sprites (flags bit 0) refused, why 3, walker draws them (design default, agent_s4.md). The battle field 1 diffs came from shaded sprites: walker key cull 2 combine 2 no atest, native from the record rm list (combine 8, atest 48).
+
+## S4-2 status (S4b agent, uncommitted)
+- mac_01 gate PASS: sprcheck f300 eq 2032 diff 0 (run 3, pal0 from spr_comb at the record).
+- battle_start_sprcheck gate FAIL: eq 289 diff 428 (run 7). Diffs: field 1 (key) 180, field 3 (unit 0) 248. Fallbacks: why 2 (texture unit) 199, why 3 (shaded) and others 42.
+- Key diff (battle, non-shaded records): walker combine 2, no atest, cull 2; native combine 8, atest 48, cull 0. Native reads the rm list (OpaqueSpriteGfx / TranslucentSpriteGfx: clear cull, combine, atest) at record time; the walker key at batch time differs. Open: which rm list the battle actors use, and whether rm_apply applies its combine/cull words.
+- Texture: 32x56 record fails nd_tex_unit (pm_tex_load refuses in the native load, cause not found).
+- Design question for the user: keep the battle gate as is (fail) or make the record carry the state the batch sees (rm list effects after rm_apply).
+- Code: pm_gpu.c (pm_gpu_spr_build, pm_gpu_spr_submit, spr_check, sprpal/sprnid/sprtex/sprdf diag lines), nd_sprite.c/.h (nd_sprite_draw). Bench battle_start_sprcheck added (azt_scenarios.json, bench_defs.json). Nothing committed for S4-2.
+
+## S4-2 final (coordinator decision, one try)
+- Battle try: record flag bit 2 (battle context, sprite.c) refused as why 4, class spr_battle. Still 180 key diffs (field 1) on battle-scene records outside that flag; eq 25.
+- Texture 32x56 (why 2, 198): fallback, desc logged once (sprtex).
+- mac_01 PASS: eq 2032 diff 0 fb 1. Battle gate FAIL (open): spr_battle class named, walker draws it.

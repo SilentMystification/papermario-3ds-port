@@ -557,6 +557,46 @@
       ]
     },
     {
+      "name": "battle_start_sprcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Battle scene sprcheck (S4-2): sprite record native build vs walker batch. Gate eq above 0, diff 0.",
+      "scenario": "battle_start_sprcheck",
+      "cap": 40,
+      "until": "sprcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "sprcheck",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "spr_eq",
+          "regex": "sprcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "spr_diff",
+          "regex": "sprcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "spr_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "spr_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    }
+,
+    {
       "name": "spot_mac01_sprcheck",
       "kind": "azahar_pic",
       "speed": "normal",

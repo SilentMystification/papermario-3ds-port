@@ -425,7 +425,8 @@ void spr_appendGfx_component(
         Gfx* rec = gMainGfxPos;
         gMainGfxPos += G_PM_SPR_WORDS;
         rec[0].words.w0 = ((u32)G_PM_SPR << 24) | ((((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 1u : 0u) |
-                          ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) ? 2u : 0u)) << 16) | ((u32)(u8) opacity << 8);
+                          ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) ? 2u : 0u) |
+                          ((gGameStatusPtr->context == CONTEXT_BATTLE) ? 4u : 0u)) << 16) | ((u32)(u8) opacity << 8); /* bit 2: battle context, the native build refuses it (spr_battle) */
         rec[0].words.w1 = (u32)(uintptr_t) rmList;
         rec[1].words.w0 = (u32)(uintptr_t) cache->image;
         rec[1].words.w1 = (u32)(uintptr_t) palette;
