@@ -72,6 +72,8 @@ static int rgb_scale = 1;
 static int batch_identity;
 static int draw_3d;
 static unsigned prim = 0xffffffffu;
+static unsigned dbg_omode_l; /* FX1-2b: the L othermode word of the current render state (orbdbg log only) */
+void pm_gpu_dbg_mode(unsigned m) { dbg_omode_l = m; }
 static float game_mvp[4][4];
 static float vp_sx = 160.f, vp_sy = 120.f, vp_tx = 160.f, vp_ty = 120.f;
 static C3D_Mtx shader_3d;
@@ -1221,6 +1223,18 @@ static void flush_draw(void) {
     if (stencil_on && !(z && r_zmark)) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
     sh_depth_map(true, -1.0f, r_decal ? decal_bias() : 0.0f);
     sh_early(false, GPU_EARLYDEPTH_GREATER, 0);
+    if (dbg_omode_l == 0x00504B50u && !off_active && PMDL("orbdbg")) { /* FX1-2b: the glow square's blend and alpha as the 3DS draw sets them, once per frame */
+        static unsigned orb_f = ~0u;
+        extern unsigned pm_frame_count(void);
+        extern void pm_log(const char* fmt, ...);
+        if (orb_f != pm_frame_count()) {
+            orb_f = pm_frame_count();
+            pm_log("orbdbg blend f%u on %d memb %d replace %d branch %s src %s dst %s atest %d ref %d tex_i8 %d combine %d prim %08x",
+                   orb_f, r_blend, memb, r_replace, (r_blend && !r_replace) ? "src_alpha" : "one_zero",
+                   (r_blend && !r_replace) ? "SRC_ALPHA" : "ONE", (r_blend && !r_replace) ? "ONE_MINUS_SRC_ALPHA" : "ZERO",
+                   r_atest >= 0, r_atest, pm_tex_i8(0), combine, prim);
+        }
+    }
     if (r_atest >= 0) sh_alpha_test(true, GPU_GREATER, r_atest);
     else sh_alpha_test(false, GPU_ALWAYS, 0);
     /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide

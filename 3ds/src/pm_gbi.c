@@ -705,6 +705,17 @@ mixed:
     if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
     pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);
     pm_gpu_dbg_mode(m); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
+    if (m == 0x00504B50u && PMDL("orbdbg")) { /* FX1-2b: the render state the glow's draws get, once per frame */
+        static unsigned orb_sf = ~0u;
+        extern unsigned pm_frame_count(void);
+        extern void pm_log(const char* fmt, ...);
+        if (orb_sf != pm_frame_count()) {
+            orb_sf = pm_frame_count();
+            pm_log("orbdbg state f%u blend %d atest %d zcmp %d zupd %d decal %d memb %d nocol %d mix %d fogmix %d", orb_sf, rs.blend, rs.atest,
+                   rs.zcmp, rs.zupd, rs.decal, rs.memb, rs.nocol, (int)0, (int)fogmix_on);
+        }
+    }
+    pm_gpu_dbg_mode(m); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
     pm_gpu_render_src(omode_h, m, rs.depth);
 }
 
