@@ -19,7 +19,7 @@ B. Before and after a change
 
 C. Console run (the orchestrator pushes, the user opens netloader first)
 1. `bench.py show <bench>` prints the push command (the recipe). Run it with PM_ROW=PUSH sh 3ds/push_3ds.sh ... as in docs/handoff/orchestrator_rules.md.
-2. After the push, run the `bench.py ingest build3ds/hw_live_log_131.txt --bench <bench> --host o3ds --build <N> --speed normal --row <row> --label "<text>"` line that push_3ds.sh prints.
+2. After the push, run the `bench.py ingest build3ds/hw_live_log_170.txt --bench <bench> --host o3ds --build <N> --speed normal --row <row> --label "<text>"` line that push_3ds.sh prints.
 3. A walking route is not comparable between runs. Use a padscript route or a standing bench.
 
 D. Performance in one place, over time

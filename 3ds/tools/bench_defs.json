@@ -3,7 +3,7 @@
   "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. host (console_prof): azahar | o3ds | n3ds | host (o3dsxl is read as o3ds). scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted). speed: turbo | normal, the speed the bench runs at (bench.py run --speed overrides it for one run; azt.ps1 -Speed). Azahar benches: normal (no scenario runs -Turbo today). Console and host benches: normal. Queries use it as the default. default: true (absent = true) shows the bench in bench.py list before the others; false is listed last. Spot benches (spot_*) are the defaults for every frame cost query.",
   "push_base": "",
   "consoles": {
-    "o3ds": "192.168.1.131"
+    "o3ds": "192.168.1.170"
   },
   "benches": [
     {
@@ -67,7 +67,7 @@
       "kind": "console_prof",
       "speed": "normal",
       "default": true,
-      "purpose": "Toad Town mac_01, Mario at pos 0 0 200. Console prof mode (O3DS XL): frame cost at the spot.",
+      "purpose": "Toad Town mac_01, Mario at pos 0 0 200. Console prof mode (O3DS 192.168.1.170): frame cost at the spot.",
       "scene_match": null,
       "recipe": "warp=mac_01:0 pos=0:0:200 prof=4",
       "scenario": null,
@@ -142,7 +142,7 @@
       "kind": "console_prof",
       "speed": "normal",
       "default": true,
-      "purpose": "mac_00 (preset toad), Mario at pos -135 0 85. Console prof mode (O3DS XL): frame cost at the spot.",
+      "purpose": "mac_00 (preset toad), Mario at pos -135 0 85. Console prof mode (O3DS 192.168.1.170): frame cost at the spot.",
       "scene_match": null,
       "recipe": "warp=mac_00:0 pos=-135:0:85 prof=4",
       "scenario": null,
@@ -217,7 +217,7 @@
       "kind": "console_prof",
       "speed": "normal",
       "default": true,
-      "purpose": "sbk_56, Mario at pos 20 0 440. Console prof mode (O3DS XL): frame cost at the spot.",
+      "purpose": "sbk_56, Mario at pos 20 0 440. Console prof mode (O3DS 192.168.1.170): frame cost at the spot.",
       "scene_match": null,
       "recipe": "warp=sbk_56:0 pos=20:0:440 prof=4",
       "scenario": null,

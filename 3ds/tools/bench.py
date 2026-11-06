@@ -37,6 +37,7 @@ Speed: every run record holds speed (turbo | normal | unknown) and frame_limit (
   any prints one block per speed. Turbo and normal rows are never averaged together. A compare of two builds with different
   speed sets prints a WARNING line and no delta.
 Area filters (where, spots, compare, trend): --map NAME --mode N --story N --battle N --entry N --x=LO..HI --y=LO..HI --z=LO..HI
+  --device TEXT|any (run device substring, 131 or 170; default: the current device of the host, the old .131 runs are excluded).
   --host azahar|o3ds|n3ds|host --chg (include chg1 windows; default excluded). Use the = form for negative ranges (--x=-300..0).
   Position bounds filter on the window end position. Imported history rows have no window positions: a position filter drops them.
 
@@ -72,7 +73,9 @@ OUT = REPO / "build3ds" / "bench"
 HOSTS = ("azahar", "o3ds", "n3ds", "host")
 BUILD_UNTRACKED = ("assets/us", "ver/us/build")  # build.sh inputs that are not in git (build-at copies them)
 HOST_ALIAS = {"o3dsxl": "o3ds"}
-DEVICE = {"azahar": "azahar emulator on pc", "host": "host pc (docker)", "o3ds": "o3ds xl 192.168.1.131"}
+DEVICE = {"azahar": "azahar emulator on pc", "host": "host pc (docker)", "o3ds": "o3ds 192.168.1.170"}
+# The O3DS XL at .131 was the console until 2026-11-05. Its runs keep this device string (never rewritten).
+DEVICE_O3DS_OLD = "o3ds xl 192.168.1.131"
 RENAME = {"fps": "fps", "ft": "ft_ms", "nd": "nd_ms", "lg": "lg_ms", "gb": "gb_ms", "dr": "draws", "tri": "tris"}
 ORDER = ["fps", "ft_ms", "nd_ms", "lg_ms", "gb_ms", "draws", "tris", "windows"]
 MET = ("fps", "ft_ms", "nd_ms", "lg_ms", "gb_ms")
@@ -155,6 +158,24 @@ def device_note(host):
         return DEVICE[host]
     ip = (load_defs().get("consoles") or {}).get(host)
     return ("%s %s" % (host, ip)) if ip else (host or "")
+
+
+def device_sql(f, alias):
+    """SQL and args for the run device (alias = the run table alias in the query). f["device"]: --device TEXT, a substring
+    of the device (131, 170), or "any" (no device filter). Else the current device of the host: with --host, that host's
+    device; without --host, an o3ds run counts only on the current O3DS (the old O3DS XL .131 runs are another device)."""
+    if f.get("device") == "any":
+        return "1=1", []
+    if f.get("device"):
+        return "%s.device LIKE ?" % alias, ["%" + f["device"] + "%"]
+    if f.get("host"):
+        return "%s.device = ?" % alias, [device_note(f["host"])]
+    return "(%s.host != 'o3ds' OR %s.device = ?)" % (alias, alias), [device_note("o3ds")]
+
+
+def has_area(f):
+    """True when f holds a filter other than the device (the query then reads the sample rows, see filtered_runs)."""
+    return any(k != "device" for k in f)
 
 
 def load_defs():
@@ -293,15 +314,16 @@ def wmean(rows, k):
     return num / den if den else None
 
 
-def bench_runs(name):
+def bench_runs(name, f=None):
     """Run-level records of one bench, in run order, filtered by the bench scene_match (when set)."""
     bd = bench_def(name) or {}
     sm = bd.get("scene_match")
     con = open_db()
+    dsql, dargs = device_sql(f or {}, "r")
     rs = con.execute("SELECT r.id, r.date, r.commit_hash, r.build_no, r.scene, r.host, r.result, r.row, r.label, r.x_range, r.z_range, r.note, "
-                     "r.speed, r.frame_limit, "
-                     "m.key, m.value FROM run r LEFT JOIN metric m ON m.run_id = r.id AND m.win = 'run' WHERE r.bench = ? ORDER BY r.id, m.key",
-                     (name,)).fetchall()
+                     "r.speed, r.frame_limit, r.device, "
+                     "m.key, m.value FROM run r LEFT JOIN metric m ON m.run_id = r.id AND m.win = 'run' WHERE r.bench = ? AND " + dsql
+                     + " ORDER BY r.id, m.key", (name, *dargs)).fetchall()
     con.close()
     out = {}
     for x in rs:
@@ -310,7 +332,7 @@ def bench_runs(name):
         d = out.setdefault(x["id"], {"id": x["id"], "date": x["date"], "commit": x["commit_hash"], "build_no": x["build_no"], "scene": x["scene"] or "",
                                      "host": x["host"], "result": x["result"], "row": x["row"], "label": x["label"] or "", "x_range": x["x_range"] or "",
                                      "z_range": x["z_range"] or "", "note": x["note"] or "", "m": {},
-                                     "speed": x["speed"] or "unknown", "frame_limit": x["frame_limit"]})
+                                     "speed": x["speed"] or "unknown", "frame_limit": x["frame_limit"], "device": x["device"] or ""})
         if x["key"] is not None:
             d["m"][x["key"]] = x["value"]
     return list(out.values())
@@ -336,6 +358,9 @@ def select_samples(con, f, bench=None):
     if "host" in f:
         wh.append("s.host = ?")
         args.append(f["host"])
+    dsql, dargs = device_sql(f, "r")
+    wh.append(dsql)
+    args += dargs
     if not f.get("chg"):
         wh.append("s.chg = 0")
     sql = ("SELECT s.run_id, s.win, s.ts, s.build_no, s.host, s.map, s.area, s.mode, s.story, s.battle, s.entry, s.chg, "
@@ -597,7 +622,10 @@ def cmd_show(a):
         print("gate: %s %s %s" % (g["metric"], g["op"], "baseline" if "ref" in g else g["value"]))
     for m in bd.get("log_metrics", []):
         print("log metric: %s  /%s/" % (m["name"], m["regex"]))
-    runs = bench_runs(bd["name"])
+    runs = bench_runs(bd["name"], {"device": "any"})
+    counts = collections.Counter((r.get("device") or "", r.get("host")) for r in runs)
+    for (dev, h), n in sorted(counts.items()):
+        print("device: %s, %d runs%s" % (dev or "(none)", n, "" if dev == device_note(h) else " (other device: not in default queries, --device picks it)"))
     print("last runs (%d total, scene filter %s):" % (len(runs), bd.get("scene_match") or "none"))
     print("  %-4s %-10s %-10s %-8s %-26s %-8s %6s %6s %s" % ("id", "date", "commit", "speed", "scene", "result", "fps", "ft", "label"))
     for r in runs[-5:]:
@@ -784,7 +812,7 @@ def cmd_import_csv(a):
             host = norm_host(row["console"])
             rec = make_run(bench, "console_prof", host, None, row["commit"], "legacy_import", row["label"], "imported", row["scene"],
                            None, None, row["note"], ["legacy_import"], run, [], row["x_range"], row["z_range"],
-                           device=DEVICE["o3ds"] if host == "o3ds" else device_note(host), date=row["date"],
+                           device=DEVICE_O3DS_OLD if host == "o3ds" else device_note(host), date=row["date"],
                            speed="unknown" if host == "azahar" else "normal")
             rec["ts"] = row["date"] + "T00:00:00"
             rec["src"] = src
@@ -815,6 +843,8 @@ def flt_of(a):
         f["host"] = norm_host(a.host)
     if getattr(a, "chg", False):
         f["chg"] = True
+    if getattr(a, "device", None):
+        f["device"] = a.device
     return f
 
 
@@ -826,6 +856,7 @@ def add_area(x):
         x.add_argument("--" + ax, help="LO..HI; use the = form for negatives: --%s=-300..0" % ax)
     x.add_argument("--host", choices=HOSTS + tuple(HOST_ALIAS))
     x.add_argument("--chg", action="store_true")
+    x.add_argument("--device", help="run device, a substring (131 = old O3DS XL, 170 = O3DS) or any. Default: the current device of the host")
     x.add_argument("--speed", choices=SPEED_CHOICES, help="turbo | normal | unknown | any (default: the bench speed; where, spots: any)")
 
 
@@ -945,7 +976,7 @@ def cmd_compare(a):
         print("no bench named %s" % a.bench)
         return 4
     f = flt_of(a)
-    runs = filtered_runs(a.bench, f) if f else bench_runs(a.bench)
+    runs = filtered_runs(a.bench, f) if has_area(f) else bench_runs(a.bench, f)
     if a.last:
         seen = []
         for r in runs:
@@ -1002,7 +1033,7 @@ def cmd_trend(a):
         print("no bench named %s" % a.bench)
         return 4
     f = flt_of(a)
-    runs = filtered_runs(a.bench, f) if f else bench_runs(a.bench)
+    runs = filtered_runs(a.bench, f) if has_area(f) else bench_runs(a.bench, f)
     for s in speed_blocks(speed_arg(a, bd), runs):
         rs = [r for r in runs if r["speed"] == s]
         print("speed %s, %s" % (s, speed_note(rs)))
