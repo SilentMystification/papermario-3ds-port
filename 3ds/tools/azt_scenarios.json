@@ -2178,6 +2178,30 @@
       "reason": "CH8 gate (one run): one log line per row; the instant win refusal (outside battle) is its gate in this run. The battle win is run separately (battle_start scenario, not in this row)."
     },
     {
+      "name": "logcolor_mn8",
+      "status": "verified",
+      "subject": "Yard, bottom screen at frames 200 to 205 with conlevel=debug: the log lines are coloured by level (error bright red, warn yellow, info white, debug grey). The last log lines are in the window.",
+      "proves": "MN8: pm_log.c drain_locked writes one colour code per console line (con_sgr by level) and a reset before the newline.",
+      "debug": "preset=yard shotbottom=200:6 conlevel=debug loglevel=debug",
+      "until": "warp: scene f300",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "frame 300",
+          "regex": "warp: scene f300"
+        }
+      ],
+      "reason": "MN8 gate: bottom shots at frames 200 to 205 show the level colours; the until is the frame 300 scene line."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",
