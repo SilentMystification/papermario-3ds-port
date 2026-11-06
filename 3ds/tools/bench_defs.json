@@ -500,6 +500,61 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "spot_iwa10_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "iwa_10, Mario at -662 0 587 (floor). Azahar picture and prof scene line. A person reads the shot.",
+      "scenario": "spot_iwa10_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "iwa10"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_ndmcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "iwa_10 ndmcheck: native draw record vs walker draw. Gate diff 0, eq above 0.",
+      "scenario": "spot_iwa10_ndmcheck",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "ndmcheck",
+        "iwa10"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_eq",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndm_eq",
+          "op": ">",
+          "value": 0
+        }
+      ]
     }
   ],
   "legacy": {

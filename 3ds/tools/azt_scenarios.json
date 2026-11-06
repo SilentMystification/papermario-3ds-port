@@ -5361,6 +5361,55 @@
         }
       ],
       "reason": "WARPY2 picture and floorscan run (one start). Placement code unchanged (WARPY2 edit discarded after 2 unchanged shots). Window 240 to 269."
+    },
+    {
+      "name": "spot_iwa10_pic",
+      "status": "pending",
+      "subject": "iwa_10 (Mario on the floor at -662 0 587, warp entry 0). Shots at frames 200 to 205 and the prof scene line at the first 300-frame window.",
+      "proves": "DRAW2 row 1: the picture at iwa_10 after the wide native change; the ndmr2 counts (c14 wide refusals) are read from the log.",
+      "debug": "warp=iwa_10:0 pos=-662:0:587 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at iwa_10 "
+        }
+      ],
+      "reason": "DRAW2 iwa_10 picture. Same shape as spot_mac01_pic. Cap 60 s."
+    },
+    {
+      "name": "spot_iwa10_ndmcheck",
+      "status": "pending",
+      "subject": "iwa_10 (Mario on the floor at -662 0 587, warp entry 0). Shots at frames 200 to 205 and the ndmcheck window line.",
+      "proves": "DRAW2 row 1: each native model draw record at iwa_10 matches the walker draw (diff 0) with the wide no-translation records native.",
+      "debug": "warp=iwa_10:0 pos=-662:0:587 prof=4 ndmcheck shots shotwin=200:6 loglevel=debug",
+      "until": "ndmcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "ndmcheck window: eq above 0 and diff 0",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "DRAW2 iwa_10 copy of spot_mac01_ndmcheck. Cap 25 s."
     }
   ]
 }
