@@ -153,10 +153,23 @@ int pm_pos_parse(const char* s, float* out) {
     return n == 3 || n == 4 ? n : 0;
 }
 
+/* WARPY: the floor under x z. The game's own collider ray (test_ray_colliders, the call of pos_probe) from y + 1000 down, length 2000.
+ * *found is 0 when no collider is hit (the caller keeps the given y). */
+static float pos_floor(float x, float y, float z, int* found) {
+    f32 hx, hy, hz, hd = 2000.0f, nx, ny, nz;
+    s32 cid = test_ray_colliders(COLLIDER_FLAG_IGNORE_PLAYER, x, y + 1000.0f, z, 0.0f, -1.0f, 0.0f, &hx, &hy, &hz, &hd, &nx, &ny, &nz);
+    *found = cid > NO_COLLIDER;
+    return *found ? hy : y;
+}
+
 void pm_pos_set(const float* v, int n) {
     PlayerStatus* ps = &gPlayerStatus;
+    int found;
+    float fy = pos_floor(v[0], v[1], v[2], &found); /* WARPY: a warp puts Mario on the floor, not at the given y */
+    if (found) pm_log("poswarp: floor y %.3f -> %.3f", v[1], fy);
+    else pm_log_w("poswarp: floor y %.3f -> no floor under x %.3f z %.3f, y kept", v[1], v[0], v[2]);
     ps->pos.x = v[0];
-    ps->pos.y = v[1];
+    ps->pos.y = found ? fy : v[1];
     ps->pos.z = v[2];
     if (n == 4) ps->curYaw = ps->targetYaw = v[3];
     ps->curSpeed = 0.0f;
