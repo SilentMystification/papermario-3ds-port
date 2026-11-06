@@ -1,0 +1,16 @@
+# Row MENU2: warp floor fix, menu shot scenario, then MN2 and epic B (main folder, lane menu)
+
+## Start state
+Branch nds1, main folder. Branch menu is merged (e5c220326). Gate results: docs/handoff/gates1.md. Read docs/handoff/agent_menu.md (STATE, section 1) and docs/handoff/archive/plan_menu.md sections 2.2 to 2.7 and 3 (rows MN2 to MN7). User answers Q1 to Q7: docs/handoff/row_MENU.md.
+Another code agent (row DRAW2) works in this same folder at the same time on 3ds/src/pm_gpu.c, pm_gbi.c, nd_model.c, nd_sprite.c, src/sprite.c. Do not edit those files except the menu functions in pm_gpu.c (MN2 only, next to pm_gpu_menu_draw). Keep every edit buildable: edit, build, commit quickly, so the other agent's build does not break.
+
+## Rows (one commit each)
+1. WARPY2 (gate 4 failed). Log at iwa_10 pos -662 0 587: `poswarp: floor y 0 -> 0`, the ray (test_ray_colliders, COLLIDER_FLAG_IGNORE_PLAYER, from y+1000) hits collider 28 at y 0, but the player ground check finds nothing there (`ground y ... id -1`), so Mario falls. Probe f30 (before the warp) shows Mario at 0 -1071 19.6: the map entry may drop him too. Fix in pm_warp.c pos_floor / pm_pos_set: (a) take only a floor Mario can stand on: test each hit with the player's own floor rule (the test player_check_collision_below uses: collider surface flags and the floor normal ny > 0.5 or the game's own walkable test), cast again below a rejected hit; (b) if no standable floor exists under x z, do not move Mario: keep the entry position and log `poswarp: no standable floor under x z, kept entry position`; (c) apply the position only after Mario stands on a floor at the entry (wait for curFloor != NO_COLLIDER, max 120 frames). Gate: iwa_10 run (spot switches, warp=iwa_10:0 pos=-662:0:587): the top shot 60 frames after the poswarp line shows Mario standing on visible ground, the probe lines show a ground id > -1. Same check at mac_01 pos 0:0:200 (no change there).
+2. exit_armed scenario (gate 3): MN1 freezes the frame counter, so frame-window shots do not fire while the menu is open. Use the menu shot (`shotmenu`, MN0) in exit_armed and every menu scenario. Gate: the bot_m shot shows the blank line, the armed label blue, "Press A again" red.
+3. MN2 grey top screen, then epic B (MN3b, MN4, MN5, MN6 with the warp memory: RAM only, log `menu: warp sub restore area <a> row <r>`, MN7) as in row_MENU.md.
+
+## Commands
+Build: `python 3ds/tools/gen_map_restore.py; PM_ROW=MENU2 PM_LANE=menu sh 3ds/build.sh`; restore 3ds/src/map_restore_table.c (md5 437b90efe5f32b82394ce2ece094210e, never commit). Azahar: `powershell -NoProfile -File 3ds/tools/azt.ps1 <scenario> -Row MENU2 -Build menu`. Status line in 3ds/logs/perf/status_MENU2.txt before each start. Budget reset allowed: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget MENU2.
+
+## Rules
+`git status --short` before each edit and commit. Pathspec commits only. Never `git add -N`, `git add -A`, `git commit -a`, `git reset`, `git stash`, `git checkout`, `git restore`, `bench.py build-at`. No toggles, no stubs, no git push, no console push, no attribution. Game source only inside `#ifdef TARGET_3DS`. Update agent_menu.md STATE after each commit. Hand back after row 2 and after epic B.
