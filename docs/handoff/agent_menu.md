@@ -3,7 +3,8 @@
 STATE (branch menu, base nds1, HEAD 74dfe57f4)
 - Audit done: cc1f68720. in = 0, partial = MN3 MN4 MN6 MN9 CH1 to CH4.
 - MN0 + MN1 coded in 74dfe57f4 (menu_fit, pm_gpu_shot_bottom, shotmenu, freeze in pm_main.c, pm_gpu_menu_present). Build NOT run, gate NOT run.
-- BLOCKER: worktree has no assets/us and no ver/us/build (ignored game data in main folder). Junction link refused by permission check (Modify Shared Resources). Not bypassed. Build and Azahar (menu_shot, menu_pause) cannot run here.
+- Build inputs copied into the worktree (assets/us, ver/us/build; gitignored, never commit). Build OK (PM_LANE=menu, build3ds/lane-menu/pm_3ds.3dsx). Build OK, gate not run.
+- Azahar azt.ps1 menu_shot: refused by the permission check (powershell in worktree). Not bypassed.
 - MN2 (grey) not started: needs present and transfer order confirmed on a shot first.
 - Coordinator add (MN6 restore last selection, RAM only): not started.
 - Next: unblock build (assets from orchestrator), build PM_LANE=menu, shot menu_shot, then MN2.
