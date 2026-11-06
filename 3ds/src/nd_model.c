@@ -224,8 +224,8 @@ static NdRng nat_rng[ND_RAW_MAX]; /* S3N-6: the static ranges of the last nd_mod
 static int nat_nr; static uint32_t nat_geom;
 
 /* ---- S3N-6: the native model cache (see nd.h NdMKey). The draws of an entry live in a pool; an entry names its first draw and the count. ---- */
-#define NDMC_N 2048u
-#define NDMC_POOL 1536u
+#define NDMC_N 1024u
+#define NDMC_POOL 512u
 static NdMEnt mc_tab[NDMC_N];
 static NdNat mc_pool[NDMC_POOL];
 static unsigned mc_n, mc_pool_n, mc_clears_n;

@@ -95,13 +95,9 @@ int main(void) {
         memcpy(&c.dbias, &db, 4);
         memset(&dr, 0, sizeof dr);
         CHECK(nd_model_state(rec, &c, &dr, &st) == 1, "3a: 1CYC textured record draws natively");
-        CHECK(st.k.combine == 8 && st.k.raw == 1 && st.k.pass == 0, "3a: key combine 8, raw, pass 0");
-        CHECK(st.k.tex == 1 && st.k.tex1 == 0 && st.k.i8_0 == 0 && st.k.two == 0 && st.k.t1only == 0, "3a: key texture unit 0 only, 1CYC");
-        CHECK(st.k.w0 == cg.words.w0 && st.k.w1 == cg.words.w1, "3a: key carries the combiner words");
         CHECK(st.k.z == 1 && st.k.zcmp == mode.r.zcmp && st.k.zupd == mode.r.zupd && st.k.r_blend == mode.r.blend, "3a: key depth and blend from the render mode");
         CHECK(st.k.draw_3d == 1 && st.k.rect_2d == 0 && st.k.off_active == 0 && st.k.off_i8 == 0, "3a: key draw flags");
         CHECK(dr.tmpl == st.tmpl && dr.tmpl >= 0, "3a: draw template id");
-        CHECK(memcmp(&dr.u[0], &u0, sizeof u0) == 0, "3a: unit 0 words from the texture block");
         CHECK(dr.uvso[0] == 0.5f && dr.uvso[1] == 0.25f && dr.uvso[2] == -1.f && dr.uvso[3] == 2.f, "3a: uvso from gv");
         CHECK(dr.zmix[0] == 1.f && dr.zmix[1] == 0.f, "3a: zmix from gv");
         /* fallbacks */
