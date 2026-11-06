@@ -9,7 +9,8 @@ Branch nds1, main folder. Old note (archive/agent_playfix2.md): "menu text and g
 ## Split rows (after one stall; do ONE row per launch, then hand back)
 UI1a HARNESS GUARD: 3ds/run_azahar.ps1, under the mutex: copy %APPDATA%/Azahar/sdmc/3ds/PaperMario/options.ini byte for byte before the run, put it back in finally. If the scenario debug words have no `prof=` word, set the line `profmode=off` in options.ini before the start. Gate: one run of ui1_choice; the log has a `warp:` line. Commit run_azahar.ps1 only.
 UI1b CHOICE HOOK: pm_warp.c (grep `MSG_Choice_000A`): get the MSG_Menus_SavePrompt printer first, then the choice printer, as src/entity/SaveBlock.c (grep `MSG_Menus_SavePrompt`) does. Gate: one ui1_choice shot shows the choice menu. Commit.
-UI1c CAUSE AND FIX: steps 2 to 4 below. Candidate: the +2 offset grey shadow pass (msg_draw.c grep `charPosX + 2`, msg.c msg_draw_choice_pointer). Compare its colour and alpha in the shot with 40,40,40 alpha 72.
+UI1b DROPPED (2026-11-06): printer lookup without the script ShowChoice step opens no window. Use a real prompt instead: scenario sbk56_superblock (the super block yes/no prompt, log line "superblock: hit" follows the prompt; shots before it) or toad_house_menu.
+UI1c CAUSE AND FIX (Sonnet, after the second stall): steps 2 to 4 below, on sbk56_superblock. Candidate: the +2 offset grey shadow pass (msg_draw.c grep `charPosX + 2`, msg.c msg_draw_choice_pointer). Compare its colour and alpha in the shot with 40,40,40 alpha 72.
 
 ## Steps
 1. Run ui1_choice (preset=yard uishow=choice, shots 200 to 205). Confirm the double in the shot. If uishow=choice fails, use toad_house_menu.
