@@ -2082,6 +2082,50 @@
       "reason": "CH6 gate: peak y of the moon run (cheat: moon jump y) against the normal run (cheat: jump y), and the top shot at the peak."
     },
     {
+      "name": "menu_cheats7",
+      "status": "verified",
+      "subject": "Yard, Mario at HP 1 (hp=1), launch cheats=hp,fp,sp,nobattle,speed: one log line per cheat (active), the HP refill from 1 to the max, speed x2 at the walk value.",
+      "proves": "CH7 batch 1: pm_cheat_tick per step (HP and FP refill, star power set, battle trigger cooldown 2, walk and run speed x2).",
+      "debug": "preset=yard hp=1 cheats=hp,fp,sp,nobattle,speed padscript=wait200 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+{
+          "name": "hp refill",
+          "regex": "cheat: infinite HP refill 1 -> [0-9]+"
+        },
+        {
+          "name": "hp active",
+          "regex": "cheat: infinite HP active"
+        },
+        {
+          "name": "fp active",
+          "regex": "cheat: infinite FP active"
+        },
+        {
+          "name": "sp active",
+          "regex": "cheat: infinite star power active"
+        },
+        {
+          "name": "nobattle active",
+          "regex": "cheat: no battles active"
+        },
+        {
+          "name": "speed active",
+          "regex": "cheat: speed x2 active"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "CH7 batch 1 gate: one log line per cheat in one yard run, the HP refill line (quantity: HP 1 to max). Named gap: the speed x2 effect (walk value at movement) is not measured: the walk value is 0 at idle, the line shows it at the first tick only."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",

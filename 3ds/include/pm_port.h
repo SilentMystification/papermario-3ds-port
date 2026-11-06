@@ -165,7 +165,7 @@ void pm_mem_log(const char* tag);
 void pm_gfx_retrace(void);
 void pm_gfx_retrace_skip(void); /* FS1 */
 void pm_audio_init(void);
-int pm_cheat_moon_get(void); void pm_cheat_moon_set(int on); void pm_cheat_tick(void); /* CH6 Moon Jump, pm_dbg_game.c */
+int pm_cheat_moon_get(void); void pm_cheat_moon_set(int on); void pm_cheat_tick(void); int pm_cheat_get(int k); void pm_cheat_set(int k, int on); /* CH6, CH7 */ /* CH6 Moon Jump, pm_dbg_game.c */
 void pm_audio_mute(int on); /* PAUSE AUDIO: the Select menu mutes the output */
 void pm_audio_post(const void* pcm, unsigned bytes, unsigned rate);
 void pm_au_thread_start(void (*entry)(void*), void* arg);

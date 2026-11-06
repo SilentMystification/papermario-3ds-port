@@ -5,6 +5,8 @@
 #include "functions.h"
 #include "pm_port.h"
 #include "game_modes.h"
+#include "npc.h"
+#include <string.h>
 
 enum { PM_DBG_MAXHP, PM_DBG_MAXFP, PM_DBG_BP, PM_DBG_LEVEL, PM_DBG_COINS, PM_DBG_SP, PM_DBG_NSTAT };
 static const struct { int lo, hi, st; } rg[PM_DBG_NSTAT] = { { 10, 75, 5 }, { 5, 75, 5 }, { 3, 30, 3 }, { 1, 27, 1 }, { 0, 999, 10 }, { 0, 99, 1 } }; /* Set Stats steps: HP 5, FP 5, BP 3 (level-up gains) */
@@ -165,8 +167,51 @@ void pm_cheat_moon_set(int on) {
     moon_on = on ? 1 : 0;
     pm_log("cheat: moon jump %s", moon_on ? "on" : "off");
 }
+/* CH7: batch 1 cheats (RAM only): bits in cheat_bits, set at boot by the launch value cheats=<list> (hp, fp, sp, nobattle, speed, comma separated).
+ * The tick runs once per step (pm_warp_tick). Each cheat logs once when it first runs, and a refill logs its change. */
+enum { CHB_HP = 1, CHB_FP = 2, CHB_SP = 4, CHB_NOBATTLE = 8, CHB_SPEED = 16 };
+static const char* const cheat_name[5] = { "infinite HP", "infinite FP", "infinite star power", "no battles", "speed x2" };
+static const int cheat_bit[5] = { CHB_HP, CHB_FP, CHB_SP, CHB_NOBATTLE, CHB_SPEED };
+static int cheat_bits = -1, cheat_seen;
+/* a whole token of the comma list (sp is not speed) */
+static int has_token(const char* list, const char* tok) {
+    size_t n = strlen(tok);
+    for (const char* p = list; (p = strstr(p, tok)) != NULL; p += n)
+        if ((p == list || p[-1] == ',') && (p[n] == 0 || p[n] == ',')) return 1;
+    return 0;
+}
+static void cheat_init(void) {
+    char v[96];
+    if (cheat_bits >= 0) return;
+    cheat_bits = 0;
+    if (pm_debug_value("cheats", v, sizeof v)) {
+        if (has_token(v, "hp")) cheat_bits |= CHB_HP;
+        if (has_token(v, "fp")) cheat_bits |= CHB_FP;
+        if (has_token(v, "sp")) cheat_bits |= CHB_SP;
+        if (has_token(v, "nobattle")) cheat_bits |= CHB_NOBATTLE;
+        if (has_token(v, "speed")) cheat_bits |= CHB_SPEED;
+    }
+}
+int pm_cheat_get(int k) { cheat_init(); return (cheat_bits & cheat_bit[k]) != 0; }
+void pm_cheat_set(int k, int on) {
+    cheat_init();
+    if (on) cheat_bits |= cheat_bit[k]; else cheat_bits &= ~cheat_bit[k];
+    pm_log("cheat: %s %s", cheat_name[k], on ? "on" : "off");
+}
 void pm_cheat_tick(void) {
     PlayerStatus* ps = &gPlayerStatus;
+    PlayerData* p = &gPlayerData;
+    cheat_init();
+    if (cheat_bits & CHB_HP && p->curHP != p->curMaxHP) { pm_log("cheat: infinite HP refill %d -> %d", (int)p->curHP, (int)p->curMaxHP); p->curHP = p->curMaxHP; }
+    if (cheat_bits & CHB_FP && p->curFP != p->curMaxFP) { pm_log("cheat: infinite FP refill %d -> %d", (int)p->curFP, (int)p->curMaxFP); p->curFP = p->curMaxFP; }
+    if (cheat_bits & CHB_SP) p->starPower = (s16)(p->maxStarPower * 256);
+    if (cheat_bits & CHB_NOBATTLE) gCurrentEncounter.battleTriggerCooldown = 2;
+    if (cheat_bits & CHB_SPEED) { ps->walkSpeed *= 2.0f; ps->runSpeed *= 2.0f; } /* the action code sets the speeds each step, so this does not compound */
+    if ((cheat_bits & ~cheat_seen) != 0) {
+        int k;
+        for (k = 0; k < 5; k++) if ((cheat_bits & ~cheat_seen) & cheat_bit[k]) pm_log("cheat: %s active, star power %d, walk %.2f", cheat_name[k], (int)p->starPower, ps->walkSpeed);
+        cheat_seen = cheat_bits;
+    }
     if (!(ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING))) return;
     if (!pm_cheat_moon_get() || !(ps->curButtons & BUTTON_A)) {
         pm_log_d("cheat: jump y %.1f", ps->pos.y);
