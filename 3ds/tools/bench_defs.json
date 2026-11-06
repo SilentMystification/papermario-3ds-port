@@ -1329,6 +1329,22 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+{
+      "name": "menu_moon_off_log",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOON check: moon jump off, the same A presses: a normal jump, no restart line.",
+      "scenario": "menu_moon_off",
+      "cap": 40,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "moon"
+      ],
+      "log_metrics": [],
+      "gates": []
     }
   ],
   "legacy": {
