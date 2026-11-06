@@ -2383,11 +2383,11 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
 /* PO3b: copy n raw Vtx records into the frame ring. Returns the ring index of the first one, or -1 (path off or ring full). */
 const unsigned char* pm_gpu_gring(void) { return gring; }
 unsigned pm_gpu_flush_gen(void) { return flush_gen; }
+static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned n);
 /* GV1b: add one triangle to the open raw batch. The caller knows that the batch has the same draw parameters (it saw no flush since its last gtrip). The
  * vertices must already carry a flag of the palette of this batch. */
 int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2) {
     if (gni == 0 || gidx_n + 3 > GRING_IDX || !g_pal) return 0;
-static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned n);
     const unsigned r3[3] = { i0, i1, i2 }, g3[3] = { g0, g1, g2 };
     for (int i = 0; i < 3; i++) {
         unsigned r = r3[i];
@@ -2454,7 +2454,6 @@ static int gtrip_batch_open(int use5, const PmFx* fx, const float vp[4], const f
 
 /* GV1c: one triangle of ring vertices ri[3], vertex i with game matrix tab[g[i]]. ro[3] gets the ring indices to use from now on (a vertex whose palette index
  * has to change is copied). Returns 0 when the raw path cannot take it now. */
-int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
 /* WIDE1-1: with wide on, an orthographic draw is native unless a vertex sits on the left or right game edge (the CPU path moves those, pm_gpu_vert_clip). The post matrix is made for the matrix kind of the
  * last note_mvp (ui_ortho), so the draw matrix must be that kind. The vertices are tested like the CPU path: clip x at +-w * 0.999. At most WIDE_MAXV index entries are tested (a bigger draw keeps the CPU path).
  * 0: native, 1: edge vertex or a matrix of the other kind, 2: too many vertices or no index list. */
@@ -2484,10 +2483,10 @@ static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned 
     { static unsigned seen; if (r == 1 && seen < 8u) { seen++; pm_log("wideedge f%u n %u ui %d wz %d", pm_frame_count(), n, ui_ortho, wz); } } /* WIDE1-2: which draws hit the edge rule */
     return r;
 }
-                 const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
 /* nonzero: the CPU path keeps the draw (an edge-only range is native in pm_gpu_grange with the x scale, the would and why tests take it as native) */
 static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) { int r = wide_edge_k(m, idx, n); return r == 3 ? 0 : r; }
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
+                 const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
     if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
