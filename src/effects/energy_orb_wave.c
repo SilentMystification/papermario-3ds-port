@@ -232,6 +232,26 @@ void energy_orb_wave_appendGfx(void* effect) {
     s32 unk_00 = data->unk_00;
     Matrix4f sp18;
     Matrix4f sp58;
+#ifdef TARGET_3DS
+    /* FX1-2a debug, switch orbdbg: one line per frame with the prim colour and the setup words this draw sends (the Gfx of D_09001000). */
+    {
+        extern int pm_debug_has(const char* name);
+        extern void pm_log(const char* fmt, ...);
+        extern unsigned pm_frame_count(void);
+        if (pm_debug_has("orbdbg")) {
+            static char orbBuf[640];
+            int n = 0;
+            const Gfx* g = D_09001000_3A5320;
+            n += snprintf(orbBuf + n, sizeof orbBuf - n, "orbdbg f%u prim %d %d %d a %d dl", (unsigned)pm_frame_count(),
+                          (int)data->unk_20, (int)data->unk_24, (int)data->unk_28, (int)unk_2C);
+            for (; g->words.w0 >> 24 != G_ENDDL && n < 560; g++) {
+                n += snprintf(orbBuf + n, sizeof orbBuf - n, " %02x:%06x:%08x", (unsigned)(g->words.w0 >> 24),
+                              (unsigned)(g->words.w0 & 0xFFFFFF), (unsigned)g->words.w1);
+            }
+            pm_log("%s", orbBuf);
+        }
+    }
+#endif
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
