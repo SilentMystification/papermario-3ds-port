@@ -4868,7 +4868,7 @@
       "expected_events": [
         {
           "name": "prof line with scene tag",
-          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 -264 20 -326 pos -?\\d+ -?\\d+ -?\\d+$"
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 -264 20 -326 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
         }
       ],
       "reason": "Log only. Cap 60 s: boot, the yard load and 300 frames. The picture is not the test."
@@ -5122,7 +5122,7 @@
         },
         {
           "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+$"
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
         }
       ],
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
@@ -5171,7 +5171,7 @@
         },
         {
           "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 -135 0 85 pos -?\\d+ -?\\d+ -?\\d+$"
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 -135 0 85 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
         }
       ],
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
@@ -5220,7 +5220,7 @@
         },
         {
           "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+$"
+          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
         }
       ],
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
