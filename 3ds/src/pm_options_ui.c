@@ -41,6 +41,13 @@ static void draw(void) {
     n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? "< > A: warp  B: back" : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
+    if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
+        static unsigned mseq;
+        char nm[24];
+        snprintf(nm, sizeof nm, "bot_m%04u", mseq++);
+        pm_gpu_shot_bottom(nm);
+        pm_log("menu: shot %s tab %d row %d", nm, tab, sel[tab]);
+    }
 }
 
 /* PT76: the one function for a message to the user. Two rows of 39 characters at the bottom of the menu. A new message replaces the old one, a key press

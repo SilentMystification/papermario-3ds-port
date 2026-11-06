@@ -1686,6 +1686,62 @@
       "reason": "EXIT1 run: the menu stays open after the A press. The until is the top shot at frame 205, so the bottom shots at frames 200 to 205 show the armed row."
     },
     {
+      "name": "menu_shot",
+      "status": "unverified",
+      "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",
+      "proves": "pm_options_ui.c draw calls pm_gpu_shot_bottom per draw (shotmenu), menu_put_line pads to 38 visible columns.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait30 shotmenu loglevel=debug",
+      "until": "menu: shot bot_m0000",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "shot",
+          "regex": "menu: shot bot_m0000 tab 0 row 0"
+        }
+      ],
+      "reason": "MN0 gate: the first menu draw writes bot_m0000. The shot must show the General tab."
+    },
+    {
+      "name": "menu_pause",
+      "status": "unverified",
+      "subject": "Select menu freezes the game (MN1): open, wait, close. The game step counter must not move while the menu is open.",
+      "proves": "pm_main.c frozen pass: no game step while pm_menu_open, resume with sched_next 0.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait60,SELECT,wait30 shotmenu loglevel=debug",
+      "until": "menu: game resumed at frame",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "paused",
+          "regex": "menu: game paused at frame \\d+"
+        },
+        {
+          "name": "resumed",
+          "regex": "menu: game resumed at frame \\d+"
+        }
+      ],
+      "reason": "MN1 gate: paused and resumed frame numbers equal (no step during the menu). The bot_m shot shows the menu."
+    },
+    {
       "name": "mac01t_cap1",
       "status": "unverified",
       "subject": "Mario in mac_01 (Toad Town), same tour path as mac01t_fsplit, with phase and fsplit. Window reset at the map load and the pos line (CAP1).",
