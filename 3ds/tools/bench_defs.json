@@ -506,7 +506,7 @@
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
-      "purpose": "iwa_10, Mario at -662 0 587 (floor). Azahar picture and prof scene line. A person reads the shot.",
+      "purpose": "iwa_10, Mario at -586 1 530 (floor, entry 1). Azahar picture and prof scene line. A person reads the shot.",
       "scenario": "spot_iwa10_pic",
       "cap": 60,
       "until": "prof f\\d+ w\\d+ at ",
