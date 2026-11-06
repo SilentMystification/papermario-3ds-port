@@ -133,6 +133,17 @@ int nd_mode_compile(NdMode* m, const unsigned* w) {
     return 1;
 }
 
+/* S3L-3: the R13 words (aux, the words the texture block wrote after the record; the walker runs them in place of the bind) as a pre-list mode:
+ * the same ops as a render mode list, applied before it. */
+int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax) {
+    uint32_t tmp[18];
+    if (n == 0 || n > 8) return 0;
+    memcpy(tmp, aw, n * 2u * sizeof(uint32_t));
+    if (n < 8) { tmp[2 * n] = (uint32_t)OP_ENDDL << 24; tmp[2 * n + 1] = 0; }
+    if (!nd_mode_compile(ax, (const unsigned*)tmp)) return 0;
+    return !ax->has_g;
+}
+
 /* the GPU_CULLMODE values of citro3d (the register values), the cull of a native draw */
 #define ND_CULL_NONE 0u
 #define ND_CULL_FRONT_CCW 1u
@@ -171,7 +182,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     const uint32_t f = rec[6]; /* R3 w0 flags */
     if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
     if (c->gv && c->gv->fxon) return (st->why = 4, 0); /* lit or fog: pm5 path, later row */
-    if (rec[26] != 0) return (st->why = 2, 0);          /* R13: words after the record (special tile list, untextured ops) */
+    if (rec[26] != 0 && !c->aux_ok) return (st->why = 2, 0); /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
     if (rec[22] != 0 || rec[23] != 0) return (st->why = 3, 0); /* R11: custom gfx pre and post */
     const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
     const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (rm_apply runs after the entry) */
@@ -246,7 +257,7 @@ unsigned nd_handle_gen(void) { return hd_gen; }
 unsigned nd_mc_clears(void) { return mc_clears_n; }
 /* S3N-7: the key words the cache compares: the record words (0 to 27), the nd_st base bits (28 to 32), and the handle and dlc generations (53, 54: a map load reuses the geometry addresses). The walker words (33 to 91) stay in the entry
  * for the ndmcache diagnostics (pm_gpu.c ndc_cmp): the words that a diff depends on are added here, with the reason in agent_s3n.md. */
-static const uint8_t ndmc_cmp[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 53, 54 };
+static const uint8_t ndmc_cmp[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 38, 53, 54 }; /* S3L-3: 38 = the R13 words (hash) */
 #define NDMC_NCMP ((unsigned)(sizeof ndmc_cmp / sizeof ndmc_cmp[0]))
 static int mc_eq(const NdMKey* a, const NdMKey* b) { for (unsigned i = 0; i < NDMC_NCMP; i++) if (a->w[ndmc_cmp[i]] != b->w[ndmc_cmp[i]]) return 0; return 1; }
 uint32_t nd_mc_hash(const NdMKey* k) {

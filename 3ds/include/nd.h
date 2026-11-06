@@ -257,6 +257,7 @@ unsigned nd_tmpl_words(int id, const NdTmplWord** out);
 typedef struct NdRender { uint8_t zcmp, zupd, blend, decal, nocol, memb, set_memb, depth; int16_t atest; } NdRender;
 typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; uint32_t wh, wl; NdRender r; uint8_t has_cb, has_tx; uint32_t cw0, cw1, tw1, gand, gor; uint32_t bad; uint8_t has_g; } NdMode;
 /* B9: has_cb: the list sets the combine (cw0, cw1 = the last G_SETCOMBINE); has_tx: the list sets TEXTURE (tw1 = its w1: s << 16 | t, the walker tss); gand, gor: the geometry ops composed (geom = (geom & gand) | gor); bad: the op code of the first other op (ok 0) */ /* B8: om_h, om_l = the list bits, wh, wl = the bits it writes; r = the list alone (nd_model_state merges) */
+int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax); /* S3L-3: the R13 words (n Gfx pairs after the record) as a pre-list NdMode: SETOTHERMODE, SETCOMBINE, TEXTURE only, no geometry. 0: another op (fallback) */
 int nd_mode_compile(NdMode* m, const unsigned* w);
 void nd_render_state(uint32_t omode_h, uint32_t omode_l, int depth_img, NdRender* o);
 
@@ -284,6 +285,7 @@ int nd_tex_unit(int id, NdUnit* u);
 int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u);
 unsigned pm_tex_slot_gen(int i); /* S3N-6 (pm_tex.c): the generation of a slot */
 typedef struct NdMCtx {
+    int aux_ok;                /* S3L-3: the R13 words are decoded into this context (nd_aux_state, base_oh, comb, tss); 0 with R13 words: fallback */
     const NdMode* mode;        /* compiled render mode list of the record (R0 bits 16 to 23) */
     const NdUnit* u0;          /* texture unit 0 of the draw (nd_tex_get + nd_tex_block), NULL: no texture */
     int i8_0;                  /* unit 0 raster is I8 */

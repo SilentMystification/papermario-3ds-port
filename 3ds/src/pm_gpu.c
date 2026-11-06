@@ -2538,6 +2538,13 @@ static NdMode mdl_mode; static NdUnit mdl_un;
  * this first). The walker-sticky values come from the same globals model_draw reads (the pre-apply values; the post-apply values are a function of them). */
 extern unsigned pm_dlc_gen;
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max);
+/* S3L-3: hash of the R13 words (the Gfx pairs after the record, count in R13 w0): the cache key holds it, the decode of the words is not in the key */
+static uint32_t aux_hash(const uint32_t* rec) {
+    unsigned n = rec[26]; uint32_t h = 2166136261u ^ n;
+    if (!n) return 0;
+    for (unsigned k = 0; k < 2u * n && k < 16u; k++) h = (h ^ rec[NDMC_RW + k]) * 16777619u;
+    return h;
+}
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
     uint32_t* s = k->w + NDMC_RW;
@@ -2546,7 +2553,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     unsigned i = 0;
     s[i++] = nd_st.om_h; s[i++] = nd_st.om_l; s[i++] = nd_st.om_kh; s[i++] = nd_st.om_kl; s[i++] = nd_st.geom;
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
-    s[i++] = nd_st.prim; s[i++] = nd_st.prim_lod; s[i++] = 0; /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0) */ s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
+    s[i++] = nd_st.prim; s[i++] = nd_st.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
     s[i++] = (uint32_t)dview; s[i++] = (uint32_t)r_mix; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
     s[i++] = (uint32_t)r_zmark; s[i++] = (uint32_t)r_decal; s[i++] = (uint32_t)r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)off_active; s[i++] = (uint32_t)ui_ortho;
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
@@ -2561,6 +2568,8 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     int tex = 0, i8 = 0, hs = -1, id = -1; unsigned hg = 0; /* S3N-6: the unit slot hint of the entry */
     const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
     if (gfx != NULL && ds == NULL) { nd_nat_why = nd_tex_handle_miss((int)texidx, gfx); return -1; } /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
+    NdMode ax; int ax_ok = 0; /* S3L-3: R13 words of an untextured record (no bind): decoded as the list ops that run before the render mode list */
+    if (rec[26] != 0 && gfx == NULL) ax_ok = nd_aux_state(rec + NDMC_RW, rec[26], &ax);
     if (ds) { /* S3N-3c: the unit 0 words from the descriptor (nd_tex_get, nd_tex_unit), not from the walker-bound slot */
         id = nd_tex_get(ds);
         if (id < 0) { nd_nat_why = 13; return -1; } /* S3L-2: nd_tex_get failed (load or table full) */
@@ -2574,15 +2583,18 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.u0 = tex ? &mdl_un : NULL;
     c.i8_0 = i8;
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
-    c.has_comb = 1; c.comb_w0 = combw ? combw[0] : sw_cw0; c.comb_w1 = combw ? combw[1] : sw_cw1;
+    if (ax_ok) { int tw = 1, th = 1; pm_tex_size(&tw, &th); c.tex_w = tw; c.tex_h = th; } /* S3L-3: no bind: the uv params of the walker use the size of its last bound texture (gv_params_calc); the draw reads no texel */
+    c.has_comb = 1; c.aux_ok = ax_ok;
+    c.comb_w0 = combw ? combw[0] : (ax_ok && ax.has_cb ? ax.cw0 : sw_cw0); c.comb_w1 = combw ? combw[1] : (ax_ok && ax.has_cb ? ax.cw1 : sw_cw1); /* S3L-3: R4 wins over R13 (it runs after it) */
     c.geom_base = sw_geo; c.wind = gv_wind;
-    c.tss = *mode_ok && mdl_mode.has_tx ? mdl_mode.tw1 : sw_tss; /* B9: the list TEXTURE wins; gv per range in nd_model_draw */
+    c.tss = *mode_ok && mdl_mode.has_tx ? mdl_mode.tw1 : (ax_ok && ax.has_tx ? ax.tw1 : sw_tss); /* B9: the list TEXTURE wins; gv per range in nd_model_draw */
     if (ds) { int w = 8, h = 8; while (w < ds->w) w <<= 1; while (h < ds->h) h <<= 1; c.tex_w = w; c.tex_h = h; } /* the size of the record's texture, not the walker-bound slot */
     c.draw_3d = 1; /* S3N-3c: a native batch goes through pm_gpu_grange, which sets draw_3d */
     c.dview = dview; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     c.prim = nd_st.prim; c.prim_lod = nd_st.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
-    c.base_oh = nd_st.om_h; c.base_ol = nd_st.om_l; c.known_h = nd_st.om_kh; c.known_l = nd_st.om_kl; /* B8 */
+    c.base_oh = ax_ok ? (nd_st.om_h & ~ax.wh) | ax.om_h : nd_st.om_h; c.base_ol = ax_ok ? (nd_st.om_l & ~ax.wl) | ax.om_l : nd_st.om_l; /* B8; S3L-3: the R13 mode ops first */
+    c.known_h = nd_st.om_kh | (ax_ok ? ax.wh : 0u); c.known_l = nd_st.om_kl | (ax_ok ? ax.wl : 0u);
     int n = nd_model_draw(rec, &c, geo, emit);
     int valid = 0;
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
@@ -2671,7 +2683,7 @@ static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDes
         ndc_cmp("u0.dim", cu->dim, f->d.u[0].dim); ndc_cmp("u0.param", cu->param, f->d.u[0].param);
         ndc_cmp("u0.lod", cu->lod, f->d.u[0].lod); ndc_cmp("u0.type", cu->type, f->d.u[0].type);
         if (cu->addr != f->d.u[0].addr) ndc_copy++; /* an equal copy (same texels) at another address: counted apart */
-        for (int i = 0; i < 4; i++) { ndc_cmp("uvso", ndc_bits(c->d.uvso[i]), ndc_bits(f->d.uvso[i])); ndc_cmp("cmul", ndc_bits(c->d.cmul[i]), ndc_bits(f->d.cmul[i])); ndc_cmp("cadd", ndc_bits(c->d.cadd[i]), ndc_bits(f->d.cadd[i])); }
+        for (int i = 0; i < 4; i++) { if (cu->dim) ndc_cmp("uvso", ndc_bits(c->d.uvso[i]), ndc_bits(f->d.uvso[i])); /* S3L-3: uv params of an untextured draw are not read (no texel) and depend on the walker tile state: not compared */ ndc_cmp("cmul", ndc_bits(c->d.cmul[i]), ndc_bits(f->d.cmul[i])); ndc_cmp("cadd", ndc_bits(c->d.cadd[i]), ndc_bits(f->d.cadd[i])); }
         for (int i = 0; i < 2; i++) ndc_cmp("zmix", ndc_bits(c->d.zmix[i]), ndc_bits(f->d.zmix[i]));
         ndc_cmp("sd", (unsigned)(uintptr_t)c->sd, (unsigned)(uintptr_t)f->sd); ndc_cmp("nidx", c->nidx, f->nidx);
     }
@@ -2799,7 +2811,7 @@ static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw*
     NDM_CMP("u0.dim", n->d.u[0].dim, wd->u[0].dim); NDM_CMP("u0.param", n->d.u[0].param, wd->u[0].param); NDM_CMP("u0.lod", n->d.u[0].lod, wd->u[0].lod);
     NDM_CMP("u0.type", n->d.u[0].type, wd->u[0].type);
     if (n->d.u[0].addr != wd->u[0].addr) ndm_fn_count("u0.copy"); /* an equal copy (same key, format, size, dim, param, lod, type; same texels) at another address: counted apart */
-    for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "uvso%d", i); NDM_CMPF(nm, n->d.uvso[i], wd->uvso[i]); }
+    for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "uvso%d", i); if (n->d.u[0].dim) NDM_CMPF(nm, n->d.uvso[i], wd->uvso[i]); } /* S3L-3: untextured draws: not compared (see ndc_cmp) */
     for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cmul%d", i); NDM_CMPF(nm, n->d.cmul[i], wd->cmul[i]); }
     for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cadd%d", i); NDM_CMPF(nm, n->d.cadd[i], wd->cadd[i]); }
     for (int i = 0; i < 2; i++) { char nm[16]; snprintf(nm, sizeof nm, "zmix%d", i); NDM_CMPF(nm, n->d.zmix[i], wd->zmix[i]); }

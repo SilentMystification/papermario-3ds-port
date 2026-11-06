@@ -63,9 +63,9 @@ int main(void) {
     d = nd_tex_handle_desc(5, gfx_a);
     CHECK(d != NULL && d->pal_n == 16 && d->pal == (const void*)pal, "B4 CI4 palette count 16");
     nd_tex_handle_set(6, gfx_a, raster, 0, 16, 16, 0, 2, 0, 0, 4, 4, 1, 0);
-    CHECK(nd_tex_handle_desc(6, gfx_a) == NULL, "B4 extra tiles is fallback");
+    CHECK(nd_tex_handle_desc(6, gfx_a) != NULL, "S3L-2 B4 extra tiles: the tile 0 desc");
     nd_tex_handle_set(7, gfx_a, raster, 0, 16, 16, 0, 2, 0, 0, 4, 4, 0, 1);
-    CHECK(nd_tex_handle_desc(7, gfx_a) == NULL, "B4 aux raster is fallback");
+    CHECK(nd_tex_handle_desc(7, gfx_a) != NULL, "S3L-2 B4 aux raster: the tile 0 desc");
 
     /* 6 (S3N-3a): one model record, 1CYC textured SURFACE_OPA: the key and the state words nd_raw_native would set (combine 8, B7) */
     {
