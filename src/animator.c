@@ -889,6 +889,12 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
 
     if (node->displayList != nullptr) {
         if (node->vertexStartOffset < 0) {
+#ifdef TARGET_3DS
+            /* S6-4: a static node list (its vertices sit in the model data behind gAnimVtxSegment): the walker draws it from the static pools. The other form
+             * (vertexStartOffset >= 0) is a fresh heap copy of the list with per frame vertices every frame: named fallback ent_dynvtx, the walker runs it. */
+            gPmEntDrawRecord(gMainGfxPos, node->displayList, gAnimVtxSegment, animator->baseAddr != nullptr ? VIRTUAL_TO_PHYSICAL(animator->baseAddr) : 0);
+            gMainGfxPos += G_PM_ENT_WORDS; gMainGfxPos[-2].words.w0 = 1; /* record word 2: the animator form (log) */
+#endif
             gSPDisplayList(gMainGfxPos++, node->displayList);
         } else {
             Gfx* gfxPos;

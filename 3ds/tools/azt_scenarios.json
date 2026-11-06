@@ -5809,6 +5809,31 @@
       "reason": "S6-3 picture of an item entity (the debug coin) on mac_01. Cap 30 s: boot, warp and the first 300-frame window (the until)."
     },
     {
+      "name": "ent_anim_pic",
+      "status": "pending",
+      "subject": "Shiver City entry sam_11 (warp entry 0): animated props (animator node lists, entnat key lines with seg 256). Shots at frames 200 to 205 and the entnat window line.",
+      "proves": "S6-4 animators: the static node lists (vertexStartOffset below 0) go through the entity draw record; entnat segs native above 0, the shot shows the models.",
+      "debug": "warp=sam_11:0 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "entnat f\\d+ draws",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "native entity draws above 0",
+          "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S6-4 picture of the sam_11 animated props. Cap 30 s: boot, warp and the first 300-frame window (the until)."
+    },
+    {
       "name": "spot_mac00_pic",
       "status": "unverified",
       "subject": "mac_00 (preset toad), Mario placed at pos -135 0 85 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",

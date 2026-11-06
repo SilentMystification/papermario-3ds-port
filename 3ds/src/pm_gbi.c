@@ -715,7 +715,6 @@ mixed:
                    rs.zcmp, rs.zupd, rs.decal, rs.memb, rs.nocol, (int)0, (int)fogmix_on);
         }
     }
-    pm_gpu_dbg_mode(m); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
     pm_gpu_render_src(omode_h, m, rs.depth);
 }
 
@@ -2310,7 +2309,7 @@ typedef struct {
     EntSeg* seg;
     u16 nseg;
     u8 st, why, nrec;
-    u32 ndraw, id;
+    u32 ndraw, id, segid;
     Gfx* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
 } EntKey;
 enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
@@ -2495,7 +2494,7 @@ static void ent_log(void) {
     pm_log_prof_line("entnat f%u draws %u native %u fb %u segs native %u interp %u keys %u comp %u dyn %u", f, ent_c.draws, ent_c.nat, ent_c.fb, ent_c.segn, ent_c.segi, ent_nent, ent_c.comp, ent_c.dyn);
     pm_log_prof_line("entnat why 1 table %u 2 op %u 3 slot %u 4 vtx %u 5 long %u 6 pool %u 7 count %u 8 none %u", ent_c.why[1], ent_c.why[2], ent_c.why[3], ent_c.why[4], ent_c.why[5], ent_c.why[6], ent_c.why[7], ent_c.why[8]);
     for (unsigned q = 0; q < 256u; q++) if (ent_opc[q]) pm_log_prof_line("entnat refused op %02x keys %u", q, ent_opc[q]);
-    for (unsigned q = 0, n = 0; q < ENT_TAB && n < 12u; q++) if (ent_tab[q]) { const EntKey* k = ent_tab[q]; n++; pm_log_prof_line("entnat key list %08x vb %08x st %u why %u nseg %u nops %u draws %u", k->list, k->vb, k->st, k->why, k->nseg, k->nops, k->ndraw); }
+    for (unsigned q = 0, n = 0; q < ENT_TAB && n < 12u; q++) if (ent_tab[q]) { const EntKey* k = ent_tab[q]; n++; pm_log_prof_line("entnat key list %08x vb %08x st %u why %u nseg %u nops %u draws %u seg %u", k->list, k->vb, k->st, k->why, k->nseg, k->nops, k->ndraw, k->segid); }
     pm_log_prof_line("entnat grange why 0 %u 1 %u 2 %u 3 %u 4 %u 5 %u", ent_gw[0], ent_gw[1], ent_gw[2], ent_gw[3], ent_gw[4], ent_gw[5]);
     pm_log_prof_line("entnat segwhy lit %u fog %u room %u mtx %u | dlc_seg code (0 none, 1 + gv why, 9 grange) 0:%u 1:%u 2:%u 3:%u 4:%u 5:%u 6:%u 7:%u 8:%u 9:%u", ent_sw[1], ent_sw[2], ent_sw[3], ent_sw[4], ent_sw[5], ent_sw[6], ent_sw[7], ent_sw[8], ent_sw[9], ent_sw[10], ent_sw[11], ent_sw[12], ent_sw[13], ent_sw[14]);
     if (entchk_on()) pm_log_prof_line("entsegcmp f%u segs %u eq %u diff %u", f, ent_c.cseg, ent_c.ceq, ent_c.cdiff);
@@ -2518,7 +2517,7 @@ static int ent_draw(const Gfx* rec) {
             else { u8 nr = k->nrec; ent_compile(k, l); k->nrec = nr; }
         }
     } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { ent_compile(k, l); }
-    k->ndraw++;
+    k->ndraw++; k->segid = rec[1].words.w0 | (rec[2].words.w0 << 8);
     { static unsigned msk = 0xffffffffu; if (msk == 0xffffffffu) { char b[16]; msk = pm_debug_value("entskip", b, sizeof b) ? (unsigned)strtoul(b, NULL, 16) : 0u; } if (k->id < 32u && (msk >> k->id & 1u)) return 0; } /* debug switch entskip=<hex mask of key ids>: those keys run the walker (bisect aid) */
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; ent_log(); return 0; }
     if (entchk_on()) { ent_c.nat++; ent_log(); return 0; }

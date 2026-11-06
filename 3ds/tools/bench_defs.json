@@ -855,6 +855,44 @@
       ]
     },
     {
+      "name": "ent_anim_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "sam_11 animated props drawn natively (S6-4): static node lists from the static pools. A person reads the shot. Gate native above 0.",
+      "scenario": "ent_anim_pic",
+      "cap": 30,
+      "until": "entnat f\\d+ draws",
+      "tags": [
+        "azahar",
+        "entity"
+      ],
+      "log_metrics": [
+        {
+          "name": "ent_native",
+          "regex": "entnat f\\d+ draws \\d+ native (\\d+) fb",
+          "pick": "last"
+        },
+        {
+          "name": "seg_native",
+          "regex": "entnat f\\d+ draws \\d+ native \\d+ fb \\d+ segs native (\\d+) ",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ent_native",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_native",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "spot_mac01_sprcheck",
       "kind": "azahar_pic",
       "speed": "normal",
