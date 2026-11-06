@@ -6216,7 +6216,7 @@
       "status": "unverified",
       "subject": "sbk_56 (Dry Dry Desert area, super block at -50 60 275). Mario placed under the block by pos=, jumps by padscript (A). Shots every 30 frames to the hit and the upgrade effects: the energy dots moving to the partner and the white flash.",
       "proves": "FX1 row 2: the super block upgrade runs (superblock: hit line, then superblock: effects done line) and the picture shows the dots and the flash.",
-      "debug": "warp=sbk_56:0 story=ch0_toad_town pos=-50:0:275 padscript=@pad_sbk56.txt shots loglevel=debug",
+      "debug": "warp=sbk_56:0 story=ch0_toad_town pos=-50:0:275 padscript=@pad_sbk56.txt shots shotwin=500:240 loglevel=debug",
       "until": "superblock: effects done",
       "cap": 45,
       "deadline": 20,
