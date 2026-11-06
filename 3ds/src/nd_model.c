@@ -210,6 +210,8 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     NdTmplKey k;
     memset(&k, 0, sizeof k);
     k.pass = 0; k.raw = 1; k.cull = cull;
+    /* S5-1 (b): decal with blend, the walker's decal2: pass A (stencil mark) then pass B (colour, stencil EQUAL). The model draw emits both (nd_model_draw). */
+    if (zb && r->zcmp && r->decal && r->blend && !r->nocol) k.pass = 2;
     k.z = (uint8_t)zb; k.zmark = 0; k.zcmp = r->zcmp; k.zupd = r->zupd; k.nocol = r->nocol; k.decal = r->decal;
     memcpy(&k.dbias, &c->dbias, 4);
     k.atest_on = r->atest >= 0; k.aref = (uint8_t)(r->atest >= 0 ? r->atest : 0);
@@ -375,8 +377,18 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
         NdDraw dd; NdMState ss;
         int rc = nd_model_state(rec, &c, &dd, &ss);
         if (rc != 1) { nat_n = 0; nd_nat_why = ss.why; return rc < 0 ? -2 : -1; }
-        if (nat_n && nat[nat_n - 1].d.tmpl == dd.tmpl && nat[nat_n - 1].sd + nat[nat_n - 1].nidx == rng[r].sd) { nat[nat_n - 1].nidx += rng[r].nidx; continue; }
-        if (nat_n >= ND_NAT_MAX) { nat_n = 0; return (nd_nat_why = 11, -1); }
+        const int d2 = ss.k.pass == 2; /* S5-1: decal2, no merge (each range has its own pass A) */
+        if (!d2 && nat_n && nat[nat_n - 1].d.tmpl == dd.tmpl && nat[nat_n - 1].sd + nat[nat_n - 1].nidx == rng[r].sd) { nat[nat_n - 1].nidx += rng[r].nidx; continue; }
+        if (nat_n + (d2 ? 2 : 1) > ND_NAT_MAX) { nat_n = 0; return (nd_nat_why = 11, -1); }
+        if (d2) { /* pass A: the stencil mark, no colour, no depth write */
+            NdTmplKey ka = ss.k; ka.pass = 1;
+            int ida = nd_tmpl_build(&ka);
+            if (ida < 0) { nat_n = 0; return (nd_nat_why = 7, -1); }
+            NdNat* a = &nat[nat_n++];
+            memcpy(a->pal, pal0, sizeof pal0);
+            a->d = dd; a->d.tmpl = ida; a->d.pal = (const float(*)[16])a->pal; a->d.npal = 1;
+            a->s = ss; a->sd = rng[r].sd; a->nidx = rng[r].nidx;
+        }
         NdNat* n = &nat[nat_n++];
         memcpy(n->pal, pal0, sizeof pal0);
         dd.pal = (const float(*)[16])n->pal; dd.npal = 1;

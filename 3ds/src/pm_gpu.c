@@ -2456,6 +2456,13 @@ int pm_gpu_grange_why(const float m[4][4], unsigned nidx) { /* S4-1: the class o
     if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 4;
     return gidx_n + nidx <= GRING_IDX ? 0 : 5;
 }
+/* S5-1 (b): the native range check. The walker's decal with blend (decal2) is a native two-pass draw (nd_model_draw), so that refusal is not kept here. */
+int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx) {
+    if (!gv4_on || !gpu_ok) return 0;
+    if (r_zmark) return 0;
+    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 0;
+    return gidx_n + nidx <= GRING_IDX;
+}
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx) {
     if (!gv4_on || !gpu_ok) return 0;
     if (r_zmark) return 0;

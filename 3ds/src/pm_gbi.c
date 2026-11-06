@@ -2061,6 +2061,7 @@ void pm_gbi_dlcc(unsigned* o) {
  * dlc_static_group cuts them. No replay and no counters. Returns the count; -1 when dlc_try would not replay the list statically (the fallback); -2 when out is full. */
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx); /* S4-1 (diagnostic) */
+int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx); /* S5-1 (b) */
 /* S4-1 (diagnostic): the refusal of pm_dlc_native_ranges by class (1 dlc off or nobox, 2 list range, 3 table, 4 refused build, 5 depth pass, 6 group without static data, 7 lit group, 8 room, 9 walker grange refuses, 10 matrix id) */
 static unsigned dnr_c[16];
 static int dnr(unsigned k) { dnr_c[k]++; return -1; }
@@ -2100,7 +2101,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
             if ((x & (G_LIGHTING | bad)) || (x & lm) != (gg & lm)) return dnr(7);
         }
         if (!pm_gpu_gidx_room(3u * g->sn) || !pm_gpu_gv_room(g->nvtx + 3u * g->ntri)) return dnr(8);
-        if (!pm_gpu_grange_would(m, 3u * g->sn)) { int w = pm_gpu_grange_why(m, 3u * g->sn); return dnr(w ? 10 + w : 9); } /* S4-1: 11 gv or gpu off, 12 zmark, 13 decal and blend, 14 wide, 15 ring */ /* the walker's grange refuses: the group runs on the ring path (not a static draw) */
+        if (!pm_gpu_grange_native_would(m, 3u * g->sn)) { int w = pm_gpu_grange_why(m, 3u * g->sn); return dnr(w ? 10 + w : 9); } /* S4-1: 11 gv or gpu off, 12 zmark, 13 decal and blend, 14 wide, 15 ring */ /* the walker's grange refuses: the group runs on the ring path (not a static draw) */
         if (!gmi_ready) { gmi = dlc_gmi(); gmi_ready = 1; }
         if (gmi == GV_NONE) return dnr(10);
         unsigned t = 0, go = 0;

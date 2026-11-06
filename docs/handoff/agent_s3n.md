@@ -1,6 +1,9 @@
 # Agent S3N: map model records draw natively
 
 ## STATE
+S5-1 (b) STATE (row S3L, decal with blend, 2026-11-05): the walker decal2 (pm_gpu.c flush_draw: pass A stencil mark, pass B colour with stencil EQUAL) is a native two-pass draw. nd_model_state sets k.pass 2 when z, zcmp, decal, blend and not nocol; nd_model_draw emits pass A (template pass 1, same state, no merge) before each pass 2 range. Range check: pm_gpu_grange_native_would (the walker's grange_would without the decal and blend refusal; zmark and wide kept).
+  Gate: spot_mac01_ndmcheck diff 0, eq 13947 (was 13836), ndmcache diff 0. spot_mac01_pic: native 47767 fb 1 (was 47386, fb 2); picture right by eye (same scene). iwa_10 switch: ndmr2 c13 decal and blend 512 -> 0, but the code 12 records are unchanged (1365): the same records are refused by wide (c14 2477 calls). So at iwa_10 the decal class is not a record drop until wide is done.
+  Not done: (a) zmark (needs the constant depth pass on CPU-transformed vertices: pm_gpu.c flush_draw b2, the native path has none; a CPU transform per zmark record is a design call), (c) wide, residual code 2 (R13 with bind).
 S4-1 STATE (row S3L, code 12 at iwa_10, 2026-11-05): the iwa_10 fallback counts (warp=iwa_10:0 pos=-662:0:587 prof=4, run_azahar direct; build ade54eeb5 plus the S4-1 diagnostic).
   Switch window (300 frames): native 27991 fb 1525 wref 1428 hit 26039 miss 3477; why 2:160, 12:1365 (fb/frame 5.1, code 12 4.55/frame, code 2 0.5/frame). ndmcheck window: recs 20351 eq 1102 diff 0 fb 1309; why 2:139, 12:1170; ndmcache diff 0.
   Mac_01, mac_00, sbk_56 switch (after code 2): code 12 at mac_01 1 per window, mac_00 0, sbk_56 0. Code 2 residual at mac_00 422 (1.4/frame), mac_01 1, sbk_56 0.
