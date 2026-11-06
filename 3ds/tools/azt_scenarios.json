@@ -1926,6 +1926,38 @@
       "reason": "CH4 gate (menu part): one partner row Off, the current partner moved (log). The world partner entity is not switched in this port (dead switch_to_partner), so the top-shot check of the new partner beside Mario is a named gap."
     },
     {
+      "name": "menu_partner_top",
+      "status": "verified",
+      "subject": "Select menu, Cheats tab (L), Partners > (4 down, A), Enable partners (A, all on), one down to Goombario, A (off: the current partner moves to Kooper and the world partner switch is queued), SELECT closes. Top screen after the resume: Mario with Kooper beside him (top shot in the shotwin window).",
+      "proves": "CH4 gap: curPartner change reaches the world partner entity (switch_to_partner, the live path of src/world/partners.c, from the frozen menu at the next world step).",
+      "debug": "preset=toad padscript=@pad_partner_top.txt shots shotwin=160:6 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "partner off",
+          "regex": "dbggame: partner [0-9]+ off, current now 2"
+        },
+        {
+          "name": "entity queued",
+          "regex": "dbggame: partner entity queued 2"
+        },
+        {
+          "name": "resumed",
+          "regex": "menu: game resumed at frame [0-9]+"
+        }
+      ],
+      "reason": "CH4 gap gate: one top shot after the resume shows the new partner beside Mario (picture, read by eye). Shot window 160 to 165 is after the resume at about frame 94 plus the take-out animation."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",

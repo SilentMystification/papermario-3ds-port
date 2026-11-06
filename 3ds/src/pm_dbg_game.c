@@ -4,6 +4,7 @@
 #include "common.h"
 #include "functions.h"
 #include "pm_port.h"
+#include "game_modes.h"
 
 enum { PM_DBG_MAXHP, PM_DBG_MAXFP, PM_DBG_BP, PM_DBG_LEVEL, PM_DBG_COINS, PM_DBG_SP, PM_DBG_NSTAT };
 static const struct { int lo, hi, st; } rg[PM_DBG_NSTAT] = { { 5, 75, 5 }, { 0, 75, 5 }, { 0, 30, 1 }, { 1, 27, 1 }, { 0, 999, 10 }, { 0, 99, 1 } };
@@ -75,6 +76,7 @@ void pm_dbgg_toggle_all(int g) {
     pm_log("dbggame: toggle all %d off", g);
 }
 
+void switch_to_partner(s32 arg0); /* src/world/partners.c, live (menus.c) */
 /* CH4: partners 1 to 11 (PARTNER_GOOMBARIO .. PARTNER_TWINK, include/enums.h). Index 0 is no partner. */
 static const char* const partner_names[12] = { "", "Goombario", "Kooper", "Bombette", "Parakarry", "Goompa", "Watt", "Sushie", "Lakilester", "Bow", "Goombaria", "Twink" };
 const char* pm_partner_name(int i) { return i >= 1 && i <= 11 ? partner_names[i] : "?"; }
@@ -88,7 +90,7 @@ const char* pm_partner_value(int i) {
 }
 int pm_dbgg_partner_on(int i) { return gPlayerData.partners[i].enabled != 0; }
 /* CH4: on or off. Off on the current partner moves curPartner to the next enabled partner, or PARTNER_NONE. The world partner entity is not switched
- * here (switch_to_partner is dead code in this port, dead.h): the new partner shows at the next partner switch of the game. */
+ * here: see pm_dbgg_partner_set. */
 void pm_dbgg_partner_set(int i, int on) {
     PlayerData* p = &gPlayerData;
     int j;
@@ -98,6 +100,13 @@ void pm_dbgg_partner_set(int i, int on) {
         p->curPartner = PARTNER_NONE;
         for (j = 1; j < 12; j++) if (j != i && p->partners[j].enabled) { p->curPartner = (s8)j; break; }
     }
+    /* CH4 gap: the world partner entity follows curPartner. switch_to_partner is the live path of the game (world menu, src/world/partners.c):
+     * it queues the switch (take out, switch or put away) for the next world step, so the frozen menu only queues it. Other modes: the entity
+     * is set at the next world entry. */
+    if (get_game_mode() == GAME_MODE_WORLD) {
+        switch_to_partner(p->curPartner);
+        pm_log("dbggame: partner entity queued %d", p->curPartner);
+    } else pm_log("dbggame: partner entity at the next world entry (mode %d)", get_game_mode());
     pm_log("dbggame: partner %d %s, current now %d", i, on ? "on" : "off", p->curPartner);
 }
 /* CH4: left or right steps the level of an enabled partner (wrap). Returns 1 when the row changed. */
