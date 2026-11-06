@@ -191,6 +191,13 @@ typedef struct NdDlcEnv {
 } NdDlcEnv;
 int nd_dlc_compile(NdObj* o, const uint32_t* list, const NdDlcEnv* env); /* list: word pairs in host order, up to G_ENDDL */
 void nd_dlc_free(NdObj* o);
+/* S6-2a: the texture state of an entity model display list, decoded from its words (pure, host safe). The walker's tile 0 state at the end of the list
+ * (SETTIMG, SETTILE tile 0, SETTILESIZE tile 0, LOADBLOCK tile 0, and for a CI format the LOADTLUT of the palette bank on tile 7). Returns a code:
+ * NDTX_NONE no texture op; NDTX_OK one bind, native-ready; NDTX_MULTI more binds (the end state is decoded, not native-ready); the others are fallbacks
+ * (NDTX_TIMG, NDTX_TILE, NDTX_WIN, NDTX_PAL, NDTX_NOLB, NDTX_NOBIND). Fields are valid for NDTX_OK and NDTX_MULTI only. pal is NULL and pal_n 0 when not CI. */
+enum { NDTX_NONE, NDTX_OK, NDTX_TIMG, NDTX_TILE, NDTX_MULTI, NDTX_WIN, NDTX_PAL, NDTX_NOLB, NDTX_NOBIND, NDTX_N };
+typedef struct NdTexDec { const void* img; const void* pal; unsigned fmt, siz, w, h, stride, pal_n, cms, cmt, masks, maskt, bad_op; } NdTexDec; /* bad_op: op << 8 | tile of the first NDTX_TILE op (diagnostic) */
+int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o);
 
 /* NDEMIT (S3 M3): the command words of one raw draw (pm4 program: static or ring Vtx with the palette matrix at entry 0), written from native data. The PICA command format is
  * [parameter][header][extra parameters][pad]: header bits 0-15 register, 16-19 byte mask, 20-27 extra count, bit 31 consecutive registers. Only the parts that differ from

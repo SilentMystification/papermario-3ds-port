@@ -604,7 +604,7 @@
       "purpose": "Toad Town mac_01 entcheck (S6-1): entity record (G_PM_ENT) vs the walker words of the draw. Gate eq above 0, diff 0.",
       "scenario": "entcheck_mac01",
       "cap": 25,
-      "until": "entcheck f\\d+ recs",
+      "until": "texchk f\\d+ ent",
       "tags": [
         "azahar",
         "entcheck",
@@ -620,6 +620,16 @@
           "name": "ent_diff",
           "regex": "entcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) dfield",
           "pick": "last"
+        },
+        {
+          "name": "tex_eq",
+          "regex": "texchk f\\d+ ent \\d+ eq (\\d+) diff \\d+ nat",
+          "pick": "last"
+        },
+        {
+          "name": "tex_diff",
+          "regex": "texchk f\\d+ ent \\d+ eq \\d+ diff (\\d+) nat",
+          "pick": "last"
         }
       ],
       "gates": [
@@ -631,6 +641,16 @@
         {
           "metric": "ent_diff",
           "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "tex_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "tex_eq",
+          "op": ">",
           "value": 0
         }
       ]
@@ -643,7 +663,7 @@
       "purpose": "Koopa Village kmr_03 entcheck (S6-1): entity record vs walker words on the coin block scene. Gate eq above 0, diff 0.",
       "scenario": "entcheck_kmr03",
       "cap": 25,
-      "until": "entcheck f\\d+ recs",
+      "until": "texchk f\\d+ ent",
       "tags": [
         "azahar",
         "entcheck",
@@ -659,6 +679,16 @@
           "name": "ent_diff",
           "regex": "entcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) dfield",
           "pick": "last"
+        },
+        {
+          "name": "tex_eq",
+          "regex": "texchk f\\d+ ent \\d+ eq (\\d+) diff \\d+ nat",
+          "pick": "last"
+        },
+        {
+          "name": "tex_diff",
+          "regex": "texchk f\\d+ ent \\d+ eq \\d+ diff (\\d+) nat",
+          "pick": "last"
         }
       ],
       "gates": [
@@ -670,6 +700,16 @@
         {
           "metric": "ent_diff",
           "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "tex_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "tex_eq",
+          "op": ">",
           "value": 0
         }
       ]

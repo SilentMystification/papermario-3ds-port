@@ -301,6 +301,39 @@ static struct {
     int w, h, stride, x0, y0, pal_n;
     const void* pal;
 } td[2];
+/* S6-2a (entcheck): at the end record of an entity model draw (G_PM_ENT with G_PM_ENT_END, entity_model.c), the walker's tile 0 state (td[0], pending for the
+ * next draw) against nd_dlc_tex_decode of the model list. eq: the same src, fmt, siz, w, h, stride, origin 0, and pal and pal_n for CI. Counts: ent (lists with a texture op),
+ * nat (NDTX_OK, native-ready), fb per code (NDTX_MULTI and the fallback codes, index 2 to 8). Line every 300 frames. */
+static void pm_gbi_ent_texchk(const uint32_t* dl) {
+    static unsigned n_ent, n_eq, n_diff, n_nat, n_fb[NDTX_N], n_dlog, n_tbad, next = 300u;
+    NdTexDec d;
+    int c = nd_dlc_tex_decode(dl, &d);
+    unsigned f;
+    extern void pm_log_prof_line(const char* fmt, ...);
+    extern unsigned pm_frame_count(void);
+    if (c != NDTX_NONE) {
+        n_ent++;
+        if (c == NDTX_OK) n_nat++; else n_fb[c]++;
+        if (c == NDTX_WIN && n_tbad++ < 6) pm_log_prof_line("texwin f%u w %u h %u ldw %u ldh %u tsiz %u", pm_frame_count(), d.w, d.h, d.stride, d.pal_n, d.fmt);
+        if (c == NDTX_TILE && n_tbad++ < 6) pm_log_prof_line("texbad f%u op %02x tile %u", pm_frame_count(), d.bad_op >> 8, d.bad_op & 7u);
+        if (c == NDTX_OK || c == NDTX_MULTI) {
+            int same = td[0].valid && (const void*)td[0].src == d.img && td[0].fmt == d.fmt && td[0].siz == d.siz && td[0].w == (int)d.w && td[0].h == (int)d.h &&
+                       td[0].stride == (int)d.stride && td[0].x0 == 0 && td[0].y0 == 0 && (d.fmt != 2u || (td[0].pal == d.pal && td[0].pal_n == (int)d.pal_n));
+            if (same) n_eq++;
+            else {
+                n_diff++;
+                if (n_dlog++ < 8) pm_log_prof_line("texdiff f%u td v%d src %p fmt %u siz %u w %d h %d str %d x0 %d y0 %d pal %p n %d / dec src %p fmt %u siz %u w %u h %u str %u pal %p n %u",
+                    pm_frame_count(), td[0].valid, (const void*)td[0].src, td[0].fmt, td[0].siz, td[0].w, td[0].h, td[0].stride, td[0].x0, td[0].y0, td[0].pal, td[0].pal_n,
+                    d.img, d.fmt, d.siz, d.w, d.h, d.stride, d.pal, d.pal_n);
+            }
+        }
+    }
+    f = pm_frame_count();
+    if (f >= next) {
+        next = (f / 300u + 1u) * 300u;
+        pm_log_prof_line("texchk f%u ent %u eq %u diff %u nat %u fb %u %u %u %u %u %u %u", f, n_ent, n_eq, n_diff, n_nat, n_fb[2], n_fb[3], n_fb[4], n_fb[5], n_fb[6], n_fb[7], n_fb[8]);
+    }
+}
 static void dd_line(void) {
         pm_log("dd f%u #%u src %08x dl %08x %08x geom %08x oml %08x omh %08x tex %u timg %08x fmt %u siz %u %dx%d tri %u scr %.0f %.0f %.0f %.0f w %.2f %.2f tw %08x %08x %08x %08x ts %u %u sz %d %d %d %d",
                pm_frame_count(), dd.idx, dd.src, dd.dl0, dd.dl1, dd.gm, dd.oml, dd.omh, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.ntri,
@@ -4492,7 +4525,8 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc += G_PM_SPR_WORDS - 1;
             break;
         }
-        case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. */
+        case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. S6-2a: the end record (G_PM_ENT_END, entcheck only) checks the tile 0 state. */
+            if (w0 & G_PM_ENT_END) pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1);
             pc += G_PM_ENT_WORDS - 1;
             break;
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */

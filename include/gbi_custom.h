@@ -223,6 +223,8 @@
  * word 3: w1 the render mode list (Gfx*, the G_DL the switch emitted, 0 when none). The old words still draw (the dispatch skips the record). */
 #define G_PM_ENT 0x11
 #define G_PM_ENT_WORDS 4
+/* S6-2a: w0 bit 8 on a record written after the entity model display list (entcheck only): the walker checks its tile 0 state against nd_dlc_tex_decode of that list. */
+#define G_PM_ENT_END 0x100u
 #define G_PM_REC_WORDS 14 /* S3F-2c: words of one producer record (R0 to R10). S3G-1: R11 custom gfx pre (w0) and post (w1), R12 geometry (w0) and pop flag (w1). S3G-2: R13 w0 = words after the record (special tile list or untextured ops), they run in place of the bind */
 #define gsSPPmTexInline(n) {{ _SHIFTL(G_PM_TEXI, 24, 8) | ((n) & 0xffff), 0 }}
 

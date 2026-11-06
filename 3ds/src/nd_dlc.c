@@ -148,3 +148,91 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
     o->nvtx = nv; o->nidx = ni;
     return NDR_OK;
 }
+
+/* S6-2a: the tile 0 state at the end of a display list, the walker rules of its texture ops (pm_gbi.c op_settimg, op_settile, op_loadblock, op_loadtlut,
+ * op_settilesize) for the form an entity model uses. Any other tile, LOADTILE, a window that is not the whole image, or a CI bank without its LOADTLUT is a fallback. */
+int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) {
+    unsigned i, nbind = 0, ntexop = 0;
+    int code = NDTX_NONE, have_timg = 0, have_set0 = 0, have_set7 = 0, have_lb = 0, have_pal = 0, have_ld = 0;
+    const void* timg = NULL;
+    unsigned timg_stride = 0, tfmt = 0, tsiz = 0, tmem0 = 0, tmem7 = 0, lb_tm = 0, pal0 = 0, cms = 0, cmt = 0, masks = 0, maskt = 0;
+    unsigned uls = 0, ult = 0, lrs = 0, lrt = 0, tlut_n = 0, ld_tm = 0, ld_w = 0, ld_h = 0;
+    const void* tlut = NULL;
+    memset(o, 0, sizeof *o);
+    for (i = 0; i < ND_DLC_MAXOPS; i++) {
+        uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
+        unsigned op = w0 >> 24, tile = (w1 >> 24) & 7u;
+        if (op == OP_ENDDL) break;
+        switch (op) {
+        case OP_SETTIMG:
+            ntexop++;
+            have_timg = 1; timg = (const void*)(uintptr_t)w1; timg_stride = (w0 & 0xfffu) + 1u; have_ld = 0; /* the walker: SETTIMG clears ld_valid */
+            if (w1 == 0 && code == NDTX_NONE) code = NDTX_TIMG;
+            break;
+        case OP_SETTILE:
+            ntexop++;
+            if (tile == 0) {
+                tfmt = (w0 >> 21) & 7u; tsiz = (w0 >> 19) & 3u; pal0 = (w1 >> 20) & 15u; tmem0 = w0 & 0x1ffu;
+                cms = (w1 >> 8) & 3u; cmt = (w1 >> 18) & 3u; masks = (w1 >> 4) & 15u; maskt = (w1 >> 14) & 15u;
+                have_set0 = 1;
+            } else if (tile == 7) {
+                tmem7 = w0 & 0x1ffu; have_set7 = 1;
+            } else if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile;
+            break;
+        case OP_SETTILESIZE:
+            ntexop++;
+            if (tile != 0) { if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile; break; }
+            uls = (w0 >> 12) & 0xfffu; ult = w0 & 0xfffu; lrs = (w1 >> 12) & 0xfffu; lrt = w1 & 0xfffu;
+            if (!have_timg || !have_set0) { if (code == NDTX_NONE) code = NDTX_TIMG; break; }
+            if (nbind++ > 0 && code == NDTX_NONE) code = NDTX_MULTI;
+            break;
+        case OP_LOADBLOCK:
+            ntexop++;
+            /* gDPLoadTextureBlock loads on the load tile 7 (its TMEM address is the tile 0 one). The load clears the stale LoadTile records of its range. */
+            if (tile == 7 && have_set7) { lb_tm = tmem7; have_lb = 1; }
+            else if (tile == 0 && have_set0) { lb_tm = tmem0; have_lb = 1; }
+            else if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile;
+            break;
+        case OP_LOADTLUT:
+            ntexop++;
+            if (tile != 7) { if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile; break; }
+            if (!have_timg || !have_set7) { if (code == NDTX_NONE) code = NDTX_PAL; break; }
+            tlut = timg; tlut_n = ((w1 >> 14) & 0x3ffu) + 1u;
+            /* the palette bank of tile 0 is the 16 entry block at TMEM 256 + 16 * bank (the walker: slot = (tmem - 256) >> 4) */
+            if (tmem7 >= 256u && ((tmem7 - 256u) >> 4) == pal0) have_pal = 1;
+            break;
+        case OP_LOADTILE: /* the walker: ld_valid, the load window (ld_x, ld_y, ld_w, ld_h) and an ldrec record of (TMEM of the load tile, image) */
+            ntexop++;
+            if (tile != 7 || !have_set7 || !have_timg) { if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile; break; }
+            if (((w0 >> 12) & 0xfffu) >= 4u || (w0 & 0xfffu) >= 4u) { if (code == NDTX_NONE) code = NDTX_WIN; break; } /* a load window origin is not 0 */
+            have_ld = 1; ld_tm = tmem7;
+            ld_w = (((w1 >> 12) & 0xfffu) >> 2) + 1u; ld_h = ((w1 & 0xfffu) >> 2) + 1u;
+            break;
+        default:
+            break;
+        }
+    }
+    if (code == NDTX_NONE && ntexop == 0) return NDTX_NONE;
+    if (code == NDTX_NONE && nbind == 0) return NDTX_NOBIND;
+    if (code == NDTX_NONE || code == NDTX_MULTI) {
+        unsigned w = ((lrs - uls) >> 2) + 1u, h = ((lrt - ult) >> 2) + 1u; /* the walker size, unsigned here: a negative window is caught below */
+        unsigned stride;
+        if (lrs < uls || lrt < ult || uls != 0 || ult != 0 || h <= 1u) { if (code == NDTX_NONE) code = NDTX_WIN; }
+        else if (!((have_lb && lb_tm == tmem0) || (have_ld && ld_tm == tmem0))) { if (code == NDTX_NONE) code = NDTX_NOLB; } /* the load clears or overwrites the stale records of the tile 0 TMEM */
+        else if (have_ld && ((tsiz == 0u ? 2u * ld_w : ld_w) != w || ld_h != h)) { if (code == NDTX_NONE) code = NDTX_WIN; o->w = w; o->h = h; o->stride = ld_w; o->pal_n = ld_h; } /* a 4 bit LoadTile counts bytes (the walker: ld_w * 2 for siz 0) */ /* a load window narrower than the tile makes the walker wrap or offset */
+        else if (tfmt == 2u && !have_pal) { if (code == NDTX_NONE) code = NDTX_PAL; }
+        else {
+            stride = timg_stride > w ? timg_stride : w;
+            if (masks && (1u << masks) < w && timg_stride > 0 && timg_stride < w) stride = timg_stride; /* the walker stride rule for a mask narrower than the window */
+            if (have_ld && tsiz == 0u) stride = 2u * timg_stride; /* 4 bit with a LoadTile (ld_valid): the walker sets stride = 2 * timg stride */
+            o->img = timg; o->fmt = tfmt; o->siz = tsiz; o->w = w; o->h = h; o->stride = stride;
+            o->cms = cms; o->cmt = cmt; o->masks = masks; o->maskt = maskt;
+            if (tfmt == 2u) { o->pal = tlut; o->pal_n = tlut_n; }
+            if (code == NDTX_NONE && nbind == 1) code = NDTX_OK;
+            if (code == NDTX_NONE) code = NDTX_MULTI;
+            if (nbind > 1) code = NDTX_MULTI;
+        }
+    }
+    if (code == NDTX_NONE) code = NDTX_NOBIND;
+    return code;
+}

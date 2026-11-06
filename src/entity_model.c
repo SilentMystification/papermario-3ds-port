@@ -1,5 +1,8 @@
 #include "common.h"
 #include "entity.h"
+#ifdef TARGET_3DS
+#include "nd.h" /* S6-2a: nd_dlc_tex_decode (entcheck census) */
+#endif
 
 EntityModelScript D_8014C260 = {
     ems_End
@@ -248,15 +251,14 @@ void make_entity_model_mtx_flipZ(Matrix4f mtx) {
 extern int pm_debug_has(const char* key);
 extern unsigned pm_frame_count(void);
 extern void pm_log_prof_line(const char* fmt, ...);
-static unsigned ent_recs_n, ent_eq_n, ent_diff_n, ent_next = 300u, ent_dfc[5], ent_cls[7];
+static unsigned ent_recs_n, ent_eq_n, ent_diff_n, ent_next = 300u, ent_dfc[5], ent_cls[8];
+static int entcheck_on(void) { static int on = -1; if (on < 0) on = pm_debug_has("entcheck"); return on; }
 static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
-    static int on = -1;
     Gfx e[2];
     const Gfx* p;
     int mtxOk = 0, segOk = model->vertexArray == nullptr, dlOk = 0, rmOk = rec[3].words.w1 == 0;
     unsigned df = 0, f;
-    if (on < 0) on = pm_debug_has("entcheck");
-    if (!on) return;
+    if (!entcheck_on()) return;
     gSPMatrix(&e[0], (Mtx*)(uintptr_t)rec[2].words.w1, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     if (model->vertexArray != nullptr) gSPSegment(&e[1], D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
     for (p = rec + G_PM_ENT_WORDS; p < gMainGfxPos; p++) {
@@ -271,6 +273,7 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
     { /* S6-2 census (diagnostic): why the draw cannot be native yet. Priority: vertex segment, fog, reflect, texture op, nested list, other op, static. */
         const Gfx* q = model->gfx.displayList;
         unsigned dlm = 0, cls = 0;
+        NdTexDec tdec;
         for (int k = 0; q != nullptr && k < 2048; k++) {
             const u32 op = q[k].words.w0 >> 24;
             if (op == (u32)G_ENDDL) break;
@@ -284,7 +287,7 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
         if (model->vertexArray != nullptr) cls = 1;
         else if (rec[0].words.w0 & 1u) cls = 2;
         else if (model->flags & ENTITY_MODEL_FLAG_REFLECT) cls = 3;
-        else if (dlm & 1u) cls = 4;
+        else if (dlm & 1u) cls = (nd_dlc_tex_decode((const uint32_t*)(const void*)q, &tdec) == NDTX_OK) ? 7 : 4; /* S6-2a: 7 texok, native-ready texture form */
         else if (dlm & 2u) cls = 5;
         else if (dlm & 4u) cls = 6;
         ent_cls[cls]++;
@@ -294,7 +297,7 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
         ent_next = (f / 300u + 1u) * 300u;
         pm_log_prof_line("entcheck f%u recs %u eq %u diff %u dfield %u", f, ent_recs_n, ent_eq_n, ent_diff_n, df);
         pm_log_prof_line("entdf f%u by field: 1 %u 2 %u 3 %u 4 %u", f, ent_dfc[1], ent_dfc[2], ent_dfc[3], ent_dfc[4]);
-        pm_log_prof_line("entcls f%u static %u vtxseg %u fog %u reflect %u tex %u nested %u other %u", f, ent_cls[0], ent_cls[1], ent_cls[2], ent_cls[3], ent_cls[4], ent_cls[5], ent_cls[6]);
+        pm_log_prof_line("entcls f%u static %u vtxseg %u fog %u reflect %u tex %u nested %u other %u texok %u", f, ent_cls[0], ent_cls[1], ent_cls[2], ent_cls[3], ent_cls[4], ent_cls[5], ent_cls[6], ent_cls[7]);
     }
 }
 #endif
@@ -472,6 +475,15 @@ void appendGfx_entity_model(EntityModel* model) {
         gDPPipeSync(gMainGfxPos++);
 
         gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
+#ifdef TARGET_3DS
+        if (entRec != nullptr && entcheck_on()) { /* S6-2a: end record, the walker checks its tile 0 state against the decode of the list (pm_gbi.c G_PM_ENT) */
+            Gfx* endRec = gMainGfxPos;
+            gMainGfxPos += G_PM_ENT_WORDS;
+            endRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_END;
+            endRec[0].words.w1 = (u32)(uintptr_t)model->gfx.displayList;
+            endRec[1].words.w0 = endRec[1].words.w1 = endRec[2].words.w0 = endRec[2].words.w1 = endRec[3].words.w0 = endRec[3].words.w1 = 0;
+        }
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gDPPipeSync(gMainGfxPos++);
 #ifdef TARGET_3DS

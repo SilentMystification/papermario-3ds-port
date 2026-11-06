@@ -4,6 +4,19 @@
 S6-1 PASS (2026-11-06, row S6, main folder, nds1). S6-2 to S6-4 not done: the S6-2 census shows every entity draw uses a texture op in its DL (named class tex, see below). Record and check for entity models (G_PM_ENT, 4 words) committed. No draw change: the dispatch skips the record, the old words draw.
 Next: S6-2 (native entity draw) not started. Named open items below.
 
+## STATE
+S6-2a PASS (2026-11-06, row S6b, main folder, nds1): texture decode of the entity model list (nd_dlc_tex_decode) and the walker check at the end record (texchk). mac_01 f300: texchk ent 3543 eq 3543 diff 0 nat 3543; entcls texok 1786 (tex class now native-ready form). entcheck eq 2041 diff 0 (unchanged). No draw change (the end record is written only under entcheck; the walker check changes no state).
+Next: S6-2b (vtxseg static check). S6-2c (native switch) not started; see the fallbacks below.
+
+## S6-2a (done, row S6b)
+- nd.h: NdTexDec, nd_dlc_tex_decode (codes NDTX_NONE, NDTX_OK, NDTX_TIMG, NDTX_TILE, NDTX_MULTI, NDTX_WIN, NDTX_PAL, NDTX_NOLB, NDTX_NOBIND). nd_dlc.c: the decode, walker rules of the form entity lists use: SETTIMG, SETTILE tile 0 and 7, LOADTILE tile 7 (the walker ld_valid form, with the 4 bit window in bytes: ld_w * 2) or LOADBLOCK on tile 7, SETTILESIZE tile 0 (origin 0, height above 1), LOADTLUT tile 7 for CI (palette bank of tile 0).
+- entity_model.c: census splits tex into texok (decode NDTX_OK). Under entcheck only: end record G_PM_ENT with G_PM_ENT_END (gbi_custom.h, w0 bit 8), written after the model DL.
+- pm_gbi.c: pm_gbi_ent_texchk at the end record: walker td[0] (src, fmt, siz, w, h, stride, origin, pal and pal_n for CI) against the decode. Line texchk f<n> ent <n> eq <n> diff <n> nat <n> fb <codes 2 to 8>. Diagnostics texbad, texwin.
+- Deviation: the row says compare unit words (nd_tex_get words vs the walker slot). The compare is on the pm_tex_load arguments (td[0]), which fix the unit words; nd_tex_get is not called in the check (it loads textures, a side effect).
+- Found (census): every entity texture list uses LOADTILE tile 7 (gsDPLoadTextureBlock here loads with G_LOADTILE), not LOADBLOCK. The 4 bit form counts the window in bytes (ld_w = w / 2).
+- Gate run: entcheck_mac01 (bench tex_eq 3543, tex_diff 0). Budget S6: 8 starts of 8 used before the window fix (S6-2a retry 1 to 4 and 5 were FAILED shots of the decode: TILE, TILE, WIN). Budget reset once (run_azahar -ResetBudget S6, 2026-11-06). Starts after the reset: 2 (retry 5 diagnostic, gate run).
+- Not checked: picture (no draw change; the check runs in entcheck builds only).
+
 ## S6-1 (done)
 - include/gbi_custom.h: G_PM_ENT 0x11, G_PM_ENT_WORDS 4. Record words: w0 = G_PM_ENT << 24 | renderMode << 16 | fog bit; w1 = model->gfx.displayList. word 1: segment id (D_80154374) and physical vertex array (0 when none). word 2: G_MTX flags and the matrixStack entry address. word 3: w1 = render mode list (the G_DL the switch emitted; 0 when none).
 - src/entity_model.c appendGfx_entity_model (TARGET_3DS, not the USE_IMAGE path): the record is written before the matrix op, word 3 is set after the render mode switch, entcheck_draw runs after the model DL and pop.
