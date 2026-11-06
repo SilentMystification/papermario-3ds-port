@@ -333,7 +333,7 @@ void nd_mc_diag_take(unsigned o[15]);                          /* S3N-7: the mis
 unsigned nd_mc_clears(void);
 /* S3N-7: exclusive tick timers of the native model path (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed inside it. */
 typedef struct NdtT { uint64_t t, all; int on; } NdtT;
-enum { NDT_KEY, NDT_RNG, NDT_MISS, NDT_FB, NDT_UPD, NDT_EMIT, NDT_ADD, NDT_MTX, NDT_N };
+enum { NDT_KEYB, NDT_FIND, NDT_RNG, NDT_APPLY, NDT_FB, NDT_UPD, NDT_EMIT, NDT_ADD, NDT_MTX, NDT_N }; /* keyb: record key build; find: cache lookup; apply: the non-hit path (rec_apply, the fallback or the model call) */
 unsigned pm_ph_smp_count(void); /* S3N-7: pm_phase.c, sampled frames so far */
 NdtT pm_gpu_ndt_begin(void);
 void pm_gpu_ndt_end(NdtT s, int k);

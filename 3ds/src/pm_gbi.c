@@ -4368,11 +4368,13 @@ extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
 extern void pm_gpu_model_fb_cached(void); /* S3N-7 */ /* S3N-6: the cached draws of the key, 1 when drawn (e: the entry found by the lookup) */
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     NdMKey mk;
-    NdtT tk = pm_gpu_ndt_begin(); /* S3N-7: key build and lookup */
+    NdtT tk = pm_gpu_ndt_begin(); /* S3N-7: key build */
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
+    pm_gpu_ndt_end(tk, NDT_KEYB);
+    NdtT tf0 = pm_gpu_ndt_begin(); /* S3N-7: cache lookup */
     NdMEnt* mce = nd_mc_find(&mk);
     int cached = mce != NULL;
-    pm_gpu_ndt_end(tk, NDT_KEY);
+    pm_gpu_ndt_end(tf0, NDT_FIND);
     if (!cached) { nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0;
@@ -4384,7 +4386,7 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
         nat = 1;
         sc_ok = 0; sr_ok = 0;
     } else {
-    NdtT tmi = pm_gpu_ndt_begin(); /* S3N-7: the miss: rec_apply and the model draw (exclusive of the submit and the matrix) */
+    NdtT tmi = pm_gpu_ndt_begin(); /* S3N-7: apply: the non-hit path, rec_apply and the fallback or the model call (exclusive of the submit and the matrix) */
     rec_apply(q, mdone);
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
         q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
@@ -4396,7 +4398,7 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
         nat = 1;
         sc_ok = 0; sr_ok = 0;
     }
-    pm_gpu_ndt_end(tmi, NDT_MISS);
+    pm_gpu_ndt_end(tmi, NDT_APPLY);
     }
     if (!nat) { NdtT tf = pm_gpu_ndt_begin(); rec_dl((const Gfx*)(uintptr_t)q[12].words.w0); pm_gpu_ndt_end(tf, NDT_FB); }  /* S3G-1: geometry (0 when none); S3N-7: the fallback walk */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
