@@ -1676,7 +1676,7 @@
         },
         {
           "name": "exit row armed",
-          "regex": "menu: tab 0 row 3 Exit to Homebrew Menu = A again"
+          "regex": "menu: tab 0 row 3 Exit to Homebrew Menu = Press A again"
         },
         {
           "name": "shot",
