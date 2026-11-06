@@ -6514,6 +6514,53 @@
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
+      "name": "spot_sbk56_notex1nat_pic",
+      "status": "unverified",
+      "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0) with the notex1nat switch: two texture combine draws (plan.uses_tex1, the SGEN-2 native path) go back to the walker. Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "SBK bisect (row SBK, oracle plan shot 1): the siding looks normal with notex1nat means the native two texture combine path (SGEN-2 unit 1 or its plan weight) makes the blown out siding. Still blown out means the boost or a stage word (causes 2 to 4).",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 notex1nat shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "SBK shot 1 (row SBK). spot_sbk56_pic with the notex1nat debug switch (pm_gpu.c nd_raw_native). Cap 60 s: boot, warp, placement and the first 300-frame window (the until)."
+    },    {
+      "name": "spot_sbk56_walk_pic",
+      "status": "unverified",
+      "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0) with the noraw nogdl nogrange noent switches: every native draw (batch, static G_DL list, entity range, entity record) goes back to the walker. The whole scene is drawn by the old path. Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "SBK walker split (row SBK): the siding of the walker-only picture against the default spot_sbk56_pic picture. Same siding in both means the native draw paths are not the cause. Normal siding here and blown out in spot_sbk56_pic means a native draw path is the cause.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 noraw nogdl nogrange noent shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "SBK walker shot (row SBK, diagnostic): all native draw switches on, to split native from walker for the siding. spot_sbk56_pic with the noraw nogdl nogrange noent debug switch (pm_gpu.c nd_raw_native). Cap 60 s: boot, warp, placement and the first 300-frame window (the until)."
+    },
+    {
       "name": "spot_sbk56_ndmcheck",
       "status": "pending",
       "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",

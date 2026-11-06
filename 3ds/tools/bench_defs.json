@@ -326,6 +326,39 @@
       "gates": []
     },
     {
+      "name": "spot_sbk56_notex1nat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SBK shot 1: sbk_56 at pos 20 0 440 with notex1nat (SGEN-2 two texture combine draws back to the walker). A person reads the siding in the shot.",
+      "scenario": "spot_sbk56_notex1nat_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "sbk"
+      ],
+      "gates": []
+    },    {
+      "name": "spot_sbk56_walk_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SBK walker shot: sbk_56 at pos 20 0 440 with all native draw switches (noraw nogdl nogrange noent). A person reads the siding in the shot.",
+      "scenario": "spot_sbk56_walk_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "sbk"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_sbk56_ndmcheck",
       "kind": "azahar_pic",
       "speed": "normal",
