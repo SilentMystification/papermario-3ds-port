@@ -1,7 +1,8 @@
 <#
 azt.ps1 - run one named test scenario in Azahar through run_azahar.ps1, with fail-fast and a subject check.
 
-  powershell -File 3ds/tools/azt.ps1 <scenario> [-Row <PM_ROW>] [-Build <lane or build3ds/lane-<name>/*.3dsx>] [-Try] [-Speed turbo|normal]
+  powershell -File 3ds/tools/azt.ps1 <scenario> [-Row <PM_ROW>] [-Build <lane or build3ds/lane-<name>/*.3dsx>] [-Try] [-Speed turbo|normal] [-NoKeep]
+  (default: the Azahar of the run stays open in its slot after a matched until line, the next run on the slot warm-restarts in it; -NoKeep closes it)
   powershell -File 3ds/tools/azt.ps1 a,b,c [-Row ...] [-Build ...] [-Try]    (AZT-3 list: one child start per scenario, one kept slot, warm restart between them; prints LIST wall times)
   powershell -File 3ds/tools/azt.ps1 -List
   powershell -File 3ds/tools/azt.ps1 <scenario> -CheckLog <file>     (checks an existing log, starts nothing)
@@ -31,7 +32,7 @@ param(
     [string]$Build = "",
     [string]$CheckLog = "",
     [switch]$Try,
-    [switch]$Keep, # AZT-2: leave the slot's Azahar open after the run (a later run on the slot restarts in it, 3 s or more sooner than a cold start)
+    [switch]$NoKeep, # AZT-3b: default is to leave the slot's Azahar open after a matched run (paused; a later run on the slot restarts in it, warm; azreap closes it after 10 min idle). -NoKeep closes it after the run.
     [ValidateSet("", "turbo", "normal")][string]$Speed = "", # BENCH3: speed of this start (default: -Turbo in the scenario, else normal)
     [switch]$List,
     [switch]$SelfTest
@@ -123,7 +124,7 @@ if ($List -or -not $Scenario) {
     exit 0
 }
 if ($Scenario -match ",") {
-    # AZT-3: a list "a,b,c" runs its scenarios one after the other, one child azt.ps1 start each. -Keep leaves the Azahar open,
+    # AZT-3: a list "a,b,c" runs its scenarios one after the other, one child azt.ps1 start each. The Azahar stays open (default),
     # so the next child restarts emulation in the same slot (warm restart, about 2 s instead of a cold start of 12 to 16 s).
     $names = @($Scenario.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     $refused = @()
@@ -141,7 +142,7 @@ if ($Scenario -match ",") {
     $worst = 0
     Write-Output ("LIST: {0} scenarios, one kept slot, warm restart between them: {1}" -f $names.Count, ($names -join ", "))
     foreach ($n in $names) {
-        $ca = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $n, "-Row", $Row, "-Keep")
+        $ca = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $n, "-Row", $Row)
         if ($Build) { $ca += @("-Build", $Build) }
         if ($Try) { $ca += "-Try" }
         if ($Speed) { $ca += @("-Speed", $Speed) }
@@ -325,7 +326,7 @@ $lastLog = Join-Path $outDir "slot$slotK\last_log.txt"
 $shotDir = Join-Path $outDir "slot$slotK\shots"
 $env:PM_SLOT_HELD = "1"
 $argv += @("-Slot", [string]$slotK)
-if ($Keep) { $argv += @("-Keep") }
+if (-not $NoKeep) { $argv += @("-Keep") } # AZT-3b: kept by default. run_azahar keeps only a run that matched its until line.
 $warmFile = Join-Path $slotInfo.dir "warm.start"
 Remove-Item $warmFile -ErrorAction SilentlyContinue
 $cmd = ($argv | ForEach-Object { if ($_ -match '^-[A-Za-z]+$') { $_ } else { '"' + $_ + '"' } }) -join " "
@@ -402,6 +403,7 @@ if ($endRow[4] -eq "retry" -and -not $env:PM_AZT_RETRY_RUN) {
     Exit-Slot $slotK; $slotK = 0
     $ra = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $Scenario, "-Row", $Row, "-Try")
     if ($Build) { $ra += @("-Build", $Build) }
+    if ($NoKeep) { $ra += "-NoKeep" }
     & (Get-Process -Id $PID).Path @ra
     exit $LASTEXITCODE
 }
