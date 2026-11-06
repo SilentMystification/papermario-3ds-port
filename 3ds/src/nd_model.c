@@ -72,7 +72,8 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
     if (index < 0 || index >= ND_HANDLE_N) return;
     NdTexDesc d;
     memset(&d, 0, sizeof d);
-    int ok = !(extra != 0 || has_aux || !raster || w == 0 || h == 0 || siz > 3); /* B4: common case only */
+    int ok = !(!raster || w == 0 || h == 0 || siz > 3); /* B4 (S3L-2): the desc is tile 0 (the main raster), so every extra form has it: mipmaps (extra 1), aux (2, 3). Tile 1 facts are not in the desc: a combine that reads tile 1 falls back (why 6, nd_model_state) */
+    (void)extra; (void)has_aux;
     if (ok) {
         d.img = raster; d.pal = palette;
         d.fmt = (uint8_t)fmt; d.siz = (uint8_t)siz; d.cms = (uint8_t)wrap_w; d.cmt = (uint8_t)wrap_h; d.masks = (uint8_t)masks; d.maskt = (uint8_t)maskt;
@@ -81,6 +82,12 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
     }
     /* S3N-6: the handle generation moves only when the handle changes (a reload of the same descriptor keeps the cached draws) */
     if (hd_ok[index] != ok || hd_gfx[index] != gfx || (ok && memcmp(&hd_desc[index], &d, sizeof d) != 0)) hd_gen++;
+#ifdef TARGET_3DS
+    { /* S3L-2 (diagnostic): the first 16 handles without a desc, with their form */
+        extern void pm_log_prof_line(const char* fmt, ...);
+        static unsigned nform; if (!ok && nform++ < 16u) pm_log_prof_line("ndmform idx %d w %u h %u fmt %u siz %u extra %u aux %d raster %d pal %d", index, w, h, fmt, siz, extra, has_aux, raster != NULL, palette != NULL);
+    }
+#endif
     hd_gfx[index] = gfx; hd_ok[index] = (uint8_t)ok;
     if (ok) hd_desc[index] = d;
 }
@@ -88,6 +95,12 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
 const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx) {
     if (index < 0 || index >= ND_HANDLE_N || !hd_ok[index] || hd_gfx[index] != gfx) return NULL;
     return &hd_desc[index];
+}
+
+/* S3L-2: the reason of a handle with no desc: 9 the handle is set but its form is not in B4, 10 the handle index holds another gfx (never set, or set by a failed load) */
+int nd_tex_handle_miss(int index, const void* gfx) {
+    if (index < 0 || index >= ND_HANDLE_N || hd_gfx[index] != gfx) return 10;
+    return 9;
 }
 
 /* ---- S3N-1 (B5, B6): render mode lists ---- */

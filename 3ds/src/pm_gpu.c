@@ -2560,10 +2560,11 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
     int tex = 0, i8 = 0, hs = -1, id = -1; unsigned hg = 0; /* S3N-6: the unit slot hint of the entry */
     const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
-    if (gfx != NULL && ds == NULL) { nd_nat_why = 9; return -1; } /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
+    if (gfx != NULL && ds == NULL) { nd_nat_why = nd_tex_handle_miss((int)texidx, gfx); return -1; } /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
     if (ds) { /* S3N-3c: the unit 0 words from the descriptor (nd_tex_get, nd_tex_unit), not from the walker-bound slot */
         id = nd_tex_get(ds);
-        if (id < 0 || !nd_tex_unit_hint(id, &hs, &hg, &mdl_un)) { nd_nat_why = 9; return -1; }
+        if (id < 0) { nd_nat_why = 13; return -1; } /* S3L-2: nd_tex_get failed (load or table full) */
+        if (!nd_tex_unit_hint(id, &hs, &hg, &mdl_un)) { nd_nat_why = 14; return -1; } /* S3L-2: the slot of the desc is not found and not reloaded */
         tex = 1;
         i8 = ds->fmt == 4 && ds->siz == 1; /* G_IM_FMT_I, G_IM_SIZ_8b: the unit 0 raster is I8 */
     }

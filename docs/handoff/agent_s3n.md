@@ -1,6 +1,19 @@
 # Agent S3N: map model records draw natively
 
 ## STATE
+S3L-2 STATE (row S3L, step 2 class 9, 2026-11-05): textured handles with extra tiles get their tile 0 desc. Diagnosis (mac_01 sub-codes, build with 10, 13, 14 and ndmform): class 9 = handle set but its form not in B4. All 16 logged forms had extraTiles 1 (mipmaps), 2 or 3 (aux), so the B4 rule extra 0 and no aux was the whole class. Codes 10 (index or gfx mismatch), 13 (nd_tex_get fails) and 14 (unit hint fails) were 0 at mac_01.
+Change: nd_tex_handle_set (nd_model.c) builds the desc from the main raster for every extra form (the tile 0 facts). Tile 1 facts are not in the desc: a combine that reads tile 1 falls back (why 6, nd_model_state), and the combine decision sees tile 1 unknown (t1_valid 0). Code 6 was 0 at all three spots.
+Gate (class 9 gone at 3 spots, ndmcheck diff 0, ndmcache diff 0, pictures by eye):
+  spot_mac01_ndmcheck: eq 13431 diff 0 fb 517 (why 2 516, 9 0), ndmcache hit 23764 miss 174 diff 0.
+  spot_mac00_ndmcheck: eq 11430 diff 0 fb 1011 (why 2 809, 12 202), ndmcache hit 26623 miss 222 diff 0.
+  spot_sbk56_ndmcheck: eq 8039 diff 0 fb 3507 (why 12 3145, 2 362), ndmcache hit 12625 miss 159 diff 0.
+  Switch (normal mode, ndm line per 300 frames, before -> after):
+    mac_01: fb 7461 (why 2:1013 9:6447 12:1) -> 1011 (why 2:1010 12:1); native 40497 -> 46757; apply 2.78 -> 0.79 ms, fb 0.79 -> 0.16 ms.
+    mac_00: fb 9604 (why 2:1231 9:8373) -> 1673 (why 2:1673); native 44716 -> 53485; apply 3.27 -> 0.91 ms.
+    sbk_56: fb 1020 (why 2:510 9:510) -> 508 (why 2:508); native 21931 -> 22353; apply 0.62 -> 0.49 ms.
+  Pictures (switch build, viewed, right by eye): spot_mac01_pic (Toad Town, Mario, star sign, post office), spot_mac00_pic (Mario and Toads, TOWN sign, fountain), spot_sbk56_pic (Mario on grass, river, trees).
+Open, not decided here: why 12 (list not static) is 3145 per window at sbk_56 in ndmcheck mode but 0 in the switch window of the same spot (0 in the switch at sbk_56). The ndmcheck count and the switch count disagree, cause not found. Step 3 (next class) is code 2 (aux words after the record, R13 nonzero) at 1.7 to 4.1 records per frame, and code 12 at mac_00 (0.7 per frame in ndmcheck).
+Budget S3L: 8 starts (runs 1 to 8: 3 count, 1 diag, 3 ndmcheck, 1 pic) then the row was INCOMPLETE at the cap (spot_mac00_pic and spot_sbk56_pic unrun). Reset (ResetBudget S3L), 2 starts since (mac_00 and sbk_56 pics). Total 10 starts.
 S3L-1 STATE (row S3L, step 1 COUNT, 2026-11-05): the fallback codes print in normal mode. The ndm line (every 300 frames) appends ` why c:n` for each nonzero code (records of the window; a stored fallback counts with the code it was stored with, NdMEnt.why). Code 0 = nost (no state bit known, the record words are not read). Build 2229 (HEAD 257d069a9 plus this step). Starts used: 3 of 8 (spot_mac01_pic, spot_mac00_pic, spot_sbk56_pic; each LOG CHECKS PASS, pictures not re-read in this step: counters only).
 Codes (nd_model.c nd_model_state and nd_model_draw; pm_gpu.c model_draw): 0 nost, 1 mode or combine entry not ok, 2 aux words after the record (R13 nonzero), 3 custom gfx pre or post (R11), 4 lit or fog (gv fxon), 5 combiner refused, 6 tex1 or noise, 7 template full, 8 combine needs tile 1, box product or key value, 9 textured handle without a desc, or unit hint fails (model_draw, pm_gpu.c), 11 too many draws, 12 list not static.
 Table (records per frame = window count / 300; fb total in brackets):

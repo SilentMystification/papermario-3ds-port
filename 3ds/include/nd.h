@@ -119,12 +119,13 @@ uint32_t nd_tex_dim(unsigned w, unsigned h);
 void nd_tex_reset(void);
 int nd_tex_get(const NdTexDesc* d);          /* block id, loading the image through pm_tex.c on a miss; -1 when it fails or the table is full */
 const uint32_t* nd_tex_block(int id);        /* dim, param, lodParam, data address >> 3 */
-/* S3N-1 (B4): the texture descriptor of a map model handle, set once when load_texture_impl builds the handle (model.c, TARGET_3DS). Common case only:
- * one tile (extra 0), no aux raster. Other handles stay unset (nd_tex_handle_desc returns NULL: the walker draws them). masks and maskt are INTEGER_LOG2 of the size (the same macro as make_texture_gfx). */
+/* S3N-1 (B4): the texture descriptor of a map model handle, set once when load_texture_impl builds the handle (model.c, TARGET_3DS). S3L-2: the desc is the tile 0 facts for every
+ * extra form (mipmaps, aux). Only a handle with no raster, zero size or a 32 bit format stays unset (nd_tex_handle_desc returns NULL: the walker draws them). masks and maskt are INTEGER_LOG2 of the size (the same macro as make_texture_gfx). */
 void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
                        unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);
 /* the descriptor of handle index when its list (gfx) is the one set; NULL otherwise */
 const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx);
+int nd_tex_handle_miss(int index, const void* gfx); /* S3L-2: fallback code of a handle with no desc (9 form, 10 index or gfx) */
 
 /* NDST (S2-1): the native state, set by nd_words() from the words the bridge form of nd_gbi.h decodes. In the bridge nothing draws from it yet (S2-2 starts);
  * it is the state a native draw reads. nd_words never touches the walker state (nd_mv, nd_proj): the N64 word is written too and the walker runs it. */
