@@ -2060,14 +2060,19 @@ void pm_gbi_dlcc(unsigned* o) {
 /* S3N-3c: the static ranges of a shape list for nd_model_draw. The groups that dlc_try replays statically (box test, no lit group, room in the pools), one range per batch as
  * dlc_static_group cuts them. No replay and no counters. Returns the count; -1 when dlc_try would not replay the list statically (the fallback); -2 when out is full. */
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx);
+int pm_gpu_grange_why(const float m[4][4], unsigned nidx); /* S4-1 (diagnostic) */
+/* S4-1 (diagnostic): the refusal of pm_dlc_native_ranges by class (1 dlc off or nobox, 2 list range, 3 table, 4 refused build, 5 depth pass, 6 group without static data, 7 lit group, 8 room, 9 walker grange refuses, 10 matrix id) */
+static unsigned dnr_c[16];
+static int dnr(unsigned k) { dnr_c[k]++; return -1; }
+void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i < 16u; i++) { o[i] = dnr_c[i]; dnr_c[i] = 0; } }
 int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
     const Gfx* l = (const Gfx*)lv;
-    if (!dlc_on || !dlc_enabled() || nobox_on() || noboxint_on()) return -1;
+    if (!dlc_on || !dlc_enabled() || nobox_on() || noboxint_on()) return dnr(1);
     if (!is_host((u32)(uintptr_t)l)) return 0; /* rec_dl: a list outside host memory is not run (gbi_cold_bad_next): no draw */
-    if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return -1;
+    if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return dnr(2);
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
-    if (!e) return -1;
+    if (!e) return dnr(3);
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
@@ -2075,9 +2080,9 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
         e->hash = dlc_hash(l);
         if (r) e->refused = (u8)r;
     }
-    if (e->refused) return -1;
+    if (e->refused) return dnr(4);
     const float(*m)[4] = combined;
-    if (img_role(0) == ROLE_DEPTH) return -1; /* gv_state_why: the z mark pass (fallback) */
+    if (img_role(0) == ROLE_DEPTH) return dnr(5); /* gv_state_why: the z mark pass (fallback) */
     const u32 lm = G_TEXTURE_GEN;
     const u32 bad = fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0;
     unsigned n = 0, gmi = GV_NONE;
@@ -2086,18 +2091,18 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
         const DlcGrp* g = &e->grp[k];
         if (dlc_box_out(g, m)) continue;
         const u32 gg = (entry & g->am) | g->om;
-        if (!g->sd || !g->nbat || !g->bat_q) return -1;
-        if (gg & (G_LIGHTING | bad)) return -1; /* lit groups run through the GPU lights path (S3N later row) */
+        if (!g->sd || !g->nbat || !g->bat_q) return dnr(6);
+        if (gg & (G_LIGHTING | bad)) return dnr(7); /* lit groups run through the GPU lights path (S3N later row) */
         u32 x = gg;
         for (unsigned q = 0; q < g->ng; q++) {
             const u32* op = e->gop[g->goff + q];
             x = (x & op[0]) | op[1];
-            if ((x & (G_LIGHTING | bad)) || (x & lm) != (gg & lm)) return -1;
+            if ((x & (G_LIGHTING | bad)) || (x & lm) != (gg & lm)) return dnr(7);
         }
-        if (!pm_gpu_gidx_room(3u * g->sn) || !pm_gpu_gv_room(g->nvtx + 3u * g->ntri)) return -1;
-        if (!pm_gpu_grange_would(m, 3u * g->sn)) return -1; /* the walker's grange refuses: the group runs on the ring path (not a static draw) */
+        if (!pm_gpu_gidx_room(3u * g->sn) || !pm_gpu_gv_room(g->nvtx + 3u * g->ntri)) return dnr(8);
+        if (!pm_gpu_grange_would(m, 3u * g->sn)) { int w = pm_gpu_grange_why(m, 3u * g->sn); return dnr(w ? 10 + w : 9); } /* S4-1: 11 gv or gpu off, 12 zmark, 13 decal and blend, 14 wide, 15 ring */ /* the walker's grange refuses: the group runs on the ring path (not a static draw) */
         if (!gmi_ready) { gmi = dlc_gmi(); gmi_ready = 1; }
-        if (gmi == GV_NONE) return -1;
+        if (gmi == GV_NONE) return dnr(10);
         unsigned t = 0, go = 0;
         u32 geom_at = gg;
         for (unsigned b = 0; b < g->nbat; b++) {

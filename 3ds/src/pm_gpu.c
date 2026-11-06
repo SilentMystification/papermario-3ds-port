@@ -2449,6 +2449,13 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
 }
 int pm_gpu_gidx_room(unsigned n) { return gv4_on && gpu_ok && gidx_n + n <= GRING_IDX; }
 /* S3N-3c: the refusals of pm_gpu_grange that come before any state change, for a static batch with matrix m (the same tests, no side effect). 1: grange takes the batch. */
+int pm_gpu_grange_why(const float m[4][4], unsigned nidx) { /* S4-1: the class of pm_gpu_grange_would's refusal (0 none) */
+    if (!gv4_on || !gpu_ok) return 1;
+    if (r_zmark) return 2;
+    if (r_decal && r_blend) return 3;
+    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 4;
+    return gidx_n + nidx <= GRING_IDX ? 0 : 5;
+}
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx) {
     if (!gv4_on || !gpu_ok) return 0;
     if (r_zmark) return 0;
@@ -2615,6 +2622,7 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
 static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf;
+void pm_gbi_dnr_take(unsigned* o, unsigned n);
 static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0 = nost: no state bit known, the record words are not read) */
 /* S3N-7: the counters of one 300-frame window (reset at the print). ndmt: ms per sampled frame of each region (ticks / 268112 per ms / frames). */
 static unsigned ndn_clr0, ndn_smp0;
@@ -2633,6 +2641,9 @@ static void ndn_log(void) {
           pm_log_prof_line("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
         pm_log_prof_line("ndmt f%u keyb %.2f find %.2f rng %.2f apply %.2f fb %.2f upd %.2f emit %.2f add %.2f mtx %.2f draws %u smp %u", f,
             ndt_ms(NDT_KEYB, ns), ndt_ms(NDT_FIND, ns), ndt_ms(NDT_RNG, ns), ndt_ms(NDT_APPLY, ns), ndt_ms(NDT_FB, ns), ndt_ms(NDT_UPD, ns), ndt_ms(NDT_EMIT, ns), ndt_ms(NDT_ADD, ns), ndt_ms(NDT_MTX, ns), ndn_draws, ns);
+        { unsigned dr[16]; pm_gbi_dnr_take(dr, 16u); /* S4-1: the refusal classes of the native ranges (code 12 = any of them) */
+          pm_log_prof_line("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
+          pm_log_prof_line("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
         ndn_clr0 = clr; ndn_smp0 = smp;
         ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = 0;
         memset(ndn_why, 0, sizeof ndn_why);
