@@ -21,7 +21,9 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -w /w pm3ds-host:1 sh -c '
   gcc -m32 -w -I 3ds/include -c -o /tmp/ndcomb.o 3ds/src/pm_comb.c
   gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndt 3ds/tools/nd_tmpl_test.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
   /tmp/ndt 3ds/tests/ndref/ndref_*.bin
-  printf "#include <nd.h>\nint pm_tex_slot_find(unsigned k, unsigned f, unsigned s, uint32_t d, NdUnit* u) { (void)k; (void)f; (void)s; (void)d; (void)u; return -1; }\nunsigned pm_tex_slot_key(int i) { (void)i; return 0; }
+  printf "#include <nd.h>\nint pm_tex_slot_find(unsigned k, unsigned f, unsigned s, uint32_t d, const void* img, const void* tlut, NdUnit* u) { (void)k; (void)f; (void)s; (void)d; (void)img; (void)tlut; (void)u; return -1; }
+int pm_tex_slot_clean(int i, const void* img, const void* tlut) { (void)i; (void)img; (void)tlut; return 0; }
+void pm_tex_stale_chk(int i, const void* img, const void* pal, unsigned key) { (void)i; (void)img; (void)pal; (void)key; }\nunsigned pm_tex_slot_key(int i) { (void)i; return 0; }
 unsigned pm_tex_slot_gen(int i) { (void)i; return 0; }\nint pm_tex_slot_unit(int i, NdUnit* u) { (void)i; (void)u; return 0; }\n" > /tmp/ndtexs.c
   gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/ndx 3ds/tools/nd_tex_test.c 3ds/src/nd_tex.c /tmp/ndtexs.c
   /tmp/ndx 3ds/tests/ndref/ndref_*.bin

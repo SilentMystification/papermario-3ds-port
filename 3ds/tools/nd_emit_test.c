@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
                     d.tmpl = nd_tmpl_build(&key);
                     if (d.tmpl >= 0) {
                         if (tw0[0]) { d.u[0].dim = tw0[0]; d.u[0].param = tw0[1]; d.u[0].lod = tw0[2]; d.u[0].addr = tw0[3]; d.u[0].type = sr.r[0x8E]; }
-                        if (tw1[0]) { d.u[1].dim = tw1[0]; d.u[1].param = tw1[1]; d.u[1].lod = tw1[2]; d.u[1].addr = tw1[3]; d.u[1].type = sr.r[0x9E]; }
+                        if (tw1[0]) { d.u[1].dim = tw1[0]; d.u[1].param = tw1[1]; d.u[1].lod = tw1[2]; d.u[1].addr = tw1[3]; d.u[1].type = sr.r[0x96]; }
                         d.pal = (const float(*)[16])pal; d.npal = npal; d.loc_pal = 6; d.loc_var = 0x5A;
                         for (int i = 0; i < 6; i++) { unsigned cr = i < 4 ? 0xC3u + 8u * (unsigned)i : 0xF3u + 8u * (unsigned)(i - 4); d.tev_col[i] = sr.set[cr] ? sr.r[cr] : 0; }
                         d.has_buf = sr.set[0xFD]; d.buf_col = sr.r[0xFD];
@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
         for (int i = 0; i < ND_NPAL; i++) for (int j = 0; j < 16; j++) wp[i][j] = (float)(i * 16 + j + 1);
         wd.tmpl = -1; wd.npal = ND_NPAL; wd.pal = (const float(*)[16])wp; wd.loc_pal = 6; wd.loc_var = 0x5A;
         wd.u[0].dim = 0x00100010; wd.u[0].param = 1; wd.u[0].lod = 2; wd.u[0].addr = 3; wd.u[0].type = 4;
-        wd.u[1] = wd.u[0]; wd.idx_word = 0x80000000u; wd.nidx = 3;
+        wd.u[1] = wd.u[0]; wd.has_uvx = 1; wd.loc_uvx = 0x40; wd.uvx[0] = 1.f; wd.uvx[3] = 2.f; wd.idx_word = 0x80000000u; wd.nidx = 3;
         unsigned wnw = nd_emit_draw(wout, &wsh, &wd);
         CHECK(wnw + ND_TMPL_WORDS * 2 <= ND_EMIT_MAX, "worst case draw %u words plus template %u over ND_EMIT_MAX %u", wnw, ND_TMPL_WORDS * 2, (unsigned)ND_EMIT_MAX);
         printf("nd_emit worst case: %u words without the template, limit %u\n", wnw + ND_TMPL_WORDS * 2, (unsigned)ND_EMIT_MAX);
