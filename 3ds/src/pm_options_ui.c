@@ -53,7 +53,7 @@ static void draw(void) {
         else n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (strcmp(pm_optui_sub_name(), "Boss") ? "< > A: warp  B: back" : "A: fight  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : strcmp(pm_optui_sub_name(), "Boss") ? "< > A: warp  B: back" : "A: fight  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
     if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
@@ -116,9 +116,18 @@ void pm_menu_key(unsigned k) {
     if ((k & (KEY_L | KEY_R)) && tab != PM_OPT_SUB) { /* the submenu has no tab change */
         tab = (tab + ((k & KEY_L) ? OPT_TABS - 1 : 1)) % OPT_TABS;
         pm_optui_disarm();
+    } else if ((k & KEY_B) && tab == PM_OPT_SUB && pm_optui_warn()) { /* MN6: B on the warning page is "warp menu" */
+        pm_optui_warn_confirm();
+        sel[tab] = pm_optui_sub_restore(); top[tab] = 0;
     } else if (k & KEY_B) {
         if (tab != PM_OPT_SUB) { pm_menu_set(0); return; }
+        pm_optui_sub_pop(sel[tab]);
         tab = home_tab; /* B in the submenu goes back to the parent tab, the menu stays open */
+        pm_log("menu: page pop depth 0");
+        pm_optui_disarm();
+    } else if ((k & KEY_A) && tab == PM_OPT_SUB && pm_optui_warn()) { /* MN6: any other key on the warning page backs out */
+        pm_optui_sub_pop(sel[tab]);
+        tab = home_tab;
         pm_log("menu: page pop depth 0");
         pm_optui_disarm();
     } else if (k & KEY_A) {

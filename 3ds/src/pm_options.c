@@ -305,6 +305,19 @@ static int tab_ids(int tab, int mode, int* ids) {
 }
 /* MN4: the folder page (tab PM_OPT_SUB) shows the Warp area rows (0) or the Boss rows (1). */
 static int sub_kind;
+/* MN6: the Warp area folder opens on a warning page (B warps on, any other key backs out). The last row of this folder is kept in RAM
+ * (not saved): leaving the folder stores its row, entering it again restores that row and logs it. */
+static int warp_warn, warp_last_row;
+int pm_optui_warn(void) { return warp_warn; }
+void pm_optui_warn_confirm(void) { warp_warn = 0; }
+void pm_optui_sub_pop(int row) { if (!sub_kind) warp_last_row = row; warp_warn = 0; }
+int pm_optui_sub_restore(void) {
+    int r = warp_last_row, P = pm_warp_preset_count();
+    if (sub_kind || r < 0) return 0;
+    if (r >= P + pm_warp_group_count()) return 0;
+    pm_log("menu: warp sub restore area %d row %d", r < P ? -1 : r - P, r); /* area -1: a preset row */
+    return r;
+}
 const char* pm_optui_sub_name(void) { return sub_kind ? "Boss" : "Warp area"; }
 static int row_id(int tab, int row, int mode) {
     int ids[48], n;
@@ -318,11 +331,14 @@ void pm_optui_disarm(void) { armed_id = 0; }
 int pm_optui_alert(int tab, int row, int mode) { int id = row_id(tab, row, mode); return armed_id && id == armed_id; }
 int pm_optui_rows(int tab, int mode) {
     int ids[48];
+    if (tab == PM_OPT_SUB && warp_warn) return 2;
     if (tab == PM_OPT_SUB) return sub_kind ? pm_boss_count() : pm_warp_preset_count() + pm_warp_group_count();
     return tab_ids(tab, mode, ids);
 }
 const char* pm_optui_label(int tab, int row, int mode) {
-    int id = row_id(tab, row, mode);
+    int id;
+    if (tab == PM_OPT_SUB && warp_warn) return row == 0 ? "Warping is dangerous." : "A warp can break the save file.";
+    id = row_id(tab, row, mode);
     if (id >= RW_SUB) { int r = id - RW_SUB, P = pm_warp_preset_count(); return r < P ? pm_warp_preset_name(r) : pm_warp_group_name(r - P); }
     if (id == RW_PROF) return "Profiling";
     if (id >= RW_BOSS) return pm_boss_label(id - RW_BOSS);
@@ -348,7 +364,9 @@ const char* pm_optui_label(int tab, int row, int mode) {
     }
 }
 const char* pm_optui_value(int tab, int row, int mode) {
-    int id = row_id(tab, row, mode);
+    int id;
+    if (tab == PM_OPT_SUB && warp_warn) return NULL;
+    id = row_id(tab, row, mode);
     if (id >= RW_SUB) { /* a preset shows its map, a prefix row shows its member (< > when it has more than one) */
         static char mb[24];
         int r = id - RW_SUB, P = pm_warp_preset_count(), g, n;
@@ -415,7 +433,9 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
 /* result: 0 nothing more, 1 close the panel (Back), 3 exit to Homebrew (second press),
  * 4 return to the title, 5 warp started (close the menu), 6 open the Warp area submenu */
 int pm_optui_act(int tab, int row, int mode) {
-    int id = row_id(tab, row, mode);
+    int id;
+    if (tab == PM_OPT_SUB && warp_warn) return 0; /* the warning page: the panel handles B and A */
+    id = row_id(tab, row, mode);
     if (id != armed_id) armed_id = 0;
     if (id >= RW_SUB) { /* PT01c: A warps to the shown preset or map at entry 0 (the same call as before) */
         int r = id - RW_SUB, P = pm_warp_preset_count(), g;
@@ -451,7 +471,7 @@ int pm_optui_act(int tab, int row, int mode) {
             if (armed_id != RW_EXIT) { armed_id = RW_EXIT; pm_log("menu: exit armed, press A again"); return 0; }
             armed_id = 0;
             return 3;
-        case RW_WARPAREA: sub_kind = 0; return 6; /* the menu opens the submenu (PM_OPT_SUB) */
+        case RW_WARPAREA: sub_kind = 0; warp_warn = 1; pm_log("menu: warp warning"); return 6; /* the menu opens the submenu (PM_OPT_SUB) */
         case RW_BOSSFOLDER: sub_kind = 1; return 6; /* MN4: the Boss folder (PM_OPT_SUB, Boss rows) */
         case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;
     }

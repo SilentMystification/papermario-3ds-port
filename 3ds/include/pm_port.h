@@ -235,7 +235,8 @@ int pm_optui_rows(int tab, int mode);
 const char* pm_optui_label(int tab, int row, int mode);
 const char* pm_optui_value(int tab, int row, int mode);
 int pm_optui_step(int tab, int row, int dir, int mode); /* left or right on a row, 1 when the value changed */
-int pm_optui_act(int tab, int row, int mode); /* 0 done, 1 close (Back), 3 exit to Homebrew, 4 return to title, 5 warp started, 6 open the Warp area submenu (tab index PM_OPT_SUB) */
+int pm_optui_act(int tab, int row, int mode);
+int pm_optui_warn(void); void pm_optui_warn_confirm(void); void pm_optui_sub_pop(int row); int pm_optui_sub_restore(void); /* MN6 */ /* 0 done, 1 close (Back), 3 exit to Homebrew, 4 return to title, 5 warp started, 6 open the Warp area submenu (tab index PM_OPT_SUB) */
 #define PM_OPT_SUB 4 /* the folder page (Warp area or Boss rows): a page index after General, Controls, Debug and the reserved tab 3 */
 void pm_optui_disarm(void);
 int pm_optui_alert(int tab, int row, int mode); /* 1 when the row asks for the second press (Exit to Homebrew, A again): drawn in red */

@@ -16,6 +16,10 @@ static s32 optTop;
 #define PM_OPT_SUB 4 // MN5: the folder page index (pm_port.h, not included here: PmRepeat clashes)
 static s32 optHome; // MN5: the tab a folder page was opened from (B returns there)
 extern const char* pm_optui_sub_name(void);
+extern int pm_optui_warn(void);
+extern void pm_optui_warn_confirm(void);
+extern void pm_optui_sub_pop(int row);
+extern int pm_optui_sub_restore(void); /* MN6 */
 
 u8 filemenu_options_gridData[] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
@@ -216,8 +220,14 @@ void filemenu_options_handle_input(MenuPanel* menu) {
             sfx_play_sound(SOUND_MENU_CHANGE_SELECTION);
         }
     }
-    if (filemenu_pressedButtons & BUTTON_B) {
+    if ((filemenu_pressedButtons & BUTTON_B) && optTab == PM_OPT_SUB && pm_optui_warn()) { // MN6: B on the warning page is "warp menu"
+        pm_optui_warn_confirm();
+        menu->row = pm_optui_sub_restore();
+        optTop = 0;
+        filemenu_set_selected(menu, 0, menu->row);
+    } else if (filemenu_pressedButtons & BUTTON_B) {
         if (optTab == PM_OPT_SUB) { // MN5: B leaves the folder page for its tab, the panel stays open
+            pm_optui_sub_pop(menu->row);
             optTab = optHome;
             optTop = 0;
             menu->row = 0;
@@ -227,6 +237,14 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         } else {
             filemenu_options_close();
         }
+    } else if ((filemenu_pressedButtons & BUTTON_A) && optTab == PM_OPT_SUB && pm_optui_warn()) { // MN6: any other key backs out of the warning
+        pm_optui_sub_pop(menu->row);
+        optTab = optHome;
+        optTop = 0;
+        menu->row = 0;
+        menu->numRows = pm_optui_rows(optTab, 0);
+        filemenu_set_selected(menu, 0, 0);
+        pm_log("options: page pop depth 0");
     } else if (filemenu_pressedButtons & BUTTON_A) {
         s32 result;
 

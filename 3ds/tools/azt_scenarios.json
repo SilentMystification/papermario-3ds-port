@@ -5427,6 +5427,38 @@
       "reason": "MN5 discovery and gate (MENU3 row 3): route to the panel and the folder page is one run. The breadcrumb shot is read from the shots window after the push (every 30 frames)."
     },
     {
+      "name": "menu_warp",
+      "status": "unverified",
+      "subject": "Select menu: Debug, Warp area (warning page, B to the rows), 3 rows down, B back, then Warp area again: the row 3 cursor comes back (warp memory, RAM only). Shot after the restore.",
+      "proves": "MENU3 MN6 part: warning page (B confirms), warp memory restore log and the cursor on the restored row.",
+      "debug": "preset=toad padscript=@pad_menu_warp.txt shotmenu loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: ",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warning",
+          "regex": "menu: warp warning"
+        },
+        {
+          "name": "first pop",
+          "regex": "menu: page pop depth 0"
+        },
+        {
+          "name": "restore",
+          "regex": "menu: warp sub restore area -?\\d+ row 3"
+        },
+        {
+          "name": "restored shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 3"
+        }
+      ],
+      "reason": "MN6 part gate (MENU3 row 3): the restore log names row 3 and the shot after it has the cursor on row 3."
+    },
+    {
       "name": "iwa10_entry0_state",
       "status": "unverified",
       "subject": "iwa_10 warp entry 0 (pos -662 0 587). Mario state every 30 frames to 300: alpha, input lock, cutscene flag, text box, camera target, curFloor. One shot 90 scene frames after the pos= run starts.",
