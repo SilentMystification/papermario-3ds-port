@@ -157,11 +157,11 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     if (rec[22] != 0 || rec[23] != 0) return (st->why = 3, 0); /* R11: custom gfx pre and post */
     const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
     const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (rm_apply runs after the entry) */
-    const uint32_t geom = (c->geom_base & c->mode->gand) | c->mode->gor; /* B9: geometry after the list ops */
+    const uint32_t geom = c->geom_at_set ? c->geom_at : (c->geom_base & c->mode->gand) | c->mode->gor; /* B9: geometry after the list ops; S3N-3c: or the batch's */
     const int zb = (geom & 1u) != 0; /* G_ZBUFFER */
     const unsigned ct = (geom & 0x600u) == 0x200u ? 1u : (geom & 0x600u) == 0x400u ? 2u : 0u; /* G_CULL_FRONT, G_CULL_BACK (pm_gbi ct) */
     int ccw = c->wind <= 0; if (ct == 2) ccw = !ccw;
-    const uint8_t cull = c->cull_set ? (uint8_t)c->cull : (uint8_t)(ct ? (ccw ? ND_CULL_BACK_CCW : ND_CULL_FRONT_CCW) : ND_CULL_NONE);
+    const uint8_t cull = (uint8_t)(ct ? (ccw ? ND_CULL_BACK_CCW : ND_CULL_FRONT_CCW) : ND_CULL_NONE); /* S3N-3c: from the draw's geometry, no walker cull */
     const uint32_t oh = (c->base_oh & ~c->mode->wh) | c->mode->om_h;
     const uint32_t ol = (c->base_ol & ~c->mode->wl) | c->mode->om_l;
     if (((ND_OMH_READ & ~c->mode->wh) & ~c->known_h) || ((ND_OML_READ & ~c->mode->wl) & ~c->known_l)) return -1; /* nost */
@@ -208,3 +208,51 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     memcpy(&st->k, &k, sizeof k); st->to = to; st->tmpl = id;
     return 1;
 }
+
+/* ---- S3N-3c: a model record as native draws. The palette 0 is post x the combined matrix of the walker's stack; the ranges are the static groups of the
+ * shape list in view (pm_gbi.c pm_dlc_native_ranges). Ranges with the same state key and contiguous indices merge into one draw. ---- */
+static NdNat nat[ND_NAT_MAX];
+static int nat_n;
+int nd_nat_why; /* the reason of the last fallback: the nd_model_state why, or 11 too many draws, 12 the list is not static */
+const NdNat* nd_model_native(unsigned j) { return j < (unsigned)nat_n ? &nat[j] : NULL; }
+
+#ifdef TARGET_3DS
+extern float pm_eye_e, pm_eye_conv;
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+void pm_gpu_pcomp_native(float o[16], const float m[4][4]);
+void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex);
+void pm_gpu_flush(void);
+
+int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int emit) {
+    static NdRng rng[512];
+    float comb[4][4], pal0[16];
+    nat_n = 0; nd_nat_why = 0;
+    if (!c0->mode || !c0->mode->ok) return (nd_nat_why = 1, -1);
+    nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
+    pm_gpu_pcomp_native(pal0, comb);
+    const uint32_t entry = (c0->geom_base & c0->mode->gand) | c0->mode->gor;
+    int nr = pm_dlc_native_ranges(list, entry, rng, 512u);
+    if (nr < 0) return (nd_nat_why = nr == -2 ? 11 : 12, -1);
+    for (int r = 0; r < nr; r++) {
+        NdMCtx c = *c0;
+        NdGvP gv;
+        pm_gbi_gv_at(c0->tss, rng[r].geom, c0->tex_w, c0->tex_h, &gv);
+        c.gv = &gv; c.rgb_scale = gv.boost ? 2 : 1; /* the walker sets rgb_scale from the boost of the batch (dlc_seg) */
+        c.geom_at = rng[r].geom; c.geom_at_set = 1;
+        NdDraw dd; NdMState ss;
+        int rc = nd_model_state(rec, &c, &dd, &ss);
+        if (rc != 1) { nat_n = 0; nd_nat_why = ss.why; return rc < 0 ? -2 : -1; }
+        if (nat_n && nat[nat_n - 1].d.tmpl == dd.tmpl && nat[nat_n - 1].sd + nat[nat_n - 1].nidx == rng[r].sd) { nat[nat_n - 1].nidx += rng[r].nidx; continue; }
+        if (nat_n >= ND_NAT_MAX) { nat_n = 0; return (nd_nat_why = 11, -1); }
+        NdNat* n = &nat[nat_n++];
+        memcpy(n->pal, pal0, sizeof pal0);
+        dd.pal = (const float(*)[16])n->pal; dd.npal = 1;
+        n->d = dd; n->s = ss; n->sd = rng[r].sd; n->nidx = rng[r].nidx;
+    }
+    if (emit) {
+        pm_gpu_flush(); /* the walker batch open before this record goes out first */
+        for (int j = 0; j < nat_n; j++) pm_gpu_native_submit_draw(&nat[j].d, nat[j].sd, nat[j].nidx, nat[j].d.u[0].dim != 0);
+    }
+    return nat_n;
+}
+#endif

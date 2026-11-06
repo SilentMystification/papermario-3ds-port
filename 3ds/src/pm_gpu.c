@@ -911,7 +911,7 @@ unsigned nd_native_draws, nd_native_refused;
 static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
 static void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd); /* S3N-3b: switch ndmcheck */
 static int ndm_live; /* S3N-3b: a model record is open (set by pm_gpu_ndm_begin) */
-void gv_params_calc(unsigned tss, NdGvP* o); /* pm_gbi.c: the walker draw parameters of a raw triangle */
+static unsigned ndm_old, ndm_refused_total, ndm_nraw_log, ndm_w_n; static unsigned ndm_geo, ndm_dlc0[10]; void pm_gbi_dlcc(unsigned* o); /* S3N-3c: batches of open records that the native raw path refused; walker batches of the record; its geometry */
 void pm_log_prof_line(const char* fmt, ...); /* the one line that prints in prof=4 mode (pm_log.c) */
 static void ndunit_after(void);
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
@@ -945,6 +945,16 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
     else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
     dc_kick();
+}
+
+/* S3N-3c: the palette 0 product post x game (the native model draw, nd_model.c) and the submit of one native model draw (emit 1, S3N-4):
+ * the attribute locations and the index address of its static range. */
+void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { nd_mtx_pcomp(o, gv_post.m, m); }
+void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex) {
+    d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
+    d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys((void*)sd) - 0x18000000u);
+    d->nidx = nidx;
+    nd_native_submit(d, tex);
 }
 
 static int nd_raw_native(void) {
@@ -1040,6 +1050,7 @@ static void flush_draw(void) {
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
     if (graw && nd_raw_native()) return;
+    if (graw && ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a batch of the record the native raw path refused (the walker drew it on the old path): not compared */
     nd_leave_native(); /* a draw that citro3d makes: it re-emits what the native draws changed */
     pm_dc_c[DC_RAW] += (unsigned)graw;
     DC_T(0);
@@ -2417,6 +2428,14 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     return 1;
 }
 int pm_gpu_gidx_room(unsigned n) { return gv4_on && gpu_ok && gidx_n + n <= GRING_IDX; }
+/* S3N-3c: the refusals of pm_gpu_grange that come before any state change, for a static batch with matrix m (the same tests, no side effect). 1: grange takes the batch. */
+int pm_gpu_grange_would(const float m[4][4], unsigned nidx) {
+    if (!gv4_on || !gpu_ok) return 0;
+    if (r_zmark) return 0;
+    if (r_decal && r_blend) return 0;
+    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 0;
+    return gidx_n + nidx <= GRING_IDX;
+}
 
 /* DLC1: 1 when the ring has room for n more vertices (and the path is on) */
 int pm_gpu_gv_room(unsigned n) { return gpu_vtx_on && gpu_ok && gring_n + n <= GRING_VTX; }
@@ -2479,29 +2498,55 @@ static int plan_same_layout(const PmPlan* a, const PmPlan* b) {
     return memcmp(&x, &y, sizeof x) == 0;
 }
 
-/* S3N-3b: switch ndmcheck (debug). The record arm (pm_gbi.c rec_run) gives the record words and the unit 0 words of the handle (nd_tex_handle_desc, nd_tex_get,
- * nd_tex_block). nd_raw_native compares the state nd_model_state builds from the record with the NdDraw of the walker: tmpl key, TEV colours, buffer colour, unit 0.
- * The walker's draw-time values (z, cull, draw_3d, dview, rgb_scale, r_mix, memb, replace, prim, env, cconst, mixcol, decal bias) are inputs of the native state, not checked.
- * A combine other than 8 is the legacy class (B7): counted, not compared. uvso, cmul, cadd, zmix, palette and index range: not compared in 3b (3c). */
-static int ndm_on_v = -1, ndm_rec_ok, ndm_rec_cmp, ndm_rec_diff, ndm_rec_leg, ndm_rec_nost;
-static int ndm_nodesc; static const uint32_t* ndm_rec; static NdMode ndm_mode; static int ndm_mode_ok, ndm_has_comb, ndm_tex;
-static uint32_t ndm_cw[2]; static int ndm_tid = -1; /* S3N-3d: the block of the texture; its words are read at the compare (nd_tex_unit) */
-static unsigned ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_legacy, ndm_nodraw, ndm_nost, ndm_lines, ndm_f_last;
-static unsigned ndm_why[10], ndm_badn; static uint32_t ndm_badop; /* S3N-3b: fallback draws by nd_model_state reason code (NdMState.why) */
+/* S3N-3b: switch ndmcheck (debug). The record arm (pm_gbi.c rec_run) passes the record words, the mode and combine entries, the texture handle and the geometry list to
+ * pm_gpu_ndm_begin. The native model draws (nd_model_draw, emit 0) are built there, before the walker draws the record. Each walker draw (nd_raw_native) is compared with
+ * the native draw at its place: tmpl key, TEV colours, buffer colour, unit 0, uvso, cmul, cadd, zmix, palette 0, and the index words (the walker copies them into its batch).
+ * A walker draw may span several native draws (consumed in order). nwalk: a walker draw with no native draw left. nraw: a native draw the walker did not draw. Both are diffs. */
+static int ndm_on_v = -1, ndm_rec_ok, ndm_rec_cmp, ndm_rec_diff, ndm_rec_nost;
+static int ndm_has_comb; static uint32_t ndm_cw[2];
+static NdMode ndm_mode; static int ndm_mode_ok;
+static NdUnit ndm_un; static int ndm_tex, ndm_i8;
+static int ndm_nat_n, ndm_j;
+static const uint32_t* ndm_rec;
+static unsigned ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_nodraw, ndm_nost, ndm_lines, ndm_f_last;
+static unsigned ndm_why[16], ndm_badn; static uint32_t ndm_badop; /* S3N-3b: fallback draws by reason code (NdMState.why, nd_nat_why) */
 int pm_gpu_ndm_on(void) { if (ndm_on_v < 0) ndm_on_v = pm_debug_has("ndmcheck"); return ndm_on_v; }
-void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx) {
-    ndm_rec = rec; ndm_live = 1; ndm_rec_ok = 1; ndm_rec_cmp = ndm_rec_diff = ndm_rec_leg = ndm_rec_nost = 0;
+void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1); /* S3N-3d */
+void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo) {
+    ndm_rec = rec; ndm_live = 1; ndm_rec_ok = 1; ndm_rec_cmp = ndm_rec_diff = ndm_rec_nost = 0; ndm_nat_n = 0; ndm_j = 0; ndm_w_n = 0; ndm_geo = (unsigned)(uintptr_t)geo;
+    pm_gbi_dlcc(ndm_dlc0);
     ndm_mode_ok = modew != NULL && nd_mode_compile(&ndm_mode, (const unsigned*)modew) != 0;
     if (!ndm_mode_ok && modew) { ndm_badop = ndm_mode.bad; ndm_badn++; } /* B9: the other op of a refused list, last one seen */
     ndm_has_comb = combw != NULL;
     if (combw) { ndm_cw[0] = combw[0]; ndm_cw[1] = combw[1]; }
-    ndm_tex = 0; ndm_tid = -1;
+    ndm_tex = 0; ndm_i8 = 0;
     const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
-    ndm_nodesc = ds == NULL && gfx != NULL; /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
-    if (ds) {
+    if (gfx != NULL && ds == NULL) { ndm_rec_ok = 0; ndm_why[9]++; return; } /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
+    if (ds) { /* S3N-3c: the unit 0 words from the descriptor (nd_tex_get, nd_tex_unit), not from the walker-bound slot */
         int id = nd_tex_get(ds);
-        if (id >= 0) { ndm_tid = id; ndm_tex = 1; }
+        if (id < 0 || !nd_tex_unit(id, &ndm_un)) { ndm_rec_ok = 0; ndm_why[9]++; return; }
+        ndm_tex = 1;
+        ndm_i8 = ds->fmt == 4 && ds->siz == 1; /* G_IM_FMT_I, G_IM_SIZ_8b: the unit 0 raster is I8 */
     }
+    NdMCtx c;
+    memset(&c, 0, sizeof c);
+    c.mode = ndm_mode_ok ? &ndm_mode : NULL;
+    c.u0 = ndm_tex ? &ndm_un : NULL;
+    c.i8_0 = ndm_i8;
+    unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
+    c.has_comb = 1; c.comb_w0 = ndm_has_comb ? ndm_cw[0] : sw_cw0; c.comb_w1 = ndm_has_comb ? ndm_cw[1] : sw_cw1;
+    c.geom_base = sw_geo; c.wind = gv_wind;
+    c.tss = ndm_mode_ok && ndm_mode.has_tx ? ndm_mode.tw1 : sw_tss; /* B9: the list TEXTURE wins; gv per range in nd_model_draw */
+    if (ds) { int w = 8, h = 8; while (w < ds->w) w <<= 1; while (h < ds->h) h <<= 1; c.tex_w = w; c.tex_h = h; } /* the size of the record's texture, not the walker-bound slot */
+    c.draw_3d = 1; /* S3N-3c: a native batch goes through pm_gpu_grange, which sets draw_3d */
+    c.dview = dview; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
+    c.prim = nd_st.prim; c.prim_lod = nd_st.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
+    { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
+    c.base_oh = nd_st.om_h; c.base_ol = nd_st.om_l; c.known_h = nd_st.om_kh; c.known_l = nd_st.om_kl; /* B8 */
+    int n = nd_model_draw(rec, &c, geo, 0);
+    if (n == -2) { ndm_rec_nost = 1; ndm_rec_ok = 0; return; }
+    if (n < 0) { ndm_rec_ok = 0; if (nd_nat_why > 0 && nd_nat_why < 16) ndm_why[nd_nat_why]++; return; }
+    ndm_nat_n = n;
 }
 /* S3N-3d: diff count per compared field (the first 20 lines are printed; the counts show every field) */
 static char ndm_fn[48][24]; static unsigned ndm_fn_n[48], ndm_fn_used;
@@ -2513,17 +2558,25 @@ static __attribute__((cold, noinline)) void ndm_end_log(void) {
     unsigned f = pm_frame_count();
     if (f % 300u || f == ndm_f_last) return;
     ndm_f_last = f;
-    pm_log_prof_line("ndmcheck f%u recs %u eq %u diff %u fb %u legacy %u nodraw %u nost %u why %u %u %u %u %u %u %u %u", f, ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_legacy, ndm_nodraw, ndm_nost, ndm_why[1], ndm_why[2], ndm_why[3], ndm_why[4], ndm_why[5], ndm_why[6], ndm_why[7], ndm_why[8]);
-    pm_log_prof_line("ndmcheck badop %02x n %u", ndm_badop >> 24, ndm_badn);
+    pm_log_prof_line("ndmcheck f%u recs %u eq %u diff %u fb %u nodraw %u nost %u why %u %u %u %u %u %u %u %u", f, ndm_recs, ndm_eq, ndm_diff, ndm_fb, ndm_nodraw, ndm_nost, ndm_why[1], ndm_why[2], ndm_why[3], ndm_why[4], ndm_why[5], ndm_why[6], ndm_why[7], ndm_why[8]);
+    pm_log_prof_line("ndmcheck why9 %u why10 %u why11 %u why12 %u badop %02x n %u", ndm_why[9], ndm_why[10], ndm_why[11], ndm_why[12], ndm_badop >> 24, ndm_badn);
+    pm_log_prof_line("ndmcheck refused batches %u", ndm_refused_total);
     { char b[200]; unsigned p = 0; for (unsigned i = 0; i < ndm_fn_used && p < 150; i++) p += (unsigned)snprintf(b + p, sizeof b - p, "%s %u ", ndm_fn[i], ndm_fn_n[i]); pm_log_prof_line("ndmcheck fields %s", b); }
 }
 void pm_gpu_ndm_end(void) {
     flush(); /* the last batch of the record is drawn before its record is classified */
+    if (ndm_rec_ok && ndm_j < ndm_nat_n) {
+        unsigned dw[10]; pm_gbi_dlcc(dw);
+        if (ndm_old) ndm_fn_count("nraw.old"); /* a refused batch is the walker's own old path: counted apart */
+        else if (ndm_w_n == 0 && dw[8] == 4) ndm_fn_count("wref"); /* walker dlc_seg refused the static range (pm_gpu_grange returned 0): the ring path draws it, class wref, apart (S3N-4 decides) */
+        else { ndm_rec_diff = 1; ndm_fn_count("nraw"); }
+    }
+    if (ndm_rec_ok && ndm_j < ndm_nat_n && !ndm_old && ndm_nraw_log++ < 6) { const NdNat* q = nd_model_native((unsigned)ndm_j); unsigned dl[10]; pm_gbi_dlcc(dl); pm_log_prof_line("ndmcheck nraw rec %08x nat %d used %d walk %u geo %08x sd %08x nidx %u tmpl %d dlc calls %u grp %u skip %u srep %u ring %u mat %u lit %u static %u dsg %u seg %u", (unsigned)(uintptr_t)ndm_rec, ndm_nat_n, ndm_j, ndm_w_n, (unsigned)ndm_geo, (unsigned)(uintptr_t)q->sd, q->nidx, q->d.tmpl, dl[0] - ndm_dlc0[0], dl[1] - ndm_dlc0[1], dl[2] - ndm_dlc0[2], dl[3] - ndm_dlc0[3], dl[4] - ndm_dlc0[4], dl[5] - ndm_dlc0[5], dl[6] - ndm_dlc0[6], dl[7] - ndm_dlc0[7], dl[8], dl[9]); }
+    ndm_old = 0;
     ndm_live = 0;
     ndm_recs++;
     if (ndm_rec_nost) ndm_nost++;
     else if (!ndm_rec_ok || !ndm_mode_ok) ndm_fb++; /* B9: a record without an entry is decided in nd_model_state (why 1) */
-    else if (ndm_rec_leg) ndm_legacy++;
     else if (ndm_rec_diff) ndm_diff++;
     else if (ndm_rec_cmp) ndm_eq++;
     else ndm_nodraw++;
@@ -2532,37 +2585,13 @@ void pm_gpu_ndm_end(void) {
 static unsigned ndm_bits(float f) { unsigned u; memcpy(&u, &f, 4); return u; }
 #define NDM_CMPF(name, a, b) NDM_CMP(name, ndm_bits(a), ndm_bits(b))
 #define NDM_CMP(name, a, b) do { if ((unsigned)(a) != (unsigned)(b)) { ndm_rec_diff = 1; ndm_fn_count(name); if (ndm_lines++ < 20) pm_log_prof_line("ndmcheck diff %s rec %08x nat %x walk %x", name, (unsigned)(uintptr_t)ndm_rec, (unsigned)(a), (unsigned)(b)); } } while (0)
-void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1); /* S3N-3d */
 static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd) {
     if (!ndm_rec_ok) return;
-    if (ndm_nodesc) { ndm_rec_ok = 0; ndm_why[9]++; return; }
-    NdMCtx c;
-    NdDraw ref;
-    NdMState rs;
-    float db = decal_bias();
-    memset(&c, 0, sizeof c);
-    c.mode = ndm_mode_ok ? &ndm_mode : NULL;
-    NdUnit ndm_un; memset(&ndm_un, 0, sizeof ndm_un); /* S3N-3d: the unit words at this draw, from the slot the block was loaded to */
-    if (ndm_tex && nd_tex_unit(ndm_tid, &ndm_un) != 1) { ndm_rec_ok = 0; ndm_why[9]++; return; }
-    c.u0 = ndm_tex ? &ndm_un : NULL;
-    c.i8_0 = pm_tex_i8(0);
-    /* S3N-3d: the walker's sticky state at the draw (tss, geometry, combine words when the record has no entry) */
-    unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
-    c.has_comb = 1; c.comb_w0 = ndm_has_comb ? ndm_cw[0] : sw_cw0; c.comb_w1 = ndm_has_comb ? ndm_cw[1] : sw_cw1;
-    c.geom_base = sw_geo; c.wind = gv_wind;
-    /* S3N-3d (3b): cull is per geometry group (3c). The key takes the walker cull; a disagreement with the cull derived from the sticky geometry is counted apart (cullskip), not a diff. */
-    c.cull_set = 1; c.cull = wk->cull;
-    { unsigned g = sw_geo & 0x600u; int ct = g == 0x200u ? 1 : g == 0x400u ? 2 : 0; int ccw = gv_wind <= 0; if (ct == 2) ccw = !ccw; if ((ct ? (ccw ? 2 : 1) : 0) != (int)wk->cull) ndm_fn_count("cullskip"); } /* B9: z and cull come from the geometry after the list; the wind sign is the walker matrix (3c) */
-    c.draw_3d = draw_3d; c.dview = dview; c.rgb_scale = rgb_scale; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
-    c.prim = nd_st.prim; c.prim_lod = nd_st.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
-    memcpy(&c.dbias, &db, 4);
-    c.base_oh = nd_st.om_h; c.base_ol = nd_st.om_l; c.known_h = nd_st.om_kh; c.known_l = nd_st.om_kl; /* B8 */
-    NdGvP gvn; /* the draw parameters with the texture scale of the bridge state (tex_s, tex_t = the walker tss words) */
-    gv_params_calc(ndm_mode.has_tx ? ndm_mode.tw1 : sw_tss, &gvn); /* B9: the list TEXTURE wins */
-    c.gv = &gvn;
-    { int rc = nd_model_state(ndm_rec, &c, &ref, &rs); if (rc != 1) { if (rc < 0) ndm_rec_nost = 1; ndm_rec_ok = 0; if (rs.why > 0 && rs.why < 10) ndm_why[rs.why]++; return; } }
+    ndm_w_n++;
+    if (ndm_j >= ndm_nat_n) { ndm_rec_diff = 1; ndm_fn_count("nwalk"); return; }
+    const NdNat* n = nd_model_native((unsigned)ndm_j);
+    const NdTmplKey* k = &n->s.k;
     ndm_rec_cmp = 1;
-    const NdTmplKey* k = &rs.k;
     NDM_CMP("k.pass", k->pass, wk->pass); NDM_CMP("k.raw", k->raw, wk->raw); NDM_CMP("k.cull", k->cull, wk->cull);
     NDM_CMP("k.z", k->z, wk->z); NDM_CMP("k.zmark", k->zmark, wk->zmark); NDM_CMP("k.zcmp", k->zcmp, wk->zcmp); NDM_CMP("k.zupd", k->zupd, wk->zupd);
     NDM_CMP("k.nocol", k->nocol, wk->nocol); NDM_CMP("k.decal", k->decal, wk->decal); NDM_CMP("k.atest_on", k->atest_on, wk->atest_on); NDM_CMP("k.aref", k->aref, wk->aref);
@@ -2573,15 +2602,29 @@ static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw*
     NDM_CMP("k.r_memblend", k->r_memblend, wk->r_memblend); NDM_CMP("k.r_replace", k->r_replace, wk->r_replace); NDM_CMP("k.r_blend", k->r_blend, wk->r_blend);
     NDM_CMP("k.noise", k->noise, wk->noise); NDM_CMP("k.two", k->two, wk->two); NDM_CMP("k.t1only", k->t1only, wk->t1only);
     NDM_CMP("k.w0", k->w0, wk->w0); NDM_CMP("k.w1", k->w1, wk->w1); NDM_CMP("k.dbias", k->dbias, wk->dbias);
-    NDM_CMP("tmpl", ref.tmpl, wd->tmpl);
-    for (int i = 0; i < 6; i++) { char nm[16]; snprintf(nm, sizeof nm, "tev%d", i); NDM_CMP(nm, ref.tev_col[i], wd->tev_col[i]); }
-    NDM_CMP("buf_col", ref.buf_col, wd->buf_col); NDM_CMP("has_buf", ref.has_buf, wd->has_buf);
-    NDM_CMP("u0.dim", ref.u[0].dim, wd->u[0].dim); NDM_CMP("u0.param", ref.u[0].param, wd->u[0].param); NDM_CMP("u0.lod", ref.u[0].lod, wd->u[0].lod);
-    NDM_CMP("u0.addr", ref.u[0].addr, wd->u[0].addr); NDM_CMP("u0.type", ref.u[0].type, wd->u[0].type);
-    for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "uvso%d", i); NDM_CMPF(nm, ref.uvso[i], wd->uvso[i]); }
-    for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cmul%d", i); NDM_CMPF(nm, ref.cmul[i], wd->cmul[i]); }
-    for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cadd%d", i); NDM_CMPF(nm, ref.cadd[i], wd->cadd[i]); }
-    for (int i = 0; i < 2; i++) { char nm[16]; snprintf(nm, sizeof nm, "zmix%d", i); NDM_CMPF(nm, ref.zmix[i], wd->zmix[i]); }
+    NDM_CMP("tmpl", n->d.tmpl, wd->tmpl);
+    for (int i = 0; i < 6; i++) { char nm[16]; snprintf(nm, sizeof nm, "tev%d", i); NDM_CMP(nm, n->d.tev_col[i], wd->tev_col[i]); }
+    NDM_CMP("buf_col", n->d.buf_col, wd->buf_col); NDM_CMP("has_buf", n->d.has_buf, wd->has_buf);
+    NDM_CMP("u0.dim", n->d.u[0].dim, wd->u[0].dim); NDM_CMP("u0.param", n->d.u[0].param, wd->u[0].param); NDM_CMP("u0.lod", n->d.u[0].lod, wd->u[0].lod);
+    NDM_CMP("u0.type", n->d.u[0].type, wd->u[0].type);
+    if (n->d.u[0].addr != wd->u[0].addr) ndm_fn_count("u0.copy"); /* an equal copy (same key, format, size, dim, param, lod, type; same texels) at another address: counted apart */
+    for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "uvso%d", i); NDM_CMPF(nm, n->d.uvso[i], wd->uvso[i]); }
+    for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cmul%d", i); NDM_CMPF(nm, n->d.cmul[i], wd->cmul[i]); }
+    for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cadd%d", i); NDM_CMPF(nm, n->d.cadd[i], wd->cadd[i]); }
+    for (int i = 0; i < 2; i++) { char nm[16]; snprintf(nm, sizeof nm, "zmix%d", i); NDM_CMPF(nm, n->d.zmix[i], wd->zmix[i]); }
+    NDM_CMP("npal", 1u, wd->npal);
+    if (wd->npal >= 1) for (int i = 0; i < 16; i++) NDM_CMPF("pal0", n->pal[i], wd->pal[0][i]);
+    /* index words: the walker batch (gidx from gi_start, gni indices) is the native draws in order, each copied in place */
+    const uint16_t* wi = gidx + gi_start;
+    unsigned got = 0;
+    while (got < wd->nidx && ndm_j < ndm_nat_n) {
+        const NdNat* q = nd_model_native((unsigned)ndm_j);
+        if (got + q->nidx > wd->nidx) break;
+        if (q->d.tmpl != n->d.tmpl) { ndm_rec_diff = 1; ndm_fn_count("tmpl.span"); }
+        if (memcmp(wi + got, q->sd, q->nidx * 2u) != 0) { ndm_rec_diff = 1; ndm_fn_count("idx.content"); }
+        got += q->nidx; ndm_j++;
+    }
+    if (got != wd->nidx) { ndm_rec_diff = 1; ndm_fn_count("idx.span"); ndm_j = ndm_nat_n; }
 }
 /* debug switch ndplan: the layout of the plan that pm_comb_build gives for the key words of a native draw against the plan the old path draws with. A mismatch means the template of that key holds another TEV layout. */
 extern int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out);

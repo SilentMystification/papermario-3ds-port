@@ -46,6 +46,7 @@ void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt)
 void pm_tex_cur_slots(int* a, int* b);
 unsigned pm_tex_slot_key(int i);
 int pm_tex_slot_unit(int i, NdUnit* u);
+int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, NdUnit* u); /* pm_tex.c, S3N-3c */
 int pm_tex_slot_words(int i, uint32_t* out);
 void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter);
 
@@ -89,13 +90,20 @@ int nd_tex_get(const NdTexDesc* in) {
 
 const uint32_t* nd_tex_block(int id) { return tex_ent[id].w; }
 
-/* S3N-3d: the unit words of block id at draw time: the bound unit 0 slot (the one the walker draws from) when it holds this texture (content key and dim). Any other slot gives 0 (fallback). */
+/* S3N-3c: the unit words of block id at draw time. The slot is found from the descriptor (its content key and dim), not from the walker-bound slot.
+ * A miss (the texture cache dropped the image) loads it again from the descriptor, as nd_tex_get does. 0: no slot (fallback). */
 int nd_tex_unit(int id, NdUnit* u) {
     NdTexEnt* e = &tex_ent[id];
     NdUnit t;
-    int a, b;
-    pm_tex_cur_slots(&a, &b);
-    if (!e->key || pm_tex_slot_key(a) != e->key || pm_tex_slot_unit(a, &t) != 1 || t.dim != e->w[0]) return 0;
+    if (!e->key) return 0;
+    int s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], &t);
+    if (s < 0) {
+        const NdTexDesc* d = &e->d;
+        pm_tex_set_wrap(d->cms, d->cmt, d->masks, d->maskt);
+        if (!pm_tex_load(d->img, d->fmt, d->siz, d->w, d->h, d->pal, d->pal_n, d->stride)) return 0;
+        s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], &t);
+        if (s < 0) return 0;
+    }
     u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
     return 1;
 }

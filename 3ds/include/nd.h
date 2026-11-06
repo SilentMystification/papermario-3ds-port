@@ -285,8 +285,10 @@ typedef struct NdMCtx {
     int i8_0;                  /* unit 0 raster is I8 */
     const NdGvP* gv;           /* uvso, cmul, cadd, zmix of the draw (nd_gv_params) */
     int has_comb; uint32_t comb_w0, comb_w1; /* R4 combine entry (words of the G_SETCOMBINE the record points to) */
-    int z_on, cull;            /* Z buffer on at the draw, GPU_CULLMODE */
-    int cull_set;              /* S3N-3d: cull is the walker's (ndmcheck, 3b): the key takes it, the derived cull is counted apart */
+    int tex_w, tex_h;          /* S3N-3c: the texture size of unit 0 (pot of the desc w, h, at least 8): the uv scale of the gv params */
+    uint32_t tss;              /* S3N-3c: the TEXTURE scale word of the gv params (the list TEXTURE or the walker tss); gv is made per range */
+    uint32_t geom_at;          /* S3N-3c: geometry mode of the draw (after the list ops and the group ops of its batch) */
+    int geom_at_set;           /* S3N-3c: geom_at is used, else (geom_base & gand) | gor. Cull and z come from this geometry */
     int draw_3d, dview, rgb_scale, r_mix, r_memblend, r_replace; /* sticky walker flags */
     uint32_t prim, env, cconst, mixcol; /* used when the record does not set PRIM (R3 bit 2) */
     uint32_t prim_lod;         /* S3N-3d: nd_st.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; aud_prim_lod is the low byte) */
@@ -297,6 +299,16 @@ typedef struct NdMCtx {
 } NdMCtx;
 typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full, 8 combine needs tile 1, the box product or a key value */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* 1 native, 0 fallback, -1 nost (B8: a read other mode bit has no value) */
+/* S3N-3c: the static ranges of a shape list (pm_gbi.c pm_dlc_native_ranges): index pool pointer, index count, geometry mode of the batch. */
+typedef struct NdRng { const uint16_t* sd; unsigned nidx; uint32_t geom; } NdRng;
+int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned max); /* -1 the walker would not replay the list statically, -2 out full */
+/* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
+ * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */
+#define ND_NAT_MAX 64
+typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; } NdNat;
+extern int nd_nat_why;
+int nd_model_draw(const uint32_t* rec, const NdMCtx* c, const void* list, int emit);
+const NdNat* nd_model_native(unsigned j);
 /* S3N-3d: the combine choice of one draw (pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
  * comb2_a..d, comb2_aa..ad). Out: leg (legacy mode, or 8 with plan), use and plan (general plan), cc (constant colour of mode 4), and the walker state (mode5, pat, why, cyc, dual). */
 typedef struct NdCombIn {

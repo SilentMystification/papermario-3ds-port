@@ -1,6 +1,18 @@
 # Agent S3N: map model records draw natively
 
 ## STATE
+3c STATE (2026-11-05, row S3N3, not committed: gate not met). Code in the working tree: nd_model_draw (nd_model.c, emit 0 for ndmcheck), pm_dlc_native_ranges (pm_gbi.c), pm_gpu_grange_would, pm_gpu_pcomp_native, pm_gpu_native_submit_draw, ndmcheck rewrite (pm_gpu.c), unit words by desc (nd_tex.c nd_tex_unit, pm_tex.c pm_tex_slot_find: key, fmt, siz, dim, most recent copy), gv per range (pm_gbi_gv_at with tss, geo, tw, th), cull per batch from geometry (no walker cull), debug counters (pm_gbi_dlcc, dbg_dsg, dbg_seg).
+Plan defaults taken: (1) matrix: nd_model_draw reads the walker stack after rec_apply (nd_mtx_combine), no nd_mtx_load in 3c; S3N-4 moves the load in. (2) index words compared by content (walker copies, native reads the static pool). (3) walker-sticky inputs kept: tss, geom_base, dview, r_mix, r_memblend, r_replace, prim, env, cconst, mixcol, decal bias. draw_3d=1 and rgb_scale from the batch boost (native derived). (4) lit groups: fallback. (5) u0.copy: equal copies (same key, fmt, siz, dim, param, lod, type) at other addresses are counted apart, not a diff (same texels). (6) a list outside host memory draws nothing (rec_dl).
+Azahar results (budget S3N reset at run 8; 6 starts since, 2 left):
+  spot_mac01: eq 11532 diff 0 u0.copy 2 PASS.
+  spot_mac00: eq 10222 diff 213 (all class nraw: a native static range the walker did not draw). Cause found: the walker dlc_seg refuses the range (pm_gpu_grange returns 0: dsg 4, seg 9) and the group runs the ring path, which draws nothing. pm_gpu_grange_would mirrors its early refusals and still says ok at begin, so some state of grange differs between begin and dlc_seg. NOT found. Open.
+  spot_sbk56: not run.
+3c RESULT (coordinator decision: wref class, not a diff; S3N-4 decides those draws):
+  spot_mac01: eq 11532 diff 0 u0.copy 2 (measured on the build before the wref class; the class only moves nraw with walk 0 and dlc_seg refused, so no diff can appear).
+  spot_mac00: eq 10222 diff 0 wref 213 fb 5222.
+  spot_sbk56: eq 8595 diff 0 wref 1170 fb 4139 (why12 3359: pm_dlc_native_ranges refuses, list not static; eq was 10675 at 3d, the difference is these records).
+Budget S3N: 8 of 8 used after run 15. Next row: S3N-4 (wref draws and why12 fallbacks decided by picture).
+Earlier note, now superseded: find the grange refusal at dlc_seg
 branch: nds1 | last commits: be480ae1d (B9), e859fd38b (begin classification), 77815d8d6 (handoff).
 done: S3N-0, S3N-1, S3N-2, S3N-3a, S3N-3b code (B8, B9). 3b gate NOT met: eq 0 on all 3 spots (last counts in the B10 section).
 B10 DECIDED (coordinator, replaces B7): walker combine choice moves to one pure function nd_comb_decide(const NdCombIn*, NdCombOut*) in nd_model.c. Inputs: combine w0 w1, two, texture facts of tile 0 and 1 (valid, fmt, size), box_pat, box_prod, box_folded, dual_on, leg_mode, prim, env. Walker calls it with its globals (one copy). Host case: random or recorded inputs give the old result bit-equal (as nd_gv). Native path calls it with the record: texture facts from the handle desc (B4), box_* = 0, dual_on = 0, leg_mode from nd_st or 0. Box or dual on at the walker with native inputs unknown: fallback class box. Then ndmcheck compares all fields again, legacy included. nodraw (lit pm5 and CPU path) stays apart (lit is epic S3L).

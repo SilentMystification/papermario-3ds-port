@@ -1352,15 +1352,16 @@ static void tritrace_tri(const char* what, unsigned seq, const float* p1, const 
  * constant replace the colour, alpha 255, the boost of the second cycle, and G_ZS_PRIM replaces the depth. Returns 0 when the path refuses. */
 typedef NdGvP GvP; /* S3N-1: the type and the function are in nd_model.c (nd_gv_params) */
 /* The draw parameters of a raw triangle from the state and the texture scale `tss` of its vertices. */
-void gv_params_calc(unsigned tss, GvP* o) { /* S3N-3b: not static, the ndmcheck compare calls it */
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o);
+void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); pm_gbi_gv_at(tss, geom, tw, th, o); } /* S3N-3b: not static, the ndmcheck compare calls it */
+/* S3N-3c: the draw parameters at geometry geo (the lighting, texgen and fog bits of the batch), the rest as the walker state */
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
     NdGvIn in;
     unsigned st = use_t1 ? 1 : 0;
-    int tw = 1, th = 1;
-    pm_tex_size(&tw, &th);
     unpack8(envc, in.en);
     unpack8(cur_plan.vtx, in.vc);
     in.tss = tss;
-    in.lighting = (geom & G_LIGHTING) != 0; in.texgen = (geom & G_TEXTURE_GEN) != 0; in.fog = (geom & G_FOG) != 0;
+    in.lighting = (geo & G_LIGHTING) != 0; in.texgen = (geo & G_TEXTURE_GEN) != 0; in.fog = (geo & G_FOG) != 0;
     in.comb5 = comb_mode5; in.plan_active = plan_active;
     in.plan_vtx_ok = cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
     in.alpha_shade = comb_alpha_shade;
@@ -1372,7 +1373,7 @@ void gv_params_calc(unsigned tss, GvP* o) { /* S3N-3b: not static, the ndmcheck 
     in.tex_on = tex_on;
     in.vp[0] = vp_sx; in.vp[1] = vp_sy; in.vp[2] = vp_tx; in.vp[3] = vp_ty;
     in.tile_x0 = tile_x0; in.tile_y0 = tile_y0; in.tile_fx = tile_fx; in.tile_fy = tile_fy;
-    in.fogmix = fogmix_on && (geom & G_FOG);
+    in.fogmix = fogmix_on && (geo & G_FOG);
     in.zc_ok = 0; in.za = 1.f; in.zb = 0.f;
     if (in.fogmix) in.zc_ok = pm_gpu_gv_zcoef(&in.za, &in.zb);
     in.fog_fm = fog_fm; in.fog_fo = fog_fo;
@@ -1797,11 +1798,13 @@ static __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l) {
     return 0;
 }
 
+static unsigned dbg_dsg, dbg_seg; /* S3N-3c debug: the static refusal codes */
 /* DLC2: one range of static triangles with the state of the current epoch. Returns 0 when the raw path refuses (nothing was queued). */
 static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
     unsigned tss = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu);
     if (ep_epoch != gv_epoch) gv_epoch_enter();
-    if (ep_why >= 0) return 0;
+    dbg_seg = 0;
+    if (ep_why >= 0) { dbg_seg = 1 + (unsigned)ep_why; return 0; }
     if (ep_cullboth) { n_out += (int)nt; return 1; }
     if (ep_pepoch != gv_epoch || ep_ptss != tss) {
         gv_params_calc(tss, &ep_p);
@@ -1810,7 +1813,7 @@ static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned
     }
     if (stdump_on() && pm_frame_count() >= 200 && pm_frame_count() < 206) { static unsigned st_n; if (++st_n <= 300) pm_log("stseg f%u n %u gmi %u geom %08x epoch %u pep %u tss %08x boost %d fxon %d rgb %d tsl %d", (unsigned)pm_frame_count(), nt, gmi, (unsigned)geom, gv_epoch, ep_pepoch, tss, ep_p.boost, ep_p.fxon, pm_gpu_rgb_scale_get(), tri_since_vtx); }
     int gr = pm_gpu_grange((const float(*)[4][4])gm_tab, gmi, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ep_p.fxon ? &ep_p.fx : NULL, idx, 3u * nt);
-    if (!gr) { ep_open = 0; return 0; }
+    if (!gr) { ep_open = 0; dbg_seg = 9; return 0; }
     if (gr == 2) dlc_c.batch++;
     ep_n += nt;
     ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss;
@@ -1823,9 +1826,10 @@ static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned
 static __attribute__((noinline)) int dlc_static_group(const DlcEnt* e, const DlcGrp* g, unsigned gmi, u32 gg) {
     u32 bad = (gv_lit_ok() ? 0 : G_LIGHTING) | (fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0), x = geom;
     const u32 lm = G_LIGHTING | G_TEXTURE_GEN, x0 = x & lm; /* the RSP lights at the vertex load: the lighting state must not change inside the group, else the interpreter runs it */
-    if (x & bad) return 0;
-    for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if ((x & bad) || (x & lm) != x0) return 0; }
-    if (!g->nbat || !g->bat_q || !pm_gpu_gidx_room(3u * g->sn)) return 0;
+    dbg_dsg = 0;
+    if (x & bad) { dbg_dsg = 1; return 0; }
+    for (unsigned q = 0; q < g->ng; q++) { x = (x & e->gop[g->goff + q][0]) | e->gop[g->goff + q][1]; if ((x & bad) || (x & lm) != x0) { dbg_dsg = 2; return 0; } }
+    if (!g->nbat || !g->bat_q || !pm_gpu_gidx_room(3u * g->sn)) { dbg_dsg = 3; return 0; }
     const unsigned short* ends = g->ends;
     unsigned t = 0, gop = 0;
     int drawn = 0;
@@ -1836,7 +1840,7 @@ static __attribute__((noinline)) int dlc_static_group(const DlcEnt* e, const Dlc
         unsigned end = ends[b];
         if (end > t) {
             dlc_set_geom(geom_at);
-            if (!dlc_seg(g->sd + 3u * t, end - t, gmi)) { if (!drawn) return 0; dlc_c.sfail++; return 1; }
+            if (!dlc_seg(g->sd + 3u * t, end - t, gmi)) { if (!drawn) { dbg_dsg = 4; return 0; } dlc_c.sfail++; return 1; }
             drawn = 1;
             t = end;
         }
@@ -2029,6 +2033,70 @@ static __attribute__((cold, noinline)) void dlc_reset(void) {
 }
 static unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
+
+/* S3N-3c debug: the walker DLC counters (calls, groups, skips, static, ring, lit, material, static refusals) for the ndmcheck nraw log */
+void pm_gbi_dlcc(unsigned* o) {
+    o[0] = dlc_c.hit + dlc_c.compile; o[1] = dlc_c.grp; o[2] = dlc_c.skip; o[3] = dlc_c.srep; o[4] = dlc_c.i_ring; o[5] = dlc_c.i_mat; o[6] = dlc_c.i_lit; o[7] = dlc_c.sfail + dlc_c.replay;
+    o[8] = dbg_dsg; o[9] = dbg_seg;
+}
+/* S3N-3c: the static ranges of a shape list for nd_model_draw. The groups that dlc_try replays statically (box test, no lit group, room in the pools), one range per batch as
+ * dlc_static_group cuts them. No replay and no counters. Returns the count; -1 when dlc_try would not replay the list statically (the fallback); -2 when out is full. */
+int pm_gpu_grange_would(const float m[4][4], unsigned nidx);
+int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
+    const Gfx* l = (const Gfx*)lv;
+    if (!dlc_on || !dlc_enabled() || nobox_on() || noboxint_on()) return -1;
+    if (!is_host((u32)(uintptr_t)l)) return 0; /* rec_dl: a list outside host memory is not run (gbi_cold_bad_next): no draw */
+    if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return -1;
+    if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
+    DlcEnt* e = dlc_find(l);
+    if (!e) return -1;
+    if (e->gen != pm_dlc_gen) {
+        dlc_free(e);
+        e->gen = pm_dlc_gen; e->refused = 0;
+        int r = dlc_build(e, l);
+        e->hash = dlc_hash(l);
+        if (r) e->refused = (u8)r;
+    }
+    if (e->refused) return -1;
+    const float(*m)[4] = combined;
+    if (img_role(0) == ROLE_DEPTH) return -1; /* gv_state_why: the z mark pass (fallback) */
+    const u32 lm = G_TEXTURE_GEN;
+    const u32 bad = fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0;
+    unsigned n = 0, gmi = GV_NONE;
+    int gmi_ready = 0;
+    for (unsigned k = 0; k < e->ngrp; k++) {
+        const DlcGrp* g = &e->grp[k];
+        if (dlc_box_out(g, m)) continue;
+        const u32 gg = (entry & g->am) | g->om;
+        if (!g->sd || !g->nbat || !g->bat_q) return -1;
+        if (gg & (G_LIGHTING | bad)) return -1; /* lit groups run through the GPU lights path (S3N later row) */
+        u32 x = gg;
+        for (unsigned q = 0; q < g->ng; q++) {
+            const u32* op = e->gop[g->goff + q];
+            x = (x & op[0]) | op[1];
+            if ((x & (G_LIGHTING | bad)) || (x & lm) != (gg & lm)) return -1;
+        }
+        if (!pm_gpu_gidx_room(3u * g->sn) || !pm_gpu_gv_room(g->nvtx + 3u * g->ntri)) return -1;
+        if (!pm_gpu_grange_would(m, 3u * g->sn)) return -1; /* the walker's grange refuses: the group runs on the ring path (not a static draw) */
+        if (!gmi_ready) { gmi = dlc_gmi(); gmi_ready = 1; }
+        if (gmi == GV_NONE) return -1;
+        unsigned t = 0, go = 0;
+        u32 geom_at = gg;
+        for (unsigned b = 0; b < g->nbat; b++) {
+            while (go < g->bat_q[b]) { const u32* op = e->gop[g->goff + go]; geom_at = (geom_at & op[0]) | op[1]; go++; }
+            unsigned end = g->ends[b];
+            if (end > t) {
+                /* the walker's dlc_seg: G_CULL_BOTH drops the triangles (no draw), cull_off draws with no cull */
+                const int off = cull_off();
+                if (!off && (geom_at & G_CULL_BOTH) == G_CULL_BOTH) { t = end; continue; }
+                if (n >= max) return -2;
+                out[n].sd = g->sd + 3u * t; out[n].nidx = 3u * (end - t); out[n].geom = off ? (geom_at & ~G_CULL_BOTH) : geom_at; n++;
+                t = end;
+            }
+        }
+    }
+    return (int)n;
+}
 
 static __attribute__((noinline)) int dlc_try(const Gfx* l) {
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
@@ -4267,13 +4335,13 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q) {
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
 extern int pm_gpu_ndm_on(void); /* S3N-3b: switch ndmcheck */
-extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx);
+extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo);
 extern void pm_gpu_ndm_end(void);
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     rec_apply(q);
     int ndm = pm_gpu_ndm_on();
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
-        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu);
+        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0);
     rec_dl((const Gfx*)(uintptr_t)q[12].words.w0);  /* S3G-1: geometry (0 when none) */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
     if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */

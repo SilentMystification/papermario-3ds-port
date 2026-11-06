@@ -1688,6 +1688,20 @@ int pm_tex_slot_unit(int i, NdUnit* u) {
     return 1;
 }
 
+/* S3N-3c: the live slot whose content key, format, size and unit 0 dim match (the bound slot need not be it). Equal copies: the most recently used one
+ * (the walker binds the copy it loaded last). Fills u with its unit words. -1: none. */
+int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, NdUnit* u) {
+    int best = -1; unsigned best_stamp = 0; NdUnit t;
+    if (!key) return -1;
+    for (int i = 0; i < SLOTS; i++) {
+        if (!slots[i].live || slots[i].shash != key || slots[i].fmt != fmt || slots[i].siz != siz) continue;
+        if (best >= 0 && slots[i].stamp < best_stamp) continue;
+        if (pm_tex_slot_unit(i, &t) != 1 || t.dim != dim) continue;
+        best = i; best_stamp = slots[i].stamp; *u = t;
+    }
+    return best;
+}
+
 int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
