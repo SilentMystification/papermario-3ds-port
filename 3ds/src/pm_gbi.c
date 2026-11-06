@@ -4779,9 +4779,8 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0, hit = 0;
     if (cached) { NdtT tm = pm_gpu_ndt_begin(); rec_matrix(q); pm_gpu_ndt_end(tm, NDT_MTX); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
-    if (!ndm && mdone && q[12].words.w0 && pm_gpu_model_hit(&mk, mce)) {
-        /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw.
-         * POND (A1): a record with no geometry (q[12] 0, the water copy of model.c mdl_draw_hidden_panel_surface) never takes the hit path: its state is its whole effect, so rec_apply must run. */
+    if (!ndm && mdone && pm_gpu_model_hit(&mk, mce)) {
+        /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw. */
         rec_n++;
         gv_epoch++;
         nat = 1; hit = 1;
