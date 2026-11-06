@@ -1959,7 +1959,7 @@
     },
     {
       "name": "menu_spawn",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Select menu, Cheats tab (L), Spawn item > (5 down, A), the first item row (A): one item spawned over Mario. SELECT closes, the top shot after the resume shows the item above Mario (falling).",
       "proves": "CH5: Spawn item folder (sub kind 11), one item made over gPlayerStatus.pos (make_item_entity_nodelay) from the frozen menu.",
       "debug": "preset=toad padscript=@pad_spawn.txt shots shotwin=160:6 loglevel=debug",
@@ -1991,7 +1991,7 @@
     },
     {
       "name": "menu_setstats_level",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Select menu, Cheats > Set Stats. First shot: normal values (white, HP 10, FP 5, BP 3, Level 1). After HP up 13 and FP up 14 (level 28 over 27): HP, FP, BP and Level draw in red. The cursor skips the Level row (down from BP goes to Star points).",
       "proves": "CH4 user change: Level is read only, computed from the stats (level = 1 + (HP-10)/5 + (FP-5)/5 + (BP-3)/3), red over 27, cursor skip.",
       "debug": "preset=toad padscript=@pad_setstats_level.txt shotmenu loglevel=debug",
