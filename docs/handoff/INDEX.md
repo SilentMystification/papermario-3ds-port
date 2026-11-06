@@ -7,6 +7,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - orchestrator_rules.md: orchestrator only. ORCH_RULES.txt, subagent_style.txt, subagent_hook.js: style hooks.
 - row_TEMPLATE.md: template for the row file each new agent reads first.
 - hw_guidelines.md: 3DS cache and ARM11 rules for all code (3 KB).
+- git_branches.md: tip hash of every branch deleted or kept in the row GIT cleanup (recovery record).
 
 ## Native draw epic (current work)
 - start_here_native_draw.md: current state and what is left (long-form handoff).
