@@ -1863,6 +1863,14 @@
           "regex": "warp: mac_00 entry 4"
         },
         {
+          "name": "audio muted at pause",
+          "regex": "audio: muted"
+        },
+        {
+          "name": "audio unmuted at resume",
+          "regex": "audio: unmuted"
+        },
+        {
           "name": "paused",
           "regex": "menu: game paused at frame \\d+"
         },

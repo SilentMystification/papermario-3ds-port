@@ -38,6 +38,16 @@ void pm_audio_shutdown(void) {
     ndspExit();
 }
 
+/* PAUSE AUDIO: the Select menu mutes the DSP output while the game is paused (a voice repeats its last buffer otherwise).
+ * The buffers stay queued, so the sound goes on from the same place at the resume. Only with ndsp up (ready). */
+static int au_muted;
+void pm_audio_mute(int on) {
+    if (!ready || au_muted == !!on) return;
+    au_muted = !!on;
+    ndspSetMasterVol(au_muted ? 0.0f : 1.0f);
+    pm_log("audio: %s", au_muted ? "muted" : "unmuted");
+}
+
 void pm_audio_init(void) {
     static int tried;
     if (ready || tried) return; /* fail once, log once, run silent: no ndspInit retry on every audio tick */

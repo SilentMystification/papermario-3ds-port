@@ -385,7 +385,7 @@ void pm_frame_loop(void) {
         pm_log_poll();
         pm_pad_scan();
         if (pm_menu_open) { /* MN1: the Select menu pauses the game: no step, no draw, no audio tick. The menu text is presented here. */
-            if (!menu_frozen) { menu_frozen = 1; pm_log("menu: game paused at frame %u", frame); pm_gpu_menu_grey(); } /* MN2 */
+            if (!menu_frozen) { menu_frozen = 1; pm_log("menu: game paused at frame %u", frame); pm_gpu_menu_grey(); pm_audio_mute(1); } /* MN2, PAUSE AUDIO */
             gspWaitForVBlank();
             pm_gpu_menu_present();
             continue;
@@ -394,6 +394,7 @@ void pm_frame_loop(void) {
             menu_frozen = 0;
             sched_next = 0;
             step_vb_ok = 0;
+            pm_audio_mute(0); /* PAUSE AUDIO: the sound goes on from the paused buffer (before the resumed line: the until line) */
             pm_log("menu: game resumed at frame %u", frame);
         }
         pace_on = pm_debug_has("pacestat");

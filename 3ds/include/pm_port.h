@@ -165,6 +165,7 @@ void pm_mem_log(const char* tag);
 void pm_gfx_retrace(void);
 void pm_gfx_retrace_skip(void); /* FS1 */
 void pm_audio_init(void);
+void pm_audio_mute(int on); /* PAUSE AUDIO: the Select menu mutes the output */
 void pm_audio_post(const void* pcm, unsigned bytes, unsigned rate);
 void pm_au_thread_start(void (*entry)(void*), void* arg);
 int pm_au_thread_started(void);
