@@ -236,7 +236,7 @@ const char* pm_optui_label(int tab, int row, int mode);
 const char* pm_optui_value(int tab, int row, int mode);
 int pm_optui_step(int tab, int row, int dir, int mode); /* left or right on a row, 1 when the value changed */
 int pm_optui_act(int tab, int row, int mode);
-int pm_optui_warn(void); void pm_optui_warn_confirm(void); void pm_optui_sub_pop(int row); int pm_optui_sub_restore(void); /* MN6 */ /* 0 done, 1 close (Back), 3 exit to Homebrew, 4 return to title, 5 warp started, 6 open the Warp area submenu (tab index PM_OPT_SUB) */
+int pm_optui_warn(void); void pm_optui_warn_confirm(void); int pm_optui_sub_pop(int row); int pm_optui_sub_restore(void); int pm_optui_sub_enter(void); int pm_optui_sub_level(void); /* MN6 */ /* 8 open an area page (depth 2) */ /* 0 done, 1 close (Back), 3 exit to Homebrew, 4 return to title, 5 warp started, 6 open the Warp area submenu (tab index PM_OPT_SUB) */
 #define PM_OPT_SUB 4 /* the folder page (Warp area or Boss rows): a page index after General, Controls, Debug and the reserved tab 3 */
 void pm_optui_disarm(void);
 int pm_optui_alert(int tab, int row, int mode); /* 1 when the row asks for the second press (Exit to Homebrew, A again): drawn in red */
@@ -260,11 +260,13 @@ void pm_dpad_mode_next(void);
 int pm_warp_preset_count(void);
 const char* pm_warp_preset_name(int i); /* UI1a */
 const char* pm_warp_preset_map(int i);
-#define PM_WARP_GROUP_MAX 48 /* PT01c: the most prefix groups (rows of the Warp area submenu) */
-int pm_warp_group_count(void); /* PT01c: the Warp area submenu, one row per map prefix (kmr, tik, ...) in area order */
-const char* pm_warp_group_name(int g);
-int pm_warp_group_size(int g);
-int pm_warp_group_map(int g, int j); /* the flat map index k of member j of group g */
+int pm_warp_area_count(void); /* MN6 rest: the Warp area folder, one row per area that has a non-test map (gAreas order) */
+const char* pm_warp_area_name(int a); /* the English area name (pm_warp.c area_name) */
+int pm_warp_area_size(int a); /* maps of area a */
+int pm_warp_area_map(int a, int j); /* the flat map index k of map j of area a */
+int pm_warp_map_entries(int k); /* entry count of map k (at least 1) */
+int pm_warp_entry_get(int k); /* the entry chosen for map k on the area page (RAM) */
+void pm_warp_entry_set(int k, int e);
 extern int pm_warp_pending; /* UI1a: set by pm_warp_now, read by filemenu_get_exit_mode */
 void pm_warp_now(int choice, int entry); /* UI1a, PT01: warp from the file select to a choice (preset or map) */
 int pm_warp_map_count(void);

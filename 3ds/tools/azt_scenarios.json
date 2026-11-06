@@ -5766,6 +5766,27 @@
         }
       ],
       "reason": "S4-1 sprcheck copy of spot_mac01_ndmcheck. Cap 25 s."
+    },
+    {
+      "name": "menu_warp_entry",
+      "status": "verified",
+      "subject": "Select menu: Debug, Warp area (warning, B), Toad Town area page (A), mac_00 row (row 1, after machi), entry right (1 of 8), A. The map page shot shows the breadcrumb, the rows with < n of N > and the cursor on mac_00 at entry 1. The warp lands at mac_00 entry 1.",
+      "proves": "MENU4 MN6 rest: area rows, one row per map on the area page with the entry shown and moved, A warps to the chosen map and entry (live warp).",
+      "debug": "preset=toad padscript=@pad_menu_warp_entry.txt shotmenu loglevel=debug",
+      "until": "warp: live to choice",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "menu: open",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "menu open", "regex": "menu: open"},
+        {"name": "area page pushed", "regex": "menu: page push 4 depth 2"},
+        {"name": "area page row", "regex": "menu: warp area 1 maps \\d+ row 0"},
+        {"name": "live warp to entry 1", "regex": "warp: live to choice \\d+ entry 1 "},
+        {"name": "map and entry", "regex": "warpstat after live: slot 0 map 1:1 entry 1 "}
+      ],
+      "reason": "MENU4 MN6 rest gate. The map page shot is read by eye (row mac_00 shows < 1 of 8 >). mac_00 is area 1 map 1 (log)."
     }
   ]
 }

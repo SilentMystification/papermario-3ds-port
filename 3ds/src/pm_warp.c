@@ -497,40 +497,61 @@ int pm_warp_map_index(const char* name) {
 const char* pm_warp_preset_name(int i) { return presets[i].name; }
 const char* pm_warp_preset_map(int i) { return presets[i].map; }
 
-/* PT01c: the Warp area submenu. The maps of pm_warp_map_name grouped by prefix (the letters before '_' or a digit). Groups in first-seen order
- * (area order), members in map order. Built on the first call, after the switches are read (warptest). Ceilings: 512 maps, PM_WARP_GROUP_MAX groups. */
-#define WG_MAPS 512
-static char wg_pre[PM_WARP_GROUP_MAX][8];
-static int wg_n = -1, wg_off[PM_WARP_GROUP_MAX + 1], wg_k[WG_MAPS];
-static void wg_build(void) {
-    int of[WG_MAPS], g, i, j, a, k = 0, cnt = 0;
-    wg_n = 0;
+/* MN6 rest: the Warp area folder. An area is a gAreas entry with at least one non-test map (gAreas order). The row name is the English
+ * area name (area_name, same order as gAreas: world.c comments). Its maps are listed in map order with their flat map index (pm_warp_map_name).
+ * Built on the first call, after the switches are read (warptest). Ceilings: 32 areas, WG_MAPS maps. */
+static const char* const area_name[] = {
+    "Goomba Village", "Toad Town", "Toad Town Tunnels", "Inside the Whale", "Peach's Castle", "Shooting Star Summit", "Koopa Village",
+    "Koopa Bros. Fortress", "Mt. Rugged", "Dry Dry Outpost", "Dry Dry Desert", "Dry Dry Ruins", "Forever Forest", "Boo's Mansion",
+    "Gusty Gulch", "Tubba Blubba's Castle", "Shy Guy's Toy Box", "Jade Jungle", "Mt. Lavalava", "Flower Fields", "Shiver City",
+    "Crystal Palace", "Bowser's Castle", "Outside Peach's Castle", "Ending", "Minigames", "Game Over", "Test map",
+};
+#define WG_MAPS 512 /* ceiling of the flat map list (area folder, entry memory) */
+#define WA_MAX 32
+static int wa_n = -1, wa_area[WA_MAX], wa_off[WA_MAX], wa_size[WA_MAX], wa_k[WG_MAPS];
+static void wa_build(void) {
+    int i, j, flat = 0, n = 0, cnt = 0;
+    for (i = 0; gAreas[i].maps != NULL; i++) {
+        int c0 = cnt;
+        for (j = 0; j < gAreas[i].mapCount; j++) {
+            if (pm_warp_is_test_map(gAreas[i].maps[j].id)) continue;
+            if (cnt < WG_MAPS) wa_k[cnt++] = flat;
+            else pm_log_w("warp: map list full, %s has no row", gAreas[i].maps[j].id);
+            flat++;
+        }
+        if (cnt == c0) continue;
+        if (n == WA_MAX) { pm_log_w("warp: area list full, area %d has no row", i); break; }
+        wa_area[n] = i; wa_off[n] = c0; wa_size[n] = cnt - c0; n++;
+    }
+    wa_n = n;
+}
+static void wa_ready(void) { if (wa_n < 0) wa_build(); }
+int pm_warp_area_count(void) { wa_ready(); return wa_n; }
+const char* pm_warp_area_name(int a) { wa_ready(); return wa_area[a] < (int)ARRAY_COUNT(area_name) ? area_name[wa_area[a]] : ""; }
+int pm_warp_area_size(int a) { wa_ready(); return wa_size[a]; }
+/* the flat map index k of map j of area a (choice = preset count + 1 + k) */
+int pm_warp_area_map(int a, int j) { wa_ready(); return wa_k[wa_off[a] + j]; }
+
+/* the MapConfig of flat map index k (test maps skipped), NULL when k is out of range */
+static const MapConfig* wa_cfg(int k) {
+    int i, j, n = 0;
     for (i = 0; gAreas[i].maps != NULL; i++)
         for (j = 0; j < gAreas[i].mapCount; j++) {
-            const char* id = gAreas[i].maps[j].id;
-            size_t len;
-            if (pm_warp_is_test_map(id)) continue;
-            len = strcspn(id, "_0123456789");
-            if (len > 7) len = 7;
-            for (g = 0; g < wg_n && !(strncmp(wg_pre[g], id, len) == 0 && wg_pre[g][len] == 0); g++) {}
-            if (g == wg_n) {
-                if (wg_n == PM_WARP_GROUP_MAX) { pm_log_w("warp: area list full, %s has no row", id); g = -1; }
-                else { memcpy(wg_pre[wg_n], id, len); wg_pre[wg_n][len] = 0; wg_n++; }
-            }
-            of[k++] = g;
+            if (pm_warp_is_test_map(gAreas[i].maps[j].id)) continue;
+            if (n++ == k) return &gAreas[i].maps[j];
         }
-    for (g = 0; g < wg_n; g++) {
-        wg_off[g] = cnt;
-        for (a = 0; a < k; a++) if (of[a] == g) wg_k[cnt++] = a;
-    }
-    wg_off[wg_n] = cnt;
+    return NULL;
 }
-static void wg_ready(void) { if (wg_n < 0) wg_build(); }
-int pm_warp_group_count(void) { wg_ready(); return wg_n; }
-const char* pm_warp_group_name(int g) { wg_ready(); return wg_pre[g]; }
-int pm_warp_group_size(int g) { wg_ready(); return wg_off[g + 1] - wg_off[g]; }
-/* the flat map index k of member j of group g (choice = preset count + 1 + k) */
-int pm_warp_group_map(int g, int j) { wg_ready(); return wg_k[wg_off[g] + j]; }
+/* the entry count of map k (MapSettings.entryCount, static data). At least 1: a map without settings warps to entry 0. */
+int pm_warp_map_entries(int k) {
+    const MapConfig* m = wa_cfg(k);
+    if (!m || !m->settings || m->settings->entryCount < 1) return 1;
+    return m->settings->entryCount;
+}
+/* MN6 rest: the entry chosen on the area page for map k, kept in RAM (not saved). */
+static unsigned char wm_ent[WG_MAPS];
+int pm_warp_entry_get(int k) { return k >= 0 && k < WG_MAPS ? wm_ent[k] : 0; }
+void pm_warp_entry_set(int k, int e) { if (k >= 0 && k < WG_MAPS) wm_ent[k] = (unsigned char)e; }
 /* UI1a: Warp now from the Options panel of the file select. The state is set as a file load does it, the caller leaves the file select
  * through the normal exit (pm_warp_pending makes filemenu_get_exit_mode return 1: curtain, cleanup, ENTER_WORLD). */
 int pm_warp_pending;

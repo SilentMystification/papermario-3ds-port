@@ -53,7 +53,7 @@ static void draw(void) {
         else n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : strcmp(pm_optui_sub_name(), "Boss") ? "< > A: warp  B: back" : "A: fight  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : !strcmp(pm_optui_sub_name(), "Boss") ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
     if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
@@ -120,10 +120,16 @@ void pm_menu_key(unsigned k) {
         pm_optui_warn_confirm();
         sel[tab] = pm_optui_sub_restore(); top[tab] = 0;
     } else if (k & KEY_B) {
+        int back;
         if (tab != PM_OPT_SUB) { pm_menu_set(0); return; }
-        pm_optui_sub_pop(sel[tab]);
-        tab = home_tab; /* B in the submenu goes back to the parent tab, the menu stays open */
-        pm_log("menu: page pop depth 0");
+        back = pm_optui_sub_pop(sel[tab]);
+        if (back >= 0) { /* MN6 rest: an area page goes back to the area list, the menu stays in the folder */
+            sel[tab] = back; top[tab] = 0;
+            pm_log("menu: page pop depth 1");
+        } else {
+            tab = home_tab; /* B in the submenu goes back to the parent tab, the menu stays open */
+            pm_log("menu: page pop depth 0");
+        }
         pm_optui_disarm();
     } else if ((k & KEY_A) && tab == PM_OPT_SUB && pm_optui_warn()) { /* MN6: any other key on the warning page backs out */
         pm_optui_sub_pop(sel[tab]);
@@ -133,6 +139,7 @@ void pm_menu_key(unsigned k) {
     } else if (k & KEY_A) {
         int r = pm_optui_act(tab, sel[tab], MODE);
         if (r == 6) { home_tab = tab; tab = PM_OPT_SUB; sel[tab] = 0; top[tab] = 0; pm_optui_disarm(); pm_log("menu: page push %d depth 1", PM_OPT_SUB); }
+        if (r == 8) { sel[tab] = pm_optui_sub_enter(); top[tab] = 0; pm_optui_disarm(); pm_log("menu: page push %d depth 2", PM_OPT_SUB); } /* MN6 rest: an area page */
         if (r == 1 || r == 5) { pm_menu_set(0); return; }
         if (r == 7) { /* MN3b: Close game. The app ends and the HOME Menu runs (chainload, region HOME Menu title). */
             pm_log("menu: close game to HOME Menu");

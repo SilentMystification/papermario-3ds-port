@@ -161,3 +161,17 @@ STATE (MENU3, branch nds1, after epic B)
 - Row 1 ENTRY TEST: PASS (ed3ebdf82). Row 2 WAIT: gate failed, edit discarded (b56459102). Camera fix: PASS (8f65f970f). Spot: iwa_10:1 at -662:0:587, then moved to -586:1:530 (5159bece7).
 - MN2, MN3b, MN4, MN5, MN7: PASS. MN6: part (warning, memory), map rows and entries open.
 - Epic B hand back: after MN7 (this section).
+
+## 11. MENU4 (rows 1 to 3 of row_MENU4.md)
+
+Row 1 MN6 rest (warp area folder, one row per map with the entry): PASS (log and shot). Commit: see git log (MN6 rest).
+- Folder level 1: presets (8 rows as before), then one row per area (`Goomba Village` .. `Test map`, area name table in pm_warp.c, areas with a non-test map only). A on an area opens the area page (log `menu: page push 4 depth 2`).
+- Area page: one row per map (`machi`, `mac_00`, ...), value `< entry of count >`, left and right move the entry (wrap, RAM only), A warps to that map and entry (pm_warp_live). Breadcrumb `Debug > Warp area > Toad Town`. B goes back to the area list on the area row.
+- Warp memory in RAM: last area row (warp_last_row, restored on the warning page), last map row of the last area (warp_mem_area, warp_mem_row, restored when that area page opens), entry per map (pm_warp_entry_get/set).
+- Gate run menu_warp_entry: area page row, `< 1 of 8 >` on mac_00 (shot bot_m0036 read by eye), `warp: live to choice 27 entry 1`, `warpstat after live: slot 0 map 1:1 entry 1`. The picture after the warp is not read (gate is the warp log line).
+- Regression menu_warp (MENU3 MN6 part): PASS (log, restore row 3).
+- Entry count from MapSettings.entryCount (static data). Maps with no settings warp to entry 0 (plan default).
+- Named gap: the page scrolls only within VIS rows (long area lists are cut by the menu height, no paging beyond the window). Entries per map are not shown as a window `0 1 [2] 3 4` (plan 2.6 shape); the value is `< n of N >`.
+- Starts MENU4: 5 (2 lost to a shared Azahar log and the padscript file not staged in the sdmc PaperMario folder, 3 valid). Starts for the menu_warp_entry gate: 2 valid (start 3 and the CheckLog pass), menu_warp regression 1.
+
+Row 2 MN7 rest (Debug row "Position log combo"): see below.

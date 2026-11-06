@@ -273,9 +273,8 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_SUB = 700 };
-/* PT01c: the Warp area submenu rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per map prefix. Checked before the other ids. */
-static int warp_pos[PM_WARP_GROUP_MAX]; /* this run only: the member that each prefix row shows (not saved, PT32) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_SUB = 700, RW_WMAP = 800 };
+/* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
@@ -297,7 +296,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_PROF; /* PROFROW */
         for (i = 0; i < 3; i++) ids[n++] = RW_GIVE + i; /* PT67 */
         for (i = 0; i < 6; i++) ids[n++] = RW_STAT + i;
-        ids[n++] = RW_WARPAREA; /* opens the Warp area submenu */
+        ids[n++] = RW_WARPAREA; /* opens the Warp area folder */
         if (mode) ids[n++] = RW_BOSSFOLDER; /* MN4: opens the Boss folder (Select menu only) */
     }
     ids[n++] = RW_BACK;
@@ -305,23 +304,54 @@ static int tab_ids(int tab, int mode, int* ids) {
 }
 /* MN4: the folder page (tab PM_OPT_SUB) shows the Warp area rows (0) or the Boss rows (1). */
 static int sub_kind;
-/* MN6: the Warp area folder opens on a warning page (B warps on, any other key backs out). The last row of this folder is kept in RAM
- * (not saved): leaving the folder stores its row, entering it again restores that row and logs it. */
-static int warp_warn, warp_last_row;
+/* MN6: the Warp area folder opens on a warning page (B warps on, any other key backs out). MN6 rest: the folder has two levels. Level 1 lists
+ * the presets and the areas; A on an area opens its page (level 2, sub_area = area index): one row per map, < > moves the entry, A warps.
+ * The last area row and the last map row of the warp memory are kept in RAM (not saved), entering again restores them and logs it. */
+static int warp_warn, warp_last_row, sub_area = -1, warp_mem_area = -1, warp_mem_row;
+static char sub_nm[48];
 int pm_optui_warn(void) { return warp_warn; }
 void pm_optui_warn_confirm(void) { warp_warn = 0; }
-void pm_optui_sub_pop(int row) { if (!sub_kind) warp_last_row = row; warp_warn = 0; }
+/* B or A on the folder: a level 2 page pops to the area list and returns that area row (>= 0); a level 1 page closes the folder (-1). */
+int pm_optui_sub_pop(int row) {
+    if (!sub_kind && sub_area >= 0) {
+        warp_mem_area = sub_area; warp_mem_row = row;
+        sub_area = -1;
+        warp_last_row = pm_warp_preset_count() + warp_mem_area;
+        return warp_last_row;
+    }
+    if (!sub_kind) warp_last_row = row;
+    warp_warn = 0;
+    return -1;
+}
 int pm_optui_sub_restore(void) {
     int r = warp_last_row, P = pm_warp_preset_count();
     if (sub_kind || r < 0) return 0;
-    if (r >= P + pm_warp_group_count()) return 0;
+    if (r >= P + pm_warp_area_count()) return 0;
     pm_log("menu: warp sub restore area %d row %d", r < P ? -1 : r - P, r); /* area -1: a preset row */
     return r;
 }
-const char* pm_optui_sub_name(void) { return sub_kind ? "Boss" : "Warp area"; }
+/* MN6 rest: an area page opens (level 2). The cursor goes to the map row of the warp memory when it was this area, else row 0. */
+int pm_optui_sub_enter(void) {
+    int r = warp_mem_area == sub_area ? warp_mem_row : 0, n = pm_warp_area_size(sub_area);
+    if (r < 0 || r >= n) r = 0;
+    pm_log("menu: warp area %d maps %d row %d", sub_area, n, r);
+    return r;
+}
+int pm_optui_sub_level(void) { return sub_area >= 0 && !sub_kind ? 2 : 1; }
+const char* pm_optui_sub_name(void) {
+    if (sub_kind) return "Boss";
+    if (sub_area < 0) return "Warp area";
+    snprintf(sub_nm, sizeof sub_nm, "Warp area > %s", pm_warp_area_name(sub_area));
+    return sub_nm;
+}
+/* MN6 rest: the entry of map k as shown and used (clamped to the entry count of the map). */
+static int wmap_entry(int k) {
+    int n = pm_warp_map_entries(k), e = pm_warp_entry_get(k);
+    return e < n ? e : 0;
+}
 static int row_id(int tab, int row, int mode) {
     int ids[48], n;
-    if (tab == PM_OPT_SUB) return sub_kind ? RW_BOSS + row : RW_SUB + row;
+    if (tab == PM_OPT_SUB) return sub_kind ? RW_BOSS + row : sub_area >= 0 ? RW_WMAP + row : RW_SUB + row;
     n = tab_ids(tab, mode, ids);
     return row >= 0 && row < n ? ids[row] : RW_BACK;
 }
@@ -332,14 +362,15 @@ int pm_optui_alert(int tab, int row, int mode) { int id = row_id(tab, row, mode)
 int pm_optui_rows(int tab, int mode) {
     int ids[48];
     if (tab == PM_OPT_SUB && warp_warn) return 2;
-    if (tab == PM_OPT_SUB) return sub_kind ? pm_boss_count() : pm_warp_preset_count() + pm_warp_group_count();
+    if (tab == PM_OPT_SUB) return sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_preset_count() + pm_warp_area_count();
     return tab_ids(tab, mode, ids);
 }
 const char* pm_optui_label(int tab, int row, int mode) {
     int id;
     if (tab == PM_OPT_SUB && warp_warn) return row == 0 ? "Warping is dangerous." : "A warp can break the save file.";
     id = row_id(tab, row, mode);
-    if (id >= RW_SUB) { int r = id - RW_SUB, P = pm_warp_preset_count(); return r < P ? pm_warp_preset_name(r) : pm_warp_group_name(r - P); }
+    if (id >= RW_WMAP) return pm_warp_map_name(pm_warp_area_map(sub_area, id - RW_WMAP));
+    if (id >= RW_SUB) { int r = id - RW_SUB, P = pm_warp_preset_count(); return r < P ? pm_warp_preset_name(r) : pm_warp_area_name(r - P); }
     if (id == RW_PROF) return "Profiling";
     if (id >= RW_BOSS) return pm_boss_label(id - RW_BOSS);
     if (id >= RW_STAT) return stat_lbl[id - RW_STAT];
@@ -367,16 +398,13 @@ const char* pm_optui_value(int tab, int row, int mode) {
     int id;
     if (tab == PM_OPT_SUB && warp_warn) return NULL;
     id = row_id(tab, row, mode);
-    if (id >= RW_SUB) { /* a preset shows its map, a prefix row shows its member (< > when it has more than one) */
-        static char mb[24];
-        int r = id - RW_SUB, P = pm_warp_preset_count(), g, n;
-        if (r < P) return pm_warp_preset_map(r);
-        g = r - P;
-        n = pm_warp_group_size(g);
-        if (n == 1) return pm_warp_map_name(pm_warp_group_map(g, 0));
-        snprintf(mb, sizeof mb, "< %s >", pm_warp_map_name(pm_warp_group_map(g, warp_pos[g])));
-        return mb;
+    if (id >= RW_WMAP) { /* a map row shows its entry and the entry count */
+        static char eb[16];
+        int k = pm_warp_area_map(sub_area, id - RW_WMAP);
+        snprintf(eb, sizeof eb, "< %d of %d >", wmap_entry(k), pm_warp_map_entries(k));
+        return eb;
     }
+    if (id >= RW_SUB) return id - RW_SUB < pm_warp_preset_count() ? pm_warp_preset_map(id - RW_SUB) : "A: open"; /* a preset shows its map, an area row opens */
     if (id == RW_PROF) return prof_label[prof_row];
     if (id >= RW_BOSS) return "A: fight";
     if (id >= RW_GIVE) {
@@ -405,14 +433,10 @@ const char* pm_optui_value(int tab, int row, int mode) {
 /* PT01c: left (dir < 0) or right (dir > 0) on a row. A prefix row with more than one map walks its members with wrap. */
 int pm_optui_step(int tab, int row, int dir, int mode) {
     int id = row_id(tab, row, mode);
-    if (id >= RW_SUB) {
-        int r = id - RW_SUB, P = pm_warp_preset_count(), g, n;
-        if (r < P) return 0;
-        g = r - P;
-        n = pm_warp_group_size(g);
-        if (n < 2) return 0;
-        warp_pos[g] = ((warp_pos[g] + dir) % n + n) % n;
-        return 1; /* the warp choice is not saved (PT32): no pm_options_touch */
+    if (id >= RW_WMAP) { /* MN6 rest: left and right move the entry of the map (wrap). RAM only (PT32): no pm_options_touch */
+        int k = pm_warp_area_map(sub_area, id - RW_WMAP), n = pm_warp_map_entries(k);
+        pm_warp_entry_set(k, ((wmap_entry(k) + dir) % n + n) % n);
+        return 1;
     }
     if (id == RW_PROF) { prof_set((prof_row + (dir > 0 ? 1 : 2)) % 3); return 1; } /* PROFROW: left and right cycle off, prof, phase */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, dir); return 1; } /* PT67c: live, not saved */
@@ -437,11 +461,17 @@ int pm_optui_act(int tab, int row, int mode) {
     if (tab == PM_OPT_SUB && warp_warn) return 0; /* the warning page: the panel handles B and A */
     id = row_id(tab, row, mode);
     if (id != armed_id) armed_id = 0;
-    if (id >= RW_SUB) { /* PT01c: A warps to the shown preset or map at entry 0 (the same call as before) */
-        int r = id - RW_SUB, P = pm_warp_preset_count(), g;
+    if (id >= RW_WMAP) { /* MN6 rest: A warps to the map of this row at its entry (the warp memory is the last one warped) */
+        int j = id - RW_WMAP, k = pm_warp_area_map(sub_area, j);
+        if (!pm_warp_live(pm_warp_preset_count() + 1 + k, wmap_entry(k))) return 0;
+        warp_mem_area = sub_area; warp_mem_row = j;
+        return 5;
+    }
+    if (id >= RW_SUB) { /* PT01c: A warps to the shown preset at entry 0; an area row opens its page (MN6 rest) */
+        int r = id - RW_SUB, P = pm_warp_preset_count();
         if (r < P) return pm_warp_live(r + 1, 0) ? 5 : 0;
-        g = r - P;
-        return pm_warp_live(P + 1 + pm_warp_group_map(g, warp_pos[g]), 0) ? 5 : 0;
+        sub_area = r - P;
+        return 8;
     }
     if (id == RW_PROF) { prof_set((prof_row + 1) % 3); return 0; } /* PROFROW: A cycles */
     if (id >= RW_BOSS) return pm_boss_launch(id - RW_BOSS) ? 5 : 0; /* 5: started, the menu closes */
@@ -471,8 +501,8 @@ int pm_optui_act(int tab, int row, int mode) {
             if (armed_id != RW_EXIT) { armed_id = RW_EXIT; pm_log("menu: exit armed, press A again"); return 0; }
             armed_id = 0;
             return 3;
-        case RW_WARPAREA: sub_kind = 0; warp_warn = 1; pm_log("menu: warp warning"); return 6; /* the menu opens the submenu (PM_OPT_SUB) */
-        case RW_BOSSFOLDER: sub_kind = 1; return 6; /* MN4: the Boss folder (PM_OPT_SUB, Boss rows) */
+        case RW_WARPAREA: sub_kind = 0; sub_area = -1; warp_warn = 1; pm_log("menu: warp warning"); return 6; /* the menu opens the submenu (PM_OPT_SUB) */
+        case RW_BOSSFOLDER: sub_kind = 1; sub_area = -1; return 6; /* MN4: the Boss folder (PM_OPT_SUB, Boss rows) */
         case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;
     }
     return 0;
