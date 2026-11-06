@@ -7,6 +7,18 @@
   },
   "benches": [
     {
+      "name": "texstale_prof_line",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FX1 row 3: the texstale summary line prints in prof mode (prof=4 texstale on dro_01). Log check only.",
+      "scenario": "texstale_prof",
+      "cap": 25,
+      "until": "texstale f300 binds [0-9]+",
+      "tags": ["azahar", "texstale", "prof"],
+      "gates": []
+    },
+    {
       "name": "merlee_spell_pic",
       "kind": "azahar_pic",
       "speed": "normal",

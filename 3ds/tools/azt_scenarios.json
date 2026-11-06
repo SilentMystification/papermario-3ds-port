@@ -6174,6 +6174,26 @@
         }
       ],
       "reason": "FX1 row 2 (SUPERBLOCK). Mario at the block by pos=; A jumps hit the block from below (the block is 60 up). Cap 45 s: 25 s of jumps and partner menu, then the effects of about 4 s. The until line ends the run when the effects are done. Shots every 30 frames (default) find the window; a second run uses shotwin from the hit frame."
+    },
+    {
+      "name": "texstale_prof",
+      "status": "unverified",
+      "subject": "dro_01 (warp entry 0), Mario stands. The texstale summary line in prof mode (prof=4), for the console counts.",
+      "proves": "FX1 row 3: the texstale line (binds, bad, dirty, img, pal, hash) prints in prof mode through pm_log_prof_line.",
+      "debug": "warp=dro_01:0 story=ch0_toad_town prof=4 texstale loglevel=debug",
+      "until": "texstale f300 binds [0-9]+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "texstale line",
+          "regex": "texstale f300 binds [0-9]+"
+        }
+      ],
+      "reason": "FX1 row 3. Only the summary line is checked; the cap is 25 s for 300 frames."
     }
   ]
 }

@@ -989,7 +989,8 @@ void pm_tex_stale_chk(int i, const void* img, const void* pal, unsigned key) {
     }
 }
 static void ts_report(void) {
-    pm_log("texstale f%u binds %u bad %u dirty %u img %u pal %u hash %u", (unsigned)tc_frame, ts_binds, ts_bad, ts_dirty, ts_img, ts_pal, ts_hash);
+    { extern void pm_log_prof_line(const char* fmt, ...); /* FX1 row 3: the texstale line prints in prof mode (console counts) */
+      pm_log_prof_line("texstale f%u binds %u bad %u dirty %u img %u pal %u hash %u", (unsigned)tc_frame, ts_binds, ts_bad, ts_dirty, ts_img, ts_pal, ts_hash); }
     ts_binds = ts_bad = ts_dirty = ts_img = ts_pal = ts_hash = ts_samp = 0;
 }
 
