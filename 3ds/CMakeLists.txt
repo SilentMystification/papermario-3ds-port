@@ -498,7 +498,7 @@ if(NOT PM_BUILD_NUM)
 endif()
 ctr_generate_smdh("${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh"
     NAME "Paper Mario 64 3DS Port"
-    DESCRIPTION "Build ${PM_BUILD_NUM}"
+    DESCRIPTION "${PM_BUILD_NUM}"
     AUTHOR "Dadrewster569"
     ICON "${DECOMP}/LaunchIcon.png"
 )
