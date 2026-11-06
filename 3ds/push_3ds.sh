@@ -27,12 +27,14 @@ while :; do
     esac
 done
 
+# The 3dsx this push sends: build3ds/pm_3ds.3dsx, or PM_SRC3DSX (bench.py build-at sends a lane build from its scratch folder).
+SRC3DSX=${PM_SRC3DSX:-build3ds/pm_3ds.3dsx}
 # Archive the 3dsx this push sends: 3ds/logs/builds/pm_3ds_<build>_<git hash>.3dsx (build = the number
 # before the first "-" in PM_BUILD_STR, the boot line's build number). An existing archive with the same
 # name must have the same sha256, or the archive is skipped (ARCHIVE WARNING). One line goes to 3ds/logs/perf/pushed_builds.txt.
-# PM_SRC3DSX, PM_ARCHIVE_DIR and PM_PUSH_LOG override the paths (tests only).
+# PM_ARCHIVE_DIR and PM_PUSH_LOG override the paths (tests only).
 archive_build() {
-    src=${PM_SRC3DSX:-build3ds/pm_3ds.3dsx}
+    src=$SRC3DSX
     adir=${PM_ARCHIVE_DIR:-3ds/logs/builds}
     plog=${PM_PUSH_LOG:-3ds/logs/perf/pushed_builds.txt}
     [ -f "$src" ] || { echo "ARCHIVE WARNING: no $src"; return 1; }
@@ -101,7 +103,12 @@ EOF
 )}}}
 if [ -z "$ip" ]; then echo "no 3DS netloader found (press Y in the Homebrew Launcher)"; exit 1; fi
 echo "3DS at $ip"
-archive_build "ip=$ip $*" || true # best effort: the push goes on without an archive (its warning line is printed above)
+if [ -n "$PM_SRC3DSX" ]; then
+    echo "archive skipped: PM_SRC3DSX is not the main build (3ds/include/pm_build.h describes the main build)"
+else
+    archive_build "ip=$ip $*" || true # best effort: the push goes on without an archive (its warning line is printed above)
+fi
+[ -f "$SRC3DSX" ] || { echo "no $SRC3DSX. Nothing was pushed."; exit 1; }
 
 # A console that isn't sitting in the Homebrew Launcher yet (most common cause - this needs a human
 # to open it there) must not cost minutes of silence. A few short attempts instead of one long one.
@@ -136,13 +143,15 @@ while [ "$i" -le "$attempts" ]; do
     : > "$outfile"
     usedocker=0
     if [ -x "$LINK" ]; then
-        echo "+ $LINK -a $ip build3ds/pm_3ds.3dsx -- --verbose $*"
-        stdbuf -oL "$LINK" -a "$ip" build3ds/pm_3ds.3dsx -- --verbose livelog "$@" >"$outfile" 2>&1 &
+        echo "+ $LINK -a $ip $SRC3DSX -- --verbose $*"
+        stdbuf -oL "$LINK" -a "$ip" "$SRC3DSX" -- --verbose livelog "$@" >"$outfile" 2>&1 &
     else
         usedocker=1
-        echo "+ docker run devkitpro/devkitarm 3dslink -a $ip /out/pm_3ds.3dsx -- --verbose $*"
-        MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$(pwd)/build3ds:/out:ro" devkitpro/devkitarm:latest \
-            stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" /out/pm_3ds.3dsx -- --verbose livelog "$@" >"$outfile" 2>&1 &
+        src_dir=$(cd "$(dirname "$SRC3DSX")" && pwd)
+        src_name=$(basename "$SRC3DSX")
+        echo "+ docker run devkitpro/devkitarm 3dslink -a $ip /out/$src_name -- --verbose $*"
+        MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$src_dir:/out:ro" devkitpro/devkitarm:latest \
+            stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" "/out/$src_name" -- --verbose livelog "$@" >"$outfile" 2>&1 &
     fi
     dpid=$!
     tail -n +1 -f "$outfile" &

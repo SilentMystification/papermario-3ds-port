@@ -16,8 +16,9 @@ This is the entry point for every test and profiling run (it replaces the text t
   python 3ds/tools/bench.py ingest-last --log <log> --scenario <name> --row <row> --rc <n> [--label L] [--build N] [--commit H] [--shots DIR]
         Called by azt.ps1 after each scenario start that wrote a log. A scenario with a bench records under that bench;
         any other scenario records as bench "adhoc:<scenario>".
-  python 3ds/tools/bench.py build-at <commit> <bench> --row R [--why "<text>"] [--label L]
-        Azahar benches only. Builds <commit> from a git archive folder build3ds/at_<short>/ (the main folder is not changed),
+  python 3ds/tools/bench.py build-at <commit> <bench> --row R [--why "<text>"] [--label L] [--dry-run]
+        Azahar and console_prof benches. Builds <commit> as lane at_<short> (own volumes, build3ds/at_<short>/, the main folder is not changed).
+        console_prof: pushes that 3dsx to the O3DS (PM_SRC3DSX) and ingests the live log (dirty false). --dry-run prints the commands only.
         runs the bench on that build, records the run with that commit and dirty false, then deletes the folder.
         The Azahar build copy is put back after the run. --why is optional: a line is written from the bench purpose.
   python 3ds/tools/bench.py import-csv                      (docs/handoff/perf_history.csv rows as runs, tag legacy_import; rows already imported are skipped)
@@ -53,7 +54,7 @@ sample has one row per window (win "f<frame> w<size>"; ts is the run wall time; 
 a window count and no window records (imported history) gets one row with win "agg" and extra_json agg_windows = count.
 Gate: {metric, op, value} or {metric, op, ref: baseline}. The baseline is the earliest run of the bench with that metric.
 """
-import argparse, collections, csv, datetime, io, json, os, re, shutil, sqlite3, subprocess, sys, tarfile
+import argparse, collections, csv, datetime, io, json, os, re, shutil, sqlite3, subprocess, sys, tarfile, time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -699,23 +700,108 @@ def app_3dsx():
     return Path(os.environ.get("APPDATA", "")) / "Azahar" / "sdmc" / "3ds" / "PaperMario" / "pm_3ds.3dsx"
 
 
+def build_at_numbers(commit):
+    """Build number build.sh writes for commit: V0 + (commit count - C0), V0 and C0 from 3ds/build_base.txt."""
+    v0, c0 = (int(x) for x in (REPO / "3ds" / "build_base.txt").read_text(encoding="utf-8").split()[:2])
+    return v0 + int(subprocess.check_output(["git", "rev-list", "--count", commit], cwd=REPO, text=True).strip()) - c0
+
+
+def push_switches(bd):
+    """The bench switches of a console bench (push_base, then the recipe), as argv words."""
+    return [w for w in (load_defs().get("push_base", "") + " " + (bd.get("recipe") or "")).split() if w]
+
+
+def scratch_build(commit, gitdir, scratch, lane, row):
+    """Archive commit into the scratch folder and build it as lane `lane`: own docker volumes and output
+    (scratch/build3ds/lane-<lane>/), never the shared build volumes. Returns (build.sh rc, build number or None)."""
+    shutil.rmtree(scratch, ignore_errors=True)
+    scratch.mkdir(parents=True)
+    arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
+    tarfile.open(fileobj=io.BytesIO(arc)).extractall(scratch)
+    gen = scratch / "3ds" / "src" / "map_restore_table.c"
+    shutil.copy2(REPO / "3ds" / "src" / "map_restore_table.c", gen)
+    subprocess.run([sys.executable, str(scratch / "3ds" / "tools" / "gen_map_restore.py")], cwd=scratch, check=True,
+                   stdout=subprocess.DEVNULL)
+    # The build inputs that git does not track (ROM-derived assets) come from the main folder. Read only.
+    for rel in BUILD_UNTRACKED:
+        if not (scratch / rel).exists() and (REPO / rel).exists():
+            shutil.copytree(REPO / rel, scratch / rel)
+    env = dict(os.environ, GIT_DIR=gitdir, PM_BUILD_REV=commit, PM_ROW=row, PM_LANE=lane)
+    rc = subprocess.run([shutil.which("sh") or "sh", "3ds/build.sh"], cwd=scratch, env=env).returncode
+    if rc != 0:
+        return rc, None
+    hdr = (scratch / "3ds" / "include" / "pm_build.h").read_text(encoding="utf-8")
+    bstr = re.search(r'PM_BUILD_STR "(\d+)', hdr)
+    return 0, (int(bstr.group(1)) if bstr else None)
+
+
+def build_at_dry(bd, a, commit, short, lane, gitdir, scratch, src3dsx):
+    """Prints the build, push and ingest commands of build-at for a console bench. Runs nothing."""
+    ip = load_defs()["consoles"]["o3ds"]
+    print("build-at %s %s --dry-run: nothing is built, pushed or recorded" % (short, bd["name"]))
+    print("build:  cd %s && PM_LANE=%s PM_BUILD_REV=%s GIT_DIR=%s PM_ROW=%s sh 3ds/build.sh" % (
+        posix(scratch), lane, commit, posix(gitdir), a.row))
+    print("push:   PM_ROW=%s PM_SRC3DSX=%s sh 3ds/push_3ds.sh --no-build --ip %s %s" % (
+        a.row, posix(src3dsx), ip, " ".join(push_switches(bd))))
+    print("ingest: PM_BENCH_DIRTY=0 python 3ds/tools/bench.py ingest build3ds/hw_live_log_%s.txt --bench %s --host o3ds --build %d "
+          "--commit %s --row %s --label \"build-at %s\" --device \"%s\" --speed normal"
+          % (ip.split(".")[-1], bd["name"], build_at_numbers(commit), commit, a.row, short, DEVICE["o3ds"]))
+    return 0
+
+
+def build_at_console(bd, a, commit, short, gitdir, scratch, src3dsx, lane):
+    """Console build-at: build the commit as a lane, push its 3dsx to the O3DS, ingest the live log with the scratch build."""
+    ip = load_defs()["consoles"]["o3ds"]
+    try:
+        rc, build_no = scratch_build(commit, gitdir, scratch, lane, a.row)
+        if rc != 0:
+            print("build-at %s: build.sh exit %d. Nothing was pushed." % (short, rc))
+            return rc
+        if not src3dsx.exists():
+            print("build-at %s: no %s after the build. Nothing was pushed." % (short, posix(src3dsx)))
+            return 5
+        env = dict(os.environ, PM_ROW=a.row, PM_SRC3DSX=str(src3dsx))
+        t0 = time.time()
+        print("build-at %s: build %s pushed to %s" % (short, build_no, ip))
+        prc = subprocess.run([shutil.which("sh") or "sh", "3ds/push_3ds.sh", "--no-build", "--ip", ip] + push_switches(bd),
+                             cwd=REPO, env=env).returncode
+        log = REPO / "build3ds" / ("hw_live_log_%s.txt" % ip.split(".")[-1])
+        if log.exists() and log.stat().st_mtime >= t0:
+            ingest_file(log, bd["name"], "o3ds", build_no, commit, a.row, a.label or ("build-at " + short),
+                        "log_pass" if prc == 0 else "fail:%d" % prc, "", None, [], device=DEVICE["o3ds"], kind=bd["kind"],
+                        speed="normal", dirty=False)
+        else:
+            print("build-at %s: no live log from this push at %s. Nothing ingested." % (short, posix(log)))
+        return prc
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
 def cmd_build_at(a):
     bd = bench_def(a.bench)
-    if not bd or not bd["kind"].startswith("azahar"):
-        print("build-at runs an Azahar bench (azahar_pic, azahar_stream). %s is not one. Nothing was built." % a.bench)
+    console = bool(bd) and bd["kind"] == "console_prof"
+    if not bd or not (bd["kind"].startswith("azahar") or console):
+        print("build-at runs an Azahar bench (azahar_pic, azahar_stream) or a console_prof bench. %s is not one. Nothing was built." % a.bench)
         return 5
     r = subprocess.run(["git", "rev-parse", "--verify", "--quiet", a.commit + "^{commit}"], cwd=REPO, capture_output=True, text=True)
     if r.returncode != 0:
         print("no commit %s. Nothing was built." % a.commit)
         return 5
     commit = r.stdout.strip()
-    short = commit[:7]
+    short = commit[:9]
+    lane = "at_" + short  # own docker volumes and output folder, never the shared build volumes
     gitdir = subprocess.check_output(["git", "rev-parse", "--absolute-git-dir"], cwd=REPO, text=True).strip()
+    scratch = REPO / "build3ds" / lane
+    src3dsx = scratch / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx"
+    if a.dry_run:
+        if not console:
+            print("--dry-run prints the console commands only (console_prof benches). Nothing was run.")
+            return 5
+        return build_at_dry(bd, a, commit, short, lane, gitdir, scratch, src3dsx)
+    if console:
+        return build_at_console(bd, a, commit, short, gitdir, scratch, src3dsx, lane)
     main_map = REPO / "3ds" / "src" / "map_restore_table.c"
     md5_before = md5_of(main_map)
-    scratch = REPO / "build3ds" / ("at_" + short)
-    shutil.rmtree(scratch, ignore_errors=True)
-    scratch.mkdir(parents=True)
     dst = app_3dsx()
     prev = scratch.parent / ("at_%s_prev.3dsx" % short)
     had_prev = dst.exists()
@@ -723,27 +809,12 @@ def cmd_build_at(a):
         shutil.copy2(dst, prev)
     rc = 0
     try:
-        arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
-        tarfile.open(fileobj=io.BytesIO(arc)).extractall(scratch)
-        gen = scratch / "3ds" / "src" / "map_restore_table.c"
-        shutil.copy2(main_map, gen)
-        subprocess.run([sys.executable, str(scratch / "3ds" / "tools" / "gen_map_restore.py")], cwd=scratch, check=True,
-                       stdout=subprocess.DEVNULL)
-        # The build inputs that git does not track (ROM-derived assets) come from the main folder. Read only.
-        for rel in BUILD_UNTRACKED:
-            if not (scratch / rel).exists() and (REPO / rel).exists():
-                shutil.copytree(REPO / rel, scratch / rel)
-        print("build-at %s: generated map_restore_table.c md5 %s, user file md5 %s (%s)" % (
-            short, md5_of(gen), md5_before, "same" if md5_of(gen) == md5_before else "differs"))
-        env = dict(os.environ, GIT_DIR=gitdir, PM_BUILD_REV=commit, PM_ROW=a.row)
-        env.pop("PM_LANE", None)
-        rc = subprocess.run([shutil.which("sh") or "sh", "3ds/build.sh"], cwd=scratch, env=env).returncode
+        rc, build_no = scratch_build(commit, gitdir, scratch, lane, a.row)
         if rc != 0:
             print("build-at %s: build.sh exit %d. Nothing was run." % (short, rc))
             return rc
-        hdr = (scratch / "3ds" / "include" / "pm_build.h").read_text(encoding="utf-8")
-        bstr = re.search(r'PM_BUILD_STR "(\d+)', hdr)
-        build_no = int(bstr.group(1)) if bstr else None
+        # The lane build does not copy its 3dsx to %APPDATA% (build.sh does that for the main build only): copy it for this run.
+        shutil.copy2(src3dsx, dst)
         why = a.why or ("build-at %s of %s: the committed code at %s, no working tree change, picture on an older build"
                         % (short, a.bench, short))
         os.environ["PM_BENCH_DIRTY"] = "0"
@@ -776,7 +847,9 @@ def cmd_ingest(a):
     text = p.read_text(encoding="utf-8", errors="replace")
     b, c = resolve_build(p, text, a.build, a.commit, host)
     speed = a.speed or ("unknown" if host == "azahar" else "normal")
-    return ingest_file(p, a.bench, host, b, c, a.row, a.label, "imported", a.note, None, [], device=a.device or device_note(host), speed=speed)
+    dv = os.environ.get("PM_BENCH_DIRTY")  # set by build-at (lane build of a commit: dirty false)
+    return ingest_file(p, a.bench, host, b, c, a.row, a.label, "imported", a.note, None, [], device=a.device or device_note(host), speed=speed,
+                       dirty=None if dv is None else dv == "1")
 
 
 def cmd_ingest_last(a):
@@ -1110,7 +1183,7 @@ def main(argv):
     x.add_argument("--speed", choices=SPEEDS, default="unknown"); x.add_argument("--frame-limit", type=float)
     x.set_defaults(f=cmd_ingest_last)
     x = sub.add_parser("build-at"); x.add_argument("commit"); x.add_argument("bench"); x.add_argument("--row", required=True)
-    x.add_argument("--why", default=""); x.add_argument("--label", default="")
+    x.add_argument("--why", default=""); x.add_argument("--label", default=""); x.add_argument("--dry-run", action="store_true")
     x.set_defaults(f=cmd_build_at)
     x = sub.add_parser("import-csv"); x.set_defaults(f=cmd_import_csv)
     x = sub.add_parser("where"); add_area(x); x.set_defaults(f=cmd_where)

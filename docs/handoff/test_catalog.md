@@ -16,11 +16,13 @@ B. Before and after a change
 2. `bench.py compare <bench> <buildA> <buildB>`, or `--last 2`. The tool prints the delta of each metric and flags failed gates. It prints WARNING and no delta when the speeds differ.
 3. Console speed claims use console_prof benches (prof mode) only. Azahar numbers show direction.
 4. An older commit: `bench.py build-at <commit> <bench> --row R` builds it in build3ds/at_<short>/ and runs an Azahar bench on it. The main folder is not changed. The run records dirty false.
+   Console: `bench.py build-at <commit> <console bench> --row R [--dry-run]` builds it as lane at_<short>, pushes that 3dsx to the O3DS 192.168.1.170 and ingests the live log (dirty false). --dry-run prints the 3 commands only.
 
 C. Console run (the orchestrator pushes, the user opens netloader first)
 1. `bench.py show <bench>` prints the push command (the recipe). Run it with PM_ROW=PUSH sh 3ds/push_3ds.sh ... as in docs/handoff/orchestrator_rules.md.
 2. After the push, run the `bench.py ingest build3ds/hw_live_log_170.txt --bench <bench> --host o3ds --build <N> --speed normal --row <row> --label "<text>"` line that push_3ds.sh prints.
 3. A walking route is not comparable between runs. Use a padscript route or a standing bench.
+4. `PM_SRC3DSX=<3dsx> sh 3ds/push_3ds.sh --no-build --ip 192.168.1.170 <switches>` sends that 3dsx instead of build3ds/pm_3ds.3dsx (no archive: the main pm_build.h does not describe it). build-at uses this.
 
 D. Performance in one place, over time
 1. Fixed spots, the defaults: spot_mac01_* (mac_01, pos 0 0 200), spot_mac00_* (mac_00, pos -135 0 85), spot_sbk56_* (sbk_56, pos 20 0 440). _pic is an Azahar picture, _prof an O3DS prof run. `bench.py list` shows them first. `bench.py spots [--map <name>]` lists the recorded places with run counts.
