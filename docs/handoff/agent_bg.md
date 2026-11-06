@@ -1,8 +1,11 @@
 # agent_bg: background image faults (rows BG1, BG2)
 
 ## STATE
-- BG1 flicker mac_00 -57 0 76: open, no cause named. Scenario bg_flicker_mac00 and bgrect switch committed 7a89f7289. Azahar starts used 7 of 8. Next: texstale on the sky (ts_bad, needs 300+ frames), palette rebuild under fog, sky texture slot reuse (pm_tex.c).
-- BG2 garbled row: open (agent ac8b933e18b4832cf).
+- BG1 flicker mac_00 -57 0 76: cause NOT named. Azahar starts 6 of 8 (2 left). Scenarios bg_edge_mac00 (shots 115-155) and bg_edge_early (100-113), debug switch bgedge (commit b3ddef27a).
+- bgedge fires at f100-112 (left rect x0 0 from xl -3: s0 0 to -0.065 normalized, about -33 texels) and f135-138 (right rect x1 319: s1 296 to 329 texels). Skipping the F07-7 extension for sky rects (branch bg1-noedge 6c1909f5, clean build ok) left screen columns 0-39 unchanged (mean diff 1.0): the extension is not the strip. Reverted from nds1.
+- bgrect coverage (game px -40..40, f112-156): no gap, no overlap. Texel reach: left-copy ends at s 296.0-296.5 at f112, f114, f120, f153 (texel 296 = padding); not seen in pictures yet.
+- Next BG1: right edge (screen 360-399) at f135-138 on the same binary; then the texel 296 reach (frames 153, 155) with the picture.
+- BG2 garbled row: not started in this session (agent ac8b933e18b4832cf).
 
 ## How the background is drawn
 - src/background_gfx.c gfx_draw_background (L336): default branch fills the screen, then calls appendGfx_background_texture (src/background.c L130) when BACKGROUND_FLAG_TEXTURE is set.
