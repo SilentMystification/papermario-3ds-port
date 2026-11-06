@@ -65,10 +65,12 @@ void nd_gv_params(const NdGvIn* in, NdGvP* o) {
 static NdTexDesc hd_desc[ND_HANDLE_N];
 static const void* hd_gfx[ND_HANDLE_N];
 static uint8_t hd_ok[ND_HANDLE_N];
+static unsigned hd_gen = 1; /* S3N-6: bumped by each handle write */
 
 void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
                        unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux) {
     if (index < 0 || index >= ND_HANDLE_N) return;
+    hd_gen++; /* S3N-6: the cached model draws of the record see the new handle */
     hd_ok[index] = 0; hd_gfx[index] = gfx;
     if (extra != 0 || has_aux || !raster || w == 0 || h == 0 || siz > 3) return; /* B4: common case only */
     NdTexDesc d;
@@ -215,6 +217,59 @@ static NdNat nat[ND_NAT_MAX];
 static int nat_n;
 int nd_nat_why; /* the reason of the last fallback: the nd_model_state why, or 11 too many draws, 12 the list is not static */
 const NdNat* nd_model_native(unsigned j) { return j < (unsigned)nat_n ? &nat[j] : NULL; }
+
+/* ---- S3N-6: the native model cache (see nd.h NdMKey). The draws of an entry live in a pool; an entry names its first draw and the count. ---- */
+#define NDMC_N 1024u
+#define NDMC_POOL 512u
+static NdMEnt mc_tab[NDMC_N];
+static NdNat mc_pool[NDMC_POOL];
+static unsigned mc_n, mc_pool_n, mc_clears_n;
+unsigned nd_handle_gen(void) { return hd_gen; }
+unsigned nd_mc_clears(void) { return mc_clears_n; }
+static uint32_t mc_hash(const NdMKey* k) {
+    uint32_t h = 2166136261u;
+    for (unsigned i = 0; i < NDMC_RW + NDMC_SW; i++) { h ^= k->w[i]; h *= 16777619u; }
+    return h ^ (h >> 15);
+}
+static void mc_clear_all(void) {
+    for (unsigned i = 0; i < NDMC_N; i++) mc_tab[i].used = 0;
+    mc_n = 0; mc_pool_n = 0; mc_clears_n++;
+}
+NdMEnt* nd_mc_find(const NdMKey* k) {
+    uint32_t h = mc_hash(k) & (NDMC_N - 1u);
+    for (unsigned p = 0; p < NDMC_N; p++, h = (h + 1u) & (NDMC_N - 1u)) {
+        NdMEnt* e = &mc_tab[h];
+        if (!e->used) return NULL;
+        if (memcmp(&e->k, k, sizeof *k) == 0) return e;
+    }
+    return NULL;
+}
+static NdMEnt* mc_slot(const NdMKey* k) {
+    if (mc_n >= NDMC_N / 4u * 3u) mc_clear_all();
+    uint32_t h = mc_hash(k) & (NDMC_N - 1u);
+    for (;;) {
+        NdMEnt* e = &mc_tab[h];
+        if (!e->used) { e->used = 1; e->k = *k; mc_n++; return e; }
+        if (memcmp(&e->k, k, sizeof *k) == 0) return e;
+        h = (h + 1u) & (NDMC_N - 1u);
+    }
+}
+NdMEnt* nd_mc_store(const NdMKey* k, const float comb[4][4], int tex, int hs, unsigned hg) {
+    if (nat_n > (int)ND_NAT_MAX) return NULL;
+    NdMEnt* e = mc_slot(k);
+    if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
+    memcpy(e->comb, comb, sizeof e->comb);
+    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
+    e->off = mc_pool_n; e->n = (unsigned)nat_n;
+    for (int j = 0; j < nat_n; j++) {
+        NdNat* q = &mc_pool[mc_pool_n + (unsigned)j];
+        *q = nat[j];
+        q->d.pal = (const float(*)[16])q->pal; /* the pointer of the copy, not of nat[] */
+    }
+    mc_pool_n += (unsigned)nat_n;
+    return e;
+}
+NdNat* nd_mc_nat(NdMEnt* e, unsigned j) { return &mc_pool[e->off + j]; }
 
 #ifdef TARGET_3DS
 extern float pm_eye_e, pm_eye_conv;

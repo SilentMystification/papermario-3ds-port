@@ -45,6 +45,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt);
 void pm_tex_cur_slots(int* a, int* b);
 unsigned pm_tex_slot_key(int i);
+unsigned pm_tex_slot_gen(int i); /* S3N-6 */
 int pm_tex_slot_unit(int i, NdUnit* u);
 int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, NdUnit* u); /* pm_tex.c, S3N-3c */
 int pm_tex_slot_words(int i, uint32_t* out);
@@ -92,10 +93,15 @@ const uint32_t* nd_tex_block(int id) { return tex_ent[id].w; }
 
 /* S3N-3c: the unit words of block id at draw time. The slot is found from the descriptor (its content key and dim), not from the walker-bound slot.
  * A miss (the texture cache dropped the image) loads it again from the descriptor, as nd_tex_get does. 0: no slot (fallback). */
-int nd_tex_unit(int id, NdUnit* u) {
+int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u) {
     NdTexEnt* e = &tex_ent[id];
     NdUnit t;
     if (!e->key) return 0;
+    /* S3N-6: the hinted slot still holds the content (its key and generation) and gives the dim: its words, no search */
+    if (*hs >= 0 && pm_tex_slot_key(*hs) == e->key && pm_tex_slot_gen(*hs) == *hg && pm_tex_slot_unit(*hs, &t) == 1 && t.dim == e->w[0]) {
+        u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
+        return 1;
+    }
     int s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], &t);
     if (s < 0) {
         const NdTexDesc* d = &e->d;
@@ -104,6 +110,11 @@ int nd_tex_unit(int id, NdUnit* u) {
         s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], &t);
         if (s < 0) return 0;
     }
+    *hs = s; *hg = pm_tex_slot_gen(s);
     u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
     return 1;
+}
+int nd_tex_unit(int id, NdUnit* u) {
+    int hs = -1; unsigned hg = 0;
+    return nd_tex_unit_hint(id, &hs, &hg, u);
 }

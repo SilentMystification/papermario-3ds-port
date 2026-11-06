@@ -279,6 +279,9 @@ static inline uint32_t nd_abgr(uint32_t c) { return ((c & 255u) << 24) | (((c >>
  * the record draws natively (d and st written), 0 for a fallback (lit, custom gfx, aux words, a refused combiner, another render mode, no combine entry). */
 /* S3N-3d: the unit 0 words of block id at draw time, read from its slot (the walker's residency step). 0: the slot no longer holds it (fallback). */
 int nd_tex_unit(int id, NdUnit* u);
+/* S3N-6: nd_tex_unit with a slot hint (the slot and its generation, pm_tex.c pm_tex_slot_gen): a valid hint gives the words without the content search. hs < 0: none. */
+int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u);
+unsigned pm_tex_slot_gen(int i); /* S3N-6 (pm_tex.c): the generation of a slot */
 typedef struct NdMCtx {
     const NdMode* mode;        /* compiled render mode list of the record (R0 bits 16 to 23) */
     const NdUnit* u0;          /* texture unit 0 of the draw (nd_tex_get + nd_tex_block), NULL: no texture */
@@ -309,6 +312,21 @@ typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; 
 extern int nd_nat_why;
 int nd_model_draw(const uint32_t* rec, const NdMCtx* c, const void* list, int emit);
 const NdNat* nd_model_native(unsigned j);
+/* S3N-6: the native model cache. The key: the 14 record words (R0 to R13) and the walker state the draw reads before the record is applied (pm_gpu.c
+ * pm_gpu_model_key). One entry per key: the combined matrix the ranges were cut with (pm_gbi.c combined), the unit 0 slot hint, and the draws (nd_mc_nat, n of them).
+ * Open hash, 1024 entries, no division. Full table (3/4) or a full draw pool: clear all (counted by nd_mc_clears). */
+#define NDMC_RW 28
+#define NDMC_SW 64
+typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; } NdMKey;
+typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; float comb[4][4]; int hs; unsigned hg; unsigned off, n; uint8_t used, tex; } NdMEnt;
+unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
+NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k, NULL when none */
+NdMEnt* nd_mc_store(const NdMKey* k, const float comb[4][4], int tex, int hs, unsigned hg); /* the draws of the last nd_model_draw (it returned >= 0) */
+NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
+unsigned nd_mc_clears(void);
+const float (*pm_gbi_combined_ptr(void))[4]; /* S3N-6 (pm_gbi.c): the walker matrix the static ranges are cut with */
+unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
+void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
 /* S3N-3d: the combine choice of one draw (pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
  * comb2_a..d, comb2_aa..ad). Out: leg (legacy mode, or 8 with plan), use and plan (general plan), cc (constant colour of mode 4), and the walker state (mode5, pat, why, cyc, dual). */
 typedef struct NdCombIn {

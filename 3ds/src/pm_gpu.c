@@ -2514,14 +2514,33 @@ void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1); 
  * walker state (the list and record values, the texture unit of the record's descriptor). emit 0: build only (ndmcheck compare). emit 1: the draws go
  * out (the switch). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. */
 static NdMode mdl_mode; static NdUnit mdl_un;
-static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok) {
+/* S3N-6: the cache key of a model record: the 14 record words and the walker state the native draw reads, before the record is applied (rec_run calls
+ * this first). The walker-sticky values come from the same globals model_draw reads (the pre-apply values; the post-apply values are a function of them). */
+extern unsigned pm_dlc_gen;
+unsigned pm_gbi_gvkey(uint32_t* o, unsigned max);
+void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
+    memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
+    uint32_t* s = k->w + NDMC_RW;
+    unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
+    float db = decal_bias(); uint32_t dbits; memcpy(&dbits, &db, 4);
+    unsigned i = 0;
+    s[i++] = nd_st.om_h; s[i++] = nd_st.om_l; s[i++] = nd_st.om_kh; s[i++] = nd_st.om_kl; s[i++] = nd_st.geom;
+    s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
+    s[i++] = nd_st.prim; s[i++] = nd_st.prim_lod; s[i++] = env_col; s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
+    s[i++] = (uint32_t)dview; s[i++] = (uint32_t)r_mix; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
+    s[i++] = (uint32_t)r_zmark; s[i++] = (uint32_t)r_decal; s[i++] = (uint32_t)r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)off_active; s[i++] = (uint32_t)ui_ortho;
+    s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
+    i += pm_gbi_gvkey(s + i, NDMC_SW - i);
+    while (i < NDMC_SW) s[i++] = 0;
+}
+static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
-    int tex = 0, i8 = 0;
+    int tex = 0, i8 = 0, hs = -1; unsigned hg = 0; /* S3N-6: the unit slot hint of the entry */
     const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
     if (gfx != NULL && ds == NULL) { nd_nat_why = 9; return -1; } /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
     if (ds) { /* S3N-3c: the unit 0 words from the descriptor (nd_tex_get, nd_tex_unit), not from the walker-bound slot */
         int id = nd_tex_get(ds);
-        if (id < 0 || !nd_tex_unit(id, &mdl_un)) { nd_nat_why = 9; return -1; }
+        if (id < 0 || !nd_tex_unit_hint(id, &hs, &hg, &mdl_un)) { nd_nat_why = 9; return -1; }
         tex = 1;
         i8 = ds->fmt == 4 && ds->siz == 1; /* G_IM_FMT_I, G_IM_SIZ_8b: the unit 0 raster is I8 */
     }
@@ -2540,13 +2559,15 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.prim = nd_st.prim; c.prim_lod = nd_st.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = nd_st.om_h; c.base_ol = nd_st.om_l; c.known_h = nd_st.om_kh; c.known_l = nd_st.om_kl; /* B8 */
-    return nd_model_draw(rec, &c, geo, emit);
+    int n = nd_model_draw(rec, &c, geo, emit);
+    if (n >= 0) nd_mc_store(mk, pm_gbi_combined_ptr(), ds != NULL, hs, hg); /* S3N-6: the draws of this key, with the matrix and the slot they were cut with */
+    return n;
 }
-void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo) {
+void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     ndm_rec = rec; ndm_live = 1; ndm_rec_ok = 1; ndm_rec_cmp = ndm_rec_diff = ndm_rec_nost = 0; ndm_nat_n = 0; ndm_j = 0; ndm_w_n = 0; ndm_geo = (unsigned)(uintptr_t)geo;
     pm_gbi_dlcc(ndm_dlc0);
     int mode_ok = 0;
-    int n = model_draw(rec, modew, combw, gfx, texidx, geo, 0, &mode_ok);
+    int n = model_draw(rec, modew, combw, gfx, texidx, geo, 0, &mode_ok, mk);
     ndm_mode_ok = mode_ok;
     if (!ndm_mode_ok && modew) { ndm_badop = mdl_mode.bad; ndm_badn++; } /* B9: the other op of a refused list, last one seen */
     if (n == -2) { ndm_rec_nost = 1; ndm_rec_ok = 0; return; }
@@ -2556,9 +2577,9 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
 static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last;
-int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo) {
+int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     int mode_ok = 0;
-    int n = model_draw(rec, modew, combw, gfx, texidx, geo, 1, &mode_ok);
+    int n = model_draw(rec, modew, combw, gfx, texidx, geo, 1, &mode_ok, mk);
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
     else ndn_fb++;
     unsigned f = pm_frame_count();

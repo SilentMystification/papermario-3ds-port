@@ -1133,6 +1133,24 @@ static void sync_combine(void) {
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) {
     *tss = ((unsigned)tex_ss << 16) | ((unsigned)tex_ts & 0xffffu); *geo = geom; *cw0 = comb_w0; *cw1 = comb_w1;
 }
+/* S3N-6: the walker matrix of the draws (the box test of the static ranges reads it) and the walker state of the gv params, the tile, vp and plan
+ * state, pre-apply values for the native model cache key (pm_gpu.c pm_gpu_model_key). Returns the count written (at most max). */
+const float (*pm_gbi_combined_ptr(void))[4] { return combined; }
+static uint32_t gvk_bits(float f) { uint32_t u; memcpy(&u, &f, 4); return u; }
+unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) {
+    uint32_t v[48]; unsigned n = 0;
+    v[n++] = envc; v[n++] = (uint32_t)comb_mode5; v[n++] = (uint32_t)plan_active; v[n++] = cur_plan.vtxname; v[n++] = cur_plan.vtx;
+    v[n++] = (uint32_t)dual_on; v[n++] = tst1.comb2_a; v[n++] = tst1.comb2_b; v[n++] = tst1.comb2_c; v[n++] = tst1.comb2_d;
+    v[n++] = (uint32_t)comb_alpha_shade; v[n++] = (uint32_t)use_t1; v[n++] = (uint32_t)tex_on; v[n++] = (uint32_t)tile_x0; v[n++] = (uint32_t)tile_y0;
+    v[n++] = gvk_bits(tile_fx); v[n++] = gvk_bits(tile_fy);
+    v[n++] = tst1.tile_shift[0][0]; v[n++] = tst1.tile_shift[0][1]; v[n++] = tst1.tile_shift[1][0]; v[n++] = tst1.tile_shift[1][1];
+    v[n++] = gvk_bits(vp_sx); v[n++] = gvk_bits(vp_sy); v[n++] = gvk_bits(vp_tx); v[n++] = gvk_bits(vp_ty);
+    v[n++] = omode_l; v[n++] = prim_z; v[n++] = (uint32_t)fog_fm; v[n++] = (uint32_t)fog_fo; v[n++] = (uint32_t)fogmix_on;
+    v[n++] = (uint32_t)img_role(0);
+    if (n > max) n = max;
+    memcpy(o, v, n * sizeof(uint32_t));
+    return n;
+}
 
 /* S3N-3d: nd_comb_decide. The combine work (sync_combine_work) on the inputs in. Every global it reads or writes is set from in and put back
  * after the call, so the walker state is the same before and after. comb_dry: no pm_gpu call, no stats, no log. */
@@ -4335,17 +4353,20 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q) {
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
 extern int pm_gpu_ndm_on(void); /* S3N-3b: switch ndmcheck */
-extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo);
+extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk);
+extern void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 */
 extern void pm_gpu_ndm_end(void);
-extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo); /* S3N-4: the switch */
+extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
 static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
+    NdMKey mk;
+    pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
     rec_apply(q);
     int ndm = pm_gpu_ndm_on();
     int nat = 0;
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
-        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0);
+        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
     else if (pm_gpu_model_native((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
-        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0) >= 0) {
+        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk) >= 0) {
         /* S3N-4: the record drew natively (nd_model_draw): no walker geometry. The native draws set the TEV and the texture unit, so the walker
          * sends its combine and render mode again at its next op (the shadows of those ops are cleared). */
         nat = 1;
