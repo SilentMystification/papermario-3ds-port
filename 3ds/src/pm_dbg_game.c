@@ -75,6 +75,42 @@ void pm_dbgg_toggle_all(int g) {
     pm_log("dbggame: toggle all %d off", g);
 }
 
+/* CH4: partners 1 to 11 (PARTNER_GOOMBARIO .. PARTNER_TWINK, include/enums.h). Index 0 is no partner. */
+static const char* const partner_names[12] = { "", "Goombario", "Kooper", "Bombette", "Parakarry", "Goompa", "Watt", "Sushie", "Lakilester", "Bow", "Goombaria", "Twink" };
+const char* pm_partner_name(int i) { return i >= 1 && i <= 11 ? partner_names[i] : "?"; }
+/* the value of a partner row: Off, or its level (0 Normal, 1 Super, 2 Ultra) */
+const char* pm_partner_value(int i) {
+    static const char* const lv[3] = { "Normal", "Super", "Ultra" };
+    PlayerData* p = &gPlayerData;
+    int l = p->partners[i].level;
+    if (!p->partners[i].enabled) return "Off";
+    return lv[l < 0 ? 0 : l > 2 ? 2 : l];
+}
+int pm_dbgg_partner_on(int i) { return gPlayerData.partners[i].enabled != 0; }
+/* CH4: on or off. Off on the current partner moves curPartner to the next enabled partner, or PARTNER_NONE. The world partner entity is not switched
+ * here (switch_to_partner is dead code in this port, dead.h): the new partner shows at the next partner switch of the game. */
+void pm_dbgg_partner_set(int i, int on) {
+    PlayerData* p = &gPlayerData;
+    int j;
+    p->partners[i].enabled = on ? 1 : 0;
+    if (on && p->curPartner == 0) p->curPartner = (s8)i;
+    if (!on && p->curPartner == i) {
+        p->curPartner = PARTNER_NONE;
+        for (j = 1; j < 12; j++) if (j != i && p->partners[j].enabled) { p->curPartner = (s8)j; break; }
+    }
+    pm_log("dbggame: partner %d %s, current now %d", i, on ? "on" : "off", p->curPartner);
+}
+/* CH4: left or right steps the level of an enabled partner (wrap). Returns 1 when the row changed. */
+int pm_dbgg_partner_level(int i, int dir) {
+    PlayerData* p = &gPlayerData;
+    int l;
+    if (!p->partners[i].enabled) return 0;
+    l = ((p->partners[i].level + dir) % 3 + 3) % 3;
+    p->partners[i].level = (s8)l;
+    pm_log("dbggame: partner %d level %d", i, l);
+    return 1;
+}
+
 /* owned and total of a group: 0 partners, 1 badges, 2 key items */
 void pm_dbgg_count(int g, int* have, int* total) {
     int i, h = 0, t = 0;

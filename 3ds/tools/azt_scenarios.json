@@ -1890,6 +1890,42 @@
       "reason": "LAYOUT gate (one start) with the skip-6 gate: the shots of the Debug tab, each folder (one of each), the Cheats tab are the picture check. Until is the first shot on row 8 (after the skip)."
     },
     {
+      "name": "menu_partners",
+      "status": "verified",
+      "subject": "Select menu, Cheats tab (L), row 4 Partners > (A), Enable partners (A, all on), one down to Goombario, A (off), one down. The bottom shot on row 2 shows the Partners folder with the partner row toggled.",
+      "proves": "CH4: Partners folder (sub kind 6), Enable all, one partner row off (pm_dbgg_partner_set, curPartner moved when the current partner is turned off).",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,L,wait20,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,A,wait20,A,wait20,ddown,wait10,A,wait20,ddown,wait30 shotmenu loglevel=debug",
+      "until": "menu: shot [A-Za-z0-9_]+ tab 4 row 2",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "partners folder",
+          "regex": "menu: page push 4 depth 1"
+        },
+        {
+          "name": "enable all",
+          "regex": "dbggame: give 0 -> owned "
+        },
+        {
+          "name": "partner off",
+          "regex": "dbggame: partner [0-9]+ off, current now [0-9]+"
+        },
+        {
+          "name": "folder shot",
+          "regex": "menu: shot bot_m[0-9]+ tab 4 row 2"
+        }
+      ],
+      "reason": "CH4 gate (menu part): one partner row Off, the current partner moved (log). The world partner entity is not switched in this port (dead switch_to_partner), so the top-shot check of the new partner beside Mario is a named gap."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",
