@@ -276,9 +276,11 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
 /* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
+int pm_dbgg_spawn_count(void); int pm_dbgg_spawn_id(int row); void pm_dbgg_spawn(int id);
 const char* pm_partner_name(int i); const char* pm_partner_value(int i); int pm_dbgg_partner_on(int i); void pm_dbgg_partner_set(int i, int on); int pm_dbgg_partner_level(int i, int dir);
+int pm_dbgg_level_over(void); int pm_dbgg_level_calc(void);
 int pm_dbgg_item_count(int g); int pm_dbgg_item_id(int g, int row); int pm_dbgg_item_has(int g, int id); void pm_dbgg_item_set(int g, int id, int on); void pm_dbgg_toggle_all(int g); const char* pm_item_name(int id);
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
@@ -304,6 +306,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_CBADGES; /* CH2: Badges folder */
         ids[n++] = RW_CKEYS; /* CH3: Key items folder */
         ids[n++] = RW_PARTF; /* LAYOUT: Partners folder (Enable partners, CH4 rows) */
+        ids[n++] = RW_SPAWNF; /* CH5: Spawn item folder */
     }
     ids[n++] = RW_BACK;
     return n;
@@ -319,13 +322,17 @@ static const int fl_render[] = { RW_DBG + 2, RW_DBG + 3, RW_DBG + 7 };
 static const int fl_game[] = { RW_DBG + 6 };
 static const int* const fl_ids[6] = { fl_bossbat, fl_partners, fl_hud, fl_log, fl_render, fl_game };
 static const int fl_n[6] = { 1, 12, 4, 4, 3, 1 };
-static const char* const fl_name[11] = { "", "", "", "", "", "Boss and Battles", "Partners", "HUD", "Logging and Profiling", "Render", "Game" };
+static const char* const fl_name[12] = { "", "", "", "", "", "Boss and Battles", "Partners", "HUD", "Logging and Profiling", "Render", "Game", "Spawn item" };
 static const struct { int id, kind; const char* name; } fold_tab[] = {
     { RW_BOSSBAT, 5, "Boss and Battles >" }, { RW_PARTF, 6, "Partners >" }, { RW_HUDF, 7, "HUD >" },
-    { RW_LOGF, 8, "Logging and Profiling >" }, { RW_RENDERF, 9, "Render >" }, { RW_GAMEF, 10, "Game >" } };
+    { RW_LOGF, 8, "Logging and Profiling >" }, { RW_RENDERF, 9, "Render >" }, { RW_GAMEF, 10, "Game >" }, { RW_SPAWNF, 11, "Spawn item >" } };
 static int fold_index(int id) { for (unsigned k = 0; k < sizeof fold_tab / sizeof fold_tab[0]; k++) if (fold_tab[k].id == id) return (int)k; return -1; }
 static const int setstat_k[5] = { 0, 1, 2, 3, 5 }; /* Max HP, Max FP, BP, Level, Star points (Coins is a Cheats tab row) */
 int pm_optui_sub_kind(void) { return sub_kind; }
+/* Set Stats: the Level row (setstat_k 3) is read only, the cursor skips it */
+int pm_optui_readonly(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < 5 && setstat_k[row] == 3; }
+/* Set Stats: HP, FP, BP and Level draw in red when the computed level is above 27 */
+int pm_optui_red(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < 4 && pm_dbgg_level_over(); }
 /* MN6: the Warp area folder opens on a warning page (B warps on, any other key backs out). MN6 rest: the folder has two levels. Level 1 lists
  * the presets and the areas; A on an area opens its page (level 2, sub_area = area index): one row per map, < > moves the entry, A warps.
  * The last area row and the last map row of the warp memory are kept in RAM (not saved), entering again restores them and logs it. */
@@ -384,6 +391,7 @@ static int folder_row(int id, int* g) {
 }
 static int row_id(int tab, int row, int mode) {
     int ids[48], n;
+    if (tab == PM_OPT_SUB && sub_kind == 11) return RW_SPAWN + row; /* CH5 */
     if (tab == PM_OPT_SUB && sub_kind >= 5) return row >= 0 && row < fl_n[sub_kind - 5] ? fl_ids[sub_kind - 5][row] : RW_BACK;
     if (tab == PM_OPT_SUB && sub_kind == 2) return RW_STAT + setstat_k[row];
     if (tab == PM_OPT_SUB && sub_kind == 3) return RW_BADGE + row;
@@ -399,7 +407,7 @@ int pm_optui_alert(int tab, int row, int mode) { int id = row_id(tab, row, mode)
 int pm_optui_rows(int tab, int mode) {
     int ids[48];
     if (tab == PM_OPT_SUB && warp_warn) return 2;
-    if (tab == PM_OPT_SUB) return sub_kind >= 5 ? fl_n[sub_kind - 5] : sub_kind >= 3 ? 1 + pm_dbgg_item_count(sub_kind == 3 ? 1 : 2) : sub_kind == 2 ? 5 : sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_preset_count() + pm_warp_area_count();
+    if (tab == PM_OPT_SUB) return sub_kind == 11 ? pm_dbgg_spawn_count() : sub_kind >= 5 ? fl_n[sub_kind - 5] : sub_kind >= 3 ? 1 + pm_dbgg_item_count(sub_kind == 3 ? 1 : 2) : sub_kind == 2 ? 5 : sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_preset_count() + pm_warp_area_count();
     return tab_ids(tab, mode, ids);
 }
 const char* pm_optui_label(int tab, int row, int mode) {
@@ -411,6 +419,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id == RW_CKEYS) return "Key items >";
     if (fold_index(id) >= 0) return fold_tab[fold_index(id)].name;
     if (id > RW_PART && id <= RW_PART + 11) return pm_partner_name(id - RW_PART); /* CH4 */
+    if (id >= RW_SPAWN && id < RW_SPAWN + 200) return pm_item_name(pm_dbgg_spawn_id(id - RW_SPAWN)); /* CH5 */
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "Toggle all" : pm_item_name(pm_dbgg_item_id(g, folder_row(id, &g) - 1));
     if (id >= RW_WMAP) return pm_warp_map_name(pm_warp_area_map(sub_area, id - RW_WMAP));
     if (id >= RW_SUB) { int r = id - RW_SUB, P = pm_warp_preset_count(); return r < P ? pm_warp_preset_name(r) : pm_warp_area_name(r - P); }
@@ -443,6 +452,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
     id = row_id(tab, row, mode);
     if (id == RW_CSTATS || id == RW_CBADGES || id == RW_CKEYS || fold_index(id) >= 0) return "A: open";
     if (id > RW_PART && id <= RW_PART + 11) return pm_partner_value(id - RW_PART); /* CH4 */
+    if (id >= RW_SPAWN && id < RW_SPAWN + 200) return "A: spawn"; /* CH5 */
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "A: all" : pm_dbgg_item_has(g, pm_dbgg_item_id(g, folder_row(id, &g) - 1)) ? "On" : "Off";
     if (id >= RW_WMAP) { /* a map row shows its entry and the entry count */
         static char eb[16];
@@ -480,6 +490,7 @@ int pm_optui_act(int tab, int row, int mode);
 /* PT01c: left (dir < 0) or right (dir > 0) on a row. A prefix row with more than one map walks its members with wrap. */
 int pm_optui_step(int tab, int row, int dir, int mode) {
     int id = row_id(tab, row, mode), g;
+    if (id >= RW_SPAWN && id < RW_SPAWN + 200) return 0; /* CH5: one A spawns one item */
     if (id > RW_PART && id <= RW_PART + 11) return pm_dbgg_partner_level(id - RW_PART, dir); /* CH4: left and right change the level of an enabled partner */
     if (id == RW_CSTATS || id == RW_CBADGES || id == RW_CKEYS || fold_index(id) >= 0 || folder_row(id, &g) >= 0) return 0;
     if (id == RW_FPS || id == RW_WIDE || id == RW_DPAD || (id >= RW_MAP && id < RW_MAP + PM_NIN) || (id >= RW_DBG && id < RW_DBG + 11)) { /* LAYOUT: left or right flips or cycles a value row like A */
@@ -492,6 +503,7 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
         return 1;
     }
     if (id == RW_PROF) { prof_set((prof_row + (dir > 0 ? 1 : 2)) % 3); return 1; } /* PROFROW: left and right cycle off, prof, phase */
+    if (id == RW_STAT + 3) return 0; /* Level: read only (computed from the stats) */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, dir); return 1; } /* PT67c: live, not saved */
     if (id >= RW_DZPAD && id <= RW_RRATE) { /* PT61, PT60: a number row. Left and right step it, A steps up and wraps. */
         static const struct { int lo, hi, st; } rg[4] = { { 0, 50, 5 }, { 0, 50, 5 }, { 200, 1000, 100 }, { 50, 500, 50 } };
@@ -517,6 +529,7 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id == RW_CSTATS) { sub_kind = 2; sub_area = -1; return 6; } /* CH1: the Set Stats folder */
     if (id == RW_CBADGES) { sub_kind = 3; sub_area = -1; return 6; } /* CH2: the Badges folder */
     if (id == RW_CKEYS) { sub_kind = 4; sub_area = -1; return 6; } /* CH3: the Key items folder */
+    if (id >= RW_SPAWN && id < RW_SPAWN + 200) { pm_dbgg_spawn(pm_dbgg_spawn_id(id - RW_SPAWN)); return 0; } /* CH5 */
     if (id > RW_PART && id <= RW_PART + 11) { /* CH4: A turns the partner on or off */
         pm_dbgg_partner_set(id - RW_PART, !pm_dbgg_partner_on(id - RW_PART));
         return 0;
@@ -546,6 +559,7 @@ int pm_optui_act(int tab, int row, int mode) {
     }
     if (id == RW_PROF) { prof_set((prof_row + 1) % 3); return 0; } /* PROFROW: A cycles */
     if (id >= RW_BOSS) return pm_boss_launch(id - RW_BOSS) ? 5 : 0; /* 5: started, the menu closes */
+    if (id == RW_STAT + 3) return 0; /* Level: read only */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, 1); return 0; }
     if (id >= RW_GIVE) { pm_dbgg_give(id - RW_GIVE); pm_log("options: debug give %d", id - RW_GIVE); return 0; }
     if (id >= RW_DBG) { pm_options_flip(id == RW_DBG + 9 ? 11 : id - RW_DBG + 2); return 0; } /* RW_DBG + 9 is Console level, option row 11 */

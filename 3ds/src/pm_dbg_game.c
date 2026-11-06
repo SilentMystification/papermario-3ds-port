@@ -7,7 +7,18 @@
 #include "game_modes.h"
 
 enum { PM_DBG_MAXHP, PM_DBG_MAXFP, PM_DBG_BP, PM_DBG_LEVEL, PM_DBG_COINS, PM_DBG_SP, PM_DBG_NSTAT };
-static const struct { int lo, hi, st; } rg[PM_DBG_NSTAT] = { { 5, 75, 5 }, { 0, 75, 5 }, { 0, 30, 1 }, { 1, 27, 1 }, { 0, 999, 10 }, { 0, 99, 1 } };
+static const struct { int lo, hi, st; } rg[PM_DBG_NSTAT] = { { 10, 75, 5 }, { 5, 75, 5 }, { 3, 30, 3 }, { 1, 27, 1 }, { 0, 999, 10 }, { 0, 99, 1 } }; /* Set Stats steps: HP 5, FP 5, BP 3 (level-up gains) */
+/* Level (read only) from the stats: each level-up gives +5 Max HP, +5 Max FP or +3 BP from the level 1 base 10, 5, 3. */
+int pm_dbgg_level_calc(void) {
+    PlayerData* p = &gPlayerData;
+    return 1 + (p->hardMaxHP - 10) / 5 + (p->hardMaxFP - 5) / 5 + (p->maxBP - 3) / 3;
+}
+/* the written game level is the computed one, capped at the game maximum 27 */
+static void level_sync(void) {
+    int l = pm_dbgg_level_calc();
+    gPlayerData.level = (s16)(l < 1 ? 1 : l > 27 ? 27 : l);
+}
+int pm_dbgg_level_over(void) { return pm_dbgg_level_calc() > 27; }
 
 /* PT73: the flag alone also matches entries outside the real ranges (one flagged entry sits before ITEM_FIRST_BADGE, it sorts first and the pause badge list
  * stops at it). The pause menus read only IS_BADGE ids (ITEM_FIRST_BADGE to ITEM_LAST_BADGE) and key items ITEM_FIRST_KEY to ITEM_LAST_KEY. */
@@ -120,6 +131,29 @@ int pm_dbgg_partner_level(int i, int dir) {
     return 1;
 }
 
+/* CH5: Spawn item. The rows are the consumables with a name (ITEM_FIRST_CONSUMABLE .. ITEM_LAST_CONSUMABLE). One A spawns one item over Mario
+ * (plan answer Q2, row_MENU.md). The entity is made in the frozen menu; the game moves it at the resume. World mode only. */
+int pm_dbgg_spawn_count(void) {
+    int i, n = 0;
+    for (i = ITEM_FIRST_CONSUMABLE; i <= ITEM_LAST_CONSUMABLE; i++) if (gItemTable[i].nameMsg != 0) n++;
+    return n;
+}
+int pm_dbgg_spawn_id(int row) {
+    int i, n = 0;
+    for (i = ITEM_FIRST_CONSUMABLE; i <= ITEM_LAST_CONSUMABLE; i++) {
+        if (gItemTable[i].nameMsg == 0) continue;
+        if (n++ == row) return i;
+    }
+    return ITEM_NONE;
+}
+void pm_menu_msg(const char* fmt, ...);
+void pm_dbgg_spawn(int id) {
+    PlayerStatus* ps = &gPlayerStatus;
+    if (get_game_mode() != GAME_MODE_WORLD) { pm_menu_msg("Spawn item needs the world"); return; }
+    make_item_entity_nodelay(id, ps->pos.x, ps->pos.y + 40.0f, ps->pos.z, ITEM_SPAWN_MODE_FALL_NEVER_VANISH, 0);
+    pm_log("dbggame: spawn item 0x%03X at %.1f %.1f %.1f", id, ps->pos.x, ps->pos.y + 40.0f, ps->pos.z);
+}
+
 /* owned and total of a group: 0 partners, 1 badges, 2 key items */
 void pm_dbgg_count(int g, int* have, int* total) {
     int i, h = 0, t = 0;
@@ -164,7 +198,7 @@ int pm_dbgg_stat_get(int k) {
         case PM_DBG_MAXHP: return p->hardMaxHP;
         case PM_DBG_MAXFP: return p->hardMaxFP;
         case PM_DBG_BP: return p->maxBP;
-        case PM_DBG_LEVEL: return p->level;
+        case PM_DBG_LEVEL: return pm_dbgg_level_calc(); /* read only: computed from the stats */
         case PM_DBG_COINS: return p->coins;
         default: return p->starPoints;
     }
@@ -186,5 +220,6 @@ void pm_dbgg_stat_step(int k, int dir) {
         case PM_DBG_COINS: p->coins = v; break;
         default: p->starPoints = v; break;
     }
+    if (k <= PM_DBG_BP) level_sync(); /* a stat row changed: the game level follows */
     pm_log("dbggame: stat %d = %d", k, pm_dbgg_stat_get(k));
 }

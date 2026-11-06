@@ -34,6 +34,7 @@ static PmRepeat rep_y, rep_x;
 static const char* const tab_name[PM_OPT_SUB + 1] = { "General", "Controls", "Debug", "Cheats", "Warp area" }; /* Boss is a folder under Debug (MN4) */
 const char* pm_optui_sub_name(void);
 int pm_optui_sub_kind(void);
+int pm_optui_red(int tab, int row);
 
 /* PT75, PT76, PT77: the 30 rows of the bottom screen, from the top: row 0 tab line, rows 1 to VIS the options, 2 empty rows, the controls line,
  * 3 empty rows, then the 2 row feedback area (rows 28 and 29). Every error of the menu goes through pm_menu_msg. */
@@ -51,10 +52,11 @@ static void draw(void) {
         const char* v = pm_optui_value(tab, r, MODE);
         /* MN3: the armed row (second A runs it): label bright blue, value "Press A again" bright red (ANSI, bottom console) */
         if (pm_optui_alert(tab, r, MODE)) n += snprintf(out + n, sizeof out - (size_t)n, "%c \x1b[1;34m%-22s\x1b[1;31m%s\x1b[0m" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
+        else if (pm_optui_red(tab, r) && v) n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s \x1b[31m%s\x1b[0m" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v); /* CH4 Set Stats: level over 27, pure red */
         else n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : pm_optui_sub_kind() == 2 ? "< > change  A: +1  B: back" : pm_optui_sub_kind() == 3 || pm_optui_sub_kind() == 4 ? "A: on or off  B: back" : pm_optui_sub_kind() == 5 ? "A: open  B: back" : pm_optui_sub_kind() >= 6 ? "< > A: change  B: back" : pm_optui_sub_kind() == 1 ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : pm_optui_sub_kind() == 2 ? "< > change  A: +1  B: back" : pm_optui_sub_kind() == 3 || pm_optui_sub_kind() == 4 ? "A: on or off  B: back" : pm_optui_sub_kind() == 5 ? "A: open  B: back" : pm_optui_sub_kind() == 11 ? "A: spawn one  B: back" : pm_optui_sub_kind() >= 6 ? "< > A: change  B: back" : pm_optui_sub_kind() == 1 ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
     if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
@@ -100,11 +102,14 @@ void pm_menu_set(int on) {
 }
 
 /* PT60: direction from the D-pad or the circle pad, called every pad scan (60 Hz) while the menu is open. Same hold repeat as the Options panel. */
+int pm_optui_readonly(int tab, int row); int pm_optui_red(int tab, int row);
 void pm_menu_hold(int dx, int dy) {
     int rows = pm_optui_rows(tab, MODE), ch = 0;
     if (pm_repeat(&rep_y, dy, 60)) {
+        int from = sel[tab], guard = 0;
         pm_optui_disarm();
-        sel[tab] = (sel[tab] + (dy > 0 ? 1 : rows - 1)) % rows;
+        do { sel[tab] = (sel[tab] + (dy > 0 ? 1 : rows - 1)) % rows; } while (pm_optui_readonly(tab, sel[tab]) && ++guard < rows); /* the read only row is skipped */
+        if (sel[tab] != from && pm_optui_readonly(tab, (from + (dy > 0 ? 1 : rows - 1)) % rows)) pm_log("menu: readonly row skipped, %d -> %d", from, sel[tab]);
         ch = 1;
     }
     if (pm_repeat(&rep_x, dx, 60)) {
