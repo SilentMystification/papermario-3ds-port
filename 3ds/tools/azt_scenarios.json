@@ -1786,6 +1786,38 @@
       "reason": "CH2 gate: Badges folder, Toggle all, one badge Off. Until is the first menu shot on row 2 (after the Off). The unequip branch (equipped badge) is not run here: the test save has no equipped badge (named gap in agent_menu.md)."
     },
     {
+      "name": "menu_keys",
+      "status": "verified",
+      "subject": "Select menu, Cheats tab (L), row 3 Key items >, A (folder), one down to the first key item, A (toggle), one down. The bottom shot on row 2 shows the Key items folder with the first key item row toggled.",
+      "proves": "CH3: Key items folder (sub kind 4, group 2), one key item row toggled (pm_dbgg_item_set on or off, list closes the hole).",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,L,wait20,ddown,wait10,ddown,wait10,ddown,wait10,A,wait20,ddown,wait10,A,wait20,ddown,wait30 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 4 row 2",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "keys folder",
+          "regex": "menu: page push 4 depth 1"
+        },
+        {
+          "name": "key on",
+          "regex": "dbggame: key \\d+ on"
+        },
+        {
+          "name": "folder shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 2"
+        }
+      ],
+      "reason": "CH3 gate: Key items folder, one key item On. Until is the first menu shot on row 2 (after the toggle), so the picture shows the row value."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",
