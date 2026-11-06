@@ -85,15 +85,33 @@ function Exit-Slot([int]$k) {
     if ($script:SlotMutex.ContainsKey($k)) { try { $script:SlotMutex[$k].ReleaseMutex() } catch {} }
 }
 
-function Get-Slot([int]$want, [int]$waitSec) {
-    # $want > 0 takes that slot. 0 takes the first free slot, a slot with a kept Azahar first. Waits only when all slots are busy. Returns the slot number, 0 on timeout.
+function Get-WarmState([int]$k, [string]$x3dsx, [bool]$turbo, [int]$turbolimit) {
+    # AZT2: can a run of this lane and turbo setting restart in slot k? Returns "warm" or the reason it cannot:
+    # "no kept" (no Azahar kept in the slot), "closed" (keep.json, but its Azahar is gone), "other lane" (kept Azahar runs another 3dsx), "turbo" (other turbo setting).
+    $kept = Get-KeptAzahar $k
+    $info = Get-KeepInfo $k
+    if (-not $kept) { if ($info) { return "closed" } else { return "no kept" } }
+    if (-not $info -or [int]$info.pid -ne $kept.Id) { return "no kept" }
+    if ([string]$info.x3dsx -ne $x3dsx) { return "other lane" }
+    if ([bool]$info.turbo -ne $turbo -or [int]$info.turbolimit -ne $turbolimit) { return "turbo" }
+    return "warm"
+}
+
+function Get-Slot([int]$want, [int]$waitSec, [string]$x3dsx = "", [bool]$turbo = $false, [int]$turbolimit = 0) {
+    # $want > 0 takes that slot. 0 takes the first free slot in this order (AZT2 affinity):
+    #   1. a free slot whose kept Azahar restarts this run (same x3dsx, turbo setting): warm
+    #   2. a free slot with no kept Azahar (cold start, no other lane is disturbed)
+    #   3. any other free slot (its kept Azahar belongs to another lane or turbo setting)
+    # Waits only when all slots are busy. Returns the slot number, 0 on timeout.
     $n = Get-SlotCount
     $t0 = Get-Date
     $said = $false
     while ($true) {
         $order = @(if ($want -gt 0) { $want } else {
-            $kept = @(1..$n | Where-Object { Get-KeptAzahar $_ })
-            $kept + @(1..$n | Where-Object { $kept -notcontains $_ })
+            $all = @(1..$n)
+            $warmK = @($all | Where-Object { $x3dsx -and (Get-WarmState $_ $x3dsx $turbo $turbolimit) -eq "warm" })
+            $freeK = @($all | Where-Object { $warmK -notcontains $_ -and -not (Get-KeptAzahar $_) })
+            $warmK + $freeK + @($all | Where-Object { $warmK -notcontains $_ -and $freeK -notcontains $_ })
         })
         foreach ($k in $order) { if (Enter-Slot $k 0) { return $k } }
         if (-not $said) { Write-Host $(if ($want -gt 0) { "Azahar slot $want is busy." } else { "All $n Azahar slots are busy." }) "Waiting up to $waitSec s..."; $said = $true }

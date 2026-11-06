@@ -198,7 +198,7 @@ $p = $null
 $gdbProc = $null
 if ($env:PM_SLOT_HELD -and $Slot -gt 0) { $slotK = $Slot }
 else {
-    $slotK = Get-Slot $Slot $LockWait
+    $slotK = Get-Slot $Slot $LockWait $x3dsx $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 })
     if (-not $slotK) { End-Run 3 "LOCK TIMEOUT: no free Azahar slot after $LockWait s. Nothing was run." }
     $heldHere = $true
     Write-Output "Azahar slot $slotK taken."

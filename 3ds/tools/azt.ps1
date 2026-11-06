@@ -345,7 +345,11 @@ if ($speed -eq "turbo") {
 foreach ($a in $argv) { if ($a -match '"') { Write-Output "ARG: a value has a double quote, not allowed: $a"; exit 5 } }
 if (-not (Test-Path (Join-Path $outDir "pm_3ds.3dsx"))) { Write-Output "BUILD: $outDir\pm_3ds.3dsx is missing. Build first. Nothing was run."; exit 5 }
 # AZT-1: take a slot (waits only when all are busy). run_azahar.ps1 gets -Slot with PM_SLOT_HELD=1 and does not take it again.
-$slotK = Get-Slot 0 900
+# AZT2: the slot with a kept Azahar of this lane 3dsx and turbo setting first (warm start), see azslot.ps1
+$azX3 = if ($lane) { "pm_3ds_$lane.3dsx" } else { "pm_3ds.3dsx" }
+$azTurbo = ($speed -eq "turbo")
+$azTL = if ($azTurbo) { [int]$frameLimit } else { 0 }
+$slotK = Get-Slot 0 900 $azX3 $azTurbo $azTL
 if (-not $slotK) { Write-Output "LOCK TIMEOUT: no free Azahar slot after 900 s. Nothing was run."; exit 3 }
 $slotInfo = Ensure-Slot $slotK
 $sd = $slotInfo.sd; $logPath = Join-Path $sd "log.txt"; $pidFile = $slotInfo.pidFile
