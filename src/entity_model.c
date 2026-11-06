@@ -248,7 +248,7 @@ void make_entity_model_mtx_flipZ(Matrix4f mtx) {
 extern int pm_debug_has(const char* key);
 extern unsigned pm_frame_count(void);
 extern void pm_log_prof_line(const char* fmt, ...);
-static unsigned ent_recs_n, ent_eq_n, ent_diff_n, ent_next = 300u, ent_dfc[5];
+static unsigned ent_recs_n, ent_eq_n, ent_diff_n, ent_next = 300u, ent_dfc[5], ent_cls[7];
 static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
     static int on = -1;
     Gfx e[2];
@@ -268,11 +268,33 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
     if (!mtxOk) df = 1; else if (!segOk) df = 2; else if (!dlOk) df = 3; else if (!rmOk) df = 4;
     ent_recs_n++;
     if (df) { ent_diff_n++; ent_dfc[df]++; } else ent_eq_n++;
+    { /* S6-2 census (diagnostic): why the draw cannot be native yet. Priority: vertex segment, fog, reflect, texture op, nested list, other op, static. */
+        const Gfx* q = model->gfx.displayList;
+        unsigned dlm = 0, cls = 0;
+        for (int k = 0; q != nullptr && k < 2048; k++) {
+            const u32 op = q[k].words.w0 >> 24;
+            if (op == (u32)G_ENDDL) break;
+            if (op == (u32)G_DL) dlm |= 2u;
+            else if (op == (u32)G_SETTIMG || op == (u32)G_LOADBLOCK || op == (u32)G_LOADTLUT || op == (u32)G_SETTILE || op == (u32)G_SETTILESIZE ||
+                     op == (u32)G_LOADTILE || op == (u32)G_TEXTURE) dlm |= 1u;
+            else if (!(op == (u32)G_VTX || op == (u32)G_TRI1 || op == (u32)G_TRI2 || op == (u32)G_GEOMETRYMODE || op == (u32)G_NOOP || op == (u32)G_SETCOMBINE ||
+                       op == (u32)G_SETOTHERMODE_H || op == (u32)G_RDPPIPESYNC || op == (u32)G_RDPTILESYNC || op == (u32)G_RDPLOADSYNC || op == (u32)G_RDPFULLSYNC || op == (u32)G_MOVEWORD))
+                dlm |= 4u;
+        }
+        if (model->vertexArray != nullptr) cls = 1;
+        else if (rec[0].words.w0 & 1u) cls = 2;
+        else if (model->flags & ENTITY_MODEL_FLAG_REFLECT) cls = 3;
+        else if (dlm & 1u) cls = 4;
+        else if (dlm & 2u) cls = 5;
+        else if (dlm & 4u) cls = 6;
+        ent_cls[cls]++;
+    }
     f = pm_frame_count();
     if (f >= ent_next) {
         ent_next = (f / 300u + 1u) * 300u;
         pm_log_prof_line("entcheck f%u recs %u eq %u diff %u dfield %u", f, ent_recs_n, ent_eq_n, ent_diff_n, df);
         pm_log_prof_line("entdf f%u by field: 1 %u 2 %u 3 %u 4 %u", f, ent_dfc[1], ent_dfc[2], ent_dfc[3], ent_dfc[4]);
+        pm_log_prof_line("entcls f%u static %u vtxseg %u fog %u reflect %u tex %u nested %u other %u", f, ent_cls[0], ent_cls[1], ent_cls[2], ent_cls[3], ent_cls[4], ent_cls[5], ent_cls[6]);
     }
 }
 #endif
