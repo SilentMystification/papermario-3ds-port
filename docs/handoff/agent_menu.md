@@ -135,3 +135,29 @@ STATE (MENU3, branch nds1)
 - Row 1 PASS (ed3ebdf82). Row 2 FAILED then superseded by camera fix (b56459102, 8f65f970f).
 - Camera fix PASS by eye (8f65f970f). Spot default iwa_10:1 (7ffba7623).
 - Row 3 MN2 and epic B: open. Next: MN2 grey probe (after-present grey, citro3d buffer order), then MN3b, MN4, MN5, MN6, MN7.
+
+## 10. MENU3 epic B (rows MN2, MN3b, MN4, MN5, MN6 part, MN7), results
+
+Design answers taken as plan default (no question asked): Q1 Close game = chainload to the HOME Menu (region title id 0004001000021000 + 0x100 per region, USA for other regions); Q3 breadcrumb on the tab line (blank line kept); Q4 file select mirrors the folder pages (no Boss, no cheats); Q2, Q5, Q6 not built (rows of MENU-C and MENU-D).
+
+| Row | Result | Commit | Gate | Starts |
+|---|---|---|---|---|
+| MN2 grey top | PASS by eye | f0d537096 | menu_grey: top_grey0000 every pixel r = g = b (checked 400 x 240 with PIL, 0 non-grey samples), Toad Town visible | 1 (probe and gate in one start) |
+| MN3b Close game | PASS (shot and log) | 7f41d6e1c | menu_close: armed row blue, Press A again red (bot_m0004); log: close path, chainload 0004001000021000 region 0, process end | 1 |
+| MN4 folders | PASS (shot and log) | d6c750d4b | menu_folder: push log (page push 4 depth 1), shot tab 4 row 0 shows `Debug > Boss` and the boss rows, B pop | 2 valid (1 with no padscript file, 1 with) |
+| MN5 file select mirror | PASS (shot and log) | 24e488671 | fs_folder: panel open (options: tab 2), page push 4, top shot shows `Debug > Warp area` and the warp rows | 1 (route found by this run: SELECT on file select, pad works there) |
+| MN6 warp submenu, part | PASS (shot and log) for the warning and memory; NOT DONE for the map rows | 0da22de10 | menu_warp: warning, pop, restore log `menu: warp sub restore area -1 row 3`, shot bot_m0030 cursor on row 3 | 2 (1 with restore skipped presets, fixed) |
+| MN7 position log | PASS (log) | 85604c04c | poslog_yard: `pos: kmr_20 area 0 map 11 entry 4 x 594.000 y 30.000 z -216.000 yaw 180.0` once per press | 1 |
+
+Named gaps (not done, not dropped):
+- MN6: map rows per area, entry shown and moved (left/right), A warps to the chosen entry, area name table. Current warp folder: presets then prefix rows with member walk (left/right), A warps to entry 0.
+- MN7: the Debug row "Position log combo" (switch poslog only). Also the L+R+Y+B line is pm_log_w (warn level).
+- MN2: grey pass is run at the pause and after each menu present (gspWaitForPPF, then gfxGetFramebuffer(GFX_TOP) back buffer, luma, GSPGPU_FlushDataCache, gfxScreenSwapBuffers). The order was confirmed by the shot (grey shown), not by a timing probe.
+- MN3 blank line under the tab line: not seen in the menu_close shot (bot_m0004 has no blank row). Not re-checked here.
+
+Shared-tree note: another agent's working copy had invalid JSON escapes (`\d` in entcheck_mac01 and battle_start_sprcheck) in 3ds/tools/azt_scenarios.json and bench_defs.json. azt.ps1 and bench.py refuse to run until fixed. Not touched by MENU3.
+
+STATE (MENU3, branch nds1, after epic B)
+- Row 1 ENTRY TEST: PASS (ed3ebdf82). Row 2 WAIT: gate failed, edit discarded (b56459102). Camera fix: PASS (8f65f970f). Spot: iwa_10:1 at -662:0:587, then moved to -586:1:530 (5159bece7).
+- MN2, MN3b, MN4, MN5, MN7: PASS. MN6: part (warning, memory), map rows and entries open.
+- Epic B hand back: after MN7 (this section).
