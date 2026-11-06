@@ -355,7 +355,8 @@ static void pf_scene_note(void) {
 static void pf_where(char* o, unsigned n) {
     const char* nm = "?"; int story = 0, btl = 0, en = 0; float pos[3] = { 0.f, 0.f, 0.f };
     if (cur_area >= 0 && cur_map >= 0) pm_prof_where(&nm, &story, &btl, &en, pos);
-    snprintf(o, n, " at %s %d:%d m%d sp%d b%d e%d chg%d pos0 %.0f %.0f %.0f pos %.0f %.0f %.0f", nm, cur_area, cur_map, cur_mode, story, btl, en, pf_chg, pf_pos0[0], pf_pos0[1], pf_pos0[2], pos[0], pos[1], pos[2]);
+    extern int pm_wide; int pm_gpu_stereo_flag(void); /* disp: the display mode at print time (read only) */
+    snprintf(o, n, " at %s %d:%d m%d sp%d b%d e%d chg%d pos0 %.0f %.0f %.0f pos %.0f %.0f %.0f disp w%d s%d f%d", nm, cur_area, cur_map, cur_mode, story, btl, en, pf_chg, pf_pos0[0], pf_pos0[1], pf_pos0[2], pos[0], pos[1], pos[2], pm_wide, pm_gpu_stereo_flag(), pm_interp_on > 0 ? 60 : 30);
 }
 static void pf_report(void) {
     char wh[160];

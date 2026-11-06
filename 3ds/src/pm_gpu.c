@@ -1860,6 +1860,7 @@ void pm_gpu_off_end(void) {
 
 /* STEREO: one task of the frame runs once per eye (pm_nusys.c gbi_task). A mono frame (3D slider at 0) has one pass with pm_eye_e = 0. */
 int pm_gpu_stereo(void) { pm_gpu_begin_wait(); return stereo_frame; }
+int pm_gpu_stereo_flag(void) { return stereo_frame; } /* read only (the prof line): pm_gpu_stereo waits and changes draw state */
 void pm_gpu_eye(int right) {
     if (!stereo_frame || !gpu_ok) return;
     flush();
