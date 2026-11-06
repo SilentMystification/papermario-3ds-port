@@ -439,7 +439,7 @@ int pm_optui_act(int tab, int row, int mode) {
             armed_id = 0;
             return 4;
         case RW_EXIT:
-            if (armed_id != RW_EXIT) { armed_id = RW_EXIT; return 0; }
+            if (armed_id != RW_EXIT) { armed_id = RW_EXIT; pm_log("menu: exit armed, press A again"); return 0; }
             armed_id = 0;
             return 3;
         case RW_WARPAREA: return 6; /* the menu opens the submenu (PM_OPT_SUB) */

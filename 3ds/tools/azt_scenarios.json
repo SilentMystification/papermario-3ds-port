@@ -1656,11 +1656,11 @@
     {
       "name": "exit_armed",
       "status": "verified",
-      "subject": "Port menu (SELECT), General tab, row 3 Exit to Homebrew Menu after one A press: the value 'A again' is red on the bottom screen. Shots at frames 200 to 205.",
+      "subject": "Port menu (SELECT), General tab, row 3 Exit to Homebrew Menu after one A press: the value 'Press A again' is red and the label blue on the bottom screen (menu shot). Blank row under the tab line.",
       "proves": "The armed exit row draws its value in red (ANSI colour 31, pm_options_ui.c draw) and the reset in menu_put_line ends the colour on the next line.",
-      "debug": "preset=toad padscript=wait80,SELECT,wait20,ddown,wait20,ddown,wait20,ddown,wait20,A,wait60 shots shotwin=200:6 shotbottom=200:6 loglevel=debug",
-      "until": "shot \\d+ frame 20[3-5]\\b",
-      "cap": 60,
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,ddown,wait20,ddown,wait20,ddown,wait20,A,wait60 shotmenu loglevel=debug",
+      "until": "menu: exit armed, press A again",
+      "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
       "expects": "warp",
@@ -1676,14 +1676,14 @@
         },
         {
           "name": "exit row armed",
-          "regex": "menu: tab 0 row 3 Exit to Homebrew Menu = Press A again"
+          "regex": "menu: exit armed, press A again"
         },
         {
-          "name": "shot",
-          "regex": "shot \\d+ frame 20[0-5]\\b"
+          "name": "armed menu shot",
+          "regex": "menu: shot bot_m\\d+ tab 0 row 3"
         }
       ],
-      "reason": "EXIT1 run: the menu stays open after the A press. The until is the top shot at frame 205, so the bottom shots at frames 200 to 205 show the armed row."
+      "reason": "MENU2 row 2: menu shot (shotmenu, MN0) replaces the frame window, which the MN1 freeze stops. Until is the arm log line (pm_options.c); the bot_m shot after it shows the armed row."
     },
     {
       "name": "menu_shot",

@@ -3,7 +3,7 @@
 STATE (branch menu, base nds1; rows of MENU2 on branch nds1 main folder)
 - MENU2 row 1 WARPY2: gate FAILED (Mario not in iwa_10 shot). Placement edit discarded. Debug floorscan + column log committed. Section 5.
 - Epic A: MN2 open (grey top screen). Epic B: MN3b, MN4, MN5, MN6 (+ warp restore), MN7 open.
-- Row 2 (exit_armed via shotmenu): next.
+- Row 2 exit_armed (shotmenu, arm log line): PASS by eye (section 6). Epic B next.
 - MENU-C (resolution) not started (out of scope, note in row_MENU).
 
 ## 1. Audit (HEAD of nds1 at start, commit 0fe0497e4 row file)
@@ -74,3 +74,9 @@ Floorscan, map iwa_10 (run 2, same grid rule as the code: step 50, samples 700, 
 Answer to the coordinator check (1): the column has no floor below y 0, so the spot is not over a lower floor. The failure is not the floor height. Next diagnosis (not run): the value of the Mario draw at this spot (model visible flag, cutscene or script flag set by the iwa_10 entry text, camera target). Not named yet.
 
 Row 1: FAILED (gate 4). Commit: debug tool only (floorscan, column log), placement unchanged.
+
+## 6. MENU2 row 2 exit_armed (menu shot), result: PASS
+
+Starts used (MENU2): 3 of 8. Status: 3ds/logs/perf/status_MENU2.txt.
+Change: exit_armed uses shotmenu (no frame window). Until is the new arm log line `menu: exit armed, press A again` (pm_options.c, one pm_log when row 3 is armed). The old armed-value line is printed with %s, so the static check of azt.ps1 cannot read it.
+Shot bot_m0004 (after the arm, 3ds/... build3ds/azt/shots/exit_armed/bot_m0004.ppm): tab line, one blank row, rows 60 FPS, Widescreen, Return to Title Screen, selected row Exit to Homebrew Menu (label blue), value Press A again (red), Back. Read by eye.
