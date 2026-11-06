@@ -275,13 +275,27 @@ static void pos_probe(unsigned f) {
         f32 py = player_check_collision_below(0.0f, &pid);
         pm_log("poswarp probe f%u mario %.3f %.3f %.3f ray y %.3f id %d ground y %.3f id %d colliders %d", f, ps->pos.x, ps->pos.y, ps->pos.z, gy, (int)cid, py, (int)pid, (int)gCollisionData.numColliders);
     }
+    { /* MENU3 row 1 (entry test): what the entry leaves behind. alpha 0 = Mario not drawn, input off = the script or a cutscene holds the player, msg 1 = a text box is open, cam = the camera target, floor = curFloor */
+        extern s32 pm_msg_active(void);
+        pm_log("poswarp state f%u entry %d alpha %u input %d cutscene %d lock %d flags %08x msg %d overrides %08x cam %.1f %.1f %.1f eye %.1f %.1f %.1f mario %.1f %.1f %.1f floor %d",
+               f, gGameStatusPtr->entryID, (unsigned)ps->curAlpha, (int)ps->inputDisabledCount, (ps->flags & PS_FLAG_CUTSCENE_MOVEMENT) != 0,
+               (ps->flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)ps->flags, (int)pm_msg_active(), (unsigned)gOverrideFlags,
+               gCameras[CAM_DEFAULT].targetPos.x, gCameras[CAM_DEFAULT].targetPos.y, gCameras[CAM_DEFAULT].targetPos.z,
+               gCameras[CAM_DEFAULT].lookAt_eye.x, gCameras[CAM_DEFAULT].lookAt_eye.y, gCameras[CAM_DEFAULT].lookAt_eye.z,
+               ps->pos.x, ps->pos.y, ps->pos.z, (int)gCollisionStatus.curFloor);
+    }
 }
 
 static void pos_tick(unsigned frame) {
     if (!pos_on || get_game_mode() != GAME_MODE_WORLD) return;
     {
         unsigned pf = frame - pos_f0;
-        if (pf == 0 || pf == 30 || pf == 60 || pf == 120 || pf == 180) pos_probe(pf);
+        if (pf == 0) { /* MENU3: posshot=<k> takes one shot (6 frames) k scene frames after the pos= run starts (shotwin counts absolute frames) */
+            char pv[12];
+            extern void pm_gpu_shot_window(unsigned from, unsigned n);
+            if (pm_debug_value("posshot", pv, sizeof pv)) pm_gpu_shot_window(frame + (unsigned)atoi(pv), 6);
+        }
+        if (pf % 30 == 0 && pf <= 300) pos_probe(pf); /* MENU3: every 30 frames to 300 (entry test) */
         if (pf == 5 && pm_debug_has("floorscan")) pos_floorscan();
     }
     if (pos_state == 0 && frame - pos_f0 >= POS_DELAY) {

@@ -80,3 +80,23 @@ Row 1: FAILED (gate 4). Commit: debug tool only (floorscan, column log), placeme
 Starts used (MENU2): 3 of 8. Status: 3ds/logs/perf/status_MENU2.txt.
 Change: exit_armed uses shotmenu (no frame window). Until is the new arm log line `menu: exit armed, press A again` (pm_options.c, one pm_log when row 3 is armed). The old armed-value line is printed with %s, so the static check of azt.ps1 cannot read it.
 Shot bot_m0004 (after the arm, 3ds/... build3ds/azt/shots/exit_armed/bot_m0004.ppm): tab line, one blank row, rows 60 FPS, Widescreen, Return to Title Screen, selected row Exit to Homebrew Menu (label blue), value Press A again (red), Back. Read by eye.
+
+## 7. MENU3 row 1 ENTRY TEST (iwa_10, pos -662:0:587), result: PASS (table complete, no entry holds the player)
+
+Starts used (MENU3): 5 of 8 (row 2 has 3 left). Status lines: 3ds/logs/perf/status_MENU3.txt. Scenarios: iwa10_entry0_state, iwa10_entry1_state (azt_scenarios.json, run with -Try, status unverified).
+Entries (src/world/area_iwa/iwa_10/settings.c): ENTRY_0 (-1250 30 0, yaw 90) runs EVS_ArriveFromToadTown (train arrival, DisablePlayerInput, train moves). ENTRY_1 (-445 215 -500, yaw 270) runs EnterWalk (normal walk-in from iwa_00).
+Per-entry log at pos run frames 0 to 300 (state line, pm_warp.c pos_probe), pos placed at frame 30 (readback 40):
+
+| Entry | Script | Mario alpha (drawn) | input lock / overrides | text box (pm_msg_active) | camera target | curFloor after place | camera eye (lookAt_eye) |
+|---|---|---|---|---|---|---|---|
+| 0 | EVS_ArriveFromToadTown | 255 | 0 / 00000000 at f30 to f300 | 0 at all probes | = Mario | 28 (f60 on) | not logged in starts 1 to 3 (field added later) |
+| 1 | EnterWalk | 255 | 0 / 00000000 at f30 to f300 | 0 at all probes | = Mario | 28 (f60 on) | y -999.8 z 677 (f60), y -891 z 935 (f120 on, frozen) |
+
+Findings:
+- No entry script held input or opened a text box in the 300 frames at this spot. The entry wait (row 2) passes at once here.
+- Mario is drawn (alpha 255) and stands on collider 28 (y 0, walkable). Both shots (frame 90 after the pos run starts, entry 0 and entry 1) show rock, sky and HUD only: no Mario.
+- Cause of the empty picture: the camera eye sits under the map (y -891 .. -1000, Mario at y 0). Camera mode is CAM_UPDATE_FROM_ZONE with no lead (SetUP_CAMERA_ALT_NO_LEAD, include/script_api/macros.h:810). The eye stops moving at f120 on entry 1. The target follows Mario, the eye does not. Not an entry problem.
+- MENU2 text box ("Confound it! Where could it be...?", shot at frame 265) did not repeat in MENU3 runs (no msg in any probe). Unexplained; not reproduced.
+- First normal walk-in entry: ENTRY_1 (EnterWalk). ENTRY_0 is the train arrival scene.
+
+Next (row 2): the entry wait is cheap and harmless here; it does not move the camera. The row 2 gate (Mario visible in the top shot) needs a camera fix, a separate diagnosis (camera zone at the placed spot).
