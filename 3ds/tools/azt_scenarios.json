@@ -1750,6 +1750,42 @@
       "reason": "CH1 gate: Cheats tab and Set Stats folder. Until is the first menu shot on row 4, written after the stat step, so the picture is complete (a shot on row 3 is taken before the step)."
     },
     {
+      "name": "menu_badges",
+      "status": "verified",
+      "subject": "Select menu, Cheats tab (L), row 2 Badges >, A (folder, row 0 Toggle all), A (all badges on), one down to the first badge, A (Off), one down. The bottom shot on row 2 shows the Badges folder with the first badge row Off.",
+      "proves": "CH2: Badges folder (sub kind 3), Toggle all on, one badge row off (pm_dbgg_item_set, list closes the hole).",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,L,wait20,ddown,wait10,ddown,wait20,A,wait20,A,wait30,ddown,wait20,A,wait20,ddown,wait30 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 4 row 2",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "badges folder",
+          "regex": "menu: page push 4 depth 1"
+        },
+        {
+          "name": "all badges on",
+          "regex": "dbggame: give 1 -> owned "
+        },
+        {
+          "name": "one badge off",
+          "regex": "dbggame: badge \\d+ off"
+        },
+        {
+          "name": "folder shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 2"
+        }
+      ],
+      "reason": "CH2 gate: Badges folder, Toggle all, one badge Off. Until is the first menu shot on row 2 (after the Off). The unequip branch (equipped badge) is not run here: the test save has no equipped badge (named gap in agent_menu.md)."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",
