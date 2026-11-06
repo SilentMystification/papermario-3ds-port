@@ -2,6 +2,7 @@
 #include "filemenu.h"
 #include "game_modes.h"
 
+
 // port: Options panel of the file select screen (F11-3). TARGET_3DS only.
 // UI1a: three tabs (General, Controls, Debug), L and R change the tab. The rows, values and actions come from the port layer (pm_options.c, pm_optui_*).
 #ifdef TARGET_3DS
@@ -12,6 +13,9 @@
 
 static s32 optTab;
 static s32 optTop;
+#define PM_OPT_SUB 4 // MN5: the folder page index (pm_port.h, not included here: PmRepeat clashes)
+static s32 optHome; // MN5: the tab a folder page was opened from (B returns there)
+extern const char* pm_optui_sub_name(void);
 
 u8 filemenu_options_gridData[] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
@@ -106,8 +110,20 @@ void filemenu_draw_contents_options_panel(
     s32 i;
 
     // UI1a: tab strip (L and R change the tab), the active tab has the second palette
-    for (i = 0; i < OPT_TABS; i++) {
-        filemenu_draw_message((u8*)pm_options_msg(tabNames[i], 4 + i), baseX + tabX[i], baseY + 8, 255, i == optTab ? 4 : 0, 1);
+    if (optTab == PM_OPT_SUB) { // MN5: a folder page shows its breadcrumb (Debug > Warp area) on the strip line
+        static char crumb[40];
+        const char* a = tabNames[optHome];
+        const char* b = pm_optui_sub_name();
+        s32 k = 0;
+        while (*a && k < 20) crumb[k++] = *a++;
+        crumb[k++] = ' '; crumb[k++] = '>'; crumb[k++] = ' ';
+        while (*b && k < 38) crumb[k++] = *b++;
+        crumb[k] = 0;
+        filemenu_draw_message((u8*)pm_options_msg(crumb, 2), baseX + 12, baseY + 8, 255, 4, 1);
+    } else {
+        for (i = 0; i < OPT_TABS; i++) {
+            filemenu_draw_message((u8*)pm_options_msg(tabNames[i], 4 + i), baseX + tabX[i], baseY + 8, 255, i == optTab ? 4 : 0, 1);
+        }
     }
     if (optTop > 0) {
         filemenu_draw_message((u8*)pm_options_msg("-", 3), baseX + 6, baseY + 8 + 17, 255, 0, 1);
@@ -154,7 +170,7 @@ void filemenu_options_handle_input(MenuPanel* menu) {
     } else if (filemenu_pressedButtons & BUTTON_R) {
         tabMove = 1;
     }
-    if (tabMove != 0) {
+    if (tabMove != 0 && optTab != PM_OPT_SUB) {
         // UI1a: L and R change the section
         optTab = (optTab + tabMove + OPT_TABS) % OPT_TABS;
         optTop = 0;
@@ -201,7 +217,16 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         }
     }
     if (filemenu_pressedButtons & BUTTON_B) {
-        filemenu_options_close();
+        if (optTab == PM_OPT_SUB) { // MN5: B leaves the folder page for its tab, the panel stays open
+            optTab = optHome;
+            optTop = 0;
+            menu->row = 0;
+            menu->numRows = pm_optui_rows(optTab, 0);
+            filemenu_set_selected(menu, 0, 0);
+            pm_log("options: page pop depth 0");
+        } else {
+            filemenu_options_close();
+        }
     } else if (filemenu_pressedButtons & BUTTON_A) {
         s32 result;
 
@@ -209,6 +234,14 @@ void filemenu_options_handle_input(MenuPanel* menu) {
         result = pm_optui_act(optTab, menu->selected, 0);
         if (result == 1) {
             filemenu_options_close();
+        } else if (result == 6) { // MN5: a folder row (Warp area) opens its page
+            optHome = optTab;
+            optTab = PM_OPT_SUB;
+            optTop = 0;
+            menu->row = 0;
+            menu->numRows = pm_optui_rows(optTab, 0);
+            filemenu_set_selected(menu, 0, 0);
+            pm_log("options: page push %d depth 1", PM_OPT_SUB);
         } else if (result == 2) {
             // Warp now: leave the file select as the Cancel button does, the exit mode of the file select is set by pm_warp_pending
             set_window_update(WIN_FILES_TITLE, (s32)filemenu_update_hidden_title);

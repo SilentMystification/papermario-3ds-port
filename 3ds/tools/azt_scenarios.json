@@ -5399,6 +5399,34 @@
       "reason": "MN4 gate: folder shot (breadcrumb Debug > Boss and the first boss row), then B pops. A press on the Boss row is not in this scenario (a boss would start)."
     },
     {
+      "name": "fs_folder",
+      "status": "unverified",
+      "subject": "File select screen, Options panel (SELECT), Debug tab (R, R), Warp area folder row (row 20) opened with A. Tab strip line shows the breadcrumb Debug > Warp area.",
+      "proves": "MENU3 MN5: the file select panel has the folder page (push log), its breadcrumb on the strip line in the top shot.",
+      "debug": "fileselect padscript=@pad_fs_folder.txt shots loglevel=debug",
+      "until": "padscript: done",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "fileselect: direct entry",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "panel open",
+          "regex": "options: tab 2"
+        },
+        {
+          "name": "page push",
+          "regex": "options: page push 4 depth 1"
+        },
+        {
+          "name": "padscript done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "MN5 discovery and gate (MENU3 row 3): route to the panel and the folder page is one run. The breadcrumb shot is read from the shots window after the push (every 30 frames)."
+    },
+    {
       "name": "iwa10_entry0_state",
       "status": "unverified",
       "subject": "iwa_10 warp entry 0 (pos -662 0 587). Mario state every 30 frames to 300: alpha, input lock, cutscene flag, text box, camera target, curFloor. One shot 90 scene frames after the pos= run starts.",
