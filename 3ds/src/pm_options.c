@@ -273,7 +273,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_SUB = 700 };
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_SUB = 700 };
 /* PT01c: the Warp area submenu rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per map prefix. Checked before the other ids. */
 static int warp_pos[PM_WARP_GROUP_MAX]; /* this run only: the member that each prefix row shows (not saved, PT32) */
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
@@ -285,7 +285,7 @@ static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
     if (tab == 0) {
         ids[n++] = RW_FPS; ids[n++] = RW_WIDE;
-        if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_EXIT; }
+        if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_CLOSE; ids[n++] = RW_EXIT; }
     } else if (tab == 1) {
         ids[n++] = RW_DPAD; ids[n++] = RW_DZPAD; ids[n++] = RW_DZCS; ids[n++] = RW_RDELAY; ids[n++] = RW_RRATE;
         for (i = 0; i < PM_NIN; i++) ids[n++] = RW_MAP + i;
@@ -331,6 +331,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
         case RW_FPS: return "60 FPS";
         case RW_WIDE: return "Widescreen";
         case RW_TITLE: return "Return to Title Screen";
+        case RW_CLOSE: return "Close game";
         case RW_EXIT: return "Exit to Homebrew Menu";
         case RW_DPAD: return "D-PAD";
         case RW_DZPAD: return "Circle pad dead zone";
@@ -374,7 +375,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
             snprintf(b, 12, id == RW_DZPAD ? "%d%%" : id == RW_DZCS ? "%d%%" : "%d ms", id == RW_DZPAD ? pm_opt.dz_pad : id == RW_DZCS ? pm_opt.dz_cs : id == RW_RDELAY ? pm_opt.rep_delay : pm_opt.rep_rate);
             return b;
         }
-        case RW_EXIT: case RW_TITLE: return armed_id == id ? "Press A again" : NULL;
+        case RW_EXIT: case RW_TITLE: case RW_CLOSE: return armed_id == id ? "Press A again" : NULL;
         case RW_WARPAREA: return "A: open";
         default: return NULL;
     }
@@ -438,6 +439,10 @@ int pm_optui_act(int tab, int row, int mode) {
             if (armed_id != RW_TITLE) { armed_id = RW_TITLE; return 0; }
             armed_id = 0;
             return 4;
+        case RW_CLOSE: /* MN3b: first A arms, second A closes the game to the HOME Menu (pm_options_ui.c) */
+            if (armed_id != RW_CLOSE) { armed_id = RW_CLOSE; return 0; }
+            armed_id = 0;
+            return 7;
         case RW_EXIT:
             if (armed_id != RW_EXIT) { armed_id = RW_EXIT; pm_log("menu: exit armed, press A again"); return 0; }
             armed_id = 0;

@@ -5331,6 +5331,42 @@
       "reason": "MN2 probe and gate (one start): the grey top shot. The grey pass runs at the pause (before the first menu draw), so the top shot is the grey of the last game frame."
     },
     {
+      "name": "menu_close",
+      "status": "unverified",
+      "subject": "Select menu, General tab, row 4 Close game after one A (armed, value Press A again) and a second A. Menu shot after the arm.",
+      "proves": "MENU3 MN3b: the second A on Close game logs the close path and the HOME Menu chainload, then the process end line.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,ddown,wait20,ddown,wait20,ddown,wait20,A,wait20,A,wait60 shotmenu loglevel=debug",
+      "until": "exit: audio job done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: ",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "close armed",
+          "regex": "menu: shot bot_m\\d+ tab 0 row 3"
+        },
+        {
+          "name": "close path",
+          "regex": "menu: close game to HOME Menu"
+        },
+        {
+          "name": "chainload",
+          "regex": "menu: HOME Menu chainload 0004001000021[0-9a-f]{3} region \\d"
+        },
+        {
+          "name": "process end",
+          "regex": "exit: audio job done"
+        }
+      ],
+      "reason": "MN3b gate (MENU3 row 3): log line of the close path, the chainload line (title id by region), then the end line. Shot after the arm: the armed row is Close game."
+    },
+    {
       "name": "iwa10_entry0_state",
       "status": "unverified",
       "subject": "iwa_10 warp entry 0 (pos -662 0 587). Mario state every 30 frames to 300: alpha, input lock, cutscene flag, text box, camera target, curFloor. One shot 90 scene frames after the pos= run starts.",

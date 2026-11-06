@@ -10,6 +10,19 @@
 #include "pm_port.h"
 
 volatile int pm_menu_open;
+
+/* MN3b: the HOME Menu title of this region (0004001000021000 + 0x100 per region: JPN 0, USA 1, EUR 2; other regions use USA). */
+static void pm_home_chainload(void) {
+    u8 region = 1;
+    u64 tid;
+    cfguInit();
+    CFGU_SecureInfoGetRegion(&region);
+    cfguExit();
+    if (region > 2) region = 1;
+    tid = 0x0004001000021000ULL + ((u64)region << 8);
+    aptSetChainloader(tid, MEDIATYPE_NAND); /* void in this libctru */
+    pm_log("menu: HOME Menu chainload %016llx region %u", (unsigned long long)tid, (unsigned)region);
+}
 volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
 
 #define OPT_TABS 4
@@ -110,6 +123,13 @@ void pm_menu_key(unsigned k) {
         int r = pm_optui_act(tab, sel[tab], MODE);
         if (r == 6) { home_tab = tab; tab = PM_OPT_SUB; sel[tab] = 0; top[tab] = 0; pm_optui_disarm(); }
         if (r == 1 || r == 5) { pm_menu_set(0); return; }
+        if (r == 7) { /* MN3b: Close game. The app ends and the HOME Menu runs (chainload, region HOME Menu title). */
+            pm_log("menu: close game to HOME Menu");
+            pm_menu_set(0);
+            pm_home_chainload();
+            pm_exit_request = 1;
+            return;
+        }
         if (r == 3) { /* PT28: the main loop ends, pm_shutdown runs (HW7 order), main returns to the Homebrew Launcher. */
             pm_log("menu: exit to Homebrew requested");
             pm_menu_set(0); /* saves options.ini */
