@@ -240,9 +240,11 @@ static int tex_decode_n(const uint32_t* l, unsigned nops, NdTexDec* o) {
 int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) { return tex_decode_n(l, ND_DLC_MAXOPS, o); }
 
 /* S6-2c-1: the entity list segments (nd.h). */
+/* S6-2c-2: G_PM_TEXI (gbi_custom.h, 0x0B) is a header whose n words run in place (pm_gbi.c tb_inline). The entity lists carry it in front of their texture loads (entcheck census: every refused list had it). Neutral: the linear scan sees the words after it. */
+#define OP_PM_TEXI 0x0B
 static int ent_known(unsigned op) {
     switch (op) {
-    case OP_VTX: case OP_TRI1: case OP_TRI2:
+    case OP_VTX: case OP_TRI1: case OP_TRI2: case OP_PM_TEXI:
     case OP_NOOP: case OP_PIPESYNC: case OP_LOADSYNC: case OP_TILESYNC: case OP_FULLSYNC:
     case OP_GEOMETRYMODE: case OP_SETOTHERMODE_H: case OP_SETOTHERMODE_L: case OP_SETCOMBINE: case OP_TEXTURE:
     case OP_SETPRIMCOLOR: case OP_SETENVCOLOR:
@@ -317,7 +319,7 @@ int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned*
                     s->ntri++; tri++;
                 }
             }
-        } else if (op == OP_NOOP || op == OP_PIPESYNC || op == OP_LOADSYNC || op == OP_TILESYNC || op == OP_FULLSYNC) {
+        } else if (op == OP_NOOP || op == OP_PIPESYNC || op == OP_LOADSYNC || op == OP_TILESYNC || op == OP_FULLSYNC || op == OP_PM_TEXI) {
             /* neutral: no segment, no delta */
         } else {
             if (pend_n == 0) pend0 = i;

@@ -334,6 +334,35 @@ static void pm_gbi_ent_texchk(const uint32_t* dl) {
         pm_log_prof_line("texchk f%u ent %u eq %u diff %u nat %u fb %u %u %u %u %u %u %u", f, n_ent, n_eq, n_diff, n_nat, n_fb[2], n_fb[3], n_fb[4], n_fb[5], n_fb[6], n_fb[7], n_fb[8]);
     }
 }
+/* S6-2c-2 (entcheck census): at the end record of an entity model draw, the list cut at its state ops (nd_ent_segments). Counts per draw: ok (the list
+ * compiles to segments), refuse (NDR_OP and the other refusals), the first refused op code, segments and triangles. Line every 300 frames: entseg. */
+static void pm_gbi_ent_segchk(const uint32_t* dl) {
+    static NdEntSeg seg[64];
+    static unsigned n_draw, n_ok, n_ref, n_seg, n_tri, n_bad[6], next = 300u;
+    static uint32_t last_bad;
+    static unsigned n_opc[256];
+    unsigned ns = 0, f;
+    uint32_t bad = 0;
+    extern void pm_log_prof_line(const char* fmt, ...);
+    extern unsigned pm_frame_count(void);
+    int rc = nd_ent_segments(dl, seg, 64u, &ns, &bad);
+    n_draw++;
+    if (rc == NDR_OK) {
+        n_ok++; n_seg += ns;
+        for (unsigned i = 0; i < ns; i++) n_tri += seg[i].ntri;
+    } else {
+        n_ref++;
+        last_bad = bad;
+        n_opc[bad & 0xFFu]++;
+        if (n_bad[rc]++ < 1) pm_log_prof_line("entseg refuse f%u rc %d op %02x", pm_frame_count(), rc, bad);
+    }
+    f = pm_frame_count();
+    if (f >= next) {
+        next = (f / 300u + 1u) * 300u;
+        pm_log_prof_line("entseg f%u draws %u ok %u refuse %u segs %u tri %u lastbad %02x", f, n_draw, n_ok, n_ref, n_seg, n_tri, last_bad);
+        for (unsigned k = 0; k < 256u; k++) if (n_opc[k] && (k == 0x0Bu || k == 0x0Du || k == 0x0Fu || k == 0x11u || k == 0x09u || k == 0x08u || k == 0x07u || k == 0x02u || k == 0x03u || k == 0x04u || k >= 0xD0u)) pm_log_prof_line("entseg op %02x n %u", k, n_opc[k]);
+    }
+}
 static void dd_line(void) {
         pm_log("dd f%u #%u src %08x dl %08x %08x geom %08x oml %08x omh %08x tex %u timg %08x fmt %u siz %u %dx%d tri %u scr %.0f %.0f %.0f %.0f w %.2f %.2f tw %08x %08x %08x %08x ts %u %u sz %d %d %d %d",
                pm_frame_count(), dd.idx, dd.src, dd.dl0, dd.dl1, dd.gm, dd.oml, dd.omh, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.ntri,
@@ -4526,7 +4555,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             break;
         }
         case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. S6-2a: the end record (G_PM_ENT_END, entcheck only) checks the tile 0 state. */
-            if (w0 & G_PM_ENT_END) pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1);
+            if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); }
             pc += G_PM_ENT_WORDS - 1;
             break;
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
