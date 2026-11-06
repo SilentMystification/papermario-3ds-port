@@ -88,12 +88,24 @@ extern s32 pm_wide_cam(Camera* c);
  * ZOOM: with the wide camera the 296 x 200 view is zoomed by 6 / 5 about game (160, 20), so the 200 sky rows fill the 240 screen rows. bg_zoom is set once per sky draw.
  * The rectangles are made in the unzoomed frame and mapped when they are emitted. An edge maps as an exclusive edge (+4 quarter pixels), so neighbouring rectangles stay seamless. */
 static s32 bg_zoom;
+#ifdef TARGET_3DS
+/* BG1/BG2 oracle plan 2, fix 2: floor division by 5 (C division rounds toward zero, which moved the negative zoomed edges). */
+static s32 fdiv5(s32 v) { return v >= 0 ? v / 5 : -((-v + 4) / 5); }
+#endif
 static void bg_emit(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
     if (bg_zoom) {
+#ifdef TARGET_3DS
+        /* The inclusive last quarter pixel is the exclusive zoomed edge minus 1: minus 4 left a one pixel gap between a zoomed group and the next (the BG2 row). */
+        xl = fdiv5((xl - 640) * 6) + 640;
+        xh = fdiv5((xh + 4 - 640) * 6) + 640 - 1;
+        yl = fdiv5((yl - 80) * 6);
+        yh = fdiv5((yh + 4 - 80) * 6) - 1;
+#else
         xl = (xl - 640) * 6 / 5 + 640;
         xh = (xh + 4 - 640) * 6 / 5 + 640 - 4;
         yl = (yl - 80) * 6 / 5;
         yh = (yh + 4 - 80) * 6 / 5 - 4;
+#endif
         dsdx = dsdx * 5 / 6;
         dtdy = dtdy * 5 / 6;
     }

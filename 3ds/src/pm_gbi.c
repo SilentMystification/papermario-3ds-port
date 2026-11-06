@@ -4458,12 +4458,17 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
     float dtdy = (float)(s16)(hd & 0xffff) / 1024.f * mt;
     float width = (float)(xh - xl) / 4.f;
     float height = (float)(yh - yl) / 4.f;
+    /* BG1/BG2 oracle plan 2, fix 1: the pixel span is the RDP one (first pixel whose left edge is at or after xl, last whose left edge is at or before xh; arithmetic shifts). s0 and t0 move from the fractional edge to that pixel edge, so the texel of every pixel is the one at its centre. Multiples of 4 give the old values. COPY only (the sky). */
+    int rx0 = xl / 4, ry0 = yl / 4, rx1 = xh / 4, ry1 = yh / 4;
     if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2) {
         /* COPY mode: the RDP writes 4 pixels per cycle, so dsdx counts 4 texels per pixel (4.0 = 1:1).
          * The lower right corner is inclusive, one more pixel (as in libultraship). */
         dsdx /= 4.f;
-        width += 1.f;
-        height += 1.f; /* PT06: the lower edge is inclusive too. Without this a 6 row background strip showed 5 rows and every 6th screen row repeated the row above */
+        rx0 = (xl + 3) >> 2; ry0 = (yl + 3) >> 2; rx1 = xh >> 2; ry1 = yh >> 2;
+        s0 += dsdx * (float)(rx0 * 4 - xl) * 0.25f / (float)tw;
+        t0 += dtdy * (float)(ry0 * 4 - yl) * 0.25f / (float)th;
+        width = (float)(rx1 - rx0 + 1);
+        height = (float)(ry1 - ry0 + 1); /* PT06: the lower edge is inclusive too. Without this a 6 row background strip showed 5 rows and every 6th screen row repeated the row above */
     }
     float s1 = s0 + dsdx * width / (float)tw;
     float t1 = t0 + dtdy * height / (float)th;
@@ -4481,19 +4486,19 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
         /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
          * above). In 1-cycle and 2-cycle mode the lower right edge is exclusive: without this the quad was one
          * pixel too wide and stretched its texture. A previous-frame blur drawn every frame zoomed in. */
-        int ex = xh / 4, ey = yh / 4;
+        int ex = rx1, ey = ry1;
         if (((omode_h >> G_MDSFT_CYCLETYPE) & 3) != 2) { ex -= 1; ey -= 1; }
-        if (ex >= xl / 4 && ey >= yl / 4) {
+        if (ex >= rx0 && ey >= ry0) {
             /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
             if ((omode_l & (1u << G_MDSFT_ZSRCSEL)) && (omode_l & 0x10u) && (geom & G_ZBUFFER)) {
                 sync_render();
-                pm_gpu_tex_rect_z(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1, (float)prim_z / 32767.f);
+                pm_gpu_tex_rect_z(rx0, ry0, ex, ey, s0, t0, s1, t1, (float)prim_z / 32767.f);
             } else
             if (pm_tex_off_idx() >= 0 && (tst1.tile_wrap[rtile][0] & 3) == 3 && (tst1.tile_wrap[rtile][1] & 3) == 3 && tst1.tile_wrap[rtile][2] && tst1.tile_wrap[rtile][3] &&
                 (1 << tst1.tile_wrap[rtile][2]) == tw && (1 << tst1.tile_wrap[rtile][3]) == th) {
                 FoldSeg fs[8], ft[8];
-                int ns = fold_axis(xl / 4, (float)(ex + 1 - xl / 4), s0 * tw, s1 * tw, (float)tw, 0, 1, fs);
-                int nt = fold_axis(yl / 4, (float)(ey + 1 - yl / 4), t0 * th, t1 * th, (float)th, 0, 1, ft);
+                int ns = fold_axis(rx0, (float)(ex + 1 - rx0), s0 * tw, s1 * tw, (float)tw, 0, 1, fs);
+                int nt = fold_axis(ry0, (float)(ey + 1 - ry0), t0 * th, t1 * th, (float)th, 0, 1, ft);
                 if (ns && nt) {
                     for (int a = 0; a < ns; a++)
                         for (int c = 0; c < nt; c++)
@@ -4501,7 +4506,7 @@ static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd
                     goto rect_done;
                 }
             }
-            pm_gpu_tex_rect(xl / 4, yl / 4, ex, ey, s0, t0, s1, t1);
+            pm_gpu_tex_rect(rx0, ry0, ex, ey, s0, t0, s1, t1);
         } else texr_early(4, xl, yl, xh, yh);
     }
     rect_done:
