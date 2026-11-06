@@ -105,8 +105,8 @@ static void accept_client(void) {
     socklen_t len = sizeof(addr);
     int fd = accept(listen_fd, (struct sockaddr*)&addr, &len);
     if (fd < 0) return;
+    if (client >= 0) { close(client); client = -1; } /* a new client replaces the old one (the PC closed it or the old link is dead) */
     fcntl(fd, F_SETFL, O_NONBLOCK);
-    if (client >= 0) close(client);
     client = fd;
     cmd_n = 0;
     cmd_done = 0;
@@ -265,7 +265,7 @@ void pm_log_init(int live) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(17492);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0 || listen(listen_fd, 1) < 0) {
+    if (bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0 || listen(listen_fd, 2) < 0) {
         int bind_errno = errno;
         close(listen_fd);
         listen_fd = -1;
@@ -640,7 +640,9 @@ static void drain_locked(void) {
     int ln = 0, bn = 0;
     int fl = log_level, cl = con_lv > 3 ? -1 : con_lv; /* CONLV: a line goes to log.txt and the socket within fl, to the console within cl (-1 = off) */
     u32 t = q_tail;
-    for (;;) {
+    /* Bounded: at most SLOTS/4 slots per call. A debug flood refills the queue as fast as it drains, and an unbounded drain kept the
+     * writer from returning to accept_client (the console could not connect). The rest waits for the next writer pass. */
+    for (int k = 0; k < SLOTS / 4; k++) {
         Slot* sl = &slots[t % SLOTS];
         if (__atomic_load_n(&sl->state, __ATOMIC_ACQUIRE) != 1) break;
         int n = sl->len;
@@ -672,18 +674,32 @@ static void drain_locked(void) {
     report_drops();
 }
 
+/* logstat, writer: one debug line every 5 s from the writer thread. A stopped count means a hang; queue and fb waits show the flood. */
+static u64 beat_tick;
+static void writer_beat(void) {
+    u64 now = svcGetSystemTick();
+    if (beat_tick && now - beat_tick < 5ull * SYSCLOCK_ARM11) return;
+    beat_tick = now;
+    pm_log_d("logstat writer hb %u queue %u of %u fbuf waits %u dropped %u", writer_hb,
+             __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED), SLOTS, fb_full_waits,
+             q_drop_total + q_dropped);
+}
+
 static void writer_main(void* arg) {
     int id = (int)(intptr_t)arg;
     writer_core = svcGetProcessorID();
     __atomic_store_n(&writer_started, id, __ATOMIC_RELEASE);
     LightEvent_Signal(&ev_started);
     for (;;) {
-        if (log_file_on) LightEvent_WaitTimeout(&ev_wake, 250000000LL);
-        else LightEvent_Wait(&ev_wake); /* logging off: asleep until pm_log_set_file or stop signals */
+        /* Wakes every 250 ms also with logging off, so accept_client and read_cmd run before every bounded drain. */
+        LightEvent_WaitTimeout(&ev_wake, 250000000LL);
         if (__atomic_load_n(&active_id, __ATOMIC_ACQUIRE) != id) return; /* a replacement thread took over */
         writer_hb++;
+        writer_beat();
         if (io_drain_req && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
             LightLock_Lock(&drain_lock);
+            accept_client();
+            read_cmd(); /* QUIT1 */
             if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
                 drain_locked();
             }
@@ -695,10 +711,8 @@ static void writer_main(void* arg) {
         }
         if (!__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) continue;
         if (pm_io_quiet) continue; /* PT68: no SD, socket or console call while the app sleeps */
-        if (log_file_on) {
-            accept_client();
-            read_cmd(); /* QUIT1 */
-        }
+        accept_client();
+        read_cmd(); /* QUIT1 */
         LightLock_Lock(&drain_lock);
         if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
             drain_locked();
