@@ -4,7 +4,7 @@ Only the orchestrator session reads this file. Shared rules (tests, code, platfo
 
 ## Roles
 - The orchestrator is Opus. It plans, writes prompts and row files, tracks status, commits docs, runs console pushes and merges passed branches.
-- Every subagent is Haiku. Haiku writes code, runs tests and investigates.
+- Every subagent is Haiku. Haiku writes code, runs tests and investigates. Sonnet only for a large, complex design problem named as such in the row file (user, 2026-11-06). No agent churn.
 - Handback triage before any relaunch. Name the class first:
   1. Environment fault (log lost or overwritten, harness bug, saved option, slot collision): fix the environment, relaunch the same row and model.
   2. Wrong premise (the orchestrator's lead, suspect commit or format claim was false): rewrite the row with the facts the agent found, same model.
