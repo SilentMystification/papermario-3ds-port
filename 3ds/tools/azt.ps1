@@ -35,6 +35,7 @@ param(
     [switch]$SelfTest
 )
 $ErrorActionPreference = "Stop"
+. "$PSScriptRoot\azslot.ps1"
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $scs = @((Get-Content (Join-Path $PSScriptRoot "azt_scenarios.json") -Raw | ConvertFrom-Json).scenarios)
 $attractRe = 'game mode (2|3|17) frame' # GAME_MODE_TITLE_SCREEN, GAME_MODE_ENTER_DEMO_WORLD, GAME_MODE_DEMO (game_modes.h)
@@ -138,10 +139,9 @@ if ($Build) {
 }
 $outDir = if ($lane) { Join-Path $repo "build3ds\lane-$lane" } else { Join-Path $repo "build3ds" }
 $lastLog = Join-Path $outDir "last_log.txt"
+# AZT-1: the slot is taken below, just before the start; these paths then point into the slot (slot<k> folder of the lane)
 $shotDir = Join-Path $outDir "shots"
-$sd = Join-Path $env:APPDATA "Azahar\sdmc\3ds\PaperMario"
-$logPath = Join-Path $sd "log.txt"
-$pidFile = Join-Path $env:TEMP "pm_azahar_run.pid"
+$sd = ""; $logPath = ""; $pidFile = ""; $slotK = 0
 $runDir = Join-Path $repo "build3ds\azt"
 
 # Shared state for the log reader
@@ -240,6 +240,7 @@ function Exit-Run([int]$code) {
     if ($null -ne $frameLimit) { $ia += @("--frame-limit", [string]$frameLimit) }
     & python @ia
     if ($LASTEXITCODE -ne 0) { Write-Output "BENCH: run not recorded (bench.py exit $LASTEXITCODE)" }
+    if ($script:slotK) { Exit-Slot $script:slotK; $script:slotK = 0 } # the slot is free for the next run once the logs are read and recorded
     exit $code
 }
 
@@ -266,6 +267,15 @@ if ($speed -eq "turbo") {
 }
 foreach ($a in $argv) { if ($a -match '"') { Write-Output "ARG: a value has a double quote, not allowed: $a"; exit 5 } }
 if (-not (Test-Path (Join-Path $outDir "pm_3ds.3dsx"))) { Write-Output "BUILD: $outDir\pm_3ds.3dsx is missing. Build first. Nothing was run."; exit 5 }
+# AZT-1: take a slot (waits only when all are busy). run_azahar.ps1 gets -Slot with PM_SLOT_HELD=1 and does not take it again.
+$slotK = Get-Slot 0 900
+if (-not $slotK) { Write-Output "LOCK TIMEOUT: no free Azahar slot after 900 s. Nothing was run."; exit 3 }
+$slotInfo = Ensure-Slot $slotK
+$sd = $slotInfo.sd; $logPath = Join-Path $sd "log.txt"; $pidFile = $slotInfo.pidFile
+$lastLog = Join-Path $outDir "slot$slotK\last_log.txt"
+$shotDir = Join-Path $outDir "slot$slotK\shots"
+$env:PM_SLOT_HELD = "1"
+$argv += @("-Slot", [string]$slotK)
 $cmd = ($argv | ForEach-Object { if ($_ -match '^-[A-Za-z]+$') { $_ } else { '"' + $_ + '"' } }) -join " "
 
 $env:PM_ROW = $Row
@@ -276,7 +286,7 @@ $t0 = Get-Date
 # No output redirect: with a redirect the child exit code is lost in this shell. The result is read from the budget file.
 $child = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $cmd -PassThru -WindowStyle Hidden
 $script:childPid = $child.Id
-Write-Output "AZT: scenario $($sc.name), row $Row, lane '$lane', cap $cap s, deadline $deadline s after the Azahar start"
+Write-Output "AZT: scenario $($sc.name), row $Row, lane '$lane', slot $slotK, cap $cap s, deadline $deadline s after the Azahar start"
 
 $azStart = $null
 $markerSeen = $false
@@ -319,7 +329,7 @@ if (Test-Path $bf) {
     $rowsB = @(Get-Content $bf | Where-Object { $_ })
     for ($i = $rowsB.Count - 1; $i -ge 0 -and -not $endRow; $i--) {
         $f = $rowsB[$i].Split(",")
-        if ($f.Count -ge 6 -and $f[1] -eq $Row -and ($f[4] -eq "end" -or $f[4] -eq "retry")) {
+        if ($f.Count -ge 7 -and $f[1] -eq $Row -and ($f[4] -eq "end" -or $f[4] -eq "retry") -and $f[6] -like "slot${slotK}:*") {
             if ([datetime]$f[0] -ge $t0.AddSeconds(-5)) { $endRow = $f }
             break
         }
@@ -330,6 +340,7 @@ if ($endRow[4] -eq "retry" -and -not $env:PM_AZT_RETRY_RUN) {
     # AZFIX: Azahar exited with an empty emulator log. One retry, its start line is retry-start (not counted).
     Write-Output "RETRY: Azahar exited with an empty emulator log. Retrying once. The retry is not counted in the row budget."
     $env:PM_AZT_RETRY_RUN = "1"
+    Exit-Slot $slotK; $slotK = 0
     $ra = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $Scenario, "-Row", $Row, "-Try")
     if ($Build) { $ra += @("-Build", $Build) }
     & (Get-Process -Id $PID).Path @ra

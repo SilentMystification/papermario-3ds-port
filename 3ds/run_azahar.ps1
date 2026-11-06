@@ -24,6 +24,10 @@ thread works against real time) all change. -Timeout and -Until keep their norma
 -Smoke: warp check. Adds the game switch `smoke`, waits for the log line "smoke done" (300 frames after the first frame in the
 scene, needs warp, story or preset in -Debug), exit status 0 when it appears and no unmapped access was seen.
 -FaultStop: stop at the first "UnmappedAccess" line in Azahar's log (Memory class, Info level, already on).
+AZT-1 slots: a run takes one of N (env PM_AZ_SLOTS, default 3) private portable Azahar copies in build3ds/azslots/slot<k> (user folder
+next to azahar.exe: config, nand, sdmc, logs stay in the slot, the user's install and %APPDATA% are only read). Waits only when all slots are busy.
+-Slot <k> picks a slot. Outputs of the run (last_log.txt, shots, last_unmapped.txt) go to <build folder>/slot<k>/; last_log.txt is also copied to the
+build folder (last writer wins). The end line in 3ds/logs/test_budget.csv starts with "slot<k>:".
 Every run writes build3ds/last_unmapped.txt: each distinct (PC, address) with a count, or nothing. For an interactive prompt use 3ds/gdb.sh.
 #>
 param(
@@ -42,17 +46,17 @@ param(
     [string]$GdbScript = "",
     [switch]$Milestone, # allows tour= with more than 40 maps (budget rule)
     [switch]$Force, # run an identical rerun anyway (counts as one start, like every real Azahar start; a cached run that skips Azahar counts nothing)
+    [int]$Slot = 0, # AZT-1: Azahar slot 1..N (build3ds\azslots\slot<k>); 0 = first free slot. azt.ps1 holds the slot lock and passes -Slot with PM_SLOT_HELD=1
     [string]$ResetBudget = "", # orchestrator only: reset the run count of one row, then exit
     [string]$Debug = ""  # render debug switches for the game, see pm_main.c (nofog nolight notex texonly logtev)
 )
 $ErrorActionPreference = "Stop"
+. "$PSScriptRoot\tools\azslot.ps1"
 if ($Interactive) { $Timeout = [int]::MaxValue }
 $repo = Split-Path -Parent $PSScriptRoot
-$sd = "$env:APPDATA\Azahar\sdmc\3ds\PaperMario"
-$cfg = "$env:APPDATA\Azahar\config\qt-config.ini"
-$exe = "C:\Program Files\Azahar\azahar.exe"
-$log = "$sd\log.txt"
-$emuLog = "$env:APPDATA\Azahar\log\azahar_log.txt"
+$sdMaster = "$env:APPDATA\Azahar\sdmc\3ds\PaperMario" # the user's game folder: only read (tour lists, copied to the slot)
+# AZT-1: the paths below are set from the slot once it is taken (build3ds\azslots\slot<k>, portable Azahar)
+$sd = $sdMaster; $cfg = ""; $exe = ""; $log = ""; $emuLog = ""
 $out = "$repo\build3ds"
 $vol = "pm3ds-work"
 $x3dsx = "pm_3ds.3dsx"
@@ -67,8 +71,9 @@ if ($ResetBudget) {
 $row = if ($env:PM_ROW) { $env:PM_ROW } else { "adhoc" }
 $max = if ($env:PM_BUDGET) { [int]$env:PM_BUDGET } elseif ($row -eq "adhoc") { 12 } else { 8 }
 if ($row -eq "adhoc") { Write-Output "WARNING: PM_ROW is not set. Set PM_ROW to your row id. Runs count under row adhoc (12 per 3 hours)." }
+$in3dsx = "$out\pm_3ds.3dsx"
 $sha = (Get-FileHash "$out\pm_3ds.3dsx" -Algorithm SHA256).Hash.ToLower()
-$argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "Force", "ResetBudget", "Milestone" } | Sort-Object Key |
+$argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "Force", "ResetBudget", "Milestone", "Slot" } | Sort-Object Key |
     ForEach-Object { "$($_.Key)=$($_.Value)" }) -join " ").Replace(",", ";")
 $budgetRows = @(if (Test-Path $budgetFile) { Get-Content $budgetFile | Where-Object { $_ } | ForEach-Object { $f = $_.Split(","); [pscustomobject]@{ t = [datetime]$f[0]; row = $f[1]; sha = $f[2]; args = $f[3]; kind = $f[4]; rc = $f[5]; res = ($f[6..($f.Count - 1)] -join ",") } } })
 $used = @($budgetRows | Where-Object { $_.row -eq $row -and $_.kind -eq "start" -and ($row -ne "adhoc" -or $_.t -gt (Get-Date).AddHours(-3)) }).Count
@@ -84,13 +89,21 @@ if (-not $Force) {
     $old = $budgetRows | Where-Object { $_.row -eq $row -and $_.sha -eq $sha -and $_.args -eq $argStr -and $_.kind -eq "end" -and $_.rc -eq "0" } | Select-Object -Last 1
     if ($old) { Write-Output "cached ok (same row, 3dsx and args, rc 0): $($old.res)"; Write-Output "budget: row $row run $used/$max (not run, use -Force to rerun)"; exit 0 }
 }
+# Several runs append at once now (one per slot): retry a sharing violation
+function Add-BudgetLine([string]$line) {
+    for ($i = 0; $i -lt 40; $i++) {
+        try { Add-Content $budgetFile $line -ErrorAction Stop; return } catch { Start-Sleep -Milliseconds (50 + (Get-Random -Maximum 100)) }
+    }
+    Add-Content $budgetFile $line
+}
 New-Item -ItemType Directory -Force -Path (Split-Path $budgetFile) | Out-Null
 $stamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
 $startKind = if ($env:PM_AZT_ATTEMPT -eq "2") { "retry-start" } else { "start" } # azt retry (AZFIX): not counted in the budget
-Add-Content $budgetFile "$stamp,$row,$sha,$argStr,$startKind,," # one real Azahar start, one line (-Force too)
+Add-BudgetLine "$stamp,$row,$sha,$argStr,$startKind,," # one real Azahar start, one line (-Force too)
 if ($startKind -eq "start") { $used += 1 }
 function End-Run([int]$rc, [string]$res, [string]$kind = "end") {
-    Add-Content $budgetFile "$((Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')),$row,$sha,$argStr,$kind,$rc,$($res.Replace(',', ';'))"
+    if ($script:slotK) { $res = "slot$($script:slotK): $res" } # azt.ps1 finds its own end line by this prefix
+    Add-BudgetLine "$((Get-Date).ToString('yyyy-MM-ddTHH:mm:ss')),$row,$sha,$argStr,$kind,$rc,$($res.Replace(',', ';'))"
     Write-Output "budget: row $row run $used/$max"
     exit $rc
 }
@@ -123,8 +136,7 @@ function Read-Tail([string]$path, [int]$max = 65536) {
 # cannot be used. Instead: one named mutex serialises all runs, the real file is saved byte for byte before the
 # first edit and put back byte for byte in finally. A hard kill skips finally: the next run puts the file back
 # from the saved copy (and kills the orphan Azahar) before it does anything.
-$cfgBak = "$env:TEMP\pm_azahar_qt-config.orig"
-$pidFile = "$env:TEMP\pm_azahar_run.pid"
+$cfgBak = ""; $pidFile = "" # set from the slot below
 function Restore-Cfg {
     if (Test-Path $cfgBak) {
         Copy-Item $cfgBak $cfg -Force
@@ -133,8 +145,7 @@ function Restore-Cfg {
 }
 # UI1a: the game's options.ini (sdmc). A saved profmode=prof makes the game log only prof lines (debug lines drop), so a run
 # without a prof word writes profmode=off into the file, and the file is put back byte for byte the same way as the config.
-$optFile = "$sd\options.ini"
-$optBak = "$env:TEMP\pm_azahar_options.orig"
+$optFile = ""; $optBak = "" # set from the slot below
 function Restore-Opt {
     if (Test-Path $optBak) {
         Copy-Item $optBak $optFile -Force
@@ -174,23 +185,31 @@ if ($Turbo) {
     if ($Until -or $Smoke) { Write-Output "TURBO run: timeout $Timeout s. Not valid for performance numbers." }
 }
 
-# Named mutex: one Azahar run at a time on this PC (all trees, all agents)
+# AZT-1 slot pool: a run takes one of N private portable Azahar copies (azslot.ps1), so runs on different slots go in parallel.
+# azt.ps1 takes the slot itself and passes -Slot with PM_SLOT_HELD=1. A direct call takes the first free slot (waits only when all are busy).
 $p = $null
 $gdbProc = $null
-$mutex = New-Object Threading.Mutex($false, "Global\pm_azahar_run")
-$held = $false
-# The lock covers the later reads of the shared game log and emulator log too: released after the last read (Release-Lock below)
-function Release-Lock { if ($script:held) { $script:held = $false; $mutex.ReleaseMutex() } }
+$slotK = 0
+$heldHere = $false
+# The slot covers the later reads of the slot game log and emulator log too: released after the last read (Release-Lock below)
+function Release-Lock { if ($script:heldHere) { $script:heldHere = $false; Exit-Slot $script:slotK } }
 trap { Release-Lock; break }
-try {
-    if (-not $mutex.WaitOne(0)) {
-        Write-Output "Another Azahar run holds the lock (Global\pm_azahar_run). Waiting up to $LockWait s..."
-        $held = $mutex.WaitOne([int]($LockWait * 1000))
-        if (-not $held) { Write-Output "LOCK TIMEOUT: no free slot after $LockWait s. Nothing was run."; exit 3 }
-        Write-Output "Lock acquired."
-    } else { $held = $true }
-} catch [Threading.AbandonedMutexException] { $held = $true; Write-Output "Lock was abandoned by a killed run. Recovering." }
-# From here this script owns the lock. Any earlier run that was killed: kill its Azahar, put the config back.
+if ($env:PM_SLOT_HELD -and $Slot -gt 0) { $slotK = $Slot }
+else {
+    $slotK = Get-Slot $Slot $LockWait
+    if (-not $slotK) { End-Run 3 "LOCK TIMEOUT: no free Azahar slot after $LockWait s. Nothing was run." }
+    $heldHere = $true
+    Write-Output "Azahar slot $slotK taken."
+}
+$sl = Ensure-Slot $slotK
+Sync-Slot $slotK
+$sd = $sl.sd; $cfg = $sl.cfg; $exe = $sl.exe; $emuLog = $sl.emuLog; $log = "$sd\log.txt"; $pidFile = $sl.pidFile
+$cfgBak = "$($sl.dir)\qt-config.orig"; $optFile = "$sd\options.ini"; $optBak = "$($sl.dir)\options.orig"
+if (Test-Path "$sdMaster\options.ini") { Copy-Item "$sdMaster\options.ini" $optFile -Force } # the user's game settings, the slot copy is edited below
+$outLane = $out
+$out = "$outLane\slot$slotK" # outputs of this slot: no file shared with a run on another slot
+New-Item -ItemType Directory -Force -Path $out | Out-Null
+# From here this script owns the slot. Any earlier run on this slot that was killed: kill its Azahar, put the config back.
 if (Test-Path $pidFile) {
     $old = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
     $op = Get-Process -Id $old -ErrorAction SilentlyContinue
@@ -199,11 +218,10 @@ if (Test-Path $pidFile) {
 }
 if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
 if (Test-Path $optBak) { Write-Output "Recovery: restoring options.ini saved by a killed run."; Restore-Opt }
-# AZFIX: the lock is ours and no run is active, so an azahar.exe open now was not started by a run (an interactive window). Wait 60 s, then stop.
-if (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue).Count) {
-    Write-Output "WARNING: azahar.exe not started by a run is open: $(Get-AzaharList). Waiting up to 60 s for it to close."
-    for ($w = 0; $w -lt 60 -and @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue).Count; $w++) { Start-Sleep -Seconds 1 }
-    if (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue).Count) { Release-Lock; End-Run 3 "STRAY AZAHAR: $(Get-AzaharList) still open after 60 s. Nothing was run." }
+# An azahar.exe of this slot that no run owns (a kill left it): the slot is ours, so stop it.
+foreach ($sp in @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -eq $exe })) {
+    Write-Output "Slot ${slotK}: stopping a stray azahar.exe (pid $($sp.ProcessId))."
+    Kill-Azahar ([int]$sp.ProcessId)
 }
 try {
     Set-Content $pidFile $PID # the script PID until Azahar starts, then the Azahar PID
@@ -212,7 +230,7 @@ try {
     if ($Turbo) { Set-Turbo }
 
 New-Item -ItemType Directory -Force -Path $sd | Out-Null
-Copy-Item "$out\pm_3ds.3dsx" "$sd\$x3dsx" -Force
+Copy-Item $in3dsx "$sd\$x3dsx" -Force
 Remove-Item $log -ErrorAction SilentlyContinue
 if (Test-Path $log) { Release-Lock; End-Run 5 "LOG LOCKED: $log is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
 if ($Smoke -and $Debug -notmatch "fixedseed") { $Debug = "$Debug fixedseed" } # R-SEED: smoke runs use the fixed RNG seed
@@ -362,7 +380,7 @@ if (Test-Path $log) {
         $prev = $cur
         Start-Sleep -Milliseconds 300
     }
-    try { Copy-Item $log "$out\last_log.txt" -Force -ErrorAction Stop; Get-Content "$out\last_log.txt" | Select-Object -Last 15 } catch { Write-Output "LOG COPY FAILED: $($_.Exception.Message)" }
+    try { Copy-Item $log "$out\last_log.txt" -Force -ErrorAction Stop; Copy-Item $log "$outLane\last_log.txt" -Force -ErrorAction SilentlyContinue; Get-Content "$out\last_log.txt" | Select-Object -Last 15 } catch { Write-Output "LOG COPY FAILED: $($_.Exception.Message)" }
 } else {
     Write-Output "no log.txt written"
 }
