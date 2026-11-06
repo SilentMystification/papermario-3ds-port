@@ -1,10 +1,11 @@
 # agent_menu: Select menu epic (plan_menu.md sections 2 and 3)
 
-STATE (MENU5, branch nds1, main folder; rows CH0 to CH4, LAYOUT, PAUSE items; section 12)
-- Done and committed: CH0 (generator; committed inside another agent's commit 1f31155b2, see 12), CH1 75f7081ea, CH2 5924e6bff, CH3 d6dc1215e, CH4 ae545debc, PAUSE AUDIO 35119c9d4, PAUSE GREY and BOTTOM b9c652897, dead zone default 15 fda1ff97f, LAYOUT 70abc9cb0 (Debug folders, skip 6).
-- Open: CH5 Spawn item, CH6 Moon Jump, CH7, CH8, MN8, MN9, BT1, BT2, BT3.
-- Next command: rebuild lane menu, then CH5 (Spawn item > under Cheats, after Partners; row 5 of the Cheats tab).
-- Named gaps: section 12.
+STATE (MENU5, branch nds1; section 12 and 13)
+- Committed on nds1: CH0 to CH4 (CH4 gap fix f716b50d6), LAYOUT 70abc9cb0, PAUSE items, profmenu_row fix 3e8be29e5.
+- Untested on branch menu5-untested (e01dcc15e, not merged): CH5 Spawn item, Set Stats Level read only. Built, not run.
+- BLOCKED: every Azahar start since the S6 commits (a64bf03c1, 982ac21a4) exits before the warp marker (control menu_partner_top passed before them). Not my code. Gate runs for CH5 and Set Stats wait for a boot fix.
+- Not started: CH6, CH7, CH8, MN8, MN9, BT1, BT2, BT3.
+- Next: boot fix, then menu_spawn and menu_setstats_level on the branch, merge, then CH6.
 
 
 STATE (MENU4, branch nds1, main folder; see section 11)
@@ -222,3 +223,12 @@ Named gaps (not done, not dropped):
 - Commits: no attribution lines (user rule). CH1 was amended once to remove one.
 - Shared-file note: azt_scenarios.json has other agents' uncommitted hunks (sbk56_superblock). Commits used an index blob with only this row's hunks.
 - Hand back after row 4 (CH4 and LAYOUT both done). Rows CH5 to CH8, MN8, MN9, BT1 to BT3 not started.
+
+
+## 13. MENU5 second pass (blocker)
+- CH4 gap closed: pm_dbgg_partner_set calls switch_to_partner (live path, src/world/partners.c, menus.c caller). Not dead: dead.h only renames symbols in src/world/dead files. Gate menu_partner_top PASS by eye (Kooper beside Mario after the Goombario off).
+- profmenu_row: SELECT before wait900, PASS (prof f300 line).
+- Set Stats Level (user change): read only, computed level = 1 + (HP-10)/5 + (FP-5)/5 + (BP-3)/3, steps HP 5, FP 5, BP 3, cursor skips the Level row (log menu: readonly row skipped), red values when level above 27. Gate run not done (boot blocked). Level written to gPlayerData.level capped at 27 (game maximum); the shown value is the computed one.
+- CH5 Spawn item: one A spawns one consumable over Mario (make_item_entity_nodelay, world mode only). Gate not run (boot blocked).
+- Blocker detail: start 1 to 6 of menu_spawn and the control menu_partner_top: Azahar exit -1 at about 25 s, the game log has no warp line (last_log: mac_00 reached, no marker). Build 2320 (a64bf03c1) is the first failing build. Also the lane build includes other agents' worktree changes in pm_tex.c and pm_tex_tx1.h.
+- Scratchpad helper files are shared with other agents: my helpers are named m5_*.
