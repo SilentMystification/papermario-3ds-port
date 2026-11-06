@@ -296,9 +296,9 @@ static void mc_note(const NdMKey* k, const NdMEnt* e) { /* S3N-7: the last entry
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     mc_lastp[s] = k->rp; mc_lasti[s] = (uint16_t)(e - mc_tab); mc_lastg[s] = mc_clears_n;
 }
-NdMEnt* nd_mc_store_neg(const NdMKey* k, unsigned ep) {
+NdMEnt* nd_mc_store_neg(const NdMKey* k, unsigned ep, unsigned why) {
     NdMEnt* e = mc_slot(k);
-    e->neg = 1; e->ep = ep; e->tex = 0; e->hs = -1; e->hg = 0; e->n = 0; e->nraw = 0; e->off = mc_pool_n; e->geom = 0;
+    e->neg = 1; e->why = (uint8_t)(why & 15u); e->ep = ep; e->tex = 0; e->hs = -1; e->hg = 0; e->n = 0; e->nraw = 0; e->off = mc_pool_n; e->geom = 0;
     mc_note(k, e);
     return e;
 }
