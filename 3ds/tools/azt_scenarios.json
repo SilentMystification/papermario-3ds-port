@@ -2126,6 +2126,58 @@
       "reason": "CH7 batch 1 gate: one log line per cheat in one yard run, the HP refill line (quantity: HP 1 to max). Named gap: the speed x2 effect (walk value at movement) is not measured: the walk value is 0 at idle, the line shows it at the first tick only."
     },
     {
+      "name": "menu_cheats8",
+      "status": "verified",
+      "subject": "Select menu, Cheats tab, rows 12 to 21: boots, hammer and star spirit steps, star pieces, story, inventory fill, save and load position (same map), instant win refused outside battle. One log line per row.",
+      "proves": "CH8: value rows step (wrap), story apply, inventory fill, position save and load (RAM), instant win in battle only.",
+      "debug": "preset=toad padscript=@pad_cheats8.txt loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "boots",
+          "regex": "cheat: boots level 1"
+        },
+        {
+          "name": "spirits",
+          "regex": "cheat: max star spirits 1"
+        },
+        {
+          "name": "pieces",
+          "regex": "cheat: star pieces 1"
+        },
+        {
+          "name": "story",
+          "regex": "cheat: story [a-z0-9_]+ [(]-?[0-9]+[)]"
+        },
+        {
+          "name": "fill",
+          "regex": "cheat: inventory filled with 0x[0-9A-F]+"
+        },
+        {
+          "name": "save",
+          "regex": "cheat: position saved, map"
+        },
+        {
+          "name": "load",
+          "regex": "cheat: position loaded x"
+        },
+        {
+          "name": "win refused",
+          "regex": "menu: Instant win needs a battle"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "CH8 gate (one run): one log line per row; the instant win refusal (outside battle) is its gate in this run. The battle win is run separately (battle_start scenario, not in this row)."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",

@@ -276,7 +276,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_CH8 = 380, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
 /* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
 int pm_dbgg_spawn_count(void); int pm_dbgg_spawn_id(int row); void pm_dbgg_spawn(int id);
 const char* pm_partner_name(int i); const char* pm_partner_value(int i); int pm_dbgg_partner_on(int i); void pm_dbgg_partner_set(int i, int on); int pm_dbgg_partner_level(int i, int dir);
@@ -309,6 +309,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_SPAWNF; /* CH5: Spawn item folder */
         ids[n++] = RW_MOON; /* CH6: Moon jump (On or Off) */
         for (i = 0; i < 5; i++) ids[n++] = RW_CHEAT + i; /* CH7: Infinite HP, FP, star power, No battles, Speed x2 */
+        for (i = 0; i < 10; i++) ids[n++] = RW_CH8 + i; /* CH8: boots, hammer, spirits, pieces, story, item, fill, save, load, instant win */
     }
     ids[n++] = RW_BACK;
     return n;
@@ -423,6 +424,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id > RW_PART && id <= RW_PART + 11) return pm_partner_name(id - RW_PART); /* CH4 */
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return pm_item_name(pm_dbgg_spawn_id(id - RW_SPAWN)); /* CH5 */
     if (id == RW_MOON) return "Moon jump"; /* CH6 */
+    if (id >= RW_CH8 && id < RW_CH8 + 10) { static const char* const cl8[10] = { "Boots level", "Hammer level", "Max star spirits", "Star pieces", "Story", "Inventory item", "Fill inventory", "Save position", "Load position", "Instant win" }; return cl8[id - RW_CH8]; } /* CH8 */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { static const char* const cl[5] = { "Infinite HP", "Infinite FP", "Infinite star power", "No battles", "Speed x2" }; return cl[id - RW_CHEAT]; } /* CH7 */
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "Toggle all" : pm_item_name(pm_dbgg_item_id(g, folder_row(id, &g) - 1));
     if (id >= RW_WMAP) return pm_warp_map_name(pm_warp_area_map(sub_area, id - RW_WMAP));
@@ -459,6 +461,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return "A: spawn"; /* CH5 */
     if (id == RW_MOON) return pm_cheat_moon_get() ? "On" : "Off"; /* CH6 */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) return pm_cheat_get(id - RW_CHEAT) ? "On" : "Off"; /* CH7 */
+    if (id >= RW_CH8 && id < RW_CH8 + 10) return pm_dbgg_ch8_text(id - RW_CH8); /* CH8 */
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "A: all" : pm_dbgg_item_has(g, pm_dbgg_item_id(g, folder_row(id, &g) - 1)) ? "On" : "Off";
     if (id >= RW_WMAP) { /* a map row shows its entry and the entry count */
         static char eb[16];
@@ -499,6 +502,8 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return 0; /* CH5: one A spawns one item */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 1; } /* CH6: left or right flips it */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7: flips */
+    if (id >= RW_CH8 && id < RW_CH8 + 6) { pm_dbgg_ch8_step(id - RW_CH8, dir); return 1; } /* CH8: value rows step */
+    if (id >= RW_CH8 && id < RW_CH8 + 10) return 0;
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7 */
     if (id > RW_PART && id <= RW_PART + 11) return pm_dbgg_partner_level(id - RW_PART, dir); /* CH4: left and right change the level of an enabled partner */
     if (id == RW_CSTATS || id == RW_CBADGES || id == RW_CKEYS || fold_index(id) >= 0 || folder_row(id, &g) >= 0) return 0;
@@ -541,6 +546,7 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) { pm_dbgg_spawn(pm_dbgg_spawn_id(id - RW_SPAWN)); return 0; } /* CH5 */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 0; } /* CH6 */
     if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 0; } /* CH7 */
+    if (id >= RW_CH8 && id < RW_CH8 + 10) { pm_dbgg_ch8_act(id - RW_CH8); return 0; } /* CH8 */
     if (id > RW_PART && id <= RW_PART + 11) { /* CH4: A turns the partner on or off */
         pm_dbgg_partner_set(id - RW_PART, !pm_dbgg_partner_on(id - RW_PART));
         return 0;

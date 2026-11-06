@@ -57,6 +57,13 @@ static const StoryName stories[] = {
     { "ch2_start", STORY_CH2_ARRIVED_AT_MT_RUGGED },
     { "epilogue", STORY_EPILOGUE },
 };
+/* CH8: the story list of the Cheats row (stories[] above): count, name and the apply (evt_set_variable GB_StoryProgress). */
+int pm_warp_story_n(void) { return (int)(sizeof stories / sizeof stories[0]); }
+const char* pm_warp_story_label(int i) { return stories[i].name; }
+void pm_warp_story_apply(int i) {
+    evt_set_variable(NULL, GB_StoryProgress, stories[i].value);
+    pm_log("cheat: story %s (%d)", stories[i].name, (int)stories[i].value);
+}
 
 /* value of "key=value" in the switch string, 0 when absent */
 int pm_debug_value(const char* key, char* out, unsigned n) {
