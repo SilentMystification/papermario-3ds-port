@@ -704,6 +704,7 @@ mixed:
     pm_gpu_set_nocolor(rs.nocol);
     if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
     pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);
+    pm_gpu_dbg_mode(m); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
     pm_gpu_render_src(omode_h, m, rs.depth);
 }
 
@@ -2298,7 +2299,8 @@ typedef struct {
     EntSeg* seg;
     u16 nseg;
     u8 st, why, nrec;
-    u32 ndraw;
+    u32 ndraw, id;
+    Gfx* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
 } EntKey;
 enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
 #define ENT_TAB 256
@@ -2314,12 +2316,42 @@ static const void* ent_env_vtx(uint32_t w1, unsigned n) {
     if (!src || !is_host((u32)src) || n == 0 || n > 64) return NULL;
     return src;
 }
-static u32 ent_hash(const Gfx* l, u32 nops, const u8* vp, u32 vlen) {
-    u32 h = 2166136261u;
-    const u32* w = (const u32*)l;
-    for (u32 i = 0; i < nops * 2u; i++) h = (h ^ w[i]) * 16777619u;
+/* S6-5: the words of the list and of every nested list (G_DL), then the vertex span */
+static u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
+    for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
+        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+        h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
+        if ((w0 >> 24) == G_ENDDL) return h;
+        if ((w0 >> 24) == G_DL) {
+            const Gfx* t = (const Gfx*)ptr_of(w1);
+            if (t && is_host((u32)t) && depth < 5) h = ent_hash_walk(t, h, depth + 1);
+            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) return h;
+        }
+    }
+    return h;
+}
+static u32 ent_hash(const Gfx* l, const u8* vp, u32 vlen) {
+    u32 h = ent_hash_walk(l, 2166136261u, 0);
     for (u32 i = 0; i < vlen; i += 4u) { u32 v; memcpy(&v, vp + i, 4); h = (h ^ v) * 16777619u; }
     return h;
+}
+/* S6-5: the list with the nested lists inlined. 0: a nested target is not host memory, too deep or too long. */
+static Gfx ent_flat_buf[ND_DLC_MAXOPS + 1];
+static int ent_flat(const Gfx* l, unsigned* n, int depth) {
+    for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
+        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+        unsigned op = w0 >> 24;
+        if (op == G_ENDDL) return 1;
+        if (op == G_DL) {
+            const Gfx* t = (const Gfx*)ptr_of(w1);
+            if (!t || !is_host((u32)t) || depth >= 5 || !ent_flat(t, n, depth + 1)) return 0;
+            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) return 1;
+            continue;
+        }
+        if (*n >= ND_DLC_MAXOPS) return 0;
+        ent_flat_buf[(*n)++] = l[i];
+    }
+    return 0;
 }
 /* the pool copies against the list: every triangle corner is the vertex the slot holds at the triangle (bytes 0 to 5 and 8 to 15; the flag word is the palette index). Per segment. */
 static void ent_refcheck(const EntKey* k, const Gfx* l) {
@@ -2355,19 +2387,26 @@ static void ent_refcheck(const EntKey* k, const Gfx* l) {
         if (bad[q] || gt != k->seg[k->nseg - 1].tri0 + k->seg[k->nseg - 1].ntri) ent_c.cdiff++; else ent_c.ceq++;
     }
 }
-static void ent_compile(EntKey* k, const Gfx* l) {
-    const u32* w = (const u32*)l;
-    unsigned ns = 0, nops;
+static void ent_compile(EntKey* k, const Gfx* l0) {
+    unsigned ns = 0, nops = 0;
     u32 bad = 0, ntri = 0;
     const u8 *lo = NULL, *hi = NULL;
     NdObj o;
     free(k->seg); k->seg = NULL; k->nseg = 0;
+    free(k->fw); k->fw = NULL;
     k->st = ENT_REF; k->why = 0; k->fr = pm_frame_count(); k->retry = k->fr + 300u;
     ent_c.comp++;
+    if (!ent_flat(l0, &nops, 0)) { k->why = 5; return; }
+    ent_flat_buf[nops].words.w0 = (u32)G_ENDDL << 24; ent_flat_buf[nops].words.w1 = 0;
+    k->fw = (Gfx*)malloc((nops + 1u) * sizeof(Gfx));
+    if (!k->fw) { k->why = 5; return; }
+    memcpy(k->fw, ent_flat_buf, (nops + 1u) * sizeof(Gfx));
+    const Gfx* l = k->fw;
+    const u32* w = (const u32*)l;
     int rc = nd_ent_segments(w, ent_sbuf, ENT_SEGMAX, &ns, &bad);
     if (rc != NDR_OK) { k->why = (u8)(rc + 1); if (rc == NDR_OP) ent_opc[bad & 0xffu]++; return; }
     if (ns == 0) { k->why = 8; return; }
-    nops = nd_ent_strip(w, dlc_words);
+    nd_ent_strip(w, dlc_words);
     for (unsigned s = 0; s < ns; s++) ntri += ent_sbuf[s].ntri;
     if (k->vb) for (unsigned i = 0; i < nops; i++) { /* the vertex span of the vertex array: hashed once per frame */
         if ((l[i].words.w0 >> 24) != G_VTX) continue;
@@ -2394,12 +2433,12 @@ static void ent_compile(EntKey* k, const Gfx* l) {
     if (o.nidx) pm_gpu_gidxs_commit(o.idx, o.nidx);
     nd_dlc_free(&o); /* the groups and geometry ops; the pool copies stay */
     k->vp = lo; k->vlen = lo ? (u32)(hi - lo) & ~3u : 0u;
-    k->hash = ent_hash(l, nops, k->vp, k->vlen);
+    k->hash = ent_hash(l0, k->vp, k->vlen);
     k->st = ENT_OK;
     if (entchk_on()) ent_refcheck(k, l);
 }
 static void ent_reset(void) {
-    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { free(ent_tab[i]->seg); free(ent_tab[i]); ent_tab[i] = NULL; }
+    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { free(ent_tab[i]->seg); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
     ent_nent = 0; ent_gen_seen = pm_dlc_gen;
 }
 static EntKey* ent_lookup(const Gfx* l, u32 vb) {
@@ -2410,7 +2449,7 @@ static EntKey* ent_lookup(const Gfx* l, u32 vb) {
             if (ent_nent >= ENT_TAB * 3 / 4) return NULL;
             k = (EntKey*)calloc(1, sizeof *k);
             if (!k) return NULL;
-            k->list = (u32)l; k->vb = vb;
+            k->list = (u32)l; k->vb = vb; k->id = ent_nent;
             ent_tab[h] = k; ent_nent++;
             ent_compile(k, l);
             return k;
@@ -2463,24 +2502,26 @@ static int ent_draw(const Gfx* rec) {
     if (!k) { ent_c.why[1]++; ent_c.fb++; ent_log(); return 0; }
     if (k->st == ENT_OK && k->fr != f) { /* content, once per frame */
         k->fr = f;
-        if (ent_hash(l, k->nops, k->vp, k->vlen) != k->hash) {
+        if (ent_hash(l, k->vp, k->vlen) != k->hash) {
             if (++k->nrec > 3) { k->st = ENT_DYN; ent_c.dyn++; }
             else { u8 nr = k->nrec; ent_compile(k, l); k->nrec = nr; }
         }
     } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { ent_compile(k, l); }
     k->ndraw++;
+    { static unsigned msk = 0xffffffffu; if (msk == 0xffffffffu) { char b[16]; msk = pm_debug_value("entskip", b, sizeof b) ? (unsigned)strtoul(b, NULL, 16) : 0u; } if (k->id < 32u && (msk >> k->id & 1u)) return 0; } /* debug switch entskip=<hex mask of key ids>: those keys run the walker (bisect aid) */
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; ent_log(); return 0; }
     if (entchk_on()) { ent_c.nat++; ent_log(); return 0; }
     for (unsigned s = 0; s < k->nseg; s++) {
         const EntSeg* e = &k->seg[s];
-        if (e->op0 > e->a0) pm_gbi_run((void*)(l + e->a0), (e->op0 - e->a0) * 8u);
+        const Gfx* fw = k->fw;
+        if (e->op0 > e->a0) pm_gbi_run((void*)(fw + e->a0), (e->op0 - e->a0) * 8u);
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; continue; }
         ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
-        for (u32 i = 0; i < e->op0; i++) if ((l[i].words.w0 >> 24) == G_VTX) pm_gbi_run((void*)(l + i), 8u);
-        if (e->op1 > e->op0) pm_gbi_run((void*)(l + e->op0), (e->op1 - e->op0) * 8u);
+        for (u32 i = 0; i < e->op0; i++) if ((fw[i].words.w0 >> 24) == G_VTX) pm_gbi_run((void*)(fw + i), 8u);
+        if (e->op1 > e->op0) pm_gbi_run((void*)(fw + e->op0), (e->op1 - e->op0) * 8u);
     }
-    { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) pm_gbi_run((void*)(l + e->op1), (k->nops - e->op1) * 8u); }
+    { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) pm_gbi_run((void*)(k->fw + e->op1), (k->nops - e->op1) * 8u); }
     tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of dlc_try */
     ent_c.nat++;
     ent_log();
