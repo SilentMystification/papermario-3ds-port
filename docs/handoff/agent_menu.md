@@ -1,11 +1,9 @@
 # agent_menu: Select menu epic (plan_menu.md sections 2 and 3)
 
-STATE (MENU5, branch nds1; section 12 and 13)
-- Committed on nds1: CH0 to CH4 (CH4 gap fix f716b50d6), LAYOUT 70abc9cb0, PAUSE items, profmenu_row fix 3e8be29e5.
-- Untested on branch menu5-untested (e01dcc15e, not merged): CH5 Spawn item, Set Stats Level read only. Built, not run.
-- BLOCKED: every Azahar start since the S6 commits (a64bf03c1, 982ac21a4) exits before the warp marker (control menu_partner_top passed before them). Not my code. Gate runs for CH5 and Set Stats wait for a boot fix.
-- Not started: CH6, CH7, CH8, MN8, MN9, BT1, BT2, BT3.
-- Next: boot fix, then menu_spawn and menu_setstats_level on the branch, merge, then CH6.
+STATE (MENU5, branch nds1, all rows of row_MENU5 through BT3 committed; section 14)
+- Done on nds1: CH0 to CH8, MN8, MN9, BT1, BT2, BT3, PAUSE items, LAYOUT, profmenu_row, CH4 gap, Set Stats level (user change). Branch menu5-untested merged by content (8568dbddd, a84284034 chain).
+- Named gaps open: Frame advance (CH8), speed x2 movement effect (CH7), moon jump peak not in the top shot (CH6), KMR_1 not in the battle table (BT2), battle or pause start message only (BT2), menu toggle route for moon jump not run (CH6).
+- Next: none in row_MENU5. Hand back after BT3.
 
 
 STATE (MENU4, branch nds1, main folder; see section 11)
@@ -232,3 +230,18 @@ Named gaps (not done, not dropped):
 - CH5 Spawn item: one A spawns one consumable over Mario (make_item_entity_nodelay, world mode only). Gate not run (boot blocked).
 - Blocker detail: start 1 to 6 of menu_spawn and the control menu_partner_top: Azahar exit -1 at about 25 s, the game log has no warp line (last_log: mac_00 reached, no marker). Build 2320 (a64bf03c1) is the first failing build. Also the lane build includes other agents' worktree changes in pm_tex.c and pm_tex_tx1.h.
 - Scratchpad helper files are shared with other agents: my helpers are named m5_*.
+
+
+## 14. MENU5 final pass (CH5 to BT3)
+- CH5 menu_spawn: PASS (log spawn item 0x080; picture: Fire Flower collected over Mario).
+- Set Stats Level (user): read only, computed level, red over 27, cursor skip. menu_setstats_level: PASS by eye (white 10/5/3/1, red 75/75/3/28).
+- CH6 Moon jump: menu_moon_on peak y 528 against 68 (menu_moon_off). Picture of the rise, window 84 to 89. Gap: the peak is above the view.
+- CH7 batch 1: menu_cheats7 PASS (HP refill 1 -> 10, one active line per cheat). Gap: speed x2 movement not measured (walk 0.00 at idle).
+- CH8 rows 12 to 21: menu_cheats8 PASS by log (9 of 9). Gap: Frame advance not built (the frozen loop has no step path with the menu open; needs a state machine in pm_main.c).
+- MN8: colour code already in pm_log.c since f019fcb5b2. logcolor_mn8 PASS by eye.
+- MN9: smdh description is the build number alone (2344-menu). Title and publisher unchanged.
+- BT1: sweep_gen.py battletable, 457 formations (pm_battle_table.h). bosstable output unchanged.
+- BT2 menu_battle: PASS (log battle: start formation 257 stage 4, battle picture). Gap: KMR_1 not in the table, KMR_PART_2 used; battle and pause start only a message.
+- BT3 menu_battle_hud: PASS (footer: Battle KMR_PART_2 F01 S04 Goomba King +).
+- Log note: a stray profmode=prof in options.ini (profmenu test) dropped the debug log; reset by the coordinator (profmode=off).
+- Shared scratchpad: helper names must be unique (m5_*), other agents overwrote add_scn.py.
