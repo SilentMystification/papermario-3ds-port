@@ -594,8 +594,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "sp0x", "regex": "sp0x f\\d+ tex ops" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "sp0x",
+          "regex": "sp0x f\\d+ tex ops"
+        }
       ],
       "reason": ""
     },
@@ -612,8 +618,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "ndref done", "regex": "ndref f200 done draws" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f200 done draws"
+        }
       ],
       "reason": ""
     },
@@ -630,8 +642,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "prof", "regex": "prof f\\d+ w\\d+ fps" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "prof",
+          "regex": "prof f\\d+ w\\d+ fps"
+        }
       ],
       "reason": ""
     },
@@ -665,15 +683,21 @@
       "subject": "Toad Town street (mac_01), Mario walks east by padscript, one shot per frame from frame 120 to 179 (compare the native close against the old close frame by frame: flicker while moving).",
       "proves": "Pictures of a walk, for region_diff between two builds.",
       "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500 shots shotwin=120:60 loglevel=debug",
-      "until": "shot \\d+ frame 17\\d" ,
+      "until": "shot \\d+ frame 17\\d",
       "cap": 60,
       "deadline": 25,
       "first_marker": "warp: mac_01 entry 0",
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "shot", "regex": "shot \\d+ frame 17\\d" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 17\\d"
+        }
       ],
       "reason": ""
     },
@@ -690,8 +714,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "ndplan", "regex": "ndplan runs" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "ndplan",
+          "regex": "ndplan runs"
+        }
       ],
       "reason": "a walk needs about 60 s"
     },
@@ -708,8 +738,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "ndref done", "regex": "ndref f170 done draws" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f170 done draws"
+        }
       ],
       "reason": ""
     },
@@ -726,8 +762,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "ndref done", "regex": "ndref f230 done draws" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f230 done draws"
+        }
       ],
       "reason": ""
     },
@@ -744,8 +786,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "ndref done", "regex": "ndref f300 done draws" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f300 done draws"
+        }
       ],
       "reason": ""
     },
@@ -762,8 +810,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "ndref done", "regex": "ndref f400 done draws" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f400 done draws"
+        }
       ],
       "reason": ""
     },
@@ -780,8 +834,14 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-        { "name": "map", "regex": "warp: mac_01 entry 0" },
-        { "name": "ndunit", "regex": "ndunit after: runs" }
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "ndunit",
+          "regex": "ndunit after: runs"
+        }
       ],
       "reason": "a walk needs about 60 s"
     },
@@ -1983,7 +2043,7 @@
     },
     {
       "name": "menu_spawn",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Select menu, Cheats tab (L), Spawn item > (5 down, A), the first item row (A): one item spawned over Mario. SELECT closes, the top shot after the resume shows the item above Mario (falling).",
       "proves": "CH5: Spawn item folder (sub kind 11), one item made over gPlayerStatus.pos (make_item_entity_nodelay) from the frozen menu.",
       "debug": "preset=toad padscript=@pad_spawn.txt shots shotwin=160:6 loglevel=debug",
@@ -2015,7 +2075,7 @@
     },
     {
       "name": "menu_setstats_level",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Select menu, Cheats > Set Stats. First shot: normal values (white, HP 10, FP 5, BP 3, Level 1). After HP up 13 and FP up 14 (level 28 over 27): HP, FP, BP and Level draw in red. The cursor skips the Level row (down from BP goes to Star points).",
       "proves": "CH4 user change: Level is read only, computed from the stats (level = 1 + (HP-10)/5 + (FP-5)/5 + (BP-3)/3), red over 27, cursor skip.",
       "debug": "preset=toad padscript=@pad_setstats_level.txt shotmenu loglevel=debug",
@@ -2051,7 +2111,7 @@
     },
     {
       "name": "menu_moon_on",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Toad Town, A held 90 scans (a jump): with the Moon jump on (launch switch moonjump), Mario floats up and stays high while A is held; the top shot in the shotwin window shows him high. Off: a normal jump.",
       "proves": "CH6: pm_cheat_tick per step (pm_warp_tick): upward velocity at least 4 and zero accelerations while A held and jumping.",
       "debug": "preset=toad moonjump padscript=@pad_moon.txt shots shotwin=84:12 loglevel=debug",
@@ -2079,7 +2139,7 @@
     },
     {
       "name": "menu_moon_off",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Toad Town, A held 90 scans (a jump): with the Moon jump on (launch switch moonjump), Mario floats up and stays high while A is held; the top shot in the shotwin window shows him high. Off: a normal jump.",
       "proves": "CH6: pm_cheat_tick per step (pm_warp_tick): upward velocity at least 4 and zero accelerations while A held and jumping.",
       "debug": "preset=toad padscript=@pad_moon.txt shots shotwin=120:12 loglevel=debug",
@@ -2118,7 +2178,7 @@
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
-{
+        {
           "name": "hp refill",
           "regex": "cheat: infinite HP refill 1 -> [0-9]+"
         },
@@ -2151,7 +2211,7 @@
     },
     {
       "name": "menu_cheats8",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Select menu, Cheats tab, rows 12 to 21: boots, hammer and star spirit steps, star pieces, story, inventory fill, save and load position (same map), instant win refused outside battle. One log line per row.",
       "proves": "CH8: value rows step (wrap), story apply, inventory fill, position save and load (RAM), instant win in battle only.",
       "debug": "preset=toad padscript=@pad_cheats8.txt loglevel=debug",
@@ -2203,7 +2263,7 @@
     },
     {
       "name": "logcolor_mn8",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Yard, bottom screen at frames 200 to 205 with conlevel=debug: the log lines are coloured by level (error bright red, warn yellow, info white, debug grey). The last log lines are in the window.",
       "proves": "MN8: pm_log.c drain_locked writes one colour code per console line (con_sgr by level) and a reset before the newline.",
       "debug": "preset=yard shotbottom=200:6 conlevel=debug loglevel=debug",
@@ -2227,7 +2287,7 @@
     },
     {
       "name": "menu_battle",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Select menu: Debug > Boss and Battles > Battles > KMR PART 2 (the first kmr area with formations in the table), formation row 1, A. The battle starts in place 30 frames later (no warp, no story change).",
       "proves": "BT2: Battles folder pages (depth 2 and 3 breadcrumb), start of a non-boss formation in the world from the menu (set_battle_stage, load_battle).",
       "debug": "preset=toad padscript=@pad_battles.txt shotmenu shots shotwin=150:8 loglevel=debug",
@@ -2255,7 +2315,7 @@
     },
     {
       "name": "menu_battle_hud",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Battle started from the Battles folder (KMR PART 2 formation row 1): the bottom screen footer row shows the battle line Battle <AREA> F<formation> S<stage> <label> (not the map line) while the battle runs.",
       "proves": "BT3: pm_map_hud_step in battle mode builds the battle line (pm_battle_hud_text, table row of the formation and stage), on change only.",
       "debug": "preset=toad padscript=@pad_battles.txt shotbottom=200:6 loglevel=debug",
@@ -5764,9 +5824,7 @@
         }
       ],
       "reason": "Log and file only. Stereo: both eyes of the frame are in one file, so the draw count is the sum of both eyes."
-    }
-
-,
+    },
     {
       "name": "spot_mac01_pic",
       "status": "unverified",
@@ -5892,6 +5950,56 @@
       "reason": "S6-2c-3 picture of the native entity draw on kmr_03 (copy of entcheck_kmr03 without the check switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
     },
     {
+      "name": "ent_kmr03_pic",
+      "status": "pending",
+      "subject": "Koopa Village kmr_03 (warp entry 0, default placement). Coin block and entity models on screen, drawn natively from the static pools (S6-2c-3). Shots at frames 200 to 205 and the entnat window line.",
+      "proves": "S6-2c-3 switch: entity model lists draw from the pools (entnat segs native above 0), the picture is the walker picture. Gate: native above 0, the shot shows the scene.",
+      "debug": "warp=kmr_03:0 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "entnat f\\d+ draws",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "native entity draws above 0",
+          "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S6-2c-3 picture of the native entity draw on kmr_03 (copy of entcheck_kmr03 without the check switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
+    },
+    {
+      "name": "ent_kmr03_pic",
+      "status": "pending",
+      "subject": "Koopa Village kmr_03 (warp entry 0, default placement). Coin block and entity models on screen, drawn natively from the static pools (S6-2c-3). Shots at frames 200 to 205 and the entnat window line.",
+      "proves": "S6-2c-3 switch: entity model lists draw from the pools (entnat segs native above 0), the picture is the walker picture. Gate: native above 0, the shot shows the scene.",
+      "debug": "warp=kmr_03:0 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "entnat f\\d+ draws",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "native entity draws above 0",
+          "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S6-2c-3 picture of the native entity draw on kmr_03 (copy of entcheck_kmr03 without the check switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
+    },
+    {
       "name": "ent_item_pic",
       "status": "pending",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200, a coin item entity spawned beside Mario at frame 30 (debug testitem=c). The item quad list is drawn from the static pools (S6-3). Shots at frames 200 to 205 and the entnat window line.",
@@ -5964,6 +6072,330 @@
         }
       ],
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
+    },
+    {
+      "name": "wide_fade_mac",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad) with wide on: the fade-in at the start of the scene (an orthographic quad on the game edge, f37). Shots at frames 30 to 41 show the fade reaching the screen edge.",
+      "proves": "WIDE1-2: an orthographic range whose vertices all sit on the game edge draws native with x scale 1.25 in the post matrix and covers the side gutters like the CPU path.",
+      "debug": "preset=toad wide shots shotwin=30:12 loglevel=debug",
+      "until": "shot \\d+ frame 4[0-3]\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "gpu: wide=1",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "wide on",
+          "regex": "gpu: wide=1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 4[0-3]\\b"
+        }
+      ],
+      "reason": "WIDE1-2 gate: the fade picture in wide mode. Cap 25 s: boot, load, 43 frames."
+    },
+    {
+      "name": "bg2_mac00_bglog",
+      "status": "pending",
+      "subject": "mac_00 (preset toad) at pos -135 0 85: one line per COPY texrect (bglog): texel s and t of each rect and the GPU texture size. Sky samples past 296 or 200 read padding.",
+      "proves": "BG2 diagnostic: max texel s and t of the sky texrects against the 296x200 image.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 bglog bglog0 shots shotwin=200:6 loglevel=debug",
+      "until": "shot \\d+ frame 20\\d",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 20\\d"
+        }
+      ],
+      "reason": "BG2 diagnostic. prof=4 turns the log off (prof=1 log=off), so the debug lines need the plain log: no prof switch here."
+    },
+    {
+      "name": "pond_mac00",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00 (preset toad), Mario placed at pos -178 0 88 (warp entry 4). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window. The shot must show the pond water, not the background through it.",
+      "proves": "POND: the pond water draws at -178 0 88 on mac_00 after SGEN (47c53a895). The shot shows the water.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND row: the mac_00 pond water does not draw on the O3DS XL since a5cd61e1a (SGEN). Copy of spot_mac00_pic at the pond position; the picture is the check."
+    },
+    {
+      "name": "pond_mac00_mlog",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with modellog=d6: one log line per draw of the water model (id 0xD6). The log gives flags, render mode, texture and custom gfx.",
+      "proves": "POND: the water model is drawn by appendGfx_model and which flags and render mode it has.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 shots shotwin=200:6 loglevel=debug modellog=d6",
+      "until": "shot 1 frame 204",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        }
+      ],
+      "reason": "POND diagnostic: model log of the water model."
+    },
+    {
+      "name": "pond_mac00_wlog",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with waterlog: one wdraw line per submitted batch in frames 200 and 201 (native or walker, render mode, depth function and write, prim z, prim colour, texture, triangles). The top shot shows the pond.",
+      "proves": "POND: the state of each draw of the two water passes (G_ZS_PRIM blocker and XLU surface) and whether the water is drawn by the native or the walker path.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 waterlog shots shotwin=200:6 loglevel=debug",
+      "until": "shot 1 frame 204",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "waterlog lines",
+          "regex": "wdraw f200 "
+        }
+      ],
+      "reason": "POND diagnostic: per draw state of the water passes (pm_gpu.c wl_on, nd_raw_native and flush_draw)."
+    },
+    {
+      "name": "pond_mac00_zspix",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00_wlog) with the zspix switch: G_ZS_PRIM draws (the pass 1 blocker) keep their own vertex depth instead of the primitive depth. The top shot shows whether the pond water comes back.",
+      "proves": "POND bisect: the primitive depth of pass 1 (G_ZS_PRIM, 0x7FF0) hides the water. Water back with zspix means the primitive depth is the cause.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 waterlog zspix shots shotwin=200:6 loglevel=debug",
+      "until": "shot 1 frame 204",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "waterlog lines",
+          "regex": "wdraw f200 "
+        }
+      ],
+      "reason": "POND bisect copy of pond_mac00_wlog with the zspix debug switch (pm_gbi.c poly z of G_ZS_PRIM)."
+    },
+    {
+      "name": "pond_mac00_notex1",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the notex1nat switch: two texture combine draws (plan.uses_tex1) go back to the walker. The top shot shows whether the pond water comes back.",
+      "proves": "POND bisect: the water draw is the native two texture combine path (SGEN-2). Water back with notex1nat means the native unit 1 close is the cause.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 notex1nat shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND bisect copy of pond_mac00 with the notex1nat debug switch (pm_gpu.c nd_raw_native)."
+    },
+    {
+      "name": "pond_mac00_nogdl",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the nogdl switch: static display lists (G_DL, SGEN-1 entity list path) run the walker. The top shot shows whether the pond water comes back.",
+      "proves": "POND bisect: the water is drawn by the SGEN-1 generic static list path. Water back with nogdl means that path is the cause.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 nogdl shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND bisect copy of pond_mac00 with the nogdl debug switch (pm_gbi.c G_DL arm)."
+    },
+    {
+      "name": "pond_mac00_noraw",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the noraw switch: every batch of the walker flush (nd_raw_native) runs the old close, no native batch. The top shot shows whether the pond water comes back.",
+      "proves": "POND bisect: the water draw goes through the switched path. Water back with noraw means that path draws the water wrong (or hides it).",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 noraw shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND bisect copy of pond_mac00 with the noraw debug switch."
+    },
+    {
+      "name": "pond_mac00_nogrange",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the nogrange switch: the entity range draws (pm_gpu_grange, pm_gpu_gtrip) run the walker. The top shot shows whether the pond water comes back.",
+      "proves": "POND bisect: the water draw goes through the switched path. Water back with nogrange means that path draws the water wrong (or hides it).",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 nogrange shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND bisect copy of pond_mac00 with the nogrange debug switch."
+    },
+    {
+      "name": "pond_mac00_walkall",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the notex1nat nogdl noraw nogrange switch: all four native draw switches on: every batch and entity range runs the walker, the static G_DL lists too. The top shot shows whether the pond water comes back.",
+      "proves": "POND bisect: the water draw goes through the switched path. Water back with notex1nat nogdl noraw nogrange means that path draws the water wrong (or hides it).",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 notex1nat nogdl noraw nogrange shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND bisect copy of pond_mac00 with the notex1nat nogdl noraw nogrange debug switch."
+    },
+    {
+      "name": "pond_mac00_noent",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the notex1nat nogdl noraw nogrange noent switch: the walkall switches plus noent: G_PM_ENT entity records also run the walker (no entity record draws). The top shot shows whether the pond water comes back.",
+      "proves": "POND bisect: the water draw goes through the switched path. Water back with notex1nat nogdl noraw nogrange noent means that path draws the water wrong (or hides it).",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 notex1nat nogdl noraw nogrange noent shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND bisect copy of pond_mac00 with the notex1nat nogdl noraw nogrange noent debug switch."
+    },
+    {
+      "name": "pond_mac00_nobox",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the nobox switch: the group box skip of the compiled map shape lists (dlc_try) is off: no group is skipped by its box. The top shot shows whether the pond water comes back.",
+      "proves": "POND bisect: the water draw goes through the switched path. Water back with nobox means that path draws the water wrong (or hides it).",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 nobox shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND bisect copy of pond_mac00 with the nobox debug switch."
+    },
+    {
+      "name": "pond_mac00_skipdump",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 with skipdump: group box log at frames 200 to 205. The top shot shows the pond.",
+      "proves": "POND bisect: the water draw goes through the switched path. Water back with skipdump means that path draws the water wrong (or hides it).",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 skipdump shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "POND box test: the group box log of the pond water group."
     },
     {
       "name": "spot_mac00_ndmcheck",
@@ -6073,30 +6505,6 @@
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: ",
-    {
-      "name": "wide_fade_mac",
-      "status": "unverified",
-      "subject": "Toad Town (preset toad) with wide on: the fade-in at the start of the scene (an orthographic quad on the game edge, f37). Shots at frames 30 to 41 show the fade reaching the screen edge.",
-      "proves": "WIDE1-2: an orthographic range whose vertices all sit on the game edge draws native with x scale 1.25 in the post matrix and covers the side gutters like the CPU path.",
-      "debug": "preset=toad wide shots shotwin=30:12 loglevel=debug",
-      "until": "shot \\d+ frame 4[0-3]\\b",
-      "cap": 25,
-      "deadline": 20,
-      "first_marker": "gpu: wide=1",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "wide on",
-          "regex": "gpu: wide=1"
-        },
-        {
-          "name": "shot",
-          "regex": "shot \\d+ frame 4[0-3]\\b"
-        }
-      ],
-      "reason": "WIDE1-2 gate: the fade picture in wide mode. Cap 25 s: boot, load, 43 frames."
-    },
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
@@ -6463,11 +6871,26 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {"name": "menu open", "regex": "menu: open"},
-        {"name": "area page pushed", "regex": "menu: page push 4 depth 2"},
-        {"name": "area page row", "regex": "menu: warp area 1 maps \\d+ row 0"},
-        {"name": "live warp to entry 1", "regex": "warp: live to choice \\d+ entry 1 "},
-        {"name": "map and entry", "regex": "warpstat after live: slot 0 map 1:1 entry 1 "}
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "area page pushed",
+          "regex": "menu: page push 4 depth 2"
+        },
+        {
+          "name": "area page row",
+          "regex": "menu: warp area 1 maps \\d+ row 0"
+        },
+        {
+          "name": "live warp to entry 1",
+          "regex": "warp: live to choice \\d+ entry 1 "
+        },
+        {
+          "name": "map and entry",
+          "regex": "warpstat after live: slot 0 map 1:1 entry 1 "
+        }
       ],
       "reason": "MENU4 MN6 rest gate. The map page shot is read by eye (row mac_00 shows < 1 of 8 >). mac_00 is area 1 map 1 (log)."
     },
@@ -6495,7 +6918,7 @@
         {
           "name": "row off",
           "regex": "menu: tab 4 row 3 Position log combo = Off",
-            "pick": "last"
+          "pick": "last"
         }
       ],
       "reason": "MENU4 MN7 rest gate. One pos line for the one combo press (the Debug row is the only switch here). The menu shot of row 22 shows On."
@@ -6513,10 +6936,22 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        { "name": "map", "regex": "livewarp: scene frame 120 to dro_02 entry 0" },
-        { "name": "shuffle start", "regex": "merlee: shuffle ret [12], state 3" },
-        { "name": "spell done", "regex": "merlee: ritual state D [(]spell done[)]" },
-        { "name": "shot", "regex": "shot [0-9]+ frame [0-9]+" }
+        {
+          "name": "map",
+          "regex": "livewarp: scene frame 120 to dro_02 entry 0"
+        },
+        {
+          "name": "shuffle start",
+          "regex": "merlee: shuffle ret [12], state 3"
+        },
+        {
+          "name": "spell done",
+          "regex": "merlee: ritual state D [(]spell done[)]"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame [0-9]+"
+        }
       ],
       "reason": "FX1 row 1 (MERLEE). Live warp to dro_02 at frame 120 gives 50 coins (warpitems; plain warp= does not, the coin count was 0 in start 2). Mario is placed by pos_ at -130 0 -370 (30 units from Merlee at -130 0 -400, npc.c), then go_ walks him the last 6 units, facing her. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell. The until line ends the run when the spell ends. Without the fix the run stops at the cap (the hang)."
     },
@@ -6525,7 +6960,7 @@
       "status": "unverified",
       "subject": "sbk_56 (Dry Dry Desert area, super block at -50 60 275). Mario placed under the block by pos=, jumps by padscript (A). Shots every 30 frames to the hit and the upgrade effects: the energy dots moving to the partner and the white flash.",
       "proves": "FX1 row 2: the super block upgrade runs (superblock: hit line, then superblock: effects done line) and the picture shows the dots and the flash.",
-      "debug": "warp=sbk_56:0 story=ch0_toad_town pos=-50:0:275 padscript=@pad_sbk56.txt shots shotwin=500:240 loglevel=debug",
+      "debug": "warp=sbk_56:0 story=ch0_toad_town pos=-50:0:275 padscript=@pad_sbk56.txt shots shotwin=500:240 orbdbg loglevel=debug",
       "until": "superblock: effects done",
       "cap": 45,
       "deadline": 20,
