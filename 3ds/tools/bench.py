@@ -201,14 +201,34 @@ def scenario(name):
     return None
 
 
+DUP_LOG = []  # read_runs: (line, file run_id, derived id, bench) of each record whose run_id was used before (rebuild prints them)
+
+
 def read_runs():
+    """The runs of runs.jsonl in file order. A record without run_id is not a run (correction notes: BF-2). A run_id that an
+    earlier record already has gets the next free id above every id of the file (derived; the file is not changed): the first
+    record keeps its id. rebuild prints each derived id."""
+    DUP_LOG.clear()
     if not RUNS.exists():
         return []
-    out = []
-    for x in RUNS.read_text(encoding="utf-8").splitlines():
+    raw = []
+    for no, x in enumerate(RUNS.read_text(encoding="utf-8").splitlines(), 1):
         if not x.strip():
             continue
         r = json.loads(x)
+        if "run_id" not in r:
+            continue
+        r["line"] = no
+        raw.append(r)
+    nxt = max((r["run_id"] for r in raw), default=0)
+    seen = set()
+    out = []
+    for r in raw:
+        if r["run_id"] in seen:
+            nxt += 1
+            DUP_LOG.append((r["line"], r["run_id"], nxt, r.get("bench")))
+            r["run_id"] = nxt
+        seen.add(r["run_id"])
         r["host"] = norm_host(r.get("host"))
         r.setdefault("device", "")
         r.setdefault("speed", "unknown")
@@ -217,17 +237,62 @@ def read_runs():
     return out
 
 
+RUNS_LOCK = PERF / "runs.lock"
+
+
+class runs_lock:
+    """An OS file lock on runs.lock: held while the next run ids are read and the records appended, and while the DB is rebuilt,
+    so two processes never get the same id. Waits up to 120 s, then raises (nothing appended)."""
+    def __enter__(self):
+        PERF.mkdir(parents=True, exist_ok=True)
+        self.f = RUNS_LOCK.open("a+b")
+        t_end = time.time() + 120
+        while True:
+            try:
+                self.f.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+                    msvcrt.locking(self.f.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(self.f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return self
+            except OSError:
+                if time.time() > t_end:
+                    self.f.close()
+                    raise RuntimeError("runs.lock held for 120 s by another bench process. Nothing was appended.")
+                time.sleep(0.1)
+
+    def __exit__(self, *exc):
+        try:
+            self.f.seek(0)
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(self.f.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.f.fileno(), fcntl.LOCK_UN)
+        finally:
+            self.f.close()
+
+
 def append_runs(recs):
+    """Appends recs under runs_lock. Run ids: the largest id of the file (derived ids counted) plus one, per record.
+    Returns (ids, rebuild tuple)."""
     PERF.mkdir(parents=True, exist_ok=True)
-    n = len(read_runs())
-    with RUNS.open("a", encoding="utf-8", newline="\n") as f:
-        for r in recs:
-            n += 1
-            r["run_id"] = n
-            r["host"] = norm_host(r.get("host"))
-            r["device"] = r.get("device") or device_note(r["host"])
-            f.write(json.dumps(r, separators=(",", ":")) + "\n")
-    return rebuild_db()
+    with runs_lock():
+        n = max((r["run_id"] for r in read_runs()), default=0)
+        ids = []
+        with RUNS.open("a", encoding="utf-8", newline="\n") as f:
+            for r in recs:
+                n += 1
+                r["run_id"] = n
+                ids.append(n)
+                r["host"] = norm_host(r.get("host"))
+                r["device"] = r.get("device") or device_note(r["host"])
+                f.write(json.dumps(r, separators=(",", ":")) + "\n")
+        info = rebuild_db()
+    return ids, info
 
 
 def scene_fields(scene):
@@ -644,9 +709,9 @@ def ingest_file(path, bench, host, build, commit, row, label, result="imported",
             wide, stereo, fps = dl.most_common(1)[0][0]
             rec["disp"] = {"wide": wide, "stereo": stereo, "fps_target": fps}
         recs.append(rec)
-    n = append_runs(recs)
-    print("ingested %s: %d scene run(s), scene-change windows dropped %d, run ids up to %d, build %s, commit %s" % (
-        path, len(recs), dropped, n[1], build if build is not None else "-", commit))
+    ids, _ = append_runs(recs)
+    print("ingested %s: %d scene run(s), scene-change windows dropped %d, run ids %s, build %s, commit %s" % (
+        path, len(recs), dropped, ",".join(str(i) for i in ids), build if build is not None else "-", commit))
     for r in recs:
         print("  scene %-30s windows %3d fps %s ft %s" % (r["scene"] or "-", int(r["run"]["windows"]),
               "%.1f" % r["run"]["fps"] if "fps" in r["run"] else "-", "%.1f" % r["run"]["ft_ms"] if "ft_ms" in r["run"] else "-"))
@@ -839,8 +904,8 @@ def cmd_run(a):
         commit = a.commit or git_head()
         recs = [make_run(bd["name"], kind, "host", a.build, commit, a.row, a.label or bd["name"], "pass" if rc == 0 else "fail:%d" % rc,
                          "", posix(log.relative_to(REPO)), None, "", [], text_metrics, [], speed="normal", dirty=git_dirty())]
-        n = append_runs(recs)
-        print("run %d: %s rc %d, %s" % (n[1], bd["name"], rc, "PASS" if rc == 0 else "FAIL"))
+        ids, _ = append_runs(recs)
+        print("run %d: %s rc %d, %s" % (ids[0], bd["name"], rc, "PASS" if rc == 0 else "FAIL"))
         return rc
     print("console_prof: push, then ingest the live log. Run this in Git Bash:")
     print(push_cmd(bd))
@@ -1071,8 +1136,8 @@ def cmd_import_csv(a):
     if not recs:
         print("nothing to import: all rows of %s are in runs.jsonl" % CSV.name)
         return 0
-    n = append_runs(recs)
-    print("imported %d row(s) from %s as runs (run ids up to %d)" % (len(recs), CSV.name, n[1]))
+    ids, _ = append_runs(recs)
+    print("imported %d row(s) from %s as runs (run ids up to %d)" % (len(recs), CSV.name, max(ids)))
     return 0
 
 
@@ -1341,7 +1406,10 @@ def cmd_check(a):
 
 
 def cmd_rebuild(a):
-    nb, nr, nm, ns = rebuild_db()
+    with runs_lock():
+        nb, nr, nm, ns = rebuild_db()
+    for line, file_id, derived, bench in DUP_LOG:
+        print("warning: runs.jsonl line %d has run_id %d, already used by an earlier record: indexed as run %d (bench %s)" % (line, file_id, derived, bench))
     print("rebuilt %s: %d bench(es), %d run(s), %d metric row(s), %d sample row(s)" % (DB.relative_to(REPO), nb, nr, nm, ns))
     return 0
 
