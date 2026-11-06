@@ -100,3 +100,23 @@ Findings:
 - First normal walk-in entry: ENTRY_1 (EnterWalk). ENTRY_0 is the train arrival scene.
 
 Next (row 2): the entry wait is cheap and harmless here; it does not move the camera. The row 2 gate (Mario visible in the top shot) needs a camera fix, a separate diagnosis (camera zone at the placed spot).
+
+## 8. MENU3 row 2 WARP WAIT (iwa_10 entry 1), result: FAILED (gate 1), wait edit discarded
+
+Starts used (MENU3): 6 of 8. Status: 3ds/logs/perf/status_MENU3.txt.
+Design (plan default, the row file's definition, taken without a question): entry done = no text box (pm_msg_active) and player input on (inputDisabledCount 0, PS_FLAG_INPUT_DISABLED clear, GLOBAL_OVERRIDES_40 clear). Wait max 300 frames after the pos run starts, then place with the WARPY floor snap. Log `poswarp: entry done after <n> frames`, or `poswarp: entry not done after <n> frames, placed anyway`.
+Run: iwa10_entry1_state, pos -662:0:587, shot at pos run frame 90 (placed at 30, so 60 frames after placed).
+- Log: `poswarp: entry done after 30 frames` (the condition was true at once: no script lock, no text box). Placed at -662 0 587, floor 28 (walkable).
+- Picture at frame 90 (after 2 shots in this run, 0009 and 0014): rock, sky, HUD. No Mario. Same picture as the row 1 start without the wait.
+- Gate needs Mario on visible ground in the top shot: FAILED. The wait changes no pixel (the entry is already done at frame 30). Edit discarded (pm_warp.c back to HEAD ed3ebdf82). Row 1 probe and posshot stay.
+- Cause (row 1): camera eye sits under the map (y -891 .. -1000, Mario y 0). Camera mode CAM_UPDATE_FROM_ZONE, no lead (macros.h:810). The eye stops at f120 (entry 1). The camera target is correct. Next diagnosis, not started: why the zone camera of iwa_10 puts the eye under the floor at the placed spot (camera zone data for this x z, or the camera update being skipped after the warp). The next run that tests it must read the zone camera record and the eye position in the same line.
+- Entry for the test spot (row 2 asked for it): ENTRY_1 (walk-in). Use it for the spot. The entry wait is not needed for the spot to work (nothing held the player).
+- Note: shot log line `shot N frame F` is not printed in these runs (dump_shot path), so the picture is read from the PPM files of build3ds/azt/shots/<scenario>/.
+
+Hand back after row 2 (the row file asks for it). Row 3 (MN2 and epic B) not started.
+
+STATE (MENU3, branch nds1, main folder)
+- Row 1 ENTRY TEST: PASS, commit ed3ebdf82. Table in section 7. First walk-in entry: 1.
+- Row 2 WARP WAIT: FAILED gate (Mario not in top shot). Wait edit discarded. Camera under the map at the placed spot is the cause (section 8).
+- Row 3 (MN2, epic B): not started. Next: camera diagnosis of iwa_10 (needs user OK: a new line in the next run).
+- Starts MENU3: 6 of 8. Budget reset only with `run_azahar.ps1 -ResetBudget MENU3` (not used).
