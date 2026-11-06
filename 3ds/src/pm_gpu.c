@@ -2459,7 +2459,6 @@ int pm_gpu_grange_why(const float m[4][4], unsigned nidx) { /* S4-1: the class o
 /* S5-1 (b): the native range check. The walker's decal with blend (decal2) is a native two-pass draw (nd_model_draw), so that refusal is not kept here. */
 int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx) {
     if (!gv4_on || !gpu_ok) return 0;
-    if (r_zmark) return 0;
     if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 0;
     return gidx_n + nidx <= GRING_IDX;
 }
@@ -2569,7 +2568,8 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
     s[i++] = nd_st.prim; s[i++] = nd_st.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
     s[i++] = (uint32_t)dview; s[i++] = (uint32_t)r_mix; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
-    s[i++] = (uint32_t)r_zmark; s[i++] = (uint32_t)r_decal; s[i++] = (uint32_t)r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)off_active; s[i++] = (uint32_t)ui_ortho;
+    { float zb_ = r_zmark ? r_zmark_zn : 0.f; uint32_t zu; memcpy(&zu, &zb_, 4); s[i++] = r_zmark ? (zu | 1u) : 0u; } /* S5-2: zmark on and its depth (bit 0 set when on) */
+    s[i++] = (uint32_t)r_decal; s[i++] = (uint32_t)r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)off_active; s[i++] = (uint32_t)ui_ortho;
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
     i += pm_gbi_gvkey(s + i, NDMC_SW - i);
     while (i < NDMC_SW) s[i++] = 0;
@@ -2604,6 +2604,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.tss = *mode_ok && mdl_mode.has_tx ? mdl_mode.tw1 : (ax_ok && ax.has_tx ? ax.tw1 : sw_tss); /* B9: the list TEXTURE wins; gv per range in nd_model_draw */
     if (ds) { int w = 8, h = 8; while (w < ds->w) w <<= 1; while (h < ds->h) h <<= 1; c.tex_w = w; c.tex_h = h; } /* the size of the record's texture, not the walker-bound slot */
     c.draw_3d = 1; /* S3N-3c: a native batch goes through pm_gpu_grange, which sets draw_3d */
+    c.zmark = r_zmark; c.zn = r_zmark_zn; /* S5-2 (a) */
     c.dview = dview; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     c.prim = nd_st.prim; c.prim_lod = nd_st.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
@@ -2760,6 +2761,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     for (unsigned j = 0; j < e->n; j++) {
         NdNat* q = nd_mc_nat(e, j);
         memcpy(q->pal, pal0, sizeof pal0);
+        if (q->zp) for (int i = 0; i < 4; i++) q->pal[8 + i] = q->zn * pal0[12 + i]; /* S5-2: zmark pass 2 */
         if (e->tex) q->d.u[0] = u;
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
     }

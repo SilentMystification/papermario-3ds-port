@@ -285,6 +285,7 @@ int nd_tex_unit(int id, NdUnit* u);
 int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u);
 unsigned pm_tex_slot_gen(int i); /* S3N-6 (pm_tex.c): the generation of a slot */
 typedef struct NdMCtx {
+    int zmark; float zn;       /* S5-2 (a): walker r_zmark (the zmark pass: pass 1 model depth and stencil mark, pass 2 constant depth zn * w) and its depth zn */
     int aux_ok;                /* S3L-3: the R13 words are decoded into this context (nd_aux_state, base_oh, comb, tss); 0 with R13 words: fallback */
     const NdMode* mode;        /* compiled render mode list of the record (R0 bits 16 to 23) */
     const NdUnit* u0;          /* texture unit 0 of the draw (nd_tex_get + nd_tex_block), NULL: no texture */
@@ -311,7 +312,7 @@ int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned 
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
  * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */
 #define ND_NAT_MAX 64
-typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; } NdNat;
+typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3 (rebuilt on a hit) */
 extern int nd_nat_why;
 int nd_model_draw(const uint32_t* rec, const NdMCtx* c, const void* list, int emit);
 const NdNat* nd_model_native(unsigned j);

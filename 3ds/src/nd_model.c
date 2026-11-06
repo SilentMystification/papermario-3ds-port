@@ -207,12 +207,13 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     const int combine = co.plan_on ? 8 : co.leg;
     const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
     if (combine == 8 && (co.plan.uses_tex1 || co.plan.uses_noise)) return (st->why = 6, 0);
+    if (c->zmark && zb && r->decal) return (st->why = 15, 0); /* S5-2: zmark with decal (the walker's pass 2 bias): named fallback */
     NdTmplKey k;
     memset(&k, 0, sizeof k);
     k.pass = 0; k.raw = 1; k.cull = cull;
     /* S5-1 (b): decal with blend, the walker's decal2: pass A (stencil mark) then pass B (colour, stencil EQUAL). The model draw emits both (nd_model_draw). */
     if (zb && r->zcmp && r->decal && r->blend && !r->nocol) k.pass = 2;
-    k.z = (uint8_t)zb; k.zmark = 0; k.zcmp = r->zcmp; k.zupd = r->zupd; k.nocol = r->nocol; k.decal = r->decal;
+    k.z = (uint8_t)zb; k.zmark = (uint8_t)(c->zmark && zb); k.zcmp = r->zcmp; k.zupd = r->zupd; k.nocol = r->nocol; k.decal = r->decal;
     memcpy(&k.dbias, &c->dbias, 4);
     k.atest_on = r->atest >= 0; k.aref = (uint8_t)(r->atest >= 0 ? r->atest : 0);
     k.combine = (uint8_t)combine; k.tex = (uint8_t)tex; k.tex1 = 0; k.i8_0 = (uint8_t)(tex && c->i8_0); k.i8_1 = 0;
@@ -392,7 +393,18 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
         NdNat* n = &nat[nat_n++];
         memcpy(n->pal, pal0, sizeof pal0);
         dd.pal = (const float(*)[16])n->pal; dd.npal = 1;
-        n->d = dd; n->s = ss; n->sd = rng[r].sd; n->nidx = rng[r].nidx;
+        n->d = dd; n->s = ss; n->sd = rng[r].sd; n->nidx = rng[r].nidx; n->zp = 0; n->zn = 0.f;
+        if (ss.k.zmark) { /* S5-2 (a): zmark pass 2 after the pass 1 draw: the same triangles, constant depth zn * w (pal row 2 := zn * row 3 = z clip of the walker's b2.z), stencil EQUAL cleared */
+            if (nat_n >= ND_NAT_MAX) { nat_n = 0; return (nd_nat_why = 11, -1); }
+            NdTmplKey kb = ss.k; kb.pass = 3; kb.zmark = 0;
+            int idb = nd_tmpl_build(&kb);
+            if (idb < 0) { nat_n = 0; return (nd_nat_why = 7, -1); }
+            NdNat* b = &nat[nat_n++];
+            memcpy(b->pal, pal0, sizeof pal0);
+            for (int i = 0; i < 4; i++) b->pal[8 + i] = c.zn * pal0[12 + i];
+            b->d = dd; b->d.tmpl = idb; b->d.pal = (const float(*)[16])b->pal; b->d.npal = 1;
+            b->s = ss; b->s.k = kb; b->sd = rng[r].sd; b->nidx = rng[r].nidx; b->zp = 1; b->zn = c.zn;
+        }
     }
     if (emit) {
         pm_gpu_flush(); /* the walker batch open before this record goes out first */
