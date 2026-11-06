@@ -618,7 +618,7 @@ static void gp2_clip_init(void) {
 /* DR1: O2 merges consecutive texture rectangles and fills with equal state into one draw.
  * rect_open: the open batch holds rectangles. Their draw state (effective combine mode, rect_z) is kept in rect_ec and rect_zb and
  * flush_impl puts it in place for the draw, then restores the caller's state. pm_gpu_drew and the grab and off-screen entry points flush it first. */
-static int rect_open, rect_ec, rect_zb, rect_tex; static unsigned rect_cc; /* UI1: the constant colour of an open class 4 batch */ /* C7: rect_tex is the tile-0 cache slot for an open DR1 batch */
+static int rect_open, rect_ec, rect_zb, rect_tex; /* C7: rect_tex is the tile-0 cache slot for an open DR1 batch */
 static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compares this instead of the plan */
 static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
 void pm_tex_cur_slots(int* a, int* b);
@@ -3467,11 +3467,11 @@ static float fill_z = 0.5f;
 /* DR1/O2: a rectangle joins the open rectangle batch when its draw state is the same (effective combine mode, rect_z). Else the batch is drawn first. */
 static void rect_begin(int ec) {
     int rtx = pm_tex_cur_idx();
-    if (rect_open && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && (ec != 4 || rect_cc == cconst) && nverts + 6 < 500 && !(off_active && pm_tex_off_idx() >= 0)) /* a batch that samples the image it writes needs one snapshot per rectangle (FX2a) */ { dr1_merged++; return; }
+    if (rect_open && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && nverts + 6 < 500 && !(off_active && pm_tex_off_idx() >= 0)) /* a batch that samples the image it writes needs one snapshot per rectangle (FX2a) */ { dr1_merged++; return; }
     if (rect_open) dr1_breaks++;
     flush();
     draw_3d = 0; /* the 2D rectangle follows; tri_raw must not flush the empty batch with the rectangle state in place */
-    rect_ec = ec; rect_cc = cconst; rect_zb = rect_z; rect_tex = rtx; rect_open = 1;
+    rect_ec = ec; rect_zb = rect_z; rect_tex = rtx; rect_open = 1;
 }
 static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have = 1; } }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
@@ -3518,7 +3518,8 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
     if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; }
     int saved = combine;
-    rect_begin((saved == 4 || saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2); /* UI1: class 4 (PM_CC_07 shadow, const PRIM colour) keeps its class */    combine = (saved == 4 || saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
+    rect_begin((saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2);
+    combine = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
     rect_2d = 1;
     batch_identity = 1;
     float xa = px(x0);

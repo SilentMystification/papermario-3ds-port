@@ -1,9 +1,11 @@
 # agent_bg: background image faults (rows BG1, BG2)
 
 ## STATE
-- BG1 and BG2 audit (code, 2026-11-06): the sky and wave texrects are G_TF_POINT (background.c L297). Mask 0 tiles (sky, G_TX_NOMASK) map to NW_CLAMP_EDGE on the GPU (nd_tex.c nd_tex_wrap_of), and the pad past 296 and 200 is the edge texel (pm_tex.c tx1_map, expand). So samples past the image read column 295 / row 199, and negatives read column 0 (N64 clamp). Wide copies at +-296 game px zoom to +-355.2 px with the texel period, and each copy has the main rect's s range. No other path samples outside the image after the clamp (commit 3bcc90638).
-- The clamp (3bcc90638) is redundant in pixels with the edge pad: it only changes the slope of a rect whose s1 passes 296. Kept (N64 behaviour), not a flicker fix.
-- BG1 flicker: cause not named. No shot showed the strip. Next: none in the scene path; the console check (coordinator) decides.
+- Seam fix (oracle plan 2) committed on nds1: 871cc95ca (gbi_texrect COPY pixel span from the RDP rule, bg_emit 3DS floor division by 5 with inclusive edge minus 1; host test 3ds/tests/bg_seam_test.c). Host test (docker pm3ds-host:1): old 11937 x / 1780 y mismatches (xOff 0 non-zoom cols 383 to 394 drift 0.51 to 0.67 texel); fix 1 alone 786 / 120; fix 1 + floor div (minus 4) 788 / 120; fix 1 + floor div + minus 1: 0 / 0 (F07-7 on and off). Clean build of 871cc95ca: rc 0, 0 errors.
+- Byte-equal (Azahar, base daa3731f3 vs new 871cc95ca): mac_01 spot shots differ (about 480 bytes, 280 px per shot, rows 0 to 34, cols 81 to 238: sky); pause_menu differs (1508 px, sky band at the edges and top, plus a small patch at the Stats tab icon). Not byte-equal, so the gate does not hold.
+- BG2 row at mac_00 (frames 200 to 205): no single-row outlier in base or new shots; the garbled row is not visible there. BG2 gate not confirmed.
+- Azahar starts this round: about 8 of 8 (see test_budget.csv). Budget at cap; flicker check at xOff 0/295 not run.
+- Next: the console check (coordinator). Pause-menu sky diff needs a look at whether the menu tab texrect uses fractional coords.
 
 ## How the background is drawn
 - src/background_gfx.c gfx_draw_background (L336): default branch fills the screen, then calls appendGfx_background_texture (src/background.c L130) when BACKGROUND_FLAG_TEXTURE is set.

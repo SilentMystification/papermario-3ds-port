@@ -1,7 +1,4 @@
 #include "common.h"
-#ifdef TARGET_3DS
-#include "pm_port.h"
-#endif
 #include "ld_addrs.h"
 #include "pm_wide.h"
 #include "message_ids.h"
@@ -2238,19 +2235,6 @@ void msg_draw_choice_pointer(MessagePrintState* printer) {
     posY++;
     posX += (cosine(posInterpPhase * 38 + 270) + 1.0) * 0.5 * 3.2;
     posX -= 2;
-#ifdef TARGET_3DS
-    { /* UI1 ui1log: one line per choice frame; the steady marker: the glyphs and shadow draw at full alpha with the pointer at full alpha */
-        extern unsigned ui1_gcount, ui1_scount, ui1_fx; extern unsigned char ui1_alpha;
-        static int steady_f = -1, steady_done = 0;
-        unsigned f = pm_frame_count();
-        if (PMDL("ui1log")) {
-            pm_log_d("ui1log f%u wstate %d sflags %08x fx %08x alpha %d glyphs %u shadows %u pointerA %d", f, (int)printer->windowState, (unsigned)printer->stateFlags, ui1_fx, (int)ui1_alpha, ui1_gcount, ui1_scount, pointerAlpha);
-            if (steady_f < 0 && ui1_scount > 0 && ui1_alpha == 0xFF && pointerAlpha == 255) { steady_f = (int)f; pm_log("ui1: choice steady f%u", f); }
-            if (steady_f >= 0 && !steady_done && f >= (unsigned)steady_f + 40u) { steady_done = 1; pm_log("ui1: choice steady end f%u (steady f%d)", f, steady_f); }
-        }
-        ui1_gcount = 0; ui1_scount = 0;
-    }
-#endif
 
     if (printer->stateFlags & MSG_STATE_FLAG_20000) {
         u32 opacity;

@@ -1,8 +1,4 @@
 #include "pm_wide.h"
-unsigned ui1_gcount, ui1_scount, ui1_fx; unsigned char ui1_alpha; /* UI1 ui1log counters, read by msg_draw_choice_pointer */
-#ifdef TARGET_3DS
-#include "pm_port.h"
-#endif
 #include "common.h"
 #include "ld_addrs.h"
 #include "message_ids.h"
@@ -1267,9 +1263,6 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                 if (msg_drawState->printModeFlags & MSG_PRINT_FLAG_2) {
                     sp96 = 0xFF;
                     gDPPipeSync(gMainGfxPos++);
-#ifdef TARGET_3DS
-                    if (PMDL("ui1log") && pm_frame_count() >= 512 && pm_frame_count() < 524) pm_log_d("ui1log f%u msg_flag2 cycle_list gfxpos %p", pm_frame_count(), (void*)gMainGfxPos);
-#endif
                     gSPDisplayList(gMainGfxPos++, D_8014C500);
                 }
                 msg_drawState->charScale.x = msg_drawState->msgScale.x;
@@ -1518,17 +1511,11 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                             sp9E = palette;
                             msg_drawState->printModeFlags |= MSG_PRINT_FLAG_10;
                         }
-#ifdef TARGET_3DS
-                        ui1_gcount++; ui1_alpha = (u8)phi_s2_5; ui1_fx = msg_drawState->effectFlags; /* UI1 ui1log: per-frame counts for the choice steady marker */
-#endif
                         if ((msg_drawState->effectFlags & MSG_FX_FLAG_DROP_SHADOW) && (phi_s2_5 == 0xFF)) {
                             gDPPipeSync(gMainGfxPos++);
                             gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
                             gDPSetCombineMode(gMainGfxPos++, PM_CC_07, PM_CC_07);
                             gDPSetPrimColor(gMainGfxPos++, 0, 0, 40, 40, 40, 72);
-#ifdef TARGET_3DS
-                            ui1_scount++;
-#endif
 #if VERSION_IQUE
                             if (byte >= MSG_CHAR_MULTIBYTE_FIRST && byte <= MSG_CHAR_MULTIBYTE_LAST) {
                                 glyph_index = (MSG_CHAR_ZH_START - MSG_CHAR_MULTIBYTE_FIRST) + byte + (byte2 - 1)
