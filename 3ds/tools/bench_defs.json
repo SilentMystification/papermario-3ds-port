@@ -7,6 +7,23 @@
   },
   "benches": [
     {
+      "name": "logbench",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "purpose": "LOG1 logbench: producer cycles per kept plain line, kept four-argument line, kept two-%s line, and per dropped line (boot switch logbench).",
+      "scenario": "logbench_boot",
+      "cap": 45,
+      "until": "logbench: done",
+      "tags": ["azahar", "log", "bench"],
+      "log_metrics": [
+        {"name": "plain_cyc", "regex": "logbench kind plain cycles ([0-9.]+)", "pick": "last"},
+        {"name": "args_cyc", "regex": "logbench kind args cycles ([0-9.]+)", "pick": "last"},
+        {"name": "str2_cyc", "regex": "logbench kind str2 cycles ([0-9.]+)", "pick": "last"},
+        {"name": "dropped_cyc", "regex": "logbench kind dropped cycles ([0-9.]+)", "pick": "last"}
+      ],
+      "gates": []
+    },
+    {
       "name": "texstale_prof_line",
       "kind": "azahar_pic",
       "speed": "normal",

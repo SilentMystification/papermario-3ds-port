@@ -661,6 +661,7 @@ static void game_thread(void* arg) {
     pm_log_init(live);
     pm_log_start();
     pm_log_live_status();
+    pm_log_bench();
     pm_wd_start();
     pm_fpscr_setup("game");
     bool is_new = false;

@@ -452,6 +452,49 @@ int pm_log_prof_mode(void) { return prof_mode; }
 PM_LOG_FN(pm_log, 2) /* an old call is info */
 PM_LOG_FN(pm_log_hw, 3 | VIP) /* HWM1: a measurement line at debug level that the queue keeps longest */
 
+/* LOG1 logbench, switch logbench, called once at boot: the producer cost of a kept plain line, a kept line with four
+ * arguments, a kept line with two %s, and a dropped line (level test fails), in CPU ticks (svcGetSystemTick, ARM11 clock).
+ * Kept lines run in batches of 512 (inside the queue room); the writer drains between batches, outside the timed window. */
+#define LB_N 10000
+#define LB_BATCH 512
+static u64 lb_ticks;
+static void lb_drain(void) {
+    wake_writer();
+    while (__atomic_load_n(&q_head, __ATOMIC_ACQUIRE) != __atomic_load_n(&q_tail, __ATOMIC_ACQUIRE)) svcSleepThread(1000000LL);
+}
+static void lb_run(int kind) {
+    lb_ticks = 0;
+    for (int done = 0; done < LB_N;) {
+        int k = LB_N - done < LB_BATCH ? LB_N - done : LB_BATCH;
+        u64 t0 = svcGetSystemTick();
+        for (int i = 0; i < k; i++) {
+            if (kind == 0) pm_log_d("logbench plain line");
+            else if (kind == 1) pm_log_d("logbench x %d %u %08x %.2f", i, (unsigned)i, (unsigned)i, 1.5 + i);
+            else pm_log_d("logbench s %s %s", "abcdefghijklmnop", "qrstuvwxyz012345");
+        }
+        lb_ticks += svcGetSystemTick() - t0;
+        done += k;
+        if (kind != 3) lb_drain();
+    }
+}
+void pm_log_bench(void) {
+    if (!pm_debug_has("logbench")) return;
+    static const char* const names[4] = {"plain", "args", "str2", "dropped"};
+    double res[4];
+    int save = log_level;
+    log_level = 3;
+    pass_recalc();
+    for (int kind = 0; kind < 3; kind++) { lb_run(kind); res[kind] = (double)lb_ticks / LB_N; }
+    log_level = -1; /* the level test fails: the dropped path */
+    pass_recalc();
+    lb_run(3);
+    res[3] = (double)lb_ticks / LB_N;
+    log_level = save;
+    pass_recalc();
+    for (int kind = 0; kind < 4; kind++) pm_log_w("logbench kind %s cycles %.1f", names[kind], res[kind]);
+    pm_log_w("logbench: done");
+}
+
 /* HW8: a client that only returns EAGAIN (stalled Wi-Fi, a reader that stopped) is closed after 3 s without one successful send.
  * The PC script reconnects and the ring replay fills the gap. Counters go to the logstat line. */
 #define LIVE_STALL_TICKS (3ull * 268111856ull)

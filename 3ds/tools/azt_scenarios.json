@@ -3,6 +3,21 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "logbench_boot",
+      "status": "unverified",
+      "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",
+      "proves": "LOG1 baseline: producer cost per kept line and per dropped line before deferred formatting.",
+      "debug": "loglevel=debug logbench",
+      "until": "logbench: done",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [{"name": "logbench dropped line", "regex": "logbench kind dropped cycles"}],
+      "reason": "LOG1: 40000 timed lines at boot, writer drains between batches. Cap 45 s."
+    },
+    {
       "name": "dro_01_walk",
       "status": "unverified",
       "subject": "Dro_01 (warp dro_01 entry 0), Mario walks by padscript; shots at frames 150 to 155 show the paths and fences near Mario. texstale check: per 300 frames, binds of native unit words against their descriptor and the mismatches.",
