@@ -257,6 +257,8 @@ void nd_mc_miss(const NdMKey* k) {
     }
     mg_cls[6]++;
 }
+unsigned nd_mc_size(void) { return NDMC_N; }
+const NdMEnt* nd_mc_ent(unsigned i) { return &mc_tab[i]; }
 void nd_mc_diag_take(unsigned o[14]) {
     for (unsigned i = 0; i < 9; i++) { o[i] = mg_cls[i]; mg_cls[i] = 0; }
     o[9] = mc_n; o[10] = mc_pool_n; o[11] = mc_ent_hi; o[12] = mc_pool_hi; o[13] = NDMC_N;

@@ -4373,7 +4373,7 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     NdMEnt* mce = nd_mc_find(&mk);
     int cached = mce != NULL;
     pm_gpu_ndt_end(tk, NDT_KEY);
-    if (!cached) nd_mc_miss(&mk); /* S3N-7: the miss class (diagnostic) */
+    if (!cached) { nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0;
     if (cached) { NdtT tm = pm_gpu_ndt_begin(); rec_matrix(q); pm_gpu_ndt_end(tm, NDT_MTX); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */

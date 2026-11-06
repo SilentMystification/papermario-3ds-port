@@ -2546,7 +2546,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     unsigned i = 0;
     s[i++] = nd_st.om_h; s[i++] = nd_st.om_l; s[i++] = nd_st.om_kh; s[i++] = nd_st.om_kl; s[i++] = nd_st.geom;
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
-    s[i++] = nd_st.prim; s[i++] = nd_st.prim_lod; s[i++] = env_col; s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
+    s[i++] = nd_st.prim; s[i++] = nd_st.prim_lod; s[i++] = 0; /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0) */ s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
     s[i++] = (uint32_t)dview; s[i++] = (uint32_t)r_mix; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
     s[i++] = (uint32_t)r_zmark; s[i++] = (uint32_t)r_decal; s[i++] = (uint32_t)r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)off_active; s[i++] = (uint32_t)ui_ortho;
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
@@ -2667,6 +2667,23 @@ static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDes
     return 1;
 }
 /* S3N-7: a stored fallback (rec_run, the entry has neg): the walker geometry runs, no model draw attempt. Counted as a fallback. */
+/* S3N-7 diagnostic (sampled misses): the stored entry of the same model (R0 word 0 and R12 word 0 equal) and the first key word that differs. */
+static unsigned mdg_miss, mdg_printed;
+void pm_gpu_model_miss_diag(const NdMKey* k) {
+    if ((mdg_miss++ % 400u) != 0u || mdg_printed >= 16u) return;
+    mdg_printed++;
+    unsigned n = nd_mc_size();
+    for (unsigned i = 0; i < n; i++) {
+        const NdMEnt* e = nd_mc_ent(i);
+        if (!e->used || e->k.w[0] != k->w[0] || e->k.w[24] != k->w[24]) continue;
+        unsigned j = 0;
+        while (j < NDMC_RW + NDMC_SW && e->k.w[j] == k->w[j]) j++;
+        if (j == NDMC_RW + NDMC_SW) { pm_log_prof_line("ndmdiff same key not found rp %08x", k->rp); return; }
+        pm_log_prof_line("ndmdiff w%u cache %08x now %08x rp %08x was %08x", j, e->k.w[j], k->w[j], k->rp, e->k.rp);
+        return;
+    }
+    pm_log_prof_line("ndmnew r0 %08x r0b %08x r12 %08x r2b %08x rp %08x", k->w[0], k->w[1], k->w[24], k->w[5], k->rp);
+}
 void pm_gpu_model_fb_cached(void) { ndn_fb++; ndn_miss++; ndn_log(); }
 int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     int mode_ok = 0;
