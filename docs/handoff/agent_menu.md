@@ -120,3 +120,18 @@ STATE (MENU3, branch nds1, main folder)
 - Row 2 WARP WAIT: FAILED gate (Mario not in top shot). Wait edit discarded. Camera under the map at the placed spot is the cause (section 8).
 - Row 3 (MN2, epic B): not started. Next: camera diagnosis of iwa_10 (needs user OK: a new line in the next run).
 - Starts MENU3: 6 of 8. Budget reset only with `run_azahar.ps1 -ResetBudget MENU3` (not used).
+
+## 9. MENU3 camera fix (coordinator order, 2 starts max) and row 3 status
+
+Camera fix: PASS by eye. Commit 8f65f970f. pm_warp.c: gCameras[CAM_DEFAULT].needsReinit = true after pm_pos_set (cam_mode_zone_interp.c re-init block); log `poswarp: camera reinit eye x y z mario x y z` one frame later. Gate run (iwa10_entry1_state, pos -662:0:587, shot at pos frame 90): eye 116.1 above Mario y 0.0 from f60 on (before: eye y -891 to -1000). Shot 0010 shows Mario standing on the ground. Starts MENU3: 7 of 8.
+Spot default: spot_iwa10_pic and spot_iwa10_ndmcheck warp iwa_10:1 (commit 7ffba7623, index-only commit, DRAW2 hunks not in it).
+
+Row 3 (MN2, then epic B): NOT DONE in this pass. Reasons:
+- MN2 (grey top screen): the present path (pm_gpu_menu_present, pm_gpu.c:1588) runs C3D_FrameEnd, which puts the target on the top screen again on every menu text change. A grey pass made once at pause is lost at the next present. The grey pass must run after each present, after the GPU is idle, on the top back buffer (gfxGetFramebuffer(GFX_TOP)), then flush and swap. citro3d buffer order at C3D_FrameEnd is not verified in this repo. Needs a probe run, not done.
+- MN3b, MN4, MN5, MN6, MN7: not started (each is a separate menu feature with its own gate).
+- Starts: 1 left of 8 on MENU3. Reset needed for more starts (run_azahar.ps1 -ResetBudget MENU3, at cap only).
+
+STATE (MENU3, branch nds1)
+- Row 1 PASS (ed3ebdf82). Row 2 FAILED then superseded by camera fix (b56459102, 8f65f970f).
+- Camera fix PASS by eye (8f65f970f). Spot default iwa_10:1 (7ffba7623).
+- Row 3 MN2 and epic B: open. Next: MN2 grey probe (after-present grey, citro3d buffer order), then MN3b, MN4, MN5, MN6, MN7.
