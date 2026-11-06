@@ -61,3 +61,11 @@ Fix (about 25 lines, in pm_tex.c and nd_tex.c):
 Build and test: per CLAUDE.md, debug check first; no Azahar run from this agent. The fix row needs a dro_01 scenario with the path and fence draws, and a picture that shows the path texture.
 
 Not verified: citro3d C3D_TexBind(0, NULL) dirty bit, dro_01 logs, which descriptors in dro_01 share an address with a Mario raster.
+
+## 4. Result of step 1 and step 2 (TEXSTALE, lane tex)
+
+Step 1 (commit 0046c8b6e), dro_01 walk, 300 frames, switch texstale: binds 25509, bad 1322, dirty 3, img 0, pal 1319, hash 0. The mismatches are palette pointers only: the slot holds the same image address and the same source hash as the descriptor, but a different TLUT address (the native lookup ignores the palette). No native bind drew stale texels in this window (hash 0, dirty 3 with unchanged hash). Hypothesis A (dirty slot bound by native) is not confirmed for dro_01 in 300 frames. The walk-frame symptom has not been reproduced yet.
+
+Step 2 (commit c04b00e93): native lookup takes only a clean slot (pm_tex_slot_clean: live, not dirty, same img and tlut). A miss or dirty copy reloads through pm_tex_load and takes the key of the loaded bytes. Unit force is set when the slot or its generation changed. Gates on lane tex: dro_01 walk texstale binds 25513 bad 0; spot_mac01_ndmcheck ndm_diff 0, eq 13727. The dro_01 shot (0002, frame 150 to 155) was viewed: Mario and partners, a wall, no clear path or fence picture in view. A person must confirm the subject.
+
+Open: the walk-frame symptom from the user report is not yet tied to a bind. Next check needs a longer dro_01 window (or the frames in which Mario's walk DMA rewrites a bound source) with texstale on, to see whether bad ever shows dirty or hash mismatches.
