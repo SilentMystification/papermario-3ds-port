@@ -1691,7 +1691,7 @@
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",
       "proves": "pm_options_ui.c draw calls pm_gpu_shot_bottom per draw (shotmenu), menu_put_line pads to 38 visible columns.",
       "debug": "preset=toad padscript=wait80,SELECT,wait30 shotmenu loglevel=debug",
-      "until": "menu: shot bot_m0000",
+      "until": "menu: shot \\w+ tab 0 row 0",
       "cap": 30,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
