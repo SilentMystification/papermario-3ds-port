@@ -6,6 +6,11 @@ The yes/no choice menu (super block prompt, Toad House prompt, save prompt) draw
 ## Start state
 Branch nds1, main folder. Old note (archive/agent_playfix2.md): "menu text and glove drawn twice. Toad House menu, 3D slider 0, fps60 off. Candidate palette path msg_draw.c:1347" (line numbers moved: grep). Not fixed since.
 
+## Split rows (after one stall; do ONE row per launch, then hand back)
+UI1a HARNESS GUARD: 3ds/run_azahar.ps1, under the mutex: copy %APPDATA%/Azahar/sdmc/3ds/PaperMario/options.ini byte for byte before the run, put it back in finally. If the scenario debug words have no `prof=` word, set the line `profmode=off` in options.ini before the start. Gate: one run of ui1_choice; the log has a `warp:` line. Commit run_azahar.ps1 only.
+UI1b CHOICE HOOK: pm_warp.c (grep `MSG_Choice_000A`): get the MSG_Menus_SavePrompt printer first, then the choice printer, as src/entity/SaveBlock.c (grep `MSG_Menus_SavePrompt`) does. Gate: one ui1_choice shot shows the choice menu. Commit.
+UI1c CAUSE AND FIX: steps 2 to 4 below. Candidate: the +2 offset grey shadow pass (msg_draw.c grep `charPosX + 2`, msg.c msg_draw_choice_pointer). Compare its colour and alpha in the shot with 40,40,40 alpha 72.
+
 ## Steps
 1. Run ui1_choice (preset=yard uishow=choice, shots 200 to 205). Confirm the double in the shot. If uishow=choice fails, use toad_house_menu.
 2. Name the cause from the shot and the code: one of (a) the message draw runs twice per frame (count calls of the choice draw function per frame with a debug log), (b) a drop shadow or outline pass of msg_draw.c that draws the same glyphs at an offset with the wrong colour or alpha, (c) the 3D stereo second eye draw at slider 0, (d) the glove HUD element draws in two passes. Write the value the draw used in the status line.
