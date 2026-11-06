@@ -5459,6 +5459,26 @@
       "reason": "MN6 part gate (MENU3 row 3): the restore log names row 3 and the shot after it has the cursor on row 3."
     },
     {
+      "name": "poslog_yard",
+      "status": "unverified",
+      "subject": "Yard (preset yard), position log combo: L+R+Y+B pressed once (padscript). One pos line with the map, area, map, entry, x y z and yaw of Mario.",
+      "proves": "MENU3 MN7: the combo logs one position line from the held keys (pm_input.c combo edge, pm_warp.c pm_poslog_line).",
+      "debug": "preset=yard poslog padscript=wait60,k_L+k_R+k_Y+k_B,wait30 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: ",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "pos line",
+          "regex": "pos: \\w+ area \\d+ map \\d+ entry \\d+ x -?\\d+\\.\\d+ y -?\\d+\\.\\d+ z -?\\d+\\.\\d+ yaw"
+        }
+      ],
+      "reason": "MN7 gate (MENU3 row 3): one line per combo press, with the values of Mario (yard values: test_catalog.md yard_poshud). Count of lines: one."
+    },
+    {
       "name": "iwa10_entry0_state",
       "status": "unverified",
       "subject": "iwa_10 warp entry 0 (pos -662 0 587). Mario state every 30 frames to 300: alpha, input lock, cutscene flag, text box, camera target, curFloor. One shot 90 scene frames after the pos= run starts.",

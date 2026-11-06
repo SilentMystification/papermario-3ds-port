@@ -228,6 +228,11 @@ void pm_pad_scan(void) {
         if (ps_run) { k |= ps[ps_i].keys; d |= ps[ps_i].keys & ~ps_pkeys; ps_pkeys = ps[ps_i].keys; } else ps_pkeys = 0;
     }
     if (d & (KEY_L | KEY_R)) { tab_scan = pm_pad_scans; tab_dir = (d & KEY_L) ? -1 : 1; }
+    { /* MN7: L+R+Y+B held and the fourth key pressed on this scan: one position line (switch poslog; the Debug row is not built yet) */
+        const u32 combo = KEY_L | KEY_R | KEY_Y | KEY_B;
+        extern void pm_poslog_line(void);
+        if ((k & combo) == combo && (d & combo) && pm_debug_has("poslog")) pm_poslog_line();
+    }
     /* UI1c: D-pad modes. cbtn: the D-pad gives its C buttons. emu: it gives the stick. Multifunction: stick and C in every state but the free overworld. */
     const int dmode = pm_opt.dpad_mode == 2 && !pm_new3ds ? 0 : pm_opt.dpad_mode;
     const int cbtn = dmode != 2;

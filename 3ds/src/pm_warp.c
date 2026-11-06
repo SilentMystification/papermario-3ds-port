@@ -821,6 +821,13 @@ void pm_title_return(void) {
 void pm_padscript_start(void);
 extern unsigned pm_pad_scans;
 
+/* MN7: the position log line of the L+R+Y+B combo (pm_input.c): map id, area, map, entry, x y z, yaw of Mario. Level warn, so the console shows it. */
+void pm_poslog_line(void) {
+    PlayerStatus* ps = &gPlayerStatus;
+    int a = gGameStatusPtr->areaID, m = gGameStatusPtr->mapID;
+    pm_log_w("pos: %s area %d map %d entry %d x %.3f y %.3f z %.3f yaw %.1f", gAreas[a].maps[m].id, a, m, (int)gGameStatusPtr->entryID, ps->pos.x, ps->pos.y, ps->pos.z, ps->curYaw);
+}
+
 /* The game reaches GAME_MODE_WORLD: first frame of the chosen scene. */
 void pm_warp_world_mode(unsigned frame) {
     if (pend_on && gGameStatusPtr->areaID == pend_area && gGameStatusPtr->mapID == pend_map) { /* POSWARP: the load a warp armed, on its map only (a door or pipe does not arm it) */
