@@ -4,9 +4,12 @@ This is the entry point for every test and profiling run (it replaces the text t
 
   python 3ds/tools/bench.py list [--tag T]
   python 3ds/tools/bench.py show <bench>
-  python 3ds/tools/bench.py run <bench> --row <row> --why "<text>" [--label L] [--build N] [--commit H] [--speed turbo|normal]
+  python 3ds/tools/bench.py run <bench> --row <row> --why "<text>" [--label L] [--build N] [--commit H] [--speed turbo|normal] [--lane L]
         azahar_pic, azahar_stream: needs --why. Writes the justification line to 3ds/logs/perf/status_<row>.txt,
         then starts the scenario through azt.ps1. azt.ps1 records the run itself (ingest-last), so run does not ingest.
+        --lane L: test lane build build3ds/lane-L/pm_3ds.3dsx (azt.ps1 -Build L).
+        "a,b,c" (AZT-4): a list of Azahar benches, one azt.ps1 list: one kept slot, warm restart between the runs.
+        All benches of a list share one speed; --label applies to every run of the list.
         host_test: runs the command, ingests its output (metric rc = exit code).
         console_prof: prints the push command only. Run `ingest` on the log after the push.
   python 3ds/tools/bench.py ingest <log> --bench <bench> --host azahar|o3ds|n3ds|host [--build N] [--commit H] [--row R] [--label L] [--note N] [--device D]
@@ -707,7 +710,81 @@ def cmd_show(a):
     return 0
 
 
+def measures(bd):
+    """What a run of this bench measures (status line): its log metrics and gates, else the picture."""
+    return list(dict.fromkeys([m["name"] for m in bd.get("log_metrics", [])] + [g["metric"] for g in bd.get("gates", [])])) or ["picture"]
+
+
+def lane_problem(lane):
+    """AZT-4: "" when --lane is absent or build3ds/lane-<lane>/pm_3ds.3dsx exists, else the reason (nothing runs)."""
+    if not lane:
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9_]+", lane):
+        return "--lane %r is not a lane name (letters, digits, _)" % lane
+    if not (REPO / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx").exists():
+        return "build3ds/lane-%s/pm_3ds.3dsx is missing. Build the lane first" % lane
+    return ""
+
+
+def run_azahar_list(a):
+    """AZT-4: "a,b,c" runs those Azahar benches as one azt.ps1 list: the scenarios go one after the other on one kept slot,
+    with a warm restart between them. Every bench needs an Azahar kind and a scenario, and all share one speed. --label
+    applies to every run of the list (without it, each run is labelled by its scenario). Nothing runs when a check fails."""
+    names = [n.strip() for n in a.bench.split(",") if n.strip()]
+    bds = []
+    for n in names:
+        bd = bench_def(n)
+        if not bd:
+            print("no bench named %s. See: bench.py list. Nothing was run." % n)
+            return 4
+        if not bd["kind"].startswith("azahar") or not bd.get("scenario"):
+            print("bench %s is %s with no scenario: a list takes Azahar benches only. Nothing was run." % (n, bd["kind"]))
+            return 5
+        if not scenario(bd["scenario"]):
+            print("scenario %s of bench %s is not in azt_scenarios.json. Nothing was run." % (bd["scenario"], n))
+            return 5
+        bds.append(bd)
+    if not a.why:
+        print("run needs --why \"<text>\": the justification lines are written before the start. Nothing was run.")
+        return 5
+    speeds = {a.speed or bd.get("speed", "normal") for bd in bds}
+    if len(speeds) > 1:
+        print("the benches of a list must share one speed (%s): split the list, or pass --speed. Nothing was run." % ", ".join(sorted(speeds)))
+        return 5
+    speed = speeds.pop()
+    if lane_problem(a.lane):
+        print("%s. Nothing was run." % lane_problem(a.lane))
+        return 5
+    scs = [scenario(bd["scenario"]) for bd in bds]
+    PERF.mkdir(parents=True, exist_ok=True)
+    with (PERF / ("status_%s.txt" % a.row)).open("a", encoding="utf-8", newline="\n") as f:
+        for bd, s in zip(bds, scs):
+            f.write("%s %s scenario %s: measures %s; path azt.ps1 list -> run_azahar.ps1 (kept slot, warm restart); speed %s; lane %s; why %s\n"
+                    % (now_iso(), bd["name"], s["name"], ", ".join(measures(bd)), speed, a.lane or "main", a.why))
+    env = dict(os.environ, PM_ROW=a.row)
+    for k in ("PM_BENCH_LABEL", "PM_BENCH_BUILD", "PM_BENCH_COMMIT"):
+        env.pop(k, None)
+    if a.label:
+        env["PM_BENCH_LABEL"] = a.label
+    if a.build is not None:
+        env["PM_BENCH_BUILD"] = str(a.build)
+    if a.commit:
+        env["PM_BENCH_COMMIT"] = a.commit
+    cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(REPO / "3ds" / "tools" / "azt.ps1"),
+           ",".join(s["name"] for s in scs), "-Row", a.row, "-Speed", speed]
+    if a.lane:
+        cmd += ["-Build", a.lane]
+    if any(s["status"] == "unverified" for s in scs):
+        cmd.append("-Try")
+    print("list of %d benches on one kept slot: %s" % (len(bds), ", ".join(names)))
+    rc = subprocess.run(cmd, cwd=REPO, env=env).returncode
+    print("list: azt.ps1 exit %d. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times." % rc)
+    return rc
+
+
 def cmd_run(a):
+    if "," in a.bench:
+        return run_azahar_list(a)
     bd = bench_def(a.bench)
     if not bd:
         print("no bench named %s. See: bench.py list" % a.bench)
@@ -722,11 +799,13 @@ def cmd_run(a):
         if not s:
             print("scenario %s is not in azt_scenarios.json. Nothing was run." % bd["scenario"])
             return 5
+        if lane_problem(a.lane):
+            print("%s. Nothing was run." % lane_problem(a.lane))
+            return 5
         speed = a.speed or bd.get("speed", "normal")
-        measured = list(dict.fromkeys([m["name"] for m in bd.get("log_metrics", [])] + [g["metric"] for g in bd.get("gates", [])])) or ["picture"]
         PERF.mkdir(parents=True, exist_ok=True)
         with (PERF / ("status_%s.txt" % a.row)).open("a", encoding="utf-8", newline="\n") as f:
-            f.write("%s %s scenario %s: measures %s; path azt.ps1 -> run_azahar.ps1; speed %s; why %s\n" % (now_iso(), bd["name"], s["name"], ", ".join(measured), speed, a.why))
+            f.write("%s %s scenario %s: measures %s; path azt.ps1 -> run_azahar.ps1; speed %s; lane %s; why %s\n" % (now_iso(), bd["name"], s["name"], ", ".join(measures(bd)), speed, a.lane or "main", a.why))
         for k in ("PM_BENCH_LABEL", "PM_BENCH_BUILD", "PM_BENCH_COMMIT"):
             env.pop(k, None)
         env["PM_BENCH_LABEL"] = a.label or bd["name"]
@@ -736,6 +815,8 @@ def cmd_run(a):
             env["PM_BENCH_COMMIT"] = a.commit
         cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(REPO / "3ds" / "tools" / "azt.ps1"), s["name"], "-Row", a.row,
                "-Speed", speed]
+        if a.lane:
+            cmd += ["-Build", a.lane]
         if s["status"] == "unverified":
             cmd.append("-Try")
         rc = subprocess.run(cmd, cwd=REPO, env=env).returncode
@@ -1270,7 +1351,7 @@ def main(argv):
     x = sub.add_parser("show"); x.add_argument("bench"); x.set_defaults(f=cmd_show)
     x = sub.add_parser("run"); x.add_argument("bench"); x.add_argument("--row", required=True)
     x.add_argument("--why", default=""); x.add_argument("--label", default=""); x.add_argument("--build", type=int); x.add_argument("--commit")
-    x.add_argument("--speed", choices=("turbo", "normal"))
+    x.add_argument("--speed", choices=("turbo", "normal")); x.add_argument("--lane", default="", help="test lane build (build3ds/lane-<lane>/pm_3ds.3dsx)")
     x.set_defaults(f=cmd_run)
     x = sub.add_parser("ingest"); x.add_argument("log"); x.add_argument("--bench", required=True); x.add_argument("--host", required=True)
     x.add_argument("--build", type=int); x.add_argument("--commit"); x.add_argument("--row", default="manual"); x.add_argument("--label", default="")

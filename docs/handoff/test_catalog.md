@@ -6,7 +6,7 @@ One tool runs tests, records every result and answers queries. Do not read runs.
 
 A. Check a change (a row)
 1. `bench.py list`, then `bench.py show <bench>` for the benches the row file names (recipe, gates, last runs).
-2. For each bench: `PM_ROW=<row> python 3ds/tools/bench.py run <bench> --row <row> --why "<quantity, code path, why no other run answers it>"`. The tool writes the why line, starts the test and records the run.
+2. For each bench: `PM_ROW=<row> python 3ds/tools/bench.py run <bench> --row <row> --why "<quantity, code path, why no other run answers it>"`. The tool writes the why line, starts the test and records the run. Add `--lane <lane>` to test a lane build (build3ds/lane-<lane>/pm_3ds.3dsx). Several Azahar benches go in one call, `run a,b,c` (see Slots and lists below).
 3. `bench.py check <run_id>`: the gates. PASS or FAIL per gate.
 4. kind azahar_pic: also open the shot in build3ds/azt/shots/<scenario>/ and confirm the subject. A log pass is not a pass.
 5. Budget: 8 Azahar starts per row. At the cap with gates unrun: reset (powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <row>) and go on.
@@ -38,8 +38,15 @@ E. Add a bench
 
 F. Database lost or stale: `bench.py rebuild` makes bench.db from runs.jsonl and bench_defs.json.
 
+## Slots, warm restart and lists (Azahar)
+- Slots: N private portable Azahar copies (env PM_AZ_SLOTS, default 3) in build3ds/azslots/slot<k>/. One named mutex per slot, so runs on different slots go in parallel. A run takes the first free slot, a kept slot first, and waits only when all are busy. Each slot has its own sdmc, config and logs; the user's Azahar install and %APPDATA% are only read.
+- Keep (default since AZT-3b): after a run that matched its until line, the slot's Azahar stays open, paused. The next run on that slot restarts emulation in it (warm, first marker about 1 s; a cold start takes 12 to 16 s). An idle kept Azahar closes after 10 min (azreap.ps1). `azt.ps1 ... -NoKeep` closes it after the run. A run with another 3dsx, other turbo settings or -Interactive starts cold.
+- List: `azt.ps1 a,b,c` (or `bench.py run a,b,c --row R --why "..." [--lane L]`) runs the scenarios one after the other, one start each, on one kept slot. All names are checked before the first start (an unknown, unverified or rejected scenario stops the whole list). The benches of a list share one speed. `--label` applies to every run of the list; without it each run is labelled by its scenario. The LIST lines print the wall time of each scenario and of the list.
+- Logs: azt.ps1 prints `LOG:`, the copy of this run's game log in build3ds/azt/logs/<scenario>.txt, and its shots are in build3ds/azt/shots/<scenario>/. Read those copies, not build3ds/last_log.txt (last writer wins, and a slot run overwrites its slot copy at the next run).
+- Until-line check: azt.ps1 checks the until line against the C sources. The source text is cached in build3ds/azt/srctext.cache (rebuilt when a .c or .h file changes).
+
 ## Command reference
-- `list [--tag T]`, `show <bench>`, `run <bench> --row R --why "..." [--speed turbo|normal] [--label L]`, `build-at <commit> <bench> --row R [--why "..."]` (Azahar benches, see B4)
+- `list [--tag T]`, `show <bench>`, `run <bench>[,<bench>...] --row R --why "..." [--speed turbo|normal] [--label L] [--lane L]`, `build-at <commit> <bench> --row R [--why "..."]` (Azahar benches, see B4)
 - `ingest <log> --bench B --host azahar|o3ds|n3ds [--build N] [--commit H] [--row R] [--label L] [--speed S]`, `ingest-last` (called by azt.ps1), `import-csv`
 - `where`, `spots`, `compare <bench> [A B | --last 2]`, `trend <bench> [metric]`: area filters `--map --mode --story --battle --entry --x --y --z --host`, plus `--speed turbo|normal|unknown|any`, `--chg` (include scene-change windows)
 - `check <run_id>`, `rebuild`
@@ -53,6 +60,6 @@ bench, host (azahar, o3ds, n3ds, host), device, build_no, commit, date, ts, row,
 - Scenes without a position tag record map "untagged".
 
 ## Files
-- 3ds/tools/bench.py, 3ds/tools/bench_defs.json (benches, tracked), 3ds/tools/azt_scenarios.json (scenarios), 3ds/tools/azt.ps1 (Azahar runner).
+- 3ds/tools/bench.py, 3ds/tools/bench_defs.json (benches, tracked), 3ds/tools/azt_scenarios.json (scenarios), 3ds/tools/azt.ps1 (Azahar runner), 3ds/tools/azslot.ps1 (slot pool, warm restart), 3ds/tools/azreap.ps1 (closes an idle kept Azahar), 3ds/run_azahar.ps1 (one run; -Slot, -Keep, -NoWarm, -ResetBudget).
 - 3ds/logs/perf/runs.jsonl (source of truth, tracked, append only), 3ds/logs/perf/bench.db (index, untracked).
 - Old text catalog: docs/handoff/archive/test_catalog.md and archive/test_catalog/. Read only when a row file names them.
