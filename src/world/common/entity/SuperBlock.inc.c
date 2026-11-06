@@ -72,6 +72,19 @@ API_CALLABLE(N(SuperBlock_ClearOverride40)) {
     return ApiStatus_DONE2;
 }
 
+#ifdef TARGET_3DS
+/* FX1 row 2: debug marks for the 3DS run. arg 0: the upgrade effects start, 1: they are done. */
+API_CALLABLE(N(SuperBlock_PmMark)) {
+    extern void pm_log(const char* fmt, ...);
+    extern unsigned pm_frame_count(void);
+    Bytecode* args = script->ptrReadPos;
+    s32 which = evt_get_variable(script, *args++);
+    if (which) pm_log("superblock: effects done f%u", pm_frame_count());
+    else pm_log("superblock: hit f%u", pm_frame_count());
+    return ApiStatus_DONE2;
+}
+#endif
+
 API_CALLABLE(N(SuperBlock_HideBlockContent)) {
     entity_upgrade_block_hide_content(evt_get_variable(script, *script->ptrReadPos));
     return ApiStatus_DONE2;
@@ -436,6 +449,9 @@ API_CALLABLE(N(SuperBlock_WaitForPlayerToLand)) {
 }
 
 EvtScript N(SuperBlock_ShowUpgradeEffects) = {
+#ifdef TARGET_3DS
+    Call(N(SuperBlock_PmMark), 0)
+#endif
     Wait(10 * DT)
     Call(PlaySound, SOUND_RELEASE_ENERGY)
     Call(N(SuperBlock_GatherEnergyFX), SUPER_BLOCK_MAPVAR)
@@ -463,6 +479,9 @@ EvtScript N(SuperBlock_ShowUpgradeEffects) = {
     Wait(3)
     Call(N(SuperBlock_AnimateEnergyOrbs), SUPER_BLOCK_MAPVAR)
     Wait(30 * DT)
+#ifdef TARGET_3DS
+    Call(N(SuperBlock_PmMark), 1)
+#endif
     Return
     End
 };
