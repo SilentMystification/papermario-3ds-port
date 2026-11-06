@@ -72,9 +72,9 @@
     {
       "name": "profmenu_row",
       "status": "unverified",
-      "subject": "Port menu Debug tab, row Profiling (row 10). SELECT opens the menu, R R goes to the Debug tab, ten ddown reach the row, A sets it to Prof (mode 1). The bottom shot shows the row value Prof. The prof lines follow once the change applies at the next drawn frame end.",
+      "subject": "Port menu, Debug > Logging and Profiling (row 2, A), row 3 Profiling. SELECT opens the menu, R R goes to the Debug tab, two ddown and A open the folder, three ddown reach the row, A sets it to Prof (LAYOUT). The bottom shot shows the row value Prof. The prof lines follow once the change applies at the next drawn frame end.",
       "proves": "PROFROW: the Profiling row sets the prof mode at run time with no launch word. The prof counter setup runs (prof cal line) and the prof report line prints.",
-      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,ddown,wait10,A,wait900 shots shotbottom=236:12 loglevel=debug",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,A,wait20,ddown,wait10,ddown,wait10,ddown,wait10,A,wait900 shots shotbottom=236:12 loglevel=debug",
       "until": "prof f\\d+ w300 fps",
       "cap": 45,
       "deadline": 20,
@@ -1844,6 +1844,50 @@
         }
       ],
       "reason": "PAUSE GREY and PAUSE BOTTOM gate (one start). Top shots are checked by PPM read (r = g = b). The bottom shot is at the first frames after the resume (the pause does not step the game)."
+    },
+    {
+      "name": "menu_layout",
+      "status": "verified",
+      "subject": "Select menu LAYOUT walk (one run, a shot at every draw): Debug tab (R R), each folder (HUD, Logging and Profiling, Render, Game, Boss and Battles > Boss at depth 2 with breadcrumb), B back to each row, Cheats tab (R), Badges folder, then the skip: one right press on row 2 moves the cursor 6 rows to row 8 (log menu: skip 6 row 2 -> 8).",
+      "proves": "LAYOUT: Debug rows are folders (page stack depth 1 and 2, breadcrumb), Cheats has Partners; skip 6 on a row with no value (folder list, badge list).",
+      "debug": "preset=toad padscript=@pad_menu_layout.txt shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 4 row 8",
+      "cap": 60,
+      "deadline": 30,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "depth 1 folder",
+          "regex": "menu: page push 4 depth 1"
+        },
+        {
+          "name": "depth 2 boss page",
+          "regex": "menu: page push 4 depth 2"
+        },
+        {
+          "name": "badges row 2 shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 2"
+        },
+        {
+          "name": "skip 6",
+          "regex": "menu: skip 6 row 2 -> 8"
+        },
+        {
+          "name": "skip shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 8"
+        }
+      ],
+      "reason": "LAYOUT gate (one start) with the skip-6 gate: the shots of the Debug tab, each folder (one of each), the Cheats tab are the picture check. Until is the first shot on row 8 (after the skip)."
     },
     {
       "name": "menu_shot",
@@ -5587,7 +5631,7 @@
     {
       "name": "menu_folder",
       "status": "unverified",
-      "subject": "Select menu: Debug tab (R, R from General), the Boss folder row (15th row, CH1) opened with A. Tab line shows the breadcrumb Debug > Boss and the Boss rows; B pops back.",
+      "subject": "Select menu: Debug tab (R, R from General), row 5 Boss and Battles > opened with A, then Boss > (depth 2). Tab line shows the breadcrumb Debug > Boss and Battles > Boss and the Boss rows; B pops back twice.",
       "proves": "MENU3 MN4: page stack (depth 1 push and pop), folder row, breadcrumb on the tab line, Boss under Debug.",
       "debug": "preset=toad padscript=@pad_menu_folder.txt shotmenu loglevel=debug",
       "until": "menu: page pop depth 0",
@@ -5600,6 +5644,10 @@
         {
           "name": "menu open",
           "regex": "menu: open"
+        },
+        {
+          "name": "page push depth 2",
+          "regex": "menu: page push 4 depth 2"
         },
         {
           "name": "page push",
@@ -5931,7 +5979,7 @@
     {
       "name": "menu_poslog_row",
       "status": "verified",
-      "subject": "Select menu Debug tab, row 16 Position log combo (CH1: the stat rows left Debug, was row 22): A sets On (bottom shot shows On), SELECT closes, then L+R+Y+B in the yard gives one position line with no poslog switch. A again sets Off.",
+      "subject": "Select menu, Debug > HUD folder, row 3 Position log combo (LAYOUT; was row 22 of Debug): A sets On (bottom shot shows On), SELECT closes, then L+R+Y+B in the yard gives one position line with no poslog switch. A again sets Off.",
       "proves": "MENU4 MN7 rest: the Debug row sets pm_opt.poslog and the combo reads it (pm_input.c), the value is saved by the menu close.",
       "debug": "preset=yard padscript=@pad_poslog_row.txt shotmenu loglevel=debug",
       "until": "padscript: done",
@@ -5943,7 +5991,7 @@
       "expected_events": [
         {
           "name": "row on",
-          "regex": "menu: tab 2 row 16 Position log combo = On"
+          "regex": "menu: tab 4 row 3 Position log combo = On"
         },
         {
           "name": "pos line",
@@ -5951,7 +5999,7 @@
         },
         {
           "name": "row off",
-          "regex": "menu: tab 2 row 16 Position log combo = Off",
+          "regex": "menu: tab 4 row 3 Position log combo = Off",
             "pick": "last"
         }
       ],
