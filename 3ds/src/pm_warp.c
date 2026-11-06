@@ -300,8 +300,11 @@ static void pos_tick(unsigned frame) {
     }
     if (pos_state == 0 && frame - pos_f0 >= POS_DELAY) {
         pm_pos_set(pos_v, pos_n);
+        gCameras[CAM_DEFAULT].needsReinit = true; /* MENU3 camera: the zone camera re-inits at the placed spot (cam_mode_zone_interp.c needsReinit block) */
         pos_state = 1;
         pos_t = frame;
+    } else if (pos_state == 1 && frame - pos_t == 1) {
+        pm_log("poswarp: camera reinit eye %.1f %.1f %.1f mario %.1f %.1f %.1f", gCameras[CAM_DEFAULT].lookAt_eye.x, gCameras[CAM_DEFAULT].lookAt_eye.y, gCameras[CAM_DEFAULT].lookAt_eye.z, gPlayerStatus.pos.x, gPlayerStatus.pos.y, gPlayerStatus.pos.z);
     } else if (pos_state == 1 && frame - pos_t >= POS_READBACK) {
         pm_pos_log(pos_v, "readback");
         pos_state = 2;
