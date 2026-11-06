@@ -162,6 +162,77 @@ static float pos_floor(float x, float y, float z, int* found) {
     return *found ? hy : y;
 }
 
+/* FLOORSCAN (debug switch floorscan, WARPY2 diagnosis, placement unchanged): at scene frame 5 of a pos= run, logs every collider hit of the
+ * column at the pos= x z (poswarp column: lines, the walkable flag is normal y above 0.5), then the walkable floor on a grid of 50 units
+ * over the collider triangles of the map (bounds from the triangle vertices). The edge is the largest z (the side toward the default
+ * camera): the 10 standable points with the largest z are logged as floorscan: edge n x y z. */
+#define FS_STEP 50.0f
+#define FS_MAX 200
+static void pos_column(float x, float z) {
+    f32 top = pos_v[1] + 1000.0f;
+    int i;
+    for (i = 0; i < 8; i++) {
+        f32 hx, hy, hz, hd = 2000.0f, nx, ny, nz;
+        s32 cid = test_ray_colliders(COLLIDER_FLAG_IGNORE_PLAYER, x, top, z, 0.0f, -1.0f, 0.0f, &hx, &hy, &hz, &hd, &nx, &ny, &nz);
+        if (cid <= NO_COLLIDER) break;
+        pm_log("poswarp column: x %.3f z %.3f hit y %.3f collider %d normal y %.3f walkable %d", x, z, hy, (int)cid, ny, ny > 0.5f);
+        top = hy - 1.0f;
+    }
+}
+static float pos_grid_floor(float x, float z, float top, int* found) {
+    int i;
+    *found = 0;
+    for (i = 0; i < 8; i++) {
+        f32 hx, hy, hz, hd = 4000.0f, nx, ny, nz;
+        s32 cid = test_ray_colliders(COLLIDER_FLAG_IGNORE_PLAYER, x, top, z, 0.0f, -1.0f, 0.0f, &hx, &hy, &hz, &hd, &nx, &ny, &nz);
+        if (cid <= NO_COLLIDER) break;
+        if (ny > 0.5f) { *found = 1; return hy; }
+        top = hy - 1.0f;
+    }
+    return 0.0f;
+}
+static void pos_floorscan(void) {
+    int c, t, i, j, n = 0, ns = 0, found, ne = 0;
+    float minx = 1e30f, maxx = -1e30f, minz = 1e30f, maxz = -1e30f, miny = 1e30f, maxy = -1e30f;
+    float ex[10], ey[10], ez[10];
+    pos_column(pos_v[0], pos_v[2]);
+    for (c = 0; c < gCollisionData.numColliders; c++) {
+        Collider* col = &gCollisionData.colliderList[c];
+        if (col->numTriangles <= 0 || col->triangleTable == NULL) continue;
+        for (t = 0; t < col->numTriangles; t++) {
+            Vec3f* vv[3] = { col->triangleTable[t].v1, col->triangleTable[t].v2, col->triangleTable[t].v3 };
+            for (j = 0; j < 3; j++) {
+                if (vv[j] == NULL) continue;
+                if (vv[j]->x < minx) minx = vv[j]->x;
+                if (vv[j]->x > maxx) maxx = vv[j]->x;
+                if (vv[j]->z < minz) minz = vv[j]->z;
+                if (vv[j]->z > maxz) maxz = vv[j]->z;
+                if (vv[j]->y < miny) miny = vv[j]->y;
+                if (vv[j]->y > maxy) maxy = vv[j]->y;
+            }
+        }
+    }
+    if (minx > maxx) { pm_log("floorscan: no triangles"); return; }
+    for (i = 0; i * FS_STEP <= maxx - minx && i < FS_MAX; i++) {
+        float x = minx + i * FS_STEP;
+        for (j = 0; j * FS_STEP <= maxz - minz && j < FS_MAX; j++) {
+            float z = minz + j * FS_STEP;
+            float y;
+            y = pos_grid_floor(x, z, maxy + 1000.0f, &found);
+            n++;
+            if (!found) continue;
+            ns++;
+            if (ne < 10 || z > ez[ne - 1]) {
+                int k = ne < 10 ? ne++ : ne - 1;
+                while (k > 0 && ez[k - 1] < z) { ex[k] = ex[k - 1]; ey[k] = ey[k - 1]; ez[k] = ez[k - 1]; k--; }
+                ex[k] = x; ey[k] = y; ez[k] = z;
+            }
+        }
+    }
+    pm_log("floorscan: bounds x %.3f..%.3f z %.3f..%.3f y %.3f..%.3f step %.0f samples %d standable %d", minx, maxx, minz, maxz, miny, maxy, FS_STEP, n, ns);
+    for (i = 0; i < ne; i++) pm_log("floorscan: edge %d x %.3f y %.3f z %.3f", i, ex[i], ey[i], ez[i]);
+}
+
 void pm_pos_set(const float* v, int n) {
     PlayerStatus* ps = &gPlayerStatus;
     int found;
@@ -211,6 +282,7 @@ static void pos_tick(unsigned frame) {
     {
         unsigned pf = frame - pos_f0;
         if (pf == 0 || pf == 30 || pf == 60 || pf == 120 || pf == 180) pos_probe(pf);
+        if (pf == 5 && pm_debug_has("floorscan")) pos_floorscan();
     }
     if (pos_state == 0 && frame - pos_f0 >= POS_DELAY) {
         pm_pos_set(pos_v, pos_n);

@@ -1,15 +1,10 @@
 # agent_menu: Select menu epic (plan_menu.md sections 2 and 3)
 
-STATE (branch menu, base nds1, HEAD 74dfe57f4)
-- Audit done: cc1f68720. in = 0, partial = MN3 MN4 MN6 MN9 CH1 to CH4.
-- MN0 + MN1 coded in 74dfe57f4 (menu_fit, pm_gpu_shot_bottom, shotmenu, freeze in pm_main.c, pm_gpu_menu_present). Build NOT run, gate NOT run.
-- Build inputs copied into the worktree (assets/us, ver/us/build; gitignored, never commit). Build OK (PM_LANE=menu, build3ds/lane-menu/pm_3ds.3dsx). Build OK, gate not run.
-- Azahar azt.ps1 menu_shot: refused by the permission check (powershell in worktree). Not bypassed.
-- MN3 done in c820149f1 (build OK, gate not run). WARPY done in 501d3b5f1 (build OK, gate not run; iwa_10 scene gate not run).
-- Epic A: MN2 open. Epic B: MN3b, MN4, MN5, MN6 (+ warp last-selection restore, coordinator add), MN7 open. D, E not started.
-- MN2 (grey) not started: needs present and transfer order confirmed on a shot first.
-- Coordinator add (MN6 restore last selection, RAM only): not started.
-- Next: unblock build (assets from orchestrator), build PM_LANE=menu, shot menu_shot, then MN2.
+STATE (branch menu, base nds1; rows of MENU2 on branch nds1 main folder)
+- MENU2 row 1 WARPY2: gate FAILED (Mario not in iwa_10 shot). Placement edit discarded. Debug floorscan + column log committed. Section 5.
+- Epic A: MN2 open (grey top screen). Epic B: MN3b, MN4, MN5, MN6 (+ warp restore), MN7 open.
+- Row 2 (exit_armed via shotmenu): next.
+- MENU-C (resolution) not started (out of scope, note in row_MENU).
 
 ## 1. Audit (HEAD of nds1 at start, commit 0fe0497e4 row file)
 
@@ -49,3 +44,33 @@ Summary: in = 0. partial = MN3, MN4, MN6, MN9, CH1, CH2, CH3, CH4. not in = the 
 ## 2. Plan detail changes (plan default taken, noted here)
 - MN1 present: a frozen frame with no draw (target kept, plan 2.2 facts) presents a menu change. Plan default kept.
 - MN0 pad: plan said pad by visible width; done in menu_fit (pm_gpu.c), cut at 38 columns.
+
+## 5. MENU2 row 1 WARPY2 (iwa_10), result: gate FAILED, placement code discarded
+
+Starts used (MENU2): 2 of 8. Lines: 3ds/logs/perf/status_MENU2.txt.
+
+Tried (binary 2252, not kept): walkable floor only (normal y above 0.5), cast again below a rejected hit, wait for curFloor (120 frames), place 1 unit below the floor (POS_SINK). Result: floor y 0 -> 0 as before, placed at -662 0 587, probe at placed+60 still `ground y 0 id -1`, shot at frame 265 (placed frame about 205, plus 60) shows rock, sky and a Mario text box ("Ah... Now... Confound it! Where could it be...?"), Mario not in the picture. Same picture as GATES1 gate 4. Two unchanged shots, so the placement edit is discarded (3ds/src/pm_warp.c back to HEAD placement code).
+
+Kept (debug only, debug switch `floorscan`, scene frame 5 of a pos= run): the collider hits of the column under the pos= x z, and the floor grid below.
+
+Column x -662 z 587 (run 2): one hit only. collider 28, y 0.000, normal y 1.000 (walkable). No hit below y 0.
+
+Floorscan, map iwa_10 (run 2, same grid rule as the code: step 50, samples 700, standable 379):
+- bounds x -1466..-100, z -587..613, y 0..365.
+- Edge = largest z (z 613). Plan default. The side the camera looks from was NOT checked.
+- The 10 standable points nearest that edge (all y 0.000):
+  1. x -966 y 0 z 613
+  2. x -916 y 0 z 613
+  3. x -866 y 0 z 613
+  4. x -816 y 0 z 613
+  5. x -766 y 0 z 613
+  6. x -716 y 0 z 613
+  7. x -666 y 0 z 613
+  8. x -616 y 0 z 613
+  9. x -566 y 0 z 613
+  10. x -516 y 0 z 613
+- The spot -662 0 587 is 26 units from the edge row, at the edge column x -666.
+
+Answer to the coordinator check (1): the column has no floor below y 0, so the spot is not over a lower floor. The failure is not the floor height. Next diagnosis (not run): the value of the Mario draw at this spot (model visible flag, cutscene or script flag set by the iwa_10 entry text, camera target). Not named yet.
+
+Row 1: FAILED (gate 4). Commit: debug tool only (floorscan, column log), placement unchanged.

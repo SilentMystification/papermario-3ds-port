@@ -5305,6 +5305,62 @@
         }
       ],
       "reason": "S3N-3 ndmcheck copy of spot_sbk56_pic. Status pending: the build prints the ndmcheck line only after S3N-3 lands. Cap 25 s: boot, warp, placement and the first 300-frame window (the until). A run with eq 0 fails (nothing compared)."
+    },
+    {
+      "name": "iwa10_floor_probe",
+      "status": "unverified",
+      "subject": "iwa_10 (warp entry 0, pos -662 0 587). Probe run, no picture: the poswarp floor line and the placed readback line, with the frame of each.",
+      "proves": "MENU2 WARPY2: pos_floor takes only a walkable floor (ny above 0.5), pos_place waits for curFloor (at most 120 frames), the placed line gives the frame of the placement.",
+      "debug": "warp=iwa_10:0 pos=-662:0:587 loglevel=debug",
+      "until": "poswarp: (placed Mario|no standable floor)",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: iwa_10 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: iwa_10 entry 0"
+        },
+        {
+          "name": "floor line",
+          "regex": "poswarp: floor y -?\\d+\\.\\d+ -> -?\\d+\\.\\d+"
+        }
+      ],
+      "reason": "MENU2 WARPY2 probe. Until is the placed or kept-entry line. The picture is the second run, iwa10_floor_pic, with a window taken after this log."
+    },
+    {
+      "name": "iwa10_floor_pic",
+      "status": "unverified",
+      "subject": "iwa_10 (warp entry 0, pos -662 0 587). Top shot at frame 265 with the floorscan lines of the same run. Gate of WARPY2 (Mario on visible ground) FAILED: Mario not in the shot.",
+      "proves": "MENU2 WARPY2 gate: Mario stands on visible ground at iwa_10, the probe lines show a ground id above -1.",
+      "debug": "warp=iwa_10:0 pos=-662:0:587 floorscan shots shotwin=240:30 loglevel=debug",
+      "until": "shot \\d+ frame 265\\b",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: iwa_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: iwa_10 entry 0"
+        },
+        {
+          "name": "placed",
+          "regex": "poswarp: placed Mario at -662\\.000 0\\.000 587\\.000"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 265\\b"
+        },
+        {
+          "name": "floorscan edge",
+          "regex": "floorscan: edge 0 x "
+        }
+      ],
+      "reason": "WARPY2 picture and floorscan run (one start). Placement code unchanged (WARPY2 edit discarded after 2 unchanged shots). Window 240 to 269."
     }
   ]
 }
