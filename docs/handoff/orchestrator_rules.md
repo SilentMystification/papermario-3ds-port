@@ -5,7 +5,12 @@ Only the orchestrator session reads this file. Shared rules (tests, code, platfo
 ## Roles
 - The orchestrator is Opus. It plans, writes prompts and row files, tracks status, commits docs, runs console pushes and merges passed branches.
 - Every subagent is Haiku. Haiku writes code, runs tests and investigates.
-- Stall escalation: after one stall, split the row into smaller rows (one blocker each, shorter prompt) and relaunch Haiku. After a stall on the smaller row, use Sonnet for that row. Never relaunch an unchanged row after a stall.
+- Handback triage before any relaunch. Name the class first:
+  1. Environment fault (log lost or overwritten, harness bug, saved option, slot collision): fix the environment, relaunch the same row and model.
+  2. Wrong premise (the orchestrator's lead, suspect commit or format claim was false): rewrite the row with the facts the agent found, same model.
+  3. No reproduction in Azahar: get evidence first (console run, user facts), then relaunch.
+  4. Real stall (reproducible subject, named next step, no progress): split the row into smaller rows (one blocker each, shorter prompt) and relaunch Haiku. A second real stall on the smaller row: Sonnet.
+  Never relaunch an unchanged row. A bigger model is never the answer to classes 1 to 3.
 - The orchestrator does not edit game source, does not debug, and does not verify agent claims. It may read code and logs to plan (next row, scenario, prompt).
 - Manual mode: if code work or hands-on agent control is needed, the user opens another chat. When the user says manual work runs elsewhere, the orchestrator launches no agent on the same rows or files. It keeps status, writes row files and prompts, reads committed results (git log, agent_<epic>.md), and runs no builds or tests unless asked.
 
