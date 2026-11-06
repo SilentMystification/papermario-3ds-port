@@ -15,6 +15,8 @@
 # The 3DS address comes from $N3DS_IP, else from a UDP broadcast (the same probe 3dslink uses).
 # The game runs a log server on TCP port 17492 when netloaded (3ds/src/pm_main.c). This PC
 # connects to it, the same direction as the upload, so a PC firewall or VPN does not block it.
+# Before the send the console IP gets one ping (informational). After a NO LOG, livelog.py --probe makes one TCP connect
+# to 17492 and prints its class (refused, timeout, unreachable, or connected).
 # Output: build3ds/hw_live_log_<last octet of the IP>.txt (also printed), one file per console, so two
 # consoles can be captured at the same time. Run it in the background for long runs.
 set -e
@@ -135,6 +137,8 @@ report_log() {
     nlines=$(wc -l <"$log" 2>/dev/null || echo 0)
     if [ "$nlines" -eq 0 ]; then
         echo "NO LOG: no line from $ip:17492 in $secs s (game did not start or log server not reached)"
+        # One TCP connect now: refused = the game's server is not up (game side), timeout/unreachable = network, connected = no line came.
+        py3 -u 3ds/tools/livelog.py --probe "$ip" || true
         case "$1" in
             attach) echo "ATTACH FAILED: no live log from $ip" ;;
             send) echo "PUSH FAILED stage=send, and no live log" ;;
@@ -181,6 +185,8 @@ EOF
 )}}}
 if [ -z "$ip" ]; then echo "no 3DS netloader found (press Y in the Homebrew Launcher)"; exit 1; fi
 echo "3DS at $ip"
+# One ping for the log only: ICMP may be blocked, so no reply does not stop the push.
+if ping -n 1 -w 1000 "$ip" >/dev/null 2>&1; then echo "ping $ip: reply"; else echo "ping $ip: no reply (ICMP may be blocked, the push goes on)"; fi
 if [ "$attach" -eq 1 ]; then
     echo "attach: no send, reading the live log of $ip"
     read_live_log

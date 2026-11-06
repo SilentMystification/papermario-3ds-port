@@ -35,8 +35,9 @@ pull o: FTP (port 5000) into O3DS's SD card. Downloads the game log and any Luma
   build3ds/hw_o3ds_log.txt and build3ds/hw_o3ds_dumps/.
 pull n: same, N3DS.
 
-Default IPs: O3DS 192.168.1.168, N3DS 192.168.1.223. -ip overrides either
-(only meaningful for a single hardware target, not on/ona).
+No default IP. push o/n without -ip takes the console address from the netloader broadcast (push_3ds.sh).
+pull o/n needs -ip. push on/ona is refused: two consoles give one broadcast answer, so push o and push n one
+at a time (each with -ip <addr> when more than one console is on the network).
 One attempt, short timeouts - this never waits indefinitely on a console (see the project's
 never-block-on-live-device rule) unless -Interactive is explicitly given. push o/n/on/ona and
 pull o/n touch real hardware; push a does not.
@@ -61,7 +62,6 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
-$defaultIp = @{ o = "192.168.1.168"; n = "192.168.1.223" }
 $consoleName = @{ o = "O3DS"; n = "N3DS"; a = "Azahar" }
 $multi = @{ on = @('o', 'n'); ona = @('o', 'n', 'a') }
 
@@ -69,9 +69,13 @@ if ($Verb -eq 'pull' -and $multi.ContainsKey($Target)) {
     Write-Output "pull ${Target}: not supported - pull one console at a time (pull o / pull n)"
     exit 1
 }
-if ($ip -and $multi.ContainsKey($Target)) {
-    Write-Output "-ip is ignored for '$Target' (multiple targets) - use a single target to override an IP"
-    $ip = ""
+if ($Verb -eq 'pull' -and -not $ip) {
+    Write-Output "pull ${Target}: needs -ip <address> (no default IP)"
+    exit 1
+}
+if ($multi.ContainsKey($Target) -and ($multi[$Target] | Where-Object { $_ -ne 'a' })) {
+    Write-Output "push ${Target}: refused - two hardware consoles cannot be told apart by the netloader broadcast. Run push o and push n one at a time."
+    exit 1
 }
 if ($Target -eq 'a' -and $ip) { Write-Output "-ip is ignored for Azahar (push a)"; $ip = "" }
 
@@ -139,12 +143,7 @@ function Invoke-Build {
 }
 
 # Runs one target, never throws - failures are captured and reported, not fatal to the others.
-# Write-Host for banners, same reason as Push-Parallel: the call site is "$results = @{ k = Push-One
-# $t }", and a function's Write-Output stream (not just `return`) becomes that value - mixing the
-# two would make $results[$t] a non-empty array (banner strings + the real $true/$false), which is
-# always truthy in PowerShell regardless of which boolean was actually returned. That means a real
-# failure here could have silently reported as success. Not yet observed, caught while fixing the
-# equivalent (observed, confirmed) bug in Push-Parallel.
+# Banners use Write-Host: the caller stores the return value of this function, so Write-Output lines would end up in it.
 function Push-One([string]$t) {
     Write-Host "=== push $t ($($consoleName[$t])) ==="
     try {
@@ -155,8 +154,8 @@ function Push-One([string]$t) {
             & powershell -NoProfile -File 3ds/run_azahar.ps1 @azArgs
             if ($LASTEXITCODE -ne 0) { throw "run_azahar.ps1 exited $LASTEXITCODE" }
         } else {
-            $targetIp = if ($ip) { $ip } else { $defaultIp[$t] }
-            $env:N3DS_IP = $targetIp
+            # No -ip: N3DS_IP stays empty and push_3ds.sh takes the netloader broadcast answer.
+            $env:N3DS_IP = $ip
             $watchSecs = if ($Interactive) { 86400 } else { $Seconds }
             $extra = @($Rest); if ($GameDebug) { $extra += $GameDebug }
             & $gitBash 3ds/push_3ds.sh -t $watchSecs @extra
@@ -170,75 +169,8 @@ function Push-One([string]$t) {
     }
 }
 
-# Multiple targets push at the same time (background jobs, not sequential) - each line a job
-# prints is echoed live, tagged "[t] ", as soon as it arrives, interleaved with the others. A job
-# never throws out of this function: a sentinel line ("GO_PS1_RESULT:...") carries its outcome, so
-# one target failing never stops or hides the others.
-function Push-Parallel([string[]]$targets) {
-    $jobs = @{}
-    foreach ($t in $targets) {
-        $targetIp = if ($ip) { $ip } else { $defaultIp[$t] }
-        $jobs[$t] = Start-Job -ScriptBlock {
-            param($t, $repo, $targetIp, $pythonExe, $gitBashPath, $interactive, $seconds, $rest, $gameDebug)
-            Set-Location $repo
-            if ($pythonExe) { $env:PYTHON_EXE = $pythonExe }
-            Write-Output "=== push $t starting ==="
-            try {
-                if ($t -eq 'a') {
-                    $azArgs = @($rest)
-                    if ($gameDebug) { $azArgs = @('-Debug', $gameDebug) + $azArgs }
-                    if ($interactive) { $azArgs = @('-Interactive') + $azArgs }
-                    & powershell -NoProfile -File 3ds/run_azahar.ps1 @azArgs 2>&1
-                    if ($LASTEXITCODE -ne 0) { throw "run_azahar.ps1 exited $LASTEXITCODE" }
-                } else {
-                    $env:N3DS_IP = $targetIp
-                    $watchSecs = if ($interactive) { 86400 } else { $seconds }
-                    $extra = @($rest); if ($gameDebug) { $extra += $gameDebug }
-                    & $gitBashPath 3ds/push_3ds.sh -t $watchSecs @extra 2>&1
-                    if ($LASTEXITCODE -ne 0) { throw "push_3ds.sh exited $LASTEXITCODE" }
-                }
-                Write-Output "GO_PS1_RESULT:OK"
-            } catch {
-                Write-Output "GO_PS1_RESULT:FAILED:$($_.Exception.Message)"
-            }
-        } -ArgumentList $t, $repo, $targetIp, $pythonExe, $gitBash, $Interactive.IsPresent, $Seconds, $Rest, $GameDebug
-    }
-
-    # Write-Host, not Write-Output, for every progress line in here: this function's return value
-    # is "$results = Push-Parallel $targets" in the caller, and in PowerShell a function's entire
-    # Write-Output stream - not just its `return` - becomes that assignment. Using Write-Output for
-    # live progress here silently swallowed every line into $results instead of the console,
-    # which also corrupted $results itself (a mix of strings and the hashtable, not a clean
-    # hashtable) - the exact bug that made a fully successful push on report FAILED for both
-    # targets. Confirmed and fixed 2026-10-07, not a guess: the live echo was completely absent
-    # (6 lines total over a 90+ second real-hardware run) and the summary was wrong despite both
-    # targets' capture files being complete and correct.
-    $results = @{}
-    while (($jobs.Values | Where-Object { $_.State -eq 'Running' }).Count -gt 0) {
-        foreach ($t in $jobs.Keys) {
-            Receive-Job $jobs[$t] | ForEach-Object {
-                if ($_ -match '^GO_PS1_RESULT:OK$') { $results[$t] = $true }
-                elseif ($_ -match '^GO_PS1_RESULT:FAILED:(.*)$') { $results[$t] = $false; Write-Host "[$t] FAILED - $($Matches[1])" }
-                else { Write-Host "[$t] $_" }
-            }
-        }
-        Start-Sleep -Milliseconds 300
-    }
-    # Drain anything written between the last poll and the job finishing.
-    foreach ($t in $jobs.Keys) {
-        Receive-Job $jobs[$t] | ForEach-Object {
-            if ($_ -match '^GO_PS1_RESULT:OK$') { $results[$t] = $true }
-            elseif ($_ -match '^GO_PS1_RESULT:FAILED:(.*)$') { $results[$t] = $false; Write-Host "[$t] FAILED - $($Matches[1])" }
-            else { Write-Host "[$t] $_" }
-        }
-        if (-not $results.ContainsKey($t)) { $results[$t] = $false; Write-Host "[$t] FAILED - job ended with no result (job state: $($jobs[$t].State))" }
-        Remove-Job $jobs[$t] -Force
-    }
-    return $results
-}
-
 function Pull-One([string]$t) {
-    $targetIp = if ($ip) { $ip } else { $defaultIp[$t] }
+    $targetIp = $ip
     Write-Output "--- pulling from $($consoleName[$t]) at $targetIp (FTP 5000) ---"
     if ($pythonExe) { & $pythonExe -3 -u 3ds/tools/ftppull.py $targetIp $t build3ds }
     else { & py -3 -u 3ds/tools/ftppull.py $targetIp $t build3ds }
@@ -247,15 +179,7 @@ function Pull-One([string]$t) {
 
 if ($Verb -eq 'push') {
     Invoke-Build
-    $targets = if ($multi.ContainsKey($Target)) { $multi[$Target] } else { @($Target) }
-    if ($targets.Count -gt 1) {
-        Write-Output "--- pushing to $($targets.Count) targets at the same time ---"
-        $results = Push-Parallel $targets
-        Write-Output "--- summary ---"
-        foreach ($t in $targets) { Write-Output "  $t ($($consoleName[$t])): $(if ($results[$t]) { 'OK' } else { 'FAILED' })" }
-    } else {
-        $results = @{ $targets[0] = Push-One $targets[0] }
-    }
+    $results = @{ $Target = Push-One $Target }
     exit $(if (($results.Values | Where-Object { -not $_ }).Count -gt 0) { 1 } else { 0 })
 }
 
