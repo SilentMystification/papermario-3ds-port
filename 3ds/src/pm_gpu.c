@@ -1075,9 +1075,10 @@ static int nd_raw_native(void) {
     if (ndm_live) ndm_cmp(&nk, &d);
     if (spr_pend) spr_check(&d);
     if (wl_on()) { unsigned fn, wr; wl_depth(z, 0, r_zcmp, r_zupd, r_decal, r_nocol, &fn, &wr);
-        pm_log("wdraw f%u nat om %08x zs %u fn %u wr %u dec2 %d zc %d zu %d dec %d z %d bl %d tmpl %d tc %08x t1 %d u0 %08x u1 %08x pz %04x prim %08x cc %08x cmb %u tris %u",
+        extern void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1); unsigned wtss_, wgeo_, wcw0_, wcw1_; pm_gbi_sticky(&wtss_, &wgeo_, &wcw0_, &wcw1_); /* POND-M1: walker combine words */
+        pm_log("wdraw f%u nat om %08x zs %u fn %u wr %u dec2 %d zc %d zu %d dec %d z %d bl %d tmpl %d tc %08x t1 %d u0 %08x u1 %08x pz %04x prim %08x cc %08x cmb %u cw %08x %08x tris %u",
                pm_frame_count(), dbg_omode_l, (dbg_omode_l >> 2) & 1u, fn, wr, decal2, r_zcmp, r_zupd, r_decal, z, r_blend, id, tex ? pm_tex_census_id(0) : 0u, tex1,
-               (unsigned)u0.addr, (unsigned)u1.addr, wl_primz, prim, cconst, (unsigned)combine, gni / 3u); /* G_MDSFT_ZSRCSEL is 2 */
+               (unsigned)u0.addr, (unsigned)u1.addr, wl_primz, prim, cconst, (unsigned)combine, wcw0_, wcw1_, gni / 3u); /* G_MDSFT_ZSRCSEL is 2 */
     }
     if (decal2) { /* pass A: the stencil mark, no colour, no depth write */
         NdTmplKey ka = nk;

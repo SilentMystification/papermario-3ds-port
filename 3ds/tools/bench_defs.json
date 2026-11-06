@@ -154,6 +154,38 @@
       "gates": []
     },
     {
+      "name": "pond_mac00_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "mac_00 (preset toad), Mario at pos -178 0 88 (the pond). Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot: the water must draw.",
+      "scenario": "pond_mac00",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "pond"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pond_mac00_wlog",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "mac_00 (preset toad), Mario at pos -178 0 88 (the pond), waterlog switch: one wdraw line per batch in frames 200 and 201 and one wrec line per copy record. Azahar picture. A person reads the top shot: the pond water must show.",
+      "scenario": "pond_mac00_wlog",
+      "cap": 60,
+      "until": "shot 1 frame 204",
+      "tags": [
+        "azahar",
+        "pic",
+        "pond"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac00_ndmcheck",
       "kind": "azahar_pic",
       "speed": "normal",
