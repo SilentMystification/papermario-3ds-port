@@ -48,14 +48,41 @@ function Test-StallExpired([datetime]$lastNew, [datetime]$now, [int]$limit) { re
 $script:srcText = $null
 function Get-SourceText {
     # All C source that can print a log line: the 3DS port, its headers and the decomp source.
-    if ($null -eq $script:srcText) {
-        $sb = New-Object System.Text.StringBuilder
-        foreach ($d in @("3ds\src", "3ds\include", "src")) {
-            $p = Join-Path $repo $d
-            if (Test-Path $p) { foreach ($f in Get-ChildItem -Path $p -Recurse -File -Include *.c, *.h) { [void]$sb.Append([IO.File]::ReadAllText($f.FullName)) } }
+    # AZT-3c: cached in build3ds\azt\srctext.cache. The key is every source file's path, size and write time (about 0.3 s to list,
+    # a full read is about 2.5 s). A changed, added or removed file changes the key and rebuilds the cache.
+    if ($null -ne $script:srcText) { return $script:srcText }
+    $key = New-Object System.Text.StringBuilder
+    $paths = New-Object System.Collections.Generic.List[string]
+    foreach ($d in @("3ds\src", "3ds\include", "src")) {
+        $p = Join-Path $repo $d
+        if (-not [IO.Directory]::Exists($p)) { continue }
+        foreach ($fi in ([IO.DirectoryInfo]$p).EnumerateFiles("*", [IO.SearchOption]::AllDirectories)) {
+            if ($fi.Extension -eq ".c" -or $fi.Extension -eq ".h") {
+                [void]$key.Append($fi.FullName).Append("|").Append($fi.Length).Append("|").Append($fi.LastWriteTimeUtc.Ticks).Append("`n")
+                $paths.Add($fi.FullName)
+            }
         }
-        $script:srcText = $sb.ToString()
     }
+    $sha = [Security.Cryptography.SHA256]::Create()
+    $stamp = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($key.ToString()))).Replace("-", "")
+    $cacheDir = Join-Path $repo "build3ds\azt"
+    $cache = Join-Path $cacheDir "srctext.cache"
+    try {
+        if (Test-Path $cache) {
+            $c = [IO.File]::ReadAllText($cache)
+            if ($c.StartsWith($stamp + "`n")) { $script:srcText = $c.Substring($stamp.Length + 1); return $script:srcText }
+        }
+    } catch {}
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($f in $paths) { [void]$sb.Append([IO.File]::ReadAllText($f)) }
+    $script:srcText = $sb.ToString()
+    try {
+        # Written to a temp file and moved in place: a concurrent reader sees the old cache or the new one, never a part
+        New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
+        $tmp = "$cache.$PID.tmp"
+        [IO.File]::WriteAllText($tmp, $stamp + "`n" + $script:srcText)
+        Move-Item $tmp $cache -Force -ErrorAction Stop
+    } catch { Remove-Item "$cache.$PID.tmp" -ErrorAction SilentlyContinue }
     return $script:srcText
 }
 function Get-UntilProblem($s) {
