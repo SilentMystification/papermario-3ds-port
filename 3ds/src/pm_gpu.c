@@ -184,6 +184,7 @@ static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the 
 
 int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
+static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
 static int ui_ortho; /* F07-3: the game matrix is orthographic (UI): drawn 1:1 and centered with wide, not stretched */
 static int off_active; /* V05: drawing goes to an off-screen image (see pm_gpu_off_begin) */
 static C3D_Mtx off_proj;
@@ -200,7 +201,7 @@ static void rebuild_3d(void) {
     C3D_Mtx view;
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
-    view.r[0].x = (pm_wide && !off_active && !ui_ortho) ? vp_sx * 1.25f : vp_sx;
+    view.r[0].x = (pm_wide && !off_active && (!ui_ortho || wedge_x)) ? vp_sx * 1.25f : vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge */
     view.r[0].w = off_active ? vp_tx : (pm_wide && !ui_ortho) ? vp_tx * 1.25f : 40.f + vp_tx;
     view.r[1].y = off_active ? -vp_sy : vp_sy;
     view.r[1].w = off_active ? vp_ty : 240.f - vp_ty;
@@ -2364,9 +2365,14 @@ unsigned pm_gpu_flush_gen(void) { return flush_gen; }
  * vertices must already carry a flag of the palette of this batch. */
 int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2) {
     if (gni == 0 || gidx_n + 3 > GRING_IDX || !g_pal) return 0;
+static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned n);
     const unsigned r3[3] = { i0, i1, i2 }, g3[3] = { g0, g1, g2 };
     for (int i = 0; i < 3; i++) {
         unsigned r = r3[i];
+    if (pm_wide && !off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides */
+        unsigned short t3[3] = { (unsigned short)i0, (unsigned short)i1, (unsigned short)i2 };
+        if (g1 != g0 || g2 != g0 || i0 > 0xffffu || i1 > 0xffffu || i2 > 0xffffu || wide_edge_k(pal_tab[g0], t3, 3) != 0) return 0;
+    }
         if (rgen[r] == pal_gen) continue;
         unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g3[i]) break;
         if (k == pal_n) return 0; /* a matrix that is not in the palette yet: the slow path adds it */
@@ -2431,36 +2437,47 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
  * last note_mvp (ui_ortho), so the draw matrix must be that kind. The vertices are tested like the CPU path: clip x at +-w * 0.999. At most WIDE_MAXV index entries are tested (a bigger draw keeps the CPU path).
  * 0: native, 1: edge vertex or a matrix of the other kind, 2: too many vertices or no index list. */
 #define WIDE_MAXV 192u
-static struct { unsigned ortho, nat, edge, big; } wide_c;
+static struct { unsigned ortho, nat, edge, big, all; } wide_c;
 static void wide_log(unsigned f) { /* called from ndn_log every 300 frames; the window counts reset at the print */
-    pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big);
-}
+    pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u all %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all);
     memset(&wide_c, 0, sizeof wide_c);
-static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) {
+}
+static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned n) {
     int r = 0;
     const int wz = m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f;
+    unsigned ne = 0;
     wide_c.ortho++;
     if (!idx || !gring) r = 2;
     else if (!wz || !ui_ortho) r = 1;
     else if (n > WIDE_MAXV) r = 2;
-    else for (unsigned i = 0; i < n && !r; i++) {
+    else for (unsigned i = 0; i < n; i++) {
         const short* v = (const short*)(gring + 16u * idx[i]);
         float x = (float)v[0], y = (float)v[1], z = (float)v[2];
         float cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0], cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-        if (cw > 0.f && (cx >= cw * 0.999f || cx <= -cw * 0.999f)) r = 1;
+        if (cw > 0.f && (cx >= cw * 0.999f || cx <= -cw * 0.999f)) ne++;
     }
-    if (r == 0) wide_c.nat++; else if (r == 1) wide_c.edge++; else wide_c.big++;
+    if (r == 0 && ne) r = ne == n ? 3 : 1;
+    if (r == 3) wide_c.all++;
+    else if (r == 0) wide_c.nat++; else if (r == 1) wide_c.edge++; else wide_c.big++;
+    { static unsigned seen; if (r == 1 && seen < 8u) { seen++; pm_log("wideedge f%u n %u ui %d wz %d", pm_frame_count(), n, ui_ortho, wz); } } /* WIDE1-2: which draws hit the edge rule */
     return r;
 }
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
+/* nonzero: the CPU path keeps the draw (an edge-only range is native in pm_gpu_grange with the x scale, the would and why tests take it as native) */
+static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) { int r = wide_edge_k(m, idx, n); return r == 3 ? 0 : r; }
+int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
     if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
     if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
     if (r_decal && r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
     if (pm_wide && !off_active) { /* F07-7: the CPU path moves edge vertices of UI quads. The wide post matrix is made for a perspective game matrix. */
-        if (ui_ortho) return 0;
-        for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) return 0; }
+        if (ui_ortho) { /* WIDE1-3: one matrix for the three vertices, no vertex on the game edge (an edge triangle keeps the CPU path) */
+            unsigned short t3[3];
+            if (g[1] != g[0] || g[2] != g[0] || ri[0] > 0xffffu || ri[1] > 0xffffu || ri[2] > 0xffffu) return 0;
+            t3[0] = (unsigned short)ri[0]; t3[1] = (unsigned short)ri[1]; t3[2] = (unsigned short)ri[2];
+            if (wide_edge_k(tab[g[0]], t3, 3) != 0) return 0;
+        } else for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) return 0; }
     }
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
@@ -2575,9 +2592,22 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
     if (r_zmark) return 0;
     if (r_decal && r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
-    if (pm_wide && !off_active) {
+    if (pm_wide && !off_active && !wedge_x) {
         const float(*m)[4] = tab[gm];
-        if ((ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0; /* WIDE1-1 */
+        if (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) {
+            int wr = wide_edge_k(m, idx, nidx); /* WIDE1-1 */
+            if (wr == 3) { /* WIDE1-2: every vertex on the game edge: draw it alone with x scale 1.25 in the post matrix, as the CPU path moves each vertex */
+                int r2;
+                if (!draw_3d) { flush(); draw_3d = 1; }
+                flush();
+                wedge_x = 1; rebuild_3d();
+                r2 = pm_gpu_grange(tab, gm, vp, uvso, cmul, cadd, zmix, ct, fx, idx, nidx);
+                flush();
+                wedge_x = 0; rebuild_3d();
+                return r2 ? 1 : 0;
+            }
+            if (wr) return 0;
+        }
     }
     if (gidx_n + nidx > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
@@ -2807,8 +2837,8 @@ static void ndn_log(void) {
     if (f % 300u == 0 && f != ndn_f_last) {
         ndn_f_last = f;
         unsigned clr = nd_mc_clears(), smp = pm_ph_smp_count(), ns = smp - ndn_smp0;
-        char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
         wide_log(f);
+        char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
         for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
         pm_log_prof_line("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
         pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u", f, ndn_nokey, ndn_rng, ndn_texf);

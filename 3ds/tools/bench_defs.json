@@ -138,6 +138,22 @@
       "gates": []
     },
     {
+      "name": "wide_fade_mac",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Toad Town (preset toad) with wide on, shots at frames 30 to 41: the fade-in quad on the game edge (WIDE1-2) reaches the screen edge. A person reads the shot.",
+      "scenario": "wide_fade_mac",
+      "cap": 25,
+      "until": "shot \\d+ frame 4[0-3]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac00_ndmcheck",
       "kind": "azahar_pic",
       "speed": "normal",

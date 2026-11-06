@@ -6073,6 +6073,30 @@
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: ",
+    {
+      "name": "wide_fade_mac",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad) with wide on: the fade-in at the start of the scene (an orthographic quad on the game edge, f37). Shots at frames 30 to 41 show the fade reaching the screen edge.",
+      "proves": "WIDE1-2: an orthographic range whose vertices all sit on the game edge draws native with x scale 1.25 in the post matrix and covers the side gutters like the CPU path.",
+      "debug": "preset=toad wide shots shotwin=30:12 loglevel=debug",
+      "until": "shot \\d+ frame 4[0-3]\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "gpu: wide=1",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "wide on",
+          "regex": "gpu: wide=1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 4[0-3]\\b"
+        }
+      ],
+      "reason": "WIDE1-2 gate: the fade picture in wide mode. Cap 25 s: boot, load, 43 frames."
+    },
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
