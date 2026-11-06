@@ -9,11 +9,11 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, loglevel warn, conlevel warn, fixedseed off, dpad_mode multi, dz_pad 5, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off, poslog off. */
+/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, loglevel warn, conlevel warn, fixedseed off, dpad_mode multi, dz_pad 15, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off, poslog off. */
 PmOpt pm_opt = {
     .fps60 = 0, .wide = 0, .dbg_hud = 1, .dbg_stats = 0, .dbg_nofog = 0, .dbg_nolight = 0, .o3ds_z = 0,
     .log = 1, .loglevel = 1, .conlevel = 1, .fixedseed = 0, .dpad_mode = 0,
-    .dz_pad = 5, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0, .poslog = 0,
+    .dz_pad = 15, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0, .poslog = 0,
 };
 /* Fails the build when PmOpt gains or loses a field without this initializer being updated. */
 _Static_assert(sizeof(PmOpt) == 20 * sizeof(int), "PmOpt field count changed: update pm_opt above");
