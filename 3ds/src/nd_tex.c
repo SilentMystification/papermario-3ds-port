@@ -50,6 +50,7 @@ int pm_tex_slot_unit(int i, NdUnit* u);
 int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, NdUnit* u); /* pm_tex.c, S3N-3c */
 int pm_tex_slot_words(int i, uint32_t* out);
 void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter);
+void pm_tex_stale_chk(int i, const void* img, const void* pal, unsigned key); /* pm_tex.c, TEXSTALE step 1 */
 
 static unsigned desc_hash(const NdTexDesc* d) {
     const unsigned char* b = (const unsigned char*)d;
@@ -99,6 +100,7 @@ int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u) {
     if (!e->key) return 0;
     /* S3N-6: the hinted slot still holds the content (its key and generation) and gives the dim: its words, no search */
     if (*hs >= 0 && pm_tex_slot_key(*hs) == e->key && pm_tex_slot_gen(*hs) == *hg && pm_tex_slot_unit(*hs, &t) == 1 && t.dim == e->w[0]) {
+        pm_tex_stale_chk(*hs, e->d.img, e->d.pal, e->key);
         u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
         return 1;
     }
@@ -111,6 +113,7 @@ int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u) {
         if (s < 0) return 0;
     }
     *hs = s; *hg = pm_tex_slot_gen(s);
+    pm_tex_stale_chk(s, e->d.img, e->d.pal, e->key);
     u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
     return 1;
 }

@@ -964,12 +964,42 @@ static void tc_report(void) {
     tc_hits = tc_miss = tc_evict = tc_evict_ev0 = tc_inval = tc_up_bytes = tc_evict_bytes = tc_ev0_bytes = 0;
 }
 
+/* TEXSTALE step 1 (switch texstale): a native unit bind checked against its descriptor. The slot must be live, not dirty, hold the descriptor
+ * image and palette, and its source bytes must still hash to the key the descriptor was matched with. Log only. */
+static unsigned ts_binds, ts_bad, ts_dirty, ts_img, ts_pal, ts_hash, ts_samp;
+static unsigned src_hash(const void* p, unsigned n);
+void pm_tex_stale_chk(int i, const void* img, const void* pal, unsigned key) {
+    if (!PMDL("texstale") || i < 0 || i >= SLOTS) return;
+    Slot* s = &slots[i];
+    int bad = 0, dirty = s->dirty, mi = s->img != img, mp = s->tlut != pal, mh = 0;
+    if (!s->native && s->slen && s->img) mh = src_hash(s->img, s->slen) != key;
+    ts_binds++;
+    if (dirty) ts_dirty++;
+    if (mi) ts_img++;
+    if (mp) ts_pal++;
+    if (mh) ts_hash++;
+    bad = dirty || mi || mp || mh;
+    if (bad) {
+        ts_bad++;
+        if (ts_samp < 10) {
+            ts_samp++;
+            pm_log_w("texstale sample f%u slot %d desc img %p slot img %p desc pal %p slot pal %p key %08x shash %08x dirty %d hash %d native %d",
+                     (unsigned)tc_frame, i, img, s->img, pal, s->tlut, key, s->shash, dirty, mh, s->native);
+        }
+    }
+}
+static void ts_report(void) {
+    pm_log("texstale f%u binds %u bad %u dirty %u img %u pal %u hash %u", (unsigned)tc_frame, ts_binds, ts_bad, ts_dirty, ts_img, ts_pal, ts_hash);
+    ts_binds = ts_bad = ts_dirty = ts_img = ts_pal = ts_hash = ts_samp = 0;
+}
+
 void pm_tex_begin_frame(void) {
     pm_tex_epoch_v++;
     pm_tex_wrap_gen_v++;
     tc_frame++;
     if (tc_on < 0) tc_on = pm_debug_has("texstat") || pm_ph_on; /* texture timers: texstat or phase only, not loglevel */
     if (tc_on && tc_frame % 300 == 0) tc_report();
+    if (tc_frame % 300 == 0 && PMDL("texstale")) ts_report();
     epoch++;
     frame_bytes = 0;
     /* Frees of a sampled block go through pf_add (TEXF1): the GPU has not waited for the previous frame by default. */
