@@ -39,9 +39,10 @@ E. Add a bench
 F. Database lost or stale: `bench.py rebuild` makes bench.db from runs.jsonl and bench_defs.json.
 
 ## Slots, warm restart and lists (Azahar)
-- Slots: N private portable Azahar copies (env PM_AZ_SLOTS, default 3) in build3ds/azslots/slot<k>/. One named mutex per slot, so runs on different slots go in parallel. A run takes the first free slot, a kept slot first, and waits only when all are busy. Each slot has its own sdmc, config and logs; the user's Azahar install and %APPDATA% are only read.
+- Slots: N private portable Azahar copies (env PM_AZ_SLOTS, default 3) in build3ds/azslots/slot<k>/. One named mutex per slot, so runs on different slots go in parallel. A run takes the free slot whose kept Azahar restarts it (same lane 3dsx and turbo setting: warm), then a free slot with no kept Azahar, then any free slot. It waits only when all are busy. Each slot has its own sdmc, config and logs; the user's Azahar install and %APPDATA% are only read.
 - Keep (default since AZT-3b): after a run that matched its until line, the slot's Azahar stays open, paused. The next run on that slot restarts emulation in it (warm, first marker about 1 s; a cold start takes 12 to 16 s). An idle kept Azahar closes after 10 min (azreap.ps1). `azt.ps1 ... -NoKeep` closes it after the run. A run with another 3dsx, other turbo settings or -Interactive starts cold.
 - List: `azt.ps1 a,b,c` (or `bench.py run a,b,c --row R --why "..." [--lane L]`) runs the scenarios one after the other, one start each, on one kept slot. All names are checked before the first start (an unknown, unverified or rejected scenario stops the whole list). The benches of a list share one speed. `--label` applies to every run of the list; without it each run is labelled by its scenario. The LIST lines print the wall time of each scenario and of the list.
+- Warm line: each start writes `azslot: slot <k> warm` or `azslot: slot <k> cold (<reason>)` (reason: no kept, closed, other lane, turbo, option, restart failed). azt.ps1 puts it as the first line of build3ds/azt/logs/<scenario>.txt and records it as `warm` 1 or 0 in the run record (absent when the start ended before the decision).
 - Logs: azt.ps1 prints `LOG:`, the copy of this run's game log in build3ds/azt/logs/<scenario>.txt, and its shots are in build3ds/azt/shots/<scenario>/. Read those copies, not build3ds/last_log.txt (last writer wins, and a slot run overwrites its slot copy at the next run).
 - Until-line check: azt.ps1 checks the until line against the C sources. The source text is cached in build3ds/azt/srctext.cache (rebuilt when a .c or .h file changes).
 
@@ -52,7 +53,7 @@ F. Database lost or stale: `bench.py rebuild` makes bench.db from runs.jsonl and
 - `check <run_id>`, `rebuild`
 
 ## Fields of a run
-bench, host (azahar, o3ds, n3ds, host), device, build_no, commit, date, ts, row, label, result, speed (turbo, normal, unknown), frame_limit, dirty (true: a tracked file changed, except map_restore_table.c and 3ds/logs/; false: clean; null: old run), scene, log_path, shot_path, metrics. Per window (sample): frame, map, area, mode, story, battle, entry, chg, position at start and end (x y z), fps, ft_ms, nd_ms, lg_ms, gb_ms.
+bench, host (azahar, o3ds, n3ds, host), device, build_no, commit, date, ts, row, label, result, speed (turbo, normal, unknown), frame_limit, warm (1 warm restart, 0 cold, absent: unknown), dirty (true: a tracked file changed, except map_restore_table.c and 3ds/logs/; false: clean; null: old run), scene, log_path, shot_path, metrics. Per window (sample): frame, map, area, mode, story, battle, entry, chg, position at start and end (x y z), fps, ft_ms, nd_ms, lg_ms, gb_ms.
 
 ## Rules
 - Turbo and normal rows are never averaged. Old runs have speed unknown.
