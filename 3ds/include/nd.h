@@ -215,6 +215,8 @@ typedef struct NdDraw {
     float uvso[4], cmul[4], cadd[4], zmix[2]; /* game order x y z w, the words go out in memory order w z y x */
     uint32_t idx_word;        /* index buffer address word (register 0x227) */
     uint32_t nidx;            /* index count */
+    float uvx[4];             /* SGEN-2: the unit 1 uv map (pm_gpu_set_tex1), game order; written at loc_uvx when has_uvx */
+    unsigned loc_uvx; uint8_t has_uvx;
 } NdDraw;
 #define ND_NPAL 21
 typedef struct NdShadow {
@@ -222,6 +224,7 @@ typedef struct NdShadow {
     NdUnit u[2]; uint8_t u_on[2], cfg_valid; uint32_t cfg;
     float pal[ND_NPAL][16]; uint8_t pal_valid[ND_NPAL];
     float uni[16]; uint8_t uni_valid;
+    float uvx[4]; uint8_t uvx_valid; /* SGEN-2 */
     uint32_t tmpl_val[64]; /* ND_TMPL_WORDS max, register values of the template last written (for word level deltas) */
     uint32_t col[6], buf_col; uint8_t col_valid, has_buf;
 } NdShadow;

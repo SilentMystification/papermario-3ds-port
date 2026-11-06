@@ -74,7 +74,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
         if (!sh->u_on[u] || t->force || memcmp(&sh->u[u], t, sizeof *t) != 0) {
             uint32_t b[5] = { 0, t->dim, t->param, t->lod, t->addr };
             o = cmd(o, base + 1, 0xF, b, 5, 1);
-            o = one(o, base + 0xE, 0xF, t->type);
+            o = one(o, u ? 0x96u : base + 0xE, 0xF, t->type); /* the format register: 0x8E unit 0, 0x96 unit 1 (SGEN-2) */
             sh->u[u] = *t; sh->u_on[u] = 1; unit_chg = 1;
         }
     }
@@ -93,6 +93,11 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
             o = uni(o, d->loc_var, all, 4);
             memcpy(sh->uni, all, sizeof all); sh->uni_valid = 1;
         }
+    }
+    if (d->has_uvx) { /* SGEN-2: the unit 1 uv map, its own uniform */
+        float v[4];
+        rev4(v, d->uvx);
+        if (!sh->uvx_valid || memcmp(sh->uvx, v, sizeof v) != 0) { o = uni(o, d->loc_uvx, v, 1); memcpy(sh->uvx, v, sizeof v); sh->uvx_valid = 1; }
     }
     /* the draw: vertex attribute buffer setup stays with citro3d; the index address, count and the trigger */
     o = one(o, 0x25E, 0x2, 0x300);

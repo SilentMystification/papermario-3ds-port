@@ -1659,7 +1659,8 @@ void pm_tex_set_filter(int linear) {
  * skips the three calls when the texture, filter and wrap are what the last bind set. Anything that can change the unit or the texture
  * object in another way clears it (frame and target changes through pm_tex_bind_reset, a dropped or loaded slot, the aux bind). */
 static const C3D_Tex* nd_lt; static unsigned nd_lsg; /* the texture and its slot generation of the last native draw: a change forces the unit block and a texture cache clear, as the C3D_TexBind of pm_tex_bind does */
-void pm_tex_bind_reset(void) { tb_last = NULL; au_last = NULL; nd_lt = NULL; }
+static const C3D_Tex* nd_lt1; 
+void pm_tex_bind_reset(void) { tb_last = NULL; au_last = NULL; nd_lt = NULL; nd_lt1 = NULL; }
 /* TEXD3 console switches (debug string): wrapov=repeat|mirror|clamp|edge forces the GPU wrap of unit 0 in pm_tex_bind; texnearest=1
  * forces nearest filter on unit 0; padov=off pads the texture with the plain window edge (no mask follow). Parsed when the switch
  * string changes (pm_dbg_gen). Absent switches change nothing. */
@@ -1707,6 +1708,27 @@ static int nu0_impl(NdUnit* u, int touch) {
     return 1;
 }
 int pm_tex_native_unit0(NdUnit* u) { return nu0_impl(u, 1); }
+/* SGEN-2: the unit 1 words of the aux texture pm_tex_bind_aux would bind (same residency work, no citro3d call). 1 with the words, 0 no aux texture, -1 the native path cannot take it (an off-screen aux image, a debug override). */
+static unsigned nd_lsg1;
+int pm_tex_native_unit1(NdUnit* u) {
+    if (aux_off >= 0 && aux_off < offt_n) return -1;
+    if (aux < 0 || !slots[aux].live) return 0;
+    td3_parse();
+    if (td3_wrap >= 0 || td3_near || PMDL("texclamp") || PMDL("texnear") || PMDL("texclamp1") || PMDL("texrep1")) return -1;
+    slots[aux].stamp = ++stamp;
+    TOUCH(&slots[aux]);
+    uint32_t ws = nd_tex_wrap_final(aux_shr_s, mk_ms, aux_ws), wt = nd_tex_wrap_final(aux_shr_t, mk_mt, aux_wt);
+    const C3D_Tex* tp = tex_for_draw(&slots[aux]);
+    u->force = slot_draws_stage(&slots[aux]) || tp != nd_lt1 || slots[aux].sgen != nd_lsg1;
+    nd_lt1 = tp; nd_lsg1 = slots[aux].sgen;
+    u->dim = tp->dim;
+    u->param = nd_tex_param(tp->param, (unsigned)tex_filt, ws, wt);
+    u->lod = tp->lodParam;
+    u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
+    u->type = (uint32_t)tp->fmt;
+    au_last = NULL;
+    return 1;
+}
 /* S3N-3d: the content identity of a live slot (its source hash, the same one the census uses). 0: none. */
 unsigned pm_tex_slot_key(int i) { if (i < 0 || i >= SLOTS || !slots[i].live) return 0; return slots[i].shash; }
 /* S3N-3d: the unit 0 words of one live slot at draw time, the same residency step as the walker bind (tex_for_draw). param is left to the caller. 0: slot not live, -1: an off-screen image is bound. */
@@ -1857,6 +1879,7 @@ int pm_tex_bind_aux(void) {
     C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB1]++;
     C3D_TexBind(1, tp);
+    nd_lt1 = NULL; /* citro3d holds unit 1: the next native draw writes its block */
     au_last = staged ? NULL : tp; au_f = (int)tex_filt; au_ws = (int)ws; au_wt = (int)wt;
     return 1;
 }

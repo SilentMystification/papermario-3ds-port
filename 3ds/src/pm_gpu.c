@@ -620,7 +620,7 @@ static int ndn_mode; /* 1: the GPU registers hold native state */
 static void nd_leave_native(void) {
     if (!ndn_mode) return;
     ndn_mode = 0;
-    *(volatile unsigned*)(__C3D_Context + 32) |= 0x10u | 0x200u | 0x20000u | 0x800000u | 0xFC000000u; /* effect, texenv buffer, texenv stages, texture unit 0 (the native draw writes unit 0 only; units 1 and 2 keep their registers) */
+    *(volatile unsigned*)(__C3D_Context + 32) |= 0x10u | 0x200u | 0x20000u | 0x1800000u | 0xFC000000u; /* effect, texenv buffer, texenv stages, texture units 0 and 1 (the native draw writes unit 1 for a two texture combine, SGEN-2; unit 2 keeps its registers) */
     raw1_reset(); /* program, buffer info, and the uniform shadows of pm4 and pm5: the native draw wrote its own palette entries and uniforms over those registers */
     pool_buf_ok = 0; proj_ok = 0;
 }
@@ -910,6 +910,7 @@ static inline int graw_is_pm4(void) { return gni > 0 && g_pal && !g_use5 && gv4_
  * those words (program, buffer info, scissor, user clip) is staged through citro3d as before, and C3Di_UpdateContext writes it first. Returns 0 when the batch needs the old close. */
 extern void C3Di_UpdateContext(void);
 int pm_tex_native_unit0(NdUnit* u);
+int pm_tex_native_unit1(NdUnit* u);
 static NdShadow ndn_sh; static TevKey ndn_tk; static NdTevOut ndn_to; static int ndn_to_ok;
 unsigned nd_native_draws, nd_native_refused;
 static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
@@ -989,36 +990,42 @@ const float (*pm_gbi_combined_ptr(void))[4];
 static float spr_comb[4][4]; /* S4-2: the walker combined matrix at the record (pm_gpu_spr_rec); the batch goes out later, combined has moved on */
 static NdTmplKey spr_wk; /* S4-1 sprcheck: the walker template key of the last raw batch (nd_raw_native), for the key diff log */
 static void spr_check(const NdDraw* w);
+static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer, 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
+void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) return 0;
-    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
-    if (off_active || grab_bind || r_zmark || nozt_on() || (combine == 8 && (plan.uses_tex1 || plan.uses_noise))) { nd_native_refused++; return 0; }
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
+    if (off_active || grab_bind || r_zmark || nozt_on() || (combine == 8 && plan.uses_noise)) { nd_native_refused++; nraw_why[off_active ? 2 : grab_bind ? 3 : r_zmark ? 4 : nozt_on() ? 5 : 7]++; return 0; }
     int z = z_on && (!rect_2d || rect_z);
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
-    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; return 0; } }
-    const int tex = t > 0, i8_0 = tex && pm_tex_i8(0);
+    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; nraw_why[8]++; return 0; } }
+    NdUnit u1;
+    memset(&u1, 0, sizeof u1);
+    int t1 = 0;
+    if (combine == 8 && plan.uses_tex1) { t1 = pm_tex_native_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; return 0; } } /* SGEN-2: unit 1 words and the uv map uniform */
+    const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
     nk.pass = 0; nk.raw = 1; nk.cull = (uint8_t)g_cullm;
     nk.z = (uint8_t)z; nk.zmark = 0; nk.zcmp = (uint8_t)r_zcmp; nk.zupd = (uint8_t)r_zupd; nk.nocol = (uint8_t)r_nocol; nk.decal = (uint8_t)r_decal;
     { float db = decal_bias(); memcpy(&nk.dbias, &db, 4); }
     nk.atest_on = r_atest >= 0; nk.aref = (uint8_t)(r_atest >= 0 ? r_atest : 0);
-    nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = 0; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = 0; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
+    nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
     nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dview != 0; nk.off_active = 0; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
     nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = 0;
     const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
-    if (id < 0) { nd_native_refused++; return 0; }
+    if (id < 0) { nd_native_refused++; nraw_why[9]++; return 0; }
     spr_wk = nk;
     if (combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
     /* from here the batch is drawn natively */
     TevKey tk;
     memset(&tk, 0, sizeof tk);
-    tk.combine = combine; tk.tex = tex; tk.tex1 = 0; tk.i8_0 = i8_0; tk.i8_1 = 0; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
+    tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
     tk.dview = dview; tk.off_active = 0; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
     tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol; tk.plan_gen = combine == 8 ? plan_gen : 0;
     if (!ndn_to_ok || memcmp(&tk, &ndn_tk, sizeof tk) != 0) { /* the stage words with the colours, built when the TEV key changes (as tev_same does for citro3d) */
@@ -1045,6 +1052,8 @@ static int nd_raw_native(void) {
     for (int i = 0; i < 6; i++) d.tev_col[i] = ndn_to.st[i][3];
     d.buf_col = ndn_to.buf_color; d.has_buf = (uint8_t)ndn_to.buf_set;
     d.u[0] = u0;
+    d.u[1] = u1;
+    if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)u4_uvx; d.has_uvx = 1; }
     d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
     memcpy(d.uvso, g_uvso, 16); memcpy(d.cmul, g_cmul, 16); memcpy(d.cadd, g_cadd, 16);
     d.zmix[0] = g_zmix[0]; d.zmix[1] = zmix_y_dbg(g_zmix[1]);
@@ -2585,7 +2594,7 @@ int pm_gpu_gidx_room(unsigned n) { return gv4_on && gpu_ok && gidx_n + n <= GRIN
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx) { /* S4-1: the class of pm_gpu_grange_would's refusal (0 none) */
     if (!gv4_on || !gpu_ok) return 1;
     if (r_zmark) return 2;
-    if (r_decal && r_blend) return 3;
+    if (r_decal && r_blend && !pm_ent_decal_ok) return 3;
     if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 4;
     return gidx_n + nidx <= GRING_IDX ? 0 : 5;
 }
