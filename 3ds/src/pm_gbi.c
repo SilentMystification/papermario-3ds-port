@@ -1,4 +1,5 @@
 #include <stdio.h>
+int pm_gpu_spr_native(const uint32_t* rec); /* S4-3: native sprite draw at the record arm (pm_gpu.c) */
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -4481,10 +4482,16 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
             pc += rec_run(pc - 1);
             break;
-        case G_PM_SPR: /* S4-1: producer record of a sprite component (sprite.c). The old words after it draw; sprcheck reads the record (pm_gpu.c). */
-            pm_gpu_spr_rec((const uint32_t*)(pc - 1));
+        case G_PM_SPR: { /* S4-1, S4-3: producer record of a sprite component (sprite.c). A native sprite (pm_gpu_spr_native) draws here; its vertex and triangle words (header offset) become G_NOOP, the state words after the record still run. Else the walker draws the old words. */
+            Gfx* srec = pc - 1;
+            if (pm_gpu_spr_native((const uint32_t*)srec)) {
+                const u32 k = srec[0].words.w0 & 0xffffu;
+                srec[k].words.w0 = 0; srec[k].words.w1 = 0;
+                srec[k + 1].words.w0 = 0; srec[k + 1].words.w1 = 0;
+            }
             pc += G_PM_SPR_WORDS - 1;
             break;
+        }
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
             tb_inline(pc, w0 & 0xffffu);
             pc += w0 & 0xffffu;

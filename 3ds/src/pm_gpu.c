@@ -3085,6 +3085,30 @@ void pm_gpu_flush(void) { flush(); }
 
 /* S4-1 sprcheck (debug switch, pm_debug_has): the native state of each sprite record (nd_sprite.c, the record words of sprite.c) against the walker draw of
  * its batch (nd_raw_native). One record per draw: the batch before a record goes out at the record. Log every 300 frames. */
+/* S4-3: the record arm. Sprites with a native build draw here (pm_gpu_spr_submit); the arm (pm_gbi.c) then turns the walker's vertex and triangle words of the
+ * component to G_NOOP, the state words still run. Returns 1 when the sprite drew natively. sprcheck on: compare only (walker draws, pm_gpu_spr_rec). */
+void pm_gpu_spr_rec(const uint32_t* rec);
+static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
+static void spr_nat_log(void) {
+    unsigned f = pm_frame_count();
+    if (f % 300u || f == spr_nat_f_last) return;
+    spr_nat_f_last = f;
+    pm_log_prof_line("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
+        spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
+}
+int pm_gpu_spr_native(const uint32_t* rec) {
+    static int on = -1;
+    if (on < 0) on = pm_debug_has("sprcheck");
+    if (on) { pm_gpu_spr_rec(rec); return 0; }
+    NdDraw n;
+    NdMState st;
+    float pal0[16];
+    int why = 0;
+    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 15]++; spr_nat_log(); return 0; }
+    spr_nat_n++;
+    spr_nat_log();
+    return 1;
+}
 void pm_gpu_spr_rec(const uint32_t* rec) {
     static int on = -1;
     if (on < 0) on = pm_debug_has("sprcheck");
@@ -3131,6 +3155,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     nd_sprite_decode(rec, &r);
     NdMode mode;
     if (!nd_sprite_mode(&r, &mode)) { *why = 1; return 0; }
+    if (!(g_pal && !g_use5 && gv4_on) || off_active || grab_bind || r_zmark || nozt_on()) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
     if (r.flags & 4u) { *why = 4; return 0; } /* spr_battle: battle context sprites (the native key differs from the walker key: combine 8 vs 2, cull, no atest); the walker draws them */
     if (r.flags & 1u) { *why = 3; return 0; } /* S4-2 plan default: a shaded sprite (SPR_SHADING_FLAG_ENABLED) runs the walker: the flat path there binds the shading palette (create_shading_palette) and tile 4 */
     NdTexDesc ds;

@@ -415,6 +415,7 @@ void spr_appendGfx_component(
     }
 
     Gfx* rmList;
+    Gfx* sprRec = nullptr; /* S4-3: the record of this component (TARGET_3DS), its header gets the geometry offset below */
     if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
         rmList = ((u8) opacity == 255) ? OpaqueShadedSpriteGfx : TranslucentShadedSpriteGfx;
     } else {
@@ -423,6 +424,7 @@ void spr_appendGfx_component(
 #ifdef TARGET_3DS
     if (quad != nullptr) { /* S4-1: the sprite record (G_PM_SPR). pm_gbi.c reads it; the old words below still draw. */
         Gfx* rec = gMainGfxPos;
+        sprRec = rec;
         gMainGfxPos += G_PM_SPR_WORDS;
         rec[0].words.w0 = ((u32)G_PM_SPR << 24) | ((((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 1u : 0u) |
                           ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) ? 2u : 0u) |
@@ -443,6 +445,11 @@ void spr_appendGfx_component(
 
     if (quad != nullptr) {
         spr_appendGfx_component_flat(quad, cache->image, palette, width, height, rotY, mtxTransform, (u8) opacity);
+#ifdef TARGET_3DS
+        if (sprRec != nullptr) { /* S4-3: the flat path ends with gSPVertex, gSP2Triangles, gDPPipeSync: the vertex word is 3 words before the end. Header low 16 bits = its offset from the record */
+            sprRec[0].words.w0 |= (u32)(gMainGfxPos - 3 - sprRec);
+        }
+#endif
     } else {
         ifxImg.raster  = cache->image;
         ifxImg.palette = palette;
