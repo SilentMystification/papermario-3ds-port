@@ -385,7 +385,7 @@ void pm_frame_loop(void) {
         pm_log_poll();
         pm_pad_scan();
         if (pm_menu_open) { /* MN1: the Select menu pauses the game: no step, no draw, no audio tick. The menu text is presented here. */
-            if (!menu_frozen) { menu_frozen = 1; pm_log("menu: game paused at frame %u", frame); }
+            if (!menu_frozen) { menu_frozen = 1; pm_log("menu: game paused at frame %u", frame); pm_gpu_menu_grey(); } /* MN2 */
             gspWaitForVBlank();
             pm_gpu_menu_present();
             continue;

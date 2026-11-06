@@ -5307,6 +5307,30 @@
       "reason": "S3N-3 ndmcheck copy of spot_sbk56_pic. Status pending: the build prints the ndmcheck line only after S3N-3 lands. Cap 25 s: boot, warp, placement and the first 300-frame window (the until). A run with eq 0 fails (nothing compared)."
     },
     {
+      "name": "menu_grey",
+      "status": "unverified",
+      "subject": "Select menu open at Toad Town (preset toad). The top screen at the pause: grey (every pixel r = g = b) in the top_grey0000 shot, read by a 5-line PPM check.",
+      "proves": "MENU2 MN2: pm_gpu_menu_grey greys the top back buffer at the pause and after each menu present; the swap shows it.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait60 shotgrey loglevel=debug",
+      "until": "menu: grey top 240 x 400",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: ",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "paused",
+          "regex": "menu: game paused at frame"
+        },
+        {
+          "name": "grey",
+          "regex": "menu: grey top 240 x 400"
+        }
+      ],
+      "reason": "MN2 probe and gate (one start): the grey top shot. The grey pass runs at the pause (before the first menu draw), so the top shot is the grey of the last game frame."
+    },
+    {
       "name": "iwa10_entry0_state",
       "status": "unverified",
       "subject": "iwa_10 warp entry 0 (pos -662 0 587). Mario state every 30 frames to 300: alpha, input lock, cutscene flag, text box, camera target, curFloor. One shot 90 scene frames after the pos= run starts.",

@@ -1594,6 +1594,45 @@ void pm_gpu_menu_present(void) {
     C3D_FrameEnd(GX_CMDLIST_FLUSH);
 }
 
+/* MN2: the top screen goes grey while the menu is open. One CPU pass over the top back buffer (BGR8, luma (77 r + 150 g + 29 b) >> 8 into all
+ * three bytes), then one data cache flush, then the swap shows it. Called at the pause and after each menu present (the transfer is done first). */
+void pm_gpu_shot_top(const char* name);
+void pm_gpu_menu_grey(void) {
+    u16 w, h;
+    u8* fb;
+    size_t n, i;
+    if (!gpu_ok) return;
+    gspWaitForPPF(); /* the display transfer of the menu present is done */
+    fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &w, &h);
+    n = (size_t)w * h * 3;
+    for (i = 0; i + 2 < n; i += 3) {
+        unsigned y = (77u * fb[i + 2] + 150u * fb[i + 1] + 29u * fb[i]) >> 8;
+        fb[i] = (u8)y; fb[i + 1] = (u8)y; fb[i + 2] = (u8)y;
+    }
+    GSPGPU_FlushDataCache(fb, (u32)n);
+    if (pm_debug_has("shotgrey")) { static char gn[24]; static unsigned gk; snprintf(gn, sizeof gn, "top_grey%04u", gk++); pm_gpu_shot_top(gn); }
+    gfxScreenSwapBuffers(GFX_TOP, false);
+    pm_log_d("menu: grey top %u x %u", (unsigned)w, (unsigned)h);
+}
+
+/* MN2 test aid: the top back buffer (what the grey pass wrote) as sdmc:/3ds/PaperMario/shots/<name>.ppm, 400 x 240, rows as the bottom shot. */
+void pm_gpu_shot_top(const char* name) {
+    u16 tw, th;
+    u8* fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &tw, &th);
+    char tpath[96];
+    FILE* sf;
+    unsigned x, y;
+    mkdir("sdmc:/3ds/PaperMario/shots", 0777);
+    snprintf(tpath, sizeof tpath, "sdmc:/3ds/PaperMario/shots/%s.ppm", name);
+    sf = fopen(tpath, "wb");
+    if (sf && fb) {
+        fprintf(sf, "P6\n%u %u\n255\n", (unsigned)th, (unsigned)tw);
+        for (y = 0; y < tw; y++)
+            for (x = 0; x < th; x++) { const u8* px = fb + ((size_t)x * tw + (tw - 1 - y)) * 3; fputc(px[2], sf); fputc(px[1], sf); fputc(px[0], sf); }
+    }
+    if (sf) fclose(sf);
+}
+
 /* MN0: the bottom screen as sdmc:/3ds/PaperMario/shots/<name>.ppm (240x320 RGB565 rotated to P6). Used by shotbottom (pm_main.c) and shotmenu (pm_options_ui.c). */
 void pm_gpu_shot_bottom(const char* name) {
     u16 bw, bh;
