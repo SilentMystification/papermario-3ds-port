@@ -2837,14 +2837,18 @@ static const char* const os_nm[OS_N] = { "vtx", "mtx", "tri", "tex", "cc", "geo"
 static unsigned os_op_n[256], os_nn[256], os_tk[256], os_sn[256], os_fl[256];
 static unsigned os_fr, os_off, os_nest, os_open, os_op, os_pk, os_t0, os_fl0;
 static unsigned os_svc_last; /* CAP1: pm_svc_n at the last opsplit line (pt field); pm_gbi_win_reset sets it */
-#define PK_MARKS 256
+#define PK_MARKS 1024 /* WCEN3: the all-marks table holds two frames of both display contexts */
 #define PK_SLOTS 256
 #define PK_PRE 253 /* main list ops before the first mark */
 #define PK_BG 254 /* ops of a list that is not the main list */
 #define PK_OTHER 255 /* a producer that found no free slot */
-static struct { const Gfx* p; unsigned s; } pmk[PK_MARKS];
+static struct { const Gfx* p; unsigned s; } pmk[PK_MARKS]; /* the marks of the list being walked (copied at its walk start) */
 static int pmk_n, pmx_main, pmx_next;
+static struct { const Gfx* p; unsigned s; } pmk_all[PK_MARKS]; /* WCEN3: marks of all lists not yet walked; a frame start drops its context's old marks */
+static int pmk_all_n;
+#define MAIN_GFX_N ((int)(sizeof gDisplayContext->mainGfx / sizeof(Gfx)))
 static unsigned pmx_cur, pk_key[PK_SLOTS], pk_set[PK_SLOTS], pk_ops[PK_SLOTS], pk_tk[PK_SLOTS], pk_sn[PK_SLOTS];
+static unsigned pk_wd[PK_SLOTS], pk_nd[PK_SLOTS]; /* WCEN3: GPU draws per producer, walker (wd) and native (nd) */
 static unsigned pk_rec[PK_SLOTS], pk_nat[PK_SLOTS]; /* WCEN2: per producer, record headers run (pk_rec) and records drawn natively (pk_nat) */
 
 static unsigned pk_slot(unsigned a) {
@@ -2862,11 +2866,19 @@ int pm_gbi_ndref_frame(void) {
     char v[16];
     return pm_debug_value("ndref", v, sizeof v) ? atoi(v) : -1;
 }
+void pm_gbi_draw_note(int native) { /* WCEN3: one GPU draw of the walker (native 0) or a native draw, counted to the producer under the cursor */
+    if (!pm_ph_on) return;
+    if (native) pk_nd[pmx_cur]++; else pk_wd[pmx_cur]++;
+}
 void pm_gbi_prod_mark(unsigned a) { /* called by pm_interp_open under phase */
     const Gfx* p = gMainGfxPos;
     if (ndref_on) ndref_tag(2, a, 0); /* NDREF1: producer tag in the reference stream */
-    if (pmk_n && p < pmk[pmk_n - 1].p) pmk_n = 0; /* the main list starts again: marks of the last one are stale */
-    if (pmk_n < PK_MARKS) { pmk[pmk_n].p = p; pmk[pmk_n].s = pk_slot(a); pmk_n++; }
+    if (gDisplayContext && p == &gDisplayContext->mainGfx[0]) { /* WCEN3: a frame start: this context's older marks are done (walked two frames back) */
+        int k = 0;
+        for (int i = 0; i < pmk_all_n; i++) if (!(pmk_all[i].p >= p && pmk_all[i].p < p + MAIN_GFX_N)) pmk_all[k++] = pmk_all[i];
+        pmk_all_n = k;
+    }
+    if (pmk_all_n < PK_MARKS) { pmk_all[pmk_all_n].p = p; pmk_all[pmk_all_n].s = pk_slot(a); pmk_all_n++; }
 }
 
 static unsigned os_flsum(void) { unsigned s = 0; for (int i = 0; i < 6; i++) s += pm_fl_us[i]; return s; }
@@ -3183,7 +3195,7 @@ void pm_pos_text(char* out); /* pm_route.c */
 static void os_win_clear(void) {
     memset(os_op_n, 0, sizeof os_op_n); memset(os_nn, 0, sizeof os_nn); memset(os_tk, 0, sizeof os_tk); memset(os_sn, 0, sizeof os_sn); memset(os_fl, 0, sizeof os_fl);
     memset(pk_ops, 0, sizeof pk_ops); memset(pk_tk, 0, sizeof pk_tk); memset(pk_sn, 0, sizeof pk_sn);
-    memset(pk_rec, 0, sizeof pk_rec); memset(pk_nat, 0, sizeof pk_nat);
+    memset(pk_rec, 0, sizeof pk_rec); memset(pk_nat, 0, sizeof pk_nat); memset(pk_wd, 0, sizeof pk_wd); memset(pk_nd, 0, sizeof pk_nd);
     gm_steps = 0;
 }
 static const Gfx* pre_w0; static const Gfx* pre_mk0; static int pre_mkn; /* WCEN2 diag: the last outer walk's list start, its first mark and mark count */
@@ -3223,7 +3235,7 @@ static void os_report(void) {
         if (best < 0) break;
         char nm[48];
         pk_name((unsigned)best, nm, sizeof nm);
-        pm_log_hw("prod f%d %s ops %u us %u rec %u nat %u", rm_frame, nm, (unsigned)(bv / 300), (unsigned)(pke[best] / 268 / 300), (unsigned)(pk_rec[best] / 300), (unsigned)(pk_nat[best] / 300));
+        pm_log_hw("prod f%d %s ops %u us %u rec %u nat %u wd %u nd %u", rm_frame, nm, (unsigned)(bv / 300), (unsigned)(pke[best] / 268 / 300), (unsigned)(pk_rec[best] / 300), (unsigned)(pk_nat[best] / 300), (unsigned)pk_wd[best], (unsigned)pk_nd[best]); /* wd, nd: window totals */
         pk_ops[best] = 0;
     }
     { const Gfx* mb = gDisplayContext ? gDisplayContext->mainGfx : NULL; pm_log_hw("pre f%d walk0 %d mk0 %d marks %d", rm_frame, mb ? (int)(pre_w0 - mb) : -99999, mb && pre_mk0 ? (int)(pre_mk0 - mb) : -99999, pre_mkn); } /* WCEN2 diag */
@@ -4326,7 +4338,10 @@ static void gbi_run_body(void* list, unsigned nbytes);
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
     if (!pm_ph_on) { gbi_run_body(list, nbytes); return; }
-    if (os_nest == 0) { pre_w0 = (const Gfx*)list; pre_mkn = pmk_n; pre_mk0 = pmk_n ? pmk[0].p : NULL; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx; pmx_cur = pmx_main ? PK_PRE : pk_slot((unsigned)(uintptr_t)list); /* WCEN2: a non-main list has its own key (its address) */ pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
+    if (os_nest == 0) { pre_w0 = (const Gfx*)list; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx;
+        pmk_n = 0; /* WCEN3: the walk copy holds the marks of this list only */
+        if (pmx_main) for (int i = 0; i < pmk_all_n && pmk_n < PK_MARKS; i++) if (pmk_all[i].p >= (const Gfx*)list && pmk_all[i].p < (const Gfx*)list + MAIN_GFX_N) { pmk[pmk_n].p = pmk_all[i].p; pmk[pmk_n].s = pmk_all[i].s; pmk_n++; }
+        pre_mkn = pmk_n; pre_mk0 = pmk_n ? pmk[0].p : NULL; pmx_cur = pmx_main ? PK_PRE : pk_slot((unsigned)(uintptr_t)list); /* WCEN2: a non-main list has its own key (its address) */ pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
     os_nest++;
     gbi_run_body(list, nbytes);
     if (os_open && os_nest == 1) os_close();

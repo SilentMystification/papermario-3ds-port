@@ -686,6 +686,7 @@ static void dbg_cmp(void) {
 static unsigned prev_draws, kick_at, kick_at2;
 static int kick_done; /* splits done in this frame: KICK2 adds a second one at 85 percent */
 extern int pm_ph_on;
+void pm_gbi_draw_note(int native); /* WCEN3 */
 extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb; /* PI4 */
 static void kick_check(void) {
     if (kick_done >= 2 || off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || rect_open || nverts > 0 || gni > 0) return;
@@ -840,7 +841,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         stc_set(1, true, GPU_ALWAYS, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
         if (ndref_on) ndref_state(1, z);
-        C3D_DrawArrays(GPU_TRIANGLES, first, count);
+        pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, first, count);
         if (ndref_on) ndref_cmd();
         sh_depth_map(true, -1.0f, decal_bias());
         sh_depth_test(true, GPU_GEQUAL, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
@@ -849,7 +850,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         draws_frame++;
     }
     if (ndref_on) ndref_state(decal2 ? 2 : 0, z);
-    C3D_DrawArrays(GPU_TRIANGLES, first, count);
+    pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, first, count);
     if (ndref_on) ndref_cmd();
     if (decal2) { stc_set(3, false, GPU_ALWAYS, 0, 0xff, 0); }
     DC_T(5);
@@ -865,7 +866,7 @@ static __attribute__((noinline)) void flush_draw_cpu(int z) {
         stc_set(4, true, GPU_EQUAL, 1, 0xff, 0xff);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_ZERO);
         if (ndref_on) ndref_state(3, z);
-        C3D_DrawArrays(GPU_TRIANGLES, (int)(b2 - vert_base), count);
+        pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, (int)(b2 - vert_base), count);
         if (ndref_on) ndref_cmd();
         verts = b2 + count;
         if ((unsigned)(uintptr_t)verts & 15u) verts++;
@@ -931,6 +932,7 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static void nd_native_submit(const NdDraw* dp, int tex) {
+    pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, pm_gbi.c) */
     const NdDraw* d = dp;
     if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; }
     if (buf_cur != 2) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, gring, 16, 3, 0x210); buf_cur = 2; }
@@ -1262,7 +1264,7 @@ static void flush_draw(void) {
             buf_cur = 2; PH_ADD(C_RAWCALL, 2);
         }
         if (ndref_on) ndref_state(0, z);
-        C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
+        pm_gbi_draw_note(0); C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
         if (ndref_on) ndref_cmd();
         PH_ADD(C_RAWD, 1); PH_ADD(C_RAWCALL, 1);
         DC_T(5);
