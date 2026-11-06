@@ -134,6 +134,10 @@ static s32 w_entry, w_flag, w_partner;
 #define POS_READBACK 10
 static float pos_v[4];
 static int pos_n, pos_on, pos_state, pos_area = -1, pos_map = -1;
+/* POSWARP: a pending position. A warp that starts a load arms it for that map only (pend_arm); pm_warp_world_mode applies it on that map and clears it. */
+static int pend_on, pend_n, pend_area = -1, pend_map = -1;
+static float pend_v[4];
+static void pend_arm(int areaID, int mapID, const float* v, int n) { pend_on = 1; pend_n = n; pend_area = areaID; pend_map = mapID; memcpy(pend_v, v, sizeof pend_v); }
 static unsigned pos_f0, pos_t;
 
 int pm_pos_parse(const char* s, float* out) {
@@ -311,6 +315,7 @@ s16 pm_warp_hook(s16 mode) {
     }
     w_why = "saving disabled by boot warp";
     warp_setup(areaID, mapID);
+    if (pos_on) pend_arm(areaID, mapID, pos_v, pos_n); /* POSWARP: pos= is the boot warp's position */
     return GAME_MODE_ENTER_WORLD;
 }
 
@@ -716,9 +721,10 @@ extern unsigned pm_pad_scans;
 
 /* The game reaches GAME_MODE_WORLD: first frame of the chosen scene. */
 void pm_warp_world_mode(unsigned frame) {
-    if (pos_on && (gGameStatusPtr->areaID != pos_area || gGameStatusPtr->mapID != pos_map)) { /* POSWARP: a new map load (not a return from battle or pause) */
-        pos_area = gGameStatusPtr->areaID;
-        pos_map = gGameStatusPtr->mapID;
+    if (pend_on && gGameStatusPtr->areaID == pend_area && gGameStatusPtr->mapID == pend_map) { /* POSWARP: the load a warp armed, on its map only (a door or pipe does not arm it) */
+        pend_on = 0;
+        pos_n = pend_n; memcpy(pos_v, pend_v, sizeof pos_v); pos_on = 1;
+        pos_area = pend_area; pos_map = pend_map;
         pos_f0 = frame;
         pos_state = 0;
     }
@@ -744,7 +750,8 @@ void pm_warp_world_mode(unsigned frame) {
 static void tour_step(void) {
     char name[16];
     s16 areaID, mapID;
-    int entry = 0;
+    int entry = 0, tpn = 0;
+    float tpos[4];
     unsigned i = 0;
     while (*tour_next == ',') tour_next++;
     if (!*tour_next) {
@@ -755,6 +762,13 @@ static void tour_step(void) {
     while (*tour_next && *tour_next != ':' && *tour_next != ',' && i + 1 < sizeof name) name[i++] = *tour_next++;
     name[i] = 0;
     if (*tour_next == ':') entry = atoi(++tour_next);
+    if (*tour_next == '@') { /* POSWARP: map:entry@x:y:z puts Mario at that point on this map */
+        char pv[40]; unsigned j = 0;
+        tour_next++;
+        while (*tour_next && *tour_next != ',' && j + 1 < sizeof pv) pv[j++] = *tour_next++;
+        pv[j] = 0;
+        tpn = pm_pos_parse(pv, tpos);
+    }
     while (*tour_next && *tour_next != ',') tour_next++;
     if (*tour_next == ',') tour_next++;
     tour_n++;
@@ -763,6 +777,7 @@ static void tour_step(void) {
         return;
     }
     pm_log("tour: next %s entry %d (area %d map %d) t=%u ms", name, entry, areaID, mapID, pm_uptime_ms());
+    if (tpn) pend_arm(areaID, mapID, tpos, tpn); /* POSWARP: this step's position, on its map */
     /* F01: the tour skips the exit script of the map (kmr_23 N(func_80240010_907A40)). Do what it does, else the curtain callback runs on the next map. */
     set_curtain_scale_goal(2.0f);
     set_curtain_draw_callback(NULL);
