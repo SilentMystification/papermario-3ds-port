@@ -1,0 +1,10 @@
+wait300,A,A,A,A,A,A,A,A,A,
+A,A,A,A,A,A,A,A,A,A,
+A,A,A,A,A,A,wait120,A,A,A,
+A,A,A,A,A,A,A,A,A,A,
+A,A,A,A,A,A,A,A,A,A,
+A,A,wait120,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A,wait30,A,wait30,A,wait30,A,wait30,
+A,wait30,A

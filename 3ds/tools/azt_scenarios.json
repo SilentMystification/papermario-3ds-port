@@ -6142,6 +6142,38 @@
         { "name": "shot", "regex": "shot [0-9]+ frame [0-9]+" }
       ],
       "reason": "FX1 row 1 (MERLEE). Live warp to dro_02 at frame 120 gives 50 coins (warpitems; plain warp= does not, the coin count was 0 in start 2). Mario is placed by pos_ at -130 0 -370 (30 units from Merlee at -130 0 -400, npc.c), then go_ walks him the last 6 units, facing her. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell. The until line ends the run when the spell ends. Without the fix the run stops at the cap (the hang)."
+    },
+    {
+      "name": "sbk56_superblock",
+      "status": "unverified",
+      "subject": "sbk_56 (Dry Dry Desert area, super block at -50 60 275). Mario placed under the block by pos=, jumps by padscript (A). Shots every 30 frames to the hit and the upgrade effects: the energy dots moving to the partner and the white flash.",
+      "proves": "FX1 row 2: the super block upgrade runs (superblock: hit line, then superblock: effects done line) and the picture shows the dots and the flash.",
+      "debug": "warp=sbk_56:0 story=ch0_toad_town pos=-50:0:275 padscript=@pad_sbk56.txt shots loglevel=debug",
+      "until": "superblock: effects done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "hit",
+          "regex": "superblock: hit f[0-9]+"
+        },
+        {
+          "name": "effects done",
+          "regex": "superblock: effects done f[0-9]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame [0-9]+"
+        }
+      ],
+      "reason": "FX1 row 2 (SUPERBLOCK). Mario at the block by pos=; A jumps hit the block from below (the block is 60 up). Cap 45 s: 25 s of jumps and partner menu, then the effects of about 4 s. The until line ends the run when the effects are done. Shots every 30 frames (default) find the window; a second run uses shotwin from the hit frame."
     }
   ]
 }
