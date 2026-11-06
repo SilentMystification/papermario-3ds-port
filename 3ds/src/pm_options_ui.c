@@ -25,13 +25,14 @@ static void pm_home_chainload(void) {
 }
 volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
 
-#define OPT_TABS 4
+#define OPT_TABS 3
 #define VIS 20 /* PT69, PT76, MN3: 30 text rows (tab, blank, 20 options, 2, controls, 3, 2 feedback), see draw */
 #define MODE 1
 /* PT01c: tab PM_OPT_SUB is the Warp area submenu. A open sets tab to it and home_tab keeps the tab it was opened from (B returns there). */
 static int tab, home_tab, sel[PM_OPT_SUB + 1], top[PM_OPT_SUB + 1];
 static PmRepeat rep_y, rep_x;
-static const char* const tab_name[PM_OPT_SUB + 1] = { "General", "Controls", "Debug", "Boss", "Warp area" };
+static const char* const tab_name[PM_OPT_SUB + 1] = { "General", "Controls", "Debug", "", "Warp area" }; /* 3: reserved (the Boss tab is a folder under Debug, MN4) */
+const char* pm_optui_sub_name(void);
 
 /* PT75, PT76, PT77: the 30 rows of the bottom screen, from the top: row 0 tab line, rows 1 to VIS the options, 2 empty rows, the controls line,
  * 3 empty rows, then the 2 row feedback area (rows 28 and 29). Every error of the menu goes through pm_menu_msg. */
@@ -42,7 +43,7 @@ static void draw(void) {
     int n = 0, rows = pm_optui_rows(tab, MODE);
     if (sel[tab] < top[tab]) top[tab] = sel[tab];
     if (sel[tab] >= top[tab] + VIS) top[tab] = sel[tab] - VIS + 1;
-    if (tab == PM_OPT_SUB) n += snprintf(out + n, sizeof out - (size_t)n, "[%s]", tab_name[PM_OPT_SUB]);
+    if (tab == PM_OPT_SUB) n += snprintf(out + n, sizeof out - (size_t)n, "%s > %s", tab_name[home_tab], pm_optui_sub_name()); /* MN4 breadcrumb */
     else for (int t = 0; t < OPT_TABS; t++) n += snprintf(out + n, sizeof out - (size_t)n, t == tab ? "[%s] " : " %s  ", tab_name[t]);
     n += snprintf(out + n, sizeof out - (size_t)n, "\n\n"); /* MN3: a blank line under the tab line */
     for (int r = top[tab]; r < top[tab] + VIS && r < rows; r++) {
@@ -52,7 +53,7 @@ static void draw(void) {
         else n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? "< > A: warp  B: back" : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (strcmp(pm_optui_sub_name(), "Boss") ? "< > A: warp  B: back" : "A: fight  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
     if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
@@ -118,10 +119,11 @@ void pm_menu_key(unsigned k) {
     } else if (k & KEY_B) {
         if (tab != PM_OPT_SUB) { pm_menu_set(0); return; }
         tab = home_tab; /* B in the submenu goes back to the parent tab, the menu stays open */
+        pm_log("menu: page pop depth 0");
         pm_optui_disarm();
     } else if (k & KEY_A) {
         int r = pm_optui_act(tab, sel[tab], MODE);
-        if (r == 6) { home_tab = tab; tab = PM_OPT_SUB; sel[tab] = 0; top[tab] = 0; pm_optui_disarm(); }
+        if (r == 6) { home_tab = tab; tab = PM_OPT_SUB; sel[tab] = 0; top[tab] = 0; pm_optui_disarm(); pm_log("menu: page push %d depth 1", PM_OPT_SUB); }
         if (r == 1 || r == 5) { pm_menu_set(0); return; }
         if (r == 7) { /* MN3b: Close game. The app ends and the HOME Menu runs (chainload, region HOME Menu title). */
             pm_log("menu: close game to HOME Menu");

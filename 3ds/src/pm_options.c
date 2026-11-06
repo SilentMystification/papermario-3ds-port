@@ -273,7 +273,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_SUB = 700 };
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_SUB = 700 };
 /* PT01c: the Warp area submenu rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per map prefix. Checked before the other ids. */
 static int warp_pos[PM_WARP_GROUP_MAX]; /* this run only: the member that each prefix row shows (not saved, PT32) */
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
@@ -298,14 +298,17 @@ static int tab_ids(int tab, int mode, int* ids) {
         for (i = 0; i < 3; i++) ids[n++] = RW_GIVE + i; /* PT67 */
         for (i = 0; i < 6; i++) ids[n++] = RW_STAT + i;
         ids[n++] = RW_WARPAREA; /* opens the Warp area submenu */
+        if (mode) ids[n++] = RW_BOSSFOLDER; /* MN4: opens the Boss folder (Select menu only) */
     }
-    if (tab == 3) { n = 0; for (i = 0; i < pm_boss_count(); i++) ids[n++] = RW_BOSS + i; } /* Select menu only (mode 1): the Boss tab */
     ids[n++] = RW_BACK;
     return n;
 }
+/* MN4: the folder page (tab PM_OPT_SUB) shows the Warp area rows (0) or the Boss rows (1). */
+static int sub_kind;
+const char* pm_optui_sub_name(void) { return sub_kind ? "Boss" : "Warp area"; }
 static int row_id(int tab, int row, int mode) {
     int ids[48], n;
-    if (tab == PM_OPT_SUB) return RW_SUB + row;
+    if (tab == PM_OPT_SUB) return sub_kind ? RW_BOSS + row : RW_SUB + row;
     n = tab_ids(tab, mode, ids);
     return row >= 0 && row < n ? ids[row] : RW_BACK;
 }
@@ -315,7 +318,7 @@ void pm_optui_disarm(void) { armed_id = 0; }
 int pm_optui_alert(int tab, int row, int mode) { int id = row_id(tab, row, mode); return armed_id && id == armed_id; }
 int pm_optui_rows(int tab, int mode) {
     int ids[48];
-    if (tab == PM_OPT_SUB) return pm_warp_preset_count() + pm_warp_group_count();
+    if (tab == PM_OPT_SUB) return sub_kind ? pm_boss_count() : pm_warp_preset_count() + pm_warp_group_count();
     return tab_ids(tab, mode, ids);
 }
 const char* pm_optui_label(int tab, int row, int mode) {
@@ -340,6 +343,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
         case RW_RRATE: return "Repeat rate";
         case RW_RESET: return "Reset controls";
         case RW_WARPAREA: return "Warp area";
+        case RW_BOSSFOLDER: return "Boss >";
         default: return "Back";
     }
 }
@@ -376,7 +380,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
             return b;
         }
         case RW_EXIT: case RW_TITLE: case RW_CLOSE: return armed_id == id ? "Press A again" : NULL;
-        case RW_WARPAREA: return "A: open";
+        case RW_WARPAREA: case RW_BOSSFOLDER: return "A: open";
         default: return NULL;
     }
 }
@@ -447,7 +451,8 @@ int pm_optui_act(int tab, int row, int mode) {
             if (armed_id != RW_EXIT) { armed_id = RW_EXIT; pm_log("menu: exit armed, press A again"); return 0; }
             armed_id = 0;
             return 3;
-        case RW_WARPAREA: return 6; /* the menu opens the submenu (PM_OPT_SUB) */
+        case RW_WARPAREA: sub_kind = 0; return 6; /* the menu opens the submenu (PM_OPT_SUB) */
+        case RW_BOSSFOLDER: sub_kind = 1; return 6; /* MN4: the Boss folder (PM_OPT_SUB, Boss rows) */
         case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;
     }
     return 0;
