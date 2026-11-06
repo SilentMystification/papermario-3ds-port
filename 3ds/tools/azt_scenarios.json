@@ -2271,9 +2271,9 @@
     {
       "name": "menu_moon_on",
       "status": "unverified",
-      "subject": "Toad Town, moon jump on: A on the ground (jump), then a ground press, then three held presses of A in the air (12 scans held, 4 scans released between them). Each press restarts the jump arc: three restarts in the log, no snap-back, Mario lands normally. Peak height is measured (not yet three jump heights).",
+      "subject": "Toad Town, moon jump on: A on the ground (jump), then one held press (A held 60 scans, the stick right for the first 40, so the air control is tested while rising), release, a second press in the air (no new hop). Each press restarts the jump arc: three restarts in the log, no snap-back, Mario lands normally. Peak height is measured (not yet three jump heights).",
       "proves": "MOON fix: pm_dbg_game.c pm_cheat_tick restarts the jump arc on each new A press in the air (timeInAir 0, start integrator); no per-step gravity override.",
-      "debug": "preset=toad moonjump padscript=wait80,A*12,wait4,A*12,wait4,A*12,wait4,A*12,wait150 shots loglevel=debug",
+      "debug": "preset=toad moonjump padscript=wait80,A+right*40,A*20,wait10,A*3,wait150 shots loglevel=debug",
       "until": "padscript: done",
       "cap": 45,
       "deadline": 25,

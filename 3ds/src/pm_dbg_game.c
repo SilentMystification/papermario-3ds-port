@@ -219,28 +219,33 @@ void pm_cheat_tick(void) {
         for (k = 0; k < 5; k++) if ((cheat_bits & ~cheat_seen) & cheat_bit[k]) pm_log("cheat: %s active, star power %d, walk %.2f", cheat_name[k], (int)p->starPower, ps->walkSpeed);
         cheat_seen = cheat_bits;
     }
-    /* MOON: each new press of A in the air starts a normal jump again: set_action_state(ACTION_STATE_JUMP) at the press, so the next step's
-     * action update runs initialize_jump (a full jump start, GravityParamsStartJump). Between presses gravity runs as it does, with no per-step
-     * override. A press counts when the step before had A released and Mario in the air. (The old hold kept the jump alive past timeInAir 100,
-     * where update_player puts Mario back on lastGoodPos.) */
+    /* MOON2 (user, one held press): while A is held in the jump action, Mario rises at the jump start rate: the vertical integrators are held
+     * (velocity = GravityParamsStartJump[0], accelerations 0), timeInAir is held at 1 (update_player puts Mario back on lastGoodPos above 100), and the
+     * action stays JUMP, so the air control of the jump runs. On release the normal arc resumes: the accelerations go back to the jump start values
+     * and the velocity decays, so Mario falls at the normal rate. A new press in the air does nothing. */
     {
-        static int moon_held, moon_air;
-        const int air = (ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0;
+        static int moon_held;
+        extern f32 GravityParamsStartJump[];
         const int held = (ps->curButtons & BUTTON_A) != 0;
-        const int press = held && !moon_held && moon_air;
-        moon_held = held;
-        moon_air = air;
-        if (!air) return;
-        if (!pm_cheat_moon_get()) {
-            pm_log_d("cheat: jump y %.1f", ps->pos.y);
-            return;
+        const int air = (ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0;
+        const int rising = air && pm_cheat_moon_get() && held && ps->actionState == ACTION_STATE_JUMP;
+        if (rising) {
+            ps->gravityIntegrator[0] = GravityParamsStartJump[0];
+            ps->gravityIntegrator[1] = 0.0f;
+            ps->gravityIntegrator[2] = 0.0f;
+            ps->gravityIntegrator[3] = 0.0f;
+            ps->timeInAir = 1;
+            pm_log_d("cheat: moon jump y %.1f x %.1f", ps->pos.y, ps->pos.x);
+        } else {
+            if (air && moon_held && pm_cheat_moon_get() && ps->actionState == ACTION_STATE_JUMP) {
+                ps->gravityIntegrator[1] = GravityParamsStartJump[1];
+                ps->gravityIntegrator[2] = GravityParamsStartJump[2];
+                ps->gravityIntegrator[3] = GravityParamsStartJump[3];
+                pm_log("cheat: moon jump release y %.1f", ps->pos.y);
+            }
+            if (air) pm_log_d("cheat: jump y %.1f", ps->pos.y);
         }
-        if (!press) {
-            pm_log_d("cheat: moon jump y %.1f", ps->pos.y);
-            return;
-        }
-        set_action_state(ACTION_STATE_JUMP); /* the normal jump start: the next step's action update runs initialize_jump (start integrators, substate, jump origin, timeInAir 0, animation, sound) */
-        pm_log("cheat: moon jump restart y %.1f", ps->pos.y);
+        moon_held = rising;
     }
 }
 
