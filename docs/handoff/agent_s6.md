@@ -2,7 +2,14 @@
 
 ## STATE
 S6-2b PASS (2026-11-06, row S6b): vertex segment static check (entcheck only). mac_01 f300: ndobj line: vtx draws static 255, dyn 0, new 1; keys static 1, dyn 0, ovf 0. Gate entcheck diff 0 and texchk diff 0 held. No draw change.
-Next: S6-2c (native switch of entity draws). Not started.
+S6-2c-1 DONE (row S6-2c, commit 1d6d19777): nd_ent_segments (nd.h, nd_dlc.c) cuts an entity list at its state ops: NdEntSeg {d (NdEntDelta), tex (tile 0 desc of the prefix), sop0, op0, op1, tri0, ntri}. Unknown op refused (NDR_OP, bad = op code). Host test: nd_dlc_test ent case PASS (docker, nd_dlc PASS on mac_01 and mac_02 shapes, 262 lists).
+Next: S6-2c-2 (segment draw + entcheck). Not started. Blockers named in the row S6-2c section below; the entity record producer (NdRec words for an entity draw) is still missing.
+
+## S6-2c-1 (done, row S6-2c)
+- Known ops: VTX, TRI1, TRI2 (geometry); NOOP, PIPESYNC, LOADSYNC, TILESYNC, FULLSYNC (neutral); GEOMETRYMODE, SETOTHERMODE_H/L, SETCOMBINE, TEXTURE, SETPRIMCOLOR, SETENVCOLOR, SETTIMG, SETTILE, SETTILESIZE, LOADBLOCK, LOADTLUT, LOADTILE (state). Any other op refuses (QUAD, DL, MTX, fill, scissor, fog and blend colour, prim depth are refused too: not in the census, add when hit).
+- tex_decode_n: nd_dlc_tex_decode with an op limit. A segment decodes the prefix only when its delta has a texture op, else copies the previous segment's desc.
+- Slots tracked over the whole list (walker rule), not per group.
+- Not done: S6-2c-2 segment draw and entcheck compare (needs the record producer and an in-game hook; no Azahar start in this row yet).
 
 ## S6-2b (done, row S6b)
 - entity_model.c entcheck_vtxseg: per draw with a vertex array, key (list, array). The G_VTX range (off + n * 16 on the vertex segment) hashed once per frame. Equal on two frames: static (sticky dynamic). Line ndobj f<n> vtx draws static/dyn/new, keys static/dyn, ovf.
