@@ -1009,6 +1009,10 @@ void appendGfx_item_entity(void* data) {
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
         }
+        #ifdef TARGET_3DS
+        gPmEntDrawRecord(gMainGfxPos, D_8014C678, 0, 0); /* S6-3: the walker draws the list from the static pools */
+        gMainGfxPos += G_PM_ENT_WORDS;
+        #endif
         gSPDisplayList(gMainGfxPos++, D_8014C678);
     } else {
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, gHudElementCacheTablePalette[item->lookupPaletteIndex].data);
@@ -1043,6 +1047,10 @@ void appendGfx_item_entity(void* data) {
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
         }
+        #ifdef TARGET_3DS
+        gPmEntDrawRecord(gMainGfxPos, D_8014C6A0, 0, 0); /* S6-3: the walker draws the list from the static pools */
+        gMainGfxPos += G_PM_ENT_WORDS;
+        #endif
         gSPDisplayList(gMainGfxPos++, D_8014C6A0);
     }
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
@@ -1217,6 +1225,10 @@ void render_item_entities(void) {
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
                             }
+                            #ifdef TARGET_3DS
+                            gPmEntDrawRecord(gMainGfxPos, D_8014C678, 0, 0); /* S6-3: the walker draws the list from the static pools */
+                            gMainGfxPos += G_PM_ENT_WORDS;
+                            #endif
                             gSPDisplayList(gMainGfxPos++, D_8014C678);
                         } else {
                             gDPLoadTLUT_pal16(gMainGfxPos++, 0, gHudElementCacheTablePalette[item->lookupPaletteIndex].data);
@@ -1245,6 +1257,10 @@ void render_item_entities(void) {
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
                             }
+                            #ifdef TARGET_3DS
+                            gPmEntDrawRecord(gMainGfxPos, D_8014C6A0, 0, 0); /* S6-3: the walker draws the list from the static pools */
+                            gMainGfxPos += G_PM_ENT_WORDS;
+                            #endif
                             gSPDisplayList(gMainGfxPos++, D_8014C6A0);
                         }
                         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

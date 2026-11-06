@@ -805,6 +805,120 @@
       ]
     },
     {
+      "name": "ent_kmr03_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Koopa Village kmr_03 picture of the native entity draw (S6-2c-3): entity lists from the static pools. A person reads the shot. Gate native above 0.",
+      "scenario": "ent_kmr03_pic",
+      "cap": 25,
+      "until": "entnat f\\d+ draws",
+      "tags": [
+        "azahar",
+        "entity"
+      ],
+      "log_metrics": [
+        {
+          "name": "ent_native",
+          "regex": "entnat f\\d+ draws \\d+ native (\\d+) fb",
+          "pick": "last"
+        },
+        {
+          "name": "seg_native",
+          "regex": "entnat f\\d+ draws \\d+ native \\d+ fb \\d+ segs native (\\d+) ",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ent_native",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_native",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "ent_kmr03_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Koopa Village kmr_03 picture of the native entity draw (S6-2c-3): entity lists from the static pools. A person reads the shot. Gate native above 0.",
+      "scenario": "ent_kmr03_pic",
+      "cap": 25,
+      "until": "entnat f\\d+ draws",
+      "tags": [
+        "azahar",
+        "entity"
+      ],
+      "log_metrics": [
+        {
+          "name": "ent_native",
+          "regex": "entnat f\\d+ draws \\d+ native (\\d+) fb",
+          "pick": "last"
+        },
+        {
+          "name": "seg_native",
+          "regex": "entnat f\\d+ draws \\d+ native \\d+ fb \\d+ segs native (\\d+) ",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ent_native",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_native",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "ent_item_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "mac_01 with a debug coin item entity (testitem=c) drawn natively (S6-3): item quad lists from the static pools. A person reads the shot. Gate native above 0.",
+      "scenario": "ent_item_pic",
+      "cap": 30,
+      "until": "entnat f\\d+ draws",
+      "tags": [
+        "azahar",
+        "entity"
+      ],
+      "log_metrics": [
+        {
+          "name": "ent_native",
+          "regex": "entnat f\\d+ draws \\d+ native (\\d+) fb",
+          "pick": "last"
+        },
+        {
+          "name": "seg_native",
+          "regex": "entnat f\\d+ draws \\d+ native \\d+ fb \\d+ segs native (\\d+) ",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ent_native",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "seg_native",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "spot_mac01_sprcheck",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -842,6 +956,34 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "ui1_choice_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "UI1: save choice menu (MSG_Choice_000A, yard, uishow=choice) picture. dbgui1 line per frame: text and glove draw counts. A person reads the shot.",
+      "scenario": "ui1_choice",
+      "cap": 30,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "ui1"
+      ],
+      "log_metrics": [
+        {
+          "name": "text_glyphs",
+          "regex": "dbgui1 f205 .* textGlyph (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "glove_draws",
+          "regex": "dbgui1 f205 .* ptr (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
     }
   ],
   "legacy": {
@@ -958,7 +1100,6 @@
       "toad_gate",
       "mac01s",
       "toad_fountain",
-      "ui1_choice",
       "toad_house_menu",
       "toad_water",
       "toad_pond",

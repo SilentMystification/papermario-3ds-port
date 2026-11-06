@@ -227,6 +227,13 @@
 #define G_PM_ENT_END 0x100u
 /* S6-2c-3: w0 bit 9 on a record written right before the model display list G_DL (w1 = the list, word 1 as the first record). The walker draws the list natively from the static pools and skips that G_DL, or leaves it to run. */
 #define G_PM_ENT_DRAW 0x200u
+/* S6-3: the draw record of a static list drawn with its own G_DL (item entities): writes the 4 words at pkt, the caller advances gMainGfxPos by G_PM_ENT_WORDS. segid and varray: the vertex segment and its array (0 when the list holds direct pointers). */
+#define gPmEntDrawRecord(pkt, list, segid, varray) do { \
+    Gfx* _pmr = (pkt); \
+    _pmr[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_DRAW; _pmr[0].words.w1 = (u32)(uintptr_t)(list); \
+    _pmr[1].words.w0 = (u32)(segid); _pmr[1].words.w1 = (u32)(varray); \
+    _pmr[2].words.w0 = _pmr[2].words.w1 = _pmr[3].words.w0 = _pmr[3].words.w1 = 0; \
+} while (0)
 #define G_PM_REC_WORDS 14 /* S3F-2c: words of one producer record (R0 to R10). S3G-1: R11 custom gfx pre (w0) and post (w1), R12 geometry (w0) and pop flag (w1). S3G-2: R13 w0 = words after the record (special tile list or untextured ops), they run in place of the bind */
 #define gsSPPmTexInline(n) {{ _SHIFTL(G_PM_TEXI, 24, 8) | ((n) & 0xffff), 0 }}
 
