@@ -1,5 +1,12 @@
 # agent_menu: Select menu epic (plan_menu.md sections 2 and 3)
 
+STATE (MENU5, branch nds1, main folder; rows CH0 to CH4, LAYOUT, PAUSE items; section 12)
+- Done and committed: CH0 (generator; committed inside another agent's commit 1f31155b2, see 12), CH1 79cd75bcc... see git log, CH2 5924e6bff, CH3 d6dc1215e, CH4 ae545debc, PAUSE AUDIO 35119c9d4, PAUSE GREY and BOTTOM b9c652897, dead zone default 15 fda1ff97f, LAYOUT 70abc9cb0 (Debug folders, skip 6).
+- Open: CH5 Spawn item, CH6 Moon Jump, CH7, CH8, MN8, MN9, BT1, BT2, BT3.
+- Next command: rebuild lane menu, then CH5 (Spawn item > under Cheats, after Partners; row 5 of the Cheats tab).
+- Named gaps: section 12.
+
+
 STATE (MENU4, branch nds1, main folder; see section 11)
 - MENU4 row 1 MN6 rest: PASS (21ba60d65). Row 2 MN7 rest: PASS (bc6b263a8). Row 3 MN3 check: PASS by eye (menu_shot, blank row under the tab line).
 - Rows 4 (MENU-D cheats CH0 to CH8) and 5 (MENU-E) not started in this run: handback after row 3 as asked.
@@ -187,3 +194,31 @@ Row 2 MN7 rest (Debug row "Position log combo"): PASS (log and shot). Commit: se
 Row 3 MN3 check (blank row under the tab line): PASS by eye. Scenario menu_shot (SELECT, General tab, first draw, bot_m0000, status now verified): tab line at row 0, one blank row (row 1), `60 FPS` at row 2. The old menu_close shot (bot_m0004, MENU3 build) had no blank row; the current build has it.
 - Starts MENU4 total: 6 (2 lost to a missing padscript in the sdmc PaperMario folder, the first two runs; the copy step is now in the row work: copy 3ds/tools/pad_*.txt to the sdmc PaperMario folder before a start).
 - Row 4 (CH0 to CH8) and row 5 (MN8, MN9, BT1, BT2, BT3): not started. Named gaps: none opened yet.
+
+
+## 12. MENU5 results and named gaps
+
+Commits (git log, newest first): LAYOUT 70abc9cb0, CH4 ae545debc, PAUSE GREY and BOTTOM b9c652897, PAUSE AUDIO 35119c9d4, CH3 d6dc1215e, CH2 5924e6bff, CH1 75f7081ea, dead zone fda1ff97f. Status lines: 3ds/logs/perf/status_MENU5.txt, status_PAUSE.txt, status_LAYOUT.txt, status_CH4.txt (not tracked: 3ds/logs is git-ignored).
+
+Gates and results:
+- CH0: 365 rows = 365 enum values. No start.
+- CH1 menu_cheats: PASS by eye (Cheats > Set Stats, Level 2). Regression menu_poslog_row PASS.
+- CH2 menu_badges: PASS (log: give 1 -> owned 100 of 100, badge 224 off (unequipped); shot Spin Smash Off).
+- CH3 menu_keys: PASS (key 16 on, shot Koopa Fortress Key On).
+- CH4 menu_partners: PASS by log and shot (partner 1 off, current now 2; Enable partners 10/11).
+- PAUSE AUDIO menu_pause: PASS by log (audio: muted at the pause, audio: unmuted before the resumed line, paused and resumed at frame 94).
+- PAUSE GREY menu_grey_pause: PASS (top_grey0000 to 0003, all r = g = b). PAUSE BOTTOM: PASS by eye (bottom after close has no menu rows).
+- Dead zone: build check only (15 is a step of the row and inside the options.ini clamp).
+- LAYOUT menu_layout: PASS by eye (Debug folders, Logging folder, Boss and Battles > Boss depth 2, Cheats, Badges skip 2 -> 8). Regressions: menu_poslog_row PASS (tab 4 row 3), menu_warp_entry PASS.
+
+Named gaps (not done, not dropped):
+- CH4: the world partner entity is not switched when the current partner is turned off. switch_to_partner is dead code in this port (include/dead.h). curPartner changes; the new partner shows at the game's next partner switch. Top-shot gate (new partner beside Mario) not run.
+- profmenu_row (unverified before this row): the scenario keeps the menu open at the end (wait900), so no prof line prints. Route moved to Logging and Profiling row 3: row set PASS (options: profiling prof). Scenario design fix (SELECT before the wait) not done.
+- Unverified scenarios whose pads moved (menu_folder, warpmenu_sub, menu_warp, fs_folder): not re-run after LAYOUT. The layout run walked the same folder pages (depth 1, depth 2, pops).
+- Skip 6 is not in the file select panel (filemenu_options.c has its own repeat). Select menu only (plan default).
+- Spawn item > not added to the Cheats tab (CH5). The layout list has it after Partners.
+- azt_scenarios.json has a duplicate scenario name forest_mim (in HEAD before this row). Not touched.
+- CH0 files were staged by this agent and swept into commit 1f31155b2 (S6-2b, another agent). Content is correct; history not rewritten.
+- Commits: no attribution lines (user rule). CH1 was amended once to remove one.
+- Shared-file note: azt_scenarios.json has other agents' uncommitted hunks (sbk56_superblock). Commits used an index blob with only this row's hunks.
+- Hand back after row 4 (CH4 and LAYOUT both done). Rows CH5 to CH8, MN8, MN9, BT1 to BT3 not started.
