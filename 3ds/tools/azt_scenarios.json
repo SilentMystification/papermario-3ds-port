@@ -33,7 +33,7 @@
     {
       "name": "warpmenu_sub",
       "status": "unverified",
-      "subject": "Port menu Debug tab, row Warp area (row 20) opens the Warp area submenu (tab 4, header [Warp area]). Row 8 is the prefix kmr (after the 8 presets). It shows '< kmr_00 >' and one right step shows '< kmr_02 >'. The bottom shot shows the submenu rows and the kmr row with its arrows.",
+      "subject": "Port menu Debug tab, row Warp area (row 14, CH1) opens the Warp area submenu (tab 4, header [Warp area]). Row 8 is the prefix kmr (after the 8 presets). It shows '< kmr_00 >' and one right step shows '< kmr_02 >'. The bottom shot shows the submenu rows and the kmr row with its arrows.",
       "proves": "WARPMENU: the Warp area submenu lists the map prefixes after the presets, and a prefix row scrolls through its members with left and right at run time.",
       "debug": "preset=yard padscript=@pad_warpmenu_sub.txt shots shotbottom=284:14 loglevel=debug",
       "cap": 45,
@@ -1712,6 +1712,42 @@
         }
       ],
       "reason": "MENU2 row 2: menu shot (shotmenu, MN0) replaces the frame window, which the MN1 freeze stops. Until is the arm log line (pm_options.c); the bot_m shot after it shows the armed row."
+    },
+    {
+      "name": "menu_cheats",
+      "status": "verified",
+      "subject": "Select menu (SELECT), L from General to the Cheats tab (tab 3, last), A on row 0 Set Stats >, the Set Stats folder (breadcrumb Cheats > Set Stats), three down to Level, A (Level 2), one down to Star points. The first bottom shot on row 4 (after the step) shows the folder with Level 2.",
+      "proves": "CH1: Cheats tab in the tab cycle (L wraps to tab 3), folder push to sub kind 2 (Set Stats), stat row step from the folder (pm_dbgg_stat_step, live, RAM only).",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,L,wait20,A,wait20,ddown,wait10,ddown,wait10,ddown,wait10,A,wait20,ddown,wait30 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 4 row 4",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "set stats folder",
+          "regex": "menu: page push 4 depth 1"
+        },
+        {
+          "name": "level stepped",
+          "regex": "dbggame: stat 3 = 2"
+        },
+        {
+          "name": "folder shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 4"
+        }
+      ],
+      "reason": "CH1 gate: Cheats tab and Set Stats folder. Until is the first menu shot on row 4, written after the stat step, so the picture is complete (a shot on row 3 is taken before the step)."
     },
     {
       "name": "menu_shot",
@@ -5447,7 +5483,7 @@
     {
       "name": "menu_folder",
       "status": "unverified",
-      "subject": "Select menu: Debug tab (R, R from General), the Boss folder row (21st row) opened with A. Tab line shows the breadcrumb Debug > Boss and the Boss rows; B pops back.",
+      "subject": "Select menu: Debug tab (R, R from General), the Boss folder row (15th row, CH1) opened with A. Tab line shows the breadcrumb Debug > Boss and the Boss rows; B pops back.",
       "proves": "MENU3 MN4: page stack (depth 1 push and pop), folder row, breadcrumb on the tab line, Boss under Debug.",
       "debug": "preset=toad padscript=@pad_menu_folder.txt shotmenu loglevel=debug",
       "until": "menu: page pop depth 0",
@@ -5479,7 +5515,7 @@
     {
       "name": "fs_folder",
       "status": "unverified",
-      "subject": "File select screen, Options panel (SELECT), Debug tab (R, R), Warp area folder row (row 20) opened with A. Tab strip line shows the breadcrumb Debug > Warp area.",
+      "subject": "File select screen, Options panel (SELECT), Debug tab (R, R), Warp area folder row (row 14, CH1) opened with A. Tab strip line shows the breadcrumb Debug > Warp area.",
       "proves": "MENU3 MN5: the file select panel has the folder page (push log), its breadcrumb on the strip line in the top shot.",
       "debug": "fileselect padscript=@pad_fs_folder.txt shots loglevel=debug",
       "until": "padscript: done",
@@ -5791,7 +5827,7 @@
     {
       "name": "menu_poslog_row",
       "status": "verified",
-      "subject": "Select menu Debug tab, row 22 Position log combo: A sets On (bottom shot shows On), SELECT closes, then L+R+Y+B in the yard gives one position line with no poslog switch. A again sets Off.",
+      "subject": "Select menu Debug tab, row 16 Position log combo (CH1: the stat rows left Debug, was row 22): A sets On (bottom shot shows On), SELECT closes, then L+R+Y+B in the yard gives one position line with no poslog switch. A again sets Off.",
       "proves": "MENU4 MN7 rest: the Debug row sets pm_opt.poslog and the combo reads it (pm_input.c), the value is saved by the menu close.",
       "debug": "preset=yard padscript=@pad_poslog_row.txt shotmenu loglevel=debug",
       "until": "padscript: done",
@@ -5803,7 +5839,7 @@
       "expected_events": [
         {
           "name": "row on",
-          "regex": "menu: tab 2 row 22 Position log combo = On"
+          "regex": "menu: tab 2 row 16 Position log combo = On"
         },
         {
           "name": "pos line",
@@ -5811,7 +5847,7 @@
         },
         {
           "name": "row off",
-          "regex": "menu: tab 2 row 22 Position log combo = Off",
+          "regex": "menu: tab 2 row 16 Position log combo = Off",
             "pick": "last"
         }
       ],

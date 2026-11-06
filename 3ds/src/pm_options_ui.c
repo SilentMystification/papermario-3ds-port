@@ -25,14 +25,15 @@ static void pm_home_chainload(void) {
 }
 volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
 
-#define OPT_TABS 3
+#define OPT_TABS 4 /* CH1: 0 General, 1 Controls, 2 Debug, 3 Cheats (Select menu only) */
 #define VIS 20 /* PT69, PT76, MN3: 30 text rows (tab, blank, 20 options, 2, controls, 3, 2 feedback), see draw */
 #define MODE 1
 /* PT01c: tab PM_OPT_SUB is the Warp area submenu. A open sets tab to it and home_tab keeps the tab it was opened from (B returns there). */
 static int tab, home_tab, sel[PM_OPT_SUB + 1], top[PM_OPT_SUB + 1];
 static PmRepeat rep_y, rep_x;
-static const char* const tab_name[PM_OPT_SUB + 1] = { "General", "Controls", "Debug", "", "Warp area" }; /* 3: reserved (the Boss tab is a folder under Debug, MN4) */
+static const char* const tab_name[PM_OPT_SUB + 1] = { "General", "Controls", "Debug", "Cheats", "Warp area" }; /* Boss is a folder under Debug (MN4) */
 const char* pm_optui_sub_name(void);
+int pm_optui_sub_kind(void);
 
 /* PT75, PT76, PT77: the 30 rows of the bottom screen, from the top: row 0 tab line, rows 1 to VIS the options, 2 empty rows, the controls line,
  * 3 empty rows, then the 2 row feedback area (rows 28 and 29). Every error of the menu goes through pm_menu_msg. */
@@ -53,7 +54,7 @@ static void draw(void) {
         else n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : !strcmp(pm_optui_sub_name(), "Boss") ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : pm_optui_sub_kind() == 2 ? "< > change  A: +1  B: back" : !strcmp(pm_optui_sub_name(), "Boss") ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
     if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
