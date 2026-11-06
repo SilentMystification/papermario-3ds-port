@@ -45,7 +45,7 @@ Picture equal first (region_diff, VIEW the picture), triangles equal, batches no
 - Build: /c/Python314/python 3ds/tools/gen_map_restore.py; PM_ROW=<row> sh 3ds/build.sh; then restore 3ds/src/map_restore_table.c. User file: never commit it, never discard it (md5 437b90efe5f32b82394ce2ece094210e).
 - Scenario: powershell -File 3ds/tools/azt.ps1 <scenario> -Row <row>. Write one justification line to 3ds/logs/perf/status_<row>.txt before each Azahar start.
 - Azahar budget: 8 starts per row. It is never a gate. If it ends with gates unrun: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <row> and continue.
-- Console push (only when the user asks): PM_ROW=PUSH sh 3ds/push_3ds.sh --no-build --ip 192.168.1.131 -t 150 prof (O3DS XL, netloader on; the log lands in build3ds/hw_live_log_131.txt). Do not challenge that IP.
+- Console push (only when the user asks): PM_ROW=PUSH sh 3ds/push_3ds.sh --no-build --ip 192.168.1.170 -t 90 prof=4 (O3DS, push target from 2026-11-05; netloader on; the log lands in build3ds/hw_live_log_170.txt). Do not challenge that IP.
 
 ## Rules that matter
 - No feature toggles, no stubs, no git push, no attribution in commits. Finished work replaces the old path in the same row. The legacy walker stays only as the bounded bridge the plan names. S10 deletes it.
