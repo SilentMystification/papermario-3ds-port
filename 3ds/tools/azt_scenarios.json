@@ -6523,6 +6523,190 @@
         }
       ],
       "reason": "FX1 row 3. Only the summary line is checked; the cap is 25 s for 300 frames."
+    },
+    {
+      "name": "wcen_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200 (spot_mac01_pic spot). Census window 0 to 300; shot 200 is the picture.",
+      "proves": "WCEN producer census (P1, phase mode) at the first 300-frame window: ops and sampled time per producer (pm_gbi.c os_report). Log and shot.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase shots shotwin=200:1 loglevel=debug",
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "phase on",
+          "regex": "phase: on"
+        },
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census window",
+          "regex": "prod f\\d+ sum \\d+ ops \\d+"
+        },
+        {
+          "name": "top producer",
+          "regex": "prod f\\d+ .+ ops \\d+ us \\d+"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "WCEN: one 300-frame census window per run (os_report prints at 300). The shot at 200 is the subject check."
+    },
+    {
+      "name": "wcen_mac00",
+      "status": "unverified",
+      "subject": "mac_00 (preset toad), Mario at pos -135 0 85 (spot_mac00_pic spot). Census window 0 to 300; shot 200 is the picture.",
+      "proves": "WCEN producer census (P1, phase mode) at the first 300-frame window: ops and sampled time per producer (pm_gbi.c os_report). Log and shot.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 phase shots shotwin=200:1 loglevel=debug",
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "phase on",
+          "regex": "phase: on"
+        },
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "census window",
+          "regex": "prod f\\d+ sum \\d+ ops \\d+"
+        },
+        {
+          "name": "top producer",
+          "regex": "prod f\\d+ .+ ops \\d+ us \\d+"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "WCEN: one 300-frame census window per run (os_report prints at 300). The shot at 200 is the subject check."
+    },
+    {
+      "name": "wcen_sbk56",
+      "status": "unverified",
+      "subject": "sbk_56, Mario at pos 20 0 440 (spot_sbk56_pic spot). Census window 0 to 300; shot 200 is the picture.",
+      "proves": "WCEN producer census (P1, phase mode) at the first 300-frame window: ops and sampled time per producer (pm_gbi.c os_report). Log and shot.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 phase shots shotwin=200:1 loglevel=debug",
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "phase on",
+          "regex": "phase: on"
+        },
+        {
+          "name": "warp",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "census window",
+          "regex": "prod f\\d+ sum \\d+ ops \\d+"
+        },
+        {
+          "name": "top producer",
+          "regex": "prod f\\d+ .+ ops \\d+ us \\d+"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "WCEN: one 300-frame census window per run (os_report prints at 300). The shot at 200 is the subject check."
+    },
+    {
+      "name": "wcen_iwa10",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530 (spot_iwa10_pic spot). Census window 0 to 300; shot 200 is the picture.",
+      "proves": "WCEN producer census (P1, phase mode) at the first 300-frame window: ops and sampled time per producer (pm_gbi.c os_report). Log and shot.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 phase shots shotwin=200:1 loglevel=debug",
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "phase on",
+          "regex": "phase: on"
+        },
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "census window",
+          "regex": "prod f\\d+ sum \\d+ ops \\d+"
+        },
+        {
+          "name": "top producer",
+          "regex": "prod f\\d+ .+ ops \\d+ us \\d+"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "WCEN: one 300-frame census window per run (os_report prints at 300). The shot at 200 is the subject check."
+    },
+    {
+      "name": "wcen_battle",
+      "status": "unverified",
+      "subject": "Battle (one Goomba on kmr_03, as battle_start). Census window 0 to 300 holds battle from scene frame 100; shot 200 is the picture.",
+      "proves": "WCEN producer census (P1, phase mode) at the first 300-frame window: ops and sampled time per producer (pm_gbi.c os_report). Log and shot.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 phase shots shotwin=200:1 loglevel=debug",
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "phase on",
+          "regex": "phase: on"
+        },
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "census window",
+          "regex": "prod f\\d+ sum \\d+ ops \\d+"
+        },
+        {
+          "name": "top producer",
+          "regex": "prod f\\d+ .+ ops \\d+ us \\d+"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "WCEN: one 300-frame census window per run (os_report prints at 300). The shot at 200 is the subject check."
     }
   ]
 }

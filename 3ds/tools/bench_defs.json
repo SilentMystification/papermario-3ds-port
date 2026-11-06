@@ -958,6 +958,126 @@
         }
       ],
       "gates": []
+    },
+    {
+      "name": "wcen_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, Toad Town mac_01 at pos 0 0 200. A person reads the shot.",
+      "scenario": "wcen_mac01",
+      "cap": 45,
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "wcen_mac00",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, mac_00 at pos -135 0 85. A person reads the shot.",
+      "scenario": "wcen_mac00",
+      "cap": 45,
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "wcen_sbk56",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, sbk_56 at pos 20 0 440. A person reads the shot.",
+      "scenario": "wcen_sbk56",
+      "cap": 45,
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "wcen_iwa10",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, iwa_10 at -586 1 530. A person reads the shot.",
+      "scenario": "wcen_iwa10",
+      "cap": 45,
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "wcen_battle",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, battle on kmr_03 (battle from scene frame 100). A person reads the shot.",
+      "scenario": "wcen_battle",
+      "cap": 45,
+      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
     }
   ],
   "legacy": {
