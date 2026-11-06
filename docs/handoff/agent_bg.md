@@ -1,7 +1,7 @@
 # agent_bg: background image faults (rows BG1, BG2)
 
 ## STATE
-- BG1 flicker mac_00 -57 0 76: open. Scenario and bench not yet added.
+- BG1 flicker mac_00 -57 0 76: open, no cause named. Scenario bg_flicker_mac00 and bgrect switch committed 7a89f7289. Azahar starts used 7 of 8. Next: texstale on the sky (ts_bad, needs 300+ frames), palette rebuild under fog, sky texture slot reuse (pm_tex.c).
 - BG2 garbled row: open (agent ac8b933e18b4832cf).
 
 ## How the background is drawn
