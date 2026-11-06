@@ -1818,6 +1818,34 @@
       "reason": "CH3 gate: Key items folder, one key item On. Until is the first menu shot on row 2 (after the toggle), so the picture shows the row value."
     },
     {
+      "name": "menu_grey_pause",
+      "status": "verified",
+      "subject": "Select menu open at Toad Town (SELECT), two row moves (each one presents the menu), SELECT closes, then the game runs 3 frames. Top screen: the grey shots at the pause and after each present (top_grey0000 to top_grey0002) are all grey. Bottom shot after the close (bot_<frame>) shows no menu rows.",
+      "proves": "PAUSE GREY: pm_gpu_menu_present greys the top screen after each present (not only at the pause). PAUSE BOTTOM: the console is cleared at the close.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait60,ddown,wait60,ddown,wait60,SELECT,wait120 shotgrey shotmenu shotbottom=95:3 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "paused",
+          "regex": "menu: game paused at frame \\d+"
+        },
+        {
+          "name": "resumed",
+          "regex": "menu: game resumed at frame \\d+"
+        }
+      ],
+      "reason": "PAUSE GREY and PAUSE BOTTOM gate (one start). Top shots are checked by PPM read (r = g = b). The bottom shot is at the first frames after the resume (the pause does not step the game)."
+    },
+    {
       "name": "menu_shot",
       "status": "verified",
       "subject": "Select menu (SELECT), General tab, first draw: the bottom screen shot of the menu (MN0). Visible-width line pad and shotmenu writer.",

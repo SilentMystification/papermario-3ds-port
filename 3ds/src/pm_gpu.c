@@ -1551,6 +1551,7 @@ void pm_gpu_menu_draw(const char* text) {
     if (!text || !text[0]) {
         if (menu_on) {
             for (i = 0; i < MENU_ROWS; i++) { menu_prev[i][0] = 1; menu_put_line(c, i, ""); }
+            consoleSetWindow(c, 0, 0, 40, 30); consoleClear(); /* PAUSE BOTTOM: the whole console is cleared at the close, no menu row or old log text stays */
             menu_on = 0;
             consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS); /* the log window again, new lines come at its top (the rows are blank) */
             c->cursorX = 1; c->cursorY = 1; /* window-relative: the top row of the log window */
@@ -1595,6 +1596,7 @@ void pm_gpu_menu_present(void) {
     sh_clear(); C3D_FrameDrawOn(target);
     if (stereo_frame) C3D_FrameDrawOn(targetR);
     C3D_FrameEnd(GX_CMDLIST_FLUSH);
+    pm_gpu_menu_grey(); /* PAUSE GREY: the present drew the colour frame on the top screen; grey the next top buffer and swap it, so every present while paused shows grey */
 }
 
 /* MN2: the top screen goes grey while the menu is open. One CPU pass over the top back buffer (BGR8, luma (77 r + 150 g + 29 b) >> 8 into all
