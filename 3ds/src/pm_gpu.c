@@ -2432,13 +2432,10 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
  * 0: native, 1: edge vertex or a matrix of the other kind, 2: too many vertices or no index list. */
 #define WIDE_MAXV 192u
 static struct { unsigned ortho, nat, edge, big; } wide_c;
-static void wide_log(void) {
-    static unsigned next = 300u;
-    unsigned f = pm_frame_count();
-    if (f < next) return;
-    next = (f / 300u + 1u) * 300u;
+static void wide_log(unsigned f) { /* called from ndn_log every 300 frames; the window counts reset at the print */
     pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big);
 }
+    memset(&wide_c, 0, sizeof wide_c);
 static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) {
     int r = 0;
     const int wz = m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f;
@@ -2453,7 +2450,6 @@ static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n)
         if (cw > 0.f && (cx >= cw * 0.999f || cx <= -cw * 0.999f)) r = 1;
     }
     if (r == 0) wide_c.nat++; else if (r == 1) wide_c.edge++; else wide_c.big++;
-    wide_log();
     return r;
 }
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
@@ -2812,6 +2808,7 @@ static void ndn_log(void) {
         ndn_f_last = f;
         unsigned clr = nd_mc_clears(), smp = pm_ph_smp_count(), ns = smp - ndn_smp0;
         char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
+        wide_log(f);
         for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
         pm_log_prof_line("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
         pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u", f, ndn_nokey, ndn_rng, ndn_texf);
