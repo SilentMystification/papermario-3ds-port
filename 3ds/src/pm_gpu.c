@@ -2427,6 +2427,35 @@ static int gtrip_batch_open(int use5, const PmFx* fx, const float vp[4], const f
 /* GV1c: one triangle of ring vertices ri[3], vertex i with game matrix tab[g[i]]. ro[3] gets the ring indices to use from now on (a vertex whose palette index
  * has to change is copied). Returns 0 when the raw path cannot take it now. */
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
+/* WIDE1-1: with wide on, an orthographic draw is native unless a vertex sits on the left or right game edge (the CPU path moves those, pm_gpu_vert_clip). The post matrix is made for the matrix kind of the
+ * last note_mvp (ui_ortho), so the draw matrix must be that kind. The vertices are tested like the CPU path: clip x at +-w * 0.999. At most WIDE_MAXV index entries are tested (a bigger draw keeps the CPU path).
+ * 0: native, 1: edge vertex or a matrix of the other kind, 2: too many vertices or no index list. */
+#define WIDE_MAXV 192u
+static struct { unsigned ortho, nat, edge, big; } wide_c;
+static void wide_log(void) {
+    static unsigned next = 300u;
+    unsigned f = pm_frame_count();
+    if (f < next) return;
+    next = (f / 300u + 1u) * 300u;
+    pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big);
+}
+static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) {
+    int r = 0;
+    const int wz = m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f;
+    wide_c.ortho++;
+    if (!idx || !gring) r = 2;
+    else if (!wz || !ui_ortho) r = 1;
+    else if (n > WIDE_MAXV) r = 2;
+    else for (unsigned i = 0; i < n && !r; i++) {
+        const short* v = (const short*)(gring + 16u * idx[i]);
+        float x = (float)v[0], y = (float)v[1], z = (float)v[2];
+        float cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0], cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+        if (cw > 0.f && (cx >= cw * 0.999f || cx <= -cw * 0.999f)) r = 1;
+    }
+    if (r == 0) wide_c.nat++; else if (r == 1) wide_c.edge++; else wide_c.big++;
+    wide_log();
+    return r;
+}
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
@@ -2552,7 +2581,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     if (r_decal && r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
     if (pm_wide && !off_active) {
         const float(*m)[4] = tab[gm];
-        if (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) return 0;
+        if ((ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0; /* WIDE1-1 */
     }
     if (gidx_n + nidx > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
@@ -2591,24 +2620,24 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
 }
 int pm_gpu_gidx_room(unsigned n) { return gv4_on && gpu_ok && gidx_n + n <= GRING_IDX; }
 /* S3N-3c: the refusals of pm_gpu_grange that come before any state change, for a static batch with matrix m (the same tests, no side effect). 1: grange takes the batch. */
-int pm_gpu_grange_why(const float m[4][4], unsigned nidx) { /* S4-1: the class of pm_gpu_grange_would's refusal (0 none) */
+int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx) { /* S4-1: the class of pm_gpu_grange_would's refusal (0 none) */
     if (!gv4_on || !gpu_ok) return 1;
     if (r_zmark) return 2;
     if (r_decal && r_blend && !pm_ent_decal_ok) return 3;
-    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 4;
+    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 4;
     return gidx_n + nidx <= GRING_IDX ? 0 : 5;
 }
 /* S5-1 (b): the native range check. The walker's decal with blend (decal2) is a native two-pass draw (nd_model_draw), so that refusal is not kept here. */
-int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx) {
+int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx) {
     if (!gv4_on || !gpu_ok) return 0;
-    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 0;
+    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
     return gidx_n + nidx <= GRING_IDX;
 }
-int pm_gpu_grange_would(const float m[4][4], unsigned nidx) {
+int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short* idx) {
     if (!gv4_on || !gpu_ok) return 0;
     if (r_zmark) return 0;
     if (r_decal && r_blend) return 0;
-    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f))) return 0;
+    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
     return gidx_n + nidx <= GRING_IDX;
 }
 

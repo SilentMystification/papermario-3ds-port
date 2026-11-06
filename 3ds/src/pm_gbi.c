@@ -2133,9 +2133,9 @@ void pm_gbi_dlcc(unsigned* o) {
 }
 /* S3N-3c: the static ranges of a shape list for nd_model_draw. The groups that dlc_try replays statically (box test, no lit group, room in the pools), one range per batch as
  * dlc_static_group cuts them. No replay and no counters. Returns the count; -1 when dlc_try would not replay the list statically (the fallback); -2 when out is full. */
-int pm_gpu_grange_would(const float m[4][4], unsigned nidx);
-int pm_gpu_grange_why(const float m[4][4], unsigned nidx); /* S4-1 (diagnostic) */
-int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx); /* S5-1 (b) */
+int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short* idx);
+int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S4-1 (diagnostic) */
+int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S5-1 (b); WIDE1-1: idx = the indices of the range, tested for edge vertices in wide mode */
 /* S4-1 (diagnostic): the refusal of pm_dlc_native_ranges by class (1 dlc off or nobox, 2 list range, 3 table, 4 refused build, 5 depth pass, 6 group without static data, 7 lit group, 8 room, 9 walker grange refuses, 10 matrix id) */
 static unsigned dnr_c[16];
 static int dnr(unsigned k) { dnr_c[k]++; return -1; }
@@ -2175,7 +2175,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
             if ((x & (G_LIGHTING | bad)) || (x & lm) != (gg & lm)) return dnr(7);
         }
         if (!pm_gpu_gidx_room(3u * g->sn) || !pm_gpu_gv_room(g->nvtx + 3u * g->ntri)) return dnr(8);
-        if (!pm_gpu_grange_native_would(m, 3u * g->sn)) { int w = pm_gpu_grange_why(m, 3u * g->sn); return dnr(w ? 10 + w : 9); } /* S4-1: 11 gv or gpu off, 12 zmark, 13 decal and blend, 14 wide, 15 ring */ /* the walker's grange refuses: the group runs on the ring path (not a static draw) */
+        if (!pm_gpu_grange_native_would(m, 3u * g->sn, g->sd)) { int w = pm_gpu_grange_why(m, 3u * g->sn, g->sd); return dnr(w ? 10 + w : 9); } /* S4-1: 11 gv or gpu off, 12 zmark, 13 decal and blend, 14 wide, 15 ring */ /* the walker's grange refuses: the group runs on the ring path (not a static draw) */
         if (!gmi_ready) { gmi = dlc_gmi(); gmi_ready = 1; }
         if (gmi == GV_NONE) return dnr(10);
         unsigned t = 0, go = 0;
@@ -2488,7 +2488,7 @@ static __attribute__((noinline)) int ent_seg_native(const EntKey* k, const EntSe
     pm_ent_decal_ok = 0;
     if (r) return 1;
     ent_sw[5 + (dbg_seg < 10 ? dbg_seg : 10)]++;
-    if (dbg_seg == 9) { pm_ent_decal_ok = 1; ent_gw[pm_gpu_grange_why(gm_tab[gmi], 3u * s->ntri) & 7]++; pm_ent_decal_ok = 0; }
+    if (dbg_seg == 9) { pm_ent_decal_ok = 1; ent_gw[pm_gpu_grange_why(gm_tab[gmi], 3u * s->ntri, k->idx + 3u * s->tri0) & 7]++; pm_ent_decal_ok = 0; }
     ((EntKey*)k)->nint++;
     return 0;
 }
