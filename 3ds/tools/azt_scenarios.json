@@ -71,10 +71,10 @@
     },
     {
       "name": "profmenu_row",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Port menu, Debug > Logging and Profiling (row 2, A), row 3 Profiling. SELECT opens the menu, R R goes to the Debug tab, two ddown and A open the folder, three ddown reach the row, A sets it to Prof (LAYOUT). The bottom shot shows the row value Prof. The prof lines follow once the change applies at the next drawn frame end.",
       "proves": "PROFROW: the Profiling row sets the prof mode at run time with no launch word. The prof counter setup runs (prof cal line) and the prof report line prints.",
-      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,A,wait20,ddown,wait10,ddown,wait10,ddown,wait10,A,wait900 shots shotbottom=236:12 loglevel=debug",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,A,wait20,ddown,wait10,ddown,wait10,ddown,wait10,A,wait20,SELECT,wait900 shots shotbottom=236:12 loglevel=debug",
       "until": "prof f\\d+ w300 fps",
       "cap": 45,
       "deadline": 20,
