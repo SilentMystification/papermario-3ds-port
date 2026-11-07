@@ -1446,6 +1446,14 @@ void pm_warp_tick(unsigned frame) {
             pm_log_d("marlog f%u side %d wide %d a10 %d b10 %d err10 %d", f, side, pm_wide, (int)(a * 10.0f), (int)(b * 10.0f), (int)((a - b) * 10.0f));
         }
     }
+    {   /* HUD1 debug: uishow=bar opens the status bar (open_status_bar_slowly) at frame 200, for the wide layout shots in the world */
+        char uv[16];
+        if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'b' && uv[1] == 'a') {
+            extern void open_status_bar_slowly(void);
+            open_status_bar_slowly();
+            pm_log_d("debug uishow: bar opened f%u", f);
+        }
+    }
     {   /* UA3 debug: uishow=coins opens the coin counter window (show_coin_counter, the pickup's own call) at frame 120 */
         char uv[16];
         if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c' && uv[1] == 'o') {

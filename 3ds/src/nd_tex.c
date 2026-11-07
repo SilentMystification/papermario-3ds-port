@@ -699,15 +699,6 @@ __attribute__((noinline)) void tb_ops(const Gfx* g) {
     }
 }
 
-void tb_inline(const Gfx* g, unsigned n) {
-    for (; n; n--, g++) {
-        unsigned op = g->words.w0 >> 24;
-        if (g1_skip[op]) continue;
-        pm_gbi_cur_op = op;
-        tex_op(g->words.w0, g->words.w1);
-    }
-}
-
 __attribute__((cold, noinline)) void ts_save(TexSnap* o) {
     memset(o, 0, sizeof *o);
     o->tst = nd_ws.tst1; o->timg = nd_ws.timg; o->tlut = nd_ws.tlut; o->tlut_n = nd_ws.tlut_n; memcpy(o->tlut_pal, tlut_pal, sizeof tlut_pal); memcpy(o->td, nd_ws.td, sizeof nd_ws.td);

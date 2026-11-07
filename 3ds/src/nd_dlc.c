@@ -240,7 +240,7 @@ static int tex_decode_n(const uint32_t* l, unsigned nops, NdTexDec* o) {
 int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) { return tex_decode_n(l, ND_DLC_MAXOPS, o); }
 
 /* S6-2c-1: the entity list segments (nd.h). */
-/* S6-2c-2: G_PM_TEXI (gbi_custom.h, 0x0B) is a header whose n words run in place (pm_gbi.c tb_inline). The entity lists carry it in front of their texture loads (entcheck census: every refused list had it). Neutral: the linear scan sees the words after it. */
+/* S6-2c-2: the entity lists carry their texture loads as plain words (the header is gone, TX-4). Neutral: the linear scan sees the words after it. */
 #define OP_PM_TEXI 0x0B
 static int ent_known(unsigned op) {
     switch (op) {

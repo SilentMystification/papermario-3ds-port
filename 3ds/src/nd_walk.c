@@ -172,8 +172,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
             else if ((w0 & G_PM_ENT_DRAW) && ((pm_tex_tagi = 4, ent_draw(pc - 1)) ? 1 : (ent_skipgen = 1, 0))) { if (pm_ph_on) pk_nat[pmx_cur]++; pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
             pc += G_PM_ENT_WORDS - 1;
             break;
-        case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
-            tb_inline(pc, w0 & 0xffffu);
             pc += w0 & 0xffffu;
             break;
             /* fall through */
@@ -320,7 +318,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
         case G_SETOTHERMODE_H:
         case G_SETOTHERMODE_L:
         case G_SETCOMBINE:
-        case G_SETPRIMCOLOR: /* HT1: the prim body is in tex_op, so a G_PM_TEXI run can hold it */
+        case G_SETPRIMCOLOR: /* HT1: the prim body is in tex_op, so a texture run can hold it */
             tex_op(w0, w1);
             break;
         case G_SETCONVERT:

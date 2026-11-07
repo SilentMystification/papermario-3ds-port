@@ -59,7 +59,7 @@ void tex_streak_flush(void) {
     tex_streak = 0;
 }
 void tex_streak_op(unsigned op) {
-    if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE || op == G_PM_TEXI) {
+    if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE ) {
         if (pm_ph_on && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
     } else
         tex_streak_flush();
@@ -2306,7 +2306,7 @@ static int os_class_of(unsigned op) {
     case G_VTX: case G_MODIFYVTX: return OS_VTX;
     case G_MTX: case G_POPMTX: return OS_MTX;
     case G_TRI1: case G_TRI2: return OS_TRI;
-    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: case G_PM_TEXI: return OS_TEX;
+    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: return OS_TEX;
     case G_SETCOMBINE: case G_SETPRIMCOLOR: case G_SETENVCOLOR: case G_SETOTHERMODE_H: case G_SETOTHERMODE_L: case G_SETFOGCOLOR: return OS_CC;
     case G_GEOMETRYMODE: case G_MOVEWORD: case G_MOVEMEM: case G_SETSCISSOR: return OS_GEO;
     case G_DL: case G_ENDDL: return OS_DL;
@@ -2845,7 +2845,6 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
 
 /* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. G_NOOP is not here: the HANG1a splash marks are G_NOOP words. */
 
-/* GLYPH: runs n texture-load words after a G_PM_TEXI header, with the tex_op handlers. Syncs are skipped as in G1. */
 
 /* G2: a state op that leaves the live state as it is. The loop skips it before the prologue. Ops that call sync_combine
  * also need sc_ok: a set sc_ok means that call would do nothing. */
