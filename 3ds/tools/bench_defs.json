@@ -15,7 +15,12 @@
       "scenario": "mdlw_battle_spr5",
       "cap": 45,
       "until": "spr5 f\\d+ nopal",
-      "tags": ["azahar", "spr", "battle", "mdl3"],
+      "tags": [
+        "azahar",
+        "spr",
+        "battle",
+        "mdl3"
+      ],
       "gates": []
     },
     {
@@ -27,7 +32,12 @@
       "scenario": "pause_spr5",
       "cap": 45,
       "until": "spr5 f\\d+ nopal",
-      "tags": ["azahar", "spr", "pause", "mdl3"],
+      "tags": [
+        "azahar",
+        "spr",
+        "pause",
+        "mdl3"
+      ],
       "gates": []
     },
     {
@@ -2205,7 +2215,12 @@
       "scenario": "fb_mac01_det",
       "cap": 25,
       "until": "shot \\d+ frame 205",
-      "tags": ["azahar", "det", "cold", "fb1"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
       "gates": []
     },
     {
@@ -2217,7 +2232,11 @@
       "scenario": "nok11_det",
       "cap": 45,
       "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2229,7 +2248,11 @@
       "scenario": "nok11_detlog",
       "cap": 45,
       "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2241,7 +2264,11 @@
       "scenario": "battle_start_f182_cold",
       "cap": 60,
       "until": "shot \\d+ frame 182\\b",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2735,7 +2762,11 @@
       "scenario": "fb_nok11_nat",
       "cap": 30,
       "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": ["azahar", "pic", "fb1"],
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
       "gates": []
     },
     {
@@ -2747,7 +2778,11 @@
       "scenario": "fb_sky_mac00_nomerge",
       "cap": 45,
       "until": "shot \\d+ frame 205\\b",
-      "tags": ["azahar", "pic", "fb1"],
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
       "gates": []
     },
     {
@@ -2759,7 +2794,11 @@
       "scenario": "fb_sky_mac00_rsig",
       "cap": 45,
       "until": "shot \\d+ frame 205\\b",
-      "tags": ["azahar", "pic", "fb1"],
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
       "gates": []
     },
     {
@@ -2775,6 +2814,55 @@
         "azahar",
         "pic",
         "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_cmdsmall_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-2 step 2 gate (cmdsmall): nok11_det with the switch; shots must equal nok11_det of the same build.",
+      "scenario": "nok11_det_cmdsmall",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_tmplsmall_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-2 step 2 gate (tmplsmall): nok11_det with the switch; shots must equal nok11_det of the same build.",
+      "scenario": "nok11_det_tmplsmall",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "intro_native_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-2 step 2 gate (aux off-screen unit 1): intro_native shots 330 to 350 (native, native aspect, wide). Shots must equal nds1 reference.",
+      "scenario": "intro_native",
+      "cap": 45,
+      "until": "shot \\d+ frame 334\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "unit"
       ],
       "gates": []
     }

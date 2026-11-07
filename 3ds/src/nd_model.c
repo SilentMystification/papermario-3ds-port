@@ -416,6 +416,7 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
     static NdRng rng[512];
     float comb[4][4], pal0[16];
     nat_n = 0; nd_nat_why = 0;
+    nd_tmpl_pin(); /* FB-2: the template ids of this record stay valid until its draws are submitted */
     if (!c0->mode || !c0->mode->ok) return (nd_nat_why = 1, -1);
     nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
     pm_gpu_pcomp_native(pal0, comb);

@@ -299,6 +299,13 @@ typedef struct { NdTmplKey key; unsigned n; NdTmplWord w[ND_TMPL_WORDS]; } NdTmp
 static NdTmplEnt tmpl_ent[ND_TMPL_N];
 static uint16_t tmpl_idx[ND_TMPL_IDX]; /* entry id + 1, 0 = empty */
 static unsigned tmpl_n;
+/* FB-2: LRU. tmpl_use[i] is the clock of the last build or hit of entry i. tmpl_pin is the clock at the start of the current batch (nd_tmpl_pin): an entry used since then
+ * is never evicted, so the ids of a batch stay valid until it is submitted. tmpl_gen counts evictions (the caller's id shadow is stale after one). */
+static unsigned tmpl_use[ND_TMPL_N], tmpl_clock, tmpl_pin, tmpl_gen, tmpl_hi, tmpl_cap = ND_TMPL_N;
+void nd_tmpl_pin(void) { tmpl_pin = tmpl_clock; }
+unsigned nd_tmpl_gen(void) { return tmpl_gen; }
+unsigned nd_tmpl_hi(void) { return tmpl_hi; }
+void nd_tmpl_set_cap(unsigned n) { tmpl_cap = n < 2u ? 2u : n > ND_TMPL_N ? ND_TMPL_N : n; }
 
 static unsigned key_hash(const NdTmplKey* k) {
     const unsigned char* b = (const unsigned char*)k;
@@ -372,6 +379,24 @@ static void build_words(NdTmplEnt* e, const NdTevOut* tev) {
 
 /* RECT-1b diag: the key fields of a template id (rpK line) */
 int nd_tmpl_dbg_key(int id, int* tex, int* comb, int* d3, int* r2) { if (id < 0 || (unsigned)id >= tmpl_n) return 0; const NdTmplKey* k = &tmpl_ent[id].key; *tex = k->tex; *comb = k->combine; *d3 = k->draw_3d; *r2 = k->rect_2d; return 1; }
+/* rebuilds the hash index from the entries (after an eviction: the victim's slot is taken over, so the open addressing chains are rebuilt) */
+static void tmpl_index(void) {
+    memset(tmpl_idx, 0, sizeof tmpl_idx);
+    for (unsigned i = 0; i < tmpl_n; i++) {
+        unsigned h = key_hash(&tmpl_ent[i].key) & (ND_TMPL_IDX - 1u);
+        while (tmpl_idx[h]) h = (h + 1u) & (ND_TMPL_IDX - 1u);
+        tmpl_idx[h] = (uint16_t)(i + 1u);
+    }
+}
+/* the entry to take over when the table is full: the least recently used one not used since the pin. -1: every entry is pinned */
+static int tmpl_victim(void) {
+    int v = -1; unsigned best = 0;
+    for (unsigned i = 0; i < tmpl_n; i++) {
+        if (tmpl_use[i] >= tmpl_pin) continue;
+        if (v < 0 || tmpl_use[i] < best) { v = (int)i; best = tmpl_use[i]; }
+    }
+    return v;
+}
 int nd_tmpl_build(const NdTmplKey* in) {
     NdTmplKey kk = *in;
     memset(kk.pad, 0, sizeof kk.pad);
@@ -381,11 +406,12 @@ int nd_tmpl_build(const NdTmplKey* in) {
     for (;;) {
         uint16_t s = tmpl_idx[h];
         if (s == 0) break;
-        if (memcmp(&tmpl_ent[s - 1u].key, &kk, sizeof kk) == 0) return s - 1;
+        if (memcmp(&tmpl_ent[s - 1u].key, &kk, sizeof kk) == 0) { tmpl_use[s - 1u] = ++tmpl_clock; return s - 1; }
         h = (h + 1u) & (ND_TMPL_IDX - 1u);
     }
-    /* ponytail: table full returns -1, the caller falls back to the walker. Add eviction when S3 fills more than 256 keys. */
-    if (tmpl_n >= ND_TMPL_N) return -1;
+    /* FB-2: a full table evicts its least recently used entry (rebuilt from the key). -1 only when every entry was used in the current batch. */
+    int victim = -1;
+    if (tmpl_n >= tmpl_cap) { victim = tmpl_victim(); if (victim < 0) return -1; }
     PmPlan plan;
     NdTevIn ti;
     NdTevOut to;
@@ -397,10 +423,21 @@ int nd_tmpl_build(const NdTmplKey* in) {
         ti.plan = &plan;
     }
     nd_tev_build(&ti, &to);
+    if (victim >= 0) { /* the id is taken over by the new key: the callers' shadows of the ids are stale (tmpl_gen) */
+        NdTmplEnt* e = &tmpl_ent[victim];
+        e->key = kk;
+        build_words(e, &to);
+        tmpl_use[victim] = ++tmpl_clock;
+        tmpl_gen++;
+        tmpl_index();
+        return victim;
+    }
     NdTmplEnt* e = &tmpl_ent[tmpl_n];
     e->key = kk;
     build_words(e, &to);
+    tmpl_use[tmpl_n] = ++tmpl_clock;
     tmpl_idx[h] = (uint16_t)(tmpl_n + 1u);
+    if (tmpl_n + 1u > tmpl_hi) tmpl_hi = tmpl_n + 1u;
     return (int)tmpl_n++;
 }
 

@@ -626,6 +626,70 @@
       "reason": "HANG1a gate: grab lines per frame during the splash (count by grep of grab lines per frame) and the picture by eye."
     },
     {
+      "name": "nok11_det_cmdsmall",
+      "subject": "DET nok_11 splash with cmdsmall=2048 (forced splits): shots must equal nok11_det.",
+      "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off det cmdsmall=2048",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ],
+      "reason": "FB-2 step 2 gate: nok11_det with cmdsmall=2048 (a forced command buffer split before nearly every native raw close). Shots byte-equal to nok11_det (no switch) of the same build.",
+      "status": "unverified"
+    },
+    {
+      "name": "nok11_det_tmplsmall",
+      "subject": "DET nok_11 splash with tmplsmall=16 (LRU evictions): shots must equal nok11_det.",
+      "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off det tmplsmall=16",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ],
+      "reason": "FB-2 step 2 gate: nok11_det with tmplsmall=16 (the template table evicts: LRU). Shots byte-equal to nok11_det (no switch) of the same build; tmplhi evict count above 0 shows the eviction ran.",
+      "status": "unverified"
+    },
+    {
       "name": "nok11_det",
       "status": "unverified",
       "subject": "DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
@@ -5268,6 +5332,7 @@
     {
       "name": "intro_native",
       "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on.",
       "proves": "UA10: the intro mode runs in the native view with wide on.",
       "debug": "wide shots shotwin=330:20 loglevel=debug",
@@ -8358,6 +8423,7 @@
     {
       "name": "intro_native_w600",
       "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
       "proves": "OFF-3 census of intro_native: cumulative nrawwhy unit0 (8) and noise (7) refusals at f600.",
       "debug": "wide shots shotwin=330:20 loglevel=debug",
