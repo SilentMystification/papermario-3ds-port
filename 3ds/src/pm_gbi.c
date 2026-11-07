@@ -630,6 +630,23 @@ static void box_fold_sync(void) {
 static PM_HOTD unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
 /* CORE-2b: the fog and blend colour setters (fogc, blendc; the fog factors stay with G_MOVEWORD). */
 static void set_fogcolor(u32 w1) { fogc = w1; }
+/* CORE-2b: scissor (the walker's sci_* and the GPU scissor), prim depth and fill colour. */
+static void set_scissor(u32 w0, u32 w1) {
+    int ulx = (int)((w0 >> 12) & 0xfff);
+    int uly = (int)(w0 & 0xfff);
+    int lrx = (int)((w1 >> 12) & 0xfff);
+    int lry = (int)(w1 & 0xfff);
+    sci_x0 = ulx >> 2;
+    sci_y0 = uly >> 2;
+    sci_x1 = lrx >> 2;
+    sci_y1 = lry >> 2;
+    pm_gpu_set_scissor(ulx >> 2, uly >> 2, lrx >> 2, lry >> 2);
+}
+static void set_primdepth(u32 w1) {
+    nd_ws.prim_z = (w1 >> 16) & 0x7fffu;
+    { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_ws.prim_z); } /* POND-LOG: waterlog line of pm_gpu.c */
+}
+static void set_fillcolor(u32 w1) { nd_ws.fill = w1; }
 static void set_blendcolor(u32 w1) { blendc = w1; }
 static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 static unsigned sr_sig;
@@ -5038,18 +5055,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (!is_host((u32)(uintptr_t)ptr_of(w1))) gbi_cold_bad_mtx(w0, w1, (Gfx*)list, pc);
             load_mtx(w0, w1, 0);
             break;
-        case G_SETSCISSOR: {
-            int ulx = (int)((w0 >> 12) & 0xfff);
-            int uly = (int)(w0 & 0xfff);
-            int lrx = (int)((w1 >> 12) & 0xfff);
-            int lry = (int)(w1 & 0xfff);
-            sci_x0 = ulx >> 2;
-            sci_y0 = uly >> 2;
-            sci_x1 = lrx >> 2;
-            sci_y1 = lry >> 2;
-            pm_gpu_set_scissor(ulx >> 2, uly >> 2, lrx >> 2, lry >> 2);
-            break;
-        }
+        case G_SETSCISSOR: set_scissor(w0, w1); break;
         case G_MOVEMEM:
             gbi_movemem(w0, w1);
             break;
@@ -5089,13 +5095,8 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_SETCIMG:
             gbi_setcimg(w0, w1);
             break;
-        case G_SETPRIMDEPTH:
-            nd_ws.prim_z = (w1 >> 16) & 0x7fffu;
-            { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_ws.prim_z); } /* POND-LOG: waterlog line of pm_gpu.c */
-            break;
-        case G_SETFILLCOLOR:
-            nd_ws.fill = w1;
-            break;
+        case G_SETPRIMDEPTH: set_primdepth(w1); break;
+        case G_SETFILLCOLOR: set_fillcolor(w1); break;
         case G_FILLRECT: {
             gbi_fillrect(w0, w1);
             break;
