@@ -119,7 +119,7 @@ void gbi_moveword(u32 w0, u32 w1) {
 
 void nd_sr_forget(void) { sr_ok = 0; }
 void sync_render(void) {
-    unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)img_role(0) ^ (unsigned)PMD("rmoff");
+    unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)img_role(0);
     if (sr_ok && sg == sr_sig) {
         GP_SET(6, 1);
         return;
@@ -147,11 +147,6 @@ void sync_render(void) {
 mixed:
     NdRender rs;
     nd_render_state(nd_ws.omode_h, m, img_role(0) == ROLE_DEPTH, &rs);
-    if (!rs.depth && PMD("rmoff")) { /* A/B check: the old always-blend, always-write state */
-        pm_gpu_set_nocolor(0);
-        pm_gpu_set_render(1, 1, 1, -1, 0);
-        return;
-    }
     pm_gpu_set_nocolor(rs.nocol);
     if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
     pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);

@@ -286,4 +286,143 @@ float cc_clamp(float v);
 void op_setcombine(u32 w0, u32 w1);
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1);
 
+
+/* ---- K: the census group (nd_cen.c, WK-2). Cut from pm_gbi.c; the walk (pm_gbi_run) and the frame hooks read these. ---- */
+#define PK_MARKS 1024 /* WCEN3: the all-marks table holds two frames of both display contexts */
+#define PK_SLOTS 256
+#define PK_PRE 253 /* main list ops before the first mark */
+#define PK_BG 254 /* ops of a list that is not the main list */
+#define PK_OTHER 255 /* a producer that found no free slot */
+extern PkMark pmk[PK_MARKS], pmk_all[PK_MARKS];
+extern int pmk_n, pmx_main, pmx_next, pmk_all_n;
+extern unsigned pmx_cur;
+extern unsigned os_nest, os_open, os_op;
+extern int mdcm_next, mdcm_cur;
+extern const Gfx* pre_w0;
+extern const Gfx* pre_mk0;
+extern int pre_mkn;
+void os_close(void);
+unsigned pk_slot(unsigned a);
+
+#define MAIN_GFX_N ((int)(sizeof gDisplayContext->mainGfx / sizeof(Gfx)))
+/* K: census readers of pm_gbi.c globals (defined in pm_gbi.c, read by nd_cen.c). */
+extern unsigned op_cnt[256], n_splits, n_grabs, rec_n, sp0_grp, sp0_skip, gp_ntri, gp_frames, gp3_t0_pending, gp3_t0_dead;
+extern int ep_open;
+extern unsigned gp_same[8], gp_set[8];
+extern u8 seen[256];
+extern int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample, dlc_on;
+extern char stats_line[96];
+unsigned gp_period(void);
+void ep_flush_stats(void);
+void dlc_report(void);
+/* WK-3 (nd_target.c): the colour image role and the z helpers, read by pm_gbi.c and the rect and state modules. */
+float prim_ndc_z(void);
+unsigned word_5551(unsigned rgba);
+typedef struct {
+    float x, y, z, w, u, v, r, g, b, a;
+} ClipV; /* the clip vertex of the triangle path (pm_gbi.c CPU path and nd_geom.c) */
+
+/* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
+void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list);
+void draw_tri(unsigned w);
+void gv_params_calc(unsigned tss, NdGvP* o);
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+void lit_freeze(void);
+int gv_lit_ok(void);
+int clip_bits4(const float* p);
+unsigned tri_flags(void);
+void tri_stats_add(unsigned f, unsigned n);
+void tri_stats(void);
+void gv_xf(int sl);
+int gv_fog_gpu_ok(void);
+int gv_state_why(int* ct, int* both);
+void gv_epoch_enter(void);
+int gv_tri(const int* idx);
+int clip_bits(const ClipV* p);
+float cull_cross(const float* p1, const float* p2, const float* p3);
+void ep_flush_stats(void);
+extern int tri_prep_ok, lit_pending, ep_why, ep_ct, ep_cullboth;
+extern unsigned gv_epoch, gv_chk_stale, ep_osc, ep_fl, ep_n;
+extern NdGvP ep_p;
+/* G (GM-2): the gather and triangle counters, the PERF-GBI laps and the state counters that nd_geom.c reads (defined in pm_gbi.c). */
+enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_N };
+#define GP_START() do { if (gp_on()) gp_last = pm_ticks(); } while (0)
+#define GP_LAP(id) do { if (gp_on()) { unsigned n_ = pm_ticks(); gp_acc[id] += n_ - gp_last; gp_last = n_; } } while (0)
+extern unsigned gp_acc[8], gp_last;
+extern unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n, gv_chk_out, gv_chk_cull, gv_chk_tri;
+extern unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
+extern unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri, st_gpu_tri, dlc_dirty;
+extern u8 vert_gvf[64];
+extern float vert_st[64][2], gv_rel_ref[2], tg_s, tg_t;
+extern unsigned vert_c[64];
+extern int tg_ok, pm_nolight;
+unsigned lit_color(const Vtx* v, const float m[4][4], int texgen);
+void draw_tri_cpu(const int* idx);
+void suntile_tri(const char* path, const int* idx);
+enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
+typedef struct {
+    unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch, xgrp;
+} DlcCnt; /* LS-1 counters of the dlc path (defined in pm_gbi.c) */
+extern DlcCnt dlc_c;
+extern unsigned ep_epoch, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
+/* Y (GM-4): the sun overlay debug draws (effects/sun.c calls them; nd_geom.c). suntile_on is the suntile switch in pm_gbi.c. */
+void pm_sun_spawn(int fromRight, float x, float y, float z, int duration);
+void pm_sun_draw(int alpha, int fromRight, const float* scroll, int n);
+void pm_sun_base(const void* graphics);
+int suntile_on(void);
+extern int suntile_lines;
+/* LS-1 (nd_shape.c): the dlc and entity types and macros (shared by the walk and the handler modules). */
+typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16* sd; u16* bat_q; u16* ends; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
+typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; NdObj o; } DlcEnt;
+#define DLC_TAB 2048
+#define DLC_MAXOPS 4096
+#define DLC_GPU_GEOM(g) ((g) & (G_ZBUFFER | G_LIGHTING))
+typedef struct { u32 a0, op0, op1, tri0, ntri; } EntSeg;
+typedef struct {
+    u32 list, vb, nops, hash, fr, vlen, retry;
+    const u8* vp;
+    const u16* idx;
+    const u8* vtx;
+    unsigned vfirst, nvtx;
+    EntSeg* seg;
+    u16 nseg;
+    u8 st, why, nrec;
+    u32 ndraw, id, segid;
+    u32 nint;
+    u8 useseg; /* S SGEN-1: the list reads vertices through a segment address: its entries are keyed by the segment bases (ent_segkey) */
+    Gfx* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
+} EntKey;
+enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
+#define ENT_TAB 1024
+#define ENT_SEGMAX 192
+extern unsigned pm_dlc_gen, dlc_seen_gen, dbg_seg, dbg_dsg, ent_opc[256], ent_nent, ent_gen_seen, dlc_nent;
+extern unsigned ent_sw[16], ent_gw[8];
+extern DlcEnt* dlc_tab[DLC_TAB];
+extern EntKey* ent_tab[ENT_TAB];
+extern GdlCount gdl_c;
+extern EntCount ent_c;
+extern const Gfx dlc_end[1];
+void dlc_reset(void);
+unsigned dlc_gmi(void);
+int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi);
+void ent_reset(void);
+void ent_compile(EntKey* k, const Gfx* l0);
+EntKey* ent_lookup(const Gfx* l, u32 vb);
+EntKey* ent_find(const Gfx* l, u32 vb);
+int ent_seg_native(const EntKey* k, const EntSeg* s);
+void ent_log(void);
+int ent_run(const Gfx* l, EntKey* k, u32 segid);
+u32 ent_segkey(void);
+int entchk_on(void);
+int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx);
+/* LS-2 (nd_ent.c): the entity record case of G_PM_ENT (the walk calls it). */
+int nd_ent_case(const Gfx* rec, u32 w0, u32 w1);
+void pm_gbi_ent_texchk(const uint32_t* dl);
+void pm_gbi_ent_segchk(const uint32_t* dl);
+extern Gfx ent_flat_buf[];
+extern NdEntSeg ent_sbuf[];
+extern u32 dlc_words[];
+uint8_t* nd_env_valloc(unsigned n, unsigned* first);
+uint16_t* nd_env_ialloc(unsigned n);
+void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
 #endif

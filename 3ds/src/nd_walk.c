@@ -170,11 +170,9 @@ void nd_walk_run(void* list, unsigned nbytes) {
             pc += G_PM_SPR_WORDS - 1;
             break;
         }
-        case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. S6-2a: the end record (G_PM_ENT_END, entcheck only) checks the tile 0 state. */
+        case G_PM_ENT: /* S6-1: producer record of an entity model draw (nd_ent.c). The record is not run; the old words draw unless nd_ent_case draws it. */
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
-            if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); }
-            else if ((w0 & G_PM_ENT_DRAW) && ((pm_tex_tagi = 4, ent_draw(pc - 1)) ? 1 : (ent_skipgen = 1, 0))) { if (pm_ph_on) pk_nat[pmx_cur]++; pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
-            pc += G_PM_ENT_WORDS - 1;
+            pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); /* the drawn record skips its own words and its G_DL */
             break;
             pc += w0 & 0xffffu;
             break;
@@ -205,7 +203,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
             }
             break;
         }
-        case G_VTX: {
+        case G_VTX:
             if (pc - 1 == spr_at) { /* SPR4: the final draw of a sprite record. Native: the vertex and triangle words are skipped. Else the walker loads and draws them. */
                 spr_at = NULL;
                 if (pm_gpu_spr_native((const uint32_t*)spr_rec)) {
@@ -215,92 +213,8 @@ void nd_walk_run(void* list, unsigned nbytes) {
                 }
                 if (pm_gpu_spr_checking()) spr_flush_at = pc; /* the triangle word: the walker draw ends its batch there */
             }
-            unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
-            unsigned n = (w0 >> 12) & 0xff;
-            unsigned v0n = (w0 >> 1) & 0x7f;
-            unsigned v0 = (v0n >= n) ? v0n - n : 0;
-            Vtx* src = (Vtx*)ptr_of(w1);
-            if (src) __builtin_prefetch(src + n); /* H4: the next vertex block */
-            if (src && !is_host((u32)src)) {
-                gbi_cold_bad_vtx(w1, w0, (u32)list);
-                src = NULL;
-            }
-            if (src && n <= 64) {
-                for (unsigned pk = 0; pk < n * 16u; pk += 32u) __builtin_prefetch((const char*)src + pk);
-                if (v0 >= 64) n = 0; /* S30: a vertex load that starts past the buffer (garbage list) copied 4 GB */
-                else if (v0 + n > 64) n = 64 - v0;
-                PH_ADD(C_VTXLOAD, n);
-                if (dd_on()) memcpy(&verts[v0], src, n * sizeof(Vtx)); /* PG4: verts is read only by the drawlog statistics */
-                /* A load at slot 0 starts a new mesh. Later loads in the same
-                 * list append above it and keep the earlier slots. */
-                if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
-                tri_since_vtx = 0;
-                if (v0 == 0 && dd_on()) gbi_cold_dd_load(src);
-                int gring0 = -1;
-                unsigned gmi = GV_NONE;
-                int gv = 0;
-                const int lit_ld = (nd_ws.geom & G_LIGHTING) != 0;
-                if (n) { /* GV1: a load goes to the ring as it is (GV5: also a lit load, the GPU lights it). A full ring takes the old code. */
-                    if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
-                    else if (!dd_on() && !xt_on() && !rmlog_on()) {
-                        gmi = gv_matrix_id(lit_ld);
-                        if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
-                        if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
-                    }
-                }
-                if (gv) { gv_load_n += n; PH_ADD(C_GVLOAD, n); }
-                int gp1_cls = GP1_CROSS;
-                unsigned char gp1_p = 0;
-                s16 gp1_lo[3] = { 32767, 32767, 32767 }, gp1_hi[3] = { -32768, -32768, -32768 };
-                if (gv) {
-                    for (unsigned j = 0; j < n; j++)
-                        for (int q = 0; q < 3; q++) {
-                            s16 o = src[j].v.ob[q];
-                            if (o < gp1_lo[q]) gp1_lo[q] = o;
-                            if (o > gp1_hi[q]) gp1_hi[q] = o;
-                        }
-                    gp1_cls = gp1_box_class(gp1_lo, gp1_hi, combined, &gp1_p);
-                    if (gp1_cls == GP1_IN) { gp1_ld_in++; gp1_vx_in += n; }
-                    else if (gp1_cls == GP1_OUT) { gp1_ld_out++; gp1_vx_out += n; }
-                    else { gp1_ld_cross++; gp1_vx_cross += n; }
-                }
-                for (unsigned i = 0; i < n; i++) {
-                    vert_ring[v0 + i] = gring0 >= 0 ? (unsigned short)(gring0 + (int)i) : GV_NONE;
-                    vert_gmi[v0 + i] = (unsigned short)gmi;
-                    vert_tss[v0 + i] = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
-                    vert_live[v0 + i] = 1;
-                    vert_scr[v0 + i] = 0;
-                    vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((nd_ws.geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
-                    if (gv && lit_ld) lit_pending = 1;
-                    if (gv && gp1_cls == GP1_IN) {
-                        vert_cb[v0 + i] = 0;
-                        vert_gvf[v0 + i] = 0;
-                        continue;
-                    }
-                    if (gv && gp1_cls == GP1_OUT) {
-                        vert_cb[v0 + i] = gp1_p;
-                        vert_gvf[v0 + i] = 0;
-                        continue;
-                    }
-                    if (gv) { /* GP1 cross: per-vertex product and clip bits */
-                        const float(*m)[4] = combined;
-                        float x = (float)src[i].v.ob[0], y = (float)src[i].v.ob[1], z = (float)src[i].v.ob[2];
-                        float* p = vert_p[v0 + i];
-                        p[0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
-                        p[1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
-                        p[2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
-                        p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-                        vert_cb[v0 + i] = (unsigned char)clip_bits4(p);
-                        vert_gvf[v0 + i] = 1;
-                        st_vx++;
-                        continue;
-                    }
-                    gbi_vtx_cpu1(&src[i], v0 + i);
-                }
-            }
-            if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;
+            nd_geom_vtx(w0, w1, list);
             break;
-        }
         case G_MODIFYVTX:
             gbi_cold_modifyvtx(w0, w1);
             break;
