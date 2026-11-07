@@ -12,3 +12,8 @@ Gate: sbk_56 native vs nomodelnat byte-equal (cold det, 12 shots); ndmcheck diff
 
 ## Rules
 Own worktree build3ds/wt/sbkw, branch sbkw from nds1; copy assets/us and ver/us/build. Code first. Cold det runs. No attribution lines, never commit 3ds/src/map_restore_table.c, no git stash, keep Azahar open. Budget: -ResetBudget SBKW at the cap. Delete this file (and nomodelnat) in the last commit.
+
+## State (2026-11-07, first agent)
+Measurement (spot_sbk56_ndmcheck, run 7025, nds1 53f7a7773, f300): eq 8880 diff 333; all 333 records: k.combine native 2 vs walker 8, k.tex1 0 vs 1, k.two, k.w0, k.w1, tmpl, tev0, tev1, has_buf, u0.dim, u0.copy, uvso1 (native 39ffff00 vs walker 3a7fff00, 2x), uvso3. Cache-hit diff 0 (14771 hits). Code: nd_model.c:280 t1n = combine==8 && plan.uses_tex1, with t1_valid = c->t1_valid (pm_gpu.c:3376 = r13t1b_ok), set only in rec_run (pm_gbi.c:909) for R13 texture-only records.
+Try 1 (333bb6881, pm_gbi_bind_tile1 for every model record): picture unchanged (12 of 12 shots still differ, 4275-4303 px in x120..152 y87..313). Reverted (51a083113).
+Next code point (try 2, different point): tile 0 window height: native mainH 64 vs the walker ensure_tile window 32 (nd_tex.c:431, src/model.c:2348). uvso1 2x and u0.dim fit a doubled tile height. Log the native desc h and the walker tile_sz height for the water record, then fix the desc build to the walker's tile window.
