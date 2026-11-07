@@ -78,6 +78,7 @@ static unsigned epoch;
 static unsigned tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_ev0, tc_inval, tc_up_bytes, tc_evict_bytes, tc_ev0_bytes;
 static unsigned tot_hit, tot_miss, tot_inval, tot_evict, tot_up; /* lifetime (up in bytes), read per map by pm_tex_map_delta */
 static unsigned tot_inv_t, tot_hash_t; /* tex_inv3: ticks in pm_tex_invalidate and in the lookup hash (slot_valid), read per map */
+unsigned pm_tex_evict_n(void) { return tc_evict; } /* DET: evictions since boot, the detlog line reads it */
 static unsigned gh_up_n, gh_up_t; /* TEXL2 L2a: upload ops and their ticks, per texghost window */
 static unsigned tot_same, tot_diff; /* tex_inv1: at invalidation, the source bytes equal (same) or differ from (diff) the bytes at load */
 static int tc_on = -1;

@@ -299,11 +299,13 @@ static unsigned pace_ticks;
 /* AU1b: the audio ticks of a step run at the kick point (entry of the main nuGfxTaskStart, after the game logic of the step), not at the top of
  * the iteration. pm_audio_step is called once per drawn step. The main loop calls it after pm_gfx_retrace when the step sent no main task. */
 static int au_kicked;
+unsigned pm_audio_last_n; /* DET: ticks of the last audio step, the detlog line reads and clears it */
 void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
     if (PMD("noaudio")) return;
     unsigned n = pm_audio_lock() ? 2u : pm_audio_retraces();
+    pm_audio_last_n = n;
     PH_ADD(C_ATICK, n);
     pace_ticks += n;
     pm_audio_kick(n); /* AU1d: runs on core 1 until the next join */
@@ -332,6 +334,11 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; d0 = pm_pace_drawn;
 }
 int pm_interp_key_draw(void);
+unsigned pm_tex_evict_n(void);
+unsigned pm_gpu_noise_state(void);
+extern unsigned gRandSeed;
+/* DET: detlog switch. One line per game step (frame) with the draw sequence and the inputs of the schedule. */
+static unsigned det_keys, det_draws, det_iv;
 /* HANG1: gspWaitForVBlank has no timeout, so a GSP that stops sending vblanks blocks the game thread with no line. This poll
  * waits at most 40 ms (200 x 0.2 ms) for the citro3d vblank counter to change. */
 static int vblank_wait_timed(void) {
@@ -434,7 +441,7 @@ void pm_frame_loop(void) {
             pm_gfx_retrace();
             /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
             if (fa_state == 0 && pm_interp_on > 0 && !last_step_skipped && pm_interp_key_draw()) { /* FADV: a hold or step draws no key frame */ /* PT87: the key frame is a draw, not a game step (it was counted as a step: the HUD showed x/x) */
-                drawn++; pm_pace_drawn++;
+                drawn++; pm_pace_drawn++; det_keys++;
                 continue;
             }
             /* PC01: keep PM_VBLANKS_PER_STEP vblanks between game steps. The counter is citro3d's own vblank
@@ -497,6 +504,7 @@ void pm_frame_loop(void) {
         if (fs_skip) {
             fs1_run++;
             fs1_skipped++;
+            det_iv = step_vb_ok ? C3D_FrameCounter(0) - step_vb : 0u; /* DET: the vblanks of a skipped step */
             step_vb += PM_VBLANKS_PER_STEP; /* the skipped step used its share of the schedule */
             au_kicked = 0;
             pm_gfx_retrace_skip();
@@ -504,7 +512,7 @@ void pm_frame_loop(void) {
             pm_audio_step(); /* the audio ticks of the step still run */
         } else {
         fs1_run = 0;
-        drawn++; pm_pace_drawn++;
+        drawn++; pm_pace_drawn++; det_draws++;
         PM_WD_PHASE(4);
         pm_gpu_begin(1);
         {
@@ -517,6 +525,7 @@ void pm_frame_loop(void) {
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */
             }
+            det_iv = step_vb_ok ? vb - step_vb : 0u; /* DET */
             step_vb = vb;
             step_vb_ok = 1;
         }
@@ -539,6 +548,10 @@ void pm_frame_loop(void) {
         pm_ph_frame_end();
         }
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
+        if (PMD("detlog")) { /* DET: one line per game step: the draw sequence (key and lerp frames), the vblanks since the last step, the audio ticks, the RNG and noise state, texture evictions */
+            pm_log_d("det step %u keys %u draws %u iv %u skip %d interp_skip %d aud %u rng %08x noise %08x evict %u", frame, det_keys, det_draws, det_iv, fs_skip, pm_interp_skip, pm_audio_last_n, gRandSeed, pm_gpu_noise_state(), pm_tex_evict_n());
+            det_keys = det_draws = 0; pm_audio_last_n = 0;
+        }
         frame++;
         pm_frame_n = frame;
         if (fa_state == 2) { fa_state = 1; pm_log("fa: step frame %u", frame); } /* FADV: the step is done, hold again */

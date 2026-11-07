@@ -626,6 +626,38 @@
       "reason": "HANG1a gate: grab lines per frame during the splash (count by grep of grab lines per frame) and the picture by eye."
     },
     {
+      "name": "nok11_detlog",
+      "status": "unverified",
+      "subject": "DET-1 cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400 (fxtest 89), shot 1 at frame 412. One detlog line per game step (det step N ...).",
+      "proves": "DET-1: the first game step where two cold runs of one build differ, and the field that differs (keys, draws, iv, skip, aud, rng, noise, evict).",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off detlog",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ],
+      "reason": "DET-1 measurement: cold start (-NoWarm, a new Azahar process) with detlog. Log only; the splash picture is the subject."
+    },
+    {
       "name": "yard_wide",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4) with wide on: zoomed original view, sky fills 240 rows, status bar at the top edge, shot at frames 200 to 205.",
