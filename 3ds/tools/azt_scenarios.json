@@ -9526,6 +9526,23 @@
       "reason": "MDL-5 gate: MDL-5 sbk_56 native (census, shots). Cold start (-NoWarm) so det shots are a function of the build."
     },
     {
+      "name": "sbkw_dlchash_sbk56",
+      "status": "unverified",
+      "subject": "sbk_56, Mario at 20 0 440, cold det, dlch lines per frame 200 to 211 (live Vtx bytes against the static copy hash).",
+      "proves": "SBKW-M: which map lists have live Vtx bytes that differ from their static pool copy (water ripple).",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det dlchash",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "SBKW step 2 measurement: live Vtx hash against the static copy hash per frame 200 to 211. Cold start (-NoWarm)."
+    },
+    {
       "name": "mdl5_sbk56_det_ref",
       "status": "unverified",
       "subject": "sbk_56 cold det with nomodelnat: the byte reference of mdl5_sbk56_det.",

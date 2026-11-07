@@ -365,18 +365,50 @@ void pm_gbi_dlcc(unsigned* o) {
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short* idx);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S4-1 (diagnostic) */
 int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S5-1 (b); WIDE1-1: idx = the indices of the range, tested for edge vertices in wide mode */
+/* SBKW-M (diagnostic, switch dlchash): per frame 200 to 211, the lists the native ranges read, and how many of them have live Vtx bytes
+ * that differ from the bytes compiled into their static copy (e->hash = dlc_hash at build). Logs the first two stale lists per frame with their first G_VTX source. */
+extern void pm_log_prof_line(const char* fmt, ...);
+static void sbkw_dlchash(const Gfx* l, const DlcEnt* e) {
+    unsigned f = pm_frame_count();
+    static unsigned lf_, nl_, ns_;
+    if (f < 200u) return;
+    if (f != lf_) { if (lf_ && lf_ <= 211u) pm_log_prof_line("dlch f%u lists %u stale %u", lf_, nl_, ns_); lf_ = f; nl_ = 0; ns_ = 0; }
+    if (f > 211u) return;
+    nl_++;
+    u32 live = dlc_hash(l);
+    if (live == e->hash) return;
+    ns_++;
+    if (ns_ > 2) return;
+    u32 src = 0; u32 nv = 0;
+    for (unsigned i = 0; i < 4096; i++) {
+        u32 w0 = l[i].words.w0;
+        if ((w0 >> 24) == G_VTX) { if (!src) src = l[i].words.w1; nv++; }
+        if ((w0 >> 24) == G_ENDDL) break;
+    }
+    pm_log_prof_line("dlch f%u list %08x live %08x pool %08x vtx0 %08x nvtx %u ngrp %u", f, (u32)(uintptr_t)l, live, e->hash, src, nv, (unsigned)e->ngrp);
+}
+
 /* S4-1 (diagnostic): the refusal of pm_dlc_native_ranges by class (1 dlc off, 2 list range, 3 table, 4 refused build, 5 depth pass, 6 group without static data, 7 lit group, 8 room, 9 walker grange refuses, 10 matrix id) */
 unsigned dnr_c[16];
 int dnr(unsigned k) { dnr_c[k]++; return -1; }
 void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i < 16u; i++) { o[i] = dnr_c[i]; dnr_c[i] = 0; } }
 int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
     const Gfx* l = (const Gfx*)lv;
+    if (PMDL("dlchash")) { /* SBKW-M: calls per frame 200 to 211 and the list address of each (first four) */
+        unsigned f = pm_frame_count(); static unsigned lf2, c2, n2;
+        if (f >= 200u && f <= 211u) {
+            if (f != lf2) { if (lf2) pm_log_prof_line("dlcn f%u calls %u", lf2, c2); lf2 = f; c2 = 0; n2 = 0; }
+            c2++;
+            if (n2 < 4u) { n2++; pm_log_prof_line("dlcn f%u l %08x host %d inmap %d gen %u %u", f, (u32)(uintptr_t)l, is_host((u32)(uintptr_t)l) ? 1 : 0, (u32)(uintptr_t)l - (u32)gMapShapeData < 0x40000u ? 1 : 0, pm_dlc_gen, dlc_on); }
+        }
+    }
     if (!dlc_on) return dnr(1);
     if (!is_host((u32)(uintptr_t)l)) return 0; /* rec_dl: a list outside host memory is not run (gbi_cold_bad_next): no draw */
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return dnr(2);
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
     if (!e) return dnr(3);
+    if (PMDL("dlchash") && e->gen == pm_dlc_gen) sbkw_dlchash(l, e); /* SBKW-M: live Vtx bytes against the bytes of the static copy (frames 200 to 211) */
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;

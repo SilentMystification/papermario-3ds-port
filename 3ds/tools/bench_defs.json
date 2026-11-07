@@ -3119,6 +3119,21 @@
       "gates": []
     },
     {
+      "name": "sbkw_dlchash_sbk56",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SBKW-M measurement: sbk_56 cold det with dlchash, dlch lines per frame 200 to 211 (live Vtx hash against the static copy hash).",
+      "scenario": "sbkw_dlchash_sbk56",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "sbkw"
+      ],
+      "gates": []
+    },
+    {
       "name": "mdl5_sbk56_ref",
       "kind": "azahar_pic",
       "speed": "normal",
