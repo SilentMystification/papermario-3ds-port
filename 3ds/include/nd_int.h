@@ -286,4 +286,33 @@ float cc_clamp(float v);
 void op_setcombine(u32 w0, u32 w1);
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1);
 
+
+/* ---- K: the census group (nd_cen.c, WK-2). Cut from pm_gbi.c; the walk (pm_gbi_run) and the frame hooks read these. ---- */
+#define PK_MARKS 1024 /* WCEN3: the all-marks table holds two frames of both display contexts */
+#define PK_SLOTS 256
+#define PK_PRE 253 /* main list ops before the first mark */
+#define PK_BG 254 /* ops of a list that is not the main list */
+#define PK_OTHER 255 /* a producer that found no free slot */
+extern PkMark pmk[PK_MARKS], pmk_all[PK_MARKS];
+extern int pmk_n, pmx_main, pmx_next, pmk_all_n;
+extern unsigned pmx_cur;
+extern unsigned os_nest, os_open, os_op;
+extern int mdcm_next, mdcm_cur;
+extern const Gfx* pre_w0;
+extern const Gfx* pre_mk0;
+extern int pre_mkn;
+void os_close(void);
+unsigned pk_slot(unsigned a);
+
+#define MAIN_GFX_N ((int)(sizeof gDisplayContext->mainGfx / sizeof(Gfx)))
+/* K: census readers of pm_gbi.c globals (defined in pm_gbi.c, read by nd_cen.c). */
+extern unsigned op_cnt[256], n_splits, n_grabs, rec_n, sp0_grp, sp0_skip, gp_ntri, gp_frames, gp3_t0_pending, gp3_t0_dead;
+extern int ep_open;
+extern unsigned gp_same[8], gp_set[8];
+extern u8 seen[256];
+extern int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample, dlc_on;
+extern char stats_line[96];
+unsigned gp_period(void);
+void ep_flush_stats(void);
+void dlc_report(void);
 #endif
