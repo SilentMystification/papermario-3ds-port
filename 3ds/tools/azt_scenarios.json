@@ -14,7 +14,12 @@
       "first_marker": "boot_main",
       "expects": "none",
       "needs_picture": false,
-      "expected_events": [{"name": "logbench dropped line", "regex": "logbench kind dropped cycles"}],
+      "expected_events": [
+        {
+          "name": "logbench dropped line",
+          "regex": "logbench kind dropped cycles"
+        }
+      ],
       "reason": "LOG1: 40000 timed lines at boot, writer drains between batches. Cap 45 s."
     },
     {
@@ -6064,7 +6069,7 @@
       ],
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
-  {
+    {
       "name": "spot_mac01_fps60_pic",
       "status": "unverified",
       "subject": "CORE-2c interp replay: Toad Town mac_01 at pos 0 0 200 with fps60 on (pm_interp_on). Shots at frames 200 to 205, byte-equal to the same scenario on the base build. Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
@@ -6728,7 +6733,8 @@
         }
       ],
       "reason": "SBK shot 1 (row SBK). spot_sbk56_pic with the notex1nat debug switch (pm_gpu.c nd_raw_native). Cap 60 s: boot, warp, placement and the first 300-frame window (the until)."
-    },    {
+    },
+    {
       "name": "spot_sbk56_walk_pic",
       "status": "unverified",
       "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0) with the noraw nogdl nogrange noent switches: every native draw (batch, static G_DL list, entity range, entity record) goes back to the walker. The whole scene is drawn by the old path. Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
@@ -7633,7 +7639,7 @@
       ],
       "reason": "CEN-1a: nok_11 field census (the splash of fxtest 89 is at frame 400, after the window). Picture by eye."
     },
-{
+    {
       "name": "menu_frameadv",
       "status": "unverified",
       "subject": "Select menu, Cheats tab, row 22 Frame advance On, close. The game holds (no step, audio muted). Each R press (k_R) runs exactly one game step: five presses, five fa: step lines, frame +1 each.",
@@ -7673,7 +7679,7 @@
       ],
       "reason": "FADV gate: exactly 5 fa: step lines (one per R press), frame +1 each, audio muted during the hold (audio: muted, no unmute before the done line). The menu: game resumed line is the close."
     },
-{
+    {
       "name": "menu_frameadv_off",
       "status": "unverified",
       "subject": "Select menu, Cheats row 22 Frame advance On, close, three R steps; reopen, row 22 Off, close, three more R presses. The game does not step after fa: off.",
@@ -7713,7 +7719,7 @@
       ],
       "reason": "FADV off check: after fa: off and menu: game resumed, no fa: step line while R is pressed (three presses). Order checked in the log: the three steps come before fa: off."
     },
-{
+    {
       "name": "menu_moon_hold",
       "status": "unverified",
       "subject": "Toad Town, moon jump on, A held 240 scans from the ground (no release): the rise must stop after about 100 air steps and Mario returns to the last ground position (the snap-back).",
@@ -7820,8 +7826,7 @@
         }
       ],
       "reason": "LOG4 gate A baseline. Cap 45 s: 300 drawn frames at about 20 fps after the pond load."
-    }
-,
+    },
     {
       "name": "rect_post_mac01",
       "status": "unverified",
@@ -8134,6 +8139,94 @@
         }
       ],
       "reason": "PM5-3 reference: iwa_10 ndmcheck with pm5 native off."
+    },
+    {
+      "name": "nok11_splash_w600",
+      "status": "unverified",
+      "subject": "Mario in nok_11 (entry 0) with the water splash (EFFECT_WATER_SPLASH, fxtest 89) spawned at Mario. Shot a at 12 frames after the spawn shows the splash drops. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "OFF-3 census of nok11_splash: cumulative nrawwhy unit0 (8) and noise (7) refusals at f600.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog",
+      "until": "nrawwhy f600 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "nrawwhy at 600",
+          "regex": "nrawwhy f600 cmdbuf"
+        }
+      ],
+      "reason": "OFF-3 census: the until line is the 600 frame counter; the subject shots are the picture (as nok11_splash)."
+    },
+    {
+      "name": "pause_spin_grab_w300",
+      "status": "unverified",
+      "subject": "OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in spin window",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        },
+        {
+          "name": "nrawwhy at 300",
+          "regex": "nrawwhy f300 cmdbuf"
+        }
+      ],
+      "reason": "OFF-2 gate (grab refusal 0). The until line is the 300 frame counter; the spin shots are the picture."
+    },
+    {
+      "name": "intro_native_w600",
+      "status": "unverified",
+      "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "OFF-3 census of intro_native: cumulative nrawwhy unit0 (8) and noise (7) refusals at f600.",
+      "debug": "wide shots shotwin=330:20 loglevel=debug",
+      "until": "nrawwhy f600 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "intro on",
+          "regex": "intro: native aspect on"
+        },
+        {
+          "name": "shot in intro",
+          "regex": "shot \\d+ frame 333\\b"
+        },
+        {
+          "name": "nrawwhy at 600",
+          "regex": "nrawwhy f600 cmdbuf"
+        }
+      ],
+      "reason": "OFF-3 census: the until line is the 600 frame counter; the subject shots are the picture (as intro_native)."
     }
   ]
 }

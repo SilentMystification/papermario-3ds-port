@@ -14,12 +14,32 @@
       "scenario": "logbench_boot",
       "cap": 45,
       "until": "logbench: done",
-      "tags": ["azahar", "log", "bench"],
+      "tags": [
+        "azahar",
+        "log",
+        "bench"
+      ],
       "log_metrics": [
-        {"name": "plain_cyc", "regex": "logbench kind plain cycles ([0-9.]+)", "pick": "last"},
-        {"name": "args_cyc", "regex": "logbench kind args cycles ([0-9.]+)", "pick": "last"},
-        {"name": "str2_cyc", "regex": "logbench kind str2 cycles ([0-9.]+)", "pick": "last"},
-        {"name": "dropped_cyc", "regex": "logbench kind dropped cycles ([0-9.]+)", "pick": "last"}
+        {
+          "name": "plain_cyc",
+          "regex": "logbench kind plain cycles ([0-9.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "args_cyc",
+          "regex": "logbench kind args cycles ([0-9.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "str2_cyc",
+          "regex": "logbench kind str2 cycles ([0-9.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "dropped_cyc",
+          "regex": "logbench kind dropped cycles ([0-9.]+)",
+          "pick": "last"
+        }
       ],
       "gates": [
         {
@@ -53,7 +73,12 @@
       "scenario": "stale2_walk_mac01",
       "cap": 27,
       "until": "texsrc f300 ",
-      "tags": ["azahar", "texstale", "texsrc", "stale2"],
+      "tags": [
+        "azahar",
+        "texstale",
+        "texsrc",
+        "stale2"
+      ],
       "gates": []
     },
     {
@@ -65,7 +90,12 @@
       "scenario": "stale2_walk_mac02",
       "cap": 27,
       "until": "texsrc f300 ",
-      "tags": ["azahar", "texstale", "texsrc", "stale2"],
+      "tags": [
+        "azahar",
+        "texstale",
+        "texsrc",
+        "stale2"
+      ],
       "gates": []
     },
     {
@@ -77,7 +107,11 @@
       "scenario": "texstale_prof",
       "cap": 25,
       "until": "texstale f300 binds [0-9]+",
-      "tags": ["azahar", "texstale", "prof"],
+      "tags": [
+        "azahar",
+        "texstale",
+        "prof"
+      ],
       "gates": []
     },
     {
@@ -89,7 +123,11 @@
       "scenario": "merlee_spell",
       "cap": 45,
       "until": "merlee: ritual state D [(]spell done[)]",
-      "tags": ["azahar", "pic", "merlee"],
+      "tags": [
+        "azahar",
+        "pic",
+        "merlee"
+      ],
       "gates": []
     },
     {
@@ -196,7 +234,7 @@
       ],
       "gates": []
     },
-  {
+    {
       "name": "spot_mac01_fps60_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -212,7 +250,7 @@
       ],
       "gates": []
     },
-  {
+    {
       "name": "yard_stereo_l_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -538,7 +576,8 @@
         "sbk"
       ],
       "gates": []
-    },    {
+    },
+    {
       "name": "spot_sbk56_walk_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -977,8 +1016,7 @@
           "value": 0
         }
       ]
-    }
-,
+    },
     {
       "name": "entcheck_mac01",
       "kind": "azahar_pic",
@@ -1342,7 +1380,6 @@
       ],
       "gates": []
     },
-
     {
       "name": "wcen_pause",
       "kind": "azahar_pic",
@@ -1367,7 +1404,6 @@
       ],
       "gates": []
     },
-
     {
       "name": "wcen_text",
       "kind": "azahar_pic",
@@ -1392,7 +1428,6 @@
       ],
       "gates": []
     },
-
     {
       "name": "wcen_golden",
       "kind": "azahar_pic",
@@ -1417,7 +1452,6 @@
       ],
       "gates": []
     },
-
     {
       "name": "wcen_nok11",
       "kind": "azahar_pic",
@@ -1538,7 +1572,7 @@
       ],
       "gates": []
     },
-{
+    {
       "name": "menu_frameadv_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -1556,7 +1590,7 @@
       "log_metrics": [],
       "gates": []
     },
-{
+    {
       "name": "menu_frameadv_off_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -1574,7 +1608,7 @@
       "log_metrics": [],
       "gates": []
     },
-{
+    {
       "name": "menu_moon_hold_log",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -1590,7 +1624,7 @@
       "log_metrics": [],
       "gates": []
     },
-{
+    {
       "name": "menu_moon_on_log",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -1606,7 +1640,7 @@
       "log_metrics": [],
       "gates": []
     },
-{
+    {
       "name": "menu_moon_off_log",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -1659,7 +1693,10 @@
       "scenario": "keep_fail_until",
       "cap": 15,
       "until": "logbench: done",
-      "tags": ["azahar", "keep"],
+      "tags": [
+        "azahar",
+        "keep"
+      ],
       "log_metrics": [],
       "gates": []
     },
@@ -1736,8 +1773,7 @@
         }
       ],
       "gates": []
-    }
-,
+    },
     {
       "name": "rect_post_mac01",
       "kind": "azahar_pic",
@@ -2004,6 +2040,57 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "pause_spin_grab_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
+      "scenario": "pause_spin_grab_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab"
+      ],
+      "gates": []
+    },
+    {
+      "name": "intro_native_w600",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "OFF-3 census: intro (native aspect, wide) run to frame 600; nrawwhy line gives the cumulative unit 0 (8) and noise (7) refusals. A person reads the intro shots.",
+      "scenario": "intro_native_w600",
+      "cap": 45,
+      "until": "nrawwhy f600 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "unit"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_splash_w600",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "OFF-3 census: nok_11 water splash run to frame 600; nrawwhy line gives the cumulative unit 0 (8) and noise (7) refusals. A person reads the splash shot.",
+      "scenario": "nok11_splash_w600",
+      "cap": 45,
+      "until": "nrawwhy f600 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "unit"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
