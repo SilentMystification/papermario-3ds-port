@@ -381,6 +381,9 @@ $slotInfo = Ensure-Slot $slotK
 $sd = $slotInfo.sd; $logPath = Join-Path $sd "log.txt"; $pidFile = $slotInfo.pidFile
 $lastLog = Join-Path $outDir "slot$slotK\last_log.txt"
 $shotDir = Join-Path $outDir "slot$slotK\shots"
+# AZT7-1: this start's shot output starts empty: the slot's shots folder and the scenario archive hold no file of an earlier run
+Remove-Item $shotDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $repo "build3ds\azt\shots\$($sc.name)") -Recurse -Force -ErrorAction SilentlyContinue
 $env:PM_SLOT_HELD = "1"
 $argv += @("-Slot", [string]$slotK)
 if (-not $NoKeep) { $argv += @("-Keep") } # AZT-3b: kept by default. AZT3-2: run_azahar keeps it after any run that did not crash or exit.

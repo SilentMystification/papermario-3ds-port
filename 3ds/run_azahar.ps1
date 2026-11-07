@@ -391,6 +391,19 @@ $marks = @()
         if ($text -match "\[CRASH\]") { Start-Sleep -Seconds 1; $reason = "crash"; break }
         if ($Until -and $text -match $Until) { $reason = "matched '$Until'"; break }
     }
+    # AZT7-2: the shot line is logged after the file is closed on the emulator side, but the file can reach the host later on a fast warm
+    # restart. The run waits (up to 20 s) for the file of the last logged shot before it pauses the game and moves the shots (no stale file counts).
+    if (Test-Path $log) {
+        $lastShot = @([regex]::Matches((Read-Tail $log 262144), '(?m)^#\d+ shot (\d+) frame \d+') | Select-Object -Last 1)
+        if ($lastShot.Count) {
+            $pat = ("{0:D4}_*.ppm" -f [int]$lastShot[0].Groups[1].Value)
+            $got = $false
+            for ($w = 0; $w -lt 80 -and -not $got; $w++) {
+                if (Get-ChildItem "$sd\shots" -Filter $pat -ErrorAction SilentlyContinue) { $got = $true } else { Start-Sleep -Milliseconds 250 }
+            }
+            Write-Output ("SHOT FILE: {0} {1} after the last shot line" -f $pat, $(if ($got) { "written" } else { "NOT written in 20 s" }))
+        }
+    }
     # AZFIX: the Azahar exit code is recorded in the result text. An early exit with no game log and an empty emulator log is retried once by azt (kind retry)
     $azState = if ($p.HasExited) { "exit code $($p.ExitCode)" } else { "running, stopped by this run" }
     if ($reason -eq "crash" -or $reason -eq "Azahar exited") { Write-PoolLog $slotK "exit" $p.Id "-" "$reason ($azState)" } # AZT6b-1
