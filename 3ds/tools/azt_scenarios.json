@@ -9126,7 +9126,7 @@
       "extra": [
         "-NoWarm"
       ],
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
       "first_marker": "warp: kmr_03 entry 0",
@@ -9138,8 +9138,8 @@
           "regex": "warp: kmr_03 entry 0"
         },
         {
-          "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "name": "frame 182\\b",
+          "regex": "shot \\d+ frame 182\\b"
         }
       ],
       "reason": "VERIFY check 2 (cold det, r13off vs battle_start_f182_cold)."
@@ -9153,7 +9153,7 @@
       "extra": [
         "-NoWarm"
       ],
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
       "first_marker": "warp: kmr_03 entry 0",
@@ -9165,8 +9165,8 @@
           "regex": "warp: kmr_03 entry 0"
         },
         {
-          "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "name": "frame 182\\b",
+          "regex": "shot \\d+ frame 182\\b"
         }
       ],
       "reason": "VERIFY check 2 (cold det, pm5off vs battle_start_f182_cold)."
