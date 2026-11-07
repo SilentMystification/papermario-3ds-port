@@ -1022,7 +1022,12 @@ void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nra
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; cen_why = CW_NRK(1); return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
-    if (off_active || grab_bind || r_zmark || nozt_on() || (combine == 8 && plan.uses_noise)) { nd_native_refused++; nraw_why[off_active ? 2 : grab_bind ? 3 : r_zmark ? 4 : nozt_on() ? 5 : 7]++; cen_why = CW_NRK(off_active ? 2 : grab_bind ? 3 : r_zmark ? 4 : nozt_on() ? 5 : 7); return 0; }
+    /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
+    if (off_active) { nd_native_refused++; nraw_why[2]++; cen_why = CW_NRK(2); return 0; }
+    if (grab_bind) { nd_native_refused++; nraw_why[3]++; cen_why = CW_NRK(3); return 0; }
+    if (r_zmark) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; }
+    if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }
+    if (combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[7]++; cen_why = CW_NRK(7); return 0; }
     int z = z_on && (!rect_2d || rect_z);
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
