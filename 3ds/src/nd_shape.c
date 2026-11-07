@@ -15,7 +15,7 @@
 #include "variables.h"
 /* DLC1: the static list compiler and the group runner (S3F-4: the former dlc include, inlined here, same unit) */
 /* DLC1: compile and replay of the map shape display lists (docs/plans/DLC.md, kind G). Included by pm_gbi.c after draw_tri, so it reads the statics of the interpreter.
- * `dlc` is always on (dlc_enabled turns it off under the dd, xt and rmlog tools), `dlccheck` (hash, exit state and the reject proof of every skipped group, counters in the `dlc` line).
+ * `dlc` is always on (dlc_enabled turns it off under the dd, xt and rmlog tools),
  * A shape list is cut into groups: a group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices that it loads itself. The compiler keeps the box of the
  * object coordinates of each group. At replay a group whose box lies outside one clip plane is skipped: the interpreter rejects every triangle of it as well. A group in view runs
  * the same code as the interpreter (G_VTX copy to the GV1 ring, draw_tri) without the CPU transform of the vertices. A group that is near the camera plane, lit, or does not
@@ -49,48 +49,8 @@ u32 dlc_hash(const Gfx* l) {
 int dlc_enabled(void) {
     return !dd_on() && !xt_on() && !rmlog_on();
 }
-int dlcchk_on(void) { return PMDL("dlccheck"); }
-int behroute_on(void) { return PMDL("behroute"); } /* FLK1 debug switch behroute: a visible group with a box corner at w < 0.05 runs through the interpreter, not the static GPU segment */
-__attribute__((noinline)) int dlc_behind(const DlcGrp* g, const float (*m)[4]) {
-    for (int c = 0; c < 8; c++) {
-        float x = (c & 1) ? g->hi[0] : g->lo[0], y = (c & 2) ? g->hi[1] : g->lo[1], z = (c & 4) ? g->hi[2] : g->lo[2];
-        if (m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3] < 0.05f) return 1;
-    }
-    return 0;
-}
 int stdump_on(void) { return PMDL("stdump"); } /* FLK1 state dump per visible static segment, frames 200 to 205 */
 int pm_gpu_rgb_scale_get(void);
-int nobox_on(void) { return PMDL("nobox"); } /* FLK1 debug switch nobox: the group box skip of dlc_try is off */
-int skipdump_on(void) { return PMDL("skipdump"); } /* FLK1 debug switch skipdump: at frame 200 each group of a list logs its box, screen box and skip result */
-/* FLK1: the screen box of a group (pixels, pm_gbi vp_ scale) and the first clip plane that rejects it. */
-__attribute__((cold, noinline)) void dlc_grp_dump(const DlcGrp* g, const float (*m)[4], unsigned k, unsigned gsk, unsigned gop) {
-    static const struct { signed char a, b; } pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } };
-    float smin[2] = { 1e9f, 1e9f }, smax[2] = { -1e9f, -1e9f };
-    int behind = 0, rej = -1;
-    for (int c = 0; c < 8; c++) {
-        float x = (c & 1) ? g->hi[0] : g->lo[0], y = (c & 2) ? g->hi[1] : g->lo[1], z = (c & 4) ? g->hi[2] : g->lo[2];
-        float p[4];
-        for (int q = 0; q < 4; q++) p[q] = m[0][q] * x + m[1][q] * y + m[2][q] * z + m[3][q];
-        if (p[3] <= 0) { behind = 1; continue; }
-        float sx = p[0] / p[3] * vp_sx + vp_tx, sy = vp_ty - p[1] / p[3] * vp_sy;
-        if (sx < smin[0]) smin[0] = sx; if (sx > smax[0]) smax[0] = sx;
-        if (sy < smin[1]) smin[1] = sy; if (sy > smax[1]) smax[1] = sy;
-    }
-    for (int p = 0; p < 5 && rej < 0; p++) {
-        int out = 1;
-        for (int c = 0; c < 8 && out; c++) {
-            float x = (c & 1) ? g->hi[0] : g->lo[0], y = (c & 2) ? g->hi[1] : g->lo[1], z = (c & 4) ? g->hi[2] : g->lo[2];
-            float v = m[0][pl[p].a] * x + m[1][pl[p].a] * y + m[2][pl[p].a] * z + m[3][pl[p].a];
-            float wv = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-            float d = v + (float)pl[p].b * wv;
-            if (pl[p].b > 0 ? !(d < 0) : !(d > 0)) out = 0;
-        }
-        if (out) rej = p;
-    }
-    static unsigned sd_n; if (++sd_n > 400) return;
-    pm_log("skipg f%d k %u op0 %u ntri %u nvtx %u skip %u plane %d behind %d scr x %.0f %.0f y %.0f %.0f box %d %d %d %d %d %d", (int)pm_frame_count(), k, gop, g->ntri, g->nvtx, gsk, rej, behind, smin[0], smax[0], smin[1], smax[1], g->lo[0], g->lo[1], g->lo[2], g->hi[0], g->hi[1], g->hi[2]);
-}
-int noboxint_on(void) { return PMDL("noboxint"); } /* FLK1 debug switch noboxint: an out group runs through the interpreter instead of the skip */
 void dlc_free(DlcEnt* e) {
     for (unsigned k = 0; k < e->ngrp; k++) { free(e->grp[k].ends); free(e->grp[k].bat_q); }
     free(e->grp); e->grp = NULL; e->gop = NULL; e->ngrp = 0;
@@ -341,44 +301,6 @@ int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigne
     return GP1_CROSS;
 }
 
-/* dlccheck: the interpreter rejects every triangle of a skipped group (all three clip bits share one plane). Counts the triangles that it would not reject. */
-__attribute__((cold, noinline)) void dlc_verify_skip(const Gfx* l, const DlcGrp* g, const float (*m)[4]) {
-    unsigned char cb[64], live[64] = { 0 }, ever[64] = { 0 };
-    int tsv = 1;
-    for (u32 j = 0; j < g->op0; j++) { /* FLK1: the slots that an earlier group of this list loaded (the ring keeps them) */
-        u32 w0 = l[j].words.w0;
-        if ((w0 >> 24) == G_ENDDL) break;
-        if ((w0 >> 24) == G_VTX) {
-            unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
-            for (unsigned k = 0; k < n && v0 + k < 64; k++) ever[v0 + k] = 1;
-        }
-    }
-    for (u32 j = g->op0; j < g->op1; j++) {
-        u32 w0 = l[j].words.w0, w1 = l[j].words.w1;
-        unsigned op = w0 >> 24;
-        if (op == G_VTX) {
-            unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
-            const Vtx* src = (const Vtx*)ptr_of(w1);
-            if (v0 + n > 64) n = 64 - v0;
-            if (v0 == 0 && tsv) memset(live, 0, sizeof live);
-            tsv = 0;
-            for (unsigned k = 0; k < n; k++) {
-                float x = src[k].v.ob[0], y = src[k].v.ob[1], z = src[k].v.ob[2], p[4];
-                for (int q = 0; q < 4; q++) p[q] = m[0][q] * x + m[1][q] * y + m[2][q] * z + m[3][q];
-                cb[v0 + k] = (unsigned char)clip_bits4(p); live[v0 + k] = 1;
-            }
-        } else if (op == G_TRI1 || op == G_TRI2) {
-            tsv = 1;
-            for (int t = 0; t < (op == G_TRI2 ? 2 : 1); t++) {
-                u32 w = t ? w1 : w0;
-                int a = (int)((w >> 16) & 0xff) / 2, b = (int)((w >> 8) & 0xff) / 2, c = (int)(w & 0xff) / 2;
-                if (a > 63 || b > 63 || c > 63) continue;
-                if (!live[a] || !live[b] || !live[c]) { if (ever[a] || ever[b] || ever[c]) dlc_c.xgrp++; continue; }
-                if (!(cb[a] & cb[b] & cb[c] & 0x2f)) dlc_c.missing++;
-            }
-        }
-    }
-}
 
 /* One group in view: the interpreter code for G_VTX (GV1 ring copy, no CPU transform) and draw_tri. Returns 0 on success. */
 __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
@@ -446,13 +368,13 @@ void pm_gbi_dlcc(unsigned* o) {
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short* idx);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S4-1 (diagnostic) */
 int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S5-1 (b); WIDE1-1: idx = the indices of the range, tested for edge vertices in wide mode */
-/* S4-1 (diagnostic): the refusal of pm_dlc_native_ranges by class (1 dlc off or nobox, 2 list range, 3 table, 4 refused build, 5 depth pass, 6 group without static data, 7 lit group, 8 room, 9 walker grange refuses, 10 matrix id) */
+/* S4-1 (diagnostic): the refusal of pm_dlc_native_ranges by class (1 dlc off, 2 list range, 3 table, 4 refused build, 5 depth pass, 6 group without static data, 7 lit group, 8 room, 9 walker grange refuses, 10 matrix id) */
 unsigned dnr_c[16];
 int dnr(unsigned k) { dnr_c[k]++; return -1; }
 void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i < 16u; i++) { o[i] = dnr_c[i]; dnr_c[i] = 0; } }
 int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
     const Gfx* l = (const Gfx*)lv;
-    if (!dlc_on || !dlc_enabled() || nobox_on() || noboxint_on()) return dnr(1);
+    if (!dlc_on || !dlc_enabled()) return dnr(1);
     if (!is_host((u32)(uintptr_t)l)) return 0; /* rec_dl: a list outside host memory is not run (gbi_cold_bad_next): no draw */
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return dnr(2);
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
@@ -510,7 +432,6 @@ int dlc_try(const Gfx* l) {
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
     if (!e) return 0;
-    int chk = dlcchk_on();
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
@@ -520,7 +441,6 @@ int dlc_try(const Gfx* l) {
         if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
     } else { dlc_c.hit++; }
     if (e->refused) return 0;
-    if (chk && dlc_hash(l) != e->hash) { dlc_c.hashbad++; e->gen = 0; return 0; }
     const float(*m)[4] = combined;
     u32 entry = nd_ws.geom;
     unsigned gmi = GV_NONE;
@@ -533,16 +453,7 @@ int dlc_try(const Gfx* l) {
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
         if (pm_ph_on) sp0_grp++;
-        if (skipdump_on() && pm_frame_count() >= 200 && pm_frame_count() < 206) dlc_grp_dump(g, m, k, dlc_box_out(g, m), (unsigned)g->op0);
-        if (!nobox_on() && dlc_box_out(g, m)) {
-            if (chk) dlc_verify_skip(l, g, m);
-            if (noboxint_on()) {
-                dlc_set_geom((entry & g->am) | g->om);
-                dlc_depth++;
-                pm_gbi_run((void*)(l + g->op0), (g->op1 - g->op0) * 8u);
-                dlc_depth--;
-                continue;
-            }
+        if (dlc_box_out(g, m)) {
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
             dlc_c.skip++;
@@ -566,7 +477,6 @@ int dlc_try(const Gfx* l) {
             if (gmi == GV_NONE) why = 4;
         }
         dlc_set_geom(gg);
-        if (!why && behroute_on() && dlc_behind(g, m)) why = 5;
         if (!why && g->sd && dlc_static_group(e, g, gmi, gg)) {
             dlc_c.replay++; dlc_c.srep++; dlc_c.tri += g->ntri;
             tri_since_vtx = g->tsv_exit;
@@ -587,18 +497,6 @@ int dlc_try(const Gfx* l) {
     dlc_set_geom((entry & e->exit_am) | e->exit_om);
     if (skipped_last) memset(vert_live, 0, sizeof vert_live);
     if (skipped_any) dlc_dirty = 1;
-    if (chk) { /* the exit state against a plain walk of the list */
-        u32 g2 = entry;
-        int anyg = 0;
-        for (unsigned i = 0; i < DLC_MAXOPS; i++) {
-            u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
-            if ((w0 >> 24) == G_ENDDL) break;
-            if ((w0 >> 24) == G_GEOMETRYMODE) g2 = (g2 & (w0 & 0xffffffu)) | w1;
-            if ((w0 >> 24) == G_VTX) anyg = 1;
-        }
-        if (g2 != nd_ws.geom) dlc_c.exitbad++;
-        if (anyg && e->ngrp && tri_since_vtx != e->grp[e->ngrp - 1].tsv_exit) dlc_c.exitbad++;
-    }
     return 1;
 }
 
