@@ -65,3 +65,10 @@ Trace: grab words equal (dim 01000200 = 512x256 slot for a 320x240 picture, near
 Measurement (two cold runs, frame 410): offdump of the full 512x256 grab slot, plus the splash draws' uv min/max in slot texels. Confirmed if the dumps differ only in the padding and uv max >= 320 (or >= 240).
 Fix: 1. clear every VRAM allocation once at creation (grab slot, off-screen slots, texture slabs) to transparent black with GX_MemoryFill. 2. N64 clamp: clamp the uv in the uvso for clamped tiles to (w - 0.5) / W (no extra copy, matches the N64 rule for every off-screen sample).
 Gate: cold vs cold byte-equal on nok11_splash (26 shots, fixedseed fast fs1off); native vs CPU byte-equal; mac_01 byte-equal; offdump padding equal in both cold runs.
+
+## FB-2 state (2026-11-07, second handback)
+Branch fb2 head f939c30a9 (WIP, on nds1 4cd689e68), reference worktree build3ds/wt/fbref. Real bugs fixed in the WIP: (1) nd_emit unit 2 registers: block 0x99 (dim 0x9A..addr 0x9D), type 0x9E (old 0xA0/0xA6 wrong); (2) GX queue overflow (svcBreak in gxCmdQueueAdd, 32 entries) on a forced cmdbuf split: pm_gx_room then split_frame; (3) model cache hit kept old template ids, after an LRU eviction they named other keys (tmplsmall picture garbled): NdNat.tk, ids rebuilt at each hit. Bug 3 is on the default path in nds1.
+Gates: intro_native_w600 9/9 byte-equal (old base); nrawwhy all 0 (noise refusal removed). Noise byte gate on nok11_fs: fb2 vs ref 13/30 differ, fb2 vs fb2 7/30 differ: run noise. Likely the same VRAM leftover source as the FB-1 grab (slot and slab padding never cleared, row_FB "Oracle review FB-1 grab noise").
+Next, in order:
+1. Split bug 3 (template id cache) and bug 2 (GX queue room) into own commits on a branch from nds1; gate mac_01 and iwa_10 byte-equal, tmplsmall picture right by eye; SendMessage main "FB-2 fix ready <hash>".
+2. After the FB-1 VRAM clear is in nds1 (the orchestrator tells you): rebase, then fb2 vs fb2 cold on nok11_fs must be byte-equal; then the noise byte gate vs the reference, cmdsmall and tmplsmall vs no-switch, intro_native rerun.
