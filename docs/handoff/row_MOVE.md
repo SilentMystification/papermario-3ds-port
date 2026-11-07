@@ -11,6 +11,28 @@ User decision (2026-11-07): one agent does every remaining pm_gbi.c move in sequ
 6. LS-2 entities (ent_*, the G_PM_ENT case) to nd_ent.c.
 Not in this row: LS-3 (records; waits for SPR4 and MDL-4), GM-3/ST-3 deletes, WK-4 part 2 (needs an oracle decision).
 
+## Oracle decision WK-4b
+Rule (D9): a switch survives only if an open row names it, or it is a user option. A deleted switch keeps its default branch (the switch-off path) and loses the other one.
+- nofog: keep. It is a user option (options.ini, the "options: ... nofog=0 nolight=0" line), like nolight, so it is not a debug switch.
+- rmoff: delete, and keep the render-mode path. Delete its XOR term in the state hash too; with the switch off the term contributes 0, so the hash value is unchanged. Check that the term really is 0 when off before deleting.
+- nocull: delete. cull_off() becomes 0, so its 5 sites collapse to the cull path.
+- nooff: delete; the off-screen path stays.
+- t1foldall: delete; the default t1_fold rule stays.
+- dlccheck: delete, together with the dlc_verify_skip path (verification only); the normal skip stays.
+- behroute, nobox, noboxint, skipdump: delete; the default branches of pm_dlc_native_ranges and dlc_static_group stay.
+- gv1check: delete its three blocks; the GV path and its cull checks as they run with the switch off stay.
+- dd_on, xt_on, rmlog_on: delete, with the drawlog and rmlog code they guard (dd_* functions, the verts[] copy in G_VTX, tri_dd_log, tri_rm_log) and their call sites in nd_walk.c and the GV path. The ndref compare is the debug tool that stays.
+- gbiprof / gp_*: convert, do not delete. The counters move to nd_cen.c (cold). They are fed only when pm_ph_on (prof) is set, the census K report reads them there, and the separate gbiprof switch is gone. The hot path keeps a single `if (pm_ph_on)` test, which is no extra test where one already exists.
+- Kept because rows name them: combchk, entcheck, r13off, waterlog, orbdbg, texdiff.
+Commits, in the MOVE train after its move 6; each gated by spot_mac01_pic byte-equal, plus the extra noted:
+1. Render, cull, off: rmoff, nocull, nooff, t1foldall. Also battle_start byte-equal.
+2. DLC: dlccheck, behroute, nobox, noboxint, skipdump. Also iwa_10 byte-equal, and the dlc report lines equal.
+3. GV and drawlog: gv1check, dd_on, xt_on, rmlog_on. Also iwa_10 by eye.
+4. gp_* into the cold census. Also one prof=4 run shows the same census and opsplit lines.
+Proof per commit: `grep -n 'PMDL("<word>")\|pm_debug_has("<word>")'` is empty for each deleted word.
+
+These 4 commits run after move 6, in this row.
+
 ## Gate
 After every 2 or 3 moves (not per move): spot_mac01_pic byte-equal to nds1, gbi phase at mac_01 within +3 percent (opsplit), plus the move's named scene by eye (iwa_10, battle_start, pause_spin_grab_w300 for WK-3, sbk56 sun for GM-4, entcheck_mac01 diff 0 for LS-2). Grep proof that each moved definition left pm_gbi.c. Host tests link (nd_host_test.sh) after each gate.
 
