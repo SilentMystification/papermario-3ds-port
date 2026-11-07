@@ -29,3 +29,9 @@ Gate:
 
 ## Rules
 Own files: 3ds/src/nd_model.c (not the why 4 line), pm_gpu.c pm_gpu_model_native and pm_gpu_model_fb_cached, pm_gbi.c rec_run and load_shaded_sprite, nd_sprite.c. CORE edits pm_gbi.c on branch core (state renames, setters): keep pm_gbi.c hunks small. No toggles (debug switches allowed), no stubs, no push, no attribution lines, never commit 3ds/src/map_restore_table.c. Keep Azahar open. Status line in 3ds/logs/perf/status_MDL.txt. Budget: reset and continue. Two tries per named cause. Delete this file in the MDL-4 commit.
+
+## Oracle review MDL-1 cache (2026-11-06, Opus; on branch mdl bba5bc3d8)
+Keep the no-hit rule only for R13 texture-block records. The store change `nd_mc_store(mk, tex != 0, ...)` in bba5bc3d8 is too broad: every textured record without a handle desc becomes no-hit (aux_ok forms, gfx-list records, iwa_10 bound-slot cases), their hits fall back (ndn_texf) and the walker draws them: likely cause of iwa_10 not byte-equal and ndmcheck 208 -> 1619. No slot-id key: the key is built before the record is applied; on a hit rec_apply is skipped and pc jumps past the R13 words, so the block never runs.
+Fix (one row): `nd_mc_store(mk, ds != NULL || (r13 && ds == NULL && gfx == NULL && tex), hs, hg)`; count those stores in the mdlw line as `r13nohit <n>`.
+Gate: iwa_10 byte-equal against efaca195d, ndmcheck mismatches back to about 208; battle_start f182 byte-equal to r13off; mac_01 byte-equal; ndm hit/miss at mac_01 and iwa_10 equal to efaca195d; kmr_03 why 2 = 0 and r13nohit about 297 per 100 frames.
+Revisit only if a console prof of a battle shows the R13 miss path above 0.5 ms/frame (then: run the block, compare the stored unit's pm_tex_census_id and the tex epoch in pm_gpu_model_hit).
