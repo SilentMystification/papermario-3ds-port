@@ -626,11 +626,183 @@
       "reason": "HANG1a gate: grab lines per frame during the splash (count by grep of grab lines per frame) and the picture by eye."
     },
     {
+      "name": "nok11_det_cmdsmall",
+      "subject": "DET nok_11 splash with cmdsmall=2048 (forced splits): shots must equal nok11_det.",
+      "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off det cmdsmall=2048",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ],
+      "reason": "FB-2 step 2 gate: nok11_det with cmdsmall=2048 (a forced command buffer split before nearly every native raw close). Shots byte-equal to nok11_det (no switch) of the same build.",
+      "status": "unverified"
+    },
+    {
+      "name": "nok11_det_tmplsmall",
+      "subject": "DET nok_11 splash with tmplsmall=16 (LRU evictions): shots must equal nok11_det.",
+      "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off det tmplsmall=16",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ],
+      "reason": "FB-2 step 2 gate: nok11_det with tmplsmall=16 (the template table evicts: LRU). Shots byte-equal to nok11_det (no switch) of the same build; tmplhi evict count above 0 shows the eviction ran.",
+      "status": "unverified"
+    },
+    {
+      "name": "spot_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold start with the det switch. Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
+      "proves": "DET cold spot: the mac_01 picture per shot is a function of the build (det), so a base and a head build give byte-equal shots (MOVE census and phase gates).",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
+    },
+    {
+      "name": "wcen_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det. Census window 0 to 300: the opsplit line with the per-producer ops and the mod column (module per op, nd_cen.c op_module).",
+      "proves": "MOVE (a) census: the mod column prints with det, so base and head per-op totals compare in the log.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase opsplit loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "opsplit f",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f\\d+ ops"
+        }
+      ],
+      "reason": "MOVE gate (c): one 300-frame window (the until is the first opsplit line). A second window would need a longer cap and is not run here. Cold start 12 to 16 s to the first marker."
+    },
+    {
+      "name": "phase_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det and phase fsplit (no picture). The fsplit line carries gbi ms per window.",
+      "proves": "MOVE gate (d): the gbi phase ms of the window (fsplit gbi) for the base and the head build, same harness.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase fsplit loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "fsplit f",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fsplit",
+          "regex": "fsplit f\\d+ logic"
+        }
+      ],
+      "reason": "MOVE gate (d): one window of phase ms. opsplit is left out: its per-op sampler adds cost to the gbi phase being measured."
+    },
+    {
+      "name": "phase_iwa10_det",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530, cold start with det and phase fsplit (no picture). The fsplit line carries gbi ms per window.",
+      "proves": "MOVE gate (d): the gbi phase ms of the window for the base and the head build on iwa_10.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 phase fsplit loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "fsplit f",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "fsplit",
+          "regex": "fsplit f\\d+ logic"
+        }
+      ],
+      "reason": "MOVE gate (d): one window of phase ms on iwa_10. opsplit is left out (see phase_mac01_det)."
+    },
+    {
       "name": "nok11_det",
       "status": "unverified",
       "subject": "DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
       "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
-      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off det",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det",
       "extra": [
         "-Turbo",
         "-NoWarm"
@@ -662,7 +834,7 @@
       "status": "unverified",
       "subject": "DET-1 cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400 (fxtest 89), shot 1 at frame 412. One detlog line per game step (det step N ...).",
       "proves": "DET-1: the first game step where two cold runs of one build differ, and the field that differs (keys, draws, iv, skip, aud, rng, noise, evict).",
-      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off detlog",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off detlog",
       "extra": [
         "-Turbo",
         "-NoWarm"
@@ -3094,42 +3266,6 @@
       "reason": ""
     },
     {
-      "name": "forest_mim",
-      "status": "unverified",
-      "subject": "Mario in mim_05 (area 12 map 4, Forever Forest), reached by warp to mim_05 entry 0 (no tour). In control, shot at frames 400 and 404.",
-      "proves": "FOREST diagnostic: opsplit, mdlsum and dlc2 static share for mim_05 at f599 (window f300 to f599), to compare with mac01t (opsplit f599 ops 1732, mdlsum f599 tot ops 1732, dlc2 static tri 91040). Log only, no numeric gate.",
-      "debug": "warp=mim_05:0 shots shotwin=400:6 loglevel=debug phase pacestat logstat dcsum",
-      "until": "mdlsum f599 r12 ",
-      "cap": 90,
-      "deadline": 20,
-      "first_marker": "warp: mim_05 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mim_05 entry 0"
-        },
-        {
-          "name": "opsplit",
-          "regex": "opsplit f599 ops"
-        },
-        {
-          "name": "mdlsum total ops (forest, f599)",
-          "regex": "mdlsum f599 tot ops (\\d+) "
-        },
-        {
-          "name": "dlc2 static tri (forest, f599)",
-          "regex": "dlc2 f599 tri \\d+ .*static grp \\d+ tri \\d+"
-        },
-        {
-          "name": "shot",
-          "regex": "shot \\d+ frame 40[0-5]\\b"
-        }
-      ],
-      "reason": ""
-    },
-    {
       "name": "mac01t",
       "status": "unverified",
       "subject": "Mario in mac_01 (area 1 map 2, Toad Town), reached by the tour path: warp to mac_00 entry 4, then tour step to mac_01 entry 0 at about frame 209. In control, shot at frames 500 and 504.",
@@ -3618,6 +3754,30 @@
         }
       ],
       "reason": "UI2 step 1 low-HP test. Uses the existing hp= switch."
+    },
+    {
+      "name": "lowmem_hint",
+      "status": "unverified",
+      "subject": "Boot with memforce (debug switch): the ROM does not fit the heap, so the fatal screen shows the low-memory text. Memforce takes the applet branch: the hint to hold R and open the Homebrew Launcher with full memory is on the bottom screen.",
+      "proves": "SIZE-4: the low-memory message names the full-memory start in applet mode, and the text is not cut on the bottom screen.",
+      "debug": "memforce loglevel=debug",
+      "until": "Not enough memory for the ROM",
+      "cap": 25,
+      "deadline": 25,
+      "first_marker": "rom: app id",
+      "expects": "rom",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "app id line",
+          "regex": "rom: app id [0-9a-f]+, applet 1"
+        },
+        {
+          "name": "low memory",
+          "regex": "Not enough memory for the ROM"
+        }
+      ],
+      "reason": "SIZE-4 gate (row SIZE): the fatal screen is printed before the game starts, so the until line is the low-memory log line; the bottom screen is read from the Azahar window capture."
     },
     {
       "name": "battle_start",
@@ -5244,6 +5404,7 @@
     {
       "name": "intro_native",
       "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on.",
       "proves": "UA10: the intro mode runs in the native view with wide on.",
       "debug": "wide shots shotwin=330:20 loglevel=debug",
@@ -6275,56 +6436,6 @@
         }
       ],
       "reason": "S6-1 entity check on the kmr_03 coin block scene (row S6-1 gate). Cap 25 s: boot, warp and the first 300-frame window (the until)."
-    },
-    {
-      "name": "ent_kmr03_pic",
-      "status": "pending",
-      "subject": "Koopa Village kmr_03 (warp entry 0, default placement). Coin block and entity models on screen, drawn natively from the static pools (S6-2c-3). Shots at frames 200 to 205 and the entnat window line.",
-      "proves": "S6-2c-3 switch: entity model lists draw from the pools (entnat segs native above 0), the picture is the walker picture. Gate: native above 0, the shot shows the scene.",
-      "debug": "warp=kmr_03:0 prof=4 shots shotwin=200:6 loglevel=debug",
-      "until": "entnat f\\d+ draws",
-      "cap": 25,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "native entity draws above 0",
-          "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
-          "pick": "last"
-        }
-      ],
-      "reason": "S6-2c-3 picture of the native entity draw on kmr_03 (copy of entcheck_kmr03 without the check switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
-    },
-    {
-      "name": "ent_kmr03_pic",
-      "status": "pending",
-      "subject": "Koopa Village kmr_03 (warp entry 0, default placement). Coin block and entity models on screen, drawn natively from the static pools (S6-2c-3). Shots at frames 200 to 205 and the entnat window line.",
-      "proves": "S6-2c-3 switch: entity model lists draw from the pools (entnat segs native above 0), the picture is the walker picture. Gate: native above 0, the shot shows the scene.",
-      "debug": "warp=kmr_03:0 prof=4 shots shotwin=200:6 loglevel=debug",
-      "until": "entnat f\\d+ draws",
-      "cap": 25,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "native entity draws above 0",
-          "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
-          "pick": "last"
-        }
-      ],
-      "reason": "S6-2c-3 picture of the native entity draw on kmr_03 (copy of entcheck_kmr03 without the check switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
     },
     {
       "name": "ent_kmr03_pic",
@@ -8334,6 +8445,7 @@
     {
       "name": "intro_native_w600",
       "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
       "proves": "OFF-3 census of intro_native: cumulative nrawwhy unit0 (8) and noise (7) refusals at f600.",
       "debug": "wide shots shotwin=330:20 loglevel=debug",
@@ -8708,6 +8820,90 @@
         }
       ],
       "reason": "BTRANS oracle: walk-in with fs1force=2 (every 2nd step skipped, O3DS-like slow frames), interp on."
+    },
+    {
+      "name": "fb_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start: shots at frames 200 to 205 (the picture). FB-1 mac_01 gate: the native grab build and the pre-row build (nds1 9ddd6a818) give byte-equal shots.",
+      "proves": "FB-1 gate 3: the native grab change does not change a scene without a grab; shots equal the pre-row build in a cold det run.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "FB-1 gate 3 (cold det, byte-equal shots between builds). The mac_01 picture is the subject."
+    },
+    {
+      "name": "fb_nok11_nat",
+      "status": "unverified",
+      "subject": "Mario in nok_11 (entry 0) with the water splash (fxtest 89), the native grab quad (raw batch, grab_tex unit 0). fixedseed as fb_nok11_cpu.",
+      "proves": "FB-1 GRAB: the native grab quad draws the picture of fb_nok11_cpu (byte-equal shots) and the grabw nat words equal the grabw cpu words.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog fixedseed fast",
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: nok_11 entry 0"},
+        {"name": "spawn", "regex": "fxtest: spawn 89 water_splash"},
+        {"name": "shot a", "regex": "fxtest: shot 1 effect 89 water_splash"},
+        {"name": "grab log", "regex": "grab \\d+ src .* rows 0-240 "}
+      ],
+      "reason": "FB-1 GRAB gate: native grab quad, same scene and seed as fb_nok11_cpu."
+    },
+    {
+      "name": "fb_sky_mac00_nomerge",
+      "status": "unverified",
+      "subject": "mac_00 sky at -135 0 85 with rectnomerge and rectsig: every raw rect batch is one rectangle (no merge); the close state against the open state.",
+      "proves": "FB-1 RSIG control: the picture against fb_sky_mac00_rsig (merged). Equal pictures show that merging a rect batch changes no pixel.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug rectsig rectnomerge",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: mac_00 entry 0"},
+        {"name": "shot at 205", "regex": "shot \\d+ frame 205\\b"}
+      ],
+      "reason": "FB-1 RSIG control: sky at mac_00 with no rect merge, shots 200 to 205."
+    },
+    {
+      "name": "fb_sky_mac00_rsig",
+      "status": "unverified",
+      "subject": "mac_00 sky at -135 0 85 with rectsig: the render state of each open raw rect batch against the live state at merge and close.",
+      "proves": "FB-1 RSIG: rsig lines name the field that differs between the queue state of a rect batch and its close (the setter that does not flush).",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug rectsig",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: mac_00 entry 0"},
+        {"name": "shot at 205", "regex": "shot \\d+ frame 205\\b"}
+      ],
+      "reason": "FB-1 RSIG measurement: sky at mac_00, shots 200 to 205 (the rsig lines and the picture of the same frames)."
     },
     {
       "name": "fb_sky_mac00",
@@ -9093,6 +9289,200 @@
       }
     ],
     "reason": "SPR4 battle gate reference (det cold): pm_gpu_spr_native returns 0, the walker draws the sprite words; same build as battle_start_f182_cold."
-  }
+  },
+    {
+      "name": "spot_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 (preset toad), Mario at pos -135 0 85, cold det start: shots at frames 200 to 205 (the picture). VERIFY check 1: HEAD and the det base give byte-equal shots.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 1 (mac_00, cold det). Same switches as fb_mac01_det."
+    },
+    {
+      "name": "battle_start_r13off_det",
+      "status": "unverified",
+      "subject": "Battle scene (one Goomba on kmr_03), cold det start, walker R13 (r13off): shot at frame 182. VERIFY check 2 walker reference.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 r13off det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 182\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\b"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, r13off vs battle_start_f182_cold)."
+    },
+    {
+      "name": "battle_start_pm5off_det",
+      "status": "unverified",
+      "subject": "Battle scene (one Goomba on kmr_03), cold det start, pm5 native path off (pm5off): shot at frame 182. VERIFY check 2 walker reference.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 pm5off det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 182\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\b"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, pm5off vs battle_start_f182_cold)."
+    },
+    {
+      "name": "spot_iwa10_det",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530 (entry 1), cold det start: shots at frames 200 to 205 with the native model draws. VERIFY check 2 native side.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, iwa_10 native)."
+    },
+    {
+      "name": "spot_iwa10_det_r13off",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530 (entry 1), cold det start with r13off: shots at frames 200 to 205. VERIFY check 2 walker side.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 shots shotwin=200:6 loglevel=debug r13off fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, iwa_10 walker R13)."
+    },
+    {
+      "name": "rect_post_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start with native textured rects (rectpost=200): shots at frames 200 to 205. VERIFY check 2 native side.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug rectpost=200 fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, native rects)."
+    },
+    {
+      "name": "rect_nr_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start with CPU textured rects (norectraw): shots at frames 200 to 205. VERIFY check 2 walker side.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug norectraw fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, CPU rects)."
+    }
   ]
 }

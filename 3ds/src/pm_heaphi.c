@@ -72,6 +72,9 @@ void pm_heaphi_line(unsigned frame) {
         pm_log_d("heaphi f%u %s used %u top %u free %u inst_top %u proc_used %u proc_top %u proc_free %u size %u", frame, h->name,
                  h->cur_used, h->cur_top, h->cur_free, h->inst_top, h->proc_used, h->proc_top, h->proc_free, (unsigned)h->head->capacity);
     }
+    /* FB-2: the nrawwhy line (the raw refusal counts, moved here from ent_log: ent_log runs only in entity scenes) and the template high mark line */
+    { extern void pm_gpu_nraw_why(unsigned* o); unsigned nw[10]; pm_gpu_nraw_why(nw); pm_log_d("nrawwhy f%u cmdbuf %u off %u grab %u zmark %u nozt %u tex1 %u noise %u unit0 %u tmpl %u", frame, nw[1], nw[2], nw[3], nw[4], nw[5], nw[6], nw[7], nw[8], nw[9]); }
+    { extern void pm_gpu_fb2_stat(unsigned* o); unsigned fb[3]; pm_gpu_fb2_stat(fb); pm_log_d("tmplhi f%u hi %u evict %u cmdsplit %u", frame, fb[0], fb[1], fb[2]); }
     /* poolhi: the existing high marks of the port pools (tex slot peak and bytes, gv palette peak). */
     unsigned gv[4] = { 0, 0, 0, 0 };
     pm_gpu_gv_stats(gv);

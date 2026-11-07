@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include "pm_port.h"
 #include "pm_au2.h"
-#include "pm_dsptest.h"
 #include "pm_dspaud.h"
 
 #define PM_AU_LEAD 1416u /* PT14: ndsp backlog (samples) where the game switches to short frames: about 1600 samples, 50 ms, before a burst */
@@ -62,7 +61,7 @@ void pm_audio_init(void) {
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
     /* A5: the 3DS DSP is the only audio path (docs/plans/AUD_DSP.md). It needs the AU2 queue. A failure is logged once and the game runs without sound. */
     if (pm_debug_has("au2off")) pm_log_e("dspaudio: needs the AU2 queue, switch au2off is set: audio is silent");
-    else if (pm_dspa_init()) { ready = 1; if (pm_debug_has("dsptest")) pm_dsptest_start(); return; }
+    else if (pm_dspa_init()) { ready = 1; return; }
     else pm_log_e("dspaudio: init failed, audio is silent");
     ndspExit();
 }

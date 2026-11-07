@@ -750,9 +750,36 @@ static void flush_impl(void) {
     flush_impl_body();
     fl_acc += (unsigned)(pm_ticks() - t0);
 }
+/* FB-1 RSIG (debug switch rectsig): the render state a raw rectangle batch was opened with (rect_sig_fill at the open), compared with the live state at
+ * every merge and at the close. The close draws the batch with the live state, so a field that differs names a setter that does not flush an open batch. */
+typedef struct { int filt, ws, wt, cur, sx0, sy0, sx1, sy1, bl, rep, zc, zu, at, dec, noc, zon, mem, mix, comb, rgbs, pgen, mixc, prim, cc, env; } RectSig;
+static RectSig rsig_open;
+static unsigned rsig_chk, rsig_diff;
+extern void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter);
+static void rect_sig_fill(RectSig* s) {
+    uint32_t ws = 0, wt = 0; unsigned f = 0;
+    pm_tex_unit0_param(&ws, &wt, &f);
+    s->filt = (int)f; s->ws = (int)ws; s->wt = (int)wt; s->cur = pm_tex_cur_idx();
+    s->sx0 = sci_x0; s->sy0 = sci_y0; s->sx1 = sci_x1; s->sy1 = sci_y1;
+    s->bl = r_blend; s->rep = r_replace; s->zc = r_zcmp; s->zu = r_zupd; s->at = r_atest; s->dec = r_decal; s->noc = r_nocol;
+    s->zon = z_on; s->mem = r_memblend; s->mix = r_mix; s->comb = combine; s->rgbs = rgb_scale; s->pgen = plan_gen;
+    s->mixc = (int)r_mixcol; s->prim = (int)prim; s->cc = (int)cconst; s->env = (int)env_col;
+}
+static void rect_sig_check(const char* where) {
+    if (!PMDL("rectsig")) return;
+    RectSig n;
+    rect_sig_fill(&n);
+    rsig_chk++;
+#define RSIG_CMP(f) if (rsig_open.f != n.f) { rsig_diff++; if (rsig_diff <= 60) pm_log_d("rsig %s f%u %s open %d live %d", where, pm_frame_count(), #f, rsig_open.f, n.f); }
+    RSIG_CMP(filt) RSIG_CMP(ws) RSIG_CMP(wt) RSIG_CMP(cur) RSIG_CMP(sx0) RSIG_CMP(sy0) RSIG_CMP(sx1) RSIG_CMP(sy1)
+    RSIG_CMP(bl) RSIG_CMP(rep) RSIG_CMP(zc) RSIG_CMP(zu) RSIG_CMP(at) RSIG_CMP(dec) RSIG_CMP(noc) RSIG_CMP(zon) RSIG_CMP(mem) RSIG_CMP(mix)
+    RSIG_CMP(comb) RSIG_CMP(rgbs) RSIG_CMP(pgen) RSIG_CMP(mixc) RSIG_CMP(prim) RSIG_CMP(cc) RSIG_CMP(env)
+#undef RSIG_CMP
+}
 static void flush_impl_body(void) {
     if (rect_open && dbg_have) { dbg_cmp(); dbg_have = 0; }
     if (rect_open) { /* DR1: the batch is rectangles: draw it with the state they were queued in */
+        if (rect_raw) rect_sig_check("close");
         int sc = combine, sr = rect_2d, sz = rect_z;
         combine = rect_ec; rect_2d = 1; rect_z = rect_zb; rect_open = 0; rect_tex = -1; rect_raw = 0;
         flush_draw();
@@ -1114,9 +1141,11 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
+static unsigned ndn_tgen;
 static void nd_native_submit(const NdDraw* dp, int tex) {
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, pm_gbi.c) */
     const NdDraw* d = dp;
+    if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     /* PM5 cause 3: a program change clears the whole native shadow (the citro3d uniform file is one file for all programs, and the template shadow does not know the program) */
     if (d->use5) {
         if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; }
@@ -1134,6 +1163,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     static uint32_t out[ND_EMIT_MAX];
     NdtT t2 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     unsigned nw = nd_emit_draw(out, &ndn_sh, d);
+    noise_bound = 0; /* FB-2: the native draw wrote unit 2 (or left it off): the walker binds the noise texture again at its next noise draw */
     pm_gpu_ndt_end(t2, NDT_EMIT);
     NdtT t3 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     GPUCMD_AddRawCommands(out, nw);
@@ -1201,6 +1231,7 @@ static NdTmplKey spr_wk; /* S4-1 sprcheck: the walker template key of the last r
 static void spr_check(const NdDraw* w);
 static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer (FB-2: no refusal, a forced split), 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
 void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
+void pm_gpu_fb2_stat(unsigned* o); /* FB-2 log: template high mark, evictions, forced splits */
 /* OFF-2: the unit 0 words of the grab copy (grab_tex), as the walker bind (dc_bind) sends them. The copy is one fixed buffer: force keeps the words in
  * every draw of the grab, as the walker binds it at every draw. 1 always. */
 static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
@@ -1235,37 +1266,48 @@ static void pm5_upload(void) {
     }
     sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
 }
-/* FB-2: the forced split of nd_raw_native (kick_check's split without its draw threshold, run inside a raw close: the open batch's ring words stay in place).
- * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
+/* FB-2 switches: tmplsmall=<n> (the template table size: the LRU evicts), cmdsmall=<n> (the command buffer limit in words: a forced split) */
 static unsigned cmd_small, cmd_split_n;
 unsigned pm_gpu_cmd_split_n(void) { return cmd_split_n; }
-static __attribute__((cold, noinline)) void cmd_split_forced(void) {
-    pm_gx_room();
-    split_frame();
-    kick_n++; pm_ph_kick_n++; cmd_split_n++;
-}
-static void cmd_switch(void) { /* cmdsmall=<n>: the command buffer limit in words (a forced split near it); read once */
+void pm_gpu_fb2_stat(unsigned* o) { o[0] = nd_tmpl_hi(); o[1] = nd_tmpl_gen(); o[2] = cmd_split_n; }
+static void fb2_switches(void) {
     static int done;
     char v[16];
     if (done) return;
     done = 1;
+    if (pm_debug_value("tmplsmall", v, sizeof v)) nd_tmpl_set_cap((unsigned)atoi(v));
     if (pm_debug_value("cmdsmall", v, sizeof v)) cmd_small = (unsigned)atoi(v);
 }
+/* FB-2: the forced split of nd_raw_native (kick_check's split without its draw threshold, run inside a raw close: the open batch's ring words stay in place).
+ * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
+void pm_gx_room(void);
+static __attribute__((cold, noinline)) void cmd_split_forced(void) {
+    pm_gx_room();
+    split_frame(); /* the same split as the grab and the frame split (grab_split counts it: the first split of a frame queues the clear) */
+    kick_n++; pm_ph_kick_n++; cmd_split_n++;
+}
+/* FB-2: the unit 2 words of the noise texture (fixed for the run: force 0, the shadow decides when they go out) */
+static void noise_native_words(NdUnit* u) {
+    u->force = 0;
+    u->dim = noise_tex.dim; u->param = noise_tex.param; u->lod = noise_tex.lodParam;
+    u->addr = (uint32_t)osConvertVirtToPhys(noise_tex.data) >> 3; u->type = (uint32_t)noise_tex.fmt;
+}
 static int nd_raw_native(void) {
-    cmd_switch();
+    fb2_switches();
+    nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
     if (g_use5 && combine == 8 && (plan.uses_tex1 || plan.uses_noise)) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* PM5 cause 2: the pm5 file has no second uv map or noise row for the native draw */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); unsigned lim = cmd_small && cmd_small < csz ? cmd_small : csz; if (coff + ND_EMIT_MAX + 1024u >= lim) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
     if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }
-    if (combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[7]++; cen_why = CW_NRK(7); return 0; }
     int z = z_on && (!rect_2d || rect_z) && !off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
     if (combine >= 2) { /* OFF-2: a grab draw binds the copy. OFF-3: an off-screen image (2) that is the target of this pass is read from its snapshot (FX2a, flush_draw made it) */
         t = grab_bind ? grab_native_unit0(&u0) : pm_tex_native_unit0(&u0);
+        if (grab_bind && PMDL("grablog")) pm_log_d("grabw f%u nat dim %08x param %08x lod %08x addr %08x type %u", pm_frame_count(), u0.dim, u0.param, u0.lod, u0.addr, u0.type); /* FB-1 GRAB: the words of the grab slot, native */
         if (t == 2 && off_active && pm_tex_off_idx() == off_cur && offs[off_cur].snap_ready) t = tex_native_words(&u0, &offs[off_cur].snap);
         if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; }
     }
@@ -1273,7 +1315,9 @@ static int nd_raw_native(void) {
     memset(&u1, 0, sizeof u1);
     int t1 = 0;
     if (combine == 8 && plan.uses_tex1) { t1 = pm_tex_native_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform */
+    if (t1 == 2 && off_active && pm_tex_aux_off_idx() == off_cur && offs[off_cur].snap_ready) t1 = tex_native_words(&u1, &offs[off_cur].snap); /* FB-2: the aux image is the target of this pass: its snapshot (OFF-3, as flush_draw) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
+    const int noise = combine == 8 && plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
     nk.pass = 0; nk.raw = 1; nk.cull = (uint8_t)g_cullm;
@@ -1282,7 +1326,7 @@ static int nd_raw_native(void) {
     nk.atest_on = r_atest >= 0; nk.aref = (uint8_t)(r_atest >= 0 ? r_atest : 0);
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
     nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
-    nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = 0;
+    nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = (uint8_t)noise;
     const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d && !r_zmark; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
@@ -1322,6 +1366,11 @@ static int nd_raw_native(void) {
     d.buf_col = ndn_to.buf_color; d.has_buf = (uint8_t)ndn_to.buf_set;
     d.u[0] = u0;
     d.u[1] = u1;
+    if (noise) { /* FB-2: unit 2 (the noise texture) and its offset uniform, as the walker's noise block of flush_draw */
+        noise_native_words(&d.u[2]);
+        d.nzo[0] = 120.f / 64.f; d.nzo[1] = 200.f / 64.f; d.nzo[2] = noise_off[0]; d.nzo[3] = noise_off[1];
+        d.loc_nzo = (unsigned)u4_nzo; d.has_nzo = u4_nzo >= 0;
+    }
     if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)u4_uvx; d.has_uvx = 1; }
     d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
     if (g_use5) { pm5_upload(); d.use5 = 1; d.no_uni = 1; d.npal = 0; d.has_uvx = 0; } /* PM5-2; PM5 cause 2: no pm4 unit 1 uv row in a pm5 draw */
@@ -1482,6 +1531,7 @@ static void flush_draw(void) {
      * Wiping the buffer here let the next 3D batch ignore the house. */
     (void)batch_identity;
     DC_T(1);
+    if (grab_bind && PMDL("grablog")) pm_log_d("grabw f%u cpu dim %08x param %08x lod %08x addr %08x type %u", pm_frame_count(), grab_tex.dim, grab_tex.param, grab_tex.lodParam, (uint32_t)osConvertVirtToPhys(grab_tex.data) >> 3, (unsigned)grab_tex.fmt); /* FB-1 GRAB: the words of the grab slot, CPU bind */
     int tex =(combine >= 2) && (grab_bind ? (dc_bind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
     int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
     int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
@@ -2399,6 +2449,26 @@ static void grab_log(const void* cfb, int y0, int y1, int reuse) {
     if (on < 0) on = pm_debug_has("grablog");
     if (on) pm_log_d("grab %d src %p rows %d-%d frame %u reuse %s", grab_n, cfb, y0, y1, pm_frame_count(), reuse ? "yes" : "no");
 }
+static void rect_raw_open(int ec, float fz, const float uvso[4]); /* RECT-1a, defined below */
+/* FB-1 GRAB: the copy quad as four ring vertices (rect_raw_quad form, identity positions as the off-screen rect path). uv = tc / 256, shorts 256 - row / 2
+ * (mo + x is even at both edges): s runs along y (240 at the top, 0 at the bottom), t along x, as the CPU quad. */
+static void grab_raw_quad(int x1, int mo) {
+    short v[32];
+    const short tva = (short)(256 - mo / 2), tvb = (short)(256 - (mo + x1) / 2);
+    const int px_[4] = { 0, x1, x1, 0 }, py_[4] = { 0, 0, 240, 240 };
+    const short ps[4] = { 240, 240, 0, 0 }, pt[4] = { tva, tvb, tvb, tva };
+    for (int i = 0; i < 4; i++) {
+        short* q = v + 8 * i;
+        unsigned char* cb = (unsigned char*)q;
+        q[0] = (short)px_[i]; q[1] = (short)py_[i]; q[2] = 0; q[3] = 0; q[4] = ps[i]; q[5] = pt[i];
+        cb[12] = cb[13] = cb[14] = cb[15] = 0xff;
+    }
+    const int b = pm_gpu_gvtx_load(v, 4);
+    unsigned short* ix = gidx + gidx_n;
+    ix[0] = (unsigned short)b; ix[1] = (unsigned short)(b + 1); ix[2] = (unsigned short)(b + 2);
+    ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
+    gidx_n += 6; gni += 6;
+}
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     pm_gpu_begin_wait();
     if (rect_open) flush(); /* DR1 */
@@ -2407,6 +2477,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
     const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
     if (!gpu_ok || off_fail || y1 <= y0) return 0;
+    if (!(gpu_vtx_on && gv4_on) || gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) return 0; /* FB-1 GRAB: the copy quad is native (no room: the caller reads the CPU) */
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
@@ -2432,14 +2503,13 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
         int s_comb = combine, s_2d = rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = r_atest, s_nc = r_nocol, s_mix = r_mix,
             s_rs = rgb_scale, s_3d = draw_3d;
-        float xa = (float)x0, xb = (float)x1, va = 1.f - ((float)mo + xa) / 512.f, vb = 1.f - ((float)mo + xb) / 512.f, ua = 240.f / 256.f;
         sci_x0 = 0; sci_y0 = 0; sci_x1 = x1; sci_y1 = 240;
         combine = 3; rect_2d = 1; batch_identity = 1; r_replace = 1; r_atest = -1; r_nocol = 0; r_mix = 0; rgb_scale = 1; draw_3d = 0;
         grab_bind = 1;
-        /* game (x, y) reads texel column 239 - y, memory row 40 + x of the copy. v = 0 samples the last memory row (found with
-         * the grabtest dump: with v = row / 512 the slot came out mirrored in x), so v = 1 - row / 512. */
-        pm_gpu_tri(xa, 0.f, 0.5f, ua, va, 0xffffffffu, xb, 0.f, 0.5f, ua, vb, 0xffffffffu, xb, 240.f, 0.5f, 0.f, vb, 0xffffffffu);
-        pm_gpu_tri(xa, 0.f, 0.5f, ua, va, 0xffffffffu, xb, 240.f, 0.5f, 0.f, vb, 0xffffffffu, xa, 240.f, 0.5f, 0.f, va, 0xffffffffu);
+        /* FB-1 GRAB: the copy quad is a native raw batch (rect path at fill depth 0.5, combine 3, unit 0 = grab_tex). */
+        static const float uvso_g[4] = { 1.f / 256.f, 1.f / 256.f, 0.f, 0.f };
+        rect_raw_open(3, 0.5f, uvso_g);
+        grab_raw_quad(x1, mo);
         flush();
         grab_bind = 0;
         sci_x0 = sc[0]; sci_y0 = sc[1]; sci_x1 = sc[2]; sci_y1 = sc[3];
@@ -3138,7 +3208,7 @@ void pm_gpu_set_r13_t1(int bound) {
     r13t1b_ok = bound; r13u1_ok = 0; r13i8_1 = 0;
     if (!bound) return;
     memset(&r13u1, 0, sizeof r13u1);
-    if (pm_tex_native_unit1(&r13u1) > 0) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); }
+    if (pm_tex_native_unit1(&r13u1) == 1) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); } /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
@@ -3346,7 +3416,8 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
-    /* FB-2: the template ids of the cached draws are built again before any draw goes out (a table that evicts may have moved an id since the store); a full table falls back */
+    /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
+    nd_tmpl_pin();
     for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
     float comb[4][4], pal0[16];
     nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
@@ -3897,7 +3968,7 @@ static int rect_raw_ok(void) {
 static void rect_raw_open(int ec, float fz, const float uvso[4]) {
     int rtx = pm_tex_cur_idx();
     rq_cur = rd_tex ? rtx : -1; /* RECT diag: the queue-time slot of this rectangle */
-    if (rect_open && rect_raw && gni > 0 && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && fz == rect_pal_z && !memcmp(g_uvso, uvso, sizeof(g_uvso)) && !PMDL("rectnomerge")) { dr1_merged++; rect_c[3]++; return; }
+    if (rect_open && rect_raw && gni > 0 && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && fz == rect_pal_z && !memcmp(g_uvso, uvso, sizeof(g_uvso)) && !PMDL("rectnomerge")) { dr1_merged++; rect_c[3]++; rect_sig_check("merge"); return; }
     if (rect_open) dr1_breaks++;
     flush();
     draw_3d = 0;
@@ -3912,6 +3983,7 @@ static void rect_raw_open(int ec, float fz, const float uvso[4]) {
     g_zmix[0] = 1.f; g_zmix[1] = 0.f;
     g_ct = 0; g_cullm = GPU_CULL_NONE; g_pal = 1; g_use5 = 0;
     pal_n = 1; pal_g[0] = RECT_GM; pal_gen++;
+    if (PMDL("rectsig")) rect_sig_fill(&rsig_open);
 }
 static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, short s1, short t1, unsigned c) {
     short v[32];
@@ -3933,7 +4005,7 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     rect_c[2]++;
     if ((unsigned)gring_n > rect_c[5]) rect_c[5] = (unsigned)gring_n;
 }
-static void rect_log(unsigned f) { pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
+static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
 static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have = 1; } }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */

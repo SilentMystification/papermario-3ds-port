@@ -11,3 +11,8 @@ Write a table into docs/handoff/audit_warm_runs.md (section "## Recheck on nds1 
 
 ## Rules
 No code changes. Own worktree not needed (bench build-at and lanes); run from the main folder. Commit only the doc (pathspec commit), no attribution lines. Cold starts: close nothing by hand; if the harness gives a warm start, the boot check must show the right build id, else rerun. Keep Azahar open. Delete this file in the commit with the table.
+
+## State and decisions (2026-11-07, orchestrator)
+Done on 29202b385: check 1 mac_01 (fb_mac01_det, cold det) 12 of 12 byte-equal to the det base 9ddd6a818. Scenarios and benches for the det checks committed (2b6edbd07; kept).
+Decisions: the base for every det pair is 9ddd6a818 (the first nds1 with det); builds before it cannot take det, so the pre-sprfix pure-move pair (5b2ee3c48) is dropped (each move row since then had its own byte gate). Pin HEAD to the nds1 head at the start of the run and record it. Run from a worktree (build3ds/wt/verify, detached at the pinned head) so no shared-folder JSON edit can collide.
+Left: check 1 mac_00 (HEAD and base); check 2 and check 3 at HEAD; the table; delete this file.

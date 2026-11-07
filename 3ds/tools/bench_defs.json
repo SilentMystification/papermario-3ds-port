@@ -15,7 +15,12 @@
       "scenario": "mdlw_battle_spr5",
       "cap": 45,
       "until": "spr5 f\\d+ nopal",
-      "tags": ["azahar", "spr", "battle", "mdl3"],
+      "tags": [
+        "azahar",
+        "spr",
+        "battle",
+        "mdl3"
+      ],
       "gates": []
     },
     {
@@ -27,7 +32,12 @@
       "scenario": "pause_spr5",
       "cap": 45,
       "until": "spr5 f\\d+ nopal",
-      "tags": ["azahar", "spr", "pause", "mdl3"],
+      "tags": [
+        "azahar",
+        "spr",
+        "pause",
+        "mdl3"
+      ],
       "gates": []
     },
     {
@@ -1103,6 +1113,53 @@
       ]
     },
     {
+      "name": "sbk56_superblock_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SIZE-1 gate: sbk_56 super block upgrade (effect graphics from the ROM copy). Shots every 30 frames to the effects end; byte compare with the reference build.",
+      "scenario": "sbk56_superblock",
+      "cap": 45,
+      "until": "superblock: effects done",
+      "tags": [
+        "azahar",
+        "pic",
+        "size"
+      ],
+      "gates": []
+    },
+    {
+      "name": "ndref_splash_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SIZE-1 gate: fxtest splash block (ndref_splash) runs to frame 412 with no fault; the walker reads the effect graphics of the ROM copy.",
+      "scenario": "ndref_splash",
+      "cap": 20,
+      "until": "ndref f412 done",
+      "tags": [
+        "azahar",
+        "pic",
+        "size"
+      ],
+      "gates": []
+    },
+    {
+      "name": "lowmem_hint_pic",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SIZE-4 gate: memforce boot shows the low-memory fatal screen with the applet hint (app id line). A person reads the bottom screen in the Azahar window capture.",
+      "scenario": "lowmem_hint",
+      "cap": 25,
+      "until": "Not enough memory for the ROM",
+      "tags": [
+        "azahar",
+        "size"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_iwa10_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2134,6 +2191,71 @@
       "gates": []
     },
     {
+      "name": "fb_mac01_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 gate 3: Toad Town mac_01 cold det run, shots 200 to 205. Byte-equal between the native grab build and the pre-row build (nds1 9ddd6a818).",
+      "scenario": "fb_mac01_det",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE gate: mac_01 spot, cold start with the det switch. Two cold runs of one build must give byte-equal shots 200 to 205.",
+      "scenario": "spot_mac01_det",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": ["azahar", "det", "cold"],
+      "gates": []
+    },
+    {
+      "name": "wcen_mac01_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE gate (c): mac_01 census with opsplit (the mod column), cold start with det.",
+      "scenario": "wcen_mac01_det",
+      "cap": 45,
+      "until": "opsplit f",
+      "tags": ["azahar", "det", "cold"],
+      "gates": []
+    },
+    {
+      "name": "phase_mac01_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE gate (d): mac_01 gbi phase ms (fsplit) cold with det, base and head.",
+      "scenario": "phase_mac01_det",
+      "cap": 45,
+      "until": "fsplit f",
+      "tags": ["azahar", "det", "cold"],
+      "gates": []
+    },
+    {
+      "name": "phase_iwa10_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE gate (d): iwa_10 gbi phase ms (fsplit) cold with det, base and head.",
+      "scenario": "phase_iwa10_det",
+      "cap": 45,
+      "until": "fsplit f",
+      "tags": ["azahar", "det", "cold"],
+      "gates": []
+    },
+    {
       "name": "nok11_det",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -2142,7 +2264,11 @@
       "scenario": "nok11_det",
       "cap": 45,
       "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2154,7 +2280,11 @@
       "scenario": "nok11_detlog",
       "cap": 45,
       "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2166,7 +2296,11 @@
       "scenario": "battle_start_f182_cold",
       "cap": 60,
       "until": "shot \\d+ frame 182\\b",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2706,7 +2840,239 @@
       "nosprnat"
     ],
     "gates": []
-  }
+  },
+    {
+      "name": "fb_nok11_nat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 GRAB: nok_11 splash with the native grab quad, fixedseed. Shots equal fb_nok11_cpu_pic; grabw nat words equal grabw cpu.",
+      "scenario": "fb_nok11_nat",
+      "cap": 30,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_nomerge_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 RSIG control: mac_00 sky, rectnomerge (one rect per batch). Picture equal to fb_sky_mac00_rsig means merging changes no pixel.",
+      "scenario": "fb_sky_mac00_nomerge",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_rsig_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 RSIG: mac_00 sky with rectsig. rsig lines per merge and close name the render field the batch closes with, not the one it was queued with.",
+      "scenario": "fb_sky_mac00_rsig",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_nok11_splash_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 GRAB scene: nok_11 water splash (grablog, grab_cur -> pm_gpu_grab). Shots of the splash window; the grab quad is the copy source.",
+      "scenario": "nok11_splash",
+      "cap": 30,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_cmdsmall_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-2 step 2 gate (cmdsmall): nok11_det with the switch; shots must equal nok11_det of the same build.",
+      "scenario": "nok11_det_cmdsmall",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_tmplsmall_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-2 step 2 gate (tmplsmall): nok11_det with the switch; shots must equal nok11_det of the same build.",
+      "scenario": "nok11_det_tmplsmall",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "intro_native_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-2 step 2 gate (aux off-screen unit 1): intro_native shots 330 to 350 (native, native aspect, wide). Shots must equal nds1 reference.",
+      "scenario": "intro_native",
+      "cap": 45,
+      "until": "shot \\d+ frame 334\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "unit"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac00_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 1: mac_00 cold det run, shots 200 to 205. Byte-equal between HEAD and the det base 9ddd6a818.",
+      "scenario": "spot_mac00_det",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_r13off_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "VERIFY check 2: battle kmr_03 cold det run with r13off, shot 182 (walker R13).",
+      "scenario": "battle_start_r13off_det",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_pm5off_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "VERIFY check 2: battle kmr_03 cold det run with pm5off, shot 182 (walker pm5).",
+      "scenario": "battle_start_pm5off_det",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 2: iwa_10 cold det run, shots 200 to 205, native draws.",
+      "scenario": "spot_iwa10_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_det_r13off_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 2: iwa_10 cold det run, shots 200 to 205, r13off (walker R13).",
+      "scenario": "spot_iwa10_det_r13off",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "rect_post_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 2: mac_01 cold det run, native textured rects, shots 200 to 205.",
+      "scenario": "rect_post_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "rect_nr_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 2: mac_01 cold det run, CPU textured rects (norectraw), shots 200 to 205.",
+      "scenario": "rect_nr_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    }
   ],
   "legacy": {
     "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",
