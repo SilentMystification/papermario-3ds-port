@@ -1,4 +1,4 @@
-/* nd_gv_test.c: host test of nd_gv_params (nd_model.c, S3N-1). The oracle is the walker's gv_params_calc as it was before the move (pm_gbi.c at 5fc6fb083),
+/* nd_gv_test.c: host test of nd_gv_params (nd_model.c, S3N-1). The oracle is the walker's gv_params_calc as it was before the move (the former pm_gbi.c at 5fc6fb083),
  * written here with the same expressions over the same values. Random inputs; every float of the output must be bit equal. Exit 1 on a difference. */
 #include <stdio.h>
 #include <stdint.h>

@@ -7,19 +7,18 @@
 #include "nd.h"
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
 #include "nd_int.h"
 
-/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+/* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdLight lt[9];
 unsigned lt_n;
 s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
 
-/* ---- M: moved from pm_gbi.c (plan_s10_path group M, GM-1): matrix load, viewport, movemem, popmtx, record lights ---- */
+/* ---- M: moved from the former pm_gbi.c (plan_s10_path group M, GM-1): matrix load, viewport, movemem, popmtx, record lights ---- */
 float combined[4][4];
 
 /* Viewport scale/translate after the 2-bit fraction. Full 320x240 until a display list sets one. */
@@ -186,7 +185,7 @@ void mtx_elem(Mtx* dst, int r, int c, float v) {
     m[idx + 8] = (m[idx + 8] & ~mask) | (((u32)fixed & 0xffffu) << sh);
 }
 
-/* ---- MV-10: light count, cut from pm_gbi.c (no change; target only, calls lit_freeze) ---- */
+/* ---- MV-10: light count, cut from the former pm_gbi.c (no change; target only, calls lit_freeze) ---- */
 extern unsigned lt_n;
 void nd_light_count(u32 w1) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; } /* ST-1: G_MW_NUMLIGHT; group M owns lt_n */
 

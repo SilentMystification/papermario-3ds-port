@@ -1,5 +1,5 @@
-/* nd_walk.c: the list walker (WK-1, plan_s10_path group W). nd_walk_run is the pc loop of pm_gbi.c, moved without change: the
- * stack, the host range check, the g1 and g2 skip tables and the cold handlers of bad lists. The op handlers stay in pm_gbi.c
+/* nd_walk.c: the list walker (WK-1, plan_s10_path group W). nd_walk_run is the pc loop of the former pm_gbi.c, moved without change: the
+ * stack, the host range check, the g1 and g2 skip tables and the cold handlers of bad lists. The op handlers stay in the former pm_gbi.c
  * until their groups move (nd_int.h declares them). */
 #include <stdio.h>
 #include <string.h>
@@ -7,7 +7,6 @@
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
@@ -15,7 +14,7 @@
 #include "variables.h"
 #include "nd_int.h"
 
-/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+/* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
 
 int host_range(u32 p, u32* lo, u32* hi) {
@@ -343,7 +342,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
     tex_streak_flush();
 }
 
-/* ---- MV-7: walk core, cut from pm_gbi.c (no change): host range, pointer resolve, init, cold modifyvtx, lt compare, run entry, fallback ---- */
+/* ---- MV-7: walk core, cut from the former pm_gbi.c (no change): host range, pointer resolve, init, cold modifyvtx, lt compare, run entry, fallback ---- */
 extern char __end__[]; /* linker: end of .bss */
 int is_host(u32 p) {
     unsigned int heap = __ctru_heap;

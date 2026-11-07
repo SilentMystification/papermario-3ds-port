@@ -1,12 +1,11 @@
 /* nd_shape.c: the map shape path (plan_s10_path group D, LS-1): the dlc group table (dlc_tab, the static-group compile, the box
- * class of the groups, the replay and the native ranges). Cut from pm_gbi.c without logic change (D12). nd_dlc.c compiles the lists. */
+ * class of the groups, the replay and the native ranges). Cut from the former pm_gbi.c without logic change (D12). nd_dlc.c compiles the lists. */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
@@ -14,7 +13,7 @@
 #include "pm_port.h"
 #include "variables.h"
 /* DLC1: the static list compiler and the group runner (S3F-4: the former dlc include, inlined here, same unit) */
-/* DLC1: compile and replay of the map shape display lists (docs/plans/DLC.md, kind G). Included by pm_gbi.c after draw_tri, so it reads the statics of the interpreter.
+/* DLC1: compile and replay of the map shape display lists (docs/plans/DLC.md, kind G). Included by the former pm_gbi.c after draw_tri, so it reads the statics of the interpreter.
  * `dlc` is always on,
  * A shape list is cut into groups: a group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices that it loads itself. The compiler keeps the box of the
  * object coordinates of each group. At replay a group whose box lies outside one clip plane is skipped: the interpreter rejects every triangle of it as well. A group in view runs

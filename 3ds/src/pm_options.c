@@ -217,7 +217,7 @@ void pm_options_init(void) {
     if (!have || from_txt || migrated) pm_options_write(); /* LOG5: a version 1 file is written as version 2 */
 }
 
-/* F11-3: the panel. nofog is live. nolight is cached in pm_gbi.c at first use, so it takes effect at the next boot. */
+/* F11-3: the panel. nofog is live. nolight is cached in the former pm_gbi.c at first use, so it takes effect at the next boot. */
 static int changed;
 void pm_options_touch(void) { changed = 1; }
 

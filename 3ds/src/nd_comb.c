@@ -1,5 +1,5 @@
-/* nd_comb.c: the combine group (plan_s10_path group C, ST-2, cut from pm_gbi.c, pure cut). 3DS only: the decision and the
- * sync_combine work call pm_gpu_*. The typedefs CcIn, Dec and ScMemo are copies of the pm_gbi.c ones (ST-2). */
+/* nd_comb.c: the combine group (plan_s10_path group C, ST-2, cut from the former pm_gbi.c, pure cut). 3DS only: the decision and the
+ * sync_combine work call pm_gpu_*. The typedefs CcIn, Dec and ScMemo are copies of the the former pm_gbi.c ones (ST-2). */
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -7,7 +7,6 @@
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
@@ -16,7 +15,7 @@
 #include "variables.h"
 #include "nd_ops.h"
 
-/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+/* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
 unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
 int dual_on;
@@ -46,7 +45,7 @@ unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst
 unsigned aux_key;
 
 
-/* globals of the combine state, owned by pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
+/* globals of the combine state, owned by the former pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
 extern unsigned aux_key, box_save[4];
 extern int box_pat, box_prod, comb_alpha_shade, comb_dry, dual_on, plan_active;
 extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
@@ -148,7 +147,7 @@ int const_rgb_tex_alpha(unsigned* out) {
     return 1;
 }
 
-/* ST-3: the legacy combine mode (moved from pm_gbi.c, pure move). leg_mode is the mode pm_gpu got last; sl_* the gpu calls of the last sync_legacy. */
+/* ST-3: the legacy combine mode (moved from the former pm_gbi.c, pure move). leg_mode is the mode pm_gpu got last; sl_* the gpu calls of the last sync_legacy. */
 int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
 int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
@@ -774,7 +773,7 @@ void op_setcombine(u32 w0, u32 w1) {
             cmb_gen_seen = comb_gen; /* R2B */
 }
 
-/* ---- MV-10: debug switch combchk, cut from pm_gbi.c (no change) ---- */
+/* ---- MV-10: debug switch combchk, cut from the former pm_gbi.c (no change) ---- */
 /* S3N-3d: debug switch combchk. Each combine work of sync_combine runs nd_comb_decide on its inputs and compares the outputs with the walker state. */
 int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
 

@@ -1,4 +1,4 @@
-/* nd_model.c: native model draws (plan S3N). S3N-1: the draw parameters of a raw triangle (nd_gv_params), moved from pm_gbi.c gv_params_calc.
+/* nd_model.c: native model draws (plan S3N). S3N-1: the draw parameters of a raw triangle (nd_gv_params), moved from the former pm_gbi.c gv_params_calc.
  * Pure C: the host test builds it (3ds/tools/nd_gv_test.c). No walker state and no pm_gpu call inside: the caller passes the values. */
 #include <stdint.h>
 #include <string.h>
@@ -182,7 +182,7 @@ int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax) {
 #define ND_CULL_BACK_CCW 2u
 
 /* ---- S3N-3d: the combine inputs of a native draw (nd_comb_decide) ---- */
-/* The 16 combiner fields as op_setcombine (pm_gbi.c) decodes them into tst1, in NdCombIn.tst order. Returns 0 when the draw takes them.
+/* The 16 combiner fields as op_setcombine (the former pm_gbi.c) decodes them into tst1, in NdCombIn.tst order. Returns 0 when the draw takes them.
  * 1: the combine reads tile 1 (the rename of op_setcombine) or the box product; both need tile state the native draw does not have (fallback).
  * -1: the combine reads KEYCENTER, KEYSCALE or K4, whose values are not native (nost). */
 static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, uint32_t env, uint32_t prim_lod, int tex, int t1v, NdCombIn* ci) {
@@ -356,7 +356,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
 }
 
 /* ---- S3N-3c: a model record as native draws. The palette 0 is post x the combined matrix of the walker's stack; the ranges are the static groups of the
- * shape list in view (pm_gbi.c pm_dlc_native_ranges). Ranges with the same state key and contiguous indices merge into one draw. ---- */
+ * shape list in view (the former pm_gbi.c pm_dlc_native_ranges). Ranges with the same state key and contiguous indices merge into one draw. ---- */
 NdNat nat[ND_NAT_MAX]; /* MOVE-5: the draw state of nd_model_draw (nd_model_set.c) */
 int nat_n;
 int nd_nat_why; /* the reason of the last fallback: the nd_model_state why, or 11 too many draws, 12 the list is not static */

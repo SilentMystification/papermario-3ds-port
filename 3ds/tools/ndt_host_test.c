@@ -8,7 +8,7 @@
  *   3 fp24 dp4 seam emulation: fp24 (s1 e7 m16, round to nearest even) after each multiply and each add. Shared-edge s16
  *     vertices, two matrices with equal value bits must give bit-equal output. Two products of one transform (two orders)
  *     give the count of differing shared-edge results (the seam risk that one product per model removes).
- *   4 record packing: sizeof and offsetof of RecKey (3ds/src/pm_gbi.c:3476-3480, copied as text). The size and alignment
+ *   4 record packing: sizeof and offsetof of RecKey (3ds/src/the former pm_gbi.c:3476-3480, copied as text). The size and alignment
  *     must match the design note (96 B, aligned 32).
  * Build and run: sh 3ds/tools/ndt_host_test.sh. Exit 0 when all gates pass. */
 #include <stdio.h>
@@ -204,7 +204,7 @@ static int test_fp24(void) {
 }
 
 /* ================= 4 record packing ================= */
-/* copied from 3ds/src/pm_gbi.c:3476-3480 (the fields after the UC2 group words are checked by offset) */
+/* copied from 3ds/src/the former pm_gbi.c:3476-3480 (the fields after the UC2 group words are checked by offset) */
 typedef struct { u32 ver; u32 gen; u16 hgen; u16 tgen0; u16 tgen1; u16 off; u16 len; u8 state; u8 nb; u16 s0; u16 s1; u32 grp[7];
     u32 io, ic;
     u32 gin, gout, view; u16 alen; u8 npt, nd, fl;

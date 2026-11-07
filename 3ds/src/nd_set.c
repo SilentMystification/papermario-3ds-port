@@ -1,4 +1,4 @@
-/* nd_set.c: the native state setters of the walker (group S, ST-1, cut from pm_gbi.c). 3DS only: they call pm_gpu_* and pm_tex_*.
+/* nd_set.c: the native state setters of the walker (group S, ST-1, cut from the former pm_gbi.c). 3DS only: they call pm_gpu_* and pm_tex_*.
  * nd_state.c keeps NdWs, nd_words and the field decoders (host-built). */
 #include <stdio.h>
 #include <stdint.h>
@@ -7,7 +7,6 @@
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
@@ -21,7 +20,7 @@
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
 void pm_tex_set_filter(int linear);
 
-/* ST-1: globals of the setters, cut from pm_gbi.c (writer: this module) */
+/* ST-1: globals of the setters, cut from the former pm_gbi.c (writer: this module) */
 int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 unsigned sr_sig;

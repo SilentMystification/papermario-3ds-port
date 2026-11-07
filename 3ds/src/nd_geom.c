@@ -1,13 +1,12 @@
 /* nd_geom.c: the geometry group (plan_s10_path group G, GM-2). G_VTX (vertex load to the ring) and G_TRI1/G_TRI2 (draw_tri):
- * the triangle path, its clip and cull helpers, the epoch and state checks. Cut from pm_gbi.c and nd_walk.c without logic change (D12).
- * fold_axis stays in pm_gbi.c (the window fold of the rectangle path, used by nd_rect.c). */
+ * the triangle path, its clip and cull helpers, the epoch and state checks. Cut from the former pm_gbi.c and nd_walk.c without logic change (D12).
+ * fold_axis stays in the former pm_gbi.c (the window fold of the rectangle path, used by nd_rect.c). */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
@@ -15,7 +14,7 @@
 #include "pm_port.h"
 #include "variables.h"
 
-/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+/* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 u8 vert_live[64];
 int tri_since_vtx;
 u8 vert_scr[64];
@@ -24,13 +23,12 @@ unsigned char vert_cb[64]; /* DIP1: clip bits of vert_p, made once at G_VTX */
 float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
 u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
 u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = the ring copy's S, T and colour read (gv_xf, GM-3). 3 for every vertex made. */
-unsigned seam_obj, seam_clip; /* SEAM: CPU path triangles by position route, `seamstat` logs them */
 unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n;
 unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross;
 unsigned short vert_ring[64], vert_gmi[64];
 unsigned vert_tss[64];
 unsigned st_gpu_tri; /* triangles drawn by the raw path */
-unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
+unsigned st_vx; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
 int pm_nolight = -1; /* F11-10: -1 = read the switch at first use, the Options row sets 0 or 1 */
 unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
 int n_cmd, n_in, n_drop, n_out;

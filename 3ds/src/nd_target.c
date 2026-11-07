@@ -1,12 +1,11 @@
 /* nd_target.c: the colour image and its role (plan_s10_path group R-target, WK-3): img_role, grab_cur, off_screen_check, the
- * depth word helpers and the colour image setter (G_SETCIMG). Cut from pm_gbi.c without logic change (D12). */
+ * depth word helpers and the colour image setter (G_SETCIMG). Cut from the former pm_gbi.c without logic change (D12). */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
@@ -14,7 +13,7 @@
 #include "pm_port.h"
 #include "variables.h"
 
-/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+/* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 int cimg_stride = 320;
 void pm_zbuf_need(void);
 int pm_fb_native(const void* p);
@@ -96,7 +95,7 @@ static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
 }
 void gbi_setcimg(u32 w0, u32 w1) { set_cimg(w1, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1); }
 
-/* ---- MV-8: target helper, cut from pm_gbi.c (no change) ---- */
+/* ---- MV-8: target helper, cut from the former pm_gbi.c (no change) ---- */
 unsigned rgba_from_5551(unsigned c) {
     unsigned r = (c >> 11) & 31;
     unsigned g = (c >> 6) & 31;

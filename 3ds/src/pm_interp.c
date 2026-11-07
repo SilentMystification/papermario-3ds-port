@@ -1,5 +1,5 @@
 /* F06-2: pm_interp_lerp(t) pairs this frame with the previous one (same node id, same leaf count, same leaf index) and builds
- * a table: dest Mtx* -> lerped MtxF (res = (1 - t) * old + t * new). Unpaired leaves are not in the table. pm_gbi.c load_mtx reads it.
+ * a table: dest Mtx* -> lerped MtxF (res = (1 - t) * old + t * new). Unpaired leaves are not in the table. the former pm_gbi.c load_mtx reads it.
  * F06-1: frame interpolation record (PaperBoat method, FrameInterpolation.cpp). Switch `fps60` / pm_opt.fps60, read at the first start.
  * Every guMtxF2L between pm_interp_start and pm_interp_stop adds a leaf (node id, leaf index, dest Mtx*, MtxF).
  * Node id = hash(parent id, a, b, occurrence index). Root node "game_logic". No picture change. */
@@ -37,7 +37,7 @@ int pm_interp_skip; /* F06-5: set by pm_frame_loop when the last step took more 
 static unsigned nskip;
 void pm_interp_skip_count(void) { nskip++; }
 /* The tables sit on the heap and exist only with fps60. A 700 KB BSS growth moved gDisplayContext past 0x01400000, the end of the
- * is_host range in pm_gbi.c: the background list was then "bad dl" and the picture changed with the switch off. */
+ * is_host range in the former pm_gbi.c: the background list was then "bad dl" and the picture changed with the switch off. */
 static Leaf *leaves, *pleaves;
 static Node *nodes, *pnodes;
 typedef struct { const Mtx* key; int idx; } RT;

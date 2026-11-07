@@ -1,5 +1,5 @@
 /* BG seam host test (row BG1 + BG2, oracle plan 2). Host C, no 3DS code: it copies the arithmetic of
- * src/background.c (bg_emit, bg_texrect, bg_sky_rows), 3ds/src/pm_gbi.c (gbi_texrect COPY) and
+ * src/background.c (bg_emit, bg_texrect, bg_sky_rows), 3ds/src/the former pm_gbi.c (gbi_texrect COPY) and
  * 3ds/src/pm_gpu.c (pm_gpu_tex_rect: the F07-7 edge rule and the linear s over the pixel span).
  *
  * For each sky configuration it computes the texel every screen pixel shows and compares it with the
@@ -86,7 +86,7 @@ static void bg_sky_rows(s32 xOff, s32 row0, s32 rows, s32 t) {
     bg_texrect((xOff + MINX) * 4, yl, (MAXX + MINX - 1) * 4, yh, 0, t, 4096, 1024);
 }
 
-/* gbi_texrect COPY (pm_gbi.c), one axis: the pixel span [a, b] (inclusive) and the texel at the left
+/* gbi_texrect COPY (the former pm_gbi.c), one axis: the pixel span [a, b] (inclusive) and the texel at the left
  * edge (s0) and the right edge (s1) of the span. copy4: dsdx counts 4 texels per pixel (x only). */
 typedef struct { int a, b; double s0, s1; int ok; } Span;
 

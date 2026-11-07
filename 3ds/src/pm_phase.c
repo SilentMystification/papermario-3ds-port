@@ -289,10 +289,10 @@ void pm_pmu_sp0(unsigned out[3]) {
  * pm_ph_frame_end hands its record to pf_take and pm_pf_frame turns pm_ph_on off again. The PMU fields (PF3) print 0 until PF3. */
 extern unsigned pm_step_calls;
 extern unsigned pm_ph_iv;
-unsigned long long pm_gbi_sp0_dlc(void); /* pm_gbi.c: dlc group ticks, summed in sampled frames only */
+unsigned long long pm_gbi_sp0_dlc(void); /* the former pm_gbi.c: dlc group ticks, summed in sampled frames only */
 int pm_pf_on;
 void pm_log_prof_line(const char* fmt, ...); /* PROF4, pm_log.c */
-int pm_pf_arm; /* prof samples: prof on and phase off. pm_gbi.c skips its phase reports while it is set */
+int pm_pf_arm; /* prof samples: prof on and phase off. the former pm_gbi.c skips its phase reports while it is set */
 static int pf_want;
 static unsigned pf_every = 30;
 static unsigned pf_cd; /* clean drawn frames left before the next sample */

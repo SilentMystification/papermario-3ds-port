@@ -1,9 +1,9 @@
 /* nd_int.h: the internal interface of the native walker modules (plan_s10_path D5, WK-1): the walk group (nd_walk.c), the rect
- * handlers (nd_rect.c) and the walker helpers of pm_gbi.c that they use. One header (D5). Sections per module, filled as the groups move. */
+ * handlers (nd_rect.c) and the walker helpers of the former pm_gbi.c that they use. One header (D5). Sections per module, filled as the groups move. */
 #ifndef ND_INT_H
 #define ND_INT_H
 
-/* pm_gbi_walk.h: the walker helpers (pm_gbi.c) that the handler modules use (CORE-3). nd_rect.c holds the G_TEXRECT and G_FILLRECT handlers. */
+/* pm_gbi_walk.h: the walker helpers (the former pm_gbi.c) that the handler modules use (CORE-3). nd_rect.c holds the G_TEXRECT and G_FILLRECT handlers. */
 
 #include <stdint.h>
 #include "ultra64.h"
@@ -13,7 +13,7 @@ typedef struct { int p0, p1; float u0, u1; } FoldSeg;
 
 extern unsigned tex_gen;
 
-/* the image roles of img_role (pm_gbi.c) */
+/* the image roles of img_role (the former pm_gbi.c) */
 enum { ROLE_MAIN, ROLE_DEPTHQ, ROLE_CPUFILL, ROLE_DEPTH, ROLE_CPUPAL, ROLE_SLOT };
 
 extern u16 DepthCopyBuffer[16];
@@ -48,7 +48,7 @@ typedef struct { unsigned draws, nat, fb, segn, segi, comp, dyn, why[12], ceq, c
 typedef struct { unsigned lists, nat, dyn, ref, skip; } GdlCount;
 typedef struct { const Gfx* p; unsigned s; } PkMark;
 
-/* ---- W: enums and defines of the gather and walk paths (cut from pm_gbi.c) ---- */
+/* ---- W: enums and defines of the gather and walk paths (cut from the former pm_gbi.c) ---- */
 enum { GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
 enum { GP1_IN, GP1_OUT, GP1_CROSS };
 #define GV_NONE 0xffffu
@@ -56,7 +56,7 @@ extern int pm_tex_tagi;
 extern unsigned int __ctru_heap, __ctru_heap_size, __ctru_linear_heap, __ctru_linear_heap_size;
 extern char __end__[];
 int pm_gpu_spr_native(const uint32_t* rec);
-/* ---- W: globals and prototypes of the walker helpers that stayed in pm_gbi.c (moved with the group) ---- */
+/* ---- W: globals and prototypes of the walker helpers that stayed in the former pm_gbi.c (moved with the group) ---- */
 const float (*pm_gbi_combined_ptr(void))[4];
 int clip_bits4(const float* p);
 int dlc_try(const Gfx* l);
@@ -69,7 +69,7 @@ int lt_mem_same(u32 w0, u32 w1);
 int pm_gpu_spr_native(const uint32_t* rec);
 unsigned gv_matrix_id(int need_nm);
 unsigned rec_run(const Gfx* q);
-int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, pm_gbi.c */
+int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
 unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
 void gbi_cold_modifyvtx(u32 w0, u32 w1);
@@ -105,7 +105,7 @@ extern int splash_on;
 extern unsigned conv_k4;
 extern unsigned s;
 
-/* ---- W: variables of pm_gbi.c that the walk group uses (global now) ---- */
+/* ---- W: variables of the former pm_gbi.c that the walk group uses (global now) ---- */
 extern NdLight lt[9];
 extern const Gfx dlc_end[1];
 extern float combined[4][4];
@@ -158,7 +158,7 @@ extern unsigned short vert_ring[64];
 extern unsigned st_vx;
 extern unsigned vert_tss[64];
 
-/* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the pm_gbi.c helpers it calls ---- */
+/* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the the former pm_gbi.c helpers it calls ---- */
 void nd_walk_run(void* list, unsigned nbytes);
 extern const u8 g1_skip[256];
 int host_range(u32 p, u32* lo, u32* hi);
@@ -176,11 +176,11 @@ void set_fillcolor(u32 w1);
 void op_setprimcolor(u32 w0, u32 w1);        /* ST-1: nd_state.c */
 void op_setothermode(unsigned op, u32 w0, u32 w1); /* ST-1: nd_state.c */
 void nd_sr_forget(void);                     /* ST-1: nd_state.c, sync_render state forgotten */
-void gp_note(int k, int same);               /* PG0 counter, pm_gbi.c */
-void lit_freeze(void);                       /* GV5, pm_gbi.c */
+void gp_note(int k, int same);               /* PG0 counter, the former pm_gbi.c */
+void lit_freeze(void);                       /* GV5, the former pm_gbi.c */
 extern int sci_x0, sci_y0, sci_x1, sci_y1;   /* ST-1: nd_state.c, scissor of the walker */
-void nd_light_count(u32 w1);                 /* ST-1: pm_gbi.c, G_MW_NUMLIGHT (lit_freeze, clamp 7) */
-extern unsigned lt_n;                        /* pm_gbi.c, lights count (GM-1) */
+void nd_light_count(u32 w1);                 /* ST-1: the former pm_gbi.c, G_MW_NUMLIGHT (lit_freeze, clamp 7) */
+extern unsigned lt_n;                        /* the former pm_gbi.c, lights count (GM-1) */
 extern unsigned fogc, blendc;                /* ST-1: nd_state.c */
 extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor */
 int ent_gdl(const Gfx* l);
@@ -188,19 +188,19 @@ extern u8 gMapShapeData[];
 extern int sc_ok, gp_prev_op, box_folded;
 
 
-/* ---- T: texture group (plan_s10_path TX). TX-1 cut the setters to nd_tex.c; globals not yet moved stay in pm_gbi.c (extern here). ---- */
+/* ---- T: texture group (plan_s10_path TX). TX-1 cut the setters to nd_tex.c; globals not yet moved stay in the former pm_gbi.c (extern here). ---- */
 struct TszLast { const u8* src; unsigned fmt, siz; int w, h, stride; const void* pal; int pal_n; unsigned ep; int ox, oy; int ok; };
 typedef struct { int valid; const u8* src; int stride, w, h, x0, y0; } M1Rec;
-extern M1Rec m1;                 /* pm_gbi.c: the shaded sprite tile 1 raster */
+extern M1Rec m1;                 /* the former pm_gbi.c: the shaded sprite tile 1 raster */
 extern struct TszLast tsz_last;  /* nd_tex_set.c */
 extern unsigned st0_ep; extern int st0_ok; /* nd_tex_set.c */
 extern unsigned blk_n;           /* nd_tex_set.c */
 extern const void* tlut_pal[16]; /* nd_tex_set.c */
-extern int ld_valid, ld_x, ld_y, ld_h, ld_w; /* pm_gbi.c: last LoadTile window */
-extern int dual_on;              /* pm_gbi.c */
-extern void* const zb_fake;      /* pm_gbi.c */
-extern unsigned sp0_cur;         /* pm_gbi.c: split timer kind */
-extern unsigned long long sp0_F; /* pm_gbi.c */
+extern int ld_valid, ld_x, ld_y, ld_h, ld_w; /* the former pm_gbi.c: last LoadTile window */
+extern int dual_on;              /* the former pm_gbi.c */
+extern void* const zb_fake;      /* the former pm_gbi.c */
+extern unsigned sp0_cur;         /* the former pm_gbi.c: split timer kind */
+extern unsigned long long sp0_F; /* the former pm_gbi.c */
 int pm_is_cfb(const void* p);
 int pm_is_cur_cfb(const void* p);
 void pm_cfb_capture_prev(void);
@@ -217,7 +217,7 @@ void op_loadtlut(u32 w0, u32 w1);
 void op_settilesize(u32 w0, u32 w1);
 void op_texture(u32 w0, u32 w1);
 
-/* ---- M: the matrix group (nd_mtx.c, GM-1). Globals defined in nd_mtx.c; pm_gbi.c and the walker read them. ---- */
+/* ---- M: the matrix group (nd_mtx.c, GM-1). Globals defined in nd_mtx.c; the former pm_gbi.c and the walker read them. ---- */
 extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
 extern unsigned gm_last, gm_steps, gm_n;
 extern float (*gm_tab)[4][4];
@@ -233,7 +233,7 @@ extern s8 lk[2][3];
 extern unsigned lt_n;
 
 /* TX-2 (nd_tex.c). owner: nd_tex.c unless noted. */
-extern unsigned long long tx_t[256], tx_f[256]; extern unsigned tx_n[256]; /* owner: pm_gbi.c (sp0 report) */
+extern unsigned long long tx_t[256], tx_f[256]; extern unsigned tx_n[256]; /* owner: the former pm_gbi.c (sp0 report) */
 extern const void* ens_img[2]; extern const void* ens_src; extern const void* ens_pal;
 extern unsigned ens_fmt, ens_siz; extern unsigned ens_wrap[4]; extern int ens_sz[4];
 void unpack8(unsigned c, float o[4]);
@@ -243,17 +243,17 @@ int tile_bound(int n);
 const u8* fb_prev_base(int n);
 void ens_clear(void);
 extern unsigned short** nuGfxCfb; extern unsigned nuGfxCfbNum;
-/* owner: pm_gbi.c (LoadTile window; G_LOADTILE writes it in tex_op_impl (nd_tex.c) and the snapshot ts_load (pm_gbi.c) until TX-3 moves ts_*) */
+/* owner: the former pm_gbi.c (LoadTile window; G_LOADTILE writes it in tex_op_impl (nd_tex.c) and the snapshot ts_load (the former pm_gbi.c) until TX-3 moves ts_*) */
 extern unsigned ldrec_n;
-void grab_cur(const void* src, int w, int h);       /* pm_gbi.c, target group */
+void grab_cur(const void* src, int w, int h);       /* the former pm_gbi.c, target group */
 void nd_native_rec(u32 w0);                         /* nd_target.c, LS-4: G_PM_ND records */
-int load_shaded_sprite(int dx4, int dy4);           /* pm_gbi.c, TX-3 */
-int glyph_atlas_bound(void);                        /* pm_gbi.c, TX-3 */
-void op_setcombine(u32 w0, u32 w1);                 /* pm_gbi.c, combine group */
-void op_setothermode(unsigned op, u32 w0, u32 w1);  /* pm_gbi.c, state group */
-void op_setprimcolor(u32 w0, u32 w1);               /* pm_gbi.c, state group */
+int load_shaded_sprite(int dx4, int dy4);           /* the former pm_gbi.c, TX-3 */
+int glyph_atlas_bound(void);                        /* the former pm_gbi.c, TX-3 */
+void op_setcombine(u32 w0, u32 w1);                 /* the former pm_gbi.c, combine group */
+void op_setothermode(unsigned op, u32 w0, u32 w1);  /* the former pm_gbi.c, state group */
+void op_setprimcolor(u32 w0, u32 w1);               /* the former pm_gbi.c, state group */
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
-/* TX-3: the texture state snapshot (texdiff check, pm_gbi.c and nd_tex.c). Fields of the other groups as they are. */
+/* TX-3: the texture state snapshot (texdiff check, the former pm_gbi.c and nd_tex.c). Fields of the other groups as they are. */
 typedef struct {
     __typeof__(nd_ws.tst1) tst; const void *timg, *tlut; int tlut_n; const void* tlut_pal[16]; __typeof__(nd_ws.td) td; int tile_x0, tile_y0; float tile_fx, tile_fy;
     int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; __typeof__(m1) m1; int dual_on, cur_tile, use_t1, tex_on; unsigned tex_ss, tex_ts; int comb_set;
@@ -266,7 +266,7 @@ typedef struct {
     X(dual_on) X(cur_tile) X(use_t1) X(tex_on) X(tex_ss) X(tex_ts) X(comb_set) X(comb_w0) X(comb_w1) X(box_folded) X(box_prod) X(box_pat) X(comb_alpha_shade) X(cmb_gen_seen) X(tsz) \
     X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig)     X(fogc) X(blendc) X(fog_fm) X(fog_fo) X(prim) X(envc)
 
-/* TX-3 externs. owner: pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
+/* TX-3 externs. owner: the former pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
 extern int comb_mode5, plan_active, fog_fm, fog_fo, box_prod, box_pat, comb_alpha_shade, leg_mode;
 extern PmPlan cur_plan; extern float dual_gain[3];
 void cc_cycle1(const float* t0, const float* t1, float out[4]);
@@ -280,7 +280,7 @@ void op_setcombine(u32 w0, u32 w1);
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1);
 
 
-/* ---- K: the census group (nd_cen.c, WK-2). Cut from pm_gbi.c; the walk (pm_gbi_run) and the frame hooks read these. ---- */
+/* ---- K: the census group (nd_cen.c, WK-2). Cut from the former pm_gbi.c; the walk (pm_gbi_run) and the frame hooks read these. ---- */
 #define PK_MARKS 1024 /* WCEN3: the all-marks table holds two frames of both display contexts */
 #define PK_SLOTS 256
 #define PK_PRE 253 /* main list ops before the first mark */
@@ -298,7 +298,7 @@ void os_close(void);
 unsigned pk_slot(unsigned a);
 
 #define MAIN_GFX_N ((int)(sizeof gDisplayContext->mainGfx / sizeof(Gfx)))
-/* K: census readers of pm_gbi.c globals (defined in pm_gbi.c, read by nd_cen.c). */
+/* K: census readers of the former pm_gbi.c globals (defined in the former pm_gbi.c, read by nd_cen.c). */
 extern unsigned op_cnt[256], n_splits, n_grabs, rec_n, sp0_grp, sp0_skip, gp_ntri, gp_frames, gp3_t0_pending, gp3_t0_dead;
 extern int ep_open;
 extern unsigned gp_same[8], gp_set[8];
@@ -307,7 +307,7 @@ extern int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample, dlc
 extern char stats_line[96];
 void ep_flush_stats(void);
 void dlc_report(void);
-/* WK-3 (nd_target.c): the colour image role and the z helpers, read by pm_gbi.c and the rect and state modules. */
+/* WK-3 (nd_target.c): the colour image role and the z helpers, read by the former pm_gbi.c and the rect and state modules. */
 float prim_ndc_z(void);
 unsigned word_5551(unsigned rgba);
 /* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
@@ -331,7 +331,7 @@ void ep_flush_stats(void);
 extern int tri_prep_ok, lit_pending, ep_why, ep_ct, ep_cullboth;
 extern unsigned gv_epoch, ep_osc, ep_fl, ep_n;
 extern NdGvP ep_p;
-/* G (GM-2): the gather and triangle counters, the PERF-GBI laps and the state counters that nd_geom.c reads (defined in pm_gbi.c). */
+/* G (GM-2): the gather and triangle counters, the PERF-GBI laps and the state counters that nd_geom.c reads (defined in the former pm_gbi.c). */
 enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_N };
 #define GP_START() do { if (gp_on()) gp_last = pm_ticks(); } while (0)
 #define GP_LAP(id) do { if (gp_on()) { unsigned n_ = pm_ticks(); gp_acc[id] += n_ - gp_last; gp_last = n_; } } while (0)
@@ -345,7 +345,7 @@ extern int pm_nolight;
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 typedef struct {
     unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch, xgrp;
-} DlcCnt; /* LS-1 counters of the dlc path (defined in pm_gbi.c) */
+} DlcCnt; /* LS-1 counters of the dlc path (defined in the former pm_gbi.c) */
 extern DlcCnt dlc_c;
 extern unsigned ep_epoch, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
 /* LS-1 (nd_shape.c): the dlc and entity types and macros (shared by the walk and the handler modules). */
@@ -403,7 +403,7 @@ uint8_t* nd_env_valloc(unsigned n, unsigned* first);
 uint16_t* nd_env_ialloc(unsigned n);
 void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
 
-/* GLOB: prototypes and externs moved from pm_gbi.c. */
+/* GLOB: prototypes and externs moved from the former pm_gbi.c. */
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4: native sprite draw at the final vertex word (nd_walk.c G_VTX arm, pm_gpu.c) */
 extern int pm_tex_tagi; /* STALE2 texsrc: bind path tag */
 extern u16 DepthCopyBuffer[16];

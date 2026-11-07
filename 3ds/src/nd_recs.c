@@ -1,9 +1,8 @@
-/* LS-3: the model producer record (G_PM_REC, M4-2 / S3F-2 / S3F-4): rec_run and its record ops, moved out of pm_gbi.c unchanged
+/* LS-3: the model producer record (G_PM_REC, M4-2 / S3F-2 / S3F-4): rec_run and its record ops, moved out of the former pm_gbi.c unchanged
  * in source order. Target-only: the native model path (pm_gpu_*) and the walker handlers of nd_int.h. */
 #include <string.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"

@@ -1,19 +1,18 @@
-/* nd_rect.c: the handlers of G_TEXRECT and G_FILLRECT (CORE-3, plan_s10_path S10 handler modules). The walker (pm_gbi.c) dispatches the words
- * here. The rectangle state is nd_ws; the walker helpers they use are in pm_gbi.c and declared in nd_int.h. Output: pm_gpu_tex_rect and pm_gpu_fill_rect. */
+/* nd_rect.c: the handlers of G_TEXRECT and G_FILLRECT (CORE-3, plan_s10_path S10 handler modules). The walker (the former pm_gbi.c) dispatches the words
+ * here. The rectangle state is nd_ws; the walker helpers they use are in the former pm_gbi.c and declared in nd_int.h. Output: pm_gpu_tex_rect and pm_gpu_fill_rect. */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "nd_int.h"
 
-/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+/* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out) {
     float b[8];
     int nb = 0, n = 0, i;
@@ -39,7 +38,7 @@ int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int 
     return n;
 }
 
-/* CORE-3 census: calls of each handler (the census counts ops by handler module: nd_rect here, pm_gbi.c for the rest) */
+/* CORE-3 census: calls of each handler (the census counts ops by handler module: nd_rect here, the former pm_gbi.c for the rest) */
 /* nd_rect_tex_n, nd_rect_fill_n: defined in nd_core.c (host-linked census counters, ST host fix) */
 
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
@@ -103,7 +102,7 @@ __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsi
  * CPU into an RGBA texture (cached by content, 128 x 128 pixel chunks), then drawn with (PRIM - ENV) * texel + ENV.
  * Returns 1 if drawn. */
 static unsigned char box_buf[128 * 128 * 4];
-extern int box_pat; /* pm_gbi.c: the 2-cycle window with a pattern in tile 0 */
+extern int box_pat; /* the former pm_gbi.c: the 2-cycle window with a pattern in tile 0 */
 __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     tex_gen++; /* TBREP */
     int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */

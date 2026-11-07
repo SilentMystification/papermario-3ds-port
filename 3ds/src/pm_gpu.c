@@ -14,7 +14,6 @@ void pm_gx_room(void); /* HANG1a */
 #include "nd_sprite.h"
 #include "pm_shaderall_shbin.h"
 #include "pm_gpu.h"
-#include "pm_gbi.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 /* Bottom screen rows, 1-based as the cursor and ANSI count them (row 1 is the top). The HUD (pm_gpu_hud_flush) has fixed rows:
@@ -65,7 +64,7 @@ static int draw_3d;
 static unsigned prim = 0xffffffffu;
 static unsigned dbg_omode_l; /* FX1-2b: the L othermode word of the current render state (orbdbg log only) */
 void pm_gpu_dbg_mode(unsigned m) { dbg_omode_l = m; }
-/* POND-LOG (debug switch waterlog): one line per submitted batch in frames 200 and 201 (the pond water passes). wl_primz: G_SETPRIMDEPTH (pm_gbi.c). The depth
+/* POND-LOG (debug switch waterlog): one line per submitted batch in frames 200 and 201 (the pond water passes). wl_primz: G_SETPRIMDEPTH (the former pm_gbi.c). The depth
  * branch of a draw: fn 0 test off, 1 GREATER, 2 GEQUAL, 3 ALWAYS; wr 0 colour only, 1 depth only, 2 colour and depth (as the walker and the native words set it). */
 static unsigned wl_primz;
 void pm_gpu_dbg_primz(unsigned z) { wl_primz = z; }
@@ -464,7 +463,7 @@ static void cen_add(const TevKey* tk, int z, int graw, int prog, unsigned cull, 
     h = (h ^ cull) * 16777619u;
     cen_put(h, id0, id1, tris);
 }
-/* CEN-1a: why each walker GPU draw (wd) is not native (pm_gbi.c os_report, lines wcen4). cen_fb marks the CPU triangles of the open batch (CEN_FB_*, set by the CPU fallbacks). flush_draw moves it to cen_fbv, clears it and sets cen_why, the code of the walker draws of that batch. */
+/* CEN-1a: why each walker GPU draw (wd) is not native (the former pm_gbi.c os_report, lines wcen4). cen_fb marks the CPU triangles of the open batch (CEN_FB_*, set by the CPU fallbacks). flush_draw moves it to cen_fbv, clears it and sets cen_why, the code of the walker draws of that batch. */
 enum { CW_OTHER, CW_RECT, CW_CLIP, CW_SEAM, CW_WIDE, CW_RING, CW_PM5, CW_NR1, CW_NR2, CW_NR3, CW_NR4, CW_NR5, CW_NR6, CW_NR7, CW_NR8, CW_NR9, CW_N };
 #define CW_NRK(k) ((unsigned)(CW_NR1 - 1 + (k)))
 #define CEN_FB_CLIP 1u
@@ -478,7 +477,7 @@ const char* pm_gpu_cen_name(unsigned c) {
     static const char* const nm[CW_N] = { "other", "rect", "clip", "seam", "wide", "ring", "pm5", "nr1", "nr2", "nr3", "nr4", "nr5", "nr6", "nr7", "nr8", "nr9" };
     return c < CW_N ? nm[c] : "?";
 }
-/* NDREF1: reference draw stream, switch ndref=<frame> (pm_gbi.c pm_gbi_ndref_frame). The draws and producer tags of that frame go to a
+/* NDREF1: reference draw stream, switch ndref=<frame> (the former pm_gbi.c pm_gbi_ndref_frame). The draws and producer tags of that frame go to a
  * buffer. cen_frame_end writes sdmc:/3ds/PaperMario/ndref.bin. Layout: 3ds/tests/ndref/FORMAT.md. */
 int pm_gbi_ndref_frame(void);
 void pm_tex_cur_slots(int* a, int* b);
@@ -506,7 +505,7 @@ static void ndref_begin(void) { /* per frame, from pm_gpu_begin */
     if (!ndref_wr) ndref_on = 0;
     else { u32 off; GPUCMD_GetBuffer(NULL, NULL, &off); ndcmd_prev = off; }
 }
-void ndref_tag(unsigned kind, unsigned id, unsigned extra) { /* pm_gbi.c producer and model marks, record kind 2 and 3 */
+void ndref_tag(unsigned kind, unsigned id, unsigned extra) { /* the former pm_gbi.c producer and model marks, record kind 2 and 3 */
     unsigned hd[2] = { kind, 8u }, p[2] = { id, extra };
     ndref_put(hd, 8); ndref_put(p, 8);
 }
@@ -677,7 +676,7 @@ static void kick_check(void) {
     pm_ph_kick_n++;
 }
 static void flush_draw(void);
-/* S3-2 measurement: ticks spent in flush_impl (phase on), read by the tex_op timer of pm_gbi.c to split the close from the op */
+/* S3-2 measurement: ticks spent in flush_impl (phase on), read by the tex_op timer of the former pm_gbi.c to split the close from the op */
 static unsigned long long fl_acc;
 unsigned long long pm_gpu_fl_acc(void) { return fl_acc; }
 static void flush_impl_body(void);
@@ -989,7 +988,7 @@ static void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsig
            la ? la->func : 99u, la ? la->scale : 99u);
 }
 static void nd_native_submit(const NdDraw* dp, int tex) {
-    pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, pm_gbi.c) */
+    pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, the former pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
     pm5draw_all(dp);
@@ -2713,7 +2712,7 @@ static int grange_batch_open(unsigned gm, const float vp[4], const float uvso[4]
     return 1;
 }
 
-unsigned char pm_ent_decal_ok; /* S6-2c-3: set by the entity segment draw (pm_gbi.c ent_seg_native) around dlc_seg */
+unsigned char pm_ent_decal_ok; /* S6-2c-3: set by the entity segment draw (the former pm_gbi.c ent_seg_native) around dlc_seg */
 int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                   const PmFx* fx, const unsigned short* idx, unsigned nidx) {
     if (!gv4_on || !gpu_ok) return 0;
@@ -2859,7 +2858,7 @@ static int plan_same_layout(const PmPlan* a, const PmPlan* b) {
     return memcmp(&x, &y, sizeof x) == 0;
 }
 
-/* S3N-3b: switch ndmcheck (debug). The record arm (pm_gbi.c rec_run) passes the record words, the mode and combine entries, the texture handle and the geometry list to
+/* S3N-3b: switch ndmcheck (debug). The record arm (the former pm_gbi.c rec_run) passes the record words, the mode and combine entries, the texture handle and the geometry list to
  * pm_gpu_ndm_begin. The native model draws (nd_model_draw, emit 0) are built there, before the walker draws the record. Each walker draw (nd_raw_native) is compared with
  * the native draw at its place: tmpl key, TEV colours, buffer colour, unit 0, uvso, cmul, cadd, zmix, palette 0, and the index words (the walker copies them into its batch).
  * A walker draw may span several native draws (consumed in order). nwalk: a walker draw with no native draw left. nraw: a native draw the walker did not draw. Both are diffs. */
@@ -3403,7 +3402,7 @@ void pm_gpu_set_const(unsigned rgba) {
 
 void pm_gpu_flush(void) { flush(); }
 
-/* SPR4-3: shaded sprites (nd_int.h is not included here; pm_gbi.c, nd_tex.c and nd_geom.c own these) */
+/* SPR4-3: shaded sprites (nd_int.h is not included here; the former pm_gbi.c, nd_tex.c and nd_geom.c own these) */
 extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
 static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
@@ -3514,7 +3513,7 @@ const char* pm_gpu_last_flush(int* line) { *line = fl_line; return fl_fn; } /* t
 unsigned pm_ec_n, pm_ec_svc; /* EC2: empty closes, svc reads inside them */
 unsigned pm_fl_n[6], pm_fl_e[6], pm_fl_us[6]; /* PI2: batch closes per class, empty closes, us per class (drawn frame, phase on) */
 unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N]; /* DC1 */
-void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list interpreter, line of the call in pm_gbi.c */
+void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list interpreter, line of the call in the former pm_gbi.c */
     fl_fn = "gbi"; fl_line = line;
     /* EC2: no vertex and no raw batch queued: flush_draw returns before any state, texture, cache or GPU call. Only the
      * rectangle bookkeeping of flush_impl runs. No timer (svc read) here, only a plain count. */
