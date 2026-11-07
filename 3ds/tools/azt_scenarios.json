@@ -7528,7 +7528,7 @@
         },
         {
           "name": "shot in window",
-          "regex": "shot \\d+ frame 200\b"
+          "regex": "shot \\d+ frame 200\\b"
         }
       ],
       "reason": "CEN-1a: pause census. Same command as pause_menu up to the open pause, phase census, no close START."
@@ -7556,7 +7556,7 @@
         },
         {
           "name": "shot in window",
-          "regex": "shot \\d+ frame 200\b"
+          "regex": "shot \\d+ frame 200\\b"
         }
       ],
       "reason": "CEN-1a: text census. Same pause start as text_menu, held to frame 300 for the census window."
@@ -7588,8 +7588,8 @@
     {
       "name": "wcen_nok11",
       "status": "unverified",
-      "subject": "Mario in nok_11 entry 0 with the water splash (fxtest 89, spawned at Mario). Census window 0 to 300 from boot covers the splash. Shot 200 is the picture.",
-      "proves": "CEN-1a why census with the water splash effect (EFFECT_WATER_SPLASH) in nok_11.",
+      "subject": "Mario in nok_11 entry 0, field (no splash in the window). Census window 0 to 300 from boot. fxtest 89 starts the water splash at frame 400, after the window. Shot 200 is the picture.",
+      "proves": "CEN-1a why census in nok_11 (field): walker draws per producer by why code.",
       "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 phase shots shotwin=200:1 loglevel=debug",
       "until": "wcen4 end f\\d+ wd \\d+",
       "cap": 45,
@@ -7603,15 +7603,11 @@
           "regex": "warp: nok_11 entry 0"
         },
         {
-          "name": "spawn",
-          "regex": "fxtest: spawn 89 water_splash"
-        },
-        {
           "name": "census window",
           "regex": "wcen4 end f\\d+ wd \\d+"
         }
       ],
-      "reason": "CEN-1a: water splash census. nok11_splash command with phase census."
+      "reason": "CEN-1a: nok_11 field census (the splash of fxtest 89 is at frame 400, after the window). Picture by eye."
     },
 {
       "name": "menu_frameadv",
