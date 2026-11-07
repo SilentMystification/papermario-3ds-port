@@ -6,6 +6,7 @@ int pm_gpu_spr_native(const uint32_t* rec); /* S4-3: native sprite draw at the r
 #include "ultra64.h"
 #include "gbi_custom.h"
 #include "pm_gbi.h"
+#include "pm_gbi_walk.h"
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
@@ -181,7 +182,7 @@ static unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRG
  * behind the far background (water in the Toad Town pond). One helper for both NDC z uses; clamped at 0. */
 static float prim_ndc_z(void) { return nd_prim_ndc_z(nd_ws.prim_z); }
 /* TBREP: tex_gen counts the writes of texture memory and texture state (the bind skip of tb_run is gone, S3F-4; the counter stays). */
-static unsigned tex_gen;
+unsigned tex_gen;
 /* TST1: the tile, combine and texture-image state in one block, 32-byte aligned, in .data.pmhot. Types and meanings are unchanged. */
 static int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
 /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
@@ -198,19 +199,18 @@ extern void pm_cfb_capture_prev_cpu_for(const void* fill);
 extern void pm_cfb_capture_prev_cpu(void);
 extern void pm_zbuf_need(void);
 extern unsigned pm_frame_count(void);
-static int cimg_stride = 320;
+int cimg_stride = 320;
 extern int pm_fb_native(const void* p);
 /* V05: the colour image is a game buffer (not a frame buffer, not the saved frame): the draw goes to an off-screen render
  * texture, which a later draw reads as an image (draw_box: the contents of a rotating window). */
 /* B1: the one decision for a colour image (docs/plans/buffer_bridge.md table 1.2). for_fill = 1 at G_FILLRECT.
  * ROLE_CPUPAL and ROLE_DEPTH are not returned yet (rect_to_image keeps its own test, B3 adds the depth role).
  * B3, R4: the z-buffer image at siz 2 with a FILL cycle or Z_CMP or Z_UPD is DEPTH (a depth write on the main target). */
-enum { ROLE_MAIN, ROLE_DEPTHQ, ROLE_CPUFILL, ROLE_DEPTH, ROLE_CPUPAL, ROLE_SLOT };
 extern unsigned short* nuGfxCfb_ptr;
-static int zcol, zslot_on; /* B5: zcol = this texrect copies colour into the z-buffer image (underwater, case 7): a slot, not a depth write */
+int zcol, zslot_on; /* B5: zcol = this texrect copies colour into the z-buffer image (underwater, case 7): a slot, not a depth write */
 static void* const zb_fake = (void*)0x1000; /* the key of that slot when nuGfxZBuffer is NULL (address 0 cannot name a texture) */
-static int cimg_zero; /* B3: the last G_SETCIMG named address 0. nuGfxZBuffer is NULL until the pause or the darkness overlay allocates it (D03), so the game's z-buffer image is address 0 */
-static int img_role(int for_fill) {
+int cimg_zero; /* B3: the last G_SETCIMG named address 0. nuGfxZBuffer is NULL until the pause or the darkness overlay allocates it (D03), so the game's z-buffer image is address 0 */
+int img_role(int for_fill) {
     if (!nd_ws.cimg && !cimg_zero) return ROLE_MAIN;
     if (nd_ws.cimg == (void*)DepthCopyBuffer) return ROLE_DEPTHQ;
     if (for_fill && pm_is_cfb(nd_ws.cimg) && (nd_ws.omode_l & ~7u) == ((G_RM_VISCVG | G_RM_VISCVG2) & ~7u)) {
@@ -225,7 +225,7 @@ static int img_role(int for_fill) {
 }
 /* B3: the N64 writes a 16 bit colour word into the z-buffer memory, and the RDP reads it back as 14 bit z plus 2 bit dz. The port
  * keeps z as prim_z (15 bit, 0 near): the word shifted right by 1 (the decal uses prim depth 32734 = the word 0xFFBC of prim 248 240 240). */
-static float depth_of_word(unsigned w16) { return (float)((w16 & 0xffffu) >> 1) / 32767.f; }
+float depth_of_word(unsigned w16) { return (float)((w16 & 0xffffu) >> 1) / 32767.f; }
 static unsigned word_5551(unsigned rgba) {
     return (((rgba >> 27) & 31u) << 11) | (((rgba >> 19) & 31u) << 6) | (((rgba >> 11) & 31u) << 1) | ((rgba >> 7) & 1u);
 }
@@ -252,7 +252,7 @@ static void grab_cur(const void* src, int w, int h) {
     r = pm_gpu_grab(nuGfxCfb_ptr, y, y + (h < 1 ? 1 : h));
     if (r == 2) { n_grabs++; n_splits++; }
 }
-static void off_screen_check(void) {
+void off_screen_check(void) {
     static int nooff = -1;
     int r;
     if (nooff < 0) nooff = pm_debug_has("nooff");
@@ -261,7 +261,7 @@ static void off_screen_check(void) {
     if (!nooff && (r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(nd_ws.cimg ? nd_ws.cimg : zb_fake, cimg_stride, nd_ws.cimg_siz);
 }
 static const void* tlut_pal[16];
-static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
+int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 /* The sprite raster captured when tile 1 got its size. A shaded sprite sets two tiles on the
  * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
 static struct { int valid; const u8* src; int stride, w, h, x0, y0; } m1;
@@ -342,7 +342,7 @@ static void dd_line(void) {
            nd_ws.td[1].valid, (unsigned)(uintptr_t)nd_ws.td[1].src, nd_ws.td[1].w, nd_ws.td[1].h, nd_ws.td[1].stride, nd_ws.td[1].x0, nd_ws.td[1].y0, nd_ws.td[1].pal_n, dual_on);
 }
 /* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
-static float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */
+float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */
 static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 /* draw_box (H04): cycle 1 = TEXEL0 * TEXEL1 (tile 0 window background, tile 1 corner image),
  * alpha = TEXEL1 alpha, cycle 2 = (PRIM - ENV) * COMBINED + ENV. box_prod marks that form.
@@ -356,7 +356,7 @@ static int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 o
 static unsigned box_save[4];
 static float dual_gain[3];
 static void unpack8(unsigned c, float o[4]);
-static void ensure_tile(int n);
+void ensure_tile(int n);
 static void ens_clear(void);
 static Vtx verts[64];
 /* A display list may only draw vertices its own G_VTX loaded. Slots left by
@@ -390,7 +390,7 @@ static void gp3_t0_set(void) {
     gp3_t0_ld++;
     gp3_t0_pending = 1;
 }
-static void gp3_t0_surv(void) { gp3_t0_pending = 0; }
+void gp3_t0_surv(void) { gp3_t0_pending = 0; }
 static float gv_rel_ref[2];
 static unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
 static unsigned short vert_ring[64], vert_gmi[64];
@@ -605,7 +605,7 @@ static int tile0_white(void) {
 
 /* Called before each textured draw. Tiles 0 and 1 are known by then, the combine mode came
  * before them. */
-static void box_fold_sync(void) {
+void box_fold_sync(void) {
     int want = box_prod && nd_ws.td[1].valid && tile0_white();
     if (want == box_folded) return;
     box_folded = want;
@@ -651,7 +651,7 @@ static void set_blendcolor(u32 w1) { blendc = w1; }
 static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 static unsigned sr_sig;
 static PM_HOTD int sr_ok;
-static void sync_render(void) {
+void sync_render(void) {
     unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)img_role(0) ^ (unsigned)PMD("rmoff");
     if (sr_ok && sg == sr_sig) {
         GP_SET(6, 1);
@@ -702,7 +702,7 @@ mixed:
     pm_gpu_render_src(nd_ws.omode_h, m, rs.depth);
 }
 
-static unsigned rgba_from_5551(unsigned c) {
+unsigned rgba_from_5551(unsigned c) {
     unsigned r = (c >> 11) & 31;
     unsigned g = (c >> 6) & 31;
     unsigned b = (c >> 1) & 31;
@@ -856,8 +856,7 @@ static void xform_vtx(const float* p, const float* st, unsigned c, ClipV* o) {
 /* DARK: a texrect that reads an off-screen image (64 texels) through a mirror + clamp + mask tile (the darkness stencil, tile 128 over a 64 image).
  * The RDP mirrors the window (period 2 * mask) and clamps outside +-2 * mask to texel 0. The PICA bound render texture has one wrap mode,
  * so the rect is cut at every mirror line and each part gets its own (flipped or constant) uv. a0 to a1 is the texel range over width pixels. */
-typedef struct { int p0, p1; float u0, u1; } FoldSeg;
-static int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out) {
+int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out) {
     float b[8];
     int nb = 0, n = 0, i;
     if (!(a1 > a0) || width < 1.f) return 0;
@@ -1284,7 +1283,7 @@ static void sync_combine_work(void) {
 static unsigned aux_key;
 static float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
 static int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */
-static void dual_bind(void) {
+void dual_bind(void) {
     unsigned key = 2166136261u, i;
     int tw0, th0, tw1, th1;
     if (!plan_active || !cur_plan.uses_tex1 || !nd_ws.td[0].valid || !nd_ws.td[1].valid) return;
@@ -1338,7 +1337,7 @@ static void dual_bind(void) {
  * reads the slot far from the window and finds nothing grabbed there. Fold the start of this draw into the window. The draw is
  * kept inside the window when it fits. The wrap inside one draw is not reproduced, the part past the window edge reads the
  * neighbour pixels of the slot. Tile 0 uv range of the draw: u0..u1 and v0..v1. */
-static void t1_fold(float u0, float u1, float v0, float v1) {
+void t1_fold(float u0, float u1, float v0, float v1) {
     static int foldall = -1; /* V20: switch t1foldall restores the old behaviour (fold every TEXEL1) */
     if (foldall < 0) foldall = pm_debug_has("t1foldall");
     if (!foldall && pm_tex_aux_off_idx() < 0) return; /* an ordinary texture: the GPU repeat and mirror give the RDP wrap, the fold moved the start by the mask size (wrong for a mirrored axis, period twice the mask) */
@@ -3456,7 +3455,7 @@ static void pal_rgba(const void* base, unsigned i, float o[4]) {
 
 /* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
  * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
-static __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
+__attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
     tex_gen++; /* TBREP: writes an image */
     if (!nd_ws.cimg || pm_is_cfb(nd_ws.cimg) || tile >= 8 || nd_ws.tst1.tile_tmem[tile] < 256) return 0;
     int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
@@ -3569,7 +3568,7 @@ static const u8* fb_prev_base(int n) {
     if (i == nuGfxCfbNum || pm_is_cur_cfb(base)) return NULL;
     return base;
 }
-static void ensure_tile(int n) {
+void ensure_tile(int n) {
     if (!nd_ws.td[n].valid) return;
     nd_ws.tile_fx = (float)(nd_ws.tst1.tile_sz[n][0] & 3) * 0.25f; /* PT38 */
     nd_ws.tile_fy = (float)(nd_ws.tst1.tile_sz[n][1] & 3) * 0.25f;
@@ -3687,7 +3686,7 @@ static int tile_texel(int n, int s, int t, unsigned char o[4]) {
  * CPU into an RGBA texture (cached by content, 128 x 128 pixel chunks), then drawn with (PRIM - ENV) * texel + ENV.
  * Returns 1 if drawn. */
 static unsigned char box_buf[128 * 128 * 4];
-static __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
+__attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     tex_gen++; /* TBREP */
     int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
     float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
@@ -4415,178 +4414,6 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     os_nest--;
 }
 
-/* HUDB1 debug switch texrlog: one line per texrect that returns before pm_gpu_tex_rect. why 1 depth copy, 2 rect_to_image, 3 box_pattern_rect,
- * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines, repeats of the last line are not logged. */
-static void texr_early(int why, int xl, int yl, int xh, int yh) {
-    static int nlog = 0;
-    static int lwhy = -1, lxl, lyl, lxh, lyh;
-    if (nlog < 400 && PMD("texrlog") && !(why == lwhy && xl == lxl && yl == lyl && xh == lxh && yh == lyh)) {
-        nlog++;
-        lwhy = why; lxl = xl; lyl = yl; lxh = xh; lyh = yh;
-        pm_log_d("texrlog f%u why %d rect %d,%d-%d,%d cyc %u", pm_frame_count(), why, xl / 4, yl / 4, xh / 4, yh / 4, (unsigned)((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3));
-    }
-}
-
-static __attribute__((noinline)) void gbi_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
-    tex_gen++; /* TBREP */
-    int xh = (int)((w0 >> 12) & 0xfff);
-    int yh = (int)(w0 & 0xfff);
-    int xl = (int)((w1 >> 12) & 0xfff);
-    int yl = (int)(w1 & 0xfff);
-    if (xh & 0x800) xh |= ~0xfff;
-    if (yh & 0x800) yh |= ~0xfff;
-    if (xl & 0x800) xl |= ~0xfff;
-    if (yl & 0x800) yl |= ~0xfff;
-    /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
-    if (nd_ws.cimg == (void*)DepthCopyBuffer) { pm_depth_query(nd_ws.timg, (int)((s16)(hs >> 16) >> 5), sci_x0); texr_early(1, xl, yl, xh, yh); return; }
-    if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) { texr_early(2, xl, yl, xh, yh); return; }
-    { /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */
-        static int tlon = -1;
-        if (tlon < 0) tlon = pm_debug_has("texlog");
-        if (tlon) pm_log_d("texlog f%u rect %d,%d-%d,%d w%d h%d cyc %u rm %08x zsrc %d ac %u tile0 %d/%d tile1 %d/%d valid1 %d",
-                           pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (xh - xl) / 4 + 1, (yh - yl) / 4 + 1, (nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3,
-                           (unsigned)nd_ws.omode_l, (nd_ws.omode_l >> G_MDSFT_ZSRCSEL) & 1, (nd_ws.omode_l >> 0) & 3, nd_ws.tst1.tile_fmt[0], nd_ws.tst1.tile_siz[0], nd_ws.tst1.tile_fmt[1], nd_ws.tst1.tile_siz[1], nd_ws.td[1].valid);
-    }
-    /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
-    zcol = nd_ws.cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)nd_ws.cimg >= nuGfxZBuffer && (const unsigned short*)nd_ws.cimg < nuGfxZBuffer + 320 * 240)) && !(nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL));
-    if (zcol) { zslot_on = 1; sync_render(); }
-    else if (img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
-    off_screen_check();
-    box_fold_sync();
-    sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
-    if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) { texr_early(3, xl, yl, xh, yh); return; }
-    /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
-    int rtile = (nd_ws.use_t1 || (((w1 >> 24) & 7) == 1 && nd_ws.td[1].valid)) ? 1 : 0;
-    if (!rtile) gp3_t0_surv();
-    ensure_tile(rtile);
-    dual_bind();
-    int tw = 1, th = 1;
-    pm_tex_size(&tw, &th);
-    /* V12b: the tile shift scales a texrect coordinate too (bulb glow uses shift 1 1). It applies after the interpolation, so it scales the step as well. */
-    float ms = shift_mul(nd_ws.tst1.tile_shift[rtile][0]);
-    float mt = shift_mul(nd_ws.tst1.tile_shift[rtile][1]);
-    float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
-    float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
-    float dsdx = (float)(s16)(hd >> 16) / 1024.f * ms;
-    float dtdy = (float)(s16)(hd & 0xffff) / 1024.f * mt;
-    float width = (float)(xh - xl) / 4.f;
-    float height = (float)(yh - yl) / 4.f;
-    /* BG1/BG2 oracle plan 2, fix 1: the pixel span is the RDP one (first pixel whose left edge is at or after xl, last whose left edge is at or before xh; arithmetic shifts). s0 and t0 move from the fractional edge to that pixel edge, so the texel of every pixel is the one at its centre. Multiples of 4 give the old values. COPY only (the sky). */
-    int rx0 = xl / 4, ry0 = yl / 4, rx1 = xh / 4, ry1 = yh / 4;
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2) {
-        /* COPY mode: the RDP writes 4 pixels per cycle, so dsdx counts 4 texels per pixel (4.0 = 1:1).
-         * The lower right corner is inclusive, one more pixel (as in libultraship). */
-        dsdx /= 4.f;
-        rx0 = (xl + 3) >> 2; ry0 = (yl + 3) >> 2; rx1 = xh >> 2; ry1 = yh >> 2;
-        s0 += dsdx * (float)(rx0 * 4 - xl) * 0.25f / (float)tw;
-        t0 += dtdy * (float)(ry0 * 4 - yl) * 0.25f / (float)th;
-        width = (float)(rx1 - rx0 + 1);
-        height = (float)(ry1 - ry0 + 1); /* PT06: the lower edge is inclusive too. Without this a 6 row background strip showed 5 rows and every 6th screen row repeated the row above */
-    }
-    float s1 = s0 + dsdx * width / (float)tw;
-    float t1 = t0 + dtdy * height / (float)th;
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2) { /* BG1 cause 3: a NOMASK tile (mask 0) clamps at its lower edge, as the RDP does. The end is the tile lrs (10.2, inclusive) plus one texel, minus the uls part. Samples past it read the clamped edge texel (the GPU texture pad holds that texel, pm_tex.c). */
-        float s1pre = s1, t1pre = t1;
-        if (!nd_ws.tst1.tile_wrap[rtile][2] && s1 > s0) { float smax = ((float)(nd_ws.tst1.tile_sz[rtile][2] >> 2) + 1.f - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw; if (s1 > smax) s1 = smax; }
-        if (!nd_ws.tst1.tile_wrap[rtile][3] && t1 > t0) { float tmax = ((float)(nd_ws.tst1.tile_sz[rtile][3] >> 2) + 1.f - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th; if (t1 > tmax) t1 = tmax; }
-        if (PMDL("bgclamp") && pm_frame_count() >= 100u && pm_frame_count() <= 160u) {
-            static int nbc = 0;
-            if (nbc < 400) { nbc++; pm_log_d("bgclamp f%u rect %d,%d-%d,%d s %.2f>%.2f t %.2f>%.2f tex %dx%d mask %u %u lrs %d lrt %d ux %d fx %.2f", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, s1pre * tw, s1 * tw, t1pre * th, t1 * th, tw, th, (unsigned)nd_ws.tst1.tile_wrap[rtile][2], (unsigned)nd_ws.tst1.tile_wrap[rtile][3], nd_ws.tst1.tile_sz[rtile][2], nd_ws.tst1.tile_sz[rtile][3], nd_ws.tile_x0, nd_ws.tile_fx); }
-        }
-    }
-    t1_fold(s0 < s1 ? s0 : s1, s0 < s1 ? s1 : s0, t0 < t1 ? t0 : t1, t0 < t1 ? t1 : t0);
-    {
-        /* pm_gpu_tex_rect takes an inclusive lower right pixel. COPY mode rectangles are inclusive (width += 1
-         * above). In 1-cycle and 2-cycle mode the lower right edge is exclusive: without this the quad was one
-         * pixel too wide and stretched its texture. A previous-frame blur drawn every frame zoomed in. */
-        int ex = rx1, ey = ry1;
-        if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 2) { ex -= 1; ey -= 1; }
-        if (ex >= rx0 && ey >= ry0) {
-            /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
-            if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER)) {
-                sync_render();
-                pm_gpu_tex_rect_z(rx0, ry0, ex, ey, s0, t0, s1, t1, (float)nd_ws.prim_z / 32767.f);
-            } else
-            if (pm_tex_off_idx() >= 0 && (nd_ws.tst1.tile_wrap[rtile][0] & 3) == 3 && (nd_ws.tst1.tile_wrap[rtile][1] & 3) == 3 && nd_ws.tst1.tile_wrap[rtile][2] && nd_ws.tst1.tile_wrap[rtile][3] &&
-                (1 << nd_ws.tst1.tile_wrap[rtile][2]) == tw && (1 << nd_ws.tst1.tile_wrap[rtile][3]) == th) {
-                FoldSeg fs[8], ft[8];
-                int ns = fold_axis(rx0, (float)(ex + 1 - rx0), s0 * tw, s1 * tw, (float)tw, 0, 1, fs);
-                int nt = fold_axis(ry0, (float)(ey + 1 - ry0), t0 * th, t1 * th, (float)th, 0, 1, ft);
-                if (ns && nt) {
-                    for (int a = 0; a < ns; a++)
-                        for (int c = 0; c < nt; c++)
-                            pm_gpu_tex_rect(fs[a].p0, ft[c].p0, fs[a].p1 - 1, ft[c].p1 - 1, fs[a].u0, ft[c].u0, fs[a].u1, ft[c].u1);
-                    goto rect_done;
-                }
-            }
-            pm_gpu_tex_rect(rx0, ry0, ex, ey, s0, t0, s1, t1);
-        } else texr_early(4, xl, yl, xh, yh);
-    }
-    rect_done:
-    zcol = 0;
-    return;
-}
-
-static __attribute__((noinline)) void gbi_fillrect(u32 w0, u32 w1) {
-    tex_gen++; /* TBREP */
-#define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
-int lrx = FILL_SX10(w0 >> 14);
-int lry = FILL_SX10(w0 >> 2);
-int ulx = FILL_SX10(w1 >> 14);
-int uly = FILL_SX10(w1 >> 2);
-if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrapped field (raw 512 or more) */
-    static int nlog = 0;
-    if (nlog < 400 && (((w0 >> 14) & 0x3ff) >= 512 || ((w0 >> 2) & 0x3ff) >= 512 || ((w1 >> 14) & 0x3ff) >= 512 || ((w1 >> 2) & 0x3ff) >= 512)) {
-        nlog++;
-        pm_log_d("fillog f%u raw ul %u,%u lr %u,%u signed ul %d,%d lr %d,%d", pm_frame_count(), (unsigned)((w1 >> 14) & 0x3ff), (unsigned)((w1 >> 2) & 0x3ff),
-                 (unsigned)((w0 >> 14) & 0x3ff), (unsigned)((w0 >> 2) & 0x3ff), ulx, uly, lrx, lry);
-    }
-}
-if (PMD("fillcyc")) { /* HUDB1 debug switch fillcyc: one line per fill with the cycle type in force (0 1cycle, 1 2cycle, 2 copy, 3 fill) */
-    static int ncyc = 0;
-    if (ncyc < 1500) {
-        ncyc++;
-        pm_log_d("fillcyc f%u cyc %u ul %d,%d lr %d,%d prim %08x fill %08x", pm_frame_count(), (unsigned)((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3),
-                 ulx, uly, lrx, lry, (unsigned)nd_ws.prim, (unsigned)nd_ws.fill);
-    }
-}
-/* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
- * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
- * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
- * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
-if (img_role(1) == ROLE_CPUFILL) {
-    unsigned short* d = (unsigned short*)nd_ws.cimg;
-    if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(nd_ws.cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
-    for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
-        for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
-    return;
-}
-if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
-    pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(nd_ws.fill));
-    return;
-}
-/* HUDB1: the lower right corner of a fill is inclusive only in G_CYC_FILL and G_CYC_COPY. 1-cycle and 2-cycle fills cover [ul, lr). */
-if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) < 2) {
-    lrx--;
-    lry--;
-    if (lrx < ulx || lry < uly) return; /* empty rectangle */
-}
-/* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-unsigned color =(((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
-    ? rgba_from_5551(nd_ws.fill & 0xffff) : nd_ws.prim;
-off_screen_check();
-if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
-pm_gpu_set_replace(((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
-/* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
-if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER)) {
-    sync_render();
-    pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)nd_ws.prim_z / 32767.f);
-} else
-pm_gpu_fill_rect(ulx, uly, lrx, lry, color);
-pm_gpu_set_replace(0);
-return;
-}
-
 /* CORE-2b batch D: colour image setter (decoded fields; cimg_zero is set from the address word). */
 static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
     void* nc = ptr_of(addr);
@@ -5109,7 +4936,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_SETPRIMDEPTH: set_primdepth(w1); break;
         case G_SETFILLCOLOR: set_fillcolor(w1); break;
         case G_FILLRECT: {
-            gbi_fillrect(w0, w1);
+            nd_fillrect(w0, w1);
             break;
         }
         case G_TEXRECT:
@@ -5119,7 +4946,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             pc++;
             u32 hd = pc->words.w1;
             pc++;
-            gbi_texrect(w0, w1, hs, hd);
+            nd_texrect(w0, w1, hs, hd);
             break;
         }
         case G_SETTIMG:

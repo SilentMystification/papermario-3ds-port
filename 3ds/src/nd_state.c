@@ -12,11 +12,6 @@ ND_HOTD NdWs nd_ws = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .cimg = 
 #define MW_SEGMENT 0x06
 #define MV_VIEWPORT 8
 
-/* CORE-2c: the record-mode leaf (nd_rec.h). A one-slot leaf's record is its word (the walker case is the setter), so the slots take the words. */
-void nd_rec_leaf(void* at, const void* w, unsigned nslots) {
-    memcpy(at, w, (size_t)nslots * 8u);
-}
-
 void nd_words(const unsigned* w, unsigned n) {
     NdWs* s = &nd_ws;
     for (unsigned i = 0; i < n; i++) {
