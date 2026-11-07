@@ -18,6 +18,17 @@ Only the orchestrator session reads this file. Shared rules (tests, code, platfo
 - The orchestrator does not edit game source, does not debug, and does not verify agent claims. It may read code and logs to plan (next row, scenario, prompt).
 - Manual mode: if code work or hands-on agent control is needed, the user opens another chat. When the user says manual work runs elsewhere, the orchestrator launches no agent on the same rows or files. It keeps status, writes row files and prompts, reads committed results (git log, agent_<epic>.md), and runs no builds or tests unless asked.
 
+## Process fixes (2026-11-07 review, user asked "how to solve these issues")
+- Premise check first: every oracle plan names the premise it rests on and one cheap check (a log line or a code read). The agent runs that check before any fix; a failed check returns to the oracle at once. Six plans this session rested on false premises (VRAM padding, per-entry palette, static vertex pool, slot reuse, snapshot path, sky inputs).
+- User facts first: for a visual bug, ask the user for the exact trigger sequence and the frames that are wrong before the first agent (FX1 looked at frames before the menu confirm for two days; the user said the break is after the confirm).
+- No early handback: the prompt says "wait for your background runs in the foreground; a handback with work left is not allowed". If an agent hands back early, resume it once with the same row; do not start a second agent in its worktree while the first can still wake.
+- One worktree, one agent: before a new agent in an existing worktree, stop the old one (TaskStop). Every build.sh and bench call in a worktree sets PM_LANE=<worktree>; a build without PM_LANE uses the shared main volume and breaks the main build (seen 2026-11-07).
+- No git stash anywhere (the stash list is shared by all worktrees).
+- Merges: run `git merge-tree --write-tree --name-only`, check its exit code (1 = conflicts listed on line 2+), never take line 1 as the tree on rc 1. The branch owner resolves source conflicts; the orchestrator resolves only doc and JSON conflicts. After a merge, grep the new tree for conflict markers.
+- Shared JSON: never rewrite azt_scenarios.json or bench_defs.json in the shared folder while an agent runs there; merge them by name (nds1 plus the branch's new entries) and check for duplicate names.
+- Determinism: byte gates run cold with det; a scene whose picture moves with code layout (mac_00 since FB-2) is not a byte gate until its cause is fixed.
+- Disk: build3ds holds about 70 worktrees and about 210 lane and build-at folders (181 GB). Remove the worktree and lanes of a row when its branch is merged (git worktree remove, then the lane folders and their docker volumes), after the user agrees.
+
 ## Status
 Every turn: RUNNING / READY-NOT-LAUNCHED (with the exact conflict) / BLOCKED-ON-USER. Relay each agent report in 3 lines or fewer. Say nothing about late or duplicate notices. Style: ASD-STE100, no praise, never open with agreement. If the plan changed, say so in the first line. Ask the user only with AskUserQuestion (2 to 4 options, recommended first). Do not ask what a default or a rule already decides: pick it and say so in the status.
 
