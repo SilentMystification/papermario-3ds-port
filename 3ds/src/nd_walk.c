@@ -94,7 +94,7 @@ void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
 
 void nd_walk_run(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
-    dlc_on = dlc_enabled();
+    dlc_on = 1;
     Gfx* stack[12];
     int sp = 0;
     Gfx* pc = (Gfx*)list;
@@ -104,8 +104,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
     gp_prev_op = -1; /* PG4: the time between two lists is not an op cost */
     sc_ok = 0; sr_ok = 0; /* DIP2: a new display list starts with a full sync */
     if (!pc) { gv_streak_flush(); tex_streak_flush(); return; }
-    dd_end();
-    if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }
     while (pc && guard++ < 200000) {
         if (__builtin_expect(spr_flush_at != NULL, 0) && pc == spr_flush_at + 1) { spr_flush_at = NULL; pm_gpu_spr_flush(); } /* SPR4 sprcheck: close the batch of the sprite */
         if (end && sp == 0 && pc >= end) break;
@@ -148,7 +146,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
         case G_ENDDL:
             if (sp == 0) {
                 if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
-                dd_end();
                 if (pm_ph_on) mr0_walk_end(); /* MR0 */
                 if (fp) pm_ph_pop();
                 gv_streak_flush();
@@ -184,7 +181,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
                 break;
             }
             if (next) { __builtin_prefetch(next); __builtin_prefetch(next + 4); } /* H4: the G_DL target */
-            if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (ent_skipgen) ent_skipgen = 0;
             else if (next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u) && (pm_tex_tagi = 5, ent_gdl(next))) { /* SGEN-1: any other static list, the entity path */

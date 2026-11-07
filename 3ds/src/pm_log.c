@@ -176,7 +176,7 @@ int pm_debug_has(const char* word) {
     return r;
 }
 
-/* PG0: the words most often asked since the last report (switch gbiprof calls this every 300 frames) */
+/* PG0: the words most often asked since the last report (prof mode calls this every 300 frames) */
 void pm_debug_report(unsigned frames) {
     for (int r = 0; r < 6; r++) {
         int best = -1; unsigned bn = 0;
@@ -495,7 +495,7 @@ void pm_log_prof_line(const char* fmt, ...) {
  * 2 phase set. Each mode sets the words it owns. A word that a mode gives up returns to its state at boot (base_has), so a launch word
  * such as pmu or drawlog comes back when the row leaves prof. base_save runs at the first call, before any change of the words. */
 static const char* const row_w[] = { "phase", "sp0c", "opsplit", "pacestat", "logstat", NULL }; /* owned by the phase mode */
-static const char* const prof_w[] = { "pmu", "fsplit", "texstat", "audiostat", "drawcensus", "drawlog", NULL }; /* off in prof mode */
+static const char* const prof_w[] = { "pmu", "fsplit", "texstat", "audiostat", "drawcensus", NULL }; /* off in prof mode */
 #define ROW_N 5
 #define PROF_N 6
 static char base_has[ROW_N + PROF_N];

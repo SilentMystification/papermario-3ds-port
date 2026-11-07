@@ -15,10 +15,7 @@ int pm_gpu_spr_checking(void); /* SPR4: sprcheck switch on */
 #include "variables.h"
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
-#define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (switch gbiprof) */
-int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
-unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
-__attribute__((cold, noinline)) void gp_note(int k, int same) { gp_set[k]++; if (same) gp_same[k]++; }
+#define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 
 unsigned pm_gbi_sync_ticks, pm_gbi_gv_ticks, pm_gbi_tex_ticks;
@@ -78,42 +75,7 @@ extern unsigned int __ctru_linear_heap_size;
 
 void pm_tex_set_filter(int linear);
 int rm_frame;
-/* X01 debug switch xtrace=<first frame>:<count>: log fill rects, prim depth and render state changes in that frame window. */
-extern unsigned pm_frame_count(void);
-int xt_on(void) {
-    static int a = -2, b;
-    if (a == -2) {
-        char v[24];
-        a = -1;
-        if (pm_debug_value("xtrace", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
-        else a = -1;
-    }
-    return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
-}
 
-/* V02 debug switch drawlog=<first frame>:<count> or drawlog=file (see dd_on): one line per mesh chunk (a G_VTX load at slot 0 starts one) with the
- * vertex source (the model data address), the two innermost G_DL targets, render mode, texture and screen bounds. */
-int dd_on(void) {
-    static int a = -2, b, file;
-    if (a == -2) {
-        char v[24];
-        a = -1;
-        if (pm_debug_value("drawlog", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
-        else { a = -1; file = pm_debug_value("drawlog", v, sizeof v) && !strcmp(v, "file"); }
-    }
-    if (file) { /* drawlog=file: create sdmc:/3ds/PaperMario/drawlog.now (Azahar: %APPDATA%/Azahar/sdmc/3ds/PaperMario) and the next frame is logged. For a spot a person walks to. */
-        static unsigned last;
-        unsigned f = pm_frame_count();
-        if (f != last) {
-            last = f;
-            if (f % 10 == 0) {
-                FILE* t = fopen("sdmc:/3ds/PaperMario/drawlog.now", "rb");
-                if (t) { fclose(t); remove("sdmc:/3ds/PaperMario/drawlog.now"); a = (int)f + 1; b = a + 1; }
-            }
-        }
-    }
-    return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
-}
 /* SUNFIX debug switch suntile=<first frame>:<count>: tile 1 state at each dual_bind, the vertex S T of each triangle, and the sun
  * overlay spawn and draws (pm_sun_spawn, pm_sun_draw). At most 4000 lines per run. */
 int suntile_on(void) {
@@ -127,25 +89,6 @@ int suntile_on(void) {
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
 int suntile_lines;
-struct {
-    unsigned vc, gm, idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri, tex;
-    float x0, y0, x1, y1, w0, w1;
-} dd;
-unsigned dd_idx, dd_dl0, dd_dl1, dd_top;
-/* ddonly=<lo>:<hi>: inside the drawlog window only chunks with lo <= index <= hi draw (bisect which draw makes a fault). */
-static int dd_skip(void) {
-    static int lo = -2, hi;
-    if (lo == -2) {
-        char v[24];
-        if (!(pm_debug_value("ddonly", v, sizeof v) && sscanf(v, "%d:%d", &lo, &hi) == 2)) lo = -1, hi = -1;
-    }
-    return lo >= 0 && dd_on() && ((int)dd.idx < lo || (int)dd.idx > hi);
-}
-static void dd_line(void);
-void dd_end(void) {
-    if (dd.ntri && dd_on()) dd_line(); /* TEXGARBLE: one line per chunk, written after tst1 is declared */
-    dd.ntri = 0;
-}
 
 unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
 unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
@@ -172,16 +115,6 @@ extern int pm_fb_native(const void* p);
  * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
 M1Rec m1;
 int dual_on;
-static void dd_line(void) {
-        pm_log("dd f%u #%u src %08x dl %08x %08x geom %08x oml %08x omh %08x tex %u timg %08x fmt %u siz %u %dx%d tri %u scr %.0f %.0f %.0f %.0f w %.2f %.2f tw %08x %08x %08x %08x ts %u %u sz %d %d %d %d",
-               pm_frame_count(), dd.idx, dd.src, dd.dl0, dd.dl1, dd.gm, dd.oml, dd.omh, dd.tex, dd.timg, dd.fmt, dd.siz, dd.w, dd.h, dd.ntri,
-               dd.x0, dd.y0, dd.x1, dd.y1, dd.w0, dd.w1, nd_ws.tst1.tile_wrap[0][0], nd_ws.tst1.tile_wrap[0][1], nd_ws.tst1.tile_wrap[0][2], nd_ws.tst1.tile_wrap[0][3],
-               nd_ws.tst1.tile_shift[0][0], nd_ws.tst1.tile_shift[0][1], nd_ws.tst1.tile_sz[0][0], nd_ws.tst1.tile_sz[0][1], nd_ws.tst1.tile_sz[0][2], nd_ws.tst1.tile_sz[0][3]);
-    pm_log("dd1 f%u #%u tile1 fmt %u siz %u tw %08x %08x %08x %08x ts %u %u sz %d %d %d %d td1 valid %d src %08x %dx%d stride %d xy %d %d pal %d dual %d",
-           pm_frame_count(), dd.idx, nd_ws.tst1.tile_fmt[1], nd_ws.tst1.tile_siz[1], nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3],
-           nd_ws.tst1.tile_shift[1][0], nd_ws.tst1.tile_shift[1][1], nd_ws.tst1.tile_sz[1][0], nd_ws.tst1.tile_sz[1][1], nd_ws.tst1.tile_sz[1][2], nd_ws.tst1.tile_sz[1][3],
-           nd_ws.td[1].valid, (unsigned)(uintptr_t)nd_ws.td[1].src, nd_ws.td[1].w, nd_ws.td[1].h, nd_ws.td[1].stride, nd_ws.td[1].x0, nd_ws.td[1].y0, nd_ws.td[1].pal_n, dual_on);
-}
 /* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
 float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */
 int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
@@ -196,7 +129,6 @@ unsigned comb_gen, cmb_gen_seen;
 int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
 unsigned box_save[4];
 float dual_gain[3];
-Vtx verts[64];
 /* A display list may only draw vertices its own G_VTX loaded. Slots left by
  * the previous model otherwise connect the two meshes into long triangles. */
 u8 vert_live[64];
@@ -217,7 +149,7 @@ float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once wh
 u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
 u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. */
 unsigned seam_obj, seam_clip; /* SEAM: CPU path triangles by position route, `seamstat` logs them */
-unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n, gv_chk_out, gv_chk_cull, gv_chk_tri;
+unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n;
 unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
 /* GP3 gate: tile 0 G_SETTILESIZE with td[0] set vs no surviving tri or tile-0 texrect before the next one. */
 unsigned gp3_t0_ld, gp3_t0_dead, gp3_t0_pending;
@@ -227,7 +159,6 @@ void gp3_t0_set(void) {
     gp3_t0_pending = 1;
 }
 void gp3_t0_surv(void) { gp3_t0_pending = 0; }
-float gv_rel_ref[2];
 unsigned short vert_ring[64], vert_gmi[64];
 unsigned vert_tss[64];
 unsigned st_gpu_tri; /* triangles drawn by the raw path */
@@ -575,7 +506,7 @@ unsigned plan_draws, plan_fails;
 
 int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
-/* OPT-SC: the result of sync_combine_work by the PG0 signature of its inputs (the same hash as gbiprof in sync_combine_work). A hit repeats the outputs and the calls into pm_gpu: no decision lookup, no
+/* OPT-SC: the result of sync_combine_work by the PG0 signature of its inputs (the same hash as the PG0 count in sync_combine_work). A hit repeats the outputs and the calls into pm_gpu: no decision lookup, no
  * constant colour test, no plan colours. 16 entries, the oldest is replaced. */
 typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
 /* S3N-3d: the combiner fields of tst1 that the combine work reads (nd_comb_decide inputs). */
@@ -634,19 +565,7 @@ unsigned aux_key;
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
 const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
-/* PERF-GBI (switch gbiprof, default off): cycle laps inside draw_tri, a tick read costs 1.3 us in Azahar so the totals are inflated, the ranking holds. One load and one branch when off. */
-unsigned gp_acc[8], gp_last, gp_ntri, gp_frames;
-/* PG0 period: frames per gbiprof report. Switch gbiprofn=<frames> (default 300); a window of 40 frames gets a report at frame 40. */
-unsigned gp_period(void) {
-    static unsigned v;
-    char b[16];
-    if (!v) v = pm_debug_value("gbiprofn", b, sizeof b) ? (unsigned)atoi(b) : 300u;
-    if (!v) v = 300u;
-    return v;
-}
-unsigned gp_opt[256], gp_opn[256], gp_opt_last; int gp_prev_op = -1; /* time between two ops, charged to the first */
 
-int rmlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("rmlog"); return v; }
 /* FLK1 debug switch tritrace=<first frame>:<count>: one line per triangle of draw_tri_cpu in the window. Corner w, screen X and Y (x/w),
  * clip bits, the cull area sign and the decision (what). At most 4000 lines per run. */
 static int tritrace_on(void) {
@@ -688,33 +607,7 @@ extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHe
 /* 1: the list is drawn (the caller skips the G_DL after the record); 0: the walker runs the old words */
 
 
-static __attribute__((cold, noinline)) void tri_dd_log(const ClipV* poly, int n) {
-    int i;
-    if (!dd.ntri) {
-        dd.oml = nd_ws.omode_l; dd.omh = nd_ws.omode_h; dd.zb = (nd_ws.geom & G_ZBUFFER) != 0; dd.tex = (unsigned)nd_ws.tex_on; dd.timg = (u32)nd_ws.td[0].src; dd.fmt = nd_ws.td[0].fmt;
-        dd.siz = nd_ws.td[0].siz; dd.w = nd_ws.td[0].w; dd.h = nd_ws.td[0].h; dd.prim = nd_ws.prim;
-        dd.x0 = dd.y0 = dd.w0 = 1e9f; dd.x1 = dd.y1 = dd.w1 = -1e9f;
-    }
-    dd.ntri++;
-    for (i = 0; i < n; i++) {
-        float sx = poly[i].x / poly[i].w * vp_sx + vp_tx, sy = vp_ty - poly[i].y / poly[i].w * vp_sy;
-        if (sx < dd.x0) dd.x0 = sx;
-        if (sx > dd.x1) dd.x1 = sx;
-        if (sy < dd.y0) dd.y0 = sy;
-        if (sy > dd.y1) dd.y1 = sy;
-        if (poly[i].w < dd.w0) dd.w0 = poly[i].w;
-        if (poly[i].w > dd.w1) dd.w1 = poly[i].w;
-    }
-}
 
-static __attribute__((cold, noinline)) void tri_rm_log(void) {
-    static unsigned lo, lg, la, lb, lc, ld, lh, lp, lf;
-    if (lo != nd_ws.omode_l || lg != (nd_ws.geom & G_ZBUFFER) || la != nd_ws.tst1.comb_a || lb != nd_ws.tst1.comb_b || lc != nd_ws.tst1.comb_c || ld != nd_ws.tst1.comb_d ||
-        lh != nd_ws.omode_h || lp != nd_ws.prim || lf != nd_ws.tst1.tile_fmt[0] * 4 + nd_ws.tst1.tile_siz[0]) {
-        lp = nd_ws.prim; lf = nd_ws.tst1.tile_fmt[0] * 4 + nd_ws.tst1.tile_siz[0];
-        lo = nd_ws.omode_l; lg = nd_ws.geom & G_ZBUFFER; la = nd_ws.tst1.comb_a; lb = nd_ws.tst1.comb_b; lc = nd_ws.tst1.comb_c; ld = nd_ws.tst1.comb_d; lh = nd_ws.omode_h;
-    }
-}
 
 __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
     ClipV poly[12];
@@ -818,15 +711,12 @@ __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
     gp3_t0_surv();
     n_in++;
     n = 3;
-    if ((rmlog_on() && (rm_frame % 30) == 1) || xt_on()) tri_rm_log();
     if (comb_mode5 && !plan_active) {
         float en[4];
         unpack8(nd_ws.envc, en);
         for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
     }
-    if (dd_skip()) return;
     sync_render();
-    if (dd_on()) tri_dd_log(poly, n);
     if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL))) {
         /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
         float zn = prim_ndc_z();
@@ -1046,9 +936,6 @@ int lt_mem_same(u32 w0, u32 w1) {
  * SETOTHERMODE mask and the prim LOD word (w0 low 16 bits, which g2_same does not compare). */
 
 /* H1: rare paths of nd_walk_run. Cold and noinline, so the hot loop does not carry their code. */
-void gbi_cold_dd_load(const Vtx* src) {
-    dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.vc = __builtin_bswap32(*(const u32*)((const u8*)src + 12)); dd.gm = nd_ws.geom; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1;
-}
 void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
     unsigned where = (w0 >> 16) & 0xff, vi = (w0 & 0xffffu) / 2;
     if (where == G_MWO_POINT_XYSCREEN && vi < 64) {

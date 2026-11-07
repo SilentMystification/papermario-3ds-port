@@ -1226,9 +1226,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     pm_gpu_rect_sync(); /* DR1 */
     pm_tex_epoch_v++;
     int r;
-    static int tp = -1;
-    if (tp < 0) tp = pm_debug_has("gbiprof");
-    unsigned t0 = (tp || pm_ph_on) ? pm_ticks() : 0; /* PI3: timed with phase on too */
+    unsigned t0 = pm_ph_on ? pm_ticks() : 0; /* PI3: timed with phase on too */
     ph_miss = 0;
     PH_ADD(C_TEXCALL, 1);
     if (!lut && dkey == 0) {
@@ -1241,7 +1239,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
         glyph_ox = glyph_oy = 0;
     r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
     if (ph_miss) PH_POP();
-    if (tp || pm_ph_on) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
+    if (pm_ph_on) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
         unsigned dt = pm_ticks() - t0;
         if (ph_miss) { tprof_miss_t += dt; tprof_miss_n++; } else { tprof_hit_t += dt; tprof_hit_n++; }
     }

@@ -225,7 +225,7 @@ void load_mtx(u32 w0, u32 w1, u32 hdr) {
     if (lm) {}
     else if (cached && mtx_tag[slot] == tag) memcpy(in, mtx_cache[slot], sizeof(in));
     else {
-        nd_mtx_unpack((const u32*)src->m, in);
+        nd_mtx_unpack((const uint32_t*)src->m, in);
         if (cached) {
             memcpy(mtx_cache[slot], in, sizeof(in));
             mtx_tag[slot] = tag;

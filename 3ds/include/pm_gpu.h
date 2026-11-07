@@ -40,8 +40,6 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
 void pm_gpu_gv_reset(void);
 void pm_gpu_gv_stats(unsigned o[4]);
 void pm_gpu_note_mvp(const float m[4][4], float sx, float sy, float tx, float ty);
-int pm_gpu_gv_wind(void);
-void pm_gpu_gv_post(const float p[4], float o[4]); /* GV1: the 16 byte Vtx copies of this frame */
 void pm_gpu_set_rgb_scale(int scale); /* 1 or 2, texture stage only */
 void pm_gpu_set_combine(int mode); /* 0 shade, 1 primitive, 2 texture * shade */
 

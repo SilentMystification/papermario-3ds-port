@@ -519,7 +519,7 @@ void pm_ph_init(void) {
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();
     int hit = 0;
-    for (int i = 0; i < 2000; i++) hit += pm_debug_has("rmlog");
+    for (int i = 0; i < 2000; i++) hit += pm_debug_has("nofog");
     unsigned dt = pm_ticks() - t0;
     /* cost of one tick read */
     unsigned t1 = pm_ticks();

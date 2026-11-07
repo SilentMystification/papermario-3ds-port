@@ -31,7 +31,7 @@ static void sync_combine_work(void);
 
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
-#define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (switch gbiprof) */
+#define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
 
 typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; float k4; } CcIn;
 typedef struct { unsigned key; int use, why; float el, ep; PmPlan plan; } Dec;
