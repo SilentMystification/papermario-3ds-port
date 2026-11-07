@@ -3,7 +3,10 @@
 ## Goal
 In wide mode (400 px top screen, game x -40 to 360) the status bar keeps its 4:3 size: left box 174 px, icons and digits 1:1. User decision: scale the WHOLE status bar 1.25 (boxes, icons, digits, star power orbs, x and y), so it takes the same part of the screen as at 320 px. 4:3 mode stays pixel-equal.
 
-## Start state
+## State (2026-11-07, folded into this session: user decision)
+The HUD1 peer session stopped: its worktree (.claude/worktrees/agent-ada36f387b16d4402, branch hud1) has no commit, only an uncommitted src/inventory.c change, saved as build3ds/hud1_wip.diff (449 lines): start from it (git apply in your worktree, then check it against the design below). Work in a new worktree from nds1 (branch hud1b). The old "peer session" collision notes below no longer apply: commit your own scenario/bench entries if needed (nds1 JSON as the base). After HUD1 passes, do TX-4 final in the same branch: remove the G_PM_TEXI headers in src/hud_element.c (HT1, two places ~365-403 and ~477-600), then delete the G_PM_TEXI case (nd_walk.c ~175), gsSPPmTexInline and G_PM_TEXI in include/gbi_custom.h, and the tb_inline walker entry; gate: HUD by eye in yard, yard_wide, battle_wide; spot_mac01_pic byte-equal; grep `G_PM_TEXI|gsSPPmTexInline` empty.
+
+## Start state (original)
 Branch: nds1, last commit f90d823b2. You work in a git worktree on branch hud1 (not nds1). Do not touch 3ds/src/nd_core.c (peer session).
 
 ## Design (do this)
