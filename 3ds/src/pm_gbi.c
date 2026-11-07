@@ -35,7 +35,7 @@ int pm_gbi_flush_class(void) {
 }
 /* W2: phase timers read the tick for one run in 8 and scale the sample by 8. A run is a streak of ops of one class. */
 unsigned ph_seq;
-static int ph_pick(void) { return (++ph_seq & 7u) == 0; }
+int ph_pick(void) { return (++ph_seq & 7u) == 0; }
 static int gv_run, gv_streak;
 unsigned gv_streak_t0;
 void gv_streak_flush(void) {
@@ -75,11 +75,6 @@ extern unsigned int __ctru_heap_size;
 extern unsigned int __ctru_linear_heap;
 extern unsigned int __ctru_linear_heap_size;
 
-/* CORE-2b: the geometry mode setter. Every G_GEOMETRYMODE path writes through here (gv_epoch stays with the callers that bumped it). */
-void set_geom(u32 w0, u32 w1) {
-    nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
-    pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
-}
 void pm_tex_set_filter(int linear);
 int rm_frame;
 /* X01 debug switch xtrace=<first frame>:<count>: log fill rects, prim depth and render state changes in that frame window. */
@@ -120,7 +115,7 @@ int dd_on(void) {
 }
 /* SUNFIX debug switch suntile=<first frame>:<count>: tile 1 state at each dual_bind, the vertex S T of each triangle, and the sun
  * overlay spawn and draws (pm_sun_spawn, pm_sun_draw). At most 4000 lines per run. */
-static int suntile_on(void) {
+int suntile_on(void) {
     static int a = -2, b;
     if (a == -2) {
         char v[24];
@@ -252,7 +247,6 @@ void off_screen_check(void) {
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
     if (!nooff && (r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(nd_ws.cimg ? nd_ws.cimg : zb_fake, cimg_stride, nd_ws.cimg_siz);
 }
-int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 /* The sprite raster captured when tile 1 got its size. A shaded sprite sets two tiles on the
  * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
 M1Rec m1;
@@ -419,92 +413,18 @@ void* ptr_of(u32 w) {
 void* pm_gbi_ptr_of(u32 w) { return ptr_of(w); } /* MDL-1: the walker's segment resolver, for the R13 texture block (nd_model.c nd_r13_desc) */
 
 
-/* Combiner input as a constant, or -1 when it needs a texel or the shade, -2 for COMBINED.
- * slot 0..3 is A, B, C, D of the colour equation. */
-static float cc_const_in(int slot, unsigned sel, int ch, const float* pr, const float* en) {
-    if (sel == 0) return -2.f;
-    if (sel == 3) return pr[ch];
-    if (sel == 5) return en[ch];
-    if (slot == 0 && sel == 6) return 1.f;
-    if (slot == 3 && sel == 6) return 1.f;
-    if (slot == 3 && sel == 7) return 0.f;
-    if (slot == 1 && sel == 7) return (float)conv_k4 / 255.f;
-    if (slot == 1 && sel > 7) return 0.f;
-    if (slot == 0 && sel >= 8) return 0.f;
-    if (slot == 2 && sel == 10) return pr[3];
-    if (slot == 2 && sel == 12) return en[3];
-    if (slot == 2 && sel >= 16) return 0.f;
-    return -1.f;
-}
 
-/* Alpha of one cycle as K * TEXEL0 alpha. Returns K, or -1 if the form is not that.
- * (T1 - T0) * E + T0 reads two textures. Tile 1 is not loaded, so TEXEL0 stands for both. */
-static float cc_alpha_k(unsigned aa, unsigned ab, unsigned ac, unsigned ad, const float* pr, const float* en) {
-    if (ab == 7 && ad == 7 && aa == 1 && (ac == 3 || ac == 5)) return ac == 3 ? pr[3] : en[3];
-    if (ab == 7 && ad == 7 && ac == 1 && (aa == 3 || aa == 5)) return aa == 3 ? pr[3] : en[3];
-    if (aa == 2 && ab == 1 && ad == 1 && (ac == 3 || ac == 5)) return 1.f;
-    if (aa == 3 && ab == 0 && ac == 1 && ad == 0) return pr[3];
-    return -1.f;
-}
 
-/* A combiner whose colour needs no texel and no shade, and whose alpha is a constant times
- * TEXEL0 alpha: a flat colour through a texture's alpha mask (a drop shadow is black this way).
- * Returns 1 and the RGBA constant, the alpha byte being the factor on texture alpha. */
-static int const_rgb_tex_alpha(unsigned* out) {
-    float pr[4], en[4], rgb[3], k, k2;
-    int ch;
-    int two = ((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) > 1 || !comb_set || !nd_ws.tex_on) return 0;
-    unpack8(nd_ws.prim, pr);
-    unpack8(nd_ws.envc, en);
-    for (ch = 0; ch < 3; ch++) {
-        float a, b, c, d;
-        if (two) {
-            a = cc_const_in(0, nd_ws.tst1.comb2_a, ch, pr, en); b = cc_const_in(1, nd_ws.tst1.comb2_b, ch, pr, en);
-            c = cc_const_in(2, nd_ws.tst1.comb2_c, ch, pr, en); d = cc_const_in(3, nd_ws.tst1.comb2_d, ch, pr, en);
-        } else {
-            a = cc_const_in(0, nd_ws.tst1.comb_a, ch, pr, en); b = cc_const_in(1, nd_ws.tst1.comb_b, ch, pr, en);
-            c = cc_const_in(2, nd_ws.tst1.comb_c, ch, pr, en); d = cc_const_in(3, nd_ws.tst1.comb_d, ch, pr, en);
-            if (a == -2.f) a = 0.f; /* COMBINED is 0 in the only cycle */
-            if (b == -2.f) b = 0.f;
-            if (c == -2.f) c = 0.f;
-            if (d == -2.f) d = 0.f;
-        }
-        if (a < 0.f || b < 0.f || c < 0.f || d < 0.f) return 0;
-        rgb[ch] = (a - b) * c + d;
-        rgb[ch] = rgb[ch] < 0.f ? 0.f : rgb[ch] > 1.f ? 1.f : rgb[ch];
-    }
-    if (nd_ws.tst1.comb_aa == 2 && nd_ws.td[1].valid) return 0; /* VIS3: (T1 - T0) * E + T0 reads tile 1 when it is loaded */
-    k = cc_alpha_k(nd_ws.tst1.comb_aa, nd_ws.tst1.comb_ab, nd_ws.tst1.comb_ac, nd_ws.tst1.comb_ad, pr, en);
-    if (k < 0.f) return 0;
-    if (two) {
-        /* Second cycle alpha: COMBINED * constant, or COMBINED passed through. */
-        if (nd_ws.tst1.comb2_aa == 0 && nd_ws.tst1.comb2_ab == 7 && nd_ws.tst1.comb2_ad == 7 && (nd_ws.tst1.comb2_ac == 3 || nd_ws.tst1.comb2_ac == 5)) k2 = nd_ws.tst1.comb2_ac == 3 ? pr[3] : en[3];
-        else if (nd_ws.tst1.comb2_aa == 7 && nd_ws.tst1.comb2_ab == 7 && nd_ws.tst1.comb2_ac == 7 && nd_ws.tst1.comb2_ad == 0) k2 = 1.f;
-        else return 0;
-        k *= k2;
-    }
-    *out = ((unsigned)(rgb[0] * 255.f + .5f) << 24) | ((unsigned)(rgb[1] * 255.f + .5f) << 16) |
-           ((unsigned)(rgb[2] * 255.f + .5f) << 8) | (unsigned)(k * 255.f + .5f);
-    return 1;
-}
 
-static void set_leg(int m) { leg_mode = m; }
+void set_leg(int m) { leg_mode = m; }
 int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 PmPlan cur_plan;
 void sync_combine(void);
-static void sync_combine_work(void);
-static void sync_combine_work_timed(void) {
-    if (!pm_ph_on || !ph_pick()) { sync_combine_work(); return; }
-    unsigned t0 = pm_ticks();
-    sync_combine_work();
-    pm_gbi_sync_ticks += (pm_ticks() - t0) * 8u; /* W2: one call in 8 timed */
-}
 /* S3N-3d: set by nd_comb_decide. The combine work then makes no pm_gpu call, no stats and no log. */
 int comb_dry;
 int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
 unsigned sl_cc;
-static void sync_legacy(void) {
+void sync_legacy(void) {
     unsigned cc;
     sl_const = sl_env = 0;
     if (const_rgb_tex_alpha(&cc)) {
@@ -555,121 +475,8 @@ static void sync_legacy(void) {
 
 /* sync_combine() is below, after the audit code it shares. */
 
-/* All texels of tile 0 are 1.0 (I4 0xF or I8 0xFF)? Then TEXEL0 * TEXEL1 is TEXEL1. */
-static int tile0_white(void) {
-    const u8* src = nd_ws.td[0].src;
-    if (!nd_ws.td[0].valid || !src || nd_ws.td[0].fmt != G_IM_FMT_I || nd_ws.td[0].siz > 1) return 0;
-    for (int y = 0; y < nd_ws.td[0].h; y++) {
-        for (int x = 0; x < nd_ws.td[0].w; x++) {
-            if (nd_ws.td[0].siz == 0) {
-                unsigned b = src[(y * nd_ws.td[0].stride + x) >> 1];
-                if (((x & 1) ? (b & 15u) : (b >> 4)) != 15u) return 0;
-            } else if (src[y * nd_ws.td[0].stride + x] != 255) {
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
 
-/* Called before each textured draw. Tiles 0 and 1 are known by then, the combine mode came
- * before them. */
-void box_fold_sync(void) {
-    int want = box_prod && nd_ws.td[1].valid && tile0_white();
-    if (want == box_folded) return;
-    box_folded = want;
-    comb_gen++;
-    if (want) {
-        box_save[0] = nd_ws.tst1.comb_a; box_save[1] = nd_ws.tst1.comb_b; box_save[2] = nd_ws.tst1.comb_c; box_save[3] = nd_ws.tst1.comb_d;
-        nd_ws.tst1.comb_a = G_CCMUX_PRIMITIVE; nd_ws.tst1.comb_b = G_CCMUX_ENVIRONMENT; nd_ws.tst1.comb_c = G_CCMUX_TEXEL0; nd_ws.tst1.comb_d = G_CCMUX_ENVIRONMENT;
-        nd_ws.tst1.comb_aa = 7; nd_ws.tst1.comb_ab = 7; nd_ws.tst1.comb_ac = 7; nd_ws.tst1.comb_ad = 1; /* TEXEL1 alpha, renamed TEXEL0 */
-        nd_ws.use_t1 = 1;
-    } else {
-        nd_ws.tst1.comb_a = box_save[0]; nd_ws.tst1.comb_b = box_save[1]; nd_ws.tst1.comb_c = box_save[2]; nd_ws.tst1.comb_d = box_save[3];
-        nd_ws.tst1.comb_aa = 7; nd_ws.tst1.comb_ab = 7; nd_ws.tst1.comb_ac = 7; nd_ws.tst1.comb_ad = 2;
-        nd_ws.use_t1 = 0;
-    }
-    sync_combine();
-}
 
-/* Render mode bits of G_SETOTHERMODE_L, same reading as libultraship DeriveTriState: depth
- * compare and update come from Z_CMP and Z_UPD, a decal passes equal depth, blending is on when
- * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
- * cut away near-transparent texels. */
-unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
-/* CORE-2b: the fog and blend colour setters (fogc, blendc; the fog factors stay with G_MOVEWORD). */
-void set_fogcolor(u32 w1) { fogc = w1; }
-/* CORE-2b: scissor (the walker's sci_* and the GPU scissor), prim depth and fill colour. */
-void set_scissor(u32 w0, u32 w1) {
-    int ulx = (int)((w0 >> 12) & 0xfff);
-    int uly = (int)(w0 & 0xfff);
-    int lrx = (int)((w1 >> 12) & 0xfff);
-    int lry = (int)(w1 & 0xfff);
-    sci_x0 = ulx >> 2;
-    sci_y0 = uly >> 2;
-    sci_x1 = lrx >> 2;
-    sci_y1 = lry >> 2;
-    pm_gpu_set_scissor(ulx >> 2, uly >> 2, lrx >> 2, lry >> 2);
-}
-void set_primdepth(u32 w1) {
-    nd_ws.prim_z = (w1 >> 16) & 0x7fffu;
-    { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_ws.prim_z); } /* POND-LOG: waterlog line of pm_gpu.c */
-}
-void set_fillcolor(u32 w1) { nd_ws.fill = w1; }
-void set_blendcolor(u32 w1) { blendc = w1; }
-int fog_fm, fog_fo; static int fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
-unsigned sr_sig;
-int sr_ok;
-void sync_render(void) {
-    unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)img_role(0) ^ (unsigned)PMD("rmoff");
-    if (sr_ok && sg == sr_sig) {
-        GP_SET(6, 1);
-        return;
-    }
-    sr_sig = sg;
-    sr_ok = 1;
-    GP_SET(6, 0);
-    unsigned m = nd_ws.omode_l;
-    /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog
-     * colour alpha: (P * A + M * (1 - A)), P = BL or FOG, A = A_FOG, M = IN, B = 1MA. The room shroud (PM_RM_SHROUD) fades the
-     * world to black this way. Other blenders are not touched. */
-    {
-        unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
-        if ((p == 2u || p == 3u) && a == 1u && mm == 0u && b == 0u)
-            pm_gpu_set_mix(1, ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu));
-        else if (!PMDL("nofog") && p == 3u && a == 2u && mm == 0u && b == 0u) {
-            /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
-            pm_gpu_set_mix(2, (fogc & 0xffffff00u) | 0xffu);
-            fogmix_on = 1;
-            goto mixed;
-        } else
-            pm_gpu_set_mix(0, 0);
-        fogmix_on = 0;
-    }
-mixed:
-    NdRender rs;
-    nd_render_state(nd_ws.omode_h, m, img_role(0) == ROLE_DEPTH, &rs);
-    if (!rs.depth && PMD("rmoff")) { /* A/B check: the old always-blend, always-write state */
-        pm_gpu_set_nocolor(0);
-        pm_gpu_set_render(1, 1, 1, -1, 0);
-        return;
-    }
-    pm_gpu_set_nocolor(rs.nocol);
-    if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
-    pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);
-    pm_gpu_dbg_mode(m); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
-    if (m == 0x00504B50u && PMDL("orbdbg")) { /* FX1-2b: the render state the glow's draws get, once per frame */
-        static unsigned orb_sf = ~0u;
-        extern unsigned pm_frame_count(void);
-        extern void pm_log(const char* fmt, ...);
-        if (orb_sf != pm_frame_count()) {
-            orb_sf = pm_frame_count();
-            pm_log("orbdbg state f%u blend %d atest %d zcmp %d zupd %d decal %d memb %d nocol %d mix %d fogmix %d", orb_sf, rs.blend, rs.atest,
-                   rs.zcmp, rs.zupd, rs.decal, rs.memb, rs.nocol, (int)0, (int)fogmix_on);
-        }
-    }
-    pm_gpu_render_src(nd_ws.omode_h, m, rs.depth);
-}
 
 unsigned rgba_from_5551(unsigned c) {
     unsigned r = (c >> 11) & 31;
@@ -685,6 +492,7 @@ unsigned rgba_from_5551(unsigned c) {
 /* L01: RSP light table. G_MW_NUMLIGHT sets the count, G_MOVEMEM index G_MV_LIGHT fills slots (slot 0 is light 1, slot nlights is the ambient light). */
 NdLight lt[9];
 unsigned lt_n;
+void nd_light_count(u32 w1) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; } /* ST-1: G_MW_NUMLIGHT; group M owns lt_n */
 s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
 float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
 /* SUN3 debug (suntile switch): the tile 0 source of a draw, its state, and the first 16 bytes of rows 0 to 11 of the source. */
@@ -869,78 +677,12 @@ static int clip_bits(const ClipV* p) {
  * cycle 1. LOD fraction, key and convert read 0. NOISE reads 0.5 (PT07). */
 typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; float k4; } CcIn;
 
-static float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* cb, int alpha, float prlod) {
-    int rgb_c = !alpha && slot == 2;
-    if (alpha) {
-        switch (sel) {
-        case 0: return slot == 2 ? 0.f : cb[3];
-        case 1: return in->t0[3];
-        case 2: return in->t1[3];
-        case 3: return in->pr[3];
-        case 4: return in->sh[3];
-        case 5: return in->en[3];
-        case 6: return slot == 2 ? prlod : 1.f;
-        default: return 0.f;
-        }
-    }
-    switch (sel) {
-    case 0: return cb[ch];
-    case 1: return in->t0[ch];
-    case 2: return in->t1[ch];
-    case 3: return in->pr[ch];
-    case 4: return in->sh[ch];
-    case 5: return in->en[ch];
-    case 6: return slot == 1 ? in->ke[ch] : slot == 2 ? in->ks[ch] : slot == 0 || slot == 3 ? 1.f : 0.f;
-    case 7: return slot == 1 ? in->k4 : slot == 0 ? 0.5f /* PT07: NOISE, the audit uses the mean */ : rgb_c ? cb[3] : 0.f;
-    case 8: return rgb_c ? in->t0[3] : 0.f;
-    case 9: return rgb_c ? in->t1[3] : 0.f;
-    case 10: return rgb_c ? in->pr[3] : 0.f;
-    case 11: return rgb_c ? in->sh[3] : 0.f;
-    case 12: return rgb_c ? in->en[3] : 0.f;
-    case 14: return rgb_c ? prlod : 0.f;
-    default: return 0.f;
-    }
-}
 
-/* s[cycle][0..7] = A B C D (colour), Aa Ab Ac Ad (alpha) */
-static void cc_decode(unsigned w0, unsigned w1, unsigned s[2][8]) {
-    s[0][0] = (w0 >> 20) & 0xf; s[0][1] = (w1 >> 28) & 0xf; s[0][2] = (w0 >> 15) & 0x1f; s[0][3] = (w1 >> 15) & 7;
-    s[0][4] = (w0 >> 12) & 7;   s[0][5] = (w1 >> 12) & 7;   s[0][6] = (w0 >> 9) & 7;      s[0][7] = (w1 >> 9) & 7;
-    s[1][0] = (w0 >> 5) & 0xf;  s[1][1] = (w1 >> 24) & 0xf; s[1][2] = w0 & 0x1f;          s[1][3] = (w1 >> 6) & 7;
-    s[1][4] = (w1 >> 21) & 7;   s[1][5] = (w1 >> 3) & 7;    s[1][6] = (w1 >> 18) & 7;     s[1][7] = w1 & 7;
-    pm_comb_swap_c2(s[1]);
-}
 
-static float cc_clamp(float v) { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
-/* (A-B)*C+D. RDP: the result is a 9 bit value, 129..255 below zero wraps to 255 and 1..128 below zero gives 0. The plan models this for
- * 0 - B*C only (pm_comb.c lower), so the reference applies it only there. Other negative results clamp to 0 as before. */
-static float cc_rdp(float a, float b, float c, float d) {
-    if (a == 0.f && d == 0.f && b * c > 0.f) return floorf(b * c * 255.f + .5f) >= 129.f ? 1.f : 0.f;
-    return cc_clamp((a - b) * c + d);
-}
 
-/* The RDP result, one or two cycles. */
-static void cc_eval(const unsigned s[2][8], int two, const CcIn* in, float prlod, float out[4]) {
-    float cb[4] = { 0, 0, 0, 0 };
-    for (int cyc = 0; cyc < (two ? 2 : 1); cyc++) {
-        float r[4];
-        for (int ch = 0; ch < 3; ch++) {
-            float a = cc_v(0, s[cyc][0], ch, in, cb, 0, prlod), b = cc_v(1, s[cyc][1], ch, in, cb, 0, prlod);
-            float c = cc_v(2, s[cyc][2], ch, in, cb, 0, prlod), d = cc_v(3, s[cyc][3], ch, in, cb, 0, prlod);
-            r[ch] = cc_rdp(a, b, c, d);
-        }
-        {
-            float a = cc_v(0, s[cyc][4], 3, in, cb, 1, prlod), b = cc_v(1, s[cyc][5], 3, in, cb, 1, prlod);
-            float c = cc_v(2, s[cyc][6], 3, in, cb, 1, prlod), d = cc_v(3, s[cyc][7], 3, in, cb, 1, prlod);
-            r[3] = cc_rdp(a, b, c, d);
-        }
-        memcpy(cb, r, sizeof cb);
-    }
-    memcpy(out, cb, sizeof cb);
-}
 
 /* What the legacy combine mode draws. */
-static void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]) {
+void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]) {
     const float* t = t1src ? in->t1 : in->t0;
     float sa = comb_alpha_shade ? in->sh[3] : 1.f;
     unsigned cc = 0;
@@ -976,151 +718,33 @@ const char* const cc_nm_d[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1",
 const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "1", "0" };
 const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
 
-static void cc_text(const unsigned s[2][8], int cyc, char* o, int n) {
-    snprintf(o, n, "(%s-%s)*%s+%s / (%s-%s)*%s+%s",
-             s[cyc][0] < 8 ? cc_nm_a[s[cyc][0]] : "0", s[cyc][1] < 8 ? cc_nm_b[s[cyc][1]] : "0",
-             s[cyc][2] < 16 ? cc_nm_c[s[cyc][2]] : "0", cc_nm_d[s[cyc][3]],
-             cc_nm_aa[s[cyc][4]], cc_nm_aa[s[cyc][5]], cc_nm_ac[s[cyc][6]], cc_nm_aa[s[cyc][7]]);
-}
 
-/* 1 if the combiner reads texel tile t (0 or 1). */
-static int cc_uses(const unsigned s[2][8], int two, int t) {
-    int u = 0;
-    for (int cyc = 0; cyc < (two ? 2 : 1); cyc++) {
-        for (int i = 0; i < 4; i++) {
-            unsigned v = s[cyc][i];
-            if (v == (unsigned)t + 1 || (i == 2 && v == (unsigned)t + 8)) u = 1;
-        }
-        for (int i = 4; i < 8; i++)
-            if (s[cyc][i] == (unsigned)t + 1) u = 1;
-    }
-    return u;
-}
 
 unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
-unsigned mm_cnt[256], mw_cnt[256];
+unsigned mm_cnt[256];
 unsigned lcg_s = 12345u;
-static float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
-unsigned char aud_prim_lod;
+float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
 
 /* Decision per combiner: the legacy combine mode, or the general plan (mode 8). Cached by the combiner words and
  * the flags the legacy mode depends on. The plan is chosen when the legacy mode is off by more than 0.012
  * (of 1.0, max over colour and alpha, 24 random inputs) and the plan is closer. */
 typedef struct { unsigned key; int use, why; float el, ep; PmPlan plan; } Dec;
-Dec dec[128];
-int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
 unsigned plan_draws, plan_fails;
 
-static Dec* decide(int two) {
-    unsigned key = 2166136261u, i;
-    unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2), (unsigned)comb_alpha_shade,
-                         (unsigned)aud_prim_lod, keyc, keys, conv_k4 }; /* S3N-3d: pm_comb_colours and the K4 input read these too */
-    for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
-    {
-        static unsigned last_i;
-        if (last_i < (unsigned)dec_n && dec[last_i].key == key) return &dec[last_i];
-        for (i = 0; i < (unsigned)dec_n; i++)
-            if (dec[i].key == key) { last_i = i; return &dec[i]; }
-    }
-    {
-        Dec* d;
-        if (dec_n < 128) d = &dec[dec_n++];
-        else { d = &dec[dec_next]; dec_next = (dec_next + 1) & 127; }
-        unsigned s[2][8];
-        float plod_f = (float)aud_prim_lod / 255.f;
-        memset(d, 0, sizeof *d);
-        d->key = key;
-        cc_decode(nd_ws.comb_w0, nd_ws.comb_w1, s);
-        if (leg_mode == 4) { d->why = -2; return d; } /* mode 4 is exact by construction (const_rgb_tex_alpha) */
-        d->why = pm_comb_build(nd_ws.comb_w0, nd_ws.comb_w1, two, nd_ws.use_t1, &d->plan);
-        if (!d->why && d->plan.uses_tex1 && !nd_ws.td[1].valid) d->why = 6; /* TEXEL1 read, tile 1 not loaded */
-        {
-            float el = 0.f, ep = 0.f;
-            lcg_s = 777u;
-            for (int k = 0; k < 24; k++) {
-                CcIn in;
-                float f[4], g[4], h[4];
-                unsigned pc = 0, ec = 0, pcs[2];
-                for (int c = 0; c < 4; c++) {
-                    in.t0[c] = lcg_f(); in.t1[c] = lcg_f(); in.sh[c] = lcg_f();
-                    pcs[0] = (unsigned)(lcg_f() * 255.f + .5f); pcs[1] = (unsigned)(lcg_f() * 255.f + .5f);
-                    pc = pc << 8 | pcs[0]; ec = ec << 8 | pcs[1];
-                }
-                unpack8(pc, in.pr); unpack8(ec, in.en); unpack8(keyc, in.ke); unpack8(keys, in.ks); in.k4 = (float)conv_k4 / 255.f;
-                cc_eval(s, two, &in, plod_f, f);
-                cc_legacy(leg_mode, &in, nd_ws.use_t1, g);
-                for (int c = 0; c < 4; c++) { float e = f[c] > g[c] ? f[c] - g[c] : g[c] - f[c]; if (e > el) el = e; }
-                if (!d->why) {
-                    PmPlan t = d->plan;
-                    pm_comb_colours(&t, pc, ec, aud_prim_lod, keyc, keys);
-                    pm_comb_eval(&t, nd_ws.use_t1 ? in.t1 : in.t0, in.t1, in.sh, h);
-                    for (int c = 0; c < 4; c++) { float e = f[c] > h[c] ? f[c] - h[c] : h[c] - f[c]; if (e > ep) ep = e; }
-                }
-            }
-            d->el = el;
-            d->ep = d->why ? 9.f : ep;
-            d->use = !d->why && el > 0.012f && ep < el;
-        }
-        return d;
-    }
-}
 
 int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
 /* OPT-SC: the result of sync_combine_work by the PG0 signature of its inputs (the same hash as gbiprof in sync_combine_work). A hit repeats the outputs and the calls into pm_gpu: no decision lookup, no
  * constant colour test, no plan colours. 16 entries, the oldest is replaced. */
 typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
-ScMemo scm[16];
-unsigned scm_next;
-static unsigned scm_sig(void) {
-    unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.omode_l, nd_ws.prim, nd_ws.envc, (unsigned)aud_prim_lod, nd_ws.tst1.tile_fmt[0] * 4 + nd_ws.tst1.tile_siz[0],
-        (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), nd_ws.geom };
-    unsigned sg = 2166136261u;
-    for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
-    return sg;
-}
-static ScMemo* scm_find(unsigned sg) {
-    for (unsigned i = 0; i < 16; i++) if (scm[i].ok && scm[i].sg == sg) return &scm[i];
-    return NULL;
-}
-static void scm_store(unsigned sg) {
-    ScMemo* m = &scm[scm_next++ & 15];
-    m->sg = sg; m->ok = 1; m->leg = leg_mode; m->mode5 = comb_mode5; m->pat = box_pat; m->use = ls_use; m->why = ls_why; m->cyc = ls_cyc; m->dual = ls_dual;
-    m->plan_on = plan_active; m->cc_on = sl_const; m->cc = sl_cc; m->env_on = sl_env;
-    if (plan_active) m->plan = cur_plan;
-}
-static void scm_replay(const ScMemo* m) {
-    if (m->cc_on) pm_gpu_set_const(m->cc);
-    if (m->env_on) pm_gpu_set_env(nd_ws.envc);
-    leg_mode = m->leg; comb_mode5 = m->mode5; box_pat = m->pat;
-    ls_use = m->use; ls_why = m->why; ls_cyc = m->cyc; ls_dual = m->dual; ls_frame = rm_frame;
-    plan_active = m->plan_on;
-    if (m->plan_on) { cur_plan = m->plan; pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, ((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1, nd_ws.use_t1); pm_gpu_set_plan(&cur_plan); }
-    else pm_gpu_set_combine(leg_mode);
-}
-/* R2B: the sync_combine input hash (the fields the skip test reads); sync_combine and the g2_same skip use the same value */
-unsigned sc_sig_now(void) {
-    unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.prim, nd_ws.envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
-                         (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
-    unsigned sg = 2166136261u;
-    for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
-    return sg;
-}
 /* S3N-3d: the combiner fields of tst1 that the combine work reads (nd_comb_decide inputs). */
 unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
     &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
-static void comb_in_walker(NdCombIn* in) {
-    in->w0 = nd_ws.comb_w0; in->w1 = nd_ws.comb_w1; in->omode_h = nd_ws.omode_h; in->prim = nd_ws.prim; in->env = nd_ws.envc; in->aud_prim_lod = aud_prim_lod;
-    in->key_c = keyc; in->key_s = keys; in->conv_k4 = conv_k4;
-    for (int i = 0; i < 16; i++) in->tst[i] = *tst_f[i];
-    in->leg_mode = leg_mode; in->tex_on = nd_ws.tex_on; in->use_t1 = nd_ws.use_t1; in->t1_valid = nd_ws.td[1].valid; in->dual_on = dual_on;
-    in->box_prod = box_prod; in->box_pat = box_pat; in->box_folded = box_folded; in->comb_set = comb_set; in->comb_alpha_shade = comb_alpha_shade;
-}
 /* S3N-3d: debug switch combchk. Each combine work of sync_combine runs nd_comb_decide on its inputs and compares the outputs with the walker state. */
-static int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
+int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
 void pm_log_prof_line(const char* fmt, ...); /* pm_log.c: the one line of prof=4 mode */
 unsigned cc_runs, cc_diff; static int cc_last_b = -1; /* the 300 frame bucket of the last log line */
-static __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked) { /* worked: the work ran (sl_* are set); a memo hit replays the outputs only */
+__attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked) { /* worked: the work ran (sl_* are set); a memo hit replays the outputs only */
     NdCombOut o;
     nd_comb_decide(in, &o);
     cc_runs++;
@@ -1132,28 +756,6 @@ static __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int 
     if ((int)b != cc_last_b) { cc_last_b = (int)b; pm_log_prof_line("combchk f%u runs %u diff %u", f, cc_runs, cc_diff); }
 }
 
-void sync_combine(void) {
-    {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
-         * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
-        unsigned sg = sc_sig_now();
-        if (sc_ok && sg == sc_sig) { GP_SET(5, 1); return; }
-        sc_sig = sg;
-        sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
-    }
-    int leg0 = leg_mode, pat0 = box_pat;
-    NdCombIn cin; int chk = combchk_on() ? (comb_in_walker(&cin), 1) : 0; /* S3N-3d: inputs before the work */
-    int hit = 0;
-    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig); if (m) { scm_replay(m); hit = 1; } else { sync_combine_work_timed(); scm_store(sig); } }
-    if (chk) combchk_run(&cin, !hit);
-    sc_ok = 1;
-    if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
-        unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.prim, nd_ws.envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
-                             (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
-        unsigned sg = 2166136261u;
-        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
-        sc_sig = sg;
-    }
-}
 /* S3N-3d: the walker's sticky state at a draw (ndmcheck compare only: the native draw takes these as inputs): the TEXTURE scale word, the geometry mode and the combine words. */
 /* MDL-1b: the tile-1 part of the walker's sync for a record, after rec_aux: dual_bind when the plan reads tile 1. 1 when tile 1 ended bound. */
 int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
@@ -1164,61 +766,14 @@ int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_
 }
 void pm_gpu_set_r13_t1(int bound);
 int pm_gbi_bind_tile1(void);
-void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) {
-    *tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu); *geo = nd_ws.geom; *cw0 = nd_ws.comb_w0; *cw1 = nd_ws.comb_w1;
-}
 /* S3N-6: the walker matrix of the draws (the box test of the static ranges reads it) and the walker state of the gv params, the tile, vp and plan
  * state, pre-apply values for the native model cache key (pm_gpu.c pm_gpu_model_key). Returns the count written (at most max). */
 const float (*pm_gbi_combined_ptr(void))[4] { return combined; }
-static uint32_t gvk_bits(float f) { uint32_t u; memcpy(&u, &f, 4); return u; }
-unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) {
-    uint32_t v[48]; unsigned n = 0;
-    v[n++] = nd_ws.envc; v[n++] = (uint32_t)comb_mode5; v[n++] = (uint32_t)plan_active; v[n++] = cur_plan.vtxname; v[n++] = cur_plan.vtx;
-    v[n++] = (uint32_t)dual_on; v[n++] = nd_ws.tst1.comb2_a; v[n++] = nd_ws.tst1.comb2_b; v[n++] = nd_ws.tst1.comb2_c; v[n++] = nd_ws.tst1.comb2_d;
-    v[n++] = (uint32_t)comb_alpha_shade; v[n++] = (uint32_t)nd_ws.use_t1; v[n++] = (uint32_t)nd_ws.tex_on; v[n++] = (uint32_t)nd_ws.tile_x0; v[n++] = (uint32_t)nd_ws.tile_y0;
-    v[n++] = gvk_bits(nd_ws.tile_fx); v[n++] = gvk_bits(nd_ws.tile_fy);
-    v[n++] = nd_ws.tst1.tile_shift[0][0]; v[n++] = nd_ws.tst1.tile_shift[0][1]; v[n++] = nd_ws.tst1.tile_shift[1][0]; v[n++] = nd_ws.tst1.tile_shift[1][1];
-    v[n++] = gvk_bits(vp_sx); v[n++] = gvk_bits(vp_sy); v[n++] = gvk_bits(vp_tx); v[n++] = gvk_bits(vp_ty);
-    v[n++] = nd_ws.omode_l; v[n++] = nd_ws.prim_z; v[n++] = (uint32_t)fog_fm; v[n++] = (uint32_t)fog_fo; v[n++] = (uint32_t)fogmix_on;
-    v[n++] = (uint32_t)img_role(0);
-    if (n > max) n = max;
-    memcpy(o, v, n * sizeof(uint32_t));
-    return n;
-}
 
-/* S3N-3d: nd_comb_decide. The combine work (sync_combine_work) on the inputs in. Every global it reads or writes is set from in and put back
- * after the call, so the walker state is the same before and after. comb_dry: no pm_gpu call, no stats, no log. */
-void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
-    struct { uint32_t w0, w1, omh, prim, env, kc, ks, ck4; unsigned alod, slcc, tst[16]; int leg, tex, use1, t1v, dual, bprod, bpat, bfold, cset, cas;
-             int mode5, pact, use, why, cyc, dualo, lsf, slc, sle; PmPlan plan; } sv;
-    int i;
-    sv.w0 = nd_ws.comb_w0; sv.w1 = nd_ws.comb_w1; sv.omh = nd_ws.omode_h; sv.prim = nd_ws.prim; sv.env = nd_ws.envc; sv.alod = aud_prim_lod; sv.kc = keyc; sv.ks = keys; sv.ck4 = conv_k4;
-    sv.leg = leg_mode; sv.tex = nd_ws.tex_on; sv.use1 = nd_ws.use_t1; sv.t1v = nd_ws.td[1].valid; sv.dual = dual_on; sv.bprod = box_prod; sv.bpat = box_pat; sv.bfold = box_folded;
-    sv.cset = comb_set; sv.cas = comb_alpha_shade;
-    for (i = 0; i < 16; i++) sv.tst[i] = *tst_f[i];
-    sv.mode5 = comb_mode5; sv.pact = plan_active; sv.plan = cur_plan; sv.use = ls_use; sv.why = ls_why; sv.cyc = ls_cyc; sv.dualo = ls_dual; sv.lsf = ls_frame;
-    sv.slc = sl_const; sv.sle = sl_env; sv.slcc = sl_cc;
-    nd_ws.comb_w0 = in->w0; nd_ws.comb_w1 = in->w1; nd_ws.omode_h = in->omode_h; nd_ws.prim = in->prim; nd_ws.envc = in->env; aud_prim_lod = (unsigned char)in->aud_prim_lod;
-    keyc = in->key_c; keys = in->key_s; conv_k4 = in->conv_k4;
-    leg_mode = in->leg_mode; nd_ws.tex_on = in->tex_on; nd_ws.use_t1 = in->use_t1; nd_ws.td[1].valid = in->t1_valid; dual_on = in->dual_on;
-    box_prod = in->box_prod; box_pat = in->box_pat; box_folded = in->box_folded; comb_set = in->comb_set; comb_alpha_shade = in->comb_alpha_shade;
-    for (i = 0; i < 16; i++) *tst_f[i] = in->tst[i];
-    comb_dry = 1;
-    sync_combine_work();
-    comb_dry = 0;
-    out->leg = leg_mode; out->mode5 = comb_mode5; out->pat = box_pat; out->use = ls_use; out->why = ls_why; out->cyc = ls_cyc; out->dual = ls_dual;
-    out->plan_on = plan_active; out->cc_on = sl_const; out->cc = sl_cc; out->env_on = sl_env; out->plan = cur_plan;
-    nd_ws.comb_w0 = sv.w0; nd_ws.comb_w1 = sv.w1; nd_ws.omode_h = sv.omh; nd_ws.prim = sv.prim; nd_ws.envc = sv.env; aud_prim_lod = (unsigned char)sv.alod; keyc = sv.kc; keys = sv.ks; conv_k4 = sv.ck4;
-    leg_mode = sv.leg; nd_ws.tex_on = sv.tex; nd_ws.use_t1 = sv.use1; nd_ws.td[1].valid = sv.t1v; dual_on = sv.dual; box_prod = sv.bprod; box_pat = sv.bpat; box_folded = sv.bfold;
-    comb_set = sv.cset; comb_alpha_shade = sv.cas;
-    for (i = 0; i < 16; i++) *tst_f[i] = sv.tst[i];
-    comb_mode5 = sv.mode5; plan_active = sv.pact; cur_plan = sv.plan; ls_use = sv.use; ls_why = sv.why; ls_cyc = sv.cyc; ls_dual = sv.dualo; ls_frame = sv.lsf;
-    sl_const = sv.slc; sl_env = sv.sle; sl_cc = sv.slcc;
-}
 
 /* UI1 debug: the PM_CC_07 combiner (flat PRIM colour times TEXEL0 alpha, the drop shadow). Logs the mode the
  * port chose and the PRIM alpha, so the shadow alpha is known per draw. Remove after UI1. */
-static void cc07_dbg(void) {
+void cc07_dbg(void) {
     static int cc07_n;
     if (comb_dry) return;
     if (cc07_n >= 40) return;
@@ -1229,117 +784,11 @@ static void cc07_dbg(void) {
            (int)((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3), leg_mode, plan_active, ls_why, nd_ws.prim & 0xffu, nd_ws.tex_on, nd_ws.td[0].valid);
 }
 
-static void sync_combine_work(void) {
-    if (gp_on() && !comb_dry) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
-        static unsigned last_sig;
-        unsigned sg = scm_sig();
-        GP_SET(5, sg == last_sig);
-        last_sig = sg;
-    }
-    unsigned cyc = (nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3;
-    sync_legacy();
-    plan_active = 0;
-    ls_use = -1; ls_cyc = (int)cyc; ls_dual = dual_on | box_prod << 1 | box_pat << 2; ls_frame = rm_frame;
-    if (cyc <= 1 && comb_set && !dual_on && (!box_prod || !box_folded)) { /* VIS1: a draw_box window with a pattern in tile 0 reads TEXEL0 * TEXEL1 on the GPU plan too. Triangles (rotated and scaled windows) have no CPU composite like box_pattern_rect, so they lost the corner image: no border, no round corners */
-        Dec* d = decide((int)cyc);
-        ls_use = d->use; ls_why = d->why;
-        if (d->use) {
-            cur_plan = d->plan;
-            pm_comb_colours(&cur_plan, nd_ws.prim, nd_ws.envc, aud_prim_lod, keyc, keys);
-            if (!comb_dry) { pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, (int)cyc, nd_ws.use_t1); pm_gpu_set_plan(&cur_plan); }
-            plan_active = 1;
-            cc07_dbg();
-            return;
-        }
-    }
-    cc07_dbg();
-    if (!comb_dry) pm_gpu_set_combine(leg_mode);
-}
 
 /* S25: a plan that reads TEXEL1. Tile 1 is loaded and kept at unit 1, tile 0 stays the current texture, and the
  * unit 1 coordinates are the first ones moved by the difference of the two tile windows. */
 unsigned aux_key;
-float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
-int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */
-void dual_bind(void) {
-    unsigned key = 2166136261u, i;
-    int tw0, th0, tw1, th1;
-    if (!plan_active || !cur_plan.uses_tex1 || !nd_ws.td[0].valid || !nd_ws.td[1].valid) return;
-    {
-        unsigned parts[] = { (unsigned)nd_ws.td[1].src, nd_ws.td[1].fmt, nd_ws.td[1].siz, (unsigned)nd_ws.td[1].w, (unsigned)nd_ws.td[1].h, (unsigned)nd_ws.td[1].stride,
-                             (unsigned)nd_ws.td[1].pal, nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3] };
-        for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
-    }
-    if (key != aux_key || !pm_tex_aux_valid()) {
-        pm_gpu_flush();
-        pm_tex_set_wrap(nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3]);
-        if (nd_ws.td[1].fmt == 0 && nd_ws.td[1].siz == 2) grab_cur(nd_ws.td[1].src, nd_ws.td[1].w, nd_ws.td[1].h);
-        tex_gen++; /* TBREP */
-        pm_tex_load(nd_ws.td[1].src, nd_ws.td[1].fmt, nd_ws.td[1].siz, nd_ws.td[1].w, nd_ws.td[1].h, nd_ws.td[1].pal, nd_ws.td[1].pal_n, nd_ws.td[1].stride);
-        pm_tex_set_aux(nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3]);
-        aux_key = key;
-        nd_ws.cur_tile = -1;
-        ens_clear();
-    }
-    ensure_tile(0);
-    pm_tex_size(&tw0, &th0);
-    pm_tex_aux_size(&tw1, &th1);
-    {   /* V12c: the two tiles may have different shifts (bulb glow: tile 0 shift 1, tile 1 shift 0) and TEXEL1 may be a slot with a window origin */
-        int ox1, oy1;
-        float rs = shift_mul(nd_ws.tst1.tile_shift[1][0]) / shift_mul(nd_ws.tst1.tile_shift[0][0]), rt = shift_mul(nd_ws.tst1.tile_shift[1][1]) / shift_mul(nd_ws.tst1.tile_shift[0][1]); if (pm_debug_has("texrt1")) rt = 1.f; /* TEXGARBLE test switch (scratch): ignore the t shift of tile 1 */
-        pm_tex_aux_origin(&ox1, &oy1);
-        t1_p[0] = (float)tw0 / (float)tw1 * rs;
-        t1_p[1] = (float)th0 / (float)th1 * rt;
-        t1_p[2] = ((float)nd_ws.tile_x0 * rs - (float)(nd_ws.td[1].x0 - ox1)) / (float)tw1;
-        t1_p[3] = ((float)nd_ws.tile_y0 * rt - (float)(nd_ws.td[1].y0 - oy1)) / (float)th1;
-        t1_ox = ox1; t1_oy = oy1; t1_w = tw1; t1_h = th1;
-        pm_gpu_set_tex1(t1_p[0], t1_p[1], t1_p[2], t1_p[3]);
-        if (suntile_on() && suntile_lines < 400) {
-            suntile_lines++;
-            pm_log("suntile t1 f%u uls %d ult %d lrs %d lrt %d | cms %u cmt %u masks %u maskt %u shifts %u %u | "
-                   "t1 tex %dx%d fmt %u siz %u td.x0 %d td.y0 %d | tile_x0 %d tile_y0 %d fx %.2f fy %.2f | origin %d %d | "
-                   "t0 tex %dx%d tile0 uls %d ult %d lrs %d lrt %d cms %u cmt %u masks %u maskt %u | "
-                   "p %.5f %.5f %.5f %.5f | aux_off %d",
-                   pm_frame_count(), nd_ws.tst1.tile_sz[1][0], nd_ws.tst1.tile_sz[1][1], nd_ws.tst1.tile_sz[1][2], nd_ws.tst1.tile_sz[1][3],
-                   nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3], nd_ws.tst1.tile_shift[1][0], nd_ws.tst1.tile_shift[1][1],
-                   tw1, th1, nd_ws.td[1].fmt, nd_ws.td[1].siz, nd_ws.td[1].x0, nd_ws.td[1].y0, nd_ws.tile_x0, nd_ws.tile_y0, (double)nd_ws.tile_fx, (double)nd_ws.tile_fy, ox1, oy1,
-                   tw0, th0, nd_ws.tst1.tile_sz[0][0], nd_ws.tst1.tile_sz[0][1], nd_ws.tst1.tile_sz[0][2], nd_ws.tst1.tile_sz[0][3],
-                   nd_ws.tst1.tile_wrap[0][0], nd_ws.tst1.tile_wrap[0][1], nd_ws.tst1.tile_wrap[0][2], nd_ws.tst1.tile_wrap[0][3],
-                   (double)t1_p[0], (double)t1_p[1], (double)t1_p[2], (double)t1_p[3], pm_tex_aux_off_idx());
-        }
-    }
-}
 
-/* R13b: a tile 1 window that wraps (G_TX_WRAP, mask bits) is read at (s - sl) & (size - 1). The draw may start outside the window
- * (water_splash: window origin 65, droplet s from 0, so the RDP reads the window at 31, 0, 1 ...). dual_bind maps s linearly, which
- * reads the slot far from the window and finds nothing grabbed there. Fold the start of this draw into the window. The draw is
- * kept inside the window when it fits. The wrap inside one draw is not reproduced, the part past the window edge reads the
- * neighbour pixels of the slot. Tile 0 uv range of the draw: u0..u1 and v0..v1. */
-void t1_fold(float u0, float u1, float v0, float v1) {
-    static int foldall = -1; /* V20: switch t1foldall restores the old behaviour (fold every TEXEL1) */
-    if (foldall < 0) foldall = pm_debug_has("t1foldall");
-    if (!foldall && pm_tex_aux_off_idx() < 0) return; /* an ordinary texture: the GPU repeat and mirror give the RDP wrap, the fold moved the start by the mask size (wrong for a mirrored axis, period twice the mask) */
-    float o[2] = { t1_p[2], t1_p[3] };
-    const float lo[2] = { u0, v0 }, ex[2] = { (u1 - u0) * t1_p[0] * (float)t1_w, (v1 - v0) * t1_p[1] * (float)t1_h };
-    const float sc[2] = { t1_p[0], t1_p[1] };
-    const int org[2] = { t1_ox, t1_oy }, dim[2] = { t1_w, t1_h };
-    int changed = 0;
-    for (int a = 0; a < 2; a++) {
-        unsigned mask = nd_ws.tst1.tile_wrap[1][2 + a];
-        float win, ws, wsz, wrapped;
-        if (!mask || mask > 9) continue;
-        if (nd_ws.tst1.tile_wrap[1][a] & 2u) continue; /* V21: a CLAMP axis has no wrap or mirror: the RDP reads (s - sl) clamped to the window, the linear map of dual_bind is right. Folding moved the star icons on the Bowser cards by 9 texels. */
-        wsz = (float)(1u << mask);
-        win = (lo[a] * sc[a] + o[a]) * (float)dim[a] - (float)org[a]; /* window position of the draw start, texels */
-        if (win >= 0.f && win < wsz) continue;
-        ws = win - wsz * floorf(win / wsz);
-        { float lim = ex[a] >= wsz && (float)dim[a] > wsz ? (float)dim[a] : wsz; /* FX2a: a draw over the whole window (flame noise scroll) reads the wrapped pad of the texture */
-          wrapped = ws + ex[a] > lim ? (lim - ex[a] > 0.f ? lim - ex[a] : 0.f) : ws; }
-        o[a] += (wrapped - win) / (float)dim[a];
-        changed = 1;
-    }
-    if (changed) pm_gpu_set_tex1(t1_p[0], t1_p[1], o[0], o[1]);
-}
 
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
@@ -3277,58 +2726,7 @@ void pm_gbi_init(void) {
 
 /* ---- RDP color combiner, one cycle, for work the display list does off screen ---- */
 
-static float cc_rgb_in(unsigned sel, int ch, const float* t0, const float* t1, const float* pr,
-                       const float* en, int a_ok) {
-    switch (sel) {
-    case 1: return t0[ch];
-    case 2: return t1[ch];
-    case 3: return pr[ch];
-    case 4: return 1.f; /* SHADE: none off screen */
-    case 5: return en[ch];
-    case 6: return a_ok ? 1.f : 0.f;
-    default: return 0.f;
-    }
-}
 
-/* (A - B) * C + D, cycle 1 only. COMBINED reads as 0 there. */
-void cc_cycle1(const float* t0, const float* t1, float out[4]) {
-    float pr[4], en[4];
-    unpack8(nd_ws.prim, pr);
-    unpack8(nd_ws.envc, en);
-    for (int ch = 0; ch < 3; ch++) {
-        float a = cc_rgb_in(nd_ws.tst1.comb_a, ch, t0, t1, pr, en, 1);
-        float b = cc_rgb_in(nd_ws.tst1.comb_b, ch, t0, t1, pr, en, 0);
-        float c;
-        switch (nd_ws.tst1.comb_c) {
-        case 8: c = t0[3]; break;
-        case 9: c = t1[3]; break;
-        case 10: c = pr[3]; break;
-        case 11: c = 1.f; break;
-        case 12: c = en[3]; break;
-        default: c = cc_rgb_in(nd_ws.tst1.comb_c, ch, t0, t1, pr, en, 0); break;
-        }
-        float d = cc_rgb_in(nd_ws.tst1.comb_d, ch, t0, t1, pr, en, 1);
-        float v = (a - b) * c + d;
-        out[ch] = v < 0.f ? 0.f : v > 1.f ? 1.f : v;
-    }
-    {
-        unsigned sel[4] = { nd_ws.tst1.comb_aa, nd_ws.tst1.comb_ab, nd_ws.tst1.comb_ac, nd_ws.tst1.comb_ad };
-        float v[4];
-        for (int i = 0; i < 4; i++) {
-            switch (sel[i]) {
-            case 1: v[i] = t0[3]; break;
-            case 2: v[i] = t1[3]; break;
-            case 3: v[i] = pr[3]; break;
-            case 4: v[i] = 1.f; break;
-            case 5: v[i] = en[3]; break;
-            case 6: v[i] = (i == 2) ? 0.f : 1.f; break;
-            default: v[i] = 0.f; break;
-            }
-        }
-        float r = (v[0] - v[1]) * v[2] + v[3];
-        out[3] = r < 0.f ? 0.f : r > 1.f ? 1.f : r;
-    }
-}
 
 
 /* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
@@ -3405,7 +2803,7 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
     int cx0 = X0 < 0 ? 0 : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > 320 ? 320 : X1, cy1 = Y1 > 240 ? 240 : Y1;
     pm_gpu_flush();
     pm_gpu_set_combine(5);
-    sc_ok = 0; sr_ok = 0; /* DIP2: pm_gpu holds a combine mode sync_combine did not set */
+    sc_ok = 0; nd_sr_forget(); /* DIP2: pm_gpu holds a combine mode sync_combine did not set */
     for (int ys = cy0; ys < cy1; ys += 128) {
         for (int xs = cx0; xs < cx1; xs += 128) {
             int cw = cx1 - xs < 128 ? cx1 - xs : 128, ch = cy1 - ys < 128 ? cy1 - ys : 128;
@@ -3463,39 +2861,6 @@ int lt_mem_same(u32 w0, u32 w1) {
 /* CORE-2a-3: a skipped op (g2_same true) still gives the state the native keys read what its write would have: the B8 known bits of a
  * SETOTHERMODE mask and the prim LOD word (w0 low 16 bits, which g2_same does not compare). */
 
-/* C2: G_PM_RM (gSPPmRenderMode) w1 = a ModelRenderModes list (static, host memory). The list must hold only
- * SETOTHERMODE_L/H, GEOMETRYMODE and ENDDL. Its effects run here in list order, with the same state writes and the same
- * side-effect calls as the handlers for those ops (filter flush, sync_combine on the cycle type, pm_gpu_set_mode).
- * Returns 0 without any effect when the list has another op; the caller then runs it as a G_DL. */
-void op_setcombine(u32 w0, u32 w1); void op_setothermode(unsigned op, u32 w0, u32 w1); /* M4, CORE-2b */
-int rm_gen; /* M4 texdiff: 1 runs the SETCOMBINE and TEXTURE words through tex_op as before */
-static int rm_apply_impl(u32 w1) {
-    const Gfx* g = (const Gfx*)w1;
-    int n = 0;
-    for (;;) {
-        unsigned op = g[n].words.w0 >> 24;
-        if (op == G_ENDDL) break;
-        if ((op != G_SETOTHERMODE_L && op != G_SETOTHERMODE_H && op != G_GEOMETRYMODE && op != G_SETCOMBINE && op != G_TEXTURE) || ++n >= 8) return 0;
-    }
-    for (int k = 0; k < n; k++) {
-        u32 a0 = g[k].words.w0, a1 = g[k].words.w1;
-        unsigned op = a0 >> 24;
-        if (op == G_GEOMETRYMODE) {
-            set_geom(a0, a1);
-            continue;
-        }
-        if (rm_gen && (op == G_SETCOMBINE || op == G_TEXTURE)) { tex_op(a0, a1); continue; }
-        if (op == G_SETCOMBINE) { /* M4: the op function, no dispatch; the sync is left out when the TEXTURE word after it syncs */
-            tex_gen++; pm_gbi_cur_op = op; op_setcombine(a0, a1);
-            if (!(k + 1 < n && (g[k + 1].words.w0 >> 24) == G_TEXTURE)) sync_combine();
-            continue;
-        }
-        if (op == G_TEXTURE) { tex_gen++; pm_gbi_cur_op = op; op_texture(a0, a1); sync_combine(); continue; }
-        if (op == G_SETOTHERMODE_H || op == G_SETOTHERMODE_L) { op_setothermode(op, a0, a1); continue; }
-    }
-    return 1;
-}
-
 /* H1: rare paths of nd_walk_run. Cold and noinline, so the hot loop does not carry their code. */
 void gbi_cold_dd_load(const Vtx* src) {
     dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.vc = __builtin_bswap32(*(const u32*)((const u8*)src + 12)); dd.gm = nd_ws.geom; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1;
@@ -3510,90 +2875,6 @@ void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex *
 }
 /* TEXH: cold and per-tile parts of tex_op, moved out of line. The same operations run in the same order. */
 
-/* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
-/* CORE-2b: G_SETPRIMCOLOR, one owner (the walker switch and the record both run it). */
-void op_setprimcolor(u32 w0, u32 w1) {
-    GP_SET(1, nd_ws.prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
-    aud_prim_lod = (u8)(w0 & 0xff);
-    nd_ws.prim = w1;
-    nd_ws.prim_lod = w0 & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
-    pm_gpu_set_prim(nd_ws.prim);
-    sync_combine();
-}
-void op_setothermode(unsigned op, u32 w0, u32 w1) {
-            unsigned len = (w0 & 0xff) + 1;
-            unsigned field = (w0 >> 8) & 0xff;
-            unsigned sft = 32 - field - len;
-            unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-            if (op == G_SETOTHERMODE_H) {
-                unsigned old_tf = nd_ws.omode_h & (3u << 12);
-                nd_ws.omode_h = (nd_ws.omode_h & ~mask) | (w1 & mask);
-                nd_ws.om_kh |= mask; /* B8 known bits */
-                if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
-                    pm_gpu_flush();
-                    pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
-                }
-            }
-            else { nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (w1 & mask); nd_ws.om_kl |= mask; }
-            /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
-            if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
-}
-void op_setcombine(u32 w0, u32 w1) {
-            GP_SET(0, nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && comb_set);
-            /* POND 3a: an open batch is drawn with the combine it was queued with. A new combine closes it first (the copy record's combine closed the blocker batch with the water combine). */
-            if (!(nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && comb_set)) pm_gpu_flush();
-            nd_ws.comb_w0 = w0;
-            nd_ws.comb_w1 = w1;
-            nd_ws.tst1.comb_a = (w0 >> 20) & 0xf;
-            nd_ws.tst1.comb_c = (w0 >> 15) & 0x1f;
-            nd_ws.tst1.comb_b = (w1 >> 28) & 0xf;
-            nd_ws.tst1.comb_d = (w1 >> 15) & 7;
-            comb_set = 1;
-            nd_ws.tst1.comb_aa = (w0 >> 12) & 7;
-            nd_ws.tst1.comb_ac = (w0 >> 9) & 7;
-            nd_ws.tst1.comb_ab = (w1 >> 12) & 7;
-            nd_ws.tst1.comb_ad = (w1 >> 9) & 7;
-            nd_ws.tst1.comb2_a = (w0 >> 5) & 0xf;
-            nd_ws.tst1.comb2_c = w0 & 0x1f;
-            nd_ws.tst1.comb2_b = (w1 >> 24) & 0xf;
-            nd_ws.tst1.comb2_d = (w1 >> 6) & 7;
-            nd_ws.tst1.comb2_aa = (w1 >> 21) & 7;
-            nd_ws.tst1.comb2_ac = (w1 >> 18) & 7;
-            nd_ws.tst1.comb2_ab = (w1 >> 3) & 7;
-            nd_ws.tst1.comb2_ad = w1 & 7;
-            /* TEXEL1 with no TEXEL0 anywhere: the texture is tile 1. Rename it so one binding serves. */
-            {
-                int t0 = nd_ws.tst1.comb_a == 1 || nd_ws.tst1.comb_b == 1 || nd_ws.tst1.comb_d == 1 || nd_ws.tst1.comb_c == 1 || nd_ws.tst1.comb_c == 8 ||
-                         nd_ws.tst1.comb_aa == 1 || nd_ws.tst1.comb_ab == 1 || nd_ws.tst1.comb_ac == 1 || nd_ws.tst1.comb_ad == 1;
-                int t1 = nd_ws.tst1.comb_a == 2 || nd_ws.tst1.comb_b == 2 || nd_ws.tst1.comb_d == 2 || nd_ws.tst1.comb_c == 2 || nd_ws.tst1.comb_c == 9 ||
-                         nd_ws.tst1.comb_aa == 2 || nd_ws.tst1.comb_ab == 2 || nd_ws.tst1.comb_ac == 2 || nd_ws.tst1.comb_ad == 2;
-                int c2 = nd_ws.tst1.comb2_a == 1 || nd_ws.tst1.comb2_b == 1 || nd_ws.tst1.comb2_d == 1 || nd_ws.tst1.comb2_c == 1 || nd_ws.tst1.comb2_c == 8 ||
-                         nd_ws.tst1.comb2_aa == 1 || nd_ws.tst1.comb2_ab == 1 || nd_ws.tst1.comb2_ac == 1 || nd_ws.tst1.comb2_ad == 1 ||
-                         nd_ws.tst1.comb2_a == 2 || nd_ws.tst1.comb2_b == 2 || nd_ws.tst1.comb2_d == 2 || nd_ws.tst1.comb2_c == 2 || nd_ws.tst1.comb2_c == 9 ||
-                         nd_ws.tst1.comb2_aa == 2 || nd_ws.tst1.comb2_ab == 2 || nd_ws.tst1.comb2_ac == 2 || nd_ws.tst1.comb2_ad == 2;
-                nd_ws.use_t1 = 0;
-                if (t1 && !t0 && !c2) {
-                    nd_ws.use_t1 = 1;
-                    if (nd_ws.tst1.comb_a == 2) nd_ws.tst1.comb_a = 1;
-                    if (nd_ws.tst1.comb_b == 2) nd_ws.tst1.comb_b = 1;
-                    if (nd_ws.tst1.comb_d == 2) nd_ws.tst1.comb_d = 1;
-                    if (nd_ws.tst1.comb_c == 2) nd_ws.tst1.comb_c = 1;
-                    if (nd_ws.tst1.comb_c == 9) nd_ws.tst1.comb_c = 8;
-                    if (nd_ws.tst1.comb_aa == 2) nd_ws.tst1.comb_aa = 1;
-                    if (nd_ws.tst1.comb_ab == 2) nd_ws.tst1.comb_ab = 1;
-                    if (nd_ws.tst1.comb_ac == 2) nd_ws.tst1.comb_ac = 1;
-                    if (nd_ws.tst1.comb_ad == 2) nd_ws.tst1.comb_ad = 1;
-                }
-            }
-            box_folded = 0;
-            box_prod = nd_ws.tst1.comb_a == 1 && nd_ws.tst1.comb_b >= 7 && nd_ws.tst1.comb_c == 2 && nd_ws.tst1.comb_d == 7 &&
-                       nd_ws.tst1.comb_aa == 7 && nd_ws.tst1.comb_ab == 7 && nd_ws.tst1.comb_ac == 7 && nd_ws.tst1.comb_ad == 2 &&
-                       nd_ws.tst1.comb2_a == 3 && nd_ws.tst1.comb2_b == 5 && nd_ws.tst1.comb2_c == 0 && nd_ws.tst1.comb2_d == 5 &&
-                       nd_ws.tst1.comb2_aa == 7 && nd_ws.tst1.comb2_ab == 7 && nd_ws.tst1.comb2_ac == 7 && nd_ws.tst1.comb2_ad == 0;
-            comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
-                               ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
-            cmb_gen_seen = comb_gen; /* R2B */
-}
 
 
 /* M4: the texture bind list of a model (make_texture_gfx: SETTIMG SETTILE LOADTLUT, SETCOMBINE, TEXTURE, SETTIMG SETTILE LOADBLOCK SETTILE SETTILESIZE). tb_ops_generic runs it
@@ -3601,19 +2882,6 @@ void op_setcombine(u32 w0, u32 w1) {
  * leaves out the combine sync after a SETCOMBINE that the TEXTURE word after it repeats: that sync would be overwritten by the next one with no draw between. */
 /* M4 state-diff check, switch texdiff: every bind list runs twice from the same start state, once word by word and once fused. The texture, tile, combine and mode state of both
  * ends is compared field by field. A difference is one log line (list, field names). The game goes on with the word by word state. */
-int rm_apply(u32 w1) { /* M4: with texdiff the list runs both ways from the same start state and the end states are compared */
-    if (!PMD("texdiff")) return rm_apply_impl(w1);
-    static TexSnap s0, eg, ef; static unsigned runs, bad; char names[256]; int n = 0, r;
-    ts_save(&s0); rm_gen = 1; r = rm_apply_impl(w1); rm_gen = 0; ts_save(&eg); ts_load(&s0); rm_apply_impl(w1); ts_save(&ef);
-#define TS_CMP(f) if (memcmp(&eg.f, &ef.f, sizeof eg.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
-    TS_FIELDS(TS_CMP)
-#undef TS_CMP
-    runs++;
-    if (n) { bad++; if (bad <= 40) pm_log("texdiff rm f%u list %08x DIFF: %s", pm_frame_count(), w1, names); }
-    if (!(runs % 500)) pm_log("texdiff rm f%u runs %u diffs %u", pm_frame_count(), runs, bad);
-    ts_load(&eg);
-    return r;
-}
 
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
@@ -3660,21 +2928,6 @@ if (tg_ok) { vert_st[k][0] = tg_s; vert_st[k][1] = tg_t; }
 
 
 
-void gbi_moveword(u32 w0, u32 w1) {
-    unsigned index = (w0 >> 16) & 0xff;
-    unsigned offset = w0 & 0xffff;
-    if (index == G_MW_NUMLIGHT) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; return; } /* L01 */
-    if (index == G_MW_LIGHTCOL && offset / 24 < 9 && (offset % 24) == 0) { unsigned k = offset / 24; lt[k].col[0] = w1 >> 24; lt[k].col[1] = w1 >> 16; lt[k].col[2] = w1 >> 8; return; } /* L01 */
-    if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; return; } /* F08 */
-    if (index != G_MW_SEGMENT) {
-        unsigned n = ++mw_cnt[index];
-    }
-    if (index == G_MW_SEGMENT && (offset / 4) < 16) {
-        unsigned seg = offset / 4;
-        nd_ws.segbase[seg] = (u32)ptr_of(w1);
-        if (!nd_ws.segbase[seg]) nd_ws.segbase[seg] = w1;
-    }
-}
 
 /* M4-2 / S3F-2 / S3F-4: producer record of a model (model.c appendGfx_model, TARGET_3DS), G_PM_REC_WORDS (11) words, R0 to R10. R0: w0 = G_PM_REC << 24 |
  * render mode index << 16 | (texture list index & 0x7f) << 8 (count byte 0); w1 = the bind list. R1: w0 G_MTX flags, w1 header w1. R2: w0 numLights,
@@ -3682,17 +2935,8 @@ void gbi_moveword(u32 w0, u32 w1) {
  * R4: w0 fog colour word, w1 combine entry (0 when none). R5: w1 fog position word. R6: w0 prim, w1 env. R7: w0 blend, w1 shroud c2.
  * R8: billboard matrix op (0 when none). R9, R10: panner tile size ops (0 when none).
  * rec_apply sets the walker state from them in the old word order: lights, bind list (tb_ops), combine (rec_op), render mode list
- * (rm_apply), fog (rec_fog), matrix (load_mtx), panner tiles, billboard. rec_op runs one op through the skip test and handler of the walker. */
+ * (the list runs as G_DL), fog (rec_fog), matrix (load_mtx), panner tiles, billboard. rec_op runs one op through the skip test and handler of the walker. */
 extern Gfx* ModelRenderModes[];
-/* S3F-1b: the lights of a record: the words gSPSetLightsN makes (plain gbi.h macros, the same ones as model.c), run through the walker
- * handlers gbi_moveword and gbi_movemem with the same skip test as the walker. No word is copied from the display list. */
-/* S3F-2b: G_SETENVCOLOR, one function for the walker and the record. */
-void gbi_setenv(u32 w1) {
-    GP_SET(2, nd_ws.envc == w1);
-    nd_ws.envc = w1;
-    pm_gpu_set_env(nd_ws.envc);
-    sync_combine();
-}
 /* S3F-2: one record op through the skip test and the handler of the walker (the ops the record writes). */
 static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
@@ -3756,7 +3000,7 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
         const Gfx* e = (const Gfx*)(uintptr_t)q[4].words.w1;
         rec_op(e->words.w0, e->words.w1);
     }
-    if (!rm_apply((u32)(uintptr_t)ModelRenderModes[(w0 >> 16) & 0xffu])) pm_log("rec: render mode list has another op f%u", pm_frame_count());
+    rec_dl(ModelRenderModes[(w0 >> 16) & 0xffu]); /* ST-4: the list runs as G_DL (the walker handlers) */
     if (f & 32u) { /* S3F-2b: shroud: render mode word, fog colour, blend colour, fog position (the old order) */
         Gfx t;
         gDPSetRenderMode(&t, PM_RM_SHROUD, q[7].words.w1);
@@ -3802,7 +3046,7 @@ unsigned rec_run(const Gfx* q) {
         rec_n++;
         gv_epoch++;
         nat = 1; hit = 1;
-        sc_ok = 0; sr_ok = 0;
+        sc_ok = 0; nd_sr_forget();
     } else {
     NdtT tmi = pm_gpu_ndt_begin(); /* S3N-7: apply: the non-hit path, rec_apply and the fallback or the model call (exclusive of the submit and the matrix) */
     rec_apply(q, mdone);
@@ -3819,7 +3063,7 @@ unsigned rec_run(const Gfx* q) {
         /* S3N-4: the record drew natively (nd_model_draw): no walker geometry. The native draws set the TEV and the texture unit, so the walker
          * sends its combine and render mode again at its next op (the shadows of those ops are cleared). */
         nat = 1;
-        sc_ok = 0; sr_ok = 0;
+        sc_ok = 0; nd_sr_forget();
     }
     pm_gpu_ndt_end(tmi, NDT_APPLY);
     }

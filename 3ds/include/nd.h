@@ -338,7 +338,7 @@ typedef struct NdMCtx {
     int geom_at_set;           /* S3N-3c: geom_at is used, else (geom_base & gand) | gor. Cull and z come from this geometry */
     int draw_3d, dview, rgb_scale, r_mix, r_memblend, r_replace; /* sticky walker flags */
     uint32_t prim, env, cconst, mixcol; /* used when the record does not set PRIM (R3 bit 2) */
-    uint32_t prim_lod;         /* S3N-3d: nd_ws.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; aud_prim_lod is the low byte) */
+    uint32_t prim_lod;         /* S3N-3d: nd_ws.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; prim_lo8 is the low byte) */
     uint32_t dbias;            /* decal bias, float bits */
     uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_ws) and the bits it has a value for */
     uint32_t geom_base;        /* B9: the geometry mode before the list (nd_ws.geom) */
@@ -388,7 +388,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
 /* S3N-3d: the combine choice of one draw (pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
  * comb2_a..d, comb2_aa..ad). Out: leg (legacy mode, or 8 with plan), use and plan (general plan), cc (constant colour of mode 4), and the walker state (mode5, pat, why, cyc, dual). */
 typedef struct NdCombIn {
-    uint32_t w0, w1, omode_h, prim, env, aud_prim_lod, key_c, key_s, conv_k4;
+    uint32_t w0, w1, omode_h, prim, env, prim_lo8, key_c, key_s, conv_k4;
     uint32_t tst[16];
     int leg_mode, tex_on, use_t1, t1_valid, dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade;
 } NdCombIn;

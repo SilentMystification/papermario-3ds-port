@@ -367,6 +367,8 @@ set(PORT_SRC
     src/nd_tmpl.c
     src/nd_tex.c
     src/nd_state.c
+    src/nd_set.c
+    src/nd_comb.c
     src/nd_rect.c
     src/nd_walk.c
     src/nd_dlc.c

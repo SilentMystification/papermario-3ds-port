@@ -66,7 +66,6 @@ int gv_lit_ok(void);
 int is_host(u32 p);
 int lt_mem_same(u32 w0, u32 w1);
 int pm_gpu_spr_native(const uint32_t* rec);
-int rm_apply(u32 w1);
 int xt_on(void);
 unsigned gv_matrix_id(int need_nm);
 unsigned rec_run(const Gfx* q);
@@ -130,7 +129,6 @@ extern u8 vert_litf[64];
 extern u8 vert_live[64];
 extern u8 vert_scr[64];
 extern unsigned blendc;
-extern unsigned char aud_prim_lod;
 extern unsigned char vert_cb[64];
 extern unsigned cmb_gen_seen;
 extern unsigned comb_gen;
@@ -182,6 +180,16 @@ void set_blendcolor(u32 w1);
 void set_fogcolor(u32 w1);
 void set_primdepth(u32 w1);
 void set_fillcolor(u32 w1);
+void op_setprimcolor(u32 w0, u32 w1);        /* ST-1: nd_state.c */
+void op_setothermode(unsigned op, u32 w0, u32 w1); /* ST-1: nd_state.c */
+void nd_sr_forget(void);                     /* ST-1: nd_state.c, sync_render state forgotten */
+void gp_note(int k, int same);               /* PG0 counter, pm_gbi.c */
+void lit_freeze(void);                       /* GV5, pm_gbi.c */
+extern int sci_x0, sci_y0, sci_x1, sci_y1;   /* ST-1: nd_state.c, scissor of the walker */
+void nd_light_count(u32 w1);                 /* ST-1: pm_gbi.c, G_MW_NUMLIGHT (lit_freeze, clamp 7) */
+extern unsigned lt_n;                        /* pm_gbi.c, lights count (GM-1) */
+extern unsigned fogc, blendc;                /* ST-1: nd_state.c */
+extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor */
 int ent_gdl(const Gfx* l);
 int rmlog_on(void);
 extern u8 gMapShapeData[];
@@ -273,4 +281,10 @@ void cc_cycle1(const float* t0, const float* t1, float out[4]);
 void ts_save(TexSnap* o);
 void ts_load(const TexSnap* o);
 void tb_ops(const Gfx* g);
+/* ---- C (ST-2): the combine group in nd_comb.c ---- */
+int const_rgb_tex_alpha(unsigned* out);
+float cc_clamp(float v);
+void op_setcombine(u32 w0, u32 w1);
+void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1);
+
 #endif

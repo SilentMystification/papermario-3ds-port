@@ -242,7 +242,6 @@ int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) { return tex_decode_n(l, N
 /* S6-2c-1: the entity list segments (nd.h). */
 /* S6-2c-2: G_PM_TEXI (gbi_custom.h, 0x0B) is a header whose n words run in place (pm_gbi.c tb_inline). The entity lists carry it in front of their texture loads (entcheck census: every refused list had it). Neutral: the linear scan sees the words after it. */
 #define OP_PM_TEXI 0x0B
-#define OP_PM_RM 0x09 /* gbi_custom.h G_PM_RM: a render mode list run in place */
 static int ent_known(unsigned op) {
     switch (op) {
     case OP_VTX: case OP_TRI1: case OP_TRI2: case OP_PM_TEXI:
@@ -252,7 +251,7 @@ static int ent_known(unsigned op) {
     case OP_SETTIMG: case OP_SETTILE: case OP_SETTILESIZE: case OP_LOADBLOCK: case OP_LOADTLUT: case OP_LOADTILE:
     /* SGEN-1: ops the walker runs in place between the native triangle ranges (matrix, lights and segments, scissor, colours, images, the render mode list op): the live walker state is the state of the next range */
     case OP_MTX: case OP_POPMTX: case OP_MOVEMEM: case OP_MOVEWORD: case OP_SETSCISSOR: case OP_SETFOGCOLOR: case OP_SETBLENDCOLOR: case OP_SETFILLCOLOR:
-    case OP_SETPRIMDEPTH: case OP_RDPSETOTHERMODE: case OP_SETCIMG: case OP_SETZIMG: case OP_SETKEYGB: case OP_SETKEYR: case OP_SETCONVERT: case OP_PM_RM:
+    case OP_SETPRIMDEPTH: case OP_RDPSETOTHERMODE: case OP_SETCIMG: case OP_SETZIMG: case OP_SETKEYGB: case OP_SETKEYR: case OP_SETCONVERT:
         return 1;
     default:
         return 0;

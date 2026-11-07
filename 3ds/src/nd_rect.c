@@ -14,7 +14,7 @@
 #include "nd_int.h"
 
 /* CORE-3 census: calls of each handler (the census counts ops by handler module: nd_rect here, pm_gbi.c for the rest) */
-unsigned nd_rect_tex_n, nd_rect_fill_n;
+/* nd_rect_tex_n, nd_rect_fill_n: defined in nd_core.c (host-linked census counters, ST host fix) */
 
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 

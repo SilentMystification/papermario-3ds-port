@@ -16,7 +16,7 @@ extern int pm_debug_has(const char* key);
 extern void pm_log_d(const char* fmt, ...);
 extern unsigned pm_frame_count(void);
 /* debug switch ndst: the native state (nd_ws) once per 100 frames */
-extern unsigned nd_rect_tex_n, nd_rect_fill_n; /* nd_rect.c: handler calls (CORE-3 census) */
+unsigned nd_rect_tex_n, nd_rect_fill_n; /* handler calls (CORE-3 census); incremented by nd_rect.c, defined here so the host test links without nd_rect.c (ST) */
 static __attribute__((cold, noinline)) void nd_st_log(void) {
     static int on = -1;
     if (on < 0) on = pm_debug_has("ndst");

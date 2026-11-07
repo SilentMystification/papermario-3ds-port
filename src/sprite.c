@@ -349,9 +349,6 @@ static Gfx* spr_final_list(u32 flags, u8 opacity) {
     if (flags & SPR_SHADING_FLAG_ENABLED) return opacity == 255 ? SprFinalA255 : SprFinalAT;
     return opacity == 255 ? SprFinalB255 : SprFinalBT;
 }
-#define SPR_RM_LIST(list) gSPPmRenderMode(gMainGfxPos++, list) /* DLF5: one G_PM_RM op; rm_apply runs the list in place */
-#else
-#define SPR_RM_LIST(list) gSPDisplayList(gMainGfxPos++, list)
 #endif
 void spr_appendGfx_component(
     SpriteRasterCacheEntry* cache,
@@ -429,7 +426,7 @@ void spr_appendGfx_component(
     if (!(gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) && (u8) opacity != 255) {
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u8) opacity);
     }
-    SPR_RM_LIST(rmList);
+    gSPDisplayList(gMainGfxPos++, rmList); /* DLF5: a render mode list is a G_DL (ST-4) */
 
     if (quad != nullptr) {
         spr_appendGfx_component_flat(quad, cache->image, palette, width, height, rotY, mtxTransform, (u8) opacity);

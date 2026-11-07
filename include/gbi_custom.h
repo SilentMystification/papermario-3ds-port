@@ -199,15 +199,6 @@
 		((((height) >> 1)-1) << G_TEXTURE_IMAGE_FRAC)  + scrollt)		\
 }
 
-/* C2: a model render mode list (ModelRenderModes[]) as one port op on 3DS. w1 = host Gfx* of the list.
- * The 3DS interpreter skips the list when the render state already equals its exit state, else runs it as G_DL. */
-#define G_PM_RM 0x09
-#define gSPPmRenderMode(pkt, rm) \
-{ \
-    Gfx *_g = (Gfx *)(pkt); \
-    _g->words.w0 = _SHIFTL(G_PM_RM, 24, 8); \
-    _g->words.w1 = (u32)(rm); \
-}
 
 /* GLYPH: header of n texture-load words after it (w0 low 16 bits = n). The words run through tex_op, not the dispatch. */
 #define G_PM_TEXI 0x0B
