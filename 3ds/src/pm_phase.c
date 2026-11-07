@@ -27,7 +27,6 @@ static unsigned last, frame_t0, acc[PH_N];
 static unsigned frame_no;
 
 typedef struct { float ms[PH_N]; float wall; unsigned c[C_N]; unsigned f; } Rec;
-static Rec win[MAXW];
 static int nwin;
 static unsigned win_t0;
 
@@ -47,7 +46,10 @@ typedef struct {
     float gpu_us[2];
     unsigned cmd_max;
 } Bucket;
-static Bucket bk[BK_N];
+/* MEM-B v3: the census window and the A/B buckets are one cold calloc, made at init only when phase or phsum is on (0 bytes otherwise). */
+typedef struct { Rec win[MAXW]; Bucket bk[BK_N]; } PmPhCold;
+static PmPhCold* cold;
+static void cold_need(void) { if (!cold) cold = calloc(1, sizeof *cold); } /* MEM-B v3: called where ph_want or ps_on becomes set */
 static int ps_on;
 static const char* const ab_words[] = { "base", "phasegbi" }; /* rule 19: a state is added here only for one console comparison and taken out again after it */
 static int ab_st[BK_N], ab_n, ab_every, ab_cur, ab_steps, ab_skip, ab_seq;
@@ -97,7 +99,7 @@ static void ps_init(void) {
 static int fcmp(const void* a, const void* b) { float x = *(const float*)a, y = *(const float*)b; return x < y ? -1 : x > y; }
 
 static void bk_flush(int i) {
-    Bucket* b = &bk[i];
+    Bucket* b = &cold->bk[i];
     if (!b->n) return;
     const char* nm = ab_words[ab_n ? ab_st[i] : 0];
     unsigned id = b->f0; /* the first frame number joins the three lines */
@@ -129,7 +131,7 @@ static void ps_step(const Rec* r) {
     int si = ab_n ? ab_cur : 0;
     if (ab_skip > 0) ab_skip--;
     else {
-        Bucket* b = &bk[si];
+        Bucket* b = &cold->bk[si];
         float cpu = r->wall - r->ms[PH_IDLE] - r->ms[PH_FBEGIN];
         int bin = cpu < 24.f ? 0 : cpu >= 36.f ? 13 : (int)cpu - 23;
         if (!b->n) b->f0 = r->f;
@@ -504,6 +506,7 @@ void pm_ph_init(void) {
     dcs_want = pm_debug_has("dcsum");
     pm_dcs_on = dcs_want && pm_log_file();
     ps_init(); /* only parses the abtog switch, so it runs even while logging is off */
+    if (ph_want || ps_on) cold_need();
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     fs_want = pm_debug_has("fsplit");
     pm_fs_on = fs_want && pm_log_file();
@@ -568,18 +571,18 @@ static void summarize(unsigned now) {
     unsigned over = 0, overcpu = 0;
     char line[240];
     int len;
-    for (int i = 0; i < n; i++) col[i] = win[i].wall;
+    for (int i = 0; i < n; i++) col[i] = cold->win[i].wall;
     stat3(col, n, &wa, &wp, &wm);
-    for (int i = 0; i < n; i++) col[i] = win[i].wall - win[i].ms[PH_IDLE] - win[i].ms[PH_FBEGIN];
+    for (int i = 0; i < n; i++) col[i] = cold->win[i].wall - cold->win[i].ms[PH_IDLE] - cold->win[i].ms[PH_FBEGIN];
     stat3(col, n, &a, &p, &m);
-    for (int i = 0; i < n; i++) if (win[i].wall > OVER_MS) over++;
-    for (int i = 0; i < n; i++) if (win[i].wall - win[i].ms[PH_IDLE] - win[i].ms[PH_FBEGIN] > 33.3f) overcpu++;
+    for (int i = 0; i < n; i++) if (cold->win[i].wall > OVER_MS) over++;
+    for (int i = 0; i < n; i++) if (cold->win[i].wall - cold->win[i].ms[PH_IDLE] - cold->win[i].ms[PH_FBEGIN] > 33.3f) overcpu++;
     pm_log_d("phase W f%u-%u n %d span %.0f ms | wall avg/p95/max %.1f/%.1f/%.1f | cpu (wall-idle-fbegin) %.1f/%.1f/%.1f | wall over34 %u, cpu over33 %u",
-           win[0].f, win[n - 1].f, n, (double)(now - win_t0) / TICKS_MS, wa, wp, wm, a, p, m, over, overcpu);
+           cold->win[0].f, cold->win[n - 1].f, n, (double)(now - win_t0) / TICKS_MS, wa, wp, wm, a, p, m, over, overcpu);
     for (int g = 0; g < (PH_N + 4) / 5; g++) {
         len = snprintf(line, sizeof line, "phase ms avg/p95/max:");
         for (int k = g * 5; k < g * 5 + 5 && k < PH_N; k++) {
-            for (int i = 0; i < n; i++) col[i] = win[i].ms[k];
+            for (int i = 0; i < n; i++) col[i] = cold->win[i].ms[k];
             stat3(col, n, &a, &p, &m);
             len += snprintf(line + len, sizeof line - (size_t)len, " %s %.1f/%.1f/%.1f", pname[k], a, p, m);
         }
@@ -590,7 +593,7 @@ static void summarize(unsigned now) {
         for (int k = g ? 8 : 0; k < (g ? C_N : 8); k++) {
             unsigned long long s = 0;
             unsigned mx = 0;
-            for (int i = 0; i < n; i++) { s += win[i].c[k]; if (win[i].c[k] > mx) mx = win[i].c[k]; }
+            for (int i = 0; i < n; i++) { s += cold->win[i].c[k]; if (cold->win[i].c[k] > mx) mx = cold->win[i].c[k]; }
             len += snprintf(line + len, sizeof line - (size_t)len, " %s %u/%u", cname[k], (unsigned)(s / (unsigned)n), mx);
         }
         pm_log_d("%s", line);
@@ -598,22 +601,22 @@ static void summarize(unsigned now) {
     if (over) {
         len = snprintf(line, sizeof line, "phase over frames:");
         for (int i = 0, k = 0; i < n && k < 24; i++)
-            if (win[i].wall > OVER_MS) { len += snprintf(line + len, sizeof line - (size_t)len, " %u(%.0f)", win[i].f, win[i].wall); k++; }
+            if (cold->win[i].wall > OVER_MS) { len += snprintf(line + len, sizeof line - (size_t)len, " %u(%.0f)", cold->win[i].f, cold->win[i].wall); k++; }
         pm_log_d("%s", line);
         /* the three worst frames, with every phase over 0.5 ms and every counter */
         for (int r = 0; r < 3; r++) {
             int w = -1;
             float best = OVER_MS;
-            for (int i = 0; i < n; i++) if (win[i].wall > best) { best = win[i].wall; w = i; }
+            for (int i = 0; i < n; i++) if (cold->win[i].wall > best) { best = cold->win[i].wall; w = i; }
             if (w < 0) break;
-            len = snprintf(line, sizeof line, "phase worst f%u wall %.1f:", win[w].f, win[w].wall);
+            len = snprintf(line, sizeof line, "phase worst f%u wall %.1f:", cold->win[w].f, cold->win[w].wall);
             for (int k = 0; k < PH_N; k++)
-                if (win[w].ms[k] >= 0.5f) len += snprintf(line + len, sizeof line - (size_t)len, " %s %.1f", pname[k], win[w].ms[k]);
+                if (cold->win[w].ms[k] >= 0.5f) len += snprintf(line + len, sizeof line - (size_t)len, " %s %.1f", pname[k], cold->win[w].ms[k]);
             len += snprintf(line + len, sizeof line - (size_t)len, " |");
             for (int k = 0; k < C_N; k++)
-                if (win[w].c[k]) len += snprintf(line + len, sizeof line - (size_t)len, " %s %u", cname[k], win[w].c[k]);
+                if (cold->win[w].c[k]) len += snprintf(line + len, sizeof line - (size_t)len, " %s %u", cname[k], cold->win[w].c[k]);
             pm_log_d("%s", line);
-            win[w].wall = 0.f; /* out of the next pick, the window is reset below */
+            cold->win[w].wall = 0.f; /* out of the next pick, the window is reset below */
         }
     }
     nwin = 0;
@@ -699,6 +702,7 @@ static void prof_row_apply(int m) {
     int pf_was = pm_pf_on;
     pm_log_prof_row(m);
     ph_want = m == 2 || ps_on;
+    if (ph_want) cold_need();
     pf_want = m == 1;
     if (m == 1) pf_every = 4;
     pf_cd = pf_every - 1;
@@ -715,7 +719,7 @@ void pm_ph_frame_end(void) {
     if (!pm_ph_on) return;
     pm_ph_smp_n++;
     unsigned now = pm_ticks();
-    Rec* r = &win[nwin];
+    Rec* r = &cold->win[nwin];
     acc[cur] += now - last;
     last = now;
     r->wall = (float)(now - frame_t0) / TICKS_MS;
