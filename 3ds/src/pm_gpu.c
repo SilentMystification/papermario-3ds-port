@@ -3074,9 +3074,9 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
     float db = decal_bias(); uint32_t dbits; memcpy(&dbits, &db, 4);
     unsigned i = 0;
-    s[i++] = nd_st.om_h; s[i++] = nd_st.om_l; s[i++] = nd_st.om_kh; s[i++] = nd_st.om_kl; s[i++] = nd_st.geom;
+    s[i++] = nd_ws.omode_h; s[i++] = nd_ws.omode_l; s[i++] = nd_ws.om_kh; s[i++] = nd_ws.om_kl; s[i++] = nd_ws.geom;
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
-    s[i++] = nd_st.prim; s[i++] = nd_st.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
+    s[i++] = nd_ws.prim; s[i++] = nd_ws.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
     s[i++] = (uint32_t)dview; s[i++] = (uint32_t)r_mix; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
     { float zb_ = r_zmark ? r_zmark_zn : 0.f; uint32_t zu; memcpy(&zu, &zb_, 4); s[i++] = r_zmark ? (zu | 1u) : 0u; } /* S5-2: zmark on and its depth (bit 0 set when on) */
     s[i++] = (uint32_t)r_decal; s[i++] = (uint32_t)r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)off_active; s[i++] = (uint32_t)ui_ortho;
@@ -3117,10 +3117,10 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.draw_3d = 1; /* S3N-3c: a native batch goes through pm_gpu_grange, which sets draw_3d */
     c.zmark = r_zmark; c.zn = r_zmark_zn; /* S5-2 (a) */
     c.dview = dv_mode(); c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
-    c.prim = nd_st.prim; c.prim_lod = nd_st.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
+    c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
-    c.base_oh = ax_ok ? (nd_st.om_h & ~ax.wh) | ax.om_h : nd_st.om_h; c.base_ol = ax_ok ? (nd_st.om_l & ~ax.wl) | ax.om_l : nd_st.om_l; /* B8; S3L-3: the R13 mode ops first */
-    c.known_h = nd_st.om_kh | (ax_ok ? ax.wh : 0u); c.known_l = nd_st.om_kl | (ax_ok ? ax.wl : 0u);
+    c.base_oh = ax_ok ? (nd_ws.omode_h & ~ax.wh) | ax.om_h : nd_ws.omode_h; c.base_ol = ax_ok ? (nd_ws.omode_l & ~ax.wl) | ax.om_l : nd_ws.omode_l; /* B8; S3L-3: the R13 mode ops first */
+    c.known_h = nd_ws.om_kh | (ax_ok ? ax.wh : 0u); c.known_l = nd_ws.om_kl | (ax_ok ? ax.wl : 0u);
     /* PM5-3: the normal rows of the walker's matrix (gm_nrm: model view rows 0 to 2, w 0) for a lit or fogged range */
     c.nrm_ok = gv5_on; for (int r_ = 0; r_ < 3; r_++) { c.nrm5[r_][0] = nd_mv[nd_mv_sp][r_][0]; c.nrm5[r_][1] = nd_mv[nd_mv_sp][r_][1]; c.nrm5[r_][2] = nd_mv[nd_mv_sp][r_][2]; c.nrm5[r_][3] = 0.f; }
     int n = nd_model_draw(rec, &c, geo, emit);
@@ -3599,10 +3599,10 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;
     c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     uint32_t env, prim;
-    nd_sprite_colors(&r, env_col, nd_st.prim, &env, &prim);
-    c.env = env; c.prim = prim; c.prim_lod = nd_st.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
+    nd_sprite_colors(&r, env_col, nd_ws.prim, &env, &prim);
+    c.env = env; c.prim = prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
-    c.base_oh = nd_st.om_h; c.base_ol = nd_st.om_l; c.known_h = nd_st.om_kh; c.known_l = nd_st.om_kl;
+    c.base_oh = nd_ws.omode_h; c.base_ol = nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
     uint32_t zr[27];
     memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
     if (nd_model_state(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; }

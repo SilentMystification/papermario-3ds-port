@@ -127,30 +127,6 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
 const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx);
 int nd_tex_handle_miss(int index, const void* gfx); /* S3L-2: fallback code of a handle with no desc (9 form, 10 index or gfx) */
 
-/* NDST (S2-1): the native state, set by nd_words() from the words the bridge form of nd_gbi.h decodes. In the bridge nothing draws from it yet (S2-2 starts);
- * it is the state a native draw reads. nd_words never touches the walker state (nd_mv, nd_proj): the N64 word is written too and the walker runs it. */
-typedef struct NdSt {
-    uint32_t geom;
-    uint32_t om_h, om_l;               /* other mode high and low */
-    uint32_t comb_w0, comb_w1;         /* G_SETCOMBINE */
-    uint32_t prim, env, fog, blend, fill; /* 0xRRGGBBAA */
-    uint32_t prim_lod;                 /* prim LOD fraction (m) and min level (l), w0 bits 8 to 15 and 0 to 7 */
-    uint16_t primz, primdz;
-    uint16_t sc_ulx, sc_uly, sc_lrx, sc_lry; /* 10.2 fixed point as the word holds them */
-    uint8_t sc_mode;
-    uint8_t tex_on, tex_level, tex_tile;
-    uint16_t tex_s, tex_t;
-    uint32_t cimg_w0, cimg_w1, zimg_w1;      /* colour image word pair, depth image address */
-    uint32_t timg_w0, timg_w1;               /* texture image */
-    uint32_t tile_w0[8], tile_w1[8];         /* G_SETTILE and G_SETTILESIZE of the 8 tiles (size words in tsz_*) */
-    uint32_t tsz_w0[8], tsz_w1[8];
-    uint32_t vp_addr;                        /* G_MOVEMEM viewport source (game pointer value) */
-    uint32_t segment[16];
-    uint32_t mtx_addr, mtx_flags, n_mtx, n_pop;
-    uint32_t n_rect, n_fill, n_tri, n_vtx, n_dl, n_enddl, n_load, n_unknown, last_unknown;
-    uint32_t om_kh, om_kl;                   /* B8: other mode bits this state has a value for (set by SETOTHERMODE, all after RDPSETOTHERMODE) */
-} NdSt;
-extern NdSt nd_st;
 /* CORE-2a-2: the texture and tile state types (moved from pm_gbi.c; layout unchanged). */
 typedef struct NdTst {
     unsigned timg_fmt, timg_siz; int timg_stride;
@@ -185,6 +161,8 @@ typedef struct NdWs {
     unsigned envc;                     /* env colour */
     unsigned fill;                     /* fill colour */
     unsigned prim_z;                   /* G_SETPRIMDEPTH, 15 bit */
+    uint32_t om_kh, om_kl;             /* B8: other mode bits the state has a value for (SETOTHERMODE sets them) */
+    uint32_t prim_lod;                 /* G_SETPRIMCOLOR w0 low 16 bits (m and l) */
     int tex_on;
     const void* timg;
     const void* tlut;
@@ -199,8 +177,7 @@ typedef struct NdWs {
     NdTd td[2];
 } NdWs;
 extern NdWs nd_ws;
-void nd_st_reset(void);
-void nd_words(const unsigned* w, unsigned n); /* n word pairs (Gfx), in list order */
+void nd_words(const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (Gfx) into nd_ws. Not called during the walk. */
 
 /* NDDLC (S3-1): a static display list (a map shape list) compiled once into an NdObj. A group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices
  * it loads itself. The compiler keeps the box of the object coordinates per group, the geometry mode ops with the triangle index they apply before, the Vtx copies
@@ -360,10 +337,10 @@ typedef struct NdMCtx {
     int geom_at_set;           /* S3N-3c: geom_at is used, else (geom_base & gand) | gor. Cull and z come from this geometry */
     int draw_3d, dview, rgb_scale, r_mix, r_memblend, r_replace; /* sticky walker flags */
     uint32_t prim, env, cconst, mixcol; /* used when the record does not set PRIM (R3 bit 2) */
-    uint32_t prim_lod;         /* S3N-3d: nd_st.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; aud_prim_lod is the low byte) */
+    uint32_t prim_lod;         /* S3N-3d: nd_ws.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; aud_prim_lod is the low byte) */
     uint32_t dbias;            /* decal bias, float bits */
-    uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_st) and the bits it has a value for */
-    uint32_t geom_base;        /* B9: the geometry mode before the list (nd_st.geom) */
+    uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_ws) and the bits it has a value for */
+    uint32_t geom_base;        /* B9: the geometry mode before the list (nd_ws.geom) */
     int wind;                  /* walker: the sign of the matrix determinant (gv_wind, until the matrix is native in 3c): cull sense */
 } NdMCtx;
 typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full, 8 combine needs tile 1, the box product or a key value */

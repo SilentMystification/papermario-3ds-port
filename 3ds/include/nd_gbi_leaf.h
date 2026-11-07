@@ -3,140 +3,50 @@
 #define ND_GBI_LEAF_H
 /* leaves: 68, compounds and aliases left as they are: 64 */
 #define ND_O_gDPFillRectangle(pkt, ulx, uly, lrx, lry) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL((lrx), 14, 10) | _SHIFTL((lry), 2, 10)); _g->words.w1 = (_SHIFTL((ulx), 14, 10) | _SHIFTL((uly), 2, 10));}
-#undef gDPFillRectangle
-#define gDPFillRectangle(pkt, ulx, uly, lrx, lry) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPFillRectangle(_ndp++, ulx, uly, lrx, lry); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPFillRectangle(pkt, ulx, uly, lrx, lry); }
 #define ND_O_gDPLoadBlock(pkt, tile, uls, ult, lrs, dxt) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_LOADBLOCK, 24, 8) | _SHIFTL(uls, 12, 12) | _SHIFTL(ult, 0, 12)); _g->words.w1 = (_SHIFTL(tile, 24, 3) | _SHIFTL((MIN(lrs,G_TX_LDBLK_MAX_TXL)), 12, 12) | _SHIFTL(dxt, 0, 12)); }
-#undef gDPLoadBlock
-#define gDPLoadBlock(pkt, tile, uls, ult, lrs, dxt) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPLoadBlock(_ndp++, tile, uls, ult, lrs, dxt); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPLoadBlock(pkt, tile, uls, ult, lrs, dxt); }
 #define ND_O_gDPLoadTLUTCmd(pkt, tile, count) { Gfx *_g = (Gfx *)pkt; _g->words.w0 = _SHIFTL(G_LOADTLUT, 24, 8); _g->words.w1 = _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10);}
-#undef gDPLoadTLUTCmd
-#define gDPLoadTLUTCmd(pkt, tile, count) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPLoadTLUTCmd(_ndp++, tile, count); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPLoadTLUTCmd(pkt, tile, count); }
 #define ND_O_gDPLoadTileGeneric(pkt, c, tile, uls, ult, lrs, lrt) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(c, 24, 8) | _SHIFTL(uls, 12, 12) | _SHIFTL(ult, 0, 12); _g->words.w1 = _SHIFTL(tile, 24, 3) | _SHIFTL(lrs, 12, 12) | _SHIFTL(lrt, 0, 12); }
-#undef gDPLoadTileGeneric
-#define gDPLoadTileGeneric(pkt, c, tile, uls, ult, lrs, lrt) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPLoadTileGeneric(_ndp++, c, tile, uls, ult, lrs, lrt); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPLoadTileGeneric(pkt, c, tile, uls, ult, lrs, lrt); }
 #define ND_O_gDPNoParam(pkt, cmd) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(cmd, 24, 8); _g->words.w1 = 0; }
-#undef gDPNoParam
-#define gDPNoParam(pkt, cmd) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPNoParam(_ndp++, cmd); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPNoParam(pkt, cmd); }
 #define ND_O_gDPParam(pkt, cmd, param) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(cmd, 24, 8); _g->words.w1 = (param); }
-#undef gDPParam
-#define gDPParam(pkt, cmd, param) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPParam(_ndp++, cmd, param); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPParam(pkt, cmd, param); }
 #define ND_O_gDPScisFillRectangle(pkt, ulx, uly, lrx, lry) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(MAX((lrx),0), 14, 10) | _SHIFTL(MAX((lry),0), 2, 10)); _g->words.w1 = (_SHIFTL(MAX((ulx),0), 14, 10) | _SHIFTL(MAX((uly),0), 2, 10)); }
-#undef gDPScisFillRectangle
-#define gDPScisFillRectangle(pkt, ulx, uly, lrx, lry) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPScisFillRectangle(_ndp++, ulx, uly, lrx, lry); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPScisFillRectangle(pkt, ulx, uly, lrx, lry); }
 #define ND_O_gDPSetBlendColor(pkt, r, g, b, a) DPRGBColor(pkt, G_SETBLENDCOLOR, r,g,b,a)
-#undef gDPSetBlendColor
-#define gDPSetBlendColor(pkt, r, g, b, a) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetBlendColor(_ndp++, r, g, b, a); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetBlendColor(pkt, r, g, b, a); }
 #define ND_O_gDPSetColor(pkt, c, d) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(c, 24, 8); _g->words.w1 = (unsigned int)(d); }
-#undef gDPSetColor
-#define gDPSetColor(pkt, c, d) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetColor(_ndp++, c, d); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetColor(pkt, c, d); }
 #define ND_O_gDPSetColorImage(pkt, f, s, w, i) gSetImage(pkt, G_SETCIMG, f, s, w, i)
-#undef gDPSetColorImage
-#define gDPSetColorImage(pkt, f, s, w, i) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetColorImage(_ndp++, f, s, w, i); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetColorImage(pkt, f, s, w, i); }
 #define ND_O_gDPSetCombine(pkt, muxs0, muxs1) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_SETCOMBINE, 24, 8) | _SHIFTL(muxs0, 0, 24); _g->words.w1 = (unsigned int)(muxs1); }
-#undef gDPSetCombine
-#define gDPSetCombine(pkt, muxs0, muxs1) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetCombine(_ndp++, muxs0, muxs1); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetCombine(pkt, muxs0, muxs1); }
 #define ND_O_gDPSetCombineLERP(pkt, a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_SETCOMBINE, 24, 8) | _SHIFTL(GCCc0w0(G_CCMUX_ ##a0, G_CCMUX_ ##c0, G_ACMUX_ ##Aa0, G_ACMUX_ ##Ac0) | GCCc1w0(G_CCMUX_ ##a1, G_CCMUX_ ##c1), 0, 24); _g->words.w1 = (unsigned int)(GCCc0w1(G_CCMUX_ ##b0, G_CCMUX_ ##d0, G_ACMUX_ ##Ab0, G_ACMUX_ ##Ad0) | GCCc1w1(G_CCMUX_ ##b1, G_ACMUX_ ##Aa1, G_ACMUX_ ##Ac1, G_CCMUX_ ##d1, G_ACMUX_ ##Ab1, G_ACMUX_ ##Ad1)); }
-#undef gDPSetCombineLERP
-#define gDPSetCombineLERP(pkt, a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetCombineLERP(_ndp++, a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetCombineLERP(pkt, a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1); }
 #define ND_O_gDPSetConvert(pkt, k0, k1, k2, k3, k4, k5) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_SETCONVERT, 24, 8) | _SHIFTL(k0, 13, 9) | _SHIFTL(k1, 4, 9) | _SHIFTR(k2, 5, 4)); _g->words.w1 = (_SHIFTL(k2, 27, 5) | _SHIFTL(k3, 18, 9) | _SHIFTL(k4, 9, 9) | _SHIFTL(k5, 0, 9)); }
-#undef gDPSetConvert
-#define gDPSetConvert(pkt, k0, k1, k2, k3, k4, k5) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetConvert(_ndp++, k0, k1, k2, k3, k4, k5); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetConvert(pkt, k0, k1, k2, k3, k4, k5); }
 #define ND_O_gDPSetDepthImage(pkt, i) gSetImage(pkt, G_SETZIMG, 0, 0, 1, i)
-#undef gDPSetDepthImage
-#define gDPSetDepthImage(pkt, i) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetDepthImage(_ndp++, i); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetDepthImage(pkt, i); }
 #define ND_O_gDPSetEnvColor(pkt, r, g, b, a) DPRGBColor(pkt, G_SETENVCOLOR, r,g,b,a)
-#undef gDPSetEnvColor
-#define gDPSetEnvColor(pkt, r, g, b, a) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetEnvColor(_ndp++, r, g, b, a); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetEnvColor(pkt, r, g, b, a); }
 #define ND_O_gDPSetFogColor(pkt, r, g, b, a) DPRGBColor(pkt, G_SETFOGCOLOR, r,g,b,a)
-#undef gDPSetFogColor
-#define gDPSetFogColor(pkt, r, g, b, a) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetFogColor(_ndp++, r, g, b, a); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetFogColor(pkt, r, g, b, a); }
 #define ND_O_gDPSetKeyGB(pkt, cG, sG, wG, cB, sB, wB) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_SETKEYGB, 24, 8) | _SHIFTL(wG, 12, 12) | _SHIFTL(wB, 0, 12)); _g->words.w1 = (_SHIFTL(cG, 24, 8) | _SHIFTL(sG, 16, 8) | _SHIFTL(cB, 8, 8) | _SHIFTL(sB, 0, 8)); }
-#undef gDPSetKeyGB
-#define gDPSetKeyGB(pkt, cG, sG, wG, cB, sB, wB) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetKeyGB(_ndp++, cG, sG, wG, cB, sB, wB); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetKeyGB(pkt, cG, sG, wG, cB, sB, wB); }
 #define ND_O_gDPSetKeyR(pkt, cR, sR, wR) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_SETKEYR, 24, 8); _g->words.w1 = (_SHIFTL(wR, 16, 12) | _SHIFTL(cR, 8, 8) | _SHIFTL(sR, 0, 8)); }
-#undef gDPSetKeyR
-#define gDPSetKeyR(pkt, cR, sR, wR) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetKeyR(_ndp++, cR, sR, wR); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetKeyR(pkt, cR, sR, wR); }
 #define ND_O_gDPSetOtherMode(pkt, mode0, mode1) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_RDPSETOTHERMODE,24,8)|_SHIFTL(mode0,0,24); _g->words.w1 = (unsigned int)(mode1); }
-#undef gDPSetOtherMode
-#define gDPSetOtherMode(pkt, mode0, mode1) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetOtherMode(_ndp++, mode0, mode1); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetOtherMode(pkt, mode0, mode1); }
 #define ND_O_gDPSetPrimColor(pkt, m, l, r, g, b, a) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_SETPRIMCOLOR, 24, 8) | _SHIFTL(m, 8, 8) | _SHIFTL(l, 0, 8)); _g->words.w1 = (_SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8)); }
-#undef gDPSetPrimColor
-#define gDPSetPrimColor(pkt, m, l, r, g, b, a) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetPrimColor(_ndp++, m, l, r, g, b, a); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetPrimColor(pkt, m, l, r, g, b, a); }
 #define ND_O_gDPSetScissor(pkt, mode, ulx, uly, lrx, lry) { Gfx *_g = (Gfx *)pkt; _g->words.w0 = _SHIFTL(G_SETSCISSOR, 24, 8) | _SHIFTL((int)((float)(ulx)*4.0F), 12, 12) | _SHIFTL((int)((float)(uly)*4.0F), 0, 12); _g->words.w1 = _SHIFTL(mode, 24, 2) | _SHIFTL((int)((float)(lrx)*4.0F), 12, 12) | _SHIFTL((int)((float)(lry)*4.0F), 0, 12); }
-#undef gDPSetScissor
-#define gDPSetScissor(pkt, mode, ulx, uly, lrx, lry) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetScissor(_ndp++, mode, ulx, uly, lrx, lry); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetScissor(pkt, mode, ulx, uly, lrx, lry); }
 #define ND_O_gDPSetScissorFrac(pkt, mode, ulx, uly, lrx, lry) { Gfx *_g = (Gfx *)pkt; _g->words.w0 = _SHIFTL(G_SETSCISSOR, 24, 8) | _SHIFTL((int)((ulx)), 12, 12) | _SHIFTL((int)((uly)), 0, 12); _g->words.w1 = _SHIFTL(mode, 24, 2) | _SHIFTL((int)((lrx)), 12, 12) | _SHIFTL((int)((lry)), 0, 12); }
-#undef gDPSetScissorFrac
-#define gDPSetScissorFrac(pkt, mode, ulx, uly, lrx, lry) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetScissorFrac(_ndp++, mode, ulx, uly, lrx, lry); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetScissorFrac(pkt, mode, ulx, uly, lrx, lry); }
 #define ND_O_gDPSetTextureImage(pkt, f, s, w, i) gSetImage(pkt, G_SETTIMG, f, s, w, i)
-#undef gDPSetTextureImage
-#define gDPSetTextureImage(pkt, f, s, w, i) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetTextureImage(_ndp++, f, s, w, i); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetTextureImage(pkt, f, s, w, i); }
 #define ND_O_gDPSetTile(pkt, fmt, siz, line, tmem, tile, palette, cmt, maskt, shiftt, cms, masks, shifts) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(fmt, 21, 3) | _SHIFTL(siz, 19, 2) | _SHIFTL(line, 9, 9) | _SHIFTL(tmem, 0, 9); _g->words.w1 = _SHIFTL(tile, 24, 3) | _SHIFTL(palette, 20, 4) | _SHIFTL(cmt, 18, 2) | _SHIFTL(maskt, 14, 4) | _SHIFTL(shiftt, 10, 4) |_SHIFTL(cms, 8, 2) | _SHIFTL(masks, 4, 4) | _SHIFTL(shifts, 0, 4); }
-#undef gDPSetTile
-#define gDPSetTile(pkt, fmt, siz, line, tmem, tile, palette, cmt, maskt, shiftt, cms, masks, shifts) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPSetTile(_ndp++, fmt, siz, line, tmem, tile, palette, cmt, maskt, shiftt, cms, masks, shifts); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPSetTile(pkt, fmt, siz, line, tmem, tile, palette, cmt, maskt, shiftt, cms, masks, shifts); }
 #define ND_O_gDPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx *_g = (Gfx *)(pkt); if (pkt); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(xh, 12, 12) | _SHIFTL(yh, 0, 12)); _g->words.w1 = (_SHIFTL(tile, 24, 3) | _SHIFTL(xl, 12, 12) | _SHIFTL(yl, 0, 12)); _g ++; _g->words.w0 = (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16)); _g->words.w1 = (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16)); }
-#undef gDPTextureRectangle
-#define gDPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPTextureRectangle(_ndp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); }
 #define ND_O_gDPTextureRectangleFlip(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx *_g = (Gfx *)(pkt); if (pkt); _g->words.w0 = (_SHIFTL(G_TEXRECTFLIP, 24, 8) | _SHIFTL(xh, 12, 12) | _SHIFTL(yh, 0, 12)); _g->words.w1 = (_SHIFTL(tile, 24, 3) | _SHIFTL(xl, 12, 12) | _SHIFTL(yl, 0, 12)); _g ++; _g->words.w0 = (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16)); _g->words.w1 = (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16)); }
-#undef gDPTextureRectangleFlip
-#define gDPTextureRectangleFlip(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPTextureRectangleFlip(_ndp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPTextureRectangleFlip(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); }
 #define ND_O_gDPWord(pkt, wordhi, wordlo) { Gfx *_g = (Gfx *)(pkt); gImmp1(pkt, G_RDPHALF_1, (unsigned int)(wordhi)); gImmp1(pkt, G_RDPHALF_2, (unsigned int)(wordlo)); }
-#undef gDPWord
-#define gDPWord(pkt, wordhi, wordlo) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gDPWord(_ndp++, wordhi, wordlo); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gDPWord(pkt, wordhi, wordlo); }
 #define ND_O_gSP1Quadrangle(pkt, v0, v1, v2, v3, flag) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_QUAD, 24, 8)| __gsSP1Quadrangle_w1f(v0, v1, v2, v3, flag)); _g->words.w1 = __gsSP1Quadrangle_w2f(v0, v1, v2, v3, flag); }
-#undef gSP1Quadrangle
-#define gSP1Quadrangle(pkt, v0, v1, v2, v3, flag) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSP1Quadrangle(_ndp++, v0, v1, v2, v3, flag); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSP1Quadrangle(pkt, v0, v1, v2, v3, flag); }
 #define ND_O_gSP1Triangle(pkt, v0, v1, v2, flag) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_TRI1, 24, 8)| __gsSP1Triangle_w1f(v0, v1, v2, flag); _g->words.w1 = 0; }
-#undef gSP1Triangle
-#define gSP1Triangle(pkt, v0, v1, v2, flag) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSP1Triangle(_ndp++, v0, v1, v2, flag); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSP1Triangle(pkt, v0, v1, v2, flag); }
 #define ND_O_gSP2Triangles(pkt, v00, v01, v02, flag0, v10, v11, v12, flag1) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_TRI2, 24, 8)| __gsSP1Triangle_w1f(v00, v01, v02, flag0)); _g->words.w1 = __gsSP1Triangle_w1f(v10, v11, v12, flag1); }
-#undef gSP2Triangles
-#define gSP2Triangles(pkt, v00, v01, v02, flag0, v10, v11, v12, flag1) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSP2Triangles(_ndp++, v00, v01, v02, flag0, v10, v11, v12, flag1); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSP2Triangles(pkt, v00, v01, v02, flag0, v10, v11, v12, flag1); }
 #define ND_O_gSPBranchLessZraw(pkt, dl, vtx, zval) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_RDPHALF_1,24,8); _g->words.w1 = (unsigned int)(dl); _g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_BRANCH_Z,24,8)| _SHIFTL((vtx)*5,12,12)|_SHIFTL((vtx)*2,0,12)); _g->words.w1 = (unsigned int)(zval); }
-#undef gSPBranchLessZraw
-#define gSPBranchLessZraw(pkt, dl, vtx, zval) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPBranchLessZraw(_ndp++, dl, vtx, zval); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPBranchLessZraw(pkt, dl, vtx, zval); }
 #define ND_O_gSPBranchLessZrg(pkt, dl, vtx, zval, near, far, flag, zmin, zmax) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_RDPHALF_1,24,8); _g->words.w1 = (unsigned int)(dl); _g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_BRANCH_Z,24,8)| _SHIFTL((vtx)*5,12,12)|_SHIFTL((vtx)*2,0,12)); _g->words.w1 = G_DEPTOZSrg(zval, near, far, flag, zmin, zmax); }
-#undef gSPBranchLessZrg
-#define gSPBranchLessZrg(pkt, dl, vtx, zval, near, far, flag, zmin, zmax) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPBranchLessZrg(_ndp++, dl, vtx, zval, near, far, flag, zmin, zmax); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPBranchLessZrg(pkt, dl, vtx, zval, near, far, flag, zmin, zmax); }
 #define ND_O_gSPBranchList(pkt, dl) gDma1p(pkt,G_DL,dl,0,G_DL_NOPUSH)
-#undef gSPBranchList
-#define gSPBranchList(pkt, dl) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPBranchList(_ndp++, dl); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPBranchList(pkt, dl); }
 #define ND_O_gSPClipRatio(pkt, r) { gMoveWd(pkt, G_MW_CLIP, G_MWO_CLIP_RNX, FR_NEG_ ##r); gMoveWd(pkt, G_MW_CLIP, G_MWO_CLIP_RNY, FR_NEG_ ##r); gMoveWd(pkt, G_MW_CLIP, G_MWO_CLIP_RPX, FR_POS_ ##r); gMoveWd(pkt, G_MW_CLIP, G_MWO_CLIP_RPY, FR_POS_ ##r); }
-#undef gSPClipRatio
-#define gSPClipRatio(pkt, r) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPClipRatio(_ndp++, r); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPClipRatio(pkt, r); }
 #define ND_O_gSPCullDisplayList(pkt, vstart, vend) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_CULLDL, 24, 8) | _SHIFTL((vstart)*2, 0, 16); _g->words.w1 = _SHIFTL((vend)*2, 0, 16); }
-#undef gSPCullDisplayList
-#define gSPCullDisplayList(pkt, vstart, vend) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPCullDisplayList(_ndp++, vstart, vend); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPCullDisplayList(pkt, vstart, vend); }
 #define ND_O_gSPDisplayList(pkt, dl) gDma1p(pkt,G_DL,dl,0,G_DL_PUSH)
-#undef gSPDisplayList
-#define gSPDisplayList(pkt, dl) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPDisplayList(_ndp++, dl); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPDisplayList(pkt, dl); }
 #define ND_O_gSPDma_io(pkt, flag, dmem, dram, size) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_DMA_IO,24,8)|_SHIFTL((flag),23,1)| _SHIFTL((dmem)/8,13,10)|_SHIFTL((size)-1,0,12); _g->words.w1 = (unsigned int)(dram); }
-#undef gSPDma_io
-#define gSPDma_io(pkt, flag, dmem, dram, size) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPDma_io(_ndp++, flag, dmem, dram, size); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPDma_io(pkt, flag, dmem, dram, size); }
 #define ND_O_gSPEndDisplayList(pkt) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_ENDDL, 24, 8); _g->words.w1 = 0; }
-#undef gSPEndDisplayList
-#define gSPEndDisplayList(pkt) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPEndDisplayList(_ndp++); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPEndDisplayList(pkt); }
 #define ND_O_gSPFogFactor(pkt, fm, fo) gMoveWd(pkt, G_MW_FOG, G_MWO_FOG, (_SHIFTL(fm,16,16) | _SHIFTL(fo,0,16)))
-#undef gSPFogFactor
-#define gSPFogFactor(pkt, fm, fo) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPFogFactor(_ndp++, fm, fo); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPFogFactor(pkt, fm, fo); }
 #define ND_O_gSPFogPosition(pkt, min, max) gMoveWd(pkt, G_MW_FOG, G_MWO_FOG, (_SHIFTL((128000/((max)-(min))),16,16) | _SHIFTL(((500-(min))*256/((max)-(min))),0,16)))
-#undef gSPFogPosition
-#define gSPFogPosition(pkt, min, max) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPFogPosition(_ndp++, min, max); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPFogPosition(pkt, min, max); }
 #define ND_O_gSPForceMatrix(pkt, mptr) { gDma2p((pkt),G_MOVEMEM,(mptr),sizeof(Mtx),G_MV_MATRIX,0); gMoveWd((pkt), G_MW_FORCEMTX,0,0x00010000); }
-#undef gSPForceMatrix
-#define gSPForceMatrix(pkt, mptr) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPForceMatrix(_ndp++, mptr); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPForceMatrix(pkt, mptr); }
 #define ND_O_gSPGeometryMode(pkt, c, s) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_GEOMETRYMODE,24,8)|_SHIFTL(~(u32)(c),0,24); _g->words.w1 = (u32)(s); }
-#undef gSPGeometryMode
-#define gSPGeometryMode(pkt, c, s) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPGeometryMode(_ndp++, c, s); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPGeometryMode(pkt, c, s); }
 #define ND_O_gSPInsertMatrix(pkt, where, num) ERROR!! gSPInsertMatrix is no longer supported.
-#undef gSPInsertMatrix
-#define gSPInsertMatrix(pkt, where, num) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPInsertMatrix(_ndp++, where, num); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPInsertMatrix(pkt, where, num); }
 #define ND_O_gSPLight(pkt, l, n) gDma2p((pkt),G_MOVEMEM,(l),sizeof(Light),G_MV_LIGHT,(n)*24+24)
-#undef gSPLight
-#define gSPLight(pkt, l, n) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPLight(_ndp++, l, n); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPLight(pkt, l, n); }
 #define ND_O_gSPLightColor(pkt, n, col) { gMoveWd(pkt, G_MW_LIGHTCOL, G_MWO_a ##n, col); gMoveWd(pkt, G_MW_LIGHTCOL, G_MWO_b ##n, col); }
-#undef gSPLightColor
-#define gSPLightColor(pkt, n, col) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPLightColor(_ndp++, n, col); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPLightColor(pkt, n, col); }
 #undef gSPLine3D
 #define gSPLine3D(pkt, v0, v1, flag) _Static_assert(0, "gSPLine3D has no native form (nd_gbi.h)")
 #undef gSPLineW3D
@@ -144,38 +54,16 @@
 #undef gSPLoadUcodeEx
 #define gSPLoadUcodeEx(pkt, uc_start, uc_dstart, uc_dsize) _Static_assert(0, "gSPLoadUcodeEx has no native form (nd_gbi.h)")
 #define ND_O_gSPLookAtX(pkt, l) gDma2p((pkt),G_MOVEMEM,(l),sizeof(Light),G_MV_LIGHT,G_MVO_LOOKATX)
-#undef gSPLookAtX
-#define gSPLookAtX(pkt, l) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPLookAtX(_ndp++, l); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPLookAtX(pkt, l); }
 #define ND_O_gSPLookAtY(pkt, l) gDma2p((pkt),G_MOVEMEM,(l),sizeof(Light),G_MV_LIGHT,G_MVO_LOOKATY)
-#undef gSPLookAtY
-#define gSPLookAtY(pkt, l) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPLookAtY(_ndp++, l); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPLookAtY(pkt, l); }
 #define ND_O_gSPMatrix(pkt, m, p) gDma2p((pkt),G_MTX,(m),sizeof(Mtx),(p)^G_MTX_PUSH,0)
-#undef gSPMatrix
-#define gSPMatrix(pkt, m, p) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPMatrix(_ndp++, m, p); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPMatrix(pkt, m, p); }
 #define ND_O_gSPModifyVertex(pkt, vtx, where, val) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_MODIFYVTX,24,8)| _SHIFTL((where),16,8)|_SHIFTL((vtx)*2,0,16)); _g->words.w1 = (unsigned int)(val); }
-#undef gSPModifyVertex
-#define gSPModifyVertex(pkt, vtx, where, val) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPModifyVertex(_ndp++, vtx, where, val); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPModifyVertex(pkt, vtx, where, val); }
 #define ND_O_gSPNoOp(pkt) gDma0p(pkt, G_SPNOOP, 0, 0)
-#undef gSPNoOp
-#define gSPNoOp(pkt) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPNoOp(_ndp++); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPNoOp(pkt); }
 #define ND_O_gSPNumLights(pkt, n) gMoveWd(pkt, G_MW_NUMLIGHT, G_MWO_NUMLIGHT, NUML(n))
-#undef gSPNumLights
-#define gSPNumLights(pkt, n) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPNumLights(_ndp++, n); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPNumLights(pkt, n); }
 #define ND_O_gSPPerspNormalize(pkt, s) gMoveWd(pkt, G_MW_PERSPNORM, 0, (s))
-#undef gSPPerspNormalize
-#define gSPPerspNormalize(pkt, s) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPPerspNormalize(_ndp++, s); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPPerspNormalize(pkt, s); }
 #define ND_O_gSPPopMatrixN(pkt, n, num) gDma2p((pkt),G_POPMTX,(num)*64,64,2,0)
-#undef gSPPopMatrixN
-#define gSPPopMatrixN(pkt, n, num) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPPopMatrixN(_ndp++, n, num); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPPopMatrixN(pkt, n, num); }
 #define ND_O_gSPScisTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(MAX((s16)(xh),0), 12, 12) | _SHIFTL(MAX((s16)(yh),0), 0, 12)); _g->words.w1 = (_SHIFTL((tile), 24, 3) | _SHIFTL(PM_SCIS_XL(xl), 12, 12) | _SHIFTL(MAX((s16)(yl),0), 0, 12)); gImmp1(pkt, G_RDPHALF_1, (_SHIFTL(((s) - (PM_SCIS_CLIP(xl) ? (((s16)(dsdx) < 0) ? (MAX((((s16)(xl)*(s16)(dsdx))>>7),0)) : (MIN((((s16)(xl)*(s16)(dsdx))>>7),0))) : 0)), 16, 16) | _SHIFTL(((t) - (((yl) < 0) ? (((s16)(dtdy) < 0) ? (MAX((((s16)(yl)*(s16)(dtdy))>>7),0)) : (MIN((((s16)(yl)*(s16)(dtdy))>>7),0))) : 0)), 0, 16))); gImmp1(pkt, G_RDPHALF_2, (_SHIFTL((dsdx), 16, 16) | _SHIFTL((dtdy), 0, 16))); }
-#undef gSPScisTextureRectangle
-#define gSPScisTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPScisTextureRectangle(_ndp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPScisTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); }
 #define ND_O_gSPSegment(pkt, segment, base) gMoveWd(pkt, G_MW_SEGMENT, (segment)*4, base)
-#undef gSPSegment
-#define gSPSegment(pkt, segment, base) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPSegment(_ndp++, segment, base); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPSegment(pkt, segment, base); }
 #define ND_O_gSPSetOtherMode(pkt, cmd, sft, len, data) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(cmd,24,8)|_SHIFTL(32-(sft)-(len),8,8)| _SHIFTL((len)-1,0,8)); _g->words.w1 = (unsigned int)(data); }
-#undef gSPSetOtherMode
-#define gSPSetOtherMode(pkt, cmd, sft, len, data) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPSetOtherMode(_ndp++, cmd, sft, len, data); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPSetOtherMode(pkt, cmd, sft, len, data); }
 #undef gSPSprite2DBase
 #define gSPSprite2DBase(pkt, s) _Static_assert(0, "gSPSprite2DBase has no native form (nd_gbi.h)")
 #undef gSPSprite2DDraw
@@ -183,21 +71,9 @@
 #undef gSPSprite2DScaleFlip
 #define gSPSprite2DScaleFlip(pkt, sx, sy, fx, fy) _Static_assert(0, "gSPSprite2DScaleFlip has no native form (nd_gbi.h)")
 #define ND_O_gSPTexture(pkt, s, t, level, tile, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_TEXTURE,24,8) | _SHIFTL(BOWTIE_VAL,16,8) | _SHIFTL((level),11,3) | _SHIFTL((tile),8,3) | _SHIFTL((on),1,7)); _g->words.w1 = (_SHIFTL((s),16,16) | _SHIFTL((t),0,16)); }
-#undef gSPTexture
-#define gSPTexture(pkt, s, t, level, tile, on) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPTexture(_ndp++, s, t, level, tile, on); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPTexture(pkt, s, t, level, tile, on); }
 #define ND_O_gSPTextureL(pkt, s, t, level, xparam, tile, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_TEXTURE,24,8) | _SHIFTL((xparam),16,8) | _SHIFTL((level),11,3) | _SHIFTL((tile),8,3) | _SHIFTL((on),1,7)); _g->words.w1 = (_SHIFTL((s),16,16) | _SHIFTL((t),0,16)); }
-#undef gSPTextureL
-#define gSPTextureL(pkt, s, t, level, xparam, tile, on) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPTextureL(_ndp++, s, t, level, xparam, tile, on); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPTextureL(pkt, s, t, level, xparam, tile, on); }
 #define ND_O_gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(xh, 12, 12) | _SHIFTL(yh, 0, 12)); _g->words.w1 = (_SHIFTL(tile, 24, 3) | _SHIFTL(xl, 12, 12) | _SHIFTL(yl, 0, 12)); gImmp1(pkt, G_RDPHALF_1, (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16))); gImmp1(pkt, G_RDPHALF_2, (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16)));}
-#undef gSPTextureRectangle
-#define gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPTextureRectangle(_ndp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); }
 #define ND_O_gSPTextureRectangleFlip(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = (_SHIFTL(G_TEXRECTFLIP, 24, 8) | _SHIFTL(xh, 12, 12) | _SHIFTL(yh, 0, 12)); _g->words.w1 = (_SHIFTL(tile, 24, 3) | _SHIFTL(xl, 12, 12) | _SHIFTL(yl, 0, 12)); gImmp1(pkt, G_RDPHALF_1, (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16))); gImmp1(pkt, G_RDPHALF_2, (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16))); }
-#undef gSPTextureRectangleFlip
-#define gSPTextureRectangleFlip(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPTextureRectangleFlip(_ndp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPTextureRectangleFlip(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy); }
 #define ND_O_gSPVertex(pkt, v, n, v0) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = _SHIFTL(G_VTX,24,8)|_SHIFTL((n),12,8)|_SHIFTL((v0)+(n),1,7); _g->words.w1 = (unsigned int)(v); }
-#undef gSPVertex
-#define gSPVertex(pkt, v, n, v0) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPVertex(_ndp++, v, n, v0); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPVertex(pkt, v, n, v0); }
 #define ND_O_gSPViewport(pkt, v) gDma2p((pkt), G_MOVEMEM, (v), sizeof(Vp), G_MV_VIEWPORT, 0)
-#undef gSPViewport
-#define gSPViewport(pkt, v) { Gfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_gSPViewport(_ndp++, v); nd_words((const unsigned*)_ndt, (unsigned)(_ndp - _ndt)); ND_O_gSPViewport(pkt, v); }
 #endif

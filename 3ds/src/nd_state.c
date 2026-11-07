@@ -1,28 +1,26 @@
-/* nd_state.c: the native state half (plan_native_slices S2-1). nd_words decodes F3DEX2 word pairs, written by the bridge form of nd_gbi.h, into nd_st.
- * The decode rules are the ones the walker uses (pm_gbi.c: other mode field mask, geometry mode, scissor, prim depth, texture and tile words).
- * Pure C: the host test builds it. The walker state is not touched. */
+/* nd_state.c: the native state (NdWs, nd_ws). The walker ops in pm_gbi.c read and write nd_ws at walk time: it is the only state.
+ * nd_words is the reference decode of F3DEX2 word pairs into nd_ws for the host tests (nd_gbi_test, nd_rec_test). The bridge
+ * leaves (nd_gbi.h) no longer decode at macro time, so nd_words is never called during the walk.
+ * Pure C: the host test builds it. */
 #include <stdint.h>
 #include <string.h>
 #include "nd.h"
 #include "nd_ops.h"
 
-NdSt nd_st;
 ND_HOTD NdWs nd_ws = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .cimg = 0, .cimg_siz = 2, .prim = 0xffffffffu, .envc = 0xffffffffu, .fill = 0xffffffffu, .tex_ss = 0xFFFF, .tex_ts = 0xFFFF };
 
 #define MW_SEGMENT 0x06
 #define MV_VIEWPORT 8
 
-void nd_st_reset(void) { memset(&nd_st, 0, sizeof nd_st); }
-
-/* CORE-1: the record-mode leaf (nd_rec.h). The ops are decoded as the bridge decodes them. Outside the main list the slots get the words
- * (the bridge writes them); in the main list no word is written (CORE-2 gives the slots a record). */
+/* CORE-2a-3: the record-mode leaf (nd_rec.h). The record of a leaf in the main list is CORE-2c. Until then the leaf writes its words
+ * outside the main list and nothing inside it. */
 void nd_rec_leaf(void* at, const void* w, unsigned nops, unsigned nslots, int in_main) {
-    nd_words((const unsigned*)w, nops);
+    (void)nops;
     if (!in_main) memcpy(at, w, (size_t)nslots * 8u);
 }
 
 void nd_words(const unsigned* w, unsigned n) {
-    NdSt* s = &nd_st;
+    NdWs* s = &nd_ws;
     for (unsigned i = 0; i < n; i++) {
         uint32_t w0 = w[2 * i], w1 = w[2 * i + 1];
         switch (w0 >> 24) {
@@ -31,45 +29,22 @@ void nd_words(const unsigned* w, unsigned n) {
         case OP_SETOTHERMODE_L: case OP_SETOTHERMODE_H: {
             unsigned len = (w0 & 0xFF) + 1, field = (w0 >> 8) & 0xFF, sft = 32 - field - len;
             uint32_t mask = len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1u) << sft;
-            uint32_t* om = (w0 >> 24) == OP_SETOTHERMODE_H ? &s->om_h : &s->om_l;
+            unsigned* om = (w0 >> 24) == OP_SETOTHERMODE_H ? &s->omode_h : &s->omode_l;
             *om = (*om & ~mask) | (w1 & mask);
             if ((w0 >> 24) == OP_SETOTHERMODE_H) s->om_kh |= mask; else s->om_kl |= mask; /* B8: the bits this state has a value for */
             break;
         }
-        case OP_RDPSETOTHERMODE: s->om_h = w0 & 0xFFFFFFu; s->om_l = w1; s->om_kh = 0xFFFFFFu; s->om_kl = 0xFFFFFFFFu; break;
+        case OP_RDPSETOTHERMODE: s->omode_h = w0 & 0xFFFFFFu; s->omode_l = w1; s->om_kh = 0xFFFFFFu; s->om_kl = 0xFFFFFFFFu; break;
         case OP_SETCOMBINE: s->comb_w0 = w0; s->comb_w1 = w1; break;
         case OP_SETPRIMCOLOR: s->prim = w1; s->prim_lod = w0 & 0xFFFFu; break;
-        case OP_SETENVCOLOR: s->env = w1; break;
-        case OP_SETFOGCOLOR: s->fog = w1; break;
-        case OP_SETBLENDCOLOR: s->blend = w1; break;
+        case OP_SETENVCOLOR: s->envc = w1; break;
         case OP_SETFILLCOLOR: s->fill = w1; break;
-        case OP_SETPRIMDEPTH: s->primz = (uint16_t)(w1 >> 16); s->primdz = (uint16_t)w1; break;
-        case OP_SETSCISSOR:
-            s->sc_ulx = (uint16_t)((w0 >> 12) & 0xFFF); s->sc_uly = (uint16_t)(w0 & 0xFFF);
-            s->sc_mode = (uint8_t)((w1 >> 24) & 3); s->sc_lrx = (uint16_t)((w1 >> 12) & 0xFFF); s->sc_lry = (uint16_t)(w1 & 0xFFF);
-            break;
-        case OP_TEXTURE:
-            s->tex_level = (uint8_t)((w0 >> 11) & 7); s->tex_tile = (uint8_t)((w0 >> 8) & 7); s->tex_on = (uint8_t)((w0 >> 1) & 0x7F);
-            s->tex_s = (uint16_t)(w1 >> 16); s->tex_t = (uint16_t)w1;
-            break;
-        case OP_SETCIMG: s->cimg_w0 = w0; s->cimg_w1 = w1; break;
-        case OP_SETZIMG: s->zimg_w1 = w1; break;
-        case OP_SETTIMG: s->timg_w0 = w0; s->timg_w1 = w1; break;
-        case OP_SETTILE: s->tile_w0[(w1 >> 24) & 7] = w0; s->tile_w1[(w1 >> 24) & 7] = w1; break;
-        case OP_SETTILESIZE: s->tsz_w0[(w1 >> 24) & 7] = w0; s->tsz_w1[(w1 >> 24) & 7] = w1; break;
-        case OP_LOADTILE: case OP_LOADBLOCK: case OP_LOADTLUT: s->n_load++; break;
-        case OP_MOVEMEM: if ((w0 & 0xFF) == MV_VIEWPORT) s->vp_addr = w1; break;
-        case OP_MOVEWORD: if (((w0 >> 16) & 0xFF) == MW_SEGMENT) s->segment[((w0 & 0xFFFF) / 4) & 15] = w1; break;
-        case OP_MTX: s->mtx_flags = (w0 & 0xFF) ^ 1u /* G_MTX_PUSH is inverted in F3DEX2 */; s->mtx_addr = w1; s->n_mtx++; break;
-        case OP_POPMTX: s->n_pop++; break;
-        case OP_TEXRECT: case OP_TEXRECTFLIP: s->n_rect++; break;
-        case OP_FILLRECT: s->n_fill++; break;
-        case OP_VTX: s->n_vtx++; break;
-        case OP_TRI1: s->n_tri++; break;
-        case OP_TRI2: case OP_QUAD: s->n_tri += 2; break;
-        case OP_DL: s->n_dl++; break;
-        case OP_ENDDL: s->n_enddl++; break;
-        default: s->n_unknown++; s->last_unknown = w0 >> 24; break;
+        case OP_SETPRIMDEPTH: s->prim_z = w1 >> 16; break;
+        case OP_TEXTURE: s->tex_on = (w0 & 0xFF) != 0; s->tex_ss = w1 >> 16; s->tex_ts = w1 & 0xFFFFu; break;
+        case OP_SETCIMG: s->cimg_siz = (int)((w0 >> 19) & 3); break;
+        case OP_SETTIMG: s->timg = (const void*)(uintptr_t)w1; break;
+        case OP_MOVEWORD: if (((w0 >> 16) & 0xFF) == MW_SEGMENT && (w0 & 0xFFFF) / 4 < 16) s->segbase[(w0 & 0xFFFF) / 4] = w1; break;
+        default: break;
         }
     }
 }

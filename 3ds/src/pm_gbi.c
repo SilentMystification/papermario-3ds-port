@@ -3739,6 +3739,15 @@ static int lt_mem_same(u32 w0, u32 w1) {
            lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10];
 }
 
+/* CORE-2a-3: a skipped op (g2_same true) still gives the state the native keys read what its write would have: the B8 known bits of a
+ * SETOTHERMODE mask and the prim LOD word (w0 low 16 bits, which g2_same does not compare). */
+static void g2_note(unsigned op, u32 w0) {
+    if (op == G_SETPRIMCOLOR) { nd_ws.prim_lod = w0 & 0xffffu; return; }
+    if (op != G_SETOTHERMODE_H && op != G_SETOTHERMODE_L) return;
+    unsigned len = (w0 & 0xff) + 1, field = (w0 >> 8) & 0xff, sft = 32 - field - len;
+    unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
+    if (op == G_SETOTHERMODE_H) nd_ws.om_kh |= mask; else nd_ws.om_kl |= mask;
+}
 static int g2_same(unsigned op, u32 w0, u32 w1) {
     switch (op) {
     /* R2B: each case skips only when the handler's writes equal the current state and its calls do nothing (sync_combine: sc_ok and
@@ -3808,6 +3817,7 @@ static int rm_apply_impl(u32 w1) {
         if (op == G_SETOTHERMODE_H) {
             unsigned old_tf = nd_ws.omode_h & (3u << 12);
             nd_ws.omode_h = (nd_ws.omode_h & ~mask) | (a1 & mask);
+            nd_ws.om_kh |= mask; /* B8 known bits (nd_ws.om_kh) */
             if ((nd_ws.omode_h & (3u << 12)) != old_tf) {
                 int f_on = pm_ph_on && sp0_cur == 1; unsigned f0 = f_on ? pm_ticks() : 0; /* SPLIT0C2: flush time in the tex kind */
                 pm_gpu_flush();
@@ -3817,6 +3827,7 @@ static int rm_apply_impl(u32 w1) {
             if (sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
         } else {
             nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (a1 & mask);
+            nd_ws.om_kl |= mask;
         }
     }
     return 1;
@@ -4154,12 +4165,13 @@ static void op_setothermode(unsigned op, u32 w0, u32 w1) {
             if (op == G_SETOTHERMODE_H) {
                 unsigned old_tf = nd_ws.omode_h & (3u << 12);
                 nd_ws.omode_h = (nd_ws.omode_h & ~mask) | (w1 & mask);
+                nd_ws.om_kh |= mask; /* B8 known bits */
                 if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
                     pm_gpu_flush();
                     pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
                 }
             }
-            else nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (w1 & mask);
+            else { nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (w1 & mask); nd_ws.om_kl |= mask; }
             /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
             if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
 }
@@ -4250,6 +4262,7 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
             GP_SET(1, nd_ws.prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
             aud_prim_lod = (u8)(w0 & 0xff);
             nd_ws.prim = w1;
+            nd_ws.prim_lod = w0 & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
             pm_gpu_set_prim(nd_ws.prim);
             sync_combine();
             break;
@@ -4659,7 +4672,7 @@ static __attribute__((noinline)) void rec_lights(const Lightsn* L, unsigned k) {
     for (const Gfx* h = tg; h < p; h++) {
         u32 w0 = h->words.w0, w1 = h->words.w1;
         unsigned op = w0 >> 24;
-        if (g2_same(op, w0, w1)) continue;
+        if (g2_same(op, w0, w1)) { g2_note(op, w0); continue; }
         if (op == G_MOVEWORD) gbi_moveword(w0, w1);
         else if (op == G_MOVEMEM) gbi_movemem(w0, w1);
     }
@@ -4674,7 +4687,8 @@ static __attribute__((noinline)) void gbi_setenv(u32 w1) {
 /* S3F-2: one record op through the skip test and the handler of the walker (the ops the record writes). */
 static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
-    if (g1_skip[op] || g2_same(op, w0, w1)) return;
+    if (g1_skip[op]) return;
+    if (g2_same(op, w0, w1)) { g2_note(op, w0); return; }
     gv_epoch++; /* GV1b, as the walker */
     switch (op) {
     case G_MOVEWORD: gbi_moveword(w0, w1); break;
@@ -4835,7 +4849,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         u32 w1 = pc->words.w1;
         unsigned op = w0 >> 24;
         if (g1_skip[op]) { pc++; continue; }
-        if (g2_same(op, w0, w1)) { pc++; continue; }
+        if (g2_same(op, w0, w1)) { g2_note(op, w0); pc++; continue; }
         pm_gbi_cur_op = op;
         int fp = 0;
         if (pm_ph_on) { gv_streak_op(op); tex_streak_op(op); }
