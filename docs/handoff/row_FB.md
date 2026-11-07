@@ -112,4 +112,12 @@ Step 1 result (pm5draw log, debug switch, battle_start_pm5draw_pic, cold det, pm
 - Not named: the screen box (flag 0 vertices, sx / sw, pal[0] rows 0, 1, 3) has outliers (sw near 0, e.g. -3083) and the window mapping is not settled (shot = PICA colour buffer, 240 wide by 400 tall, dump_shot pm_gpu.c; NDC axes map to rows and cols with unknown flips). No single draw matches the halo box in both axes.
 - Next (step 2 of this row): the halo draw is named by its geometry, not its uniforms. A log of the clip-space vertices (only w > 0) of the draws whose screen box covers rows 4 to 127 and cols 185 to 202 of the shot, with the index count and the producer, or a per-draw count of pixels (pm5 on, pm5 off) by draw. Decide with the orchestrator before the next start.
 
-Code on fb3: pm5draw (pm_gpu.c, nd_cen.c pm_gbi_cur_prod_name), scenario battle_start_pm5draw, bench battle_start_pm5draw_pic. Log only, debug switch.
+Step 3 (pm5tex1 log line, commit 0ef7b18e2): once per producer when a program 5 draw with tex1 is submitted. Not yet seen in a run: iwa_10 (fogged) and the tex1 tours and sbk_56 show 0 lines (pm5 tex1 needs a fogged model with tex1, or a raw tex1 draw with fog; no catalog scene has one). The line is in; its first real hit is open.
+
+Step 4 (pm5 noise, native): the raw path refusal for program 5 noise is removed (pm_gpu.c), the noise offset of a draw uses u5_nzo for program 5, nd_model_state takes a plan with noise (unit 2 from pm_gpu_noise_draw, nzo, key noise), refusal only when the walker has no noise texture (pm_gpu_noise_ok). pm5.v.pica already had outtc2 from nzo as pm4.
+Gates (fb3 build of the step 4 change vs 6cb36367a, the build before it; the log-only change of step 3 is in both):
+- nrawwhy noise 0 on nok_11 (nok11_det run): pm5 noise refusals 0.
+- nok11_det: 40 of 40 shots byte-equal to 6cb36367a.
+- fb_mac01_det_pic: 12 of 12 shots byte-equal.
+- battle_start_f182_cold: 1 of 1 shot byte-equal.
+Open: no catalog scene is known to draw pm5 noise, so the byte gates prove no change on the scenes that run noise, not that the pm5 noise path draws. The check needs a pm5 noise draw counter (not added).

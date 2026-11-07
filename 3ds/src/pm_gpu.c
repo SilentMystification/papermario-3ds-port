@@ -1293,6 +1293,7 @@ static void pm5tex1_log(const NdDraw* d) {
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex) {
     rp_src_ = 2;
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
+    if (d->has_nzo) d->loc_nzo = (unsigned)(d->use5 ? u5_nzo : u4_nzo); /* FB-3 part 2: the noise offset of the program of the draw */
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys((void*)sd) - 0x18000000u);
     d->nidx = nidx;
     pm5draw_log(d, sd, nidx);
@@ -1366,11 +1367,13 @@ static void noise_native_words(NdUnit* u) {
     u->dim = noise_tex.dim; u->param = noise_tex.param; u->lod = noise_tex.lodParam;
     u->addr = (uint32_t)osConvertVirtToPhys(noise_tex.data) >> 3; u->type = (uint32_t)noise_tex.fmt;
 }
+/* FB-3 part 2: the noise unit and offset of a native model draw (nd_model.c, a plan with noise): the same words as the raw path (d.u[2], d.nzo) */
+int pm_gpu_noise_ok(void) { return noise_init(); }
+void pm_gpu_noise_draw(NdUnit* u, float* nzo) { noise_native_words(u); nzo[0] = 120.f / 64.f; nzo[1] = 200.f / 64.f; nzo[2] = noise_off[0]; nzo[3] = noise_off[1]; }
 static int nd_raw_native(void) {
     fb2_switches();
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
-    if (g_use5 && combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* FB-3 part 2 removes this (pm5 noise row); tex1 is native for pm5 (part 1) */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); unsigned lim = cmd_small && cmd_small < csz ? cmd_small : csz; if (coff + ND_EMIT_MAX + 1024u >= lim) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
@@ -1443,7 +1446,7 @@ static int nd_raw_native(void) {
     if (noise) { /* FB-2: unit 2 (the noise texture) and its offset uniform, as the walker's noise block of flush_draw */
         noise_native_words(&d.u[2]);
         d.nzo[0] = 120.f / 64.f; d.nzo[1] = 200.f / 64.f; d.nzo[2] = noise_off[0]; d.nzo[3] = noise_off[1];
-        d.loc_nzo = (unsigned)u4_nzo; d.has_nzo = u4_nzo >= 0;
+        d.loc_nzo = (unsigned)(g_use5 ? u5_nzo : u4_nzo); d.has_nzo = (g_use5 ? u5_nzo : u4_nzo) >= 0;
     }
     if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)(g_use5 ? u5_uvx : u4_uvx); d.has_uvx = 1; }
     d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
