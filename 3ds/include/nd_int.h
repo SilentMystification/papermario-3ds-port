@@ -315,4 +315,55 @@ extern char stats_line[96];
 unsigned gp_period(void);
 void ep_flush_stats(void);
 void dlc_report(void);
+/* WK-3 (nd_target.c): the colour image role and the z helpers, read by pm_gbi.c and the rect and state modules. */
+float prim_ndc_z(void);
+unsigned word_5551(unsigned rgba);
+typedef struct {
+    float x, y, z, w, u, v, r, g, b, a;
+} ClipV; /* the clip vertex of the triangle path (pm_gbi.c CPU path and nd_geom.c) */
+
+/* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
+void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list);
+void draw_tri(unsigned w);
+void gv_params_calc(unsigned tss, NdGvP* o);
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+void lit_freeze(void);
+int gv_lit_ok(void);
+int clip_bits4(const float* p);
+unsigned tri_flags(void);
+void tri_stats_add(unsigned f, unsigned n);
+void tri_stats(void);
+void gv_xf(int sl);
+int gv_fog_gpu_ok(void);
+int gv_state_why(int* ct, int* both);
+void gv_epoch_enter(void);
+int gv_tri(const int* idx);
+int clip_bits(const ClipV* p);
+int cull_off(void);
+float cull_cross(const float* p1, const float* p2, const float* p3);
+void ep_flush_stats(void);
+extern int tri_prep_ok, lit_pending, ep_why, ep_ct, ep_cullboth;
+extern unsigned gv_epoch, gv_chk_stale, ep_osc, ep_fl, ep_n;
+extern NdGvP ep_p;
+/* G (GM-2): the gather and triangle counters, the PERF-GBI laps and the state counters that nd_geom.c reads (defined in pm_gbi.c). */
+enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_N };
+#define GP_START() do { if (gp_on()) gp_last = pm_ticks(); } while (0)
+#define GP_LAP(id) do { if (gp_on()) { unsigned n_ = pm_ticks(); gp_acc[id] += n_ - gp_last; gp_last = n_; } } while (0)
+extern unsigned gp_acc[8], gp_last;
+extern unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n, gv_chk_out, gv_chk_cull, gv_chk_tri;
+extern unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
+extern unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri, st_gpu_tri, dlc_dirty;
+extern u8 vert_gvf[64];
+extern float vert_st[64][2], gv_rel_ref[2], tg_s, tg_t;
+extern unsigned vert_c[64];
+extern int tg_ok, pm_nolight;
+unsigned lit_color(const Vtx* v, const float m[4][4], int texgen);
+void draw_tri_cpu(const int* idx);
+void suntile_tri(const char* path, const int* idx);
+enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
+typedef struct {
+    unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch, xgrp;
+} DlcCnt; /* LS-1 counters of the dlc path (defined in pm_gbi.c) */
+extern DlcCnt dlc_c;
+extern unsigned ep_epoch, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
 #endif
