@@ -83,3 +83,14 @@ Op mapping checked: nd_tmpl.c:77 F_MULADD 8 = GPU_MULTIPLY_ADD (a*b)+c, right. L
 Measurement (one run, sbk56_superblock with det): at the three content draws at f530, f540, f548 log the TLUT address and its first 4 raw u16 entries, the decoded slot RGBA at the emblem centre texel and a corner (entry-0) texel, the plan alpha source, prim alpha, blend word, alpha test.
 Fix: corner texel alpha 1 -> fix the TLUT read for entity palettes in pm_tex; slot stale over the cycle -> key by TLUT content (STALE2 rule); decode right -> fix the plan alpha mapping for PM_CC_01/02.
 Gate: f530-f546 corner pixels within 4 of the background (same pixel with the content entity hidden), emblem centre within 8 of the formula (pass 1 T.rgb x shade; passes 2-3 out = T.rgb x a + dst x (1-a), a = T.a x 120/255 then 80/255); no white disc before the hit; then the glow check (plan 3 numbers) at f547-f565; mac_01 byte-equal. Worktree build3ds/wt/fx2 holds the plan 5 debug hunks (uncommitted; take only what the measurement needs).
+
+## FX1 body texture: result (2026-11-07, worktree fx2; no Azahar start)
+The body is right on alpha. Facts (not a run):
+- The body palette (SuperBlock_tex.pal, from assets/us/entity/model/SuperBlock_tex.png, 16 entries) has alpha bit 1 on all 16 entries. Raw TLUT in the f536 log (emdbg, img 0x56cac0 tlut 0x56cbc0): c62f ff61 bdef ef35, bit 0 set on each. PNG tRNS: all alpha 255. All 16 indices are used; none is transparent.
+- So the N64 rule (S mirror period 16, T clamp at row 31) cannot land on an alpha-0 texel for any st: the answer is the same for every face point. No probe needed for the alpha question.
+- The body slot decodes right: f528-f544 decode lines show no out-of-range index (out 0), t00 idx 2 val bdef.
+- The white centre is the body's own pale colour: texel (8,15) idx b = efefd6, (8,16) idx 5 = f7efd6. Not a hole.
+- The walker's combine on the body draw (combine 2, atest ref 48, tex 1, 16x32) passes alpha 255 x shade alpha, so no discard on the body.
+Fix: none. No code commit. The FX1 content disc premise and the body texture premise are closed.
+Next step: the glow (plan 5: the glow quads, tags 3 and 4, white square at f547 to f567). Start from plan 5 measure orbreg=550 / orbtex=552 on sbk56_glowvram (lane fx). The body is not the cause.
+Probes (emdbg, orbdbg, pm_tex CI log) stay uncommitted in the worktree and were removed from it after this result.

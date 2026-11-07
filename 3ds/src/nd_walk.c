@@ -33,7 +33,7 @@ static Gfx* spr_flush_at; /* SPR4 sprcheck: the triangle word of a walker-drawn 
 const u8 g1_skip[256] = { [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
 
 void g2_note(unsigned op, u32 w0) {
-    if (op == G_SETPRIMCOLOR) { nd_ws.prim_lod = w0 & 0xffffu; return; }
+    if (op == G_SETPRIMCOLOR) { pm_gpu_set_prim(nd_ws.prim, w0 & 0xffffu); nd_ws.prim_lod = w0 & 0xffffu; return; } /* SPR4-prim: LOD change closes the open batch */
     if (op != G_SETOTHERMODE_H && op != G_SETOTHERMODE_L) return;
     unsigned len = (w0 & 0xff) + 1, field = (w0 >> 8) & 0xff, sft = 32 - field - len;
     unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);

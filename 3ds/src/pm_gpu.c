@@ -3628,9 +3628,14 @@ void pm_gpu_set_rgb_scale(int scale) {
     rgb_scale = scale;
 }
 
-void pm_gpu_set_prim(unsigned rgba) {
-    if ((combine == 5 || combine == 6 || combine == 7) && rgba != prim) flush();
+/* SPR4-prim: the open batch reads PRIM and PRIM_LOD in combine 1, 5, 6, 7 and in combine 8 (the plan has no source mask, so any change closes it). The
+ * batch draws with the prim of its flush, so a change while it is open must close it first. */
+static unsigned prim_lod_g = 0xffffffffu;
+void pm_gpu_set_prim(unsigned rgba, unsigned lod) {
+    int reads = combine == 1 || combine == 5 || combine == 6 || combine == 7 || combine == 8;
+    if (reads && (rgba != prim || lod != prim_lod_g)) flush();
     prim = rgba;
+    prim_lod_g = lod;
 }
 
 void pm_gpu_set_mix(int on, unsigned rgba) {
@@ -3641,11 +3646,17 @@ void pm_gpu_set_mix(int on, unsigned rgba) {
     r_mixcol = rgba;
 }
 
-void pm_gpu_set_env(unsigned rgba) { env_col = rgba; }
+/* SPR4-env: the open batch reads ENV at its flush (combine 5, 7 and the combine 8 plans), so a change while it is open closes it first.
+ * The batch-open tests need no env compare: no change can happen while a batch is open. */
+void pm_gpu_set_env(unsigned rgba) {
+    if (rgba != env_col && (gni > 0 || nverts > 0 || rect_open)) flush();
+    env_col = rgba;
+}
 
+/* SPR4-env: cconst is in the TEV key of combine 4 and 8 (the batch draws with the cconst of its flush). */
 void pm_gpu_set_const(unsigned rgba) {
     if (rgba == cconst) return;
-    if (combine == 4) flush();
+    if (combine == 4 || combine == 8) flush();
     cconst = rgba;
 }
 

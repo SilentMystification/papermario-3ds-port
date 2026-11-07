@@ -68,3 +68,10 @@ Gates: intro_native_w600 9/9 byte-equal (old base); nrawwhy all 0 (noise refusal
 Next, in order:
 1. Split bug 3 (template id cache) and bug 2 (GX queue room) into own commits on a branch from nds1; gate mac_01 and iwa_10 byte-equal, tmplsmall picture right by eye; SendMessage main "FB-2 fix ready <hash>".
 2. After the FB-1 VRAM clear is in nds1 (the orchestrator tells you): rebase, then fb2 vs fb2 cold on nok11_fs must be byte-equal; then the noise byte gate vs the reference, cmdsmall and tmplsmall vs no-switch, intro_native rerun.
+
+## Oracle review FB-3 pm5all (2026-11-07; fb3 f1b1768d4 part 1 code, 0868c54c0/3707a00fb t1log + battle_start_t1cold scenarios)
+Measured (cold det): pm4 battle deterministic; pm5all vs pm4 787-2157 px, Mario and the Goomba missing under pm5all. battle_start has no use5 tex1 draws.
+Cause (code): the pm5all forcing in nd_model_state (nd_model.c ~295) also hits sprites (pm_gpu_spr_build calls nd_model_state). Sprites submit through pm_gpu_spr_submit -> nd_native_submit directly, never through pm_gpu_native_submit_draw where pm5_upload_draw runs (pm_gpu.c:1214). So a use5 sprite binds prog5 with no pm5 uniforms (pal5, uvso, cmul/cadd, zmix, lflag, fogu); no_uni 0 makes nd_emit write the pm4 layout into the pm5 register file. A real bug: any native sprite whose gv has fxon (fogged maps) takes this path.
+Fix (one point): at the top of nd_native_submit: `if (d->use5 && !d->no_uni) { pm5_upload_draw(d); d->no_uni = 1; d->npal = 0; if (d->has_uvx) d->loc_uvx = u5_uvx; }`; remove the copy in pm_gpu_native_submit_draw. The raw path keeps pm5_upload (sets no_uni first).
+tex1 subject: run the t1log line over tour10 (cold, det); take the first map with use5 1 and tex1 1 (likely a lit or fogged two-texture map model); add a spot scenario there.
+Revised part 1 gate: pm5all vs pm4 0 px on battle_start and mac_01; the found scene pm5 vs pre-FB-3 by eye in the tex1 region plus the t1log line with u1 and uvx set; a fogged tour map with native sprites byte-equal to pre-fix or the sprite region changed only from wrong to right (inspect).
