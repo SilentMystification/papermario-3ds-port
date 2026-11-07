@@ -2650,7 +2650,46 @@
         "fb1"
       ],
       "gates": []
-    }
+    },
+  {
+    "name": "pause_spin_grab_det_w300",
+    "kind": "azahar_pic",
+    "speed": "normal",
+    "default": false,
+    "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
+    "scenario": "pause_spin_grab_det_w300",
+    "cap": 45,
+    "until": "nrawwhy f300 ",
+    "tags": [
+      "azahar",
+      "pic",
+      "off",
+      "grab",
+      "det",
+      "cold"
+    ],
+    "gates": []
+  },
+  {
+    "name": "pause_spin_nosprnat_det_w300",
+    "kind": "azahar_pic",
+    "speed": "normal",
+    "default": false,
+    "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.",
+    "scenario": "pause_spin_nosprnat_det_w300",
+    "cap": 45,
+    "until": "nrawwhy f300 ",
+    "tags": [
+      "azahar",
+      "pic",
+      "off",
+      "grab",
+      "nosprnat",
+      "det",
+      "cold"
+    ],
+    "gates": []
+  }
   ],
   "legacy": {
     "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",

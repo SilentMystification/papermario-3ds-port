@@ -9000,6 +9000,76 @@
         }
       ],
       "reason": "SPR4 reference: same scenario as pause_spin_grab_w300 with the nosprnat switch (pm_gpu_spr_native returns 0, the walker draws every sprite record). Cold run."
-    }
+    },
+  {
+    "name": "pause_spin_grab_det_w300",
+    "status": "unverified",
+    "subject": "SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+    "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
+    "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det",
+    "until": "nrawwhy f300 ",
+    "cap": 45,
+    "deadline": 20,
+    "first_marker": "warp: mac_00 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "warp",
+        "regex": "warp: mac_00 entry 4"
+      },
+      {
+        "name": "pause mode",
+        "regex": "game mode 10 frame"
+      },
+      {
+        "name": "shot in spin window",
+        "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+      },
+      {
+        "name": "nrawwhy at 300",
+        "regex": "nrawwhy f300 cmdbuf"
+      }
+    ],
+    "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300.",
+    "extra": [
+      "-NoWarm"
+    ]
+  },
+  {
+    "name": "pause_spin_nosprnat_det_w300",
+    "status": "unverified",
+    "subject": "SPR4 det gate, cold: Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.",
+    "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
+    "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat nosprnat det",
+    "until": "nrawwhy f300 ",
+    "cap": 45,
+    "deadline": 20,
+    "first_marker": "warp: mac_00 entry 4",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "warp",
+        "regex": "warp: mac_00 entry 4"
+      },
+      {
+        "name": "pause mode",
+        "regex": "game mode 10 frame"
+      },
+      {
+        "name": "shot in spin window",
+        "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+      },
+      {
+        "name": "nrawwhy at 300",
+        "regex": "nrawwhy f300 cmdbuf"
+      }
+    ],
+    "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_nosprnat_w300.",
+    "extra": [
+      "-NoWarm"
+    ]
+  }
   ]
 }
