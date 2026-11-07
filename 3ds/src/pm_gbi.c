@@ -1178,6 +1178,15 @@ void sync_combine(void) {
     }
 }
 /* S3N-3d: the walker's sticky state at a draw (ndmcheck compare only: the native draw takes these as inputs): the TEXTURE scale word, the geometry mode and the combine words. */
+/* MDL-1b: the tile-1 part of the walker's sync for a record, after rec_aux: dual_bind when the plan reads tile 1. 1 when tile 1 ended bound. */
+int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
+    if (!plan_active || !cur_plan.uses_tex1) return 0;
+    ensure_tile(nd_ws.use_t1 ? 1 : 0);
+    dual_bind();
+    return nd_ws.td[1].valid && pm_tex_aux_off_idx() < 0;
+}
+void pm_gpu_set_r13_t1(int bound);
+int pm_gbi_bind_tile1(void);
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) {
     *tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu); *geo = nd_ws.geom; *cw0 = nd_ws.comb_w0; *cw1 = nd_ws.comb_w1;
 }
@@ -4579,6 +4588,11 @@ unsigned rec_run(const Gfx* q) {
     } else {
     NdtT tmi = pm_gpu_ndt_begin(); /* S3N-7: apply: the non-hit path, rec_apply and the fallback or the model call (exclusive of the submit and the matrix) */
     rec_apply(q, mdone);
+    { /* MDL-1b v2: once per record after rec_aux, before the ndm and model branches (R13 texture-only records) */
+        const uint32_t* qw = (const uint32_t*)q; uint32_t cw_[4]; int cb_ = 0; int t1 = 0;
+        if (qw[26] && !pm_debug_has("r13off") && nd_r13_texonly(qw + NDMC_RW, qw[26], cw_, &cb_)) t1 = pm_gbi_bind_tile1();
+        pm_gpu_set_r13_t1(t1);
+    }
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
         q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
     else if (mce && mce->neg && mce->ep == pm_tex_epoch()) { pm_gpu_model_fb_cached(mce->why); } /* S3N-7: a stored fallback: walker geometry, no draw attempt */

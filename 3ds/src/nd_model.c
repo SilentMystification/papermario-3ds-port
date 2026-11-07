@@ -76,7 +76,7 @@ int nd_r13_texonly(const uint32_t* aw, unsigned n, uint32_t* cw, int* has_cb) {
         case 0x00: /* NOOP */
             break;
         case 0xFC: /* G_SETCOMBINE */
-            cw[0] = w0 & 0xffffffu; cw[1] = w1; *has_cb = 1;
+            cw[0] = w0; cw[1] = w1; *has_cb = 1; /* the full word, as the walker key has it (the op byte included) */
             break;
         case 0xD7: /* G_TEXTURE: the texture scale */
             cw[2] = w1; cw[3] = 1;
@@ -181,7 +181,7 @@ int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax) {
 /* The 16 combiner fields as op_setcombine (pm_gbi.c) decodes them into tst1, in NdCombIn.tst order. Returns 0 when the draw takes them.
  * 1: the combine reads tile 1 (the rename of op_setcombine) or the box product; both need tile state the native draw does not have (fallback).
  * -1: the combine reads KEYCENTER, KEYSCALE or K4, whose values are not native (nost). */
-static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, uint32_t env, uint32_t prim_lod, int tex, NdCombIn* ci) {
+static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, uint32_t env, uint32_t prim_lod, int tex, int t1v, NdCombIn* ci) {
     uint32_t* f = ci->tst;
     f[0] = (w0 >> 20) & 0xf;  f[1] = (w1 >> 28) & 0xf;  f[2] = (w0 >> 15) & 0x1f; f[3] = (w1 >> 15) & 7;
     f[4] = (w0 >> 12) & 7;    f[5] = (w1 >> 12) & 7;    f[6] = (w0 >> 9) & 7;      f[7] = (w1 >> 9) & 7;
@@ -198,7 +198,7 @@ static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, 
     if (f[1] == 6 || f[1] == 7 || f[9] == 6 || f[9] == 7 || f[2] == 6 || f[10] == 6) return -1;
     ci->w0 = w0; ci->w1 = w1; ci->omode_h = oh; ci->prim = prim; ci->env = env; ci->aud_prim_lod = prim_lod & 0xffu;
     ci->key_c = 0; ci->key_s = 0; ci->conv_k4 = 0;
-    ci->leg_mode = 0; ci->tex_on = tex; ci->use_t1 = 0; ci->t1_valid = 0; ci->dual_on = 0;
+    ci->leg_mode = 0; ci->tex_on = tex; ci->use_t1 = 0; ci->t1_valid = t1v; ci->dual_on = 0;
     ci->box_prod = 0; ci->box_pat = 0; ci->box_folded = 0; ci->comb_set = 1;
     ci->comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
     return 0;
@@ -218,7 +218,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     unsigned f = pm_frame_count();
     if (f >= mw_f) { mw_f = f - f % 100u + 100u; /* the next line at the next multiple of 100 frames (pm_frame_count, the shot frame) */
         char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
-        extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; }
+        extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u [why 5 = spr_build raw refusal: off, grab, zmark, nozt or no g_pal (pm_gpu.c spr_build)]", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; }
     return r;
 }
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
@@ -251,11 +251,15 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     /* S3N-3d: the combine choice is the walker's own function (nd_comb_decide) on the native inputs */
     NdCombIn ci;
     NdCombOut co;
-    { int rc = nd_comb_native(w0, w1, oh, prim, c->env, c->prim_lod, tex_u, &ci); if (rc == 1) return (st->why = 8, 0); if (rc < 0) return (st->why = 8, -1); }
+    /* MDL-1b: tile 1 valid from the walker state after pm_gbi_bind_tile1 (the ctx t1_valid, set before the draw): one decision */
+    const int t1v = c->t1_valid;
+    { int rc = nd_comb_native(w0, w1, oh, prim, c->env, c->prim_lod, tex_u, t1v, &ci); if (rc == 1) return (st->why = 8, 0); if (rc < 0) return (st->why = 8, -1); }
     nd_comb_decide(&ci, &co);
     const int combine = co.plan_on ? 8 : co.leg;
     const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
-    if (combine == 8 && (co.plan.uses_tex1 || co.plan.uses_noise)) return (st->why = 6, 0);
+    /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise and pm5 with tex1 stay why 6 (named) */
+    if (combine == 8 && (co.plan.uses_noise || (co.plan.uses_tex1 && (!c->u1 || c->gv && c->gv->fxon)))) return (st->why = 6, 0);
+    const int t1n = combine == 8 && co.plan.uses_tex1;
     if (c->zmark && zb && r->decal) return (st->why = 15, 0); /* S5-2: zmark with decal (the walker's pass 2 bias): named fallback */
     NdTmplKey k;
     memset(&k, 0, sizeof k);
@@ -265,12 +269,12 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     k.z = (uint8_t)zb; k.zmark = (uint8_t)(c->zmark && zb); k.zcmp = r->zcmp; k.zupd = r->zupd; k.nocol = r->nocol; k.decal = r->decal;
     memcpy(&k.dbias, &c->dbias, 4);
     k.atest_on = r->atest >= 0; k.aref = (uint8_t)(r->atest >= 0 ? r->atest : 0);
-    k.combine = (uint8_t)combine; k.tex = (uint8_t)tex; k.tex1 = 0; k.i8_0 = (uint8_t)(tex && c->i8_0); k.i8_1 = 0;
+    k.combine = (uint8_t)combine; k.tex = (uint8_t)tex; k.tex1 = (uint8_t)t1n; k.i8_0 = (uint8_t)(tex && c->i8_0); k.i8_1 = (uint8_t)(t1n && c->i8_1);
     k.rgb_scale = (uint8_t)c->rgb_scale; k.r_mix = (uint8_t)c->r_mix; k.draw_3d = (uint8_t)c->draw_3d; k.rect_2d = 0;
     k.dview = c->dview != 0; k.off_active = 0; k.off_i8 = 0;
     k.r_memblend = (uint8_t)(r->set_memb ? r->memb : c->r_memblend);
     k.r_replace = (uint8_t)c->r_replace; k.r_blend = r->blend; k.noise = 0;
-    k.w0 = combine == 8 ? w0 : 0; k.w1 = combine == 8 ? w1 : 0; k.two = combine == 8 ? (uint8_t)two : 0; k.t1only = 0;
+    k.w0 = combine == 8 ? w0 : 0; k.w1 = combine == 8 ? w1 : 0; k.two = combine == 8 ? (uint8_t)two : 0; k.t1only = (uint8_t)(t1n ? c->t1only : 0);
     int id = nd_tmpl_build(&k);
     if (id < 0) return (st->why = 7, 0);
     NdTevIn ti = { &k, combine == 8 ? &co.plan : NULL, prim, c->cconst, c->mixcol };
@@ -281,6 +285,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     for (int i = 0; i < 6; i++) d->tev_col[i] = to.st[i][3];
     d->buf_col = to.buf_color; d->has_buf = (uint8_t)to.buf_set;
     if (tex) d->u[0] = *c->u0;
+    if (t1n) { d->u[1] = *c->u1; memcpy(d->uvx, c->uvx, 16); d->loc_uvx = c->loc_uvx; d->has_uvx = 1; } /* MDL-1b: unit 1 and its uv map (the raw path's lines) */
     d->u[0].force = 0;
     if (c->gv) {
         memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16);

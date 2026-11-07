@@ -342,6 +342,8 @@ typedef struct NdMCtx {
     uint32_t dbias;            /* decal bias, float bits */
     uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_ws) and the bits it has a value for */
     uint32_t geom_base;        /* B9: the geometry mode before the list (nd_ws.geom) */
+    /* MDL-1b: tile 1 of an R13 record (the walker's live state after rec_aux and pm_gbi_bind_tile1): unit 1, its i8 flag, the uv map, the plan t1only */
+    NdUnit* u1; int i8_1; int t1_valid; int t1only; float uvx[4]; unsigned loc_uvx;
     int wind;                  /* walker: the sign of the matrix determinant (gv_wind, until the matrix is native in 3c): cull sense */
 } NdMCtx;
 typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full, 8 combine needs tile 1, the box product or a key value */

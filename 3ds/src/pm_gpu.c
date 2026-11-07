@@ -3100,6 +3100,16 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
 static int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg); /* S3N-6 check: 1 when the entry is valid */
 unsigned nd_r13_nohit; /* MDL-1: R13 texture records without a desc, stored no-hit (mdlw r13nohit) */
 static int r13_last;
+static NdUnit r13u1; static int r13u1_ok, r13i8_1; int pm_gbi_bind_tile1(void);
+/* MDL-1b (oracle decision): pm_gbi_bind_tile1 runs once per R13 record after rec_aux, before the model draw; unit 1 from the live state. */
+static int r13t1b_ok;
+/* MDL-1b v2: called by rec_run after rec_apply with the result of pm_gbi_bind_tile1 (0 for every other record): unit 1 from the live state */
+void pm_gpu_set_r13_t1(int bound) {
+    r13t1b_ok = bound; r13u1_ok = 0; r13i8_1 = 0;
+    if (!bound) return;
+    memset(&r13u1, 0, sizeof r13u1);
+    if (pm_tex_native_unit1(&r13u1) > 0) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); }
+}
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
     if (!*mode_ok) { static unsigned mb_; if (mb_++ < 8u) { const uint32_t* mw_ = (const uint32_t*)modew; pm_log_prof_line("modebad modew %p bad %02x w0 %08x w1 %08x w2 %08x w3 %08x", modew, mdl_mode.bad, modew ? mw_[0] : 0u, modew ? mw_[1] : 0u, modew ? mw_[2] : 0u, modew ? mw_[3] : 0u); } }
@@ -3112,11 +3122,10 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     /* MDL-1 (oracle decision): an R13 texture block is aux_ok; the walker ran it (rec_aux) so the bound tile state is current. Without a handle
      * desc, unit 0 is the bound slot (pm_tex_native_unit0), the raw path's rule. */
     uint32_t r13cw[4] = { 0, 0, 0, 0 }; int r13cb = 0; int r13 = 0;
+    r13u1_ok = 0; r13i8_1 = 0;
     r13_last = 0;
     if (rec[26] != 0 && !ax_ok && !pm_debug_has("r13off") && nd_r13_texonly(rec + NDMC_RW, rec[26], r13cw, &r13cb)) {
         r13_last = 1;
-        { NdUnit t1u; memset(&t1u, 0, sizeof t1u); /* MDL-1: a bound tile 1 (the walker's combine may read it: the walker key has tex1, the native decision does not): walker draws it (why 6) */
-          if (pm_tex_native_unit1(&t1u) > 0) { nd_nat_why = 6; return -1; } } /* r13off: the walker-fallback reference (switch) */
         r13 = 1;
         if (ds == NULL && gfx == NULL) {
             NdUnit wu; memset(&wu, 0, sizeof wu);
@@ -3141,6 +3150,9 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
     if (ax_ok) { int tw = 1, th = 1; pm_tex_size(&tw, &th); c.tex_w = tw; c.tex_h = th; } /* S3L-3: no bind: the uv params of the walker use the size of its last bound texture (gv_params_calc); the draw reads no texel */
     c.has_comb = 1; c.aux_ok = ax_ok || r13;
+    if (r13t1b_ok && !r13u1_ok) { nd_nat_why = 6; return -1; } /* tile 1 bound with no unit 1 (aux off-screen): named, why 6 */
+    c.t1_valid = r13t1b_ok; c.u1 = r13u1_ok ? &r13u1 : NULL; c.i8_1 = r13i8_1; c.t1only = (int)plan_k[3]; /* MDL-1b: tile 1 from pm_gbi_bind_tile1 */
+    memcpy(c.uvx, t1_s, 16); c.loc_uvx = (unsigned)u4_uvx;
     c.comb_w0 = combw ? combw[0] : (ax_ok && ax.has_cb ? ax.cw0 : sw_cw0); c.comb_w1 = combw ? combw[1] : (ax_ok && ax.has_cb ? ax.cw1 : sw_cw1); /* S3L-3: R4 wins over R13 (it runs after it) */
     if (r13 && r13cb) { c.comb_w0 = r13cw[0]; c.comb_w1 = r13cw[1]; } /* MDL-1: the block SETCOMBINE (the walker runs it in place) */
     c.geom_base = sw_geo; c.wind = gv_wind;
