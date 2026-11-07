@@ -9532,7 +9532,7 @@
       "expected_events": [
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ]
     },
@@ -9554,7 +9554,7 @@
       "expected_events": [
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ],
       "reason": "MDL-5 gate: MDL-5 byte reference: battle with nomodelnat. Cold start (-NoWarm) so det shots are a function of the build."
