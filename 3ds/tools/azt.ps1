@@ -242,6 +242,16 @@ if ($SelfTest) {
     Invoke-QSweep
     QCheck "stale c: running 61 s past start (cap 30) is removed, running 20 s stays" ((-not (Test-Path $pC)) -and (Test-Path $pO))
     Remove-Item $qdir -Recurse -Force
+    # T9 AZT12: runT is the scenario clock. A process started 80 s ago (cap 45, past cap+30) whose clock restarted just now (a warm round
+    # or a cold fallback, Set-QRunClock) is not stale; before the restart it is (c)
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pK = New-FakeQ "K9" 1000 "x" "running"
+    $k = Get-QState $pK; $k.runT = $now - 80000; $k.cap = 45; Save-QEntry $pK $k
+    $kOld = Get-StaleReason (Get-QState $pK) (Get-NowMs)
+    Set-QRunClock $pK
+    $kNew = Get-StaleReason (Get-QState $pK) (Get-NowMs)
+    QCheck "clock: process 80 s old with cap 45 is c before the clock restart, fresh after it (before '$kOld', after '$kNew')" (($kOld -eq "c") -and ($kNew -eq ""))
+    Remove-Item $qdir -Recurse -Force
     Remove-Item Env:PM_AZQUEUE_DIR -ErrorAction SilentlyContinue
     if ($qFails) { Write-Output "QUEUE SELFTEST: $qFails FAILED" } else { Write-Output "QUEUE SELFTEST: all pass" }
     $fails += $qFails
@@ -547,6 +557,7 @@ $stopFile = Join-Path $slotInfo.dir "stop.request"; Remove-Item $stopFile -Error
 $okFile = Join-Path $slotInfo.dir "warm.ok"; Remove-Item $okFile -ErrorAction SilentlyContinue # AZT3-3: run_azahar.ps1 writes it when the warm boot has started
 $azLineFile = Join-Path $slotInfo.dir "azslot.line"
 $warmReady = $true # AZT3-3: false while a warm start waits for warm.ok (or the cold fallback in azslot.line)
+$warmStamp = "" # AZT12: the warm.start content (its ticks) of the last clock restart
 Remove-Item (Join-Path $slotInfo.dir "azslot.line") -ErrorAction SilentlyContinue # AZT2: a line of this start only
 $cmd = ($argv | ForEach-Object { if ($_ -match '^-[A-Za-z]+$') { $_ } else { '"' + $_ + '"' } }) -join " "
 
@@ -577,11 +588,13 @@ while (-not $child.HasExited) {
     if (-not $azStart) {
         if (Get-AzaharProc $t0) {
             $azStart = Get-Date; $lastNew = $azStart; $startKind = "cold"; $deadlineEff = Get-StartDeadline "cold" $deadline
+            Set-QRunClock $qPath # AZT12: the run's cap clock starts with the cold launch
             Write-Output "AZT: Azahar started, cold start, deadline kind cold: $deadlineEff s (scenario $deadline s, cold minimum 45 s). The deadline clock runs"
         }
         elseif (Test-Path $warmFile) {
             # AZT-2: run_azahar.ps1 restarts emulation in the kept Azahar and wrote warm.start. The old log.txt content does not count.
             $azStart = Get-Date; $lastNew = $azStart; $script:warm = $true; $startKind = "warm"; $deadlineEff = Get-StartDeadline "warm" $deadline
+            $warmStamp = (Get-Content $warmFile -Raw).Trim(); Set-QRunClock $qPath # AZT12: the run's cap clock starts with this warm round
             # AZT3-3: the restart truncates log.txt (the creation time stays), so the old file length is no mark for the new boot.
             # The log is read from its first byte once warm.ok says the new boot has started (below).
             $warmReady = $false
@@ -592,10 +605,16 @@ while (-not $child.HasExited) {
     if (-not $warmReady) {
         # AZT3-3: a warm start reads nothing until the new boot has started (warm.ok), so no line of the old boot is read.
         # If run_azahar.ps1 fell back to a cold start (azslot.line says cold), this start is a cold start with its own deadline.
+        # AZT12: a second warm round (run_azahar.ps1 rewrites warm.start) restarts the run's cap clock too, as run_azahar.ps1 does.
+        if (Test-Path $warmFile) {
+            try { $ws = (Get-Content $warmFile -Raw).Trim() } catch { $ws = $warmStamp }
+            if ($ws -and $ws -ne $warmStamp) { $warmStamp = $ws; Set-QRunClock $qPath }
+        }
         if (Test-Path $okFile) { $warmReady = $true; $script:pos = 0; $script:carry = ""; $script:logCT = $null }
         elseif (Test-Path $azLineFile) {
             $warmReady = $true; $script:pos = 0; $script:carry = ""; $script:logCT = $null
             $startKind = "cold"; $azStart = Get-Date; $lastNew = $azStart; $deadlineEff = Get-StartDeadline "cold" $deadline
+            Set-QRunClock $qPath # AZT12: the cold launch after a failed warm restart starts the run's cap clock
             Write-Output "AZT: warm restart failed, cold start in this slot, deadline kind cold: $deadlineEff s. The deadline clock runs"
         }
         continue

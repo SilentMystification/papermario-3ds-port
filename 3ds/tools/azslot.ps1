@@ -328,7 +328,7 @@ function Start-SlotReaper([int]$k) {
 # ---- AZT11-1..3: one machine-wide run queue ----
 # One json file per run that waits or runs: build3ds\azslots\queue\<t>-<pid>-<rnd>.json (shared by all worktrees; the slot pool is in the main folder).
 # Every read-modify-write runs under one named mutex (Global\pm_azqueue). A run is: wait (FIFO position), granted (slot k reserved for it),
-# running (runner = its run_azahar.ps1 process, runT = start, cap = scenario cap). Stale entries are removed and their runs booted (Invoke-QSweep).
+# running (runner = its run_azahar.ps1 process, runT = start of the scenario clock (Set-QRunClock), cap = scenario cap). Stale entries are removed and their runs booted (Invoke-QSweep).
 # PM_AZQUEUE_DIR overrides the folder (self-test only).
 $script:QMutex = "Global\pm_azqueue"
 $script:QStaleBootSec = 60  # AZT11-2 (b): heartbeat older than this
@@ -390,6 +390,12 @@ function Set-QFields([string]$path, [hashtable]$fields) {
         foreach ($k in $fields.Keys) { $e | Add-Member -NotePropertyName $k -NotePropertyValue $fields[$k] -Force }
         Save-QEntry $path $e
     }
+}
+function Set-QRunClock([string]$path) {
+    # AZT12: runT is the start of the scenario clock, the clock run_azahar.ps1 cuts its cap from ($start: a warm round's start (warm.start),
+    # or the cold launch after a failed warm restart). Not the process start (azt.ps1 Set-QFields at the Start-Process): a failed warm restart
+    # takes up to 66 s per round before the cold start, and that time is not in the run's cap. Called by azt.ps1 at each of those starts.
+    Set-QFields $path @{ runT = (Get-NowMs) }
 }
 function New-QEntry([string]$scenario, [string]$row, [string]$lane, [string]$speed, [string]$tree, [int]$want, [long]$t) {
     $par = Get-ParentPid $PID
