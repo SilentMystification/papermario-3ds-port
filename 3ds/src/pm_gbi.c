@@ -334,7 +334,7 @@ static void dd_line(void) {
 }
 /* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
 float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */
-static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
+int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 /* draw_box (H04): cycle 1 = TEXEL0 * TEXEL1 (tile 0 window background, tile 1 corner image),
  * alpha = TEXEL1 alpha, cycle 2 = (PRIM - ENV) * COMBINED + ENV. box_prod marks that form.
  * box_folded is 1 while it is drawn as (PRIM - ENV) * TEXEL1 + ENV, which is exact when tile 0
@@ -490,7 +490,7 @@ static int const_rgb_tex_alpha(unsigned* out) {
 }
 
 static void set_leg(int m) { leg_mode = m; }
-static int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
+int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 PmPlan cur_plan;
 void sync_combine(void);
 static void sync_combine_work(void);
@@ -617,7 +617,7 @@ void set_primdepth(u32 w1) {
 }
 void set_fillcolor(u32 w1) { nd_ws.fill = w1; }
 void set_blendcolor(u32 w1) { blendc = w1; }
-static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
+int fog_fm, fog_fo; static int fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 unsigned sr_sig;
 int sr_ok;
 void sync_render(void) {
@@ -3294,7 +3294,7 @@ static float cc_rgb_in(unsigned sel, int ch, const float* t0, const float* t1, c
 }
 
 /* (A - B) * C + D, cycle 1 only. COMBINED reads as 0 there. */
-static void cc_cycle1(const float* t0, const float* t1, float out[4]) {
+void cc_cycle1(const float* t0, const float* t1, float out[4]) {
     float pr[4], en[4];
     unpack8(nd_ws.prim, pr);
     unpack8(nd_ws.envc, en);
@@ -3378,48 +3378,10 @@ __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsi
 /* Tile 0 reads the shading palette, tile 1 the sprite palette, both through the same 4-bit
  * indices, and the first combiner cycle multiplies them. Build the 16 x 16 result the
  * combiner would give, and let pm_tex apply it per texel. Returns 1 if the texture is bound. */
-int load_shaded_sprite(int dx4, int dy4) {
-    const void* sp = tlut_pal[nd_ws.tst1.tile_pal[1] & 15];
-    const void* sh = tlut_pal[nd_ws.tst1.tile_pal[0] & 15];
-    unsigned lut[256];
-    float env[4];
-    if (!sp || !sh) return 0;
-    unpack8(nd_ws.envc, env);
-    /* Second cycle (SHADE - ENV) * COMBINED + COMBINED is linear in the vertex shade. It
-     * can brighten past 1, so fold the largest factor into the texture and the rest into the
-     * vertex color (see draw_tri). */
-    (void)env;
-    dual_gain[0] = dual_gain[1] = dual_gain[2] = 1.f;
-    for (unsigned i = 0; i < 16; i++) {
-        float t1[4];
-        pal_rgba(sp, i, t1);
-        for (unsigned j = 0; j < 16; j++) {
-            float t0[4], o[4];
-            pal_rgba(sh, j, t0);
-            cc_cycle1(t0, t1, o);
-            unsigned c[4];
-            for (int k = 0; k < 4; k++) {
-                float v = o[k] * (k < 3 ? dual_gain[k] : 1.f);
-                if (v > 1.f) v = 1.f;
-                c[k] = (unsigned)(v * 255.f + .5f);
-            }
-            lut[i * 16 + j] = (c[0] << 24) | (c[1] << 16) | (c[2] << 8) | c[3];
-        }
-    }
-    return pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp, lut, dx4, dy4);
-}
 
 /* Bind the texture of tile n (0 or 1) for the next draw. */
 /* GA1: a glyph (4 bit CI, message font) is one cell of the sheet atlas. When the atlas of its sheet and palette is the bound
  * texture, the glyph needs no flush and no wrap call: tile_bound compares the raster, which differs per glyph. */
-int glyph_atlas_bound(void) {
-    int gx, gy;
-    if (!nd_ws.td[0].valid || !nd_ws.td[0].src || nd_ws.td[0].fmt != 2 || nd_ws.td[0].siz != 0 || !ens_src) { return 0; }
-    if (ens_pal != nd_ws.td[0].pal || ens_fmt != 2 || ens_siz != 0) { return 0; }
-    if (memcmp(nd_ws.tst1.tile_wrap[0], ens_wrap, sizeof ens_wrap) || memcmp(nd_ws.tst1.tile_sz[0], ens_sz, sizeof ens_sz)) { return 0; }
-    if (!pm_tex_glyph_same(nd_ws.td[0].src, nd_ws.td[0].fmt, nd_ws.td[0].siz, nd_ws.td[0].w, nd_ws.td[0].h, nd_ws.td[0].pal, nd_ws.td[0].pal_n, &gx, &gy)) { return 0; }
-    return 1;
-}
 extern unsigned short** nuGfxCfb;
 extern unsigned nuGfxCfbNum;
 extern int pm_wide;
@@ -3489,14 +3451,6 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
 /* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. G_NOOP is not here: the HANG1a splash marks are G_NOOP words. */
 
 /* GLYPH: runs n texture-load words after a G_PM_TEXI header, with the tex_op handlers. Syncs are skipped as in G1. */
-void tb_inline(const Gfx* g, unsigned n) {
-    for (; n; n--, g++) {
-        unsigned op = g->words.w0 >> 24;
-        if (g1_skip[op]) continue;
-        pm_gbi_cur_op = op;
-        tex_op(g->words.w0, g->words.w1);
-    }
-}
 
 /* G2: a state op that leaves the live state as it is. The loop skips it before the prologue. Ops that call sync_combine
  * also need sc_ok: a set sc_ok means that call would do nothing. */
@@ -3648,100 +3602,8 @@ void op_setcombine(u32 w0, u32 w1) {
 /* M4: the texture bind list of a model (make_texture_gfx: SETTIMG SETTILE LOADTLUT, SETCOMBINE, TEXTURE, SETTIMG SETTILE LOADBLOCK SETTILE SETTILESIZE). tb_ops_generic runs it
  * word by word through tex_op, as before. tb_ops runs the same op functions in list order without the dispatch (tex_op wrapper, tex_op_impl switch, one tex_gen step per op) and
  * leaves out the combine sync after a SETCOMBINE that the TEXTURE word after it repeats: that sync would be overwritten by the next one with no draw between. */
-static __attribute__((noinline)) void tb_ops_generic(const Gfx* g) {
-    for (const Gfx* h = g;; h++) {
-        unsigned op = h->words.w0 >> 24;
-        if (op == G_ENDDL) break;
-        if (g1_skip[op]) continue;
-        pm_gbi_cur_op = op;
-        tex_op(h->words.w0, h->words.w1);
-    }
-}
-static __attribute__((noinline)) void tb_ops(const Gfx* g) {
-    tex_gen++;
-    for (const Gfx* h = g;; h++) {
-        u32 w0 = h->words.w0, w1 = h->words.w1;
-        unsigned op = w0 >> 24;
-        if (op == G_ENDDL) break;
-        if (g1_skip[op]) continue;
-        pm_gbi_cur_op = op;
-        unsigned pt0 = 0; unsigned long long pf0 = 0;
-        if (pm_ph_on) { pt0 = pm_ticks(); pf0 = pm_gpu_fl_acc(); } /* M4: sp0x own and close time of the fused ops */
-        switch (op) {
-        case G_SETTIMG: op_settimg(w0, w1); break;
-        case G_SETTILE: op_settile(w0, w1); break;
-        case G_LOADBLOCK: op_loadblock(w0, w1); break;
-        case G_LOADTLUT: op_loadtlut(w0, w1); break;
-        case G_SETTILESIZE: op_settilesize(w0, w1); break;
-        case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
-        case G_SETCOMBINE: {
-            const Gfx* n = h + 1;
-            op_setcombine(w0, w1);
-            while (g1_skip[n->words.w0 >> 24]) n++;
-            if ((n->words.w0 >> 24) != G_TEXTURE) sync_combine();
-            break;
-        }
-        case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
-        default: tex_op(w0, w1); break;
-        }
-        if (pm_ph_on) { unsigned dt = (unsigned)(pm_ticks() - pt0), df = (unsigned)(pm_gpu_fl_acc() - pf0); tx_t[op] += dt - (df < dt ? df : dt); tx_f[op] += df; tx_n[op]++; }
-    }
-}
 /* M4 state-diff check, switch texdiff: every bind list runs twice from the same start state, once word by word and once fused. The texture, tile, combine and mode state of both
  * ends is compared field by field. A difference is one log line (list, field names). The game goes on with the word by word state. */
-typedef struct {
-    __typeof__(nd_ws.tst1) tst; const void *timg, *tlut; int tlut_n; const void* tlut_pal[16]; __typeof__(nd_ws.td) td; int tile_x0, tile_y0; float tile_fx, tile_fy;
-    int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; __typeof__(m1) m1; int dual_on, cur_tile, use_t1, tex_on; unsigned tex_ss, tex_ts; int comb_set;
-    unsigned comb_w0, comb_w1; int box_folded, box_prod, box_pat, comb_alpha_shade; unsigned cmb_gen_seen; struct TszLast tsz; unsigned st0_ep; int st0_ok;
-    unsigned omode_h, omode_l; int leg_mode, plan_active, comb_mode5; PmPlan plan; int sc_ok; unsigned sc_sig;
-    unsigned fogc, blendc; int fog_fm, fog_fo; /* S3F-2: the colour and fog state the record writes */
-    unsigned prim, envc;       /* S3F-2b: prim and env colour, the record writes both */
-} TexSnap;
-#define TS_FIELDS(X) X(tst) X(timg) X(tlut) X(tlut_n) X(tlut_pal) X(td) X(tile_x0) X(tile_y0) X(tile_fx) X(tile_fy) X(ld_valid) X(ld_x) X(ld_y) X(ld_h) X(ld_w) X(ldrec_n) X(blk_n) X(m1) \
-    X(dual_on) X(cur_tile) X(use_t1) X(tex_on) X(tex_ss) X(tex_ts) X(comb_set) X(comb_w0) X(comb_w1) X(box_folded) X(box_prod) X(box_pat) X(comb_alpha_shade) X(cmb_gen_seen) X(tsz) \
-    X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig)     X(fogc) X(blendc) X(fog_fm) X(fog_fo) X(prim) X(envc)
-static __attribute__((cold, noinline)) void ts_save(TexSnap* o) {
-    memset(o, 0, sizeof *o);
-    o->tst = nd_ws.tst1; o->timg = nd_ws.timg; o->tlut = nd_ws.tlut; o->tlut_n = nd_ws.tlut_n; memcpy(o->tlut_pal, tlut_pal, sizeof tlut_pal); memcpy(o->td, nd_ws.td, sizeof nd_ws.td);
-    o->tile_x0 = nd_ws.tile_x0; o->tile_y0 = nd_ws.tile_y0; o->tile_fx = nd_ws.tile_fx; o->tile_fy = nd_ws.tile_fy;
-    o->ld_valid = ld_valid; o->ld_x = ld_x; o->ld_y = ld_y; o->ld_h = ld_h; o->ld_w = ld_w; o->ldrec_n = ldrec_n; o->blk_n = blk_n; o->m1 = m1;
-    o->dual_on = dual_on; o->cur_tile = nd_ws.cur_tile; o->use_t1 = nd_ws.use_t1; o->tex_on = nd_ws.tex_on; o->tex_ss = nd_ws.tex_ss; o->tex_ts = nd_ws.tex_ts; o->comb_set = comb_set;
-    o->comb_w0 = nd_ws.comb_w0; o->comb_w1 = nd_ws.comb_w1; o->box_folded = box_folded; o->box_prod = box_prod; o->box_pat = box_pat; o->comb_alpha_shade = comb_alpha_shade;
-    o->cmb_gen_seen = cmb_gen_seen; o->tsz = tsz_last; o->st0_ep = st0_ep == pm_tex_wrap_gen(); o->st0_ok = st0_ok; /* the wrap generation counts calls, the second run advances it: compare whether st0_ep is current */ o->omode_h = nd_ws.omode_h; o->omode_l = nd_ws.omode_l;
-    o->leg_mode = leg_mode; o->plan_active = plan_active; o->comb_mode5 = comb_mode5; o->plan = cur_plan; o->sc_ok = sc_ok; o->sc_sig = sc_sig;
-    o->fogc = fogc; o->blendc = blendc; o->fog_fm = fog_fm; o->fog_fo = fog_fo;
-    o->prim = nd_ws.prim; o->envc = nd_ws.envc;
-}
-static __attribute__((cold, noinline)) void ts_load(const TexSnap* o) {
-    nd_ws.tst1 = o->tst; nd_ws.timg = o->timg; nd_ws.tlut = o->tlut; nd_ws.tlut_n = o->tlut_n; memcpy(tlut_pal, o->tlut_pal, sizeof tlut_pal); memcpy(nd_ws.td, o->td, sizeof nd_ws.td);
-    nd_ws.tile_x0 = o->tile_x0; nd_ws.tile_y0 = o->tile_y0; nd_ws.tile_fx = o->tile_fx; nd_ws.tile_fy = o->tile_fy;
-    ld_valid = o->ld_valid; ld_x = o->ld_x; ld_y = o->ld_y; ld_h = o->ld_h; ld_w = o->ld_w; ldrec_n = o->ldrec_n; blk_n = o->blk_n; m1 = o->m1;
-    dual_on = o->dual_on; nd_ws.cur_tile = o->cur_tile; nd_ws.use_t1 = o->use_t1; nd_ws.tex_on = o->tex_on; nd_ws.tex_ss = o->tex_ss; nd_ws.tex_ts = o->tex_ts; comb_set = o->comb_set;
-    nd_ws.comb_w0 = o->comb_w0; nd_ws.comb_w1 = o->comb_w1; box_folded = o->box_folded; box_prod = o->box_prod; box_pat = o->box_pat; comb_alpha_shade = o->comb_alpha_shade;
-    cmb_gen_seen = o->cmb_gen_seen; tsz_last = o->tsz; st0_ep = o->st0_ep ? pm_tex_wrap_gen() : ~pm_tex_wrap_gen(); st0_ok = o->st0_ok; nd_ws.omode_h = o->omode_h; nd_ws.omode_l = o->omode_l;
-    leg_mode = o->leg_mode; plan_active = o->plan_active; comb_mode5 = o->comb_mode5; cur_plan = o->plan; sc_ok = o->sc_ok; sc_sig = o->sc_sig;
-    fogc = o->fogc; blendc = o->blendc; fog_fm = o->fog_fm; fog_fo = o->fog_fo;
-    nd_ws.prim = o->prim; nd_ws.envc = o->envc;
-}
-static __attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
-    static TexSnap s0, eg, ef;
-    static unsigned runs, bad;
-    char names[256]; int n = 0;
-    ts_save(&s0);
-    tb_ops_generic(g);
-    ts_save(&eg);
-    ts_load(&s0);
-    tb_ops(g);
-    ts_save(&ef);
-#define TS_CMP(f) if (memcmp(&eg.f, &ef.f, sizeof eg.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
-    TS_FIELDS(TS_CMP)
-#undef TS_CMP
-    runs++;
-    if (n) { bad++; if (bad <= 40) pm_log("texdiff f%u list %p DIFF: %s", pm_frame_count(), (const void*)g, names); }
-    if (!(runs % 500)) pm_log("texdiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
-    ts_load(&eg);
-}
 int rm_apply(u32 w1) { /* M4: with texdiff the list runs both ways from the same start state and the end states are compared */
     if (!PMD("texdiff")) return rm_apply_impl(w1);
     static TexSnap s0, eg, ef; static unsigned runs, bad; char names[256]; int n = 0, r;

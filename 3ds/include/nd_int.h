@@ -253,4 +253,24 @@ void op_setcombine(u32 w0, u32 w1);                 /* pm_gbi.c, combine group *
 void op_setothermode(unsigned op, u32 w0, u32 w1);  /* pm_gbi.c, state group */
 void op_setprimcolor(u32 w0, u32 w1);               /* pm_gbi.c, state group */
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
+/* TX-3: the texture state snapshot (texdiff check, pm_gbi.c and nd_tex.c). Fields of the other groups as they are. */
+typedef struct {
+    __typeof__(nd_ws.tst1) tst; const void *timg, *tlut; int tlut_n; const void* tlut_pal[16]; __typeof__(nd_ws.td) td; int tile_x0, tile_y0; float tile_fx, tile_fy;
+    int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; __typeof__(m1) m1; int dual_on, cur_tile, use_t1, tex_on; unsigned tex_ss, tex_ts; int comb_set;
+    unsigned comb_w0, comb_w1; int box_folded, box_prod, box_pat, comb_alpha_shade; unsigned cmb_gen_seen; struct TszLast tsz; unsigned st0_ep; int st0_ok;
+    unsigned omode_h, omode_l; int leg_mode, plan_active, comb_mode5; PmPlan plan; int sc_ok; unsigned sc_sig;
+    unsigned fogc, blendc; int fog_fm, fog_fo; /* S3F-2: the colour and fog state the record writes */
+    unsigned prim, envc;       /* S3F-2b: prim and env colour, the record writes both */
+} TexSnap;
+#define TS_FIELDS(X) X(tst) X(timg) X(tlut) X(tlut_n) X(tlut_pal) X(td) X(tile_x0) X(tile_y0) X(tile_fx) X(tile_fy) X(ld_valid) X(ld_x) X(ld_y) X(ld_h) X(ld_w) X(ldrec_n) X(blk_n) X(m1) \
+    X(dual_on) X(cur_tile) X(use_t1) X(tex_on) X(tex_ss) X(tex_ts) X(comb_set) X(comb_w0) X(comb_w1) X(box_folded) X(box_prod) X(box_pat) X(comb_alpha_shade) X(cmb_gen_seen) X(tsz) \
+    X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig)     X(fogc) X(blendc) X(fog_fm) X(fog_fo) X(prim) X(envc)
+
+/* TX-3 externs. owner: pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
+extern int comb_mode5, plan_active, fog_fm, fog_fo, box_prod, box_pat, comb_alpha_shade, leg_mode;
+extern PmPlan cur_plan; extern float dual_gain[3];
+void cc_cycle1(const float* t0, const float* t1, float out[4]);
+void ts_save(TexSnap* o);
+void ts_load(const TexSnap* o);
+void tb_ops(const Gfx* g);
 #endif

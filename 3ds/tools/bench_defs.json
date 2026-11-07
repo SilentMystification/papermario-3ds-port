@@ -2378,6 +2378,22 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "text_menu_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TX-3 text gate: pause status menu text (text_menu scenario), picture by eye: periods and spacing of the menu glyphs drawn by the texture path (tb_* and load_shaded_sprite moved to nd_tex.c).",
+      "scenario": "text_menu",
+      "cap": 90,
+      "until": "shot \\d+ frame (178|179|180|181)\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "text"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
