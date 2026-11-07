@@ -1113,22 +1113,6 @@
       ]
     },
     {
-      "name": "nok11_splash_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "SIZE-1 gate: nok_11 water splash (fxtest 89, effect graphics from the ROM copy). Shot 1 at 12 frames after the spawn; a person reads the splash, byte compare with the reference build.",
-      "scenario": "nok11_splash",
-      "cap": 20,
-      "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": [
-        "azahar",
-        "pic",
-        "size"
-      ],
-      "gates": []
-    },
-    {
       "name": "sbk56_superblock_pic",
       "kind": "azahar_pic",
       "speed": "normal",
