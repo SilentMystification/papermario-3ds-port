@@ -20,6 +20,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - plan_walker_end.md: plan WEND (oracle 2026-11-06): every remaining walker GPU draw goes native; streams CEN, RECT, TRI, OFF, PM5, MDL, decisions D1 to D10.
 - plan_s10_path.md: plan for S10 (oracle 2026-11-06): producers write NdRec records (streams CORE, UI, FXW, WBO), then pm_gbi.c is deleted; decisions D1 to D10.
 - agent_S7.md: WBO-1 site list (custom gfx builders in src/world and src/battle: 57 sites, kinds, scenario candidates) and the WBO-2a to WBO-3 row groups.
+- agent_s10.md: S10 epic handoff (orchestrator, 2026-11-07): merged rows, open rows, parked bugs, size and push state, next command.
 - agent_wcen.md: WCEN walker producer census at 5 scenes (top 8 per scene, function, file, slice owner). Census tool: pm_gbi.c os_report.
 - agent_boot.md: row BOOT (boot time): boot ms marks, the elf size listing, the warm and cold run state.
 - agent_bg.md: background image faults (BG1 flicker at mac_00, BG2 garbled row), how the background strips are drawn.
