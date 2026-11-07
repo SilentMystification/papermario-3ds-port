@@ -375,7 +375,7 @@ void spr_load_npc_extra_anims(SpriteAnimData* header, u32* extraAnimList) {
     u16* cmdList;
     u32 extraAnimID;
     u8* dataPos;
-    void* copyEnd;
+    void* copyEnd = nullptr;
     SpriteAnimComponent* comp;
     SpriteAnimComponent** compList;
     void* writePos;
