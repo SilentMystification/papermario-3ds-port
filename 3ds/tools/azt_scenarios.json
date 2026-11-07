@@ -690,6 +690,60 @@
       "status": "unverified"
     },
     {
+      "name": "spot_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold start with the det switch. Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
+      "proves": "DET cold spot: the mac_01 picture per shot is a function of the build (det), so a base and a head build give byte-equal shots (MOVE census and phase gates).",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
+    },
+    {
+      "name": "wcen_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det. Census window 0 to 300: the opsplit line with the per-producer ops and the mod column (module per op, nd_cen.c op_module).",
+      "proves": "MOVE (a) census: the mod column prints with det, so base and head per-op totals compare in the log.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase opsplit loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "opsplit f",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f\\d+ ops"
+        }
+      ],
+      "reason": "MOVE gate (c): one 300-frame window (the until is the first opsplit line). A second window would need a longer cap and is not run here. Cold start 12 to 16 s to the first marker."
+    },
+    {
       "name": "nok11_det",
       "status": "unverified",
       "subject": "DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",

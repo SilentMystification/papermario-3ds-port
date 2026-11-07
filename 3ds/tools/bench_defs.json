@@ -2208,6 +2208,30 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE gate: mac_01 spot, cold start with the det switch. Two cold runs of one build must give byte-equal shots 200 to 205.",
+      "scenario": "spot_mac01_det",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": ["azahar", "det", "cold"],
+      "gates": []
+    },
+    {
+      "name": "wcen_mac01_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE gate (c): mac_01 census with opsplit (the mod column), cold start with det.",
+      "scenario": "wcen_mac01_det",
+      "cap": 45,
+      "until": "opsplit f",
+      "tags": ["azahar", "det", "cold"],
+      "gates": []
+    },
+    {
       "name": "nok11_det",
       "kind": "azahar_pic",
       "speed": "turbo",
