@@ -87,7 +87,7 @@ void pm_gpu_set_zmark(int on, float zn); /* B3b: case 6 model: depth test agains
 void pm_gpu_set_nocolor(int on); /* S25: the blender returns the frame buffer colour, so only depth is written */
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal);
 void pm_gpu_dbg_mode(unsigned m); /* FX1-2b: L othermode word for the orbdbg log */
-void pm_gpu_set_prim(unsigned rgba);
+void pm_gpu_set_prim(unsigned rgba, unsigned lod); /* SPR4-prim: lod = the prim LOD word (low 16 bits of G_SETPRIMCOLOR w0) */
 /* V06: a last stage mixes the colour to rgb of `rgba` by its alpha (the RDP blender with the blend or fog colour and the fog alpha). */
 void pm_gpu_set_mix(int on, unsigned rgba);
 void pm_gpu_set_memblend(int on); /* FX2a: blender B is the memory alpha */
