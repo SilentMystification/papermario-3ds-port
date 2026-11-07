@@ -151,6 +151,30 @@ typedef struct NdSt {
     uint32_t om_kh, om_kl;                   /* B8: other mode bits this state has a value for (set by SETOTHERMODE, all after RDPSETOTHERMODE) */
 } NdSt;
 extern NdSt nd_st;
+/* CORE-2a-2: the texture and tile state types (moved from pm_gbi.c; layout unchanged). */
+typedef struct NdTst {
+    unsigned timg_fmt, timg_siz; int timg_stride;
+    /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
+     * the image that was loaded to its TMEM address, not the image of the load that came last. */
+    struct { unsigned tmem; const void* img; int stride, x, y; } ldrec[4];
+    /* V13: a block load keeps its image and TMEM range. A half-height aux tile (tile 1 at TMEM + half) reads the second half. */
+    struct { unsigned tmem, bytes; const void* img; } blk[4];
+    unsigned tile_tmem[8], tile_pal[8];
+    int tile_sz[8][4];
+    unsigned comb2_a, comb2_b, comb2_c, comb2_d, comb2_aa, comb2_ab, comb2_ac, comb2_ad;
+    unsigned comb_aa, comb_ab, comb_ac, comb_ad;
+    unsigned tile_wrap[8][4];
+    unsigned tile_shift[8][2]; /* V12: G_SETTILE shifts (s, t) of each tile */
+    unsigned tile_fmt[8], tile_siz[8];
+    unsigned comb_a, comb_b, comb_c, comb_d;
+} NdTst;
+typedef struct NdTd {
+    int valid;
+    const uint8_t* src;
+    unsigned fmt, siz;
+    int w, h, stride, x0, y0, pal_n;
+    const void* pal;
+} NdTd;
 /* CORE-2a: the walker state (one state, read and written by the walker ops in pm_gbi.c and by the record setters). */
 typedef struct NdWs {
     unsigned geom;                     /* geometry mode */
@@ -160,6 +184,19 @@ typedef struct NdWs {
     unsigned prim;                     /* primitive colour */
     unsigned envc;                     /* env colour */
     unsigned fill;                     /* fill colour */
+    unsigned prim_z;                   /* G_SETPRIMDEPTH, 15 bit */
+    int tex_on;
+    const void* timg;
+    const void* tlut;
+    int tlut_n;
+    int tile_x0, tile_y0;
+    float tile_fx, tile_fy;
+    int cur_tile, use_t1;
+    unsigned tex_ss, tex_ts;
+    uint32_t segbase[16];
+    unsigned comb_w0, comb_w1;
+    NdTst tst1;
+    NdTd td[2];
 } NdWs;
 extern NdWs nd_ws;
 void nd_st_reset(void);
