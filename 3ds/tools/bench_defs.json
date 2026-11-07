@@ -3164,6 +3164,22 @@
         "fb3"
       ],
       "gates": []
+    },
+    {
+      "name": "super_text_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "RS3 gate: super_text cold det run (box_pattern_rect path) with texrlog lines. Two cold runs of one build must give byte-equal shots.",
+      "scenario": "super_text_det",
+      "cap": 90,
+      "until": "shot \\d+ frame 230\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
