@@ -488,7 +488,7 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${
     -Wl,--defsym,fx_sun_undeclared=fx_sun
     # effect_shims.yaml entries are asm jumps through effectFuncs in the N64 build. Here each one is an alias of the real function.
     ${EFFECT_SHIM_DEFSYMS})
-set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds;${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore.ld")
+set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds;${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore.ld;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore_bss.ld")
 target_link_libraries(pm_3ds pm_shaderall_lib pm_shader5_lib citro3d ctru m)
 
 ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")

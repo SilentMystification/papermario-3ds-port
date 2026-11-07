@@ -2458,6 +2458,45 @@
         "fb1"
       ],
       "gates": []
+    },
+    {
+      "name": "mem_reenter",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MEM-A item 2 gate: map re-entry restore (hos_01, tour to mac_00 and back). Gate: restored data bytes above 0 on re-entry and dprobe after bytes 0.",
+      "scenario": "mem_reenter",
+      "cap": 45,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "memory",
+        "bench"
+      ],
+      "log_metrics": [
+        {
+          "name": "restore_data",
+          "regex": "mapdata: hos_01 restored data (\\d+) bss \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "probe_after_bytes",
+          "regex": "dprobe: after hos_01 sum syms \\d+ bytes (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "restore_data",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "probe_after_bytes",
+          "op": "==",
+          "value": 0
+        }
+      ]
     }
   ],
   "legacy": {
