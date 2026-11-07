@@ -20,7 +20,6 @@ extern void boot_main(void* data);
 const char* pm_wd_phase_name(unsigned p);
 
 static u8 crash_stack[0x4000] __attribute__((aligned(8)));
-static int netloaded;
 static char args[256];
 
 /* Stack records: bounds of the game and audio thread stacks, a fill pattern for the high-water mark.
@@ -585,6 +584,7 @@ void pm_frame_loop(void) {
         }
         pm_log_lvtest(frame);
         if (frame % 300 == 0) pm_rom_drop_stat(); /* ROMKEEP: count of ROM reads in a dropped range, per 300 frames */
+        if (frame % 300 == 0) pm_heaphi_line(frame); /* MEM-B: heap high-water, per 300 frames */
         if (frame % 3600 == 0) {
             pm_mem_log("tick");
             pm_log_d("log writer core %d heartbeat %u dropped %u", pm_log_writer_core(), pm_log_writer_hb(), pm_log_dropped());
@@ -696,12 +696,14 @@ static void game_thread(void* arg) {
             if (sp) *sp = 0;
         }
     }
-    int live = netloaded || strstr(sw, "livelog") != NULL;
     if (args[0]) {
         size_t n = strlen(sw);
         if (n && n + 1 < sizeof(sw)) sw[n++] = ' ';
         strncat(sw, args, sizeof(sw) - strlen(sw) - 1);
     }
+    /* MEM-B item 9: the live log (socket, 17492) is opt-in: the livelog word from debug3ds.txt or a launch argument (push_3ds.sh passes it).
+     * A netload alone no longer starts it. Read after the args are appended, so the argument word counts. */
+    int live = strstr(sw, "livelog") != NULL;
     { /* PROF4: options.ini prof=1 adds the word prof, as a launch argument does. pm_options_init runs later and re-applies it. */
         FILE* oi = fopen("options.ini", "r");
         static char ln[32];
@@ -774,7 +776,6 @@ static void pm_shutdown(void) {
 
 int main(int argc, char** argv) {
     pm_boot_mark(PMB_MAIN, 0); /* BOOT-1 */
-    netloaded = __3dslink_host.s_addr != 0 || (argc > 0 && argv[0] && strncmp(argv[0], "3dslink:", 8) == 0);
     args[0] = 0;
     for (int i = 1; i < argc; i++) {
         strncat(args, argv[i], sizeof(args) - strlen(args) - 2);

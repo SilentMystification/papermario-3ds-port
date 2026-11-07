@@ -294,7 +294,7 @@ void pm_log_init(int live) {
     Result soc_rc = (!live || !soc || soc_bytes < 0x1000) ? -1 : socInit(soc, soc_bytes);
     /* LIVEMSG: pm_log_w drops lines until pm_log_start, so the result is kept here and written by pm_log_live_status. */
     if (!live) {
-        snprintf(live_msg, sizeof live_msg, "live log: off (no netload and no livelog switch)");
+        snprintf(live_msg, sizeof live_msg, "live log: off (no livelog switch)");
         return;
     }
     if (soc_rc != 0) {

@@ -344,6 +344,7 @@ dkp_add_embedded_binary_library(pm_shader5_lib pm_shader5)
 
 set(PORT_SRC
     src/pm_main.c
+    src/pm_heaphi.c
     src/pm_mem.c
     src/pm_log.c
     src/pm_flash.c
@@ -420,6 +421,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in ${CMAKE_BINARY_DIR}/lds
 target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map
     -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background -Wl,--wrap=appendGfx_darkness_stencil
+    -Wl,--wrap=_heap_malloc -Wl,--wrap=_heap_malloc_tail -Wl,--wrap=_heap_free
     -Wl,--defsym,heap_battleHead=gFrameBuf2
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
     -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50
