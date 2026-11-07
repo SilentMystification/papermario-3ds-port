@@ -75,15 +75,24 @@ void nuContDataGetExAll(NUContData* data) {
 static Gfx* key_list[MAX_KEY];
 static u32 key_size[MAX_KEY];
 static int nkey;
+uint64_t svcGetSystemTick(void);
+void pm_pf_nd_add(unsigned long long ticks, unsigned legacy); /* pm_phase.c: S0-6 window sums (legacy 1 = one walk) */
+
+/* S10-2: one walk of the task's words (pm_gbi_run). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
+static void gbi_walk(Gfx* gfxList, u32 n) {
+    uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
+    pm_gbi_run(gfxList, n);
+    if (pm_ph_on) pm_pf_nd_add(svcGetSystemTick() - t0, 1);
+}
+
 /* PI1: walk one task. */
 static void gbi_task(Gfx* gfxList, u32 n) {
     if (pm_fs_on) pm_fs_tasks++; /* WMODEL: render tasks per frame, fsplit only */
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
     nd_frame_begin();
-    nd_bridge_cut(gfxList, n);
-    nd_emit();
-    if (pm_gpu_stereo()) { pm_gpu_eye(1); nd_emit(); pm_gpu_eye(0); } /* STEREO: the same task for the right eye */
+    gbi_walk(gfxList, n);
+    if (pm_gpu_stereo()) { pm_gpu_eye(1); gbi_walk(gfxList, n); pm_gpu_eye(0); } /* STEREO: the same task for the right eye */
 }
 
 /* LB1b: with pm_interp_on <= 0 the background task (no swap flag) is recorded here and runs with the swap task, after the main list is

@@ -1,4 +1,4 @@
-/* nd.h: native draw record, frame driver, matrices (plan_native_system 2.2 and 2.5, S1-2 and S1-4). Only the LEGACY bridge kind is emitted so far. */
+/* nd.h: native draw state, frame driver, matrices (plan_native_system 2.5, S1-2 and S1-4). The record array and the LEGACY bridge are deleted (S10-2). */
 #ifndef ND_H
 #define ND_H
 
@@ -13,36 +13,9 @@
 
 enum {
     ND_DRAW_IDX = 0, /* later rows: indexed static mesh */
-    ND_LEGACY = 7    /* bridge only: the walker runs the words of one list span (deleted in S10) */
 };
 
-/* 32 bytes, one cache line (plan 2.2). LEGACY: aux = list address (32-bit ARM11 pointer), aux2 = byte count. */
-typedef struct NdRec {
-    uint8_t kind;
-    uint8_t tmpl;     /* template id */
-    uint8_t tex0;     /* texture unit 0 block id (0 = none) */
-    uint8_t tex1;     /* texture unit 1 block id (0 = none) */
-    uint16_t mtx;     /* matrix slot in the frame matrix pool */
-    uint16_t unif;    /* per-draw uniform block id (0 = the template default) */
-    uint32_t idx_word; /* index buffer address, GPU register form */
-    uint16_t nidx;    /* index count */
-    uint16_t vbuf;    /* attribute buffer id (0 = dynamic ring, 1 = static pool) */
-    uint32_t sort;    /* tmpl << 24, tex0 << 16, tex1 << 8, layer */
-    uint32_t seq;     /* game order index. Bit 31 = ordered (blend, decal or depth off: keep game order) */
-    uint32_t aux;     /* rectangle corners, or the LEGACY list address */
-    uint32_t aux2;    /* second rectangle word, the light block id, or the LEGACY byte count */
-} NdRec;
-_Static_assert(sizeof(NdRec) == 32, "NdRec is one 32-byte line");
-#define ND_SEQ_ORDERED 0x80000000u
-#define ND_REC_MAX 2048u
-
-void nd_frame_begin(void);                    /* empties the record array (once per gbi task) */
-void nd_bridge_cut(void* list, unsigned nbytes); /* appends one LEGACY record for an N64 list span */
-void nd_emit(void);                           /* runs the records in order; LEGACY calls the walker */
-
-/* Draw order for n records into ord (indices). A record with ND_SEQ_ORDERED keeps its place and breaks runs. Inside each run of unordered records a stable
- * counting sort by tex1, then tex0, then tmpl (LSD, three passes): the order by (tmpl, tex0, tex1). Returns n. n <= ND_REC_MAX. */
-unsigned nd_order(const NdRec* rec, unsigned n, uint16_t* ord);
+void nd_frame_begin(void); /* once per gbi task: the ndst debug line */
 
 /* NDMTX (S1-4). Walker matrix stack (the RSP depth is 10), projection, N64 unpack, per-eye matrix pool. */
 #define ND_MV_DEPTH 10
@@ -265,9 +238,6 @@ typedef struct NdShadow {
 void nd_shadow_reset(NdShadow* s);
 unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */
 
-/* Eye 2 without a second walk: copy the eye 1 command span, then write the eye 2 matrix words at each logged position. */
-typedef struct NdMtxLog { uint32_t at; uint16_t slot; uint16_t pad; } NdMtxLog;
-void nd_eye_copy(uint32_t* dst, const uint32_t* src, unsigned nw, const NdMtxLog* log, unsigned nlog, unsigned eye);
 
 /* NDTMPL (S1-3): render state and TEV template per key. The key holds the inputs of flush_draw's state setters and of the TEV builder.
  * Construct it with memset 0 and set the fields; the struct has no padding. pass: 0 main draw, 1 decal pass A, 2 decal pass B, 3 zmark pass 2.
