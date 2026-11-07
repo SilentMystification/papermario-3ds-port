@@ -680,5 +680,4 @@ __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked)
 
 
 /* SPR4-3: the dual boost of the walker (draw_tri path): 1 when cycle 2 is (SHADE - ENV) * COMBINED + COMBINED with the shaded bake live. nd_model/sprite native share it. */
-/* SPR4-3: the dual boost of the walker (draw_tri path): 1 when cycle 2 is (SHADE - ENV) * COMBINED + COMBINED with the shaded bake live. nd_model/sprite native share it. */
 int dual_boost_on(void) { return dual_on && nd_ws.tst1.comb2_a == G_CCMUX_SHADE && nd_ws.tst1.comb2_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb2_c == G_CCMUX_COMBINED && nd_ws.tst1.comb2_d == G_CCMUX_COMBINED; }

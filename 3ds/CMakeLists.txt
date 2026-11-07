@@ -378,6 +378,7 @@ set(PORT_SRC
     src/nd_geom.c
     src/nd_shape.c
     src/nd_ent.c
+    src/nd_recs.c
     src/nd_dlc.c
     src/nd_emit.c
     src/nd_model.c

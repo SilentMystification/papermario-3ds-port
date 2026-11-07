@@ -69,6 +69,7 @@ int lt_mem_same(u32 w0, u32 w1);
 int pm_gpu_spr_native(const uint32_t* rec);
 unsigned gv_matrix_id(int need_nm);
 unsigned rec_run(const Gfx* q);
+int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, pm_gbi.c */
 unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
 void gbi_cold_modifyvtx(u32 w0, u32 w1);
