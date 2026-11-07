@@ -299,11 +299,15 @@ static unsigned pace_ticks;
 /* AU1b: the audio ticks of a step run at the kick point (entry of the main nuGfxTaskStart, after the game logic of the step), not at the top of
  * the iteration. pm_audio_step is called once per drawn step. The main loop calls it after pm_gfx_retrace when the step sent no main task. */
 static int au_kicked;
+unsigned pm_audio_last_n; /* DET: ticks of the last audio step, the detlog line reads and clears it */
+/* DET: switch det = the frame schedule is a function of the game steps only: no FS1 skip, no interp skip, 2 audio ticks a step. */
+static int pm_det_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("det"); return v; }
 void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
     if (PMD("noaudio")) return;
-    unsigned n = pm_audio_lock() ? 2u : pm_audio_retraces();
+    unsigned n = pm_audio_lock() || pm_det_on() ? 2u : pm_audio_retraces(); /* DET: 2 a step */
+    pm_audio_last_n = n;
     PH_ADD(C_ATICK, n);
     pace_ticks += n;
     pm_audio_kick(n); /* AU1d: runs on core 1 until the next join */
@@ -332,6 +336,11 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; d0 = pm_pace_drawn;
 }
 int pm_interp_key_draw(void);
+unsigned pm_tex_evict_n(void);
+unsigned pm_gpu_noise_state(void);
+extern unsigned gRandSeed;
+/* DET: detlog switch. One line per game step (frame) with the draw sequence and the inputs of the schedule. */
+static unsigned det_keys, det_draws, det_iv;
 /* HANG1: gspWaitForVBlank has no timeout, so a GSP that stops sending vblanks blocks the game thread with no line. This poll
  * waits at most 40 ms (200 x 0.2 ms) for the citro3d vblank counter to change. */
 static int vblank_wait_timed(void) {
@@ -434,7 +443,7 @@ void pm_frame_loop(void) {
             pm_gfx_retrace();
             /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
             if (fa_state == 0 && pm_interp_on > 0 && !last_step_skipped && pm_interp_key_draw()) { /* FADV: a hold or step draws no key frame */ /* PT87: the key frame is a draw, not a game step (it was counted as a step: the HUD showed x/x) */
-                drawn++; pm_pace_drawn++;
+                drawn++; pm_pace_drawn++; det_keys++;
                 continue;
             }
             /* PC01: keep PM_VBLANKS_PER_STEP vblanks between game steps. The counter is citro3d's own vblank
@@ -474,7 +483,7 @@ void pm_frame_loop(void) {
          * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
         int fs_skip = 0, fs_force_skip = 0;
-        if (ever && step_vb_ok && !fs1_off && !PMD("fast")) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
+        if (ever && step_vb_ok && !fs1_off && !PMD("fast") && !pm_det_on()) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
             fs1_steps++;
             /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
              * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
@@ -497,6 +506,7 @@ void pm_frame_loop(void) {
         if (fs_skip) {
             fs1_run++;
             fs1_skipped++;
+            det_iv = step_vb_ok ? C3D_FrameCounter(0) - step_vb : 0u; /* DET: the vblanks of a skipped step */
             step_vb += PM_VBLANKS_PER_STEP; /* the skipped step used its share of the schedule */
             au_kicked = 0;
             pm_gfx_retrace_skip();
@@ -504,7 +514,7 @@ void pm_frame_loop(void) {
             pm_audio_step(); /* the audio ticks of the step still run */
         } else {
         fs1_run = 0;
-        drawn++; pm_pace_drawn++;
+        drawn++; pm_pace_drawn++; det_draws++;
         PM_WD_PHASE(4);
         pm_gpu_begin(1);
         {
@@ -513,10 +523,11 @@ void pm_frame_loop(void) {
                 unsigned iv = vb - step_vb;
                 pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
-                pm_interp_skip = iv > PM_VBLANKS_PER_STEP; /* F06-5 */
+                pm_interp_skip = !pm_det_on() && iv > PM_VBLANKS_PER_STEP; /* F06-5; DET: the key path is never taken on the vblank count */
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */
             }
+            det_iv = step_vb_ok ? vb - step_vb : 0u; /* DET */
             step_vb = vb;
             step_vb_ok = 1;
         }
@@ -539,6 +550,10 @@ void pm_frame_loop(void) {
         pm_ph_frame_end();
         }
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
+        if (PMD("detlog")) { /* DET: one line per game step: the draw sequence (key and lerp frames), the vblanks since the last step, the audio ticks, the RNG and noise state, texture evictions */
+            pm_log_d("det step %u keys %u draws %u iv %u skip %d interp_skip %d aud %u rng %08x noise %08x evict %u", frame, det_keys, det_draws, det_iv, fs_skip, pm_interp_skip, pm_audio_last_n, gRandSeed, pm_gpu_noise_state(), pm_tex_evict_n());
+            det_keys = det_draws = 0; pm_audio_last_n = 0;
+        }
         frame++;
         pm_frame_n = frame;
         if (fa_state == 2) { fa_state = 1; pm_log("fa: step frame %u", frame); } /* FADV: the step is done, hold again */

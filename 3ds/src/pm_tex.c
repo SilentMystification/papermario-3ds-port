@@ -78,6 +78,7 @@ static unsigned epoch;
 static unsigned tc_frame, tc_hits, tc_miss, tc_evict, tc_evict_ev0, tc_inval, tc_up_bytes, tc_evict_bytes, tc_ev0_bytes;
 static unsigned tot_hit, tot_miss, tot_inval, tot_evict, tot_up; /* lifetime (up in bytes), read per map by pm_tex_map_delta */
 static unsigned tot_inv_t, tot_hash_t; /* tex_inv3: ticks in pm_tex_invalidate and in the lookup hash (slot_valid), read per map */
+unsigned pm_tex_evict_n(void) { return tc_evict; } /* DET: evictions since boot, the detlog line reads it */
 static unsigned gh_up_n, gh_up_t; /* TEXL2 L2a: upload ops and their ticks, per texghost window */
 static unsigned tot_same, tot_diff; /* tex_inv1: at invalidation, the source bytes equal (same) or differ from (diff) the bytes at load */
 static int tc_on = -1;
@@ -666,9 +667,14 @@ static void pf_add(u8* p, unsigned bytes, int slab) {
     if (pf_n > pf_max) pf_max = pf_n;
     pf_ops++;
 }
+/* DET: switch det. The gate waits for the GX queue instead of skipping the release, so a freed block is reused at the same game step whatever the GPU speed. */
+static int tex_det(void) { static int v = -1; if (v < 0) v = pm_debug_has("det"); return v; }
 void pm_tex_gate(void) {
     if (!pf_n) return;
-    if (!pm_gx_done()) { pf_gate_busy++; return; }
+    if (!pm_gx_done()) {
+        if (!tex_det()) { pf_gate_busy++; return; }
+        pm_gx_drain(); /* DET */
+    }
     pf_release_all();
 }
 

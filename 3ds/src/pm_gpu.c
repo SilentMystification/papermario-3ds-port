@@ -104,6 +104,7 @@ static int noise_ready; /* 1 ready, -1 failed */
 static float noise_off[2];
 static unsigned noise_lcg = 0x2545f491u;
 static unsigned noise_next(void) { noise_lcg = noise_lcg * 1664525u + 1013904223u; return noise_lcg >> 8; }
+unsigned pm_gpu_noise_state(void) { return noise_lcg; } /* DET: the detlog line reads it */
 static int noise_init(void) {
     if (noise_ready) return noise_ready > 0;
     if (!C3D_TexInit(&noise_tex, 64, 64, GPU_L8)) { pm_log_e("PT07: no memory for the noise texture, NOISE stays 0"); noise_ready = -1; return 0; }
