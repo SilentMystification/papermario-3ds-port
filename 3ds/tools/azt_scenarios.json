@@ -9629,7 +9629,7 @@
       "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
       "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det",
       "extra": ["-Turbo", "-NoWarm"],
-      "until": "shot 6 frame",
+      "until": "tour: done",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
@@ -9659,6 +9659,25 @@
         {"name": "tour done", "regex": "tour: done, 10 maps"}
       ],
       "reason": "MDL-5e census: ten map changes (tour10 list), cold start so the fb count is a function of the build. Cap as tour10."
+    },
+    {
+      "name": "tour10_det_ref",
+      "status": "unverified",
+      "subject": "Mario in each of 10 maps of the tour list, cold det, the walker geometry of every model record (nomodelnat): the byte reference of tour10_det shots 0 to 10.",
+      "proves": "MDL-5f byte gate: the native state-only custom list records of the tour (shots 4 to 6) equal the walker geometry.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 profdisk=1 det fixedseed loglevel=debug mdl0 nomodelnat",
+      "extra": ["-NoWarm"],
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: mac_00 entry 4"},
+        {"name": "tour done", "regex": "tour: done, 10 maps"}
+      ],
+      "reason": "MDL-5f byte reference: tour10_det with nomodelnat (walker geometry of every model record), cold start so the shots are a function of the build. Cap as tour10."
     },
     {
       "name": "battle_fb_det",
