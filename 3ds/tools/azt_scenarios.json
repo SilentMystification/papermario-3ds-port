@@ -8287,6 +8287,58 @@
       "reason": "MDL-0b count at battle start (mdlw and mdl2 lines)."
     },
     {
+      "name": "mdlw_battle_spr5",
+      "status": "unverified",
+      "subject": "Battle scene (default formation: one Goomba on kmr_03), log only: the spr5 line at scene frame 300 (sprite class 5 refusals by flag).",
+      "proves": "MDL-3a: class 5 sub-reasons in battle, the window at frame 300 (the mdlw_battle until stops at frame 299).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 profdisk=1",
+      "until": "spr5 f\\d+ nopal",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle mode",
+          "regex": "game mode 8 frame"
+        },
+        {
+          "name": "spr5 at 300",
+          "regex": "spr5 f300 nopal"
+        }
+      ],
+      "reason": "MDL-3a: sprite class 5 by flag in battle (the mdlw_battle until stops at frame 299, before the frame 300 window)."
+    },
+    {
+      "name": "pause_spr5",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at pos 0 0 200, START opens the pause menu (grab path), log only: the spr5 line at frame 300.",
+      "proves": "MDL-3a: class 5 by flag with the pause grab bound (grab_bind), the window at frame 300.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=wait80,START*3,wait260 profdisk=1",
+      "until": "spr5 f\\d+ nopal",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "spr5 at 300",
+          "regex": "spr5 f300 nopal"
+        }
+      ],
+      "reason": "MDL-3a: sprite class 5 with the pause grab (grab_bind) at frame 300; battle and iwa_10 had 0."
+    },
+    {
       "name": "battle_start_r13off",
       "status": "verified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",

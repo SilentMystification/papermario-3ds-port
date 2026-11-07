@@ -7,6 +7,30 @@
   },
   "benches": [
     {
+      "name": "battle_spr5_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-3a: battle (kmr_03 one Goomba, mdlw_battle_spr5 scenario) sprite class 5 refusals by flag (spr5 line, every 300 frames) with the sprnat totals. Log only: the picture is the battle the scenario already checks.",
+      "scenario": "mdlw_battle_spr5",
+      "cap": 45,
+      "until": "spr5 f\\d+ nopal",
+      "tags": ["azahar", "spr", "battle", "mdl3"],
+      "gates": []
+    },
+    {
+      "name": "pause_spr5_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-3a: pause menu open on mac_01 (grab bound): sprite class 5 refusals by flag (spr5 line at frame 300). Log only.",
+      "scenario": "pause_spr5",
+      "cap": 45,
+      "until": "spr5 f\\d+ nopal",
+      "tags": ["azahar", "spr", "pause", "mdl3"],
+      "gates": []
+    },
+    {
       "name": "btrans_walk_fs1",
       "kind": "azahar_stream",
       "speed": "normal",
