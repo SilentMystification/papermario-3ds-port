@@ -408,6 +408,7 @@ static void pf_arm(void) {
     depth = 0;
     cur = PH_OTHER;
     pf_samp = 1;
+    cold_need(); /* SPRFIX: pm_ph_frame_end reads cold->win for a sampled frame; prof mode 1 never allocates cold otherwise (NULL read at pf_take) */
     pm_ph_on = 1;
 }
 /* PF2: one sampled frame, at its end. r is the frame record: it is not stored in the phase window. */
