@@ -339,7 +339,6 @@ int gv_state_why(int* ct, int* both);
 void gv_epoch_enter(void);
 int gv_tri(const int* idx);
 int clip_bits(const ClipV* p);
-int cull_off(void);
 float cull_cross(const float* p1, const float* p2, const float* p3);
 void ep_flush_stats(void);
 extern int tri_prep_ok, lit_pending, ep_why, ep_ct, ep_cullboth;

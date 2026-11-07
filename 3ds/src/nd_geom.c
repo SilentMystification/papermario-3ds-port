@@ -41,7 +41,6 @@ int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip posi
     return b;
 }
 
-int cull_off(void) { static int v = -1; if (v < 0) v = pm_debug_has("nocull"); return v; }
 
 /* FLK1: screen area sign of a triangle from clip positions (x y z w, the ClipV and vert_p layout). Both copies of the cull test use it. */
 float cull_cross(const float* p1, const float* p2, const float* p3) {
@@ -165,8 +164,8 @@ void ep_flush_stats(void) { if (ep_n) { tri_stats_add(ep_fl, ep_n); ep_n = 0; } 
 /* what the state alone says: a reason to leave the GPU path (or -1), the cull type, CULL_BOTH */
 int gv_state_why(int* ct, int* both) {
     unsigned cg = nd_ws.geom & G_CULL_BOTH;
-    *ct = cull_off() ? 0 : cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
-    *both = cg == G_CULL_BOTH && !cull_off();
+    *ct = cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
+    *both = cg == G_CULL_BOTH;
     if ((nd_ws.geom & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
     if (fogmix_on && (nd_ws.geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
     if (img_role(0) == ROLE_DEPTH) return GVR_ZMARK;

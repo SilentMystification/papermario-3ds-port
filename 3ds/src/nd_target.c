@@ -72,12 +72,10 @@ void grab_cur(const void* src, int w, int h) {
     if (r == 2) { n_grabs++; n_splits++; }
 }
 void off_screen_check(void) {
-    static int nooff = -1;
     int r;
-    if (nooff < 0) nooff = pm_debug_has("nooff");
     r = img_role(0);
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
-    if (!nooff && (r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(nd_ws.cimg ? nd_ws.cimg : zb_fake, cimg_stride, nd_ws.cimg_siz);
+    if ((r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(nd_ws.cimg ? nd_ws.cimg : zb_fake, cimg_stride, nd_ws.cimg_siz);
 }
 /* CORE-2b batch D: colour image setter (decoded fields; cimg_zero is set from the address word). */
 static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {

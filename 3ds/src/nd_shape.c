@@ -494,11 +494,10 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
             while (go < g->bat_q[b]) { const u32* op = e->gop[g->goff + go]; geom_at = (geom_at & op[0]) | op[1]; go++; }
             unsigned end = g->ends[b];
             if (end > t) {
-                /* the walker's dlc_seg: G_CULL_BOTH drops the triangles (no draw), cull_off draws with no cull */
-                const int off = cull_off();
-                if (!off && (geom_at & G_CULL_BOTH) == G_CULL_BOTH) { t = end; continue; }
+                /* the walker's dlc_seg: G_CULL_BOTH drops the triangles (no draw) */
+                if ((geom_at & G_CULL_BOTH) == G_CULL_BOTH) { t = end; continue; }
                 if (n >= max) return -2;
-                out[n].sd = g->sd + 3u * t; out[n].nidx = 3u * (end - t); out[n].geom = off ? (geom_at & ~G_CULL_BOTH) : geom_at; n++;
+                out[n].sd = g->sd + 3u * t; out[n].nidx = 3u * (end - t); out[n].geom = geom_at; n++;
                 t = end;
             }
         }

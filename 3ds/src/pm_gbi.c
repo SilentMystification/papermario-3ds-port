@@ -737,7 +737,7 @@ __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
             GP_LAP(GPL_EARLY);
             return;
         }
-        if ((nd_ws.geom & G_CULL_BOTH) && !cull_off()) {
+        if (nd_ws.geom & G_CULL_BOTH) {
             float cross = cull_cross(a, b, c);
             unsigned ct = nd_ws.geom & G_CULL_BOTH;
             if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
@@ -794,10 +794,10 @@ __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
         n_out++;
         return;
     }
-    if (!early && (nd_ws.geom & G_CULL_BOTH) && !cull_off()) {
+    if (!early && (nd_ws.geom & G_CULL_BOTH)) {
         /* V02: the RSP culls by the sign of the screen space area (G_CULL_FRONT / G_CULL_BACK / both), same test as
          * libultraship. A one sided wall (the cliff skirt around the Mario house yard, seen from inside) draws only
-         * if this test runs. nocull turns it off for A/B checks. */
+         * if this test runs. */
         float cross = cull_cross((const float*)&poly[0], (const float*)&poly[1], (const float*)&poly[2]);
         unsigned ct = nd_ws.geom & G_CULL_BOTH;
         if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
