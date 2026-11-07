@@ -397,6 +397,38 @@
       "gates": []
     },
     {
+      "name": "yard_hud_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HUD1: yard at 4:3 (nowide), uishow=bar opens the status bar at the warp frame; shots 272 to 300 (scenario yard_hud). A person reads the shot: the 4:3 status bar at its old positions.",
+      "scenario": "yard_hud",
+      "cap": 45,
+      "until": "shot \\d+ frame 28[0-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "hud"
+      ],
+      "gates": []
+    },
+    {
+      "name": "yard_wide_hud_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HUD1: yard with wide on, uishow=bar opens the status bar at the warp frame; shots 272 to 301 (scenario yard_wide_hud). A person reads the shot: the wide status bar (1.25x) on screen.",
+      "scenario": "yard_wide_hud",
+      "cap": 45,
+      "until": "shot \\d+ frame 28[0-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "hud"
+      ],
+      "gates": []
+    },
+    {
       "name": "yard_stereo_l_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2066,7 +2098,7 @@
       "purpose": "RECT-2 text box gate: super_text scenario (kmr_03 battle, A presses open the text box), picture by eye: the box and its glyphs drawn by textured rects.",
       "scenario": "super_text",
       "cap": 90,
-      "until": "shot \\d+ frame 230\b",
+      "until": "shot \\d+ frame 230\\b",
       "tags": [
         "azahar",
         "pic"
@@ -2642,7 +2674,7 @@
       "purpose": "TX-3 text gate: pause status menu text (text_menu scenario), picture by eye: periods and spacing of the menu glyphs drawn by the texture path (tb_* and load_shaded_sprite moved to nd_tex.c).",
       "scenario": "text_menu",
       "cap": 90,
-      "until": "shot \\d+ frame (178|179|180|181)\b",
+      "until": "shot \\d+ frame (178|179|180|181)\\b",
       "tags": [
         "azahar",
         "pic",
@@ -2944,7 +2976,7 @@
       "default": false,
       "purpose": "FB-2 step 2 gate (aux off-screen unit 1): intro_native shots 330 to 350 (native, native aspect, wide). Shots must equal nds1 reference.",
       "scenario": "intro_native",
-      "cap": 45,
+      "cap": 25,
       "until": "shot \\d+ frame 334\\b",
       "tags": [
         "azahar",
@@ -2979,7 +3011,7 @@
       "purpose": "VERIFY check 2: battle kmr_03 cold det run with r13off, shot 182 (walker R13).",
       "scenario": "battle_start_r13off_det",
       "cap": 60,
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "tags": [
         "azahar",
         "det",
@@ -2996,7 +3028,7 @@
       "purpose": "VERIFY check 2: battle kmr_03 cold det run with pm5off, shot 182 (walker pm5).",
       "scenario": "battle_start_pm5off_det",
       "cap": 60,
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "tags": [
         "azahar",
         "det",
