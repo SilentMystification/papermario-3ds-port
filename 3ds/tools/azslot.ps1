@@ -10,6 +10,8 @@ $script:AzRepo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $script:AzInstall = "C:\Program Files\Azahar"
 $script:AzMaster = "$env:APPDATA\Azahar"
 $script:SlotMutex = @{}
+# AZT3-4: the one idle time of a kept Azahar. azreap.ps1 (dot-sources this file) closes it after this many seconds without a run.
+$script:AzIdleSec = 900
 
 function Get-SlotCount { if ($env:PM_AZ_SLOTS) { return [int]$env:PM_AZ_SLOTS } else { return 2 } }
 
@@ -213,7 +215,7 @@ function Get-KeepInfo([int]$k) {
 }
 
 function Start-SlotReaper([int]$k) {
-    # A hidden process closes the kept Azahar of slot k after 10 idle minutes (one reaper per slot: a mutex)
+    # A hidden process closes the kept Azahar of slot k after $script:AzIdleSec idle seconds (one reaper per slot: a mutex)
     $ps = (Get-Process -Id $PID).Path
     Start-Process $ps -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\azreap.ps1`" -Slot $k" -WindowStyle Hidden | Out-Null
 }

@@ -32,7 +32,7 @@ param(
     [string]$Build = "",
     [string]$CheckLog = "",
     [switch]$Try,
-    [switch]$NoKeep, # AZT-3b: default is to leave the slot's Azahar open after a matched run (paused; a later run on the slot restarts in it, warm; azreap closes it after 3 min idle). -NoKeep closes it after the run.
+    [switch]$NoKeep, # AZT-3b: default is to leave the slot's Azahar open after a matched run (paused; a later run on the slot restarts in it, warm; azreap closes it after 15 min idle, AZT3-4). -NoKeep closes it after the run.
     [ValidateSet("", "turbo", "normal")][string]$Speed = "", # BENCH3: speed of this start (default: -Turbo in the scenario, else normal)
     [switch]$List,
     [switch]$SelfTest

@@ -1,10 +1,11 @@
 <#
-azreap.ps1 - closes the Azahar that a run kept open (-Keep) in slot <k> after -IdleSec seconds without a run (AZT-2).
+azreap.ps1 - closes the Azahar that a run kept open (-Keep) in slot <k> after the idle time $script:AzIdleSec (AZT-2, AZT3-4: 900 s, set in azslot.ps1).
 Started hidden by run_azahar.ps1. One reaper per slot (mutex Global\pm_azahar_reaper<k>); it ends when the kept Azahar is gone.
 #>
-param([int]$Slot, [int]$IdleSec = 180)
+param([int]$Slot)
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\azslot.ps1"
+$IdleSec = $script:AzIdleSec # AZT3-4: the one idle time, set in azslot.ps1
 $rm = New-Object Threading.Mutex($false, "Global\pm_azahar_reaper$Slot")
 $got = $false
 try { $got = $rm.WaitOne(0) } catch [Threading.AbandonedMutexException] { $got = $true }

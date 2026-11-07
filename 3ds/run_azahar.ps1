@@ -407,7 +407,7 @@ public class AzWin {
     $keepNow = $keepOn -and $p -and -not $p.HasExited -and -not $crashed -and -not $Gdb -and -not $Interactive
     Remove-Item $stopReq -ErrorAction SilentlyContinue
     if ($keepNow) {
-        # AZT-2: pause the game (no CPU while idle) and leave Azahar open; the idle reaper closes it after 3 minutes
+        # AZT-2: pause the game (no CPU while idle) and leave Azahar open; the idle reaper closes it after AzIdleSec (900 s, AZT3-4)
         [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation"))
         @{ pid = $p.Id; x3dsx = $x3dsx; turbo = $Turbo.IsPresent; turbolimit = $(if ($Turbo) { $TurboLimit } else { 0 }); time = (Get-Date).ToString("s") } | ConvertTo-Json | Set-Content $sl.keepFile
         Start-SlotReaper $slotK
