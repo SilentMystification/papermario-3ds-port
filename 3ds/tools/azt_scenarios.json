@@ -7868,6 +7868,26 @@
         }
       ],
       "reason": "RECT-1b plan 3 control, cap 45 s."
+    },
+    {
+      "name": "keep_fail_until",
+      "status": "unverified",
+      "subject": "Boot with no logbench switch. The until line 'logbench: done' is never printed, so the run ends at its cap. Log subject only.",
+      "proves": "AZT3-2: a run that misses its until line keeps its Azahar open (paused); the next start on the slot is warm.",
+      "debug": "loglevel=debug",
+      "until": "logbench: done",
+      "cap": 15,
+      "deadline": 12,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "boot_main line",
+          "regex": "boot_main"
+        }
+      ],
+      "reason": "AZT3-2 keep on fail. No logbench switch, so the until never matches and the run ends at the 15 s cap with its Azahar kept."
     }
   ]
 }

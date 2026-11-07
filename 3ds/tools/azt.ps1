@@ -383,9 +383,13 @@ $lastLog = Join-Path $outDir "slot$slotK\last_log.txt"
 $shotDir = Join-Path $outDir "slot$slotK\shots"
 $env:PM_SLOT_HELD = "1"
 $argv += @("-Slot", [string]$slotK)
-if (-not $NoKeep) { $argv += @("-Keep") } # AZT-3b: kept by default. run_azahar keeps only a run that matched its until line.
+if (-not $NoKeep) { $argv += @("-Keep") } # AZT-3b: kept by default. AZT3-2: run_azahar keeps it after any run that did not crash or exit.
 $warmFile = Join-Path $slotInfo.dir "warm.start"
 Remove-Item $warmFile -ErrorAction SilentlyContinue
+$stopFile = Join-Path $slotInfo.dir "stop.request"; Remove-Item $stopFile -ErrorAction SilentlyContinue # AZT3-2: this start's early stop only
+$okFile = Join-Path $slotInfo.dir "warm.ok"; Remove-Item $okFile -ErrorAction SilentlyContinue # AZT3-3: run_azahar.ps1 writes it when the warm boot has started
+$azLineFile = Join-Path $slotInfo.dir "azslot.line"
+$warmReady = $true # AZT3-3: false while a warm start waits for warm.ok (or the cold fallback in azslot.line)
 Remove-Item (Join-Path $slotInfo.dir "azslot.line") -ErrorAction SilentlyContinue # AZT2: a line of this start only
 $cmd = ($argv | ForEach-Object { if ($_ -match '^-[A-Za-z]+$') { $_ } else { '"' + $_ + '"' } }) -join " "
 
@@ -439,10 +443,9 @@ while (-not $child.HasExited) {
     if (Test-StallExpired $lastNew (Get-Date) $stallSec) { $stop = "stall"; break }
 }
 if ($stop) {
-    Write-Output "AZT: stopping the run ($stop). Killing the Azahar of this run."
-    $pr = Get-AzaharProc $t0
-    if (-not $pr) { $pr = Get-KeptAzahar $slotK }
-    if ($pr) { Stop-Process -Id $pr.Id -Force -ErrorAction SilentlyContinue }
+    # AZT3-2: run_azahar.ps1 ends the run at its next poll and keeps the Azahar (paused), so the next start is warm. -NoKeep closes it there.
+    Write-Output "AZT: stopping the run ($stop). run_azahar.ps1 ends it; the Azahar is kept unless -NoKeep."
+    Set-Content $stopFile $stop
 }
 if (-not $child.WaitForExit(150000)) {
     Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue

@@ -46,7 +46,7 @@ param(
     [string]$GdbScript = "",
     [switch]$Milestone, # allows tour= with more than 40 maps (budget rule)
     [switch]$Force, # run an identical rerun anyway (counts as one start, like every real Azahar start; a cached run that skips Azahar counts nothing)
-    [switch]$Keep, # AZT-2: leave this slot's Azahar open (paused) after a run that matched its until line; the next run on the slot restarts emulation in it (warm). Env PM_AZ_KEEP=1 does the same.
+    [switch]$Keep, # AZT-2: leave this slot's Azahar open (paused) after a run that did not crash or exit (AZT3-2: also a timeout or a missed until line); the next run on the slot restarts emulation in it (warm). Env PM_AZ_KEEP=1 does the same.
     [switch]$NoWarm, # AZT-2: do not restart in a kept Azahar, start a new one
     [int]$Slot = 0, # AZT-1: Azahar slot 1..N (build3ds\azslots\slot<k>); 0 = first free slot. azt.ps1 holds the slot lock and passes -Slot with PM_SLOT_HELD=1
     [string]$ResetBudget = "", # orchestrator only: reset the run count of one row, then exit
@@ -354,6 +354,7 @@ $marks = @()
         if ($FaultStop -and (Read-Tail $emuLog) -match "UnmappedAccess") { Start-Sleep -Seconds 1; $reason = "unmapped access"; break }
         if ((Read-Tail $emuLog) -match "Exception Type:") { Start-Sleep -Seconds 4; $reason = "emulator exception"; break }
         if (-not (Test-Path $log)) {
+        if (Test-Path $stopReq) { $reason = "stopped by azt: $(Get-Content $stopReq -First 1)"; break } # AZT3-2: azt ends the run early, the Azahar stays (see keepNow)
             # No game log yet: a modal dialog (usage, first-run, error) or a hang before the first frame stops an unattended run
             if (-not $Gdb -and -not $Interactive -and ((Get-Date) - $start).TotalSeconds -gt ($Stall + 30)) { $reason = "modal dialog suspected: no game log $($Stall + 30) s after the start (windows: $([AzEnum]::Titles))"; break }
             continue
@@ -397,7 +398,11 @@ public class AzWin {
         $g.Dispose(); $bmp.Dispose()
     }
 } finally {
-    $keepNow = $keepOn -and $p -and -not $p.HasExited -and $reason -like "matched*" -and -not $Gdb -and -not $Interactive
+    # AZT3-2: a run keeps its Azahar unless it exited or crashed (a [CRASH] line, an emulator exception, an exception dialog). A run that
+    # timed out, missed its until line or was stopped by azt is kept too (paused). -NoKeep, Gdb and Interactive close it.
+    $crashed = $reason -match '^(crash|emulator exception|Azahar dialog)'
+    $keepNow = $keepOn -and $p -and -not $p.HasExited -and -not $crashed -and -not $Gdb -and -not $Interactive
+    Remove-Item $stopReq -ErrorAction SilentlyContinue
     if ($keepNow) {
         # AZT-2: pause the game (no CPU while idle) and leave Azahar open; the idle reaper closes it after 3 minutes
         [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation"))

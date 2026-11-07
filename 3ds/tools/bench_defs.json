@@ -1619,6 +1619,19 @@
       "gates": []
     },
     {
+      "name": "keep_fail",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AZT3-2 keep on fail: an until line that is never printed. The run ends at its cap and its Azahar stays open (the next start on the slot is warm).",
+      "scenario": "keep_fail_until",
+      "cap": 15,
+      "until": "logbench: done",
+      "tags": ["azahar", "keep"],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
       "name": "log_storm_zero",
       "kind": "azahar_stream",
       "speed": "normal",
