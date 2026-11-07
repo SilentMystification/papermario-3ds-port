@@ -157,19 +157,21 @@ The FB-4 census (nds1 aac1fae4e) shows walker GPU draws wd 0 and every refusal 0
 3. GM-3: the CPU-only geometry functions in pm_gbi.c (lit_color, vert_color, vert_uv, pack_color, xform_vtx, fold_axis, gbi_vtx_cpu1).
 Gate per commit: build; census wd 0 and refusals 0 on mac_01, sbk_56, iwa_10, kmr_03 battle, nok_11 (cold det); mac_01, iwa_10, nok11_det, battle_start_f182_cold byte-equal to nds1; tour10_det fb 0; grep proof; 3dsx size.
 
-### DEL state (2026-11-07, session end, branch fb4)
-Done commits (fb4, not pushed): 671567666 TRI-4 (CPU triangle path deleted, row_TRI.md deleted; built before the merge), afb4efb22 merge of nds1 1e915fa5b.
+### DEL state (2026-11-07, branch fb4, hand back: TRI-4 nok11 byte gate FAILS, named cause, design needed)
+Commits (fb4, not pushed): 671567666 TRI-4 (CPU triangle path deleted); afb4efb22 merge nds1 1e915fa5b; 44d8bee2b DEL-N11 result; 0b9782284 tridrop counter (permanent debug line, no picture change).
 Gates:
-- TRI-4 census PASS on merged head afb4efb22 (lane fb4, build 2874): wcen_mac01, wcen_mac00, wcen_sbk56, wcen_iwa10, wcen_battle, wcen_nok11, wcen4 end wd 0 in all six, nrawwhy and rectwhy refusals 0.
-- TRI-4 byte gate on afb4efb22 (lane fb4, runs 25266 and later) vs 1e915fa5b base shots (C:\Users\Andrew\AppData\Local\Temp\claude\c--Users-Andrew-Documents-GitHub-papermario-3ds-port\cfb2b13f-6944-48de-8418-7b56f133c798\scratchpad\base_shots\<bench>): battle_start_f182_cold 1/1, spot_mac01_det 6/6, mdl5_iwa10_det 6/6 byte-equal. nok11_det 26/29: 0014_6_4 (509 px, box 90,101-192,158), 0015_6_4 (56 px), 0016_6_4 (whole screen) differ; 0017 and later equal.
-- DEL-N11 (done 2026-11-07, case a): fb4 run A (run 25266, 10:47) and fb4 run B (run 25938, 10:52, afb4efb22) byte-equal on all 212 shots (0000-0199, off410-421). Base 1e915fa5b run A (09:41, run 24594, copy in scratchpad del_n11 base_shots) and run B (run 26106, 10:58): equal on 0000-0013 and off410-421, differ at 0016 only. Base runs differ from each other, so the scene is not deterministic at frames 14-16: the gate passes and frames 0014-0016 stay outside the byte gate.
-  Open, not chased (no DEL step names it): fb4 vs base differs at 0014 and 0015 in both pairs (fb4 A vs base A, fb4 B vs base B), so it is stable, not the flip. Frame 0016 fb4 B equals base B. Off files and 0000-0013 equal. A byte gate on FB-4 and GM-3 must name this window.
-- Grep proof: not run for FB-4 (flush_draw_cpu and C3D_DrawElements still in pm_gpu.c, comments still name flush_draw_cpu).
-- 3dsx size: lane-fb4 build afb4efb22 13344304 bytes.
-Not started: FB-4 (citro3d draw path, sh_*/u5_*, switches, vert_base) and GM-3 (pm_gbi.c CPU vertex functions). row_FB.md deleted only by the GM-3 commit.
-Uncommitted unpassed code: none (no patch file).
-Next command: cd build3ds/wt/fb4; PM_ROW=DEL PM_LANE=fb4 python 3ds/tools/bench.py run nok11_det,battle_start_f182_cold,spot_mac01_det --row DEL --lane fb4 --why "..."  (then compare shots with the base copies), and build-at 1e915fa5b mdl5_iwa10_det plus run mdl5_iwa10_det on lane fb4.
-Budget: DEL reset at 09:57; 8 starts counted since (base 09:57, base 10:02, fb4 nok11 10:46, battle, spot, mdl5, fb4 nok11 10:52, base nok11 10:58). At 8: the next start needs a reset (report INCOMPLETE, reset, continue).
+- TRI-4 census PASS (wcen_mac01, mac00, sbk56, iwa10, battle, nok11: wd 0, nrawwhy and rectwhy 0). NOTE: the census window is frames 0-300 only. The nok11 splash starts after frame 400.
+- TRI-4 byte gate (afb4efb22 vs 1e915fa5b): battle_start_f182_cold, spot_mac01_det, mdl5_iwa10_det byte-equal. nok11_det: 0014 and 0015 differ, 0016 differs from one base run only (base runs 24594 and 26106 differ at 0016, equal at 0014 and 0015; fb4 runs 25266 and 25938 equal to each other on all 212 shots). So 0014 (509 px, box 90,101-192,158) and 0015 (56 px) are stable, not a flip.
+- DEL-N11 (oracle plan DEL): fb4 runs equal, base runs differ at 0016: case (a) (the premise passes). Frames 0014-0015 are NOT explained by run-to-run noise; see the cause below.
+- N11 step 0: "rect f500 ... cpu 0" (fb4 log). Recorded.
+- Counter (0b9782284): tridrop line per rect_log. The counter run (run 26274) has ONE nonzero tridrop line in its whole log: f500 window (f400-f500) tex1 2168, all other fields 0 (none, scr, tss, lit, fog, zmark, refuse). Named line: nd_geom.c gv_epoch_enter, the GVR_TEX1 clause ("off-screen TEXEL1 needs the window fold t1_fold per draw"): ep_why = GVR_TEX1 when pm_tex_aux_off_idx() >= 0, then gv_tri refuses and draw_tri drops the triangle (tri_drop[1] path).
+- Try 1 (reverted, not committed): drop the aux clause. Result: tex1 0, but 0014 511 px vs base (was 509), 0015 56 px (same), so the picture did not move to the base. A ring triangle carries one TEXEL1 map per epoch (dual_bind, t1_p), and t1_fold is a per-draw window fold (nd_comb.c:554). The clause edit samples the window unfolded. The fix point is not a clause edit: a native per-triangle fold is a design item.
+- Try 2: not run (needs the design above).
+- Grep proof: not run (FB-4 not started).
+- 3dsx size: lane-fb4 13344716 bytes (counter build 0b9782284).
+Not started: FB-4 (C1 switches, C2 flush_draw tail, C3 Vert batch) and GM-3. Both need the nok11 gate to pass or a decision from the orchestrator. row_FB.md is not deleted (GM-3 not done).
+Budget: DEL reset at 10:59 after 8 starts (base 09:57, base 10:02, fb4 10:46, battle 10:48, spot 10:48, mdl5 10:49, fb4 10:52, base 10:58). Since the reset: tridrop run (start 1), fix run (start 2). 6 left.
+Open for the orchestrator: (1) accept the nok11 0014-0015 difference as the TRI-4 cost (the drops are the aux TEXEL1 window fold); or (2) a native per-triangle fold for aux TEXEL1 in gv_tri (new row). Until then no FB-4 or GM-3 commit.
 
 ## UB audit result (2026-11-07, read-only agent, nds1 c2dba5cc2) and row UB1
 Map (lane-mac00): pm_tex.o .bss 0x01218ef0-0x012433c4; growing it shifts every .bss object up to pm_map.o last_asset_src (0x0143ee2c); gMapShapeData, gBackgroundImage, nuGfxZBuffer and later do not move. So the bad access's target lies in [0x01218ef0, 0x0143f000): pm_tex, pm_gbi (box_buf, vert_*), nd_mtx*, nd_core, nd_tmpl, nd_tex, nd_comb, nd_cen, nd_shape, nd_ent, nd_dlc, nd_model (rng, mc_*, nat, hd_*), pm_os, pm_audio. Every index into the pm_tex.c statics is bounded.
