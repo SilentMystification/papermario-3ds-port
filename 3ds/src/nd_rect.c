@@ -30,6 +30,105 @@ static void texr_early(int why, int xl, int yl, int xh, int yh) {
     }
 }
 
+/* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
+ * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
+__attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
+    tex_gen++; /* TBREP: writes an image */
+    if (!nd_ws.cimg || pm_is_cfb(nd_ws.cimg) || tile >= 8 || nd_ws.tst1.tile_tmem[tile] < 256) return 0;
+    int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
+    if (x0 < sci_x0) x0 = sci_x0;
+    if (y0 < sci_y0) y0 = sci_y0;
+    if (x1 > sci_x1) x1 = sci_x1;
+    if (y1 > sci_y1) y1 = sci_y1;
+    float s0 = (float)(s16)(hs >> 16) / 32.f;
+    float t0 = (float)(s16)(hs & 0xffff) / 32.f;
+    float dsdx = (float)(s16)(hd >> 16) / 1024.f;
+    float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
+    float sl = (float)nd_ws.tst1.tile_sz[tile][0] / 4.f, tl = (float)nd_ws.tst1.tile_sz[tile][1] / 4.f;
+    for (int y = y0; y < y1; y++) {
+        for (int x = x0; x < x1; x++) {
+            float s = s0 + dsdx * (float)(x - (xl >> 2)) - sl;
+            float t = t0 + dtdy * (float)(y - (yl >> 2)) - tl;
+            int ts = (int)s;
+            (void)t;
+            if (ts < 0) ts = 0;
+            /* A TLUT in TMEM holds each entry four times in a row. One row only. */
+            unsigned word = nd_ws.tst1.tile_tmem[tile] + (unsigned)(ts >> 2);
+            unsigned entry = word - 256u;
+            if (entry > 255u) continue;
+            float tx[4], none[4] = { 0, 0, 0, 0 }, o[4];
+            pal_rgba(tlut_pal[entry >> 4], entry & 15u, tx);
+            cc_cycle1(tx, none, o);
+            unsigned r = (unsigned)(o[0] * 31.f + .5f), g = (unsigned)(o[1] * 31.f + .5f),
+                     b = (unsigned)(o[2] * 31.f + .5f), a = o[3] >= .5f;
+            unsigned c = (r << 11) | (g << 6) | (b << 1) | a;
+            u8* d = (u8*)nd_ws.cimg + ((size_t)y * (size_t)cimg_stride + (size_t)x) * 2u;
+            d[0] = (u8)(c >> 8);
+            d[1] = (u8)c;
+        }
+    }
+    pm_tex_invalidate(nd_ws.cimg, 64);
+    return 1;
+}
+
+/* D03: a draw_box window with the bg_tile pattern. The combiner is (PRIM - ENV) * (TEXEL0 * TEXEL1) + ENV, alpha
+ * TEXEL1: tile 0 is the wrapped pattern, tile 1 the corner image, clamped, so its edge texels make the border.
+ * The PICA path binds one texture, so the product TEXEL0 * TEXEL1 (colour) and TEXEL1 alpha are composed on the
+ * CPU into an RGBA texture (cached by content, 128 x 128 pixel chunks), then drawn with (PRIM - ENV) * texel + ENV.
+ * Returns 1 if drawn. */
+static unsigned char box_buf[128 * 128 * 4];
+extern int box_pat; /* pm_gbi.c: the 2-cycle window with a pattern in tile 0 */
+__attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
+    tex_gen++; /* TBREP */
+    int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
+    float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
+    float dsdx = (float)(s16)(hd >> 16) / 1024.f, dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
+    unsigned char tst[4];
+    if (!box_pat || !nd_ws.td[0].valid || !nd_ws.td[1].valid || !nd_ws.td[0].src || !nd_ws.td[1].src) return 0;
+    if (!tile_texel(0, 0, 0, tst) || !tile_texel(1, 0, 0, tst)) return 0;
+    int cx0 = X0 < 0 ? 0 : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > 320 ? 320 : X1, cy1 = Y1 > 240 ? 240 : Y1;
+    pm_gpu_flush();
+    pm_gpu_set_combine(5);
+    sc_ok = 0; nd_sr_forget(); /* DIP2: pm_gpu holds a combine mode sync_combine did not set */
+    for (int ys = cy0; ys < cy1; ys += 128) {
+        for (int xs = cx0; xs < cx1; xs += 128) {
+            int cw = cx1 - xs < 128 ? cx1 - xs : 128, ch = cy1 - ys < 128 ? cy1 - ys : 128;
+            int sa = (int)__builtin_floorf(s0 + dsdx * (float)(xs - X0));
+            int ta = (int)__builtin_floorf(t0 + dtdy * (float)(ys - Y0));
+            unsigned key = 2166136261u;
+            unsigned parts[] = { (unsigned)nd_ws.td[0].src, (unsigned)nd_ws.td[1].src, (unsigned)nd_ws.td[0].x0, (unsigned)nd_ws.td[0].y0, (unsigned)nd_ws.td[1].x0,
+                                 (unsigned)nd_ws.td[1].y0, (unsigned)(nd_ws.td[0].w | nd_ws.td[0].h << 8 | nd_ws.td[1].w << 16 | nd_ws.td[1].h << 24),
+                                 (unsigned)(nd_ws.td[0].fmt | nd_ws.td[0].siz << 3 | nd_ws.td[1].fmt << 6 | nd_ws.td[1].siz << 9), (unsigned)sa, (unsigned)ta,
+                                 hd, (unsigned)(cw | ch << 8), (unsigned)nd_ws.td[0].stride | (unsigned)nd_ws.td[1].stride << 16 };
+            for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) key = (key ^ parts[k]) * 16777619u;
+            if (!pm_tex_load_rgba8(box_buf, key, cw, ch, NULL)) {
+                for (int y = 0; y < ch; y++) {
+                    for (int x = 0; x < cw; x++) {
+                        int S = (int)__builtin_floorf(s0 + dsdx * (float)(xs + x - X0));
+                        int T = (int)__builtin_floorf(t0 + dtdy * (float)(ys + y - Y0));
+                        unsigned char a[4], b[4];
+                        tile_texel(0, S - nd_ws.td[0].x0, T - nd_ws.td[0].y0, a);
+                        tile_texel(1, S - nd_ws.td[1].x0, T - nd_ws.td[1].y0, b);
+                        unsigned char* d = &box_buf[(y * cw + x) * 4];
+                        d[0] = (unsigned char)(a[0] * b[0] / 255u);
+                        d[1] = (unsigned char)(a[1] * b[1] / 255u);
+                        d[2] = (unsigned char)(a[2] * b[2] / 255u);
+                        d[3] = b[3];
+                    }
+                }
+                if (!pm_tex_load_rgba8(box_buf, key, cw, ch, box_buf)) { sync_combine(); return 0; }
+            }
+            int tw = 1, th = 1;
+            pm_tex_size(&tw, &th);
+            pm_gpu_tex_rect(xs, ys, xs + cw - 1, ys + ch - 1, 0.f, 0.f, (float)cw / (float)tw, (float)ch / (float)th);
+        }
+    }
+    nd_ws.cur_tile = -1; /* the bound texture is the composite */
+    ens_clear();
+    sync_combine();
+    return 1;
+}
+
 __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     nd_rect_tex_n++;
     tex_gen++; /* TBREP */

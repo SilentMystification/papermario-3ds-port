@@ -57,7 +57,6 @@ extern int pm_fb_native(const void* p);
  * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
 M1Rec m1;
 int dual_on;
-int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 /* draw_box (H04): cycle 1 = TEXEL0 * TEXEL1 (tile 0 window background, tile 1 corner image),
  * alpha = TEXEL1 alpha, cycle 2 = (PRIM - ENV) * COMBINED + ENV. box_prod marks that form.
  * box_folded is 1 while it is drawn as (PRIM - ENV) * TEXEL1 + ENV, which is exact when tile 0
@@ -101,7 +100,6 @@ u8 seen[256];
  * x is the first vertex's N64 ndc * 100. */
 int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample;
 char stats_line[96];
-int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
 int comb_set;
 /* 1 when the alpha combiner reads shade alpha. DECAL and MODULATE modes do not, and imgfx
  * meshes leave cn[3] at 0, so passing it through made them vanish. */
@@ -111,62 +109,11 @@ int comb_alpha_shade = 1;
 
 
 
-void set_leg(int m) { leg_mode = m; }
 int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 PmPlan cur_plan;
 void sync_combine(void);
 /* S3N-3d: set by nd_comb_decide. The combine work then makes no pm_gpu call, no stats and no log. */
 int comb_dry;
-int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
-unsigned sl_cc;
-void sync_legacy(void) {
-    unsigned cc;
-    sl_const = sl_env = 0;
-    if (const_rgb_tex_alpha(&cc)) {
-        if (!comb_dry) pm_gpu_set_const(cc);
-        sl_const = 1; sl_cc = cc;
-        set_leg(4);
-        return;
-    }
-    /* Decal modes put TEXEL0 in the addend, which is mux d, not a/b/c.
-     * Missing it draws the sprite quad's vertex colors: a grey gradient. */
-    /* H06b1: with G_TEXTURE off the RSP sends a triangle with no S and T, the RDP reads texel (0, 0) of tile 0 (draw_tri sets that), so TEXEL0 is read whatever the flag says. */
-    int wants_tex = (nd_ws.tst1.comb_a == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_b == G_CCMUX_TEXEL0 ||
-        nd_ws.tst1.comb_c == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_d == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_c == G_CCMUX_TEXEL0_ALPHA);
-    int wants_prim = nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE || nd_ws.tst1.comb_b == G_CCMUX_PRIMITIVE || nd_ws.tst1.comb_c == G_CCMUX_PRIMITIVE;
-    int mode = 0;
-    /* Mode 3 = texture colour, but alpha only from the vertex: the alpha combiner does not read TEXEL0. */
-    int alpha_tex = nd_ws.tst1.comb_aa == 1 || nd_ws.tst1.comb_ab == 1 || nd_ws.tst1.comb_ac == 1 || nd_ws.tst1.comb_ad == 1 ||
-                    nd_ws.tst1.comb_aa == 2 || nd_ws.tst1.comb_ab == 2 || nd_ws.tst1.comb_ac == 2 || nd_ws.tst1.comb_ad == 2;
-    comb_mode5 = 0;
-    box_pat = box_prod && !box_folded; /* V10: the 2-cycle window with a pattern in tile 0 (not white): product on the CPU */
-    if (wants_tex && nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE && nd_ws.tst1.comb_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb_c == G_CCMUX_TEXEL0 &&
-        nd_ws.tst1.comb_d == G_CCMUX_ENVIRONMENT && alpha_tex && nd_ws.tst1.comb2_aa != 0) { /* FX2f: a cycle 2 alpha that reads COMBINED (huff_puff_breath, times PRIM) is no window pass */
-        comb_mode5 = 1;
-        if (!comb_dry) pm_gpu_set_env(nd_ws.envc);
-        sl_env = 1;
-        /* D03: draw_box windows with the bg_tile pattern (tile 0, I4 0/F checker) take their alpha from
-         * TEXEL1 (the corner image). Tile 0 alpha is the checker itself, so it must not become the alpha:
-         * mode 7 draws the body opaque (the 8x8 rounded corner shape is lost). */
-        {
-            int a_t0 = nd_ws.tst1.comb_aa == 1 || nd_ws.tst1.comb_ab == 1 || nd_ws.tst1.comb_ac == 1 || nd_ws.tst1.comb_ad == 1;
-            box_pat = !a_t0;
-            set_leg(a_t0 ? 5 : 7);
-        }
-        return;
-    }
-    /* D03: (TEXEL0 - PRIM) * PRIM_ALPHA + PRIM, the pause screen background fade. */
-    /* Texture rectangles read the texture whatever gSPTexture says, so tex_on is not tested. */
-    if (nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE && nd_ws.tst1.comb_b == G_CCMUX_TEXEL0 && nd_ws.tst1.comb_c == G_CCMUX_PRIMITIVE_ALPHA &&
-        nd_ws.tst1.comb_d == G_CCMUX_TEXEL0) {
-        set_leg(6);
-        return;
-    }
-    if (wants_tex) mode = alpha_tex ? 2 : 3;
-    else if (wants_prim && !comb_set) mode = 1;
-    else if (wants_prim && nd_ws.tst1.comb_a != G_CCMUX_SHADE) mode = 1;
-    set_leg(mode);
-}
 
 /* sync_combine() is below, after the audit code it shares. */
 
@@ -229,41 +176,11 @@ int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int 
  * (A-B)*C+D per cycle, on random inputs, against what that mode draws. A difference is logged once
  * ("comb new") and then with a draw count at 1, 10, 100, ... draws ("comb count"). COMBINED is 0 in
  * cycle 1. LOD fraction, key and convert read 0. NOISE reads 0.5 (PT07). */
-typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; float k4; } CcIn;
 
 
 
 
 
-/* What the legacy combine mode draws. */
-void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]) {
-    const float* t = t1src ? in->t1 : in->t0;
-    float sa = comb_alpha_shade ? in->sh[3] : 1.f;
-    unsigned cc = 0;
-    switch (mode) {
-    case 1: memcpy(out, in->pr, 4 * sizeof(float)); return;
-    case 2: for (int i = 0; i < 3; i++) out[i] = t[i] * in->sh[i]; out[3] = t[3] * sa; return;
-    case 3: for (int i = 0; i < 3; i++) out[i] = t[i] * in->sh[i]; out[3] = sa; return;
-    case 4:
-        if (const_rgb_tex_alpha(&cc)) {
-            float c[4];
-            unpack8(cc, c);
-            out[0] = c[0]; out[1] = c[1]; out[2] = c[2]; out[3] = t[3] * c[3];
-            return;
-        }
-        break;
-    case 5: case 7:
-        for (int i = 0; i < 3; i++) out[i] = (in->pr[i] - in->en[i]) * t[i] + in->en[i];
-        out[3] = mode == 7 ? 1.f : t[3];
-        return;
-    case 6:
-        for (int i = 0; i < 3; i++) out[i] = cc_clamp((t[i] - in->pr[i]) * in->pr[3] + in->pr[i]);
-        out[3] = t[3];
-        return;
-    default: break;
-    }
-    memcpy(out, in->sh, 4 * sizeof(float));
-}
 
 const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
 const char* const cc_nm_b[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYC", "K4" };
@@ -347,50 +264,7 @@ unsigned op_cnt[256];
 
 
 
-/* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
- * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
-__attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
-    tex_gen++; /* TBREP: writes an image */
-    if (!nd_ws.cimg || pm_is_cfb(nd_ws.cimg) || tile >= 8 || nd_ws.tst1.tile_tmem[tile] < 256) return 0;
-    int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
-    if (x0 < sci_x0) x0 = sci_x0;
-    if (y0 < sci_y0) y0 = sci_y0;
-    if (x1 > sci_x1) x1 = sci_x1;
-    if (y1 > sci_y1) y1 = sci_y1;
-    float s0 = (float)(s16)(hs >> 16) / 32.f;
-    float t0 = (float)(s16)(hs & 0xffff) / 32.f;
-    float dsdx = (float)(s16)(hd >> 16) / 1024.f;
-    float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
-    float sl = (float)nd_ws.tst1.tile_sz[tile][0] / 4.f, tl = (float)nd_ws.tst1.tile_sz[tile][1] / 4.f;
-    for (int y = y0; y < y1; y++) {
-        for (int x = x0; x < x1; x++) {
-            float s = s0 + dsdx * (float)(x - (xl >> 2)) - sl;
-            float t = t0 + dtdy * (float)(y - (yl >> 2)) - tl;
-            int ts = (int)s;
-            (void)t;
-            if (ts < 0) ts = 0;
-            /* A TLUT in TMEM holds each entry four times in a row. One row only. */
-            unsigned word = nd_ws.tst1.tile_tmem[tile] + (unsigned)(ts >> 2);
-            unsigned entry = word - 256u;
-            if (entry > 255u) continue;
-            float tx[4], none[4] = { 0, 0, 0, 0 }, o[4];
-            pal_rgba(tlut_pal[entry >> 4], entry & 15u, tx);
-            cc_cycle1(tx, none, o);
-            unsigned r = (unsigned)(o[0] * 31.f + .5f), g = (unsigned)(o[1] * 31.f + .5f),
-                     b = (unsigned)(o[2] * 31.f + .5f), a = o[3] >= .5f;
-            unsigned c = (r << 11) | (g << 6) | (b << 1) | a;
-            u8* d = (u8*)nd_ws.cimg + ((size_t)y * (size_t)cimg_stride + (size_t)x) * 2u;
-            d[0] = (u8)(c >> 8);
-            d[1] = (u8)c;
-        }
-    }
-    pm_tex_invalidate(nd_ws.cimg, 64);
-    return 1;
-}
 
-/* Tile 0 reads the shading palette, tile 1 the sprite palette, both through the same 4-bit
- * indices, and the first combiner cycle multiplies them. Build the 16 x 16 result the
- * combiner would give, and let pm_tex apply it per texel. Returns 1 if the texture is bound. */
 
 /* Bind the texture of tile n (0 or 1) for the next draw. */
 /* GA1: a glyph (4 bit CI, message font) is one cell of the sheet atlas. When the atlas of its sheet and palette is the bound
@@ -404,62 +278,6 @@ extern int pm_wide;
 /* D03: one texel of tile n as RGBA 0..255. Tile 0 wraps, tile 1 clamps (draw_box: pattern and corner image).
  * Returns 0 for a format not handled. */
 
-/* D03: a draw_box window with the bg_tile pattern. The combiner is (PRIM - ENV) * (TEXEL0 * TEXEL1) + ENV, alpha
- * TEXEL1: tile 0 is the wrapped pattern, tile 1 the corner image, clamped, so its edge texels make the border.
- * The PICA path binds one texture, so the product TEXEL0 * TEXEL1 (colour) and TEXEL1 alpha are composed on the
- * CPU into an RGBA texture (cached by content, 128 x 128 pixel chunks), then drawn with (PRIM - ENV) * texel + ENV.
- * Returns 1 if drawn. */
-unsigned char box_buf[128 * 128 * 4];
-__attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
-    tex_gen++; /* TBREP */
-    int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
-    float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
-    float dsdx = (float)(s16)(hd >> 16) / 1024.f, dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
-    unsigned char tst[4];
-    if (!box_pat || !nd_ws.td[0].valid || !nd_ws.td[1].valid || !nd_ws.td[0].src || !nd_ws.td[1].src) return 0;
-    if (!tile_texel(0, 0, 0, tst) || !tile_texel(1, 0, 0, tst)) return 0;
-    int cx0 = X0 < 0 ? 0 : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > 320 ? 320 : X1, cy1 = Y1 > 240 ? 240 : Y1;
-    pm_gpu_flush();
-    pm_gpu_set_combine(5);
-    sc_ok = 0; nd_sr_forget(); /* DIP2: pm_gpu holds a combine mode sync_combine did not set */
-    for (int ys = cy0; ys < cy1; ys += 128) {
-        for (int xs = cx0; xs < cx1; xs += 128) {
-            int cw = cx1 - xs < 128 ? cx1 - xs : 128, ch = cy1 - ys < 128 ? cy1 - ys : 128;
-            int sa = (int)__builtin_floorf(s0 + dsdx * (float)(xs - X0));
-            int ta = (int)__builtin_floorf(t0 + dtdy * (float)(ys - Y0));
-            unsigned key = 2166136261u;
-            unsigned parts[] = { (unsigned)nd_ws.td[0].src, (unsigned)nd_ws.td[1].src, (unsigned)nd_ws.td[0].x0, (unsigned)nd_ws.td[0].y0, (unsigned)nd_ws.td[1].x0,
-                                 (unsigned)nd_ws.td[1].y0, (unsigned)(nd_ws.td[0].w | nd_ws.td[0].h << 8 | nd_ws.td[1].w << 16 | nd_ws.td[1].h << 24),
-                                 (unsigned)(nd_ws.td[0].fmt | nd_ws.td[0].siz << 3 | nd_ws.td[1].fmt << 6 | nd_ws.td[1].siz << 9), (unsigned)sa, (unsigned)ta,
-                                 hd, (unsigned)(cw | ch << 8), (unsigned)nd_ws.td[0].stride | (unsigned)nd_ws.td[1].stride << 16 };
-            for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) key = (key ^ parts[k]) * 16777619u;
-            if (!pm_tex_load_rgba8(box_buf, key, cw, ch, NULL)) {
-                for (int y = 0; y < ch; y++) {
-                    for (int x = 0; x < cw; x++) {
-                        int S = (int)__builtin_floorf(s0 + dsdx * (float)(xs + x - X0));
-                        int T = (int)__builtin_floorf(t0 + dtdy * (float)(ys + y - Y0));
-                        unsigned char a[4], b[4];
-                        tile_texel(0, S - nd_ws.td[0].x0, T - nd_ws.td[0].y0, a);
-                        tile_texel(1, S - nd_ws.td[1].x0, T - nd_ws.td[1].y0, b);
-                        unsigned char* d = &box_buf[(y * cw + x) * 4];
-                        d[0] = (unsigned char)(a[0] * b[0] / 255u);
-                        d[1] = (unsigned char)(a[1] * b[1] / 255u);
-                        d[2] = (unsigned char)(a[2] * b[2] / 255u);
-                        d[3] = b[3];
-                    }
-                }
-                if (!pm_tex_load_rgba8(box_buf, key, cw, ch, box_buf)) { sync_combine(); return 0; }
-            }
-            int tw = 1, th = 1;
-            pm_tex_size(&tw, &th);
-            pm_gpu_tex_rect(xs, ys, xs + cw - 1, ys + ch - 1, 0.f, 0.f, (float)cw / (float)tw, (float)ch / (float)th);
-        }
-    }
-    nd_ws.cur_tile = -1; /* the bound texture is the composite */
-    ens_clear();
-    sync_combine();
-    return 1;
-}
 
 /* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. */
 
