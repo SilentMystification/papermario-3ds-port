@@ -1,4 +1,4 @@
-/* nd_cen.c: the census of the walker (plan_s10_path group K, WK-2). Cut from pm_gbi.c without logic change (D12): the op
+/* nd_cen.c: the census of the walker (plan_s10_path group K, WK-2). Cut from the former pm_gbi.c without logic change (D12): the op
  * census (os_*), the producer census (pk_*, pm_gbi_prod_mark), the model census (mdc_*), the window and frame end hooks.
  * Cold except os_op_hook and mdc_op, which the walk calls per op under phase. */
 #include <stdio.h>
@@ -7,7 +7,6 @@
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
@@ -23,7 +22,7 @@ unsigned gp_opt[256], gp_opn[256], gp_opt_last; int gp_prev_op = -1; /* time bet
 #include "pm_port.h"
 #include "variables.h"
 
-/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+/* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned pm_gbi_sync_ticks, pm_gbi_gv_ticks, pm_gbi_tex_ticks;
 int rm_frame;
 u8 seen[256];
@@ -123,7 +122,7 @@ static int os_class_of(unsigned op) {
     }
 }
 /* MV (a): the module that runs each op (the handler of its dispatch arm in nd_walk.c). Read by os_report as the mod column. Updated in each move row:
- * an arm that moves changes its entry. MOD_PMGBI counts the ops whose handler is still in pm_gbi.c; MOD_REC the G_PM_REC arm (rec_run, nd_recs.c). */
+ * an arm that moves changes its entry. MOD_PMGBI counts the ops whose handler is still in the former pm_gbi.c; MOD_REC the G_PM_REC arm (rec_run, nd_recs.c). */
 enum { MOD_WALK, MOD_SET, MOD_TEX, MOD_RECT, MOD_GEOM, MOD_MTX, MOD_TGT, MOD_ENT, MOD_PMGBI, MOD_REC, MOD_OTH, MOD_N };
 const char* const mod_nm[MOD_N] = { "walk", "set", "tex", "rect", "geom", "mtx", "tgt", "ent", "pmgbi", "rec", "oth" };
 static const uint8_t op_module[256] = {
@@ -239,7 +238,7 @@ static inline int sp0_tex(unsigned op) {
 unsigned long long pm_gbi_sp0_dlc(void) { return sp0_T[2]; } /* PF2: read by pm_phase.c pf_take, dlc group ticks */
 void pm_pmu_sp0(unsigned out[3]); /* pm_phase.c, CAP2 */
 /* S3-2 measurement: ticks and calls of tex_op per op code, phase on only (line sp0x of sp0_report) */
-unsigned long long tx_t[256], tx_f[256]; unsigned tx_n[256]; /* owner: pm_gbi.c (sp0 report); tex_op in nd_tex.c adds to them */
+unsigned long long tx_t[256], tx_f[256]; unsigned tx_n[256]; /* owner: the former pm_gbi.c (sp0 report); tex_op in nd_tex.c adds to them */
 unsigned long long pm_gpu_fl_acc(void); /* pm_gpu.c */
 static __attribute__((cold, noinline)) void sp0_report(void) {
     unsigned pmv[3];
@@ -551,7 +550,7 @@ void pm_gbi_end_frame(void) {
 const char* pm_gbi_stats(void) { return stats_line; }
 
 
-/* ---- MV-9: frame census helpers, cut from pm_gbi.c (no change): flush class, phase streak timers, gp3 gate ---- */
+/* ---- MV-9: frame census helpers, cut from the former pm_gbi.c (no change): flush class, phase streak timers, gp3 gate ---- */
 /* PI2: batch class of the op that closes a batch. 0 TEX, 1 CC, 2 GEO, 3 RECT, 4 TRI, 5 other. */
 int pm_gbi_flush_class(void) {
     switch (pm_gbi_cur_op) {

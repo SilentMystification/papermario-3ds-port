@@ -13,7 +13,7 @@
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #include "pm_gpu.h"
-#include "pm_gbi.h"
+#include "nd.h"
 
 
 extern void boot_main(void* data);

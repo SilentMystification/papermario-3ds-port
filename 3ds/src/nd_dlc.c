@@ -1,4 +1,4 @@
-/* nd_dlc.c: static display list compiler (plan_native_slices S3-1). Moved from the DLC compile code (pm_gbi.c dlc_compile) (the group cut, the slot rules, the boxes) and dlc_static_build
+/* nd_dlc.c: static display list compiler (plan_native_slices S3-1). Moved from the DLC compile code (the former pm_gbi.c dlc_compile) (the group cut, the slot rules, the boxes) and dlc_static_build
  * (the Vtx copies with flag 0 and the triangle indices). Pure C on host-order word pairs: the host test builds it. The batch merge of dlc_batch_compile is not here:
  * it belongs to the sort and merge of nd_core (S3-5). */
 #include <stdint.h>
@@ -149,7 +149,7 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
     return NDR_OK;
 }
 
-/* S6-2a: the tile 0 state at the end of a display list, the walker rules of its texture ops (pm_gbi.c op_settimg, op_settile, op_loadblock, op_loadtlut,
+/* S6-2a: the tile 0 state at the end of a display list, the walker rules of its texture ops (the former pm_gbi.c op_settimg, op_settile, op_loadblock, op_loadtlut,
  * op_settilesize) for the form an entity model uses. Any other tile, LOADTILE, a window that is not the whole image, or a CI bank without its LOADTLUT is a fallback. */
 static int tex_decode_n(const uint32_t* l, unsigned nops, NdTexDec* o) {
     unsigned i, nbind = 0, ntexop = 0;

@@ -1,7 +1,6 @@
 #include "nu/nusys.h"
 #include "pm_port.h"
 #include "pm_gpu.h"
-#include "pm_gbi.h"
 #include "nd.h"
 
 static NUGfxFunc gfx_func;

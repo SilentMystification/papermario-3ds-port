@@ -1,4 +1,4 @@
-/* nd_state.c: the native state (NdWs, nd_ws). The walker ops in pm_gbi.c read and write nd_ws at walk time: it is the only state.
+/* nd_state.c: the native state (NdWs, nd_ws). The walker ops in the former pm_gbi.c read and write nd_ws at walk time: it is the only state.
  * nd_words is the reference decode of F3DEX2 word pairs into nd_ws for the host tests (nd_gbi_test, nd_rec_test). The bridge
  * the list words run in the walker only (no macro-time decode), so nd_words is never called during the walk.
  * Pure C: the host test builds it. */

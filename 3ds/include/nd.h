@@ -45,7 +45,7 @@ int nd_mtx_replace(const void* src, float in[4][4]);
 typedef struct NdLight { uint8_t col[3]; int8_t dir[3]; } NdLight;
 void nd_lights(PmFx* fx, int texgen, const NdLight* lt, unsigned n, const int8_t lk[2][3]);
 
-/* NDGV (S3N-1): the draw parameters of a raw triangle, moved from pm_gbi.c gv_params_calc. nd_gv_params is pure: the caller reads the walker values into
+/* NDGV (S3N-1): the draw parameters of a raw triangle, moved from the former pm_gbi.c gv_params_calc. nd_gv_params is pure: the caller reads the walker values into
  * NdGvIn (the flags are the walker's own tests, written out by the caller), so the walker and the native model path call one function. */
 typedef struct NdGvP { float uvso[4], vp[4], cm[4], ca[4], zm[2]; int boost; PmFx fx; int fxon; } NdGvP;
 typedef struct NdGvIn {
@@ -102,7 +102,7 @@ unsigned nd_tex_handle_extra(int index, const void* gfx); /* MDL-5a: the header 
 extern unsigned nd_mdl_cur_x;
 int nd_tex_handle_miss(int index, const void* gfx); /* S3L-2: fallback code of a handle with no desc (9 form, 10 index or gfx) */
 
-/* CORE-2a-2: the texture and tile state types (moved from pm_gbi.c; layout unchanged). */
+/* CORE-2a-2: the texture and tile state types (moved from the former pm_gbi.c; layout unchanged). */
 typedef struct NdTst {
     unsigned timg_fmt, timg_siz; int timg_stride;
     /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
@@ -126,7 +126,7 @@ typedef struct NdTd {
     int w, h, stride, x0, y0, pal_n;
     const void* pal;
 } NdTd;
-/* CORE-2a: the walker state (one state, read and written by the walker ops in pm_gbi.c and by the record setters). */
+/* CORE-2a: the walker state (one state, read and written by the walker ops in the former pm_gbi.c and by the record setters). */
 typedef struct NdWs {
     unsigned geom;                     /* geometry mode */
     unsigned omode_h, omode_l;         /* other mode high and low */
@@ -156,7 +156,7 @@ void nd_words(const unsigned* w, unsigned n); /* reference decode (host tests): 
 
 /* NDDLC (S3-1): a static display list (a map shape list) compiled once into an NdObj. A group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices
  * it loads itself. The compiler keeps the box of the object coordinates per group, the geometry mode ops with the triangle index they apply before, the Vtx copies
- * (flag 0, a palette index 0) and the triangle indices into those copies. Moved from the DLC compile code (pm_gbi.c dlc_compile) and dlc_static_build. Returns a refusal reason, NDR_OK when compiled. */
+ * (flag 0, a palette index 0) and the triangle indices into those copies. Moved from the DLC compile code (the former pm_gbi.c dlc_compile) and dlc_static_build. Returns a refusal reason, NDR_OK when compiled. */
 enum { NDR_OK, NDR_OP, NDR_SLOT, NDR_VTX, NDR_LONG, NDR_FULL }; /* NDR_FULL: the vertex or index pool has no room (the list itself is fine) */
 #define ND_DLC_MAXOPS 4096u
 #define ND_DLC_MAXGRP 1024u
@@ -270,7 +270,7 @@ unsigned nd_tmpl_hi(void);       /* the most entries in use (log) */
 /* the register writes of template id; returns the count (ND_TMPL_WORDS max) */
 unsigned nd_tmpl_words(int id, const NdTmplWord** out);
 
-/* Render state rules of the walker (pm_gbi.c sync_render): other mode words to the draw flags. depth_img: the colour image is the z buffer image (a model drawn into
+/* Render state rules of the walker (the former pm_gbi.c sync_render): other mode words to the draw flags. depth_img: the colour image is the z buffer image (a model drawn into
  * it is a depth write). set_memb 0: the memory blend flag is not changed by this state. atest -1 = off. */
 typedef struct NdRender { uint8_t zcmp, zupd, blend, decal, nocol, memb, set_memb, depth; int16_t atest; } NdRender;
 typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; uint32_t wh, wl; NdRender r; uint8_t has_cb, has_tx; uint32_t cw0, cw1, tw1, gand, gor; uint32_t bad; uint8_t has_g; } NdMode;
@@ -327,7 +327,7 @@ typedef struct NdMCtx {
 } NdMCtx;
 typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full, 8 combine needs tile 1, the box product or a key value */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* 1 native, 0 fallback, -1 nost (B8: a read other mode bit has no value) */
-/* S3N-3c: the static ranges of a shape list (pm_gbi.c pm_dlc_native_ranges): index pool pointer, index count, geometry mode of the batch. */
+/* S3N-3c: the static ranges of a shape list (the former pm_gbi.c pm_dlc_native_ranges): index pool pointer, index count, geometry mode of the batch. */
 typedef struct NdRng { const uint16_t* sd; unsigned nidx; uint32_t geom; } NdRng;
 int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned max); /* -1 the walker would not replay the list statically, -2 out full */
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
@@ -340,7 +340,7 @@ void nd_mdlfb_note(uint32_t prod, unsigned sub); /* MDL-5 census: one why 6 fall
 int nd_model_draw(const uint32_t* rec, const NdMCtx* c, const void* list, int emit);
 const NdNat* nd_model_native(unsigned j);
 /* S3N-6: the native model cache. The key: the 14 record words (R0 to R13) and the walker state the draw reads before the record is applied (pm_gpu.c
- * pm_gpu_model_key). One entry per key: the combined matrix the ranges were cut with (pm_gbi.c combined), the unit 0 slot hint, and the draws (nd_mc_nat, n of them).
+ * pm_gpu_model_key). One entry per key: the combined matrix the ranges were cut with (the former pm_gbi.c combined), the unit 0 slot hint, and the draws (nd_mc_nat, n of them).
  * Open hash, 1024 entries, no division. Full table (3/4) or a full draw pool: clear all (counted by nd_mc_clears). */
 #define NDMC_RW 28
 #define NDMC_SW 64
@@ -363,9 +363,9 @@ enum { NDT_KEYB, NDT_FIND, NDT_RNG, NDT_APPLY, NDT_FB, NDT_UPD, NDT_EMIT, NDT_AD
 unsigned pm_ph_smp_count(void); /* S3N-7: pm_phase.c, sampled frames so far */
 NdtT pm_gpu_ndt_begin(void);
 void pm_gpu_ndt_end(NdtT s, int k);
-unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
+unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (the former pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
-/* S3N-3d: the combine choice of one draw (pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
+/* S3N-3d: the combine choice of one draw (the former pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
  * comb2_a..d, comb2_aa..ad). Out: leg (legacy mode, or 8 with plan), use and plan (general plan), cc (constant colour of mode 4), and the walker state (mode5, pat, why, cyc, dual). */
 typedef struct NdCombIn {
     uint32_t w0, w1, omode_h, prim, env, prim_lo8, key_c, key_s, conv_k4;
@@ -402,5 +402,14 @@ typedef struct NdEntSeg {
 int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned* nseg, uint32_t* bad);
 /* S6-2c-2: the geometry ops (VTX, TRI1, TRI2) of an entity list copied into out (word pairs, G_ENDDL last): the list the static compile takes. Returns the op count of l (the index of its G_ENDDL). */
 unsigned nd_ent_strip(const uint32_t* l, uint32_t* out);
+
+/* The walker entry points (were pm_gbi.h, S10-1): nd_walk.c, nd_cen.c and nd_mtx_set.c define them. */
+void pm_gbi_init(void);
+void pm_gbi_run(void* dl, unsigned nbytes);
+void pm_gbi_fallback(void);
+/* Once a frame. The log gets one summed line per second, and only when it changes. */
+void pm_gbi_end_frame(void);
+void pm_gbi_eye_changed(void); /* STEREO: the eye shift changed, the combined matrix changes */
+const char* pm_gbi_stats(void);
 
 #endif

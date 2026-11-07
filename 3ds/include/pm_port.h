@@ -207,7 +207,7 @@ void pm_dspa_rearm(void); /* after sleep: channels set up again (pm_dspaud.c) */
 #define PM_STEP_EXIT 1
 int pm_step_timed(int slot, void (*fn)(void*), void* arg, unsigned ms);
 void pm_audio_step(void); /* AU1b: once per drawn step */
-/* B7-0: swirl capture (pm_cfb_capture_prev) and F03 depth query timing, read and cleared by the b7 line in pm_gbi.c. ticks of the ARM11 clock */
+/* B7-0: swirl capture (pm_cfb_capture_prev) and F03 depth query timing, read and cleared by the b7 line in the former pm_gbi.c. ticks of the ARM11 clock */
 typedef struct PmB7 { unsigned cap_n, cap_ticks, cap_max, dq_n, dq_ticks, dq_max; } PmB7;
 extern PmB7 pm_b7;
 

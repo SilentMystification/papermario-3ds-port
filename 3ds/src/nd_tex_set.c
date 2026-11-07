@@ -1,5 +1,5 @@
 /* nd_tex_set.c: the texture ops of the walker and the globals they keep (target only). Split from nd_tex.c (MOVE-5): the
- * descriptor table, nd_tex_get and the unit words are host-tested there (nd_tex.c), and these need the walker state (nd_ws, pm_gbi.c). */
+ * descriptor table, nd_tex_get and the unit words are host-tested there (nd_tex.c), and these need the walker state (nd_ws, the former pm_gbi.c). */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,7 +10,7 @@
 #include "pm_port.h"
 #include "variables.h"
 
-/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+/* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned tex_gen;
 int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
 unsigned ldrec_n;
@@ -22,13 +22,13 @@ int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_
     return nd_ws.td[1].valid && pm_tex_aux_off_idx() < 0;
 }
 
-/* the counters of PG0 (pm_gbi.c gp_note) and the pipeline flush by its line (pm_gbi.c macros) */
+/* the counters of PG0 (the former pm_gbi.c gp_note) and the pipeline flush by its line (the former pm_gbi.c macros) */
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
 
 /* ---- T globals owned by nd_tex.c (plan_s10_path D10: set by the texture setters here) ---- */
 unsigned st0_ep; int st0_ok; /* PG1: tile 0 wrap state of the last G_SETTILE */
-struct TszLast tsz_last;     /* PG1: the last tile 0 size record (ensure_tile in pm_gbi.c reads and writes it until TX-2) */
+struct TszLast tsz_last;     /* PG1: the last tile 0 size record (ensure_tile in the former pm_gbi.c reads and writes it until TX-2) */
 unsigned blk_n;              /* V13: block load slot rotation */
 const void* tlut_pal[16];    /* TLUT per palette slot (set by G_LOADTLUT) */
 /* owner: nd_tex.c. The bind of tile n for the next draw (ensure_tile, the ens_ state the cache skip reads) */
@@ -667,6 +667,6 @@ int load_shaded_sprite(int dx4, int dy4) {
     return pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp, lut, dx4, dy4);
 }
 
-/* ---- MV-10: RDP shift helper, cut from pm_gbi.c (no change) ---- */
+/* ---- MV-10: RDP shift helper, cut from the former pm_gbi.c (no change) ---- */
 /* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
 float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */

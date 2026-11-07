@@ -269,7 +269,7 @@ void nd_tev_build(const NdTevIn* in, NdTevOut* o) {
     o->memb = memb;
 }
 
-/* ---- render state rules: moved from pm_gbi.c sync_render (RDP other mode to draw flags) ---- */
+/* ---- render state rules: moved from the former pm_gbi.c sync_render (RDP other mode to draw flags) ---- */
 #define OM_CYCLETYPE 20 /* G_MDSFT_CYCLETYPE */
 void nd_render_state(uint32_t omode_h, uint32_t m, int depth_img, NdRender* o) {
     memset(o, 0, sizeof *o);

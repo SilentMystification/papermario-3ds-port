@@ -1,13 +1,12 @@
 /* nd_ent.c: the entity path (plan_s10_path group E, LS-2): the entity draw lists compiled from the static pools (ent_compile,
  * ent_run, ent_gdl, ent_draw), their key table and the record case of G_PM_ENT (nd_ent_case, called by the walk). Cut from
- * pm_gbi.c and nd_shape.c without logic change (D12). */
+ * the former pm_gbi.c and nd_shape.c without logic change (D12). */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include "ultra64.h"
 #include "gbi_custom.h"
-#include "pm_gbi.h"
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
