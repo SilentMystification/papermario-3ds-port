@@ -363,8 +363,6 @@ const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA
 
 unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
 unsigned mm_cnt[256];
-unsigned lcg_s = 12345u;
-float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
 
 /* Decision per combiner: the legacy combine mode, or the general plan (mode 8). Cached by the combiner words and
  * the flags the legacy mode depends on. The plan is chosen when the legacy mode is off by more than 0.012
@@ -381,20 +379,6 @@ typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan
 /* S3N-3d: the combiner fields of tst1 that the combine work reads (nd_comb_decide inputs). */
 unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
     &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
-void pm_log_prof_line(const char* fmt, ...); /* pm_log.c: the one line of prof=4 mode */
-unsigned cc_runs, cc_diff; static int cc_last_b = -1; /* the 300 frame bucket of the last log line */
-__attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked) { /* worked: the work ran (sl_* are set); a memo hit replays the outputs only */
-    NdCombOut o;
-    nd_comb_decide(in, &o);
-    cc_runs++;
-    int bad = o.leg != leg_mode || o.mode5 != comb_mode5 || o.pat != box_pat || o.use != ls_use || o.why != ls_why || o.cyc != ls_cyc ||
-              o.dual != ls_dual || o.plan_on != plan_active || (worked && (o.cc_on != sl_const || o.env_on != sl_env || (sl_const && o.cc != sl_cc))) ||
-              (plan_active && memcmp(&o.plan, &cur_plan, sizeof cur_plan) != 0);
-    if (bad) cc_diff++;
-    unsigned f = pm_frame_count(), b = f / 300u;
-    if ((int)b != cc_last_b) { cc_last_b = (int)b; pm_log_prof_line("combchk f%u runs %u diff %u", f, cc_runs, cc_diff); }
-}
-
 /* S3N-3d: the walker's sticky state at a draw (ndmcheck compare only: the native draw takes these as inputs): the TEXTURE scale word, the geometry mode and the combine words. */
 /* MDL-1b: the tile-1 part of the walker's sync for a record, after rec_aux: dual_bind when the plan reads tile 1. 1 when tile 1 ended bound. */
 int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
@@ -405,9 +389,6 @@ int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_
 }
 void pm_gpu_set_r13_t1(int bound);
 int pm_gbi_bind_tile1(void);
-/* S3N-6: the walker matrix of the draws (the box test of the static ranges reads it) and the walker state of the gv params, the tile, vp and plan
- * state, pre-apply values for the native model cache key (pm_gpu.c pm_gpu_model_key). Returns the count written (at most max). */
-const float (*pm_gbi_combined_ptr(void))[4] { return combined; }
 
 
 /* S25: a plan that reads TEXEL1. Tile 1 is loaded and kept at unit 1, tile 0 stays the current texture, and the
@@ -933,5 +914,3 @@ unsigned rec_run(const Gfx* q) {
     return G_PM_REC_WORDS - 1 + q[13].words.w0; /* R1 to R12: matrix, lights, fog, combine, prim, env, blend, shroud, billboard, panner, custom gfx, geometry, pop; then the R13 words */
 }
 
-/* SPR4-3: the dual boost of the walker (draw_tri path): 1 when cycle 2 is (SHADE - ENV) * COMBINED + COMBINED with the shaded bake live. nd_model/sprite native share it. */
-int dual_boost_on(void) { return dual_on && nd_ws.tst1.comb2_a == G_CCMUX_SHADE && nd_ws.tst1.comb2_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb2_c == G_CCMUX_COMBINED && nd_ws.tst1.comb2_d == G_CCMUX_COMBINED; }

@@ -53,7 +53,17 @@ Note: all pic runs logged rc "crash symbols" (also base). Check whether this is 
 ## State 4 (2026-11-07, MOVE4 agent)
 Branch move4 from nds1 a682f24be, worktree build3ds/wt/move4. MOVE-4 done: suntile_on, suntile_t0, suntile_tri, pm_sun_spawn, pm_sun_draw, pm_sun_base (and their calls in src/effects/sun.c, nd_geom.c, nd_comb.c, nd_tex.c), cc07_dbg, tritrace_on, tritrace_tri, tritrace_seq and the 5 tritrace lines in draw_tri_cpu deleted. Scenarios nok02_tri_dd and nok02_tri (tritrace only) deleted. sun_sbk: suntile word removed. New scenario and bench spot_sbk56_det (cold det, sbk_56 sun scene).
 Gates: spot_mac01_det cold det 12 of 12 shots byte-equal to nds1 a682f24be (runs 15571 base, 15708 head). spot_sbk56_det cold det 12 of 12 byte-equal (one run each). spot_sbk56_pic (no det) differs in 2 of 3 shots between two nds1 runs, so it is noise and not a gate. Link map (pm_3ds.map, pm_gbi.o sections) has no suntile, tritrace, cc07 or pm_sun names.
-Left in pm_gbi.c (live link sections of pm_gbi.o): rec_op, rec_fogpos, rec_fog, rec_dl, rec_aux, rec_matrix, rec_apply, rec_run: LS-3 (MDL-5 edits rec_run now). sync_legacy, cc_legacy, set_leg: ST-3 (after RECT-3). draw_tri_cpu, gbi_vtx_cpu1, fold_axis, pack_color, lit_color: GM-3 (after TRI-4). box_pattern_rect, rect_to_image: RECT-3. pm_gbi_bind_tile1: named by row_TX and row_MDL5, keep until they decide. pm_gbi_combined_ptr, dual_boost_on, combchk_run, lcg_f: no open row names them; decide in the C group move.
+Left in pm_gbi.c (live link sections of pm_gbi.o): rec_op, rec_fogpos, rec_fog, rec_dl, rec_aux, rec_matrix, rec_apply, rec_run: LS-3 (MDL-5 edits rec_run now). sync_legacy, cc_legacy, set_leg: ST-3 (after RECT-3). draw_tri_cpu, gbi_vtx_cpu1, fold_axis, pack_color, lit_color: GM-3 (after TRI-4). box_pattern_rect, rect_to_image: RECT-3. pm_gbi_bind_tile1: named by row_TX and row_MDL5, keep until they decide.
+The row file stays until LS-3, ST-3, GM-3 and RECT-3 land.
+
+## State 5 (2026-11-07, MOVE5 agent)
+Branch move5 from nds1 9d978d836, worktree build3ds/wt/move5. Done, pure cuts and prototypes:
+- pm_gbi_combined_ptr to nd_mtx_set.c (next to combined, its only data). Caller: pm_gpu.c native draw.
+- dual_boost_on, combchk_run with cc_runs, cc_diff, cc_last_b to nd_comb.c after combchk_on. combchk kept (S3N rows name it). dual_boost_on is live (pm_gpu.c rgb_scale).
+- lcg_s, lcg_f to nd_comb.c. Live, not debug: the 24-input plan decision (sync work, seed 777) calls lcg_f. Not deleted (plan_s10 table said delete; corrected there).
+- nd_tex.c split for the host link: descriptor table, nd_tex_get, unit words stay in nd_tex.c (host-tested). Walker ops, ensure_tile, tex_op and their globals to nd_tex_set.c (target only, CMake). Same pattern as nd_mtx_set.c.
+- nd_tex -Werror fixes (op_loadblock and op_loadtlut (void)w0, tlut_v20 sign compare); now in nd_tex_set.c.
+- nd_host: passes (see the commit). ver/us/build/include copied into the worktree (untracked).
 The row file stays until LS-3, ST-3, GM-3 and RECT-3 land.
 
 ## Oracle plan MOVE 7+ (empty pm_gbi.c)

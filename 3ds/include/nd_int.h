@@ -189,10 +189,10 @@ extern int sc_ok, gp_prev_op, box_folded;
 struct TszLast { const u8* src; unsigned fmt, siz; int w, h, stride; const void* pal; int pal_n; unsigned ep; int ox, oy; int ok; };
 typedef struct { int valid; const u8* src; int stride, w, h, x0, y0; } M1Rec;
 extern M1Rec m1;                 /* pm_gbi.c: the shaded sprite tile 1 raster */
-extern struct TszLast tsz_last;  /* nd_tex.c */
-extern unsigned st0_ep; extern int st0_ok; /* nd_tex.c */
-extern unsigned blk_n;           /* nd_tex.c */
-extern const void* tlut_pal[16]; /* nd_tex.c */
+extern struct TszLast tsz_last;  /* nd_tex_set.c */
+extern unsigned st0_ep; extern int st0_ok; /* nd_tex_set.c */
+extern unsigned blk_n;           /* nd_tex_set.c */
+extern const void* tlut_pal[16]; /* nd_tex_set.c */
 extern int ld_valid, ld_x, ld_y, ld_h, ld_w; /* pm_gbi.c: last LoadTile window */
 extern int dual_on;              /* pm_gbi.c */
 extern void* const zb_fake;      /* pm_gbi.c */
