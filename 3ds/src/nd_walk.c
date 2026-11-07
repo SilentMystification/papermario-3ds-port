@@ -23,6 +23,13 @@ int host_range(u32 p, u32* lo, u32* hi) {
     return 0;
 }
 
+int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
+int pm_gpu_spr_checking(void); /* SPR4 */
+void pm_gpu_spr_flush(void); /* SPR4 sprcheck: the flush at the sprite triangle; counts whether the sprite was checked by it */
+static Gfx* spr_at; /* SPR4: vertex word of the sprite record to draw natively (G_PM_SPR arm sets it, G_VTX arm uses it) */
+static Gfx* spr_rec; /* SPR4: the sprite record of spr_at */
+static Gfx* spr_flush_at; /* SPR4 sprcheck: the triangle word of a walker-drawn sprite; the batch closes after it, so the compare sees the draw state */
+
 const u8 g1_skip[256] = { [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
 
 void g2_note(unsigned op, u32 w0) {
@@ -100,6 +107,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
     dd_end();
     if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }
     while (pc && guard++ < 200000) {
+        if (__builtin_expect(spr_flush_at != NULL, 0) && pc == spr_flush_at + 1) { spr_flush_at = NULL; pm_gpu_spr_flush(); } /* SPR4 sprcheck: close the batch of the sprite */
         if (end && sp == 0 && pc >= end) break;
         if ((u32)pc < pc_lo || (u32)pc >= pc_hi) { /* PG3 A15: the range of pc is looked up when pc leaves the last range (list entry, G_DL, return), not at every op */
             if (!host_range((u32)pc, &pc_lo, &pc_hi)) { pc_lo = pc_hi = 0;
@@ -154,15 +162,11 @@ void nd_walk_run(void* list, unsigned nbytes) {
             pc += rec_run(pc - 1);
             if (pm_ph_on && rec_nat_last) pk_nat[pmx_cur]++;
             break;
-        case G_PM_SPR: { /* S4-1, S4-3: producer record of a sprite component (sprite.c). A native sprite (pm_gpu_spr_native) draws here; its vertex and triangle words (header offset) become G_NOOP, the state words after the record still run. Else the walker draws the old words. */
+        case G_PM_SPR: { /* S4-1, S4-3, SPR4: producer record of a sprite component (sprite.c). The record is not run here: the state words after it run on the walker, and the final draw is built at its vertex word (G_VTX arm below), where the live state is the draw state. */
             Gfx* srec = pc - 1;
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
-            if (pm_gpu_spr_native((const uint32_t*)srec)) {
-                if (pm_ph_on) pk_nat[pmx_cur]++;
-                const u32 k = srec[0].words.w0 & 0xffu; /* SPR4-0: header bits 0 to 7 = offset (alpha is bits 8 to 15) */
-                srec[k].words.w0 = 0; srec[k].words.w1 = 0;
-                srec[k + 1].words.w0 = 0; srec[k + 1].words.w1 = 0;
-            }
+            spr_rec = srec;
+            spr_at = srec + (srec[0].words.w0 & 0xffu); /* header bits 0 to 7: the offset of the final gSPVertex word */
             pc += G_PM_SPR_WORDS - 1;
             break;
         }
@@ -202,6 +206,15 @@ void nd_walk_run(void* list, unsigned nbytes) {
             break;
         }
         case G_VTX: {
+            if (pc - 1 == spr_at) { /* SPR4: the final draw of a sprite record. Native: the vertex and triangle words are skipped. Else the walker loads and draws them. */
+                spr_at = NULL;
+                if (pm_gpu_spr_native((const uint32_t*)spr_rec)) {
+                    if (pm_ph_on) pk_nat[pmx_cur]++;
+                    pc += 1;
+                    break;
+                }
+                if (pm_gpu_spr_checking()) spr_flush_at = pc; /* the triangle word: the walker draw ends its batch there */
+            }
             unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
             unsigned n = (w0 >> 12) & 0xff;
             unsigned v0n = (w0 >> 1) & 0x7f;

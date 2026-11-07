@@ -1,5 +1,6 @@
 #include <stdio.h>
-int pm_gpu_spr_native(const uint32_t* rec); /* S4-3: native sprite draw at the record arm (pm_gpu.c) */
+int pm_gpu_spr_native(const uint32_t* rec); /* SPR4: native sprite draw at the final vertex word (nd_walk.c G_VTX arm, pm_gpu.c) */
+int pm_gpu_spr_checking(void); /* SPR4: sprcheck switch on */
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
