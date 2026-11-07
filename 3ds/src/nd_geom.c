@@ -147,7 +147,6 @@ void lit_freeze(void) {
 int gv_lit_ok(void) { if (pm_nolight < 0) pm_nolight = pm_debug_has("nolight"); return pm_gpu_gv5_ok() && !pm_nolight; }
 int gv_fog_gpu_ok(void) { return pm_gpu_gv5_ok() && pm_gpu_gv_zcoef(NULL, NULL); }
 
-int gv1chk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gv1check"); return v; }
 
 /* GV1b: state epoch. gv_epoch goes up at every display list op that is not a vertex load, a triangle, a matrix op or a list jump. The decision that depends on state
  * only (fallback reason, cull mode, the combiner, texture and render sync, the draw parameters) is made once per epoch and per texture scale, not per triangle. */
@@ -157,7 +156,6 @@ int ep_why, ep_ct, ep_cullboth, ep_open;
 
 GvP ep_p;
 
-unsigned gv_chk_stale;
 
 void ep_flush_stats(void) { if (ep_n) { tri_stats_add(ep_fl, ep_n); ep_n = 0; } }
 
@@ -169,7 +167,6 @@ int gv_state_why(int* ct, int* both) {
     if ((nd_ws.geom & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
     if (fogmix_on && (nd_ws.geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
     if (img_role(0) == ROLE_DEPTH) return GVR_ZMARK;
-    if (dd_on() || xt_on() || rmlog_on()) return GVR_DBG;
     return -1;
 }
 
@@ -208,46 +205,16 @@ int gv_tri(const int* idx) {
     }
     if (why < 0) {
         if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
-        else if (gv1chk_on()) { /* the stored decision against a fresh one */
-            int ct, both, w = gv_state_why(&ct, &both);
-            if ((w != ep_why && ep_why != GVR_TEX1) || ct != ep_ct || both != ep_cullboth) gv_chk_stale++;
-        }
         why = ep_why;
     }
     suntile_tri(why < 0 ? "gpu" : "cpu-pending", idx);
     if (why < 0) {
         unsigned tss = vert_tss[a];
         if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); return 1; }
-        if (gv1chk_on()) { /* Azahar check: the old rule and the old cull for this triangle, against the GPU rule */
-            gv_xf(a); gv_xf(b); gv_xf(c);
-            const float *pa = vert_p[a], *pb = vert_p[b], *pc = vert_p[c];
-            float ex1 = pa[0] * pb[3] - pb[0] * pa[3], ey1 = pa[1] * pb[3] - pb[1] * pa[3];
-            float ex2 = pc[0] * pb[3] - pb[0] * pc[3], ey2 = pc[1] * pb[3] - pb[1] * pc[3];
-            float cross = (ex1 * ey2 - ey1 * ex2) * (pa[3] * pc[3]);
-            if ((pa[3] < 0) ^ (pb[3] < 0) ^ (pc[3] < 0)) cross = -cross;
-            int old_cull = ep_ct == 1 ? cross <= 0 : ep_ct == 2 ? cross >= 0 : 0;
-            int old_rej = (vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f;
-            gv_chk_tri++;
-            if (!old_rej && !old_cull) gv_chk_out++;
-            if (pa[3] > 0.05f && pb[3] > 0.05f && pc[3] > 0.05f) { /* window orientation from the matrix after the game matrix */
-                float qa[4], qb[4], qc[4];
-                pm_gpu_gv_post(pa, qa); pm_gpu_gv_post(pb, qb); pm_gpu_gv_post(pc, qc);
-                float ox = (qb[0] / qb[3] - qa[0] / qa[3]) * (qc[1] / qc[3] - qa[1] / qa[3]) - (qb[1] / qb[3] - qa[1] / qa[3]) * (qc[0] / qc[3] - qa[0] / qa[3]);
-                if (cross != 0.f && ox != 0.f) {
-                    int k = pm_gpu_gv_wind() > 0, rel = (cross > 0.f) == (ox > 0.f);
-                    if (gv_rel_ref[k] == 0.f) gv_rel_ref[k] = rel ? 1.f : -1.f;
-                    else if ((gv_rel_ref[k] > 0.f) != (rel != 0)) gv_chk_cull++;
-                }
-            }
-        }
         if (ep_pepoch != gv_epoch || ep_ptss != tss) {
             gv_params_calc(tss, &ep_p);
             pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
             ep_pepoch = gv_epoch; ep_ptss = tss;
-        } else if (gv1chk_on()) {
-            GvP f;
-            gv_params_calc(tss, &f);
-            if (memcmp(&f, &ep_p, sizeof f) != 0) gv_chk_stale++;
         }
         ep_n++;
         if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && pm_gpu_gappend((unsigned)vert_ring[a], (unsigned)vert_ring[b], (unsigned)vert_ring[c], vert_gmi[a], vert_gmi[b], vert_gmi[c])) {
@@ -321,19 +288,17 @@ void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (c
         if (v0 >= 64) n = 0; /* S30: a vertex load that starts past the buffer (garbage list) copied 4 GB */
         else if (v0 + n > 64) n = 64 - v0;
         PH_ADD(C_VTXLOAD, n);
-        if (dd_on()) memcpy(&verts[v0], src, n * sizeof(Vtx)); /* PG4: verts is read only by the drawlog statistics */
         /* A load at slot 0 starts a new mesh. Later loads in the same
          * list append above it and keep the earlier slots. */
         if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
         tri_since_vtx = 0;
-        if (v0 == 0 && dd_on()) gbi_cold_dd_load(src);
         int gring0 = -1;
         unsigned gmi = GV_NONE;
         int gv = 0;
         const int lit_ld = (nd_ws.geom & G_LIGHTING) != 0;
         if (n) { /* GV1: a load goes to the ring as it is (GV5: also a lit load, the GPU lights it). A full ring takes the old code. */
             if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
-            else if (!dd_on() && !xt_on() && !rmlog_on()) {
+            else {
                 gmi = gv_matrix_id(lit_ld);
                 if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
                 if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }

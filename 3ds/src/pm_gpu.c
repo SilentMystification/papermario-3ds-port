@@ -2683,7 +2683,6 @@ int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned 
     gni += 3;
     return 1;
 }
-int pm_gpu_gv_wind(void) { return gv_wind; }
 /* GV5: the PICA clip z is a * z + b * w of the N64 clip position and w stays w, when the matrix after the game matrix is a plain depth map. Returns 0 when it is not. */
 int pm_gpu_gv_zcoef(float* a, float* b) {
     const C3D_FVec *z = &gv_post.r[2], *w = &gv_post.r[3];
@@ -2694,9 +2693,6 @@ int pm_gpu_gv_zcoef(float* a, float* b) {
     if (a) *a = z->z;
     if (b) *b = z->w;
     return 1;
-}
-void pm_gpu_gv_post(const float p[4], float o[4]) { /* gv1check: the clip position after the viewport and tilt (the game matrix is already in p) */
-    for (int r = 0; r < 4; r++) o[r] = gv_post.r[r].x * p[0] + gv_post.r[r].y * p[1] + gv_post.r[r].z * p[2] + gv_post.r[r].w * p[3];
 }
 void pm_gpu_gv_reset(void) { post_gen++; }
 void pm_gpu_gv_stats(unsigned o[4]) { o[0] = gv_palup_n; o[1] = gv_palmax; o[2] = gv_palflush; o[3] = gv_recopy_n; }

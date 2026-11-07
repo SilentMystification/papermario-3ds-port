@@ -15,7 +15,7 @@
 #include "variables.h"
 /* DLC1: the static list compiler and the group runner (S3F-4: the former dlc include, inlined here, same unit) */
 /* DLC1: compile and replay of the map shape display lists (docs/plans/DLC.md, kind G). Included by pm_gbi.c after draw_tri, so it reads the statics of the interpreter.
- * `dlc` is always on (dlc_enabled turns it off under the dd, xt and rmlog tools),
+ * `dlc` is always on,
  * A shape list is cut into groups: a group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices that it loads itself. The compiler keeps the box of the
  * object coordinates of each group. At replay a group whose box lies outside one clip plane is skipped: the interpreter rejects every triangle of it as well. A group in view runs
  * the same code as the interpreter (G_VTX copy to the GV1 ring, draw_tri) without the CPU transform of the vertices. A group that is near the camera plane, lit, or does not
@@ -45,9 +45,6 @@ u32 dlc_hash(const Gfx* l) {
         if (op == G_ENDDL) break;
     }
     return h;
-}
-int dlc_enabled(void) {
-    return !dd_on() && !xt_on() && !rmlog_on();
 }
 int stdump_on(void) { return PMDL("stdump"); } /* FLK1 state dump per visible static segment, frames 200 to 205 */
 int pm_gpu_rgb_scale_get(void);
@@ -374,7 +371,7 @@ int dnr(unsigned k) { dnr_c[k]++; return -1; }
 void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i < 16u; i++) { o[i] = dnr_c[i]; dnr_c[i] = 0; } }
 int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
     const Gfx* l = (const Gfx*)lv;
-    if (!dlc_on || !dlc_enabled()) return dnr(1);
+    if (!dlc_on) return dnr(1);
     if (!is_host((u32)(uintptr_t)l)) return 0; /* rec_dl: a list outside host memory is not run (gbi_cold_bad_next): no draw */
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return dnr(2);
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }

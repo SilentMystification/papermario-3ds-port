@@ -46,7 +46,7 @@ typedef struct { unsigned lists, nat, dyn, ref, skip; } GdlCount;
 typedef struct { const Gfx* p; unsigned s; } PkMark;
 
 /* ---- W: enums and defines of the gather and walk paths (cut from pm_gbi.c) ---- */
-enum { GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_DBG, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
+enum { GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
 enum { GP1_IN, GP1_OUT, GP1_CROSS };
 #define GV_NONE 0xffffu
 extern int pm_tex_tagi;
@@ -56,8 +56,6 @@ int pm_gpu_spr_native(const uint32_t* rec);
 /* ---- W: globals and prototypes of the walker helpers that stayed in pm_gbi.c (moved with the group) ---- */
 const float (*pm_gbi_combined_ptr(void))[4];
 int clip_bits4(const float* p);
-int dd_on(void);
-int dlc_enabled(void);
 int dlc_try(const Gfx* l);
 int ent_draw(const Gfx* rec);
 int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits);
@@ -66,13 +64,10 @@ int gv_lit_ok(void);
 int is_host(u32 p);
 int lt_mem_same(u32 w0, u32 w1);
 int pm_gpu_spr_native(const uint32_t* rec);
-int xt_on(void);
 unsigned gv_matrix_id(int need_nm);
 unsigned rec_run(const Gfx* q);
 unsigned sc_sig_now(void);
-void dd_end(void);
 void draw_tri(unsigned w);
-void gbi_cold_dd_load(const Vtx* src);
 void gbi_cold_modifyvtx(u32 w0, u32 w1);
 void gbi_movemem(u32 w0, u32 w1);
 void gbi_moveword(u32 w0, u32 w1);
@@ -109,7 +104,6 @@ extern unsigned s;
 
 /* ---- W: variables of pm_gbi.c that the walk group uses (global now) ---- */
 extern NdLight lt[9];
-extern Vtx verts[64];
 extern const Gfx dlc_end[1];
 extern float combined[4][4];
 extern float vert_p[64][4];
@@ -132,10 +126,6 @@ extern unsigned char vert_cb[64];
 extern unsigned cmb_gen_seen;
 extern unsigned comb_gen;
 extern unsigned conv_k4;
-extern unsigned dd_dl0;
-extern unsigned dd_dl1;
-extern unsigned dd_idx;
-extern unsigned dd_top;
 extern unsigned ent_skipgen;
 extern unsigned fogc;
 extern unsigned gp1_ld_cross;
@@ -190,7 +180,6 @@ extern unsigned lt_n;                        /* pm_gbi.c, lights count (GM-1) */
 extern unsigned fogc, blendc;                /* ST-1: nd_state.c */
 extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor */
 int ent_gdl(const Gfx* l);
-int rmlog_on(void);
 extern u8 gMapShapeData[];
 extern int sc_ok, gp_prev_op, box_folded;
 
@@ -342,18 +331,18 @@ int clip_bits(const ClipV* p);
 float cull_cross(const float* p1, const float* p2, const float* p3);
 void ep_flush_stats(void);
 extern int tri_prep_ok, lit_pending, ep_why, ep_ct, ep_cullboth;
-extern unsigned gv_epoch, gv_chk_stale, ep_osc, ep_fl, ep_n;
+extern unsigned gv_epoch, ep_osc, ep_fl, ep_n;
 extern NdGvP ep_p;
 /* G (GM-2): the gather and triangle counters, the PERF-GBI laps and the state counters that nd_geom.c reads (defined in pm_gbi.c). */
 enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_N };
 #define GP_START() do { if (gp_on()) gp_last = pm_ticks(); } while (0)
 #define GP_LAP(id) do { if (gp_on()) { unsigned n_ = pm_ticks(); gp_acc[id] += n_ - gp_last; gp_last = n_; } } while (0)
 extern unsigned gp_acc[8], gp_last;
-extern unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n, gv_chk_out, gv_chk_cull, gv_chk_tri;
+extern unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n;
 extern unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
 extern unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri, st_gpu_tri, dlc_dirty;
 extern u8 vert_gvf[64];
-extern float vert_st[64][2], gv_rel_ref[2], tg_s, tg_t;
+extern float vert_st[64][2], tg_s, tg_t;
 extern unsigned vert_c[64];
 extern int tg_ok, pm_nolight;
 unsigned lit_color(const Vtx* v, const float m[4][4], int texgen);
