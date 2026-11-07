@@ -25,10 +25,8 @@ INCLUDE_IMG("entity/shadow/square_big.png", D_802E92F0);
 INCLUDE_IMG("entity/shadow/circle_big.png", D_802E94F0);
 
 #ifdef TARGET_3DS
-/* EN2: the texture load of each shadow is one G_PM_TEXI run. n counts the words after the header:
- * GfxCommon (9), LUT (1), tile load (7), and for the circle the LoadTexCircle combine (1). */
+/* EN2: the texture load of each shadow is plain N64 words (no G_PM_TEXI header, TX-4). */
 Gfx Entity_RenderSquareShadow[] = {
-    gsSPPmTexInline(17),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
     gsDPPipeSync(),
     gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW),
@@ -47,7 +45,6 @@ Gfx Entity_RenderSquareShadow[] = {
 };
 
 Gfx Entity_RenderCircularShadow[] = {
-    gsSPPmTexInline(18),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
     gsDPPipeSync(),
     gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW),
