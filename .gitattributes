@@ -2,3 +2,4 @@
 
 # suppress asm/nonmatchings/ in GitHub diffs
 asm/nonmatchings/**/*.s linguist-generated
+3ds/logs/perf/runs.jsonl merge=union
