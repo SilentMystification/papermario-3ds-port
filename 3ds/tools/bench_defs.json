@@ -2232,6 +2232,30 @@
       "gates": []
     },
     {
+      "name": "phase_mac01_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE gate (d): mac_01 gbi phase ms (fsplit) cold with det, base and head.",
+      "scenario": "phase_mac01_det",
+      "cap": 45,
+      "until": "fsplit f",
+      "tags": ["azahar", "det", "cold"],
+      "gates": []
+    },
+    {
+      "name": "phase_iwa10_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE gate (d): iwa_10 gbi phase ms (fsplit) cold with det, base and head.",
+      "scenario": "phase_iwa10_det",
+      "cap": 45,
+      "until": "fsplit f",
+      "tags": ["azahar", "det", "cold"],
+      "gates": []
+    },
+    {
       "name": "nok11_det",
       "kind": "azahar_pic",
       "speed": "turbo",
