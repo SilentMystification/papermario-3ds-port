@@ -1145,6 +1145,7 @@ static unsigned ndn_tgen;
 static void pm5_upload_draw(const NdDraw* d);
 static void t1log_draw(const NdDraw* d);
 static void pm5draw_all(const NdDraw* d);
+static void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
 static void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
     extern unsigned pm_gbi_dbg_orb_tag(void);
@@ -1163,6 +1164,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     pm5draw_all(dp);
     if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
     t1log_draw(dp);
+    pm5tex1_log(dp);
     const NdDraw* d = dp;
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     /* PM5 cause 3: a program change clears the whole native shadow (the citro3d uniform file is one file for all programs, and the template shadow does not know the program) */
@@ -1276,6 +1278,17 @@ static void pm5draw_log(const NdDraw* d, const uint16_t* sd, unsigned nidx) {
     char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
     pm_log("pm5draw f%u p %.8s n%u v%u box %.1f %.1f %.1f %.1f zm %.3f %.3f cm %.2f %.2f %.2f ca %.2f %.2f %.2f",
            f, prod, nidx, vmax, x0, x1, y0, y1, d->zmix[0], d->zmix[1], d->cmul[0], d->cmul[1], d->cmul[2], d->cadd[0], d->cadd[1], d->cadd[2]);
+}
+/* FB-3 pm5tex1: one line per producer the first time it submits a program 5 draw with tex1 (the unit 1 uv map, uvx): the pm5 tex1 path is in use */
+void pm_gbi_cur_prod_name(char* b, int n);
+static void pm5tex1_log(const NdDraw* d) {
+    static char seen[24][48]; static unsigned nseen;
+    if (!d->use5 || !d->has_uvx) return;
+    char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
+    for (unsigned i = 0; i < nseen; i++) if (strcmp(seen[i], prod) == 0) return;
+    if (nseen < 24) { strncpy(seen[nseen], prod, 47); seen[nseen][47] = 0; nseen++; }
+    extern unsigned pm_frame_count(void);
+    pm_log("pm5tex1 %s f%u", prod, pm_frame_count());
 }
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex) {
     rp_src_ = 2;
