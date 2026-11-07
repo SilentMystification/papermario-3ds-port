@@ -372,4 +372,48 @@ void pm_sun_draw(int alpha, int fromRight, const float* scroll, int n);
 void pm_sun_base(const void* graphics);
 int suntile_on(void);
 extern int suntile_lines;
+/* LS-1 (nd_shape.c): the dlc and entity types and macros (shared by the walk and the handler modules). */
+typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16* sd; u16* bat_q; u16* ends; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
+typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; NdObj o; } DlcEnt;
+#define DLC_TAB 2048
+#define DLC_MAXOPS 4096
+#define DLC_GPU_GEOM(g) ((g) & (G_ZBUFFER | G_LIGHTING))
+typedef struct { u32 a0, op0, op1, tri0, ntri; } EntSeg;
+typedef struct {
+    u32 list, vb, nops, hash, fr, vlen, retry;
+    const u8* vp;
+    const u16* idx;
+    const u8* vtx;
+    unsigned vfirst, nvtx;
+    EntSeg* seg;
+    u16 nseg;
+    u8 st, why, nrec;
+    u32 ndraw, id, segid;
+    u32 nint;
+    u8 useseg; /* S SGEN-1: the list reads vertices through a segment address: its entries are keyed by the segment bases (ent_segkey) */
+    Gfx* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
+} EntKey;
+enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
+#define ENT_TAB 1024
+#define ENT_SEGMAX 192
+extern unsigned pm_dlc_gen, dlc_seen_gen, dbg_seg, dbg_dsg, ent_opc[256], ent_nent, ent_gen_seen, dlc_nent;
+extern unsigned ent_sw[16], ent_gw[8];
+extern DlcEnt* dlc_tab[DLC_TAB];
+extern EntKey* ent_tab[ENT_TAB];
+extern GdlCount gdl_c;
+extern EntCount ent_c;
+extern const Gfx dlc_end[1];
+void dlc_reset(void);
+unsigned dlc_gmi(void);
+int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi);
+void ent_reset(void);
+void ent_compile(EntKey* k, const Gfx* l0);
+EntKey* ent_lookup(const Gfx* l, u32 vb);
+EntKey* ent_find(const Gfx* l, u32 vb);
+int ent_seg_native(const EntKey* k, const EntSeg* s);
+void ent_log(void);
+int ent_run(const Gfx* l, EntKey* k, u32 segid);
+u32 ent_segkey(void);
+int entchk_on(void);
+int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx);
 #endif
