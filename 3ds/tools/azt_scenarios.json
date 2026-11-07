@@ -8391,6 +8391,134 @@
         }
       ],
       "reason": "MDL-1 reference at iwa_10 (r13off)."
+    },
+    {
+      "name": "btrans_walk_enc",
+      "status": "unverified",
+      "subject": "BTRANS walk-in (Goomba, kmr_09, stick right). Shots 116 to 155 (star wipe frames 118 to 151 in the run 5 log) with caplog wipe state.",
+      "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:40 caplog loglevel=debug",
+      "until": "shot 39 frame ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: kmr_09 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_09 entry 0"
+        },
+        {
+          "name": "battle start",
+          "regex": "maphud: battle Battle"
+        },
+        {
+          "name": "caplog lines",
+          "regex": "caplog f[0-9]+ cpu"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot [0-9]+ frame 1[1-5][0-9]"
+        }
+      ],
+      "reason": "BTRANS gate: walk-in, interp on."
+    },
+    {
+      "name": "btrans_walk_noint",
+      "status": "unverified",
+      "subject": "BTRANS walk-in, interp off (nointerp).",
+      "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:40 caplog loglevel=debug nointerp",
+      "until": "shot 39 frame ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: kmr_09 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_09 entry 0"
+        },
+        {
+          "name": "battle start",
+          "regex": "maphud: battle Battle"
+        },
+        {
+          "name": "caplog lines",
+          "regex": "caplog f[0-9]+ cpu"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot [0-9]+ frame 1[1-5][0-9]"
+        }
+      ],
+      "reason": "BTRANS gate: walk-in, interp off."
+    },
+    {
+      "name": "btrans_stand_enc",
+      "status": "unverified",
+      "subject": "BTRANS standing encounter (encwarp 120, kmr_09), interp on. Star wipe shots from the pre-battle start.",
+      "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog loglevel=debug",
+      "until": "encwarp: window end",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_09 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_09 entry 0"
+        },
+        {
+          "name": "pre-battle entered",
+          "regex": "encwarp: pre-battle entered"
+        },
+        {
+          "name": "caplog lines",
+          "regex": "caplog f[0-9]+ cpu"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot [0-9]+ frame [0-9]+"
+        }
+      ],
+      "reason": "BTRANS gate: standing, interp on."
+    },
+    {
+      "name": "btrans_stand_noint",
+      "status": "unverified",
+      "subject": "BTRANS standing encounter, interp off (nointerp).",
+      "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog loglevel=debug nointerp",
+      "until": "encwarp: window end",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_09 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_09 entry 0"
+        },
+        {
+          "name": "pre-battle entered",
+          "regex": "encwarp: pre-battle entered"
+        },
+        {
+          "name": "caplog lines",
+          "regex": "caplog f[0-9]+ cpu"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot [0-9]+ frame [0-9]+"
+        }
+      ],
+      "reason": "BTRANS gate: standing, interp off."
     }
   ]
 }
