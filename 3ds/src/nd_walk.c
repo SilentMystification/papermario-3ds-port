@@ -15,6 +15,9 @@
 #include "variables.h"
 #include "nd_int.h"
 
+/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
+
 int host_range(u32 p, u32* lo, u32* hi) {
     u32 heap = __ctru_heap, hend = __ctru_heap + __ctru_heap_size, lin = __ctru_linear_heap, lend = lin + __ctru_linear_heap_size;
     if (p >= heap && p < hend) { *lo = heap; *hi = hend; return 1; }

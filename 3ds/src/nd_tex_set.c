@@ -10,6 +10,18 @@
 #include "pm_port.h"
 #include "variables.h"
 
+/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+unsigned tex_gen;
+int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
+unsigned ldrec_n;
+M1Rec m1;
+int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
+    if (!plan_active || !cur_plan.uses_tex1) return 0;
+    ensure_tile(nd_ws.use_t1 ? 1 : 0);
+    dual_bind();
+    return nd_ws.td[1].valid && pm_tex_aux_off_idx() < 0;
+}
+
 /* the counters of PG0 (pm_gbi.c gp_note) and the pipeline flush by its line (pm_gbi.c macros) */
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)

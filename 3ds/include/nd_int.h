@@ -402,4 +402,26 @@ extern u32 dlc_words[];
 uint8_t* nd_env_valloc(unsigned n, unsigned* first);
 uint16_t* nd_env_ialloc(unsigned n);
 void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
+
+/* GLOB: prototypes and externs moved from pm_gbi.c. */
+int pm_gpu_spr_native(const uint32_t* rec); /* SPR4: native sprite draw at the final vertex word (nd_walk.c G_VTX arm, pm_gpu.c) */
+extern int pm_tex_tagi; /* STALE2 texsrc: bind path tag */
+extern u16 DepthCopyBuffer[16];
+extern unsigned short* nuGfxZBuffer;
+void pm_depth_query(const void* timg, int x, int id); /* F03, pm_depth.c */
+extern unsigned int __ctru_heap;
+extern unsigned int __ctru_heap_size;
+extern unsigned int __ctru_linear_heap;
+extern unsigned int __ctru_linear_heap_size;
+extern int pm_is_cfb(const void* p);
+extern void pm_cfb_capture_prev(void);
+extern void pm_cfb_capture_prev_cpu_for(const void* fill);
+extern void pm_cfb_capture_prev_cpu(void);
+extern void pm_zbuf_need(void);
+extern unsigned pm_frame_count(void);
+extern int pm_fb_native(const void* p);
+extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
+extern unsigned short** nuGfxCfb;
+extern unsigned nuGfxCfbNum;
+extern int pm_wide;
 #endif

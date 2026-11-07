@@ -13,6 +13,9 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
+
+/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+int cimg_stride = 320;
 void pm_zbuf_need(void);
 int pm_fb_native(const void* p);
 int pm_is_cur_cfb(const void* p);

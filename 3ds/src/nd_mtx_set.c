@@ -14,6 +14,11 @@
 #include "variables.h"
 #include "nd_int.h"
 
+/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+NdLight lt[9];
+unsigned lt_n;
+s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
+
 /* ---- M: moved from pm_gbi.c (plan_s10_path group M, GM-1): matrix load, viewport, movemem, popmtx, record lights ---- */
 float combined[4][4];
 
