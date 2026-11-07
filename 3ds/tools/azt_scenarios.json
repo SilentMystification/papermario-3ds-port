@@ -9212,7 +9212,7 @@
       "status": "unverified",
       "subject": "Battle scene (one Goomba on kmr_03), cold det start, shot 182. t1log: one t1draw line per native tex1 draw (u1 words and uvx sent). pm4 for unlit draws, pm5 tex1 for lit draws.",
       "proves": "FB-3 part 1: pm5 tex1 native draws reproduce the pm4 picture (unlit draws) and send the unit 1 uv map (uvx).",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det t1log loglevel=debug",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det fixedseed fast fs1off t1log loglevel=debug",
       "extra": [
         "-NoWarm"
       ],
@@ -9235,7 +9235,7 @@
       "status": "unverified",
       "subject": "Battle scene as battle_start_t1cold with the pm5all switch: unlit model draws take program 5. Gate: shots equal battle_start_t1cold (pm5 tex1 == pm4 tex1 on unlit draws).",
       "proves": "FB-3 part 1: pm5 tex1 native draws reproduce the pm4 picture (unlit draws) and send the unit 1 uv map (uvx).",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det t1log loglevel=debug pm5all",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det fixedseed fast fs1off t1log loglevel=debug pm5all",
       "extra": [
         "-NoWarm"
       ],

@@ -1209,14 +1209,16 @@ static void pm5_upload_draw(const NdDraw* d) {
     for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 4 + r, d->nrm5[r][0], d->nrm5[r][1], d->nrm5[r][2], 0.f);
     gv_palup_n++; pm_dc_c[DC_PALUP]++;
 }
+/* FB-3 t1log (debug switch, log only): one line per tex1 draw of a native record or raw batch, with the unit 1 words and the uvx values sent */
+static void t1log_draw(const NdDraw* d) {
+    static int t1l_on = -1, t1l_n; extern unsigned pm_frame_count(void);
+    if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
+    if (t1l_on && d->has_uvx && pm_frame_count() >= 100 && t1l_n++ < 400) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
+}
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex) {
     rp_src_ = 2;
     if (d->use5) { pm5_upload_draw(d); d->no_uni = 1; d->npal = 0; if (d->has_uvx) d->loc_uvx = (unsigned)u5_uvx; }
-    if (d->has_uvx) { /* FB-3 t1log (debug switch, log only): the tex1 draws of a native submit, with the unit 1 words and the uvx values sent */
-        static int t1l_on = -1, t1l_n; extern unsigned pm_frame_count(void);
-        if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
-        if (t1l_on && t1l_n++ < 40) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
-    }
+    t1log_draw(d);
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys((void*)sd) - 0x18000000u);
     d->nidx = nidx;
@@ -1385,6 +1387,7 @@ static int nd_raw_native(void) {
     d.nidx = gni;
     if (ndm_live) ndm_cmp(&nk, &d);
     if (spr_pend) spr_check(&d);
+    t1log_draw(&d);
     if (wl_on()) { unsigned fn, wr; wl_depth(z, 0, r_zcmp, r_zupd, r_decal, r_nocol, &fn, &wr);
         extern void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1); unsigned wtss_, wgeo_, wcw0_, wcw1_; pm_gbi_sticky(&wtss_, &wgeo_, &wcw0_, &wcw1_); /* POND-M1: walker combine words */
         pm_log("wdraw f%u nat om %08x zs %u fn %u wr %u dec2 %d zc %d zu %d dec %d z %d bl %d tmpl %d tc %08x t1 %d u0 %08x u1 %08x pz %04x prim %08x cc %08x cmb %u cw %08x %08x zm %.4f %.6f ca %.3f %.3f uvx %.4f %.4f %.4f %.4f ts0 %08x %08x tris %u",
