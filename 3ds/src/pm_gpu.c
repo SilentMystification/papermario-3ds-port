@@ -1304,6 +1304,7 @@ static void flush_draw(void) {
         if (snap0 || snap1) off_snapshot(off_cur);
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
+    { static unsigned rcl_; if (rect_2d && !graw && rcl_ < 8u && pm_frame_count() > 100u) { rcl_++; pm_log_d("rectcpu f%u nverts %d gni %d comb %d d3 %d grab %d off %d open %d raw %d caller %s:%d", pm_frame_count(), nverts, gni, combine, draw_3d, grab_bind, off_active, rect_open, rect_raw, fl_fn, fl_line); } } /* RECT-2b diag */
     cen_why = graw ? CW_OTHER : rect_2d ? CW_RECT : (cen_fbv & CEN_FB_CLIP) ? CW_CLIP : (cen_fbv & CEN_FB_SEAM) ? CW_SEAM : (cen_fbv & CEN_FB_WIDE) ? CW_WIDE : (cen_fbv & CEN_FB_RING) ? CW_RING : CW_OTHER; /* CEN-1a */
     if (graw && nd_raw_native()) return;
     if (graw && spr_pend) spr_pend = NULL, spr_fb_n++; /* S4-1: the sprite of this batch fell back to the walker draw */
@@ -2464,6 +2465,7 @@ void pm_gpu_begin(int clear) {
 }
 
 void pm_gpu_end(void) {
+    if (pm_frame_count() % 100u == 0) rect_log(pm_frame_count()); /* RECT-2b diag: rect and rectwhy lines every 100 frames */
     pm_gpu_begin_wait();
     if (!gpu_ok) return;
     FS_MARK(FS_FLUSH);
@@ -3714,8 +3716,15 @@ static void rect_begin(int ec) {
  * Palette entry RECT_GM (pcomp_calc) is the projection with the depth folded in, so the batch draws what the CPU path draws. The batch closes through nd_raw_native with
  * rect_2d set (flush_impl_body rect branch). Merge key as rect_begin, plus the depth. rect_c: fill, tex, native, merged, cpu, ring high mark. */
 static unsigned rect_c[6];
+static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle takes the CPU path: 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
-    return gpu_vtx_on && gpu_ok && gv4_on && !off_active && !grab_bind && !r_zmark && gring_n + 4 <= GRING_VTX && gidx_n + 6 <= GRING_IDX && !PMDL("norectraw");
+    if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
+    if (off_active) { rr_why[2]++; return 0; }
+    if (grab_bind) { rr_why[3]++; return 0; }
+    if (r_zmark) { rr_why[4]++; return 0; }
+    if (gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) { rr_why[5]++; return 0; }
+    if (PMDL("norectraw")) { rr_why[6]++; return 0; }
+    return 1;
 }
 static void rect_raw_open(int ec, float fz, const float uvso[4]) {
     int rtx = pm_tex_cur_idx();
@@ -3756,7 +3765,7 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     rect_c[2]++;
     if ((unsigned)gring_n > rect_c[5]) rect_c[5] = (unsigned)gring_n;
 }
-static void rect_log(unsigned f) { pm_log_prof_line("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); memset(rect_c, 0, sizeof rect_c); }
+static void rect_log(unsigned f) { pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
 static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have = 1; } }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
@@ -3830,7 +3839,7 @@ static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, floa
     if (mx < 7.9f) { sc = 4096.f; inv = 0.000244140625f; }
     else if (mx < 31.9f) { sc = 1024.f; inv = 0.0009765625f; }
     else if (mx < 127.f) { sc = 256.f; inv = 0.00390625f; }
-    else return 0;
+    else { rr_why[7]++; return 0; }
     const float ya = py(y0), yb = py(y1 + 1);
     unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
     if (PMDL("rectred")) c = 0xff0000ffu; /* RECT diag: native textured rect in red (texel colour times red) */
