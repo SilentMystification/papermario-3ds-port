@@ -1,6 +1,6 @@
 /* nd_geom.c: the geometry group (plan_s10_path group G, GM-2). G_VTX (vertex load to the ring) and G_TRI1/G_TRI2 (draw_tri):
  * the triangle path, its clip and cull helpers, the epoch and state checks. Cut from pm_gbi.c and nd_walk.c without logic change (D12).
- * The CPU-only geometry functions (xform_vtx, vert_color, vert_uv, pack_color, lit_color, fold_axis) stay in pm_gbi.c until GM-3. */
+ * fold_axis stays in pm_gbi.c (the window fold of the rectangle path, used by nd_rect.c). */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -17,18 +17,6 @@
 
 typedef NdGvP GvP;
 
-/* Same bits as libultraship, except the near plane, which they leave commented out.
- * A triangle is dropped only when every corner is off the same side. */
-int clip_bits(const ClipV* p) {
-    int b = 0;
-    float w = p->w;
-    if (p->x < -w) b |= 1;
-    if (p->x > w) b |= 2;
-    if (p->y < -w) b |= 4;
-    if (p->y > w) b |= 8;
-    if (p->z > w) b |= 32;
-    return b;
-}
 
 int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
     int b = 0;
@@ -42,7 +30,7 @@ int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip posi
 }
 
 
-/* FLK1: screen area sign of a triangle from clip positions (x y z w, the ClipV and vert_p layout). Both copies of the cull test use it. */
+/* FLK1: screen area sign of a triangle from clip positions (x y z w, the vert_p layout). Both copies of the cull test use it. */
 float cull_cross(const float* p1, const float* p2, const float* p3) {
     float ex1 = p1[0] * p2[3] - p2[0] * p1[3], ey1 = p1[1] * p2[3] - p2[1] * p1[3];
     float ex2 = p3[0] * p2[3] - p2[0] * p3[3], ey2 = p3[1] * p2[3] - p2[1] * p3[3];
@@ -117,16 +105,6 @@ void gv_xf(int sl) {
         p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
         vert_cb[sl] = (unsigned char)clip_bits4(p);
         gv_xf_n++;
-    }
-    {
-        unsigned tss = vert_tss[sl];
-        vert_st[sl][0] = (float)r->v.tc[0] * (float)(tss >> 16) / 65536.f;
-        vert_st[sl][1] = (float)r->v.tc[1] * (float)(tss & 0xffffu) / 65536.f;
-        if (vert_litf[sl] & 3) { /* GV5: a vertex that was loaded lit goes to the GPU raw, the CPU path makes its colour from the stored normal matrix (the lights are the ones of the load: lit_freeze) */
-            vert_c[sl] = lit_color(r, gm_nrm[vert_gmi[sl]], (vert_litf[sl] & 2) != 0);
-            if (tg_ok) { vert_st[sl][0] = tg_s; vert_st[sl][1] = tg_t; }
-        } else
-        vert_c[sl] = ((unsigned)r->v.cn[0] << 24) | ((unsigned)r->v.cn[1] << 16) | ((unsigned)r->v.cn[2] << 8) | (unsigned)r->v.cn[3];
     }
     vert_gvf[sl] = 3;
 }
@@ -368,7 +346,7 @@ void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (c
                 st_vx++;
                 continue;
             }
-            gbi_vtx_cpu1(&src[i], v0 + i);
+            vert_gvf[v0 + i] = 3;
         }
     }
     if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;

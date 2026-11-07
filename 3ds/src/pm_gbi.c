@@ -86,9 +86,9 @@ float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once wh
  * per vertex transform of PO2, so the decisions are the same. Per slot: ring index, matrix table index, texture scale (s and t) at the load. */
 /* GV1 (switch gv1, default off, nogv1 turns it off): the full GPU geometry path. G_VTX of an unlit load copies the 16 byte Vtx to the ring and makes only the reject bits.
  * A triangle of ring vertices goes to the GPU as three indices. The GPU transforms, clips and culls. The CPU path stays for the rare cases and reads the ring copy
- * (gv_xf makes vert_p, vert_st and vert_c on demand). It replaces gpuvtx (PO3b) when both are on. */
+ * (gv_xf makes vert_p on demand). It replaces gpuvtx (PO3b) when both are on. */
 u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
-u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. */
+u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = the ring copy's S, T and colour read (gv_xf, GM-3). 3 for every vertex made. */
 unsigned seam_obj, seam_clip; /* SEAM: CPU path triangles by position route, `seamstat` logs them */
 unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n;
 unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
@@ -178,87 +178,13 @@ void sync_legacy(void) {
 NdLight lt[9];
 unsigned lt_n;
 s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
-float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
-int tg_ok;
-float tg_s, tg_t; /* T01: texgen result of the last vert_color call */
-unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex is loaded, as the RSP does */
 
 /* L01: RSP lighting. The normal goes through the model view matrix, then colour = ambient + sum(light colour * max(0, normal . direction)). Alpha stays the vertex alpha.
  * Debug switch nolight keeps the old fixed light for an A/B. */
 int pm_nolight = -1; /* F11-10: -1 = read the switch at first use, the Options row sets 0 or 1 */
-unsigned lit_color(const Vtx* v, const float m[4][4], int texgen) {
-    tg_ok = 0;
-    {
-        float nx = pm_f127[(unsigned char)v->v.cn[0]];
-        float ny = pm_f127[(unsigned char)v->v.cn[1]];
-        float nz = pm_f127[(unsigned char)v->v.cn[2]];
-        if (pm_nolight < 0) pm_nolight = pm_debug_has("nolight");
-        if (pm_nolight) {
-            float d = nx * 0.25f + ny * 0.85f + nz * 0.45f;
-            if (d < 0.f) d = 0.f;
-            if (d > 1.f) d = 1.f;
-            unsigned c = (unsigned)((0.35f + 0.65f * d) * 255.f);
-            return (c << 24) | (c << 16) | (c << 8) | 255u;
-        }
-        float tx = nx * m[0][0] + ny * m[1][0] + nz * m[2][0];
-        float ty = nx * m[0][1] + ny * m[1][1] + nz * m[2][1];
-        float tz = nx * m[0][2] + ny * m[1][2] + nz * m[2][2];
-        float l2 = tx * tx + ty * ty + tz * tz;
-        if (l2 > 0.f) { float k = 1.f / sqrtf(l2); tx *= k; ty *= k; tz *= k; }
-        if (texgen) { /* T01: F3DEX2 texgen is in the lighting path. Non-linear: (dot + 1) / 4 * scale. G_TEXTURE_GEN_LINEAR has no user in src */
-            float dx = (tx * lk[0][0] + ty * lk[0][1] + tz * lk[0][2]) / 127.f;
-            float dy = (tx * lk[1][0] + ty * lk[1][1] + tz * lk[1][2]) / 127.f;
-            tg_s = (dx + 1.f) / 4.f * (float)nd_ws.tex_ss;
-            tg_t = (dy + 1.f) / 4.f * (float)nd_ws.tex_ts;
-            tg_ok = 1;
-        }
-        float r = lt[lt_n].col[0], g = lt[lt_n].col[1], b = lt[lt_n].col[2];
-        for (unsigned i = 0; i < lt_n; i++) {
-            float d = (tx * lt[i].dir[0] + ty * lt[i].dir[1] + tz * lt[i].dir[2]) / 127.f;
-            if (d <= 0.f) continue;
-            r += lt[i].col[0] * d; g += lt[i].col[1] * d; b += lt[i].col[2] * d;
-        }
-        if (r > 255.f) r = 255.f;
-        if (g > 255.f) g = 255.f;
-        if (b > 255.f) b = 255.f;
-        return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)v->v.cn[3];
-    }
-}
-static unsigned vert_color(const Vtx* v, const float m[4][4]) {
-    tg_ok = 0;
-    if (nd_ws.geom & G_LIGHTING) return lit_color(v, m, (nd_ws.geom & G_TEXTURE_GEN) != 0);
-    return ((unsigned)v->v.cn[0] << 24) | ((unsigned)v->v.cn[1] << 16) |
-           ((unsigned)v->v.cn[2] << 8) | (unsigned)v->v.cn[3];
-}
-
-static void vert_uv(const float* tc, float* u, float* vcoord) {
-    int tw = 1, th = 1;
-    pm_tex_size(&tw, &th);
-    if (tw < 1) tw = 1;
-    if (th < 1) th = 1;
-    /* SetTileSize's origin is the start of the uploaded window. Absolute
-     * vertex UVs have to be moved into that window, same as a texrect. */
-    /* V12: the tile shift scales the coordinate before the tile origin is subtracted. */
-    unsigned st = nd_ws.use_t1 ? 1 : 0;
-    float ms = shift_mul(nd_ws.tst1.tile_shift[st][0]);
-    float mt = shift_mul(nd_ws.tst1.tile_shift[st][1]);
-    *u = (tc[0] / 32.f * ms - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
-    *vcoord = (tc[1] / 32.f * mt - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
-}
 
 
-static unsigned pack_color(const ClipV* v) {
-    int r = (int)v->r, g = (int)v->g, b = (int)v->b, a = (int)v->a;
-    if (r < 0) r = 0;
-    if (g < 0) g = 0;
-    if (b < 0) b = 0;
-    if (a < 0) a = 0;
-    if (r > 255) r = 255;
-    if (g > 255) g = 255;
-    if (b > 255) b = 255;
-    if (a > 255) a = 255;
-    return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)a;
-}
+
 
 const float ident_m[4][4] = {
     { 1.f, 0.f, 0.f, 0.f },
@@ -267,18 +193,6 @@ const float ident_m[4][4] = {
     { 0.f, 0.f, 0.f, 1.f },
 };
 
-/* The RSP multiplies when the vertex is loaded. Later matrices do not move it. */
-static void xform_vtx(const float* p, const float* st, unsigned c, ClipV* o) {
-    o->x = p[0];
-    o->y = p[1];
-    o->z = p[2];
-    o->w = p[3];
-    vert_uv(st, &o->u, &o->v);
-    o->r = (float)((c >> 24) & 255u);
-    o->g = (float)((c >> 16) & 255u);
-    o->b = (float)((c >> 8) & 255u);
-    o->a = (float)(c & 255u);
-}
 
 /* Cut only corners that passed behind the eye. A corner that is merely off the
  * side of the screen keeps its projected position, so a pan cannot swap the
@@ -592,23 +506,6 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
 
 
 
-void gbi_vtx_cpu1(const Vtx* s, unsigned k) {
-vert_gvf[k] = 3;
-vert_st[k][0] = (float)s->v.tc[0] * (float)nd_ws.tex_ss / 65536.f; /* T02: the RSP scales S and T */
-vert_st[k][1] = (float)s->v.tc[1] * (float)nd_ws.tex_ts / 65536.f;
-vert_c[k] = vert_color(s, nd_mv[nd_mv_sp]);
-if (tg_ok) { vert_st[k][0] = tg_s; vert_st[k][1] = tg_t; }
-{   /* PO2: the same products as the old per corner code, once per vertex */
-    const float(*m)[4] = combined;
-    float x = (float)s->v.ob[0], y = (float)s->v.ob[1], z = (float)s->v.ob[2];
-    vert_p[k][0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
-    vert_p[k][1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
-    vert_p[k][2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
-    vert_p[k][3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-    vert_cb[k] = (unsigned char)clip_bits4(vert_p[k]);
-    st_vx++;
-}
-}
 
 
 
