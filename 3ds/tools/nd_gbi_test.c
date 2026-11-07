@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ultra64.h"
-#include "nd_gbi.h"
+#include "nd.h"
 Mtx seq_mtx;
 Vp seq_vp;
 unsigned char seq_img[8192];

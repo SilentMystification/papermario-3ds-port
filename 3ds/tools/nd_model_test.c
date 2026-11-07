@@ -6,6 +6,7 @@
 #include "nd_ops.h"
 #include "PR/mbi.h"
 #include "PR/gbi.h"
+int pm_debug_has(const char* name) { (void)name; return 0; } /* the switches are off in the host test (nd_model.c PM5) */
 
 int pm_interp_repl;
 const float (*pm_interp_find(const void* m))[4] { (void)m; return 0; }

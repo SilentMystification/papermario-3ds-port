@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "nd.h"
+int pm_debug_has(const char* name) { (void)name; return 0; } /* the switches are off in the host test (nd_model.c PM5) */
 
 /* nd_mtx.c links the interpolation hooks; the gv test does not use them */
 int pm_interp_repl;

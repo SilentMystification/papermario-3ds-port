@@ -1,5 +1,5 @@
 /* nd_gbi_seq.inc: one sequence of every macro the S2 files use (main_loop.c, cam_main.c, background_gfx.c, background.c), included by nd_gbi_test.c
- * (with nd_gbi.h) and nd_gbi_ref.c (plain gbi.h). Writes the list at gp, returns the end. */
+ * (the walker form) and nd_gbi_ref.c (plain gbi.h). Writes the list at gp, returns the end. */
 extern Mtx seq_mtx;
 extern Vp seq_vp;
 extern unsigned char seq_img[8192];

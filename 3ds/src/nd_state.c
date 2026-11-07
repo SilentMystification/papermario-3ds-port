@@ -1,6 +1,6 @@
 /* nd_state.c: the native state (NdWs, nd_ws). The walker ops in pm_gbi.c read and write nd_ws at walk time: it is the only state.
  * nd_words is the reference decode of F3DEX2 word pairs into nd_ws for the host tests (nd_gbi_test, nd_rec_test). The bridge
- * leaves (nd_gbi.h) no longer decode at macro time, so nd_words is never called during the walk.
+ * the list words run in the walker only (no macro-time decode), so nd_words is never called during the walk.
  * Pure C: the host test builds it. */
 #include <stdint.h>
 #include <string.h>
@@ -11,11 +11,6 @@ ND_HOTD NdWs nd_ws = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .cimg = 
 
 #define MW_SEGMENT 0x06
 #define MV_VIEWPORT 8
-
-/* CORE-2c: the record-mode leaf (nd_rec.h). A one-slot leaf's record is its word (the walker case is the setter), so the slots take the words. */
-void nd_rec_leaf(void* at, const void* w, unsigned nslots) {
-    memcpy(at, w, (size_t)nslots * 8u);
-}
 
 void nd_words(const unsigned* w, unsigned n) {
     NdWs* s = &nd_ws;
