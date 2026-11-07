@@ -415,6 +415,8 @@ set(PM_NO_SHORT_ENUM_SRC ${PORT_SRC} ${GAME_SRC})
 list(REMOVE_DUPLICATES PM_NO_SHORT_ENUM_SRC)
 list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_wdog.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dspaud.c)
 set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
+# S103: the census (nd_cen.c) is cold code outside the hot span: size over speed.
+set_property(SOURCE src/nd_cen.c APPEND PROPERTY COMPILE_OPTIONS -Os)
 
 add_executable(pm_3ds
     ${PORT_SRC}
