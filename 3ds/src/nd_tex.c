@@ -11,6 +11,7 @@
 #include "pm_gpu.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+void pm_log_prof_line(const char* fmt, ...); /* MDL-5e debug log of the texture table misses */
 #include "variables.h"
 
 /* the counters of PG0 (pm_gbi.c gp_note) and the pipeline flush by its line (pm_gbi.c macros) */
@@ -96,10 +97,10 @@ int nd_tex_get(const NdTexDesc* in) {
         h = (h + 1u) & (ND_TEX_IDX - 1u);
     }
     /* ponytail: table full returns -1, the caller falls back to the walker. Add eviction when S3 loads more than 128 textures in a map. */
-    if (tex_n >= ND_TEX_N) return -1;
+    if (tex_n >= ND_TEX_N) { static unsigned tfl; if (tfl++ < 12u) pm_log_prof_line("ndtex full n %u fmt %u siz %u w %u h %u img %08x pal %08x", tex_n, d.fmt, d.siz, d.w, d.h, (unsigned)(uintptr_t)d.img, (unsigned)(uintptr_t)d.pal); return -1; } /* MDL-5e debug: the table-full miss (why 13) */
     /* miss: load through the texture cache, then read the unit words of the slot it bound */
     pm_tex_set_wrap(d.cms, d.cmt, d.masks, d.maskt);
-    if (!pm_tex_load(d.img, d.fmt, d.siz, d.w, d.h, d.pal, d.pal_n, d.stride)) return -1;
+    if (!pm_tex_load(d.img, d.fmt, d.siz, d.w, d.h, d.pal, d.pal_n, d.stride)) { static unsigned tld; if (tld++ < 12u) pm_log_prof_line("ndtex load fail n %u fmt %u siz %u w %u h %u", tex_n, d.fmt, d.siz, d.w, d.h); return -1; } /* MDL-5e debug */
     int a, b;
     pm_tex_cur_slots(&a, &b);
     NdTexEnt* e = &tex_ent[tex_n];

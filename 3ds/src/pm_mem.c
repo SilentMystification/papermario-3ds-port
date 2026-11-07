@@ -203,6 +203,7 @@ void pm_vram_unreg(const void* p, unsigned bytes) {
 }
 static unsigned bank_free_kb(int b) { return VRAM_BANK_KB - (vram_used_b[b] >> 10); }
 unsigned pm_vram_bank_free_kb(int b) { return bank_free_kb(b); } /* VRAM2: the texture cache sizes itself from this at boot (pm_tex.c slab_init) */
+void nd_tex_reset(void); /* MDL-5e: nd_tex.c, the descriptor table of the native textures */
 void pm_mem_scene_reset(void) { scene_min_kb = 2u * VRAM_BANK_KB - vram_used_kb(); scene_peak_kb = vram_used_kb(); }
 
 /* Row 0 is the pool, row 1 is VRAM. BOTLAYOUT: the VRAM bank row (bank used and free, evictions per second) is no longer drawn. */
@@ -229,7 +230,7 @@ void pm_mem_hud(char out[2][40]) {
 }
 
 void pm_mem_log(const char* tag) {
-    if (!strcmp(tag, "map")) pm_mem_scene_reset(); /* HUDVRAM: the scene minimum and peak start at each map load */
+    if (!strcmp(tag, "map")) { pm_mem_scene_reset(); nd_tex_reset(); } /* HUDVRAM: the scene minimum and peak start at each map load. MDL-5e: the texture descriptor table (nd_tex.c, 128 entries) starts empty at each map, so a tour never fills it (why 13) */
     if (!pm_log_file()) return; /* logging off: no stack walk, no stats formatting */
     if (!strcmp(tag, "map") && pm_debug_has("texmax")) {
         unsigned wmax, pk = pm_tex_map_peak_take(&wmax);

@@ -9629,7 +9629,7 @@
       "status": "unverified",
       "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4: one ndm line per 300 frames (native draws and fallback count).",
       "proves": "MDL-5e census: ndm fb 0 on the tour10 list (every model record drawn natively).",
-      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 phase phasecsv profdisk=1 det fixedseed loglevel=debug",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 phase phasecsv profdisk=1 det fixedseed loglevel=debug mdl0",
       "extra": ["-NoWarm"],
       "until": "tour: done",
       "cap": 90,
