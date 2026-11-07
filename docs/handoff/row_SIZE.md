@@ -33,5 +33,12 @@ SIZE-1 (MEM-A agent, now): item 1, effect graphics from the resident ROM. Then i
 SIZE-2 (with WK-4, later): item 2 debug code deletion.
 SIZE-3 (later, correctness): item 4, the -Os adjacency bug.
 
+## Oracle decision SIZE-1 shots (2026-11-07)
+Cause: LOG5 a9f558df33 turns logging off in prof mode. pm_log_prof_row(1) sets lv_live = lv_disk = lv_con = -1 (pm_log.c ~520), so the pm_log_d "shot N frame F" line of dump_shot (pm_gpu.c ~2065) is dropped. run_azahar.ps1 uses that line as the until-line and to copy the files from the slot SD, so no shots are collected. dump_shot itself still writes the files (confirm: list the slot sdmc/3ds/PaperMario/shots for 0000-0005 with this run's time).
+Design: test-event lines are a harness contract and bypass the logging gate. Add pm_log_evt(fmt, ...) in pm_log.c: written to the disk and live sinks in every mode (logging on, off, prof), still obeying the io gate. Use it for the shot line and every line a scenario uses as an until-line (grep the until patterns in azt_scenarios.json for producers: shot, ndref ... done, encwarp window end, and the like). Picture scenarios keep prof=4.
+Files: pm_log.c, pm_gpu.c dump_shot, the until-line producers, one note in docs/handoff/test_catalog.md.
+Gate: spot_mac01_pic with prof=4 collects 6 shots and its log shows the shot lines. log5 benches still pass (pm_log_d stays off in prof mode).
+Order: SIZE-0 (this fix) first, on its own branch logevt from nds1 (worktree build3ds/wt/logevt); commit; SendMessage main "LOGEVT ready <hash>". Then rebase size1 on logevt and run the SIZE-1 pixel gates (mac_01, nok11_splash, sbk56_superblock, iwa_10, battle_start, intro_native byte-equal vs logevt base), the romdrop counter, and fix 3ds/tools/gen_effect_ld.py so it does not re-add the 109 gfx lines.
+
 ## Rules
 Own worktree from nds1 (branch size1). Code first (CLAUDE.md rule 5). No attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. Report the 3dsx size after each commit. The orchestrator pushes to the console when the file is at most 12.8 MB. Delete this file when SIZE-1..3 are done.
