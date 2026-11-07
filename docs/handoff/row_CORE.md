@@ -18,14 +18,10 @@ CORE-1 RECORD MODE, CORE-2 NdRec KINDS, CORE-3 RECT/FILL (after RECT-1 lands: gr
 3. CORE-3: background.c, background_gfx.c opted in; walker ops of camera_render and the 2 background lists 0 (WCEN census); mac_00 sky right by eye.
 4. CORE-4: walking_dust.c opted in; its walker ops 0; dust right by eye at mac_01.
 
-## State (2026-11-06, after CORE agent 1)
-CORE-1 done: 1f5e0db04, host test pass, spot_mac01_pic byte-equal (dc7f1c438 vs 1f5e0db04). bench.py build-at fixed: 813a8bfed.
-Worktree build3ds/wt/core, branch core, at 813a8bfed, assets/us and ver/us/build copied, map_restore_table.c copied (never commit it). Work ONLY in this worktree. Build there (PM_LANE=core), azt -Build <worktree 3dsx path>. Rebase on nds1 before each gate.
-CORE-2a split into small commits (each: build, spot_mac01_pic byte-equal against the previous commit, then commit):
-  2a-1: struct NdWs in nd.h, `NdWs nd_ws` in nd_state.c, and in pm_gbi.c `#define omode_h (nd_ws.omode_h)` style aliases for omode_h, omode_l, cimg, cimg_siz, zimg, geom, prim, env, fog, blend, fill (delete the old globals). Small diff.
-  2a-2: same for td[0..7] and the tile state (tst1 and the other tile fields), segments, combine words.
-  2a-3: delete nd_st; nd_words writes NdWs only for nd_dlc compile callers (not during the walk); replace the aliases by `ws->x` only if the diff stays under 150 lines, else keep the aliases.
-Then 2b (setters, one op group per commit) and 2c (record word) as the oracle plan says. A big file or a slow build is not a reason to hand back.
+## State (2026-11-06, after CORE agent 2)
+CORE-1 done (1f5e0db04). Branch core (worktree build3ds/wt/core): 2a-1 d5e07bd11 and 2a-2 643d7b501, both byte-equal at spot_mac01_pic (nd_ws.X renames; #define aliases collide with struct members). Not merged into nds1 yet (shared pm_gbi.c holds the super block agent's debug hunks; the orchestrator merges when that agent is done). Rebase on nds1 before each gate.
+Decision for 2a-3 (orchestrator, 2026-11-06): route (a). Delete nd_st. Allowed outside the Touch list for this row only: the nd_st readers in 3ds/src/pm_gpu.c (~3016-3062, ~3539-3542: om_h, om_l, om_kh, om_kl, geom, prim, prim_lod) read nd_ws instead; host tests 3ds/tools/nd_gbi_test.c and nd_rec_test.c compare against nd_ws; the nd_core.c ndst log reads nd_ws. Add om_kh, om_kl (B8 known bits) and prim_lod to NdWs and set them in the walker SETOTHERMODE / RDPSETOTHERMODE / SETPRIMCOLOR paths. Gate: spot_mac01_pic byte-equal to 2a-2; if not equal, name the field whose walk-time value differs from the old macro-time nd_st value and fix that setter (2 tries), then continue.
+Then 2b and 2c per the oracle plan. The 150-line guideline does not apply to pure renames.
 
 ## Oracle plan CORE-2 (2026-11-06, Opus; replaces CORE-2 to CORE-4 of plan_s10_path.md Stream CORE)
 The CORE-1 leaves decode at macro time, and that is the root of (a) and (b). State decoded at macro time is not the state at walk time: replays walk the same memory again, the walker has its own globals, and the bg and key lists run later. So a record-mode leaf must encode a record into its own slots, and the state change must happen when the record runs, through the one owner of the state.
