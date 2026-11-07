@@ -179,7 +179,7 @@ void gv_epoch_enter(void) {
         ensure_tile(nd_ws.use_t1 ? 1 : 0);
         dual_bind();
         sync_render();
-        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). A TEXEL1 that is an off-screen slot needs the fold of the window (t1_fold) per draw: the CPU path. */
+        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw, which a ring triangle cannot carry: it is refused here and dropped (tri_drop, tridrop tex1). DEL-N11: the aux clause is needed (dropping it changed the picture, see docs/handoff/row_FB.md). */
         if (plan_active && cur_plan.uses_tex1 && (!nd_ws.td[0].valid || !nd_ws.td[1].valid || pm_tex_aux_off_idx() >= 0)) ep_why = GVR_TEX1;
     }
     ep_epoch = gv_epoch;
@@ -237,6 +237,14 @@ int gv_tri(const int* idx) {
 }
 
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
+unsigned tri_drop[2]; /* DEL: triangles dropped at the draw_tri drop site, printed as tridrop in rect_log */
+/* DEL: one tridrop line per rect_log: triangles dropped since the last line (tri_drop, reset here) and the gv_fb reasons as deltas (gv_fb is not reset: other readers). */
+void nd_tridrop_log(unsigned f) {
+    static unsigned gvfb_snap[GVR_N];
+    pm_log_d("tridrop f%u none %u scr %u tss %u lit %u fog %u zmark %u tex1 %u refuse %u", f, tri_drop[0], gv_fb[GVR_SCR] - gvfb_snap[GVR_SCR], gv_fb[GVR_TSS] - gvfb_snap[GVR_TSS], gv_fb[GVR_LIT] - gvfb_snap[GVR_LIT], gv_fb[GVR_FOG] - gvfb_snap[GVR_FOG], gv_fb[GVR_ZMARK] - gvfb_snap[GVR_ZMARK], gv_fb[GVR_TEX1] - gvfb_snap[GVR_TEX1], gv_fb[GVR_REFUSE] - gvfb_snap[GVR_REFUSE]);
+    memcpy(gvfb_snap, gv_fb, sizeof gvfb_snap);
+    tri_drop[0] = tri_drop[1] = 0;
+}
 int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 void pm_gpu_cen_mark(unsigned bit); /* CEN-1a (pm_gpu.c) */
 void draw_tri(unsigned w);
@@ -266,7 +274,9 @@ void draw_tri(unsigned w) {
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
     }
-    n_drop++; /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped (census 0 at the DEL row) */
+    /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and gv_tri refused (gv_fb names why) */
+    tri_drop[(vert_ring[i0] == GV_NONE || vert_ring[i1] == GV_NONE || vert_ring[i2] == GV_NONE) ? 0 : 1]++;
+    n_drop++;
 }
 
 void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */

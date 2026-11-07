@@ -654,6 +654,7 @@ static void gp2_clip_init(void) {
 static int rect_open, rect_ec, rect_zb, rect_tex; /* C7: rect_tex is the tile-0 cache slot for an open DR1 batch */
 static int rect_raw; /* RECT-1a: the open rectangle batch is a raw Vtx batch (pm_gpu_fill_rect) and closes through nd_raw_native */
 static void rect_log(unsigned f);
+void nd_tridrop_log(unsigned f); /* DEL (nd_geom.c) */
 static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compares this instead of the plan */
 static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
 void pm_tex_cur_slots(int* a, int* b);
@@ -3994,7 +3995,9 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     rect_c[2]++;
     if ((unsigned)gring_n > rect_c[5]) rect_c[5] = (unsigned)gring_n;
 }
-static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
+static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c);
+    nd_tridrop_log(f);
+}
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
