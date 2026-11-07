@@ -2685,6 +2685,57 @@
       "gates": []
     },
     {
+      "name": "fb_sky_mac00_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: mac_00 sky, cold det run, shots 200 to 205. Byte-equal between the ring build and nds1 (the default ring).",
+      "scenario": "fb_sky_mac00_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_ring_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: mac_00 sky, cold det run, ringsmall=64 (ring_wrap runs). rr_why 5 0, shots 200 to 205 byte-equal to fb_sky_mac00_det_pic.",
+      "scenario": "fb_sky_mac00_ring_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_ring_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: nok_11 splash, cold det run, ringsmall=64 (ring_wrap runs, grab quad native). rr_why 5 0, shots and dumps byte-equal to nok11_det.",
+      "scenario": "nok11_det_ring",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
       "name": "fb_pause_spin_grab_pic",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -141,6 +141,17 @@ static unsigned char* gring; /* GRING_VTX x 16 bytes, linear */
 static unsigned short* gidx; /* GRING_IDX, linear */
 static unsigned gstat_n; /* DLC2: static vertices in use */
 static unsigned gring_n, gidx_n, gi_start, gni; /* ring fill, index fill, first index of the open batch, indices in the open batch */
+/* FB-1 ring_wrap: the raw ring is a chunk list. Chunk 0 is the boot allocation; its tail is the static area (GRING_VTX and up). ring_cur is the chunk the
+ * open batch and the fills use: gring and gidx point to it. stamp = the frame that used the chunk; a chunk with stamp < ring_done is finished on the GPU
+ * (ring_done = the frame of the last begin that waited with SYNCDRAW). A batch has one vertex base: gi_kind 0 is the ring chunk in use (walker, rect, spr),
+ * gi_kind 1 the static area of chunk 0 (grange). Model draws use chunk 0 too. A batch never mixes the kinds off chunk 0. */
+enum { RING_CHUNK_MAX = 8 };
+typedef struct { unsigned char* vtx; unsigned short* idx; unsigned stamp; int used; } RingChunk;
+static RingChunk rchunk[RING_CHUNK_MAX];
+static int rchunk_n = 1, ring_cur;
+static unsigned ring_fr, ring_done;
+static const void* buf_bp; /* FB-1: the vertex base of the buffer info while buf_cur is 2 */
+static int gi_kind; /* FB-1: kind of the open batch (see above) */
 static float g_uvso[4], g_vp[4], g_cmul[4], g_cadd[4], g_zmix[2];
 /* PRIMZFIX repro, switch zround (debug only): zmix.y rounded to 2^-16 steps, the float24 z step of the console (diag_primz.md). The shader multiplies this value. */
 static float zmix_y_dbg(float y) { static int on = -1; if (on < 0) on = pm_debug_has("zround"); return on ? (float)(int)(y * 65536.f + 0.5f) * (1.f / 65536.f) : y; }
@@ -547,7 +558,7 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     for (unsigned k = 0; k < np; k++) { ndref_put(&pal_g[k], 4); ndref_put(&pcomp[pal_g[k]], sizeof(C3D_Mtx)); }
     unsigned nv = graw ? gni : (unsigned)nverts; /* resolved vertices in draw order: 16-byte ring values or 40-byte CPU Vert */
     ndref_put(&nv, 4);
-    if (graw) for (unsigned i = 0; i < gni; i++) ndref_put(gring + 16u * gidx[gi_start + i], 16);
+    if (graw) for (unsigned i = 0; i < gni; i++) ndref_put((gi_kind == 1 ? rchunk[0].vtx : gring) + 16u * gidx[gi_start + i], 16);
     else ndref_put(verts, (unsigned)nverts * sizeof(Vert));
     ndref_patch(at);
     if (np) { /* S1-4 oracle: kind 5, the inputs of the palette product pcomp = post x game of this draw: post (gv_post), then per entry the game matrix (u32 gm, 16 floats pal_tab[gm]) */
@@ -1168,7 +1179,10 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; }
         nd_shadow_reset(&ndn_sh); ndn_mode = 1;
     } else if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
-    if (buf_cur != 2) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, gring, 16, 3, 0x210); buf_cur = 2; }
+    { /* FB-1: a model draw indexes the static area (chunk 0), a walker draw the ring chunk in use */
+        const void* bb = (ndt_mdl || gi_kind == 1) ? (const void*)rchunk[0].vtx : (const void*)gring;
+        if (buf_cur != 2 || buf_bp != bb) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, bb, 16, 3, 0x210); buf_cur = 2; buf_bp = bb; }
+    }
     if (off_active) scissor_off(); else stage_scissor(); /* OFF-1: an off-screen target has its own scissor (citro3d state, not in the template words) */
     sh_user_clip(1);
     if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
@@ -1404,7 +1418,7 @@ static int nd_raw_native(void) {
         if (r_blend && !((dbg_omode_l >> 2) & 1u)) { /* POND-S: one line per surface batch (blend on, not G_ZS_PRIM): texel alpha share and vertex alpha range of the batch */
             extern int pm_tex_alpha0_permille(int unit);
             unsigned vmin = 255u, vmax = 0u;
-            for (unsigned i = 0; gring && gidx && i < gni; i++) { unsigned a = gring[16u * gidx[gi_start + i] + 15u]; if (a < vmin) vmin = a; if (a > vmax) vmax = a; }
+            for (unsigned i = 0; gring && gidx && i < gni; i++) { unsigned a = (gi_kind == 1 ? rchunk[0].vtx : gring)[16u * gidx[gi_start + i] + 15u]; if (a < vmin) vmin = a; if (a > vmax) vmax = a; }
             pm_log("wsurf f%u a0 %d a1 %d vamin %u vamax %u tris %u tex0 %08x tex1 %08x", pm_frame_count(), pm_tex_alpha0_permille(0), pm_tex_alpha0_permille(1), vmin, vmax, gni / 3u, (unsigned)u0.addr, (unsigned)u1.addr);
         }
     }
@@ -1639,12 +1653,13 @@ static void flush_draw(void) {
     /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
     if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
         PH_PUSH(PH_GDRAW);
-        if (buf_cur != 2) {
+        const void* bb = gi_kind == 1 ? (const void*)rchunk[0].vtx : (const void*)gring;
+        if (buf_cur != 2 || buf_bp != bb) {
             pm_dc_c[DC_BUF]++;
             C3D_BufInfo* gb = C3D_GetBufInfo();
             BufInfo_Init(gb);
-            BufInfo_Add(gb, gring, 16, 3, 0x210);
-            buf_cur = 2; PH_ADD(C_RAWCALL, 2);
+            BufInfo_Add(gb, bb, 16, 3, 0x210);
+            buf_cur = 2; buf_bp = bb; PH_ADD(C_RAWCALL, 2);
         }
         if (ndref_on) ndref_state(0, z);
         pm_gbi_draw_note(0); C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
@@ -1844,6 +1859,7 @@ void pm_gpu_init(void) {
     { /* GV1: the raw Vtx path: a ring of the Vtx records of the frame and a u16 index ring */
         gring = (unsigned char*)linearAlloc((GRING_VTX + GSTAT_VTX) * 16);
         gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
+        rchunk[0].vtx = gring; rchunk[0].idx = gidx; rchunk[0].used = 1;
         gpu_vtx_on = gring && gidx;
         if (gpu_vtx_on) { /* GV1c: the palette program */
             shaderProgramInit(&prog4);
@@ -2444,6 +2460,80 @@ void pm_gx_drain(void) {
     gxCmdQueueStop(q);
     gxCmdQueueClear(q);
 }
+/* FB-1 ring_wrap: the raw vertex and index ring has no room for the next rectangle or grab quad. The logical limits are ring_cap_v and ring_cap_i (GRING_VTX and
+ * GRING_IDX unless ringsmall=<n> is set: n vertices and n * 3 / 2 indices, so the wrap runs often). The walker paths keep the real limits. A wrap closes the open
+ * batch, submits the queued part (split_frame) and moves the ring to a chunk the GPU has finished, else to a new one. No wait for the GPU happens here: the
+ * mid-frame gspWaitForP3D hung on a list that citro3d had not started (FB-1 oracle decision). */
+static unsigned ring_cap_v = GRING_VTX, ring_cap_i = GRING_IDX, ring_wraps, ring_cap_done;
+static __attribute__((cold, noinline)) void ring_cap_init(void) {
+    char v[16];
+    ring_cap_done = 1;
+    if (pm_debug_value("ringsmall", v, sizeof v)) {
+        const unsigned n = (unsigned)atoi(v);
+        if (n >= 8u && n <= GRING_VTX) { ring_cap_v = n; ring_cap_i = n * 3u / 2u; }
+    }
+}
+/* the chunk c becomes the ring. The caller has flushed the open batch. */
+static void ring_set(int c) {
+    ring_cur = c;
+    gring = rchunk[c].vtx; gidx = rchunk[c].idx;
+    gring_n = gidx_n = gring_fl = gidx_fl = gi_start = gni = 0;
+    buf_cur = 0;
+}
+/* a frame begins on chunk 0 with empty fills */
+static void ring_frame_begin(void) {
+    ring_fr++;
+    rchunk[0].stamp = ring_fr;
+    ring_set(0);
+}
+/* FB-1: the open batch takes kind k. A batch of the other kind is closed first, off chunk 0 only (on chunk 0 both kinds share the vertex base). */
+static void gi_kind_set(int k) {
+    if (gni == 0) gi_kind = k;
+    else if (ring_cur && gi_kind != k) { flush(); gi_kind = k; }
+}
+/* a chunk other than the one in use: finished on the GPU (stamp < ring_done), or never used. A new chunk is linearAlloc'd (counted, logged). -1 when none. */
+static __attribute__((cold, noinline)) int ring_pick(void) {
+    for (int c = 0; c < rchunk_n; c++) {
+        if (c == ring_cur || (rchunk[c].used && rchunk[c].stamp >= ring_done)) continue;
+        rchunk[c].used = 1; rchunk[c].stamp = ring_fr;
+        return c;
+    }
+    if (rchunk_n >= RING_CHUNK_MAX) return -1;
+    unsigned char* v = (unsigned char*)linearAlloc(GRING_VTX * 16u);
+    unsigned short* x = (unsigned short*)linearAlloc(GRING_IDX * 2u);
+    if (!v || !x) {
+        if (v) linearFree(v);
+        if (x) linearFree(x);
+        pm_log_e("ring: chunk %d failed (linear)", rchunk_n);
+        return -1;
+    }
+    const int c = rchunk_n++;
+    rchunk[c].vtx = v; rchunk[c].idx = x; rchunk[c].used = 1; rchunk[c].stamp = ring_fr;
+    pm_log_w("ring: chunk %d allocated, %u chunks in use (%u KB each)", c, (unsigned)rchunk_n, (unsigned)((GRING_VTX * 16u + GRING_IDX * 2u) >> 10));
+    return c;
+}
+static __attribute__((cold, noinline)) int ring_wrap(void) {
+    const int was_off = off_active, prev = off_cur;
+    flush();
+    if (was_off) pm_gpu_off_end(); /* the split runs on the main target, as grab_impl does */
+    pm_gx_room();
+    split_frame();
+    const int c = ring_pick();
+    if (c >= 0) {
+        ring_set(c);
+        ring_wraps++;
+        pm_log_d("ringwrap f%u wraps %u chunk %d", pm_frame_count(), ring_wraps, c);
+    }
+    if (was_off) pm_gpu_off_begin(offs[prev].base, offs[prev].w == 64 ? 64 : 320, offs[prev].siz);
+    return c >= 0;
+}
+/* FB-1: 1 when nv vertices and ni indices fit the ring, after a ring_wrap when they do not. 0 when they cannot fit an empty chunk or no chunk is free. */
+static int ring_need(unsigned nv, unsigned ni) {
+    if (!ring_cap_done) ring_cap_init();
+    if (gring_n + nv <= ring_cap_v && gidx_n + ni <= ring_cap_i) return 1;
+    if (nv > ring_cap_v || ni > ring_cap_i) return 0;
+    return ring_wrap();
+}
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
 static void grab_queue_copy(void) {
     const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
@@ -2504,7 +2594,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
     const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
     if (!gpu_ok || off_fail || y1 <= y0) return 0;
-    if (!(gpu_vtx_on && gv4_on) || gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) return 0; /* FB-1 GRAB: the copy quad is native (no room: the caller reads the CPU) */
+    if (!(gpu_vtx_on && gv4_on)) return 0;
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
@@ -2513,6 +2603,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     }
     flush();
     if (prev_frame && (!prev_pre || grab_n)) return 0;
+    if (!ring_need(4, 6)) return 0; /* FB-1 GRAB: the copy quad is native; a full ring wraps first */
     if (!grab_tex_init()) return 0;
     if (!pm_gpu_off_begin(cfb, 320, 2)) return 0; /* no free slot: the load reads the frame buffer memory as before */
     pm_gpu_off_end(); /* the slot exists (cleared on first use); the copy goes before the quad */
@@ -2616,7 +2707,7 @@ void pm_gpu_begin_wait(void) {
     draws_frame = 0;
     drew = 0;
     nverts = 0;
-    gni = 0; gidx_n = 0; gi_start = 0; gring_n = 0; pal_n = 0; post_gen++; /* PO3b, GV1c */
+    gni = 0; pal_n = 0; post_gen++; ring_frame_begin(); /* PO3b, GV1c; FB-1: chunk 0 with empty fills */
     verts = vert_base;
     v_fl = vert_base; gring_fl = gidx_fl = 0; kick_done = 0; /* GV0, KICK1 */
     sci_x0 = 0;
@@ -2633,6 +2724,7 @@ void pm_gpu_begin_wait(void) {
     unsigned fb_flags = (pm_interp_on > 0 && !pm_wd_wake_frames) ? C3D_FRAME_SYNCDRAW : 0;
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
+    if (fb_flags) ring_done = ring_fr; /* FB-1: the begin waited for the GPU: every chunk used before this frame is finished */
     if (gb_on) { gb_sum += pm_ticks() - gb_sub; gb_n++; gb_on = 0; } /* S0-6: the sync of the previous frame returned */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     FS_MARK(FS_REST);
     PH_POP();
@@ -2774,6 +2866,7 @@ static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned 
  * vertices must already carry a flag of the palette of this batch. */
 int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2) {
     if (gni == 0 || gidx_n + 3 > GRING_IDX || !g_pal) return 0;
+    if (ring_cur && gi_kind != 0) return 0; /* FB-1: a static batch on chunk k takes no ring triangles */
     const unsigned r3[3] = { i0, i1, i2 }, g3[3] = { g0, g1, g2 };
     for (int i = 0; i < 3; i++) {
         unsigned r = r3[i];
@@ -2903,6 +2996,7 @@ static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n)
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3], unsigned* mv) {
     if (!gv4_on || !gpu_ok) return 0;
+    gi_kind_set(0);
     const int use5 = fx != NULL;
     if (use5 && !gv5_on) return 0;
     unsigned mvm = 0; /* TRI-2: bit i: ro[i] is a copy with x moved (the caller keeps vert_ring) */
@@ -2997,10 +3091,10 @@ int pm_gpu_gstat_alloc(unsigned n, unsigned char** out) {
     if (!gpu_vtx_on || !gpu_ok || !gv4_on || gstat_n + n > GSTAT_VTX) return -1;
     unsigned first = GRING_VTX + gstat_n;
     gstat_n += n;
-    *out = gring + 16u * first;
+    *out = rchunk[0].vtx + 16u * first;
     return (int)first;
 }
-void pm_gpu_gstat_commit(unsigned first, unsigned n) { pm_fl_dc(gring + 16u * first, n * 16u); }
+void pm_gpu_gstat_commit(unsigned first, unsigned n) { pm_fl_dc(rchunk[0].vtx + 16u * first, n * 16u); }
 /* DS1: svc flush first; the GSP call only when the svc fails. */
 unsigned pm_fl_gsp_n;
 void pm_fl_dc(const void* p, unsigned n) {
@@ -3063,6 +3157,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     if (gidx_n + nidx > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
     if (nverts > 0) flush();
+    gi_kind_set(1); /* FB-1: static indices name chunk 0 vertices */
     /* C3: extend an open static batch across consecutive compiled lists (same PSO inputs and matrix slot). */
     if (grange_batch_open(gm, vp, uvso, cmul, cadd, zmix, ct, fx, use5)) {
         pal_tab = tab;
@@ -3773,7 +3868,8 @@ int pm_gpu_spr_submit(NdDraw* d, const void* quad, int tex) {
     rp_src_ = 3;
     static const unsigned char tri[6] = { 0, 2, 1, 0, 3, 2 };
     flush();
-    if (!gpu_vtx_on || !gpu_ok || gidx_n + 6 > GRING_IDX || gring_n + 4 > GRING_VTX) return 0;
+    gi_kind = 0;
+    if (!gpu_vtx_on || !gpu_ok || !ring_need(4, 6)) return 0; /* FB-1: a full ring wraps first */
     const int b = pm_gpu_gvtx_load(quad, 4);
     if (b < 0) return 0;
     for (unsigned i = 0; i < 4; i++) *(unsigned short*)(gring + 16u * ((unsigned)b + i) + 6) = 0;
@@ -3915,8 +4011,8 @@ static unsigned rect_c[6];
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle takes the CPU path: 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
     if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
-    if (gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) { rr_why[5]++; return 0; }
     if (PMDL("norectraw")) { rr_why[6]++; return 0; }
+    if (!ring_need(4, 6)) { rr_why[5]++; return 0; }
     return 1;
 }
 static void rect_raw_open(int ec, float fz, const float uvso[4]) {
@@ -3925,6 +4021,7 @@ static void rect_raw_open(int ec, float fz, const float uvso[4]) {
     if (rect_open && rect_raw && gni > 0 && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && fz == rect_pal_z && !memcmp(g_uvso, uvso, sizeof(g_uvso)) && !PMDL("rectnomerge")) { dr1_merged++; rect_c[3]++; rect_sig_check("merge"); return; }
     if (rect_open) dr1_breaks++;
     flush();
+    gi_kind = 0;
     draw_3d = 0;
     rect_ec = ec; rect_zb = rect_z; rect_tex = rtx; rect_open = 1; rect_raw = 1; rq_n = 0;
     if (fz != rect_pal_z) { /* the palette entry and the register caches hold the matrix of the old depth */
@@ -4075,7 +4172,7 @@ static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, floa
     if (nx == 1 && ny == 1) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
     const int W = ixb - ixa, H = iyb - iya;
     if (W == 0 || H == 0 || (W < 0 ? -W : W) < nx || (H < 0 ? -H : H) < ny) { rr_why[7]++; return 0; }
-    if (gring_n + 4 * nx * ny > GRING_VTX || gidx_n + 6 * nx * ny > GRING_IDX) { rr_why[5]++; return 0; } /* the pieces must fit the ring together */
+    if (!ring_need(4u * (unsigned)nx * (unsigned)ny, 6u * (unsigned)nx * (unsigned)ny)) { rr_why[5]++; return 0; } /* the pieces must fit the ring together */
     for (int j = 0; j < ny; j++) {
         const int ja = iya + H * j / ny, jb = iya + H * (j + 1) / ny;
         const float ta = t0 + (t1 - t0) * (float)(ja - iya) / (float)H, tb = t0 + (t1 - t0) * (float)(jb - iya) / (float)H;

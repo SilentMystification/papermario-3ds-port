@@ -9027,6 +9027,85 @@
       "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
     },
     {
+      "name": "fb_sky_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 at -135 0 85, cold det start: textured rects (sky and HUD), shots at frames 200 to 205 (the picture).",
+      "proves": "FB-1 ring gate reference: a cold det run of the default ring; two builds give byte-equal shots.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot at 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "FB-1 ring gate: cold det sky picture, default ring."
+    },
+    {
+      "name": "fb_sky_mac00_ring_det",
+      "status": "unverified",
+      "subject": "mac_00 at -135 0 85, cold det start with ringsmall=64: the raw ring wraps (ring_wrap, ringwrap lines) in the frames of the shot window.",
+      "proves": "FB-1 ring gate: rr_why 5 0 with wraps above 0, and the picture byte-equal to fb_sky_mac00_det.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det ringsmall=64",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot at 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "FB-1 ring gate: cold det sky picture with the small ring."
+    },
+    {
+      "name": "nok11_det_ring",
+      "status": "unverified",
+      "subject": "DET nok_11 splash run (as nok11_det) with ringsmall=64: the raw ring wraps before the splash shot at frame 412.",
+      "proves": "FB-1 ring gate: rr_why 5 0 and wrap count above 0 on a grab scene; shots byte-equal to nok11_det.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det ringsmall=64",
+      "extra": ["-NoWarm"],
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ],
+      "reason": "FB-1 ring gate: the splash picture with the small ring."
+    },
+    {
       "name": "mem_reenter",
       "status": "unverified",
       "subject": "Mario in hos_01, tour to mac_00 and back to hos_01 (a map entered twice). The second entry restores the .data block (2 changing symbols) and zeroes the .bss block of hos_01.",
