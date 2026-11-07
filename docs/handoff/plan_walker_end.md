@@ -17,7 +17,7 @@ Walker work = a walker GPU draw: wd in the WCEN3 census (cen_add in pm_gpu.c), a
 12. pause, file menu, title, text box, battle: wd not measured. CEN-1a.
 
 ## Decisions (Haiku does not change these)
-- D1 Done = wd 0 in every CEN scene plus the CPU paths deleted. pm_gbi.c stays as a state decoder and record dispatch. Record conversion of HUD/text/world (S5, S7, S10) waits for a console prof number.
+- D1 (user, 2026-11-06: "Commit to S10 now") Goal is S10: pm_gbi.c deleted. WEND (wd 0, CPU paths deleted) runs in parallel with S5, S7, S8, S9 (producers write native records, no N64 words), then S10-1 to S10-4. No wait for a console number.
 - D2 Why codes, fixed: rect_cpu, tri_cpu_clip, tri_cpu_seam, wide_edge, ring_miss, nraw1 cmdbuf, nraw2 off, nraw3 grab, nraw4 zmark, nraw5 nozt, nraw6 tex1, nraw7 noise, nraw8 unit0, nraw9 tmpl, pm5, other (with the op). No new codes.
 - D3 One refusal line per reason in nd_raw_native (CEN-1b). Each stream edits only its own line.
 - D4 2D rects: palette slot RECT_GM 256, depth folded as in tri_raw. No new palette slots.
