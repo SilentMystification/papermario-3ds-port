@@ -3330,7 +3330,8 @@ void pm_gpu_set_r13_t1(int bound) {
     r13t1b_ok = bound; r13u1_ok = 0; r13i8_1 = 0;
     if (!bound) return;
     memset(&r13u1, 0, sizeof r13u1);
-    if (pm_tex_native_unit1(&r13u1) == 1) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); } /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
+    if (pm_tex_native_unit1(&r13u1) == 1) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); }
+    /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
@@ -3344,8 +3345,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     /* MDL-1 (oracle decision): an R13 texture block is aux_ok; the walker ran it (rec_aux) so the bound tile state is current. Without a handle
      * desc, unit 0 is the bound slot (pm_tex_native_unit0), the raw path's rule. */
     uint32_t r13cw[4] = { 0, 0, 0, 0 }; int r13cb = 0; int r13 = 0;
-    r13u1_ok = 0; r13i8_1 = 0;
-    r13_last = 0;
+    r13_last = 0; /* MDL-5a: r13u1_ok and r13i8_1 are set by pm_gpu_set_r13_t1 (rec_run, before this draw); clearing them here made every bound R13 tile 1 a why 6 sub b */
     if (rec[26] != 0 && !ax_ok && !pm_debug_has("r13off") && nd_r13_texonly(rec + NDMC_RW, rec[26], r13cw, &r13cb)) {
         r13_last = 1;
         r13 = 1;
@@ -3390,6 +3390,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.known_h = nd_ws.om_kh | (ax_ok ? ax.wh : 0u); c.known_l = nd_ws.om_kl | (ax_ok ? ax.wl : 0u);
     /* PM5-3: the normal rows of the walker's matrix (gm_nrm: model view rows 0 to 2, w 0) for a lit or fogged range */
     c.nrm_ok = gv5_on; for (int r_ = 0; r_ < 3; r_++) { c.nrm5[r_][0] = nd_mv[nd_mv_sp][r_][0]; c.nrm5[r_][1] = nd_mv[nd_mv_sp][r_][1]; c.nrm5[r_][2] = nd_mv[nd_mv_sp][r_][2]; c.nrm5[r_][3] = 0.f; }
+    nd_mdl_cur_x = nd_tex_handle_extra((int)texidx, gfx); /* MDL-5a census: extraTiles of this draw's handle */
     int n = nd_model_draw(rec, &c, geo, emit);
     if (n < 0 && nd_nat_why == 6 && nd_nat_sub == 2 && pm_tex_aux_off_idx() >= 0) nd_nat_sub = 3; /* MDL-5 census: tile 1 is the aux off-screen image (sub c) */
     int valid = 0;
