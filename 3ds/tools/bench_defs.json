@@ -3201,7 +3201,7 @@
       "purpose": "MDL-5e census: golden tour (6 maps) cold det, ndm fb per 300 frames.",
       "scenario": "golden_multi_det",
       "cap": 90,
-      "until": "shot 6 frame",
+      "until": "tour: done",
       "tags": [
         "azahar",
         "mdl5"

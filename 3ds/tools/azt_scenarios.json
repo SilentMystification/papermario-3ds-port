@@ -9629,7 +9629,7 @@
       "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
       "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det",
       "extra": ["-Turbo", "-NoWarm"],
-      "until": "shot 6 frame",
+      "until": "tour: done",
       "cap": 90,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
