@@ -956,9 +956,17 @@ def scratch_build(commit, gitdir, scratch, lane, row):
     subprocess.run([sys.executable, str(scratch / "3ds" / "tools" / "gen_map_restore.py")], cwd=scratch, check=True,
                    stdout=subprocess.DEVNULL)
     # The build inputs that git does not track (ROM-derived assets) come from the main folder. Read only.
+    # Untracked inputs: git archive holds only some files of ver/us/build, so copy every file the main folder has and the archive lacks.
     for rel in BUILD_UNTRACKED:
-        if not (scratch / rel).exists() and (REPO / rel).exists():
-            shutil.copytree(REPO / rel, scratch / rel)
+        for root, _dirs, files in os.walk(REPO / rel):
+            for fn in files:
+                src = Path(root) / fn
+                dst = scratch / src.relative_to(REPO)
+                if not dst.exists():
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+    # build.sh writes its sync lists under build3ds/lane-<lane> of the scratch folder; create it first.
+    (scratch / "build3ds" / ("lane-" + lane)).mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, GIT_DIR=gitdir, PM_BUILD_REV=commit, PM_ROW=row, PM_LANE=lane)
     rc = subprocess.run([shutil.which("sh") or "sh", "3ds/build.sh"], cwd=scratch, env=env).returncode
     if rc != 0:
