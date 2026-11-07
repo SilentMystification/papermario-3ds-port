@@ -84,9 +84,13 @@ Measurement (one run, sbk56_superblock with det): at the three content draws at 
 Fix: corner texel alpha 1 -> fix the TLUT read for entity palettes in pm_tex; slot stale over the cycle -> key by TLUT content (STALE2 rule); decode right -> fix the plan alpha mapping for PM_CC_01/02.
 Gate: f530-f546 corner pixels within 4 of the background (same pixel with the content entity hidden), emblem centre within 8 of the formula (pass 1 T.rgb x shade; passes 2-3 out = T.rgb x a + dst x (1-a), a = T.a x 120/255 then 80/255); no white disc before the hit; then the glow check (plan 3 numbers) at f547-f565; mac_01 byte-equal. Worktree build3ds/wt/fx2 holds the plan 5 debug hunks (uncommitted; take only what the measurement needs).
 
-## FX1 state and oracle review of the body texture (2026-11-07)
-Measured (emdbg probes, scratchpad fx1_emdbg_probes.patch, uncommitted): the content emblem decodes right (corner idx 0 = 0x294a alpha 0, centre 0xcad5; plan alpha TEX0.a x per-draw prim). The content-disc premise is refuted. The white centre is a 16x32 CI4 draw: img 0x56cac0 = D_0A000480_E44C80, tlut 0x56cbc0 = D_0A000580_E44D80 (src/entity/model/SuperBlock.o .data): the block's own body texture (SuperBlock.c:6-7 SuperBlock_tex), bound by Entity_SuperBlock_LoadTexture (9-18): TLUT RGBA16, G_CC_MODULATEIA, gsDPLoadTextureBlock_4b(CI, 16, 32, S = MIRROR|WRAP mask 4, T = NOMIRROR|CLAMP mask 5), bilerp; drawn by the body lists (29-48 culled, 52-59 not).
-Question: do the face interior st values land on alpha-0 texels under the N64 tile rule (S mirrored repeat period 16, T clamp at row 31)? The probed texel (texture centre) is not the face-centre texel.
-Measurement (log only, f528, det): for the body draws' vertices: raw tc s,t, tile shifts, the unit param wrap bits for S and T as emitted. Compute on the PC for the face centre and 4 interior points the N64 texel index and its TLUT alpha; compare with the PICA sampling (unit dim, per-axis wrap, uv = tc x uvso).
-Fix: if they differ, nd_tex.c nd_tex_wrap_final / the unit param build: S = GPU_MIRRORED_REPEAT with the 16-wide period, T = clamp to edge at row 31. If they agree: the body is right; continue with the glow (plan 3/4/5) against the user's expected transparent green glow.
-Gate: f528-f546 face interior shows the scene or the emblem wherever the N64 rule gives alpha 0 (within 4 of the background with the body hidden), frame texels match TLUT colour x shade (within 8); mac_01 byte-equal; other entity blocks by eye (HitYellowBlock, RedBlock, HeartBlock scenes).
+## FX1 body texture: result (2026-11-07, worktree fx2; no Azahar start)
+The body is right on alpha. Facts (not a run):
+- The body palette (SuperBlock_tex.pal, from assets/us/entity/model/SuperBlock_tex.png, 16 entries) has alpha bit 1 on all 16 entries. Raw TLUT in the f536 log (emdbg, img 0x56cac0 tlut 0x56cbc0): c62f ff61 bdef ef35, bit 0 set on each. PNG tRNS: all alpha 255. All 16 indices are used; none is transparent.
+- So the N64 rule (S mirror period 16, T clamp at row 31) cannot land on an alpha-0 texel for any st: the answer is the same for every face point. No probe needed for the alpha question.
+- The body slot decodes right: f528-f544 decode lines show no out-of-range index (out 0), t00 idx 2 val bdef.
+- The white centre is the body's own pale colour: texel (8,15) idx b = efefd6, (8,16) idx 5 = f7efd6. Not a hole.
+- The walker's combine on the body draw (combine 2, atest ref 48, tex 1, 16x32) passes alpha 255 x shade alpha, so no discard on the body.
+Fix: none. No code commit. The FX1 content disc premise and the body texture premise are closed.
+Next step: the glow (plan 5: the glow quads, tags 3 and 4, white square at f547 to f567). Start from plan 5 measure orbreg=550 / orbtex=552 on sbk56_glowvram (lane fx). The body is not the cause.
+Probes (emdbg, orbdbg, pm_tex CI log) stay uncommitted in the worktree and were removed from it after this result.
