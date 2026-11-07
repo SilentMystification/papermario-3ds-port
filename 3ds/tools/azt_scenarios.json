@@ -7515,6 +7515,35 @@
       "reason": "UI1c measurement (row UI1, Oracle plan). Same prompt as sbk56_superblock with the ui1log debug word (msg.c and msg_draw.c pm_log_d lines, frames 512 to 524). The until line is the same as sbk56_superblock: the run ends when the effects are done, after the prompt. Cap 45 s."
     },
     {
+      "name": "sbk56_orbdbg_det",
+      "status": "unverified",
+      "subject": "sbk_56 super block, cold det run (FX1 plan 5). Tagged glow lists (tags 3, 4 from energy_orb_wave.c): orbdbg enter and draw lines, and the GPU register shadow at the first glow frame (orbreg).",
+      "proves": "FX1 plan 5 naming: the glow frames (orbdbg draw per frame, the hit frame in a det run) and the register shadow of the first glow draw",
+      "debug": "warp=sbk_56:0 story=ch0_toad_town pos=-50:0:275 padscript=@pad_sbk56.txt shots shotwin=520:12 det orbdbg loglevel=debug orbreg=524",
+      "until": "superblock: effects done",
+      "cap": 45,
+      "deadline": 45,
+      "extra": ["-NoWarm"],
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "hit",
+          "regex": "superblock: hit f[0-9]+"
+        },
+        {
+          "name": "effects done",
+          "regex": "superblock: effects done f[0-9]+"
+        }
+      ],
+      "reason": "FX1 plan 5 (debug, kept): cold det start so the hit frame is fixed (f524 in det runs; a warm run hits at f547). Same route as sbk56_superblock. orbreg=524 dumps the GPU registers at the first glow draw (orb_log tags in nd_walk.c and pm_gpu.c). Cap 45 s."
+    },
+    {
       "name": "sbk56_superblock",
       "status": "unverified",
       "subject": "sbk_56 (Dry Dry Desert area, super block at -50 60 275). Mario placed under the block by pos=, jumps by padscript (A). Shots every 30 frames to the hit and the upgrade effects: the energy dots moving to the partner and the white flash.",

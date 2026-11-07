@@ -92,6 +92,25 @@ void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
         pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
 }
 
+/* FX1-3 orbdbg (debug tool): a display list an effect registers (pm_gbi_dbg_reg, energy_orb_wave.c) gets a tag. The walker keeps the tag of the list it runs
+ * in (orb_tag, saved with the pc on the stack). Under the orbdbg switch a tagged list runs in the walker, not the ent or DLC path, so orb_log (pm_gpu.c)
+ * sees its draws. Nothing is tagged without the switch. */
+static const void* orb_lst[32];
+static unsigned char orb_lst_tag[32];
+static int orb_lst_n;
+static unsigned orb_tag, orb_tag_stk[12];
+void pm_gbi_dbg_reg(const void* l, unsigned tag) {
+    for (int i = 0; i < orb_lst_n; i++) if (orb_lst[i] == l) { orb_lst_tag[i] = (unsigned char)tag; return; }
+    if (orb_lst_n < 32) {
+        orb_lst[orb_lst_n] = l; orb_lst_tag[orb_lst_n] = (unsigned char)tag; orb_lst_n++;
+        pm_log("orbdbg reg tag %u ptr %p", tag, l);
+    }
+}
+static unsigned orb_tag_of(const void* l) {
+    for (int i = 0; i < orb_lst_n; i++) if (orb_lst[i] == l) return orb_lst_tag[i];
+    return 0;
+}
+unsigned pm_gbi_dbg_orb_tag(void) { return orb_tag; }
 void nd_walk_run(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     dlc_on = 1;
@@ -153,6 +172,8 @@ void nd_walk_run(void* list, unsigned nbytes) {
                 return;
             }
             pc = stack[--sp];
+            if (orb_lst_n && orb_tag != orb_tag_stk[sp]) pm_gpu_flush(); /* FX1-3 */
+            orb_tag = orb_tag_stk[sp];
             break;
         case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
@@ -182,21 +203,28 @@ void nd_walk_run(void* list, unsigned nbytes) {
             }
             if (next) { __builtin_prefetch(next); __builtin_prefetch(next + 4); } /* H4: the G_DL target */
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
+            unsigned ot_sv = orb_tag; /* FX1-3: the tag of the list this G_DL runs in */
+            int ow_ = 0; /* FX1-3: a tagged list under orbdbg runs in the walker (no ent or DLC path) */
+            if (orb_lst_n && PMDL("orbdbg")) {
+                unsigned t_ = orb_tag_of(next);
+                if (t_) { if (t_ != orb_tag) pm_gpu_flush(); orb_tag = t_; ow_ = 1; pm_log("orbdbg enter f%u tag %u ptr %p", pm_frame_count(), t_, (void*)next); }
+            }
             if (ent_skipgen) ent_skipgen = 0;
-            else if (next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u) && (pm_tex_tagi = 5, ent_gdl(next))) { /* SGEN-1: any other static list, the entity path */
+            else if (!ow_ && next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u) && (pm_tex_tagi = 5, ent_gdl(next))) { /* SGEN-1: any other static list, the entity path */
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
                 break;
             }
-            if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
+            if (!ow_ && dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
                 if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
                 break;
             }
             if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) { pc = next; }
             else if (sp < 12) {
+                orb_tag_stk[sp] = ot_sv; /* FX1-3 */
                 stack[sp++] = pc;
                 pc = next;
-            }
+            } else orb_tag = ot_sv;
             break;
         }
         case G_VTX:
