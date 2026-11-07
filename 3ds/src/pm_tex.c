@@ -667,9 +667,14 @@ static void pf_add(u8* p, unsigned bytes, int slab) {
     if (pf_n > pf_max) pf_max = pf_n;
     pf_ops++;
 }
+/* DET: switch det. The gate waits for the GX queue instead of skipping the release, so a freed block is reused at the same game step whatever the GPU speed. */
+static int tex_det(void) { static int v = -1; if (v < 0) v = pm_debug_has("det"); return v; }
 void pm_tex_gate(void) {
     if (!pf_n) return;
-    if (!pm_gx_done()) { pf_gate_busy++; return; }
+    if (!pm_gx_done()) {
+        if (!tex_det()) { pf_gate_busy++; return; }
+        pm_gx_drain(); /* DET */
+    }
     pf_release_all();
 }
 
