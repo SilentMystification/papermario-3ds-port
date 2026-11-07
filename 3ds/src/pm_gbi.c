@@ -174,30 +174,6 @@ int comb_set;
 /* 1 when the alpha combiner reads shade alpha. DECAL and MODULATE modes do not, and imgfx
  * meshes leave cn[3] at 0, so passing it through made them vanish. */
 int comb_alpha_shade = 1;
-extern char __end__[]; /* linker: end of .bss */
-int is_host(u32 p) {
-    unsigned int heap = __ctru_heap;
-    unsigned int hend = __ctru_heap + __ctru_heap_size;
-    unsigned int lin = __ctru_linear_heap;
-    unsigned int lend = lin + __ctru_linear_heap_size;
-    if (p >= heap && p < hend) return 1;
-    if (p >= lin && p < lend) return 1;
-    if (p >= 0x00100000u && p < (u32)(uintptr_t)__end__) return 1;
-    return 0;
-}
-
-/* PG3 A15: the host range that holds p (same three ranges as is_host). 0 when p is not host memory. */
-
-void* ptr_of(u32 w) {
-    if (!w) return NULL;
-    if (is_host(w)) return (void*)w;
-    unsigned seg = (w >> 24) & 0xff;
-    if (seg < 16 && nd_ws.segbase[seg]) return (void*)(nd_ws.segbase[seg] + (w & 0x00ffffffu));
-    /* SW1: an N64 K0 or K1 address (OS_PHYSICAL_TO_K0 of a static buffer: the camera projection matrix of the credits parade) names host memory with the top bits set */
-    if ((w & 0xc0000000u) == 0x80000000u && is_host(w & 0x1fffffffu)) return (void*)(w & 0x1fffffffu);
-    return (void*)w;
-}
-void* pm_gbi_ptr_of(u32 w) { return ptr_of(w); } /* MDL-1: the walker's segment resolver, for the R13 texture block (nd_model.c nd_r13_desc) */
 
 
 
@@ -791,12 +767,6 @@ no_boost:
 
 /* S25: an opcode the interpreter does not run. Counted, logged at 1, 100, 10000 ... uses. */
 unsigned op_cnt[256];
-void pm_gbi_init(void) {
-    nd_mtx_reset();
-    memset(vert_live, 0, sizeof vert_live);
-    nd_ws.geom = G_SHADE | G_SHADING_SMOOTH;
-    upload_mvp();
-}
 
 
 /* ---- RDP color combiner, one cycle, for work the display list does off screen ---- */
@@ -923,27 +893,11 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
 
 /* G2: a state op that leaves the live state as it is. The loop skips it before the prologue. Ops that call sync_combine
  * also need sc_ok: a set sc_ok means that call would do nothing. */
-/* R5B: a G_MOVEMEM light that writes the values already in lt[slot] changes nothing. The same op also runs lit_freeze, which
- * acts when a lit vertex is pending, so the skip needs lit_pending == 0 (then lit_freeze returns at once). */
-int lt_mem_same(u32 w0, u32 w1) {
-    int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
-    const u8* l = (const u8*)ptr_of(w1);
-    return l && slot >= 0 && slot < 9 && !lit_pending && lt[slot].col[0] == l[0] && lt[slot].col[1] == l[1] && lt[slot].col[2] == l[2] &&
-           lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10];
-}
 
 /* CORE-2a-3: a skipped op (g2_same true) still gives the state the native keys read what its write would have: the B8 known bits of a
  * SETOTHERMODE mask and the prim LOD word (w0 low 16 bits, which g2_same does not compare). */
 
 /* H1: rare paths of nd_walk_run. Cold and noinline, so the hot loop does not carry their code. */
-void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
-    unsigned where = (w0 >> 16) & 0xff, vi = (w0 & 0xffffu) / 2;
-    if (where == G_MWO_POINT_XYSCREEN && vi < 64) {
-        vert_sx[vi] = (s16)(w1 >> 16);
-        vert_sy[vi] = (s16)(w1 & 0xffffu);
-        vert_scr[vi] = 1;
-    }
-}
 /* TEXH: cold and per-tile parts of tex_op, moved out of line. The same operations run in the same order. */
 
 
@@ -954,18 +908,6 @@ void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex *
 /* M4 state-diff check, switch texdiff: every bind list runs twice from the same start state, once word by word and once fused. The texture, tile, combine and mode state of both
  * ends is compared field by field. A difference is one log line (list, field names). The game goes on with the word by word state. */
 
-/* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
-void pm_gbi_run(void* list, unsigned nbytes) {
-    if (!pm_ph_on) { nd_walk_run(list, nbytes); return; }
-    if (os_nest == 0) { pre_w0 = (const Gfx*)list; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx;
-        pmk_n = 0; /* WCEN3: the walk copy holds the marks of this list only */
-        if (pmx_main) for (int i = 0; i < pmk_all_n && pmk_n < PK_MARKS; i++) if (pmk_all[i].p >= (const Gfx*)list && pmk_all[i].p < (const Gfx*)list + MAIN_GFX_N) { pmk[pmk_n].p = pmk_all[i].p; pmk[pmk_n].s = pmk_all[i].s; pmk_n++; }
-        pre_mkn = pmk_n; pre_mk0 = pmk_n ? pmk[0].p : NULL; pmx_cur = pmx_main ? PK_PRE : pk_slot((unsigned)(uintptr_t)list); /* WCEN2: a non-main list has its own key (its address) */ pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
-    os_nest++;
-    nd_walk_run(list, nbytes);
-    if (os_open && os_nest == 1) os_close();
-    os_nest--;
-}
 
 
 
@@ -1142,38 +1084,3 @@ unsigned rec_run(const Gfx* q) {
 
 
 
-void pm_gbi_fallback(void) {
-    static int ready;
-    static Gfx dl[8];
-    static Vtx fv[3];
-    static Mtx fm;
-    if (!ready) {
-        memset(&fm, 0, sizeof(fm));
-        mtx_elem(&fm, 0, 0, 1.f / 160.f);
-        mtx_elem(&fm, 1, 1, 1.f / 120.f);
-        mtx_elem(&fm, 2, 2, 1.f);
-        mtx_elem(&fm, 3, 3, 1.f);
-        short xy[3][2] = { { -50, -40 }, { 50, -40 }, { 0, 50 } };
-        u8 rgb[3][3] = { { 255, 80, 80 }, { 80, 255, 80 }, { 80, 80, 255 } };
-        for (int i = 0; i < 3; i++) {
-            fv[i].v.ob[0] = xy[i][0];
-            fv[i].v.ob[1] = xy[i][1];
-            fv[i].v.ob[2] = 0;
-            fv[i].v.cn[0] = rgb[i][0];
-            fv[i].v.cn[1] = rgb[i][1];
-            fv[i].v.cn[2] = rgb[i][2];
-            fv[i].v.cn[3] = 255;
-        }
-        Gfx* g = dl;
-        gDPSetCycleType(g++, G_CYC_FILL);
-        gDPSetFillColor(g++, 0x22292229);
-        gDPFillRectangle(g++, 0, 0, 319, 239);
-        gDPSetCycleType(g++, G_CYC_1CYCLE);
-        gSPMatrix(g++, &fm, G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
-        gSPVertex(g++, fv, 3, 0);
-        gSP1Triangle(g++, 0, 1, 2, 0);
-        gSPEndDisplayList(g++);
-        ready = 1;
-    }
-    pm_gbi_run(dl, 0);
-}
