@@ -2365,6 +2365,27 @@ static void grab_log(const void* cfb, int y0, int y1, int reuse) {
     if (on < 0) on = pm_debug_has("grablog");
     if (on) pm_log_d("grab %d src %p rows %d-%d frame %u reuse %s", grab_n, cfb, y0, y1, pm_frame_count(), reuse ? "yes" : "no");
 }
+static void rect_raw_open(int ec, float fz, const float uvso[4]); /* RECT-1a, defined below */
+/* FB-1 GRAB: the copy quad as four ring vertices (rect_raw_quad form, identity positions as the off-screen rect path). uv = tc / 256 with the shorts
+ * 256 - row / 2 (mo + x is even at both edges): the quad is the one grab_impl drew with pm_gpu_tri, s runs along y (240 at the top, 0 at the bottom),
+ * t along x. */
+static void grab_raw_quad(int x1, int mo) {
+    short v[32];
+    const short tva = (short)(256 - mo / 2), tvb = (short)(256 - (mo + x1) / 2);
+    const int px_[4] = { 0, x1, x1, 0 }, py_[4] = { 0, 0, 240, 240 };
+    const short ps[4] = { 240, 240, 0, 0 }, pt[4] = { tva, tvb, tvb, tva };
+    for (int i = 0; i < 4; i++) {
+        short* q = v + 8 * i;
+        unsigned char* cb = (unsigned char*)q;
+        q[0] = (short)px_[i]; q[1] = (short)py_[i]; q[2] = 0; q[3] = 0; q[4] = ps[i]; q[5] = pt[i];
+        cb[12] = cb[13] = cb[14] = cb[15] = 0xff;
+    }
+    const int b = pm_gpu_gvtx_load(v, 4);
+    unsigned short* ix = gidx + gidx_n;
+    ix[0] = (unsigned short)b; ix[1] = (unsigned short)(b + 1); ix[2] = (unsigned short)(b + 2);
+    ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
+    gidx_n += 6; gni += 6;
+}
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     pm_gpu_begin_wait();
     if (rect_open) flush(); /* DR1 */
@@ -2373,6 +2394,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
     const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
     if (!gpu_ok || off_fail || y1 <= y0) return 0;
+    if (!(gpu_vtx_on && gv4_on) || gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) return 0; /* FB-1 GRAB: the copy quad is native (no room: the caller reads the CPU) */
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
@@ -2398,14 +2420,16 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
         int s_comb = combine, s_2d = rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = r_atest, s_nc = r_nocol, s_mix = r_mix,
             s_rs = rgb_scale, s_3d = draw_3d;
-        float xa = (float)x0, xb = (float)x1, va = 1.f - ((float)mo + xa) / 512.f, vb = 1.f - ((float)mo + xb) / 512.f, ua = 240.f / 256.f;
         sci_x0 = 0; sci_y0 = 0; sci_x1 = x1; sci_y1 = 240;
         combine = 3; rect_2d = 1; batch_identity = 1; r_replace = 1; r_atest = -1; r_nocol = 0; r_mix = 0; rgb_scale = 1; draw_3d = 0;
         grab_bind = 1;
-        /* game (x, y) reads texel column 239 - y, memory row 40 + x of the copy. v = 0 samples the last memory row (found with
-         * the grabtest dump: with v = row / 512 the slot came out mirrored in x), so v = 1 - row / 512. */
-        pm_gpu_tri(xa, 0.f, 0.5f, ua, va, 0xffffffffu, xb, 0.f, 0.5f, ua, vb, 0xffffffffu, xb, 240.f, 0.5f, 0.f, vb, 0xffffffffu);
-        pm_gpu_tri(xa, 0.f, 0.5f, ua, va, 0xffffffffu, xb, 240.f, 0.5f, 0.f, vb, 0xffffffffu, xa, 240.f, 0.5f, 0.f, va, 0xffffffffu);
+        /* FB-1 GRAB: the copy quad is a native raw batch (the rect path at fill depth 0.5, combine 3, unit 0 = grab_tex). game (x, y) reads texel column 239 - y,
+         * memory row 40 + x of the copy, so v = 1 - row / 512 (found with the grabtest dump). */
+        {
+            static const float uvso_g[4] = { 1.f / 256.f, 1.f / 256.f, 0.f, 0.f };
+            rect_raw_open(3, 0.5f, uvso_g);
+            grab_raw_quad(x1, mo);
+        }
         flush();
         grab_bind = 0;
         sci_x0 = sc[0]; sci_y0 = sc[1]; sci_x1 = sc[2]; sci_y1 = sc[3];
@@ -3830,11 +3854,29 @@ static void rect_begin(int ec) {
  * rect_2d set (flush_impl_body rect branch). Merge key as rect_begin, plus the depth. rect_c: fill, tex, native, merged, cpu, ring high mark. */
 static unsigned rect_c[6];
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle takes the CPU path: 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
+/* FB-1 RING: the raw ring is full. The open batch closes, the queued part goes to the GPU (split_frame), the CPU waits for the GPU to finish it
+ * (gspWaitForP3D), then the ring is reused from 0. Cold: a frame with a full ring is rare. Debug switch ringsmall=<n> sets a small vertex cap for the
+ * rectangle path (indices 3n/2) so the wrap runs in a test scene. */
+static unsigned rr_wraps;
+static __attribute__((cold, noinline)) void ring_wrap(void) {
+    flush();
+    split_frame();
+    gspWaitForP3D();
+    gring_n = gidx_n = gring_fl = gidx_fl = 0;
+    gni = 0; gi_start = 0;
+    rr_wraps++;
+}
+static unsigned rect_ring_vtx(void) {
+    static int rs = -1;
+    if (rs < 0) { char v[16]; rs = pm_debug_value("ringsmall", v, sizeof v) ? atoi(v) : 0; }
+    return rs > 0 ? (unsigned)rs : GRING_VTX;
+}
 static int rect_raw_ok(void) {
     if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
-    if (grab_bind) { rr_why[3]++; return 0; } /* OFF-1: an off-screen target is native (no refusal here) */
     if (r_zmark) { rr_why[4]++; return 0; }
-    if (gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) { rr_why[5]++; return 0; }
+    const unsigned cv = rect_ring_vtx(), ci = rect_ring_vtx() * 3u / 2u;
+    if (gring_n + 4 > cv || gidx_n + 6 > ci) { ring_wrap(); }
+    if (gring_n + 4 > cv || gidx_n + 6 > ci) { rr_why[5]++; return 0; }
     if (PMDL("norectraw")) { rr_why[6]++; return 0; }
     return 1;
 }
@@ -3877,7 +3919,7 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     rect_c[2]++;
     if ((unsigned)gring_n > rect_c[5]) rect_c[5] = (unsigned)gring_n;
 }
-static void rect_log(unsigned f) { pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
+static void rect_log(unsigned f) { pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u wrap %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7], rr_wraps); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
 static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have = 1; } }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
