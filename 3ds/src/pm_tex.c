@@ -66,6 +66,7 @@ static short recent_slot[RECENT_N] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 static unsigned recent_n;
 static int slot_hi; /* every live slot index is below this, so scans stay short while few slots are live */
 static unsigned slot_nlive, slot_peak; /* SLOT1: live slots now and the highest count of this run */
+unsigned pm_tex_pool_peak(void) { return slot_peak; } /* MEM-B v2 poolhi */
 static unsigned used_peak; /* M02 measurement */
 static unsigned map_peak;
 /* V13c: bytes of the slots that a draw touched in this frame (the working set that eviction must keep), highest since the last map. */

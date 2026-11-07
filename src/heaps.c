@@ -11,8 +11,12 @@ BSS u8 gEffectGlobals[0x1000] ALIGNED(0x1000);
 BSS u8 BattleEntityHeapBottom[0x3000] ALIGNED(0x1000);
 #endif
 BSS u8 AuHeapBase[AUDIO_HEAP_SIZE] ALIGNED(0x1000);
+#ifndef TARGET_3DS /* MEM-B v2: the port has no reader of this 16 KB copy (D_80200000 is pm_hud_aux_cache, pm_map.c) */
 BSS u8 D_80200000[0x4000] ALIGNED(0x1000);
+#endif
 BSS u8 D_80204000[0x3000] ALIGNED(0x1000);
 BSS u8 D_80207000[0x3000] ALIGNED(0x1000);
 BSS u8 D_8020A000[0x6000] ALIGNED(0x1000);
+#ifndef TARGET_3DS /* MEM-B v2: the port defines the real gMapShapeData (pm_map.c pm_shape_buf); this 32 KB copy has no reader */
 BSS ShapeFile gMapShapeData;
+#endif
