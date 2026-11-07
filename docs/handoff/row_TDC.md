@@ -27,3 +27,22 @@ CLAUDE.md rules 5, 7, 8, 9, 11. PM_ROW=TDC PM_LANE=tdc on every build.sh and ben
 
 ## At the end
 Commit this file with the Result section (do not delete it: the orchestrator turns it into fix rows). Report in 5 lines.
+
+## Result
+Runs on lane tdc, build 2909, commit d8864ae48, one start per bench (8 starts; the golden run first refused with SPEED CONFLICT, nothing ran; retry with --speed turbo). Sums are over every tridrop line of the run log (build3ds/azt/logs/<scenario>.txt copy). Windows are rect_log calls (every 100 frames; f300 printed twice in golden, two sums added).
+
+| bench | map | field | sum | first frame |
+|---|---|---|---|---|
+| pause_spin_grab_det_w300 | pause spin (grab) | all 0 | 0 | - |
+| sbk56_orbdbg_det | sbk_56 | all 0 | 0 | - |
+| battle_start_f182_cold | kmr_03 | all 0 | 0 | - |
+| mdl5_battle_det | kmr_03 | all 0 | 0 | - |
+| pond_mac00_pic | mac_00 | no tridrop line (0 windows) | - | - |
+| spot_sbk56_pic | sbk_56 | no tridrop line (0 windows) | - | - |
+| tour10_det | 10-map tour | all 0 (14 windows, f0..f1000) | 0 | - |
+| golden_multi_det | isk_04 (f300), kzn_19 (f400) | t1fold | 573 (61 + 5 at f300, 507 at f400) | f300 |
+
+Notes:
+- pond_mac00_pic and spot_sbk56_pic use prof=4, which sets prof=1 log=off (scenario debug text). The rect_log lines (pm_log_d) are not in the log, so no count. The premise holds only for benches with the plain log. A bench for these spots with the plain log is needed to count them: the orchestrator decides.
+- golden_multi_det: only non-zero field is t1fold (texture 1 fold, nd_comb.c t1_fold_tri). Map at f300 is isk_04 (map change #211, tour in #228), at f400 kzn_19 (map change #266). Other fields 0 in every window.
+- No code change in this row. Fix row candidates: t1fold source in isk_04 and kzn_19 (not a drop count of refuse or lit).
