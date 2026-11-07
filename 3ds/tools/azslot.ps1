@@ -7,6 +7,7 @@ One named mutex per slot (Global\pm_azahar_slot<k>) lets one run use a slot at a
 The user's C:\Program Files\Azahar and %APPDATA%\Azahar are only read (copied from), never written.
 #>
 $script:AzRepo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$script:AzTree = Split-Path -Parent (Split-Path -Parent $PSScriptRoot) # AZT6b: the worktree that runs this copy of the tools
 # AZT6-1: one slot pool for every worktree. The slots live in the main folder (the parent of the git common dir), whichever worktree calls.
 $gcd = & git -C $script:AzRepo rev-parse --path-format=absolute --git-common-dir 2>$null
 if ($LASTEXITCODE -eq 0 -and $gcd) { $script:AzRepo = Split-Path -Parent ([string]$gcd).Trim() }
@@ -34,6 +35,16 @@ function Get-LiveAzahar {
     return @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -match '\\azslots\\slot\d+\\azahar\.exe$' })
 }
 
+# AZT6b-1: one line per pool event in build3ds\azslots\pool.log (shared by all worktrees): time, tree, slot, pid old -> new, event, reason.
+function Write-PoolLog([int]$slot, [string]$event, $old, $new, [string]$reason) {
+    try {
+        $f = Join-Path $script:AzRepo "build3ds\azslots\pool.log"
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $f) | Out-Null
+        $line = "{0} {1} slot{2} pid {3} -> {4} {5} {6}" -f (Get-Date -Format "yyyy-MM-ddTHH:mm:ss"), $script:AzTree, $slot, $old, $new, $event, $reason
+        Add-Content -Path $f -Value $line
+    } catch { }
+}
+
 function Close-IdleKept([int]$except = 0) {
     # AZT4-2: close every kept Azahar that no run holds (its slot mutex is free), of any worktree. $except is a slot number that the caller holds.
     # Returns the number closed. A kept Azahar is one with a keep.json in its slot folder. Waits up to 5 s for each process to end.
@@ -47,6 +58,7 @@ function Close-IdleKept([int]$except = 0) {
             Stop-Process -Id $pr.ProcessId -Force -ErrorAction SilentlyContinue
             for ($i = 0; $i -lt 50 -and (Get-Process -Id $pr.ProcessId -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 100 }
             Remove-Item (Join-Path $dir "keep.json") -ErrorAction SilentlyContinue
+            Write-PoolLog $num "close" $pr.ProcessId "-" "close kept (cap or GPU fault retry)"
             $closed++
         } finally { Exit-Slot $num }
     }

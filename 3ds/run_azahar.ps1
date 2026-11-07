@@ -117,10 +117,11 @@ function End-Run([int]$rc, [string]$res, [string]$kind = "end") {
 # azahar.exe processes now: PID, start time, command line (the holder of a shared file is not named, this lists Azahar only)
 function Get-AzaharList { return (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue) | ForEach-Object { "pid $($_.ProcessId), started $($_.CreationDate), cmd: $($_.CommandLine)" }) -join " | " }
 
-function Kill-Azahar([int]$procId) {
+function Kill-Azahar([int]$procId, [string]$why = "kill") {
     # Scoped to the PID this script itself launched - never kills other azahar.exe processes (a
     # concurrent agent/session may have its own instance open; a blanket "taskkill /IM azahar.exe"
     # here would silently terminate theirs too).
+    Write-PoolLog $slotK "kill" $procId "-" $why # AZT6b-1
     Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
     for ($i = 0; $i -lt 50 -and (Get-Process -Id $procId -ErrorAction SilentlyContinue); $i++) {
         Start-Sleep -Milliseconds 100
@@ -226,7 +227,7 @@ if (-not $warm) { Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
 if (-not $warm -and (Test-Path $pidFile)) {
     $old = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
     $op = Get-Process -Id $old -ErrorAction SilentlyContinue
-    if ($op -and $op.ProcessName -eq "azahar") { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old }
+    if ($op -and $op.ProcessName -eq "azahar") { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old "orphan of a killed run" }
     Remove-Item $pidFile -ErrorAction SilentlyContinue
 }
 if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
@@ -234,7 +235,7 @@ if (Test-Path $optBak) { Write-Output "Recovery: restoring options.ini saved by 
 # An azahar.exe of this slot that no run owns (a kill left it): the slot is ours, so stop it.
 foreach ($sp in @(if (-not $warm) { Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -eq $exe } })) {
     Write-Output "Slot ${slotK}: stopping a stray azahar.exe (pid $($sp.ProcessId))."
-    Kill-Azahar ([int]$sp.ProcessId)
+    Kill-Azahar ([int]$sp.ProcessId) "stray azahar of this slot" 
 }
 try {
     Set-Content $pidFile $PID # the script PID until Azahar starts, then the Azahar PID
@@ -244,7 +245,7 @@ try {
 
 New-Item -ItemType Directory -Force -Path $sd, $sl.romDir | Out-Null
 try { Copy-Item $in3dsx $romFile -Force -ErrorAction Stop }
-catch { if ($warm) { Write-Output "Warm: the 3dsx in the kept Azahar is locked ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id; Copy-Item $in3dsx $romFile -Force } else { throw } }
+catch { if ($warm) { Write-Output "Warm: the 3dsx in the kept Azahar is locked ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id "3dsx locked"; Copy-Item $in3dsx $romFile -Force } else { throw } }
 $oldLogCT = [datetime]::MinValue
 if ($warm) { if (Test-Path $log) { $oldLogCT = (Get-Item $log).CreationTimeUtc } } # the kept game holds log.txt open: the restart makes a new one
 else { Remove-Item $log -ErrorAction SilentlyContinue }
@@ -312,7 +313,7 @@ if ($warm) {
     if ($warmDone -and $Debug -and -not (Test-WarmSwitches $log $Debug)) {
         # AZT6-3: the restarted game printed other switches (stale debug3ds.txt): this start is cold, the kept Azahar is closed
         Write-Output "Warm restart: the boot prints other switches than this run. Cold start."
-        Kill-Azahar $kept.Id
+        Kill-Azahar $kept.Id "switch mismatch" 
         Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
         $emuOff = 0L
         $warm = $false
@@ -322,24 +323,26 @@ if ($warm) {
     elseif ($warmDone) {
         $p = $kept; Write-Output ("Warm restart ok after {0:N1} s (hotkey {1})." -f ((Get-Date) - $start).TotalSeconds, $hk)
         Set-Content "$($sl.dir)\warm.ok" "ok" # AZT3-3: azt.ps1 reads this boot's log from its first byte after this line
+        Write-PoolLog $slotK "warm" $kept.Id $kept.Id "restart, this run's switches"
     }
     else {
         Write-Output "Warm restart failed (hotkey '$hk', sent $sent): no new log.txt after 15 s. Cold start."
-        Kill-Azahar $kept.Id
+        Kill-Azahar $kept.Id "warm restart failed" 
         Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
         $emuOff = 0L
         $warm = $false
         $warmWhy = "restart failed"
     }
 }
-# AZT2: one line per start: warm, or cold with the reason. azt.ps1 reads it from the slot folder and puts it in the log copy and the run record.
-$azLine = if ($warm) { "azslot: slot $slotK warm" } else { "azslot: slot $slotK cold ($warmWhy)" }
-Set-Content "$($sl.dir)\azslot.line" $azLine
-Write-Output $azLine
 if (-not $p) {
     $p = Start-Process $exe -ArgumentList "`"$romFile`"" -PassThru
     Set-Content $pidFile $p.Id
+    Write-PoolLog $slotK "start" "-" $p.Id "cold: $warmWhy"
 }
+# AZT2: one line per start: warm, or cold with the reason. AZT6b-2: written after the switch check and the start, with the pid. azt.ps1 reads it from the slot folder.
+$azLine = if ($warm) { "azslot: slot $slotK pid $($p.Id) warm" } else { "azslot: slot $slotK pid $($p.Id) cold ($warmWhy)" } # azt.ps1 matches the end: " warm" or " cold ("
+Set-Content "$($sl.dir)\azslot.line" $azLine
+Write-Output $azLine
 if ($Gdb) {
     # Azahar waits for gdb before it runs the game. winhost = the Windows host (IPv4) seen from Docker.
     $cmds = @("set pagination off", "set confirm off", "set width 0", "target remote winhost:24689")
@@ -390,6 +393,7 @@ $marks = @()
     }
     # AZFIX: the Azahar exit code is recorded in the result text. An early exit with no game log and an empty emulator log is retried once by azt (kind retry)
     $azState = if ($p.HasExited) { "exit code $($p.ExitCode)" } else { "running, stopped by this run" }
+    if ($reason -eq "crash" -or $reason -eq "Azahar exited") { Write-PoolLog $slotK "exit" $p.Id "-" "$reason ($azState)" } # AZT6b-1
     $retryable = $reason -eq "Azahar exited" -and (-not (Test-Path $emuLog) -or (Get-Item $emuLog).Length -eq 0)
     if ($Capture -and -not $p.HasExited) {
         Add-Type -AssemblyName System.Drawing
