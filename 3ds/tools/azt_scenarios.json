@@ -9070,6 +9070,29 @@
     "extra": [
       "-NoWarm"
     ]
+  },
+  {
+    "name": "battle_start_f182_nosprnat_cold",
+    "status": "unverified",
+    "subject": "SPR4 battle gate, cold, det: battle_start_f182 with the nosprnat switch (walker draws every sprite record). Reference for the native battle_start_f182_cold.",
+    "proves": "DET gate: the battle picture per shot is a function of the build with the det switch, cold start to cold start.",
+    "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det nosprnat",
+    "extra": [
+      "-NoWarm"
+    ],
+    "until": "shot \\d+ frame 182\\b",
+    "cap": 60,
+    "deadline": 45,
+    "first_marker": "warp: kmr_03 entry 0",
+    "expects": "warp",
+    "needs_picture": true,
+    "expected_events": [
+      {
+        "name": "frame 182",
+        "regex": "shot \\d+ frame 182\\b"
+      }
+    ],
+    "reason": "SPR4 battle gate reference (det cold): pm_gpu_spr_native returns 0, the walker draws the sprite words; same build as battle_start_f182_cold."
   }
   ]
 }

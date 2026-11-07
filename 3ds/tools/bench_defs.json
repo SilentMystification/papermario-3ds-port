@@ -2689,6 +2689,23 @@
       "cold"
     ],
     "gates": []
+  },
+  {
+    "name": "battle_start_f182_nosprnat_cold",
+    "kind": "azahar_pic",
+    "speed": "normal",
+    "default": false,
+    "purpose": "SPR4 battle gate reference: battle_start_f182 cold det with nosprnat (walker sprite draw).",
+    "scenario": "battle_start_f182_nosprnat_cold",
+    "cap": 60,
+    "until": "shot \\d+ frame 182\\b",
+    "tags": [
+      "azahar",
+      "det",
+      "cold",
+      "nosprnat"
+    ],
+    "gates": []
   }
   ],
   "legacy": {
