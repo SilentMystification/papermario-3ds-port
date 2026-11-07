@@ -234,7 +234,7 @@ typedef struct NdDraw {
     int tmpl;                 /* nd_tmpl id: effect, depth, blend and TEV words */
     uint32_t tev_col[6];      /* the colour word of each TEV stage that a colour source sets (the template holds 0 there), ABGR */
     uint32_t buf_col; uint8_t has_buf; /* texenv buffer colour (register 0xFD), written when has_buf */
-    NdUnit u[2];              /* texture units 0 and 1 */
+    NdUnit u[3];              /* texture units 0, 1 and 2 (unit 2: the noise texture, FB-2) */
     const float (*pal)[16];   /* palette entries, pcomp each, C3D_Mtx memory order */
     unsigned npal;
     unsigned loc_pal, loc_var; /* vertex shader float uniform locations: palette entry 0 (entries 4 apart), then uvso, cmul, cadd, zmix (4 vec4 in a row) */
@@ -246,14 +246,17 @@ typedef struct NdDraw {
     uint8_t use5, no_uni;     /* PM5-2: program 5 batch (the caller wrote its pm5 uniforms); no_uni: nd_emit writes no palette or uvso block */
     PmFx fx5;                 /* PM5-3: the pm5 light, fog and texgen block of a model range (use5) */
     float nrm5[3][4];         /* PM5-3: the normal rows of palette entry 0 (the walker's gm_nrm: model view rows 0 to 2) */
+    float nzo[4];             /* FB-2: the noise offset uniform (game order: 120/64, 200/64, offset x, offset y), written at loc_nzo when has_nzo */
+    unsigned loc_nzo; uint8_t has_nzo;
 } NdDraw;
 #define ND_NPAL 21
 typedef struct NdShadow {
     int tmpl;                 /* -1 = unknown */
-    NdUnit u[2]; uint8_t u_on[2], cfg_valid; uint32_t cfg;
+    NdUnit u[3]; uint8_t u_on[3], cfg_valid; uint32_t cfg;
     float pal[ND_NPAL][16]; uint8_t pal_valid[ND_NPAL];
     float uni[16]; uint8_t uni_valid;
     float uvx[4]; uint8_t uvx_valid; /* SGEN-2 */
+    float nzo[4]; uint8_t nzo_valid; /* FB-2 */
     uint32_t tmpl_val[64]; /* ND_TMPL_WORDS max, register values of the template last written (for word level deltas) */
     uint32_t col[6], buf_col; uint8_t col_valid, has_buf;
 } NdShadow;
@@ -288,6 +291,12 @@ typedef struct NdTmplWord { uint16_t reg; uint32_t val; } NdTmplWord;
 
 /* returns the template id (0..255) of a key, building it on a miss; -1 when the table is full or the combiner words are refused */
 int nd_tmpl_build(const NdTmplKey* k);
+/* FB-2: the table is an LRU. A miss on a full table evicts the least recently used entry (not one built or hit since nd_tmpl_pin, so a model record keeps its ids).
+ * nd_tmpl_gen counts evictions: an id then names another key, so a shadow of the ids is stale. nd_tmpl_pin marks the start of a batch of builds. */
+void nd_tmpl_pin(void);
+unsigned nd_tmpl_gen(void);
+void nd_tmpl_set_cap(unsigned n); /* table size for the tmplsmall switch (2 to ND_TMPL_N) */
+unsigned nd_tmpl_hi(void);       /* the most entries in use (log) */
 /* the register writes of template id; returns the count (ND_TMPL_WORDS max) */
 unsigned nd_tmpl_words(int id, const NdTmplWord** out);
 
@@ -354,7 +363,7 @@ int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned 
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
  * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */
 #define ND_NAT_MAX 64
-typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3 (rebuilt on a hit) */
+typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again (the LRU may have taken it over) */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3 (rebuilt on a hit) */
 extern int nd_nat_why;
 int nd_model_draw(const uint32_t* rec, const NdMCtx* c, const void* list, int emit);
 const NdNat* nd_model_native(unsigned j);

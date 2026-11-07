@@ -1784,10 +1784,19 @@ static int nu0_off(NdUnit* u) {
 }
 /* OFF-3: 2 with the words of the off-screen image of unit 0 (pm_tex_off_idx), see nu0_off. */
 int pm_tex_native_unit0(NdUnit* u) { return (have && off_cur >= 0) ? nu0_off(u) : nu0_impl(u, 1); }
-/* SGEN-2: the unit 1 words of the aux texture pm_tex_bind_aux would bind (same residency work, no citro3d call). 1 with the words, 0 no aux texture, -1 the native path cannot take it (an off-screen aux image, a debug override). */
+/* SGEN-2: the unit 1 words of the aux texture pm_tex_bind_aux would bind (same residency work, no citro3d call). 1 with the words, 0 no aux texture, -1 the native path cannot take it (a debug override).
+ * FB-2: 2 with the words of the off-screen aux image (aux_off), as pm_tex_bind_aux binds it; the caller takes the snapshot when the image is the target (OFF-3). */
 static unsigned nd_lsg1;
 int pm_tex_native_unit1(NdUnit* u) {
-    if (aux_off >= 0 && aux_off < offt_n) return -1;
+    if (aux_off >= 0 && aux_off < offt_n) {
+        if (!offt[aux_off].tex) return 0;
+        const C3D_Tex* tp = (const C3D_Tex*)offt[aux_off].tex;
+        u->force = 1;
+        u->dim = tp->dim; u->param = tp->param; u->lod = tp->lodParam;
+        u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3; u->type = (uint32_t)tp->fmt;
+        au_last = NULL; /* citro3d holds unit 1 after the native draw: the next walker bind of the aux image sends it again */
+        return 2;
+    }
     if (aux < 0 || !slots[aux].live) return 0;
     td3_parse();
     if (td3_wrap >= 0 || td3_near || PMDL("texclamp") || PMDL("texnear") || PMDL("texclamp1") || PMDL("texrep1")) return -1;

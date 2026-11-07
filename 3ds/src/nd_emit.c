@@ -57,7 +57,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
     /* texture units: the enable word when the set changes, then the blocks that changed */
     int cfg_cleared = 0;
     {
-        unsigned en = (d->u[0].dim ? 1u : 0u) | (d->u[1].dim ? 2u : 0u);
+        unsigned en = (d->u[0].dim ? 1u : 0u) | (d->u[1].dim ? 2u : 0u) | (d->u[2].dim ? 4u : 0u);
         if (en && (!sh->cfg_valid || sh->cfg != en)) {
             cfg_cleared = 1;
             o = one(o, 0x80, 0xB, 0x11000u | en);
@@ -67,14 +67,15 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
         }
     }
     int unit_chg = 0;
-    for (unsigned u = 0; u < 2; u++) {
+    /* libctru gpu/registers.h: unit 0 border 0x81 (dim 0x82, param 0x83, lod 0x84, addr 0x85), type 0x8E; unit 1 border 0x91, type 0x96; unit 2 border 0x99 (dim 0x9A .. addr 0x9D), type 0x9E (FB-2) */
+    static const unsigned blk_reg[3] = { 0x81u, 0x91u, 0x99u }, fmt_reg[3] = { 0x8Eu, 0x96u, 0x9Eu };
+    for (unsigned u = 0; u < 3; u++) {
         const NdUnit* t = &d->u[u];
-        unsigned base = 0x80u + 0x10u * u;
         if (!t->dim) continue;
         if (!sh->u_on[u] || t->force || memcmp(&sh->u[u], t, sizeof *t) != 0) {
             uint32_t b[5] = { 0, t->dim, t->param, t->lod, t->addr };
-            o = cmd(o, base + 1, 0xF, b, 5, 1);
-            o = one(o, u ? 0x96u : base + 0xE, 0xF, t->type); /* the format register: 0x8E unit 0, 0x96 unit 1 (SGEN-2) */
+            o = cmd(o, blk_reg[u], 0xF, b, 5, 1);
+            o = one(o, fmt_reg[u], 0xF, t->type);
             sh->u[u] = *t; sh->u_on[u] = 1; unit_chg = 1;
         }
     }
@@ -98,6 +99,11 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
         float v[4];
         rev4(v, d->uvx);
         if (!sh->uvx_valid || memcmp(sh->uvx, v, sizeof v) != 0) { o = uni(o, d->loc_uvx, v, 1); memcpy(sh->uvx, v, sizeof v); sh->uvx_valid = 1; }
+    }
+    if (d->has_nzo) { /* FB-2: the noise offset uniform (the walker sets it at every noise draw) */
+        float v[4];
+        rev4(v, d->nzo);
+        if (!sh->nzo_valid || memcmp(sh->nzo, v, sizeof v) != 0) { o = uni(o, d->loc_nzo, v, 1); memcpy(sh->nzo, v, sizeof v); sh->nzo_valid = 1; }
     }
     /* the draw: vertex attribute buffer setup stays with citro3d; the index address, count and the trigger */
     o = one(o, 0x25E, 0x2, 0x300);

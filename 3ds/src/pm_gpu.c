@@ -1114,9 +1114,11 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
+static unsigned ndn_tgen;
 static void nd_native_submit(const NdDraw* dp, int tex) {
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, pm_gbi.c) */
     const NdDraw* d = dp;
+    if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     /* PM5 cause 3: a program change clears the whole native shadow (the citro3d uniform file is one file for all programs, and the template shadow does not know the program) */
     if (d->use5) {
         if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; }
@@ -1134,6 +1136,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     static uint32_t out[ND_EMIT_MAX];
     NdtT t2 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     unsigned nw = nd_emit_draw(out, &ndn_sh, d);
+    noise_bound = 0; /* FB-2: the native draw wrote unit 2 (or left it off): the walker binds the noise texture again at its next noise draw */
     pm_gpu_ndt_end(t2, NDT_EMIT);
     NdtT t3 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     GPUCMD_AddRawCommands(out, nw);
@@ -1201,6 +1204,7 @@ static NdTmplKey spr_wk; /* S4-1 sprcheck: the walker template key of the last r
 static void spr_check(const NdDraw* w);
 static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer (FB-2: no refusal, a forced split), 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
 void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
+void pm_gpu_fb2_stat(unsigned* o); /* FB-2 log: template high mark, evictions, forced splits */
 /* OFF-2: the unit 0 words of the grab copy (grab_tex), as the walker bind (dc_bind) sends them. The copy is one fixed buffer: force keeps the words in
  * every draw of the grab, as the walker binds it at every draw. 1 always. */
 static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
@@ -1235,31 +1239,41 @@ static void pm5_upload(void) {
     }
     sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
 }
-/* FB-2: the forced split of nd_raw_native (kick_check's split without its draw threshold, run inside a raw close: the open batch's ring words stay in place).
- * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
+/* FB-2 switches: tmplsmall=<n> (the template table size: the LRU evicts), cmdsmall=<n> (the command buffer limit in words: a forced split) */
 static unsigned cmd_small, cmd_split_n;
 unsigned pm_gpu_cmd_split_n(void) { return cmd_split_n; }
-static __attribute__((cold, noinline)) void cmd_split_forced(void) {
-    pm_gx_room();
-    split_frame();
-    kick_n++; pm_ph_kick_n++; cmd_split_n++;
-}
-static void cmd_switch(void) { /* cmdsmall=<n>: the command buffer limit in words (a forced split near it); read once */
+void pm_gpu_fb2_stat(unsigned* o) { o[0] = nd_tmpl_hi(); o[1] = nd_tmpl_gen(); o[2] = cmd_split_n; }
+static void fb2_switches(void) {
     static int done;
     char v[16];
     if (done) return;
     done = 1;
+    if (pm_debug_value("tmplsmall", v, sizeof v)) nd_tmpl_set_cap((unsigned)atoi(v));
     if (pm_debug_value("cmdsmall", v, sizeof v)) cmd_small = (unsigned)atoi(v);
 }
+/* FB-2: the forced split of nd_raw_native (kick_check's split without its draw threshold, run inside a raw close: the open batch's ring words stay in place).
+ * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
+void pm_gx_room(void);
+static __attribute__((cold, noinline)) void cmd_split_forced(void) {
+    pm_gx_room();
+    split_frame(); /* the same split as the grab and the frame split (grab_split counts it: the first split of a frame queues the clear) */
+    kick_n++; pm_ph_kick_n++; cmd_split_n++;
+}
+/* FB-2: the unit 2 words of the noise texture (fixed for the run: force 0, the shadow decides when they go out) */
+static void noise_native_words(NdUnit* u) {
+    u->force = 0;
+    u->dim = noise_tex.dim; u->param = noise_tex.param; u->lod = noise_tex.lodParam;
+    u->addr = (uint32_t)osConvertVirtToPhys(noise_tex.data) >> 3; u->type = (uint32_t)noise_tex.fmt;
+}
 static int nd_raw_native(void) {
-    cmd_switch();
+    fb2_switches();
+    nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
     if (g_use5 && combine == 8 && (plan.uses_tex1 || plan.uses_noise)) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* PM5 cause 2: the pm5 file has no second uv map or noise row for the native draw */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); unsigned lim = cmd_small && cmd_small < csz ? cmd_small : csz; if (coff + ND_EMIT_MAX + 1024u >= lim) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
     if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }
-    if (combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[7]++; cen_why = CW_NRK(7); return 0; }
     int z = z_on && (!rect_2d || rect_z) && !off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
@@ -1273,7 +1287,9 @@ static int nd_raw_native(void) {
     memset(&u1, 0, sizeof u1);
     int t1 = 0;
     if (combine == 8 && plan.uses_tex1) { t1 = pm_tex_native_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform */
+    if (t1 == 2 && off_active && pm_tex_aux_off_idx() == off_cur && offs[off_cur].snap_ready) t1 = tex_native_words(&u1, &offs[off_cur].snap); /* FB-2: the aux image is the target of this pass: its snapshot (OFF-3, as flush_draw) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
+    const int noise = combine == 8 && plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
     nk.pass = 0; nk.raw = 1; nk.cull = (uint8_t)g_cullm;
@@ -1282,7 +1298,7 @@ static int nd_raw_native(void) {
     nk.atest_on = r_atest >= 0; nk.aref = (uint8_t)(r_atest >= 0 ? r_atest : 0);
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
     nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
-    nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = 0;
+    nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = (uint8_t)noise;
     const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d && !r_zmark; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
@@ -1322,6 +1338,11 @@ static int nd_raw_native(void) {
     d.buf_col = ndn_to.buf_color; d.has_buf = (uint8_t)ndn_to.buf_set;
     d.u[0] = u0;
     d.u[1] = u1;
+    if (noise) { /* FB-2: unit 2 (the noise texture) and its offset uniform, as the walker's noise block of flush_draw */
+        noise_native_words(&d.u[2]);
+        d.nzo[0] = 120.f / 64.f; d.nzo[1] = 200.f / 64.f; d.nzo[2] = noise_off[0]; d.nzo[3] = noise_off[1];
+        d.loc_nzo = (unsigned)u4_nzo; d.has_nzo = u4_nzo >= 0;
+    }
     if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)u4_uvx; d.has_uvx = 1; }
     d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
     if (g_use5) { pm5_upload(); d.use5 = 1; d.no_uni = 1; d.npal = 0; d.has_uvx = 0; } /* PM5-2; PM5 cause 2: no pm4 unit 1 uv row in a pm5 draw */
@@ -3138,7 +3159,7 @@ void pm_gpu_set_r13_t1(int bound) {
     r13t1b_ok = bound; r13u1_ok = 0; r13i8_1 = 0;
     if (!bound) return;
     memset(&r13u1, 0, sizeof r13u1);
-    if (pm_tex_native_unit1(&r13u1) > 0) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); }
+    if (pm_tex_native_unit1(&r13u1) == 1) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); } /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
@@ -3346,7 +3367,8 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
-    /* FB-2: the template ids of the cached draws are built again before any draw goes out (a table that evicts may have moved an id since the store); a full table falls back */
+    /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
+    nd_tmpl_pin();
     for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
     float comb[4][4], pal0[16];
     nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
