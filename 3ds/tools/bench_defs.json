@@ -2125,7 +2125,7 @@
       "purpose": "LOGFIX fault 2: battle picture at frame 182 (top-left corner, Goomba label). Compare per build with bench.py build-at.",
       "scenario": "battle_start_f182",
       "cap": 60,
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "tags": [
         "azahar",
         "pic",
@@ -2143,7 +2143,7 @@
       "purpose": "PM5 picture by eye: battle start on kmr_03, shot mode frames 182 on.",
       "scenario": "battle_start",
       "cap": 20,
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "tags": [
         "azahar",
         "pic"
@@ -2158,7 +2158,7 @@
       "purpose": "PM5 reference: battle start with the pm5 native path off (walker pm5 close).",
       "scenario": "battle_start_pm5off",
       "cap": 20,
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "tags": [
         "azahar",
         "pic"
@@ -2263,7 +2263,7 @@
       "purpose": "MDL-0b count at battle start (mdlw lines, mdl2 prints).",
       "scenario": "mdlw_battle",
       "cap": 60,
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "tags": [
         "azahar",
         "pic"
@@ -2278,7 +2278,7 @@
       "purpose": "PM5 picture by eye: battle start on kmr_03, shot mode frames 182 on.",
       "scenario": "battle_start_r13off",
       "cap": 20,
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "tags": [
         "azahar",
         "pic"
