@@ -57,7 +57,7 @@ static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buc
 static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */
 unsigned pm_ph_gpu_us[2];
 unsigned pm_ph_cmd_pm;
-unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb, pm_ph_iv, pm_ph_hud_us; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
+unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_iv, pm_ph_hud_us; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
 
 void pm_ph_scene_mode(int mode) { cur_mode = mode; }
 static void fs_win_reset(void);

@@ -32,19 +32,6 @@ static int frame_key = -1, frame_lay = -1; /* LOG5: pm_log_header_key of the dra
 static volatile int hud_new, foot_new;
 static char foot_row[2][40]; /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build) */
 
-typedef struct {
-    float x, y, z, w;
-    float u, v;
-    float r, g, b, a;
-} Vert;
-
-enum { VERT_SLOTS = 32768 };
-/* CONFIG2 stores bytes-per-vertex in 8 bits, and that value has to equal the
- * attribute size or the PICA freezes. 4+2+4 floats, no padding. */
-_Static_assert(sizeof(Vert) == (4 + 2 + 4) * sizeof(float), "vertex stride");
-static Vert* vert_base;
-static Vert* verts;
-static int nverts;
 static int rect_2d;
 static int drew;
 static int gpu_ok;
@@ -128,7 +115,7 @@ static float eye_slider;
 float pm_eye_e, pm_eye_conv = 300.f;
 #define PM_EYE_E 0.015f /* NDC shift per eye at slider 1 for a point at infinity (3 px of 400). The calibration knob. */
 /* H02 GPU limit stats, maxima since the last `mem` log line. Verts and command buffer overflow drop work without a message. */
-static unsigned draws_frame, draws_max, verts_max, vert_drops, frames_seen;
+static unsigned draws_frame, draws_max, frames_seen;
 static float cmd_max;
 static DVLB_s* dvlb;
 /* PO3b (switch gpuvtx): raw Vtx path. A ring of the 16 byte Vtx records of this frame and a u16 index ring. A batch is the triangles that share one
@@ -277,8 +264,7 @@ static void sh_clear(void);
 static int want_clear; /* see below */
 /* GV0 and KICK1: the GPU reads the vertex pool, the raw Vtx ring and the index ring when it runs the command list. Everything written since the last
  * flush goes out of the data cache before every C3D_FrameSplit and at the end of the frame (GSPGPU_FlushDataCache is one call to the GSP, so each
- * range is flushed once). v_fl, gring_fl and gidx_fl mark what is flushed. They restart at pm_gpu_begin. */
-static Vert* v_fl;
+ * range is flushed once). gring_fl and gidx_fl mark what is flushed. They restart at pm_gpu_begin. */
 static unsigned gring_fl, gidx_fl;
 /* DC1: the sampled close (set in pm_gpu_flush_at). Only one close in 8 reads the tick, so the timers are sampled and scaled by 8. */
 static int dc_on;
@@ -287,12 +273,6 @@ static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n, 
 static void gpu_flush_written(void) {
     unsigned g0 = dc_on ? pm_ticks() : 0;
     pm_tex_flush_pend_only();
-    if (verts && v_fl && verts > v_fl) {
-        PH_PUSH(PH_GCACHE);
-        pm_fl_dc(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl)); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (unsigned)((uintptr_t)verts - (uintptr_t)v_fl) >> 10); dcs_fl++;
-        PH_POP();
-        v_fl = verts;
-    }
     if (gring && gring_n > gring_fl) { pm_fl_dc(gring + gring_fl * 16, (gring_n - gring_fl) * 16); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gring_n - gring_fl) * 16 >> 10); gring_fl = gring_n; dcs_fl++; }
     if (gidx && gidx_n > gidx_fl) { pm_fl_dc(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gidx_n - gidx_fl) * 2 >> 10); gidx_fl = gidx_n; dcs_fl++; }
     if (dc_on) dcs_gt += (pm_ticks() - g0) * 8u;
@@ -545,10 +525,9 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     unsigned np = graw ? pal_n : 0u; /* palette: game matrix index and the composed matrix pcomp of each entry */
     ndref_put(&np, 4);
     for (unsigned k = 0; k < np; k++) { ndref_put(&pal_g[k], 4); ndref_put(&pcomp[pal_g[k]], sizeof(C3D_Mtx)); }
-    unsigned nv = graw ? gni : (unsigned)nverts; /* resolved vertices in draw order: 16-byte ring values or 40-byte CPU Vert */
+    unsigned nv = gni; /* resolved vertices in draw order: 16-byte ring values */
     ndref_put(&nv, 4);
-    if (graw) for (unsigned i = 0; i < gni; i++) ndref_put((gi_kind == 1 ? rchunk[0].vtx : gring) + 16u * gidx[gi_start + i], 16);
-    else ndref_put(verts, (unsigned)nverts * sizeof(Vert));
+    for (unsigned i = 0; i < gni; i++) ndref_put((gi_kind == 1 ? rchunk[0].vtx : gring) + 16u * gidx[gi_start + i], 16);
     ndref_patch(at);
     if (np) { /* S1-4 oracle: kind 5, the inputs of the palette product pcomp = post x game of this draw: post (gv_post), then per entry the game matrix (u32 gm, 16 floats pal_tab[gm]) */
         unsigned hd[2] = { 5u, 0u }, at5 = ndref_len;
@@ -699,9 +678,9 @@ static unsigned prev_draws, kick_at, kick_at2;
 static int kick_done; /* splits done in this frame: KICK2 adds a second one at 85 percent */
 extern int pm_ph_on;
 void pm_gbi_draw_note(int native); /* WCEN3 */
-extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb; /* PI4 */
+extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws; /* PI4 */
 static void kick_check(void) {
-    if (kick_done >= 2 || off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || rect_open || nverts > 0 || gni > 0) return;
+    if (kick_done >= 2 || off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || rect_open || gni > 0) return;
     kick_done++;
     gpu_flush_written();
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
@@ -759,7 +738,7 @@ static void flush_impl_body(void) {
         combine = rect_ec; rect_2d = 1; rect_z = rect_zb; rect_open = 0; rect_tex = -1; rect_raw = 0;
         flush_draw();
         combine = sc; rect_2d = sr; rect_z = sz;
-        if (!off_active) { /* RECT-1b: the grab rows of this batch (the native raw close returns before flush_draw_cpu's bookkeeping) */
+        if (!off_active) { /* RECT-1b: the grab rows of this batch (the native raw close returns before flush_draw's bookkeeping) */
             if (rect_y1 <= rect_y0) grab_dirty = 1;
             else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
             else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
@@ -826,7 +805,7 @@ static void dc_kick(void) {
 static void dc_bind(int unit, C3D_Tex* t) { pm_dc_c[DC_TB0 + unit]++; C3D_TexBind(unit, t); }
 /* FLH: cold and per-change parts of flush_draw, moved out of line. Same operations, same order. */
 static __attribute__((cold, noinline)) void flush_fl_dbg(int graw) {
-    fl_count(nverts <= 0 && !graw);
+    fl_count(!graw);
     if (fl_fn != (const char*)"pm_gpu_tex_rect" && strcmp(fl_fn, "pm_gpu_tex_rect") != 0) fl_prev_rect = 0;
 }
 static __attribute__((noinline)) void flush_light_tab(void) {
@@ -860,7 +839,7 @@ static __attribute__((noinline)) void scissor_off(void) {
 /* RECT-1b diag (switch rectreg=<frame>, rectalt): citro3d and the raw close write one GPUCMD buffer. Entry = [param0][header][param1..paramk] with
  * header bits 0-15 id, 16-19 mask, 20-27 k, 31 consecutive (word j goes to id + j), padded to an even word count (libctru GPUCMD_AddInternal). rd_sync
  * parses every word before each submit, so rd_reg is the GPU register shadow since boot (citro3d writes only changed registers). cb_regdump prints the
- * registers of one textured rectangle at the draw ("cpu" after C3D_DrawArrays, "nat" after nd_native_submit). rd_tex marks a textured rectangle batch. */
+ * registers of one textured rectangle at the draw ("cpu" after the CPU draw of DEL, deleted, "nat" after nd_native_submit). rd_tex marks a textured rectangle batch. */
 static u32 rd_reg[0x400];
 static u32 rd_uf[256][4];
 static unsigned rd_uidx, rd_ucnt, rd_last, rd_fr = 0xffffffffu, rd_nl, rd_pairs;
@@ -956,7 +935,7 @@ static __attribute__((cold, noinline)) void rd_close(unsigned addr, unsigned dim
     rq_n = 0;
 }
 /* RECT-1b plan 3 (switch rectpost=<frame>): every textured rectangle (rect_2d) opens a window; the window logs its rect and the next 15 draws
- * (cpu = C3D_DrawArrays, nat = nd_native_submit), one rpD line each with the GPU register shadow (rd_reg) at the draw. The last window of the frame is the
+ * (cpu = the deleted CPU draw, nat = nd_native_submit), one rpD line each with the GPU register shadow (rd_reg) at the draw. The last window of the frame is the
  * one that matters: the first line that differs between two runs names the field. */
 void pm_tex_size(int* w, int* h);
 static int rp_src_, rp_tmpl_ = -1, rp_u0_;
@@ -1088,7 +1067,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     GPUCMD_AddRawCommands(out, nw);
     pm_gpu_ndt_end(t3, NDT_ADD);
     if (tex) ndunit_after();
-    *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as C3D_DrawElements sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
+    *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
     nd_native_draws++;
     dv_draw++;
@@ -1099,7 +1078,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     gni = 0; pal_n = 0;
     batch_identity = 0;
     drew = 1;
-    if (!off_active) { /* B2: the main target changed, the grab slot is old (as flush_draw_cpu) */
+    if (!off_active) { /* B2: the main target changed, the grab slot is old (as flush_draw) */
         if (rect_y1 <= rect_y0) grab_dirty = 1;
         else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
         else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
@@ -1216,7 +1195,7 @@ static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
     return 1;
 }
 static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex); }
-/* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw_cpu's pm5 block, no cache: the native batch writes them
+/* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw's pm5 block, no cache: the native batch writes them
  * in order before its draw). Palette entries: the pm5 register layout, 7 rows per entry (4 position, 3 normal). */
 static void pm5_upload(void) {
     pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4;
@@ -1287,7 +1266,7 @@ static int nd_raw_native(void) {
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
     nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
     nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = (uint8_t)noise;
-    const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d && !r_zmark; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
+    const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d && !r_zmark; /* S6-2c-3: as flush_draw: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
@@ -1381,14 +1360,12 @@ static void flush_draw(void) {
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
     if (fl_on() && gpu_ok) flush_fl_dbg(graw);
-    if ((nverts <= 0 && !graw) || !gpu_ok) {
-        nverts = 0;
+    if (!graw || !gpu_ok) {
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
     }
     if (r_nocol && !(z_on && (!rect_2d || rect_z) && r_zupd)) {
-        nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
@@ -1397,7 +1374,6 @@ static void flush_draw(void) {
     if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
         { extern unsigned pm_gbi_dbg_orb_tag(void); unsigned ot_ = pm_gbi_dbg_orb_tag(); /* FX1-3: a skipped draw of an effect list is logged too */
           if (ot_ && PMDL("orbdbg")) pm_log("orbdbg skip f%u list %u H03 cmb %d", pm_frame_count(), ot_, combine); }
-        nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
@@ -1409,7 +1385,6 @@ static void flush_draw(void) {
         if (snap0 || snap1) off_snapshot(off_cur);
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
-    { static unsigned rcl_; if (rect_2d && !graw && rcl_ < 8u && pm_frame_count() > 100u) { rcl_++; pm_log_d("rectcpu f%u nverts %d gni %d comb %d d3 %d grab %d off %d open %d raw %d caller %s:%d", pm_frame_count(), nverts, gni, combine, draw_3d, grab_bind, off_active, rect_open, rect_raw, fl_fn, fl_line); } } /* RECT-2b diag */
     cen_why = graw ? CW_OTHER : rect_2d ? CW_RECT : (cen_fbv & CEN_FB_CLIP) ? CW_CLIP : (cen_fbv & CEN_FB_SEAM) ? CW_SEAM : (cen_fbv & CEN_FB_WIDE) ? CW_WIDE : (cen_fbv & CEN_FB_RING) ? CW_RING : CW_OTHER; /* CEN-1a */
     if (graw && nd_raw_native()) return;
     if (graw && ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a raw batch the native path refused is dropped (nd_raw_native counted the reason, census 0 at the DEL row) */
@@ -1577,8 +1552,6 @@ void pm_gpu_init(void) {
         }
         pm_log("gpuvtx: raw Vtx path %s (ring %u vtx, %u idx)", gpu_vtx_on ? "on" : "FAILED", (unsigned)GRING_VTX, (unsigned)GRING_IDX);
     }
-    vert_base = (Vert*)linearAlloc(sizeof(Vert) * VERT_SLOTS);
-    verts = vert_base;
     ident(game_mvp);
     rebuild_3d();
     pm_tex_init();
@@ -1589,8 +1562,7 @@ void pm_gpu_init(void) {
     setvbuf(stdout, NULL, _IONBF, 0);
     consoleSetWindow(&bottom_con, 1, LOG_TOP, 40, LOG_ROWS); /* BOTLAYOUT: the log window, rows 9 to 26 */
     pm_con_unlock();
-    gpu_ok = vert_base != NULL;
-    if (!vert_base) pm_log_e("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
+    gpu_ok = gpu_vtx_on;
     pm_log_d("gpu %s m %d %d", gpu_ok ? "ok" : "no vertex buffer",
            (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
@@ -2371,10 +2343,8 @@ void pm_gpu_begin_wait(void) {
     dv_draw = 0;
     draws_frame = 0;
     drew = 0;
-    nverts = 0;
     gni = 0; pal_n = 0; post_gen++; ring_frame_begin(); /* PO3b, GV1c; FB-1: chunk 0 with empty fills */
-    verts = vert_base;
-    v_fl = vert_base; gring_fl = gidx_fl = 0; kick_done = 0; /* GV0, KICK1 */
+    gring_fl = gidx_fl = 0; kick_done = 0; /* GV0, KICK1 */
     sci_x0 = 0;
     sci_y0 = 0;
     sci_x1 = 320;
@@ -2439,26 +2409,23 @@ void pm_gpu_end(void) {
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
     if (want_clear && drew) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
     /* PO1: the GPU reads the vertex buffer when C3D_FrameEnd runs the command list. One flush of the
-     * whole range written this frame replaces one GSPGPU call per draw. Each frame starts at vert_base
+     * whole range written this frame replaces one GSPGPU call per draw. Each frame's writes
      * again, and FrameBegin(SYNCDRAW) has waited for the GPU, so no draw of this frame overlaps the
      * writes. */
     gpu_flush_written(); /* GV0: pool, raw Vtx ring and index ring, what a split has not flushed already */
     {
-        unsigned used = verts ? (unsigned)(verts - vert_base) : 0;
         float cmd = C3D_GetCmdBufUsage();
         static unsigned warned;
         frames_seen++;
         if (draws_frame > draws_max) draws_max = draws_frame;
         prev_draws = draws_frame; kick_at = draws_frame >= 48 ? draws_frame * 55 / 100 : 0; /* KICK1 */
         kick_at2 = draws_frame >= 48 ? draws_frame * 85 / 100 : 0; /* KICK2 */
-        if (used > verts_max) verts_max = used;
         if (cmd > cmd_max) cmd_max = cmd;
         pm_ph_cmd_pm = (unsigned)(cmd * 1000.f);
-        pm_ph_draws = draws_frame; pm_ph_vb = used; /* PI4 */
-        if ((used * 10u > VERT_SLOTS * 9u || cmd > 0.9f || vert_drops) && (warned < 5 || frames_seen % 600 == 0)) {
+        pm_ph_draws = draws_frame; /* PI4 */
+        if (cmd > 0.9f && (warned < 5 || frames_seen % 600 == 0)) {
             warned++;
-            pm_log_w("GPU LIMIT NEAR: vertex slots %u of %u (dropped %u), command buffer %d%%, draws %u", used,
-                   (unsigned)VERT_SLOTS, vert_drops, (int)(cmd * 100.f), draws_frame);
+            pm_log_w("GPU LIMIT NEAR: command buffer %d%%, draws %u", (int)(cmd * 100.f), draws_frame);
         }
     }
     pm_gbi_end_frame();
@@ -2479,9 +2446,8 @@ void pm_gpu_rect_sync(void) { if (rect_open) flush(); }
 int pm_gpu_drew(void) { pm_gpu_begin_wait(); if (rect_open) flush(); return drew; }
 
 void pm_gpu_log_stats(const char* tag) {
-    pm_log_d("mem %s gpu max per frame: draws %u, vertex slots %u of %u, command buffer %d%%, vertex drops (total) %u", tag, draws_max,
-           verts_max, (unsigned)VERT_SLOTS, (int)(cmd_max * 100.f), vert_drops);
-    draws_max = verts_max = 0;
+    pm_log_d("mem %s gpu max per frame: draws %u, command buffer %d%%", tag, draws_max, (int)(cmd_max * 100.f));
+    draws_max = 0;
     cmd_max = 0.f;
 }
 
@@ -2513,7 +2479,7 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
     int ortho = memcmp(m, id4, sizeof(id4)) == 0 ? ui_ortho : (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f);
     if (sx == vp_sx && sy == vp_sy && tx == vp_tx && ty == vp_ty && ortho == ui_ortho &&
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
-    if (draw_3d && (nverts > 0 || gni > 0)) flush();
+    if (draw_3d && gni > 0) flush();
     ui_ortho = ortho;
     memcpy(game_mvp, m, sizeof(game_mvp));
     vp_sx = sx;
@@ -2680,7 +2646,6 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     }
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
-    if (nverts > 0) flush(); /* the CPU batch in flight comes first, draw order */
     if (gni > 0 && !gtrip_batch_open(use5, fx, vp, uvso, cmul, cadd, zmix, ct, g)) {
         if (pal_n) { /* count a palette overflow only when the matrices do not fit */
             unsigned miss = 0;
@@ -2821,7 +2786,6 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     }
     if (gidx_n + nidx > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
-    if (nverts > 0) flush();
     gi_kind_set(1); /* FB-1: static indices name chunk 0 vertices */
     /* C3: extend an open static batch across consecutive compiled lists (same PSO inputs and matrix slot). */
     if (grange_batch_open(gm, vp, uvso, cmul, cadd, zmix, ct, fx, use5)) {
@@ -3470,7 +3434,7 @@ void pm_gpu_set_mix(int on, unsigned rgba) {
 /* SPR4-env: the open batch reads ENV at its flush (combine 5, 7 and the combine 8 plans), so a change while it is open closes it first.
  * The batch-open tests need no env compare: no change can happen while a batch is open. */
 void pm_gpu_set_env(unsigned rgba) {
-    if (rgba != env_col && (gni > 0 || nverts > 0 || rect_open)) flush();
+    if (rgba != env_col && (gni > 0 || rect_open)) flush();
     env_col = rgba;
 }
 
@@ -3598,7 +3562,7 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     fl_fn = "gbi"; fl_line = line;
     /* EC2: no vertex and no raw batch queued: flush_draw returns before any state, texture, cache or GPU call. Only the
      * rectangle bookkeeping of flush_impl runs. No timer (svc read) here, only a plain count. */
-    if (nverts <= 0 && gni <= 0) {
+    if (gni <= 0) {
         unsigned s0 = pm_svc_n;
         pm_ec_n++;
         if (pm_ph_on) { int c = pm_gbi_flush_class(); pm_fl_n[c]++; pm_fl_e[c]++; }

@@ -320,7 +320,7 @@ static void build_words(NdTmplEnt* e, const NdTevOut* tev) {
     unsigned dfunc, dmask, den = 1, sten = 0, sfn = G_ALWAYS, sop = 0, sref = 0, swm = 0;
     float bias = 0.0f;
     e->n = 0;
-    /* depth test and stencil of the pass (flush_draw main state, flush_draw_cpu decal2 passes and zmark pass 2) */
+    /* depth test and stencil of the pass (flush_draw main state, flush_draw decal2 passes and zmark pass 2) */
     if (k->pass == 1) { /* decal pass A: no colour, no depth write, mark the stencil where the stored depth is not behind the decal */
         bias = -ND_DECAL_EPS; dfunc = G_LEQUAL; dmask = 0;
         sten = 1; sfn = G_ALWAYS; sref = 1; swm = 0xFF; sop = G_KEEP | G_KEEP << 4 | G_REPLACE << 8;
