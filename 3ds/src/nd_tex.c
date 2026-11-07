@@ -782,3 +782,7 @@ int load_shaded_sprite(int dx4, int dy4) {
     }
     return pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp, lut, dx4, dy4);
 }
+
+/* ---- MV-10: RDP shift helper, cut from pm_gbi.c (no change) ---- */
+/* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
+float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */

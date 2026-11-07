@@ -649,3 +649,7 @@ void op_setcombine(u32 w0, u32 w1) {
                                ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
             cmb_gen_seen = comb_gen; /* R2B */
 }
+
+/* ---- MV-10: debug switch combchk, cut from pm_gbi.c (no change) ---- */
+/* S3N-3d: debug switch combchk. Each combine work of sync_combine runs nd_comb_decide on its inputs and compares the outputs with the walker state. */
+int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }

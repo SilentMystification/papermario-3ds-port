@@ -76,3 +76,6 @@ Keep the no-hit rule only for R13 texture-block records. The store change `nd_mc
 Fix (one row): `nd_mc_store(mk, ds != NULL || (r13 && ds == NULL && gfx == NULL && tex), hs, hg)`; count those stores in the mdlw line as `r13nohit <n>`.
 Gate: iwa_10 byte-equal against efaca195d, ndmcheck mismatches back to about 208; battle_start f182 byte-equal to r13off; mac_01 byte-equal; ndm hit/miss at mac_01 and iwa_10 equal to efaca195d; kmr_03 why 2 = 0 and r13nohit about 297 per 100 frames.
 Revisit only if a console prof of a battle shows the R13 miss path above 0.5 ms/frame (then: run the block, compare the stored unit's pm_tex_census_id and the tex epoch in pm_gpu_model_hit).
+
+## Unblocked (2026-11-07)
+SPR4 measured sprnat why 4 = 0 at the kmr_03 battle (battle_spr5_pic, f300, build 95d70761c: native 997 fb 0 why 4 0): the flags & 4 refusal was deleted by SPR4 a031a1238. MDL-4 can run: first one ndm fb census on the MDL-0 scenes (cold det); if fb = 0, delete pm_gpu_model_fb_cached and the walker geometry fallback in rec_run (`if (!nat) rec_dl`); else name each remaining case as a counted fallback. Gate: mac_01, iwa_10, battle_start_f182_cold byte-equal to nds1 (cold det).

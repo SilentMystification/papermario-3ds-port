@@ -401,7 +401,14 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
         else { Write-Output ("PASS  {0}: {1}" -f $ev.name, $hit.Trim()) }
     }
     $shotFiles = @()
-    if (Test-Path $shots) { $shotFiles = @(Get-ChildItem $shots -File | Where-Object { $_.LastWriteTime -ge $since } | Sort-Object Name) }
+    # SHOTCOPY1: a shot file is copied only when it is full (288015 B, 240 x 400 P6); a part-written file is not a shot of this run
+    $shotFull = 288015
+    if (Test-Path $shots) {
+        # only the top-screen shots (NNNN_ma_mm.ppm, 288015 B) have the full-size rule; bottom shots (bot_*.ppm, 230415 B) are copied as before
+        $shotFiles = @(Get-ChildItem $shots -File | Where-Object { $_.LastWriteTime -ge $since -and ($_.Name -notmatch '^\d{4}_' -or $_.Length -eq $shotFull) } | Sort-Object Name)
+        $shotShort = @(Get-ChildItem $shots -File | Where-Object { $_.LastWriteTime -ge $since -and $_.Name -match '^\d{4}_' -and $_.Length -ne $shotFull })
+        if ($shotShort.Count) { Write-Output ("SHOT FILES SHORT: {0} file(s) not {1} B: {2}" -f $shotShort.Count, $shotFull, (($shotShort | ForEach-Object { "$($_.Name)=$($_.Length)" }) -join " ")); $script:shotCopyBad = $true }
+    }
     if ($since -gt [datetime]::MinValue -and $shotFiles.Count -gt 0) {
         # Keep this run's shots per scenario: the shared shots folder is overwritten by the next run
         $arch = Join-Path $repo "build3ds\azt\shots\$($sc.name)"
@@ -430,6 +437,7 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
     Write-Output "SHOTS: $($shotFiles.Count) from this run"
     foreach ($f in $shotFiles) { Write-Output "  $($f.FullName)" }
     if ($sc.needs_picture -and $shotFiles.Count -eq 0) { Write-Output "FAIL  picture: no shot file from this run"; $fails++ }
+    if ($script:shotCopyBad) { Write-Output "FAIL  shot copy: a logged shot has no full file (SHOT COPY FAILED or SHOT FILES SHORT above)"; $fails++ }
     if ($fails) { Write-Output "SCENARIO FAILED: $fails check(s) failed."; $script:checkRc = 1; return }
     if ($script:checkRc -eq 0) { Write-Output "LOG CHECKS PASS ($(@($sc.expected_events).Count) of $(@($sc.expected_events).Count)). The script does not read the picture. A person must open the shot and confirm the subject." }
 }
@@ -701,6 +709,7 @@ $rc = [int]$endRow[5]
 Write-Output ("run: rc {0}: {1}" -f $rc, (($endRow[6..($endRow.Count - 1)]) -join ","))
 # AZT10b-2: the run's timing from the run result (run_azahar End-Run text): wall seconds, until seconds, end after the until line
 $runTxt = (($endRow[6..($endRow.Count - 1)]) -join ",")
+$script:shotCopyBad = $runTxt -match 'SHOT COPY FAILED'; # SHOTCOPY1: run_azahar counts the logged shots against the full files
 $tmW = [regex]::Match($runTxt, 'stopped after (\d+)s'); $tmU = [regex]::Match($runTxt, 'until at ([\d.]+) s'); $tmA = [regex]::Match($runTxt, '([\d.]+) s after the until line')
 $wallS = if ($tmW.Success) { [double]$tmW.Groups[1].Value } else { $null }
 $untilS = if ($tmU.Success) { [double]$tmU.Groups[1].Value } else { $null }

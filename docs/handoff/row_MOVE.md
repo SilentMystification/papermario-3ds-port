@@ -50,7 +50,11 @@ Open, in this order:
 6. gbi-phase within +3%: one phase run of mac_01 against the nds1 build.
 Note: all pic runs logged rc "crash symbols" (also base). Check whether this is the sprite zeroing bug (row_SPR4) after sprfix lands, else report the PC.
 
-## State 2 (2026-11-07): merged in nds1 88388cb78 (moves 1-6, WK-4b-1..4, nd_host include path). pm_gbi.c 1179 lines.
+## State 3 (2026-11-07, MOVE agent)
+Order items done on nds1 fd36a677d (rebased): (b) nd_mtx_set.c split, MV-7 walk core to nd_walk.c, MV-8 rgba_from_5551 to nd_target.c, MV-9 census helpers to nd_cen.c, MV-10 combchk_on, shift_mul, nd_light_count moved (sync_combine and pm_gbi_gv_at were already elsewhere), (a) op_module table and modsplit column in nd_cen.c, (c) census op counts equal to base (ops 577), (d) phase mac_01 10.8 vs 10.8 ms, iwa_10 16.7 vs 16.7 ms (fsplit gbi, one window each, cold det).
+Gates: spot_mac01_det cold 12 of 12 shots byte-equal to base fd36a677d.
+Open, not met: pm_gbi.c has 21 definitions left (records rec_*, rec_run, sync_legacy, lit_color, cc_legacy, draw_tri_cpu-free set, suntile, tritrace, cc07_dbg). The op_module bucket MOD_PMGBI is 90 ops per frame (G_PM_REC, rec_run). Both need the records move (LS-3, not in this row) and the CPU vertex delete (GM-3). The row file stays until those rows decide.
+Census second window (scene frames 300 to 600) not run. Phase gate measured one window per map, not the 100 to 400 mean.
 
 ## Oracle plan MOVE 7+ (empty pm_gbi.c)
 Precondition grep fix: count definitions only, `grep -cE "^[a-z][^;]*\)\s*\{?$" 3ds/src/pm_gbi.c`, plus nm on pm_gbi.o (defined T/t symbols). S10 precondition 4: nm shows only the pm_gbi_run shim, or nothing.

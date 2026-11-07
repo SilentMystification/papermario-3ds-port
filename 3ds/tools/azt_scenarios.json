@@ -690,6 +690,114 @@
       "status": "unverified"
     },
     {
+      "name": "spot_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold start with the det switch. Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
+      "proves": "DET cold spot: the mac_01 picture per shot is a function of the build (det), so a base and a head build give byte-equal shots (MOVE census and phase gates).",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
+    },
+    {
+      "name": "wcen_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det. Census window 0 to 300: the opsplit line with the per-producer ops and the mod column (module per op, nd_cen.c op_module).",
+      "proves": "MOVE (a) census: the mod column prints with det, so base and head per-op totals compare in the log.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase opsplit loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "opsplit f",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "opsplit",
+          "regex": "opsplit f\\d+ ops"
+        }
+      ],
+      "reason": "MOVE gate (c): one 300-frame window (the until is the first opsplit line). A second window would need a longer cap and is not run here. Cold start 12 to 16 s to the first marker."
+    },
+    {
+      "name": "phase_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det and phase fsplit (no picture). The fsplit line carries gbi ms per window.",
+      "proves": "MOVE gate (d): the gbi phase ms of the window (fsplit gbi) for the base and the head build, same harness.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase fsplit loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "fsplit f",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fsplit",
+          "regex": "fsplit f\\d+ logic"
+        }
+      ],
+      "reason": "MOVE gate (d): one window of phase ms. opsplit is left out: its per-op sampler adds cost to the gbi phase being measured."
+    },
+    {
+      "name": "phase_iwa10_det",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530, cold start with det and phase fsplit (no picture). The fsplit line carries gbi ms per window.",
+      "proves": "MOVE gate (d): the gbi phase ms of the window for the base and the head build on iwa_10.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 phase fsplit loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "fsplit f",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "fsplit",
+          "regex": "fsplit f\\d+ logic"
+        }
+      ],
+      "reason": "MOVE gate (d): one window of phase ms on iwa_10. opsplit is left out (see phase_mac01_det)."
+    },
+    {
       "name": "nok11_det",
       "status": "unverified",
       "subject": "DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
@@ -4060,6 +4168,34 @@
       "reason": "Verified from the file_select run (same command, one start): shots at frames 282, 286, 290 and 293 exist (log shot lines). Read by eye on the crop of the File 1 box: the box and label shift between 282 and 293, so the turn is visible. Frames 297 and later are past the window. Shots: build3ds\\azt\\shots\file_select\u00000 to 0003."
     },
     {
+      "name": "pause_shift",
+      "status": "unverified",
+      "subject": "PSHIFT-1: Toad Town mac_01 at pos 0 0 200, START opens the pause menu (story set, so the pause is allowed). Shots at frames 92 to 135: live frames 92 and 95, the pause from 96, the open menu from about 105. The pause background is compared with the live frame outside the menu panel (bottom band).",
+      "proves": "The pause background offset: dx and dy of the grabbed scene against the last live frame (cross-correlation outside the panel). Frame numbers of the open come from the pause mode line.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=wait80,START*3,wait100 phase phsum shots shotwin=92:44 loglevel=debug grablog",
+      "until": "shot \\d+ frame 1(3[4-9])\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in the open menu window (134 to 139)",
+          "regex": "shot \\d+ frame 1(3[4-9])\\b"
+        }
+      ],
+      "reason": "PSHIFT-1 measure (and the PSHIFT-2 gate). Same START command as pause_spin on mac_01 pos 0 0 200. Offsets from the shot files: normalized cross-correlation of the bottom band (rows 4 to 45 and 352 to 395 of the PPM) at offsets -3..3, live shot 95 against pause shots. Before the fix dy +1 from frame 105; after the fix dx 0 dy 0."
+    },
+    {
       "name": "pause_spin",
       "status": "unverified",
       "subject": "Pause menu open with the spin animation running. One shot window of 40 frames, frames 140 to 179, all inside the open pause (opened at frame 96).",
@@ -5299,9 +5435,9 @@
       "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on.",
       "proves": "UA10: the intro mode runs in the native view with wide on.",
-      "debug": "wide shots shotwin=330:20 loglevel=debug",
+      "debug": "wide shots shotwin=330:20 loglevel=debug fixedseed fast fs1off det",
       "until": "shot \\d+ frame 334\\b",
-      "cap": 45,
+      "cap": 25,
       "deadline": 20,
       "first_marker": "game mode 1 frame",
       "expects": "none",
@@ -8340,7 +8476,7 @@
       "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
       "proves": "OFF-3 census of intro_native: cumulative nrawwhy unit0 (8) and noise (7) refusals at f600.",
-      "debug": "wide shots shotwin=330:20 loglevel=debug",
+      "debug": "wide shots shotwin=330:20 loglevel=debug fixedseed fast fs1off det",
       "until": "nrawwhy f600 ",
       "cap": 45,
       "deadline": 20,
@@ -8911,7 +9047,7 @@
       "subject": "Mario in his yard, wide on, uishow=coins keeps the status bar up. Shots frames 200 to 219: the 1.25x bar.",
       "proves": "HUD1: the wide status bar (1.25x) is on screen in the world. uishow=bar opens the bar at the pm_warp frame 200 (about pm_frame_count 249); the bar is at full height at 270 and shot from 272 on.",
       "debug": "preset=yard wide uishow=bar shots shotwin=272:30 shotbottom=200:60 loglevel=debug",
-      "until": "shot \\d+ frame 28[0-9]\b",
+      "until": "shot \\d+ frame 28[0-9]\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
@@ -8928,7 +9064,7 @@
         },
         {
           "name": "shot at 28x",
-          "regex": "shot \\d+ frame 28[0-9]\b"
+          "regex": "shot \\d+ frame 28[0-9]\\b"
         }
       ],
       "reason": "HUD1 gate by eye: status bar layout in the world."
@@ -8939,7 +9075,7 @@
       "subject": "Mario in his yard, 4:3 (nowide), uishow=bar opens the status bar. Shots frames 272 to 300: the 4:3 bar at its old positions.",
       "proves": "HUD1: the wide status bar (1.25x) is on screen in the world. uishow=bar opens the bar at the pm_warp frame 200 (about pm_frame_count 249); the bar is at full height at 270 and shot from 272 on.",
       "debug": "preset=yard nowide uishow=bar shots shotwin=272:30 loglevel=debug",
-      "until": "shot \\d+ frame 28[0-9]\b",
+      "until": "shot \\d+ frame 28[0-9]\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
@@ -8956,7 +9092,7 @@
         },
         {
           "name": "shot at 28x",
-          "regex": "shot \\d+ frame 28[0-9]\b"
+          "regex": "shot \\d+ frame 28[0-9]\\b"
         }
       ],
       "reason": "HUD1 gate by eye: status bar layout in the world."
@@ -9126,7 +9262,7 @@
       "extra": [
         "-NoWarm"
       ],
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
       "first_marker": "warp: kmr_03 entry 0",
@@ -9139,7 +9275,7 @@
         },
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ],
       "reason": "VERIFY check 2 (cold det, r13off vs battle_start_f182_cold)."
@@ -9153,7 +9289,7 @@
       "extra": [
         "-NoWarm"
       ],
-      "until": "shot \\d+ frame 182\b",
+      "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
       "first_marker": "warp: kmr_03 entry 0",
@@ -9166,7 +9302,7 @@
         },
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ],
       "reason": "VERIFY check 2 (cold det, pm5off vs battle_start_f182_cold)."
