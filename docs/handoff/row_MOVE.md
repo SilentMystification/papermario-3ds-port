@@ -49,3 +49,16 @@ Open, in this order:
 5. Fix 3ds/tools/nd_host_test.sh include path (nd_int.h includes ultra64.h) so nd_host passes.
 6. gbi-phase within +3%: one phase run of mac_01 against the nds1 build.
 Note: all pic runs logged rc "crash symbols" (also base). Check whether this is the sprite zeroing bug (row_SPR4) after sprfix lands, else report the PC.
+
+## State 2 (2026-11-07): merged in nds1 88388cb78 (moves 1-6, WK-4b-1..4, nd_host include path). pm_gbi.c 1179 lines.
+
+## Oracle plan MOVE 7+ (empty pm_gbi.c)
+Precondition grep fix: count definitions only, `grep -cE "^[a-z][^;]*\)\s*\{?$" 3ds/src/pm_gbi.c`, plus nm on pm_gbi.o (defined T/t symbols). S10 precondition 4: nm shows only the pm_gbi_run shim, or nothing.
+Targets: walk core (is_host, ptr_of, pm_gbi_ptr_of, pm_gbi_run, pm_gbi_init, gbi_cold_modifyvtx, pm_gbi_fallback, lt_mem_same) -> nd_walk.c (MV-7). Target/frame (pm_depth_query, pm_is_cfb, pm_cfb_capture_prev/_cpu/_cpu_for, pm_zbuf_need, pm_fb_native, rgba_from_5551, the definitions here only) -> nd_target.c (MV-8). Census (pm_gbi_flush_class, ph_pick, gv_streak_*, tex_streak_*, gp3_t0_*) -> nd_cen.c; delete tritrace_*, cc07_dbg, suntile_on if no caller (MV-9). Combine (sync_combine, combchk_on moves, combchk is named by a row) -> nd_comb.c; shift_mul, pm_tex_set_filter -> nd_tex.c; pm_gbi_gv_at -> nd_geom.c; nd_light_count -> nd_mtx (MV-10).
+Later rows (not this agent): legacy combine delete ST-3 after RECT-3; CPU vertex delete GM-3 after TRI-4; records to nd_recs.c LS-3 after MDL-4; sprite to nd_sprite.c LS-3 after SPR4 row 4.
+Each MV row: pure cut and paste plus prototypes, about 150 lines. Gate: mac_01 byte-equal (det switch when DET is in nds1, else a warm A/B pair with the same harness), nm shows the row's symbols absent from pm_gbi.o, host tests link.
+(a) Module column: static const uint8_t op_module[256] in nd_cen.c, updated in each move row; the gate checks the table against the switch arms. os_report adds the module column from the table. Bucket MOD_PM_GBI must reach 0 (S10 precondition 1). No per-arm store in the hot path.
+(b) nd_mtx host link: split, no stubs. nd_mtx.c keeps pure math (nd_mtx_pcomp, pool, products). The GM-1 handlers that call walker or GPU symbols (G_MTX, popmtx, movemem lights, lit_freeze, lt/lk, g2_same/g2_note, gbi_moveword, pm_gpu_note_mvp, pm_gpu_set_ntab, pm_eye_e, ptr_of, pm_frame_count, pm_log, pm_gbi_ndref_frame) go to a new target-only nd_mtx_set.c. The nd_mtx host test links nd_mtx.c only. Add nd_mtx_set.c to the D5 module list.
+(c) Census gate: wcen_mac01 (prof=4, det), scene frames 0-700 (two 300-frame windows). Pass: prod lines with the module column print for windows 1 and 2; per-producer op totals within 2% of the pre-WK-4b base.
+(d) Phase: prof=4 with opsplit, cold, det, wcen_mac01 and wcen_iwa10; mean gbi-phase us per frame over scene frames 100-400, base before the train vs head after each MV row. Gate: at most +3% per row (Azahar direction only). Past +3%: put the hot handler pair back in one TU or static inline in nd_int.h, measure again.
+Order: (b), MV-7, MV-8, MV-9, MV-10, (a), (c), (d). Delete this file in the last commit.
