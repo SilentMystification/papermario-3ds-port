@@ -75,5 +75,18 @@ Gate:
 - The boot mem line shows the heap free after the ROM grown by the .bss saved. One O3DS push for the same lines.
 Decision on the 2 unused decomp symbols: delete them. In src/heaps.c, put the pm_unused_shape_data (gMapShapeData copy, 32 KB) and pm_unused_80200000 (16 KB) definitions under `#ifndef TARGET_3DS`, and drop the -D renames in CMakeLists.txt. Proof: a grep shows no reader (the renames guarantee it; heaps.c is the only user). Gain 48 KB.
 
+## Oracle decision MEM-B v3
+How free memory is computed (pm_mem.c:72-116 __system_allocateHeaps):
+- avail = commit_max - commit_cur (the process commit limit, minus what the loader already committed: the 3dsx text, data and .bss, plus stacks), then capped at PM_FCRAM, then minus the 128 KB socket block.
+- One MEMOP_ALLOC_LINEAR of avail: the first PM_OURS - soc bytes are the linear pool (14208 KB); the rest is the newlib heap (sbrk). The ROM (pm_os.c, 26.3 MB) is malloc'd from that heap.
+- So .bss competes with the heap only when the commit, not PM_FCRAM, is the binding limit. Your Azahar line (heap 51200 + linear 14208, about 64 MB, sbrk-left 25 MB, region 96 MB) is PM_FCRAM-bound. That is why removing 48 KB changed nothing, and why my "3458 KB left" premise (the ROMFIT note in pm_os.c) does not hold there.
+- On a 64 MB O3DS region the commit binds: avail = 64 MB - (image + .bss ≈ 23 MB) - stacks. There every KB of .bss saved is a KB more heap.
+Decision:
+1. First get the console boot line (pull-o after one boot) with commit_max, commit_cur and avail; pm_mem.c already stores commit_max and commit_cur, so print them in the boot line.
+2. If commit_max - commit_cur < PM_FCRAM on the O3DS XL, shrinking matters; go to steps 3-4.
+3. Corrected measurement. hi_used is inflated because the counters are not reset when a heap is re-created: general, collision and battle heaps are rebuilt with _heap_create at map and battle load. That is also how collision shows 154 KB in a 96 KB heap. The fix: reset a head's counters in a wrap of _heap_create. At each heap re-create (before the reset) and every 60 frames, walk the node list (cold) and record used = Σ(length + sizeof(HeapNode)) over allocated nodes, top = max allocated node end - base, and the largest free block. Size each heap by the max top.
+4. Shrink: general back to the N64 size 0x54000 if the corrected top is at most 268 KB (Azahar shows 188 KB; this saves 1.2 MB). Sprite to roundup(top x 1.25, 64 KB), likely 768 KB (saves 256 KB). Collision and battle keep their N64 sizes. Same gate as v2 (tour10, bowser_intro_fire, intro_native, pause_spin, a battle; tops under 80%).
+5. If PM_FCRAM binds on the console too: close MEM-B after the cold census calloc. The O3DS action that matters is then the 3dsx file size (MEM-A: -Os for game code, .mapstat NOLOAD) for the netloader.
+
 ## Rules
 Code first (CLAUDE.md rule 5). Own worktree per row (mema, memb) from nds1; copy assets/us and ver/us/build. No toggles (switches only for debug/measure), no stubs, no attribution lines, never commit 3ds/src/map_restore_table.c (the map_restore md5 rule stays). Keep Azahar open. Rebase on nds1 before each commit; check merge markers per commit. Delete this file when both rows are done.
