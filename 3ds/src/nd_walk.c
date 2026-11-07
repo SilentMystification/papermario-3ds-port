@@ -52,7 +52,7 @@ int g2_same(unsigned op, u32 w0, u32 w1) {
         return index == G_MW_LIGHTCOL && k < 9 && (offset % 24) == 0 && lt[k].col[0] == (u8)(w1 >> 24) && lt[k].col[1] == (u8)(w1 >> 16) &&
                lt[k].col[2] == (u8)(w1 >> 8);
     }
-    case G_SETPRIMCOLOR: return nd_ws.prim == w1 && aud_prim_lod == (u8)(w0 & 0xff) && sc_ok;
+    case G_SETPRIMCOLOR: return nd_ws.prim == w1 && (u8)nd_ws.prim_lod == (u8)(w0 & 0xff) && sc_ok;
     case G_SETENVCOLOR: return nd_ws.envc == w1 && sc_ok;
     case G_SETFOGCOLOR: return fogc == w1;
     case G_SETBLENDCOLOR: return blendc == w1;
@@ -176,10 +176,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
             tb_inline(pc, w0 & 0xffffu);
             pc += w0 & 0xffffu;
             break;
-        case G_PM_RM: /* C2: a render mode list, applied in place (rm_apply). */
-            if (rm_apply(w1)) break;
-            /* fallback: the list has another op, run it as G_DL */
-            w0 = (u32)G_DL << 24; /* G_DL_PUSH */
             /* fall through */
         case G_DL: {
             Gfx* next = (Gfx*)ptr_of(w1);

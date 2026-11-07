@@ -124,7 +124,7 @@ S10-4 FULL: full catalog once (epic merge) and a console prof push. Numbers go i
 - D2 One decoder: the nd_ops.h inline field decoders, used by the walk, nd_dlc and nd_words.
 - D3 G_PM_ND carries only SPLASH (and TEXBIND under D6).
 - D4 G_PM_REC, G_PM_SPR and G_PM_ENT stay as words; only their handlers move.
-- D5 Module map as in the table. New files: nd_walk.c, nd_comb.c, nd_geom.c, nd_target.c, nd_shape.c, nd_ent.c, nd_recs.c, nd_cen.c, nd_int.h. Haiku adds no other file.
+- D5 Module map as in the table. New files: nd_walk.c, nd_set.c (ST-1, 3DS only: the setters that call pm_gpu_*), nd_comb.c, nd_geom.c, nd_target.c, nd_shape.c, nd_ent.c, nd_recs.c, nd_cen.c, nd_int.h. Haiku adds no other file.
 - D6 G_PM_TEXI goes back to plain words. TEXBIND (G_PM_ND, slot key) is added only if a TX-4 row measures the gbi-phase us above +3%.
 - D7 G_PM_RM goes back to G_DL plus the state-list memo in the G_DL handler.
 - D8 No handler writes list memory (the replay rule).

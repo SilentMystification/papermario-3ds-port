@@ -303,7 +303,7 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
         if (!mtxOk && p->words.w0 == e[0].words.w0 && p->words.w1 == e[0].words.w1) mtxOk = 1;
         if (!segOk && p->words.w0 == e[1].words.w0 && p->words.w1 == e[1].words.w1) segOk = 1;
         if (!dlOk && p->words.w1 == (u32)(uintptr_t)model->gfx.displayList && (p->words.w0 >> 24) == (u32)G_DL) dlOk = 1;
-        if (!rmOk && p->words.w1 == rec[3].words.w1 && ((p->words.w0 >> 24) == (u32)G_DL || (p->words.w0 >> 24) == (u32)G_PM_RM)) rmOk = 1;
+        if (!rmOk && p->words.w1 == rec[3].words.w1 && (p->words.w0 >> 24) == (u32)G_DL) rmOk = 1;
     }
     if (!mtxOk) df = 1; else if (!segOk) df = 2; else if (!dlOk) df = 3; else if (!rmOk) df = 4;
     ent_recs_n++;
@@ -399,7 +399,7 @@ void appendGfx_entity_model(EntityModel* model) {
             }
 
 #ifdef TARGET_3DS
-            Gfx* rm_first = gMainGfxPos; /* DLF4: a render mode list of one G_DL word becomes one G_PM_RM op */
+            Gfx* rm_first = gMainGfxPos; /* DLF4: a render mode list of one G_DL word (ST-4: a G_DL op) */
 #endif
             switch (entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
                 case false:
@@ -488,7 +488,6 @@ void appendGfx_entity_model(EntityModel* model) {
             }
 #ifdef TARGET_3DS
             if (entRec != nullptr && gMainGfxPos > rm_first && rm_first->words.w0 == (u32)G_DL << 24) entRec[3].words.w1 = rm_first->words.w1; /* S6-1 record: the render mode list */
-            if (gMainGfxPos == rm_first + 1 && rm_first->words.w0 == (u32)G_DL << 24) rm_first->words.w0 = (u32)G_PM_RM << 24; /* rm_apply runs the list; a list with another op falls back to G_DL */
 #endif
             gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
             if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {

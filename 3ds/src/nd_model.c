@@ -196,7 +196,7 @@ static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, 
               f[8] == 3 && f[9] == 5 && f[10] == 0 && f[11] == 5 && f[12] == 7 && f[13] == 7 && f[14] == 7 && f[15] == 0;
     if (box) return 1;
     if (f[1] == 6 || f[1] == 7 || f[9] == 6 || f[9] == 7 || f[2] == 6 || f[10] == 6) return -1;
-    ci->w0 = w0; ci->w1 = w1; ci->omode_h = oh; ci->prim = prim; ci->env = env; ci->aud_prim_lod = prim_lod & 0xffu;
+    ci->w0 = w0; ci->w1 = w1; ci->omode_h = oh; ci->prim = prim; ci->env = env; ci->prim_lo8 = prim_lod & 0xffu;
     ci->key_c = 0; ci->key_s = 0; ci->conv_k4 = 0;
     ci->leg_mode = 0; ci->tex_on = tex; ci->use_t1 = 0; ci->t1_valid = t1v; ci->dual_on = 0;
     ci->box_prod = 0; ci->box_pat = 0; ci->box_folded = 0; ci->comb_set = 1;
@@ -234,7 +234,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
             pm_log_d("mdl3 pre %08x post %08x pre w %08x %08x post w %08x %08x", (unsigned)rec[22], (unsigned)rec[23], a ? a[0] : 0u, a ? a[1] : 0u, b ? b[0] : 0u, b ? b[1] : 0u); }
         return (st->why = 3, 0); } /* R11: custom gfx pre and post */
     const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
-    const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (rm_apply runs after the entry) */
+    const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (the render mode list runs after the entry) */
     const uint32_t geom = c->geom_at_set ? c->geom_at : (c->geom_base & c->mode->gand) | c->mode->gor; /* B9: geometry after the list ops; S3N-3c: or the batch's */
     const int zb = (geom & 1u) != 0; /* G_ZBUFFER */
     const unsigned ct = (geom & 0x600u) == 0x200u ? 1u : (geom & 0x600u) == 0x400u ? 2u : 0u; /* G_CULL_FRONT, G_CULL_BACK (pm_gbi ct) */
