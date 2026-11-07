@@ -3340,6 +3340,8 @@ static int plan_same_layout(const PmPlan* a, const PmPlan* b) {
  * pm_gpu_ndm_begin. The native model draws (nd_model_draw, emit 0) are built there, before the walker draws the record. Each walker draw (nd_raw_native) is compared with
  * the native draw at its place: tmpl key, TEV colours, buffer colour, unit 0, uvso, cmul, cadd, zmix, palette 0, and the index words (the walker copies them into its batch).
  * A walker draw may span several native draws (consumed in order). nwalk: a walker draw with no native draw left. nraw: a native draw the walker did not draw. Both are diffs. */
+static unsigned sbkw_rec, sbkw_dsw, sbkw_dsh, sbkw_ctw, sbkw_cth; static int sbkw_lines; /* SBKW-2 diagnostic: the native desc size of the last model_draw (ndm_cmp logs the dim diffs) */
+static unsigned sbkw_bits(float f) { unsigned u; memcpy(&u, &f, 4); return u; }
 static int ndm_on_v = -1, ndm_rec_ok, ndm_rec_cmp, ndm_rec_diff, ndm_rec_nost;
 static int ndm_mode_ok;
 static int ndm_nat_n, ndm_j;
@@ -3401,6 +3403,15 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     int tex = 0, i8 = 0, hs = -1, id = -1; unsigned hg = 0; /* S3N-6: the unit slot hint of the entry */
     const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
     if (gfx != NULL && ds == NULL) { nd_nat_why = nd_tex_handle_miss((int)texidx, gfx); return -1; } /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
+    /* SBKW-2: the walker binds the tile 0 window (LoadTile w x h from the handle raster, ensure_tile), not the whole handle. The handle desc is
+     * the full texture (mainW x mainH, 32 x 64 on the sbk_56 water): the native draw sampled 64 rows and took uv scale 1/64 (uvso1 2x, u0.dim 0x40).
+     * The desc takes the window size of the live tile 0 when that window starts at the handle raster with the same form and stride. */
+    NdTexDesc wdesc;
+    if (ds && nd_ws.td[0].valid && nd_ws.td[0].src == ds->img && nd_ws.td[0].fmt == ds->fmt && nd_ws.td[0].siz == ds->siz && nd_ws.td[0].stride == ds->stride &&
+        nd_ws.td[0].w > 0 && nd_ws.td[0].h > 0 && nd_ws.td[0].w <= ds->w && nd_ws.td[0].h <= ds->h && (nd_ws.td[0].w != ds->w || nd_ws.td[0].h != ds->h)) {
+        wdesc = *ds; wdesc.w = nd_ws.td[0].w; wdesc.h = nd_ws.td[0].h;
+        ds = &wdesc;
+    }
     NdMode ax; int ax_ok = 0; /* S3L-3: R13 words of an untextured record (no bind): decoded as the list ops that run before the render mode list */
     if (rec[26] != 0 && gfx == NULL) ax_ok = nd_aux_state(rec + NDMC_RW, rec[26], &ax);
     /* MDL-1: an R13 texture block (no handle, no mode list) is the tile 0 descriptor of the walker's bind */
@@ -3454,6 +3465,9 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.nrm_ok = gv5_on; for (int r_ = 0; r_ < 3; r_++) { c.nrm5[r_][0] = nd_mv[nd_mv_sp][r_][0]; c.nrm5[r_][1] = nd_mv[nd_mv_sp][r_][1]; c.nrm5[r_][2] = nd_mv[nd_mv_sp][r_][2]; c.nrm5[r_][3] = 0.f; }
     nd_mdl_cur_x = nd_tex_handle_extra((int)texidx, gfx); /* MDL-5a census: extraTiles of this draw's handle */
     int n = nd_model_draw(rec, &c, geo, emit);
+    if (!emit && pm_gpu_ndm_on()) { /* SBKW-2 diagnostic: the native desc size of the record, read by ndm_cmp against the walker */
+        sbkw_rec = (unsigned)(uintptr_t)rec; sbkw_dsw = ds ? ds->w : 0; sbkw_dsh = ds ? ds->h : 0; sbkw_ctw = (unsigned)c.tex_w; sbkw_cth = (unsigned)c.tex_h;
+    }
     if (n < 0 && nd_nat_why == 6 && nd_nat_sub == 2 && pm_tex_aux_off_idx() >= 0) nd_nat_sub = 3; /* MDL-5 census: tile 1 is the aux off-screen image (sub c) */
     int valid = 0;
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
@@ -3670,6 +3684,14 @@ static unsigned ndm_bits(float f) { unsigned u; memcpy(&u, &f, 4); return u; }
 #define NDM_CMP(name, a, b) do { if ((unsigned)(a) != (unsigned)(b)) { ndm_rec_diff = 1; ndm_fn_count(name); if (ndm_lines++ < 20) pm_log_prof_line("ndmcheck diff %s rec %08x nat %x walk %x", name, (unsigned)(uintptr_t)ndm_rec, (unsigned)(a), (unsigned)(b)); } } while (0)
 static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd) {
     if (!ndm_rec_ok) return;
+    if (sbkw_lines < 12 && ndm_j < ndm_nat_n && nd_model_native((unsigned)ndm_j)->d.u[0].dim != wd->u[0].dim) { /* SBKW-2: the walker side at this draw: bound slot size and tile 0 window */
+        const NdDraw* nd_ = &nd_model_native((unsigned)ndm_j)->d;
+        int wtw = 1, wth = 1; pm_tex_size(&wtw, &wth); sbkw_lines++;
+        pm_log_prof_line("sbkw dim rec %08x desc %ux%u ctex %ux%u tile0 win %dx%d td0 %dx%d walk slot %dx%d nat dim %08x walk dim %08x nat uvso1 %08x walk uvso1 %08x nat uvso3 %08x walk uvso3 %08x",
+            sbkw_rec, sbkw_dsw, sbkw_dsh, sbkw_ctw, sbkw_cth,
+            ((nd_ws.tst1.tile_sz[0][2] - nd_ws.tst1.tile_sz[0][0]) >> 2) + 1, ((nd_ws.tst1.tile_sz[0][3] - nd_ws.tst1.tile_sz[0][1]) >> 2) + 1, nd_ws.td[0].w, nd_ws.td[0].h, wtw, wth,
+            nd_->u[0].dim, wd->u[0].dim, sbkw_bits(nd_->uvso[1]), sbkw_bits(wd->uvso[1]), sbkw_bits(nd_->uvso[3]), sbkw_bits(wd->uvso[3]));
+    }
     ndm_w_n++;
     if (ndm_j >= ndm_nat_n) { ndm_rec_diff = 1; ndm_fn_count("nwalk"); return; }
     const NdNat* n = nd_model_native((unsigned)ndm_j);
@@ -3692,6 +3714,19 @@ static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw*
     NDM_CMP("u0.type", n->d.u[0].type, wd->u[0].type);
     if (n->d.u[0].addr != wd->u[0].addr) ndm_fn_count("u0.copy"); /* an equal copy (same key, format, size, dim, param, lod, type; same texels) at another address: counted apart */
     for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "uvso%d", i); if (n->d.u[0].dim) NDM_CMPF(nm, n->d.uvso[i], wd->uvso[i]); } /* S3L-3: untextured draws: not compared (see ndc_cmp) */
+    /* SBKW-3: unit 1 and its uv map (tile 1 of a two-tile surface); not compared before. */
+    NDM_CMP("has_uvx", n->d.has_uvx, wd->has_uvx);
+    if (wd->has_uvx) {
+        NDM_CMP("u1.dim", n->d.u[1].dim, wd->u[1].dim); NDM_CMP("u1.param", n->d.u[1].param, wd->u[1].param); NDM_CMP("u1.lod", n->d.u[1].lod, wd->u[1].lod);
+        NDM_CMP("u1.type", n->d.u[1].type, wd->u[1].type); NDM_CMP("loc_uvx", n->d.loc_uvx, wd->loc_uvx);
+        if (n->d.u[1].addr != wd->u[1].addr) ndm_fn_count("u1.copy");
+        for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "uvx%d", i); NDM_CMPF(nm, n->d.uvx[i], wd->uvx[i]); }
+    }
+    /* SBKW-3: the lit and fogged block (pm5 program 5): fx5 (light, fog, texgen), normals, the pm5 flag. Not compared before. */
+    NDM_CMP("use5", n->d.use5, wd->use5);
+    NDM_CMP("fx5", memcmp(&n->d.fx5, &wd->fx5, sizeof wd->fx5) != 0, 0);
+    NDM_CMP("nrm5", memcmp(n->d.nrm5, wd->nrm5, sizeof wd->nrm5) != 0, 0);
+    if (n->d.fx5.fogu[0] != wd->fx5.fogu[0] || n->d.fx5.fogu[1] != wd->fx5.fogu[1]) ndm_fn_count("fogu");
     for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cmul%d", i); NDM_CMPF(nm, n->d.cmul[i], wd->cmul[i]); }
     for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cadd%d", i); NDM_CMPF(nm, n->d.cadd[i], wd->cadd[i]); }
     for (int i = 0; i < 2; i++) { char nm[16]; snprintf(nm, sizeof nm, "zmix%d", i); NDM_CMPF(nm, n->d.zmix[i], wd->zmix[i]); }
