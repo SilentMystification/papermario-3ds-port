@@ -390,6 +390,7 @@ static void pf_report(void) {
         pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %.2f lg %.2f gb %.2f",
             pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn, gbm);
         pm_log_prof_line("prof f%u w%u%s", pf_total, pf_w, wh); /* the scene line: the first line is too long to carry it (256 byte log slot) */
+        pm_log_prof_line("prof f%u w%u writer beats %u", pf_total, pf_w, pm_log_writer_hb()); /* U1: the writer heartbeat count (grows only while the queue runs) */
     }
     pf_reset();
 }
@@ -693,11 +694,10 @@ static __attribute__((cold, noinline)) void pc_frame(unsigned now, const Rec* r)
  * mode (no svc call stops them); pm_pmu_on stays 0 after a prof row, so a launch pmu word is not restored. */
 static int prof_pend = -1;
 void pm_prof_row_set(int mode) { prof_pend = mode; }
-void pm_log_prof_row(int mode, int lv, int con); /* PROFROW, pm_log.c */
+void pm_log_prof_row(int mode); /* PROFROW, pm_log.c: LOG5 saves and restores the levels; Profiling turns logging off */
 static void prof_row_apply(int m) {
     int pf_was = pm_pf_on;
-    if (m && !pm_log_file()) { pm_opt.log = 1; pm_log_set_file(1); } /* the modes write through the log file, as the boot prof does */
-    pm_log_prof_row(m, pm_opt.loglevel, pm_opt.conlevel);
+    pm_log_prof_row(m);
     ph_want = m == 2 || ps_on;
     pf_want = m == 1;
     if (m == 1) pf_every = 4;

@@ -14,11 +14,15 @@ void pm_log_w(const char* fmt, ...);
 void pm_log_i(const char* fmt, ...);
 void pm_log_d(const char* fmt, ...);
 void pm_log_hw(const char* fmt, ...); /* HWM1: debug level measurement line, kept longest by the queue */
-int pm_log_level(void);
+int pm_log_level(void); /* the higher of the live and disk level */
 int pm_log_conlevel(void); /* CONLV: console level 0..4, 4 = off */
-int pm_log_file(void);
-void pm_log_set_level(int lv);
-void pm_log_set_conlevel(int lv);
+int pm_log_file(void); /* 1 when the queue takes lines: logging or Profiling on */
+int pm_log_live_level(void); int pm_log_disk_level(void); int pm_log_con_level(void); /* LOG5: -1 off, 0 error .. 3 debug */
+int pm_log_logging(void); /* LOG5: the logging gate (pm_opt.log), 0 while Profiling runs */
+void pm_log_set_levels(int on, int live, int disk, int con);
+void pm_log_set_prof_disk(int on); int pm_log_get_prof_disk(void); /* U2 */ /* LOG5: the logging gate and the three levels (options panel, options.ini) */
+void pm_log_header(char* con, int nc, char* live, int nl); /* U3: bottom screen header texts */
+int pm_log_header_key(void); /* U3: changes when the header text changes */
 void pm_log_apply_switch_levels(void); /* LOG3: re-reads loglevel, livelevel, disklevel, conlevel, log from the switches */
 void pm_log_set_file(int on);
 void pm_log_init(int live);
@@ -213,7 +217,7 @@ void pm_mapdata_enter(const char* id);
 typedef struct PmOpt {
     int fps60, wide, dbg_hud, dbg_stats, dbg_nofog, dbg_nolight;
     int o3ds_z; /* C-O3DS: 0 = X is the Z key on the O3DS, 1 = Y (options.ini o3dsz) */
-    int log, loglevel, conlevel; /* L02, F11-8: log file on or off (default 1), loglevel 0 error, 1 warn (default), 2 info, 3 debug: log.txt and the live log. CONLV: conlevel 0..3 as loglevel, 4 off: the bottom screen console (default 1 warn) */
+    int log, livelevel, disklevel, conlevel, prof_disk; /* U2: prof_disk 1 writes profiling lines to log.txt too (options.ini prof_disk, switch profdisk=0|1, default 0). LOG5: log = logging on (default 1, options.ini log_on). livelevel, disklevel, conlevel: -1 off, 0 error, 1 warn (default), 2 info, 3 debug (options.ini live_level, disk_level, con_level) */
     int fixedseed; /* F11-7: 1 = same random start seed every boot (as the switch fixedseed), read at boot */
     int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.ini dpad_mode=multi|cstick|analog */
     int dz_pad, dz_cs; /* PT61: dead zone in percent of full travel, circle pad and C-Stick (N3DS). 0 = as before (no port dead zone) */
@@ -232,8 +236,9 @@ const char* pm_map_now(void); /* BOTLAYOUT: pm_route.c, the footer map row text 
 void pm_gpu_footer(const char* map, const char* sys); /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build), drawn by the sink thread */
 void pm_options_init(void);
 void pm_options_write(void);
-/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 6 is Logging, row 7 is Log level, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 11 is Console level, row 12 is Position log combo. */
+/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 12 is Position log combo. LOG5: the logging rows (Logging, Live log, Log to disk, Console log) are the Logging page, not option rows. */
 int pm_options_get(int row);
+int pm_optui_grey(int tab, int row); /* LOG5: the Logging rows that grey while logging is off (cursor skip and colour) */
 void pm_options_flip(int row);
 void pm_options_close(void);
 const unsigned char* pm_options_build_msg(void); /* BN1 footer text */

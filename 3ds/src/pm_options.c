@@ -9,16 +9,16 @@
 
 int pm_debug_value(const char* key, char* out, unsigned n);
 
-/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, loglevel warn, conlevel warn, fixedseed off, dpad_mode multi, dz_pad 15, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off, poslog off. */
+/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, live, disk and con levels warn, fixedseed off, dpad_mode multi, dz_pad 15, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off, poslog off. */
 PmOpt pm_opt = {
     .fps60 = 0, .wide = 0, .dbg_hud = 1, .dbg_stats = 0, .dbg_nofog = 0, .dbg_nolight = 0, .o3ds_z = 0,
-    .log = 1, .loglevel = 1, .conlevel = 1, .fixedseed = 0, .dpad_mode = 0,
+    .log = 1, .livelevel = 1, .disklevel = 1, .conlevel = 1, .prof_disk = 0, .fixedseed = 0, .dpad_mode = 0,
     .dz_pad = 15, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0, .poslog = 0,
 };
 /* Fails the build when PmOpt gains or loses a field without this initializer being updated. */
-_Static_assert(sizeof(PmOpt) == 20 * sizeof(int), "PmOpt field count changed: update pm_opt above");
-/* ARG1: the saved log and loglevel (options.ini, or the defaults). pm_opt.log and pm_opt.loglevel hold the values of this run (a launch argument may differ). CONLV: sv_conlevel the same for conlevel. */
-static int sv_log = 1, sv_loglevel = 1, sv_conlevel = 1;
+_Static_assert(sizeof(PmOpt) == 22 * sizeof(int), "PmOpt field count changed: update pm_opt above");
+/* ARG1, LOG5: the saved logging values (options.ini, or the defaults). pm_opt holds the values of this run (a launch argument may differ). */
+static int sv_log = 1, sv_live = 1, sv_disk = 1, sv_con = 1, sv_prof_disk = 0;
 /* PROFROW: the Profiling row. Modes 0 off, 1 prof, 2 phase (the index of prof_name). prof_row is this run, sv_prof the saved value (options.ini profmode=). */
 static const char* const prof_name[3] = { "off", "prof", "phase" };
 static const char* const prof_label[3] = { "Off", "Prof", "Phase" };
@@ -69,9 +69,6 @@ static int* opt_field(const char* key) {
     if (!strcmp(key, "nofog")) return &pm_opt.dbg_nofog;
     if (!strcmp(key, "nolight")) return &pm_opt.dbg_nolight;
     if (!strcmp(key, "o3dsz")) return &pm_opt.o3ds_z;
-    if (!strcmp(key, "log")) return &pm_opt.log;
-    if (!strcmp(key, "loglevel")) return &pm_opt.loglevel;
-    if (!strcmp(key, "conlevel")) return &pm_opt.conlevel;
     if (!strcmp(key, "fixedseed")) return &pm_opt.fixedseed;
     if (!strcmp(key, "fskip")) return &pm_opt.fskip;
     if (!strcmp(key, "poshud")) return &pm_opt.pos_hud;
@@ -86,8 +83,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=1\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog=%d\nloglevel=%d\nconlevel=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\nposlog=%d\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_loglevel, sv_conlevel, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud, pm_opt.poslog, prof_name[sv_prof]);
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=2\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog_on=%d\nlive_level=%d\ndisk_level=%d\ncon_level=%d\nprof_disk=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\nposlog=%d\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_live, sv_disk, sv_con, sv_prof_disk, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud, pm_opt.poslog, prof_name[sv_prof]);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -103,6 +100,7 @@ void pm_options_init(void) {
     FILE* f = fopen("options.ini", "r");
     int from_txt = 0;
     if (!f && (f = fopen("options.txt", "r")) != NULL) from_txt = 1; /* PT30: old name, read once, options.ini is written below */
+    int ver = 0, migrated = 0, v1set[3] = { 0, 0, 0 }, v1val[3] = { 0, 0, 0 }; /* LOG5: version 1 keys log, loglevel, conlevel are read here and migrated after the loop */
     if (f) {
         have = 1;
         while (fgets(line, sizeof(line), f)) {
@@ -117,7 +115,28 @@ void pm_options_init(void) {
                 continue;
             }
             *eq = 0;
-            if (!strcmp(line, "version")) continue;
+            if (!strcmp(line, "version")) { ver = atoi(eq + 1); continue; }
+            if (!strcmp(line, "log_on") || !strcmp(line, "live_level") || !strcmp(line, "disk_level") || !strcmp(line, "con_level")) { /* LOG5: version 2 keys, -1 off or 0..3 (log_on 0 or 1) */
+                int* tf = !strcmp(line, "log_on") ? &pm_opt.log : !strcmp(line, "live_level") ? &pm_opt.livelevel : !strcmp(line, "disk_level") ? &pm_opt.disklevel : &pm_opt.conlevel;
+                int hi = tf == &pm_opt.log ? 1 : 3;
+                v = strtol(eq + 1, &end, 10);
+                if (end == eq + 1 || *end || v < (tf == &pm_opt.log ? 0 : -1) || v > hi) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
+                else *tf = (int)v;
+                continue;
+            }
+            if (!strcmp(line, "prof_disk")) { /* U2: 0 or 1, profiling lines also to log.txt */
+                v = strtol(eq + 1, &end, 10);
+                if (end == eq + 1 || *end || v < 0 || v > 1) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
+                else pm_opt.prof_disk = (int)v;
+                continue;
+            }
+            if (!strcmp(line, "log") || !strcmp(line, "loglevel") || !strcmp(line, "conlevel")) { /* LOG5: version 1 keys, migrated after the loop */
+                int k = !strcmp(line, "log") ? 0 : !strcmp(line, "loglevel") ? 1 : 2;
+                v = strtol(eq + 1, &end, 10);
+                if (end == eq + 1 || *end || v < 0 || v > (k == 0 ? 1 : k == 1 ? 3 : 4)) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
+                else { v1set[k] = 1; v1val[k] = (int)v; }
+                continue;
+            }
             if (!strncmp(line, "map.", 4)) { /* F11-5: map.<3DS input>=<N64 button> */
                 int in, bt;
                 for (in = 0; in < PM_NIN && strcmp(line + 4, pm_in_name[in]); in++) {}
@@ -158,35 +177,44 @@ void pm_options_init(void) {
             }
             fld = opt_field(line);
             v = strtol(eq + 1, &end, 10);
-            if (!fld || end == eq + 1 || *end || v < 0 || v > (fld == &pm_opt.conlevel ? 4 : fld == &pm_opt.loglevel ? 3 : 1)) {
+            if (!fld || end == eq + 1 || *end || v < 0 || v > 1) {
                 pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
                 continue;
             }
             *fld = (int)v;
         }
         fclose(f);
+        if (ver < 2) { /* LOG5 migration, version 1: log -> log_on, loglevel -> live and disk level, conlevel 4 -> con off (-1), 0..3 kept */
+            if (v1set[0]) pm_opt.log = v1val[0];
+            if (v1set[1]) pm_opt.livelevel = pm_opt.disklevel = v1val[1];
+            if (v1set[2]) pm_opt.conlevel = v1val[2] == 4 ? -1 : v1val[2];
+            migrated = 1;
+        }
     }
     sv_log = pm_opt.log;
-    sv_loglevel = pm_opt.loglevel;
-    sv_conlevel = pm_opt.conlevel;
-    {   /* ARG1: precedence launch argument > saved option (options.ini) > built-in default. The argument sets this run only, sv_* keep the saved values.
-         * Runs before pm_ph_init (pm_main.c), so phase, prof, pmu and fsplit read the final gate. */
-        char v[16];
-        if (pm_debug_value("loglevel", v, sizeof v)) pm_opt.loglevel = pm_log_level();
-        if (pm_debug_value("conlevel", v, sizeof v)) pm_opt.conlevel = pm_log_conlevel(); /* CONLV */
-        if (pm_debug_value("log", v, sizeof v)) pm_opt.log = pm_log_file();
-        pm_log_set_level(pm_opt.loglevel);
-        pm_log_set_conlevel(pm_opt.conlevel);
-        pm_log_set_file(pm_opt.log);
+    sv_live = pm_opt.livelevel;
+    sv_disk = pm_opt.disklevel;
+    sv_con = pm_opt.conlevel;
+    sv_prof_disk = pm_opt.prof_disk;
+    {   /* ARG1, LOG5: precedence launch argument > saved option (options.ini) > built-in default. The switches set this run only (pm_opt is
+         * read back from the queue), sv_* keep the saved values. Runs before pm_ph_init (pm_main.c), so phase, prof, pmu and fsplit read the final gate. */
+        pm_log_set_levels(pm_opt.log, pm_opt.livelevel, pm_opt.disklevel, pm_opt.conlevel);
+        pm_log_set_prof_disk(pm_opt.prof_disk);
         pm_log_apply_switch_levels(); /* LOG3: livelevel, disklevel, conlevel switches win over the saved levels */
+        pm_opt.prof_disk = pm_log_get_prof_disk(); /* U2: profdisk switch */
+        pm_opt.log = pm_log_logging();
+        pm_opt.livelevel = pm_log_live_level();
+        pm_opt.disklevel = pm_log_disk_level();
+        pm_opt.conlevel = pm_log_con_level();
     }
     pm_log("options: fps60=%d wide=%d hud=%d stats=%d nofog=%d nolight=%d (%s)", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, have ? (from_txt ? "read from options.txt, written as options.ini" : "read from options.ini") : "defaults");
-    pm_log_i("options: boot dz_cs=%d rep_delay=%d rep_rate=%d hud_ms=%d conlevel=%d loglevel=%d log=%d", pm_opt.dz_cs, pm_opt.rep_delay,
-             pm_opt.rep_rate, pm_opt.hud_ms, sv_conlevel, sv_loglevel, sv_log); /* OPTFIX: the saved values, as read from options.ini or the defaults */
+    pm_log_w("options: levels run log_on=%d live=%d disk=%d con=%d saved log_on=%d live=%d disk=%d con=%d ini version %d migrated %d", pm_opt.log, pm_opt.livelevel, pm_opt.disklevel, pm_opt.conlevel, sv_log, sv_live, sv_disk, sv_con, ver, migrated); /* LOG5: the run levels after the switches, and the saved ones */
+    pm_log_i("options: boot dz_cs=%d rep_delay=%d rep_rate=%d hud_ms=%d live=%d disk=%d conlevel=%d log=%d", pm_opt.dz_cs, pm_opt.rep_delay,
+             pm_opt.rep_rate, pm_opt.hud_ms, sv_live, sv_disk, sv_con, sv_log); /* OPTFIX: the saved values, as read from options.ini or the defaults */
     pm_log_switch("nofog", pm_opt.dbg_nofog); /* a debug word that the code reads each frame */
     pm_log_switch("nolight", pm_opt.dbg_nolight);
-    if (!have || from_txt) pm_options_write();
+    if (!have || from_txt || migrated) pm_options_write(); /* LOG5: a version 1 file is written as version 2 */
 }
 
 /* F11-3: the panel. nofog is live. nolight is cached in pm_gbi.c at first use, so it takes effect at the next boot. */
@@ -199,20 +227,18 @@ static void prof_set(int m) {
     pm_options_touch();
     pm_prof_row_set(m);
     pm_log("options: profiling %s", prof_name[m]);
+    if (m) { pm_opt.log = sv_log = 0; pm_log_set_file(0); } /* U2: Profiling turns logging off (one choice) */
 }
 /* PROFROW: at boot a launch word (prof or phase) sets this run's mode, as ARG1 does for the log. Without one the saved mode is applied. */
 void pm_options_prof_boot(void) {
     char v[16];
-    if (pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v)) { prof_row = 1; return; }
-    if (pm_debug_has("phase")) { prof_row = 2; return; }
-    prof_row = sv_prof;
-    if (prof_row) pm_prof_row_set(prof_row);
+    if (pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v)) prof_row = 1; /* the launch word sets this run only */
+    else if (pm_debug_has("phase")) { prof_row = 2; pm_prof_row_set(2); }
+    else { prof_row = sv_prof; if (prof_row) pm_prof_row_set(prof_row); }
+    if (prof_row) pm_opt.log = 0; /* U2: Profiling and logging are one choice; this run has logging off */
 }
 
 int pm_options_get(int row) {
-    if (row == 6) return pm_opt.log;
-    if (row == 7) return pm_opt.loglevel; /* 0 error, 1 warn, 2 info, 3 debug */
-    if (row == 11) return pm_opt.conlevel; /* CONLV: 0 error, 1 warn, 2 info, 3 debug, 4 off */
     if (row == 8) return pm_opt.fixedseed;
     if (row == 9) return pm_opt.fskip; /* FS1: frame skip */
     if (row == 10) return pm_opt.pos_hud; /* POSHUD */
@@ -223,13 +249,6 @@ int pm_options_get(int row) {
 }
 
 void pm_options_flip(int row) {
-    if (row == 6 || row == 7) { /* F11-8: Logging On/Off, Log level (A cycles error, warn, info, debug) */
-        if (row == 6) { pm_opt.log = !pm_opt.log; sv_log = pm_opt.log; pm_log_set_file(pm_opt.log); }
-        else { pm_opt.loglevel = (pm_opt.loglevel + 1) & 3; sv_loglevel = pm_opt.loglevel; pm_log_set_level(pm_opt.loglevel); }
-        changed = 1;
-        return;
-    }
-    if (row == 11) { pm_opt.conlevel = (pm_opt.conlevel + 1) % 5; sv_conlevel = pm_opt.conlevel; pm_log_set_conlevel(pm_opt.conlevel); changed = 1; return; } /* CONLV: A cycles error, warn, info, debug, off */
     if (row == 8) { pm_opt.fixedseed = !pm_opt.fixedseed; changed = 1; return; } /* F11-7: takes effect at the next boot */
     if (row == 9) { pm_opt.fskip = !pm_opt.fskip; pm_fskip_set(pm_opt.fskip); changed = 1; return; }
     if (row == 10) { pm_opt.pos_hud = !pm_opt.pos_hud; changed = 1; return; } /* POSHUD: the Debug tab row 8 */
@@ -277,7 +296,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_CH8 = 380, RW_FADV = 390, RW_BATTLESF = 347, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_CH8 = 380, RW_FADV = 390, RW_BATTLESF = 347, RW_LOGSUB = 348, RW_LOG = 3200, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800 }; /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
 /* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
 int pm_dbgg_spawn_count(void); int pm_dbgg_spawn_id(int row); void pm_dbgg_spawn(int id);
 const char* pm_partner_name(int i); const char* pm_partner_value(int i); int pm_dbgg_partner_on(int i); void pm_dbgg_partner_set(int i, int on); int pm_dbgg_partner_level(int i, int dir);
@@ -288,7 +307,32 @@ void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int 
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
 const char* const pm_lvl_name[5] = { "Error", "Warn", "Info", "Debug", "Off" }; /* Off: only the console level (conlevel 4) */
-static const char* const dbg_lbl[11] = { "HUD", "Stats", "No fog", "No light", "Logging", "Log level", "Fixed seed", "Frame skip", "Position HUD", "Console level", "Position log combo" };
+static const char* const dbg_lbl[11] = { "HUD", "Stats", "No fog", "No light", "", "", "Fixed seed", "Frame skip", "Position HUD", "", "Position log combo" }; /* LOG5: rows 4, 5 and 9 are on the Logging page */
+/* LOG5: the Logging page (sub kind 14). Row 0 Logging (pm_opt.log), rows 1 to 3 Live log, Log to disk, Console log (-1 off .. 3 debug).
+ * Logging and Profiling are one choice (U2): Logging on turns Profiling off here, and Profiling on turns logging off (prof_set). */
+void pm_options_touch(void);
+static int* log_field(int id) { return id == RW_LOG + 1 ? &pm_opt.livelevel : id == RW_LOG + 2 ? &pm_opt.disklevel : &pm_opt.conlevel; }
+static int lvl_step(int v, int dir) { int i = (v + 1 + dir + 5) % 5; return i - 1; } /* Off, Error, Warn, Info, Debug, wrap */
+static void log_on_set(int on) {
+    if (!on) pm_log("options: logging off"); /* logged while the queue is still on */
+    pm_opt.log = sv_log = on != 0;
+    if (on && prof_row) { prof_row = sv_prof = 0; pm_prof_row_set(0); } /* U2: logging on turns Profiling off */
+    pm_log_set_levels(pm_opt.log, pm_opt.livelevel, pm_opt.disklevel, pm_opt.conlevel);
+    pm_options_touch();
+    if (on) pm_log("options: logging on");
+}
+static void prof_disk_set(int on) { /* U2: Profile to disk, the Logging page row 4 */
+    pm_opt.prof_disk = sv_prof_disk = on != 0;
+    pm_log_set_prof_disk(pm_opt.prof_disk);
+    pm_options_touch();
+}
+static void log_level_set(int id, int v) {
+    int* f = log_field(id);
+    *f = v;
+    if (f == &pm_opt.livelevel) sv_live = v; else if (f == &pm_opt.disklevel) sv_disk = v; else sv_con = v;
+    pm_log_set_levels(pm_opt.log, pm_opt.livelevel, pm_opt.disklevel, pm_opt.conlevel);
+    pm_options_touch();
+}
 static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
     if (tab == 0) {
@@ -323,15 +367,15 @@ static int sub_kind, sub_parent = -1; /* sub_parent: the folder kind a nested pa
 static const int fl_bossbat[] = { RW_BOSSFOLDER, RW_BATTLESF }; /* BT2: Battles next to Boss */
 static const int fl_partners[] = { RW_GIVE + 0, RW_PART + 1, RW_PART + 2, RW_PART + 3, RW_PART + 4, RW_PART + 5, RW_PART + 6, RW_PART + 7, RW_PART + 8, RW_PART + 9, RW_PART + 10, RW_PART + 11 }; /* CH4: Enable partners, then the 11 partners */
 static const int fl_hud[] = { RW_DBG + 0, RW_DBG + 1, RW_DBG + 8, RW_DBG + 10 };
-static const int fl_log[] = { RW_DBG + 4, RW_DBG + 5, RW_DBG + 9, RW_PROF };
+static const int fl_log[] = { RW_PROF, RW_LOGSUB }; /* LOG5: Profiling, then the Logging page */
 static const int fl_render[] = { RW_DBG + 2, RW_DBG + 3, RW_DBG + 7 };
 static const int fl_game[] = { RW_DBG + 6 };
 static const int* const fl_ids[6] = { fl_bossbat, fl_partners, fl_hud, fl_log, fl_render, fl_game };
-static const int fl_n[6] = { 2, 12, 4, 4, 3, 1 };
+static const int fl_n[6] = { 2, 12, 4, 2, 3, 1 };
 static const char* const fl_name[12] = { "", "", "", "", "", "Boss and Battles", "Partners", "HUD", "Logging and Profiling", "Render", "Game", "Spawn item" };
 static const struct { int id, kind; const char* name; } fold_tab[] = {
     { RW_BOSSBAT, 5, "Boss and Battles >" }, { RW_PARTF, 6, "Partners >" }, { RW_HUDF, 7, "HUD >" },
-    { RW_LOGF, 8, "Logging and Profiling >" }, { RW_RENDERF, 9, "Render >" }, { RW_GAMEF, 10, "Game >" }, { RW_SPAWNF, 11, "Spawn item >" } };
+    { RW_LOGF, 8, "Logging and Profiling >" }, { RW_RENDERF, 9, "Render >" }, { RW_GAMEF, 10, "Game >" }, { RW_SPAWNF, 11, "Spawn item >" }, { RW_LOGSUB, 14, "Logging >" } };
 static int fold_index(int id) { for (unsigned k = 0; k < sizeof fold_tab / sizeof fold_tab[0]; k++) if (fold_tab[k].id == id) return (int)k; return -1; }
 static const int setstat_k[5] = { 0, 1, 2, 3, 5 }; /* Max HP, Max FP, BP, Level, Star points (Coins is a Cheats tab row) */
 int pm_optui_sub_kind(void) { return sub_kind; }
@@ -339,6 +383,8 @@ static int bt_row; /* BT2: the area row the formation page was opened from */
 int pm_battle_area_count(void); int pm_battle_area_rows(int a); int pm_battle_area_item(int a, int r); const char* pm_battle_area_name(int a); const char* pm_battle_label(int k); int pm_battle_launch(int k);
 /* Set Stats: the Level row (setstat_k 3) is read only, the cursor skips it */
 int pm_optui_readonly(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < 5 && setstat_k[row] == 3; }
+/* LOG5: the Logging page rows Live log, Log to disk, Console log grey while logging is off (Profiling is on or logging is off). Cursor skip and colour. */
+int pm_optui_grey(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 14 && row >= 1 && row <= 3 && !pm_opt.log; }
 /* Set Stats: HP, FP, BP and Level draw in red when the computed level is above 27 */
 int pm_optui_red(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < 4 && pm_dbgg_level_over(); }
 /* MN6: the Warp area folder opens on a warning page (B warps on, any other key backs out). MN6 rest: the folder has two levels. Level 1 lists
@@ -350,6 +396,7 @@ int pm_optui_warn(void) { return warp_warn; }
 void pm_optui_warn_confirm(void) { warp_warn = 0; }
 /* B or A on the folder: a level 2 page pops to the area list and returns that area row (>= 0); a level 1 page closes the folder (-1). */
 int pm_optui_sub_pop(int row) {
+    if (sub_kind == 14) { sub_kind = 8; sub_parent = -1; return 1; } /* LOG5: the Logging page back to its folder, row 1 (Logging) */
     if (sub_kind == 13) { sub_kind = 12; sub_area = -1; return bt_row; } /* BT2: formations back to the area list */
     if (sub_kind == 12) { sub_kind = 5; sub_parent = -1; return 1; } /* BT2: area list back to Boss and Battles (row 1, Battles) */
     if (sub_kind == 1 && sub_parent == 5) { sub_kind = 5; sub_parent = -1; warp_warn = 0; return 0; } /* LAYOUT: Boss page back to Boss and Battles (row 0) */
@@ -384,6 +431,7 @@ const char* pm_optui_sub_name(void) {
     if (sub_kind == 2) return "Set Stats";
     if (sub_kind == 12) return "Boss and Battles > Battles";
     if (sub_kind == 13) { static char bn[64]; snprintf(bn, sizeof bn, "Boss and Battles > Battles > %s", pm_battle_area_name(sub_area)); return bn; }
+    if (sub_kind == 14) return "Logging and Profiling > Logging";
     if (sub_kind >= 5) return fl_name[sub_kind];
     if (sub_kind == 1) return sub_parent == 5 ? "Boss and Battles > Boss" : "Boss";
     if (sub_area < 0) return "Warp area";
@@ -406,6 +454,7 @@ static int row_id(int tab, int row, int mode) {
     if (tab == PM_OPT_SUB && sub_kind == 11) return RW_SPAWN + row; /* CH5 */
     if (tab == PM_OPT_SUB && sub_kind == 12) return RW_BTLAREA + row; /* BT2 */
     if (tab == PM_OPT_SUB && sub_kind == 13) return RW_BTLROW + pm_battle_area_item(sub_area, row);
+    if (tab == PM_OPT_SUB && sub_kind == 14) return RW_LOG + row; /* LOG5 */
     if (tab == PM_OPT_SUB && sub_kind >= 5) return row >= 0 && row < fl_n[sub_kind - 5] ? fl_ids[sub_kind - 5][row] : RW_BACK;
     if (tab == PM_OPT_SUB && sub_kind == 2) return RW_STAT + setstat_k[row];
     if (tab == PM_OPT_SUB && sub_kind == 3) return RW_BADGE + row;
@@ -421,13 +470,14 @@ int pm_optui_alert(int tab, int row, int mode) { int id = row_id(tab, row, mode)
 int pm_optui_rows(int tab, int mode) {
     int ids[48];
     if (tab == PM_OPT_SUB && warp_warn) return 2;
-    if (tab == PM_OPT_SUB) return sub_kind == 12 ? pm_battle_area_count() : sub_kind == 13 ? pm_battle_area_rows(sub_area) : sub_kind == 11 ? pm_dbgg_spawn_count() : sub_kind >= 5 ? fl_n[sub_kind - 5] : sub_kind >= 3 ? 1 + pm_dbgg_item_count(sub_kind == 3 ? 1 : 2) : sub_kind == 2 ? 5 : sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_preset_count() + pm_warp_area_count();
+    if (tab == PM_OPT_SUB) return sub_kind == 12 ? pm_battle_area_count() : sub_kind == 13 ? pm_battle_area_rows(sub_area) : sub_kind == 11 ? pm_dbgg_spawn_count() : sub_kind == 14 ? 5 : sub_kind >= 5 ? fl_n[sub_kind - 5] : sub_kind >= 3 ? 1 + pm_dbgg_item_count(sub_kind == 3 ? 1 : 2) : sub_kind == 2 ? 5 : sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_preset_count() + pm_warp_area_count();
     return tab_ids(tab, mode, ids);
 }
 const char* pm_optui_label(int tab, int row, int mode) {
     int id, g = 1;
     if (tab == PM_OPT_SUB && warp_warn) return row == 0 ? "Warping is dangerous." : "A warp can break the save file.";
     id = row_id(tab, row, mode);
+    if (id >= RW_LOG && id < RW_LOG + 5) { static const char* const ll[5] = { "Logging", "Live log", "Log to disk", "Console log", "Profile to disk" }; return ll[id - RW_LOG]; } /* LOG5, U2 */
     if (id == RW_CSTATS) return "Set Stats >";
     if (id == RW_CBADGES) return "Badges >";
     if (id == RW_CKEYS) return "Key items >";
@@ -471,6 +521,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
     int id, g = 1;
     if (tab == PM_OPT_SUB && warp_warn) return NULL;
     id = row_id(tab, row, mode);
+    if (id >= RW_LOG && id < RW_LOG + 5) return id == RW_LOG + 4 ? (pm_opt.prof_disk ? "On" : "Off") : id == RW_LOG ? (pm_opt.log ? "On" : "Off") : pm_lvl_name[*log_field(id) < 0 || *log_field(id) > 3 ? 4 : *log_field(id)]; /* LOG5 */
     if (id == RW_CSTATS || id == RW_CBADGES || id == RW_CKEYS || fold_index(id) >= 0) return "A: open";
     if (id > RW_PART && id <= RW_PART + 11) return pm_partner_value(id - RW_PART); /* CH4 */
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return "A: spawn"; /* CH5 */
@@ -497,7 +548,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
         else { int h, t; pm_dbgg_count(id - RW_GIVE, &h, &t); snprintf(b, 16, "%d/%d", h, t); }
         return b;
     }
-    if (id >= RW_DBG) return id == RW_DBG + 5 ? pm_lvl_name[pm_options_get(7) & 3] : id == RW_DBG + 9 ? pm_lvl_name[pm_options_get(11) % 5] : pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows 0 to 8 are option rows 2 to 10 */
+    if (id >= RW_DBG) return pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows are option rows 2 to 12 */
     if (id >= RW_MAP) return pm_n64_name(pm_map[id - RW_MAP]);
     switch (id) {
         case RW_FPS: case RW_WIDE: return pm_options_get(id == RW_FPS ? 0 : 1) ? "On" : "Off";
@@ -517,6 +568,13 @@ int pm_optui_act(int tab, int row, int mode);
 /* PT01c: left (dir < 0) or right (dir > 0) on a row. A prefix row with more than one map walks its members with wrap. */
 int pm_optui_step(int tab, int row, int dir, int mode) {
     int id = row_id(tab, row, mode), g;
+    if (id >= RW_LOG && id < RW_LOG + 5) { /* LOG5: left or right flips Logging, or steps a level (Off, Error .. Debug, wrap) */
+        if (id == RW_LOG + 4) { prof_disk_set(!pm_opt.prof_disk); return 1; }
+        if (id == RW_LOG) { log_on_set(!pm_opt.log); return 1; }
+        if (!pm_opt.log) return 0;
+        log_level_set(id, lvl_step(*log_field(id), dir));
+        return 1;
+    }
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return 0; /* CH5: one A spawns one item */
     if (id == RW_BATTLESF || (id >= RW_BTLAREA && id < RW_BTLROW + 1000)) return 0; /* BT2: no value */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 1; } /* CH6: left or right flips it */
@@ -560,6 +618,12 @@ int pm_optui_act(int tab, int row, int mode) {
     if (tab == PM_OPT_SUB && warp_warn) return 0; /* the warning page: the panel handles B and A */
     id = row_id(tab, row, mode);
     if (id != armed_id) armed_id = 0;
+    if (id >= RW_LOG && id < RW_LOG + 5) { /* LOG5: A flips Logging, or cycles a level while logging is on */
+        if (id == RW_LOG + 4) prof_disk_set(!pm_opt.prof_disk);
+        else if (id == RW_LOG) log_on_set(!pm_opt.log);
+        else if (pm_opt.log) log_level_set(id, lvl_step(*log_field(id), 1));
+        return 0;
+    }
     if (id == RW_CSTATS) { sub_kind = 2; sub_area = -1; return 6; } /* CH1: the Set Stats folder */
     if (id == RW_CBADGES) { sub_kind = 3; sub_area = -1; return 6; } /* CH2: the Badges folder */
     if (id == RW_CKEYS) { sub_kind = 4; sub_area = -1; return 6; } /* CH3: the Key items folder */
@@ -603,7 +667,7 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id == RW_STAT + 3) return 0; /* Level: read only */
     if (id >= RW_STAT) { pm_dbgg_stat_step(id - RW_STAT, 1); return 0; }
     if (id >= RW_GIVE) { pm_dbgg_give(id - RW_GIVE); pm_log("options: debug give %d", id - RW_GIVE); return 0; }
-    if (id >= RW_DBG) { pm_options_flip(id == RW_DBG + 9 ? 11 : id - RW_DBG + 2); return 0; } /* RW_DBG + 9 is Console level, option row 11 */
+    if (id >= RW_DBG) { pm_options_flip(id - RW_DBG + 2); return 0; } /* debug rows are option rows 2 to 12 */
     if (id >= RW_MAP) {
         int i = id - RW_MAP;
         pm_map[i] = pm_n64_next(pm_map[i]); pm_options_touch(); pm_log("options: map %s = %s", pm_in_name[i], pm_n64_name(pm_map[i]));

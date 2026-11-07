@@ -28,7 +28,7 @@ static volatile int pos_on, stats_on; /* set by pm_gpu_hud on the game thread: t
 #define LOG_ROWS (18 - HUD_X)
 #define LAY_KEY (2 * pos_on + stats_on)
 extern const char* const pm_lvl_name[5]; /* pm_options.c: Error, Warn, Info, Debug, Off */
-static int frame_con = -1, frame_lg = -1, frame_lay = -1; /* the levels and the layout key in the drawn header; -1: not drawn yet */
+static int frame_key = -1, frame_lay = -1; /* LOG5: pm_log_header_key of the drawn header, and the layout key; -1: not drawn yet */
 static volatile int hud_new, foot_new;
 static char foot_row[2][40]; /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build) */
 
@@ -1795,7 +1795,7 @@ void pm_gpu_menu_draw(const char* text) {
             menu_on = 0;
             consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS); /* the log window again, new lines come at its top (the rows are blank) */
             c->cursorX = 1; c->cursorY = 1; /* window-relative: the top row of the log window */
-            hud_new = 1; foot_new = 1; frame_con = -1; /* BOTLAYOUT: the menu blanked the HUD, footer and frame rows: draw them again */
+            hud_new = 1; foot_new = 1; frame_key = -1; /* BOTLAYOUT: the menu blanked the HUD, footer and frame rows: draw them again */
             fflush(stdout);
         }
         pm_con_unlock();
@@ -1926,12 +1926,10 @@ void pm_gpu_hud(const char* line0, const char* stats, char (*mem)[40], const cha
 /* BOTLAYOUT: the separator, the log header and the footer. Absolute rows (ANSI), window the whole screen while they print, then the log window again.
  * The separator is 39 columns: a 40th column would wrap. */
 static void frame_draw(PrintConsole* c) {
-    char sep[40], left[32], right[16], hdr[40];
-    int con = pm_log_conlevel(), lg = pm_log_level();
+    char sep[40], left[24], right[20], hdr[40];
     memset(sep, '-', 39);
     sep[39] = 0;
-    snprintf(left, sizeof left, "Log (console: %s)", pm_lvl_name[con]);
-    snprintf(right, sizeof right, "(SD: %s)", pm_lvl_name[lg & 3]);
+    pm_log_header(left, sizeof left, right, sizeof right); /* U3: "Console: <level or Profiling>" and "Live log: On, waiting or Off" */
     snprintf(hdr, sizeof hdr, "%-*s%s", 39 - (int)strlen(right), left, right);
     consoleSetWindow(c, 0, 0, 40, 30);
     printf("\x1b[%d;1H\x1b[0m%s", LOG_TOP - 2, sep);
@@ -1939,8 +1937,7 @@ static void frame_draw(PrintConsole* c) {
     printf("\x1b[27;1H\x1b[0m%s", sep);
     printf("\x1b[30;1H%39s", "");
     consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS);
-    frame_con = con;
-    frame_lg = lg;
+    frame_key = pm_log_header_key();
     frame_lay = LAY_KEY;
 }
 
@@ -1959,7 +1956,7 @@ void pm_gpu_hud_flush(void) {
     PrintConsole* c = &bottom_con;
     int cx, cy, wx, wy, ww, wh;
     int hud = hud_new, foot = foot_new;
-    int frame = frame_con != pm_log_conlevel() || frame_lg != pm_log_level() || frame_lay != LAY_KEY;
+    int frame = frame_key != pm_log_header_key() || frame_lay != LAY_KEY;
     int lay = frame_lay != LAY_KEY; /* the layout changed (poshud or stats row), the log window and cursor restart at its top */
     if (!(hud || foot || frame) || !c->consoleInitialised || menu_on) return;
     hud_new = 0;

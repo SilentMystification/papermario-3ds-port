@@ -185,7 +185,7 @@
       "status": "verified",
       "subject": "Port menu, Debug > Logging and Profiling (row 2, A), row 3 Profiling. SELECT opens the menu, R R goes to the Debug tab, two ddown and A open the folder, three ddown reach the row, A sets it to Prof (LAYOUT). The bottom shot shows the row value Prof. The prof lines follow once the change applies at the next drawn frame end.",
       "proves": "PROFROW: the Profiling row sets the prof mode at run time with no launch word. The prof counter setup runs (prof cal line) and the prof report line prints.",
-      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,A,wait20,ddown,wait10,ddown,wait10,ddown,wait10,A,wait20,SELECT,wait900 shots shotbottom=236:12 loglevel=debug",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,A,wait20,A,wait20,SELECT,wait900 shots shotbottom=236:12 loglevel=debug",
       "until": "prof f\\d+ w300 fps",
       "cap": 45,
       "deadline": 20,
@@ -7888,6 +7888,150 @@
         }
       ],
       "reason": "AZT3-2 keep on fail. No logbench switch, so the until never matches and the run ends at the 15 s cap with its Azahar kept."
+    },
+    {
+      "name": "log5_menu",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad), Debug > Logging and Profiling > Logging page with logging on: the page shot (Logging On), then A turns logging off: the menu redraws with the Logging row Off and the Live log, Log to disk and Console log rows grey.",
+      "proves": "LOG5 menu: Logging On/Off and the grey rows (pm_optui_grey). Two menu shots: the page with Logging On, then the page with Logging Off.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,A,wait20,ddown,wait10,A,wait60,A,wait60 shotmenu loglevel=debug",
+      "until": "options: logging off",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "logging off",
+          "regex": "options: logging off"
+        },
+        {
+          "name": "logging page shot",
+          "regex": "menu: shot \\w+ tab 4 row 0"
+        }
+      ],
+      "reason": "LOG5 menu gate. Cap 45 s. The until is the logging off line, printed while the queue is still on (the menu turns logging off after it)."
+    },
+    {
+      "name": "log5_ini",
+      "status": "unverified",
+      "subject": "Boot with the master options.ini at version 1 (loglevel 3, conlevel 1, log 1): the migration keeps the levels. The run and saved values are live 3, disk 3, con 1, log_on 1, and the file is written as version 2. Log line only.",
+      "proves": "LOG5 ini round trip: version 1 keys log, loglevel, conlevel migrate to log_on, live_level and disk_level (loglevel), con_level (conlevel).",
+      "debug": "fixedseed",
+      "until": "options: levels run",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "levels line",
+          "regex": "options: levels run log_on=1 live=3 disk=3 con=1 saved log_on=1 live=3 disk=3 con=1 ini version 1 migrated 1"
+        }
+      ],
+      "reason": "LOG5 ini gate. Cap 25 s. The levels line is printed after the migration and before the version 2 write."
+    },
+    {
+      "name": "log5_switch",
+      "status": "unverified",
+      "subject": "Boot with the switches loglevel=3 conlevel=4 over the master options.ini (version 1, loglevel 3, conlevel 1): the run levels are live 3, disk 3, console off (-1). The saved console level stays 1. Log line only.",
+      "proves": "LOG5 switch precedence: launch switch over options.ini. conlevel=4 is off (-1).",
+      "debug": "loglevel=3 conlevel=4",
+      "until": "options: levels run",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "levels line",
+          "regex": "options: levels run log_on=1 live=3 disk=3 con=-1 saved log_on=1 live=3 disk=3 con=1 ini version 1 migrated 1"
+        }
+      ],
+      "reason": "LOG5 switch gate (loglevel=3 conlevel=4). Cap 25 s."
+    },
+    {
+      "name": "log5_bot_log",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad), logging on at the defaults: the bottom screen log header reads Console: Warn and Live log: waiting (no client connected). Shot at frames 236 and 237.",
+      "proves": "LOG5 U3, state Logging: the header texts of pm_log_header.",
+      "debug": "preset=toad padscript=wait80,wait300 shotbottom=236:2 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "padscript done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "LOG5 U3 Logging state. Cap 40 s: boot, warp, the 380-frame script."
+    },
+    {
+      "name": "log5_bot_prof",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad), Debug > Logging and Profiling, row 0 Profiling set to Prof (A) and the menu closed: the bottom screen log header reads Console: Profiling and Live log: waiting. Shot at frames 240 to 242. Profiling lines go to the live log and the console only (U2), so log.txt has no prof line: the until cannot match on Azahar (see the row file).",
+      "proves": "LOG5 U3, state Profiling: the header text Console: Profiling, and the Logging rows are off with Profiling on.",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,R,wait10,R,wait20,ddown,wait10,ddown,wait10,A,wait20,A,wait20,SELECT,wait900 shotbottom=240:3 loglevel=debug",
+      "until": "prof f\\d+ w300 fps",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "profiling on",
+          "regex": "options: profiling prof"
+        }
+      ],
+      "reason": "LOG5 U3 Profiling state. Cap 30 s. The until is the prof window line, which U2 keeps out of log.txt (open point, see the row file)."
+    },
+    {
+      "name": "log5_bot_off",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad) with the switch log=off: logging and Profiling off, nothing is logged. The bottom screen log header reads Console: Off and Live log: Off. Shot at frames 30 to 32.",
+      "proves": "LOG5 U3, state both off: the header text with the queue off (the header draw at console ready, U1 keeps the sink asleep).",
+      "debug": "preset=toad log=off shotbottom=30:3",
+      "until": "boot_main",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "boot marker",
+          "regex": "boot_main"
+        }
+      ],
+      "reason": "LOG5 U3 both off. Logging off prints no line, so the marker and the until cannot match: the bottom shot is the check (expected fail on the log, see the row file)."
+    },
+    {
+      "name": "log5_u1_prof",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad) with logging off and profiling on (prof=4, profdisk=1): the prof windows print the writer beat count. U1 check: the count in the second window (frame 600 to 700, about 10 s after the first) must equal the count in the first window.",
+      "proves": "LOG5 U1: with logging off the writer does not beat while nothing is queued. Two prof window lines: writer beats N in each.",
+      "debug": "preset=toad prof=4 log=off",
+      "until": "prof f[6-9]\\d\\d w300 fps",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "window 1",
+          "regex": "prof f\\d+ w300 writer beats \\d+"
+        }
+      ],
+      "reason": "LOG5 U1 check. Cap 45 s: boot, warp and two 300-frame windows."
     }
   ]
 }

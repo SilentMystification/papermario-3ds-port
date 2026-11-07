@@ -60,13 +60,20 @@ static int lv_live = 1; /* the live socket and the ring that replays to a reconn
 static int lv_disk = 1; /* log.txt (fb) */
 static int lv_con = 1; /* the bottom screen console (cb) */
 static int log_file_on = 1; /* the logging gate: 0 = off (switch log=off, options panel Logging). No line is formatted, queued, written or sent, and phase timing stops (pm_ph_log_gate). */
-static int pass_lv = 1; /* LOG3: the highest level an enabled sink takes: max of lv_live, lv_disk, lv_con; -1 when log_file_on is 0. One compare in vlog. */
+static int pass_lv = 1; /* LOG3: the highest level an enabled sink takes: max of lv_live, lv_disk, lv_con; -1 when the queue is off (qon). One compare in vlog. */
+static int prof_mode; /* U2: Profiling on (prof, phase): logging is off, only profiling lines pass (live and console, never log.txt) */
+static int sv_lv[3]; /* U2: live, disk, con levels saved when Profiling starts, restored when it ends */
+static int prof_disk; /* U2 (user decision): profiling lines also go to log.txt when this is on (option prof_disk, switch profdisk=1). Off by default. */
+void pm_log_set_prof_disk(int on) { prof_disk = on != 0; }
+int pm_log_get_prof_disk(void) { return prof_disk; }
+/* U2: the queue takes lines when logging is on or Profiling is on. Logging and Profiling are one choice, so this is one load and one compare. */
+static int qon(void) { return log_file_on || prof_mode; }
 static u32 cnt_disk, cnt_live, cnt_con; /* LOG3: slot lines each sink took since boot (beat line: sinks disk live con) */
 static u32 con_lines; /* CONLV: console lines printed by the sink thread since boot (logstat2 console lines) */
 static void pass_recalc(void) {
     int m = lv_live > lv_disk ? lv_live : lv_disk;
     if (lv_con > m) m = lv_con;
-    pass_lv = log_file_on ? m : -1;
+    pass_lv = qon() ? m : -1;
 }
 void pm_ph_log_gate(int on);
 
@@ -229,6 +236,7 @@ void pm_log_apply_switch_levels(void) {
     if (pm_debug_value("livelevel", v, sizeof v)) lv_live = lv_word(v, lv_live);
     if (pm_debug_value("disklevel", v, sizeof v)) lv_disk = lv_word(v, lv_disk);
     if (pm_debug_value("conlevel", v, sizeof v)) lv_con = lv_word(v, lv_con);
+    if (pm_debug_value("profdisk", v, sizeof v)) prof_disk = v[0] == '1'; /* U2: profiling to log.txt, 0 off (default), 1 on */
     if (pm_debug_value("log", v, sizeof v)) log_file_on = !(!strcmp(v, "off") || !strcmp(v, "0")); /* ARG1: log=on sets the gate too */
     pass_recalc();
 }
@@ -241,20 +249,36 @@ void pm_log_set_switches(const char* s) {
     pm_log_apply_switch_levels();
 }
 
-/* The file or socket level, the higher of the two (the old single log level). */
+/* The higher of the live and disk level (the old single log level). */
 int pm_log_level(void) { return lv_disk > lv_live ? lv_disk : lv_live; }
-/* The console level, 4 = off (the options panel and prof row convention). */
+/* The console level, 4 = off (the bottom screen and the boot line). */
 int pm_log_conlevel(void) { return lv_con < 0 ? 4 : lv_con; }
-int pm_log_file(void) { return log_file_on; }
-/* loglevel: sets the live and the disk level together. */
-void pm_log_set_level(int lv) { lv = lv < 0 ? 0 : lv > 3 ? 3 : lv; lv_live = lv_disk = lv; pass_recalc(); }
-void pm_log_set_conlevel(int lv) { lv_con = lv < 0 ? 0 : lv > 3 ? -1 : lv; pass_recalc(); }
+/* 1 when the queue takes lines: logging on, or Profiling on (phase timing and the measurement gates read this). */
+int pm_log_file(void) { return qon(); }
+/* LOG5: the three levels as run (-1 off, 0 error .. 3 debug), and the logging gate (pm_opt.log). */
+int pm_log_live_level(void) { return lv_live; }
+int pm_log_disk_level(void) { return lv_disk; }
+int pm_log_con_level(void) { return lv_con; }
+int pm_log_logging(void) { return log_file_on; }
 static void wake_writer(void);
+/* The queue changed (logging or profiling): the phase gate, the level pass and the sinks follow. */
+static void gate_changed(void) {
+    pm_ph_log_gate(qon());
+    pass_recalc();
+    LightEvent_Signal(&ev_sink); /* LOG4: the sink sleeps without a timeout while the queue is off */
+    wake_writer(); /* the writer drains the queue, then sleeps while the queue is off */
+}
 void pm_log_set_file(int on) {
     log_file_on = on != 0;
-    pm_ph_log_gate(log_file_on);
-    LightEvent_Signal(&ev_sink); /* LOG4: the sink sleeps without a timeout while logging is off */
-    wake_writer(); /* the writer drains the queue, then sleeps while logging is off */
+    gate_changed();
+}
+/* LOG5: the menu and the options file set the logging gate and the three levels at once. Profiling keeps its own saved levels (pm_log_prof_row). */
+void pm_log_set_levels(int on, int live, int disk, int con) {
+    log_file_on = on != 0;
+    lv_live = live < 0 ? -1 : live > 3 ? 3 : live;
+    lv_disk = disk < 0 ? -1 : disk > 3 ? 3 : disk;
+    lv_con = con < 0 ? -1 : con > 3 ? 3 : con;
+    gate_changed();
 }
 
 void pm_log_init(int live) {
@@ -380,17 +404,17 @@ void pm_log_console_ready(void) {
     LightLock_Lock(&con_lock);
     con_up = 1; /* the sink thread prints the lines that waited in cb */
     LightLock_Unlock(&con_lock);
+    LightEvent_Signal(&ev_sink); /* U3: one header draw, also when the queue is off at boot */
 }
 static LightEvent ev_wake, ev_started, ev_flushed;
 static volatile int io_drain_req;
 static void wake_writer(void) { if (writer_th) LightEvent_Signal(&ev_wake); }
 
 static int prof_force; /* PROF4: set only by pm_log_prof_line, the one line that prints in prof mode */
-static int prof_mode;
 static void vlog(int lv, const char* fmt, va_list ap) {
     int vip = (lv & VIP) != 0;
     lv &= 15;
-    if (!log_file_on) return; /* logging off: nothing below runs, not even the level test */
+    if (!qon()) return; /* logging and Profiling off: nothing below runs, not even the level test (U1) */
     if (lv > pass_lv && !prof_force) return; /* CONLV: one compare; the sinks check their own level in drain_locked */
     if (!writer_th) return; /* no writer: drop the line, never touch SD, socket or stdout on the caller */
     u32 lim = vip ? SLOTS : SLOTS - SLOT_RES;
@@ -443,7 +467,7 @@ static void vlog(int lv, const char* fmt, va_list ap) {
  * queue reaches half full (edge: the flag clears below a quarter), so a storm costs one wake per fill, not one per line. */
 static int half_sig;
 void pm_log_frame_tick(void) {
-    if (!log_file_on || !writer_th) return;
+    if (!qon() || !writer_th) return;
     static int storm = -1; /* LOG4 test switch logstorm=<n>: n debug lines per drawn frame (the storm bench) */
     if (storm < 0) { char v[16]; storm = pm_debug_value("logstorm", v, sizeof v) ? atoi(v) : 0; }
     for (int i = 0; i < storm; i++) pm_log_d("storm line %d", i);
@@ -480,27 +504,48 @@ static void base_save(void) {
     for (const char* const* w = row_w; *w; w++) base_has[k++] = pm_debug_has(*w) != 0;
     for (const char* const* w = prof_w; *w; w++) base_has[k++] = pm_debug_has(*w) != 0;
 }
-/* lv and con: the log level and console level to return to. Prof mode sets log level -1 (prof lines only) and console off.
- * Ceiling: a Log level or Console level change in the options panel while prof mode is on is undone by the next mode change. */
-void pm_log_prof_row(int mode, int lv, int con) {
+/* U2, LOG5: mode 0 off, 1 prof (profiling lines only), 2 phase (the normal lines at the saved live and console levels, never log.txt).
+ * Logging is off in both profiling modes. The three levels are saved when profiling starts and restored when it ends: mode 1 sets all three
+ * to off (only profiling lines pass), mode 2 sets the disk level off and keeps the saved live and console levels. */
+void pm_log_prof_row(int mode) {
     base_save();
     for (const char* const* w = row_w; *w; w++) pm_log_switch(*w, mode == 2);
     int k = ROW_N;
     for (const char* const* w = prof_w; *w; w++, k++) pm_log_switch(*w, mode != 1 && base_has[k]);
     pm_log_switch("prof", mode == 1);
-    prof_mode = mode == 1;
-    lv_live = lv_disk = mode == 1 ? -1 : lv;
-    lv_con = mode == 1 || con > 3 ? -1 : con;
-    pass_recalc();
+    int was = prof_mode;
+    if (mode && !was) { sv_lv[0] = lv_live; sv_lv[1] = lv_disk; sv_lv[2] = lv_con; }
+    if (mode) log_file_on = 0;
+    prof_mode = mode != 0;
+    if (!mode && was) { lv_live = sv_lv[0]; lv_disk = sv_lv[1]; lv_con = sv_lv[2]; }
+    if (mode == 1) lv_live = lv_disk = lv_con = -1;
+    if (mode == 2) { lv_live = sv_lv[0]; lv_disk = -1; lv_con = sv_lv[2]; }
+    gate_changed();
 }
-/* PROF4: switch prof at boot. boot_line 1 prints "prof=1 log=off". */
+/* PROF4: the launch word prof=1 (boot_line 1 prints "prof=1 log=off"). U2: it turns logging off for this run. */
 void pm_log_prof_apply(int boot_line) {
     char v[16];
     base_save();
-    if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) { prof_mode = 0; return; }
-    pm_log_prof_row(1, pm_log_level(), pm_log_conlevel());
-    if (!log_file_on) pm_log_set_file(1);
+    if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) return;
+    pm_log_prof_row(1);
     if (boot_line) pm_log_prof_line("prof=1 log=off");
+}
+/* U3: the bottom screen header. con: "Console: Profiling" while profiling, else "Console: <level or Off>" (Off when logging is off).
+ * live: "Live log: On" (a client is connected), "Live log: waiting" (the live log is on with no client), else "Live log: Off". */
+static const char* const hdr_lvl[5] = { "Error", "Warn", "Info", "Debug", "Off" };
+static int live_state(void) { /* 0 off, 1 waiting, 2 on */
+    if (!(prof_mode || (log_file_on && lv_live >= 0))) return 0;
+    return client >= 0 ? 2 : 1;
+}
+void pm_log_header(char* con, int nc, char* live, int nl) {
+    if (prof_mode) snprintf(con, (size_t)nc, "Console: Profiling");
+    else snprintf(con, (size_t)nc, "Console: %s", hdr_lvl[log_file_on && lv_con >= 0 ? lv_con : 4]);
+    int s = live_state();
+    snprintf(live, (size_t)nl, "Live log: %s", s == 2 ? "On" : s == 1 ? "waiting" : "Off");
+}
+/* U3: a key of the header text; the bottom screen redraws its header when it changes. */
+int pm_log_header_key(void) {
+    return (prof_mode ? 1 << 12 : 0) | (log_file_on ? 1 << 11 : 0) | ((lv_con + 1) & 7) << 8 | live_state() << 4 | (client >= 0 ? 1 : 0);
 }
 int pm_log_prof_mode(void) { return prof_mode; }
 PM_LOG_FN(pm_log, 2) /* an old call is info */
@@ -586,7 +631,7 @@ static void fb_write_locked(unsigned budget) { /* budget 0: all of fb, else at m
         LightLock_Unlock(&fb_lock);
         if (!n) break;
         tot += n;
-        if (log_fd >= 0 && log_file_on) {
+        if (log_fd >= 0) {
             u64 t0 = svcGetSystemTick();
             unsigned done = 0;
             while (done < n) {
@@ -635,7 +680,7 @@ static void cb_put(const char* s, unsigned n) {
 
 /* LOG3: one buffer per sink. dk: log.txt lines (fb), lv: socket lines (and the ring), cs: console bodies (cb). An empty buffer is skipped. */
 static void out_batch(const char* dk, int dn, const char* lv, int ln, const char* cs, int cn) {
-    if (dn > 0 && log_fd >= 0 && log_file_on) {
+    if (dn > 0 && log_fd >= 0) { /* lines queued before the gate went off still reach log.txt */
         u64 t0 = svcGetSystemTick();
         fb_put(dk, (unsigned)dn);
         u32 d = us_since(t0);
@@ -708,10 +753,17 @@ static void sink_main(void* arg) {
     unsigned dtick = 0;
     for (;;) {
         /* LOG4 (U1): logging off, the sink waits with no timeout; pm_log_set_file and pm_log_stop signal ev_sink. */
-        if (log_file_on) svcSleepThread(100000000LL);
+        if (qon()) svcSleepThread(100000000LL);
         else LightEvent_Wait(&ev_sink);
         if (__atomic_load_n(&writer_stop, __ATOMIC_ACQUIRE) || __atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) return;
-        if (pm_io_quiet || !log_file_on) continue;
+        if (pm_io_quiet) continue;
+        if (!qon()) { /* lines queued before the gate went off: write them once, then sleep again */
+            LightLock_Lock(&fsink_lock);
+            fb_write_locked(0);
+            LightLock_Unlock(&fsink_lock);
+            con_flush();
+            continue;
+        } /* U3: logging off, one header draw after a change (the thread waits again at once) */
         /* No fsync here: an SD fsync held fsink_lock for 1 to 7 s. fb_sync_all and the crash path still sync.
          * LOG4: one SD write per 250 ms (every third 100 ms step) or 32 KB, whichever comes first. */
         if (++dtick >= 3 || fb_used() >= 32768u) {
@@ -804,8 +856,8 @@ static void drain_locked(void) {
             int pad = (sl->flags & 1) != 0, lvl = sl->lv;
             st_bytes += (unsigned)n + 8;
             int skip = sw_lognull && !strstr(line, "CRASH") && !strstr(line, "FATAL") && !strstr(line, "logstat"); /* lognull: writer drops */
-            int tf = !skip && (pad || lvl <= dl); /* PROF4: pad 1 = prof line, log.txt only */
-            int tl = !skip && !pad && lvl <= ll, tc = !skip && !pad && lvl <= cl;
+            int tf = !skip && (pad ? prof_disk : lvl <= dl); /* U2: a profiling line (pad 1) goes to log.txt only with prof_disk on */
+            int tl = !skip && (pad || lvl <= ll), tc = !skip && (pad || lvl <= cl); /* U2: profiling lines go to the live log and the console */
             cnt_disk += (unsigned)tf; cnt_live += (unsigned)tl; cnt_con += (unsigned)tc; /* LOG3: counted per slot, the beat and drop lines are not */
             int cskip = 0, cn = 0;
             if (tc) { /* the console text is the line after "#<seq> " */
@@ -853,10 +905,11 @@ static void writer_main(void* arg) {
     for (;;) {
         /* Wakes every 250 ms, so accept_client and read_cmd run before every bounded drain. LOG4 (U1): logging off, no timeout:
          * the writer sleeps until a signal (pm_log_set_file, pm_io_gate, pm_log_stop). No heartbeat, no accept, no beat. */
-        if (log_file_on) LightEvent_WaitTimeout(&ev_wake, 250000000LL);
+        if (qon()) LightEvent_WaitTimeout(&ev_wake, 250000000LL);
         else LightEvent_Wait(&ev_wake);
         if (__atomic_load_n(&active_id, __ATOMIC_ACQUIRE) != id) return; /* a replacement thread took over */
-        if (!log_file_on && !io_drain_req && !__atomic_load_n(&writer_stop, __ATOMIC_ACQUIRE) && !__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) continue;
+        /* LOG5 fix: lines queued before the queue went off (the logging off line) still drain once: skip only with nothing queued */
+        if (!qon() && q_head == q_tail && !io_drain_req && !__atomic_load_n(&writer_stop, __ATOMIC_ACQUIRE) && !__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) continue;
         writer_hb++;
         writer_beat();
         if (io_drain_req && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {

@@ -1767,6 +1767,123 @@
         "pic"
       ],
       "gates": []
+    },
+    {
+      "name": "log5_menu",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG5 menu gate: Logging page On shot, then Off with the grey rows (menu shots bot_m).",
+      "scenario": "log5_menu",
+      "cap": 45,
+      "until": "options: logging off",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "log"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "log5_ini",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG5 ini gate: version 1 migrates to version 2 with the same levels (options: levels run line).",
+      "scenario": "log5_ini",
+      "cap": 25,
+      "until": "options: levels run",
+      "tags": [
+        "azahar",
+        "log"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "log5_switch",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG5 switch gate: loglevel=3 conlevel=4 over the options.ini levels (options: levels run line, con=-1).",
+      "scenario": "log5_switch",
+      "cap": 25,
+      "until": "options: levels run",
+      "tags": [
+        "azahar",
+        "log"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "log5_bot_log",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG5 U3 Logging state: bottom header Console: Warn, Live log: waiting (shot 236).",
+      "scenario": "log5_bot_log",
+      "cap": 40,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "log"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "log5_bot_prof",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG5 U3 Profiling state: bottom header Console: Profiling (shot 240). Until cannot match on Azahar (U2, prof lines not on disk).",
+      "scenario": "log5_bot_prof",
+      "cap": 30,
+      "until": "prof f\\d+ w300 fps",
+      "tags": [
+        "azahar",
+        "pic",
+        "log"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "log5_bot_off",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG5 U3 both off: bottom header Console: Off, Live log: Off (shot 30). Logging off prints no line: picture only.",
+      "scenario": "log5_bot_off",
+      "cap": 25,
+      "until": "boot_main",
+      "tags": [
+        "azahar",
+        "pic",
+        "log"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "log5_u1_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG5 U1 check: logging off, profiling on: writer beats in two prof windows about 10 s apart.",
+      "scenario": "log5_u1_prof",
+      "cap": 45,
+      "until": "prof f[6-9]\\d\\d w300 fps",
+      "tags": [
+        "azahar",
+        "log"
+      ],
+      "log_metrics": [],
+      "gates": []
     }
   ],
   "legacy": {
