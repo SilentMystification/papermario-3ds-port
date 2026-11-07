@@ -67,6 +67,7 @@ static __attribute__((cold, noinline)) void tex_streak_op(unsigned op) {
         tex_streak_flush();
 }
 
+extern int pm_tex_tagi; /* STALE2 texsrc: bind path tag */
 extern u16 DepthCopyBuffer[16];
 extern unsigned short* nuGfxZBuffer;
 void pm_depth_query(const void* timg, int x, int id); /* F03, pm_depth.c */
@@ -4913,7 +4914,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
         case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. S6-2a: the end record (G_PM_ENT_END, entcheck only) checks the tile 0 state. */
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); }
-            else if ((w0 & G_PM_ENT_DRAW) && (ent_draw(pc - 1) ? 1 : (ent_skipgen = 1, 0))) { if (pm_ph_on) pk_nat[pmx_cur]++; pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
+            else if ((w0 & G_PM_ENT_DRAW) && ((pm_tex_tagi = 4, ent_draw(pc - 1)) ? 1 : (ent_skipgen = 1, 0))) { if (pm_ph_on) pk_nat[pmx_cur]++; pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
             pc += G_PM_ENT_WORDS - 1;
             break;
         case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
@@ -4935,7 +4936,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
             __builtin_prefetch(next); __builtin_prefetch(next + 4);
             if (ent_skipgen) ent_skipgen = 0;
-            else if (next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u) && ent_gdl(next)) { /* SGEN-1: any other static list, the entity path */
+            else if (next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u) && (pm_tex_tagi = 5, ent_gdl(next))) { /* SGEN-1: any other static list, the entity path */
                 if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
                 break;
             }

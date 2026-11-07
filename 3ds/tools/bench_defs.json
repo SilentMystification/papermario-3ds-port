@@ -57,6 +57,18 @@
       "gates": []
     },
     {
+      "name": "stale2_walk_mac02",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STALE2 measurement: texsrc per bind path (walk, model, hit, spr) and texstale counts over a 300-frame walk on mac_02, shots 150 to 169.",
+      "scenario": "stale2_walk_mac02",
+      "cap": 27,
+      "until": "texsrc f300 ",
+      "tags": ["azahar", "texstale", "texsrc", "stale2"],
+      "gates": []
+    },
+    {
       "name": "texstale_prof_line",
       "kind": "azahar_pic",
       "speed": "normal",

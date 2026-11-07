@@ -987,10 +987,10 @@ static void tc_report(void) {
  * descriptor key != the slot shash). The first 40 binds of each path print one line. Log only. */
 int pm_tex_tagi;
 static unsigned src_hash(const void* p, unsigned n);
-static const char* const tsrc_name[4] = {"walk", "model", "hit", "spr"};
+static const char* const tsrc_name[6] = {"walk", "model", "hit", "spr", "ent_draw", "ent_gdl"};
 static const u8* tsrc_lo[4];
 static unsigned tsrc_len[4], tsrc_nr;
-static unsigned tsrc_b[4], tsrc_now[4], tsrc_spr[4], tsrc_memo[4], tsrc_cold[4];
+static unsigned tsrc_b[6], tsrc_now[6], tsrc_spr[6], tsrc_memo[6], tsrc_cold[6];
 void pm_tex_sprite_range(const void* p, unsigned n) { if (p && n && tsrc_nr < 4) { tsrc_lo[tsrc_nr] = (const u8*)p; tsrc_len[tsrc_nr] = n; tsrc_nr++; } }
 static int tsrc_in_spr(const void* p) {
     for (unsigned k = 0; k < tsrc_nr; k++) if ((const u8*)p >= tsrc_lo[k] && (const u8*)p < tsrc_lo[k] + tsrc_len[k]) return 1;
@@ -998,7 +998,7 @@ static int tsrc_in_spr(const void* p) {
 }
 static void texsrc_chk(int i, const void* img, unsigned key) {
     int t = pm_tex_tagi;
-    if (i < 0 || i >= SLOTS || !slots[i].live || t < 0 || t > 3 || !PMDL("texsrc")) return;
+    if (i < 0 || i >= SLOTS || !slots[i].live || t < 0 || t > 5 || !PMDL("texsrc")) return;
     Slot* s = &slots[i];
     unsigned h = 0; int now = 0, sp = tsrc_in_spr(s->img), mm = key != 0 && key != s->shash;
     (void)img;
@@ -1010,11 +1010,14 @@ static void texsrc_chk(int i, const void* img, unsigned key) {
     }
 }
 static void tsrc_report(void) {
-    pm_log_w("texsrc f%u walk b %u now %u spr %u memo %u | model b %u now %u spr %u memo %u | hit b %u now %u spr %u memo %u | spr b %u now %u spr %u memo %u",
+    { extern void pm_log_prof_line(const char* fmt, ...); /* STALE2: the texsrc lines print in prof mode too (console counts); two lines, the prof line has a short buffer */
+      pm_log_prof_line("texsrc f%u walk b %u now %u spr %u memo %u | model b %u now %u spr %u memo %u | hit b %u now %u spr %u memo %u | spr b %u now %u spr %u memo %u",
              (unsigned)tc_frame,
              tsrc_b[0], tsrc_now[0], tsrc_spr[0], tsrc_memo[0], tsrc_b[1], tsrc_now[1], tsrc_spr[1], tsrc_memo[1],
              tsrc_b[2], tsrc_now[2], tsrc_spr[2], tsrc_memo[2], tsrc_b[3], tsrc_now[3], tsrc_spr[3], tsrc_memo[3]);
-    for (int t = 0; t < 4; t++) tsrc_b[t] = tsrc_now[t] = tsrc_spr[t] = tsrc_memo[t] = 0;
+      pm_log_prof_line("texsrc ent f%u ent_draw b %u now %u spr %u memo %u | ent_gdl b %u now %u spr %u memo %u",
+             (unsigned)tc_frame, tsrc_b[4], tsrc_now[4], tsrc_spr[4], tsrc_memo[4], tsrc_b[5], tsrc_now[5], tsrc_spr[5], tsrc_memo[5]); }
+    for (int t = 0; t < 6; t++) tsrc_b[t] = tsrc_now[t] = tsrc_spr[t] = tsrc_memo[t] = 0;
 }
 
 /* TEXSTALE step 1 (switch texstale): a native unit bind checked against its descriptor. The slot must be live, not dirty, hold the descriptor
