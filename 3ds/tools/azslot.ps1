@@ -73,33 +73,33 @@ function Get-Build3dsx([string]$path) {
     return ""
 }
 
-# AZT8-2: the build line of this boot ("#N build <id> git <hash>") is the build id that runs. 1 when it equals $want; waits up to 15 s for the line.
-function Test-BootBuild([string]$log, [string]$want) {
-    if (-not $want) { return $false }
+# AZT9d-2: the value of the newest boot's line matching $pattern. A boot starts with the line "#0 log: writer" (the log is re-created or truncated).
+# Before the restart the caller takes the file length and the marker count ($oldLen, $oldMarks). The new boot is: the text after the last
+# marker when the file got shorter (truncated in place), else the text after the last marker once the marker count rises. $null after 15 s.
+function Get-BootValue([string]$log, [string]$pattern, [long]$oldLen, [int]$oldMarks) {
     for ($w = 0; $w -lt 60; $w++) {
         if (Test-Path $log) {
             $t = ""
             try { $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite'); try { $t = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch { $t = "" }
-            $m = [regex]::Match($t, '(?m)^#\d+ build (\S+) git')
-            if ($m.Success) { return ($m.Groups[1].Value -eq $want) }
+            $marks = @([regex]::Matches($t, '(?m)^#0 log: writer')).Count
+            $truncated = $t.Length -lt $oldLen
+            if ($marks -gt 0 -and ($truncated -or $marks -gt $oldMarks)) {
+                $last = [regex]::Matches($t, '(?m)^#0 log: writer') | Select-Object -Last 1
+                $seg = $t.Substring($last.Index)
+                $m = [regex]::Match($seg, $pattern)
+                if ($m.Success) { return $m.Groups[1].Value }
+            }
         }
         Start-Sleep -Milliseconds 250
     }
-    return $false
+    return $null
 }
-
-# AZT6-3: the switch line of a warm boot must hold this run's switches (the game reads debug3ds.txt at its start). Waits up to 15 s for the line.
-function Test-WarmSwitches([string]$log, [string]$debug) {
-    for ($w = 0; $w -lt 60; $w++) {
-        if (Test-Path $log) {
-            $t = ""
-            try { $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite'); try { $t = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch { $t = "" }
-            $m = [regex]::Match($t, '(?m)^#\d+ switches ([^\r\n]*)')
-            if ($m.Success) { return $m.Groups[1].Value.Contains($debug.Trim()) }
-        }
-        Start-Sleep -Milliseconds 250
-    }
-    return $false
+function Get-LogState([string]$log) {
+    # length and marker count of the log now (0, 0 when none)
+    if (-not (Test-Path $log)) { return @{ len = [long]0; marks = 0 } }
+    $t = ""
+    try { $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite'); try { $t = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch { return @{ len = [long]0; marks = 0 } }
+    return @{ len = [long]$t.Length; marks = @([regex]::Matches($t, '(?m)^#0 log: writer')).Count }
 }
 
 function Get-SlotPaths([int]$k) {

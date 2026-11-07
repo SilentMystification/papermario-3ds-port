@@ -252,7 +252,8 @@ try {
 }
 catch { if ($warm) { Write-Output "Warm: the ROM copy failed ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id "3dsx locked or ROM copy failed"; Copy-Item $in3dsx $romFile -Force } else { throw } }
 $oldLogCT = [datetime]::MinValue
-if ($warm) { if (Test-Path $log) { $oldLogCT = (Get-Item $log).CreationTimeUtc } } # the kept game holds log.txt open: the restart makes a new one
+$oldLen = [long]0; $oldMarks = 0 # AZT9d-2: the log before this restart
+if ($warm) { if (Test-Path $log) { $oldLogCT = (Get-Item $log).CreationTimeUtc; $ls = Get-LogState $log; $oldLen = $ls.len; $oldMarks = $ls.marks } } # the kept game holds log.txt open: the restart makes a new one (AZT9d-2: its length and boot marks)
 else { Remove-Item $log -ErrorAction SilentlyContinue }
 if (-not $warm -and (Test-Path $log)) { Release-Lock; End-Run 5 "LOG LOCKED: $log is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
 if ($Smoke -and $Debug -notmatch "fixedseed") { $Debug = "$Debug fixedseed" } # R-SEED: smoke runs use the fixed RNG seed
@@ -327,7 +328,8 @@ if ($warm) {
         }
         Write-PoolLog $slotK "warm wait" $kept.Id $kept.Id ("try {0} log {1} created {2} after {3:N1} s" -f $try, $(if ($warmDone) { "new" } else { "none" }), $(if ($created) { "yes" } else { "no" }), ((Get-Date) - $start).TotalSeconds)
     }
-    if ($warmDone -and -not (Test-BootBuild $log $wantBuild)) {
+    $bootBuild = if ($warmDone) { Get-BootValue $log '(?m)^#\d+ build (\S+) git' $oldLen $oldMarks } else { $null } # AZT9d-2: the newest boot's build line
+    if ($warmDone -and $bootBuild -ne $wantBuild) {
         # AZT8-2: the restarted Azahar booted another build than this lane 3dsx (a warm restart can keep the old ROM): cold start
         Write-Output "Warm restart: the boot runs another build than this lane 3dsx ($wantBuild). Cold start."
         Kill-Azahar $kept.Id "stale rom"
@@ -337,7 +339,7 @@ if ($warm) {
         $warmWhy = "stale rom"
         $warmDone = $false
     }
-    elseif ($warmDone -and $Debug -and -not (Test-WarmSwitches $log $Debug)) {
+    elseif ($warmDone -and $Debug -and -not ((Get-BootValue $log '(?m)^#\d+ switches ([^\r\n]*)' $oldLen $oldMarks) -match [regex]::Escape($Debug.Trim()))) {
         # AZT6-3: the restarted game printed other switches (stale debug3ds.txt): this start is cold, the kept Azahar is closed
         Write-Output "Warm restart: the boot prints other switches than this run. Cold start."
         Kill-Azahar $kept.Id "switch mismatch" 
@@ -555,7 +557,7 @@ $addrs = $addrs | ForEach-Object { [Convert]::ToUInt32($_, 16) } |
 if ($addrs) {
     Write-Output "--- crash symbols (pc, lr, then stack words that are code) ---"
     $env:MSYS_NO_PATHCONV = "1"
-    & docker run --rm -v ${vol}:/work devkitpro/devkitarm:latest sh -c "`$DEVKITARM/bin/arm-none-eabi-addr2line -f -C -p -e /work/build/pm_3ds.elf $($addrs -join ' ')" |
+    & docker run --rm -v ${vol}:/work devkitpro/devkitarm:latest sh -c "$DEVKITARM/bin/arm-none-eabi-addr2line -f -C -p -e /work/build/pm_3ds.elf $($addrs -join ' ')" |
         Where-Object { $_ -notmatch "^\?\?" }
     End-Run 2 "crash symbols; stopped: $reason"
 }
