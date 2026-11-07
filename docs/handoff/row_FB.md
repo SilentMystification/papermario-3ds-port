@@ -34,5 +34,14 @@ FB-4 DELETE (after FB-1..3, TRI-4, MDL-3; same commit as GM-3's CPU-only geometr
 - Proof: `grep -nE "flush_draw_cpu|C3D_DrawArrays|C3D_DrawElements|vert_base|put4\(" 3ds/src` is empty.
 - Gate: wd 0 in all CEN scenes; mac_01, battle_start, pause and iwa_10 byte-equal to the pre-row build; linear_kb lower by the vert_base size (the boot_mem bench).
 
+## Oracle plan FB-1 ring
+Most likely cause: the short encoding of s,t now depends on the batch. The new base form (0539f47cc) stores round((s - s_base) * sc), with s_base taken per batch, from the batch's first rect. A rect merged into a batch uses that rect's base; the same rect in its own batch (ringsmall=64, or a flush per rect) uses its own base. When s_base is not a multiple of 1/sc, round((s - base) * sc) + base*sc ≠ round(s * sc), so the encoded coordinate moves by up to half a step. The sky is point-sampled (G_TF_POINT, unit param nearest), so a texel boundary near a sample flips to the neighbour texel. That gives a thin strip of small differences (max 13 in a smooth sky gradient), and it is stable and repeatable: the strip you see. The other candidates do not change the encoded vertices: grab rows (the grab quad was refuted), depth or blend (COPY / NOOP mode, z 0), shared-edge rasterisation (the same triangles give the same pixels whatever the draw call).
+One measurement: frame N of fb_sky_mac00, two runs (unforced merged, and a forced flush per rect). Per rect, log s0, t0, s1, t1 (floats), sc, s_base, t_base and the 4 encoded shorts read back from gring. The floats are equal in both runs, so if the shorts or the base differ for the rects covering game rows 0-45, the cause is confirmed.
+Fix (tex_raw_rect / rect_raw_open, pm_gpu.c): quantize the base to whole normalized units, `s_base = floorf(min(s0, s1))` (the same for t), and pick sc from the span after subtracting the base. Because sc is a power of two and the base is an integer, round((s - k) * sc) = round(s * sc) - k * sc exactly, so the encoding no longer depends on batching. Keep the merge key as it is (sc and base equal); merging still occurs, with no picture effect.
+Gate:
+- fb_sky_mac00 (3 shots) byte-equal to the pre-row sky in all three modes: merged, forced flush per rect, and ringsmall=64.
+- scforce (the s + 200 sky test) byte-equal.
+- mac_01 and pause sky byte-equal.
+
 ## Rules
 One agent per FB row, own worktree (fb1, fb2, fb3, fb4) from nds1; copy assets/us and ver/us/build. Code first (CLAUDE.md rule 5). Forcing switches are debug switches for the gate; FB-4 deletes them with the CPU path. Byte-equal against the pre-row build on the forced scene. Commit on your branch, no attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. Rebase on nds1 before each commit; check merge markers per commit. FB-4 waits for FB-1..3, TRI-4 and MDL-3. Delete this file in the FB-4 commit.
