@@ -80,7 +80,7 @@ void pm_interp_dont_camera(void) { camera_epoch = previous_camera_epoch + 1; }
 
 void pm_interp_drop_keys(void);
 void pm_interp_start(void) {
-    if (pm_interp_on < 0) pm_interp_on = pm_debug_has("fps60") || pm_opt.fps60;
+    if (pm_interp_on < 0) pm_interp_on = (pm_debug_has("fps60") || pm_opt.fps60) && !pm_debug_has("nointerp"); /* BTRANS: nointerp = interp off for a test */
     else if (pm_interp_want >= 0 && pm_interp_want != pm_interp_on) {
         /* A new on state starts with empty records and no key frame list, an off state drops both. */
         pm_interp_on = pm_interp_want;

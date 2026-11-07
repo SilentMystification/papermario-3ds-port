@@ -1550,3 +1550,6 @@ s32 pm_mash_posx(s32 posX) {
     if (pm_debug_value("mashx", v, sizeof v)) return (s32)atoi(v);
     return posX;
 }
+
+/* BTRANS caplog: the star wipe state of the encounter (state * 1000 + fadeOutAmount, 0 when no encounter runs). */
+int pm_enc_wipe(void) { return (int)gEncounterState * 1000 + (int)gCurrentEncounter.fadeOutAmount; }
