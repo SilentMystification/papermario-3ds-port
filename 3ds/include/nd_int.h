@@ -1,0 +1,190 @@
+/* nd_int.h: the internal interface of the native walker modules (plan_s10_path D5, WK-1): the walk group (nd_walk.c), the rect
+ * handlers (nd_rect.c) and the walker helpers of pm_gbi.c that they use. One header (D5). Sections per module, filled as the groups move. */
+#ifndef ND_INT_H
+#define ND_INT_H
+
+/* pm_gbi_walk.h: the walker helpers (pm_gbi.c) that the handler modules use (CORE-3). nd_rect.c holds the G_TEXRECT and G_FILLRECT handlers. */
+
+#include <stdint.h>
+#include "ultra64.h"
+#include "nd.h"
+
+typedef struct { int p0, p1; float u0, u1; } FoldSeg;
+
+extern unsigned tex_gen;
+
+/* the image roles of img_role (pm_gbi.c) */
+enum { ROLE_MAIN, ROLE_DEPTHQ, ROLE_CPUFILL, ROLE_DEPTH, ROLE_CPUPAL, ROLE_SLOT };
+
+extern u16 DepthCopyBuffer[16];
+extern unsigned short* nuGfxZBuffer;
+void pm_depth_query(const void* timg, int x, int id); /* F03, pm_depth.c */
+void pm_cfb_capture_prev_cpu_for(const void* fill);
+extern int cimg_stride, cimg_zero, zcol, zslot_on, sci_x0;
+
+int img_role(int for_fill);
+float depth_of_word(unsigned w16);
+void off_screen_check(void);
+float shift_mul(unsigned n);
+void ensure_tile(int n);
+void gp3_t0_surv(void);
+void box_fold_sync(void);
+void sync_render(void);
+unsigned rgba_from_5551(unsigned c);
+int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out);
+void dual_bind(void);
+void t1_fold(float u0, float u1, float v0, float v1);
+int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd);
+int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd);
+
+void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd); /* nd_rect.c: G_TEXRECT (3 slots) */
+void nd_fillrect(u32 w0, u32 w1);                /* nd_rect.c: G_FILLRECT */
+extern unsigned nd_rect_tex_n, nd_rect_fill_n;    /* nd_rect.c: calls of each handler */
+
+typedef struct { unsigned draws, nat, fb, segn, segi, comp, dyn, why[12], ceq, cdiff, cseg; } EntCount;
+typedef struct { unsigned lists, nat, dyn, ref, skip; } GdlCount;
+typedef struct { const Gfx* p; unsigned s; } PkMark;
+
+/* ---- W: enums and defines of the gather and walk paths (cut from pm_gbi.c) ---- */
+enum { GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_DBG, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
+enum { GP1_IN, GP1_OUT, GP1_CROSS };
+#define GV_NONE 0xffffu
+extern int pm_tex_tagi;
+extern unsigned int __ctru_heap, __ctru_heap_size, __ctru_linear_heap, __ctru_linear_heap_size;
+extern char __end__[];
+int pm_gpu_spr_native(const uint32_t* rec);
+/* ---- W: globals and prototypes of the walker helpers that stayed in pm_gbi.c (moved with the group) ---- */
+const float (*pm_gbi_combined_ptr(void))[4];
+int clip_bits4(const float* p);
+int dd_on(void);
+int dlc_enabled(void);
+int dlc_try(const Gfx* l);
+int ent_draw(const Gfx* rec);
+int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits);
+int gp_on(void);
+int gv_lit_ok(void);
+int is_host(u32 p);
+int lt_mem_same(u32 w0, u32 w1);
+int pm_gpu_spr_native(const uint32_t* rec);
+int rm_apply(u32 w1);
+int xt_on(void);
+unsigned gv_matrix_id(int need_nm);
+unsigned rec_run(const Gfx* q);
+unsigned sc_sig_now(void);
+void dd_end(void);
+void draw_tri(unsigned w);
+void gbi_cold_dd_load(const Vtx* src);
+void gbi_cold_modifyvtx(u32 w0, u32 w1);
+void gbi_movemem(u32 w0, u32 w1);
+void gbi_moveword(u32 w0, u32 w1);
+void gbi_popmtx(u32 w1);
+void gbi_setcimg(u32 w0, u32 w1);
+void gbi_setenv(u32 w1);
+void gbi_vtx_cpu1(const Vtx* s, unsigned k);
+void gv_streak_flush(void);
+void gv_streak_op(unsigned op);
+void load_mtx(u32 w0, u32 w1, u32 hdr);
+void mdc_op(const Gfx* at, int sp, unsigned op, u32 w0, u32 w1);
+void mr0_walk_end(void);
+void note(unsigned op);
+void os_dlc_hit(void);
+void os_op_hook(const Gfx* at, int sp, unsigned op);
+void pm_gbi_ent_segchk(const uint32_t* dl);
+void pm_gbi_ent_texchk(const uint32_t* dl);
+void set_fillcolor(u32 w1);
+void set_fogcolor(u32 w1);
+void set_geom(u32 w0, u32 w1);
+void set_primdepth(u32 w1);
+void sync_combine(void);
+void tb_inline(const Gfx* g, unsigned n);
+void tex_op(u32 w0, u32 w1);
+void tex_streak_flush(void);
+void tex_streak_op(unsigned op);
+void* ptr_of(u32 w);
+extern const u8* src;
+extern float vert_p[][4];
+extern int box_folded;
+extern int h;
+extern int splash_on;
+extern unsigned conv_k4;
+extern unsigned s;
+
+/* ---- W: variables of pm_gbi.c that the walk group uses (global now) ---- */
+extern NdLight lt[9];
+extern Vtx verts[64];
+extern const Gfx dlc_end[1];
+extern float combined[4][4];
+extern float vert_p[64][4];
+extern int comb_set;
+extern int dlc_on;
+extern int lit_pending;
+extern int mr0_dlc_hit;
+extern int rec_nat_last;
+extern int rm_frame;
+extern int splash_on;
+extern int sr_ok;
+extern int tri_prep_ok;
+extern int tri_since_vtx;
+extern u8 vert_gvf[64];
+extern u8 vert_litf[64];
+extern u8 vert_live[64];
+extern u8 vert_scr[64];
+extern unsigned blendc;
+extern unsigned char aud_prim_lod;
+extern unsigned char vert_cb[64];
+extern unsigned cmb_gen_seen;
+extern unsigned comb_gen;
+extern unsigned conv_k4;
+extern unsigned dd_dl0;
+extern unsigned dd_dl1;
+extern unsigned dd_idx;
+extern unsigned dd_top;
+extern unsigned ent_skipgen;
+extern unsigned fogc;
+extern unsigned gp1_ld_cross;
+extern unsigned gp1_ld_in;
+extern unsigned gp1_ld_out;
+extern unsigned gp1_vx_cross;
+extern unsigned gp1_vx_in;
+extern unsigned gp1_vx_out;
+extern unsigned gp_acc[8];
+extern unsigned gp_opn[256];
+extern unsigned gp_opt[256];
+extern unsigned gp_opt_last;
+extern unsigned gv_epoch;
+extern unsigned gv_fb[];
+extern unsigned gv_load_n;
+extern unsigned keyc;
+extern unsigned keys;
+extern unsigned n_ops;
+extern unsigned pk_nat[];
+extern unsigned pk_rec[];
+extern unsigned pm_gbi_cur_op;
+extern unsigned pmx_cur;
+extern unsigned sc_sig;
+extern unsigned short vert_gmi[64];
+extern unsigned short vert_ring[64];
+extern unsigned st_vx;
+extern unsigned vert_tss[64];
+
+/* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the pm_gbi.c helpers it calls ---- */
+void nd_walk_run(void* list, unsigned nbytes);
+extern const u8 g1_skip[256];
+int host_range(u32 p, u32* lo, u32* hi);
+int g2_same(unsigned op, u32 w0, u32 w1);
+void g2_note(unsigned op, u32 w0);
+void gbi_cold_bad_dl(u32 pc, u32 list, unsigned nbytes, int sp);
+void gbi_cold_bad_next(u32 w1, u32 w0, u32 list);
+void gbi_cold_bad_vtx(u32 w1, u32 w0, u32 list);
+void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc);
+void set_scissor(u32 w0, u32 w1);
+void set_blendcolor(u32 w1);
+void set_fogcolor(u32 w1);
+void set_primdepth(u32 w1);
+void set_fillcolor(u32 w1);
+int ent_gdl(const Gfx* l);
+int rmlog_on(void);
+extern u8 gMapShapeData[];
+extern int sc_ok, gp_prev_op, box_folded;
+
+#endif
