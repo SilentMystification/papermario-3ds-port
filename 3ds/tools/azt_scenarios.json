@@ -8464,13 +8464,13 @@
     },
     {
       "name": "btrans_walk_enc",
-      "status": "unverified",
-      "subject": "BTRANS walk-in (Goomba, kmr_09, stick right). Shots 116 to 155 (star wipe frames 118 to 151 in the run 5 log) with caplog wipe state.",
+      "status": "verified",
+      "subject": "BTRANS walk-in (Goomba, kmr_09, stick right). Shots every 4 frames from 116 to 272: the star wipe starts at frame 116 (caplog wipe state) and the battle starts at frame 156 (run 8081) or 235 (run 7990); the battle frame varies by run.",
       "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
-      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:40 caplog loglevel=debug",
-      "until": "shot 39 frame ",
-      "cap": 60,
-      "deadline": 20,
+      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:160 caplog loglevel=debug",
+      "until": "shot \\d+ frame 27\\d\\b",
+      "cap": 45,
+      "deadline": 45,
       "first_marker": "warp: kmr_09 entry 0",
       "expects": "warp",
       "needs_picture": true,
@@ -8489,20 +8489,20 @@
         },
         {
           "name": "shot in window",
-          "regex": "shot [0-9]+ frame 1[1-5][0-9]"
+          "regex": "shot [0-9]+ frame 1[1-9][0-9]"
         }
       ],
       "reason": "BTRANS gate: walk-in, interp on."
     },
     {
       "name": "btrans_walk_noint",
-      "status": "unverified",
+      "status": "verified",
       "subject": "BTRANS walk-in, interp off (nointerp).",
       "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
-      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:40 caplog loglevel=debug nointerp",
-      "until": "shot 39 frame ",
-      "cap": 60,
-      "deadline": 20,
+      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:160 caplog loglevel=debug nointerp",
+      "until": "shot \\d+ frame 272\\b",
+      "cap": 45,
+      "deadline": 45,
       "first_marker": "warp: kmr_09 entry 0",
       "expects": "warp",
       "needs_picture": true,
@@ -8521,7 +8521,7 @@
         },
         {
           "name": "shot in window",
-          "regex": "shot [0-9]+ frame 1[1-5][0-9]"
+          "regex": "shot [0-9]+ frame 1[1-9][0-9]"
         }
       ],
       "reason": "BTRANS gate: walk-in, interp off."
@@ -8534,7 +8534,7 @@
       "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog loglevel=debug",
       "until": "encwarp: window end",
       "cap": 45,
-      "deadline": 20,
+      "deadline": 45,
       "first_marker": "warp: kmr_09 entry 0",
       "expects": "warp",
       "needs_picture": true,
@@ -8566,7 +8566,7 @@
       "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog loglevel=debug nointerp",
       "until": "encwarp: window end",
       "cap": 45,
-      "deadline": 20,
+      "deadline": 45,
       "first_marker": "warp: kmr_09 entry 0",
       "expects": "warp",
       "needs_picture": true,
@@ -8595,10 +8595,10 @@
       "status": "unverified",
       "subject": "BTRANS: walk-in into a Goomba with FS1 forced skips (fs1force=2) to mimic O3DS slow frames. caplog: capture path per call.",
       "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
-      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:40 caplog loglevel=debug fs1force=2",
-      "until": "shot 39 frame ",
-      "cap": 60,
-      "deadline": 20,
+      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:160 caplog loglevel=debug fs1force=2",
+      "until": "shot \\d+ frame 272\\b",
+      "cap": 45,
+      "deadline": 45,
       "first_marker": "warp: kmr_09 entry 0",
       "expects": "warp",
       "needs_picture": true,
@@ -8617,7 +8617,7 @@
         },
         {
           "name": "shot in window",
-          "regex": "shot [0-9]+ frame 1[1-5][0-9]"
+          "regex": "shot [0-9]+ frame 1[1-9][0-9]"
         }
       ],
       "reason": "BTRANS oracle: walk-in with fs1force=2 (every 2nd step skipped, O3DS-like slow frames), interp on."

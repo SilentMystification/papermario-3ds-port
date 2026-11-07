@@ -37,8 +37,8 @@
       "default": false,
       "purpose": "BTRANS oracle: walk-in with FS1 forced skips (fs1force=2, O3DS-like slow frames). caplog capture path. Gate: cpu-after-split 0.",
       "scenario": "btrans_walk_fs1",
-      "cap": 60,
-      "until": "shot 39 frame ",
+      "cap": 45,
+      "until": "shot \\d+ frame 272\\b",
       "tags": [
         "azahar",
         "battle",
@@ -53,8 +53,8 @@
       "default": false,
       "purpose": "BTRANS: walk-in into a Goomba, interp off (nointerp). caplog: capture path per call. Gate: cpu-after-split 0.",
       "scenario": "btrans_walk_noint",
-      "cap": 60,
-      "until": "shot 39 frame ",
+      "cap": 45,
+      "until": "shot \\d+ frame 272\\b",
       "tags": [
         "azahar",
         "battle",
@@ -102,7 +102,7 @@
       "purpose": "BTRANS: battle entry while Mario walks (kmr_09 Goomba). caplog lines: capture path per call and KICK1 split state.",
       "scenario": "btrans_walk_enc",
       "cap": 45,
-      "until": "encwarp: window end",
+      "until": "shot \\d+ frame 27\\d\\b",
       "tags": [
         "azahar",
         "battle",
