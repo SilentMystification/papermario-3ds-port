@@ -330,9 +330,7 @@ set_property(SOURCE ${GAME_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-toplevel-re
 # next array and the list ran into vertex data. The effect gfx files keep one data section each, so a file stays whole when any symbol of it is used.
 file(GLOB EFFECT_GFX_SRC ${DECOMP}/src/effects/gfx/*.c)
 set_property(SOURCE ${EFFECT_GFX_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-data-sections)
-# heaps.c holds gMapShapeData as a 32 KB array. Real map shapes are up to 157 KB, so the port defines the real-size buffer
-# (pm_map.c) and heaps.c gets its copy renamed.
-set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data -DD_80200000=pm_unused_80200000)
+# heaps.c: the 32 KB gMapShapeData and the 16 KB D_80200000 are not defined for the port (TARGET_3DS, see heaps.c). pm_map.c defines the real ones.
 set_property(SOURCE ${DECOMP}/src/world/partners.c APPEND PROPERTY COMPILE_OPTIONS -include common.h)
 file(GLOB PAUSE_SRC ${DECOMP}/src/pause/pause_*.c)
 set_property(SOURCE ${PAUSE_SRC} APPEND PROPERTY COMPILE_OPTIONS -include common.h)
