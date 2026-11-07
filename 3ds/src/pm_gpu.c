@@ -1142,6 +1142,17 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static unsigned ndn_tgen;
+/* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
+static void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
+    extern unsigned pm_gbi_dbg_orb_tag(void);
+    unsigned ot_ = pm_gbi_dbg_orb_tag();
+    if (!ot_ || !PMDL("orbdbg")) return;
+    const PmTevCh* la = combine == 8 && plan.n > 0 ? &plan.st[plan.n - 1].g[1] : NULL; /* the alpha channel of the last stage */
+    pm_log("orbdbg draw %s f%u list %u cmb %d stages %d uses t0 %d t1 %d noise %d i8_0 %d i8_1 %d blend %d memb %d atest %d z %d graw %d tris %u prim %08x cconst %08x afin src %u %u %u op %u %u %u fn %u sc %u",
+           path, pm_frame_count(), ot_, combine, combine == 8 ? plan.n : -1, plan.uses_tex, plan.uses_tex1, plan.uses_noise, i8_0, i8_1, r_blend, memb, r_atest, z, graw, tris, prim, cconst,
+           la ? la->src[0] : 99u, la ? la->src[1] : 99u, la ? la->src[2] : 99u, la ? la->op[0] : 99u, la ? la->op[1] : 99u, la ? la->op[2] : 99u,
+           la ? la->func : 99u, la ? la->scale : 99u);
+}
 static void nd_native_submit(const NdDraw* dp, int tex) {
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, pm_gbi.c) */
     const NdDraw* d = dp;
@@ -1334,6 +1345,7 @@ static int nd_raw_native(void) {
     if (id < 0) { nd_native_refused++; nraw_why[9]++; cen_why = CW_NRK(9); return 0; }
     spr_wk = nk;
     if (combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
+    orb_log("native", z, -1, i8_0, i8_1, gni / 3u, 1); /* FX1-3 */
     /* from here the batch is drawn natively */
     if (grab_bind) pm_tex_bind_reset(); /* as flush_draw: the next walker bind of unit 0 sends its own words */
     TevKey tk;
@@ -1416,6 +1428,7 @@ static int nd_raw_native(void) {
             nd_native_submit(&db, tex);
         }
     }
+    if (rd_st == 2) orbreg_dump(); /* FX1-2 plan 5 orbreg: the register shadow at a glow draw */
     return 1;
 }
 static void flush_draw(void) {
@@ -1437,6 +1450,8 @@ static void flush_draw(void) {
     }
     /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
     if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
+        { extern unsigned pm_gbi_dbg_orb_tag(void); unsigned ot_ = pm_gbi_dbg_orb_tag(); /* FX1-3: a skipped draw of an effect list is logged too */
+          if (ot_ && PMDL("orbdbg")) pm_log("orbdbg skip f%u list %u H03 cmb %d", pm_frame_count(), ot_, combine); }
         nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
@@ -1603,6 +1618,7 @@ static void flush_draw(void) {
                    r_atest >= 0, r_atest, pm_tex_i8(0), combine, prim);
         }
     }
+    orb_log("walk", z, memb, i8_0, i8_1, (unsigned)(graw ? gni / 3 : nverts / 3), graw); /* FX1-3 */
     if (r_atest >= 0) sh_alpha_test(true, GPU_GREATER, r_atest);
     else sh_alpha_test(false, GPU_ALWAYS, 0);
     /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide

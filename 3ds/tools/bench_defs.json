@@ -1145,6 +1145,24 @@
       ]
     },
     {
+      "name": "sbk56_orbdbg_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FX1 plan 5: sbk_56 super block cold det run with the orbdbg tags. Glow frames by tag (orbdbg enter, orbdbg draw) and the register shadow at the first glow frame (orbreg 524). A person reads the shots 520 to 531.",
+      "scenario": "sbk56_orbdbg_det",
+      "cap": 45,
+      "until": "superblock: effects done",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "cold",
+        "fx1"
+      ],
+      "gates": []
+    },
+    {
       "name": "sbk56_superblock_pic",
       "kind": "azahar_pic",
       "speed": "normal",
