@@ -2055,7 +2055,8 @@ void pm_gpu_hud_flush(void) {
 int pm_debug_value(const char* key, char* out, unsigned n);
 static int want_clear; /* X01: the clear runs at frame end, and only for a frame the game drew */
 static int shot_burst;
-void pm_gpu_shot_burst(int n) { shot_burst = n; }
+static unsigned shot_burst_f = ~0u; /* AZT10b-1: the game frame of the last burst count */
+void pm_gpu_shot_burst(int n) { shot_burst = n; shot_burst_f = ~0u; }
 /* encwarp: one shot per frame for the frames from..from+n-1 (overrides shotwin) */
 static int shot_w0 = -2, shot_w1;
 void pm_gpu_shot_window(unsigned from, unsigned n) { shot_w0 = (int)from; shot_w1 = (int)(from + n); }
@@ -2085,6 +2086,10 @@ static void dump_shot(void) {
         }
         if (shot_burst > 0) { /* shotmode: one file per burst, the last frame (the settle frame). Every frame logs t, C_CMD and C_FLUSH of the frame before (pm_ph_cnt is per frame). */
             int ma, mm;
+            /* AZT10b-1: the burst counts game frames, not GPU frame begins. In battle one game frame can begin the GPU more than once, so the burst
+             * ended early (frame 173 of 153 to 183) and the frame-182 shot never came. A call in the same game frame does nothing. */
+            if (pm_frame_count() == shot_burst_f) return;
+            shot_burst_f = pm_frame_count();
             shot_burst--;
             pm_route_mapid(&ma, &mm);
             if (shot_burst != 0) {
