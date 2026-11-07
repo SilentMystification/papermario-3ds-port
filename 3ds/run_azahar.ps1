@@ -183,7 +183,7 @@ function Set-Turbo {
 }
 
 # U2 (user decision): a run with profiling writes its prof lines to log.txt too (profdisk=1), so the scenario lines and the until stay on the disk copy.
-if ($Debug -match '\bprof\b' -and $Debug -notmatch 'profdisk') { $Debug = "$Debug profdisk=1" }
+if ($Debug -match '\b(prof|phase)\b' -and $Debug -notmatch 'profdisk') { $Debug = "$Debug profdisk=1" }
 if ($Smoke) { $Until = "smoke done"; $Debug = ("$Debug smoke").Trim() }
 # L02: the game logs only warnings and errors by default. The tools read info and debug lines, so a run asks for all of them.
 if ($Debug -notmatch "loglevel=" -and ($Debug.Length + 12) -le 255) { $Debug = ("$Debug loglevel=debug").Trim() }
