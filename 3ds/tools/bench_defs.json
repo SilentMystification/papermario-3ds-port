@@ -356,6 +356,38 @@
       "gates": []
     },
     {
+      "name": "pond_mac00_wsurf",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "POND check: pond_mac00_wlog with wsurfalways (surface batch without depth test). Water over the bed = depth, water elsewhere = matrix or vertex data. Azahar picture, waterlog lines in frames 200 and 201.",
+      "scenario": "pond_mac00_wsurf",
+      "cap": 60,
+      "until": "shot 1 frame 204",
+      "tags": [
+        "azahar",
+        "pic",
+        "pond"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pond_mac00_view",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "POND plan 4: pond_mac00_view, camera on the whole water plane (mac_00, Mario at 0 20 262). A person reads the top shot: blue-green water over the pond outline.",
+      "scenario": "pond_mac00_view",
+      "cap": 60,
+      "until": "shot 2 frame 205",
+      "tags": [
+        "azahar",
+        "pic",
+        "pond"
+      ],
+      "gates": []
+    },
+    {
       "name": "pond_mac00_wlog",
       "kind": "azahar_pic",
       "speed": "normal",

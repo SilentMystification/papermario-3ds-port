@@ -6353,6 +6353,46 @@
       "reason": "POND diagnostic: model log of the water model."
     },
     {
+      "name": "pond_mac00_wsurf",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with waterlog and wsurfalways (the surface batch of the water, om 0c1849d8, drawn without depth test): the top shot shows where the surface draws. one wdraw line per submitted batch in frames 200 and 201 (native or walker, render mode, depth function and write, prim z, prim colour, texture, triangles). The top shot shows the pond.",
+      "proves": "POND: the state of each draw of the two water passes (G_ZS_PRIM blocker and XLU surface) and whether the water is drawn by the native or the walker path.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 waterlog wsurfalways shots shotwin=200:6 loglevel=debug",
+      "until": "shot 1 frame 204",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: mac_00 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "waterlog lines",
+          "regex": "wdraw f200 "
+        }
+      ],
+      "reason": "POND plan 3 check: wsurfalways tells depth from matrix or vertex data."
+    },
+    {
+      "name": "pond_mac00_view",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, camera framing the whole water plane (model AABB x -100..100, z 225..418, y 20; centre 0 20 321) from Mario at pos 0 20 262. The top shot must show blue-green see-through water over the whole pond outline, no background through it.",
+      "proves": "POND plan 4: the water draws over the pond with A1 and 3a.",
+      "debug": "warp=mac_00:4 pos=0:20:262 shots shotwin=200:6 loglevel=debug",
+      "until": "shot 2 frame 205",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: mac_00 entry",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 2",
+          "regex": "shot 2 frame 205"
+        }
+      ],
+      "reason": "POND plan 4 view: frames the whole water plane."
+    },
+    {
       "name": "pond_mac00_wlog",
       "status": "unverified",
       "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with waterlog: one wdraw line per submitted batch in frames 200 and 201 (native or walker, render mode, depth function and write, prim z, prim colour, texture, triangles). The top shot shows the pond.",
@@ -6360,7 +6400,7 @@
       "debug": "warp=mac_00:4 pos=-178:0:88 waterlog shots shotwin=200:6 loglevel=debug",
       "until": "shot 1 frame 204",
       "cap": 60,
-      "deadline": 20,
+      "deadline": 45,
       "first_marker": "warp: mac_00 entry",
       "expects": "warp",
       "needs_picture": true,

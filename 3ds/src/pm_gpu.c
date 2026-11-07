@@ -1076,9 +1076,17 @@ static int nd_raw_native(void) {
     if (spr_pend) spr_check(&d);
     if (wl_on()) { unsigned fn, wr; wl_depth(z, 0, r_zcmp, r_zupd, r_decal, r_nocol, &fn, &wr);
         extern void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1); unsigned wtss_, wgeo_, wcw0_, wcw1_; pm_gbi_sticky(&wtss_, &wgeo_, &wcw0_, &wcw1_); /* POND-M1: walker combine words */
-        pm_log("wdraw f%u nat om %08x zs %u fn %u wr %u dec2 %d zc %d zu %d dec %d z %d bl %d tmpl %d tc %08x t1 %d u0 %08x u1 %08x pz %04x prim %08x cc %08x cmb %u cw %08x %08x tris %u",
+        pm_log("wdraw f%u nat om %08x zs %u fn %u wr %u dec2 %d zc %d zu %d dec %d z %d bl %d tmpl %d tc %08x t1 %d u0 %08x u1 %08x pz %04x prim %08x cc %08x cmb %u cw %08x %08x zm %.4f %.6f ca %.3f %.3f uvx %.4f %.4f %.4f %.4f ts0 %08x %08x tris %u",
                pm_frame_count(), dbg_omode_l, (dbg_omode_l >> 2) & 1u, fn, wr, decal2, r_zcmp, r_zupd, r_decal, z, r_blend, id, tex ? pm_tex_census_id(0) : 0u, tex1,
-               (unsigned)u0.addr, (unsigned)u1.addr, wl_primz, prim, cconst, (unsigned)combine, wcw0_, wcw1_, gni / 3u); /* G_MDSFT_ZSRCSEL is 2 */
+               (unsigned)u0.addr, (unsigned)u1.addr, wl_primz, prim, cconst, (unsigned)combine, wcw0_, wcw1_,
+               (double)d.zmix[0], (double)d.zmix[1], (double)g_cmul[3], (double)g_cadd[3], (double)t1_s[0], (double)t1_s[1], (double)t1_s[2], (double)t1_s[3],
+               (unsigned)ndn_to.st[0][0], (unsigned)ndn_to.st[0][1], gni / 3u); /* G_MDSFT_ZSRCSEL is 2 */
+        if (r_blend && !((dbg_omode_l >> 2) & 1u)) { /* POND-S: one line per surface batch (blend on, not G_ZS_PRIM): texel alpha share and vertex alpha range of the batch */
+            extern int pm_tex_alpha0_permille(int unit);
+            unsigned vmin = 255u, vmax = 0u;
+            for (unsigned i = 0; gring && gidx && i < gni; i++) { unsigned a = gring[16u * gidx[gi_start + i] + 15u]; if (a < vmin) vmin = a; if (a > vmax) vmax = a; }
+            pm_log("wsurf f%u a0 %d a1 %d vamin %u vamax %u tris %u tex0 %08x tex1 %08x", pm_frame_count(), pm_tex_alpha0_permille(0), pm_tex_alpha0_permille(1), vmin, vmax, gni / 3u, (unsigned)u0.addr, (unsigned)u1.addr);
+        }
     }
     if (decal2) { /* pass A: the stencil mark, no colour, no depth write */
         NdTmplKey ka = nk;

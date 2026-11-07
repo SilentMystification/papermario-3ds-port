@@ -707,6 +707,23 @@ unsigned pm_tex_slot_gen(int i) {
 }
 /* RK2: the cache slots bound on unit 0 and unit 1 (-1 when none). The record key compares their generations. */
 void pm_tex_cur_slots(int* a, int* b) { *a = cur; *b = aux; }
+/* POND-S (debug, waterlog): per mille of the texels of the unit 0 (0) or unit 1 (1) slot with alpha 0, over the whole allocation (tiles included).
+ * RGBA8 (alpha byte) and RGBA5551 (bit 0 of the u16) only; -1 when the slot is off-screen, not live or another format. */
+int pm_tex_alpha0_permille(int unit) {
+    int idx = unit == 0 ? cur : aux;
+    if (unit == 0 && have && off_cur >= 0) return -1;
+    if (idx < 0 || idx >= SLOTS || !slots[idx].live) return -1;
+    const Slot* s = &slots[idx];
+    GPU_TEXCOLOR gf = gpu_fmt(s->fmt, s->siz);
+    if (gf != GPU_RGBA8 && gf != GPU_RGBA5551) return -1;
+    const u8* d = (const u8*)(slot_draws_stage(s) ? s->vram_stage : (s->tex_vram_ptr ? s->tex_vram_ptr : s->tex.data));
+    if (!d) return -1;
+    unsigned n = (unsigned)s->tex.width * (unsigned)s->tex.height, z = 0;
+    if (!n) return -1;
+    if (gf == GPU_RGBA8) { for (unsigned k = 0; k < n; k++) if (d[4u * k + 3u] == 0) z++; }
+    else { for (unsigned k = 0; k < n; k++) if (!(((unsigned)d[2u * k] | ((unsigned)d[2u * k + 1] << 8)) & 1u)) z++; }
+    return (int)(z * 1000u / n);
+}
 /* E5-3: the unit 0 words C3Di_SetTex sends for a live slot (citro3d texture.c:258 to 289): dim, param, lodParam, phys(data) >> 3. The
  * data address is the staging copy when the draw stages, else the VRAM copy (tex_for_draw). Returns 0 when the slot is not live. */
 int pm_tex_slot_words(int i, uint32_t* out) {
