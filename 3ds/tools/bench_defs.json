@@ -2497,6 +2497,38 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "fb_sky_mac00_zmf_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 ZM gate: mac_00 sky with zmforce (zmark rects), shots 200 to 205. rr_why 4 0; byte-equal to the pre-row build with the same switch.",
+      "scenario": "fb_sky_mac00_zmf",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_mac01_plain_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 ZM gate: mac_01 plain picture, byte-equal to the pre-row build.",
+      "scenario": "fb_mac01_plain",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

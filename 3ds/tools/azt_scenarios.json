@@ -8761,6 +8761,54 @@
         }
       ],
       "reason": "HUD1 gate by eye: status bar layout in the world."
+    },
+    {
+          "name": "fb_sky_mac00_zmf",
+          "status": "unverified",
+          "subject": "mac_00 sky with zmforce: every textured and fill rect is a zmark rect (rect_z and z_on forced).",
+          "proves": "FB-1 ZM gate.",
+          "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug zmforce",
+          "until": "shot \\d+ frame 205\\b",
+          "cap": 45,
+          "deadline": 20,
+          "first_marker": "warp: mac_00 entry 0",
+          "expects": "warp",
+          "needs_picture": true,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: mac_00 entry 0"
+                },
+                {
+                      "name": "shot",
+                      "regex": "shot \\d+ frame 205\\b"
+                }
+          ],
+          "reason": "FB-1 scenario."
+    },
+    {
+          "name": "fb_mac01_plain",
+          "status": "unverified",
+          "subject": "mac_01 at pos 0 0 200, no forcing: the plain picture (byte-equal gate for the zmark change).",
+          "proves": "FB-1 ZM gate.",
+          "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug",
+          "until": "shot \\d+ frame 205\\b",
+          "cap": 45,
+          "deadline": 20,
+          "first_marker": "warp: mac_01 entry 0",
+          "expects": "warp",
+          "needs_picture": true,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: mac_01 entry 0"
+                },
+                {
+                      "name": "shot",
+                      "regex": "shot \\d+ frame 205\\b"
+                }
+          ],
+          "reason": "FB-1 scenario."
     }
   ]
 }

@@ -1238,7 +1238,7 @@ static int nd_raw_native(void) {
     if (g_use5 && combine == 8 && (plan.uses_tex1 || plan.uses_noise)) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* PM5 cause 2: the pm5 file has no second uv map or noise row for the native draw */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; cen_why = CW_NRK(1); return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
-    if (r_zmark) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; }
+    if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
     if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }
     if (combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[7]++; cen_why = CW_NRK(7); return 0; }
     int z = z_on && (!rect_2d || rect_z) && !off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
@@ -1258,13 +1258,13 @@ static int nd_raw_native(void) {
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
     nk.pass = 0; nk.raw = 1; nk.cull = (uint8_t)g_cullm;
-    nk.z = (uint8_t)z; nk.zmark = 0; nk.zcmp = (uint8_t)r_zcmp; nk.zupd = (uint8_t)r_zupd; nk.nocol = (uint8_t)r_nocol; nk.decal = (uint8_t)r_decal;
+    nk.z = (uint8_t)z; nk.zmark = (uint8_t)(z && r_zmark); /* FB-1 ZM: pass 1 tests the model and marks the stencil (nd_tmpl zmark branch) */ nk.zcmp = (uint8_t)r_zcmp; nk.zupd = (uint8_t)r_zupd; nk.nocol = (uint8_t)r_nocol; nk.decal = (uint8_t)r_decal;
     { float db = decal_bias(); memcpy(&nk.dbias, &db, 4); }
     nk.atest_on = r_atest >= 0; nk.aref = (uint8_t)(r_atest >= 0 ? r_atest : 0);
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
     nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
     nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = 0;
-    const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
+    const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d && !r_zmark; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
@@ -1333,6 +1333,21 @@ static int nd_raw_native(void) {
         if (ida >= 0) { NdDraw da = d; da.tmpl = ida; nd_native_submit(&da, tex); }
     }
     nd_native_submit(&d, tex);
+    if (z && r_zmark) { /* FB-1 ZM: pass 3 is the same triangles at the constant depth r_zmark_zn (z clip = zn * w: palette row 2 := zn * row 3, as nd_model.c). Stencil EQUAL, cleared as it passes */
+        NdTmplKey kb = nk;
+        kb.pass = 3; kb.zmark = 0;
+        int idb = nd_tmpl_build(&kb);
+        if (idb >= 0) {
+            float palz[ND_NPAL][16];
+            for (unsigned k = 0; k < npal; k++) {
+                memcpy(palz[k], palk[k], 64);
+                for (int i = 0; i < 4; i++) palz[k][8 + i] = r_zmark_zn * palk[k][12 + i];
+            }
+            NdDraw db = d;
+            db.tmpl = idb; db.pal = (const float(*)[16])palz; db.npal = npal;
+            nd_native_submit(&db, tex);
+        }
+    }
     return 1;
 }
 static void flush_draw(void) {
@@ -3832,7 +3847,6 @@ static unsigned rect_c[6];
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle takes the CPU path: 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
     if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
-    if (r_zmark) { rr_why[4]++; return 0; }
     if (gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) { rr_why[5]++; return 0; }
     if (PMDL("norectraw")) { rr_why[6]++; return 0; }
     return 1;
@@ -3879,6 +3893,7 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
 static void rect_log(unsigned f) { pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
 static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have = 1; } }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
+    if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
     rect_c[0]++;
@@ -4004,6 +4019,7 @@ static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, floa
     return 1;
 }
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
+    if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing (as pm_gpu_fill_rect) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float s = s0; s0 = s1; s1 = s; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
     if (PMDL("scforce")) s0 += 200.f, s1 += 200.f; /* SC-1 forcing: s + 200 on every textured rect (CPU and native), the sc base form then draws it */
