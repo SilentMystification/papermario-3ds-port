@@ -168,6 +168,7 @@ __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, un
     dbg_seg = 0;
     if (ep_why >= 0) { dbg_seg = 1 + (unsigned)ep_why; return 0; }
     if (ep_cullboth) { n_out += (int)nt; return 1; }
+    if (ep_t1f) { dbg_seg = 1 + GVR_TEX1; return 0; } /* T1F: a range cannot carry the per triangle window fold */
     if (ep_pepoch != gv_epoch || ep_ptss != tss) {
         gv_params_calc(tss, &ep_p);
         pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);

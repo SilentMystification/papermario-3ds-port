@@ -551,6 +551,7 @@ void dual_bind(void) {
  * reads the slot far from the window and finds nothing grabbed there. Fold the start of this draw into the window. The draw is
  * kept inside the window when it fits. The wrap inside one draw is not reproduced, the part past the window edge reads the
  * neighbour pixels of the slot. Tile 0 uv range of the draw: u0..u1 and v0..v1. */
+unsigned t1fold_n;
 void t1_fold(float u0, float u1, float v0, float v1) {
     if (pm_tex_aux_off_idx() < 0) return; /* an ordinary texture: the GPU repeat and mirror give the RDP wrap, the fold moved the start by the mask size (wrong for a mirrored axis, period twice the mask) */
     float o[2] = { t1_p[2], t1_p[3] };
@@ -572,7 +573,29 @@ void t1_fold(float u0, float u1, float v0, float v1) {
         o[a] += (wrapped - win) / (float)dim[a];
         changed = 1;
     }
-    if (changed) pm_gpu_set_tex1(t1_p[0], t1_p[1], o[0], o[1]);
+    if (changed) { pm_gpu_set_tex1(t1_p[0], t1_p[1], o[0], o[1]); t1fold_n++; }
+}
+
+/* T1F: the CPU path fold for a ring triangle. dual_bind map reset, then the window fold over the tile 0 uv range of the triangle (same floats as gv_xf and vert_uv of the old draw_tri_cpu). */
+void t1_fold_tri(const unsigned ri[3], unsigned tss) {
+    float u[3], v[3];
+    int tw = 1, th = 1;
+    pm_tex_size(&tw, &th);
+    if (tw < 1) tw = 1;
+    if (th < 1) th = 1;
+    unsigned st = nd_ws.use_t1 ? 1 : 0;
+    float ms = shift_mul(nd_ws.tst1.tile_shift[st][0]);
+    float mt = shift_mul(nd_ws.tst1.tile_shift[st][1]);
+    for (int k = 0; k < 3; k++) {
+        const Vtx* r = (const Vtx*)(pm_gpu_gring() + 16u * ri[k]);
+        float s0 = nd_ws.tex_on ? (float)r->v.tc[0] * (float)(tss >> 16) / 65536.f : 0.f;
+        float t0 = nd_ws.tex_on ? (float)r->v.tc[1] * (float)(tss & 0xffffu) / 65536.f : 0.f;
+        u[k] = (s0 / 32.f * ms - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
+        v[k] = (t0 / 32.f * mt - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
+        if (!nd_ws.tex_on) { u[k] += 0.5f / (float)tw; v[k] += 0.5f / (float)th; }
+    }
+    pm_gpu_set_tex1(t1_p[0], t1_p[1], t1_p[2], t1_p[3]);
+    t1_fold(fminf(u[0], fminf(u[1], u[2])), fmaxf(u[0], fmaxf(u[1], u[2])), fminf(v[0], fminf(v[1], v[2])), fmaxf(v[0], fmaxf(v[1], v[2])));
 }
 
 

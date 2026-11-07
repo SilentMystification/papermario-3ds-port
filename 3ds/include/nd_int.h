@@ -34,6 +34,9 @@ unsigned rgba_from_5551(unsigned c);
 int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out);
 void dual_bind(void);
 void t1_fold(float u0, float u1, float v0, float v1);
+void t1_fold_tri(const unsigned ri[3], unsigned tss);
+extern unsigned t1fold_n; /* t1_fold calls that changed the map, per rect_log line */
+extern int ep_t1f;
 int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd);
 int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd);
 

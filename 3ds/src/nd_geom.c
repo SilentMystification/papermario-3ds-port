@@ -152,7 +152,7 @@ int gv_fog_gpu_ok(void) { return pm_gpu_gv5_ok() && pm_gpu_gv_zcoef(NULL, NULL);
  * only (fallback reason, cull mode, the combiner, texture and render sync, the draw parameters) is made once per epoch and per texture scale, not per triangle. */
 unsigned gv_epoch = 1, ep_epoch; unsigned ep_osc, ep_fl, ep_n, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
 
-int ep_why, ep_ct, ep_cullboth, ep_open;
+int ep_why, ep_ct, ep_cullboth, ep_open, ep_t1f; /* ep_t1f: TEXEL1 reads an off-screen window: gv_tri folds the window per triangle (t1_fold_tri) */
 
 GvP ep_p;
 
@@ -174,13 +174,17 @@ int gv_state_why(int* ct, int* both) {
 void gv_epoch_enter(void) {
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
+    ep_t1f = 0;
     if (ep_why < 0 && !ep_cullboth) {
         ep_fl = tri_flags();
         ensure_tile(nd_ws.use_t1 ? 1 : 0);
         dual_bind();
         sync_render();
-        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw, which a ring triangle cannot carry: it is refused here and dropped (tri_drop, tridrop tex1). DEL-N11: the aux clause is needed (dropping it changed the picture, see docs/handoff/row_FB.md). */
-        if (plan_active && cur_plan.uses_tex1 && (!nd_ws.td[0].valid || !nd_ws.td[1].valid || pm_tex_aux_off_idx() >= 0)) ep_why = GVR_TEX1;
+        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
+        if (plan_active && cur_plan.uses_tex1) {
+            if (!nd_ws.td[0].valid || !nd_ws.td[1].valid) ep_why = GVR_TEX1;
+            else if (pm_tex_aux_off_idx() >= 0) ep_t1f = 1;
+        }
     }
     ep_epoch = gv_epoch;
     ep_pepoch = 0;
@@ -215,6 +219,11 @@ int gv_tri(const int* idx) {
             pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
             ep_pepoch = gv_epoch; ep_ptss = tss;
         }
+        if (ep_t1f) {
+            if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) & 2) { gv_fb[GVR_TEX1]++; PH_ADD(C_GVFB, 1); return 0; } /* a texgen vertex keeps the refusal */
+            unsigned rt[3] = { vert_ring[a], vert_ring[b], vert_ring[c] };
+            t1_fold_tri(rt, tss); /* a changed window map flushes the open batch (flush_gen), a new batch opens below */
+        }
         ep_n++;
         if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && pm_gpu_gappend((unsigned)vert_ring[a], (unsigned)vert_ring[b], (unsigned)vert_ring[c], vert_gmi[a], vert_gmi[b], vert_gmi[c])) {
             gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
@@ -241,7 +250,8 @@ unsigned tri_drop[2]; /* DEL: triangles dropped at the draw_tri drop site, print
 /* DEL: one tridrop line per rect_log: triangles dropped since the last line (tri_drop, reset here) and the gv_fb reasons as deltas (gv_fb is not reset: other readers). */
 void nd_tridrop_log(unsigned f) {
     static unsigned gvfb_snap[GVR_N];
-    pm_log_d("tridrop f%u none %u scr %u tss %u lit %u fog %u zmark %u tex1 %u refuse %u", f, tri_drop[0], gv_fb[GVR_SCR] - gvfb_snap[GVR_SCR], gv_fb[GVR_TSS] - gvfb_snap[GVR_TSS], gv_fb[GVR_LIT] - gvfb_snap[GVR_LIT], gv_fb[GVR_FOG] - gvfb_snap[GVR_FOG], gv_fb[GVR_ZMARK] - gvfb_snap[GVR_ZMARK], gv_fb[GVR_TEX1] - gvfb_snap[GVR_TEX1], gv_fb[GVR_REFUSE] - gvfb_snap[GVR_REFUSE]);
+    pm_log_d("tridrop f%u none %u scr %u tss %u lit %u fog %u zmark %u tex1 %u refuse %u t1fold %u", f, tri_drop[0], gv_fb[GVR_SCR] - gvfb_snap[GVR_SCR], gv_fb[GVR_TSS] - gvfb_snap[GVR_TSS], gv_fb[GVR_LIT] - gvfb_snap[GVR_LIT], gv_fb[GVR_FOG] - gvfb_snap[GVR_FOG], gv_fb[GVR_ZMARK] - gvfb_snap[GVR_ZMARK], gv_fb[GVR_TEX1] - gvfb_snap[GVR_TEX1], gv_fb[GVR_REFUSE] - gvfb_snap[GVR_REFUSE], t1fold_n);
+    t1fold_n = 0;
     memcpy(gvfb_snap, gv_fb, sizeof gvfb_snap);
     tri_drop[0] = tri_drop[1] = 0;
 }
