@@ -1739,6 +1739,21 @@
         "spot"
       ],
       "gates": []
+    },
+    {
+      "name": "super_text_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "RECT-2 text box gate: super_text scenario (kmr_03 battle, A presses open the text box), picture by eye: the box and its glyphs drawn by textured rects.",
+      "scenario": "super_text",
+      "cap": 90,
+      "until": "shot \\d+ frame 230\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
