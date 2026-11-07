@@ -13,7 +13,42 @@ $script:SlotMutex = @{}
 # AZT3-4: the one idle time of a kept Azahar. azreap.ps1 (dot-sources this file) closes it after this many seconds without a run.
 $script:AzIdleSec = 900
 
-function Get-SlotCount { if ($env:PM_AZ_SLOTS) { return [int]$env:PM_AZ_SLOTS } else { return 2 } }
+# AZT4-1: the cap on live azahar.exe processes of the slot pool, all slots of all worktrees and agents. A constant, not an env value.
+$script:AzCap = 2
+$script:CapSaid = $false
+
+function Get-SlotCount {
+    $n = if ($env:PM_AZ_SLOTS) { [int]$env:PM_AZ_SLOTS } else { 2 }
+    if ($n -gt $script:AzCap) {
+        if (-not $script:CapSaid) { Write-Host "azslot: PM_AZ_SLOTS=$n is above the cap $($script:AzCap) live Azahars: using $($script:AzCap) slots"; $script:CapSaid = $true }
+        $n = $script:AzCap
+    }
+    return $n
+}
+
+function Get-LiveAzahar {
+    # AZT4-1: every azahar.exe that runs from a slot folder (build3ds\azslots\slot<k>), of any worktree. Returns the CIM processes.
+    return @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -match '\\azslots\\slot\d+\\azahar\.exe$' })
+}
+
+function Close-IdleKept([int]$except = 0) {
+    # AZT4-2: close every kept Azahar that no run holds (its slot mutex is free), of any worktree. $except is a slot number that the caller holds.
+    # Returns the number closed. A kept Azahar is one with a keep.json in its slot folder. Waits up to 5 s for each process to end.
+    $closed = 0
+    foreach ($pr in @(Get-LiveAzahar)) {
+        $dir = Split-Path -Parent $pr.ExecutablePath
+        $num = [int]([regex]::Match($dir, 'slot(\d+)$').Groups[1].Value)
+        if ($num -eq $except -or -not (Test-Path (Join-Path $dir "keep.json"))) { continue }
+        if (-not (Enter-Slot $num 0)) { continue }
+        try {
+            Stop-Process -Id $pr.ProcessId -Force -ErrorAction SilentlyContinue
+            for ($i = 0; $i -lt 50 -and (Get-Process -Id $pr.ProcessId -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 100 }
+            Remove-Item (Join-Path $dir "keep.json") -ErrorAction SilentlyContinue
+            $closed++
+        } finally { Exit-Slot $num }
+    }
+    return $closed
+}
 
 function Get-SlotPaths([int]$k) {
     $d = Join-Path $script:AzRepo "build3ds\azslots\slot$k"
@@ -106,17 +141,28 @@ function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbol
     #   2. a free slot with no kept Azahar (cold start, no other lane is disturbed)
     #   3. any other free slot (its kept Azahar belongs to another lane or turbo setting)
     # Waits only when all slots are busy. Returns the slot number, 0 on timeout.
+    # AZT4-1: a start that needs a new Azahar process (cold) takes room under the cap first. At the cap, a free slot whose Azahar is
+    # live (restart, no new process) is taken before a cold slot. A cold start at the cap closes the idle kept Azahars of other slots
+    # (Close-IdleKept); when none is idle the start waits for a busy one.
     $n = Get-SlotCount
     $t0 = Get-Date
     $said = $false
     while ($true) {
-        $order = @(if ($want -gt 0) { $want } else {
-            $all = @(1..$n)
-            $warmK = @($all | Where-Object { (Get-WarmState $_ $turbo $turbolimit) -eq "warm" })
-            $freeK = @($all | Where-Object { $warmK -notcontains $_ -and -not (Get-KeptAzahar $_) })
-            $warmK + $freeK + @($all | Where-Object { $warmK -notcontains $_ -and $freeK -notcontains $_ })
-        })
-        foreach ($k in $order) { if (Enter-Slot $k 0) { return $k } }
+        $all = @(if ($want -gt 0) { $want } else { 1..$n })
+        $warmK = @($all | Where-Object { (Get-WarmState $_ $turbo $turbolimit) -eq "warm" })
+        $liveK = @($all | Where-Object { $warmK -notcontains $_ -and (Get-KeptAzahar $_) })
+        $coldK = @($all | Where-Object { $warmK -notcontains $_ -and $liveK -notcontains $_ })
+        $capFull = (@(Get-LiveAzahar).Count -ge $script:AzCap)
+        $order = if ($capFull) { $warmK + $liveK + $coldK } else { $warmK + $coldK + $liveK }
+        foreach ($k in $order) {
+            if (-not (Enter-Slot $k 0)) { continue }
+            if ($coldK -contains $k -and $capFull) {
+                $closed = Close-IdleKept -except $k
+                if ($closed -gt 0) { Write-Host "azslot: cap $($script:AzCap) live Azahars reached, closed $closed idle kept, cold start in slot $k" }
+                if ($closed -eq 0 -or (@(Get-LiveAzahar).Count -ge $script:AzCap)) { Exit-Slot $k; continue }
+            }
+            return $k
+        }
         if (-not $said) { Write-Host $(if ($want -gt 0) { "Azahar slot $want is busy." } else { "All $n Azahar slots are busy." }) "Waiting up to $waitSec s..."; $said = $true }
         if (((Get-Date) - $t0).TotalSeconds -gt $waitSec) { return 0 }
         Start-Sleep -Milliseconds 400
