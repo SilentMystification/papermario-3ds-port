@@ -145,6 +145,8 @@ static void pk_name(unsigned s, char* b, int n) {
     for (int i = 0; ok && i < 40; i++) { if (!p[i]) break; if (p[i] < 32 || p[i] > 126) ok = 0; else if (i == 39) ok = 0; }
     if (ok && p[0]) snprintf(b, n, "%.40s", p); else snprintf(b, n, "%08x", a);
 }
+/* FB-3 pm5draw (log only): the producer under the cursor, as pk_name names it */
+void pm_gbi_cur_prod_name(char* b, int n) { pk_name(pmx_cur, b, n); }
 void os_op_hook(const Gfx* at, int sp, unsigned op) { /* one call per op, phase on */
     if (os_nest == 1) {
         if (os_open) os_close();

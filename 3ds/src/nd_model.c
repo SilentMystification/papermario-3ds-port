@@ -273,6 +273,8 @@ int nd_r11_state(uint32_t addr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigne
     }
     return 1;
 }
+int pm_gpu_noise_ok(void);
+void pm_gpu_noise_draw(NdUnit* u, float* nzo);
 static int nd_pm5all(void) { static int v = -1; if (v < 0) v = pm_debug_has("pm5all"); return v; }
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0; nd_nat_sub = 0;
@@ -313,7 +315,9 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     const int combine = co.plan_on ? 8 : co.leg;
     const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
     /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise and pm5 with tex1 stay why 6 (named) */
-    if (combine == 8 && (co.plan.uses_noise || (co.plan.uses_tex1 && (!c->u1 || c->gv && c->gv->fxon)))) { nd_nat_sub = co.plan.uses_noise ? 1u : (c->gv && c->gv->fxon) ? 4u : 2u; if (nd_nat_sub == 2u) mf_bx[nd_mdl_cur_x & 3u]++; return (st->why = 6, 0); }
+    const int nz = combine == 8 && co.plan.uses_noise; /* FB-3 part 2: noise is native (unit 2, nzo) when the walker has its noise texture */
+    if (nz && !pm_gpu_noise_ok()) { nd_nat_sub = 1u; return (st->why = 6, 0); }
+    if (combine == 8 && co.plan.uses_tex1 && (!c->u1 || c->gv && c->gv->fxon)) { nd_nat_sub = (c->gv && c->gv->fxon) ? 4u : 2u; if (nd_nat_sub == 2u) mf_bx[nd_mdl_cur_x & 3u]++; return (st->why = 6, 0); }
     const int t1n = combine == 8 && co.plan.uses_tex1;
     if (c->zmark && zb && r->decal) return (st->why = 15, 0); /* S5-2: zmark with decal (the walker's pass 2 bias): named fallback */
     NdTmplKey k;
@@ -328,7 +332,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     k.rgb_scale = (uint8_t)c->rgb_scale; k.r_mix = (uint8_t)c->r_mix; k.draw_3d = (uint8_t)c->draw_3d; k.rect_2d = 0;
     k.dview = c->dview != 0; k.off_active = 0; k.off_i8 = 0;
     k.r_memblend = (uint8_t)(r->set_memb ? r->memb : c->r_memblend);
-    k.r_replace = (uint8_t)c->r_replace; k.r_blend = r->blend; k.noise = 0;
+    k.r_replace = (uint8_t)c->r_replace; k.r_blend = r->blend; k.noise = (uint8_t)nz;
     k.w0 = combine == 8 ? w0 : 0; k.w1 = combine == 8 ? w1 : 0; k.two = combine == 8 ? (uint8_t)two : 0; k.t1only = (uint8_t)(t1n ? c->t1only : 0);
     int id = nd_tmpl_build(&k);
     if (id < 0) return (st->why = 7, 0);
@@ -340,6 +344,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     for (int i = 0; i < 6; i++) d->tev_col[i] = to.st[i][3];
     d->buf_col = to.buf_color; d->has_buf = (uint8_t)to.buf_set;
     if (tex) d->u[0] = *c->u0;
+    if (nz) { pm_gpu_noise_draw(&d->u[2], d->nzo); d->has_nzo = 1; } /* FB-3 part 2 */
     if (t1n) { d->u[1] = *c->u1; memcpy(d->uvx, c->uvx, 16); d->loc_uvx = c->loc_uvx; d->has_uvx = 1; } /* MDL-1b: unit 1 and its uv map (the raw path's lines) */
     d->u[0].force = 0;
     if (c->gv) {

@@ -1155,6 +1155,8 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 static unsigned ndn_tgen;
 static void pm5_upload_draw(const NdDraw* d);
 static void t1log_draw(const NdDraw* d);
+static void pm5draw_all(const NdDraw* d);
+static void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
 static void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
     extern unsigned pm_gbi_dbg_orb_tag(void);
@@ -1170,8 +1172,10 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
+    pm5draw_all(dp);
     if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
     t1log_draw(dp);
+    pm5tex1_log(dp);
     const NdDraw* d = dp;
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     /* PM5 cause 3: a program change clears the whole native shadow (the citro3d uniform file is one file for all programs, and the template shadow does not know the program) */
@@ -1246,11 +1250,67 @@ static void t1log_draw(const NdDraw* d) {
     if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
     if (t1l_on && d->has_uvx && d->use5 && pm_frame_count() >= 100 && t1l_n++ < 400) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
 }
+/* FB-3 pm5draw (debug switch, log only): frames 182 to 189. Per frame one sum line (pm5sum: every program 5 draw of nd_native_submit, the model
+ * draws of pm_gpu_native_submit_draw, the largest vertex flag over the model draws vmax1), then up to 90 draws of 1 line each (box, zmix, cmul, cadd). The vertex flag of a
+ * vertex is its palette index k (pm5.v.pica: pal5[7k]). box: the screen box (sx / sw, OrthoTilt units 0..400 x 0..240) of the flag 0 vertices, rows 0, 1, 3 of pal[0]. */
+static unsigned p5_f, p5_all, p5_mdl, p5_vmax1, p5_log;
+static int p5_on = -1;
+static int pm5draw_on(void) { extern unsigned pm_frame_count(void); if (p5_on < 0) p5_on = pm_debug_has("pm5draw"); if (!p5_on) return 0; const unsigned f = pm_frame_count(); return f >= 182u && f <= 189u; }
+static void pm5draw_frame(unsigned f) {
+    if (f == p5_f) return;
+    if (p5_f) pm_log("pm5sum f%u use5 all %u model %u vmax1 %u logged %u", p5_f, p5_all, p5_mdl, p5_vmax1, p5_log);
+    p5_f = f; p5_all = p5_mdl = p5_vmax1 = p5_log = 0;
+}
+/* every program 5 draw (model, sprite, raw) of nd_native_submit: the count per frame */
+static void pm5draw_all(const NdDraw* d) { extern unsigned pm_frame_count(void); if (!d->use5 || !pm5draw_on()) return; pm5draw_frame(pm_frame_count()); p5_all++; }
+static void pm5draw_log(const NdDraw* d, const uint16_t* sd, unsigned nidx) {
+    extern unsigned pm_frame_count(void); extern void pm_gbi_cur_prod_name(char* b, int n);
+    if (!d->use5 || !pm5draw_on() || !sd || !nidx || !d->pal) return;
+    const unsigned f = pm_frame_count();
+    pm5draw_frame(f);
+    p5_mdl++;
+    unsigned vmax = 0, n0 = 0, nb = 0;
+    float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
+    const float* p = d->pal[0];
+    for (unsigned i = 0; i < nidx; i++) {
+        const unsigned ix = sd[i];
+        if (ix >= GRING_VTX + GSTAT_VTX) { vmax = 0xffffu; break; }
+        const int16_t* v = (const int16_t*)(gring + 16u * ix);
+        const unsigned k = (uint16_t)v[3];
+        if (k > vmax) vmax = k;
+        if (k != 0) continue;
+        const float px = (float)v[0], py = (float)v[1], pz = (float)v[2];
+        const float sw = p[12] * px + p[13] * py + p[14] * pz + p[15];
+        if (sw <= 0.05f) { nb++; continue; }
+        const float sx = (p[0] * px + p[1] * py + p[2] * pz + p[3]) / sw, sy = (p[4] * px + p[5] * py + p[6] * pz + p[7]) / sw;
+        n0++;
+        if (sx < x0) x0 = sx; if (sx > x1) x1 = sx; if (sy < y0) y0 = sy; if (sy > y1) y1 = sy;
+    }
+    if (vmax > p5_vmax1 && vmax < 0xffffu) p5_vmax1 = vmax;
+    if (f != 182u || p5_log >= 90) return; /* FB-3 halo: frame 182 only, the box with w > 0.05 (nb: the vertices behind or at the w cut) */
+    p5_log++;
+    char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
+    pm_log("pm5draw f%u p %.8s n%u v%u nv %u nb %u box %.3f %.3f %.3f %.3f zm %.3f %.3f cm %.2f %.2f %.2f ca %.2f %.2f %.2f",
+           f, prod, nidx, vmax, n0, nb, x0, x1, y0, y1, d->zmix[0], d->zmix[1], d->cmul[0], d->cmul[1], d->cmul[2], d->cadd[0], d->cadd[1], d->cadd[2]);
+}
+/* FB-3 pm5tex1: one line per producer the first time it submits a program 5 draw with tex1 (the unit 1 uv map, uvx): the pm5 tex1 path is in use */
+void pm_gbi_cur_prod_name(char* b, int n);
+static void pm5tex1_log(const NdDraw* d) {
+    static char seen[24][48]; static unsigned nseen;
+    if (!d->use5 || !d->has_uvx) return;
+    char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
+    for (unsigned i = 0; i < nseen; i++) if (strcmp(seen[i], prod) == 0) return;
+    if (nseen < 24) { strncpy(seen[nseen], prod, 47); seen[nseen][47] = 0; nseen++; }
+    extern unsigned pm_frame_count(void);
+    pm_log("pm5tex1 %s f%u", prod, pm_frame_count());
+}
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex) {
     rp_src_ = 2;
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
+    if (d->has_nzo) d->loc_nzo = (unsigned)(d->use5 ? u5_nzo : u4_nzo); /* FB-3 part 2: the noise offset of the program of the draw */
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys((void*)sd) - 0x18000000u);
     d->nidx = nidx;
+    pm5draw_log(d, sd, nidx);
     ndt_mdl = 1;
     nd_native_submit(d, tex);
     ndt_mdl = 0;
@@ -1321,11 +1381,13 @@ static void noise_native_words(NdUnit* u) {
     u->dim = noise_tex.dim; u->param = noise_tex.param; u->lod = noise_tex.lodParam;
     u->addr = (uint32_t)osConvertVirtToPhys(noise_tex.data) >> 3; u->type = (uint32_t)noise_tex.fmt;
 }
+/* FB-3 part 2: the noise unit and offset of a native model draw (nd_model.c, a plan with noise): the same words as the raw path (d.u[2], d.nzo) */
+int pm_gpu_noise_ok(void) { return noise_init(); }
+void pm_gpu_noise_draw(NdUnit* u, float* nzo) { noise_native_words(u); nzo[0] = 120.f / 64.f; nzo[1] = 200.f / 64.f; nzo[2] = noise_off[0]; nzo[3] = noise_off[1]; }
 static int nd_raw_native(void) {
     fb2_switches();
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
-    if (g_use5 && combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* FB-3 part 2 removes this (pm5 noise row); tex1 is native for pm5 (part 1) */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); unsigned lim = cmd_small && cmd_small < csz ? cmd_small : csz; if (coff + ND_EMIT_MAX + 1024u >= lim) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
@@ -1398,7 +1460,7 @@ static int nd_raw_native(void) {
     if (noise) { /* FB-2: unit 2 (the noise texture) and its offset uniform, as the walker's noise block of flush_draw */
         noise_native_words(&d.u[2]);
         d.nzo[0] = 120.f / 64.f; d.nzo[1] = 200.f / 64.f; d.nzo[2] = noise_off[0]; d.nzo[3] = noise_off[1];
-        d.loc_nzo = (unsigned)u4_nzo; d.has_nzo = u4_nzo >= 0;
+        d.loc_nzo = (unsigned)(g_use5 ? u5_nzo : u4_nzo); d.has_nzo = (g_use5 ? u5_nzo : u4_nzo) >= 0;
     }
     if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)(g_use5 ? u5_uvx : u4_uvx); d.has_uvx = 1; }
     d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
@@ -3924,6 +3986,7 @@ int pm_gpu_spr_submit(NdDraw* d, const void* quad, int tex) {
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(ix) - 0x18000000u);
     d->nidx = 6;
+    pm5draw_log(d, ix, 6); /* FB-3 pm5draw: a sprite quad (nidx 6) of program 5 */
     nd_native_submit(d, tex);
     return 1;
 }
