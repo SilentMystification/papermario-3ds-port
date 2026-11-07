@@ -3873,7 +3873,6 @@ static unsigned rect_ring_vtx(void) {
 }
 static int rect_raw_ok(void) {
     if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
-    if (grab_bind) { rr_why[3]++; return 0; } /* OFF-1: an off-screen target is native (no refusal here) */
     if (r_zmark) { rr_why[4]++; return 0; }
     const unsigned cv = rect_ring_vtx(), ci = rect_ring_vtx() * 3u / 2u;
     if (gring_n + 4 > cv || gidx_n + 6 > ci) { ring_wrap(); }
