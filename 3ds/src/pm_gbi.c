@@ -709,7 +709,6 @@ extern void pm_gpu_ndm_end(void);
 extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
 extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
 extern int nd_r11_state(uint32_t addr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo); /* MDL-5f */
-extern void pm_gpu_model_fb_cached(unsigned why, uint32_t rp); /* S3N-7, S3L-1: the code of the stored fallback */ /* S3N-6: the cached draws of the key, 1 when drawn (e: the entry found by the lookup) */
 int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
 static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomodelnat") ? 1 : 0; return v; } /* MDL-5: switch nomodelnat, the walker geometry of every model record (the byte reference) */
 unsigned rec_run(const Gfx* q) {
@@ -765,7 +764,6 @@ unsigned rec_run(const Gfx* q) {
     }
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, mwp,
         q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
-    else if (mce && mce->neg && mce->ep == pm_tex_epoch()) { pm_gpu_model_fb_cached(mce->why, (uint32_t)mk.rp); } /* S3N-7: a stored fallback: walker geometry, no draw attempt */
     else if (!nmn_sw() && pm_gpu_model_native((const uint32_t*)q, mwp,
         cwp, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk) >= 0) {
         /* S3N-4: the record drew natively (nd_model_draw): no walker geometry. The native draws set the TEV and the texture unit, so the walker
@@ -779,7 +777,7 @@ unsigned rec_run(const Gfx* q) {
         unsigned tss_, geo_, cw0_, cw1_; pm_gbi_sticky(&tss_, &geo_, &cw0_, &cw1_);
         pm_log("wrec f%u copy hit %d nat %d cw %08x %08x", pm_frame_count(), hit, nat, cw0_, cw1_);
     }
-    if (!nat) { NdtT tf = pm_gpu_ndt_begin(); rec_dl((const Gfx*)(uintptr_t)q[12].words.w0); pm_gpu_ndt_end(tf, NDT_FB); }  /* S3G-1: geometry (0 when none); S3N-7: the fallback walk */
+    if (!nat && (ndm || nmn_sw())) { NdtT tf = pm_gpu_ndt_begin(); rec_dl((const Gfx*)(uintptr_t)q[12].words.w0); pm_gpu_ndt_end(tf, NDT_FB); }  /* S3G-1: geometry (0 when none); S3N-7: the fallback walk */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
     if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     if (ndm) pm_gpu_ndm_end();
