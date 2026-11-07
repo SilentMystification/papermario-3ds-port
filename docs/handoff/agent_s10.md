@@ -6,7 +6,7 @@ STATE
 - Open rows (row files in docs/handoff): DEL (branch fb4: TRI-4, FB-4, GM-3; see row_FB.md "DEL row"), LS-3 (rec_* to nd_recs.c, row_MOVE.md), ST-3 and RECT-3 (after DEL), then END-1 and S10-1..4 (plan_s10_path.md).
 - Parked bugs: mac_00 layout-dependent sky row (row_FB.md MAC00 sections; not a valid byte gate), SBKW sbk_56 water residual (row_SBKW.md), pm5all halo (row_FB.md FB-3), FX1 super block (row_FX1.md: broken only after the upgrade menu confirm; needs a menu-walk scenario).
 - Size: 3dsx 13,359,084 B; netloader accepted 13.17 MB before. Push to O3DS XL failed at 23.84%. Options: Homebrew Launcher in title mode (hold R starting a game), SIZE-3 step 2 (-Os, 122 KB, blocked by layout bug), delete rows, SIZE-1 (parked).
-- Unmerged branches with useful work: ub1 (stale unit-1 cache patch, sprnat OOB patch), fb4 (DEL in progress).
+- Unmerged branches with useful work: ub1 (stale unit-1 cache patch, sprnat OOB patch); fb4 head 9c14de8ad = TRI-4 671567666 (draw_tri_cpu, pm_gpu_tri3d, pm_gpu_vert_clip, tri_raw, flush_draw_cpu deleted; census wd 0 PASS; byte gate not run; 3dsx 13,344,304 B) + its state in row_FB.md on that branch. FB-4 and GM-3 not started.
 - Process rules updated: orchestrator_rules.md "Process fixes".
-- Next command: read row_FB.md "DEL row" and the DEL agent's last state; merge fb4 when its gates pass; then LS-3 from row_MOVE.md.
+- Next command: cd build3ds/wt/fb4; PM_ROW=DEL PM_LANE=fb4 python 3ds/tools/bench.py run nok11_det,battle_start_f182_cold,spot_mac01_det --row DEL --lane fb4; compare with the nds1 1e915fa5b base shots (scratchpad base_shots); merge fb4 if byte-equal; then FB-4, GM-3, LS-3 (row_MOVE.md).
 - Disk: build3ds is 181 GB (about 70 worktrees, about 210 lanes); clean merged worktrees with user approval.
