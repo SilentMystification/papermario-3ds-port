@@ -1,0 +1,10 @@
+# Row GM: geometry and matrix groups to nd_geom.c and nd_mtx.c
+
+## Start state
+nds1 5e5456e11 (WK-1 merged). Branch gm. TRI-4 (CPU triangle delete) has not landed: GM-3 waits for it.
+
+## Rows (plan_s10_path.md Stream GM)
+GM-1 matrix group M to nd_mtx.c (gate also yard_stereo_l by eye). GM-2 G_VTX case, draw_tri, gv_tri, gv_*, tri/cull/clip helpers to new nd_geom.c (gate also iwa_10 and nok11_splash by eye). GM-4 sun: grep pm_sun_* callers, move to nd_geom.c or delete (sbk56 sun by eye). GM-3 CPU-only deletes only after TRI-4 lands: skip it if not in nds1 and say so.
+
+## Rules
+Plan: docs/handoff/plan_s10_path.md (What is left, Design, Streams, your Rows, Decisions D1 to D13). D12: each move is a pure cut and paste plus prototypes (nd_int.h, your section only), no logic change; byte-equal proves it. D10 globals: the writing module owns a global; a global read by 2 or more modules goes to NdWs or an nd_int.h extern. pm_gbi.c is shared: cut only your groups' functions and your ops' switch case bodies (WK owns the loop structure in nd_walk.c). Rebase on nds1 before each commit; after a rebase check `git grep '^<<<<<<<'` on every commit and fix markers before handing back. Investigate by code first (CLAUDE.md rule 5). Own worktree: git worktree add build3ds/wt/<id> -b <id> nds1; copy assets/us and ver/us/build; build there (PM_LANE=<id>); azt -Build <worktree 3dsx>. Move gate: spot_mac01_pic byte-equal to nds1 (3 shots), iwa_10 and battle_start by eye, gbi-phase us at mac_01 within +3 percent (opsplit), grep proof that the moved definitions are gone from pm_gbi.c. Commit on your branch, no attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. New scenarios: nds1 JSON as the base, add only yours. Status line in 3ds/logs/perf/status_<id>.txt before each start. Budget: reset and continue. Two tries per named cause. Hand back once with the branch head after your last row (or a failed gate); the orchestrator merges. Delete this file in your last commit.
