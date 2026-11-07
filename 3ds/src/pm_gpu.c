@@ -1255,7 +1255,7 @@ static void pm5draw_log(const NdDraw* d, const uint16_t* sd, unsigned nidx) {
     const unsigned f = pm_frame_count();
     pm5draw_frame(f);
     p5_mdl++;
-    unsigned vmax = 0, n0 = 0;
+    unsigned vmax = 0, n0 = 0, nb = 0;
     float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
     const float* p = d->pal[0];
     for (unsigned i = 0; i < nidx; i++) {
@@ -1267,17 +1267,17 @@ static void pm5draw_log(const NdDraw* d, const uint16_t* sd, unsigned nidx) {
         if (k != 0) continue;
         const float px = (float)v[0], py = (float)v[1], pz = (float)v[2];
         const float sw = p[12] * px + p[13] * py + p[14] * pz + p[15];
-        if (sw == 0.f) continue;
+        if (sw <= 0.05f) { nb++; continue; }
         const float sx = (p[0] * px + p[1] * py + p[2] * pz + p[3]) / sw, sy = (p[4] * px + p[5] * py + p[6] * pz + p[7]) / sw;
         n0++;
         if (sx < x0) x0 = sx; if (sx > x1) x1 = sx; if (sy < y0) y0 = sy; if (sy > y1) y1 = sy;
     }
     if (vmax > p5_vmax1 && vmax < 0xffffu) p5_vmax1 = vmax;
-    if (p5_log >= 90) return;
+    if (f != 182u || p5_log >= 90) return; /* FB-3 halo: frame 182 only, the box with w > 0.05 (nb: the vertices behind or at the w cut) */
     p5_log++;
     char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
-    pm_log("pm5draw f%u p %.8s n%u v%u box %.1f %.1f %.1f %.1f zm %.3f %.3f cm %.2f %.2f %.2f ca %.2f %.2f %.2f",
-           f, prod, nidx, vmax, x0, x1, y0, y1, d->zmix[0], d->zmix[1], d->cmul[0], d->cmul[1], d->cmul[2], d->cadd[0], d->cadd[1], d->cadd[2]);
+    pm_log("pm5draw f%u p %.8s n%u v%u nv %u nb %u box %.3f %.3f %.3f %.3f zm %.3f %.3f cm %.2f %.2f %.2f ca %.2f %.2f %.2f",
+           f, prod, nidx, vmax, n0, nb, x0, x1, y0, y1, d->zmix[0], d->zmix[1], d->cmul[0], d->cmul[1], d->cmul[2], d->cadd[0], d->cadd[1], d->cadd[2]);
 }
 /* FB-3 pm5tex1: one line per producer the first time it submits a program 5 draw with tex1 (the unit 1 uv map, uvx): the pm5 tex1 path is in use */
 void pm_gbi_cur_prod_name(char* b, int n);
