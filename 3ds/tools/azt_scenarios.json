@@ -7796,6 +7796,78 @@
         }
       ],
       "reason": "LOG4 gate A baseline. Cap 45 s: 300 drawn frames at about 20 fps after the pond load."
+    },
+    {
+      "name": "rect_post_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200. Native textured rects (no norectraw): the white ground and sky of frame 200. rectpost=200 logs rpD lines after each textured rect.",
+      "proves": "RECT-1b plan 3: the 16 draws after the last textured rectangle of frame 200 (rpD lines: path, combine, slot, GPU register shadow, uvso, pal0). The first line that differs between rect_post_mac01 and rect_post_nr_mac01 names the field. The shots show the picture of both runs.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug rectpost=200",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "RECT-1b plan 3 (no prof=4: the prof lines go to live and console only, so the log copy would miss the rpD lines). Cap 45 s: boot, warp and the window up to frame 205."
+    },
+    {
+      "name": "rect_post_nr_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200. CPU textured rects (norectraw): the right picture of frame 200. rectpost=200 logs rpD lines after each textured rect.",
+      "proves": "RECT-1b plan 3: the 16 draws after the last textured rectangle of frame 200 (rpD lines: path, combine, slot, GPU register shadow, uvso, pal0). The first line that differs between rect_post_mac01 and rect_post_nr_mac01 names the field. The shots show the picture of both runs.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug rectpost=200 norectraw",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "RECT-1b plan 3 (no prof=4: the prof lines go to live and console only, so the log copy would miss the rpD lines). Cap 45 s: boot, warp and the window up to frame 205."
+    },
+    {
+      "name": "rect_nr_plain_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200. CPU textured rects (norectraw), no rectpost: control for the crash of rect_post_nr_mac01 (Azahar exit -1073741795 before the first marker).",
+      "proves": "RECT-1b plan 3 control: norectraw alone starts and reaches frame 205 (no rpD switch). If it exits early, the CPU rect path crashes without the rpD code.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug norectraw",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "RECT-1b plan 3 control, cap 45 s."
     }
   ]
 }

@@ -370,6 +370,8 @@ static void build_words(NdTmplEnt* e, const NdTevOut* tev) {
     put(e, R_TEXENV_BUFCOL, tev->buf_set ? tev->buf_color : 0);
 }
 
+/* RECT-1b diag: the key fields of a template id (rpK line) */
+int nd_tmpl_dbg_key(int id, int* tex, int* comb, int* d3, int* r2) { if (id < 0 || (unsigned)id >= tmpl_n) return 0; const NdTmplKey* k = &tmpl_ent[id].key; *tex = k->tex; *comb = k->combine; *d3 = k->draw_3d; *r2 = k->rect_2d; return 1; }
 int nd_tmpl_build(const NdTmplKey* in) {
     NdTmplKey kk = *in;
     memset(kk.pad, 0, sizeof kk.pad);

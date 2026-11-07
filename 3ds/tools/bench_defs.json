@@ -1691,6 +1691,54 @@
         }
       ],
       "gates": []
+    },
+    {
+      "name": "rect_post_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "RECT-1b plan 3: native textured rects, rpD lines of the 16 draws after the last rect of frame 200 (picture: white or right).",
+      "scenario": "rect_post_mac01",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "rect_post_nr_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "RECT-1b plan 3: CPU textured rects (norectraw), rpD lines of the same window (picture: right).",
+      "scenario": "rect_post_nr_mac01",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "rect_nr_plain_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "RECT-1b plan 3 control: CPU textured rects (norectraw) with no rpD switch: does it reach frame 205.",
+      "scenario": "rect_nr_plain_mac01",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
