@@ -2,6 +2,9 @@
 
 MDL-3 (merged cc10a9043): the last sprite fallback is battle sprites, sprnat why 4 = 555 per 300 frames at kmr_03. This row also covers the LS-3 no-mutation rule for G_PM_SPR (plan_s10_path.md D8).
 
+## State (2026-11-07, after SPR4 agent 1)
+Uncommitted work in build3ds/wt/spr4, saved as scratchpad spr4_wip.diff (this session's scratchpad). Steps 1-3 implemented (G_PM_SPR and G_VTX arms are in nd_walk.c after WK-1). Real bug fixed in the WIP: the flat sprite record ORed the vertex offset into w0 bits 0-15, over alpha bits 8-15; offset now bits 0-7 (src/sprite.c, include/gbi_custom.h, nd_walk.c). sprcheck kmr_03 f300: eq 732, diff 256: the walker key is the open batch state (g_cullm from batch-open geometry, pm_gpu.c ~2816), not the sprite's own state. Waiting for the oracle decision SPR4b.
+
 ## Oracle plan SPR4
 What the native path cannot express. pm_gpu_spr_build (pm_gpu.c ~3610) builds the key from the walker's sticky state as it was before the record (pm_gbi_sticky: combine, geometry), merged with the record's rmList and final list (nd_sprite_mode). The walker draws the quad later, after the words that follow the record in spr_appendGfx_component_flat (src/sprite.c) have run: the opacity prim, SPR_RM_LIST, the NP1 texture words, and, with SET_VIEWPORT, the vpAlt pass with its own render mode, env, gDPSetCombineMode(PM_CC_0A / 0B, 0C) and its own triangles. In battle (the CONTEXT_BATTLE bit 4 written at sprite.c:431), those words set the state at the draw. So the record-time key is wrong (combine 8 vs 2, cull, alpha test), and spr_battle refuses (pm_gpu.c:3621).
 Native form: build the sprite draw at the point where the walker reaches the record's vertex word. The state then comes from nd_ws live, as nd_raw_native does; the record supplies only the geometry, raster, palette, matrix and quad. This also satisfies the LS-3 no-mutation rule.
