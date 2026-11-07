@@ -628,6 +628,9 @@ static void box_fold_sync(void) {
  * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
  * cut away near-transparent texels. */
 static PM_HOTD unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
+/* CORE-2b: the fog and blend colour setters (fogc, blendc; the fog factors stay with G_MOVEWORD). */
+static void set_fogcolor(u32 w1) { fogc = w1; }
+static void set_blendcolor(u32 w1) { blendc = w1; }
 static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 static unsigned sr_sig;
 static PM_HOTD int sr_ok;
@@ -4144,6 +4147,15 @@ static void op_texture(u32 w0, u32 w1) {
             nd_ws.tex_ss = w1 >> 16;
             nd_ws.tex_ts = w1 & 0xffffu;
 }
+/* CORE-2b: G_SETPRIMCOLOR, one owner (the walker switch and the record both run it). */
+static void op_setprimcolor(u32 w0, u32 w1) {
+    GP_SET(1, nd_ws.prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
+    aud_prim_lod = (u8)(w0 & 0xff);
+    nd_ws.prim = w1;
+    nd_ws.prim_lod = w0 & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
+    pm_gpu_set_prim(nd_ws.prim);
+    sync_combine();
+}
 static void op_setothermode(unsigned op, u32 w0, u32 w1) {
             unsigned len = (w0 & 0xff) + 1;
             unsigned field = (w0 >> 8) & 0xff;
@@ -4245,14 +4257,7 @@ static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
         case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
         case G_SETOTHERMODE_H:
         case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
-        case G_SETPRIMCOLOR:
-            GP_SET(1, nd_ws.prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
-            aud_prim_lod = (u8)(w0 & 0xff);
-            nd_ws.prim = w1;
-            nd_ws.prim_lod = w0 & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
-            pm_gpu_set_prim(nd_ws.prim);
-            sync_combine();
-            break;
+        case G_SETPRIMCOLOR: op_setprimcolor(w0, w1); break;
         case G_SETCOMBINE: op_setcombine(w0, w1); sync_combine(); break;
     }
 }
@@ -4679,8 +4684,8 @@ static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
     gv_epoch++; /* GV1b, as the walker */
     switch (op) {
     case G_MOVEWORD: gbi_moveword(w0, w1); break;
-    case G_SETFOGCOLOR: fogc = w1; break;
-    case G_SETBLENDCOLOR: blendc = w1; break;
+    case G_SETFOGCOLOR: set_fogcolor(w1); break;
+    case G_SETBLENDCOLOR: set_blendcolor(w1); break;
     case G_SETENVCOLOR: gbi_setenv(w1); break;
     case G_SETPRIMCOLOR: case G_SETCOMBINE: case G_SETOTHERMODE_L: case G_SETOTHERMODE_H: case G_SETTILESIZE: tex_op(w0, w1); break;
     default: pm_log("rec: op %u is not a record op f%u", op, pm_frame_count()); break;
@@ -5076,12 +5081,8 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
             sync_combine();
             break;
-        case G_SETFOGCOLOR:
-            fogc = w1;
-            break;
-        case G_SETBLENDCOLOR:
-            blendc = w1;
-            break;
+        case G_SETFOGCOLOR: set_fogcolor(w1); break;
+        case G_SETBLENDCOLOR: set_blendcolor(w1); break;
         case G_SETENVCOLOR:
             gbi_setenv(w1);
             break;
