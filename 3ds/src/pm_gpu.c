@@ -887,11 +887,6 @@ static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
                     pcomp_gen[gm] = post_gen;
                     pm_dc_c[DC_PMUL]++;
 }
-static __attribute__((noinline)) int nozt_on(void) {
-    static int nozt = -1;
-    if (nozt < 0) nozt = pm_debug_has("nozt");
-    return nozt;
-}
 static __attribute__((noinline)) void scissor_off(void) {
         /* not rotated: x is the game x. GPU y is the game y: row 0 of the image is the last memory row, where v = 0 samples */
         int x1 = sci_x1 > off_w ? off_w : sci_x1, y1 = sci_y1 > off_h ? off_h : sci_y1;
@@ -1290,18 +1285,9 @@ static void pm5_upload(void) {
     }
     sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
 }
-/* FB-2 switches: tmplsmall=<n> (the template table size: the LRU evicts), cmdsmall=<n> (the command buffer limit in words: a forced split) */
-static unsigned cmd_small, cmd_split_n;
+static unsigned cmd_split_n;
 unsigned pm_gpu_cmd_split_n(void) { return cmd_split_n; }
 void pm_gpu_fb2_stat(unsigned* o) { o[0] = nd_tmpl_hi(); o[1] = nd_tmpl_gen(); o[2] = cmd_split_n; }
-static void fb2_switches(void) {
-    static int done;
-    char v[16];
-    if (done) return;
-    done = 1;
-    if (pm_debug_value("tmplsmall", v, sizeof v)) nd_tmpl_set_cap((unsigned)atoi(v));
-    if (pm_debug_value("cmdsmall", v, sizeof v)) cmd_small = (unsigned)atoi(v);
-}
 /* FB-2: the forced split of nd_raw_native (kick_check's split without its draw threshold, run inside a raw close: the open batch's ring words stay in place).
  * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
 void pm_gx_room(void);
@@ -1320,13 +1306,11 @@ static void noise_native_words(NdUnit* u) {
 int pm_gpu_noise_ok(void) { return noise_init(); }
 void pm_gpu_noise_draw(NdUnit* u, float* nzo) { noise_native_words(u); nzo[0] = 120.f / 64.f; nzo[1] = 200.f / 64.f; nzo[2] = noise_off[0]; nzo[3] = noise_off[1]; }
 static int nd_raw_native(void) {
-    fb2_switches();
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
-    if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
-    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); unsigned lim = cmd_small && cmd_small < csz ? cmd_small : csz; if (coff + ND_EMIT_MAX + 1024u >= lim) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
+    if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || gv5_on))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
-    if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }
     int z = z_on && (!rect_2d || rect_z) && !off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
@@ -1575,7 +1559,6 @@ static void flush_draw(void) {
     DC_T(2);
     PHF_POP();
     int z = z_on && (!rect_2d || rect_z) && !off_active;
-    if (nozt_on()) z = 0;
     PHF_PUSH(PH_GTEV);
     int memb = 0;
     TevKey tk;
@@ -2406,19 +2389,11 @@ void pm_gx_drain(void) {
     gxCmdQueueStop(q);
     gxCmdQueueClear(q);
 }
-/* FB-1 ring_wrap: the raw vertex and index ring has no room for the next rectangle or grab quad. The logical limits are ring_cap_v and ring_cap_i (GRING_VTX and
- * GRING_IDX unless ringsmall=<n> is set: n vertices and n * 3 / 2 indices, so the wrap runs often). The walker paths keep the real limits. A wrap closes the open
+/* FB-1 ring_wrap: the raw vertex and index ring has no room for the next rectangle or grab quad. The limits are GRING_VTX and GRING_IDX (the ringsmall
+ * switch was deleted in DEL). The walker paths keep the real limits. A wrap closes the open
  * batch, submits the queued part (split_frame) and moves the ring to a chunk the GPU has finished, else to a new one. No wait for the GPU happens here: the
  * mid-frame gspWaitForP3D hung on a list that citro3d had not started (FB-1 oracle decision). */
-static unsigned ring_cap_v = GRING_VTX, ring_cap_i = GRING_IDX, ring_wraps, ring_cap_done;
-static __attribute__((cold, noinline)) void ring_cap_init(void) {
-    char v[16];
-    ring_cap_done = 1;
-    if (pm_debug_value("ringsmall", v, sizeof v)) {
-        const unsigned n = (unsigned)atoi(v);
-        if (n >= 8u && n <= GRING_VTX) { ring_cap_v = n; ring_cap_i = n * 3u / 2u; }
-    }
-}
+static unsigned ring_wraps;
 /* the chunk c becomes the ring. The caller has flushed the open batch. */
 static void ring_set(int c) {
     ring_cur = c;
@@ -2475,9 +2450,8 @@ static __attribute__((cold, noinline)) int ring_wrap(void) {
 }
 /* FB-1: 1 when nv vertices and ni indices fit the ring, after a ring_wrap when they do not. 0 when they cannot fit an empty chunk or no chunk is free. */
 static int ring_need(unsigned nv, unsigned ni) {
-    if (!ring_cap_done) ring_cap_init();
-    if (gring_n + nv <= ring_cap_v && gidx_n + ni <= ring_cap_i) return 1;
-    if (nv > ring_cap_v || ni > ring_cap_i) return 0;
+    if (gring_n + nv <= GRING_VTX && gidx_n + ni <= GRING_IDX) return 1;
+    if (nv > GRING_VTX || ni > GRING_IDX) return 0;
     return ring_wrap();
 }
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
@@ -3798,9 +3772,9 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     memset(&mode, 0, sizeof mode);
     mode.ok = 1; mode.gand = 0xFFFFFFFFu;
     { /* MDL-3a: class 5 by sub-reason, each flag counted on its own (a record can hold several) */
-        const int nopal = !(g_pal && !g_use5 && gv4_on), noz = nozt_on();
-        spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(r_zmark != 0); spr5_sub[5] += (unsigned)noz;
-        if (nopal || off_active || grab_bind || r_zmark || noz) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
+        const int nopal = !(g_pal && !g_use5 && gv4_on);
+        spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(r_zmark != 0);
+        if (nopal || off_active || grab_bind || r_zmark) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
     }
     NdTexDesc ds;
     NdUnit un;
@@ -3950,7 +3924,6 @@ static unsigned rect_c[6];
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle takes the CPU path: 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
     if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
-    if (PMDL("norectraw")) { rr_why[6]++; return 0; }
     if (!ring_need(4, 6)) { rr_why[5]++; return 0; }
     return 1;
 }
@@ -4115,7 +4088,6 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing (as pm_gpu_fill_rect) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float s = s0; s0 = s1; s1 = s; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
-    if (PMDL("scforce")) s0 += 200.f, s1 += 200.f; /* SC-1 forcing: s + 200 on every textured rect (CPU and native), the sc base form then draws it */
     if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; }
     rect_c[1]++;
     rd_tex = 1;

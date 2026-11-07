@@ -383,22 +383,6 @@
       "gates": []
     },
     {
-      "name": "spot_mac01_cmdsmall_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FB-2 GX room: spot_mac01_cmdsmall (cmdsmall=2048, forced command buffer splits) with the picture of spot_mac01_pic. Gate: no svcBreak, cmdsplit n above 32, picture equal to spot_mac01_pic.",
-      "scenario": "spot_mac01_cmdsmall",
-      "cap": 60,
-      "until": "prof f\\d+ w\\d+ at ",
-      "tags": [
-        "azahar",
-        "pic",
-        "spot"
-      ],
-      "gates": []
-    },
-    {
       "name": "spot_mac01_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -769,40 +753,6 @@
         "azahar",
         "pic",
         "spot"
-      ],
-      "gates": []
-    },
-    {
-      "name": "spot_sbk56_notex1nat_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "SBK shot 1: sbk_56 at pos 20 0 440 with notex1nat (SGEN-2 two texture combine draws back to the walker). A person reads the siding in the shot.",
-      "scenario": "spot_sbk56_notex1nat_pic",
-      "cap": 60,
-      "until": "prof f\\d+ w\\d+ at ",
-      "tags": [
-        "azahar",
-        "pic",
-        "spot",
-        "sbk"
-      ],
-      "gates": []
-    },
-    {
-      "name": "spot_sbk56_walk_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "SBK walker shot: sbk_56 at pos 20 0 440 with all native draw switches (noraw nogdl nogrange noent). A person reads the siding in the shot.",
-      "scenario": "spot_sbk56_walk_pic",
-      "cap": 60,
-      "until": "prof f\\d+ w\\d+ at ",
-      "tags": [
-        "azahar",
-        "pic",
-        "spot",
-        "sbk"
       ],
       "gates": []
     },
@@ -2033,38 +1983,6 @@
       "gates": []
     },
     {
-      "name": "rect_post_nr_mac01",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "RECT-1b plan 3: CPU textured rects (norectraw), rpD lines of the same window (picture: right).",
-      "scenario": "rect_post_nr_mac01",
-      "cap": 45,
-      "until": "shot \\d+ frame 205\\b",
-      "tags": [
-        "azahar",
-        "pic",
-        "spot"
-      ],
-      "gates": []
-    },
-    {
-      "name": "rect_nr_plain_mac01",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "RECT-1b plan 3 control: CPU textured rects (norectraw) with no rpD switch: does it reach frame 205.",
-      "scenario": "rect_nr_plain_mac01",
-      "cap": 45,
-      "until": "shot \\d+ frame 205\\b",
-      "tags": [
-        "azahar",
-        "pic",
-        "spot"
-      ],
-      "gates": []
-    },
-    {
       "name": "super_text_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2375,60 +2293,6 @@
       "gates": []
     },
     {
-      "name": "battle_start_pm5off_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "PM5 reference: battle start with the pm5 native path off (walker pm5 close).",
-      "scenario": "battle_start_pm5off",
-      "cap": 20,
-      "until": "shot \\d+ frame 182\\b",
-      "tags": [
-        "azahar",
-        "pic"
-      ],
-      "gates": []
-    },
-    {
-      "name": "spot_iwa10_pm5off_ndmcheck",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "PM5-3 reference: iwa_10 ndmcheck with pm5 native off.",
-      "scenario": "spot_iwa10_pm5off_ndmcheck",
-      "cap": 25,
-      "until": "ndmcheck f\\d+ recs",
-      "tags": [
-        "azahar",
-        "ndmcheck",
-        "iwa10"
-      ],
-      "log_metrics": [
-        {
-          "name": "ndm_eq",
-          "regex": "ndmcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
-          "pick": "last"
-        },
-        {
-          "name": "ndm_diff",
-          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
-          "pick": "last"
-        }
-      ],
-      "gates": [
-        {
-          "metric": "ndm_diff",
-          "op": "==",
-          "value": 0
-        },
-        {
-          "metric": "ndm_eq",
-          "op": ">",
-          "value": 0
-        }
-      ]
-    },
-    {
       "name": "pause_spin_grab_w300",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2653,38 +2517,6 @@
       "gates": []
     },
     {
-      "name": "fb_sky_mac00_scforce_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FB-1 sc: scforce (every textured rect sc above 127) must match the pre-row scforce picture. rr_why 7 0.",
-      "scenario": "fb_sky_mac00_scforce",
-      "cap": 45,
-      "until": "shot \\d+ frame 205\\b",
-      "tags": [
-        "azahar",
-        "pic",
-        "fb1"
-      ],
-      "gates": []
-    },
-    {
-      "name": "fb_sky_mac00_ring_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FB-1 ring: ringsmall=64 wraps the raw ring. rr_why 5 0, picture equal to fb_sky_mac00.",
-      "scenario": "fb_sky_mac00_ring",
-      "cap": 45,
-      "until": "shot \\d+ frame 205\\b",
-      "tags": [
-        "azahar",
-        "pic",
-        "fb1"
-      ],
-      "gates": []
-    },
-    {
       "name": "fb_sky_mac00_det_pic",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -2693,40 +2525,6 @@
       "scenario": "fb_sky_mac00_det",
       "cap": 45,
       "until": "shot \\d+ frame 205\\b",
-      "tags": [
-        "azahar",
-        "det",
-        "cold",
-        "fb1"
-      ],
-      "gates": []
-    },
-    {
-      "name": "fb_sky_mac00_ring_det_pic",
-      "kind": "azahar_pic",
-      "speed": "turbo",
-      "default": false,
-      "purpose": "FB-1 ring gate: mac_00 sky, cold det run, ringsmall=64 (ring_wrap runs). rr_why 5 0, shots 200 to 205 byte-equal to fb_sky_mac00_det_pic.",
-      "scenario": "fb_sky_mac00_ring_det",
-      "cap": 45,
-      "until": "shot \\d+ frame 205\\b",
-      "tags": [
-        "azahar",
-        "det",
-        "cold",
-        "fb1"
-      ],
-      "gates": []
-    },
-    {
-      "name": "nok11_det_ring_pic",
-      "kind": "azahar_pic",
-      "speed": "turbo",
-      "default": false,
-      "purpose": "FB-1 ring gate: nok_11 splash, cold det run, ringsmall=64 (ring_wrap runs, grab quad native). rr_why 5 0, shots and dumps byte-equal to nok11_det.",
-      "scenario": "nok11_det_ring",
-      "cap": 45,
-      "until": "fxtest: shot 1 effect 89 water_splash",
       "tags": [
         "azahar",
         "det",
@@ -2906,38 +2704,6 @@
       "gates": []
     },
     {
-      "name": "nok11_det_cmdsmall_pic",
-      "kind": "azahar_pic",
-      "speed": "turbo",
-      "default": false,
-      "purpose": "FB-2 step 2 gate (cmdsmall): nok11_det with the switch; shots must equal nok11_det of the same build.",
-      "scenario": "nok11_det_cmdsmall",
-      "cap": 45,
-      "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": [
-        "azahar",
-        "det",
-        "cold"
-      ],
-      "gates": []
-    },
-    {
-      "name": "nok11_det_tmplsmall_pic",
-      "kind": "azahar_pic",
-      "speed": "turbo",
-      "default": false,
-      "purpose": "FB-2 step 2 gate (tmplsmall): nok11_det with the switch; shots must equal nok11_det of the same build.",
-      "scenario": "nok11_det_tmplsmall",
-      "cap": 45,
-      "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": [
-        "azahar",
-        "det",
-        "cold"
-      ],
-      "gates": []
-    },
-    {
       "name": "intro_native_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2989,23 +2755,6 @@
       "gates": []
     },
     {
-      "name": "battle_start_pm5off_det_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "VERIFY check 2: battle kmr_03 cold det run with pm5off, shot 182 (walker pm5).",
-      "scenario": "battle_start_pm5off_det",
-      "cap": 60,
-      "until": "shot \\d+ frame 182\\b",
-      "tags": [
-        "azahar",
-        "det",
-        "cold",
-        "verify"
-      ],
-      "gates": []
-    },
-    {
       "name": "spot_iwa10_det_pic",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -3046,23 +2795,6 @@
       "default": false,
       "purpose": "VERIFY check 2: mac_01 cold det run, native textured rects, shots 200 to 205.",
       "scenario": "rect_post_det",
-      "cap": 45,
-      "until": "shot \\d+ frame 205",
-      "tags": [
-        "azahar",
-        "det",
-        "cold",
-        "verify"
-      ],
-      "gates": []
-    },
-    {
-      "name": "rect_nr_det_pic",
-      "kind": "azahar_pic",
-      "speed": "turbo",
-      "default": false,
-      "purpose": "VERIFY check 2: mac_01 cold det run, CPU textured rects (norectraw), shots 200 to 205.",
-      "scenario": "rect_nr_det",
       "cap": 45,
       "until": "shot \\d+ frame 205",
       "tags": [
@@ -3384,59 +3116,12 @@
       "gates": []
     },
     {
-      "name": "battle_start_pm5all_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FB-3: battle start with the pm5all switch (unlit model draws through program 5, tex1 native). Byte-equal to battle_start_pic of the pre-row build.",
-      "scenario": "battle_start_pm5all",
-      "cap": 20,
-      "until": "shot \\d+ frame 182\\b",
-      "tags": [
-        "azahar",
-        "pic"
-      ],
-      "gates": []
-    },
-    {
       "name": "battle_start_t1cold_pic",
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
       "purpose": "FB-3 part 1: battle start cold det, pm4 unlit and pm5 tex1 lit; t1draw lines. Reference of battle_start_t1cold_pm5all_pic.",
       "scenario": "battle_start_t1cold",
-      "cap": 60,
-      "until": "shot \\d+ frame 182\\b",
-      "tags": [
-        "azahar",
-        "det",
-        "cold"
-      ],
-      "gates": []
-    },
-    {
-      "name": "battle_start_pm5draw_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FB-3 halo: battle 182 to 189 with pm5all and the pm5draw log (per frame sum, per use5 draw with a vertex flag above 0: producer, npal, vmax, box, pm5 uniforms). Log only.",
-      "scenario": "battle_start_pm5draw",
-      "cap": 45,
-      "until": "pm5sum f188 use5",
-      "tags": [
-        "azahar",
-        "det",
-        "cold"
-      ],
-      "gates": []
-    },
-    {
-      "name": "battle_start_t1cold_pm5all_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FB-3 part 1: battle start cold det with pm5all (unlit draws through program 5). Gate: shots equal battle_start_t1cold_pic.",
-      "scenario": "battle_start_t1cold_pm5all",
       "cap": 60,
       "until": "shot \\d+ frame 182\\b",
       "tags": [
@@ -3464,63 +3149,12 @@
       "gates": []
     },
     {
-      "name": "tour10_t1cold_pm5all_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FB-3 tex1 subject search with pm5all: tour10 cold det, the use5 1 tex1 draws (program 5) per map, and the shots of each map.",
-      "scenario": "tour10_t1cold_pm5all",
-      "cap": 90,
-      "until": "tour: done",
-      "tags": [
-        "azahar",
-        "det",
-        "cold",
-        "fb3"
-      ],
-      "gates": []
-    },
-    {
       "name": "spot_sbk56_t1det_pic",
       "kind": "azahar_pic",
       "speed": "turbo",
       "default": false,
       "purpose": "FB-3 part 1 tex1 subject: sbk_56 cold det, native tex1 draws, t1log use5 lines and shots 200 to 205.",
       "scenario": "spot_sbk56_t1det",
-      "cap": 25,
-      "until": "shot \\d+ frame 205",
-      "tags": [
-        "azahar",
-        "det",
-        "cold",
-        "fb3"
-      ],
-      "gates": []
-    },
-    {
-      "name": "spot_sbk56_t1det_notex1nat_pic",
-      "kind": "azahar_pic",
-      "speed": "turbo",
-      "default": false,
-      "purpose": "FB-3 part 1 reference: sbk_56 cold det with notex1nat (walker tex1), shots 200 to 205.",
-      "scenario": "spot_sbk56_t1det_notex1nat",
-      "cap": 25,
-      "until": "shot \\d+ frame 205",
-      "tags": [
-        "azahar",
-        "det",
-        "cold",
-        "fb3"
-      ],
-      "gates": []
-    },
-    {
-      "name": "spot_mac01_det_pm5all_pic",
-      "kind": "azahar_pic",
-      "speed": "turbo",
-      "default": false,
-      "purpose": "FB-3 part 1 mac_01 gate: cold det, pm5all, shots 200 to 205 (compare with fb_mac01_det_pic of the same build).",
-      "scenario": "spot_mac01_det_pm5all",
       "cap": 25,
       "until": "shot \\d+ frame 205",
       "tags": [

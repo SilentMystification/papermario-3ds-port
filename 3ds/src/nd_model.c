@@ -275,12 +275,11 @@ int nd_r11_state(uint32_t addr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigne
 }
 int pm_gpu_noise_ok(void);
 void pm_gpu_noise_draw(NdUnit* u, float* nzo);
-static int nd_pm5all(void) { static int v = -1; if (v < 0) v = pm_debug_has("pm5all"); return v; }
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0; nd_nat_sub = 0;
     const uint32_t f = rec[6]; /* R3 w0 flags */
     if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
-    if (c->gv && c->gv->fxon && (!c->nrm_ok || pm_debug_has("pm5off"))) return (st->why = 4, 0); /* lit or fog without the walker normal rows (PM5-3: with them the range is a pm5 draw) */
+    if (c->gv && c->gv->fxon && !c->nrm_ok) return (st->why = 4, 0); /* lit or fog without the walker normal rows (PM5-3: with them the range is a pm5 draw) */
     if (rec[26] != 0 && !c->aux_ok) { /* MDL-0 count (switch mdl0): the first 12 why 2 records, their R13 words */
         static unsigned m2_ = 0; if (m2_ < 12u && pm_debug_has("mdl0")) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
         return (st->why = 2, 0); } /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
@@ -351,7 +350,6 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
         memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16);
         d->zmix[0] = c->gv->zm[0]; d->zmix[1] = c->gv->zm[1];
         if (c->gv->fxon) { d->use5 = 1; d->fx5 = c->gv->fx; memcpy(d->nrm5, c->nrm5, sizeof d->nrm5); }
-        else if (nd_pm5all()) { d->use5 = 1; memset(&d->fx5, 0, sizeof d->fx5); memset(d->nrm5, 0, sizeof d->nrm5); } /* FB-3 switch pm5all: an unlit draw takes program 5 with no light, no fog (same colour and alpha as pm4) */
     }
     memcpy(&st->k, &k, sizeof k); st->to = to; st->tmpl = id;
     return 1;

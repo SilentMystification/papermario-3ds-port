@@ -297,7 +297,6 @@ int nd_tmpl_build(const NdTmplKey* k);
  * nd_tmpl_gen counts evictions: an id then names another key, so a shadow of the ids is stale. nd_tmpl_pin marks the start of a batch of builds. */
 void nd_tmpl_pin(void);
 unsigned nd_tmpl_gen(void);
-void nd_tmpl_set_cap(unsigned n); /* table size for the tmplsmall switch (2 to ND_TMPL_N) */
 unsigned nd_tmpl_hi(void);       /* the most entries in use (log) */
 /* the register writes of template id; returns the count (ND_TMPL_WORDS max) */
 unsigned nd_tmpl_words(int id, const NdTmplWord** out);
