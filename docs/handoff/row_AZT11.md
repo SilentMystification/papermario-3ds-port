@@ -13,3 +13,9 @@ Done: 6 concurrent runs from 3 worktrees, 2 lanes: all complete, order logged, a
 
 ## Rules
 Files: 3ds/tools/azt.ps1, azslot.ps1, azreap.ps1, 3ds/run_azahar.ps1, 3ds/tools/bench.py (queue line only). Own worktree build3ds/wt/azt11, branch azt11 from nds1. Code first (CLAUDE.md rule 5). No attribution lines, never commit 3ds/src/map_restore_table.c. Keep Azahar open. Delete this file in the last commit. Hand back once with the head; the orchestrator merges at once and tells all agents to rebase.
+
+## State (2026-11-07, after merge 99ccf421d)
+- Merged: AZT11-1..3 and AZT11-4 code (501cf83a1). All worktrees told to take the harness files from nds1.
+- AZT11-4 gate FAIL by environment: 5 cold of 18 after the first 2, causes "cold: turbo" and "cold: no kept" from other worktrees' old harness code. Rerun the gate when every worktree runs the merged harness.
+- AZT11-5: many SCENARIO BROKEN results (battle_start, battle_start_r13off, mdlw_battle, wcen_mac01) are likely the prof-mode shot line drop (row_SIZE "Oracle decision SIZE-1 shots", pm_log_evt). Rerun after LOGEVT merges.
+- Uncommitted in worktree azt11: bench_defs.json turbo default, test_catalog.md slot text. yard_hud / yard_wide_hud exist only on hud1b, fb1, enccrash.
