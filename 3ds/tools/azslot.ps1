@@ -65,41 +65,18 @@ function Close-IdleKept([int]$except = 0) {
     return $closed
 }
 
-# AZT8-1: the build id of a 3dsx (the string PM_BUILD_STR, e.g. 2500-off1), read from the file. "" when not found.
-function Get-Build3dsx([string]$path) {
-    $t = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($path))
-    $m = [regex]::Match($t, '(\d{3,5}-[A-Za-z0-9_]+)\x00')
-    if ($m.Success) { return $m.Groups[1].Value }
-    return ""
+# AZT11-4a: does the 3dsx hold the boot's build id as a NUL-terminated string (PM_BUILD_STR)? The restart is the lane's build when it does.
+function Test-Build3dsx([string]$path, [string]$build) {
+    if (-not $build) { return $false }
+    $t = [Text.Encoding]::GetEncoding(28591).GetString([IO.File]::ReadAllBytes($path))
+    return $t.Contains($build + [char]0)
 }
-
-# AZT9d-2: the value of the newest boot's line matching $pattern. A boot starts with the line "#0 log: writer" (the log is re-created or truncated).
-# Before the restart the caller takes the file length and the marker count ($oldLen, $oldMarks). The new boot is: the text after the last
-# marker when the file got shorter (truncated in place), else the text after the last marker once the marker count rises. $null after 15 s.
-function Get-BootValue([string]$log, [string]$pattern, [long]$oldLen, [int]$oldMarks) {
-    for ($w = 0; $w -lt 60; $w++) {
-        if (Test-Path $log) {
-            $t = ""
-            try { $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite'); try { $t = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch { $t = "" }
-            $marks = @([regex]::Matches($t, '(?m)^#0 log: writer')).Count
-            $truncated = $t.Length -lt $oldLen
-            if ($marks -gt 0 -and ($truncated -or $marks -gt $oldMarks)) {
-                $last = [regex]::Matches($t, '(?m)^#0 log: writer') | Select-Object -Last 1
-                $seg = $t.Substring($last.Index)
-                $m = [regex]::Match($seg, $pattern)
-                if ($m.Success) { return $m.Groups[1].Value }
-            }
-        }
-        Start-Sleep -Milliseconds 250
-    }
-    return $null
-}
-function Get-LogState([string]$log) {
-    # length and marker count of the log now (0, 0 when none)
-    if (-not (Test-Path $log)) { return @{ len = [long]0; marks = 0 } }
-    $t = ""
-    try { $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite'); try { $t = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch { return @{ len = [long]0; marks = 0 } }
-    return @{ len = [long]$t.Length; marks = @([regex]::Matches($t, '(?m)^#0 log: writer')).Count }
+# AZT11-4b: every word of the run's switches is a word of the boot's switches line (the boot line adds the launch arguments and the
+# line may end with a CR). A substring test missed a word at a line end and forced a cold start.
+function Test-SwitchWords([string]$printed, [string]$want) {
+    $have = @($printed -split '\s+' | Where-Object { $_ })
+    foreach ($w in @($want -split '\s+' | Where-Object { $_ })) { if ($have -notcontains $w) { return $false } }
+    return $true
 }
 
 function Get-SlotPaths([int]$k) {
@@ -346,4 +323,230 @@ function Start-SlotReaper([int]$k) {
     if ($held) { return }
     $ps = (Get-Process -Id $PID).Path
     Start-Process $ps -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\azreap.ps1`" -Slot $k" -WindowStyle Hidden | Out-Null
+}
+
+# ---- AZT11-1..3: one machine-wide run queue ----
+# One json file per run that waits or runs: build3ds\azslots\queue\<t>-<pid>-<rnd>.json (shared by all worktrees; the slot pool is in the main folder).
+# Every read-modify-write runs under one named mutex (Global\pm_azqueue). A run is: wait (FIFO position), granted (slot k reserved for it),
+# running (runner = its run_azahar.ps1 process, runT = start, cap = scenario cap). Stale entries are removed and their runs booted (Invoke-QSweep).
+# PM_AZQUEUE_DIR overrides the folder (self-test only).
+$script:QMutex = "Global\pm_azqueue"
+$script:QStaleBootSec = 60  # AZT11-2 (b): heartbeat older than this
+$script:QCapGraceSec = 30   # AZT11-2 (c): running past scenario cap plus this
+
+function Get-QueueDir {
+    $d = if ($env:PM_AZQUEUE_DIR) { $env:PM_AZQUEUE_DIR } else { Join-Path $script:AzRepo "build3ds\azslots\queue" }
+    New-Item -ItemType Directory -Force -Path $d | Out-Null
+    return $d
+}
+function Get-NowMs { return [long]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) }
+function Get-ProcStart([int]$id) {
+    if ($id -le 0) { return [long]0 }
+    try { return (Get-Process -Id $id -ErrorAction Stop).StartTime.Ticks } catch { return [long]0 }
+}
+function Test-ProcAlive([int]$id, [long]$start) {
+    # alive, and (when start is known) the same process as when it was recorded (a reused pid is gone)
+    if ($id -le 0) { return $false }
+    $ticks = Get-ProcStart $id
+    if ($ticks -eq 0) { return $false }
+    return ($start -eq 0 -or $ticks -eq $start)
+}
+function Get-ParentPid([int]$id) {
+    try { return [int](Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction Stop).ParentProcessId } catch { return 0 }
+}
+
+function Invoke-QLocked([scriptblock]$body) {
+    # Runs $body under the queue mutex. Results go to $script: variables. A lock wait over 20 s skips the body.
+    $m = New-Object Threading.Mutex($false, $script:QMutex)
+    $got = $false
+    try { $got = $m.WaitOne(20000) } catch [Threading.AbandonedMutexException] { $got = $true }
+    try { if ($got) { & $body } else { Write-Host "queue: lock wait over 20 s, skipped" } }
+    finally { if ($got) { try { $m.ReleaseMutex() } catch {} }; $m.Dispose() }
+}
+
+function Save-QEntry([string]$path, $e) {
+    $tmp = "$path.$PID.tmp"
+    ($e | ConvertTo-Json -Depth 4) | Set-Content $tmp -Encoding UTF8
+    Move-Item $tmp $path -Force
+}
+function Read-QEntry([string]$path) {
+    if (-not (Test-Path $path)) { return $null }
+    try { $e = Get-Content $path -Raw | ConvertFrom-Json; $e | Add-Member -NotePropertyName path -NotePropertyValue $path -Force; return $e } catch { return $null }
+}
+function Read-QEntries {
+    # All entries (no lock), oldest first (t, then file name)
+    $out = @()
+    foreach ($f in @(Get-ChildItem (Get-QueueDir) -Filter "*.json" -File -ErrorAction SilentlyContinue)) {
+        $e = Read-QEntry $f.FullName
+        if ($e) { $out += $e }
+    }
+    return @($out | Sort-Object @{ e = { [long]$_.t } }, @{ e = { [string]$_.path } })
+}
+function Set-QFields([string]$path, [hashtable]$fields) {
+    # Under the queue mutex: sets fields of one entry (read, change, write). A missing entry: nothing.
+    Invoke-QLocked {
+        $e = Read-QEntry $path
+        if (-not $e) { return }
+        foreach ($k in $fields.Keys) { $e | Add-Member -NotePropertyName $k -NotePropertyValue $fields[$k] -Force }
+        Save-QEntry $path $e
+    }
+}
+function New-QEntry([string]$scenario, [string]$row, [string]$lane, [string]$speed, [string]$tree, [int]$want, [long]$t) {
+    $par = Get-ParentPid $PID
+    return [pscustomobject][ordered]@{
+        t = $t; tree = $tree; lane = $lane; speed = $speed; scenario = $scenario; row = $row; want = $want
+        owner = [int]$PID; ownerStart = (Get-ProcStart $PID); parent = $par; parentStart = (Get-ProcStart $par)
+        hb = (Get-NowMs); state = "wait"; slot = 0; runner = 0; runnerStart = [long]0; cap = 0; runT = [long]0; skipped = 0
+    }
+}
+
+function Get-StaleReason($e, [long]$now) {
+    # AZT11-2: "a" owner (or its parent) gone; "b" heartbeat older than 60 s; "c" running past its cap plus 30 s. "" when fresh.
+    if (-not (Test-ProcAlive ([int]$e.owner) ([long]$e.ownerStart))) { return "a" }
+    if ([int]$e.parent -gt 0 -and -not (Test-ProcAlive ([int]$e.parent) ([long]$e.parentStart))) { return "a" }
+    if (($now - [long]$e.hb) -gt ($script:QStaleBootSec * 1000)) { return "b" }
+    if ([string]$e.state -eq "running" -and ($now - [long]$e.runT) -gt (([int]$e.cap + $script:QCapGraceSec) * 1000)) { return "c" }
+    return ""
+}
+
+function Stop-QRunner($e, [string]$code) {
+    # Boots a stale run: stop.request in its slot (run_azahar.ps1 ends the run and keeps a healthy Azahar, paused), then the
+    # run_azahar process is killed when it has not ended in 10 s. Written to pool.log.
+    $slot = [int]$e.slot
+    $rid = [int]$e.runner; $rst = [long]$e.runnerStart
+    if (-not (Test-ProcAlive $rid $rst)) { return }
+    $sdir = if ($slot -gt 0) { (Get-SlotPaths $slot).dir } else { "" }
+    if ($sdir) { New-Item -ItemType Directory -Force -Path $sdir | Out-Null; Set-Content (Join-Path $sdir "stop.request") "stale run booted: $code" }
+    $how = "ended on stop request"
+    for ($i = 0; $i -lt 40 -and (Test-ProcAlive $rid $rst); $i++) { Start-Sleep -Milliseconds 250 }
+    if (Test-ProcAlive $rid $rst) { Stop-Process -Id $rid -Force -ErrorAction SilentlyContinue; $how = "killed after 10 s" }
+    if ($sdir) { Remove-Item (Join-Path $sdir "stop.request") -Force -ErrorAction SilentlyContinue }
+    if ($slot -gt 0) { Write-PoolLog $slot "stale" $rid "-" ("stale run booted: {0} ({1}), {2} {3}" -f $code, $how, $e.scenario, $e.row) }
+    Write-Host ("queue: stale run booted ({0}): {1} row {2} slot {3}, {4}" -f $code, $e.scenario, $e.row, $slot, $how)
+}
+
+function Invoke-QSweep {
+    # AZT11-2: removes stale entries and boots their runs. Called on every enqueue and every wait poll (azt.ps1) and by azreap.ps1.
+    Invoke-QLocked {
+        $now = Get-NowMs
+        foreach ($e in @(Read-QEntries)) {
+            $r = Get-StaleReason $e $now
+            if (-not $r) { continue }
+            if ([string]$e.state -ne "wait") { Stop-QRunner $e $r }
+            Remove-Item $e.path -Force -ErrorAction SilentlyContinue
+            if ([string]$e.state -eq "wait") { Write-Host ("queue: stale waiting entry removed ({0}): {1} row {2}" -f $r, $e.scenario, $e.row) }
+        }
+    }
+}
+
+function Get-SlotLane([int]$k) {
+    # The key of the ROM and speed the slot's Azahar has loaded: "<lane>|<turbo|normal>" ("" = never run). Written by run_azahar.ps1.
+    $f = Join-Path (Get-SlotPaths $k).dir "lane.txt"
+    if (Test-Path $f) { return ([string](Get-Content $f -Raw)).Trim() }
+    return ""
+}
+function Test-SlotFree([int]$k) {
+    if (-not (Enter-Slot $k 0)) { return $false }
+    Exit-Slot $k
+    return $true
+}
+
+function Invoke-QGrant {
+    # AZT11-1: for every free slot (no granted or running entry on it, mutex free), grant the oldest waiting entry that may use it:
+    #  1. the oldest entry that was passed over twice already (skipped >= 2): never more than 2 turns behind a younger one
+    #  2. else the oldest entry whose lane and speed are the ROM and speed the slot holds (saves a reload and a cold start)
+    #  3. else the oldest entry (FIFO)
+    # Each entry older than the granted one gets skipped + 1. An entry with want > 0 (a GPU retry) is granted only its slot.
+    Invoke-QLocked {
+        $n = Get-SlotCount
+        $ents = @(Read-QEntries)
+        for ($k = 1; $k -le $n; $k++) {
+            if (@($ents | Where-Object { ([string]$_.state -eq "granted" -or [string]$_.state -eq "running") -and [int]$_.slot -eq $k }).Count) { continue }
+            $waiting = @($ents | Where-Object { [string]$_.state -eq "wait" -and ([int]$_.want -eq 0 -or [int]$_.want -eq $k) })
+            if (-not $waiting.Count) { continue }
+            if (-not (Test-SlotFree $k)) { continue }
+            $key = Get-SlotLane $k
+            $pick = @($waiting | Where-Object { [int]$_.skipped -ge 2 } | Select-Object -First 1)
+            if (-not $pick.Count) { $pick = @($waiting | Where-Object { ([string]$_.lane + "|" + [string]$_.speed) -eq $key } | Select-Object -First 1) }
+            if (-not $pick.Count) { $pick = @($waiting | Select-Object -First 1) }
+            $pick = $pick[0]
+            foreach ($w in $waiting) {
+                if ([long]$w.t -lt [long]$pick.t) { $w.skipped = [int]$w.skipped + 1; Save-QEntry $w.path $w }
+            }
+            $pick.state = "granted"; $pick.slot = $k
+            Save-QEntry $pick.path $pick
+        }
+    }
+}
+
+function Get-QueueSummary {
+    # AZT11-3: the queue and the running runs, one line each (azt.ps1 -Queue; bench.py prints the first line on a start)
+    $ents = @(Read-QEntries)
+    $now = Get-NowMs
+    $run = @($ents | Where-Object { [string]$_.state -eq "running" -or [string]$_.state -eq "granted" })
+    $wait = @($ents | Where-Object { [string]$_.state -eq "wait" })
+    $lines = @()
+    $lines += ("QUEUE: {0} waiting, {1} running or granted, {2} Azahar slots" -f $wait.Count, $run.Count, (Get-SlotCount))
+    foreach ($e in $run) {
+        $age = [math]::Round((($now - [long]$e.runT) / 1000), 0)
+        $alive = Test-ProcAlive ([int]$e.owner) ([long]$e.ownerStart)
+        $ownerTxt = if ($alive) { "alive" } else { "gone" }
+        $lines += ("  run   slot {0} lane '{1}' {2} row {3} age {4} s state {5} owner {6}" -f $e.slot, $e.lane, $e.scenario, $e.row, $age, $e.state, $ownerTxt)
+    }
+    $i = 0
+    foreach ($e in $wait) {
+        $i++
+        $waited = [math]::Round((($now - [long]$e.t) / 1000), 0)
+        $alive = Test-ProcAlive ([int]$e.owner) ([long]$e.ownerStart)
+        $ownerTxt = if ($alive) { "alive" } else { "gone" }
+        $lines += ("  wait  {0} lane '{1}' {2} row {3} waited {4} s owner {5}" -f $i, $e.lane, $e.scenario, $e.row, $waited, $ownerTxt)
+    }
+    return $lines
+}
+
+# AZT11-4c: a fourth restart key method. SwitchToThisWindow makes Azahar the foreground window even when the foreground lock refuses
+# SetForegroundWindow (a background agent); then the key goes in as keyboard input (Send-AzKeyEvent).
+if (-not ([System.Management.Automation.PSTypeName]'AzSwitch').Type) {
+    Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class AzSwitch {
+  [DllImport("user32.dll")] public static extern void SwitchToThisWindow(IntPtr h, bool altTab);
+}
+"@
+}
+function Send-AzKeyEventSwitch([IntPtr]$h, [string]$seq) {
+    [AzSwitch]::SwitchToThisWindow($h, $true)
+    Start-Sleep -Milliseconds 200
+    return (Send-AzKeyEvent $h $seq)
+}
+
+# AZT11-4: the boot of this run is the one that prints the run's nonce (bootid=<n>, the first word of its switches line; the game prints
+# the build line just before the switches line). Searches the head of the game log (a restart that writes from offset 0) and its tail
+# (an appended boot). Returns @{ build; switches } once the line is complete, else $null.
+function Find-BootNonce([string]$log, [string]$nonce) {
+    if (-not (Test-Path $log)) { return $null }
+    $needle = "bootid=$nonce"
+    foreach ($where in @("head", "tail")) {
+        $t = ""
+        try {
+            $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite')
+            try {
+                $n = [int][Math]::Min($fs.Length, 262144)
+                if ($n -le 0) { continue }
+                if ($where -eq "head") { $fs.Seek(0, 'Begin') | Out-Null } else { $fs.Seek(-$n, 'End') | Out-Null }
+                $buf = New-Object byte[] $n
+                $got = $fs.Read($buf, 0, $n)
+                $t = [Text.Encoding]::UTF8.GetString($buf, 0, $got)
+            } finally { $fs.Close() }
+        } catch { continue }
+        $i = $t.IndexOf($needle)
+        if ($i -lt 0) { continue }
+        $eol = $t.IndexOf("`n", $i)
+        if ($eol -lt 0) { return $null } # the switches line is not complete yet
+        $ls = $t.LastIndexOf("`n", $i) + 1
+        $bm = [regex]::Matches($t.Substring(0, $ls), '(?m)^#\d+ build (\S+) git')
+        if ($bm.Count -eq 0) { return $null }
+        return [pscustomobject]@{ build = $bm[$bm.Count - 1].Groups[1].Value; switches = ($t.Substring($ls, $eol - $ls).Trim() -replace '^#\d+ switches ', '') }
+    }
+    return $null
 }

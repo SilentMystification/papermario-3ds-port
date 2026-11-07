@@ -13,6 +13,7 @@ if (-not $got) { exit 0 }
 $s = Get-SlotPaths $Slot
 while ($true) {
     Start-Sleep -Seconds 15
+    Invoke-QSweep # AZT11-2: the reaper also boots stale runs (the queue keeper is any waiting azt.ps1)
     $kept = Get-KeptAzahar $Slot
     if (-not $kept) { break }
     if (-not (Test-Path $s.keepFile)) { continue }
