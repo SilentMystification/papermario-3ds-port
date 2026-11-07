@@ -177,11 +177,12 @@ static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, 
 }
 
 /* ---- S3N-3a: the state of one model record as a native draw (pure: record words and NdMCtx) ---- */
+int pm_debug_has(const char* name);
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0;
     const uint32_t f = rec[6]; /* R3 w0 flags */
     if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
-    if (c->gv && c->gv->fxon) return (st->why = 4, 0); /* lit or fog: pm5 path, later row */
+    if (c->gv && c->gv->fxon && (!c->nrm_ok || pm_debug_has("pm5off"))) return (st->why = 4, 0); /* lit or fog without the walker normal rows (PM5-3: with them the range is a pm5 draw) */
     if (rec[26] != 0 && !c->aux_ok) return (st->why = 2, 0); /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
     if (rec[22] != 0 || rec[23] != 0) return (st->why = 3, 0); /* R11: custom gfx pre and post */
     const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
@@ -236,6 +237,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     if (c->gv) {
         memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16);
         d->zmix[0] = c->gv->zm[0]; d->zmix[1] = c->gv->zm[1];
+        if (c->gv->fxon) { d->use5 = 1; d->fx5 = c->gv->fx; memcpy(d->nrm5, c->nrm5, sizeof d->nrm5); }
     }
     memcpy(&st->k, &k, sizeof k); st->to = to; st->tmpl = id;
     return 1;

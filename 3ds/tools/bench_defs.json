@@ -1755,7 +1755,8 @@
         }
       ],
       "gates": []
-    },
+    }
+,
     {
       "name": "rect_post_mac01",
       "kind": "azahar_pic",
@@ -1953,6 +1954,75 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+    {
+      "name": "battle_start_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PM5 picture by eye: battle start on kmr_03, shot mode frames 182 on.",
+      "scenario": "battle_start",
+      "cap": 20,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_pm5off_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PM5 reference: battle start with the pm5 native path off (walker pm5 close).",
+      "scenario": "battle_start_pm5off",
+      "cap": 20,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_pm5off_ndmcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PM5-3 reference: iwa_10 ndmcheck with pm5 native off.",
+      "scenario": "spot_iwa10_pm5off_ndmcheck",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "ndmcheck",
+        "iwa10"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_eq",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndm_eq",
+          "op": ">",
+          "value": 0
+        }
+      ]
     }
   ],
   "legacy": {

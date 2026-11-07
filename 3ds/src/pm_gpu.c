@@ -1116,7 +1116,11 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 static void nd_native_submit(const NdDraw* dp, int tex) {
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, pm_gbi.c) */
     const NdDraw* d = dp;
-    if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; }
+    /* PM5 cause 3: a program change clears the whole native shadow (the citro3d uniform file is one file for all programs, and the template shadow does not know the program) */
+    if (d->use5) {
+        if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; }
+        nd_shadow_reset(&ndn_sh); ndn_mode = 1;
+    } else if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
     if (buf_cur != 2) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, gring, 16, 3, 0x210); buf_cur = 2; }
     if (off_active) scissor_off(); else stage_scissor(); /* OFF-1: an off-screen target has its own scissor (citro3d state, not in the template words) */
     sh_user_clip(1);
@@ -1158,8 +1162,25 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
 /* S3N-3c: the palette 0 product post x game (the native model draw, nd_model.c) and the submit of one native model draw (emit 1, S3N-4):
  * the attribute locations and the index address of its static range. */
 void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { NdtT t = pm_gpu_ndt_begin(); nd_mtx_pcomp(o, gv_post.m, m); pm_gpu_ndt_end(t, NDT_MTX); }
+/* PM5-3: the pm5 block of a model draw from its NdDraw fields (the same calls as pm5_upload, values of the draw) */
+static void pm5_upload_draw(const NdDraw* d) {
+    pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4;
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, d->uvso[0], d->uvso[1], d->uvso[2], d->uvso[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, d->cmul[0], d->cmul[1], d->cmul[2], d->cmul[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, d->cadd[0], d->cadd[1], d->cadd[2], d->cadd[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_zmix, d->zmix[0], zmix_y_dbg(d->zmix[1]), 0.f, 0.f);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, d->fx5.lflag[0], d->fx5.lflag[1], d->fx5.lflag[2], d->fx5.lflag[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, d->fx5.fogu[0], d->fx5.fogu[1], d->fx5.fogu[2], d->fx5.fogu[3]);
+    if (d->fx5.lflag[0] != 0.f) { /* the light table of the draw: the walker's flush_light_tab reads g_fx; the model range carries the same block */
+        const PmFx* sv = &g_fx; PmFx tmp = d->fx5; g_fx = tmp; flush_light_tab(); g_fx = *sv; }
+    sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal, (const C3D_Mtx*)d->pal[0]);
+    for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 4 + r, d->nrm5[r][0], d->nrm5[r][1], d->nrm5[r][2], 0.f);
+    gv_palup_n++; pm_dc_c[DC_PALUP]++;
+}
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex) {
     rp_src_ = 2;
+    if (d->use5) { pm5_upload_draw(d); d->no_uni = 1; d->npal = 0; d->has_uvx = 0; }
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys((void*)sd) - 0x18000000u);
     d->nidx = nidx;
@@ -1190,8 +1211,31 @@ static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
     return 1;
 }
 static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex); }
+/* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw_cpu's pm5 block, no cache: the native batch writes them
+ * in order before its draw). Palette entries: the pm5 register layout, 7 rows per entry (4 position, 3 normal). */
+static void pm5_upload(void) {
+    pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4;
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, g_fx.lflag[0], g_fx.lflag[1], g_fx.lflag[2], g_fx.lflag[3]);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, g_fx.fogu[0], g_fx.fogu[1], g_fx.fogu[2], g_fx.fogu[3]);
+    if (g_fx.lflag[0] != 0.f) flush_light_tab();
+    sh5_fx = g_fx; sh5_ok = 1;
+    sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok);
+    for (unsigned k = 0; k < pal_n; k++) {
+        unsigned gm = pal_g[k];
+        if (pcomp_gen[gm] != post_gen) pcomp_calc(gm);
+        C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
+        if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
+        gv_palup_n++; pm_dc_c[DC_PALUP]++;
+    }
+    sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
+}
 static int nd_raw_native(void) {
-    if (!graw_is_pm4()) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a */
+    if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
+    if (g_use5 && combine == 8 && (plan.uses_tex1 || plan.uses_noise)) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* PM5 cause 2: the pm5 file has no second uv map or noise row for the native draw */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; cen_why = CW_NRK(1); return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; }
@@ -1261,6 +1305,7 @@ static int nd_raw_native(void) {
     d.u[1] = u1;
     if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)u4_uvx; d.has_uvx = 1; }
     d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
+    if (g_use5) { pm5_upload(); d.use5 = 1; d.no_uni = 1; d.npal = 0; d.has_uvx = 0; } /* PM5-2; PM5 cause 2: no pm4 unit 1 uv row in a pm5 draw */
     memcpy(d.uvso, g_uvso, 16); memcpy(d.cmul, g_cmul, 16); memcpy(d.cadd, g_cadd, 16);
     d.zmix[0] = g_zmix[0]; d.zmix[1] = zmix_y_dbg(g_zmix[1]);
     d.idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(gidx + gi_start) - 0x18000000u);
@@ -3076,6 +3121,8 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = ax_ok ? (nd_st.om_h & ~ax.wh) | ax.om_h : nd_st.om_h; c.base_ol = ax_ok ? (nd_st.om_l & ~ax.wl) | ax.om_l : nd_st.om_l; /* B8; S3L-3: the R13 mode ops first */
     c.known_h = nd_st.om_kh | (ax_ok ? ax.wh : 0u); c.known_l = nd_st.om_kl | (ax_ok ? ax.wl : 0u);
+    /* PM5-3: the normal rows of the walker's matrix (gm_nrm: model view rows 0 to 2, w 0) for a lit or fogged range */
+    c.nrm_ok = gv5_on; for (int r_ = 0; r_ < 3; r_++) { c.nrm5[r_][0] = nd_mv[nd_mv_sp][r_][0]; c.nrm5[r_][1] = nd_mv[nd_mv_sp][r_][1]; c.nrm5[r_][2] = nd_mv[nd_mv_sp][r_][2]; c.nrm5[r_][3] = 0.f; }
     int n = nd_model_draw(rec, &c, geo, emit);
     int valid = 0;
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */

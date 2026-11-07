@@ -7872,7 +7872,8 @@
         }
       ],
       "reason": "LOG4 gate A baseline. Cap 45 s: 300 drawn frames at about 20 fps after the pond load."
-    },
+    }
+,
     {
       "name": "rect_post_mac01",
       "status": "unverified",
@@ -8128,6 +8129,63 @@
         }
       ],
       "reason": "LOGFIX fault 2 bench copy of battle_start with cap 60 s, so the run reaches frame 182 on the slow machine."
+    },
+    {
+      "name": "battle_start_pm5off",
+      "status": "verified",
+      "subject": "battle start, pm5 native off (walker pm5 close): the pre-PM5 reference picture",
+      "proves": "The battle debug switch starts a real battle from a warp.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 pm5off",
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "battle mode",
+          "regex": "game mode 8 frame"
+        },
+        {
+          "name": "shot at 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "PM5 reference: battle_start with the pm5 native path off (debug switch pm5off). Cap as battle_start."
+    },
+    {
+      "name": "spot_iwa10_pm5off_ndmcheck",
+      "status": "pending",
+      "subject": "iwa_10 (Mario on the floor at -662 0 587, warp entry 0). Shots at frames 200 to 205 and the ndmcheck window line.",
+      "proves": "DRAW2 row 1: each native model draw record at iwa_10 matches the walker draw (diff 0) with the wide no-translation records native.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 ndmcheck shots shotwin=200:6 loglevel=debug pm5off",
+      "until": "ndmcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "ndmcheck window: eq above 0 and diff 0",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "PM5-3 reference: iwa_10 ndmcheck with pm5 native off."
     }
   ]
 }

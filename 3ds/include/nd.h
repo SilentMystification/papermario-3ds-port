@@ -217,6 +217,9 @@ typedef struct NdDraw {
     uint32_t nidx;            /* index count */
     float uvx[4];             /* SGEN-2: the unit 1 uv map (pm_gpu_set_tex1), game order; written at loc_uvx when has_uvx */
     unsigned loc_uvx; uint8_t has_uvx;
+    uint8_t use5, no_uni;     /* PM5-2: program 5 batch (the caller wrote its pm5 uniforms); no_uni: nd_emit writes no palette or uvso block */
+    PmFx fx5;                 /* PM5-3: the pm5 light, fog and texgen block of a model range (use5) */
+    float nrm5[3][4];         /* PM5-3: the normal rows of palette entry 0 (the walker's gm_nrm: model view rows 0 to 2) */
 } NdDraw;
 #define ND_NPAL 21
 typedef struct NdShadow {
@@ -301,6 +304,7 @@ typedef struct NdMCtx {
     const NdUnit* u0;          /* texture unit 0 of the draw (nd_tex_get + nd_tex_block), NULL: no texture */
     int i8_0;                  /* unit 0 raster is I8 */
     const NdGvP* gv;           /* uvso, cmul, cadd, zmix of the draw (nd_gv_params) */
+    int nrm_ok; float nrm5[3][4]; /* PM5-3: the walker normal rows at the draw (pal_ntab of the model's matrix); nrm_ok 0: a lit or fogged range refuses (why 4) */
     int has_comb; uint32_t comb_w0, comb_w1; /* R4 combine entry (words of the G_SETCOMBINE the record points to) */
     int tex_w, tex_h;          /* S3N-3c: the texture size of unit 0 (pot of the desc w, h, at least 8): the uv scale of the gv params */
     uint32_t tss;              /* S3N-3c: the TEXTURE scale word of the gv params (the list TEXTURE or the walker tss); gv is made per range */

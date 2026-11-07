@@ -80,7 +80,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
     }
     if (unit_chg && !cfg_cleared) o = one(o, 0x80, 0x4, 0x10000u); /* citro3d clears the texture cache at every bind: a slab that was freed and reused holds new texels under an old address */
     /* palette entries and the per draw uniforms */
-    for (unsigned k = 0; k < d->npal && k < ND_NPAL; k++) {
+    for (unsigned k = 0; k < d->npal && k < ND_NPAL && !d->no_uni; k++) {
         if (!sh->pal_valid[k] || memcmp(sh->pal[k], d->pal[k], sizeof sh->pal[k]) != 0) {
             o = uni(o, d->loc_pal + 4u * k, d->pal[k], 4);
             memcpy(sh->pal[k], d->pal[k], sizeof sh->pal[k]); sh->pal_valid[k] = 1;
@@ -89,7 +89,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
     {
         float all[16], z[4] = { d->zmix[0], d->zmix[1], 0.f, 0.f };
         rev4(all, d->uvso); rev4(all + 4, d->cmul); rev4(all + 8, d->cadd); rev4(all + 12, z);
-        if (!sh->uni_valid || memcmp(sh->uni, all, sizeof all) != 0) {
+        if (!d->no_uni && (!sh->uni_valid || memcmp(sh->uni, all, sizeof all) != 0)) {
             o = uni(o, d->loc_var, all, 4);
             memcpy(sh->uni, all, sizeof all); sh->uni_valid = 1;
         }
