@@ -36,7 +36,7 @@ int pm_gpu_gidx_room(unsigned n);
 const unsigned char* pm_gpu_gring(void);
 unsigned pm_gpu_flush_gen(void);
 int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2);
-int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const PmFx* fx, const unsigned ri[3], unsigned ro[3]);
+int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const PmFx* fx, const unsigned ri[3], unsigned ro[3], unsigned* mv); /* mv (may be NULL): bit i = ro[i] is an edge copy (TRI-2) */
 void pm_gpu_gv_reset(void);
 void pm_gpu_gv_stats(unsigned o[4]);
 void pm_gpu_note_mvp(const float m[4][4], float sx, float sy, float tx, float ty);

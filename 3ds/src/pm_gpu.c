@@ -2488,38 +2488,73 @@ static int gtrip_batch_open(int use5, const PmFx* fx, const float vp[4], const f
  * last note_mvp (ui_ortho), so the draw matrix must be that kind. The vertices are tested like the CPU path: clip x at +-w * 0.999. At most WIDE_MAXV index entries are tested (a bigger draw keeps the CPU path).
  * 0: native, 1: edge vertex or a matrix of the other kind, 2: too many vertices or no index list. */
 #define WIDE_MAXV 192u
-static struct { unsigned ortho, nat, edge, big, all; } wide_c;
+static struct { unsigned ortho, nat, edge, big, all, copy; } wide_c;
 static void wide_log(unsigned f) { /* called from ndn_log every 300 frames; the window counts reset at the print */
-    pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u all %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all);
+    pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u all %u copy %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all, wide_c.copy);
     memset(&wide_c, 0, sizeof wide_c);
+}
+/* TRI-2: the CPU rule of pm_gpu_vert_clip for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999). */
+static int wide_on_edge(const float m[4][4], unsigned v, float* cxo) {
+    const short* p = (const short*)(gring + 16u * v);
+    float x = (float)p[0], y = (float)p[1], z = (float)p[2];
+    float cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0], cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+    if (cxo) *cxo = cx;
+    return cw > 0.f && (cx >= cw * 0.999f || cx <= -cw * 0.999f);
+}
+/* TRI-2: a new ring slot with a copy of src whose clip x is 1.25 times the CPU clip x. For the orthographic kind only the object x moves: x' = x + 0.25 * cx / m00 keeps cw.
+ * The short x is rounded (at most 0.5 raw unit). The caller sets the flag and rgen of the slot. src stays as it was (the CPU path reads it). Returns the slot or -1. */
+static int wide_copy_vtx(const float m[4][4], unsigned src) {
+    float cx = 0.f;
+    wide_on_edge(m, src, &cx);
+    float xn = (float)((const short*)(gring + 16u * src))[0] + 0.25f * cx / m[0][0];
+    if (gring_n + 1 > GRING_VTX || !(xn > -32768.f && xn < 32767.f)) return -1;
+    unsigned n = gring_n++;
+    memcpy(gring + 16u * n, gring + 16u * src, 16);
+    *(short*)(gring + 16u * n) = (short)(xn >= 0.f ? xn + 0.5f : xn - 0.5f);
+    rgen[n] = 0; rk[n] = 0;
+    return (int)n;
+}
+/* TRI-2: out[i] = idx[i] for a vertex off the edge, else a copy with x moved (one copy per vertex). 0: no room. */
+static int wide_copy_list(const float m[4][4], const unsigned short* idx, unsigned n, unsigned short* out) {
+    for (unsigned i = 0; i < n; i++) {
+        int c = -1;
+        if (!wide_on_edge(m, idx[i], NULL)) { out[i] = idx[i]; continue; }
+        for (unsigned j = 0; j < i; j++) if (idx[j] == idx[i] && out[j] != idx[j]) { c = (int)out[j]; break; }
+        if (c < 0 && (c = wide_copy_vtx(m, idx[i])) < 0) return 0;
+        out[i] = (unsigned short)c;
+    }
+    return 1;
 }
 static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned n) {
     int r = 0;
     const int wz = m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f;
     unsigned ne = 0;
     wide_c.ortho++;
-    if (!idx || !gring) r = 2;
+    if (!idx || !gring || !rgen) r = 2;
     else if (!wz || !ui_ortho) r = 1;
     else if (n > WIDE_MAXV) r = 2;
-    else for (unsigned i = 0; i < n; i++) {
-        const short* v = (const short*)(gring + 16u * idx[i]);
-        float x = (float)v[0], y = (float)v[1], z = (float)v[2];
-        float cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0], cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-        if (cw > 0.f && (cx >= cw * 0.999f || cx <= -cw * 0.999f)) ne++;
+    else for (unsigned i = 0; i < n; i++) if (wide_on_edge(m, idx[i], NULL)) ne++;
+    if (r == 0 && ne) { /* TRI-2: edge vertices are copied with x moved (wide_copy_vtx) when m00 moves them and the ring has room */
+        if (m[0][0] == 0.f || gring_n + ne > GRING_VTX) r = 1;
+        else r = ne == n ? 3 : 4;
     }
-    if (r == 0 && ne) r = ne == n ? 3 : 1;
     if (r == 3) wide_c.all++;
-    else if (r == 0) wide_c.nat++; else if (r == 1) wide_c.edge++; else wide_c.big++;
+    else if (r == 0) wide_c.nat++;
+    else if (r == 1) wide_c.edge++;
+    else if (r == 4) wide_c.copy++;
+    else wide_c.big++;
     { static unsigned seen; if (r == 1 && seen < 8u) { seen++; pm_log("wideedge f%u n %u ui %d wz %d", pm_frame_count(), n, ui_ortho, wz); } } /* WIDE1-2: which draws hit the edge rule */
     return r;
 }
-/* nonzero: the CPU path keeps the draw (an edge-only range is native in pm_gpu_grange with the x scale, the would and why tests take it as native) */
-static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) { int r = wide_edge_k(m, idx, n); return r == 3 ? 0 : r; }
+/* 0: native (no vertex on the edge, or the edge vertices are copies: wide_copy_list, pm_gpu_gtrip). 1 and 2: the CPU path keeps the draw. 3 (every vertex on the edge) is the wedge of pm_gpu_grange. */
+static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) { int r = wide_edge_k(m, idx, n); return r == 3 || r == 4 ? 0 : r; }
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
-                 const PmFx* fx, const unsigned ri[3], unsigned ro[3]) {
+                 const PmFx* fx, const unsigned ri[3], unsigned ro[3], unsigned* mv) {
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
     if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
+    unsigned mvm = 0; /* TRI-2: bit i: ro[i] is a copy with x moved (the caller keeps vert_ring) */
+    if (mv) *mv = 0;
     if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
     if (r_decal && r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
     if (pm_wide && !off_active) { /* F07-7: the CPU path moves edge vertices of UI quads. The wide post matrix is made for a perspective game matrix. */
@@ -2527,7 +2562,9 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
             unsigned short t3[3];
             if (g[1] != g[0] || g[2] != g[0] || ri[0] > 0xffffu || ri[1] > 0xffffu || ri[2] > 0xffffu) return 0;
             t3[0] = (unsigned short)ri[0]; t3[1] = (unsigned short)ri[1]; t3[2] = (unsigned short)ri[2];
-            if (wide_edge_k(tab[g[0]], t3, 3) != 0) { cen_fb |= CEN_FB_WIDE; return 0; } /* CEN-1a */
+            const int we = wide_edge_k(tab[g[0]], t3, 3); /* TRI-2: 3 or 4 = edge vertices, copied in the loop below */
+            if (we == 1 || we == 2) { cen_fb |= CEN_FB_WIDE; return 0; } /* CEN-1a */
+            if (we) for (int i = 0; i < 3; i++) if (wide_on_edge(tab[g[0]], ri[i], NULL)) mvm |= 1u << i;
         } else for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) { cen_fb |= CEN_FB_WIDE; return 0; } }
     }
     if (gidx_n + 3 > GRING_IDX) return 0;
@@ -2569,6 +2606,14 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     for (int i = 0; i < 3; i++) {
         unsigned r = ri[i];
         ro[i] = r;
+        if (mvm & (1u << i)) { /* TRI-2: an edge vertex: a copy with x moved (the CPU rule), with this palette index */
+            const int n = wide_copy_vtx(tab[g[i]], r);
+            if (n < 0) return 0;
+            *(unsigned short*)(gring + 16u * (unsigned)n + 6) = (unsigned short)k3[i];
+            rgen[n] = pal_gen; rk[n] = (unsigned char)k3[i];
+            ro[i] = (unsigned)n;
+            continue;
+        }
         if (rgen[r] == pal_gen) continue; /* in this palette already, with the right index */
         if (rgen[r] != 0 && rk[r] == k3[i]) { rgen[r] = pal_gen; continue; } /* an older palette gave it the same index */
         if (rgen[r] == 0 && r >= gring_fl) { /* first use, and the GPU has not seen the ring slot */
@@ -2589,6 +2634,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     gidx[gidx_n++] = (unsigned short)ro[0];
     gidx[gidx_n++] = (unsigned short)ro[1];
     gidx[gidx_n++] = (unsigned short)ro[2];
+    if (mv) *mv = mvm;
     gni += 3;
     return 1;
 }
@@ -2643,6 +2689,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
     if (r_zmark) return 0;
     if (r_decal && r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
+    unsigned short wide_idx[WIDE_MAXV]; /* TRI-2: the range with its edge vertices copied */
     if (pm_wide && !off_active && !wedge_x) {
         const float(*m)[4] = tab[gm];
         if (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) {
@@ -2657,7 +2704,8 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
                 wedge_x = 0; rebuild_3d();
                 return r2 ? 1 : 0;
             }
-            if (wr) return 0;
+            if (wr == 4) { if (!wide_copy_list(m, idx, nidx, wide_idx)) return 0; idx = wide_idx; } /* TRI-2 */
+            else if (wr) return 0;
         }
     }
     if (gidx_n + nidx > GRING_IDX) return 0;
