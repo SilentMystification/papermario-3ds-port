@@ -3572,8 +3572,10 @@ static void spr_nat_log(void) {
 }
 int pm_gpu_spr_checking(void) { static int on = -1; if (on < 0) on = pm_debug_has("sprcheck"); return on; }
 int pm_gpu_spr_native(const uint32_t* rec) {
-    static int on = -1;
+    static int on = -1, off = -1;
     if (on < 0) on = pm_debug_has("sprcheck");
+    if (off < 0) off = pm_debug_has("nosprnat"); /* SPR4 reference: the walker draws every sprite record (nd_walk.c G_VTX arm) */
+    if (off) return 0;
     if (on) { pm_gpu_spr_rec(rec); return 0; }
     NdDraw n;
     NdMState st;
