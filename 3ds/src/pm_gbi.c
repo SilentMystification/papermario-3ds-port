@@ -4019,11 +4019,12 @@ static void op_settile(u32 w0, u32 w1) {
     unsigned wr[4] = { (w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15 };
     set_tile((w1 >> 24) & 7, (w0 >> 21) & 7, (w0 >> 19) & 3, w0 & 0x1ff, (w1 >> 20) & 15, wr, w1 & 15, (w1 >> 10) & 15);
 }
-static void op_loadblock(u32 w0, u32 w1) {
-            unsigned tm = nd_ws.tst1.tile_tmem[(w1 >> 24) & 7];
+/* CORE-2b batch D2: block load setter (decoded fields: tile and texel count). */
+static void set_loadblock(unsigned tile, unsigned texels) {
+            unsigned tm = nd_ws.tst1.tile_tmem[tile];
             {
                 /* V13: the block also covers the TMEM above it (a half-height aux tile reads there) */
-                unsigned words = ((((w1 >> 12) & 0xfff) + 1u) << nd_ws.tst1.tile_siz[(w1 >> 24) & 7]) >> 4;
+                unsigned words = ((texels + 1u) << nd_ws.tst1.tile_siz[tile]) >> 4;
                 for (unsigned k = 0; k < 4; k++) if (nd_ws.tst1.ldrec[k].tmem >= tm && (nd_ws.tst1.ldrec[k].tmem == tm || nd_ws.tst1.ldrec[k].tmem < tm + words)) nd_ws.tst1.ldrec[k].img = NULL;
             }
             {
@@ -4031,15 +4032,17 @@ static void op_loadblock(u32 w0, u32 w1) {
                 for (k = 0; k < 4 && !(nd_ws.tst1.blk[k].img && nd_ws.tst1.blk[k].tmem == tm); k++) {}
                 if (k == 4) k = blk_n++ & 3;
                 nd_ws.tst1.blk[k].tmem = tm; nd_ws.tst1.blk[k].img = nd_ws.timg;
-                nd_ws.tst1.blk[k].bytes = ((((w1 >> 12) & 0xfff) + 1u) << nd_ws.tst1.tile_siz[(w1 >> 24) & 7]) >> 1;
+                nd_ws.tst1.blk[k].bytes = ((texels + 1u) << nd_ws.tst1.tile_siz[tile]) >> 1;
             }
 }
-static void op_loadtlut(u32 w0, u32 w1) {
+static void op_loadblock(u32 w0, u32 w1) { set_loadblock((w1 >> 24) & 7, (w1 >> 12) & 0xfff); }
+/* CORE-2b batch D2: palette load setter (decoded fields: tile and entry count). */
+static void set_loadtlut(unsigned tile, unsigned count) {
             nd_ws.tlut = nd_ws.timg;
-            nd_ws.tlut_n = (int)((w1 >> 14) & 0x3ff) + 1;
+            nd_ws.tlut_n = (int)(count) + 1;
             {
                 /* The palette slot is the 16-entry block at the load tile's TMEM address. */
-                unsigned slot = (nd_ws.tst1.tile_tmem[(w1 >> 24) & 7] - 256u) >> 4;
+                unsigned slot = (nd_ws.tst1.tile_tmem[tile] - 256u) >> 4;
                 if (slot < 16) {
                     tlut_pal[slot] = nd_ws.timg;
                     /* V20: gDPLoadTextureBlock_4b sets the tile size (which binds the texture) BEFORE the palette load. A bound CI tile that
@@ -4049,6 +4052,7 @@ static void op_loadtlut(u32 w0, u32 w1) {
                 }
             }
 }
+static void op_loadtlut(u32 w0, u32 w1) { set_loadtlut((w1 >> 24) & 7, (w1 >> 14) & 0x3ff); }
 /* CORE-2b batch D: tile size setter (decoded fields). */
 static __attribute__((noinline)) void set_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
             if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt);
@@ -4164,11 +4168,13 @@ static __attribute__((noinline)) void set_tilesize(unsigned tile, int uls, int u
 static __attribute__((noinline)) void op_settilesize(u32 w0, u32 w1) {
     set_tilesize((w1 >> 24) & 7, (int)((w0 >> 12) & 0xfff), (int)(w0 & 0xfff), (int)((w1 >> 12) & 0xfff), (int)(w1 & 0xfff));
 }
-static void op_texture(u32 w0, u32 w1) {
-            nd_ws.tex_on = (w0 & 0xff) != 0;
-            nd_ws.tex_ss = w1 >> 16;
-            nd_ws.tex_ts = w1 & 0xffffu;
+/* CORE-2b batch D2: texture enable and scale setter (decoded fields). */
+static void set_texture(unsigned on, unsigned ss, unsigned ts) {
+    nd_ws.tex_on = on;
+    nd_ws.tex_ss = ss;
+    nd_ws.tex_ts = ts;
 }
+static void op_texture(u32 w0, u32 w1) { set_texture((w0 & 0xff) != 0, w1 >> 16, w1 & 0xffffu); }
 /* CORE-2b: G_SETPRIMCOLOR, one owner (the walker switch and the record both run it). */
 static void op_setprimcolor(u32 w0, u32 w1) {
     GP_SET(1, nd_ws.prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
