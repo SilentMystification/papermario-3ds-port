@@ -222,66 +222,6 @@
       "reason": "PROFMENU: the Profiling row turns prof on at run time. Until is the prof report line (300 samples at prof=4, 1200 drawn frames). Shot at frames 236 to 247 is the bottom menu with the row value."
     },
     {
-      "name": "nok02_tri_dd",
-      "status": "unverified",
-      "subject": "Map nok_02 at player position 250 0 11, frame 200 on the CPU draw path (drawlog turns DLC2 off). Picture: the path end piece near Mario.",
-      "proves": "FLK1: every triangle of frame 200 reaches draw_tri_cpu, with the tritrace line, and the drawlog chunk line names the draw.",
-      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 tritrace=200:1",
-      "until": "shot 1 frame 204",
-      "cap": 20,
-      "deadline": 20,
-      "first_marker": "warp: nok_02 entry",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: nok_02 entry"
-        },
-        {
-          "name": "trace",
-          "regex": "tri f200 s[0-9]+ (keep|cull|clip|early-cull|early-keep)"
-        },
-        {
-          "name": "shot",
-          "regex": "shot [0-9]+ frame 20[0-5]"
-        }
-      ],
-      "reason": "New scenario (FLK1 step 2b). Forces the CPU draw path for frame 200."
-    },
-    {
-      "name": "nok02_tri",
-      "status": "unverified",
-      "subject": "Map nok_02 at player position 250 0 11 (the path end piece that flickers, triage item 1). Frames 200 to 205 with the game camera on Mario. Picture: the end piece of the path near Mario.",
-      "proves": "FLK1: the tritrace lines of draw_tri_cpu for frame 200 list the corners w, screen X and Y, clip bits, cull sign and decision of each triangle in the window.",
-      "debug": "warp=nok_02:0 pos=250:0:11 story=ch0_toad_town shots shotwin=200:6 loglevel=debug tritrace=200:1",
-      "until": "shot 1 frame 204",
-      "cap": 20,
-      "deadline": 20,
-      "first_marker": "warp: nok_02 entry",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: nok_02 entry"
-        },
-        {
-          "name": "pos",
-          "regex": "poswarp: placed Mario at 250"
-        },
-        {
-          "name": "trace",
-          "regex": "tri f200 s[0-9]+ (keep|cull|clip|early-cull|early-keep)"
-        },
-        {
-          "name": "shot",
-          "regex": "shot [0-9]+ frame 20[0-5]"
-        }
-      ],
-      "reason": "New scenario (FLK1 step 2). Map entry and trace line not run yet."
-    },
-    {
       "name": "nok02_dlccheck",
       "status": "unverified",
       "subject": "Map nok_02 at player position 250 0 11, 300 frames, with dlccheck=1: each group the box skip hides is checked triangle by triangle (clip bits). The dlc2 line counts the groups (grp), the skipped groups (skip) and the triangles the interpreter would keep (missing).",
@@ -688,6 +628,33 @@
       ],
       "reason": "FB-2 step 2 gate: nok11_det with tmplsmall=16 (the template table evicts: LRU). Shots byte-equal to nok11_det (no switch) of the same build; tmplhi evict count above 0 shows the eviction ran.",
       "status": "unverified"
+    },
+    {
+      "name": "spot_sbk56_det",
+      "status": "unverified",
+      "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0), cold start with the det switch (the sun scene). Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
+      "proves": "DET cold spot, sbk_56 (sun overlay): the sbk_56 picture per shot is a function of the build (det), so a base and a head build give byte-equal shots (MOVE4 gate after the suntile removal).",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "MOVE4 gate: DET cold start of the sbk_56 sun scene (-NoWarm, as spot_mac01_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
       "name": "spot_mac01_det",
@@ -3904,7 +3871,7 @@
       "status": "unverified",
       "subject": "Dry Dry Desert (sbk_00, entry 0): the sun overlay (SpawnSunEffect, fx_sun, five ray layers) at scene frames 200 to 205. Read the top shot by eye.",
       "proves": "A warp into a Dry Dry Desert (sbk_*) map loads, the sun effect is spawned, and steady frames run with shots.",
-      "debug": "warp=sbk_00:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug suntile=200:1",
+      "debug": "warp=sbk_00:0 story=ch0_toad_town shots shotwin=200:6 loglevel=debug",
       "until": "warp: scene f300 ",
       "cap": 90,
       "deadline": 20,
@@ -9060,6 +9027,85 @@
       "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
     },
     {
+      "name": "fb_sky_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 at -135 0 85, cold det start: textured rects (sky and HUD), shots at frames 200 to 205 (the picture).",
+      "proves": "FB-1 ring gate reference: a cold det run of the default ring; two builds give byte-equal shots.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot at 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "FB-1 ring gate: cold det sky picture, default ring."
+    },
+    {
+      "name": "fb_sky_mac00_ring_det",
+      "status": "unverified",
+      "subject": "mac_00 at -135 0 85, cold det start with ringsmall=64: the raw ring wraps (ring_wrap, ringwrap lines) in the frames of the shot window.",
+      "proves": "FB-1 ring gate: rr_why 5 0 with wraps above 0, and the picture byte-equal to fb_sky_mac00_det.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det ringsmall=64",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot at 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "FB-1 ring gate: cold det sky picture with the small ring."
+    },
+    {
+      "name": "nok11_det_ring",
+      "status": "unverified",
+      "subject": "DET nok_11 splash run (as nok11_det) with ringsmall=64: the raw ring wraps before the splash shot at frame 412.",
+      "proves": "FB-1 ring gate: rr_why 5 0 and wrap count above 0 on a grab scene; shots byte-equal to nok11_det.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det ringsmall=64",
+      "extra": ["-NoWarm"],
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ],
+      "reason": "FB-1 ring gate: the splash picture with the small ring."
+    },
+    {
       "name": "mem_reenter",
       "status": "unverified",
       "subject": "Mario in hos_01, tour to mac_00 and back to hos_01 (a map entered twice). The second entry restores the .data block (2 changing symbols) and zeroes the .bss block of hos_01.",
@@ -9532,7 +9578,7 @@
       "expected_events": [
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ]
     },
@@ -9554,10 +9600,66 @@
       "expected_events": [
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ],
       "reason": "MDL-5 gate: MDL-5 byte reference: battle with nomodelnat. Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "golden_multi_det",
+      "status": "unverified",
+      "subject": "Six maps in one start (golden_multi tour), cold det, prof=4: one ndm line per 300 frames with the native draw and fallback (fb) counts of the window.",
+      "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
+      "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "shot 6 frame",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "first map", "regex": "warp: kmr_20 entry 4"},
+        {"name": "last shot", "regex": "shot 6 frame \\d+"}
+      ],
+      "reason": "MDL-5e census: six map changes (golden_multi list), cold start so the fb count is a function of the build. Cap as golden_multi."
+    },
+    {
+      "name": "tour10_det",
+      "status": "unverified",
+      "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4: one ndm line per 300 frames (native draws and fallback count).",
+      "proves": "MDL-5e census: ndm fb 0 on the tour10 list (every model record drawn natively).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 phase phasecsv profdisk=1 det fixedseed loglevel=debug mdl0",
+      "extra": ["-NoWarm"],
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: mac_00 entry 4"},
+        {"name": "tour done", "regex": "tour: done, 10 maps"}
+      ],
+      "reason": "MDL-5e census: ten map changes (tour10 list), cold start so the fb count is a function of the build. Cap as tour10."
+    },
+    {
+      "name": "battle_fb_det",
+      "status": "unverified",
+      "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: runs to frame 300 so the first ndm window line (native and fallback counts) is in the log.",
+      "proves": "MDL-5e census: ndm fb of the battle window 0 to 300 (every model record drawn natively).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1",
+      "extra": ["-NoWarm"],
+      "until": "ndm f\\d+ native",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "ndm window", "regex": "ndm f300 native"}
+      ],
+      "reason": "MDL-5e census: battle window to frame 300 (the window line of the fb count). Cold start so the count is a function of the build."
     },
     {
       "name": "battle_start_sprcheck",

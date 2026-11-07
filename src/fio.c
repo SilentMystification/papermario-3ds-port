@@ -32,7 +32,7 @@ bool fio_write_flash(s32 pageNum, s8* readBuffer, u32 numBytes);
 int pm_save_blocked(void);
 void pm_save_note(s32 slot);
 #endif
-s32 fio_erase_flash(s32 pageNum);
+void fio_erase_flash(s32 pageNum);
 
 #if VERSION_PAL
 bool save_check_integrity(void) {
@@ -488,7 +488,7 @@ bool fio_write_flash(s32 pageNum, s8* readBuffer, u32 numBytes) {
     return true;
 }
 
-s32 fio_erase_flash(s32 pageNum) {
+void fio_erase_flash(s32 pageNum) {
 #if VERSION_PAL
     int i;
     s32 success;

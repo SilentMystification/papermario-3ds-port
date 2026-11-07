@@ -1374,7 +1374,7 @@ void npc_render_without_adjusted_palettes(Npc* npc, s32 arg1, Matrix4f mtx) {
     }
 }
 
-s32 npc_render_with_watt_idle_palettes(Npc* npc, s32 arg1, Matrix4f mtx) {
+void npc_render_with_watt_idle_palettes(Npc* npc, s32 arg1, Matrix4f mtx) {
     s32 i, j;
     s32 brightness;
     PAL_PTR src;
@@ -1486,7 +1486,7 @@ u16 npc_blend_palette_colors(u16 colorA, u16 colorB, s32 lerpAlpha) {
     }
 }
 
-s32 npc_render_with_single_pal_blending(Npc* npc, s32 yaw, bool hasDifferentIntervals, Matrix4f mtx) {
+void npc_render_with_single_pal_blending(Npc* npc, s32 yaw, bool hasDifferentIntervals, Matrix4f mtx) {
     PAL_PTR color1;
     PAL_PTR color2;
     PAL_PTR outColor;
@@ -1624,7 +1624,7 @@ s32 npc_render_with_single_pal_blending(Npc* npc, s32 yaw, bool hasDifferentInte
     }
 }
 
-s32 npc_render_with_double_pal_blending(Npc* npc, s32 yaw, Matrix4f mtx) {
+void npc_render_with_double_pal_blending(Npc* npc, s32 yaw, Matrix4f mtx) {
     PAL_PTR color1;
     PAL_PTR color2;
     PAL_PTR outColor;
@@ -1787,7 +1787,7 @@ void npc_remove_decoration(Npc* npc, s32 idx) {
     npc_remove_decoration_impl(npc, idx);
 }
 
-s32 npc_update_decorations(Npc* npc) {
+void npc_update_decorations(Npc* npc) {
     s32 i;
 
     for (i = 0; i < MAX_NPC_DECORATIONS; i++) {
@@ -2621,7 +2621,7 @@ void make_npcs(s32 flags, s32 mapID, s32* npcGroupList) {
     }
 }
 
-s32 kill_encounter(Enemy* enemy) {
+void kill_encounter(Enemy* enemy) {
     Encounter* encounter = gCurrentEncounter.encounterList[enemy->encounterIndex];
     s32 i;
 
@@ -2814,6 +2814,7 @@ Enemy* get_enemy(s32 npcID) {
         }
     }
     PANIC();
+    return nullptr; // PANIC returns on 3DS (pm_assert_fail); the N64 spins here
 }
 
 Enemy* get_enemy_safe(s32 npcID) {

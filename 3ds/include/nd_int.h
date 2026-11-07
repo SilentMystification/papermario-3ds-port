@@ -203,7 +203,6 @@ int pm_is_cur_cfb(const void* p);
 void pm_cfb_capture_prev(void);
 void gp_note(int k, int same);
 void gp3_t0_set(void);
-void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls, int ult, int lrs, int lrt);
 void tlut_v20(unsigned slot);
 void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt);
 int tex_shaded0(int uls, int ult);
@@ -348,19 +347,12 @@ extern unsigned vert_c[64];
 extern int tg_ok, pm_nolight;
 unsigned lit_color(const Vtx* v, const float m[4][4], int texgen);
 void draw_tri_cpu(const int* idx);
-void suntile_tri(const char* path, const int* idx);
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 typedef struct {
     unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch, xgrp;
 } DlcCnt; /* LS-1 counters of the dlc path (defined in pm_gbi.c) */
 extern DlcCnt dlc_c;
 extern unsigned ep_epoch, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
-/* Y (GM-4): the sun overlay debug draws (effects/sun.c calls them; nd_geom.c). suntile_on is the suntile switch in pm_gbi.c. */
-void pm_sun_spawn(int fromRight, float x, float y, float z, int duration);
-void pm_sun_draw(int alpha, int fromRight, const float* scroll, int n);
-void pm_sun_base(const void* graphics);
-int suntile_on(void);
-extern int suntile_lines;
 /* LS-1 (nd_shape.c): the dlc and entity types and macros (shared by the walk and the handler modules). */
 typedef struct { u32 op0, op1, am, om; s16 lo[3], hi[3]; u16 nvtx, ntri, goff, ng, sn, nbat; u8 tsv_exit; u16* sd; u16* bat_q; u16* ends; } DlcGrp; /* C3: sd = indices then nbat batch end counts; bat_q[gop index before each batch] */
 typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refused; DlcGrp* grp; u32 (*gop)[2]; NdObj o; } DlcEnt;

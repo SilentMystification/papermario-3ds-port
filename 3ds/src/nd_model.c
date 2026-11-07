@@ -93,6 +93,7 @@ int nd_r13_texonly(const uint32_t* aw, unsigned n, uint32_t* cw, int* has_cb) {
 static NdTexDesc hd_desc[ND_HANDLE_N];
 static const void* hd_gfx[ND_HANDLE_N];
 static uint8_t hd_ok[ND_HANDLE_N];
+static uint8_t hd_extra[ND_HANDLE_N]; /* MDL-5a census: the header extraTiles of each handle */
 static unsigned hd_gen = 1; /* S3N-6: bumped by each handle write */
 
 void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
@@ -101,7 +102,7 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
     NdTexDesc d;
     memset(&d, 0, sizeof d);
     int ok = !(!raster || w == 0 || h == 0 || siz > 3); /* B4 (S3L-2): the desc is tile 0 (the main raster), so every extra form has it: mipmaps (extra 1), aux (2, 3). Tile 1 facts are not in the desc: a combine that reads tile 1 falls back (why 6, nd_model_state) */
-    (void)extra; (void)has_aux;
+    (void)has_aux;
     if (ok) {
         d.img = raster; d.pal = palette;
         d.fmt = (uint8_t)fmt; d.siz = (uint8_t)siz; d.cms = (uint8_t)wrap_w; d.cmt = (uint8_t)wrap_h; d.masks = (uint8_t)masks; d.maskt = (uint8_t)maskt;
@@ -116,9 +117,11 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
         static unsigned nform; if (!ok && nform++ < 16u) pm_log_prof_line("ndmform idx %d w %u h %u fmt %u siz %u extra %u aux %d raster %d pal %d", index, w, h, fmt, siz, extra, has_aux, raster != NULL, palette != NULL);
     }
 #endif
-    hd_gfx[index] = gfx; hd_ok[index] = (uint8_t)ok;
+    hd_gfx[index] = gfx; hd_ok[index] = (uint8_t)ok; hd_extra[index] = (uint8_t)extra;
     if (ok) hd_desc[index] = d;
 }
+
+unsigned nd_tex_handle_extra(int index, const void* gfx) { return index < 0 || index >= ND_HANDLE_N || hd_gfx[index] != gfx ? 9u : hd_extra[index] & 3u; }
 
 const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx) {
     if (index < 0 || index >= ND_HANDLE_N || !hd_ok[index] || hd_gfx[index] != gfx) return NULL;
@@ -213,6 +216,8 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
 static unsigned mw_cnt[32], mw_ok, mw_f = 100u; /* mw_f: the frame of the last line + 300 */
 /* MDL-5 census: why 6 fallbacks of the window by producer (the record address) and sub-case; top 8 per mdlw line, then reset */
 unsigned nd_nat_sub;
+unsigned nd_mdl_cur_x; /* MDL-5a census: extraTiles of the handle of the draw in model_draw */
+static unsigned mf_bx[4]; /* sub b by extraTiles (cumulative) */
 static struct { uint32_t p; unsigned s, n; } mf_e[32]; static unsigned mf_k, mf_tot[5]; /* mf_tot: cumulative per sub-case (a 1, b 2, c 3, d 4) */
 void nd_mdlfb_note(uint32_t prod, unsigned sub) {
     mf_tot[sub & 7u]++;
@@ -229,7 +234,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
         extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0;
         for (int t = 0; t < 8; t++) { unsigned bi = 32; for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].n && (bi == 32 || mf_e[i].n > mf_e[bi].n)) bi = i; if (bi == 32) break;
             pm_log_prof_line("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s & 3], mf_e[bi].n); mf_e[bi].n = 0; }
-        pm_log_prof_line("mdlsub f%u a %u b %u c %u d %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4]);
+        pm_log_prof_line("mdlsub f%u a %u b %u c %u d %u bx0 %u bx1 %u bx2 %u bx3 %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4], mf_bx[0], mf_bx[1], mf_bx[2], mf_bx[3]);
         mf_k = 0; }
     return r;
 }
@@ -275,7 +280,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise and pm5 with tex1 stay why 6 (named) */
     const int nz = combine == 8 && co.plan.uses_noise; /* FB-3 part 2: noise is native (unit 2, nzo) when the walker has its noise texture */
     if (nz && !pm_gpu_noise_ok()) { nd_nat_sub = 1u; return (st->why = 6, 0); }
-    if (combine == 8 && co.plan.uses_tex1 && (!c->u1 || c->gv && c->gv->fxon)) { nd_nat_sub = (c->gv && c->gv->fxon) ? 4u : 2u; return (st->why = 6, 0); }
+    if (combine == 8 && co.plan.uses_tex1 && (!c->u1 || c->gv && c->gv->fxon)) { nd_nat_sub = (c->gv && c->gv->fxon) ? 4u : 2u; if (nd_nat_sub == 2u) mf_bx[nd_mdl_cur_x & 3u]++; return (st->why = 6, 0); }
     const int t1n = combine == 8 && co.plan.uses_tex1;
     if (c->zmark && zb && r->decal) return (st->why = 15, 0); /* S5-2: zmark with decal (the walker's pass 2 bias): named fallback */
     NdTmplKey k;

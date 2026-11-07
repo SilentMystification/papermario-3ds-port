@@ -982,6 +982,7 @@ static void tour_step(void) {
     unsigned i = 0;
     while (*tour_next == ',') tour_next++;
     if (!*tour_next) {
+        { extern void pm_gpu_ndn_window_end(void); pm_gpu_ndn_window_end(); } /* MDL-5e debug: the fallback window of the tour */
         pm_log("tour: done, %d maps", tour_n);
         tour_next = NULL;
         return;

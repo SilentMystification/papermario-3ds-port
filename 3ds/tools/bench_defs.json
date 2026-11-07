@@ -2214,6 +2214,22 @@
       "gates": []
     },
     {
+      "name": "spot_sbk56_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE4 gate: sbk_56 spot (sun scene), cold start with the det switch. Two cold runs of one build must give byte-equal shots 200 to 205.",
+      "scenario": "spot_sbk56_det",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_det",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2669,6 +2685,57 @@
       "gates": []
     },
     {
+      "name": "fb_sky_mac00_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: mac_00 sky, cold det run, shots 200 to 205. Byte-equal between the ring build and nds1 (the default ring).",
+      "scenario": "fb_sky_mac00_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_ring_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: mac_00 sky, cold det run, ringsmall=64 (ring_wrap runs). rr_why 5 0, shots 200 to 205 byte-equal to fb_sky_mac00_det_pic.",
+      "scenario": "fb_sky_mac00_ring_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_ring_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: nok_11 splash, cold det run, ringsmall=64 (ring_wrap runs, grab quad native). rr_why 5 0, shots and dumps byte-equal to nok11_det.",
+      "scenario": "nok11_det_ring",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
       "name": "fb_pause_spin_grab_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3112,6 +3179,51 @@
       "gates": []
     },
     {
+      "name": "golden_multi_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: golden tour (6 maps) cold det, ndm fb per 300 frames.",
+      "scenario": "golden_multi_det",
+      "cap": 90,
+      "until": "shot 6 frame",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour10_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: tour10 (10 maps) cold det, ndm fb per 300 frames.",
+      "scenario": "tour10_det",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_fb_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: battle kmr_03 cold det to frame 300, ndm fb of the window.",
+      "scenario": "battle_fb_det",
+      "cap": 45,
+      "until": "ndm f\\d+ native",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_start_sprcheck",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3395,8 +3507,6 @@
     "names": [
       "warpmenu_sub",
       "profmenu_row",
-      "nok02_tri_dd",
-      "nok02_tri",
       "nok02_dlccheck",
       "nok02_noboxint",
       "nok02_stdump_on",

@@ -292,7 +292,7 @@ static void entcheck_vtxseg(const EntityModel* model, unsigned f) {
     ent_vs_draw[ent_vk[i].st]++;
 }
 static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
-    Gfx e[2];
+    Gfx e[2] = { { { 0, 0 } } }; /* e[1] stays zero when the model has no vertexArray */
     const Gfx* p;
     int mtxOk = 0, segOk = model->vertexArray == nullptr, dlOk = 0, rmOk = rec[3].words.w1 == 0;
     unsigned df = 0, f;

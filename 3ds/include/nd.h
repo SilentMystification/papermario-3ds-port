@@ -126,6 +126,8 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
                        unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);
 /* the descriptor of handle index when its list (gfx) is the one set; NULL otherwise */
 const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx);
+unsigned nd_tex_handle_extra(int index, const void* gfx); /* MDL-5a: the header extraTiles of a handle (9 none) */
+extern unsigned nd_mdl_cur_x;
 int nd_tex_handle_miss(int index, const void* gfx); /* S3L-2: fallback code of a handle with no desc (9 form, 10 index or gfx) */
 
 /* CORE-2a-2: the texture and tile state types (moved from pm_gbi.c; layout unchanged). */

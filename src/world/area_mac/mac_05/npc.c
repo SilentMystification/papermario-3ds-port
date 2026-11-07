@@ -148,7 +148,7 @@ API_CALLABLE(N(func_80242A90_854C00)) {
     s32 outVarZ = *args++;
     Npc* npc = get_npc_safe(NPC_Whale);
     f32 posX, posY, posZ;
-    f32 radius, angle;
+    f32 radius = 0.0f, angle;
 
     switch (mode) {
         case 0:
