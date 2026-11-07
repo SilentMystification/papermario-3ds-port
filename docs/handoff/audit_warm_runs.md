@@ -128,3 +128,34 @@ Not on the list: MDL mac_01 pair (W814, W815), PSHIFT pair (H834, H835), the AZT
 | PSHIFT | OK | | citation of run ids wrong |
 | LOG5 | SUSPECT | | 11 warm before AZT8 |
 | AZT9c | SUSPECT | | 32 warm in AZT8 to AZT9c window |
+
+## Recheck on nds1 fd36a677d
+
+Pinned HEAD fd36a677d (build 2748, worktree build3ds/wt/verify, lane verify). Base 9ddd6a818 (build 2732, the first nds1 with det). All runs are cold det starts (-NoWarm) except the three census runs (check 3). Run ids are in 3ds/logs/perf/runs.jsonl (line in brackets). Shots are copied to build3ds/verify_shots/ in the worktree (not tracked). The pictures were not opened by the agent: a person must read the battle, iwa_10 and rect shots.
+
+| Check | Runs (run_id [line]) | Result |
+|---|---|---|
+| 1 mac_00, HEAD vs base 9ddd6a818 | 12163 [1108] HEAD; 12277 [1109] base | FAIL. 12 of 12 shots differ. First differing frame: 200 (shot 0000, the first shot). 53 pixels per shot, all in framebuffer column x 181, y 0 to 382. |
+| 1 bisect, mac_00 at 29202b385 vs base | 12391 [1110] | PASS. 12 of 12 equal. |
+| 1 bisect, mac_00 at fc198b745 (FB-2 merge) vs base | 12505 [1111] | FAIL. 12 of 12 differ, 235 pixels per shot, x 0 to 181, y 0 to 377. First bad merge: fc198b745 (good 29202b385, bad fc198b745). |
+| 2 battle kmr_03 native vs r13off | 12619 [1112] native; 13075 [1116] r13off | PASS. Shots 0000 to 0010 equal (shot 0010 is frame 182). Shot 0011 exists only in the walker run (after the until line). |
+| 2 battle kmr_03 native vs pm5off | 12619 [1112]; 13189 [1117] | PASS. Shots 0000 to 0010 equal. |
+| 2 iwa_10 native vs r13off | 13303 [1118]; 13417 [1119] | PASS. 12 of 12 equal. |
+| 2 mac_01 rect post (native) vs norectraw | 13531 [1120]; 13645 [1121] | PASS. 12 of 12 equal. |
+| 3 census mac_01, wd | 13759 [1122] | PASS. wcen4 end f324 wd 0. |
+| 3 census pause, wd | 13873 [1123] | PASS. wcen4 end f324 wd 0 (warm start in the kept Azahar of 13759, boot build 2748). |
+| 3 census battle, wd | 13987 [1124] | PASS. wcen4 end f324 wd 0 (warm, same as above). |
+
+Not run: mac_01 at HEAD (check 1 was done on 29202b385 only: 12 of 12 equal). That pass predates FB-2, so it does not cover HEAD. Treat mac_01 as unverified at HEAD until the FB-2 cause is fixed.
+
+Findings:
+- The pure-move claims (CORE-2/3, WK-1, TX-1, GM-1) hold on mac_00: 29202b385 equals the base 12 of 12. They are not the cause of the mac_00 difference.
+- The first bad merge is FB-2 (fc198b745). Its gates (nok11, tmplsmall, cmdsmall) did not include mac_00 or a base pair. The mac_00 picture changes in the sky strip.
+- Code candidates, not yet verified by a shot: 3ds/src/pm_tex.c lines 1790 to 1798 at fc198b745 (pm_tex_native_unit1: the aux off-screen branch now returns 2 with the aux image words; before it returned -1, the walker path). 3ds/src/pm_gpu.c line 1318 (t1 == 2 takes the snapshot words when snap_ready) and line 1539 (DC2 binds the snapshot to unit 1). Next try: the value of u1 (addr, dim, fmt) that the sky draw uses at frame 200, against the value the walker bind sends, at pm_tex.c 1794 to 1797.
+- The HEAD diff (53 px, x 181 only) is smaller than the fc198b745 diff (235 px). So a later merge (0157e1fb8 SIZE-2 or d02faeb35 spr4b) changed the sky again. Not bisected; the next bisect point is between fc198b745 and fd36a677d.
+- Check 2 and check 3 pass on HEAD. The MDL-1/1b battle_start and iwa_10 pairs and the RECT-1b rect pair now have passing same-binary pairs.
+
+Harness notes (this recheck):
+- battle_start_r13off_det and battle_start_pm5off_det (commit 2b6edbd07) had the until regex written with a single backslash in JSON: "\b" is a backspace, so no line matched and both runs were marked broken (runs 12733, 12847, 12961, rc 10). Fixed in 3ds/tools/azt_scenarios.json ("\b"). Runs 13075 and 13189 are the fixed runs; their dirty flag is true only because the fix was not yet committed.
+- The VERIFY budget (8 starts) was reset twice: after run 12961 (the first gates unrun, so INCOMPLETE at that point) and after run 13873. Run 13987 is after the second reset.
+- The slot pool (build3ds/azslots) is shared by all worktrees. Other agents warm-restarted and killed kept Azahars during this run (pool.log, 05:17 to 05:21). No run of this recheck was lost to that, but a run can be.
