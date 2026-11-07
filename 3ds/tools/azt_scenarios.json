@@ -6070,6 +6070,34 @@
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
+      "name": "pause_shift",
+      "status": "unverified",
+      "subject": "PSHIFT-1: Toad Town mac_01 at pos 0 0 200, START opens the pause menu. Shots at frames 84 to 99: live frames before the open, then the first pause frames. The pause background (grab) is compared with the live frame outside the menu panel.",
+      "proves": "The pause background offset: dx and dy of the grabbed scene against the last live frame (cross-correlation outside the panel). Frame numbers of the open come from the pause mode line.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=wait80,START*3,wait100 phase phsum shots shotwin=92:44 loglevel=debug grablog",
+      "until": "shot \\d+ frame 1(3[4-9])\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in the open menu window (134 to 139)",
+          "regex": "shot \\d+ frame 1(3[4-9])\\b"
+        }
+      ],
+      "reason": "PSHIFT-1 measure. Same START command as pause_spin, on mac_01 pos 0 0 200 (the spot_mac01 placement). The shot window covers the live frames and the pause frames; the offset is computed from the shot files."
+    },
+    {
       "name": "spot_mac01_fps60_pic",
       "status": "unverified",
       "subject": "CORE-2c interp replay: Toad Town mac_01 at pos 0 0 200 with fps60 on (pm_interp_on). Shots at frames 200 to 205, byte-equal to the same scenario on the base build. Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",

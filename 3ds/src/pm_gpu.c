@@ -2387,7 +2387,8 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
         int s_comb = combine, s_2d = rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = r_atest, s_nc = r_nocol, s_mix = r_mix,
             s_rs = rgb_scale, s_3d = draw_3d;
-        float xa = (float)x0, xb = (float)x1, va = 1.f - ((float)mo + xa) / 512.f, vb = 1.f - ((float)mo + xb) / 512.f, ua = 240.f / 256.f;
+        /* PSHIFT-2: v is the texel row (game x) at the pixel centre, +0.5 texel. At the texel edge the sample took the row below (x - 1), so the pause background sat 1 px right of the live frame. */
+        float xa = (float)x0, xb = (float)x1, va = 1.f - ((float)mo + xa + 0.5f) / 512.f, vb = 1.f - ((float)mo + xb + 0.5f) / 512.f, ua = 240.f / 256.f;
         sci_x0 = 0; sci_y0 = 0; sci_x1 = x1; sci_y1 = 240;
         combine = 3; rect_2d = 1; batch_identity = 1; r_replace = 1; r_atest = -1; r_nocol = 0; r_mix = 0; rgb_scale = 1; draw_3d = 0;
         grab_bind = 1;
