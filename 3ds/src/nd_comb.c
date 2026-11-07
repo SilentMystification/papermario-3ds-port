@@ -18,8 +18,8 @@
 
 
 /* globals of the combine state, owned by pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
-extern unsigned aux_key, box_save[4], sl_cc;
-extern int box_pat, box_prod, comb_alpha_shade, comb_dry, comb_mode5, dual_on, leg_mode, plan_active, sl_const, sl_env;
+extern unsigned aux_key, box_save[4];
+extern int box_pat, box_prod, comb_alpha_shade, comb_dry, dual_on, plan_active;
 extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
 extern PmPlan cur_plan;
 extern const char* const cc_nm_a[8], * const cc_nm_aa[8], * const cc_nm_ac[8];
@@ -120,6 +120,93 @@ int const_rgb_tex_alpha(unsigned* out) {
            ((unsigned)(rgb[2] * 255.f + .5f) << 8) | (unsigned)(k * 255.f + .5f);
     return 1;
 }
+
+/* ST-3: the legacy combine mode (moved from pm_gbi.c, pure move). leg_mode is the mode pm_gpu got last; sl_* the gpu calls of the last sync_legacy. */
+int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
+int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
+int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
+unsigned sl_cc;
+void set_leg(int m) { leg_mode = m; }
+
+void sync_legacy(void) {
+    unsigned cc;
+    sl_const = sl_env = 0;
+    if (const_rgb_tex_alpha(&cc)) {
+        if (!comb_dry) pm_gpu_set_const(cc);
+        sl_const = 1; sl_cc = cc;
+        set_leg(4);
+        return;
+    }
+    /* Decal modes put TEXEL0 in the addend, which is mux d, not a/b/c.
+     * Missing it draws the sprite quad's vertex colors: a grey gradient. */
+    /* H06b1: with G_TEXTURE off the RSP sends a triangle with no S and T, the RDP reads texel (0, 0) of tile 0 (draw_tri sets that), so TEXEL0 is read whatever the flag says. */
+    int wants_tex = (nd_ws.tst1.comb_a == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_b == G_CCMUX_TEXEL0 ||
+        nd_ws.tst1.comb_c == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_d == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_c == G_CCMUX_TEXEL0_ALPHA);
+    int wants_prim = nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE || nd_ws.tst1.comb_b == G_CCMUX_PRIMITIVE || nd_ws.tst1.comb_c == G_CCMUX_PRIMITIVE;
+    int mode = 0;
+    /* Mode 3 = texture colour, but alpha only from the vertex: the alpha combiner does not read TEXEL0. */
+    int alpha_tex = nd_ws.tst1.comb_aa == 1 || nd_ws.tst1.comb_ab == 1 || nd_ws.tst1.comb_ac == 1 || nd_ws.tst1.comb_ad == 1 ||
+                    nd_ws.tst1.comb_aa == 2 || nd_ws.tst1.comb_ab == 2 || nd_ws.tst1.comb_ac == 2 || nd_ws.tst1.comb_ad == 2;
+    comb_mode5 = 0;
+    box_pat = box_prod && !box_folded; /* V10: the 2-cycle window with a pattern in tile 0 (not white): product on the CPU */
+    if (wants_tex && nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE && nd_ws.tst1.comb_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb_c == G_CCMUX_TEXEL0 &&
+        nd_ws.tst1.comb_d == G_CCMUX_ENVIRONMENT && alpha_tex && nd_ws.tst1.comb2_aa != 0) { /* FX2f: a cycle 2 alpha that reads COMBINED (huff_puff_breath, times PRIM) is no window pass */
+        comb_mode5 = 1;
+        if (!comb_dry) pm_gpu_set_env(nd_ws.envc);
+        sl_env = 1;
+        /* D03: draw_box windows with the bg_tile pattern (tile 0, I4 0/F checker) take their alpha from
+         * TEXEL1 (the corner image). Tile 0 alpha is the checker itself, so it must not become the alpha:
+         * mode 7 draws the body opaque (the 8x8 rounded corner shape is lost). */
+        {
+            int a_t0 = nd_ws.tst1.comb_aa == 1 || nd_ws.tst1.comb_ab == 1 || nd_ws.tst1.comb_ac == 1 || nd_ws.tst1.comb_ad == 1;
+            box_pat = !a_t0;
+            set_leg(a_t0 ? 5 : 7);
+        }
+        return;
+    }
+    /* D03: (TEXEL0 - PRIM) * PRIM_ALPHA + PRIM, the pause screen background fade. */
+    /* Texture rectangles read the texture whatever gSPTexture says, so tex_on is not tested. */
+    if (nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE && nd_ws.tst1.comb_b == G_CCMUX_TEXEL0 && nd_ws.tst1.comb_c == G_CCMUX_PRIMITIVE_ALPHA &&
+        nd_ws.tst1.comb_d == G_CCMUX_TEXEL0) {
+        set_leg(6);
+        return;
+    }
+    if (wants_tex) mode = alpha_tex ? 2 : 3;
+    else if (wants_prim && !comb_set) mode = 1;
+    else if (wants_prim && nd_ws.tst1.comb_a != G_CCMUX_SHADE) mode = 1;
+    set_leg(mode);
+}
+
+/* What the legacy combine mode draws. */
+void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]) {
+    const float* t = t1src ? in->t1 : in->t0;
+    float sa = comb_alpha_shade ? in->sh[3] : 1.f;
+    unsigned cc = 0;
+    switch (mode) {
+    case 1: memcpy(out, in->pr, 4 * sizeof(float)); return;
+    case 2: for (int i = 0; i < 3; i++) out[i] = t[i] * in->sh[i]; out[3] = t[3] * sa; return;
+    case 3: for (int i = 0; i < 3; i++) out[i] = t[i] * in->sh[i]; out[3] = sa; return;
+    case 4:
+        if (const_rgb_tex_alpha(&cc)) {
+            float c[4];
+            unpack8(cc, c);
+            out[0] = c[0]; out[1] = c[1]; out[2] = c[2]; out[3] = t[3] * c[3];
+            return;
+        }
+        break;
+    case 5: case 7:
+        for (int i = 0; i < 3; i++) out[i] = (in->pr[i] - in->en[i]) * t[i] + in->en[i];
+        out[3] = mode == 7 ? 1.f : t[3];
+        return;
+    case 6:
+        for (int i = 0; i < 3; i++) out[i] = cc_clamp((t[i] - in->pr[i]) * in->pr[3] + in->pr[i]);
+        out[3] = t[3];
+        return;
+    default: break;
+    }
+    memcpy(out, in->sh, 4 * sizeof(float));
+}
+
 
 float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* cb, int alpha, float prlod) {
     int rgb_c = !alpha && slot == 2;
