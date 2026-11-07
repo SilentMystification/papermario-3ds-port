@@ -5432,7 +5432,7 @@
     {
       "name": "intro_native",
       "status": "unverified",
-      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
+      "reason": "UA10 gate by eye and the log line.",
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on.",
       "proves": "UA10: the intro mode runs in the native view with wide on.",
       "debug": "wide shots shotwin=330:20 loglevel=debug fixedseed fast fs1off det",
@@ -5451,8 +5451,7 @@
           "name": "shot in intro",
           "regex": "shot \\d+ frame 334\\b"
         }
-      ],
-      "reason": "UA10 gate by eye and the log line."
+      ]
     },
     {
       "status": "unverified",
@@ -7501,7 +7500,9 @@
       "until": "superblock: effects done",
       "cap": 45,
       "deadline": 45,
-      "extra": ["-NoWarm"],
+      "extra": [
+        "-NoWarm"
+      ],
       "first_marker": "warp: sbk_56 entry 0",
       "expects": "warp",
       "needs_picture": true,
@@ -8452,7 +8453,7 @@
     {
       "name": "intro_native_w600",
       "status": "unverified",
-      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
+      "reason": "OFF-3 census: the until line is the 600 frame counter; the subject shots are the picture (as intro_native).",
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
       "proves": "OFF-3 census of intro_native: cumulative nrawwhy unit0 (8) and noise (7) refusals at f600.",
       "debug": "wide shots shotwin=330:20 loglevel=debug fixedseed fast fs1off det",
@@ -8475,8 +8476,7 @@
           "name": "nrawwhy at 600",
           "regex": "nrawwhy f600 cmdbuf"
         }
-      ],
-      "reason": "OFF-3 census: the until line is the 600 frame counter; the subject shots are the picture (as intro_native)."
+      ]
     },
     {
       "name": "mdlw_battle",
@@ -8920,10 +8920,22 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {"name": "warp", "regex": "warp: nok_11 entry 0"},
-        {"name": "spawn", "regex": "fxtest: spawn 89 water_splash"},
-        {"name": "shot a", "regex": "fxtest: shot 1 effect 89 water_splash"},
-        {"name": "grab log", "regex": "grab \\d+ src .* rows 0-240 "}
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        },
+        {
+          "name": "grab log",
+          "regex": "grab \\d+ src .* rows 0-240 "
+        }
       ],
       "reason": "FB-1 GRAB gate: native grab quad, same scene and seed as fb_nok11_cpu."
     },
@@ -8940,8 +8952,14 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {"name": "warp", "regex": "warp: mac_00 entry 0"},
-        {"name": "shot at 205", "regex": "shot \\d+ frame 205\\b"}
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot at 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
       ],
       "reason": "FB-1 RSIG control: sky at mac_00 with no rect merge, shots 200 to 205."
     },
@@ -8958,8 +8976,14 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {"name": "warp", "regex": "warp: mac_00 entry 0"},
-        {"name": "shot at 205", "regex": "shot \\d+ frame 205\\b"}
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot at 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
       ],
       "reason": "FB-1 RSIG measurement: sky at mac_00, shots 200 to 205 (the rsig lines and the picture of the same frames)."
     },
@@ -9128,88 +9152,88 @@
       "reason": "HUD1 gate by eye: status bar layout in the world."
     },
     {
-          "name": "fb_sky_mac00_zmf",
-          "status": "unverified",
-          "subject": "mac_00 sky with zmforce: every textured and fill rect is a zmark rect (rect_z and z_on forced).",
-          "proves": "FB-1 ZM gate.",
-          "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug zmforce",
-          "until": "shot \\d+ frame 205\\b",
-          "cap": 45,
-          "deadline": 20,
-          "first_marker": "warp: mac_00 entry 0",
-          "expects": "warp",
-          "needs_picture": true,
-          "expected_events": [
-                {
-                      "name": "warp",
-                      "regex": "warp: mac_00 entry 0"
-                },
-                {
-                      "name": "shot",
-                      "regex": "shot \\d+ frame 205\\b"
-                }
-          ],
-          "reason": "FB-1 scenario."
+      "name": "fb_sky_mac00_zmf",
+      "status": "unverified",
+      "subject": "mac_00 sky with zmforce: every textured and fill rect is a zmark rect (rect_z and z_on forced).",
+      "proves": "FB-1 ZM gate.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug zmforce",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "FB-1 scenario."
     },
     {
-          "name": "fb_mac01_plain",
-          "status": "unverified",
-          "subject": "mac_01 at pos 0 0 200, no forcing: the plain picture (byte-equal gate for the zmark change).",
-          "proves": "FB-1 ZM gate.",
-          "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug",
-          "until": "shot \\d+ frame 205\\b",
-          "cap": 45,
-          "deadline": 20,
-          "first_marker": "warp: mac_01 entry 0",
-          "expects": "warp",
-          "needs_picture": true,
-          "expected_events": [
-                {
-                      "name": "warp",
-                      "regex": "warp: mac_01 entry 0"
-                },
-                {
-                      "name": "shot",
-                      "regex": "shot \\d+ frame 205\\b"
-                }
-          ],
-          "reason": "FB-1 scenario."
+      "name": "fb_mac01_plain",
+      "status": "unverified",
+      "subject": "mac_01 at pos 0 0 200, no forcing: the plain picture (byte-equal gate for the zmark change).",
+      "proves": "FB-1 ZM gate.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "FB-1 scenario."
     },
-  {
-    "name": "pause_spin_grab_det_w300",
-    "status": "unverified",
-    "subject": "SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
-    "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
-    "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det",
-    "until": "nrawwhy f300 ",
-    "cap": 45,
-    "deadline": 20,
-    "first_marker": "warp: mac_00 entry 4",
-    "expects": "warp",
-    "needs_picture": true,
-    "expected_events": [
-      {
-        "name": "warp",
-        "regex": "warp: mac_00 entry 4"
-      },
-      {
-        "name": "pause mode",
-        "regex": "game mode 10 frame"
-      },
-      {
-        "name": "shot in spin window",
-        "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
-      },
-      {
-        "name": "nrawwhy at 300",
-        "regex": "nrawwhy f300 cmdbuf"
-      }
-    ],
-    "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300.",
-    "extra": [
-      "-NoWarm"
-    ]
-  },
+    {
+      "name": "pause_spin_grab_det_w300",
+      "status": "unverified",
+      "subject": "SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in spin window",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        },
+        {
+          "name": "nrawwhy at 300",
+          "regex": "nrawwhy f300 cmdbuf"
+        }
+      ],
+      "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300.",
+      "extra": [
+        "-NoWarm"
+      ]
+    },
     {
       "name": "spot_mac00_det",
       "status": "unverified",
@@ -9492,7 +9516,7 @@
     {
       "name": "mdl5_battle_det",
       "status": "unverified",
-      "reason": "broken: no until in 60 s (AZT11-5, 2026-11-07)",
+      "reason": "MDL-5 gate: MDL-5 census and picture: battle mdlfb and mdlsub lines (profdisk). Cold start (-NoWarm) so det shots are a function of the build.",
       "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: mdlfb and mdlsub lines to disk.",
       "proves": "MDL-5 census and picture: battle mdlfb and mdlsub lines (profdisk).",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1",
@@ -9510,8 +9534,7 @@
           "name": "frame 182",
           "regex": "shot \\d+ frame 182\b"
         }
-      ],
-      "reason": "MDL-5 gate: MDL-5 census and picture: battle mdlfb and mdlsub lines (profdisk). Cold start (-NoWarm) so det shots are a function of the build."
+      ]
     },
     {
       "name": "mdl5_battle_det_ref",
@@ -9535,6 +9558,346 @@
         }
       ],
       "reason": "MDL-5 gate: MDL-5 byte reference: battle with nomodelnat. Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "battle_start_sprcheck",
+      "status": "pending",
+      "subject": "Battle scene (default formation, one Goomba on kmr_03). Sprite records of the battle actors against the walker draw, sprcheck window line at frame 300.",
+      "proves": "S4-2 sprite native build (pal0, index count, key, TEV, uniforms) on battle sprites: eq above 0 and diff 0.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 prof=4 sprcheck loglevel=debug",
+      "until": "sprcheck f\\d+ recs",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "sprcheck window: eq above 0 and diff 0",
+          "regex": "sprcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S4-2 copy of spot_mac01_sprcheck on the battle scene (the battle_start debug line). Cap 40 s with reason: battle start is at frame 153, the window line is frame 300."
+    },
+    {
+      "name": "spot_mac01_sprcheck",
+      "status": "pending",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200. NPC and Mario sprites on screen. Shots at frames 200 to 205 and the sprcheck window line.",
+      "proves": "S4-1 sprite record check (sprcheck): each sprite record (G_PM_SPR) gives the native template key equal to the walker key of its batch. Gate: eq above 0 and diff 0.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 sprcheck shots shotwin=200:6 loglevel=debug",
+      "until": "sprcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "sprcheck window: eq above 0 and diff 0",
+          "regex": "sprcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "S4-1 sprcheck copy of spot_mac01_ndmcheck. Cap 25 s."
+    },
+    {
+      "name": "spot_mac01_nosprnat_pic",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at pos 0 0 200, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
+      "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug nosprnat",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 23,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "SPR4 reference: same scenario as spot_mac01_pic with the nosprnat switch (pm_gpu_spr_native returns 0, the walker draws every sprite record). Cold run."
+    },
+    {
+      "name": "spot_iwa10_nosprnat_pic",
+      "status": "unverified",
+      "subject": "iwa_10 at entry 1, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
+      "proves": "DRAW2 row 1: the picture at iwa_10 after the wide native change; the ndmr2 counts (c14 wide refusals) are read from the log.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 shots shotwin=200:6 loglevel=debug nosprnat",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at iwa_10 "
+        }
+      ],
+      "reason": "SPR4 reference: same scenario as spot_iwa10_pic with the nosprnat switch (pm_gpu_spr_native returns 0, the walker draws every sprite record). Cold run."
+    },
+    {
+      "name": "pause_spin_nosprnat_w300",
+      "status": "unverified",
+      "subject": "Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.",
+      "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat nosprnat",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in spin window",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        },
+        {
+          "name": "nrawwhy at 300",
+          "regex": "nrawwhy f300 cmdbuf"
+        }
+      ],
+      "reason": "SPR4 reference: same scenario as pause_spin_grab_w300 with the nosprnat switch (pm_gpu_spr_native returns 0, the walker draws every sprite record). Cold run."
+    },
+    {
+      "name": "battle_start_pm5all",
+      "status": "unverified",
+      "subject": "battle start with the pm5all switch: unlit model draws take program 5 (FB-3). Gate: byte-equal to battle_start of the pre-row build",
+      "proves": "FB-3: pm5 native draws with tex1 and the forced pm5 path for unlit draws reproduce the pm4 picture.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 pm5all",
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "battle mode",
+          "regex": "game mode 8 frame"
+        },
+        {
+          "name": "shot at 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "FB-3 forcing switch pm5all (every model draw without light takes program 5). Cap as battle_start."
+    },
+    {
+      "name": "battle_start_t1cold",
+      "status": "unverified",
+      "subject": "Battle scene (one Goomba on kmr_03), cold det start, shot 182. t1log: one t1draw line per native tex1 draw (u1 words and uvx sent). pm4 for unlit draws, pm5 tex1 for lit draws.",
+      "proves": "FB-3 part 1: pm5 tex1 native draws reproduce the pm4 picture (unlit draws) and send the unit 1 uv map (uvx).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det fixedseed fast fs1off t1log loglevel=debug",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "FB-3 part 1 cold det pair: same build, differs only in pm5all."
+    },
+    {
+      "name": "battle_start_t1cold_pm5all",
+      "status": "unverified",
+      "subject": "Battle scene as battle_start_t1cold with the pm5all switch: unlit model draws take program 5. Gate: shots equal battle_start_t1cold (pm5 tex1 == pm4 tex1 on unlit draws).",
+      "proves": "FB-3 part 1: pm5 tex1 native draws reproduce the pm4 picture (unlit draws) and send the unit 1 uv map (uvx).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det fixedseed fast fs1off t1log loglevel=debug pm5all",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "FB-3 part 1 cold det pair: same build, differs only in pm5all."
+    },
+    {
+      "name": "tour10_t1cold",
+      "status": "unverified",
+      "subject": "Tour of 10 maps (tour10 list), cold det start, default build (no pm5all). t1log: one t1draw line per native tex1 draw; use5 1 lines are the lit tex1 draws of program 5. Used to find the first map with a lit tex1 draw (FB-3 tex1 subject search).",
+      "proves": "FB-3 part 1 tex1 subject search: which maps send lit tex1 draws through pm5 (use5 1 with has_uvx) and the uvx and u1 words of each.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=@tour_fb3_t1.txt shots shotwin=999999:1 shotmode=4:21 phase phasecsv det fixedseed fast fs1off t1log loglevel=debug",
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done, 10 maps"
+        }
+      ],
+      "reason": "FB-3 tex1 subject search: the tour10 list with t1log and the cold det switches. Cap 90 as tour10 (10 map changes; the until line is the tour end)."
+    },
+    {
+      "name": "tour10_t1cold_pm5all",
+      "status": "unverified",
+      "subject": "Tour of 10 maps (tour10 list via tour=@tour_fb3_t1.txt), cold det start, pm5all (unlit model draws take program 5). t1log: use5 1 lines = the tex1 model draws in program 5 with the u1 words and uvx. Tex1 subject search: the first map with such a draw.",
+      "proves": "FB-3 part 1 tex1 subject search with pm5all: which maps have a tex1 draw in program 5 (use5 1 with has_uvx).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=@tour_fb3_t1.txt shots shotwin=999999:1 shotmode=4:21 phase phasecsv det fixedseed fast fs1off t1log loglevel=debug pm5all",
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done, 10 maps"
+        }
+      ],
+      "reason": "FB-3 tex1 subject search (pm5all). Default tour10_t1cold gave 0 use5 tex1 lines on all 10 maps: the tex1 pm5 draws need pm5all or fog. Cap 90 as tour10 (10 map changes)."
+    },
+    {
+      "name": "spot_sbk56_t1det",
+      "status": "unverified",
+      "subject": "sbk_56 (Mario at pos 20 0 440), cold det start, shots at frames 200 to 205. t1log: use5 1 lines = tex1 raw draws in program 5 (u1 words, uvx). FB-3 tex1 subject: sbk_56 had 2116 tex1 refusals in spot_sbk56_notex1nat.",
+      "proves": "FB-3 part 1 tex1 subject: the tex1 raw draws of program 5 on sbk_56 (use5 1 with has_uvx) and their shots; the walker reference is spot_sbk56_t1det_notex1nat.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det t1log",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "FB-3 part 1 tex1 subject (sbk_56, cold det). Cap 25 as the other det spots."
+    },
+    {
+      "name": "spot_sbk56_t1det_notex1nat",
+      "status": "unverified",
+      "subject": "sbk_56 (Mario at pos 20 0 440), cold det start, shots at frames 200 to 205, notex1nat: every tex1 draw takes the walker (CPU) path. The reference of spot_sbk56_t1det (the pre-FB-3 tex1 refusal rule).",
+      "proves": "FB-3 part 1 reference: tex1 draws through the walker (the pre-row refusal) on the same build, for the pixel comparison with the native tex1 draws.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det t1log notex1nat",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "FB-3 part 1 reference for spot_sbk56_t1det (the walker tex1 path, the pre-row rule)."
+    },
+    {
+      "name": "spot_mac01_det_pm5all",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start, pm5all (unlit model draws take program 5), shots at frames 200 to 205. FB-3 part 1 mac_01 gate: shots equal spot_mac01_det (pm4) of the same build.",
+      "proves": "FB-3 part 1 gate: pm5 unlit model draws reproduce the pm4 picture on mac_01 (0 px).",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det pm5all",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "FB-3 part 1 mac_01 gate (cold det, pm5all against pm4 on the same build)."
     }
   ]
 }

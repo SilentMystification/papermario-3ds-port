@@ -33,7 +33,11 @@
       "scenario": "sprshade_hos01",
       "cap": 30,
       "until": "spr5 f\\d+ nopal",
-      "tags": ["azahar", "spr", "log"],
+      "tags": [
+        "azahar",
+        "spr",
+        "log"
+      ],
       "gates": []
     },
     {
@@ -2218,7 +2222,11 @@
       "scenario": "spot_mac01_det",
       "cap": 35,
       "until": "prof f\\d+ w\\d+ at ",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2230,7 +2238,11 @@
       "scenario": "wcen_mac01_det",
       "cap": 45,
       "until": "opsplit f",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2242,7 +2254,11 @@
       "scenario": "phase_mac01_det",
       "cap": 45,
       "until": "fsplit f",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2254,7 +2270,11 @@
       "scenario": "phase_iwa10_det",
       "cap": 45,
       "until": "fsplit f",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2735,25 +2755,25 @@
       ],
       "gates": []
     },
-  {
-    "name": "pause_spin_grab_det_w300",
-    "kind": "azahar_pic",
-    "speed": "normal",
-    "default": false,
-    "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
-    "scenario": "pause_spin_grab_det_w300",
-    "cap": 45,
-    "until": "nrawwhy f300 ",
-    "tags": [
-      "azahar",
-      "pic",
-      "off",
-      "grab",
-      "det",
-      "cold"
-    ],
-    "gates": []
-  },
+    {
+      "name": "pause_spin_grab_det_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
+      "scenario": "pause_spin_grab_det_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
     {
       "name": "fb_nok11_nat_pic",
       "kind": "azahar_pic",
@@ -3088,6 +3108,268 @@
       "tags": [
         "azahar",
         "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_sprcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Battle scene sprcheck (S4-2): sprite record native build vs walker batch. Gate eq above 0, diff 0.",
+      "scenario": "battle_start_sprcheck",
+      "cap": 40,
+      "until": "sprcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "sprcheck",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "spr_eq",
+          "regex": "sprcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "spr_diff",
+          "regex": "sprcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "spr_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "spr_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "spot_mac01_sprcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Toad Town mac_01 sprcheck (S4-1): sprite record key vs walker key. Gate eq above 0, diff 0.",
+      "scenario": "spot_mac01_sprcheck",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "sprcheck",
+        "spot"
+      ],
+      "log_metrics": [
+        {
+          "name": "spr_eq",
+          "regex": "sprcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "spr_diff",
+          "regex": "sprcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "spr_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "spr_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "spot_mac01_nosprnat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Toad Town mac_01 at pos 0 0 200, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
+      "scenario": "spot_mac01_nosprnat_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_nosprnat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "iwa_10 at entry 1, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
+      "scenario": "spot_iwa10_nosprnat_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "iwa10",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_spin_nosprnat_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.",
+      "scenario": "pause_spin_nosprnat_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_pm5all_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3: battle start with the pm5all switch (unlit model draws through program 5, tex1 native). Byte-equal to battle_start_pic of the pre-row build.",
+      "scenario": "battle_start_pm5all",
+      "cap": 20,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_t1cold_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 part 1: battle start cold det, pm4 unlit and pm5 tex1 lit; t1draw lines. Reference of battle_start_t1cold_pm5all_pic.",
+      "scenario": "battle_start_t1cold",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_t1cold_pm5all_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 part 1: battle start cold det with pm5all (unlit draws through program 5). Gate: shots equal battle_start_t1cold_pic.",
+      "scenario": "battle_start_t1cold_pm5all",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour10_t1cold_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 tex1 subject search: tour10 cold det with t1log, the t1draw lines per map (use5 1 = lit tex1 draws in program 5).",
+      "scenario": "tour10_t1cold",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour10_t1cold_pm5all_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 tex1 subject search with pm5all: tour10 cold det, the use5 1 tex1 draws (program 5) per map, and the shots of each map.",
+      "scenario": "tour10_t1cold_pm5all",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_sbk56_t1det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-3 part 1 tex1 subject: sbk_56 cold det, native tex1 draws, t1log use5 lines and shots 200 to 205.",
+      "scenario": "spot_sbk56_t1det",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_sbk56_t1det_notex1nat_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-3 part 1 reference: sbk_56 cold det with notex1nat (walker tex1), shots 200 to 205.",
+      "scenario": "spot_sbk56_t1det_notex1nat",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_det_pm5all_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-3 part 1 mac_01 gate: cold det, pm5all, shots 200 to 205 (compare with fb_mac01_det_pic of the same build).",
+      "scenario": "spot_mac01_det_pm5all",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
       ],
       "gates": []
     }

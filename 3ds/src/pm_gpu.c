@@ -172,7 +172,7 @@ static C3D_AttrInfo attr4;
 enum { GPAL5 = 8 };
 static shaderProgram_s prog5;
 static DVLB_s* dvlb5;
-static int u5_pal = -1, u5_lamb = -1, u5_lcol = -1, u5_ldir = -1, u5_lk0 = -1, u5_lk1 = -1, u5_lflag = -1, u5_fogu = -1, u5_uvso = -1, u5_cmul = -1, u5_cadd = -1, u5_nzo = -1, u5_zmix = -1, gv5_on, g_use5;
+static int u5_uvx = -1, u5_pal = -1, u5_lamb = -1, u5_lcol = -1, u5_ldir = -1, u5_lk0 = -1, u5_lk1 = -1, u5_lflag = -1, u5_fogu = -1, u5_uvso = -1, u5_cmul = -1, u5_cadd = -1, u5_nzo = -1, u5_zmix = -1, gv5_on, g_use5;
 static PmFx g_fx, sh5_fx;
 static float sh5_uvso[4], sh5_cmul[4], sh5_cadd[4], sh5_zmix[2];
 static int sh5_ok;
@@ -1142,6 +1142,8 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static unsigned ndn_tgen;
+static void pm5_upload_draw(const NdDraw* d);
+static void t1log_draw(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
 static void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
     extern unsigned pm_gbi_dbg_orb_tag(void);
@@ -1155,6 +1157,10 @@ static void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsig
 }
 static void nd_native_submit(const NdDraw* dp, int tex) {
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, pm_gbi.c) */
+    /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
+    NdDraw d5;
+    if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
+    t1log_draw(dp);
     const NdDraw* d = dp;
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     /* PM5 cause 3: a program change clears the whole native shadow (the citro3d uniform file is one file for all programs, and the template shadow does not know the program) */
@@ -1220,9 +1226,14 @@ static void pm5_upload_draw(const NdDraw* d) {
     for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 4 + r, d->nrm5[r][0], d->nrm5[r][1], d->nrm5[r][2], 0.f);
     gv_palup_n++; pm_dc_c[DC_PALUP]++;
 }
+/* FB-3 t1log (debug switch, log only): one line per tex1 draw of a native record or raw batch, with the unit 1 words and the uvx values sent */
+static void t1log_draw(const NdDraw* d) {
+    static int t1l_on = -1, t1l_n; extern unsigned pm_frame_count(void);
+    if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
+    if (t1l_on && d->has_uvx && d->use5 && pm_frame_count() >= 100 && t1l_n++ < 400) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
+}
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex) {
     rp_src_ = 2;
-    if (d->use5) { pm5_upload_draw(d); d->no_uni = 1; d->npal = 0; d->has_uvx = 0; }
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys((void*)sd) - 0x18000000u);
     d->nidx = nidx;
@@ -1300,7 +1311,7 @@ static int nd_raw_native(void) {
     fb2_switches();
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
-    if (g_use5 && combine == 8 && (plan.uses_tex1 || plan.uses_noise)) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* PM5 cause 2: the pm5 file has no second uv map or noise row for the native draw */
+    if (g_use5 && combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* FB-3 part 2 removes this (pm5 noise row); tex1 is native for pm5 (part 1) */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); unsigned lim = cmd_small && cmd_small < csz ? cmd_small : csz; if (coff + ND_EMIT_MAX + 1024u >= lim) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
@@ -1375,9 +1386,9 @@ static int nd_raw_native(void) {
         d.nzo[0] = 120.f / 64.f; d.nzo[1] = 200.f / 64.f; d.nzo[2] = noise_off[0]; d.nzo[3] = noise_off[1];
         d.loc_nzo = (unsigned)u4_nzo; d.has_nzo = u4_nzo >= 0;
     }
-    if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)u4_uvx; d.has_uvx = 1; }
+    if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)(g_use5 ? u5_uvx : u4_uvx); d.has_uvx = 1; }
     d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
-    if (g_use5) { pm5_upload(); d.use5 = 1; d.no_uni = 1; d.npal = 0; d.has_uvx = 0; } /* PM5-2; PM5 cause 2: no pm4 unit 1 uv row in a pm5 draw */
+    if (g_use5) { pm5_upload(); d.use5 = 1; d.no_uni = 1; d.npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d.loc_uvx (set above) */
     memcpy(d.uvso, g_uvso, 16); memcpy(d.cmul, g_cmul, 16); memcpy(d.cadd, g_cadd, 16);
     d.zmix[0] = g_zmix[0]; d.zmix[1] = zmix_y_dbg(g_zmix[1]);
     d.idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(gidx + gi_start) - 0x18000000u);
@@ -1868,7 +1879,8 @@ void pm_gpu_init(void) {
                 u5_cadd = shaderInstanceGetUniformLocation(prog5.vertexShader, "cadd");
                 u5_nzo = shaderInstanceGetUniformLocation(prog5.vertexShader, "nzo");
                 u5_zmix = shaderInstanceGetUniformLocation(prog5.vertexShader, "zmix");
-                gv5_on = prog5.vertexShader && u5_pal >= 0 && u5_lamb >= 0 && u5_lcol >= 0 && u5_ldir >= 0 && u5_lk0 >= 0 && u5_lk1 >= 0 && u5_lflag >= 0 && u5_fogu >= 0 && u5_uvso >= 0 && u5_cmul >= 0 && u5_cadd >= 0 && u5_nzo >= 0 && u5_zmix >= 0;
+                u5_uvx = shaderInstanceGetUniformLocation(prog5.vertexShader, "uvx"); /* FB-3: the unit 1 uv map of a pm5 draw */
+                gv5_on = prog5.vertexShader && u5_pal >= 0 && u5_lamb >= 0 && u5_lcol >= 0 && u5_ldir >= 0 && u5_lk0 >= 0 && u5_lk1 >= 0 && u5_lflag >= 0 && u5_fogu >= 0 && u5_uvso >= 0 && u5_cmul >= 0 && u5_cadd >= 0 && u5_nzo >= 0 && u5_zmix >= 0 && u5_uvx >= 0;
                 pm_log("gv5: lighting, texgen and fog program %s (pal %d lcol %d ldir %d)", gv5_on ? "on" : "FAILED", u5_pal, u5_lcol, u5_ldir);
             }
             pm_log("gv1: palette path %s (pal %d uvso %d cmul %d cadd %d zmix %d nzo %d)", gv4_on ? "on" : "FAILED", u4_pal, u4_uvso, u4_cmul, u4_cadd, u4_zmix, u4_nzo);
@@ -2892,7 +2904,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3], unsigned* mv) {
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
-    if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
+    if (use5 && !gv5_on) return 0;
     unsigned mvm = 0; /* TRI-2: bit i: ro[i] is a copy with x moved (the caller keeps vert_ring) */
     if (mv) *mv = 0;
     if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
@@ -3026,7 +3038,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
                   const PmFx* fx, const unsigned short* idx, unsigned nidx) {
     if (!gv4_on || !gpu_ok) return 0;
     const int use5 = fx != NULL;
-    if (use5 && (!gv5_on || (combine == 8 && plan.uses_tex1))) return 0; /* pm5 has no second texture coordinate */
+    if (use5 && !gv5_on) return 0;
     if (r_zmark) return 0;
     if (r_decal && r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
     unsigned short wide_idx[WIDE_MAXV]; /* TRI-2: the range with its edge vertices copied */
