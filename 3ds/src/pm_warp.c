@@ -1151,7 +1151,7 @@ static void encwarp_tick(unsigned f) {
             state = 3;
         }
     } else if (state == 2 && pm_frame_count() >= t0 + 45) {
-        pm_log("encwarp: window end at frame %u", pm_frame_count());
+        pm_log_evt("encwarp: window end at frame %u", pm_frame_count());
         state = 3;
     }
 }

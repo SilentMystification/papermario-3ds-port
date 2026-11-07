@@ -587,7 +587,7 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
     uint32_t hdr[5] = { 0x3152444Eu /* NDR1 */, 4u, fr, ndref_draws, ndref_len };
     FILE* f = fopen("sdmc:/3ds/PaperMario/ndref.bin", "wb");
     if (f) { fwrite(hdr, 4, 5, f); fwrite(ndref_buf, 1, ndref_len, f); fclose(f); }
-    pm_log_d("ndref f%u done draws %u bytes %u%s%s", fr, ndref_draws, ndref_len, f ? "" : " open failed", ndref_over ? " over" : "");
+    pm_log_evt("ndref f%u done draws %u bytes %u%s%s", fr, ndref_draws, ndref_len, f ? "" : " open failed", ndref_over ? " over" : "");
     free(ndref_buf); ndref_buf = NULL;
 }
 /* S0-6: prof counters. pfd_add runs at each frame end (cen_frame_end), before pm_dc_c is cleared: draws, TEV rebuilds, texture binds and
@@ -1686,7 +1686,7 @@ static void jt_queue(void) {
  * shows as no line. */
 static void jt_result(void) {
     gspWaitForP3D();
-    pm_log_w("jump f%u ran", jt_frame);
+    pm_log_evt("jump f%u ran", jt_frame);
     pm_log_d("jump f%u layout: size0=%u addr0=%08x size1=2 addr1=%08x jump1=1 cont_word=%u", jt_frame, (unsigned)jt_size0,
              (unsigned)(jt_cont_pa << 3), (unsigned)(jt_sub_pa << 3), (unsigned)jt_cont_word);
     jt_state = 0;
@@ -2108,7 +2108,7 @@ static void dump_shot(void) {
             shot_burst--;
             pm_route_mapid(&ma, &mm);
             if (shot_burst != 0) {
-                pm_log_d("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
+                pm_log_evt("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
                 return;
             }
             snprintf(msg, sizeof msg, "shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
@@ -2140,7 +2140,7 @@ static void dump_shot(void) {
     }
     free(row);
     fclose(f);
-    if (msg[0]) pm_log_d("%s", msg); /* SHOT1: after fclose, so the until line (run_azahar.ps1) means the file is complete */
+    if (msg[0]) pm_log_evt("%s", msg); /* SHOT1: after fclose, so the until line (run_azahar.ps1) means the file is complete */
 }
 
 /* D03: the last finished frame as N64 RGBA5551 (native u16, alpha bit set), 320x240, for game code that
