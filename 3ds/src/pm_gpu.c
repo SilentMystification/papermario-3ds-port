@@ -3418,6 +3418,15 @@ static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0
 /* S3N-7: the counters of one 300-frame window (reset at the print). ndmt: ms per sampled frame of each region (ticks / 268112 per ms / frames). */
 static unsigned ndn_clr0, ndn_smp0;
 static double ndt_ms(int k, unsigned ns) { return ns ? (double)ndt_sum[k] / ((double)ns * 268112.0) : 0.0; }
+/* MDL-5e debug: the window so far at the end of a tour (a tour shorter than 300 frames has no ndm window line). */
+void pm_gpu_ndn_window_end(void) {
+    unsigned f = pm_frame_count();
+    char wb[160]; unsigned wn = 0; wb[0] = 0;
+    for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
+    pm_log_prof_line("ndm end f%u native %u fb %u wref %u hit %u miss %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, wb);
+    ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = 0;
+    for (unsigned c = 0; c < 16u; c++) ndn_why[c] = 0;
+}
 static void ndn_log(void) {
     unsigned f = pm_frame_count();
     if (f % 300u == 0 && f != ndn_f_last) {
