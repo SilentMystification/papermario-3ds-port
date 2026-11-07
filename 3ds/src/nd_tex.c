@@ -288,7 +288,6 @@ static __attribute__((noinline)) void set_tilesize(unsigned tile, int uls, int u
                 src += (size_t)r_y * (size_t)r_str + (size_t)r_x;
                 stride = r_str * 2;
             }
-            suntile_t0(src, stride, w, h, bpp, uls, ult, lrs, lrt);
             nd_ws.tile_x0 = x0;
             nd_ws.tile_y0 = y0;
             nd_ws.tile_fx = (float)(uls & 3) * 0.25f; /* PT38 */

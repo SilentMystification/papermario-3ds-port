@@ -2214,6 +2214,22 @@
       "gates": []
     },
     {
+      "name": "spot_sbk56_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOVE4 gate: sbk_56 spot (sun scene), cold start with the det switch. Two cold runs of one build must give byte-equal shots 200 to 205.",
+      "scenario": "spot_sbk56_det",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_det",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3379,8 +3395,6 @@
     "names": [
       "warpmenu_sub",
       "profmenu_row",
-      "nok02_tri_dd",
-      "nok02_tri",
       "nok02_dlccheck",
       "nok02_noboxint",
       "nok02_stdump_on",
