@@ -26,7 +26,6 @@ void nd_frame_begin(void); /* once per gbi task: the ndst debug line */
 extern float nd_mv[ND_MV_DEPTH][4][4];
 extern int nd_mv_sp;
 extern float nd_proj[4][4];
-extern float nd_mtx_pool[2][ND_MTX_MAX][16]; /* matrix slot per eye, C3D_Mtx memory order, 64 bytes, aligned 32 */
 void nd_mtx_ident(float m[4][4]);
 void nd_mtx_mul(float c[4][4], const float a[4][4], const float b[4][4]);
 void nd_mtx_unpack(const uint32_t* n64, float d[4][4]);      /* 16 words of an N64 Mtx */

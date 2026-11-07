@@ -10,7 +10,6 @@
 float nd_mv[ND_MV_DEPTH][4][4];
 ND_HOTD int nd_mv_sp;
 float nd_proj[4][4];
-float nd_mtx_pool[2][ND_MTX_MAX][16] __attribute__((aligned(32)));
 
 void nd_mtx_ident(float m[4][4]) {
     memset(m, 0, sizeof(float) * 16);
