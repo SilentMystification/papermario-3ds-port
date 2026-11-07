@@ -1,5 +1,11 @@
 # Row STALE2: signposts show Mario's walk frame (stale texture)
 
+## State (2026-11-06)
+- Azahar: texsrc 0 on six paths at mac_01 and mac_02 (walk, model, hit, spr, ent_draw, ent_gdl). The sign is unchanged in the shots. No Azahar repro of the sign report.
+- Cause 4 fix (walker bind skip after a slot reuse, tb_sg == slot sgen): commit 300fd4cf1 on nds1. spot_mac01_pic shots 200 to 202 at standstill byte-equal to the nds1 build 1f5e0db04 (cold, both lanes).
+- Cause 4 is console only. The orchestrator pushes for the user check. The prof-mode texsrc lines (texsrc f<n>, texsrc ent f<n>) print every 300 frames on the O3DS.
+- Open: the console result. Keep this row file until then.
+
 ## User report (2026-11-06, console and Azahar)
 Signpost textures sometimes show Mario's walking sprite texture. Earlier: Mario's walk frames on paths and fences in dro_01 (docs/handoff/diag_stale_tex.md; palette fix c04b00e93).
 
