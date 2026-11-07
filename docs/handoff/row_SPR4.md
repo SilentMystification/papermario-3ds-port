@@ -32,3 +32,5 @@ Gate:
 
 ## Rules
 Own worktree build3ds/wt/spr4, branch spr4 from nds1; copy assets/us and ver/us/build. Code first (CLAUDE.md rule 5). pm_gbi.c is shared with ST/TX/GM/WK: keep your hunks to the G_PM_SPR case, the G_VTX hook and pm_gpu_spr_build; rebase before each commit and check markers. No attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. Delete this file in the last commit.
+
+Gate change (user, 2026-11-07): no N64 reference shot. The walker fix is accepted by code reasoning (name the missing batch break and why the RDP would use the per-triangle state) plus the byte checks of unaffected scenes; any changed region in mac_01, iwa_10 or pause_spin is named by code as the same mis-batched-state class.
