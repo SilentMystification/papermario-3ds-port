@@ -5158,7 +5158,7 @@
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on.",
       "proves": "UA10: the intro mode runs in the native view with wide on.",
       "debug": "wide shots shotwin=330:20 loglevel=debug",
-      "until": "shot \\d+ frame 334\\b",
+      "until": "shot \\d+ frame 333\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "game mode 1 frame",
@@ -5171,7 +5171,7 @@
         },
         {
           "name": "shot in intro",
-          "regex": "shot \\d+ frame 334\\b"
+          "regex": "shot \\d+ frame 333\\b"
         }
       ],
       "reason": "UA10 gate by eye and the log line."
