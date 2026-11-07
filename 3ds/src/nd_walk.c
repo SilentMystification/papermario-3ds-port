@@ -24,11 +24,8 @@ int host_range(u32 p, u32* lo, u32* hi) {
 }
 
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
-int pm_gpu_spr_checking(void); /* SPR4 */
-void pm_gpu_spr_flush(void); /* SPR4 sprcheck: the flush at the sprite triangle; counts whether the sprite was checked by it */
 static Gfx* spr_at; /* SPR4: vertex word of the sprite record to draw natively (G_PM_SPR arm sets it, G_VTX arm uses it) */
 static Gfx* spr_rec; /* SPR4: the sprite record of spr_at */
-static Gfx* spr_flush_at; /* SPR4 sprcheck: the triangle word of a walker-drawn sprite; the batch closes after it, so the compare sees the draw state */
 
 const u8 g1_skip[256] = { [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
 
@@ -124,7 +121,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
     sc_ok = 0; sr_ok = 0; /* DIP2: a new display list starts with a full sync */
     if (!pc) { gv_streak_flush(); tex_streak_flush(); return; }
     while (pc && guard++ < 200000) {
-        if (__builtin_expect(spr_flush_at != NULL, 0) && pc == spr_flush_at + 1) { spr_flush_at = NULL; pm_gpu_spr_flush(); } /* SPR4 sprcheck: close the batch of the sprite */
         if (end && sp == 0 && pc >= end) break;
         if ((u32)pc < pc_lo || (u32)pc >= pc_hi) { /* PG3 A15: the range of pc is looked up when pc leaves the last range (list entry, G_DL, return), not at every op */
             if (!host_range((u32)pc, &pc_lo, &pc_hi)) { pc_lo = pc_hi = 0;
@@ -235,7 +231,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
                     pc += 1;
                     break;
                 }
-                if (pm_gpu_spr_checking()) spr_flush_at = pc; /* the triangle word: the walker draw ends its batch there */
             }
             nd_geom_vtx(w0, w1, list);
             break;
