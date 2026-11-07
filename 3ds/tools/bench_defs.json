@@ -1312,6 +1312,23 @@
     },
 
     {
+      "name": "pause_spin_grab_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
+      "scenario": "pause_spin_grab_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab"
+      ],
+      "gates": []
+    },
+    {
       "name": "wcen_pause",
       "kind": "azahar_pic",
       "speed": "normal",

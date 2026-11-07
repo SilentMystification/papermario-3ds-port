@@ -3995,6 +3995,26 @@
       "reason": "GRAB2 (BTLSTAR row). Same command as text_menu with a 40 frame shot window. Unverified: one start needed. Add grablog to the debug string for the grab line check."
     },
     {
+      "name": "pause_spin_grab_w300",
+      "status": "unverified",
+      "subject": "OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: mac_00 entry 4"},
+        {"name": "pause mode", "regex": "game mode 10 frame"},
+        {"name": "shot in spin window", "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"},
+        {"name": "nrawwhy at 300", "regex": "nrawwhy f300 cmdbuf"}
+      ],
+      "reason": "OFF-2 gate (grab refusal 0). The until line is the 300 frame counter; the spin shots are the picture."
+    },
+    {
       "name": "yard_vramfill",
       "status": "unverified",
       "subject": "VRAM2: yard with vramfill=3 (three 512 KB dummy blocks in bank B, after the texture cache has its boot blocks). Reads the texstat cap line at frame 300.",

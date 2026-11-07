@@ -1178,11 +1178,22 @@ static NdTmplKey spr_wk; /* S4-1 sprcheck: the walker template key of the last r
 static void spr_check(const NdDraw* w);
 static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer, 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
 void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
+/* OFF-2: the unit 0 words of the grab copy (grab_tex), as the walker bind (dc_bind) sends them. The copy is one fixed buffer: force keeps the words in
+ * every draw of the grab, as the walker binds it at every draw. 1 always. */
+static int grab_native_unit0(NdUnit* u) {
+    const C3D_Tex* tp = &grab_tex;
+    u->force = 1;
+    u->dim = tp->dim;
+    u->param = tp->param;
+    u->lod = tp->lodParam;
+    u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
+    u->type = (uint32_t)tp->fmt;
+    return 1;
+}
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; cen_why = CW_NRK(1); return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
-    if (grab_bind) { nd_native_refused++; nraw_why[3]++; cen_why = CW_NRK(3); return 0; }
     if (r_zmark) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; }
     if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }
     if (combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[7]++; cen_why = CW_NRK(7); return 0; }
@@ -1190,7 +1201,7 @@ static int nd_raw_native(void) {
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
-    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; } }
+    if (combine >= 2) { t = grab_bind ? grab_native_unit0(&u0) : pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; } } /* OFF-2: a grab draw binds the copy */
     NdUnit u1;
     memset(&u1, 0, sizeof u1);
     int t1 = 0;
@@ -1213,6 +1224,7 @@ static int nd_raw_native(void) {
     spr_wk = nk;
     if (combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
     /* from here the batch is drawn natively */
+    if (grab_bind) pm_tex_bind_reset(); /* as flush_draw: the next walker bind of unit 0 sends its own words */
     TevKey tk;
     memset(&tk, 0, sizeof tk);
     tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
@@ -1224,7 +1236,7 @@ static int nd_raw_native(void) {
         ndn_tk = tk; ndn_to_ok = 1;
     }
     if (ndref_on) { ndref_nz = 0; ndref_raw = 1; ndref_draw(&tk, z, 1, 4, (unsigned)g_cullm); ndref_state(0, z); }
-    cen_add(&tk, z, 1, 4, (unsigned)g_cullm, tex ? pm_tex_census_id(0) : 0u, 0u, gni / 3u);
+    cen_add(&tk, z, 1, 4, (unsigned)g_cullm, grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, 0u, gni / 3u);
     dc_on = 0;
     proj_ok = 0; pool_buf_ok = 0;
     sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
