@@ -48,6 +48,20 @@ Gate:
 - battle_start f182 byte-equal to r13off.
 - ndmcheck mismatches not above the post-fix baseline.
 
+## Oracle decision MDL-1b v2
+The fault is in pm_gbi_bind_tile1 (build3ds/wt/mdl/3ds/src/pm_gbi.c ~1191): it calls sync_combine_work() directly. That bypasses sync_combine's memo (sc_ok/sc_sig, scm_find/scm_store) and runs with comb_dry = 0, so it calls pm_gpu_set_plan and pm_gpu_plan_key, and can change leg_mode. Every R13 record then leaves sc_sig and the plan memo out of step with nd_ws, and later records skip or replay the wrong combine. This explains the whole-frame difference at iwa_10 0000 and ndmcheck 207 to 453. The call is also redundant: rec_aux runs the block's SETCOMBINE, SETTILE and TEXTURE words through their own handlers, and each of those already calls sync_combine() (e.g. G_SETCOMBINE at ~4296, tile 1 load at ~4071). So cur_plan and plan_active are current when rec_aux returns.
+The clean bind is the walker's own pre-draw tile step, from gv_epoch_enter (~1587-1595): `ensure_tile(nd_ws.use_t1 ? 1 : 0); dual_bind();`. In the r13off build the walker draw of these records ran exactly this, so the walker state ends identical.
+1. pm_gbi_bind_tile1 becomes: `if (!plan_active || !cur_plan.uses_tex1) return 0; ensure_tile(nd_ws.use_t1 ? 1 : 0); dual_bind(); return nd_ws.td[1].valid && pm_tex_aux_off_idx() < 0;`. No sync_combine_work.
+2. Call it once per record in rec_run: after rec_apply (rec_aux done), before the branch `if (ndm) pm_gpu_ndm_begin(...) else if (... pm_gpu_model_native(...))`. Only for R13 texture-only records. Remove the call at the top of model_draw. Both paths then see the same bound tile 1, and the bind runs once.
+3. Keep the rest of the v1 decision: nd_comb_native reads t1_valid; unit 1 from pm_tex_native_unit1; d.uvx from t1_s; pm5 with tex1 and aux-off unit 1 counted as why 6.
+4. Fallback class 5 (3600): log its why name in the mdlw line. If it is the r13nohit store, it is expected; any other class must be 0.
+Gate:
+- iwa_10 shots 0000-0002 byte-equal to r13off.
+- ndmcheck f600 diff at most 207.
+- why 6 for R13 tile-1 records 0, apart from the counted pm5tex1, aux-off and noise cases.
+- mac_01 and battle_start f182 byte-equal.
+If this one try misses the gate: defer MDL-1b and keep why 6 counted. Keep the merged MDL-1 state (nds1 1b9b9d119 plus the r13nohit store fix), revert the mdl branch's MDL-1b commits (437c098c6, 66128be21, 92b74b3b0), and reopen it after ST-2/TX-3 have moved the combine and tile code.
+
 ## Rules
 Own files: 3ds/src/nd_model.c (not the why 4 line), pm_gpu.c pm_gpu_model_native and pm_gpu_model_fb_cached, pm_gbi.c rec_run and load_shaded_sprite, nd_sprite.c. CORE edits pm_gbi.c on branch core (state renames, setters): keep pm_gbi.c hunks small. No toggles (debug switches allowed), no stubs, no push, no attribution lines, never commit 3ds/src/map_restore_table.c. Keep Azahar open. Status line in 3ds/logs/perf/status_MDL.txt. Budget: reset and continue. Two tries per named cause. Delete this file in the MDL-4 commit.
 
