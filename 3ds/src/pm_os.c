@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
+#include <3ds/types.h>
+#include <3ds/env.h>
+#include <3ds/services/apt.h>
 #include "ultra64.h"
 #include "nu/nusys.h"
 #include "enums.h"
@@ -189,6 +192,16 @@ static int rom_fail(FILE* f, const char* msg) {
     return 0;
 }
 
+/* SIZE-4: a low-memory message in applet mode (the game started from the home menu, not from the Homebrew Launcher title) names
+ * the way to the full memory. memforce (debug switch) takes the applet branch too, so the gate shows the text on Azahar. */
+static void low_mem_hint(char* msg, size_t n, int force) {
+    unsigned appid = envGetAptAppId();
+    pm_log_e("rom: app id %08x, applet %d", appid, (appid != APPID_APPLICATION) || force);
+    if (!force && appid == APPID_APPLICATION) return;
+    size_t k = strlen(msg);
+    snprintf(msg + k, n - k, "\n\nHold R while you start any game to open the Homebrew Launcher with full memory, then start Paper Mario again.");
+}
+
 /* Returns 1 when the ROM can be used. On 0 the reason is on the bottom screen and the game must not run. */
 int pm_rom_init(void) {
     if (rom_tried) return rom_bytes != NULL;
@@ -236,12 +249,14 @@ int pm_rom_init(void) {
     unsigned leave = 3458u * 1024u;
     unsigned heap = pm_heap_bytes();
     unsigned cap = heap > leave ? heap - leave : 0;
+    int memforce = pm_debug_has("memforce"); /* SIZE-4 gate: the low memory path with the applet hint */
+    if (memforce) cap = 0;
     /* RR2: the ROM is always resident. No SD streaming: a ROM that does not fit stops the game here. */
-    char nomem[160];
+    char nomem[320];
     snprintf(nomem, sizeof(nomem), "Not enough memory for the ROM: need %u MB, free %u MB", (need + 0xFFFFFu) >> 20, cap >> 20);
-    if (need > cap) return rom_fail(f, nomem);
+    if (need > cap) { low_mem_hint(nomem, sizeof(nomem), memforce); return rom_fail(f, nomem); }
     u8* block = (u8*)memalign(16, (size_t)need);
-    if (!block) return rom_fail(f, nomem);
+    if (!block) { low_mem_hint(nomem, sizeof(nomem), memforce); return rom_fail(f, nomem); }
     int ok = 1;
     if (can_pack) {
         for (unsigned i = 0; ok && i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)

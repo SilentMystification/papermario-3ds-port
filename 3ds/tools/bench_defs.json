@@ -1103,6 +1103,69 @@
       ]
     },
     {
+      "name": "nok11_splash_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SIZE-1 gate: nok_11 water splash (fxtest 89, effect graphics from the ROM copy). Shot 1 at 12 frames after the spawn; a person reads the splash, byte compare with the reference build.",
+      "scenario": "nok11_splash",
+      "cap": 20,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "pic",
+        "size"
+      ],
+      "gates": []
+    },
+    {
+      "name": "sbk56_superblock_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SIZE-1 gate: sbk_56 super block upgrade (effect graphics from the ROM copy). Shots every 30 frames to the effects end; byte compare with the reference build.",
+      "scenario": "sbk56_superblock",
+      "cap": 45,
+      "until": "superblock: effects done",
+      "tags": [
+        "azahar",
+        "pic",
+        "size"
+      ],
+      "gates": []
+    },
+    {
+      "name": "ndref_splash_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SIZE-1 gate: fxtest splash block (ndref_splash) runs to frame 412 with no fault; the walker reads the effect graphics of the ROM copy.",
+      "scenario": "ndref_splash",
+      "cap": 20,
+      "until": "ndref f412 done",
+      "tags": [
+        "azahar",
+        "pic",
+        "size"
+      ],
+      "gates": []
+    },
+    {
+      "name": "lowmem_hint_pic",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SIZE-4 gate: memforce boot shows the low-memory fatal screen with the applet hint (app id line). A person reads the bottom screen in the Azahar window capture.",
+      "scenario": "lowmem_hint",
+      "cap": 25,
+      "until": "Not enough memory for the ROM",
+      "tags": [
+        "azahar",
+        "size"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_iwa10_pic",
       "kind": "azahar_pic",
       "speed": "normal",

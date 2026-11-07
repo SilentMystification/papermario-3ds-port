@@ -3620,6 +3620,30 @@
       "reason": "UI2 step 1 low-HP test. Uses the existing hp= switch."
     },
     {
+      "name": "lowmem_hint",
+      "status": "unverified",
+      "subject": "Boot with memforce (debug switch): the ROM does not fit the heap, so the fatal screen shows the low-memory text. Memforce takes the applet branch: the hint to hold R and open the Homebrew Launcher with full memory is on the bottom screen.",
+      "proves": "SIZE-4: the low-memory message names the full-memory start in applet mode, and the text is not cut on the bottom screen.",
+      "debug": "memforce loglevel=debug",
+      "until": "Not enough memory for the ROM",
+      "cap": 25,
+      "deadline": 25,
+      "first_marker": "rom: app id",
+      "expects": "rom",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "app id line",
+          "regex": "rom: app id [0-9a-f]+, applet 1"
+        },
+        {
+          "name": "low memory",
+          "regex": "Not enough memory for the ROM"
+        }
+      ],
+      "reason": "SIZE-4 gate (row SIZE): the fatal screen is printed before the game starts, so the until line is the low-memory log line; the bottom screen is read from the Azahar window capture."
+    },
+    {
       "name": "battle_start",
       "status": "verified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",
