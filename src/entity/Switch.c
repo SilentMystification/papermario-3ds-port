@@ -146,7 +146,7 @@ void entity_base_switch_anim_init(Entity* entity) {
     data->animStateScaleY = 0;
 }
 
-s32 entity_RedSwitch_animate_scale(Entity* entity) {
+void entity_RedSwitch_animate_scale(Entity* entity) {
     f32 phi_f4;
     f32 temp_f6;
     SwitchData* data = entity->dataBuf.swtch;
