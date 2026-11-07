@@ -27,6 +27,7 @@ extern u32 __ctru_linear_heap, __ctru_linear_heap_size;
 
 static u8* soc_buf;
 static s64 commit_max, commit_cur; /* M02 measurement: what the OS offered before the 64MB cap */
+static u32 boot_avail; /* MEM-B v3: avail in __system_allocateHeaps (commit minus image, capped at PM_FCRAM), KB in the boot memory line */
 static u32 soc_size;
 static Result soc_rc_alloc = -1;
 unsigned pm_soc_alloc_rc(void) { return (unsigned)soc_rc_alloc; }
@@ -83,6 +84,7 @@ void __system_allocateHeaps(void) {
 
     u32 avail = (u32)(max_commit - cur_commit) & ~0xFFFu;
     if (avail > PM_FCRAM) avail = PM_FCRAM;
+    boot_avail = avail;
 
     /* HW1: socInit needs a memory block in the normal heap area (0x08000000 and up). The linear block is at 0x14000000 and
      * above, so socInit returns e0e01bf5 (invalid address) with a linear buffer. The old code called MEMOP_ALLOC with
@@ -244,7 +246,8 @@ void pm_mem_log(const char* tag) {
         fail_prev = fc;
     }
     if (!strcmp(tag, "boot")) /* BS1: status line, shown at every log level */
-        pm_log_w("memory: linear %uKB, heap %uKB, texture budget %uKB, FCRAM cap %uKB", pm_linear_bytes() >> 10, pm_heap_bytes() >> 10, pm_tex_budget() >> 10, PM_FCRAM >> 10);
+        pm_log_w("memory: linear %uKB, heap %uKB, texture budget %uKB, FCRAM cap %uKB, commit max %uKB cur %uKB avail %uKB", pm_linear_bytes() >> 10, pm_heap_bytes() >> 10, pm_tex_budget() >> 10, PM_FCRAM >> 10,
+               (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10), boot_avail >> 10);
     if (!strcmp(tag, "boot"))
         pm_log_d("mem commit limit %uKB used-by-image %uKB offered %uKB cap %uKB", (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10),
                (unsigned)((commit_max - commit_cur) >> 10), PM_FCRAM >> 10);

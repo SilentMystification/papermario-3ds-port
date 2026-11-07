@@ -1,95 +1,78 @@
-/* MEM-B step 1: heap high-water marks. The N64 first-fit heaps (src/43F0.c) are wrapped at link time
- * (CMake --wrap of _heap_malloc, _heap_malloc_tail, _heap_free). Per head: used bytes (block size on malloc,
- * header length on free), hi_used, and hi_top (the highest block end above the head, the fragmentation-relevant
- * number). pm_heaphi_line prints one heaphi line per heap every 300 frames (pm_main.c). Cost: a few adds per call. */
+/* MEM-B v3: heap high-water. The N64 first-fit heaps (src/43F0.c) are re-created with _heap_create at map and battle load.
+ * A link wrap of _heap_create (CMake --wrap) walks the old list of that head (the last values of the instance), keeps the
+ * process maxima, and resets the instance counters. pm_heaphi_line walks every head every 60 frames (cold, print time only):
+ *   used  = sum over allocated nodes of (length + sizeof(HeapNode))
+ *   top   = max over allocated nodes of (node end - head), the extent the heap needs
+ *   free  = largest free block
+ * inst_* is this instance (reset at re-create), proc_* is the process maximum. Sizing uses proc_top. */
 #include <stdio.h>
 #include "pm_port.h"
 #include "common_structs.h"
 
 extern HeapNode heap_generalHead, heap_spriteHead, heap_collisionHead, heap_battleHead;
-void* __real__heap_malloc(HeapNode* head, u32 size);
-void* __real__heap_malloc_tail(HeapNode* head, u32 size);
-u32 __real__heap_free(HeapNode* heapNodeList, void* addrToFree);
-
-typedef struct { const char* name; HeapNode* head; unsigned used, hi_used, hi_top, hi_tail, hi_top_max; } PmHeapHi;
-static PmHeapHi hh[4] = {
-    { "general", &heap_generalHead, 0, 0, 0, 0, 0 },
-    { "sprite", &heap_spriteHead, 0, 0, 0, 0, 0 },
-    { "collision", &heap_collisionHead, 0, 0, 0, 0, 0 },
-    { "battle", &heap_battleHead, 0, 0, 0, 0, 0 },
-};
-
-static PmHeapHi* hi_of(HeapNode* head) {
-    for (unsigned i = 0; i < 4; i++) if (hh[i].head == head) return &hh[i];
-    return NULL;
-}
-
-static void hi_alloc(HeapNode* head, void* p, u32 size, int tail) {
-    PmHeapHi* h = hi_of(head);
-    if (!h || !p) return;
-    u32 blk = (size + 15u) & ~15u;
-    u32 top = (u32)((u8*)p + blk - (u8*)head);
-    h->used += blk;
-    if (h->used > h->hi_used) h->hi_used = h->used;
-    if (top > h->hi_top) h->hi_top = top;
-    /* MEM-B v2: a tail allocation is placed at the end; its extent is the distance from the end, the sprite heap sizing number */
-    if (tail && p) { u32 ext = h->head->capacity - (u32)((u8*)p - (u8*)head); if (ext > h->hi_tail) h->hi_tail = ext; }
-}
-
-void* __wrap__heap_malloc(HeapNode* head, u32 size) {
-    void* p = __real__heap_malloc(head, size);
-    hi_alloc(head, p, size, 0);
-    return p;
-}
-
-void* __wrap__heap_malloc_tail(HeapNode* head, u32 size) {
-    void* p = __real__heap_malloc_tail(head, size);
-    hi_alloc(head, p, size, 1);
-    return p;
-}
-
-u32 __wrap__heap_free(HeapNode* head, void* data) {
-    PmHeapHi* h = hi_of(head);
-    HeapNode* hdr = data ? (HeapNode*)data - 1 : NULL;
-    u32 len = 0, was = 0;
-    if (h && hdr) { was = hdr->allocated; len = hdr->length; }
-    u32 r = __real__heap_free(head, data);
-    if (h && was && h->used >= len) h->used -= len;
-    return r;
-}
-
+HeapNode* __real__heap_create(HeapNode* addr, u32 size);
 unsigned pm_tex_used(void);
 unsigned pm_tex_peak(void);
-unsigned pm_tex_pool_peak(void); /* pm_tex.c: highest live slot count */
+unsigned pm_tex_pool_peak(void);
 void pm_gpu_gv_stats(unsigned o[4]);
 
-/* The live bytes of a heap: walk the node list (allocated blocks' lengths). The wrapper counter misses _heap_realloc
- * and split leftovers, so this walk is the used figure. Walks at print time only (every 60 frames). */
-static u32 heap_live(HeapNode* head, u32* ext) {
-    u32 sum = 0, top = 0;
-    for (HeapNode* n = head; n; n = n->next) {
-        if (!n->allocated) continue;
-        sum += n->length;
-        u32 e = (u32)((u8*)n + sizeof(HeapNode) + n->length - (u8*)head);
-        if (e > top) top = e;
+typedef struct { const char* name; HeapNode* head; u32 cur_used, cur_top, cur_free; u32 inst_used, inst_top, inst_free; u32 proc_used, proc_top, proc_free; } PmHeapHi;
+static PmHeapHi hh[4] = {
+    { "general", &heap_generalHead },
+    { "sprite", &heap_spriteHead },
+    { "collision", &heap_collisionHead },
+    { "battle", &heap_battleHead },
+};
+
+static void heap_walk(PmHeapHi* h, u32* used, u32* top, u32* freemax) {
+    u32 u = 0, t = 0, f = 0;
+    HeapNode* base = h->head;
+    for (HeapNode* n = base; n; n = n->next) {
+        u32 blk = n->length + sizeof(HeapNode);
+        if (n->allocated) {
+            u += blk;
+            u32 e = (u32)((u8*)n + blk - (u8*)base);
+            if (e > t) t = e;
+        } else if (n->length > f) f = n->length;
     }
-    *ext = top;
-    return sum;
+    *used = u; *top = t; *freemax = f;
+}
+
+static void heap_note(PmHeapHi* h) {
+    u32 u, t, f;
+    heap_walk(h, &u, &t, &f);
+    h->cur_used = u; h->cur_top = t; h->cur_free = f;
+    if (u > h->inst_used) h->inst_used = u;
+    if (t > h->inst_top) h->inst_top = t;
+    if (f > h->inst_free) h->inst_free = f;
+    if (u > h->proc_used) h->proc_used = u;
+    if (t > h->proc_top) h->proc_top = t;
+    if (f > h->proc_free) h->proc_free = f;
+}
+
+/* Wrap of _heap_create: a re-create of a known head walks the old instance first, then resets its counters. */
+HeapNode* __wrap__heap_create(HeapNode* addr, u32 size) {
+    for (unsigned i = 0; i < 4; i++) {
+        PmHeapHi* h = &hh[i];
+        if ((u8*)h->head == (u8*)addr && h->head->capacity) heap_note(h); /* the old instance: last walk */
+    }
+    HeapNode* r = __real__heap_create(addr, size);
+    for (unsigned i = 0; i < 4; i++) {
+        PmHeapHi* h = &hh[i];
+        if ((u8*)h->head == (u8*)addr) { h->cur_used = h->cur_top = h->cur_free = 0; h->inst_used = h->inst_top = h->inst_free = 0; }
+    }
+    return r;
 }
 
 void pm_heaphi_line(unsigned frame) {
     for (unsigned i = 0; i < 4; i++) {
         PmHeapHi* h = &hh[i];
         if (!h->head->capacity) continue; /* not created in this scene */
-        u32 ext = 0, live = heap_live(h->head, &ext);
-        h->used = live;
-        if (live > h->hi_used) h->hi_used = live;
-        h->hi_top = ext; /* the extent of the live blocks now (walk): the number that sizes a heap, not the wrapper's */
-        h->hi_top_max = ext > h->hi_top_max ? ext : h->hi_top_max;
-        pm_log_d("heaphi f%u %s used %u hi_used %u hi_top %u hi_top_max %u hi_tail %u size %u", frame, h->name, h->used, h->hi_used, h->hi_top,
-                 h->hi_top_max, h->hi_tail, (unsigned)h->head->capacity);
+        heap_note(h);
+        pm_log_d("heaphi f%u %s used %u top %u free %u inst_top %u proc_used %u proc_top %u proc_free %u size %u", frame, h->name,
+                 h->cur_used, h->cur_top, h->cur_free, h->inst_top, h->proc_used, h->proc_top, h->proc_free, (unsigned)h->head->capacity);
     }
-    /* MEM-B v2 poolhi: the existing high marks of the port pools (tex slot peak and bytes, gv palette peak). */
+    /* poolhi: the existing high marks of the port pools (tex slot peak and bytes, gv palette peak). */
     unsigned gv[4] = { 0, 0, 0, 0 };
     pm_gpu_gv_stats(gv);
     pm_log_d("poolhi f%u tex_used %u tex_peak %u tex_slots %u gv_palup %u gv_palmax %u", frame, pm_tex_used(), pm_tex_peak(),
