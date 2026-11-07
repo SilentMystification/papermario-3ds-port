@@ -1,6 +1,6 @@
 /* nd_geom.c: the geometry group (plan_s10_path group G, GM-2). G_VTX (vertex load to the ring) and G_TRI1/G_TRI2 (draw_tri):
  * the triangle path, its clip and cull helpers, the epoch and state checks. Cut from pm_gbi.c and nd_walk.c without logic change (D12).
- * The CPU-only functions (draw_tri_cpu, xform_vtx, vert_color, vert_uv, pack_color, lit_color, fold_axis) stay in pm_gbi.c until GM-3. */
+ * The CPU-only geometry functions (xform_vtx, vert_color, vert_uv, pack_color, lit_color, fold_axis) stay in pm_gbi.c until GM-3. */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -266,8 +266,7 @@ void draw_tri(unsigned w) {
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
     }
-    draw_tri_cpu(idx);
-    pm_gpu_cen_mark(8u); /* CEN-1a: CEN_FB_RING, a CPU triangle of this batch (the ring did not take it) */
+    n_drop++; /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped (census 0 at the DEL row) */
 }
 
 void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */

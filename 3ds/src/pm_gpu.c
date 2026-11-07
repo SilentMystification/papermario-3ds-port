@@ -1040,72 +1040,6 @@ static __attribute__((cold, noinline)) void rp_draw(const char* path, int tex) {
       pm_log_d("rpG %u %u %s env %08x cconst %08x mix %08x sticky tss %08x geo %08x cw %08x %08x tex %dx%d plan_gen %u comb %d", rp_win, rp_n, path,
           env_col, cconst, r_mixcol, st_tss, st_geo, st_cw0, st_cw1, tw_, th_, plan_gen, combine); }
 }
-static __attribute__((noinline)) void flush_draw_cpu(int z) {
-    if (bound != 1) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
-    Vert* batch = verts;
-    int count = nverts;
-    PH_PUSH(PH_GDRAW);
-    const int first = (int)(batch - vert_base); /* DR1: one buffer info for the whole pool, the draw starts at the batch */
-    if (!pool_buf_ok) { pm_dc_c[DC_BUF]++; /* DC2: C3D_GetBufInfo marks the buffer info dirty, so it is called only when the pool info changes */
-        C3D_BufInfo* buf = C3D_GetBufInfo();
-        BufInfo_Init(buf); buf_cur = 1;
-        BufInfo_Add(buf, vert_base, sizeof(Vert), 3, 0x210);
-        pool_buf_ok = 1;
-    }
-    int decal2 = z && r_zcmp && r_decal && r_blend && !r_zmark && !r_nocol && draw_3d;
-    if (decal2) { /* V16b pass 1: no colour, no depth write, mark the stencil where the stored depth is not behind the decal */
-        sh_depth_map(true, -1.0f, -DECAL_EPS);
-        sh_depth_test(true, GPU_LEQUAL, (GPU_WRITEMASK)0);
-        stc_set(1, true, GPU_ALWAYS, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
-        if (ndref_on) ndref_state(1, z);
-        pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, first, count);
-        if (ndref_on) ndref_cmd();
-        sh_depth_map(true, -1.0f, decal_bias());
-        sh_depth_test(true, GPU_GEQUAL, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-        stc_set(2, true, GPU_EQUAL, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_ZERO, GPU_STENCIL_ZERO);
-        draws_frame++;
-    }
-    if (ndref_on) ndref_state(decal2 ? 2 : 0, z);
-    pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, first, count);
-    if (ndref_on) ndref_cmd();
-    if (rd_tex && rect_2d) cb_regdump("cpu");
-    rp_draw("cpu", 0);
-    if (decal2) { stc_set(3, false, GPU_ALWAYS, 0, 0xff, 0); }
-    DC_T(5);
-    PH_POP();
-    verts = batch + count;
-    /* 16-byte aligned start for the next batch (a vertex is 40 bytes, so every other batch start moves one slot). */
-    if ((unsigned)(uintptr_t)verts & 15u) verts++;
-    if (z && r_zmark && verts + count < vert_base + VERT_SLOTS) {
-        /* B3b pass 2: the same triangles with the constant depth, where pass 1 marked the stencil. The stencil is cleared as it passes. */
-        Vert* b2 = verts;
-        for (int i = 0; i < count; i++) { b2[i] = batch[i]; b2[i].z = r_zmark_zn * b2[i].w; }
-        sh_depth_test(true, GPU_ALWAYS, GPU_WRITE_DEPTH);
-        stc_set(4, true, GPU_EQUAL, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_ZERO);
-        if (ndref_on) ndref_state(3, z);
-        pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, (int)(b2 - vert_base), count);
-        if (ndref_on) ndref_cmd();
-        verts = b2 + count;
-        if ((unsigned)(uintptr_t)verts & 15u) verts++;
-        draws_frame++;
-    }
-    draws_frame++;
-    PH_ADD(C_DRAW, 1);
-    PH_ADD(C_VTXSLOT, count);
-    PH_POP();
-    nverts = 0;
-    batch_identity = 0;
-    drew = 1;
-    if (!off_active) { /* B2: the main target changed, the grab slot is old */
-        if (rect_y1 <= rect_y0) grab_dirty = 1;
-        else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
-        else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
-    }
-    dc_kick();
-}
 
 /* the scissor of the main target (flush_draw and the native draw): the game scissor in the rotated 240 x 400 buffer */
 static void stage_scissor(void) {
@@ -1745,59 +1679,8 @@ static void flush_draw(void) {
         dc_kick();
         return;
     }
-    flush_draw_cpu(z);
 }
 
-/* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
- * (texture alpha kept, so cut-outs show). 1: depth, red near to blue far. 2: one colour per draw (flush) index.
- * 3: depth bands (repeating, 64 per range) to see depth order faults of near-equal surfaces. */
-static unsigned dv_color(float z, float w, unsigned c) {
-    float r, g, b, d;
-    if (dview == 2) {
-        unsigned h = dv_draw * 2654435761u;
-        r = (float)((h >> 8) & 255) / 255.f; g = (float)((h >> 16) & 255) / 255.f; b = (float)((h >> 24) & 255) / 255.f;
-    } else {
-        d = (w > 0.f ? z / w : 0.f) * 0.5f + 0.5f;
-        if (d < 0.f) d = 0.f;
-        if (d > 1.f) d = 1.f;
-        if (dview == 3) {
-            float f = d * 64.f;
-            f -= (float)(int)f;
-            r = f; g = 1.f - f; b = d;
-        } else {
-            r = d; g = 1.f - (d < 0.5f ? 1.f - 2.f * d : 2.f * d - 1.f); b = 1.f - d;
-        }
-    }
-    return ((unsigned)(r * 255.f) << 24) | ((unsigned)(g * 255.f) << 16) | ((unsigned)(b * 255.f) << 8) | (c & 255u);
-}
-
-static void put4(float x, float y, float z, float w, float u, float v, unsigned c) {
-    if (dv_mode() && draw_3d && !rect_2d) c = dv_color(z, w, c);
-    if (nverts >= 510) {
-        int id = batch_identity;
-        flush();
-        batch_identity = id;
-    }
-    if (!verts || verts + nverts >= vert_base + VERT_SLOTS) {
-        vert_drops++;
-        return;
-    }
-    Vert* p = &verts[nverts++];
-    p->x = x;
-    p->y = y;
-    p->z = z;
-    p->w = w;
-    p->u = u;
-    p->v = v;
-    p->r = pm_f255[(c >> 24) & 255];
-    p->g = pm_f255[(c >> 16) & 255];
-    p->b = pm_f255[(c >> 8) & 255];
-    p->a = pm_f255[c & 255];
-}
-
-static void put(float x, float y, float z, float u, float v, unsigned c) {
-    put4(x, y, z, 1.f, u, v, c);
-}
 
 /* PG3 O11: byte to float tables, filled with the same divide the code used, so every value is equal. The VFP divide costs about 19 cycles on the O3DS. */
 float pm_f255[256], pm_f127[256]; /* pm_f127 is indexed by the byte of a signed char */
@@ -2991,7 +2874,7 @@ static int gtrip_batch_open(int use5, const PmFx* fx, const float vp[4], const f
 
 /* GV1c: one triangle of ring vertices ri[3], vertex i with game matrix tab[g[i]]. ro[3] gets the ring indices to use from now on (a vertex whose palette index
  * has to change is copied). Returns 0 when the raw path cannot take it now. */
-/* WIDE1-1: with wide on, an orthographic draw is native unless a vertex sits on the left or right game edge (the CPU path moves those, pm_gpu_vert_clip). The post matrix is made for the matrix kind of the
+/* WIDE1-1: with wide on, an orthographic draw is native unless a vertex sits on the left or right game edge (the vertex copy moves those to the screen edge, wide_edge_k). The post matrix is made for the matrix kind of the
  * last note_mvp (ui_ortho), so the draw matrix must be that kind. The vertices are tested like the CPU path: clip x at +-w * 0.999. At most WIDE_MAXV index entries are tested (a bigger draw keeps the CPU path).
  * 0: native, 1: edge vertex or a matrix of the other kind, 2: too many vertices or no index list. */
 #define WIDE_MAXV 192u
@@ -3000,7 +2883,7 @@ static void wide_log(unsigned f) { /* called from ndn_log every 300 frames; the 
     pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u all %u copy %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all, wide_c.copy);
     memset(&wide_c, 0, sizeof wide_c);
 }
-/* TRI-2: the CPU rule of pm_gpu_vert_clip for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999). */
+/* TRI-2: the screen-edge rule of the vertex copy for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999). */
 static int wide_on_edge(const float m[4][4], unsigned v, float* cxo) {
     const short* p = (const short*)(gring + 16u * v);
     float x = (float)p[0], y = (float)p[1], z = (float)p[2];
@@ -4053,65 +3936,15 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     sci_y1 = y1;
 }
 
-static void tri_raw(float x0, float y0, float z0, float u0, float v0, unsigned c0,
-                    float x1, float y1, float z1, float u1, float v1, unsigned c1,
-                    float x2, float y2, float z2, float u2, float v2, unsigned c2) {
-    if (draw_3d) {
-        flush();
-        draw_3d = 0;
-    }
-    put(x0, y0, z0, u0, v0, c0);
-    put(x1, y1, z1, u1, v1, c1);
-    put(x2, y2, z2, u2, v2, c2);
-}
 
-void pm_gpu_tri(float x0, float y0, float z0, float u0, float v0, unsigned c0,
-                float x1, float y1, float z1, float u1, float v1, unsigned c1,
-                float x2, float y2, float z2, float u2, float v2, unsigned c2) {
-    if (rect_open) flush(); /* DR1: a plain 2D triangle does not join a rectangle batch */
-    tri_raw(x0, y0, z0, u0, v0, c0, x1, y1, z1, u1, v1, c1, x2, y2, z2, u2, v2, c2);
-}
 
-void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
-                  float x1, float y1, float z1, float u1, float v1, unsigned c1,
-                  float x2, float y2, float z2, float u2, float v2, unsigned c2) {
-    if (gni > 0) flush(); /* GV1: a raw batch is open, it was queued first */
-    if (!draw_3d) {
-        flush();
-        draw_3d = 1;
-    }
-    cen_fb |= CEN_FB_SEAM; /* CEN-1a */
-    put(x0, y0, z0, u0, v0, c0);
-    put(x1, y1, z1, u1, v1, c1);
-    put(x2, y2, z2, u2, v2, c2);
-}
 
-void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsigned c) {
-    if (gni > 0) flush(); /* GV1: a raw batch is open, it was queued first */
-    if (!draw_3d) {
-        flush();
-        draw_3d = 1;
-    }
-    /* F07-7: a UI (orthographic) vertex on the left or right screen edge goes to the 400 px screen edge: bars, fades and overlay quads fill the gutters. Same rule as the fill rectangle. */
-    if (pm_wide && !off_active && ui_ortho && w > 0.f && (x >= w * 0.999f || x <= -w * 0.999f)) x *= 1.25f;
-    cen_fb |= CEN_FB_CLIP; /* CEN-1a */
-    put4(x, y, z, w, u, v, c);
-}
 
 /* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
 static float px(int x) { return off_active ? (float)x : 40.f + (float)x; } /* F07-3: 2D is 1:1 and centered, also with wide */
 static float py(int y) { return off_active ? (float)y : 240.f - (float)y; }
 
 static float fill_z = 0.5f;
-/* DR1/O2: a rectangle joins the open rectangle batch when its draw state is the same (effective combine mode, rect_z). Else the batch is drawn first. */
-static void rect_begin(int ec) {
-    int rtx = pm_tex_cur_idx();
-    if (rect_open && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && !rect_raw && nverts + 6 < 500 && !(off_active && pm_tex_off_idx() >= 0)) /* a batch that samples the image it writes needs one snapshot per rectangle (FX2a) */ { dr1_merged++; return; }
-    if (rect_open) dr1_breaks++;
-    flush();
-    draw_3d = 0; /* the 2D rectangle follows; tri_raw must not flush the empty batch with the rectangle state in place */
-    rect_ec = ec; rect_zb = rect_z; rect_tex = rtx; rect_open = 1; rect_raw = 0;
-}
 /* RECT-1a: fill rectangles as raw Vtx batches (agent_s6.md RECT-1). Four Vtx in the ring: x, y screen pixels, z 0, s t 0, colour in the N64 Vtx layout (r in byte 12).
  * Palette entry RECT_GM (pcomp_calc) is the projection with the depth folded in, so the batch draws what the CPU path draws. The batch closes through nd_raw_native with
  * rect_2d set (flush_impl_body rect branch). Merge key as rect_begin, plus the depth. rect_c: fill, tex, native, merged, cpu, ring high mark. */
@@ -4165,7 +3998,6 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     if ((unsigned)gring_n > rect_c[5]) rect_c[5] = (unsigned)gring_n;
 }
 static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
-static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have = 1; } }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
@@ -4183,21 +4015,8 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
         if (!off_active) grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
         return;
     }
-    rect_c[4]++;
-    rect_begin(0);
-    int saved = combine;
-    combine = 0;
-    rect_2d = 1;
-    batch_identity = 1;
-    float xa = (pm_wide && !off_active && x0 <= 0) ? 0.f : px(x0); /* F07-3: a fill from the game edge reaches the screen edge */
-    float xb = (pm_wide && !off_active && x1 >= 319) ? 400.f : px(x1 + 1);
-    float ya = py(y0);
-    float yb = py(y1 + 1);
-    tri_raw(xa, ya, fill_z, 0, 0, rgba, xb, ya, fill_z, 0, 0, rgba, xb, yb, fill_z, 0, 0, rgba);
-    tri_raw(xa, ya, fill_z, 0, 0, rgba, xb, yb, fill_z, 0, 0, rgba, xa, yb, fill_z, 0, 0, rgba);
-    rect_end();
-    rect_2d = 0;
-    combine = saved;
+    rect_c[4]++; /* TRI-4: no CPU rectangle path. A refused rectangle is dropped and counted here (rect_c[4], rect log cpu) */
+    return;
 }
 
 void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d) {
@@ -4301,38 +4120,7 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     rect_c[1]++;
     rd_tex = 1;
     if (tex_raw_rect(x0, y0, x1, y1, s0, t0, s1, t1)) { fl_prev_rect = 1; return; }
-    rect_c[4]++;
-    int saved = combine;
-    rect_begin((saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2);
-    combine = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
-    rect_2d = 1;
-    batch_identity = 1;
-    float xa = px(x0);
-    float xb = px(x1 + 1);
-    if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, the texture continues at the same density */
-        float ds = (s1 - s0) / (xb - xa);
-        float bxa = xa, bxb = xb, bs0 = s0, bs1 = s1; /* BG1 debug switch bgedge: the values before the extension */
-        if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
-        if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
-        if (PMDL("bgedge") && (xa != bxa || xb != bxb)) {
-            static int nbe = 0;
-            unsigned bf = pm_frame_count();
-            if (nbe < 2000 && bf >= 100u && bf <= 160u) { nbe++; pm_log_d("bgedge f%u x0 %d x1 %d xa %.1f>%.1f xb %.1f>%.1f s0 %.3f>%.3f s1 %.3f>%.3f", bf, x0, x1, bxa, xa, bxb, xb, bs0, s0, bs1, s1); }
-        }
-    }
-    float ya = py(y0);
-    float yb = py(y1 + 1);
-    unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
-    tri_raw(xa, ya, fill_z, s0, t0, c, xb, ya, fill_z, s1, t0, c, xb, yb, fill_z, s1, t1, c);
-    tri_raw(xa, ya, fill_z, s0, t0, c, xb, yb, fill_z, s1, t1, c, xa, yb, fill_z, s0, t1, c);
-    { /* R13c: the rows this rectangle draws, see grab_dy0. Merged rectangles keep the union. */
-        int ry0 = y0 < 0 ? 0 : y0, ry1 = y1 + 1;
-        if (rect_y1 > rect_y0) { if (ry0 < rect_y0) rect_y0 = ry0; if (ry1 > rect_y1) rect_y1 = ry1; }
-        else { rect_y0 = ry0; rect_y1 = ry1; }
-    }
-    rect_end();
-    rect_2d = 0;
-    combine = saved;
+    rect_c[4]++; /* TRI-4: no CPU rectangle path. A refused rectangle is dropped and counted here (rect_c[4], rect log cpu) */
     fl_prev_rect = 1;
 }
 

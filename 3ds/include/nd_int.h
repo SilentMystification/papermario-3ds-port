@@ -346,7 +346,6 @@ extern float vert_st[64][2], tg_s, tg_t;
 extern unsigned vert_c[64];
 extern int tg_ok, pm_nolight;
 unsigned lit_color(const Vtx* v, const float m[4][4], int texgen);
-void draw_tri_cpu(const int* idx);
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 typedef struct {
     unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch, xgrp;
