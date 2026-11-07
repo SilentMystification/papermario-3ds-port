@@ -405,6 +405,7 @@ Write-Output "AZT: scenario $($sc.name), row $Row, lane '$lane', slot $slotK, ca
 
 $azStart = $null
 $markerSeen = $false
+$mtext = "" # AZT3-3: the text of this boot (from its banner line) for the marker
 $stop = ""
 $attract = 0
 $capGuard = $cap + 120
@@ -421,15 +422,31 @@ while (-not $child.HasExited) {
         elseif (Test-Path $warmFile) {
             # AZT-2: run_azahar.ps1 restarts emulation in the kept Azahar and wrote warm.start. The old log.txt content does not count.
             $azStart = Get-Date; $lastNew = $azStart; $script:warm = $true; $startKind = "warm"; $deadlineEff = Get-StartDeadline "warm" $deadline
-            if (Test-Path $logPath) { $script:pos = (Get-Item $logPath).Length; $script:logCT = (Get-Item $logPath).CreationTimeUtc }
+            # AZT3-3: the restart truncates log.txt (the creation time stays), so the old file length is no mark for the new boot.
+            # The log is read from its first byte once warm.ok says the new boot has started (below).
+            $warmReady = $false
             Write-Output "AZT: warm restart in the kept Azahar, deadline kind warm: $deadlineEff s (scenario deadline). The deadline clock runs"
+        }
+        continue
+    }
+    if (-not $warmReady) {
+        # AZT3-3: a warm start reads nothing until the new boot has started (warm.ok), so no line of the old boot is read.
+        # If run_azahar.ps1 fell back to a cold start (azslot.line says cold), this start is a cold start with its own deadline.
+        if (Test-Path $okFile) { $warmReady = $true; $script:pos = 0; $script:carry = ""; $script:logCT = $null }
+        elseif (Test-Path $azLineFile) {
+            $warmReady = $true; $script:pos = 0; $script:carry = ""; $script:logCT = $null
+            $startKind = "cold"; $azStart = Get-Date; $lastNew = $azStart; $deadlineEff = Get-StartDeadline "cold" $deadline
+            Write-Output "AZT: warm restart failed, cold start in this slot, deadline kind cold: $deadlineEff s. The deadline clock runs"
         }
         continue
     }
     $chunk = Read-LogChunk
     if ($chunk) {
         $lastNew = Get-Date
-        if (-not $markerSeen -and $chunk -match $sc.first_marker) {
+        # AZT3-3: a boot starts at its banner line. The marker counts only after the newest banner, so an old boot's line is never a marker.
+        $bi = $chunk.LastIndexOf("#0 log: writer id")
+        if ($bi -ge 0) { $mtext = $chunk.Substring($bi) } else { $mtext += $chunk }
+        if (-not $markerSeen -and $mtext -match $sc.first_marker) {
             $markerSeen = $true
             $script:bootLine = ("AZT: boot time {0} start, first marker after {1:N1} s (deadline kind {2}, {3} s)" -f $startKind, ((Get-Date) - $azStart).TotalSeconds, $startKind, $deadlineEff)
             Write-Output $script:bootLine
@@ -453,7 +470,6 @@ if (-not $child.WaitForExit(150000)) {
 }
 $rc = $child.ExitCode
 # AZT2: the warm/cold line run_azahar.ps1 wrote for this start (none when the run ended before the decision)
-$azLineFile = Join-Path $slotInfo.dir "azslot.line"
 if (Test-Path $azLineFile) {
     $script:azLine = (Get-Content $azLineFile -Raw).Trim()
     Write-Output $script:azLine

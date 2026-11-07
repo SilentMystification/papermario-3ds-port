@@ -307,7 +307,10 @@ if ($warm) {
             if (Test-Path $log) { $li = Get-Item $log; if ($li.CreationTimeUtc -ne $oldLogCT -or $li.LastWriteTimeUtc -gt $start.ToUniversalTime()) { $warmDone = $true } }
         }
     }
-    if ($warmDone) { $p = $kept; Write-Output ("Warm restart ok after {0:N1} s (hotkey {1})." -f ((Get-Date) - $start).TotalSeconds, $hk) }
+    if ($warmDone) {
+        $p = $kept; Write-Output ("Warm restart ok after {0:N1} s (hotkey {1})." -f ((Get-Date) - $start).TotalSeconds, $hk)
+        Set-Content "$($sl.dir)\warm.ok" "ok" # AZT3-3: azt.ps1 reads this boot's log from its first byte after this line
+    }
     else {
         Write-Output "Warm restart failed (hotkey '$hk', sent $sent): no new log.txt after 15 s. Cold start."
         Kill-Azahar $kept.Id
