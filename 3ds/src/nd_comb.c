@@ -18,7 +18,7 @@
 
 
 /* globals of the combine state, owned by pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
-extern unsigned aux_key, box_save[4], lcg_s, sl_cc;
+extern unsigned aux_key, box_save[4], sl_cc;
 extern int box_pat, box_prod, comb_alpha_shade, comb_dry, comb_mode5, dual_on, leg_mode, plan_active, sl_const, sl_env;
 extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
 extern PmPlan cur_plan;
@@ -27,6 +27,9 @@ extern unsigned* const tst_f[16];
 extern float vp_sx, vp_sy, vp_tx, vp_ty;
 int ph_pick(void); void grab_cur(const void* src, int w, int h); void ens_clear(void);
 float lcg_f(void); void unpack8(unsigned c, float o[4]);
+/* the 24 random inputs of the decision (nd_comb_decide, sync_combine_work): a fixed seed per decision, so the choice is repeatable */
+unsigned lcg_s = 12345u;
+float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
 static void sync_combine_work(void);
 
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
@@ -637,3 +640,22 @@ void op_setcombine(u32 w0, u32 w1) {
 /* ---- MV-10: debug switch combchk, cut from pm_gbi.c (no change) ---- */
 /* S3N-3d: debug switch combchk. Each combine work of sync_combine runs nd_comb_decide on its inputs and compares the outputs with the walker state. */
 int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
+
+unsigned cc_runs, cc_diff; static int cc_last_b = -1; /* the 300 frame bucket of the last log line */
+void pm_log_prof_line(const char* fmt, ...); /* pm_log.c: the one line of prof=4 mode */
+__attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked) { /* worked: the work ran (sl_* are set); a memo hit replays the outputs only */
+    NdCombOut o;
+    nd_comb_decide(in, &o);
+    cc_runs++;
+    int bad = o.leg != leg_mode || o.mode5 != comb_mode5 || o.pat != box_pat || o.use != ls_use || o.why != ls_why || o.cyc != ls_cyc ||
+              o.dual != ls_dual || o.plan_on != plan_active || (worked && (o.cc_on != sl_const || o.env_on != sl_env || (sl_const && o.cc != sl_cc))) ||
+              (plan_active && memcmp(&o.plan, &cur_plan, sizeof cur_plan) != 0);
+    if (bad) cc_diff++;
+    unsigned f = pm_frame_count(), b = f / 300u;
+    if ((int)b != cc_last_b) { cc_last_b = (int)b; pm_log_prof_line("combchk f%u runs %u diff %u", f, cc_runs, cc_diff); }
+}
+
+
+/* SPR4-3: the dual boost of the walker (draw_tri path): 1 when cycle 2 is (SHADE - ENV) * COMBINED + COMBINED with the shaded bake live. nd_model/sprite native share it. */
+/* SPR4-3: the dual boost of the walker (draw_tri path): 1 when cycle 2 is (SHADE - ENV) * COMBINED + COMBINED with the shaded bake live. nd_model/sprite native share it. */
+int dual_boost_on(void) { return dual_on && nd_ws.tst1.comb2_a == G_CCMUX_SHADE && nd_ws.tst1.comb2_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb2_c == G_CCMUX_COMBINED && nd_ws.tst1.comb2_d == G_CCMUX_COMBINED; }

@@ -367,6 +367,7 @@ set(PORT_SRC
     src/nd_core.c
     src/nd_tmpl.c
     src/nd_tex.c
+    src/nd_tex_set.c
     src/nd_state.c
     src/nd_set.c
     src/nd_comb.c
@@ -380,6 +381,7 @@ set(PORT_SRC
     src/nd_dlc.c
     src/nd_emit.c
     src/nd_model.c
+    src/nd_model_set.c
     src/nd_sprite.c
     src/pm_gu.c
     src/pm_interp.c

@@ -111,8 +111,11 @@ int main(void) {
         c2 = c; gv.fxon = 1;
         CHECK(nd_model_state(rec, &c2, &dr, &st) == 0, "3a: lit or fog is fallback");
         gv.fxon = 0;
-        memcpy(rr, rec, sizeof rr); rr[22] = 1;
-        CHECK(nd_model_state(rr, &c, &dr, &st) == 0, "3a: custom gfx pre is fallback");
+        { /* MDL-5e: a custom pre list is read (state-only ops run native); a list with geometry (G_TRI1) is fallback */
+            static const uint32_t geo_l[4] = { 0xbfu << 24, 0, 0xdfu << 24, 0 };
+            memcpy(rr, rec, sizeof rr); rr[22] = (uint32_t)(uintptr_t)geo_l;
+            CHECK(nd_model_state(rr, &c, &dr, &st) == 0, "3a: custom gfx pre with geometry is fallback");
+        }
         { /* B8: a list that writes only om_l bits 16 to 23: the read bits 28 to 31 have no value (nd_st unknown) */
             unsigned L5[3][2];
             NdMode pm;
