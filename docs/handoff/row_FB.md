@@ -104,4 +104,12 @@ MAC00 trace (partial, row not closed): the sky is a COPY-mode texrect (nd_rect.c
 Next: log xl, xh, s0, rx0 of the texrect covering (181,0) at frames 200-205 (debug line in nd_rect.c, one build each on 599c48970 and 55a41fa6b with e954, 2 starts). Then name the value: edge (line 84) or texel (line 85/90).
 
 ## FB-3 state (2026-11-07; part 1 merged in nds1 02a6cecbd)
-The per-entry palette premise is refuted by code: nd_model.c 460, 465, 475 set dd.npal = 1 on every NdNat (pal0 = the combined model matrix); pm_gpu.c 1162 and 1391 copy with npal 0 after the upload; nd_emit.c:84 (pm4) uploads the same single entry. The pm5all battle halo (x185-202 y4-127, 65 px, shots 0001-0007) has no named cause. Decision (orchestrator): the halo appears only under the pm5all forcing switch and default runs are byte-equal, so it does not block FB-3. One log start names the draw (producer, npal, vertex flag max, uvso/cmul/cadd, zmix, lflag, fx5 per use5 draw in battle frames 1-7); write the result here, no fix in FB-3. Then step 3 (pm5tex1 log line) and step 4 (pm5 noise) with their gates.
+The per-entry palette premise is refuted by code: nd_model.c 460, 465, 475 set dd.npal = 1 on every NdNat (pal0 = the combined model matrix); pm_gpu.c copies with npal 0 after the upload; nd_emit.c:84 (pm4) uploads the same single entry.
+
+Step 1 result (pm5draw log, debug switch, battle_start_pm5draw_pic, cold det, pm5all, frames 182 to 188; 626 draws of program 5 in the log, 74 to 82 per frame, 4 sprite quads per frame among them):
+- Every draw: npal 1, vertex flag max 0 (no vertex reads pal5[7k] with k > 0). The stale-palette-entry cause (per-entry palette) is refuted for battle.
+- Every draw: zmix 1 0, cmul 1 1 1, cadd 0, lflag 0, fogu 0. The pm5 uniforms do not tell the halo draw apart.
+- Not named: the screen box (flag 0 vertices, sx / sw, pal[0] rows 0, 1, 3) has outliers (sw near 0, e.g. -3083) and the window mapping is not settled (shot = PICA colour buffer, 240 wide by 400 tall, dump_shot pm_gpu.c; NDC axes map to rows and cols with unknown flips). No single draw matches the halo box in both axes.
+- Next (step 2 of this row): the halo draw is named by its geometry, not its uniforms. A log of the clip-space vertices (only w > 0) of the draws whose screen box covers rows 4 to 127 and cols 185 to 202 of the shot, with the index count and the producer, or a per-draw count of pixels (pm5 on, pm5 off) by draw. Decide with the orchestrator before the next start.
+
+Code on fb3: pm5draw (pm_gpu.c, nd_cen.c pm_gbi_cur_prod_name), scenario battle_start_pm5draw, bench battle_start_pm5draw_pic. Log only, debug switch.

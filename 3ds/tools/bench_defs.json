@@ -3273,6 +3273,22 @@
       "gates": []
     },
     {
+      "name": "battle_start_pm5draw_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 halo: battle 182 to 189 with pm5all and the pm5draw log (per frame sum, per use5 draw with a vertex flag above 0: producer, npal, vmax, box, pm5 uniforms). Log only.",
+      "scenario": "battle_start_pm5draw",
+      "cap": 45,
+      "until": "pm5sum f188 use5",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_start_t1cold_pm5all_pic",
       "kind": "azahar_pic",
       "speed": "normal",
