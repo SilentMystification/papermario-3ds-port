@@ -1884,6 +1884,24 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+    {
+      "name": "battle_start_f182",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOGFIX fault 2: battle picture at frame 182 (top-left corner, Goomba label). Compare per build with bench.py build-at.",
+      "scenario": "battle_start_f182",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "log",
+        "bisect"
+      ],
+      "log_metrics": [],
+      "gates": []
     }
   ],
   "legacy": {

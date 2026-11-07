@@ -8032,6 +8032,26 @@
         }
       ],
       "reason": "LOG5 U1 check. Cap 45 s: boot, warp and two 300-frame windows."
+    },
+    {
+      "name": "battle_start_f182",
+      "status": "verified",
+      "subject": "battle_start copy (LOGFIX bisect): Battle scene, one Goomba on kmr_03, default formation. The shot at frame 182 is the picture (top-left corner and the Goomba label are compared).",
+      "proves": "LOGFIX fault 2: the battle picture at frame 182 per build.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30",
+      "until": "shot \\d+ frame 182\b",
+      "cap": 60,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\b"
+        }
+      ],
+      "reason": "LOGFIX fault 2 bench copy of battle_start with cap 60 s, so the run reaches frame 182 on the slow machine."
     }
   ]
 }

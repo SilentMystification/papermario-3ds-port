@@ -519,7 +519,7 @@ void pm_log_prof_row(int mode) {
     prof_mode = mode != 0;
     if (!mode && was) { lv_live = sv_lv[0]; lv_disk = sv_lv[1]; lv_con = sv_lv[2]; }
     if (mode == 1) lv_live = lv_disk = lv_con = -1;
-    if (mode == 2) { lv_live = sv_lv[0]; lv_disk = -1; lv_con = sv_lv[2]; }
+    if (mode == 2) { lv_live = sv_lv[0]; lv_disk = prof_disk ? sv_lv[1] : -1; lv_con = sv_lv[2]; } /* phase lines (census, wcen4) reach log.txt only with prof_disk */
     gate_changed();
 }
 /* PROF4: the launch word prof=1 (boot_line 1 prints "prof=1 log=off"). U2: it turns logging off for this run. */
