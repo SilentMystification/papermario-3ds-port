@@ -26,6 +26,31 @@ Decision on the record word (orchestrator, 2026-11-06), replaces the G_PM_ND enc
 - So CORE-2c shrinks to: the record-mode predicate covers mainGfx and backgroundGfx of both display contexts; opt in main_loop.c and cam_main.c; host test (a leaf writes exactly nslots slots; record replay state equals word state); gates as the plan says.
 2b scope: all setter groups, but gate in batches: one spot_mac01_pic byte-equal run per 4 to 5 setter groups (one commit per batch). If a batch differs, bisect inside it. Setters stay static in pm_gbi.c for now (2b); they move to nd_state.c with CORE-5 to CORE-8.
 
+## Oracle review CORE record and CORE-3 (2026-11-06, Opus; replaces the CORE-3 G_PM_ND reply and the opt-in steps of the oracle plan CORE-2)
+(1) Record word, 64d344659: confirmed. The N64 word is self-contained: opcode plus fields, and a pointer that is read when the op runs. Re-encoding it buys nothing, so the word is the record, and decoding its fields in the setter is the record reader. My G_PM_ND layout was the wrong tool for this.
+What follows from it (decided):
+- At 2da2a6947, nd_rec_leaf is a memcpy of the leaf words, and the bridge leaves (nd_gbi.h) no longer decode. Both force-includes are now layers that change nothing. Delete nd_rec.h, nd_rec_leaf.h, nd_gbi.h, nd_gbi_leaf.h, the gen_nd_gbi.py record and bridge output, and the CMake lines 338-339, in CORE-3 (rule 7: no dead layers). Keep nd_rec_test's "replay state equals word state" check, rewritten against the dispatcher.
+- So "opt a file in" no longer means anything. Producer work in UI, FXW and WBO shrinks to:
+  1. replace the custom word hacks (G_PM_TEXI, G_PM_RM, the gPmSplashMark NOOP) with handled ops or native-only records;
+  2. the WEND draw paths;
+  3. side-buffer lists compiled through nd_dlc.
+  Per-file force-includes are dropped from plan_s10_path.md.
+- S10 now means: the dispatcher (opcode to handler table) and every handler live in nd_state.c, nd_rect.c, nd_geom.c, nd_mtx.c, nd_dlc.c and nd_core.c; pm_gbi.c is gone. There is one decoder for both walked lists and nd_dlc compile, never a second copy.
+- Rule for G_PM_ND: only for native-only payloads that have no N64 encoding (glyph by sheet and index, splash on/off, target role, the TEXI/RM replacements). It never wraps N64 words.
+(2) CORE-3: replaced. Texrect and fillrect keep their words. G_TEXRECT is the fixed F3DEX2 three-slot form (TEXRECT, then RDPHALF_1, then RDPHALF_2), and gbi_texrect already reads the two halves. G_FILLRECT is one slot, so wrapping it in G_PM_ND would also break rule (1).
+CORE-3 corrected:
+- Move gbi_texrect and gbi_fillrect (plus FILL_SX10 and the HUDB1 inclusive-corner rule) to nd_rect.c as the handlers of G_TEXRECT and G_FILLRECT. They read nd_ws and call pm_gpu_tex_rect / pm_gpu_fill_rect.
+- The pm_gbi.c pc loop and the g1/g2 tables call them through the dispatcher entry.
+- No G_PM_ND, no opt-in. Delete the bridge and record layers as above.
+- The census counts ops by handler module, not by "word vs record".
+- Gate: for camera_render and the 2 background lists, ops served by pm_gbi.c handlers = 0 (all in module nd_rect); mac_00 sky and mac_01 byte-equal against the CORE-2c build; pause sky by eye.
+S10 precondition (census over the full catalog plus a grep). All must hold:
+1. Per-opcode census of every walked list (main, bg, key replay, ND_CALL side lists): every opcode seen has its handler outside pm_gbi.c, and the "legacy handler" counter is 0.
+2. G_PM_TEXI, G_PM_RM and the splash NOOP mark: 0 hits, and grep `G_PM_TEXI|gSPPmRenderMode|SPR_RM_LIST|gsSPPmTexInline|gPmSplashMark` over src and 3ds is empty.
+3. wd = 0 (WEND).
+4. No pm_gbi.c function has a caller outside pm_gbi.c (nm or grep of every exported pm_gbi_* symbol). The structured records G_PM_REC, G_PM_SPR and G_PM_ENT are allowed; their handlers move to nd_model.c, nd_sprite.c and nd_dlc.c in CORE-8.
+5. Opcodes with 0 hits and no macro caller are deleted, not moved (WEND END-1).
+
 ## Oracle plan CORE-2 (2026-11-06, Opus; replaces CORE-2 to CORE-4 of plan_s10_path.md Stream CORE)
 The CORE-1 leaves decode at macro time, and that is the root of (a) and (b). State decoded at macro time is not the state at walk time: replays walk the same memory again, the walker has its own globals, and the bg and key lists run later. So a record-mode leaf must encode a record into its own slots, and the state change must happen when the record runs, through the one owner of the state.
 (a) Where records live. They live in list memory, in the leaf's own slots. There is no nd_rec array per task. Replays (key_list, bg_list, multi-task frames) then walk the same records again, exactly as they walk words today. nd_frame_begin keeps clearing only the LEGACY array; nothing a record needs is in it.
