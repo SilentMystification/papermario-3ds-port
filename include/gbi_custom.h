@@ -202,7 +202,7 @@
 
 #define G_PM_REC 0x0D /* M4-2, S3F-4: producer record of a model (model.c), pm_gbi.c rec_run */
 /* S4-1: producer record of one sprite component (sprite.c spr_appendGfx_component, TARGET_3DS): 4 Gfx words after the header, the old words follow.
-  * w0 (header): G_PM_SPR << 24 | flags << 16 | alpha << 8 (flags bit 0 shading, bit 1 set viewport). w1: the render mode list (Gfx*).
+  * w0 (header): G_PM_SPR << 24 | flags << 16 | alpha << 8 | offset (bits 0 to 7: words from the record to the final gSPVertex). w1: the render mode list (Gfx*).
   * word 1: w0 raster, w1 palette. word 2: w0 matrix (the matrixStack entry), w1 vertices (Quad*). word 3: w0 width << 16 | height. */
 #define G_PM_SPR 0x0F
 #define G_PM_SPR_WORDS 4
