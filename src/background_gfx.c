@@ -415,7 +415,7 @@ void gfx_draw_background(void) {
             gSPTextureRectangle(gMainGfxPos++,
                                 0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2,
                                 G_TX_RENDERTILE,
-                                -1 << 5, 0 << 5, 1 << 10, 1 << 10);
+                                0 << 5, 0 << 5, 1 << 10, 1 << 10);
             gDPPipeSync(gMainGfxPos++);
 #else
             for (i = 0; i < 40; i++) {
@@ -445,7 +445,7 @@ void gfx_draw_background(void) {
                         gSPTextureRectangle(gMainGfxPos++,
                                             (side == 0 ? -40 : SCREEN_WIDTH) << 2, i * a, (side == 0 ? 0 : SCREEN_WIDTH + 40) << 2, a + (i * (SCREEN_COPY_TILE_HEIGHT << 2)),
                                             G_TX_RENDERTILE,
-                                            -1 << 5, 0 << 5, 1 << 10, 1 << 10);
+                                            0 << 5, 0 << 5, 1 << 10, 1 << 10);
                         gDPPipeSync(gMainGfxPos++);
                     }
                 }

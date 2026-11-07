@@ -6070,7 +6070,33 @@
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
-      "name": "spot_mac01_fps60_pic",
+      "name": "pause_shift",
+      "status": "unverified",
+      "subject": "PSHIFT-1: Toad Town mac_01 at pos 0 0 200, START opens the pause menu (story set, so the pause is allowed). Shots at frames 92 to 135: live frames 92 and 95, the pause from 96, the open menu from about 105. The pause background is compared with the live frame outside the menu panel (bottom band).",
+      "proves": "The pause background offset: dx and dy of the grabbed scene against the last live frame (cross-correlation outside the panel). Frame numbers of the open come from the pause mode line.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=wait80,START*3,wait100 phase phsum shots shotwin=92:44 loglevel=debug grablog",
+      "until": "shot \\d+ frame 1(3[4-9])\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in the open menu window (134 to 139)",
+          "regex": "shot \\d+ frame 1(3[4-9])\\b"
+        }
+      ],
+      "reason": "PSHIFT-1 measure (and the PSHIFT-2 gate). Same START command as pause_spin on mac_01 pos 0 0 200. Offsets from the shot files: normalized cross-correlation of the bottom band (rows 4 to 45 and 352 to 395 of the PPM) at offsets -3..3, live shot 95 against pause shots. Before the fix dy +1 from frame 105; after the fix dx 0 dy 0.",
+"name": "spot_mac01_fps60_pic",
       "status": "unverified",
       "subject": "CORE-2c interp replay: Toad Town mac_01 at pos 0 0 200 with fps60 on (pm_interp_on). Shots at frames 200 to 205, byte-equal to the same scenario on the base build. Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
       "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
