@@ -235,6 +235,30 @@ void suspend_frozen_scripts(Evt* script) {
     }
 }
 
+/* ENCCRASH validator (cold): a script bytecode pointer outside 0x00100000..0x0FFFFFFF (image and heap) logs once with the caller
+ * address (ra), the parent script and the encounter state. enc_bad_ptr counts every hit. The walk runs as before. */
+s32 enc_bad_ptr = 0;
+static void enc_check_ptr(Evt* s, Bytecode* p, Evt* parent, u32 ra) {
+    Enemy* ce;
+    u32 a = (u32)p;
+    if (a >= 0x00100000u && a < 0x10000000u) {
+        return;
+    }
+    enc_bad_ptr++;
+    if (enc_bad_ptr > 1) {
+        return;
+    }
+    ce = gCurrentEncounter.curEnemy;
+    pm_log_w("ENCCRASH: ptr %08x script %d prio %d caller %08x parent %d pline %08x popc %d parent_is_ai %d ai_susp %d owner1 %08x npc %d mode %d encst %d",
+             a, s->id, s->priority, ra,
+             parent != nullptr ? parent->id : -1,
+             parent != nullptr ? (u32)parent->ptrCurLine : 0u,
+             parent != nullptr ? (s32)parent->curOpcode : -1,
+             (parent != nullptr && ce != nullptr && parent == ce->aiScript) ? 1 : 0,
+             (ce != nullptr && ce->aiScript != nullptr) ? ((ce->aiScript->stateFlags & EVT_FLAG_SUSPENDED) ? 1 : 0) : -1,
+             (u32)s->owner1.enemy, (s32)s->owner2.npcID, (s32)get_game_mode(), gEncounterState);
+}
+
 Evt* start_script(EvtScript* source, s32 priority, s32 flags) {
     Evt* newScript;
     s32 curScriptIndex;
@@ -285,6 +309,7 @@ Evt* start_script(EvtScript* source, s32 priority, s32 flags) {
         newScript->varFlags[i] = 0;
     }
 
+    enc_check_ptr(newScript, newScript->ptrNextLine, nullptr, (u32)__builtin_return_address(0));
     find_script_labels(newScript);
 
     if (IsUpdatingScripts && (newScript->stateFlags & EVT_FLAG_RUN_IMMEDIATELY)) {
@@ -427,6 +452,7 @@ Evt* start_child_script(Evt* parentScript, EvtScript* source, s32 flags) {
         child->varFlags[i] = parentScript->varFlags[i];
     }
 
+    enc_check_ptr(child, child->ptrNextLine, parentScript, (u32)__builtin_return_address(0));
     find_script_labels(child);
     if (IsUpdatingScripts) {
         scriptListCount = gScriptListCount++;
@@ -495,6 +521,7 @@ Evt* func_802C39F8(Evt* parentScript, Bytecode* nextLine, s32 newState) {
         child->varFlags[i] = parentScript->varFlags[i];
     }
 
+    enc_check_ptr(child, child->ptrNextLine, parentScript, (u32)__builtin_return_address(0));
     find_script_labels(child);
     if (IsUpdatingScripts) {
         scriptListCount = gScriptListCount++;
@@ -568,6 +595,7 @@ Evt* restart_script(Evt* script) {
 
     script->timeScale = GlobalTimeRate;
 
+    enc_check_ptr(script, script->ptrNextLine, nullptr, (u32)__builtin_return_address(0));
     find_script_labels(script);
     suspend_frozen_scripts(script);
 

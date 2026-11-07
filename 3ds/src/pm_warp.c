@@ -1088,6 +1088,39 @@ static void battlelist_tick(unsigned f) {
     }
 }
 
+/* ENCCRASH: the side effects of a real touch (encounter.c update_encounters_neutral, START_BATTLE, ENCOUNTER_TRIGGER_NONE). Without them
+ * the touched enemy's AI and aux scripts keep running into the battle, and the hit scripts never start. Mirror of that case; the game
+ * code is not changed. */
+static void encwarp_touch_effects(EncounterStatus* es, Enemy* en) {
+    Encounter* encounter = es->curEncounter;
+    int i;
+    if (en->aiScript != NULL) suspend_all_script(en->aiScriptID);
+    if (en->auxScript != NULL) suspend_all_script(en->auxScriptID);
+    for (i = 0; encounter != NULL && i < encounter->count; i++) {
+        Enemy* e = encounter->enemy[i];
+        Evt* script;
+        if (e == NULL) continue;
+        if ((e->flags & ENEMY_FLAG_ENABLE_HIT_SCRIPT) && e != en) continue;
+        if (e->flags & ENEMY_FLAG_DISABLE_AI) continue;
+        if ((en->flags & ENEMY_FLAG_PROJECTILE) && e != en) continue;
+        if (e->hitBytecode != NULL) {
+            e->encountered = ENCOUNTER_TRIGGER_NONE;
+            script = start_script(e->hitBytecode, EVT_PRIORITY_A, 0);
+            e->hitScript = script;
+            e->hitScriptID = script->id;
+            script->owner1.enemy = e;
+            script->owner2.npcID = e->npcID;
+            script->groupFlags = e->scriptGroup;
+        }
+    }
+    disable_player_input();
+    partner_disable_input();
+    if (gPlayerStatus.actionState != ACTION_STATE_TORNADO_JUMP && gPlayerStatus.actionState != ACTION_STATE_TORNADO_POUND &&
+        gPlayerStatus.actionState != ACTION_STATE_SPIN_JUMP && gPlayerStatus.actionState != ACTION_STATE_SPIN_POUND) {
+        gPlayerStatus.flags |= PS_FLAG_ENTERING_BATTLE;
+    }
+}
+
 /* encwarp=<scene frame>: enters ENCOUNTER_STATE_PRE_BATTLE for the first world enemy of the map (the fields START_BATTLE sets), so the real
  * pre-battle update and the star transition OVERLAY_START_BATTLE run. Logs the pre-battle start and shoots the 40 frames from it
  * (pm_gpu_shot_window). Nothing else is changed. */
@@ -1117,8 +1150,12 @@ static void encwarp_tick(unsigned f) {
         /* The touch test does not start the battle (the enemy npc stays at the sentinel y -1000, run 4). The pre-battle state is set with the
          * fields START_BATTLE sets (firstStrikeType, scriptedBattle, fadeOutAmount, substateDelay, state). Update and draw of the pre-battle
          * state (update_encounters_pre_battle, OVERLAY_START_BATTLE) are the real code. */
-        es->firstStrikeType = FIRST_STRIKE_PLAYER;
-        es->hitType = 0;
+        /* ENCCRASH: a standing touch has hitType NONE and firstStrikeType NONE or ENEMY (encounter.c standing contact). FIRST_STRIKE_PLAYER with
+         * hitType NONE has no dummy menu move (btl_states_actions.c, switch on hitType), so LoadMoveScript set a NULL move script and
+         * ExecWait(NULL) crashed the battle (evt_handle_exec_wait, start_child_script). NONE is the scripted-battle path (battle.c mode 0). */
+        es->firstStrikeType = FIRST_STRIKE_NONE;
+        es->hitType = ENCOUNTER_TRIGGER_NONE;
+        encwarp_touch_effects(es, en);
         es->scriptedBattle = false;
         es->fadeOutAmount = 0;
         es->substateDelay = 0;
