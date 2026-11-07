@@ -7,6 +7,9 @@
 #include "pm_port.h"
 #include "pm_build.h"
 
+extern volatile int pm_io_quiet; /* pm_log.c: set while the app is suspended or asleep */
+extern volatile unsigned pm_wd_quiet;
+
 volatile unsigned pm_wd_prog;  /* the game loop adds 1 per iteration and per drawn step */
 volatile unsigned pm_wd_evt[4]; /* the last script step: Evt, first line, next line, opcode */
 volatile unsigned pm_wd_sub; /* the last numbered call of step_game_loop (src/main_loop.c PM_WDSUB) */
@@ -44,11 +47,45 @@ void pm_exit_process(void) {
 static unsigned now_ms(void) { return (unsigned)(svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull)); }
 
 /* SLP2: a note from the monitor thread. It appends to crash.txt directly: no log drain (that would end the queued log), no crash
- * state, no fsync. The line is written before anything can block. */
+ * state, no fsync. The line is written before anything can block.
+ * SLEEP1: while the app sleeps or is suspended (HOME), no note touches the SD card. Notes go to a RAM ring; pm_wd_flush_notes writes
+ * them after the wake or the HOME close, from a bounded step. A sleeping system module cannot take an FS call. */
+#define WD_RING 2048
+static LightLock wd_lock;
+static char wd_ring[WD_RING];
+static unsigned wd_ring_n, wd_ring_dropped;
+volatile unsigned pm_wd_quiet; /* SLEEP1: set on HOME suspend, cleared on restore. Notes stay in RAM while set. */
+
 static void wd_note(const char* buf, int n) {
+    if (pm_io_quiet || pm_wd_asleep || pm_wd_quiet || !aptIsActive()) {
+        LightLock_Lock(&wd_lock);
+        if (wd_ring_n + (unsigned)n <= WD_RING) { memcpy(wd_ring + wd_ring_n, buf, (size_t)n); wd_ring_n += (unsigned)n; }
+        else wd_ring_dropped++;
+        LightLock_Unlock(&wd_lock);
+        return;
+    }
     FILE* f = fopen("crash.txt", "a");
     if (!f) return;
     fwrite(buf, 1, (size_t)n, f);
+    fclose(f);
+}
+
+/* SLEEP1: writes the RAM notes to crash.txt. Call from a bounded step (it touches the SD card), after the gate is open. */
+void pm_wd_flush_notes(void) {
+    static char out[WD_RING + 80];
+    unsigned n, dropped;
+    LightLock_Lock(&wd_lock);
+    n = wd_ring_n;
+    memcpy(out, wd_ring, n);
+    dropped = wd_ring_dropped;
+    wd_ring_n = 0;
+    wd_ring_dropped = 0;
+    LightLock_Unlock(&wd_lock);
+    if (dropped) n += (unsigned)snprintf(out + n, sizeof out - n, "watchdog: %u notes dropped while quiet (ring full)\n", dropped);
+    if (!n) return;
+    FILE* f = fopen("crash.txt", "a");
+    if (!f) return;
+    fwrite(out, 1, n, f);
     fclose(f);
 }
 
@@ -113,6 +150,7 @@ void pm_wd_start(void) {
     char v[16];
     if (pm_debug_value("wdog", v, sizeof v)) limit_s = (unsigned)atoi(v);
     if (wd_th) return;
+    LightLock_Init(&wd_lock);
     wd_th = threadCreate(wd_main, NULL, 8 * 1024, 0x3F, 1, false);
     pm_log_w("watchdog: %s%u s, monitor thread %s", limit_s ? "" : "off, hang limit ", limit_s, wd_th ? "on core 1" : "NOT STARTED");
 }
