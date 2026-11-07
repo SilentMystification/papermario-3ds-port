@@ -799,7 +799,7 @@ static __attribute__((noinline)) void flush_light_tab(void) {
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk0, g_fx.lk0[0], g_fx.lk0[1], g_fx.lk0[2], g_fx.lk0[3]);
                     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk1, g_fx.lk1[0], g_fx.lk1[1], g_fx.lk1[2], g_fx.lk1[3]);
 }
-/* N4 2b: the palette product post x game, one function for the live path (pcomp) and the per-eye fill (nd_mtx_pool). Same order of products. */
+/* N4 2b: the palette product post x game, one function for the live path (pcomp) and the per-eye fill. Same order of products. */
 static void pal_mul(C3D_Mtx* o, const float (*m)[4]) { nd_mtx_pcomp(o->m, gv_post.m, m); } /* S1-4 */
 static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
     if (gm == RECT_GM) { /* RECT-1a: a rectangle vertex is (x, y, 0, 1) in screen pixels; P (x, y, z, 1) = P (x, y, 0, 1) + z * column 2 of P */

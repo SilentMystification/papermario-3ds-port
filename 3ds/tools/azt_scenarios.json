@@ -703,6 +703,7 @@
     {
       "name": "nok11_det",
       "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
       "subject": "DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
       "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
       "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det",
@@ -710,7 +711,7 @@
         "-Turbo",
         "-NoWarm"
       ],
-      "until": "fxtest: shot 1 effect 89 water_splash",
+      "until": "shot 16 frame \\d+",
       "cap": 45,
       "deadline": 30,
       "first_marker": "warp: nok_11 entry 0",
