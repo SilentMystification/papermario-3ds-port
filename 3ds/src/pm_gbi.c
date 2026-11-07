@@ -1,6 +1,5 @@
 #include <stdio.h>
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4: native sprite draw at the final vertex word (nd_walk.c G_VTX arm, pm_gpu.c) */
-int pm_gpu_spr_checking(void); /* SPR4: sprcheck switch on */
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -955,7 +954,6 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
 extern int pm_gpu_ndm_on(void); /* S3N-3b: switch ndmcheck */
-void pm_gpu_spr_rec(const uint32_t* rec); /* S4-1: a sprite record (sprcheck; pm_gpu.c) */
 extern void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk);
 extern void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 */
 extern void pm_gpu_ndm_end(void);
