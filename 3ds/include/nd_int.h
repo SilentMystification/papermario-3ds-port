@@ -366,4 +366,10 @@ typedef struct {
 } DlcCnt; /* LS-1 counters of the dlc path (defined in pm_gbi.c) */
 extern DlcCnt dlc_c;
 extern unsigned ep_epoch, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
+/* Y (GM-4): the sun overlay debug draws (effects/sun.c calls them; nd_geom.c). suntile_on is the suntile switch in pm_gbi.c. */
+void pm_sun_spawn(int fromRight, float x, float y, float z, int duration);
+void pm_sun_draw(int alpha, int fromRight, const float* scroll, int n);
+void pm_sun_base(const void* graphics);
+int suntile_on(void);
+extern int suntile_lines;
 #endif
