@@ -187,4 +187,35 @@ int rmlog_on(void);
 extern u8 gMapShapeData[];
 extern int sc_ok, gp_prev_op, box_folded;
 
+
+/* ---- T: texture group (plan_s10_path TX). TX-1 cut the setters to nd_tex.c; globals not yet moved stay in pm_gbi.c (extern here). ---- */
+struct TszLast { const u8* src; unsigned fmt, siz; int w, h, stride; const void* pal; int pal_n; unsigned ep; int ox, oy; int ok; };
+typedef struct { int valid; const u8* src; int stride, w, h, x0, y0; } M1Rec;
+extern M1Rec m1;                 /* pm_gbi.c: the shaded sprite tile 1 raster */
+extern struct TszLast tsz_last;  /* nd_tex.c */
+extern unsigned st0_ep; extern int st0_ok; /* nd_tex.c */
+extern unsigned blk_n;           /* nd_tex.c */
+extern const void* tlut_pal[16]; /* nd_tex.c */
+extern int ld_valid, ld_x, ld_y, ld_h, ld_w; /* pm_gbi.c: last LoadTile window */
+extern int dual_on;              /* pm_gbi.c */
+extern void* const zb_fake;      /* pm_gbi.c */
+extern unsigned sp0_cur;         /* pm_gbi.c: split timer kind */
+extern unsigned long long sp0_F; /* pm_gbi.c */
+int pm_is_cfb(const void* p);
+int pm_is_cur_cfb(const void* p);
+void pm_cfb_capture_prev(void);
+void gp_note(int k, int same);
+void gp3_t0_set(void);
+void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls, int ult, int lrs, int lrt);
+void tlut_v20(unsigned slot);
+void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt);
+int tex_shaded0(int uls, int ult);
+void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt);
+void op_settimg(u32 w0, u32 w1);
+void op_settile(u32 w0, u32 w1);
+void op_loadblock(u32 w0, u32 w1);
+void op_loadtlut(u32 w0, u32 w1);
+void op_settilesize(u32 w0, u32 w1);
+void op_texture(u32 w0, u32 w1);
+
 #endif
