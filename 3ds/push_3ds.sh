@@ -9,6 +9,9 @@
 # After a send failure the log's boot line "build N git H" must equal the sent build (PM_SENT_BUILD, PM_SENT_GIT, set by
 # bench.py build-at; else 3ds/include/pm_build.h). Otherwise the log is from another binary: STALE BINARY, no ingest hint.
 # "--check-log <file>" runs only that check (tests).
+# NETLOADER REFUSED: a 3dslink output with a "N sent (P%)" line below 100 is a partial send (the console
+# refused or closed the upload, typically not enough free RAM in applet mode). Then the instruction block is printed
+# with the 3dsx size and the last line of pushed_builds.txt. "--check-send <3dslink output file>" runs only that check (tests).
 # Every push first archives build3ds/pm_3ds.3dsx to 3ds/logs/builds/pm_3ds_<build>_<hash>.3dsx and appends
 # a line to 3ds/logs/perf/pushed_builds.txt. The archive is best effort: a failed archive prints one
 # ARCHIVE WARNING line and the push goes on. "--archive-only" does the archive step and stops (no push), and fails on error.
@@ -27,6 +30,8 @@ nobuild=0
 archonly=0
 attach=0
 checklog=""
+checksend=""
+partial_pct=""
 while :; do
     case "$1" in
         -t) secs=$2; shift 2 ;;
@@ -35,6 +40,7 @@ while :; do
         --archive-only) archonly=1; shift ;;
         --attach) attach=1; shift ;;
         --check-log) checklog=$2; shift 2 ;;
+        --check-send) checksend=$2; shift 2 ;;
         *) break ;;
     esac
 done
@@ -74,7 +80,7 @@ archive_build() {
 # Build only when build3ds/pm_3ds.3dsx is older than its inputs (same input list as Invoke-Build in
 # 3ds/go.ps1) or the build number in pm_build.h differs from the one build.sh would write now.
 # This script never stashes or changes user files.
-if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ]; then
+if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then
     OUT=build3ds; [ -n "$PM_LANE" ] && OUT=build3ds/lane-$PM_LANE
     read V0 C0 <<EOF2
 $(tr -d '\015' < 3ds/build_base.txt)
@@ -132,6 +138,40 @@ if [ -n "$checklog" ]; then
     echo "STALE BINARY: log build ${boot_log}, sent ${sent_b:-none}"; exit 1
 fi
 
+# last_sent_pct <3dslink output>: percentage of the last "N sent (P%)" line, empty when none.
+# 3dslink may end its progress with CR, so CR counts as a line end.
+last_sent_pct() {
+    tr '\r' '\n' <"$1" 2>/dev/null | sed -n 's/.* sent (\([0-9.]*\)%).*/\1/p' | tail -n 1
+}
+
+# note_partial <3dslink output>: a send line below 100% sets partial_pct (the upload was refused or cut).
+note_partial() {
+    p=$(last_sent_pct "$1")
+    [ -n "$p" ] || return 0
+    if awk -v p="$p" 'BEGIN { exit !(p + 0 < 100) }'; then partial_pct=$p; fi
+}
+
+# refusal_hint: when partial_pct is set, print the NETLOADER REFUSED block (3dsx size, last pushed size). Else nothing.
+refusal_hint() {
+    [ -n "$partial_pct" ] || return 0
+    if [ -f "$SRC3DSX" ]; then sz="$(wc -c <"$SRC3DSX" | tr -d ' ') bytes"; else sz="n/a (no $SRC3DSX)"; fi
+    plog=${PM_PUSH_LOG:-3ds/logs/perf/pushed_builds.txt}
+    lastpush=$(tail -n 1 "$plog" 2>/dev/null | awk -v f="$plog" '{ for (i = 2; i <= NF; i++) { if ($i == "bytes") b = $(i - 1); if ($i == "build") n = $(i + 1); if ($i == "git") g = $(i + 1) } if (b != "") printf "%s bytes (build %s git %s)", b, n, g }') || true
+    [ -n "$lastpush" ] || lastpush="none in $plog"
+    echo "=========================================================="
+    echo "NETLOADER REFUSED (likely not enough free RAM in applet mode). On the 3DS: hold R while you start any game to open the Homebrew Launcher in title mode with full memory, then start the netloader (Y) and push again."
+    echo "3dsx size: $sz"
+    echo "send stopped at: ${partial_pct}%"
+    echo "last pushed size (last line of $plog, accept is not logged): $lastpush"
+    echo "=========================================================="
+}
+
+if [ -n "$checksend" ]; then
+    note_partial "$checksend"
+    if [ -n "$partial_pct" ]; then refusal_hint; echo "REFUSAL PATTERN: send stopped at ${partial_pct}%"; exit 0; fi
+    echo "NO REFUSAL PATTERN: no send line below 100% in $checksend"; exit 1
+fi
+
 # $1: push | send | attach. Prints the ingest hint and the result, then exits.
 report_log() {
     nlines=$(wc -l <"$log" 2>/dev/null || echo 0)
@@ -144,12 +184,14 @@ report_log() {
             send) echo "PUSH FAILED stage=send, and no live log" ;;
             *) echo "PUSH FAILED stage=no log" ;;
         esac
+        refusal_hint
         exit 1
     fi
     if [ "$1" = send ]; then
         # The send failed: the live log may be of another binary (an older game still running). Ingest only when it is the sent build.
         if ! boot_check "$log"; then
             echo "STALE BINARY: log build ${boot_log}, sent ${sent_b:-none}"
+            refusal_hint
             echo "PUSH FAILED stage=send, $nlines log lines, not the sent build: nothing to record"
             exit 1
         fi
@@ -283,9 +325,11 @@ while [ "$i" -le "$attempts" ]; do
     wait "$dpid" 2>/dev/null || rc=$?
     kill "$tpid" 2>/dev/null || true
     wait "$tpid" 2>/dev/null || true
+    note_partial "$outfile"
     rm -f "$outfile"
     if [ "$killed" -eq 0 ] && [ "$rc" -eq 0 ]; then
         ok=1
+        partial_pct=""
         break
     fi
     if [ "$killed" -eq 0 ]; then
@@ -298,6 +342,7 @@ done
 if [ "$ok" -ne 1 ]; then
     if [ "$stage" != send ]; then
         echo "PUSH FAILED stage=$stage: $reason (after $attempts attempts, $ip)"
+        refusal_hint
         exit 1
     fi
     echo "PUSH FAILED stage=send: $reason (after $attempts attempts, $ip). The console answered, so the live log is read anyway: the game may be running."
