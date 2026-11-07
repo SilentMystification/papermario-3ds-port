@@ -8695,6 +8695,42 @@
                 }
           ],
           "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
+    },
+    {
+      "name": "mem_reenter",
+      "status": "unverified",
+      "subject": "Mario in hos_01, tour to mac_00 and back to hos_01 (a map entered twice). The second entry restores the .data block (2 changing symbols) and zeroes the .bss block of hos_01.",
+      "proves": "MEM-A item 2 gate: the map restore on re-entry (pm_mapdata_enter) after the .mapstat NOLOAD move. dprobe after lines show 0 bytes differ from the first entry.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town tour=hos_01:0,mac_00:4,hos_01:0 dataprobe loglevel=debug",
+      "until": "tour: done",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "tour step mac_01",
+          "regex": "tour: next mac_00 entry 4"
+        },
+        {
+          "name": "tour step mac_00 again",
+          "regex": "tour: next hos_01 entry 0"
+        },
+        {
+          "name": "restore on re-entry",
+          "regex": "mapdata: hos_01 restored data \\d+ bss \\d+"
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done, 3 maps"
+        }
+      ],
+      "reason": "MEM-A item 2 gate: re-entry of a map with the restore block (the only map re-entry in a short tour)."
     }
   ]
 }
