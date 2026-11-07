@@ -1212,6 +1212,11 @@ static void pm5_upload_draw(const NdDraw* d) {
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex) {
     rp_src_ = 2;
     if (d->use5) { pm5_upload_draw(d); d->no_uni = 1; d->npal = 0; if (d->has_uvx) d->loc_uvx = (unsigned)u5_uvx; }
+    if (d->has_uvx) { /* FB-3 t1log (debug switch, log only): the tex1 draws of a native submit, with the unit 1 words and the uvx values sent */
+        static int t1l_on = -1, t1l_n; extern unsigned pm_frame_count(void);
+        if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
+        if (t1l_on && t1l_n++ < 40) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
+    }
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys((void*)sd) - 0x18000000u);
     d->nidx = nidx;

@@ -2880,6 +2880,38 @@
         "unit"
       ],
       "gates": []
+    },
+    {
+      "name": "battle_start_t1cold_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 part 1: battle start cold det, pm4 unlit and pm5 tex1 lit; t1draw lines. Reference of battle_start_t1cold_pm5all_pic.",
+      "scenario": "battle_start_t1cold",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_t1cold_pm5all_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 part 1: battle start cold det with pm5all (unlit draws through program 5). Gate: shots equal battle_start_t1cold_pic.",
+      "scenario": "battle_start_t1cold_pm5all",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
