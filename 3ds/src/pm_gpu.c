@@ -2806,6 +2806,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     if (ds) { /* S3N-3c: the unit 0 words from the descriptor (nd_tex_get, nd_tex_unit), not from the walker-bound slot */
         id = nd_tex_get(ds);
         if (id < 0) { nd_nat_why = 13; return -1; } /* S3L-2: nd_tex_get failed (load or table full) */
+        extern int pm_tex_tagi; pm_tex_tagi = 1; /* STALE2 texsrc path tag: model */
         if (!nd_tex_unit_hint(id, &hs, &hg, &mdl_un)) { nd_nat_why = 14; return -1; } /* S3L-2: the slot of the desc is not found and not reloaded */
         tex = 1;
         i8 = ds->fmt == 4 && ds->siz == 1; /* G_IM_FMT_I, G_IM_SIZ_8b: the unit 0 raster is I8 */
@@ -2972,6 +2973,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (e->tex) {
         const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);
         int id = ds ? nd_tex_get(ds) : -1;
+        { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
     float comb[4][4], pal0[16];
@@ -3282,6 +3284,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
         ds.fmt = 2; ds.siz = 0; ds.cms = 2; ds.cmt = 2; ds.masks = 8; ds.maskt = 8; /* G_IM_FMT_CI, G_IM_SIZ_4b, G_TX_CLAMP (gbi.h values; nd_model.c uses the numbers too) */
         ds.w = (uint16_t)r.w; ds.h = (uint16_t)r.h; ds.stride = (uint16_t)r.w; ds.pal_n = 16;
         int id = nd_tex_get(&ds);
+        { extern int pm_tex_tagi; pm_tex_tagi = 3; } /* STALE2 texsrc path tag: spr */
         if (id < 0 || !nd_tex_unit(id, &un)) { /* S4-2 diagnosis: the first 3 texture refusals (record size, id) */
             static unsigned tn; if (tn++ < 3u) pm_log_prof_line("sprtex %u w %u h %u raster %08x pal %08x id %d unit %d", tn, r.w, r.h, (unsigned)r.raster, (unsigned)r.palette, id, id >= 0 ? nd_tex_unit(id, &un) : -9);
             *why = 2; return 0; }

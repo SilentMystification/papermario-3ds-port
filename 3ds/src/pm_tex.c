@@ -964,11 +964,48 @@ static void tc_report(void) {
     tc_hits = tc_miss = tc_evict = tc_evict_ev0 = tc_inval = tc_up_bytes = tc_evict_bytes = tc_ev0_bytes = 0;
 }
 
+/* STALE2 texsrc (switch texsrc): the bytes a bind draws, against the content key of its slot. pm_tex_tagi names the path of the bind (set by the caller
+ * before the bind): 0 walk (pm_tex_bind), 1 model (model_draw), 2 hit (pm_gpu_model_hit), 3 spr (native sprite). Counts per 300 frames: binds, now (the
+ * hash of the source bytes now != the slot shash: rewritten under a clean slot), spr (the source lies in a sprite raster range), memo (native: the
+ * descriptor key != the slot shash). The first 40 binds of each path print one line. Log only. */
+int pm_tex_tagi;
+static unsigned src_hash(const void* p, unsigned n);
+static const char* const tsrc_name[4] = {"walk", "model", "hit", "spr"};
+static const u8* tsrc_lo[4];
+static unsigned tsrc_len[4], tsrc_nr;
+static unsigned tsrc_b[4], tsrc_now[4], tsrc_spr[4], tsrc_memo[4], tsrc_cold[4];
+void pm_tex_sprite_range(const void* p, unsigned n) { if (p && n && tsrc_nr < 4) { tsrc_lo[tsrc_nr] = (const u8*)p; tsrc_len[tsrc_nr] = n; tsrc_nr++; } }
+static int tsrc_in_spr(const void* p) {
+    for (unsigned k = 0; k < tsrc_nr; k++) if ((const u8*)p >= tsrc_lo[k] && (const u8*)p < tsrc_lo[k] + tsrc_len[k]) return 1;
+    return 0;
+}
+static void texsrc_chk(int i, const void* img, unsigned key) {
+    int t = pm_tex_tagi;
+    if (i < 0 || i >= SLOTS || !slots[i].live || t < 0 || t > 3 || !PMDL("texsrc")) return;
+    Slot* s = &slots[i];
+    unsigned h = 0; int now = 0, sp = tsrc_in_spr(s->img), mm = key != 0 && key != s->shash;
+    (void)img;
+    if (!s->native && s->slen && s->img) { h = src_hash(s->img, s->slen); now = h != s->shash; }
+    tsrc_b[t]++; tsrc_now[t] += now; tsrc_spr[t] += sp; tsrc_memo[t] += mm;
+    if (tsrc_cold[t] < 40) {
+        tsrc_cold[t]++;
+        pm_log_w("texsrc hit %s f%u slot %d simg %p tlut %p shash %08x now %08x spr %d key %08x memo %d", tsrc_name[t], (unsigned)tc_frame, i, s->img, s->tlut, s->shash, h, sp, key, mm);
+    }
+}
+static void tsrc_report(void) {
+    pm_log_w("texsrc f%u walk b %u now %u spr %u memo %u | model b %u now %u spr %u memo %u | hit b %u now %u spr %u memo %u | spr b %u now %u spr %u memo %u",
+             (unsigned)tc_frame,
+             tsrc_b[0], tsrc_now[0], tsrc_spr[0], tsrc_memo[0], tsrc_b[1], tsrc_now[1], tsrc_spr[1], tsrc_memo[1],
+             tsrc_b[2], tsrc_now[2], tsrc_spr[2], tsrc_memo[2], tsrc_b[3], tsrc_now[3], tsrc_spr[3], tsrc_memo[3]);
+    for (int t = 0; t < 4; t++) tsrc_b[t] = tsrc_now[t] = tsrc_spr[t] = tsrc_memo[t] = 0;
+}
+
 /* TEXSTALE step 1 (switch texstale): a native unit bind checked against its descriptor. The slot must be live, not dirty, hold the descriptor
  * image and palette, and its source bytes must still hash to the key the descriptor was matched with. Log only. */
 static unsigned ts_binds, ts_bad, ts_dirty, ts_img, ts_pal, ts_hash, ts_samp;
 static unsigned src_hash(const void* p, unsigned n);
 void pm_tex_stale_chk(int i, const void* img, const void* pal, unsigned key) {
+    texsrc_chk(i, img, key);
     if (!PMDL("texstale") || i < 0 || i >= SLOTS) return;
     Slot* s = &slots[i];
     int bad = 0, dirty = s->dirty, mi = s->img != img, mp = s->tlut != pal, mh = 0;
@@ -1001,6 +1038,7 @@ void pm_tex_begin_frame(void) {
     if (tc_on < 0) tc_on = pm_debug_has("texstat") || pm_ph_on; /* texture timers: texstat or phase only, not loglevel */
     if (tc_on && tc_frame % 300 == 0) tc_report();
     if (tc_frame % 300 == 0 && PMDL("texstale")) ts_report();
+    if (tc_frame % 300 == 0 && PMDL("texsrc")) tsrc_report();
     epoch++;
     frame_bytes = 0;
     /* Frees of a sampled block go through pf_add (TEXF1): the GPU has not waited for the previous frame by default. */
@@ -1771,6 +1809,7 @@ int pm_tex_bind(void) {
         return 1;
     }
     if (!have || cur < 0 || !slots[cur].live) return 0;
+    { int tg = pm_tex_tagi; pm_tex_tagi = 0; texsrc_chk(cur, slots[cur].img, 0); pm_tex_tagi = tg; } /* STALE2 texsrc: the walker path */
     slots[cur].stamp = ++stamp;
     slots[cur].last_frame = tc_frame;
     GPU_TEXTURE_WRAP_PARAM ws = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(shr_s, mk_ms, wrap_s), wt = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(shr_t, mk_mt, wrap_t);

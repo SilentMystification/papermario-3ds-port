@@ -877,6 +877,13 @@ void spr_init_sprites(s32 playerSpriteSet) {
 #endif
     spr_init_player_raster_cache((&PlayerSpriteSets[playerSpriteSet])->cacheSize,
                   (&PlayerSpriteSets[playerSpriteSet])->rasterSize);
+#ifdef TARGET_3DS
+    { /* STALE2 texsrc: the player raster block (cacheSize rasters, one heap block) is a sprite range for pm_tex */
+        extern PlayerSpriteCacheEntry PlayerRasterCache[18];
+        extern void pm_tex_sprite_range(const void* p, unsigned n);
+        pm_tex_sprite_range(PlayerRasterCache[0].raster, (&PlayerSpriteSets[playerSpriteSet])->cacheSize * (&PlayerSpriteSets[playerSpriteSet])->rasterSize);
+    }
+#endif
 
     for (i = 1; i <= SPR_Peach3; i++) {
         if ((loadedFlags >> i) & 1) {

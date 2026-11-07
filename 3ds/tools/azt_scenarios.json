@@ -86,6 +86,34 @@
       "reason": "TEXSTALE step 1. Walk coordinates are the generic route of mac01_ndunit (not measured on dro_01): Mario may stop at a wall, the texstale counts still run. Cap 27 s for 300 frames."
     },
     {
+      "name": "stale2_walk_mac01",
+      "status": "unverified",
+      "subject": "Toad Town street (mac_01), Mario walks by padscript; shots at frames 150 to 169 show the signs and the walking sprite near Mario. STALE2: texsrc and texstale counts per bind path.",
+      "proves": "texsrc lines per 300 frames (walk, model, hit, spr: binds, now, spr, memo) and the first 40 hit lines per path, plus the picture.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town padscript=go_-300_0_500,wait40,go_-100_0_500 texstale texsrc shots shotwin=150:20 loglevel=debug",
+      "until": "texsrc f300 ",
+      "cap": 27,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "texsrc report",
+          "regex": "texsrc f300 walk b \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 15\\d\\b"
+        }
+      ],
+      "reason": "STALE2 measurement. 300 frames of the padscript walk, cap 27 s as dro_01_walk."
+    },
+    {
       "name": "warpmenu_sub",
       "status": "unverified",
       "subject": "Port menu Debug tab, row Warp area (row 14, CH1) opens the Warp area submenu (tab 4, header [Warp area]). Row 8 is the prefix kmr (after the 8 presets). It shows '< kmr_00 >' and one right step shows '< kmr_02 >'. The bottom shot shows the submenu rows and the kmr row with its arrows.",
