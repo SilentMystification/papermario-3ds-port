@@ -309,7 +309,17 @@ if ($warm) {
             if (Test-Path $log) { $li = Get-Item $log; if ($li.CreationTimeUtc -ne $oldLogCT -or $li.LastWriteTimeUtc -gt $start.ToUniversalTime()) { $warmDone = $true } }
         }
     }
-    if ($warmDone) {
+    if ($warmDone -and $Debug -and -not (Test-WarmSwitches $log $Debug)) {
+        # AZT6-3: the restarted game printed other switches (stale debug3ds.txt): this start is cold, the kept Azahar is closed
+        Write-Output "Warm restart: the boot prints other switches than this run. Cold start."
+        Kill-Azahar $kept.Id
+        Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
+        $emuOff = 0L
+        $warm = $false
+        $warmWhy = "switches"
+        $warmDone = $false
+    }
+    elseif ($warmDone) {
         $p = $kept; Write-Output ("Warm restart ok after {0:N1} s (hotkey {1})." -f ((Get-Date) - $start).TotalSeconds, $hk)
         Set-Content "$($sl.dir)\warm.ok" "ok" # AZT3-3: azt.ps1 reads this boot's log from its first byte after this line
     }

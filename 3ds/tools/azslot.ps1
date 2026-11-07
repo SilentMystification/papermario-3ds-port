@@ -7,6 +7,9 @@ One named mutex per slot (Global\pm_azahar_slot<k>) lets one run use a slot at a
 The user's C:\Program Files\Azahar and %APPDATA%\Azahar are only read (copied from), never written.
 #>
 $script:AzRepo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+# AZT6-1: one slot pool for every worktree. The slots live in the main folder (the parent of the git common dir), whichever worktree calls.
+$gcd = & git -C $script:AzRepo rev-parse --path-format=absolute --git-common-dir 2>$null
+if ($LASTEXITCODE -eq 0 -and $gcd) { $script:AzRepo = Split-Path -Parent ([string]$gcd).Trim() }
 $script:AzInstall = "C:\Program Files\Azahar"
 $script:AzMaster = "$env:APPDATA\Azahar"
 $script:SlotMutex = @{}
@@ -48,6 +51,20 @@ function Close-IdleKept([int]$except = 0) {
         } finally { Exit-Slot $num }
     }
     return $closed
+}
+
+# AZT6-3: the switch line of a warm boot must hold this run's switches (the game reads debug3ds.txt at its start). Waits up to 15 s for the line.
+function Test-WarmSwitches([string]$log, [string]$debug) {
+    for ($w = 0; $w -lt 60; $w++) {
+        if (Test-Path $log) {
+            $t = ""
+            try { $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite'); try { $t = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch { $t = "" }
+            $m = [regex]::Match($t, '(?m)^#\d+ switches ([^\r\n]*)')
+            if ($m.Success) { return $m.Groups[1].Value.Contains($debug.Trim()) }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    return $false
 }
 
 function Get-SlotPaths([int]$k) {
@@ -142,8 +159,8 @@ function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbol
     #   3. any other free slot (its kept Azahar belongs to another lane or turbo setting)
     # Waits only when all slots are busy. Returns the slot number, 0 on timeout.
     # AZT4-1: a start that needs a new Azahar process (cold) takes room under the cap first. At the cap, a free slot whose Azahar is
-    # live (restart, no new process) is taken before a cold slot. A cold start at the cap closes the idle kept Azahars of other slots
-    # (Close-IdleKept); when none is idle the start waits for a busy one.
+    # live (restart, no new process) is taken before a cold slot.
+    # AZT6-2: at the cap a cold slot is not taken and no kept Azahar is closed (Close-IdleKept runs on a GPU fault only): the start waits.
     $n = Get-SlotCount
     $t0 = Get-Date
     $said = $false
@@ -156,11 +173,7 @@ function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbol
         $order = if ($capFull) { $warmK + $liveK + $coldK } else { $warmK + $coldK + $liveK }
         foreach ($k in $order) {
             if (-not (Enter-Slot $k 0)) { continue }
-            if ($coldK -contains $k -and $capFull) {
-                $closed = Close-IdleKept -except $k
-                if ($closed -gt 0) { Write-Host "azslot: cap $($script:AzCap) live Azahars reached, closed $closed idle kept, cold start in slot $k" }
-                if ($closed -eq 0 -or (@(Get-LiveAzahar).Count -ge $script:AzCap)) { Exit-Slot $k; continue }
-            }
+            if ($coldK -contains $k -and $capFull) { Exit-Slot $k; continue }
             return $k
         }
         if (-not $said) { Write-Host $(if ($want -gt 0) { "Azahar slot $want is busy." } else { "All $n Azahar slots are busy." }) "Waiting up to $waitSec s..."; $said = $true }
