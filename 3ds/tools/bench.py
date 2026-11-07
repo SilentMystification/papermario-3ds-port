@@ -684,7 +684,7 @@ def resolve_build(path, text, build, commit, host="host"):
 
 
 def ingest_file(path, bench, host, build, commit, row, label, result="imported", note="", shot=None, tags=None, device="", kind=None,
-                speed="unknown", frame_limit=None, dirty=None, warm=None):
+                speed="unknown", frame_limit=None, dirty=None, warm=None, timing=None):
     p = Path(path)
     dirty = git_dirty() if dirty is None else dirty
     text = p.read_text(encoding="utf-8", errors="replace")
@@ -717,6 +717,8 @@ def ingest_file(path, bench, host, build, commit, row, label, result="imported",
                        [window_rec(w) for w in ws], x, z, y=y, device=device, speed=speed, frame_limit=frame_limit, dirty=dirty)
         if warm is not None:  # AZT2: 1 the start restarted a kept Azahar, 0 cold (the azslot line of the start)
             rec["warm"] = int(warm)
+        for k, v in (timing or {}).items():  # AZT10b-2: wall seconds, until seconds, end after the until line (from the run result)
+            if v is not None: rec[k] = v
         dl = collections.Counter(tuple(w["disp"]) for w in (good or ws) if w.get("disp"))
         if dl:  # the run's display mode: the most common of its windows (old logs: none)
             wide, stereo, fps = dl.most_common(1)[0][0]
@@ -1133,6 +1135,7 @@ def cmd_ingest_last(a):
         return 1
     return ingest_file(p, bench, "azahar", b, c, a.row, a.label or s, result, note, shot, [], device=DEVICE["azahar"],
                        kind=bd["kind"] if bd else "adhoc", speed=a.speed, frame_limit=a.frame_limit,
+                       timing={"wall_s": a.wall_s, "until_s": a.until_s, "end_after_until_s": a.end_after_until_s},
                        dirty=None if dv is None else dv == "1", warm=a.warm)
 
 
@@ -1470,6 +1473,7 @@ def main(argv):
     x.add_argument("--build", type=int); x.add_argument("--commit"); x.add_argument("--shots", default="")
     x.add_argument("--speed", choices=SPEEDS, default="unknown"); x.add_argument("--frame-limit", type=float)
     x.add_argument("--warm", type=int, choices=[0, 1])  # AZT2: 1 warm restart in a kept Azahar, 0 cold; absent when unknown
+    x.add_argument("--wall-s", type=float); x.add_argument("--until-s", type=float); x.add_argument("--end-after-until-s", type=float)  # AZT10b-2: run timing
     x.set_defaults(f=cmd_ingest_last)
     x = sub.add_parser("build-at"); x.add_argument("commit"); x.add_argument("bench"); x.add_argument("--row", required=True)
     x.add_argument("--why", default=""); x.add_argument("--label", default=""); x.add_argument("--dry-run", action="store_true")

@@ -4700,7 +4700,7 @@
       "subject": "Merlon's room (mac_01) with Mario placed at pos -264 20 -326, the crystal ball in the shots at frames 44 to 59, after the placement readback at frame 40. Grab log lines (grablog) for the crystal ball window.",
       "proves": "pos=<x>:<y>:<z> places Mario inside Merlon's house after the warp, the readback equals the request, and the crystal ball window grabs (grab lines) are logged.",
       "debug": "warp=mac_01:0 pos=-264:20:-326 poshud grablog shots shotwin=40:6 shotbottom=40:6 loglevel=debug",
-      "until": "shot \\d+ frame (4[4-9]|5\\d)\b",
+      "until": "shot \\d+ frame (4[4-9]|5\\d)\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_01 entry 0",
@@ -4746,7 +4746,7 @@
       "subject": "Merlon's house entered through the door on mac_01: Mario placed on the street south of the door (-203 20 -206), walks through the doorway (go to -203 -280), and the room with the crystal ball is shot at frames 120 to 179 (grab and texlog lines in the same frames).",
       "proves": "The door walk loads the room (the ball is in the shot), and the ball quad (32 by 32 texrect) and grab lines appear in those frames.",
       "debug": "warp=mac_01:0 story=ch0_toad_town pos=-203:20:-206 padscript=go_-203_-280_500,wait20,up*60,wait60 grablog texlog shots shotwin=130:60 shotbottom=130:60 loglevel=debug",
-      "until": "shot \\d+ frame 179\b",
+      "until": "shot \\d+ frame 179\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_01 entry 0",
@@ -4961,7 +4961,7 @@
       "subject": "Toad Town, Mario speech box (preset toad, pos -66:20:-518:0, A at frame 200), wide off. Byte-equal check of the speech box against main.",
       "proves": "UA2 wide-off: speech box unchanged against main.",
       "debug": "preset=toad pos=-66:20:-518:0 padscript=wait300,A,wait150 shots loglevel=debug",
-      "until": "shot \\d+ frame 210\b",
+      "until": "shot \\d+ frame 210\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -8095,8 +8095,8 @@
       "subject": "battle_start copy (LOGFIX bisect): Battle scene, one Goomba on kmr_03, default formation. The shot at frame 182 is the picture (top-left corner and the Goomba label are compared).",
       "proves": "LOGFIX fault 2: the battle picture at frame 182 per build.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30",
-      "until": "shot \\d+ frame 182\b",
-      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 26,
       "deadline": 30,
       "first_marker": "warp: kmr_03 entry 0",
       "expects": "warp",
@@ -8104,7 +8104,7 @@
       "expected_events": [
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ],
       "reason": "LOGFIX fault 2 bench copy of battle_start with cap 60 s, so the run reaches frame 182 on the slow machine."
@@ -8261,7 +8261,7 @@
       "proves": "The battle debug switch starts a real battle from a warp.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 profdisk=1 mdl0",
       "until": "shot \\d+ frame 182\\b",
-      "cap": 20,
+      "cap": 25,
       "deadline": 20,
       "first_marker": "warp: kmr_03 entry 0",
       "expects": "warp",

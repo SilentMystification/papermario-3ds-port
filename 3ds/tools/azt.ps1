@@ -340,6 +340,9 @@ function Exit-Run([int]$code) {
     $ia += @("--speed", $speed)
     if ($null -ne $script:azWarm) { $ia += @("--warm", [string]$script:azWarm) } # AZT2: 1 warm, 0 cold (the azslot line)
     if ($null -ne $frameLimit) { $ia += @("--frame-limit", [string]$frameLimit) }
+    if ($null -ne $wallS) { $ia += @("--wall-s", [string]$wallS) } # AZT10b-2: the run timing (bench record)
+    if ($null -ne $untilS) { $ia += @("--until-s", [string]$untilS) }
+    if ($null -ne $afterS) { $ia += @("--end-after-until-s", [string]$afterS) }
     & python @ia
     if ($LASTEXITCODE -ne 0) { Write-Output "BENCH: run not recorded (bench.py exit $LASTEXITCODE)" }
     if ($script:slotK) { Exit-Slot $script:slotK; $script:slotK = 0 } # the slot is free for the next run once the logs are read and recorded
@@ -523,6 +526,14 @@ if ($endRow[4] -eq "retry" -and -not $env:PM_AZT_RETRY_RUN) {
 }
 $rc = [int]$endRow[5]
 Write-Output ("run: rc {0}: {1}" -f $rc, (($endRow[6..($endRow.Count - 1)]) -join ","))
+# AZT10b-2: the run's timing from the run result (run_azahar End-Run text): wall seconds, until seconds, end after the until line
+$runTxt = (($endRow[6..($endRow.Count - 1)]) -join ",")
+$tmW = [regex]::Match($runTxt, 'stopped after (\d+)s'); $tmU = [regex]::Match($runTxt, 'until at ([\d.]+) s'); $tmA = [regex]::Match($runTxt, '([\d.]+) s after the until line')
+$wallS = if ($tmW.Success) { [double]$tmW.Groups[1].Value } else { $null }
+$untilS = if ($tmU.Success) { [double]$tmU.Groups[1].Value } else { $null }
+$afterS = if ($tmA.Success) { [double]$tmA.Groups[1].Value } else { $null }
+# AZT10b-3: a scenario with a cap above 25 s and a measured until names itself, so its cap gets fixed as it runs
+if ($null -ne $untilS -and [double]$sc.cap -gt 25) { Write-Output ("cap high: {0} cap {1} until {2}" -f $sc.name, $sc.cap, $untilS) }
 if ($stop -eq "marker") {
     Write-Output "SCENARIO FAILED: marker missing: $($sc.first_marker)"
     Write-Output "Not in the log $deadlineEff s after the Azahar start ($startKind start). Azahar was stopped. Log: $logPath"
