@@ -8623,6 +8623,78 @@
         }
       ],
       "reason": "BTRANS oracle: walk-in with fs1force=2 (every 2nd step skipped, O3DS-like slow frames), interp on."
+    },
+    {
+          "name": "fb_sky_mac00",
+          "status": "unverified",
+          "subject": "mac_00 (Toad Town) at pos -135 0 85: textured rects (sky and HUD), shots at frames 200 to 205.",
+          "proves": "FB-1 baseline picture of the textured rect path (sc base 0). Byte-equal reference for the sc and ring changes.",
+          "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug",
+          "until": "shot \\d+ frame 205\\b",
+          "cap": 45,
+          "deadline": 20,
+          "first_marker": "warp: mac_00 entry 0",
+          "expects": "warp",
+          "needs_picture": true,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: mac_00 entry 0"
+                },
+                {
+                      "name": "shot at 205",
+                      "regex": "shot \\d+ frame 205\\b"
+                }
+          ],
+          "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
+    },
+    {
+          "name": "fb_sky_mac00_scforce",
+          "status": "unverified",
+          "subject": "mac_00 at -135 0 85 with scforce: every textured rect gets s and t plus 200, so the base path (sc above 127) draws it.",
+          "proves": "FB-1 gate: picture byte-equal to fb_sky_mac00; rr_why 7 0.",
+          "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug scforce",
+          "until": "shot \\d+ frame 205\\b",
+          "cap": 45,
+          "deadline": 20,
+          "first_marker": "warp: mac_00 entry 0",
+          "expects": "warp",
+          "needs_picture": true,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: mac_00 entry 0"
+                },
+                {
+                      "name": "shot at 205",
+                      "regex": "shot \\d+ frame 205\\b"
+                }
+          ],
+          "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
+    },
+    {
+          "name": "fb_sky_mac00_ring",
+          "status": "unverified",
+          "subject": "mac_00 at -135 0 85 with ringsmall=64: the raw ring fills and wraps (ring_wrap) in the frames of the shot window.",
+          "proves": "FB-1 gate: wrap count above 0 on the rectwhy line, rr_why 5 0, picture byte-equal to fb_sky_mac00.",
+          "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug ringsmall=64",
+          "until": "shot \\d+ frame 205\\b",
+          "cap": 45,
+          "deadline": 20,
+          "first_marker": "warp: mac_00 entry 0",
+          "expects": "warp",
+          "needs_picture": true,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: mac_00 entry 0"
+                },
+                {
+                      "name": "shot at 205",
+                      "regex": "shot \\d+ frame 205\\b"
+                }
+          ],
+          "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
     }
   ]
 }

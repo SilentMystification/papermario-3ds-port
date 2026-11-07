@@ -2394,6 +2394,70 @@
         "text"
       ],
       "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 baseline: mac_00 textured rect picture (shots 200 to 205). Reference for sc and ring.",
+      "scenario": "fb_sky_mac00",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_scforce_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 sc: scforce (every textured rect sc above 127) must match the pre-row scforce picture. rr_why 7 0.",
+      "scenario": "fb_sky_mac00_scforce",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_ring_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 ring: ringsmall=64 wraps the raw ring. rr_why 5 0, picture equal to fb_sky_mac00.",
+      "scenario": "fb_sky_mac00_ring",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_pause_spin_grab_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 grab: pause spin frames 140 to 179 (grab quad native). Reference and gate.",
+      "scenario": "pause_spin_grab",
+      "cap": 45,
+      "until": "shot \\d+ frame (17[6-9]|18[01])\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

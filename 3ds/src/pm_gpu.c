@@ -3935,31 +3935,31 @@ void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d) {
 /* RECT-1b: a texture rectangle as a raw batch (agent_s6.md RECT-1b). s and t are normalized: the ring gets shorts s * sc, the batch uvso is {1 / sc, 1 / sc, 0, 0} (pica uv = tc * uvso.xy + uvso.zw).
  * sc is 4096, 1024 or 256 by the largest |s| or |t| (the short range): above 127 the CPU path draws it (returns 0). Same clipping, colour and rows as the CPU path. */
 static short tex_st(float v, float sc) { float f = v * sc; return (short)(f >= 0.f ? f + 0.5f : f - 0.5f); }
-static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
-    { static unsigned alt_; if (PMDL("rectalt") && (++alt_ & 1u)) return 0; } /* RECT-1b diag: every second textured rect runs the CPU path */
-    if (!rect_raw_ok()) return 0;
+/* SC-1 (FB-1): one textured piece as a raw batch. Coordinates at or above 127 take the base form: the shorts hold s - bs and uvso.zw = bs (pica uv = tc * uvso.xy + uvso.zw),
+ * bs = floor of the lower s (bt for t). Below 127 the base is 0 and the batch is as before. sc follows the largest value that the shorts hold.
+ * Returns 0 when the piece is still too wide (tex_raw_rect splits first, so this is not reached in practice). */
+static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, float s1, float t1, int y0, int y1) {
     const int saved = combine;
     const int ec = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
-    float xa = px(x0), xb = px(x1 + 1);
-    if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, as the CPU path */
-        float ds = (s1 - s0) / (xb - xa);
-        if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
-        if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
-    }
     float mx = 0.f;
     const float av[4] = { s0 < 0.f ? -s0 : s0, s1 < 0.f ? -s1 : s1, t0 < 0.f ? -t0 : t0, t1 < 0.f ? -t1 : t1 };
     for (int i = 0; i < 4; i++) if (av[i] > mx) mx = av[i];
+    float bs = 0.f, bt = 0.f;
+    if (mx >= 127.f) { bs = floorf(s0 < s1 ? s0 : s1); bt = floorf(t0 < t1 ? t0 : t1); }
+    const float r0s = s0 - bs, r1s = s1 - bs, r0t = t0 - bt, r1t = t1 - bt;
+    const float rv[4] = { r0s < 0.f ? -r0s : r0s, r1s < 0.f ? -r1s : r1s, r0t < 0.f ? -r0t : r0t, r1t < 0.f ? -r1t : r1t };
+    float rmx = 0.f;
+    for (int i = 0; i < 4; i++) if (rv[i] > rmx) rmx = rv[i];
     float sc, inv;
-    if (mx < 7.9f) { sc = 4096.f; inv = 0.000244140625f; }
-    else if (mx < 31.9f) { sc = 1024.f; inv = 0.0009765625f; }
-    else if (mx < 127.f) { sc = 256.f; inv = 0.00390625f; }
+    if (rmx < 7.9f) { sc = 4096.f; inv = 0.000244140625f; }
+    else if (rmx < 31.9f) { sc = 1024.f; inv = 0.0009765625f; }
+    else if (rmx < 127.f) { sc = 256.f; inv = 0.00390625f; }
     else { rr_why[7]++; return 0; }
-    const float ya = py(y0), yb = py(y1 + 1);
     unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
     if (PMDL("rectred")) c = 0xff0000ffu; /* RECT diag: native textured rect in red (texel colour times red) */
-    const float uvso[4] = { inv, inv, 0.f, 0.f };
+    const float uvso[4] = { inv, inv, bs, bt };
     rect_raw_open(ec, fill_z, uvso);
-    rect_raw_quad((int)xa, (int)ya, (int)xb, (int)yb, tex_st(s0, sc), tex_st(t0, sc), tex_st(s1, sc), tex_st(t1, sc), c);
+    rect_raw_quad(xa, ya, xb, yb, tex_st(r0s, sc), tex_st(r0t, sc), tex_st(r1s, sc), tex_st(r1t, sc), c);
     { /* R13c: the rows this rectangle draws, as the CPU path (the close reads them for the grab) */
         int ry0 = y0 < 0 ? 0 : y0, ry1 = y1 + 1;
         if (rect_y1 > rect_y0) { if (ry0 < rect_y0) rect_y0 = ry0; if (ry1 > rect_y1) rect_y1 = ry1; }
@@ -3967,9 +3967,47 @@ static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, floa
     }
     return 1;
 }
+/* RECT-1b: a texture rectangle as a raw batch (agent_s6.md RECT-1b). s and t are normalized: the ring gets shorts s * sc, the batch uvso is {1 / sc, 1 / sc, bs, bt}.
+ * Same clipping, colour and rows as the CPU path. A rectangle whose s or t span needs more than about 120 texels is split into equal pieces along that axis (SC-1). */
+static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
+    { static unsigned alt_; if (PMDL("rectalt") && (++alt_ & 1u)) return 0; } /* RECT-1b diag: every second textured rect runs the CPU path */
+    if (!rect_raw_ok()) return 0;
+    float xa = px(x0), xb = px(x1 + 1);
+    if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, as the CPU path */
+        float ds = (s1 - s0) / (xb - xa);
+        if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
+        if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
+    }
+    const float ya = py(y0), yb = py(y1 + 1);
+    const int ixa = (int)xa, ixb = (int)xb, iya = (int)ya, iyb = (int)yb;
+    /* split count: the base form is needed when the magnitude is at or above 127; a piece holds a span of about 120 texels */
+    float mx = 0.f;
+    const float av[4] = { s0 < 0.f ? -s0 : s0, s1 < 0.f ? -s1 : s1, t0 < 0.f ? -t0 : t0, t1 < 0.f ? -t1 : t1 };
+    for (int i = 0; i < 4; i++) if (av[i] > mx) mx = av[i];
+    int nx = 1, ny = 1;
+    if (mx >= 127.f) {
+        const float spanS = s0 < s1 ? s1 - s0 : s0 - s1, spanT = t0 < t1 ? t1 - t0 : t0 - t1;
+        if (spanS >= 120.f || spanT >= 120.f) { nx = 1 + (int)(spanS / 120.f); ny = 1 + (int)(spanT / 120.f); }
+    }
+    if (nx == 1 && ny == 1) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
+    const int W = ixb - ixa, H = iyb - iya;
+    if (W == 0 || H == 0 || (W < 0 ? -W : W) < nx || (H < 0 ? -H : H) < ny) { rr_why[7]++; return 0; }
+    if (gring_n + 4 * nx * ny > GRING_VTX || gidx_n + 6 * nx * ny > GRING_IDX) { rr_why[5]++; return 0; } /* the pieces must fit the ring together */
+    for (int j = 0; j < ny; j++) {
+        const int ja = iya + H * j / ny, jb = iya + H * (j + 1) / ny;
+        const float ta = t0 + (t1 - t0) * (float)(ja - iya) / (float)H, tb = t0 + (t1 - t0) * (float)(jb - iya) / (float)H;
+        for (int i = 0; i < nx; i++) {
+            const int ia = ixa + W * i / nx, ib = ixa + W * (i + 1) / nx;
+            const float sa = s0 + (s1 - s0) * (float)(ia - ixa) / (float)W, sb = s0 + (s1 - s0) * (float)(ib - ixa) / (float)W;
+            tex_raw_piece(ia, ja, ib, jb, sa, ta, sb, tb, y0, y1);
+        }
+    }
+    return 1;
+}
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float s = s0; s0 = s1; s1 = s; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
+    if (PMDL("scforce")) s0 += 200.f, s1 += 200.f; /* SC-1 forcing: s + 200 on every textured rect (CPU and native), the sc base form then draws it */
     if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; }
     rect_c[1]++;
     rd_tex = 1;
