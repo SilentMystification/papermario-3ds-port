@@ -2344,9 +2344,15 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1,
  * first frame of a run of requests, or a frame with an earlier T2 grab (it overwrites grab_tex), returns 0: the caller reads with the CPU.
  * Returns 2 if the old frame is in the slot of prev_cfb. */
 int pm_gpu_grab_prev(const void* prev_cfb) {
-    prev_want = 1;
+    prev_want = 2; /* BTRANS: the request holds for 2 drawn frames: a replay draw (interp) takes the copy and does not capture */
     if (!target || !gpu_ok) return 0;
     return grab_impl(prev_cfb, 0, 240, 1);
+}
+/* BTRANS fix 3: an encounter start (pre-battle init) asks for the copy of the frame before the star wipe, at the next two begins. */
+void pm_gpu_want_prev(void) { prev_want = 2; }
+/* BTRANS caplog: the capture state read by cfb_capture_prev (pm_main.c, switch caplog). */
+void pm_gpu_cap_state(int* o) {
+    o[0] = prev_pre; o[1] = grab_n; o[2] = grab_split; o[3] = kick_done; o[4] = want_clear; o[5] = (int)draws_frame; o[6] = off_fail; o[7] = (gpu_ok && target) ? 1 : 0;
 }
 /* K1: debug switch grablog. One line per grab call: id (grab_n of the frame), source colour buffer, rows, frame, reuse yes or no. */
 static void grab_log(const void* cfb, int y0, int y1, int reuse) {
@@ -2504,7 +2510,7 @@ void pm_gpu_begin_wait(void) {
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
     if (prev_want && !pm_debug_has("prevcpu") && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
-    prev_want = 0;
+    if (prev_want) prev_want--;
     eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
     if (pm_debug_has("stereo")) eye_slider = 1.f;
     stereo_frame = targetR && eye_slider > 0.02f;

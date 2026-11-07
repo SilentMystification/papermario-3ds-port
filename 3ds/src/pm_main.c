@@ -229,26 +229,43 @@ int pm_gpu_grab_prev(const void* prev_cfb);
 extern short get_game_mode(void);
 static int pm_game_mode_now(void) { return (int)get_game_mode(); }
 static const void* cap_fill; /* PT78: the frame buffer the pause coverage fill writes (the game fixes it to nuGfxCfb[1]) */
+/* BTRANS caplog (switch caplog): one line per capture call. path gpu2 = copy made at pm_gpu_begin, cpu = CPU read of the live colour buffer
+ * (the swirl fallback, the case the row names), done = already taken this frame. split, kick and clear show whether this frame already
+ * queued its KICK1 split or clear before the read. */
+void pm_gpu_cap_state(int* o);
+int pm_tex_failed(void);
+int pm_enc_wipe(void);
+static void cap_note(int cpu, const char* path) {
+    static int on = -1;
+    int st[8];
+    if (on < 0) on = pm_debug_has("caplog");
+    if (!on) return;
+    pm_gpu_cap_state(st);
+    pm_log_d("caplog f%u cpu %d repl %d interp %d path %s prev_pre %d grab_n %d split %d kick %d clear %d draws %d off_fail %d tex_fail %d tgt %d wipe %d why %s",
+             pm_frame_count(), cpu, pm_interp_repl, pm_interp_on, path, st[0], st[1], st[2], st[3], st[4], st[5], st[6], pm_tex_failed(), st[7], pm_enc_wipe(),
+             !st[0] ? "prev0" : st[1] ? "grabn" : "setup");
+}
 static void cfb_capture_prev(int cpu) {
     static unsigned done = ~0u, done_gpu = ~0u;
     static int nocpu = -1;
     unsigned i;
     if (nocpu < 0) nocpu = pm_debug_has("prevcpu");
     if (!cpu && !nocpu) {
-        if (done_gpu == pm_frame_n || done == pm_frame_n) return;
+        if (done_gpu == pm_frame_n || done == pm_frame_n) { cap_note(cpu, "done"); return; }
         for (i = 0; i < nuGfxCfbNum; i++) {
             if (nuGfxCfb[i] == nuGfxCfb_ptr) {
                 unsigned t0 = pm_ph_on ? pm_ticks() : 0;
                 if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
                     done_gpu = pm_frame_n;
                     if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
+                    cap_note(cpu, "gpu2");
                     return;
                 }
                 break;
             }
         }
     }
-    if (done == pm_frame_n) return;
+    if (done == pm_frame_n) { cap_note(cpu, "done"); return; }
     done = pm_frame_n;
     for (i = 0; i < nuGfxCfbNum; i++) {
         /* PT78: the pause reads the frame from the buffer that is not the fill target, whatever the parity of the drawn step (a step skipped by FS1 moves the
@@ -260,6 +277,12 @@ static void cfb_capture_prev(int cpu) {
             unsigned short* prev = cpu && cap_fill ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
             unsigned t0 = pm_ph_on ? pm_ticks() : 0;
             static unsigned nlog;
+            if (!cpu) { /* BTRANS: a split this frame (KICK1 or a grab split) put part of this frame in the colour buffer: no CPU read, the slot keeps its last frame */
+                int st[8];
+                pm_gpu_cap_state(st);
+                if (st[2] || st[3]) { cap_note(cpu, "skip"); return; }
+            }
+            cap_note(cpu, "cpu");
             pm_gpu_read_frame(prev);
             if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
             if (pm_ph_on && nlog++ < 6) pm_log("D03: last frame copied to a frame buffer in %u us (ARM11 tick, Azahar timing)", (unsigned)((pm_ticks() - t0) / 268u));

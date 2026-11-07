@@ -7,6 +7,70 @@
   },
   "benches": [
     {
+      "name": "btrans_walk_noint",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTRANS: walk-in into a Goomba, interp off (nointerp). caplog: capture path per call. Gate: cpu-after-split 0.",
+      "scenario": "btrans_walk_noint",
+      "cap": 60,
+      "until": "shot 39 frame ",
+      "tags": [
+        "azahar",
+        "battle",
+        "btrans"
+      ],
+      "gates": []
+    },
+    {
+      "name": "btrans_stand_enc",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTRANS: standing encounter (encwarp 120, kmr_09), interp on. caplog wipe state and capture path. Gate: cpu-after-split 0.",
+      "scenario": "btrans_stand_enc",
+      "cap": 45,
+      "until": "encwarp: window end",
+      "tags": [
+        "azahar",
+        "battle",
+        "btrans"
+      ],
+      "gates": []
+    },
+    {
+      "name": "btrans_stand_noint",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTRANS: standing encounter, interp off (nointerp). caplog capture path. Gate: cpu-after-split 0.",
+      "scenario": "btrans_stand_noint",
+      "cap": 45,
+      "until": "encwarp: window end",
+      "tags": [
+        "azahar",
+        "battle",
+        "btrans"
+      ],
+      "gates": []
+    },
+    {
+      "name": "btrans_walk_enc",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTRANS: battle entry while Mario walks (kmr_09 Goomba). caplog lines: capture path per call and KICK1 split state.",
+      "scenario": "btrans_walk_enc",
+      "cap": 45,
+      "until": "encwarp: window end",
+      "tags": [
+        "azahar",
+        "battle",
+        "btrans"
+      ],
+      "gates": []
+    },
+    {
       "name": "logbench",
       "kind": "azahar_stream",
       "speed": "normal",
