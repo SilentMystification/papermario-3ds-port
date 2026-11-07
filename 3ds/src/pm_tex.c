@@ -1766,7 +1766,19 @@ static int nu0_impl(NdUnit* u, int touch) {
     if (touch) tb_last = NULL;
     return 1;
 }
-int pm_tex_native_unit0(NdUnit* u) { return nu0_impl(u, 1); }
+/* OFF-3: unit 0 of an off-screen image (the texture pm_tex_bind binds for it: C3D_TexBind of offt[off_cur].tex, the render target texture). Words as
+ * C3Di_SetTex sends them. 1 with the words, -1 no image. The caller takes the snapshot when the image is the target of its batch (pm_gpu.c). */
+static int nu0_off(NdUnit* u) {
+    if (off_cur >= offt_n || !offt[off_cur].tex) return -1;
+    const C3D_Tex* tp = (const C3D_Tex*)offt[off_cur].tex;
+    u->force = 1;
+    u->dim = tp->dim; u->param = tp->param; u->lod = tp->lodParam;
+    u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3; u->type = (uint32_t)tp->fmt;
+    tb_last = NULL;
+    return 1;
+}
+/* OFF-3: 2 with the words of the off-screen image of unit 0 (pm_tex_off_idx), see nu0_off. */
+int pm_tex_native_unit0(NdUnit* u) { return (have && off_cur >= 0) ? nu0_off(u) : nu0_impl(u, 1); }
 /* SGEN-2: the unit 1 words of the aux texture pm_tex_bind_aux would bind (same residency work, no citro3d call). 1 with the words, 0 no aux texture, -1 the native path cannot take it (an off-screen aux image, a debug override). */
 static unsigned nd_lsg1;
 int pm_tex_native_unit1(NdUnit* u) {

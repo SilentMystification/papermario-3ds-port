@@ -840,7 +840,7 @@ static __attribute__((noinline)) void flush_light_tab(void) {
 static void pal_mul(C3D_Mtx* o, const float (*m)[4]) { nd_mtx_pcomp(o->m, gv_post.m, m); } /* S1-4 */
 static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
     if (gm == RECT_GM) { /* RECT-1a: a rectangle vertex is (x, y, 0, 1) in screen pixels; P (x, y, z, 1) = P (x, y, 0, 1) + z * column 2 of P */
-        pcomp[gm] = projection;
+        pcomp[gm] = off_active ? off_proj : projection; /* OFF-1: the off-screen pass has its own ortho (pixels of the target) */
         for (int i = 0; i < 4; i++) pcomp[gm].r[i].w += pcomp[gm].r[i].z * rect_pal_z;
     } else
         pal_mul(&pcomp[gm], pal_tab[gm]);
@@ -1118,7 +1118,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     const NdDraw* d = dp;
     if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; }
     if (buf_cur != 2) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, gring, 16, 3, 0x210); buf_cur = 2; }
-    stage_scissor();
+    if (off_active) scissor_off(); else stage_scissor(); /* OFF-1: an off-screen target has its own scissor (citro3d state, not in the template words) */
     sh_user_clip(1);
     if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
@@ -1145,9 +1145,11 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     gni = 0; pal_n = 0;
     batch_identity = 0;
     drew = 1;
-    if (rect_y1 <= rect_y0) grab_dirty = 1;
-    else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
-    else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
+    if (!off_active) { /* B2: the main target changed, the grab slot is old (as flush_draw_cpu) */
+        if (rect_y1 <= rect_y0) grab_dirty = 1;
+        else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
+        else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
+    }
     rp_tmpl_ = d->tmpl; rp_u0_ = d->u[0].dim != 0;
     rp_draw("nat", tex);
     dc_kick();
@@ -1176,20 +1178,34 @@ static NdTmplKey spr_wk; /* S4-1 sprcheck: the walker template key of the last r
 static void spr_check(const NdDraw* w);
 static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer, 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
 void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
+/* OFF-2: the unit 0 words of the grab copy (grab_tex), as the walker bind (dc_bind) sends them. The copy is one fixed buffer: force keeps the words in
+ * every draw of the grab, as the walker binds it at every draw. 1 always. */
+static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
+    u->force = 1;
+    u->dim = tp->dim;
+    u->param = tp->param;
+    u->lod = tp->lodParam;
+    u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
+    u->type = (uint32_t)tp->fmt;
+    return 1;
+}
+static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex); }
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; cen_why = CW_NRK(1); return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
-    if (off_active) { nd_native_refused++; nraw_why[2]++; cen_why = CW_NRK(2); return 0; }
-    if (grab_bind) { nd_native_refused++; nraw_why[3]++; cen_why = CW_NRK(3); return 0; }
     if (r_zmark) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; }
     if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }
     if (combine == 8 && plan.uses_noise) { nd_native_refused++; nraw_why[7]++; cen_why = CW_NRK(7); return 0; }
-    int z = z_on && (!rect_2d || rect_z);
+    int z = z_on && (!rect_2d || rect_z) && !off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
-    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; } }
+    if (combine >= 2) { /* OFF-2: a grab draw binds the copy. OFF-3: an off-screen image (2) that is the target of this pass is read from its snapshot (FX2a, flush_draw made it) */
+        t = grab_bind ? grab_native_unit0(&u0) : pm_tex_native_unit0(&u0);
+        if (t == 2 && off_active && pm_tex_off_idx() == off_cur && offs[off_cur].snap_ready) t = tex_native_words(&u0, &offs[off_cur].snap);
+        if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; }
+    }
     NdUnit u1;
     memset(&u1, 0, sizeof u1);
     int t1 = 0;
@@ -1202,7 +1218,7 @@ static int nd_raw_native(void) {
     { float db = decal_bias(); memcpy(&nk.dbias, &db, 4); }
     nk.atest_on = r_atest >= 0; nk.aref = (uint8_t)(r_atest >= 0 ? r_atest : 0);
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
-    nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = 0; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
+    nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
     nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = 0;
     const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
@@ -1212,10 +1228,11 @@ static int nd_raw_native(void) {
     spr_wk = nk;
     if (combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
     /* from here the batch is drawn natively */
+    if (grab_bind) pm_tex_bind_reset(); /* as flush_draw: the next walker bind of unit 0 sends its own words */
     TevKey tk;
     memset(&tk, 0, sizeof tk);
     tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
-    tk.dview = dv_mode(); tk.off_active = 0; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
+    tk.dview = dv_mode(); tk.off_active = (uint8_t)off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
     tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol; tk.plan_gen = combine == 8 ? plan_gen : 0;
     if (!ndn_to_ok || memcmp(&tk, &ndn_tk, sizeof tk) != 0) { /* the stage words with the colours, built when the TEV key changes (as tev_same does for citro3d) */
         NdTevIn ti = { &nk, &plan, prim, cconst, r_mixcol };
@@ -1223,7 +1240,7 @@ static int nd_raw_native(void) {
         ndn_tk = tk; ndn_to_ok = 1;
     }
     if (ndref_on) { ndref_nz = 0; ndref_raw = 1; ndref_draw(&tk, z, 1, 4, (unsigned)g_cullm); ndref_state(0, z); }
-    cen_add(&tk, z, 1, 4, (unsigned)g_cullm, tex ? pm_tex_census_id(0) : 0u, 0u, gni / 3u);
+    cen_add(&tk, z, 1, 4, (unsigned)g_cullm, grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, 0u, gni / 3u);
     dc_on = 0;
     proj_ok = 0; pool_buf_ok = 0;
     sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
@@ -3716,8 +3733,7 @@ static unsigned rect_c[6];
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle takes the CPU path: 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
     if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
-    if (off_active) { rr_why[2]++; return 0; }
-    if (grab_bind) { rr_why[3]++; return 0; }
+    if (grab_bind) { rr_why[3]++; return 0; } /* OFF-1: an off-screen target is native (no refusal here) */
     if (r_zmark) { rr_why[4]++; return 0; }
     if (gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) { rr_why[5]++; return 0; }
     if (PMDL("norectraw")) { rr_why[6]++; return 0; }
@@ -3771,11 +3787,13 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     rd_tex = 0;
     if (rect_raw_ok()) {
         static const float uv0[4] = { 1.f, 1.f, 0.f, 0.f };
-        int xa = (pm_wide && x0 <= 0) ? 0 : 40 + x0; /* F07-3: a fill from the game edge reaches the screen edge (off_active is 0 here) */
-        int xb = (pm_wide && x1 >= 319) ? 400 : 40 + x1 + 1;
+        /* F07-3: a fill from the game edge reaches the screen edge. OFF-1: an off-screen pass is px and py (no wide, no 40 pixel margin) */
+        int xa = off_active ? x0 : (pm_wide && x0 <= 0) ? 0 : 40 + x0;
+        int xb = off_active ? x1 + 1 : (pm_wide && x1 >= 319) ? 400 : 40 + x1 + 1;
+        int ya = off_active ? y0 : 240 - y0, yb = off_active ? y1 + 1 : 240 - (y1 + 1);
         rect_raw_open(0, fill_z, uv0);
-        rect_raw_quad(xa, 240 - y0, xb, 240 - (y1 + 1), 0, 0, 0, 0, rgba);
-        grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
+        rect_raw_quad(xa, ya, xb, yb, 0, 0, 0, 0, rgba);
+        if (!off_active) grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
         return;
     }
     rect_c[4]++;
@@ -3824,7 +3842,7 @@ static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, floa
     const int saved = combine;
     const int ec = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
     float xa = px(x0), xb = px(x1 + 1);
-    if (pm_wide && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, as the CPU path */
+    if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, as the CPU path */
         float ds = (s1 - s0) / (xb - xa);
         if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
         if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
