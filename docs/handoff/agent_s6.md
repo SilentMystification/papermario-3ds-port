@@ -1,3 +1,4 @@
+LOGFIX (2026-11-07): fault 1 (phase-mode census lines missing) fixed in 922a66bb5 (merged). Fault 2 (battle_start f182 top-left box, Goomba label) is run-to-run animation timing: 2 samples of one build differ in the same box; the box appears in samples of 2206cd0a0 and of a9f558df3; not a LOG5 fault. Closed.
 # Agent S6: entities, items, animators draw from records natively
 
 ## STATE
