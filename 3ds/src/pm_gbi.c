@@ -20,48 +20,6 @@ int pm_gpu_spr_checking(void); /* SPR4: sprcheck switch on */
 
 unsigned pm_gbi_sync_ticks, pm_gbi_gv_ticks, pm_gbi_tex_ticks;
 unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
-/* PI2: batch class of the op that closes a batch. 0 TEX, 1 CC, 2 GEO, 3 RECT, 4 TRI, 5 other. */
-int pm_gbi_flush_class(void) {
-    switch (pm_gbi_cur_op) {
-    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: return 0;
-    case G_SETCOMBINE: case G_SETPRIMCOLOR: case G_SETENVCOLOR: case G_SETOTHERMODE_L: case G_SETOTHERMODE_H: case G_SETFOGCOLOR: return 1;
-    case G_MTX: case G_POPMTX: case G_GEOMETRYMODE: case G_MOVEWORD: case G_MOVEMEM: return 2;
-    case G_TEXRECT: case G_TEXRECTFLIP: case G_FILLRECT: return 3;
-    case G_TRI1: case G_TRI2: return 4;
-    default: return 5;
-    }
-}
-/* W2: phase timers read the tick for one run in 8 and scale the sample by 8. A run is a streak of ops of one class. */
-unsigned ph_seq;
-int ph_pick(void) { return (++ph_seq & 7u) == 0; }
-static int gv_run, gv_streak;
-unsigned gv_streak_t0;
-void gv_streak_flush(void) {
-    gv_run = 0;
-    if (!gv_streak) return;
-    pm_gbi_gv_ticks += (pm_ticks() - gv_streak_t0) * 8u;
-    gv_streak = 0;
-}
-void gv_streak_op(unsigned op) {
-    if (op == G_TRI1 || op == G_TRI2) {
-        if (pm_ph_on && !gv_run) { gv_run = 1; if (ph_pick()) { gv_streak_t0 = pm_ticks(); gv_streak = 1; } }
-    } else
-        gv_streak_flush();
-}
-int tex_run, tex_streak;
-unsigned tex_streak_t0;
-void tex_streak_flush(void) {
-    tex_run = 0;
-    if (!tex_streak) return;
-    pm_gbi_tex_ticks += (pm_ticks() - tex_streak_t0) * 8u;
-    tex_streak = 0;
-}
-void tex_streak_op(unsigned op) {
-    if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE ) {
-        if (pm_ph_on && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
-    } else
-        tex_streak_flush();
-}
 
 extern int pm_tex_tagi; /* STALE2 texsrc: bind path tag */
 extern u16 DepthCopyBuffer[16];
@@ -151,14 +109,6 @@ u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid.
 unsigned seam_obj, seam_clip; /* SEAM: CPU path triangles by position route, `seamstat` logs them */
 unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n;
 unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
-/* GP3 gate: tile 0 G_SETTILESIZE with td[0] set vs no surviving tri or tile-0 texrect before the next one. */
-unsigned gp3_t0_ld, gp3_t0_dead, gp3_t0_pending;
-void gp3_t0_set(void) {
-    if (gp3_t0_pending) gp3_t0_dead++;
-    gp3_t0_ld++;
-    gp3_t0_pending = 1;
-}
-void gp3_t0_surv(void) { gp3_t0_pending = 0; }
 unsigned short vert_ring[64], vert_gmi[64];
 unsigned vert_tss[64];
 unsigned st_gpu_tri; /* triangles drawn by the raw path */
@@ -240,17 +190,6 @@ void sync_legacy(void) {
 
 
 
-
-unsigned rgba_from_5551(unsigned c) {
-    unsigned r = (c >> 11) & 31;
-    unsigned g = (c >> 6) & 31;
-    unsigned b = (c >> 1) & 31;
-    unsigned a = (c & 1) ? 255 : 0;
-    r = (r << 3) | (r >> 2);
-    g = (g << 3) | (g >> 2);
-    b = (b << 3) | (b >> 2);
-    return (r << 24) | (g << 16) | (b << 8) | a;
-}
 
 /* L01: RSP light table. G_MW_NUMLIGHT sets the count, G_MOVEMEM index G_MV_LIGHT fills slots (slot 0 is light 1, slot nlights is the ambient light). */
 NdLight lt[9];

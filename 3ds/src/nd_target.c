@@ -92,3 +92,15 @@ static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
     cimg_stride = stride;
 }
 void gbi_setcimg(u32 w0, u32 w1) { set_cimg(w1, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1); }
+
+/* ---- MV-8: target helper, cut from pm_gbi.c (no change) ---- */
+unsigned rgba_from_5551(unsigned c) {
+    unsigned r = (c >> 11) & 31;
+    unsigned g = (c >> 6) & 31;
+    unsigned b = (c >> 1) & 31;
+    unsigned a = (c & 1) ? 255 : 0;
+    r = (r << 3) | (r >> 2);
+    g = (g << 3) | (g >> 2);
+    b = (b << 3) | (b >> 2);
+    return (r << 24) | (g << 16) | (b << 8) | a;
+}
