@@ -8519,6 +8519,38 @@
         }
       ],
       "reason": "BTRANS gate: standing, interp off."
+    },
+    {
+      "name": "btrans_walk_fs1",
+      "status": "unverified",
+      "subject": "BTRANS: walk-in into a Goomba with FS1 forced skips (fs1force=2) to mimic O3DS slow frames. caplog: capture path per call.",
+      "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:40 caplog loglevel=debug fs1force=2",
+      "until": "shot 39 frame ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "warp: kmr_09 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_09 entry 0"
+        },
+        {
+          "name": "battle start",
+          "regex": "maphud: battle Battle"
+        },
+        {
+          "name": "caplog lines",
+          "regex": "caplog f[0-9]+ cpu"
+        },
+        {
+          "name": "shot in window",
+          "regex": "shot [0-9]+ frame 1[1-5][0-9]"
+        }
+      ],
+      "reason": "BTRANS oracle: walk-in with fs1force=2 (every 2nd step skipped, O3DS-like slow frames), interp on."
     }
   ]
 }
