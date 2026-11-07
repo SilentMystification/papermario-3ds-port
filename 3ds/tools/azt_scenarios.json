@@ -9610,7 +9610,7 @@
       "status": "unverified",
       "subject": "Six maps in one start (golden_multi tour), cold det, prof=4: one ndm line per 300 frames with the native draw and fallback (fb) counts of the window.",
       "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
-      "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug prof=4 det",
+      "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=60 shots fixedseed fast loglevel=debug prof=4 det",
       "extra": ["-Turbo", "-NoWarm"],
       "until": "shot 6 frame",
       "cap": 90,
