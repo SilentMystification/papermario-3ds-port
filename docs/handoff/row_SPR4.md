@@ -19,5 +19,16 @@ Gate:
 - mac_01, iwa_10 and pause_spin byte-equal (the vp and pause sprite path changes too).
 - mdl/spr fallback counters: why 5 stays 0.
 
+## Oracle decision SPR4b
+The per-sprite live state is the N64-correct picture. The RDP has no batches: each triangle is drawn with the mode registers current when it runs. At the sprite's G_VTX those registers are nd_ws (geom 00200005, no cull; oml 00551238). A walker draw that uses the state of an earlier open batch (g_cullm set only when gni == 0, pm_gpu.c ~2816; render and combine taken when the batch opened) means a state change did not close the batch. That is a walker bug, not a reference to copy. So the native sprite keeps the per-sprite state, and sprcheck in its present form is not a valid gate (it compares against the buggy key).
+Next, in the same row:
+1. Name the missing batch break. At the sprite's G_VTX, log gni, the open batch's key (g_ct, g_cullm, gv_wind at open, the render key r_*, the combine and plan key) against nd_ws. Also log the ops run since the batch opened, as op codes. The first state op that changed a key field without a flush is the bug. The likely place is the batch-open test, gtrip_batch_open / grange_batch_open: it compares ct but not the winding that g_cullm also depends on, and it does not compare the render or combine key when those are synced lazily (sync_render at gv_epoch_enter).
+2. Fix the walker: that test or that setter closes the open batch when the cull class, winding, render mode or combine key differs. One fix, in the owning module (TRI or ST, whichever owns the function by then).
+3. sprcheck then compares like with like and must show diff 0.
+Gate:
+- battle_start f182: the native sprite build byte-equal to `nosprnat` built with the walker fix; the walker fix alone is checked by eye against an N64 reference shot of the same battle frame (ask the user for an N64 emulator capture, as for sb_effect4.png).
+- mac_01, iwa_10 and pause_spin byte-equal to the pre-row build. If the walker fix changes any of them, each changed region is inspected: it should be the same mis-batched-state class, and is accepted only after that check.
+- sprcheck diff 0 at kmr_03 battle f300; sprnat why 4 = 0.
+
 ## Rules
 Own worktree build3ds/wt/spr4, branch spr4 from nds1; copy assets/us and ver/us/build. Code first (CLAUDE.md rule 5). pm_gbi.c is shared with ST/TX/GM/WK: keep your hunks to the G_PM_SPR case, the G_VTX hook and pm_gpu_spr_build; rebase before each commit and check markers. No attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. Delete this file in the last commit.
