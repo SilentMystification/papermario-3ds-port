@@ -9606,6 +9606,62 @@
       "reason": "MDL-5 gate: MDL-5 byte reference: battle with nomodelnat. Cold start (-NoWarm) so det shots are a function of the build."
     },
     {
+      "name": "golden_multi_det",
+      "status": "unverified",
+      "subject": "Six maps in one start (golden_multi tour), cold det, prof=4: one ndm line per 300 frames with the native draw and fallback (fb) counts of the window.",
+      "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
+      "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "shot 6 frame",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "first map", "regex": "warp: kmr_20 entry 4"},
+        {"name": "last shot", "regex": "shot 6 frame \\d+"}
+      ],
+      "reason": "MDL-5e census: six map changes (golden_multi list), cold start so the fb count is a function of the build. Cap as golden_multi."
+    },
+    {
+      "name": "tour10_det",
+      "status": "unverified",
+      "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4: one ndm line per 300 frames (native draws and fallback count).",
+      "proves": "MDL-5e census: ndm fb 0 on the tour10 list (every model record drawn natively).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 phase phasecsv profdisk=1 det fixedseed loglevel=debug",
+      "extra": ["-NoWarm"],
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: mac_00 entry 4"},
+        {"name": "tour done", "regex": "tour: done, 10 maps"}
+      ],
+      "reason": "MDL-5e census: ten map changes (tour10 list), cold start so the fb count is a function of the build. Cap as tour10."
+    },
+    {
+      "name": "battle_fb_det",
+      "status": "unverified",
+      "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: runs to frame 300 so the first ndm window line (native and fallback counts) is in the log.",
+      "proves": "MDL-5e census: ndm fb of the battle window 0 to 300 (every model record drawn natively).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1",
+      "extra": ["-NoWarm"],
+      "until": "ndm f\\d+ native",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "ndm window", "regex": "ndm f300 native"}
+      ],
+      "reason": "MDL-5e census: battle window to frame 300 (the window line of the fb count). Cold start so the count is a function of the build."
+    },
+    {
       "name": "battle_start_sprcheck",
       "status": "pending",
       "subject": "Battle scene (default formation, one Goomba on kmr_03). Sprite records of the battle actors against the walker draw, sprcheck window line at frame 300.",

@@ -3179,6 +3179,51 @@
       "gates": []
     },
     {
+      "name": "golden_multi_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: golden tour (6 maps) cold det, ndm fb per 300 frames.",
+      "scenario": "golden_multi_det",
+      "cap": 90,
+      "until": "shot 6 frame",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour10_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: tour10 (10 maps) cold det, ndm fb per 300 frames.",
+      "scenario": "tour10_det",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_fb_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: battle kmr_03 cold det to frame 300, ndm fb of the window.",
+      "scenario": "battle_fb_det",
+      "cap": 45,
+      "until": "ndm f\\d+ native",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_start_sprcheck",
       "kind": "azahar_pic",
       "speed": "normal",
