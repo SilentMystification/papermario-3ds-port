@@ -3265,7 +3265,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
     if (ax_ok) { int tw = 1, th = 1; pm_tex_size(&tw, &th); c.tex_w = tw; c.tex_h = th; } /* S3L-3: no bind: the uv params of the walker use the size of its last bound texture (gv_params_calc); the draw reads no texel */
     c.has_comb = 1; c.aux_ok = ax_ok || r13;
-    if (r13t1b_ok && !r13u1_ok) { nd_nat_why = 6; return -1; } /* tile 1 bound with no unit 1 (aux off-screen): named, why 6 */
+    if (r13t1b_ok && !r13u1_ok) { nd_nat_why = 6; nd_nat_sub = 2; return -1; } /* tile 1 bound with no unit 1: named, why 6 */
     c.t1_valid = r13t1b_ok; c.u1 = r13u1_ok ? &r13u1 : NULL; c.i8_1 = r13i8_1; c.t1only = (int)plan_k[3]; /* MDL-1b: tile 1 from pm_gbi_bind_tile1 */
     memcpy(c.uvx, t1_s, 16); c.loc_uvx = (unsigned)u4_uvx;
     c.comb_w0 = combw ? combw[0] : (ax_ok && ax.has_cb ? ax.cw0 : sw_cw0); c.comb_w1 = combw ? combw[1] : (ax_ok && ax.has_cb ? ax.cw1 : sw_cw1); /* S3L-3: R4 wins over R13 (it runs after it) */
@@ -3284,6 +3284,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     /* PM5-3: the normal rows of the walker's matrix (gm_nrm: model view rows 0 to 2, w 0) for a lit or fogged range */
     c.nrm_ok = gv5_on; for (int r_ = 0; r_ < 3; r_++) { c.nrm5[r_][0] = nd_mv[nd_mv_sp][r_][0]; c.nrm5[r_][1] = nd_mv[nd_mv_sp][r_][1]; c.nrm5[r_][2] = nd_mv[nd_mv_sp][r_][2]; c.nrm5[r_][3] = 0.f; }
     int n = nd_model_draw(rec, &c, geo, emit);
+    if (n < 0 && nd_nat_why == 6 && nd_nat_sub == 2 && pm_tex_aux_off_idx() >= 0) nd_nat_sub = 3; /* MDL-5 census: tile 1 is the aux off-screen image (sub c) */
     int valid = 0;
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
     /* MDL-1: a textured draw without a handle desc (the bound slot, R13 block) stores tex 1: its hit has no desc, so it falls back (ndn_texf) and never reuses the slot of another frame */
@@ -3402,12 +3403,12 @@ void pm_gpu_model_miss_diag(const NdMKey* k) {
     }
     pm_log_prof_line("ndmnew r0 %08x r0b %08x r12 %08x r2b %08x rp %08x", k->w[0], k->w[1], k->w[24], k->w[5], k->rp);
 }
-void pm_gpu_model_fb_cached(unsigned why) { ndn_fb++; ndn_miss++; ndn_why[why & 15u]++; ndn_log(); }
+void pm_gpu_model_fb_cached(unsigned why, uint32_t rp) { ndn_fb++; ndn_miss++; ndn_why[why & 15u]++; ndn_log(); if (why >> 4) nd_mdlfb_note(rp, why >> 4); }
 int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     int mode_ok = 0;
     int n = model_draw(rec, modew, combw, gfx, texidx, geo, 1, &mode_ok, mk);
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
-    else { ndn_fb++; ndn_why[nd_nat_why & 15]++; nd_mc_store_neg(mk, pm_tex_epoch(), (unsigned)nd_nat_why); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
+    else { ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; nd_mc_store_neg(mk, pm_tex_epoch(), (unsigned)nd_nat_why | (sub << 4)); if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
     ndn_miss++;
     ndn_log();
     return n;

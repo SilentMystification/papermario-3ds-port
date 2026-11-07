@@ -2985,6 +2985,111 @@
         "verify"
       ],
       "gates": []
+    },
+    {
+      "name": "mdl5_iwa10_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 census and picture: iwa_10 cold det, mdlfb and mdlsub lines, shots 200 to 205.",
+      "scenario": "mdl5_iwa10_det",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_iwa10_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 byte reference: iwa_10 cold det with nomodelnat, shots 200 to 205.",
+      "scenario": "mdl5_iwa10_det_ref",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_sbk56_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 census and picture: sbk_56 cold det, mdlfb and mdlsub lines, shots 200 to 205.",
+      "scenario": "mdl5_sbk56_det",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_sbk56_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 byte reference: sbk_56 cold det with nomodelnat, shots 200 to 205.",
+      "scenario": "mdl5_sbk56_det_ref",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_mac01_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 byte reference: mac_01 cold det with nomodelnat, shots 200 to 205.",
+      "scenario": "mdl5_mac01_det_ref",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_battle_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 census and picture: battle kmr_03 cold det, mdlfb and mdlsub lines, shot 182.",
+      "scenario": "mdl5_battle_det",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_battle_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 byte reference: battle kmr_03 cold det with nomodelnat, shot 182.",
+      "scenario": "mdl5_battle_det_ref",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

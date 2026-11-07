@@ -9403,6 +9403,138 @@
         }
       ],
       "reason": "VERIFY check 2 (cold det, CPU rects)."
+    },
+    {
+      "name": "mdl5_iwa10_det",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530, cold det, shots 200 to 205, prof lines (mdlfb, mdlsub).",
+      "proves": "MDL-5 iwa_10 native (census, shots).",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 shots shotwin=200:6 loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "MDL-5 gate: MDL-5 iwa_10 native (census, shots). Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "mdl5_iwa10_det_ref",
+      "status": "unverified",
+      "subject": "iwa_10 cold det with nomodelnat (walker geometry of every model record): the byte reference of mdl5_iwa10_det.",
+      "proves": "MDL-5 byte reference iwa_10 (nomodelnat).",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "MDL-5 gate: MDL-5 byte reference iwa_10 (nomodelnat). Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "mdl5_sbk56_det",
+      "status": "unverified",
+      "subject": "sbk_56, Mario at 20 0 440, cold det, shots 200 to 205, prof lines (mdlfb, mdlsub).",
+      "proves": "MDL-5 sbk_56 native (census, shots).",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "MDL-5 gate: MDL-5 sbk_56 native (census, shots). Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "mdl5_sbk56_det_ref",
+      "status": "unverified",
+      "subject": "sbk_56 cold det with nomodelnat: the byte reference of mdl5_sbk56_det.",
+      "proves": "MDL-5 byte reference sbk_56 (nomodelnat).",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "MDL-5 gate: MDL-5 byte reference sbk_56 (nomodelnat). Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "mdl5_mac01_det_ref",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, cold det with nomodelnat: the byte reference of spot_mac01_det.",
+      "proves": "MDL-5 byte reference mac_01 (nomodelnat).",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "MDL-5 gate: MDL-5 byte reference mac_01 (nomodelnat). Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "mdl5_battle_det",
+      "status": "unverified",
+      "reason": "broken: no until in 60 s (AZT11-5, 2026-11-07)",
+      "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: mdlfb and mdlsub lines to disk.",
+      "proves": "MDL-5 census and picture: battle mdlfb and mdlsub lines (profdisk).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\b"
+        }
+      ],
+      "reason": "MDL-5 gate: MDL-5 census and picture: battle mdlfb and mdlsub lines (profdisk). Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "mdl5_battle_det_ref",
+      "status": "unverified",
+      "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: mdlfb and mdlsub lines to disk with nomodelnat (walker geometry of every model record): the byte reference.",
+      "proves": "MDL-5 byte reference: battle with nomodelnat.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1 nomodelnat",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\b"
+        }
+      ],
+      "reason": "MDL-5 gate: MDL-5 byte reference: battle with nomodelnat. Cold start (-NoWarm) so det shots are a function of the build."
     }
   ]
 }
