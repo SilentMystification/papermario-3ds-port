@@ -18,6 +18,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - frame_budget.md: 16.7 ms stage budget and O3DS XL baseline.
 - agent_nds_s0.md to agent_nds_s1e.md, agent_nds1_e6.md: logs of finished agents (state at their end).
 - plan_walker_end.md: plan WEND (oracle 2026-11-06): every remaining walker GPU draw goes native; streams CEN, RECT, TRI, OFF, PM5, MDL, decisions D1 to D10.
+- plan_s10_path.md: plan for S10 (oracle 2026-11-06): producers write NdRec records (streams CORE, UI, FXW, WBO), then pm_gbi.c is deleted; decisions D1 to D10.
 - agent_wcen.md: WCEN walker producer census at 5 scenes (top 8 per scene, function, file, slice owner). Census tool: pm_gbi.c os_report.
 - agent_bg.md: background image faults (BG1 flicker at mac_00, BG2 garbled row), how the background strips are drawn.
 - map_e4.md, map_rtb1.md, diag_e53_*.md, diag_s1_1_picture.md, diag_uc3a_bad.md, inv_frame_cost.md, plan_prof_mode.md, nds1_*.patch, nds1_status_2026-11-05.md: findings the plan files cite.
