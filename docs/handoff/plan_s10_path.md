@@ -47,12 +47,12 @@ Hot path (docs/handoff/hw_guidelines.md, rules 1, 5, 6, 10):
 - D7 G_PM_RM goes back to G_DL plus the state-list memo in the G_DL handler.
 - D8 No handler writes list memory (the replay rule).
 - D9 A debug switch survives a move only if an open row file names it. Otherwise it is deleted in that move. The census (K) stays, cold.
-- D10 Ownership of globals: a global is defined in the module that sets it from the display-list words or by its own decision (else in its main hot reader). Other modules may write it only to save or restore the walker state, to reset it at a list, window or frame start, to replay the walk (dlc and entity groups), or to bump a generation counter; they use the extern in nd_int.h. A shared global moves into NdWs only in a later row.
+- D10 Ownership of globals: a global is defined in the module that sets it from the display-list words or by its own decision (else in its main hot reader). Other modules that write it use the extern in nd_int.h. The owner choice is placement only (layout, no logic change), so a row does not stop on it. A shared global moves into NdWs only in a later row.
 - D11 hud_element.c and the status bar files are touched only after the HUD1 worktree commits, and as the last TX-4 row.
 - D12 Each move is a pure cut and paste plus prototypes, with no logic change in the same row (byte-equal proves it). A fix found during a move becomes its own row.
 - D13 Two tries per named cause, then hand back with the measurement.
 
 ## Risks
-- Hidden coupling through globals: GLOB checks that every extra writer of a global is a save/restore, reset, replay or generation write (D10).
+- Hidden coupling through globals: GLOB places each global by D10; extra writers keep the extern.
 - Inlining lost across files raises walk cost: each row reports gbi-phase us at wcen_mac01 (+3% rule); S10-3 restores locality.
 - Azahar is not the console: one console push at S10-4.
