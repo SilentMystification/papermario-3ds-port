@@ -2154,12 +2154,18 @@ void pm_gpu_hud_flush(void) {
 /* shots switch: dump the last finished frame (rotated 240x400 buffer, tiled RGBA8) as a PPM. */
 int pm_debug_value(const char* key, char* out, unsigned n);
 static int want_clear; /* X01: the clear runs at frame end, and only for a frame the game drew */
-static int shot_burst;
-static unsigned shot_burst_f = ~0u; /* AZT10b-1: the game frame of the last burst count */
-void pm_gpu_shot_burst(int n) { shot_burst = n; shot_burst_f = ~0u; }
+/* SHOT-1: a burst is a frame window. Armed at game frame F for n: the window is F..F+n-1. The one file is written at the first drawn
+ * frame >= F+n-1 (the settle frame), and the log line "shot" follows fclose. Drawn frames before it log "burst" lines (no file). Then the
+ * burst is off. (A count of drawn frames ran past the window: battle 182 was an intermediate frame, the file came at 185.) */
+static int shot_burst_on;
+static unsigned shot_burst_w1;      /* first frame after the window */
+static unsigned shot_burst_f = ~0u; /* the game frame of the last burst call (a game frame may begin the GPU more than once) */
+/* SHOT-1: set by a window scene (shotmode=, shotwin=, pm_gpu_shot_window). Then only the window's frames are shot: the periodic one-per-30-frames dump (no window) stays off. A single burst (fxtest) is no window. */
+static int shot_armed;
+void pm_gpu_shot_burst(int n) { extern unsigned pm_frame_count(void); shot_burst_on = 1; shot_burst_w1 = pm_frame_count() + (unsigned)n; shot_burst_f = ~0u; }
 /* encwarp: one shot per frame for the frames from..from+n-1 (overrides shotwin) */
 static int shot_w0 = -2, shot_w1;
-void pm_gpu_shot_window(unsigned from, unsigned n) { shot_w0 = (int)from; shot_w1 = (int)(from + n); }
+void pm_gpu_shot_window(unsigned from, unsigned n) { shot_w0 = (int)from; shot_w1 = (int)(from + n); shot_armed = 1; }
 void pm_route_mapid(int* area, int* map);
 extern unsigned pm_uptime_ms(void);
 static void dump_shot(void) {
@@ -2181,26 +2187,29 @@ static void dump_shot(void) {
         if (shot_w0 == -2) {
             char v[24];
             shot_w0 = -1;
-            if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d", &shot_w0, &shot_w1) == 2) shot_w1 += shot_w0;
+            if (pm_debug_value("shotmode", v, sizeof v)) shot_armed = 1; /* SHOT-1: a shotmode scene has no shot before its burst (the periodic dump is for a run without a window) */
+            if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d", &shot_w0, &shot_w1) == 2) { shot_w1 += shot_w0; shot_armed = 1; }
             else shot_w0 = -1;
         }
-        if (shot_burst > 0) { /* shotmode: one file per burst, the last frame (the settle frame). Every frame logs t, C_CMD and C_FLUSH of the frame before (pm_ph_cnt is per frame). */
+        if (shot_burst_on) { /* shotmode: one file, the settle frame (the last frame of the window). Every other drawn frame logs t, C_CMD and C_FLUSH of the frame before (pm_ph_cnt is per frame). */
             int ma, mm;
-            /* AZT10b-1: the burst counts game frames, not GPU frame begins. In battle one game frame can begin the GPU more than once, so the burst
-             * ended early (frame 173 of 153 to 183) and the frame-182 shot never came. A call in the same game frame does nothing. */
-            if (pm_frame_count() == shot_burst_f) return;
-            shot_burst_f = pm_frame_count();
-            shot_burst--;
+            unsigned fc = pm_frame_count();
+            /* AZT10b-1: a game frame can begin the GPU more than once. A call in the same game frame does nothing. */
+            if (fc == shot_burst_f) return;
+            shot_burst_f = fc;
             pm_route_mapid(&ma, &mm);
-            if (shot_burst != 0) {
-                pm_log_evt("shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
+            if (fc + 1 < shot_burst_w1) {
+                pm_log_evt("burst frame %u map %d:%d t=%u ms cmd %u flush %u", fc, ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
                 return;
             }
-            snprintf(msg, sizeof msg, "shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, pm_frame_count(), ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
+            shot_burst_on = 0;
+            snprintf(msg, sizeof msg, "shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, fc, ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
         } else if (shot_w0 >= 0) {
             unsigned fc = pm_frame_count();
             if ((int)fc < shot_w0 || (int)fc >= shot_w1) return;
             snprintf(msg, sizeof msg, "shot %u frame %u", n, fc);
+        } else if (shot_armed) {
+            return; /* SHOT-1: a burst or window ran: no shot outside it */
         } else if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
     }
     src = (const unsigned char*)((pm_debug_has("shoteye") && targetR ? targetR : target)->frameBuf.colorBuf); /* shoteye: the right eye */
