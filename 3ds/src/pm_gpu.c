@@ -1198,7 +1198,7 @@ static uint32_t spr_omh, spr_oml, spr_geo, spr_cw0, spr_cw1; /* SPR4 diag: nd_ws
 static NdDraw spr_nd; static NdMState spr_nst; static float spr_nal0[16]; static int spr_nok, spr_nwhy; /* SPR4 sprcheck: the native build of the pending record (pm_gpu_spr_rec) */
 static NdTmplKey spr_wk; /* S4-1 sprcheck: the walker template key of the last raw batch (nd_raw_native), for the key diff log */
 static void spr_check(const NdDraw* w);
-static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer, 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
+static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer (FB-2: no refusal, a forced split), 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
 void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
 /* OFF-2: the unit 0 words of the grab copy (grab_tex), as the walker bind (dc_bind) sends them. The copy is one fixed buffer: force keeps the words in
  * every draw of the grab, as the walker binds it at every draw. 1 always. */
@@ -1234,10 +1234,27 @@ static void pm5_upload(void) {
     }
     sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
 }
+/* FB-2: the forced split of nd_raw_native (kick_check's split without its draw threshold, run inside a raw close: the open batch's ring words stay in place).
+ * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
+static unsigned cmd_small, cmd_split_n;
+unsigned pm_gpu_cmd_split_n(void) { return cmd_split_n; }
+static __attribute__((cold, noinline)) void cmd_split_forced(void) {
+    pm_gx_room();
+    split_frame();
+    kick_n++; pm_ph_kick_n++; cmd_split_n++;
+}
+static void cmd_switch(void) { /* cmdsmall=<n>: the command buffer limit in words (a forced split near it); read once */
+    static int done;
+    char v[16];
+    if (done) return;
+    done = 1;
+    if (pm_debug_value("cmdsmall", v, sizeof v)) cmd_small = (unsigned)atoi(v);
+}
 static int nd_raw_native(void) {
+    cmd_switch();
     if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
     if (g_use5 && combine == 8 && (plan.uses_tex1 || plan.uses_noise)) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } /* PM5 cause 2: the pm5 file has no second uv map or noise row for the native draw */
-    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; cen_why = CW_NRK(1); return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); unsigned lim = cmd_small && cmd_small < csz ? cmd_small : csz; if (coff + ND_EMIT_MAX + 1024u >= lim) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
     if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }

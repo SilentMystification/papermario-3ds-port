@@ -339,6 +339,22 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_cmdsmall_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-2 GX room: spot_mac01_cmdsmall (cmdsmall=2048, forced command buffer splits) with the picture of spot_mac01_pic. Gate: no svcBreak, cmdsplit n above 32, picture equal to spot_mac01_pic.",
+      "scenario": "spot_mac01_cmdsmall",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_pic",
       "kind": "azahar_pic",
       "speed": "normal",
