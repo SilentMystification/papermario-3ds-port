@@ -32,19 +32,6 @@ static int frame_key = -1, frame_lay = -1; /* LOG5: pm_log_header_key of the dra
 static volatile int hud_new, foot_new;
 static char foot_row[2][40]; /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build) */
 
-typedef struct {
-    float x, y, z, w;
-    float u, v;
-    float r, g, b, a;
-} Vert;
-
-enum { VERT_SLOTS = 32768 };
-/* CONFIG2 stores bytes-per-vertex in 8 bits, and that value has to equal the
- * attribute size or the PICA freezes. 4+2+4 floats, no padding. */
-_Static_assert(sizeof(Vert) == (4 + 2 + 4) * sizeof(float), "vertex stride");
-static Vert* vert_base;
-static Vert* verts;
-static int nverts;
 static int rect_2d;
 static int drew;
 static int gpu_ok;
@@ -96,7 +83,6 @@ static C3D_Mtx shader_3d;
 /* N64 scissor, y down. The 400-wide target is the 320 game plus 40px bars. */
 static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 static C3D_Mtx projection;
-static int u_proj = -1, u_uvx = -1, u_nzo = -1;
 /* PT07: the RDP NOISE input. A 64 x 64 L8 texture of random bytes (fixed seed) on unit 2. The vertex shader gives it the screen position
  * (one texel per pixel) plus a random offset per drawn frame, so every pixel reads a new random value every frame. */
 static C3D_Tex noise_tex;
@@ -129,14 +115,12 @@ static float eye_slider;
 float pm_eye_e, pm_eye_conv = 300.f;
 #define PM_EYE_E 0.015f /* NDC shift per eye at slider 1 for a point at infinity (3 px of 400). The calibration knob. */
 /* H02 GPU limit stats, maxima since the last `mem` log line. Verts and command buffer overflow drop work without a message. */
-static unsigned draws_frame, draws_max, verts_max, vert_drops, frames_seen;
+static unsigned draws_frame, draws_max, frames_seen;
 static float cmd_max;
-static shaderProgram_s prog;
 static DVLB_s* dvlb;
 /* PO3b (switch gpuvtx): raw Vtx path. A ring of the 16 byte Vtx records of this frame and a u16 index ring. A batch is the triangles that share one
  * matrix and one uv map. Program prog4 (matrix palette) or prog5 reads the Vtx as they are. The batch is drawn by flush() when gni > 0. */
 enum { GRING_VTX = 16384, GRING_IDX = 65536, GSTAT_VTX = 16384 }; /* DLC2: the static vertex area follows the ring in the same buffer (indices GRING_VTX and up) */
-static C3D_AttrInfo attr_cpu;
 static unsigned char* gring; /* GRING_VTX x 16 bytes, linear */
 static unsigned short* gidx; /* GRING_IDX, linear */
 static unsigned gstat_n; /* DLC2: static vertices in use */
@@ -184,21 +168,14 @@ enum { GPAL5 = 8 };
 static shaderProgram_s prog5;
 static DVLB_s* dvlb5;
 static int u5_uvx = -1, u5_pal = -1, u5_lamb = -1, u5_lcol = -1, u5_ldir = -1, u5_lk0 = -1, u5_lk1 = -1, u5_lflag = -1, u5_fogu = -1, u5_uvso = -1, u5_cmul = -1, u5_cadd = -1, u5_nzo = -1, u5_zmix = -1, gv5_on, g_use5;
-static PmFx g_fx, sh5_fx;
-static float sh5_uvso[4], sh5_cmul[4], sh5_cadd[4], sh5_zmix[2];
-static int sh5_ok;
-static unsigned sh5_pal_gm[GPAL5], sh5_pal_gen[GPAL5]; static unsigned char sh5_pal_ok[GPAL5];
-static C3D_Mtx sh5_pal_mtx[GPAL5]; /* DC6: the matrix each pm5 palette register holds */
+static PmFx g_fx;
 static const float (*pal_ntab)[3][4];
 void pm_gpu_set_ntab(const float (*ntab)[3][4]) { pal_ntab = ntab; }
 int pm_gpu_gv5_ok(void) { return gv5_on; }
 /* RAW1: lean binding. bound = the program citro3d has (0 unknown, 1 cpu, 3 pm4, 4 pm5), buf_cur = the buffer info (0 unknown, 1 CPU pool, 2 raw ring). shadows of the pm4 uniforms
  * and of the palette entries skip a set that holds the value already. They restart at every frame begin. */
 static int bound, buf_cur, raw_dvlb_ok; static DVLB_s* dvlb_all;
-static float sh_uvso[4], sh_cmul[4], sh_cadd[4], sh_zmix[2]; static int sh_ok;
-static unsigned sh_pal_gm[32], sh_pal_gen[32]; static unsigned char sh_pal_ok[32];
-static C3D_Mtx sh_pal_mtx[32]; /* DC6: the matrix each pm4 palette register holds */
-static void raw1_reset(void) { bound = 0; buf_cur = 0; sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); }
+static void raw1_reset(void) { bound = 0; buf_cur = 0; }
 static int u4_pal = -1, u4_uvx = -1, u4_uvso = -1, u4_cmul = -1, u4_cadd = -1, u4_zmix = -1, u4_nzo = -1, g_pal, gv4_on;
 static void rd_sync(void); /* RECT-1b diag: parse the GPUCMD words since the last sync (before every submit) */
 static unsigned pal_n, pal_g[GPAL], pal_gen = 1, post_gen = 1;
@@ -287,8 +264,7 @@ static void sh_clear(void);
 static int want_clear; /* see below */
 /* GV0 and KICK1: the GPU reads the vertex pool, the raw Vtx ring and the index ring when it runs the command list. Everything written since the last
  * flush goes out of the data cache before every C3D_FrameSplit and at the end of the frame (GSPGPU_FlushDataCache is one call to the GSP, so each
- * range is flushed once). v_fl, gring_fl and gidx_fl mark what is flushed. They restart at pm_gpu_begin. */
-static Vert* v_fl;
+ * range is flushed once). gring_fl and gidx_fl mark what is flushed. They restart at pm_gpu_begin. */
 static unsigned gring_fl, gidx_fl;
 /* DC1: the sampled close (set in pm_gpu_flush_at). Only one close in 8 reads the tick, so the timers are sampled and scaled by 8. */
 static int dc_on;
@@ -297,12 +273,6 @@ static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n, 
 static void gpu_flush_written(void) {
     unsigned g0 = dc_on ? pm_ticks() : 0;
     pm_tex_flush_pend_only();
-    if (verts && v_fl && verts > v_fl) {
-        PH_PUSH(PH_GCACHE);
-        pm_fl_dc(v_fl, (u32)((uintptr_t)verts - (uintptr_t)v_fl)); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (unsigned)((uintptr_t)verts - (uintptr_t)v_fl) >> 10); dcs_fl++;
-        PH_POP();
-        v_fl = verts;
-    }
     if (gring && gring_n > gring_fl) { pm_fl_dc(gring + gring_fl * 16, (gring_n - gring_fl) * 16); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gring_n - gring_fl) * 16 >> 10); gring_fl = gring_n; dcs_fl++; }
     if (gidx && gidx_n > gidx_fl) { pm_fl_dc(gidx + gidx_fl, (gidx_n - gidx_fl) * 2); PH_ADD(C_FLCALL, 1); PH_ADD(C_FLKB, (gidx_n - gidx_fl) * 2 >> 10); gidx_fl = gidx_n; dcs_fl++; }
     if (dc_on) dcs_gt += (pm_ticks() - g0) * 8u;
@@ -468,7 +438,6 @@ static float decal_bias(void) {
  * pixels where the stored depth is not farther than decal - DECAL_EPS, pass 2 draws where the mark is set and the usual test (decal + bias is not behind) passes. */
 #define DECAL_EPS 0.003f
 typedef struct { int combine, tex, tex1, i8_0, i8_1, rgb_scale, r_mix, draw_3d, rect_2d, dview, off_active, off_i8, r_memblend, r_replace, r_blend; unsigned prim, cconst, mixcol; unsigned plan_gen; } TevKey;
-static TevKey tev_key;
 unsigned pm_tex_census_id(int unit);
 /* CEN1: draw census (debug tool, switch drawcensus=<frame>). Each flush batch adds one entry: template key (TevKey without plan_gen, z, raw, program, cull), texture ids of unit 0 and 1, triangle count. At the end of the frame the switch frame prints one line per distinct entry and a summary. The accumulation has no switch test. The print runs once per frame and only reads the table. */
 #define CEN_N 256
@@ -556,10 +525,9 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     unsigned np = graw ? pal_n : 0u; /* palette: game matrix index and the composed matrix pcomp of each entry */
     ndref_put(&np, 4);
     for (unsigned k = 0; k < np; k++) { ndref_put(&pal_g[k], 4); ndref_put(&pcomp[pal_g[k]], sizeof(C3D_Mtx)); }
-    unsigned nv = graw ? gni : (unsigned)nverts; /* resolved vertices in draw order: 16-byte ring values or 40-byte CPU Vert */
+    unsigned nv = gni; /* resolved vertices in draw order: 16-byte ring values */
     ndref_put(&nv, 4);
-    if (graw) for (unsigned i = 0; i < gni; i++) ndref_put((gi_kind == 1 ? rchunk[0].vtx : gring) + 16u * gidx[gi_start + i], 16);
-    else ndref_put(verts, (unsigned)nverts * sizeof(Vert));
+    for (unsigned i = 0; i < gni; i++) ndref_put((gi_kind == 1 ? rchunk[0].vtx : gring) + 16u * gidx[gi_start + i], 16);
     ndref_patch(at);
     if (np) { /* S1-4 oracle: kind 5, the inputs of the palette product pcomp = post x game of this draw: post (gv_post), then per entry the game matrix (u32 gm, 16 floats pal_tab[gm]) */
         unsigned hd[2] = { 5u, 0u }, at5 = ndref_len;
@@ -628,7 +596,6 @@ static void cen_frame_end(void) {
     if (cen_nt) memset(cen_tab, 0, sizeof cen_tab);
     cen_nt = cen_draws = cen_tris = cen_over = 0;
 }
-static int tev_valid, tev_memb;
 /* PG3 O4: citro3d marks a state group dirty at every setter call and sends it again at the next draw. These wrappers call the setter only when an
  * argument differs from the last call. sh.has is cleared where citro3d may change the state itself (frame begin, target change, frame split). */
 static struct { int dt[3]; float dm[2]; int dm_on, at[2]; unsigned sc[5]; int bl[6]; int cull, ed[3], uc; unsigned has; } sh;
@@ -654,13 +621,11 @@ static void gp2_clip_init(void) {
 static int rect_open, rect_ec, rect_zb, rect_tex; /* C7: rect_tex is the tile-0 cache slot for an open DR1 batch */
 static int rect_raw; /* RECT-1a: the open rectangle batch is a raw Vtx batch (pm_gpu_fill_rect) and closes through nd_raw_native */
 static void rect_log(unsigned f);
+void nd_tridrop_log(unsigned f); /* DEL (nd_geom.c) */
 static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compares this instead of the plan */
-static unsigned dr1_merged, dr1_breaks, dr1_skips, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
+static unsigned dr1_merged, dr1_breaks, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
 void pm_tex_cur_slots(int* a, int* b);
 int pm_tex_cur_vram_pending(void); int pm_tex_aux_vram_pending(void);
-static int pool_buf_ok; /* DR1: the citro3d buffer info holds the vertex pool (set once per frame, cleared by a raw batch and by sh_clear) */
-static int proj_ok; static C3D_Mtx proj_last; /* DR1: the projection uniform of the last draw */
-static int noise_bound; /* DC2: unit 2 holds the noise texture (cleared by sh_clear) */
 /* S3 M3: the native raw draw (nd_raw_native) writes the effect, TEV, texture unit and uniform registers itself. The GPU then holds state that citro3d did not write. nd_leave_native
  * marks the context parts a native draw touched as dirty, so the next citro3d draw re-emits what the walker staged (its shadows still match that staged copy), and clears the
  * program binding, which makes C3D_BindProgram mark every uniform dirty. Runs at a frame begin and a split (sh_clear) and before a draw that citro3d makes. */
@@ -670,33 +635,11 @@ static void nd_leave_native(void) {
     ndn_mode = 0;
     *(volatile unsigned*)(__C3D_Context + 32) |= 0x10u | 0x200u | 0x20000u | 0x1800000u | 0xFC000000u; /* effect, texenv buffer, texenv stages, texture units 0 and 1 (the native draw writes unit 1 for a two texture combine, SGEN-2; unit 2 keeps its registers) */
     raw1_reset(); /* program, buffer info, and the uniform shadows of pm4 and pm5: the native draw wrote its own palette entries and uniforms over those registers */
-    pool_buf_ok = 0; proj_ok = 0;
 }
-static void sh_clear(void) { nd_leave_native(); sh.has = 0; tev_valid = 0; pool_buf_ok = 0; proj_ok = 0; noise_bound = 0; pm_tex_bind_reset(); }
-static void sh_depth_test(bool en, GPU_TESTFUNC f, GPU_WRITEMASK m) {
-    if ((sh.has & SH_DT) && sh.dt[0] == (int)en && sh.dt[1] == (int)f && sh.dt[2] == (int)m) return;
-    sh.dt[0] = en; sh.dt[1] = (int)f; sh.dt[2] = (int)m; sh.has |= SH_DT; pm_dc_c[DC_SHM]++; C3D_DepthTest(en, f, m);
-}
-static void sh_depth_map(bool en, float sc, float off) {
-    if ((sh.has & SH_DM) && sh.dm_on == (int)en && sh.dm[0] == sc && sh.dm[1] == off) return;
-    sh.dm_on = en; sh.dm[0] = sc; sh.dm[1] = off; sh.has |= SH_DM; pm_dc_c[DC_SHM]++; C3D_DepthMap(en, sc, off);
-}
-static void sh_alpha_test(bool en, GPU_TESTFUNC f, int ref) {
-    if ((sh.has & SH_AT) && sh.at[0] == (int)en && sh.at[1] == ref) return;
-    sh.at[0] = en; sh.at[1] = ref; sh.has |= SH_AT; pm_dc_c[DC_SHM]++; C3D_AlphaTest(en, f, ref);
-}
+static void sh_clear(void) { nd_leave_native(); sh.has = 0; pm_tex_bind_reset(); }
 static void sh_scissor(GPU_SCISSORMODE m, u32 l, u32 t, u32 r, u32 b) {
     if ((sh.has & SH_SC) && sh.sc[0] == (unsigned)m && sh.sc[1] == l && sh.sc[2] == t && sh.sc[3] == r && sh.sc[4] == b) return;
     sh.sc[0] = m; sh.sc[1] = l; sh.sc[2] = t; sh.sc[3] = r; sh.sc[4] = b; sh.has |= SH_SC; pm_dc_c[DC_SHM]++; C3D_SetScissor(m, l, t, r, b);
-}
-static void sh_blend(GPU_BLENDEQUATION c, GPU_BLENDEQUATION a, GPU_BLENDFACTOR sc, GPU_BLENDFACTOR dc, GPU_BLENDFACTOR sa, GPU_BLENDFACTOR da) {
-    if ((sh.has & SH_BL) && sh.bl[0] == (int)c && sh.bl[1] == (int)a && sh.bl[2] == (int)sc && sh.bl[3] == (int)dc && sh.bl[4] == (int)sa && sh.bl[5] == (int)da) return;
-    sh.bl[0] = c; sh.bl[1] = a; sh.bl[2] = sc; sh.bl[3] = dc; sh.bl[4] = sa; sh.bl[5] = da; sh.has |= SH_BL; pm_dc_c[DC_SHM]++; C3D_AlphaBlend(c, a, sc, dc, sa, da);
-}
-static void sh_cull(GPU_CULLMODE m) { if ((sh.has & SH_CU) && sh.cull == (int)m) return; sh.cull = (int)m; sh.has |= SH_CU; pm_dc_c[DC_SHM]++; C3D_CullFace(m); }
-static void sh_early(bool en, GPU_EARLYDEPTHFUNC f, u32 v) {
-    if ((sh.has & SH_ED) && sh.ed[0] == (int)en && sh.ed[1] == (int)f && sh.ed[2] == (int)v) return;
-    sh.ed[0] = en; sh.ed[1] = (int)f; sh.ed[2] = (int)v; sh.has |= SH_ED; pm_dc_c[DC_SHM]++; C3D_EarlyDepthTest(en, f, v);
 }
 static void sh_user_clip(int on) {
     if ((sh.has & SH_UC) && sh.uc == on) return;
@@ -735,9 +678,9 @@ static unsigned prev_draws, kick_at, kick_at2;
 static int kick_done; /* splits done in this frame: KICK2 adds a second one at 85 percent */
 extern int pm_ph_on;
 void pm_gbi_draw_note(int native); /* WCEN3 */
-extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_vb; /* PI4 */
+extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws; /* PI4 */
 static void kick_check(void) {
-    if (kick_done >= 2 || off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || rect_open || nverts > 0 || gni > 0) return;
+    if (kick_done >= 2 || off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || rect_open || gni > 0) return;
     kick_done++;
     gpu_flush_written();
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
@@ -795,7 +738,7 @@ static void flush_impl_body(void) {
         combine = rect_ec; rect_2d = 1; rect_z = rect_zb; rect_open = 0; rect_tex = -1; rect_raw = 0;
         flush_draw();
         combine = sc; rect_2d = sr; rect_z = sz;
-        if (!off_active) { /* RECT-1b: the grab rows of this batch (the native raw close returns before flush_draw_cpu's bookkeeping) */
+        if (!off_active) { /* RECT-1b: the grab rows of this batch (the native raw close returns before flush_draw's bookkeeping) */
             if (rect_y1 <= rect_y0) grab_dirty = 1;
             else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
             else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
@@ -832,7 +775,6 @@ static __attribute__((noinline)) void flush_tev_rebuild(C3D_TexEnv* env, int tex
     for (int i = 0, hi = env_hi > to.n ? env_hi : to.n; i < hi; i++) memcpy(C3D_GetTexEnv(i), to.st[i], 20);
     env_hi = to.n;
     memb = to.memb;
-    memcpy(&tev_key, &tk, tk_n); tev_valid = 1; tev_memb = memb;
     if (memb_out) *memb_out = memb;
 }
 
@@ -863,7 +805,7 @@ static void dc_kick(void) {
 static void dc_bind(int unit, C3D_Tex* t) { pm_dc_c[DC_TB0 + unit]++; C3D_TexBind(unit, t); }
 /* FLH: cold and per-change parts of flush_draw, moved out of line. Same operations, same order. */
 static __attribute__((cold, noinline)) void flush_fl_dbg(int graw) {
-    fl_count(nverts <= 0 && !graw);
+    fl_count(!graw);
     if (fl_fn != (const char*)"pm_gpu_tex_rect" && strcmp(fl_fn, "pm_gpu_tex_rect") != 0) fl_prev_rect = 0;
 }
 static __attribute__((noinline)) void flush_light_tab(void) {
@@ -886,11 +828,6 @@ static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
                     pcomp_gen[gm] = post_gen;
                     pm_dc_c[DC_PMUL]++;
 }
-static __attribute__((noinline)) int nozt_on(void) {
-    static int nozt = -1;
-    if (nozt < 0) nozt = pm_debug_has("nozt");
-    return nozt;
-}
 static __attribute__((noinline)) void scissor_off(void) {
         /* not rotated: x is the game x. GPU y is the game y: row 0 of the image is the last memory row, where v = 0 samples */
         int x1 = sci_x1 > off_w ? off_w : sci_x1, y1 = sci_y1 > off_h ? off_h : sci_y1;
@@ -899,17 +836,10 @@ static __attribute__((noinline)) void scissor_off(void) {
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, 0, off_w, off_h);
 }
-static __attribute__((noinline)) void blend_off(int memb) {
-    if (r_replace || (off_i8 && !r_blend && !memb))
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-    else /* alpha accumulates as source over destination: a covered pixel becomes opaque */
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-            GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-}
 /* RECT-1b diag (switch rectreg=<frame>, rectalt): citro3d and the raw close write one GPUCMD buffer. Entry = [param0][header][param1..paramk] with
  * header bits 0-15 id, 16-19 mask, 20-27 k, 31 consecutive (word j goes to id + j), padded to an even word count (libctru GPUCMD_AddInternal). rd_sync
  * parses every word before each submit, so rd_reg is the GPU register shadow since boot (citro3d writes only changed registers). cb_regdump prints the
- * registers of one textured rectangle at the draw ("cpu" after C3D_DrawArrays, "nat" after nd_native_submit). rd_tex marks a textured rectangle batch. */
+ * registers of one textured rectangle at the draw ("cpu" after the CPU draw of DEL, deleted, "nat" after nd_native_submit). rd_tex marks a textured rectangle batch. */
 static u32 rd_reg[0x400];
 static u32 rd_uf[256][4];
 static unsigned rd_uidx, rd_ucnt, rd_last, rd_fr = 0xffffffffu, rd_nl, rd_pairs;
@@ -1005,7 +935,7 @@ static __attribute__((cold, noinline)) void rd_close(unsigned addr, unsigned dim
     rq_n = 0;
 }
 /* RECT-1b plan 3 (switch rectpost=<frame>): every textured rectangle (rect_2d) opens a window; the window logs its rect and the next 15 draws
- * (cpu = C3D_DrawArrays, nat = nd_native_submit), one rpD line each with the GPU register shadow (rd_reg) at the draw. The last window of the frame is the
+ * (cpu = the deleted CPU draw, nat = nd_native_submit), one rpD line each with the GPU register shadow (rd_reg) at the draw. The last window of the frame is the
  * one that matters: the first line that differs between two runs names the field. */
 void pm_tex_size(int* w, int* h);
 static int rp_src_, rp_tmpl_ = -1, rp_u0_;
@@ -1039,72 +969,6 @@ static __attribute__((cold, noinline)) void rp_draw(const char* path, int tex) {
       pm_gbi_sticky(&st_tss, &st_geo, &st_cw0, &st_cw1); pm_tex_size(&tw_, &th_);
       pm_log_d("rpG %u %u %s env %08x cconst %08x mix %08x sticky tss %08x geo %08x cw %08x %08x tex %dx%d plan_gen %u comb %d", rp_win, rp_n, path,
           env_col, cconst, r_mixcol, st_tss, st_geo, st_cw0, st_cw1, tw_, th_, plan_gen, combine); }
-}
-static __attribute__((noinline)) void flush_draw_cpu(int z) {
-    if (bound != 1) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog); C3D_SetAttrInfo(&attr_cpu); bound = 1; pool_buf_ok = 0; }
-    Vert* batch = verts;
-    int count = nverts;
-    PH_PUSH(PH_GDRAW);
-    const int first = (int)(batch - vert_base); /* DR1: one buffer info for the whole pool, the draw starts at the batch */
-    if (!pool_buf_ok) { pm_dc_c[DC_BUF]++; /* DC2: C3D_GetBufInfo marks the buffer info dirty, so it is called only when the pool info changes */
-        C3D_BufInfo* buf = C3D_GetBufInfo();
-        BufInfo_Init(buf); buf_cur = 1;
-        BufInfo_Add(buf, vert_base, sizeof(Vert), 3, 0x210);
-        pool_buf_ok = 1;
-    }
-    int decal2 = z && r_zcmp && r_decal && r_blend && !r_zmark && !r_nocol && draw_3d;
-    if (decal2) { /* V16b pass 1: no colour, no depth write, mark the stencil where the stored depth is not behind the decal */
-        sh_depth_map(true, -1.0f, -DECAL_EPS);
-        sh_depth_test(true, GPU_LEQUAL, (GPU_WRITEMASK)0);
-        stc_set(1, true, GPU_ALWAYS, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
-        if (ndref_on) ndref_state(1, z);
-        pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, first, count);
-        if (ndref_on) ndref_cmd();
-        sh_depth_map(true, -1.0f, decal_bias());
-        sh_depth_test(true, GPU_GEQUAL, r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-        stc_set(2, true, GPU_EQUAL, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_ZERO, GPU_STENCIL_ZERO);
-        draws_frame++;
-    }
-    if (ndref_on) ndref_state(decal2 ? 2 : 0, z);
-    pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, first, count);
-    if (ndref_on) ndref_cmd();
-    if (rd_tex && rect_2d) cb_regdump("cpu");
-    rp_draw("cpu", 0);
-    if (decal2) { stc_set(3, false, GPU_ALWAYS, 0, 0xff, 0); }
-    DC_T(5);
-    PH_POP();
-    verts = batch + count;
-    /* 16-byte aligned start for the next batch (a vertex is 40 bytes, so every other batch start moves one slot). */
-    if ((unsigned)(uintptr_t)verts & 15u) verts++;
-    if (z && r_zmark && verts + count < vert_base + VERT_SLOTS) {
-        /* B3b pass 2: the same triangles with the constant depth, where pass 1 marked the stencil. The stencil is cleared as it passes. */
-        Vert* b2 = verts;
-        for (int i = 0; i < count; i++) { b2[i] = batch[i]; b2[i].z = r_zmark_zn * b2[i].w; }
-        sh_depth_test(true, GPU_ALWAYS, GPU_WRITE_DEPTH);
-        stc_set(4, true, GPU_EQUAL, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_ZERO);
-        if (ndref_on) ndref_state(3, z);
-        pm_gbi_draw_note(0); C3D_DrawArrays(GPU_TRIANGLES, (int)(b2 - vert_base), count);
-        if (ndref_on) ndref_cmd();
-        verts = b2 + count;
-        if ((unsigned)(uintptr_t)verts & 15u) verts++;
-        draws_frame++;
-    }
-    draws_frame++;
-    PH_ADD(C_DRAW, 1);
-    PH_ADD(C_VTXSLOT, count);
-    PH_POP();
-    nverts = 0;
-    batch_identity = 0;
-    drew = 1;
-    if (!off_active) { /* B2: the main target changed, the grab slot is old */
-        if (rect_y1 <= rect_y0) grab_dirty = 1;
-        else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
-        else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
-    }
-    dc_kick();
 }
 
 /* the scissor of the main target (flush_draw and the native draw): the game scissor in the rotated 240 x 400 buffer */
@@ -1198,13 +1062,12 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     static uint32_t out[ND_EMIT_MAX];
     NdtT t2 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     unsigned nw = nd_emit_draw(out, &ndn_sh, d);
-    noise_bound = 0; /* FB-2: the native draw wrote unit 2 (or left it off): the walker binds the noise texture again at its next noise draw */
     pm_gpu_ndt_end(t2, NDT_EMIT);
     NdtT t3 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     GPUCMD_AddRawCommands(out, nw);
     pm_gpu_ndt_end(t3, NDT_ADD);
     if (tex) ndunit_after();
-    *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as C3D_DrawElements sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
+    *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
     nd_native_draws++;
     dv_draw++;
@@ -1215,7 +1078,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     gni = 0; pal_n = 0;
     batch_identity = 0;
     drew = 1;
-    if (!off_active) { /* B2: the main target changed, the grab slot is old (as flush_draw_cpu) */
+    if (!off_active) { /* B2: the main target changed, the grab slot is old (as flush_draw) */
         if (rect_y1 <= rect_y0) grab_dirty = 1;
         else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
         else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
@@ -1239,7 +1102,6 @@ static void pm5_upload_draw(const NdDraw* d) {
     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, d->fx5.fogu[0], d->fx5.fogu[1], d->fx5.fogu[2], d->fx5.fogu[3]);
     if (d->fx5.lflag[0] != 0.f) { /* the light table of the draw: the walker's flush_light_tab reads g_fx; the model range carries the same block */
         const PmFx* sv = &g_fx; PmFx tmp = d->fx5; g_fx = tmp; flush_light_tab(); g_fx = *sv; }
-    sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal, (const C3D_Mtx*)d->pal[0]);
     for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 4 + r, d->nrm5[r][0], d->nrm5[r][1], d->nrm5[r][2], 0.f);
     gv_palup_n++; pm_dc_c[DC_PALUP]++;
@@ -1333,7 +1195,7 @@ static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
     return 1;
 }
 static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex); }
-/* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw_cpu's pm5 block, no cache: the native batch writes them
+/* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw's pm5 block, no cache: the native batch writes them
  * in order before its draw). Palette entries: the pm5 register layout, 7 rows per entry (4 position, 3 normal). */
 static void pm5_upload(void) {
     pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4;
@@ -1344,8 +1206,6 @@ static void pm5_upload(void) {
     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, g_fx.lflag[0], g_fx.lflag[1], g_fx.lflag[2], g_fx.lflag[3]);
     C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, g_fx.fogu[0], g_fx.fogu[1], g_fx.fogu[2], g_fx.fogu[3]);
     if (g_fx.lflag[0] != 0.f) flush_light_tab();
-    sh5_fx = g_fx; sh5_ok = 1;
-    sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok);
     for (unsigned k = 0; k < pal_n; k++) {
         unsigned gm = pal_g[k];
         if (pcomp_gen[gm] != post_gen) pcomp_calc(gm);
@@ -1353,20 +1213,10 @@ static void pm5_upload(void) {
         if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
         gv_palup_n++; pm_dc_c[DC_PALUP]++;
     }
-    sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
 }
-/* FB-2 switches: tmplsmall=<n> (the template table size: the LRU evicts), cmdsmall=<n> (the command buffer limit in words: a forced split) */
-static unsigned cmd_small, cmd_split_n;
+static unsigned cmd_split_n;
 unsigned pm_gpu_cmd_split_n(void) { return cmd_split_n; }
 void pm_gpu_fb2_stat(unsigned* o) { o[0] = nd_tmpl_hi(); o[1] = nd_tmpl_gen(); o[2] = cmd_split_n; }
-static void fb2_switches(void) {
-    static int done;
-    char v[16];
-    if (done) return;
-    done = 1;
-    if (pm_debug_value("tmplsmall", v, sizeof v)) nd_tmpl_set_cap((unsigned)atoi(v));
-    if (pm_debug_value("cmdsmall", v, sizeof v)) cmd_small = (unsigned)atoi(v);
-}
 /* FB-2: the forced split of nd_raw_native (kick_check's split without its draw threshold, run inside a raw close: the open batch's ring words stay in place).
  * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
 void pm_gx_room(void);
@@ -1385,13 +1235,11 @@ static void noise_native_words(NdUnit* u) {
 int pm_gpu_noise_ok(void) { return noise_init(); }
 void pm_gpu_noise_draw(NdUnit* u, float* nzo) { noise_native_words(u); nzo[0] = 120.f / 64.f; nzo[1] = 200.f / 64.f; nzo[2] = noise_off[0]; nzo[3] = noise_off[1]; }
 static int nd_raw_native(void) {
-    fb2_switches();
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
-    if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || (gv5_on && !PMDL("pm5off"))))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
-    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); unsigned lim = cmd_small && cmd_small < csz ? cmd_small : csz; if (coff + ND_EMIT_MAX + 1024u >= lim) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
+    if (!(gni > 0 && g_pal && gv4_on && (!g_use5 || gv5_on))) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (r_zmark && g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
-    if (nozt_on()) { nd_native_refused++; nraw_why[5]++; cen_why = CW_NRK(5); return 0; }
     int z = z_on && (!rect_2d || rect_z) && !off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
@@ -1418,7 +1266,7 @@ static int nd_raw_native(void) {
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
     nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
     nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = (uint8_t)noise;
-    const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d && !r_zmark; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
+    const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d && !r_zmark; /* S6-2c-3: as flush_draw: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
@@ -1440,8 +1288,6 @@ static int nd_raw_native(void) {
     if (ndref_on) { ndref_nz = 0; ndref_raw = 1; ndref_draw(&tk, z, 1, 4, (unsigned)g_cullm); ndref_state(0, z); }
     cen_add(&tk, z, 1, 4, (unsigned)g_cullm, grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, 0u, gni / 3u);
     dc_on = 0;
-    proj_ok = 0; pool_buf_ok = 0;
-    sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
     float palk[ND_NPAL][16];
     unsigned npal = pal_n < ND_NPAL ? pal_n : ND_NPAL;
     for (unsigned k = 0; k < npal; k++) {
@@ -1514,14 +1360,12 @@ static void flush_draw(void) {
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
     if (fl_on() && gpu_ok) flush_fl_dbg(graw);
-    if ((nverts <= 0 && !graw) || !gpu_ok) {
-        nverts = 0;
+    if (!graw || !gpu_ok) {
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
     }
     if (r_nocol && !(z_on && (!rect_2d || rect_z) && r_zupd)) {
-        nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
@@ -1530,7 +1374,6 @@ static void flush_draw(void) {
     if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
         { extern unsigned pm_gbi_dbg_orb_tag(void); unsigned ot_ = pm_gbi_dbg_orb_tag(); /* FX1-3: a skipped draw of an effect list is logged too */
           if (ot_ && PMDL("orbdbg")) pm_log("orbdbg skip f%u list %u H03 cmb %d", pm_frame_count(), ot_, combine); }
-        nverts = 0;
         gni = 0; gi_start = gidx_n;
         batch_identity = 0;
         return;
@@ -1542,262 +1385,13 @@ static void flush_draw(void) {
         if (snap0 || snap1) off_snapshot(off_cur);
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
-    { static unsigned rcl_; if (rect_2d && !graw && rcl_ < 8u && pm_frame_count() > 100u) { rcl_++; pm_log_d("rectcpu f%u nverts %d gni %d comb %d d3 %d grab %d off %d open %d raw %d caller %s:%d", pm_frame_count(), nverts, gni, combine, draw_3d, grab_bind, off_active, rect_open, rect_raw, fl_fn, fl_line); } } /* RECT-2b diag */
     cen_why = graw ? CW_OTHER : rect_2d ? CW_RECT : (cen_fbv & CEN_FB_CLIP) ? CW_CLIP : (cen_fbv & CEN_FB_SEAM) ? CW_SEAM : (cen_fbv & CEN_FB_WIDE) ? CW_WIDE : (cen_fbv & CEN_FB_RING) ? CW_RING : CW_OTHER; /* CEN-1a */
     if (graw && nd_raw_native()) return;
-    if (graw && ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a batch of the record the native raw path refused (the walker drew it on the old path): not compared */
-    nd_leave_native(); /* a draw that citro3d makes: it re-emits what the native draws changed */
-    pm_dc_c[DC_RAW] += (unsigned)graw;
-    DC_T(0);
-    if (dc_on) GPUCMD_GetBuffer(NULL, NULL, &dc_w0);
-    PH_ADD(C_FLUSH, 1);
-    PH_PUSH(PH_GPU);
-    PHF_PUSH(PH_GBIND);
-    const int gpal = graw && g_pal; /* GV1c: the palette program */
-    if (graw) { /* PO3b */
-        proj_ok = 0; pool_buf_ok = 0; /* DR1: the program and the buffer change */
-        if (gpal && g_use5) { /* GV5: lighting, texgen, fog */
-            if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; PH_ADD(C_RAWCALL, 2); }
-            if (!sh5_ok || memcmp(sh5_uvso, g_uvso, sizeof sh5_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh5_uvso, g_uvso, sizeof sh5_uvso); PH_ADD(C_RAWCALL, 1); }
-            if (!sh5_ok || memcmp(sh5_cmul, g_cmul, sizeof sh5_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh5_cmul, g_cmul, sizeof sh5_cmul); PH_ADD(C_RAWCALL, 1); }
-            if (!sh5_ok || memcmp(sh5_cadd, g_cadd, sizeof sh5_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh5_cadd, g_cadd, sizeof sh5_cadd); PH_ADD(C_RAWCALL, 1); }
-            if (!sh5_ok || memcmp(sh5_zmix, g_zmix, sizeof sh5_zmix)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f); memcpy(sh5_zmix, g_zmix, sizeof sh5_zmix); PH_ADD(C_RAWCALL, 1); }
-            if (!sh5_ok || memcmp(&sh5_fx, &g_fx, sizeof g_fx)) { /* the light block, the look-at vectors, the fog factor and the flags: one set per change */
-                C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, g_fx.lflag[0], g_fx.lflag[1], g_fx.lflag[2], g_fx.lflag[3]);
-                C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, g_fx.fogu[0], g_fx.fogu[1], g_fx.fogu[2], g_fx.fogu[3]);
-                if (g_fx.lflag[0] != 0.f) { /* lighting: the light table and, for texgen, the look-at vectors */
-                    flush_light_tab();
-                }
-                sh5_fx = g_fx;
-                PH_ADD(C_RAWCALL, 2 + (g_fx.lflag[0] != 0.f ? 17 : 0));
-            }
-            sh5_ok = 1;
-            sh_ok = 0; memset(sh_pal_ok, 0, sizeof sh_pal_ok); /* the uniform registers are one file for all programs: pm5 wrote over what pm4 and pm had */
-            for (unsigned k = 0; k < pal_n; k++) {
-                unsigned gm = pal_g[k];
-                if (pcomp_gen[gm] != post_gen) {
-                    pcomp_calc(gm);
-                }
-                if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && sh5_pal_gen[k] == post_gen) continue;
-                if (sh5_pal_ok[k] && sh5_pal_gm[k] == gm && memcmp(&sh5_pal_mtx[k], &pcomp[gm], sizeof(C3D_Mtx)) == 0) pm_dc_c[DC_PKEQ]++; /* DC6 count: this upload writes the matrix the register holds */
-                sh5_pal_mtx[k] = pcomp[gm];
-                C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
-                if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
-                sh5_pal_ok[k] = 1; sh5_pal_gm[k] = gm; sh5_pal_gen[k] = post_gen;
-                PH_ADD(C_RAWCALL, 4);
-                gv_palup_n++; pm_dc_c[DC_PALUP]++;
-            }
-        } else if (gpal) {
-            sh5_ok = 0; memset(sh5_pal_ok, 0, sizeof sh5_pal_ok); /* pm4 writes over the registers of pm5 */
-            if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; PH_ADD(C_RAWCALL, 2); }
-            if (!sh_ok || memcmp(sh_uvso, g_uvso, sizeof sh_uvso)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]); memcpy(sh_uvso, g_uvso, sizeof sh_uvso); PH_ADD(C_RAWCALL, 1); }
-            if (!sh_ok || memcmp(sh_cmul, g_cmul, sizeof sh_cmul)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]); memcpy(sh_cmul, g_cmul, sizeof sh_cmul); PH_ADD(C_RAWCALL, 1); }
-            if (!sh_ok || memcmp(sh_cadd, g_cadd, sizeof sh_cadd)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]); memcpy(sh_cadd, g_cadd, sizeof sh_cadd); PH_ADD(C_RAWCALL, 1); }
-            if (!sh_ok || memcmp(sh_zmix, g_zmix, sizeof sh_zmix)) { C3D_FVUnifSet(GPU_VERTEX_SHADER, u4_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f); memcpy(sh_zmix, g_zmix, sizeof sh_zmix); PH_ADD(C_RAWCALL, 1); }
-            sh_ok = 1;
-            for (unsigned k = 0; k < pal_n; k++) {
-                unsigned gm = pal_g[k];
-                if (pcomp_gen[gm] != post_gen) {
-                    pcomp_calc(gm);
-                }
-                if (sh_pal_ok[k] && sh_pal_gm[k] == gm && sh_pal_gen[k] == post_gen) continue; /* the register block holds this matrix already */
-                if (sh_pal_ok[k] && sh_pal_gm[k] == gm && memcmp(&sh_pal_mtx[k], &pcomp[gm], sizeof(C3D_Mtx)) == 0) pm_dc_c[DC_PKEQ]++; /* DC6 count */
-                sh_pal_mtx[k] = pcomp[gm];
-                C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u4_pal + 4 * (int)k, &pcomp[gm]);
-                sh_pal_ok[k] = 1; sh_pal_gm[k] = gm; sh_pal_gen[k] = post_gen;
-                PH_ADD(C_RAWCALL, 1);
-                gv_palup_n++; pm_dc_c[DC_PALUP]++;
-            }
-        }
-    }
-    /* 2D batches are already pixels. 3D batches are object space. */
-    if (u_proj >= 0 && !gpal) {
-        const C3D_Mtx* pm_ = draw_3d ? &shader_3d : off_active ? &off_proj : &projection; /* V05: shader_3d follows off_active, see rebuild_3d */
-        if (!graw && proj_ok && memcmp(&proj_last, pm_, sizeof proj_last) == 0) dr1_skips++; /* DR1: same value as the last draw */
-        else {
-            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u_proj, pm_); sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; /* RAW1: registers 0 to 3 are also pal 0 */
-            proj_last = *pm_; proj_ok = !graw;
-        }
-    }
-    /* Rectangles skip the depth test, so a story page already covers the mesh.
-     * Wiping the buffer here let the next 3D batch ignore the house. */
-    (void)batch_identity;
-    DC_T(1);
-    if (grab_bind && PMDL("grablog")) pm_log_d("grabw f%u cpu dim %08x param %08x lod %08x addr %08x type %u", pm_frame_count(), grab_tex.dim, grab_tex.param, grab_tex.lodParam, (uint32_t)osConvertVirtToPhys(grab_tex.data) >> 3, (unsigned)grab_tex.fmt); /* FB-1 GRAB: the words of the grab slot, CPU bind */
-    int tex =(combine >= 2) && (grab_bind ? (dc_bind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
-    int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
-    int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
-    if (tex && snap0) { dc_bind(0, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DR1: unit 0 no longer holds the texture of the shadow */
-    if (tex1 && snap1) { dc_bind(1, &offs[off_cur].snap); pm_tex_bind_reset(); } /* DC2: unit 1 no longer holds the aux texture */
-    if (!gpal) { sh_pal_ok[0] = sh_pal_ok[1] = 0; sh5_pal_ok[0] = 0; } /* RAW1: the cpu program writes registers 0 to 5 (projection, uvx, nzo): pal 0 and 1 */
-    if (tex1 && !(gpal && g_use5) && (gpal ? u4_uvx : u_uvx) >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, gpal ? u4_uvx : u_uvx, t1_s[0], t1_s[1], t1_s[2], t1_s[3]);
-    int noise = combine == 8 && plan.uses_noise && noise_init();
-    if (noise) { /* PT07: unit 2 stays bound after the first use, as unit 1 does. The target is 240 x 400 screen pixels: ndc * 120 and ndc * 200 */
-        int u = gpal ? (g_use5 ? u5_nzo : u4_nzo) : u_nzo;
-        if (!noise_bound) { dc_bind(2, &noise_tex); noise_bound = 1; } /* DC2: unit 2 stays bound until the next sh_clear */
-        if (u >= 0) C3D_FVUnifSet(GPU_VERTEX_SHADER, u, 120.f / 64.f, 200.f / 64.f, noise_off[0], noise_off[1]);
-    }
-    DC_T(2);
-    PHF_POP();
-    int z = z_on && (!rect_2d || rect_z) && !off_active;
-    if (nozt_on()) z = 0;
-    PHF_PUSH(PH_GTEV);
-    int memb = 0;
-    TevKey tk;
-    const size_t tk_n = sizeof tk;
-    memset(&tk, 0, tk_n);
-    tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
-    tk.dview = dv_mode(); tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
-    tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
-    tk.plan_gen = combine == 8 ? plan_gen : 0;
-    int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
-    if (tev_same) memb = tev_memb;
-    else { pm_dc_c[DC_TEVR]++; C3D_TexEnv* env = C3D_GetTexEnv(0); flush_tev_rebuild(env, tex, tex1, i8_0, i8_1, noise, &memb); }
-    cen_add(&tk, z, graw, graw ? (gpal ? (g_use5 ? 5 : 4) : 2) : 1, graw ? (unsigned)g_cullm : 0u,
-        grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, tex1 ? pm_tex_census_id(1) : 0u,
-        (unsigned)(graw ? gni / 3 : nverts / 3));
-    ndref_nz = noise; ndref_raw = graw;
-    if (ndref_on) ndref_draw(&tk, z, graw, graw ? (gpal ? (g_use5 ? 5 : 4) : 2) : 1, graw ? (unsigned)g_cullm : 0u);
-    DC_T(3);
-    PHF_POP();
-    PHF_PUSH(PH_GST);
-    dv_draw++;
-    if (z && r_zmark) {
-        /* B3b: pass 1 tests the model with its own depth and marks the stencil where it is nearer than the world. Pass 2 (below) writes the constant there. */
-        sh_depth_test(true, GPU_GREATER, GPU_WRITE_DEPTH);
-        stc_set(5, true, GPU_ALWAYS, 1, 0xff, 0xff);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
-        stencil_on = 1;
-    } else if (z && r_zcmp)
-        sh_depth_test(true, r_decal ? GPU_GEQUAL : GPU_GREATER, r_nocol ? GPU_WRITE_DEPTH : r_zupd ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-    else if (z && r_zupd)
-        sh_depth_test(true, GPU_ALWAYS, r_nocol ? GPU_WRITE_DEPTH : GPU_WRITE_ALL);
-    else
-        sh_depth_test(false, GPU_GREATER, GPU_WRITE_COLOR);
-    if (wl_on()) { unsigned fn, wr; wl_depth(z, z && r_zmark, r_zcmp, r_zupd, r_decal, r_nocol, &fn, &wr);
-        pm_log("wdraw f%u walk om %08x zs %u fn %u wr %u dec2 0 zc %d zu %d dec %d z %d bl %d gpal %d tc %08x t1 %d pz %04x prim %08x cc %08x cmb %u tris %u",
-               pm_frame_count(), dbg_omode_l, (dbg_omode_l >> 2) & 1u, fn, wr, r_zcmp, r_zupd, r_decal, z, r_blend, graw, tex ? pm_tex_census_id(0) : 0u, tex1,
-               wl_primz, prim, cconst, (unsigned)combine, (unsigned)(graw ? gni / 3 : nverts / 3));
-    }
-    /* A decal lies in the plane of its base surface. Move it a little toward the eye. */
-    if (stencil_on && !(z && r_zmark)) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; }
-    sh_depth_map(true, -1.0f, r_decal ? decal_bias() : 0.0f);
-    sh_early(false, GPU_EARLYDEPTH_GREATER, 0);
-    if (dbg_omode_l == 0x00504B50u && !off_active && PMDL("orbdbg")) { /* FX1-2b: the glow square's blend and alpha as the 3DS draw sets them, once per frame */
-        static unsigned orb_f = ~0u;
-        extern unsigned pm_frame_count(void);
-        extern void pm_log(const char* fmt, ...);
-        if (orb_f != pm_frame_count()) {
-            orb_f = pm_frame_count();
-            pm_log("orbdbg blend f%u on %d memb %d replace %d branch %s src %s dst %s atest %d ref %d tex_i8 %d combine %d prim %08x",
-                   orb_f, r_blend, memb, r_replace, (r_blend && !r_replace) ? "src_alpha" : "one_zero",
-                   (r_blend && !r_replace) ? "SRC_ALPHA" : "ONE", (r_blend && !r_replace) ? "ONE_MINUS_SRC_ALPHA" : "ZERO",
-                   r_atest >= 0, r_atest, pm_tex_i8(0), combine, prim);
-        }
-    }
-    orb_log("walk", z, memb, i8_0, i8_1, (unsigned)(graw ? gni / 3 : nverts / 3), graw); /* FX1-3 */
-    if (r_atest >= 0) sh_alpha_test(true, GPU_GREATER, r_atest);
-    else sh_alpha_test(false, GPU_ALWAYS, 0);
-    /* Target is 240x400, rotated so buffer Y is landscape X. Keep the 320-wide
-     * game picture and whatever scissor the display list set inside it. */
-    if (off_active) scissor_off();
-    else stage_scissor();
-    sh_cull(graw ? (GPU_CULLMODE)g_cullm : GPU_CULL_NONE);
-    if (off_active) blend_off(memb);
-    else if (r_blend) /* V25: a 2D rectangle follows its own blender mode (the story page strips use alpha = PRIM with an opaque blender) */
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-            GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    else
-        sh_blend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-    PHF_POP();
-    DC_T(4);
-    sh_user_clip(graw); /* GP2: near clip on raw batches only */
-    /* The GPU runs at FrameEnd. Each draw must keep its own vertices until then. */
-    if (graw) { /* PO3b: one DrawElements for the open batch, then back to the CPU vertex program */
-        PH_PUSH(PH_GDRAW);
-        const void* bb = gi_kind == 1 ? (const void*)rchunk[0].vtx : (const void*)gring;
-        if (buf_cur != 2 || buf_bp != bb) {
-            pm_dc_c[DC_BUF]++;
-            C3D_BufInfo* gb = C3D_GetBufInfo();
-            BufInfo_Init(gb);
-            BufInfo_Add(gb, bb, 16, 3, 0x210);
-            buf_cur = 2; buf_bp = bb; PH_ADD(C_RAWCALL, 2);
-        }
-        if (ndref_on) ndref_state(0, z);
-        pm_gbi_draw_note(0); C3D_DrawElements(GPU_TRIANGLES, (int)gni, C3D_UNSIGNED_SHORT, gidx + gi_start);
-        if (ndref_on) ndref_cmd();
-        PH_ADD(C_RAWD, 1); PH_ADD(C_RAWCALL, 1);
-        DC_T(5);
-        PH_POP();
-        draws_frame++;
-        PH_ADD(C_DRAW, 1);
-        PH_ADD(C_VTXSLOT, gni);
-        PH_POP();
-        gi_start = gidx_n;
-        gni = 0; pal_n = 0;
-        batch_identity = 0;
-        drew = 1;
-        if (!off_active) { /* B2: the main target changed, the grab slot is old */
-            if (rect_y1 <= rect_y0) grab_dirty = 1;
-            else if (grab_dy1 <= grab_dy0) { grab_dy0 = rect_y0; grab_dy1 = rect_y1; }
-            else { if (rect_y0 < grab_dy0) grab_dy0 = rect_y0; if (rect_y1 > grab_dy1) grab_dy1 = rect_y1; }
-        }
-        dc_kick();
-        return;
-    }
-    flush_draw_cpu(z);
+    if (graw && ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a raw batch the native path refused is dropped (nd_raw_native counted the reason, census 0 at the DEL row) */
+    gni = 0; gi_start = gidx_n; batch_identity = 0;
+    return;
 }
 
-/* V02 debug switch depthview=<1|2|3>: 3D fragments get a depth or draw index colour instead of the combiner colour
- * (texture alpha kept, so cut-outs show). 1: depth, red near to blue far. 2: one colour per draw (flush) index.
- * 3: depth bands (repeating, 64 per range) to see depth order faults of near-equal surfaces. */
-static unsigned dv_color(float z, float w, unsigned c) {
-    float r, g, b, d;
-    if (dview == 2) {
-        unsigned h = dv_draw * 2654435761u;
-        r = (float)((h >> 8) & 255) / 255.f; g = (float)((h >> 16) & 255) / 255.f; b = (float)((h >> 24) & 255) / 255.f;
-    } else {
-        d = (w > 0.f ? z / w : 0.f) * 0.5f + 0.5f;
-        if (d < 0.f) d = 0.f;
-        if (d > 1.f) d = 1.f;
-        if (dview == 3) {
-            float f = d * 64.f;
-            f -= (float)(int)f;
-            r = f; g = 1.f - f; b = d;
-        } else {
-            r = d; g = 1.f - (d < 0.5f ? 1.f - 2.f * d : 2.f * d - 1.f); b = 1.f - d;
-        }
-    }
-    return ((unsigned)(r * 255.f) << 24) | ((unsigned)(g * 255.f) << 16) | ((unsigned)(b * 255.f) << 8) | (c & 255u);
-}
-
-static void put4(float x, float y, float z, float w, float u, float v, unsigned c) {
-    if (dv_mode() && draw_3d && !rect_2d) c = dv_color(z, w, c);
-    if (nverts >= 510) {
-        int id = batch_identity;
-        flush();
-        batch_identity = id;
-    }
-    if (!verts || verts + nverts >= vert_base + VERT_SLOTS) {
-        vert_drops++;
-        return;
-    }
-    Vert* p = &verts[nverts++];
-    p->x = x;
-    p->y = y;
-    p->z = z;
-    p->w = w;
-    p->u = u;
-    p->v = v;
-    p->r = pm_f255[(c >> 24) & 255];
-    p->g = pm_f255[(c >> 16) & 255];
-    p->b = pm_f255[(c >> 8) & 255];
-    p->a = pm_f255[c & 255];
-}
-
-static void put(float x, float y, float z, float u, float v, unsigned c) {
-    put4(x, y, z, 1.f, u, v, c);
-}
 
 /* PG3 O11: byte to float tables, filled with the same divide the code used, so every value is equal. The VFP divide costs about 19 cycles on the O3DS. */
 float pm_f255[256], pm_f127[256]; /* pm_f127 is indexed by the byte of a signed char */
@@ -1904,12 +1498,6 @@ void pm_gpu_init(void) {
     pm_log("raw1: one DVLB %s (%d entries)", raw_dvlb_ok ? "on" : "FAILED", dvlb_all ? (int)dvlb_all->numDVLE : 0);
     if (!raw_dvlb_ok) { pm_log_e("shader library failed"); return; }
     dvlb = dvlb_all;
-    shaderProgramInit(&prog);
-    shaderProgramSetVsh(&prog, &dvlb->DVLE[0]);
-    C3D_BindProgram(&prog);
-    u_proj = shaderInstanceGetUniformLocation(prog.vertexShader, "projection");
-    u_uvx = shaderInstanceGetUniformLocation(prog.vertexShader, "uvx");
-    u_nzo = shaderInstanceGetUniformLocation(prog.vertexShader, "nzo");
     /* y grows up, matching the citro3d immediate example. 320 game pixels sit in the middle. */
     Mtx_OrthoTilt(&projection, 0.f, 400.f, 0.f, 240.f, 0.f, 1.f, true);
     C3D_AttrInfo* ai = C3D_GetAttrInfo();
@@ -1917,7 +1505,6 @@ void pm_gpu_init(void) {
     AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 4);
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
-    attr_cpu = *ai;
     { /* GV1: the raw Vtx path: a ring of the Vtx records of the frame and a u16 index ring */
         gring = (unsigned char*)linearAlloc((GRING_VTX + GSTAT_VTX) * 16);
         gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
@@ -1965,8 +1552,6 @@ void pm_gpu_init(void) {
         }
         pm_log("gpuvtx: raw Vtx path %s (ring %u vtx, %u idx)", gpu_vtx_on ? "on" : "FAILED", (unsigned)GRING_VTX, (unsigned)GRING_IDX);
     }
-    vert_base = (Vert*)linearAlloc(sizeof(Vert) * VERT_SLOTS);
-    verts = vert_base;
     ident(game_mvp);
     rebuild_3d();
     pm_tex_init();
@@ -1977,9 +1562,8 @@ void pm_gpu_init(void) {
     setvbuf(stdout, NULL, _IONBF, 0);
     consoleSetWindow(&bottom_con, 1, LOG_TOP, 40, LOG_ROWS); /* BOTLAYOUT: the log window, rows 9 to 26 */
     pm_con_unlock();
-    gpu_ok = vert_base != NULL;
-    if (!vert_base) pm_log_e("linearAlloc for %u vertex slots failed, nothing will draw", (unsigned)VERT_SLOTS);
-    pm_log_d("gpu %s proj %d m %d %d", gpu_ok ? "ok" : "no vertex buffer", u_proj,
+    gpu_ok = gpu_vtx_on;
+    pm_log_d("gpu %s m %d %d", gpu_ok ? "ok" : "no vertex buffer",
            (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
 
@@ -2522,19 +2106,11 @@ void pm_gx_drain(void) {
     gxCmdQueueStop(q);
     gxCmdQueueClear(q);
 }
-/* FB-1 ring_wrap: the raw vertex and index ring has no room for the next rectangle or grab quad. The logical limits are ring_cap_v and ring_cap_i (GRING_VTX and
- * GRING_IDX unless ringsmall=<n> is set: n vertices and n * 3 / 2 indices, so the wrap runs often). The walker paths keep the real limits. A wrap closes the open
+/* FB-1 ring_wrap: the raw vertex and index ring has no room for the next rectangle or grab quad. The limits are GRING_VTX and GRING_IDX (the ringsmall
+ * switch was deleted in DEL). The walker paths keep the real limits. A wrap closes the open
  * batch, submits the queued part (split_frame) and moves the ring to a chunk the GPU has finished, else to a new one. No wait for the GPU happens here: the
  * mid-frame gspWaitForP3D hung on a list that citro3d had not started (FB-1 oracle decision). */
-static unsigned ring_cap_v = GRING_VTX, ring_cap_i = GRING_IDX, ring_wraps, ring_cap_done;
-static __attribute__((cold, noinline)) void ring_cap_init(void) {
-    char v[16];
-    ring_cap_done = 1;
-    if (pm_debug_value("ringsmall", v, sizeof v)) {
-        const unsigned n = (unsigned)atoi(v);
-        if (n >= 8u && n <= GRING_VTX) { ring_cap_v = n; ring_cap_i = n * 3u / 2u; }
-    }
-}
+static unsigned ring_wraps;
 /* the chunk c becomes the ring. The caller has flushed the open batch. */
 static void ring_set(int c) {
     ring_cur = c;
@@ -2591,9 +2167,8 @@ static __attribute__((cold, noinline)) int ring_wrap(void) {
 }
 /* FB-1: 1 when nv vertices and ni indices fit the ring, after a ring_wrap when they do not. 0 when they cannot fit an empty chunk or no chunk is free. */
 static int ring_need(unsigned nv, unsigned ni) {
-    if (!ring_cap_done) ring_cap_init();
-    if (gring_n + nv <= ring_cap_v && gidx_n + ni <= ring_cap_i) return 1;
-    if (nv > ring_cap_v || ni > ring_cap_i) return 0;
+    if (gring_n + nv <= GRING_VTX && gidx_n + ni <= GRING_IDX) return 1;
+    if (nv > GRING_VTX || ni > GRING_IDX) return 0;
     return ring_wrap();
 }
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
@@ -2768,10 +2343,8 @@ void pm_gpu_begin_wait(void) {
     dv_draw = 0;
     draws_frame = 0;
     drew = 0;
-    nverts = 0;
     gni = 0; pal_n = 0; post_gen++; ring_frame_begin(); /* PO3b, GV1c; FB-1: chunk 0 with empty fills */
-    verts = vert_base;
-    v_fl = vert_base; gring_fl = gidx_fl = 0; kick_done = 0; /* GV0, KICK1 */
+    gring_fl = gidx_fl = 0; kick_done = 0; /* GV0, KICK1 */
     sci_x0 = 0;
     sci_y0 = 0;
     sci_x1 = 320;
@@ -2836,26 +2409,23 @@ void pm_gpu_end(void) {
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
     if (want_clear && drew) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
     /* PO1: the GPU reads the vertex buffer when C3D_FrameEnd runs the command list. One flush of the
-     * whole range written this frame replaces one GSPGPU call per draw. Each frame starts at vert_base
+     * whole range written this frame replaces one GSPGPU call per draw. Each frame's writes
      * again, and FrameBegin(SYNCDRAW) has waited for the GPU, so no draw of this frame overlaps the
      * writes. */
     gpu_flush_written(); /* GV0: pool, raw Vtx ring and index ring, what a split has not flushed already */
     {
-        unsigned used = verts ? (unsigned)(verts - vert_base) : 0;
         float cmd = C3D_GetCmdBufUsage();
         static unsigned warned;
         frames_seen++;
         if (draws_frame > draws_max) draws_max = draws_frame;
         prev_draws = draws_frame; kick_at = draws_frame >= 48 ? draws_frame * 55 / 100 : 0; /* KICK1 */
         kick_at2 = draws_frame >= 48 ? draws_frame * 85 / 100 : 0; /* KICK2 */
-        if (used > verts_max) verts_max = used;
         if (cmd > cmd_max) cmd_max = cmd;
         pm_ph_cmd_pm = (unsigned)(cmd * 1000.f);
-        pm_ph_draws = draws_frame; pm_ph_vb = used; /* PI4 */
-        if ((used * 10u > VERT_SLOTS * 9u || cmd > 0.9f || vert_drops) && (warned < 5 || frames_seen % 600 == 0)) {
+        pm_ph_draws = draws_frame; /* PI4 */
+        if (cmd > 0.9f && (warned < 5 || frames_seen % 600 == 0)) {
             warned++;
-            pm_log_w("GPU LIMIT NEAR: vertex slots %u of %u (dropped %u), command buffer %d%%, draws %u", used,
-                   (unsigned)VERT_SLOTS, vert_drops, (int)(cmd * 100.f), draws_frame);
+            pm_log_w("GPU LIMIT NEAR: command buffer %d%%, draws %u", (int)(cmd * 100.f), draws_frame);
         }
     }
     pm_gbi_end_frame();
@@ -2876,9 +2446,8 @@ void pm_gpu_rect_sync(void) { if (rect_open) flush(); }
 int pm_gpu_drew(void) { pm_gpu_begin_wait(); if (rect_open) flush(); return drew; }
 
 void pm_gpu_log_stats(const char* tag) {
-    pm_log_d("mem %s gpu max per frame: draws %u, vertex slots %u of %u, command buffer %d%%, vertex drops (total) %u", tag, draws_max,
-           verts_max, (unsigned)VERT_SLOTS, (int)(cmd_max * 100.f), vert_drops);
-    draws_max = verts_max = 0;
+    pm_log_d("mem %s gpu max per frame: draws %u, command buffer %d%%", tag, draws_max, (int)(cmd_max * 100.f));
+    draws_max = 0;
     cmd_max = 0.f;
 }
 
@@ -2910,7 +2479,7 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
     int ortho = memcmp(m, id4, sizeof(id4)) == 0 ? ui_ortho : (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f);
     if (sx == vp_sx && sy == vp_sy && tx == vp_tx && ty == vp_ty && ortho == ui_ortho &&
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
-    if (draw_3d && (nverts > 0 || gni > 0)) flush();
+    if (draw_3d && gni > 0) flush();
     ui_ortho = ortho;
     memcpy(game_mvp, m, sizeof(game_mvp));
     vp_sx = sx;
@@ -2991,7 +2560,7 @@ static int gtrip_batch_open(int use5, const PmFx* fx, const float vp[4], const f
 
 /* GV1c: one triangle of ring vertices ri[3], vertex i with game matrix tab[g[i]]. ro[3] gets the ring indices to use from now on (a vertex whose palette index
  * has to change is copied). Returns 0 when the raw path cannot take it now. */
-/* WIDE1-1: with wide on, an orthographic draw is native unless a vertex sits on the left or right game edge (the CPU path moves those, pm_gpu_vert_clip). The post matrix is made for the matrix kind of the
+/* WIDE1-1: with wide on, an orthographic draw is native unless a vertex sits on the left or right game edge (the vertex copy moves those to the screen edge, wide_edge_k). The post matrix is made for the matrix kind of the
  * last note_mvp (ui_ortho), so the draw matrix must be that kind. The vertices are tested like the CPU path: clip x at +-w * 0.999. At most WIDE_MAXV index entries are tested (a bigger draw keeps the CPU path).
  * 0: native, 1: edge vertex or a matrix of the other kind, 2: too many vertices or no index list. */
 #define WIDE_MAXV 192u
@@ -3000,7 +2569,7 @@ static void wide_log(unsigned f) { /* called from ndn_log every 300 frames; the 
     pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u all %u copy %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all, wide_c.copy);
     memset(&wide_c, 0, sizeof wide_c);
 }
-/* TRI-2: the CPU rule of pm_gpu_vert_clip for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999). */
+/* TRI-2: the screen-edge rule of the vertex copy for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999). */
 static int wide_on_edge(const float m[4][4], unsigned v, float* cxo) {
     const short* p = (const short*)(gring + 16u * v);
     float x = (float)p[0], y = (float)p[1], z = (float)p[2];
@@ -3077,7 +2646,6 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     }
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
-    if (nverts > 0) flush(); /* the CPU batch in flight comes first, draw order */
     if (gni > 0 && !gtrip_batch_open(use5, fx, vp, uvso, cmul, cadd, zmix, ct, g)) {
         if (pal_n) { /* count a palette overflow only when the matrices do not fit */
             unsigned miss = 0;
@@ -3218,7 +2786,6 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     }
     if (gidx_n + nidx > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
-    if (nverts > 0) flush();
     gi_kind_set(1); /* FB-1: static indices name chunk 0 vertices */
     /* C3: extend an open static batch across consecutive compiled lists (same PSO inputs and matrix slot). */
     if (grange_batch_open(gm, vp, uvso, cmul, cadd, zmix, ct, fx, use5)) {
@@ -3867,7 +3434,7 @@ void pm_gpu_set_mix(int on, unsigned rgba) {
 /* SPR4-env: the open batch reads ENV at its flush (combine 5, 7 and the combine 8 plans), so a change while it is open closes it first.
  * The batch-open tests need no env compare: no change can happen while a batch is open. */
 void pm_gpu_set_env(unsigned rgba) {
-    if (rgba != env_col && (gni > 0 || nverts > 0 || rect_open)) flush();
+    if (rgba != env_col && (gni > 0 || rect_open)) flush();
     env_col = rgba;
 }
 
@@ -3914,9 +3481,9 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     memset(&mode, 0, sizeof mode);
     mode.ok = 1; mode.gand = 0xFFFFFFFFu;
     { /* MDL-3a: class 5 by sub-reason, each flag counted on its own (a record can hold several) */
-        const int nopal = !(g_pal && !g_use5 && gv4_on), noz = nozt_on();
-        spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(r_zmark != 0); spr5_sub[5] += (unsigned)noz;
-        if (nopal || off_active || grab_bind || r_zmark || noz) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
+        const int nopal = !(g_pal && !g_use5 && gv4_on);
+        spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(r_zmark != 0);
+        if (nopal || off_active || grab_bind || r_zmark) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
     }
     NdTexDesc ds;
     NdUnit un;
@@ -3995,7 +3562,7 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     fl_fn = "gbi"; fl_line = line;
     /* EC2: no vertex and no raw batch queued: flush_draw returns before any state, texture, cache or GPU call. Only the
      * rectangle bookkeeping of flush_impl runs. No timer (svc read) here, only a plain count. */
-    if (nverts <= 0 && gni <= 0) {
+    if (gni <= 0) {
         unsigned s0 = pm_svc_n;
         pm_ec_n++;
         if (pm_ph_on) { int c = pm_gbi_flush_class(); pm_fl_n[c]++; pm_fl_e[c]++; }
@@ -4050,65 +3617,15 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     sci_y1 = y1;
 }
 
-static void tri_raw(float x0, float y0, float z0, float u0, float v0, unsigned c0,
-                    float x1, float y1, float z1, float u1, float v1, unsigned c1,
-                    float x2, float y2, float z2, float u2, float v2, unsigned c2) {
-    if (draw_3d) {
-        flush();
-        draw_3d = 0;
-    }
-    put(x0, y0, z0, u0, v0, c0);
-    put(x1, y1, z1, u1, v1, c1);
-    put(x2, y2, z2, u2, v2, c2);
-}
 
-void pm_gpu_tri(float x0, float y0, float z0, float u0, float v0, unsigned c0,
-                float x1, float y1, float z1, float u1, float v1, unsigned c1,
-                float x2, float y2, float z2, float u2, float v2, unsigned c2) {
-    if (rect_open) flush(); /* DR1: a plain 2D triangle does not join a rectangle batch */
-    tri_raw(x0, y0, z0, u0, v0, c0, x1, y1, z1, u1, v1, c1, x2, y2, z2, u2, v2, c2);
-}
 
-void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
-                  float x1, float y1, float z1, float u1, float v1, unsigned c1,
-                  float x2, float y2, float z2, float u2, float v2, unsigned c2) {
-    if (gni > 0) flush(); /* GV1: a raw batch is open, it was queued first */
-    if (!draw_3d) {
-        flush();
-        draw_3d = 1;
-    }
-    cen_fb |= CEN_FB_SEAM; /* CEN-1a */
-    put(x0, y0, z0, u0, v0, c0);
-    put(x1, y1, z1, u1, v1, c1);
-    put(x2, y2, z2, u2, v2, c2);
-}
 
-void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsigned c) {
-    if (gni > 0) flush(); /* GV1: a raw batch is open, it was queued first */
-    if (!draw_3d) {
-        flush();
-        draw_3d = 1;
-    }
-    /* F07-7: a UI (orthographic) vertex on the left or right screen edge goes to the 400 px screen edge: bars, fades and overlay quads fill the gutters. Same rule as the fill rectangle. */
-    if (pm_wide && !off_active && ui_ortho && w > 0.f && (x >= w * 0.999f || x <= -w * 0.999f)) x *= 1.25f;
-    cen_fb |= CEN_FB_CLIP; /* CEN-1a */
-    put4(x, y, z, w, u, v, c);
-}
 
 /* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
 static float px(int x) { return off_active ? (float)x : 40.f + (float)x; } /* F07-3: 2D is 1:1 and centered, also with wide */
 static float py(int y) { return off_active ? (float)y : 240.f - (float)y; }
 
 static float fill_z = 0.5f;
-/* DR1/O2: a rectangle joins the open rectangle batch when its draw state is the same (effective combine mode, rect_z). Else the batch is drawn first. */
-static void rect_begin(int ec) {
-    int rtx = pm_tex_cur_idx();
-    if (rect_open && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && !rect_raw && nverts + 6 < 500 && !(off_active && pm_tex_off_idx() >= 0)) /* a batch that samples the image it writes needs one snapshot per rectangle (FX2a) */ { dr1_merged++; return; }
-    if (rect_open) dr1_breaks++;
-    flush();
-    draw_3d = 0; /* the 2D rectangle follows; tri_raw must not flush the empty batch with the rectangle state in place */
-    rect_ec = ec; rect_zb = rect_z; rect_tex = rtx; rect_open = 1; rect_raw = 0;
-}
 /* RECT-1a: fill rectangles as raw Vtx batches (agent_s6.md RECT-1). Four Vtx in the ring: x, y screen pixels, z 0, s t 0, colour in the N64 Vtx layout (r in byte 12).
  * Palette entry RECT_GM (pcomp_calc) is the projection with the depth folded in, so the batch draws what the CPU path draws. The batch closes through nd_raw_native with
  * rect_2d set (flush_impl_body rect branch). Merge key as rect_begin, plus the depth. rect_c: fill, tex, native, merged, cpu, ring high mark. */
@@ -4116,7 +3633,6 @@ static unsigned rect_c[6];
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle takes the CPU path: 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
     if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
-    if (PMDL("norectraw")) { rr_why[6]++; return 0; }
     if (!ring_need(4, 6)) { rr_why[5]++; return 0; }
     return 1;
 }
@@ -4131,7 +3647,6 @@ static void rect_raw_open(int ec, float fz, const float uvso[4]) {
     rect_ec = ec; rect_zb = rect_z; rect_tex = rtx; rect_open = 1; rect_raw = 1; rq_n = 0;
     if (fz != rect_pal_z) { /* the palette entry and the register caches hold the matrix of the old depth */
         rect_pal_z = fz; pcomp_gen[RECT_GM] = 0;
-        memset(sh_pal_ok, 0, sizeof sh_pal_ok); memset(sh5_pal_ok, 0, sizeof sh5_pal_ok);
     }
     memcpy(g_uvso, uvso, sizeof(g_uvso));
     g_vp[0] = vp_sx; g_vp[1] = vp_sy; g_vp[2] = vp_tx; g_vp[3] = vp_ty;
@@ -4161,8 +3676,9 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     rect_c[2]++;
     if ((unsigned)gring_n > rect_c[5]) rect_c[5] = (unsigned)gring_n;
 }
-static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
-static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have = 1; } }
+static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c);
+    nd_tridrop_log(f);
+}
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
@@ -4180,21 +3696,8 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
         if (!off_active) grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
         return;
     }
-    rect_c[4]++;
-    rect_begin(0);
-    int saved = combine;
-    combine = 0;
-    rect_2d = 1;
-    batch_identity = 1;
-    float xa = (pm_wide && !off_active && x0 <= 0) ? 0.f : px(x0); /* F07-3: a fill from the game edge reaches the screen edge */
-    float xb = (pm_wide && !off_active && x1 >= 319) ? 400.f : px(x1 + 1);
-    float ya = py(y0);
-    float yb = py(y1 + 1);
-    tri_raw(xa, ya, fill_z, 0, 0, rgba, xb, ya, fill_z, 0, 0, rgba, xb, yb, fill_z, 0, 0, rgba);
-    tri_raw(xa, ya, fill_z, 0, 0, rgba, xb, yb, fill_z, 0, 0, rgba, xa, yb, fill_z, 0, 0, rgba);
-    rect_end();
-    rect_2d = 0;
-    combine = saved;
+    rect_c[4]++; /* TRI-4: no CPU rectangle path. A refused rectangle is dropped and counted here (rect_c[4], rect log cpu) */
+    return;
 }
 
 void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d) {
@@ -4293,43 +3796,11 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing (as pm_gpu_fill_rect) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float s = s0; s0 = s1; s1 = s; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
-    if (PMDL("scforce")) s0 += 200.f, s1 += 200.f; /* SC-1 forcing: s + 200 on every textured rect (CPU and native), the sc base form then draws it */
     if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; }
     rect_c[1]++;
     rd_tex = 1;
     if (tex_raw_rect(x0, y0, x1, y1, s0, t0, s1, t1)) { fl_prev_rect = 1; return; }
-    rect_c[4]++;
-    int saved = combine;
-    rect_begin((saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2);
-    combine = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
-    rect_2d = 1;
-    batch_identity = 1;
-    float xa = px(x0);
-    float xb = px(x1 + 1);
-    if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge, the texture continues at the same density */
-        float ds = (s1 - s0) / (xb - xa);
-        float bxa = xa, bxb = xb, bs0 = s0, bs1 = s1; /* BG1 debug switch bgedge: the values before the extension */
-        if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
-        if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
-        if (PMDL("bgedge") && (xa != bxa || xb != bxb)) {
-            static int nbe = 0;
-            unsigned bf = pm_frame_count();
-            if (nbe < 2000 && bf >= 100u && bf <= 160u) { nbe++; pm_log_d("bgedge f%u x0 %d x1 %d xa %.1f>%.1f xb %.1f>%.1f s0 %.3f>%.3f s1 %.3f>%.3f", bf, x0, x1, bxa, xa, bxb, xb, bs0, s0, bs1, s1); }
-        }
-    }
-    float ya = py(y0);
-    float yb = py(y1 + 1);
-    unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
-    tri_raw(xa, ya, fill_z, s0, t0, c, xb, ya, fill_z, s1, t0, c, xb, yb, fill_z, s1, t1, c);
-    tri_raw(xa, ya, fill_z, s0, t0, c, xb, yb, fill_z, s1, t1, c, xa, yb, fill_z, s0, t1, c);
-    { /* R13c: the rows this rectangle draws, see grab_dy0. Merged rectangles keep the union. */
-        int ry0 = y0 < 0 ? 0 : y0, ry1 = y1 + 1;
-        if (rect_y1 > rect_y0) { if (ry0 < rect_y0) rect_y0 = ry0; if (ry1 > rect_y1) rect_y1 = ry1; }
-        else { rect_y0 = ry0; rect_y1 = ry1; }
-    }
-    rect_end();
-    rect_2d = 0;
-    combine = saved;
+    rect_c[4]++; /* TRI-4: no CPU rectangle path. A refused rectangle is dropped and counted here (rect_c[4], rect log cpu) */
     fl_prev_rect = 1;
 }
 

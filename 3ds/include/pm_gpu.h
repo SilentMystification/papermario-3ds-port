@@ -100,15 +100,6 @@ void pm_gpu_gbiprof_report(unsigned frames);
 /* N64 pixels, y down. Clipped to the 320x240 picture inside the 400-wide target. */
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1);
 
-void pm_gpu_tri(float x0, float y0, float z0, float u0, float v0, unsigned c0,
-                float x1, float y1, float z1, float u1, float v1, unsigned c1,
-                float x2, float y2, float z2, float u2, float v2, unsigned c2);
-/* Object-space triangle. The current MVP uniform transforms it. w is 1. */
-void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
-                  float x1, float y1, float z1, float u1, float v1, unsigned c1,
-                  float x2, float y2, float z2, float u2, float v2, unsigned c2);
-/* One vertex already in F3DEX clip space. The MVP uniform must be identity. */
-void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsigned c);
 /* V05: draws go to an off-screen RGBA image for the colour image at base (width stride pixels) until pm_gpu_off_end. */
 int pm_gpu_off_begin(const void* base, int stride, int siz); /* siz: 3 = 32 bit, 2 = 16 bit, 1 = 8 bit */
 void pm_gpu_off_end(void);

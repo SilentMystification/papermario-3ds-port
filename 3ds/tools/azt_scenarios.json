@@ -566,70 +566,6 @@
       "reason": "HANG1a gate: grab lines per frame during the splash (count by grep of grab lines per frame) and the picture by eye."
     },
     {
-      "name": "nok11_det_cmdsmall",
-      "subject": "DET nok_11 splash with cmdsmall=2048 (forced splits): shots must equal nok11_det.",
-      "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
-      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off det cmdsmall=2048",
-      "extra": [
-        "-Turbo",
-        "-NoWarm"
-      ],
-      "until": "fxtest: shot 1 effect 89 water_splash",
-      "cap": 45,
-      "deadline": 30,
-      "first_marker": "warp: nok_11 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: nok_11 entry 0"
-        },
-        {
-          "name": "spawn",
-          "regex": "fxtest: spawn 89 water_splash"
-        },
-        {
-          "name": "shot a",
-          "regex": "fxtest: shot 1 effect 89 water_splash"
-        }
-      ],
-      "reason": "FB-2 step 2 gate: nok11_det with cmdsmall=2048 (a forced command buffer split before nearly every native raw close). Shots byte-equal to nok11_det (no switch) of the same build.",
-      "status": "unverified"
-    },
-    {
-      "name": "nok11_det_tmplsmall",
-      "subject": "DET nok_11 splash with tmplsmall=16 (LRU evictions): shots must equal nok11_det.",
-      "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
-      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog grabcpu padlog offdump=410 fixedseed fast fs1off det tmplsmall=16",
-      "extra": [
-        "-Turbo",
-        "-NoWarm"
-      ],
-      "until": "fxtest: shot 1 effect 89 water_splash",
-      "cap": 45,
-      "deadline": 30,
-      "first_marker": "warp: nok_11 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: nok_11 entry 0"
-        },
-        {
-          "name": "spawn",
-          "regex": "fxtest: spawn 89 water_splash"
-        },
-        {
-          "name": "shot a",
-          "regex": "fxtest: shot 1 effect 89 water_splash"
-        }
-      ],
-      "reason": "FB-2 step 2 gate: nok11_det with tmplsmall=16 (the template table evicts: LRU). Shots byte-equal to nok11_det (no switch) of the same build; tmplhi evict count above 0 shows the eviction ran.",
-      "status": "unverified"
-    },
-    {
       "name": "spot_sbk56_det",
       "status": "unverified",
       "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0), cold start with the det switch (the sun scene). Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
@@ -6285,30 +6221,6 @@
       "reason": "Log and file only. Stereo: both eyes of the frame are in one file, so the draw count is the sum of both eyes."
     },
     {
-      "name": "spot_mac01_cmdsmall",
-      "status": "unverified",
-      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), with cmdsmall=2048: a forced command buffer split at nearly every native raw close. Shots at frames 200 to 205 and the prof scene line at the first 300-frame window.",
-      "proves": "FB-2 GX room: the forced split (cmd_split_forced: pm_gx_room, then split_frame) runs many times without svcBreak, and the picture equals the same build without the switch (spot_mac01_pic).",
-      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug cmdsmall=2048",
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 23,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
-        }
-      ],
-      "reason": "FB-2 GX room gate. Same shape as spot_mac01_pic; cmdsmall=2048 (ND_EMIT_MAX 768 + 1024) splits before almost every raw close. The cmdsplit n line (loglevel=debug) counts the forced splits."
-    },
-    {
       "name": "spot_mac01_pic",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
@@ -6683,30 +6595,6 @@
       "reason": "POND diagnostic: per draw state of the water passes (pm_gpu.c wl_on, nd_raw_native and flush_draw)."
     },
     {
-      "name": "pond_mac00_notex1",
-      "status": "unverified",
-      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the notex1nat switch: two texture combine draws (plan.uses_tex1) go back to the walker. The top shot shows whether the pond water comes back.",
-      "proves": "POND bisect: the water draw is the native two texture combine path (SGEN-2). Water back with notex1nat means the native unit 1 close is the cause.",
-      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 notex1nat shots shotwin=200:6 loglevel=debug",
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
-        }
-      ],
-      "reason": "POND bisect copy of pond_mac00 with the notex1nat debug switch (pm_gpu.c nd_raw_native)."
-    },
-    {
       "name": "pond_mac00_nogdl",
       "status": "unverified",
       "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the nogdl switch: static display lists (G_DL, SGEN-1 entity list path) run the walker. The top shot shows whether the pond water comes back.",
@@ -6729,102 +6617,6 @@
         }
       ],
       "reason": "POND bisect copy of pond_mac00 with the nogdl debug switch (pm_gbi.c G_DL arm)."
-    },
-    {
-      "name": "pond_mac00_noraw",
-      "status": "unverified",
-      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the noraw switch: every batch of the walker flush (nd_raw_native) runs the old close, no native batch. The top shot shows whether the pond water comes back.",
-      "proves": "POND bisect: the water draw goes through the switched path. Water back with noraw means that path draws the water wrong (or hides it).",
-      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 noraw shots shotwin=200:6 loglevel=debug",
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
-        }
-      ],
-      "reason": "POND bisect copy of pond_mac00 with the noraw debug switch."
-    },
-    {
-      "name": "pond_mac00_nogrange",
-      "status": "unverified",
-      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the nogrange switch: the entity range draws (pm_gpu_grange, pm_gpu_gtrip) run the walker. The top shot shows whether the pond water comes back.",
-      "proves": "POND bisect: the water draw goes through the switched path. Water back with nogrange means that path draws the water wrong (or hides it).",
-      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 nogrange shots shotwin=200:6 loglevel=debug",
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
-        }
-      ],
-      "reason": "POND bisect copy of pond_mac00 with the nogrange debug switch."
-    },
-    {
-      "name": "pond_mac00_walkall",
-      "status": "unverified",
-      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the notex1nat nogdl noraw nogrange switch: all four native draw switches on: every batch and entity range runs the walker, the static G_DL lists too. The top shot shows whether the pond water comes back.",
-      "proves": "POND bisect: the water draw goes through the switched path. Water back with notex1nat nogdl noraw nogrange means that path draws the water wrong (or hides it).",
-      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 notex1nat nogdl noraw nogrange shots shotwin=200:6 loglevel=debug",
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
-        }
-      ],
-      "reason": "POND bisect copy of pond_mac00 with the notex1nat nogdl noraw nogrange debug switch."
-    },
-    {
-      "name": "pond_mac00_noent",
-      "status": "unverified",
-      "subject": "Toad Town pond, map mac_00, Mario at pos -178 0 88 (as pond_mac00) with the notex1nat nogdl noraw nogrange noent switch: the walkall switches plus noent: G_PM_ENT entity records also run the walker (no entity record draws). The top shot shows whether the pond water comes back.",
-      "proves": "POND bisect: the water draw goes through the switched path. Water back with notex1nat nogdl noraw nogrange noent means that path draws the water wrong (or hides it).",
-      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 notex1nat nogdl noraw nogrange noent shots shotwin=200:6 loglevel=debug",
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at mac_00 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e\\d+ chg0 pos0 -178 0 88 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
-        }
-      ],
-      "reason": "POND bisect copy of pond_mac00 with the notex1nat nogdl noraw nogrange noent debug switch."
     },
     {
       "name": "pond_mac00_nobox",
@@ -6922,54 +6714,6 @@
         }
       ],
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
-    },
-    {
-      "name": "spot_sbk56_notex1nat_pic",
-      "status": "unverified",
-      "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0) with the notex1nat switch: two texture combine draws (plan.uses_tex1, the SGEN-2 native path) go back to the walker. Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
-      "proves": "SBK bisect (row SBK, oracle plan shot 1): the siding looks normal with notex1nat means the native two texture combine path (SGEN-2 unit 1 or its plan weight) makes the blown out siding. Still blown out means the boost or a stage word (causes 2 to 4).",
-      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 notex1nat shots shotwin=200:6 loglevel=debug",
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
-        }
-      ],
-      "reason": "SBK shot 1 (row SBK). spot_sbk56_pic with the notex1nat debug switch (pm_gpu.c nd_raw_native). Cap 60 s: boot, warp, placement and the first 300-frame window (the until)."
-    },
-    {
-      "name": "spot_sbk56_walk_pic",
-      "status": "unverified",
-      "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0) with the noraw nogdl nogrange noent switches: every native draw (batch, static G_DL list, entity range, entity record) goes back to the walker. The whole scene is drawn by the old path. Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
-      "proves": "SBK walker split (row SBK): the siding of the walker-only picture against the default spot_sbk56_pic picture. Same siding in both means the native draw paths are not the cause. Normal siding here and blown out in spot_sbk56_pic means a native draw path is the cause.",
-      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 noraw nogdl nogrange noent shots shotwin=200:6 loglevel=debug",
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "scene line",
-          "regex": "prof f\\d+ w\\d+ at sbk_56 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 20 0 440 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
-        }
-      ],
-      "reason": "SBK walker shot (row SBK, diagnostic): all native draw switches on, to split native from walker for the siding. spot_sbk56_pic with the noraw nogdl nogrange noent debug switch (pm_gpu.c nd_raw_native). Cap 60 s: boot, warp, placement and the first 300-frame window (the until)."
     },
     {
       "name": "spot_sbk56_ndmcheck",
@@ -8046,54 +7790,6 @@
       "reason": "RECT-1b plan 3 (no prof=4: the prof lines go to live and console only, so the log copy would miss the rpD lines). Cap 45 s: boot, warp and the window up to frame 205."
     },
     {
-      "name": "rect_post_nr_mac01",
-      "status": "unverified",
-      "subject": "Toad Town mac_01, Mario at pos 0 0 200. CPU textured rects (norectraw): the right picture of frame 200. rectpost=200 logs rpD lines after each textured rect.",
-      "proves": "RECT-1b plan 3: the 16 draws after the last textured rectangle of frame 200 (rpD lines: path, combine, slot, GPU register shadow, uvso, pal0). The first line that differs between rect_post_mac01 and rect_post_nr_mac01 names the field. The shots show the picture of both runs.",
-      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug rectpost=200 norectraw",
-      "until": "shot \\d+ frame 205\\b",
-      "cap": 45,
-      "deadline": 25,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: mac_01 entry 0"
-        },
-        {
-          "name": "shot",
-          "regex": "shot \\d+ frame 205"
-        }
-      ],
-      "reason": "RECT-1b plan 3 (no prof=4: the prof lines go to live and console only, so the log copy would miss the rpD lines). Cap 45 s: boot, warp and the window up to frame 205."
-    },
-    {
-      "name": "rect_nr_plain_mac01",
-      "status": "unverified",
-      "subject": "Toad Town mac_01, Mario at pos 0 0 200. CPU textured rects (norectraw), no rectpost: control for the crash of rect_post_nr_mac01 (Azahar exit -1073741795 before the first marker).",
-      "proves": "RECT-1b plan 3 control: norectraw alone starts and reaches frame 205 (no rpD switch). If it exits early, the CPU rect path crashes without the rpD code.",
-      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug norectraw",
-      "until": "shot \\d+ frame 205\\b",
-      "cap": 45,
-      "deadline": 25,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: mac_01 entry 0"
-        },
-        {
-          "name": "shot",
-          "regex": "shot \\d+ frame 205"
-        }
-      ],
-      "reason": "RECT-1b plan 3 control, cap 45 s."
-    },
-    {
       "name": "keep_fail_until",
       "status": "unverified",
       "subject": "Boot with no logbench switch. The until line 'logbench: done' is never printed, so the run ends at its cap. Log subject only.",
@@ -8299,63 +7995,6 @@
         }
       ],
       "reason": "LOGFIX fault 2 bench copy of battle_start with cap 60 s, so the run reaches frame 182 on the slow machine."
-    },
-    {
-      "name": "battle_start_pm5off",
-      "status": "verified",
-      "subject": "battle start, pm5 native off (walker pm5 close): the pre-PM5 reference picture",
-      "proves": "The battle debug switch starts a real battle from a warp.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 pm5off",
-      "until": "shot \\d+ frame 182\\b",
-      "cap": 20,
-      "deadline": 20,
-      "first_marker": "warp: kmr_03 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: kmr_03 entry 0"
-        },
-        {
-          "name": "battle formation",
-          "regex": "debug battle: formation"
-        },
-        {
-          "name": "battle mode",
-          "regex": "game mode 8 frame"
-        },
-        {
-          "name": "shot at 182",
-          "regex": "shot \\d+ frame 182\\b"
-        }
-      ],
-      "reason": "PM5 reference: battle_start with the pm5 native path off (debug switch pm5off). Cap as battle_start."
-    },
-    {
-      "name": "spot_iwa10_pm5off_ndmcheck",
-      "status": "pending",
-      "subject": "iwa_10 (Mario on the floor at -662 0 587, warp entry 0). Shots at frames 200 to 205 and the ndmcheck window line.",
-      "proves": "DRAW2 row 1: each native model draw record at iwa_10 matches the walker draw (diff 0) with the wide no-translation records native.",
-      "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 ndmcheck shots shotwin=200:6 loglevel=debug pm5off",
-      "until": "ndmcheck f\\d+ recs",
-      "cap": 25,
-      "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
-        {
-          "name": "ndmcheck window: eq above 0 and diff 0",
-          "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
-          "pick": "last"
-        }
-      ],
-      "reason": "PM5-3 reference: iwa_10 ndmcheck with pm5 native off."
     },
     {
       "name": "nok11_splash_w600",
@@ -8979,54 +8618,6 @@
       "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
     },
     {
-      "name": "fb_sky_mac00_scforce",
-      "status": "unverified",
-      "subject": "mac_00 at -135 0 85 with scforce: every textured rect gets s and t plus 200, so the base path (sc above 127) draws it.",
-      "proves": "FB-1 gate: picture byte-equal to fb_sky_mac00; rr_why 7 0.",
-      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug scforce",
-      "until": "shot \\d+ frame 205\\b",
-      "cap": 45,
-      "deadline": 20,
-      "first_marker": "warp: mac_00 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_00 entry 0"
-        },
-        {
-          "name": "shot at 205",
-          "regex": "shot \\d+ frame 205\\b"
-        }
-      ],
-      "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
-    },
-    {
-      "name": "fb_sky_mac00_ring",
-      "status": "unverified",
-      "subject": "mac_00 at -135 0 85 with ringsmall=64: the raw ring fills and wraps (ring_wrap) in the frames of the shot window.",
-      "proves": "FB-1 gate: wrap count above 0 on the rectwhy line, rr_why 5 0, picture byte-equal to fb_sky_mac00.",
-      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug ringsmall=64",
-      "until": "shot \\d+ frame 205\\b",
-      "cap": 45,
-      "deadline": 20,
-      "first_marker": "warp: mac_00 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_00 entry 0"
-        },
-        {
-          "name": "shot at 205",
-          "regex": "shot \\d+ frame 205\\b"
-        }
-      ],
-      "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
-    },
-    {
       "name": "fb_sky_mac00_det",
       "status": "unverified",
       "subject": "mac_00 at -135 0 85, cold det start: textured rects (sky and HUD), shots at frames 200 to 205 (the picture).",
@@ -9050,60 +8641,6 @@
         }
       ],
       "reason": "FB-1 ring gate: cold det sky picture, default ring."
-    },
-    {
-      "name": "fb_sky_mac00_ring_det",
-      "status": "unverified",
-      "subject": "mac_00 at -135 0 85, cold det start with ringsmall=64: the raw ring wraps (ring_wrap, ringwrap lines) in the frames of the shot window.",
-      "proves": "FB-1 ring gate: rr_why 5 0 with wraps above 0, and the picture byte-equal to fb_sky_mac00_det.",
-      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det ringsmall=64",
-      "extra": ["-Turbo", "-NoWarm"],
-      "until": "shot \\d+ frame 205\\b",
-      "cap": 45,
-      "deadline": 20,
-      "first_marker": "warp: mac_00 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_00 entry 0"
-        },
-        {
-          "name": "shot at 205",
-          "regex": "shot \\d+ frame 205\\b"
-        }
-      ],
-      "reason": "FB-1 ring gate: cold det sky picture with the small ring."
-    },
-    {
-      "name": "nok11_det_ring",
-      "status": "unverified",
-      "subject": "DET nok_11 splash run (as nok11_det) with ringsmall=64: the raw ring wraps before the splash shot at frame 412.",
-      "proves": "FB-1 ring gate: rr_why 5 0 and wrap count above 0 on a grab scene; shots byte-equal to nok11_det.",
-      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det ringsmall=64",
-      "extra": ["-NoWarm"],
-      "until": "fxtest: shot 1 effect 89 water_splash",
-      "cap": 45,
-      "deadline": 30,
-      "first_marker": "warp: nok_11 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: nok_11 entry 0"
-        },
-        {
-          "name": "spawn",
-          "regex": "fxtest: spawn 89 water_splash"
-        },
-        {
-          "name": "shot a",
-          "regex": "fxtest: shot 1 effect 89 water_splash"
-        }
-      ],
-      "reason": "FB-1 ring gate: the splash picture with the small ring."
     },
     {
       "name": "mem_reenter",
@@ -9336,33 +8873,6 @@
       "reason": "VERIFY check 2 (cold det, r13off vs battle_start_f182_cold)."
     },
     {
-      "name": "battle_start_pm5off_det",
-      "status": "unverified",
-      "subject": "Battle scene (one Goomba on kmr_03), cold det start, pm5 native path off (pm5off): shot at frame 182. VERIFY check 2 walker reference.",
-      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 pm5off det",
-      "extra": [
-        "-NoWarm"
-      ],
-      "until": "shot \\d+ frame 182\\b",
-      "cap": 60,
-      "deadline": 45,
-      "first_marker": "warp: kmr_03 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: kmr_03 entry 0"
-        },
-        {
-          "name": "frame 182",
-          "regex": "shot \\d+ frame 182\\b"
-        }
-      ],
-      "reason": "VERIFY check 2 (cold det, pm5off vs battle_start_f182_cold)."
-    },
-    {
       "name": "spot_iwa10_det",
       "status": "unverified",
       "subject": "iwa_10, Mario at -586 1 530 (entry 1), cold det start: shots at frames 200 to 205 with the native model draws. VERIFY check 2 native side.",
@@ -9445,34 +8955,6 @@
         }
       ],
       "reason": "VERIFY check 2 (cold det, native rects)."
-    },
-    {
-      "name": "rect_nr_det",
-      "status": "unverified",
-      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start with CPU textured rects (norectraw): shots at frames 200 to 205. VERIFY check 2 walker side.",
-      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
-      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug norectraw fixedseed fast fs1off det",
-      "extra": [
-        "-Turbo",
-        "-NoWarm"
-      ],
-      "until": "shot \\d+ frame 205",
-      "cap": 45,
-      "deadline": 30,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: mac_01 entry 0"
-        },
-        {
-          "name": "shot 205",
-          "regex": "shot \\d+ frame 205"
-        }
-      ],
-      "reason": "VERIFY check 2 (cold det, CPU rects)."
     },
     {
       "name": "mdl5_iwa10_det",
@@ -9828,89 +9310,11 @@
       "reason": "SPR4 reference: same scenario as pause_spin_grab_w300 with the nosprnat switch (pm_gpu_spr_native returns 0, the walker draws every sprite record). Cold run."
     },
     {
-      "name": "battle_start_pm5all",
-      "status": "unverified",
-      "subject": "battle start with the pm5all switch: unlit model draws take program 5 (FB-3). Gate: byte-equal to battle_start of the pre-row build",
-      "proves": "FB-3: pm5 native draws with tex1 and the forced pm5 path for unlit draws reproduce the pm4 picture.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 pm5all",
-      "until": "shot \\d+ frame 182\\b",
-      "cap": 20,
-      "deadline": 20,
-      "first_marker": "warp: kmr_03 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: kmr_03 entry 0"
-        },
-        {
-          "name": "battle formation",
-          "regex": "debug battle: formation"
-        },
-        {
-          "name": "battle mode",
-          "regex": "game mode 8 frame"
-        },
-        {
-          "name": "shot at 182",
-          "regex": "shot \\d+ frame 182\\b"
-        }
-      ],
-      "reason": "FB-3 forcing switch pm5all (every model draw without light takes program 5). Cap as battle_start."
-    },
-    {
-      "name": "battle_start_pm5draw",
-      "status": "unverified",
-      "reason": "FB-3 step 1: one log start naming the pm5all halo draw (log only, no fix). Cold det; window 182 to 190 covers shots 0000 to 0008 of battle_start_pm5all.",
-      "subject": "Battle scene (kmr_03, one Goomba), cold det start, pm5all, frames 182 to 189 (no shots: a shot file per frame is too slow for the window). pm5draw log: per program 5 model draw with a vertex flag above 0 (producer, npal, vmax, screen box of flag 0 vertices, uvso/cmul/cadd, zmix, lflag, fogu), and a pm5sum line per frame (use5 draws, vflag>0 draws).",
-      "proves": "FB-3 halo: the use5 draws (pm5all) that cover x185-202 y4-127 named by value (npal, vflag max, pm5 uniforms).",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 det fixedseed fast fs1off pm5all pm5draw phase loglevel=debug",
-      "extra": [
-        "-NoWarm"
-      ],
-      "until": "pm5sum f188 use5",
-      "cap": 45,
-      "deadline": 40,
-      "first_marker": "warp: kmr_03 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "frame 188 sum",
-          "regex": "pm5sum f188 use5"
-        }
-      ]
-    },
-    {
       "name": "battle_start_t1cold",
       "status": "unverified",
       "subject": "Battle scene (one Goomba on kmr_03), cold det start, shot 182. t1log: one t1draw line per native tex1 draw (u1 words and uvx sent). pm4 for unlit draws, pm5 tex1 for lit draws.",
       "proves": "FB-3 part 1: pm5 tex1 native draws reproduce the pm4 picture (unlit draws) and send the unit 1 uv map (uvx).",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det fixedseed fast fs1off t1log loglevel=debug",
-      "extra": [
-        "-NoWarm"
-      ],
-      "until": "shot \\d+ frame 182\\b",
-      "cap": 60,
-      "deadline": 45,
-      "first_marker": "warp: kmr_03 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "frame 182",
-          "regex": "shot \\d+ frame 182\\b"
-        }
-      ],
-      "reason": "FB-3 part 1 cold det pair: same build, differs only in pm5all."
-    },
-    {
-      "name": "battle_start_t1cold_pm5all",
-      "status": "unverified",
-      "subject": "Battle scene as battle_start_t1cold with the pm5all switch: unlit model draws take program 5. Gate: shots equal battle_start_t1cold (pm5 tex1 == pm4 tex1 on unlit draws).",
-      "proves": "FB-3 part 1: pm5 tex1 native draws reproduce the pm4 picture (unlit draws) and send the unit 1 uv map (uvx).",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det fixedseed fast fs1off t1log loglevel=debug pm5all",
       "extra": [
         "-NoWarm"
       ],
@@ -9953,30 +9357,6 @@
       "reason": "FB-3 tex1 subject search: the tour10 list with t1log and the cold det switches. Cap 90 as tour10 (10 map changes; the until line is the tour end)."
     },
     {
-      "name": "tour10_t1cold_pm5all",
-      "status": "unverified",
-      "subject": "Tour of 10 maps (tour10 list via tour=@tour_fb3_t1.txt), cold det start, pm5all (unlit model draws take program 5). t1log: use5 1 lines = the tex1 model draws in program 5 with the u1 words and uvx. Tex1 subject search: the first map with such a draw.",
-      "proves": "FB-3 part 1 tex1 subject search with pm5all: which maps have a tex1 draw in program 5 (use5 1 with has_uvx).",
-      "debug": "warp=mac_00:4 story=ch0_toad_town tour=@tour_fb3_t1.txt shots shotwin=999999:1 shotmode=4:21 phase phasecsv det fixedseed fast fs1off t1log loglevel=debug pm5all",
-      "until": "tour: done",
-      "cap": 90,
-      "deadline": 20,
-      "first_marker": "warp: mac_00 entry 4",
-      "expects": "tour",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_00 entry 4"
-        },
-        {
-          "name": "tour done",
-          "regex": "tour: done, 10 maps"
-        }
-      ],
-      "reason": "FB-3 tex1 subject search (pm5all). Default tour10_t1cold gave 0 use5 tex1 lines on all 10 maps: the tex1 pm5 draws need pm5all or fog. Cap 90 as tour10 (10 map changes)."
-    },
-    {
       "name": "spot_sbk56_t1det",
       "status": "unverified",
       "subject": "sbk_56 (Mario at pos 20 0 440), cold det start, shots at frames 200 to 205. t1log: use5 1 lines = tex1 raw draws in program 5 (u1 words, uvx). FB-3 tex1 subject: sbk_56 had 2116 tex1 refusals in spot_sbk56_notex1nat.",
@@ -10003,62 +9383,6 @@
         }
       ],
       "reason": "FB-3 part 1 tex1 subject (sbk_56, cold det). Cap 25 as the other det spots."
-    },
-    {
-      "name": "spot_sbk56_t1det_notex1nat",
-      "status": "unverified",
-      "subject": "sbk_56 (Mario at pos 20 0 440), cold det start, shots at frames 200 to 205, notex1nat: every tex1 draw takes the walker (CPU) path. The reference of spot_sbk56_t1det (the pre-FB-3 tex1 refusal rule).",
-      "proves": "FB-3 part 1 reference: tex1 draws through the walker (the pre-row refusal) on the same build, for the pixel comparison with the native tex1 draws.",
-      "debug": "warp=sbk_56:0 pos=20:0:440 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det t1log notex1nat",
-      "extra": [
-        "-Turbo",
-        "-NoWarm"
-      ],
-      "until": "shot \\d+ frame 205",
-      "cap": 25,
-      "deadline": 20,
-      "first_marker": "warp: sbk_56 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: sbk_56 entry 0"
-        },
-        {
-          "name": "shot 205",
-          "regex": "shot \\d+ frame 205"
-        }
-      ],
-      "reason": "FB-3 part 1 reference for spot_sbk56_t1det (the walker tex1 path, the pre-row rule)."
-    },
-    {
-      "name": "spot_mac01_det_pm5all",
-      "status": "unverified",
-      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start, pm5all (unlit model draws take program 5), shots at frames 200 to 205. FB-3 part 1 mac_01 gate: shots equal spot_mac01_det (pm4) of the same build.",
-      "proves": "FB-3 part 1 gate: pm5 unlit model draws reproduce the pm4 picture on mac_01 (0 px).",
-      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det pm5all",
-      "extra": [
-        "-Turbo",
-        "-NoWarm"
-      ],
-      "until": "shot \\d+ frame 205",
-      "cap": 25,
-      "deadline": 20,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_01 entry 0"
-        },
-        {
-          "name": "shot 205",
-          "regex": "shot \\d+ frame 205"
-        }
-      ],
-      "reason": "FB-3 part 1 mac_01 gate (cold det, pm5all against pm4 on the same build)."
     }
   ]
 }

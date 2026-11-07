@@ -1,6 +1,6 @@
 /* nd_geom.c: the geometry group (plan_s10_path group G, GM-2). G_VTX (vertex load to the ring) and G_TRI1/G_TRI2 (draw_tri):
  * the triangle path, its clip and cull helpers, the epoch and state checks. Cut from pm_gbi.c and nd_walk.c without logic change (D12).
- * The CPU-only functions (draw_tri_cpu, xform_vtx, vert_color, vert_uv, pack_color, lit_color, fold_axis) stay in pm_gbi.c until GM-3. */
+ * fold_axis stays in pm_gbi.c (the window fold of the rectangle path, used by nd_rect.c). */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -17,18 +17,6 @@
 
 typedef NdGvP GvP;
 
-/* Same bits as libultraship, except the near plane, which they leave commented out.
- * A triangle is dropped only when every corner is off the same side. */
-int clip_bits(const ClipV* p) {
-    int b = 0;
-    float w = p->w;
-    if (p->x < -w) b |= 1;
-    if (p->x > w) b |= 2;
-    if (p->y < -w) b |= 4;
-    if (p->y > w) b |= 8;
-    if (p->z > w) b |= 32;
-    return b;
-}
 
 int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
     int b = 0;
@@ -42,7 +30,7 @@ int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip posi
 }
 
 
-/* FLK1: screen area sign of a triangle from clip positions (x y z w, the ClipV and vert_p layout). Both copies of the cull test use it. */
+/* FLK1: screen area sign of a triangle from clip positions (x y z w, the vert_p layout). Both copies of the cull test use it. */
 float cull_cross(const float* p1, const float* p2, const float* p3) {
     float ex1 = p1[0] * p2[3] - p2[0] * p1[3], ey1 = p1[1] * p2[3] - p2[1] * p1[3];
     float ex2 = p3[0] * p2[3] - p2[0] * p3[3], ey2 = p3[1] * p2[3] - p2[1] * p3[3];
@@ -118,16 +106,6 @@ void gv_xf(int sl) {
         vert_cb[sl] = (unsigned char)clip_bits4(p);
         gv_xf_n++;
     }
-    {
-        unsigned tss = vert_tss[sl];
-        vert_st[sl][0] = (float)r->v.tc[0] * (float)(tss >> 16) / 65536.f;
-        vert_st[sl][1] = (float)r->v.tc[1] * (float)(tss & 0xffffu) / 65536.f;
-        if (vert_litf[sl] & 3) { /* GV5: a vertex that was loaded lit goes to the GPU raw, the CPU path makes its colour from the stored normal matrix (the lights are the ones of the load: lit_freeze) */
-            vert_c[sl] = lit_color(r, gm_nrm[vert_gmi[sl]], (vert_litf[sl] & 2) != 0);
-            if (tg_ok) { vert_st[sl][0] = tg_s; vert_st[sl][1] = tg_t; }
-        } else
-        vert_c[sl] = ((unsigned)r->v.cn[0] << 24) | ((unsigned)r->v.cn[1] << 16) | ((unsigned)r->v.cn[2] << 8) | (unsigned)r->v.cn[3];
-    }
     vert_gvf[sl] = 3;
 }
 
@@ -152,7 +130,7 @@ int gv_fog_gpu_ok(void) { return pm_gpu_gv5_ok() && pm_gpu_gv_zcoef(NULL, NULL);
  * only (fallback reason, cull mode, the combiner, texture and render sync, the draw parameters) is made once per epoch and per texture scale, not per triangle. */
 unsigned gv_epoch = 1, ep_epoch; unsigned ep_osc, ep_fl, ep_n, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
 
-int ep_why, ep_ct, ep_cullboth, ep_open;
+int ep_why, ep_ct, ep_cullboth, ep_open, ep_t1f; /* ep_t1f: TEXEL1 reads an off-screen window: gv_tri folds the window per triangle (t1_fold_tri) */
 
 GvP ep_p;
 
@@ -174,13 +152,17 @@ int gv_state_why(int* ct, int* both) {
 void gv_epoch_enter(void) {
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
+    ep_t1f = 0;
     if (ep_why < 0 && !ep_cullboth) {
         ep_fl = tri_flags();
         ensure_tile(nd_ws.use_t1 ? 1 : 0);
         dual_bind();
         sync_render();
-        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). A TEXEL1 that is an off-screen slot needs the fold of the window (t1_fold) per draw: the CPU path. */
-        if (plan_active && cur_plan.uses_tex1 && (!nd_ws.td[0].valid || !nd_ws.td[1].valid || pm_tex_aux_off_idx() >= 0)) ep_why = GVR_TEX1;
+        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
+        if (plan_active && cur_plan.uses_tex1) {
+            if (!nd_ws.td[0].valid || !nd_ws.td[1].valid) ep_why = GVR_TEX1;
+            else if (pm_tex_aux_off_idx() >= 0) ep_t1f = 1;
+        }
     }
     ep_epoch = gv_epoch;
     ep_pepoch = 0;
@@ -215,6 +197,11 @@ int gv_tri(const int* idx) {
             pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
             ep_pepoch = gv_epoch; ep_ptss = tss;
         }
+        if (ep_t1f) {
+            if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) & 2) { gv_fb[GVR_TEX1]++; PH_ADD(C_GVFB, 1); return 0; } /* a texgen vertex keeps the refusal */
+            unsigned rt[3] = { vert_ring[a], vert_ring[b], vert_ring[c] };
+            t1_fold_tri(rt, tss); /* a changed window map flushes the open batch (flush_gen), a new batch opens below */
+        }
         ep_n++;
         if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && pm_gpu_gappend((unsigned)vert_ring[a], (unsigned)vert_ring[b], (unsigned)vert_ring[c], vert_gmi[a], vert_gmi[b], vert_gmi[c])) {
             gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
@@ -237,6 +224,15 @@ int gv_tri(const int* idx) {
 }
 
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
+unsigned tri_drop[2]; /* DEL: triangles dropped at the draw_tri drop site, printed as tridrop in rect_log */
+/* DEL: one tridrop line per rect_log: triangles dropped since the last line (tri_drop, reset here) and the gv_fb reasons as deltas (gv_fb is not reset: other readers). */
+void nd_tridrop_log(unsigned f) {
+    static unsigned gvfb_snap[GVR_N];
+    pm_log_d("tridrop f%u none %u scr %u tss %u lit %u fog %u zmark %u tex1 %u refuse %u t1fold %u", f, tri_drop[0], gv_fb[GVR_SCR] - gvfb_snap[GVR_SCR], gv_fb[GVR_TSS] - gvfb_snap[GVR_TSS], gv_fb[GVR_LIT] - gvfb_snap[GVR_LIT], gv_fb[GVR_FOG] - gvfb_snap[GVR_FOG], gv_fb[GVR_ZMARK] - gvfb_snap[GVR_ZMARK], gv_fb[GVR_TEX1] - gvfb_snap[GVR_TEX1], gv_fb[GVR_REFUSE] - gvfb_snap[GVR_REFUSE], t1fold_n);
+    t1fold_n = 0;
+    memcpy(gvfb_snap, gv_fb, sizeof gvfb_snap);
+    tri_drop[0] = tri_drop[1] = 0;
+}
 int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 void pm_gpu_cen_mark(unsigned bit); /* CEN-1a (pm_gpu.c) */
 void draw_tri(unsigned w);
@@ -266,8 +262,9 @@ void draw_tri(unsigned w) {
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
     }
-    draw_tri_cpu(idx);
-    pm_gpu_cen_mark(8u); /* CEN-1a: CEN_FB_RING, a CPU triangle of this batch (the ring did not take it) */
+    /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and gv_tri refused (gv_fb names why) */
+    tri_drop[(vert_ring[i0] == GV_NONE || vert_ring[i1] == GV_NONE || vert_ring[i2] == GV_NONE) ? 0 : 1]++;
+    n_drop++;
 }
 
 void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */
@@ -349,7 +346,7 @@ void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (c
                 st_vx++;
                 continue;
             }
-            gbi_vtx_cpu1(&src[i], v0 + i);
+            vert_gvf[v0 + i] = 3;
         }
     }
     if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;

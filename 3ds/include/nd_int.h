@@ -34,6 +34,9 @@ unsigned rgba_from_5551(unsigned c);
 int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out);
 void dual_bind(void);
 void t1_fold(float u0, float u1, float v0, float v1);
+void t1_fold_tri(const unsigned ri[3], unsigned tss);
+extern unsigned t1fold_n; /* t1_fold calls that changed the map, per rect_log line */
+extern int ep_t1f;
 int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd);
 int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd);
 
@@ -74,7 +77,6 @@ void gbi_moveword(u32 w0, u32 w1);
 void gbi_popmtx(u32 w1);
 void gbi_setcimg(u32 w0, u32 w1);
 void gbi_setenv(u32 w1);
-void gbi_vtx_cpu1(const Vtx* s, unsigned k);
 void gv_streak_flush(void);
 void gv_streak_op(unsigned op);
 void load_mtx(u32 w0, u32 w1, u32 hdr);
@@ -307,10 +309,6 @@ void dlc_report(void);
 /* WK-3 (nd_target.c): the colour image role and the z helpers, read by pm_gbi.c and the rect and state modules. */
 float prim_ndc_z(void);
 unsigned word_5551(unsigned rgba);
-typedef struct {
-    float x, y, z, w, u, v, r, g, b, a;
-} ClipV; /* the clip vertex of the triangle path (pm_gbi.c CPU path and nd_geom.c) */
-
 /* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
 void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list);
 void draw_tri(unsigned w);
@@ -327,7 +325,6 @@ int gv_fog_gpu_ok(void);
 int gv_state_why(int* ct, int* both);
 void gv_epoch_enter(void);
 int gv_tri(const int* idx);
-int clip_bits(const ClipV* p);
 float cull_cross(const float* p1, const float* p2, const float* p3);
 void ep_flush_stats(void);
 extern int tri_prep_ok, lit_pending, ep_why, ep_ct, ep_cullboth;
@@ -339,14 +336,11 @@ enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_
 #define GP_LAP(id) do { if (gp_on()) { unsigned n_ = pm_ticks(); gp_acc[id] += n_ - gp_last; gp_last = n_; } } while (0)
 extern unsigned gp_acc[8], gp_last;
 extern unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n;
+extern unsigned tri_drop[2];
 extern unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
 extern unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri, st_gpu_tri, dlc_dirty;
 extern u8 vert_gvf[64];
-extern float vert_st[64][2], tg_s, tg_t;
-extern unsigned vert_c[64];
-extern int tg_ok, pm_nolight;
-unsigned lit_color(const Vtx* v, const float m[4][4], int texgen);
-void draw_tri_cpu(const int* idx);
+extern int pm_nolight;
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 typedef struct {
     unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch, xgrp;

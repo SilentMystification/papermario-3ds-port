@@ -86,9 +86,9 @@ float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once wh
  * per vertex transform of PO2, so the decisions are the same. Per slot: ring index, matrix table index, texture scale (s and t) at the load. */
 /* GV1 (switch gv1, default off, nogv1 turns it off): the full GPU geometry path. G_VTX of an unlit load copies the 16 byte Vtx to the ring and makes only the reject bits.
  * A triangle of ring vertices goes to the GPU as three indices. The GPU transforms, clips and culls. The CPU path stays for the rare cases and reads the ring copy
- * (gv_xf makes vert_p, vert_st and vert_c on demand). It replaces gpuvtx (PO3b) when both are on. */
+ * (gv_xf makes vert_p on demand). It replaces gpuvtx (PO3b) when both are on. */
 u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
-u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. */
+u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = the ring copy's S, T and colour read (gv_xf, GM-3). 3 for every vertex made. */
 unsigned seam_obj, seam_clip; /* SEAM: CPU path triangles by position route, `seamstat` logs them */
 unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n;
 unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
@@ -178,87 +178,13 @@ void sync_legacy(void) {
 NdLight lt[9];
 unsigned lt_n;
 s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
-float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
-int tg_ok;
-float tg_s, tg_t; /* T01: texgen result of the last vert_color call */
-unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex is loaded, as the RSP does */
 
 /* L01: RSP lighting. The normal goes through the model view matrix, then colour = ambient + sum(light colour * max(0, normal . direction)). Alpha stays the vertex alpha.
  * Debug switch nolight keeps the old fixed light for an A/B. */
 int pm_nolight = -1; /* F11-10: -1 = read the switch at first use, the Options row sets 0 or 1 */
-unsigned lit_color(const Vtx* v, const float m[4][4], int texgen) {
-    tg_ok = 0;
-    {
-        float nx = pm_f127[(unsigned char)v->v.cn[0]];
-        float ny = pm_f127[(unsigned char)v->v.cn[1]];
-        float nz = pm_f127[(unsigned char)v->v.cn[2]];
-        if (pm_nolight < 0) pm_nolight = pm_debug_has("nolight");
-        if (pm_nolight) {
-            float d = nx * 0.25f + ny * 0.85f + nz * 0.45f;
-            if (d < 0.f) d = 0.f;
-            if (d > 1.f) d = 1.f;
-            unsigned c = (unsigned)((0.35f + 0.65f * d) * 255.f);
-            return (c << 24) | (c << 16) | (c << 8) | 255u;
-        }
-        float tx = nx * m[0][0] + ny * m[1][0] + nz * m[2][0];
-        float ty = nx * m[0][1] + ny * m[1][1] + nz * m[2][1];
-        float tz = nx * m[0][2] + ny * m[1][2] + nz * m[2][2];
-        float l2 = tx * tx + ty * ty + tz * tz;
-        if (l2 > 0.f) { float k = 1.f / sqrtf(l2); tx *= k; ty *= k; tz *= k; }
-        if (texgen) { /* T01: F3DEX2 texgen is in the lighting path. Non-linear: (dot + 1) / 4 * scale. G_TEXTURE_GEN_LINEAR has no user in src */
-            float dx = (tx * lk[0][0] + ty * lk[0][1] + tz * lk[0][2]) / 127.f;
-            float dy = (tx * lk[1][0] + ty * lk[1][1] + tz * lk[1][2]) / 127.f;
-            tg_s = (dx + 1.f) / 4.f * (float)nd_ws.tex_ss;
-            tg_t = (dy + 1.f) / 4.f * (float)nd_ws.tex_ts;
-            tg_ok = 1;
-        }
-        float r = lt[lt_n].col[0], g = lt[lt_n].col[1], b = lt[lt_n].col[2];
-        for (unsigned i = 0; i < lt_n; i++) {
-            float d = (tx * lt[i].dir[0] + ty * lt[i].dir[1] + tz * lt[i].dir[2]) / 127.f;
-            if (d <= 0.f) continue;
-            r += lt[i].col[0] * d; g += lt[i].col[1] * d; b += lt[i].col[2] * d;
-        }
-        if (r > 255.f) r = 255.f;
-        if (g > 255.f) g = 255.f;
-        if (b > 255.f) b = 255.f;
-        return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)v->v.cn[3];
-    }
-}
-static unsigned vert_color(const Vtx* v, const float m[4][4]) {
-    tg_ok = 0;
-    if (nd_ws.geom & G_LIGHTING) return lit_color(v, m, (nd_ws.geom & G_TEXTURE_GEN) != 0);
-    return ((unsigned)v->v.cn[0] << 24) | ((unsigned)v->v.cn[1] << 16) |
-           ((unsigned)v->v.cn[2] << 8) | (unsigned)v->v.cn[3];
-}
-
-static void vert_uv(const float* tc, float* u, float* vcoord) {
-    int tw = 1, th = 1;
-    pm_tex_size(&tw, &th);
-    if (tw < 1) tw = 1;
-    if (th < 1) th = 1;
-    /* SetTileSize's origin is the start of the uploaded window. Absolute
-     * vertex UVs have to be moved into that window, same as a texrect. */
-    /* V12: the tile shift scales the coordinate before the tile origin is subtracted. */
-    unsigned st = nd_ws.use_t1 ? 1 : 0;
-    float ms = shift_mul(nd_ws.tst1.tile_shift[st][0]);
-    float mt = shift_mul(nd_ws.tst1.tile_shift[st][1]);
-    *u = (tc[0] / 32.f * ms - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
-    *vcoord = (tc[1] / 32.f * mt - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
-}
 
 
-static unsigned pack_color(const ClipV* v) {
-    int r = (int)v->r, g = (int)v->g, b = (int)v->b, a = (int)v->a;
-    if (r < 0) r = 0;
-    if (g < 0) g = 0;
-    if (b < 0) b = 0;
-    if (a < 0) a = 0;
-    if (r > 255) r = 255;
-    if (g > 255) g = 255;
-    if (b > 255) b = 255;
-    if (a > 255) a = 255;
-    return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)a;
-}
+
 
 const float ident_m[4][4] = {
     { 1.f, 0.f, 0.f, 0.f },
@@ -267,18 +193,6 @@ const float ident_m[4][4] = {
     { 0.f, 0.f, 0.f, 1.f },
 };
 
-/* The RSP multiplies when the vertex is loaded. Later matrices do not move it. */
-static void xform_vtx(const float* p, const float* st, unsigned c, ClipV* o) {
-    o->x = p[0];
-    o->y = p[1];
-    o->z = p[2];
-    o->w = p[3];
-    vert_uv(st, &o->u, &o->v);
-    o->r = (float)((c >> 24) & 255u);
-    o->g = (float)((c >> 16) & 255u);
-    o->b = (float)((c >> 8) & 255u);
-    o->a = (float)(c & 255u);
-}
 
 /* Cut only corners that passed behind the eye. A corner that is merely off the
  * side of the screen keeps its projected position, so a pan cannot swap the
@@ -423,176 +337,6 @@ extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHe
 
 
 
-__attribute__((noinline)) void draw_tri_cpu(const int* idx) {
-    ClipV poly[12];
-    int n, i;
-    int early = 0; /* PO3b2, DIP1: reject and cull from the clip positions of PO2 and the clip bits made at G_VTX, before the statistics, ensure_tile, dual_bind and any ClipV. Same tests and counters as before except the debug statistics (tris lit fog), which now count the triangles that pass. */
-    if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
-        for (i = 0; i < 3; i++)
-            if ((vert_gvf[idx[i]] & 1) == 0) gv_xf(idx[i]);
-        const float *a = vert_p[idx[0]], *b = vert_p[idx[1]], *c = vert_p[idx[2]];
-        early = 1;
-        st_cor += 3;
-        if (!have_sample && a[3] != 0.f) {
-            sample_x = (int)(a[0] / a[3] * 100.f);
-            have_sample = 1;
-        }
-        if (vert_cb[idx[0]] & vert_cb[idx[1]] & vert_cb[idx[2]] & 0x2f) {
-            n_out++;
-            GP_LAP(GPL_EARLY);
-            return;
-        }
-        if (nd_ws.geom & G_CULL_BOTH) {
-            float cross = cull_cross(a, b, c);
-            unsigned ct = nd_ws.geom & G_CULL_BOTH;
-            if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
-                n_out++;
-                GP_LAP(GPL_EARLY);
-                return;
-            }
-        }
-        {
-            const float* q[3] = { a, b, c };
-            for (int k = 0; k < 3; k++) {
-                float pw = q[k][3];
-                if (pw > 0.05f && q[k][0] >= -pw && q[k][0] <= pw && q[k][1] >= -pw && q[k][1] <= pw) n_keep++;
-            }
-        }
-    }
-    GP_LAP(GPL_EARLY);
-    GP_LAP(GPL_A);
-    tri_stats();
-    GP_LAP(GPL_A);
-    ensure_tile(nd_ws.use_t1 ? 1 : 0);
-    GP_LAP(GPL_ENSURE);
-    dual_bind();
-    GP_LAP(GPL_DUAL);
-    GP_LAP(GPL_EARLY);
-    for (i = 0; i < 3; i++) {
-        if (!early) st_cor++;
-        if (vert_gvf[idx[i]] != 3) gv_xf(idx[i]);
-        xform_vtx(vert_p[idx[i]], nd_ws.tex_on ? vert_st[idx[i]] : st_off, vert_c[idx[i]], &poly[i]);
-        if (!nd_ws.tex_on) { /* H06b1: texel (0, 0), the centre of the first texel */
-            int tw, th;
-            pm_tex_size(&tw, &th);
-            if (tw > 0 && th > 0) { poly[i].u += 0.5f / (float)tw; poly[i].v += 0.5f / (float)th; }
-        }
-        if (vert_scr[idx[i]]) { /* B5: screen position from G_MODIFYVTX, the inverse of the viewport map (x, y only, z and w kept in ratio) */
-            ClipV* p = &poly[i];
-            p->z = p->w > 0.f ? p->z / p->w : 0.f;
-            p->w = 1.f;
-            p->x = ((float)vert_sx[idx[i]] / 4.f - vp_tx) / vp_sx;
-            p->y = (vp_ty - (float)vert_sy[idx[i]] / 4.f) / vp_sy;
-        }
-    }
-    if (plan_active && cur_plan.uses_tex1) {
-        float u0 = poly[0].u, u1 = poly[1].u, u2 = poly[2].u, v0 = poly[0].v, v1 = poly[1].v, v2 = poly[2].v;
-        t1_fold(fminf(u0, fminf(u1, u2)), fmaxf(u0, fmaxf(u1, u2)), fminf(v0, fminf(v1, v2)), fmaxf(v0, fmaxf(v1, v2)));
-    }
-    if (!early && !have_sample && poly[0].w != 0.f) {
-        sample_x = (int)(poly[0].x / poly[0].w * 100.f);
-        have_sample = 1;
-    }
-    if (!early && (clip_bits(&poly[0]) & clip_bits(&poly[1]) & clip_bits(&poly[2]))) {
-        n_out++;
-        return;
-    }
-    if (!early && (nd_ws.geom & G_CULL_BOTH)) {
-        /* V02: the RSP culls by the sign of the screen space area (G_CULL_FRONT / G_CULL_BACK / both), same test as
-         * libultraship. A one sided wall (the cliff skirt around the Mario house yard, seen from inside) draws only
-         * if this test runs. */
-        float cross = cull_cross((const float*)&poly[0], (const float*)&poly[1], (const float*)&poly[2]);
-        unsigned ct = nd_ws.geom & G_CULL_BOTH;
-        if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
-            n_out++;
-            return;
-        }
-    }
-    if (!early) {
-        int k;
-        for (k = 0; k < 3; k++) {
-            float pw = poly[k].w;
-            if (pw > 0.05f && poly[k].x >= -pw && poly[k].x <= pw && poly[k].y >= -pw && poly[k].y <= pw)
-                n_keep++;
-        }
-    }
-    gp3_t0_surv();
-    n_in++;
-    n = 3;
-    if (comb_mode5 && !plan_active) {
-        float en[4];
-        unpack8(nd_ws.envc, en);
-        for (i = 0; i < n; i++) { poly[i].r = en[0] * 255.f; poly[i].g = en[1] * 255.f; poly[i].b = en[2] * 255.f; poly[i].a = en[3] * 255.f; }
-    }
-    sync_render();
-    if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL))) {
-        /* X01: depth source G_ZS_PRIM, every pixel gets the primitive depth (the battle start swirl and other stencil passes) */
-        float zn = prim_ndc_z();
-        for (i = 0; i < n; i++) poly[i].z = zn * poly[i].w;
-    } else if (img_role(0) == ROLE_DEPTH) {
-        /* B3: case 6, the combiner is PRIM. B3b: the vertices keep their own depth, the GPU tests it against the world and writes zn there */
-        pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ws.prim)) - 1.f);
-    }
-    if (plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE) {
-        /* S25: the vertex colour carries a constant (PRIM, ENV or PRIM_LOD_FRAC) because the shade is not read. */
-        float vc[4];
-        unpack8(cur_plan.vtx, vc);
-        for (i = 0; i < n; i++) { poly[i].r = vc[0] * 255.f; poly[i].g = vc[1] * 255.f; poly[i].b = vc[2] * 255.f; poly[i].a = vc[3] * 255.f; }
-    } else if (!comb_alpha_shade && !(plan_active && cur_plan.uses_sha)) {
-        for (i = 0; i < n; i++) poly[i].a = 255;
-    }
-    if (fogmix_on && (nd_ws.geom & G_FOG)) { /* F08: RSP fog factor, clamp(z / w * fm + fo) replaces the vertex alpha */
-        for (i = 0; i < n; i++) {
-            float f = (poly[i].w > 0.f ? poly[i].z / poly[i].w : poly[i].z * 32767.f) * fog_fm + fog_fo;
-            poly[i].a = f < 0.f ? 0.f : f > 255.f ? 255.f : f;
-        }
-    }
-    {
-        int boost = dual_on && nd_ws.tst1.comb2_a == G_CCMUX_SHADE && nd_ws.tst1.comb2_b == G_CCMUX_ENVIRONMENT &&
-                    nd_ws.tst1.comb2_c == G_CCMUX_COMBINED && nd_ws.tst1.comb2_d == G_CCMUX_COMBINED;
-        pm_gpu_set_rgb_scale(boost ? 2 : 1);
-        if (!boost) goto no_boost;
-    }
-    {
-        /* Cycle 2 is (SHADE - ENV) * COMBINED + COMBINED = COMBINED * (SHADE - ENV + 1), up to 2.
-         * The texture stage multiplies by 2, so the vertex carries half of it. */
-        float en[4];
-        unpack8(nd_ws.envc, en);
-        for (i = 0; i < n; i++) {
-            float* ch[3] = { &poly[i].r, &poly[i].g, &poly[i].b };
-            for (int k = 0; k < 3; k++) {
-                float f = (*ch[k] / 255.f - en[k] + 1.f) / 2.f;
-                *ch[k] = (f < 0.f ? 0.f : f > 1.f ? 1.f : f) * 255.f;
-            }
-        }
-    }
-no_boost:
-    GP_LAP(GPL_OLD);
-    {   /* SEAM: a triangle the raw path refused still takes its position from the same GPU matrix as the raw path (post x game, one dp4 on the object vertex). Positions are then
-         * bit-identical along a shared edge. Clip coordinates (CPU product, then the post matrix) round differently and left one pixel gaps. Not for a screen position (G_MODIFYVTX),
-         * a primitive depth, vertices of different matrices, vertices not in the ring, or an orthographic matrix (UI). */
-        const unsigned g = vert_gmi[idx[0]];
-        int obj = !(nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && g != GV_NONE && vert_gmi[idx[1]] == g && vert_gmi[idx[2]] == g;
-        for (i = 0; obj && i < 3; i++) obj = vert_ring[idx[i]] != GV_NONE && !vert_scr[idx[i]];
-        if (obj) { const float(*m)[4] = gm_tab[g]; obj = m[0][3] != 0.f || m[1][3] != 0.f || m[2][3] != 0.f; }
-        if (obj) {
-            const Vtx* r0 = (const Vtx*)(pm_gpu_gring() + 16u * vert_ring[idx[0]]);
-            const Vtx* r1 = (const Vtx*)(pm_gpu_gring() + 16u * vert_ring[idx[1]]);
-            const Vtx* r2 = (const Vtx*)(pm_gpu_gring() + 16u * vert_ring[idx[2]]);
-            pm_gpu_set_mvp(gm_tab[g], vp_sx, vp_sy, vp_tx, vp_ty);
-            pm_gpu_tri3d((float)r0->v.ob[0], (float)r0->v.ob[1], (float)r0->v.ob[2], poly[0].u, poly[0].v, pack_color(&poly[0]),
-                         (float)r1->v.ob[0], (float)r1->v.ob[1], (float)r1->v.ob[2], poly[1].u, poly[1].v, pack_color(&poly[1]),
-                         (float)r2->v.ob[0], (float)r2->v.ob[1], (float)r2->v.ob[2], poly[2].u, poly[2].v, pack_color(&poly[2]));
-            seam_obj++;
-            return;
-        }
-    }
-    seam_clip++;
-    pm_gpu_set_mvp(ident_m, vp_sx, vp_sy, vp_tx, vp_ty);
-    pm_gpu_vert_clip(poly[0].x, poly[0].y, poly[0].z, poly[0].w, poly[0].u, poly[0].v, pack_color(&poly[0]));
-    pm_gpu_vert_clip(poly[1].x, poly[1].y, poly[1].z, poly[1].w, poly[1].u, poly[1].v, pack_color(&poly[1]));
-    pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
-}
 
 
 
@@ -743,23 +487,6 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
 
 
 
-void gbi_vtx_cpu1(const Vtx* s, unsigned k) {
-vert_gvf[k] = 3;
-vert_st[k][0] = (float)s->v.tc[0] * (float)nd_ws.tex_ss / 65536.f; /* T02: the RSP scales S and T */
-vert_st[k][1] = (float)s->v.tc[1] * (float)nd_ws.tex_ts / 65536.f;
-vert_c[k] = vert_color(s, nd_mv[nd_mv_sp]);
-if (tg_ok) { vert_st[k][0] = tg_s; vert_st[k][1] = tg_t; }
-{   /* PO2: the same products as the old per corner code, once per vertex */
-    const float(*m)[4] = combined;
-    float x = (float)s->v.ob[0], y = (float)s->v.ob[1], z = (float)s->v.ob[2];
-    vert_p[k][0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
-    vert_p[k][1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
-    vert_p[k][2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
-    vert_p[k][3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-    vert_cb[k] = (unsigned char)clip_bits4(vert_p[k]);
-    st_vx++;
-}
-}
 
 
 
