@@ -44,6 +44,8 @@ void nd_comb_decide(const NdCombIn* in, NdCombOut* out) { (void)in; memset(out, 
   gcc -m32 -Wall -Wextra -Werror $FP -DF3DEX_GBI_2 -D_LANGUAGE_C -D_MIPS_SZLONG=32 -I include -I 3ds/include -I 3ds/stub_include -o /tmp/ndmd 3ds/tools/nd_model_test.c 3ds/src/nd_model.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o /tmp/ndcombs.c -lm
   /tmp/ndmd
   /tmp/ndseam assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin 3ds/tests/ndref/ndref_*.bin
+  gcc -m32 -Wall -Wextra -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I 3ds/include -I 3ds/stub_include -I 3ds/tools -o /tmp/ndrec 3ds/tools/nd_rec_test.c 3ds/tools/nd_rec_bridge.c 3ds/tools/nd_gbi_ref.c 3ds/src/nd_state.c
+  /tmp/ndrec
 ' || fail=1
 [ "$fail" = 0 ] && echo "ND HOST TESTS PASS" || echo "ND HOST TESTS FAIL"
 exit $fail

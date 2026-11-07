@@ -13,6 +13,13 @@ NdSt nd_st;
 
 void nd_st_reset(void) { memset(&nd_st, 0, sizeof nd_st); }
 
+/* CORE-1: the record-mode leaf (nd_rec.h). The ops are decoded as the bridge decodes them. Outside the main list the slots get the words
+ * (the bridge writes them); in the main list no word is written (CORE-2 gives the slots a record). */
+void nd_rec_leaf(void* at, const void* w, unsigned nops, unsigned nslots, int in_main) {
+    nd_words((const unsigned*)w, nops);
+    if (!in_main) memcpy(at, w, (size_t)nslots * 8u);
+}
+
 void nd_words(const unsigned* w, unsigned n) {
     NdSt* s = &nd_st;
     for (unsigned i = 0; i < n; i++) {
