@@ -176,7 +176,7 @@ int pm_debug_has(const char* word) {
     return r;
 }
 
-/* PG0: the words most often asked since the last report (switch gbiprof calls this every 300 frames) */
+/* PG0: the words most often asked since the last report (prof mode calls this every 300 frames) */
 void pm_debug_report(unsigned frames) {
     for (int r = 0; r < 6; r++) {
         int best = -1; unsigned bn = 0;

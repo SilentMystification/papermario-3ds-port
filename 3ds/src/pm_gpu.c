@@ -411,14 +411,14 @@ static void off_snapshot(int i) {
     GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)dst, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
 }
 
-/* PG0 (switch gbiprof): flush count by caller. The macro below records the function and line of the call. */
+/* PG0 (prof mode): flush count by caller. The macro below records the function and line of the call. */
 static const char* fl_fn = "?";
 static int fl_line;
 typedef struct { const char* fn; int line; unsigned n, e; } FlCause; /* n = flush calls, e = calls that found an empty batch */
 static FlCause fl_tab[48];
 static int fl_nt;
 static int fl_prev_rect; static unsigned fl_rects, fl_consec; /* PG0: texture rectangles, and those that follow another with no other flush call between */
-static int fl_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
+#define fl_on() (pm_ph_on)
 extern unsigned pm_frame_count(void);
 /* Debug tool, switch flushlog=<frame>: one log line per flush call of that frame (function, line, raw batch triangles, CPU vertices): finds what ends a batch. */
 static void fl_trace(int empty) {

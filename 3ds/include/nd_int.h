@@ -59,7 +59,7 @@ int clip_bits4(const float* p);
 int dlc_try(const Gfx* l);
 int ent_draw(const Gfx* rec);
 int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits);
-int gp_on(void);
+#define gp_on() (pm_ph_on) /* PG0 and PERF-GBI counters: fed in prof mode only */
 int gv_lit_ok(void);
 int is_host(u32 p);
 int lt_mem_same(u32 w0, u32 w1);
@@ -301,7 +301,6 @@ extern unsigned gp_same[8], gp_set[8];
 extern u8 seen[256];
 extern int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample, dlc_on;
 extern char stats_line[96];
-unsigned gp_period(void);
 void ep_flush_stats(void);
 void dlc_report(void);
 /* WK-3 (nd_target.c): the colour image role and the z helpers, read by pm_gbi.c and the rect and state modules. */

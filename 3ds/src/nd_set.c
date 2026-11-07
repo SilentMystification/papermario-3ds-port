@@ -18,7 +18,7 @@
 
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
-#define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (switch gbiprof) */
+#define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
 void pm_tex_set_filter(int linear);
 
 /* ST-1: globals of the setters, cut from pm_gbi.c (writer: this module) */
