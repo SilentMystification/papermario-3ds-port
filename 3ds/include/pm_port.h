@@ -148,6 +148,9 @@ void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsign
 
 void pm_game_bind(void);
 int pm_rom_init(void);
+/* BOOT-1: boot timing marks (pm_main.c). pm_boot_mark stores the svc tick of point id once; arg is the ROM byte count for PMB_ROM_READ. */
+enum { PMB_MAIN, PMB_THREAD, PMB_LOG, PMB_OPT, PMB_ROM_OPEN, PMB_ROM_READ, PMB_GFX, PMB_AUDIO, PMB_DRAW, PMB_TITLE, PMB_N };
+void pm_boot_mark(int id, unsigned arg);
 void pm_rom_drop_stat(void);
 void pm_fatal_screen(const char* msg);
 void pm_crash_selftest(void);

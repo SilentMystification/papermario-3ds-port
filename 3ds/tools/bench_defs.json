@@ -750,6 +750,49 @@
       "gates": []
     },
     {
+      "name": "boot_ms",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "purpose": "BOOT-1: cold boot timing. The boot ms line (main, log, opt, rom read, gfx, audio, first drawn frame, title; ms after main) at the first title frame.",
+      "scenario": "boot_ms",
+      "cap": 45,
+      "until": "boot ms main ",
+      "tags": [
+        "azahar",
+        "boot",
+        "timing"
+      ],
+      "log_metrics": [
+        {
+          "name": "rom_ms",
+          "regex": "boot ms main \\d+ log \\d+ opt \\d+ rom (\\d+) \\(",
+          "pick": "last"
+        },
+        {
+          "name": "rom_mbs",
+          "regex": "boot ms .* rom \\d+ \\(([\\d.]+) MB/s\\)",
+          "pick": "last"
+        },
+        {
+          "name": "first_ms",
+          "regex": "boot ms .* first (\\d+) title",
+          "pick": "last"
+        },
+        {
+          "name": "title_ms",
+          "regex": "boot ms .* title (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "title_ms",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "boot_mem",
       "kind": "azahar_stream",
       "speed": "normal",

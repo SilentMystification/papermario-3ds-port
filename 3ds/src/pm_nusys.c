@@ -9,9 +9,11 @@ static int display_on;
 
 void nuGfxInitEX2(void) {
     pm_gpu_init();
+    pm_boot_mark(PMB_GFX, 0); /* BOOT-1 */
     pm_log_console_ready(); /* CPULIM-UI: the bottom console exists now */
     pm_gbi_init();
     pm_audio_init();
+    pm_boot_mark(PMB_AUDIO, 0); /* BOOT-1 */
 }
 
 void nuGfxDisplayOff(void) { display_on = 0; }
