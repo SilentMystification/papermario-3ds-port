@@ -3015,6 +3015,91 @@
         "cold"
       ],
       "gates": []
+    },
+    {
+      "name": "tour10_t1cold_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 tex1 subject search: tour10 cold det with t1log, the t1draw lines per map (use5 1 = lit tex1 draws in program 5).",
+      "scenario": "tour10_t1cold",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour10_t1cold_pm5all_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 tex1 subject search with pm5all: tour10 cold det, the use5 1 tex1 draws (program 5) per map, and the shots of each map.",
+      "scenario": "tour10_t1cold_pm5all",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_sbk56_t1det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-3 part 1 tex1 subject: sbk_56 cold det, native tex1 draws, t1log use5 lines and shots 200 to 205.",
+      "scenario": "spot_sbk56_t1det",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_sbk56_t1det_notex1nat_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-3 part 1 reference: sbk_56 cold det with notex1nat (walker tex1), shots 200 to 205.",
+      "scenario": "spot_sbk56_t1det_notex1nat",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_det_pm5all_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-3 part 1 mac_01 gate: cold det, pm5all, shots 200 to 205 (compare with fb_mac01_det_pic of the same build).",
+      "scenario": "spot_mac01_det_pm5all",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb3"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

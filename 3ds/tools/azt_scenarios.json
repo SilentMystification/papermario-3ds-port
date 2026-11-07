@@ -9360,6 +9360,138 @@
         }
       ],
       "reason": "FB-3 part 1 cold det pair: same build, differs only in pm5all."
+    },
+    {
+      "name": "tour10_t1cold",
+      "status": "unverified",
+      "subject": "Tour of 10 maps (tour10 list), cold det start, default build (no pm5all). t1log: one t1draw line per native tex1 draw; use5 1 lines are the lit tex1 draws of program 5. Used to find the first map with a lit tex1 draw (FB-3 tex1 subject search).",
+      "proves": "FB-3 part 1 tex1 subject search: which maps send lit tex1 draws through pm5 (use5 1 with has_uvx) and the uvx and u1 words of each.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=@tour_fb3_t1.txt shots shotwin=999999:1 shotmode=4:21 phase phasecsv det fixedseed fast fs1off t1log loglevel=debug",
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done, 10 maps"
+        }
+      ],
+      "reason": "FB-3 tex1 subject search: the tour10 list with t1log and the cold det switches. Cap 90 as tour10 (10 map changes; the until line is the tour end)."
+    },
+    {
+      "name": "tour10_t1cold_pm5all",
+      "status": "unverified",
+      "subject": "Tour of 10 maps (tour10 list via tour=@tour_fb3_t1.txt), cold det start, pm5all (unlit model draws take program 5). t1log: use5 1 lines = the tex1 model draws in program 5 with the u1 words and uvx. Tex1 subject search: the first map with such a draw.",
+      "proves": "FB-3 part 1 tex1 subject search with pm5all: which maps have a tex1 draw in program 5 (use5 1 with has_uvx).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=@tour_fb3_t1.txt shots shotwin=999999:1 shotmode=4:21 phase phasecsv det fixedseed fast fs1off t1log loglevel=debug pm5all",
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done, 10 maps"
+        }
+      ],
+      "reason": "FB-3 tex1 subject search (pm5all). Default tour10_t1cold gave 0 use5 tex1 lines on all 10 maps: the tex1 pm5 draws need pm5all or fog. Cap 90 as tour10 (10 map changes)."
+    },
+    {
+      "name": "spot_sbk56_t1det",
+      "status": "unverified",
+      "subject": "sbk_56 (Mario at pos 20 0 440), cold det start, shots at frames 200 to 205. t1log: use5 1 lines = tex1 raw draws in program 5 (u1 words, uvx). FB-3 tex1 subject: sbk_56 had 2116 tex1 refusals in spot_sbk56_notex1nat.",
+      "proves": "FB-3 part 1 tex1 subject: the tex1 raw draws of program 5 on sbk_56 (use5 1 with has_uvx) and their shots; the walker reference is spot_sbk56_t1det_notex1nat.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det t1log",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "FB-3 part 1 tex1 subject (sbk_56, cold det). Cap 25 as the other det spots."
+    },
+    {
+      "name": "spot_sbk56_t1det_notex1nat",
+      "status": "unverified",
+      "subject": "sbk_56 (Mario at pos 20 0 440), cold det start, shots at frames 200 to 205, notex1nat: every tex1 draw takes the walker (CPU) path. The reference of spot_sbk56_t1det (the pre-FB-3 tex1 refusal rule).",
+      "proves": "FB-3 part 1 reference: tex1 draws through the walker (the pre-row refusal) on the same build, for the pixel comparison with the native tex1 draws.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det t1log notex1nat",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "FB-3 part 1 reference for spot_sbk56_t1det (the walker tex1 path, the pre-row rule)."
+    },
+    {
+      "name": "spot_mac01_det_pm5all",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start, pm5all (unlit model draws take program 5), shots at frames 200 to 205. FB-3 part 1 mac_01 gate: shots equal spot_mac01_det (pm4) of the same build.",
+      "proves": "FB-3 part 1 gate: pm5 unlit model draws reproduce the pm4 picture on mac_01 (0 px).",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det pm5all",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "FB-3 part 1 mac_01 gate (cold det, pm5all against pm4 on the same build)."
     }
   ]
 }
