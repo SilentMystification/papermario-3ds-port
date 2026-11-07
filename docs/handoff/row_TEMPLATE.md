@@ -1,38 +1,33 @@
 # Row <id>: <full name>
 
-(60 lines or fewer. The orchestrator copies this file to row_<id>.md and fills it. The agent reads only this file and what it names.)
+(60 lines or fewer. The agent reads only this file and what it names.)
+
+## User facts (bugs only, required)
+Trigger sequence: <inputs, menus, choices>. First wrong frame: <event or frame>. Expected look: <user words>. Reproducing scenario: <name, or "add one first">.
 
 ## Goal
-<2 to 3 lines: what changes and why.>
+<2 to 3 lines.>
 
 ## Start state
-Branch: <name>. Last commit: <hash>. Tree: <clean or named user files>.
-STATE from the previous agent (paste, 10 lines or fewer):
+Worktree build3ds/wt/<id>, branch <id> from nds1 <hash>. Copy assets/us and ver/us/build into it. STATE from the previous agent (10 lines or fewer):
 
-## Open before you start (blockers are work)
-- <blocker>: route to clear it: <command or file>.
+## Premise and its check (oracle plans)
+Premise: <the claim the plan rests on>. Check first: <log line or code read>; if it fails, hand back at once.
 
 ## Touch only
-- Files: <paths>
-- Symbols (grep, a line shift is not a stop): <symbol> in <file>
-- Plan sections to read: docs/handoff/<plan>.md section <n>
+Files: <paths>. Symbols: <symbol> in <file>.
 
 ## Done criteria (all must pass; handback only then)
-1. <gate: host test command, expected result>
-2. <scenario: powershell -File 3ds/tools/azt.ps1 <scenario> -Row <id>, the quantity and the picture that prove it>
-3. <console prof check if the user asks>
+1. <gate: command, expected result>
 Affected scenarios (no others): <list>
 
-## Rules that apply
-CLAUDE.md rules 5, 7, 9. No toggles, no stubs, no git push, no attribution. Commit after each passed row. Never commit 3ds/src/map_restore_table.c.
+## Rules
+CLAUDE.md rules 5, 7, 9, 11. PM_LANE=<id> on every build.sh and bench call. No git stash. Wait for background runs in the foreground. Commit after each passed step.
 
 ## Commands
-- Build: python 3ds/tools/gen_map_restore.py; PM_ROW=<id> sh 3ds/build.sh; then restore 3ds/src/map_restore_table.c.
-- Host tests: sh 3ds/tools/nd_host_test.sh
+- Build: python 3ds/tools/gen_map_restore.py; PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh; restore 3ds/src/map_restore_table.c.
+- Test: PM_ROW=<id> PM_LANE=<id> python 3ds/tools/bench.py run <bench> --row <id> --lane <id> --why "<text>"
 - Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <id>
 
-## Tests
-Entry point: python 3ds/tools/bench.py (process: docs/handoff/test_catalog.md, situations A to F). Name the benches here: <bench list>. Numbers go to the database, not to prose.
-
 ## At the end
-Overwrite docs/handoff/agent_<epic>.md (do not append, do not create a new file) with a STATE block at the top (10 lines or fewer): branch, last commit, done rows, open rows, next command. Delete this row file in the commit that completes the row (CLAUDE.md rule 11).
+Delete this row file in the commit that completes the row. SendMessage main "<id> ready <hash>". The orchestrator merges and removes the worktree.
