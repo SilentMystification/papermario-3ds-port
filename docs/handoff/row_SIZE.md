@@ -40,5 +40,11 @@ Files: pm_log.c, pm_gpu.c dump_shot, the until-line producers, one note in docs/
 Gate: spot_mac01_pic with prof=4 collects 6 shots and its log shows the shot lines. log5 benches still pass (pm_log_d stays off in prof mode).
 Order: SIZE-0 (this fix) first, on its own branch logevt from nds1 (worktree build3ds/wt/logevt); commit; SendMessage main "LOGEVT ready <hash>". Then rebase size1 on logevt and run the SIZE-1 pixel gates (mac_01, nok11_splash, sbk56_superblock, iwa_10, battle_start, intro_native byte-equal vs logevt base), the romdrop counter, and fix 3ds/tools/gen_effect_ld.py so it does not re-add the 109 gfx lines.
 
+## SIZE-4 low-memory hint (user, 2026-11-07)
+User: when there is not enough RAM, the error message tells the player to start the Homebrew Launcher in title (non-applet) mode, for example "Hold R while you start any game to open the Homebrew Launcher with full memory, then start Paper Mario again."
+Where: 3ds/src/pm_os.c:240-244 (nomem, "Not enough memory for the ROM: need %u MB, free %u MB", shown by rom_fail -> pm_fatal_screen). Also any other boot-time fatal for memory (grep pm_fatal_screen and the linear/heap alloc failures in pm_mem.c, pm_main.c).
+How: detect applet mode with libctru envGetAptAppId() != APPID_APPLICATION (or the heap/linear size). In applet mode append the hint (R is the Luma3DS default key; say "Hold R (the default key)"). Outside applet mode keep the plain message. Enlarge the buffer (160 is too small) and check pm_fatal_screen wraps long text on the bottom screen.
+Gate: build; Azahar run with a debug switch that forces the low-memory path (e.g. an existing romfull or a new memforce debug switch, debug tools may stay): the bottom screen shot shows the full hint text, no cut. Host or log check that applet detection reads the app id.
+
 ## Rules
 Own worktree from nds1 (branch size1). Code first (CLAUDE.md rule 5). No attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. Report the 3dsx size after each commit. The orchestrator pushes to the console when the file is at most 12.8 MB. Delete this file when SIZE-1..3 are done.
