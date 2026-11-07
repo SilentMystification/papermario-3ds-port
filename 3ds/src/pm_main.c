@@ -300,11 +300,13 @@ static unsigned pace_ticks;
  * the iteration. pm_audio_step is called once per drawn step. The main loop calls it after pm_gfx_retrace when the step sent no main task. */
 static int au_kicked;
 unsigned pm_audio_last_n; /* DET: ticks of the last audio step, the detlog line reads and clears it */
+/* DET: switch det = the frame schedule is a function of the game steps only: no FS1 skip, no interp skip, 2 audio ticks a step. */
+static int pm_det_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("det"); return v; }
 void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
     if (PMD("noaudio")) return;
-    unsigned n = pm_audio_lock() ? 2u : pm_audio_retraces();
+    unsigned n = pm_audio_lock() || pm_det_on() ? 2u : pm_audio_retraces(); /* DET: 2 a step */
     pm_audio_last_n = n;
     PH_ADD(C_ATICK, n);
     pace_ticks += n;
@@ -481,7 +483,7 @@ void pm_frame_loop(void) {
          * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
         int fs_skip = 0, fs_force_skip = 0;
-        if (ever && step_vb_ok && !fs1_off && !PMD("fast")) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
+        if (ever && step_vb_ok && !fs1_off && !PMD("fast") && !pm_det_on()) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
             fs1_steps++;
             /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
              * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
@@ -521,7 +523,7 @@ void pm_frame_loop(void) {
                 unsigned iv = vb - step_vb;
                 pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
-                pm_interp_skip = iv > PM_VBLANKS_PER_STEP; /* F06-5 */
+                pm_interp_skip = !pm_det_on() && iv > PM_VBLANKS_PER_STEP; /* F06-5; DET: the key path is never taken on the vblank count */
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */
             }
