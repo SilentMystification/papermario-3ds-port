@@ -340,6 +340,10 @@ function Get-KeepInfo([int]$k) {
 
 function Start-SlotReaper([int]$k) {
     # A hidden process closes the kept Azahar of slot k after $script:AzIdleSec idle seconds (one reaper per slot: a mutex)
+    # AZT10-2: a reaper already holds its slot mutex: no new process (a start costs about a second on every keep)
+    $held = $false
+    try { $rm = New-Object Threading.Mutex($false, "Global\pm_azahar_reaper$k"); if ($rm.WaitOne(0)) { $rm.ReleaseMutex() } else { $held = $true } } catch [Threading.AbandonedMutexException] { $held = $false }
+    if ($held) { return }
     $ps = (Get-Process -Id $PID).Path
     Start-Process $ps -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\azreap.ps1`" -Slot $k" -WindowStyle Hidden | Out-Null
 }

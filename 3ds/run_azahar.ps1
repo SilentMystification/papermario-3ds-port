@@ -393,7 +393,7 @@ $lastGrow = Get-Date
 $echoed = 0
 $marks = @()
     while (((Get-Date) - $start).TotalSeconds -lt $Timeout) {
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds 250
         if ($p.HasExited) { $reason = "Azahar exited"; break }
         if ($gdbProc -and $gdbProc.HasExited) { $reason = "gdb finished"; break }
         # Azahar shows a dialog on a guest CPU exception and the game stops: kill at once
@@ -418,7 +418,7 @@ $marks = @()
         for ($mi = $marks.Count; $mi -lt $mk.Count; $mi++) { $marks += ("{0,6:N1} s  {1}" -f ((Get-Date) - $start).TotalSeconds, $mk[$mi].Groups[1].Value) }
         if ($text.Length -gt $echoed) { Write-Host -NoNewline $text.Substring($echoed); $echoed = $text.Length }
         if ($text -match "\[CRASH\]") { Start-Sleep -Seconds 1; $reason = "crash"; break }
-        if ($Until -and $text -match $Until) { $reason = "matched '$Until'"; break }
+        if ($Until -and $text -match $Until) { $reason = "matched '$Until'"; $untilAt = ((Get-Date) - $start).TotalSeconds; break } # AZT10-1: until time (s from the start)
     }
     # AZT7-2: the shot line is logged after the file is closed on the emulator side, but the file can reach the host later on a fast warm
     # restart. The run waits (up to 20 s) for the file of the last logged shot before it pauses the game and moves the shots (no stale file counts).
@@ -497,7 +497,7 @@ if (Test-Path $log) {
     $prev = -1
     for ($k = 0; $k -lt 20; $k++) {
         $cur = (Get-Item $log).Length
-        if ($cur -eq $prev -and $k -ge 3) { break }
+        if ($cur -eq $prev -and $k -ge 1) { break } # AZT10-3: the log copy waits 0.3 s for a flush, not 1.2 s
         $prev = $cur
         Start-Sleep -Milliseconds 300
     }
@@ -563,4 +563,8 @@ if ($addrs) {
 }
 if ($Smoke -and $reason -notmatch "^matched") { Write-Output "SMOKE FAILED: $reason"; End-Run 1 "smoke failed: $reason" }
 $endKind = if ($retryable -and $env:PM_AZT_ATTEMPT -eq "1") { "retry" } else { "end" }
-End-Run 0 "stopped after ${secs}s: $reason (Azahar $azState)$(if ($warmDone) { ' warm' })$(if ($keepNow) { ' kept' })" $endKind
+$endAt = ((Get-Date) - $start).TotalSeconds # AZT10-1: end of the run (after the pause, the log copy and the shot move)
+$timing = if ($null -ne $untilAt) { "; until at {0:N1} s, end at {1:N1} s, {2:N1} s after the until line" -f $untilAt, $endAt, ($endAt - $untilAt) } else { "; no until line, end at {0:N1} s (cap or stop)" -f $endAt }
+$warmSfx = if ($warmDone) { " warm" } else { "" }
+$keepSfx = if ($keepNow) { " kept" } else { "" }
+End-Run 0 ("stopped after ${secs}s: $reason (Azahar $azState)" + $warmSfx + $keepSfx + $timing) $endKind

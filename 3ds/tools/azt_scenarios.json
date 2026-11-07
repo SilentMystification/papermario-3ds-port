@@ -491,7 +491,7 @@
     },
     {
       "name": "yard",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4), in control, at scene frames 200 and 204 (the shot writer takes one shot every 4 frames).",
       "proves": "A preset start loads the yard map and runs steady frames with shots.",
       "debug": "preset=yard shots shotwin=200:6 shotbottom=200:60 loglevel=debug",
@@ -1923,7 +1923,7 @@
     },
     {
       "name": "mapchange_poshud",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Bottom screen after the tour change to mac_01 (Toad Town, change at step 170), with the poshud switch, stats off. Rows 1 to 3 fps, memory, VRAM on every frame. Rows 4 to 6 the map block: during the hold row 4 'mac_00', row 5 'area 1 map 1 -> mac_01', row 6 'area 1 map 2'; after it the current map (row 6 blank). Row 7 the Mario row.",
       "proves": "All HUD rows visible during the map change (the block uses rows 4 to 6, no HUD row is replaced) and the Mario row at row 7, separator row 8, header row 9, log window from row 10 with stats off.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 poshud shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
@@ -1955,7 +1955,7 @@
     },
     {
       "name": "mapchange_allrows",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Bottom screen after the tour change to mac_01 with poshud and stats on (largest HUD). Rows 1 to 3 fps, memory, VRAM. Rows 4 to 6 the map block (hold: 'mac_00', 'area 1 map 1 -> mac_01', 'area 1 map 2'; after: current map). Row 7 the Mario row, row 8 the stats row, row 9 separator, row 10 log header, log rows 11 to 26.",
       "proves": "Every HUD row is visible at once with both optional rows on, and the log window shrinks by 2 rows (11 to 26) without losing HUD rows.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 poshud stats shots shotwin=226:12 shotbottom=226:12 loglevel=debug",
@@ -2927,7 +2927,7 @@
     },
     {
       "name": "mac01",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Mario in mac_01 (area 1 map 2, entry 0), in control, at scene frames 200 and 204 (the shot writer takes one shot every 4 frames).",
       "proves": "Phase prints the opsplit line for mac_01, and the shot is the reference picture. The mops line (MODELOPS R0) was removed in DLX2.",
       "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase",
@@ -2955,7 +2955,7 @@
     },
     {
       "name": "ndobj_mac01",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Toad Town mac_01 with the ndobj gate: every shape list that dlc compiles is also compiled by nd_dlc into the static pools; the summary line must show bad 0.",
       "proves": "S3-1: nd_dlc equals dlc_compile and dlc_static_build in the game (group counts, boxes, geometry ops, index deltas).",
       "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase ndobj",
@@ -2975,7 +2975,7 @@
     },
     {
       "name": "mac01_texprof",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Toad Town mac_01 with ndst: the per-frame texture hit and miss cost lines (ndst sorted) next to the opsplit line.",
       "proves": "S3-2: how much of the model class cost is texture hits (per call and per frame).",
       "debug": "warp=mac_01:0 shots shotwin=200:6 loglevel=debug phase ndst",
@@ -3067,7 +3067,7 @@
     },
     {
       "name": "mac01t",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Mario in mac_01 (area 1 map 2, Toad Town), reached by the tour path: warp to mac_00 entry 4, then tour step to mac_01 entry 0 at about frame 209. In control, shot at frames 500 and 504.",
       "proves": "T1 console view census: mdlsum tot ops (mean per frame over the window f600 to f899, all on mac_01) is 1623 to 2065 (1844 +/- 12 %). Console scene A 2156, Azahar tour10 2045 (diag_ops2). Mdlsum rows present.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:6 loglevel=debug phase",
@@ -3145,7 +3145,7 @@
     },
     {
       "name": "tour10",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Mario in each of 10 maps of the tour list. The list starts and ends on mac_00 (Toad Town).",
       "proves": "tour= visits 10 maps by the real map change path, one shot burst per map change.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 phase phasecsv",
@@ -3177,7 +3177,7 @@
     },
     {
       "name": "tour_k30",
-      "status": "log_only",
+      "status": "unverified",
       "subject": "Texture failure counter on kmr_30, the last map of tour_k30.txt (6 maps). Log subject only. Run on lane azt2 at HEAD 0738350b2: tex fail cum 0, delta 0 on kmr_30 (tour: next kmr_30 at #2924, texmap state at #3573). Picture check not applicable.",
       "proves": "warp= plus a story and a tour file from the SD folder runs to the end of the file.",
       "debug": "warp=arn_02:0 story=ch0_toad_town tour=@tour_k30.txt texmax shots shotwin=999999:1 shotmode=4:21",
@@ -3209,7 +3209,7 @@
     },
     {
       "name": "tour_no_warp",
-      "status": "fail_demo",
+      "status": "unverified",
       "subject": "Deliberately wrong: a tour without warp=, preset= or story=. The game starts at the title and attract screen, and no map is loaded.",
       "proves": "Fail-fast: the first marker is missing, azt.ps1 stops the run at the deadline and exits 2.",
       "debug": "tour=@tour_k30.txt texmax",
@@ -3621,7 +3621,7 @@
     },
     {
       "name": "sewer",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Mario in Toad Town Tunnels (tik_03, entry 0), scene frame 200 to 205.",
       "proves": "A warp into the sewer (tik_*) map loads and runs steady frames.",
       "debug": "warp=tik_03:0 story=ch0_toad_town shots shotwin=200:6",
@@ -3649,7 +3649,7 @@
     },
     {
       "name": "ruins",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Mario in Dry Dry Ruins (isk_04, entry 0), scene frame 200 to 205.",
       "proves": "A warp into the ruins (isk_*) map loads and runs steady frames.",
       "debug": "warp=isk_04:0 story=ch0_toad_town shots shotwin=200:6",
@@ -3705,7 +3705,7 @@
     },
     {
       "name": "volcano",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Mario in Mt. Lavalava (kzn_19, entry 0).",
       "proves": "A warp into the volcano (kzn_*) map loads and runs steady frames.",
       "debug": "warp=kzn_19:0 story=ch0_toad_town shots shotwin=200:6",
@@ -3795,7 +3795,7 @@
     },
     {
       "name": "attract_no_warp",
-      "status": "fail_demo",
+      "status": "unverified",
       "subject": "Deliberately wrong: a tour without warp=. The start shows the title and attract (demo) screens and no map is loaded.",
       "proves": "Attract detector: more than 2 title or demo mode lines in a run that expects a tour stop the run with ATTRACT LOOP.",
       "debug": "tour=@tour_k30.txt texmax",
@@ -3815,7 +3815,7 @@
     },
     {
       "name": "partner_menu",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Pause menu, Party tab (col 3, Goombario, 'Check your Party and see each member's abilities.'). Shots at frames 190 to 208 (partner=1 is needed: the Party tab is skipped when no partner is in the save).",
       "proves": "The padscript from docs/handoff/diag_pause_closes.md opens the partner page of the pause menu.",
       "debug": "preset=toad partner=1 padscript=wait80,START*3,wait100,R*2,wait60,R*2,wait60,R*2,wait60 phase shots shotwin=200:1 loglevel=debug",
@@ -3865,7 +3865,7 @@
     },
     {
       "name": "file_select",
-      "status": "verified",
+      "status": "unverified",
       "subject": "File select screen, shots at frames 282 to 341 (box rotation at 282 to 296).",
       "proves": "The golden.py fileselect padscript reaches the file select mode (GAME_MODE_FILE_SELECT, 14) from a boot.",
       "debug": "fileselect phase shots shotwin=100:1 loglevel=debug",
@@ -4070,7 +4070,7 @@
     },
     {
       "name": "text_menu",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Pause status menu text: dialog 'Check here to see what Mario's current status is.' and the item names Hammer, Boots, Stats, Items. Periods and spacing read by eye.",
       "proves": "Pause menu text draws (periods and spacing) at shot frame 178.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=170:12",
@@ -4139,7 +4139,7 @@
     },
     {
       "name": "full411",
-      "status": "completion_only",
+      "status": "unverified",
       "subject": "Full tour of the 411 maps in tour_s420.txt (the tst_ maps are not in the file). Completion only: no per-map picture check.",
       "proves": "The whole list runs to tour: done in one Azahar start.",
       "debug": "warp=arn_02:0 story=ch0_toad_town tour=@tour_s420.txt shots shotwin=999999:1 shotmode=4:21 texmax",
@@ -5255,7 +5255,7 @@
     },
     {
       "name": "census_yard",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Yard (kmr_20, entry 4): draw census of frame 200 on the old path, one cen line per distinct flush batch and one summary line.",
       "proves": "CEN1 draw census: the per-frame multiset of (template key, texture ids, triangle count) is printed, and the summary counts equal the lines.",
       "debug": "preset=yard drawcensus=200 loglevel=debug",
@@ -5303,7 +5303,7 @@
     },
     {
       "name": "census_toad",
-      "status": "verified",
+      "status": "unverified",
       "subject": "Toad Town (kmr_10 entry 0, player at -142 136 221): draw census of frame 200 on the old path, with the NDS1 combine diagnostic (cenc lines).",
       "proves": "NDS1 step 1: combine words and mode tuples (cenc lines) per flush batch on Toad Town, with the census summary.",
       "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town drawcensus=200 loglevel=debug",
@@ -6052,7 +6052,7 @@
       "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
       "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug",
       "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
+      "cap": 23,
       "deadline": 20,
       "first_marker": "prof=1 log=off",
       "expects": "none",
@@ -7564,7 +7564,7 @@
       "proves": "CEN-1a why census in the pause menu: walker draws per producer by why code (pm_gbi.c os_report, wcen4 lines).",
       "debug": "preset=toad padscript=wait80,START*3 phase shots shotwin=200:1 loglevel=debug",
       "until": "wcen4 end f\\d+ wd \\d+",
-      "cap": 45,
+      "cap": 25,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
       "expects": "warp",
@@ -7596,7 +7596,7 @@
       "proves": "CEN-1a why census in the pause text dialog: walker draws per producer by why code.",
       "debug": "preset=toad padscript=wait80,START*3,wait240 phase shots shotwin=200:1 loglevel=debug",
       "until": "wcen4 end f\\d+ wd \\d+",
-      "cap": 45,
+      "cap": 25,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
       "expects": "warp",
