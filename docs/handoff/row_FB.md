@@ -157,6 +157,18 @@ The FB-4 census (nds1 aac1fae4e) shows walker GPU draws wd 0 and every refusal 0
 3. GM-3: the CPU-only geometry functions in pm_gbi.c (lit_color, vert_color, vert_uv, pack_color, xform_vtx, fold_axis, gbi_vtx_cpu1).
 Gate per commit: build; census wd 0 and refusals 0 on mac_01, sbk_56, iwa_10, kmr_03 battle, nok_11 (cold det); mac_01, iwa_10, nok11_det, battle_start_f182_cold byte-equal to nds1; tour10_det fb 0; grep proof; 3dsx size.
 
+### DEL state (2026-11-07, session end, branch fb4)
+Done commits (fb4, not pushed): 671567666 TRI-4 (CPU triangle path deleted, row_TRI.md deleted; built before the merge), afb4efb22 merge of nds1 1e915fa5b.
+Gates:
+- TRI-4 census PASS on merged head afb4efb22 (lane fb4, build 2874): wcen_mac01, wcen_mac00, wcen_sbk56, wcen_iwa10, wcen_battle, wcen_nok11, wcen4 end wd 0 in all six, nrawwhy and rectwhy refusals 0.
+- TRI-4 byte gate NOT run on the fb4 side. nds1 1e915fa5b base recorded: nok11_det, battle_start_f182_cold, spot_mac01_det (shots in the bench history). Missing: the fb4 runs of the same three, and the base and fb4 runs of mdl5_iwa10_det (spot_iwa10_det is not a bench name).
+- Grep proof: not run for FB-4 (flush_draw_cpu and C3D_DrawElements still in pm_gpu.c, comments still name flush_draw_cpu).
+- 3dsx size: lane-fb4 build afb4efb22 13344304 bytes.
+Not started: FB-4 (citro3d draw path, sh_*/u5_*, switches, vert_base) and GM-3 (pm_gbi.c CPU vertex functions). row_FB.md deleted only by the GM-3 commit.
+Uncommitted unpassed code: none (no patch file).
+Next command: cd build3ds/wt/fb4; PM_ROW=DEL PM_LANE=fb4 python 3ds/tools/bench.py run nok11_det,battle_start_f182_cold,spot_mac01_det --row DEL --lane fb4 --why "..."  (then compare shots with the base copies), and build-at 1e915fa5b mdl5_iwa10_det plus run mdl5_iwa10_det on lane fb4.
+Budget: DEL reset at 09:57 (after 6 census starts + base runs the count restarts from that reset; at 8 starts reset again).
+
 ## UB audit result (2026-11-07, read-only agent, nds1 c2dba5cc2) and row UB1
 Map (lane-mac00): pm_tex.o .bss 0x01218ef0-0x012433c4; growing it shifts every .bss object up to pm_map.o last_asset_src (0x0143ee2c); gMapShapeData, gBackgroundImage, nuGfxZBuffer and later do not move. So the bad access's target lies in [0x01218ef0, 0x0143f000): pm_tex, pm_gbi (box_buf, vert_*), nd_mtx*, nd_core, nd_tmpl, nd_tex, nd_comb, nd_cen, nd_shape, nd_ent, nd_dlc, nd_model (rng, mc_*, nat, hd_*), pm_os, pm_audio. Every index into the pm_tex.c statics is bounded.
 Ranked suspects:
