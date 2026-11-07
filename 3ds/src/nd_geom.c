@@ -207,7 +207,6 @@ int gv_tri(const int* idx) {
         if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
         why = ep_why;
     }
-    suntile_tri(why < 0 ? "gpu" : "cpu-pending", idx);
     if (why < 0) {
         unsigned tss = vert_tss[a];
         if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); return 1; }
@@ -263,7 +262,6 @@ void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
-    suntile_tri("draw", idx);
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
@@ -355,25 +353,4 @@ void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (c
         }
     }
     if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;
-}
-
-void pm_sun_spawn(int fromRight, float x, float y, float z, int duration) {
-    if (!suntile_on()) return;
-    pm_log("sun spawn f%u fromRight %d pos %.1f %.1f %.1f duration %d", pm_frame_count(), fromRight, x, y, z, duration);
-}
-
-void pm_sun_draw(int alpha, int fromRight, const float* scroll, int n) {
-    if (!suntile_on()) return;
-    pm_log("sun draw f%u alpha %d fromRight %d scroll %.2f %.2f %.2f %.2f %.2f (n %d)", pm_frame_count(), alpha, fromRight,
-           scroll[0], scroll[1], scroll[2], scroll[3], scroll[4], n);
-}
-
-/* SUN3 debug: the first words of the sun base list (segment 9 + 0x898) and of ray list 0 (+0x7C0), as they are in RAM. */
-void pm_sun_base(const void* graphics) {
-    const unsigned* p;
-    if (!suntile_on() || !graphics) return;
-    p = (const unsigned*)((const u8*)graphics + 0x898);
-    pm_log("sun base gfx %p +898 %08x %08x %08x %08x", graphics, p[0], p[1], p[2], p[3]);
-    p = (const unsigned*)((const u8*)graphics + 0x7C0);
-    pm_log("sun base gfx +7C0 %08x %08x %08x %08x", p[0], p[1], p[2], p[3]);
 }

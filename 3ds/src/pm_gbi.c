@@ -32,19 +32,6 @@ extern unsigned int __ctru_linear_heap_size;
 
 int rm_frame;
 
-/* SUNFIX debug switch suntile=<first frame>:<count>: tile 1 state at each dual_bind, the vertex S T of each triangle, and the sun
- * overlay spawn and draws (pm_sun_spawn, pm_sun_draw). At most 4000 lines per run. */
-int suntile_on(void) {
-    static int a = -2, b;
-    if (a == -2) {
-        char v[24];
-        a = -1;
-        if (pm_debug_value("suntile", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
-        else a = -1;
-    }
-    return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
-}
-int suntile_lines;
 
 unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
 unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
@@ -192,34 +179,6 @@ NdLight lt[9];
 unsigned lt_n;
 s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
 float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
-/* SUN3 debug (suntile switch): the tile 0 source of a draw, its state, and the first 16 bytes of rows 0 to 11 of the source. */
-__attribute__((cold, noinline)) void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls, int ult, int lrs, int lrt) {
-    if (!suntile_on() || suntile_lines >= 400) return;
-    suntile_lines++;
-    pm_log("suntile t0 f%u src %p str %d w %d h %d bpp %d fmt %u siz %u tmem %u win %d %d %d %d",
-           pm_frame_count(), (const void*)src, stride, w, h, bpp, nd_ws.tst1.tile_fmt[0], nd_ws.tst1.tile_siz[0], nd_ws.tst1.tile_tmem[0], uls, ult, lrs, lrt);
-    pm_log("suntile t0 timg %p tstr %d ld %d %d w %d h %d v %d", nd_ws.timg, nd_ws.tst1.timg_stride, ld_x, ld_y, ld_w, ld_h, ld_valid);
-    if (!src) return;
-    for (int r = 0; r < 12; r++) {
-        unsigned q[4];
-        if (suntile_lines >= 400) break;
-        suntile_lines++;
-        memcpy(q, src + (size_t)r * (size_t)stride * (bpp > 0 ? (size_t)bpp : 1u), 16); /* stride counts texels */
-        pm_log("suntile t0 row %d %08x %08x %08x %08x", r, q[0], q[1], q[2], q[3]);
-    }
-}
-__attribute__((cold, noinline)) void suntile_tri(const char* path, const int* idx) {
-    if (!suntile_on() || suntile_lines >= 400) return;
-    suntile_lines++;
-    pm_log("suntile tri %s f%u verts %d %d %d s %.3f %.3f %.3f t %.3f %.3f %.3f tss %08x",
-           path, pm_frame_count(), idx[0], idx[1], idx[2],
-           (double)vert_st[idx[0]][0], (double)vert_st[idx[1]][0], (double)vert_st[idx[2]][0],
-           (double)vert_st[idx[0]][1], (double)vert_st[idx[1]][1], (double)vert_st[idx[2]][1], vert_tss[idx[0]]);
-    if (path[0] == 'd') /* SUN3: the tile 1 state the draw uses */
-        pm_log("suntile t1 draw fmt %u siz %u tmem %u sz %d %d %d %d td1 v %d src %p w %d h %d str %d x0 %d y0 %d tile %u",
-               nd_ws.tst1.tile_fmt[1], nd_ws.tst1.tile_siz[1], nd_ws.tst1.tile_tmem[1], nd_ws.tst1.tile_sz[1][0], nd_ws.tst1.tile_sz[1][1], nd_ws.tst1.tile_sz[1][2], nd_ws.tst1.tile_sz[1][3],
-               nd_ws.td[1].valid, (const void*)nd_ws.td[1].src, nd_ws.td[1].w, nd_ws.td[1].h, nd_ws.td[1].stride, nd_ws.td[1].x0, nd_ws.td[1].y0, nd_ws.cur_tile);
-}
 int tg_ok;
 float tg_s, tg_t; /* T01: texgen result of the last vert_color call */
 unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex is loaded, as the RSP does */
@@ -451,20 +410,6 @@ int pm_gbi_bind_tile1(void);
 const float (*pm_gbi_combined_ptr(void))[4] { return combined; }
 
 
-/* UI1 debug: the PM_CC_07 combiner (flat PRIM colour times TEXEL0 alpha, the drop shadow). Logs the mode the
- * port chose and the PRIM alpha, so the shadow alpha is known per draw. Remove after UI1. */
-void cc07_dbg(void) {
-    static int cc07_n;
-    if (comb_dry) return;
-    if (cc07_n >= 40) return;
-    if (!(nd_ws.tst1.comb_a == 0 && nd_ws.tst1.comb_b == 0 && nd_ws.tst1.comb_c == 0 && nd_ws.tst1.comb_d == G_CCMUX_PRIMITIVE &&
-          nd_ws.tst1.comb_aa == G_ACMUX_TEXEL0 && nd_ws.tst1.comb_ab == 0 && nd_ws.tst1.comb_ac == G_ACMUX_PRIMITIVE && nd_ws.tst1.comb_ad == 0)) return;
-    cc07_n++;
-    pm_log("cc07 f%u n %d cyc %d leg %d plan %d why %d prim_a %u tex_on %d valid0 %d", pm_frame_count(), cc07_n,
-           (int)((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3), leg_mode, plan_active, ls_why, nd_ws.prim & 0xffu, nd_ws.tex_on, nd_ws.td[0].valid);
-}
-
-
 /* S25: a plan that reads TEXEL1. Tile 1 is loaded and kept at unit 1, tile 0 stays the current texture, and the
  * unit 1 coordinates are the first ones moved by the difference of the two tile windows. */
 unsigned aux_key;
@@ -473,26 +418,6 @@ unsigned aux_key;
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
 const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
-
-/* FLK1 debug switch tritrace=<first frame>:<count>: one line per triangle of draw_tri_cpu in the window. Corner w, screen X and Y (x/w),
- * clip bits, the cull area sign and the decision (what). At most 4000 lines per run. */
-static int tritrace_on(void) {
-    static int a = -2, b;
-    if (a == -2) {
-        char v[24];
-        a = -1;
-        if (pm_debug_value("tritrace", v, sizeof v) && sscanf(v, "%d:%d", &a, &b) == 2) b += a;
-    }
-    return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
-}
-unsigned tritrace_seq, tritrace_lines;
-static void tritrace_tri(const char* what, unsigned seq, const float* p1, const float* p2, const float* p3, int cb1, int cb2, int cb3) {
-    if (tritrace_lines >= 4000) return;
-    tritrace_lines++;
-    pm_log("tri f%u s%u %s w %.4f %.4f %.4f X %.3f %.3f %.3f Y %.3f %.3f %.3f cb %x %x %x cross %.6g", pm_frame_count(), seq, what,
-           p1[3], p2[3], p3[3], p1[0] / p1[3], p2[0] / p2[3], p3[0] / p3[3], p1[1] / p1[3], p2[1] / p2[3], p3[1] / p3[3], cb1, cb2, cb3,
-           cull_cross(p1, p2, p3));
-}
 
 /* PO3b, PO3c: one triangle of the raw Vtx path. The caller checked that the three vertices have a ring slot, one matrix and one texture scale, and that
  * the triangle is plain (unlit, no texgen, no screen vertex, no fog). The colour and depth overrides of the CPU path become uniforms: ENV or the plan
@@ -520,7 +445,6 @@ extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHe
 __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
     ClipV poly[12];
     int n, i;
-    const unsigned seq = ++tritrace_seq;
     int early = 0; /* PO3b2, DIP1: reject and cull from the clip positions of PO2 and the clip bits made at G_VTX, before the statistics, ensure_tile, dual_bind and any ClipV. Same tests and counters as before except the debug statistics (tris lit fog), which now count the triangles that pass. */
     if (!(plan_active && cur_plan.uses_tex1) && !(vert_scr[idx[0]] | vert_scr[idx[1]] | vert_scr[idx[2]])) {
         for (i = 0; i < 3; i++)
@@ -533,7 +457,6 @@ __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
             have_sample = 1;
         }
         if (vert_cb[idx[0]] & vert_cb[idx[1]] & vert_cb[idx[2]] & 0x2f) {
-            if (tritrace_on()) tritrace_tri("early-clip", seq, a, b, c, vert_cb[idx[0]], vert_cb[idx[1]], vert_cb[idx[2]]);
             n_out++;
             GP_LAP(GPL_EARLY);
             return;
@@ -542,7 +465,6 @@ __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
             float cross = cull_cross(a, b, c);
             unsigned ct = nd_ws.geom & G_CULL_BOTH;
             if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
-                if (tritrace_on()) tritrace_tri("early-cull", seq, a, b, c, vert_cb[idx[0]], vert_cb[idx[1]], vert_cb[idx[2]]);
                 n_out++;
                 GP_LAP(GPL_EARLY);
                 return;
@@ -591,7 +513,6 @@ __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
         have_sample = 1;
     }
     if (!early && (clip_bits(&poly[0]) & clip_bits(&poly[1]) & clip_bits(&poly[2]))) {
-        if (tritrace_on()) tritrace_tri("clip", seq, (float*)&poly[0], (float*)&poly[1], (float*)&poly[2], clip_bits(&poly[0]), clip_bits(&poly[1]), clip_bits(&poly[2]));
         n_out++;
         return;
     }
@@ -602,7 +523,6 @@ __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
         float cross = cull_cross((const float*)&poly[0], (const float*)&poly[1], (const float*)&poly[2]);
         unsigned ct = nd_ws.geom & G_CULL_BOTH;
         if (ct == G_CULL_BOTH || (ct == G_CULL_FRONT && cross <= 0) || (ct == G_CULL_BACK && cross >= 0)) {
-            if (tritrace_on()) tritrace_tri("cull", seq, (float*)&poly[0], (float*)&poly[1], (float*)&poly[2], clip_bits(&poly[0]), clip_bits(&poly[1]), clip_bits(&poly[2]));
             n_out++;
             return;
         }
@@ -615,7 +535,6 @@ __attribute__((noinline)) void draw_tri_cpu(const int* idx) {
                 n_keep++;
         }
     }
-    if (tritrace_on()) tritrace_tri(early ? "early-keep" : "keep", seq, (float*)&poly[0], (float*)&poly[1], (float*)&poly[2], clip_bits(&poly[0]), clip_bits(&poly[1]), clip_bits(&poly[2]));
     gp3_t0_surv();
     n_in++;
     n = 3;

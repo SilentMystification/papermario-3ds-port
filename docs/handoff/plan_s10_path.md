@@ -18,7 +18,7 @@ The model now (review 5b2ee3c48): the word is the record, and one dispatcher run
 | P records | rec_run, rec_apply, rec_matrix, rec_op, rec_fog, rec_fogpos, rec_dl, rec_aux (G_PM_REC); pm_gpu_spr_rec plus the G_PM_SPR case; the G_PM_ENT case | nd_recs.c (new) for REC; nd_sprite.c for SPR; nd_ent.c for ENT |
 | K census | pm_gpu_cen_mark, pm_gbi_draw_note, pm_gbi_prod_mark, os_* (os_report, os_op_hook, os_win, os_close, os_calibrate, os_class_of, os_dlc_hit), pk_*, mdc_*, pm_gbi_census_close, pm_gbi_mdl_mark, pm_gbi_task_id, pm_gbi_win_reset, pm_gbi_end_frame, pm_gbi_stats | nd_cen.c (new, cold) |
 | X debug, deleted | dd_* drawlog, suntile_*, tritrace_*, tri_dd_log, tri_rm_log, rmlog_on, combchk_*, cc07_dbg, dlcchk_on, stdump_on, skipdump_on, nobox(int)_on, behroute_on, xt_on, gv1chk_on, ph_pick, gp_*/gp3_*, sp0_*, mr0_*, ms0_*, mtx_dbg, tri_stats, ep_flush_stats, lcg_f, the orbdbg blocks (after FX closes) | deleted in the move row of its group, unless an open row names it (D9) |
-| Y sun | pm_sun_spawn, pm_sun_draw, pm_sun_base | nd_geom.c if live; else delete (grep callers) |
+| Y sun | pm_sun_spawn, pm_sun_draw, pm_sun_base | deleted in MOVE-4 (suntile debug draws, calls in effects/sun.c removed) |
 Producer hacks:
 - G_PM_TEXI: grep `G_PM_TEXI|gsSPPmTexInline` in src. Sites: hud_element.c HT1 x2, msg_draw.c GLYPH, entity/Shadow.c EN2, sprite.c NP1. The header makes tb_inline run the n texture words that follow.
 - G_PM_RM: sprite.c SPR_RM_LIST, entity_model.c rm_first. rm_apply applies a render-mode list in place, with a G_DL fallback.

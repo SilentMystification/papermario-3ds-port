@@ -20,12 +20,12 @@
 /* globals of the combine state, owned by pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
 extern unsigned aux_key, box_save[4], lcg_s, sl_cc;
 extern int box_pat, box_prod, comb_alpha_shade, comb_dry, comb_mode5, dual_on, leg_mode, plan_active, sl_const, sl_env;
-extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame, suntile_lines;
+extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
 extern PmPlan cur_plan;
 extern const char* const cc_nm_a[8], * const cc_nm_aa[8], * const cc_nm_ac[8];
 extern unsigned* const tst_f[16];
 extern float vp_sx, vp_sy, vp_tx, vp_ty;
-int suntile_on(void); int ph_pick(void); void grab_cur(const void* src, int w, int h); void ens_clear(void);
+int ph_pick(void); void grab_cur(const void* src, int w, int h); void ens_clear(void);
 float lcg_f(void); void unpack8(unsigned c, float o[4]);
 static void sync_combine_work(void);
 
@@ -40,7 +40,6 @@ void set_leg(int m);
 void sync_legacy(void);
 int combchk_on(void);
 void combchk_run(const NdCombIn* in, int worked);
-void cc07_dbg(void);
 void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]);
 Dec dec[128];
 int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
@@ -443,11 +442,9 @@ void sync_combine_work(void) {
             pm_comb_colours(&cur_plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
             if (!comb_dry) { pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, (int)cyc, nd_ws.use_t1); pm_gpu_set_plan(&cur_plan); }
             plan_active = 1;
-            cc07_dbg();
             return;
         }
     }
-    cc07_dbg();
     if (!comb_dry) pm_gpu_set_combine(leg_mode);
 }
 
@@ -546,19 +543,6 @@ void dual_bind(void) {
         t1_p[3] = ((float)nd_ws.tile_y0 * rt - (float)(nd_ws.td[1].y0 - oy1)) / (float)th1;
         t1_ox = ox1; t1_oy = oy1; t1_w = tw1; t1_h = th1;
         pm_gpu_set_tex1(t1_p[0], t1_p[1], t1_p[2], t1_p[3]);
-        if (suntile_on() && suntile_lines < 400) {
-            suntile_lines++;
-            pm_log("suntile t1 f%u uls %d ult %d lrs %d lrt %d | cms %u cmt %u masks %u maskt %u shifts %u %u | "
-                   "t1 tex %dx%d fmt %u siz %u td.x0 %d td.y0 %d | tile_x0 %d tile_y0 %d fx %.2f fy %.2f | origin %d %d | "
-                   "t0 tex %dx%d tile0 uls %d ult %d lrs %d lrt %d cms %u cmt %u masks %u maskt %u | "
-                   "p %.5f %.5f %.5f %.5f | aux_off %d",
-                   pm_frame_count(), nd_ws.tst1.tile_sz[1][0], nd_ws.tst1.tile_sz[1][1], nd_ws.tst1.tile_sz[1][2], nd_ws.tst1.tile_sz[1][3],
-                   nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3], nd_ws.tst1.tile_shift[1][0], nd_ws.tst1.tile_shift[1][1],
-                   tw1, th1, nd_ws.td[1].fmt, nd_ws.td[1].siz, nd_ws.td[1].x0, nd_ws.td[1].y0, nd_ws.tile_x0, nd_ws.tile_y0, (double)nd_ws.tile_fx, (double)nd_ws.tile_fy, ox1, oy1,
-                   tw0, th0, nd_ws.tst1.tile_sz[0][0], nd_ws.tst1.tile_sz[0][1], nd_ws.tst1.tile_sz[0][2], nd_ws.tst1.tile_sz[0][3],
-                   nd_ws.tst1.tile_wrap[0][0], nd_ws.tst1.tile_wrap[0][1], nd_ws.tst1.tile_wrap[0][2], nd_ws.tst1.tile_wrap[0][3],
-                   (double)t1_p[0], (double)t1_p[1], (double)t1_p[2], (double)t1_p[3], pm_tex_aux_off_idx());
-        }
     }
 }
 
