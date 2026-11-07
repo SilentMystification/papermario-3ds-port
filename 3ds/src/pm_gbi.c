@@ -1835,7 +1835,6 @@ static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned
         pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
         ep_pepoch = gv_epoch; ep_ptss = tss;
     }
-    if (stdump_on() && pm_frame_count() >= 200 && pm_frame_count() < 206) { static unsigned st_n; if (++st_n <= 300) pm_log("stseg f%u n %u gmi %u geom %08x epoch %u pep %u tss %08x boost %d fxon %d rgb %d tsl %d", (unsigned)pm_frame_count(), nt, gmi, (unsigned)nd_ws.geom, gv_epoch, ep_pepoch, tss, ep_p.boost, ep_p.fxon, pm_gpu_rgb_scale_get(), tri_since_vtx); }
     int gr = pm_gpu_grange((const float(*)[4][4])gm_tab, gmi, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ep_p.fxon ? &ep_p.fx : NULL, idx, 3u * nt);
     if (!gr) { ep_open = 0; dbg_seg = 9; return 0; }
     if (gr == 2) dlc_c.batch++;
@@ -3206,7 +3205,6 @@ void pm_gbi_win_reset(void) {
 }
 
 void pm_gbi_end_frame(void) {
-    if (pm_debug_has("seamstat") && pm_frame_count() % 120 == 0) pm_log_d("seam: cpu path triangles, object route %u, clip route %u (totals), raw path %u", seam_obj, seam_clip, gv_tri_n);
     /* One second of presented frames, summed. Identical seconds are not written. */
     static int frames, acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x;
     static char prev[112];
@@ -3233,7 +3231,6 @@ void pm_gbi_end_frame(void) {
         char line[112];
         snprintf(line, sizeof line, "t%d i%d c%d d%d o%d k%d x%d sp%u sl%d gr%u", acc_t, acc_i, acc_c, acc_d, acc_o, acc_k, acc_x, n_splits, pm_gpu_off_count(), n_grabs);
         if (strcmp(line, prev) != 0) {
-            if (pm_debug_has("stats")) pm_log_d("stats %s", line); /* L01: per second line, only with the stats switch */
             snprintf(prev, sizeof prev, "%s", line);
         }
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
@@ -3845,7 +3842,6 @@ void pm_gbi_fallback(void) {
     static Gfx dl[8];
     static Vtx fv[3];
     static Mtx fm;
-    if (pm_debug_has("nofallback")) return;
     if (!ready) {
         memset(&fm, 0, sizeof(fm));
         mtx_elem(&fm, 0, 0, 1.f / 160.f);
