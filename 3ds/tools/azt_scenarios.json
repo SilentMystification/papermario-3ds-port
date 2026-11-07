@@ -8227,6 +8227,144 @@
         }
       ],
       "reason": "OFF-3 census: the until line is the 600 frame counter; the subject shots are the picture (as intro_native)."
+    },
+    {
+      "name": "mdlw_battle",
+      "status": "verified",
+      "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",
+      "proves": "The battle debug switch starts a real battle from a warp.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 profdisk=1 mdl0",
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "battle mode",
+          "regex": "game mode 8 frame"
+        },
+        {
+          "name": "shot at 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "MDL-0b count at battle start (mdlw and mdl2 lines)."
+    },
+    {
+      "name": "battle_start_r13off",
+      "status": "verified",
+      "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",
+      "proves": "The battle debug switch starts a real battle from a warp.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 r13off",
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "battle mode",
+          "regex": "game mode 8 frame"
+        },
+        {
+          "name": "shot at 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "MDL-1 reference: battle_start with the walker-fallback R13 (switch r13off)."
+    },
+    {
+      "name": "spot_mac01_r13off",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug r13off",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "MDL-1 reference: mac_01 with the walker-fallback R13 (r13off)."
+    },
+    {
+      "name": "mdl_iwa10_modebad",
+      "status": "pending",
+      "subject": "iwa_10 (Mario on the floor at -662 0 587, warp entry 0). Shots at frames 200 to 205 and the ndmcheck window line.",
+      "proves": "DRAW2 row 1: each native model draw record at iwa_10 matches the walker draw (diff 0) with the wide no-translation records native.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 ndmcheck shots shotwin=200:6 loglevel=debug profdisk=1",
+      "until": "ndmcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "ndmcheck window: eq above 0 and diff 0",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "MDL-2 why 1 trace: iwa_10 with profdisk (modebad prof lines)."
+    },
+    {
+      "name": "mdl_iwa10_r13off",
+      "status": "pending",
+      "subject": "iwa_10 (Mario on the floor at -662 0 587, warp entry 0). Shots at frames 200 to 205 and the ndmcheck window line.",
+      "proves": "DRAW2 row 1: each native model draw record at iwa_10 matches the walker draw (diff 0) with the wide no-translation records native.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 ndmcheck shots shotwin=200:6 loglevel=debug profdisk=1 r13off",
+      "until": "ndmcheck f\\d+ recs",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "ndmcheck window: eq above 0 and diff 0",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq [1-9]\\d* diff 0 ",
+          "pick": "last"
+        }
+      ],
+      "reason": "MDL-1 reference at iwa_10 (r13off)."
     }
   ]
 }

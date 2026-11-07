@@ -2,6 +2,7 @@
  * Pure C: the host test builds it (3ds/tools/nd_gv_test.c). No walker state and no pm_gpu call inside: the caller passes the values. */
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 #include "nd.h"
 #include "nd_ops.h"
 
@@ -58,6 +59,33 @@ void nd_gv_params(const NdGvIn* in, NdGvP* o) {
             o->fxon = 1;
         }
     }
+}
+
+/* MDL-1 (oracle decision): an R13 list is the record's texture block when every op is a texture, tile, load, sync, state or NOOP op. The walker
+ * runs the list in place before the native draw (rec_aux), so its state is the bound tile state. cw: the combine words (G_SETCOMBINE, 0xFC) and
+ * the texture scale (G_TEXTURE, 0xD7, cw[2] w1, cw[3] = 1) of the block. Returns 1 for a texture block, 0 for any other op (why 2, counted). */
+int nd_r13_texonly(const uint32_t* aw, unsigned n, uint32_t* cw, int* has_cb) {
+    *has_cb = 0; cw[3] = 0;
+    if (n == 0 || n > 32) return 0;
+    for (unsigned i = 0; i < n; i++) {
+        const uint32_t w0 = aw[2 * i], w1 = aw[2 * i + 1];
+        switch (w0 >> 24) {
+        case 0xFD: case 0xF5: case 0xF2: case 0xF4: case 0xF3: case 0xF0: /* SETTIMG, SETTILE, SETTILESIZE, LOADTILE, LOADBLOCK, LOADTLUT */
+        case 0xE8: case 0xE7: case 0xE6: /* RDPTILESYNC, PIPESYNC, LOADSYNC */
+        case 0xE3: case 0xE2: /* G_SETOTHERMODE_L, _H: the texture block's render state (the block carries one) */
+        case 0x00: /* NOOP */
+            break;
+        case 0xFC: /* G_SETCOMBINE */
+            cw[0] = w0 & 0xffffffu; cw[1] = w1; *has_cb = 1;
+            break;
+        case 0xD7: /* G_TEXTURE: the texture scale */
+            cw[2] = w1; cw[3] = 1;
+            break;
+        default:
+            return 0;
+        }
+    }
+    return 1;
 }
 
 /* ---- S3N-1 (B4): texture descriptors of the map model handles ---- */
@@ -178,13 +206,33 @@ static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, 
 
 /* ---- S3N-3a: the state of one model record as a native draw (pure: record words and NdMCtx) ---- */
 int pm_debug_has(const char* name);
+void pm_log_d(const char* fmt, ...);
+void pm_log_prof_line(const char* fmt, ...);
+static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st);
+/* MDL-0b: every why code of nd_model_state, uncapped, one line per 300 frames (mdlw) */
+static unsigned mw_cnt[32], mw_ok, mw_f = 100u; /* mw_f: the frame of the last line + 300 */
+unsigned pm_frame_count(void);
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
+    int r = nd_model_state_in(rec, c, d, st);
+    if (r == 1) mw_ok++; else mw_cnt[st->why & 31]++;
+    unsigned f = pm_frame_count();
+    if (f >= mw_f) { mw_f = f - f % 100u + 100u; /* the next line at the next multiple of 100 frames (pm_frame_count, the shot frame) */
+        char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
+        extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; }
+    return r;
+}
+static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0;
     const uint32_t f = rec[6]; /* R3 w0 flags */
     if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
     if (c->gv && c->gv->fxon && (!c->nrm_ok || pm_debug_has("pm5off"))) return (st->why = 4, 0); /* lit or fog without the walker normal rows (PM5-3: with them the range is a pm5 draw) */
-    if (rec[26] != 0 && !c->aux_ok) return (st->why = 2, 0); /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
-    if (rec[22] != 0 || rec[23] != 0) return (st->why = 3, 0); /* R11: custom gfx pre and post */
+    if (rec[26] != 0 && !c->aux_ok) { /* MDL-0 count (switch mdl0): the first 12 why 2 records, their R13 words */
+        static unsigned m2_ = 0; if (m2_ < 12u && pm_debug_has("mdl0")) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
+        return (st->why = 2, 0); } /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
+    if (rec[22] != 0 || rec[23] != 0) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
+        static unsigned m3_ = 0; if (m3_ < 12u && pm_debug_has("mdl0")) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
+            pm_log_d("mdl3 pre %08x post %08x pre w %08x %08x post w %08x %08x", (unsigned)rec[22], (unsigned)rec[23], a ? a[0] : 0u, a ? a[1] : 0u, b ? b[0] : 0u, b ? b[1] : 0u); }
+        return (st->why = 3, 0); } /* R11: custom gfx pre and post */
     const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
     const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (rm_apply runs after the entry) */
     const uint32_t geom = c->geom_at_set ? c->geom_at : (c->geom_base & c->mode->gand) | c->mode->gor; /* B9: geometry after the list ops; S3N-3c: or the batch's */

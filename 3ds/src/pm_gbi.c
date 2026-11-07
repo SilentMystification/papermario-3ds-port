@@ -442,6 +442,7 @@ static void* ptr_of(u32 w) {
     if ((w & 0xc0000000u) == 0x80000000u && is_host(w & 0x1fffffffu)) return (void*)(w & 0x1fffffffu);
     return (void*)w;
 }
+void* pm_gbi_ptr_of(u32 w) { return ptr_of(w); } /* MDL-1: the walker's segment resolver, for the R13 texture block (nd_model.c nd_r13_desc) */
 
 extern float pm_eye_e, pm_eye_conv;
 static void upload_mvp(void) {

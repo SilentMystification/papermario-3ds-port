@@ -2091,6 +2091,130 @@
         "unit"
       ],
       "gates": []
+    },
+    {
+      "name": "mdlw_battle_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-0b count at battle start (mdlw lines, mdl2 prints).",
+      "scenario": "mdlw_battle",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_r13off_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PM5 picture by eye: battle start on kmr_03, shot mode frames 182 on.",
+      "scenario": "battle_start_r13off",
+      "cap": 20,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_r13off_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": true,
+      "purpose": "Toad Town mac_01, Mario at pos 0 0 200. Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot.",
+      "scenario": "spot_mac01_r13off",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl_iwa10_modebad_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "iwa_10 ndmcheck: native draw record vs walker draw. Gate diff 0, eq above 0.",
+      "scenario": "mdl_iwa10_modebad",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "ndmcheck",
+        "iwa10"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_eq",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndm_eq",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "mdl_iwa10_r13off_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "iwa_10 ndmcheck: native draw record vs walker draw. Gate diff 0, eq above 0.",
+      "scenario": "mdl_iwa10_r13off",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "ndmcheck",
+        "iwa10"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_eq",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndm_eq",
+          "op": ">",
+          "value": 0
+        }
+      ]
     }
   ],
   "legacy": {

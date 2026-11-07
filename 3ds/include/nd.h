@@ -112,6 +112,7 @@ typedef struct NdTexDesc {
     uint8_t pad[2];
 } NdTexDesc;
 _Static_assert(sizeof(void*) != 4 || sizeof(NdTexDesc) == 24, "NdTexDesc has no padding on the 32 bit target");
+int nd_r13_texonly(const uint32_t* aw, unsigned n, uint32_t* cw, int* has_cb); /* MDL-1: the R13 list is a texture block */ /* MDL-1: the tile 0 descriptor of an R13 texture block */
 uint32_t nd_tex_wrap_of(unsigned cm, unsigned mask);
 uint32_t nd_tex_wrap_final(int shr, unsigned mirror, uint32_t wrap);
 uint32_t nd_tex_param(uint32_t param, unsigned filter, uint32_t ws, uint32_t wt);
