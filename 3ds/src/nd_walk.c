@@ -298,10 +298,10 @@ void nd_walk_run(void* list, unsigned nbytes) {
         case G_MOVEWORD:
             gbi_moveword(w0, w1);
             break;
-        case G_NOOP:
-            if ((w0 & 0xffffffu) == PM_SPLASH_ON) splash_on = 1;
-            else if ((w0 & 0xffffffu) == PM_SPLASH_OFF) splash_on = 0;
+        case G_PM_ND: /* LS-4: native-only payload record (gbi_custom.h), dispatched by kind in nd_target.c */
+            nd_native_rec(w0);
             break;
+        case G_NOOP:
         case G_SPNOOP:
         case G_RDPFULLSYNC:
         case G_RDPTILESYNC:

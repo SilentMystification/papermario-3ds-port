@@ -2291,6 +2291,23 @@
       "gates": []
     },
     {
+      "name": "nok11_splash_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LS-4 splash gate: water splash (fxtest 89) at nok_11. Counts grab lines (the splash_on grab, nd_target.c grab_cur) and the splash shot picture.",
+      "scenario": "nok11_splash",
+      "cap": 35,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "pic",
+        "splash",
+        "ls4"
+      ],
+      "gates": []
+    },
+    {
       "name": "nok11_splash_w600",
       "kind": "azahar_pic",
       "speed": "normal",
