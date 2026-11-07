@@ -1517,6 +1517,80 @@
         }
       ],
       "gates": []
+    },
+    {
+      "name": "log_storm_zero",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG4 gate B baseline: pond at mac_00, logging on, no storm lines. Same binary as log_storm.",
+      "scenario": "log_storm_zero",
+      "cap": 45,
+      "until": "logstat frames \\d+ work ",
+      "tags": [
+        "azahar",
+        "log",
+        "bench"
+      ],
+      "log_metrics": [
+        {
+          "name": "work_ms",
+          "regex": "logstat frames \\d+ work ([\\d.]+) ms",
+          "pick": "last"
+        },
+        {
+          "name": "dropped",
+          "regex": "logstat frames \\d+ .* dropped (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "log_storm_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG4 gate A: prof=4 with 200 storm lines per drawn frame (logging off). Reads the prof window frame time (ft ms).",
+      "scenario": "log_storm_prof",
+      "cap": 45,
+      "until": "prof f\\d+ w300 fps",
+      "tags": [
+        "azahar",
+        "log",
+        "bench"
+      ],
+      "log_metrics": [
+        {
+          "name": "work_ms",
+          "regex": "prof f\\d+ w300 fps [\\d.]+ \\| ft ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "log_storm_prof_zero",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG4 gate A baseline: prof=4 with no storm lines. Reads the prof window frame time (ft ms).",
+      "scenario": "log_storm_prof_zero",
+      "cap": 45,
+      "until": "prof f\\d+ w300 fps",
+      "tags": [
+        "azahar",
+        "log",
+        "bench"
+      ],
+      "log_metrics": [
+        {
+          "name": "work_ms",
+          "regex": "prof f\\d+ w300 fps [\\d.]+ \\| ft ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
     }
   ],
   "legacy": {

@@ -7628,6 +7628,66 @@
         }
       ],
       "reason": "LOG4 storm bench. logstat every 300 drawn frames (about 10 s after the pond load at 30 fps). Cap 45 s."
+    },
+    {
+      "name": "log_storm_zero",
+      "status": "verified",
+      "subject": "Toad Town pond, map mac_00, Mario at -178 0 88, log at debug with the texstale and waterlog switches and no storm lines (logstorm absent). Same as log_storm without logstorm=200.",
+      "proves": "LOG4 gate B baseline: frame work with the logging on and no storm, same binary as log_storm.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 loglevel=debug texstale waterlog logstat",
+      "until": "logstat frames \\d+ work ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "logstat line",
+          "regex": "logstat frames \\d+ work [\\d.]+ ms"
+        }
+      ],
+      "reason": "LOG4 gate B baseline. Cap 45 s: logstat every 300 drawn frames after the pond load."
+    },
+    {
+      "name": "log_storm_prof",
+      "status": "verified",
+      "subject": "Toad Town pond, map mac_00, Mario at -178 0 88 with prof=4 (logging off for the prof run: the pass level is -1, so each storm line fails the level test in vlog). The prof window line gives the frame time.",
+      "proves": "LOG4 gate A: 200 storm lines per drawn frame cost under 1 percent of the frame time when logging is off.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 texstale waterlog logstorm=200",
+      "until": "prof f\\d+ w300 fps",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof window",
+          "regex": "prof f\\d+ w300 fps [\\d.]+ \\| ft [\\d.]+"
+        }
+      ],
+      "reason": "LOG4 gate A, prof storm. Cap 45 s: 300 drawn frames at about 20 fps after the pond load."
+    },
+    {
+      "name": "log_storm_prof_zero",
+      "status": "verified",
+      "subject": "Toad Town pond, map mac_00, Mario at -178 0 88 with prof=4 and no storm lines (logstorm absent). The baseline of log_storm_prof.",
+      "proves": "LOG4 gate A baseline: frame time with prof=4 and no storm.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 prof=4 texstale waterlog",
+      "until": "prof f\\d+ w300 fps",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof window",
+          "regex": "prof f\\d+ w300 fps [\\d.]+ \\| ft [\\d.]+"
+        }
+      ],
+      "reason": "LOG4 gate A baseline. Cap 45 s: 300 drawn frames at about 20 fps after the pond load."
     }
   ]
 }
