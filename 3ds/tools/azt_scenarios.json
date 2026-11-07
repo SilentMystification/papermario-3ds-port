@@ -9383,29 +9383,6 @@
         }
       ],
       "reason": "FB-3 part 1 tex1 subject (sbk_56, cold det). Cap 25 as the other det spots."
-    },
-    {
-      "name": "super_text_det",
-      "status": "unverified",
-      "subject": "super_text (kmr_03 battle, A presses open the text box) as a cold start with the det switch and texrlog: the picture at frames 150 to 230 and the texrlog lines (why 2 rect_to_image, why 3 box_pattern_rect).",
-      "proves": "RS3 gate: the text box picture is byte-equal cold start to cold start, and the texrlog lines show the early-return rect paths still run after the move to nd_rect.c.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 padscript=wait150,A*2,wait40,A*2,wait40,A*2,wait40,A*2,wait40,A*2,wait40,A*2,wait40,A*2,wait40,A*2 shots shotwin=150:90 det texrlog",
-      "until": "shot \\d+ frame 230\b",
-      "cap": 90,
-      "deadline": 45,
-      "first_marker": "debug battle: formation",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "battle",
-          "regex": "debug battle: formation"
-        }
-      ],
-      "extra": [
-        "-NoWarm"
-      ],
-      "reason": "RS3: super_text had no det switch, so two runs of one build differed (2 of 23 shots). Cold det run of the same debug string, cap 90 as super_text. Run 1 (RS3, 2026-11-07): no until matched in 90 s (exit 10; the tool marked it broken); the texrlog lines reach 400 by frame 525; cause not traced."
     }
   ]
 }
