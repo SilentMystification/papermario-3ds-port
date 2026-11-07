@@ -3658,6 +3658,8 @@ void pm_gpu_flush(void) { flush(); }
 /* S4-3: the record arm. Sprites with a native build draw here (pm_gpu_spr_submit); the arm (pm_gbi.c) then turns the walker's vertex and triangle words of the
  * component to G_NOOP, the state words still run. Returns 1 when the sprite drew natively. sprcheck on: compare only (walker draws, pm_gpu_spr_rec). */
 void pm_gpu_spr_rec(const uint32_t* rec);
+/* SPR4-3: shaded sprites (nd_int.h is not included here; pm_gbi.c, nd_tex.c and nd_geom.c own these) */
+extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
 static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
 static void spr_nat_log(void) {
@@ -3747,13 +3749,20 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
         spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(r_zmark != 0); spr5_sub[5] += (unsigned)noz;
         if (nopal || off_active || grab_bind || r_zmark || noz) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
     }
-    if (r.flags & 1u) { *why = 3; return 0; } /* S4-2 plan default: a shaded sprite (SPR_SHADING_FLAG_ENABLED) runs the walker: the flat path there binds the shading palette (create_shading_palette) and tile 4 */
     NdTexDesc ds;
     NdUnit un;
     memset(&ds, 0, sizeof ds); memset(&un, 0, sizeof un);
+    const int shaded = (r.flags & 1u) != 0; /* SPR4-3: SPR_SHADING_FLAG_ENABLED. The walker bakes the shaded image at SetTileSize 0 (tex_shaded0, dual_on), before the vertex word: the live tile 0 is that texture */
     const int tex = r.raster != 0;
     int tw = 8, th = 8;
-    if (tex) { /* the unit 0 words of the record's raster (CI4, clamp), as the walker binds it */
+    if (shaded) {
+        if (!dual_on || nd_ws.use_t1) { *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */
+        ensure_tile(0);
+        dual_bind();
+        if (pm_tex_native_unit0(&un) != 1) { *why = 2; return 0; }
+        while (tw < (int)r.w) tw <<= 1;
+        while (th < (int)r.h) th <<= 1;
+    } else if (tex) { /* the unit 0 words of the record's raster (CI4, clamp), as the walker binds it */
         ds.img = (const void*)(uintptr_t)r.raster; ds.pal = (const void*)(uintptr_t)r.palette;
         ds.fmt = 2; ds.siz = 0; ds.cms = 2; ds.cmt = 2; ds.masks = 8; ds.maskt = 8; /* G_IM_FMT_CI, G_IM_SIZ_4b, G_TX_CLAMP (gbi.h values; nd_model.c uses the numbers too) */
         ds.w = (uint16_t)r.w; ds.h = (uint16_t)r.h; ds.stride = (uint16_t)r.w; ds.pal_n = 16;
@@ -3772,8 +3781,8 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv);
     NdMCtx c;
     memset(&c, 0, sizeof c);
-    c.mode = &mode; c.u0 = tex ? &un : NULL; c.i8_0 = 0; c.gv = &gv;
-    c.rgb_scale = rgb_scale; /* S4-1 fix 1: the walker's sticky rgb scale (1 or 2, set by pm_gpu_set_rgb_scale) at the batch; the key diff showed rgb_scale 0/1 */
+    c.mode = &mode; c.u0 = (tex || shaded) ? &un : NULL; c.i8_0 = 0; c.gv = &gv;
+    c.rgb_scale = shaded ? (dual_boost_on() ? 2 : 1) : rgb_scale; /* S4-1 fix 1: the walker's sticky rgb scale (1 or 2, set by pm_gpu_set_rgb_scale) at the batch; the key diff showed rgb_scale 0/1. Shaded: the walker sets 2 under the dual boost, else 1 */
     c.has_comb = 1; c.comb_w0 = sw_cw0; c.comb_w1 = sw_cw1;
     c.tex_w = tw; c.tex_h = th; c.tss = mode.has_tx ? mode.tw1 : sw_tss;
     c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;

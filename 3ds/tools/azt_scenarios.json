@@ -8532,6 +8532,84 @@
       "reason": "MDL-0b count at battle start (mdlw and mdl2 lines)."
     },
     {
+      "name": "sprshade_hos01_pic",
+      "status": "unverified",
+      "subject": "Map hos_01 at pos -400 0 410 (SHADING_HOS_01 profile), cold det start: shots at frames 200 to 205 (the picture). Shaded sprite records (why 3 before SPR4-3).",
+      "proves": "SPR4 step 3 gate: cold det run, native shaded sprites byte-equal to the walker reference.",
+      "debug": "warp=hos_01:0 pos=-400:0:410 shots shotwin=200:6 loglevel=debug det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "SPR4 step 3 picture: hos_01 shaded sprites, native (live baked tile 0). Compare with sprshade_hos01_nosprnat_pic, same build and switches."
+    },
+    {
+      "name": "sprshade_hos01_nosprnat_pic",
+      "status": "unverified",
+      "subject": "Map hos_01 at pos -400 0 410 (SHADING_HOS_01 profile), cold det start: shots at frames 200 to 205 (the picture). Shaded sprite records (why 3 before SPR4-3).",
+      "proves": "SPR4 step 3 gate: cold det run, native shaded sprites byte-equal to the walker reference.",
+      "debug": "warp=hos_01:0 pos=-400:0:410 shots shotwin=200:6 loglevel=debug det nosprnat",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "SPR4 step 3 reference: same scenario with nosprnat (pm_gpu_spr_native returns 0, walker draws every sprite record)."
+    },
+    {
+      "name": "sprshade_hos01",
+      "status": "unverified",
+      "subject": "Map hos_01 (SHADING_HOS_01 profile, set in src/world/area_hos/hos_01/main.c:117), log only: the sprnat and spr5 lines at scene frame 300 (shaded sprite records: why 3).",
+      "proves": "SPR4 step 3: how many sprite records of a shaded-profile map take the native path, and how many refuse on flags & 1 (why 3).",
+      "debug": "warp=hos_01:0 profdisk=1",
+      "until": "spr5 f\\d+ nopal",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "spr5 at 300",
+          "regex": "spr5 f300 nopal"
+        }
+      ],
+      "reason": "SPR4 step 3 measurement: a shaded-profile map, log only, to confirm why 3 (flags & 1) counts outside battle. Window at frame 300 (the sprnat line of the same frame)."
+    },
+    {
       "name": "mdlw_battle_spr5",
       "status": "unverified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), log only: the spr5 line at scene frame 300 (sprite class 5 refusals by flag).",
