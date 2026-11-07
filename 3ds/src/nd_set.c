@@ -68,9 +68,9 @@ void set_blendcolor(u32 w1) { blendc = w1; }
 /* CORE-2b: G_SETPRIMCOLOR, one owner (the walker switch and the record both run it). */
 void op_setprimcolor(u32 w0, u32 w1) {
     GP_SET(1, nd_ws.prim == w1 && (u8)nd_ws.prim_lod == (u8)(w0 & 0xff));
+    pm_gpu_set_prim(w1, w0 & 0xffffu); /* closes the open batch before the change (SPR4-prim) */
     nd_ws.prim = w1;
     nd_ws.prim_lod = w0 & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
-    pm_gpu_set_prim(nd_ws.prim);
     sync_combine();
 }
 

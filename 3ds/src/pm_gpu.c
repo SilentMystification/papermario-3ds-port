@@ -3548,9 +3548,14 @@ void pm_gpu_set_rgb_scale(int scale) {
     rgb_scale = scale;
 }
 
-void pm_gpu_set_prim(unsigned rgba) {
-    if ((combine == 5 || combine == 6 || combine == 7) && rgba != prim) flush();
+/* SPR4-prim: the open batch reads PRIM and PRIM_LOD in combine 1, 5, 6, 7 and in combine 8 (the plan has no source mask, so any change closes it). The
+ * batch draws with the prim of its flush, so a change while it is open must close it first. */
+static unsigned prim_lod_g = 0xffffffffu;
+void pm_gpu_set_prim(unsigned rgba, unsigned lod) {
+    int reads = combine == 1 || combine == 5 || combine == 6 || combine == 7 || combine == 8;
+    if (reads && (rgba != prim || lod != prim_lod_g)) flush();
     prim = rgba;
+    prim_lod_g = lod;
 }
 
 void pm_gpu_set_mix(int on, unsigned rgba) {
