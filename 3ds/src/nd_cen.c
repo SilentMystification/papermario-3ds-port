@@ -114,6 +114,26 @@ static int os_class_of(unsigned op) {
     default: return OS_OTH;
     }
 }
+/* MV (a): the module that runs each op (the handler of its dispatch arm in nd_walk.c). Read by os_report as the mod column. Updated in each move row:
+ * an arm that moves changes its entry. MOD_PMGBI counts the ops whose handler is still in pm_gbi.c (G_PM_REC: rec_run, records group LS-3). */
+enum { MOD_WALK, MOD_SET, MOD_TEX, MOD_RECT, MOD_GEOM, MOD_MTX, MOD_TGT, MOD_ENT, MOD_PMGBI, MOD_OTH, MOD_N };
+const char* const mod_nm[MOD_N] = { "walk", "set", "tex", "rect", "geom", "mtx", "tgt", "ent", "pmgbi", "oth" };
+static const uint8_t op_module[256] = {
+    [0 ... 255] = MOD_OTH,
+    [G_ENDDL] = MOD_WALK, [G_DL] = MOD_WALK, [G_NOOP] = MOD_WALK, [G_SPNOOP] = MOD_WALK, [G_SETZIMG] = MOD_WALK,
+    [G_RDPFULLSYNC] = MOD_WALK, [G_RDPTILESYNC] = MOD_WALK, [G_RDPPIPESYNC] = MOD_WALK, [G_RDPLOADSYNC] = MOD_WALK,
+    [G_RDPHALF_1] = MOD_WALK, [G_RDPHALF_2] = MOD_WALK, [G_PM_SPR] = MOD_WALK, [G_MODIFYVTX] = MOD_WALK,
+    [G_SETCONVERT] = MOD_WALK, [G_SETKEYR] = MOD_WALK, [G_SETKEYGB] = MOD_WALK,
+    [G_PM_REC] = MOD_PMGBI, [G_PM_ENT] = MOD_ENT,
+    [G_VTX] = MOD_GEOM, [G_TRI1] = MOD_GEOM, [G_TRI2] = MOD_GEOM,
+    [G_MTX] = MOD_MTX, [G_MOVEMEM] = MOD_MTX, [G_POPMTX] = MOD_MTX,
+    [G_SETSCISSOR] = MOD_SET, [G_GEOMETRYMODE] = MOD_SET, [G_MOVEWORD] = MOD_SET, [G_SETFOGCOLOR] = MOD_SET, [G_SETBLENDCOLOR] = MOD_SET,
+    [G_SETENVCOLOR] = MOD_SET, [G_SETPRIMDEPTH] = MOD_SET, [G_SETFILLCOLOR] = MOD_SET,
+    [G_TEXTURE] = MOD_TEX, [G_SETOTHERMODE_H] = MOD_TEX, [G_SETOTHERMODE_L] = MOD_TEX, [G_SETCOMBINE] = MOD_TEX, [G_SETPRIMCOLOR] = MOD_TEX,
+    [G_SETTIMG] = MOD_TEX, [G_SETTILE] = MOD_TEX, [G_LOADBLOCK] = MOD_TEX, [G_LOADTILE] = MOD_TEX, [G_LOADTLUT] = MOD_TEX, [G_SETTILESIZE] = MOD_TEX,
+    [G_FILLRECT] = MOD_RECT, [G_TEXRECT] = MOD_RECT, [G_TEXRECTFLIP] = MOD_RECT,
+    [G_SETCIMG] = MOD_TGT,
+};
 /* P1 name: a label string when the key reads as printable text, else the hex key (a function address, resolved with the .map file). */
 static void pk_name(unsigned s, char* b, int n) {
     if (s == PK_PRE) { snprintf(b, n, "pre"); return; }
@@ -390,11 +410,12 @@ static void os_win_clear(void) {
 const Gfx* pre_w0; const Gfx* pre_mk0; int pre_mkn; /* WCEN2 diag: the last outer walk's list start, its first mark and mark count */
 static void os_report(void) {
     static unsigned long long est[256], estc[256], pke[PK_SLOTS];
-    unsigned long long cls_tk[OS_N] = { 0 }, cls_n[OS_N] = { 0 }, tot_n = 0, tot_fl = 0, tot_sn = 0, psum = 0;
+    unsigned long long cls_tk[OS_N] = { 0 }, cls_n[OS_N] = { 0 }, mod_n[MOD_N] = { 0 }, tot_n = 0, tot_fl = 0, tot_sn = 0, psum = 0;
     for (int op = 0; op < 256; op++) {
         est[op] = os_sn[op] ? (unsigned long long)os_tk[op] * os_op_n[op] / os_sn[op] : 0;
         tot_n += os_op_n[op] + os_nn[op]; tot_fl += os_fl[op]; tot_sn += os_sn[op];
         cls_tk[os_class_of(op)] += est[op]; cls_n[os_class_of(op)] += os_op_n[op];
+        mod_n[op_module[op]] += os_op_n[op];
     }
     char c[480]; int k = 0;
     for (int i = 0; i < OS_N; i++) k += snprintf(c + k, sizeof c - k, " %s %u/%u", os_nm[i], (unsigned)(cls_tk[i] / 268 / 300), (unsigned)(cls_n[i] / 300));
@@ -415,6 +436,9 @@ static void os_report(void) {
     unsigned svc_now = pm_svc_n;
     pm_log_hw("opsplit f%d ops %u |%s | %s | fl %u | tk %u | pt %u | gms %u gmn %u | rec %u", rm_frame, (unsigned)(tot_n / 300), c, t, (unsigned)(tot_fl / 300), (unsigned)(2 * tot_sn / 300), (svc_now - os_svc_last) / 300u, gm_steps / 300, gm_n, rec_n);
     os_svc_last = svc_now;
+    { char md[200]; int q = snprintf(md, sizeof md, "modsplit f%d", rm_frame); /* MV (a): module column, own line (the opsplit line is cut at its length) */
+      for (int i = 0; i < MOD_N; i++) q += snprintf(md + q, sizeof md - q, " %s %u", mod_nm[i], (unsigned)(mod_n[i] / 300));
+      pm_log_hw("%s", md); }
     rec_n = 0;
     { char p[40]; pm_pos_text(p); pm_log_hw("pos f%d %s", rm_frame, p); } /* CAP1: Mario, one line per window */
     pm_log_hw("prod f%d sum %u ops %u", rm_frame, (unsigned)(psum / 300), (unsigned)(tot_n / 300));
