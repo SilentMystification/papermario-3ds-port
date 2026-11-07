@@ -115,16 +115,16 @@ static int os_class_of(unsigned op) {
     }
 }
 /* MV (a): the module that runs each op (the handler of its dispatch arm in nd_walk.c). Read by os_report as the mod column. Updated in each move row:
- * an arm that moves changes its entry. MOD_PMGBI counts the ops whose handler is still in pm_gbi.c (G_PM_REC: rec_run, records group LS-3). */
-enum { MOD_WALK, MOD_SET, MOD_TEX, MOD_RECT, MOD_GEOM, MOD_MTX, MOD_TGT, MOD_ENT, MOD_PMGBI, MOD_OTH, MOD_N };
-const char* const mod_nm[MOD_N] = { "walk", "set", "tex", "rect", "geom", "mtx", "tgt", "ent", "pmgbi", "oth" };
+ * an arm that moves changes its entry. MOD_PMGBI counts the ops whose handler is still in pm_gbi.c; MOD_REC the G_PM_REC arm (rec_run, nd_recs.c). */
+enum { MOD_WALK, MOD_SET, MOD_TEX, MOD_RECT, MOD_GEOM, MOD_MTX, MOD_TGT, MOD_ENT, MOD_PMGBI, MOD_REC, MOD_OTH, MOD_N };
+const char* const mod_nm[MOD_N] = { "walk", "set", "tex", "rect", "geom", "mtx", "tgt", "ent", "pmgbi", "rec", "oth" };
 static const uint8_t op_module[256] = {
     [0 ... 255] = MOD_OTH,
     [G_ENDDL] = MOD_WALK, [G_DL] = MOD_WALK, [G_NOOP] = MOD_WALK, [G_SPNOOP] = MOD_WALK, [G_SETZIMG] = MOD_WALK,
     [G_RDPFULLSYNC] = MOD_WALK, [G_RDPTILESYNC] = MOD_WALK, [G_RDPPIPESYNC] = MOD_WALK, [G_RDPLOADSYNC] = MOD_WALK,
     [G_RDPHALF_1] = MOD_WALK, [G_RDPHALF_2] = MOD_WALK, [G_PM_SPR] = MOD_WALK, [G_MODIFYVTX] = MOD_WALK,
     [G_SETCONVERT] = MOD_WALK, [G_SETKEYR] = MOD_WALK, [G_SETKEYGB] = MOD_WALK,
-    [G_PM_REC] = MOD_PMGBI, [G_PM_ENT] = MOD_ENT,
+    [G_PM_REC] = MOD_REC, [G_PM_ENT] = MOD_ENT,
     [G_VTX] = MOD_GEOM, [G_TRI1] = MOD_GEOM, [G_TRI2] = MOD_GEOM,
     [G_MTX] = MOD_MTX, [G_MOVEMEM] = MOD_MTX, [G_POPMTX] = MOD_MTX,
     [G_SETSCISSOR] = MOD_SET, [G_GEOMETRYMODE] = MOD_SET, [G_MOVEWORD] = MOD_SET, [G_SETFOGCOLOR] = MOD_SET, [G_SETBLENDCOLOR] = MOD_SET,

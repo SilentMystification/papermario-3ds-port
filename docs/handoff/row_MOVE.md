@@ -9,7 +9,7 @@ User decision (2026-11-07): one agent does every remaining pm_gbi.c move in sequ
 4. GM-4 sun: grep pm_sun_* callers, move to nd_geom.c or delete.
 5. LS-1 map shapes (dlc_*, gp1_box, nd_env, pm_dlc_native_ranges) to nd_shape.c.
 6. LS-2 entities (ent_*, the G_PM_ENT case) to nd_ent.c.
-Not in this row: LS-3 (records; waits for SPR4 and MDL-4), GM-3/ST-3 deletes, WK-4 part 2 (needs an oracle decision).
+Not in this row: GM-3/ST-3 deletes, WK-4 part 2 (needs an oracle decision).
 
 ## Oracle decision WK-4b
 Rule (D9): a switch survives only if an open row names it, or it is a user option. A deleted switch keeps its default branch (the switch-off path) and loses the other one.
@@ -53,8 +53,8 @@ Note: all pic runs logged rc "crash symbols" (also base). Check whether this is 
 ## State 4 (2026-11-07, MOVE4 agent)
 Branch move4 from nds1 a682f24be, worktree build3ds/wt/move4. MOVE-4 done: suntile_on, suntile_t0, suntile_tri, pm_sun_spawn, pm_sun_draw, pm_sun_base (and their calls in src/effects/sun.c, nd_geom.c, nd_comb.c, nd_tex.c), cc07_dbg, tritrace_on, tritrace_tri, tritrace_seq and the 5 tritrace lines in draw_tri_cpu deleted. Scenarios nok02_tri_dd and nok02_tri (tritrace only) deleted. sun_sbk: suntile word removed. New scenario and bench spot_sbk56_det (cold det, sbk_56 sun scene).
 Gates: spot_mac01_det cold det 12 of 12 shots byte-equal to nds1 a682f24be (runs 15571 base, 15708 head). spot_sbk56_det cold det 12 of 12 byte-equal (one run each). spot_sbk56_pic (no det) differs in 2 of 3 shots between two nds1 runs, so it is noise and not a gate. Link map (pm_3ds.map, pm_gbi.o sections) has no suntile, tritrace, cc07 or pm_sun names.
-Left in pm_gbi.c (live link sections of pm_gbi.o): rec_op, rec_fogpos, rec_fog, rec_dl, rec_aux, rec_matrix, rec_apply, rec_run: LS-3 (MDL-5 edits rec_run now). sync_legacy, cc_legacy, set_leg: ST-3 (after RECT-3). draw_tri_cpu, gbi_vtx_cpu1, fold_axis, pack_color, lit_color: GM-3 (after TRI-4). box_pattern_rect, rect_to_image: RECT-3. pm_gbi_bind_tile1: named by row_TX and row_MDL5, keep until they decide.
-The row file stays until LS-3, ST-3, GM-3 and RECT-3 land.
+Moved to nd_recs.c by LS-3 (done): rec_op, rec_fogpos, rec_fog, rec_dl, rec_aux, rec_matrix, rec_apply, rec_run. Left in pm_gbi.c (live link sections of pm_gbi.o): sync_legacy, cc_legacy, set_leg: ST-3 (after RECT-3). draw_tri_cpu, gbi_vtx_cpu1, fold_axis, pack_color, lit_color: GM-3 (after TRI-4). box_pattern_rect, rect_to_image: RECT-3. pm_gbi_bind_tile1: named by row_TX and row_MDL5, keep until they decide.
+The row file stays until ST-3, GM-3 and RECT-3 land.
 
 ## State 5 (2026-11-07, MOVE5 agent)
 Branch move5 from nds1 9d978d836, worktree build3ds/wt/move5. Done, pure cuts and prototypes:
@@ -67,12 +67,12 @@ Branch move5 from nds1 9d978d836, worktree build3ds/wt/move5. Done, pure cuts an
 Gates: spot_mac01_det cold det, nds1 9d978d836 run 6911 vs head 4fd23d765 run 7139: 12 of 12 shots byte-equal (md5). Log checks pass; the picture is the same bytes as the base, which shows mac_01 at pos 0 0 200.
 Link map (head build, pm_3ds.map): pm_gbi_combined_ptr in nd_mtx_set.o; dual_boost_on, lcg_f, lcg_s in nd_comb.o; combchk_run in nd_comb.o (unlikely section); op_loadblock, tlut_v20 in nd_tex_set.o; nd_tex_get in nd_tex.o; nd_model_draw in nd_model_set.o. No moved name in pm_gbi.o.
 Starts used this row: 2 of 8.
-The row file stays until LS-3, ST-3, GM-3 and RECT-3 land.
+The row file stays until ST-3, GM-3 and RECT-3 land.
 
 ## Oracle plan MOVE 7+ (empty pm_gbi.c)
 Precondition grep fix: count definitions only, `grep -cE "^[a-z][^;]*\)\s*\{?$" 3ds/src/pm_gbi.c`, plus nm on pm_gbi.o (defined T/t symbols). S10 precondition 4: nm shows only the pm_gbi_run shim, or nothing.
 Targets: walk core (is_host, ptr_of, pm_gbi_ptr_of, pm_gbi_run, pm_gbi_init, gbi_cold_modifyvtx, pm_gbi_fallback, lt_mem_same) -> nd_walk.c (MV-7). Target/frame (pm_depth_query, pm_is_cfb, pm_cfb_capture_prev/_cpu/_cpu_for, pm_zbuf_need, pm_fb_native, rgba_from_5551, the definitions here only) -> nd_target.c (MV-8). Census (pm_gbi_flush_class, ph_pick, gv_streak_*, tex_streak_*, gp3_t0_*) -> nd_cen.c (MV-9). The debug deletes (tritrace, cc07_dbg, suntile) are MOVE-4. Combine (sync_combine, combchk_on moves, combchk is named by a row) -> nd_comb.c; shift_mul, pm_tex_set_filter -> nd_tex.c; pm_gbi_gv_at -> nd_geom.c; nd_light_count -> nd_mtx (MV-10).
-Later rows (not this agent): legacy combine delete ST-3 after RECT-3; CPU vertex delete GM-3 after TRI-4; records to nd_recs.c LS-3 after MDL-4; sprite to nd_sprite.c LS-3 after SPR4 row 4.
+Later rows (not this agent): legacy combine delete ST-3 after RECT-3; CPU vertex delete GM-3 after TRI-4; sprite to nd_sprite.c LS-3 after SPR4 row 4.
 Each MV row: pure cut and paste plus prototypes, about 150 lines. Gate: mac_01 byte-equal (det switch when DET is in nds1, else a warm A/B pair with the same harness), nm shows the row's symbols absent from pm_gbi.o, host tests link.
 (a) Module column: static const uint8_t op_module[256] in nd_cen.c, updated in each move row; the gate checks the table against the switch arms. os_report adds the module column from the table. Bucket MOD_PM_GBI must reach 0 (S10 precondition 1). No per-arm store in the hot path.
 (b) nd_mtx host link: split, no stubs. nd_mtx.c keeps pure math (nd_mtx_pcomp, pool, products). The GM-1 handlers that call walker or GPU symbols (G_MTX, popmtx, movemem lights, lit_freeze, lt/lk, g2_same/g2_note, gbi_moveword, pm_gpu_note_mvp, pm_gpu_set_ntab, pm_eye_e, ptr_of, pm_frame_count, pm_log, pm_gbi_ndref_frame) go to a new target-only nd_mtx_set.c. The nd_mtx host test links nd_mtx.c only. Add nd_mtx_set.c to the D5 module list.
@@ -86,6 +86,7 @@ Gate spot_mac01_det: move5 lane (PM_LANE=move5) shots 200 to 205 equal nds1 1e91
 MOVE-5 step 1: passed. Orchestrator sign-off pending.
 Build rule: always PM_LANE=<lane>. A worktree build without it uses the shared main volume pm3ds-src (the first merge build did this; its shots are not used). A worktree needs the untracked ver/us/build and assets/us copied from the main repo (done in move5). Build: copy map_restore_table.c to scratch, python 3ds/tools/gen_map_restore.py, PM_LANE=move5 sh 3ds/build.sh, restore the table file.
 ## Oracle plan LS-3 (2026-11-07, oracle on fb4 dd78611db; starts on nds1 after DEL (fb4) merges, never before GM-3 lands)
+Status: done (2026-11-07, branch ls3 on d8864ae48). The commit that adds 3ds/src/nd_recs.c is the LS-3 commit (git log -- 3ds/src/nd_recs.c). Gate: spot_mac01_det 6/6, mdl5_iwa10_det 6/6, battle_start_f182_cold 1/1 byte-equal to the base shots; wcen_mac01 gbi phase 5.9 ms avg both, p95 14.9 vs 14.9; modsplit pmgbi 91 to rec 91; nd_host PASS. dual_boost_on is in nd_comb.c already (not moved).
 Premise: rec_op, rec_fogpos, rec_fog, rec_dl, rec_aux, rec_matrix, rec_apply, rec_run and nmn_sw call no pm_gbi.c static; every callee is in nd_int.h or nd.h. Pure cut and paste.
 Check first: `grep -nE "^(static [^(]*)?\b(rec_(op|fogpos|fog|dl|aux|matrix|apply|run)|nmn_sw)\b *\(" 3ds/src/*.c` lists only pm_gbi.c. Then compile nd_recs.c alone: an undefined static = premise fails, stop and report the name.
 Move to new 3ds/src/nd_recs.c in source order (find by name, lines shift): the R0-R10 record comment and `extern Gfx* ModelRenderModes[]`; rec_op, rec_fogpos, rec_fog, rec_dl, rec_aux, rec_matrix, rec_apply (static noinline); the extern block pm_gpu_ndm_on/ndm_begin/model_key/ndm_end/model_native/model_hit and nd_r11_state; rec_nat_last, nmn_sw, rec_run; `unsigned rec_n` (reset nd_cen.c, extern nd_int.h).
