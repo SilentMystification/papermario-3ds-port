@@ -48,3 +48,13 @@ Measurement (one run sbk56_superblock, orbdbg plus new switch bigdraw; shots eve
 Reading: big draw with orb tag 3/4: cause 1. Big draw from a screen_overlay or fill: cause 2. No big draw, orb alpha source TEX0.A on L8: cause 3. Correct: colour INTERPOLATE(ONE, CONST, TEX0) or MULADD(TEX0, 1-CONST, CONST), alpha MODULATE(TEX0 op R, CONST A).
 Fix: 1 pm_gbi.c G_MTX path (or nd_model.c gv_params palette) for PUSH|LOAD inside a render task, compare bbox with the noraw walker draw. 2 log set_screen_overlay_params_front caller; 3DS fill blend (pm_gbi.c fill rect r_blend from the XLU mode). 3 pm_tex_i8(0) true for any L8/L4 slot, stored at batch open; tev_op_a_i/tev_op_rgb_i map TEX0 to OR_R/OA_R for L formats; nd_raw_native takes i8_0 from the stored slot.
 Gate: f547-f565 see-through green disc, alpha rising, background visible (within 10% of ((1-T)P+T)a + bg(1-a) at 5 points); no big draw; grey flash only after the confirm; mac_01 byte-equal; iwa_10 effects by eye; then the orchestrator pushes.
+
+## Oracle plan 4: measure state (Haiku, 2026-11-06, INCOMPLETE, 3 of 8 Azahar starts used)
+Facts from runs 729, 735, 741 (sbk56_glowvram, build lane fx):
+- The white square is the glow quads (tags 3, 4): with noglow the block shows its own blue disc. Glow draws are 2 tris each, native path, I8 64x32 (i8_0 1), CPU and ring uv correct (st 0/1024, uvso 1/1024, 1/512). TEV words = N64 formula (colour MULT_ADD(1-T, PRIM, T), alpha MODULATE(T.R, PRIM.a)), blend SRC_ALPHA/ONE_MINUS.
+- PRIM alpha is 182 to 191 from f540 on (not about 11 at f548: plan 4 premise false; f206 is 11).
+- Slab bytes (GPU view) equal the source at f546 to f556 for the slot in use (corners 0, (32,0) 255). Shot still white: the GPU sample is not the texel the decode predicts.
+- f550 draw uses slot 46 with vram_up pending (slab holds old bytes 255/76/222): a second, real race (upload after the draw). Not the whole story (f548 slot 219 is uploaded and still white).
+- Forcing the unit 0 write and cache clear on every draw (test) changes nothing: stale unit words are not the cause.
+Next: a sampling readback (TEV override to REPLACE TEX0 on the glow, one shot) to split the sampling from the combiner; then fix the pending-upload draw (draw from vram_stage until the DMA).
+Code state: debug readouts (orbpix gpuvram, orbpix ring, tx1read window, pm_tex_slot_vram_sample, pm_tex_slot_upstate) and scenario sbk56_glowvram are in the working tree, not committed (shared files carry other agents' CRLF and hunks).
