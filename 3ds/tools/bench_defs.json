@@ -2320,6 +2320,21 @@
       "gates": []
     },
     {
+      "name": "battle_start_pm5all_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3: battle start with the pm5all switch (unlit model draws through program 5, tex1 native). Byte-equal to battle_start_pic of the pre-row build.",
+      "scenario": "battle_start_pm5all",
+      "cap": 20,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_iwa10_pm5off_ndmcheck",
       "kind": "azahar_pic",
       "speed": "normal",

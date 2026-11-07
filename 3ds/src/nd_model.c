@@ -221,6 +221,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
         extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; }
     return r;
 }
+static int nd_pm5all(void) { static int v = -1; if (v < 0) v = pm_debug_has("pm5all"); return v; }
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0;
     const uint32_t f = rec[6]; /* R3 w0 flags */
@@ -258,7 +259,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     const int combine = co.plan_on ? 8 : co.leg;
     const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
     /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise and pm5 with tex1 stay why 6 (named) */
-    if (combine == 8 && (co.plan.uses_noise || (co.plan.uses_tex1 && (!c->u1 || c->gv && c->gv->fxon)))) return (st->why = 6, 0);
+    if (combine == 8 && (co.plan.uses_noise || (co.plan.uses_tex1 && !c->u1))) return (st->why = 6, 0); /* FB-3: pm5 takes tex1 (uvx uniform); noise stays why 6 until FB-2 */
     const int t1n = combine == 8 && co.plan.uses_tex1;
     if (c->zmark && zb && r->decal) return (st->why = 15, 0); /* S5-2: zmark with decal (the walker's pass 2 bias): named fallback */
     NdTmplKey k;
@@ -291,6 +292,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
         memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16);
         d->zmix[0] = c->gv->zm[0]; d->zmix[1] = c->gv->zm[1];
         if (c->gv->fxon) { d->use5 = 1; d->fx5 = c->gv->fx; memcpy(d->nrm5, c->nrm5, sizeof d->nrm5); }
+        else if (nd_pm5all()) { d->use5 = 1; memset(&d->fx5, 0, sizeof d->fx5); memset(d->nrm5, 0, sizeof d->nrm5); } /* FB-3 switch pm5all: an unlit draw takes program 5 with no light, no fog (same colour and alpha as pm4) */
     }
     memcpy(&st->k, &k, sizeof k); st->to = to; st->tmpl = id;
     return 1;

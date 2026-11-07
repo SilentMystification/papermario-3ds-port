@@ -8336,6 +8336,38 @@
       "reason": "PM5 reference: battle_start with the pm5 native path off (debug switch pm5off). Cap as battle_start."
     },
     {
+      "name": "battle_start_pm5all",
+      "status": "unverified",
+      "subject": "battle start with the pm5all switch: unlit model draws take program 5 (FB-3). Gate: byte-equal to battle_start of the pre-row build",
+      "proves": "FB-3: pm5 native draws with tex1 and the forced pm5 path for unlit draws reproduce the pm4 picture.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 pm5all",
+      "until": "shot \\d+ frame 182\\b",
+      "cap": 20,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "battle mode",
+          "regex": "game mode 8 frame"
+        },
+        {
+          "name": "shot at 182",
+          "regex": "shot \\d+ frame 182\\b"
+        }
+      ],
+      "reason": "FB-3 forcing switch pm5all (every model draw without light takes program 5). Cap as battle_start."
+    },
+    {
       "name": "spot_iwa10_pm5off_ndmcheck",
       "status": "pending",
       "subject": "iwa_10 (Mario on the floor at -662 0 587, warp entry 0). Shots at frames 200 to 205 and the ndmcheck window line.",
