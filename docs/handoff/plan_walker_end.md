@@ -2,6 +2,9 @@
 
 Walker work = a walker GPU draw: wd in the WCEN3 census (cen_add in pm_gpu.c), any draw that does not close through nd_native_submit. Model records, sprite records, entity segments and ent_gdl draw natively already (interpretation cost only).
 
+## Census at HEAD (CEN-1a, 951ff79e5; table in agent_wcen.md; replaces the wd numbers below where they differ)
+Walker wd per 300 frames is CPU rect in every scene: mac_01 607, iwa_10 593, battle kmr_03 2401 (effect_renderUI 1736), sbk_56 1487 (rect 611, clip 876 = sun_appendGfx), pause 40482 (rect 40272, nr8 210, draw_msg glyphs), text 40746 (rect 40536, nr8 210), golden 600, nok_11 605. Not seen: wide, ring, seam, pm5, nr1 to nr7, nr9, other. entity_model, appendGfx_model, sprite_component, walking_dust, stars_shimmer: 0 wd (WorkerBackUI 2136 rect in one mac_01 window). So: RECT is the main stream. TRI-2 runs only if a wide-mode census (battle_wide, pause_spin_wide) shows wide wd. TRI-3 = sun_appendGfx clip at sbk_56. OFF = nr8 (unit 0) at text menus first (after STALE2); OFF-1/2 only if pause_spin_grab, battle_start_fb show nr2/nr3. MDL-1/2 (R13, R11 forms) not yet listed: one ndmcheck run first; MDL-3 only if spr_fb shows wd.
+
 ## Inventory (wd per 300 frames, mac_01 / iwa_10, agent_wcen.md WCEN3)
 1. camera_render (background pre-render) 289 / 283: CPU textured rect, `pm_gpu_tex_rect(` in pm_gbi.c. Stream RECT.
 2. background lists 015fe3d8, 0155a1a8: 145+144 / 142+141: same. Stream RECT.
