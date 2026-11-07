@@ -417,6 +417,13 @@ $marks = @()
         if ($text -match "\[CRASH\]") { Start-Sleep -Seconds 1; $reason = "crash"; break }
         if ($Until -and $text -match $Until) { $reason = "matched '$Until'"; $untilAt = ((Get-Date) - $start).TotalSeconds; break } # AZT10-1: until time (s from the start)
     }
+    # S10C-1: the until line ends the game as well. Without a pause the emulator runs on after the until line (the shots debug dumps a shot every
+    # 30 frames to 200) and the shot wait below waited for shots the run does not need: nok11_det ran 28 s past its until line. Pause at the
+    # until line (the keep pause below then is not sent again): no frame and no shot after it. The shot wait only settles files already written.
+    $pausedAtUntil = $false
+    if ($reason -like "matched*" -and $p -and -not $p.HasExited -and -not $Interactive -and -not $Gdb) {
+        [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation")); $pausedAtUntil = $true
+    }
     # SHOTCOPY1: the emulator closes a shot file after its shot line, but the host can see part of it for a while (DET saw 155648 of 288015 B).
     # The run waits (up to 30 s) until every shot line of this start has its full file: 288015 B (header "P6 240 400 255" + LF = 15 B, then 240 * 400 * 3),
     # the same size on two polls 250 ms apart. Shot lines before this start (a warm restart keeps the log) are not counted: only the lines after this run's bootid.
@@ -433,7 +440,8 @@ $marks = @()
         } catch { Write-Output "SHOT COPY FAILED: the game log could not be read for its shot lines: $($_.Exception.Message)" }
         # The burst writer (shotmode) gives every logged frame the same counter, so a logged number is checked against the files on disk, not one file per line.
         $prevLen = @{}; $okN = @{}; $nFiles = 0
-        for ($w = 0; $w -lt 120; $w++) {
+        $shotWaitN = if ($pausedAtUntil) { 20 } else { 120 } # 20 polls of 250 ms: 5 s after the pause at the until line, else 30 s
+        for ($w = 0; $w -lt $shotWaitN; $w++) {
             $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' })
             $have = @{}; foreach ($f1 in $files) { $have[[int]$f1.Name.Substring(0, 4)] = $true }
             $nFiles = $files.Count
@@ -488,7 +496,7 @@ public class AzWin {
     Remove-Item $stopReq -ErrorAction SilentlyContinue
     if ($keepNow) {
         # AZT-2: pause the game (no CPU while idle) and leave Azahar open; the idle reaper closes it after AzIdleSec (900 s, AZT3-4)
-        [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation"))
+        if (-not $pausedAtUntil) { [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation")) } # S10C-1: already paused at the until line
         @{ pid = $p.Id; x3dsx = $x3dsx; turbo = $Turbo.IsPresent; turbolimit = $(if ($Turbo) { $TurboLimit } else { 0 }); time = (Get-Date).ToString("s") } | ConvertTo-Json | Set-Content $sl.keepFile
         Start-SlotReaper $slotK
     }
