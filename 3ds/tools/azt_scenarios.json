@@ -9088,6 +9088,200 @@
         }
       ],
       "reason": "SPR4 reference: same scenario as pause_spin_grab_w300 with the nosprnat switch (pm_gpu_spr_native returns 0, the walker draws every sprite record). Cold run."
+    },
+    {
+      "name": "spot_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 (preset toad), Mario at pos -135 0 85, cold det start: shots at frames 200 to 205 (the picture). VERIFY check 1: HEAD and the det base give byte-equal shots.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 1 (mac_00, cold det). Same switches as fb_mac01_det."
+    },
+    {
+      "name": "battle_start_r13off_det",
+      "status": "unverified",
+      "subject": "Battle scene (one Goomba on kmr_03), cold det start, walker R13 (r13off): shot at frame 182. VERIFY check 2 walker reference.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 r13off det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 182\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\b"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, r13off vs battle_start_f182_cold)."
+    },
+    {
+      "name": "battle_start_pm5off_det",
+      "status": "unverified",
+      "subject": "Battle scene (one Goomba on kmr_03), cold det start, pm5 native path off (pm5off): shot at frame 182. VERIFY check 2 walker reference.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 pm5off det",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 182\b",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "frame 182",
+          "regex": "shot \\d+ frame 182\b"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, pm5off vs battle_start_f182_cold)."
+    },
+    {
+      "name": "spot_iwa10_det",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530 (entry 1), cold det start: shots at frames 200 to 205 with the native model draws. VERIFY check 2 native side.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, iwa_10 native)."
+    },
+    {
+      "name": "spot_iwa10_det_r13off",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530 (entry 1), cold det start with r13off: shots at frames 200 to 205. VERIFY check 2 walker side.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 shots shotwin=200:6 loglevel=debug r13off fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, iwa_10 walker R13)."
+    },
+    {
+      "name": "rect_post_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start with native textured rects (rectpost=200): shots at frames 200 to 205. VERIFY check 2 native side.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug rectpost=200 fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, native rects)."
+    },
+    {
+      "name": "rect_nr_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start with CPU textured rects (norectraw): shots at frames 200 to 205. VERIFY check 2 walker side.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug norectraw fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "VERIFY check 2 (cold det, CPU rects)."
     }
   ]
 }
