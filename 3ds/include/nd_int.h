@@ -218,4 +218,19 @@ void op_loadtlut(u32 w0, u32 w1);
 void op_settilesize(u32 w0, u32 w1);
 void op_texture(u32 w0, u32 w1);
 
+/* ---- M: the matrix group (nd_mtx.c, GM-1). Globals defined in nd_mtx.c; pm_gbi.c and the walker read them. ---- */
+extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
+extern unsigned gm_last, gm_steps, gm_n;
+extern float (*gm_tab)[4][4];
+extern float (*gm_nrm)[3][4];
+extern unsigned short gm_idx[512];
+extern float mtx_cache[256][16];
+extern u32 mtx_tag[256];
+void upload_mvp(void);
+void mtx_elem(Mtx* dst, int r, int c, float v);
+void rec_lights(const Lightsn* L, unsigned k);
+void lit_freeze(void);
+extern s8 lk[2][3];
+extern unsigned lt_n;
+
 #endif

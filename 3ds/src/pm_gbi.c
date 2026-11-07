@@ -80,10 +80,6 @@ void set_geom(u32 w0, u32 w1) {
     nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
     pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
 }
-float combined[4][4];
-/* Viewport scale/translate after the 2-bit fraction. Full 320x240 until a display list sets one. */
-float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
-float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 void pm_tex_set_filter(int linear);
 int rm_frame;
 /* X01 debug switch xtrace=<first frame>:<count>: log fill rects, prim depth and render state changes in that frame window. */
@@ -385,13 +381,8 @@ void gp3_t0_set(void) {
 }
 void gp3_t0_surv(void) { gp3_t0_pending = 0; }
 static float gv_rel_ref[2];
-unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
 unsigned short vert_ring[64], vert_gmi[64];
 unsigned vert_tss[64];
-unsigned gm_steps; /* W1: entries compared by gv_matrix_id, summed over the report window */
-float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
-float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each gm_tab entry (the normal matrix), made when the entry is made */
-unsigned gm_n;
 unsigned st_gpu_tri; /* triangles drawn by the raw path */
 unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
 u8 seen[256];
@@ -430,12 +421,6 @@ void* ptr_of(u32 w) {
 }
 void* pm_gbi_ptr_of(u32 w) { return ptr_of(w); } /* MDL-1: the walker's segment resolver, for the R13 texture block (nd_model.c nd_r13_desc) */
 
-extern float pm_eye_e, pm_eye_conv;
-static void upload_mvp(void) {
-    nd_mtx_combine(combined, pm_eye_e, pm_eye_conv); /* S1-4: modelview x projection, STEREO eye shift on a perspective matrix */
-    pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
-}
-void pm_gbi_eye_changed(void) { upload_mvp(); }
 
 /* Combiner input as a constant, or -1 when it needs a texel or the shade, -2 for COMBINED.
  * slot 0..3 is A, B, C, D of the colour equation. */
@@ -1502,7 +1487,7 @@ static void gv_xf(int sl) {
 
 /* GV5: the lights are about to change (G_MOVEMEM light, G_MW_NUMLIGHT). A lit vertex that is still in the ring has not seen its colour yet: make it now with the old lights and keep it on the CPU path. */
 int lit_pending; /* a lit vertex was loaded to the ring since the last lit_freeze */
-static void lit_freeze(void) {
+void lit_freeze(void) {
     if (!lit_pending) return; /* no vertex was loaded lit since the last freeze */
     lit_pending = 0;
     for (int s = 0; s < 64; s++) {
@@ -1512,40 +1497,8 @@ static void lit_freeze(void) {
     }
 }
 
-/* H3: open-addressing index of gm_tab by a hash of the combined matrix. Slot holds entry + 1, 0 is empty. 512 slots for at most 256 entries. */
-unsigned short gm_idx[512];
-static unsigned gm_hash(const float (*m)[4]) {
-    const unsigned* w = (const unsigned*)m;
-    unsigned h = 2166136261u;
-    for (int i = 0; i < 16; i++) h = (h ^ w[i]) * 16777619u;
-    return (h ^ (h >> 16)) & 511u;
-}
 
 /* GV1: the id of the matrix of the next vertex load or static group in gm_tab: the combined matrix, and for a lit load also the model view matrix of the normal. -1 when the table is full. */
-unsigned gv_matrix_id(int need_nm) {
-    if (!gm_tab) {
-        gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
-        gm_nrm = (float(*)[3][4])malloc(256 * sizeof(float[3][4]));
-        if (!gm_tab || !gm_nrm) { free(gm_tab); free(gm_nrm); gm_tab = NULL; gm_nrm = NULL; return GV_NONE; }
-        pm_gpu_set_ntab((const float(*)[3][4])gm_nrm);
-    }
-    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && !need_nm) return gm_last;
-    float nm[3][4];
-    for (int i = 0; i < 3; i++) { nm[i][0] = nd_mv[nd_mv_sp][i][0]; nm[i][1] = nd_mv[nd_mv_sp][i][1]; nm[i][2] = nd_mv[nd_mv_sp][i][2]; nm[i][3] = 0.f; }
-    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0) return gm_last;
-    unsigned p, best = GV_NONE, gmi;
-    /* H3: the newest entry with the same combined matrix (and normal when needed), found by probing its hash chain */
-    for (p = gm_hash(combined); gm_idx[p]; p = (p + 1) & 511u) {
-        unsigned e = gm_idx[p] - 1u;
-        gm_steps++;
-        if ((best == GV_NONE || e > best) && memcmp(gm_tab[e], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[e], nm, sizeof nm) == 0)) best = e;
-    }
-    if (best != GV_NONE) gmi = best;
-    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gm_idx[p] = (unsigned short)(gm_n + 1); gmi = gm_n++; }
-    else gmi = GV_NONE;
-    gm_last = gmi;
-    return gmi;
-}
 
 /* GV5: the fog factor can be made on the GPU */
 /* GV5: a lit load can go to the ring: the program is there and the Options row for the fixed light is off */
@@ -2814,45 +2767,7 @@ void draw_tri(unsigned w) {
     pm_gpu_cen_mark(8u); /* CEN-1a: CEN_FB_RING, a CPU triangle of this batch (the ring did not take it) */
 }
 
-/* SR2: unpacked model matrices by slot (header w1 bits 0 to 7). A tag is 0x10000 | pmMtxVer when valid, 0 when not. */
-float mtx_cache[256][16];
-u32 mtx_tag[256];
 
-/* hdr: the header w1 of a producer record (model.c R1), 0 for a plain G_MTX. */
-_Static_assert(ND_MTX_PUSH == G_MTX_PUSH && ND_MTX_LOAD == G_MTX_LOAD && ND_MTX_PROJ == G_MTX_PROJECTION, "nd.h matrix flags equal the gbi values");
-/* M4-2 diag, switch ndref=<frame>: one line per G_MTX load of that frame (source pointer, first words, interp hit, slot) */
-extern int pm_interp_repl;
-int pm_gbi_ndref_frame(void);
-extern const float (*pm_interp_find(const void* m))[4];
-static __attribute__((cold, noinline)) void mtx_dbg(const Mtx* src, u32 hdr) {
-    static unsigned n;
-    const u32* s = (const u32*)src->m;
-    const float (*lm)[4] = pm_interp_repl ? pm_interp_find(src) : 0;
-    pm_log("gmtx f%u n %u src %p w %08x %08x %08x %08x slot %u tag %u repl %d lm %d", pm_frame_count(), n++, (const void*)src,
-           s[0], s[1], s[2], s[3], hdr & 0xffu, (unsigned)(hdr >> 16), pm_interp_repl, lm != 0);
-}
-void load_mtx(u32 w0, u32 w1, u32 hdr) {
-    unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
-    Mtx* src = (Mtx*)ptr_of(w1);
-    if (!src) return;
-    float in[4][4];
-    if (pm_frame_count() == 200 && pm_gbi_ndref_frame() == 200) mtx_dbg(src, hdr); /* M4-2 diag */
-    int lm = nd_mtx_replace(src, in); /* F06-2, S1-5: the interpolated matrix of the t = 0.5 pass */
-    unsigned slot = hdr & 0xffu;
-    int cached = slot != 0 && (hdr & 0x100u) != 0 && !lm; /* a static model matrix: the header says src is that model's savedMtx */
-    u32 tag = 0x10000u | (hdr >> 16);
-    if (lm) {}
-    else if (cached && mtx_tag[slot] == tag) memcpy(in, mtx_cache[slot], sizeof(in));
-    else {
-        nd_mtx_unpack((const u32*)src->m, in);
-        if (cached) {
-            memcpy(mtx_cache[slot], in, sizeof(in));
-            mtx_tag[slot] = tag;
-        }
-    }
-    nd_mtx_load(in, flags); /* S1-4: push, load or premultiply */
-    upload_mvp();
-}
 
 /* S25: an opcode the interpreter does not run. Counted, logged at 1, 100, 10000 ... uses. */
 unsigned op_cnt[256];
@@ -4165,18 +4080,6 @@ static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
 }
 void gbi_setcimg(u32 w0, u32 w1) { set_cimg(w1, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1); }
 
-static __attribute__((noinline)) void gbi_viewport(u32 w1) {
-    Vp* vp = (Vp*)ptr_of(w1);
-    if (vp) {
-        vp_sx = (float)vp->vp.vscale[0] / 4.f;
-        vp_sy = (float)vp->vp.vscale[1] / 4.f;
-        vp_sz = (float)vp->vp.vscale[2] / 4.f;
-        vp_tx = (float)vp->vp.vtrans[0] / 4.f;
-        vp_ty = (float)vp->vp.vtrans[1] / 4.f;
-        vp_tz = (float)vp->vp.vtrans[2] / 4.f;
-        upload_mvp();
-    }
-}
 
 void gbi_vtx_cpu1(const Vtx* s, unsigned k) {
 vert_gvf[k] = 3;
@@ -4196,25 +4099,7 @@ if (tg_ok) { vert_st[k][0] = tg_s; vert_st[k][1] = tg_t; }
 }
 }
 
-void gbi_movemem(u32 w0, u32 w1) {
-    if ((w0 & 0xff) == G_MV_LIGHT) lit_freeze(); /* GV5 */
-    if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
-        int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
-        const u8* l = (const u8*)ptr_of(w1);
-        if (l && (ls == -2 || ls == -1)) { lk[ls + 2][0] = (s8)l[8]; lk[ls + 2][1] = (s8)l[9]; lk[ls + 2][2] = (s8)l[10]; }
-    }
-    if ((w0 & 0xff) == G_MV_LIGHT) { /* L01: offset 0 and 24 are the look-at vectors, light n is at n * 24 + 24 */
-        int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
-        const u8* l = (const u8*)ptr_of(w1);
-        if (l && slot >= 0 && slot < 9) { lt[slot].col[0] = l[0]; lt[slot].col[1] = l[1]; lt[slot].col[2] = l[2]; lt[slot].dir[0] = (s8)l[8]; lt[slot].dir[1] = (s8)l[9]; lt[slot].dir[2] = (s8)l[10]; }
-    }
-    if ((w0 & 0xff) == G_MV_VIEWPORT) gbi_viewport(w1);
-}
 
-void gbi_popmtx(u32 w1) {
-    nd_mtx_pop(w1 / 64); /* S1-4: count 0 pops one */
-    upload_mvp();
-}
 
 void gbi_moveword(u32 w0, u32 w1) {
     unsigned index = (w0 >> 16) & 0xff;
@@ -4242,28 +4127,6 @@ void gbi_moveword(u32 w0, u32 w1) {
 extern Gfx* ModelRenderModes[];
 /* S3F-1b: the lights of a record: the words gSPSetLightsN makes (plain gbi.h macros, the same ones as model.c), run through the walker
  * handlers gbi_moveword and gbi_movemem with the same skip test as the walker. No word is copied from the display list. */
-static __attribute__((noinline)) void rec_lights(const Lightsn* L, unsigned k) {
-    Gfx tg[12];
-    Gfx* p = tg;
-    switch (k) {
-    case 0: gSPSetLights0(p++, L[0]); break;
-    case 1: gSPSetLights1(p++, L[0]); break;
-    case 2: gSPSetLights2(p++, L[0]); break;
-    case 3: gSPSetLights3(p++, L[0]); break;
-    case 4: gSPSetLights4(p++, L[0]); break;
-    case 5: gSPSetLights5(p++, L[0]); break;
-    case 6: gSPSetLights6(p++, L[0]); break;
-    case 7: gSPSetLights7(p++, L[0]); break;
-    default: return;
-    }
-    for (const Gfx* h = tg; h < p; h++) {
-        u32 w0 = h->words.w0, w1 = h->words.w1;
-        unsigned op = w0 >> 24;
-        if (g2_same(op, w0, w1)) { g2_note(op, w0); continue; }
-        if (op == G_MOVEWORD) gbi_moveword(w0, w1);
-        else if (op == G_MOVEMEM) gbi_movemem(w0, w1);
-    }
-}
 /* S3F-2b: G_SETENVCOLOR, one function for the walker and the record. */
 void gbi_setenv(u32 w1) {
     GP_SET(2, nd_ws.envc == w1);
@@ -4414,15 +4277,6 @@ unsigned rec_run(const Gfx* q) {
 }
 
 
-static void mtx_elem(Mtx* dst, int r, int c, float v) {
-    s32 fixed = (s32)(v * 65536.f);
-    u32* m = (u32*)dst->m;
-    int idx = r * 2 + (c >> 1);
-    u32 sh = (c & 1) ? 0u : 16u;
-    u32 mask = 0xffffu << sh;
-    m[idx] = (m[idx] & ~mask) | ((((u32)(fixed >> 16)) & 0xffffu) << sh);
-    m[idx + 8] = (m[idx + 8] & ~mask) | (((u32)fixed & 0xffffu) << sh);
-}
 
 void pm_gbi_fallback(void) {
     static int ready;
