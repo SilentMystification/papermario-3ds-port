@@ -346,6 +346,7 @@ static int vblank_wait_timed(void) {
 extern volatile int pm_exit_request; /* PT28 */
 extern unsigned pm_ph_iv, pm_ph_hud_us; /* PI4, PI5 */
 extern int pm_ph_on;
+void pm_boot_title_check(void); /* BOOT-1: prints the boot ms line at the first title-screen step */
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
@@ -529,10 +530,12 @@ void pm_frame_loop(void) {
         if (!pm_gpu_drew()) {
             if (!ever) pm_gbi_fallback();
         } else {
+            if (!ever) pm_boot_mark(PMB_DRAW, 0); /* BOOT-1 */
             ever = 1;
         }
         pm_gpu_end();
         pm_log_frame_tick();
+        pm_boot_title_check(); /* BOOT-1 */
         if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow draw (a skipped step does not pay it) */
         pm_ph_frame_end();
         }
@@ -650,8 +653,34 @@ void pm_frame_loop(void) {
 
 void pm_log_prof_apply(int boot_line); /* PROF4, pm_log.c */
 void pm_options_prof_boot(void); /* PROFROW, pm_options.c */
+
+/* BOOT-1: boot timing. pm_boot_mark is cold (no log call: the log is not running yet at the first marks). The line is printed
+ * once, at the first title-screen frame, from the stored ticks. All values are ms after main() except the ROM read (ms, MB/s). */
+static u64 pmb_tick[PMB_N];
+static unsigned pmb_set, pmb_arg[PMB_N];
+__attribute__((cold, noinline)) void pm_boot_mark(int id, unsigned arg) {
+    if (id < 0 || id >= PMB_N || (pmb_set >> id & 1u)) return;
+    pmb_tick[id] = svcGetSystemTick();
+    pmb_arg[id] = arg;
+    pmb_set |= 1u << id;
+}
+static unsigned pmb_ms(int id) { return (unsigned)((pmb_tick[id] - pmb_tick[PMB_MAIN]) / (SYSCLOCK_ARM11 / 1000ull)); }
+static void pm_boot_report(void);
+void pm_boot_title_check(void) {
+    if (pmb_set >> PMB_TITLE & 1u) return;
+    int m = pm_game_mode_now(); /* first step after the logos: GAME_MODE_TITLE_SCREEN (2, src/game_modes.h) or the intro (16); a no-warp boot skips the title */
+    if (m == 2 || m == 16) { pm_boot_mark(PMB_TITLE, 0); pm_boot_report(); }
+}
+static void pm_boot_report(void) {
+    unsigned rom_ms = (unsigned)((pmb_tick[PMB_ROM_READ] - pmb_tick[PMB_ROM_OPEN]) / (SYSCLOCK_ARM11 / 1000ull));
+    float mbs = rom_ms ? (float)pmb_arg[PMB_ROM_READ] / 1048576.f / ((float)rom_ms / 1000.f) : 0.f;
+    pm_log_w("boot ms main %u log %u opt %u rom %u (%.1f MB/s) gfx %u audio %u first %u title %u",
+             pmb_ms(PMB_THREAD), pmb_ms(PMB_LOG), pmb_ms(PMB_OPT), rom_ms, mbs, pmb_ms(PMB_GFX), pmb_ms(PMB_AUDIO), pmb_ms(PMB_DRAW), pmb_ms(PMB_TITLE));
+}
+
 static void game_thread(void* arg) {
     (void)arg;
+    pm_boot_mark(PMB_THREAD, 0);
     pm_crash_install(crash_stack, sizeof(crash_stack));
     pm_stack_register(0, "game", 256 * 1024);
     char sw[256]; /* H06d: a bigger array here stops the boot (FX3a, H06d: _svfprintf_r PC 0), so the limit stays and a cut is handled */
@@ -684,6 +713,7 @@ static void game_thread(void* arg) {
     pm_log_set_switches(sw);
     pm_log_init(live);
     pm_log_start();
+    pm_boot_mark(PMB_LOG, 0);
     pm_log_live_status();
     pm_log_bench();
     pm_wd_start();
@@ -700,6 +730,7 @@ static void game_thread(void* arg) {
     if (sw[0] && sw[0] != '\n') pm_log("switches %s", sw);
     if (sw_cut) pm_log_e("switches: debug3ds.txt is longer than 255 bytes. The last word and the rest are cut. Use tour=@file for a long map list.");
     pm_options_init();
+    pm_boot_mark(PMB_OPT, 0);
     pm_log_prof_apply(1); /* PROF4: re-applies after pm_options_init set the levels, and prints the boot line */
     pm_ph_init(); /* after the log gate: phase, prof, pmu and fsplit read the final pm_log_file() */
     pm_options_prof_boot(); /* PROFROW: the launch word or the saved Profiling row */
@@ -742,6 +773,7 @@ static void pm_shutdown(void) {
 }
 
 int main(int argc, char** argv) {
+    pm_boot_mark(PMB_MAIN, 0); /* BOOT-1 */
     netloaded = __3dslink_host.s_addr != 0 || (argc > 0 && argv[0] && strncmp(argv[0], "3dslink:", 8) == 0);
     args[0] = 0;
     for (int i = 1; i < argc; i++) {

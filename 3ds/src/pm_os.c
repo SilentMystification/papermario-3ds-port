@@ -193,6 +193,7 @@ static int rom_fail(FILE* f, const char* msg) {
 int pm_rom_init(void) {
     if (rom_tried) return rom_bytes != NULL;
     rom_tried = 1;
+    pm_boot_mark(PMB_ROM_OPEN, 0); /* BOOT-1 */
     FILE* f = fopen("papermario.z64", "rb");
     if (!f) f = fopen("baserom.us.z64", "rb");
     if (!f) return rom_fail(NULL, "ROM missing. Copy the US Paper Mario ROM to sdmc:/3ds/PaperMario/papermario.z64 (big-endian .z64).");
@@ -253,6 +254,7 @@ int pm_rom_init(void) {
         free(block);
         return rom_fail(f, "Cannot read the ROM. Check the SD card.");
     }
+    pm_boot_mark(PMB_ROM_READ, need); /* BOOT-1 */
     rom_bytes = block;
     rom_size = (u32)sz;
     rom_remap = can_pack;

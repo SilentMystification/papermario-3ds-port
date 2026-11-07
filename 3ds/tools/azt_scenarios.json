@@ -4465,6 +4465,26 @@
       "reason": "BOOTJ: no warp, so the intro plays. Until is the first jump result at frame 390 or later. Cap 60 s."
     },
     {
+      "name": "boot_ms",
+      "status": "unverified",
+      "subject": "BOOT-1: cold boot from the start with no warp (no kept Azahar of this lane, so the start is cold). The boot ms line prints the tick marks since main.",
+      "proves": "The boot marks are set in order (game thread, log, options, ROM read, gfx, audio, first drawn frame, title) and the line prints at the first title frame.",
+      "debug": "loglevel=debug",
+      "until": "boot ms main ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "boot ms line at the title",
+          "regex": "boot ms main \\d+ log \\d+ opt \\d+ rom \\d+ \\([\\d.]+ MB/s\\) gfx \\d+ audio \\d+ first \\d+ title \\d+"
+        }
+      ],
+      "reason": "BOOT-1: a cold start takes 12 to 16 s on Azahar, then the logos and the title. Until is the boot ms line. Cap 45 s (upper limit), stated here for the cold start plus the logos."
+    },
+    {
       "name": "boot_opts",
       "status": "unverified",
       "subject": "Boot with no options.ini and no options.txt: the OPTFIX boot line prints the saved option values (dz_cs, rep_delay, rep_rate, hud_ms, conlevel, loglevel, log).",
