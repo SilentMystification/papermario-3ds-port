@@ -27,6 +27,27 @@ Gate:
 - battle_start_pic byte-equal against the walker-fallback build (the same branch with aux_ok forced off).
 - mac_01 byte-equal; iwa_10 by eye; model fb 0 in mdlw_battle.
 
+## Oracle decision MDL-1b tile 1 (2026-11-06, Opus; on nds1 1b9b9d119)
+Decision: a record whose R13 block binds tile 1 draws natively with two units. Tile 1 is taken from the walker's live state after rec_aux, by the same rules the raw path uses (SGEN-2). There is no new decoder and no cache change.
+1. pm_gbi.c, the MDL hunk: export `int pm_gbi_bind_tile1(void)`. It runs the tile-1 part of sync_combine on the current state: dual_bind, then t1_fold, then pm_gpu_set_tex1. It returns 1 when td[1].valid ended bound. It is called after rec_aux, before pm_gpu_model_native. ST-2 later moves this function as part of group C; that is a move, not a second copy.
+2. nd_model.c nd_comb_native gains an input `t1_valid` (from nd_ws.td[1].valid via NdMCtx, set only for an r13 record after step 1), in place of the forced 0. nd_comb_decide then plans exactly what the walker plans (combine 8, uses_tex1).
+3. nd_model.c nd_model_state:
+   - Replace `if (combine == 8 && uses_tex1) why 6` with: if uses_tex1 and the ctx has a unit 1, set k.tex1 = 1, k.i8_1 = ctx i8_1, k.t1only = plan_k[3] (the same as nd_raw_native); otherwise keep why 6.
+   - noise keeps why 6, counted apart.
+   - pm5 (gv->fxon) with tex1 stays a named fallback (`pm5tex1` count), because the pm5 shader has no tc1 (D7 rule).
+4. pm_gpu.c pm_gpu_model_native:
+   - For r13 records with tile 1, fill ctx u1 = pm_tex_native_unit1 and i8_1 = pm_tex_i8(1).
+   - If pm_tex_native_unit1 < 0 (an aux off-screen image, the OFF counted fallback), keep why 6.
+   - In nd_model_draw's NdDraw: d.u[1] = u1; memcpy(d.uvx, t1_s, 16); d.loc_uvx = u4_uvx; d.has_uvx = 1 (the raw path's lines).
+5. Cache: these records are r13 bound-slot stores, so the no-hit rule already applies. No stale unit 1.
+Files: nd_model.c (nd_comb_native, nd_model_state, NdMCtx: u1, i8_1, t1_valid), pm_gpu.c (pm_gpu_model_native, the nd_model_draw NdDraw fill), pm_gbi.c (the pm_gbi_bind_tile1 export only).
+Gate:
+- iwa_10: why 6 goes from 1678 per 300 frames to 0, apart from the counted noise, pm5tex1 and aux-off cases.
+- iwa_10 byte-equal to r13off.
+- mac_01 byte-equal.
+- battle_start f182 byte-equal to r13off.
+- ndmcheck mismatches not above the post-fix baseline.
+
 ## Rules
 Own files: 3ds/src/nd_model.c (not the why 4 line), pm_gpu.c pm_gpu_model_native and pm_gpu_model_fb_cached, pm_gbi.c rec_run and load_shaded_sprite, nd_sprite.c. CORE edits pm_gbi.c on branch core (state renames, setters): keep pm_gbi.c hunks small. No toggles (debug switches allowed), no stubs, no push, no attribution lines, never commit 3ds/src/map_restore_table.c. Keep Azahar open. Status line in 3ds/logs/perf/status_MDL.txt. Budget: reset and continue. Two tries per named cause. Delete this file in the MDL-4 commit.
 
