@@ -8710,9 +8710,9 @@
       "name": "yard_wide_hud",
       "status": "unverified",
       "subject": "Mario in his yard, wide on, uishow=coins keeps the status bar up. Shots frames 200 to 219: the 1.25x bar.",
-      "proves": "HUD1: the wide status bar (1.25x) is on screen in the world. uishow=coins keeps it up (pm_debug_status_always). Shots every 4 frames from 200; the bar slides in over 10 frames after the hook at f200.",
-      "debug": "preset=yard wide uishow=coins shots shotwin=200:20 shotbottom=200:60 loglevel=debug",
-      "until": "shot \\d+ frame 215\b",
+      "proves": "HUD1: the wide status bar (1.25x) is on screen in the world. uishow=bar opens the bar at the pm_warp frame 200 (about pm_frame_count 249); the bar is at full height at 270 and shot from 272 on.",
+      "debug": "preset=yard wide uishow=bar shots shotwin=272:30 shotbottom=200:60 loglevel=debug",
+      "until": "shot \\d+ frame 28[0-9]\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
@@ -8724,12 +8724,12 @@
           "regex": "warp: kmr_20 entry 4"
         },
         {
-          "name": "bar kept up",
-          "regex": "debug uishow: coins opened"
+          "name": "bar opened",
+          "regex": "debug uishow: bar opened"
         },
         {
-          "name": "shot at 215",
-          "regex": "shot \\d+ frame 215\b"
+          "name": "shot at 28x",
+          "regex": "shot \\d+ frame 28[0-9]\b"
         }
       ],
       "reason": "HUD1 gate by eye: status bar layout in the world."
@@ -8737,10 +8737,10 @@
     {
       "name": "yard_hud",
       "status": "unverified",
-      "subject": "Mario in his yard, 4:3, uishow=coins keeps the status bar up. Shots frames 200 to 219: the 4:3 bar.",
-      "proves": "HUD1: the wide status bar (1.25x) is on screen in the world. uishow=coins keeps it up (pm_debug_status_always). Shots every 4 frames from 200; the bar slides in over 10 frames after the hook at f200.",
-      "debug": "preset=yard uishow=coins shots shotwin=200:20 loglevel=debug",
-      "until": "shot \\d+ frame 215\b",
+      "subject": "Mario in his yard, 4:3 (nowide), uishow=bar opens the status bar. Shots frames 272 to 300: the 4:3 bar at its old positions.",
+      "proves": "HUD1: the wide status bar (1.25x) is on screen in the world. uishow=bar opens the bar at the pm_warp frame 200 (about pm_frame_count 249); the bar is at full height at 270 and shot from 272 on.",
+      "debug": "preset=yard nowide uishow=bar shots shotwin=272:30 loglevel=debug",
+      "until": "shot \\d+ frame 28[0-9]\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
@@ -8752,12 +8752,12 @@
           "regex": "warp: kmr_20 entry 4"
         },
         {
-          "name": "bar kept up",
-          "regex": "debug uishow: coins opened"
+          "name": "bar opened",
+          "regex": "debug uishow: bar opened"
         },
         {
-          "name": "shot at 215",
-          "regex": "shot \\d+ frame 215\b"
+          "name": "shot at 28x",
+          "regex": "shot \\d+ frame 28[0-9]\b"
         }
       ],
       "reason": "HUD1 gate by eye: status bar layout in the world."

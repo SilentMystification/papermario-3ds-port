@@ -1682,7 +1682,7 @@ void pm_gpu_init(void) {
     gp2_clip_init();
     if (gpu_ok) return;
     jt_on = pm_debug_has("jumptest");
-    pm_wide = pm_wide_cfg = pm_debug_has("wide") || pm_opt.wide;
+    pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
     pm_log("gpu: wide=%d", pm_wide);
     gfxInitDefault();
     if (!C3D_Init(0x180000)) { /* MEM1: 1.5 MB command buffer. The worst fill seen was 9 percent of 4 MB (369 KB), the new size keeps 4 times that. 2.5 MB of linear memory come back */
