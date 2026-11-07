@@ -3332,6 +3332,8 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
+    /* FB-2: the template ids of the cached draws are built again before any draw goes out (a table that evicts may have moved an id since the store); a full table falls back */
+    for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
     float comb[4][4], pal0[16];
     nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
     pm_gpu_pcomp_native(pal0, comb);
