@@ -244,8 +244,13 @@ try {
     if ($Turbo) { Set-Turbo }
 
 New-Item -ItemType Directory -Force -Path $sd, $sl.romDir | Out-Null
-try { Copy-Item $in3dsx $romFile -Force -ErrorAction Stop }
-catch { if ($warm) { Write-Output "Warm: the 3dsx in the kept Azahar is locked ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id "3dsx locked"; Copy-Item $in3dsx $romFile -Force } else { throw } }
+# AZT8-3: the ROM copy is checked by hash. A copy that did not land (or a stale ROM) is a cold start, never a warm restart.
+$wantBuild = Get-Build3dsx $in3dsx
+try {
+    Copy-Item $in3dsx $romFile -Force -ErrorAction Stop
+    if ((Get-FileHash $romFile -Algorithm SHA256).Hash -ne (Get-FileHash $in3dsx -Algorithm SHA256).Hash) { throw "ROM copy differs from the lane 3dsx" }
+}
+catch { if ($warm) { Write-Output "Warm: the ROM copy failed ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id "3dsx locked or ROM copy failed"; Copy-Item $in3dsx $romFile -Force } else { throw } }
 $oldLogCT = [datetime]::MinValue
 if ($warm) { if (Test-Path $log) { $oldLogCT = (Get-Item $log).CreationTimeUtc } } # the kept game holds log.txt open: the restart makes a new one
 else { Remove-Item $log -ErrorAction SilentlyContinue }
@@ -310,7 +315,17 @@ if ($warm) {
             if (Test-Path $log) { $li = Get-Item $log; if ($li.CreationTimeUtc -ne $oldLogCT -or $li.LastWriteTimeUtc -gt $start.ToUniversalTime()) { $warmDone = $true } }
         }
     }
-    if ($warmDone -and $Debug -and -not (Test-WarmSwitches $log $Debug)) {
+    if ($warmDone -and -not (Test-BootBuild $log $wantBuild)) {
+        # AZT8-2: the restarted Azahar booted another build than this lane 3dsx (a warm restart can keep the old ROM): cold start
+        Write-Output "Warm restart: the boot runs another build than this lane 3dsx ($wantBuild). Cold start."
+        Kill-Azahar $kept.Id "stale rom"
+        Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
+        $emuOff = 0L
+        $warm = $false
+        $warmWhy = "stale rom"
+        $warmDone = $false
+    }
+    elseif ($warmDone -and $Debug -and -not (Test-WarmSwitches $log $Debug)) {
         # AZT6-3: the restarted game printed other switches (stale debug3ds.txt): this start is cold, the kept Azahar is closed
         Write-Output "Warm restart: the boot prints other switches than this run. Cold start."
         Kill-Azahar $kept.Id "switch mismatch" 

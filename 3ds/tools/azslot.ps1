@@ -65,6 +65,29 @@ function Close-IdleKept([int]$except = 0) {
     return $closed
 }
 
+# AZT8-1: the build id of a 3dsx (the string PM_BUILD_STR, e.g. 2500-off1), read from the file. "" when not found.
+function Get-Build3dsx([string]$path) {
+    $t = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($path))
+    $m = [regex]::Match($t, '(\d{3,5}-[A-Za-z0-9_]+)\x00')
+    if ($m.Success) { return $m.Groups[1].Value }
+    return ""
+}
+
+# AZT8-2: the build line of this boot ("#N build <id> git <hash>") is the build id that runs. 1 when it equals $want; waits up to 15 s for the line.
+function Test-BootBuild([string]$log, [string]$want) {
+    if (-not $want) { return $false }
+    for ($w = 0; $w -lt 60; $w++) {
+        if (Test-Path $log) {
+            $t = ""
+            try { $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite'); try { $t = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch { $t = "" }
+            $m = [regex]::Match($t, '(?m)^#\d+ build (\S+) git')
+            if ($m.Success) { return ($m.Groups[1].Value -eq $want) }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    return $false
+}
+
 # AZT6-3: the switch line of a warm boot must hold this run's switches (the game reads debug3ds.txt at its start). Waits up to 15 s for the line.
 function Test-WarmSwitches([string]$log, [string]$debug) {
     for ($w = 0; $w -lt 60; $w++) {
