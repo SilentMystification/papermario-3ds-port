@@ -95,7 +95,6 @@ void set_fogcolor(u32 w1);
 void set_geom(u32 w0, u32 w1);
 void set_primdepth(u32 w1);
 void sync_combine(void);
-void tb_inline(const Gfx* g, unsigned n);
 void tex_op(u32 w0, u32 w1);
 void tex_streak_flush(void);
 void tex_streak_op(unsigned op);

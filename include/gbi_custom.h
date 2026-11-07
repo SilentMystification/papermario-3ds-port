@@ -200,8 +200,6 @@
 }
 
 
-/* GLYPH: header of n texture-load words after it (w0 low 16 bits = n). The words run through tex_op, not the dispatch. */
-#define G_PM_TEXI 0x0B
 #define G_PM_REC 0x0D /* M4-2, S3F-4: producer record of a model (model.c), pm_gbi.c rec_run */
 /* S4-1: producer record of one sprite component (sprite.c spr_appendGfx_component, TARGET_3DS): 4 Gfx words after the header, the old words follow.
   * w0 (header): G_PM_SPR << 24 | flags << 16 | alpha << 8 (flags bit 0 shading, bit 1 set viewport). w1: the render mode list (Gfx*).
@@ -226,7 +224,6 @@
     _pmr[2].words.w0 = _pmr[2].words.w1 = _pmr[3].words.w0 = _pmr[3].words.w1 = 0; \
 } while (0)
 #define G_PM_REC_WORDS 14 /* S3F-2c: words of one producer record (R0 to R10). S3G-1: R11 custom gfx pre (w0) and post (w1), R12 geometry (w0) and pop flag (w1). S3G-2: R13 w0 = words after the record (special tile list or untextured ops), they run in place of the bind */
-#define gsSPPmTexInline(n) {{ _SHIFTL(G_PM_TEXI, 24, 8) | ((n) & 0xffff), 0 }}
 
 /* HANG1a: a G_NOOP whose low 24 bits are PM_SPLASH_ON or PM_SPLASH_OFF brackets the water splash draws (water_splash.c).
  * Between them a colour buffer grab is one full-height copy per frame (pm_gbi.c grab_cur). */

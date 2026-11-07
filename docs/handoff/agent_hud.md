@@ -1,8 +1,8 @@
 # agent_hud: HUD1 status bar wide scale, then TX-4 final
 
 STATE (2026-11-07)
-- Branch hud1b (worktree build3ds/wt/hud1b), base nds1 41b41a747, last commit 462becdfa (HUD1 inventory.c).
-- Done: HUD1 code (wip diff applied, PM_HUD_*_DX deleted). Build passes. battle_wide: bar scaled 1.25 (pixel scan: boxes, top gap 15 px, contents inside).
-- Open: yard_wide and yard shots show no status bar at frames 200 to 205 (bar auto-hides in world, inventory.c hidden/showTimer). Criteria 2 and 3 not verified. Needs a scenario that keeps the bar up (json edit: user decision).
-- Open: TX-4 final (hud_element.c HT1 headers, then G_PM_TEXI delete in nd_walk.c, gbi_custom.h, tb_inline) not started; waits on HUD1 criteria.
-- Next: user decides on the yard scenario; then gates per row_HUD1.md.
+- Branch hud1b (worktree build3ds/wt/hud1b), rebased on nds1; last commit: see git log (TX-4 final on top of 462becdfa).
+- HUD1 code (src/inventory.c): done. battle_wide 1.25x bar: pixel scan ok (criterion 4).
+- Open: yard_wide_hud and yard_hud (new scenarios, uishow=coins) show NO bar at shots 200 to 219. Hook sets alwaysShown at f200 (pm_warp.c), but no "hud f" debug line at f%4==0 in the log: draw_status_ui apparently not reached in the yard world. Next: trace the yard world UI path (state_drawUI_world caller, statusBar->disabled).
+- TX-4 final: G_PM_TEXI gone from src, include, nd_walk, nd_tex (tb_inline), nd_dlc comment. Grep empty. spot_mac01 3 of 3 byte-equal. battle_wide HUD region same, scene differs in a small non-HUD area (frames 11, 12).
+- Not done: HUD1 criteria 2 and 3 (yard), so row_HUD1.md is not deleted.

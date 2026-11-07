@@ -362,8 +362,6 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
     }
 
 #ifdef TARGET_3DS
-    Gfx* texHdr = gMainGfxPos++; /* HT1: G_PM_TEXI header; the element setup words (render mode, LUT, TLUT, filter) run in tb_inline */
-    Gfx* texFirst = gMainGfxPos;
 #endif
     switch (fmt) {
         case 0:
@@ -399,8 +397,6 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
         gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
     }
 #ifdef TARGET_3DS
-    texHdr->words.w0 = ((u32)G_PM_TEXI << 24) | (u32)(gMainGfxPos - texFirst);
-    texHdr->words.w1 = 0;
 #endif
 
     ult = 0;
@@ -474,8 +470,6 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
             }
 
 #ifdef TARGET_3DS
-            Gfx* tileHdr = gMainGfxPos++; /* HT1: G_PM_TEXI header; this tile's combine, prim and load words run in tb_inline */
-            Gfx* tileFirst = gMainGfxPos;
 #endif
             gDPPipeSync(gMainGfxPos++);
 
@@ -597,8 +591,6 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
             }
 
 #ifdef TARGET_3DS
-            tileHdr->words.w0 = ((u32)G_PM_TEXI << 24) | (u32)(gMainGfxPos - tileFirst);
-            tileHdr->words.w1 = 0;
 #endif
             if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
                 if (!pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale)) {
