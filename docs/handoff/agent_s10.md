@@ -8,5 +8,5 @@ STATE
 - Size: 3dsx 13,321,796 B (after DEL); netloader accepted 13.17 MB before. Push to O3DS XL failed at 23.84%. Options: Homebrew Launcher in title mode (hold R starting a game), SIZE-3 step 2 (-Os, 122 KB, blocked by layout bug), delete rows, SIZE-1 (parked).
 - Unmerged branches with useful work: ub1 (stale unit-1 cache patch, sprnat OOB patch).
 - Process rules updated: orchestrator_rules.md "Process fixes".
-- Next: wait for the LS-3 handback; merge LS-3; then ST-3 and RECT-3 (oracle plan first). TDC closed: no dropped triangles.
+- Next: wait for the LS-3 handback; merge LS-3; then RECT-3 and ST-3 (row_RS3.md, one agent, after the LS-3 merge). TDC closed: no dropped triangles.
 - Disk: build3ds/wt/fb4 and build3ds/wt/t1f folders stay on disk (worktree records removed; a process held them): delete them when Azahar is closed. Run wt_gc.sh --apply after every merge.
