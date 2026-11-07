@@ -48,3 +48,12 @@ Rows in order:
 2. Combine-1 prim candidate: for each sprite that differs from nosprnat (mac_01 about 1550 px), sprcheck (sprkey, sprst) names the first differing key field; fix the live-state read (likely c.prim / prim_lod or cconst, combine class 1). Gate: mac_01, iwa_10, pause byte-equal to nosprnat.
 3. The 263 sprflush misses: name the path of each walker-drawn sprite not in a raw batch (CPU vertex path, refusal class); reduce each class to 0 or a named native form. Gate: misses 0, same byte gates.
 4. Battle after the SPR4b walker batch-break fix: sprcheck diff 0 at the kmr_03 battle; battle_start by eye against the N64 reference.
+
+## Oracle decision SPR4 prim (2026-11-07; nds1 e5a4844b4 has nosprnat)
+Results so far: native vs nosprnat md5-equal on mac_01 and iwa_10, 0 refusals. Pause: frame 140 28 px, frame 147 130 px; the walker draws combine-1 sprites with a stale prim (pm_gpu_set_prim pm_gpu.c:3535 flushes only for combine 5-7; prim_lod in nd_set.c:68-73 never flushes; gtrip_batch_open pm_gpu.c:2711 does not compare prim). Native is the correct side.
+Order:
+1. Walker prim fix, own commit: pm_gpu_set_prim flushes when the open batch's combine or plan reads PRIM or PRIM_LOD (combine 1, 5, 6, 7; combine 8 with plan.uses_prim or the prim_lod input; plan source mask if present, else flush on any prim change while gni > 0 or nverts > 0). nd_set.c prim_lod change calls the same test. gtrip_batch_open and grange_batch_open compare the prim key when the combine reads prim. Gate: mac_01, iwa_10, battle_start byte-equal to the pre-fix build, every changed region a prim-reading draw; pause native byte-equal to nosprnat after the fix, with a fixed shot list (shotwin fixed frames, cold, fixedseed, fs1off; compare only frames both runs took).
+2. Row 3: the 263 sprflush misses; name each class, make it native or 0. Gate: misses 0; native vs nosprnat byte-equal on mac_01, iwa_10, pause.
+3. Row 4: battle after the SPR4b batch-break fix (cull and render key in batch open, same pattern). Gate: sprcheck diff 0 at the kmr_03 battle; battle_start native vs nosprnat byte-equal and by eye against the N64 reference. Then delete sprcheck, pm_gpu_spr_rec and nosprnat in that commit.
+Row 1 only deletes dead leftover declarations (mac_01 byte-equal).
+Cold runs: if the bench CLI has no cold option, use azt.ps1 -NoKeep as FB-1 did, or the AZT12 agent's cold option when merged.
