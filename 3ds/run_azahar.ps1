@@ -307,13 +307,25 @@ if ($warm) {
     Set-Content "$($sl.dir)\warm.start" $start.Ticks # azt.ps1 starts its clock on this file
     Set-Content $pidFile $kept.Id
     $hk = Get-SlotHotkey $slotK "Restart Emulation"
-    $sent = Send-AzHotkey $kept $hk
-    if ($sent) {
-        for ($w = 0; $w -lt 60 -and -not $warmDone; $w++) {
+    # AZT9: the restart is a window shortcut. A try whose key did not reach a foreground Azahar is sent again once; a restart that is already
+    # under way (Azahar alive, key delivered) gets 40 s for its new log.txt instead of a second key press.
+    $sent = $false
+    for ($try = 1; $try -le 3 -and -not $warmDone; $try++) {
+        $script:AzLastFg = $false
+        $kept.Refresh()
+        $method = if ($try -eq 1) { "posted" } else { "keybd_event" }
+        $sent = if ($try -eq 1) { Send-AzHotkey $kept $hk } else { Send-AzKeyEvent $kept.MainWindowHandle $hk }
+        $fgTxt = if ($script:AzLastFg) { "foreground" } else { "no foreground" }
+        Write-PoolLog $slotK "warm try" $kept.Id $kept.Id ("try {0} {1} hotkey {2} sent={3} {4} title '{5}'" -f $try, $method, $hk, $sent, $fgTxt, $kept.MainWindowTitle)
+        if (-not $sent) { continue }
+        $wait = 15
+        $created = $false
+        for ($w = 0; $w -lt ($wait * 4) -and -not $warmDone; $w++) {
             Start-Sleep -Milliseconds 250
             # a new boot makes a new log.txt (new creation time) or writes to it; the paused old game wrote nothing since its run ended
-            if (Test-Path $log) { $li = Get-Item $log; if ($li.CreationTimeUtc -ne $oldLogCT -or $li.LastWriteTimeUtc -gt $start.ToUniversalTime()) { $warmDone = $true } }
+            if (Test-Path $log) { $li = Get-Item $log; if ($li.CreationTimeUtc -ne $oldLogCT) { $created = $true }; if ($li.CreationTimeUtc -ne $oldLogCT -or $li.LastWriteTimeUtc -gt $start.ToUniversalTime()) { $warmDone = $true } }
         }
+        Write-PoolLog $slotK "warm wait" $kept.Id $kept.Id ("try {0} log {1} created {2} after {3:N1} s" -f $try, $(if ($warmDone) { "new" } else { "none" }), $(if ($created) { "yes" } else { "no" }), ((Get-Date) - $start).TotalSeconds)
     }
     if ($warmDone -and -not (Test-BootBuild $log $wantBuild)) {
         # AZT8-2: the restarted Azahar booted another build than this lane 3dsx (a warm restart can keep the old ROM): cold start

@@ -275,7 +275,7 @@ function Send-AzHotkey($proc, [string]$seq) {
     $h = $proc.MainWindowHandle
     if ($h -eq [IntPtr]::Zero -or -not $seq) { return $false }
     $prevFg = [AzFg]::GetForegroundWindow()
-    [void](Set-AzForeground $h)
+    $script:AzLastFg = [bool](Set-AzForeground $h) # AZT9-1: the key goes to a foreground window only (Qt window shortcuts)
     Start-Sleep -Milliseconds 150
     try { return (Send-AzHotkeyKeys $h $seq) }
     finally {
@@ -284,6 +284,36 @@ function Send-AzHotkey($proc, [string]$seq) {
     }
 }
 
+# AZT9-2: the key as keyboard input to the foreground window (keybd_event), for the warm restart tries after a posted key did not restart.
+if (-not ([System.Management.Automation.PSTypeName]'AzKb').Type) {
+    Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class AzKb {
+  [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+}
+"@
+}
+function Send-AzKeyEvent([IntPtr]$h, [string]$seq) {
+    $mods = @(); $key = ""
+    foreach ($part in $seq.Split("+")) {
+        switch ($part.ToLower()) { "ctrl" { $mods += 0x11 } "shift" { $mods += 0x10 } "alt" { $mods += 0x12 } default { $key = $part } }
+    }
+    $vk = 0
+    if ($key -match '^F(\d{1,2})$') { $vk = 0x6F + [int]$Matches[1] }
+    elseif ($key -match '^[A-Za-z0-9]$') { $vk = [int][char]$key.ToUpper() }
+    if (-not $vk) { return $false }
+    $prevFg = [AzFg]::GetForegroundWindow()
+    [void](Set-AzForeground $h)
+    Start-Sleep -Milliseconds 150
+    foreach ($m in $mods) { [AzKb]::keybd_event([byte]$m, 0, 0, [UIntPtr]::Zero) }
+    [AzKb]::keybd_event([byte]$vk, 0, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 60
+    [AzKb]::keybd_event([byte]$vk, 0, 2, [UIntPtr]::Zero)
+    foreach ($m in $mods) { [AzKb]::keybd_event([byte]$m, 0, 2, [UIntPtr]::Zero) }
+    Start-Sleep -Milliseconds 150
+    if ($prevFg -ne [IntPtr]::Zero -and $prevFg -ne $h) { [void](Set-AzForeground $prevFg) }
+    return $true
+}
 function Send-AzHotkeyKeys([IntPtr]$h, [string]$seq) {
     $mods = @(); $key = ""
     foreach ($part in $seq.Split("+")) {
