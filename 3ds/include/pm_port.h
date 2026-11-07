@@ -14,6 +14,7 @@ void pm_log_w(const char* fmt, ...);
 void pm_log_i(const char* fmt, ...);
 void pm_log_d(const char* fmt, ...);
 void pm_log_hw(const char* fmt, ...); /* HWM1: debug level measurement line, kept longest by the queue */
+void pm_log_evt(const char* fmt, ...); /* SIZE-0: harness test-event line (shot, until-lines); passes the gate in every mode */
 int pm_log_level(void); /* the higher of the live and disk level */
 int pm_log_conlevel(void); /* CONLV: console level 0..4, 4 = off */
 int pm_log_file(void); /* 1 when the queue takes lines: logging or Profiling on */

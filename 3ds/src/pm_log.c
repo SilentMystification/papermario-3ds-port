@@ -367,6 +367,7 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs, unsigned spikes, flo
 #define SLOTS 1024 /* HWM1: was 512. The first O3DS run lost 1207 lines when the writer fell behind. LOG2: 1024 slots of 256 B = 256 KB. */
 #define SLOT_BYTES 256
 #define VIP 16 /* level flag: a measurement line (pm_log_hw) keeps the last SLOT_RES slots, other lines are dropped first */
+#define EVT 32 /* level flag: a test-event line (pm_log_evt, the harness until-lines) passes the logging gate and the levels in every mode; the io gates still apply */
 #define SLOT_RES 128
 #define LINE_MAX 1024 /* the writer's formatted line: "#<seq> " body and newline */
 #define ABANDON_TICKS (268111856ull / 20ull) /* PLAN E: a queue position uncommitted for 50 ms is abandoned */
@@ -412,12 +413,14 @@ static void wake_writer(void) { if (writer_th) LightEvent_Signal(&ev_wake); }
 
 static int prof_force; /* PROF4: set only by pm_log_prof_line, the one line that prints in prof mode */
 static void vlog(int lv, const char* fmt, va_list ap) {
-    int vip = (lv & VIP) != 0;
+    int vip = (lv & VIP) != 0, evt = (lv & EVT) != 0;
     lv &= 15;
-    if (!qon()) return; /* logging and Profiling off: nothing below runs, not even the level test (U1) */
-    if (lv > pass_lv && !prof_force) return; /* CONLV: one compare; the sinks check their own level in drain_locked */
+    if (!evt) {
+        if (!qon()) return; /* logging and Profiling off: nothing below runs, not even the level test (U1) */
+        if (lv > pass_lv && !prof_force) return; /* CONLV: one compare; the sinks check their own level in drain_locked */
+    }
     if (!writer_th) return; /* no writer: drop the line, never touch SD, socket or stdout on the caller */
-    u32 lim = vip ? SLOTS : SLOTS - SLOT_RES;
+    u32 lim = vip || evt ? SLOTS : SLOTS - SLOT_RES;
     /* Queue full: one load and compare, before the descriptor lookup, so a flood costs almost nothing. */
     u32 h = __atomic_load_n(&q_head, __ATOMIC_RELAXED);
     for (;;) {
@@ -441,7 +444,7 @@ static void vlog(int lv, const char* fmt, va_list ap) {
     sl->seq = __atomic_fetch_add(&seq, 1, __ATOMIC_RELAXED);
     sl->th = (u32)(uintptr_t)threadGetCurrent();
     sl->lv = (u8)lv;
-    sl->flags = (u8)(prof_force ? 1 : 0);
+    sl->flags = (u8)((prof_force ? 1 : 0) | (evt ? 4 : 0));
     sl->slen = 0;
     if (d->ok) {
         sl->nargs = d->nargs;
@@ -550,6 +553,7 @@ int pm_log_header_key(void) {
 int pm_log_prof_mode(void) { return prof_mode; }
 PM_LOG_FN(pm_log, 2) /* an old call is info */
 PM_LOG_FN(pm_log_hw, 3 | VIP) /* HWM1: a measurement line at debug level that the queue keeps longest */
+PM_LOG_FN(pm_log_evt, 3 | EVT) /* SIZE-0: a harness test-event line (shot, until-lines). Written to log.txt and the live log in every mode (logging on, off, Profiling); the io gates still apply (log_fd, client). */
 
 /* LOG1 logbench, switch logbench, called once at boot: the producer cost of a kept plain line, a kept line with four
  * arguments, a kept line with two %s, and a dropped line (level test fails), in CPU ticks (svcGetSystemTick, ARM11 clock).
@@ -856,8 +860,9 @@ static void drain_locked(void) {
             int pad = (sl->flags & 1) != 0, lvl = sl->lv;
             st_bytes += (unsigned)n + 8;
             int skip = sw_lognull && !strstr(line, "CRASH") && !strstr(line, "FATAL") && !strstr(line, "logstat"); /* lognull: writer drops */
-            int tf = !skip && (pad ? prof_disk : lvl <= dl); /* U2: a profiling line (pad 1) goes to log.txt only with prof_disk on */
-            int tl = !skip && (pad || lvl <= ll), tc = !skip && (pad || lvl <= cl); /* U2: profiling lines go to the live log and the console */
+            int evt = (sl->flags & 4) != 0;
+            int tf = !skip && (evt || (pad ? prof_disk : lvl <= dl)); /* U2: a profiling line (pad 1) goes to log.txt only with prof_disk on; SIZE-0: an event line always */
+            int tl = !skip && (evt || pad || lvl <= ll), tc = !skip && (pad || lvl <= cl); /* U2: profiling lines go to the live log and the console */
             cnt_disk += (unsigned)tf; cnt_live += (unsigned)tl; cnt_con += (unsigned)tc; /* LOG3: counted per slot, the beat and drop lines are not */
             int cskip = 0, cn = 0;
             if (tc) { /* the console text is the line after "#<seq> " */
