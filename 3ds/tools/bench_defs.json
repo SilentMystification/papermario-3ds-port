@@ -7,6 +7,89 @@
   },
   "benches": [
     {
+      "name": "sprshade_hos01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 step 3 gate: hos_01 shaded sprites, native, cold det, shots 200 to 205. Byte-equal to sprshade_hos01_nosprnat_pic.",
+      "scenario": "sprshade_hos01_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "spr",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "sprshade_hos01_nosprnat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 step 3 reference: hos_01 with nosprnat (walker sprite draw), cold det, shots 200 to 205.",
+      "scenario": "sprshade_hos01_nosprnat_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "spr",
+        "det",
+        "cold",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_nosprnat_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 step 3 gate: mac_01 cold det walker reference (nosprnat), shots 200 to 205; byte-equal to spot_mac01_det.",
+      "scenario": "spot_mac01_nosprnat_det",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_nosprnat_det",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "SPR4 step 3 gate: iwa_10 cold det walker reference (nosprnat), shots 200 to 205; byte-equal to spot_iwa10_det_pic.",
+      "scenario": "spot_iwa10_nosprnat_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "sprshade_hos01_log",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 step 3: hos_01 (shaded profile) sprnat why 3 count at frame 300 (log only).",
+      "scenario": "sprshade_hos01",
+      "cap": 30,
+      "until": "spr5 f\\d+ nopal",
+      "tags": ["azahar", "spr", "log"],
+      "gates": []
+    },
+    {
       "name": "battle_spr5_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2835,6 +2918,62 @@
       ],
       "gates": []
     },
+  {
+    "name": "pause_spin_grab_det_w300",
+    "kind": "azahar_pic",
+    "speed": "normal",
+    "default": false,
+    "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
+    "scenario": "pause_spin_grab_det_w300",
+    "cap": 45,
+    "until": "nrawwhy f300 ",
+    "tags": [
+      "azahar",
+      "pic",
+      "off",
+      "grab",
+      "det",
+      "cold"
+    ],
+    "gates": []
+  },
+  {
+    "name": "pause_spin_nosprnat_det_w300",
+    "kind": "azahar_pic",
+    "speed": "normal",
+    "default": false,
+    "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.",
+    "scenario": "pause_spin_nosprnat_det_w300",
+    "cap": 45,
+    "until": "nrawwhy f300 ",
+    "tags": [
+      "azahar",
+      "pic",
+      "off",
+      "grab",
+      "nosprnat",
+      "det",
+      "cold"
+    ],
+    "gates": []
+  },
+  {
+    "name": "battle_start_f182_nosprnat_cold",
+    "kind": "azahar_pic",
+    "speed": "normal",
+    "default": false,
+    "purpose": "SPR4 battle gate reference: battle_start_f182 cold det with nosprnat (walker sprite draw).",
+    "scenario": "battle_start_f182_nosprnat_cold",
+    "cap": 60,
+    "until": "shot \\d+ frame 182\\b",
+    "tags": [
+      "azahar",
+      "det",
+      "cold",
+      "nosprnat"
+    ],
+    "gates": []
+  },
     {
       "name": "fb_nok11_nat_pic",
       "kind": "azahar_pic",
