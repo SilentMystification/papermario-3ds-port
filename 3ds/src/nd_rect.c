@@ -1,5 +1,5 @@
 /* nd_rect.c: the handlers of G_TEXRECT and G_FILLRECT (CORE-3, plan_s10_path S10 handler modules). The walker (pm_gbi.c) dispatches the words
- * here. The rectangle state is nd_ws; the walker helpers they use are in pm_gbi.c and declared in pm_gbi_walk.h. Output: pm_gpu_tex_rect and pm_gpu_fill_rect. */
+ * here. The rectangle state is nd_ws; the walker helpers they use are in pm_gbi.c and declared in nd_int.h. Output: pm_gpu_tex_rect and pm_gpu_fill_rect. */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -11,7 +11,7 @@
 #include "nd.h"
 #include "pm_tex.h"
 #include "pm_port.h"
-#include "pm_gbi_walk.h"
+#include "nd_int.h"
 
 /* CORE-3 census: calls of each handler (the census counts ops by handler module: nd_rect here, pm_gbi.c for the rest) */
 unsigned nd_rect_tex_n, nd_rect_fill_n;

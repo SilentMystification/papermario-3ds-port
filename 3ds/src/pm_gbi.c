@@ -6,7 +6,7 @@ int pm_gpu_spr_native(const uint32_t* rec); /* S4-3: native sprite draw at the r
 #include "ultra64.h"
 #include "gbi_custom.h"
 #include "pm_gbi.h"
-#include "pm_gbi_walk.h"
+#include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
@@ -16,9 +16,9 @@ int pm_gpu_spr_native(const uint32_t* rec); /* S4-3: native sprite draw at the r
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (switch gbiprof) */
 struct TszLast { const u8* src; unsigned fmt, siz; int w, h, stride; const void* pal; int pal_n; unsigned ep; int ox, oy; int ok; };
-static struct TszLast tsz_last; /* PG1 */
-static unsigned st0_ep; static int st0_ok;
-static int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
+struct TszLast tsz_last; /* PG1 */
+unsigned st0_ep; static int st0_ok;
+int gp_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gbiprof"); return v; }
 static unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
 static __attribute__((cold, noinline)) void gp_note(int k, int same) { gp_set[k]++; if (same) gp_same[k]++; }
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
@@ -37,31 +37,31 @@ int pm_gbi_flush_class(void) {
     }
 }
 /* W2: phase timers read the tick for one run in 8 and scale the sample by 8. A run is a streak of ops of one class. */
-static unsigned ph_seq;
+unsigned ph_seq;
 static int ph_pick(void) { return (++ph_seq & 7u) == 0; }
 static int gv_run, gv_streak;
-static unsigned gv_streak_t0;
-static void gv_streak_flush(void) {
+unsigned gv_streak_t0;
+void gv_streak_flush(void) {
     gv_run = 0;
     if (!gv_streak) return;
     pm_gbi_gv_ticks += (pm_ticks() - gv_streak_t0) * 8u;
     gv_streak = 0;
 }
-static __attribute__((cold, noinline)) void gv_streak_op(unsigned op) {
+void gv_streak_op(unsigned op) {
     if (op == G_TRI1 || op == G_TRI2) {
         if (pm_ph_on && !gv_run) { gv_run = 1; if (ph_pick()) { gv_streak_t0 = pm_ticks(); gv_streak = 1; } }
     } else
         gv_streak_flush();
 }
-static int tex_run, tex_streak;
-static unsigned tex_streak_t0;
-static void tex_streak_flush(void) {
+int tex_run, tex_streak;
+unsigned tex_streak_t0;
+void tex_streak_flush(void) {
     tex_run = 0;
     if (!tex_streak) return;
     pm_gbi_tex_ticks += (pm_ticks() - tex_streak_t0) * 8u;
     tex_streak = 0;
 }
-static __attribute__((cold, noinline)) void tex_streak_op(unsigned op) {
+void tex_streak_op(unsigned op) {
     if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE || op == G_PM_TEXI) {
         if (pm_ph_on && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
     } else
@@ -79,19 +79,19 @@ extern unsigned int __ctru_linear_heap;
 extern unsigned int __ctru_linear_heap_size;
 
 /* CORE-2b: the geometry mode setter. Every G_GEOMETRYMODE path writes through here (gv_epoch stays with the callers that bumped it). */
-static void set_geom(u32 w0, u32 w1) {
+void set_geom(u32 w0, u32 w1) {
     nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
     pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
 }
-static float combined[4][4];
+float combined[4][4];
 /* Viewport scale/translate after the 2-bit fraction. Full 320x240 until a display list sets one. */
-static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
-static float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
+float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
+float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 void pm_tex_set_filter(int linear);
-static int rm_frame;
+int rm_frame;
 /* X01 debug switch xtrace=<first frame>:<count>: log fill rects, prim depth and render state changes in that frame window. */
 extern unsigned pm_frame_count(void);
-static int xt_on(void) {
+int xt_on(void) {
     static int a = -2, b;
     if (a == -2) {
         char v[24];
@@ -104,7 +104,7 @@ static int xt_on(void) {
 
 /* V02 debug switch drawlog=<first frame>:<count> or drawlog=file (see dd_on): one line per mesh chunk (a G_VTX load at slot 0 starts one) with the
  * vertex source (the model data address), the two innermost G_DL targets, render mode, texture and screen bounds. */
-static int dd_on(void) {
+int dd_on(void) {
     static int a = -2, b, file;
     if (a == -2) {
         char v[24];
@@ -137,7 +137,7 @@ static int suntile_on(void) {
     }
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
-static int suntile_lines;
+int suntile_lines;
 void pm_sun_spawn(int fromRight, float x, float y, float z, int duration) {
     if (!suntile_on()) return;
     pm_log("sun spawn f%u fromRight %d pos %.1f %.1f %.1f duration %d", pm_frame_count(), fromRight, x, y, z, duration);
@@ -156,11 +156,11 @@ void pm_sun_base(const void* graphics) {
     p = (const unsigned*)((const u8*)graphics + 0x7C0);
     pm_log("sun base gfx +7C0 %08x %08x %08x %08x", p[0], p[1], p[2], p[3]);
 }
-static struct {
+struct {
     unsigned vc, gm, idx, top, src, dl0, dl1, oml, omh, zb, timg, fmt, siz, w, h, prim, ntri, tex;
     float x0, y0, x1, y1, w0, w1;
 } dd;
-static unsigned dd_idx, dd_dl0, dd_dl1, dd_top;
+unsigned dd_idx, dd_dl0, dd_dl1, dd_top;
 /* ddonly=<lo>:<hi>: inside the drawlog window only chunks with lo <= index <= hi draw (bisect which draw makes a fault). */
 static int dd_skip(void) {
     static int lo = -2, hi;
@@ -171,26 +171,26 @@ static int dd_skip(void) {
     return lo >= 0 && dd_on() && ((int)dd.idx < lo || (int)dd.idx > hi);
 }
 static void dd_line(void);
-static void dd_end(void) {
+void dd_end(void) {
     if (dd.ntri && dd_on()) dd_line(); /* TEXGARBLE: one line per chunk, written after tst1 is declared */
     dd.ntri = 0;
 }
 
-static unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
-static unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
+unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
+unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
 /* PRIMZFIX: the primitive depth is one unit (512 units of the 24-bit depth) nearer than G_SETPRIMDEPTH. The console rounds a 0x7FF0 blocker
  * behind the far background (water in the Toad Town pond). One helper for both NDC z uses; clamped at 0. */
 static float prim_ndc_z(void) { return nd_prim_ndc_z(nd_ws.prim_z); }
 /* TBREP: tex_gen counts the writes of texture memory and texture state (the bind skip of tb_run is gone, S3F-4; the counter stays). */
 unsigned tex_gen;
 /* TST1: the tile, combine and texture-image state in one block, 32-byte aligned, in .data.pmhot. Types and meanings are unchanged. */
-static int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
+int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
 /* V09: the source of each LoadTile by TMEM word. A tile 1 window that is set again later (chapter_change strips) still reads
  * the image that was loaded to its TMEM address, not the image of the load that came last. */
-static unsigned ldrec_n;
-static unsigned rec_n; /* M4-2: records run in the current opsplit window */
+unsigned ldrec_n;
+unsigned rec_n; /* M4-2: records run in the current opsplit window */
 /* V13: a block load keeps its image and TMEM range. A half-height aux tile (tile 1 at TMEM + half) reads the second half. */
-static unsigned blk_n;
+unsigned blk_n;
 /* RDP state the shaded-sprite path needs: color image, TLUT per palette slot, per-tile TMEM
  * address and palette, tile sizes, scissor, env color and the second combiner cycle. */
 extern int pm_is_cfb(const void* p);
@@ -208,7 +208,7 @@ extern int pm_fb_native(const void* p);
  * B3, R4: the z-buffer image at siz 2 with a FILL cycle or Z_CMP or Z_UPD is DEPTH (a depth write on the main target). */
 extern unsigned short* nuGfxCfb_ptr;
 int zcol, zslot_on; /* B5: zcol = this texrect copies colour into the z-buffer image (underwater, case 7): a slot, not a depth write */
-static void* const zb_fake = (void*)0x1000; /* the key of that slot when nuGfxZBuffer is NULL (address 0 cannot name a texture) */
+void* const zb_fake = (void*)0x1000; /* the key of that slot when nuGfxZBuffer is NULL (address 0 cannot name a texture) */
 int cimg_zero; /* B3: the last G_SETCIMG named address 0. nuGfxZBuffer is NULL until the pause or the darkness overlay allocates it (D03), so the game's z-buffer image is address 0 */
 int img_role(int for_fill) {
     if (!nd_ws.cimg && !cimg_zero) return ROLE_MAIN;
@@ -229,13 +229,13 @@ float depth_of_word(unsigned w16) { return (float)((w16 & 0xffffu) >> 1) / 32767
 static unsigned word_5551(unsigned rgba) {
     return (((rgba >> 27) & 31u) << 11) | (((rgba >> 19) & 31u) << 6) | (((rgba >> 11) & 31u) << 1) | ((rgba >> 7) & 1u);
 }
-static unsigned n_splits, n_grabs; /* B2: per frame, see grab_cur */
+unsigned n_splits, n_grabs; /* B2: per frame, see grab_cur */
 extern int pm_is_cur_cfb(const void* p);
 /* B2: role T2. A 16 bit texture window inside the frame buffer being drawn (water ripples, crystal ball, bulb glow). Copy it into
  * the grab slot before the load, so that the load finds the slot like any off-screen image (T1). A window inside an older frame
  * buffer is T3: G_SETTIMG fetched it with pm_cfb_capture_prev. */
-static int splash_on; /* HANG1a: set by the PM_SPLASH_ON / PM_SPLASH_OFF marks (water_splash.c) */
-static unsigned splash_grab_f = ~0u;
+int splash_on; /* HANG1a: set by the PM_SPLASH_ON / PM_SPLASH_OFF marks (water_splash.c) */
+unsigned splash_grab_f = ~0u;
 static void grab_cur(const void* src, int w, int h) {
     tex_gen++; /* TBREP */
     int x, y, r;
@@ -260,19 +260,19 @@ void off_screen_check(void) {
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
     if (!nooff && (r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(nd_ws.cimg ? nd_ws.cimg : zb_fake, cimg_stride, nd_ws.cimg_siz);
 }
-static const void* tlut_pal[16];
+const void* tlut_pal[16];
 int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 /* The sprite raster captured when tile 1 got its size. A shaded sprite sets two tiles on the
  * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
-static struct { int valid; const u8* src; int stride, w, h, x0, y0; } m1;
-static int dual_on;
+struct { int valid; const u8* src; int stride, w, h, x0, y0; } m1;
+int dual_on;
 /* A texture tile as the RDP holds it. Tile 0 is the render tile. A combiner that reads only TEXEL1
  * samples tile 1 (draw_box takes its window body from tile 1). One texture is bound at a time,
  * so the tile the next draw needs is bound just before it. */
 /* S6-2a (entcheck): at the end record of an entity model draw (G_PM_ENT with G_PM_ENT_END, entity_model.c), the walker's tile 0 state (td[0], pending for the
  * next draw) against nd_dlc_tex_decode of the model list. eq: the same src, fmt, siz, w, h, stride, origin 0, and pal and pal_n for CI. Counts: ent (lists with a texture op),
  * nat (NDTX_OK, native-ready), fb per code (NDTX_MULTI and the fallback codes, index 2 to 8). Line every 300 frames. */
-static void pm_gbi_ent_texchk(const uint32_t* dl) {
+void pm_gbi_ent_texchk(const uint32_t* dl) {
     static unsigned n_ent, n_eq, n_diff, n_nat, n_fb[NDTX_N], n_dlog, n_tbad, next = 300u;
     NdTexDec d;
     int c = nd_dlc_tex_decode(dl, &d);
@@ -304,7 +304,7 @@ static void pm_gbi_ent_texchk(const uint32_t* dl) {
 }
 /* S6-2c-2 (entcheck census): at the end record of an entity model draw, the list cut at its state ops (nd_ent_segments). Counts per draw: ok (the list
  * compiles to segments), refuse (NDR_OP and the other refusals), the first refused op code, segments and triangles. Line every 300 frames: entseg. */
-static void pm_gbi_ent_segchk(const uint32_t* dl) {
+void pm_gbi_ent_segchk(const uint32_t* dl) {
     static NdEntSeg seg[64];
     static unsigned n_draw, n_ok, n_ref, n_seg, n_tri, n_bad[6], next = 300u;
     static uint32_t last_bad;
@@ -348,43 +348,41 @@ static int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
  * alpha = TEXEL1 alpha, cycle 2 = (PRIM - ENV) * COMBINED + ENV. box_prod marks that form.
  * box_folded is 1 while it is drawn as (PRIM - ENV) * TEXEL1 + ENV, which is exact when tile 0
  * is all white (the flat background of the window styles, `bg_flat`). */
-static int box_prod; static PM_HOTD int box_folded;
+int box_prod; PM_HOTD int box_folded;
 /* R2B: comb_gen counts the writes of the combine state that the SETCOMBINE handler does not make (box_fold_sync toggles);
  * cmb_gen_seen is comb_gen at the last SETCOMBINE. */
-static PM_HOTD unsigned comb_gen, cmb_gen_seen;
-static int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
-static unsigned box_save[4];
-static float dual_gain[3];
+unsigned comb_gen, cmb_gen_seen;
+int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
+unsigned box_save[4];
+float dual_gain[3];
 static void unpack8(unsigned c, float o[4]);
 void ensure_tile(int n);
 static void ens_clear(void);
-static Vtx verts[64];
+Vtx verts[64];
 /* A display list may only draw vertices its own G_VTX loaded. Slots left by
  * the previous model otherwise connect the two meshes into long triangles. */
-static u8 vert_live[64];
+u8 vert_live[64];
 /* FX3f: a triangle was issued since the last G_VTX. A load at slot 0 only starts a new mesh then. aura loads slots 2,6 and then
  * 0,4 and draws 4,5,6,7, so the slot 0 load must keep the slots loaded just before it. */
-static PM_HOTD int tri_since_vtx;
+int tri_since_vtx;
 /* B5: G_MODIFYVTX G_MWO_POINT_XYSCREEN sets the screen position of a loaded vertex (underwater warp). x, y in 10.2 fixed point. */
-static u8 vert_scr[64];
-static s16 vert_sx[64], vert_sy[64];
+u8 vert_scr[64];
+s16 vert_sx[64], vert_sy[64];
 /* The RSP transforms a vertex when it is loaded. A later matrix does not move it. */
-static unsigned char vert_cb[64]; /* DIP1: clip bits of vert_p, made once at G_VTX */
-static float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
+unsigned char vert_cb[64]; /* DIP1: clip bits of vert_p, made once at G_VTX */
+float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
 /* PO3b (switch gpuvtx, default off): plain triangles are drawn from the raw Vtx ring by the GPU transform. The CPU path keeps its checks (reject, cull, near clip) from the
  * per vertex transform of PO2, so the decisions are the same. Per slot: ring index, matrix table index, texture scale (s and t) at the load. */
-#define GV_NONE 0xffffu
 /* GV1 (switch gv1, default off, nogv1 turns it off): the full GPU geometry path. G_VTX of an unlit load copies the 16 byte Vtx to the ring and makes only the reject bits.
  * A triangle of ring vertices goes to the GPU as three indices. The GPU transforms, clips and culls. The CPU path stays for the rare cases and reads the ring copy
  * (gv_xf makes vert_p, vert_st and vert_c on demand). It replaces gpuvtx (PO3b) when both are on. */
-static u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
-static u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. */
-enum { GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_DBG, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
-static unsigned seam_obj, seam_clip; /* SEAM: CPU path triangles by position route, `seamstat` logs them */
-static unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n, gv_chk_out, gv_chk_cull, gv_chk_tri;
-static unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
+u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
+u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = vert_st and vert_c valid. 3 for every vertex the old code made. */
+unsigned seam_obj, seam_clip; /* SEAM: CPU path triangles by position route, `seamstat` logs them */
+unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n, gv_chk_out, gv_chk_cull, gv_chk_tri;
+unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
 /* GP3 gate: tile 0 G_SETTILESIZE with td[0] set vs no surviving tri or tile-0 texrect before the next one. */
-static unsigned gp3_t0_ld, gp3_t0_dead, gp3_t0_pending;
+unsigned gp3_t0_ld, gp3_t0_dead, gp3_t0_pending;
 static void gp3_t0_set(void) {
     if (gp3_t0_pending) gp3_t0_dead++;
     gp3_t0_ld++;
@@ -392,28 +390,28 @@ static void gp3_t0_set(void) {
 }
 void gp3_t0_surv(void) { gp3_t0_pending = 0; }
 static float gv_rel_ref[2];
-static unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
-static unsigned short vert_ring[64], vert_gmi[64];
-static unsigned vert_tss[64];
-static unsigned gm_steps; /* W1: entries compared by gv_matrix_id, summed over the report window */
-static float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
-static float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each gm_tab entry (the normal matrix), made when the entry is made */
-static unsigned gm_n;
-static unsigned st_gpu_tri; /* triangles drawn by the raw path */
-static unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
-static u8 seen[256];
+unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
+unsigned short vert_ring[64], vert_gmi[64];
+unsigned vert_tss[64];
+unsigned gm_steps; /* W1: entries compared by gv_matrix_id, summed over the report window */
+float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
+float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each gm_tab entry (the normal matrix), made when the entry is made */
+unsigned gm_n;
+unsigned st_gpu_tri; /* triangles drawn by the raw path */
+unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
+u8 seen[256];
 /* i = every corner in front of the eye, drawn where it projected.
  * c = a corner behind the eye was cut. d = nothing left in front.
  * x is the first vertex's N64 ndc * 100. */
-static int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample;
-static char stats_line[96];
-static int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
-static PM_HOTD int comb_set;
+int n_cmd, n_in, n_cut, n_drop, n_out, n_keep, sample_x, have_sample;
+char stats_line[96];
+int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
+int comb_set;
 /* 1 when the alpha combiner reads shade alpha. DECAL and MODULATE modes do not, and imgfx
  * meshes leave cn[3] at 0, so passing it through made them vanish. */
-static int comb_alpha_shade = 1;
+int comb_alpha_shade = 1;
 extern char __end__[]; /* linker: end of .bss */
-static int is_host(u32 p) {
+int is_host(u32 p) {
     unsigned int heap = __ctru_heap;
     unsigned int hend = __ctru_heap + __ctru_heap_size;
     unsigned int lin = __ctru_linear_heap;
@@ -425,15 +423,8 @@ static int is_host(u32 p) {
 }
 
 /* PG3 A15: the host range that holds p (same three ranges as is_host). 0 when p is not host memory. */
-static int host_range(u32 p, u32* lo, u32* hi) {
-    u32 heap = __ctru_heap, hend = __ctru_heap + __ctru_heap_size, lin = __ctru_linear_heap, lend = lin + __ctru_linear_heap_size;
-    if (p >= heap && p < hend) { *lo = heap; *hi = hend; return 1; }
-    if (p >= lin && p < lend) { *lo = lin; *hi = lend; return 1; }
-    if (p >= 0x00100000u && p < (u32)(uintptr_t)__end__) { *lo = 0x00100000u; *hi = (u32)(uintptr_t)__end__; return 1; }
-    return 0;
-}
 
-static void* ptr_of(u32 w) {
+void* ptr_of(u32 w) {
     if (!w) return NULL;
     if (is_host(w)) return (void*)w;
     unsigned seg = (w >> 24) & 0xff;
@@ -523,8 +514,8 @@ static int const_rgb_tex_alpha(unsigned* out) {
 
 static void set_leg(int m) { leg_mode = m; }
 static int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
-static PmPlan cur_plan;
-static void sync_combine(void);
+PmPlan cur_plan;
+void sync_combine(void);
 static void sync_combine_work(void);
 static void sync_combine_work_timed(void) {
     if (!pm_ph_on || !ph_pick()) { sync_combine_work(); return; }
@@ -533,9 +524,9 @@ static void sync_combine_work_timed(void) {
     pm_gbi_sync_ticks += (pm_ticks() - t0) * 8u; /* W2: one call in 8 timed */
 }
 /* S3N-3d: set by nd_comb_decide. The combine work then makes no pm_gpu call, no stats and no log. */
-static int comb_dry;
-static int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
-static unsigned sl_cc;
+int comb_dry;
+int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
+unsigned sl_cc;
 static void sync_legacy(void) {
     unsigned cc;
     sl_const = sl_env = 0;
@@ -628,11 +619,11 @@ void box_fold_sync(void) {
  * compare and update come from Z_CMP and Z_UPD, a decal passes equal depth, blending is on when
  * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
  * cut away near-transparent texels. */
-static PM_HOTD unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
+unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
 /* CORE-2b: the fog and blend colour setters (fogc, blendc; the fog factors stay with G_MOVEWORD). */
-static void set_fogcolor(u32 w1) { fogc = w1; }
+void set_fogcolor(u32 w1) { fogc = w1; }
 /* CORE-2b: scissor (the walker's sci_* and the GPU scissor), prim depth and fill colour. */
-static void set_scissor(u32 w0, u32 w1) {
+void set_scissor(u32 w0, u32 w1) {
     int ulx = (int)((w0 >> 12) & 0xfff);
     int uly = (int)(w0 & 0xfff);
     int lrx = (int)((w1 >> 12) & 0xfff);
@@ -643,15 +634,15 @@ static void set_scissor(u32 w0, u32 w1) {
     sci_y1 = lry >> 2;
     pm_gpu_set_scissor(ulx >> 2, uly >> 2, lrx >> 2, lry >> 2);
 }
-static void set_primdepth(u32 w1) {
+void set_primdepth(u32 w1) {
     nd_ws.prim_z = (w1 >> 16) & 0x7fffu;
     { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_ws.prim_z); } /* POND-LOG: waterlog line of pm_gpu.c */
 }
-static void set_fillcolor(u32 w1) { nd_ws.fill = w1; }
-static void set_blendcolor(u32 w1) { blendc = w1; }
+void set_fillcolor(u32 w1) { nd_ws.fill = w1; }
+void set_blendcolor(u32 w1) { blendc = w1; }
 static int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
-static unsigned sr_sig;
-static PM_HOTD int sr_ok;
+unsigned sr_sig;
+int sr_ok;
 void sync_render(void) {
     unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)img_role(0) ^ (unsigned)PMD("rmoff");
     if (sr_ok && sg == sr_sig) {
@@ -715,10 +706,10 @@ unsigned rgba_from_5551(unsigned c) {
 }
 
 /* L01: RSP light table. G_MW_NUMLIGHT sets the count, G_MOVEMEM index G_MV_LIGHT fills slots (slot 0 is light 1, slot nlights is the ambient light). */
-static NdLight lt[9];
-static unsigned lt_n;
-static s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
-static float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
+NdLight lt[9];
+unsigned lt_n;
+s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
+float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
 /* SUN3 debug (suntile switch): the tile 0 source of a draw, its state, and the first 16 bytes of rows 0 to 11 of the source. */
 static __attribute__((cold, noinline)) void suntile_t0(const u8* src, int stride, int w, int h, int bpp, int uls, int ult, int lrs, int lrt) {
     if (!suntile_on() || suntile_lines >= 400) return;
@@ -747,9 +738,9 @@ static __attribute__((cold, noinline)) void suntile_tri(const char* path, const 
                nd_ws.tst1.tile_fmt[1], nd_ws.tst1.tile_siz[1], nd_ws.tst1.tile_tmem[1], nd_ws.tst1.tile_sz[1][0], nd_ws.tst1.tile_sz[1][1], nd_ws.tst1.tile_sz[1][2], nd_ws.tst1.tile_sz[1][3],
                nd_ws.td[1].valid, (const void*)nd_ws.td[1].src, nd_ws.td[1].w, nd_ws.td[1].h, nd_ws.td[1].stride, nd_ws.td[1].x0, nd_ws.td[1].y0, nd_ws.cur_tile);
 }
-static int tg_ok;
-static float tg_s, tg_t; /* T01: texgen result of the last vert_color call */
-static unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex is loaded, as the RSP does */
+int tg_ok;
+float tg_s, tg_t; /* T01: texgen result of the last vert_color call */
+unsigned vert_c[64]; /* lit or plain vertex colour, set when the vertex is loaded, as the RSP does */
 
 /* L01: RSP lighting. The normal goes through the model view matrix, then colour = ambient + sum(light colour * max(0, normal . direction)). Alpha stays the vertex alpha.
  * Debug switch nolight keeps the old fixed light for an A/B. */
@@ -831,7 +822,7 @@ static unsigned pack_color(const ClipV* v) {
     return ((unsigned)r << 24) | ((unsigned)g << 16) | ((unsigned)b << 8) | (unsigned)a;
 }
 
-static const float ident_m[4][4] = {
+const float ident_m[4][4] = {
     { 1.f, 0.f, 0.f, 0.f },
     { 0.f, 1.f, 0.f, 0.f },
     { 0.f, 0.f, 1.f, 0.f },
@@ -1001,12 +992,12 @@ static void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]) {
     memcpy(out, in->sh, 4 * sizeof(float));
 }
 
-static const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
-static const char* const cc_nm_b[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYC", "K4" };
-static const char* const cc_nm_c[16] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYS", "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "LODF", "PLODF", "K5" };
-static const char* const cc_nm_d[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "0" };
-static const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "1", "0" };
-static const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
+const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
+const char* const cc_nm_b[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYC", "K4" };
+const char* const cc_nm_c[16] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYS", "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "LODF", "PLODF", "K5" };
+const char* const cc_nm_d[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "0" };
+const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "1", "0" };
+const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
 
 static void cc_text(const unsigned s[2][8], int cyc, char* o, int n) {
     snprintf(o, n, "(%s-%s)*%s+%s / (%s-%s)*%s+%s",
@@ -1029,19 +1020,19 @@ static int cc_uses(const unsigned s[2][8], int two, int t) {
     return u;
 }
 
-static unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
-static unsigned mm_cnt[256], mw_cnt[256];
-static unsigned lcg_s = 12345u;
+unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
+unsigned mm_cnt[256], mw_cnt[256];
+unsigned lcg_s = 12345u;
 static float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
-static unsigned char aud_prim_lod;
+unsigned char aud_prim_lod;
 
 /* Decision per combiner: the legacy combine mode, or the general plan (mode 8). Cached by the combiner words and
  * the flags the legacy mode depends on. The plan is chosen when the legacy mode is off by more than 0.012
  * (of 1.0, max over colour and alpha, 24 random inputs) and the plan is closer. */
 typedef struct { unsigned key; int use, why; float el, ep; PmPlan plan; } Dec;
-static Dec dec[128];
-static int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
-static unsigned plan_draws, plan_fails;
+Dec dec[128];
+int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
+unsigned plan_draws, plan_fails;
 
 static Dec* decide(int two) {
     unsigned key = 2166136261u, i;
@@ -1097,13 +1088,13 @@ static Dec* decide(int two) {
     }
 }
 
-static int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
-static unsigned sc_sig; static PM_HOTD int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
+int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
+unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
 /* OPT-SC: the result of sync_combine_work by the PG0 signature of its inputs (the same hash as gbiprof in sync_combine_work). A hit repeats the outputs and the calls into pm_gpu: no decision lookup, no
  * constant colour test, no plan colours. 16 entries, the oldest is replaced. */
 typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
-static ScMemo scm[16];
-static unsigned scm_next;
+ScMemo scm[16];
+unsigned scm_next;
 static unsigned scm_sig(void) {
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.omode_l, nd_ws.prim, nd_ws.envc, (unsigned)aud_prim_lod, nd_ws.tst1.tile_fmt[0] * 4 + nd_ws.tst1.tile_siz[0],
         (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), nd_ws.geom };
@@ -1131,7 +1122,7 @@ static void scm_replay(const ScMemo* m) {
     else pm_gpu_set_combine(leg_mode);
 }
 /* R2B: the sync_combine input hash (the fields the skip test reads); sync_combine and the g2_same skip use the same value */
-static unsigned sc_sig_now(void) {
+unsigned sc_sig_now(void) {
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.prim, nd_ws.envc, (unsigned)aud_prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
                          (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
     unsigned sg = 2166136261u;
@@ -1139,7 +1130,7 @@ static unsigned sc_sig_now(void) {
     return sg;
 }
 /* S3N-3d: the combiner fields of tst1 that the combine work reads (nd_comb_decide inputs). */
-static unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
+unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
     &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
 static void comb_in_walker(NdCombIn* in) {
     in->w0 = nd_ws.comb_w0; in->w1 = nd_ws.comb_w1; in->omode_h = nd_ws.omode_h; in->prim = nd_ws.prim; in->env = nd_ws.envc; in->aud_prim_lod = aud_prim_lod;
@@ -1151,7 +1142,7 @@ static void comb_in_walker(NdCombIn* in) {
 /* S3N-3d: debug switch combchk. Each combine work of sync_combine runs nd_comb_decide on its inputs and compares the outputs with the walker state. */
 static int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
 void pm_log_prof_line(const char* fmt, ...); /* pm_log.c: the one line of prof=4 mode */
-static unsigned cc_runs, cc_diff; static int cc_last_b = -1; /* the 300 frame bucket of the last log line */
+unsigned cc_runs, cc_diff; static int cc_last_b = -1; /* the 300 frame bucket of the last log line */
 static __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked) { /* worked: the work ran (sl_* are set); a memo hit replays the outputs only */
     NdCombOut o;
     nd_comb_decide(in, &o);
@@ -1164,7 +1155,7 @@ static __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int 
     if ((int)b != cc_last_b) { cc_last_b = (int)b; pm_log_prof_line("combchk f%u runs %u diff %u", f, cc_runs, cc_diff); }
 }
 
-static void sync_combine(void) {
+void sync_combine(void) {
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
         unsigned sg = sc_sig_now();
@@ -1281,9 +1272,9 @@ static void sync_combine_work(void) {
 
 /* S25: a plan that reads TEXEL1. Tile 1 is loaded and kept at unit 1, tile 0 stays the current texture, and the
  * unit 1 coordinates are the first ones moved by the difference of the two tile windows. */
-static unsigned aux_key;
-static float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
-static int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */
+unsigned aux_key;
+float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
+int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */
 void dual_bind(void) {
     unsigned key = 2166136261u, i;
     int tw0, th0, tw1, th1;
@@ -1366,9 +1357,9 @@ void t1_fold(float u0, float u1, float v0, float v1) {
 
 /* Clip positions, not object positions. The identity matrix leaves x,y,z,w
  * alone and the viewport places them. */
-static const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
+const float st_off[2] = { 0.f, 0.f }; /* H06b1 */
 /* PERF-GBI (switch gbiprof, default off): cycle laps inside draw_tri, a tick read costs 1.3 us in Azahar so the totals are inflated, the ranking holds. One load and one branch when off. */
-static unsigned gp_acc[8], gp_last, gp_ntri, gp_frames;
+unsigned gp_acc[8], gp_last, gp_ntri, gp_frames;
 /* PG0 period: frames per gbiprof report. Switch gbiprofn=<frames> (default 300); a window of 40 frames gets a report at frame 40. */
 static unsigned gp_period(void) {
     static unsigned v;
@@ -1377,12 +1368,12 @@ static unsigned gp_period(void) {
     if (!v) v = 300u;
     return v;
 }
-static unsigned gp_opt[256], gp_opn[256], gp_opt_last; static int gp_prev_op = -1; /* time between two ops, charged to the first */
+unsigned gp_opt[256], gp_opn[256], gp_opt_last; int gp_prev_op = -1; /* time between two ops, charged to the first */
 enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_N };
 #define GP_START() do { if (gp_on()) gp_last = pm_ticks(); } while (0)
 #define GP_LAP(id) do { if (gp_on()) { unsigned n_ = pm_ticks(); gp_acc[id] += n_ - gp_last; gp_last = n_; } } while (0)
 
-static int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
+int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
     int b = 0;
     float w = p[3];
     if (p[0] < -w) b |= 1;
@@ -1393,7 +1384,7 @@ static int clip_bits4(const float* p) { /* the same bits as clip_bits, from a cl
     return b;
 }
 static int cull_off(void) { static int v = -1; if (v < 0) v = pm_debug_has("nocull"); return v; }
-static int rmlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("rmlog"); return v; }
+int rmlog_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("rmlog"); return v; }
 /* FLK1: screen area sign of a triangle from clip positions (x y z w, the ClipV and vert_p layout). Both copies of the cull test use it. */
 static float cull_cross(const float* p1, const float* p2, const float* p3) {
     float ex1 = p1[0] * p2[3] - p2[0] * p1[3], ey1 = p1[1] * p2[3] - p2[1] * p1[3];
@@ -1413,7 +1404,7 @@ static int tritrace_on(void) {
     }
     return a >= 0 && (int)pm_frame_count() >= a && (int)pm_frame_count() < b;
 }
-static unsigned tritrace_seq, tritrace_lines;
+unsigned tritrace_seq, tritrace_lines;
 static void tritrace_tri(const char* what, unsigned seq, const float* p1, const float* p2, const float* p3, int cb1, int cb2, int cb3) {
     if (tritrace_lines >= 4000) return;
     tritrace_lines++;
@@ -1506,7 +1497,7 @@ static void gv_xf(int sl) {
 }
 
 /* GV5: the lights are about to change (G_MOVEMEM light, G_MW_NUMLIGHT). A lit vertex that is still in the ring has not seen its colour yet: make it now with the old lights and keep it on the CPU path. */
-static int lit_pending; /* a lit vertex was loaded to the ring since the last lit_freeze */
+int lit_pending; /* a lit vertex was loaded to the ring since the last lit_freeze */
 static void lit_freeze(void) {
     if (!lit_pending) return; /* no vertex was loaded lit since the last freeze */
     lit_pending = 0;
@@ -1518,7 +1509,7 @@ static void lit_freeze(void) {
 }
 
 /* H3: open-addressing index of gm_tab by a hash of the combined matrix. Slot holds entry + 1, 0 is empty. 512 slots for at most 256 entries. */
-static unsigned short gm_idx[512];
+unsigned short gm_idx[512];
 static unsigned gm_hash(const float (*m)[4]) {
     const unsigned* w = (const unsigned*)m;
     unsigned h = 2166136261u;
@@ -1527,7 +1518,7 @@ static unsigned gm_hash(const float (*m)[4]) {
 }
 
 /* GV1: the id of the matrix of the next vertex load or static group in gm_tab: the combined matrix, and for a lit load also the model view matrix of the normal. -1 when the table is full. */
-static unsigned gv_matrix_id(int need_nm) {
+unsigned gv_matrix_id(int need_nm) {
     if (!gm_tab) {
         gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
         gm_nrm = (float(*)[3][4])malloc(256 * sizeof(float[3][4]));
@@ -1554,16 +1545,16 @@ static unsigned gv_matrix_id(int need_nm) {
 
 /* GV5: the fog factor can be made on the GPU */
 /* GV5: a lit load can go to the ring: the program is there and the Options row for the fixed light is off */
-static int gv_lit_ok(void) { if (pm_nolight < 0) pm_nolight = pm_debug_has("nolight"); return pm_gpu_gv5_ok() && !pm_nolight; }
+int gv_lit_ok(void) { if (pm_nolight < 0) pm_nolight = pm_debug_has("nolight"); return pm_gpu_gv5_ok() && !pm_nolight; }
 static int gv_fog_gpu_ok(void) { return pm_gpu_gv5_ok() && pm_gpu_gv_zcoef(NULL, NULL); }
 static int gv1chk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("gv1check"); return v; }
 
 /* GV1b: state epoch. gv_epoch goes up at every display list op that is not a vertex load, a triangle, a matrix op or a list jump. The decision that depends on state
  * only (fallback reason, cull mode, the combiner, texture and render sync, the draw parameters) is made once per epoch and per texture scale, not per triangle. */
-static PM_HOTD unsigned gv_epoch = 1, ep_epoch; static unsigned ep_osc, ep_fl, ep_n, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
-static int ep_why, ep_ct, ep_cullboth, ep_open;
-static GvP ep_p;
-static unsigned gv_chk_stale;
+unsigned gv_epoch = 1, ep_epoch; unsigned ep_osc, ep_fl, ep_n, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
+int ep_why, ep_ct, ep_cullboth, ep_open;
+GvP ep_p;
+unsigned gv_chk_stale;
 static void ep_flush_stats(void) { if (ep_n) { tri_stats_add(ep_fl, ep_n); ep_n = 0; } }
 /* what the state alone says: a reason to leave the GPU path (or -1), the cull type, CULL_BOTH */
 static int gv_state_why(int* ct, int* both) {
@@ -1676,9 +1667,9 @@ static int gv_tri(const int* idx) {
 
 extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
-static PM_HOTD int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
+int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
 void pm_gpu_cen_mark(unsigned bit); /* CEN-1a (pm_gpu.c) */
-static void draw_tri(unsigned w);
+void draw_tri(unsigned w);
 /* DLC1: the static list compiler and the group runner (S3F-4: the former dlc include, inlined here, same unit) */
 /* DLC1: compile and replay of the map shape display lists (docs/plans/DLC.md, kind G). Included by pm_gbi.c after draw_tri, so it reads the statics of the interpreter.
  * `dlc` is always on (dlc_enabled turns it off under the dd, xt and rmlog tools), `dlccheck` (hash, exit state and the reject proof of every skipped group, counters in the `dlc` line).
@@ -1693,15 +1684,15 @@ typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refus
 enum { DLR_OK, DLR_OP, DLR_SLOT, DLR_VTX, DLR_LONG, DLR_N };
 #define DLC_TAB 2048
 #define DLC_MAXOPS 4096
-static DlcEnt* dlc_tab[DLC_TAB];
-static unsigned dlc_nent;
-static PM_HOTD int dlc_on; static int dlc_depth;
-static struct {
+DlcEnt* dlc_tab[DLC_TAB];
+unsigned dlc_nent;
+int dlc_on; int dlc_depth;
+struct {
     unsigned frames, hit, compile, refused[DLR_N], full, lists, grp, skip, replay, i_near, i_lit, i_ring, i_mat, tri, opsrep, hashbad, exitbad, missing, slotfix, ringfail, srep, sfail, sfull, sfb, stri, batch, xgrp;
 } dlc_c;
-static unsigned sp0_grp, sp0_skip; /* SPLIT0C: groups and skips per phase window (sp0c line), counted under phase only */
-static unsigned dlc_dirty; /* the last replay left vert_live cleared although the interpreter would have left slots live */
-static const Gfx dlc_end[1] = { { { (u32)G_ENDDL << 24, 0 } } };
+unsigned sp0_grp, sp0_skip; /* SPLIT0C: groups and skips per phase window (sp0c line), counted under phase only */
+unsigned dlc_dirty; /* the last replay left vert_live cleared although the interpreter would have left slots live */
+const Gfx dlc_end[1] = { { { (u32)G_ENDDL << 24, 0 } } };
 
 /* hash of a list (words up to G_ENDDL) and of the Vtx bytes of its G_VTX ops */
 static u32 dlc_hash(const Gfx* l) {
@@ -1719,7 +1710,7 @@ static u32 dlc_hash(const Gfx* l) {
     }
     return h;
 }
-static int dlc_enabled(void) {
+int dlc_enabled(void) {
     return !dd_on() && !xt_on() && !rmlog_on();
 }
 static int dlcchk_on(void) { return PMDL("dlccheck"); }
@@ -1877,7 +1868,7 @@ static __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l) {
     return 0;
 }
 
-static unsigned dbg_dsg, dbg_seg; /* S3N-3c debug: the static refusal codes */
+unsigned dbg_dsg, dbg_seg; /* S3N-3c debug: the static refusal codes */
 /* DLC2: one range of static triangles with the state of the current epoch. Returns 0 when the raw path refuses (nothing was queued). */
 static __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
     unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
@@ -1973,7 +1964,6 @@ static __attribute__((noinline)) int dlc_box_out(const DlcGrp* g, const float (*
     return out;
 }
 
-enum { GP1_IN, GP1_OUT, GP1_CROSS };
 
 /* AND of clip_bits4 on the 8 corners of an object-space box (subset P for GP1 out loads). */
 static __attribute__((noinline)) unsigned char gp1_box_subset(const s16 lo[3], const s16 hi[3], const float (*m)[4]) {
@@ -2004,7 +1994,7 @@ static __attribute__((noinline)) int gp1_box_in(const s16 lo[3], const s16 hi[3]
 }
 
 /* GP1: exact hybrid box per non-DLC G_VTX load. */
-static __attribute__((noinline)) int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits) {
+int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits) {
     DlcGrp g;
     g.lo[0] = lo[0]; g.lo[1] = lo[1]; g.lo[2] = lo[2];
     g.hi[0] = hi[0]; g.hi[1] = hi[1]; g.hi[2] = hi[2];
@@ -2109,7 +2099,7 @@ static __attribute__((cold, noinline)) void dlc_reset(void) {
     dlc_nent = 0;
     pm_gpu_gstat_reset();
 }
-static unsigned dlc_seen_gen;
+unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
 
 /* S3N-3c debug: the walker DLC counters (calls, groups, skips, static, ring, lit, material, static refusals) for the ndmcheck nraw log */
@@ -2123,7 +2113,7 @@ int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S4-1 (diagnostic) */
 int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S5-1 (b); WIDE1-1: idx = the indices of the range, tested for edge vertices in wide mode */
 /* S4-1 (diagnostic): the refusal of pm_dlc_native_ranges by class (1 dlc off or nobox, 2 list range, 3 table, 4 refused build, 5 depth pass, 6 group without static data, 7 lit group, 8 room, 9 walker grange refuses, 10 matrix id) */
-static unsigned dnr_c[16];
+unsigned dnr_c[16];
 static int dnr(unsigned k) { dnr_c[k]++; return -1; }
 void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i < 16u; i++) { o[i] = dnr_c[i]; dnr_c[i] = 0; } }
 int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
@@ -2182,7 +2172,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
     return (int)n;
 }
 
-static __attribute__((noinline)) int dlc_try(const Gfx* l) {
+int dlc_try(const Gfx* l) {
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
@@ -2303,13 +2293,13 @@ typedef struct {
 enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
 #define ENT_TAB 1024
 #define ENT_SEGMAX 192
-static EntKey* ent_tab[ENT_TAB];
-static unsigned ent_nent, ent_gen_seen;
-static NdEntSeg ent_sbuf[ENT_SEGMAX];
-static unsigned ent_opc[256];
-static struct { unsigned draws, nat, fb, segn, segi, comp, dyn, why[12], ceq, cdiff, cseg; } ent_c;
-static struct { unsigned lists, nat, dyn, ref, skip; } gdl_c; /* SGEN-1: the generic G_DL path */
-static unsigned ent_skipgen; /* the G_DL after a draw record that ent_draw refused: no second try */
+EntKey* ent_tab[ENT_TAB];
+unsigned ent_nent, ent_gen_seen;
+NdEntSeg ent_sbuf[ENT_SEGMAX];
+unsigned ent_opc[256];
+EntCount ent_c;
+GdlCount gdl_c; /* SGEN-1: the generic G_DL path */
+unsigned ent_skipgen; /* the G_DL after a draw record that ent_draw refused: no second try */
 static int entchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("entcheck"); return v; }
 static const void* ent_env_vtx(uint32_t w1, unsigned n) {
     const Vtx* src = (const Vtx*)ptr_of(w1);
@@ -2336,7 +2326,7 @@ static u32 ent_hash(const Gfx* l, const u8* vp, u32 vlen) {
     return h;
 }
 /* S6-5: the list with the nested lists inlined. 0: a nested target is not host memory, too deep or too long. */
-static Gfx ent_flat_buf[ND_DLC_MAXOPS + 1];
+Gfx ent_flat_buf[ND_DLC_MAXOPS + 1];
 static int ent_flat(const Gfx* l, unsigned* n, int depth) {
     for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
@@ -2460,7 +2450,7 @@ static EntKey* ent_lookup(const Gfx* l, u32 vb) {
     return NULL;
 }
 extern unsigned char pm_ent_decal_ok; /* pm_gpu.c: pm_gpu_grange takes a decal with blend (two native passes at the close) */
-static unsigned ent_sw[16], ent_gw[8]; /* ent_gw: pm_gpu_grange_why of a grange refusal (1 gv or gpu off, 2 zmark, 3 decal and blend, 4 wide, 5 ring) */ /* segments the static path refused, by reason: 1 lit, 2 fog, 3 index room, 4 matrix table, 5 + dlc_seg code (1 + gv state why, 9 grange) */
+unsigned ent_sw[16], ent_gw[8]; /* ent_gw: pm_gpu_grange_why of a grange refusal (1 gv or gpu off, 2 zmark, 3 decal and blend, 4 wide, 5 ring) */ /* segments the static path refused, by reason: 1 lit, 2 fog, 3 index room, 4 matrix table, 5 + dlc_seg code (1 + gv state why, 9 grange) */
 static __attribute__((noinline)) int ent_seg_native(const EntKey* k, const EntSeg* s) {
     extern unsigned char pm_ent_decal_ok;
     if (nd_ws.geom & G_LIGHTING) { ent_sw[1]++; return 0; }
@@ -2507,7 +2497,7 @@ static EntKey* ent_find(const Gfx* l, u32 vb) {
 }
 static u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h = (h ^ nd_ws.segbase[i]) * 16777619u; return h | 1u; }
 /* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts (the frame heap) are dynamic by address: walker. 1: drawn. */
-static int ent_gdl(const Gfx* l) {
+int ent_gdl(const Gfx* l) {
     if (!dlc_on || ((u32)l & 7u) || (u32)l - (u32)D_80164000 < 2u * sizeof(DisplayContext)) { gdl_c.skip++; return 0; }
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
@@ -2537,7 +2527,7 @@ static int ent_gdl(const Gfx* l) {
     if (r) gdl_c.nat++; else if (k->st == ENT_DYN) gdl_c.dyn++; else gdl_c.ref++;
     return r;
 }
-static int ent_draw(const Gfx* rec) {
+int ent_draw(const Gfx* rec) {
     const Gfx* l = (const Gfx*)ptr_of(rec[0].words.w1);
     const Gfx* nx = rec + G_PM_ENT_WORDS;
     if (!l || !dlc_on || !is_host((u32)l) || ((u32)l & 7u) || (nx->words.w0 >> 24) != G_DL || nx->words.w1 != rec[0].words.w1) return 0;
@@ -2790,7 +2780,7 @@ no_boost:
     pm_gpu_vert_clip(poly[2].x, poly[2].y, poly[2].z, poly[2].w, poly[2].u, poly[2].v, pack_color(&poly[2]));
 }
 
-static void draw_tri(unsigned w) {
+void draw_tri(unsigned w) {
     int i0 = (int)((w >> 16) & 0xff) / 2;
     int i1 = (int)((w >> 8) & 0xff) / 2;
     int i2 = (int)(w & 0xff) / 2;
@@ -2821,8 +2811,8 @@ static void draw_tri(unsigned w) {
 }
 
 /* SR2: unpacked model matrices by slot (header w1 bits 0 to 7). A tag is 0x10000 | pmMtxVer when valid, 0 when not. */
-static float mtx_cache[256][16];
-static u32 mtx_tag[256];
+float mtx_cache[256][16];
+u32 mtx_tag[256];
 
 /* hdr: the header w1 of a producer record (model.c R1), 0 for a plain G_MTX. */
 _Static_assert(ND_MTX_PUSH == G_MTX_PUSH && ND_MTX_LOAD == G_MTX_LOAD && ND_MTX_PROJ == G_MTX_PROJECTION, "nd.h matrix flags equal the gbi values");
@@ -2837,7 +2827,7 @@ static __attribute__((cold, noinline)) void mtx_dbg(const Mtx* src, u32 hdr) {
     pm_log("gmtx f%u n %u src %p w %08x %08x %08x %08x slot %u tag %u repl %d lm %d", pm_frame_count(), n++, (const void*)src,
            s[0], s[1], s[2], s[3], hdr & 0xffu, (unsigned)(hdr >> 16), pm_interp_repl, lm != 0);
 }
-static void load_mtx(u32 w0, u32 w1, u32 hdr) {
+void load_mtx(u32 w0, u32 w1, u32 hdr) {
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
     if (!src) return;
@@ -2861,39 +2851,39 @@ static void load_mtx(u32 w0, u32 w1, u32 hdr) {
 }
 
 /* S25: an opcode the interpreter does not run. Counted, logged at 1, 100, 10000 ... uses. */
-static unsigned op_cnt[256];
-static __attribute__((cold, noinline)) void note(unsigned op) {
+unsigned op_cnt[256];
+void note(unsigned op) {
     unsigned n = ++op_cnt[op];
     seen[op] = 1;
 }
 
-static PM_HOTD unsigned n_ops; /* PT01: display list ops run this frame */
+unsigned n_ops; /* PT01: display list ops run this frame */
 
 /* W1: sampled time per op class. Phase on only. op_n is exact (one increment per op). One tick pair per 64 ops, outer list only.
  * P1: producer census. Marks come from pm_interp_open (gMainGfxPos at the open). The cursor moves forward at sp == 0 in the
  * main list. Each op counts to the producer under the cursor. Nested lists count to the calling producer. */
 enum { OS_VTX, OS_MTX, OS_TRI, OS_TEX, OS_CC, OS_GEO, OS_DL, OS_DLC, OS_SYNC, OS_OTH, OS_N };
-static const char* const os_nm[OS_N] = { "vtx", "mtx", "tri", "tex", "cc", "geo", "dl", "dlc", "sync", "oth" };
+const char* const os_nm[OS_N] = { "vtx", "mtx", "tri", "tex", "cc", "geo", "dl", "dlc", "sync", "oth" };
 #define OS_DLC_OP 0xFF /* pseudo op: a G_DL that dlc_try answered */
-static unsigned os_op_n[256], os_nn[256], os_tk[256], os_sn[256], os_fl[256];
-static unsigned os_fr, os_off, os_nest, os_open, os_op, os_pk, os_t0, os_fl0;
-static unsigned os_svc_last; /* CAP1: pm_svc_n at the last opsplit line (pt field); pm_gbi_win_reset sets it */
+unsigned os_op_n[256], os_nn[256], os_tk[256], os_sn[256], os_fl[256];
+unsigned os_fr, os_off, os_nest, os_open, os_op, os_pk, os_t0, os_fl0;
+unsigned os_svc_last; /* CAP1: pm_svc_n at the last opsplit line (pt field); pm_gbi_win_reset sets it */
 #define PK_MARKS 1024 /* WCEN3: the all-marks table holds two frames of both display contexts */
 #define PK_SLOTS 256
 #define PK_PRE 253 /* main list ops before the first mark */
 #define PK_BG 254 /* ops of a list that is not the main list */
 #define PK_OTHER 255 /* a producer that found no free slot */
-static struct { const Gfx* p; unsigned s; } pmk[PK_MARKS]; /* the marks of the list being walked (copied at its walk start) */
-static int pmk_n, pmx_main, pmx_next;
-static struct { const Gfx* p; unsigned s; } pmk_all[PK_MARKS]; /* WCEN3: marks of all lists not yet walked; a frame start drops its context's old marks */
-static int pmk_all_n;
+struct { const Gfx* p; unsigned s; } pmk[PK_MARKS]; /* the marks of the list being walked (copied at its walk start) */
+int pmk_n, pmx_main, pmx_next;
+PkMark pmk_all[PK_MARKS]; /* WCEN3: marks of all lists not yet walked; a frame start drops its context's old marks */
+int pmk_all_n;
 #define MAIN_GFX_N ((int)(sizeof gDisplayContext->mainGfx / sizeof(Gfx)))
-static unsigned pmx_cur, pk_key[PK_SLOTS], pk_set[PK_SLOTS], pk_ops[PK_SLOTS], pk_tk[PK_SLOTS], pk_sn[PK_SLOTS];
-static unsigned pk_wd[PK_SLOTS], pk_nd[PK_SLOTS]; /* WCEN3: GPU draws per producer, walker (wd) and native (nd) */
+unsigned pmx_cur, pk_key[PK_SLOTS], pk_set[PK_SLOTS], pk_ops[PK_SLOTS], pk_tk[PK_SLOTS], pk_sn[PK_SLOTS];
+unsigned pk_wd[PK_SLOTS], pk_nd[PK_SLOTS]; /* WCEN3: GPU draws per producer, walker (wd) and native (nd) */
 #define CW_NW 16 /* CEN-1a: why codes (pm_gpu.c CW_*) */
 unsigned pm_gpu_cen_why(void); const char* pm_gpu_cen_name(unsigned c);
-static unsigned pk_wdw[PK_SLOTS][CW_NW]; /* CEN-1a: walker draws per producer by why code */
-static unsigned pk_rec[PK_SLOTS], pk_nat[PK_SLOTS]; /* WCEN2: per producer, record headers run (pk_rec) and records drawn natively (pk_nat) */
+unsigned pk_wdw[PK_SLOTS][CW_NW]; /* CEN-1a: walker draws per producer by why code */
+unsigned pk_rec[PK_SLOTS], pk_nat[PK_SLOTS]; /* WCEN2: per producer, record headers run (pk_rec) and records drawn natively (pk_nat) */
 
 static unsigned pk_slot(unsigned a) {
     unsigned h = ((a * 2654435761u) >> 16) % PK_PRE;
@@ -2941,7 +2931,7 @@ static void os_close(void) {
     pk_tk[os_pk] += w; pk_sn[os_pk]++;
     os_open = 0;
 }
-static __attribute__((cold, noinline)) void os_dlc_hit(void) { /* a G_DL answered by dlc_try: count it as the dlc pseudo op */
+void os_dlc_hit(void) { /* a G_DL answered by dlc_try: count it as the dlc pseudo op */
     unsigned* n = os_nest > 1 ? os_nn : os_op_n;
     n[G_DL]--; n[OS_DLC_OP]++;
     if (os_open && os_op == G_DL) os_op = OS_DLC_OP;
@@ -2971,7 +2961,7 @@ static void pk_name(unsigned s, char* b, int n) {
     for (int i = 0; ok && i < 40; i++) { if (!p[i]) break; if (p[i] < 32 || p[i] > 126) ok = 0; else if (i == 39) ok = 0; }
     if (ok && p[0]) snprintf(b, n, "%.40s", p); else snprintf(b, n, "%08x", a);
 }
-static __attribute__((cold, noinline)) void os_op_hook(const Gfx* at, int sp, unsigned op) { /* one call per op, phase on */
+void os_op_hook(const Gfx* at, int sp, unsigned op) { /* one call per op, phase on */
     if (os_nest == 1) {
         if (os_open) os_close();
         if (pmx_main && sp == 0) while (pmx_next < pmk_n && at >= pmk[pmx_next].p) pmx_cur = pmk[pmx_next++].s;
@@ -2993,10 +2983,10 @@ typedef struct {
     unsigned ops, draws, tris, binds, closes, tex_sum, frames, stat; /* window sums */
     unsigned seen, ntx, tx[8], prev_h, cur_h; /* frame state */
 } mdc_t;
-static mdc_t mdc[MDC_SLOTS];
-static struct { const Gfx* p; int s; u8 plain; } mdcm[MDC_MARKS];
-static int mdcm_n, mdcm_next, mdcm_cur = -1, mdcm_over, mdc_prev_tri, mdcm_last = -1;
-static unsigned mdc_tot_ops, mdc_tot_draws, mdc_tot_tris, mdc_tot_binds, mdc_none;
+mdc_t mdc[MDC_SLOTS];
+struct { const Gfx* p; int s; u8 plain; } mdcm[MDC_MARKS];
+int mdcm_n, mdcm_next, mdcm_cur = -1, mdcm_over, mdc_prev_tri, mdcm_last = -1;
+unsigned mdc_tot_ops, mdc_tot_draws, mdc_tot_tris, mdc_tot_binds, mdc_none;
 
 static __attribute__((cold, noinline)) int mdc_slot(unsigned id) {
     unsigned h = (id * 2654435761u) >> 25;
@@ -3008,8 +2998,8 @@ static __attribute__((cold, noinline)) int mdc_slot(unsigned id) {
 }
 /* T2b: one pseudo ID per task function pointer (first-sight order, 32 entries, 0xF100 + index). A full table gives 0xF0FF. */
 #define MDC_FNS 32
-static const void* mdc_fn[MDC_FNS];
-static int mdc_fn_n;
+const void* mdc_fn[MDC_FNS];
+int mdc_fn_n;
 static __attribute__((cold, noinline)) unsigned mdc_fn_id(const void* fn) {
     for (int i = 0; i < mdc_fn_n; i++) if (mdc_fn[i] == fn) return 0xF100u + (unsigned)i;
     if (mdc_fn_n >= MDC_FNS) return 0xF0FFu;
@@ -3036,8 +3026,8 @@ void pm_gbi_mdl_mark(unsigned id, int pan) { /* called by appendGfx_model under 
 /* SPLIT0C: split of the walk by kind, phase only. A period has a kind: 0 rest, 1 texture op (tex_op, tb_ops), 2 replayed
  * list (dlc_try). A tick is read at the group begin and end and at each kind change, never per op (a tick read costs 1.3 us in
  * Azahar). sp0_T is in system ticks (268 per us). The sp0c line prints us per frame over the phase window (300 frames). */
-static unsigned sp0_t, sp0_cur;
-static unsigned long long sp0_T[3], sp0_F; /* SPLIT0C2: flush ticks inside the tex kind, a subset of sp0_T[1] */
+unsigned sp0_t, sp0_cur;
+unsigned long long sp0_T[3], sp0_F; /* SPLIT0C2: flush ticks inside the tex kind, a subset of sp0_T[1] */
 static __attribute__((noinline)) void sp0_set(unsigned k) {
     unsigned n = pm_ticks();
     sp0_T[sp0_cur] += n - sp0_t;
@@ -3055,10 +3045,10 @@ static inline int sp0_tex(unsigned op) {
 unsigned long long pm_gbi_sp0_dlc(void) { return sp0_T[2]; } /* PF2: read by pm_phase.c pf_take, dlc group ticks */
 void pm_pmu_sp0(unsigned out[3]); /* pm_phase.c, CAP2 */
 /* S3-2 measurement: ticks and calls of tex_op per op code, phase on only (line sp0x of sp0_report) */
-static unsigned long long tx_t[256], tx_f[256]; static unsigned tx_n[256];
+unsigned long long tx_t[256], tx_f[256]; static unsigned tx_n[256];
 unsigned long long pm_gpu_fl_acc(void); /* pm_gpu.c */
 static void tex_op_impl(u32 w0, u32 w1);
-static __attribute__((noinline)) void tex_op(u32 w0, u32 w1) {
+void tex_op(u32 w0, u32 w1) {
     if (!pm_ph_on) { tex_op_impl(w0, w1); return; }
     unsigned op = w0 >> 24, t0 = pm_ticks();
     unsigned long long f0 = pm_gpu_fl_acc();
@@ -3089,9 +3079,9 @@ static __attribute__((cold, noinline)) void sp0_report(void) {
  * no billboard (set by appendGfx_model through pm_gbi_mr0_plain). The walk cuts time into periods. A period has a kind: 0 ops,
  * 1 bind (texture op), 2 dlc (a G_DL that dlc_try answers). A tick ends a period when the kind changes or the model changes.
  * Flush time (os_flsum) is cut out of each kind. Ticks are cheap: one per bind or dlc boundary and one per model change. */
-static unsigned mr0_t, mr0_fl0, mr0_plain_n;
-static int mr0_kind, mr0_plain, mr0_dlc_hit;
-static unsigned long long mr0_T[3], mr0_F[3]; /* T in system ticks, F in us */
+unsigned mr0_t, mr0_fl0, mr0_plain_n;
+int mr0_kind, mr0_plain, mr0_dlc_hit;
+unsigned long long mr0_T[3], mr0_F[3]; /* T in system ticks, F in us */
 void pm_gbi_mr0_plain(int plain) { /* appendGfx_model, under phase, right after its mark */
     if (mdcm_last >= 0 && plain) { mdcm[mdcm_last].plain = 1; mr0_plain_n++; }
 }
@@ -3112,9 +3102,9 @@ static __attribute__((cold, noinline)) void mr0_op(unsigned op, int adv, int pla
 }
 /* MS0: removable closes, phase only, an upper bound. A run is consecutive plain opaque model marks (non-model ops between them
  * are not checked). A stable sort by texture inside a run leaves one close per distinct texture: removable = changes + 1 - distinct. */
-static int ms0_in, ms0_last = -1, ms0_nd;
-static unsigned ms0_d[64];
-static unsigned long long ms0_rem, ms0_chg, ms0_ctot, ms0_opm, ms0_runs;
+int ms0_in, ms0_last = -1, ms0_nd;
+unsigned ms0_d[64];
+unsigned long long ms0_rem, ms0_chg, ms0_ctot, ms0_opm, ms0_runs;
 static __attribute__((cold, noinline)) void ms0_end(void) {
     if (!ms0_in) return;
     int r = (int)ms0_nd > 0 ? (int)ms0_chg + 1 - (int)ms0_nd : 0;
@@ -3133,10 +3123,10 @@ void pm_gbi_ms0_mark(int opaque, unsigned tex) { /* appendGfx_model, under phase
     ms0_last = (int)tex;
 }
 /* the main walk ends: the time after it (logic, other producers) is not a model period */
-static __attribute__((cold, noinline)) void mr0_walk_end(void) {
+void mr0_walk_end(void) {
     if (mr0_plain || mr0_kind) mr0_tick(0, 0);
 }
-static __attribute__((cold, noinline)) void mdc_op(const Gfx* at, int sp, unsigned op, u32 w0, u32 w1) {
+void mdc_op(const Gfx* at, int sp, unsigned op, u32 w0, u32 w1) {
     int adv = 0;
     if (os_nest == 1 && pmx_main && sp == 0) {
         while (mdcm_next < mdcm_n && at >= mdcm[mdcm_next].p) { mdcm_cur = mdcm[mdcm_next++].s; mdc_prev_tri = 0; adv = 1; }
@@ -3242,7 +3232,7 @@ static void os_win_clear(void) {
     memset(pk_rec, 0, sizeof pk_rec); memset(pk_nat, 0, sizeof pk_nat); memset(pk_wd, 0, sizeof pk_wd); memset(pk_nd, 0, sizeof pk_nd); memset(pk_wdw, 0, sizeof pk_wdw);
     gm_steps = 0;
 }
-static const Gfx* pre_w0; static const Gfx* pre_mk0; static int pre_mkn; /* WCEN2 diag: the last outer walk's list start, its first mark and mark count */
+const Gfx* pre_w0; static const Gfx* pre_mk0; static int pre_mkn; /* WCEN2 diag: the last outer walk's list start, its first mark and mark count */
 static void os_report(void) {
     static unsigned long long est[256], estc[256], pke[PK_SLOTS];
     unsigned long long cls_tk[OS_N] = { 0 }, cls_n[OS_N] = { 0 }, tot_n = 0, tot_fl = 0, tot_sn = 0, psum = 0;
@@ -3530,12 +3520,12 @@ static int load_shaded_sprite(int dx4, int dy4) {
 }
 
 /* Bind the texture of tile n (0 or 1) for the next draw. */
-static const void* ens_img[2];
-static const void* ens_src;
-static const void* ens_pal;
-static unsigned ens_fmt, ens_siz;
-static unsigned ens_wrap[4];
-static int ens_sz[4];
+const void* ens_img[2];
+const void* ens_src;
+const void* ens_pal;
+unsigned ens_fmt, ens_siz;
+unsigned ens_wrap[4];
+int ens_sz[4];
 static void ens_clear(void) { ens_src = NULL; ens_pal = NULL; }
 static int tile_bound(int n) {
     if (!nd_ws.td[n].valid || pm_tex_cur_idx() < 0 || !ens_src) return 0;
@@ -3686,7 +3676,7 @@ static int tile_texel(int n, int s, int t, unsigned char o[4]) {
  * The PICA path binds one texture, so the product TEXEL0 * TEXEL1 (colour) and TEXEL1 alpha are composed on the
  * CPU into an RGBA texture (cached by content, 128 x 128 pixel chunks), then drawn with (PRIM - ENV) * texel + ENV.
  * Returns 1 if drawn. */
-static unsigned char box_buf[128 * 128 * 4];
+unsigned char box_buf[128 * 128 * 4];
 __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     tex_gen++; /* TBREP */
     int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
@@ -3739,11 +3729,10 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
 }
 
 /* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. G_NOOP is not here: the HANG1a splash marks are G_NOOP words. */
-static const u8 g1_skip[256] = { [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
 
-static __attribute__((noinline)) void tex_op(u32 w0, u32 w1);
+void tex_op(u32 w0, u32 w1);
 /* GLYPH: runs n texture-load words after a G_PM_TEXI header, with the tex_op handlers. Syncs are skipped as in G1. */
-static __attribute__((noinline)) void tb_inline(const Gfx* g, unsigned n) {
+void tb_inline(const Gfx* g, unsigned n) {
     for (; n; n--, g++) {
         unsigned op = g->words.w0 >> 24;
         if (g1_skip[op]) continue;
@@ -3756,7 +3745,7 @@ static __attribute__((noinline)) void tb_inline(const Gfx* g, unsigned n) {
  * also need sc_ok: a set sc_ok means that call would do nothing. */
 /* R5B: a G_MOVEMEM light that writes the values already in lt[slot] changes nothing. The same op also runs lit_freeze, which
  * acts when a lit vertex is pending, so the skip needs lit_pending == 0 (then lit_freeze returns at once). */
-static int lt_mem_same(u32 w0, u32 w1) {
+int lt_mem_same(u32 w0, u32 w1) {
     int slot = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
     const u8* l = (const u8*)ptr_of(w1);
     return l && slot >= 0 && slot < 9 && !lit_pending && lt[slot].col[0] == l[0] && lt[slot].col[1] == l[1] && lt[slot].col[2] == l[2] &&
@@ -3765,54 +3754,13 @@ static int lt_mem_same(u32 w0, u32 w1) {
 
 /* CORE-2a-3: a skipped op (g2_same true) still gives the state the native keys read what its write would have: the B8 known bits of a
  * SETOTHERMODE mask and the prim LOD word (w0 low 16 bits, which g2_same does not compare). */
-static void g2_note(unsigned op, u32 w0) {
-    if (op == G_SETPRIMCOLOR) { nd_ws.prim_lod = w0 & 0xffffu; return; }
-    if (op != G_SETOTHERMODE_H && op != G_SETOTHERMODE_L) return;
-    unsigned len = (w0 & 0xff) + 1, field = (w0 >> 8) & 0xff, sft = 32 - field - len;
-    unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-    if (op == G_SETOTHERMODE_H) nd_ws.om_kh |= mask; else nd_ws.om_kl |= mask;
-}
-static int g2_same(unsigned op, u32 w0, u32 w1) {
-    switch (op) {
-    /* R2B: each case skips only when the handler's writes equal the current state and its calls do nothing (sync_combine: sc_ok and
-     * the same input hash; pm_gpu_set_mode: the mode already set). */
-    case G_SETCOMBINE:
-        return comb_set && nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok &&
-               sc_sig_now() == sc_sig;
-    case G_TEXTURE:
-        return nd_ws.tex_on == ((w0 & 0xff) != 0) && nd_ws.tex_ss == (w1 >> 16) && nd_ws.tex_ts == (w1 & 0xffffu) && sc_ok && sc_sig_now() == sc_sig;
-    case G_GEOMETRYMODE: {
-        unsigned g = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
-        return g == nd_ws.geom && pm_gpu_mode_is((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
-    }
-    case G_MOVEMEM: return (w0 & 0xff) == G_MV_LIGHT && lt_mem_same(w0, w1);
-    case G_MOVEWORD: { /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
-        unsigned index = (w0 >> 16) & 0xff, offset = w0 & 0xffff, k = offset / 24;
-        return index == G_MW_LIGHTCOL && k < 9 && (offset % 24) == 0 && lt[k].col[0] == (u8)(w1 >> 24) && lt[k].col[1] == (u8)(w1 >> 16) &&
-               lt[k].col[2] == (u8)(w1 >> 8);
-    }
-    case G_SETPRIMCOLOR: return nd_ws.prim == w1 && aud_prim_lod == (u8)(w0 & 0xff) && sc_ok;
-    case G_SETENVCOLOR: return nd_ws.envc == w1 && sc_ok;
-    case G_SETFOGCOLOR: return fogc == w1;
-    case G_SETBLENDCOLOR: return blendc == w1;
-    case G_SETOTHERMODE_L:
-    case G_SETOTHERMODE_H: {
-        unsigned len = (w0 & 0xff) + 1, field = (w0 >> 8) & 0xff;
-        unsigned sft = 32 - field - len;
-        unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-        unsigned old = op == G_SETOTHERMODE_H ? nd_ws.omode_h : nd_ws.omode_l;
-        return (w1 & mask) == (old & mask) && (op == G_SETOTHERMODE_L || sc_ok);
-    }
-    default: return 0;
-    }
-}
 
 /* C2: G_PM_RM (gSPPmRenderMode) w1 = a ModelRenderModes list (static, host memory). The list must hold only
  * SETOTHERMODE_L/H, GEOMETRYMODE and ENDDL. Its effects run here in list order, with the same state writes and the same
  * side-effect calls as the handlers for those ops (filter flush, sync_combine on the cycle type, pm_gpu_set_mode).
  * Returns 0 without any effect when the list has another op; the caller then runs it as a G_DL. */
 static void op_setcombine(u32 w0, u32 w1); static void op_texture(u32 w0, u32 w1); static void op_setothermode(unsigned op, u32 w0, u32 w1); /* M4, CORE-2b */
-static int rm_gen; /* M4 texdiff: 1 runs the SETCOMBINE and TEXTURE words through tex_op as before */
+int rm_gen; /* M4 texdiff: 1 runs the SETCOMBINE and TEXTURE words through tex_op as before */
 static int rm_apply_impl(u32 w1) {
     const Gfx* g = (const Gfx*)w1;
     int n = 0;
@@ -3840,24 +3788,11 @@ static int rm_apply_impl(u32 w1) {
     return 1;
 }
 
-/* H1: rare paths of gbi_run_body. Cold and noinline, so the hot loop does not carry their code. */
-static __attribute__((cold, noinline)) void gbi_cold_bad_dl(u32 pc, u32 list, unsigned nbytes, int sp) {
-    static int bad; if (bad++ < 6) pm_log_e("bad dl pc %08x list %08x n %u sp %d", pc, list, nbytes, sp);
-}
-static __attribute__((cold, noinline)) void gbi_cold_bad_next(u32 w1, u32 w0, u32 list) {
-    static int bad; if (bad++ < 8) pm_log_e("bad dl target %08x w0 %08x list %08x", w1, w0, list);
-}
-static __attribute__((cold, noinline)) void gbi_cold_bad_vtx(u32 w1, u32 w0, u32 list) {
-    static int bad; if (bad++ < 8) pm_log_e("bad vtx %08x w0 %08x list %08x", w1, w0, list);
-}
-static __attribute__((cold, noinline)) void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
-    static unsigned bad; if (bad++ < 6) pm_log_w("gbi: G_MTX w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
-        pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
-}
-static __attribute__((cold, noinline)) void gbi_cold_dd_load(const Vtx* src) {
+/* H1: rare paths of nd_walk_run. Cold and noinline, so the hot loop does not carry their code. */
+void gbi_cold_dd_load(const Vtx* src) {
     dd_end(); dd.idx = dd_idx++; dd.top = dd_top; dd.src = (u32)src; dd.vc = __builtin_bswap32(*(const u32*)((const u8*)src + 12)); dd.gm = nd_ws.geom; dd.dl0 = dd_dl0; dd.dl1 = dd_dl1;
 }
-static __attribute__((cold, noinline)) void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
+void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
     unsigned where = (w0 >> 16) & 0xff, vi = (w0 & 0xffffu) / 2;
     if (where == G_MWO_POINT_XYSCREEN && vi < 64) {
         vert_sx[vi] = (s16)(w1 >> 16);
@@ -4387,7 +4322,7 @@ static __attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
     if (!(runs % 500)) pm_log("texdiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
     ts_load(&eg);
 }
-static int rm_apply(u32 w1) { /* M4: with texdiff the list runs both ways from the same start state and the end states are compared */
+int rm_apply(u32 w1) { /* M4: with texdiff the list runs both ways from the same start state and the end states are compared */
     if (!PMD("texdiff")) return rm_apply_impl(w1);
     static TexSnap s0, eg, ef; static unsigned runs, bad; char names[256]; int n = 0, r;
     ts_save(&s0); rm_gen = 1; r = rm_apply_impl(w1); rm_gen = 0; ts_save(&eg); ts_load(&s0); rm_apply_impl(w1); ts_save(&ef);
@@ -4401,16 +4336,15 @@ static int rm_apply(u32 w1) { /* M4: with texdiff the list runs both ways from t
     return r;
 }
 
-static void gbi_run_body(void* list, unsigned nbytes);
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
-    if (!pm_ph_on) { gbi_run_body(list, nbytes); return; }
+    if (!pm_ph_on) { nd_walk_run(list, nbytes); return; }
     if (os_nest == 0) { pre_w0 = (const Gfx*)list; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx;
         pmk_n = 0; /* WCEN3: the walk copy holds the marks of this list only */
         if (pmx_main) for (int i = 0; i < pmk_all_n && pmk_n < PK_MARKS; i++) if (pmk_all[i].p >= (const Gfx*)list && pmk_all[i].p < (const Gfx*)list + MAIN_GFX_N) { pmk[pmk_n].p = pmk_all[i].p; pmk[pmk_n].s = pmk_all[i].s; pmk_n++; }
         pre_mkn = pmk_n; pre_mk0 = pmk_n ? pmk[0].p : NULL; pmx_cur = pmx_main ? PK_PRE : pk_slot((unsigned)(uintptr_t)list); /* WCEN2: a non-main list has its own key (its address) */ pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
     os_nest++;
-    gbi_run_body(list, nbytes);
+    nd_walk_run(list, nbytes);
     if (os_open && os_nest == 1) os_close();
     os_nest--;
 }
@@ -4424,7 +4358,7 @@ static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
     nd_ws.cimg_siz = ns;
     cimg_stride = stride;
 }
-static __attribute__((noinline)) void gbi_setcimg(u32 w0, u32 w1) { set_cimg(w1, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1); }
+void gbi_setcimg(u32 w0, u32 w1) { set_cimg(w1, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1); }
 
 static __attribute__((noinline)) void gbi_viewport(u32 w1) {
     Vp* vp = (Vp*)ptr_of(w1);
@@ -4439,7 +4373,7 @@ static __attribute__((noinline)) void gbi_viewport(u32 w1) {
     }
 }
 
-static __attribute__((noinline)) void gbi_vtx_cpu1(const Vtx* s, unsigned k) {
+void gbi_vtx_cpu1(const Vtx* s, unsigned k) {
 vert_gvf[k] = 3;
 vert_st[k][0] = (float)s->v.tc[0] * (float)nd_ws.tex_ss / 65536.f; /* T02: the RSP scales S and T */
 vert_st[k][1] = (float)s->v.tc[1] * (float)nd_ws.tex_ts / 65536.f;
@@ -4457,7 +4391,7 @@ if (tg_ok) { vert_st[k][0] = tg_s; vert_st[k][1] = tg_t; }
 }
 }
 
-static __attribute__((noinline)) void gbi_movemem(u32 w0, u32 w1) {
+void gbi_movemem(u32 w0, u32 w1) {
     if ((w0 & 0xff) == G_MV_LIGHT) lit_freeze(); /* GV5 */
     if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
         int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
@@ -4472,12 +4406,12 @@ static __attribute__((noinline)) void gbi_movemem(u32 w0, u32 w1) {
     if ((w0 & 0xff) == G_MV_VIEWPORT) gbi_viewport(w1);
 }
 
-static __attribute__((noinline)) void gbi_popmtx(u32 w1) {
+void gbi_popmtx(u32 w1) {
     nd_mtx_pop(w1 / 64); /* S1-4: count 0 pops one */
     upload_mvp();
 }
 
-static __attribute__((noinline)) void gbi_moveword(u32 w0, u32 w1) {
+void gbi_moveword(u32 w0, u32 w1) {
     unsigned index = (w0 >> 16) & 0xff;
     unsigned offset = w0 & 0xffff;
     if (index == G_MW_NUMLIGHT) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; return; } /* L01 */
@@ -4526,7 +4460,7 @@ static __attribute__((noinline)) void rec_lights(const Lightsn* L, unsigned k) {
     }
 }
 /* S3F-2b: G_SETENVCOLOR, one function for the walker and the record. */
-static __attribute__((noinline)) void gbi_setenv(u32 w1) {
+void gbi_setenv(u32 w1) {
     GP_SET(2, nd_ws.envc == w1);
     nd_ws.envc = w1;
     pm_gpu_set_env(nd_ws.envc);
@@ -4621,8 +4555,8 @@ extern void pm_gpu_ndm_end(void);
 extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
 extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
 extern void pm_gpu_model_fb_cached(unsigned why); /* S3N-7, S3L-1: the code of the stored fallback */ /* S3N-6: the cached draws of the key, 1 when drawn (e: the entry found by the lookup) */
-static int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
-static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
+int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
+unsigned rec_run(const Gfx* q) {
     NdMKey mk;
     NdtT tk = pm_gpu_ndt_begin(); /* S3N-7: key build */
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
@@ -4669,320 +4603,6 @@ static __attribute__((noinline)) unsigned rec_run(const Gfx* q) {
     return G_PM_REC_WORDS - 1 + q[13].words.w0; /* R1 to R12: matrix, lights, fog, combine, prim, env, blend, shroud, billboard, panner, custom gfx, geometry, pop; then the R13 words */
 }
 
-static void gbi_run_body(void* list, unsigned nbytes) {
-    gv_epoch++; /* GV1b */
-    dlc_on = dlc_enabled();
-    Gfx* stack[12];
-    int sp = 0;
-    Gfx* pc = (Gfx*)list;
-    Gfx* end = (nbytes >= 8) ? pc + nbytes / 8 : NULL;
-    unsigned guard = 0;
-    u32 pc_lo = 0, pc_hi = 0;
-    gp_prev_op = -1; /* PG4: the time between two lists is not an op cost */
-    sc_ok = 0; sr_ok = 0; /* DIP2: a new display list starts with a full sync */
-    if (!pc) { gv_streak_flush(); tex_streak_flush(); return; }
-    dd_end();
-    if (dd_on()) { dd_idx = 0; dd_dl0 = dd_dl1 = 0; }
-    while (pc && guard++ < 200000) {
-        if (end && sp == 0 && pc >= end) break;
-        if ((u32)pc < pc_lo || (u32)pc >= pc_hi) { /* PG3 A15: the range of pc is looked up when pc leaves the last range (list entry, G_DL, return), not at every op */
-            if (!host_range((u32)pc, &pc_lo, &pc_hi)) { pc_lo = pc_hi = 0;
-            gbi_cold_bad_dl((u32)pc, (u32)list, nbytes, sp);
-            gv_streak_flush();
-            tex_streak_flush();
-            return;
-            }
-        }
-        u32 w0 = pc->words.w0;
-        u32 w1 = pc->words.w1;
-        unsigned op = w0 >> 24;
-        if (g1_skip[op]) { pc++; continue; }
-        if (g2_same(op, w0, w1)) { g2_note(op, w0); pc++; continue; }
-        pm_gbi_cur_op = op;
-        int fp = 0;
-        if (pm_ph_on) { gv_streak_op(op); tex_streak_op(op); }
-        pc++;
-        if (!((u32)pc & 31u)) { __builtin_prefetch(pc + 4); __builtin_prefetch(pc + 8); }
-        n_ops++;
-        if (gp_on()) {
-            unsigned t = pm_ticks();
-            if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += t - gp_opt_last; gp_opn[gp_prev_op]++; }
-            gp_opt_last = t;
-            gp_prev_op = (int)op;
-        }
-        if (pm_ph_fine) {
-            /* only these three: the thousands of state ops stay in the gbi phase (a tick read costs 1.3 us in Azahar) */
-            fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
-            if (fp) pm_ph_push(fp);
-        }
-        if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_ENDDL && op != G_MODIFYVTX) {
-            gv_epoch++; /* GV1b */
-        }
-        if (pm_ph_on) os_op_hook(pc - 1, sp, op); /* W1: after the prologue, so a sample is the handler only */
-        if (pm_ph_on) mdc_op(pc - 1, sp, op, w0, w1); /* MDL1: model census, counts only */
-        switch (op) {
-        case G_ENDDL:
-            if (sp == 0) {
-                if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
-                dd_end();
-                if (pm_ph_on) mr0_walk_end(); /* MR0 */
-                if (fp) pm_ph_pop();
-                gv_streak_flush();
-                tex_streak_flush();
-                return;
-            }
-            pc = stack[--sp];
-            break;
-        case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
-            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
-            pc += rec_run(pc - 1);
-            if (pm_ph_on && rec_nat_last) pk_nat[pmx_cur]++;
-            break;
-        case G_PM_SPR: { /* S4-1, S4-3: producer record of a sprite component (sprite.c). A native sprite (pm_gpu_spr_native) draws here; its vertex and triangle words (header offset) become G_NOOP, the state words after the record still run. Else the walker draws the old words. */
-            Gfx* srec = pc - 1;
-            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
-            if (pm_gpu_spr_native((const uint32_t*)srec)) {
-                if (pm_ph_on) pk_nat[pmx_cur]++;
-                const u32 k = srec[0].words.w0 & 0xffffu;
-                srec[k].words.w0 = 0; srec[k].words.w1 = 0;
-                srec[k + 1].words.w0 = 0; srec[k + 1].words.w1 = 0;
-            }
-            pc += G_PM_SPR_WORDS - 1;
-            break;
-        }
-        case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. S6-2a: the end record (G_PM_ENT_END, entcheck only) checks the tile 0 state. */
-            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
-            if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); }
-            else if ((w0 & G_PM_ENT_DRAW) && ((pm_tex_tagi = 4, ent_draw(pc - 1)) ? 1 : (ent_skipgen = 1, 0))) { if (pm_ph_on) pk_nat[pmx_cur]++; pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
-            pc += G_PM_ENT_WORDS - 1;
-            break;
-        case G_PM_TEXI: /* GLYPH: the texture-load words after this header run in tb_inline. */
-            tb_inline(pc, w0 & 0xffffu);
-            pc += w0 & 0xffffu;
-            break;
-        case G_PM_RM: /* C2: a render mode list, applied in place (rm_apply). */
-            if (rm_apply(w1)) break;
-            /* fallback: the list has another op, run it as G_DL */
-            w0 = (u32)G_DL << 24; /* G_DL_PUSH */
-            /* fall through */
-        case G_DL: {
-            Gfx* next = (Gfx*)ptr_of(w1);
-            if (next && !is_host((u32)next)) {
-                gbi_cold_bad_next(w1, w0, (u32)list);
-                break;
-            }
-            if (next) { __builtin_prefetch(next); __builtin_prefetch(next + 4); } /* H4: the G_DL target */
-            if (dd_on()) { dd_dl1 = dd_dl0; dd_dl0 = (u32)next; if (sp == 0) dd_top = (u32)(pc - 1); }
-            __builtin_prefetch(next); __builtin_prefetch(next + 4);
-            if (ent_skipgen) ent_skipgen = 0;
-            else if (next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u) && (pm_tex_tagi = 5, ent_gdl(next))) { /* SGEN-1: any other static list, the entity path */
-                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
-                break;
-            }
-            if (dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
-                if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
-                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
-                break;
-            }
-            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) { pc = next; }
-            else if (sp < 12) {
-                stack[sp++] = pc;
-                pc = next;
-            }
-            break;
-        }
-        case G_VTX: {
-            unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
-            unsigned n = (w0 >> 12) & 0xff;
-            unsigned v0n = (w0 >> 1) & 0x7f;
-            unsigned v0 = (v0n >= n) ? v0n - n : 0;
-            Vtx* src = (Vtx*)ptr_of(w1);
-            if (src) __builtin_prefetch(src + n); /* H4: the next vertex block */
-            if (src && !is_host((u32)src)) {
-                gbi_cold_bad_vtx(w1, w0, (u32)list);
-                src = NULL;
-            }
-            if (src && n <= 64) {
-                for (unsigned pk = 0; pk < n * 16u; pk += 32u) __builtin_prefetch((const char*)src + pk);
-                if (v0 >= 64) n = 0; /* S30: a vertex load that starts past the buffer (garbage list) copied 4 GB */
-                else if (v0 + n > 64) n = 64 - v0;
-                PH_ADD(C_VTXLOAD, n);
-                if (dd_on()) memcpy(&verts[v0], src, n * sizeof(Vtx)); /* PG4: verts is read only by the drawlog statistics */
-                /* A load at slot 0 starts a new mesh. Later loads in the same
-                 * list append above it and keep the earlier slots. */
-                if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
-                tri_since_vtx = 0;
-                if (v0 == 0 && dd_on()) gbi_cold_dd_load(src);
-                int gring0 = -1;
-                unsigned gmi = GV_NONE;
-                int gv = 0;
-                const int lit_ld = (nd_ws.geom & G_LIGHTING) != 0;
-                if (n) { /* GV1: a load goes to the ring as it is (GV5: also a lit load, the GPU lights it). A full ring takes the old code. */
-                    if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
-                    else if (!dd_on() && !xt_on() && !rmlog_on()) {
-                        gmi = gv_matrix_id(lit_ld);
-                        if (gmi != GV_NONE) gring0 = pm_gpu_gvtx_load(src, n);
-                        if (gring0 >= 0) gv = 1; else { gmi = GV_NONE; gv_fb[GVR_RING]++; }
-                    }
-                }
-                if (gv) { gv_load_n += n; PH_ADD(C_GVLOAD, n); }
-                int gp1_cls = GP1_CROSS;
-                unsigned char gp1_p = 0;
-                s16 gp1_lo[3] = { 32767, 32767, 32767 }, gp1_hi[3] = { -32768, -32768, -32768 };
-                if (gv) {
-                    for (unsigned j = 0; j < n; j++)
-                        for (int q = 0; q < 3; q++) {
-                            s16 o = src[j].v.ob[q];
-                            if (o < gp1_lo[q]) gp1_lo[q] = o;
-                            if (o > gp1_hi[q]) gp1_hi[q] = o;
-                        }
-                    gp1_cls = gp1_box_class(gp1_lo, gp1_hi, combined, &gp1_p);
-                    if (gp1_cls == GP1_IN) { gp1_ld_in++; gp1_vx_in += n; }
-                    else if (gp1_cls == GP1_OUT) { gp1_ld_out++; gp1_vx_out += n; }
-                    else { gp1_ld_cross++; gp1_vx_cross += n; }
-                }
-                for (unsigned i = 0; i < n; i++) {
-                    vert_ring[v0 + i] = gring0 >= 0 ? (unsigned short)(gring0 + (int)i) : GV_NONE;
-                    vert_gmi[v0 + i] = (unsigned short)gmi;
-                    vert_tss[v0 + i] = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
-                    vert_live[v0 + i] = 1;
-                    vert_scr[v0 + i] = 0;
-                    vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((nd_ws.geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
-                    if (gv && lit_ld) lit_pending = 1;
-                    if (gv && gp1_cls == GP1_IN) {
-                        vert_cb[v0 + i] = 0;
-                        vert_gvf[v0 + i] = 0;
-                        continue;
-                    }
-                    if (gv && gp1_cls == GP1_OUT) {
-                        vert_cb[v0 + i] = gp1_p;
-                        vert_gvf[v0 + i] = 0;
-                        continue;
-                    }
-                    if (gv) { /* GP1 cross: per-vertex product and clip bits */
-                        const float(*m)[4] = combined;
-                        float x = (float)src[i].v.ob[0], y = (float)src[i].v.ob[1], z = (float)src[i].v.ob[2];
-                        float* p = vert_p[v0 + i];
-                        p[0] = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
-                        p[1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
-                        p[2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
-                        p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
-                        vert_cb[v0 + i] = (unsigned char)clip_bits4(p);
-                        vert_gvf[v0 + i] = 1;
-                        st_vx++;
-                        continue;
-                    }
-                    gbi_vtx_cpu1(&src[i], v0 + i);
-                }
-            }
-            if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;
-            break;
-        }
-        case G_MODIFYVTX:
-            gbi_cold_modifyvtx(w0, w1);
-            break;
-        case G_TRI1:
-            tri_prep_ok = 0;
-            draw_tri(w0);
-            break;
-        case G_TRI2:
-            tri_prep_ok = 0;
-            draw_tri(w0);
-            draw_tri(w1);
-            break;
-        case G_MTX:
-            if (!is_host((u32)(uintptr_t)ptr_of(w1))) gbi_cold_bad_mtx(w0, w1, (Gfx*)list, pc);
-            load_mtx(w0, w1, 0);
-            break;
-        case G_SETSCISSOR: set_scissor(w0, w1); break;
-        case G_MOVEMEM:
-            gbi_movemem(w0, w1);
-            break;
-        case G_POPMTX:
-            gbi_popmtx(w1);
-            break;
-        case G_GEOMETRYMODE:
-            set_geom(w0, w1);
-            break;
-        case G_TEXTURE:
-        case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L:
-        case G_SETCOMBINE:
-        case G_SETPRIMCOLOR: /* HT1: the prim body is in tex_op, so a G_PM_TEXI run can hold it */
-            tex_op(w0, w1);
-            break;
-        case G_SETCONVERT:
-            conv_k4 = (w1 >> 9) & 0xffu;
-            pm_comb_set_k4(conv_k4);
-            sync_combine();
-            break;
-        case G_SETKEYR:
-            keyc = (keyc & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24);
-            keys = (keys & 0x00ffffffu) | ((w1 & 0xffu) << 24);
-            sync_combine();
-            break;
-        case G_SETKEYGB:
-            keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
-            keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
-            sync_combine();
-            break;
-        case G_SETFOGCOLOR: set_fogcolor(w1); break;
-        case G_SETBLENDCOLOR: set_blendcolor(w1); break;
-        case G_SETENVCOLOR:
-            gbi_setenv(w1);
-            break;
-        case G_SETCIMG:
-            gbi_setcimg(w0, w1);
-            break;
-        case G_SETPRIMDEPTH: set_primdepth(w1); break;
-        case G_SETFILLCOLOR: set_fillcolor(w1); break;
-        case G_FILLRECT: {
-            nd_fillrect(w0, w1);
-            break;
-        }
-        case G_TEXRECT:
-        case G_TEXRECTFLIP: {
-            if (!pc || (end && sp == 0 && pc + 1 >= end)) break;
-            u32 hs = pc->words.w1;
-            pc++;
-            u32 hd = pc->words.w1;
-            pc++;
-            nd_texrect(w0, w1, hs, hd);
-            break;
-        }
-        case G_SETTIMG:
-        case G_SETTILE:
-        case G_LOADBLOCK:
-        case G_LOADTILE:
-        case G_LOADTLUT:
-        case G_SETTILESIZE:
-            tex_op(w0, w1);
-            break;
-        case G_MOVEWORD:
-            gbi_moveword(w0, w1);
-            break;
-        case G_NOOP:
-            if ((w0 & 0xffffffu) == PM_SPLASH_ON) splash_on = 1;
-            else if ((w0 & 0xffffffu) == PM_SPLASH_OFF) splash_on = 0;
-            break;
-        case G_SPNOOP:
-        case G_RDPFULLSYNC:
-        case G_RDPTILESYNC:
-        case G_RDPPIPESYNC:
-        case G_RDPLOADSYNC:
-        case G_SETZIMG:
-        case G_RDPHALF_1:
-        case G_RDPHALF_2:
-            break;
-        default:
-            note(op);
-            break;
-        }
-        if (fp) pm_ph_pop();
-    }
-    gv_streak_flush();
-    tex_streak_flush();
-}
 
 static void mtx_elem(Mtx* dst, int r, int c, float v) {
     s32 fixed = (s32)(v * 65536.f);

@@ -369,6 +369,7 @@ set(PORT_SRC
     src/nd_tex.c
     src/nd_state.c
     src/nd_rect.c
+    src/nd_walk.c
     src/nd_dlc.c
     src/nd_emit.c
     src/nd_model.c
