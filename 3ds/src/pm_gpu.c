@@ -1180,8 +1180,7 @@ static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close d
 void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
 /* OFF-2: the unit 0 words of the grab copy (grab_tex), as the walker bind (dc_bind) sends them. The copy is one fixed buffer: force keeps the words in
  * every draw of the grab, as the walker binds it at every draw. 1 always. */
-static int grab_native_unit0(NdUnit* u) {
-    const C3D_Tex* tp = &grab_tex;
+static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
     u->force = 1;
     u->dim = tp->dim;
     u->param = tp->param;
@@ -1190,6 +1189,7 @@ static int grab_native_unit0(NdUnit* u) {
     u->type = (uint32_t)tp->fmt;
     return 1;
 }
+static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex); }
 static int nd_raw_native(void) {
     if (!graw_is_pm4()) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; cen_why = CW_NRK(1); return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
@@ -1201,7 +1201,11 @@ static int nd_raw_native(void) {
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
-    if (combine >= 2) { t = grab_bind ? grab_native_unit0(&u0) : pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; } } /* OFF-2: a grab draw binds the copy */
+    if (combine >= 2) { /* OFF-2: a grab draw binds the copy. OFF-3: an off-screen image (2) that is the target of this pass is read from its snapshot (FX2a, flush_draw made it) */
+        t = grab_bind ? grab_native_unit0(&u0) : pm_tex_native_unit0(&u0);
+        if (t == 2 && off_active && pm_tex_off_idx() == off_cur && offs[off_cur].snap_ready) t = tex_native_words(&u0, &offs[off_cur].snap);
+        if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; }
+    }
     NdUnit u1;
     memset(&u1, 0, sizeof u1);
     int t1 = 0;
