@@ -38,3 +38,14 @@ After every 2 or 3 moves (not per move): spot_mac01_pic byte-equal to nds1, gbi 
 
 ## Rules
 Own worktree build3ds/wt/move, branch move from nds1. Rebase on nds1 after each gate and hand the head to the orchestrator only at the end, unless a merge is asked for. Check `git grep '^<<<<<<<'` per commit. No attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. Two tries per named cause. Hand back once after move 6 (or a failed gate). Delete this file in the last commit.
+
+## State (2026-11-07, handback of the first MOVE agent)
+Branch move head cc035ecd0 (base 52374b549, not rebased), worktree build3ds/wt/move. Done: moves 1-6 (a0af182d3 WK-2, cb41ff6af WK-3+GM-2 in one commit, ffbe556ac GM-4 sun live, c552bafbc LS-1, 35c544069 LS-2), WK-4b-1 898efe249, WK-4b-2 b84f53e7f. Gates: spot_mac01 md5 equal through every step; entcheck_mac01 diff 0; iwa_10 and sbk_56 by eye.
+Open, in this order:
+1. Rebase move on nds1. Conflicts: pm_gbi.c (os_class_of drops G_PM_TEXI, removed G_PM_TEXI comment in the census block) and nd_walk.c (case G_PM_TEXI deleted in nds1). Rule: drop G_PM_TEXI everywhere, keep the move cuts. Check markers in every commit. Rerun spot_mac01_pic bytes once (compare with the md5 of the nds1 build at the same time, cold).
+2. WK-4b-3 (gv1check, dd_on, xt_on, rmlog_on and the drawlog code; sites: nd_geom.c 172/211/221/247/324/329/336, nd_shape.c 50, nd_walk.c 100/101/143/185, pm_gbi.c 82/133-198/648/690/709/820/826/828/1050; recheck by grep after rebase). Gate mac01 bytes, iwa_10 picture.
+3. WK-4b-4 (gp_* into the cold census, gbiprof switch removed, one pm_ph_on test). Gate prof=4 census line, mac01 bytes.
+4. WK-2 module column in os_report (per-module op counts).
+5. Fix 3ds/tools/nd_host_test.sh include path (nd_int.h includes ultra64.h) so nd_host passes.
+6. gbi-phase within +3%: one phase run of mac_01 against the nds1 build.
+Note: all pic runs logged rc "crash symbols" (also base). Check whether this is the sprite zeroing bug (row_SPR4) after sprfix lands, else report the PC.
