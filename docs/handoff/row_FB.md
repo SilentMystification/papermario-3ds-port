@@ -156,3 +156,18 @@ The FB-4 census (nds1 aac1fae4e) shows walker GPU draws wd 0 and every refusal 0
 2. FB-4: the CPU batch path and the forcing switches row FB-4 lists (nozt, norectraw, pm5off, gv5, notex1nat, noraw, nogrange, ringsmall, scforce, tmplsmall, cmdsmall, pm5all) except those an open row names (grep row_*.md; nomodelnat stays for SBKW).
 3. GM-3: the CPU-only geometry functions in pm_gbi.c (lit_color, vert_color, vert_uv, pack_color, xform_vtx, fold_axis, gbi_vtx_cpu1).
 Gate per commit: build; census wd 0 and refusals 0 on mac_01, sbk_56, iwa_10, kmr_03 battle, nok_11 (cold det); mac_01, iwa_10, nok11_det, battle_start_f182_cold byte-equal to nds1; tour10_det fb 0; grep proof; 3dsx size.
+
+## UB audit result (2026-11-07, read-only agent, nds1 c2dba5cc2) and row UB1
+Map (lane-mac00): pm_tex.o .bss 0x01218ef0-0x012433c4; growing it shifts every .bss object up to pm_map.o last_asset_src (0x0143ee2c); gMapShapeData, gBackgroundImage, nuGfxZBuffer and later do not move. So the bad access's target lies in [0x01218ef0, 0x0143f000): pm_tex, pm_gbi (box_buf, vert_*), nd_mtx*, nd_core, nd_tmpl, nd_tex, nd_comb, nd_cen, nd_shape, nd_ent, nd_dlc, nd_model (rng, mc_*, nat, hd_*), pm_os, pm_audio. Every index into the pm_tex.c statics is bounded.
+Ranked suspects:
+1. (top; fits the FB-2 dependence) stale unit 1/2 words replayed from the model cache: nd_model.c:348 stores d->u[1] = *c->u1 (and uvx, unit 2) in mc_pool; pm_gpu_model_hit (pm_gpu.c:3637-3651) refreshes only u[0]. The key (ndmc_cmp words 0-32, 38, 53, 54) holds no unit-1 slot or slot generation. If the aux slot was staged at store time, u[1].addr is the linear vram_stage copy, freed 2 frames later (pm_tex.c:1079-1083, pf_add); a later hit samples freed linear memory whose content depends on allocation history.
+2. range merge (nd_model.c:499) compares only the template id and index contiguity; it ignores the per-range gv (uvso, cmul, cadd, zmix, fx5 from pm_gbi_gv_at), the unit words and use5.
+3. template register delta (nd_emit.c:47-53 skips equal words) after C3Di_UpdateContext (pm_gpu.c:1196) can leave citro3d's value in place; the shadow resets only on program change, tmpl_gen, ndn_mode 0 or the texture-dirty bit.
+4. confirmed out-of-bounds read, log only: pm_gpu.c:3894-3895 reads spr_nat_fb[20] (array 16).
+5. the unit-0 TEV cache key (TevKey, pm_gpu.c:470, cache at 1430-1438) has no noise field although nd_tev_build reads k->noise.
+6. R13 textured record with no handle desc and ax_ok 0 (pm_gpu.c:3440-3456): c.tex_w/h stay 0, nd_gv_params clamps to 1 (uvso for 1x1).
+7. nd_tex.c:106-108: a pm_tex_load that bound an off-screen image stores key 0 and slot -1, so nd_tex_unit_hint returns 0 for it forever. (nd_tex_reset now has a caller.)
+8. nd_model.c mf_tot[5] written at `sub & 7` (5-7 past the end; callers pass 1-4).
+9. nd_tex.c:418-420 tile_texel reads pal[idx*2] for CI8 without a pal_n check (box pattern path into box_buf).
+10. debug-only reads past the source (pm_tex_boxinfo 1919, alpha0_permille 727-732, fl1log 1508).
+Row UB1: fix 1 first (store the unit-1/2 slot index and slot generation in the cache entry and refresh u[1]/u[2] from the live slot on a hit, as u[0]; or key them), then 4, 5, 8 and 6 (small, separate commits), then 2 and 3 if a gate shows them. Measurement for 1: on the layout pair (599c48970+e954 with and without the 3 pm_tex statics), count hits whose stored u[1].addr is not the live slot address. Gate: spot_mac00_det_pic byte-equal across the layout variants (55a41fa6b^ and 55a41fa6b with FB-2, the pattern build, the statics build) and nds1 head; mac_01, iwa_10, nok11_det, battle_start_f182_cold, tour10 fb unchanged or changed only by a named fix.
