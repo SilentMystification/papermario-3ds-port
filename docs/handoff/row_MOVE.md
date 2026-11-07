@@ -63,7 +63,10 @@ Branch move5 from nds1 9d978d836, worktree build3ds/wt/move5. Done, pure cuts an
 - lcg_s, lcg_f to nd_comb.c. Live, not debug: the 24-input plan decision (sync work, seed 777) calls lcg_f. Not deleted (plan_s10 table said delete; corrected there).
 - nd_tex.c split for the host link: descriptor table, nd_tex_get, unit words stay in nd_tex.c (host-tested). Walker ops, ensure_tile, tex_op and their globals to nd_tex_set.c (target only, CMake). Same pattern as nd_mtx_set.c.
 - nd_tex -Werror fixes (op_loadblock and op_loadtlut (void)w0, tlut_v20 sign compare); now in nd_tex_set.c.
-- nd_host: passes (see the commit). ver/us/build/include copied into the worktree (untracked).
+- nd_host: ND HOST TESTS PASS. ver/us/build/include and two mac shape bins copied into the worktree (untracked, build-at copies them too).
+Gates: spot_mac01_det cold det, nds1 9d978d836 run 6911 vs head 4fd23d765 run 7139: 12 of 12 shots byte-equal (md5). Log checks pass; the picture is the same bytes as the base, which shows mac_01 at pos 0 0 200.
+Link map (head build, pm_3ds.map): pm_gbi_combined_ptr in nd_mtx_set.o; dual_boost_on, lcg_f, lcg_s in nd_comb.o; combchk_run in nd_comb.o (unlikely section); op_loadblock, tlut_v20 in nd_tex_set.o; nd_tex_get in nd_tex.o; nd_model_draw in nd_model_set.o. No moved name in pm_gbi.o.
+Starts used this row: 2 of 8.
 The row file stays until LS-3, ST-3, GM-3 and RECT-3 land.
 
 ## Oracle plan MOVE 7+ (empty pm_gbi.c)
