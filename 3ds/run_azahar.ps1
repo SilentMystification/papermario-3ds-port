@@ -417,18 +417,43 @@ $marks = @()
         if ($text -match "\[CRASH\]") { Start-Sleep -Seconds 1; $reason = "crash"; break }
         if ($Until -and $text -match $Until) { $reason = "matched '$Until'"; $untilAt = ((Get-Date) - $start).TotalSeconds; break } # AZT10-1: until time (s from the start)
     }
-    # AZT7-2: the shot line is logged after the file is closed on the emulator side, but the file can reach the host later on a fast warm
-    # restart. The run waits (up to 20 s) for the file of the last logged shot before it pauses the game and moves the shots (no stale file counts).
+    # SHOTCOPY1: the emulator closes a shot file after its shot line, but the host can see part of it for a while (DET saw 155648 of 288015 B).
+    # The run waits (up to 30 s) until every shot line of this start has its full file: 288015 B (header "P6 240 400 255" + LF = 15 B, then 240 * 400 * 3),
+    # the same size on two polls 250 ms apart. Shot lines before this start (a warm restart keeps the log) are not counted: only the lines after this run's bootid.
+    # A logged shot without a full file is a failure: "SHOT COPY FAILED", and azt.ps1 fails the scenario.
+    $shotFull = 288015
+    $shotSfx = ""
     if (Test-Path $log) {
-        $lastShot = @([regex]::Matches((Read-Tail $log 262144), '(?m)^#\d+ shot (\d+) frame \d+') | Select-Object -Last 1)
-        if ($lastShot.Count) {
-            $pat = ("{0:D4}_*.ppm" -f [int]$lastShot[0].Groups[1].Value)
-            $got = $false
-            for ($w = 0; $w -lt 80 -and -not $got; $w++) {
-                if (Get-ChildItem "$sd\shots" -Filter $pat -ErrorAction SilentlyContinue) { $got = $true } else { Start-Sleep -Milliseconds 250 }
+        $logged = @()
+        try {
+            $logTxt = Read-Tail $log 4194304
+            $anch = $logTxt.LastIndexOf("bootid=$bootNonce") # SHOTCOPY1: the shot lines of this start follow this run's switches line (warm starts keep the file)
+            if ($anch -ge 0) { $logTxt = $logTxt.Substring($anch) } else { $logTxt = "" }
+            $logged = @([regex]::Matches($logTxt, '(?m)^#\d+ shot (\d+) frame \d+') | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Unique)
+        } catch { Write-Output "SHOT COPY FAILED: the game log could not be read for its shot lines: $($_.Exception.Message)" }
+        # The burst writer (shotmode) gives every logged frame the same counter, so a logged number is checked against the files on disk, not one file per line.
+        $prevLen = @{}; $okN = @{}; $nFiles = 0
+        for ($w = 0; $w -lt 120; $w++) {
+            $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' })
+            $have = @{}; foreach ($f1 in $files) { $have[[int]$f1.Name.Substring(0, 4)] = $true }
+            $nFiles = $files.Count
+            $allOk = $true
+            foreach ($f1 in $files) {
+                $len = $f1.Length
+                if ($len -eq $shotFull -and $prevLen[$f1.Name] -eq $len) { $okN[$f1.Name] = $true } else { $prevLen[$f1.Name] = $len; $allOk = $false; $okN.Remove($f1.Name) }
             }
-            Write-Output ("SHOT FILE: {0} {1} after the last shot line" -f $pat, $(if ($got) { "written" } else { "NOT written in 20 s" }))
+            $missingNow = @($logged | Where-Object { -not $have.ContainsKey($_) })
+            if ($allOk -and $missingNow.Count -eq 0 -and $files.Count -gt 0) { break }
+            Start-Sleep -Milliseconds 250
         }
+        $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' })
+        $have = @{}; foreach ($f1 in $files) { $have[[int]$f1.Name.Substring(0, 4)] = $true }
+        $missing = @($logged | Where-Object { -not $have.ContainsKey($_) })
+        $short = @($files | Where-Object { -not $okN.ContainsKey($_.Name) } | ForEach-Object { "$($_.Name)=$($_.Length)" })
+        $bad = @($missing) + @($short)
+        Write-Output ("SHOT FILES: {0} logged this run, {1} top-screen files, {2} full ({3} B)" -f $logged.Count, $files.Count, $okN.Count, $shotFull)
+        $shotSfx = "; shot files {0} of {1} full" -f $okN.Count, $files.Count
+        if ($bad.Count) { $shotSfx += "; SHOT COPY FAILED: missing " + (($missing) -join " ") + " short " + ($short -join " ") + " after 30 s"; Write-Output ("SHOT COPY FAILED after 30 s: missing numbers [{0}], short files [{1}]" -f (($missing) -join " "), ($short -join " ")) }
     }
     # AZFIX: the Azahar exit code is recorded in the result text. An early exit with no game log and an empty emulator log is retried once by azt (kind retry)
     $azState = if ($p.HasExited) { "exit code $($p.ExitCode)" } else { "running, stopped by this run" }
@@ -565,4 +590,4 @@ $timing = if ($null -ne $untilAt) { "; until at {0:N1} s, end at {1:N1} s, {2:N1
 $warmSfx = if ($warmDone) { " warm" } else { "" }
 $keepSfx = if ($keepNow) { " kept" } else { "" }
 $queueSfx = if ($env:PM_QUEUE_INFO) { " | " + $env:PM_QUEUE_INFO } else { "" } # AZT11-1: queue position and wait of this start (set by azt.ps1)
-End-Run 0 ("stopped after ${secs}s: $reason (Azahar $azState)" + $warmSfx + $keepSfx + $timing + $queueSfx) $endKind
+End-Run 0 ("stopped after ${secs}s: $reason (Azahar $azState)" + $warmSfx + $keepSfx + $timing + $queueSfx + $shotSfx) $endKind
