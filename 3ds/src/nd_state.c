@@ -7,6 +7,7 @@
 #include "nd_ops.h"
 
 NdSt nd_st;
+ND_HOTD NdWs nd_ws = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .cimg = 0, .cimg_siz = 2, .prim = 0xffffffffu, .envc = 0xffffffffu, .fill = 0xffffffffu };
 
 #define MW_SEGMENT 0x06
 #define MV_VIEWPORT 8

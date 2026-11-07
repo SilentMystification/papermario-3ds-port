@@ -151,6 +151,17 @@ typedef struct NdSt {
     uint32_t om_kh, om_kl;                   /* B8: other mode bits this state has a value for (set by SETOTHERMODE, all after RDPSETOTHERMODE) */
 } NdSt;
 extern NdSt nd_st;
+/* CORE-2a: the walker state (one state, read and written by the walker ops in pm_gbi.c and by the record setters). */
+typedef struct NdWs {
+    unsigned geom;                     /* geometry mode */
+    unsigned omode_h, omode_l;         /* other mode high and low */
+    void* cimg;                        /* colour image address */
+    int cimg_siz;                      /* G_IM_SIZ of the colour image: 1 8 bit, 2 16 bit, 3 32 bit */
+    unsigned prim;                     /* primitive colour */
+    unsigned envc;                     /* env colour */
+    unsigned fill;                     /* fill colour */
+} NdWs;
+extern NdWs nd_ws;
 void nd_st_reset(void);
 void nd_words(const unsigned* w, unsigned n); /* n word pairs (Gfx), in list order */
 
