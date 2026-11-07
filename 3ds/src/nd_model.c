@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "nd.h"
 #include "nd_ops.h"
+#include "variables.h"
 
 float nd_shift_mul(unsigned n) {
     return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
@@ -238,6 +239,40 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
         mf_k = 0; }
     return r;
 }
+/* MDL-5f: a custom gfx list of a record (pre or post, rec[22] or rec[23]) with state ops only: no geometry, no G_DL. The walker runs it on the
+ * state side (rec_apply runs the pre list before the native draw; rec_run runs the post after it), so the native draw reads the state it sets.
+ * 0 address: no list (1). Ops: G_SETOTHERMODE_H/L, SETPRIMCOLOR, SETENVCOLOR, SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR, the syncs, G_ENDDL (0xdf). */
+static int nd_gfx_state_only(uint32_t addr) {
+    if (!addr) return 1;
+    const uint32_t* p = (const uint32_t*)(uintptr_t)addr;
+    for (unsigned i = 0; i < 16u; i++, p += 2) {
+        switch (p[0] >> 24) {
+        case 0xdfu: return 1; /* G_ENDDL */
+        case 0xe3u: case 0xe2u: /* G_SETOTHERMODE_H, _L */
+        case 0xfau: case 0xfbu: case 0xfcu: case 0xf9u: case 0xf8u: /* SETPRIMCOLOR, SETENVCOLOR, SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR */
+        case 0xe7u: case 0xe6u: case 0xe8u: /* RDPPIPESYNC, RDPLOADSYNC, RDPTILESYNC */
+            break;
+        default: return 0;
+        }
+    }
+    return 0;
+}
+/* MDL-5f: the state the native draw takes from a state-only pre list (nd_gfx_state_only true): the last SETCOMBINE words (cw, has_cb 1) and
+ * the SETOTHERMODE ops (mo, 2 words each, nmo <= 4). The record runs the list before the draw (rec_apply); its combine and mode state replace the
+ * record's own (rec_run composes the mode list). 0: no list. */
+int nd_r11_state(uint32_t addr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo) {
+    if (has_cb) *has_cb = 0;
+    if (nmo) *nmo = 0;
+    if (!addr) return 0;
+    const uint32_t* p = (const uint32_t*)(uintptr_t)addr;
+    for (unsigned i = 0; i < 16u; i++, p += 2) {
+        uint32_t op = p[0] >> 24;
+        if (op == 0xdfu) break;
+        if (op == 0xfcu) { if (cw) { cw[0] = p[0]; cw[1] = p[1]; } if (has_cb) *has_cb = 1; continue; }
+        if ((op == 0xe3u || op == 0xe2u) && nmo && mo && *nmo < 4u) { mo[2 * *nmo] = p[0]; mo[2 * *nmo + 1] = p[1]; (*nmo)++; }
+    }
+    return 1;
+}
 static int nd_pm5all(void) { static int v = -1; if (v < 0) v = pm_debug_has("pm5all"); return v; }
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0; nd_nat_sub = 0;
@@ -247,9 +282,11 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     if (rec[26] != 0 && !c->aux_ok) { /* MDL-0 count (switch mdl0): the first 12 why 2 records, their R13 words */
         static unsigned m2_ = 0; if (m2_ < 12u && pm_debug_has("mdl0")) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
         return (st->why = 2, 0); } /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
-    if (rec[22] != 0 || rec[23] != 0) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
+    if (!nd_gfx_state_only(rec[22]) || !nd_gfx_state_only(rec[23])) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
         static unsigned m3_ = 0; if (m3_ < 12u && pm_debug_has("mdl0")) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
-            pm_log_d("mdl3 pre %08x post %08x pre w %08x %08x post w %08x %08x", (unsigned)rec[22], (unsigned)rec[23], a ? a[0] : 0u, a ? a[1] : 0u, b ? b[0] : 0u, b ? b[1] : 0u); }
+            /* MDL-5e: the map, and the first 6 words (3 ops) of each custom list: the ops that run on the state side */
+            pm_log_d("mdl3 f%u map %d:%d pre %08x post %08x pre w %08x %08x %08x %08x %08x %08x post w %08x %08x %08x %08x", pm_frame_count(), (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (unsigned)rec[22], (unsigned)rec[23],
+                a ? a[0] : 0u, a ? a[1] : 0u, a ? a[2] : 0u, a ? a[3] : 0u, a ? a[4] : 0u, a ? a[5] : 0u, b ? b[0] : 0u, b ? b[1] : 0u, b ? b[2] : 0u, b ? b[3] : 0u); }
         return (st->why = 3, 0); } /* R11: custom gfx pre and post */
     const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
     const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (the render mode list runs after the entry) */

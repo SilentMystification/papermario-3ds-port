@@ -3224,6 +3224,21 @@
       "gates": []
     },
     {
+      "name": "tour10_det_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5f byte reference: tour10 (10 maps) cold det with nomodelnat, shots 0 to 10 byte-equal to tour10_det.",
+      "scenario": "tour10_det_ref",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_fb_det",
       "kind": "azahar_pic",
       "speed": "normal",
