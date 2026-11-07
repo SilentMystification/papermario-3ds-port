@@ -864,6 +864,7 @@ s32 suspend_all_script(s32 id) {
             suspend_group_script(scriptContextPtr, EVT_GROUP_NOT_BATTLE);
         }
     }
+    return 0; // N64 0x802C4420: v0 = loop test (0) at exit
 }
 
 s32 resume_all_script(s32 id) {
@@ -876,6 +877,7 @@ s32 resume_all_script(s32 id) {
             resume_group_script(scriptContextPtr, EVT_GROUP_NOT_BATTLE);
         }
     }
+    return 0; // N64 0x802C448C: v0 = loop test (0) at exit
 }
 
 void suspend_group_script_index(s32 id, s32 groupFlags) {
@@ -924,6 +926,7 @@ s32 resume_all_group(s32 groupFlags) {
             resume_group_script(scriptContextPtr, groupFlags);
         }
     }
+    return 0; // N64 0x802C4648: v0 = loop test (0) at exit
 }
 
 void suspend_group_others(Evt* script, s32 groupFlags) {

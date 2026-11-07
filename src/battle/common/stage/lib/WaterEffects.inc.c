@@ -9,7 +9,7 @@ enum {
 
 API_CALLABLE(N(UpdateAnimatedFish)) {
     Bytecode* args = script->ptrReadPos;
-    #ifdef AVOID_UB
+    #if defined(AVOID_UB) || defined(TARGET_3DS)
     f32 vt0 = 0.0f;
     f32 vt1 = 0.0f;
     f32 vt2 = 0.0f;

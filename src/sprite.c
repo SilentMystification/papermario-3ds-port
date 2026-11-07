@@ -545,8 +545,8 @@ s32 spr_unpack_signed_16bit(u16 val) {
 }
 
 void spr_component_update_commands(SpriteComponent* comp, SpriteAnimComponent* anim) {
-    f32 posX, posY, posZ;
-    f32 rotX, rotY, rotZ;
+    f32 posX = 0.0f, posY = 0.0f, posZ = 0.0f;
+    f32 rotX = 0.0f, rotY = 0.0f, rotZ = 0.0f;
     f32 scaleX, scaleY, scaleZ;
     s32 changedFlags;
 
