@@ -494,10 +494,13 @@ if (-not $endRow) { Write-Output "NO END LINE: run_azahar.ps1 wrote no end line 
 $emuTxt = if (Test-Path $slotInfo.emuLog) { Get-Content $slotInfo.emuLog -Raw } else { "" }
 $gpuFault = (-not $markerSeen) -and (($emuTxt -match 'Failed to allocate Stream buffer') -or (($endRow -join ",") -match '-1073741795'))
 if ($gpuFault -and -not $env:PM_AZT_RETRY_RUN) {
-    Write-Output "AZT: GPU memory fault, retry. Same slot $slotK after 10 s (no marker before the Azahar exit)."
-    Start-Sleep -Seconds 10
+    # AZT4-2: the kept Azahars that hold GPU memory are closed (idle ones only, any worktree), then the same slot retries once after 2 s
+    Write-Output "AZT: GPU memory fault, retry. Same slot $slotK (no marker before the Azahar exit)."
     $env:PM_AZT_RETRY_RUN = "1"; $env:PM_AZT_RETRY_SLOT = [string]$slotK
     Exit-Slot $slotK; $slotK = 0
+    $closedIdle = Close-IdleKept
+    Write-Output "azslot: gpu fault, closed $closedIdle idle, retry"
+    Start-Sleep -Seconds 2
     $ga = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $Scenario, "-Row", $Row, "-Try")
     if ($Build) { $ga += @("-Build", $Build) }
     if ($NoKeep) { $ga += "-NoKeep" }
