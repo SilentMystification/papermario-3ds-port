@@ -57,6 +57,10 @@ static int r_zcmp = 1, r_zupd = 1, r_blend = 1, r_atest = -1, r_decal;
 static int combine;
 int pm_debug_value(const char* key, char* out, unsigned n);
 static int dview = -1; /* V02 depth view mode, see dv_color */
+static int dv_mode(void) { /* RECT-1b: read the switch on first use in any path (the key fields below read it before put4 ever ran in a native-only frame: -1 keyed as depth view) */
+    if (dview < 0) { char vv[8]; dview = pm_debug_value("depthview", vv, sizeof vv) ? atoi(vv) : 0; }
+    return dview;
+}
 static unsigned dv_draw;
 static int rect_z; /* X01: the 2D rectangle in flight tests depth (fill rect with G_ZS_PRIM) */
 static unsigned rs_src[3]; /* S1-3: other mode words and depth image flag of the last sync_render, for the ndref oracle */
@@ -758,7 +762,7 @@ static __attribute__((noinline)) void flush_tev_rebuild(C3D_TexEnv* env, int tex
     const size_t tk_n = sizeof tk;
     memset(&tk, 0, tk_n);
     tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
-    tk.dview = dview; tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
+    tk.dview = dv_mode(); tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
     tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
     tk.plan_gen = combine == 8 ? plan_gen : 0;
     /* S1-3: the stage words come from nd_tmpl.c nd_tev_build (host tested against the ndref oracle). Stages 0 to max(old, new) - 1 are written: the builder
@@ -766,7 +770,7 @@ static __attribute__((noinline)) void flush_tev_rebuild(C3D_TexEnv* env, int tex
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale;
-    nk.r_mix = (uint8_t)r_mix; nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dview != 0; nk.off_active = (uint8_t)off_active;
+    nk.r_mix = (uint8_t)r_mix; nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active;
     nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend; nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = noise != 0;
     NdTevIn ti = { &nk, &plan, prim, cconst, r_mixcol };
     NdTevOut to;
@@ -1045,7 +1049,7 @@ static int nd_raw_native(void) {
     { float db = decal_bias(); memcpy(&nk.dbias, &db, 4); }
     nk.atest_on = r_atest >= 0; nk.aref = (uint8_t)(r_atest >= 0 ? r_atest : 0);
     nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
-    nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dview != 0; nk.off_active = 0; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
+    nk.draw_3d = (uint8_t)draw_3d; nk.rect_2d = (uint8_t)rect_2d; nk.dview = dv_mode() != 0; nk.off_active = 0; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
     nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = 0;
     const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && draw_3d; /* S6-2c-3: as flush_draw_cpu: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
@@ -1058,7 +1062,7 @@ static int nd_raw_native(void) {
     TevKey tk;
     memset(&tk, 0, sizeof tk);
     tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
-    tk.dview = dview; tk.off_active = 0; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
+    tk.dview = dv_mode(); tk.off_active = 0; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
     tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol; tk.plan_gen = combine == 8 ? plan_gen : 0;
     if (!ndn_to_ok || memcmp(&tk, &ndn_tk, sizeof tk) != 0) { /* the stage words with the colours, built when the TEV key changes (as tev_same does for citro3d) */
         NdTevIn ti = { &nk, &plan, prim, cconst, r_mixcol };
@@ -1251,7 +1255,7 @@ static void flush_draw(void) {
     const size_t tk_n = sizeof tk;
     memset(&tk, 0, tk_n);
     tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = draw_3d; tk.rect_2d = rect_2d;
-    tk.dview = dview; tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
+    tk.dview = dv_mode(); tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
     tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
     tk.plan_gen = combine == 8 ? plan_gen : 0;
     int tev_same = tev_valid && memcmp(&tk, &tev_key, tk_n) == 0;
@@ -1374,11 +1378,7 @@ static unsigned dv_color(float z, float w, unsigned c) {
 }
 
 static void put4(float x, float y, float z, float w, float u, float v, unsigned c) {
-    if (dview < 0) {
-        char vv[8];
-        dview = pm_debug_value("depthview", vv, sizeof vv) ? atoi(vv) : 0;
-    }
-    if (dview && draw_3d && !rect_2d) c = dv_color(z, w, c);
+    if (dv_mode() && draw_3d && !rect_2d) c = dv_color(z, w, c);
     if (nverts >= 510) {
         int id = batch_identity;
         flush();
@@ -2854,7 +2854,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     if (ds) { int w = 8, h = 8; while (w < ds->w) w <<= 1; while (h < ds->h) h <<= 1; c.tex_w = w; c.tex_h = h; } /* the size of the record's texture, not the walker-bound slot */
     c.draw_3d = 1; /* S3N-3c: a native batch goes through pm_gpu_grange, which sets draw_3d */
     c.zmark = r_zmark; c.zn = r_zmark_zn; /* S5-2 (a) */
-    c.dview = dview; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
+    c.dview = dv_mode(); c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     c.prim = nd_st.prim; c.prim_lod = nd_st.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = ax_ok ? (nd_st.om_h & ~ax.wh) | ax.om_h : nd_st.om_h; c.base_ol = ax_ok ? (nd_st.om_l & ~ax.wl) | ax.om_l : nd_st.om_l; /* B8; S3L-3: the R13 mode ops first */
@@ -3332,7 +3332,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.has_comb = 1; c.comb_w0 = sw_cw0; c.comb_w1 = sw_cw1;
     c.tex_w = tw; c.tex_h = th; c.tss = mode.has_tx ? mode.tw1 : sw_tss;
     c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;
-    c.draw_3d = 1; c.dview = dview; c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
+    c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     uint32_t env, prim;
     nd_sprite_colors(&r, env_col, nd_st.prim, &env, &prim);
     c.env = env; c.prim = prim; c.prim_lod = nd_st.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
