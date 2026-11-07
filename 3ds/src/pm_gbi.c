@@ -3977,41 +3977,47 @@ static __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
 
 /* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
 /* M4: the bodies of the texture ops, one function each. tex_op_impl calls them in its switch, tb_plain (fused bind of a plain texture list) calls them in list order. The code is the code of the cases, moved. */
-static void op_settimg(u32 w0, u32 w1) {
-            nd_ws.timg = ptr_of(w1);
-            if (!w1 && zslot_on && ((w0 >> 19) & 3) == 2) nd_ws.timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
-            /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
-            if (nd_ws.timg && pm_is_cfb(nd_ws.timg) && !pm_is_cur_cfb(nd_ws.timg) && !pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
-            nd_ws.tst1.timg_fmt = (w0 >> 21) & 7;
-            nd_ws.tst1.timg_siz = (w0 >> 19) & 3;
-            nd_ws.tst1.timg_stride = (int)(w0 & 0xfff) + 1;
-            ld_valid = 0;
+/* CORE-2b batch D: texture image setter (decoded fields). */
+static void set_timg(u32 addr, unsigned fmt, unsigned siz, int stride) {
+    nd_ws.timg = ptr_of(addr);
+    if (!addr && zslot_on && siz == 2) nd_ws.timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
+    /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
+    if (nd_ws.timg && pm_is_cfb(nd_ws.timg) && !pm_is_cur_cfb(nd_ws.timg) && !pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
+    nd_ws.tst1.timg_fmt = fmt;
+    nd_ws.tst1.timg_siz = siz;
+    nd_ws.tst1.timg_stride = stride;
+    ld_valid = 0;
+}
+static void op_settimg(u32 w0, u32 w1) { set_timg(w1, (w0 >> 21) & 7, (w0 >> 19) & 3, (int)(w0 & 0xfff) + 1); }
+/* CORE-2b batch D: tile setter (decoded fields; wr = the four wrap words, sh0 and sh1 the shifts). */
+static void set_tile(unsigned tile, unsigned fmt, unsigned siz, unsigned tmem, unsigned pal, const unsigned* wr, unsigned sh0, unsigned sh1) {
+    int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && nd_ws.tst1.tile_fmt[0] == fmt && nd_ws.tst1.tile_siz[0] == siz && nd_ws.tst1.tile_tmem[0] == tmem && nd_ws.tst1.tile_pal[0] == pal
+                  && nd_ws.tst1.tile_wrap[0][0] == wr[0] && nd_ws.tst1.tile_wrap[0][1] == wr[1] && nd_ws.tst1.tile_wrap[0][2] == wr[2] && nd_ws.tst1.tile_wrap[0][3] == wr[3]
+                  && nd_ws.tst1.tile_shift[0][0] == sh0 && nd_ws.tst1.tile_shift[0][1] == sh1;
+    if (tile == 0) GP_SET(3, same_tile);
+    nd_ws.tst1.tile_fmt[tile] = fmt;
+    nd_ws.tst1.tile_siz[tile] = siz;
+    nd_ws.tst1.tile_tmem[tile] = tmem;
+    nd_ws.tst1.tile_pal[tile] = pal;
+    nd_ws.tst1.tile_wrap[tile][0] = wr[0];
+    nd_ws.tst1.tile_wrap[tile][1] = wr[1];
+    nd_ws.tst1.tile_wrap[tile][2] = wr[2];
+    nd_ws.tst1.tile_wrap[tile][3] = wr[3];
+    nd_ws.tst1.tile_shift[tile][0] = sh0;
+    nd_ws.tst1.tile_shift[tile][1] = sh1;
+    /* The render tile's wrap belongs to the triangles already queued.
+     * Draw them before this tile replaces it. */
+    if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
+        int f_on = pm_ph_on && sp0_cur == 1; unsigned f0 = f_on ? pm_ticks() : 0; /* SPLIT0C2: flush time in the tex kind */
+        pm_gpu_flush();
+        if (f_on) sp0_F += (unsigned)(pm_ticks() - f0);
+        pm_tex_set_wrap(wr[0], wr[1], wr[2], wr[3]);
+        st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
+    }
 }
 static void op_settile(u32 w0, u32 w1) {
-            unsigned tile = (w1 >> 24) & 7;
-            int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && nd_ws.tst1.tile_fmt[0] == ((w0 >> 21) & 7) && nd_ws.tst1.tile_siz[0] == ((w0 >> 19) & 3) && nd_ws.tst1.tile_tmem[0] == (w0 & 0x1ff) && nd_ws.tst1.tile_pal[0] == ((w1 >> 20) & 15) &&
-                          nd_ws.tst1.tile_wrap[0][0] == ((w1 >> 8) & 3) && nd_ws.tst1.tile_wrap[0][1] == ((w1 >> 18) & 3) && nd_ws.tst1.tile_wrap[0][2] == ((w1 >> 4) & 15) && nd_ws.tst1.tile_wrap[0][3] == ((w1 >> 14) & 15) &&
-                          nd_ws.tst1.tile_shift[0][0] == (w1 & 15) && nd_ws.tst1.tile_shift[0][1] == ((w1 >> 10) & 15);
-            if (tile == 0) GP_SET(3, same_tile);
-            nd_ws.tst1.tile_fmt[tile] = (w0 >> 21) & 7;
-            nd_ws.tst1.tile_siz[tile] = (w0 >> 19) & 3;
-            nd_ws.tst1.tile_tmem[tile] = w0 & 0x1ff;
-            nd_ws.tst1.tile_pal[tile] = (w1 >> 20) & 15;
-            nd_ws.tst1.tile_wrap[tile][0] = (w1 >> 8) & 3;
-            nd_ws.tst1.tile_wrap[tile][1] = (w1 >> 18) & 3;
-            nd_ws.tst1.tile_wrap[tile][2] = (w1 >> 4) & 15;
-            nd_ws.tst1.tile_wrap[tile][3] = (w1 >> 14) & 15;
-            nd_ws.tst1.tile_shift[tile][0] = w1 & 15;
-            nd_ws.tst1.tile_shift[tile][1] = (w1 >> 10) & 15;
-            /* The render tile's wrap belongs to the triangles already queued.
-             * Draw them before this tile replaces it. */
-            if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
-                int f_on = pm_ph_on && sp0_cur == 1; unsigned f0 = f_on ? pm_ticks() : 0; /* SPLIT0C2: flush time in the tex kind */
-                pm_gpu_flush();
-                if (f_on) sp0_F += (unsigned)(pm_ticks() - f0);
-                pm_tex_set_wrap((w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15);
-                st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
-            }
+    unsigned wr[4] = { (w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15 };
+    set_tile((w1 >> 24) & 7, (w0 >> 21) & 7, (w0 >> 19) & 3, w0 & 0x1ff, (w1 >> 20) & 15, wr, w1 & 15, (w1 >> 10) & 15);
 }
 static void op_loadblock(u32 w0, u32 w1) {
             unsigned tm = nd_ws.tst1.tile_tmem[(w1 >> 24) & 7];
@@ -4043,12 +4049,8 @@ static void op_loadtlut(u32 w0, u32 w1) {
                 }
             }
 }
-static __attribute__((noinline)) void op_settilesize(u32 w0, u32 w1) {
-            unsigned tile = (w1 >> 24) & 7;
-            int uls = (int)((w0 >> 12) & 0xfff);
-            int ult = (int)(w0 & 0xfff);
-            int lrs = (int)((w1 >> 12) & 0xfff);
-            int lrt = (int)(w1 & 0xfff);
+/* CORE-2b batch D: tile size setter (decoded fields). */
+static __attribute__((noinline)) void set_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
             if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt);
             GP_SET(4, nd_ws.tst1.tile_sz[tile][0] == uls && nd_ws.tst1.tile_sz[tile][1] == ult && nd_ws.tst1.tile_sz[tile][2] == lrs && nd_ws.tst1.tile_sz[tile][3] == lrt);
             nd_ws.tst1.tile_sz[tile][0] = uls;
@@ -4158,6 +4160,9 @@ static __attribute__((noinline)) void op_settilesize(u32 w0, u32 w1) {
                 gp3_t0_set();
             }
             return;
+}
+static __attribute__((noinline)) void op_settilesize(u32 w0, u32 w1) {
+    set_tilesize((w1 >> 24) & 7, (int)((w0 >> 12) & 0xfff), (int)(w0 & 0xfff), (int)((w1 >> 12) & 0xfff), (int)(w1 & 0xfff));
 }
 static void op_texture(u32 w0, u32 w1) {
             nd_ws.tex_on = (w0 & 0xff) != 0;
@@ -4576,16 +4581,16 @@ pm_gpu_set_replace(0);
 return;
 }
 
-static __attribute__((noinline)) void gbi_setcimg(u32 w0, u32 w1) {
-void* nc = ptr_of(w1);
-int ns = (int)((w0 >> 19) & 3);
-if (nc != nd_ws.cimg || ns != nd_ws.cimg_siz) pm_gpu_off_end(); /* V05 */
-nd_ws.cimg = nc;
-cimg_zero = (w1 == 0); zcol = 0;
-nd_ws.cimg_siz = ns;
-cimg_stride = (int)(w0 & 0xfff) + 1;
-return;
+/* CORE-2b batch D: colour image setter (decoded fields; cimg_zero is set from the address word). */
+static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
+    void* nc = ptr_of(addr);
+    if (nc != nd_ws.cimg || ns != nd_ws.cimg_siz) pm_gpu_off_end(); /* V05 */
+    nd_ws.cimg = nc;
+    cimg_zero = (addr == 0); zcol = 0;
+    nd_ws.cimg_siz = ns;
+    cimg_stride = stride;
 }
+static __attribute__((noinline)) void gbi_setcimg(u32 w0, u32 w1) { set_cimg(w1, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1); }
 
 static __attribute__((noinline)) void gbi_viewport(u32 w1) {
     Vp* vp = (Vp*)ptr_of(w1);
