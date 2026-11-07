@@ -2134,6 +2134,18 @@
       "gates": []
     },
     {
+      "name": "fb_mac01_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 gate 3: Toad Town mac_01 cold det run, shots 200 to 205. Byte-equal between the native grab build and the pre-row build (nds1 9ddd6a818).",
+      "scenario": "fb_mac01_det",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": ["azahar", "det", "cold", "fb1"],
+      "gates": []
+    },
+    {
       "name": "nok11_det",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -2644,6 +2656,58 @@
       "scenario": "fb_mac01_plain",
       "cap": 45,
       "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_nok11_nat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 GRAB: nok_11 splash with the native grab quad, fixedseed. Shots equal fb_nok11_cpu_pic; grabw nat words equal grabw cpu.",
+      "scenario": "fb_nok11_nat",
+      "cap": 30,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": ["azahar", "pic", "fb1"],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_nomerge_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 RSIG control: mac_00 sky, rectnomerge (one rect per batch). Picture equal to fb_sky_mac00_rsig means merging changes no pixel.",
+      "scenario": "fb_sky_mac00_nomerge",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": ["azahar", "pic", "fb1"],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_rsig_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 RSIG: mac_00 sky with rectsig. rsig lines per merge and close name the render field the batch closes with, not the one it was queued with.",
+      "scenario": "fb_sky_mac00_rsig",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": ["azahar", "pic", "fb1"],
+      "gates": []
+    },
+    {
+      "name": "fb_nok11_splash_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-1 GRAB scene: nok_11 water splash (grablog, grab_cur -> pm_gpu_grab). Shots of the splash window; the grab quad is the copy source.",
+      "scenario": "nok11_splash",
+      "cap": 30,
+      "until": "fxtest: shot 1 effect 89 water_splash",
       "tags": [
         "azahar",
         "pic",

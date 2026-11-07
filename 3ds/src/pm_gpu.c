@@ -750,9 +750,36 @@ static void flush_impl(void) {
     flush_impl_body();
     fl_acc += (unsigned)(pm_ticks() - t0);
 }
+/* FB-1 RSIG (debug switch rectsig): the render state a raw rectangle batch was opened with (rect_sig_fill at the open), compared with the live state at
+ * every merge and at the close. The close draws the batch with the live state, so a field that differs names a setter that does not flush an open batch. */
+typedef struct { int filt, ws, wt, cur, sx0, sy0, sx1, sy1, bl, rep, zc, zu, at, dec, noc, zon, mem, mix, comb, rgbs, pgen, mixc, prim, cc, env; } RectSig;
+static RectSig rsig_open;
+static unsigned rsig_chk, rsig_diff;
+extern void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter);
+static void rect_sig_fill(RectSig* s) {
+    uint32_t ws = 0, wt = 0; unsigned f = 0;
+    pm_tex_unit0_param(&ws, &wt, &f);
+    s->filt = (int)f; s->ws = (int)ws; s->wt = (int)wt; s->cur = pm_tex_cur_idx();
+    s->sx0 = sci_x0; s->sy0 = sci_y0; s->sx1 = sci_x1; s->sy1 = sci_y1;
+    s->bl = r_blend; s->rep = r_replace; s->zc = r_zcmp; s->zu = r_zupd; s->at = r_atest; s->dec = r_decal; s->noc = r_nocol;
+    s->zon = z_on; s->mem = r_memblend; s->mix = r_mix; s->comb = combine; s->rgbs = rgb_scale; s->pgen = plan_gen;
+    s->mixc = (int)r_mixcol; s->prim = (int)prim; s->cc = (int)cconst; s->env = (int)env_col;
+}
+static void rect_sig_check(const char* where) {
+    if (!PMDL("rectsig")) return;
+    RectSig n;
+    rect_sig_fill(&n);
+    rsig_chk++;
+#define RSIG_CMP(f) if (rsig_open.f != n.f) { rsig_diff++; if (rsig_diff <= 60) pm_log_d("rsig %s f%u %s open %d live %d", where, pm_frame_count(), #f, rsig_open.f, n.f); }
+    RSIG_CMP(filt) RSIG_CMP(ws) RSIG_CMP(wt) RSIG_CMP(cur) RSIG_CMP(sx0) RSIG_CMP(sy0) RSIG_CMP(sx1) RSIG_CMP(sy1)
+    RSIG_CMP(bl) RSIG_CMP(rep) RSIG_CMP(zc) RSIG_CMP(zu) RSIG_CMP(at) RSIG_CMP(dec) RSIG_CMP(noc) RSIG_CMP(zon) RSIG_CMP(mem) RSIG_CMP(mix)
+    RSIG_CMP(comb) RSIG_CMP(rgbs) RSIG_CMP(pgen) RSIG_CMP(mixc) RSIG_CMP(prim) RSIG_CMP(cc) RSIG_CMP(env)
+#undef RSIG_CMP
+}
 static void flush_impl_body(void) {
     if (rect_open && dbg_have) { dbg_cmp(); dbg_have = 0; }
     if (rect_open) { /* DR1: the batch is rectangles: draw it with the state they were queued in */
+        if (rect_raw) rect_sig_check("close");
         int sc = combine, sr = rect_2d, sz = rect_z;
         combine = rect_ec; rect_2d = 1; rect_z = rect_zb; rect_open = 0; rect_tex = -1; rect_raw = 0;
         flush_draw();
@@ -1266,6 +1293,7 @@ static int nd_raw_native(void) {
     int t = 0;
     if (combine >= 2) { /* OFF-2: a grab draw binds the copy. OFF-3: an off-screen image (2) that is the target of this pass is read from its snapshot (FX2a, flush_draw made it) */
         t = grab_bind ? grab_native_unit0(&u0) : pm_tex_native_unit0(&u0);
+        if (grab_bind && PMDL("grablog")) pm_log_d("grabw f%u nat dim %08x param %08x lod %08x addr %08x type %u", pm_frame_count(), u0.dim, u0.param, u0.lod, u0.addr, u0.type); /* FB-1 GRAB: the words of the grab slot, native */
         if (t == 2 && off_active && pm_tex_off_idx() == off_cur && offs[off_cur].snap_ready) t = tex_native_words(&u0, &offs[off_cur].snap);
         if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; }
     }
@@ -1482,6 +1510,7 @@ static void flush_draw(void) {
      * Wiping the buffer here let the next 3D batch ignore the house. */
     (void)batch_identity;
     DC_T(1);
+    if (grab_bind && PMDL("grablog")) pm_log_d("grabw f%u cpu dim %08x param %08x lod %08x addr %08x type %u", pm_frame_count(), grab_tex.dim, grab_tex.param, grab_tex.lodParam, (uint32_t)osConvertVirtToPhys(grab_tex.data) >> 3, (unsigned)grab_tex.fmt); /* FB-1 GRAB: the words of the grab slot, CPU bind */
     int tex =(combine >= 2) && (grab_bind ? (dc_bind(0, &grab_tex), pm_tex_bind_reset(), 1) : pm_tex_bind());
     int tex1 = combine == 8 && plan.uses_tex1 && pm_tex_bind_aux();
     int i8_0 = tex && pm_tex_i8(0), i8_1 = tex1 && pm_tex_i8(1);
@@ -2399,6 +2428,26 @@ static void grab_log(const void* cfb, int y0, int y1, int reuse) {
     if (on < 0) on = pm_debug_has("grablog");
     if (on) pm_log_d("grab %d src %p rows %d-%d frame %u reuse %s", grab_n, cfb, y0, y1, pm_frame_count(), reuse ? "yes" : "no");
 }
+static void rect_raw_open(int ec, float fz, const float uvso[4]); /* RECT-1a, defined below */
+/* FB-1 GRAB: the copy quad as four ring vertices (rect_raw_quad form, identity positions as the off-screen rect path). uv = tc / 256, shorts 256 - row / 2
+ * (mo + x is even at both edges): s runs along y (240 at the top, 0 at the bottom), t along x, as the CPU quad. */
+static void grab_raw_quad(int x1, int mo) {
+    short v[32];
+    const short tva = (short)(256 - mo / 2), tvb = (short)(256 - (mo + x1) / 2);
+    const int px_[4] = { 0, x1, x1, 0 }, py_[4] = { 0, 0, 240, 240 };
+    const short ps[4] = { 240, 240, 0, 0 }, pt[4] = { tva, tvb, tvb, tva };
+    for (int i = 0; i < 4; i++) {
+        short* q = v + 8 * i;
+        unsigned char* cb = (unsigned char*)q;
+        q[0] = (short)px_[i]; q[1] = (short)py_[i]; q[2] = 0; q[3] = 0; q[4] = ps[i]; q[5] = pt[i];
+        cb[12] = cb[13] = cb[14] = cb[15] = 0xff;
+    }
+    const int b = pm_gpu_gvtx_load(v, 4);
+    unsigned short* ix = gidx + gidx_n;
+    ix[0] = (unsigned short)b; ix[1] = (unsigned short)(b + 1); ix[2] = (unsigned short)(b + 2);
+    ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
+    gidx_n += 6; gni += 6;
+}
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     pm_gpu_begin_wait();
     if (rect_open) flush(); /* DR1 */
@@ -2407,6 +2456,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
     const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
     if (!gpu_ok || off_fail || y1 <= y0) return 0;
+    if (!(gpu_vtx_on && gv4_on) || gring_n + 4 > GRING_VTX || gidx_n + 6 > GRING_IDX) return 0; /* FB-1 GRAB: the copy quad is native (no room: the caller reads the CPU) */
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
@@ -2432,14 +2482,13 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
         int s_comb = combine, s_2d = rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = r_atest, s_nc = r_nocol, s_mix = r_mix,
             s_rs = rgb_scale, s_3d = draw_3d;
-        float xa = (float)x0, xb = (float)x1, va = 1.f - ((float)mo + xa) / 512.f, vb = 1.f - ((float)mo + xb) / 512.f, ua = 240.f / 256.f;
         sci_x0 = 0; sci_y0 = 0; sci_x1 = x1; sci_y1 = 240;
         combine = 3; rect_2d = 1; batch_identity = 1; r_replace = 1; r_atest = -1; r_nocol = 0; r_mix = 0; rgb_scale = 1; draw_3d = 0;
         grab_bind = 1;
-        /* game (x, y) reads texel column 239 - y, memory row 40 + x of the copy. v = 0 samples the last memory row (found with
-         * the grabtest dump: with v = row / 512 the slot came out mirrored in x), so v = 1 - row / 512. */
-        pm_gpu_tri(xa, 0.f, 0.5f, ua, va, 0xffffffffu, xb, 0.f, 0.5f, ua, vb, 0xffffffffu, xb, 240.f, 0.5f, 0.f, vb, 0xffffffffu);
-        pm_gpu_tri(xa, 0.f, 0.5f, ua, va, 0xffffffffu, xb, 240.f, 0.5f, 0.f, vb, 0xffffffffu, xa, 240.f, 0.5f, 0.f, va, 0xffffffffu);
+        /* FB-1 GRAB: the copy quad is a native raw batch (rect path at fill depth 0.5, combine 3, unit 0 = grab_tex). */
+        static const float uvso_g[4] = { 1.f / 256.f, 1.f / 256.f, 0.f, 0.f };
+        rect_raw_open(3, 0.5f, uvso_g);
+        grab_raw_quad(x1, mo);
         flush();
         grab_bind = 0;
         sci_x0 = sc[0]; sci_y0 = sc[1]; sci_x1 = sc[2]; sci_y1 = sc[3];
@@ -3886,7 +3935,7 @@ static int rect_raw_ok(void) {
 static void rect_raw_open(int ec, float fz, const float uvso[4]) {
     int rtx = pm_tex_cur_idx();
     rq_cur = rd_tex ? rtx : -1; /* RECT diag: the queue-time slot of this rectangle */
-    if (rect_open && rect_raw && gni > 0 && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && fz == rect_pal_z && !memcmp(g_uvso, uvso, sizeof(g_uvso)) && !PMDL("rectnomerge")) { dr1_merged++; rect_c[3]++; return; }
+    if (rect_open && rect_raw && gni > 0 && rect_ec == ec && rect_zb == rect_z && rect_tex == rtx && fz == rect_pal_z && !memcmp(g_uvso, uvso, sizeof(g_uvso)) && !PMDL("rectnomerge")) { dr1_merged++; rect_c[3]++; rect_sig_check("merge"); return; }
     if (rect_open) dr1_breaks++;
     flush();
     draw_3d = 0;
@@ -3901,6 +3950,7 @@ static void rect_raw_open(int ec, float fz, const float uvso[4]) {
     g_zmix[0] = 1.f; g_zmix[1] = 0.f;
     g_ct = 0; g_cullm = GPU_CULL_NONE; g_pal = 1; g_use5 = 0;
     pal_n = 1; pal_g[0] = RECT_GM; pal_gen++;
+    if (PMDL("rectsig")) rect_sig_fill(&rsig_open);
 }
 static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, short s1, short t1, unsigned c) {
     short v[32];
@@ -3922,7 +3972,7 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     rect_c[2]++;
     if ((unsigned)gring_n > rect_c[5]) rect_c[5] = (unsigned)gring_n;
 }
-static void rect_log(unsigned f) { pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
+static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c); }
 static void rect_end(void) { if (PMDL("rectdbg")) { dbg_take(dbg_snap); dbg_have = 1; } }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (PMDL("zmforce")) { z_on = 1; rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */
