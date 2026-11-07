@@ -351,10 +351,10 @@ $marks = @()
         if ($gdbProc -and $gdbProc.HasExited) { $reason = "gdb finished"; break }
         # Azahar shows a dialog on a guest CPU exception and the game stops: kill at once
         if (-not $Interactive -and [AzEnum]::Count([uint32]$p.Id) -gt 1) { Start-Sleep -Seconds 4; $reason = "Azahar dialog (exception or error), windows: $([AzEnum]::Titles)"; break }
+        if (Test-Path $stopReq) { $reason = "stopped by azt: $(Get-Content $stopReq -First 1)"; break } # AZT3-2: azt ends the run early, the Azahar stays (see keepNow)
         if ($FaultStop -and (Read-Tail $emuLog) -match "UnmappedAccess") { Start-Sleep -Seconds 1; $reason = "unmapped access"; break }
         if ((Read-Tail $emuLog) -match "Exception Type:") { Start-Sleep -Seconds 4; $reason = "emulator exception"; break }
         if (-not (Test-Path $log)) {
-        if (Test-Path $stopReq) { $reason = "stopped by azt: $(Get-Content $stopReq -First 1)"; break } # AZT3-2: azt ends the run early, the Azahar stays (see keepNow)
             # No game log yet: a modal dialog (usage, first-run, error) or a hang before the first frame stops an unattended run
             if (-not $Gdb -and -not $Interactive -and ((Get-Date) - $start).TotalSeconds -gt ($Stall + 30)) { $reason = "modal dialog suspected: no game log $($Stall + 30) s after the start (windows: $([AzEnum]::Titles))"; break }
             continue
