@@ -416,4 +416,14 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid);
 u32 ent_segkey(void);
 int entchk_on(void);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx);
+/* LS-2 (nd_ent.c): the entity record case of G_PM_ENT (the walk calls it). */
+int nd_ent_case(const Gfx* rec, u32 w0, u32 w1);
+void pm_gbi_ent_texchk(const uint32_t* dl);
+void pm_gbi_ent_segchk(const uint32_t* dl);
+extern Gfx ent_flat_buf[];
+extern NdEntSeg ent_sbuf[];
+extern u32 dlc_words[];
+uint8_t* nd_env_valloc(unsigned n, unsigned* first);
+uint16_t* nd_env_ialloc(unsigned n);
+void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
 #endif

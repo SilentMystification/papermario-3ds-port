@@ -170,11 +170,9 @@ void nd_walk_run(void* list, unsigned nbytes) {
             pc += G_PM_SPR_WORDS - 1;
             break;
         }
-        case G_PM_ENT: /* S6-1: producer record of an entity model draw (entity_model.c). The record is not run; the old words draw. S6-2a: the end record (G_PM_ENT_END, entcheck only) checks the tile 0 state. */
+        case G_PM_ENT: /* S6-1: producer record of an entity model draw (nd_ent.c). The record is not run; the old words draw unless nd_ent_case draws it. */
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
-            if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); }
-            else if ((w0 & G_PM_ENT_DRAW) && ((pm_tex_tagi = 4, ent_draw(pc - 1)) ? 1 : (ent_skipgen = 1, 0))) { if (pm_ph_on) pk_nat[pmx_cur]++; pc += G_PM_ENT_WORDS; break; } /* S6-2c-3: the list drew from the pools, its G_DL after the record is skipped */
-            pc += G_PM_ENT_WORDS - 1;
+            pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); /* the drawn record skips its own words and its G_DL */
             break;
             pc += w0 & 0xffffu;
             break;
