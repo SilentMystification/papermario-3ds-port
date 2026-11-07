@@ -222,13 +222,6 @@ $kept = Get-KeptAzahar $slotK
 # AZT2: the warm decision and its reason (azslot line below). Reasons: no kept, closed, turbo, option, restart failed (AZT3-1: no lane reason)
 $warmWhy = if ($NoWarm -or $Interactive -or $Gdb -or $FaultStop) { "option" } else { Get-WarmState $slotK $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 }) }
 $warm = ($warmWhy -eq "warm")
-# AZT9b-1: a warm restart reloads the file the kept Azahar booted. The slot keeps the SHA256 of the ROM it booted (rom.sha, written at a cold start).
-# A lane 3dsx with another hash (a dirty build keeps its build number) is not proven loaded by a restart: cold start, reason "new rom".
-$romSha = (Get-FileHash $in3dsx -Algorithm SHA256).Hash
-if ($warm) {
-    $bootSha = if (Test-Path "$($sl.dir)\rom.sha") { (Get-Content "$($sl.dir)\rom.sha" -Raw).Trim() } else { "" }
-    if ($bootSha -ne $romSha) { $warm = $false; $warmWhy = "new rom" }
-}
 if (-not $warm) { Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
 # From here this script owns the slot. Any earlier run on this slot that was killed: kill its Azahar, put the config back.
 if (-not $warm -and (Test-Path $pidFile)) {
@@ -372,7 +365,6 @@ if (-not $p) {
     $p = Start-Process $exe -ArgumentList "`"$romFile`"" -PassThru
     Set-Content $pidFile $p.Id
     Write-PoolLog $slotK "start" "-" $p.Id "cold: $warmWhy"
-    Set-Content "$($sl.dir)\rom.sha" $romSha # AZT9b-1: the ROM this Azahar boots
 }
 # AZT2: one line per start: warm, or cold with the reason. AZT6b-2: written after the switch check and the start, with the pid. azt.ps1 reads it from the slot folder.
 $azLine = if ($warm) { "azslot: slot $slotK pid $($p.Id) warm" } else { "azslot: slot $slotK pid $($p.Id) cold ($warmWhy)" } # azt.ps1 matches the end: " warm" or " cold ("

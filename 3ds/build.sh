@@ -22,6 +22,8 @@ EOF2
 REV=${PM_BUILD_REV:-HEAD}
 BN=$((V0 + $(git rev-list --count "$REV") - C0))
 if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ -z "$PM_BUILD_REV" ] && [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
+# AZT9c-1: a lane build carries a unique tag (time and pid): a dirty build with the same number has its own build id, so a warm restart proves the new ROM by the boot line
+if [ -n "$PM_LANE" ]; then BN="${BN}_$(date +%H%M%S)$$"; fi
 printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
 printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/include/pm_build.h.tmp
 # Rewrite pm_build.h only when the number changed: a new mtime would rebuild every file that includes it.
