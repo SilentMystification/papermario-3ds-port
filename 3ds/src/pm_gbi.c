@@ -878,6 +878,7 @@ extern void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 */
 extern void pm_gpu_ndm_end(void);
 extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
 extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
+extern int nd_r11_state(uint32_t addr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo); /* MDL-5f */
 extern void pm_gpu_model_fb_cached(unsigned why, uint32_t rp); /* S3N-7, S3L-1: the code of the stored fallback */ /* S3N-6: the cached draws of the key, 1 when drawn (e: the entry found by the lookup) */
 int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
 static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomodelnat") ? 1 : 0; return v; } /* MDL-5: switch nomodelnat, the walker geometry of every model record (the byte reference) */
@@ -894,7 +895,8 @@ unsigned rec_run(const Gfx* q) {
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0, hit = 0;
     if (cached) { NdtT tm = pm_gpu_ndt_begin(); rec_matrix(q); pm_gpu_ndt_end(tm, NDT_MTX); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
-    if (!ndm && mdone && q[12].words.w0 && pm_gpu_model_hit(&mk, mce)) {
+    /* MDL-5f: a record with a custom gfx pre list (state-only, drawn natively) never takes the hit path: rec_apply runs the pre list (its state op); the hit path skips rec_apply. The post list runs in both paths (rec_run). */
+    if (!ndm && mdone && q[12].words.w0 && !q[11].words.w0 && pm_gpu_model_hit(&mk, mce)) {
         /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw.
          * POND (A1): a record with no geometry (q[12] 0, the water copy of model.c mdl_draw_hidden_panel_surface) never takes the hit path: its state is its whole effect, so rec_apply must run. */
         rec_n++;
@@ -910,11 +912,32 @@ unsigned rec_run(const Gfx* q) {
         if (!qw[26] || (!pm_debug_has("r13off") && nd_r13_texonly(qw + NDMC_RW, qw[26], cw_, &cb_))) t1 = pm_gbi_bind_tile1();
         pm_gpu_set_r13_t1(t1);
     }
-    if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
+    /* MDL-5f: the walker order is record combine, render mode list, pre list (rec_apply), so a state-only pre list's SETCOMBINE and SETOTHERMODE
+     * ops win over the record's words. The native draw gets them in the same order: its combine replaces cwp, the render mode list is copied
+     * without its SETCOMBINE (when the pre list has one) and its SETOTHERMODE ops are followed by the pre list's ops, then ENDDL. */
+    const uint32_t* mwp = (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu];
+    const uint32_t* cwp = q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL;
+    uint32_t mcomp[2 * 24], cwr[2];
+    if (q[11].words.w0) {
+        int hcb = 0; unsigned nmo = 0; uint32_t mo[8];
+        nd_r11_state((uint32_t)q[11].words.w0, cwr, &hcb, mo, &nmo);
+        if (hcb) cwp = cwr;
+        if (hcb || nmo) {
+            unsigned k = 0;
+            for (unsigned i = 0; i < 16u && (mwp[2 * i] >> 24) != 0xdfu; i++) {
+                if (hcb && (mwp[2 * i] >> 24) == 0xfcu) continue; /* G_SETCOMBINE: the pre list's combine replaces it */
+                mcomp[2 * k] = mwp[2 * i]; mcomp[2 * k + 1] = mwp[2 * i + 1]; k++;
+            }
+            for (unsigned j = 0; j < nmo; j++, k++) { mcomp[2 * k] = mo[2 * j]; mcomp[2 * k + 1] = mo[2 * j + 1]; }
+            mcomp[2 * k] = 0xdfu << 24; mcomp[2 * k + 1] = 0;
+            mwp = mcomp;
+        }
+    }
+    if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, mwp,
         q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
     else if (mce && mce->neg && mce->ep == pm_tex_epoch()) { pm_gpu_model_fb_cached(mce->why, (uint32_t)mk.rp); } /* S3N-7: a stored fallback: walker geometry, no draw attempt */
-    else if (!nmn_sw() && pm_gpu_model_native((const uint32_t*)q, (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu],
-        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk) >= 0) {
+    else if (!nmn_sw() && pm_gpu_model_native((const uint32_t*)q, mwp,
+        cwp, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk) >= 0) {
         /* S3N-4: the record drew natively (nd_model_draw): no walker geometry. The native draws set the TEV and the texture unit, so the walker
          * sends its combine and render mode again at its next op (the shadows of those ops are cleared). */
         nat = 1;

@@ -3201,7 +3201,7 @@
       "purpose": "MDL-5e census: golden tour (6 maps) cold det, ndm fb per 300 frames.",
       "scenario": "golden_multi_det",
       "cap": 90,
-      "until": "shot 6 frame",
+      "until": "tour: done",
       "tags": [
         "azahar",
         "mdl5"
@@ -3215,6 +3215,21 @@
       "default": false,
       "purpose": "MDL-5e census: tour10 (10 maps) cold det, ndm fb per 300 frames.",
       "scenario": "tour10_det",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour10_det_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5f byte reference: tour10 (10 maps) cold det with nomodelnat, shots 0 to 10 byte-equal to tour10_det.",
+      "scenario": "tour10_det_ref",
       "cap": 90,
       "until": "tour: done",
       "tags": [
