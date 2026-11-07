@@ -23,6 +23,7 @@ void pm_log_apply_switch_levels(void); /* LOG3: re-reads loglevel, livelevel, di
 void pm_log_set_file(int on);
 void pm_log_init(int live);
 void pm_log_poll(void);
+void pm_log_frame_tick(void); /* LOG4: once per drawn frame after pm_gpu_end */
 void pm_con_lock(void);
 int pm_con_trylock(void);
 void pm_con_unlock(void);

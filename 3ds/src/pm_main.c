@@ -509,6 +509,7 @@ void pm_frame_loop(void) {
             ever = 1;
         }
         pm_gpu_end();
+        pm_log_frame_tick();
         if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow draw (a skipped step does not pay it) */
         pm_ph_frame_end();
         }

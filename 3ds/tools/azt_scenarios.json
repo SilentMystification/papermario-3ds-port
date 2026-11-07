@@ -7580,6 +7580,26 @@
         }
       ],
       "reason": "MOON diagnosis (log first): count the moon jump y lines of the hold and the y at the last one; the next line after the hold shows the ground position again."
+    },
+    {
+      "name": "log_storm",
+      "status": "unverified",
+      "subject": "Toad Town pond, map mac_00, Mario at -178 0 88, with the log at debug and the texstale and waterlog switches: a storm of lines while the water draws. The logstat line every 300 drawn frames gives the frame work, the lines, and the dropped count.",
+      "proves": "LOG4: the game thread cost in a storm; drops are counted (dropped, fbdrop) and the writer keeps the log going.",
+      "debug": "warp=mac_00:4 pos=-178:0:88 loglevel=debug texstale waterlog logstat logstorm=200",
+      "until": "logstat frames \\d+ work ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "logstat line with drops",
+          "regex": "logstat frames \\d+ work [\\d.]+ ms .* dropped \\d+"
+        }
+      ],
+      "reason": "LOG4 storm bench. logstat every 300 drawn frames (about 10 s after the pond load at 30 fps). Cap 45 s."
     }
   ]
 }

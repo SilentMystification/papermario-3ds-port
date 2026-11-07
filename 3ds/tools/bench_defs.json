@@ -1477,6 +1477,34 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+    {
+      "name": "log_storm",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "LOG4 storm: pond at mac_00 with debug lines, texstale and waterlog. Reads the logstat frame work (ms) and the dropped count.",
+      "scenario": "log_storm",
+      "cap": 45,
+      "until": "logstat frames \\d+ work ",
+      "tags": [
+        "azahar",
+        "log",
+        "bench"
+      ],
+      "log_metrics": [
+        {
+          "name": "work_ms",
+          "regex": "logstat frames \\d+ work ([\\d.]+) ms",
+          "pick": "last"
+        },
+        {
+          "name": "dropped",
+          "regex": "logstat frames \\d+ .* dropped (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
     }
   ],
   "legacy": {

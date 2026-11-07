@@ -24,6 +24,8 @@ static unsigned fb_head, fb_tail;
 static char cb[CB_SIZE];
 static unsigned cb_n;
 static LightLock fb_lock;    /* fb, fb_head, fb_tail, cb, cb_n */
+static LightEvent ev_sink; /* LOG4: the sink thread waits here while logging is off */
+static u32 fb_drop_lines; /* LOG4: lines of log.txt dropped by a full fb (fb_put), beat line fbdrop */
 static LightLock fsink_lock; /* every write and fsync of log_fd (sink thread, writer when fb is full, crash, stop) */
 
 static int log_fd = -1;
@@ -51,7 +53,7 @@ static u32 q_dropped, q_drop_total;
 static u32 q_head;    /* next slot to reserve (producers, compare and swap) */
 static u32 q_tail;    /* next slot to read (writer or crash flush, under drain_lock) */
 static u32 wr_file_max, wr_sock_max, con_skipped; /* HWM1: longest single step of the writer in us, since the last logstat line */
-static u32 sink_file_max, sink_con_max, fb_full_waits; /* PI6: the sink thread's longest write and console step in us */
+static u32 sink_file_max, sink_con_max; /* PI6: the sink thread's longest write and console step in us */
 static int sw_lognull;
 /* LOG3: one level per sink: -1 off, 0 error, 1 warn, 2 info, 3 debug. A line reaches a sink when its level is at or below that sink's level. */
 static int lv_live = 1; /* the live socket and the ring that replays to a reconnect */
@@ -251,6 +253,7 @@ static void wake_writer(void);
 void pm_log_set_file(int on) {
     log_file_on = on != 0;
     pm_ph_log_gate(log_file_on);
+    LightEvent_Signal(&ev_sink); /* LOG4: the sink sleeps without a timeout while logging is off */
     wake_writer(); /* the writer drains the queue, then sleeps while logging is off */
 }
 
@@ -325,9 +328,9 @@ void pm_log_stat(float avg_ms, unsigned frames, float secs, unsigned spikes, flo
     st_prev_bytes = st_bytes;
     pm_log_d("logstat frames %u work %.2f ms wall %.2f ms lines %u (%.1f/frame %.0f/s) bytes %u total %u writer on %d core %d hb %u dropped %u live eagain %u stall closes %u spikes %u max %.1f ms", frames, avg_ms, secs * 1000.f / (float)frames, dl,
            (float)dl / (float)frames, (float)dl / secs, db, all, writer_on, writer_core, writer_hb, q_drop_total + q_dropped, live_eagain, live_stall_close, spikes, spike_max);
-    pm_log_d("logstat2 writer max us fbuf %u sock %u | sink max us file %u console %u, console skipped %u, console lines %u, queue %u of %u, fbuf %u of %u, fbuf waits %u",
+    pm_log_d("logstat2 writer max us fbuf %u sock %u | sink max us file %u console %u, console skipped %u, console lines %u, queue %u of %u, fbuf %u of %u, fbuf dropped lines %u",
            wr_file_max, wr_sock_max, sink_file_max, sink_con_max, con_skipped, con_lines, __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED), 1024u,
-           fb_head - fb_tail, FB_SIZE, fb_full_waits);
+           fb_head - fb_tail, FB_SIZE, fb_drop_lines);
     wr_file_max = wr_sock_max = sink_file_max = sink_con_max = 0;
 }
 
@@ -433,9 +436,21 @@ static void vlog(int lv, const char* fmt, va_list ap) {
         return;
     }
     __atomic_fetch_add(&st_lines, 1, __ATOMIC_RELAXED);
-    /* Wake the writer when the queue was empty or is half full. Otherwise its 250 ms timeout collects the lines. */
-    u32 t = __atomic_load_n(&q_tail, __ATOMIC_RELAXED);
-    if (h == t || h - t == SLOTS / 8) LightEvent_Signal(&ev_wake);
+    /* LOG4: no signal per line. pm_log_frame_tick signals the writer once per frame at half full; its 250 ms timeout collects the rest. */
+}
+
+/* LOG4: called once per drawn frame (pm_main.c, after pm_gpu_end). Logging off: one load and return. One signal to the writer when the
+ * queue reaches half full (edge: the flag clears below a quarter), so a storm costs one wake per fill, not one per line. */
+static int half_sig;
+void pm_log_frame_tick(void) {
+    if (!log_file_on || !writer_th) return;
+    static int storm = -1; /* LOG4 test switch logstorm=<n>: n debug lines per drawn frame (the storm bench) */
+    if (storm < 0) { char v[16]; storm = pm_debug_value("logstorm", v, sizeof v) ? atoi(v) : 0; }
+    for (int i = 0; i < storm; i++) pm_log_d("storm line %d", i);
+    u32 n = __atomic_load_n(&q_head, __ATOMIC_RELAXED) - __atomic_load_n(&q_tail, __ATOMIC_RELAXED);
+    if (n >= SLOTS / 2) {
+        if (!half_sig) { half_sig = 1; LightEvent_Signal(&ev_wake); }
+    } else if (n < SLOTS / 4) half_sig = 0;
 }
 
 #define PM_LOG_FN(name, lv) void name(const char* fmt, ...) { va_list ap; va_start(ap, fmt); vlog(lv, fmt, ap); va_end(ap); }
@@ -448,7 +463,6 @@ void pm_log_prof_line(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
     prof_force = 1; vlog(1, fmt, ap); prof_force = 0;
     va_end(ap);
-    wake_writer();
 }
 /* PROF4, PROFROW: the lean prof mode and the Profiling row (pm_phase.c prof_row_apply). Mode 0 off, 1 prof (prof lines only, as prof=4),
  * 2 phase set. Each mode sets the words it owns. A word that a mode gives up returns to its state at boot (base_has), so a launch word
@@ -557,8 +571,10 @@ static void fb_copy_in(const char* s, unsigned n) {
 
 static char fw_buf[8192]; /* fsink_lock held: one step of the file write */
 /* fsink_lock held: write every byte in fb to log.txt. Only the sink thread, the writer (full fb), the stop and the crash path call it. */
-static void fb_write_locked(void) {
+static void fb_write_locked(unsigned budget) { /* budget 0: all of fb, else at most budget bytes (LOG4: one SD write per step) */
+    unsigned tot = 0;
     for (;;) {
+        if (budget && tot >= budget) break;
         LightLock_Lock(&fb_lock);
         unsigned n = fb_used();
         if (n > sizeof fw_buf) n = sizeof fw_buf;
@@ -569,6 +585,7 @@ static void fb_write_locked(void) {
         memcpy(fw_buf + first, fb, n - first);
         LightLock_Unlock(&fb_lock);
         if (!n) break;
+        tot += n;
         if (log_fd >= 0 && log_file_on) {
             u64 t0 = svcGetSystemTick();
             unsigned done = 0;
@@ -590,30 +607,22 @@ static void fb_write_locked(void) {
 /* Any thread except the crash path: write fb now, then fsync. Stops on a stalled SD card only as long as the write takes. */
 static void fb_sync_all(void) {
     LightLock_Lock(&fsink_lock);
-    fb_write_locked();
+    fb_write_locked(0);
     if (log_fd >= 0 && dirty) { fsync(log_fd); dirty = 0; }
     LightLock_Unlock(&fsink_lock);
 }
 
 /* Writer only: add lines to fb. Full fb (the SD card is behind by 128 KB): write now, so no line is dropped. */
+/* LOG4: a full fb drops the whole batch for log.txt (counted in fb_drop_lines, beat line fbdrop), never waits on fsink_lock. */
+
 static void fb_put(const char* s, unsigned n) {
-    while (n) {
-        LightLock_Lock(&fb_lock);
-        unsigned room = FB_SIZE - fb_used();
-        if (room) {
-            unsigned k = n < room ? n : room;
-            fb_copy_in(s, k);
-            s += k;
-            n -= k;
-        }
-        LightLock_Unlock(&fb_lock);
-        if (n) {
-            fb_full_waits++;
-            LightLock_Lock(&fsink_lock);
-            fb_write_locked();
-            LightLock_Unlock(&fsink_lock);
-        }
+    LightLock_Lock(&fb_lock);
+    if (n <= FB_SIZE - fb_used()) {
+        fb_copy_in(s, n);
+    } else {
+        for (unsigned i = 0; i < n; i++) if (s[i] == '\n') fb_drop_lines++;
     }
+    LightLock_Unlock(&fb_lock);
 }
 
 /* Writer only: keep the console bytes for the sink thread. Full cb: skipped (log.txt and the socket keep the line). */
@@ -696,14 +705,21 @@ static void con_flush(void) {
 
 static void sink_main(void* arg) {
     (void)arg;
+    unsigned dtick = 0;
     for (;;) {
-        svcSleepThread(100000000LL);
+        /* LOG4 (U1): logging off, the sink waits with no timeout; pm_log_set_file and pm_log_stop signal ev_sink. */
+        if (log_file_on) svcSleepThread(100000000LL);
+        else LightEvent_Wait(&ev_sink);
         if (__atomic_load_n(&writer_stop, __ATOMIC_ACQUIRE) || __atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) return;
-        if (pm_io_quiet) continue;
-        /* No fsync here: an SD fsync held fsink_lock for 1 to 7 s, and the writer waits on that lock when fb is full. fb_sync_all and the crash path still sync. */
-        LightLock_Lock(&fsink_lock);
-        fb_write_locked();
-        LightLock_Unlock(&fsink_lock);
+        if (pm_io_quiet || !log_file_on) continue;
+        /* No fsync here: an SD fsync held fsink_lock for 1 to 7 s. fb_sync_all and the crash path still sync.
+         * LOG4: one SD write per 250 ms (every third 100 ms step) or 32 KB, whichever comes first. */
+        if (++dtick >= 3 || fb_used() >= 32768u) {
+            dtick = 0;
+            LightLock_Lock(&fsink_lock);
+            fb_write_locked(32768u);
+            LightLock_Unlock(&fsink_lock);
+        }
         con_flush();
     }
 }
@@ -759,8 +775,8 @@ static void drain_locked(void) {
         u32 t = q_tail, hd = __atomic_load_n(&q_head, __ATOMIC_ACQUIRE);
         u32 st = __atomic_load_n(&slots[t & (SLOTS - 1)].state, __ATOMIC_ACQUIRE);
         u32 age = stall_on && stall_t == t ? (u32)((svcGetSystemTick() - stall_tick) / (SYSCLOCK_ARM11 / 1000)) : 0;
-        int bl = snprintf(line, sizeof line, "beat hb %u head %u tail %u tstate %u tage_ms %u tthread %08x abandoned %u dropped %u file_on %d pass_lv %d sinks disk %u live %u con %u\n",
-                          writer_hb, hd, t, st, age, (u32)(uintptr_t)threadGetCurrent(), q_abandoned, q_drop_total + q_dropped, log_file_on, pass_lv, cnt_disk, cnt_live, cnt_con);
+        int bl = snprintf(line, sizeof line, "beat hb %u head %u tail %u tstate %u tage_ms %u tthread %08x abandoned %u dropped %u file_on %d pass_lv %d sinks disk %u live %u con %u fbdrop %u\n",
+                          writer_hb, hd, t, st, age, (u32)(uintptr_t)threadGetCurrent(), q_abandoned, q_drop_total + q_dropped, log_file_on, pass_lv, cnt_disk, cnt_live, cnt_con, fb_drop_lines);
         if (bl > (int)sizeof line - 1) bl = sizeof line - 1;
         out_batch(line, dl >= 2 ? bl : 0, line, ll >= 2 ? bl : 0, line, cl >= 2 ? bl : 0); /* LOG3: the beat is an info line */
     }
@@ -835,9 +851,12 @@ static void writer_main(void* arg) {
     __atomic_store_n(&writer_started, id, __ATOMIC_RELEASE);
     LightEvent_Signal(&ev_started);
     for (;;) {
-        /* Wakes every 250 ms also with logging off, so accept_client and read_cmd run before every bounded drain. */
-        LightEvent_WaitTimeout(&ev_wake, 250000000LL);
+        /* Wakes every 250 ms, so accept_client and read_cmd run before every bounded drain. LOG4 (U1): logging off, no timeout:
+         * the writer sleeps until a signal (pm_log_set_file, pm_io_gate, pm_log_stop). No heartbeat, no accept, no beat. */
+        if (log_file_on) LightEvent_WaitTimeout(&ev_wake, 250000000LL);
+        else LightEvent_Wait(&ev_wake);
         if (__atomic_load_n(&active_id, __ATOMIC_ACQUIRE) != id) return; /* a replacement thread took over */
+        if (!log_file_on && !io_drain_req && !__atomic_load_n(&writer_stop, __ATOMIC_ACQUIRE) && !__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) continue;
         writer_hb++;
         writer_beat();
         if (io_drain_req && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
@@ -1037,6 +1056,7 @@ void pm_log_start(void) {
     LightEvent_Init(&ev_wake, RESET_ONESHOT);
     LightEvent_Init(&ev_started, RESET_ONESHOT);
     LightEvent_Init(&ev_flushed, RESET_ONESHOT);
+    LightEvent_Init(&ev_sink, RESET_ONESHOT);
     LightLock_Init(&drain_lock);
     /* Core 1 (system core): a thread there is allowed only after APT_SetAppCpuTimeLimit (libctru thread.h). */
     /* CPULIM-UI: the game value is 80 (try 79 when 80 fails). Switch cpulimit=<5..80> overrides. HOME menu and sleep set 30, resume sets the game value. */
@@ -1082,6 +1102,7 @@ void pm_log_stop(void) {
     if (!writer_th) return;
     __atomic_store_n(&writer_stop, 1, __ATOMIC_RELEASE);
     LightEvent_Signal(&ev_wake);
+    LightEvent_Signal(&ev_sink);
     threadJoin(writer_th, 2000000000ULL);
     __atomic_store_n(&writer_on, 0, __ATOMIC_RELEASE);
     LightLock_Lock(&drain_lock);
@@ -1109,7 +1130,7 @@ static void crash_flush(void) {
         fg = LightLock_TryLock(&fsink_lock) == 0;
     }
     if (fg) {
-        fb_write_locked();
+        fb_write_locked(0);
         if (log_fd >= 0) fsync(log_fd);
     }
     __atomic_store_n(&writer_on, 0, __ATOMIC_RELEASE); /* later lines go direct */
