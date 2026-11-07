@@ -35,6 +35,7 @@ param(
     [switch]$NoKeep, # AZT-3b: default is to leave the slot's Azahar open after a matched run (paused; a later run on the slot restarts in it, warm; azreap closes it after 15 min idle, AZT3-4). -NoKeep closes it after the run.
     [ValidateSet("", "turbo", "normal")][string]$Speed = "", # BENCH3: speed of this start (default: -Turbo in the scenario, else normal)
     [switch]$List,
+    [switch]$Queue, # AZT11-3: print the run queue and the running runs (one line each), then exit
     [switch]$SelfTest
 )
 $ErrorActionPreference = "Stop"
@@ -155,9 +156,102 @@ if ($SelfTest) {
         if (-not $dlOk) { $fails++ }
         Write-Output ("{0} start deadline: {1} start, scenario {2} s -> {3} s (want {4} s)" -f $(if ($dlOk) { "PASS" } else { "FAIL" }), $d.k, $d.s, $got, $d.e)
     }
+    # AZT11-1/2: the queue rules on fake entries in a temp folder (no Azahar, no slot mutex: the slot lane and the free slots are stubbed)
+    $qdir = Join-Path $env:TEMP ("azq_selftest_" + [guid]::NewGuid().ToString("N"))
+    $env:PM_AZQUEUE_DIR = $qdir
+    $script:fakeLane = @{ 1 = ""; 2 = "" }
+    $script:fakeFree = @{ 1 = $true; 2 = $true }
+    function Get-SlotLane([int]$k) { return [string]$script:fakeLane[$k] }
+    function Test-SlotFree([int]$k) { return [bool]$script:fakeFree[$k] }
+    $now = Get-NowMs
+    function New-FakeQ([string]$name, [long]$t, [string]$lane, [string]$state = "wait", [int]$owner = $PID, [int]$want = 0, [long]$hb = 0, [int]$skipped = 0) {
+        if ($hb -eq 0) { $hb = $now }
+        $o = [ordered]@{ t = $t; tree = "selftest"; lane = $lane; speed = "normal"; scenario = $name; row = "selftest"; want = $want; owner = $owner; ownerStart = (Get-ProcStart $owner)
+            parent = 0; parentStart = [long]0; hb = $hb; state = $state; slot = 0; runner = 0; runnerStart = [long]0; cap = 30; runT = $now; skipped = $skipped }
+        $path = Join-Path $qdir ("{0:D15}-{1}.json" -f $t, $name)
+        Save-QEntry $path ([pscustomobject]$o)
+        return $path
+    }
+    function Get-QState([string]$path) { $e = Read-QEntry $path; if ($e) { return $e } else { return $null } }
+    $qFails = 0
+    function QCheck([string]$name, [bool]$ok) {
+        if (-not $ok) { $script:qFails++ }
+        Write-Output ("{0} queue: {1}" -f $(if ($ok) { "PASS" } else { "FAIL" }), $name)
+    }
+    # T1 FIFO without a lane match: the oldest waiting entry gets slot 1
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pA = New-FakeQ "A1" 1000 "x"; $pB = New-FakeQ "B1" 2000 "y"
+    $script:fakeLane = @{ 1 = ""; 2 = "" }; $script:fakeFree = @{ 1 = $true; 2 = $false }
+    Invoke-QGrant
+    $a = Get-QState $pA; $b = Get-QState $pB
+    QCheck "FIFO: oldest entry granted slot 1, the younger waits (skipped A 0)" (($a.state -eq "granted") -and ([int]$a.slot -eq 1) -and ($b.state -eq "wait") -and ([int]$a.skipped -eq 0))
+    Remove-Item $qdir -Recurse -Force
+    # T2 lane preference: slot 1 holds lane y, so the younger lane-y entry is granted, the older one is passed over once
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pA = New-FakeQ "A2" 1000 "x"; $pB = New-FakeQ "B2" 2000 "y"
+    $script:fakeLane = @{ 1 = "y|normal"; 2 = "" }; $script:fakeFree = @{ 1 = $true; 2 = $false }
+    Invoke-QGrant
+    $a = Get-QState $pA; $b = Get-QState $pB
+    QCheck "lane: the lane-y entry is granted on the lane-y slot, the older lane-x entry gets skipped 1" (($b.state -eq "granted") -and ([int]$b.slot -eq 1) -and ([int]$a.skipped -eq 1))
+    Remove-Item $qdir -Recurse -Force
+    # T3 never more than 2 turns behind: an entry skipped twice is granted before a lane match
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pA = New-FakeQ "A3" 1000 "x" -skipped 2; $pB = New-FakeQ "B3" 2000 "y"
+    $script:fakeLane = @{ 1 = "y|normal"; 2 = "" }; $script:fakeFree = @{ 1 = $true; 2 = $false }
+    Invoke-QGrant
+    $a = Get-QState $pA; $b = Get-QState $pB
+    QCheck "bypass limit: the entry skipped twice is granted, the lane match waits" (($a.state -eq "granted") -and ($b.state -eq "wait"))
+    Remove-Item $qdir -Recurse -Force
+    # T4 a GPU retry (want 2) is granted slot 2 only; slot 1 stays free for the next entry
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pA = New-FakeQ "A4" 1000 "x" -want 2; $pB = New-FakeQ "B4" 2000 "y"
+    $script:fakeLane = @{ 1 = ""; 2 = "" }; $script:fakeFree = @{ 1 = $true; 2 = $true }
+    Invoke-QGrant
+    $a = Get-QState $pA; $b = Get-QState $pB
+    QCheck "want: the retry gets slot 2, the other entry gets slot 1" (([int]$a.slot -eq 2) -and ([int]$b.slot -eq 1))
+    Remove-Item $qdir -Recurse -Force
+    # T5 a reserved slot (granted or running entry) is not granted again
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pR = New-FakeQ "R5" 500 "x" "running"; $pB = New-FakeQ "B5" 2000 "y"
+    $r = Get-QState $pR; $r.slot = 1; Save-QEntry $pR $r
+    $script:fakeFree = @{ 1 = $true; 2 = $false }
+    Invoke-QGrant
+    $b = Get-QState $pB
+    QCheck "reserve: slot 1 held by a running entry is not granted" ($b.state -eq "wait")
+    Remove-Item $qdir -Recurse -Force
+    # T6 AZT11-2 (a): a dead owner's entry is removed (the owner pid is not alive)
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pD = New-FakeQ "D6" 1000 "x" "wait" 2147000
+    $pL = New-FakeQ "L6" 2000 "x"
+    Invoke-QSweep
+    QCheck "stale a: a waiting entry of a dead owner is removed, a live one stays" ((-not (Test-Path $pD)) -and (Test-Path $pL))
+    Remove-Item $qdir -Recurse -Force
+    # T7 AZT11-2 (b): a heartbeat older than 60 s
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pH = New-FakeQ "H7" 1000 "x" "wait" $PID 0 ($now - 61000)
+    $pF = New-FakeQ "F7" 2000 "x" "wait" $PID 0 ($now - 5000)
+    Invoke-QSweep
+    QCheck "stale b: heartbeat 61 s old is removed, 5 s old stays" ((-not (Test-Path $pH)) -and (Test-Path $pF))
+    Remove-Item $qdir -Recurse -Force
+    # T8 AZT11-2 (c): a running entry past its cap plus 30 s (cap 30, run 61 s ago; a run 20 s ago stays)
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pC = New-FakeQ "C8" 1000 "x" "running"
+    $c = Get-QState $pC; $c.runT = $now - 61000; Save-QEntry $pC $c
+    $pO = New-FakeQ "O8" 2000 "x" "running"
+    $o = Get-QState $pO; $o.runT = $now - 20000; Save-QEntry $pO $o
+    Invoke-QSweep
+    QCheck "stale c: running 61 s past start (cap 30) is removed, running 20 s stays" ((-not (Test-Path $pC)) -and (Test-Path $pO))
+    Remove-Item $qdir -Recurse -Force
+    Remove-Item Env:PM_AZQUEUE_DIR -ErrorAction SilentlyContinue
+    if ($qFails) { Write-Output "QUEUE SELFTEST: $qFails FAILED" } else { Write-Output "QUEUE SELFTEST: all pass" }
+    $fails += $qFails
     Remove-Item $tmp -ErrorAction SilentlyContinue
     if ($fails) { Write-Output "SELFTEST FAILED: $fails case(s)"; exit 1 }
     Write-Output "SELFTEST PASS"
+    exit 0
+}
+if ($Queue) {
+    Get-QueueSummary | ForEach-Object { Write-Output $_ }
     exit 0
 }
 if ($List -or -not $Scenario) {
@@ -330,6 +424,27 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
     if ($script:checkRc -eq 0) { Write-Output "LOG CHECKS PASS ($(@($sc.expected_events).Count) of $(@($sc.expected_events).Count)). The script does not read the picture. A person must open the shot and confirm the subject." }
 }
 
+function Set-ScenarioStatus([string]$name, [string]$status, [string]$reason) {
+    # AZT11-5: the status (and the reason, when the object has none) of one scenario in azt_scenarios.json, text edit only (the file keeps its layout)
+    $p = Join-Path $PSScriptRoot "azt_scenarios.json"
+    $t = [IO.File]::ReadAllText($p)
+    $rx = [regex]('"name":\s*"' + [regex]::Escape($name) + '"')
+    $m = $rx.Match($t)
+    if (-not $m.Success) { return $false }
+    $next = $t.IndexOf('"name":', $m.Index + $m.Length)
+    $end = if ($next -gt 0) { $next } else { $t.Length }
+    $seg = $t.Substring($m.Index, $end - $m.Index)
+    $sm = [regex]::Match($seg, '"status":\s*"[^"]*"')
+    if (-not $sm.Success) { return $false }
+    $nl = if ($t.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $ind = [regex]::Match($seg, '
+([ 	]*)"status"').Groups[1].Value
+    $new = '"status": "' + $status + '"'
+    if ($seg -notmatch '"reason"') { $new += ',' + $nl + $ind + '"reason": "' + $reason.Replace('"', "'") + '"' }
+    $seg2 = $seg.Substring(0, $sm.Index) + $new + $seg.Substring($sm.Index + $sm.Length)
+    [IO.File]::WriteAllText($p, $t.Substring(0, $m.Index) + $seg2 + $t.Substring($end), (New-Object Text.UTF8Encoding($false)))
+    return $true
+}
 function Exit-Run([int]$code) {
     # Records this scenario start in 3ds/logs/perf/runs.jsonl (bench.py ingest-last): under the bench of this scenario, else adhoc:<scenario>.
     $ia = @((Join-Path $repo "3ds\tools\bench.py"), "ingest-last", "--log", $lastLog, "--scenario", $sc.name, "--row", $Row,
@@ -346,6 +461,7 @@ function Exit-Run([int]$code) {
     & python @ia
     if ($LASTEXITCODE -ne 0) { Write-Output "BENCH: run not recorded (bench.py exit $LASTEXITCODE)" }
     if ($script:slotK) { Exit-Slot $script:slotK; $script:slotK = 0 } # the slot is free for the next run once the logs are read and recorded
+    Leave-Queue # AZT11-1: the run leaves the queue (its slot is free)
     exit $code
 }
 
@@ -355,8 +471,9 @@ if ($CheckLog) {
 }
 
 # Start the run
+$dbgArg = [string]$sc.debug
 $argv = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $repo "3ds\run_azahar.ps1"),
-          "-Until", [string]$sc.until, "-Timeout", [string]$cap, "-Force", "-Debug", [string]$sc.debug)
+          "-Until", [string]$sc.until, "-Timeout", [string]$cap, "-Force", "-Debug", $dbgArg)
 if ($sc.extra) { $argv += @($sc.extra) }
 # BENCH3: the speed of this start, recorded by Exit-Run. Turbo: frame_limit is the TurboLimit of the run (run_azahar default 1000)
 $extraArgs = @($sc.extra)
@@ -376,10 +493,44 @@ if (-not (Test-Path (Join-Path $outDir "pm_3ds.3dsx"))) { Write-Output "BUILD: $
 # AZT2: the slot with a kept Azahar of this lane 3dsx and turbo setting first (warm start), see azslot.ps1
 $azTurbo = ($speed -eq "turbo")
 $azTL = if ($azTurbo) { [int]$frameLimit } else { 0 }
-# AZT-GPU: the GPU retry takes the slot of the failed start again (the slot number is passed by the retry)
+# AZT11-1: the run waits in the machine-wide queue (azslot.ps1 Invoke-QGrant grants a slot). The GPU retry asks for its slot (want).
+# The entry is the run's own file: it is removed at every exit (Leave-Queue), and a dead owner's entry is swept by any queue user (AZT11-2).
 $wantSlot = if ($env:PM_AZT_RETRY_RUN -and $env:PM_AZT_RETRY_SLOT) { [int]$env:PM_AZT_RETRY_SLOT } else { 0 }
-$slotK = Get-Slot $wantSlot 900 $azTurbo $azTL
-if (-not $slotK) { Write-Output "LOCK TIMEOUT: no free Azahar slot after 900 s. Nothing was run."; exit 3 }
+$qTree = Split-Path -Leaf $script:AzTree
+$qE = New-QEntry $sc.name $Row $lane $speed $qTree $wantSlot (Get-NowMs)
+$qPath = Join-Path (Get-QueueDir) ("{0:D15}-{1}-{2}.json" -f [long]$qE.t, $PID, (Get-Random))
+$script:qPath = $qPath
+Invoke-QLocked { Save-QEntry $qPath $qE }
+function Leave-Queue { if ($script:qPath) { Remove-Item $script:qPath -Force -ErrorAction SilentlyContinue; $script:qPath = "" } }
+$qT0 = Get-Date; $qHb = Get-Date; $qSaid = $false; $slotK = 0; $qPosAtStart = 0
+while ($true) {
+    Invoke-QSweep
+    if (-not $qSaid) {
+        # the position at enqueue: waiting entries older than this one, plus this one
+        $ws = @(Read-QEntries | Where-Object { [string]$_.state -eq "wait" })
+        $qPosAtStart = 1 + @($ws | Where-Object { [long]$_.t -lt [long]$qE.t }).Count
+        Write-Output ("queue: position {0} of {1} waiting (lane '{2}', speed {3}, scenario {4}, want slot {5})" -f $qPosAtStart, $ws.Count, $lane, $speed, $sc.name, $(if ($wantSlot) { $wantSlot } else { "any" }))
+        $qSaid = $true
+    }
+    Invoke-QGrant
+    $snap = Read-QEntry $qPath
+    if (-not $snap) {
+        # removed by a sweep while this run waited (its owner looked stale): queued again at its first time
+        Invoke-QLocked { Save-QEntry $qPath $qE }
+        Write-Output "queue: the entry was removed as stale, queued again at its first time"
+        $snap = Read-QEntry $qPath
+    }
+    if ([string]$snap.state -eq "granted") { $slotK = [int]$snap.slot; break }
+    if (((Get-Date) - $qHb).TotalSeconds -ge 2) { Set-QFields $qPath @{ hb = (Get-NowMs) }; $qHb = Get-Date }
+    if (((Get-Date) - $qT0).TotalSeconds -gt 900) { Leave-Queue; Write-Output "LOCK TIMEOUT: no free Azahar slot after 900 s. Nothing was run."; exit 3 }
+    Start-Sleep -Milliseconds 400
+}
+$qWaitS = [math]::Round(((Get-Date) - $qT0).TotalSeconds, 1)
+$slotOk = Get-Slot $slotK 900 $azTurbo $azTL
+if (-not $slotOk) { Leave-Queue; Write-Output "LOCK TIMEOUT: granted slot $slotK is not free after 900 s. Nothing was run."; exit 3 }
+Write-Output ("queue: granted slot {0} after {1} s (position {2} at enqueue)" -f $slotK, $qWaitS, $qPosAtStart)
+$queueInfo = "queue: position $qPosAtStart at enqueue; waited $qWaitS s; slot $slotK"
+$env:PM_QUEUE_INFO = $queueInfo
 $slotInfo = Ensure-Slot $slotK
 $sd = $slotInfo.sd; $logPath = Join-Path $sd "log.txt"; $pidFile = $slotInfo.pidFile
 $lastLog = Join-Path $outDir "slot$slotK\last_log.txt"
@@ -407,6 +558,8 @@ $t0 = Get-Date
 # No output redirect: with a redirect the child exit code is lost in this shell. The result is read from the budget file.
 $child = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $cmd -PassThru -WindowStyle Hidden
 $script:childPid = $child.Id
+Set-QFields $qPath @{ state = "running"; slot = $slotK; runner = $child.Id; runnerStart = (Get-ProcStart $child.Id); runT = (Get-NowMs); cap = $cap; hb = (Get-NowMs) }
+$qHb = Get-Date
 Write-Output "AZT: scenario $($sc.name), row $Row, lane '$lane', slot $slotK, cap $cap s, deadline $deadline s after the Azahar start"
 
 $azStart = $null
@@ -420,6 +573,7 @@ $deadlineEff = $deadline
 $script:bootLine = $null
 while (-not $child.HasExited) {
     Start-Sleep -Milliseconds 500
+    if (((Get-Date) - $qHb).TotalSeconds -ge 2) { Set-QFields $qPath @{ hb = (Get-NowMs) }; $qHb = Get-Date } # AZT11-2: heartbeat
     if (-not $azStart) {
         if (Get-AzaharProc $t0) {
             $azStart = Get-Date; $lastNew = $azStart; $startKind = "cold"; $deadlineEff = Get-StartDeadline "cold" $deadline
@@ -481,7 +635,7 @@ if (Test-Path $azLineFile) {
     Write-Output $script:azLine
     if ($script:azLine -match ' warm$') { $script:azWarm = 1 } elseif ($script:azLine -match ' cold \(') { $script:azWarm = 0 }
 }
-if ($rc -eq 9) { Write-Output "BUDGET: row $Row has no starts left. Nothing more was run. The orchestrator resets a row with run_azahar.ps1 -ResetBudget <row>."; exit 9 }
+if ($rc -eq 9) { Leave-Queue; Write-Output "BUDGET: row $Row has no starts left. Nothing more was run. The orchestrator resets a row with run_azahar.ps1 -ResetBudget <row>."; exit 9 }
 # The end line of this start in the budget file: rc and the result text of run_azahar.ps1
 $endRow = $null
 $bf = Join-Path $repo "3ds\logs\test_budget.csv"
@@ -495,7 +649,7 @@ if (Test-Path $bf) {
         }
     }
 }
-if (-not $endRow) { Write-Output "NO END LINE: run_azahar.ps1 wrote no end line for row $Row after this start. It did not run (lock timeout, switch error or budget). Nothing was checked."; exit 1 }
+if (-not $endRow) { Leave-Queue; Write-Output "NO END LINE: run_azahar.ps1 wrote no end line for row $Row after this start. It did not run (lock timeout, switch error or budget). Nothing was checked."; exit 1 }
 # AZT-GPU: Azahar died before the first marker with the GPU stream buffer failure (Vulkan "Failed to allocate Stream buffer") or exit 0xC000001D (-1073741795).
 $emuTxt = if (Test-Path $slotInfo.emuLog) { Get-Content $slotInfo.emuLog -Raw } else { "" }
 $gpuFault = (-not $markerSeen) -and (($emuTxt -match 'Failed to allocate Stream buffer') -or (($endRow -join ",") -match '-1073741795'))
@@ -503,7 +657,7 @@ if ($gpuFault -and -not $env:PM_AZT_RETRY_RUN) {
     # AZT4-2: the kept Azahars that hold GPU memory are closed (idle ones only, any worktree), then the same slot retries once after 2 s
     Write-Output "AZT: GPU memory fault, retry. Same slot $slotK (no marker before the Azahar exit)."
     $env:PM_AZT_RETRY_RUN = "1"; $env:PM_AZT_RETRY_SLOT = [string]$slotK
-    Exit-Slot $slotK; $slotK = 0
+    Exit-Slot $slotK; $slotK = 0; Leave-Queue # the retry queues again: this entry must not hold the slot it asks for
     $closedIdle = Close-IdleKept
     Write-Output "azslot: gpu fault, closed $closedIdle idle, retry"
     Start-Sleep -Seconds 2
@@ -517,7 +671,7 @@ if ($endRow[4] -eq "retry" -and -not $env:PM_AZT_RETRY_RUN) {
     # AZFIX: Azahar exited with an empty emulator log. One retry, its start line is retry-start (not counted).
     Write-Output "RETRY: Azahar exited with an empty emulator log. Retrying once. The retry is not counted in the row budget."
     $env:PM_AZT_RETRY_RUN = "1"
-    Exit-Slot $slotK; $slotK = 0
+    Exit-Slot $slotK; $slotK = 0; Leave-Queue # the retry queues again: this entry must not hold the slot it asks for
     $ra = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $Scenario, "-Row", $Row, "-Try")
     if ($Build) { $ra += @("-Build", $Build) }
     if ($NoKeep) { $ra += "-NoKeep" }
@@ -534,6 +688,23 @@ $untilS = if ($tmU.Success) { [double]$tmU.Groups[1].Value } else { $null }
 $afterS = if ($tmA.Success) { [double]$tmA.Groups[1].Value } else { $null }
 # AZT10b-3: a scenario with a cap above 25 s and a measured until names itself, so its cap gets fixed as it runs
 if ($null -ne $untilS -and [double]$sc.cap -gt 25) { Write-Output ("cap high: {0} cap {1} until {2}" -f $sc.name, $sc.cap, $untilS) }
+if ($runTxt -match 'stopped after \d+s: timeout \(' -and $stop -eq "") {
+    # AZT11-5: the until line never came in the timeout. A cold start spends its first 12 to 17 s on the boot: a run whose timeout was mostly
+    # boot is cap short (exit 1, rerun or raise the cap), not broken. Broken: the until line did not come in 60 % of the timeout after the first marker.
+    $tmoM = [regex]::Match($runTxt, 'timeout \((\d+) s\)')
+    $tmoS = if ($tmoM.Success) { [double]$tmoM.Groups[1].Value } else { [double]$cap }
+    $bootM = [regex]::Match([string]$script:bootLine, 'first marker after ([\d.]+) s')
+    $bootS = if ($bootM.Success) { [double]$bootM.Groups[1].Value } else { 0.0 }
+    $afterS = [double]$wallS - $bootS
+    if ($afterS -lt (0.6 * $tmoS)) {
+        Write-Output ("SCENARIO CAP SHORT: {0}: the timeout {1} s had {2} s of {3} start before the first marker; {4} s left for the until line. Not marked broken: rerun on a warm slot or raise the cap." -f $sc.name, $tmoS, $bootS, $startKind, [math]::Round($afterS, 1))
+        Exit-Run 1
+    }
+    # AZT11-5: the until line never came in the cap. The scenario is marked unverified (its subject and until need a fix), bench.py records rc 10 as broken.
+    Write-Output "SCENARIO BROKEN: $($sc.name) no until in $cap s (until /$($sc.until)/). Marked unverified in azt_scenarios.json."
+    if (Set-ScenarioStatus $sc.name "unverified" ("broken: no until in $cap s (AZT11-5, " + (Get-Date -Format "yyyy-MM-dd") + ")")) { Write-Output "azt_scenarios.json: $($sc.name) status unverified" }
+    Exit-Run 10
+}
 if ($stop -eq "marker") {
     Write-Output "SCENARIO FAILED: marker missing: $($sc.first_marker)"
     Write-Output "Not in the log $deadlineEff s after the Azahar start ($startKind start). Azahar was stopped. Log: $logPath"

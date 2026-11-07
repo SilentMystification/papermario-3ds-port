@@ -68,7 +68,7 @@ REPO = HERE.parent.parent
 DEFS = HERE / "bench_defs.json"
 SCEN = HERE / "azt_scenarios.json"
 PERF = REPO / "3ds" / "logs" / "perf"
-RUNS = PERF / "runs.jsonl"
+RUNS = Path(os.environ["PM_RUNS_FILE"]) if os.environ.get("PM_RUNS_FILE") else PERF / "runs.jsonl"  # PM_RUNS_FILE: a read-only query of another copy (slow)
 DB = PERF / "bench.db"
 PUSHED = PERF / "pushed_builds.txt"
 CSV = REPO / "docs" / "handoff" / "perf_history.csv"
@@ -859,9 +859,53 @@ def run_azahar_list(a):
     if any(s["status"] == "unverified" for s in scs):
         cmd.append("-Try")
     print("list of %d benches on one kept slot: %s" % (len(bds), ", ".join(names)))
+    queue_line()
     rc = subprocess.run(cmd, cwd=REPO, env=env).returncode
     print("list: azt.ps1 exit %d. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times." % rc)
     return rc
+
+
+def queue_line():
+    """AZT11-3: the one summary line of the Azahar run queue (azt.ps1 -Queue), printed on every start."""
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(REPO / "3ds" / "tools" / "azt.ps1"), "-Queue"],
+                             cwd=REPO, capture_output=True, text=True, timeout=120).stdout
+        first = [l for l in out.splitlines() if l.startswith("QUEUE:")]
+        print(first[0] if first else "QUEUE: no summary from azt.ps1 -Queue")
+    except (OSError, subprocess.SubprocessError) as e:
+        print("QUEUE: summary failed (%s)" % e)
+
+
+def cmd_slow(a):
+    """AZT11-5: scenarios whose measured until (median of the recorded runs) is above --min s, with the until line and its frame.
+    broken = runs that reached the cap without the until line (rc 10). Read-only."""
+    rows = read_runs()
+    seen = collections.OrderedDict()
+    for r in rows:
+        b = r.get("bench") or "adhoc"
+        seen.setdefault(b, {"u": [], "w": [], "broken": 0})
+        if r.get("result") == "broken":
+            seen[b]["broken"] += 1
+        t = r.get("timing") or {}
+        u = r.get("until_s", t.get("until_s"))  # the record carries until_s and wall_s at top level (ingest-last), older ones in timing
+        w = r.get("wall_s", t.get("wall_s"))
+        if u is not None:
+            seen[b]["u"].append(float(u))
+        if w is not None:
+            seen[b]["w"].append(float(w))
+    print("%-28s %-22s %5s %8s %8s %7s  %s" % ("bench", "scenario", "runs", "until_s", "wall_s", "broken", "until line (frame)"))
+    for b, v in seen.items():
+        if not v["u"]:
+            continue
+        bd = bench_def(b) if b != "adhoc" else None
+        sc = scenario(bd["scenario"]) if bd and bd.get("scenario") else None
+        until = (sc or {}).get("until", "")
+        mu = sorted(v["u"])[len(v["u"]) // 2] if v["u"] else None
+        if mu is not None and mu <= a.min:
+            continue
+        fm = re.search(r"frame (\d+)", until)
+        print("%-28s %-22s %5d %8s %8s %7d  %s (%s)" % (b, (sc or {}).get("name", "-")[:22], len(v["u"]), "%.1f" % mu if mu is not None else "-",
+              "%.1f" % sorted(v["w"])[len(v["w"]) // 2] if v["w"] else "-", v["broken"], until or "-", fm.group(1) if fm else "-"))
 
 
 def cmd_run(a):
@@ -885,6 +929,7 @@ def cmd_run(a):
             print("%s. Nothing was run." % lane_problem(a.lane))
             return 5
         speed = a.speed or bd.get("speed", "normal")
+        queue_line()
         PERF.mkdir(parents=True, exist_ok=True)
         with (PERF / ("status_%s.txt" % a.row)).open("a", encoding="utf-8", newline="\n") as f:
             f.write("%s %s scenario %s: measures %s; path azt.ps1 -> run_azahar.ps1; speed %s; lane %s; why %s\n" % (now_iso(), bd["name"], s["name"], ", ".join(measures(bd)), speed, a.lane or "main", a.why))
@@ -1125,7 +1170,7 @@ def cmd_ingest_last(a):
     bench = bd["name"] if bd else "adhoc:" + s
     text = p.read_text(encoding="utf-8", errors="replace")
     b, c = resolve_build(p, text, a.build, a.commit, "azahar")
-    result = "log_pass" if a.rc == 0 else "fail:%d" % a.rc
+    result = "log_pass" if a.rc == 0 else ("broken" if a.rc == 10 else "fail:%d" % a.rc) # AZT11-5: rc 10 = no until line in the cap (broken, not a code fail)
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
     shot = a.shots or str(SHOTS / s)
     dv = os.environ.get("PM_BENCH_DIRTY")
@@ -1485,6 +1530,7 @@ def main(argv):
     x.add_argument("--last", type=int); add_area(x); x.set_defaults(f=cmd_compare)
     x = sub.add_parser("trend"); x.add_argument("bench"); x.add_argument("metric", nargs="?"); add_area(x); x.set_defaults(f=cmd_trend)
     x = sub.add_parser("check"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_check)
+    x = sub.add_parser("slow"); x.add_argument("--min", type=float, default=8.0, help="list scenarios with a median until_s above this (AZT11-5)"); x.set_defaults(f=cmd_slow)
     x = sub.add_parser("rebuild"); x.set_defaults(f=cmd_rebuild)
     x = sub.add_parser("correct"); x.add_argument("run_id", type=int); x.add_argument("--why", required=True); x.add_argument("--row", default="BENCHFIX")
     x.set_defaults(f=cmd_correct)

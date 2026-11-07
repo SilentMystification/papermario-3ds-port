@@ -245,16 +245,17 @@ try {
 
 New-Item -ItemType Directory -Force -Path $sd, $sl.romDir | Out-Null
 # AZT8-3: the ROM copy is checked by hash. A copy that did not land (or a stale ROM) is a cold start, never a warm restart.
-$wantBuild = Get-Build3dsx $in3dsx
+Set-Content "$($sl.dir)\lane.txt" ("{0}|{1}" -f [string]$env:PM_LANE, $(if ($Turbo) { "turbo" } else { "normal" })) # AZT11-1: the lane and speed this slot now holds (the queue prefers the same key: no reload, no cold start)
 try {
     Copy-Item $in3dsx $romFile -Force -ErrorAction Stop
     if ((Get-FileHash $romFile -Algorithm SHA256).Hash -ne (Get-FileHash $in3dsx -Algorithm SHA256).Hash) { throw "ROM copy differs from the lane 3dsx" }
 }
 catch { if ($warm) { Write-Output "Warm: the ROM copy failed ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id "3dsx locked or ROM copy failed"; Copy-Item $in3dsx $romFile -Force } else { throw } }
-$oldLogCT = [datetime]::MinValue
-$oldLen = [long]0; $oldMarks = 0 # AZT9d-2: the log before this restart
-if ($warm) { if (Test-Path $log) { $oldLogCT = (Get-Item $log).CreationTimeUtc; $ls = Get-LogState $log; $oldLen = $ls.len; $oldMarks = $ls.marks } } # the kept game holds log.txt open: the restart makes a new one (AZT9d-2: its length and boot marks)
-else { Remove-Item $log -ErrorAction SilentlyContinue }
+# AZT11-4: this start's boot nonce, the first switches word. The game cuts a switch text over 255 bytes at its end, so the nonce goes first.
+$bootNonce = [guid]::NewGuid().ToString("N").Substring(0, 10)
+if ($Debug.Length -gt 230) { Release-Lock; End-Run 8 "SWITCHES: -Debug is over 230 characters: the boot nonce (AZT11-4) would be cut. Use tour=@file for a long list." }
+$Debug = ("bootid=$bootNonce " + $Debug).Trim()
+if (-not $warm) { Remove-Item $log -ErrorAction SilentlyContinue } # a cold start deletes the old game log (a warm restart keeps the kept game's file)
 if (-not $warm -and (Test-Path $log)) { Release-Lock; End-Run 5 "LOG LOCKED: $log is still there after the delete, another process holds it. Nothing was run. azahar.exe open: $(Get-AzaharList)" }
 if ($Smoke -and $Debug -notmatch "fixedseed") { $Debug = "$Debug fixedseed" } # R-SEED: smoke runs use the fixed RNG seed
 if ($Debug) { Set-Content "$sd\debug3ds.txt" $Debug } else { Remove-Item "$sd\debug3ds.txt" -ErrorAction SilentlyContinue }
@@ -304,63 +305,59 @@ $p = $null
 $warmDone = $false
 $start = Get-Date
 if ($warm) {
-    # AZT-2 warm restart: Azahar > Emulation > Restart (hotkey of the slot config) boots the same 3dsx again; the new boot makes a new log.txt
-    Set-Content "$($sl.dir)\warm.start" $start.Ticks # azt.ps1 starts its clock on this file
-    Set-Content $pidFile $kept.Id
+    # AZT-2 warm restart: Azahar > Emulation > Restart (hotkey of the slot config) boots the same 3dsx again.
+    # AZT11-4: the boot is found by this run's nonce (bootid=, the first word of the switches line). The old boot never prints it, whatever the
+    # log file does on a restart (AZT9d-2 and AZT11-4a: a log overwritten in place from offset 0, same banner count and size, was never seen as new).
+    # Four key methods per round (posted, keybd_event, keybd_event again, SwitchToThisWindow + keybd_event). A boot that is not this run
+    # (other switches, or another build than this lane 3dsx) gets a second round in the kept Azahar with a new nonce (switches only);
+    # a stale build is cold at once. A cold start is the last resort.
     $hk = Get-SlotHotkey $slotK "Restart Emulation"
-    # AZT9: the restart is a window shortcut. A try whose key did not reach a foreground Azahar is sent again once; a restart that is already
-    # under way (Azahar alive, key delivered) gets 40 s for its new log.txt instead of a second key press.
-    $sent = $false
-    for ($try = 1; $try -le 3 -and -not $warmDone; $try++) {
-        $script:AzLastFg = $false
-        $kept.Refresh()
-        $method = if ($try -eq 1) { "posted" } else { "keybd_event" }
-        $sent = if ($try -eq 1) { Send-AzHotkey $kept $hk } else { Send-AzKeyEvent $kept.MainWindowHandle $hk }
-        $fgTxt = if ($script:AzLastFg) { "foreground" } else { "no foreground" }
-        Write-PoolLog $slotK "warm try" $kept.Id $kept.Id ("try {0} {1} hotkey {2} sent={3} {4} title '{5}'" -f $try, $method, $hk, $sent, $fgTxt, $kept.MainWindowTitle)
-        if (-not $sent) { continue }
-        $wait = 15
-        $created = $false
-        for ($w = 0; $w -lt ($wait * 4) -and -not $warmDone; $w++) {
-            Start-Sleep -Milliseconds 250
-            # a new boot makes a new log.txt (new creation time) or writes to it; the paused old game wrote nothing since its run ended
-            if (Test-Path $log) { $li = Get-Item $log; if ($li.CreationTimeUtc -ne $oldLogCT) { $created = $true }; if ($li.CreationTimeUtc -ne $oldLogCT -or $li.LastWriteTimeUtc -gt $start.ToUniversalTime()) { $warmDone = $true } }
+    $warmDone = $false
+    for ($round = 1; $round -le 2; $round++) {
+        $start = Get-Date
+        Set-Content "$($sl.dir)\warm.start" $start.Ticks # azt.ps1 starts its clock on this file
+        Set-Content $pidFile $kept.Id
+        $boot = $null
+        for ($try = 1; $try -le 4 -and -not $boot; $try++) {
+            $script:AzLastFg = $false
+            $kept.Refresh()
+            $method = @("posted", "keybd_event", "keybd_event", "switch_to_window")[$try - 1]
+            if ($try -eq 1) { $sent = Send-AzHotkey $kept $hk }
+            elseif ($try -eq 4) { $sent = Send-AzKeyEventSwitch $kept.MainWindowHandle $hk }
+            else { $sent = Send-AzKeyEvent $kept.MainWindowHandle $hk }
+            $fgTxt = if ($script:AzLastFg) { "foreground" } else { "no foreground" }
+            Write-PoolLog $slotK "warm try" $kept.Id $kept.Id ("round {0} try {1} {2} hotkey {3} sent={4} {5} title '{6}'" -f $round, $try, $method, $hk, $sent, $fgTxt, $kept.MainWindowTitle)
+            if (-not $sent) { continue }
+            for ($w = 0; $w -lt 60 -and -not $boot; $w++) {
+                Start-Sleep -Milliseconds 250
+                $boot = Find-BootNonce $log $bootNonce
+            }
+            Write-PoolLog $slotK "warm wait" $kept.Id $kept.Id ("round {0} try {1} nonce {2} after {3:N1} s" -f $round, $try, $(if ($boot) { "found" } else { "none" }), ((Get-Date) - $start).TotalSeconds)
         }
-        Write-PoolLog $slotK "warm wait" $kept.Id $kept.Id ("try {0} log {1} created {2} after {3:N1} s" -f $try, $(if ($warmDone) { "new" } else { "none" }), $(if ($created) { "yes" } else { "no" }), ((Get-Date) - $start).TotalSeconds)
+        if (-not $boot) { $warmWhy = "restart failed"; break }
+        $buildOk = Test-Build3dsx $in3dsx ([string]$boot.build) # AZT11-4a: the lane 3dsx holds the boot's build id
+        $swOk = Test-SwitchWords ([string]$boot.switches) $Debug.Trim() # AZT11-4b: every switch word of this run is in the boot
+        if ($buildOk -and $swOk) {
+            $p = $kept; $warmDone = $true
+            Write-Output ("Warm restart ok after {0:N1} s (hotkey {1}, round {2})." -f ((Get-Date) - $start).TotalSeconds, $hk, $round)
+            Set-Content "$($sl.dir)\warm.ok" "ok" # AZT3-3: azt.ps1 reads this boot's log from its first byte after this line
+            Write-PoolLog $slotK "warm" $kept.Id $kept.Id "restart, this run's switches"
+            break
+        }
+        $warmWhy = if (-not $buildOk) { "stale rom" } else { "switch mismatch" }
+        Write-Output ("Warm restart: the boot is not this run ({0}; boot build '{1}', boot switches '{2}'), round {3} of 2." -f $warmWhy, $boot.build, $boot.switches, $round)
+        if (-not $buildOk -or $round -eq 2) { break }
+        # round 2: the old boot prints the old nonce, so the next boot gets a new one (the switches file is rewritten with it)
+        $bootNonce = [guid]::NewGuid().ToString("N").Substring(0, 10)
+        $Debug = ("bootid=$bootNonce " + ($Debug -replace '^bootid=\S+\s*', '')).Trim()
+        Set-Content "$sd\debug3ds.txt" $Debug
     }
-    $bootBuild = if ($warmDone) { Get-BootValue $log '(?m)^#\d+ build (\S+) git' $oldLen $oldMarks } else { $null } # AZT9d-2: the newest boot's build line
-    if ($warmDone -and $bootBuild -ne $wantBuild) {
-        # AZT8-2: the restarted Azahar booted another build than this lane 3dsx (a warm restart can keep the old ROM): cold start
-        Write-Output "Warm restart: the boot runs another build than this lane 3dsx ($wantBuild). Cold start."
-        Kill-Azahar $kept.Id "stale rom"
+    if (-not $warmDone) {
+        Write-Output "Warm restart failed ($warmWhy): cold start."
+        Kill-Azahar $kept.Id $warmWhy
         Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
         $emuOff = 0L
         $warm = $false
-        $warmWhy = "stale rom"
-        $warmDone = $false
-    }
-    elseif ($warmDone -and $Debug -and -not ((Get-BootValue $log '(?m)^#\d+ switches ([^\r\n]*)' $oldLen $oldMarks) -match [regex]::Escape($Debug.Trim()))) {
-        # AZT6-3: the restarted game printed other switches (stale debug3ds.txt): this start is cold, the kept Azahar is closed
-        Write-Output "Warm restart: the boot prints other switches than this run. Cold start."
-        Kill-Azahar $kept.Id "switch mismatch" 
-        Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
-        $emuOff = 0L
-        $warm = $false
-        $warmWhy = "switches"
-        $warmDone = $false
-    }
-    elseif ($warmDone) {
-        $p = $kept; Write-Output ("Warm restart ok after {0:N1} s (hotkey {1})." -f ((Get-Date) - $start).TotalSeconds, $hk)
-        Set-Content "$($sl.dir)\warm.ok" "ok" # AZT3-3: azt.ps1 reads this boot's log from its first byte after this line
-        Write-PoolLog $slotK "warm" $kept.Id $kept.Id "restart, this run's switches"
-    }
-    else {
-        Write-Output "Warm restart failed (hotkey '$hk', sent $sent): no new log.txt after 15 s. Cold start."
-        Kill-Azahar $kept.Id "warm restart failed" 
-        Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
-        $emuOff = 0L
-        $warm = $false
-        $warmWhy = "restart failed"
     }
 }
 if (-not $p) {
@@ -567,4 +564,5 @@ $endAt = ((Get-Date) - $start).TotalSeconds # AZT10-1: end of the run (after the
 $timing = if ($null -ne $untilAt) { "; until at {0:N1} s, end at {1:N1} s, {2:N1} s after the until line" -f $untilAt, $endAt, ($endAt - $untilAt) } else { "; no until line, end at {0:N1} s (cap or stop)" -f $endAt }
 $warmSfx = if ($warmDone) { " warm" } else { "" }
 $keepSfx = if ($keepNow) { " kept" } else { "" }
-End-Run 0 ("stopped after ${secs}s: $reason (Azahar $azState)" + $warmSfx + $keepSfx + $timing) $endKind
+$queueSfx = if ($env:PM_QUEUE_INFO) { " | " + $env:PM_QUEUE_INFO } else { "" } # AZT11-1: queue position and wait of this start (set by azt.ps1)
+End-Run 0 ("stopped after ${secs}s: $reason (Azahar $azState)" + $warmSfx + $keepSfx + $timing + $queueSfx) $endKind
