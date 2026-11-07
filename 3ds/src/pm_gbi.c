@@ -241,17 +241,6 @@ void sync_legacy(void) {
 
 
 
-unsigned rgba_from_5551(unsigned c) {
-    unsigned r = (c >> 11) & 31;
-    unsigned g = (c >> 6) & 31;
-    unsigned b = (c >> 1) & 31;
-    unsigned a = (c & 1) ? 255 : 0;
-    r = (r << 3) | (r >> 2);
-    g = (g << 3) | (g >> 2);
-    b = (b << 3) | (b >> 2);
-    return (r << 24) | (g << 16) | (b << 8) | a;
-}
-
 /* L01: RSP light table. G_MW_NUMLIGHT sets the count, G_MOVEMEM index G_MV_LIGHT fills slots (slot 0 is light 1, slot nlights is the ambient light). */
 NdLight lt[9];
 unsigned lt_n;
