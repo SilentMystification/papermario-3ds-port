@@ -14,5 +14,18 @@ MDL-3 SPRITE: only if MDL-0 or a census shows sprite_component or spr_fb walker 
 MDL-4 DELETE: pm_gpu_model_fb_cached and the walker geometry fallback in rec_run (`if (!nat) rec_dl`) only if fb = 0 in the MDL-0 scenes; else the remaining cases become named fallbacks with a counter in agent_s6.md.
 Hand back with the branch head after MDL-4 or a failed gate.
 
+## Oracle decision MDL-1 R13 (2026-11-06, Opus; replaces the nd_r13_desc sequence decoder)
+Decision: run the R13 block through the dispatcher's texture handlers (the words are the record, D1/D2), and take unit 0 (and unit 1 if the combine uses tex1) from the state that results. Do not write a second decoder (nd_r13_desc as a sequence decoder breaks D2, and 3 loads plus 2 TLUTs plus tile 0 in between is exactly the walker's rule set). The counted fallback stays only for blocks that hold a non-texture op.
+How:
+- nd_model.c nd_model_state, why 2 path: if every op in the R13 block is in {SETTIMG, SETTILE, SETTILESIZE, LOADTILE, LOADBLOCK, LOADTLUT, the syncs, NOOP}, set aux_ok. Any other op keeps why 2, counted.
+- pm_gbi.c rec_run, before pm_gpu_model_native: run the block on the walker handlers today (pm_gbi_run on the R13 words, state only); after TX-3, through nd_tex.c.
+- Then pm_tex_native_unit0 / pm_tex_native_unit1 give the units from the live tile state.
+- The model cache key (nd_mc) adds the bound slot ids (pm_tex_census_id of units 0 and 1), so a hit never reuses another frame's texture.
+- Remove nd_r13_desc. Keep the r13all dump line until the gate passes, then delete it.
+Gate:
+- kmr_03 battle: ndm why 2 drops from 297 per 100 frames to 0 (non-texture ops counted apart).
+- battle_start_pic byte-equal against the walker-fallback build (the same branch with aux_ok forced off).
+- mac_01 byte-equal; iwa_10 by eye; model fb 0 in mdlw_battle.
+
 ## Rules
 Own files: 3ds/src/nd_model.c (not the why 4 line), pm_gpu.c pm_gpu_model_native and pm_gpu_model_fb_cached, pm_gbi.c rec_run and load_shaded_sprite, nd_sprite.c. CORE edits pm_gbi.c on branch core (state renames, setters): keep pm_gbi.c hunks small. No toggles (debug switches allowed), no stubs, no push, no attribution lines, never commit 3ds/src/map_restore_table.c. Keep Azahar open. Status line in 3ds/logs/perf/status_MDL.txt. Budget: reset and continue. Two tries per named cause. Delete this file in the MDL-4 commit.
