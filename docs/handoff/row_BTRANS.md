@@ -29,5 +29,25 @@ Gate:
 - caplog: cpu-after-split = 0; pause filter (golden pause1-4) right.
 - One O3DS console push, the user walks into 5 encounters.
 
+## Oracle decision BTRANS
+Keep fixes 1-3 and verify on the console. They guard code paths that still exist on nds1:
+- cfb_capture_prev (pm_main.c) still falls back to pm_gpu_read_frame;
+- prev_want is still cleared at every pm_gpu_begin, including the interp replay draw (pm_gpu.c, the prev_pre/prev_want lines);
+- kick_check still queues the clear at the first split.
+Of the 18 commits between efaca195d and 5ec146f06, none touches those lines. They are CORE-3 (nd_rect.c), MDL, the PSHIFT grab texel row and AZT9 pool/warm-restart changes.
+Nothing on nds1 hides the fallback. The evidence is not comparable:
+- the old 38/38 run was a walk-in (most likely interp on: every key frame falls back, cause b);
+- the only nds1 base run was standing;
+- the 8 fixed-build runs show cpu 0 because the fix removes the fallback, so they prove nothing about the base.
+Next run: one nds1-base (caplog only) walk-in with interp on.
+- cpu_after_split > 0: the cause is shown on nds1.
+- cpu 0: also run a walk-in with interp off, and one with the cpulimit and frame pacing of O3DS (the `fs1force` switch to force FS1 skips). This covers the O3DS-only paths: slow frames give an early KICK1 and FS1 skips.
+Then push the fixed build to the O3DS console. Gate: the user does 5 walk-in encounters, with no black frames, and crash.txt/log.txt have the caplog lines.
+The crash (standing encwarp, interp off, base and fixed): give it its own row; it is not BTRANS.
+1. Code-trace route: take the symbolized PC/LR and the last 30 log lines from the AZT crash report ("crash symbols").
+2. Read the faulting function, and the frame, game mode and battle-load phase from the pm_wd phase line.
+3. Compare with docs/handoff/archive/diag_encwarp.md and diag_battle_start_crash.md (earlier encwarp and battle-start faults: warp-into-battle state and the load order).
+4. Name the field or pointer at the faulting line from the code before any further run. One confirming run at most.
+
 ## Rules
 Own worktree: git worktree add build3ds/wt/btrans -b btrans nds1; copy assets/us and ver/us/build; build there (PM_LANE=btrans); azt -Build <worktree 3dsx>; check each run's boot build line. The caplog counters are the main proof; shots only for the final picture gate (keep the encounter count of the gate, but read black frames from caplog plus one shot pass). Commit on branch btrans, no attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. New scenarios go into azt_scenarios.json and bench_defs.json in the same commit (nds1 JSON as the base, add only yours). Status line in 3ds/logs/perf/status_BTRANS.txt before each start. Budget: reset and continue. Two tries per named cause. Delete this file in the last fix commit; the orchestrator pushes to the console for the user check.
