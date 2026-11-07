@@ -94,3 +94,7 @@ The body is right on alpha. Facts (not a run):
 Fix: none. No code commit. The FX1 content disc premise and the body texture premise are closed.
 Next step: the glow (plan 5: the glow quads, tags 3 and 4, white square at f547 to f567). Start from plan 5 measure orbreg=550 / orbtex=552 on sbk56_glowvram (lane fx). The body is not the cause.
 Probes (emdbg, orbdbg, pm_tex CI log) stay uncommitted in the worktree and were removed from it after this result.
+
+## State (2026-11-07, plan 5 measure blocked) and decision
+Facts: the orbdbg chain is not in nds1. orbreg_dump (pm_gpu.c ~936) has no caller; pm_gbi_dbg_reg, pm_gbi_dbg_orb_tag, the orb_tag G_DL hook and the energy_orb_wave.c tag registration (tags 1-5) exist only in build3ds/fx.diff. In the current build the hit is at f524 (run 12619), not f547; effects end f704. The f547-f565 window and orbreg=550 are stale.
+Decision (orchestrator): re-apply the tag chain as a committed debug tool this time (debug tools may stay; rows FX1 and this one name orbdbg): fx.diff pm_gbi.c hunk L23-L60 (now in the module that owns G_DL: nd_walk.c or nd_cen.c, not pm_gbi.c), the G_DL tag enter/exit hunk ~L120-L170, energy_orb_wave.c L1261-L1290 (TARGET_3DS only); call orbreg_dump() in nd_raw_native after nd_native_submit under the orbreg switch. Then: one orbdbg run (cold det) with shots f520-f575 to name the glow frames by tag; then orbreg and orbtex at the first glow frame; then the plan 5 reading, fix and gate (window = the frames the tags name).
